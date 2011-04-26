@@ -323,6 +323,7 @@ testpmd_mbuf_ctor(struct rte_mempool *mp,
 	mb_ctor_arg = (struct mbuf_ctor_arg *) opaque_arg;
 	mb = (struct rte_mbuf *) raw_mbuf;
 
+	mb->type         = RTE_MBUF_PKT;
 	mb->pool         = mp;
 	mb->buf_addr     = (void *) ((char *)mb + mb_ctor_arg->seg_buf_offset);
 	mb->buf_physaddr = (uint64_t) (rte_mempool_virt2phy(mp, mb) +

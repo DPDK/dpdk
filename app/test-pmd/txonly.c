@@ -235,6 +235,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		for (i = 1; i < tx_pkt_nb_segs; i++) {
 			pkt_seg->pkt.next = tx_mbuf_alloc(mbp);
 			if (pkt_seg->pkt.next == NULL) {
+				pkt->pkt.nb_segs = i;
 				rte_pktmbuf_free(pkt);
 				goto nomore_mbuf;
 			}
