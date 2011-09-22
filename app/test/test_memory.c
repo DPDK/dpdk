@@ -61,7 +61,6 @@ test_memory(void)
 	uint64_t s;
 	unsigned i, j;
 	const struct rte_memseg *mem;
-	volatile uint8_t x;
 
 	/*
 	 * dump the mapped memory: the python-expect script checks
@@ -83,8 +82,7 @@ test_memory(void)
 
 		/* check memory */
 		for (j = 0; j<mem[i].len; j++) {
-			x = *((uint8_t *) mem[i].addr + j);
-			RTE_SET_USED(x);
+			*((volatile uint8_t *) mem[i].addr + j);
 		}
 	}
 
