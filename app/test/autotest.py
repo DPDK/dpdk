@@ -143,6 +143,7 @@ class AutoTest:
             self.report_list.append(report)
 
     def gen_report(self):
+        fails = 0
         for report in self.report_list:
             # main report header and stats
             self.literal = 0
@@ -186,15 +187,17 @@ class AutoTest:
                     reportlog.write(s)
 
             reportlog.close()
+            if report["fails"] > 0:
+                fails += 1
 
         # displayed on console
         print
         print "-------------------------"
         print
-        if report["fails"] == 0:
+        if fails == 0:
             print "All test OK"
         else:
-            print "%s test(s) failed"%(report["fails"])
+            print "%s test(s) failed" % fails
 
     # file API, to store logs from pexpect
     def write(self, buf):
