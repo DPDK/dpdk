@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2012 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2012-2013 6WIND.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without 
@@ -547,17 +548,14 @@ simple_fwd_config_setup(void)
 	portid_t j;
 	portid_t inc = 2;
 
-	if (nb_fwd_ports % 2) {
-		if (port_topology == PORT_TOPOLOGY_CHAINED) {
-			inc = 1;
-		}
-		else {
-			printf("\nWarning! Cannot handle an odd number of ports "
-			       "with the current port topology. Configuration "
-			       "must be changed to have an even number of ports, "
-			       "or relaunch application with "
-			       "--port-topology=chained\n\n");
-		}
+	if (port_topology == PORT_TOPOLOGY_CHAINED) {
+		inc = 1;
+	} else if (nb_fwd_ports % 2) {
+		printf("\nWarning! Cannot handle an odd number of ports "
+		       "with the current port topology. Configuration "
+		       "must be changed to have an even number of ports, "
+		       "or relaunch application with "
+		       "--port-topology=chained\n\n");
 	}
 
 	cur_fwd_config.nb_fwd_ports = (portid_t) nb_fwd_ports;
