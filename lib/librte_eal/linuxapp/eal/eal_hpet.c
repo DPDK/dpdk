@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2012 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2012-2013 6WIND.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without 
@@ -140,6 +141,41 @@ set_rdtsc_freq(void)
 			((1.0 / eal_hpet_resolution_hz) / 1e-15);
 }
 
+static void
+check_tsc_flags(void)
+{
+	char line[512];
+	FILE *stream;
+
+	stream = fopen("/proc/cpuinfo", "r");
+	if (!stream) {
+		RTE_LOG(WARNING, EAL, "WARNING: Unable to open /proc/cpuinfo\n");
+		return;
+	}
+
+	while (fgets(line, sizeof line, stream)) {
+		char *constant_tsc;
+		char *nonstop_tsc;
+
+		if (strncmp(line, "flags", 5) != 0)
+			continue;
+
+		constant_tsc = strstr(line, "constant_tsc");
+		nonstop_tsc = strstr(line, "nonstop_tsc");
+		if (!constant_tsc || !nonstop_tsc)
+			RTE_LOG(WARNING, EAL,
+				"WARNING: cpu flags "
+				"constant_tsc=%s "
+				"nonstop_tsc=%s "
+				"-> using unreliable clock cycles !\n",
+				constant_tsc ? "yes":"no",
+				nonstop_tsc ? "yes":"no");
+		break;
+	}
+
+	fclose(stream);
+}
+
 /*
  * Open and mmap /dev/hpet (high precision event timer) that will
  * provide our time reference.
@@ -192,6 +228,7 @@ rte_eal_hpet_init(void)
 use_rdtsc:
 	internal_config.no_hpet = 1;
 	set_rdtsc_freq();
+	check_tsc_flags();
 	return 0;
 }
 
