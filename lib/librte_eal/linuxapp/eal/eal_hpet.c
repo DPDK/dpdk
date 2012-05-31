@@ -129,14 +129,51 @@ hpet_msb_inc(__attribute__((unused)) void *arg)
 	}
 }
 
+static uint64_t
+get_tsc_freq_from_cpuinfo(void)
+{
+	char line[256];
+	FILE *stream;
+	double dmhz;
+	uint64_t freq = 0;
+
+	stream = fopen("/proc/cpuinfo", "r");
+	if (!stream) {
+		RTE_LOG(WARNING, EAL, "WARNING: Unable to open /proc/cpuinfo\n");
+		return 0;
+	}
+
+	while (fgets(line, sizeof line, stream)) {
+		if (sscanf(line, "cpu MHz\t: %lf", &dmhz) == 1) {
+			freq = (uint64_t)(dmhz * 1000000UL);
+			break;
+		}
+	}
+
+	fclose(stream);
+	return freq;
+}
+
+static uint64_t
+get_tsc_freq_from_sleep(void)
+{
+	uint64_t start = rte_rdtsc();
+	sleep(1);
+	return rte_rdtsc() - start;
+}
+
 static inline void
 set_rdtsc_freq(void)
 {
-	uint64_t start;
-
-	start = rte_rdtsc();
-	sleep(1);
-	eal_hpet_resolution_hz = rte_rdtsc() - start;
+	uint64_t freq;
+	freq = get_tsc_freq_from_cpuinfo();
+	if (!freq) {
+		RTE_LOG(WARNING, EAL, "WARNING: Cannot read CPU clock\n");
+		freq = get_tsc_freq_from_sleep();
+	}
+	RTE_LOG(INFO, EAL, "TSC clock @ %lu MHz\n",
+		(unsigned long) (freq / (1000000UL)));
+	eal_hpet_resolution_hz = freq;
 	eal_hpet_resolution_fs = (uint32_t)
 			((1.0 / eal_hpet_resolution_hz) / 1e-15);
 }
