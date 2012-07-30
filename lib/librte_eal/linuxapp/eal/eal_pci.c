@@ -700,7 +700,8 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		dev->id.vendor_id, dev->id.device_id, dr->name);
 
 		/* Unbind PCI devices if needed */
-		if (module_name != NULL) {
+		if ((!dev->blacklisted) &&
+		    (module_name != NULL)) {
 			if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 			/* unbind current driver, bind ours */
 				if (pci_unbind_kernel_driver(dev) < 0)
@@ -712,6 +713,14 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 			if (pci_uio_map_resource(dev) < 0)
 				return -1;
 		}
+
+		/* reference driver structure */
+		dev->driver = dr;
+
+		/* no initialization when blacklisted */
+		if (dev->blacklisted)
+			return -1;
+
 		/* call the driver devinit() function */
 		return dr->devinit(dr, dev);
 
