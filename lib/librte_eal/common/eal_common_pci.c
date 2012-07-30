@@ -81,9 +81,8 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 {
 	struct rte_pci_driver *dr = NULL;
 
+	dev->blacklisted = !!is_blacklisted(dev);
 	TAILQ_FOREACH(dr, &driver_list, next) {
-		if (is_blacklisted(dev))
-			return -1;
 		if (rte_eal_pci_probe_one_driver(dr, dev) == 0)
 			return 0;
 	}

@@ -111,6 +111,8 @@ struct rte_pci_device {
 	struct rte_pci_id id;                   /**< PCI ID. */
 	struct rte_pci_resource mem_resource;   /**< PCI Memory Resource */
 	struct rte_intr_handle intr_handle;     /**< Interrupt handle */
+	const struct rte_pci_driver *driver;    /**< Associated driver */
+	unsigned int blacklisted:1;             /**< Device is blacklisted */
 };
 
 /** Any PCI device identifier (vendor, device, ...) */
