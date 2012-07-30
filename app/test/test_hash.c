@@ -1604,7 +1604,7 @@ test_hash_jhash_1word(const void *key, uint32_t length, uint32_t initval)
 {
 	const uint32_t *k = key;
 
-	length =length;
+	(void)length;
 
 	return rte_jhash_1word(k[0], initval);
 }
@@ -1614,7 +1614,7 @@ test_hash_jhash_2word(const void *key, uint32_t length, uint32_t initval)
 {
 	const uint32_t *k = key;
 
-	length =length;
+	(void)length;
 
 	return rte_jhash_2words(k[0], k[1], initval);
 }
@@ -1624,7 +1624,7 @@ test_hash_jhash_3word(const void *key, uint32_t length, uint32_t initval)
 {
 	const uint32_t *k = key;
 
-	length =length;
+	(void)length;
 
 	return rte_jhash_3words(k[0], k[1], k[2], initval);
 }
