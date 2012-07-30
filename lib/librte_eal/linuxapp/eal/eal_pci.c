@@ -701,15 +701,12 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 {
 	struct rte_pci_id *id_table;
 	const char *module_name = NULL;
-	int ret;
+	int uio_status = -1;
 
 	if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO)
 		module_name = IGB_UIO_NAME;
 
-	ret = pci_uio_check_module(module_name);
-	if (ret != 0)
-		rte_exit(1, "The %s module is required by the %s driver\n",
-				module_name, dr->name);
+	uio_status = pci_uio_check_module(module_name);
 
 	for (id_table = dr->id_table ; id_table->vendor_id != 0; id_table++) {
 
@@ -729,6 +726,11 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 
 		RTE_LOG(DEBUG, EAL, "probe driver: %x:%x %s\n",
 		dev->id.vendor_id, dev->id.device_id, dr->name);
+
+		if ((!dev->blacklisted) && (uio_status != 0)) {
+			rte_exit(1, "The %s module is required by the %s driver\n",
+					module_name, dr->name);
+		}
 
 		/* Unbind PCI devices if needed */
 		if ((!dev->blacklisted) &&
