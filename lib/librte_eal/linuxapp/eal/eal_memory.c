@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2012 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2012-2013 6WIND.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without 
@@ -292,7 +293,7 @@ find_physaddr(struct hugepage *hugepg_tbl, struct hugepage_info *hpi)
 		virt_pfn = (unsigned long)hugepg_tbl[i].orig_va /
 			page_size;
 		offset = sizeof(uint64_t) * virt_pfn;
-		if (lseek(fd, offset, SEEK_SET) != offset){
+		if (lseek(fd, offset, SEEK_SET) == (off_t) -1) {
 			RTE_LOG(ERR, EAL, "%s(): seek error in /proc/self/pagemap: %s",
 					__func__, strerror(errno));
 			close(fd);
