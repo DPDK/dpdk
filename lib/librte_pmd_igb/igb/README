@@ -1,0 +1,74 @@
+..
+  BSD LICENSE
+
+  Copyright(c) 2010-2012 Intel Corporation. All rights reserved.
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without 
+  modification, are permitted provided that the following conditions 
+  are met:
+
+    * Redistributions of source code must retain the above copyright 
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright 
+      notice, this list of conditions and the following disclaimer in 
+      the documentation and/or other materials provided with the 
+      distribution.
+    * Neither the name of Intel Corporation nor the names of its 
+      contributors may be used to endorse or promote products derived 
+      from this software without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
+  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY 
+  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+ version: DPDK.L.1.2.3-3
+
+Intel® IGB driver
+=================
+
+This directory contains code from the Intel® Network Adapter Driver for 82575/6
+and 82580-based Gigabit Network Connections under FreeBSD, version 2.2.3,
+dated 04/25/2011. This code is available from
+`http://downloadmirror.intel.com/15815/eng/igb-2.2.3.tar.gz`
+
+This driver is valid for the product(s) listed below
+
+* Intel® 82575EB Gigabit Ethernet Controller
+* Intel® 82576 Gigabit Ethernet Controller
+* Intel® 82580EB Gigabit Ethernet Controller
+* Intel® Ethernet Controller I350
+* Intel® Ethernet Server Adapter I340-F4
+* Intel® Ethernet Server Adapter I340-T4
+* Intel® Ethernet Server Adapter I350-F2
+* Intel® Ethernet Server Adapter I350-F4
+* Intel® Ethernet Server Adapter I350-T2
+* Intel® Ethernet Server Adapter I350-T4
+* Intel® Gigabit EF Dual Port Server Adapter
+* Intel® Gigabit ET Dual Port Server Adapter
+* Intel® Gigabit ET Quad Port Server Adapter
+* Intel® Gigabit ET2 Quad Port Server Adapter
+* Intel® Gigabit VT Quad Port Server Adapter
+
+
+Updating driver
+===============
+
+The following modifications have been made to this code to integrate it with the
+Intel® DPDK:
+
+
+e1000_osdep.h and e1000_osdep.c
+-------------------------------
+
+The OS dependency layer has been extensively modified to support the drivers in
+the Intel® DPDK environment. It is expected that these files will not need to be
+changed on updating the driver.

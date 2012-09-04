@@ -1,0 +1,318 @@
+/*-
+ *   BSD LICENSE
+ * 
+ *   Copyright(c) 2010-2012 Intel Corporation. All rights reserved.
+ *   All rights reserved.
+ * 
+ *   Redistribution and use in source and binary forms, with or without 
+ *   modification, are permitted provided that the following conditions 
+ *   are met:
+ * 
+ *     * Redistributions of source code must retain the above copyright 
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright 
+ *       notice, this list of conditions and the following disclaimer in 
+ *       the documentation and/or other materials provided with the 
+ *       distribution.
+ *     * Neither the name of Intel Corporation nor the names of its 
+ *       contributors may be used to endorse or promote products derived 
+ *       from this software without specific prior written permission.
+ * 
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY 
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ *  version: DPDK.L.1.2.3-3
+ */
+
+#include <stdio.h>
+#include <stdint.h>
+#include <inttypes.h>
+#include <unistd.h>
+#include <sys/queue.h>
+
+#include <cmdline_parse.h>
+
+#include <rte_common.h>
+#include <rte_memory.h>
+#include <rte_memzone.h>
+#include <rte_per_lcore.h>
+#include <rte_launch.h>
+#include <rte_tailq.h>
+#include <rte_eal.h>
+#include <rte_per_lcore.h>
+#include <rte_lcore.h>
+#include <rte_cycles.h>
+#include <rte_spinlock.h>
+
+#include "test.h"
+
+/*
+ * Spinlock test
+ * =============
+ *
+ * - There is a global spinlock and a table of spinlocks (one per lcore).
+ *
+ * - The test function takes all of these locks and launches the
+ *   ``test_spinlock_per_core()`` function on each core (except the master).
+ *
+ *   - The function takes the global lock, display something, then releases
+ *     the global lock.
+ *   - The function takes the per-lcore lock, display something, then releases
+ *     the per-core lock.
+ *
+ * - The main function unlocks the per-lcore locks sequentially and
+ *   waits between each lock. This triggers the display of a message
+ *   for each core, in the correct order. The autotest script checks that
+ *   this order is correct.
+ *
+ * - A load test is carried out, with all cores attempting to lock a single lock
+ *   multiple times
+ */
+
+static rte_spinlock_t sl, sl_try;
+static rte_spinlock_t sl_tab[RTE_MAX_LCORE];
+static rte_spinlock_recursive_t slr;
+static unsigned count;
+
+static int
+test_spinlock_per_core(__attribute__((unused)) void *arg)
+{
+	rte_spinlock_lock(&sl);
+	printf("Global lock taken on core %u\n", rte_lcore_id());
+	rte_spinlock_unlock(&sl);
+
+	rte_spinlock_lock(&sl_tab[rte_lcore_id()]);
+	printf("Hello from core %u !\n", rte_lcore_id());
+	rte_spinlock_unlock(&sl_tab[rte_lcore_id()]);
+
+	return 0;
+}
+
+static int
+test_spinlock_recursive_per_core(__attribute__((unused)) void *arg)
+{
+	unsigned id = rte_lcore_id();
+
+	rte_spinlock_recursive_lock(&slr);
+	printf("Global recursive lock taken on core %u - count = %d\n",
+	       id, slr.count);
+	rte_spinlock_recursive_lock(&slr);
+	printf("Global recursive lock taken on core %u - count = %d\n",
+	       id, slr.count);
+	rte_spinlock_recursive_lock(&slr);
+	printf("Global recursive lock taken on core %u - count = %d\n",
+	       id, slr.count);
+
+	printf("Hello from within recursive locks from core %u !\n", id);
+
+	rte_spinlock_recursive_unlock(&slr);
+	printf("Global recursive lock released on core %u - count = %d\n",
+	       id, slr.count);
+	rte_spinlock_recursive_unlock(&slr);
+	printf("Global recursive lock released on core %u - count = %d\n",
+	       id, slr.count);
+	rte_spinlock_recursive_unlock(&slr);
+	printf("Global recursive lock released on core %u - count = %d\n",
+	       id, slr.count);
+
+	return 0;
+}
+
+static volatile int count1, count2;
+static rte_spinlock_t lk = RTE_SPINLOCK_INITIALIZER;
+static unsigned int max = 10000000; /* 10M */
+static volatile uint64_t looptime[RTE_MAX_LCORE];
+
+static int
+load_loop_fn(__attribute__((unused)) void *dummy)
+{
+	uint64_t end, begin;
+	begin = rte_get_hpet_cycles();
+	unsigned int i = 0;
+	for ( i = 0; i < max; i++) {
+		rte_spinlock_lock(&lk);
+		count1++;
+		rte_spinlock_unlock(&lk);
+		count2++;
+	}
+	end = rte_get_hpet_cycles();
+	looptime[rte_lcore_id()] = end - begin;
+	return 0;
+}
+
+static int
+test_spinlock_load(void)
+{
+	if (rte_lcore_count()<= 1) {
+		printf("no cores counted\n");
+		return -1;
+	}
+	printf ("Running %u tests.......\n", max);
+	printf ("Number of cores = %u\n", rte_lcore_count());
+
+	rte_eal_mp_remote_launch(load_loop_fn, NULL , CALL_MASTER);
+	rte_eal_mp_wait_lcore();
+
+	unsigned int k = 0;
+	uint64_t avgtime = 0;
+
+	RTE_LCORE_FOREACH(k) {
+		printf("Core [%u] time = %"PRIu64"\n", k, looptime[k]);
+		avgtime += looptime[k];
+	}
+
+	avgtime = avgtime / rte_lcore_count();
+	printf("Average time = %"PRIu64"\n", avgtime);
+
+	int check = 0;
+	check =  max * rte_lcore_count();
+	if (count1 == check && count2 != check)
+		printf("Passed Load test\n");
+	else {
+		printf("Failed load test\n");
+		return -1;
+	}
+	return 0;
+}
+
+/*
+ * Use rte_spinlock_trylock() to trylock a spinlock object,
+ * If it could not lock the object sucessfully, it would
+ * return immediately and the variable of "count" would be
+ * increased by one per times. the value of "count" could be
+ * checked as the result later.
+ */
+static int
+test_spinlock_try(__attribute__((unused)) void *arg)
+{
+	if (rte_spinlock_trylock(&sl_try) == 0) {
+		rte_spinlock_lock(&sl);
+		count ++;
+		rte_spinlock_unlock(&sl);
+	}
+
+	return 0;
+}
+
+
+/*
+ * Test rte_eal_get_lcore_state() in addition to spinlocks
+ * as we have "waiting" then "running" lcores.
+ */
+int
+test_spinlock(void)
+{
+	int ret = 0;
+	int i;
+
+	/* slave cores should be waiting: print it */
+	RTE_LCORE_FOREACH_SLAVE(i) {
+		printf("lcore %d state: %d\n", i,
+		       (int) rte_eal_get_lcore_state(i));
+	}
+
+	rte_spinlock_init(&sl);
+	rte_spinlock_init(&sl_try);
+	rte_spinlock_recursive_init(&slr);
+	for (i=0; i<RTE_MAX_LCORE; i++)
+		rte_spinlock_init(&sl_tab[i]);
+
+	rte_spinlock_lock(&sl);
+
+	RTE_LCORE_FOREACH_SLAVE(i) {
+		rte_spinlock_lock(&sl_tab[i]);
+		rte_eal_remote_launch(test_spinlock_per_core, NULL, i);
+	}
+
+	/* slave cores should be busy: print it */
+	RTE_LCORE_FOREACH_SLAVE(i) {
+		printf("lcore %d state: %d\n", i,
+		       (int) rte_eal_get_lcore_state(i));
+	}
+	rte_spinlock_unlock(&sl);
+
+	RTE_LCORE_FOREACH_SLAVE(i) {
+		rte_spinlock_unlock(&sl_tab[i]);
+		rte_delay_ms(100);
+	}
+
+	rte_eal_mp_wait_lcore();
+
+	if (test_spinlock_load()<0)
+		return -1;
+
+	rte_spinlock_recursive_lock(&slr);
+
+	/*
+	 * Try to acquire a lock that we already own
+	 */
+	if(!rte_spinlock_recursive_trylock(&slr)) {
+		printf("rte_spinlock_recursive_trylock failed on a lock that "
+		       "we already own\n");
+		ret = -1;
+	} else
+		rte_spinlock_recursive_unlock(&slr);
+
+	RTE_LCORE_FOREACH_SLAVE(i) {
+		rte_eal_remote_launch(test_spinlock_recursive_per_core, NULL, i);
+	}
+	rte_spinlock_recursive_unlock(&slr);
+	rte_eal_mp_wait_lcore();
+
+	/*
+	 * Test if it could return immediately from try-locking a locked object.
+	 * Here it will lock the spinlock object first, then launch all the slave
+	 * lcores to trylock the same spinlock object.
+	 * All the slave lcores should give up try-locking a locked object and
+	 * return immediately, and then increase the "count" initialized with zero
+	 * by one per times.
+	 * We can check if the "count" is finally equal to the number of all slave
+	 * lcores to see if the behavior of try-locking a locked spinlock object
+	 * is correct.
+	 */
+	if (rte_spinlock_trylock(&sl_try) == 0) {
+		return -1;
+	}
+	count = 0;
+	RTE_LCORE_FOREACH_SLAVE(i) {
+		rte_eal_remote_launch(test_spinlock_try, NULL, i);
+	}
+	rte_eal_mp_wait_lcore();
+	rte_spinlock_unlock(&sl_try);
+	if (rte_spinlock_is_locked(&sl)) {
+		printf("spinlock is locked but it should not be\n");
+		return -1;
+	}
+	rte_spinlock_lock(&sl);
+	if (count != ( rte_lcore_count() - 1)) {
+		ret = -1;
+	}
+	rte_spinlock_unlock(&sl);
+
+	/*
+	 * Test if it can trylock recursively.
+	 * Use rte_spinlock_recursive_trylock() to check if it can lock a spinlock
+	 * object recursively. Here it will try to lock a spinlock object twice.
+	 */
+	if (rte_spinlock_recursive_trylock(&slr) == 0) {
+		printf("It failed to do the first spinlock_recursive_trylock but it should able to do\n");
+		return -1;
+	}
+	if (rte_spinlock_recursive_trylock(&slr) == 0) {
+		printf("It failed to do the second spinlock_recursive_trylock but it should able to do\n");
+		return -1;
+	}
+	rte_spinlock_recursive_unlock(&slr);
+	rte_spinlock_recursive_unlock(&slr);
+
+	return ret;
+}

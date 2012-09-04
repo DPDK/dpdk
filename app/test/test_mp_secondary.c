@@ -1,0 +1,236 @@
+/*-
+ *   BSD LICENSE
+ * 
+ *   Copyright(c) 2010-2012 Intel Corporation. All rights reserved.
+ *   All rights reserved.
+ * 
+ *   Redistribution and use in source and binary forms, with or without 
+ *   modification, are permitted provided that the following conditions 
+ *   are met:
+ * 
+ *     * Redistributions of source code must retain the above copyright 
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright 
+ *       notice, this list of conditions and the following disclaimer in 
+ *       the documentation and/or other materials provided with the 
+ *       distribution.
+ *     * Neither the name of Intel Corporation nor the names of its 
+ *       contributors may be used to endorse or promote products derived 
+ *       from this software without specific prior written permission.
+ * 
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY 
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ *  version: DPDK.L.1.2.3-3
+ */
+
+#include <stdio.h>
+
+#include <cmdline_parse.h>
+
+#include "test.h"
+
+#ifndef RTE_EXEC_ENV_BAREMETAL
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <inttypes.h>
+#include <sys/queue.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <inttypes.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+#include <rte_common.h>
+#include <rte_memory.h>
+#include <rte_memzone.h>
+#include <rte_tailq.h>
+#include <rte_eal.h>
+#include <rte_launch.h>
+#include <rte_per_lcore.h>
+#include <rte_lcore.h>
+#include <rte_errno.h>
+#include <rte_branch_prediction.h>
+#include <rte_atomic.h>
+#include <rte_ring.h>
+#include <rte_debug.h>
+#include <stdarg.h>
+#include <rte_log.h>
+#include <rte_mempool.h>
+#include <rte_hash.h>
+#include <rte_fbk_hash.h>
+#include <rte_lpm.h>
+#include <rte_string_fns.h>
+
+#include "process.h"
+
+#define launch_proc(ARGV) process_dup(ARGV, \
+		sizeof(ARGV)/(sizeof(ARGV[0])), __func__)
+
+/*
+ * This function is called in the primary i.e. main test, to spawn off secondary
+ * processes to run actual mp tests. Uses fork() and exec pair
+ */
+static int
+run_secondary_instances(void)
+{
+	int ret = 0;
+	char coremask[10];
+
+	/* good case, using secondary */
+	const char *argv1[] = {
+			prgname, "-c", coremask, "--proc-type=secondary"
+	};
+	/* good case, using auto */
+	const char *argv2[] = {
+			prgname, "-c", coremask, "--proc-type=auto"
+	};
+	/* bad case, using invalid type */
+	const char *argv3[] = {
+			prgname, "-c", coremask, "--proc-type=ERROR"
+	};
+	/* bad case, using invalid file prefix */
+	const char *argv4[]  = {
+			prgname, "-c", coremask, "--proc-type=secondary",
+					"--file-prefix=ERROR"
+	};
+
+	rte_snprintf(coremask, sizeof(coremask), "%x", \
+			(1 << rte_get_master_lcore()));
+
+	ret |= launch_proc(argv1);
+	ret |= launch_proc(argv2);
+
+	ret |= !(launch_proc(argv3));
+	ret |= !(launch_proc(argv4));
+
+	return ret;
+}
+
+/*
+ * This function is run in the secondary instance to test that creation of
+ * objects fails in a secondary
+ */
+static int
+run_object_creation_tests(void)
+{
+	const unsigned flags = 0;
+	const unsigned size = 1024;
+	const unsigned elt_size = 64;
+	const unsigned cache_size = 64;
+	const unsigned priv_data_size = 32;
+
+	printf("### Testing object creation - expect lots of mz reserve errors!\n");
+
+	rte_errno = 0;
+	if (rte_memzone_reserve("test_mz", size, rte_socket_id(), flags) != NULL
+			|| rte_errno != E_RTE_SECONDARY){
+		printf("Error: unexpected return value from rte_memzone_reserve\n");
+		return -1;
+	}
+	printf("# Checked rte_memzone_reserve() OK\n");
+
+	rte_errno = 0;
+	if (rte_ring_create("test_rng", size, rte_socket_id(), flags) != NULL
+			|| rte_errno != E_RTE_SECONDARY){
+		printf("Error: unexpected return value from rte_ring_create()\n");
+		return -1;
+	}
+	printf("# Checked rte_ring_create() OK\n");
+
+
+	rte_errno = 0;
+	if (rte_mempool_create("test_mp", size, elt_size, cache_size,
+			priv_data_size, NULL, NULL, NULL, NULL,
+			rte_socket_id(), flags) != NULL
+			|| rte_errno != E_RTE_SECONDARY){
+		printf("Error: unexpected return value from rte_ring_create()\n");
+		return -1;
+	}
+	printf("# Checked rte_mempool_create() OK\n");
+
+	const struct rte_hash_parameters hash_params = { .name = "test_mp_hash" };
+	rte_errno=0;
+	if (rte_hash_create(&hash_params) != NULL
+			|| rte_errno != E_RTE_SECONDARY){
+		printf("Error: unexpected return value from rte_ring_create()\n");
+		return -1;
+	}
+	printf("# Checked rte_hash_create() OK\n");
+
+	const struct rte_fbk_hash_params fbk_params = { .name = "test_mp_hash" };
+	rte_errno=0;
+	if (rte_fbk_hash_create(&fbk_params) != NULL
+			|| rte_errno != E_RTE_SECONDARY){
+		printf("Error: unexpected return value from rte_ring_create()\n");
+		return -1;
+	}
+	printf("# Checked rte_fbk_hash_create() OK\n");
+
+	rte_errno=0;
+	if (rte_lpm_create("test_lpm", size, rte_socket_id(), RTE_LPM_HEAP) != NULL
+			|| rte_errno != E_RTE_SECONDARY){
+		printf("Error: unexpected return value from rte_ring_create()\n");
+		return -1;
+	}
+	printf("# Checked rte_lpm_create() OK\n");
+
+	/* Run a test_pci call */
+	if (test_pci() != 0) {
+		printf("PCI scan failed in secondary\n");
+		if (getuid() == 0) /* pci scans can fail as non-root */
+			return -1;
+	} else
+		printf("PCI scan succeeded in secondary\n");
+
+	return 0;
+}
+
+/* if called in a primary process, just spawns off a secondary process to
+ * run validation tests - which brings us right back here again...
+ * if called in a secondary process, this runs a series of API tests to check
+ * how things run in a secondary instance.
+ */
+int
+test_mp_secondary(void)
+{
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		if (!test_pci_run) {
+			printf("=== Running pre-requisite test of test_pci\n");
+			test_pci();
+			printf("=== Requisite test done\n");
+		}
+		return run_secondary_instances();
+	}
+
+	printf("IN SECONDARY PROCESS\n");
+
+	return run_object_creation_tests();
+}
+
+#else
+
+/* Baremetal version
+ * Multiprocess not applicable, so just return 0 always
+ */
+int
+test_mp_secondary(void)
+{
+	printf("Multi-process not applicable for baremetal\n");
+	return 0;
+}
+
+#endif
