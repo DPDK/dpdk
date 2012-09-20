@@ -40,7 +40,7 @@
 
 #find out GCC version
 
-GCC_MAJOR_VERSION = $(shell gcc -dumpversion | cut -f1 -d.)
+GCC_MAJOR_VERSION = $(shell $(CC) -dumpversion | cut -f1 -d.)
 
 # if GCC is not 4.x
 ifneq ($(GCC_MAJOR_VERSION),4)
@@ -49,7 +49,7 @@ $(warning You are not using GCC 4.x. This is neither supported, nor tested.)
 
 
 else
-	GCC_MINOR_VERSION = $(shell gcc -dumpversion | cut -f2 -d.)
+	GCC_MINOR_VERSION = $(shell $(CC) -dumpversion | cut -f2 -d.)
 
 # GCC graceful degradation
 # GCC 4.2.x - added support for generic target
