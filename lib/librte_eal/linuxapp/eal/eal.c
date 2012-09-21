@@ -78,6 +78,7 @@
 #define OPT_PROC_TYPE   "proc-type"
 #define OPT_NO_SHCONF   "no-shconf"
 #define OPT_NO_HPET     "no-hpet"
+#define OPT_VMWARE_TSC_MAP   "vmware-tsc-map"
 #define OPT_NO_PCI      "no-pci"
 #define OPT_NO_HUGE     "no-huge"
 #define OPT_FILE_PREFIX "file-prefix"
@@ -124,6 +125,9 @@ struct lcore_config lcore_config[RTE_MAX_LCORE];
 
 /* internal configuration */
 struct internal_config internal_config;
+
+/* used by rte_rdtsc() */
+int rte_cycles_vmware_tsc_map;
 
 /* Return a pointer to the configuration structure */
 struct rte_config *
@@ -264,6 +268,7 @@ eal_usage(const char *prgname)
 	       "  --"OPT_HUGE_DIR" : directory where hugetlbfs is mounted\n"
 	       "  --"OPT_PROC_TYPE": type of this process\n"
 	       "  --"OPT_FILE_PREFIX": prefix for hugepage filenames\n"
+	       "  --"OPT_VMWARE_TSC_MAP"  : use VMware TSC map instead of native RDTSC\n\n"
 	       "\nEAL options for DEBUG use only:\n"
 	       "  --"OPT_NO_HUGE"  : use malloc instead of hugetlbfs\n"
 	       "  --"OPT_NO_PCI"   : disable pci\n"
@@ -379,6 +384,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_NO_HUGE, 0, 0, 0},
 		{OPT_NO_PCI, 0, 0, 0},
 		{OPT_NO_HPET, 0, 0, 0},
+		{OPT_VMWARE_TSC_MAP, 0, 0, 0},
 		{OPT_HUGE_DIR, 1, 0, 0},
 		{OPT_NO_SHCONF, 0, 0, 0},
 		{OPT_PROC_TYPE, 1, 0, 0},
@@ -398,6 +404,8 @@ eal_parse_args(int argc, char **argv)
 #else
 	internal_config.no_hpet = 1;
 #endif
+
+	internal_config.vmware_tsc_map = 0;
 
 	while ((opt = getopt_long(argc, argvopt, "b:c:m:n:r:v",
 				  lgopts, &option_index)) != EOF) {
@@ -463,6 +471,9 @@ eal_parse_args(int argc, char **argv)
 			}
 			else if (!strcmp(lgopts[option_index].name, OPT_NO_HPET)) {
 				internal_config.no_hpet = 1;
+			}
+			else if (!strcmp(lgopts[option_index].name, OPT_VMWARE_TSC_MAP)) {
+				internal_config.vmware_tsc_map = 1;
 			}
 			else if (!strcmp(lgopts[option_index].name, OPT_NO_SHCONF)) {
 				internal_config.no_shconf = 1;
@@ -547,6 +558,18 @@ rte_eal_init(int argc, char **argv)
 			internal_config.memory = eal_get_hugepage_mem_size();
 	}
 
+	if (internal_config.vmware_tsc_map == 1) {
+#ifdef RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT
+		rte_cycles_vmware_tsc_map = 1;
+		RTE_LOG (DEBUG, EAL, "Using VMware TSC map, "
+				"you must have monitor_control.pseudo_perfctr = TRUE\n");
+#else
+		RTE_LOG (WARNING, EAL, "Ignoring --vmware-tsc-map because "
+				"RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT is not set\n");
+#endif
+	} else {
+		RTE_LOG (DEBUG, EAL, "Using native RDTSC\n");
+	}
 	rte_srand(rte_rdtsc());
 	rte_config_init();
 
