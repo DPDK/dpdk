@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2013 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2012-2013 6WIND S.A.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without 
@@ -47,6 +48,13 @@ extern "C" {
 
 #include <stdint.h>
 
+#ifdef RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT
+/** Global switch to use VMware mapping of TSC instead of RDTSC */
+extern int rte_cycles_vmware_tsc_map;
+#include <rte_branch_prediction.h>
+#endif
+
+
 /**
  * Read the TSC register.
  *
@@ -64,9 +72,20 @@ rte_rdtsc(void)
 		};
 	} tsc;
 
+#ifdef RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT
+	if (unlikely(rte_cycles_vmware_tsc_map)) {
+		/* ecx = 0x10000 corresponds to the Physical TSC for VMware */
+		asm volatile("rdpmc" :
+		             "=a" (tsc.lo_32),
+		             "=d" (tsc.hi_32) :
+		             "c"(0x10000));
+		return tsc.tsc_64;
+	}
+#endif
 	asm volatile("rdtsc" :
 		     "=a" (tsc.lo_32),
 		     "=d" (tsc.hi_32));
+
 	return tsc.tsc_64;
 }
 
