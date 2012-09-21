@@ -126,6 +126,11 @@ CONFIG_RTE_LIBRTE_EAL_LINUXAPP=y
 CONFIG_RTE_LIBRTE_EAL_BAREMETAL=n
 
 #
+# Compile Environment Abstraction Layer to support Vmware TSC map
+# 
+CONFIG_RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT=y
+
+#
 # Compile generic ethernet library
 #
 CONFIG_RTE_LIBRTE_ETHER=y
