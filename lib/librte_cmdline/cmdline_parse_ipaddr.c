@@ -266,7 +266,6 @@ inet_pton6(const char *src, unsigned char *dst)
 		    inet_pton4(curtok, tp) > 0) {
 			tp += INADDRSZ;
 			saw_xdigit = 0;
-			count_xdigit = 0;
 			dbloct_count += 2;
 			break;  /* '\0' was seen by inet_pton4(). */
 		}

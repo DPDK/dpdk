@@ -253,7 +253,7 @@ rule_add(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 	last_rule = rule_gindex + lpm->used_rules_at_depth[depth - 1];
 		
 	/* Scan through rule group to see if rule already exists. */
-	for (rule_index = rule_gindex; rule_index < last_rule; rule_index++) {
+	for (; rule_index < last_rule; rule_index++) {
 
 		/* If rule already exists update its next_hop and return. */
 		if (lpm->rules_tbl[rule_index].ip == ip_masked) {

@@ -1231,8 +1231,6 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->tx_ring_phys_addr = (uint64_t) tz->phys_addr;
 	txq->tx_ring = (union e1000_adv_tx_desc *) tz->addr;
 
-	size = sizeof(union e1000_adv_tx_desc) * nb_desc;
-
 	/* Allocate software ring */
 	txq->sw_ring = rte_zmalloc("txq->sw_ring",
 				   sizeof(struct igb_tx_entry) * nb_desc,
