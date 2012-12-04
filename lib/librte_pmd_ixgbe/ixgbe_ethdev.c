@@ -507,6 +507,10 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	hw->mac.num_rar_entries = hw->mac.max_rx_queues;
 	diag = hw->mac.ops.reset_hw(hw);
+	if (diag != IXGBE_SUCCESS) {
+		PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", diag);
+		return (diag);
+	}
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("ixgbevf", ETHER_ADDR_LEN *

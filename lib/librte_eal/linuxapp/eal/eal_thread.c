@@ -86,7 +86,6 @@ rte_eal_remote_launch(int (*f)(void *), void *arg, unsigned slave_id)
 		rte_panic("cannot write on configuration pipe\n");
 
 	/* wait ack */
-	n = 0;
 	do {
 		n = read(s2m, &c, 1);
 	} while (n < 0 && errno == EINTR);
@@ -203,7 +202,6 @@ eal_thread_loop(__attribute__((unused)) void *arg)
 		void *fct_arg;
 
 		/* wait command */
-		n = 0;
 		do {
 			n = read(m2s, &c, 1);
 		} while (n < 0 && errno == EINTR);
