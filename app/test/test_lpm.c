@@ -752,7 +752,6 @@ test10(void)
 
 	ip = IPv4(128, 0, 0, 0);
 	depth = 24;
-	next_hop_add = 100;
 
 	status = rte_lpm_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status < 0);
@@ -766,7 +765,6 @@ test10(void)
 
 	ip = IPv4(128, 0, 0, 0);
 	depth = 32;
-	next_hop_add = 100;
 
 	status = rte_lpm_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status < 0);
@@ -976,7 +974,7 @@ test14(void)
 	next_hop_add = 100;
 
 	/* Add 256 rules that require a tbl8 extension */
-	for (ip = 0; ip <= IPv4(0, 0, 255, 0); ip += 256) {
+	for (; ip <= IPv4(0, 0, 255, 0); ip += 256) {
 		status = rte_lpm_add(lpm, ip, depth, next_hop_add);
 		TEST_LPM_ASSERT(status == 0);
 
