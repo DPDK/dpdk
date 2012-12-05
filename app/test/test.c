@@ -134,7 +134,6 @@ main(int argc, char **argv)
 
 	rte_timer_subsystem_init();
 
-	argc -= ret;
 	argv += ret;
 
 	prgname = argv[0];

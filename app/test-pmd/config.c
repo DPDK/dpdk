@@ -650,7 +650,6 @@ setup_fwd_config_of_each_lcore(struct fwd_config *cfg)
 		nb_fs_per_lcore = (streamid_t) (nb_fs / nb_fc);
 		nb_extra = (lcoreid_t) (nb_fs % nb_fc);
 	}
-	nb_extra = (lcoreid_t) (nb_fs % nb_fc);
 
 	nb_lc = (lcoreid_t) (nb_fc - nb_extra);
 	sm_id = 0;

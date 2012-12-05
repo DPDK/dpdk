@@ -579,7 +579,7 @@ test_set_watermark( void ){
 	}
 
 	count = 0;
-	setwm = rte_ring_set_water_mark(r, count);
+	rte_ring_set_water_mark(r, count);
 	if (r->prod.watermark != r->prod.size) {
 		printf("Test failed to detect invalid watermark count value\n");
 		goto error;
@@ -820,17 +820,12 @@ test_ring_basic(void)
 	cur_dst = dst;
 
 	ret = rte_ring_mp_enqueue(r, cur_src);
-	cur_src += 1;
 	if (ret != 0)
 		goto fail;
 
 	ret = rte_ring_mc_dequeue(r, cur_dst);
-	cur_dst += 1;
 	if (ret != 0)
 		goto fail;
-
-	cur_src = src;
-	cur_dst = dst;
 
 	if (src)
 		free(src);
