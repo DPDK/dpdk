@@ -128,9 +128,10 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	}
 
 	/* count must be a power of 2 */
-	if (!POWEROF2(count)) {
+	if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK )) {
 		rte_errno = EINVAL;
-		RTE_LOG(ERR, RING, "Requested size is not a power of 2\n");
+		RTE_LOG(ERR, RING, "Requested size is invalid, must be power of 2, and "
+				"do not exceed the size limit %u\n", RTE_RING_SZ_MASK);
 		return NULL;
 	}
 
@@ -205,7 +206,6 @@ rte_ring_dump(const struct rte_ring *r)
 		printf("  watermark=0\n");
 	else
 		printf("  watermark=%"PRIu32"\n", r->prod.watermark);
-	printf("  bulk_default=%"PRIu32"\n", r->prod.bulk_default);
 
 	/* sum and dump statistics */
 #ifdef RTE_LIBRTE_RING_DEBUG
