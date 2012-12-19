@@ -43,9 +43,14 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <emmintrin.h>
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef __INTEL_COMPILER
+#pragma warning(disable:593) /* Stop unused variable warning (reg_a etc). */
 #endif
 
 /**
@@ -60,12 +65,15 @@ extern "C" {
 static inline void
 rte_mov16(uint8_t *dst, const uint8_t *src)
 {
-	asm volatile ("movdqu (%[src]), %%xmm0\n\t"
-		      "movdqu %%xmm0, (%[dst])\n\t"
-		      :
-		      : [src] "r" (src),
-			[dst] "r"(dst)
-		      : "xmm0", "memory");
+	__m128i reg_a;
+	asm volatile (
+		"movdqu (%[src]), %[reg_a]\n\t"
+		"movdqu %[reg_a], (%[dst])\n\t"
+		: [reg_a] "=x" (reg_a)
+		: [src] "r" (src),
+		  [dst] "r"(dst)
+		: "memory"
+	);
 }
 
 /**
@@ -80,14 +88,18 @@ rte_mov16(uint8_t *dst, const uint8_t *src)
 static inline void
 rte_mov32(uint8_t *dst, const uint8_t *src)
 {
-	asm volatile ("movdqu (%[src]), %%xmm0\n\t"
-		      "movdqu 16(%[src]), %%xmm1\n\t"
-		      "movdqu %%xmm0, (%[dst])\n\t"
-		      "movdqu %%xmm1, 16(%[dst])"
-		      :
-		      : [src] "r" (src),
-			[dst] "r"(dst)
-		      : "xmm0", "xmm1", "memory");
+	__m128i reg_a, reg_b;
+	asm volatile (
+		"movdqu (%[src]), %[reg_a]\n\t"
+		"movdqu 16(%[src]), %[reg_b]\n\t"
+		"movdqu %[reg_a], (%[dst])\n\t"
+		"movdqu %[reg_b], 16(%[dst])\n\t"
+		: [reg_a] "=x" (reg_a),
+		  [reg_b] "=x" (reg_b)
+		: [src] "r" (src),
+		  [dst] "r"(dst)
+		: "memory"
+	);
 }
 
 /**
@@ -102,16 +114,21 @@ rte_mov32(uint8_t *dst, const uint8_t *src)
 static inline void
 rte_mov48(uint8_t *dst, const uint8_t *src)
 {
-	asm volatile ("movdqu (%[src]), %%xmm0\n\t"
-		      "movdqu 16(%[src]), %%xmm1\n\t"
-		      "movdqu 32(%[src]), %%xmm2\n\t"
-		      "movdqu %%xmm0, (%[dst])\n\t"
-		      "movdqu %%xmm1, 16(%[dst])\n\t"
-		      "movdqu %%xmm2, 32(%[dst])"
-		      :
-		      : [src] "r" (src),
-			[dst] "r"(dst)
-		      : "xmm0", "xmm1", "memory");
+	__m128i reg_a, reg_b, reg_c;
+	asm volatile (
+		"movdqu (%[src]), %[reg_a]\n\t"
+		"movdqu 16(%[src]), %[reg_b]\n\t"
+		"movdqu 32(%[src]), %[reg_c]\n\t"
+		"movdqu %[reg_a], (%[dst])\n\t"
+		"movdqu %[reg_b], 16(%[dst])\n\t"
+		"movdqu %[reg_c], 32(%[dst])\n\t"
+		: [reg_a] "=x" (reg_a),
+		  [reg_b] "=x" (reg_b),
+		  [reg_c] "=x" (reg_c)
+		: [src] "r" (src),
+		  [dst] "r"(dst)
+		: "memory"
+	);
 }
 
 /**
@@ -126,18 +143,24 @@ rte_mov48(uint8_t *dst, const uint8_t *src)
 static inline void
 rte_mov64(uint8_t *dst, const uint8_t *src)
 {
-	asm volatile ("movdqu (%[src]), %%xmm0\n\t"
-		      "movdqu 16(%[src]), %%xmm1\n\t"
-		      "movdqu 32(%[src]), %%xmm2\n\t"
-		      "movdqu 48(%[src]), %%xmm3\n\t"
-		      "movdqu %%xmm0, (%[dst])\n\t"
-		      "movdqu %%xmm1, 16(%[dst])\n\t"
-		      "movdqu %%xmm2, 32(%[dst])\n\t"
-		      "movdqu %%xmm3, 48(%[dst])"
-		      :
-		      : [src] "r" (src),
-			[dst] "r"(dst)
-		      : "xmm0", "xmm1", "xmm2", "xmm3","memory");
+	__m128i reg_a, reg_b, reg_c, reg_d;
+	asm volatile (
+		"movdqu (%[src]), %[reg_a]\n\t"
+		"movdqu 16(%[src]), %[reg_b]\n\t"
+		"movdqu 32(%[src]), %[reg_c]\n\t"
+		"movdqu 48(%[src]), %[reg_d]\n\t"
+		"movdqu %[reg_a], (%[dst])\n\t"
+		"movdqu %[reg_b], 16(%[dst])\n\t"
+		"movdqu %[reg_c], 32(%[dst])\n\t"
+		"movdqu %[reg_d], 48(%[dst])\n\t"
+		: [reg_a] "=x" (reg_a),
+		  [reg_b] "=x" (reg_b),
+		  [reg_c] "=x" (reg_c),
+		  [reg_d] "=x" (reg_d)
+		: [src] "r" (src),
+		  [dst] "r"(dst)
+		: "memory"
+	);
 }
 
 /**
@@ -152,28 +175,41 @@ rte_mov64(uint8_t *dst, const uint8_t *src)
 static inline void
 rte_mov128(uint8_t *dst, const uint8_t *src)
 {
-	asm volatile ("movdqu (%[src]), %%xmm0\n\t"
-		      "movdqu 16(%[src]), %%xmm1\n\t"
-		      "movdqu 32(%[src]), %%xmm2\n\t"
-		      "movdqu 48(%[src]), %%xmm3\n\t"
-		      "movdqu 64(%[src]), %%xmm4\n\t"
-		      "movdqu 80(%[src]), %%xmm5\n\t"
-		      "movdqu 96(%[src]), %%xmm6\n\t"
-		      "movdqu 112(%[src]), %%xmm7\n\t"
-		      "movdqu %%xmm0, (%[dst])\n\t"
-		      "movdqu %%xmm1, 16(%[dst])\n\t"
-		      "movdqu %%xmm2, 32(%[dst])\n\t"
-		      "movdqu %%xmm3, 48(%[dst])\n\t"
-		      "movdqu %%xmm4, 64(%[dst])\n\t"
-		      "movdqu %%xmm5, 80(%[dst])\n\t"
-		      "movdqu %%xmm6, 96(%[dst])\n\t"
-		      "movdqu %%xmm7, 112(%[dst])"
-		      :
-		      : [src] "r" (src),
-			[dst] "r"(dst)
-		      : "xmm0", "xmm1", "xmm2", "xmm3",
-			"xmm4", "xmm5", "xmm6", "xmm7", "memory");
+	__m128i reg_a, reg_b, reg_c, reg_d, reg_e, reg_f, reg_g, reg_h;
+	asm volatile (
+		"movdqu (%[src]), %[reg_a]\n\t"
+		"movdqu 16(%[src]), %[reg_b]\n\t"
+		"movdqu 32(%[src]), %[reg_c]\n\t"
+		"movdqu 48(%[src]), %[reg_d]\n\t"
+		"movdqu 64(%[src]), %[reg_e]\n\t"
+		"movdqu 80(%[src]), %[reg_f]\n\t"
+		"movdqu 96(%[src]), %[reg_g]\n\t"
+		"movdqu 112(%[src]), %[reg_h]\n\t"
+		"movdqu %[reg_a], (%[dst])\n\t"
+		"movdqu %[reg_b], 16(%[dst])\n\t"
+		"movdqu %[reg_c], 32(%[dst])\n\t"
+		"movdqu %[reg_d], 48(%[dst])\n\t"
+		"movdqu %[reg_e], 64(%[dst])\n\t"
+		"movdqu %[reg_f], 80(%[dst])\n\t"
+		"movdqu %[reg_g], 96(%[dst])\n\t"
+		"movdqu %[reg_h], 112(%[dst])\n\t"
+		: [reg_a] "=x" (reg_a),
+		  [reg_b] "=x" (reg_b),
+		  [reg_c] "=x" (reg_c),
+		  [reg_d] "=x" (reg_d),
+		  [reg_e] "=x" (reg_e),
+		  [reg_f] "=x" (reg_f),
+		  [reg_g] "=x" (reg_g),
+		  [reg_h] "=x" (reg_h)
+		: [src] "r" (src),
+		  [dst] "r"(dst)
+		: "memory"
+	);
 }
+
+#ifdef __INTEL_COMPILER
+#pragma warning(enable:593)
+#endif
 
 /**
  * Copy 256 bytes from one location to another using optimised SSE
@@ -187,33 +223,15 @@ rte_mov128(uint8_t *dst, const uint8_t *src)
 static inline void
 rte_mov256(uint8_t *dst, const uint8_t *src)
 {
-	/*
-	 * There are 16XMM registers, but this function does not use
-	 * them all so that it can still be compiled as 32bit
-	 * code. The performance increase was neglible if all 16
-	 * registers were used.
-	 */
 	rte_mov128(dst, src);
 	rte_mov128(dst + 128, src + 128);
 }
 
-#ifdef RTE_MEMCPY_BUILTIN_CONSTANT_P
-/**
- * Choose between compiler built-in implementation of memcpy or DPDK
- * implementation depending if size is a compile-time constant
- */
-#define rte_memcpy(dst, src, n) \
-	(__builtin_constant_p (n) ? \
-	memcpy(dst, src, n) : rte_memcpy_func(dst, src, n))
-#else
-/**
- * Always use DPDK implementation.
- */
-#define rte_memcpy rte_memcpy_func
-#endif
-
 /**
  * Copy bytes from one location to another. The locations must not overlap.
+ *
+ * @note This is implemented as a macro, so it's address should not be taken
+ * and care is needed as parameter expressions may be evaluated multiple times.
  *
  * @param dst
  *   Pointer to the destination of the data.
@@ -224,6 +242,17 @@ rte_mov256(uint8_t *dst, const uint8_t *src)
  * @return
  *   Pointer to the destination data.
  */
+#define rte_memcpy(dst, src, n)              \
+	((__builtin_constant_p(n)) ?          \
+	memcpy((dst), (src), (n)) :          \
+	rte_memcpy_func((dst), (src), (n)))
+
+/*
+ * memcpy() function used by rte_memcpy macro
+ */
+static inline void *
+rte_memcpy_func(void *dst, const void *src, size_t n) __attribute__((always_inline));
+
 static inline void *
 rte_memcpy_func(void *dst, const void *src, size_t n)
 {
@@ -242,13 +271,7 @@ rte_memcpy_func(void *dst, const void *src, size_t n)
 			src = (const uint16_t *)src + 1;
 		}
 		if (n & 0x04) {
-			/*
-			 * NOTE: doing this as a 32bit copy causes "strict
-			 * aliasing" compile errors, but worked fine for 64bit
-			 * copy below, for unknown reasons.
-			 */
-			*(uint16_t *)dst = *(const uint16_t *)src;
-			*((uint16_t *)dst + 1) = *((const uint16_t *)src + 1);
+			*(uint32_t *)dst = *(const uint32_t *)src;
 			dst = (uint32_t *)dst + 1;
 			src = (const uint32_t *)src + 1;
 		}
