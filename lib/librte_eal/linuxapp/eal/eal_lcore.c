@@ -32,157 +32,150 @@
  * 
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <stdint.h>
-#include <inttypes.h>
+#include <unistd.h>
+#include <limits.h>
 #include <string.h>
-#include <errno.h>
-#include <sys/queue.h>
+#include <dirent.h>
 
 #include <rte_log.h>
-#include <rte_memory.h>
-#include <rte_memzone.h>
-#include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
-#include <rte_per_lcore.h>
 #include <rte_lcore.h>
+#include <rte_common.h>
+#include <rte_string_fns.h>
 #include <rte_debug.h>
 
 #include "eal_private.h"
+#include "eal_filesystem.h"
 
-#define PROC_CPUINFO "/proc/cpuinfo"
-#define PROC_PROCESSOR_FMT ""
+#define SYS_CPU_DIR "/sys/devices/system/cpu/cpu%u"
+#define CORE_ID_FILE "topology/core_id"
+#define PHYS_PKG_FILE "topology/physical_package_id"
 
-/* parse one line and try to match "processor : %d". */
+/* Check if a cpu is present by the presence of the cpu information for it */
 static int
-parse_processor_id(const char *buf, unsigned *lcore_id)
+cpu_detected(unsigned lcore_id)
 {
-	static const char _processor[] = "processor";
-	const char *s;
+	char path[PATH_MAX];
+	int len = rte_snprintf(path, sizeof(path), SYS_CPU_DIR
+		"/"CORE_ID_FILE, lcore_id);
+	if (len <= 0 || (unsigned)len >= sizeof(path))
+		return 0;
+	if (access(path, F_OK) != 0)
+		return 0;
 
-	if (strncmp(buf, _processor, sizeof(_processor) - 1) != 0)
-		return -1;
+	return 1;
+}
 
-	s = strchr(buf, ':');
-	if (s == NULL)
-		return -1;
+/* Get CPU socket id (NUMA node) by reading directory
+ * /sys/devices/system/cpu/cpuX looking for symlink "nodeY"
+ * which gives the NUMA topology information.
+ * Note: physical package id != NUMA node, but we use it as a
+ * fallback for kernels which don't create a nodeY link
+ */
+static unsigned
+cpu_socket_id(unsigned lcore_id)
+{
+	const char node_prefix[] = "node";
+	const size_t prefix_len = sizeof(node_prefix) - 1;
+	char path[PATH_MAX];
+	DIR *d;
+	unsigned long id = 0;
+	struct dirent *e;
+	char *endptr = NULL;
 
-	errno = 0;
-	*lcore_id = strtoul(s+1, NULL, 10);
-	if (errno != 0) {
-		*lcore_id = -1;
-		return -1;
+	int len = rte_snprintf(path, sizeof(path),
+			       SYS_CPU_DIR, lcore_id);
+	if (len <= 0 || (unsigned)len >= sizeof(path))
+		goto err;
+
+	d = opendir(path);
+	if (!d)
+		goto err;
+
+	while ((e = readdir(d)) != NULL) {
+		if (strncmp(e->d_name, node_prefix, prefix_len) == 0) {
+			id = strtoul(e->d_name+prefix_len, &endptr, 0);
+			break;
+		}
 	}
+	closedir(d);
+	if (endptr == NULL || *endptr!='\0' || endptr == e->d_name+prefix_len) {
+		RTE_LOG(ERR, EAL, "Error reading numa node link "
+				"for lcore %u - using physical package id instead\n",
+				lcore_id);
 
+		len = rte_snprintf(path, sizeof(path), SYS_CPU_DIR "/%s",
+				lcore_id, PHYS_PKG_FILE);
+		if (len <= 0 || (unsigned)len >= sizeof(path))
+			goto err;
+		if (eal_parse_sysfs_value(path, &id) != 0)
+			goto err;
+	}
+	return (unsigned)id;
+
+err:
+	RTE_LOG(ERR, EAL, "Error getting NUMA socket information from %s "
+			"for lcore %u - assuming NUMA socket 0\n", SYS_CPU_DIR, lcore_id);
 	return 0;
 }
 
-/* parse one line and try to match "physical id : %d". */
-static int
-parse_socket_id(const char *buf, unsigned *socket_id)
+/* Get the cpu core id value from the /sys/.../cpuX core_id value */
+static unsigned
+cpu_core_id(unsigned lcore_id)
 {
-	static const char _physical_id[] = "physical id";
-	const char *s;
+	char path[PATH_MAX];
+	unsigned long id;
 
-	if (strncmp(buf, _physical_id, sizeof(_physical_id) - 1) != 0)
-		return -1;
+	int len = rte_snprintf(path, sizeof(path), SYS_CPU_DIR "/%s", lcore_id, CORE_ID_FILE);
+	if (len <= 0 || (unsigned)len >= sizeof(path))
+		goto err;
+	if (eal_parse_sysfs_value(path, &id) != 0)
+		goto err;
+	return (unsigned)id;
 
-	s = strchr(buf, ':');
-	if (s == NULL)
-		return -1;
-
-	errno = 0;
-	*socket_id = strtoul(s+1, NULL, 10);
-	if (errno != 0)
-		return -1;
-
+err:
+	RTE_LOG(ERR, EAL, "Error reading core id value from %s "
+			"for lcore %u - assuming core 0\n", SYS_CPU_DIR, lcore_id);
 	return 0;
 }
 
 /*
- * Parse /proc/cpuinfo to get the number of physical and logical
+ * Parse /sys/devices/system/cpu to get the number of physical and logical
  * processors on the machine. The function will fill the cpu_info
  * structure.
  */
 int
 rte_eal_cpu_init(void)
 {
-	struct rte_config *config;
-	FILE *f;
-	char buf[BUFSIZ];
-	unsigned lcore_id = 0;
-	unsigned socket_id = 0;
+	/* pointer to global configuration */
+	struct rte_config *config = rte_eal_get_configuration();
+	unsigned lcore_id;
 	unsigned count = 0;
-
-	/* get pointer to global configuration */
-	config = rte_eal_get_configuration();
-
-	/* open /proc/cpuinfo */
-	f = fopen(PROC_CPUINFO, "r");
-	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): Cannot find "PROC_CPUINFO"\n", __func__);
-		return -1;
-	}
-
-	/*
-	 * browse lines of /proc/cpuinfo and fill memseg entries in
-	 * global configuration
-	 */
-	while (fgets(buf, sizeof(buf), f) != NULL) {
-
-		if (parse_processor_id(buf, &lcore_id) == 0)
-			continue;
-
-		if (parse_socket_id(buf, &socket_id) == 0)
-			continue;
-
-		if (buf[0] == '\n') {
-			RTE_LOG(DEBUG, EAL, "Detected lcore %u on socket %u\n",
-				lcore_id, socket_id);
-			if (lcore_id >= RTE_MAX_LCORE) {
-				RTE_LOG(DEBUG, EAL,
-					"Skip lcore %u >= RTE_MAX_LCORE\n",
-					  lcore_id);
-				continue;
-			}
-
-			/*
-			 * In a virtualization environment, the socket ID
-			 * reported by the system may not be linked to a real
-			 * physical socket ID, and may be incoherent. So in this
-			 * case, a default socket ID of 0 is assigned.
-			 */
-			if (socket_id >= RTE_MAX_NUMA_NODES) {
-#ifdef CONFIG_RTE_EAL_ALLOW_INV_SOCKET_ID
-				socket_id = 0;
-#else
-				rte_panic("Socket ID (%u) is greater than "
-				    "RTE_MAX_NUMA_NODES (%d)\n",
-				    socket_id, RTE_MAX_NUMA_NODES);
-#endif
-			}
-
-			lcore_config[lcore_id].detected = 1;
-			lcore_config[lcore_id].socket_id = socket_id;
-
-		}
-	}
-
-	fclose(f);
 
 	/* disable lcores that were not detected */
 	RTE_LCORE_FOREACH(lcore_id) {
 
+		lcore_config[lcore_id].detected = cpu_detected(lcore_id);
 		if (lcore_config[lcore_id].detected == 0) {
-			RTE_LOG(DEBUG, EAL, "Skip lcore %u (not detected)\n",
-				lcore_id);
+			RTE_LOG(DEBUG, EAL, "Skip lcore %u (not detected)\n", lcore_id);
 			config->lcore_role[lcore_id] = ROLE_OFF;
+			continue;
 		}
-		else
-			count ++;
+		lcore_config[lcore_id].core_id = cpu_core_id(lcore_id);
+		lcore_config[lcore_id].socket_id = cpu_socket_id(lcore_id);
+		if (lcore_config[lcore_id].socket_id >= RTE_MAX_NUMA_NODES)
+#ifdef CONFIG_RTE_EAL_ALLOW_INV_SOCKET_ID
+			lcore_config[lcore_id].socket_id = 0;
+#else
+			rte_panic("Socket ID (%u) is greater than "
+				"RTE_MAX_NUMA_NODES (%d)\n",
+				lcore_config[lcore_id].socket_id, RTE_MAX_NUMA_NODES);
+#endif
+		RTE_LOG(DEBUG, EAL, "Detected lcore %u as core %u on socket %u\n",
+				lcore_id,
+				lcore_config[lcore_id].core_id,
+				lcore_config[lcore_id].socket_id);
+		count ++;
 	}
 
 	config->lcore_count = count;

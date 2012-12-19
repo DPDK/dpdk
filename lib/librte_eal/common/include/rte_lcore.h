@@ -92,15 +92,17 @@ rte_lcore_count(void)
 
 #include <exec-env/rte_lcore.h>
 
-#ifdef __DOXYGEN__
 /**
  * Return the ID of the physical socket of the logical core we are
  * running on.
  * @return
- *   Socket ID
+ *   the ID of current lcoreid's physical socket
  */
 static inline unsigned
-rte_socket_id(void);
+rte_socket_id(void)
+{
+	return lcore_config[rte_lcore_id()].socket_id;
+}
 
 /**
  * Get the ID of the physical socket of the specified lcore
@@ -111,10 +113,10 @@ rte_socket_id(void);
  *   the ID of lcoreid's physical socket
  */
 static inline unsigned
-rte_lcore_to_socket_id(unsigned lcore_id);
-
-#endif
-
+rte_lcore_to_socket_id(unsigned lcore_id)
+{
+	return lcore_config[lcore_id].socket_id;
+}
 
 /**
  * Test if an lcore is enabled.

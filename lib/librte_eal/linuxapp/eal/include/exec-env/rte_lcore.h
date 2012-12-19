@@ -57,6 +57,7 @@ struct lcore_config {
 	volatile int ret;          /**< return value of function */
 	volatile enum rte_lcore_state_t state; /**< lcore state */
 	unsigned socket_id;        /**< physical socket id for this lcore */
+	unsigned core_id;          /**< core number on socket for this lcore */
 };
 
 /**
@@ -64,28 +65,4 @@ struct lcore_config {
  */
 extern struct lcore_config lcore_config[RTE_MAX_LCORE];
 
-/**
- * Return the ID of the physical socket of the logical core we are
- * running on.
- */
-static inline unsigned
-rte_socket_id(void)
-{
-	return lcore_config[rte_lcore_id()].socket_id;
-}
-
-/**
- * Get the ID of the physical socket of the specified lcore
- *
- * @param lcore_id
- *   the targeted lcore, which MUST be between 0 and RTE_MAX_LCORE-1.
- * @return
- *   the ID of lcoreid's physical socket
- */
-static inline unsigned
-rte_lcore_to_socket_id(unsigned lcore_id)
-{
-	return lcore_config[lcore_id].socket_id;
-}
-
-#endif /* _RTE_LCORE_H_ */
+#endif /* _RTE_LINUXAPP_LCORE_H_ */
