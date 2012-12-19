@@ -133,8 +133,8 @@ struct mbuf_table {
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
 struct lcore_queue_conf {
-	unsigned n_rx_queue;
-	unsigned rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
+	unsigned n_rx_port;
+	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
 	unsigned tx_queue_id;
 	struct mbuf_table tx_mbufs[LSI_MAX_PORTS];
 
@@ -304,9 +304,9 @@ lsi_simple_forward(struct rte_mbuf *m, unsigned portid)
 
 	eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
-	/* 00:09:c0:00:00:xx */
+	/* 02:00:00:00:00:xx */
 	tmp = &eth->d_addr.addr_bytes[0];
-	*((uint64_t *)tmp) = 0x000000c00900 + (dst_port << 24);
+	*((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)dst_port << 40);
 
 	/* src addr */
 	ether_addr_copy(&lsi_ports_eth_addr[dst_port], &eth->s_addr);
@@ -331,16 +331,16 @@ lsi_main_loop(void)
 	lcore_id = rte_lcore_id();
 	qconf = &lcore_queue_conf[lcore_id];
 
-	if (qconf->n_rx_queue == 0) {
+	if (qconf->n_rx_port == 0) {
 		RTE_LOG(INFO, LSI, "lcore %u has nothing to do\n", lcore_id);
 		while(1);
 	}
 
 	RTE_LOG(INFO, LSI, "entering main loop on lcore %u\n", lcore_id);
 
-	for (i = 0; i < qconf->n_rx_queue; i++) {
+	for (i = 0; i < qconf->n_rx_port; i++) {
 
-		portid = qconf->rx_queue_list[i];
+		portid = qconf->rx_port_list[i];
 		RTE_LOG(INFO, LSI, " -- lcoreid=%u portid=%u\n", lcore_id,
 			portid);
 	}
@@ -390,9 +390,9 @@ lsi_main_loop(void)
 		/*
 		 * Read packet from RX queues
 		 */
-		for (i = 0; i < qconf->n_rx_queue; i++) {
+		for (i = 0; i < qconf->n_rx_port; i++) {
 
-			portid = qconf->rx_queue_list[i];
+			portid = qconf->rx_port_list[i];
 			nb_rx = rte_eth_rx_burst((uint8_t) portid, 0,
 						 pkts_burst, MAX_PKT_BURST);
 
@@ -639,10 +639,9 @@ MAIN(int argc, char **argv)
 	struct lcore_queue_conf *qconf;
 	struct rte_eth_dev_info dev_info;
 	int ret;
-	unsigned int nb_ports, nb_lcores;
-	unsigned portid, portid_last = 0, queueid = 0;
+	unsigned int nb_ports;
+	unsigned portid, portid_last = 0;
 	unsigned lcore_id, rx_lcore_id;
-	unsigned n_tx_queue, max_tx_queues;
 	unsigned nb_ports_in_mask = 0;
 
 	/* init EAL */
@@ -682,13 +681,9 @@ MAIN(int argc, char **argv)
 	if (nb_ports > LSI_MAX_PORTS)
 		nb_ports = LSI_MAX_PORTS;
 
-	nb_lcores = rte_lcore_count();
-
 	/*
 	 * Each logical core is assigned a dedicated TX queue on each port.
-	 * Compute the maximum number of TX queues that can be used.
 	 */
-	max_tx_queues = nb_lcores;
 	for (portid = 0; portid < nb_ports; portid++) {
 		/* skip ports that are not enabled */
 		if ((lsi_enabled_port_mask & (1 << portid)) == 0)
@@ -705,10 +700,7 @@ MAIN(int argc, char **argv)
 		nb_ports_in_mask++;
 
 		rte_eth_dev_info_get((uint8_t) portid, &dev_info);
-		if (max_tx_queues > dev_info.max_tx_queues)
-			max_tx_queues = dev_info.max_tx_queues;
 	}
-
 	if (nb_ports_in_mask < 2 || nb_ports_in_mask % 2)
 		rte_exit(EXIT_FAILURE, "Current enabled port number is %u, "
 				"but it should be even and at least 2\n",
@@ -716,8 +708,6 @@ MAIN(int argc, char **argv)
 
 	rx_lcore_id = 0;
 	qconf = &lcore_queue_conf[rx_lcore_id];
-	qconf->tx_queue_id = 0;
-	n_tx_queue = 1;
 
 	/* Initialize the port/queue configuration of each logical core */
 	for (portid = 0; portid < nb_ports; portid++) {
@@ -727,30 +717,24 @@ MAIN(int argc, char **argv)
 
 		/* get the lcore_id for this port */
 		while (rte_lcore_is_enabled(rx_lcore_id) == 0 ||
-		       lcore_queue_conf[rx_lcore_id].n_rx_queue ==
+		       lcore_queue_conf[rx_lcore_id].n_rx_port ==
 		       lsi_rx_queue_per_lcore) {
 
 			rx_lcore_id++;
 			if (rx_lcore_id >= RTE_MAX_LCORE)
 				rte_exit(EXIT_FAILURE, "Not enough cores\n");
-			if (n_tx_queue == max_tx_queues)
-				rte_exit(EXIT_FAILURE, "Not enough TX queues\n");
 		}
-		if (qconf != &lcore_queue_conf[rx_lcore_id]) {
+		if (qconf != &lcore_queue_conf[rx_lcore_id])
 			/* Assigned a new logical core in the loop above. */
 			qconf = &lcore_queue_conf[rx_lcore_id];
-			qconf->tx_queue_id = n_tx_queue;
-			n_tx_queue++;
-		}
-		qconf->rx_queue_list[qconf->n_rx_queue] = portid;
-		qconf->n_rx_queue++;
-		printf("Lcore %u: RX port %u TX queue %u\n",
-		       rx_lcore_id, portid, qconf->tx_queue_id);
+
+		qconf->rx_port_list[qconf->n_rx_port] = portid;
+		qconf->n_rx_port++;
+		printf("Lcore %u: RX port %u\n",rx_lcore_id, portid);
 	}
 
 	/* Initialise each port */
 	for (portid = 0; portid < nb_ports; portid++) {
-
 		/* skip ports that are not enabled */
 		if ((lsi_enabled_port_mask & (1 << portid)) == 0) {
 			printf("Skipping disabled port %u\n", portid);
@@ -759,8 +743,7 @@ MAIN(int argc, char **argv)
 		/* init port */
 		printf("Initializing port %u... ", portid);
 		fflush(stdout);
-		ret = rte_eth_dev_configure((uint8_t) portid, 1,
-					    (uint16_t) n_tx_queue, &port_conf);
+		ret = rte_eth_dev_configure((uint8_t) portid, 1, 1, &port_conf);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n",
 				  ret, portid);
@@ -786,16 +769,12 @@ MAIN(int argc, char **argv)
 				  ret, portid);
 
 		/* init one TX queue logical core on each port */
-		for (queueid = 0; queueid < n_tx_queue; queueid++) {
-			fflush(stdout);
-			ret = rte_eth_tx_queue_setup((uint8_t) portid,
-						     (uint16_t) queueid, nb_txd,
-						     SOCKET0, &tx_conf);
-			if (ret < 0)
-				rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d, "
-					  "port=%u queue=%u\n",
-					  ret, portid, queueid);
-		}
+		fflush(stdout);
+		ret = rte_eth_tx_queue_setup((uint8_t) portid, 0, nb_txd,
+				SOCKET0, &tx_conf);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d,port=%u\n",
+				  ret, portid);
 
 		/* Start device */
 		ret = rte_eth_dev_start((uint8_t) portid);
