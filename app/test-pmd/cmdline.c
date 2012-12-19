@@ -219,6 +219,10 @@ static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
 		       "- set_masks_filter port_id only_ip_flow 0|1 src_mask\n"
 		       "    ip_src_mask  port_src_mask dst_mask ip_dst_mask\n"
 		       "    port_dst_mask flexbytes 0|1 vlan_id 0|1 vlan_prio 0|1\n"
+		       "- set_ipv6_masks_filter port_id only_ip_flow 0|1 src_mask\n"
+		       "    ip_src_mask port_src_mask dst_mask ip_dst_mask\n"
+		       "    port_dst_mask flexbytes 0|1 vlan_id 0|1\n"
+		       "    vlan_prio 0|1 compare_dst 0|1\n"
 		       "\n");
 	cmdline_printf(cl,
 		       "Misc:\n"
@@ -1414,9 +1418,11 @@ struct cmd_pkt_filter_masks_result {
 	uint8_t  port_id;
 	cmdline_fixed_string_t src_mask;
 	uint32_t ip_src_mask;
+	uint16_t ipv6_src_mask;
 	uint16_t port_src_mask;
 	cmdline_fixed_string_t dst_mask;
 	uint32_t ip_dst_mask;
+	uint16_t ipv6_dst_mask;
 	uint16_t port_dst_mask;
 	cmdline_fixed_string_t flexbytes;
 	uint8_t flexbytes_value;
@@ -1426,6 +1432,8 @@ struct cmd_pkt_filter_masks_result {
 	uint8_t  vlan_prio_value;
 	cmdline_fixed_string_t only_ip_flow;
 	uint8_t  only_ip_flow_value;
+	cmdline_fixed_string_t comp_ipv6_dst;
+	uint8_t  comp_ipv6_dst_value;
 };
 
 static void
@@ -1520,6 +1528,74 @@ cmdline_parse_inst_t cmd_set_masks_filter = {
 		(void *)&cmd_pkt_filter_masks_vlan_id_value,
 		(void *)&cmd_pkt_filter_masks_vlan_prio,
 		(void *)&cmd_pkt_filter_masks_vlan_prio_value,
+		NULL,
+	},
+};
+
+static void
+cmd_pkt_filter_masks_ipv6_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	struct rte_fdir_masks fdir_masks;
+	struct cmd_pkt_filter_masks_result *res = parsed_result;
+
+	memset(&fdir_masks, 0, sizeof(struct rte_fdir_masks));
+
+	fdir_masks.set_ipv6_mask = 1;
+	fdir_masks.only_ip_flow  = res->only_ip_flow_value;
+	fdir_masks.vlan_id       = res->vlan_id_value;
+	fdir_masks.vlan_prio     = res->vlan_prio_value;
+	fdir_masks.dst_ipv6_mask = res->ipv6_dst_mask;
+	fdir_masks.src_ipv6_mask = res->ipv6_src_mask;
+	fdir_masks.src_port_mask = res->port_src_mask;
+	fdir_masks.dst_port_mask = res->port_dst_mask;
+	fdir_masks.flexbytes     = res->flexbytes_value;
+	fdir_masks.comp_ipv6_dst = res->comp_ipv6_dst_value;
+
+	fdir_set_masks(res->port_id, &fdir_masks);
+}
+
+cmdline_parse_token_string_t cmd_pkt_filter_masks_filter_mask_ipv6 =
+	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_masks_result,
+				 filter_mask, "set_ipv6_masks_filter");
+cmdline_parse_token_num_t cmd_pkt_filter_masks_src_mask_ipv6_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
+			      ipv6_src_mask, UINT16);
+cmdline_parse_token_num_t cmd_pkt_filter_masks_dst_mask_ipv6_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
+			      ipv6_dst_mask, UINT16);
+
+cmdline_parse_token_string_t cmd_pkt_filter_masks_comp_ipv6_dst =
+	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_masks_result,
+				 comp_ipv6_dst, "compare_dst");
+cmdline_parse_token_num_t cmd_pkt_filter_masks_comp_ipv6_dst_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
+			      comp_ipv6_dst_value, UINT8);
+
+cmdline_parse_inst_t cmd_set_ipv6_masks_filter = {
+	.f = cmd_pkt_filter_masks_ipv6_parsed,
+	.data = NULL,
+	.help_str = "setup ipv6 masks filter",
+	.tokens = {
+		(void *)&cmd_pkt_filter_masks_filter_mask_ipv6,
+		(void *)&cmd_pkt_filter_masks_port_id,
+		(void *)&cmd_pkt_filter_masks_only_ip_flow,
+		(void *)&cmd_pkt_filter_masks_only_ip_flow_value,
+		(void *)&cmd_pkt_filter_masks_src_mask,
+		(void *)&cmd_pkt_filter_masks_src_mask_ipv6_value,
+		(void *)&cmd_pkt_filter_masks_port_src_mask,
+		(void *)&cmd_pkt_filter_masks_dst_mask,
+		(void *)&cmd_pkt_filter_masks_dst_mask_ipv6_value,
+		(void *)&cmd_pkt_filter_masks_port_dst_mask,
+		(void *)&cmd_pkt_filter_masks_flexbytes,
+		(void *)&cmd_pkt_filter_masks_flexbytes_value,
+		(void *)&cmd_pkt_filter_masks_vlan_id,
+		(void *)&cmd_pkt_filter_masks_vlan_id_value,
+		(void *)&cmd_pkt_filter_masks_vlan_prio,
+		(void *)&cmd_pkt_filter_masks_vlan_prio_value,
+		(void *)&cmd_pkt_filter_masks_comp_ipv6_dst,
+		(void *)&cmd_pkt_filter_masks_comp_ipv6_dst_value,
 		NULL,
 	},
 };
@@ -2375,6 +2451,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_upd_perfect_filter,
 	(cmdline_parse_inst_t *)&cmd_rm_perfect_filter,
 	(cmdline_parse_inst_t *)&cmd_set_masks_filter,
+	(cmdline_parse_inst_t *)&cmd_set_ipv6_masks_filter,
 	(cmdline_parse_inst_t *)&cmd_stop,
 	(cmdline_parse_inst_t *)&cmd_mac_addr,
 	(cmdline_parse_inst_t *)&cmd_set_qmap,
