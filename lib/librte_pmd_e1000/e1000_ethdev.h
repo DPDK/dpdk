@@ -117,4 +117,35 @@ int eth_igbvf_rx_init(struct rte_eth_dev *dev);
 
 void eth_igbvf_tx_init(struct rte_eth_dev *dev);
 
+/*
+ * RX/TX EM function prototypes
+ */
+void eth_em_tx_queue_release(void *txq);
+void eth_em_rx_queue_release(void *rxq);
+
+void em_dev_clear_queues(struct rte_eth_dev *dev);
+
+int eth_em_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
+		uint16_t nb_rx_desc, unsigned int socket_id,
+		const struct rte_eth_rxconf *rx_conf,
+		struct rte_mempool *mb_pool);
+
+int eth_em_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+		uint16_t nb_tx_desc, unsigned int socket_id,
+		const struct rte_eth_txconf *tx_conf);
+
+int eth_em_rx_init(struct rte_eth_dev *dev);
+
+void eth_em_tx_init(struct rte_eth_dev *dev);
+
+uint16_t eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
+
+uint16_t eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+
+uint16_t eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+
+
 #endif /* _E1000_ETHDEV_H_ */

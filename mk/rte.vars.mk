@@ -80,6 +80,9 @@ include $(RTE_SDK)/mk/rte.extvars.mk
 endif
 
 CONFIG_RTE_LIBRTE_E1000_PMD = $(CONFIG_RTE_LIBRTE_IGB_PMD)
+ifneq ($(CONFIG_RTE_LIBRTE_E1000_PMD),y)
+  CONFIG_RTE_LIBRTE_E1000_PMD = $(CONFIG_RTE_LIBRTE_EM_PMD)
+endif
 
 ifeq ($(RTE_ARCH),)
 $(error RTE_ARCH is not defined)

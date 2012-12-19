@@ -64,6 +64,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000_phy.c
 SRCS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000_vf.c
 SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb_rxtx.c
+SRCS-$(CONFIG_RTE_LIBRTE_EM_PMD) += em_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_EM_PMD) += em_rxtx.c
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += lib/librte_eal lib/librte_ether
