@@ -79,6 +79,9 @@ do_recursive_call(void)
 			{ "test_invalid_b_flag", no_action },
 			{ "test_invalid_r_flag", no_action },
 			{ "test_misc_flags", no_action },
+			{ "test_memory_flags", no_action },
+			{ "test_file_prefix", no_action },
+			{ "test_no_huge_flag", no_action },
 	};
 
 	if (recursive_call == NULL)
