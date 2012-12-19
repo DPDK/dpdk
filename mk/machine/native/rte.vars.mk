@@ -57,54 +57,54 @@
 # CPU_ASFLAGS =
 
 MACHINE_CFLAGS = -march=native
-AUTO_CPUFLAGS = $(shell cat /proc/cpuinfo | grep flags -m 1)
+AUTO_CPUFLAGS = $(shell grep -m 1 flags /proc/cpuinfo)
 
 # adding flags to CPUFLAGS
 
 ifneq ($(filter $(AUTO_CPUFLAGS),sse),)
- CPUFLAGS += SSE
+CPUFLAGS += SSE
 endif
 
 ifneq ($(filter $(AUTO_CPUFLAGS),sse2),)
- CPUFLAGS += SSE2
+CPUFLAGS += SSE2
 endif
 
 ifneq ($(filter $(AUTO_CPUFLAGS),sse3),)
- CPUFLAGS += SSE3
+CPUFLAGS += SSE3
 endif
 
 ifneq ($(filter $(AUTO_CPUFLAGS),ssse3),)
- CPUFLAGS += SSSE3
+CPUFLAGS += SSSE3
 endif
 
 ifneq ($(filter $(AUTO_CPUFLAGS),sse4_1),)
- CPUFLAGS += SSE4_1
+CPUFLAGS += SSE4_1
 endif
 
 ifneq ($(filter $(AUTO_CPUFLAGS),sse4_2),)
- CPUFLAGS += SSE4_2
+CPUFLAGS += SSE4_2
 endif
 
 ifneq ($(filter $(AUTO_CPUFLAGS),aes),)
- CPUFLAGS += AES
+CPUFLAGS += AES
 endif
 
 ifneq ($(filter $(AUTO_CPUFLAGS),pclmulqdq),)
- CPUFLAGS += PCLMULQDQ
+CPUFLAGS += PCLMULQDQ
 endif
 
 ifneq ($(filter $(AUTO_CPUFLAGS),avx),)
- CPUFLAGS += AVX
+CPUFLAGS += AVX
 endif
 
 ifneq ($(filter $(AUTO_CPUFLAGS),rdrnd),)
- CPUFLAGS += RDRAND
+CPUFLAGS += RDRAND
 endif
 
 ifneq ($(filter $(AUTO_CPUFLAGS),fsgsbase),)
- CPUFLAGS += FSGSBASE
+CPUFLAGS += FSGSBASE
 endif
 
 ifneq ($(filter $(AUTO_CPUFLAGS),f16c),)
- CPUFLAGS += F16C
+CPUFLAGS += F16C
 endif
