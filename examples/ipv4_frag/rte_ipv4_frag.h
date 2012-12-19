@@ -239,7 +239,7 @@ static inline int32_t rte_ipv4_fragmentation(struct rte_mbuf *pkt_in,
 		    out_pkt->pkt.pkt_len - sizeof(struct ipv4_hdr));
 
 		out_pkt->ol_flags |= PKT_TX_IP_CKSUM;
-		out_pkt->pkt.l3_len = sizeof(struct ipv4_hdr);
+		out_pkt->pkt.vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
 
 		/* Write the fragment to the output list */
 		pkts_out[out_pkt_pos] = out_pkt;

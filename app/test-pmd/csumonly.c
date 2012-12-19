@@ -413,8 +413,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		}
 
 		/* Combine the packet header write. VLAN is not consider here */
-		mb->pkt.l2_len = l2_len;
-		mb->pkt.l3_len = l3_len;
+		mb->pkt.vlan_macip.f.l2_len = l2_len;
+		mb->pkt.vlan_macip.f.l3_len = l3_len;
 		mb->ol_flags = ol_flags;
 	}
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_rx);

@@ -287,7 +287,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t port_in)
 			rte_panic("No headroom in mbuf.\n");
 		}
 
-		m->pkt.l2_len = sizeof(struct ether_hdr);
+		m->pkt.vlan_macip.f.l2_len = sizeof(struct ether_hdr);
 
 		ether_addr_copy(&remote_eth_addr, &eth_hdr->d_addr);
 		ether_addr_copy(&ports_eth_addr[port_out], &eth_hdr->s_addr);

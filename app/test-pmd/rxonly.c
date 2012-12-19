@@ -164,7 +164,8 @@ pkt_burst_receive(struct fwd_stream *fs)
 			printf(" - FDIR hash=0x%x - FDIR id=0x%x ",
 			       mb->pkt.hash.fdir.hash, mb->pkt.hash.fdir.id);
 		if (ol_flags & PKT_RX_VLAN_PKT)
-			printf(" - VLAN tci=0x%x", mb->pkt.vlan_tci);
+			printf(" - VLAN tci=0x%x",
+				mb->pkt.vlan_macip.f.vlan_tci);
 		printf("\n");
 		if (ol_flags != 0) {
 			int rxf;

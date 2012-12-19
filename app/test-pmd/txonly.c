@@ -266,9 +266,9 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		pkt->pkt.nb_segs = tx_pkt_nb_segs;
 		pkt->pkt.pkt_len = tx_pkt_length;
 		pkt->ol_flags = ol_flags;
-		pkt->pkt.vlan_tci  = vlan_tci;
-		pkt->pkt.l2_len = sizeof(struct ether_hdr);
-		pkt->pkt.l3_len = sizeof(struct ipv4_hdr);
+		pkt->pkt.vlan_macip.f.vlan_tci  = vlan_tci;
+		pkt->pkt.vlan_macip.f.l2_len = sizeof(struct ether_hdr);
+		pkt->pkt.vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
 		pkts_burst[nb_pkt] = pkt;
 	}
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_pkt);

@@ -331,9 +331,7 @@ testpmd_mbuf_ctor(struct rte_mempool *mp,
 	mb->ol_flags     = 0;
 	mb->pkt.data     = (char *) mb->buf_addr + RTE_PKTMBUF_HEADROOM;
 	mb->pkt.nb_segs  = 1;
-	mb->pkt.l2_len = 0;
-	mb->pkt.l3_len = 0;
-	mb->pkt.vlan_tci = 0;
+	mb->pkt.vlan_macip.data = 0;
 	mb->pkt.hash.rss = 0;
 }
 
