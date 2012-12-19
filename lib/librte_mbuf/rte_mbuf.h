@@ -59,7 +59,6 @@
  */
 
 #include <stdint.h>
-
 #include <rte_mempool.h>
 #include <rte_atomic.h>
 #include <rte_prefetch.h>
@@ -340,6 +339,8 @@ rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 
 /** Mbuf prefetch */
 #define RTE_MBUF_PREFETCH_TO_FREE(m) do { } while(0)
+
+#define rte_mbuf_refcnt_set(m,v) do { } while(0)
 
 #endif /* RTE_MBUF_SCATTER_GATHER */
 
