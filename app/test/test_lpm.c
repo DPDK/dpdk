@@ -54,17 +54,12 @@
 
 #include "test.h"
 
-#define ITERATIONS (1 << 20)
-#define BATCH_SIZE (1 << 13)
-
 #define TEST_LPM_ASSERT(cond) do {                                            \
 	if (!(cond)) {                                                        \
 		printf("Error at line %d: \n", __LINE__);                     \
 		return -1;                                                    \
 	}                                                                     \
 } while(0)
-
-
 
 typedef int32_t (* rte_lpm_test)(void);
 
@@ -86,7 +81,7 @@ static int32_t test14(void);
 static int32_t test15(void);
 static int32_t test16(void);
 static int32_t test17(void);
-static int32_t test18(void);
+static int32_t perf_test(void);
 
 rte_lpm_test tests[] = {
 /* Test Cases */
@@ -108,7 +103,7 @@ rte_lpm_test tests[] = {
 	test15,
 	test16,
 	test17,
-	test18
+	perf_test,
 };
 
 #define NUM_LPM_TESTS (sizeof(tests)/sizeof(tests[0]))
@@ -972,215 +967,16 @@ test14(void)
 	return PASS;
 }
 
-/* TEST test15
- *
- * Lookup performance test using Mae West Routing Table
- */
-static inline uint32_t
-depth_to_mask(uint8_t depth) {
-	return (int)0x80000000 >> (depth - 1);
-}
-
-static uint32_t
-rule_table_check_for_duplicates(const struct route_rule *table, uint32_t n){
-	unsigned i, j, count;
-
-	count = 0;
-	for (i = 0; i < (n - 1); i++) {
-		uint8_t depth1 = table[i].depth;
-		uint32_t ip1_masked = table[i].ip & depth_to_mask(depth1);
-
-		for (j = (i + 1); j <n; j ++) {
-			uint8_t depth2 = table[j].depth;
-			uint32_t ip2_masked = table[j].ip &
-					depth_to_mask(depth2);
-
-			if ((depth1 == depth2) && (ip1_masked == ip2_masked)){
-				printf("Rule %u is a duplicate of rule %u\n",
-						j, i);
-				count ++;
-			}
-		}
-	}
-
-	return count;
-}
-
-static int32_t
-rule_table_characterisation(const struct route_rule *table, uint32_t n){
-	unsigned i, j;
-
-	printf("DEPTH		QUANTITY (PERCENT)\n");
-	printf("--------------------------------- \n");
-	/* Count depths. */
-	for(i = 1; i <= 32; i++) {
-		unsigned depth_counter = 0;
-		double percent_hits;
-
-		for (j = 0; j < n; j++) {
-			if (table[j].depth == (uint8_t) i)
-				depth_counter++;
-		}
-
-		percent_hits = ((double)depth_counter)/((double)n) * 100;
-
-		printf("%u	-	%5u (%.2f)\n",
-				i, depth_counter, percent_hits);
-	}
-
-	return 0;
-}
-
-static inline uint64_t
-div64(uint64_t dividend, uint64_t divisor)
-{
-	return ((2 * dividend) + divisor) / (2 * divisor);
-}
-
-int32_t
-test15(void)
-{
-	struct rte_lpm *lpm = NULL;
-	uint64_t begin, end, total_time, lpm_used_entries = 0;
-	unsigned avg_ticks, i, j;
-	uint8_t next_hop_add = 0, next_hop_return = 0;
-	int32_t status = 0;
-
-	printf("Using Mae West routing table from www.oiforum.com\n");
-	printf("No. routes = %u\n", (unsigned) NUM_ROUTE_ENTRIES);
-	printf("No. duplicate routes = %u\n\n", (unsigned)
-		rule_table_check_for_duplicates(mae_west_tbl, NUM_ROUTE_ENTRIES));
-	printf("Route distribution per prefix width: \n");
-	rule_table_characterisation(mae_west_tbl,
-			(uint32_t) NUM_ROUTE_ENTRIES);
-	printf("\n");
-
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, 1000000,
-			RTE_LPM_MEMZONE);
-	TEST_LPM_ASSERT(lpm != NULL);
-
-	next_hop_add = 1;
-
-	/* Add */
-	/* Begin Timer. */
-	begin = rte_rdtsc();
-
-	for (i = 0; i < NUM_ROUTE_ENTRIES; i++) {
-		/* rte_lpm_add(lpm, ip, depth, next_hop_add) */
-		status += rte_lpm_add(lpm, mae_west_tbl[i].ip,
-				mae_west_tbl[i].depth, next_hop_add);
-	}
-	/* End Timer. */
-	end = rte_rdtsc();
-
-	TEST_LPM_ASSERT(status == 0);
-
-	/* Calculate average cycles per add. */
-	avg_ticks = (uint32_t) div64((end - begin),
-			(uint64_t) NUM_ROUTE_ENTRIES);
-
-	uint64_t cache_line_counter = 0;
-	uint64_t count = 0;
-
-	/* Obtain add statistics. */
-	for (i = 0; i < RTE_LPM_TBL24_NUM_ENTRIES; i++) {
-		if (lpm->tbl24[i].valid)
-			lpm_used_entries++;
-
-		if (i % 32 == 0){
-			if (count < lpm_used_entries) {
-				cache_line_counter++;
-				count = lpm_used_entries;
-			}
-		}
-	}
-
-	printf("Number of table 24 entries = 	%u\n",
-			(unsigned) RTE_LPM_TBL24_NUM_ENTRIES);
-	printf("Used table 24 entries = 	%u\n",
-			(unsigned) lpm_used_entries);
-	printf("Percentage of table 24 entries used = %u\n",
-			(unsigned) div64((lpm_used_entries * 100) ,
-					RTE_LPM_TBL24_NUM_ENTRIES));
-	printf("64 byte Cache entries used = %u \n",
-			(unsigned) cache_line_counter);
-	printf("Cache Required = %u bytes\n\n",
-			(unsigned) cache_line_counter * 64);
-
-	printf("Average LPM Add:	%u cycles\n", avg_ticks);
-
-	/* Lookup */
-
-	/* Choose random seed. */
-	rte_srand(0);
-	total_time = 0;
-	status = 0;
-	for (i = 0; i < (ITERATIONS / BATCH_SIZE); i ++) {
-		static uint32_t ip_batch[BATCH_SIZE];
-		uint64_t begin_batch, end_batch;
-
-		/* Generate a batch of random numbers */
-		for (j = 0; j < BATCH_SIZE; j ++) {
-			ip_batch[j] = rte_rand();
-		}
-
-		/* Lookup per batch */
-		begin_batch = rte_rdtsc();
-
-		for (j = 0; j < BATCH_SIZE; j ++) {
-			status += rte_lpm_lookup(lpm, ip_batch[j],
-					&next_hop_return);
-		}
-
-		end_batch = rte_rdtsc();
-		printf("status = %d\r", next_hop_return);
-		TEST_LPM_ASSERT(status < 1);
-
-		/* Accumulate batch time */
-		total_time += (end_batch - begin_batch);
-
-		TEST_LPM_ASSERT((status < -ENOENT) ||
-					(next_hop_return == next_hop_add));
-	}
-
-	avg_ticks = (uint32_t) div64(total_time, ITERATIONS);
-	printf("Average LPM Lookup: 	%u cycles\n", avg_ticks);
-
-	/* Delete */
-	status = 0;
-	begin = rte_rdtsc();
-
-	for (i = 0; i < NUM_ROUTE_ENTRIES; i++) {
-		/* rte_lpm_delete(lpm, ip, depth) */
-		status += rte_lpm_delete(lpm, mae_west_tbl[i].ip,
-				mae_west_tbl[i].depth);
-	}
-
-	end = rte_rdtsc();
-
-	TEST_LPM_ASSERT(status == 0);
-
-	avg_ticks = (uint32_t) div64((end - begin), NUM_ROUTE_ENTRIES);
-
-	printf("Average LPM Delete: 	%u cycles\n", avg_ticks);
-
-	rte_lpm_delete_all(lpm);
-	rte_lpm_free(lpm);
-
-	return PASS;
-}
-
-
-
 /*
- * Sequence of operations for find existing fbk hash table
+ * Sequence of operations for find existing lpm table
  *
  *  - create table
  *  - find existing table: hit
  *  - find non-existing table: miss
  *
  */
-int32_t test16(void)
+int32_t
+test15(void)
 {
 	struct rte_lpm *lpm = NULL, *result = NULL;
 
@@ -1207,18 +1003,16 @@ int32_t test16(void)
  * test failure condition of overloading the tbl8 so no more will fit
  * Check we get an error return value in that case
  */
-static int32_t
-test17(void)
+int32_t
+test16(void)
 {
 	uint32_t ip;
 	struct rte_lpm *lpm = rte_lpm_create(__func__, SOCKET_ID_ANY,
-			256 * 32, RTE_LPM_HEAP);
+			256 * 32, 0);
 
-	printf("Testing filling tbl8's\n");
-
-	/* ip loops through all positibilities for top 24 bits of address */
+	/* ip loops through all possibilities for top 24 bits of address */
 	for (ip = 0; ip < 0xFFFFFF; ip++){
-		/* add an entrey within a different tbl8 each time, since
+		/* add an entry within a different tbl8 each time, since
 		 * depth >24 and the top 24 bits are different */
 		if (rte_lpm_add(lpm, (ip << 8) + 0xF0, 30, 0) < 0)
 			break;
@@ -1235,7 +1029,6 @@ test17(void)
 }
 
 /*
- * Test 18
  * Test for overwriting of tbl8:
  *  - add rule /32 and lookup
  *  - add new rule /24 and lookup
@@ -1243,7 +1036,7 @@ test17(void)
  *	- lookup /32 and /24 rule to ensure the table has not been overwritten.
  */
 int32_t
-test18(void)
+test17(void)
 {
 	struct rte_lpm *lpm = NULL;
 	const uint32_t ip_10_32 = IPv4(10, 10, 10, 2);
@@ -1258,29 +1051,45 @@ test18(void)
 	uint8_t next_hop_return = 0;
 	int32_t status = 0;
 
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
-	status = rte_lpm_add(lpm, ip_10_32, d_ip_10_32, next_hop_ip_10_32);
-	TEST_LPM_ASSERT(status == 0);
+	if ((status = rte_lpm_add(lpm, ip_10_32, d_ip_10_32,
+			next_hop_ip_10_32)) < 0)
+		return -1;
 
 	status = rte_lpm_lookup(lpm, ip_10_32, &next_hop_return);
+	uint8_t test_hop_10_32 = next_hop_return;
 	TEST_LPM_ASSERT(status == 0);
 	TEST_LPM_ASSERT(next_hop_return == next_hop_ip_10_32);
 
-	status = rte_lpm_add(lpm, ip_10_24, d_ip_10_24,	next_hop_ip_10_24);
-	TEST_LPM_ASSERT(status == 0);
+	if ((status = rte_lpm_add(lpm, ip_10_24, d_ip_10_24,
+			next_hop_ip_10_24)) < 0)
+			return -1;
 
 	status = rte_lpm_lookup(lpm, ip_10_24, &next_hop_return);
+	uint8_t test_hop_10_24 = next_hop_return;
 	TEST_LPM_ASSERT(status == 0);
 	TEST_LPM_ASSERT(next_hop_return == next_hop_ip_10_24);
 
-	status = rte_lpm_add(lpm, ip_20_25, d_ip_20_25, next_hop_ip_20_25);
-	TEST_LPM_ASSERT(status == 0);
+	if ((status = rte_lpm_add(lpm, ip_20_25, d_ip_20_25,
+			next_hop_ip_20_25)) < 0)
+		return -1;
 
 	status = rte_lpm_lookup(lpm, ip_20_25, &next_hop_return);
+	uint8_t test_hop_20_25 = next_hop_return;
 	TEST_LPM_ASSERT(status == 0);
 	TEST_LPM_ASSERT(next_hop_return == next_hop_ip_20_25);
+
+	if (test_hop_10_32 == test_hop_10_24) {
+		printf("Next hop return equal\n");
+		return -1;
+	}
+
+	if (test_hop_10_24 == test_hop_20_25){
+		printf("Next hop return equal\n");
+		return -1;
+	}
 
 	status = rte_lpm_lookup(lpm, ip_10_32, &next_hop_return);
 	TEST_LPM_ASSERT(status == 0);
@@ -1292,10 +1101,166 @@ test18(void)
 
 	rte_lpm_free(lpm);
 
-	printf("%s PASSED\n", __func__);
 	return PASS;
 }
 
+/*
+ * Lookup performance test
+ */
+
+#define ITERATIONS (1 << 10)
+#define BATCH_SIZE (1 << 12)
+#define BULK_SIZE 32
+
+static void
+print_route_distribution(const struct route_rule *table, uint32_t n)
+{
+	unsigned i, j;
+
+	printf("Route distribution per prefix width: \n");
+	printf("DEPTH    QUANTITY (PERCENT)\n");
+	printf("--------------------------- \n");
+
+	/* Count depths. */
+	for(i = 1; i <= 32; i++) {
+		unsigned depth_counter = 0;
+		double percent_hits;
+
+		for (j = 0; j < n; j++)
+			if (table[j].depth == (uint8_t) i)
+				depth_counter++;
+
+		percent_hits = ((double)depth_counter)/((double)n) * 100;
+		printf("%.2u%15u (%.2f)\n", i, depth_counter, percent_hits);
+	}
+	printf("\n");
+}
+
+int32_t
+perf_test(void)
+{
+	struct rte_lpm *lpm = NULL;
+	uint64_t begin, total_time, lpm_used_entries = 0;
+	unsigned i, j;
+	uint8_t next_hop_add = 0xAA, next_hop_return = 0;
+	int status = 0;
+	uint64_t cache_line_counter = 0;
+	int64_t count = 0;
+
+	rte_srand(rte_rdtsc());
+
+	printf("No. routes = %u\n", (unsigned) NUM_ROUTE_ENTRIES);
+
+	print_route_distribution(large_route_table, (uint32_t) NUM_ROUTE_ENTRIES);
+
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, 1000000, 0);
+	TEST_LPM_ASSERT(lpm != NULL);
+
+	/* Measue add. */
+	begin = rte_rdtsc();
+
+	for (i = 0; i < NUM_ROUTE_ENTRIES; i++) {
+		if (rte_lpm_add(lpm, large_route_table[i].ip,
+				large_route_table[i].depth, next_hop_add) == 0)
+			status++;
+	}
+	/* End Timer. */
+	total_time = rte_rdtsc() - begin;
+
+	printf("Unique added entries = %d\n", status);
+	/* Obtain add statistics. */
+	for (i = 0; i < RTE_LPM_TBL24_NUM_ENTRIES; i++) {
+		if (lpm->tbl24[i].valid)
+			lpm_used_entries++;
+
+		if (i % 32 == 0){
+			if ((uint64_t)count < lpm_used_entries) {
+				cache_line_counter++;
+				count = lpm_used_entries;
+			}
+		}
+	}
+
+	printf("Used table 24 entries = %u (%g%%)\n",
+			(unsigned) lpm_used_entries,
+			(lpm_used_entries * 100.0) / RTE_LPM_TBL24_NUM_ENTRIES);
+	printf("64 byte Cache entries used = %u (%u bytes)\n",
+			(unsigned) cache_line_counter, (unsigned) cache_line_counter * 64);
+
+	printf("Average LPM Add: %g cycles\n", (double)total_time / NUM_ROUTE_ENTRIES);
+
+	/* Measure single Lookup */
+	total_time = 0;
+	count = 0;
+
+	for (i = 0; i < ITERATIONS; i ++) {
+		static uint32_t ip_batch[BATCH_SIZE];
+
+		for (j = 0; j < BATCH_SIZE; j ++)
+			ip_batch[j] = rte_rand();
+
+		/* Lookup per batch */
+		begin = rte_rdtsc();
+
+		for (j = 0; j < BATCH_SIZE; j ++) {
+			if (rte_lpm_lookup(lpm, ip_batch[j], &next_hop_return) != 0)
+				count++;
+		}
+
+		total_time += rte_rdtsc() - begin;
+
+	}
+	printf("Average LPM Lookup: %.1f cycles (fails = %.1f%%)\n",
+			(double)total_time / ((double)ITERATIONS * BATCH_SIZE),
+			(count * 100.0) / (double)(ITERATIONS * BATCH_SIZE));
+
+	/* Measure bulk Lookup */
+	total_time = 0;
+	count = 0;
+	for (i = 0; i < ITERATIONS; i ++) {
+		static uint32_t ip_batch[BATCH_SIZE];
+		uint16_t next_hops[BULK_SIZE];
+
+		/* Create array of random IP addresses */
+		for (j = 0; j < BATCH_SIZE; j ++)
+			ip_batch[j] = rte_rand();
+
+		/* Lookup per batch */
+		begin = rte_rdtsc();
+		for (j = 0; j < BATCH_SIZE; j += BULK_SIZE) {
+			unsigned k;
+			rte_lpm_lookup_bulk(lpm, &ip_batch[j], next_hops, BULK_SIZE);
+			for (k = 0; k < BULK_SIZE; k++)
+				if (unlikely(!(next_hops[k] & RTE_LPM_LOOKUP_SUCCESS)))
+					count++;
+		}
+
+		total_time += rte_rdtsc() - begin;
+	}
+	printf("BULK LPM Lookup: %.1f cycles (fails = %.1f%%)\n",
+			(double)total_time / ((double)ITERATIONS * BATCH_SIZE),
+			(count * 100.0) / (double)(ITERATIONS * BATCH_SIZE));
+
+	/* Delete */
+	status = 0;
+	begin = rte_rdtsc();
+
+	for (i = 0; i < NUM_ROUTE_ENTRIES; i++) {
+		/* rte_lpm_delete(lpm, ip, depth) */
+		status += rte_lpm_delete(lpm, large_route_table[i].ip,
+				large_route_table[i].depth);
+	}
+
+	total_time += rte_rdtsc() - begin;
+
+	printf("Average LPM Delete: %g cycles\n",
+			(double)total_time / NUM_ROUTE_ENTRIES);
+
+	rte_lpm_delete_all(lpm);
+	rte_lpm_free(lpm);
+
+	return PASS;
+}
 
 /*
  * Do all unit and performance tests.
@@ -1304,22 +1269,13 @@ test18(void)
 int
 test_lpm(void)
 {
-	unsigned test_num;
-	int status, global_status;
+	unsigned i;
+	int status, global_status = 0;
 
-	printf("Running LPM tests...\n"
-	       "Total number of test = %u\n", (unsigned) NUM_LPM_TESTS);
-
-	global_status = 0;
-
-	for (test_num = 0; test_num < NUM_LPM_TESTS; test_num++) {
-
-		status = tests[test_num]();
-
-		printf("LPM Test %u: %s\n", test_num,
-				(status < 0) ? "FAIL" : "PASS");
-
+	for (i = 0; i < NUM_LPM_TESTS; i++) {
+		status = tests[i]();
 		if (status < 0) {
+			printf("ERROR: LPM Test %s: FAIL\n", RTE_STR(tests[i]));
 			global_status = status;
 		}
 	}

@@ -113,11 +113,13 @@ test_exit_val(int exit_val)
 	}
 	wait(&status);
 	printf("Child process status: %d\n", status);
+#ifndef RTE_EAL_ALWAYS_PANIC_ON_ERROR
 	if(!WIFEXITED(status) || WEXITSTATUS(status) != (uint8_t)exit_val){
-		printf("Child process terminated with incorrect return code!\n");
+		printf("Child process terminated with incorrect status (expected = %d)!\n",
+				exit_val);
 		return -1;
 	}
-
+#endif
 	return 0;
 }
 

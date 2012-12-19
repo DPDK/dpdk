@@ -86,7 +86,8 @@ test_errno(void)
 		 * a duplicate error number that conflicts with errno.h */
 		rte_snprintf(expected_libc_retval, sizeof(expected_libc_retval),
 				unknown_code_result, rte_errs[i]);
-		if (strcmp(expected_libc_retval, libc_retval) != 0){
+		if ((strcmp(expected_libc_retval, libc_retval) != 0) &&
+				(strcmp("", libc_retval) != 0)){
 			printf("Error, duplicate error code %d\n", rte_errs[i]);
 			return -1;
 		}
@@ -101,8 +102,10 @@ test_errno(void)
 			rte_retval, libc_retval);
 	if ((strcmp(rte_retval, libc_retval) != 0) ||
 			(strcmp(expected_libc_retval, libc_retval) != 0)){
-		printf("Failed test for RTE_MAX_ERRNO + 1 value\n");
-		return -1;
+		if (strcmp("", libc_retval) != 0){
+			printf("Failed test for RTE_MAX_ERRNO + 1 value\n");
+			return -1;
+		}
 	}
 
 	return 0;

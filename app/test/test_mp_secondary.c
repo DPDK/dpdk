@@ -52,6 +52,8 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <libgen.h>
+#include <dirent.h>
 
 #include <rte_common.h>
 #include <rte_memory.h>
@@ -66,7 +68,6 @@
 #include <rte_atomic.h>
 #include <rte_ring.h>
 #include <rte_debug.h>
-#include <stdarg.h>
 #include <rte_log.h>
 #include <rte_mempool.h>
 #include <rte_hash.h>
@@ -79,6 +80,29 @@
 #define launch_proc(ARGV) process_dup(ARGV, \
 		sizeof(ARGV)/(sizeof(ARGV[0])), __func__)
 
+static char*
+get_current_prefix(char * prefix, int size)
+{
+	char path[PATH_MAX] = {0};
+	char buf[PATH_MAX] = {0};
+
+	/* get file for config (fd is always 3) */
+	rte_snprintf(path, sizeof(path), "/proc/self/fd/%d", 3);
+
+	/* return NULL on error */
+	if (readlink(path, buf, sizeof(buf)) == -1)
+		return NULL;
+
+	/* get the basename */
+	rte_snprintf(buf, sizeof(buf), "%s", basename(buf));
+
+	/* copy string all the way from second char up to start of _config */
+	rte_snprintf(prefix, size, "%.*s",
+			strnlen(buf, sizeof(buf)) - sizeof("_config"), &buf[1]);
+
+	return prefix;
+}
+
 /*
  * This function is called in the primary i.e. main test, to spawn off secondary
  * processes to run actual mp tests. Uses fork() and exec pair
@@ -89,17 +113,27 @@ run_secondary_instances(void)
 	int ret = 0;
 	char coremask[10];
 
+	char tmp[PATH_MAX] = {0};
+	char prefix[PATH_MAX] = {0};
+
+	get_current_prefix(tmp, sizeof(tmp));
+
+	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+
 	/* good case, using secondary */
 	const char *argv1[] = {
-			prgname, "-c", coremask, "--proc-type=secondary"
+			prgname, "-c", coremask, "--proc-type=secondary",
+			prefix
 	};
 	/* good case, using auto */
 	const char *argv2[] = {
-			prgname, "-c", coremask, "--proc-type=auto"
+			prgname, "-c", coremask, "--proc-type=auto",
+			prefix
 	};
 	/* bad case, using invalid type */
 	const char *argv3[] = {
-			prgname, "-c", coremask, "--proc-type=ERROR"
+			prgname, "-c", coremask, "--proc-type=ERROR",
+			prefix
 	};
 	/* bad case, using invalid file prefix */
 	const char *argv4[]  = {
@@ -135,54 +169,55 @@ run_object_creation_tests(void)
 	printf("### Testing object creation - expect lots of mz reserve errors!\n");
 
 	rte_errno = 0;
-	if (rte_memzone_reserve("test_mz", size, rte_socket_id(), flags) != NULL
-			|| rte_errno != E_RTE_SECONDARY){
+	if ((rte_memzone_reserve("test_mz", size, rte_socket_id(), 
+				 flags) == NULL) &&
+	    (rte_memzone_lookup("test_mz") == NULL)) {
 		printf("Error: unexpected return value from rte_memzone_reserve\n");
 		return -1;
 	}
 	printf("# Checked rte_memzone_reserve() OK\n");
 
 	rte_errno = 0;
-	if (rte_ring_create("test_rng", size, rte_socket_id(), flags) != NULL
-			|| rte_errno != E_RTE_SECONDARY){
+	if ((rte_ring_create(
+		     "test_ring", size, rte_socket_id(), flags) == NULL) &&
+		    (rte_ring_lookup("test_ring") == NULL)){
 		printf("Error: unexpected return value from rte_ring_create()\n");
 		return -1;
 	}
 	printf("# Checked rte_ring_create() OK\n");
 
-
 	rte_errno = 0;
-	if (rte_mempool_create("test_mp", size, elt_size, cache_size,
-			priv_data_size, NULL, NULL, NULL, NULL,
-			rte_socket_id(), flags) != NULL
-			|| rte_errno != E_RTE_SECONDARY){
-		printf("Error: unexpected return value from rte_ring_create()\n");
+	if ((rte_mempool_create("test_mp", size, elt_size, cache_size,
+				priv_data_size, NULL, NULL, NULL, NULL,
+				rte_socket_id(), flags) == NULL) &&
+	     (rte_mempool_lookup("test_mp") == NULL)){
+		printf("Error: unexpected return value from rte_mempool_create()\n");
 		return -1;
 	}
 	printf("# Checked rte_mempool_create() OK\n");
 
 	const struct rte_hash_parameters hash_params = { .name = "test_mp_hash" };
 	rte_errno=0;
-	if (rte_hash_create(&hash_params) != NULL
-			|| rte_errno != E_RTE_SECONDARY){
-		printf("Error: unexpected return value from rte_ring_create()\n");
+	if ((rte_hash_create(&hash_params) != NULL) &&
+	    (rte_hash_find_existing(hash_params.name) == NULL)){
+		printf("Error: unexpected return value from rte_hash_create()\n");
 		return -1;
 	}
 	printf("# Checked rte_hash_create() OK\n");
 
-	const struct rte_fbk_hash_params fbk_params = { .name = "test_mp_hash" };
+	const struct rte_fbk_hash_params fbk_params = { .name = "test_fbk_mp_hash" };
 	rte_errno=0;
-	if (rte_fbk_hash_create(&fbk_params) != NULL
-			|| rte_errno != E_RTE_SECONDARY){
-		printf("Error: unexpected return value from rte_ring_create()\n");
+	if ((rte_fbk_hash_create(&fbk_params) != NULL) && 
+	    (rte_fbk_hash_find_existing(fbk_params.name) == NULL)){
+		printf("Error: unexpected return value from rte_fbk_hash_create()\n");
 		return -1;
 	}
 	printf("# Checked rte_fbk_hash_create() OK\n");
 
 	rte_errno=0;
-	if (rte_lpm_create("test_lpm", size, rte_socket_id(), RTE_LPM_HEAP) != NULL
-			|| rte_errno != E_RTE_SECONDARY){
-		printf("Error: unexpected return value from rte_ring_create()\n");
+	if ((rte_lpm_create("test_lpm", size, rte_socket_id(), 0) != NULL) &&
+	    (rte_lpm_find_existing("test_lpm") == NULL)){
+		printf("Error: unexpected return value from rte_lpm_create()\n");
 		return -1;
 	}
 	printf("# Checked rte_lpm_create() OK\n");

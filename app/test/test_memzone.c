@@ -39,10 +39,13 @@
 
 #include <cmdline_parse.h>
 
+#include <rte_random.h>
+#include <rte_cycles.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_common.h>
 
 #include "test.h"
@@ -279,8 +282,10 @@ test_memzone_reserve_max(void)
 		if (ms[memseg_idx].len < maxlen)
 			continue;
 
-		len = ms[memseg_idx].len;
-		last_addr = ms[memseg_idx].addr;
+		/* align everything */
+		last_addr = RTE_PTR_ALIGN_CEIL(ms[memseg_idx].addr, CACHE_LINE_SIZE);
+		len = ms[memseg_idx].len - RTE_PTR_DIFF(last_addr, ms[memseg_idx].addr);
+		len &= ~((uint64_t) CACHE_LINE_MASK);
 
 		/* cycle through all memzones */
 		for (memzone_idx = 0; memzone_idx < RTE_MAX_MEMZONE; memzone_idx++) {
@@ -301,12 +306,11 @@ test_memzone_reserve_max(void)
 				 * are allocated sequentially so we don't need to worry about
 				 * them being in the right order.
 				 */
-				len -= (uintptr_t) RTE_PTR_SUB(
+				len -= RTE_PTR_DIFF(
 						config->mem_config->memzone[memzone_idx].addr,
-						(uintptr_t) last_addr);
+						last_addr);
 				len -= config->mem_config->memzone[memzone_idx].len;
-				last_addr =
-						RTE_PTR_ADD(config->mem_config->memzone[memzone_idx].addr,
+				last_addr = RTE_PTR_ADD(config->mem_config->memzone[memzone_idx].addr,
 						(size_t) config->mem_config->memzone[memzone_idx].len);
 			}
 		}
@@ -315,6 +319,11 @@ test_memzone_reserve_max(void)
 		 * is always cache-aligned */
 		if (len > maxlen)
 			maxlen = len;
+	}
+
+	if (maxlen == 0) {
+		printf("There is no space left!\n");
+		return 0;
 	}
 
 	mz = rte_memzone_reserve("max_zone", 0, SOCKET_ID_ANY, 0);
@@ -349,6 +358,10 @@ test_memzone_reserve_max_aligned(void)
 	void* last_addr;
 	uint64_t maxlen = 0;
 
+	/* random alignment */
+	rte_srand((unsigned)rte_rdtsc());
+	const unsigned align = 1 << ((rte_rand() % 8) + 5); /* from 128 up to 4k alignment */
+
 	/* get pointer to global configuration */
 	config = rte_eal_get_configuration();
 
@@ -362,8 +375,10 @@ test_memzone_reserve_max_aligned(void)
 		if (ms[memseg_idx].len < maxlen)
 			continue;
 
-		len = ms[memseg_idx].len;
-		last_addr = ms[memseg_idx].addr;
+		/* align everything */
+		last_addr = RTE_PTR_ALIGN_CEIL(ms[memseg_idx].addr, CACHE_LINE_SIZE);
+		len = ms[memseg_idx].len - RTE_PTR_DIFF(last_addr, ms[memseg_idx].addr);
+		len &= ~((uint64_t) CACHE_LINE_MASK);
 
 		/* cycle through all memzones */
 		for (memzone_idx = 0; memzone_idx < RTE_MAX_MEMZONE; memzone_idx++) {
@@ -394,15 +409,20 @@ test_memzone_reserve_max_aligned(void)
 
 		/* make sure we get the alignment offset */
 		if (len > maxlen) {
-			addr_offset = RTE_ALIGN_CEIL((uintptr_t) last_addr, 512) - (uintptr_t) last_addr;
+			addr_offset = RTE_PTR_ALIGN_CEIL((uintptr_t) last_addr, align) - (uintptr_t) last_addr;
 			maxlen = len;
 		}
+	}
+
+	if (maxlen == 0 || maxlen == addr_offset) {
+		printf("There is no space left for biggest %u-aligned memzone!\n", align);
+		return 0;
 	}
 
 	maxlen -= addr_offset;
 
 	mz = rte_memzone_reserve_aligned("max_zone_aligned", 0,
-			SOCKET_ID_ANY, 0, 512);
+			SOCKET_ID_ANY, 0, align);
 	if (mz == NULL){
 		printf("Failed to reserve a big chunk of memory\n");
 		rte_dump_physmem_layout();
@@ -411,8 +431,8 @@ test_memzone_reserve_max_aligned(void)
 	}
 
 	if (mz->len != maxlen) {
-		printf("Memzone reserve with 0 size and alignment 512 did not return"
-				" bigest block\n");
+		printf("Memzone reserve with 0 size and alignment %u did not return"
+				" bigest block\n", align);
 		printf("Expected size = %" PRIu64 ", actual size = %" PRIu64 "\n",
 				maxlen, mz->len);
 		rte_dump_physmem_layout();
@@ -463,37 +483,56 @@ test_memzone_aligned(void)
 				SOCKET_ID_ANY, 0, 1024);
 
 	printf("check alignments and lengths\n");
+	if (memzone_aligned_32 == NULL) {
+		printf("Unable to reserve 64-byte aligned memzone!\n");
+		return -1;
+	}
 	if ((memzone_aligned_32->phys_addr & CACHE_LINE_MASK) != 0)
 		return -1;
 	if (((uintptr_t) memzone_aligned_32->addr & CACHE_LINE_MASK) != 0)
 		return -1;
 	if ((memzone_aligned_32->len & CACHE_LINE_MASK) != 0)
 		return -1;
+	if (memzone_aligned_128 == NULL) {
+		printf("Unable to reserve 128-byte aligned memzone!\n");
+		return -1;
+	}
 	if ((memzone_aligned_128->phys_addr & 127) != 0)
 		return -1;
 	if (((uintptr_t) memzone_aligned_128->addr & 127) != 0)
 		return -1;
 	if ((memzone_aligned_128->len & CACHE_LINE_MASK) != 0)
 		return -1;
+	if (memzone_aligned_256 == NULL) {
+		printf("Unable to reserve 256-byte aligned memzone!\n");
+		return -1;
+	}
 	if ((memzone_aligned_256->phys_addr & 255) != 0)
 		return -1;
 	if (((uintptr_t) memzone_aligned_256->addr & 255) != 0)
 		return -1;
 	if ((memzone_aligned_256->len & CACHE_LINE_MASK) != 0)
 		return -1;
+	if (memzone_aligned_512 == NULL) {
+		printf("Unable to reserve 512-byte aligned memzone!\n");
+		return -1;
+	}
 	if ((memzone_aligned_512->phys_addr & 511) != 0)
 		return -1;
 	if (((uintptr_t) memzone_aligned_512->addr & 511) != 0)
 		return -1;
 	if ((memzone_aligned_512->len & CACHE_LINE_MASK) != 0)
 		return -1;
+	if (memzone_aligned_1024 == NULL) {
+		printf("Unable to reserve 1024-byte aligned memzone!\n");
+		return -1;
+	}
 	if ((memzone_aligned_1024->phys_addr & 1023) != 0)
 		return -1;
 	if (((uintptr_t) memzone_aligned_1024->addr & 1023) != 0)
 		return -1;
 	if ((memzone_aligned_1024->len & CACHE_LINE_MASK) != 0)
 		return -1;
-
 
 	/* check that zones don't overlap */
 	printf("check overlapping\n");
@@ -614,10 +653,6 @@ test_memzone(void)
 	if (test_memzone_reserving_zone_size_bigger_than_the_maximum() < 0)
 		return -1;
 
-	printf("test reserving the largest size memzone possible\n");
-	if (test_memzone_reserve_max() < 0)
-		return -1;
-
 	printf("test memzone_reserve flags\n");
 	if (test_memzone_reserve_flags() < 0)
 		return -1;
@@ -628,6 +663,10 @@ test_memzone(void)
 
 	printf("test invalid alignment for memzone_reserve\n");
 	if (test_memzone_invalid_alignment() < 0)
+		return -1;
+
+	printf("test reserving the largest size memzone possible\n");
+	if (test_memzone_reserve_max() < 0)
 		return -1;
 
 	printf("test reserving the largest size aligned memzone possible\n");

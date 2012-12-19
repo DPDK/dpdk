@@ -117,7 +117,7 @@ test_align_overlap_per_lcore(__attribute__((unused)) void *arg)
 		}
 		for(j = 0; j < 1000 ; j++) {
 			if( *(char *)p1 != 0) {
-				printf("rte_zmalloc didn't zeroed"
+				printf("rte_zmalloc didn't zero"
 				       "the allocated memory\n");
 				ret = -1;
 			}
@@ -189,7 +189,7 @@ test_reordered_free_per_lcore(__attribute__((unused)) void *arg)
 		}
 		for(j = 0; j < 1000 ; j++) {
 			if( *(char *)p1 != 0) {
-				printf("rte_zmalloc didn't zeroed"
+				printf("rte_zmalloc didn't zero"
 				       "the allocated memory\n");
 				ret = -1;
 			}
@@ -266,7 +266,6 @@ test_reordered_free_per_lcore(__attribute__((unused)) void *arg)
 	return ret;
 }
 
-
 /* test function inside the malloc lib*/
 static int
 test_str_to_size(void)
@@ -275,20 +274,20 @@ test_str_to_size(void)
 		const char *str;
 		uint64_t value;
 	} test_values[] =
-		{{ "5G", (uint64_t)5 * 1024 * 1024 *1024 },
-				{"0x20g", (uint64_t)0x20 * 1024 * 1024 *1024},
-				{"10M", 10 * 1024 * 1024},
-				{"050m", 050 * 1024 * 1024},
-				{"8K", 8 * 1024},
-				{"15k", 15 * 1024},
-				{"0200", 0200},
-				{"0x103", 0x103},
-				{"432", 432},
-				{"-1", 0}, /* negative values return 0 */
-				{"  -2", 0},
-				{"  -3MB", 0},
-				{"18446744073709551616", 0} /* ULLONG_MAX + 1 == out of range*/
-		};
+	{{ "5G", (uint64_t)5 * 1024 * 1024 *1024 },
+			{"0x20g", (uint64_t)0x20 * 1024 * 1024 *1024},
+			{"10M", 10 * 1024 * 1024},
+			{"050m", 050 * 1024 * 1024},
+			{"8K", 8 * 1024},
+			{"15k", 15 * 1024},
+			{"0200", 0200},
+			{"0x103", 0x103},
+			{"432", 432},
+			{"-1", 0}, /* negative values return 0 */
+			{"  -2", 0},
+			{"  -3MB", 0},
+			{"18446744073709551616", 0} /* ULLONG_MAX + 1 == out of range*/
+	};
 	unsigned i;
 	for (i = 0; i < sizeof(test_values)/sizeof(test_values[0]); i++)
 		if (rte_str_to_size(test_values[i].str) != test_values[i].value)
@@ -299,10 +298,152 @@ test_str_to_size(void)
 static int
 test_big_alloc(void)
 {
-	void *p1 = rte_malloc("BIG", rte_str_to_size(MALLOC_MEMZONE_SIZE) * 2, 1024);
+	int socket = 0;
+	struct rte_malloc_socket_stats pre_stats, post_stats;
+	size_t size =rte_str_to_size(MALLOC_MEMZONE_SIZE)*2;
+	int align = 0;
+#ifndef RTE_LIBRTE_MALLOC_DEBUG
+	int overhead = 64 + 64;
+#else
+	int overhead = 64 + 64 + 64;
+#endif
+
+	rte_malloc_get_socket_stats(socket, &pre_stats);
+
+	void *p1 = rte_malloc_socket("BIG", size , align, socket);
+	if (!p1)
+		return -1;
+	rte_malloc_get_socket_stats(socket,&post_stats);
+
+	/* Check statistics reported are correct */
+	/* Allocation increase, cannot be the same as before big allocation */
+	if (post_stats.heap_totalsz_bytes == pre_stats.heap_totalsz_bytes) {
+		printf("Malloc statistics are incorrect - heap_totalz_bytes\n");
+		return -1;
+	}
+	/* Check that allocated size adds up correctly */
+	if (post_stats.heap_allocsz_bytes !=
+			pre_stats.heap_allocsz_bytes + size + align + overhead) {
+		printf("Malloc statistics are incorrect - alloc_size\n");
+		return -1;
+	}
+	/* Check free size against tested allocated size */
+	if (post_stats.heap_freesz_bytes !=
+			post_stats.heap_totalsz_bytes - post_stats.heap_allocsz_bytes) {
+		printf("Malloc statistics are incorrect - heap_freesz_bytes\n");
+		return -1;
+	}
+	/* Number of allocated blocks must increase after allocation */
+	if (post_stats.alloc_count != pre_stats.alloc_count + 1) {
+		printf("Malloc statistics are incorrect - alloc_count\n");
+		return -1;
+	}
+	/* New blocks now available - just allocated 1 but also 1 new free */
+	if(post_stats.free_count != pre_stats.free_count ) {
+		printf("Malloc statistics are incorrect - free_count\n");
+		return -1;
+	}
+
+	rte_free(p1);
+	return 0;
+}
+
+static int
+test_multi_alloc_statistics(void)
+{
+	int socket = 0;
+	struct rte_malloc_socket_stats pre_stats, post_stats ,first_stats, second_stats;
+	size_t size = 2048;
+	int align = 1024;
+#ifndef RTE_LIBRTE_MALLOC_DEBUG
+	int trailer_size = 0;
+#else
+	int trailer_size = 64;
+#endif
+	int overhead = 64 + trailer_size;
+
+	rte_malloc_get_socket_stats(socket, &pre_stats);
+
+	void *p1 = rte_malloc_socket("stats", size , align, socket);
 	if (!p1)
 		return -1;
 	rte_free(p1);
+	rte_malloc_dump_stats("stats");
+
+	rte_malloc_get_socket_stats(socket,&post_stats);
+	/* Check statistics reported are correct */
+	/* All post stats should be equal to pre stats after alloc freed */
+	if ((post_stats.heap_totalsz_bytes != pre_stats.heap_totalsz_bytes) &&
+			(post_stats.heap_freesz_bytes!=pre_stats.heap_freesz_bytes) &&
+			(post_stats.heap_allocsz_bytes!=pre_stats.heap_allocsz_bytes)&&
+			(post_stats.alloc_count!=pre_stats.alloc_count)&&
+			(post_stats.free_count!=pre_stats.free_count)) {
+		printf("Malloc statistics are incorrect - freed alloc\n");
+		return -1;
+	}
+	/* Check two consecutive allocations */
+	size = 1024;
+	align = 0;
+	rte_malloc_get_socket_stats(socket,&pre_stats);
+	void *p2 = rte_malloc_socket("add", size ,align, socket);
+	if (!p2)
+		return -1;
+	rte_malloc_get_socket_stats(socket,&first_stats);
+
+	void *p3 = rte_malloc_socket("add2", size,align, socket);
+	if (!p3)
+		return -1;
+	rte_malloc_get_socket_stats(socket,&second_stats);
+
+	/*
+	 * Check that no new blocks added after small allocations
+	 * i.e. < RTE_MALLOC_MEMZONE_SIZE
+	 */
+	if(second_stats.heap_totalsz_bytes != first_stats.heap_totalsz_bytes) {
+		printf("Incorrect heap statistics: Total size \n");
+		return -1;
+	}
+	/* Check allocated size is equal to two additions plus overhead */
+	if(second_stats.heap_allocsz_bytes !=
+			size + overhead + first_stats.heap_allocsz_bytes) {
+		printf("Incorrect heap statistics: Allocated size \n");
+		return -1;
+	}
+	/* Check that allocation count increments correctly i.e. +1 */
+	if (second_stats.alloc_count != first_stats.alloc_count + 1) {
+		printf("Incorrect heap statistics: Allocated count \n");
+		return -1;
+	}
+
+	if (second_stats.free_count != first_stats.free_count){
+		printf("Incorrect heap statistics: Free count \n");
+		return -1;
+	}
+
+	/* 2 Free blocks smaller 11M, larger 11M + (11M - 2048)  */
+	if (second_stats.greatest_free_size !=
+			(rte_str_to_size(MALLOC_MEMZONE_SIZE) * 2) -
+			2048 - trailer_size) {
+		printf("Incorrect heap statistics: Greatest free size \n");
+		return -1;
+	}
+	/* Free size must equal the original free size minus the new allocation*/
+	if (first_stats.heap_freesz_bytes <= second_stats.heap_freesz_bytes) {
+		printf("Incorrect heap statistics: Free size \n");
+		return -1;
+	}
+	rte_free(p2);
+	rte_free(p3);
+	/* After freeing both allocations check stats return to original */
+	rte_malloc_get_socket_stats(socket, &post_stats);
+	if ((post_stats.heap_totalsz_bytes != pre_stats.heap_totalsz_bytes) &&
+			(post_stats.heap_freesz_bytes!=pre_stats.heap_freesz_bytes) &&
+			(post_stats.heap_allocsz_bytes!=pre_stats.heap_allocsz_bytes)&&
+			(post_stats.alloc_count!=pre_stats.alloc_count)&&
+			(post_stats.free_count!=pre_stats.free_count)) {
+		printf("Malloc statistics are incorrect - freed alloc\n");
+		return -1;
+	}
 	return 0;
 }
 
@@ -558,6 +699,11 @@ test_rte_malloc_validate(void)
 	const size_t request_size = 1024;
 	size_t allocated_size;
 	char *data_ptr = rte_malloc(NULL, request_size, CACHE_LINE_SIZE);
+#ifdef RTE_LIBRTE_MALLOC_DEBUG
+	int retval;
+	char *over_write_vals = NULL;
+#endif
+
 	if (data_ptr == NULL) {
 		printf("%s: %d - Allocation error\n", __func__, __LINE__);
 		return -1;
@@ -576,8 +722,6 @@ test_rte_malloc_validate(void)
 		err_return();
 
 #ifdef RTE_LIBRTE_MALLOC_DEBUG
-	int retval;
-	char *over_write_vals = NULL;
 
 	/****** change the header to be bad */
 	char save_buf[64];
@@ -669,6 +813,117 @@ err_return:
 	return -1;
 }
 
+/* Check if memory is avilable on a specific socket */
+static int
+is_mem_on_socket(int32_t socket)
+{
+	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
+	unsigned i;
+
+	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
+		if (socket == ms[i].socket_id)
+			return 1;
+	}
+	return 0;
+}
+
+/*
+ * Find what socket a memory address is on. Only works for addresses within
+ * memsegs, not heap or stack...
+ */
+static int32_t
+addr_to_socket(void * addr)
+{
+	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
+	unsigned i;
+
+	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
+		if ((ms[i].addr <= addr) &&
+				((uintptr_t)addr <
+				((uintptr_t)ms[i].addr + (uintptr_t)ms[i].len)))
+			return ms[i].socket_id;
+	}
+	return -1;
+}
+
+/* Test using rte_[c|m|zm]alloc_socket() on a specific socket */
+static int
+test_alloc_single_socket(int32_t socket)
+{
+	const char *type = NULL;
+	const size_t size = 10;
+	const unsigned align = 0;
+	char *mem = NULL;
+	int32_t desired_socket = (socket == SOCKET_ID_ANY) ?
+			(int32_t)rte_socket_id() : socket;
+
+	/* Test rte_calloc_socket() */
+	mem = rte_calloc_socket(type, size, sizeof(char), align, socket);
+	if (mem == NULL)
+		return -1;
+	if (addr_to_socket(mem) != desired_socket) {
+		rte_free(mem);
+		return -1;
+	}
+	rte_free(mem);
+
+	/* Test rte_malloc_socket() */
+	mem = rte_malloc_socket(type, size, align, socket);
+	if (mem == NULL)
+		return -1;
+	if (addr_to_socket(mem) != desired_socket) {
+		return -1;
+	}
+	rte_free(mem);
+
+	/* Test rte_zmalloc_socket() */
+	mem = rte_zmalloc_socket(type, size, align, socket);
+	if (mem == NULL)
+		return -1;
+	if (addr_to_socket(mem) != desired_socket) {
+		rte_free(mem);
+		return -1;
+	}
+	rte_free(mem);
+
+	return 0;
+}
+
+static int
+test_alloc_socket(void)
+{
+	unsigned socket_count = 0;
+	unsigned i;
+
+	if (test_alloc_single_socket(SOCKET_ID_ANY) < 0)
+		return -1;
+
+	for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
+		if (is_mem_on_socket(i)) {
+			socket_count++;
+			if (test_alloc_single_socket(i) < 0) {
+				printf("Fail: rte_malloc_socket(..., %u) did not succeed\n",
+						i);
+				return -1;
+			}
+		}
+		else {
+			if (test_alloc_single_socket(i) == 0) {
+				printf("Fail: rte_malloc_socket(..., %u) succeeded\n",
+						i);
+				return -1;
+			}
+		}
+	}
+
+	/* Print warnign if only a single socket, but don't fail the test */
+	if (socket_count < 2) {
+		printf("WARNING: alloc_socket test needs memory on multiple sockets!\n");
+	}
+
+	return 0;
+}
+
 int
 test_malloc(void)
 {
@@ -710,7 +965,8 @@ test_malloc(void)
 		return -1;
 	}
 	else printf("test_realloc() passed\n");
-/*----------------------------*/
+
+	/*----------------------------*/
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		rte_eal_remote_launch(test_align_overlap_per_lcore, NULL, lcore_id);
 	}
@@ -724,6 +980,7 @@ test_malloc(void)
 		return ret;
 	}
 	else printf("test_align_overlap_per_lcore() passed\n");
+
 	/*----------------------------*/
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		rte_eal_remote_launch(test_reordered_free_per_lcore, NULL, lcore_id);
@@ -770,6 +1027,21 @@ test_malloc(void)
 		return ret;
 	}
 	else printf("test_rte_malloc_validate() passed\n");
+
+	ret = test_alloc_socket();
+	if (ret < 0){
+		printf("test_alloc_socket() failed\n");
+		return ret;
+	}
+	else printf("test_alloc_socket() passed\n");
+
+	ret = test_multi_alloc_statistics();
+	if (ret < 0) {
+		printf("test_muti_alloc_statistics() failed\n");
+		return ret;
+	}
+	else
+		printf("test_muti_alloc_statistics() passed\n");
 
 	return 0;
 }

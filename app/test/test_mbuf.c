@@ -90,7 +90,7 @@ static struct rte_mempool *ctrlmbuf_pool = NULL;
 static struct rte_mempool *refcnt_pool = NULL;
 static struct rte_ring *refcnt_mbuf_ring = NULL;
 static volatile uint32_t refcnt_stop_slaves;
-static uint32_t refcnt_lcore[RTE_MAX_LCORE];
+static unsigned refcnt_lcore[RTE_MAX_LCORE];
 
 #endif
 
@@ -508,8 +508,8 @@ test_pktmbuf_free_segment(void)
 static int
 test_refcnt_slave(__attribute__((unused)) void *arg)
 {
-	uint32_t lcore, free;
-	void *mp;
+	unsigned lcore, free;
+	void *mp = 0;
 
 	lcore = rte_lcore_id();
 	printf("%s started at lcore %u\n", __func__, lcore);
@@ -530,10 +530,10 @@ test_refcnt_slave(__attribute__((unused)) void *arg)
 }
 
 static void
-test_refcnt_iter(uint32_t lcore, uint32_t iter)
+test_refcnt_iter(unsigned lcore, unsigned iter)
 {
 	uint16_t ref;
-	uint32_t i, n, tref, wn;
+	unsigned i, n, tref, wn;
 	struct rte_mbuf *m;
 
 	tref = 0;
@@ -588,7 +588,7 @@ test_refcnt_iter(uint32_t lcore, uint32_t iter)
 static int
 test_refcnt_master(void)
 {
-	uint32_t i, lcore;
+	unsigned i, lcore;
 
 	lcore = rte_lcore_id();
 	printf("%s started at lcore %u\n", __func__, lcore);
@@ -610,7 +610,7 @@ test_refcnt_mbuf(void)
 {
 #if defined RTE_MBUF_SCATTER_GATHER  && defined RTE_MBUF_REFCNT_ATOMIC
 
-	uint32_t lnum, master, slave, tref;
+	unsigned lnum, master, slave, tref;
 
 
 	if ((lnum = rte_lcore_count()) == 1) {

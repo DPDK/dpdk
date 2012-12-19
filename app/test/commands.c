@@ -329,12 +329,7 @@ static void cmd_set_ring_parsed(void *parsed_result, struct cmdline *cl,
 		return;
 	}
 
-	if (!strcmp(res->set, "set_quota")) {
-		ret = rte_ring_set_bulk_count(r, res->value);
-		if (ret != 0)
-			cmdline_printf(cl, "Cannot set quota\n");
-	}
-	else if (!strcmp(res->set, "set_watermark")) {
+	if (!strcmp(res->set, "set_watermark")) {
 		ret = rte_ring_set_water_mark(r, res->value);
 		if (ret != 0)
 			cmdline_printf(cl, "Cannot set water mark\n");
@@ -343,7 +338,7 @@ static void cmd_set_ring_parsed(void *parsed_result, struct cmdline *cl,
 
 cmdline_parse_token_string_t cmd_set_ring_set =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_ring_result, set,
-				 "set_quota#set_watermark");
+				 "set_watermark");
 
 cmdline_parse_token_string_t cmd_set_ring_name =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_ring_result, name, NULL);
@@ -354,8 +349,8 @@ cmdline_parse_token_num_t cmd_set_ring_value =
 cmdline_parse_inst_t cmd_set_ring = {
 	.f = cmd_set_ring_parsed,  /* function to call */
 	.data = NULL,      /* 2nd arg of func */
-	.help_str = "set quota/watermark: "
-			"set_quota|set_watermark <ring_name> <value>",
+	.help_str = "set watermark: "
+			"set_watermark <ring_name> <value>",
 	.tokens = {        /* token list, NULL terminated */
 		(void *)&cmd_set_ring_set,
 		(void *)&cmd_set_ring_name,
