@@ -79,6 +79,9 @@
 #include "ixgbe_ethdev.h"
 #include "ixgbe/ixgbe_dcb.h"
 
+
+#define RTE_PMD_IXGBE_TX_MAX_BURST 32
+
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 #define RTE_PMD_IXGBE_RX_MAX_BURST 32
 #endif
@@ -186,11 +189,14 @@ struct igb_tx_queue {
 	uint16_t            last_desc_cleaned;
 	/** Total number of TX descriptors ready to be allocated. */
 	uint16_t            nb_tx_free;
+	uint16_t tx_next_dd; /**< next desc to scan for DD bit */
+	uint16_t tx_next_rs; /**< next desc to set RS bit */
 	uint16_t            queue_id;      /**< TX queue index. */
 	uint8_t             port_id;       /**< Device port identifier. */
 	uint8_t             pthresh;       /**< Prefetch threshold register. */
 	uint8_t             hthresh;       /**< Host threshold register. */
 	uint8_t             wthresh;       /**< Write-back threshold reg. */
+	uint32_t txq_flags; /**< Holds flags for this TXq */
 	uint32_t            ctx_curr;      /**< Hardware context states. */
 	/** Hardware context0 history. */
 	struct ixgbe_advctx_info ctx_cache[IXGBE_CTX_NUM];
@@ -221,6 +227,268 @@ struct igb_tx_queue {
  *  TX functions
  *
  **********************************************************************/
+
+/*
+ * The "simple" TX queue functions require that the following
+ * flags are set when the TX queue is configured:
+ *  - ETH_TXQ_FLAGS_NOMULTSEGS
+ *  - ETH_TXQ_FLAGS_NOVLANOFFL
+ *  - ETH_TXQ_FLAGS_NOXSUMSCTP
+ *  - ETH_TXQ_FLAGS_NOXSUMUDP
+ *  - ETH_TXQ_FLAGS_NOXSUMTCP
+ * and that the RS bit threshold (tx_rs_thresh) is at least equal to
+ * RTE_PMD_IXGBE_TX_MAX_BURST.
+ */
+#define IXGBE_SIMPLE_FLAGS ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
+			    ETH_TXQ_FLAGS_NOOFFLOADS)
+
+/*
+ * Check for descriptors with their DD bit set and free mbufs.
+ * Return the total number of buffers freed.
+ */
+static inline int
+ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
+{
+	struct igb_tx_entry *txep;
+	uint32_t status;
+	int i;
+
+	/* check DD bit on threshold descriptor */
+	status = txq->tx_ring[txq->tx_next_dd].wb.status;
+	if (! (status & IXGBE_ADVTXD_STAT_DD))
+		return 0;
+
+	/*
+	 * first buffer to free from S/W ring is at index
+	 * tx_next_dd - (tx_rs_thresh-1)
+	 */
+	txep = &(txq->sw_ring[txq->tx_next_dd - (txq->tx_rs_thresh - 1)]);
+
+	/* prefetch the mbufs that are about to be freed */
+	for (i = 0; i < txq->tx_rs_thresh; ++i)
+		rte_prefetch0((txep + i)->mbuf);
+
+	/* free buffers one at a time */
+	if ((txq->txq_flags & (uint32_t)ETH_TXQ_FLAGS_NOREFCOUNT) != 0) {
+		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
+			rte_mempool_put(txep->mbuf->pool, txep->mbuf);
+			txep->mbuf = NULL;
+		}
+	} else {
+		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
+			rte_pktmbuf_free_seg(txep->mbuf);
+			txep->mbuf = NULL;
+		}
+	}
+
+	/* buffers were freed, update counters */
+	txq->nb_tx_free += txq->tx_rs_thresh;
+	txq->tx_next_dd += txq->tx_rs_thresh;
+	if (txq->tx_next_dd >= txq->nb_tx_desc)
+		txq->tx_next_dd = txq->tx_rs_thresh - 1;
+
+	return txq->tx_rs_thresh;
+}
+
+/*
+ * Populate descriptors with the following info:
+ * 1.) buffer_addr = phys_addr + headroom
+ * 2.) cmd_type_len = DCMD_DTYP_FLAGS | pkt_len
+ * 3.) olinfo_status = pkt_len << PAYLEN_SHIFT
+ */
+
+/* Defines for Tx descriptor */
+#define DCMD_DTYP_FLAGS (IXGBE_ADVTXD_DTYP_DATA |\
+			 IXGBE_ADVTXD_DCMD_IFCS |\
+			 IXGBE_ADVTXD_DCMD_DEXT |\
+			 IXGBE_ADVTXD_DCMD_EOP)
+
+/* Populate 4 descriptors with data from 4 mbufs */
+static inline void
+tx4(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
+{
+	uint64_t buf_dma_addr;
+	uint32_t pkt_len;
+	int i;
+
+	for (i = 0; i < 4; ++i, ++txdp, ++pkts) {
+		buf_dma_addr = RTE_MBUF_DATA_DMA_ADDR(*pkts);
+		pkt_len = (*pkts)->pkt.data_len;
+
+		/* write data to descriptor */
+		txdp->read.buffer_addr = buf_dma_addr;
+		txdp->read.cmd_type_len =
+				((uint32_t)DCMD_DTYP_FLAGS | pkt_len);
+		txdp->read.olinfo_status =
+				(pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
+	}
+}
+
+/* Populate 1 descriptor with data from 1 mbuf */
+static inline void
+tx1(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
+{
+	uint64_t buf_dma_addr;
+	uint32_t pkt_len;
+
+	buf_dma_addr = RTE_MBUF_DATA_DMA_ADDR(*pkts);
+	pkt_len = (*pkts)->pkt.data_len;
+
+	/* write data to descriptor */
+	txdp->read.buffer_addr = buf_dma_addr;
+	txdp->read.cmd_type_len =
+			((uint32_t)DCMD_DTYP_FLAGS | pkt_len);
+	txdp->read.olinfo_status =
+			(pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
+}
+
+/*
+ * Fill H/W descriptor ring with mbuf data.
+ * Copy mbuf pointers to the S/W ring.
+ */
+static inline void
+ixgbe_tx_fill_hw_ring(struct igb_tx_queue *txq, struct rte_mbuf **pkts,
+		      uint16_t nb_pkts)
+{
+	volatile union ixgbe_adv_tx_desc *txdp = &(txq->tx_ring[txq->tx_tail]);
+	struct igb_tx_entry *txep = &(txq->sw_ring[txq->tx_tail]);
+	const int N_PER_LOOP = 4;
+	const int N_PER_LOOP_MASK = N_PER_LOOP-1;
+	int mainpart, leftover;
+	int i, j;
+
+	/*
+	 * Process most of the packets in chunks of N pkts.  Any
+	 * leftover packets will get processed one at a time.
+	 */
+	mainpart = (nb_pkts & ((uint32_t) ~N_PER_LOOP_MASK));
+	leftover = (nb_pkts & ((uint32_t)  N_PER_LOOP_MASK));
+	for (i = 0; i < mainpart; i += N_PER_LOOP) {
+		/* Copy N mbuf pointers to the S/W ring */
+		for (j = 0; j < N_PER_LOOP; ++j) {
+			(txep + i + j)->mbuf = *(pkts + i + j);
+		}
+		tx4(txdp + i, pkts + i);
+	}
+
+	if (unlikely(leftover > 0)) {
+		for (i = 0; i < leftover; ++i) {
+			(txep + mainpart + i)->mbuf = *(pkts + mainpart + i);
+			tx1(txdp + mainpart + i, pkts + mainpart + i);
+		}
+	}
+}
+
+static inline uint16_t
+tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+	     uint16_t nb_pkts)
+{
+	struct igb_tx_queue *txq = (struct igb_tx_queue *)tx_queue;
+	volatile union ixgbe_adv_tx_desc *tx_r = txq->tx_ring;
+	uint16_t n = 0;
+
+	/*
+	 * Begin scanning the H/W ring for done descriptors when the
+	 * number of available descriptors drops below tx_free_thresh.  For
+	 * each done descriptor, free the associated buffer.
+	 */
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		ixgbe_tx_free_bufs(txq);
+
+	/* Only use descriptors that are available */
+	nb_pkts = RTE_MIN(txq->nb_tx_free, nb_pkts);
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	/* Use exactly nb_pkts descriptors */
+	txq->nb_tx_free -= nb_pkts;
+
+	/*
+	 * At this point, we know there are enough descriptors in the
+	 * ring to transmit all the packets.  This assumes that each
+	 * mbuf contains a single segment, and that no new offloads
+	 * are expected, which would require a new context descriptor.
+	 */
+
+	/*
+	 * See if we're going to wrap-around. If so, handle the top
+	 * of the descriptor ring first, then do the bottom.  If not,
+	 * the processing looks just like the "bottom" part anyway...
+	 */
+	if ((txq->tx_tail + nb_pkts) > txq->nb_tx_desc) {
+		n = txq->nb_tx_desc - txq->tx_tail;
+		ixgbe_tx_fill_hw_ring(txq, tx_pkts, n);
+
+		/*
+		 * We know that the last descriptor in the ring will need to
+		 * have its RS bit set because tx_rs_thresh has to be
+		 * a divisor of the ring size
+		 */
+		tx_r[txq->tx_next_rs].read.cmd_type_len |=
+			rte_cpu_to_le_32(IXGBE_ADVTXD_DCMD_RS);
+		txq->tx_next_rs = txq->tx_rs_thresh - 1;
+
+		txq->tx_tail = 0;
+	}
+
+	/* Fill H/W descriptor ring with mbuf data */
+	ixgbe_tx_fill_hw_ring(txq, tx_pkts + n, nb_pkts - n);
+	txq->tx_tail += (nb_pkts - n);
+
+	/*
+	 * Determine if RS bit should be set
+	 * This is what we actually want:
+	 *   if ((txq->tx_tail - 1) >= txq->tx_next_rs)
+	 * but instead of subtracting 1 and doing >=, we can just do
+	 * greater than without subtracting.
+	 */
+	if (txq->tx_tail > txq->tx_next_rs) {
+		tx_r[txq->tx_next_rs].read.cmd_type_len |=
+			rte_cpu_to_le_32(IXGBE_ADVTXD_DCMD_RS);
+		txq->tx_next_rs += txq->tx_rs_thresh;
+		if (txq->tx_next_rs >= txq->nb_tx_desc)
+			txq->tx_next_rs = txq->tx_rs_thresh - 1;
+	}
+
+	/*
+	 * Check for wrap-around. This would only happen if we used
+	 * up to the last descriptor in the ring, no more, no less.
+	 */
+	if (txq->tx_tail >= txq->nb_tx_desc)
+		txq->tx_tail = 0;
+
+	/* update tail pointer */
+	rte_wmb();
+	IXGBE_PCI_REG_WRITE(txq->tdt_reg_addr, txq->tx_tail);
+
+	return nb_pkts;
+}
+
+uint16_t
+ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
+		       uint16_t nb_pkts)
+{
+	uint16_t nb_tx;
+
+	/* Try to transmit at least chunks of TX_MAX_BURST pkts */
+	if (likely(nb_pkts <= RTE_PMD_IXGBE_TX_MAX_BURST))
+		return tx_xmit_pkts(tx_queue, tx_pkts, nb_pkts);
+
+	/* transmit more than the max burst, in chunks of TX_MAX_BURST */
+	nb_tx = 0;
+	while (nb_pkts) {
+		uint16_t ret, n;
+		n = RTE_MIN(nb_pkts, RTE_PMD_IXGBE_TX_MAX_BURST);
+		ret = tx_xmit_pkts(tx_queue, &(tx_pkts[nb_tx]), n);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < n)
+			break;
+	}
+
+	return nb_tx;
+}
+
 static inline void
 ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		volatile struct ixgbe_adv_tx_context_desc *ctx_txd,
@@ -1532,6 +1800,9 @@ ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
 		prev = i;
 	}
 
+	txq->tx_next_dd = txq->tx_rs_thresh - 1;
+	txq->tx_next_rs = txq->tx_rs_thresh - 1;
+
 	txq->tx_tail = 0;
 	txq->nb_tx_used = 0;
 	/*
@@ -1584,6 +1855,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	 *  tx_rs_thresh must be greater than 0.
 	 *  tx_rs_thresh must be less than the size of the ring minus 2.
 	 *  tx_rs_thresh must be less than or equal to tx_free_thresh.
+	 *  tx_rs_thresh must be a divisor of the ring size.
 	 *  tx_free_thresh must be greater than 0.
 	 *  tx_free_thresh must be less than the size of the ring minus 3.
 	 * One descriptor in the TX ring is used as a sentinel to avoid a
@@ -1616,9 +1888,17 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			     "tx_rs_thresh must be less than or equal to "
 			     "tx_free_thresh. "
 			     "(tx_free_thresh=%u tx_rs_thresh=%u "
-			     "port=%d queue=%d)",
+			     "port=%d queue=%d)\n",
 			     tx_free_thresh, tx_rs_thresh,
 			     dev->data->port_id, queue_idx);
+		return -(EINVAL);
+	}
+	if ((nb_desc % tx_rs_thresh) != 0) {
+		RTE_LOG(ERR, PMD,
+			     "tx_rs_thresh must be a divisor of the"
+			     "number of TX descriptors. "
+			     "(tx_rs_thresh=%u port=%d queue=%d)\n",
+			     tx_rs_thresh, dev->data->port_id, queue_idx);
 		return -(EINVAL);
 	}
 
@@ -1670,6 +1950,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->wthresh = tx_conf->tx_thresh.wthresh;
 	txq->queue_id = queue_idx;
 	txq->port_id = dev->data->port_id;
+	txq->txq_flags = tx_conf->txq_flags;
 
 	/*
 	 * Modification to set VFTDT for virtual function if vf is detected
@@ -1697,6 +1978,11 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	dev->data->tx_queues[queue_idx] = txq;
 
+	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
+	if (((txq->txq_flags & IXGBE_SIMPLE_FLAGS) == IXGBE_SIMPLE_FLAGS) &&
+	    (txq->tx_rs_thresh >= RTE_PMD_IXGBE_TX_MAX_BURST))
+		dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
+	else
 	dev->tx_pkt_burst = ixgbe_xmit_pkts;
 
 	return (0);
