@@ -63,7 +63,6 @@
 #include "eal_private.h"
 
 #define LOG_ELT_SIZE     2048
-#define LOG_BUF_SIZE     (LOG_ELT_SIZE - sizeof(struct log_history))
 
 #define LOG_HISTORY_MP_NAME "log_history"
 
@@ -171,6 +170,7 @@ int
 rte_log_add_in_history(const char *buf, size_t size)
 {
 	struct log_history *hist_buf = NULL;
+	static const unsigned hist_buf_size = LOG_ELT_SIZE - sizeof(*hist_buf);
 	void *obj;
 
 	if (history_enabled == 0)
@@ -196,7 +196,7 @@ rte_log_add_in_history(const char *buf, size_t size)
 	}
 
 	/* not enough room for msg, buffer go back in mempool */
-	if (size >= LOG_BUF_SIZE - 1) {
+	if (size >= hist_buf_size) {
 		rte_mempool_mp_put(log_history_mp, hist_buf);
 		rte_spinlock_unlock(&log_list_lock);
 		return -ENOBUFS;
@@ -204,9 +204,10 @@ rte_log_add_in_history(const char *buf, size_t size)
 
 	/* add in history */
 	memcpy(hist_buf->buf, buf, size);
-	hist_buf->buf[size] = '\0';
+	hist_buf->buf[size] = hist_buf->buf[hist_buf_size-1] = '\0';
 	hist_buf->size = size;
 	STAILQ_INSERT_TAIL(&log_history, hist_buf, next);
+	log_history_size++;
 	rte_spinlock_unlock(&log_list_lock);
 
 	return 0;
