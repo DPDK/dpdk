@@ -376,10 +376,10 @@ add_depth_small(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 				lpm->tbl24[i].depth <= depth)) {
 
 			struct rte_lpm_tbl24_entry new_tbl24_entry = {
+				{ .next_hop = next_hop, },
 				.valid = VALID,
 				.ext_entry = 0,
 				.depth = depth,
-				{ .next_hop = next_hop, }
 			};
 
 			/* Setting tbl24 entry in one go to avoid race
@@ -458,10 +458,10 @@ add_depth_big(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 		 */
 
 		struct rte_lpm_tbl24_entry new_tbl24_entry = {
+			{ .tbl8_gindex = (uint8_t)tbl8_group_index, },
 			.valid = VALID,
 			.ext_entry = 1,
 			.depth = 0,
-			{ .tbl8_gindex = (uint8_t)tbl8_group_index, }
 		};
 
 		lpm->tbl24[tbl24_index] = new_tbl24_entry;
@@ -509,10 +509,10 @@ add_depth_big(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 		 */
 
 		struct rte_lpm_tbl24_entry new_tbl24_entry = {
+				{ .tbl8_gindex = (uint8_t)tbl8_group_index, },
 				.valid = VALID,
 				.ext_entry = 1,
 				.depth = 0,
-				{ .tbl8_gindex = (uint8_t)tbl8_group_index, }
 		};
 
 		lpm->tbl24[tbl24_index] = new_tbl24_entry;
@@ -670,10 +670,10 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
 				lpm->max_rules_per_depth);
 
 		struct rte_lpm_tbl24_entry new_tbl24_entry = {
+			{.next_hop = lpm->rules_tbl[sub_rule_index].next_hop,},
 			.valid = VALID,
 			.ext_entry = 0,
 			.depth = new_depth,
-			{.next_hop = lpm->rules_tbl[sub_rule_index].next_hop,}
 		};
 
 		struct rte_lpm_tbl8_entry new_tbl8_entry = {
@@ -835,10 +835,10 @@ delete_depth_big(struct rte_lpm *lpm, uint32_t ip_masked,
 	else if (tbl8_recycle_index > -1) {
 		/* Update tbl24 entry. */
 		struct rte_lpm_tbl24_entry new_tbl24_entry = {
+			{ .next_hop = lpm->tbl8[tbl8_recycle_index].next_hop, },
 			.valid = VALID,
 			.ext_entry = 0,
 			.depth = lpm->tbl8[tbl8_recycle_index].depth,
-			{ .next_hop = lpm->tbl8[tbl8_recycle_index].next_hop, }
 		};
 
 		/* Set tbl24 before freeing tbl8 to avoid race condition. */

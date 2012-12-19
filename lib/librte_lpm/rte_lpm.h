@@ -97,24 +97,24 @@ extern "C" {
 
 /** @internal Tbl24 entry structure. */
 struct rte_lpm_tbl24_entry {
-	/* Using single uint8_t to store 3 values. */
-	uint8_t valid     :1; /**< Validation flag. */
-	uint8_t ext_entry :1; /**< External entry. */
-	uint8_t depth     :6; /**< Rule depth. */
 	/* Stores Next hop or group index (i.e. gindex)into tbl8. */
 	union {
 		uint8_t next_hop;
 		uint8_t tbl8_gindex;
 	};
+	/* Using single uint8_t to store 3 values. */
+	uint8_t valid     :1; /**< Validation flag. */
+	uint8_t ext_entry :1; /**< External entry. */
+	uint8_t depth     :6; /**< Rule depth. */
 };
 
 /** @internal Tbl8 entry structure. */
 struct rte_lpm_tbl8_entry {
+	uint8_t next_hop; /**< next hop. */
 	/* Using single uint8_t to store 3 values. */
 	uint8_t valid       :1; /**< Validation flag. */
 	uint8_t valid_group :1; /**< Group validation flag. */
 	uint8_t depth       :6; /**< Rule depth. */
-	uint8_t next_hop; /**< next hop. */
 };
 
 /** @internal Rule structure. */
@@ -247,45 +247,83 @@ rte_lpm_delete_all(struct rte_lpm *lpm);
 static inline int
 rte_lpm_lookup(struct rte_lpm *lpm, uint32_t ip, uint8_t *next_hop)
 {
-	uint32_t tbl24_index, tbl8_group_index, tbl8_index;
+	unsigned tbl24_index = (ip >> 8);
+	uint16_t tbl_entry;
 
 	/* DEBUG: Check user input arguments. */
 	RTE_LPM_RETURN_IF_TRUE(((lpm == NULL) || (next_hop == NULL)), -EINVAL);
 
-	/* Calculate index into tbl24. */
-	tbl24_index = (ip >> 8);
+	/* Copy tbl24 entry */
+	tbl_entry = *(const uint16_t *)&lpm->tbl24[tbl24_index];
 
-	/*
-	 * Use the tbl24_index to access the required tbl24 entry then check if
-	 * the tbl24 entry is INVALID, if so return -ENOENT.
-	 */
-	if (!lpm->tbl24[tbl24_index].valid){
-		return -ENOENT; /* Lookup miss. */
-	}
-	/*
-	 * If tbl24 entry is valid check if it is NOT extended (i.e. it does
-	 * not use a tbl8 extension) if so return the next hop.
-	 */
-	if (likely(lpm->tbl24[tbl24_index].ext_entry == 0)) {
-		*next_hop = lpm->tbl24[tbl24_index].next_hop;
-		return 0; /* Lookup hit. */
+	/* Copy tbl8 entry (only if needed) */
+	if (unlikely((tbl_entry & RTE_LPM_VALID_EXT_ENTRY_BITMASK) ==
+			RTE_LPM_VALID_EXT_ENTRY_BITMASK)) {
+
+		unsigned tbl8_index = (uint8_t)ip +
+				((uint8_t)tbl_entry * RTE_LPM_TBL8_GROUP_NUM_ENTRIES);
+
+		tbl_entry = *(const uint16_t *)&lpm->tbl8[tbl8_index];
 	}
 
-	/*
-	 * If tbl24 entry is valid and extended calculate the index into the
-	 * tbl8 entry.
-	 */
-	tbl8_group_index = lpm->tbl24[tbl24_index].tbl8_gindex;
-	tbl8_index = (tbl8_group_index * RTE_LPM_TBL8_GROUP_NUM_ENTRIES) +
-			(ip & 0xFF);
+	*next_hop = (uint8_t)tbl_entry;
+	return (tbl_entry & RTE_LPM_LOOKUP_SUCCESS) ? 0 : -ENOENT;
+}
 
-	/* Check if the tbl8 entry is invalid and if so return -ENOENT. */
-	if (!lpm->tbl8[tbl8_index].valid)
-		return -ENOENT;/* Lookup miss. */
+/**
+ * Lookup multiple IP addresses in an LPM table. This may be implemented as a
+ * macro, so the address of the function should not be used.
+ *
+ * @param lpm
+ *   LPM object handle
+ * @param ips
+ *   Array of IPs to be looked up in the LPM table
+ * @param next_hops
+ *   Next hop of the most specific rule found for IP (valid on lookup hit only).
+ *   This is an array of two byte values. The most significant byte in each
+ *   value says whether the lookup was successful (bitmask
+ *   RTE_LPM_LOOKUP_SUCCESS is set). The least significant byte is the
+ *   actual next hop.
+ * @param n
+ *   Number of elements in ips (and next_hops) array to lookup. This should be a
+ *   compile time constant, and divisible by 8 for best performance.
+ *  @return
+ *   -EINVAL for incorrect arguments, otherwise 0
+ */
+#define rte_lpm_lookup_bulk(lpm, ips, next_hops, n) \
+		rte_lpm_lookup_bulk_func(lpm, ips, next_hops, n)
 
-	/* If the tbl8 entry is valid return return the next_hop. */
-	*next_hop = lpm->tbl8[tbl8_index].next_hop;
-	return 0; /* Lookup hit. */
+static inline int
+rte_lpm_lookup_bulk_func(const struct rte_lpm *lpm, const uint32_t * ips,
+		uint16_t * next_hops, const unsigned n)
+{
+	unsigned i;
+	unsigned tbl24_indexes[n];
+
+	/* DEBUG: Check user input arguments. */
+	RTE_LPM_RETURN_IF_TRUE(((lpm == NULL) || (ips == NULL) ||
+			(next_hops == NULL)), -EINVAL);
+
+	for (i = 0; i < n; i++) {
+		tbl24_indexes[i] = ips[i] >> 8;
+	}
+
+	for (i = 0; i < n; i++) {
+		/* Simply copy tbl24 entry to output */
+		next_hops[i] = *(const uint16_t *)&lpm->tbl24[tbl24_indexes[i]];
+
+		/* Overwrite output with tbl8 entry if needed */
+		if (unlikely((next_hops[i] & RTE_LPM_VALID_EXT_ENTRY_BITMASK) ==
+				RTE_LPM_VALID_EXT_ENTRY_BITMASK)) {
+
+			unsigned tbl8_index = (uint8_t)ips[i] +
+					((uint8_t)next_hops[i] *
+					 RTE_LPM_TBL8_GROUP_NUM_ENTRIES);
+
+			next_hops[i] = *(const uint16_t *)&lpm->tbl8[tbl8_index];
+		}
+	}
+	return 0;
 }
 
 #ifdef __cplusplus
