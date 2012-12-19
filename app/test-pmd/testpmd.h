@@ -215,6 +215,34 @@ struct fwd_config {
 	portid_t   nb_fwd_ports;    /**< Nb. of ports involved. */
 };
 
+/**
+ * DCB mode enable
+ */
+enum dcb_mode_enable
+{
+	DCB_VT_ENABLED,
+	DCB_ENABLED
+};
+
+/*
+ * DCB general config info
+ */
+struct dcb_config {
+	enum dcb_mode_enable dcb_mode;
+	uint8_t vt_en;
+	enum rte_eth_nb_tcs num_tcs;
+	uint8_t pfc_en;
+};
+ 
+/*
+ * In DCB io FWD mode, 128 RX queue to 128 TX queue mapping
+ */
+enum dcb_queue_mapping_mode {
+	DCB_VT_Q_MAPPING = 0,
+	DCB_4_TCS_Q_MAPPING,
+	DCB_8_TCS_Q_MAPPING
+};
+
 #define MAX_TX_QUEUE_STATS_MAPPINGS 1024 /* MAX_PORT of 32 @ 32 tx_queues/port */
 #define MAX_RX_QUEUE_STATS_MAPPINGS 4096 /* MAX_PORT of 32 @ 128 rx_queues/port */
 
@@ -273,6 +301,10 @@ extern uint8_t rx_drop_en;
 extern uint16_t tx_free_thresh;
 extern uint16_t tx_rs_thresh;
 extern uint32_t txq_flags;
+
+extern uint8_t dcb_config;
+extern uint8_t dcb_test;
+extern enum dcb_queue_mapping_mode dcb_q_mapping;
 
 extern uint16_t mbuf_data_size; /**< Mbuf data space size. */
 extern uint32_t param_total_num_mbufs;
@@ -422,6 +454,7 @@ void set_pkt_forwarding_mode(const char *fwd_mode);
 void start_packet_forwarding(int with_tx_first);
 void stop_packet_forwarding(void);
 void init_port_config(void);
+int init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf);
 void start_port(portid_t pid);
 void stop_port(portid_t pid);
 void close_port(portid_t pid);

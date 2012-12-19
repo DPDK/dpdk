@@ -243,6 +243,8 @@ static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
 		       "\n"
 		       "- port config all rss ip|udp|none\n"
 		       "    set rss mode\n"
+		       "- port config port-id dcb vt on|off nb-tcs pfc on|off\n"
+		       "    set dcb mode\n"
 		       "- port config all burst value\n"
 		       "    set the number of packet per burst\n"
 		       "- port config all txpt|txht|txwt|rxpt|rxht|rxwt value\n"
@@ -877,6 +879,99 @@ cmdline_parse_inst_t cmd_config_rss = {
 		(void *)&cmd_config_rss_value,
 		NULL,
 	},
+};
+
+/* *** Configure DCB *** */
+struct cmd_config_dcb {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t config;
+	uint8_t port_id; 
+	cmdline_fixed_string_t dcb;
+	cmdline_fixed_string_t vt;
+	cmdline_fixed_string_t vt_en;
+	uint8_t num_tcs; 
+	cmdline_fixed_string_t pfc;
+	cmdline_fixed_string_t pfc_en;
+};
+
+static void
+cmd_config_dcb_parsed(void *parsed_result,
+                        __attribute__((unused)) struct cmdline *cl,
+                        __attribute__((unused)) void *data)
+{
+	struct cmd_config_dcb *res = parsed_result;
+	struct dcb_config dcb_conf;
+	portid_t port_id = res->port_id;
+	struct rte_port *port;
+	
+	port = &ports[port_id];
+	/** Check if the port is not started **/
+	if (port->port_status != RTE_PORT_STOPPED) {
+		printf("Please stop port %d first\n",port_id);
+		return;
+	}
+		
+	dcb_conf.num_tcs = (enum rte_eth_nb_tcs) res->num_tcs;
+	if ((dcb_conf.num_tcs != ETH_4_TCS) && (dcb_conf.num_tcs != ETH_8_TCS)){
+		printf("The invalid number of traffic class,only 4 or 8 allowed\n");
+		return;
+	}
+
+	/* DCB in VT mode */
+	if (!strncmp(res->vt_en, "on",2)) 
+		dcb_conf.dcb_mode = DCB_VT_ENABLED;	
+	else
+		dcb_conf.dcb_mode = DCB_ENABLED;
+
+	if (!strncmp(res->pfc_en, "on",2)) {
+		dcb_conf.pfc_en = 1;
+	}
+	else
+		dcb_conf.pfc_en = 0;
+
+	if (init_port_dcb_config(port_id,&dcb_conf) != 0) {
+		printf("Cannot initialize network ports\n");
+		return;
+	}
+
+	cmd_reconfig_device_queue(port_id, 1, 1);
+}
+ 
+cmdline_parse_token_string_t cmd_config_dcb_port =
+        TOKEN_STRING_INITIALIZER(struct cmd_config_dcb, port, "port");
+cmdline_parse_token_string_t cmd_config_dcb_config =
+        TOKEN_STRING_INITIALIZER(struct cmd_config_dcb, config, "config");
+cmdline_parse_token_num_t cmd_config_dcb_port_id =
+        TOKEN_NUM_INITIALIZER(struct cmd_config_dcb, port_id, UINT8);
+cmdline_parse_token_string_t cmd_config_dcb_dcb =
+        TOKEN_STRING_INITIALIZER(struct cmd_config_dcb, dcb, "dcb");
+cmdline_parse_token_string_t cmd_config_dcb_vt =
+        TOKEN_STRING_INITIALIZER(struct cmd_config_dcb, vt, "vt");
+cmdline_parse_token_string_t cmd_config_dcb_vt_en =
+        TOKEN_STRING_INITIALIZER(struct cmd_config_dcb, vt_en, "on#off");
+cmdline_parse_token_num_t cmd_config_dcb_num_tcs =
+        TOKEN_NUM_INITIALIZER(struct cmd_config_dcb, num_tcs, UINT8);
+cmdline_parse_token_string_t cmd_config_dcb_pfc=
+        TOKEN_STRING_INITIALIZER(struct cmd_config_dcb, pfc, "pfc");
+cmdline_parse_token_string_t cmd_config_dcb_pfc_en =
+        TOKEN_STRING_INITIALIZER(struct cmd_config_dcb, pfc_en, "on#off");
+
+cmdline_parse_inst_t cmd_config_dcb = {
+        .f = cmd_config_dcb_parsed,
+        .data = NULL,
+        .help_str = "port config port-id dcb vt on|off nb-tcs pfc on|off",
+        .tokens = {
+		(void *)&cmd_config_dcb_port,
+		(void *)&cmd_config_dcb_config,
+		(void *)&cmd_config_dcb_port_id,
+		(void *)&cmd_config_dcb_dcb,
+		(void *)&cmd_config_dcb_vt,
+		(void *)&cmd_config_dcb_vt_en,
+		(void *)&cmd_config_dcb_num_tcs,
+		(void *)&cmd_config_dcb_pfc,
+		(void *)&cmd_config_dcb_pfc_en,
+                NULL,
+        },
 };
 
 /* *** configure number of packets per burst *** */
@@ -3266,6 +3361,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_reset,
 	(cmdline_parse_inst_t *)&cmd_tx_cksum_set,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
+	(cmdline_parse_inst_t *)&cmd_config_dcb,
 	(cmdline_parse_inst_t *)&cmd_read_reg,
 	(cmdline_parse_inst_t *)&cmd_read_reg_bit_field,
 	(cmdline_parse_inst_t *)&cmd_read_reg_bit,

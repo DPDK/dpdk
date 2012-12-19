@@ -157,10 +157,14 @@ uint8_t  tx_pkt_nb_segs = 1; /**< Number of segments in TXONLY packets */
 uint16_t nb_pkt_per_burst = DEF_PKT_BURST; /**< Number of packets per burst. */
 uint16_t mb_mempool_cache = DEF_PKT_BURST; /**< Size of mbuf mempool cache. */
 
-/*
- * Ethernet Ports Configuration.
- */
-int promiscuous_on = 1; /**< Ports set in promiscuous mode by default. */
+/* current configuration is in DCB or not,0 means it is not in DCB mode */
+uint8_t dcb_config = 0;
+ 
+/* Whether the dcb is in testing status */
+uint8_t dcb_test = 0;
+ 
+/* DCB on and VT on mapping is default */
+enum dcb_queue_mapping_mode dcb_q_mapping = DCB_VT_Q_MAPPING;
 
 /*
  * Configurable number of RX/TX queues.
