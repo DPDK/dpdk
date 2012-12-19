@@ -217,9 +217,6 @@ rte_jhash_3words(uint32_t a, uint32_t b, uint32_t c, uint32_t initval)
  * A special ultra-optimized versions that knows it is hashing exactly
  * 2 words.
  *
- * NOTE: In partilar the "c += length; __rte_jhash_mix(a,b,c);" normally
- *       done at the end is not done here.
- *
  * @param a
  *   First word to calcuate hash of.
  * @param b
@@ -238,9 +235,6 @@ rte_jhash_2words(uint32_t a, uint32_t b, uint32_t initval)
 /**
  * A special ultra-optimized versions that knows it is hashing exactly
  * 1 word.
- *
- * NOTE: In partilar the "c += length; __rte_jhash_mix(a,b,c);" normally
- *       done at the end is not done here.
  *
  * @param a
  *   Word to calcuate hash of.
