@@ -35,35 +35,35 @@
 #ifndef _E1000_LOGS_H_
 #define _E1000_LOGS_H_
 
-#ifdef RTE_LIBRTE_IGB_DEBUG_INIT
+#ifdef RTE_LIBRTE_E1000_DEBUG_INIT
 #define PMD_INIT_LOG(level, fmt, args...) \
 	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_INIT_LOG(level, fmt, args...) do { } while(0)
 #endif
 
-#ifdef RTE_LIBRTE_IGB_DEBUG_RX
+#ifdef RTE_LIBRTE_E1000_DEBUG_RX
 #define PMD_RX_LOG(level, fmt, args...) \
 	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_RX_LOG(level, fmt, args...) do { } while(0)
 #endif
 
-#ifdef RTE_LIBRTE_IGB_DEBUG_TX
+#ifdef RTE_LIBRTE_E1000_DEBUG_TX
 #define PMD_TX_LOG(level, fmt, args...) \
 	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_TX_LOG(level, fmt, args...) do { } while(0)
 #endif
 
-#ifdef RTE_LIBRTE_IGB_DEBUG_TX_FREE
+#ifdef RTE_LIBRTE_E1000_DEBUG_TX_FREE
 #define PMD_TX_FREE_LOG(level, fmt, args...) \
 	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_TX_FREE_LOG(level, fmt, args...) do { } while(0)
 #endif
 
-#ifdef RTE_LIBRTE_IGB_DEBUG_DRIVER
+#ifdef RTE_LIBRTE_E1000_DEBUG_DRIVER
 #define PMD_DRV_LOG(level, fmt, args...) \
 	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
 #else

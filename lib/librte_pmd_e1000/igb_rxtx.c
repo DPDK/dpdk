@@ -72,7 +72,7 @@
 #include <rte_string_fns.h>
 
 #include "e1000_logs.h"
-#include "igb/e1000_api.h"
+#include "e1000/e1000_api.h"
 #include "e1000_ethdev.h"
 
 static inline struct rte_mbuf *
@@ -139,7 +139,7 @@ struct igb_rx_queue {
 enum igb_advctx_num {
 	IGB_CTX_0    = 0, /**< CTX0    */
 	IGB_CTX_1    = 1, /**< CTX1    */
-	IGB_CTX_NUM  = 2, /**< CTX NUM */
+	IGB_CTX_NUM  = 2, /**< CTX_NUM */
 };
 
 /**
@@ -148,7 +148,7 @@ enum igb_advctx_num {
 struct igb_advctx_info {
 	uint16_t flags;           /**< ol_flags related to context build. */
 	uint32_t cmp_mask;        /**< compare mask for vlan_macip_lens */
-	uint32_t vlan_macip_lens; /**< vlan, mac.ip length. */
+	union rte_vlan_macip vlan_macip_lens; /**< vlan, mac & ip length. */
 };
 
 /**
@@ -162,15 +162,19 @@ struct igb_tx_queue {
 	uint32_t               txd_type;      /**< Device-specific TXD type */
 	uint16_t               nb_tx_desc;    /**< number of TX descriptors. */
 	uint16_t               tx_tail;  /**< Current value of TDT register. */
-	uint16_t               tx_head;  /**< Index of first used TX descriptor. */
+	uint16_t               tx_head;
+	/**< Index of first used TX descriptor. */
 	uint16_t               queue_id; /**< TX queue index. */
 	uint8_t                port_id;  /**< Device port identifier. */
 	uint8_t                pthresh;  /**< Prefetch threshold register. */
 	uint8_t                hthresh;  /**< Host threshold register. */
 	uint8_t                wthresh;  /**< Write-back threshold register. */
-	uint32_t               ctx_curr; /**< Current used hardware descriptor. */
-	uint32_t               ctx_start;/**< Start context position for transmit queue. */
-	struct igb_advctx_info ctx_cache[IGB_CTX_NUM];  /**< Hardware context history.*/
+	uint32_t               ctx_curr;
+	/**< Current used hardware descriptor. */
+	uint32_t               ctx_start;
+	/**< Start context position for transmit queue. */
+	struct igb_advctx_info ctx_cache[IGB_CTX_NUM];
+	/**< Hardware context history.*/
 };
 
 #if 1
@@ -255,7 +259,8 @@ igbe_set_xmit_ctx(struct igb_tx_queue* txq,
 
 	txq->ctx_cache[ctx_curr].flags           = ol_flags;
 	txq->ctx_cache[ctx_curr].cmp_mask        = cmp_mask;
-	txq->ctx_cache[ctx_curr].vlan_macip_lens = vlan_macip_lens & cmp_mask;
+	txq->ctx_cache[ctx_curr].vlan_macip_lens.data =
+		vlan_macip_lens & cmp_mask;
 
 	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
 	ctx_txd->vlan_macip_lens = rte_cpu_to_le_32(vlan_macip_lens);
@@ -273,7 +278,7 @@ what_advctx_update(struct igb_tx_queue *txq, uint16_t flags,
 {
 	/* If match with the current context */
 	if (likely((txq->ctx_cache[txq->ctx_curr].flags == flags) &&
-		(txq->ctx_cache[txq->ctx_curr].vlan_macip_lens ==
+		(txq->ctx_cache[txq->ctx_curr].vlan_macip_lens.data ==
 		(txq->ctx_cache[txq->ctx_curr].cmp_mask & vlan_macip_lens)))) {
 			return txq->ctx_curr;
 	}
@@ -281,7 +286,7 @@ what_advctx_update(struct igb_tx_queue *txq, uint16_t flags,
 	/* If match with the second context */
 	txq->ctx_curr ^= 1;
 	if (likely((txq->ctx_cache[txq->ctx_curr].flags == flags) &&
-		(txq->ctx_cache[txq->ctx_curr].vlan_macip_lens ==
+		(txq->ctx_cache[txq->ctx_curr].vlan_macip_lens.data ==
 		(txq->ctx_cache[txq->ctx_curr].cmp_mask & vlan_macip_lens)))) {
 			return txq->ctx_curr;
 	}
@@ -356,12 +361,13 @@ eth_igb_xmit_pkts(struct igb_tx_queue *txq, struct rte_mbuf **tx_pkts,
 		tx_last = (uint16_t) (tx_id + tx_pkt->pkt.nb_segs - 1);
 
 		ol_flags = tx_pkt->ol_flags;
-		vlan_macip_lens = (tx_pkt->pkt.vlan_tci << 16) | (tx_pkt->pkt.l2_len << E1000_ADVTXD_MACLEN_SHIFT) | tx_pkt->pkt.l3_len;
+		vlan_macip_lens = tx_pkt->pkt.vlan_macip.data;
 		tx_ol_req = (ol_flags & PKT_TX_OFFLOAD_MASK);
 
 		/* If a Context Descriptor need be built . */
 		if (tx_ol_req) {
-			ctx = what_advctx_update(txq, tx_ol_req,vlan_macip_lens);
+			ctx = what_advctx_update(txq, tx_ol_req,
+				vlan_macip_lens);
 			/* Only allocate context descriptor if required*/
 			new_ctx = (ctx == IGB_CTX_NUM);
 			ctx = txq->ctx_curr;
@@ -736,7 +742,8 @@ eth_igb_recv_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		rxm->pkt.hash.rss = rxd.wb.lower.hi_dword.rss;
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
-		rxm->pkt.vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
+		rxm->pkt.vlan_macip.f.vlan_tci =
+			rte_le_to_cpu_16(rxd.wb.upper.vlan);
 
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
 		pkt_flags = (pkt_flags |
@@ -970,7 +977,8 @@ eth_igb_recv_scattered_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		 * The vlan_tci field is only valid when PKT_RX_VLAN_PKT is
 		 * set in the pkt_flags field.
 		 */
-		first_seg->pkt.vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
+		first_seg->pkt.vlan_macip.f.vlan_tci =
+			rte_le_to_cpu_16(rxd.wb.upper.vlan);
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
 		pkt_flags = (pkt_flags | rx_desc_status_to_pkt_flags(staterr));
@@ -1203,15 +1211,15 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	if (tx_conf->tx_free_thresh != 0)
 		RTE_LOG(WARNING, PMD,
 			"The tx_free_thresh parameter is not "
-			"used for the 1G driver.");
+			"used for the 1G driver.\n");
 	if (tx_conf->tx_rs_thresh != 0)
 		RTE_LOG(WARNING, PMD,
 			"The tx_rs_thresh parameter is not "
-			"used for the 1G driver.");
+			"used for the 1G driver.\n");
 	if (tx_conf->tx_thresh.wthresh == 0)
 		RTE_LOG(WARNING, PMD,
 			"To improve 1G driver performance, consider setting "
-			"the TX WTHRESH value to 4, 8, or 16.");
+			"the TX WTHRESH value to 4, 8, or 16.\n");
 
 	/* Free memory prior to re-allocation if needed */
 	if (dev->data->tx_queues[queue_idx] != NULL)
@@ -1763,19 +1771,20 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		/* set STRCRC bit in all queues for Powerville */
 		if (hw->mac.type == e1000_i350) {
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
-				uint32_t dvmolr = E1000_READ_REG(hw, E1000_DVMOLR(i));
+				uint32_t dvmolr = E1000_READ_REG(hw,
+					E1000_DVMOLR(i));
 				dvmolr |= E1000_DVMOLR_STRCRC;
 				E1000_WRITE_REG(hw, E1000_DVMOLR(i), dvmolr);
 			}
 		}
-
 	} else {
 		rctl &= ~E1000_RCTL_SECRC; /* Do not Strip Ethernet CRC. */
 
 		/* clear STRCRC bit in all queues for Powerville */
 		if (hw->mac.type == e1000_i350) {
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
-				uint32_t dvmolr = E1000_READ_REG(hw, E1000_DVMOLR(i));
+				uint32_t dvmolr = E1000_READ_REG(hw,
+					E1000_DVMOLR(i));
 				dvmolr &= ~E1000_DVMOLR_STRCRC;
 				E1000_WRITE_REG(hw, E1000_DVMOLR(i), dvmolr);
 			}

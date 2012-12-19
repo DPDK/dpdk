@@ -54,8 +54,7 @@
 #include <rte_malloc.h>
 
 #include "e1000_logs.h"
-#include "igb/e1000_api.h"
-#include "igb/e1000_hw.h"
+#include "e1000/e1000_api.h"
 #include "e1000_ethdev.h"
 
 static int  eth_igb_configure(struct rte_eth_dev *dev, uint16_t nb_rx_q,
@@ -96,7 +95,8 @@ static int eth_igb_led_off(struct rte_eth_dev *dev);
 
 static void igb_intr_disable(struct e1000_hw *hw);
 static int  igb_get_rx_buffer_size(struct e1000_hw *hw);
-static void eth_igb_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+static void eth_igb_rar_set(struct rte_eth_dev *dev,
+		struct ether_addr *mac_addr,
 		uint32_t index, uint32_t pool);
 static void eth_igb_rar_clear(struct rte_eth_dev *dev, uint32_t index);
 
