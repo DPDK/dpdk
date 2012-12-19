@@ -370,15 +370,14 @@ rte_eal_common_log_init(FILE *default_log)
 
 	/* reserve RTE_LOG_HISTORY*2 elements, so we can dump and
 	 * keep logging during this time */
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		log_history_mp = rte_mempool_create(LOG_HISTORY_MP_NAME, RTE_LOG_HISTORY*2,
+	log_history_mp = rte_mempool_create(LOG_HISTORY_MP_NAME, RTE_LOG_HISTORY*2,
 				LOG_ELT_SIZE, 0, 0,
 				NULL, NULL,
 				NULL, NULL,
 				SOCKET_ID_ANY, 0);
-	else
-		log_history_mp = rte_mempool_lookup(LOG_HISTORY_MP_NAME);
-	if (log_history_mp == NULL) {
+       
+	if ((log_history_mp == NULL) && 
+	    ((log_history_mp = rte_mempool_lookup(LOG_HISTORY_MP_NAME)) == NULL)){
 		RTE_LOG(ERR, EAL, "%s(): cannot create log_history mempool\n",
 			__func__);
 		return -1;
