@@ -48,6 +48,11 @@ extern "C" {
 #include <rte_common.h>
 
 /**
+ * String that appears before the version number
+ */
+#define RTE_VER_PREFIX "RTE"
+
+/**
  * Major version number i.e. the x in x.y.z
  */
 #define RTE_VER_MAJOR 1
@@ -55,14 +60,18 @@ extern "C" {
 /**
  * Minor version number i.e. the y in x.y.z
  */
-#define RTE_VER_MINOR 2
+#define RTE_VER_MINOR 3
 
 /**
  * Patch level number i.e. the z in x.y.z
  */
-#define RTE_VER_PATCH_LEVEL 3
+#define RTE_VER_PATCH_LEVEL 0
 
-#define RTE_VER_PREFIX "RTE"
+/**
+ * Extra string to be appended to version number,
+ * for example: pre1, EAR, final etc.
+ */
+#define RTE_VER_SUFFIX ""
 
 /**
  * Function returning string of version number: "RTE x.y.z"
@@ -71,10 +80,17 @@ extern "C" {
  */
 static inline const char *
 rte_version(void) {
-	return RTE_VER_PREFIX" "
-			RTE_STR(RTE_VER_MAJOR)"."
-			RTE_STR(RTE_VER_MINOR)"."
-			RTE_STR(RTE_VER_PATCH_LEVEL);
+	if (sizeof(RTE_VER_SUFFIX) > sizeof(""))
+		return RTE_VER_PREFIX" "
+				RTE_STR(RTE_VER_MAJOR)"."
+				RTE_STR(RTE_VER_MINOR)"."
+				RTE_STR(RTE_VER_PATCH_LEVEL)
+				"-"RTE_VER_SUFFIX;
+	else
+		return RTE_VER_PREFIX" "
+				RTE_STR(RTE_VER_MAJOR)"."
+				RTE_STR(RTE_VER_MINOR)"."
+				RTE_STR(RTE_VER_PATCH_LEVEL);
 }
 
 #ifdef __cplusplus
