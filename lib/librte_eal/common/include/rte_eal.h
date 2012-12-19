@@ -41,9 +41,7 @@
  * EAL Configuration API
  */
 
-#include <rte_tailq.h>
-#include <rte_memory.h>
-#include <rte_memzone.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,23 +68,6 @@ enum rte_proc_type_t {
 
 	RTE_PROC_INVALID
 };
-
-/**
- * the structure for the memory configuration for the RTE.
- * Used by the rte_config structure. It is separated out, as for multi-process
- * support, the memory details should be shared across instances
- */
-struct rte_mem_config {
-	/* memory topology */
-	uint32_t nchannel;    /**< Number of channels (0 if unknown). */
-	uint32_t nrank;       /**< Number of ranks (0 if unknown). */
-
-	/* memory segments and zones */
-	struct rte_memseg memseg[RTE_MAX_MEMSEG];    /**< Physmem descriptors. */
-	struct rte_memzone memzone[RTE_MAX_MEMZONE]; /**< Memzone descriptors. */
-
-	struct rte_tailq_head tailq_head[RTE_MAX_TAILQ]; /**< Tailqs for objects */
-} __attribute__((__packed__));
 
 /**
  * The global RTE configuration structure.
