@@ -213,8 +213,8 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	if (h != NULL)
 		return NULL;
 
-	h = (struct rte_hash *)rte_zmalloc(hash_name, mem_size,
-					   CACHE_LINE_SIZE);
+	h = (struct rte_hash *)rte_zmalloc_socket(hash_name, mem_size,
+					   CACHE_LINE_SIZE, params->socket_id);
 	if (h == NULL) {
 		RTE_LOG(ERR, HASH, "memory allocation failed\n");
 		return NULL;

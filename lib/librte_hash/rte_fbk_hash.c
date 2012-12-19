@@ -138,7 +138,8 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 		return NULL;
 
 	/* Allocate memory for table. */
-	ht = (struct rte_fbk_hash_table *)rte_malloc(hash_name, mem_size, 0);
+	ht = (struct rte_fbk_hash_table *)rte_malloc_socket(hash_name, mem_size,
+			0, params->socket_id);
 	if (ht == NULL)
 		return NULL;
 	memset(ht, 0, mem_size);
