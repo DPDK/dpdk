@@ -854,7 +854,7 @@ setup_lpm(int socketid)
 	/* create the LPM table */
 	rte_snprintf(s, sizeof(s), "L3FWD_LPM_%d", socketid);
 	l3fwd_lookup_struct[socketid] = rte_lpm_create(s, socketid,
-				L3FWD_LPM_MAX_RULES, RTE_LPM_MEMZONE);
+				L3FWD_LPM_MAX_RULES, 0);
 	if (l3fwd_lookup_struct[socketid] == NULL)
 		rte_exit(EXIT_FAILURE, "Unable to create the l3fwd LPM table"
 				" on socket %d\n", socketid);

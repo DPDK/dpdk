@@ -672,8 +672,7 @@ MAIN(int argc, char **argv)
 	}
 
 	/* create the LPM table */
-	l3fwd_lpm = rte_lpm_create("L3FWD_LPM", SOCKET0, L3FWD_LPM_MAX_RULES,
-			RTE_LPM_MEMZONE);
+	l3fwd_lpm = rte_lpm_create("L3FWD_LPM", SOCKET0, L3FWD_LPM_MAX_RULES, 0);
 	if (l3fwd_lpm == NULL)
 		rte_panic("Unable to create the l3fwd LPM table\n");
 

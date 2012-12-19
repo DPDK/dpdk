@@ -117,8 +117,6 @@ rte_lpm_test tests[] = {
 #define PASS 0
 
 /*
- * TEST 0
- *
  * Check that rte_lpm_create fails gracefully for incorrect user input
  * arguments
  */
@@ -128,31 +126,22 @@ test0(void)
 	struct rte_lpm *lpm = NULL;
 
 	/* rte_lpm_create: lpm name == NULL */
-	lpm = rte_lpm_create(NULL, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(NULL, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm == NULL);
 
 	/* rte_lpm_create: max_rules = 0 */
 	/* Note: __func__ inserts the function name, in this case "test0". */
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, 0, RTE_LPM_HEAP);
-	TEST_LPM_ASSERT(lpm == NULL);
-
-	/* rte_lpm_create: mem_location is not RTE_LPM_HEAP or not MEMZONE */
-	/* Note: __func__ inserts the function name, in this case "test0". */
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 2);
-	TEST_LPM_ASSERT(lpm == NULL);
-
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, -1);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, 0, 0);
 	TEST_LPM_ASSERT(lpm == NULL);
 
 	/* socket_id < -1 is invalid */
-	lpm = rte_lpm_create(__func__, -2, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, -2, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm == NULL);
 
 	return PASS;
 }
 
-/* TEST 1
- *
+/*
  * Create lpm table then delete lpm table 100 times
  * Use a slightly different rules size each time
  * */
@@ -164,8 +153,7 @@ test1(void)
 
 	/* rte_lpm_free: Free NULL */
 	for (i = 0; i < 100; i++) {
-		lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES - i,
-				RTE_LPM_HEAP);
+		lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES - i, 0);
 		TEST_LPM_ASSERT(lpm != NULL);
 
 		rte_lpm_free(lpm);
@@ -175,8 +163,7 @@ test1(void)
 	return PASS;
 }
 
-/* TEST 2
- *
+/*
  * Call rte_lpm_free for NULL pointer user input. Note: free has no return and
  * therefore it is impossible to check for failure but this test is added to
  * increase function coverage metrics and to validate that freeing null does
@@ -195,8 +182,7 @@ test2(void)
 	return PASS;
 }
 
-/* TEST 3
- *
+/*
  * Check that rte_lpm_add fails gracefully for incorrect user input arguments
  */
 int32_t
@@ -212,7 +198,7 @@ test3(void)
 	TEST_LPM_ASSERT(status < 0);
 
 	/*Create vaild lpm to use in rest of test. */
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	/* rte_lpm_add: depth < 1 */
@@ -228,8 +214,7 @@ test3(void)
 	return PASS;
 }
 
-/* TEST 4
- *
+/*
  * Check that rte_lpm_delete fails gracefully for incorrect user input
  * arguments
  */
@@ -246,7 +231,7 @@ test4(void)
 	TEST_LPM_ASSERT(status < 0);
 
 	/*Create vaild lpm to use in rest of test. */
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	/* rte_lpm_delete: depth < 1 */
@@ -262,8 +247,7 @@ test4(void)
 	return PASS;
 }
 
-/* TEST 5
- *
+/*
  * Check that rte_lpm_lookup fails gracefully for incorrect user input
  * arguments
  */
@@ -281,7 +265,7 @@ test5(void)
 	TEST_LPM_ASSERT(status < 0);
 
 	/*Create vaild lpm to use in rest of test. */
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	/* rte_lpm_lookup: depth < 1 */
@@ -295,8 +279,7 @@ test5(void)
 
 
 
-/* TEST 6
- *
+/*
  * Call add, lookup and delete for a single rule with depth <= 24
  */
 int32_t
@@ -307,7 +290,7 @@ test6(void)
 	uint8_t depth = 24, next_hop_add = 100, next_hop_return = 0;
 	int32_t status = 0;
 
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	status = rte_lpm_add(lpm, ip, depth, next_hop_add);
@@ -327,8 +310,7 @@ test6(void)
 	return PASS;
 }
 
-/* TEST 7
- *
+/*
  * Call add, lookup and delete for a single rule with depth > 24
  */
 
@@ -340,7 +322,7 @@ test7(void)
 	uint8_t depth = 32, next_hop_add = 100, next_hop_return = 0;
 	int32_t status = 0;
 
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	status = rte_lpm_add(lpm, ip, depth, next_hop_add);
@@ -360,8 +342,7 @@ test7(void)
 	return PASS;
 }
 
-/* TEST 8
- *
+/*
  * Use rte_lpm_add to add rules which effect only the second half of the lpm
  * table. Use all possible depths ranging from 1..32. Set the next hop = to the
  * depth. Check lookup hit for on every add and check for lookup miss on the
@@ -378,7 +359,7 @@ test8(void)
 	uint8_t depth, next_hop_add, next_hop_return;
 	int32_t status = 0;
 
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	/* Loop with rte_lpm_add. */
@@ -424,8 +405,7 @@ test8(void)
 	return PASS;
 }
 
-/* TEST 9
- *
+/*
  * - Add & lookup to hit invalid TBL24 entry
  * - Add & lookup to hit valid TBL24 entry not extended
  * - Add & lookup to hit valid extended TBL24 entry with invalid TBL8 entry
@@ -446,7 +426,7 @@ test9(void)
 	depth = 24;
 	next_hop_add = 100;
 
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	status = rte_lpm_add(lpm, ip, depth, next_hop_add);
@@ -583,8 +563,7 @@ test9(void)
 }
 
 
-/* TEST 10
- *
+/*
  * - Add rule that covers a TBL24 range previously invalid & lookup (& delete &
  *   lookup)
  * - Add rule that extends a TBL24 invalid entry & lookup (& delete & lookup)
@@ -778,8 +757,7 @@ test10(void)
 	return PASS;
 }
 
-/* TEST 11
- *
+/*
  * Add two rules, lookup to hit the more specific one, lookup to hit the less
  * specific one delete the less specific rule and lookup previous values again;
  * add a more specific rule than the existing rule, lookup again
@@ -794,7 +772,7 @@ test11(void)
 	uint8_t depth, next_hop_add, next_hop_return;
 	int32_t status = 0;
 
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	ip = IPv4(128, 0, 0, 0);
@@ -843,8 +821,7 @@ test11(void)
 	return PASS;
 }
 
-/* TEST 12
- *
+/*
  * Add an extended rule (i.e. depth greater than 24, lookup (hit), delete,
  * lookup (miss) in a for loop of 1000 times. This will check tbl8 extension
  * and contraction.
@@ -859,7 +836,7 @@ test12(void)
 	uint8_t depth, next_hop_add, next_hop_return;
 	int32_t status = 0;
 
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	ip = IPv4(128, 0, 0, 0);
@@ -886,8 +863,7 @@ test12(void)
 	return PASS;
 }
 
-/* TEST 13
- *
+/*
  * Add a rule to tbl24, lookup (hit), then add a rule that will extend this
  * tbl24 entry, lookup (hit). delete the rule that caused the tbl24 extension,
  * lookup (miss) and repeat for loop of 1000 times. This will check tbl8
@@ -903,7 +879,7 @@ test13(void)
 	uint8_t depth, next_hop_add_1, next_hop_add_2, next_hop_return;
 	int32_t status = 0;
 
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	ip = IPv4(128, 0, 0, 0);
@@ -948,8 +924,7 @@ test13(void)
 	return PASS;
 }
 
-/* TEST 14
- *
+/*
  * Fore TBL8 extension exhaustion. Add 256 rules that require a tbl8 extension.
  * No more tbl8 extensions will be allowed. Now add one more rule that required
  * a tbl8 extension and get fail.
@@ -967,7 +942,7 @@ test14(void)
 	int32_t status = 0;
 
 	/* Add enough space for 256 rules for every depth */
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, 256 * 32, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, 256 * 32, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	ip = IPv4(0, 0, 0, 0);
@@ -1210,7 +1185,7 @@ int32_t test16(void)
 	struct rte_lpm *lpm = NULL, *result = NULL;
 
 	/* Create lpm  */
-	lpm = rte_lpm_create("lpm_find_existing", SOCKET_ID_ANY, 256 * 32, RTE_LPM_HEAP);
+	lpm = rte_lpm_create("lpm_find_existing", SOCKET_ID_ANY, 256 * 32, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	/* Try to find existing lpm */

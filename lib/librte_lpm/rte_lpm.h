@@ -151,9 +151,8 @@ struct rte_lpm {
  *   NUMA socket ID for LPM table memory allocation
  * @param max_rules
  *   Maximum number of LPM rules that can be added
- * @param mem_location
- *   Location of memory to be allocated. Can only be RTE_LPM_HEAP or
- *   RTE_LPM_MEMZONE
+ * @param flags
+ *   This parameter is currently unused
  * @return
  *   Handle to LPM object on success, NULL otherwise with rte_errno set
  *   to an appropriate values. Possible rte_errno values include:
@@ -166,8 +165,7 @@ struct rte_lpm {
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
 struct rte_lpm *
-rte_lpm_create(const char *name, int socket_id, int max_rules,
-		int mem_location);
+rte_lpm_create(const char *name, int socket_id, int max_rules, int flags);
 
 /**
  * Find an existing LPM object and return a pointer to it.

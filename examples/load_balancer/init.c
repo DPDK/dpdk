@@ -191,7 +191,7 @@ app_init_lpm_tables(void)
 			name,
 			socket,
 			APP_MAX_LPM_RULES,
-			RTE_LPM_MEMZONE);
+			0);
 		if (app.lpm_tables[socket] == NULL) {
 			rte_panic("Unable to create LPM table on socket %u\n", socket);
 		}

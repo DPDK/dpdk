@@ -142,7 +142,7 @@ rte_lpm_find_existing(const char *name)
  */
 struct rte_lpm *
 rte_lpm_create(const char *name, int socket_id, int max_rules,
-		int mem_location)
+		__rte_unused int flags)
 {
 	char mem_name[RTE_LPM_NAMESIZE];
 	struct rte_lpm *lpm = NULL;
@@ -160,9 +160,7 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm_tbl8_entry) != 2);
 
 	/* Check user arguments. */
-	if ((name == NULL) || (socket_id < -1) || (max_rules == 0) ||
-			(mem_location != RTE_LPM_HEAP &&
-					mem_location != RTE_LPM_MEMZONE)){
+	if ((name == NULL) || (socket_id < -1) || (max_rules == 0)){
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -190,34 +188,16 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 		return NULL;
 
 	/* Allocate memory to store the LPM data structures. */
-	if (mem_location == RTE_LPM_MEMZONE) {
-		const struct rte_memzone *mz;
-		uint32_t mz_flags = 0;
-
-		mz = rte_memzone_reserve(mem_name, mem_size, socket_id,
-				mz_flags);
-		if (mz == NULL) {
-			RTE_LOG(ERR, LPM, "LPM memzone creation failed\n");
-			return NULL;
-		}
-
-		memset(mz->addr, 0, mem_size);
-		lpm = (struct rte_lpm *) mz->addr;
-
-	}
-	else {
-		lpm = (struct rte_lpm *)rte_zmalloc(mem_name, mem_size,
+	lpm = (struct rte_lpm *)rte_zmalloc(mem_name, mem_size,
 			CACHE_LINE_SIZE);
-		if (lpm == NULL) {
-			RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
-			return NULL;
-		}
+	if (lpm == NULL) {
+		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
+		return NULL;
 	}
 
 	/* Save user arguments. */
 	lpm->max_rules_per_depth = max_rules / RTE_LPM_MAX_DEPTH;
 	rte_snprintf(lpm->name, sizeof(lpm->name), "%s", name);
-	lpm->mem_location = mem_location;
 
 	TAILQ_INSERT_TAIL(lpm_list, lpm, next);
 
@@ -234,11 +214,8 @@ rte_lpm_free(struct rte_lpm *lpm)
 	if (lpm == NULL)
 		return;
 
-	/* Note: Its is currently not possible to free a memzone. */
-	if (lpm->mem_location == RTE_LPM_HEAP){
-		RTE_EAL_TAILQ_REMOVE(RTE_TAILQ_LPM, rte_lpm_list, lpm);
-		rte_free(lpm);
-	}
+	RTE_EAL_TAILQ_REMOVE(RTE_TAILQ_LPM, rte_lpm_list, lpm);
+	rte_free(lpm);
 }
 
 /*
