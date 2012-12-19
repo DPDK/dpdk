@@ -48,7 +48,7 @@
 #define IXGBE_RXDADV_ERR_CKSUM_BIT  30
 #define IXGBE_RXDADV_ERR_CKSUM_MSK  3
 #define IXGBE_ADVTXD_MACLEN_SHIFT   9          /* Bit shift for l2_len */
-
+#define IXGBE_NB_STAT_MAPPING_REGS  32
 #define IXGBE_VFTA_SIZE 128
 
 /*
@@ -70,6 +70,11 @@ struct ixgbe_interrupt {
 	uint32_t flags;
 };
 
+struct ixgbe_stat_mapping_registers {
+	uint32_t tqsm[IXGBE_NB_STAT_MAPPING_REGS];
+	uint32_t rqsmr[IXGBE_NB_STAT_MAPPING_REGS];
+};
+
 /* local VFTA copy */
 struct ixgbe_vfta {
 	uint32_t vfta[IXGBE_VFTA_SIZE];
@@ -83,6 +88,7 @@ struct ixgbe_adapter {
 	struct ixgbe_hw_stats       stats;
 	struct ixgbe_hw_fdir_info   fdir;
 	struct ixgbe_interrupt      intr;
+	struct ixgbe_stat_mapping_registers stat_mappings;
 	struct ixgbe_vfta           shadow_vfta;
 };
 
@@ -97,6 +103,9 @@ struct ixgbe_adapter {
 
 #define IXGBE_DEV_PRIVATE_TO_FDIR_INFO(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->fdir)
+
+#define IXGBE_DEV_PRIVATE_TO_STAT_MAPPINGS(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->stat_mappings)
 
 #define IXGBE_DEV_PRIVATE_TO_VFTA(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->shadow_vfta)

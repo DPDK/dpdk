@@ -85,6 +85,8 @@
 #define IXGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define IXGBE_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
 
+#define IXGBE_QUEUE_STAT_COUNTERS (sizeof(hw_stats->qprc) / sizeof(hw_stats->qprc[0]))
+
 static int eth_ixgbe_dev_init(struct eth_driver *eth_drv,
 		struct rte_eth_dev *eth_dev);
 static int  ixgbe_dev_configure(struct rte_eth_dev *dev, uint16_t nb_rx_q,
@@ -101,6 +103,10 @@ static int ixgbe_dev_link_update(struct rte_eth_dev *dev,
 static void ixgbe_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
 static void ixgbe_dev_stats_reset(struct rte_eth_dev *dev);
+static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
+					     uint16_t queue_id,
+					     uint8_t stat_idx,
+					     uint8_t is_rx);
 static void ixgbe_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static void ixgbe_vlan_filter_set(struct rte_eth_dev *dev,
@@ -189,6 +195,7 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.link_update          = ixgbe_dev_link_update,
 	.stats_get            = ixgbe_dev_stats_get,
 	.stats_reset          = ixgbe_dev_stats_reset,
+	.queue_stats_mapping_set = ixgbe_dev_queue_stats_mapping_set,
 	.dev_infos_get        = ixgbe_dev_info_get,
 	.vlan_filter_set      = ixgbe_vlan_filter_set,
 	.rx_queue_setup       = ixgbe_dev_rx_queue_setup,
@@ -326,9 +333,94 @@ static void
 ixgbe_reset_qstat_mappings(struct ixgbe_hw *hw)
 {
 	uint32_t i;
-	for(i = 0; i != 16; i++) {
+
+	for(i = 0; i != IXGBE_NB_STAT_MAPPING_REGS; i++) {
 		IXGBE_WRITE_REG(hw, IXGBE_RQSMR(i), 0);
 		IXGBE_WRITE_REG(hw, IXGBE_TQSM(i), 0);
+	}
+}
+
+
+static int
+ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
+				  uint16_t queue_id,
+				  uint8_t stat_idx,
+				  uint8_t is_rx)
+{
+#define QSM_REG_NB_BITS_PER_QMAP_FIELD 8
+#define NB_QMAP_FIELDS_PER_QSM_REG 4
+#define QMAP_FIELD_RESERVED_BITS_MASK 0x0f
+
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct ixgbe_stat_mapping_registers *stat_mappings =
+		IXGBE_DEV_PRIVATE_TO_STAT_MAPPINGS(eth_dev->data->dev_private);
+	uint32_t qsmr_mask = 0;
+	uint32_t clearing_mask = QMAP_FIELD_RESERVED_BITS_MASK;
+	uint32_t q_map;
+	uint8_t n, offset;
+
+	if ((hw->mac.type != ixgbe_mac_82599EB) && (hw->mac.type != ixgbe_mac_X540))
+		return -ENOSYS;
+
+	PMD_INIT_LOG(INFO, "Setting port %d, %s queue_id %d to stat index %d\n",
+		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX", queue_id, stat_idx);
+
+	n = queue_id / NB_QMAP_FIELDS_PER_QSM_REG;
+	if (n >= IXGBE_NB_STAT_MAPPING_REGS) {
+		PMD_INIT_LOG(ERR, "Nb of stat mapping registers exceeded\n");
+		return -EIO;
+	}
+	offset = queue_id % NB_QMAP_FIELDS_PER_QSM_REG;
+
+	/* Now clear any previous stat_idx set */
+	clearing_mask <<= (QSM_REG_NB_BITS_PER_QMAP_FIELD * offset);
+	if (!is_rx)
+		stat_mappings->tqsm[n] &= ~clearing_mask;
+	else
+		stat_mappings->rqsmr[n] &= ~clearing_mask;
+
+	q_map = (uint32_t)stat_idx;
+	q_map &= QMAP_FIELD_RESERVED_BITS_MASK;
+	qsmr_mask = q_map << (QSM_REG_NB_BITS_PER_QMAP_FIELD * offset);
+	if (!is_rx)
+		stat_mappings->tqsm[n] |= qsmr_mask;
+	else
+		stat_mappings->rqsmr[n] |= qsmr_mask;
+
+	PMD_INIT_LOG(INFO, "Set port %d, %s queue_id %d to stat index %d\n"
+		     "%s[%d] = 0x%08x\n",
+		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX", queue_id, stat_idx,
+		     is_rx ? "RQSMR" : "TQSM",n, is_rx ? stat_mappings->rqsmr[n] : stat_mappings->tqsm[n]);
+
+	/* Now write the mapping in the appropriate register */
+	if (is_rx) {
+		PMD_INIT_LOG(INFO, "Write 0x%x to RX IXGBE stat mapping reg:%d\n",
+			     stat_mappings->rqsmr[n], n);
+		IXGBE_WRITE_REG(hw, IXGBE_RQSMR(n), stat_mappings->rqsmr[n]);
+	}
+	else {
+		PMD_INIT_LOG(INFO, "Write 0x%x to TX IXGBE stat mapping reg:%d\n",
+			     stat_mappings->tqsm[n], n);
+		IXGBE_WRITE_REG(hw, IXGBE_TQSM(n), stat_mappings->tqsm[n]);
+	}
+	return 0;
+}
+
+static void
+ixgbe_restore_statistics_mapping(struct rte_eth_dev * dev)
+{
+	struct ixgbe_stat_mapping_registers *stat_mappings =
+		IXGBE_DEV_PRIVATE_TO_STAT_MAPPINGS(dev->data->dev_private);
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int i;
+
+	/* write whatever was in stat mapping table to the NIC */
+	for (i = 0; i < IXGBE_NB_STAT_MAPPING_REGS; i++) {
+		/* rx */
+		IXGBE_WRITE_REG(hw, IXGBE_RQSMR(i), stat_mappings->rqsmr[i]);
+
+		/* tx */
+		IXGBE_WRITE_REG(hw, IXGBE_TQSM(i), stat_mappings->tqsm[i]);
 	}
 }
 
@@ -820,6 +912,8 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 			goto error;
 	}
 
+	ixgbe_restore_statistics_mapping(dev);
+
 	return (0);
 
 error:
@@ -927,7 +1021,7 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		hw_stats->pxon2offc[i] +=
 		    IXGBE_READ_REG(hw, IXGBE_PXON2OFFCNT(i));
 	}
-	for (i = 0; i < 16; i++) {
+	for (i = 0; i < IXGBE_QUEUE_STAT_COUNTERS; i++) {
 		hw_stats->qprc[i] += IXGBE_READ_REG(hw, IXGBE_QPRC(i));
 		hw_stats->qptc[i] += IXGBE_READ_REG(hw, IXGBE_QPTC(i));
 		hw_stats->qbrc[i] += IXGBE_READ_REG(hw, IXGBE_QBRC_L(i));
@@ -1033,6 +1127,14 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->opackets = hw_stats->gptc;
 	stats->obytes = hw_stats->gotc;
 	stats->imcasts = hw_stats->mprc;
+
+	for (i = 0; i < IXGBE_QUEUE_STAT_COUNTERS; i++) {
+		stats->q_ipackets[i] = hw_stats->qprc[i];
+		stats->q_opackets[i] = hw_stats->qptc[i];
+		stats->q_ibytes[i] = hw_stats->qbrc[i];
+		stats->q_obytes[i] = hw_stats->qbtc[i];
+		stats->q_errors[i] = hw_stats->qprdc[i];
+	}
 
 	/* Rx Errors */
 	stats->ierrors = total_missed_rx + hw_stats->crcerrs +
