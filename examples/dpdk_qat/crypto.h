@@ -45,6 +45,7 @@ enum cipher_alg {
 	CIPHER_DES3_CBC,
 	CIPHER_AES,
 	CIPHER_AES_CBC_128,
+	NUM_CRYPTO,
 };
 
 enum hash_alg {
@@ -58,7 +59,8 @@ enum hash_alg {
 	HASH_SHA384,
 	HASH_SHA512,
 	HASH_AES_XCBC,
-	HASH_AES_XCBC_96
+	HASH_AES_XCBC_96,
+	NUM_HMAC,
 };
 
 /* Return value from crypto_{encrypt/decrypt} */

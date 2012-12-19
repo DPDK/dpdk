@@ -72,10 +72,6 @@
 
 #include "crypto.h"
 
-#define NUM_HMAC	(10)
-#define NUM_CRYPTO	(7)
-
-
 /* CIPHER KEY LENGTHS */
 #define KEY_SIZE_64_IN_BYTES	(64 / 8)
 #define KEY_SIZE_56_IN_BYTES	(56 / 8)
@@ -203,7 +199,7 @@ struct glob_keys g_crypto_hash_keys = {
  * +18 takes this to the next cache line.
  */
 
-#define CRYPTO_OFFSET_TO_OPDATA 	(ETHER_MAX_LEN+18)
+#define CRYPTO_OFFSET_TO_OPDATA		(ETHER_MAX_LEN+18)
 
 /*
  * Default number of requests to place on the hardware ring before kicking the
@@ -560,6 +556,10 @@ initCySymSession(const int pkt_cipher_alg,
 		return CPA_STATUS_SUCCESS;
 	}
 
+	/* Set flags for digest operations */
+	sessionSetupData.digestIsAppended = CPA_FALSE;
+	sessionSetupData.verifyDigest = CPA_TRUE;
+
 	/* Get the session context size based on the crypto and/or hash operations*/
 	status = cpaCySymDpSessionCtxGetSize(cyInstanceHandle, &sessionSetupData,
 			&sessionCtxSizeInBytes);
@@ -576,7 +576,7 @@ initCySymSession(const int pkt_cipher_alg,
 	}
 
 	status = cpaCySymDpInitSession(cyInstanceHandle, &sessionSetupData,
-			CPA_TRUE,CPA_FALSE, *ppSessionCtx);
+			*ppSessionCtx);
 	if (CPA_STATUS_SUCCESS != status) {
 		printf("Crypto: cpaCySymDpInitSession failed with status %"PRId32"\n", status);
 		return CPA_STATUS_FAIL;
@@ -617,11 +617,11 @@ initSessionDataTables(struct qa_core_conf *qaCoreConf,uint32_t lcore_id)
 int
 crypto_init(void)
 {
-	if (CPA_STATUS_SUCCESS != icp_sal_userStart("SSL")) {
+	if (CPA_STATUS_SUCCESS != icp_sal_userStartMultiProcess("SSL",CPA_FALSE)) {
 		printf("Crypto: Could not start sal for user space\n");
 		return CPA_STATUS_FAIL;
 	}
-	printf("Crypto: icp_sal_userStart(\"SSL\")\n");
+	printf("Crypto: icp_sal_userStartMultiProcess(\"SSL\",CPA_FALSE)\n");
 	return 0;
 }
 
@@ -758,6 +758,9 @@ crypto_encrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 					+ CRYPTO_OFFSET_TO_OPDATA);
 	uint32_t lcore_id;
 
+	if (unlikely(c >= NUM_CRYPTO || h >= NUM_HMAC))
+		return CRYPTO_RESULT_FAIL;
+
 	lcore_id = rte_lcore_id();
 
 	bzero(opData, sizeof(CpaCySymDpOpData));
@@ -829,6 +832,9 @@ crypto_decrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 	CpaCySymDpOpData *opData = (void*) (((char *) rte_buff->pkt.data)
 			+ CRYPTO_OFFSET_TO_OPDATA);
 	uint32_t lcore_id;
+
+	if (unlikely(c >= NUM_CRYPTO || h >= NUM_HMAC))
+		return CRYPTO_RESULT_FAIL;
 
 	lcore_id = rte_lcore_id();
 

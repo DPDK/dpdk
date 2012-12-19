@@ -48,9 +48,13 @@ $(error This application can only operate in a linuxapp environment, \
 please change the definition of the RTE_TARGET environment variable)
 endif
 
+LBITS := $(shell uname -p)
 ifneq ($(CONFIG_RTE_ARCH),"x86_64")
-$(error This application can only operate in a x86_64 environment, \
-please change the definition of the RTE_TARGET environment variable)
+        ifneq ($(LBITS),i686)
+        $(error The RTE_TARGET chosen is not compatible with this environment \
+        (x86_64), for this application. Please change the definition of the \
+        RTE_TARGET environment variable, or run the application on a 32-bit OS)
+        endif
 endif
 
 # binary name
@@ -67,6 +71,7 @@ CFLAGS += -I$(ICP_ROOT)/quickassist/include \
 
 LDLIBS += -L$(ICP_ROOT)/build
 LDLIBS += $(ICP_ROOT)/build/icp_qa_al.a \
+		-lz \
 		-losal \
 		-ladf_proxy \
 		-lcrypto

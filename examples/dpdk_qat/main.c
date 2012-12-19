@@ -169,10 +169,11 @@ static struct rte_eth_conf port_conf = {
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IPV4,
+			.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6,
 		},
 	},
 	.txmode = {
+		.mq_mode = ETH_DCB_NONE,
 	},
 };
 
@@ -318,6 +319,7 @@ nic_tx_send_packet(struct rte_mbuf *pkt, uint8_t port)
 static inline uint8_t
 get_output_port(uint8_t input_port)
 {
+	RTE_BUILD_BUG_ON((RTE_MAX_ETHPORTS & 1) != 0);
 	return (uint8_t)(input_port ^ 1);
 }
 
@@ -492,10 +494,10 @@ static void
 print_usage(const char *prgname)
 {
 	printf ("%s [EAL options] -- -p PORTMASK [--no-promisc]"
-		"  [--config (port,queue,lcore)[,(port,queue,lcore]]\n"
+		"  [--config '(port,queue,lcore)[,(port,queue,lcore)]'\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
 		"  --no-promisc: disable promiscuous mode (default is ON)\n"
-		"  --config (port,queue,lcore): rx queues configuration\n",
+		"  --config '(port,queue,lcore)': rx queues configuration\n",
 		prgname);
 }
 
@@ -795,7 +797,7 @@ MAIN(int argc, char **argv)
 			fflush(stdout);
 
 			ret = rte_eth_rx_queue_setup(portid, queueid, nb_rxd,
- 				        socketid, &rx_conf, pktmbuf_pool[socketid]);
+				        socketid, &rx_conf, pktmbuf_pool[socketid]);
 			if (ret < 0)
 				rte_panic("rte_eth_rx_queue_setup: err=%d,"
 						"port=%d\n", ret, portid);
