@@ -71,6 +71,12 @@ else
 	endif
 	ifeq ($(shell test $(GCC_MINOR_VERSION) -lt 4 && echo 1), 1)
 		MACHINE_CFLAGS := $(filter-out -mavx -mpclmul -maes,$(MACHINE_CFLAGS))
+		ifneq ($(findstring SSE4_2, $(CPUFLAGS)),)
+			MACHINE_CFLAGS += -msse4.2
+		endif
+		ifneq ($(findstring SSE4_1, $(CPUFLAGS)),)
+			MACHINE_CFLAGS += -msse4.1
+		endif
 	endif
 	ifeq ($(shell test $(GCC_MINOR_VERSION) -lt 3 && echo 1), 1)
 		MACHINE_CFLAGS := $(filter-out -msse% -mssse%,$(MACHINE_CFLAGS))

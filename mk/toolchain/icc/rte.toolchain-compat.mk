@@ -41,9 +41,9 @@
 
 ICC_MAJOR_VERSION = $(shell icc -dumpversion | cut -f1 -d.)
 
-ifneq ($(ICC_MAJOR_VERSION),12)
+ifeq ($(shell test $(ICC_MAJOR_VERSION) -lt 12 && echo 1), 1)
 	MACHINE_CFLAGS = -xSSE3
-$(warning You are not using ICC 12.x. This is neither supported, nor tested.)
+$(warning You are not using ICC 12.x or higher. This is neither supported, nor tested.)
 
 else
 # proceed to adjust compiler flags
@@ -51,7 +51,8 @@ else
 	ICC_MINOR_VERSION = $(shell icc -dumpversion | cut -f2 -d.)
 
 # replace GCC flags with ICC flags
-	ifeq ($(shell test $(ICC_MINOR_VERSION) -lt 2 && echo 1), 1)
+	# if icc version >= 12
+	ifeq ($(shell test $(ICC_MAJOR_VERSION) -ge 12 && echo 1), 1)
 		# Atom
 		MACHINE_CFLAGS := $(patsubst -march=atom,-xSSSE3_ATOM -march=atom,$(MACHINE_CFLAGS))
 		# nehalem/westmere
@@ -63,7 +64,8 @@ else
 		# remove westmere flags
 		MACHINE_CFLAGS := $(filter-out -mpclmul -maes,$(MACHINE_CFLAGS))
 	endif
-	ifeq ($(shell test $(ICC_MINOR_VERSION) -lt 1 && echo 1), 1)
+	# if icc version == 12.0
+	ifeq ($(shell test $(ICC_MAJOR_VERSION) -eq 12 && test $(ICC_MINOR_VERSION) -eq 0 && echo 1), 1)
 		# Atom
 		MACHINE_CFLAGS := $(patsubst -xSSSE3_ATOM,-xSSE3_ATOM,$(MACHINE_CFLAGS))
 		# remove march options
