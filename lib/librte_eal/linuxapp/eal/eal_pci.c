@@ -66,7 +66,6 @@
 #include <rte_string_fns.h>
 #include <rte_debug.h>
 
-#include "eal_internal_cfg.h"
 #include "eal_filesystem.h"
 #include "eal_private.h"
 
@@ -87,8 +86,7 @@
 
 #define IGB_UIO_NAME "igb_uio"
 
-#define UIO_NEWID "/sys/bus/pci/drivers/%s/new_id"
-#define UIO_BIND  "/sys/bus/pci/drivers/%s/bind"
+#define UIO_DRV_PATH  "/sys/bus/pci/drivers/%s"
 
 /* maximum time to wait that /dev/uioX appears */
 #define UIO_DEV_WAIT_TIMEOUT 3 /* seconds */
@@ -127,7 +125,8 @@ pci_uio_check_module(const char *module_name)
 
 	f = fopen(PROC_MODULES, "r");
 	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot open "PROC_MODULES"\n");
+		RTE_LOG(ERR, EAL, "Cannot open "PROC_MODULES": %s\n", 
+				strerror(errno));
 		return -1;
 	}
 
@@ -144,11 +143,51 @@ pci_uio_check_module(const char *module_name)
 		}
 	}
 	fclose(f);
-	RTE_LOG(ERR, EAL, "Cannot find %s in "PROC_MODULES"\n", module_name);
 	return -1;
 }
 
 /* bind a PCI to the kernel module driver */
+static int
+pci_bind_device(struct rte_pci_device *dev, char dr_path[])
+{
+	FILE *f;
+	int n;
+	char buf[BUFSIZ];
+	char dev_bind[PATH_MAX];
+	struct rte_pci_addr *loc = &dev->addr;
+
+	RTE_LOG(DEBUG, EAL, "bind PCI device "PCI_PRI_FMT"\n",
+		        loc->domain, loc->bus, loc->devid, loc->function);
+
+	n = rte_snprintf(dev_bind, sizeof(dev_bind), "%s/bind", dr_path);
+	if ((n < 0) || (n >= (int)sizeof(buf))) {
+		RTE_LOG(ERR, EAL, "Cannot rte_snprintf device bind path\n");
+		return -1;
+	}
+
+	f = fopen(dev_bind, "w");
+	if (f == NULL) {
+		RTE_LOG(ERR, EAL, "Cannot open %s\n", dev->previous_dr);
+		return -1;
+	}
+	n = rte_snprintf(buf, sizeof(buf), PCI_PRI_FMT "\n",
+	                 loc->domain, loc->bus, loc->devid, loc->function);
+	if ((n < 0) || (n >= (int)sizeof(buf))) {
+		RTE_LOG(ERR, EAL, "Cannot rte_snprintf PCI infos\n");
+		fclose(f);
+		return -1;
+	}
+	if (fwrite(buf, n, 1, f) == 0) {
+		fclose(f);
+		return -1;
+	}
+
+	RTE_LOG(DEBUG, EAL, "Device bound\n");
+
+	fclose(f);
+	return 0;
+}
+
 static int
 pci_uio_bind_device(struct rte_pci_device *dev, const char *module_name)
 {
@@ -157,17 +196,14 @@ pci_uio_bind_device(struct rte_pci_device *dev, const char *module_name)
 	char buf[BUFSIZ];
 	char uio_newid[PATH_MAX];
 	char uio_bind[PATH_MAX];
-	struct rte_pci_addr *loc = &dev->addr;
 
-	RTE_LOG(DEBUG, EAL, "bind PCI device "PCI_PRI_FMT" to %s driver\n",
-	        loc->domain, loc->bus, loc->devid, loc->function, module_name);
-
-	n = rte_snprintf(uio_newid, sizeof(uio_newid), UIO_NEWID, module_name);
+	n = rte_snprintf(uio_newid, sizeof(uio_newid), UIO_DRV_PATH "/new_id", module_name);
 	if ((n < 0) || (n >= (int)sizeof(uio_newid))) {
 		RTE_LOG(ERR, EAL, "Cannot rte_snprintf uio_newid name\n");
 		return -1;
 	}
-	n = rte_snprintf(uio_bind, sizeof(uio_bind), UIO_BIND, module_name);
+
+	n = rte_snprintf(uio_bind, sizeof(uio_bind), UIO_DRV_PATH, module_name);
 	if ((n < 0) || (n >= (int)sizeof(uio_bind))) {
 		RTE_LOG(ERR, EAL, "Cannot rte_snprintf uio_bind name\n");
 		return -1;
@@ -191,28 +227,10 @@ pci_uio_bind_device(struct rte_pci_device *dev, const char *module_name)
 	}
 	fclose(f);
 
-	f = fopen(uio_bind, "w");
-	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot open %s\n", uio_bind);
-		return -1;
-	}
-	n = rte_snprintf(buf, sizeof(buf), PCI_PRI_FMT "\n",
-	                 loc->domain, loc->bus, loc->devid, loc->function);
-	if ((n < 0) || (n >= (int)sizeof(buf))) {
-		RTE_LOG(ERR, EAL, "Cannot rte_snprintf PCI infos\n");
-		fclose(f);
-		return -1;
-	}
-	if (fwrite(buf, n, 1, f) == 0) {
-		fclose(f);
-		return -1;
-	}
-
-	RTE_LOG(DEBUG, EAL, "Device bound\n");
-
-	fclose(f);
+	pci_bind_device(dev, uio_bind);
 	return 0;
 }
+
 
 /* map a particular resource from a file */
 static void *
@@ -391,7 +409,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	/* save the mapping details for secondary processes*/
 	uio_res = rte_malloc("UIO_RES", sizeof(*uio_res), 0);
-	if (uio_res == NULL){
+	if (uio_res == NULL) {
 		RTE_LOG(ERR, EAL, "%s(): cannot store uio mmap details\n", __func__);
 		return -1;
 	}
@@ -467,6 +485,20 @@ error:
 }
 
 
+/* Compare two PCI device addresses. */
+static int
+pci_addr_comparison(struct rte_pci_addr *addr, struct rte_pci_addr *addr2)
+{
+        uint64_t dev_addr = (addr->domain << 24) + (addr->bus << 16) + (addr->devid << 8) + addr->function;
+        uint64_t dev_addr2 = (addr2->domain << 24) + (addr2->bus << 16) + (addr2->devid << 8) + addr2->function;
+
+        if (dev_addr > dev_addr2) 
+                return 1;	
+        else 
+                return 0;
+}
+
+
 /* Scan one pci sysfs entry, and fill the devices list from it. */
 static int
 pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
@@ -529,9 +561,24 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 		return -1;
 	}
 
-	/* device is valid, add in list */
-	TAILQ_INSERT_TAIL(&device_list, dev, next);
+	/* device is valid, add in list (sorted) */
+	if (TAILQ_EMPTY(&device_list)) {
+		TAILQ_INSERT_TAIL(&device_list, dev, next);
+	}	
+	else {
+		struct rte_pci_device *dev2 = NULL;
 
+		TAILQ_FOREACH(dev2, &device_list, next) {
+			if (pci_addr_comparison(&dev->addr, &dev2->addr))
+				continue;
+			else {
+				TAILQ_INSERT_BEFORE(dev2, dev, next);
+				return 0;
+			}
+		}
+		TAILQ_INSERT_TAIL(&device_list, dev, next);
+	}
+				
 	return 0;
 }
 
@@ -650,8 +697,11 @@ pci_unbind_kernel_driver(struct rte_pci_device *dev)
 		RTE_LOG(ERR, EAL, "%s(): rte_snprintf failed\n", __func__);
 		goto error;
 	}
-	if (fwrite(buf, n, 1, f) == 0)
+	if (fwrite(buf, n, 1, f) == 0) {
+		RTE_LOG(ERR, EAL, "%s(): could not write to %s\n", __func__,
+				filename);
 		goto error;
+	}
 
 	fclose(f);
 	return 0;
@@ -659,6 +709,63 @@ pci_unbind_kernel_driver(struct rte_pci_device *dev)
 error:
 	fclose(f);
 	return -1;
+}
+
+static int
+pci_exit_process(struct rte_pci_device *dev)
+{
+	if (munmap(dev->mem_resource.addr, dev->mem_resource.len) == -1){
+		RTE_LOG(ERR, EAL, "Error with munmap\n");
+		return -1;
+	}
+	if (close(dev->intr_handle.fd) == -1){
+		RTE_LOG(ERR, EAL, "Error closing interrupt handle\n");
+		return -1;
+	}
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		if (pci_unbind_kernel_driver(dev) < 0){
+			RTE_LOG(ERR, EAL, "Error unbinding\n");
+			return -1;
+		}
+		if (pci_bind_device(dev, dev->previous_dr) < 0){
+			RTE_LOG(ERR, EAL, "Error binding\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static void
+pci_get_previous_driver_path(struct rte_pci_device *dev)
+{
+	int n;
+	char dev_path[PATH_MAX];
+	char dr_path[PATH_MAX];
+	struct rte_pci_addr *loc = &dev->addr;
+
+	n = rte_snprintf(dev_path, sizeof(dev_path), SYSFS_PCI_DEVICES "/"
+			PCI_PRI_FMT "/driver", loc->domain, loc->bus, loc->devid, loc->function );
+	if ((n < 0) || (n >= (int)sizeof(dev_path)))
+		RTE_LOG(ERR, EAL, "Cannot rte_snprintf device filepath\n");
+
+	n = readlink(dev_path, dr_path, sizeof(dr_path));
+	if ((n < 0) || (n >= (int)sizeof(dr_path))){
+		RTE_LOG(ERR, EAL, "Cannot readlink driver filepath\n");
+		dev->previous_dr[0] = '\0';
+		return;
+	}
+	dr_path[n] = '\0';
+
+	if (dr_path[0] != '/')
+		n = rte_snprintf(dev->previous_dr, sizeof(dev->previous_dr),
+				SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/%s",
+				loc->domain, loc->bus, loc->devid, loc->function, dr_path);
+	else
+		n = rte_snprintf(dev->previous_dr, sizeof(dev->previous_dr),
+				"%s", dr_path);
+	if ((n < 0) || (n >= (int)sizeof(dev_path)))
+		RTE_LOG(ERR, EAL, "Cannot rte_snprintf driver filepath\n");
 }
 
 /*
@@ -675,37 +782,44 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 	if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO)
 		module_name = IGB_UIO_NAME;
 
-	uio_status = pci_uio_check_module(module_name);
-
 	for (id_table = dr->id_table ; id_table->vendor_id != 0; id_table++) {
 
 		/* check if device's identifiers match the driver's ones */
 		if (id_table->vendor_id != dev->id.vendor_id &&
-		    id_table->vendor_id != PCI_ANY_ID)
+				id_table->vendor_id != PCI_ANY_ID)
 			continue;
 		if (id_table->device_id != dev->id.device_id &&
-		    id_table->device_id != PCI_ANY_ID)
+				id_table->device_id != PCI_ANY_ID)
 			continue;
 		if (id_table->subsystem_vendor_id != dev->id.subsystem_vendor_id &&
-		    id_table->subsystem_vendor_id != PCI_ANY_ID)
+				id_table->subsystem_vendor_id != PCI_ANY_ID)
 			continue;
 		if (id_table->subsystem_device_id != dev->id.subsystem_device_id &&
-		    id_table->subsystem_device_id != PCI_ANY_ID)
+				id_table->subsystem_device_id != PCI_ANY_ID)
 			continue;
 
-		RTE_LOG(DEBUG, EAL, "probe driver: %x:%x %s\n",
-		dev->id.vendor_id, dev->id.device_id, dr->name);
+		RTE_LOG(DEBUG, EAL, "probe driver: %x:%x %s\n", dev->id.vendor_id,
+				dev->id.device_id, dr->name);
 
-		if ((!dev->blacklisted) && (uio_status != 0)) {
-			rte_exit(1, "The %s module is required by the %s driver\n",
-					module_name, dr->name);
-		}
+		/* reference driver structure */
+		dev->driver = dr;
+
+		/* no initialization when blacklisted, return without error */
+		if (dev->blacklisted)
+			return 0;
 
 		/* Unbind PCI devices if needed */
-		if ((!dev->blacklisted) &&
-		    (module_name != NULL)) {
+		if (module_name != NULL) {
+
 			if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-			/* unbind current driver, bind ours */
+				/* check that our driver is loaded */
+				if (uio_status != 0 &&
+						(uio_status = pci_uio_check_module(module_name)) != 0)
+					rte_exit(EXIT_FAILURE, "The %s module is required by the "
+							"%s driver\n", module_name, dr->name);
+
+				/* unbind current driver, bind ours */
+				pci_get_previous_driver_path(dev);
 				if (pci_unbind_kernel_driver(dev) < 0)
 					return -1;
 				if (pci_uio_bind_device(dev, module_name) < 0)
@@ -716,18 +830,24 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 				return -1;
 		}
 
-		/* reference driver structure */
-		dev->driver = dr;
-
-		/* no initialization when blacklisted */
-		if (dev->blacklisted)
-			return -1;
-
 		/* call the driver devinit() function */
 		return dr->devinit(dr, dev);
-
 	}
 	return -1;
+}
+
+/*Start the exit process for each dev in use*/
+void
+rte_eal_pci_exit(void)
+{
+	struct rte_pci_device *dev = NULL;
+
+	TAILQ_FOREACH(dev, &device_list, next){
+		if (dev->previous_dr[0] == '\0')
+			continue;
+		if(pci_exit_process(dev) == 1)
+			RTE_LOG(ERR, EAL, "Exit process failure\n");
+	}
 }
 
 /* Init the PCI EAL subsystem */

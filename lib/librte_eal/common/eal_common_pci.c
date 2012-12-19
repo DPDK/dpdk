@@ -34,10 +34,12 @@
 
 #include <inttypes.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <sys/queue.h>
 
 #include <rte_interrupts.h>
+#include <rte_log.h>
 #include <rte_pci.h>
 #include <rte_per_lcore.h>
 #include <rte_memory.h>
@@ -100,7 +102,10 @@ rte_eal_pci_probe(void)
 
 	TAILQ_FOREACH(dev, &device_list, next)
 		pci_probe_all_drivers(dev);
-
+	#ifdef RTE_EAL_UNBIND_PORTS
+		if (atexit(rte_eal_pci_exit) != 0)
+			RTE_LOG(ERR, EAL, "atexit failure\n");
+	#endif
 	return 0;
 }
 

@@ -45,6 +45,7 @@
 extern "C" {
 #endif
 
+#include <limits.h>
 #include <sys/queue.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -110,6 +111,7 @@ struct rte_pci_device {
 	struct rte_pci_id id;                   /**< PCI ID. */
 	struct rte_pci_resource mem_resource;   /**< PCI Memory Resource */
 	struct rte_intr_handle intr_handle;     /**< Interrupt handle */
+	char previous_dr[PATH_MAX];             /**< path for pre-dpdk driver*/
 	const struct rte_pci_driver *driver;    /**< Associated driver */
 	unsigned int blacklisted:1;             /**< Device is blacklisted */
 };
@@ -153,6 +155,11 @@ struct rte_pci_driver {
 
 /**< Device needs igb_uio kernel module */
 #define RTE_PCI_DRV_NEED_IGB_UIO 0x0001
+
+/**
+ * Perform clean up of pci drivers on application exits.
+ * */
+void rte_eal_pci_exit(void);
 
 /**
  * Probe the PCI bus for registered drivers.
