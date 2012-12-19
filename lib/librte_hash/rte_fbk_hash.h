@@ -48,7 +48,6 @@
 #include <stdint.h>
 #include <errno.h>
 #include <sys/queue.h>
-#include <rte_hash_crc.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,8 +56,14 @@ extern "C" {
 #include <string.h>
 
 #ifndef RTE_FBK_HASH_FUNC_DEFAULT
+#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+#include <rte_hash_crc.h>
 /** Default four-byte key hash function if none is specified. */
 #define RTE_FBK_HASH_FUNC_DEFAULT		rte_hash_crc_4byte
+#else
+#include <rte_jhash.h>
+#define RTE_FBK_HASH_FUNC_DEFAULT		rte_jhash_1word
+#endif
 #endif
 
 #ifndef RTE_FBK_HASH_INIT_VAL_DEFAULT
@@ -96,7 +101,7 @@ union rte_fbk_hash_entry {
 		uint16_t value;		/**< Value returned by lookup. */
 		uint32_t key;		/**< Key used to find value. */
 	} entry;			/**< For accessing each entry part. */
-} ;
+};
 
 
 
@@ -178,7 +183,7 @@ rte_fbk_hash_add_key(struct rte_fbk_hash_table *ht,
 		}
 	}
 
-	return -ENOSPC;	/* No space in bucket. */
+	return -ENOSPC; /* No space in bucket. */	
 }
 
 /**

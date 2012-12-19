@@ -43,7 +43,6 @@
 #include <rte_memzone.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
-#include <rte_hash_crc.h>
 #include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
 #include <rte_common.h>
@@ -54,8 +53,6 @@
 #include <rte_log.h>
 
 #include "rte_fbk_hash.h"
-#include "rte_jhash.h"
-#include "rte_hash_crc.h"
 
 TAILQ_HEAD(rte_fbk_hash_list, rte_fbk_hash_table);
 
@@ -172,14 +169,6 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 	else {
 		ht->hash_func = RTE_FBK_HASH_FUNC_DEFAULT;
 		ht->init_val = RTE_FBK_HASH_INIT_VAL_DEFAULT;
-	}
-
-	if (ht->hash_func == rte_hash_crc_4byte &&
-			!rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_2)) {
-		RTE_LOG(WARNING, HASH, "CRC32 instruction requires SSE4.2, "
-				"which is not supported on this system. "
-				"Falling back to software hash\n.");
-		ht->hash_func = rte_jhash_1word;
 	}
 
 	TAILQ_INSERT_TAIL(fbk_hash_list, ht, next);

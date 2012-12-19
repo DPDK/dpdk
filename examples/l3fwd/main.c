@@ -86,8 +86,6 @@
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 #include <rte_hash.h>
-#include <rte_hash_crc.h>
-#include <rte_jhash.h>
 #elif (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
 #include <rte_lpm.h>
 #else
@@ -225,6 +223,15 @@ static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
 
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
+
+#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+#include <rte_hash_crc.h>
+#define DEFAULT_HASH_FUNC       rte_hash_crc
+#else
+#include <rte_jhash.h>
+#define DEFAULT_HASH_FUNC       rte_jhash
+#endif
+
 struct ipv4_5tuple {
 	uint32_t ip_dst;
 	uint32_t ip_src;

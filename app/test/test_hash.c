@@ -46,15 +46,18 @@
 #include <rte_random.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_hash.h>
-#include <rte_hash_crc.h>
-#include <rte_jhash.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
-#include <rte_fbk_hash.h>
 #include <rte_ip.h>
 #include <rte_string_fns.h>
 
+#include <rte_hash.h>
+#include <rte_fbk_hash.h>
+#include <rte_jhash.h>
+
+#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+#include <rte_hash_crc.h>
+#endif
 #include <cmdline_parse.h>
 
 #include "test.h"

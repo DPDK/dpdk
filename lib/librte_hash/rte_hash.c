@@ -57,8 +57,6 @@
 #include <rte_log.h>
 
 #include "rte_hash.h"
-#include "rte_jhash.h"
-#include "rte_hash_crc.h"
 
 
 TAILQ_HEAD(rte_hash_list, rte_hash);
@@ -73,7 +71,13 @@ TAILQ_HEAD(rte_hash_list, rte_hash);
 #endif
 
 /* Hash function used if none is specified */
+#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+#include <rte_hash_crc.h>
 #define DEFAULT_HASH_FUNC       rte_hash_crc
+#else
+#include <rte_jhash.h>
+#define DEFAULT_HASH_FUNC       rte_jhash
+#endif
 
 /* Signature bucket size is a multiple of this value */
 #define SIG_BUCKET_ALIGNMENT    16
@@ -243,14 +247,6 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	h->key_tbl_key_size = key_size;
 	h->hash_func = (params->hash_func == NULL) ?
 		DEFAULT_HASH_FUNC : params->hash_func;
-
-	if (h->hash_func == rte_hash_crc &&
-			!rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_2)) {
-		RTE_LOG(WARNING, HASH, "CRC32 instruction requires SSE4.2, "
-				"which is not supported on this system. "
-				"Falling back to software hash\n.");
-		h->hash_func = rte_jhash;
-	}
 
 	TAILQ_INSERT_TAIL(hash_list, h, next);
 	return h;
