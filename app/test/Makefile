@@ -72,6 +72,14 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_alarm.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_interrupts.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_version.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_eal_fs.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_num.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_etheraddr.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_portlist.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_ipaddr.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_cirbuf.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_string.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_lib.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

@@ -32,56 +32,43 @@
  * 
  */
 
-#ifndef _TEST_H_
-#define _TEST_H_
+#ifndef TEST_CMDLINE_H_
+#define TEST_CMDLINE_H_
 
-/* icc on baremetal gives us troubles with function named 'main' */
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define main _main
-#endif
+#define CMDLINE_TEST_BUFSIZE 64
 
-#define RECURSIVE_ENV_VAR "RTE_TEST_RECURSIVE"
+/* cmdline_parse_num tests */
+int test_parse_num_valid(void);
+int test_parse_num_invalid_data(void);
+int test_parse_num_invalid_param(void);
 
-extern const char *prgname;
+/* cmdline_parse_etheraddr tests */
+int test_parse_etheraddr_valid(void);
+int test_parse_etheraddr_invalid_data(void);
+int test_parse_etheraddr_invalid_param(void);
 
-extern cmdline_parse_ctx_t main_ctx[];
+/* cmdline_parse_portlist tests */
+int test_parse_portlist_valid(void);
+int test_parse_portlist_invalid_data(void);
+int test_parse_portlist_invalid_param(void);
 
-void test_hexdump(const char *title, const void *buf, unsigned int len);
+/* cmdline_parse_ipaddr tests */
+int test_parse_ipaddr_valid(void);
+int test_parse_ipaddr_invalid_data(void);
+int test_parse_ipaddr_invalid_param(void);
 
-int main(int argc, char **argv);
+/* cmdline_parse_string tests */
+int test_parse_string_valid(void);
+int test_parse_string_invalid_data(void);
+int test_parse_string_invalid_param(void);
 
-int test_pci(void);
-int test_memory(void);
-int test_per_lcore(void);
-int test_spinlock(void);
-int test_rwlock(void);
-int test_atomic(void);
-int test_byteorder(void);
-int test_prefetch(void);
-int test_cycles(void);
-int test_logs(void);
-int test_memzone(void);
-int test_ring(void);
-int test_mempool(void);
-int test_mbuf(void);
-int test_timer(void);
-int test_malloc(void);
-int test_memcpy(void);
-int test_hash(void);
-int test_lpm(void);
-int test_debug(void);
-int test_errno(void);
-int test_tailq(void);
-int test_string_fns(void);
-int test_mp_secondary(void);
-int test_cpuflags(void);
-int test_eal_flags(void);
-int test_alarm(void);
-int test_interrupt(void);
-int test_version(void);
-int test_eal_fs(void);
-int test_cmdline(void);
+/* cmdline_cirbuf tests */
+int test_cirbuf_invalid_param(void);
+int test_cirbuf_char(void);
+int test_cirbuf_string(void);
+int test_cirbuf_align(void);
 
-int test_pci_run;
+/* test the rest of the library */
+int test_cmdline_lib(void);
 
-#endif
+#endif /* TEST_CMDLINE_H_ */

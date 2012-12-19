@@ -129,6 +129,8 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret |= test_lpm();
 	if (all || !strcmp(res->autotest, "cpuflags_autotest"))
 		ret |= test_cpuflags();
+	if (all || !strcmp(res->autotest, "cmdline_autotest"))
+		ret |= test_cmdline();
 	/* tailq autotest must go after all lpm and hashs tests or any other
 	 * tests which need to create tailq objects (ring and mempool are implicitly
 	 * created in earlier tests so can go later)
@@ -180,6 +182,7 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"cpuflags_autotest#eal_flags_autotest#"
 			"alarm_autotest#interrupt_autotest#"
 			"version_autotest#eal_fs_autotest#"
+			"cmdline_autotest#"
 			"all_autotests");
 
 cmdline_parse_inst_t cmd_autotest = {

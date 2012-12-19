@@ -32,11 +32,18 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_APP_TEST) += test
-DIRS-$(CONFIG_RTE_TEST_PMD) += test-pmd
-DIRS-$(CONFIG_RTE_APP_CHKINCS) += chkincs
+#
+# library name
+#
+APP = cmdline_test
 
-DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += cmdline_test
-DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += dump_cfg
+#
+# all sources are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_APP_TEST) += cmdline_test.c
+SRCS-$(CONFIG_RTE_APP_TEST) += commands.c
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+include $(RTE_SDK)/mk/rte.app.mk

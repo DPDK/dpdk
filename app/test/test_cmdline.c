@@ -32,56 +32,63 @@
  * 
  */
 
-#ifndef _TEST_H_
-#define _TEST_H_
+#include <stdio.h>
 
-/* icc on baremetal gives us troubles with function named 'main' */
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define main _main
-#endif
+#include <cmdline_parse.h>
 
-#define RECURSIVE_ENV_VAR "RTE_TEST_RECURSIVE"
+#include "test.h"
+#include "test_cmdline.h"
 
-extern const char *prgname;
+int
+test_cmdline(void)
+{
+	printf("Testind parsing ethernet addresses...\n");
+	if (test_parse_etheraddr_valid() < 0)
+		return -1;
+	if (test_parse_etheraddr_invalid_data() < 0)
+		return -1;
+	if (test_parse_etheraddr_invalid_param() < 0)
+		return -1;
+	printf("Testind parsing port lists...\n");
+	if (test_parse_portlist_valid() < 0)
+		return -1;
+	if (test_parse_portlist_invalid_data() < 0)
+		return -1;
+	if (test_parse_portlist_invalid_param() < 0)
+		return -1;
+	printf("Testind parsing numbers...\n");
+	if (test_parse_num_valid() < 0)
+		return -1;
+	if (test_parse_num_invalid_data() < 0)
+		return -1;
+	if (test_parse_num_invalid_param() < 0)
+		return -1;
+	printf("Testing parsing IP addresses...\n");
+	if (test_parse_ipaddr_valid() < 0)
+		return -1;
+	if (test_parse_ipaddr_invalid_data() < 0)
+		return -1;
+	if (test_parse_ipaddr_invalid_param() < 0)
+		return -1;
+	printf("Testing parsing strings...\n");
+	if (test_parse_string_valid() < 0)
+		return -1;
+	if (test_parse_string_invalid_data() < 0)
+		return -1;
+	if (test_parse_string_invalid_param() < 0)
+		return -1;
+	printf("Testing circular buffer...\n");
+	if (test_cirbuf_char() < 0)
+		return -1;
+	if (test_cirbuf_string() < 0)
+		return -1;
+	if (test_cirbuf_align() < 0)
+		return -1;
+	if (test_cirbuf_invalid_param() < 0)
+		return -1;
+	printf("Testing library functions...\n");
+	if (test_cmdline_lib() < 0)
+		return -1;
+	return 0;
+}
 
-extern cmdline_parse_ctx_t main_ctx[];
-
-void test_hexdump(const char *title, const void *buf, unsigned int len);
-
-int main(int argc, char **argv);
-
-int test_pci(void);
-int test_memory(void);
-int test_per_lcore(void);
-int test_spinlock(void);
-int test_rwlock(void);
-int test_atomic(void);
-int test_byteorder(void);
-int test_prefetch(void);
-int test_cycles(void);
-int test_logs(void);
-int test_memzone(void);
-int test_ring(void);
-int test_mempool(void);
-int test_mbuf(void);
-int test_timer(void);
-int test_malloc(void);
-int test_memcpy(void);
-int test_hash(void);
-int test_lpm(void);
-int test_debug(void);
-int test_errno(void);
-int test_tailq(void);
-int test_string_fns(void);
-int test_mp_secondary(void);
-int test_cpuflags(void);
-int test_eal_flags(void);
-int test_alarm(void);
-int test_interrupt(void);
-int test_version(void);
-int test_eal_fs(void);
-int test_cmdline(void);
-
-int test_pci_run;
-
-#endif
