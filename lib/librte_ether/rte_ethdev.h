@@ -265,6 +265,8 @@ struct rte_eth_rxmode {
 	uint8_t header_split : 1, /**< Header Split enable. */
 		hw_ip_checksum   : 1, /**< IP/UDP/TCP checksum offload enable. */
 		hw_vlan_filter   : 1, /**< VLAN filter enable. */
+		hw_vlan_strip    : 1, /**< VLAN strip enable. */
+		hw_vlan_extend   : 1, /**< Extended VLAN enable. */
 		jumbo_frame      : 1, /**< Jumbo Frame Receipt enable. */
 		hw_strip_crc     : 1; /**< Enable CRC stripping by hardware. */
 };
@@ -306,6 +308,16 @@ struct rte_eth_rss_conf {
 /* DCB capability defines */
 #define ETH_DCB_PG_SUPPORT      0x00000001 /**< Priority Group(ETS) support. */
 #define ETH_DCB_PFC_SUPPORT     0x00000002 /**< Priority Flow Control support. */ 
+
+/* Definitions used for VLAN Offload functionality */
+#define ETH_VLAN_STRIP_OFFLOAD   0x0001 /**< VLAN Strip  On/Off */
+#define ETH_VLAN_FILTER_OFFLOAD  0x0002 /**< VLAN Filter On/Off */
+#define ETH_VLAN_EXTEND_OFFLOAD  0x0004 /**< VLAN Extend On/Off */
+
+/* Definitions used for mask VLAN setting */
+#define ETH_VLAN_STRIP_MASK   0x0001 /**< VLAN Strip  setting mask */
+#define ETH_VLAN_FILTER_MASK  0x0002 /**< VLAN Filter  setting mask*/
+#define ETH_VLAN_EXTEND_MASK  0x0004 /**< VLAN Extend  setting mask*/
 
 /**
  * This enum indicates the possible number of traffic classes
@@ -700,10 +712,22 @@ typedef int (*eth_tx_queue_setup_t)(struct rte_eth_dev *dev,
 typedef void (*eth_queue_release_t)(void *queue);
 /**< @internal Release memory resources allocated by given RX/TX queue. */
 
-typedef void (*vlan_filter_set_t)(struct rte_eth_dev *dev,
+typedef int (*vlan_filter_set_t)(struct rte_eth_dev *dev,
 				  uint16_t vlan_id,
 				  int on);
 /**< @internal filtering of a VLAN Tag Identifier by an Ethernet device. */
+
+typedef void (*vlan_tpid_set_t)(struct rte_eth_dev *dev,
+				  uint16_t tpid);
+/**< @internal set the outer VLAN-TPID by an Ethernet device. */
+
+typedef void (*vlan_offload_set_t)(struct rte_eth_dev *dev, int mask);
+/**< @internal set VLAN offload function by an Ethernet device. */
+
+typedef void (*vlan_strip_queue_set_t)(struct rte_eth_dev *dev,
+				  uint16_t rx_queue_id,
+				  int on);
+/**< @internal VLAN stripping enable/disable by an queue of Ethernet device. */
 
 typedef uint16_t (*eth_rx_burst_t)(void *rxq,
 				   struct rte_mbuf **rx_pkts,
@@ -792,6 +816,9 @@ struct eth_dev_ops {
 	/**< Configure per queue stat counter mapping. */
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
 	vlan_filter_set_t          vlan_filter_set;  /**< Filter VLAN Setup. */
+	vlan_tpid_set_t            vlan_tpid_set;      /**< Outer VLAN TPID Setup. */
+	vlan_strip_queue_set_t     vlan_strip_queue_set; /**< VLAN Stripping on queue. */
+	vlan_offload_set_t         vlan_offload_set; /**< Set VLAN Offload. */
 	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device RX queue.*/
 	eth_queue_release_t        rx_queue_release;/**< Release RX queue.*/
 	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue.*/
@@ -1400,7 +1427,81 @@ extern void rte_eth_dev_info_get(uint8_t port_id,
  *   - (-ENOSYS) if VLAN filtering on *port_id* disabled.
  *   - (-EINVAL) if *vlan_id* > 4095.
  */
-extern int rte_eth_dev_vlan_filter(uint8_t port_id, uint16_t vlan_id, int on);
+extern int rte_eth_dev_vlan_filter(uint8_t port_id, uint16_t vlan_id , int on);
+
+/**
+ * Enable/Disable hardware VLAN Strip by a rx queue of an Ethernet device.
+ * 82599/X540 can support VLAN stripping at the rx queue level
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param rx_queue_id
+ *   The index of the receive queue for which a queue stats mapping is required.
+ *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param on
+ *   If 1, Enable VLAN Stripping of the receive queue of the Ethernet port.
+ *   If 0, Disable VLAN Stripping of the receive queue of the Ethernet port.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOSUP) if hardware-assisted VLAN stripping not configured.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if *rx_queue_id* invalid.
+ */
+extern int rte_eth_dev_set_vlan_strip_on_queue(uint8_t port_id,
+		uint16_t rx_queue_id, int on);
+
+/**
+ * Set the Outer VLAN Ether Type by an Ethernet device, it can be inserted to
+ * the VLAN Header. This is a register setup available on some Intel NIC, not
+ * but all, please check the data sheet for availability.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param tag_type
+ *   The Tag Protocol ID
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOSUP) if hardware-assisted VLAN TPID setup is not supported.
+ *   - (-ENODEV) if *port_id* invalid.
+ */
+extern int rte_eth_dev_set_vlan_ether_type(uint8_t port_id, uint16_t tag_type);
+
+/**
+ * Set VLAN offload configuration on an Ethernet device
+ * Enable/Disable Extended VLAN by an Ethernet device, This is a register setup
+ * available on some Intel NIC, not but all, please check the data sheet for
+ * availability.
+ * Enable/Disable VLAN Strip can be done on rx queue for certain NIC, but here
+ * the configuration is applied on the port level.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param offload_mask
+ *   The VLAN Offload bit mask can be mixed use with "OR"
+ *       ETH_VLAN_STRIP_OFFLOAD
+ *       ETH_VLAN_FILTER_OFFLOAD
+ *       ETH_VLAN_EXTEND_OFFLOAD
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOSUP) if hardware-assisted VLAN filtering not configured.
+ *   - (-ENODEV) if *port_id* invalid.
+ */
+extern int rte_eth_dev_set_vlan_offload(uint8_t port_id, int offload_mask);
+
+/**
+ * Read VLAN Offload configuration from an Ethernet device
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @return
+ *   - (>0) if successful. Bit mask to indicate
+ *       ETH_VLAN_STRIP_OFFLOAD
+ *       ETH_VLAN_FILTER_OFFLOAD
+ *       ETH_VLAN_EXTEND_OFFLOAD
+ *   - (-ENODEV) if *port_id* invalid.
+ */
+extern int rte_eth_dev_get_vlan_offload(uint8_t port_id);
 
 /**
  *

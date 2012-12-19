@@ -994,6 +994,118 @@ rte_eth_dev_vlan_filter(uint8_t port_id, uint16_t vlan_id, int on)
 }
 
 int
+rte_eth_dev_set_vlan_strip_on_queue(uint8_t port_id, uint16_t rx_queue_id, int on)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+
+	dev = &rte_eth_devices[port_id];
+	if (rx_queue_id >= dev->data->nb_rx_queues) {
+		PMD_DEBUG_TRACE("Invalid rx_queue_id=%d\n", port_id);
+		return (-EINVAL);
+	}
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_strip_queue_set, -ENOTSUP);
+	(*dev->dev_ops->vlan_strip_queue_set)(dev, rx_queue_id, on);
+
+	return (0);
+}
+
+int
+rte_eth_dev_set_vlan_ether_type(uint8_t port_id, uint16_t tpid)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_tpid_set, -ENOTSUP);
+	(*dev->dev_ops->vlan_tpid_set)(dev, tpid);
+
+	return (0);
+}
+
+int
+rte_eth_dev_set_vlan_offload(uint8_t port_id, int offload_mask)
+{
+	struct rte_eth_dev *dev;
+	int ret = 0;
+	int mask = 0;
+	int cur, org = 0;
+	
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+
+	dev = &rte_eth_devices[port_id];
+
+	/*check which option changed by application*/
+	cur = !!(offload_mask & ETH_VLAN_STRIP_OFFLOAD);
+	org = !!(dev->data->dev_conf.rxmode.hw_vlan_strip);
+	if (cur != org){
+		dev->data->dev_conf.rxmode.hw_vlan_strip = (uint8_t)cur;
+		mask |= ETH_VLAN_STRIP_MASK;
+	}
+	
+	cur = !!(offload_mask & ETH_VLAN_FILTER_OFFLOAD);
+	org = !!(dev->data->dev_conf.rxmode.hw_vlan_filter);
+	if (cur != org){
+		dev->data->dev_conf.rxmode.hw_vlan_filter = (uint8_t)cur;
+		mask |= ETH_VLAN_FILTER_MASK;
+	}
+
+	cur = !!(offload_mask & ETH_VLAN_EXTEND_OFFLOAD);
+	org = !!(dev->data->dev_conf.rxmode.hw_vlan_extend);
+	if (cur != org){
+		dev->data->dev_conf.rxmode.hw_vlan_extend = (uint8_t)cur;
+		mask |= ETH_VLAN_EXTEND_MASK;
+	}
+
+	/*no change*/
+	if(mask == 0)
+		return ret;
+	
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_offload_set, -ENOTSUP);
+	(*dev->dev_ops->vlan_offload_set)(dev, mask);
+
+	return ret;
+}
+
+int
+rte_eth_dev_get_vlan_offload(uint8_t port_id)
+{
+	struct rte_eth_dev *dev;
+	int ret = 0;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+
+	dev = &rte_eth_devices[port_id];
+
+	if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+		ret |= ETH_VLAN_STRIP_OFFLOAD ;
+
+	if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+		ret |= ETH_VLAN_FILTER_OFFLOAD ;
+
+	if (dev->data->dev_conf.rxmode.hw_vlan_extend)
+		ret |= ETH_VLAN_EXTEND_OFFLOAD ;
+
+	return ret;
+}
+
+
+int
 rte_eth_dev_fdir_add_signature_filter(uint8_t port_id,
 				      struct rte_fdir_filter *fdir_filter,
 				      uint8_t queue)
