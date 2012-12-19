@@ -43,11 +43,11 @@ struct e1000_hw;
 #define E1000_DEV_ID_82576_VF                 0x10CA
 #define E1000_DEV_ID_I350_VF                  0x1520
 
-#define E1000_VF_INIT_TIMEOUT 200 /* Number of retries to clear RSTI */
+#define E1000_VF_INIT_TIMEOUT		200 /* Num of retries to clear RSTI */
 
 /* Additional Descriptor Control definitions */
-#define E1000_TXDCTL_QUEUE_ENABLE  0x02000000 /* Enable specific Tx Queue */
-#define E1000_RXDCTL_QUEUE_ENABLE  0x02000000 /* Enable specific Rx Queue */
+#define E1000_TXDCTL_QUEUE_ENABLE	0x02000000 /* Ena specific Tx Queue */
+#define E1000_RXDCTL_QUEUE_ENABLE	0x02000000 /* Ena specific Rx Queue */
 
 /* SRRCTL bit definitions */
 #define E1000_SRRCTL_BSIZEPKT_SHIFT                     10 /* Shift _right_ */
@@ -68,13 +68,13 @@ struct e1000_hw;
 /* Interrupt Defines */
 #define E1000_EICR     0x01580  /* Ext. Interrupt Cause Read - R/clr */
 #define E1000_EITR(_n) (0x01680 + ((_n) << 2))
-#define E1000_EICS     0x01520  /* Ext. Interrupt Cause Set - W0 */
-#define E1000_EIMS     0x01524  /* Ext. Interrupt Mask Set/Read - RW */
-#define E1000_EIMC     0x01528  /* Ext. Interrupt Mask Clear - WO */
-#define E1000_EIAC     0x0152C  /* Ext. Interrupt Auto Clear - RW */
-#define E1000_EIAM     0x01530  /* Ext. Interrupt Ack Auto Clear Mask - RW */
-#define E1000_IVAR0    0x01700  /* Interrupt Vector Allocation (array) - RW */
-#define E1000_IVAR_MISC 0x01740 /* IVAR for "other" causes - RW */
+#define E1000_EICS		0x01520 /* Ext. Intr Cause Set -W0 */
+#define E1000_EIMS		0x01524 /* Ext. Intr Mask Set/Read -RW */
+#define E1000_EIMC		0x01528 /* Ext. Intr Mask Clear -WO */
+#define E1000_EIAC		0x0152C /* Ext. Intr Auto Clear -RW */
+#define E1000_EIAM		0x01530 /* Ext. Intr Ack Auto Clear Mask -RW */
+#define E1000_IVAR0		0x01700 /* Intr Vector Alloc (array) -RW */
+#define E1000_IVAR_MISC		0x01740 /* IVAR for "other" causes -RW */
 #define E1000_IVAR_VALID        0x80
 
 /* Receive Descriptor - Advanced */
@@ -156,7 +156,7 @@ enum e1000_mac_type {
 	e1000_undefined = 0,
 	e1000_vfadapt,
 	e1000_vfadapt_i350,
-	e1000_num_macs  /* List is 1-based, so subtract 1 for TRUE count. */
+	e1000_num_macs  /* List is 1-based, so subtract 1 for true count. */
 };
 
 struct e1000_vf_stats {

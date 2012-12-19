@@ -74,8 +74,7 @@ enum e1000_mng_mode {
 
 #define E1000_HI_MAX_BLOCK_BYTE_LENGTH       1792 /* Num of bytes in range */
 #define E1000_HI_MAX_BLOCK_DWORD_LENGTH      448 /* Num of dwords in range */
-#define E1000_HI_COMMAND_TIMEOUT             500 /* Process HI command limit */
-
+#define E1000_HI_COMMAND_TIMEOUT		500 /* Process HI cmd limit */
 #define E1000_HICR_EN              0x01  /* Enable bit - RO */
 /* Driver sets this bit when done to put command in RAM */
 #define E1000_HICR_C               0x02

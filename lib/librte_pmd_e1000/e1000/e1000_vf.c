@@ -35,21 +35,21 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "e1000_api.h"
 
 
-static s32       e1000_init_phy_params_vf(struct e1000_hw *hw);
-static s32       e1000_init_nvm_params_vf(struct e1000_hw *hw);
-static void      e1000_release_vf(struct e1000_hw *hw);
-static s32       e1000_acquire_vf(struct e1000_hw *hw);
-static s32       e1000_setup_link_vf(struct e1000_hw *hw);
-static s32       e1000_get_bus_info_pcie_vf(struct e1000_hw *hw);
-static s32       e1000_init_mac_params_vf(struct e1000_hw *hw);
-static s32       e1000_check_for_link_vf(struct e1000_hw *hw);
-static s32       e1000_get_link_up_info_vf(struct e1000_hw *hw, u16 *speed,
+STATIC s32       e1000_init_phy_params_vf(struct e1000_hw *hw);
+STATIC s32       e1000_init_nvm_params_vf(struct e1000_hw *hw);
+STATIC void      e1000_release_vf(struct e1000_hw *hw);
+STATIC s32       e1000_acquire_vf(struct e1000_hw *hw);
+STATIC s32       e1000_setup_link_vf(struct e1000_hw *hw);
+STATIC s32       e1000_get_bus_info_pcie_vf(struct e1000_hw *hw);
+STATIC s32       e1000_init_mac_params_vf(struct e1000_hw *hw);
+STATIC s32       e1000_check_for_link_vf(struct e1000_hw *hw);
+STATIC s32       e1000_get_link_up_info_vf(struct e1000_hw *hw, u16 *speed,
                                               u16 *duplex);
-static s32       e1000_init_hw_vf(struct e1000_hw *hw);
-static s32       e1000_reset_hw_vf(struct e1000_hw *hw);
-static void      e1000_update_mc_addr_list_vf(struct e1000_hw *hw, u8 *, u32);
-static void      e1000_rar_set_vf(struct e1000_hw *, u8 *, u32);
-static s32       e1000_read_mac_addr_vf(struct e1000_hw *);
+STATIC s32       e1000_init_hw_vf(struct e1000_hw *hw);
+STATIC s32       e1000_reset_hw_vf(struct e1000_hw *hw);
+STATIC void      e1000_update_mc_addr_list_vf(struct e1000_hw *hw, u8 *, u32);
+STATIC void      e1000_rar_set_vf(struct e1000_hw *, u8 *, u32);
+STATIC s32       e1000_read_mac_addr_vf(struct e1000_hw *);
 
 /**
  *  e1000_init_phy_params_vf - Inits PHY params
@@ -57,7 +57,7 @@ static s32       e1000_read_mac_addr_vf(struct e1000_hw *);
  *
  *  Doesn't do much - there's no PHY available to the VF.
  **/
-static s32 e1000_init_phy_params_vf(struct e1000_hw *hw)
+STATIC s32 e1000_init_phy_params_vf(struct e1000_hw *hw)
 {
 	DEBUGFUNC("e1000_init_phy_params_vf");
 	hw->phy.type = e1000_phy_vf;
@@ -73,7 +73,7 @@ static s32 e1000_init_phy_params_vf(struct e1000_hw *hw)
  *
  *  Doesn't do much - there's no NVM available to the VF.
  **/
-static s32 e1000_init_nvm_params_vf(struct e1000_hw *hw)
+STATIC s32 e1000_init_nvm_params_vf(struct e1000_hw *hw)
 {
 	DEBUGFUNC("e1000_init_nvm_params_vf");
 	hw->nvm.type = e1000_nvm_none;
@@ -87,7 +87,7 @@ static s32 e1000_init_nvm_params_vf(struct e1000_hw *hw)
  *  e1000_init_mac_params_vf - Inits MAC params
  *  @hw: pointer to the HW structure
  **/
-static s32 e1000_init_mac_params_vf(struct e1000_hw *hw)
+STATIC s32 e1000_init_mac_params_vf(struct e1000_hw *hw)
 {
 	struct e1000_mac_info *mac = &hw->mac;
 
@@ -102,11 +102,11 @@ static s32 e1000_init_mac_params_vf(struct e1000_hw *hw)
 	hw->phy.media_type = e1000_media_type_unknown;
 
 	/* No ASF features for the VF driver */
-	mac->asf_firmware_present = FALSE;
+	mac->asf_firmware_present = false;
 	/* ARC subsystem not supported */
-	mac->arc_subsystem_valid = FALSE;
+	mac->arc_subsystem_valid = false;
 	/* Disable adaptive IFS mode so the generic funcs don't do anything */
-	mac->adaptive_ifs = FALSE;
+	mac->adaptive_ifs = false;
 	/* VF's have no MTA Registers - PF feature only */
 	mac->mta_reg_count = 128;
 	/* VF's have no access to RAR entries  */
@@ -158,7 +158,7 @@ void e1000_init_function_pointers_vf(struct e1000_hw *hw)
  *  In addition, the MAC registers to access PHY/NVM don't exist so we don't
  *  even want any SW to attempt to use them.
  **/
-static s32 e1000_acquire_vf(struct e1000_hw *hw)
+STATIC s32 e1000_acquire_vf(struct e1000_hw *hw)
 {
 	return -E1000_ERR_PHY;
 }
@@ -171,7 +171,7 @@ static s32 e1000_acquire_vf(struct e1000_hw *hw)
  *  In addition, the MAC registers to access PHY/NVM don't exist so we don't
  *  even want any SW to attempt to use them.
  **/
-static void e1000_release_vf(struct e1000_hw *hw)
+STATIC void e1000_release_vf(struct e1000_hw *hw)
 {
 	return;
 }
@@ -182,7 +182,7 @@ static void e1000_release_vf(struct e1000_hw *hw)
  *
  *  Virtual functions cannot change link.
  **/
-static s32 e1000_setup_link_vf(struct e1000_hw *hw)
+STATIC s32 e1000_setup_link_vf(struct e1000_hw *hw)
 {
 	DEBUGFUNC("e1000_setup_link_vf");
 
@@ -195,7 +195,7 @@ static s32 e1000_setup_link_vf(struct e1000_hw *hw)
  *
  *  Virtual functions are not really on their own bus.
  **/
-static s32 e1000_get_bus_info_pcie_vf(struct e1000_hw *hw)
+STATIC s32 e1000_get_bus_info_pcie_vf(struct e1000_hw *hw)
 {
 	struct e1000_bus_info *bus = &hw->bus;
 
@@ -217,7 +217,7 @@ static s32 e1000_get_bus_info_pcie_vf(struct e1000_hw *hw)
  *  Since we cannot read the PHY and get accurate link info, we must rely upon
  *  the status register's data which is often stale and inaccurate.
  **/
-static s32 e1000_get_link_up_info_vf(struct e1000_hw *hw, u16 *speed,
+STATIC s32 e1000_get_link_up_info_vf(struct e1000_hw *hw, u16 *speed,
                                      u16 *duplex)
 {
 	s32 status;
@@ -254,7 +254,7 @@ static s32 e1000_get_link_up_info_vf(struct e1000_hw *hw, u16 *speed,
  *  VF's provide a function level reset. This is done using bit 26 of ctrl_reg.
  *  This is all the reset we can perform on a VF.
  **/
-static s32 e1000_reset_hw_vf(struct e1000_hw *hw)
+STATIC s32 e1000_reset_hw_vf(struct e1000_hw *hw)
 {
 	struct e1000_mbx_info *mbx = &hw->mbx;
 	u32 timeout = E1000_VF_INIT_TIMEOUT;
@@ -303,7 +303,7 @@ static s32 e1000_reset_hw_vf(struct e1000_hw *hw)
  *
  *  Not much to do here except clear the PF Reset indication if there is one.
  **/
-static s32 e1000_init_hw_vf(struct e1000_hw *hw)
+STATIC s32 e1000_init_hw_vf(struct e1000_hw *hw)
 {
 	DEBUGFUNC("e1000_init_hw_vf");
 
@@ -319,7 +319,7 @@ static s32 e1000_init_hw_vf(struct e1000_hw *hw)
  *  @addr: pointer to the receive address
  *  @index receive address array register
  **/
-static void e1000_rar_set_vf(struct e1000_hw *hw, u8 * addr, u32 index)
+STATIC void e1000_rar_set_vf(struct e1000_hw *hw, u8 * addr, u32 index)
 {
 	struct e1000_mbx_info *mbx = &hw->mbx;
 	u32 msgbuf[3];
@@ -350,7 +350,7 @@ static void e1000_rar_set_vf(struct e1000_hw *hw, u8 * addr, u32 index)
  *  Generates a multicast address hash value which is used to determine
  *  the multicast filter table array address and new table value.
  **/
-static u32 e1000_hash_mc_addr_vf(struct e1000_hw *hw, u8 *mc_addr)
+STATIC u32 e1000_hash_mc_addr_vf(struct e1000_hw *hw, u8 *mc_addr)
 {
 	u32 hash_value, hash_mask;
 	u8 bit_shift = 0;
@@ -498,7 +498,7 @@ s32 e1000_promisc_set_vf(struct e1000_hw *hw, enum e1000_promisc_type type)
  *  e1000_read_mac_addr_vf - Read device MAC address
  *  @hw: pointer to the HW structure
  **/
-static s32 e1000_read_mac_addr_vf(struct e1000_hw *hw)
+STATIC s32 e1000_read_mac_addr_vf(struct e1000_hw *hw)
 {
 	int i;
 
@@ -516,7 +516,7 @@ static s32 e1000_read_mac_addr_vf(struct e1000_hw *hw)
  *  if it is then it reports the link state to the hardware, otherwise
  *  it reports link down and returns an error.
  **/
-static s32 e1000_check_for_link_vf(struct e1000_hw *hw)
+STATIC s32 e1000_check_for_link_vf(struct e1000_hw *hw)
 {
 	struct e1000_mbx_info *mbx = &hw->mbx;
 	struct e1000_mac_info *mac = &hw->mac;
@@ -533,7 +533,7 @@ static s32 e1000_check_for_link_vf(struct e1000_hw *hw)
 
 	/* If we were hit with a reset or timeout drop the link */
 	if (!mbx->ops.check_for_rst(hw, 0) || !mbx->timeout)
-		mac->get_link_status = TRUE;
+		mac->get_link_status = true;
 
 	if (!mac->get_link_status)
 		goto out;
@@ -565,7 +565,7 @@ static s32 e1000_check_for_link_vf(struct e1000_hw *hw)
 
 	/* if we passed all the tests above then the link is up and we no
 	 * longer need to check for link */
-	mac->get_link_status = FALSE;
+	mac->get_link_status = false;
 
 out:
 	return ret_val;

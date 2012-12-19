@@ -546,7 +546,7 @@ out:
  **/
 s32 e1000_read_phy_reg_igp(struct e1000_hw *hw, u32 offset, u16 *data)
 {
-	return __e1000_read_phy_reg_igp(hw, offset, data, FALSE);
+	return __e1000_read_phy_reg_igp(hw, offset, data, false);
 }
 
 /**
@@ -560,7 +560,7 @@ s32 e1000_read_phy_reg_igp(struct e1000_hw *hw, u32 offset, u16 *data)
  **/
 s32 e1000_read_phy_reg_igp_locked(struct e1000_hw *hw, u32 offset, u16 *data)
 {
-	return __e1000_read_phy_reg_igp(hw, offset, data, TRUE);
+	return __e1000_read_phy_reg_igp(hw, offset, data, true);
 }
 
 /**
@@ -619,7 +619,7 @@ out:
  **/
 s32 e1000_write_phy_reg_igp(struct e1000_hw *hw, u32 offset, u16 data)
 {
-	return __e1000_write_phy_reg_igp(hw, offset, data, FALSE);
+	return __e1000_write_phy_reg_igp(hw, offset, data, false);
 }
 
 /**
@@ -633,7 +633,7 @@ s32 e1000_write_phy_reg_igp(struct e1000_hw *hw, u32 offset, u16 data)
  **/
 s32 e1000_write_phy_reg_igp_locked(struct e1000_hw *hw, u32 offset, u16 data)
 {
-	return __e1000_write_phy_reg_igp(hw, offset, data, TRUE);
+	return __e1000_write_phy_reg_igp(hw, offset, data, true);
 }
 
 /**
@@ -692,7 +692,7 @@ out:
  **/
 s32 e1000_read_kmrn_reg_generic(struct e1000_hw *hw, u32 offset, u16 *data)
 {
-	return __e1000_read_kmrn_reg(hw, offset, data, FALSE);
+	return __e1000_read_kmrn_reg(hw, offset, data, false);
 }
 
 /**
@@ -707,7 +707,7 @@ s32 e1000_read_kmrn_reg_generic(struct e1000_hw *hw, u32 offset, u16 *data)
  **/
 s32 e1000_read_kmrn_reg_locked(struct e1000_hw *hw, u32 offset, u16 *data)
 {
-	return __e1000_read_kmrn_reg(hw, offset, data, TRUE);
+	return __e1000_read_kmrn_reg(hw, offset, data, true);
 }
 
 /**
@@ -762,7 +762,7 @@ out:
  **/
 s32 e1000_write_kmrn_reg_generic(struct e1000_hw *hw, u32 offset, u16 data)
 {
-	return __e1000_write_kmrn_reg(hw, offset, data, FALSE);
+	return __e1000_write_kmrn_reg(hw, offset, data, false);
 }
 
 /**
@@ -776,7 +776,7 @@ s32 e1000_write_kmrn_reg_generic(struct e1000_hw *hw, u32 offset, u16 data)
  **/
 s32 e1000_write_kmrn_reg_locked(struct e1000_hw *hw, u32 offset, u16 data)
 {
-	return __e1000_write_kmrn_reg(hw, offset, data, TRUE);
+	return __e1000_write_kmrn_reg(hw, offset, data, true);
 }
 
 /**
@@ -1421,10 +1421,8 @@ s32 e1000_setup_copper_link_generic(struct e1000_hw *hw)
 	 * Check link status. Wait up to 100 microseconds for link to become
 	 * valid.
 	 */
-	ret_val = e1000_phy_has_link_generic(hw,
-	                                     COPPER_LINK_UP_LIMIT,
-	                                     10,
-	                                     &link);
+	ret_val = e1000_phy_has_link_generic(hw, COPPER_LINK_UP_LIMIT, 10,
+					     &link);
 	if (ret_val)
 		goto out;
 
@@ -1489,10 +1487,8 @@ s32 e1000_phy_force_speed_duplex_igp(struct e1000_hw *hw)
 	if (phy->autoneg_wait_to_complete) {
 		DEBUGOUT("Waiting for forced speed/duplex link on IGP phy.\n");
 
-		ret_val = e1000_phy_has_link_generic(hw,
-		                                     PHY_FORCE_LIMIT,
-		                                     100000,
-		                                     &link);
+		ret_val = e1000_phy_has_link_generic(hw, PHY_FORCE_LIMIT,
+						     100000, &link);
 		if (ret_val)
 			goto out;
 
@@ -1690,12 +1686,8 @@ s32 e1000_phy_force_speed_duplex_ife(struct e1000_hw *hw)
 			DEBUGOUT("Link taking longer than expected.\n");
 
 		/* Try once more */
-		ret_val = e1000_phy_has_link_generic(hw,
-		                                     PHY_FORCE_LIMIT,
-		                                     100000,
-		                                     &link);
-		if (ret_val)
-			goto out;
+		ret_val = e1000_phy_has_link_generic(hw, PHY_FORCE_LIMIT,
+						     100000, &link);
 	}
 
 out:
@@ -1772,7 +1764,7 @@ void e1000_phy_force_speed_duplex_setup(struct e1000_hw *hw, u16 *phy_ctrl)
  *  Success returns 0, Failure returns 1
  *
  *  The low power link up (lplu) state is set to the power management level D3
- *  and SmartSpeed is disabled when active is TRUE, else clear lplu for D3
+ *  and SmartSpeed is disabled when active is true, else clear lplu for D3
  *  and enable Smartspeed.  LPLU and Smartspeed are mutually exclusive.  LPLU
  *  is used during Dx states where the power conservation is most important.
  *  During driver activity, SmartSpeed should be enabled so performance is
@@ -1885,7 +1877,7 @@ s32 e1000_check_downshift_generic(struct e1000_hw *hw)
 		break;
 	default:
 		/* speed downshift not supported */
-		phy->speed_downgraded = FALSE;
+		phy->speed_downgraded = false;
 		ret_val = E1000_SUCCESS;
 		goto out;
 	}
@@ -1893,7 +1885,7 @@ s32 e1000_check_downshift_generic(struct e1000_hw *hw)
 	ret_val = phy->ops.read_reg(hw, offset, &phy_data);
 
 	if (!ret_val)
-		phy->speed_downgraded = (phy_data & mask) ? TRUE : FALSE;
+		phy->speed_downgraded = !!(phy_data & mask);
 
 out:
 	return ret_val;
@@ -2023,7 +2015,7 @@ s32 e1000_wait_autoneg_generic(struct e1000_hw *hw)
 
 	DEBUGFUNC("e1000_wait_autoneg_generic");
 
-	if (!(hw->phy.ops.read_reg))
+	if (!hw->phy.ops.read_reg)
 		return E1000_SUCCESS;
 
 	/* Break after autoneg completes or PHY_AUTO_NEG_LIMIT expires. */
@@ -2063,7 +2055,7 @@ s32 e1000_phy_has_link_generic(struct e1000_hw *hw, u32 iterations,
 
 	DEBUGFUNC("e1000_phy_has_link_generic");
 
-	if (!(hw->phy.ops.read_reg))
+	if (!hw->phy.ops.read_reg)
 		return E1000_SUCCESS;
 
 	for (i = 0; i < iterations; i++) {
@@ -2091,7 +2083,7 @@ s32 e1000_phy_has_link_generic(struct e1000_hw *hw, u32 iterations,
 			usec_delay(usec_interval);
 	}
 
-	*success = (i < iterations) ? TRUE : FALSE;
+	*success = (i < iterations);
 
 	return ret_val;
 }
@@ -2178,12 +2170,13 @@ s32 e1000_get_cable_length_m88_gen2(struct e1000_hw *hw)
 		phy->max_cable_length = phy_data / (is_cm ? 100 : 1);
 		phy->cable_length = phy_data / (is_cm ? 100 : 1);
 
-		/* Reset the page selec	to its original value */
+		/* Reset the page select to its original value */
 		ret_val = phy->ops.write_reg(hw, I347AT4_PAGE_SELECT,
 					     default_page);
 		if (ret_val)
 			goto out;
 		break;
+
 	case M88E1112_E_PHY_ID:
 		/* Remember the original page select and set it to 5 */
 		ret_val = phy->ops.read_reg(hw, I347AT4_PAGE_SELECT,
@@ -2343,8 +2336,8 @@ s32 e1000_get_phy_info_m88(struct e1000_hw *hw)
 	if (ret_val)
 		goto out;
 
-	phy->polarity_correction = (phy_data & M88E1000_PSCR_POLARITY_REVERSAL)
-	                           ? TRUE : FALSE;
+	phy->polarity_correction = !!(phy_data &
+				      M88E1000_PSCR_POLARITY_REVERSAL);
 
 	ret_val = e1000_check_polarity_m88(hw);
 	if (ret_val)
@@ -2354,7 +2347,7 @@ s32 e1000_get_phy_info_m88(struct e1000_hw *hw)
 	if (ret_val)
 		goto out;
 
-	phy->is_mdix = (phy_data & M88E1000_PSSR_MDIX) ? TRUE : FALSE;
+	phy->is_mdix = !!(phy_data & M88E1000_PSSR_MDIX);
 
 	if ((phy_data & M88E1000_PSSR_SPEED) == M88E1000_PSSR_1000MBS) {
 		ret_val = hw->phy.ops.get_cable_length(hw);
@@ -2411,7 +2404,7 @@ s32 e1000_get_phy_info_igp(struct e1000_hw *hw)
 		goto out;
 	}
 
-	phy->polarity_correction = TRUE;
+	phy->polarity_correction = true;
 
 	ret_val = e1000_check_polarity_igp(hw);
 	if (ret_val)
@@ -2421,7 +2414,7 @@ s32 e1000_get_phy_info_igp(struct e1000_hw *hw)
 	if (ret_val)
 		goto out;
 
-	phy->is_mdix = (data & IGP01E1000_PSSR_MDIX) ? TRUE : FALSE;
+	phy->is_mdix = !!(data & IGP01E1000_PSSR_MDIX);
 
 	if ((data & IGP01E1000_PSSR_SPEED_MASK) ==
 	    IGP01E1000_PSSR_SPEED_1000MBPS) {
@@ -2496,7 +2489,7 @@ s32 e1000_get_phy_info_ife(struct e1000_hw *hw)
 	if (ret_val)
 		goto out;
 
-	phy->is_mdix = (data & IFE_PMC_MDIX_STATUS) ? TRUE : FALSE;
+	phy->is_mdix = !!(data & IFE_PMC_MDIX_STATUS);
 
 	/* The following parameters are undefined for 10/100 operation. */
 	phy->cable_length = E1000_CABLE_LENGTH_UNDEFINED;

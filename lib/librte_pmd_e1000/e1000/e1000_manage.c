@@ -75,7 +75,7 @@ s32 e1000_mng_enable_host_if_generic(struct e1000_hw *hw)
 
 	DEBUGFUNC("e1000_mng_enable_host_if_generic");
 
-	if (!(hw->mac.arc_subsystem_valid)) {
+	if (!hw->mac.arc_subsystem_valid) {
 		DEBUGOUT("ARC subsystem not valid.\n");
 		ret_val = -E1000_ERR_HOST_INTERFACE_COMMAND;
 		goto out;
@@ -83,7 +83,7 @@ s32 e1000_mng_enable_host_if_generic(struct e1000_hw *hw)
 
 	/* Check that the host interface is enabled. */
 	hicr = E1000_READ_REG(hw, E1000_HICR);
-	if ((hicr & E1000_HICR_EN) == 0) {
+	if (!(hicr & E1000_HICR_EN)) {
 		DEBUGOUT("E1000_HOST_EN bit disabled.\n");
 		ret_val = -E1000_ERR_HOST_INTERFACE_COMMAND;
 		goto out;
@@ -110,8 +110,8 @@ out:
  *  e1000_check_mng_mode_generic - Generic check management mode
  *  @hw: pointer to the HW structure
  *
- *  Reads the firmware semaphore register and returns TRUE (>0) if
- *  manageability is enabled, else FALSE (0).
+ *  Reads the firmware semaphore register and returns true (>0) if
+ *  manageability is enabled, else false (0).
  **/
 bool e1000_check_mng_mode_generic(struct e1000_hw *hw)
 {
@@ -141,11 +141,11 @@ bool e1000_enable_tx_pkt_filtering_generic(struct e1000_hw *hw)
 
 	DEBUGFUNC("e1000_enable_tx_pkt_filtering_generic");
 
-	hw->mac.tx_pkt_filtering = TRUE;
+	hw->mac.tx_pkt_filtering = true;
 
 	/* No manageability, no filtering */
 	if (!hw->mac.ops.check_mng_mode(hw)) {
-		hw->mac.tx_pkt_filtering = FALSE;
+		hw->mac.tx_pkt_filtering = false;
 		goto out;
 	}
 
@@ -155,7 +155,7 @@ bool e1000_enable_tx_pkt_filtering_generic(struct e1000_hw *hw)
 	 */
 	ret_val = hw->mac.ops.mng_enable_host_if(hw);
 	if (ret_val != E1000_SUCCESS) {
-		hw->mac.tx_pkt_filtering = FALSE;
+		hw->mac.tx_pkt_filtering = false;
 		goto out;
 	}
 
@@ -437,9 +437,7 @@ s32 e1000_host_interface_command(struct e1000_hw *hw, u8 *buffer, u32 length)
 	 * into the ram area.
 	 */
 	for (i = 0; i < length; i++)
-		E1000_WRITE_REG_ARRAY_DWORD(hw,
-		                            E1000_HOST_IF,
-		                            i,
+		E1000_WRITE_REG_ARRAY_DWORD(hw, E1000_HOST_IF, i,
 		                            *((u32 *)buffer + i));
 
 	/* Setting this bit tells the ARC that a new command is pending. */

@@ -61,17 +61,17 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_VFMAILBOX_SIZE   16 /* 16 32 bit words - 64 bytes */
 
 /* If it's a E1000_VF_* msg then it originates in the VF and is sent to the
- * PF.  The reverse is TRUE if it is E1000_PF_*.
+ * PF.  The reverse is true if it is E1000_PF_*.
  * Message ACK's are the value or'd with 0xF0000000
  */
-#define E1000_VT_MSGTYPE_ACK      0x80000000  /* Messages below or'd with
-                                               * this are the ACK */
-#define E1000_VT_MSGTYPE_NACK     0x40000000  /* Messages below or'd with
-                                               * this are the NACK */
-#define E1000_VT_MSGTYPE_CTS      0x20000000  /* Indicates that VF is still
-                                                 clear to send requests */
+/* Msgs below or'd with this are the ACK */
+#define E1000_VT_MSGTYPE_ACK	0x80000000
+/* Msgs below or'd with this are the NACK */
+#define E1000_VT_MSGTYPE_NACK	0x40000000
+/* Indicates that VF is still clear to send requests */
+#define E1000_VT_MSGTYPE_CTS	0x20000000
 #define E1000_VT_MSGINFO_SHIFT    16
-/* bits 23:16 are used for exra info for certain messages */
+/* bits 23:16 are used for extra info for certain messages */
 #define E1000_VT_MSGINFO_MASK     (0xFF << E1000_VT_MSGINFO_SHIFT)
 
 #define E1000_VF_RESET            0x01 /* VF requests reset */
@@ -81,8 +81,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_VF_SET_MULTICAST_OVERFLOW   (0x80 << E1000_VT_MSGINFO_SHIFT)
 #define E1000_VF_SET_VLAN         0x04 /* VF requests to set VLAN */
 #define E1000_VF_SET_VLAN_ADD             (0x01 << E1000_VT_MSGINFO_SHIFT)
-#define E1000_VF_SET_LPE          0x05 /* VF requests to set VMOLR.LPE */
-#define E1000_VF_SET_PROMISC      0x06 /*VF requests to clear VMOLR.ROPE/MPME*/
+#define E1000_VF_SET_LPE		0x05 /* reqs to set VMOLR.LPE */
+#define E1000_VF_SET_PROMISC		0x06 /* reqs to clear VMOLR.ROPE/MPME*/
 #define E1000_VF_SET_PROMISC_UNICAST      (0x01 << E1000_VT_MSGINFO_SHIFT)
 #define E1000_VF_SET_PROMISC_MULTICAST    (0x02 << E1000_VT_MSGINFO_SHIFT)
 

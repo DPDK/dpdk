@@ -206,10 +206,10 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 /**
  *  e1000_setup_init_funcs - Initializes function pointers
  *  @hw: pointer to the HW structure
- *  @init_device: TRUE will initialize the rest of the function pointers
- *                 getting the device ready for use.  FALSE will only set
+ *  @init_device: true will initialize the rest of the function pointers
+ *		  getting the device ready for use.  false will only set
  *                 MAC type and the function pointers for the other init
- *                 functions.  Passing FALSE will not generate any hardware
+ *		  functions.  Passing false will not generate any hardware
  *                 reads or writes.
  *
  *  This function must be called by a driver in order to use the rest
@@ -393,7 +393,7 @@ bool e1000_check_mng_mode(struct e1000_hw *hw)
 	if (hw->mac.ops.check_mng_mode)
 		return hw->mac.ops.check_mng_mode(hw);
 
-	return FALSE;
+	return false;
 }
 
 /**
@@ -683,7 +683,7 @@ bool e1000_enable_tx_pkt_filtering(struct e1000_hw *hw)
  *  It also does alignment considerations to do the writes in most efficient
  *  way.  Also fills up the sum of the buffer in *buffer parameter.
  **/
-s32 e1000_mng_host_if_write(struct e1000_hw * hw, u8 *buffer, u16 length,
+s32 e1000_mng_host_if_write(struct e1000_hw *hw, u8 *buffer, u16 length,
                             u16 offset, u8 *sum)
 {
 	if (hw->mac.ops.mng_host_if_write)
@@ -719,7 +719,7 @@ s32 e1000_mng_write_cmd_header(struct e1000_hw *hw,
  *  and also checks whether the previous command is completed.  It busy waits
  *  in case of previous command is not completed.
  **/
-s32 e1000_mng_enable_host_if(struct e1000_hw * hw)
+s32 e1000_mng_enable_host_if(struct e1000_hw *hw)
 {
 	if (hw->mac.ops.mng_enable_host_if)
 		return hw->mac.ops.mng_enable_host_if(hw);
@@ -919,7 +919,7 @@ s32 e1000_phy_commit(struct e1000_hw *hw)
  *  Success returns 0, Failure returns 1
  *
  *  The low power link up (lplu) state is set to the power management level D0
- *  and SmartSpeed is disabled when active is TRUE, else clear lplu for D0
+ *  and SmartSpeed is disabled when active is true, else clear lplu for D0
  *  and enable Smartspeed.  LPLU and Smartspeed are mutually exclusive.  LPLU
  *  is used during Dx states where the power conservation is most important.
  *  During driver activity, SmartSpeed should be enabled so performance is
@@ -941,7 +941,7 @@ s32 e1000_set_d0_lplu_state(struct e1000_hw *hw, bool active)
  *  Success returns 0, Failure returns 1
  *
  *  The low power link up (lplu) state is set to the power management level D3
- *  and SmartSpeed is disabled when active is TRUE, else clear lplu for D3
+ *  and SmartSpeed is disabled when active is true, else clear lplu for D3
  *  and enable Smartspeed.  LPLU and Smartspeed are mutually exclusive.  LPLU
  *  is used during Dx states where the power conservation is most important.
  *  During driver activity, SmartSpeed should be enabled so performance is

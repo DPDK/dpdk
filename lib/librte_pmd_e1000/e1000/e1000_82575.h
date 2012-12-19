@@ -62,19 +62,19 @@ struct e1000_adv_data_desc {
 	union {
 		u32 data;
 		struct {
-			u32 datalen :16; /* Data buffer length */
-			u32 rsvd    :4;
-			u32 dtyp    :4;  /* Descriptor type */
-			u32 dcmd    :8;  /* Descriptor command */
+			u32 datalen:16; /* Data buffer length */
+			u32 rsvd:4;
+			u32 dtyp:4;  /* Descriptor type */
+			u32 dcmd:8;  /* Descriptor command */
 		} config;
 	} lower;
 	union {
 		u32 data;
 		struct {
-			u32 status  :4;  /* Descriptor status */
-			u32 idx     :4;
-			u32 popts   :6;  /* Packet Options */
-			u32 paylen  :18; /* Payload length */
+			u32 status:4;  /* Descriptor status */
+			u32 idx:4;
+			u32 popts:6;  /* Packet Options */
+			u32 paylen:18; /* Payload length */
 		} options;
 	} upper;
 };
@@ -99,23 +99,23 @@ struct e1000_adv_context_desc {
 	union {
 		u32 ip_config;
 		struct {
-			u32 iplen    :9;
-			u32 maclen   :7;
-			u32 vlan_tag :16;
+			u32 iplen:9;
+			u32 maclen:7;
+			u32 vlan_tag:16;
 		} fields;
 	} ip_setup;
 	u32 seq_num;
 	union {
 		u64 l4_config;
 		struct {
-			u32 mkrloc :9;
-			u32 tucmd  :11;
-			u32 dtyp   :4;
-			u32 adv    :8;
-			u32 rsvd   :4;
-			u32 idx    :4;
-			u32 l4len  :8;
-			u32 mss    :16;
+			u32 mkrloc:9;
+			u32 tucmd:11;
+			u32 dtyp:4;
+			u32 adv:8;
+			u32 rsvd:4;
+			u32 idx:4;
+			u32 l4len:8;
+			u32 mss:16;
 		} fields;
 	} l4_setup;
 };
@@ -150,7 +150,8 @@ struct e1000_adv_context_desc {
 #define E1000_MRQC_ENABLE_RSS_8Q            0x00000002
 
 #define E1000_VMRCTL_MIRROR_PORT_SHIFT      8
-#define E1000_VMRCTL_MIRROR_DSTPORT_MASK    (7 << E1000_VMRCTL_MIRROR_PORT_SHIFT)
+#define E1000_VMRCTL_MIRROR_DSTPORT_MASK	(7 << \
+						 E1000_VMRCTL_MIRROR_PORT_SHIFT)
 #define E1000_VMRCTL_POOL_MIRROR_ENABLE     (1 << 0)
 #define E1000_VMRCTL_UPLINK_MIRROR_ENABLE   (1 << 1)
 #define E1000_VMRCTL_DOWNLINK_MIRROR_ENABLE (1 << 2)
@@ -298,14 +299,15 @@ union e1000_adv_tx_desc {
 #define E1000_ADVTXD_DCMD_DEXT    0x20000000 /* Descriptor extension (1=Adv) */
 #define E1000_ADVTXD_DCMD_VLE     0x40000000 /* VLAN pkt enable */
 #define E1000_ADVTXD_DCMD_TSE     0x80000000 /* TCP Seg enable */
-#define E1000_ADVTXD_MAC_LINKSEC  0x00040000 /* Apply LinkSec on packet */
-#define E1000_ADVTXD_MAC_TSTAMP   0x00080000 /* IEEE1588 Timestamp packet */
-#define E1000_ADVTXD_STAT_SN_CRC  0x00000002 /* NXTSEQ/SEED present in WB */
+#define E1000_ADVTXD_MAC_LINKSEC	0x00040000 /* Apply LinkSec on pkt */
+#define E1000_ADVTXD_MAC_TSTAMP		0x00080000 /* IEEE1588 Timestamp pkt */
+#define E1000_ADVTXD_STAT_SN_CRC	0x00000002 /* NXTSEQ/SEED prsnt in WB */
 #define E1000_ADVTXD_IDX_SHIFT    4  /* Adv desc Index shift */
 #define E1000_ADVTXD_POPTS_ISCO_1ST  0x00000000 /* 1st TSO of iSCSI PDU */
 #define E1000_ADVTXD_POPTS_ISCO_MDL  0x00000800 /* Middle TSO of iSCSI PDU */
 #define E1000_ADVTXD_POPTS_ISCO_LAST 0x00001000 /* Last TSO of iSCSI PDU */
-#define E1000_ADVTXD_POPTS_ISCO_FULL 0x00001800 /* 1st&Last TSO-full iSCSI PDU*/
+/* 1st & Last TSO-full iSCSI PDU*/
+#define E1000_ADVTXD_POPTS_ISCO_FULL	0x00001800
 #define E1000_ADVTXD_POPTS_IPSEC     0x00000400 /* IPSec offload request */
 #define E1000_ADVTXD_PAYLEN_SHIFT    14 /* Adv desc PAYLEN shift */
 
@@ -327,7 +329,8 @@ struct e1000_adv_tx_context_desc {
 #define E1000_ADVTXD_TUCMD_IPSEC_TYPE_ESP    0x00002000 /* IPSec Type ESP */
 /* IPSec Encrypt Enable for ESP */
 #define E1000_ADVTXD_TUCMD_IPSEC_ENCRYPT_EN  0x00004000
-#define E1000_ADVTXD_TUCMD_MKRREQ  0x00002000 /* Req requires Markers and CRC */
+/* Req requires Markers and CRC */
+#define E1000_ADVTXD_TUCMD_MKRREQ	0x00002000
 #define E1000_ADVTXD_L4LEN_SHIFT     8  /* Adv ctxt L4LEN shift */
 #define E1000_ADVTXD_MSS_SHIFT      16  /* Adv ctxt MSS shift */
 /* Adv ctxt IPSec SA IDX mask */
@@ -336,14 +339,14 @@ struct e1000_adv_tx_context_desc {
 #define E1000_ADVTXD_IPSEC_ESP_LEN_MASK      0x000000FF
 
 /* Additional Transmit Descriptor Control definitions */
-#define E1000_TXDCTL_QUEUE_ENABLE  0x02000000 /* Enable specific Tx Queue */
-#define E1000_TXDCTL_SWFLSH        0x04000000 /* Tx Desc. write-back flushing */
+#define E1000_TXDCTL_QUEUE_ENABLE	0x02000000 /* Ena specific Tx Queue */
+#define E1000_TXDCTL_SWFLSH		0x04000000 /* Tx Desc. wbk flushing */
 /* Tx Queue Arbitration Priority 0=low, 1=high */
 #define E1000_TXDCTL_PRIORITY      0x08000000
 
 /* Additional Receive Descriptor Control definitions */
-#define E1000_RXDCTL_QUEUE_ENABLE  0x02000000 /* Enable specific Rx Queue */
-#define E1000_RXDCTL_SWFLSH        0x04000000 /* Rx Desc. write-back flushing */
+#define E1000_RXDCTL_QUEUE_ENABLE	0x02000000 /* Ena specific Rx Queue */
+#define E1000_RXDCTL_SWFLSH		0x04000000 /* Rx Desc. wbk flushing */
 
 /* Direct Cache Access (DCA) definitions */
 #define E1000_DCA_CTRL_DCA_ENABLE  0x00000000 /* DCA Enable */
@@ -354,8 +357,8 @@ struct e1000_adv_tx_context_desc {
 
 #define E1000_DCA_RXCTRL_CPUID_MASK 0x0000001F /* Rx CPUID Mask */
 #define E1000_DCA_RXCTRL_DESC_DCA_EN (1 << 5) /* DCA Rx Desc enable */
-#define E1000_DCA_RXCTRL_HEAD_DCA_EN (1 << 6) /* DCA Rx Desc header enable */
-#define E1000_DCA_RXCTRL_DATA_DCA_EN (1 << 7) /* DCA Rx Desc payload enable */
+#define E1000_DCA_RXCTRL_HEAD_DCA_EN	(1 << 6) /* DCA Rx Desc header ena */
+#define E1000_DCA_RXCTRL_DATA_DCA_EN	(1 << 7) /* DCA Rx Desc payload ena */
 
 #define E1000_DCA_TXCTRL_CPUID_MASK 0x0000001F /* Tx CPUID Mask */
 #define E1000_DCA_TXCTRL_DESC_DCA_EN (1 << 5) /* DCA Tx Desc enable */
@@ -395,10 +398,10 @@ struct e1000_adv_tx_context_desc {
 #define E1000_FTQF_MASK_SOURCE_PORT_BP 0x80000000
 
 #define E1000_NVM_APME_82575          0x0400
-#define MAX_NUM_VFS                   8
+#define MAX_NUM_VFS			7
 
-#define E1000_DTXSWC_MAC_SPOOF_MASK   0x000000FF /* Per VF MAC spoof control */
-#define E1000_DTXSWC_VLAN_SPOOF_MASK  0x0000FF00 /* Per VF VLAN spoof control */
+#define E1000_DTXSWC_MAC_SPOOF_MASK	0x000000FF /* Per VF MAC spoof cntrl */
+#define E1000_DTXSWC_VLAN_SPOOF_MASK	0x0000FF00 /* Per VF VLAN spoof cntrl */
 #define E1000_DTXSWC_LLE_MASK         0x00FF0000 /* Per VF Local LB enables */
 #define E1000_DTXSWC_VLAN_SPOOF_SHIFT 8
 #define E1000_DTXSWC_LLE_SHIFT        16
@@ -460,6 +463,8 @@ struct e1000_adv_tx_context_desc {
 #define E1000_DTXCTL_OOS_ENABLE 0x0010
 #define E1000_DTXCTL_MDP_EN     0x0020
 #define E1000_DTXCTL_SPOOF_INT  0x0040
+
+#define E1000_EEPROM_PCS_AUTONEG_DISABLE_BIT	(1 << 14)
 
 #define ALL_QUEUES   0xFFFF
 

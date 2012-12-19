@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "e1000_api.h"
 
 static void e1000_stop_nvm(struct e1000_hw *hw);
-static void e1000_reload_nvm_generic(struct e1000_hw *hw);
+STATIC void e1000_reload_nvm_generic(struct e1000_hw *hw);
 
 /**
  *  e1000_init_nvm_ops_generic - Initialize NVM function pointers
@@ -1055,7 +1055,7 @@ out:
  *  Reloads the EEPROM by setting the "Reinitialize from EEPROM" bit in the
  *  extended control register.
  **/
-static void e1000_reload_nvm_generic(struct e1000_hw *hw)
+STATIC void e1000_reload_nvm_generic(struct e1000_hw *hw)
 {
 	u32 ctrl_ext;
 

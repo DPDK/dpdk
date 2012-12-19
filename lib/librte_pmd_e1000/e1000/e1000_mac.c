@@ -36,8 +36,8 @@ POSSIBILITY OF SUCH DAMAGE.
 static s32 e1000_set_default_fc_generic(struct e1000_hw *hw);
 static s32 e1000_commit_fc_settings_generic(struct e1000_hw *hw);
 static s32 e1000_poll_fiber_serdes_link_generic(struct e1000_hw *hw);
-static s32 e1000_validate_mdi_setting_generic(struct e1000_hw *hw);
-static void e1000_set_lan_id_multi_port_pcie(struct e1000_hw *hw);
+STATIC s32 e1000_validate_mdi_setting_generic(struct e1000_hw *hw);
+STATIC void e1000_set_lan_id_multi_port_pcie(struct e1000_hw *hw);
 
 /**
  *  e1000_init_mac_ops_generic - Initialize MAC function pointers
@@ -115,13 +115,13 @@ s32 e1000_null_link_info(struct e1000_hw *hw, u16 *s, u16 *d)
 }
 
 /**
- *  e1000_null_mng_mode - No-op function, return FALSE
+ *  e1000_null_mng_mode - No-op function, return false
  *  @hw: pointer to the HW structure
  **/
 bool e1000_null_mng_mode(struct e1000_hw *hw)
 {
 	DEBUGFUNC("e1000_null_mng_mode");
-	return FALSE;
+	return false;
 }
 
 /**
@@ -228,8 +228,7 @@ s32 e1000_get_bus_info_pcie_generic(struct e1000_hw *hw)
 
 	bus->type = e1000_bus_type_pci_express;
 
-	ret_val = e1000_read_pcie_cap_reg(hw,
-	                                  PCIE_LINK_STATUS,
+	ret_val = e1000_read_pcie_cap_reg(hw, PCIE_LINK_STATUS,
 	                                  &pcie_link_status);
 	if (ret_val) {
 		bus->width = e1000_bus_width_unknown;
@@ -248,8 +247,7 @@ s32 e1000_get_bus_info_pcie_generic(struct e1000_hw *hw)
 		}
 
 		bus->width = (enum e1000_bus_width)((pcie_link_status &
-		                                PCIE_LINK_WIDTH_MASK) >>
-		                               PCIE_LINK_WIDTH_SHIFT);
+			      PCIE_LINK_WIDTH_MASK) >> PCIE_LINK_WIDTH_SHIFT);
 	}
 
 	mac->ops.set_lan_id(hw);
@@ -265,7 +263,7 @@ s32 e1000_get_bus_info_pcie_generic(struct e1000_hw *hw)
  *  Determines the LAN function id by reading memory-mapped registers
  *  and swaps the port value if requested.
  **/
-static void e1000_set_lan_id_multi_port_pcie(struct e1000_hw *hw)
+STATIC void e1000_set_lan_id_multi_port_pcie(struct e1000_hw *hw)
 {
 	struct e1000_bus_info *bus = &hw->bus;
 	u32 reg;
@@ -461,7 +459,7 @@ out:
  *  Sets the receive address array register at index to the address passed
  *  in by addr.
  **/
-void e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index)
+STATIC void e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index)
 {
 	u32 rar_low, rar_high;
 
@@ -471,8 +469,7 @@ void e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index)
 	 * HW expects these in little endian so we reverse the byte order
 	 * from network order (big endian) to little endian
 	 */
-	rar_low = ((u32) addr[0] |
-	           ((u32) addr[1] << 8) |
+	rar_low = ((u32) addr[0] | ((u32) addr[1] << 8) |
 	           ((u32) addr[2] << 16) | ((u32) addr[3] << 24));
 
 	rar_high = ((u32) addr[4] | ((u32) addr[5] << 8));
@@ -726,7 +723,7 @@ s32 e1000_check_for_copper_link_generic(struct e1000_hw *hw)
 	if (!link)
 		goto out; /* No link detected */
 
-	mac->get_link_status = FALSE;
+	mac->get_link_status = false;
 
 	/*
 	 * Check if there was DownShift, must be checked
@@ -827,7 +824,7 @@ s32 e1000_check_for_fiber_link_generic(struct e1000_hw *hw)
 		E1000_WRITE_REG(hw, E1000_TXCW, mac->txcw);
 		E1000_WRITE_REG(hw, E1000_CTRL, (ctrl & ~E1000_CTRL_SLU));
 
-		mac->serdes_has_link = TRUE;
+		mac->serdes_has_link = true;
 	}
 
 out:
@@ -895,7 +892,7 @@ s32 e1000_check_for_serdes_link_generic(struct e1000_hw *hw)
 		E1000_WRITE_REG(hw, E1000_TXCW, mac->txcw);
 		E1000_WRITE_REG(hw, E1000_CTRL, (ctrl & ~E1000_CTRL_SLU));
 
-		mac->serdes_has_link = TRUE;
+		mac->serdes_has_link = true;
 	} else if (!(E1000_TXCW_ANE & E1000_READ_REG(hw, E1000_TXCW))) {
 		/*
 		 * If we force link for non-auto-negotiation switch, check
@@ -907,11 +904,11 @@ s32 e1000_check_for_serdes_link_generic(struct e1000_hw *hw)
 		rxcw = E1000_READ_REG(hw, E1000_RXCW);
 		if (rxcw & E1000_RXCW_SYNCH) {
 			if (!(rxcw & E1000_RXCW_IV)) {
-				mac->serdes_has_link = TRUE;
+				mac->serdes_has_link = true;
 				DEBUGOUT("SERDES: Link up - forced.\n");
 			}
 		} else {
-			mac->serdes_has_link = FALSE;
+			mac->serdes_has_link = false;
 			DEBUGOUT("SERDES: Link down - force failed.\n");
 		}
 	}
@@ -1105,7 +1102,7 @@ static s32 e1000_poll_fiber_serdes_link_generic(struct e1000_hw *hw)
 	DEBUGFUNC("e1000_poll_fiber_serdes_link_generic");
 
 	/*
-	 * If we have a signal (the cable is plugged in, or assumed TRUE for
+	 * If we have a signal (the cable is plugged in, or assumed true for
 	 * serdes media) then poll for a "Link-Up" indication in the Device
 	 * Status Register.  Time-out if a link isn't seen in 500 milliseconds
 	 * seconds (Auto-negotiation should complete in less than 500
@@ -1488,11 +1485,10 @@ s32 e1000_config_fc_after_link_up_generic(struct e1000_hw *hw)
 			 */
 			if (hw->fc.requested_mode == e1000_fc_full) {
 				hw->fc.current_mode = e1000_fc_full;
-				DEBUGOUT("Flow Control = FULL.\r\n");
+				DEBUGOUT("Flow Control = FULL.\n");
 			} else {
 				hw->fc.current_mode = e1000_fc_rx_pause;
-				DEBUGOUT("Flow Control = "
-				         "Rx PAUSE frames only.\r\n");
+				DEBUGOUT("Flow Control = Rx PAUSE frames only.\n");
 			}
 		}
 		/*
@@ -1508,7 +1504,7 @@ s32 e1000_config_fc_after_link_up_generic(struct e1000_hw *hw)
 		          (mii_nway_lp_ability_reg & NWAY_LPAR_PAUSE) &&
 		          (mii_nway_lp_ability_reg & NWAY_LPAR_ASM_DIR)) {
 			hw->fc.current_mode = e1000_fc_tx_pause;
-			DEBUGOUT("Flow Control = Tx PAUSE frames only.\r\n");
+			DEBUGOUT("Flow Control = Tx PAUSE frames only.\n");
 		}
 		/*
 		 * For transmitting PAUSE frames ONLY.
@@ -1523,14 +1519,14 @@ s32 e1000_config_fc_after_link_up_generic(struct e1000_hw *hw)
 		         !(mii_nway_lp_ability_reg & NWAY_LPAR_PAUSE) &&
 		         (mii_nway_lp_ability_reg & NWAY_LPAR_ASM_DIR)) {
 			hw->fc.current_mode = e1000_fc_rx_pause;
-			DEBUGOUT("Flow Control = Rx PAUSE frames only.\r\n");
+			DEBUGOUT("Flow Control = Rx PAUSE frames only.\n");
 		} else {
 			/*
 			 * Per the IEEE spec, at this point flow control
 			 * should be disabled.
 			 */
 			hw->fc.current_mode = e1000_fc_none;
-			DEBUGOUT("Flow Control = NONE.\r\n");
+			DEBUGOUT("Flow Control = NONE.\n");
 		}
 
 		/*
@@ -1842,8 +1838,7 @@ s32 e1000_setup_led_generic(struct e1000_hw *hw)
 		ledctl = E1000_READ_REG(hw, E1000_LEDCTL);
 		hw->mac.ledctl_default = ledctl;
 		/* Turn off LED0 */
-		ledctl &= ~(E1000_LEDCTL_LED0_IVRT |
-		            E1000_LEDCTL_LED0_BLINK |
+		ledctl &= ~(E1000_LEDCTL_LED0_IVRT | E1000_LEDCTL_LED0_BLINK |
 		            E1000_LEDCTL_LED0_MODE_MASK);
 		ledctl |= (E1000_LEDCTL_MODE_LED_OFF <<
 		           E1000_LEDCTL_LED0_MODE_SHIFT);
@@ -2056,7 +2051,7 @@ void e1000_reset_adaptive_generic(struct e1000_hw *hw)
 	mac->ifs_step_size = IFS_STEP;
 	mac->ifs_ratio = IFS_RATIO;
 
-	mac->in_ifs_mode = FALSE;
+	mac->in_ifs_mode = false;
 	E1000_WRITE_REG(hw, E1000_AIT, 0);
 out:
 	return;
@@ -2082,21 +2077,22 @@ void e1000_update_adaptive_generic(struct e1000_hw *hw)
 
 	if ((mac->collision_delta * mac->ifs_ratio) > mac->tx_packet_delta) {
 		if (mac->tx_packet_delta > MIN_NUM_XMITS) {
-			mac->in_ifs_mode = TRUE;
+			mac->in_ifs_mode = true;
 			if (mac->current_ifs_val < mac->ifs_max_val) {
 				if (!mac->current_ifs_val)
 					mac->current_ifs_val = mac->ifs_min_val;
 				else
 					mac->current_ifs_val +=
 						mac->ifs_step_size;
-				E1000_WRITE_REG(hw, E1000_AIT, mac->current_ifs_val);
+				E1000_WRITE_REG(hw, E1000_AIT,
+						mac->current_ifs_val);
 			}
 		}
 	} else {
 		if (mac->in_ifs_mode &&
 		    (mac->tx_packet_delta <= MIN_NUM_XMITS)) {
 			mac->current_ifs_val = 0;
-			mac->in_ifs_mode = FALSE;
+			mac->in_ifs_mode = false;
 			E1000_WRITE_REG(hw, E1000_AIT, 0);
 		}
 	}
@@ -2111,7 +2107,7 @@ out:
  *  Verify that when not using auto-negotiation that MDI/MDIx is correctly
  *  set, which is forced to MDI mode only.
  **/
-static s32 e1000_validate_mdi_setting_generic(struct e1000_hw *hw)
+STATIC s32 e1000_validate_mdi_setting_generic(struct e1000_hw *hw)
 {
 	s32 ret_val = E1000_SUCCESS;
 

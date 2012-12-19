@@ -125,4 +125,6 @@ static inline uint32_t e1000_read_addr(volatile void* addr)
 #define E1000_READ_REG_ARRAY_DWORD E1000_READ_REG_ARRAY
 #define E1000_WRITE_REG_ARRAY_DWORD E1000_WRITE_REG_ARRAY
 
+#define STATIC static
+
 #endif /* _E1000_OSDEP_H_ */
