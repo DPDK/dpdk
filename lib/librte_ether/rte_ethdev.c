@@ -126,6 +126,11 @@ struct rte_eth_dev_callback {
 	enum rte_eth_event_type event;          /**< Interrupt event type */
 };
 
+enum {
+	STAT_QMAP_TX = 0,
+	STAT_QMAP_RX
+};
+
 static inline void
 rte_eth_dev_data_alloc(void)
 {
@@ -729,6 +734,43 @@ rte_eth_stats_reset(uint8_t port_id)
 	FUNC_PTR_OR_RET(*dev->dev_ops->stats_reset);
 	(*dev->dev_ops->stats_reset)(dev);
 }
+
+
+static int
+set_queue_stats_mapping(uint8_t port_id, uint16_t queue_id, uint8_t stat_idx,
+		uint8_t is_rx)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_stats_mapping_set, -ENOTSUP);
+	return (*dev->dev_ops->queue_stats_mapping_set)
+			(dev, queue_id, stat_idx, is_rx);
+}
+
+
+int
+rte_eth_dev_set_tx_queue_stats_mapping(uint8_t port_id, uint16_t tx_queue_id,
+		uint8_t stat_idx)
+{
+	return set_queue_stats_mapping(port_id, tx_queue_id, stat_idx,
+			STAT_QMAP_TX);
+}
+
+
+int
+rte_eth_dev_set_rx_queue_stats_mapping(uint8_t port_id, uint16_t rx_queue_id,
+		uint8_t stat_idx)
+{
+	return set_queue_stats_mapping(port_id, rx_queue_id, stat_idx,
+			STAT_QMAP_RX);
+}
+
 
 void
 rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info)

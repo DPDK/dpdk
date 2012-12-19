@@ -116,6 +116,7 @@
  *     - VLAN filtering configuration
  *     - MAC addresses supplied to MAC address array
  *     - flow director filtering mode (but not filtering rules)
+ *     - NIC queue statistics mappings
  *
  * Any other configuration will not be stored and will need to be re-entered
  * after a call to rte_eth_dev_start().
@@ -192,6 +193,16 @@ struct rte_eth_stats {
 	uint64_t rx_nombuf; /**< Total number of RX mbuf allocation failures. */
 	uint64_t fdirmatch; /**< Total number of RX packets matching a filter. */
 	uint64_t fdirmiss;  /**< Total number of RX packets not matching any filter. */
+	uint64_t q_ipackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	/**< Total number of queue RX packets. */
+	uint64_t q_opackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	/**< Total number of queue TX packets. */
+	uint64_t q_ibytes[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	/**< Total number of successfully received queue bytes. */
+	uint64_t q_obytes[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	/**< Total number of successfully transmitted queue bytes. */
+	uint64_t q_errors[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	/**< Total number of queue packets received that are dropped. */
 };
 
 /**
@@ -597,6 +608,12 @@ typedef void (*eth_stats_get_t)(struct rte_eth_dev *dev,
 typedef void (*eth_stats_reset_t)(struct rte_eth_dev *dev);
 /**< @internal Reset global I/O statistics of an Ethernet device to 0. */
 
+typedef int (*eth_queue_stats_mapping_set_t)(struct rte_eth_dev *dev,
+					     uint16_t queue_id,
+					     uint8_t stat_idx,
+					     uint8_t is_rx);
+/**< @internal Set a queue statistics mapping for a tx/rx queue of an Ethernet device. */
+
 typedef void (*eth_dev_infos_get_t)(struct rte_eth_dev *dev,
 				    struct rte_eth_dev_info *dev_info);
 /**< @internal Get specific informations of an Ethernet device. */
@@ -704,6 +721,8 @@ struct eth_dev_ops {
 	eth_link_update_t          link_update;   /**< Get device link state. */
 	eth_stats_get_t            stats_get;     /**< Get device statistics. */
 	eth_stats_reset_t          stats_reset;   /**< Reset device statistics. */
+	eth_queue_stats_mapping_set_t queue_stats_mapping_set;
+	/**< Configure per queue stat counter mapping. */
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
 	vlan_filter_set_t          vlan_filter_set;  /**< Filter VLAN Setup. */
 	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device RX queue.*/
@@ -1225,6 +1244,48 @@ extern void rte_eth_stats_get(uint8_t port_id, struct rte_eth_stats *stats);
  *   The port identifier of the Ethernet device.
  */
 extern void rte_eth_stats_reset(uint8_t port_id);
+
+/**
+ *  Set a mapping for the specified transmit queue to the specified per-queue
+ *  statistics counter.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param tx_queue_id
+ *   The index of the transmit queue for which a queue stats mapping is required.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param stat_idx
+ *   The per-queue packet statistics functionality number that the transmit
+ *   queue is to be assigned.
+ *   The value must be in the range [0, RTE_MAX_ETHPORT_QUEUE_STATS_MAPS - 1].
+ * @return
+ *   Zero if successful. Non-zero otherwise.
+ */
+extern int rte_eth_dev_set_tx_queue_stats_mapping(uint8_t port_id,
+						  uint16_t tx_queue_id,
+						  uint8_t stat_idx);
+
+/**
+ *  Set a mapping for the specified receive queue to the specified per-queue
+ *  statistics counter.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param rx_queue_id
+ *   The index of the receive queue for which a queue stats mapping is required.
+ *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param stat_idx
+ *   The per-queue packet statistics functionality number that the receive
+ *   queue is to be assigned.
+ *   The value must be in the range [0, RTE_MAX_ETHPORT_QUEUE_STATS_MAPS - 1].
+ * @return
+ *   Zero if successful. Non-zero otherwise.
+ */
+extern int rte_eth_dev_set_rx_queue_stats_mapping(uint8_t port_id,
+						  uint16_t rx_queue_id,
+						  uint8_t stat_idx);
 
 /**
  * Retrieve the Ethernet address of an Ethernet device.
