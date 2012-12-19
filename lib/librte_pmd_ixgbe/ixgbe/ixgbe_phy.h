@@ -94,6 +94,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_TN_LASI_STATUS_REG        0x9005
 #define IXGBE_TN_LASI_STATUS_TEMP_ALARM 0x0008
 
+#ident "$Id: ixgbe_phy.h,v 1.48 2012/01/04 01:49:02 jtkirshe Exp $"
+
 s32 ixgbe_init_phy_ops_generic(struct ixgbe_hw *hw);
 bool ixgbe_validate_phy_addr(struct ixgbe_hw *hw, u32 phy_addr);
 enum ixgbe_phy_type ixgbe_get_phy_type_from_id(u32 phy_id);
@@ -124,6 +126,7 @@ s32 ixgbe_get_phy_firmware_version_generic(struct ixgbe_hw *hw,
                                        u16 *firmware_version);
 
 s32 ixgbe_reset_phy_nl(struct ixgbe_hw *hw);
+s32 ixgbe_identify_module_generic(struct ixgbe_hw *hw);
 s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw);
 s32 ixgbe_get_sfp_init_sequence_offsets(struct ixgbe_hw *hw,
                                         u16 *list_offset,
@@ -137,4 +140,5 @@ s32 ixgbe_read_i2c_eeprom_generic(struct ixgbe_hw *hw, u8 byte_offset,
                                   u8 *eeprom_data);
 s32 ixgbe_write_i2c_eeprom_generic(struct ixgbe_hw *hw, u8 byte_offset,
                                    u8 eeprom_data);
+void ixgbe_i2c_bus_clear(struct ixgbe_hw *hw);
 #endif /* _IXGBE_PHY_H_ */

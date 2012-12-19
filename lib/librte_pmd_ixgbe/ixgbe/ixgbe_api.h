@@ -35,8 +35,14 @@ POSSIBILITY OF SUCH DAMAGE.
 #define _IXGBE_API_H_
 
 #include "ixgbe_type.h"
+#ident "$Id: ixgbe_api.h,v 1.115 2012/08/23 23:30:15 jtkirshe Exp $"
 
 s32 ixgbe_init_shared_code(struct ixgbe_hw *hw);
+
+extern s32 ixgbe_init_ops_82598(struct ixgbe_hw *hw);
+extern s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw);
+extern s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw);
+extern s32 ixgbe_init_ops_vf(struct ixgbe_hw *hw);
 
 s32 ixgbe_set_mac_type(struct ixgbe_hw *hw);
 s32 ixgbe_init_hw(struct ixgbe_hw *hw);
@@ -98,6 +104,7 @@ s32 ixgbe_set_rar(struct ixgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
                   u32 enable_addr);
 s32 ixgbe_clear_rar(struct ixgbe_hw *hw, u32 index);
 s32 ixgbe_set_vmdq(struct ixgbe_hw *hw, u32 rar, u32 vmdq);
+s32 ixgbe_set_vmdq_san_mac(struct ixgbe_hw *hw, u32 vmdq);
 s32 ixgbe_clear_vmdq(struct ixgbe_hw *hw, u32 rar, u32 vmdq);
 s32 ixgbe_init_rx_addrs(struct ixgbe_hw *hw);
 u32 ixgbe_get_num_rx_addrs(struct ixgbe_hw *hw);
@@ -112,8 +119,9 @@ s32 ixgbe_disable_mc(struct ixgbe_hw *hw);
 s32 ixgbe_clear_vfta(struct ixgbe_hw *hw);
 s32 ixgbe_set_vfta(struct ixgbe_hw *hw, u32 vlan,
                    u32 vind, bool vlan_on);
-
-s32 ixgbe_fc_enable(struct ixgbe_hw *hw, s32 packetbuf_num);
+s32 ixgbe_set_vlvf(struct ixgbe_hw *hw, u32 vlan, u32 vind,
+		   bool vlan_on, bool *vfta_changed);
+s32 ixgbe_fc_enable(struct ixgbe_hw *hw);
 s32 ixgbe_set_fw_drv_ver(struct ixgbe_hw *hw, u8 maj, u8 min, u8 build,
                          u8 ver);
 void ixgbe_set_mta(struct ixgbe_hw *hw, u8 *mc_addr);
@@ -125,6 +133,8 @@ s32 ixgbe_init_uta_tables(struct ixgbe_hw *hw);
 s32 ixgbe_read_i2c_eeprom(struct ixgbe_hw *hw, u8 byte_offset, u8 *eeprom_data);
 u32 ixgbe_get_supported_physical_layer(struct ixgbe_hw *hw);
 s32 ixgbe_enable_rx_dma(struct ixgbe_hw *hw, u32 regval);
+s32 ixgbe_disable_sec_rx_path(struct ixgbe_hw *hw);
+s32 ixgbe_enable_sec_rx_path(struct ixgbe_hw *hw);
 s32 ixgbe_reinit_fdir_tables_82599(struct ixgbe_hw *hw);
 s32 ixgbe_init_fdir_signature_82599(struct ixgbe_hw *hw, u32 fdirctrl);
 s32 ixgbe_init_fdir_perfect_82599(struct ixgbe_hw *hw, u32 fdirctrl);
@@ -149,6 +159,7 @@ void ixgbe_atr_compute_perfect_hash_82599(union ixgbe_atr_input *input,
 					  union ixgbe_atr_input *mask);
 u32 ixgbe_atr_compute_sig_hash_82599(union ixgbe_atr_hash_dword input,
                                      union ixgbe_atr_hash_dword common);
+bool ixgbe_verify_lesm_fw_enabled_82599(struct ixgbe_hw *hw);
 s32 ixgbe_read_i2c_byte(struct ixgbe_hw *hw, u8 byte_offset, u8 dev_addr,
                         u8 *data);
 s32 ixgbe_write_i2c_byte(struct ixgbe_hw *hw, u8 byte_offset, u8 dev_addr,

@@ -55,11 +55,18 @@
 #pragma warning(disable:1419) /* External declaration in primary source file */
 #pragma warning(disable:111)  /* Statement is unreachable */
 #pragma warning(disable:981)  /* Operands are evaluated in unspecified order */
+#pragma warning(disable:593)  /* Variable was set but never used */
+#pragma warning(disable:174)  /* expression has no effect */
 #else
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wformat"
 #pragma GCC diagnostic ignored "-Wuninitialized"
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#pragma GCC diagnostic ignored "-Wunused-value"
+#pragma GCC diagnostic ignored "-Wformat-extra-args"
+#if (((__GNUC__) >= 4) && ((__GNUC_MINOR__) >= 6))
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
 #if (((__GNUC__) >= 4) && ((__GNUC_MINOR__) >= 7))
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
@@ -82,6 +89,12 @@
 #define FALSE               0
 #define TRUE                1
 
+#define false               0
+#define true                1
+#define min(a,b)	RTE_MIN(a,b) 
+
+#define EWARN(hw, S, args...)     DEBUGOUT1(S, ##args)
+
 /* Bunch of defines for shared code bogosity */
 #define UNREFERENCED_PARAMETER(_p)
 #define UNREFERENCED_1PARAMETER(_p)
@@ -89,10 +102,11 @@
 #define UNREFERENCED_3PARAMETER(_p, _q, _r)
 #define UNREFERENCED_4PARAMETER(_p, _q, _r, _s)
 
-
 #define STATIC static
 #define IXGBE_NTOHL(_i)	rte_be_to_cpu_32(_i)
 #define IXGBE_NTOHS(_i)	rte_be_to_cpu_16(_i)
+#define IXGBE_CPU_TO_LE32(_i)  rte_cpu_to_le_32(_i)
+#define IXGBE_LE32_TO_CPUS(_i) rte_le_to_cpu_32(_i)
 
 typedef uint8_t		u8;
 typedef int8_t		s8;

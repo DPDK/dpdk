@@ -37,20 +37,25 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_pmd_ixgbe.a
 
-CFLAGS += -O3
+CFLAGS += -O3 -Wno-deprecated
 CFLAGS += $(WERROR_FLAGS)
+
+VPATH += $(RTE_SDK)/lib/librte_pmd_ixgbe/ixgbe
 
 #
 # all source are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe/ixgbe_common.c
-SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe/ixgbe_82598.c
-SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe/ixgbe_82599.c
-SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe/ixgbe_x540.c
-SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe/ixgbe_phy.c
-SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe/ixgbe_api.c
-SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe/ixgbe_vf.c
-SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe/ixgbe_mbx.c
+SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_common.c
+SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_82598.c
+SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_82599.c
+SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_x540.c
+SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_phy.c
+SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_api.c
+SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_vf.c
+SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_dcb.c
+SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_dcb_82599.c
+SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_dcb_82598.c
+SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_mbx.c
 SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_fdir.c

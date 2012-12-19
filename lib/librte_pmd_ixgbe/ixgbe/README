@@ -34,11 +34,9 @@
 Intel® IXGBE driver
 ===================
 
-This directory contains code from the Intel® Network Adapter Driver for PCI-E
-10 Gigabit Network Connections under FreeBSD, version 2.4.4, dated 10/25/2011.
-This code is available from
-`http://downloadmirror.intel.com/14688/eng/ixgbe-2.4.4.tar.gz`
-
+This directory contains source code of FreeBSD ixgbe driver of version
+cid-10g-shared-code.2012.11.09 released by LAD. The sub-directory of lad/
+contains the original source package.
 This driver is valid for the product(s) listed below
 
 * Intel® 10 Gigabit AF DA Dual Port Server Adapter

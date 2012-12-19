@@ -31,35 +31,22 @@ POSSIBILITY OF SUCH DAMAGE.
 
 ***************************************************************************/
 
-#ifndef _IXGBE_X540_H_
-#define _IXGBE_X540_H_
+#ifndef _IXGBE_82598_H_
+#define _IXGBE_82598_H_
+#ident "$Id: ixgbe_82598.h,v 1.3 2012/03/27 22:16:51 jtkirshe Exp $"
 
-#include "ixgbe_type.h"
-#ident "$Id: ixgbe_x540.h,v 1.6 2012/08/09 20:43:58 cmwyborn Exp $"
-
-s32 ixgbe_get_link_capabilities_X540(struct ixgbe_hw *hw,
-				     ixgbe_link_speed *speed, bool *autoneg);
-enum ixgbe_media_type ixgbe_get_media_type_X540(struct ixgbe_hw *hw);
-s32 ixgbe_setup_mac_link_X540(struct ixgbe_hw *hw, ixgbe_link_speed speed,
-			      bool autoneg, bool link_up_wait_to_complete);
-s32 ixgbe_reset_hw_X540(struct ixgbe_hw *hw);
-s32 ixgbe_start_hw_X540(struct ixgbe_hw *hw);
-u32 ixgbe_get_supported_physical_layer_X540(struct ixgbe_hw *hw);
-
-s32 ixgbe_init_eeprom_params_X540(struct ixgbe_hw *hw);
-s32 ixgbe_read_eerd_X540(struct ixgbe_hw *hw, u16 offset, u16 *data);
-s32 ixgbe_read_eerd_buffer_X540(struct ixgbe_hw *hw, u16 offset, u16 words,
-				u16 *data);
-s32 ixgbe_write_eewr_X540(struct ixgbe_hw *hw, u16 offset, u16 data);
-s32 ixgbe_write_eewr_buffer_X540(struct ixgbe_hw *hw, u16 offset, u16 words,
-				 u16 *data);
-s32 ixgbe_update_eeprom_checksum_X540(struct ixgbe_hw *hw);
-s32 ixgbe_validate_eeprom_checksum_X540(struct ixgbe_hw *hw, u16 *checksum_val);
-u16 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw);
-
-s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask);
-void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask);
-
-s32 ixgbe_blink_led_start_X540(struct ixgbe_hw *hw, u32 index);
-s32 ixgbe_blink_led_stop_X540(struct ixgbe_hw *hw, u32 index);
-#endif /* _IXGBE_X540_H_ */
+u32 ixgbe_get_pcie_msix_count_82598(struct ixgbe_hw *hw);
+s32 ixgbe_fc_enable_82598(struct ixgbe_hw *hw);
+s32 ixgbe_start_hw_82598(struct ixgbe_hw *hw);
+void ixgbe_enable_relaxed_ordering_82598(struct ixgbe_hw *hw);
+s32 ixgbe_set_vmdq_82598(struct ixgbe_hw *hw, u32 rar, u32 vmdq);
+s32 ixgbe_set_vfta_82598(struct ixgbe_hw *hw, u32 vlan, u32 vind, bool vlan_on);
+s32 ixgbe_read_analog_reg8_82598(struct ixgbe_hw *hw, u32 reg, u8 *val);
+s32 ixgbe_write_analog_reg8_82598(struct ixgbe_hw *hw, u32 reg, u8 val);
+s32 ixgbe_read_i2c_eeprom_82598(struct ixgbe_hw *hw, u8 byte_offset,
+				u8 *eeprom_data);
+u32 ixgbe_get_supported_physical_layer_82598(struct ixgbe_hw *hw);
+s32 ixgbe_init_phy_ops_82598(struct ixgbe_hw *hw);
+void ixgbe_set_lan_id_multi_port_pcie_82598(struct ixgbe_hw *hw);
+void ixgbe_set_pcie_completion_timeout(struct ixgbe_hw *hw);
+#endif /* _IXGBE_82598_H_ */

@@ -37,32 +37,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_common.h"
 #include "ixgbe_phy.h"
 
-s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw);
-s32 ixgbe_get_link_capabilities_X540(struct ixgbe_hw *hw,
-                                      ixgbe_link_speed *speed,
-                                      bool *autoneg);
-enum ixgbe_media_type ixgbe_get_media_type_X540(struct ixgbe_hw *hw);
-s32 ixgbe_setup_mac_link_X540(struct ixgbe_hw *hw,
-                               ixgbe_link_speed speed,
-                               bool autoneg, bool link_up_wait_to_complete);
-s32 ixgbe_reset_hw_X540(struct ixgbe_hw *hw);
-s32 ixgbe_start_hw_X540(struct ixgbe_hw *hw);
-u32 ixgbe_get_supported_physical_layer_X540(struct ixgbe_hw *hw);
-
-s32 ixgbe_init_eeprom_params_X540(struct ixgbe_hw *hw);
-s32 ixgbe_read_eerd_X540(struct ixgbe_hw *hw, u16 offset, u16 *data);
-s32 ixgbe_read_eerd_buffer_X540(struct ixgbe_hw *hw,
-                                u16 offset, u16 words, u16 *data);
-s32 ixgbe_write_eewr_X540(struct ixgbe_hw *hw, u16 offset, u16 data);
-s32 ixgbe_write_eewr_buffer_X540(struct ixgbe_hw *hw,
-                                 u16 offset, u16 words, u16 *data);
-s32 ixgbe_update_eeprom_checksum_X540(struct ixgbe_hw *hw);
-s32 ixgbe_validate_eeprom_checksum_X540(struct ixgbe_hw *hw, u16 *checksum_val);
-u16 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw);
-
-s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask);
-void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask);
-
 STATIC s32 ixgbe_update_flash_X540(struct ixgbe_hw *hw);
 STATIC s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw);
 STATIC s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw);
@@ -72,7 +46,7 @@ STATIC void ixgbe_release_swfw_sync_semaphore(struct ixgbe_hw *hw);
  *  ixgbe_init_ops_X540 - Inits func ptrs and MAC type
  *  @hw: pointer to hardware structure
  *
- *  Initialize the function pointers and assign the MAC type for 82599.
+ *  Initialize the function pointers and assign the MAC type for X540.
  *  Does not touch the hardware.
  **/
 s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
@@ -118,13 +92,17 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
 	mac->ops.get_fcoe_boot_status = &ixgbe_get_fcoe_boot_status_generic;
 	mac->ops.acquire_swfw_sync = &ixgbe_acquire_swfw_sync_X540;
 	mac->ops.release_swfw_sync = &ixgbe_release_swfw_sync_X540;
+	mac->ops.disable_sec_rx_path = &ixgbe_disable_sec_rx_path_generic;
+	mac->ops.enable_sec_rx_path = &ixgbe_enable_sec_rx_path_generic;
 
 	/* RAR, Multicast, VLAN */
 	mac->ops.set_vmdq = &ixgbe_set_vmdq_generic;
+	mac->ops.set_vmdq_san_mac = &ixgbe_set_vmdq_san_mac_generic;
 	mac->ops.clear_vmdq = &ixgbe_clear_vmdq_generic;
 	mac->ops.insert_mac_addr = &ixgbe_insert_mac_addr_generic;
 	mac->rar_highwater = 1;
 	mac->ops.set_vfta = &ixgbe_set_vfta_generic;
+	mac->ops.set_vlvf = &ixgbe_set_vlvf_generic;
 	mac->ops.clear_vfta = &ixgbe_clear_vfta_generic;
 	mac->ops.init_uta_tables = &ixgbe_init_uta_tables_generic;
 	mac->ops.set_mac_anti_spoofing = &ixgbe_set_mac_anti_spoofing;
@@ -191,7 +169,6 @@ s32 ixgbe_get_link_capabilities_X540(struct ixgbe_hw *hw,
  **/
 enum ixgbe_media_type ixgbe_get_media_type_X540(struct ixgbe_hw *hw)
 {
-	UNREFERENCED_1PARAMETER(hw);
 	return ixgbe_media_type_copper;
 }
 
@@ -284,6 +261,9 @@ mac_reset_top:
 	if (ixgbe_validate_mac_addr(hw->mac.san_addr) == 0) {
 		hw->mac.ops.set_rar(hw, hw->mac.num_rar_entries - 1,
 		                    hw->mac.san_addr, 0, IXGBE_RAH_AV);
+
+		/* Save the SAN MAC RAR index */
+		hw->mac.san_mac_rar_index = hw->mac.num_rar_entries - 1;
 
 		/* Reserve the last RAR for the SAN MAC address */
 		hw->mac.num_rar_entries--;
@@ -935,18 +915,22 @@ s32 ixgbe_blink_led_start_X540(struct ixgbe_hw *hw, u32 index)
 {
 	u32 macc_reg;
 	u32 ledctl_reg;
+	ixgbe_link_speed speed;
+	bool link_up;
 
 	DEBUGFUNC("ixgbe_blink_led_start_X540");
 
 	/*
-	 * In order for the blink bit in the LED control register
-	 * to work, link and speed must be forced in the MAC. We
-	 * will reverse this when we stop the blinking.
+	 * Link should be up in order for the blink bit in the LED control
+	 * register to work. Force link and speed in the MAC if link is down.
+	 * This will be reversed when we stop the blinking.
 	 */
+	hw->mac.ops.check_link(hw, &speed, &link_up, false);
+	if (link_up == false) {
 	macc_reg = IXGBE_READ_REG(hw, IXGBE_MACC);
 	macc_reg |= IXGBE_MACC_FLU | IXGBE_MACC_FSV_10G | IXGBE_MACC_FS;
 	IXGBE_WRITE_REG(hw, IXGBE_MACC, macc_reg);
-
+	}
 	/* Set the LED to LINK_UP + BLINK. */
 	ledctl_reg = IXGBE_READ_REG(hw, IXGBE_LEDCTL);
 	ledctl_reg &= ~IXGBE_LED_MODE_MASK(index);

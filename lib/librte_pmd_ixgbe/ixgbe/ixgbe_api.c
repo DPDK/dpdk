@@ -33,11 +33,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "ixgbe_api.h"
 #include "ixgbe_common.h"
-
-extern s32 ixgbe_init_ops_82598(struct ixgbe_hw *hw);
-extern s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw);
-extern s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw);
-extern s32 ixgbe_init_ops_vf(struct ixgbe_hw *hw);
+#ident "$Id: ixgbe_api.c,v 1.187 2012/11/08 10:11:52 jtkirshe Exp $"
 
 /**
  *  ixgbe_init_shared_code - Initialize the shared code
@@ -97,7 +93,6 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_set_mac_type\n");
 
-	if (hw->vendor_id == IXGBE_INTEL_VENDOR_ID) {
 		switch (hw->device_id) {
 		case IXGBE_DEV_ID_82598:
 		case IXGBE_DEV_ID_82598_BX:
@@ -122,27 +117,29 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 		case IXGBE_DEV_ID_82599_BACKPLANE_FCOE:
 		case IXGBE_DEV_ID_82599_SFP_FCOE:
 		case IXGBE_DEV_ID_82599_SFP_EM:
+	case IXGBE_DEV_ID_82599_SFP_SF2:
+	case IXGBE_DEV_ID_82599_SFP_SF_QP:
 		case IXGBE_DEV_ID_82599EN_SFP:
 		case IXGBE_DEV_ID_82599_CX4:
 		case IXGBE_DEV_ID_82599_T3_LOM:
 			hw->mac.type = ixgbe_mac_82599EB;
 			break;
 		case IXGBE_DEV_ID_82599_VF:
+	case IXGBE_DEV_ID_82599_VF_HV:
 			hw->mac.type = ixgbe_mac_82599_vf;
 			break;
 		case IXGBE_DEV_ID_X540_VF:
+	case IXGBE_DEV_ID_X540_VF_HV:
 			hw->mac.type = ixgbe_mac_X540_vf;
 			break;
 		case IXGBE_DEV_ID_X540T:
+	case IXGBE_DEV_ID_X540T1:
 			hw->mac.type = ixgbe_mac_X540;
 			break;
 		default:
 			ret_val = IXGBE_ERR_DEVICE_NOT_SUPPORTED;
 			break;
 		}
-	} else {
-		ret_val = IXGBE_ERR_DEVICE_NOT_SUPPORTED;
-	}
 
 	DEBUGOUT2("ixgbe_set_mac_type found mac: %d, returns: %d\n",
 	          hw->mac.type, ret_val);
@@ -815,6 +812,18 @@ s32 ixgbe_set_vmdq(struct ixgbe_hw *hw, u32 rar, u32 vmdq)
 {
 	return ixgbe_call_func(hw, hw->mac.ops.set_vmdq, (hw, rar, vmdq),
 	                       IXGBE_NOT_IMPLEMENTED);
+
+}
+
+/**
+ *  ixgbe_set_vmdq_san_mac - Associate VMDq index 127 with a receive address
+ *  @hw: pointer to hardware structure
+ *  @vmdq: VMDq default pool index
+ **/
+s32 ixgbe_set_vmdq_san_mac(struct ixgbe_hw *hw, u32 vmdq)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.set_vmdq_san_mac,
+			       (hw, vmdq), IXGBE_NOT_IMPLEMENTED);
 }
 
 /**
@@ -944,15 +953,32 @@ s32 ixgbe_set_vfta(struct ixgbe_hw *hw, u32 vlan, u32 vind, bool vlan_on)
 }
 
 /**
+ *  ixgbe_set_vlvf - Set VLAN Pool Filter
+ *  @hw: pointer to hardware structure
+ *  @vlan: VLAN id to write to VLAN filter
+ *  @vind: VMDq output index that maps queue to VLAN id in VFVFB
+ *  @vlan_on: boolean flag to turn on/off VLAN in VFVF
+ *  @vfta_changed: pointer to boolean flag which indicates whether VFTA
+ *                 should be changed
+ *
+ *  Turn on/off specified bit in VLVF table.
+ **/
+s32 ixgbe_set_vlvf(struct ixgbe_hw *hw, u32 vlan, u32 vind, bool vlan_on,
+		    bool *vfta_changed)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.set_vlvf, (hw, vlan, vind,
+			       vlan_on, vfta_changed), IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
  *  ixgbe_fc_enable - Enable flow control
  *  @hw: pointer to hardware structure
- *  @packetbuf_num: packet buffer number (0-7)
  *
  *  Configures the flow control settings based on SW configuration.
  **/
-s32 ixgbe_fc_enable(struct ixgbe_hw *hw, s32 packetbuf_num)
+s32 ixgbe_fc_enable(struct ixgbe_hw *hw)
 {
-	return ixgbe_call_func(hw, hw->mac.ops.fc_enable, (hw, packetbuf_num),
+	return ixgbe_call_func(hw, hw->mac.ops.fc_enable, (hw),
 	                       IXGBE_NOT_IMPLEMENTED);
 }
 
@@ -1098,6 +1124,30 @@ s32 ixgbe_enable_rx_dma(struct ixgbe_hw *hw, u32 regval)
 {
 	return ixgbe_call_func(hw, hw->mac.ops.enable_rx_dma,
 	                       (hw, regval), IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ *  ixgbe_disable_sec_rx_path - Stops the receive data path
+ *  @hw: pointer to hardware structure
+ *
+ *  Stops the receive data path.
+ **/
+s32 ixgbe_disable_sec_rx_path(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.disable_sec_rx_path,
+				(hw), IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ *  ixgbe_enable_sec_rx_path - Enables the receive data path
+ *  @hw: pointer to hardware structure
+ *
+ *  Enables the receive data path.
+ **/
+s32 ixgbe_enable_sec_rx_path(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.enable_sec_rx_path,
+				(hw), IXGBE_NOT_IMPLEMENTED);
 }
 
 /**
