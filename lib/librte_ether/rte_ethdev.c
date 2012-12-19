@@ -339,6 +339,66 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		    return (-EINVAL);
 		}
 	}
+	if (dev_conf->txmode.mq_mode == ETH_VMDQ_DCB_TX) {
+		const struct rte_eth_vmdq_dcb_tx_conf *conf;
+
+		if (nb_tx_q != ETH_VMDQ_DCB_NUM_QUEUES) {
+			PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB, nb_tx_q "
+					"!= %d\n",
+					port_id, ETH_VMDQ_DCB_NUM_QUEUES);
+			return (-EINVAL);
+		}
+		conf = &(dev_conf->tx_adv_conf.vmdq_dcb_tx_conf);
+		if (! (conf->nb_queue_pools == ETH_16_POOLS ||
+		       conf->nb_queue_pools == ETH_32_POOLS)) {
+			PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB selected, "
+				    "nb_queue_pools != %d or nb_queue_pools "
+				    "!= %d\n",
+				    port_id, ETH_16_POOLS, ETH_32_POOLS);
+			return (-EINVAL);
+		}
+	}
+	
+	/* For DCB mode check our configuration before we go further */
+	if (dev_conf->rxmode.mq_mode == ETH_DCB_RX) {
+		const struct rte_eth_dcb_rx_conf *conf;
+
+		if (nb_rx_q != ETH_DCB_NUM_QUEUES) {
+			PMD_DEBUG_TRACE("ethdev port_id=%d DCB, nb_rx_q "
+					"!= %d\n",
+					port_id, ETH_DCB_NUM_QUEUES);
+			return (-EINVAL);
+		}
+		conf = &(dev_conf->rx_adv_conf.dcb_rx_conf);
+		if (! (conf->nb_tcs == ETH_4_TCS ||
+		       conf->nb_tcs == ETH_8_TCS)) {
+			PMD_DEBUG_TRACE("ethdev port_id=%d DCB selected, "
+				    "nb_tcs != %d or nb_tcs "
+				    "!= %d\n",
+				    port_id, ETH_4_TCS, ETH_8_TCS);
+			return (-EINVAL);
+		}
+	}
+
+	if (dev_conf->txmode.mq_mode == ETH_DCB_TX) {
+		const struct rte_eth_dcb_tx_conf *conf;
+
+		if (nb_tx_q != ETH_DCB_NUM_QUEUES) {
+			PMD_DEBUG_TRACE("ethdev port_id=%d DCB, nb_tx_q "
+					"!= %d\n",
+					port_id, ETH_DCB_NUM_QUEUES);
+			return (-EINVAL);
+		}
+		conf = &(dev_conf->tx_adv_conf.dcb_tx_conf);
+		if (! (conf->nb_tcs == ETH_4_TCS ||
+		       conf->nb_tcs == ETH_8_TCS)) {
+			PMD_DEBUG_TRACE("ethdev port_id=%d DCB selected, "
+				    "nb_tcs != %d or nb_tcs "
+				    "!= %d\n",
+				    port_id, ETH_4_TCS, ETH_8_TCS);
+			return (-EINVAL);
+		}
+	}
 
 	diag = (*dev->dev_ops->dev_configure)(dev, nb_rx_q, nb_tx_q);
 	if (diag != 0) {

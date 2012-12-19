@@ -273,6 +273,7 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 				},
 			},
 			.txmode = {
+				.mq_mode = ETH_DCB_NONE,
 			}
 	};
 	const uint16_t rx_rings = num_queues, tx_rings = num_queues;

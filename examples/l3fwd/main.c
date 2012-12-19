@@ -198,6 +198,7 @@ static struct rte_eth_conf port_conf = {
 		},
 	},
 	.txmode = {
+		.mq_mode = ETH_DCB_NONE,
 	},
 };
 

@@ -240,7 +240,18 @@ struct rte_eth_thresh {
  */
 enum rte_eth_rx_mq_mode {
 	ETH_RSS     = 0,     /**< Default to RSS mode */
-	ETH_VMDQ_DCB         /**< Use VMDQ+DCB to route traffic to queues */
+	ETH_VMDQ_DCB,        /**< Use VMDQ+DCB to route traffic to queues */
+	ETH_DCB_RX           /**< For RX side,only DCB is on. */
+};
+
+/**
+ * A set of values to identify what method is to be used to transmit 
+ * packets using multi-TCs.
+ */
+enum rte_eth_tx_mq_mode {
+	ETH_DCB_NONE    = 0, 	/**< It is not in DCB mode. */
+	ETH_VMDQ_DCB_TX,	/**< For TX side,both DCB and VT is on. */
+	ETH_DCB_TX           	/**< For TX side,only DCB is on. */
 };
 
 /**
@@ -290,6 +301,20 @@ struct rte_eth_rss_conf {
 #define ETH_VMDQ_MAX_VLAN_FILTERS   64 /**< Maximum nb. of VMDQ vlan filters. */
 #define ETH_DCB_NUM_USER_PRIORITIES 8  /**< Maximum nb. of DCB priorities. */
 #define ETH_VMDQ_DCB_NUM_QUEUES     128 /**< Maximum nb. of VMDQ DCB queues. */
+#define ETH_DCB_NUM_QUEUES          128 /**< Maximum nb. of DCB queues. */
+
+/* DCB capability defines */
+#define ETH_DCB_PG_SUPPORT      0x00000001 /**< Priority Group(ETS) support. */
+#define ETH_DCB_PFC_SUPPORT     0x00000002 /**< Priority Flow Control support. */ 
+
+/**
+ * This enum indicates the possible number of traffic classes
+ * in DCB configratioins
+ */
+enum rte_eth_nb_tcs {
+	ETH_4_TCS = 4, /**< 4 TCs with DCB. */
+	ETH_8_TCS = 8  /**< 8 TCs with DCB. */
+};
 
 /**
  * This enum indicates the possible number of queue pools
@@ -298,6 +323,25 @@ struct rte_eth_rss_conf {
 enum rte_eth_nb_pools {
 	ETH_16_POOLS = 16, /**< 16 pools with DCB. */
 	ETH_32_POOLS = 32  /**< 32 pools with DCB. */
+};
+
+/* This structure may be extended in future. */
+struct rte_eth_dcb_rx_conf {
+	enum rte_eth_nb_tcs nb_tcs; /**< Possible DCB TCs, 4 or 8 TCs */
+	uint8_t dcb_queue[ETH_DCB_NUM_USER_PRIORITIES];
+	/**< Possible DCB queue,4 or 8. */
+};
+ 
+struct rte_eth_vmdq_dcb_tx_conf {
+	enum rte_eth_nb_pools nb_queue_pools; /**< With DCB, 16 or 32 pools. */
+	uint8_t dcb_queue[ETH_DCB_NUM_USER_PRIORITIES];
+	/**< Possible DCB queue,4 or 8. */
+};
+ 
+struct rte_eth_dcb_tx_conf {
+	enum rte_eth_nb_tcs nb_tcs; /**< possible DCB TCs, 4 or 8 TCs. */
+	uint8_t dcb_queue[ETH_DCB_NUM_USER_PRIORITIES];
+	/**< Possible DCB queue,4 or 8. */
 };
 
 /**
@@ -326,9 +370,9 @@ struct rte_eth_vmdq_dcb_conf {
 
 /**
  * A structure used to configure the TX features of an Ethernet port.
- * For future extensions.
  */
 struct rte_eth_txmode {
+	enum rte_eth_tx_mq_mode mq_mode; /**< TX multi-queues mode. */
 };
 
 /**
@@ -538,7 +582,18 @@ struct rte_eth_conf {
 		struct rte_eth_rss_conf rss_conf; /**< Port RSS configuration */
 		struct rte_eth_vmdq_dcb_conf vmdq_dcb_conf;
 		/**< Port vmdq+dcb configuration. */
+		struct rte_eth_dcb_rx_conf dcb_rx_conf;
+		/**< Port dcb RX configuration. */
 	} rx_adv_conf; /**< Port RX filtering configuration (union). */
+	union {
+		struct rte_eth_vmdq_dcb_tx_conf vmdq_dcb_tx_conf;
+		/**< Port vmdq+dcb TX configuration. */
+		struct rte_eth_dcb_tx_conf dcb_tx_conf;
+		/**< Port dcb TX configuration. */
+	} tx_adv_conf; /**< Port TX DCB configuration (union). */
+	/** Currently,Priority Flow Control(PFC) are supported,if DCB with PFC 
+ 	    is needed,and the variable must be set ETH_DCB_PFC_SUPPORT. */ 
+	uint32_t dcb_capability_en; 
 	struct rte_fdir_conf fdir_conf; /**< FDIR configuration. */
 	struct rte_intr_conf intr_conf; /**< Interrupt mode configuration. */
 };

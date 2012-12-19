@@ -130,6 +130,7 @@ static const struct rte_eth_conf vmdq_dcb_conf_default = {
 		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
 	},
 	.txmode = {
+		.mq_mode = ETH_DCB_NONE,
 	},
 	.rx_adv_conf = {
 		/*
