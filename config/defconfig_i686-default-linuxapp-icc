@@ -232,11 +232,6 @@ CONFIG_RTE_INSECURE_FUNCTION_WARNING=n
 CONFIG_RTE_APP_TEST=y
 
 #
-# Compile the "check includes" application
-#
-CONFIG_RTE_APP_CHKINCS=y
-
-#
 # Compile the PMD test application
 #
 CONFIG_RTE_TEST_PMD=y
