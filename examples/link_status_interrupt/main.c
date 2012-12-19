@@ -568,7 +568,7 @@ lsi_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param)
 
 	printf("\n\nIn registered callback...\n");
 	printf("Event type: %s\n", type == RTE_ETH_EVENT_INTR_LSC ? "LSC interrupt" : "unknown event");
-	rte_eth_link_get(port_id, &link);
+	rte_eth_link_get_nowait(port_id, &link);
 	if (link.link_status) {
 		printf("Port %d Link Up - speed %u Mbps - %s\n\n",
 				port_id, (unsigned)link.link_speed,
@@ -578,12 +578,66 @@ lsi_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param)
 		printf("Port %d Link Down\n\n", port_id);
 }
 
+/* Check the link status of all ports in up to 9s, and print them finally */
+static void
+check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
+{
+#define CHECK_INTERVAL 100 /* 100ms */
+#define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
+	uint8_t portid, count, all_ports_up, print_flag = 0;
+	struct rte_eth_link link;
+
+	printf("\nChecking link status");
+	fflush(stdout);
+	for (count = 0; count <= MAX_CHECK_TIME; count++) {
+		all_ports_up = 1;
+		for (portid = 0; portid < port_num; portid++) {
+			if ((port_mask & (1 << portid)) == 0)
+				continue;
+			memset(&link, 0, sizeof(link));
+			rte_eth_link_get_nowait(portid, &link);
+			/* print link status if flag set */
+			if (print_flag == 1) {
+				if (link.link_status)
+					printf("Port %d Link Up - speed %u "
+						"Mbps - %s\n", (uint8_t)portid,
+						(unsigned)link.link_speed,
+				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
+					("full-duplex") : ("half-duplex\n"));
+				else
+					printf("Port %d Link Down\n",
+							(uint8_t)portid);
+				continue;
+			}
+			/* clear all_ports_up flag if any link down */
+			if (link.link_status == 0) {
+				all_ports_up = 0;
+				break;
+			}
+		}
+		/* after finally printing all link status, get out */
+		if (print_flag == 1)
+			break;
+
+		if (all_ports_up == 0) {
+			printf(".");
+			fflush(stdout);
+			rte_delay_ms(CHECK_INTERVAL);
+		}
+
+		/* set the print_flag if all ports up or timeout */
+		if (all_ports_up == 1 || count == (MAX_CHECK_TIME - 1)) {
+			print_flag = 1;
+			printf("done\n");
+		}
+	}
+}
+
 int
 MAIN(int argc, char **argv)
 {
 	struct lcore_queue_conf *qconf;
 	struct rte_eth_dev_info dev_info;
-	struct rte_eth_link link;
 	int ret;
 	unsigned int nb_ports, nb_lcores;
 	unsigned portid, portid_last = 0, queueid = 0;
@@ -748,19 +802,7 @@ MAIN(int argc, char **argv)
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_dev_start: err=%d, port=%u\n",
 				  ret, portid);
-
-		printf("done: ");
-
-		/* get link status */
-		rte_eth_link_get((uint8_t) portid, &link);
-		if (link.link_status) {
-			printf(" Link Up - speed %u Mbps - %s\n",
-			       (unsigned) link.link_speed,
-			       (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
-			       ("full-duplex") : ("half-duplex\n"));
-		} else {
-			printf(" Link Down\n");
-		}
+		printf("done:\n");
 
 		printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
 				portid,
@@ -774,6 +816,8 @@ MAIN(int argc, char **argv)
 		/* initialize port stats */
 		memset(&port_statistics, 0, sizeof(port_statistics));
 	}
+
+	check_all_ports_link_status((uint8_t)nb_ports, lsi_enabled_port_mask);
 
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(lsi_launch_one_lcore, NULL, CALL_MASTER);

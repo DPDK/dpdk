@@ -379,6 +379,66 @@ app_init_rings_tx(void)
 	}
 }
 
+/* Check the link status of all ports in up to 9s, and print them finally */
+static void
+check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
+{
+#define CHECK_INTERVAL 100 /* 100ms */
+#define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
+	uint8_t portid, count, all_ports_up, print_flag = 0;
+	struct rte_eth_link link;
+	uint32_t n_rx_queues, n_tx_queues;
+
+	printf("\nChecking link status");
+	fflush(stdout);
+	for (count = 0; count <= MAX_CHECK_TIME; count++) {
+		all_ports_up = 1;
+		for (portid = 0; portid < port_num; portid++) {
+			if ((port_mask & (1 << portid)) == 0)
+				continue;
+			n_rx_queues = app_get_nic_rx_queues_per_port(portid);
+			n_tx_queues = app.nic_tx_port_mask[portid];
+			if ((n_rx_queues == 0) && (n_tx_queues == 0))
+				continue;
+			memset(&link, 0, sizeof(link));
+			rte_eth_link_get_nowait(portid, &link);
+			/* print link status if flag set */
+			if (print_flag == 1) {
+				if (link.link_status)
+					printf("Port %d Link Up - speed %u "
+						"Mbps - %s\n", (uint8_t)portid,
+						(unsigned)link.link_speed,
+				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
+					("full-duplex") : ("half-duplex\n"));
+				else
+					printf("Port %d Link Down\n",
+							(uint8_t)portid);
+				continue;
+			}
+			/* clear all_ports_up flag if any link down */
+			if (link.link_status == 0) {
+				all_ports_up = 0;
+				break;
+			}
+		}
+		/* after finally printing all link status, get out */
+		if (print_flag == 1)
+			break;
+
+		if (all_ports_up == 0) {
+			printf(".");
+			fflush(stdout);
+			rte_delay_ms(CHECK_INTERVAL);
+		}
+
+		/* set the print_flag if all ports up or timeout */
+		if (all_ports_up == 1 || count == (MAX_CHECK_TIME - 1)) {
+			print_flag = 1;
+			printf("done\n");
+		}
+	}
+}
+
 static void
 app_init_nics(void)
 {
@@ -398,7 +458,6 @@ app_init_nics(void)
 
 	/* Init NIC ports and queues, then start the ports */
 	for (port = 0; port < APP_MAX_NIC_PORTS; port ++) {
-		struct rte_eth_link link;
 		struct rte_mempool *pool;
 		uint32_t n_rx_queues, n_tx_queues;
 
@@ -473,18 +532,9 @@ app_init_nics(void)
 		if (ret < 0) {
 			rte_panic("Cannot start port %d (%d)\n", port, ret);
 		}
-
-		/* Get link status */
-		rte_eth_link_get(port, &link);
-		if (link.link_status) {
-			printf("Port %u is UP (%u Mbps)\n",
-				(uint32_t) port,
-				(unsigned) link.link_speed);
-		} else {
-			printf("Port %u is DOWN\n",
-				(uint32_t) port);
-		}
 	}
+
+	check_all_ports_link_status(APP_MAX_NIC_PORTS, (~0x0));
 }
 
 void
