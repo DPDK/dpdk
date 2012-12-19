@@ -2335,7 +2335,7 @@ cmdline_parse_token_string_t cmd_mac_addr_what =
 				"add#remove");
 cmdline_parse_token_num_t cmd_mac_addr_portnum =
 		TOKEN_NUM_INITIALIZER(struct cmd_mac_addr_result, port_num, UINT8);
-cmdline_parse_token_string_t cmd_mac_addr_addr =
+cmdline_parse_token_etheraddr_t cmd_mac_addr_addr =
 		TOKEN_ETHERADDR_INITIALIZER(struct cmd_mac_addr_result, address);
 
 cmdline_parse_inst_t cmd_mac_addr = {
