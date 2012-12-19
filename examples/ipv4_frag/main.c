@@ -312,7 +312,7 @@ static __attribute__((noreturn)) int
 main_loop(__attribute__((unused)) void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
-	uint32_t lcore_id;
+	unsigned lcore_id;
 	uint64_t prev_tsc = 0;
 	uint64_t diff_tsc, cur_tsc;
 	int i, j, nb_rx;
@@ -729,7 +729,7 @@ MAIN(int argc, char **argv)
 		}
 
 		printf("Adding route 0x%08x / %d (%d)\n",
-			l3fwd_route_array[i].ip,
+			(unsigned) l3fwd_route_array[i].ip,
 			l3fwd_route_array[i].depth,
 			l3fwd_route_array[i].if_out);
 	}
