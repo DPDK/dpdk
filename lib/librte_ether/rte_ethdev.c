@@ -1361,10 +1361,6 @@ rte_eth_dev_fdir_set_masks(uint8_t port_id, struct rte_fdir_masks *fdir_mask)
 		return (-ENOSYS);
 	}
 
-	/* IPv6 mask are not supported */
-	if (fdir_mask->src_ipv6_mask)
-		return (-ENOTSUP);
-
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fdir_set_masks, -ENOTSUP);
 	return (*dev->dev_ops->fdir_set_masks)(dev, fdir_mask);
 }

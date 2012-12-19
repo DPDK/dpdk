@@ -537,6 +537,11 @@ struct rte_fdir_masks {
 	uint8_t vlan_prio;
 	/** If set to 1, flexbytes is relevant in filters. */
 	uint8_t flexbytes;
+	/** If set to 1, set the IPv6 masks. Otherwise set the IPv4 masks. */
+	uint8_t set_ipv6_mask;
+	/** When set to 1, comparison of destination IPv6 address with IP6AT
+	    registers is meaningful. */
+	uint8_t comp_ipv6_dst;
 	/** Mask of Destination IPv4 Address. All bits set to 1 define the
 	    relevant bits to use in the destination address of an IPv4 packet
 	    when matching it against FDIR filters. */
@@ -547,6 +552,10 @@ struct rte_fdir_masks {
 	uint32_t src_ipv4_mask;
 	/** Mask of Source IPv6 Address. All bits set to 1 define the
 	    relevant BYTES to use in the source address of an IPv6 packet
+	    when matching it against FDIR filters. */
+	uint16_t dst_ipv6_mask;
+	/** Mask of Destination IPv6 Address. All bits set to 1 define the
+	    relevant BYTES to use in the destination address of an IPv6 packet
 	    when matching it against FDIR filters. */
 	uint16_t src_ipv6_mask;
 	/** Mask of Source Port. All bits set to 1 define the relevant
