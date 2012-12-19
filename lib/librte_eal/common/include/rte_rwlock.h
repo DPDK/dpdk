@@ -113,14 +113,7 @@ rte_rwlock_read_lock(rte_rwlock_t *rwl)
 static inline void
 rte_rwlock_read_unlock(rte_rwlock_t *rwl)
 {
-	/* in debug mode, we should check that rwl->cnt is > 0 */
-
-	/* same than atomic32_dec */
-	asm volatile(MPLOCKED
-		     "decl %[cnt]"
-		     : [cnt] "=m" (rwl->cnt) /* output (0) */
-		     : "m" (rwl->cnt)        /* input (1) */
-		     );                      /* no clobber-list */
+	rte_atomic32_dec((rte_atomic32_t *)(intptr_t)&rwl->cnt);
 }
 
 /**
@@ -156,14 +149,7 @@ rte_rwlock_write_lock(rte_rwlock_t *rwl)
 static inline void
 rte_rwlock_write_unlock(rte_rwlock_t *rwl)
 {
-	/* in debug mode, we should check that rwl->cnt is < 0 */
-
-	/* same than atomic32_inc */
-	asm volatile(MPLOCKED
-		     "incl %[cnt]"
-		     : [cnt] "=m" (rwl->cnt) /* output (0) */
-		     : "m" (rwl->cnt)        /* input (1) */
-		     );                      /* no clobber-list */
+	rte_atomic32_inc((rte_atomic32_t *)(intptr_t)&rwl->cnt);
 }
 
 #ifdef __cplusplus
