@@ -349,7 +349,7 @@ test_atomic(void)
 	rte_atomic32_clear(&synchro);
 
 	if (rte_atomic32_read(&count) != NUM_ATOMIC_TYPES) {
-		printf("Atomic inc and test failed %d\n", count.cnt);
+		printf("Atomic inc and test failed %d\n", (int)count.cnt);
 		return -1;
 	}
 

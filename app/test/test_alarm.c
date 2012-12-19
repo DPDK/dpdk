@@ -132,7 +132,8 @@ test_multi_alarms(void)
 	rte_delay_ms(3500);
 	if (cb_count.cnt != 2 || rm_count != 1) {
 		printf("Error: invalid flags count or alarm removal failure"
-				" -  flags value = %d, expected = %d\n", cb_count.cnt, 2);
+				" -  flags value = %d, expected = %d\n",
+				(int)cb_count.cnt, 2);
 		/* remove any callbacks that might remain */
 		rte_eal_alarm_cancel(test_multi_cb, (void *)-1);
 		return -1;

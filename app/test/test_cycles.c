@@ -48,7 +48,7 @@
  * Cycles test
  * ===========
  *
- * - Loop N times and check that the timer alway increments and
+ * - Loop N times and check that the timer always increments and
  *   never decrements during this loop.
  *
  * - Wait one second using rte_usleep() and check that the increment
@@ -79,13 +79,13 @@ test_cycles(void)
 	prev_cycles = rte_get_hpet_cycles();
 	rte_delay_us(1000000);
 	cycles = rte_get_hpet_cycles();
+
 	if ((uint64_t)(cycles - prev_cycles) > (hz + max_inc)) {
-		printf("delay_us is not accurate\n");
+		printf("delay_us is not accurate: too long\n");
 		return -1;
 	}
-	cycles = rte_get_hpet_cycles();
-	if ((uint64_t)(cycles - prev_cycles) < (hz)) {
-		printf("delay_us is not accurate\n");
+	if ((uint64_t)(cycles - prev_cycles) < (hz - max_inc)) {
+		printf("delay_us is not accurate: too short\n");
 		return -1;
 	}
 
