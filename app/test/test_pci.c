@@ -44,7 +44,6 @@
 
 #include "test.h"
 
-#define RTE_PCI_DEV_ID_DECL(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 
 #define	TEST_BLACKLIST_NUM	0x100
 
@@ -72,24 +71,20 @@ static int my_driver_init(struct rte_pci_driver *dr,
  * drivers are created (one with IGB devices, the other with IXGBE devices).
  */
 
-/* IXGBE NICS + e1000 used for Qemu */
-#define RTE_LIBRTE_IXGBE_PMD 1
-#undef RTE_LIBRTE_IGB_PMD
+/* IXGBE NICS */
 struct rte_pci_id my_driver_id[] = {
 
+#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include <rte_pci_dev_ids.h>
-
-/* this device is the e1000 of qemu for testing */
-{RTE_PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x100E)},
 
 { .vendor_id = 0, /* sentinel */ },
 };
 
 struct rte_pci_id my_driver_id2[] = {
 
-/* IGB NICS */
-#undef RTE_LIBRTE_IXGBE_PMD
-#define RTE_LIBRTE_IGB_PMD 1
+/* IGB & EM NICS */
+#define RTE_PCI_DEV_ID_DECL_EM(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
+#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #define RTE_PCI_DEV_USE_82575EB_COPPER
 #include <rte_pci_dev_ids.h>
 
