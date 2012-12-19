@@ -87,7 +87,7 @@ static struct rte_eth_conf port_conf = {
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IPV4,
+			.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6,
 		},
 	},
 	.txmode = {
@@ -102,6 +102,7 @@ static struct rte_eth_rxconf rx_conf = {
 		.wthresh = APP_DEFAULT_NIC_RX_WTHRESH,
 	},
 	.rx_free_thresh = APP_DEFAULT_NIC_RX_FREE_THRESH,
+	.rx_drop_en = APP_DEFAULT_NIC_RX_DROP_EN,
 };
 
 static struct rte_eth_txconf tx_conf = {
@@ -136,7 +137,7 @@ app_assign_worker_ids(void)
 static void
 app_init_mbuf_pools(void)
 {
-	uint32_t socket, lcore;
+	unsigned socket, lcore;
 
 	/* Init the buffer pools */
 	for (socket = 0; socket < APP_MAX_SOCKETS; socket ++) {
@@ -175,7 +176,7 @@ app_init_mbuf_pools(void)
 static void
 app_init_lpm_tables(void)
 {
-	uint32_t socket, lcore;
+	unsigned socket, lcore;
 
 	/* Init the LPM tables */
 	for (socket = 0; socket < APP_MAX_SOCKETS; socket ++) {
@@ -207,9 +208,10 @@ app_init_lpm_tables(void)
 
 			if (ret < 0) {
 				rte_panic("Unable to add entry %u (%x/%u => %u) to the LPM table on socket %u (%d)\n",
-					rule, app.lpm_rules[rule].ip,
-					(uint32_t) app.lpm_rules[rule].depth,
-					(uint32_t) app.lpm_rules[rule].if_out,
+					(unsigned) rule,
+					(unsigned) app.lpm_rules[rule].ip,
+					(unsigned) app.lpm_rules[rule].depth,
+					(unsigned) app.lpm_rules[rule].if_out,
 					socket,
 					ret);
 			}
@@ -230,12 +232,12 @@ app_init_lpm_tables(void)
 static void
 app_init_rings_rx(void)
 {
-	uint32_t lcore;
+	unsigned lcore;
 
 	/* Initialize the rings for the RX side */
 	for (lcore = 0; lcore < APP_MAX_LCORES; lcore ++) {
 		struct app_lcore_params_io *lp_io = &app.lcore_params[lcore].io;
-		uint32_t socket_io, lcore_worker;
+		unsigned socket_io, lcore_worker;
 
 		if ((app.lcore_params[lcore].type != e_APP_LCORE_IO) ||
 		    (lp_io->rx.n_nic_queues == 0)) {
@@ -309,12 +311,12 @@ app_init_rings_rx(void)
 static void
 app_init_rings_tx(void)
 {
-	uint32_t lcore;
+	unsigned lcore;
 
 	/* Initialize the rings for the TX side */
 	for (lcore = 0; lcore < APP_MAX_LCORES; lcore ++) {
 		struct app_lcore_params_worker *lp_worker = &app.lcore_params[lcore].worker;
-		uint32_t port;
+		unsigned port;
 
 		if (app.lcore_params[lcore].type != e_APP_LCORE_WORKER) {
 			continue;
@@ -339,7 +341,7 @@ app_init_rings_tx(void)
 			socket_io = rte_lcore_to_socket_id(lcore_io);
 
 			printf("Creating ring to connect worker lcore %u with TX port %u (through I/O lcore %u) (socket %u) ...\n",
-				lcore, port, lcore_io, socket_io);
+				lcore, port, (unsigned)lcore_io, (unsigned)socket_io);
 			rte_snprintf(name, sizeof(name), "app_ring_tx_s%u_w%u_p%u", socket_io, lcore, port);
 			ring = rte_ring_create(
 				name,
@@ -359,7 +361,7 @@ app_init_rings_tx(void)
 
 	for (lcore = 0; lcore < APP_MAX_LCORES; lcore ++) {
 		struct app_lcore_params_io *lp_io = &app.lcore_params[lcore].io;
-		uint32_t i;
+		unsigned i;
 
 		if ((app.lcore_params[lcore].type != e_APP_LCORE_IO) ||
 		    (lp_io->tx.n_nic_ports == 0)) {
@@ -367,7 +369,7 @@ app_init_rings_tx(void)
 		}
 
 		for (i = 0; i < lp_io->tx.n_nic_ports; i ++){
-			uint32_t port, j;
+			unsigned port, j;
 
 			port = lp_io->tx.nic_ports[i];
 			for (j = 0; j < app_get_lcores_worker(); j ++) {
@@ -442,9 +444,11 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 static void
 app_init_nics(void)
 {
-	uint32_t socket, lcore;
-	uint8_t	port, queue;
+	unsigned socket;
+	uint32_t lcore;
+	uint8_t port, queue;
 	int ret;
+	uint32_t n_rx_queues, n_tx_queues;
 
 	/* Init driver */
 	printf("Initializing the PMD driver ...\n");
@@ -459,7 +463,6 @@ app_init_nics(void)
 	/* Init NIC ports and queues, then start the ports */
 	for (port = 0; port < APP_MAX_NIC_PORTS; port ++) {
 		struct rte_mempool *pool;
-		uint32_t n_rx_queues, n_tx_queues;
 
 		n_rx_queues = app_get_nic_rx_queues_per_port(port);
 		n_tx_queues = app.nic_tx_port_mask[port];
@@ -469,14 +472,14 @@ app_init_nics(void)
 		}
 
 		/* Init port */
-		printf("Initializing NIC port %u ...\n", (uint32_t) port);
+		printf("Initializing NIC port %u ...\n", (unsigned) port);
 		ret = rte_eth_dev_configure(
 			port,
 			(uint8_t) n_rx_queues,
 			(uint8_t) n_tx_queues,
 			&port_conf);
 		if (ret < 0) {
-			rte_panic("Cannot init NIC port %u (%d)\n", (uint32_t) port, ret);
+			rte_panic("Cannot init NIC port %u (%d)\n", (unsigned) port, ret);
 		}
 		rte_eth_promiscuous_enable(port);
 
@@ -491,8 +494,8 @@ app_init_nics(void)
 			pool = app.lcore_params[lcore].pool;
 
 			printf("Initializing NIC port %u RX queue %u ...\n",
-				(uint32_t) port,
-				(uint32_t) queue);
+				(unsigned) port,
+				(unsigned) queue);
 			ret = rte_eth_rx_queue_setup(
 				port,
 				queue,
@@ -502,8 +505,8 @@ app_init_nics(void)
 				pool);
 			if (ret < 0) {
 				rte_panic("Cannot init RX queue %u for port %u (%d)\n",
-					(uint32_t) queue,
-					(uint32_t) port,
+					(unsigned) queue,
+					(unsigned) port,
 					ret);
 			}
 		}
@@ -513,7 +516,7 @@ app_init_nics(void)
 			app_get_lcore_for_nic_tx(port, &lcore);
 			socket = rte_lcore_to_socket_id(lcore);
 			printf("Initializing NIC port %u TX queue 0 ...\n",
-				(uint32_t) port);
+				(unsigned) port);
 			ret = rte_eth_tx_queue_setup(
 				port,
 				0,

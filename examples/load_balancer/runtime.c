@@ -165,11 +165,11 @@ app_lcore_io_rx_buffer_to_send (
 		lp->rx.rings_count[worker] ++;
 	}
 	if (unlikely(lp->rx.rings_iters[worker] == APP_STATS)) {
-		uint32_t lcore = rte_lcore_id();
+		unsigned lcore = rte_lcore_id();
 
 		printf("\tI/O RX %u out (worker %u): enq success rate = %.2f\n",
 			lcore,
-			worker,
+			(unsigned)worker,
 			((double) lp->rx.rings_count[worker]) / ((double) lp->rx.rings_iters[worker]));
 		lp->rx.rings_iters[worker] = 0;
 		lp->rx.rings_count[worker] = 0;
@@ -186,7 +186,7 @@ app_lcore_io_rx(
 	uint8_t pos_lb)
 {
 	struct rte_mbuf *mbuf_1_0, *mbuf_1_1, *mbuf_2_0, *mbuf_2_1;
-	uint8_t *data_1_0, *data_1_1;
+	uint8_t *data_1_0, *data_1_1 = NULL;
 	uint32_t i;
 
 	for (i = 0; i < lp->rx.n_nic_queues; i ++) {
@@ -209,13 +209,13 @@ app_lcore_io_rx(
 		lp->rx.nic_queues_count[i] += n_mbufs;
 		if (unlikely(lp->rx.nic_queues_iters[i] == APP_STATS)) {
 			struct rte_eth_stats stats;
-			uint32_t lcore = rte_lcore_id();
+			unsigned lcore = rte_lcore_id();
 
 			rte_eth_stats_get(port, &stats);
 
 			printf("I/O RX %u in (NIC port %u): NIC drop ratio = %.2f avg burst size = %.2f\n",
 				lcore,
-				(uint32_t) port,
+				(unsigned) port,
 				(double) stats.ierrors / (double) (stats.ierrors + stats.ipackets),
 				((double) lp->rx.nic_queues_count[i]) / ((double) lp->rx.nic_queues_iters[i]));
 			lp->rx.nic_queues_iters[i] = 0;
@@ -392,11 +392,11 @@ app_lcore_io_tx(
 			lp->tx.nic_ports_iters[port] ++;
 			lp->tx.nic_ports_count[port] += n_pkts;
 			if (unlikely(lp->tx.nic_ports_iters[port] == APP_STATS)) {
-				uint32_t lcore = rte_lcore_id();
+				unsigned lcore = rte_lcore_id();
 
 				printf("\t\t\tI/O TX %u out (port %u): avg burst size = %.2f\n",
 					lcore,
-					(uint32_t) port,
+					(unsigned) port,
 					((double) lp->tx.nic_ports_count[port]) / ((double) lp->tx.nic_ports_iters[port]));
 				lp->tx.nic_ports_iters[port] = 0;
 				lp->tx.nic_ports_count[port] = 0;
@@ -564,8 +564,8 @@ app_lcore_worker(
 			}
 			if (lp->rings_out_iters[port] == APP_STATS){
 				printf("\t\tWorker %u out (NIC port %u): enq success rate = %.2f\n",
-					lp->worker_id,
-					(uint32_t) port,
+					(unsigned) lp->worker_id,
+					(unsigned) port,
 					((double) lp->rings_out_count[port]) / ((double) lp->rings_out_iters[port]));
 				lp->rings_out_iters[port] = 0;
 				lp->rings_out_count[port] = 0;
@@ -647,7 +647,7 @@ int
 app_lcore_main_loop(__attribute__((unused)) void *arg)
 {
 	struct app_lcore_params *lp;
-	uint32_t lcore;
+	unsigned lcore;
 
 	lcore = rte_lcore_id();
 	lp = &app.lcore_params[lcore];
@@ -660,7 +660,7 @@ app_lcore_main_loop(__attribute__((unused)) void *arg)
 	if (lp->type == e_APP_LCORE_WORKER) {
 		printf("Logical core %u (worker %u) main loop.\n",
 			lcore,
-			lp->worker.worker_id);
+			(unsigned) lp->worker.worker_id);
 		app_lcore_main_loop_worker();
 	}
 

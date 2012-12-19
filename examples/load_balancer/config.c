@@ -892,7 +892,7 @@ app_get_lcores_worker(void)
 void
 app_print_params(void)
 {
-	uint32_t port, queue, lcore, rule, i, j;
+	unsigned port, queue, lcore, rule, i, j;
 
 	/* Print NIC RX configuration */
 	printf("NIC RX ports: ");
@@ -927,8 +927,8 @@ app_print_params(void)
 		printf("RX ports  ");
 		for (i = 0; i < lp->rx.n_nic_queues; i ++) {
 			printf("(%u, %u)  ",
-				(uint32_t) lp->rx.nic_queues[i].port,
-				(uint32_t) lp->rx.nic_queues[i].queue);
+				(unsigned) lp->rx.nic_queues[i].port,
+				(unsigned) lp->rx.nic_queues[i].queue);
 		}
 		printf("; ");
 
@@ -950,7 +950,7 @@ app_print_params(void)
 		printf("Worker lcore %u (socket %u) ID %u: ",
 			lcore,
 			rte_lcore_to_socket_id(lcore),
-			lp->worker_id);
+			(unsigned)lp->worker_id);
 
 		printf("Input rings  ");
 		for (i = 0; i < lp->n_rings_in; i ++) {
@@ -1009,7 +1009,7 @@ app_print_params(void)
 		printf("Worker lcore %u (socket %u) ID %u: \n",
 			lcore,
 			rte_lcore_to_socket_id(lcore),
-			lp->worker_id);
+			(unsigned)lp->worker_id);
 
 		printf("Output rings per TX port  ");
 		for (port = 0; port < APP_MAX_NIC_PORTS; port ++) {
@@ -1030,28 +1030,28 @@ app_print_params(void)
 
 		printf("\t%u: %u.%u.%u.%u/%u => %u;\n",
 			rule,
-			(ip & 0xFF000000) >> 24,
-			(ip & 0x00FF0000) >> 16,
-			(ip & 0x0000FF00) >> 8,
-			ip & 0x000000FF,
-			(uint32_t) depth,
-			(uint32_t) if_out
+			(unsigned) (ip & 0xFF000000) >> 24,
+			(unsigned) (ip & 0x00FF0000) >> 16,
+			(unsigned) (ip & 0x0000FF00) >> 8,
+			(unsigned) ip & 0x000000FF,
+			(unsigned) depth,
+			(unsigned) if_out
 		);
 	}
 
 	/* Rings */
 	printf("Ring sizes: NIC RX = %u; Worker in = %u; Worker out = %u; NIC TX = %u;\n",
-		app.nic_rx_ring_size,
-		app.ring_rx_size,
-		app.ring_tx_size,
-		app.nic_tx_ring_size);
+		(unsigned) app.nic_rx_ring_size,
+		(unsigned) app.ring_rx_size,
+		(unsigned) app.ring_tx_size,
+		(unsigned) app.nic_tx_ring_size);
 
 	/* Bursts */
 	printf("Burst sizes: I/O RX (rd = %u, wr = %u); Worker (rd = %u, wr = %u); I/O TX (rd = %u, wr = %u)\n",
-		app.burst_size_io_rx_read,
-		app.burst_size_io_rx_write,
-		app.burst_size_worker_read,
-		app.burst_size_worker_write,
-		app.burst_size_io_tx_read,
-		app.burst_size_io_tx_write);
+		(unsigned) app.burst_size_io_rx_read,
+		(unsigned) app.burst_size_io_rx_write,
+		(unsigned) app.burst_size_worker_read,
+		(unsigned) app.burst_size_worker_write,
+		(unsigned) app.burst_size_io_tx_read,
+		(unsigned) app.burst_size_io_tx_write);
 }
