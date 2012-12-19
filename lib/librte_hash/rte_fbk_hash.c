@@ -138,17 +138,9 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 		return NULL;
 
 	/* Allocate memory for table. */
-#if defined(RTE_LIBRTE_HASH_USE_MEMZONE)
-	const struct rte_memzone *mz;
-	mz = rte_memzone_reserve(hash_name, mem_size, params->socket_id, 0);
-	if (mz == NULL)
-		return NULL;
-	ht = (struct rte_fbk_hash_table *)mz->addr;
-#else
 	ht = (struct rte_fbk_hash_table *)rte_malloc(hash_name, mem_size, 0);
 	if (ht == NULL)
 		return NULL;
-#endif
 	memset(ht, 0, mem_size);
 
 	/* Set up hash table context. */
@@ -187,12 +179,7 @@ rte_fbk_hash_free(struct rte_fbk_hash_table *ht)
 	if (ht == NULL)
 		return;
 
-	/* No way to deallocate memzones - but can de-allocate from malloc */
-#if !defined(RTE_LIBRTE_HASH_USE_MEMZONE)
 	RTE_EAL_TAILQ_REMOVE(RTE_TAILQ_FBK_HASH, rte_fbk_hash_list, ht);
 	rte_free(ht);
-#endif
-	RTE_SET_USED(ht);
-	return;
 }
 

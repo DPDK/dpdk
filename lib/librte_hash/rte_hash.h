@@ -109,9 +109,7 @@ struct rte_hash {
 };
 
 /**
- * Create a new hash table. If RTE_LIBRTE_HASH_USE_MEMZONE is defined, then
- * the hash table is allocated in a memzone on a specific NUMA socket ID,
- * otherwise it is allocated in the heap.
+ * Create a new hash table.
  *
  * @param params
  *   Parameters used to create and initialise the hash table.
@@ -146,8 +144,7 @@ struct rte_hash *
 rte_hash_find_existing(const char *name);
 
 /**
- * De-allocate all memory used by hash table. If RTE_LIBRTE_HASH_USE_MEMZONE
- * is defined, then this has no effect.
+ * De-allocate all memory used by hash table.
  * @param h
  *   Hash table to free
  */

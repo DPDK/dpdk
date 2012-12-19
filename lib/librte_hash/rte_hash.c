@@ -201,7 +201,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 				  CACHE_LINE_SIZE);
 	key_tbl_size = align_size(num_buckets * key_size *
 				  params->bucket_entries, CACHE_LINE_SIZE);
-
+	
 	/* Total memory required for hash context */
 	mem_size = hash_tbl_size + sig_tbl_size + key_tbl_size;
 
@@ -213,24 +213,12 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	if (h != NULL)
 		return NULL;
 
-	/* Allocate as a memzone, or in normal memory space */
-#if defined(RTE_LIBRTE_HASH_USE_MEMZONE)
-	const struct rte_memzone *mz;
-	mz = rte_memzone_reserve(hash_name, mem_size, params->socket_id, 0);
-	if (mz == NULL) {
-		RTE_LOG(ERR, HASH, "memzone reservation failed\n");
-		return NULL;
-	}
-	memset(mz->addr, 0, mem_size);
-	h = (struct rte_hash *)mz->addr;
-#else
 	h = (struct rte_hash *)rte_zmalloc(hash_name, mem_size,
 					   CACHE_LINE_SIZE);
 	if (h == NULL) {
 		RTE_LOG(ERR, HASH, "memory allocation failed\n");
 		return NULL;
 	}
-#endif
 
 	/* Setup hash context */
 	rte_snprintf(h->name, sizeof(h->name), "%s", params->name);
@@ -258,12 +246,8 @@ rte_hash_free(struct rte_hash *h)
 	if (h == NULL)
 		return;
 
-#if !defined(RTE_LIBRTE_HASH_USE_MEMZONE)
 	RTE_EAL_TAILQ_REMOVE(RTE_TAILQ_HASH, rte_hash_list, h);
 	rte_free(h);
-#endif
-	/* No way to deallocate memzones */
-	return;
 }
 
 int32_t
