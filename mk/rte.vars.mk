@@ -29,7 +29,6 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 
-#  version: DPDK.L.1.2.3-3
 
 #
 # To be included at the beginning of all RTE user Makefiles. This
