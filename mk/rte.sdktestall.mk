@@ -55,4 +55,4 @@ testall: $(TESTALL_TARGETS)
 
 %_testall:
 	@echo ================== Test $*
-	$(Q)$(MAKE) test O=$*
+	$(Q)$(MAKE) fast_test O=$*

@@ -49,17 +49,37 @@ DIR := $(shell basename $(RTE_OUTPUT))
 #
 PHONY: test fast_test
 
-fast_test: BLACKLIST=-Ring,Mempool
+coverage: BLACKLIST=-Mempool_perf,Memcpy_perf,Hash_perf
+fast_test: BLACKLIST=-Ring,Mempool_perf,Memcpy_perf,Hash_perf
 ring_test: WHITELIST=Ring
-mempool_test: WHITELIST=Mempool
-test fast_test ring_test mempool_test:
+mempool_test: WHITELIST=Mempool,Mempool_perf
+perf_test:WHITELIST=Mempool_perf,Memcpy_perf,Hash_perf,Ring
+test fast_test ring_test mempool_test perf_test:
 	@mkdir -p $(AUTOTEST_DIR) ; \
 	cd $(AUTOTEST_DIR) ; \
 	if [ -f $(RTE_OUTPUT)/app/test ]; then \
 		python $(RTE_SDK)/app/test/autotest.py \
 			$(RTE_OUTPUT)/app/test \
-			$(DIR) $(RTE_TARGET) \
+			$(RTE_TARGET) \
 			$(BLACKLIST) $(WHITELIST); \
 	else \
 		echo "No test found, please do a 'make build' first, or specify O=" ; \
+	fi
+
+# this is a special target to ease the pain of running coverage tests
+# this runs all the autotests, cmdline_test script and dump_cfg
+coverage:
+	@mkdir -p $(AUTOTEST_DIR) ; \
+	cd $(AUTOTEST_DIR) ; \
+	if [ -f $(RTE_OUTPUT)/app/test ]; then \
+		python $(RTE_SDK)/app/cmdline_test/cmdline_test.py \
+			$(RTE_OUTPUT)/app/cmdline_test; \
+		ulimit -S -n 100 ; \
+		python $(RTE_SDK)/app/test/autotest.py \
+			$(RTE_OUTPUT)/app/test \
+			$(RTE_TARGET) \
+			$(BLACKLIST) $(WHITELIST) ; \
+		$(RTE_OUTPUT)/app/dump_cfg --file-prefix=ring_perf ; \
+	else \
+		echo "No test found, please do a 'make build' first, or specify O=" ;\
 	fi

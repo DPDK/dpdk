@@ -94,8 +94,8 @@ config:
 test:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktest.mk test
 
-.PHONY: fast_test ring_test mempool_test
-fast_test ring_test mempool_test:
+.PHONY: fast_test ring_test mempool_test perf_test coverage
+fast_test ring_test mempool_test perf_test coverage:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktest.mk $@
 
 .PHONY: testall

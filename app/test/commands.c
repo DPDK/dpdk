@@ -125,6 +125,8 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret |= test_errno();
 	if (all || !strcmp(res->autotest, "hash_autotest"))
 		ret |= test_hash();
+	if (all || !strcmp(res->autotest, "hash_perf_autotest"))
+		ret |= test_hash_perf();
 	if (all || !strcmp(res->autotest, "lpm_autotest"))
 		ret |= test_lpm();
 	if (all || !strcmp(res->autotest, "cpuflags_autotest"))
@@ -157,6 +159,10 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret |= test_timer();
 	if (all || !strcmp(res->autotest, "mempool_autotest"))
 		ret |= test_mempool();
+	if (all || !strcmp(res->autotest, "mempool_perf_autotest"))
+		ret |= test_mempool_perf();
+	if (all || !strcmp(res->autotest, "memcpy_perf_autotest"))
+		ret |= test_memcpy_perf();
 
 	if (ret == 0)
 		printf("Test OK\n");
@@ -183,6 +189,8 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"alarm_autotest#interrupt_autotest#"
 			"version_autotest#eal_fs_autotest#"
 			"cmdline_autotest#"
+			"mempool_perf_autotest#hash_perf_autotest#"
+			"memcpy_perf_autotest#"
 			"all_autotests");
 
 cmdline_parse_inst_t cmd_autotest = {

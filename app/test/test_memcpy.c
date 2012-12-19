@@ -82,210 +82,7 @@ static size_t buf_sizes[TEST_VALUE_RANGE];
 /* Data is aligned on this many bytes (power of 2) */
 #define ALIGNMENT_UNIT          16
 
-/*
- * Pointers used in performance tests. The two large buffers are for uncached
- * access where random addresses within the buffer are used for each
- * memcpy. The two small buffers are for cached access.
- */
-static uint8_t *large_buf_read, *large_buf_write,
-               *small_buf_read, *small_buf_write;
 
-/* Initialise data buffers. */
-static int
-init_buffers(void)
-{
-	unsigned i;
-
-	large_buf_read = rte_malloc("memcpy", LARGE_BUFFER_SIZE, ALIGNMENT_UNIT);
-	if (large_buf_read == NULL)
-		goto error_large_buf_read;
-
-	large_buf_write = rte_malloc("memcpy", LARGE_BUFFER_SIZE, ALIGNMENT_UNIT);
-	if (large_buf_write == NULL)
-		goto error_large_buf_write;
-
-	small_buf_read = rte_malloc("memcpy", SMALL_BUFFER_SIZE, ALIGNMENT_UNIT);
-	if (small_buf_read == NULL)
-		goto error_small_buf_read;
-
-	small_buf_write = rte_malloc("memcpy", SMALL_BUFFER_SIZE, ALIGNMENT_UNIT);
-	if (small_buf_write == NULL)
-		goto error_small_buf_write;
-
-	for (i = 0; i < LARGE_BUFFER_SIZE; i++)
-		large_buf_read[i] = rte_rand();
-	for (i = 0; i < SMALL_BUFFER_SIZE; i++)
-		small_buf_read[i] = rte_rand();
-
-	return 0;
-
-error_small_buf_write:
-	rte_free(small_buf_read);
-error_small_buf_read:
-	rte_free(large_buf_write);
-error_large_buf_write:
-	rte_free(large_buf_read);
-error_large_buf_read:
-	printf("ERROR: not enough memory");
-	return -1;
-}
-
-/* Cleanup data buffers */
-static void
-free_buffers(void)
-{
-	rte_free(large_buf_read);
-	rte_free(large_buf_write);
-	rte_free(small_buf_read);
-	rte_free(small_buf_write);
-}
-
-/*
- * Get a random offset into large array, with enough space needed to perform
- * max copy size. Offset is aligned.
- */
-static inline size_t
-get_rand_offset(void)
-{
-	return ((rte_rand() % (LARGE_BUFFER_SIZE - SMALL_BUFFER_SIZE)) &
-	                ~(ALIGNMENT_UNIT - 1));
-}
-
-/* Fill in source and destination addresses. */
-static inline void
-fill_addr_arrays(size_t *dst_addr, int is_dst_cached,
-                 size_t *src_addr, int is_src_cached)
-{
-	unsigned int i;
-
-	for (i = 0; i < TEST_BATCH_SIZE; i++) {
-		dst_addr[i] = (is_dst_cached) ? 0 : get_rand_offset();
-		src_addr[i] = (is_src_cached) ? 0 : get_rand_offset();
-	}
-}
-
-/* Integer division with round to nearest */
-static inline uint64_t
-div_round(uint64_t dividend, uint64_t divisor)
-{
-	return ((2 * dividend) + divisor) / (2 * divisor);
-}
-
-/*
- * WORKAROUND: For some reason the first test doing an uncached write
- * takes a very long time (~25 times longer than is expected). So we do
- * it once without timing.
- */
-static void
-do_uncached_write(uint8_t *dst, int is_dst_cached,
-                  const uint8_t *src, int is_src_cached, size_t size)
-{
-	unsigned i, j;
-	size_t dst_addrs[TEST_BATCH_SIZE], src_addrs[TEST_BATCH_SIZE];
-
-	for (i = 0; i < (TEST_ITERATIONS / TEST_BATCH_SIZE); i++) {
-		fill_addr_arrays(dst_addrs, is_dst_cached,
-			 src_addrs, is_src_cached);
-		for (j = 0; j < TEST_BATCH_SIZE; j++)
-			rte_memcpy(dst+dst_addrs[j], src+src_addrs[j], size);
-	}
-}
-
-/*
- * Run a single memcpy performance test. This is a macro to ensure that if
- * the "size" parameter is a constant it won't be converted to a variable.
- */
-#define SINGLE_PERF_TEST(dst, is_dst_cached, src, is_src_cached, size) do {   \
-	unsigned int iter, t;                                                 \
-	size_t dst_addrs[TEST_BATCH_SIZE], src_addrs[TEST_BATCH_SIZE];        \
-	uint64_t start_time, total_time = 0;                                  \
-	uint64_t total_time2 = 0;                                             \
-	for (iter = 0; iter < (TEST_ITERATIONS / TEST_BATCH_SIZE); iter++) {  \
-		fill_addr_arrays(dst_addrs, is_dst_cached,                    \
-		                 src_addrs, is_src_cached);                   \
-		start_time = rte_rdtsc();                                     \
-		for (t = 0; t < TEST_BATCH_SIZE; t++)                         \
-			rte_memcpy(dst+dst_addrs[t], src+src_addrs[t], size); \
-		total_time += rte_rdtsc() - start_time;                       \
-	}                                                                     \
-	for (iter = 0; iter < (TEST_ITERATIONS / TEST_BATCH_SIZE); iter++) {  \
-		fill_addr_arrays(dst_addrs, is_dst_cached,                    \
-		                 src_addrs, is_src_cached);                   \
-		start_time = rte_rdtsc();                                     \
-		for (t = 0; t < TEST_BATCH_SIZE; t++)                         \
-			memcpy(dst+dst_addrs[t], src+src_addrs[t], size);     \
-		total_time2 += rte_rdtsc() - start_time;                      \
-	}                                                                     \
-	printf("%9u/",  (unsigned)div_round(total_time, TEST_ITERATIONS));    \
-	printf("%4u",   (unsigned)div_round(total_time2, TEST_ITERATIONS));   \
-} while (0)
-
-/* Run memcpy() tests for each cached/uncached permutation. */
-#define ALL_PERF_TESTS_FOR_SIZE(n) do {                             \
-	if (__builtin_constant_p(n))                                \
-	        printf("\nC%6u ", (unsigned)n);                     \
-	else                                                        \
-		printf("\n%7u ", (unsigned)n);                      \
-	SINGLE_PERF_TEST(small_buf_write, 1, small_buf_read, 1, n); \
-	SINGLE_PERF_TEST(large_buf_write, 0, small_buf_read, 1, n); \
-	SINGLE_PERF_TEST(small_buf_write, 1, large_buf_read, 0, n); \
-	SINGLE_PERF_TEST(large_buf_write, 0, large_buf_read, 0, n); \
-} while (0)
-
-/*
- * Run performance tests for a number of different sizes and cached/uncached
- * permutations.
- */
-static int
-perf_test(void)
-{
-	const unsigned num_buf_sizes = sizeof(buf_sizes) / sizeof(buf_sizes[0]);
-	unsigned i;
-	int ret;
-
-	ret = init_buffers();
-	if (ret != 0)
-		return ret;
-
-#if TEST_VALUE_RANGE != 0
-	/* Setup buf_sizes array, if required */
-	for (i = 0; i < TEST_VALUE_RANGE; i++)
-		buf_sizes[i] = i;
-#endif
-
-	/* See function comment */
-	do_uncached_write(large_buf_write, 0, small_buf_read, 1, SMALL_BUFFER_SIZE);
-
-	printf("\n** rte_memcpy()/memcpy performance tests **\n"
-	       "======= ============== ============== ============== ==============\n"
-	       "   Size Cache to cache   Cache to mem   Mem to cache     Mem to mem\n"
-	       "(bytes)        (ticks)        (ticks)        (ticks)        (ticks)\n"
-	       "------- -------------- -------------- -------------- --------------");
-
-	/* Do tests where size is a variable */
-	for (i = 0; i < num_buf_sizes; i++) {
-		ALL_PERF_TESTS_FOR_SIZE((size_t)buf_sizes[i]);
-	}
-
-#ifdef RTE_MEMCPY_BUILTIN_CONSTANT_P
-	/* Do tests where size is a compile-time constant */
-	ALL_PERF_TESTS_FOR_SIZE(63U);
-	ALL_PERF_TESTS_FOR_SIZE(64U);
-	ALL_PERF_TESTS_FOR_SIZE(65U);
-	ALL_PERF_TESTS_FOR_SIZE(255U);
-	ALL_PERF_TESTS_FOR_SIZE(256U);
-	ALL_PERF_TESTS_FOR_SIZE(257U);
-	ALL_PERF_TESTS_FOR_SIZE(1023U);
-	ALL_PERF_TESTS_FOR_SIZE(1024U);
-	ALL_PERF_TESTS_FOR_SIZE(1025U);
-	ALL_PERF_TESTS_FOR_SIZE(1518U);
-#endif
-	printf("\n======= ============== ============== ============== ==============\n\n");
-
-	free_buffers();
-
-	return 0;
-}
 
 /* Structure with base memcpy func pointer, and number of bytes it copies */
 struct base_memcpy_func {
@@ -345,6 +142,7 @@ test_single_memcpy(unsigned int off_src, unsigned int off_dst, size_t size)
 	unsigned int i;
 	uint8_t dest[SMALL_BUFFER_SIZE + ALIGNMENT_UNIT];
 	uint8_t src[SMALL_BUFFER_SIZE + ALIGNMENT_UNIT];
+	void * ret;
 
 	/* Setup buffers */
 	for (i = 0; i < SMALL_BUFFER_SIZE + ALIGNMENT_UNIT; i++) {
@@ -353,7 +151,11 @@ test_single_memcpy(unsigned int off_src, unsigned int off_dst, size_t size)
 	}
 
 	/* Do the copy */
-	rte_memcpy(dest + off_dst, src + off_src, size);
+	ret = rte_memcpy(dest + off_dst, src + off_src, size);
+	if (ret != (dest + off_dst)) {
+		printf("rte_memcpy() returned %p, not %p\n",
+		       ret, dest + off_dst);
+	}
 
 	/* Check nothing before offset is affected */
 	for (i = 0; i < off_dst; i++) {
@@ -419,9 +221,6 @@ test_memcpy(void)
 	if (ret != 0)
 		return -1;
 	ret = base_func_test();
-	if (ret != 0)
-		return -1;
-	ret = perf_test();
 	if (ret != 0)
 		return -1;
 	return 0;
