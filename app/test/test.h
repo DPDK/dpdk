@@ -84,6 +84,7 @@ int test_interrupt(void);
 int test_version(void);
 int test_eal_fs(void);
 int test_cmdline(void);
+int test_func_reentrancy(void);
 
 int test_pci_run;
 

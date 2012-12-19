@@ -75,6 +75,7 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_alarm.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_interrupts.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_version.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_eal_fs.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_func_reentrancy.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_num.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_etheraddr.c

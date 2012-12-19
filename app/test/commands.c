@@ -163,6 +163,8 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret |= test_mempool_perf();
 	if (all || !strcmp(res->autotest, "memcpy_perf_autotest"))
 		ret |= test_memcpy_perf();
+	if (all || !strcmp(res->autotest, "func_reentrancy_autotest"))
+		ret |= test_func_reentrancy();
 
 	if (ret == 0)
 		printf("Test OK\n");
@@ -188,7 +190,7 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"cpuflags_autotest#eal_flags_autotest#"
 			"alarm_autotest#interrupt_autotest#"
 			"version_autotest#eal_fs_autotest#"
-			"cmdline_autotest#"
+			"cmdline_autotest#func_reentrancy_autotest#"
 			"mempool_perf_autotest#hash_perf_autotest#"
 			"memcpy_perf_autotest#"
 			"all_autotests");
