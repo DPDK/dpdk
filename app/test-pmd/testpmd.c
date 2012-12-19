@@ -205,6 +205,11 @@ struct rte_eth_thresh tx_thresh = {
 uint16_t rx_free_thresh = 0; /* Immediately free RX descriptors by default. */
 
 /*
+ * Configurable value of RX drop enable.
+ */
+uint8_t rx_drop_en = 0; /* Drop packets when no descriptors for queue. */
+
+/*
  * Configurable value of TX free threshold.
  */
 uint16_t tx_free_thresh = 0; /* Use default values. */
@@ -213,6 +218,11 @@ uint16_t tx_free_thresh = 0; /* Use default values. */
  * Configurable value of TX RS bit threshold.
  */
 uint16_t tx_rs_thresh = 0; /* Use default values. */
+
+/*
+ * Configurable value of TX queue flags.
+ */
+uint32_t txq_flags = 0; /* No flags set. */
 
 /*
  * Receive Side Scaling (RSS) configuration.
@@ -260,6 +270,13 @@ uint16_t nb_rx_queue_stats_mappings = 0;
 
 /* Forward function declarations */
 static void map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port);
+static void check_all_ports_link_status(uint8_t port_num, uint32_t port_mask);
+
+/*
+ * Check if all the ports are started.
+ * If yes, return positive value. If not, return zero.
+ */
+static int all_ports_started(void);
 
 /*
  * Setup default configuration.
@@ -394,35 +411,35 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 				    testpmd_mbuf_ctor, &mb_ctor_arg,
 				    socket_id, 0);
 	if (rte_mp == NULL) {
-		rte_exit(EXIT_FAILURE, "Creation of mbuf pool for socket %u failed\n",
-		       socket_id);
+		rte_exit(EXIT_FAILURE, "Creation of mbuf pool for socket %u "
+						"failed\n", socket_id);
 	}
 }
 
 static void
 init_config(void)
 {
+	portid_t pid;
 	struct rte_port *port;
 	struct rte_mempool *mbp;
 	unsigned int nb_mbuf_per_pool;
-	streamid_t sm_id;
 	lcoreid_t  lc_id;
-	portid_t   pt_id;
 
 	/* Configuration of logical cores. */
 	fwd_lcores = rte_zmalloc("testpmd: fwd_lcores",
 				sizeof(struct fwd_lcore *) * nb_lcores,
 				CACHE_LINE_SIZE);
 	if (fwd_lcores == NULL) {
-		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d (struct fwd_lcore *)) failed\n",
-		       nb_lcores);
+		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d (struct fwd_lcore *)) "
+							"failed\n", nb_lcores);
 	}
 	for (lc_id = 0; lc_id < nb_lcores; lc_id++) {
 		fwd_lcores[lc_id] = rte_zmalloc("testpmd: struct fwd_lcore",
 					       sizeof(struct fwd_lcore),
 					       CACHE_LINE_SIZE);
 		if (fwd_lcores[lc_id] == NULL) {
-			rte_exit(EXIT_FAILURE, "rte_zmalloc(struct fwd_lcore) failed\n");
+			rte_exit(EXIT_FAILURE, "rte_zmalloc(struct fwd_lcore) "
+								"failed\n");
 		}
 		fwd_lcores[lc_id]->cpuid_idx = lc_id;
 	}
@@ -466,48 +483,86 @@ init_config(void)
 			    sizeof(struct rte_port) * nb_ports,
 			    CACHE_LINE_SIZE);
 	if (ports == NULL) {
-		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d struct rte_port) failed\n",
-		       nb_ports);
+		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d struct rte_port) "
+							"failed\n", nb_ports);
 	}
-	port = ports;
-	for (pt_id = 0; pt_id < nb_ports; pt_id++, port++) {
-		rte_eth_dev_info_get(pt_id, &port->dev_info);
+
+	for (pid = 0; pid < nb_ports; pid++) {
+		port = &ports[pid];
+		rte_eth_dev_info_get(pid, &port->dev_info);
+
+		/* set flag to initialize port/queue */
+		port->need_reconfig = 1;
+		port->need_reconfig_queues = 1;
+	}
+
+	init_port_config();
+
+	/* Configuration of packet forwarding streams. */
+	if (init_fwd_streams() < 0)
+		rte_exit(EXIT_FAILURE, "FAIL from init_fwd_streams()\n");
+}
+
+int
+init_fwd_streams(void)
+{
+	portid_t pid;
+	struct rte_port *port;
+	streamid_t sm_id, nb_fwd_streams_new;
+
+	/* set socket id according to numa or not */
+	for (pid = 0; pid < nb_ports; pid++) {
+		port = &ports[pid];
 		if (nb_rxq > port->dev_info.max_rx_queues) {
-			rte_exit(EXIT_FAILURE, "Port %d: max RX queues %d < nb_rxq %d\n",
-			       (int) pt_id,
-			       (int) port->dev_info.max_rx_queues,
-			       (int) nb_rxq);
+			printf("Fail: nb_rxq(%d) is greater than "
+				"max_rx_queues(%d)\n", nb_rxq,
+				port->dev_info.max_rx_queues);
+			return -1;
 		}
 		if (nb_txq > port->dev_info.max_tx_queues) {
-			rte_exit(EXIT_FAILURE, "Port %d: max TX queues %d < nb_txq %d\n",
-			       (int) pt_id,
-			       (int) port->dev_info.max_tx_queues,
-			       (int) nb_txq);
+			printf("Fail: nb_txq(%d) is greater than "
+				"max_tx_queues(%d)\n", nb_txq,
+				port->dev_info.max_tx_queues);
+			return -1;
 		}
-
 		if (numa_support)
-			port->socket_id = (pt_id < (nb_ports >> 1)) ? 0 : 1;
+			port->socket_id = (pid < (nb_ports >> 1)) ? 0 : 1;
 		else
 			port->socket_id = 0;
 	}
 
-	/* Configuration of packet forwarding streams. */
-	nb_fwd_streams = (streamid_t) (nb_ports * nb_rxq);
-	fwd_streams = rte_zmalloc("testpmd: fwd_streams",
-				  sizeof(struct fwd_stream *) * nb_fwd_streams,
-				  CACHE_LINE_SIZE);
-	if (fwd_streams == NULL) {
-		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d (struct fwd_stream *)) failed\n",
-		       nb_fwd_streams);
+	nb_fwd_streams_new = (streamid_t)(nb_ports * nb_rxq);
+	if (nb_fwd_streams_new == nb_fwd_streams)
+		return 0;
+	/* clear the old */
+	if (fwd_streams != NULL) {
+		for (sm_id = 0; sm_id < nb_fwd_streams; sm_id++) {
+			if (fwd_streams[sm_id] == NULL)
+				continue;
+			rte_free(fwd_streams[sm_id]);
+			fwd_streams[sm_id] = NULL;
+		}
+		rte_free(fwd_streams);
+		fwd_streams = NULL;
 	}
+
+	/* init new */
+	nb_fwd_streams = nb_fwd_streams_new;
+	fwd_streams = rte_zmalloc("testpmd: fwd_streams",
+		sizeof(struct fwd_stream *) * nb_fwd_streams, CACHE_LINE_SIZE);
+	if (fwd_streams == NULL)
+		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d (struct fwd_stream *)) "
+						"failed\n", nb_fwd_streams);
+
 	for (sm_id = 0; sm_id < nb_fwd_streams; sm_id++) {
 		fwd_streams[sm_id] = rte_zmalloc("testpmd: struct fwd_stream",
-						 sizeof(struct fwd_stream),
-						 CACHE_LINE_SIZE);
-		if (fwd_streams[sm_id] == NULL) {
-			rte_exit(EXIT_FAILURE, "rte_zmalloc(struct fwd_stream) failed\n");
-		}
+				sizeof(struct fwd_stream), CACHE_LINE_SIZE);
+		if (fwd_streams[sm_id] == NULL)
+			rte_exit(EXIT_FAILURE, "rte_zmalloc(struct fwd_stream)"
+								" failed\n");
 	}
+
+	return 0;
 }
 
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
@@ -746,6 +801,10 @@ start_packet_forwarding(int with_tx_first)
 	portid_t   pt_id;
 	streamid_t sm_id;
 
+	if (all_ports_started() == 0) {
+		printf("Not all ports were started\n");
+		return;
+	}
 	if (test_done == 0) {
 		printf("Packet forwarding already started\n");
 		return;
@@ -818,6 +877,10 @@ stop_packet_forwarding(void)
 #endif
 	static const char *acc_stats_border = "+++++++++++++++";
 
+	if (all_ports_started() == 0) {
+		printf("Not all ports were started\n");
+		return;
+	}
 	if (test_done) {
 		printf("Packet forwarding not started\n");
 		return;
@@ -931,6 +994,231 @@ stop_packet_forwarding(void)
 	test_done = 1;
 }
 
+static int
+all_ports_started(void)
+{
+	portid_t pi;
+	struct rte_port *port;
+
+	for (pi = 0; pi < nb_ports; pi++) {
+		port = &ports[pi];
+		/* Check if there is a port which is not started */
+		if (port->port_status != RTE_PORT_STARTED)
+			return 0;
+	}
+
+	/* No port is not started */
+	return 1;
+}
+
+void
+start_port(portid_t pid)
+{
+	int diag, need_check_link_status = 0;
+	portid_t pi;
+	queueid_t qi;
+	struct rte_port *port;
+
+	if (test_done == 0) {
+		printf("Please stop forwarding first\n");
+		return;
+	}
+
+	if (init_fwd_streams() < 0) {
+		printf("Fail from init_fwd_streams()\n");
+		return;
+	}
+	
+	if(dcb_config)
+		dcb_test = 1;
+	for (pi = 0; pi < nb_ports; pi++) {
+		if (pid < nb_ports && pid != pi)
+			continue;
+
+		port = &ports[pi];
+		if (rte_atomic16_cmpset(&(port->port_status), RTE_PORT_STOPPED,
+						 RTE_PORT_HANDLING) == 0) {
+			printf("Port %d is now not stopped\n", pi);
+			continue;
+		}
+
+		if (port->need_reconfig > 0) {
+			port->need_reconfig = 0;
+
+			printf("Configuring Port %d\n", pi);
+			/* configure port */
+			diag = rte_eth_dev_configure(pi, nb_rxq, nb_txq,
+						&(port->dev_conf));
+			if (diag != 0) {
+				if (rte_atomic16_cmpset(&(port->port_status),
+				RTE_PORT_HANDLING, RTE_PORT_STOPPED) == 0)
+					printf("Port %d can not be set back "
+							"to stopped\n", pi);
+				printf("Fail to configure port %d\n", pi);
+				/* try to reconfigure port next time */
+				port->need_reconfig = 1;
+				return;
+			}
+		}
+
+		if (port->need_reconfig_queues > 0) {
+			port->need_reconfig_queues = 0;
+
+			/* setup tx queues */
+			for (qi = 0; qi < nb_txq; qi++) {
+				diag = rte_eth_tx_queue_setup(pi, qi, nb_txd,
+					port->socket_id, &(port->tx_conf));
+				if (diag == 0)
+					continue;
+
+				/* Fail to setup tx queue, return */
+				if (rte_atomic16_cmpset(&(port->port_status),
+							RTE_PORT_HANDLING,
+							RTE_PORT_STOPPED) == 0)
+					printf("Port %d can not be set back "
+							"to stopped\n", pi);
+				printf("Fail to configure port %d tx queues\n", pi);
+				/* try to reconfigure queues next time */
+				port->need_reconfig_queues = 1;
+				return;
+			}
+			/* setup rx queues */
+			for (qi = 0; qi < nb_rxq; qi++) {
+				diag = rte_eth_rx_queue_setup(pi, qi, nb_rxd,
+					port->socket_id, &(port->rx_conf),
+					mbuf_pool_find(port->socket_id));
+				if (diag == 0)
+					continue;
+
+				/* Fail to setup rx queue, return */
+				if (rte_atomic16_cmpset(&(port->port_status),
+							RTE_PORT_HANDLING,
+							RTE_PORT_STOPPED) == 0)
+					printf("Port %d can not be set back "
+							"to stopped\n", pi);
+				printf("Fail to configure port %d rx queues\n", pi);
+				/* try to reconfigure queues next time */
+				port->need_reconfig_queues = 1;
+				return;
+			}
+		}
+
+		/* start port */
+		if (rte_eth_dev_start(pi) < 0) {
+			printf("Fail to start port %d\n", pi);
+
+			/* Fail to setup rx queue, return */
+			if (rte_atomic16_cmpset(&(port->port_status),
+				RTE_PORT_HANDLING, RTE_PORT_STOPPED) == 0)
+				printf("Port %d can not be set back to "
+							"stopped\n", pi);
+			continue;
+		}
+
+		if (rte_atomic16_cmpset(&(port->port_status),
+			RTE_PORT_HANDLING, RTE_PORT_STARTED) == 0)
+			printf("Port %d can not be set into started\n", pi);
+
+		/* at least one port started, need checking link status */
+		need_check_link_status = 1;
+	}
+
+	if (need_check_link_status)
+		check_all_ports_link_status(nb_ports, RTE_PORT_ALL);
+	else
+		printf("Please stop the ports first\n");
+
+	printf("Done\n");
+}
+
+void
+stop_port(portid_t pid)
+{
+	portid_t pi;
+	struct rte_port *port;
+	int need_check_link_status = 0;
+
+	if (test_done == 0) {
+		printf("Please stop forwarding first\n");
+		return;
+	}
+	if (dcb_test) {
+		dcb_test = 0;
+		dcb_config = 0;
+	}
+	printf("Stopping ports...\n");
+
+	for (pi = 0; pi < nb_ports; pi++) {
+		if (pid < nb_ports && pid != pi)
+			continue;
+
+		port = &ports[pi];
+		if (rte_atomic16_cmpset(&(port->port_status), RTE_PORT_STARTED,
+						RTE_PORT_HANDLING) == 0)
+			continue;
+
+		rte_eth_dev_stop(pi);
+
+		if (rte_atomic16_cmpset(&(port->port_status),
+			RTE_PORT_HANDLING, RTE_PORT_STOPPED) == 0)
+			printf("Port %d can not be set into stopped\n", pi);
+		need_check_link_status = 1;
+	}
+	if (need_check_link_status)
+		check_all_ports_link_status(nb_ports, RTE_PORT_ALL);
+
+	printf("Done\n");
+}
+
+void
+close_port(portid_t pid)
+{
+	portid_t pi;
+	struct rte_port *port;
+
+	if (test_done == 0) {
+		printf("Please stop forwarding first\n");
+		return;
+	}
+
+	printf("Closing ports...\n");
+
+	for (pi = 0; pi < nb_ports; pi++) {
+		if (pid < nb_ports && pid != pi)
+			continue;
+
+		port = &ports[pi];
+		if (rte_atomic16_cmpset(&(port->port_status),
+			RTE_PORT_STOPPED, RTE_PORT_HANDLING) == 0) {
+			printf("Port %d is now not stopped\n", pi);
+			continue;
+		}
+
+		rte_eth_dev_close(pi);
+
+		if (rte_atomic16_cmpset(&(port->port_status),
+			RTE_PORT_HANDLING, RTE_PORT_CLOSED) == 0)
+			printf("Port %d can not be set into stopped\n", pi);
+	}
+
+	printf("Done\n");
+}
+
+int
+all_ports_stopped(void)
+{
+	portid_t pi;
+	struct rte_port *port;
+
+	for (pi = 0; pi < nb_ports; pi++) {
+		port = &ports[pi];
+		if (port->port_status != RTE_PORT_STOPPED)
+			return 0;
+	}
+
+	return 1;
+}
+
 void
 pmd_test_exit(void)
 {
@@ -953,11 +1241,57 @@ struct pmd_test_command {
 
 #define PMD_TEST_CMD_NB (sizeof(pmd_test_menu) / sizeof(pmd_test_menu[0]))
 
+/* Check the link status of all ports in up to 9s, and print them finally */
 static void
-fatal_init_error(const char *func_name, uint8_t port_id, int diag)
+check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 {
-	rte_panic("%s(port_id=%d) failed - diag=%d\n",
-		  func_name, port_id, diag);
+#define CHECK_INTERVAL 100 /* 100ms */
+#define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
+	uint8_t portid, count, all_ports_up, print_flag = 0;
+	struct rte_eth_link link;
+
+	printf("Checking link statuses...\n");
+	fflush(stdout);
+	for (count = 0; count <= MAX_CHECK_TIME; count++) {
+		all_ports_up = 1;
+		for (portid = 0; portid < port_num; portid++) {
+			if ((port_mask & (1 << portid)) == 0)
+				continue;
+			memset(&link, 0, sizeof(link));
+			rte_eth_link_get_nowait(portid, &link);
+			/* print link status if flag set */
+			if (print_flag == 1) {
+				if (link.link_status)
+					printf("Port %d Link Up - speed %u "
+						"Mbps - %s\n", (uint8_t)portid,
+						(unsigned)link.link_speed,
+				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
+					("full-duplex") : ("half-duplex\n"));
+				else
+					printf("Port %d Link Down\n",
+						(uint8_t)portid);
+				continue;
+			}
+			/* clear all_ports_up flag if any link down */
+			if (link.link_status == 0) {
+				all_ports_up = 0;
+				break;
+			}
+		}
+		/* after finally printing all link status, get out */
+		if (print_flag == 1)
+			break;
+
+		if (all_ports_up == 0) {
+			fflush(stdout);
+			rte_delay_ms(CHECK_INTERVAL);
+		}
+
+		/* set the print_flag if all ports up or timeout */
+		if (all_ports_up == 1 || count == (MAX_CHECK_TIME - 1)) {
+			print_flag = 1;
+		}
+	}
 }
 
 static void
@@ -1096,8 +1430,11 @@ main(int argc, char** argv)
 		       nb_rxq, nb_txq);
 
 	init_config();
+	start_port(RTE_PORT_ALL);
 
-	init_ports();
+	/* set all ports to promiscuous mode by default */
+	for (port_id = 0; port_id < nb_ports; port_id++)
+		rte_eth_promiscuous_enable(port_id);
 
 	if (interactive == 1)
 		prompt();

@@ -81,6 +81,8 @@
 
 #include "testpmd.h"
 
+static void cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue);
+
 /* *** HELP *** */
 struct cmd_help_result {
 	cmdline_fixed_string_t help;
@@ -225,6 +227,32 @@ static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
 		       "    vlan_prio 0|1 compare_dst 0|1\n"
 		       "\n");
 	cmdline_printf(cl,
+		       "Port Operations:\n"
+		       "--------------\n"
+		       "- port start|stop|close all|X\n"
+		       "    start/stop/close all ports or port X\n"
+		       "- port config all|X speed 10|100|1000|10000|auto "
+		       "duplex half|full|auto\n"
+		       "    set speed for all ports or port X\n"
+		       "- port config all rxq|txq|rxd|txd value\n"
+		       "    set number for rxq/txq/rxd/txd\n"
+		       "- port config all max-pkt-len value\n"
+		       "    set the max packet lenght\n"
+		       "- port config all crc-strip|rx-cksum|hw-vlan|drop-en on|off\n"
+		       "    set crc-strip/rx-checksum/hardware-vlan/drop_en on or off"
+		       "\n"
+		       "- port config all rss ip|udp|none\n"
+		       "    set rss mode\n"
+		       "- port config all burst value\n"
+		       "    set the number of packet per burst\n"
+		       "- port config all txpt|txht|txwt|rxpt|rxht|rxwt value\n"
+		       "    set ring prefetch/host/writeback threshold for "
+		       "tx/rx queue\n"
+		       "- port config all txfreet|txrst|rxfreet value\n"
+		       "    set free threshold for rx/tx, or set tx rs bit "
+		       "threshold\n"
+		       "\n");
+	cmdline_printf(cl,
 		       "Misc:\n"
 		       "-----\n"
 		       "- quit\n"
@@ -241,6 +269,807 @@ cmdline_parse_inst_t cmd_help = {
 	.help_str = "show help",
 	.tokens = {
 		(void *)&cmd_help_help,
+		NULL,
+	},
+};
+
+/* *** start/stop/close all ports *** */
+struct cmd_operate_port_result {
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t name;
+	cmdline_fixed_string_t value;
+};
+
+static void cmd_operate_port_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_operate_port_result *res = parsed_result;
+
+	if (!strcmp(res->name, "start"))
+		start_port(RTE_PORT_ALL);
+	else if (!strcmp(res->name, "stop"))
+		stop_port(RTE_PORT_ALL);
+	else if (!strcmp(res->name, "close"))
+		close_port(RTE_PORT_ALL);
+	else
+		printf("Unknown parameter\n");
+}
+
+cmdline_parse_token_string_t cmd_operate_port_all_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_port_result, keyword,
+								"port");
+cmdline_parse_token_string_t cmd_operate_port_all_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_port_result, name,
+						"start#stop#close");
+cmdline_parse_token_string_t cmd_operate_port_all_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_port_result, value, "all");
+
+cmdline_parse_inst_t cmd_operate_port = {
+	.f = cmd_operate_port_parsed,
+	.data = NULL,
+	.help_str = "port start|stop|close all: start/stop/close all ports",
+	.tokens = {
+		(void *)&cmd_operate_port_all_cmd,
+		(void *)&cmd_operate_port_all_port,
+		(void *)&cmd_operate_port_all_all,
+		NULL,
+	},
+};
+
+/* *** start/stop/close specific port *** */
+struct cmd_operate_specific_port_result {
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t name;
+	uint8_t value;
+};
+
+static void cmd_operate_specific_port_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_operate_specific_port_result *res = parsed_result;
+
+	if (!strcmp(res->name, "start"))
+		start_port(res->value);
+	else if (!strcmp(res->name, "stop"))
+		stop_port(res->value);
+	else if (!strcmp(res->name, "close"))
+		close_port(res->value);
+	else
+		printf("Unknown parameter\n");
+}
+
+cmdline_parse_token_string_t cmd_operate_specific_port_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_specific_port_result,
+							keyword, "port");
+cmdline_parse_token_string_t cmd_operate_specific_port_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_specific_port_result,
+						name, "start#stop#close");
+cmdline_parse_token_num_t cmd_operate_specific_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_operate_specific_port_result,
+							value, UINT8);
+
+cmdline_parse_inst_t cmd_operate_specific_port = {
+	.f = cmd_operate_specific_port_parsed,
+	.data = NULL,
+	.help_str = "port start|stop|close X: start/stop/close port X",
+	.tokens = {
+		(void *)&cmd_operate_specific_port_cmd,
+		(void *)&cmd_operate_specific_port_port,
+		(void *)&cmd_operate_specific_port_id,
+		NULL,
+	},
+};
+
+/* *** configure speed for all ports *** */
+struct cmd_config_speed_all {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t all;
+	cmdline_fixed_string_t item1;
+	cmdline_fixed_string_t item2;
+	cmdline_fixed_string_t value1;
+	cmdline_fixed_string_t value2;
+};
+
+static void
+cmd_config_speed_all_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_config_speed_all *res = parsed_result;
+	uint16_t link_speed = ETH_LINK_SPEED_AUTONEG;
+	uint16_t link_duplex = 0;
+	portid_t pid;
+
+	if (!all_ports_stopped()) {
+		printf("Please stop all ports first\n");
+		return;
+	}
+
+	if (!strcmp(res->value1, "10"))
+		link_speed = ETH_LINK_SPEED_10;
+	else if (!strcmp(res->value1, "100"))
+		link_speed = ETH_LINK_SPEED_100;
+	else if (!strcmp(res->value1, "1000"))
+		link_speed = ETH_LINK_SPEED_1000;
+	else if (!strcmp(res->value1, "10000"))
+		link_speed = ETH_LINK_SPEED_10000;
+	else if (!strcmp(res->value1, "auto"))
+		link_speed = ETH_LINK_SPEED_AUTONEG;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	if (!strcmp(res->value2, "half"))
+		link_duplex = ETH_LINK_HALF_DUPLEX;
+	else if (!strcmp(res->value2, "full"))
+		link_duplex = ETH_LINK_FULL_DUPLEX;
+	else if (!strcmp(res->value2, "auto"))
+		link_duplex = ETH_LINK_AUTONEG_DUPLEX;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	for (pid = 0; pid < nb_ports; pid++) {
+		ports[pid].dev_conf.link_speed = link_speed;
+		ports[pid].dev_conf.link_duplex = link_duplex;
+	}
+
+	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
+}
+
+cmdline_parse_token_string_t cmd_config_speed_all_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_all, port, "port");
+cmdline_parse_token_string_t cmd_config_speed_all_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_all, keyword,
+							"config");
+cmdline_parse_token_string_t cmd_config_speed_all_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_all, all, "all");
+cmdline_parse_token_string_t cmd_config_speed_all_item1 =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_all, item1, "speed");
+cmdline_parse_token_string_t cmd_config_speed_all_value1 =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_all, value1,
+						"10#100#1000#10000#auto");
+cmdline_parse_token_string_t cmd_config_speed_all_item2 =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_all, item2, "duplex");
+cmdline_parse_token_string_t cmd_config_speed_all_value2 =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_all, value2,
+						"half#full#auto");
+
+cmdline_parse_inst_t cmd_config_speed_all = {
+	.f = cmd_config_speed_all_parsed,
+	.data = NULL,
+	.help_str = "port config all speed 10|100|1000|10000|auto duplex "
+							"half|full|auto",
+	.tokens = {
+		(void *)&cmd_config_speed_all_port,
+		(void *)&cmd_config_speed_all_keyword,
+		(void *)&cmd_config_speed_all_all,
+		(void *)&cmd_config_speed_all_item1,
+		(void *)&cmd_config_speed_all_value1,
+		(void *)&cmd_config_speed_all_item2,
+		(void *)&cmd_config_speed_all_value2,
+		NULL,
+	},
+};
+
+/* *** configure speed for specific port *** */
+struct cmd_config_speed_specific {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	uint8_t id;
+	cmdline_fixed_string_t item1;
+	cmdline_fixed_string_t item2;
+	cmdline_fixed_string_t value1;
+	cmdline_fixed_string_t value2;
+};
+
+static void
+cmd_config_speed_specific_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_config_speed_specific *res = parsed_result;
+	uint16_t link_speed = ETH_LINK_SPEED_AUTONEG;
+	uint16_t link_duplex = 0;
+
+	if (!all_ports_stopped()) {
+		printf("Please stop all ports first\n");
+		return;
+	}
+
+	if (res->id >= nb_ports) {
+		printf("Port id %d must be less than %d\n", res->id, nb_ports);
+		return;
+	}
+
+	if (!strcmp(res->value1, "10"))
+		link_speed = ETH_LINK_SPEED_10;
+	else if (!strcmp(res->value1, "100"))
+		link_speed = ETH_LINK_SPEED_100;
+	else if (!strcmp(res->value1, "1000"))
+		link_speed = ETH_LINK_SPEED_1000;
+	else if (!strcmp(res->value1, "10000"))
+		link_speed = ETH_LINK_SPEED_10000;
+	else if (!strcmp(res->value1, "auto"))
+		link_speed = ETH_LINK_SPEED_AUTONEG;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	if (!strcmp(res->value2, "half"))
+		link_duplex = ETH_LINK_HALF_DUPLEX;
+	else if (!strcmp(res->value2, "full"))
+		link_duplex = ETH_LINK_FULL_DUPLEX;
+	else if (!strcmp(res->value2, "auto"))
+		link_duplex = ETH_LINK_AUTONEG_DUPLEX;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	ports[res->id].dev_conf.link_speed = link_speed;
+	ports[res->id].dev_conf.link_duplex = link_duplex;
+
+	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
+}
+
+
+cmdline_parse_token_string_t cmd_config_speed_specific_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_specific, port,
+								"port");
+cmdline_parse_token_string_t cmd_config_speed_specific_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_specific, keyword,
+								"config");
+cmdline_parse_token_num_t cmd_config_speed_specific_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_speed_specific, id, UINT8);
+cmdline_parse_token_string_t cmd_config_speed_specific_item1 =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_specific, item1,
+								"speed");
+cmdline_parse_token_string_t cmd_config_speed_specific_value1 =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_specific, value1,
+						"10#100#1000#10000#auto");
+cmdline_parse_token_string_t cmd_config_speed_specific_item2 =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_specific, item2,
+								"duplex");
+cmdline_parse_token_string_t cmd_config_speed_specific_value2 =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_specific, value2,
+							"half#full#auto");
+
+cmdline_parse_inst_t cmd_config_speed_specific = {
+	.f = cmd_config_speed_specific_parsed,
+	.data = NULL,
+	.help_str = "port config X speed 10|100|1000|10000|auto duplex "
+							"half|full|auto",
+	.tokens = {
+		(void *)&cmd_config_speed_specific_port,
+		(void *)&cmd_config_speed_specific_keyword,
+		(void *)&cmd_config_speed_specific_id,
+		(void *)&cmd_config_speed_specific_item1,
+		(void *)&cmd_config_speed_specific_value1,
+		(void *)&cmd_config_speed_specific_item2,
+		(void *)&cmd_config_speed_specific_value2,
+		NULL,
+	},
+};
+
+/* *** configure txq/rxq, txd/rxd *** */
+struct cmd_config_rx_tx {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t all;
+	cmdline_fixed_string_t name;
+	uint16_t value;
+};
+
+static void
+cmd_config_rx_tx_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_config_rx_tx *res = parsed_result;
+
+	if (!all_ports_stopped()) {
+		printf("Please stop all ports first\n");
+		return;
+	}
+
+	if (!strcmp(res->name, "rxq")) {
+		if (res->value <= 0) {
+			printf("rxq %d invalid - must be > 0\n", res->value);
+			return;
+		}
+		nb_rxq = res->value;
+	}
+	else if (!strcmp(res->name, "txq")) {
+		if (res->value <= 0) {
+			printf("txq %d invalid - must be > 0\n", res->value);
+			return;
+		}
+		nb_txq = res->value;
+	}
+	else if (!strcmp(res->name, "rxd")) {
+		if (res->value <= 0 || res->value > RTE_TEST_RX_DESC_MAX) {
+			printf("rxd %d invalid - must be > 0 && <= %d\n",
+					res->value, RTE_TEST_RX_DESC_MAX);
+			return;
+		}
+		nb_rxd = res->value;
+	} else if (!strcmp(res->name, "txd")) {
+		if (res->value <= 0 || res->value > RTE_TEST_TX_DESC_MAX) {
+			printf("txd %d invalid - must be > 0 && <= %d\n",
+					res->value, RTE_TEST_TX_DESC_MAX);
+			return;
+		}
+		nb_txd = res->value;
+	} else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	init_port_config();
+
+	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
+}
+
+cmdline_parse_token_string_t cmd_config_rx_tx_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_tx, port, "port");
+cmdline_parse_token_string_t cmd_config_rx_tx_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_tx, keyword, "config");
+cmdline_parse_token_string_t cmd_config_rx_tx_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_tx, all, "all");
+cmdline_parse_token_string_t cmd_config_rx_tx_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_tx, name,
+						"rxq#txq#rxd#txd");
+cmdline_parse_token_num_t cmd_config_rx_tx_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rx_tx, value, UINT16);
+
+cmdline_parse_inst_t cmd_config_rx_tx = {
+	.f = cmd_config_rx_tx_parsed,
+	.data = NULL,
+	.help_str = "port config all rxq|txq|rxd|txd value",
+	.tokens = {
+		(void *)&cmd_config_rx_tx_port,
+		(void *)&cmd_config_rx_tx_keyword,
+		(void *)&cmd_config_rx_tx_all,
+		(void *)&cmd_config_rx_tx_name,
+		(void *)&cmd_config_rx_tx_value,
+		NULL,
+	},
+};
+
+/* *** config max packet length *** */
+struct cmd_config_max_pkt_len_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t all;
+	cmdline_fixed_string_t name;
+	uint32_t value;
+};
+
+static void
+cmd_config_max_pkt_len_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_config_max_pkt_len_result *res = parsed_result;
+
+	if (!all_ports_stopped()) {
+		printf("Please stop all ports first\n");
+		return;
+	}
+
+	if (!strcmp(res->name, "max-pkt-len")) {
+		if (res->value < ETHER_MIN_LEN) {
+			printf("max-pkt-len can not be less than %d\n",
+							ETHER_MIN_LEN);
+			return;
+		}
+		if (res->value == rx_mode.max_rx_pkt_len)
+			return;
+
+		rx_mode.max_rx_pkt_len = res->value;
+		if (res->value > ETHER_MAX_LEN)
+			rx_mode.jumbo_frame = 1;
+		else
+			rx_mode.jumbo_frame = 0;
+	} else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	init_port_config();
+
+	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
+}
+
+cmdline_parse_token_string_t cmd_config_max_pkt_len_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_max_pkt_len_result, port,
+								"port");
+cmdline_parse_token_string_t cmd_config_max_pkt_len_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_max_pkt_len_result, keyword,
+								"config");
+cmdline_parse_token_string_t cmd_config_max_pkt_len_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_max_pkt_len_result, all,
+								"all");
+cmdline_parse_token_string_t cmd_config_max_pkt_len_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_max_pkt_len_result, name,
+								"max-pkt-len");
+cmdline_parse_token_num_t cmd_config_max_pkt_len_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_max_pkt_len_result, value,
+								UINT32);
+
+cmdline_parse_inst_t cmd_config_max_pkt_len = {
+	.f = cmd_config_max_pkt_len_parsed,
+	.data = NULL,
+	.help_str = "port config all max-pkt-len value",
+	.tokens = {
+		(void *)&cmd_config_max_pkt_len_port,
+		(void *)&cmd_config_max_pkt_len_keyword,
+		(void *)&cmd_config_max_pkt_len_all,
+		(void *)&cmd_config_max_pkt_len_name,
+		(void *)&cmd_config_max_pkt_len_value,
+		NULL,
+	},
+};
+
+/* *** configure rx mode *** */
+struct cmd_config_rx_mode_flag {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t all;
+	cmdline_fixed_string_t name;
+	cmdline_fixed_string_t value;
+};
+
+static void
+cmd_config_rx_mode_flag_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_config_rx_mode_flag *res = parsed_result;
+
+	if (!all_ports_stopped()) {
+		printf("Please stop all ports first\n");
+		return;
+	}
+
+	if (!strcmp(res->name, "crc-strip")) {
+		if (!strcmp(res->value, "on"))
+			rx_mode.hw_strip_crc = 1;
+		else if (!strcmp(res->value, "off"))
+			rx_mode.hw_strip_crc = 0;
+		else {
+			printf("Unknown parameter\n");
+			return;
+		}
+	} else if (!strcmp(res->name, "rx-cksum")) {
+		if (!strcmp(res->value, "on"))
+			rx_mode.hw_ip_checksum = 1;
+		else if (!strcmp(res->value, "off"))
+			rx_mode.hw_ip_checksum = 0;
+		else {
+			printf("Unknown parameter\n");
+			return;
+		}
+	} else if (!strcmp(res->name, "hw-vlan")) {
+		if (!strcmp(res->value, "on")) {
+			rx_mode.hw_vlan_filter = 1;
+			rx_mode.hw_vlan_strip  = 1;
+		}
+		else if (!strcmp(res->value, "off")) {
+			rx_mode.hw_vlan_filter = 0;
+			rx_mode.hw_vlan_strip  = 0;
+		}
+		else {
+			printf("Unknown parameter\n");
+			return;
+		}
+	} else if (!strcmp(res->name, "drop-en")) {
+		if (!strcmp(res->value, "on"))
+			rx_drop_en = 1;
+		else if (!strcmp(res->value, "off"))
+			rx_drop_en = 0;
+		else {
+			printf("Unknown parameter\n");
+			return;
+		}
+	} else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	init_port_config();
+
+	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
+}
+
+cmdline_parse_token_string_t cmd_config_rx_mode_flag_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_mode_flag, port, "port");
+cmdline_parse_token_string_t cmd_config_rx_mode_flag_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_mode_flag, keyword,
+								"config");
+cmdline_parse_token_string_t cmd_config_rx_mode_flag_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_mode_flag, all, "all");
+cmdline_parse_token_string_t cmd_config_rx_mode_flag_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_mode_flag, name,
+					"crc-strip#rx-cksum#hw-vlan");
+cmdline_parse_token_string_t cmd_config_rx_mode_flag_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_mode_flag, value,
+							"on#off");
+
+cmdline_parse_inst_t cmd_config_rx_mode_flag = {
+	.f = cmd_config_rx_mode_flag_parsed,
+	.data = NULL,
+	.help_str = "port config all crc-strip|rx-cksum|hw-vlan on|off",
+	.tokens = {
+		(void *)&cmd_config_rx_mode_flag_port,
+		(void *)&cmd_config_rx_mode_flag_keyword,
+		(void *)&cmd_config_rx_mode_flag_all,
+		(void *)&cmd_config_rx_mode_flag_name,
+		(void *)&cmd_config_rx_mode_flag_value,
+		NULL,
+	},
+};
+
+/* *** configure rss *** */
+struct cmd_config_rss {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t all;
+	cmdline_fixed_string_t name;
+	cmdline_fixed_string_t value;
+};
+
+static void
+cmd_config_rss_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_config_rss *res = parsed_result;
+
+	if (!all_ports_stopped()) {
+		printf("Please stop all ports first\n");
+		return;
+	}
+
+	if (!strcmp(res->value, "ip"))
+		rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6;
+	else if (!strcmp(res->value, "udp"))
+		rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6 | ETH_RSS_IPV4_UDP;
+	else if (!strcmp(res->value, "none"))
+		rss_hf = 0;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	init_port_config();
+
+	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
+}
+
+cmdline_parse_token_string_t cmd_config_rss_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss, port, "port");
+cmdline_parse_token_string_t cmd_config_rss_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss, keyword, "config");
+cmdline_parse_token_string_t cmd_config_rss_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss, all, "all");
+cmdline_parse_token_string_t cmd_config_rss_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss, name, "rss");
+cmdline_parse_token_string_t cmd_config_rss_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss, value, "ip#udp#none");
+
+cmdline_parse_inst_t cmd_config_rss = {
+	.f = cmd_config_rss_parsed,
+	.data = NULL,
+	.help_str = "port config all rss ip|udp|none",
+	.tokens = {
+		(void *)&cmd_config_rss_port,
+		(void *)&cmd_config_rss_keyword,
+		(void *)&cmd_config_rss_all,
+		(void *)&cmd_config_rss_name,
+		(void *)&cmd_config_rss_value,
+		NULL,
+	},
+};
+
+/* *** configure number of packets per burst *** */
+struct cmd_config_burst {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t all;
+	cmdline_fixed_string_t name;
+	uint16_t value;
+};
+
+static void
+cmd_config_burst_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_config_burst *res = parsed_result;
+
+	if (!all_ports_stopped()) {
+		printf("Please stop all ports first\n");
+		return;
+	}
+
+	if (!strcmp(res->name, "burst")) {
+		if (res->value < 1 || res->value > MAX_PKT_BURST) {
+			printf("burst must be >= 1 && <= %d\n", MAX_PKT_BURST);
+			return;
+		}
+		nb_pkt_per_burst = res->value;
+	} else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	init_port_config();
+
+	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
+}
+
+cmdline_parse_token_string_t cmd_config_burst_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_burst, port, "port");
+cmdline_parse_token_string_t cmd_config_burst_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_burst, keyword, "config");
+cmdline_parse_token_string_t cmd_config_burst_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_burst, all, "all");
+cmdline_parse_token_string_t cmd_config_burst_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_burst, name, "burst");
+cmdline_parse_token_num_t cmd_config_burst_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_burst, value, UINT16);
+
+cmdline_parse_inst_t cmd_config_burst = {
+	.f = cmd_config_burst_parsed,
+	.data = NULL,
+	.help_str = "port config all burst value",
+	.tokens = {
+		(void *)&cmd_config_burst_port,
+		(void *)&cmd_config_burst_keyword,
+		(void *)&cmd_config_burst_all,
+		(void *)&cmd_config_burst_name,
+		(void *)&cmd_config_burst_value,
+		NULL,
+	},
+};
+
+/* *** configure rx/tx queues *** */
+struct cmd_config_thresh {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t all;
+	cmdline_fixed_string_t name;
+	uint8_t value;
+};
+
+static void
+cmd_config_thresh_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_config_thresh *res = parsed_result;
+
+	if (!all_ports_stopped()) {
+		printf("Please stop all ports first\n");
+		return;
+	}
+
+	if (!strcmp(res->name, "txpt"))
+		tx_thresh.pthresh = res->value;
+	else if(!strcmp(res->name, "txht"))
+		tx_thresh.hthresh = res->value;
+	else if(!strcmp(res->name, "txwt"))
+		tx_thresh.wthresh = res->value;
+	else if(!strcmp(res->name, "rxpt"))
+		rx_thresh.pthresh = res->value;
+	else if(!strcmp(res->name, "rxht"))
+		rx_thresh.hthresh = res->value;
+	else if(!strcmp(res->name, "rxwt"))
+		rx_thresh.wthresh = res->value;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	init_port_config();
+
+	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
+}
+
+cmdline_parse_token_string_t cmd_config_thresh_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_thresh, port, "port");
+cmdline_parse_token_string_t cmd_config_thresh_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_thresh, keyword, "config");
+cmdline_parse_token_string_t cmd_config_thresh_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_thresh, all, "all");
+cmdline_parse_token_string_t cmd_config_thresh_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_thresh, name,
+				"txpt#txht#txwt#rxpt#rxht#rxwt");
+cmdline_parse_token_num_t cmd_config_thresh_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_thresh, value, UINT8);
+
+cmdline_parse_inst_t cmd_config_thresh = {
+	.f = cmd_config_thresh_parsed,
+	.data = NULL,
+	.help_str = "port config all txpt|txht|txwt|rxpt|rxht|rxwt value",
+	.tokens = {
+		(void *)&cmd_config_thresh_port,
+		(void *)&cmd_config_thresh_keyword,
+		(void *)&cmd_config_thresh_all,
+		(void *)&cmd_config_thresh_name,
+		(void *)&cmd_config_thresh_value,
+		NULL,
+	},
+};
+
+/* *** configure free/rs threshold *** */
+struct cmd_config_threshold {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t all;
+	cmdline_fixed_string_t name;
+	uint16_t value;
+};
+
+static void
+cmd_config_threshold_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_config_threshold *res = parsed_result;
+
+	if (!all_ports_stopped()) {
+		printf("Please stop all ports first\n");
+		return;
+	}
+
+	if (!strcmp(res->name, "txfreet"))
+		tx_free_thresh = res->value;
+	else if (!strcmp(res->name, "txrst"))
+		tx_rs_thresh = res->value;
+	else if (!strcmp(res->name, "rxfreet"))
+		rx_free_thresh = res->value;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	init_port_config();
+
+	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
+}
+
+cmdline_parse_token_string_t cmd_config_threshold_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_threshold, port, "port");
+cmdline_parse_token_string_t cmd_config_threshold_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_threshold, keyword,
+								"config");
+cmdline_parse_token_string_t cmd_config_threshold_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_threshold, all, "all");
+cmdline_parse_token_string_t cmd_config_threshold_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_threshold, name,
+						"txfreet#txrst#rxfreet");
+cmdline_parse_token_num_t cmd_config_threshold_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_threshold, value, UINT16);
+
+cmdline_parse_inst_t cmd_config_threshold = {
+	.f = cmd_config_threshold_parsed,
+	.data = NULL,
+	.help_str = "port config all txfreet|txrst|rxfreet value",
+	.tokens = {
+		(void *)&cmd_config_threshold_port,
+		(void *)&cmd_config_threshold_keyword,
+		(void *)&cmd_config_threshold_all,
+		(void *)&cmd_config_threshold_name,
+		(void *)&cmd_config_threshold_value,
 		NULL,
 	},
 };
@@ -2455,6 +3284,17 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_stop,
 	(cmdline_parse_inst_t *)&cmd_mac_addr,
 	(cmdline_parse_inst_t *)&cmd_set_qmap,
+	(cmdline_parse_inst_t *)&cmd_operate_port,
+	(cmdline_parse_inst_t *)&cmd_operate_specific_port,
+	(cmdline_parse_inst_t *)&cmd_config_speed_all,
+	(cmdline_parse_inst_t *)&cmd_config_speed_specific,
+	(cmdline_parse_inst_t *)&cmd_config_rx_tx,
+	(cmdline_parse_inst_t *)&cmd_config_max_pkt_len,
+	(cmdline_parse_inst_t *)&cmd_config_rx_mode_flag,
+	(cmdline_parse_inst_t *)&cmd_config_rss,
+	(cmdline_parse_inst_t *)&cmd_config_burst,
+	(cmdline_parse_inst_t *)&cmd_config_thresh,
+	(cmdline_parse_inst_t *)&cmd_config_threshold,
 	NULL,
 };
 
@@ -2470,4 +3310,28 @@ prompt(void)
 	}
 	cmdline_interact(cl);
 	cmdline_stdin_exit(cl);
+}
+
+static void
+cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue)
+{
+	if (id < nb_ports) {
+		/* check if need_reconfig has been set to 1 */
+		if (ports[id].need_reconfig == 0)
+			ports[id].need_reconfig = dev;
+		/* check if need_reconfig_queues has been set to 1 */
+		if (ports[id].need_reconfig_queues == 0)
+			ports[id].need_reconfig_queues = queue;
+	} else {
+		portid_t pid;
+
+		for (pid = 0; pid < nb_ports; pid++) {
+			/* check if need_reconfig has been set to 1 */
+			if (ports[pid].need_reconfig == 0)
+				ports[pid].need_reconfig = dev;
+			/* check if need_reconfig_queues has been set to 1 */
+			if (ports[pid].need_reconfig_queues == 0)
+				ports[pid].need_reconfig_queues = queue;
+		}
+	}
 }

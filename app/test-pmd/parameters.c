@@ -89,7 +89,7 @@ usage(char* progname)
 	       "--rss-ip | --rss-udp | "
 	       "--rxpt= | --rxht= | --rxwt= | --rxfreet= | "
 	       "--txpt= | --txht= | --txwt= | --txfreet= | "
-	       "--txrst= ]\n",
+	       "--txrst= | --txqflags= ]\n",
 	       progname);
 	printf("  --interactive: run in interactive mode\n");
 	printf("  --help:   display this message and quit\n");
@@ -158,6 +158,8 @@ usage(char* progname)
 	       " (0 <= N <= value of txd)\n");
 	printf("  --txrst=N set the transmit RS bit threshold of TX rings to N"
 	       " (0 <= N <= value of txd)\n");
+	printf("  --txqflags=0xXXXXXXXX hexidecimal bitmask of TX queue flags"
+	       " (0 <= N <= 0x7FFFFFFF)\n");
 	printf("  --tx-queue-stats-mapping (port,queue,mapping)[,(port,queue,mapping]:"
 	       " tx queues statistics counters mapping"
 	       " (0 <= mapping <= %d)\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
@@ -356,6 +358,7 @@ launch_args_parse(int argc, char** argv)
 		{ "txwt",			1, 0, 0 },
 		{ "txfreet",			1, 0, 0 },
 		{ "txrst",			1, 0, 0 },
+		{ "txqflags",			1, 0, 0 },
 		{ "rxpt",			1, 0, 0 },
 		{ "rxht",			1, 0, 0 },
 		{ "rxwt",			1, 0, 0 },
@@ -541,6 +544,9 @@ launch_args_parse(int argc, char** argv)
 				rx_mode.hw_vlan_extend = 0;
 			}
 
+			if (!strcmp(lgopts[opt_idx].name, "enable-drop-en"))
+				rx_drop_en = 1;
+
 			if (!strcmp(lgopts[opt_idx].name, "disable-rss"))
 				rss_hf = 0;
 			if (!strcmp(lgopts[opt_idx].name, "port-topology")) {
@@ -643,6 +649,15 @@ launch_args_parse(int argc, char** argv)
 					tx_rs_thresh = (uint16_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "txrst must be >= 0\n");
+			}
+			if (!strcmp(lgopts[opt_idx].name, "txqflags")) {
+				char *end = NULL;
+				n = strtoul(optarg, &end, 16);
+				if (n >= 0)
+					txq_flags = (uint32_t)n;
+				else
+					rte_exit(EXIT_FAILURE,
+						 "txqflags must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "rxpt")) {
 				n = atoi(optarg);

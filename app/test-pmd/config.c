@@ -593,7 +593,8 @@ rxtx_config_display(void)
 	       nb_txq, nb_txd, tx_free_thresh);
 	printf("  TX threshold registers: pthresh=%d hthresh=%d wthresh=%d\n",
 	       tx_thresh.pthresh, tx_thresh.hthresh, tx_thresh.wthresh);
-	printf("  TX RS bit threshold=%d\n", tx_rs_thresh);
+	printf("  TX RS bit threshold=%d - TXQ flags=0x%"PRIx32"\n",
+	       tx_rs_thresh, txq_flags);
 }
 
 /*

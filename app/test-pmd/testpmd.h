@@ -41,6 +41,16 @@
 int main(int argc, char **argv);
 #endif
 
+#define RTE_PORT_ALL            (~(portid_t)0x0)
+
+#define RTE_TEST_RX_DESC_MAX    2048
+#define RTE_TEST_TX_DESC_MAX    2048
+
+#define RTE_PORT_STOPPED        (uint16_t)0
+#define RTE_PORT_STARTED        (uint16_t)1
+#define RTE_PORT_CLOSED         (uint16_t)2
+#define RTE_PORT_HANDLING       (uint16_t)3
+
 /*
  * Default size of the mbuf data buffer to receive standard 1518-byte
  * Ethernet frames in a mono-segment memory buffer.
@@ -133,6 +143,12 @@ struct rte_port {
 	uint64_t                rx_bad_l4_csum; /**< rx pkts with bad l4 checksum */
 	uint8_t                 tx_queue_stats_mapping_enabled;
 	uint8_t                 rx_queue_stats_mapping_enabled;
+	volatile uint16_t        port_status;    /**< port started or not */
+	uint8_t                 need_reconfig;  /**< need reconfiguring port or not */
+	uint8_t                 need_reconfig_queues; /**< need reconfiguring queues or not */
+	uint8_t                 rss_flag;   /**< enable rss or not */
+	struct rte_eth_rxconf   rx_conf;    /**< rx configuration */
+	struct rte_eth_txconf   tx_conf;    /**< tx configuration */
 };
 
 /**
@@ -253,8 +269,10 @@ extern uint16_t nb_rxd;
 extern uint16_t nb_txd;
 
 extern uint16_t rx_free_thresh;
+extern uint8_t rx_drop_en;
 extern uint16_t tx_free_thresh;
 extern uint16_t tx_rs_thresh;
+extern uint32_t txq_flags;
 
 extern uint16_t mbuf_data_size; /**< Mbuf data space size. */
 extern uint32_t param_total_num_mbufs;
@@ -403,6 +421,11 @@ void set_nb_pkt_per_burst(uint16_t pkt_burst);
 void set_pkt_forwarding_mode(const char *fwd_mode);
 void start_packet_forwarding(int with_tx_first);
 void stop_packet_forwarding(void);
+void init_port_config(void);
+void start_port(portid_t pid);
+void stop_port(portid_t pid);
+void close_port(portid_t pid);
+int all_ports_stopped(void);
 void pmd_test_exit(void);
 
 void fdir_add_signature_filter(portid_t port_id, uint8_t queue_id,
