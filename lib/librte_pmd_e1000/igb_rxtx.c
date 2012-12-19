@@ -130,6 +130,7 @@ struct igb_rx_queue {
 	uint8_t             hthresh;    /**< Host threshold register. */
 	uint8_t             wthresh;    /**< Write-back threshold register. */
 	uint8_t             crc_len;    /**< 0 if CRC stripped, 4 otherwise. */
+	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
 };
 
 /**
@@ -1385,6 +1386,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->pthresh = rx_conf->rx_thresh.pthresh;
 	rxq->hthresh = rx_conf->rx_thresh.hthresh;
 	rxq->wthresh = rx_conf->rx_thresh.wthresh;
+	rxq->drop_en = rx_conf->rx_drop_en;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 	rxq->queue_id = queue_idx;
 	rxq->port_id = dev->data->port_id;
@@ -1694,6 +1696,10 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 			dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
 			dev->data->scattered_rx = 1;
 		}
+
+		/* Set if packets are dropped when no descriptors available */
+		if (rxq->drop_en)
+			srrctl |= E1000_SRRCTL_DROP_EN;
 
 		E1000_WRITE_REG(hw, E1000_SRRCTL(i), srrctl);
 

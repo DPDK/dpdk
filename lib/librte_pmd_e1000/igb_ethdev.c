@@ -614,9 +614,6 @@ eth_igb_start(struct rte_eth_dev *dev)
 		E1000_WRITE_REG(hw, E1000_EITR(0), 0xFFFF);
 	}
 
-	/* Don't reset the phy next time init gets called */
-	hw->phy.reset_disable = 1;
-
 	/* Setup link speed and duplex */
 	switch (dev->data->dev_conf.link_speed) {
 	case ETH_LINK_SPEED_AUTONEG:
@@ -662,11 +659,17 @@ eth_igb_start(struct rte_eth_dev *dev)
 	}
 	e1000_setup_link(hw);
 
-	PMD_INIT_LOG(DEBUG, "<<");
-
 	/* check if lsc interrupt feature is enabled */
-	if (dev->data->dev_conf.intr_conf.lsc != 0)
-		return eth_igb_interrupt_setup(dev);
+	if (dev->data->dev_conf.intr_conf.lsc != 0) {
+		ret = eth_igb_interrupt_setup(dev);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Unable to setup interrupts");
+			igb_dev_clear_queues(dev);
+			return ret;
+		}
+	}
+
+	PMD_INIT_LOG(DEBUG, "<<");
 
 	return (0);
 
