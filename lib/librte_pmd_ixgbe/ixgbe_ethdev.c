@@ -89,8 +89,7 @@
 
 static int eth_ixgbe_dev_init(struct eth_driver *eth_drv,
 		struct rte_eth_dev *eth_dev);
-static int  ixgbe_dev_configure(struct rte_eth_dev *dev, uint16_t nb_rx_q,
-				uint16_t nb_tx_q);
+static int  ixgbe_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbe_dev_start(struct rte_eth_dev *dev);
 static void ixgbe_dev_stop(struct rte_eth_dev *dev);
 static void ixgbe_dev_close(struct rte_eth_dev *dev);
@@ -130,8 +129,7 @@ static void ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index);
 /* For Virtual Function support */
 static int eth_ixgbevf_dev_init(struct eth_driver *eth_drv,
 		struct rte_eth_dev *eth_dev);
-static int  ixgbevf_dev_configure(struct rte_eth_dev *dev, uint16_t nb_rx_q,
-		uint16_t nb_tx_q);
+static int  ixgbevf_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_start(struct rte_eth_dev *dev);
 static void ixgbevf_dev_stop(struct rte_eth_dev *dev);
 static void ixgbevf_intr_disable(struct ixgbe_hw *hw);
@@ -199,7 +197,9 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.dev_infos_get        = ixgbe_dev_info_get,
 	.vlan_filter_set      = ixgbe_vlan_filter_set,
 	.rx_queue_setup       = ixgbe_dev_rx_queue_setup,
+	.rx_queue_release     = ixgbe_dev_rx_queue_release,
 	.tx_queue_setup       = ixgbe_dev_tx_queue_setup,
+	.tx_queue_release     = ixgbe_dev_tx_queue_release,
 	.dev_led_on           = ixgbe_dev_led_on,
 	.dev_led_off          = ixgbe_dev_led_off,
 	.flow_ctrl_set        = ixgbe_flow_ctrl_set,
@@ -231,7 +231,9 @@ static struct eth_dev_ops ixgbevf_eth_dev_ops = {
 
 	.dev_infos_get        = ixgbe_dev_info_get,
 	.rx_queue_setup       = ixgbe_dev_rx_queue_setup,
+	.rx_queue_release     = ixgbe_dev_rx_queue_release,
 	.tx_queue_setup       = ixgbe_dev_tx_queue_setup,
+	.tx_queue_release     = ixgbe_dev_tx_queue_release,
 };
 
 /**
@@ -777,22 +779,8 @@ ixgbe_dev_configure(struct rte_eth_dev *dev, uint16_t nb_rx_q, uint16_t nb_tx_q)
 
 	PMD_INIT_FUNC_TRACE();
 
-	/* Allocate the array of pointers to RX queue structures */
-	diag = ixgbe_dev_rx_queue_alloc(dev, nb_rx_q);
-	if (diag != 0) {
-		PMD_INIT_LOG(ERR, "ethdev port_id=%d allocation of array of %d"
-			     "pointers to RX queues failed", dev->data->port_id,
-			     nb_rx_q);
-		return diag;
 	}
 
-	/* Allocate the array of pointers to TX queue structures */
-	diag = ixgbe_dev_tx_queue_alloc(dev, nb_tx_q);
-	if (diag != 0) {
-		PMD_INIT_LOG(ERR, "ethdev port_id=%d allocation of array of %d"
-			     "pointers to TX queues failed", dev->data->port_id,
-			     nb_tx_q);
-		return diag;
 	}
 
 	/* set flag to update link status after init */
@@ -918,6 +906,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 
 error:
 	PMD_INIT_LOG(ERR, "failure in ixgbe_dev_start(): %d", err);
+	ixgbe_dev_clear_queues(dev);
 	return -EIO;
 }
 
@@ -1640,30 +1629,10 @@ ixgbevf_intr_disable(struct ixgbe_hw *hw)
 }
 
 static int
-ixgbevf_dev_configure(struct rte_eth_dev *dev, uint16_t nb_rx_q, uint16_t nb_tx_q)
+ixgbevf_dev_configure(struct rte_eth_dev *dev)
 {
-	int diag;
 	struct rte_eth_conf* conf = &dev->data->dev_conf;
 
-	PMD_INIT_FUNC_TRACE();
-
-	/* Allocate the array of pointers to RX queue structures */
-	diag = ixgbe_dev_rx_queue_alloc(dev, nb_rx_q);
-	if (diag != 0) {
-		PMD_INIT_LOG(ERR, "ethdev port_id=%d allocation of array of %d"
-			     "pointers to RX queues failed", dev->data->port_id,
-			     nb_rx_q);
-		return diag;
-	}
-
-	/* Allocate the array of pointers to TX queue structures */
-	diag = ixgbe_dev_tx_queue_alloc(dev, nb_tx_q);
-	if (diag != 0) {
-		PMD_INIT_LOG(ERR, "ethdev port_id=%d allocation of array of %d"
-			     "pointers to TX queues failed", dev->data->port_id,
-			     nb_tx_q);
-		return diag;
-	}
 
 	if (!conf->rxmode.hw_strip_crc) {
 		/*

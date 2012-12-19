@@ -377,9 +377,10 @@ ixgbe_xmit_cleanup(struct igb_tx_queue *txq)
 }
 
 uint16_t
-ixgbe_xmit_pkts(struct igb_tx_queue *txq, struct rte_mbuf **tx_pkts,
+ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
 {
+	struct igb_tx_queue *txq;
 	struct igb_tx_entry *sw_ring;
 	struct igb_tx_entry *txe, *txn;
 	volatile union ixgbe_adv_tx_desc *txr;
@@ -401,6 +402,7 @@ ixgbe_xmit_pkts(struct igb_tx_queue *txq, struct rte_mbuf **tx_pkts,
 	uint32_t ctx;
 	uint32_t new_ctx;
 
+	txq = tx_queue;
 	sw_ring = txq->sw_ring;
 	txr     = txq->tx_ring;
 	tx_id   = txq->tx_tail;
@@ -729,9 +731,10 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status)
 }
 
 uint16_t
-ixgbe_recv_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
+	struct igb_rx_queue *rxq;
 	volatile union ixgbe_adv_rx_desc *rx_ring;
 	volatile union ixgbe_adv_rx_desc *rxdp;
 	struct igb_rx_entry *sw_ring;
@@ -750,6 +753,7 @@ ixgbe_recv_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 	nb_rx = 0;
 	nb_hold = 0;
+	rxq = rx_queue;
 	rx_id = rxq->rx_tail;
 	rx_ring = rxq->rx_ring;
 	sw_ring = rxq->sw_ring;
@@ -909,9 +913,10 @@ ixgbe_recv_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 }
 
 uint16_t
-ixgbe_recv_scattered_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			  uint16_t nb_pkts)
 {
+	struct igb_rx_queue *rxq;
 	volatile union ixgbe_adv_rx_desc *rx_ring;
 	volatile union ixgbe_adv_rx_desc *rxdp;
 	struct igb_rx_entry *sw_ring;
@@ -932,6 +937,7 @@ ixgbe_recv_scattered_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 	nb_rx = 0;
 	nb_hold = 0;
+	rxq = rx_queue;
 	rx_id = rxq->rx_tail;
 	rx_ring = rxq->rx_ring;
 	sw_ring = rxq->sw_ring;
@@ -1238,46 +1244,17 @@ ixgbe_tx_queue_release_mbufs(struct igb_tx_queue *txq)
 static void
 ixgbe_tx_queue_release(struct igb_tx_queue *txq)
 {
+	if (txq != NULL) {
 	ixgbe_tx_queue_release_mbufs(txq);
 	rte_free(txq->sw_ring);
 	rte_free(txq);
+	}
 }
 
-int
-ixgbe_dev_tx_queue_alloc(struct rte_eth_dev *dev, uint16_t nb_queues)
+void
+ixgbe_dev_tx_queue_release(void *txq)
 {
-	uint16_t old_nb_queues = dev->data->nb_tx_queues;
-	struct igb_tx_queue **txq;
-	unsigned i;
-
-	PMD_INIT_FUNC_TRACE();
-
-	if (dev->data->tx_queues == NULL) {
-		dev->data->tx_queues = rte_zmalloc("ethdev->tx_queues",
-				sizeof(struct igb_tx_queue *) * nb_queues,
-				CACHE_LINE_SIZE);
-		if (dev->data->tx_queues == NULL) {
-			dev->data->nb_tx_queues = 0;
-			return -1;
-		}
-	}
-	else {
-		for (i = nb_queues; i < old_nb_queues; i++)
-			ixgbe_tx_queue_release(dev->data->tx_queues[i]);
-		txq = rte_realloc(dev->data->tx_queues,
-				sizeof(struct igb_tx_queue *) * nb_queues,
-				CACHE_LINE_SIZE);
-		if (txq == NULL)
-			return -1;
-		else
-			dev->data->tx_queues = txq;
-		if (nb_queues > old_nb_queues)
-			memset(&dev->data->tx_queues[old_nb_queues], 0,
-					sizeof(struct igb_tx_queue *) *
-					(nb_queues - old_nb_queues));
-	}
-	dev->data->nb_tx_queues = nb_queues;
-	return 0;
+	ixgbe_tx_queue_release(txq);
 }
 
 /* (Re)set dynamic igb_tx_queue fields to defaults */
@@ -1496,14 +1473,12 @@ ixgbe_rx_queue_release(struct igb_rx_queue *rxq)
 	rte_free(rxq);
 }
 
-int
-ixgbe_dev_rx_queue_alloc(struct rte_eth_dev *dev, uint16_t nb_queues)
+void
+ixgbe_dev_rx_queue_release(void *rxq)
 {
-	uint16_t old_nb_queues = dev->data->nb_rx_queues;
-	struct igb_rx_queue **rxq;
-	unsigned i;
+	ixgbe_rx_queue_release(rxq);
+}
 
-	PMD_INIT_FUNC_TRACE();
 
 	if (dev->data->rx_queues == NULL) {
 		dev->data->rx_queues = rte_zmalloc("ethdev->rx_queues",
@@ -1965,16 +1940,13 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 
 	/* Setup RX queues */
-	dev->rx_pkt_burst = ixgbe_recv_pkts;
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
 
 		/* Allocate buffers for descriptor rings */
 		ret = ixgbe_alloc_rx_queue_mbufs(rxq);
-		if (ret) {
-			ixgbe_dev_clear_queues(dev);
+		if (ret)
 			return ret;
-		}
 
 		/*
 		 * Reset crc_len in case it was changed after queue setup by a

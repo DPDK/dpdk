@@ -116,9 +116,9 @@ struct ixgbe_adapter {
  */
 void ixgbe_dev_clear_queues(struct rte_eth_dev *dev);
 
-int ixgbe_dev_rx_queue_alloc(struct rte_eth_dev *dev, uint16_t nb_rx_queues);
+void ixgbe_dev_rx_queue_release(void *rxq);
 
-int ixgbe_dev_tx_queue_alloc(struct rte_eth_dev *dev, uint16_t nb_tx_queues);
+void ixgbe_dev_tx_queue_release(void *txq);
 
 int  ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, unsigned int socket_id,
@@ -141,13 +141,16 @@ void ixgbevf_dev_tx_init(struct rte_eth_dev *dev);
 
 void ixgbevf_dev_rxtx_start(struct rte_eth_dev *dev);
 
-uint16_t ixgbe_recv_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+uint16_t ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
 
-uint16_t ixgbe_recv_scattered_pkts(struct igb_rx_queue *rxq,
+uint16_t ixgbe_recv_scattered_pkts(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
-uint16_t ixgbe_xmit_pkts(struct igb_tx_queue *txq, struct rte_mbuf **tx_pkts,
+uint16_t ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
+
+uint16_t ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 
 /*
