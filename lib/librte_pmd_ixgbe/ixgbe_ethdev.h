@@ -34,6 +34,9 @@
 
 #ifndef _IXGBE_ETHDEV_H_
 #define _IXGBE_ETHDEV_H_
+#include "ixgbe/ixgbe_dcb.h"
+#include "ixgbe/ixgbe_dcb_82599.h"
+#include "ixgbe/ixgbe_dcb_82598.h"
 
 /* need update link, bit flag */
 #define IXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
@@ -97,6 +100,7 @@ struct ixgbe_adapter {
 	struct ixgbe_stat_mapping_registers stat_mappings;
 	struct ixgbe_vfta           shadow_vfta;
 	struct ixgbe_hwstrip		hwstrip;
+	struct ixgbe_dcb_config     dcb_config;
 };
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
@@ -119,6 +123,9 @@ struct ixgbe_adapter {
 
 #define IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->hwstrip)
+
+#define IXGBE_DEV_PRIVATE_TO_DCB_CFG(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->dcb_config)
 
 /*
  * RX/TX function prototypes
@@ -197,5 +204,7 @@ int ixgbe_fdir_remove_perfect_filter(struct rte_eth_dev *dev,
 
 int ixgbe_fdir_set_masks(struct rte_eth_dev *dev,
 		struct rte_fdir_masks *fdir_masks);
+
+void ixgbe_configure_dcb(struct rte_eth_dev *dev);
 
 #endif /* _IXGBE_ETHDEV_H_ */

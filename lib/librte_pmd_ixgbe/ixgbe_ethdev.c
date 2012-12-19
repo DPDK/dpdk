@@ -129,6 +129,8 @@ static int ixgbe_dev_led_on(struct rte_eth_dev *dev);
 static int ixgbe_dev_led_off(struct rte_eth_dev *dev);
 static int  ixgbe_flow_ctrl_set(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
+static int ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
+		struct rte_eth_pfc_conf *pfc_conf);
 static void ixgbe_dev_link_status_print(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_setup(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
@@ -139,6 +141,7 @@ static void ixgbe_dev_interrupt_delayed_handler(void *param);
 static void ixgbe_add_rar(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 				uint32_t index, uint32_t pool);
 static void ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index);
+static void ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config);
 
 /* For Virtual Function support */
 static int eth_ixgbevf_dev_init(struct eth_driver *eth_drv,
@@ -245,6 +248,7 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.dev_led_on           = ixgbe_dev_led_on,
 	.dev_led_off          = ixgbe_dev_led_off,
 	.flow_ctrl_set        = ixgbe_flow_ctrl_set,
+	.priority_flow_ctrl_set = ixgbe_priority_flow_ctrl_set,
 	.mac_addr_add         = ixgbe_add_rar,
 	.mac_addr_remove      = ixgbe_remove_rar,
 	.fdir_add_signature_filter    = ixgbe_fdir_add_signature_filter,
@@ -471,6 +475,46 @@ ixgbe_restore_statistics_mapping(struct rte_eth_dev * dev)
 	}
 }
 
+static void
+ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config)
+{
+	uint8_t i;
+	struct ixgbe_dcb_tc_config *tc;
+	int dcb_max_tc = IXGBE_DCB_MAX_TRAFFIC_CLASS;
+
+	dcb_config->num_tcs.pg_tcs = dcb_max_tc;
+	dcb_config->num_tcs.pfc_tcs = dcb_max_tc;
+	for (i = 0; i < dcb_max_tc; i++) {
+		tc = &dcb_config->tc_config[i];
+		tc->path[IXGBE_DCB_TX_CONFIG].bwg_id = i;
+		tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent = 100/dcb_max_tc + (i & 1);
+		tc->path[IXGBE_DCB_RX_CONFIG].bwg_id = i;
+		tc->path[IXGBE_DCB_RX_CONFIG].bwg_percent = 100/dcb_max_tc + (i & 1);
+		tc->pfc = ixgbe_dcb_pfc_disabled;
+	}
+
+	/* Initialize default user to priority mapping, UPx->TC0 */
+	tc = &dcb_config->tc_config[0];
+	tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap = 0xFF;
+	tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap = 0xFF;
+	for (i = 0; i< IXGBE_DCB_MAX_BW_GROUP; i++) {
+		dcb_config->bw_percentage[IXGBE_DCB_TX_CONFIG][i] = 100;
+		dcb_config->bw_percentage[IXGBE_DCB_RX_CONFIG][i] = 100;
+	}
+	dcb_config->rx_pba_cfg = ixgbe_dcb_pba_equal;
+	dcb_config->pfc_mode_enable = false;
+	dcb_config->vt_mode = true;
+	dcb_config->round_robin_enable = false;
+	/* support all DCB capabilities in 82599 */
+	dcb_config->support.capabilities = 0xFF;
+
+	/*we only support 4 Tcs for X540*/		
+	if (hw->mac.type == ixgbe_mac_X540) {
+		dcb_config->num_tcs.pg_tcs = 4;
+		dcb_config->num_tcs.pfc_tcs = 4;
+	}
+} 
+
 /*
  * This function is based on code in ixgbe_attach() in ixgbe/ixgbe.c.
  * It returns 0 on success.
@@ -520,13 +564,17 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		return -EIO;
 	}
 
+	/* Initialize DCB configuration*/
+	memset(dcb_config, 0, sizeof(struct ixgbe_dcb_config));
+	ixgbe_dcb_init(hw,dcb_config);
 	/* Get Hardware Flow Control setting */
 	hw->fc.requested_mode = ixgbe_fc_full;
 	hw->fc.current_mode = ixgbe_fc_full;
 	hw->fc.pause_time = IXGBE_FC_PAUSE;
-	hw->fc.low_water = IXGBE_FC_LO;
-	for (i = 0; i < MAX_TRAFFIC_CLASS; i++)
+	for (i = 0; i < IXGBE_DCB_MAX_TRAFFIC_CLASS; i++) {
+		hw->fc.low_water[i] = IXGBE_FC_LO;
 		hw->fc.high_water[i] = IXGBE_FC_HI;
+	}
 	hw->fc.send_xon = 1;
 
 	ixgbe_disable_intr(hw);
@@ -1133,6 +1181,9 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK | \
 		ETH_VLAN_EXTEND_MASK;
 	ixgbe_vlan_offload_set(dev, mask);
+	
+	/* Configure DCB hw */
+	ixgbe_configure_dcb(dev); 
 
 	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_NONE) {
 		err = ixgbe_fdir_configure(dev);
@@ -1823,10 +1874,10 @@ ixgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	hw->fc.requested_mode = rte_fcmode_2_ixgbe_fcmode[fc_conf->mode];
 	hw->fc.pause_time     = fc_conf->pause_time;
 	hw->fc.high_water[0]  = fc_conf->high_water;
-	hw->fc.low_water      = fc_conf->low_water;
+	hw->fc.low_water[0]   = fc_conf->low_water;
 	hw->fc.send_xon       = fc_conf->send_xon;
 
-	err = ixgbe_fc_enable(hw, 0);
+	err = ixgbe_fc_enable(hw);
 	/* Not negotiated is not an error case */
 	if ((err == IXGBE_SUCCESS) || (err == IXGBE_ERR_FC_NOT_NEGOTIATED)) {
 		return 0;
@@ -1835,6 +1886,211 @@ ixgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	PMD_INIT_LOG(ERR, "ixgbe_fc_enable = 0x%x \n", err);
 	return -EIO;
 }
+
+/**
+ *  ixgbe_pfc_enable_generic - Enable flow control
+ *  @hw: pointer to hardware structure
+ *  @tc_num: traffic class number
+ *  Enable flow control according to the current settings.
+ */
+static int 
+ixgbe_dcb_pfc_enable_generic(struct ixgbe_hw *hw,uint8_t tc_num)
+{
+	int ret_val = 0;
+	uint32_t mflcn_reg, fccfg_reg;
+	uint32_t reg;
+	uint32_t fcrtl, fcrth;
+	uint8_t i;
+	uint8_t nb_rx_en;
+	
+	/* Validate the water mark configuration */
+	if (!hw->fc.pause_time) {
+		ret_val = IXGBE_ERR_INVALID_LINK_SETTINGS;
+		goto out;
+	}
+
+	/* Low water mark of zero causes XOFF floods */
+	if (hw->fc.current_mode & ixgbe_fc_tx_pause) {
+		 /* High/Low water can not be 0 */
+		if( (!hw->fc.high_water[tc_num])|| (!hw->fc.low_water[tc_num])) {
+			PMD_INIT_LOG(ERR,"Invalid water mark configuration\n");
+			ret_val = IXGBE_ERR_INVALID_LINK_SETTINGS;
+			goto out;
+		}
+ 
+		if(hw->fc.low_water[tc_num] >= hw->fc.high_water[tc_num]) {
+			PMD_INIT_LOG(ERR,"Invalid water mark configuration\n");
+			ret_val = IXGBE_ERR_INVALID_LINK_SETTINGS;
+			goto out;
+		}
+	}
+	/* Negotiate the fc mode to use */
+	ixgbe_fc_autoneg(hw);
+
+	/* Disable any previous flow control settings */
+	mflcn_reg = IXGBE_READ_REG(hw, IXGBE_MFLCN);
+	mflcn_reg &= ~(IXGBE_MFLCN_RPFCE_SHIFT | IXGBE_MFLCN_RFCE|IXGBE_MFLCN_RPFCE);
+
+	fccfg_reg = IXGBE_READ_REG(hw, IXGBE_FCCFG);
+	fccfg_reg &= ~(IXGBE_FCCFG_TFCE_802_3X | IXGBE_FCCFG_TFCE_PRIORITY);
+
+	switch (hw->fc.current_mode) {
+	case ixgbe_fc_none:
+		/*
+		 * If the count of enabled RX Priority Flow control >1,
+		 * and the TX pause can not be disabled 
+		 */
+		nb_rx_en = 0;
+		for (i =0; i < IXGBE_DCB_MAX_TRAFFIC_CLASS; i++) {
+			reg = IXGBE_READ_REG(hw, IXGBE_FCRTH_82599(i));
+			if (reg & IXGBE_FCRTH_FCEN)
+				nb_rx_en++;
+		}
+		if (nb_rx_en > 1)
+			fccfg_reg |=IXGBE_FCCFG_TFCE_PRIORITY;
+		break;
+	case ixgbe_fc_rx_pause:
+		/*
+		 * Rx Flow control is enabled and Tx Flow control is
+		 * disabled by software override. Since there really
+		 * isn't a way to advertise that we are capable of RX
+		 * Pause ONLY, we will advertise that we support both
+		 * symmetric and asymmetric Rx PAUSE.  Later, we will
+		 * disable the adapter's ability to send PAUSE frames.
+		 */
+		mflcn_reg |= IXGBE_MFLCN_RPFCE;
+		/*
+		 * If the count of enabled RX Priority Flow control >1,
+		 * and the TX pause can not be disabled
+		 */
+		nb_rx_en = 0;
+		for (i =0; i < IXGBE_DCB_MAX_TRAFFIC_CLASS; i++) {
+			reg = IXGBE_READ_REG(hw, IXGBE_FCRTH_82599(i));
+			if (reg & IXGBE_FCRTH_FCEN)
+				nb_rx_en++;
+		}
+		if (nb_rx_en > 1)
+			fccfg_reg |=IXGBE_FCCFG_TFCE_PRIORITY;
+		break;
+	case ixgbe_fc_tx_pause:
+		/*
+		 * Tx Flow control is enabled, and Rx Flow control is
+		 * disabled by software override.
+		 */
+		fccfg_reg |=IXGBE_FCCFG_TFCE_PRIORITY;
+		break;
+	case ixgbe_fc_full:
+		/* Flow control (both Rx and Tx) is enabled by SW override. */
+		mflcn_reg |= IXGBE_MFLCN_RPFCE;
+		fccfg_reg |= IXGBE_FCCFG_TFCE_PRIORITY;
+		break;
+	default:
+		DEBUGOUT("Flow control param set incorrectly\n");
+		ret_val = IXGBE_ERR_CONFIG;
+		goto out;
+		break;
+	}
+
+	/* Set 802.3x based flow control settings. */
+	mflcn_reg |= IXGBE_MFLCN_DPF;
+	IXGBE_WRITE_REG(hw, IXGBE_MFLCN, mflcn_reg);
+	IXGBE_WRITE_REG(hw, IXGBE_FCCFG, fccfg_reg);
+
+	/* Set up and enable Rx high/low water mark thresholds, enable XON. */
+	if ((hw->fc.current_mode & ixgbe_fc_tx_pause) &&
+		hw->fc.high_water[tc_num]) {
+		fcrtl = (hw->fc.low_water[tc_num] << 10) | IXGBE_FCRTL_XONE;
+		IXGBE_WRITE_REG(hw, IXGBE_FCRTL_82599(tc_num), fcrtl);
+		fcrth = (hw->fc.high_water[tc_num] << 10) | IXGBE_FCRTH_FCEN;
+	} else {
+		IXGBE_WRITE_REG(hw, IXGBE_FCRTL_82599(tc_num), 0);
+		/*
+		 * In order to prevent Tx hangs when the internal Tx
+		 * switch is enabled we must set the high water mark
+		 * to the maximum FCRTH value.  This allows the Tx
+		 * switch to function even under heavy Rx workloads.
+		 */
+		fcrth = IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(tc_num)) - 32;
+	}
+	IXGBE_WRITE_REG(hw, IXGBE_FCRTH_82599(tc_num), fcrth);
+
+	/* Configure pause time (2 TCs per register) */
+	reg = hw->fc.pause_time * 0x00010001;
+	for (i = 0; i < (IXGBE_DCB_MAX_TRAFFIC_CLASS / 2); i++)
+		IXGBE_WRITE_REG(hw, IXGBE_FCTTV(i), reg);
+
+	/* Configure flow control refresh threshold value */
+	IXGBE_WRITE_REG(hw, IXGBE_FCRTV, hw->fc.pause_time / 2);
+
+out:
+	return ret_val;
+}
+
+static int 
+ixgbe_dcb_pfc_enable(struct rte_eth_dev *dev,uint8_t tc_num)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int32_t ret_val = IXGBE_NOT_IMPLEMENTED;
+
+	if(hw->mac.type != ixgbe_mac_82598EB) {
+		ret_val = ixgbe_dcb_pfc_enable_generic(hw,tc_num);
+	}
+	return ret_val;
+}
+
+static int 
+ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc_conf)
+{
+	int err;
+	uint32_t rx_buf_size;
+	uint32_t max_high_water;
+	uint8_t tc_num;
+	uint8_t  map[IXGBE_DCB_MAX_USER_PRIORITY] = { 0 };
+	struct ixgbe_hw *hw =
+                IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_dcb_config *dcb_config =
+                IXGBE_DEV_PRIVATE_TO_DCB_CFG(dev->data->dev_private);
+	
+	enum ixgbe_fc_mode rte_fcmode_2_ixgbe_fcmode[] = {
+		ixgbe_fc_none,
+		ixgbe_fc_rx_pause,
+		ixgbe_fc_tx_pause,
+		ixgbe_fc_full
+	};
+	
+	PMD_INIT_FUNC_TRACE();
+	
+	ixgbe_dcb_unpack_map_cee(dcb_config, IXGBE_DCB_RX_CONFIG, map);
+	tc_num = map[pfc_conf->priority];
+	rx_buf_size = IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(tc_num));
+	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x \n", rx_buf_size);
+	/*
+	 * At least reserve one Ethernet frame for watermark
+	 * high_water/low_water in kilo bytes for ixgbe
+	 */
+	max_high_water = (rx_buf_size - ETHER_MAX_LEN) >> IXGBE_RXPBSIZE_SHIFT;
+	if ((pfc_conf->fc.high_water > max_high_water) ||
+		(pfc_conf->fc.high_water <= pfc_conf->fc.low_water)) {
+		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB\n");
+		PMD_INIT_LOG(ERR, "High_water must <=  0x%x\n", max_high_water);
+		return (-EINVAL);
+	}
+
+	hw->fc.requested_mode = rte_fcmode_2_ixgbe_fcmode[pfc_conf->fc.mode];
+	hw->fc.pause_time = pfc_conf->fc.pause_time;
+	hw->fc.send_xon = pfc_conf->fc.send_xon;
+	hw->fc.low_water[tc_num] =  pfc_conf->fc.low_water;
+	hw->fc.high_water[tc_num] = pfc_conf->fc.high_water;
+		
+	err = ixgbe_dcb_pfc_enable(dev,tc_num);
+	
+	/* Not negotiated is not an error case */
+	if ((err == IXGBE_SUCCESS) || (err == IXGBE_ERR_FC_NOT_NEGOTIATED)) 
+		return 0;
+
+	PMD_INIT_LOG(ERR, "ixgbe_dcb_pfc_enable = 0x%x \n", err);
+	return -EIO;
+}	
 
 static void
 ixgbe_add_rar(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
