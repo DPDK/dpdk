@@ -77,7 +77,8 @@ void rte_dump_registers(void);
  * @param args
  *   The variable list of arguments.
  */
-#define rte_panic(format, args...) __rte_panic(__func__, format, ## args)
+#define rte_panic_(func, format, ...) __rte_panic(func, format "%.0s", __VA_ARGS__)
+#define rte_panic(...) rte_panic_(__func__, __VA_ARGS__, "dummy")
 
 /*
  * Provide notification of a critical non-recoverable error and stop.
