@@ -245,6 +245,18 @@ struct rte_fdir_conf fdir_conf = {
 
 static volatile int test_done = 1; /* stop packet forwarding when set to 1. */
 
+struct queue_stats_mappings tx_queue_stats_mappings_array[MAX_TX_QUEUE_STATS_MAPPINGS];
+struct queue_stats_mappings rx_queue_stats_mappings_array[MAX_RX_QUEUE_STATS_MAPPINGS];
+
+struct queue_stats_mappings *tx_queue_stats_mappings = tx_queue_stats_mappings_array;
+struct queue_stats_mappings *rx_queue_stats_mappings = rx_queue_stats_mappings_array;
+
+uint16_t nb_tx_queue_stats_mappings = 0;
+uint16_t nb_rx_queue_stats_mappings = 0;
+
+/* Forward function declarations */
+static void map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port);
+
 /*
  * Setup default configuration.
  */

@@ -100,8 +100,8 @@ static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
 	cmdline_printf(cl,
 		       "Display informations:\n"
 		       "---------------------\n"
-		       "- show port info|stats|fdir X|all\n"
-		       "    Diplays information or stats on port X, or all\n"
+		       "- show port info|stats|fdir|stat_qmap X|all\n"
+		       "    Diplays information or stats or stats queue mapping on port X, or all\n"
 		       "- clear port stats X|all\n"
 		       "    Clear stats for port X, or all\n"
 		       "- show config rxtx|cores|fwd\n"
@@ -175,6 +175,9 @@ static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
 		       "    Set bit field value of a port register\n"
 		       "- write regbit port_id reg_off bit_x value\n"
 		       "    Set bit value of a port register\n"
+		       "- set stat_qmap tx|rx port_id queue_id qmapping\n"
+		       "    Set statistics mapping (qmapping 0..15) for tx|rx queue_id on port_id\n"
+		       "    e.g., 'set stat_qmap rx 0 2 5' sets rx queue 2 on port 0 to mapping 5\n"
 		       "\n");
 	cmdline_printf(cl,
 		       "Control forwarding:\n"
@@ -1631,6 +1634,9 @@ static void cmd_showportall_parsed(void *parsed_result,
 	else if (!strcmp(res->what, "fdir"))
 		for (i = 0; i < nb_ports; i++)
 			fdir_get_infos(i);
+	else if (!strcmp(res->what, "stat_qmap"))
+		for (i = 0; i < nb_ports; i++)
+			nic_stats_mapping_display(i);
 }
 
 cmdline_parse_token_string_t cmd_showportall_show =
@@ -1640,13 +1646,13 @@ cmdline_parse_token_string_t cmd_showportall_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_showportall_result, port, "port");
 cmdline_parse_token_string_t cmd_showportall_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showportall_result, what,
-				 "info#stats#fdir");
+				 "info#stats#fdir#stat_qmap");
 cmdline_parse_token_string_t cmd_showportall_all =
 	TOKEN_STRING_INITIALIZER(struct cmd_showportall_result, all, "all");
 cmdline_parse_inst_t cmd_showportall = {
 	.f = cmd_showportall_parsed,
 	.data = NULL,
-	.help_str = "show|clear port info|stats|fdir all",
+	.help_str = "show|clear port info|stats|fdir|stat_qmap all",
 	.tokens = {
 		(void *)&cmd_showportall_show,
 		(void *)&cmd_showportall_port,
@@ -1678,6 +1684,8 @@ static void cmd_showport_parsed(void *parsed_result,
 		nic_stats_display(res->portnum);
 	else if (!strcmp(res->what, "fdir"))
 		 fdir_get_infos(res->portnum);
+	else if (!strcmp(res->what, "stat_qmap"))
+		nic_stats_mapping_display(res->portnum);
 }
 
 cmdline_parse_token_string_t cmd_showport_show =
@@ -1687,14 +1695,14 @@ cmdline_parse_token_string_t cmd_showport_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_result, port, "port");
 cmdline_parse_token_string_t cmd_showport_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_result, what,
-				 "info#stats#fdir");
+				 "info#stats#fdir#stat_qmap");
 cmdline_parse_token_num_t cmd_showport_portnum =
 	TOKEN_NUM_INITIALIZER(struct cmd_showport_result, portnum, INT32);
 
 cmdline_parse_inst_t cmd_showport = {
 	.f = cmd_showport_parsed,
 	.data = NULL,
-	.help_str = "show|clear port info|stats|fdir X (X = port number)",
+	.help_str = "show|clear port info|stats|fdir|stat_qmap X (X = port number)",
 	.tokens = {
 		(void *)&cmd_showport_show,
 		(void *)&cmd_showport_port,
@@ -2120,6 +2128,63 @@ cmdline_parse_inst_t cmd_mac_addr = {
 };
 
 
+/* *** CONFIGURE QUEUE STATS COUNTER MAPPINGS *** */
+struct cmd_set_qmap_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t qmap;
+	cmdline_fixed_string_t what;
+	uint8_t port_id;
+	uint16_t queue_id;
+	uint8_t map_value;
+};
+
+static void
+cmd_set_qmap_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	struct cmd_set_qmap_result *res = parsed_result;
+	int is_rx = (strcmp(res->what, "tx") == 0) ? 0 : 1;
+
+	set_qmap(res->port_id, (uint8_t)is_rx, res->queue_id, res->map_value);
+}
+
+cmdline_parse_token_string_t cmd_setqmap_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_qmap_result,
+				 set, "set");
+cmdline_parse_token_string_t cmd_setqmap_qmap =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_qmap_result,
+				 qmap, "stat_qmap");
+cmdline_parse_token_string_t cmd_setqmap_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_qmap_result,
+				 what, "tx#rx");
+cmdline_parse_token_num_t cmd_setqmap_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_qmap_result,
+			      port_id, UINT8);
+cmdline_parse_token_num_t cmd_setqmap_queueid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_qmap_result,
+			      queue_id, UINT16);
+cmdline_parse_token_num_t cmd_setqmap_mapvalue =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_qmap_result,
+			      map_value, UINT8);
+
+cmdline_parse_inst_t cmd_set_qmap = {
+	.f = cmd_set_qmap_parsed,
+	.data = NULL,
+	.help_str = "Set statistics mapping value on tx|rx queue_id of port_id",
+	.tokens = {
+		(void *)&cmd_setqmap_set,
+		(void *)&cmd_setqmap_qmap,
+		(void *)&cmd_setqmap_what,
+		(void *)&cmd_setqmap_portid,
+		(void *)&cmd_setqmap_queueid,
+		(void *)&cmd_setqmap_mapvalue,
+		NULL,
+	},
+};
+
+/* ******************************************************************************** */
+
 /* list of instructions */
 cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_help,
@@ -2161,6 +2226,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_masks_filter,
 	(cmdline_parse_inst_t *)&cmd_stop,
 	(cmdline_parse_inst_t *)&cmd_mac_addr,
+	(cmdline_parse_inst_t *)&cmd_set_qmap,
 	NULL,
 };
 

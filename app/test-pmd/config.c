@@ -83,6 +83,8 @@ void
 nic_stats_display(portid_t port_id)
 {
 	struct rte_eth_stats stats;
+	struct rte_port *port = &ports[port_id];
+	uint8_t i;
 
 	static const char *nic_stats_border = "########################";
 
@@ -93,18 +95,47 @@ nic_stats_display(portid_t port_id)
 	rte_eth_stats_get(port_id, &stats);
 	printf("\n  %s NIC statistics for port %-2d %s\n",
 	       nic_stats_border, port_id, nic_stats_border);
-	printf("  RX-packets: %-10"PRIu64" RX-errors: %-10"PRIu64"RX-bytes: "
-	       "%-"PRIu64"\n"
-	       "  TX-packets: %-10"PRIu64" TX-errors: %-10"PRIu64"TX-bytes: "
-	       "%-"PRIu64"\n",
-	       stats.ipackets, stats.ierrors, stats.ibytes,
-	       stats.opackets, stats.oerrors, stats.obytes);
+
+	if ((!port->rx_queue_stats_mapping_enabled) && (!port->tx_queue_stats_mapping_enabled)) {
+		printf("  RX-packets: %-10"PRIu64" RX-errors: %-10"PRIu64"RX-bytes: "
+		       "%-"PRIu64"\n"
+		       "  TX-packets: %-10"PRIu64" TX-errors: %-10"PRIu64"TX-bytes: "
+		       "%-"PRIu64"\n",
+		       stats.ipackets, stats.ierrors, stats.ibytes,
+		       stats.opackets, stats.oerrors, stats.obytes);
+	}
+	else {
+		printf("  RX-packets:              %10"PRIu64"    RX-errors: %10"PRIu64
+		       "    RX-bytes: %10"PRIu64"\n"
+		       "  TX-packets:              %10"PRIu64"    TX-errors: %10"PRIu64
+		       "    TX-bytes: %10"PRIu64"\n",
+		       stats.ipackets, stats.ierrors, stats.ibytes,
+		       stats.opackets, stats.oerrors, stats.obytes);
+	}
 
 	/* stats fdir */
 	if (fdir_conf.mode != RTE_FDIR_MODE_NONE)
 		printf("  Fdirmiss:   %-10"PRIu64" Fdirmatch: %-10"PRIu64"\n",
 		       stats.fdirmiss,
 		       stats.fdirmatch);
+
+	if (port->rx_queue_stats_mapping_enabled) {
+		printf("\n");
+		for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
+			printf("  Stats reg %2d RX-packets: %10"PRIu64
+			       "    RX-errors: %10"PRIu64
+			       "    RX-bytes: %10"PRIu64"\n",
+			       i, stats.q_ipackets[i], stats.q_errors[i], stats.q_ibytes[i]);
+		}
+	}
+	if (port->tx_queue_stats_mapping_enabled) {
+		printf("\n");
+		for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
+			printf("  Stats reg %2d TX-packets: %10"PRIu64
+			       "                             TX-bytes: %10"PRIu64"\n",
+			       i, stats.q_opackets[i], stats.q_obytes[i]);
+		}
+	}
 
 	printf("  %s############################%s\n",
 	       nic_stats_border, nic_stats_border);
@@ -119,6 +150,55 @@ nic_stats_clear(portid_t port_id)
 	}
 	rte_eth_stats_reset(port_id);
 	printf("\n  NIC statistics for port %d cleared\n", port_id);
+}
+
+
+void
+nic_stats_mapping_display(portid_t port_id)
+{
+	struct rte_port *port = &ports[port_id];
+	uint16_t i;
+
+	static const char *nic_stats_mapping_border = "########################";
+
+	if (port_id >= nb_ports) {
+		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+		return;
+	}
+
+	if ((!port->rx_queue_stats_mapping_enabled) && (!port->tx_queue_stats_mapping_enabled)) {
+		printf("Port id %d - either does not support queue statistic mapping or"
+		       " no queue statistic mapping set\n", port_id);
+		return;
+	}
+
+	printf("\n  %s NIC statistics mapping for port %-2d %s\n",
+	       nic_stats_mapping_border, port_id, nic_stats_mapping_border);
+
+	if (port->rx_queue_stats_mapping_enabled) {
+		for (i = 0; i < nb_rx_queue_stats_mappings; i++) {
+			if (rx_queue_stats_mappings[i].port_id == port_id) {
+				printf("  RX-queue %2d mapped to Stats Reg %2d\n",
+				       rx_queue_stats_mappings[i].queue_id,
+				       rx_queue_stats_mappings[i].stats_counter_id);
+			}
+		}
+		printf("\n");
+	}
+
+
+	if (port->tx_queue_stats_mapping_enabled) {
+		for (i = 0; i < nb_tx_queue_stats_mappings; i++) {
+			if (tx_queue_stats_mappings[i].port_id == port_id) {
+				printf("  TX-queue %2d mapped to Stats Reg %2d\n",
+				       tx_queue_stats_mappings[i].queue_id,
+				       tx_queue_stats_mappings[i].stats_counter_id);
+			}
+		}
+	}
+
+	printf("  %s####################################%s\n",
+	       nic_stats_mapping_border, nic_stats_mapping_border);
 }
 
 void
@@ -976,6 +1056,58 @@ tx_vlan_reset(portid_t port_id)
 	if (port_id_is_invalid(port_id))
 		return;
 	ports[port_id].tx_ol_flags &= ~PKT_TX_VLAN_PKT;
+}
+
+void
+set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
+{
+	uint16_t i;
+	uint8_t existing_mapping_found = 0;
+
+	if (port_id_is_invalid(port_id))
+		return;
+
+	if (is_rx ? (rx_queue_id_is_invalid(queue_id)) : (tx_queue_id_is_invalid(queue_id)))
+		return;
+
+	if (map_value >= RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+		printf("map_value not in required range 0..%d\n",
+				RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
+		return;
+	}
+
+	if (!is_rx) { /*then tx*/
+		for (i = 0; i < nb_tx_queue_stats_mappings; i++) {
+			if ((tx_queue_stats_mappings[i].port_id == port_id) &&
+			    (tx_queue_stats_mappings[i].queue_id == queue_id)) {
+				tx_queue_stats_mappings[i].stats_counter_id = map_value;
+				existing_mapping_found = 1;
+				break;
+			}
+		}
+		if (!existing_mapping_found) { /* A new additional mapping... */
+			tx_queue_stats_mappings[nb_tx_queue_stats_mappings].port_id = port_id;
+			tx_queue_stats_mappings[nb_tx_queue_stats_mappings].queue_id = queue_id;
+			tx_queue_stats_mappings[nb_tx_queue_stats_mappings].stats_counter_id = map_value;
+			nb_tx_queue_stats_mappings++;
+		}
+	}
+	else { /*rx*/
+		for (i = 0; i < nb_rx_queue_stats_mappings; i++) {
+			if ((rx_queue_stats_mappings[i].port_id == port_id) &&
+			    (rx_queue_stats_mappings[i].queue_id == queue_id)) {
+				rx_queue_stats_mappings[i].stats_counter_id = map_value;
+				existing_mapping_found = 1;
+				break;
+			}
+		}
+		if (!existing_mapping_found) { /* A new additional mapping... */
+			rx_queue_stats_mappings[nb_rx_queue_stats_mappings].port_id = port_id;
+			rx_queue_stats_mappings[nb_rx_queue_stats_mappings].queue_id = queue_id;
+			rx_queue_stats_mappings[nb_rx_queue_stats_mappings].stats_counter_id = map_value;
+			nb_rx_queue_stats_mappings++;
+		}
+	}
 }
 
 void

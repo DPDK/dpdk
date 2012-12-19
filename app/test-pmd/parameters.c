@@ -155,6 +155,12 @@ usage(char* progname)
 	       " (0 <= N <= value of txd)\n");
 	printf("  --txrst=N set the transmit RS bit threshold of TX rings to N"
 	       " (0 <= N <= value of txd)\n");
+	printf("  --tx-queue-stats-mapping (port,queue,mapping)[,(port,queue,mapping]:"
+	       " tx queues statistics counters mapping"
+	       " (0 <= mapping <= %d)\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
+	printf("  --rx-queue-stats-mapping (port,queue,mapping)[,(port,queue,mapping]:"
+	       " rx queues statistics counters mapping"
+	       " (0 <= mapping <= %d)\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
 }
 
 static int
@@ -224,6 +230,87 @@ parse_fwd_portmask(const char *portmask)
 		set_fwd_ports_mask((uint64_t) pm);
 }
 
+
+static int
+parse_queue_stats_mapping_config(const char *q_arg, int is_rx)
+{
+	char s[256];
+	const char *p, *p0 = q_arg;
+	char *end;
+	enum fieldnames {
+		FLD_PORT = 0,
+		FLD_QUEUE,
+		FLD_STATS_COUNTER,
+		_NUM_FLD
+	};
+	unsigned long int_fld[_NUM_FLD];
+	char *str_fld[_NUM_FLD];
+	int i;
+	unsigned size;
+
+	/* reset from value set at definition */
+	is_rx ? (nb_rx_queue_stats_mappings = 0) : (nb_tx_queue_stats_mappings = 0);
+
+	while ((p = strchr(p0,'(')) != NULL) {
+		++p;
+		if((p0 = strchr(p,')')) == NULL)
+			return -1;
+
+		size = p0 - p;
+		if(size >= sizeof(s))
+			return -1;
+
+		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
+			return -1;
+		for (i = 0; i < _NUM_FLD; i++){
+			errno = 0;
+			int_fld[i] = strtoul(str_fld[i], &end, 0);
+			if (errno != 0 || end == str_fld[i] || int_fld[i] > 255)
+				return -1;
+		}
+		/* Check mapping field is in correct range (0..RTE_ETHDEV_QUEUE_STAT_CNTRS-1) */
+		if (int_fld[FLD_STATS_COUNTER] >= RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			printf("Stats counter not in the correct range 0..%d\n",
+					RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
+			return -1;
+		}
+
+		if (is_rx ? (nb_rx_queue_stats_mappings >= MAX_RX_QUEUE_STATS_MAPPINGS) :
+		    (nb_tx_queue_stats_mappings >= MAX_TX_QUEUE_STATS_MAPPINGS)) {
+			printf("exceeded max number of %s queue statistics mappings: %hu\n",
+			       is_rx ? "RX" : "TX",
+			       is_rx ? nb_rx_queue_stats_mappings : nb_tx_queue_stats_mappings);
+			return -1;
+		}
+		if (!is_rx) {
+			tx_queue_stats_mappings_array[nb_tx_queue_stats_mappings].port_id =
+				(uint8_t)int_fld[FLD_PORT];
+			tx_queue_stats_mappings_array[nb_tx_queue_stats_mappings].queue_id =
+				(uint8_t)int_fld[FLD_QUEUE];
+			tx_queue_stats_mappings_array[nb_tx_queue_stats_mappings].stats_counter_id =
+				(uint8_t)int_fld[FLD_STATS_COUNTER];
+			++nb_tx_queue_stats_mappings;
+		}
+		else {
+			rx_queue_stats_mappings_array[nb_rx_queue_stats_mappings].port_id =
+				(uint8_t)int_fld[FLD_PORT];
+			rx_queue_stats_mappings_array[nb_rx_queue_stats_mappings].queue_id =
+				(uint8_t)int_fld[FLD_QUEUE];
+			rx_queue_stats_mappings_array[nb_rx_queue_stats_mappings].stats_counter_id =
+				(uint8_t)int_fld[FLD_STATS_COUNTER];
+			++nb_rx_queue_stats_mappings;
+		}
+
+	}
+/* Reassign the rx/tx_queue_stats_mappings pointer to point to this newly populated array rather */
+/* than to the default array (that was set at its definition) */
+	is_rx ? (rx_queue_stats_mappings = rx_queue_stats_mappings_array) :
+		(tx_queue_stats_mappings = tx_queue_stats_mappings_array);
+	return 0;
+}
+
+
 void
 launch_args_parse(int argc, char** argv)
 {
@@ -269,6 +356,8 @@ launch_args_parse(int argc, char** argv)
 		{ "rxht",			1, 0, 0 },
 		{ "rxwt",			1, 0, 0 },
 		{ "rxfreet",                    1, 0, 0 },
+		{ "tx-queue-stats-mapping",	1, 0, 0 },
+		{ "rx-queue-stats-mapping",	1, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -629,6 +718,18 @@ launch_args_parse(int argc, char** argv)
 					rx_free_thresh = (uint16_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "rxfreet must be >= 0\n");
+			}
+			if (!strcmp(lgopts[opt_idx].name, "tx-queue-stats-mapping")) {
+				if (parse_queue_stats_mapping_config(optarg, TX)) {
+					rte_exit(EXIT_FAILURE,
+						 "invalid TX queue statistics mapping config entered\n");
+				}
+			}
+			if (!strcmp(lgopts[opt_idx].name, "rx-queue-stats-mapping")) {
+				if (parse_queue_stats_mapping_config(optarg, RX)) {
+					rte_exit(EXIT_FAILURE,
+						 "invalid RX queue statistics mapping config entered\n");
+				}
 			}
 			break;
 		case 'h':

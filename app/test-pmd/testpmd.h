@@ -131,6 +131,8 @@ struct rte_port {
 	void                    *fwd_ctx;   /**< Forwarding mode context */
 	uint64_t                rx_bad_ip_csum; /**< rx pkts with bad ip checksum  */
 	uint64_t                rx_bad_l4_csum; /**< rx pkts with bad l4 checksum */
+	uint8_t                 tx_queue_stats_mapping_enabled;
+	uint8_t                 rx_queue_stats_mapping_enabled;
 };
 
 /**
@@ -196,6 +198,25 @@ struct fwd_config {
 	lcoreid_t  nb_fwd_lcores;   /**< Nb. of logical cores to launch. */
 	portid_t   nb_fwd_ports;    /**< Nb. of ports involved. */
 };
+
+#define MAX_TX_QUEUE_STATS_MAPPINGS 1024 /* MAX_PORT of 32 @ 32 tx_queues/port */
+#define MAX_RX_QUEUE_STATS_MAPPINGS 4096 /* MAX_PORT of 32 @ 128 rx_queues/port */
+
+struct queue_stats_mappings {
+	uint8_t port_id;
+	uint16_t queue_id;
+	uint8_t stats_counter_id;
+} __rte_cache_aligned;
+
+extern struct queue_stats_mappings tx_queue_stats_mappings_array[];
+extern struct queue_stats_mappings rx_queue_stats_mappings_array[];
+
+/* Assign both tx and rx queue stats mappings to the same default values */
+extern struct queue_stats_mappings *tx_queue_stats_mappings;
+extern struct queue_stats_mappings *rx_queue_stats_mappings;
+
+extern uint16_t nb_tx_queue_stats_mappings;
+extern uint16_t nb_rx_queue_stats_mappings;
 
 /* globals used for configuration */
 extern uint16_t verbose_level; /**< Drives messages being displayed, if any. */
@@ -330,6 +351,7 @@ void launch_args_parse(int argc, char** argv);
 void prompt(void);
 void nic_stats_display(portid_t port_id);
 void nic_stats_clear(portid_t port_id);
+void nic_stats_mapping_display(portid_t port_id);
 void port_infos_display(portid_t port_id);
 void fwd_lcores_config_display(void);
 void fwd_config_display(void);
@@ -362,6 +384,9 @@ void rx_vlan_filter_set(portid_t port_id, uint16_t vlan_id, int on);
 void rx_vlan_all_filter_set(portid_t port_id, int on);
 void tx_vlan_set(portid_t port_id, uint16_t vlan_id);
 void tx_vlan_reset(portid_t port_id);
+
+
+void set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value);
 
 void tx_cksum_set(portid_t port_id, uint8_t cksum_mask);
 
