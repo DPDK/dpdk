@@ -65,8 +65,8 @@ LDLIBS += -lrte_kni
 endif
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_IGB_PMD),y)
-LDLIBS += -lrte_pmd_igb
+ifeq ($(CONFIG_RTE_LIBRTE_E1000_PMD),y)
+LDLIBS += -lrte_pmd_e1000
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)

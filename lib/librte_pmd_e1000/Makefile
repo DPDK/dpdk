@@ -35,7 +35,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 # library name
 #
-LIB = librte_pmd_igb.a
+LIB = librte_pmd_e1000.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
@@ -43,21 +43,21 @@ CFLAGS += $(WERROR_FLAGS)
 #
 # all source are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb/e1000_nvm.c
-SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb/e1000_manage.c
-SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb/e1000_mac.c
-SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb/e1000_phy.c
-SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb/e1000_82575.c
-SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb/e1000_api.c
-SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb/e1000_osdep.c
-SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb/e1000_vf.c
-SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb/e1000_mbx.c
-SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += e1000_rxtx.c
-SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += e1000_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000_82575.c
+SRCS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000_api.c
+SRCS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000_mac.c
+SRCS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000_manage.c
+SRCS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000_mbx.c
+SRCS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000_nvm.c
+SRCS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000_osdep.c
+SRCS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000_phy.c
+SRCS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000_vf.c
+SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += igb_rxtx.c
 
 # this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += lib/librte_eal lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += lib/librte_mempool lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += lib/librte_net lib/librte_malloc
+DEPDIRS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += lib/librte_eal lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += lib/librte_mempool lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += lib/librte_net lib/librte_malloc
 
 include $(RTE_SDK)/mk/rte.lib.mk

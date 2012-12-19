@@ -79,6 +79,8 @@ ifeq ($(BUILDING_RTE_SDK),)
 include $(RTE_SDK)/mk/rte.extvars.mk
 endif
 
+CONFIG_RTE_LIBRTE_E1000_PMD = $(CONFIG_RTE_LIBRTE_IGB_PMD)
+
 ifeq ($(RTE_ARCH),)
 $(error RTE_ARCH is not defined)
 endif
