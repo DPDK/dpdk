@@ -53,6 +53,8 @@ struct malloc_heap {
 	rte_spinlock_t lock;
 	struct malloc_elem * volatile free_head;
 	unsigned mz_count;
+	unsigned alloc_count;
+	size_t total_size;
 } __rte_cache_aligned;
 
 #endif /* _RTE_MALLOC_HEAP_H_ */

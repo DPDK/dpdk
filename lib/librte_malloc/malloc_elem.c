@@ -231,7 +231,10 @@ malloc_elem_free(struct malloc_elem *elem)
 		elem->state = ELEM_FREE;
 		elem->pad = 0;
 	}
+	/* decrease heap's count of allocated elements */
+	elem->heap->alloc_count--;
 	rte_spinlock_unlock(&(elem->heap->lock));
+
 	return 0;
 }
 

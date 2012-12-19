@@ -53,6 +53,10 @@ malloc_heap_alloc(struct malloc_heap *heap, const char *type,
 		size_t size, unsigned align);
 
 int
+malloc_heap_get_stats(struct malloc_heap *heap,
+		struct rte_malloc_socket_stats *socket_stats);
+
+int
 rte_eal_heap_memzone_init(void);
 
 #ifdef __cplusplus

@@ -178,12 +178,44 @@ rte_malloc_validate(void *ptr, size_t *size)
 		*size = elem->size - elem->pad - MALLOC_ELEM_OVERHEAD;
 	return 0;
 }
+
 /*
- * TODO: Print stats on memory type. If type is NULL, info on all types is printed
+ * Function to retrieve data for heap on given socket
+ */
+int
+rte_malloc_get_socket_stats(int socket,
+		struct rte_malloc_socket_stats *socket_stats)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
+	if (socket >= RTE_MAX_NUMA_NODES || socket < 0)
+		return -1;
+
+	return malloc_heap_get_stats(&mcfg->malloc_heaps[socket], socket_stats);
+}
+
+/*
+ * Print stats on memory type. If type is NULL, info on all types is printed
  */
 void
 rte_malloc_dump_stats(__rte_unused const char *type)
 {
+	unsigned int socket;
+	struct rte_malloc_socket_stats sock_stats;
+	/* Iterate through all initialised heaps */
+	for (socket=0; socket< RTE_MAX_NUMA_NODES; socket++) {
+		if ((rte_malloc_get_socket_stats(socket, &sock_stats) < 0))
+			continue;
+
+		printf("Socket:%u\n", socket);
+		printf("\tHeap_size:%zu,\n", sock_stats.heap_totalsz_bytes);
+		printf("\tFree_size:%zu,\n", sock_stats.heap_freesz_bytes);
+		printf("\tAlloc_size:%zu,\n", sock_stats.heap_allocsz_bytes);
+		printf("\tGreatest_free_size:%zu,\n",
+				sock_stats.greatest_free_size);
+		printf("\tAlloc_count:%u,\n",sock_stats.alloc_count);
+		printf("\tFree_count:%u,\n", sock_stats.free_count);
+	}
 	return;
 }
 
@@ -196,4 +228,3 @@ rte_malloc_set_limit(__rte_unused const char *type,
 {
 	return 0;
 }
-

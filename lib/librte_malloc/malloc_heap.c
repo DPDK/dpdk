@@ -105,6 +105,8 @@ malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
 
 	start_elem->next_free = heap->free_head;
 	heap->free_head = start_elem;
+	/* increase heap total size by size of new memzone */
+	heap->total_size+=mz_size - MALLOC_ELEM_OVERHEAD;
 	return 0;
 }
 
@@ -127,6 +129,8 @@ malloc_heap_init(struct malloc_heap *heap)
 
 			heap->free_head = NULL;
 			heap->mz_count = 0;
+			heap->alloc_count = 0;
+			heap->total_size = 0;
 			/*
 			 * Find NUMA socket of heap that is being initialised, so that
 			 * malloc_heaps[n].numa_socket == n
@@ -176,15 +180,54 @@ malloc_heap_alloc(struct malloc_heap *heap,
 	size = CACHE_LINE_ROUNDUP(size);
 	align = CACHE_LINE_ROUNDUP(align);
 	rte_spinlock_lock(&heap->lock);
-
 	struct malloc_elem *prev, *elem = find_suitable_element(heap,
 			size, align, &prev);
 	if (elem == NULL){
-		malloc_heap_add_memzone(heap, size, align);
-		elem = find_suitable_element(heap, size, align, &prev);
+		if ((malloc_heap_add_memzone(heap, size, align)) == 0)
+			elem = find_suitable_element(heap, size, align, &prev);
 	}
-	if (elem != NULL)
+
+	if (elem != NULL){
 		elem = malloc_elem_alloc(elem, size, align, prev);
+		/* increase heap's count of allocated elements */
+		heap->alloc_count++;
+	}
 	rte_spinlock_unlock(&heap->lock);
 	return elem == NULL ? NULL : (void *)(&elem[1]);
+
 }
+
+/*
+ * Function to retrieve data for heap on given socket
+ */
+int
+malloc_heap_get_stats(struct malloc_heap *heap,
+		struct rte_malloc_socket_stats *socket_stats)
+{
+	if (!heap->initialised)
+		return -1;
+
+	struct malloc_elem *elem = heap->free_head;
+
+	/* Initialise variables for heap */
+	socket_stats->free_count = 0;
+	socket_stats->heap_freesz_bytes = 0;
+	socket_stats->greatest_free_size = 0;
+
+	/* Iterate through free list */
+	while(elem) {
+		socket_stats->free_count++;
+		socket_stats->heap_freesz_bytes += elem->size;
+		if (elem->size > socket_stats->greatest_free_size)
+			socket_stats->greatest_free_size = elem->size;
+
+		elem = elem->next_free;
+	}
+	/* Get stats on overall heap and allocated memory on this heap */
+	socket_stats->heap_totalsz_bytes = heap->total_size;
+	socket_stats->heap_allocsz_bytes = (socket_stats->heap_totalsz_bytes -
+			socket_stats->heap_freesz_bytes);
+	socket_stats->alloc_count = heap->alloc_count;
+	return 0;
+}
+

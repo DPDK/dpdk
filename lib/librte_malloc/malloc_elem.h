@@ -50,7 +50,7 @@ struct malloc_elem {
 	struct malloc_elem *volatile next_free; /* to make list of free elements */
 	volatile enum elem_state state;
 	uint32_t pad;
-	volatile size_t size;
+	size_t size;
 #ifdef RTE_LIBRTE_MALLOC_DEBUG
 	uint64_t header_cookie;         /* Cookie marking start of data */
 	                                /* trailer cookie at start + size */
