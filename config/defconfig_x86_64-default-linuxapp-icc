@@ -50,7 +50,7 @@ CONFIG_RTE_EXEC_ENV_LINUXAPP=y
 # snb      Intel® microarchitecture code name Sandy Bridge
 # ivb      Intel® microarchitecture code name Ivy Bridge
 #
-# Warning: if your compiler does not support the relevant -march options,
+# Note: if your compiler does not support the relevant -march options,
 # it will be compiled with whatever latest processor the compiler supports!
 #
 CONFIG_RTE_MACHINE="native"
@@ -210,6 +210,11 @@ CONFIG_RTE_LIBRTE_LPM_DEBUG=n
 # Compile librte_net
 #
 CONFIG_RTE_LIBRTE_NET=y
+
+#
+# Enable warning directives
+#
+CONFIG_RTE_INSECURE_FUNCTION_WARNING=n
 
 #
 # Compile the test application
