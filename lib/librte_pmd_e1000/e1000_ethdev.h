@@ -46,7 +46,7 @@
 #define E1000_ADVTXD_POPTS_IXSM     0x00000100 /* IP Checksum offload request */
 #define E1000_ADVTXD_TUCMD_L4T_RSV  0x00001800 /* L4 Packet TYPE of Reserved */
 #define E1000_RXD_STAT_TMST         0x10000    /* Timestamped Packet indication */
-#define E1000_RXD_ERR_CKSUM_BIT     29 
+#define E1000_RXD_ERR_CKSUM_BIT     29
 #define E1000_RXD_ERR_CKSUM_MSK     3
 #define E1000_ADVTXD_MACLEN_SHIFT   9          /* Bit shift for l2_len */
 #define E1000_CTRL_EXT_EXTEND_VLAN  (1<<26)    /* EXTENDED VLAN */

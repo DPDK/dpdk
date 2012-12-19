@@ -283,7 +283,7 @@ eth_igb_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct e1000_vfta * shadow_vfta =
-		E1000_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
+			E1000_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
 
 	pci_dev = eth_dev->pci_dev;
 	eth_dev->dev_ops = &eth_igb_ops;

@@ -35,21 +35,21 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "e1000_api.h"
 
 
-STATIC s32       e1000_init_phy_params_vf(struct e1000_hw *hw);
-STATIC s32       e1000_init_nvm_params_vf(struct e1000_hw *hw);
-STATIC void      e1000_release_vf(struct e1000_hw *hw);
-STATIC s32       e1000_acquire_vf(struct e1000_hw *hw);
-STATIC s32       e1000_setup_link_vf(struct e1000_hw *hw);
-STATIC s32       e1000_get_bus_info_pcie_vf(struct e1000_hw *hw);
-STATIC s32       e1000_init_mac_params_vf(struct e1000_hw *hw);
-STATIC s32       e1000_check_for_link_vf(struct e1000_hw *hw);
-STATIC s32       e1000_get_link_up_info_vf(struct e1000_hw *hw, u16 *speed,
-                                              u16 *duplex);
-STATIC s32       e1000_init_hw_vf(struct e1000_hw *hw);
-STATIC s32       e1000_reset_hw_vf(struct e1000_hw *hw);
-STATIC void      e1000_update_mc_addr_list_vf(struct e1000_hw *hw, u8 *, u32);
-STATIC void      e1000_rar_set_vf(struct e1000_hw *, u8 *, u32);
-STATIC s32       e1000_read_mac_addr_vf(struct e1000_hw *);
+STATIC s32 e1000_init_phy_params_vf(struct e1000_hw *hw);
+STATIC s32 e1000_init_nvm_params_vf(struct e1000_hw *hw);
+STATIC void e1000_release_vf(struct e1000_hw *hw);
+STATIC s32 e1000_acquire_vf(struct e1000_hw *hw);
+STATIC s32 e1000_setup_link_vf(struct e1000_hw *hw);
+STATIC s32 e1000_get_bus_info_pcie_vf(struct e1000_hw *hw);
+STATIC s32 e1000_init_mac_params_vf(struct e1000_hw *hw);
+STATIC s32 e1000_check_for_link_vf(struct e1000_hw *hw);
+STATIC s32 e1000_get_link_up_info_vf(struct e1000_hw *hw, u16 *speed,
+				     u16 *duplex);
+STATIC s32 e1000_init_hw_vf(struct e1000_hw *hw);
+STATIC s32 e1000_reset_hw_vf(struct e1000_hw *hw);
+STATIC void e1000_update_mc_addr_list_vf(struct e1000_hw *hw, u8 *, u32);
+STATIC void e1000_rar_set_vf(struct e1000_hw *, u8 *, u32);
+STATIC s32 e1000_read_mac_addr_vf(struct e1000_hw *);
 
 /**
  *  e1000_init_phy_params_vf - Inits PHY params
@@ -218,7 +218,7 @@ STATIC s32 e1000_get_bus_info_pcie_vf(struct e1000_hw *hw)
  *  the status register's data which is often stale and inaccurate.
  **/
 STATIC s32 e1000_get_link_up_info_vf(struct e1000_hw *hw, u16 *speed,
-                                     u16 *duplex)
+				     u16 *duplex)
 {
 	s32 status;
 
@@ -287,7 +287,7 @@ STATIC s32 e1000_reset_hw_vf(struct e1000_hw *hw)
 		ret_val = mbx->ops.read_posted(hw, msgbuf, 3, 0);
 		if (!ret_val) {
 			if (msgbuf[0] == (E1000_VF_RESET |
-						E1000_VT_MSGTYPE_ACK))
+			    E1000_VT_MSGTYPE_ACK))
 				memcpy(hw->mac.perm_addr, addr, 6);
 			else
 				ret_val = -E1000_ERR_MAC_INIT;
@@ -368,7 +368,7 @@ STATIC u32 e1000_hash_mc_addr_vf(struct e1000_hw *hw, u8 *mc_addr)
 		bit_shift++;
 
 	hash_value = hash_mask & (((mc_addr[4] >> (8 - bit_shift)) |
-	                          (((u16) mc_addr[5]) << bit_shift)));
+				  (((u16) mc_addr[5]) << bit_shift)));
 
 	return hash_value;
 }
@@ -394,7 +394,7 @@ static void e1000_write_msg_read_ack(struct e1000_hw *hw,
  *  The caller must have a packed mc_addr_list of multicast addresses.
  **/
 void e1000_update_mc_addr_list_vf(struct e1000_hw *hw,
-                                  u8 *mc_addr_list, u32 mc_addr_count)
+				  u8 *mc_addr_list, u32 mc_addr_count)
 {
 	u32 msgbuf[E1000_VFMAILBOX_SIZE];
 	u16 *hash_list = (u16 *)&msgbuf[1];

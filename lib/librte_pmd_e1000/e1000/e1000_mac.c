@@ -178,8 +178,8 @@ s32 e1000_get_bus_info_pci_generic(struct e1000_hw *hw)
 	/* Bus speed */
 	if (bus->type == e1000_bus_type_pci) {
 		bus->speed = (status & E1000_STATUS_PCI66)
-		             ? e1000_bus_speed_66
-		             : e1000_bus_speed_33;
+			     ? e1000_bus_speed_66
+			     : e1000_bus_speed_33;
 	} else {
 		switch (status & E1000_STATUS_PCIX_SPEED) {
 		case E1000_STATUS_PCIX_SPEED_66:
@@ -199,8 +199,8 @@ s32 e1000_get_bus_info_pci_generic(struct e1000_hw *hw)
 
 	/* Bus width */
 	bus->width = (status & E1000_STATUS_BUS64)
-	             ? e1000_bus_width_64
-	             : e1000_bus_width_32;
+		     ? e1000_bus_width_64
+		     : e1000_bus_width_32;
 
 	/* Which PCI(-X) function? */
 	mac->ops.set_lan_id(hw);
@@ -228,7 +228,7 @@ s32 e1000_get_bus_info_pcie_generic(struct e1000_hw *hw)
 	bus->type = e1000_bus_type_pci_express;
 
 	ret_val = e1000_read_pcie_cap_reg(hw, PCIE_LINK_STATUS,
-	                                  &pcie_link_status);
+					  &pcie_link_status);
 	if (ret_val) {
 		bus->width = e1000_bus_width_unknown;
 		bus->speed = e1000_bus_speed_unknown;
@@ -291,7 +291,7 @@ void e1000_set_lan_id_multi_port_pci(struct e1000_hw *hw)
 	if (pci_header_type & PCI_HEADER_TYPE_MULTIFUNC) {
 		status = E1000_READ_REG(hw, E1000_STATUS);
 		bus->func = (status & E1000_STATUS_FUNC_MASK)
-		            >> E1000_STATUS_FUNC_SHIFT;
+			    >> E1000_STATUS_FUNC_SHIFT;
 	} else {
 		bus->func = 0;
 	}
@@ -410,7 +410,7 @@ s32 e1000_check_alt_mac_addr_generic(struct e1000_hw *hw)
 		return E1000_SUCCESS;
 
 	ret_val = hw->nvm.ops.read(hw, NVM_ALT_MAC_ADDR_PTR, 1,
-	                         &nvm_alt_mac_addr_offset);
+				   &nvm_alt_mac_addr_offset);
 	if (ret_val) {
 		DEBUGOUT("NVM Read Error\n");
 		return ret_val;
@@ -476,7 +476,7 @@ STATIC void e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index)
 	 * from network order (big endian) to little endian
 	 */
 	rar_low = ((u32) addr[0] | ((u32) addr[1] << 8) |
-	           ((u32) addr[2] << 16) | ((u32) addr[3] << 24));
+		   ((u32) addr[2] << 16) | ((u32) addr[3] << 24));
 
 	rar_high = ((u32) addr[4] | ((u32) addr[5] << 8));
 
@@ -539,7 +539,7 @@ u32 e1000_hash_mc_addr_generic(struct e1000_hw *hw, u8 *mc_addr)
 	 * values resulting from each mc_filter_type...
 	 * [0] [1] [2] [3] [4] [5]
 	 * 01  AA  00  12  34  56
-	 * LSB                 MSB
+	 * LSB		 MSB
 	 *
 	 * case 0: hash_value = ((0x34 >> 4) | (0x56 << 4)) & 0xFFF = 0x563
 	 * case 1: hash_value = ((0x34 >> 3) | (0x56 << 5)) & 0xFFF = 0xAC6
@@ -562,7 +562,7 @@ u32 e1000_hash_mc_addr_generic(struct e1000_hw *hw, u8 *mc_addr)
 	}
 
 	hash_value = hash_mask & (((mc_addr[4] >> (8 - bit_shift)) |
-	                          (((u16) mc_addr[5]) << bit_shift)));
+				  (((u16) mc_addr[5]) << bit_shift)));
 
 	return hash_value;
 }
@@ -629,9 +629,9 @@ void e1000_pcix_mmrbc_workaround_generic(struct e1000_hw *hw)
 	e1000_read_pci_cfg(hw, PCIX_COMMAND_REGISTER, &pcix_cmd);
 	e1000_read_pci_cfg(hw, PCIX_STATUS_REGISTER_HI, &pcix_stat_hi_word);
 	cmd_mmrbc = (pcix_cmd & PCIX_COMMAND_MMRBC_MASK) >>
-	             PCIX_COMMAND_MMRBC_SHIFT;
+		     PCIX_COMMAND_MMRBC_SHIFT;
 	stat_mmrbc = (pcix_stat_hi_word & PCIX_STATUS_HI_MMRBC_MASK) >>
-	              PCIX_STATUS_HI_MMRBC_SHIFT;
+		      PCIX_STATUS_HI_MMRBC_SHIFT;
 	if (stat_mmrbc == PCIX_STATUS_HI_MMRBC_4K)
 		stat_mmrbc = PCIX_STATUS_HI_MMRBC_2K;
 	if (cmd_mmrbc > stat_mmrbc) {
@@ -967,7 +967,7 @@ s32 e1000_set_default_fc_generic(struct e1000_hw *hw)
 
 	if (ret_val) {
 		DEBUGOUT("NVM Read Error\n");
-	return ret_val;
+		return ret_val;
 	}
 
 	if (!(nvm_data & NVM_WORD0F_PAUSE_MASK))
@@ -1081,14 +1081,14 @@ s32 e1000_commit_fc_settings_generic(struct e1000_hw *hw)
 		txcw = (E1000_TXCW_ANE | E1000_TXCW_FD);
 		break;
 	case e1000_fc_rx_pause:
-	/*
+		/*
 		 * Rx Flow control is enabled and Tx Flow control is disabled
 		 * by a software over-ride. Since there really isn't a way to
 		 * advertise that we are capable of Rx Pause ONLY, we will
 		 * advertise that we support both symmetric and asymmetric Rx
 		 * PAUSE.  Later, we will disable the adapter's ability to send
 		 * PAUSE frames.
-	 */
+		 */
 		txcw = (E1000_TXCW_ANE | E1000_TXCW_FD | E1000_TXCW_PAUSE_MASK);
 		break;
 	case e1000_fc_tx_pause:
@@ -1199,18 +1199,18 @@ s32 e1000_setup_fiber_serdes_link_generic(struct e1000_hw *hw)
 	 * will restart auto-negotiation.  If auto-negotiation is successful
 	 * then the link-up status bit will be set and the flow control enable
 	 * bits (RFCE and TFCE) will be set according to their negotiated value.
-		 */
+	 */
 	DEBUGOUT("Auto-negotiation enabled\n");
 
 	E1000_WRITE_REG(hw, E1000_CTRL, ctrl);
 	E1000_WRITE_FLUSH(hw);
 	msec_delay(1);
 
-		/*
+	/*
 	 * For these adapters, the SW definable pin 1 is set when the optics
 	 * detect a signal.  If we have a signal, then poll for a "Link-Up"
 	 * indication.
-		 */
+	 */
 	if (hw->phy.media_type == e1000_media_type_internal_serdes ||
 	    (E1000_READ_REG(hw, E1000_CTRL) & E1000_CTRL_SWDPIN1)) {
 		ret_val = e1000_poll_fiber_serdes_link_generic(hw);
@@ -1416,11 +1416,11 @@ s32 e1000_config_fc_after_link_up_generic(struct e1000_hw *hw)
 		 * flow control was negotiated.
 		 */
 		ret_val = hw->phy.ops.read_reg(hw, PHY_AUTONEG_ADV,
-		                             &mii_nway_adv_reg);
+					       &mii_nway_adv_reg);
 		if (ret_val)
 			return ret_val;
 		ret_val = hw->phy.ops.read_reg(hw, PHY_LP_ABILITY,
-		                             &mii_nway_lp_ability_reg);
+					       &mii_nway_lp_ability_reg);
 		if (ret_val)
 			return ret_val;
 
@@ -1484,9 +1484,9 @@ s32 e1000_config_fc_after_link_up_generic(struct e1000_hw *hw)
 		 *   0   |    1    |   1   |    1    | e1000_fc_tx_pause
 		 */
 		else if (!(mii_nway_adv_reg & NWAY_AR_PAUSE) &&
-		          (mii_nway_adv_reg & NWAY_AR_ASM_DIR) &&
-		          (mii_nway_lp_ability_reg & NWAY_LPAR_PAUSE) &&
-		          (mii_nway_lp_ability_reg & NWAY_LPAR_ASM_DIR)) {
+			  (mii_nway_adv_reg & NWAY_AR_ASM_DIR) &&
+			  (mii_nway_lp_ability_reg & NWAY_LPAR_PAUSE) &&
+			  (mii_nway_lp_ability_reg & NWAY_LPAR_ASM_DIR)) {
 			hw->fc.current_mode = e1000_fc_tx_pause;
 			DEBUGOUT("Flow Control = Tx PAUSE frames only.\n");
 		}
@@ -1499,9 +1499,9 @@ s32 e1000_config_fc_after_link_up_generic(struct e1000_hw *hw)
 		 *   1   |    1    |   0   |    1    | e1000_fc_rx_pause
 		 */
 		else if ((mii_nway_adv_reg & NWAY_AR_PAUSE) &&
-		         (mii_nway_adv_reg & NWAY_AR_ASM_DIR) &&
-		         !(mii_nway_lp_ability_reg & NWAY_LPAR_PAUSE) &&
-		         (mii_nway_lp_ability_reg & NWAY_LPAR_ASM_DIR)) {
+			 (mii_nway_adv_reg & NWAY_AR_ASM_DIR) &&
+			 !(mii_nway_lp_ability_reg & NWAY_LPAR_PAUSE) &&
+			 (mii_nway_lp_ability_reg & NWAY_LPAR_ASM_DIR)) {
 			hw->fc.current_mode = e1000_fc_rx_pause;
 			DEBUGOUT("Flow Control = Rx PAUSE frames only.\n");
 		} else {
@@ -1616,8 +1616,8 @@ s32 e1000_config_fc_after_link_up_generic(struct e1000_hw *hw)
 			} else {
 				hw->fc.current_mode = e1000_fc_rx_pause;
 				DEBUGOUT("Flow Control = Rx PAUSE frames only.\n");
+			}
 		}
-	}
 		/*
 		 * For receiving PAUSE frames ONLY.
 		 *
@@ -1667,7 +1667,7 @@ s32 e1000_config_fc_after_link_up_generic(struct e1000_hw *hw)
 		ret_val = e1000_force_mac_fc_generic(hw);
 		if (ret_val) {
 			DEBUGOUT("Error forcing flow control settings\n");
-	return ret_val;
+			return ret_val;
 		}
 	}
 
@@ -1684,7 +1684,7 @@ s32 e1000_config_fc_after_link_up_generic(struct e1000_hw *hw)
  *  speed and duplex for copper connections.
  **/
 s32 e1000_get_speed_and_duplex_copper_generic(struct e1000_hw *hw, u16 *speed,
-                                              u16 *duplex)
+					      u16 *duplex)
 {
 	u32 status;
 
@@ -1723,7 +1723,7 @@ s32 e1000_get_speed_and_duplex_copper_generic(struct e1000_hw *hw, u16 *speed,
  *  for fiber/serdes links.
  **/
 s32 e1000_get_speed_and_duplex_fiber_serdes_generic(struct e1000_hw *hw,
-                                                    u16 *speed, u16 *duplex)
+						    u16 *speed, u16 *duplex)
 {
 	DEBUGFUNC("e1000_get_speed_and_duplex_fiber_serdes_generic");
 
@@ -1943,9 +1943,9 @@ s32 e1000_setup_led_generic(struct e1000_hw *hw)
 		hw->mac.ledctl_default = ledctl;
 		/* Turn off LED0 */
 		ledctl &= ~(E1000_LEDCTL_LED0_IVRT | E1000_LEDCTL_LED0_BLINK |
-		            E1000_LEDCTL_LED0_MODE_MASK);
+			    E1000_LEDCTL_LED0_MODE_MASK);
 		ledctl |= (E1000_LEDCTL_MODE_LED_OFF <<
-		           E1000_LEDCTL_LED0_MODE_SHIFT);
+			   E1000_LEDCTL_LED0_MODE_SHIFT);
 		E1000_WRITE_REG(hw, E1000_LEDCTL, ledctl);
 	} else if (hw->phy.media_type == e1000_media_type_copper) {
 		E1000_WRITE_REG(hw, E1000_LEDCTL, hw->mac.ledctl_mode1);
@@ -1996,7 +1996,7 @@ s32 e1000_blink_led_generic(struct e1000_hw *hw)
 			if (((hw->mac.ledctl_mode2 >> (i * 8)) & 0xFF) ==
 			    E1000_LEDCTL_MODE_LED_ON)
 				ledctl_blink |= (E1000_LEDCTL_LED0_BLINK <<
-				                 (i * 8));
+						 (i * 8));
 	}
 
 	E1000_WRITE_REG(hw, E1000_LEDCTL, ledctl_blink);
@@ -2241,7 +2241,7 @@ s32 e1000_validate_mdi_setting_crossover_generic(struct e1000_hw *hw)
  *  completion.
  **/
 s32 e1000_write_8bit_ctrl_reg_generic(struct e1000_hw *hw, u32 reg,
-                                      u32 offset, u8 data)
+				      u32 offset, u8 data)
 {
 	u32 i, regvalue = 0;
 

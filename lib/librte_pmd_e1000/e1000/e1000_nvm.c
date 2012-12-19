@@ -404,7 +404,7 @@ static s32 e1000_ready_nvm_eeprom(struct e1000_hw *hw)
 		 */
 		while (timeout) {
 			e1000_shift_out_eec_bits(hw, NVM_RDSR_OPCODE_SPI,
-			                         hw->nvm.opcode_bits);
+						 hw->nvm.opcode_bits);
 			spi_stat_reg = (u8)e1000_shift_in_eec_bits(hw, 8);
 			if (!(spi_stat_reg & NVM_STATUS_RDY_SPI))
 				break;
@@ -495,7 +495,7 @@ release:
  *  Reads a 16 bit word from the EEPROM.
  **/
 s32 e1000_read_nvm_microwire(struct e1000_hw *hw, u16 offset, u16 words,
-                             u16 *data)
+			     u16 *data)
 {
 	struct e1000_nvm_info *nvm = &hw->nvm;
 	u32 i = 0;
@@ -579,7 +579,7 @@ s32 e1000_read_nvm_eerd(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 			break;
 
 		data[i] = (E1000_READ_REG(hw, E1000_EERD) >>
-		           E1000_NVM_RW_REG_DATA);
+			   E1000_NVM_RW_REG_DATA);
 	}
 
 	return ret_val;
@@ -632,7 +632,7 @@ s32 e1000_write_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 
 		/* Send the WRITE ENABLE command (8 bit opcode) */
 		e1000_shift_out_eec_bits(hw, NVM_WREN_OPCODE_SPI,
-		                         nvm->opcode_bits);
+					 nvm->opcode_bits);
 
 		e1000_standby_nvm(hw);
 
@@ -646,7 +646,7 @@ s32 e1000_write_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 		/* Send the Write command (8-bit opcode + addr) */
 		e1000_shift_out_eec_bits(hw, write_opcode, nvm->opcode_bits);
 		e1000_shift_out_eec_bits(hw, (u16)((offset + widx) * 2),
-		                         nvm->address_bits);
+					 nvm->address_bits);
 
 		/* Loop to allow for up to whole page write of eeprom */
 		while (widx < words) {
@@ -660,8 +660,8 @@ s32 e1000_write_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 				break;
 			}
 		}
-	msec_delay(10);
-	nvm->ops.release(hw);
+		msec_delay(10);
+		nvm->ops.release(hw);
 	}
 
 	return ret_val;
@@ -680,7 +680,7 @@ s32 e1000_write_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
  *  EEPROM will most likely contain an invalid checksum.
  **/
 s32 e1000_write_nvm_microwire(struct e1000_hw *hw, u16 offset, u16 words,
-                              u16 *data)
+			      u16 *data)
 {
 	struct e1000_nvm_info *nvm = &hw->nvm;
 	s32  ret_val;
@@ -709,7 +709,7 @@ s32 e1000_write_nvm_microwire(struct e1000_hw *hw, u16 offset, u16 words,
 		goto release;
 
 	e1000_shift_out_eec_bits(hw, NVM_EWEN_OPCODE_MICROWIRE,
-	                         (u16)(nvm->opcode_bits + 2));
+				 (u16)(nvm->opcode_bits + 2));
 
 	e1000_shift_out_eec_bits(hw, 0, (u16)(nvm->address_bits - 2));
 
@@ -717,10 +717,10 @@ s32 e1000_write_nvm_microwire(struct e1000_hw *hw, u16 offset, u16 words,
 
 	while (words_written < words) {
 		e1000_shift_out_eec_bits(hw, NVM_WRITE_OPCODE_MICROWIRE,
-		                         nvm->opcode_bits);
+					 nvm->opcode_bits);
 
 		e1000_shift_out_eec_bits(hw, (u16)(offset + words_written),
-		                         nvm->address_bits);
+					 nvm->address_bits);
 
 		e1000_shift_out_eec_bits(hw, data[words_written], 16);
 
@@ -745,7 +745,7 @@ s32 e1000_write_nvm_microwire(struct e1000_hw *hw, u16 offset, u16 words,
 	}
 
 	e1000_shift_out_eec_bits(hw, NVM_EWDS_OPCODE_MICROWIRE,
-	                         (u16)(nvm->opcode_bits + 2));
+				 (u16)(nvm->opcode_bits + 2));
 
 	e1000_shift_out_eec_bits(hw, 0, (u16)(nvm->address_bits - 2));
 
@@ -765,7 +765,7 @@ release:
  *  the value in pba_num.
  **/
 s32 e1000_read_pba_string_generic(struct e1000_hw *hw, u8 *pba_num,
-                                  u32 pba_num_size)
+				  u32 pba_num_size)
 {
 	s32 ret_val;
 	u16 nvm_data;
@@ -1094,7 +1094,7 @@ s32 e1000_get_pba_block_size(struct e1000_hw *hw, u16 *eeprom_buf,
 			ret_val = e1000_read_nvm(hw, pba_word[1] + 0, 1,
 						 &length);
 			if (ret_val)
-	return ret_val;
+				return ret_val;
 		} else {
 			if (eeprom_buf_size > pba_word[1])
 				length = eeprom_buf[pba_word[1] + 0];

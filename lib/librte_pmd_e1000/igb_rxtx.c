@@ -88,7 +88,7 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
 	(uint64_t) ((mb)->buf_physaddr +		   \
 			(uint64_t) ((char *)((mb)->pkt.data) -     \
-			 	(char *)(mb)->buf_addr))
+				(char *)(mb)->buf_addr))
 
 #define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
 	(uint64_t) ((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
@@ -161,7 +161,7 @@ struct igb_tx_queue {
 	volatile uint32_t      *tdt_reg_addr; /**< Address of TDT register. */
 	uint32_t               txd_type;      /**< Device-specific TXD type */
 	uint16_t               nb_tx_desc;    /**< number of TX descriptors. */
-	uint16_t               tx_tail;  /**< Current value of TDT register. */
+	uint16_t               tx_tail; /**< Current value of TDT register. */
 	uint16_t               tx_head;
 	/**< Index of first used TX descriptor. */
 	uint16_t               queue_id; /**< TX queue index. */
@@ -1099,9 +1099,9 @@ static void
 igb_tx_queue_release(struct igb_tx_queue *txq)
 {
 	if (txq != NULL) {
-	igb_tx_queue_release_mbufs(txq);
-        rte_free(txq->sw_ring);
-        rte_free(txq);
+		igb_tx_queue_release_mbufs(txq);
+		rte_free(txq->sw_ring);
+		rte_free(txq);
 	}
 }
 
@@ -1270,9 +1270,9 @@ static void
 igb_rx_queue_release(struct igb_rx_queue *rxq)
 {
 	if (rxq != NULL) {
-	igb_rx_queue_release_mbufs(rxq);
-	rte_free(rxq->sw_ring);
-	rte_free(rxq);
+		igb_rx_queue_release_mbufs(rxq);
+		rte_free(rxq->sw_ring);
+		rte_free(rxq);
 	}
 }
 
@@ -1389,17 +1389,17 @@ igb_dev_clear_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
 		if (txq != NULL) {
-		igb_tx_queue_release_mbufs(txq);
-		igb_reset_tx_queue(txq, dev);
-	}
+			igb_tx_queue_release_mbufs(txq);
+			igb_reset_tx_queue(txq, dev);
+		}
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
 		if (rxq != NULL) {
-		igb_rx_queue_release_mbufs(rxq);
-		igb_reset_rx_queue(rxq);
-	}
+			igb_rx_queue_release_mbufs(rxq);
+			igb_reset_rx_queue(rxq);
+		}
 	}
 }
 

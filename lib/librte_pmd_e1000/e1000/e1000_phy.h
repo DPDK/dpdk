@@ -85,7 +85,7 @@ s32  e1000_write_phy_reg_igp_locked(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_write_phy_reg_m88(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_phy_reset_dsp(struct e1000_hw *hw);
 s32  e1000_phy_has_link_generic(struct e1000_hw *hw, u32 iterations,
-                                u32 usec_interval, bool *success);
+				u32 usec_interval, bool *success);
 s32  e1000_phy_init_script_igp3(struct e1000_hw *hw);
 enum e1000_phy_type e1000_get_phy_type_from_id(u32 phy_id);
 s32  e1000_determine_phy_address(struct e1000_hw *hw);
@@ -121,17 +121,17 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 #define E1000_MAX_PHY_ADDR		8
 
 /* IGP01E1000 Specific Registers */
-#define IGP01E1000_PHY_PORT_CONFIG        0x10 /* Port Config */
-#define IGP01E1000_PHY_PORT_STATUS        0x11 /* Status */
-#define IGP01E1000_PHY_PORT_CTRL          0x12 /* Control */
-#define IGP01E1000_PHY_LINK_HEALTH        0x13 /* PHY Link Health */
-#define IGP01E1000_GMII_FIFO              0x14 /* GMII FIFO */
-#define IGP01E1000_PHY_CHANNEL_QUALITY    0x15 /* PHY Channel Quality */
-#define IGP02E1000_PHY_POWER_MGMT         0x19 /* Power Management */
-#define IGP01E1000_PHY_PAGE_SELECT        0x1F /* Page Select */
-#define BM_PHY_PAGE_SELECT                22   /* Page Select for BM */
-#define IGP_PAGE_SHIFT                    5
-#define PHY_REG_MASK                      0x1F
+#define IGP01E1000_PHY_PORT_CONFIG	0x10 /* Port Config */
+#define IGP01E1000_PHY_PORT_STATUS	0x11 /* Status */
+#define IGP01E1000_PHY_PORT_CTRL	0x12 /* Control */
+#define IGP01E1000_PHY_LINK_HEALTH	0x13 /* PHY Link Health */
+#define IGP01E1000_GMII_FIFO		0x14 /* GMII FIFO */
+#define IGP01E1000_PHY_CHANNEL_QUALITY	0x15 /* PHY Channel Quality */
+#define IGP02E1000_PHY_POWER_MGMT	0x19 /* Power Management */
+#define IGP01E1000_PHY_PAGE_SELECT	0x1F /* Page Select */
+#define BM_PHY_PAGE_SELECT		22   /* Page Select for BM */
+#define IGP_PAGE_SHIFT			5
+#define PHY_REG_MASK			0x1F
 
 /* GS40G - I210 PHY defines */
 #define GS40G_PAGE_SELECT		0x16
@@ -168,26 +168,26 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 	 (((offset) >> (PHY_UPPER_SHIFT - PHY_PAGE_SHIFT)) &\
 		~MAX_PHY_REG_ADDRESS)))
 
-#define HV_INTC_FC_PAGE_START             768
-#define I82578_ADDR_REG                   29
-#define I82577_ADDR_REG                   16
-#define I82577_CFG_REG                    22
-#define I82577_CFG_ASSERT_CRS_ON_TX       (1 << 15)
-#define I82577_CFG_ENABLE_DOWNSHIFT       (3 << 10) /* auto downshift 100/10 */
-#define I82577_CTRL_REG                   23
+#define HV_INTC_FC_PAGE_START		768
+#define I82578_ADDR_REG			29
+#define I82577_ADDR_REG			16
+#define I82577_CFG_REG			22
+#define I82577_CFG_ASSERT_CRS_ON_TX	(1 << 15)
+#define I82577_CFG_ENABLE_DOWNSHIFT	(3 << 10) /* auto downshift 100/10 */
+#define I82577_CTRL_REG			23
 
 /* 82577 specific PHY registers */
-#define I82577_PHY_CTRL_2            18
-#define I82577_PHY_LBK_CTRL          19
-#define I82577_PHY_STATUS_2          26
-#define I82577_PHY_DIAG_STATUS       31
+#define I82577_PHY_CTRL_2		18
+#define I82577_PHY_LBK_CTRL		19
+#define I82577_PHY_STATUS_2		26
+#define I82577_PHY_DIAG_STATUS		31
 
 /* I82577 PHY Status 2 */
-#define I82577_PHY_STATUS2_REV_POLARITY   0x0400
-#define I82577_PHY_STATUS2_MDIX           0x0800
-#define I82577_PHY_STATUS2_SPEED_MASK     0x0300
-#define I82577_PHY_STATUS2_SPEED_1000MBPS 0x0200
-#define I82577_PHY_STATUS2_SPEED_100MBPS  0x0100
+#define I82577_PHY_STATUS2_REV_POLARITY		0x0400
+#define I82577_PHY_STATUS2_MDIX			0x0800
+#define I82577_PHY_STATUS2_SPEED_MASK		0x0300
+#define I82577_PHY_STATUS2_SPEED_1000MBPS	0x0200
+#define I82577_PHY_STATUS2_SPEED_100MBPS	0x0100
 
 /* I82577 PHY Control 2 */
 #define I82577_PHY_CTRL2_MANUAL_MDIX		0x0200
@@ -195,14 +195,14 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 #define I82577_PHY_CTRL2_MDIX_CFG_MASK		0x0600
 
 /* I82577 PHY Diagnostics Status */
-#define I82577_DSTATUS_CABLE_LENGTH       0x03FC
-#define I82577_DSTATUS_CABLE_LENGTH_SHIFT 2
+#define I82577_DSTATUS_CABLE_LENGTH		0x03FC
+#define I82577_DSTATUS_CABLE_LENGTH_SHIFT	2
 
 /* 82580 PHY Power Management */
-#define E1000_82580_PHY_POWER_MGMT        0xE14
-#define E1000_82580_PM_SPD                0x0001 /* Smart Power Down */
-#define E1000_82580_PM_D0_LPLU            0x0002 /* For D0a states */
-#define E1000_82580_PM_D3_LPLU            0x0004 /* For all other states */
+#define E1000_82580_PHY_POWER_MGMT	0xE14
+#define E1000_82580_PM_SPD		0x0001 /* Smart Power Down */
+#define E1000_82580_PM_D0_LPLU		0x0002 /* For D0a states */
+#define E1000_82580_PM_D3_LPLU		0x0004 /* For all other states */
 #define E1000_82580_PM_GO_LINKD		0x0020 /* Go Link Disconnect */
 
 /* BM PHY Copper Specific Control 1 */
@@ -224,53 +224,53 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 #define HV_M_STATUS_SPEED_1000		0x0200
 #define HV_M_STATUS_LINK_UP		0x0040
 
-#define IGP01E1000_PHY_PCS_INIT_REG       0x00B4
-#define IGP01E1000_PHY_POLARITY_MASK      0x0078
+#define IGP01E1000_PHY_PCS_INIT_REG	0x00B4
+#define IGP01E1000_PHY_POLARITY_MASK	0x0078
 
-#define IGP01E1000_PSCR_AUTO_MDIX         0x1000
-#define IGP01E1000_PSCR_FORCE_MDI_MDIX    0x2000 /* 0=MDI, 1=MDIX */
+#define IGP01E1000_PSCR_AUTO_MDIX	0x1000
+#define IGP01E1000_PSCR_FORCE_MDI_MDIX	0x2000 /* 0=MDI, 1=MDIX */
 
-#define IGP01E1000_PSCFR_SMART_SPEED      0x0080
+#define IGP01E1000_PSCFR_SMART_SPEED	0x0080
 
 /* Enable flexible speed on link-up */
-#define IGP01E1000_GMII_FLEX_SPD          0x0010
-#define IGP01E1000_GMII_SPD               0x0020 /* Enable SPD */
+#define IGP01E1000_GMII_FLEX_SPD	0x0010
+#define IGP01E1000_GMII_SPD		0x0020 /* Enable SPD */
 
-#define IGP02E1000_PM_SPD                 0x0001 /* Smart Power Down */
-#define IGP02E1000_PM_D0_LPLU             0x0002 /* For D0a states */
-#define IGP02E1000_PM_D3_LPLU             0x0004 /* For all other states */
+#define IGP02E1000_PM_SPD		0x0001 /* Smart Power Down */
+#define IGP02E1000_PM_D0_LPLU		0x0002 /* For D0a states */
+#define IGP02E1000_PM_D3_LPLU		0x0004 /* For all other states */
 
-#define IGP01E1000_PLHR_SS_DOWNGRADE      0x8000
+#define IGP01E1000_PLHR_SS_DOWNGRADE	0x8000
 
-#define IGP01E1000_PSSR_POLARITY_REVERSED 0x0002
-#define IGP01E1000_PSSR_MDIX              0x0800
-#define IGP01E1000_PSSR_SPEED_MASK        0xC000
-#define IGP01E1000_PSSR_SPEED_1000MBPS    0xC000
+#define IGP01E1000_PSSR_POLARITY_REVERSED	0x0002
+#define IGP01E1000_PSSR_MDIX		0x0800
+#define IGP01E1000_PSSR_SPEED_MASK	0xC000
+#define IGP01E1000_PSSR_SPEED_1000MBPS	0xC000
 
-#define IGP02E1000_PHY_CHANNEL_NUM        4
-#define IGP02E1000_PHY_AGC_A              0x11B1
-#define IGP02E1000_PHY_AGC_B              0x12B1
-#define IGP02E1000_PHY_AGC_C              0x14B1
-#define IGP02E1000_PHY_AGC_D              0x18B1
+#define IGP02E1000_PHY_CHANNEL_NUM	4
+#define IGP02E1000_PHY_AGC_A		0x11B1
+#define IGP02E1000_PHY_AGC_B		0x12B1
+#define IGP02E1000_PHY_AGC_C		0x14B1
+#define IGP02E1000_PHY_AGC_D		0x18B1
 
-#define IGP02E1000_AGC_LENGTH_SHIFT       9   /* Course - 15:13, Fine - 12:9 */
-#define IGP02E1000_AGC_LENGTH_MASK        0x7F
-#define IGP02E1000_AGC_RANGE              15
+#define IGP02E1000_AGC_LENGTH_SHIFT	9   /* Course - 15:13, Fine - 12:9 */
+#define IGP02E1000_AGC_LENGTH_MASK	0x7F
+#define IGP02E1000_AGC_RANGE		15
 
-#define IGP03E1000_PHY_MISC_CTRL          0x1B
-#define IGP03E1000_PHY_MISC_DUPLEX_MANUAL_SET  0x1000 /* Manually Set Duplex */
+#define IGP03E1000_PHY_MISC_CTRL	0x1B
+#define IGP03E1000_PHY_MISC_DUPLEX_MANUAL_SET	0x1000 /* Manually Set Duplex */
 
-#define E1000_CABLE_LENGTH_UNDEFINED      0xFF
+#define E1000_CABLE_LENGTH_UNDEFINED	0xFF
 
-#define E1000_KMRNCTRLSTA_OFFSET          0x001F0000
-#define E1000_KMRNCTRLSTA_OFFSET_SHIFT    16
-#define E1000_KMRNCTRLSTA_REN             0x00200000
+#define E1000_KMRNCTRLSTA_OFFSET	0x001F0000
+#define E1000_KMRNCTRLSTA_OFFSET_SHIFT	16
+#define E1000_KMRNCTRLSTA_REN		0x00200000
 #define E1000_KMRNCTRLSTA_CTRL_OFFSET	0x1    /* Kumeran Control */
-#define E1000_KMRNCTRLSTA_DIAG_OFFSET     0x3    /* Kumeran Diagnostic */
-#define E1000_KMRNCTRLSTA_TIMEOUTS        0x4    /* Kumeran Timeouts */
-#define E1000_KMRNCTRLSTA_INBAND_PARAM    0x9    /* Kumeran InBand Parameters */
-#define E1000_KMRNCTRLSTA_IBIST_DISABLE   0x0200 /* Kumeran IBIST Disable */
-#define E1000_KMRNCTRLSTA_DIAG_NELPBK     0x1000 /* Nearend Loopback mode */
+#define E1000_KMRNCTRLSTA_DIAG_OFFSET	0x3    /* Kumeran Diagnostic */
+#define E1000_KMRNCTRLSTA_TIMEOUTS	0x4    /* Kumeran Timeouts */
+#define E1000_KMRNCTRLSTA_INBAND_PARAM	0x9    /* Kumeran InBand Parameters */
+#define E1000_KMRNCTRLSTA_IBIST_DISABLE	0x0200 /* Kumeran IBIST Disable */
+#define E1000_KMRNCTRLSTA_DIAG_NELPBK	0x1000 /* Nearend Loopback mode */
 #define E1000_KMRNCTRLSTA_K1_CONFIG	0x7
 #define E1000_KMRNCTRLSTA_K1_ENABLE	0x0002 /* enable K1 */
 #define E1000_KMRNCTRLSTA_UNBLOCK_RX	0x0004 /* unblock Kumeran Rx in K0/K1 */
@@ -281,27 +281,27 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 #define E1000_KMRNCTRLSTA_K0_GBE_EN	0x1000 /* ena K0s mode for 1G link */
 #define E1000_KMRNCTRLSTA_K0_100_EN	0x2000 /* ena K0s mode for 10/100 lnk */
 
-#define IFE_PHY_EXTENDED_STATUS_CONTROL 0x10
-#define IFE_PHY_SPECIAL_CONTROL     0x11 /* 100BaseTx PHY Special Control */
-#define IFE_PHY_SPECIAL_CONTROL_LED 0x1B /* PHY Special and LED Control */
-#define IFE_PHY_MDIX_CONTROL        0x1C /* MDI/MDI-X Control */
+#define IFE_PHY_EXTENDED_STATUS_CONTROL	0x10
+#define IFE_PHY_SPECIAL_CONTROL		0x11 /* 100BaseTx PHY Special Control */
+#define IFE_PHY_SPECIAL_CONTROL_LED	0x1B /* PHY Special and LED Control */
+#define IFE_PHY_MDIX_CONTROL		0x1C /* MDI/MDI-X Control */
 
 /* IFE PHY Extended Status Control */
-#define IFE_PESC_POLARITY_REVERSED    0x0100
+#define IFE_PESC_POLARITY_REVERSED	0x0100
 
 /* IFE PHY Special Control */
-#define IFE_PSC_AUTO_POLARITY_DISABLE      0x0010
-#define IFE_PSC_FORCE_POLARITY             0x0020
-#define IFE_PSC_DISABLE_DYNAMIC_POWER_DOWN 0x0100
+#define IFE_PSC_AUTO_POLARITY_DISABLE	0x0010
+#define IFE_PSC_FORCE_POLARITY		0x0020
+#define IFE_PSC_DISABLE_DYNAMIC_POWER_DOWN	0x0100
 
 /* IFE PHY Special Control and LED Control */
-#define IFE_PSCL_PROBE_MODE            0x0020
-#define IFE_PSCL_PROBE_LEDS_OFF        0x0006 /* Force LEDs 0 and 2 off */
-#define IFE_PSCL_PROBE_LEDS_ON         0x0007 /* Force LEDs 0 and 2 on */
+#define IFE_PSCL_PROBE_MODE		0x0020
+#define IFE_PSCL_PROBE_LEDS_OFF		0x0006 /* Force LEDs 0 and 2 off */
+#define IFE_PSCL_PROBE_LEDS_ON		0x0007 /* Force LEDs 0 and 2 on */
 
 /* IFE PHY MDIX Control */
-#define IFE_PMC_MDIX_STATUS      0x0020 /* 1=MDI-X, 0=MDI */
-#define IFE_PMC_FORCE_MDIX       0x0040 /* 1=force MDI-X, 0=force MDI */
+#define IFE_PMC_MDIX_STATUS		0x0020 /* 1=MDI-X, 0=MDI */
+#define IFE_PMC_FORCE_MDIX		0x0040 /* 1=force MDI-X, 0=force MDI */
 #define IFE_PMC_AUTO_MDIX		0x0080 /* 1=enable auto, 0=disable */
 
 /* SFP modules ID memory locations */

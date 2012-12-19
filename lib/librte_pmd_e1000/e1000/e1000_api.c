@@ -356,9 +356,9 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
  *  @hw: pointer to the HW structure
  *  @init_device: true will initialize the rest of the function pointers
  *		  getting the device ready for use.  false will only set
- *                 MAC type and the function pointers for the other init
+ *		  MAC type and the function pointers for the other init
  *		  functions.  Passing false will not generate any hardware
- *                 reads or writes.
+ *		  reads or writes.
  *
  *  This function must be called by a driver in order to use the rest
  *  of the 'shared' code files. Called by drivers only.
@@ -534,11 +534,11 @@ void e1000_write_vfta(struct e1000_hw *hw, u32 offset, u32 value)
  *  The caller must have a packed mc_addr_list of multicast addresses.
  **/
 void e1000_update_mc_addr_list(struct e1000_hw *hw, u8 *mc_addr_list,
-                               u32 mc_addr_count)
+			       u32 mc_addr_count)
 {
 	if (hw->mac.ops.update_mc_addr_list)
 		hw->mac.ops.update_mc_addr_list(hw, mc_addr_list,
-		                                mc_addr_count);
+						mc_addr_count);
 }
 
 /**
@@ -873,11 +873,11 @@ bool e1000_enable_tx_pkt_filtering(struct e1000_hw *hw)
  *  way.  Also fills up the sum of the buffer in *buffer parameter.
  **/
 s32 e1000_mng_host_if_write(struct e1000_hw *hw, u8 *buffer, u16 length,
-                            u16 offset, u8 *sum)
+			    u16 offset, u8 *sum)
 {
 	if (hw->mac.ops.mng_host_if_write)
 		return hw->mac.ops.mng_host_if_write(hw, buffer, length,
-		                                     offset, sum);
+						     offset, sum);
 
 	return E1000_NOT_IMPLEMENTED;
 }
@@ -890,7 +890,7 @@ s32 e1000_mng_host_if_write(struct e1000_hw *hw, u8 *buffer, u16 length,
  *  Writes the command header after does the checksum calculation.
  **/
 s32 e1000_mng_write_cmd_header(struct e1000_hw *hw,
-                               struct e1000_host_mng_command_header *hdr)
+			       struct e1000_host_mng_command_header *hdr)
 {
 	if (hw->mac.ops.mng_write_cmd_header)
 		return hw->mac.ops.mng_write_cmd_header(hw, hdr);
@@ -1293,7 +1293,7 @@ s32 e1000_write_nvm(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
  *  This is a function pointer entry point called by drivers.
  **/
 s32 e1000_write_8bit_ctrl_reg(struct e1000_hw *hw, u32 reg, u32 offset,
-                              u8 data)
+			      u8 data)
 {
 	return e1000_write_8bit_ctrl_reg_generic(hw, reg, offset, data);
 }
