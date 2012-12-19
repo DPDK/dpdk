@@ -2130,14 +2130,21 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 	struct rte_eth_conf* conf = &dev->data->dev_conf;
 
 
-	if (!conf->rxmode.hw_strip_crc) {
 		/*
 		 * VF has no ability to enable/disable HW CRC
 		 * Keep the persistent behavior the same as Host PF
 		 */
+#ifndef RTE_LIBRTE_IXGBE_PF_DISABLE_STRIP_CRC
+	if (!conf->rxmode.hw_strip_crc) {
 		PMD_INIT_LOG(INFO, "VF can't disable HW CRC Strip\n");
 		conf->rxmode.hw_strip_crc = 1;
 	}
+#else
+	if (conf->rxmode.hw_strip_crc) {
+		PMD_INIT_LOG(INFO, "VF can't enable HW CRC Strip\n");
+		conf->rxmode.hw_strip_crc = 0;
+	}
+#endif
 
 	return 0;
 }
