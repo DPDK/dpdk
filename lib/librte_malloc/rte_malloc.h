@@ -49,7 +49,8 @@ extern "C" {
 
 /**
  * This function allocates memory from the huge-page area of memory. The memory
- * is not cleared.
+ * is not cleared. In NUMA systems, the memory allocated resides on the same
+ * NUMA socket as the core that calls this function.
  *
  * @param type
  *   A string identifying the type of allocated objects (useful for debug
@@ -74,7 +75,8 @@ rte_malloc(const char *type, size_t size, unsigned align);
  * Allocate zero'ed memory from the heap.
  *
  * Equivalent to rte_malloc() except that the memory zone is
- * initialised with zeros.
+ * initialised with zeros. In NUMA systems, the memory allocated resides on the
+ * same NUMA socket as the core that calls this function.
  *
  * @param type
  *   A string identifying the type of allocated objects (useful for debug
@@ -97,7 +99,8 @@ rte_zmalloc(const char *type, size_t size, unsigned align);
 
 /**
  * Replacement function for calloc(), using huge-page memory. Memory area is
- * initialised with zeros.
+ * initialised with zeros. In NUMA systems, the memory allocated resides on the
+ * same NUMA socket as the core that calls this function.
  *
  * @param type
  *   A string identifying the type of allocated objects (useful for debug
@@ -122,7 +125,8 @@ rte_calloc(const char *type, size_t num, size_t size, unsigned align);
 
 /**
  * Replacement function for realloc(), using huge-page memory. Reserved area
- * memory is resized, preserving contents.
+ * memory is resized, preserving contents. In NUMA systems, the new area
+ * resides on the same NUMA socket as the old area.
  *
  * @param ptr
  *   Pointer to already allocated memory
@@ -141,6 +145,88 @@ rte_calloc(const char *type, size_t num, size_t size, unsigned align);
  */
 void *
 rte_realloc(void *ptr, size_t size, unsigned align);
+
+/**
+ * This function allocates memory from the huge-page area of memory. The memory
+ * is not cleared.
+ *
+ * @param type
+ *   A string identifying the type of allocated objects (useful for debug
+ *   purposes, such as identifying the cause of a memory leak). Can be NULL.
+ * @param size
+ *   Size (in bytes) to be allocated.
+ * @param align
+ *   If 0, the return is a pointer that is suitably aligned for any kind of
+ *   variable (in the same manner as malloc()).
+ *   Otherwise, the return is a pointer that is a multiple of *align*. In
+ *   this case, it must be a power of two. (Minimum alignment is the
+ *   cacheline size, i.e. 64-bytes)
+ * @param socket
+ *   NUMA socket to allocate memory on. If SOCKET_ID_ANY is used, this function
+ *   will behave the same as rte_malloc().
+ * @return
+ *   - NULL on error. Not enough memory, or invalid arguments (size is 0,
+ *     align is not a power of two).
+ *   - Otherwise, the pointer to the allocated object.
+ */
+void *
+rte_malloc_socket(const char *type, size_t size, unsigned align, int socket);
+
+/**
+ * Allocate zero'ed memory from the heap.
+ *
+ * Equivalent to rte_malloc() except that the memory zone is
+ * initialised with zeros.
+ *
+ * @param type
+ *   A string identifying the type of allocated objects (useful for debug
+ *   purposes, such as identifying the cause of a memory leak). Can be NULL.
+ * @param size
+ *   Size (in bytes) to be allocated.
+ * @param align
+ *   If 0, the return is a pointer that is suitably aligned for any kind of
+ *   variable (in the same manner as malloc()).
+ *   Otherwise, the return is a pointer that is a multiple of *align*. In
+ *   this case, it must obviously be a power of two. (Minimum alignment is the
+ *   cacheline size, i.e. 64-bytes)
+ * @param socket
+ *   NUMA socket to allocate memory on. If SOCKET_ID_ANY is used, this function
+ *   will behave the same as rte_zmalloc().
+ * @return
+ *   - NULL on error. Not enough memory, or invalid arguments (size is 0,
+ *     align is not a power of two).
+ *   - Otherwise, the pointer to the allocated object.
+ */
+void *
+rte_zmalloc_socket(const char *type, size_t size, unsigned align, int socket);
+
+/**
+ * Replacement function for calloc(), using huge-page memory. Memory area is
+ * initialised with zeros.
+ *
+ * @param type
+ *   A string identifying the type of allocated objects (useful for debug
+ *   purposes, such as identifying the cause of a memory leak). Can be NULL.
+ * @param num
+ *   Number of elements to be allocated.
+ * @param size
+ *   Size (in bytes) of a single element.
+ * @param align
+ *   If 0, the return is a pointer that is suitably aligned for any kind of
+ *   variable (in the same manner as malloc()).
+ *   Otherwise, the return is a pointer that is a multiple of *align*. In
+ *   this case, it must obviously be a power of two. (Minimum alignment is the
+ *   cacheline size, i.e. 64-bytes)
+ * @param socket
+ *   NUMA socket to allocate memory on. If SOCKET_ID_ANY is used, this function
+ *   will behave the same as rte_calloc().
+ * @return
+ *   - NULL on error. Not enough memory, or invalid arguments (size is 0,
+ *     align is not a power of two).
+ *   - Otherwise, the pointer to the allocated object.
+ */
+void *
+rte_calloc_socket(const char *type, size_t num, size_t size, unsigned align, int socket);
 
 /**
  * Frees the memory space pointed to by the provided pointer.
@@ -192,6 +278,8 @@ rte_malloc_dump_stats(const char *type);
 
 /**
  * Set the maximum amount of allocated memory for this type.
+ *
+ * This is not yet implemented
  *
  * @param type
  *   A string identifying the type of allocated objects.

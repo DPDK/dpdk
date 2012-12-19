@@ -32,31 +32,25 @@
  * 
  */
 
-#ifndef MALLOC_HEAP_H_
-#define MALLOC_HEAP_H_
+#ifndef _RTE_MALLOC_HEAP_H_
+#define _RTE_MALLOC_HEAP_H_
 
-#include <rte_malloc.h>
-#include <rte_malloc_heap.h>
+#include <stddef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+enum heap_state {
+	NOT_INITIALISED = 0,
+	INITIALISED
+};
 
-static inline unsigned
-malloc_get_numa_socket(void)
-{
-	return rte_socket_id();
-}
+/**
+ * Structure to hold malloc heap
+ */
+struct malloc_heap {
+	enum heap_state volatile initialised;
+	unsigned numa_socket;
+	rte_spinlock_t lock;
+	struct malloc_elem * volatile free_head;
+	unsigned mz_count;
+} __rte_cache_aligned;
 
-void *
-malloc_heap_alloc(struct malloc_heap *heap, const char *type,
-		size_t size, unsigned align);
-
-int
-rte_eal_heap_memzone_init(void);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* MALLOC_HEAP_H_ */
+#endif /* _RTE_MALLOC_HEAP_H_ */

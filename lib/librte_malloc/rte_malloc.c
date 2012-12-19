@@ -68,17 +68,46 @@ void rte_free(void *addr)
 }
 
 /*
+ * Allocate memory on specified heap.
+ */
+void *
+rte_malloc_socket(const char *type, size_t size, unsigned align, int socket)
+{
+	/* return NULL if size is 0 or alignment is not power-of-2 */
+	if (size == 0 || !rte_is_power_of_2(align))
+		return NULL;
+
+	if (socket == SOCKET_ID_ANY)
+		socket = malloc_get_numa_socket();
+
+	/* Check socket parameter */
+	if (socket >= RTE_MAX_NUMA_NODES)
+		return NULL;
+
+	return malloc_heap_alloc(&malloc_heaps[socket], type,
+			size, align == 0 ? 1 : align);
+}
+
+/*
  * Allocate memory on default heap.
  */
 void *
 rte_malloc(const char *type, size_t size, unsigned align)
 {
-	unsigned malloc_socket = malloc_get_numa_socket();
-	/* return NULL if size is 0 or alignment is not power-of-2 */
-	if (size == 0 || !rte_is_power_of_2(align))
-		return NULL;
-	return malloc_heap_alloc(&malloc_heap[malloc_socket], type,
-			size, align == 0 ? 1 : align);
+	return rte_malloc_socket(type, size, align, SOCKET_ID_ANY);
+}
+
+/*
+ * Allocate zero'd memory on specified heap.
+ */
+void *
+rte_zmalloc_socket(const char *type, size_t size, unsigned align, int socket)
+{
+	void *ptr = rte_malloc_socket(type, size, align, socket);
+
+	if (ptr != NULL)
+		memset(ptr, 0, size);
+	return ptr;
 }
 
 /*
@@ -87,11 +116,16 @@ rte_malloc(const char *type, size_t size, unsigned align)
 void *
 rte_zmalloc(const char *type, size_t size, unsigned align)
 {
-	void *ptr = rte_malloc(type, size, align);
+	return rte_zmalloc_socket(type, size, align, SOCKET_ID_ANY);
+}
 
-	if (ptr != NULL)
-		memset(ptr, 0, size);
-	return ptr;
+/*
+ * Allocate zero'd memory on specified heap.
+ */
+void *
+rte_calloc_socket(const char *type, size_t num, size_t size, unsigned align, int socket)
+{
+	return rte_zmalloc_socket(type, num * size, align, socket);
 }
 
 /*
