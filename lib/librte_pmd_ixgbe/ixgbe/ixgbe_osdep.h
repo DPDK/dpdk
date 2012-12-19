@@ -96,11 +96,11 @@
 #define EWARN(hw, S, args...)     DEBUGOUT1(S, ##args)
 
 /* Bunch of defines for shared code bogosity */
-#define UNREFERENCED_PARAMETER(_p)
-#define UNREFERENCED_1PARAMETER(_p)
+#define UNREFERENCED_PARAMETER(_p)  
+#define UNREFERENCED_1PARAMETER(_p) 
 #define UNREFERENCED_2PARAMETER(_p, _q)
-#define UNREFERENCED_3PARAMETER(_p, _q, _r)
-#define UNREFERENCED_4PARAMETER(_p, _q, _r, _s)
+#define UNREFERENCED_3PARAMETER(_p, _q, _r) 
+#define UNREFERENCED_4PARAMETER(_p, _q, _r, _s) 
 
 #define STATIC static
 #define IXGBE_NTOHL(_i)	rte_be_to_cpu_32(_i)
@@ -140,7 +140,7 @@ static inline uint32_t ixgbe_read_addr(volatile void* addr)
 	IXGBE_PCI_REG_ADDR((hw), (reg) + ((index) << 2))
 
 /* Not implemented !! */
-#define IXGBE_READ_PCIE_WORD(hw, reg) 0
+#define IXGBE_READ_PCIE_WORD(hw, reg) 0	
 #define IXGBE_WRITE_PCIE_WORD(hw, reg, value) do { } while(0)
 
 #define IXGBE_WRITE_FLUSH(a) IXGBE_READ_REG(a, IXGBE_STATUS)

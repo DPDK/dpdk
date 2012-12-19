@@ -114,7 +114,7 @@ static void ixgbe_vlan_tpid_set(struct rte_eth_dev *dev, uint16_t tpid_id);
 static void ixgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev, 
 		uint16_t queue, bool on);
 static void ixgbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue,
-				  int on);
+		int on);
 static void ixgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static void ixgbe_vlan_hw_filter_enable(struct rte_eth_dev *dev);
 static void ixgbe_vlan_hw_filter_disable(struct rte_eth_dev *dev);
@@ -128,7 +128,7 @@ static void ixgbe_vlan_hw_extend_disable(struct rte_eth_dev *dev);
 static int ixgbe_dev_led_on(struct rte_eth_dev *dev);
 static int ixgbe_dev_led_off(struct rte_eth_dev *dev);
 static int  ixgbe_flow_ctrl_set(struct rte_eth_dev *dev,
-				struct rte_eth_fc_conf *fc_conf);
+		struct rte_eth_fc_conf *fc_conf);
 static int ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 		struct rte_eth_pfc_conf *pfc_conf);
 static void ixgbe_dev_link_status_print(struct rte_eth_dev *dev);
@@ -136,10 +136,10 @@ static int ixgbe_dev_interrupt_setup(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_action(struct rte_eth_dev *dev);
 static void ixgbe_dev_interrupt_handler(struct rte_intr_handle *handle,
-							void *param);
+		void *param);
 static void ixgbe_dev_interrupt_delayed_handler(void *param);
 static void ixgbe_add_rar(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
-				uint32_t index, uint32_t pool);
+		uint32_t index, uint32_t pool);
 static void ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index);
 static void ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config);
 
@@ -1092,7 +1092,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	int err, link_up = 0, negotiate = 0;
 	uint32_t speed = 0;
 	int mask = 0;
-
+	
 	PMD_INIT_FUNC_TRACE();
 
 	/* IXGBE devices don't support half duplex */
@@ -2131,10 +2131,10 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "\nConfigured Virtual Function port id: %d\n",
 		dev->data->port_id);
 
-		/*
-		 * VF has no ability to enable/disable HW CRC
-		 * Keep the persistent behavior the same as Host PF
-		 */
+	/*
+	 * VF has no ability to enable/disable HW CRC
+	 * Keep the persistent behavior the same as Host PF
+	 */
 #ifndef RTE_LIBRTE_IXGBE_PF_DISABLE_STRIP_CRC
 	if (!conf->rxmode.hw_strip_crc) {
 		PMD_INIT_LOG(INFO, "VF can't disable HW CRC Strip\n");
@@ -2186,7 +2186,7 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_LOG(DEBUG, "ixgbevf_dev_stop");
-
+		
 	hw->adapter_stopped = TRUE;
 	ixgbe_stop_adapter(hw);
 

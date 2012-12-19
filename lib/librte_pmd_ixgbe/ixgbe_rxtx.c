@@ -1225,7 +1225,7 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 /* split requests into chunks of size RTE_PMD_IXGBE_RX_MAX_BURST */
 uint16_t
 ixgbe_recv_pkts_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
-		uint16_t nb_pkts)
+			   uint16_t nb_pkts)
 {
 	uint16_t nb_rx;
 
@@ -1767,9 +1767,9 @@ static void
 ixgbe_tx_queue_release(struct igb_tx_queue *txq)
 {
 	if (txq != NULL) {
-	ixgbe_tx_queue_release_mbufs(txq);
-	rte_free(txq->sw_ring);
-	rte_free(txq);
+		ixgbe_tx_queue_release_mbufs(txq);
+		rte_free(txq->sw_ring);
+		rte_free(txq);
 	}
 }
 
@@ -1984,7 +1984,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	    (txq->tx_rs_thresh >= RTE_PMD_IXGBE_TX_MAX_BURST))
 		dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
 	else
-	dev->tx_pkt_burst = ixgbe_xmit_pkts;
+		dev->tx_pkt_burst = ixgbe_xmit_pkts;
 
 	return (0);
 }
@@ -2018,9 +2018,9 @@ static void
 ixgbe_rx_queue_release(struct igb_rx_queue *rxq)
 {
 	if (rxq != NULL) {
-	ixgbe_rx_queue_release_mbufs(rxq);
-	rte_free(rxq->sw_ring);
-	rte_free(rxq);
+		ixgbe_rx_queue_release_mbufs(rxq);
+		rte_free(rxq->sw_ring);
+		rte_free(rxq);
 	}
 }
 
@@ -2252,17 +2252,17 @@ ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		struct igb_tx_queue *txq = dev->data->tx_queues[i];
 		if (txq != NULL) {
-		ixgbe_tx_queue_release_mbufs(txq);
-		ixgbe_reset_tx_queue(txq);
-	}
+			ixgbe_tx_queue_release_mbufs(txq);
+			ixgbe_reset_tx_queue(txq);
+		}
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct igb_rx_queue *rxq = dev->data->rx_queues[i];
 		if (rxq != NULL) {
-		ixgbe_rx_queue_release_mbufs(rxq);
-		ixgbe_reset_rx_queue(rxq);
-	}
+			ixgbe_rx_queue_release_mbufs(rxq);
+			ixgbe_reset_rx_queue(rxq);
+		}
 	}
 }
 

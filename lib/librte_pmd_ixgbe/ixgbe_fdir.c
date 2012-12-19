@@ -608,7 +608,7 @@ fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 
 	/*
 	 * Program the relevant mask registers.  If src/dst_port or src/dst_addr
-	 * are zero, then assume a full mask for that field.  Also assume that
+	 * are zero, then assume a full mask for that field. Also assume that
 	 * a VLAN of 0 is unspecified, so mask that out as well.  L4type
 	 * cannot be masked out in this implementation.
 	 */
@@ -649,10 +649,10 @@ fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 
 	if (!input_mask->set_ipv6_mask) {
 		/* Store source and destination IPv4 masks (big-endian) */
-	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIP4M,
-			IXGBE_NTOHL(~input_mask->src_ipv4_mask));
-	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRDIP4M,
-			IXGBE_NTOHL(~input_mask->dst_ipv4_mask));
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIP4M,
+				IXGBE_NTOHL(~input_mask->src_ipv4_mask));
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRDIP4M,
+				IXGBE_NTOHL(~input_mask->dst_ipv4_mask));
 	}
 	else {
 		/* Store source and destination IPv6 masks (bit reversed) */

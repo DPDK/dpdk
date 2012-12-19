@@ -35,27 +35,27 @@ POSSIBILITY OF SUCH DAMAGE.
 #define __IXGBE_VF_H__
 #ident "$Id: ixgbe_vf.h,v 1.34 2012/08/09 17:04:18 cmwyborn Exp $"
 
-#define IXGBE_VF_IRQ_CLEAR_MASK     7
-#define IXGBE_VF_MAX_TX_QUEUES      8
-#define IXGBE_VF_MAX_RX_QUEUES      8
+#define IXGBE_VF_IRQ_CLEAR_MASK	7
+#define IXGBE_VF_MAX_TX_QUEUES	8
+#define IXGBE_VF_MAX_RX_QUEUES	8
 
 /* DCB define */
 #define IXGBE_VF_MAX_TRAFFIC_CLASS	8
 
-#define IXGBE_VFCTRL           0x00000
-#define IXGBE_VFSTATUS         0x00008
-#define IXGBE_VFLINKS          0x00010
-#define IXGBE_VFFRTIMER        0x00048
-#define IXGBE_VFRXMEMWRAP      0x03190
-#define IXGBE_VTEICR           0x00100
-#define IXGBE_VTEICS           0x00104
-#define IXGBE_VTEIMS           0x00108
-#define IXGBE_VTEIMC           0x0010C
-#define IXGBE_VTEIAC           0x00110
-#define IXGBE_VTEIAM           0x00114
+#define IXGBE_VFCTRL		0x00000
+#define IXGBE_VFSTATUS		0x00008
+#define IXGBE_VFLINKS		0x00010
+#define IXGBE_VFFRTIMER		0x00048
+#define IXGBE_VFRXMEMWRAP	0x03190
+#define IXGBE_VTEICR		0x00100
+#define IXGBE_VTEICS		0x00104
+#define IXGBE_VTEIMS		0x00108
+#define IXGBE_VTEIMC		0x0010C
+#define IXGBE_VTEIAC		0x00110
+#define IXGBE_VTEIAM		0x00114
 #define IXGBE_VTEITR(x)		(0x00820 + (4 * (x)))
 #define IXGBE_VTIVAR(x)		(0x00120 + (4 * (x)))
-#define IXGBE_VTIVAR_MISC      0x00140
+#define IXGBE_VTIVAR_MISC	0x00140
 #define IXGBE_VTRSCINT(x)	(0x00180 + (4 * (x)))
 /* define IXGBE_VFPBACL  still says TBD in EAS */
 #define IXGBE_VFRDBAL(x)	(0x01000 + (0x40 * (x)))
@@ -66,7 +66,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_VFRXDCTL(x)	(0x01028 + (0x40 * (x)))
 #define IXGBE_VFSRRCTL(x)	(0x01014 + (0x40 * (x)))
 #define IXGBE_VFRSCCTL(x)	(0x0102C + (0x40 * (x)))
-#define IXGBE_VFPSRTYPE        0x00300
+#define IXGBE_VFPSRTYPE		0x00300
 #define IXGBE_VFTDBAL(x)	(0x02000 + (0x40 * (x)))
 #define IXGBE_VFTDBAH(x)	(0x02004 + (0x40 * (x)))
 #define IXGBE_VFTDLEN(x)	(0x02008 + (0x40 * (x)))
@@ -77,13 +77,13 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_VFTDWBAH(x)	(0x0203C + (0x40 * (x)))
 #define IXGBE_VFDCA_RXCTRL(x)	(0x0100C + (0x40 * (x)))
 #define IXGBE_VFDCA_TXCTRL(x)	(0x0200c + (0x40 * (x)))
-#define IXGBE_VFGPRC           0x0101C
-#define IXGBE_VFGPTC           0x0201C
-#define IXGBE_VFGORC_LSB       0x01020
-#define IXGBE_VFGORC_MSB       0x01024
-#define IXGBE_VFGOTC_LSB       0x02020
-#define IXGBE_VFGOTC_MSB       0x02024
-#define IXGBE_VFMPRC           0x01034
+#define IXGBE_VFGPRC		0x0101C
+#define IXGBE_VFGPTC		0x0201C
+#define IXGBE_VFGORC_LSB	0x01020
+#define IXGBE_VFGORC_MSB	0x01024
+#define IXGBE_VFGOTC_LSB	0x02020
+#define IXGBE_VFGOTC_MSB	0x02024
+#define IXGBE_VFMPRC		0x01034
 
 
 struct ixgbevf_hw_stats {

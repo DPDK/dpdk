@@ -241,7 +241,7 @@ out:
  *  received an ack to that message within delay * timeout period
  **/
 s32 ixgbe_write_posted_mbx(struct ixgbe_hw *hw, u32 *msg, u16 size,
-                           u16 mbx_id)
+			   u16 mbx_id)
 {
 	struct ixgbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = IXGBE_ERR_MBX;
@@ -370,7 +370,7 @@ STATIC s32 ixgbe_check_for_rst_vf(struct ixgbe_hw *hw, u16 mbx_id)
 	DEBUGFUNC("ixgbe_check_for_rst_vf");
 
 	if (!ixgbe_check_for_bit_vf(hw, (IXGBE_VFMAILBOX_RSTD |
-	                                 IXGBE_VFMAILBOX_RSTI))) {
+	    IXGBE_VFMAILBOX_RSTI))) {
 		ret_val = IXGBE_SUCCESS;
 		hw->mbx.stats.rsts++;
 	}
@@ -410,7 +410,7 @@ STATIC s32 ixgbe_obtain_mbx_lock_vf(struct ixgbe_hw *hw)
  *  returns SUCCESS if it successfully copied message into the buffer
  **/
 STATIC s32 ixgbe_write_mbx_vf(struct ixgbe_hw *hw, u32 *msg, u16 size,
-                              u16 mbx_id)
+			      u16 mbx_id)
 {
 	s32 ret_val;
 	u16 i;
@@ -451,7 +451,7 @@ out_no_write:
  *  returns SUCCESS if it successfuly read message from buffer
  **/
 STATIC s32 ixgbe_read_mbx_vf(struct ixgbe_hw *hw, u32 *msg, u16 size,
-                             u16 mbx_id)
+			     u16 mbx_id)
 {
 	s32 ret_val = IXGBE_SUCCESS;
 	u16 i;
@@ -538,7 +538,7 @@ STATIC s32 ixgbe_check_for_msg_pf(struct ixgbe_hw *hw, u16 vf_number)
 	DEBUGFUNC("ixgbe_check_for_msg_pf");
 
 	if (!ixgbe_check_for_bit_pf(hw, IXGBE_MBVFICR_VFREQ_VF1 << vf_bit,
-	                            index)) {
+				    index)) {
 		ret_val = IXGBE_SUCCESS;
 		hw->mbx.stats.reqs++;
 	}
@@ -562,7 +562,7 @@ STATIC s32 ixgbe_check_for_ack_pf(struct ixgbe_hw *hw, u16 vf_number)
 	DEBUGFUNC("ixgbe_check_for_ack_pf");
 
 	if (!ixgbe_check_for_bit_pf(hw, IXGBE_MBVFICR_VFACK_VF1 << vf_bit,
-	                            index)) {
+				    index)) {
 		ret_val = IXGBE_SUCCESS;
 		hw->mbx.stats.acks++;
 	}
@@ -641,7 +641,7 @@ STATIC s32 ixgbe_obtain_mbx_lock_pf(struct ixgbe_hw *hw, u16 vf_number)
  *  returns SUCCESS if it successfully copied message into the buffer
  **/
 STATIC s32 ixgbe_write_mbx_pf(struct ixgbe_hw *hw, u32 *msg, u16 size,
-                              u16 vf_number)
+			      u16 vf_number)
 {
 	s32 ret_val;
 	u16 i;
@@ -684,7 +684,7 @@ out_no_write:
  *  a message due to a VF request so no polling for message is needed.
  **/
 STATIC s32 ixgbe_read_mbx_pf(struct ixgbe_hw *hw, u32 *msg, u16 size,
-                             u16 vf_number)
+			     u16 vf_number)
 {
 	s32 ret_val;
 	u16 i;
