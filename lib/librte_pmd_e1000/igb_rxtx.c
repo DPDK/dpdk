@@ -315,9 +315,10 @@ tx_desc_vlan_flags_to_cmdtype(uint16_t ol_flags)
 }
 
 uint16_t
-eth_igb_xmit_pkts(struct igb_tx_queue *txq, struct rte_mbuf **tx_pkts,
+eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	       uint16_t nb_pkts)
 {
+	struct igb_tx_queue *txq;
 	struct igb_tx_entry *sw_ring;
 	struct igb_tx_entry *txe, *txn;
 	volatile union e1000_adv_tx_desc *txr;
@@ -339,6 +340,7 @@ eth_igb_xmit_pkts(struct igb_tx_queue *txq, struct rte_mbuf **tx_pkts,
 	uint32_t ctx;
 	uint32_t vlan_macip_lens;
 
+	txq = tx_queue;
 	sw_ring = txq->sw_ring;
 	txr     = txq->tx_ring;
 	tx_id   = txq->tx_tail;
@@ -610,9 +612,10 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status)
 }
 
 uint16_t
-eth_igb_recv_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	       uint16_t nb_pkts)
 {
+	struct igb_rx_queue *rxq;
 	volatile union e1000_adv_rx_desc *rx_ring;
 	volatile union e1000_adv_rx_desc *rxdp;
 	struct igb_rx_entry *sw_ring;
@@ -631,6 +634,7 @@ eth_igb_recv_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 	nb_rx = 0;
 	nb_hold = 0;
+	rxq = rx_queue;
 	rx_id = rxq->rx_tail;
 	rx_ring = rxq->rx_ring;
 	sw_ring = rxq->sw_ring;
@@ -786,9 +790,10 @@ eth_igb_recv_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 }
 
 uint16_t
-eth_igb_recv_scattered_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			 uint16_t nb_pkts)
 {
+	struct igb_rx_queue *rxq;
 	volatile union e1000_adv_rx_desc *rx_ring;
 	volatile union e1000_adv_rx_desc *rxdp;
 	struct igb_rx_entry *sw_ring;
@@ -809,6 +814,7 @@ eth_igb_recv_scattered_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 	nb_rx = 0;
 	nb_hold = 0;
+	rxq = rx_queue;
 	rx_id = rxq->rx_tail;
 	rx_ring = rxq->rx_ring;
 	sw_ring = rxq->sw_ring;
@@ -1092,47 +1098,17 @@ igb_tx_queue_release_mbufs(struct igb_tx_queue *txq)
 static void
 igb_tx_queue_release(struct igb_tx_queue *txq)
 {
+	if (txq != NULL) {
 	igb_tx_queue_release_mbufs(txq);
         rte_free(txq->sw_ring);
         rte_free(txq);
+	}
 }
 
-int
-igb_dev_tx_queue_alloc(struct rte_eth_dev *dev, uint16_t nb_queues)
+void
+eth_igb_tx_queue_release(void *txq)
 {
-	uint16_t i, old_nb_queues = dev->data->nb_tx_queues;
-	struct igb_tx_queue **txq;
-
-	if (dev->data->tx_queues == NULL) {
-		dev->data->tx_queues = rte_zmalloc("ethdev->tx_queues",
-				sizeof(struct igb_tx_queue *) * nb_queues,
-							CACHE_LINE_SIZE);
-		if (dev->data->tx_queues == NULL) {
-			dev->data->nb_tx_queues = 0;
-			return -ENOMEM;
-		}
-	} else {
-		if (nb_queues < old_nb_queues)
-			for (i = nb_queues; i < old_nb_queues; i++)
-				igb_tx_queue_release(dev->data->tx_queues[i]);
-
-		if (nb_queues != old_nb_queues) {
-			txq = rte_realloc(dev->data->tx_queues,
-				sizeof(struct igb_tx_queue *) * nb_queues,
-							CACHE_LINE_SIZE);
-			if (txq == NULL)
-				return -ENOMEM;
-			else
-				dev->data->tx_queues = txq;
-			if (nb_queues > old_nb_queues)
-				memset(&(txq[old_nb_queues]), 0,
-					sizeof(struct igb_tx_queue *) *
-					(nb_queues - old_nb_queues));
-		}
-	}
-	dev->data->nb_tx_queues = nb_queues;
-
-	return 0;
+	igb_tx_queue_release(txq);
 }
 
 static void
@@ -1293,47 +1269,17 @@ igb_rx_queue_release_mbufs(struct igb_rx_queue *rxq)
 static void
 igb_rx_queue_release(struct igb_rx_queue *rxq)
 {
+	if (rxq != NULL) {
 	igb_rx_queue_release_mbufs(rxq);
 	rte_free(rxq->sw_ring);
 	rte_free(rxq);
+	}
 }
 
-int
-igb_dev_rx_queue_alloc(struct rte_eth_dev *dev, uint16_t nb_queues)
+void
+eth_igb_rx_queue_release(void *rxq)
 {
-	uint16_t i, old_nb_queues = dev->data->nb_rx_queues;
-	struct igb_rx_queue **rxq;
-
-	if (dev->data->rx_queues == NULL) {
-		dev->data->rx_queues = rte_zmalloc("ethdev->rx_queues",
-				sizeof(struct igb_rx_queue *) * nb_queues,
-							CACHE_LINE_SIZE);
-		if (dev->data->rx_queues == NULL) {
-			dev->data->nb_rx_queues = 0;
-			return -ENOMEM;
-		}
-	} else {
-		for (i = nb_queues; i < old_nb_queues; i++) {
-			igb_rx_queue_release(dev->data->rx_queues[i]);
-			dev->data->rx_queues[i] = NULL;
-		}
-		if (nb_queues != old_nb_queues) {
-			rxq = rte_realloc(dev->data->rx_queues,
-				sizeof(struct igb_rx_queue *) * nb_queues,
-							CACHE_LINE_SIZE);
-			if (rxq == NULL)
-				return -ENOMEM;
-			else
-				dev->data->rx_queues = rxq;
-			if (nb_queues > old_nb_queues)
-				memset(&(rxq[old_nb_queues]), 0,
-					sizeof(struct igb_rx_queue *) *
-					(nb_queues - old_nb_queues));
-		}
-	}
-	dev->data->nb_rx_queues = nb_queues;
-
-	return 0;
+	igb_rx_queue_release(rxq);
 }
 
 static void
@@ -1442,14 +1388,18 @@ igb_dev_clear_queues(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
+		if (txq != NULL) {
 		igb_tx_queue_release_mbufs(txq);
 		igb_reset_tx_queue(txq, dev);
+	}
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
+		if (rxq != NULL) {
 		igb_rx_queue_release_mbufs(rxq);
 		igb_reset_rx_queue(rxq);
+	}
 	}
 }
 
@@ -1647,10 +1597,8 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 
 		/* Allocate buffers for descriptor rings and set up queue */
 		ret = igb_alloc_rx_queue_mbufs(rxq);
-		if (ret) {
-			igb_dev_clear_queues(dev);
+		if (ret)
 			return ret;
-		}
 
 		/*
 		 * Reset crc_len in case it was changed after queue setup by a

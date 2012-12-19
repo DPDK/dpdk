@@ -85,10 +85,10 @@ struct e1000_adapter {
 	(&((struct e1000_adapter *)adapter)->shadow_vfta)
 
 /*
- * RX/TX function prototypes
+ * RX/TX IGB function prototypes
  */
-int igb_dev_tx_queue_alloc(struct rte_eth_dev *dev, uint16_t nb_queues);
-int igb_dev_rx_queue_alloc(struct rte_eth_dev *dev, uint16_t nb_queues);
+void eth_igb_tx_queue_release(void *txq);
+void eth_igb_rx_queue_release(void *rxq);
 void igb_dev_clear_queues(struct rte_eth_dev *dev);
 
 int eth_igb_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
@@ -104,13 +104,13 @@ int eth_igb_rx_init(struct rte_eth_dev *dev);
 
 void eth_igb_tx_init(struct rte_eth_dev *dev);
 
-uint16_t eth_igb_xmit_pkts(struct igb_tx_queue *txq, struct rte_mbuf **tx_pkts,
+uint16_t eth_igb_xmit_pkts(void *txq, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 
-uint16_t eth_igb_recv_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+uint16_t eth_igb_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
 
-uint16_t eth_igb_recv_scattered_pkts(struct igb_rx_queue *rxq,
+uint16_t eth_igb_recv_scattered_pkts(void *rxq,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
 int eth_igbvf_rx_init(struct rte_eth_dev *dev);

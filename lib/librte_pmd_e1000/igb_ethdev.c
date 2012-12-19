@@ -57,8 +57,7 @@
 #include "e1000/e1000_api.h"
 #include "e1000_ethdev.h"
 
-static int  eth_igb_configure(struct rte_eth_dev *dev, uint16_t nb_rx_q,
-		uint16_t nb_tx_q);
+static int  eth_igb_configure(struct rte_eth_dev *dev);
 static int  eth_igb_start(struct rte_eth_dev *dev);
 static void eth_igb_stop(struct rte_eth_dev *dev);
 static void eth_igb_close(struct rte_eth_dev *dev);
@@ -177,7 +176,9 @@ static struct eth_dev_ops eth_igb_ops = {
 	.vlan_tpid_set        = eth_igb_vlan_tpid_set,
 	.vlan_offload_set     = eth_igb_vlan_offload_set,
 	.rx_queue_setup       = eth_igb_rx_queue_setup,
+	.rx_queue_release     = eth_igb_rx_queue_release,
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
+	.tx_queue_release     = eth_igb_tx_queue_release,
 	.dev_led_on           = eth_igb_led_on,
 	.dev_led_off          = eth_igb_led_off,
 	.flow_ctrl_set        = eth_igb_flow_ctrl_set,
@@ -500,34 +501,14 @@ rte_igbvf_pmd_init(void)
 }
 
 static int
-eth_igb_configure(struct rte_eth_dev *dev, uint16_t nb_rx_q, uint16_t nb_tx_q)
+eth_igb_configure(struct rte_eth_dev *dev)
 {
 	struct e1000_interrupt *intr =
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
-	int diag;
 
 	PMD_INIT_LOG(DEBUG, ">>");
 
 	intr->flags |= E1000_FLAG_NEED_LINK_UPDATE;
-
-	/* Allocate the array of pointers to RX structures */
-	diag = igb_dev_rx_queue_alloc(dev, nb_rx_q);
-	if (diag != 0) {
-		PMD_INIT_LOG(ERR, "ethdev port_id=%u allocation of array of %u"
-					" pointers to RX queues failed",
-					dev->data->port_id, nb_rx_q);
-		return diag;
-	}
-
-	/* Allocate the array of pointers to TX structures */
-	diag = igb_dev_tx_queue_alloc(dev, nb_tx_q);
-	if (diag != 0) {
-		PMD_INIT_LOG(ERR, "ethdev port_id=%u allocation of array of %u"
-					" pointers to TX queues failed",
-					dev->data->port_id, nb_tx_q);
-
-		return diag;
-	}
 
 	PMD_INIT_LOG(DEBUG, "<<");
 
@@ -539,7 +520,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	int ret, i;
+	int ret, i, mask;
 
 	PMD_INIT_LOG(DEBUG, ">>");
 
@@ -566,7 +547,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 	/* Initialize the hardware */
 	if (igb_hardware_init(hw)) {
 		PMD_INIT_LOG(ERR, "Unable to initialize the hardware");
-		return (-1);
+		return (-EIO);
 	}
 
 	E1000_WRITE_REG(hw, E1000_VET, ETHER_TYPE_VLAN);
@@ -580,6 +561,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 	ret = eth_igb_rx_init(dev);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware");
+		igb_dev_clear_queues(dev);
 		return ret;
 	}
 
@@ -685,7 +667,8 @@ error_invalid_config:
 	PMD_INIT_LOG(ERR, "Invalid link_speed/link_duplex (%u/%u) for port %u\n",
 			dev->data->dev_conf.link_speed,
 			dev->data->dev_conf.link_duplex, dev->data->port_id);
-	return -1;
+	igb_dev_clear_queues(dev);
+	return (-EINVAL);
 }
 
 /*********************************************************************
