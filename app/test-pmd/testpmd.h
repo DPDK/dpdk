@@ -121,7 +121,7 @@ struct fwd_stream {
 /**
  * The data structure associated with each port.
  * tx_ol_flags is slightly different from ol_flags of rte_mbuf.
- * 	 Bit  0: Insert IP checksum
+ *   Bit  0: Insert IP checksum
  *   Bit  1: Insert UDP checksum
  *   Bit  2: Insert TCP checksum
  *   Bit  3: Insert SCTP checksum
@@ -409,6 +409,8 @@ void fwd_config_display(void);
 void rxtx_config_display(void);
 void fwd_config_setup(void);
 void set_def_fwd_config(void);
+int init_fwd_streams(void);
+
 
 void port_reg_bit_display(portid_t port_id, uint32_t reg_off, uint8_t bit_pos);
 void port_reg_bit_set(portid_t port_id, uint32_t reg_off, uint8_t bit_pos,
@@ -423,8 +425,8 @@ void port_reg_set(portid_t port_id, uint32_t reg_off, uint32_t value);
 void rx_ring_desc_display(portid_t port_id, queueid_t rxq_id, uint16_t rxd_id);
 void tx_ring_desc_display(portid_t port_id, queueid_t txq_id, uint16_t txd_id);
 
-void set_fwd_lcores_list(unsigned int *lcorelist, unsigned int nb_lc);
-void set_fwd_lcores_mask(uint64_t lcoremask);
+int set_fwd_lcores_list(unsigned int *lcorelist, unsigned int nb_lc);
+int set_fwd_lcores_mask(uint64_t lcoremask);
 void set_fwd_lcores_number(uint16_t nb_lc);
 
 void set_fwd_ports_list(unsigned int *portlist, unsigned int nb_pt);

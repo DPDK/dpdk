@@ -214,7 +214,7 @@ port_infos_display(portid_t port_id)
 		return;
 	}
 	port = &ports[port_id];
-	rte_eth_link_get(port_id, &link);
+	rte_eth_link_get_nowait(port_id, &link);
 	printf("\n%s Infos for port %-2d %s\n",
 	       info_border, port_id, info_border);
 	print_ethaddr("MAC address: ", &port->eth_addr);
@@ -665,6 +665,9 @@ simple_fwd_config_setup(void)
 	cur_fwd_config.nb_fwd_streams =
 		(streamid_t) cur_fwd_config.nb_fwd_ports;
 
+	/* reinitialize forwarding streams */
+	init_fwd_streams();
+
 	/*
 	 * In the simple forwarding test, the number of forwarding cores
 	 * must be lower or equal to the number of forwarding ports.
@@ -730,6 +733,10 @@ rss_fwd_config_setup(void)
 	else
 		cur_fwd_config.nb_fwd_lcores =
 			(lcoreid_t)cur_fwd_config.nb_fwd_streams;
+
+	/* reinitialize forwarding streams */
+	init_fwd_streams();
+
 	setup_fwd_config_of_each_lcore(&cur_fwd_config);
 	rxp = 0; rxq = 0;
 	for (lc_id = 0; lc_id < cur_fwd_config.nb_fwd_lcores; lc_id++) {
@@ -931,7 +938,7 @@ fwd_config_display(void)
 	pkt_fwd_config_display(&cur_fwd_config);
 }
 
-void
+int
 set_fwd_lcores_list(unsigned int *lcorelist, unsigned int nb_lc)
 {
 	unsigned int i;
@@ -943,13 +950,15 @@ set_fwd_lcores_list(unsigned int *lcorelist, unsigned int nb_lc)
 	for (i = 0; i < nb_lc; i++) {
 		lcore_cpuid = lcorelist[i];
 		if (! rte_lcore_is_enabled(lcore_cpuid)) {
-			printf("Logical core %u not enabled\n", lcore_cpuid);
-			return;
+			printf("lcore %u not enabled\n", lcore_cpuid);
+			return -1;
 		}
 		if (lcore_cpuid == rte_get_master_lcore()) {
-			printf("Master core %u cannot forward packets\n",
+			printf("lcore %u cannot be masked on for running "
+			       "packet forwarding, which is the master lcore "
+			       "and reserved for command line parsing only\n",
 			       lcore_cpuid);
-			return;
+			return -1;
 		}
 		if (record_now)
 			fwd_lcores_cpuids[i] = lcore_cpuid;
@@ -965,9 +974,11 @@ set_fwd_lcores_list(unsigned int *lcorelist, unsigned int nb_lc)
 		       (unsigned int) nb_fwd_lcores, nb_lc);
 		nb_fwd_lcores = (lcoreid_t) nb_lc;
 	}
+
+	return 0;
 }
 
-void
+int
 set_fwd_lcores_mask(uint64_t lcoremask)
 {
 	unsigned int lcorelist[64];
@@ -976,7 +987,7 @@ set_fwd_lcores_mask(uint64_t lcoremask)
 
 	if (lcoremask == 0) {
 		printf("Invalid NULL mask of cores\n");
-		return;
+		return -1;
 	}
 	nb_lc = 0;
 	for (i = 0; i < 64; i++) {
@@ -984,7 +995,7 @@ set_fwd_lcores_mask(uint64_t lcoremask)
 			continue;
 		lcorelist[nb_lc++] = i;
 	}
-	set_fwd_lcores_list(lcorelist, nb_lc);
+	return set_fwd_lcores_list(lcorelist, nb_lc);
 }
 
 void
@@ -1422,13 +1433,13 @@ fdir_get_infos(portid_t port_id)
 
 	rte_eth_dev_fdir_get_infos(port_id, &fdir_infos);
 
-	printf("\n  %s FDIR infos for port %-2d %s\n",
+	printf("\n  %s FDIR infos for port %-2d     %s\n",
 	       fdir_stats_border, port_id, fdir_stats_border);
 
-	printf("  collision: %-10"PRIu64" free: %-10"PRIu64"\n"
-	       "  maxhash: %-10"PRIu64" maxlen: %-10"PRIu64"\n"
-	       "  add : %-10"PRIu64"   remove : %-10"PRIu64"\n"
-	       "  f_add: %-10"PRIu64" f_remove: %-10"PRIu64"\n",
+	printf("  collision: %-10"PRIu64"  free:     %"PRIu64"\n"
+	       "  maxhash:   %-10"PRIu64"  maxlen:   %"PRIu64"\n"
+	       "  add:       %-10"PRIu64"  remove:   %"PRIu64"\n"
+	       "  f_add:     %-10"PRIu64"  f_remove: %"PRIu64"\n",
 	       (uint64_t)(fdir_infos.collision), (uint64_t)(fdir_infos.free),
 	       (uint64_t)(fdir_infos.maxhash), (uint64_t)(fdir_infos.maxlen),
 	       fdir_infos.add, fdir_infos.remove,

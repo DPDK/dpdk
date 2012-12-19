@@ -132,8 +132,8 @@ get_ipv4_cksum(struct ipv4_hdr *ipv4_hdr)
 }
 
 
-static inline
-uint16_t get_ipv4_psd_sum (struct ipv4_hdr * ip_hdr)
+static inline uint16_t
+get_ipv4_psd_sum (struct ipv4_hdr * ip_hdr)
 {
 	struct psd_header psd_hdr;
 	psd_hdr.src_addr = ip_hdr->src_addr;
@@ -145,11 +145,11 @@ uint16_t get_ipv4_psd_sum (struct ipv4_hdr * ip_hdr)
 	return get_16b_sum((uint16_t*)&psd_hdr, sizeof(struct psd_header));
 }
 
-static inline
-uint16_t get_ipv6_psd_sum (struct ipv6_hdr * ip_hdr)
+static inline uint16_t
+get_ipv6_psd_sum (struct ipv6_hdr * ip_hdr)
 {
 	struct ipv6_psd_header psd_hdr;
-	rte_memcpy(psd_hdr.src_addr, ip_hdr->src_addr, sizeof(ip_hdr->src_addr)
+	rte_memcpy(&psd_hdr.src_addr, ip_hdr->src_addr, sizeof(ip_hdr->src_addr)
 			+ sizeof(ip_hdr->dst_addr));
 
 	psd_hdr.zero[0]   = 0;
@@ -224,6 +224,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint16_t pkt_ol_flags;
 	uint16_t tx_ol_flags;
 	uint16_t l4_proto;
+	uint16_t eth_type;
 	uint8_t  l2_len;
 	uint8_t  l3_len;
 
@@ -266,14 +267,29 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		ol_flags = (uint16_t) (pkt_ol_flags & (~PKT_TX_L4_MASK));
 
 		eth_hdr = (struct ether_hdr *) mb->pkt.data;
-		if (rte_be_to_cpu_16(eth_hdr->ether_type) == ETHER_TYPE_VLAN) {
+		eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
+		if (eth_type == ETHER_TYPE_VLAN) {
 			/* Only allow single VLAN label here */
 			l2_len  += sizeof(struct vlan_hdr);
+			 eth_type = rte_be_to_cpu_16(*(uint16_t *)
+				((uintptr_t)&eth_hdr->ether_type +
+				sizeof(struct vlan_hdr)));
 		}
 
 		/* Update the L3/L4 checksum error packet count  */
 		rx_bad_ip_csum += (uint16_t) ((pkt_ol_flags & PKT_RX_IP_CKSUM_BAD) != 0);
 		rx_bad_l4_csum += (uint16_t) ((pkt_ol_flags & PKT_RX_L4_CKSUM_BAD) != 0);
+
+		/*
+		 * Try to figure out L3 packet type by SW.
+		 */
+		if ((pkt_ol_flags & (PKT_RX_IPV4_HDR | PKT_RX_IPV4_HDR_EXT |
+				PKT_RX_IPV6_HDR | PKT_RX_IPV6_HDR_EXT)) == 0) {
+			if (eth_type == ETHER_TYPE_IPv4)
+				pkt_ol_flags |= PKT_RX_IPV4_HDR;
+			else if (eth_type == ETHER_TYPE_IPv6)
+				pkt_ol_flags |= PKT_RX_IPV6_HDR;
+		}
 
 		/*
 		 * Simplify the protocol parsing
@@ -354,8 +370,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			}
 			/* End of L4 Handling*/
 		}
+		else if (pkt_ol_flags & PKT_RX_IPV6_HDR) {
 
-		else {
 			ipv6_hdr = (struct ipv6_hdr *) (rte_pktmbuf_mtod(mb,
 					unsigned char *) + l2_len);
 			l3_len = sizeof(struct ipv6_hdr) ;
@@ -409,7 +425,11 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			} else {
 				printf("Test flow control for 1G PMD \n");
 			}
-			/* End of L4 Handling*/
+			/* End of L6 Handling*/
+		}
+		else {
+			l3_len = 0;
+			printf("Unhandled packet type: %#hx\n", eth_type);
 		}
 
 		/* Combine the packet header write. VLAN is not consider here */

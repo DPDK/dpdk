@@ -102,7 +102,9 @@ usage(char* progname)
 	printf("  --nb-ports=N set the number of forwarding ports"
 	       " (1 <= N <= %d)\n", nb_ports);
 	printf("  --coremask=COREMASK: hexadecimal bitmask of cores running "
-	       "the packet forwarding test\n");
+	       "the packet forwarding test. The master lcore is reserved for "
+	       "command line parsing only, and can not be masked on for running"
+	       "the packet forwarding\n");
 	printf("  --portmask=PORTMASK: hexadecimal bitmask of ports used "
 	       "by the packet forwarding test\n");
 	printf("  --numa: enable NUMA-aware allocation of RX/TX rings and of "
@@ -129,6 +131,7 @@ usage(char* progname)
 	printf("  --crc-strip: enable CRC stripping by hardware\n");
 	printf("  --enable-rx-cksum: enable rx hardware checksum offload\n");
 	printf("  --disable-hw-vlan: disable hardware vlan\n");
+	printf("  --enable-drop-en: enable per queue packet drop\n");
 	printf("  --disable-rss: disable rss\n");
 	printf("  --port-topology=N: set port topology (N: paired (default) or "
 	       "chained)\n");
@@ -212,8 +215,8 @@ parse_fwd_coremask(const char *coremask)
 	cm = strtoull(coremask, &end, 16);
 	if ((coremask[0] == '\0') || (end == NULL) || (*end != '\0'))
 		rte_exit(EXIT_FAILURE, "Invalid fwd core mask\n");
-	else
-		set_fwd_lcores_mask((uint64_t) cm);
+	else if (set_fwd_lcores_mask((uint64_t) cm) < 0)
+		rte_exit(EXIT_FAILURE, "coremask is not valid\n");
 }
 
 /*
@@ -322,6 +325,8 @@ launch_args_parse(int argc, char** argv)
 	int n, opt;
 	char **argvopt;
 	int opt_idx;
+	enum { TX, RX };
+
 	static struct option lgopts[] = {
 		{ "help",			0, 0, 0 },
 		{ "interactive",		0, 0, 0 },
@@ -342,7 +347,9 @@ launch_args_parse(int argc, char** argv)
 		{ "pkt-filter-flexbytes-offset",1, 0, 0 },
 		{ "pkt-filter-drop-queue",      1, 0, 0 },
 		{ "crc-strip",                  0, 0, 0 },
+		{ "enable-rx-cksum",            0, 0, 0 },
 		{ "disable-hw-vlan",            0, 0, 0 },
+		{ "enable-drop-en",            0, 0, 0 },
 		{ "disable-rss",                0, 0, 0 },
 		{ "port-topology",              1, 0, 0 },
 		{ "rss-ip",			0, 0, 0 },
@@ -562,8 +569,8 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "rss-ip"))
 				rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6;
 			if (!strcmp(lgopts[opt_idx].name, "rss-udp"))
-				rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6 |
-					ETH_RSS_IPV4_UDP;
+				rss_hf = ETH_RSS_IPV4 |
+						ETH_RSS_IPV6 | ETH_RSS_IPV4_UDP;
 			if (!strcmp(lgopts[opt_idx].name, "rxq")) {
 				n = atoi(optarg);
 				if (n >= 1 && n <= (int) MAX_QUEUE_ID)
