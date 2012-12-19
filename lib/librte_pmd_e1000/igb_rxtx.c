@@ -1856,3 +1856,173 @@ eth_igb_tx_init(struct rte_eth_dev *dev)
 	E1000_WRITE_REG(hw, E1000_TCTL, tctl);
 }
 
+/*********************************************************************
+ *
+ *  Enable VF receive unit.
+ *
+ **********************************************************************/
+int
+eth_igbvf_rx_init(struct rte_eth_dev *dev)
+{
+	struct e1000_hw     *hw;
+	struct igb_rx_queue *rxq;
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	uint32_t srrctl;
+	uint16_t buf_size;
+	uint16_t rctl_bsize;
+	uint16_t i;
+	int ret;
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Configure and enable each RX queue. */
+	rctl_bsize = 0;
+	dev->rx_pkt_burst = eth_igb_recv_pkts;
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		uint64_t bus_addr;
+		uint32_t rxdctl;
+
+		rxq = dev->data->rx_queues[i];
+
+		/* Allocate buffers for descriptor rings and set up queue */
+		ret = igb_alloc_rx_queue_mbufs(rxq);
+		if (ret)
+			return ret;
+
+		bus_addr = rxq->rx_ring_phys_addr;
+		E1000_WRITE_REG(hw, E1000_RDLEN(i),
+				rxq->nb_rx_desc *
+				sizeof(union e1000_adv_rx_desc));
+		E1000_WRITE_REG(hw, E1000_RDBAH(i),
+				(uint32_t)(bus_addr >> 32));
+		E1000_WRITE_REG(hw, E1000_RDBAL(i), (uint32_t)bus_addr);
+
+		srrctl = E1000_SRRCTL_DESCTYPE_ADV_ONEBUF;
+
+		/*
+		 * Configure RX buffer size.
+		 */
+		mbp_priv = (struct rte_pktmbuf_pool_private *)
+			((char *)rxq->mb_pool + sizeof(struct rte_mempool));
+		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
+				       RTE_PKTMBUF_HEADROOM);
+		if (buf_size >= 1024) {
+			/*
+			 * Configure the BSIZEPACKET field of the SRRCTL
+			 * register of the queue.
+			 * Value is in 1 KB resolution, from 1 KB to 127 KB.
+			 * If this field is equal to 0b, then RCTL.BSIZE
+			 * determines the RX packet buffer size.
+			 */
+			srrctl |= ((buf_size >> E1000_SRRCTL_BSIZEPKT_SHIFT) &
+				   E1000_SRRCTL_BSIZEPKT_MASK);
+			buf_size = (uint16_t) ((srrctl &
+						E1000_SRRCTL_BSIZEPKT_MASK) <<
+					       E1000_SRRCTL_BSIZEPKT_SHIFT);
+
+			if (dev->data->dev_conf.rxmode.max_rx_pkt_len > buf_size){
+				dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
+				dev->data->scattered_rx = 1;
+			}
+		} else {
+			/*
+			 * Use BSIZE field of the device RCTL register.
+			 */
+			if ((rctl_bsize == 0) || (rctl_bsize > buf_size))
+				rctl_bsize = buf_size;
+			dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
+			dev->data->scattered_rx = 1;
+		}
+
+		/* Set if packets are dropped when no descriptors available */
+		if (rxq->drop_en)
+			srrctl |= E1000_SRRCTL_DROP_EN;
+
+		E1000_WRITE_REG(hw, E1000_SRRCTL(i), srrctl);
+
+		/* Enable this RX queue. */
+		rxdctl = E1000_READ_REG(hw, E1000_RXDCTL(i));
+		rxdctl |= E1000_RXDCTL_QUEUE_ENABLE;
+		rxdctl &= 0xFFF00000;
+		rxdctl |= (rxq->pthresh & 0x1F);
+		rxdctl |= ((rxq->hthresh & 0x1F) << 8);
+		if (hw->mac.type == e1000_82576) {
+			/* 
+			 * Workaround of 82576 VF Erratum
+			 * force set WTHRESH to 1 
+			 * to avoid Write-Back not triggered sometimes
+			 */
+			rxdctl |= 0x10000;
+			PMD_INIT_LOG(DEBUG, "Force set RX WTHRESH to 1 !\n");
+		}
+		else
+			rxdctl |= ((rxq->wthresh & 0x1F) << 16);
+		E1000_WRITE_REG(hw, E1000_RXDCTL(i), rxdctl);
+	}
+
+	/*
+	 * Setup the HW Rx Head and Tail Descriptor Pointers.
+	 * This needs to be done after enable.
+	 */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		E1000_WRITE_REG(hw, E1000_RDH(i), 0);
+		E1000_WRITE_REG(hw, E1000_RDT(i), rxq->nb_rx_desc - 1);
+	}
+
+	return 0;
+}
+
+/*********************************************************************
+ *
+ *  Enable VF transmit unit.
+ *
+ **********************************************************************/
+void
+eth_igbvf_tx_init(struct rte_eth_dev *dev)
+{
+	struct e1000_hw     *hw;
+	struct igb_tx_queue *txq;
+	uint32_t txdctl;
+	uint16_t i;
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Setup the Base and Length of the Tx Descriptor Rings. */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		uint64_t bus_addr;
+
+		txq = dev->data->tx_queues[i];
+		bus_addr = txq->tx_ring_phys_addr;
+		E1000_WRITE_REG(hw, E1000_TDLEN(i),
+				txq->nb_tx_desc *
+				sizeof(union e1000_adv_tx_desc));
+		E1000_WRITE_REG(hw, E1000_TDBAH(i),
+				(uint32_t)(bus_addr >> 32));
+		E1000_WRITE_REG(hw, E1000_TDBAL(i), (uint32_t)bus_addr);
+
+		/* Setup the HW Tx Head and Tail descriptor pointers. */
+		E1000_WRITE_REG(hw, E1000_TDT(i), 0);
+		E1000_WRITE_REG(hw, E1000_TDH(i), 0);
+
+		/* Setup Transmit threshold registers. */
+		txdctl = E1000_READ_REG(hw, E1000_TXDCTL(i));
+		txdctl |= txq->pthresh & 0x1F;
+		txdctl |= ((txq->hthresh & 0x1F) << 8);
+		if (hw->mac.type == e1000_82576) {
+			/* 
+			 * Workaround of 82576 VF Erratum
+			 * force set WTHRESH to 1 
+			 * to avoid Write-Back not triggered sometimes
+			 */
+			txdctl |= 0x10000; 
+			PMD_INIT_LOG(DEBUG, "Force set TX WTHRESH to 1 !\n");
+		}
+		else
+			txdctl |= ((txq->wthresh & 0x1F) << 16);
+		txdctl |= E1000_TXDCTL_QUEUE_ENABLE;
+		E1000_WRITE_REG(hw, E1000_TXDCTL(i), txdctl);
+	}
+
+}
+

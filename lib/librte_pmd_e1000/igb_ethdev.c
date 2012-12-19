@@ -100,6 +100,30 @@ static void eth_igb_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr
 		uint32_t index, uint32_t pool);
 static void eth_igb_rar_clear(struct rte_eth_dev *dev, uint32_t index);
 
+static void igbvf_intr_disable(struct e1000_hw *hw);
+static int igbvf_dev_configure(struct rte_eth_dev *dev);
+static int igbvf_dev_start(struct rte_eth_dev *dev);
+static void igbvf_dev_stop(struct rte_eth_dev *dev);
+static void igbvf_dev_close(struct rte_eth_dev *dev);
+static int eth_igbvf_link_update(struct e1000_hw *hw);
+static void eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats);
+static void eth_igbvf_stats_reset(struct rte_eth_dev *dev);
+static int igbvf_vlan_filter_set(struct rte_eth_dev *dev, 
+		uint16_t vlan_id, int on);
+static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on);
+static void igbvf_set_vfta_all(struct rte_eth_dev *dev, bool on);
+
+/*
+ * Define VF Stats MACRO for Non "cleared on read" register
+ */
+#define UPDATE_VF_STAT(reg, last, cur)            \
+{                                                 \
+	u32 latest = E1000_READ_REG(hw, reg);     \
+	cur += latest - last;                     \
+	last = latest;                            \
+}
+
+
 #define IGB_FC_PAUSE_TIME 0x0680
 #define IGB_LINK_UPDATE_CHECK_TIMEOUT  90  /* 9s */
 #define IGB_LINK_UPDATE_CHECK_INTERVAL 100 /* ms */
@@ -111,8 +135,18 @@ static enum e1000_fc_mode igb_fc_setting = e1000_fc_full;
  */
 static struct rte_pci_id pci_id_igb_map[] = {
 
-#undef RTE_LIBRTE_IXGBE_PMD
-#define RTE_PCI_DEV_ID_DECL(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
+#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
+#include "rte_pci_dev_ids.h"
+
+{.device_id = 0},
+};
+
+/*
+ * The set of PCI devices this driver supports (for 82576&I350 VF)
+ */
+static struct rte_pci_id pci_id_igbvf_map[] = {
+
+#define RTE_PCI_DEV_ID_DECL_IGBVF(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"
 
 {.device_id = 0},
@@ -139,6 +173,26 @@ static struct eth_dev_ops eth_igb_ops = {
 	.flow_ctrl_set        = eth_igb_flow_ctrl_set,
 	.mac_addr_add         = eth_igb_rar_set,
 	.mac_addr_remove      = eth_igb_rar_clear,
+};
+
+/*
+ * dev_ops for virtual function, bare necessities for basic vf
+ * operation have been implemented
+ */
+static struct eth_dev_ops igbvf_eth_dev_ops = {
+	.dev_configure        = igbvf_dev_configure,
+	.dev_start            = igbvf_dev_start,
+	.dev_stop             = igbvf_dev_stop,
+	.dev_close            = igbvf_dev_close,
+	.link_update          = eth_igb_link_update,
+	.stats_get            = eth_igbvf_stats_get,
+	.stats_reset          = eth_igbvf_stats_reset,
+	.vlan_filter_set      = igbvf_vlan_filter_set,
+	.dev_infos_get        = eth_igb_infos_get,
+	.rx_queue_setup       = eth_igb_rx_queue_setup,
+	.rx_queue_release     = eth_igb_rx_queue_release,
+	.tx_queue_setup       = eth_igb_tx_queue_setup,
+	.tx_queue_release     = eth_igb_tx_queue_release,
 };
 
 /**
@@ -331,6 +385,66 @@ err_late:
 	return (error);
 }
 
+/*
+ * Virtual Function device init
+ */
+static int
+eth_igbvf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
+		struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev;
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	int diag;
+
+	PMD_INIT_LOG(DEBUG, "eth_igbvf_dev_init");
+
+	eth_dev->dev_ops = &igbvf_eth_dev_ops;
+	pci_dev = eth_dev->pci_dev;
+
+	hw->device_id = pci_dev->id.device_id;
+	hw->vendor_id = pci_dev->id.vendor_id;
+	hw->hw_addr = (void *)pci_dev->mem_resource.addr;
+
+	/* Initialize the shared code */
+	diag = e1000_setup_init_funcs(hw, TRUE);
+	if (diag != 0) {
+		PMD_INIT_LOG(ERR, "Shared code init failed for igbvf: %d",
+			diag);
+		return -EIO;
+	}
+
+	/* init_mailbox_params */
+	hw->mbx.ops.init_params(hw);
+
+	/* Disable the interrupts for VF */
+	igbvf_intr_disable(hw);
+
+	diag = hw->mac.ops.reset_hw(hw);
+
+	/* Allocate memory for storing MAC addresses */
+	eth_dev->data->mac_addrs = rte_zmalloc("igbvf", ETHER_ADDR_LEN *
+		hw->mac.rar_entry_count, 0);
+	if (eth_dev->data->mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR,
+			"Failed to allocate %d bytes needed to store MAC "
+			"addresses",
+			ETHER_ADDR_LEN * hw->mac.rar_entry_count);
+		return -ENOMEM;
+	}
+	/* Copy the permanent MAC address */
+	ether_addr_copy((struct ether_addr *) hw->mac.perm_addr,
+			&eth_dev->data->mac_addrs[0]);
+
+	PMD_INIT_LOG(DEBUG, "\nport %d vendorID=0x%x deviceID=0x%x "
+			"mac.type=%s\n",
+			eth_dev->data->port_id, pci_dev->id.vendor_id,
+			pci_dev->id.device_id,
+			"igb_mac_82576_vf");
+
+	return 0;
+}
+
 static struct eth_driver rte_igb_pmd = {
 	{
 		.name = "rte_igb_pmd",
@@ -341,11 +455,38 @@ static struct eth_driver rte_igb_pmd = {
 	.dev_private_size = sizeof(struct e1000_adapter),
 };
 
+/*
+ * virtual function driver struct
+ */
+static struct eth_driver rte_igbvf_pmd = {
+	{
+		.name = "rte_igbvf_pmd",
+		.id_table = pci_id_igbvf_map,
+		.drv_flags = RTE_PCI_DRV_NEED_IGB_UIO,
+	},
+	.eth_dev_init = eth_igbvf_dev_init,
+	.dev_private_size = sizeof(struct e1000_adapter),
+};
+
 int
 rte_igb_pmd_init(void)
 {
 	rte_eth_driver_register(&rte_igb_pmd);
 	return 0;
+}
+
+/*
+ * VF Driver initialization routine.
+ * Invoked one at EAL init time.
+ * Register itself as the [Virtual Poll Mode] Driver of PCI IGB devices.
+ */
+int
+rte_igbvf_pmd_init(void)
+{
+	DEBUGFUNC("rte_igbvf_pmd_init");
+
+	rte_eth_driver_register(&rte_igbvf_pmd);
+	return (0);
 }
 
 static int
@@ -796,6 +937,80 @@ eth_igb_stats_reset(struct rte_eth_dev *dev)
 }
 
 static void
+eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_vf_stats *hw_stats = (struct e1000_vf_stats*)
+			  E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+
+	/* Good Rx packets, include VF loopback */
+	UPDATE_VF_STAT(E1000_VFGPRC,
+	    hw_stats->last_gprc, hw_stats->gprc);
+
+	/* Good Rx octets, include VF loopback */
+	UPDATE_VF_STAT(E1000_VFGORC,
+	    hw_stats->last_gorc, hw_stats->gorc);
+
+	/* Good Tx packets, include VF loopback */
+	UPDATE_VF_STAT(E1000_VFGPTC,
+	    hw_stats->last_gptc, hw_stats->gptc);
+
+	/* Good Tx octets, include VF loopback */
+	UPDATE_VF_STAT(E1000_VFGOTC,
+	    hw_stats->last_gotc, hw_stats->gotc);
+
+	/* Rx Multicst packets */
+	UPDATE_VF_STAT(E1000_VFMPRC,
+	    hw_stats->last_mprc, hw_stats->mprc);
+
+	/* Good Rx loopback packets */
+	UPDATE_VF_STAT(E1000_VFGPRLBC,
+	    hw_stats->last_gprlbc, hw_stats->gprlbc);
+
+	/* Good Rx loopback octets */
+	UPDATE_VF_STAT(E1000_VFGORLBC,
+	    hw_stats->last_gorlbc, hw_stats->gorlbc);
+
+	/* Good Tx loopback packets */
+	UPDATE_VF_STAT(E1000_VFGPTLBC,
+	    hw_stats->last_gptlbc, hw_stats->gptlbc);
+
+	/* Good Tx loopback octets */
+	UPDATE_VF_STAT(E1000_VFGOTLBC,
+	    hw_stats->last_gotlbc, hw_stats->gotlbc);
+
+	if (rte_stats == NULL)
+		return;
+
+	memset(rte_stats, 0, sizeof(*rte_stats));
+	rte_stats->ipackets = hw_stats->gprc;
+	rte_stats->ibytes = hw_stats->gorc;
+	rte_stats->opackets = hw_stats->gptc;
+	rte_stats->obytes = hw_stats->gotc;
+	rte_stats->imcasts = hw_stats->mprc;
+	rte_stats->ilbpackets = hw_stats->gprlbc;
+	rte_stats->ilbbytes = hw_stats->gorlbc;
+	rte_stats->olbpackets = hw_stats->gptlbc;
+	rte_stats->olbbytes = hw_stats->gotlbc;
+
+}
+
+static void
+eth_igbvf_stats_reset(struct rte_eth_dev *dev)
+{
+	struct e1000_vf_stats *hw_stats = (struct e1000_vf_stats*)
+			E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+
+	/* Sync HW register to the last stats */
+	eth_igbvf_stats_get(dev, NULL);
+
+	/* reset HW current stats*/
+	memset(&hw_stats->gprc, 0, sizeof(*hw_stats) -
+	       offsetof(struct e1000_vf_stats, gprc));
+
+}
+
+static void
 eth_igb_infos_get(struct rte_eth_dev *dev,
 		    struct rte_eth_dev_info *dev_info)
 {
@@ -881,8 +1096,13 @@ eth_igb_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 			link_check = hw->mac.serdes_has_link;
 			break;
 
-		default:
+		/* VF device is type_unknown */
 		case e1000_media_type_unknown:
+			eth_igbvf_link_update(hw);
+			link_check = !hw->mac.get_link_status;
+			break;
+
+		default:
 			break;
 		}
 		if (link_check || wait_to_complete == 0)
@@ -1333,3 +1553,233 @@ eth_igb_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 
 	e1000_rar_set(hw, addr, index);
 }
+
+/*
+ * Virtual Function operations
+ */
+static void
+igbvf_intr_disable(struct e1000_hw *hw)
+{
+	PMD_INIT_LOG(DEBUG, "igbvf_intr_disable");
+
+	/* Clear interrupt mask to stop from interrupts being generated */
+	E1000_WRITE_REG(hw, E1000_EIMC, ~0);
+
+	E1000_WRITE_FLUSH(hw);
+}
+
+static void
+igbvf_stop_adapter(struct rte_eth_dev *dev)
+{
+	u32 reg_val;
+	u16 i;
+	struct rte_eth_dev_info dev_info;
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	memset(&dev_info, 0, sizeof(dev_info));
+	eth_igb_infos_get(dev, &dev_info);
+
+	/* Clear interrupt mask to stop from interrupts being generated */
+	E1000_WRITE_REG(hw, E1000_EIMC, ~0);
+
+	/* Clear any pending interrupts, flush previous writes */
+	E1000_READ_REG(hw, E1000_EICR);
+
+	/* Disable the transmit unit.  Each queue must be disabled. */
+	for (i = 0; i < dev_info.max_tx_queues; i++)
+		E1000_WRITE_REG(hw, E1000_TXDCTL(i), E1000_TXDCTL_SWFLSH);
+
+	/* Disable the receive unit by stopping each queue */
+	for (i = 0; i < dev_info.max_rx_queues; i++) {
+		reg_val = E1000_READ_REG(hw, E1000_RXDCTL(i));
+		reg_val &= ~E1000_RXDCTL_QUEUE_ENABLE;
+		E1000_WRITE_REG(hw, E1000_RXDCTL(i), reg_val);
+		while (E1000_READ_REG(hw, E1000_RXDCTL(i)) & E1000_RXDCTL_QUEUE_ENABLE)
+			;
+	}
+
+	/* flush all queues disables */
+	E1000_WRITE_FLUSH(hw);
+	msec_delay(2);
+}
+
+static int eth_igbvf_link_update(struct e1000_hw *hw)
+{
+	struct e1000_mbx_info *mbx = &hw->mbx;
+	struct e1000_mac_info *mac = &hw->mac;
+	int ret_val = E1000_SUCCESS;
+
+	PMD_INIT_LOG(DEBUG, "e1000_check_for_link_vf");
+
+	/*
+	 * We only want to run this if there has been a rst asserted.
+	 * in this case that could mean a link change, device reset,
+	 * or a virtual function reset
+	 */
+
+	/* If we were hit with a reset or timeout drop the link */
+	if (!e1000_check_for_rst(hw, 0) || !mbx->timeout)
+		mac->get_link_status = TRUE;
+
+	if (!mac->get_link_status)
+		goto out;
+
+	/* if link status is down no point in checking to see if pf is up */
+	if (!(E1000_READ_REG(hw, E1000_STATUS) & E1000_STATUS_LU))
+		goto out;
+
+	/* if we passed all the tests above then the link is up and we no
+	 * longer need to check for link */
+	mac->get_link_status = FALSE;
+
+out:
+	return ret_val;
+}
+
+
+static int
+igbvf_dev_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_conf* conf = &dev->data->dev_conf;
+
+	PMD_INIT_LOG(DEBUG, "\nConfigured Virtual Function port id: %d\n",
+		dev->data->port_id);
+
+	/*
+	 * VF has no ability to enable/disable HW CRC
+	 * Keep the persistent behavior the same as Host PF
+	 */
+#ifndef RTE_LIBRTE_E1000_PF_DISABLE_STRIP_CRC
+	if (!conf->rxmode.hw_strip_crc) {
+		PMD_INIT_LOG(INFO, "VF can't disable HW CRC Strip\n");
+		conf->rxmode.hw_strip_crc = 1;
+	}
+#else
+	if (conf->rxmode.hw_strip_crc) {
+		PMD_INIT_LOG(INFO, "VF can't enable HW CRC Strip\n");
+		conf->rxmode.hw_strip_crc = 0;
+	}
+#endif
+
+	return 0;
+}
+
+static int
+igbvf_dev_start(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	PMD_INIT_LOG(DEBUG, "igbvf_dev_start");
+
+	/* Set all vfta */
+	igbvf_set_vfta_all(dev,1);
+	
+	eth_igbvf_tx_init(dev);
+
+	/* This can fail when allocating mbufs for descriptor rings */
+	ret = eth_igbvf_rx_init(dev);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware");
+		igb_dev_clear_queues(dev);
+		return ret;
+	}
+
+	return 0;
+}
+
+static void
+igbvf_dev_stop(struct rte_eth_dev *dev)
+{
+	PMD_INIT_LOG(DEBUG, "igbvf_dev_stop");
+
+	igbvf_stop_adapter(dev);
+	
+	/* 
+	  * Clear what we set, but we still keep shadow_vfta to 
+	  * restore after device starts
+	  */
+	igbvf_set_vfta_all(dev,0);
+
+	igb_dev_clear_queues(dev);
+}
+
+static void
+igbvf_dev_close(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_INIT_LOG(DEBUG, "igbvf_dev_close");
+
+	e1000_reset_hw(hw);
+
+	igbvf_dev_stop(dev);
+}
+
+static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on)
+{
+	struct e1000_mbx_info *mbx = &hw->mbx;
+	uint32_t msgbuf[2];
+
+	/* After set vlan, vlan strip will also be enabled in igb driver*/ 
+	msgbuf[0] = E1000_VF_SET_VLAN;
+	msgbuf[1] = vid;
+	/* Setting the 8 bit field MSG INFO to TRUE indicates "add" */
+	if (on)
+		msgbuf[0] |= E1000_VF_SET_VLAN_ADD;
+
+	return (mbx->ops.write_posted(hw, msgbuf, 2, 0));
+}
+
+static void igbvf_set_vfta_all(struct rte_eth_dev *dev, bool on)
+{
+	struct e1000_hw *hw = 
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_vfta * shadow_vfta =
+		E1000_DEV_PRIVATE_TO_VFTA(dev->data->dev_private);
+	int i = 0, j = 0, vfta = 0, mask = 1;
+
+	for (i = 0; i < IGB_VFTA_SIZE; i++){
+		vfta = shadow_vfta->vfta[i];
+		if(vfta){
+			mask = 1;
+			for (j = 0; j < 32; j++){
+				if(vfta & mask)
+					igbvf_set_vfta(hw, (i<<5)+j, on);
+				mask<<=1;
+			}
+		}
+	}
+
+}
+
+static int
+igbvf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct e1000_hw *hw = 
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_vfta * shadow_vfta =
+		E1000_DEV_PRIVATE_TO_VFTA(dev->data->dev_private);
+	uint32_t vid_idx = 0;
+	uint32_t vid_bit = 0;
+	int ret = 0;
+	
+	PMD_INIT_LOG(DEBUG, "igbvf_vlan_filter_set");
+
+	/*vind is not used in VF driver, set to 0, check ixgbe_set_vfta_vf*/
+	ret = igbvf_set_vfta(hw, vlan_id, !!on);
+	if(ret){
+		PMD_INIT_LOG(ERR, "Unable to set VF vlan");
+		return ret;
+	}
+	vid_idx = (uint32_t) ((vlan_id >> 5) & 0x7F);
+	vid_bit = (uint32_t) (1 << (vlan_id & 0x1F));
+
+	/*Save what we set and retore it after device reset*/
+	if (on)
+		shadow_vfta->vfta[vid_idx] |= vid_bit;
+	else
+		shadow_vfta->vfta[vid_idx] &= ~vid_bit;
+
+	return 0;
+}
+

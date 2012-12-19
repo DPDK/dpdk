@@ -113,4 +113,8 @@ uint16_t eth_igb_recv_pkts(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 uint16_t eth_igb_recv_scattered_pkts(struct igb_rx_queue *rxq,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
+int eth_igbvf_rx_init(struct rte_eth_dev *dev);
+
+void eth_igbvf_tx_init(struct rte_eth_dev *dev);
+
 #endif /* _E1000_ETHDEV_H_ */
