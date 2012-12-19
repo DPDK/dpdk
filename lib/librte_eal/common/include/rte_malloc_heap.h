@@ -36,9 +36,11 @@
 #define _RTE_MALLOC_HEAP_H_
 
 #include <stddef.h>
+#include <rte_spinlock.h>
 
 enum heap_state {
 	NOT_INITIALISED = 0,
+	INITIALISING,
 	INITIALISED
 };
 

@@ -54,10 +54,8 @@
 #include <rte_malloc.h>
 #include "malloc_elem.h"
 #include "malloc_heap.h"
+#include "malloc_heap.c"
 
-static struct malloc_heap malloc_heap[RTE_MAX_NUMA_NODES] = {
-		{ .initialised = NOT_INITIALISED }
-};
 
 /* Free the memory space back to heap */
 void rte_free(void *addr)
@@ -73,6 +71,8 @@ void rte_free(void *addr)
 void *
 rte_malloc_socket(const char *type, size_t size, unsigned align, int socket)
 {
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
 	/* return NULL if size is 0 or alignment is not power-of-2 */
 	if (size == 0 || !rte_is_power_of_2(align))
 		return NULL;
@@ -84,7 +84,7 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket)
 	if (socket >= RTE_MAX_NUMA_NODES)
 		return NULL;
 
-	return malloc_heap_alloc(&malloc_heaps[socket], type,
+	return malloc_heap_alloc(&mcfg->malloc_heaps[socket], type,
 			size, align == 0 ? 1 : align);
 }
 

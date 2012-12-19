@@ -43,12 +43,15 @@
 #include <rte_memzone.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_launch.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_common.h>
 #include <rte_string_fns.h>
 #include <rte_spinlock.h>
+#include <rte_memcpy.h>
+#include <rte_atomic.h>
 
 #include "malloc_elem.h"
 #include "malloc_heap.h"
@@ -114,16 +117,25 @@ malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
 static void
 malloc_heap_init(struct malloc_heap *heap)
 {
-	static rte_spinlock_t init_lock = RTE_SPINLOCK_INITIALIZER;
-	rte_spinlock_lock(&init_lock);
-	if (!heap->initialised) {
-		heap->free_head = NULL;
-		heap->mz_count = 0;
-		heap->numa_socket = malloc_get_numa_socket();
-		rte_spinlock_init(&heap->lock);
-		heap->initialised = INITIALISED;
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
+	rte_eal_mcfg_wait_complete(mcfg);
+	while (heap->initialised != INITIALISED) {
+		if (rte_atomic32_cmpset(
+				(volatile uint32_t*)&heap->initialised,
+				NOT_INITIALISED, INITIALISING)) {
+
+			heap->free_head = NULL;
+			heap->mz_count = 0;
+			/*
+			 * Find NUMA socket of heap that is being initialised, so that
+			 * malloc_heaps[n].numa_socket == n
+			 */
+			heap->numa_socket = heap - mcfg->malloc_heaps;
+			rte_spinlock_init(&heap->lock);
+			heap->initialised = INITIALISED;
+		}
 	}
-	rte_spinlock_unlock(&init_lock);
 }
 
 /*

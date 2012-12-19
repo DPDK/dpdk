@@ -38,6 +38,7 @@
 #include <rte_tailq.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
+#include <rte_malloc_heap.h>
 #include <rte_rwlock.h>
 
 #ifdef __cplusplus
@@ -86,6 +87,9 @@ struct rte_mem_config {
 	struct rte_memseg free_memseg[RTE_MAX_MEMSEG];
 
 	struct rte_tailq_head tailq_head[RTE_MAX_TAILQ]; /**< Tailqs for objects */
+
+	/* Heaps of Malloc per socket */
+	struct malloc_heap malloc_heaps[RTE_MAX_NUMA_NODES];
 } __attribute__((__packed__));
 
 
