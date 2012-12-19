@@ -188,8 +188,8 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 		return NULL;
 
 	/* Allocate memory to store the LPM data structures. */
-	lpm = (struct rte_lpm *)rte_zmalloc(mem_name, mem_size,
-			CACHE_LINE_SIZE);
+	lpm = (struct rte_lpm *)rte_zmalloc_socket(mem_name, mem_size,
+			CACHE_LINE_SIZE, socket_id);
 	if (lpm == NULL) {
 		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
 		return NULL;
