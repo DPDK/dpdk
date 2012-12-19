@@ -47,27 +47,27 @@
  * mount points of hugepages
  */
 struct hugepage_info {
-	uint64_t hugepage_sz;       /**< size of a huge page */
-	const char *hugedir;        /**< dir where hugetlbfs is mounted */
-	uint32_t num_pages;         /**< number of hugepages of that size */
+	uint64_t hugepage_sz;   /**< size of a huge page */
+	const char *hugedir;    /**< dir where hugetlbfs is mounted */
+	uint32_t num_pages;     /**< number of hugepages of that size */
 };
 
 /**
  * internal configuration
  */
 struct internal_config {
-	volatile uint64_t memory;         /* amount of asked memory */
-	volatile unsigned force_nchannel; /* force number of channels */
-	volatile unsigned force_nrank;    /* force number of ranks */
-	volatile unsigned no_hugetlbfs;   /* true to disable hugetlbfs */
-	volatile unsigned no_pci;         /* true to disable PCI */
-	volatile unsigned no_hpet;        /* true to disable HPET */
-	volatile unsigned no_shconf;      /* true if there is no shared config */
+	volatile uint64_t memory;         /**< amount of asked memory */
+	volatile unsigned force_nchannel; /**< force number of channels */
+	volatile unsigned force_nrank;    /**< force number of ranks */
+	volatile unsigned no_hugetlbfs;   /**< true to disable hugetlbfs */
+	volatile unsigned no_pci;         /**< true to disable PCI */
+	volatile unsigned no_hpet;        /**< true to disable HPET */
+	volatile unsigned no_shconf;      /**< true if there is no shared config */
 	volatile enum rte_proc_type_t process_type; /* multi-process proc type */
-	const char *hugefile_prefix;      /* the base filename of hugetlbfs files */
-	const char *hugepage_dir;         /* specific hugetlbfs directory to use */
+	const char *hugefile_prefix;      /**< the base filename of hugetlbfs files */
+	const char *hugepage_dir;         /**< specific hugetlbfs directory to use */
 
-	unsigned num_hugepage_sizes;      /* how many sizes on this system */
+	unsigned num_hugepage_sizes;      /**< how many sizes on this system */
 	struct hugepage_info hugepage_info[MAX_HUGEPAGE_SIZES];
 };
 extern struct internal_config internal_config; /**< Global EAL configuration. */

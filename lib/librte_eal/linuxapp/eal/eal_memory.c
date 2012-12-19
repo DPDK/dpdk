@@ -221,7 +221,7 @@ map_all_hugepages(struct hugepage *hugepg_tbl,
 
 		fd = open(hugepg_tbl[i].filepath, O_CREAT | O_RDWR, 0755);
 		if (fd < 0) {
-			RTE_LOG(ERR, EAL, "%s(): open failed: %s", __func__,
+			RTE_LOG(ERR, EAL, "%s(): open failed: %s\n", __func__,
 					strerror(errno));
 			return -1;
 		}
@@ -229,11 +229,12 @@ map_all_hugepages(struct hugepage *hugepg_tbl,
 		virtaddr = mmap(vma_addr, hugepage_sz, PROT_READ | PROT_WRITE,
 				MAP_SHARED, fd, 0);
 		if (virtaddr == MAP_FAILED) {
-			RTE_LOG(ERR, EAL, "%s(): mmap failed: %s", __func__,
+			RTE_LOG(ERR, EAL, "%s(): mmap failed: %s\n", __func__,
 					strerror(errno));
 			close(fd);
 			return -1;
 		}
+
 		if (orig) {
 			hugepg_tbl[i].orig_va = virtaddr;
 			memset(virtaddr, 0, hugepage_sz);
@@ -281,7 +282,7 @@ find_physaddr(struct hugepage *hugepg_tbl, struct hugepage_info *hpi)
 
 	fd = open("/proc/self/pagemap", O_RDONLY);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "%s(): cannot open /proc/self/pagemap: %s",
+		RTE_LOG(ERR, EAL, "%s(): cannot open /proc/self/pagemap: %s\n",
 			__func__, strerror(errno));
 		return -1;
 	}
@@ -292,13 +293,13 @@ find_physaddr(struct hugepage *hugepg_tbl, struct hugepage_info *hpi)
 			page_size;
 		offset = sizeof(uint64_t) * virt_pfn;
 		if (lseek(fd, offset, SEEK_SET) != offset){
-			RTE_LOG(ERR, EAL, "%s(): seek error in /proc/self/pagemap: %s",
+			RTE_LOG(ERR, EAL, "%s(): seek error in /proc/self/pagemap: %s\n",
 					__func__, strerror(errno));
 			close(fd);
 			return -1;
 		}
 		if (read(fd, &page, sizeof(uint64_t)) < 0) {
-			RTE_LOG(ERR, EAL, "%s(): cannot read /proc/self/pagemap: %s",
+			RTE_LOG(ERR, EAL, "%s(): cannot read /proc/self/pagemap: %s\n",
 					__func__, strerror(errno));
 			close(fd);
 			return -1;
@@ -332,7 +333,7 @@ find_numasocket(struct hugepage *hugepg_tbl, struct hugepage_info *hpi)
 	f = fopen("/proc/self/numa_maps", "r");
 	if (f == NULL) {
 		RTE_LOG(INFO, EAL, "cannot open /proc/self/numa_maps,"
-				"consider that all memory is in socket_id 0");
+				" consider that all memory is in socket_id 0\n");
 		return 0;
 	}
 
@@ -441,7 +442,7 @@ sort_by_physaddr(struct hugepage *hugepg_tbl, struct hugepage_info *hpi)
 
 /*
  * Uses mmap to create a shared memory area for storage of data
- *Used in this file to store the hugepage file map on disk
+ * Used in this file to store the hugepage file map on disk
  */
 static void *
 create_shared_memory(const char *filename, const size_t mem_size)

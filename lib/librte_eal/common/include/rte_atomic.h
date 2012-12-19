@@ -51,7 +51,6 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-
 #include "arch/rte_atomic.h"
 
 
