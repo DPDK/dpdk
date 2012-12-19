@@ -121,7 +121,7 @@ s32 ixgbe_init_ops_vf(struct ixgbe_hw *hw)
 s32 ixgbe_start_hw_vf(struct ixgbe_hw *hw)
 {
 	/* Clear adapter stopped flag */
-	hw->adapter_stopped = FALSE;
+	hw->adapter_stopped = false;
 
 	return IXGBE_SUCCESS;
 }
@@ -226,7 +226,7 @@ s32 ixgbe_stop_adapter_vf(struct ixgbe_hw *hw)
 	 * Set the adapter_stopped flag so other driver functions stop touching
 	 * the hardware
 	 */
-	hw->adapter_stopped = TRUE;
+	hw->adapter_stopped = true;
 
 	/* Clear interrupt mask to stop from interrupts being generated */
 	IXGBE_VFWRITE_REG(hw, IXGBE_VTEIMC, IXGBE_VF_IRQ_CLEAR_MASK);
@@ -460,8 +460,7 @@ s32 ixgbevf_set_uc_addr_vf(struct ixgbe_hw *hw, u32 index, u8 *addr)
 	msgbuf[0] &= ~IXGBE_VT_MSGTYPE_CTS;
 
 	if (!ret_val)
-		if (msgbuf[0] ==
-		    (IXGBE_VF_SET_MACVLAN | IXGBE_VT_MSGTYPE_NACK))
+		if (msgbuf[0] == (IXGBE_VF_SET_MACVLAN | IXGBE_VT_MSGTYPE_NACK))
 			ret_val = IXGBE_ERR_OUT_OF_MEM;
 
 	return ret_val;
@@ -471,8 +470,8 @@ s32 ixgbevf_set_uc_addr_vf(struct ixgbe_hw *hw, u32 index, u8 *addr)
  *  ixgbe_setup_mac_link_vf - Setup MAC link settings
  *  @hw: pointer to hardware structure
  *  @speed: new link speed
- *  @autoneg: TRUE if autonegotiation enabled
- *  @autoneg_wait_to_complete: TRUE when waiting for completion is needed
+ *  @autoneg: true if autonegotiation enabled
+ *  @autoneg_wait_to_complete: true when waiting for completion is needed
  *
  *  Set the link speed in the AUTOC register and restarts link.
  **/
@@ -488,8 +487,8 @@ s32 ixgbe_setup_mac_link_vf(struct ixgbe_hw *hw,
  *  ixgbe_check_mac_link_vf - Get link/speed status
  *  @hw: pointer to hardware structure
  *  @speed: pointer to link speed
- *  @link_up: TRUE is link is up, FALSE otherwise
- *  @autoneg_wait_to_complete: TRUE when waiting for completion is needed
+ *  @link_up: true is link is up, false otherwise
+ *  @autoneg_wait_to_complete: true when waiting for completion is needed
  *
  *  Reads the links register to determine if link is up and the current speed
  **/
@@ -500,7 +499,7 @@ s32 ixgbe_check_mac_link_vf(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
 
 	if (!(hw->mbx.ops.check_for_rst(hw, 0))) {
-		*link_up = FALSE;
+		*link_up = false;
 		*speed = 0;
 		return -1;
 	}

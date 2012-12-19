@@ -182,7 +182,7 @@ s32 ixgbe_start_hw_generic(struct ixgbe_hw *hw)
 	ixgbe_setup_fc(hw, 0);
 
 	/* Clear adapter stopped flag */
-	hw->adapter_stopped = FALSE;
+	hw->adapter_stopped = false;
 
 	return IXGBE_SUCCESS;
 }
@@ -634,7 +634,7 @@ s32 ixgbe_stop_adapter_generic(struct ixgbe_hw *hw)
 	 * Set the adapter_stopped flag so other driver functions stop touching
 	 * the hardware
 	 */
-	hw->adapter_stopped = TRUE;
+	hw->adapter_stopped = true;
 
 	/* Disable the receive unit */
 	IXGBE_WRITE_REG(hw, IXGBE_RXCTRL, 0);
@@ -2907,7 +2907,7 @@ s32 ixgbe_blink_led_start_generic(struct ixgbe_hw *hw, u32 index)
 	 * Link must be up to auto-blink the LEDs;
 	 * Force it if link is down.
 	 */
-	hw->mac.ops.check_link(hw, &speed, &link_up, FALSE);
+	hw->mac.ops.check_link(hw, &speed, &link_up, false);
 
 	if (!link_up) {
 		autoc_reg |= IXGBE_AUTOC_AN_RESTART;
@@ -3376,39 +3376,39 @@ s32 ixgbe_set_vfta_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 			/* set the pool bit */
 			if (vind < 32) {
 				bits = IXGBE_READ_REG(hw,
-						IXGBE_VLVFB(vlvf_index*2));
+						IXGBE_VLVFB(vlvf_index * 2));
 				bits |= (1 << vind);
 				IXGBE_WRITE_REG(hw,
-						IXGBE_VLVFB(vlvf_index*2),
+						IXGBE_VLVFB(vlvf_index * 2),
 						bits);
 			} else {
 				bits = IXGBE_READ_REG(hw,
-						IXGBE_VLVFB((vlvf_index*2)+1));
-				bits |= (1 << (vind-32));
+					IXGBE_VLVFB((vlvf_index * 2) + 1));
+				bits |= (1 << (vind - 32));
 				IXGBE_WRITE_REG(hw,
-						IXGBE_VLVFB((vlvf_index*2)+1),
+					IXGBE_VLVFB((vlvf_index * 2) + 1),
 						bits);
 			}
 		} else {
 			/* clear the pool bit */
 			if (vind < 32) {
 				bits = IXGBE_READ_REG(hw,
-						IXGBE_VLVFB(vlvf_index*2));
+						IXGBE_VLVFB(vlvf_index * 2));
 				bits &= ~(1 << vind);
 				IXGBE_WRITE_REG(hw,
-						IXGBE_VLVFB(vlvf_index*2),
+						IXGBE_VLVFB(vlvf_index * 2),
 						bits);
 				bits |= IXGBE_READ_REG(hw,
-						IXGBE_VLVFB((vlvf_index*2)+1));
+					IXGBE_VLVFB((vlvf_index * 2) + 1));
 			} else {
 				bits = IXGBE_READ_REG(hw,
-						IXGBE_VLVFB((vlvf_index*2)+1));
-				bits &= ~(1 << (vind-32));
+					IXGBE_VLVFB((vlvf_index * 2) + 1));
+				bits &= ~(1 << (vind - 32));
 				IXGBE_WRITE_REG(hw,
-						IXGBE_VLVFB((vlvf_index*2)+1),
+					IXGBE_VLVFB((vlvf_index * 2) + 1),
 						bits);
 				bits |= IXGBE_READ_REG(hw,
-						IXGBE_VLVFB(vlvf_index*2));
+						IXGBE_VLVFB(vlvf_index * 2));
 			}
 		}
 
@@ -3464,8 +3464,8 @@ s32 ixgbe_clear_vfta_generic(struct ixgbe_hw *hw)
 
 	for (offset = 0; offset < IXGBE_VLVF_ENTRIES; offset++) {
 		IXGBE_WRITE_REG(hw, IXGBE_VLVF(offset), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_VLVFB(offset*2), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_VLVFB((offset*2)+1), 0);
+		IXGBE_WRITE_REG(hw, IXGBE_VLVFB(offset * 2), 0);
+		IXGBE_WRITE_REG(hw, IXGBE_VLVFB((offset * 2) + 1), 0);
 	}
 
 	return IXGBE_SUCCESS;
@@ -3475,7 +3475,7 @@ s32 ixgbe_clear_vfta_generic(struct ixgbe_hw *hw)
  *  ixgbe_check_mac_link_generic - Determine link and speed status
  *  @hw: pointer to hardware structure
  *  @speed: pointer to link speed
- *  @link_up: TRUE when link is up
+ *  @link_up: true when link is up
  *  @link_up_wait_to_complete: bool used to wait for link up or not
  *
  *  Reads the links register to determine if link is up and the current speed
@@ -3501,19 +3501,19 @@ s32 ixgbe_check_mac_link_generic(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 	if (link_up_wait_to_complete) {
 		for (i = 0; i < IXGBE_LINK_UP_TIME; i++) {
 			if (links_reg & IXGBE_LINKS_UP) {
-				*link_up = TRUE;
+				*link_up = true;
 				break;
 			} else {
-				*link_up = FALSE;
+				*link_up = false;
 			}
 			msec_delay(100);
 			links_reg = IXGBE_READ_REG(hw, IXGBE_LINKS);
 		}
 	} else {
 		if (links_reg & IXGBE_LINKS_UP)
-			*link_up = TRUE;
+			*link_up = true;
 		else
-			*link_up = FALSE;
+			*link_up = false;
 	}
 
 	if ((links_reg & IXGBE_LINKS_SPEED_82599) ==
@@ -3794,7 +3794,7 @@ static u8 ixgbe_calculate_checksum(u8 *buffer, u32 length)
  *  @hw: pointer to the HW structure
  *  @buffer: contains the command to write and where the return status will
  *           be placed
- *  @lenght: lenght of buffer, must be multiple of 4 bytes
+ *  @length: length of buffer, must be multiple of 4 bytes
  *
  *  Communicates with the manageability block.  On success return IXGBE_SUCCESS
  *  else return IXGBE_ERR_HOST_INTERFACE_COMMAND.
@@ -4046,3 +4046,4 @@ void ixgbe_clear_tx_pending(struct ixgbe_hw *hw)
 	IXGBE_WRITE_REG(hw, IXGBE_GCR_EXT, gcr_ext);
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 }
+

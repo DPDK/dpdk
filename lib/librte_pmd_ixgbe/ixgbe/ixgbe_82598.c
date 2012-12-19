@@ -38,32 +38,32 @@ POSSIBILITY OF SUCH DAMAGE.
 
 u32 ixgbe_get_pcie_msix_count_82598(struct ixgbe_hw *hw);
 s32 ixgbe_init_ops_82598(struct ixgbe_hw *hw);
-static s32 ixgbe_get_link_capabilities_82598(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_get_link_capabilities_82598(struct ixgbe_hw *hw,
                                              ixgbe_link_speed *speed,
                                              bool *autoneg);
-static enum ixgbe_media_type ixgbe_get_media_type_82598(struct ixgbe_hw *hw);
+STATIC enum ixgbe_media_type ixgbe_get_media_type_82598(struct ixgbe_hw *hw);
 s32 ixgbe_fc_enable_82598(struct ixgbe_hw *hw, s32 packetbuf_num);
-static s32 ixgbe_start_mac_link_82598(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_start_mac_link_82598(struct ixgbe_hw *hw,
 					bool autoneg_wait_to_complete);
-static s32 ixgbe_check_mac_link_82598(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_check_mac_link_82598(struct ixgbe_hw *hw,
                                       ixgbe_link_speed *speed, bool *link_up,
                                       bool link_up_wait_to_complete);
-static s32 ixgbe_setup_mac_link_82598(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_setup_mac_link_82598(struct ixgbe_hw *hw,
                                             ixgbe_link_speed speed,
                                             bool autoneg,
                                             bool autoneg_wait_to_complete);
-static s32 ixgbe_setup_copper_link_82598(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_setup_copper_link_82598(struct ixgbe_hw *hw,
                                                ixgbe_link_speed speed,
                                                bool autoneg,
                                                bool autoneg_wait_to_complete);
-static s32 ixgbe_reset_hw_82598(struct ixgbe_hw *hw);
+STATIC s32 ixgbe_reset_hw_82598(struct ixgbe_hw *hw);
 s32 ixgbe_start_hw_82598(struct ixgbe_hw *hw);
 void ixgbe_enable_relaxed_ordering_82598(struct ixgbe_hw *hw);
 s32 ixgbe_set_vmdq_82598(struct ixgbe_hw *hw, u32 rar, u32 vmdq);
-static s32 ixgbe_clear_vmdq_82598(struct ixgbe_hw *hw, u32 rar, u32 vmdq);
+STATIC s32 ixgbe_clear_vmdq_82598(struct ixgbe_hw *hw, u32 rar, u32 vmdq);
 s32 ixgbe_set_vfta_82598(struct ixgbe_hw *hw, u32 vlan,
                          u32 vind, bool vlan_on);
-static s32 ixgbe_clear_vfta_82598(struct ixgbe_hw *hw);
+STATIC s32 ixgbe_clear_vfta_82598(struct ixgbe_hw *hw);
 s32 ixgbe_read_analog_reg8_82598(struct ixgbe_hw *hw, u32 reg, u8 *val);
 s32 ixgbe_write_analog_reg8_82598(struct ixgbe_hw *hw, u32 reg, u8 val);
 s32 ixgbe_read_i2c_eeprom_82598(struct ixgbe_hw *hw, u8 byte_offset,
@@ -198,8 +198,7 @@ s32 ixgbe_init_ops_82598(struct ixgbe_hw *hw)
 	mac->ops.check_link = &ixgbe_check_mac_link_82598;
 	mac->ops.setup_link = &ixgbe_setup_mac_link_82598;
 	mac->ops.flap_tx_laser = NULL;
-	mac->ops.get_link_capabilities =
-	                       &ixgbe_get_link_capabilities_82598;
+	mac->ops.get_link_capabilities = &ixgbe_get_link_capabilities_82598;
 	mac->ops.setup_rxpba = &ixgbe_set_rxpba_82598;
 
 	/* Manageability interface */
@@ -321,7 +320,7 @@ s32 ixgbe_start_hw_82598(struct ixgbe_hw *hw)
  *
  *  Determines the link capabilities by reading the AUTOC register.
  **/
-static s32 ixgbe_get_link_capabilities_82598(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_get_link_capabilities_82598(struct ixgbe_hw *hw,
                                              ixgbe_link_speed *speed,
                                              bool *autoneg)
 {
@@ -343,17 +342,17 @@ static s32 ixgbe_get_link_capabilities_82598(struct ixgbe_hw *hw,
 	switch (autoc & IXGBE_AUTOC_LMS_MASK) {
 	case IXGBE_AUTOC_LMS_1G_LINK_NO_AN:
 		*speed = IXGBE_LINK_SPEED_1GB_FULL;
-		*autoneg = FALSE;
+		*autoneg = false;
 		break;
 
 	case IXGBE_AUTOC_LMS_10G_LINK_NO_AN:
 		*speed = IXGBE_LINK_SPEED_10GB_FULL;
-		*autoneg = FALSE;
+		*autoneg = false;
 		break;
 
 	case IXGBE_AUTOC_LMS_1G_AN:
 		*speed = IXGBE_LINK_SPEED_1GB_FULL;
-		*autoneg = TRUE;
+		*autoneg = true;
 		break;
 
 	case IXGBE_AUTOC_LMS_KX4_AN:
@@ -363,7 +362,7 @@ static s32 ixgbe_get_link_capabilities_82598(struct ixgbe_hw *hw,
 			*speed |= IXGBE_LINK_SPEED_10GB_FULL;
 		if (autoc & IXGBE_AUTOC_KX_SUPP)
 			*speed |= IXGBE_LINK_SPEED_1GB_FULL;
-		*autoneg = TRUE;
+		*autoneg = true;
 		break;
 
 	default:
@@ -380,7 +379,7 @@ static s32 ixgbe_get_link_capabilities_82598(struct ixgbe_hw *hw,
  *
  *  Returns the media type (fiber, copper, backplane)
  **/
-static enum ixgbe_media_type ixgbe_get_media_type_82598(struct ixgbe_hw *hw)
+STATIC enum ixgbe_media_type ixgbe_get_media_type_82598(struct ixgbe_hw *hw)
 {
 	enum ixgbe_media_type media_type;
 
@@ -450,7 +449,7 @@ s32 ixgbe_fc_enable_82598(struct ixgbe_hw *hw, s32 packetbuf_num)
 	 * so if it's on turn it off once we know link_speed. For
 	 * more details see 82598 Specification update.
 	 */
-	hw->mac.ops.check_link(hw, &link_speed, &link_up, FALSE);
+	hw->mac.ops.check_link(hw, &link_speed, &link_up, false);
 	if (link_up && link_speed == IXGBE_LINK_SPEED_1GB_FULL) {
 		switch (hw->fc.requested_mode) {
 		case ixgbe_fc_full:
@@ -564,7 +563,7 @@ out:
  *  Configures link settings based on values in the ixgbe_hw struct.
  *  Restarts the link.  Performs autonegotiation if needed.
  **/
-static s32 ixgbe_start_mac_link_82598(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_start_mac_link_82598(struct ixgbe_hw *hw,
                                       bool autoneg_wait_to_complete)
 {
 	u32 autoc_reg;
@@ -612,7 +611,7 @@ static s32 ixgbe_start_mac_link_82598(struct ixgbe_hw *hw,
  *  Function indicates success when phy link is available. If phy is not ready
  *  within 5 seconds of MAC indicating link, the function returns error.
  **/
-static s32 ixgbe_validate_link_ready(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_validate_link_ready(struct ixgbe_hw *hw)
 {
 	u32 timeout;
 	u16 an_reg;
@@ -644,12 +643,12 @@ static s32 ixgbe_validate_link_ready(struct ixgbe_hw *hw)
  *  ixgbe_check_mac_link_82598 - Get link/speed status
  *  @hw: pointer to hardware structure
  *  @speed: pointer to link speed
- *  @link_up: TRUE is link is up, FALSE otherwise
+ *  @link_up: true is link is up, false otherwise
  *  @link_up_wait_to_complete: bool used to wait for link up or not
  *
  *  Reads the links register to determine if link is up and the current speed
  **/
-static s32 ixgbe_check_mac_link_82598(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_check_mac_link_82598(struct ixgbe_hw *hw,
                                       ixgbe_link_speed *speed, bool *link_up,
                                       bool link_up_wait_to_complete)
 {
@@ -674,10 +673,10 @@ static s32 ixgbe_check_mac_link_82598(struct ixgbe_hw *hw,
 			for (i = 0; i < IXGBE_LINK_UP_TIME; i++) {
 				if ((link_reg & 1) &&
 				    ((adapt_comp_reg & 1) == 0)) {
-					*link_up = TRUE;
+					*link_up = true;
 					break;
 				} else {
-					*link_up = FALSE;
+					*link_up = false;
 				}
 				msec_delay(100);
 				hw->phy.ops.read_reg(hw, 0xC79F,
@@ -689,12 +688,12 @@ static s32 ixgbe_check_mac_link_82598(struct ixgbe_hw *hw,
 			}
 		} else {
 			if ((link_reg & 1) && ((adapt_comp_reg & 1) == 0))
-				*link_up = TRUE;
+				*link_up = true;
 			else
-				*link_up = FALSE;
+				*link_up = false;
 		}
 
-		if (*link_up == FALSE)
+		if (*link_up == false)
 			goto out;
 	}
 
@@ -702,19 +701,19 @@ static s32 ixgbe_check_mac_link_82598(struct ixgbe_hw *hw,
 	if (link_up_wait_to_complete) {
 		for (i = 0; i < IXGBE_LINK_UP_TIME; i++) {
 			if (links_reg & IXGBE_LINKS_UP) {
-				*link_up = TRUE;
+				*link_up = true;
 				break;
 			} else {
-				*link_up = FALSE;
+				*link_up = false;
 			}
 			msec_delay(100);
 			links_reg = IXGBE_READ_REG(hw, IXGBE_LINKS);
 		}
 	} else {
 		if (links_reg & IXGBE_LINKS_UP)
-			*link_up = TRUE;
+			*link_up = true;
 		else
-			*link_up = FALSE;
+			*link_up = false;
 	}
 
 	if (links_reg & IXGBE_LINKS_SPEED)
@@ -722,9 +721,9 @@ static s32 ixgbe_check_mac_link_82598(struct ixgbe_hw *hw,
 	else
 		*speed = IXGBE_LINK_SPEED_1GB_FULL;
 
-	if ((hw->device_id == IXGBE_DEV_ID_82598AT2) && (*link_up == TRUE) &&
+	if ((hw->device_id == IXGBE_DEV_ID_82598AT2) && (*link_up == true) &&
 	    (ixgbe_validate_link_ready(hw) != IXGBE_SUCCESS))
-		*link_up = FALSE;
+		*link_up = false;
 
 	/* if link is down, zero out the current_mode */
 	if (*link_up == FALSE) {
@@ -739,12 +738,12 @@ out:
  *  ixgbe_setup_mac_link_82598 - Set MAC link speed
  *  @hw: pointer to hardware structure
  *  @speed: new link speed
- *  @autoneg: TRUE if autonegotiation enabled
- *  @autoneg_wait_to_complete: TRUE when waiting for completion is needed
+ *  @autoneg: true if autonegotiation enabled
+ *  @autoneg_wait_to_complete: true when waiting for completion is needed
  *
  *  Set the link speed in the AUTOC register and restarts link.
  **/
-static s32 ixgbe_setup_mac_link_82598(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_setup_mac_link_82598(struct ixgbe_hw *hw,
                                            ixgbe_link_speed speed, bool autoneg,
                                            bool autoneg_wait_to_complete)
 {
@@ -793,12 +792,12 @@ static s32 ixgbe_setup_mac_link_82598(struct ixgbe_hw *hw,
  *  ixgbe_setup_copper_link_82598 - Set the PHY autoneg advertised field
  *  @hw: pointer to hardware structure
  *  @speed: new link speed
- *  @autoneg: TRUE if autonegotiation enabled
- *  @autoneg_wait_to_complete: TRUE if waiting is needed to complete
+ *  @autoneg: true if autonegotiation enabled
+ *  @autoneg_wait_to_complete: true if waiting is needed to complete
  *
  *  Sets the link speed in the AUTOC register in the MAC and restarts link.
  **/
-static s32 ixgbe_setup_copper_link_82598(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_setup_copper_link_82598(struct ixgbe_hw *hw,
                                                ixgbe_link_speed speed,
                                                bool autoneg,
                                                bool autoneg_wait_to_complete)
@@ -824,7 +823,7 @@ static s32 ixgbe_setup_copper_link_82598(struct ixgbe_hw *hw,
  *  clears all interrupts, performing a PHY reset, and performing a link (MAC)
  *  reset.
  **/
-static s32 ixgbe_reset_hw_82598(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_reset_hw_82598(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_SUCCESS;
 	s32 phy_status = IXGBE_SUCCESS;
@@ -875,7 +874,7 @@ static s32 ixgbe_reset_hw_82598(struct ixgbe_hw *hw)
 	}
 
 	/* Reset PHY */
-	if (hw->phy.reset_disable == FALSE) {
+	if (hw->phy.reset_disable == false) {
 		/* PHY ops must be identified and initialized prior to reset */
 
 		/* Init PHY and function pointers, perform SFP setup */
@@ -931,9 +930,9 @@ mac_reset_top:
 	 * AUTOC value since the reset operation sets back to deaults.
 	 */
 	autoc = IXGBE_READ_REG(hw, IXGBE_AUTOC);
-	if (hw->mac.orig_link_settings_stored == FALSE) {
+	if (hw->mac.orig_link_settings_stored == false) {
 		hw->mac.orig_autoc = autoc;
-		hw->mac.orig_link_settings_stored = TRUE;
+		hw->mac.orig_link_settings_stored = true;
 	} else if (autoc != hw->mac.orig_autoc) {
 		IXGBE_WRITE_REG(hw, IXGBE_AUTOC, hw->mac.orig_autoc);
 	}
@@ -986,7 +985,7 @@ s32 ixgbe_set_vmdq_82598(struct ixgbe_hw *hw, u32 rar, u32 vmdq)
  *  @rar: receive address register index to associate with a VMDq index
  *  @vmdq: VMDq clear index (not used in 82598, but elsewhere)
  **/
-static s32 ixgbe_clear_vmdq_82598(struct ixgbe_hw *hw, u32 rar, u32 vmdq)
+STATIC s32 ixgbe_clear_vmdq_82598(struct ixgbe_hw *hw, u32 rar, u32 vmdq)
 {
 	u32 rar_high;
 	u32 rar_entries = hw->mac.num_rar_entries;
@@ -1064,7 +1063,7 @@ s32 ixgbe_set_vfta_82598(struct ixgbe_hw *hw, u32 vlan, u32 vind,
  *
  *  Clears the VLAN filer table, and the VMDq index associated with the filter
  **/
-static s32 ixgbe_clear_vfta_82598(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_clear_vfta_82598(struct ixgbe_hw *hw)
 {
 	u32 offset;
 	u32 vlanbyte;

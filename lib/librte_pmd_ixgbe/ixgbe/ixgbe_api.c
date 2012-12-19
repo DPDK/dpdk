@@ -509,7 +509,7 @@ s32 ixgbe_check_phy_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
  *  ixgbe_setup_phy_link_speed - Set auto advertise
  *  @hw: pointer to hardware structure
  *  @speed: new link speed
- *  @autoneg: TRUE if autonegotiation enabled
+ *  @autoneg: true if autonegotiation enabled
  *
  *  Sets the auto advertised capabilities
  **/
@@ -578,7 +578,7 @@ void ixgbe_flap_tx_laser(struct ixgbe_hw *hw)
  *  ixgbe_setup_link - Set link speed
  *  @hw: pointer to hardware structure
  *  @speed: new link speed
- *  @autoneg: TRUE if autonegotiation enabled
+ *  @autoneg: true if autonegotiation enabled
  *
  *  Configures link settings.  Restarts the link.
  *  Performs autonegotiation if needed.
@@ -971,6 +971,7 @@ s32 ixgbe_set_fw_drv_ver(struct ixgbe_hw *hw, u8 maj, u8 min, u8 build,
 	                       build, ver), IXGBE_NOT_IMPLEMENTED);
 }
 
+
 /**
  *  ixgbe_read_analog_reg8 - Reads 8 bit analog register
  *  @hw: pointer to hardware structure
@@ -1087,7 +1088,7 @@ u32 ixgbe_get_supported_physical_layer(struct ixgbe_hw *hw)
 }
 
 /**
- *  ixgbe_enable_rx_dma - Enables Rx DMA unit, dependant on device specifics
+ *  ixgbe_enable_rx_dma - Enables Rx DMA unit, dependent on device specifics
  *  @hw: pointer to hardware structure
  *  @regval: bitfield to write to the Rx DMA register
  *

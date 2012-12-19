@@ -66,7 +66,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 
 /* If it's a IXGBE_VF_* msg then it originates in the VF and is sent to the
- * PF.  The reverse is TRUE if it is IXGBE_PF_*.
+ * PF.  The reverse is true if it is IXGBE_PF_*.
  * Message ACK's are the value or'd with 0xF0000000
  */
 #define IXGBE_VT_MSGTYPE_ACK      0x80000000  /* Messages below or'd with
@@ -74,7 +74,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_VT_MSGTYPE_NACK     0x40000000  /* Messages below or'd with
                                                * this are the NACK */
 #define IXGBE_VT_MSGTYPE_CTS      0x20000000  /* Indicates that VF is still
-                                                 clear to send requests */
+					    * clear to send requests */
 #define IXGBE_VT_MSGINFO_SHIFT    16
 /* bits 23:16 are used for extra info for certain messages */
 #define IXGBE_VT_MSGINFO_MASK     (0xFF << IXGBE_VT_MSGINFO_SHIFT)

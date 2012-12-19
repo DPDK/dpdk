@@ -63,10 +63,10 @@ u16 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw);
 s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask);
 void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask);
 
-static s32 ixgbe_update_flash_X540(struct ixgbe_hw *hw);
-static s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw);
-static s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw);
-static void ixgbe_release_swfw_sync_semaphore(struct ixgbe_hw *hw);
+STATIC s32 ixgbe_update_flash_X540(struct ixgbe_hw *hw);
+STATIC s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw);
+STATIC s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw);
+STATIC void ixgbe_release_swfw_sync_semaphore(struct ixgbe_hw *hw);
 
 /**
  *  ixgbe_init_ops_X540 - Inits func ptrs and MAC type
@@ -131,10 +131,12 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
 	mac->ops.set_vlan_anti_spoofing = &ixgbe_set_vlan_anti_spoofing;
 
 	/* Link */
-	mac->ops.get_link_capabilities = &ixgbe_get_copper_link_capabilities_generic;
+	mac->ops.get_link_capabilities =
+				&ixgbe_get_copper_link_capabilities_generic;
 	mac->ops.setup_link = &ixgbe_setup_mac_link_X540;
 	mac->ops.setup_rxpba = &ixgbe_set_rxpba_generic;
 	mac->ops.check_link = &ixgbe_check_mac_link_generic;
+
 
 	mac->mcft_size        = 128;
 	mac->vft_size         = 128;
@@ -150,7 +152,7 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
 	 * enabled.
 	 */
 	mac->arc_subsystem_valid = (IXGBE_READ_REG(hw, IXGBE_FWSM) &
-	                           IXGBE_FWSM_MODE_MASK) ? TRUE : FALSE;
+				   IXGBE_FWSM_MODE_MASK) ? true : false;
 
 	hw->mbx.ops.init_params = ixgbe_init_mbx_params_pf;
 
@@ -168,15 +170,15 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
  *  ixgbe_get_link_capabilities_X540 - Determines link capabilities
  *  @hw: pointer to hardware structure
  *  @speed: pointer to link speed
- *  @negotiation: TRUE when autoneg or autotry is enabled
+ *  @autoneg: true when autoneg or autotry is enabled
  *
  *  Determines the link capabilities by reading the AUTOC register.
  **/
 s32 ixgbe_get_link_capabilities_X540(struct ixgbe_hw *hw,
                                      ixgbe_link_speed *speed,
-                                     bool *negotiation)
+				     bool *autoneg)
 {
-	ixgbe_get_copper_link_capabilities_generic(hw, speed, negotiation);
+	ixgbe_get_copper_link_capabilities_generic(hw, speed, autoneg);
 
 	return IXGBE_SUCCESS;
 }
@@ -197,8 +199,8 @@ enum ixgbe_media_type ixgbe_get_media_type_X540(struct ixgbe_hw *hw)
  *  ixgbe_setup_mac_link_X540 - Sets the auto advertised capabilities
  *  @hw: pointer to hardware structure
  *  @speed: new link speed
- *  @autoneg: TRUE if autonegotiation enabled
- *  @autoneg_wait_to_complete: TRUE when waiting for completion is needed
+ *  @autoneg: true if autonegotiation enabled
+ *  @autoneg_wait_to_complete: true when waiting for completion is needed
  **/
 s32 ixgbe_setup_mac_link_X540(struct ixgbe_hw *hw,
                                      ixgbe_link_speed speed, bool autoneg,
@@ -526,7 +528,7 @@ u16 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 		    pointer >= hw->eeprom.word_size)
 			continue;
 
-		if (ixgbe_read_eerd_generic(hw, pointer, &length)!=
+		if (ixgbe_read_eerd_generic(hw, pointer, &length) !=
 		    IXGBE_SUCCESS) {
 			DEBUGOUT("EEPROM read failed\n");
 			break;
@@ -665,7 +667,7 @@ s32 ixgbe_update_eeprom_checksum_X540(struct ixgbe_hw *hw)
  *  Set FLUP (bit 23) of the EEC register to instruct Hardware to copy
  *  EEPROM from shadow RAM to the flash device.
  **/
-static s32 ixgbe_update_flash_X540(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_update_flash_X540(struct ixgbe_hw *hw)
 {
 	u32 flup;
 	s32 status = IXGBE_ERR_EEPROM;
@@ -712,7 +714,7 @@ out:
  *  Polls the FLUDONE (bit 26) of the EEC Register to determine when the
  *  flash update is done.
  **/
-static s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw)
 {
 	u32 i;
 	u32 reg;
@@ -777,9 +779,9 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
 			goto out;
 		} else {
 			/*
-			 * Firmware currently using resource (fwmask), hardware currently
-			 * using resource (hwmask), or other software thread currently
-			 * using resource (swmask)
+			 * Firmware currently using resource (fwmask), hardware
+			 * currently using resource (hwmask), or other software
+			 * thread currently using resource (swmask)
 			 */
 			ixgbe_release_swfw_sync_semaphore(hw);
 			msec_delay(5);
@@ -798,7 +800,7 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
 	 * bits in the SW_FW_SYNC register.
 	 */
 	swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC);
-	if (swfw_sync & (fwmask| hwmask)) {
+	if (swfw_sync & (fwmask | hwmask)) {
 		if (ixgbe_get_swfw_sync_semaphore(hw)) {
 			ret_val = IXGBE_ERR_SWFW_SYNC;
 			goto out;
@@ -819,7 +821,7 @@ out:
  *  @hw: pointer to hardware structure
  *  @mask: Mask to specify which semaphore to release
  *
- *  Releases the SWFW semaphore throught the SW_FW_SYNC register
+ *  Releases the SWFW semaphore through the SW_FW_SYNC register
  *  for the specified function (CSR, PHY0, PHY1, EVM, Flash)
  **/
 void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
@@ -845,7 +847,7 @@ void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
  *
  *  Sets the hardware semaphores so SW/FW can gain control of shared resources
  **/
-static s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_ERR_EEPROM;
 	u32 timeout = 2000;
@@ -883,7 +885,8 @@ static s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw)
 		 * was not granted because we don't have access to the EEPROM
 		 */
 		if (i >= timeout) {
-			DEBUGOUT("REGSMP Software NVM semaphore not granted.\n");
+			DEBUGOUT("REGSMP Software NVM semaphore not "
+				 "granted.\n");
 			ixgbe_release_swfw_sync_semaphore(hw);
 			status = IXGBE_ERR_EEPROM;
 		}
@@ -901,7 +904,7 @@ static s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw)
  *
  *  This function clears hardware semaphore bits.
  **/
-static void ixgbe_release_swfw_sync_semaphore(struct ixgbe_hw *hw)
+STATIC void ixgbe_release_swfw_sync_semaphore(struct ixgbe_hw *hw)
 {
 	u32 swsm;
 

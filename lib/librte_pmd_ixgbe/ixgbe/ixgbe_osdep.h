@@ -90,6 +90,7 @@
 #define UNREFERENCED_4PARAMETER(_p, _q, _r, _s)
 
 
+#define STATIC static
 #define IXGBE_NTOHL(_i)	rte_be_to_cpu_32(_i)
 #define IXGBE_NTOHS(_i)	rte_be_to_cpu_16(_i)
 

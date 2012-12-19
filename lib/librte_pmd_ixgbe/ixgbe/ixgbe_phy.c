@@ -139,7 +139,7 @@ s32 ixgbe_identify_phy_generic(struct ixgbe_hw *hw)
 bool ixgbe_validate_phy_addr(struct ixgbe_hw *hw, u32 phy_addr)
 {
 	u16 phy_id = 0;
-	bool valid = FALSE;
+	bool valid = false;
 
 	DEBUGFUNC("ixgbe_validate_phy_addr");
 
@@ -148,7 +148,7 @@ bool ixgbe_validate_phy_addr(struct ixgbe_hw *hw, u32 phy_addr)
 	                     IXGBE_MDIO_PMA_PMD_DEV_TYPE, &phy_id);
 
 	if (phy_id != 0xFFFF && phy_id != 0x0)
-		valid = TRUE;
+		valid = true;
 
 	return valid;
 }
@@ -474,7 +474,7 @@ s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
 	u32 time_out;
 	u32 max_time_out = 10;
 	u16 autoneg_reg = IXGBE_MII_AUTONEG_REG;
-	bool autoneg = FALSE;
+	bool autoneg = false;
 	ixgbe_link_speed speed;
 
 	DEBUGFUNC("ixgbe_setup_phy_link_generic");
@@ -564,7 +564,7 @@ s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
  *  ixgbe_setup_phy_link_speed_generic - Sets the auto advertised capabilities
  *  @hw: pointer to hardware structure
  *  @speed: new link speed
- *  @autoneg: TRUE if autonegotiation enabled
+ *  @autoneg: true if autonegotiation enabled
  **/
 s32 ixgbe_setup_phy_link_speed_generic(struct ixgbe_hw *hw,
                                        ixgbe_link_speed speed,
@@ -614,7 +614,7 @@ s32 ixgbe_get_copper_link_capabilities_generic(struct ixgbe_hw *hw,
 	DEBUGFUNC("ixgbe_get_copper_link_capabilities_generic");
 
 	*speed = 0;
-	*autoneg = TRUE;
+	*autoneg = true;
 
 	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_PHY_SPEED_ABILITY,
 	                              IXGBE_MDIO_PMA_PMD_DEV_TYPE,
@@ -652,7 +652,7 @@ s32 ixgbe_check_phy_link_tnx(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 	DEBUGFUNC("ixgbe_check_phy_link_tnx");
 
 	/* Initialize speed and link to default case */
-	*link_up = FALSE;
+	*link_up = false;
 	*speed = IXGBE_LINK_SPEED_10GB_FULL;
 
 	/*
@@ -666,12 +666,11 @@ s32 ixgbe_check_phy_link_tnx(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 		                        IXGBE_MDIO_VENDOR_SPECIFIC_1_STATUS,
 		                        IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
 		                        &phy_data);
-		phy_link = phy_data &
-		           IXGBE_MDIO_VENDOR_SPECIFIC_1_LINK_STATUS;
+		phy_link = phy_data & IXGBE_MDIO_VENDOR_SPECIFIC_1_LINK_STATUS;
 		phy_speed = phy_data &
 		            IXGBE_MDIO_VENDOR_SPECIFIC_1_SPEED_STATUS;
 		if (phy_link == IXGBE_MDIO_VENDOR_SPECIFIC_1_LINK_STATUS) {
-			*link_up = TRUE;
+			*link_up = true;
 			if (phy_speed ==
 			    IXGBE_MDIO_VENDOR_SPECIFIC_1_SPEED_STATUS)
 				*speed = IXGBE_LINK_SPEED_1GB_FULL;
@@ -694,7 +693,7 @@ s32 ixgbe_setup_phy_link_tnx(struct ixgbe_hw *hw)
 	u32 time_out;
 	u32 max_time_out = 10;
 	u16 autoneg_reg = IXGBE_MII_AUTONEG_REG;
-	bool autoneg = FALSE;
+	bool autoneg = false;
 	ixgbe_link_speed speed;
 
 	DEBUGFUNC("ixgbe_setup_phy_link_tnx");
@@ -822,7 +821,7 @@ s32 ixgbe_get_phy_firmware_version_generic(struct ixgbe_hw *hw,
 s32 ixgbe_reset_phy_nl(struct ixgbe_hw *hw)
 {
 	u16 phy_offset, control, eword, edata, block_crc;
-	bool end_data = FALSE;
+	bool end_data = false;
 	u16 list_offset, data_offset;
 	u16 phy_data = 0;
 	s32 ret_val = IXGBE_SUCCESS;
@@ -875,7 +874,7 @@ s32 ixgbe_reset_phy_nl(struct ixgbe_hw *hw)
 			msec_delay(edata);
 			break;
 		case IXGBE_DATA_NL:
-			DEBUGOUT("DATA:  \n");
+			DEBUGOUT("DATA:\n");
 			data_offset++;
 			hw->eeprom.ops.read(hw, data_offset++,
 			                    &phy_offset);
@@ -891,10 +890,10 @@ s32 ixgbe_reset_phy_nl(struct ixgbe_hw *hw)
 			break;
 		case IXGBE_CONTROL_NL:
 			data_offset++;
-			DEBUGOUT("CONTROL: \n");
+			DEBUGOUT("CONTROL:\n");
 			if (edata == IXGBE_CONTROL_EOL_NL) {
 				DEBUGOUT("EOL\n");
-				end_data = TRUE;
+				end_data = true;
 			} else if (edata == IXGBE_CONTROL_SOL_NL) {
 				DEBUGOUT("SOL\n");
 			} else {
@@ -1052,15 +1051,15 @@ s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw)
 		}
 
 		if (hw->phy.sfp_type != stored_sfp_type)
-			hw->phy.sfp_setup_needed = TRUE;
+			hw->phy.sfp_setup_needed = true;
 
 		/* Determine if the SFP+ PHY is dual speed or not. */
-		hw->phy.multispeed_fiber = FALSE;
+		hw->phy.multispeed_fiber = false;
 		if (((comp_codes_1g & IXGBE_SFF_1GBASESX_CAPABLE) &&
 		   (comp_codes_10g & IXGBE_SFF_10GBASESR_CAPABLE)) ||
 		   ((comp_codes_1g & IXGBE_SFF_1GBASELX_CAPABLE) &&
 		   (comp_codes_10g & IXGBE_SFF_10GBASELR_CAPABLE)))
-			hw->phy.multispeed_fiber = TRUE;
+			hw->phy.multispeed_fiber = true;
 
 		/* Determine PHY vendor */
 		if (hw->phy.type != ixgbe_phy_nl) {
@@ -1159,7 +1158,8 @@ s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw)
 				status = IXGBE_SUCCESS;
 			} else {
 				DEBUGOUT("SFP+ module not supported\n");
-				hw->phy.type = ixgbe_phy_sfp_unsupported;
+					hw->phy.type =
+						ixgbe_phy_sfp_unsupported;
 				status = IXGBE_ERR_SFP_NOT_SUPPORTED;
 			}
 		} else {
@@ -1178,6 +1178,8 @@ err_read_i2c_eeprom:
 	}
 	return IXGBE_ERR_SFP_NOT_PRESENT;
 }
+
+
 
 /**
  *  ixgbe_get_sfp_init_sequence_offsets - Provides offset of PHY init sequence
@@ -1814,7 +1816,7 @@ void ixgbe_i2c_bus_clear(struct ixgbe_hw *hw)
 }
 
 /**
- *  ixgbe_tn_check_overtemp - Checks if an overtemp occured.
+ *  ixgbe_tn_check_overtemp - Checks if an overtemp occurred.
  *  @hw: pointer to hardware structure
  *
  *  Checks if the LASI temp alarm status was triggered due to overtemp
