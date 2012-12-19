@@ -46,6 +46,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <nmmintrin.h>
 
 /**
  * Use single crc32 instruction to perform a hash on a 4 byte value.
@@ -60,10 +61,7 @@ extern "C" {
 static inline uint32_t
 rte_hash_crc_4byte(uint32_t data, uint32_t init_val)
 {
-	asm volatile("crc32 %[data], %[init_val]"
-	             : [init_val]"=r" (init_val)
-	             : [data]"r" (data), "[init_val]" (init_val));
-	return init_val;
+	return _mm_crc32_u32(data, init_val);
 }
 
 /**
