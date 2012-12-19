@@ -206,6 +206,7 @@ port_infos_display(portid_t port_id)
 {
 	struct rte_port *port;
 	struct rte_eth_link link;
+	int vlan_offload;
 	static const char *info_border = "*********************";
 
 	if (port_id >= nb_ports) {
@@ -227,6 +228,25 @@ port_infos_display(portid_t port_id)
 	       rte_eth_allmulticast_get(port_id) ? "enabled" : "disabled");
 	printf("Maximum number of MAC addresses: %u\n",
 	       (unsigned int)(port->dev_info.max_mac_addrs));
+
+	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
+	if (vlan_offload >= 0){
+		printf("VLAN offload: \n");
+		if (vlan_offload & ETH_VLAN_STRIP_OFFLOAD)
+			printf("  strip on \n");
+		else
+			printf("  strip off \n");
+
+		if (vlan_offload & ETH_VLAN_FILTER_OFFLOAD)
+			printf("  filter on \n");
+		else
+			printf("  filter off \n");
+
+		if (vlan_offload & ETH_VLAN_EXTEND_OFFLOAD)
+			printf("  qinq(extend) on \n");
+		else
+			printf("  qinq(extend) off \n");
+	}
 }
 
 static int
@@ -1012,7 +1032,87 @@ set_verbose_level(uint16_t vb_level)
 }
 
 void
-rx_vlan_filter_set(portid_t port_id, uint16_t vlan_id, int on)
+vlan_extend_set(portid_t port_id, int on)
+{
+	int diag;
+	int vlan_offload;
+
+	if (port_id_is_invalid(port_id))
+		return;
+
+	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
+
+	if (on)
+		vlan_offload |= ETH_VLAN_EXTEND_OFFLOAD;
+	else
+		vlan_offload &= ~ETH_VLAN_EXTEND_OFFLOAD;
+
+	diag = rte_eth_dev_set_vlan_offload(port_id, vlan_offload);
+	if (diag < 0)
+		printf("rx_vlan_extend_set(port_pi=%d, on=%d) failed "
+	       "diag=%d\n", port_id, on, diag);
+}
+
+void
+rx_vlan_strip_set(portid_t port_id, int on)
+{
+	int diag;
+	int vlan_offload;
+
+	if (port_id_is_invalid(port_id))
+		return;
+
+	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
+
+	if (on)
+		vlan_offload |= ETH_VLAN_STRIP_OFFLOAD;
+	else
+		vlan_offload &= ~ETH_VLAN_STRIP_OFFLOAD;
+
+	diag = rte_eth_dev_set_vlan_offload(port_id, vlan_offload);
+	if (diag < 0)
+		printf("rx_vlan_strip_set(port_pi=%d, on=%d) failed "
+	       "diag=%d\n", port_id, on, diag);
+}
+
+void
+rx_vlan_strip_set_on_queue(portid_t port_id, uint16_t queue_id, int on)
+{
+	int diag;
+
+	if (port_id_is_invalid(port_id))
+		return;
+
+	diag = rte_eth_dev_set_vlan_strip_on_queue(port_id, queue_id, on);
+	if (diag < 0)
+		printf("rx_vlan_strip_set_on_queue(port_pi=%d, queue_id=%d, on=%d) failed "
+	       "diag=%d\n", port_id, queue_id, on, diag);
+}
+
+void
+rx_vlan_filter_set(portid_t port_id, int on)
+{
+	int diag;
+	int vlan_offload;
+
+	if (port_id_is_invalid(port_id))
+		return;
+
+	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
+
+	if (on)
+		vlan_offload |= ETH_VLAN_FILTER_OFFLOAD;
+	else
+		vlan_offload &= ~ETH_VLAN_FILTER_OFFLOAD;
+
+	diag = rte_eth_dev_set_vlan_offload(port_id, vlan_offload);
+	if (diag < 0)
+		printf("rx_vlan_filter_set(port_pi=%d, on=%d) failed "
+	       "diag=%d\n", port_id, on, diag);
+}
+
+void
+rx_vft_set(portid_t port_id, uint16_t vlan_id, int on)
 {
 	int diag;
 
@@ -1036,7 +1136,23 @@ rx_vlan_all_filter_set(portid_t port_id, int on)
 	if (port_id_is_invalid(port_id))
 		return;
 	for (vlan_id = 0; vlan_id < 4096; vlan_id++)
-		rx_vlan_filter_set(port_id, vlan_id, on);
+		rx_vft_set(port_id, vlan_id, on);
+}
+
+void
+vlan_tpid_set(portid_t port_id, uint16_t tp_id)
+{
+	int diag;
+	if (port_id_is_invalid(port_id))
+		return;
+
+	diag = rte_eth_dev_set_vlan_ether_type(port_id, tp_id);
+	if (diag == 0)
+		return;
+
+	printf("tx_vlan_tpid_set(port_pi=%d, tpid=%d) failed "
+	       "diag=%d\n",
+	       port_id, tp_id, diag);
 }
 
 void

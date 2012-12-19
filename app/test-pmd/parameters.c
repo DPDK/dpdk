@@ -522,8 +522,13 @@ launch_args_parse(int argc, char** argv)
 				rx_mode.hw_strip_crc = 1;
 			if (!strcmp(lgopts[opt_idx].name, "enable-rx-cksum"))
 				rx_mode.hw_ip_checksum = 1;
-			if (!strcmp(lgopts[opt_idx].name, "disable-hw-vlan"))
+
+			if (!strcmp(lgopts[opt_idx].name, "disable-hw-vlan")) {
 				rx_mode.hw_vlan_filter = 0;
+				rx_mode.hw_vlan_strip  = 0;
+				rx_mode.hw_vlan_extend = 0;
+			}
+
 			if (!strcmp(lgopts[opt_idx].name, "disable-rss"))
 				rss_hf = 0;
 			if (!strcmp(lgopts[opt_idx].name, "port-topology")) {

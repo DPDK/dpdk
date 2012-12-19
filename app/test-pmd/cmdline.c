@@ -135,13 +135,16 @@ static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
 		       "- set corelist|portlist x[,y]*\n"
 		       "    Set the list of forwarding cores / forwarding "
 		       "ports\n"
+		       "- vlan set strip|filter|qinq on/off port_id\n"
+		       "    Set the VLAN strip, filter, QinQ(extended) on a port"
 		       "- rx_vlan add/rm vlan_id|all port_id\n"
-		       "    Add/remove vlan_id, or all identifiers, to/from "
-		       "the set of VLAN Identifiers\n    filtered by port_id\n"
+		       "    Set the VLAN filter table, add/remove vlan_id, or all "
+		       "identifiers, to/from the set of VLAN Identifiers\n"
+		       "filtered by port_id\n"
+		       "- rx_vlan set tpid value port_id\n"
+		       "    Set Outer VLAN TPID for Packet Filtering on a port \n"
 		       "- tx_vlan set vlan_id port_id\n"
-		       "    Enable hardware insertion of a VLAN header with "
-		       "the Tag Identifier vlan_id\n    in packets sent on"
-		       "port_id\n"
+		       "    Set hardware insertion of VLAN ID in packets sent on a port\n"
 		       "- tx_vlan reset port_id\n"
 		       "    Disable hardware insertion of a VLAN header in "
 		       "packets sent on port_id\n"
@@ -564,6 +567,153 @@ cmdline_parse_inst_t cmd_rx_vlan_filter_all = {
 	},
 };
 
+/* *** VLAN OFFLOAD SET ON A PORT *** */
+struct cmd_vlan_offload_result {
+	cmdline_fixed_string_t vlan;
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t what;
+	cmdline_fixed_string_t on;
+	cmdline_fixed_string_t port_id;
+};
+
+static void
+cmd_vlan_offload_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	int on;
+	struct cmd_vlan_offload_result *res = parsed_result;	
+	char *str;
+	int i, len = 0;
+	portid_t port_id = 0;
+	unsigned int tmp;
+	
+	str = res->port_id;
+	len = strnlen(str, STR_TOKEN_SIZE);
+	i = 0;
+	/* Get port_id first */
+	while(i < len){
+		if(str[i] == ',')
+			break;
+		
+		i++;
+	}
+	str[i]='\0';
+	tmp = strtoul(str, NULL, 0);
+	/* If port_id greater that what portid_t can represent, return */
+	if(tmp > 255)
+		return;
+	port_id = (portid_t)tmp;
+
+	if (!strcmp(res->on, "on"))
+		on = 1;
+	else
+		on = 0;
+
+	if (!strcmp(res->what, "strip"))
+		rx_vlan_strip_set(port_id,  on);
+	else if(!strcmp(res->what, "stripq")){
+		uint16_t queue_id = 0;
+
+		/* No queue_id, return */
+		if(i + 1 >= len)
+			return;
+		tmp = strtoul(str + i + 1, NULL, 0);
+		/* If queue_id greater that what 16-bits can represent, return */
+		if(tmp > 0xffff)
+			return;
+		
+		queue_id = (uint16_t)tmp;
+		rx_vlan_strip_set_on_queue(port_id, queue_id, on);
+	}
+	else if (!strcmp(res->what, "filter"))
+		rx_vlan_filter_set(port_id, on);
+	else
+		vlan_extend_set(port_id, on);
+
+	return;
+}
+
+cmdline_parse_token_string_t cmd_vlan_offload_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_vlan_offload_result,
+				 vlan, "vlan");
+cmdline_parse_token_string_t cmd_vlan_offload_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_vlan_offload_result,
+				 set, "set");
+cmdline_parse_token_string_t cmd_vlan_offload_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_vlan_offload_result,
+				 what, "strip#filter#qinq#stripq");
+cmdline_parse_token_string_t cmd_vlan_offload_on =
+	TOKEN_STRING_INITIALIZER(struct cmd_vlan_offload_result,
+			      on, "on#off");
+cmdline_parse_token_string_t cmd_vlan_offload_portid =
+	TOKEN_STRING_INITIALIZER(struct cmd_vlan_offload_result,
+			      port_id, NULL);
+
+cmdline_parse_inst_t cmd_vlan_offload = {
+	.f = cmd_vlan_offload_parsed,
+	.data = NULL,
+	.help_str = "set strip|filter|qinq|stripq on|off port_id[,queue_id], filter/strip for rx side"
+	" qinq(extended) for both rx/tx sides ",
+	.tokens = {
+		(void *)&cmd_vlan_offload_vlan,
+		(void *)&cmd_vlan_offload_set,
+		(void *)&cmd_vlan_offload_what,
+		(void *)&cmd_vlan_offload_on,
+		(void *)&cmd_vlan_offload_portid,
+		NULL,
+	},
+};
+
+/* *** VLAN TPID SET ON A PORT *** */
+struct cmd_vlan_tpid_result {
+	cmdline_fixed_string_t vlan;
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t what;
+	uint16_t tp_id;
+	uint8_t port_id;
+};
+
+static void
+cmd_vlan_tpid_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	struct cmd_vlan_tpid_result *res = parsed_result;
+	vlan_tpid_set(res->port_id, res->tp_id);
+	return;
+}
+
+cmdline_parse_token_string_t cmd_vlan_tpid_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_vlan_tpid_result,
+				 vlan, "vlan");
+cmdline_parse_token_string_t cmd_vlan_tpid_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_vlan_tpid_result,
+				 set, "set");
+cmdline_parse_token_string_t cmd_vlan_tpid_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_vlan_tpid_result,
+				 what, "tpid");
+cmdline_parse_token_num_t cmd_vlan_tpid_tpid =
+	TOKEN_NUM_INITIALIZER(struct cmd_vlan_tpid_result,
+			      tp_id, UINT16);
+cmdline_parse_token_num_t cmd_vlan_tpid_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_vlan_tpid_result,
+			      port_id, UINT8);
+
+cmdline_parse_inst_t cmd_vlan_tpid = {
+	.f = cmd_vlan_tpid_parsed,
+	.data = NULL,
+	.help_str = "set tpid tp_id port_id, set the Outer VLAN Ether type",
+	.tokens = {
+		(void *)&cmd_vlan_tpid_vlan,
+		(void *)&cmd_vlan_tpid_set,
+		(void *)&cmd_vlan_tpid_what,
+		(void *)&cmd_vlan_tpid_tpid,
+		(void *)&cmd_vlan_tpid_portid,
+		NULL,
+	},
+};
+
 /* *** ADD/REMOVE A VLAN IDENTIFIER TO/FROM A PORT VLAN RX FILTER *** */
 struct cmd_rx_vlan_filter_result {
 	cmdline_fixed_string_t rx_vlan;
@@ -580,9 +730,9 @@ cmd_rx_vlan_filter_parsed(void *parsed_result,
 	struct cmd_rx_vlan_filter_result *res = parsed_result;
 
 	if (!strcmp(res->what, "add"))
-		rx_vlan_filter_set(res->port_id, res->vlan_id, 1);
+		rx_vft_set(res->port_id, res->vlan_id, 1);
 	else
-		rx_vlan_filter_set(res->port_id, res->vlan_id, 0);
+		rx_vft_set(res->port_id, res->vlan_id, 0);
 }
 
 cmdline_parse_token_string_t cmd_rx_vlan_filter_rx_vlan =
@@ -626,7 +776,6 @@ cmd_tx_vlan_set_parsed(void *parsed_result,
 		       __attribute__((unused)) void *data)
 {
 	struct cmd_tx_vlan_set_result *res = parsed_result;
-
 	tx_vlan_set(res->port_id, res->vlan_id);
 }
 
@@ -2204,6 +2353,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_promisc_mode_all,
 	(cmdline_parse_inst_t *)&cmd_set_allmulti_mode_one,
 	(cmdline_parse_inst_t *)&cmd_set_allmulti_mode_all,
+	(cmdline_parse_inst_t *)&cmd_vlan_offload,
+	(cmdline_parse_inst_t *)&cmd_vlan_tpid,
 	(cmdline_parse_inst_t *)&cmd_rx_vlan_filter_all,
 	(cmdline_parse_inst_t *)&cmd_rx_vlan_filter,
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_set,

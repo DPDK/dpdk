@@ -231,6 +231,8 @@ struct rte_eth_rxmode rx_mode = {
 	.header_split   = 0, /**< Header Split disabled. */
 	.hw_ip_checksum = 0, /**< IP checksum offload disabled. */
 	.hw_vlan_filter = 1, /**< VLAN filtering enabled. */
+	.hw_vlan_strip  = 1, /**< VLAN strip enabled. */
+	.hw_vlan_extend = 0, /**< Extended VLAN disabled. */
 	.jumbo_frame    = 0, /**< Jumbo Frame Support disabled. */
 	.hw_strip_crc   = 0, /**< CRC stripping by hardware disabled. */
 };
