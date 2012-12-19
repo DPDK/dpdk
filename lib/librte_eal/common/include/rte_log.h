@@ -275,14 +275,13 @@ int rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap);
  *   - 0: Success.
  *   - Negative on error.
  */
-#define RTE_LOG(l, t, fmt, args...) ({					\
-	if ((RTE_LOG_##l <= RTE_LOG_LEVEL) &&				\
-	    (RTE_LOG_##l <= rte_logs.level) &&				\
-	    (RTE_LOGTYPE_##t & rte_logs.type)) {			\
-		rte_log(RTE_LOG_##l, RTE_LOGTYPE_##t,			\
-			  #t ": " fmt, ## args);			\
-	}								\
-})
+#define RTE_LOG(l, t, ...)					\
+	(((RTE_LOG_ ## l <= RTE_LOG_LEVEL) &&			\
+	  (RTE_LOG_ ## l <= rte_logs.level) &&			\
+	  (RTE_LOGTYPE_ ## t & rte_logs.type)) ?		\
+	 rte_log(RTE_LOG_ ## l,					\
+		 RTE_LOGTYPE_ ## t, # t ": " __VA_ARGS__) :	\
+	 0)
 
 #ifdef __cplusplus
 }

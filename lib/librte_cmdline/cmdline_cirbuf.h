@@ -78,9 +78,10 @@ struct cirbuf {
 };
 
 #ifdef RTE_LIBRTE_CMDLINE_DEBUG
-#define dprintf(fmt, ...) printf("line %3.3d - " fmt, __LINE__, ##__VA_ARGS__)
+#define dprintf_(fmt, ...) printf("line %3.3d - " fmt "%.0s", __LINE__, __VA_ARGS__)
+#define dprintf(...) dprintf_(__VA_ARGS__, "dummy")
 #else
-#define dprintf(args...) do {} while(0)
+#define dprintf(...) (void)0
 #endif
 
 
