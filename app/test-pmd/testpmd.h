@@ -257,6 +257,7 @@ extern uint16_t tx_free_thresh;
 extern uint16_t tx_rs_thresh;
 
 extern uint16_t mbuf_data_size; /**< Mbuf data space size. */
+extern uint32_t param_total_num_mbufs;
 
 extern struct rte_fdir_conf fdir_conf;
 

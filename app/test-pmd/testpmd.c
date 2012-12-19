@@ -142,6 +142,8 @@ struct fwd_config cur_fwd_config;
 struct fwd_engine *cur_fwd_eng = &io_fwd_engine; /**< IO mode by default. */
 
 uint16_t mbuf_data_size = DEFAULT_MBUF_DATA_SIZE; /**< Mbuf data space size. */
+uint32_t param_total_num_mbufs = 0;  /**< number of mbufs in all pools - if
+                                      * specified on command-line. */
 
 /*
  * Configuration of packet segments used by the "txonly" processing engine.
@@ -430,15 +432,22 @@ init_config(void)
 	 * If NUMA support is disabled, create a single pool of mbuf in
 	 * socket 0 memory.
 	 * Otherwise, create a pool of mbuf in the memory of sockets 0 and 1.
+	 *
+	 * Use the maximum value of nb_rxd and nb_txd here, then nb_rxd and
+	 * nb_txd can be configured at run time.
 	 */
-	nb_mbuf_per_pool = nb_rxd + (nb_lcores * mb_mempool_cache) +
-		nb_txd + MAX_PKT_BURST;
+	if (param_total_num_mbufs)
+		nb_mbuf_per_pool = param_total_num_mbufs;
+	else {
+		nb_mbuf_per_pool = RTE_TEST_RX_DESC_MAX + (nb_lcores * mb_mempool_cache)
+				+ RTE_TEST_TX_DESC_MAX + MAX_PKT_BURST;
+		nb_mbuf_per_pool = (nb_mbuf_per_pool * nb_ports);
+	}
 	if (numa_support) {
-		nb_mbuf_per_pool = nb_mbuf_per_pool * (nb_ports >> 1);
+		nb_mbuf_per_pool /= 2;
 		mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, 0);
 		mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, 1);
 	} else {
-		nb_mbuf_per_pool = (nb_mbuf_per_pool * nb_ports);
 		mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, 0);
 	}
 

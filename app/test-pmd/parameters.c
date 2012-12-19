@@ -82,6 +82,7 @@ usage(char* progname)
 {
 	printf("usage: %s [--interactive|-i] [--help|-h] | ["
 	       "--coremask=COREMASK --portmask=PORTMASK --numa "
+	       "--mbuf-size= | --total-num-mbufs= | "
 	       "--eth-peers-configfile= | "
 	       "--eth-peer=X,M:M:M:M:M:M | --nb-cores= | --nb-ports= | "
 	       "--pkt-filter-mode= |"
@@ -107,6 +108,8 @@ usage(char* progname)
 	printf("  --numa: enable NUMA-aware allocation of RX/TX rings and of "
 	       " RX memory buffers (mbufs)\n");
 	printf("  --mbuf-size=N set the data size of mbuf to N bytes\n");
+	printf("  --total-num-mbufs=N set the number of mbufs to be allocated "
+	       "in mbuf pools\n");
 	printf("  --max-pkt-len=N set the maximum size of packet to N bytes\n");
 	printf("  --pkt-filter-mode=N: set Flow director mode "
 	       "( N: none (default mode) or signature or perfect)\n");
@@ -329,6 +332,7 @@ launch_args_parse(int argc, char** argv)
 		{ "portmask",			1, 0, 0 },
 		{ "numa",			0, 0, 0 },
 		{ "mbuf-size",			1, 0, 0 },
+		{ "total-num-mbufs",			1, 0, 0 },
 		{ "max-pkt-len",		1, 0, 0 },
 		{ "pkt-filter-mode",            1, 0, 0 },
 		{ "pkt-filter-report-hash",     1, 0, 0 },
@@ -439,6 +443,14 @@ launch_args_parse(int argc, char** argv)
 				else
 					rte_exit(EXIT_FAILURE,
 						 "mbuf-size should be > 0 and < 65536\n");
+			}
+			if (!strcmp(lgopts[opt_idx].name, "total-num-mbufs")) {
+				n = atoi(optarg);
+				if (n > 1024)
+					param_total_num_mbufs = (unsigned)n;
+				else
+					rte_exit(EXIT_FAILURE,
+						 "total-num-mbufs should be > 1024\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "max-pkt-len")) {
 				n = atoi(optarg);
