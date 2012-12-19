@@ -48,6 +48,7 @@
 #include <rte_memzone.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
 #include <rte_string_fns.h>
 #include <rte_errno.h>
@@ -55,18 +56,7 @@
 #include "rte_lpm.h"
 
 TAILQ_HEAD(rte_lpm_list, rte_lpm);
-
-/* global list of ring (used for debug/dump) */
-static struct rte_lpm_list *lpm_list;
-
-#define CHECK_LPM_LIST_CREATED() do { \
-	if (lpm_list == NULL) \
-		if ((lpm_list = RTE_TAILQ_RESERVE("RTE_LPM", rte_lpm_list)) == NULL){ \
-			rte_errno = E_RTE_NO_TAILQ; \
-		return NULL; \
-	} \
-} while (0)
-
+ 
 #define MAX_DEPTH_TBL24 24
 
 enum valid_flag {
@@ -132,9 +122,13 @@ struct rte_lpm *
 rte_lpm_find_existing(const char *name)
 {
 	struct rte_lpm *l;
+	struct rte_lpm_list *lpm_list;
 
 	/* check that we have an initialised tail queue */
-	CHECK_LPM_LIST_CREATED();
+	if ((lpm_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM, rte_lpm_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return NULL;
+	}
 
 	TAILQ_FOREACH(l, lpm_list, next) {
 		if (strncmp(name, l->name, RTE_LPM_NAMESIZE) == 0)
@@ -160,15 +154,14 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 	char mem_name[RTE_LPM_NAMESIZE];
 	struct rte_lpm *lpm = NULL;
 	uint32_t mem_size;
-
-	/* check that we have access to create things in shared memory. */
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY){
-		rte_errno = E_RTE_SECONDARY;
-		return NULL;
-	}
+	struct rte_lpm_list *lpm_list;
 
 	/* check that we have an initialised tail queue */
-	CHECK_LPM_LIST_CREATED();
+	if ((lpm_list = 
+	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM, rte_lpm_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return NULL;	
+	}
 
 	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm_tbl24_entry) != 2);
 	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm_tbl8_entry) != 2);
@@ -194,6 +187,14 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 
 	/* Determine the amount of memory to allocate. */
 	mem_size = sizeof(*lpm) + (sizeof(lpm->rules_tbl[0]) * max_rules);
+
+	/* guarantee there's no existing */
+	TAILQ_FOREACH(lpm, lpm_list, next) {
+		if (strncmp(name, lpm->name, RTE_LPM_NAMESIZE) == 0)
+			break;
+	}
+	if (lpm != NULL)
+		return NULL;
 
 	/* Allocate memory to store the LPM data structures. */
 	if (mem_location == RTE_LPM_MEMZONE) {
@@ -243,7 +244,7 @@ rte_lpm_free(struct rte_lpm *lpm)
 
 	/* Note: Its is currently not possible to free a memzone. */
 	if (lpm->mem_location == RTE_LPM_HEAP){
-		TAILQ_REMOVE(lpm_list, lpm, next);
+		RTE_EAL_TAILQ_REMOVE(RTE_TAILQ_LPM, rte_lpm_list, lpm);
 		rte_free(lpm);
 	}
 }

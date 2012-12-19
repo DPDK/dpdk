@@ -34,56 +34,50 @@
 
 /**
  * @file
- * Definitions of warnings for use of various insecure functions
+ *
+ * This file contains the type of the tailq elem recognised by DPDK, which
+ * can be used to fill out an array of structures describing the tailq.
+ *
+ * In order to populate an array, the user of this file must define this macro:
+ * rte_tailq_elem(idx, name). For example:
+ *
+ * @code
+ * enum rte_tailq_t {
+ * #define rte_tailq_elem(idx, name)     idx,
+ * #define rte_tailq_end(idx)            idx
+ * #include <rte_tailq_elem.h>
+ * };
+ *
+ * const char* rte_tailq_names[RTE_MAX_TAILQ] = {
+ * #define rte_tailq_elem(idx, name)     name,
+ * #include <rte_tailq_elem.h>
+ * };
+ * @endcode
+ *
+ * Note that this file can be included multiple times within the same file.
  */
 
-#ifndef _RTE_WARNINGS_H_
-#define _RTE_WARNINGS_H_
+#ifndef rte_tailq_elem
+#define rte_tailq_elem(idx, name)
+#endif /* rte_tailq_elem */
 
-#ifdef RTE_INSECURE_FUNCTION_WARNING
+#ifndef rte_tailq_end
+#define rte_tailq_end(idx)
+#endif /* rte_tailq_end */
 
-/* we need to include all used standard header files so that they appear
- * _before_ we poison the function names.
- */
+rte_tailq_elem(RTE_TAILQ_PCI, "PCI_RESOURCE_LIST")
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
-#ifdef RTE_LIBRTE_EAL_LINUXAPP
-#include <dirent.h>
-#endif
+rte_tailq_elem(RTE_TAILQ_MEMPOOL, "RTE_MEMPOOL")
 
-/* rte_snprintf uses snprintf, so include its definition before we poison the
- * functions, otherwise we'll get an error in it. */
-#include <rte_string_fns.h>
+rte_tailq_elem(RTE_TAILQ_RING, "RTE_RING")
 
-/* the following function are deemed not fully secure for use e.g. they
- * do not always null-terminate arguments */
-#pragma GCC poison sprintf strtok snprintf vsnprintf
-#pragma GCC poison strlen strcpy strcat
-#pragma GCC poison sscanf
+rte_tailq_elem(RTE_TAILQ_HASH, "RTE_HASH")
 
-/* other unsafe functions may be implemented as macros so just undef them */
-#ifdef strsep
-#undef strsep
-#else
-#pragma GCC poison strsep
-#endif
+rte_tailq_elem(RTE_TAILQ_FBK_HASH, "RTE_FBK_HASH")
 
-#ifdef strncpy
-#undef strncpy
-#else
-#pragma GCC poison strncpy
-#endif
+rte_tailq_elem(RTE_TAILQ_LPM, "RTE_LPM")
 
-#ifdef strncat
-#undef strncat
-#else
-#pragma GCC poison strncat
-#endif
+rte_tailq_end(RTE_TAILQ_NUM)
 
-#endif
-
-#endif /* RTE_WARNINGS_H */
+#undef rte_tailq_elem
+#undef rte_tailq_end

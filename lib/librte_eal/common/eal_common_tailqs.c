@@ -38,12 +38,14 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_memory.h>
@@ -51,9 +53,16 @@
 #include <rte_branch_prediction.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
+
 #include "eal_private.h"
 
-static unsigned tailq_idx = 0;
+/**
+ * Name of tailq_head
+ */
+const char* rte_tailq_names[RTE_MAX_TAILQ] = {
+#define rte_tailq_elem(idx, name)     name,
+#include <rte_tailq_elem.h>
+};
 
 struct rte_tailq_head *
 rte_eal_tailq_lookup(const char *name)
@@ -61,52 +70,76 @@ rte_eal_tailq_lookup(const char *name)
 	unsigned i;
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 
-	/*
-	 * the algorithm is not optimal (linear), but there are few
-	 * tailq's and this function should be called at init only
-	 */
+	if (name == NULL)
+		return NULL;
+
 	for (i = 0; i < RTE_MAX_TAILQ; i++) {
-		if (!strncmp(name, mcfg->tailq_head[i].qname, RTE_TAILQ_NAMESIZE-1))
+		if (rte_tailq_names[i] == NULL)
+			continue;
+		if (!strncmp(name, rte_tailq_names[i], RTE_TAILQ_NAMESIZE-1))
 			return &mcfg->tailq_head[i];
 	}
+
 	return NULL;
+}
+
+inline struct rte_tailq_head *
+rte_eal_tailq_lookup_by_idx(const unsigned tailq_idx)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
+	if (tailq_idx >= RTE_MAX_TAILQ) {
+		RTE_LOG(ERR, EAL, "%s(): No more room in config\n", __func__);
+		return NULL;
+	}
+
+	return &mcfg->tailq_head[tailq_idx];
 }
 
 struct rte_tailq_head *
 rte_eal_tailq_reserve(const char *name)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	return rte_eal_tailq_lookup(name);
+}
 
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
-		return rte_eal_tailq_lookup(name);
+inline struct rte_tailq_head *
+rte_eal_tailq_reserve_by_idx(const unsigned tailq_idx)
+{
+	return rte_eal_tailq_lookup_by_idx(tailq_idx);
+}
 
-	if (tailq_idx == RTE_MAX_TAILQ){
-		RTE_LOG(ERR, EAL, "%s(): No more room in config\n", __func__);
-		return NULL;
+void
+rte_dump_tailq(void)
+{
+	struct rte_mem_config *mcfg;
+	unsigned i = 0;
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+
+	for (i=0; i < RTE_MAX_TAILQ; i++) {
+		const struct rte_tailq_head *tailq = &mcfg->tailq_head[i];
+		const struct rte_dummy_head *head = &tailq->tailq_head;
+
+		printf("Tailq %o: qname:<%s>, tqh_first:%p, tqh_last:%p\n", i,
+		       (rte_tailq_names[i] != NULL ? rte_tailq_names[i]:"nil"),
+		       head->tqh_first, head->tqh_last);
 	}
-
-	/* zone already exist */
-	if (rte_eal_tailq_lookup(name) != NULL) {
-		RTE_LOG(DEBUG, EAL, "%s(): tailq <%s> already exists\n",
-			__func__, name);
-		return NULL;
-	}
-
-	rte_snprintf(mcfg->tailq_head[tailq_idx].qname, RTE_TAILQ_NAMESIZE,
-			"%.*s", (int)(RTE_TAILQ_NAMESIZE - 1), name);
-
-	return &mcfg->tailq_head[tailq_idx++];
 }
 
 int
 rte_eal_tailqs_init(void)
 {
 	unsigned i;
-	struct rte_config *cfg = rte_eal_get_configuration();
+	struct rte_mem_config *mcfg = NULL; 
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+	RTE_BUILD_BUG_ON(RTE_MAX_TAILQ < RTE_TAILQ_NUM);
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		mcfg = rte_eal_get_configuration()->mem_config;
 		for (i = 0; i < RTE_MAX_TAILQ; i++)
-			TAILQ_INIT(&cfg->mem_config->tailq_head[i].tailq_head);
+			TAILQ_INIT(&mcfg->tailq_head[i].tailq_head);
+	}
 
 	return 0;
 }
+

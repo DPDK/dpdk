@@ -49,6 +49,7 @@
 #include <rte_malloc.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
 #include <rte_errno.h>
 #include <rte_string_fns.h>
@@ -61,18 +62,6 @@
 
 
 TAILQ_HEAD(rte_hash_list, rte_hash);
-
-/* global list of hashes (used for debug/dump) */
-static struct rte_hash_list *hash_list;
-
-/* macro to prevent duplication of list creation check code */
-#define CHECK_HASH_LIST_CREATED() do { \
-	if (hash_list == NULL) \
-		if ((hash_list = RTE_TAILQ_RESERVE("RTE_HASH", rte_hash_list)) == NULL){ \
-			rte_errno = E_RTE_NO_TAILQ; \
-			return NULL; \
-		} \
-} while (0)
 
 /* Macro to enable/disable run-time checking of function parameters */
 #if defined(RTE_LIBRTE_HASH_DEBUG)
@@ -148,9 +137,13 @@ struct rte_hash *
 rte_hash_find_existing(const char *name)
 {
 	struct rte_hash *h;
+	struct rte_hash_list *hash_list;
 
 	/* check that we have an initialised tail queue */
-	CHECK_HASH_LIST_CREATED();
+	if ((hash_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_HASH, rte_hash_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return NULL;
+	}
 
 	TAILQ_FOREACH(h, hash_list, next) {
 		if (strncmp(name, h->name, RTE_HASH_NAMESIZE) == 0)
@@ -168,14 +161,14 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	uint32_t num_buckets, sig_bucket_size, key_size,
 		hash_tbl_size, sig_tbl_size, key_tbl_size, mem_size;
 	char hash_name[RTE_HASH_NAMESIZE];
-
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY){
-		rte_errno = E_RTE_SECONDARY;
-		return NULL;
-	}
+	struct rte_hash_list *hash_list;
 
 	/* check that we have an initialised tail queue */
-	CHECK_HASH_LIST_CREATED();
+	if ((hash_list = 
+	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_HASH, rte_hash_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return NULL;	
+	}
 
 	/* Check for valid parameters */
 	if ((params == NULL) ||
@@ -207,6 +200,14 @@ rte_hash_create(const struct rte_hash_parameters *params)
 
 	/* Total memory required for hash context */
 	mem_size = hash_tbl_size + sig_tbl_size + key_tbl_size;
+
+	/* guarantee there's no existing */
+	TAILQ_FOREACH(h, hash_list, next) {
+		if (strncmp(params->name, h->name, RTE_HASH_NAMESIZE) == 0)
+			break;
+	}
+	if (h != NULL)
+		return NULL;
 
 	/* Allocate as a memzone, or in normal memory space */
 #if defined(RTE_LIBRTE_HASH_USE_MEMZONE)
@@ -260,8 +261,9 @@ rte_hash_free(struct rte_hash *h)
 {
 	if (h == NULL)
 		return;
+
 #if !defined(RTE_LIBRTE_HASH_USE_MEMZONE)
-	TAILQ_REMOVE(hash_list, h, next);
+	RTE_EAL_TAILQ_REMOVE(RTE_TAILQ_HASH, rte_hash_list, h);
 	rte_free(h);
 #endif
 	/* No way to deallocate memzones */

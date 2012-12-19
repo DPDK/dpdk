@@ -37,9 +37,9 @@
 
 /**
  * @file
+ *  Here defines rte_tailq APIs for only internal use
  *
  */
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,7 +47,6 @@ extern "C" {
 
 #include <sys/queue.h>
 
-#ifndef __KERNEL__
 /** dummy structure type used by the rte_tailq APIs */
 struct rte_dummy {
 	TAILQ_ENTRY(rte_dummy) next; /**< Pointer entries for a tailq list */
@@ -67,11 +66,7 @@ TAILQ_HEAD(rte_dummy_head, rte_dummy);
  */
 struct rte_tailq_head {
 	struct rte_dummy_head tailq_head; /**< NOTE: must be first element */
-	char qname[RTE_TAILQ_NAMESIZE]; /**< Queue name */
 };
-#else
-struct rte_tailq_head {};
-#endif
 
 /**
  * Utility macro to make reserving a tailqueue for a particular struct easier.
@@ -93,10 +88,30 @@ struct rte_tailq_head {};
 	(struct struct_name *)(&rte_eal_tailq_reserve(name)->tailq_head)
 
 /**
+ * Utility macro to make reserving a tailqueue for a particular struct easier.
+ *
+ * @param idx
+ *   The tailq idx defined in rte_tail_t to be given to the tail queue.
+ *       - used by lookup to find it later
+ *
+ * @param struct_name
+ *   The name of the list type we are using. (Generally this is the same as the
+ *   first parameter passed to TAILQ_HEAD macro)
+ *
+ * @return
+ *   The return value from rte_eal_tailq_reserve, typecast to the appropriate
+ *   structure pointer type.
+ *   NULL on error, since the tailq_head is the first
+ *   element in the rte_tailq_head structure.
+ */
+#define RTE_TAILQ_RESERVE_BY_IDX(idx, struct_name) \
+	(struct struct_name *)(&rte_eal_tailq_reserve_by_idx(idx)->tailq_head)
+
+/**
  * Utility macro to make looking up a tailqueue for a particular struct easier.
  *
  * @param name
- *   The name of the tailq
+ *   The name of tailq
  *
  * @param struct_name
  *   The name of the list type we are using. (Generally this is the same as the
@@ -112,6 +127,25 @@ struct rte_tailq_head {};
 	(struct struct_name *)(&rte_eal_tailq_lookup(name)->tailq_head)
 
 /**
+ * Utility macro to make looking up a tailqueue for a particular struct easier.
+ *
+ * @param idx
+ *   The tailq idx defined in rte_tail_t to be given to the tail queue.
+ *
+ * @param struct_name
+ *   The name of the list type we are using. (Generally this is the same as the
+ *   first parameter passed to TAILQ_HEAD macro)
+ *
+ * @return
+ *   The return value from rte_eal_tailq_lookup, typecast to the appropriate
+ *   structure pointer type.
+ *   NULL on error, since the tailq_head is the first
+ *   element in the rte_tailq_head structure.
+ */
+#define RTE_TAILQ_LOOKUP_BY_IDX(idx, struct_name) \
+	(struct struct_name *)(&rte_eal_tailq_lookup_by_idx(idx)->tailq_head)
+
+/**
  * Reserve a slot in the tailq list for a particular tailq header
  * Note: this function, along with rte_tailq_lookup, is not multi-thread safe,
  * and both these functions should only be called from a single thread at a time
@@ -122,6 +156,23 @@ struct rte_tailq_head {};
  *   A pointer to the newly reserved tailq entry
  */
 struct rte_tailq_head *rte_eal_tailq_reserve(const char *name);
+
+/**
+ * Reserve a slot in the tailq list for a particular tailq header
+ * Note: this function, along with rte_tailq_lookup, is not multi-thread safe,
+ * and both these functions should only be called from a single thread at a time
+ *
+ * @param idx
+ *   The tailq idx defined in rte_tail_t to be given to the tail queue.
+ * @return
+ *   A pointer to the newly reserved tailq entry
+ */
+struct rte_tailq_head *rte_eal_tailq_reserve_by_idx(const unsigned idx);
+
+/**
+ * Dump tail queues to the console.
+ */
+void rte_dump_tailq(void);
 
 /**
  * Lookup for a tail queue.
@@ -137,6 +188,21 @@ struct rte_tailq_head *rte_eal_tailq_reserve(const char *name);
  *   A pointer to the tail queue head structure.
  */
 struct rte_tailq_head *rte_eal_tailq_lookup(const char *name);
+
+/**
+ * Lookup for a tail queue.
+ *
+ * Get a pointer to a tail queue header of an already reserved tail
+ * queue identified by the name given as an argument.
+ * Note: this function, along with rte_tailq_reserve, is not multi-thread safe,
+ * and both these functions should only be called from a single thread at a time
+ *
+ * @param idx
+ *   The tailq idx defined in rte_tail_t to be given to the tail queue.
+ * @return
+ *   A pointer to the tail queue head structure.
+ */
+struct rte_tailq_head *rte_eal_tailq_lookup_by_idx(const unsigned idx);
 
 #ifdef __cplusplus
 }

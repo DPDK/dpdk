@@ -40,6 +40,8 @@
 
 #include <cmdline_parse.h>
 
+#include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_string_fns.h>
 #include <rte_tailq.h>
 
@@ -51,7 +53,7 @@
 	return 1; \
 } while (0)
 
-#define DEFAULT_TAILQ "dummy_q0"
+#define DEFAULT_TAILQ (RTE_TAILQ_NUM)
 
 static struct rte_dummy d_elem;
 
@@ -59,33 +61,31 @@ static int
 test_tailq_create(void)
 {
 	struct rte_dummy_head *d_head;
-	char name[RTE_TAILQ_NAMESIZE];
 	unsigned i;
 
 	/* create a first tailq and check its non-null */
-	d_head = RTE_TAILQ_RESERVE(DEFAULT_TAILQ, rte_dummy_head);
+	d_head = RTE_TAILQ_RESERVE_BY_IDX(DEFAULT_TAILQ, rte_dummy_head);
 	if (d_head == NULL)
-		do_return("Error allocating "DEFAULT_TAILQ"\n");
+		do_return("Error allocating dummy_q0\n");
 
 	/* check we can add an item to it
 	 */
 	TAILQ_INSERT_TAIL(d_head, &d_elem, next);
 
 	/* try allocating dummy_q0 again, and check for failure */
-	if (RTE_TAILQ_RESERVE(DEFAULT_TAILQ, rte_dummy_head) != NULL)
+	if (RTE_TAILQ_RESERVE_BY_IDX(DEFAULT_TAILQ, rte_dummy_head) == NULL)
 		do_return("Error, non-null result returned when attemption to "
 				"re-allocate a tailq\n");
 
 	/* now fill up the tailq slots available and check we get an error */
-	for (i = 1; i < RTE_MAX_TAILQ; i++){
-		rte_snprintf(name, sizeof(name), "dummy_q%u", i);
-		if ((d_head = RTE_TAILQ_RESERVE(name, rte_dummy_head)) == NULL)
+	for (i = RTE_TAILQ_NUM; i < RTE_MAX_TAILQ; i++){
+		if ((d_head = RTE_TAILQ_RESERVE_BY_IDX(i, rte_dummy_head)) == NULL)
 			break;
 	}
 
 	/* check that we had an error return before RTE_MAX_TAILQ */
-	if (i == RTE_MAX_TAILQ)
-		do_return("Error, we did not have a reservation failure as expected\n");
+	if (i != RTE_MAX_TAILQ)
+		do_return("Error, we did not have a reservation as expected\n");
 
 	return 0;
 }
@@ -97,7 +97,7 @@ test_tailq_lookup(void)
 	struct rte_dummy_head *d_head;
 	struct rte_dummy *d_ptr;
 
-	d_head = RTE_TAILQ_LOOKUP(DEFAULT_TAILQ, rte_dummy_head);
+	d_head = RTE_TAILQ_LOOKUP_BY_IDX(DEFAULT_TAILQ, rte_dummy_head);
 	if (d_head == NULL)
 		do_return("Error with tailq lookup\n");
 
@@ -107,7 +107,7 @@ test_tailq_lookup(void)
 					"expected element not found\n");
 
 	/* now try a bad/error lookup */
-	d_head = RTE_TAILQ_LOOKUP("does_not_exist_queue", rte_dummy_head);
+	d_head = RTE_TAILQ_LOOKUP_BY_IDX(RTE_MAX_TAILQ, rte_dummy_head);
 	if (d_head != NULL)
 		do_return("Error, lookup does not return NULL for bad tailq name\n");
 

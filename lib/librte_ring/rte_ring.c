@@ -79,6 +79,7 @@
 #include <rte_launch.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_atomic.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
@@ -89,9 +90,6 @@
 #include "rte_ring.h"
 
 TAILQ_HEAD(rte_ring_list, rte_ring);
-
-/* global list of ring (used for debug/dump) */
-static struct rte_ring_list *ring_list = NULL;
 
 /* true if x is a power of 2 */
 #define POWEROF2(x) ((((x)-1) & (x)) == 0)
@@ -106,6 +104,7 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	const struct rte_memzone *mz;
 	size_t ring_size;
 	int mz_flags = 0;
+	struct rte_ring_list* ring_list = NULL;
 
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_ring) &
@@ -122,11 +121,11 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 #endif
 
 	/* check that we have an initialised tail queue */
-	if (ring_list == NULL)
-		if ((ring_list = RTE_TAILQ_RESERVE("RTE_RING", rte_ring_list)) == NULL){
-			rte_errno = E_RTE_NO_TAILQ;
-			return NULL;
-		}
+	if ((ring_list = 
+	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_RING, rte_ring_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return NULL;	
+	}
 
 	/* count must be a power of 2 */
 	if (!POWEROF2(count)) {
@@ -142,27 +141,27 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	 * we are secondary process, the memzone_reserve function will set
 	 * rte_errno for us appropriately - hence no check in this this function */
 	mz = rte_memzone_reserve(mz_name, ring_size, socket_id, mz_flags);
-	if (mz == NULL) {
+	if (mz != NULL) {
+		r = mz->addr;
+
+		/* init the ring structure */
+		memset(r, 0, sizeof(*r));
+		rte_snprintf(r->name, sizeof(r->name), "%s", name);
+		r->flags = flags;
+		r->prod.watermark = count;
+		r->prod.sp_enqueue = !!(flags & RING_F_SP_ENQ);
+		r->cons.sc_dequeue = !!(flags & RING_F_SC_DEQ);
+		r->prod.size = r->cons.size = count;
+		r->prod.mask = r->cons.mask = count-1;
+		r->prod.head = r->cons.head = 0;
+		r->prod.tail = r->cons.tail = 0;
+
+		TAILQ_INSERT_TAIL(ring_list, r, next);
+	} else {
+		r = NULL;
 		RTE_LOG(ERR, RING, "Cannot reserve memory\n");
-		return NULL;
 	}
-
-	r = mz->addr;
-
-	/* init the ring structure */
-	memset(r, 0, sizeof(*r));
-	rte_snprintf(r->name, sizeof(r->name), "%s", name);
-	r->flags = flags;
-	r->prod.bulk_default = r->cons.bulk_default = 1;
-	r->prod.watermark = count;
-	r->prod.sp_enqueue = !!(flags & RING_F_SP_ENQ);
-	r->cons.sc_dequeue = !!(flags & RING_F_SC_DEQ);
-	r->prod.size = r->cons.size = count;
-	r->prod.mask = r->cons.mask = count-1;
-	r->prod.head = r->cons.head = 0;
-	r->prod.tail = r->cons.tail = 0;
-
-	TAILQ_INSERT_TAIL(ring_list, r, next);
+	
 	return r;
 }
 
@@ -244,13 +243,14 @@ void
 rte_ring_list_dump(void)
 {
 	const struct rte_ring *mp;
+	struct rte_ring_list *ring_list;
 
 	/* check that we have an initialised tail queue */
-	if (ring_list == NULL)
-		if ((ring_list = RTE_TAILQ_RESERVE("RTE_RING", rte_ring_list)) == NULL){
-			rte_errno = E_RTE_NO_TAILQ;
-			return;
-		}
+	if ((ring_list = 
+	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_RING, rte_ring_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return;	
+	}
 
 	TAILQ_FOREACH(mp, ring_list, next) {
 		rte_ring_dump(mp);
@@ -262,13 +262,14 @@ struct rte_ring *
 rte_ring_lookup(const char *name)
 {
 	struct rte_ring *r;
+	struct rte_ring_list *ring_list;
 
-	/* check that we have an initialised tail queue */
-	if (ring_list == NULL)
-		if ((ring_list = RTE_TAILQ_RESERVE("RTE_RING", rte_ring_list)) == NULL){
-			rte_errno = E_RTE_NO_TAILQ;
-			return NULL;
-		}
+	/* check that we have an initialized tail queue */
+	if ((ring_list = 
+	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_RING, rte_ring_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return NULL;	
+	}
 
 	TAILQ_FOREACH(r, ring_list, next) {
 		if (strncmp(name, r->name, RTE_RING_NAMESIZE) == 0)

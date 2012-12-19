@@ -59,6 +59,7 @@
 #include <rte_memzone.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_malloc.h>
@@ -724,7 +725,7 @@ rte_eal_pci_init(void)
 {
 	TAILQ_INIT(&driver_list);
 	TAILQ_INIT(&device_list);
-	uio_res_list = RTE_TAILQ_RESERVE("PCI_RESOURCE_LIST", uio_res_list);
+	uio_res_list = RTE_TAILQ_RESERVE_BY_IDX(RTE_TAILQ_PCI, uio_res_list);
 
 	/* for debug purposes, PCI can be disabled */
 	if (internal_config.no_pci)

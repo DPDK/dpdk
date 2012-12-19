@@ -44,6 +44,7 @@
 #include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_hash_crc.h>
+#include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
 #include <rte_common.h>
 #include <rte_per_lcore.h>
@@ -57,20 +58,6 @@
 #include "rte_hash_crc.h"
 
 TAILQ_HEAD(rte_fbk_hash_list, rte_fbk_hash_table);
-
-/* global list of fbk_hashes (used for debug/dump) */
-static struct rte_fbk_hash_list *fbk_hash_list = NULL;
-
-/* macro to prevent duplication of list creation check code */
-#define CHECK_FBK_HASH_LIST_CREATED() do { \
-	if (fbk_hash_list == NULL) \
-		if ((fbk_hash_list = RTE_TAILQ_RESERVE("RTE_FBK_HASH", \
-				rte_fbk_hash_list)) == NULL){ \
-			rte_errno = E_RTE_NO_TAILQ; \
-			return NULL; \
-		} \
-} while (0)
-
 
 /**
  * Performs a lookup for an existing hash table, and returns a pointer to
@@ -86,9 +73,14 @@ struct rte_fbk_hash_table *
 rte_fbk_hash_find_existing(const char *name)
 {
 	struct rte_fbk_hash_table *h;
+	struct rte_fbk_hash_list *fbk_hash_list;
 
 	/* check that we have an initialised tail queue */
-	CHECK_FBK_HASH_LIST_CREATED();
+	if ((fbk_hash_list = 
+	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_FBK_HASH, rte_fbk_hash_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return NULL;
+	}
 
 	TAILQ_FOREACH(h, fbk_hash_list, next) {
 		if (strncmp(name, h->name, RTE_FBK_HASH_NAMESIZE) == 0)
@@ -112,20 +104,19 @@ rte_fbk_hash_find_existing(const char *name)
 struct rte_fbk_hash_table *
 rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 {
-	struct rte_fbk_hash_table *ht;
+	struct rte_fbk_hash_table *ht = NULL;
 	char hash_name[RTE_FBK_HASH_NAMESIZE];
 	const uint32_t mem_size =
 			sizeof(*ht) + (sizeof(ht->t[0]) * params->entries);
 	uint32_t i;
-
-	/* check that we have access to create things in shared memory. */
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY){
-		rte_errno = E_RTE_SECONDARY;
-		return NULL;
-	}
+	struct rte_fbk_hash_list *fbk_hash_list;
 
 	/* check that we have an initialised tail queue */
-	CHECK_FBK_HASH_LIST_CREATED();
+	if ((fbk_hash_list = 
+	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_FBK_HASH, rte_fbk_hash_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return NULL;	
+	}
 
 	/* Error checking of parameters. */
 	if ((!rte_is_power_of_2(params->entries)) ||
@@ -140,6 +131,14 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 	}
 
 	rte_snprintf(hash_name, sizeof(hash_name), "FBK_%s", params->name);
+
+	/* guarantee there's no existing */
+	TAILQ_FOREACH(ht, fbk_hash_list, next) {
+		if (strncmp(params->name, ht->name, RTE_FBK_HASH_NAMESIZE) == 0)
+			break;
+	}
+	if (ht != NULL)
+		return NULL;
 
 	/* Allocate memory for table. */
 #if defined(RTE_LIBRTE_HASH_USE_MEMZONE)
@@ -198,9 +197,10 @@ rte_fbk_hash_free(struct rte_fbk_hash_table *ht)
 {
 	if (ht == NULL)
 		return;
+
 	/* No way to deallocate memzones - but can de-allocate from malloc */
 #if !defined(RTE_LIBRTE_HASH_USE_MEMZONE)
-	TAILQ_REMOVE(fbk_hash_list, ht, next);
+	RTE_EAL_TAILQ_REMOVE(RTE_TAILQ_FBK_HASH, rte_fbk_hash_list, ht);
 	rte_free(ht);
 #endif
 	RTE_SET_USED(ht);

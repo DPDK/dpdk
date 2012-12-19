@@ -49,6 +49,7 @@
 #include <rte_launch.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_branch_prediction.h>
@@ -60,8 +61,6 @@
 
 TAILQ_HEAD(rte_mempool_list, rte_mempool);
 
-/* global list of mempool (used for debug/dump) */
-static struct rte_mempool_list *mempool_list;
 
 /*
  * return the greatest common divisor between a and b (fast algorithm)
@@ -129,7 +128,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 {
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	char rg_name[RTE_RING_NAMESIZE];
-	struct rte_mempool *mp;
+	struct rte_mempool *mp = NULL;
 	struct rte_ring *r;
 	const struct rte_memzone *mz;
 	size_t mempool_size;
@@ -157,13 +156,11 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 #endif
 
 	/* check that we have an initialised tail queue */
-	if (mempool_list == NULL)
-		if ((mempool_list = RTE_TAILQ_RESERVE("RTE_MEMPOOL", \
-				rte_mempool_list)) == NULL){
-			rte_errno = E_RTE_NO_TAILQ;
-			return NULL;
-		}
-
+	if (RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL, rte_mempool_list) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return NULL;	
+	}
+	
 	/* asked cache too big */
 	if (cache_size > RTE_MEMPOOL_CACHE_MAX_SIZE){
 		rte_errno = EINVAL;
@@ -289,7 +286,8 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		obj = (char *)obj + elt_size + trailer_size;
 	}
 
-	TAILQ_INSERT_TAIL(mempool_list, mp, next);
+	RTE_EAL_TAILQ_INSERT_TAIL(RTE_TAILQ_MEMPOOL, rte_mempool_list, mp);
+
 	return mp;
 }
 
@@ -459,6 +457,13 @@ void
 rte_mempool_list_dump(void)
 {
 	const struct rte_mempool *mp = NULL;
+	struct rte_mempool_list *mempool_list;
+
+	if ((mempool_list = 
+	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL, rte_mempool_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return;	
+	}
 
 	TAILQ_FOREACH(mp, mempool_list, next) {
 		rte_mempool_dump(mp);
@@ -470,14 +475,13 @@ struct rte_mempool *
 rte_mempool_lookup(const char *name)
 {
 	struct rte_mempool *mp = NULL;
+	struct rte_mempool_list *mempool_list;
 
-	/* check that we have an initialised tail queue */
-	if (mempool_list == NULL)
-		if ((mempool_list = RTE_TAILQ_RESERVE("RTE_MEMPOOL", \
-				rte_mempool_list)) == NULL){
-			rte_errno = E_RTE_NO_TAILQ;
-			return NULL;
-		}
+	if ((mempool_list = 
+	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL, rte_mempool_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return NULL;
+	}
 
 	TAILQ_FOREACH(mp, mempool_list, next) {
 		if (strncmp(name, mp->name, RTE_MEMPOOL_NAMESIZE) == 0)
