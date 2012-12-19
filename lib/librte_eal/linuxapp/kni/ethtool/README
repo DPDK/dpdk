@@ -1,0 +1,101 @@
+..
+  BSD LICENSE
+
+  Copyright(c) 2010-2012 Intel Corporation. All rights reserved.
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without 
+  modification, are permitted provided that the following conditions 
+  are met:
+
+    * Redistributions of source code must retain the above copyright 
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright 
+      notice, this list of conditions and the following disclaimer in 
+      the documentation and/or other materials provided with the 
+      distribution.
+    * Neither the name of Intel Corporation nor the names of its 
+      contributors may be used to endorse or promote products derived 
+      from this software without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
+  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY 
+  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Description
+
+In order to support ethtool in Kernel NIC Interface, the standard Linux kernel
+drivers of ixgbe/igb are needed to be reused here. ixgbe-3.9.17 is the version
+modified from in kernel NIC interface kernel module to support ixgbe NIC, and
+igb-3.4.8 is the version modified from in kernel NIC interface kernel module to
+support igb NIC.
+
+The source code package of ixgbe can be downloaded from sourceforge.net as below.
+http://sourceforge.net/projects/e1000/files/ixgbe%20stable/
+Below source files are copied or modified from ixgbe.
+
+ixgbe_82598.h
+ixgbe_82599.c
+ixgbe_82599.h
+ixgbe_api.c
+ixgbe_api.h
+ixgbe_common.c
+ixgbe_common.h
+ixgbe_dcb.h
+ixgbe_ethtool.c
+ixgbe_fcoe.h
+ixgbe.h
+ixgbe_main.c
+ixgbe_mbx.h
+ixgbe_osdep.h
+ixgbe_phy.c
+ixgbe_phy.h
+ixgbe_sriov.h
+ixgbe_type.h
+kcompat.c
+kcompat.h
+
+The source code package of igb can be downloaded from sourceforge.net as below.
+http://sourceforge.net/projects/e1000/files/igb%20stable/
+Below source files are copied or modified from igb.
+
+e1000_82575.c
+e1000_82575.h
+e1000_api.c
+e1000_api.h
+e1000_defines.h
+e1000_hw.h
+e1000_mac.c
+e1000_mac.h
+e1000_manage.c
+e1000_manage.h
+e1000_mbx.c
+e1000_mbx.h
+e1000_nvm.c
+e1000_nvm.h
+e1000_osdep.h
+e1000_phy.c
+e1000_phy.h
+e1000_regs.h
+igb_ethtool.c
+igb.h
+igb_main.c
+igb_param.c
+igb_procfs.c
+igb_regtest.h
+igb_sysfs.c
+igb_vmdq.c
+igb_vmdq.h
+kcompat.c
+kcompat_ethtool.c
+kcompat.h
+

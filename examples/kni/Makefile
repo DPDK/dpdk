@@ -30,25 +30,27 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 
 
-include $(RTE_SDK)/mk/rte.vars.mk
-
-DIRS-$(CONFIG_RTE_LIBC) += libc
-DIRS-$(CONFIG_RTE_LIBRTE_EAL) += librte_eal
-DIRS-$(CONFIG_RTE_LIBRTE_MALLOC) += librte_malloc
-DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring
-DIRS-$(CONFIG_RTE_LIBRTE_MEMPOOL) += librte_mempool
-DIRS-$(CONFIG_RTE_LIBRTE_MBUF) += librte_mbuf
-DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += librte_timer
-DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
-DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ether
-DIRS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += librte_pmd_igb
-DIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += librte_pmd_ixgbe
-DIRS-$(CONFIG_RTE_LIBRTE_HASH) += librte_hash
-DIRS-$(CONFIG_RTE_LIBRTE_LPM) += librte_lpm
-DIRS-$(CONFIG_RTE_LIBRTE_NET) += librte_net
-
-ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
-DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
+ifeq ($(RTE_SDK),)
+$(error "Please define RTE_SDK environment variable")
 endif
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+# Default target, can be overriden by command line or environment
+RTE_TARGET ?= x86_64-default-linuxapp-gcc
+
+include $(RTE_SDK)/mk/rte.vars.mk
+
+ifneq ($(CONFIG_RTE_EXEC_ENV),"linuxapp")
+$(error This application can only operate in a linuxapp environment, \
+please change the definition of the RTE_TARGET environment variable)
+endif
+
+# binary name
+APP = kni
+
+# all source are stored in SRCS-y
+SRCS-y := main.c
+
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+include $(RTE_SDK)/mk/rte.extapp.mk

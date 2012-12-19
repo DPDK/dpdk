@@ -59,6 +59,12 @@ LDLIBS += -L$(RTE_SDK_BIN)/lib
 #
 ifeq ($(NO_AUTOLIBS),)
 
+ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
+ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
+LDLIBS += -lrte_kni
+endif
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_IGB_PMD),y)
 LDLIBS += -lrte_pmd_igb
 endif

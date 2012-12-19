@@ -32,23 +32,51 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBC) += libc
-DIRS-$(CONFIG_RTE_LIBRTE_EAL) += librte_eal
-DIRS-$(CONFIG_RTE_LIBRTE_MALLOC) += librte_malloc
-DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring
-DIRS-$(CONFIG_RTE_LIBRTE_MEMPOOL) += librte_mempool
-DIRS-$(CONFIG_RTE_LIBRTE_MBUF) += librte_mbuf
-DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += librte_timer
-DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
-DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ether
-DIRS-$(CONFIG_RTE_LIBRTE_IGB_PMD) += librte_pmd_igb
-DIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += librte_pmd_ixgbe
-DIRS-$(CONFIG_RTE_LIBRTE_HASH) += librte_hash
-DIRS-$(CONFIG_RTE_LIBRTE_LPM) += librte_lpm
-DIRS-$(CONFIG_RTE_LIBRTE_NET) += librte_net
+#
+# module name and path
+#
+MODULE = rte_kni
 
-ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
-DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
-endif
+#
+# CFLAGS
+#
+MODULE_CFLAGS += -I$(SRCDIR) --param max-inline-insns-single=50
+MODULE_CFLAGS += -I$(RTE_OUTPUT)/include -I$(SRCDIR)/ethtool/ixgbe -I$(SRCDIR)/ethtool/igb
+MODULE_CFLAGS += -Wall -Werror
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+# this lib needs main eal
+DEPDIRS-y += lib/librte_eal/linuxapp/eal
+
+#
+# all source are stored in SRCS-y
+#
+SRCS-y := ethtool/ixgbe/ixgbe_main.c
+SRCS-y += ethtool/ixgbe/ixgbe_api.c
+SRCS-y += ethtool/ixgbe/ixgbe_common.c
+SRCS-y += ethtool/ixgbe/ixgbe_ethtool.c
+SRCS-y += ethtool/ixgbe/ixgbe_82599.c
+SRCS-y += ethtool/ixgbe/ixgbe_82598.c
+SRCS-y += ethtool/ixgbe/ixgbe_x540.c
+SRCS-y += ethtool/ixgbe/ixgbe_phy.c
+SRCS-y += ethtool/ixgbe/kcompat.c
+
+SRCS-y += ethtool/igb/e1000_82575.c
+SRCS-y += ethtool/igb/e1000_api.c
+SRCS-y += ethtool/igb/e1000_mac.c
+SRCS-y += ethtool/igb/e1000_manage.c
+SRCS-y += ethtool/igb/e1000_mbx.c
+SRCS-y += ethtool/igb/e1000_nvm.c
+SRCS-y += ethtool/igb/e1000_phy.c
+SRCS-y += ethtool/igb/igb_ethtool.c
+SRCS-y += ethtool/igb/igb_main.c
+SRCS-y += ethtool/igb/igb_param.c
+SRCS-y += ethtool/igb/igb_procfs.c
+SRCS-y += ethtool/igb/igb_sysfs.c
+SRCS-y += ethtool/igb/igb_vmdq.c
+#SRCS-y += ethtool/igb/kcompat.c
+
+SRCS-y += kni_misc.c
+SRCS-y += kni_net.c
+SRCS-y += kni_ethtool.c
+
+include $(RTE_SDK)/mk/rte.module.mk

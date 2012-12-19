@@ -34,5 +34,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += igb_uio
 DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal
+DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += kni
 
 include $(RTE_SDK)/mk/rte.subdir.mk
