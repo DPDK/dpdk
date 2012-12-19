@@ -203,6 +203,14 @@ struct rte_eth_stats {
 	/**< Total number of successfully transmitted queue bytes. */
 	uint64_t q_errors[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	/**< Total number of queue packets received that are dropped. */
+	uint64_t ilbpackets;
+	/**< Total number of good packets received from loopback,VF Only */
+	uint64_t olbpackets;
+	/**< Total number of good packets transmitted to loopback,VF Only */
+	uint64_t ilbbytes;
+	/**< Total number of good bytes received from loopback,VF Only */
+	uint64_t olbbytes;
+	/**< Total number of good bytes transmitted to loopback,VF Only */
 };
 
 /**
