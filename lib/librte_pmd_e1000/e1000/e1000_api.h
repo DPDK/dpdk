@@ -36,12 +36,21 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "e1000_hw.h"
 
+extern void e1000_init_function_pointers_82542(struct e1000_hw *hw);
+extern void e1000_init_function_pointers_82543(struct e1000_hw *hw);
+extern void e1000_init_function_pointers_82540(struct e1000_hw *hw);
+extern void e1000_init_function_pointers_82571(struct e1000_hw *hw);
+extern void e1000_init_function_pointers_82541(struct e1000_hw *hw);
+extern void e1000_init_function_pointers_80003es2lan(struct e1000_hw *hw);
+extern void e1000_init_function_pointers_ich8lan(struct e1000_hw *hw);
 extern void    e1000_init_function_pointers_82575(struct e1000_hw *hw);
 extern void    e1000_rx_fifo_flush_82575(struct e1000_hw *hw);
 extern void    e1000_init_function_pointers_vf(struct e1000_hw *hw);
 extern void    e1000_power_up_fiber_serdes_link(struct e1000_hw *hw);
 extern void    e1000_shutdown_fiber_serdes_link(struct e1000_hw *hw);
+extern void e1000_init_function_pointers_i210(struct e1000_hw *hw);
 
+s32 e1000_set_obff_timer(struct e1000_hw *hw, u32 itr);
 s32  e1000_set_mac_type(struct e1000_hw *hw);
 s32  e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device);
 s32  e1000_init_mac_params(struct e1000_hw *hw);
@@ -81,6 +90,7 @@ s32 e1000_write_8bit_ctrl_reg(struct e1000_hw *hw, u32 reg, u32 offset,
 s32  e1000_get_phy_info(struct e1000_hw *hw);
 void e1000_release_phy(struct e1000_hw *hw);
 s32  e1000_acquire_phy(struct e1000_hw *hw);
+s32  e1000_cfg_on_link_up(struct e1000_hw *hw);
 s32  e1000_phy_hw_reset(struct e1000_hw *hw);
 s32  e1000_phy_commit(struct e1000_hw *hw);
 void e1000_power_up_phy(struct e1000_hw *hw);
@@ -106,6 +116,9 @@ s32 e1000_mng_host_if_write(struct e1000_hw *hw, u8 *buffer, u16 length,
 s32  e1000_mng_write_cmd_header(struct e1000_hw *hw,
                                 struct e1000_host_mng_command_header *hdr);
 s32 e1000_mng_write_dhcp_info(struct e1000_hw *hw, u8 *buffer, u16 length);
+u32  e1000_translate_register_82542(u32 reg);
+
+
 
 /*
  * TBI_ACCEPT macro definition:
@@ -149,3 +162,6 @@ s32 e1000_mng_write_dhcp_info(struct e1000_hw *hw, u8 *buffer, u16 length);
           (((length) > min_frame_size) && \
            ((length) <= (max_frame_size + VLAN_TAG_SIZE + 1)))))
 
+#define E1000_MAX(a, b) ((a) > (b) ? (a) : (b))
+#define E1000_DIVIDE_ROUND_UP(a, b)	(((a) + (b) - 1) / (b)) /* ceil(a/b) */
+#endif /* _E1000_API_H_ */

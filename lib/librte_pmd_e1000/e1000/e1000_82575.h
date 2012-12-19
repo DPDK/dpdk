@@ -488,4 +488,23 @@ void e1000_rlpml_set_vf(struct e1000_hw *, u16);
 s32 e1000_promisc_set_vf(struct e1000_hw *, enum e1000_promisc_type type);
 u16 e1000_rxpbs_adjust_82580(u32 data);
 s32 e1000_set_eee_i350(struct e1000_hw *);
+
+/* I2C SDA and SCL timing parameters for standard mode */
+#define E1000_I2C_T_HD_STA	4
+#define E1000_I2C_T_LOW		5
+#define E1000_I2C_T_HIGH	4
+#define E1000_I2C_T_SU_STA	5
+#define E1000_I2C_T_HD_DATA	5
+#define E1000_I2C_T_SU_DATA	1
+#define E1000_I2C_T_RISE	1
+#define E1000_I2C_T_FALL	1
+#define E1000_I2C_T_SU_STO	4
+#define E1000_I2C_T_BUF		5
+
+s32 e1000_set_i2c_bb(struct e1000_hw *hw);
+s32 e1000_read_i2c_byte_generic(struct e1000_hw *hw, u8 byte_offset,
+				u8 dev_addr, u8 *data);
+s32 e1000_write_i2c_byte_generic(struct e1000_hw *hw, u8 byte_offset,
+				 u8 dev_addr, u8 data);
+void e1000_i2c_bus_clear(struct e1000_hw *hw);
 #endif /* _E1000_82575_H_ */

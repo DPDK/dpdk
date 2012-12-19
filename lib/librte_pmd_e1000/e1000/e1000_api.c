@@ -154,6 +154,140 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	DEBUGFUNC("e1000_set_mac_type");
 
 	switch (hw->device_id) {
+	case E1000_DEV_ID_82542:
+		mac->type = e1000_82542;
+		break;
+	case E1000_DEV_ID_82543GC_FIBER:
+	case E1000_DEV_ID_82543GC_COPPER:
+		mac->type = e1000_82543;
+		break;
+	case E1000_DEV_ID_82544EI_COPPER:
+	case E1000_DEV_ID_82544EI_FIBER:
+	case E1000_DEV_ID_82544GC_COPPER:
+	case E1000_DEV_ID_82544GC_LOM:
+		mac->type = e1000_82544;
+		break;
+	case E1000_DEV_ID_82540EM:
+	case E1000_DEV_ID_82540EM_LOM:
+	case E1000_DEV_ID_82540EP:
+	case E1000_DEV_ID_82540EP_LOM:
+	case E1000_DEV_ID_82540EP_LP:
+		mac->type = e1000_82540;
+		break;
+	case E1000_DEV_ID_82545EM_COPPER:
+	case E1000_DEV_ID_82545EM_FIBER:
+		mac->type = e1000_82545;
+		break;
+	case E1000_DEV_ID_82545GM_COPPER:
+	case E1000_DEV_ID_82545GM_FIBER:
+	case E1000_DEV_ID_82545GM_SERDES:
+		mac->type = e1000_82545_rev_3;
+		break;
+	case E1000_DEV_ID_82546EB_COPPER:
+	case E1000_DEV_ID_82546EB_FIBER:
+	case E1000_DEV_ID_82546EB_QUAD_COPPER:
+		mac->type = e1000_82546;
+		break;
+	case E1000_DEV_ID_82546GB_COPPER:
+	case E1000_DEV_ID_82546GB_FIBER:
+	case E1000_DEV_ID_82546GB_SERDES:
+	case E1000_DEV_ID_82546GB_PCIE:
+	case E1000_DEV_ID_82546GB_QUAD_COPPER:
+	case E1000_DEV_ID_82546GB_QUAD_COPPER_KSP3:
+		mac->type = e1000_82546_rev_3;
+		break;
+	case E1000_DEV_ID_82541EI:
+	case E1000_DEV_ID_82541EI_MOBILE:
+	case E1000_DEV_ID_82541ER_LOM:
+		mac->type = e1000_82541;
+		break;
+	case E1000_DEV_ID_82541ER:
+	case E1000_DEV_ID_82541GI:
+	case E1000_DEV_ID_82541GI_LF:
+	case E1000_DEV_ID_82541GI_MOBILE:
+		mac->type = e1000_82541_rev_2;
+		break;
+	case E1000_DEV_ID_82547EI:
+	case E1000_DEV_ID_82547EI_MOBILE:
+		mac->type = e1000_82547;
+		break;
+	case E1000_DEV_ID_82547GI:
+		mac->type = e1000_82547_rev_2;
+		break;
+	case E1000_DEV_ID_82571EB_COPPER:
+	case E1000_DEV_ID_82571EB_FIBER:
+	case E1000_DEV_ID_82571EB_SERDES:
+	case E1000_DEV_ID_82571EB_SERDES_DUAL:
+	case E1000_DEV_ID_82571EB_SERDES_QUAD:
+	case E1000_DEV_ID_82571EB_QUAD_COPPER:
+	case E1000_DEV_ID_82571PT_QUAD_COPPER:
+	case E1000_DEV_ID_82571EB_QUAD_FIBER:
+	case E1000_DEV_ID_82571EB_QUAD_COPPER_LP:
+		mac->type = e1000_82571;
+		break;
+	case E1000_DEV_ID_82572EI:
+	case E1000_DEV_ID_82572EI_COPPER:
+	case E1000_DEV_ID_82572EI_FIBER:
+	case E1000_DEV_ID_82572EI_SERDES:
+		mac->type = e1000_82572;
+		break;
+	case E1000_DEV_ID_82573E:
+	case E1000_DEV_ID_82573E_IAMT:
+	case E1000_DEV_ID_82573L:
+		mac->type = e1000_82573;
+		break;
+	case E1000_DEV_ID_82574L:
+	case E1000_DEV_ID_82574LA:
+		mac->type = e1000_82574;
+		break;
+	case E1000_DEV_ID_82583V:
+		mac->type = e1000_82583;
+		break;
+	case E1000_DEV_ID_80003ES2LAN_COPPER_DPT:
+	case E1000_DEV_ID_80003ES2LAN_SERDES_DPT:
+	case E1000_DEV_ID_80003ES2LAN_COPPER_SPT:
+	case E1000_DEV_ID_80003ES2LAN_SERDES_SPT:
+		mac->type = e1000_80003es2lan;
+		break;
+	case E1000_DEV_ID_ICH8_IFE:
+	case E1000_DEV_ID_ICH8_IFE_GT:
+	case E1000_DEV_ID_ICH8_IFE_G:
+	case E1000_DEV_ID_ICH8_IGP_M:
+	case E1000_DEV_ID_ICH8_IGP_M_AMT:
+	case E1000_DEV_ID_ICH8_IGP_AMT:
+	case E1000_DEV_ID_ICH8_IGP_C:
+	case E1000_DEV_ID_ICH8_82567V_3:
+		mac->type = e1000_ich8lan;
+		break;
+	case E1000_DEV_ID_ICH9_IFE:
+	case E1000_DEV_ID_ICH9_IFE_GT:
+	case E1000_DEV_ID_ICH9_IFE_G:
+	case E1000_DEV_ID_ICH9_IGP_M:
+	case E1000_DEV_ID_ICH9_IGP_M_AMT:
+	case E1000_DEV_ID_ICH9_IGP_M_V:
+	case E1000_DEV_ID_ICH9_IGP_AMT:
+	case E1000_DEV_ID_ICH9_BM:
+	case E1000_DEV_ID_ICH9_IGP_C:
+	case E1000_DEV_ID_ICH10_R_BM_LM:
+	case E1000_DEV_ID_ICH10_R_BM_LF:
+	case E1000_DEV_ID_ICH10_R_BM_V:
+		mac->type = e1000_ich9lan;
+		break;
+	case E1000_DEV_ID_ICH10_D_BM_LM:
+	case E1000_DEV_ID_ICH10_D_BM_LF:
+	case E1000_DEV_ID_ICH10_D_BM_V:
+		mac->type = e1000_ich10lan;
+		break;
+	case E1000_DEV_ID_PCH_D_HV_DM:
+	case E1000_DEV_ID_PCH_D_HV_DC:
+	case E1000_DEV_ID_PCH_M_HV_LM:
+	case E1000_DEV_ID_PCH_M_HV_LC:
+		mac->type = e1000_pchlan;
+		break;
+	case E1000_DEV_ID_PCH2_LV_LM:
+	case E1000_DEV_ID_PCH2_LV_V:
+		mac->type = e1000_pch2lan;
+		break;
 	case E1000_DEV_ID_82575EB_COPPER:
 	case E1000_DEV_ID_82575EB_FIBER_SERDES:
 	case E1000_DEV_ID_82575GB_QUAD_COPPER:
@@ -188,12 +322,26 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_I350_DA4:
 		mac->type = e1000_i350;
 		break;
+	case E1000_DEV_ID_I210_COPPER:
+	case E1000_DEV_ID_I210_COPPER_OEM1:
+	case E1000_DEV_ID_I210_COPPER_IT:
+	case E1000_DEV_ID_I210_FIBER:
+	case E1000_DEV_ID_I210_SERDES:
+	case E1000_DEV_ID_I210_SGMII:
+		mac->type = e1000_i210;
+		break;
+	case E1000_DEV_ID_I211_COPPER:
+	mac->type = e1000_i211;
+	break;
 	case E1000_DEV_ID_82576_VF:
+	case E1000_DEV_ID_82576_VF_HV:
 		mac->type = e1000_vfadapt;
 		break;
 	case E1000_DEV_ID_I350_VF:
+	case E1000_DEV_ID_I350_VF_HV:
 		mac->type = e1000_vfadapt_i350;
 		break;
+
 	default:
 		/* Should never have loaded on this device */
 		ret_val = -E1000_ERR_MAC_INIT;
@@ -247,11 +395,52 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 	 * the functions in that family.
 	 */
 	switch (hw->mac.type) {
+	case e1000_82542:
+		e1000_init_function_pointers_82542(hw);
+		break;
+	case e1000_82543:
+	case e1000_82544:
+		e1000_init_function_pointers_82543(hw);
+		break;
+	case e1000_82540:
+	case e1000_82545:
+	case e1000_82545_rev_3:
+	case e1000_82546:
+	case e1000_82546_rev_3:
+		e1000_init_function_pointers_82540(hw);
+		break;
+	case e1000_82541:
+	case e1000_82541_rev_2:
+	case e1000_82547:
+	case e1000_82547_rev_2:
+		e1000_init_function_pointers_82541(hw);
+		break;
+	case e1000_82571:
+	case e1000_82572:
+	case e1000_82573:
+	case e1000_82574:
+	case e1000_82583:
+		e1000_init_function_pointers_82571(hw);
+		break;
+	case e1000_80003es2lan:
+		e1000_init_function_pointers_80003es2lan(hw);
+		break;
+	case e1000_ich8lan:
+	case e1000_ich9lan:
+	case e1000_ich10lan:
+	case e1000_pchlan:
+	case e1000_pch2lan:
+		e1000_init_function_pointers_ich8lan(hw);
+		break;
 	case e1000_82575:
 	case e1000_82576:
 	case e1000_82580:
 	case e1000_i350:
 		e1000_init_function_pointers_82575(hw);
+		break;
+	case e1000_i210:
+	case e1000_i211:
+		e1000_init_function_pointers_i210(hw);
 		break;
 	case e1000_vfadapt:
 		e1000_init_function_pointers_vf(hw);
@@ -815,6 +1004,18 @@ s32 e1000_acquire_phy(struct e1000_hw *hw)
 {
 	if (hw->phy.ops.acquire)
 		return hw->phy.ops.acquire(hw);
+
+	return E1000_SUCCESS;
+}
+
+/**
+ *  e1000_cfg_on_link_up - Configure PHY upon link up
+ *  @hw: pointer to the HW structure
+ **/
+s32 e1000_cfg_on_link_up(struct e1000_hw *hw)
+{
+	if (hw->phy.ops.cfg_on_link_up)
+		return hw->phy.ops.cfg_on_link_up(hw);
 
 	return E1000_SUCCESS;
 }

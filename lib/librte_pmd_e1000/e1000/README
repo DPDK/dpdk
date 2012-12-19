@@ -31,43 +31,10 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-Intel® IGB driver
-=================
-
-This directory contains code from the Intel® Network Adapter Driver for 82575/6
-and 82580-based Gigabit Network Connections under FreeBSD, version 2.2.3,
-dated 04/25/2011. This code is available from
-`http://downloadmirror.intel.com/15815/eng/igb-2.2.3.tar.gz`
-
-This driver is valid for the product(s) listed below
-
-* Intel® 82575EB Gigabit Ethernet Controller
-* Intel® 82576 Gigabit Ethernet Controller
-* Intel® 82580EB Gigabit Ethernet Controller
-* Intel® Ethernet Controller I350
-* Intel® Ethernet Server Adapter I340-F4
-* Intel® Ethernet Server Adapter I340-T4
-* Intel® Ethernet Server Adapter I350-F2
-* Intel® Ethernet Server Adapter I350-F4
-* Intel® Ethernet Server Adapter I350-T2
-* Intel® Ethernet Server Adapter I350-T4
-* Intel® Gigabit EF Dual Port Server Adapter
-* Intel® Gigabit ET Dual Port Server Adapter
-* Intel® Gigabit ET Quad Port Server Adapter
-* Intel® Gigabit ET2 Quad Port Server Adapter
-* Intel® Gigabit VT Quad Port Server Adapter
-
-
-Updating driver
-===============
-
-The following modifications have been made to this code to integrate it with the
-Intel® DPDK:
-
-
-e1000_osdep.h and e1000_osdep.c
--------------------------------
-
-The OS dependency layer has been extensively modified to support the drivers in
-the Intel® DPDK environment. It is expected that these files will not need to be
-changed on updating the driver.
+This directory contains source code of FreeBSD em & igb drivers of version
+cid-shared-code.2012.11.09 released by LAD. The sub-directory of lad/
+contains the original source package.
+Few changes to the original FreeBSD sources were made to:
+- Adopt it for PMD usage mode:
+	e1000_osdep.c
+	e1000_osdep.h

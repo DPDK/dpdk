@@ -53,6 +53,17 @@ e1000_read_pci_cfg(struct e1000_hw *hw, u32 reg, u16 *value)
 	return;
 }
 
+void
+e1000_pci_set_mwi(struct e1000_hw *hw)
+{
+}
+
+void
+e1000_pci_clear_mwi(struct e1000_hw *hw)
+{
+}
+
+
 /*
  * Read the PCI Express capabilities
  */

@@ -39,11 +39,18 @@ s32  e1000_null_read_reg(struct e1000_hw *hw, u32 offset, u16 *data);
 void e1000_null_phy_generic(struct e1000_hw *hw);
 s32  e1000_null_lplu_state(struct e1000_hw *hw, bool active);
 s32  e1000_null_write_reg(struct e1000_hw *hw, u32 offset, u16 data);
+s32  e1000_null_set_page(struct e1000_hw *hw, u16 data);
+s32 e1000_read_i2c_byte_null(struct e1000_hw *hw, u8 byte_offset,
+			     u8 dev_addr, u8 *data);
+s32 e1000_write_i2c_byte_null(struct e1000_hw *hw, u8 byte_offset,
+			      u8 dev_addr, u8 data);
 s32  e1000_check_downshift_generic(struct e1000_hw *hw);
 s32  e1000_check_polarity_m88(struct e1000_hw *hw);
 s32  e1000_check_polarity_igp(struct e1000_hw *hw);
 s32  e1000_check_polarity_ife(struct e1000_hw *hw);
 s32  e1000_check_reset_block_generic(struct e1000_hw *hw);
+s32  e1000_phy_setup_autoneg(struct e1000_hw *hw);
+s32  e1000_copper_link_autoneg(struct e1000_hw *hw);
 s32  e1000_copper_link_setup_igp(struct e1000_hw *hw);
 s32  e1000_copper_link_setup_m88(struct e1000_hw *hw);
 s32  e1000_copper_link_setup_m88_gen2(struct e1000_hw *hw);
@@ -64,6 +71,7 @@ s32  e1000_phy_hw_reset_generic(struct e1000_hw *hw);
 s32  e1000_phy_reset_dsp_generic(struct e1000_hw *hw);
 s32  e1000_read_kmrn_reg_generic(struct e1000_hw *hw, u32 offset, u16 *data);
 s32  e1000_read_kmrn_reg_locked(struct e1000_hw *hw, u32 offset, u16 *data);
+s32  e1000_set_page_igp(struct e1000_hw *hw, u16 page);
 s32  e1000_read_phy_reg_igp(struct e1000_hw *hw, u32 offset, u16 *data);
 s32  e1000_read_phy_reg_igp_locked(struct e1000_hw *hw, u32 offset, u16 *data);
 s32  e1000_read_phy_reg_m88(struct e1000_hw *hw, u32 offset, u16 *data);
@@ -81,19 +89,36 @@ s32  e1000_phy_has_link_generic(struct e1000_hw *hw, u32 iterations,
 s32  e1000_phy_init_script_igp3(struct e1000_hw *hw);
 enum e1000_phy_type e1000_get_phy_type_from_id(u32 phy_id);
 s32  e1000_determine_phy_address(struct e1000_hw *hw);
+s32  e1000_write_phy_reg_bm(struct e1000_hw *hw, u32 offset, u16 data);
+s32  e1000_read_phy_reg_bm(struct e1000_hw *hw, u32 offset, u16 *data);
+s32  e1000_enable_phy_wakeup_reg_access_bm(struct e1000_hw *hw, u16 *phy_reg);
+s32  e1000_disable_phy_wakeup_reg_access_bm(struct e1000_hw *hw, u16 *phy_reg);
+s32  e1000_read_phy_reg_bm2(struct e1000_hw *hw, u32 offset, u16 *data);
+s32  e1000_write_phy_reg_bm2(struct e1000_hw *hw, u32 offset, u16 data);
 void e1000_power_up_phy_copper(struct e1000_hw *hw);
 void e1000_power_down_phy_copper(struct e1000_hw *hw);
 s32  e1000_read_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 *data);
 s32  e1000_write_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_read_phy_reg_i2c(struct e1000_hw *hw, u32 offset, u16 *data);
 s32  e1000_write_phy_reg_i2c(struct e1000_hw *hw, u32 offset, u16 data);
+s32  e1000_read_sfp_data_byte(struct e1000_hw *hw, u16 offset, u8 *data);
+s32  e1000_write_sfp_data_byte(struct e1000_hw *hw, u16 offset, u8 data);
+s32  e1000_read_phy_reg_hv(struct e1000_hw *hw, u32 offset, u16 *data);
+s32  e1000_read_phy_reg_hv_locked(struct e1000_hw *hw, u32 offset, u16 *data);
+s32  e1000_read_phy_reg_page_hv(struct e1000_hw *hw, u32 offset, u16 *data);
+s32  e1000_write_phy_reg_hv(struct e1000_hw *hw, u32 offset, u16 data);
+s32  e1000_write_phy_reg_hv_locked(struct e1000_hw *hw, u32 offset, u16 data);
+s32  e1000_write_phy_reg_page_hv(struct e1000_hw *hw, u32 offset, u16 data);
+s32  e1000_link_stall_workaround_hv(struct e1000_hw *hw);
 s32  e1000_copper_link_setup_82577(struct e1000_hw *hw);
 s32  e1000_check_polarity_82577(struct e1000_hw *hw);
 s32  e1000_get_phy_info_82577(struct e1000_hw *hw);
 s32  e1000_phy_force_speed_duplex_82577(struct e1000_hw *hw);
 s32  e1000_get_cable_length_82577(struct e1000_hw *hw);
+s32  e1000_write_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 data);
+s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 
-#define E1000_MAX_PHY_ADDR                4
+#define E1000_MAX_PHY_ADDR		8
 
 /* IGP01E1000 Specific Registers */
 #define IGP01E1000_PHY_PORT_CONFIG        0x10 /* Port Config */
@@ -107,6 +132,41 @@ s32  e1000_get_cable_length_82577(struct e1000_hw *hw);
 #define BM_PHY_PAGE_SELECT                22   /* Page Select for BM */
 #define IGP_PAGE_SHIFT                    5
 #define PHY_REG_MASK                      0x1F
+
+/* GS40G - I210 PHY defines */
+#define GS40G_PAGE_SELECT		0x16
+#define GS40G_PAGE_SHIFT		16
+#define GS40G_OFFSET_MASK		0xFFFF
+#define GS40G_PAGE_2			0x20000
+#define GS40G_MAC_REG2			0x15
+#define GS40G_MAC_LB			0x4140
+#define GS40G_MAC_SPEED_1G		0X0006
+#define GS40G_COPPER_SPEC		0x0010
+#define GS40G_CS_POWER_DOWN		0x0002
+
+/* BM/HV Specific Registers */
+#define BM_PORT_CTRL_PAGE		769
+#define BM_PCIE_PAGE			770
+#define BM_WUC_PAGE			800
+#define BM_WUC_ADDRESS_OPCODE		0x11
+#define BM_WUC_DATA_OPCODE		0x12
+#define BM_WUC_ENABLE_PAGE		BM_PORT_CTRL_PAGE
+#define BM_WUC_ENABLE_REG		17
+#define BM_WUC_ENABLE_BIT		(1 << 2)
+#define BM_WUC_HOST_WU_BIT		(1 << 4)
+#define BM_WUC_ME_WU_BIT		(1 << 5)
+
+#define PHY_UPPER_SHIFT			21
+#define BM_PHY_REG(page, reg) \
+	(((reg) & MAX_PHY_REG_ADDRESS) |\
+	 (((page) & 0xFFFF) << PHY_PAGE_SHIFT) |\
+	 (((reg) & ~MAX_PHY_REG_ADDRESS) << (PHY_UPPER_SHIFT - PHY_PAGE_SHIFT)))
+#define BM_PHY_REG_PAGE(offset) \
+	((u16)(((offset) >> PHY_PAGE_SHIFT) & 0xFFFF))
+#define BM_PHY_REG_NUM(offset) \
+	((u16)(((offset) & MAX_PHY_REG_ADDRESS) |\
+	 (((offset) >> (PHY_UPPER_SHIFT - PHY_PAGE_SHIFT)) &\
+		~MAX_PHY_REG_ADDRESS)))
 
 #define HV_INTC_FC_PAGE_START             768
 #define I82578_ADDR_REG                   29
@@ -130,8 +190,9 @@ s32  e1000_get_cable_length_82577(struct e1000_hw *hw);
 #define I82577_PHY_STATUS2_SPEED_100MBPS  0x0100
 
 /* I82577 PHY Control 2 */
-#define I82577_PHY_CTRL2_AUTO_MDIX        0x0400
-#define I82577_PHY_CTRL2_FORCE_MDI_MDIX   0x0200
+#define I82577_PHY_CTRL2_MANUAL_MDIX		0x0200
+#define I82577_PHY_CTRL2_AUTO_MDI_MDIX		0x0400
+#define I82577_PHY_CTRL2_MDIX_CFG_MASK		0x0600
 
 /* I82577 PHY Diagnostics Status */
 #define I82577_DSTATUS_CABLE_LENGTH       0x03FC
@@ -142,6 +203,26 @@ s32  e1000_get_cable_length_82577(struct e1000_hw *hw);
 #define E1000_82580_PM_SPD                0x0001 /* Smart Power Down */
 #define E1000_82580_PM_D0_LPLU            0x0002 /* For D0a states */
 #define E1000_82580_PM_D3_LPLU            0x0004 /* For all other states */
+#define E1000_82580_PM_GO_LINKD		0x0020 /* Go Link Disconnect */
+
+/* BM PHY Copper Specific Control 1 */
+#define BM_CS_CTRL1			16
+#define BM_CS_CTRL1_ENERGY_DETECT	0x0300 /* Enable Energy Detect */
+
+/* BM PHY Copper Specific Status */
+#define BM_CS_STATUS			17
+#define BM_CS_STATUS_ENERGY_DETECT	0x0010 /* Energy Detect Status */
+#define BM_CS_STATUS_LINK_UP		0x0400
+#define BM_CS_STATUS_RESOLVED		0x0800
+#define BM_CS_STATUS_SPEED_MASK		0xC000
+#define BM_CS_STATUS_SPEED_1000		0x8000
+
+/* 82577 Mobile Phy Status Register */
+#define HV_M_STATUS			26
+#define HV_M_STATUS_AUTONEG_COMPLETE	0x1000
+#define HV_M_STATUS_SPEED_MASK		0x0300
+#define HV_M_STATUS_SPEED_1000		0x0200
+#define HV_M_STATUS_LINK_UP		0x0040
 
 #define IGP01E1000_PHY_PCS_INIT_REG       0x00B4
 #define IGP01E1000_PHY_POLARITY_MASK      0x0078
@@ -184,11 +265,21 @@ s32  e1000_get_cable_length_82577(struct e1000_hw *hw);
 #define E1000_KMRNCTRLSTA_OFFSET          0x001F0000
 #define E1000_KMRNCTRLSTA_OFFSET_SHIFT    16
 #define E1000_KMRNCTRLSTA_REN             0x00200000
+#define E1000_KMRNCTRLSTA_CTRL_OFFSET	0x1    /* Kumeran Control */
 #define E1000_KMRNCTRLSTA_DIAG_OFFSET     0x3    /* Kumeran Diagnostic */
 #define E1000_KMRNCTRLSTA_TIMEOUTS        0x4    /* Kumeran Timeouts */
 #define E1000_KMRNCTRLSTA_INBAND_PARAM    0x9    /* Kumeran InBand Parameters */
 #define E1000_KMRNCTRLSTA_IBIST_DISABLE   0x0200 /* Kumeran IBIST Disable */
 #define E1000_KMRNCTRLSTA_DIAG_NELPBK     0x1000 /* Nearend Loopback mode */
+#define E1000_KMRNCTRLSTA_K1_CONFIG	0x7
+#define E1000_KMRNCTRLSTA_K1_ENABLE	0x0002 /* enable K1 */
+#define E1000_KMRNCTRLSTA_UNBLOCK_RX	0x0004 /* unblock Kumeran Rx in K0/K1 */
+#define E1000_KMRNCTRLSTA_PLL_STOP_EN	0x0008 /* enable PLL stop in K1 mode */
+
+#define E1000_KMRNCTRLSTA_HD_CTRL	0x10   /* Kumeran HD Control */
+#define E1000_KMRNCTRLSTA_K0_CTRL	0x1E   /* Kumeran K0s Control */
+#define E1000_KMRNCTRLSTA_K0_GBE_EN	0x1000 /* ena K0s mode for 1G link */
+#define E1000_KMRNCTRLSTA_K0_100_EN	0x2000 /* ena K0s mode for 10/100 lnk */
 
 #define IFE_PHY_EXTENDED_STATUS_CONTROL 0x10
 #define IFE_PHY_SPECIAL_CONTROL     0x11 /* 100BaseTx PHY Special Control */
@@ -211,6 +302,30 @@ s32  e1000_get_cable_length_82577(struct e1000_hw *hw);
 /* IFE PHY MDIX Control */
 #define IFE_PMC_MDIX_STATUS      0x0020 /* 1=MDI-X, 0=MDI */
 #define IFE_PMC_FORCE_MDIX       0x0040 /* 1=force MDI-X, 0=force MDI */
-#define IFE_PMC_AUTO_MDIX        0x0080 /* 1=enable auto MDI/MDI-X, 0=disable */
+#define IFE_PMC_AUTO_MDIX		0x0080 /* 1=enable auto, 0=disable */
+
+/* SFP modules ID memory locations */
+#define E1000_SFF_IDENTIFIER_OFFSET	0x00
+#define E1000_SFF_IDENTIFIER_SFF	0x02
+#define E1000_SFF_IDENTIFIER_SFP	0x03
+
+#define E1000_SFF_ETH_FLAGS_OFFSET	0x06
+/* Flags for SFP modules compatible with ETH up to 1Gb */
+struct sfp_e1000_flags {
+	u8 e1000_base_sx:1;
+	u8 e1000_base_lx:1;
+	u8 e1000_base_cx:1;
+	u8 e1000_base_t:1;
+	u8 e100_base_lx:1;
+	u8 e100_base_fx:1;
+	u8 e10_base_bx10:1;
+	u8 e10_base_px:1;
+};
+
+/* Vendor OUIs: format of OUI is 0x[byte0][byte1][byte2][00] */
+#define E1000_SFF_VENDOR_OUI_TYCO	0x00407600
+#define E1000_SFF_VENDOR_OUI_FTL	0x00906500
+#define E1000_SFF_VENDOR_OUI_AVAGO	0x00176A00
+#define E1000_SFF_VENDOR_OUI_INTEL	0x001B2100
 
 #endif

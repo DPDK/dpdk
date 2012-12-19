@@ -42,6 +42,7 @@
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_log.h>
+#include <rte_debug.h>
 
 #include "../e1000_logs.h"
 
@@ -50,10 +51,14 @@
 #pragma warning(disable:2259) /* conversion may lose significant bits */
 #pragma warning(disable:869)  /* Parameter was never referenced */
 #pragma warning(disable:181)  /* Arg incompatible with format string */
+#pragma warning(disable:188)  /* enumerated type mixed with another type */
+#pragma warning(disable:1599) /* declaration hides variable */
+#pragma warning(disable:177)  /* declared but never referenced */
 #else
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wformat"
 #pragma GCC diagnostic ignored "-Wuninitialized"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #if (((__GNUC__) >= 4) && ((__GNUC_MINOR__) >= 7))
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
@@ -74,6 +79,14 @@
 
 #define FALSE			0
 #define TRUE			1
+
+#define	CMD_MEM_WRT_INVALIDATE	0x0010  /* BIT_4 */
+
+/* Mutex used in the shared code */
+#define E1000_MUTEX                     uintptr_t
+#define E1000_MUTEX_INIT(mutex)         (*(mutex) = 0)
+#define E1000_MUTEX_LOCK(mutex)         (*(mutex) = 1)
+#define E1000_MUTEX_UNLOCK(mutex)       (*(mutex) = 0)
 
 typedef uint64_t	u64;
 typedef uint32_t	u32;
@@ -125,6 +138,43 @@ static inline uint32_t e1000_read_addr(volatile void* addr)
 #define E1000_READ_REG_ARRAY_DWORD E1000_READ_REG_ARRAY
 #define E1000_WRITE_REG_ARRAY_DWORD E1000_WRITE_REG_ARRAY
 
+#define	E1000_ACCESS_PANIC(x, hw, reg, value) \
+	rte_panic("%s:%u\t" RTE_STR(x) "(%p, 0x%x, 0x%x)", \
+		__FILE__, __LINE__, (hw), (reg), (value))
+
+/*
+ * To be able to do IO write, we need to map IO BAR
+ * (bar 2/4 depending on device).
+ * Right now mapping multiple BARs is not supported by DPDK.
+ * Fortunatelly we need it only for legacy hw support.
+ */
+
+#define E1000_WRITE_REG_IO(hw, reg, value) \
+	E1000_WRITE_REG(hw, reg, value)
+
+/*
+ * Not implemented.
+ */
+
+#define E1000_READ_FLASH_REG(hw, reg) \
+	(E1000_ACCESS_PANIC(E1000_READ_FLASH_REG, hw, reg, 0), 0)
+
+#define E1000_READ_FLASH_REG16(hw, reg)  \
+	(E1000_ACCESS_PANIC(E1000_READ_FLASH_REG16, hw, reg, 0), 0)
+
+#define E1000_WRITE_FLASH_REG(hw, reg, value)  \
+	E1000_ACCESS_PANIC(E1000_WRITE_FLASH_REG, hw, reg, value)
+
+#define E1000_WRITE_FLASH_REG16(hw, reg, value) \
+	E1000_ACCESS_PANIC(E1000_WRITE_FLASH_REG16, hw, reg, value)
+
 #define STATIC static
+
+#ifndef ETH_ADDR_LEN
+#define ETH_ADDR_LEN                  6
+#endif
+
+#define false                         FALSE
+#define true                          TRUE
 
 #endif /* _E1000_OSDEP_H_ */

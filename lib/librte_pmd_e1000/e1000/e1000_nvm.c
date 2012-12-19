@@ -33,7 +33,6 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "e1000_api.h"
 
-static void e1000_stop_nvm(struct e1000_hw *hw);
 STATIC void e1000_reload_nvm_generic(struct e1000_hw *hw);
 
 /**
@@ -227,7 +226,6 @@ s32 e1000_poll_eerd_eewr_done(struct e1000_hw *hw, int ee_reg)
 {
 	u32 attempts = 100000;
 	u32 i, reg = 0;
-	s32 ret_val = -E1000_ERR_NVM;
 
 	DEBUGFUNC("e1000_poll_eerd_eewr_done");
 
@@ -237,15 +235,13 @@ s32 e1000_poll_eerd_eewr_done(struct e1000_hw *hw, int ee_reg)
 		else
 			reg = E1000_READ_REG(hw, E1000_EEWR);
 
-		if (reg & E1000_NVM_RW_REG_DONE) {
-			ret_val = E1000_SUCCESS;
-			break;
-		}
+		if (reg & E1000_NVM_RW_REG_DONE)
+			return E1000_SUCCESS;
 
 		usec_delay(5);
 	}
 
-	return ret_val;
+	return -E1000_ERR_NVM;
 }
 
 /**
@@ -260,7 +256,6 @@ s32 e1000_acquire_nvm_generic(struct e1000_hw *hw)
 {
 	u32 eecd = E1000_READ_REG(hw, E1000_EECD);
 	s32 timeout = E1000_NVM_GRANT_ATTEMPTS;
-	s32 ret_val = E1000_SUCCESS;
 
 	DEBUGFUNC("e1000_acquire_nvm_generic");
 
@@ -279,10 +274,10 @@ s32 e1000_acquire_nvm_generic(struct e1000_hw *hw)
 		eecd &= ~E1000_EECD_REQ;
 		E1000_WRITE_REG(hw, E1000_EECD, eecd);
 		DEBUGOUT("Could not acquire NVM grant\n");
-		ret_val = -E1000_ERR_NVM;
+		return -E1000_ERR_NVM;
 	}
 
-	return ret_val;
+	return E1000_SUCCESS;
 }
 
 /**
@@ -313,8 +308,7 @@ static void e1000_standby_nvm(struct e1000_hw *hw)
 		usec_delay(nvm->delay_usec);
 
 		e1000_lower_eec_clk(hw, &eecd);
-	} else
-	if (nvm->type == e1000_nvm_eeprom_spi) {
+	} else if (nvm->type == e1000_nvm_eeprom_spi) {
 		/* Toggle CS to flush commands */
 		eecd |= E1000_EECD_CS;
 		E1000_WRITE_REG(hw, E1000_EECD, eecd);
@@ -333,7 +327,7 @@ static void e1000_standby_nvm(struct e1000_hw *hw)
  *
  *  Terminates the current command by inverting the EEPROM's chip select pin.
  **/
-static void e1000_stop_nvm(struct e1000_hw *hw)
+void e1000_stop_nvm(struct e1000_hw *hw)
 {
 	u32 eecd;
 
@@ -382,7 +376,6 @@ static s32 e1000_ready_nvm_eeprom(struct e1000_hw *hw)
 {
 	struct e1000_nvm_info *nvm = &hw->nvm;
 	u32 eecd = E1000_READ_REG(hw, E1000_EECD);
-	s32 ret_val = E1000_SUCCESS;
 	u8 spi_stat_reg;
 
 	DEBUGFUNC("e1000_ready_nvm_eeprom");
@@ -394,13 +387,13 @@ static s32 e1000_ready_nvm_eeprom(struct e1000_hw *hw)
 		/* Set CS */
 		eecd |= E1000_EECD_CS;
 		E1000_WRITE_REG(hw, E1000_EECD, eecd);
-	} else
-	if (nvm->type == e1000_nvm_eeprom_spi) {
+	} else if (nvm->type == e1000_nvm_eeprom_spi) {
 		u16 timeout = NVM_MAX_RETRY_SPI;
 
 		/* Clear SK and CS */
 		eecd &= ~(E1000_EECD_CS | E1000_EECD_SK);
 		E1000_WRITE_REG(hw, E1000_EECD, eecd);
+		E1000_WRITE_FLUSH(hw);
 		usec_delay(1);
 
 		/*
@@ -423,13 +416,11 @@ static s32 e1000_ready_nvm_eeprom(struct e1000_hw *hw)
 
 		if (!timeout) {
 			DEBUGOUT("SPI NVM Status error\n");
-			ret_val = -E1000_ERR_NVM;
-			goto out;
+			return -E1000_ERR_NVM;
 		}
 	}
 
-out:
-	return ret_val;
+	return E1000_SUCCESS;
 }
 
 /**
@@ -458,13 +449,12 @@ s32 e1000_read_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 	if ((offset >= nvm->word_size) || (words > (nvm->word_size - offset)) ||
 	    (words == 0)) {
 		DEBUGOUT("nvm parameter(s) out of bounds\n");
-		ret_val = -E1000_ERR_NVM;
-		goto out;
+		return -E1000_ERR_NVM;
 	}
 
 	ret_val = nvm->ops.acquire(hw);
 	if (ret_val)
-		goto out;
+		return ret_val;
 
 	ret_val = e1000_ready_nvm_eeprom(hw);
 	if (ret_val)
@@ -492,7 +482,6 @@ s32 e1000_read_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 release:
 	nvm->ops.release(hw);
 
-out:
 	return ret_val;
 }
 
@@ -522,13 +511,12 @@ s32 e1000_read_nvm_microwire(struct e1000_hw *hw, u16 offset, u16 words,
 	if ((offset >= nvm->word_size) || (words > (nvm->word_size - offset)) ||
 	    (words == 0)) {
 		DEBUGOUT("nvm parameter(s) out of bounds\n");
-		ret_val = -E1000_ERR_NVM;
-		goto out;
+		return -E1000_ERR_NVM;
 	}
 
 	ret_val = nvm->ops.acquire(hw);
 	if (ret_val)
-		goto out;
+		return ret_val;
 
 	ret_val = e1000_ready_nvm_eeprom(hw);
 	if (ret_val)
@@ -551,7 +539,6 @@ s32 e1000_read_nvm_microwire(struct e1000_hw *hw, u16 offset, u16 words,
 release:
 	nvm->ops.release(hw);
 
-out:
 	return ret_val;
 }
 
@@ -579,8 +566,7 @@ s32 e1000_read_nvm_eerd(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 	if ((offset >= nvm->word_size) || (words > (nvm->word_size - offset)) ||
 	    (words == 0)) {
 		DEBUGOUT("nvm parameter(s) out of bounds\n");
-		ret_val = -E1000_ERR_NVM;
-		goto out;
+		return -E1000_ERR_NVM;
 	}
 
 	for (i = 0; i < words; i++) {
@@ -596,7 +582,6 @@ s32 e1000_read_nvm_eerd(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 		           E1000_NVM_RW_REG_DATA);
 	}
 
-out:
 	return ret_val;
 }
 
@@ -615,7 +600,7 @@ out:
 s32 e1000_write_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 {
 	struct e1000_nvm_info *nvm = &hw->nvm;
-	s32 ret_val;
+	s32 ret_val = -E1000_ERR_NVM;
 	u16 widx = 0;
 
 	DEBUGFUNC("e1000_write_nvm_spi");
@@ -627,20 +612,21 @@ s32 e1000_write_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 	if ((offset >= nvm->word_size) || (words > (nvm->word_size - offset)) ||
 	    (words == 0)) {
 		DEBUGOUT("nvm parameter(s) out of bounds\n");
-		ret_val = -E1000_ERR_NVM;
-		goto out;
+		return -E1000_ERR_NVM;
 	}
-
-	ret_val = nvm->ops.acquire(hw);
-	if (ret_val)
-		goto out;
 
 	while (widx < words) {
 		u8 write_opcode = NVM_WRITE_OPCODE_SPI;
 
-		ret_val = e1000_ready_nvm_eeprom(hw);
+		ret_val = nvm->ops.acquire(hw);
 		if (ret_val)
-			goto release;
+			return ret_val;
+
+		ret_val = e1000_ready_nvm_eeprom(hw);
+		if (ret_val) {
+			nvm->ops.release(hw);
+			return ret_val;
+		}
 
 		e1000_standby_nvm(hw);
 
@@ -674,13 +660,10 @@ s32 e1000_write_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 				break;
 			}
 		}
+	msec_delay(10);
+	nvm->ops.release(hw);
 	}
 
-	msec_delay(10);
-release:
-	nvm->ops.release(hw);
-
-out:
 	return ret_val;
 }
 
@@ -714,13 +697,12 @@ s32 e1000_write_nvm_microwire(struct e1000_hw *hw, u16 offset, u16 words,
 	if ((offset >= nvm->word_size) || (words > (nvm->word_size - offset)) ||
 	    (words == 0)) {
 		DEBUGOUT("nvm parameter(s) out of bounds\n");
-		ret_val = -E1000_ERR_NVM;
-		goto out;
+		return -E1000_ERR_NVM;
 	}
 
 	ret_val = nvm->ops.acquire(hw);
 	if (ret_val)
-		goto out;
+		return ret_val;
 
 	ret_val = e1000_ready_nvm_eeprom(hw);
 	if (ret_val)
@@ -770,7 +752,6 @@ s32 e1000_write_nvm_microwire(struct e1000_hw *hw, u16 offset, u16 words,
 release:
 	nvm->ops.release(hw);
 
-out:
 	return ret_val;
 }
 
@@ -796,20 +777,19 @@ s32 e1000_read_pba_string_generic(struct e1000_hw *hw, u8 *pba_num,
 
 	if (pba_num == NULL) {
 		DEBUGOUT("PBA string buffer was null\n");
-		ret_val = E1000_ERR_INVALID_ARGUMENT;
-		goto out;
+		return -E1000_ERR_INVALID_ARGUMENT;
 	}
 
 	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_0, 1, &nvm_data);
 	if (ret_val) {
 		DEBUGOUT("NVM Read Error\n");
-		goto out;
+		return ret_val;
 	}
 
 	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_1, 1, &pba_ptr);
 	if (ret_val) {
 		DEBUGOUT("NVM Read Error\n");
-		goto out;
+		return ret_val;
 	}
 
 	/*
@@ -820,8 +800,8 @@ s32 e1000_read_pba_string_generic(struct e1000_hw *hw, u8 *pba_num,
 	if (nvm_data != NVM_PBA_PTR_GUARD) {
 		DEBUGOUT("NVM PBA number is not stored as string\n");
 
-		/* we will need 11 characters to store the PBA */
-		if (pba_num_size < 11) {
+		/* make sure callers buffer is big enough to store the PBA */
+		if (pba_num_size < E1000_PBANUM_LENGTH) {
 			DEBUGOUT("PBA string buffer too small\n");
 			return E1000_ERR_NO_SPACE;
 		}
@@ -849,25 +829,23 @@ s32 e1000_read_pba_string_generic(struct e1000_hw *hw, u8 *pba_num,
 				pba_num[offset] += 'A' - 0xA;
 		}
 
-		goto out;
+		return E1000_SUCCESS;
 	}
 
 	ret_val = hw->nvm.ops.read(hw, pba_ptr, 1, &length);
 	if (ret_val) {
 		DEBUGOUT("NVM Read Error\n");
-		goto out;
+		return ret_val;
 	}
 
 	if (length == 0xFFFF || length == 0) {
 		DEBUGOUT("NVM PBA number section invalid length\n");
-		ret_val = E1000_ERR_NVM_PBA_SECTION;
-		goto out;
+		return -E1000_ERR_NVM_PBA_SECTION;
 	}
 	/* check if pba_num buffer is big enough */
 	if (pba_num_size < (((u32)length * 2) - 1)) {
 		DEBUGOUT("PBA string buffer too small\n");
-		ret_val = E1000_ERR_NO_SPACE;
-		goto out;
+		return -E1000_ERR_NO_SPACE;
 	}
 
 	/* trim pba length from start of string */
@@ -878,15 +856,14 @@ s32 e1000_read_pba_string_generic(struct e1000_hw *hw, u8 *pba_num,
 		ret_val = hw->nvm.ops.read(hw, pba_ptr + offset, 1, &nvm_data);
 		if (ret_val) {
 			DEBUGOUT("NVM Read Error\n");
-			goto out;
+			return ret_val;
 		}
 		pba_num[offset * 2] = (u8)(nvm_data >> 8);
 		pba_num[(offset * 2) + 1] = (u8)(nvm_data & 0xFF);
 	}
 	pba_num[offset * 2] = '\0';
 
-out:
-	return ret_val;
+	return E1000_SUCCESS;
 }
 
 /**
@@ -908,38 +885,36 @@ s32 e1000_read_pba_length_generic(struct e1000_hw *hw, u32 *pba_num_size)
 
 	if (pba_num_size == NULL) {
 		DEBUGOUT("PBA buffer size was null\n");
-		ret_val = E1000_ERR_INVALID_ARGUMENT;
-		goto out;
+		return -E1000_ERR_INVALID_ARGUMENT;
 	}
 
 	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_0, 1, &nvm_data);
 	if (ret_val) {
 		DEBUGOUT("NVM Read Error\n");
-		goto out;
+		return ret_val;
 	}
 
 	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_1, 1, &pba_ptr);
 	if (ret_val) {
 		DEBUGOUT("NVM Read Error\n");
-		goto out;
+		return ret_val;
 	}
 
 	 /* if data is not ptr guard the PBA must be in legacy format */
 	if (nvm_data != NVM_PBA_PTR_GUARD) {
-		*pba_num_size = 11;
-		goto out;
+		*pba_num_size = E1000_PBANUM_LENGTH;
+		return E1000_SUCCESS;
 	}
 
 	ret_val = hw->nvm.ops.read(hw, pba_ptr, 1, &length);
 	if (ret_val) {
 		DEBUGOUT("NVM Read Error\n");
-		goto out;
+		return ret_val;
 	}
 
 	if (length == 0xFFFF || length == 0) {
 		DEBUGOUT("NVM PBA number section invalid length\n");
-		ret_val = E1000_ERR_NVM_PBA_SECTION;
-		goto out;
+		return -E1000_ERR_NVM_PBA_SECTION;
 	}
 
 	/*
@@ -948,8 +923,196 @@ s32 e1000_read_pba_length_generic(struct e1000_hw *hw, u32 *pba_num_size)
 	 */
 	*pba_num_size = ((u32)length * 2) - 1;
 
-out:
+	return E1000_SUCCESS;
+}
+
+
+/**
+ *  e1000_read_pba_raw
+ *  @hw: pointer to the HW structure
+ *  @eeprom_buf: optional pointer to EEPROM image
+ *  @eeprom_buf_size: size of EEPROM image in words
+ *  @max_pba_block_size: PBA block size limit
+ *  @pba: pointer to output PBA structure
+ *
+ *  Reads PBA from EEPROM image when eeprom_buf is not NULL.
+ *  Reads PBA from physical EEPROM device when eeprom_buf is NULL.
+ *
+ **/
+s32 e1000_read_pba_raw(struct e1000_hw *hw, u16 *eeprom_buf,
+		       u32 eeprom_buf_size, u16 max_pba_block_size,
+		       struct e1000_pba *pba)
+{
+	s32 ret_val;
+	u16 pba_block_size;
+
+	if (pba == NULL)
+		return -E1000_ERR_PARAM;
+
+	if (eeprom_buf == NULL) {
+		ret_val = e1000_read_nvm(hw, NVM_PBA_OFFSET_0, 2,
+					 &pba->word[0]);
+		if (ret_val)
+			return ret_val;
+	} else {
+		if (eeprom_buf_size > NVM_PBA_OFFSET_1) {
+			pba->word[0] = eeprom_buf[NVM_PBA_OFFSET_0];
+			pba->word[1] = eeprom_buf[NVM_PBA_OFFSET_1];
+		} else {
+			return -E1000_ERR_PARAM;
+		}
+	}
+
+	if (pba->word[0] == NVM_PBA_PTR_GUARD) {
+		if (pba->pba_block == NULL)
+			return -E1000_ERR_PARAM;
+
+		ret_val = e1000_get_pba_block_size(hw, eeprom_buf,
+						   eeprom_buf_size,
+						   &pba_block_size);
+		if (ret_val)
+			return ret_val;
+
+		if (pba_block_size > max_pba_block_size)
+			return -E1000_ERR_PARAM;
+
+		if (eeprom_buf == NULL) {
+			ret_val = e1000_read_nvm(hw, pba->word[1],
+						 pba_block_size,
+						 pba->pba_block);
+			if (ret_val)
+				return ret_val;
+		} else {
+			if (eeprom_buf_size > (u32)(pba->word[1] +
+					      pba->pba_block[0])) {
+				memcpy(pba->pba_block,
+				       &eeprom_buf[pba->word[1]],
+				       pba_block_size * sizeof(u16));
+			} else {
+				return -E1000_ERR_PARAM;
+			}
+		}
+	}
+
+	return E1000_SUCCESS;
+}
+
+/**
+ *  e1000_write_pba_raw
+ *  @hw: pointer to the HW structure
+ *  @eeprom_buf: optional pointer to EEPROM image
+ *  @eeprom_buf_size: size of EEPROM image in words
+ *  @pba: pointer to PBA structure
+ *
+ *  Writes PBA to EEPROM image when eeprom_buf is not NULL.
+ *  Writes PBA to physical EEPROM device when eeprom_buf is NULL.
+ *
+ **/
+s32 e1000_write_pba_raw(struct e1000_hw *hw, u16 *eeprom_buf,
+			u32 eeprom_buf_size, struct e1000_pba *pba)
+{
+	s32 ret_val;
+
+	if (pba == NULL)
+		return -E1000_ERR_PARAM;
+
+	if (eeprom_buf == NULL) {
+		ret_val = e1000_write_nvm(hw, NVM_PBA_OFFSET_0, 2,
+					  &pba->word[0]);
+		if (ret_val)
+			return ret_val;
+	} else {
+		if (eeprom_buf_size > NVM_PBA_OFFSET_1) {
+			eeprom_buf[NVM_PBA_OFFSET_0] = pba->word[0];
+			eeprom_buf[NVM_PBA_OFFSET_1] = pba->word[1];
+		} else {
+			return -E1000_ERR_PARAM;
+		}
+	}
+
+	if (pba->word[0] == NVM_PBA_PTR_GUARD) {
+		if (pba->pba_block == NULL)
+			return -E1000_ERR_PARAM;
+
+		if (eeprom_buf == NULL) {
+			ret_val = e1000_write_nvm(hw, pba->word[1],
+						  pba->pba_block[0],
+						  pba->pba_block);
+			if (ret_val)
+				return ret_val;
+		} else {
+			if (eeprom_buf_size > (u32)(pba->word[1] +
+					      pba->pba_block[0])) {
+				memcpy(&eeprom_buf[pba->word[1]],
+				       pba->pba_block,
+				       pba->pba_block[0] * sizeof(u16));
+			} else {
+				return -E1000_ERR_PARAM;
+			}
+		}
+	}
+
+	return E1000_SUCCESS;
+}
+
+/**
+ *  e1000_get_pba_block_size
+ *  @hw: pointer to the HW structure
+ *  @eeprom_buf: optional pointer to EEPROM image
+ *  @eeprom_buf_size: size of EEPROM image in words
+ *  @pba_data_size: pointer to output variable
+ *
+ *  Returns the size of the PBA block in words. Function operates on EEPROM
+ *  image if the eeprom_buf pointer is not NULL otherwise it accesses physical
+ *  EEPROM device.
+ *
+ **/
+s32 e1000_get_pba_block_size(struct e1000_hw *hw, u16 *eeprom_buf,
+			     u32 eeprom_buf_size, u16 *pba_block_size)
+{
+	s32 ret_val;
+	u16 pba_word[2];
+	u16 length;
+
+	DEBUGFUNC("e1000_get_pba_block_size");
+
+	if (eeprom_buf == NULL) {
+		ret_val = e1000_read_nvm(hw, NVM_PBA_OFFSET_0, 2, &pba_word[0]);
+		if (ret_val)
+			return ret_val;
+	} else {
+		if (eeprom_buf_size > NVM_PBA_OFFSET_1) {
+			pba_word[0] = eeprom_buf[NVM_PBA_OFFSET_0];
+			pba_word[1] = eeprom_buf[NVM_PBA_OFFSET_1];
+		} else {
+			return -E1000_ERR_PARAM;
+		}
+	}
+
+	if (pba_word[0] == NVM_PBA_PTR_GUARD) {
+		if (eeprom_buf == NULL) {
+			ret_val = e1000_read_nvm(hw, pba_word[1] + 0, 1,
+						 &length);
+			if (ret_val)
 	return ret_val;
+		} else {
+			if (eeprom_buf_size > pba_word[1])
+				length = eeprom_buf[pba_word[1] + 0];
+			else
+				return -E1000_ERR_PARAM;
+		}
+
+		if (length == 0xFFFF || length == 0)
+			return -E1000_ERR_NVM_PBA_SECTION;
+	} else {
+		/* PBA number in legacy format, there is no PBA Block. */
+		length = 0;
+	}
+
+	if (pba_block_size != NULL)
+		*pba_block_size = length;
+
+	return E1000_SUCCESS;
 }
 
 /**
@@ -990,7 +1153,7 @@ s32 e1000_read_mac_addr_generic(struct e1000_hw *hw)
  **/
 s32 e1000_validate_nvm_checksum_generic(struct e1000_hw *hw)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 	u16 checksum = 0;
 	u16 i, nvm_data;
 
@@ -1000,19 +1163,17 @@ s32 e1000_validate_nvm_checksum_generic(struct e1000_hw *hw)
 		ret_val = hw->nvm.ops.read(hw, i, 1, &nvm_data);
 		if (ret_val) {
 			DEBUGOUT("NVM Read Error\n");
-			goto out;
+			return ret_val;
 		}
 		checksum += nvm_data;
 	}
 
 	if (checksum != (u16) NVM_SUM) {
 		DEBUGOUT("NVM Checksum Invalid\n");
-		ret_val = -E1000_ERR_NVM;
-		goto out;
+		return -E1000_ERR_NVM;
 	}
 
-out:
-	return ret_val;
+	return E1000_SUCCESS;
 }
 
 /**
@@ -1035,7 +1196,7 @@ s32 e1000_update_nvm_checksum_generic(struct e1000_hw *hw)
 		ret_val = hw->nvm.ops.read(hw, i, 1, &nvm_data);
 		if (ret_val) {
 			DEBUGOUT("NVM Read Error while updating checksum.\n");
-			goto out;
+			return ret_val;
 		}
 		checksum += nvm_data;
 	}
@@ -1044,7 +1205,6 @@ s32 e1000_update_nvm_checksum_generic(struct e1000_hw *hw)
 	if (ret_val)
 		DEBUGOUT("NVM Write Error while updating checksum.\n");
 
-out:
 	return ret_val;
 }
 
@@ -1067,4 +1227,80 @@ STATIC void e1000_reload_nvm_generic(struct e1000_hw *hw)
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext);
 	E1000_WRITE_FLUSH(hw);
 }
+
+/**
+ *  e1000_get_fw_version - Get firmware version information
+ *  @hw: pointer to the HW structure
+ *  @fw_vers: pointer to output version structure
+ *
+ *  unsupported/not present features return 0 in version structure
+ **/
+void e1000_get_fw_version(struct e1000_hw *hw, struct e1000_fw_version *fw_vers)
+{
+	u16 eeprom_verh, eeprom_verl, fw_version;
+	u16 comb_verh, comb_verl, comb_offset;
+
+	memset(fw_vers, 0, sizeof(struct e1000_fw_version));
+
+	/* this code only applies to certain mac types */
+	switch (hw->mac.type) {
+	case e1000_i211:
+		e1000_read_invm_version(hw, fw_vers);
+		return;
+	case e1000_82575:
+	case e1000_82576:
+	case e1000_82580:
+	case e1000_i350:
+	case e1000_i210:
+		break;
+	default:
+		return;
+	}
+
+	/* basic eeprom version numbers */
+	hw->nvm.ops.read(hw, NVM_VERSION, 1, &fw_version);
+	fw_vers->eep_major = (fw_version & NVM_MAJOR_MASK) >> NVM_MAJOR_SHIFT;
+	fw_vers->eep_minor = (fw_version & NVM_MINOR_MASK);
+
+	/* etrack id */
+	hw->nvm.ops.read(hw, NVM_ETRACK_WORD, 1, &eeprom_verl);
+	hw->nvm.ops.read(hw, (NVM_ETRACK_WORD + 1), 1, &eeprom_verh);
+	fw_vers->etrack_id = (eeprom_verh << NVM_ETRACK_SHIFT) | eeprom_verl;
+
+	switch (hw->mac.type) {
+	case e1000_i210:
+	case e1000_i350:
+		/* find combo image version */
+		hw->nvm.ops.read(hw, NVM_COMB_VER_PTR, 1, &comb_offset);
+		if ((comb_offset != 0x0) &&
+		    (comb_offset != NVM_VER_INVALID)) {
+
+			hw->nvm.ops.read(hw, (NVM_COMB_VER_OFF + comb_offset
+					 + 1), 1, &comb_verh);
+			hw->nvm.ops.read(hw, (NVM_COMB_VER_OFF + comb_offset),
+					 1, &comb_verl);
+
+			/* get Option Rom version if it exists and is valid */
+			if ((comb_verh && comb_verl) &&
+			    ((comb_verh != NVM_VER_INVALID) &&
+			     (comb_verl != NVM_VER_INVALID))) {
+
+				fw_vers->or_valid = true;
+				fw_vers->or_major =
+					comb_verl >> NVM_COMB_VER_SHFT;
+				fw_vers->or_build =
+					(comb_verl << NVM_COMB_VER_SHFT)
+					| (comb_verh >> NVM_COMB_VER_SHFT);
+				fw_vers->or_patch =
+					comb_verh & NVM_COMB_VER_MASK;
+			}
+		}
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
 

@@ -373,6 +373,17 @@ STATIC u32 e1000_hash_mc_addr_vf(struct e1000_hw *hw, u8 *mc_addr)
 	return hash_value;
 }
 
+static void e1000_write_msg_read_ack(struct e1000_hw *hw,
+				     u32 *msg, u16 size)
+{
+	struct e1000_mbx_info *mbx = &hw->mbx;
+	u32 retmsg[E1000_VFMAILBOX_SIZE];
+	s32 retval = mbx->ops.write_posted(hw, msg, size, 0);
+
+	if (!retval)
+		mbx->ops.read_posted(hw, retmsg, E1000_VFMAILBOX_SIZE, 0);
+}
+
 /**
  *  e1000_update_mc_addr_list_vf - Update Multicast addresses
  *  @hw: pointer to the HW structure
@@ -385,7 +396,6 @@ STATIC u32 e1000_hash_mc_addr_vf(struct e1000_hw *hw, u8 *mc_addr)
 void e1000_update_mc_addr_list_vf(struct e1000_hw *hw,
                                   u8 *mc_addr_list, u32 mc_addr_count)
 {
-	struct e1000_mbx_info *mbx = &hw->mbx;
 	u32 msgbuf[E1000_VFMAILBOX_SIZE];
 	u16 *hash_list = (u16 *)&msgbuf[1];
 	u32 hash_value;
@@ -419,18 +429,17 @@ void e1000_update_mc_addr_list_vf(struct e1000_hw *hw,
 		mc_addr_list += ETH_ADDR_LEN;
 	}
 
-	mbx->ops.write_posted(hw, msgbuf, E1000_VFMAILBOX_SIZE, 0);
+	e1000_write_msg_read_ack(hw, msgbuf, E1000_VFMAILBOX_SIZE);
 }
 
 /**
  *  e1000_vfta_set_vf - Set/Unset vlan filter table address
  *  @hw: pointer to the HW structure
  *  @vid: determines the vfta register and bit to set/unset
- *  @set: if TRUE then set bit, else clear bit
+ *  @set: if true then set bit, else clear bit
  **/
 void e1000_vfta_set_vf(struct e1000_hw *hw, u16 vid, bool set)
 {
-	struct e1000_mbx_info *mbx = &hw->mbx;
 	u32 msgbuf[2];
 
 	msgbuf[0] = E1000_VF_SET_VLAN;
@@ -439,7 +448,7 @@ void e1000_vfta_set_vf(struct e1000_hw *hw, u16 vid, bool set)
 	if (set)
 		msgbuf[0] |= E1000_VF_SET_VLAN_ADD;
 
-	mbx->ops.write_posted(hw, msgbuf, 2, 0);
+	e1000_write_msg_read_ack(hw, msgbuf, 2);
 }
 
 /** e1000_rlpml_set_vf - Set the maximum receive packet length
@@ -448,13 +457,12 @@ void e1000_vfta_set_vf(struct e1000_hw *hw, u16 vid, bool set)
  **/
 void e1000_rlpml_set_vf(struct e1000_hw *hw, u16 max_size)
 {
-	struct e1000_mbx_info *mbx = &hw->mbx;
 	u32 msgbuf[2];
 
 	msgbuf[0] = E1000_VF_SET_LPE;
 	msgbuf[1] = max_size;
 
-	mbx->ops.write_posted(hw, msgbuf, 2, 0);
+	e1000_write_msg_read_ack(hw, msgbuf, 2);
 }
 
 /**
