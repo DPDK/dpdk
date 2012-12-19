@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2012 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2013 6WIND.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without 
@@ -75,6 +76,10 @@ static int is_blacklisted(struct rte_pci_device *dev)
  * If vendor/device ID match, call the devinit() function of all
  * registered driver for the given device. Return -1 if no driver is
  * found for this device.
+ * For drivers with the RTE_PCI_DRV_MULTIPLE flag enabled, register
+ * the same device multiple times until failure to do so.
+ * It is required for non-Intel NIC drivers provided by third-parties such
+ * as 6WIND.
  */
 static int
 pci_probe_all_drivers(struct rte_pci_device *dev)
@@ -83,8 +88,13 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 
 	dev->blacklisted = !!is_blacklisted(dev);
 	TAILQ_FOREACH(dr, &driver_list, next) {
-		if (rte_eal_pci_probe_one_driver(dr, dev) == 0)
-			return 0;
+		if (rte_eal_pci_probe_one_driver(dr, dev))
+			continue;
+		/* initialize subsequent driver instances for this device */
+		if (dr->drv_flags & RTE_PCI_DRV_MULTIPLE)
+			while (rte_eal_pci_probe_one_driver(dr, dev) == 0)
+				;
+		return 0;
 	}
 	return -1;
 }

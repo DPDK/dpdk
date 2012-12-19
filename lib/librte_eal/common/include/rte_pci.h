@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2012 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2013 6WIND.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without 
@@ -154,6 +155,8 @@ struct rte_pci_driver {
 
 /**< Device needs igb_uio kernel module */
 #define RTE_PCI_DRV_NEED_IGB_UIO 0x0001
+/**< Device driver must be registered several times until failure */
+#define RTE_PCI_DRV_MULTIPLE 0x0002
 
 /**
  * Probe the PCI bus for registered drivers.
