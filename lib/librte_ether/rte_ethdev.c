@@ -246,6 +246,82 @@ rte_eth_dev_count(void)
 	return (nb_ports);
 }
 
+static int
+rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
+{
+	uint16_t old_nb_queues = dev->data->nb_rx_queues;
+	void **rxq;
+	unsigned i;
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_release, -ENOTSUP);
+
+	if (dev->data->rx_queues == NULL) {
+		dev->data->rx_queues = rte_zmalloc("ethdev->rx_queues",
+				sizeof(dev->data->rx_queues[0]) * nb_queues,
+				CACHE_LINE_SIZE);
+		if (dev->data->rx_queues == NULL) {
+			dev->data->nb_rx_queues = 0;
+			return -(ENOMEM);
+		}
+	} else {
+		rxq = dev->data->rx_queues;
+
+		for (i = nb_queues; i < old_nb_queues; i++)
+			(*dev->dev_ops->rx_queue_release)(rxq[i]);
+		rxq = rte_realloc(rxq, sizeof(rxq[0]) * nb_queues,
+				CACHE_LINE_SIZE);
+		if (rxq == NULL)
+			return -(ENOMEM);
+
+		if (nb_queues > old_nb_queues)
+			memset(rxq + old_nb_queues, 0,
+				sizeof(rxq[0]) * (nb_queues - old_nb_queues));
+
+		dev->data->rx_queues = rxq;
+
+	}
+	dev->data->nb_rx_queues = nb_queues;
+	return (0);
+}
+
+static int
+rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
+{
+	uint16_t old_nb_queues = dev->data->nb_tx_queues;
+	void **txq;
+	unsigned i;
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_release, -ENOTSUP);
+
+	if (dev->data->tx_queues == NULL) {
+		dev->data->tx_queues = rte_zmalloc("ethdev->tx_queues",
+				sizeof(dev->data->tx_queues[0]) * nb_queues,
+				CACHE_LINE_SIZE);
+		if (dev->data->tx_queues == NULL) {
+			dev->data->nb_tx_queues = 0;
+			return -(ENOMEM);
+		}
+	} else {
+		txq = dev->data->tx_queues;
+
+		for (i = nb_queues; i < old_nb_queues; i++)
+			(*dev->dev_ops->tx_queue_release)(txq[i]);
+		txq = rte_realloc(txq, sizeof(txq[0]) * nb_queues,
+				CACHE_LINE_SIZE);
+		if (txq == NULL)
+			return -(ENOMEM);
+
+		if (nb_queues > old_nb_queues)
+			memset(txq + old_nb_queues, 0,
+				sizeof(txq[0]) * (nb_queues - old_nb_queues));
+
+		dev->data->tx_queues = txq;
+
+	}
+	dev->data->nb_tx_queues = nb_queues;
+	return (0);
+}
+
 int
 rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		      const struct rte_eth_conf *dev_conf)
@@ -314,6 +390,14 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				port_id,
 				(unsigned)dev_conf->rxmode.max_rx_pkt_len,
 				(unsigned)dev_info.max_rx_pktlen);
+			return (-EINVAL);
+		}
+		else if (dev_conf->rxmode.max_rx_pkt_len < ETHER_MIN_LEN) {
+			PMD_DEBUG_TRACE("ethdev port_id=%d max_rx_pkt_len %u"
+				" < min valid value %u\n",
+				port_id,
+				(unsigned)dev_conf->rxmode.max_rx_pkt_len,
+				(unsigned)ETHER_MIN_LEN);
 			return (-EINVAL);
 		}
 	} else
@@ -400,12 +484,34 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		}
 	}
 
-	diag = (*dev->dev_ops->dev_configure)(dev, nb_rx_q, nb_tx_q);
+	/*
+	 * Setup new number of RX/TX queues and reconfigure device.
+	 */
+	diag = rte_eth_dev_rx_queue_config(dev, nb_rx_q);
 	if (diag != 0) {
-		rte_free(dev->data->rx_queues);
-		rte_free(dev->data->tx_queues);
+		PMD_DEBUG_TRACE("port%d rte_eth_dev_rx_queue_config = %d\n",
+				port_id, diag);
+		return diag;
 	}
-	return diag;
+
+	diag = rte_eth_dev_tx_queue_config(dev, nb_tx_q);
+	if (diag != 0) {
+		PMD_DEBUG_TRACE("port%d rte_eth_dev_tx_queue_config = %d\n",
+				port_id, diag);
+		rte_eth_dev_rx_queue_config(dev, 0);
+		return diag;
+	}
+
+	diag = (*dev->dev_ops->dev_configure)(dev);
+	if (diag != 0) {
+		PMD_DEBUG_TRACE("port%d dev_configure = %d\n",
+				port_id, diag);
+		rte_eth_dev_rx_queue_config(dev, 0);
+		rte_eth_dev_tx_queue_config(dev, 0);
+		return diag;
+	}
+
+	return 0;
 }
 
 static void
@@ -597,7 +703,7 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 	 * in a multi-process setup*/
 	PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
-	if (port_id >= nb_ports) {
+	if (port_id >= RTE_MAX_ETHPORTS || port_id >= nb_ports) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
 		return (-EINVAL);
 	}

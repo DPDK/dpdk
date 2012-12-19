@@ -381,8 +381,19 @@ struct rte_eth_txmode {
 struct rte_eth_rxconf {
 	struct rte_eth_thresh rx_thresh; /**< RX ring threshold registers. */
 	uint16_t rx_free_thresh; /**< Drives the freeing of RX descriptors. */
+	uint8_t rx_drop_en; /**< Drop packets if no descriptors are available. */
 };
 
+#define ETH_TXQ_FLAGS_NOMULTSEGS 0x0001 /**< nb_segs=1 for all mbufs */
+#define ETH_TXQ_FLAGS_NOREFCOUNT 0x0002 /**< refcnt can be ignored */
+#define ETH_TXQ_FLAGS_NOMULTMEMP 0x0004 /**< all bufs come from same mempool */
+#define ETH_TXQ_FLAGS_NOVLANOFFL 0x0100 /**< disable VLAN offload */
+#define ETH_TXQ_FLAGS_NOXSUMSCTP 0x0200 /**< disable SCTP checksum offload */
+#define ETH_TXQ_FLAGS_NOXSUMUDP  0x0400 /**< disable UDP checksum offload */
+#define ETH_TXQ_FLAGS_NOXSUMTCP  0x0800 /**< disable TCP checksum offload */
+#define ETH_TXQ_FLAGS_NOOFFLOADS \
+		(ETH_TXQ_FLAGS_NOVLANOFFL | ETH_TXQ_FLAGS_NOXSUMSCTP | \
+		 ETH_TXQ_FLAGS_NOXSUMUDP  | ETH_TXQ_FLAGS_NOXSUMTCP)
 /**
  * A structure used to configure a TX ring of an Ethernet port.
  */
@@ -390,6 +401,7 @@ struct rte_eth_txconf {
 	struct rte_eth_thresh tx_thresh; /**< TX ring threshold registers. */
 	uint16_t tx_rs_thresh; /**< Drives the setting of RS bit on TXDs. */
 	uint16_t tx_free_thresh; /**< Drives the freeing of TX buffers. */
+	uint32_t txq_flags; /**< Set flags for the Tx queue */
 };
 
 /**
@@ -614,8 +626,6 @@ struct rte_eth_dev_info {
 };
 
 struct rte_eth_dev;
-struct igb_rx_queue;
-struct igb_tx_queue;
 
 struct rte_eth_dev_callback;
 /** @internal Structure to keep track of registered callbacks */
@@ -627,8 +637,7 @@ TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
  * structure associated with an Ethernet device.
  */
 
-typedef int  (*eth_dev_configure_t)(struct rte_eth_dev *dev, uint16_t nb_rx_q,
-				    uint16_t nb_tx_q);
+typedef int  (*eth_dev_configure_t)(struct rte_eth_dev *dev);
 /**< @internal Ethernet device configuration. */
 
 typedef int  (*eth_dev_start_t)(struct rte_eth_dev *dev);
@@ -688,17 +697,20 @@ typedef int (*eth_tx_queue_setup_t)(struct rte_eth_dev *dev,
 				    const struct rte_eth_txconf *tx_conf);
 /**< @internal Setup a transmit queue of an Ethernet device. */
 
+typedef void (*eth_queue_release_t)(void *queue);
+/**< @internal Release memory resources allocated by given RX/TX queue. */
+
 typedef void (*vlan_filter_set_t)(struct rte_eth_dev *dev,
 				  uint16_t vlan_id,
 				  int on);
 /**< @internal filtering of a VLAN Tag Identifier by an Ethernet device. */
 
-typedef uint16_t (*eth_rx_burst_t)(struct igb_rx_queue *rxq,
+typedef uint16_t (*eth_rx_burst_t)(void *rxq,
 				   struct rte_mbuf **rx_pkts,
 				   uint16_t nb_pkts);
 /**< @internal Retrieve input packets from a receive queue of an Ethernet device. */
 
-typedef uint16_t (*eth_tx_burst_t)(struct igb_tx_queue *txq,
+typedef uint16_t (*eth_tx_burst_t)(void *txq,
 				   struct rte_mbuf **tx_pkts,
 				   uint16_t nb_pkts);
 /**< @internal Send output packets on a transmit queue of an Ethernet device. */
@@ -781,7 +793,9 @@ struct eth_dev_ops {
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
 	vlan_filter_set_t          vlan_filter_set;  /**< Filter VLAN Setup. */
 	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device RX queue.*/
+	eth_queue_release_t        rx_queue_release;/**< Release RX queue.*/
 	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue.*/
+	eth_queue_release_t        tx_queue_release;/**< Release TX queue.*/
 	eth_dev_led_on_t           dev_led_on;    /**< Turn on LED. */
 	eth_dev_led_off_t          dev_led_off;   /**< Turn off LED. */
 	flow_ctrl_set_t            flow_ctrl_set; /**< Setup flow control. */
@@ -834,8 +848,8 @@ struct rte_eth_dev {
  * processes in a multi-process configuration.
  */
 struct rte_eth_dev_data {
-	struct igb_rx_queue **rx_queues; /**< Array of pointers to RX queues. */
-	struct igb_tx_queue **tx_queues; /**< Array of pointers to TX queues. */
+	void **rx_queues; /**< Array of pointers to RX queues. */
+	void **tx_queues; /**< Array of pointers to TX queues. */
 	uint16_t nb_rx_queues; /**< Number of RX queues. */
 	uint16_t nb_tx_queues; /**< Number of TX queues. */
 
@@ -1147,6 +1161,9 @@ extern int rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
  *     The *tx_rs_thresh* value should be less or equal then
  *     *tx_free_thresh* value, and both of them should be less then
  *     *nb_tx_desc* - 3.
+ *   - The *txq_flags* member contains flags to pass to the TX queue setup
+ *     function to configure the behavior of the TX queue. This should be set
+ *     to 0 if no special configuration is required.
  *
  *     Note that setting *tx_free_thresh* or *tx_rs_thresh* value to 0 forces
  *     the transmit function to use default values.
