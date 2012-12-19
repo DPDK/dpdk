@@ -264,7 +264,7 @@ malloc_elem_resize(struct malloc_elem *elem, size_t size)
 	if (elem->size - new_size > MIN_DATA_SIZE + MALLOC_ELEM_OVERHEAD){
 		/* now we have a big block together. Lets cut it down a bit, by splitting */
 		struct malloc_elem *split_pt = RTE_PTR_ADD(elem, new_size);
-		split_pt = RTE_ALIGN_CEIL(split_pt, CACHE_LINE_SIZE);
+		split_pt = RTE_PTR_ALIGN_CEIL(split_pt, CACHE_LINE_SIZE);
 		split_elem(elem, split_pt);
 		split_pt->state = ELEM_FREE;
 		split_pt->next_free = elem->heap->free_head;

@@ -53,11 +53,9 @@
 #include "malloc_elem.h"
 #include "malloc_heap.h"
 
-#define QUOTE_(x) #x
-#define QUOTE(x) QUOTE_(x)
 /* since the memzone size starts with a digit, it will appear unquoted in
  * rte_config.h, so quote it so it can be passed to rte_str_to_size */
-#define MALLOC_MEMZONE_SIZE QUOTE(RTE_MALLOC_MEMZONE_SIZE)
+#define MALLOC_MEMZONE_SIZE RTE_STR(RTE_MALLOC_MEMZONE_SIZE)
 
 /*
  * returns the configuration setting for the memzone size as a size_t value
@@ -96,7 +94,7 @@ malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
 	struct malloc_elem *start_elem = (struct malloc_elem *)mz->addr;
 	struct malloc_elem *end_elem = RTE_PTR_ADD(mz->addr,
 			mz_size - MALLOC_ELEM_OVERHEAD);
-	end_elem = RTE_ALIGN_FLOOR(end_elem, CACHE_LINE_SIZE);
+	end_elem = RTE_PTR_ALIGN_FLOOR(end_elem, CACHE_LINE_SIZE);
 
 	const unsigned elem_size = (uintptr_t)end_elem - (uintptr_t)start_elem;
 	malloc_elem_init(start_elem, heap, elem_size);

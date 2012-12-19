@@ -51,6 +51,7 @@ extern "C" {
 #include <ctype.h>
 #include <errno.h>
 
+
 /*********** Macros to eliminate unused variable warnings ********/
 
 /**
@@ -111,26 +112,53 @@ rte_align_floor_int(uintptr_t ptr, uintptr_t align)
  * point to an address no higher than the first parameter. Second parameter
  * must be a power-of-two value.
  */
-#define RTE_ALIGN_FLOOR(ptr, align) \
+#define RTE_PTR_ALIGN_FLOOR(ptr, align) \
 	(typeof(ptr))rte_align_floor_int((uintptr_t)ptr, align)
 
 /**
- * Macro to align a pointer to a given power-of-two. The resultant
- * pointer will be a pointer of the same type as the first parameter, and
- * point to an address no lower than the first parameter. Second parameter
- * must be a power-of-two value.
+ * Macro to align a value to a given power-of-two. The resultant value
+ * will be of the same type as the first parameter, and will be no
+ * bigger than the first parameter. Second parameter must be a
+ * power-of-two value.
  */
-#define RTE_ALIGN_CEIL(ptr, align) \
-	RTE_ALIGN_FLOOR(RTE_PTR_ADD(ptr, align - 1), align)
+#define RTE_ALIGN_FLOOR(val, align) \
+	(typeof(val))(val & (~((typeof(val))(align - 1))))
 
 /**
  * Macro to align a pointer to a given power-of-two. The resultant
  * pointer will be a pointer of the same type as the first parameter, and
  * point to an address no lower than the first parameter. Second parameter
  * must be a power-of-two value.
+ */
+#define RTE_PTR_ALIGN_CEIL(ptr, align) \
+	RTE_PTR_ALIGN_FLOOR(RTE_PTR_ADD(ptr, align - 1), align)
+
+/**
+ * Macro to align a value to a given power-of-two. The resultant value
+ * will be of the same type as the first parameter, and will be no lower
+ * than the first parameter. Second parameter must be a power-of-two
+ * value.
+ */
+#define RTE_ALIGN_CEIL(val, align) \
+	RTE_ALIGN_FLOOR((val + ((typeof(val)) align - 1)), align)
+
+/**
+ * Macro to align a pointer to a given power-of-two. The resultant
+ * pointer will be a pointer of the same type as the first parameter, and
+ * point to an address no lower than the first parameter. Second parameter
+ * must be a power-of-two value.
+ * This function is the same as RTE_PTR_ALIGN_CEIL
+ */
+#define RTE_PTR_ALIGN(ptr, align) RTE_PTR_ALIGN_CEIL(ptr, align)
+
+/**
+ * Macro to align a value to a given power-of-two. The resultant
+ * value will be of the same type as the first parameter, and
+ * will be no lower than the first parameter. Second parameter
+ * must be a power-of-two value.
  * This function is the same as RTE_ALIGN_CEIL
  */
-#define RTE_ALIGN(ptr, align) RTE_ALIGN_CEIL(ptr, align)
+#define RTE_ALIGN(val, align) RTE_ALIGN_CEIL(val, align)
 
 /**
  * Checks if a pointer is aligned to a given power-of-two value
@@ -146,7 +174,7 @@ rte_align_floor_int(uintptr_t ptr, uintptr_t align)
 static inline int
 rte_is_aligned(void *ptr, unsigned align)
 {
-	return RTE_ALIGN(ptr, align) == ptr;
+	return RTE_PTR_ALIGN(ptr, align) == ptr;
 }
 
 /*********** Macros for compile type checks ********/
@@ -291,11 +319,11 @@ rte_str_to_size(const char *str)
  * This function never returns
  *
  * @param exit_code
- * 	The exit code to be returned by the application
+ *     The exit code to be returned by the application
  * @param format
- * 	The format string to be used for printing the message. This can include
- * 	printf format characters which will be expanded using any further parameters
- * 	to the function.
+ *     The format string to be used for printing the message. This can include
+ *     printf format characters which will be expanded using any further parameters
+ *     to the function.
  */
 void
 rte_exit(int exit_code, const char *format, ...)

@@ -436,7 +436,7 @@ test_realloc(void)
 		return -1;
 	}
 	/* calc an alignment we don't already have */
-	while(RTE_ALIGN(ptr7, new_align) == ptr7)
+	while(RTE_PTR_ALIGN(ptr7, new_align) == ptr7)
 		new_align *= 2;
 	char *ptr8 = rte_realloc(ptr7, size7, new_align);
 	if (!ptr8){
@@ -444,7 +444,7 @@ test_realloc(void)
 		rte_free(ptr7);
 		return -1;
 	}
-	if (RTE_ALIGN(ptr8, new_align) != ptr8){
+	if (RTE_PTR_ALIGN(ptr8, new_align) != ptr8){
 		printf("Failure to re-align data\n");
 		rte_free(ptr8);
 		return -1;
@@ -515,13 +515,13 @@ test_random_alloc_free(void *_ __attribute__((unused)))
 		size_t allocated_size;
 		while (!free_mem){
 			const unsigned mem_size = sizeof(struct mem_list) + \
-				rte_rand() % (64 * 1024);
+					rte_rand() % (64 * 1024);
 			const unsigned align = 1 << (rte_rand() % 12); /* up to 4k alignment */
 			struct mem_list *entry = rte_malloc(NULL,
 					mem_size, align);
 			if (entry == NULL)
 				return -1;
-			if (RTE_ALIGN(entry, align)!= entry)
+			if (RTE_PTR_ALIGN(entry, align)!= entry)
 				return -1;
 			if (rte_malloc_validate(entry, &allocated_size) == -1
 					|| allocated_size < mem_size)

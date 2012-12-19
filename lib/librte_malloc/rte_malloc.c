@@ -118,7 +118,7 @@ rte_realloc(void *ptr, size_t size, unsigned align)
 
 	size = CACHE_LINE_ROUNDUP(size), align = CACHE_LINE_ROUNDUP(align);
 	/* check alignment matches first, and if ok, see if we can resize block */
-	if (RTE_ALIGN(ptr,align) == ptr &&
+	if (RTE_PTR_ALIGN(ptr,align) == ptr &&
 			malloc_elem_resize(elem, size) == 0)
 		return ptr;
 
