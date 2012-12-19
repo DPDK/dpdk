@@ -425,14 +425,8 @@ main(int argc, char **argv)
 
 	/* probe to determine the NIC devices available */
 	proc_type = rte_eal_process_type();
-#ifdef RTE_LIBRTE_IGB_PMD
-	if (rte_igb_pmd_init() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot init igb pmd\n");
-#endif
-#ifdef RTE_LIBRTE_IXGBE_PMD
-	if (rte_ixgbe_pmd_init() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot init ixgbe pmd\n");
-#endif
+	if (rte_pmd_init_all() < 0)
+		rte_exit(EXIT_FAILURE, "Cannot init pmd\n");
 	if (rte_eal_pci_probe() < 0)
 		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 	if (rte_eth_dev_count() == 0)

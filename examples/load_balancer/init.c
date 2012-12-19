@@ -387,16 +387,10 @@ app_init_nics(void)
 
 	/* Init driver */
 	printf("Initializing the PMD driver ...\n");
-#ifdef RTE_LIBRTE_IGB_PMD
-	if (rte_igb_pmd_init() < 0) {
-		rte_panic("Cannot init IGB PMD\n");
+	if (rte_pmd_init_all() < 0) {
+		rte_panic("Cannot init PMD\n");
 	}
-#endif
-#ifdef RTE_LIBRTE_IXGBE_PMD
-	if (rte_ixgbe_pmd_init() < 0) {
-		rte_panic("Cannot init IXGBE PMD\n");
-	}
-#endif
+
 	if (rte_eal_pci_probe() < 0) {
 		rte_panic("Cannot probe PCI\n");
 	}

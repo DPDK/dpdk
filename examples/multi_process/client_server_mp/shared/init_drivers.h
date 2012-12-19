@@ -41,14 +41,7 @@
 static inline int
 init_drivers(void)
 {
-	if (
-#ifdef RTE_LIBRTE_IGB_PMD
-			(rte_igb_pmd_init() < 0) ||
-#endif
-#ifdef RTE_LIBRTE_IXGBE_PMD
-			(rte_ixgbe_pmd_init() < 0) ||
-#endif
-			(rte_eal_pci_probe() < 0 ))
+	if (rte_pmd_init_all() < 0 || rte_eal_pci_probe() < 0)
 		return -1;
 
 	return 0;

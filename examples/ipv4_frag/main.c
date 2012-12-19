@@ -557,14 +557,8 @@ MAIN(int argc, char **argv)
 		rte_panic("Cannot init indirect mbuf pool\n");
 
 	/* init driver */
-#ifdef RTE_LIBRTE_IGB_PMD
-	if (rte_igb_pmd_init() < 0)
-		rte_panic("Cannot init igb pmd\n");
-#endif
-#ifdef RTE_LIBRTE_IXGBE_PMD
-	if (rte_ixgbe_pmd_init() < 0)
-		rte_panic("Cannot init ixgbe pmd\n");
-#endif
+	if (rte_pmd_init_all() < 0)
+		rte_panic("Cannot init PMD\n");
 
 	if (rte_eal_pci_probe() < 0)
 		rte_panic("Cannot probe PCI\n");

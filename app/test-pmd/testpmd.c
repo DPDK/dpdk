@@ -1043,17 +1043,8 @@ main(int argc, char** argv)
 	if (diag < 0)
 		rte_panic("Cannot init EAL\n");
 
-#ifdef RTE_LIBRTE_IGB_PMD
-	if (rte_igb_pmd_init())
-		rte_panic("Cannot init igb PMD\n");
-#endif
-#ifdef RTE_LIBRTE_IXGBE_PMD
-	if (rte_ixgbe_pmd_init())
-		rte_panic("Cannot init ixgbe PMD\n");
-
-	if (rte_ixgbevf_pmd_init())
-		rte_panic("Cannot init ixgbevf PMD\n");
-#endif
+	if (rte_pmd_init_all())
+		rte_panic("Cannot init PMD\n");
 
 	if (rte_eal_pci_probe())
 		rte_panic("Cannot probe PCI\n");
@@ -1062,6 +1053,7 @@ main(int argc, char** argv)
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No probed ethernet devices - check that "
 			  "CONFIG_RTE_LIBRTE_IGB_PMD=y and that "
+			  "CONFIG_RTE_LIBRTE_EM_PMD=y and that "
 			  "CONFIG_RTE_LIBRTE_IXGBE_PMD=y in your "
 			  "configuration file\n");
 

@@ -518,16 +518,9 @@ main(int argc, char** argv)
 	}
 
 	/* Initialise PMD driver(s) */
-#ifdef RTE_LIBRTE_IGB_PMD
-	ret = rte_igb_pmd_init();
+	ret = rte_pmd_init_all();
 	if (ret < 0)
-		FATAL_ERROR("Could not initialise igb PMD (%d)", ret);
-#endif
-#ifdef RTE_LIBRTE_IXGBE_PMD
-	ret = rte_ixgbe_pmd_init();
-	if (ret < 0)
-		FATAL_ERROR("Could not initialise ixgbe PMD (%d)", ret);
-#endif
+		FATAL_ERROR("Could not probe PMD (%d)", ret);
 
 	/* Scan PCI bus for recognised devices */
 	ret = rte_eal_pci_probe();

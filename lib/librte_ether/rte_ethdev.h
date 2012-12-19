@@ -867,6 +867,24 @@ extern void rte_eth_driver_register(struct eth_driver *eth_drv);
 extern int rte_igb_pmd_init(void);
 
 /**
+ * The initialization function of the driver for
+ * Intel(r) EM Gigabit Ethernet Controller devices.
+ * This function is invoked once at EAL start time.
+ * @return
+ *   0 on success
+ */
+extern int rte_em_pmd_init(void);
+
+/**
+ * The initialization function of the driver for 1Gbps Intel IGB_VF
+ * Ethernet devices.
+ * Invoked once at EAL start time.
+ * @return
+ *   0 on success
+ */
+extern int rte_igbvf_pmd_init(void);
+
+/**
  * The initialization function of the driver for 10Gbps Intel IXGBE
  * Ethernet devices.
  * Invoked once at EAL start time.
@@ -883,6 +901,60 @@ extern int rte_ixgbe_pmd_init(void);
  *   0 on success
  */
 extern int rte_ixgbevf_pmd_init(void);
+
+/**
+ * The initialization function of *all* supported and enabled drivers.
+ * Right now, the following PMDs are supported:
+ *  - igb
+ *  - igbvf
+ *  - em
+ *  - ixgbe
+ *  - ixgbevf
+ * This function is invoked once at EAL start time.
+ * @return
+ *   0 on success.
+ *   Error code of the device initialization failure,
+ *   -ENODEV if there are no drivers available
+ *   (e.g. if all driver config options are = n).
+ */
+static inline
+int rte_pmd_init_all(void)
+{
+	int ret = -ENODEV;
+
+#ifdef RTE_LIBRTE_IGB_PMD
+	if ((ret = rte_igb_pmd_init()) != 0) {
+		RTE_LOG(ERR, PMD, "Cannot init igb PMD\n");
+		return (ret);
+	}
+	if ((ret = rte_igbvf_pmd_init()) != 0) {
+		RTE_LOG(ERR, PMD, "Cannot init igbvf PMD\n");
+		return (ret);
+	}
+#endif /* RTE_LIBRTE_IGB_PMD */
+
+#ifdef RTE_LIBRTE_EM_PMD
+	if ((ret = rte_em_pmd_init()) != 0) {
+		RTE_LOG(ERR, PMD, "Cannot init em PMD\n");
+		return (ret);
+	}
+#endif /* RTE_LIBRTE_EM_PMD */
+
+#ifdef RTE_LIBRTE_IXGBE_PMD
+	if ((ret = rte_ixgbe_pmd_init()) != 0) {
+		RTE_LOG(ERR, PMD, "Cannot init ixgbe PMD\n");
+		return (ret);
+	}
+	if ((ret = rte_ixgbevf_pmd_init()) != 0) {
+		RTE_LOG(ERR, PMD, "Cannot init ixgbevf PMD\n");
+		return (ret);
+	}
+#endif /* RTE_LIBRTE_IXGBE_PMD */
+
+	if (ret == -ENODEV)
+		RTE_LOG(ERR, PMD, "No PMD(s) are configured\n");
+	return (ret);
+}
 
 /**
  * Configure an Ethernet device.
@@ -1727,79 +1799,6 @@ int rte_eth_dev_mac_addr_add(uint8_t port, struct ether_addr *mac_addr,
  */
 int rte_eth_dev_mac_addr_remove(uint8_t port, struct ether_addr *mac_addr);
 
-
-/*-------------------------- Deprecated definitions --------------------------*/
-
-/* Needed to stop deprecation warnings becoming errors with GCC. */
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic warning "-Wdeprecated-declarations"
-#endif
-
-#ifdef RTE_LIBRTE_82576_PMD
-#pragma message "\nWARNING: CONFIG_RTE_LIBRTE_82576_PMD is deprecated. " \
-"CONFIG_RTE_LIBRTE_IGB_PMD must be set in the config file to use Intel(R) " \
-"DPDK supported Gigabit Ethernet Controllers."
-#endif
-
-#ifdef RTE_LIBRTE_IGB_PMD
-/**
- * @deprecated The config file option CONFIG_RTE_LIBRTE_82576_PMD and resulting
- * preprocessor define RTE_LIBRTE_82576_PMD are deprecated.
- * CONFIG_RTE_LIBRTE_IGB_PMD must be set in the config file to use Intel(R) DPDK
- * supported Gigabit Ethernet Controllers, and RTE_LIBRTE_IGB_PMD should be used
- * in code.
- */
-#define RTE_LIBRTE_82576_PMD 1
-#endif
-
-/**
- * @deprecated rte_82576_pmd_init() is deprecated and will be removed from
- * future versions of Intel(R) DPDK. It has been replaced by rte_igb_pmd_init().
- *
- * @return
- *   0 on success
- */
-static inline int __attribute__((deprecated))
-rte_82576_pmd_init(void) {
-	RTE_LOG(WARNING, PMD, "rte_82576_pmd_init() is deprecated and will be "
-			"removed from future version of Intel(R) DPDK. It has "
-			"been replaced by rte_igb_pmd_init()");
-	return rte_igb_pmd_init();
-}
-
-
-#ifdef RTE_LIBRTE_82599_PMD
-#pragma message "\nWARNING: CONFIG_RTE_LIBRTE_82599_PMD is deprecated. " \
-"CONFIG_RTE_LIBRTE_IXGBE_PMD must be set in the config file to use Intel(R) " \
-"DPDK supported 10 Gigabit Ethernet Controllers."
-#endif
-
-#ifdef RTE_LIBRTE_IXGBE_PMD
-/**
- * @deprecated The config file option CONFIG_RTE_LIBRTE_82599_PMD and resulting
- * preprocessor define RTE_LIBRTE_82599_PMD are deprecated.
- * CONFIG_RTE_LIBRTE_IXGBE_PMD must be set in the config file to use Intel(R)
- * DPDK supported Gigabit Ethernet Controllers, and RTE_LIBRTE_IXGBE_PMD should
- * be used in code.
- */
-#define RTE_LIBRTE_82599_PMD 1
-#endif
-
-/**
- * @deprecated rte_82599_pmd_init() is deprecated and will be removed from
- * future versions of Intel(R) DPDK. It has been replaced by
- * rte_ixgbe_pmd_init().
- *
- * @return
- *   0 on success
- */
-static inline int __attribute__((deprecated))
-rte_82599_pmd_init(void) {
-	RTE_LOG(WARNING, PMD, "rte_82599_pmd_init() is deprecated and will be "
-			"removed from future version of Intel(R) DPDK. It has "
-			"been replaced by rte_ixgbe_pmd_init()");
-	return rte_ixgbe_pmd_init();
-}
 
 #ifdef __cplusplus
 }
