@@ -193,7 +193,7 @@ static struct rte_eth_conf port_conf = {
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IPV4,
+			.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6,
 		},
 	},
 	.txmode = {
@@ -479,9 +479,9 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, lookup_struct_t * l3fwd
 	if (dst_port >= MAX_PORTS || (enabled_port_mask & 1 << dst_port) == 0)
 		dst_port = portid;
 
-	/* 00:09:c0:00:00:xx */
+	/* 02:00:00:00:00:xx */
 	tmp = &eth_hdr->d_addr.addr_bytes[0];
-	*((uint64_t *)tmp) = 0x000000c00900 + (dst_port << 24);
+	*((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)dst_port << 40);
 
 #ifdef DO_RFC_1812_CHECKS
 	/* Update time to live and header checksum */
