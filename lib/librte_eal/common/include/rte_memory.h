@@ -66,9 +66,7 @@ enum rte_page_sizes {
  */
 #define __rte_cache_aligned __attribute__((__aligned__(CACHE_LINE_SIZE)))
 
-#ifndef __KERNEL__ /* so we can include this header in kernel modules */
 typedef uint64_t phys_addr_t; /**< Physical address definition. */
-#endif
 
 /**
  * Physical memory segment descriptor.

@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/queue.h>
 
@@ -51,6 +52,7 @@
 #include <rte_lcore.h>
 #include <rte_cycles.h>
 #include <rte_spinlock.h>
+#include <rte_atomic.h>
 
 #include "test.h"
 
@@ -80,7 +82,9 @@
 static rte_spinlock_t sl, sl_try;
 static rte_spinlock_t sl_tab[RTE_MAX_LCORE];
 static rte_spinlock_recursive_t slr;
-static unsigned count;
+static unsigned count = 0;
+
+static rte_atomic32_t synchro;
 
 static int
 test_spinlock_per_core(__attribute__((unused)) void *arg)
@@ -126,60 +130,77 @@ test_spinlock_recursive_per_core(__attribute__((unused)) void *arg)
 	return 0;
 }
 
-static volatile int count1, count2;
 static rte_spinlock_t lk = RTE_SPINLOCK_INITIALIZER;
-static unsigned int max = 10000000; /* 10M */
-static volatile uint64_t looptime[RTE_MAX_LCORE];
+static uint64_t lock_count[RTE_MAX_LCORE] = {0};
+
+#define TIME_S 5
 
 static int
-load_loop_fn(__attribute__((unused)) void *dummy)
+load_loop_fn(void *func_param)
 {
-	uint64_t end, begin;
+	uint64_t time_diff = 0, begin;
+	uint64_t hz = rte_get_hpet_hz();
+	uint64_t lcount = 0;
+	const int use_lock = *(int*)func_param;
+	const unsigned lcore = rte_lcore_id();
+
+	/* wait synchro for slaves */
+	if (lcore != rte_get_master_lcore())
+		while (rte_atomic32_read(&synchro) == 0);
+
 	begin = rte_get_hpet_cycles();
-	unsigned int i = 0;
-	for ( i = 0; i < max; i++) {
-		rte_spinlock_lock(&lk);
-		count1++;
-		rte_spinlock_unlock(&lk);
-		count2++;
+	while (time_diff / hz < TIME_S) {
+		if (use_lock)
+			rte_spinlock_lock(&lk);
+		lcount++;
+		if (use_lock)
+			rte_spinlock_unlock(&lk);
+		/* delay to make lock duty cycle slighlty realistic */
+		rte_delay_us(1);
+		time_diff = rte_get_hpet_cycles() - begin;
 	}
-	end = rte_get_hpet_cycles();
-	looptime[rte_lcore_id()] = end - begin;
+	lock_count[lcore] = lcount;
 	return 0;
 }
 
 static int
-test_spinlock_load(void)
+test_spinlock_perf(void)
 {
-	if (rte_lcore_count()<= 1) {
-		printf("no cores counted\n");
-		return -1;
-	}
-	printf ("Running %u tests.......\n", max);
-	printf ("Number of cores = %u\n", rte_lcore_count());
+	unsigned int i;
+	uint64_t total = 0;
+	int lock = 0;
+	const unsigned lcore = rte_lcore_id();
 
-	rte_eal_mp_remote_launch(load_loop_fn, NULL , CALL_MASTER);
+	printf("\nTest with no lock on single core...\n");
+	load_loop_fn(&lock);
+	printf("Core [%u] count = %"PRIu64"\n", lcore, lock_count[lcore]);
+	memset(lock_count, 0, sizeof(lock_count));
+
+	printf("\nTest with lock on single core...\n");
+	lock = 1;
+	load_loop_fn(&lock);
+	printf("Core [%u] count = %"PRIu64"\n", lcore, lock_count[lcore]);
+	memset(lock_count, 0, sizeof(lock_count));
+
+	printf("\nTest with lock on %u cores...\n", rte_lcore_count());
+
+	/* Clear synchro and start slaves */
+	rte_atomic32_set(&synchro, 0);
+	rte_eal_mp_remote_launch(load_loop_fn, &lock, SKIP_MASTER);
+
+	/* start synchro and launch test on master */
+	rte_atomic32_set(&synchro, 1);
+	load_loop_fn(&lock);
+
 	rte_eal_mp_wait_lcore();
 
-	unsigned int k = 0;
-	uint64_t avgtime = 0;
-
-	RTE_LCORE_FOREACH(k) {
-		printf("Core [%u] time = %"PRIu64"\n", k, looptime[k]);
-		avgtime += looptime[k];
+	RTE_LCORE_FOREACH(i) {
+		printf("Core [%u] count = %"PRIu64"\n", i, lock_count[i]);
+		total += lock_count[i];
 	}
 
-	avgtime = avgtime / rte_lcore_count();
-	printf("Average time = %"PRIu64"\n", avgtime);
+	printf("Total count = %"PRIu64"\n", total);
 
-	int check = 0;
-	check =  max * rte_lcore_count();
-	if (count1 == check && count2 != check)
-		printf("Passed Load test\n");
-	else {
-		printf("Failed load test\n");
-		return -1;
-	}
 	return 0;
 }
 
@@ -246,9 +267,6 @@ test_spinlock(void)
 
 	rte_eal_mp_wait_lcore();
 
-	if (test_spinlock_load()<0)
-		return -1;
-
 	rte_spinlock_recursive_lock(&slr);
 
 	/*
@@ -312,6 +330,9 @@ test_spinlock(void)
 	}
 	rte_spinlock_recursive_unlock(&slr);
 	rte_spinlock_recursive_unlock(&slr);
+
+	if (test_spinlock_perf() < 0)
+		return -1;
 
 	return ret;
 }

@@ -44,11 +44,13 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/queue.h>
-#include <fcntl.h>
+#include <sys/file.h>
 #include <unistd.h>
 #include <limits.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include <rte_log.h>
 #include <rte_memory.h>
@@ -56,6 +58,7 @@
 #include <rte_launch.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_common.h>
@@ -109,6 +112,44 @@ aslr_enabled(void)
 		case '2' : return 2;
 		default: return -EINVAL;
 	}
+}
+
+/*
+ * Increase limit for open files for current process
+ */
+static int
+increase_open_file_limit(void)
+{
+	struct rlimit limit;
+
+	/* read current limits */
+	if (getrlimit(RLIMIT_NOFILE, &limit) != 0) {
+		RTE_LOG(ERR, EAL, "Error reading resource limit: %s\n",
+				strerror(errno));
+		return -1;
+	}
+
+	/* check if current soft limit matches the hard limit */
+	if (limit.rlim_cur < limit.rlim_max) {
+		/* set soft limit to match hard limit */
+		limit.rlim_cur = limit.rlim_max;
+	}
+	else {
+		/* we can't increase the soft limit so now we try to increase
+		 * soft and hard limit. this might fail when run as non-root.
+		 */
+		limit.rlim_cur *= 2;
+		limit.rlim_max *= 2;
+	}
+
+	/* set current resource limit */
+	if (setrlimit(RLIMIT_NOFILE, &limit) != 0) {
+		RTE_LOG(ERR, EAL, "Error increasing open files limit: %s\n",
+				strerror(errno));
+		return -1;
+	}
+
+	return 0;
 }
 
 /*
@@ -219,6 +260,7 @@ map_all_hugepages(struct hugepage *hugepg_tbl,
 				vma_len = hugepage_sz;
 		}
 
+		/* try to create hugepage file */
 		fd = open(hugepg_tbl[i].filepath, O_CREAT | O_RDWR, 0755);
 		if (fd < 0) {
 			RTE_LOG(ERR, EAL, "%s(): open failed: %s\n", __func__,
@@ -243,9 +285,11 @@ map_all_hugepages(struct hugepage *hugepg_tbl,
 			hugepg_tbl[i].final_va = virtaddr;
 		}
 
+		/* close the file descriptor, files will be locked later */
+		close(fd);
+
 		vma_addr = (char *)vma_addr + hugepage_sz;
 		vma_len -= hugepage_sz;
-		close(fd);
 	}
 	return 0;
 }
@@ -518,7 +562,30 @@ unmap_unneeded_hugepages(struct hugepage *hugepg_tbl,
 						munmap(hp->final_va, hp->size);
 						hp->final_va = NULL;
 					}
+					/* lock the page and skip */
 					else {
+						/* try and open the hugepage file */
+						while ((fd = open(hp->filepath, O_CREAT | O_RDWR, 0755)) < 0) {
+							/* if we can't open due to resource limits */
+							if (errno == EMFILE) {
+								RTE_LOG(INFO, EAL, "Increasing open file limit\n");
+
+								/* if we manage to increase resource limit, try again */
+								if (increase_open_file_limit() == 0)
+									continue;
+							}
+							else
+								RTE_LOG(ERR, EAL, "%s(): open failed: %s\n", __func__,
+										strerror(errno));
+							return -1;
+						}
+						/* try and lock the hugepage */
+						if (flock(fd, LOCK_SH | LOCK_NB) == -1) {
+							RTE_LOG(ERR, EAL, "Locking hugepage file failed!\n");
+							close(fd);
+							return -1;
+						}
+						hp->page_lock = fd;
 						pages_found++;
 					}
 				} /* match page */

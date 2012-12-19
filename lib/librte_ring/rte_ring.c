@@ -86,6 +86,7 @@
 #include <rte_branch_prediction.h>
 #include <rte_errno.h>
 #include <rte_string_fns.h>
+#include <rte_spinlock.h>
 
 #include "rte_ring.h"
 
@@ -138,6 +139,8 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	rte_snprintf(mz_name, sizeof(mz_name), "RG_%s", name);
 	ring_size = count * sizeof(void *) + sizeof(struct rte_ring);
 
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
 	/* reserve a memory zone for this ring. If we can't get rte_config or
 	 * we are secondary process, the memzone_reserve function will set
 	 * rte_errno for us appropriately - hence no check in this this function */
@@ -162,6 +165,7 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 		r = NULL;
 		RTE_LOG(ERR, RING, "Cannot reserve memory\n");
 	}
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 	
 	return r;
 }
@@ -252,9 +256,13 @@ rte_ring_list_dump(void)
 		return;	
 	}
 
+	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
+
 	TAILQ_FOREACH(mp, ring_list, next) {
 		rte_ring_dump(mp);
 	}
+
+	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
 }
 
 /* search a ring from its name */
@@ -271,10 +279,14 @@ rte_ring_lookup(const char *name)
 		return NULL;	
 	}
 
+	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
+	
 	TAILQ_FOREACH(r, ring_list, next) {
 		if (strncmp(name, r->name, RTE_RING_NAMESIZE) == 0)
 			break;
 	}
+
+	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	if (r == NULL)
 		rte_errno = ENOENT;

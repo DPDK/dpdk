@@ -56,6 +56,7 @@
 #include <rte_ring.h>
 #include <rte_errno.h>
 #include <rte_string_fns.h>
+#include <rte_spinlock.h>
 
 #include "rte_mempool.h"
 
@@ -178,6 +179,8 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	if (flags & MEMPOOL_F_SC_GET)
 		rg_flags |= RING_F_SC_DEQ;
 
+	rte_rwlock_write_lock(RTE_EAL_MEMPOOL_RWLOCK);
+
 	/* allocate the ring that will be used to store objects */
 	/* Ring functions will return appropriate errors if we are
 	 * running as a secondary process etc., so no checks made
@@ -185,7 +188,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	rte_snprintf(rg_name, sizeof(rg_name), "MP_%s", name);
 	r = rte_ring_create(rg_name, rte_align32pow2(n+1), socket_id, rg_flags);
 	if (r == NULL)
-		return NULL;
+		goto exit;
 
 	/*
 	 * In header, we have at least the pointer to the pool, and
@@ -236,6 +239,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	mempool_size = total_elt_size * n +
 		sizeof(struct rte_mempool) + private_data_size;
 	rte_snprintf(mz_name, sizeof(mz_name), "MP_%s", name);
+
 	mz = rte_memzone_reserve(mz_name, mempool_size, socket_id, mz_flags);
 
 	/*
@@ -243,7 +247,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	 * space for the as we cannot free it
 	 */
 	if (mz == NULL)
-		return NULL;
+		goto exit;
 
 	/* init the mempool structure */
 	mp = mz->addr;
@@ -288,6 +292,9 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	}
 
 	RTE_EAL_TAILQ_INSERT_TAIL(RTE_TAILQ_MEMPOOL, rte_mempool_list, mp);
+
+exit:
+	rte_rwlock_write_unlock(RTE_EAL_MEMPOOL_RWLOCK);
 
 	return mp;
 }
@@ -398,6 +405,9 @@ rte_mempool_audit(const struct rte_mempool *mp)
 {
 	mempool_audit_cache(mp);
 	mempool_audit_cookies(mp);
+
+	/* For case where mempool DEBUG is not set, and cache size is 0 */
+	RTE_SET_USED(mp);
 }
 
 /* dump the status of the mempool on the console */
@@ -465,9 +475,13 @@ rte_mempool_list_dump(void)
 		return;	
 	}
 
+	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
+
 	TAILQ_FOREACH(mp, mempool_list, next) {
 		rte_mempool_dump(mp);
 	}
+
+	rte_rwlock_read_unlock(RTE_EAL_MEMPOOL_RWLOCK);
 }
 
 /* search a mempool from its name */
@@ -483,10 +497,15 @@ rte_mempool_lookup(const char *name)
 		return NULL;
 	}
 
+	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
+
 	TAILQ_FOREACH(mp, mempool_list, next) {
 		if (strncmp(name, mp->name, RTE_MEMPOOL_NAMESIZE) == 0)
 			break;
 	}
+	
+	rte_rwlock_read_unlock(RTE_EAL_MEMPOOL_RWLOCK);
+	
 	if (mp == NULL)
 		rte_errno = ENOENT;
 

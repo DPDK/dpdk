@@ -116,6 +116,7 @@ rte_dump_tailq(void)
 
 	mcfg = rte_eal_get_configuration()->mem_config;
 
+	rte_rwlock_read_lock(&mcfg->qlock);
 	for (i=0; i < RTE_MAX_TAILQ; i++) {
 		const struct rte_tailq_head *tailq = &mcfg->tailq_head[i];
 		const struct rte_dummy_head *head = &tailq->tailq_head;
@@ -124,6 +125,7 @@ rte_dump_tailq(void)
 		       (rte_tailq_names[i] != NULL ? rte_tailq_names[i]:"nil"),
 		       head->tqh_first, head->tqh_last);
 	}
+	rte_rwlock_read_unlock(&mcfg->qlock);
 }
 
 int

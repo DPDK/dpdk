@@ -148,7 +148,18 @@ enum rte_proc_type_t rte_eal_process_type(void);
 int rte_eal_init(int argc, char **argv);
 
 /**
- * Utility macro to do a tailq 'INSERT' of rte_mem_config
+ * macro to get the lock of tailq in mem_config 
+ */
+#define RTE_EAL_TAILQ_RWLOCK         (&rte_eal_get_configuration()->mem_config->qlock)
+
+/**
+ * macro to get the multiple lock of mempool shared by mutiple-instance
+ */
+#define RTE_EAL_MEMPOOL_RWLOCK            (&rte_eal_get_configuration()->mem_config->mplock)
+
+
+/**
+ * Utility macro to do a thread-safe tailq 'INSERT' of rte_mem_config
  *
  * @param idx
  *   a kind of tailq define in enum rte_tailq_t
@@ -163,11 +174,13 @@ int rte_eal_init(int argc, char **argv);
 #define RTE_EAL_TAILQ_INSERT_TAIL(idx, type, elm) do {	\
 	struct type *list;                                      \
 	list = RTE_TAILQ_LOOKUP_BY_IDX(idx, type);              \
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);            \
 	TAILQ_INSERT_TAIL(list, elm, next);                     \
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);          \
 } while (0)  
 
 /**
- * Utility macro to do a tailq 'REMOVE' of rte_mem_config
+ * Utility macro to do a thread-safe tailq 'REMOVE' of rte_mem_config
  *
  * @param idx
  *   a kind of tailq define in enum rte_tailq_t
@@ -182,7 +195,9 @@ int rte_eal_init(int argc, char **argv);
 #define RTE_EAL_TAILQ_REMOVE(idx, type, elm) do {	\
 	struct type *list;                                      \
 	list = RTE_TAILQ_LOOKUP_BY_IDX(idx, type);              \
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);            \
 	TAILQ_REMOVE(list, elm, next);                          \
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);          \
 } while (0)                                                     \
 
 

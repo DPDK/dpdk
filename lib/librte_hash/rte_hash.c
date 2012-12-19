@@ -55,6 +55,8 @@
 #include <rte_string_fns.h>
 #include <rte_cpuflags.h>
 #include <rte_log.h>
+#include <rte_rwlock.h>
+#include <rte_spinlock.h>
 
 #include "rte_hash.h"
 
@@ -149,10 +151,13 @@ rte_hash_find_existing(const char *name)
 		return NULL;
 	}
 
+	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(h, hash_list, next) {
 		if (strncmp(name, h->name, RTE_HASH_NAMESIZE) == 0)
 			break;
 	}
+	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
+
 	if (h == NULL)
 		rte_errno = ENOENT;
 	return h;
@@ -205,19 +210,21 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	/* Total memory required for hash context */
 	mem_size = hash_tbl_size + sig_tbl_size + key_tbl_size;
 
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
 	/* guarantee there's no existing */
 	TAILQ_FOREACH(h, hash_list, next) {
 		if (strncmp(params->name, h->name, RTE_HASH_NAMESIZE) == 0)
 			break;
 	}
 	if (h != NULL)
-		return NULL;
+		goto exit;
 
 	h = (struct rte_hash *)rte_zmalloc_socket(hash_name, mem_size,
 					   CACHE_LINE_SIZE, params->socket_id);
 	if (h == NULL) {
 		RTE_LOG(ERR, HASH, "memory allocation failed\n");
-		return NULL;
+		goto exit;
 	}
 
 	/* Setup hash context */
@@ -237,6 +244,10 @@ rte_hash_create(const struct rte_hash_parameters *params)
 		DEFAULT_HASH_FUNC : params->hash_func;
 
 	TAILQ_INSERT_TAIL(hash_list, h, next);
+
+exit:
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+
 	return h;
 }
 

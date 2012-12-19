@@ -51,6 +51,7 @@
 #include <rte_string_fns.h>
 #include <rte_cpuflags.h>
 #include <rte_log.h>
+#include <rte_spinlock.h>
 
 #include "rte_fbk_hash.h"
 
@@ -79,10 +80,12 @@ rte_fbk_hash_find_existing(const char *name)
 		return NULL;
 	}
 
+	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(h, fbk_hash_list, next) {
 		if (strncmp(name, h->name, RTE_FBK_HASH_NAMESIZE) == 0)
 			break;
 	}
+	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
 	if (h == NULL)
 		rte_errno = ENOENT;
 	return h;
@@ -129,19 +132,22 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 
 	rte_snprintf(hash_name, sizeof(hash_name), "FBK_%s", params->name);
 
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
 	/* guarantee there's no existing */
 	TAILQ_FOREACH(ht, fbk_hash_list, next) {
 		if (strncmp(params->name, ht->name, RTE_FBK_HASH_NAMESIZE) == 0)
 			break;
 	}
 	if (ht != NULL)
-		return NULL;
+		goto exit;
 
 	/* Allocate memory for table. */
 	ht = (struct rte_fbk_hash_table *)rte_malloc_socket(hash_name, mem_size,
 			0, params->socket_id);
 	if (ht == NULL)
-		return NULL;
+		goto exit;
+
 	memset(ht, 0, mem_size);
 
 	/* Set up hash table context. */
@@ -165,6 +171,10 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 	}
 
 	TAILQ_INSERT_TAIL(fbk_hash_list, ht, next);
+
+exit:	
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	
 	return ht;
 }
 

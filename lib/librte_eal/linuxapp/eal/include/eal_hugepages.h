@@ -49,7 +49,8 @@ struct hugepage {
 	int socket_id;      /**< NUMA socket ID */
 	int file_id;        /**< the '%d' in HUGEFILE_FMT */
 	int memseg_id;      /**< the memory segment to which page belongs */
-	char filepath[MAX_HUGEPAGE_PATH]; /**< Path to backing file on filesystem */
+	char filepath[MAX_HUGEPAGE_PATH]; /**< path to backing file on filesystem */
+	int page_lock;      /**< descriptor for hugepage file */
 };
 
 /**

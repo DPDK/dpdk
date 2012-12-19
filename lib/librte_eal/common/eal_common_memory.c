@@ -43,6 +43,7 @@
 #include <rte_memzone.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_log.h>
 
 #include "eal_private.h"
@@ -93,12 +94,18 @@ rte_dump_physmem_layout(void)
 	for (i=0; i<RTE_MAX_MEMSEG; i++) {
 		if (mcfg->memseg[i].addr == NULL)
 			break;
-		printf("phys:0x%"PRIx64", len:0x%"PRIx64", virt:%p, "
-		       "socket_id:%"PRId32"\n",
+
+		printf("Segment %o: phys:0x%"PRIx64", len:0x%"PRIx64", "
+		       "virt:%p, socket_id:%"PRId32", "
+		       "hugepage_sz:0x%"PRIx64", nchannel:%"PRIx32", "
+		       "nrank:%"PRIx32"\n", i,
 		       mcfg->memseg[i].phys_addr,
 		       mcfg->memseg[i].len,
 		       mcfg->memseg[i].addr,
-		       mcfg->memseg[i].socket_id);
+		       mcfg->memseg[i].socket_id,
+		       mcfg->memseg[i].hugepage_sz,
+		       mcfg->memseg[i].nchannel,
+		       mcfg->memseg[i].nrank);
 	}
 }
 

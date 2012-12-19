@@ -40,7 +40,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <getopt.h>
-#include <fcntl.h>
+#include <sys/file.h>
 #include <stddef.h>
 #include <errno.h>
 #include <limits.h>
@@ -55,6 +55,7 @@
 #include <rte_launch.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
@@ -66,6 +67,7 @@
 #include <rte_pci.h>
 #include <rte_common.h>
 #include <rte_version.h>
+#include <rte_atomic.h>
 
 #include "eal_private.h"
 #include "eal_thread.h"
@@ -203,14 +205,13 @@ rte_eal_config_create(void)
 	}
 
 	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config),
-			   PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
+				PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
 
 	if (rte_mem_cfg_addr == MAP_FAILED){
 		rte_panic("Cannot mmap memory for rte_config\n");
 	}
+	memcpy(rte_mem_cfg_addr, &early_mem_config, sizeof(early_mem_config));
 	rte_config.mem_config = (struct rte_mem_config *) rte_mem_cfg_addr;
-	memcpy(rte_config.mem_config, &early_mem_config,
-			sizeof(early_mem_config));
 }
 
 /* attach to an existing shared memory config */
@@ -224,13 +225,13 @@ rte_eal_config_attach(void)
 		return;
 
 	if (mem_cfg_fd < 0){
-		mem_cfg_fd = open(pathname, O_RDONLY);
+		mem_cfg_fd = open(pathname, O_RDWR);
 		if (mem_cfg_fd < 0)
 			rte_panic("Cannot open '%s' for rte_mem_config\n", pathname);
 	}
 
-	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config), PROT_READ,
-			MAP_SHARED, mem_cfg_fd, 0);
+	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config), 
+				PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
 	close(mem_cfg_fd);
 	if (rte_mem_cfg_addr == MAP_FAILED)
 		rte_panic("Cannot mmap memory for rte_config\n");
@@ -274,10 +275,30 @@ rte_config_init(void)
 		break;
 	case RTE_PROC_SECONDARY:
 		rte_eal_config_attach();
+		rte_eal_mcfg_wait_complete(rte_config.mem_config);
 		break;
 	case RTE_PROC_AUTO:
 	case RTE_PROC_INVALID:
 		rte_panic("Invalid process type\n");
+	}
+}
+
+/* Unlocks hugepage directories that were locked by eal_hugepage_info_init */
+static void
+eal_hugedirs_unlock(void)
+{
+	int i;
+
+	for (i = 0; i < MAX_HUGEPAGE_SIZES; i++)
+	{
+		/* skip uninitialized */
+		if (internal_config.hugepage_info[i].lock_descriptor == 0)
+			continue;
+		/* unlock hugepage file */
+		flock(internal_config.hugepage_info[i].lock_descriptor, LOCK_UN);
+		close(internal_config.hugepage_info[i].lock_descriptor);
+		/* reset the field */
+		internal_config.hugepage_info[i].lock_descriptor = 0;
 	}
 }
 
@@ -494,6 +515,10 @@ eal_parse_args(int argc, char **argv)
 	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
 		internal_config.socket_mem[i] = 0;
 
+	/* zero out hugedir descriptors */
+	for (i = 0; i < MAX_HUGEPAGE_SIZES; i++)
+		internal_config.hugepage_info[i].lock_descriptor = 0;
+
 	while ((opt = getopt_long(argc, argvopt, "b:c:m:n:r:v",
 				  lgopts, &option_index)) != EOF) {
 
@@ -663,12 +688,30 @@ eal_check_mem_on_local_socket(void)
 			"memory on local socket!\n");
 }
 
+static int
+sync_func(__attribute__((unused)) void *arg)
+{
+	return 0;
+}
+
+inline static void 
+rte_eal_mcfg_complete(void)
+{
+	/* ALL shared mem_config related INIT DONE */
+	if (rte_config.process_type == RTE_PROC_PRIMARY)
+		rte_config.mem_config->magic = RTE_MAGIC;
+}
+
 /* Launch threads, called at application init(). */
 int
 rte_eal_init(int argc, char **argv)
 {
 	int i, fctret, ret;
 	pthread_t thread_id;
+	static rte_atomic32_t run_once = RTE_ATOMIC32_INIT(0);
+
+	if (!rte_atomic32_test_and_set(&run_once))
+		return -1;
 
 	thread_id = pthread_self();
 
@@ -679,7 +722,9 @@ rte_eal_init(int argc, char **argv)
 	if (fctret < 0)
 		exit(1);
 
-	if (eal_hugepage_info_init() < 0)
+	if (internal_config.no_hugetlbfs == 0 &&
+			internal_config.process_type != RTE_PROC_SECONDARY &&
+			eal_hugepage_info_init() < 0)
 		rte_panic("Cannot get hugepage information\n");
 
 	if (internal_config.memory == 0 && internal_config.force_sockets == 0) {
@@ -690,14 +735,18 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	rte_srand(rte_rdtsc());
-	rte_config_init();
 
+	rte_config_init();
+	
 	if (rte_eal_cpu_init() < 0)
 		rte_panic("Cannot detect lcores\n");
 
 	if (rte_eal_memory_init() < 0)
 		rte_panic("Cannot init memory\n");
 
+	/* the directories are locked during eal_hugepage_info_init */
+	eal_hugedirs_unlock();
+	
 	if (rte_eal_memzone_init() < 0)
 		rte_panic("Cannot init memzone\n");
 
@@ -724,6 +773,8 @@ rte_eal_init(int argc, char **argv)
 
 	eal_check_mem_on_local_socket();
 
+	rte_eal_mcfg_complete();
+
 	RTE_LCORE_FOREACH_SLAVE(i) {
 
 		/*
@@ -745,6 +796,13 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	eal_thread_init_master(rte_config.master_lcore);
+
+	/*
+	 * Launch a dummy function on all slave lcores, so that master lcore
+	 * knows they are all ready when this function returns.
+	 */
+	rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MASTER);
+	rte_eal_mp_wait_lcore();
 
 	return fctret;
 }

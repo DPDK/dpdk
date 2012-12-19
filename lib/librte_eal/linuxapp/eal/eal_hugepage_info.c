@@ -34,25 +34,28 @@
 
 #include <string.h>
 #include <sys/types.h>
+#include <sys/file.h>
 #include <dirent.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fnmatch.h>
 #include <inttypes.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include <errno.h>
 #include <sys/queue.h>
 
-#include "rte_memory.h"
-#include "rte_memzone.h"
-#include "rte_tailq.h"
-#include "rte_eal.h"
-#include "rte_launch.h"
-#include "rte_per_lcore.h"
-#include "rte_lcore.h"
-#include "rte_debug.h"
-#include "rte_log.h"
-#include "rte_common.h"
+#include <rte_memory.h>
+#include <rte_memzone.h>
+#include <rte_tailq.h>
+#include <rte_eal.h>
+#include <rte_launch.h>
+#include <rte_per_lcore.h>
+#include <rte_lcore.h>
+#include <rte_debug.h>
+#include <rte_log.h>
+#include <rte_common.h>
 #include "rte_string_fns.h"
 #include "eal_internal_cfg.h"
 #include "eal_hugepages.h"
@@ -63,9 +66,16 @@ static const char sys_dir_path[] = "/sys/kernel/mm/hugepages";
 static int32_t
 get_num_hugepages(const char *subdir)
 {
-	const char nr_hp_file[] = "nr_hugepages";
-	char path[BUFSIZ];
-	unsigned num_pages = 0;
+	char path[PATH_MAX];
+	long unsigned num_pages = 0;
+	const char *nr_hp_file;
+
+	/* if secondary process, just look at the number of hugepages,
+	 * otherwise look at number of free hugepages */
+	if (internal_config.process_type == RTE_PROC_SECONDARY)
+		nr_hp_file = "nr_hugepages";
+	else
+		nr_hp_file = "free_hugepages";
 
 	rte_snprintf(path, sizeof(path), "%s/%s/%s",
 			sys_dir_path, subdir, nr_hp_file);
@@ -73,7 +83,10 @@ get_num_hugepages(const char *subdir)
 	if (eal_parse_sysfs_value(path, &num_pages) < 0)
 		return 0;
 
-	return num_pages;
+	if (num_pages == 0)
+		RTE_LOG(ERR, EAL, "Error - no free hugepages available!\n");
+
+	return (int32_t)num_pages;
 }
 
 static uint64_t
@@ -169,9 +182,79 @@ static inline void
 swap_hpi(struct hugepage_info *a, struct hugepage_info *b)
 {
 	char buf[sizeof(*a)];
-	memcpy(buf, a, sizeof(*a));
-	memcpy(a, b, sizeof(*a));
-	memcpy(b, buf, sizeof(*a));
+	memcpy(buf, a, sizeof(buf));
+	memcpy(a, b, sizeof(buf));
+	memcpy(b, buf, sizeof(buf));
+}
+
+/*
+ * Clear the hugepage directory of whatever hugepage files
+ * there are. Checks if the file is locked (i.e.
+ * if it's in use by another DPDK process).
+ */
+static int
+clear_hugedir(const char * hugedir)
+{
+	DIR *dir;
+	struct dirent *dirent;
+	int dir_fd, fd, lck_result;
+	const char filter[] = "*map_*"; /* matches hugepage files */
+
+	/* open directory */
+	dir = opendir(hugedir);
+	if (!dir) {
+		RTE_LOG(INFO, EAL, "Unable to open hugepage directory %s\n",
+				hugedir);
+		goto error;
+	}
+	dir_fd = dirfd(dir);
+
+	dirent = readdir(dir);
+	if (!dirent) {
+		RTE_LOG(INFO, EAL, "Unable to read hugepage directory %s\n",
+				hugedir);
+		goto error;
+	}
+
+	while(dirent != NULL){
+		/* skip files that don't match the hugepage pattern */
+		if (fnmatch(filter, dirent->d_name, 0) > 0) {
+			dirent = readdir(dir);
+			continue;
+		}
+
+		/* try and lock the file */
+		fd = openat(dir_fd, dirent->d_name, O_RDONLY);
+
+		/* skip to next file */
+		if (fd == -1) {
+			dirent = readdir(dir);
+			continue;
+		}
+
+		/* non-blocking lock */
+		lck_result = flock(fd, LOCK_EX | LOCK_NB);
+
+		/* if lock succeeds, unlock and remove the file */
+		if (lck_result != -1) {
+			flock(fd, LOCK_UN);
+			unlinkat(dir_fd, dirent->d_name, 0);
+		}
+		close (fd);
+		dirent = readdir(dir);
+	}
+
+	closedir(dir);
+	return 0;
+
+error:
+	if (dir)
+		closedir(dir);
+
+	RTE_LOG(INFO, EAL, "Error while clearing hugepage dir: %s\n",
+		strerror(errno));
+
+	return -1;
 }
 
 /*
@@ -206,6 +289,18 @@ eal_hugepage_info_init(void)
 						(unsigned) get_num_hugepages(dirent->d_name),
 						(unsigned long long)hpi->hugepage_sz);
 			} else {
+				/* try to obtain a writelock */
+				hpi->lock_descriptor = open(hpi->hugedir, O_RDONLY);
+
+				/* if blocking lock failed */
+				if (flock(hpi->lock_descriptor, LOCK_EX) == -1) {
+					RTE_LOG(CRIT, EAL, "Failed to lock hugepage directory!\n");
+					return -1;
+				}
+				/* clear out the hugepages dir from unused pages */
+				if (clear_hugedir(hpi->hugedir) == -1)
+					return -1;
+
 				/* for now, put all pages into socket 0,
 				 * later they will be sorted */
 				hpi->num_pages[0] = get_num_hugepages(dirent->d_name);

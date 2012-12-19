@@ -52,6 +52,8 @@
 #include <rte_per_lcore.h>
 #include <rte_string_fns.h>
 #include <rte_errno.h>
+#include <rte_rwlock.h>
+#include <rte_spinlock.h>
 
 #include "rte_lpm.h"
 
@@ -126,10 +128,12 @@ rte_lpm_find_existing(const char *name)
 		return NULL;
 	}
 
+	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(l, lpm_list, next) {
 		if (strncmp(name, l->name, RTE_LPM_NAMESIZE) == 0)
 			break;
 	}
+	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	if (l == NULL)
 		rte_errno = ENOENT;
@@ -179,20 +183,22 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 	/* Determine the amount of memory to allocate. */
 	mem_size = sizeof(*lpm) + (sizeof(lpm->rules_tbl[0]) * max_rules);
 
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
 	/* guarantee there's no existing */
 	TAILQ_FOREACH(lpm, lpm_list, next) {
 		if (strncmp(name, lpm->name, RTE_LPM_NAMESIZE) == 0)
 			break;
 	}
 	if (lpm != NULL)
-		return NULL;
+		goto exit;
 
 	/* Allocate memory to store the LPM data structures. */
 	lpm = (struct rte_lpm *)rte_zmalloc_socket(mem_name, mem_size,
 			CACHE_LINE_SIZE, socket_id);
 	if (lpm == NULL) {
 		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
-		return NULL;
+		goto exit;
 	}
 
 	/* Save user arguments. */
@@ -200,6 +206,9 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 	rte_snprintf(lpm->name, sizeof(lpm->name), "%s", name);
 
 	TAILQ_INSERT_TAIL(lpm_list, lpm, next);
+
+exit:	
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	return lpm;
 }
