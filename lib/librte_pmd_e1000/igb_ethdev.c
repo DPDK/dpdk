@@ -461,7 +461,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 	 * value of Write-Back Threshold registers.
 	 */
 	if ((hw->mac.type == e1000_82576) || (hw->mac.type == e1000_82580) ||
-			(hw->mac.type == e1000_i350)) {
+		(hw->mac.type == e1000_i350) || (hw->mac.type == e1000_i210)) {
 		uint32_t ivar;
 
 		/* Enable all RX & TX queues in the IVAR registers */
@@ -585,11 +585,13 @@ igb_get_rx_buffer_size(struct e1000_hw *hw)
 	uint32_t rx_buf_size;
 	if (hw->mac.type == e1000_82576) {
 		rx_buf_size = (E1000_READ_REG(hw, E1000_RXPBS) & 0xffff) << 10;
-	} else if (hw->mac.type == e1000_82580) {
+	} else if (hw->mac.type == e1000_82580 || hw->mac.type == e1000_i350) {
 		/* PBS needs to be translated according to a lookup table */
 		rx_buf_size = (E1000_READ_REG(hw, E1000_RXPBS) & 0xf);
 		rx_buf_size = (uint32_t) e1000_rxpbs_adjust_82580(rx_buf_size);
 		rx_buf_size = (rx_buf_size << 10);
+	} else if (hw->mac.type == e1000_i210) {
+		rx_buf_size = (E1000_READ_REG(hw, E1000_RXPBS) & 0x3f) << 10;
 	} else {
 		rx_buf_size = (E1000_READ_REG(hw, E1000_PBA) & 0xffff) << 10;
 	}
@@ -822,6 +824,21 @@ eth_igb_infos_get(struct rte_eth_dev *dev,
 	case e1000_i350:
 		dev_info->max_rx_queues = 8;
 		dev_info->max_tx_queues = 8;
+		break;
+
+	case e1000_i210:
+		dev_info->max_rx_queues = 4;
+		dev_info->max_tx_queues = 4;
+		break;
+
+	case e1000_vfadapt:
+		dev_info->max_rx_queues = 2;
+		dev_info->max_tx_queues = 2;
+		break;
+
+	case e1000_vfadapt_i350:
+		dev_info->max_rx_queues = 1;
+		dev_info->max_tx_queues = 1;
 		break;
 
 	default:
