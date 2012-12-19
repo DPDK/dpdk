@@ -31,15 +31,6 @@
 #include <linux/msi.h>
 #include <linux/version.h>
 
-/* Some function names changes between 3.2.0 and 3.3.0... */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
-#define PCI_LOCK pci_block_user_cfg_access
-#define PCI_UNLOCK pci_unblock_user_cfg_access
-#else
-#define PCI_LOCK pci_cfg_access_lock
-#define PCI_UNLOCK pci_cfg_access_unlock
-#endif
-
 /**
  * MSI-X related macros, copy from linux/pci_regs.h in kernel 2.6.39,
  * but none of them in kernel 2.6.35.
@@ -79,15 +70,44 @@ static const enum igbuio_intr_mode igbuio_intr_mode_preferred = IGBUIO_MSIX_INTR
 
 /* PCI device id table */
 static struct pci_device_id igbuio_pci_ids[] = {
-#define RTE_PCI_DEV_ID_DECL(vend, dev) {PCI_DEVICE(vend, dev)},
+#define RTE_PCI_DEV_ID_DECL_EM(vend, dev) {PCI_DEVICE(vend, dev)},
+#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) {PCI_DEVICE(vend, dev)},
+#define RTE_PCI_DEV_ID_DECL_IGBVF(vend, dev) {PCI_DEVICE(vend, dev)},
+#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) {PCI_DEVICE(vend, dev)},
+#define RTE_PCI_DEV_ID_DECL_IXGBEVF(vend, dev) {PCI_DEVICE(vend, dev)},
 #include <rte_pci_dev_ids.h>
 { 0, },
 };
+
+MODULE_DEVICE_TABLE(pci, igbuio_pci_ids);
 
 static inline struct rte_uio_pci_dev *
 igbuio_get_uio_pci_dev(struct uio_info *info)
 {
 	return container_of(info, struct rte_uio_pci_dev, info);
+}
+
+static inline int
+pci_lock(struct pci_dev * pdev)
+{
+	/* Some function names changes between 3.2.0 and 3.3.0... */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
+	pci_block_user_cfg_access(pdev);
+	return 1;
+#else
+	return pci_cfg_access_trylock(pdev);
+#endif
+}
+
+static inline void
+pci_unlock(struct pci_dev * pdev)
+{
+	/* Some function names changes between 3.2.0 and 3.3.0... */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
+	pci_unblock_user_cfg_access(pdev);
+#else
+	pci_cfg_access_unlock(pdev);
+#endif
 }
 
 /**
@@ -176,11 +196,14 @@ igbuio_pci_irqcontrol(struct uio_info *info, s32 irq_state)
 	struct pci_dev *pdev = udev->pdev;
 
 	spin_lock_irqsave(&udev->lock, flags);
-	PCI_LOCK(pdev);
+	if (!pci_lock(pdev)) {
+		spin_unlock_irqrestore(&udev->lock, flags);
+		return -1;
+	}
 
 	igbuio_set_interrupt_mask(udev, irq_state);
 
-	PCI_UNLOCK(pdev);
+	pci_unlock(pdev);
 	spin_unlock_irqrestore(&udev->lock, flags);
 
 	return 0;
@@ -202,7 +225,8 @@ igbuio_pci_irqhandler(int irq, struct uio_info *info)
 
 	spin_lock_irqsave(&udev->lock, flags);
 	/* block userspace PCI config reads/writes */
-	PCI_LOCK(pdev);
+	if (!pci_lock(pdev))
+		goto spin_unlock;
 
 	/* for legacy mode, interrupt maybe shared */
 	if (udev->mode == IGBUIO_LEGACY_INTR_MODE) {
@@ -217,7 +241,8 @@ igbuio_pci_irqhandler(int irq, struct uio_info *info)
 	ret = IRQ_HANDLED;
 done:
 	/* unblock userspace PCI config reads/writes */
-	PCI_UNLOCK(pdev);
+	pci_unlock(pdev);
+spin_unlock:
 	spin_unlock_irqrestore(&udev->lock, flags);
 	printk(KERN_INFO "irq 0x%x %s\n", irq, (ret == IRQ_HANDLED) ? "handled" : "not handled");
 
@@ -369,7 +394,13 @@ igbuio_pci_remove(struct pci_dev *dev)
 {
 	struct uio_info *info = pci_get_drvdata(dev);
 
+	if (info->priv == NULL) {
+		printk(KERN_DEBUG "Not igbuio device\n");
+		return;
+	}
+
 	uio_unregister_device(info);
+	igbuio_pci_release_iomem(info);
 	if (((struct rte_uio_pci_dev *)info->priv)->mode == IGBUIO_MSIX_INTR_MODE)
 		pci_disable_msix(dev);
 	pci_release_regions(dev);
