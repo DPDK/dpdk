@@ -66,7 +66,8 @@ struct rte_uio_pci_dev {
 		msix_entries[IGBUIO_NUM_MSI_VECTORS]; /* pointer to the msix vectors to be allocated later */
 };
 
-static const enum igbuio_intr_mode igbuio_intr_mode_preferred = IGBUIO_MSIX_INTR_MODE;
+static char *intr_mode = NULL;
+static enum igbuio_intr_mode igbuio_intr_mode_preferred = IGBUIO_MSIX_INTR_MODE;
 
 /* PCI device id table */
 static struct pci_device_id igbuio_pci_ids[] = {
@@ -401,12 +402,35 @@ igbuio_pci_remove(struct pci_dev *dev)
 
 	uio_unregister_device(info);
 	igbuio_pci_release_iomem(info);
-	if (((struct rte_uio_pci_dev *)info->priv)->mode == IGBUIO_MSIX_INTR_MODE)
+	if (((struct rte_uio_pci_dev *)info->priv)->mode ==
+					IGBUIO_MSIX_INTR_MODE)
 		pci_disable_msix(dev);
 	pci_release_regions(dev);
 	pci_disable_device(dev);
 	pci_set_drvdata(dev, NULL);
 	kfree(info);
+}
+
+static int
+igbuio_config_intr_mode(char *intr_str)
+{
+	if (!intr_str) {
+		printk(KERN_INFO "Use MSIX interrupt by default\n");
+		return 0;
+	}
+
+	if (!strcmp(intr_str, "msix")) {
+		igbuio_intr_mode_preferred = IGBUIO_MSIX_INTR_MODE;
+		printk(KERN_INFO "Use MSIX interrupt\n");
+	} else if (!strcmp(intr_str, "legacy")) {
+		igbuio_intr_mode_preferred = IGBUIO_LEGACY_INTR_MODE;
+		printk(KERN_INFO "Use legacy interrupt\n");
+	} else {
+		printk(KERN_INFO "Error: bad parameter - %s\n", intr_str);
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 static struct pci_driver igbuio_pci_driver = {
@@ -419,6 +443,12 @@ static struct pci_driver igbuio_pci_driver = {
 static int __init
 igbuio_pci_init_module(void)
 {
+	int ret;
+
+	ret = igbuio_config_intr_mode(intr_mode);
+	if (ret < 0)
+		return ret;
+
 	return pci_register_driver(&igbuio_pci_driver);
 }
 
@@ -430,6 +460,13 @@ igbuio_pci_exit_module(void)
 
 module_init(igbuio_pci_init_module);
 module_exit(igbuio_pci_exit_module);
+
+module_param(intr_mode, charp, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(intr_mode,
+"igb_uio interrupt mode (default=msix):\n"
+"    msix       Use MSIX interrupt\n"
+"    legacy     Use Legacy interrupt\n"
+"\n");
 
 MODULE_DESCRIPTION("UIO driver for Intel IGB PCI cards");
 MODULE_LICENSE("GPL");
