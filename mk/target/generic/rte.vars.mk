@@ -127,7 +127,7 @@ ifeq ($(BUILDING_RTE_SDK),1)
 # building sdk
 CFLAGS += -include $(RTE_OUTPUT)/include/rte_config.h
 ifeq ($(CONFIG_RTE_INSECURE_FUNCTION_WARNING),y)
-CFLAGS += -include $(RTE_OUTPUT)/include/rte_warnings.h
+CFLAGS += -include rte_warnings.h
 endif
 else
 # if we are building an external application, include SDK's lib and
@@ -138,7 +138,7 @@ CFLAGS += -include $(RTE_OUTPUT)/include/rte_config.h
 endif
 CFLAGS += -include $(RTE_SDK_BIN)/include/rte_config.h
 ifeq ($(CONFIG_RTE_INSECURE_FUNCTION_WARNING),y)
-CFLAGS += -include $(RTE_SDK_BIN)/include/rte_warnings.h
+CFLAGS += -include rte_warnings.h
 endif
 LDFLAGS += -L$(RTE_SDK_BIN)/lib
 endif

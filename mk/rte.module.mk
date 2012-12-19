@@ -72,7 +72,7 @@ build: _postbuild
 # Link all sources in build directory
 %_link: FORCE
 	$(if $(call compare,$(notdir $*),$*),\
-	@if [ ! -f $(notdir $(*)) ]; then ln -nfs $(*) . ; fi,\
+	@if [ ! -f $(notdir $(*)) ]; then ln -nfs $(SRCDIR)/$(*) . ; fi,\
 	@if [ ! -f $(notdir $(*)) ]; then ln -nfs $(SRCDIR)/$(*) . ; fi)
 
 # build module

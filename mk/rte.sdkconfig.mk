@@ -55,9 +55,16 @@ else
 $(RTE_OUTPUT)/.config: $(RTE_CONFIG_TEMPLATE) FORCE
 	@[ -d $(RTE_OUTPUT) ] || mkdir -p $(RTE_OUTPUT)
 	$(Q)if [ "$(RTE_CONFIG_TEMPLATE)" != "" -a -f "$(RTE_CONFIG_TEMPLATE)" ]; then \
-		if ! cmp -s $(RTE_CONFIG_TEMPLATE) $(RTE_OUTPUT)/.config; then \
-			cp $(RTE_CONFIG_TEMPLATE) $(RTE_OUTPUT)/.config ; \
+		if grep -q '#include' $(RTE_CONFIG_TEMPLATE) ; then \
+			$(CPP) -undef -C -P -x assembler-with-cpp -fdirectives-only \
+			-o $(RTE_OUTPUT)/.config_tmp $(RTE_CONFIG_TEMPLATE) ; \
+		else \
+			cp $(RTE_CONFIG_TEMPLATE) $(RTE_OUTPUT)/.config_tmp ; \
 		fi ; \
+		if ! cmp -s $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config; then \
+			cp $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config ; \
+		fi ; \
+		rm -f $(RTE_OUTPUT)/.config_tmp ; \
 	else \
 		echo -n "No template specified. Use T=template " ; \
 		echo "among the following list:" ; \
@@ -83,7 +90,7 @@ $(RTE_OUTPUT)/Makefile:
 $(RTE_OUTPUT)/include/rte_config.h: $(RTE_OUTPUT)/.config
 	$(Q)rm -rf $(RTE_OUTPUT)/include $(RTE_OUTPUT)/app \
 		$(RTE_OUTPUT)/hostapp $(RTE_OUTPUT)/lib \
-		$(RTE_OUTPUT)/hostlib
+		$(RTE_OUTPUT)/hostlib $(RTE_OUTPUT)/kmod $(RTE_OUTPUT)/build
 	@[ -d $(RTE_OUTPUT)/include ] || mkdir -p $(RTE_OUTPUT)/include
 	$(Q)$(RTE_SDK)/scripts/gen-config-h.sh $(RTE_OUTPUT)/.config \
 		> $(RTE_OUTPUT)/include/rte_config.h
