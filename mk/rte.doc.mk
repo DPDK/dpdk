@@ -43,7 +43,6 @@ VPATH = $(abspath $(BASEDOCDIR)/$(DOCDIR))
 
 pngfiles = $(patsubst %.svg,%.png,$(SVG))
 pdfimgfiles = $(patsubst %.svg,%.pdf,$(SVG))
-htmlfiles = $(patsubst %.rst,%.html,$(RST))
 pdffiles = $(patsubst %.rst,%.pdf,$(RST))
 
 .PHONY: all doc clean
@@ -59,10 +58,7 @@ else
 winpath = $(1)
 endif
 
-all doc: $(pngfiles) $(htmlfiles) $(pdffiles) $(DIRS)
-	@true
-
-htmldoc: $(pngfiles) $(htmlfiles) $(DIRS)
+all doc: $(pngfiles) $(pdffiles) $(DIRS)
 	@true
 
 pdfdoc: $(pngfiles) $(pdffiles) $(DIRS)

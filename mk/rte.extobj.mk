@@ -52,4 +52,3 @@ else
 include $(RTE_SDK)/mk/rte.obj.mk
 endif
 
-include $(RTE_SDK)/mk/internal/rte.exthelp-post.mk

@@ -102,10 +102,6 @@ fast_test ring_test mempool_test:
 testall:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktestall.mk testall
 
-.PHONY: testimport
-testimport:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktestall.mk testimport
-
 .PHONY: install
 install:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkinstall.mk install
@@ -145,11 +141,6 @@ gcovclean:
 .PHONY: gcov
 gcov:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkgcov.mk gcov
-
-.PHONY: help
-help:
-	@sed -e '1,/.*==================================.*/ d' \
-		doc/rst/developers_reference/sdk_mkhelp.rst
 
 # all other build targets
 %:

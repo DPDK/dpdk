@@ -57,16 +57,16 @@ pdfdoc:
 doxydoc:
 	$(Q)$(MAKE) -C $(RTE_SDK)/doc/images $@ BASEDOCDIR=.. DOCDIR=images
 	$(Q)mkdir -p $(RTE_SDK)/doc/latex
-	$(Q)mkdir -p $(RTE_SDK)/doc/pdf/api
 	$(Q)cat $(RTE_SDK)/doc/gen/doxygen_pdf/Doxyfile | doxygen -
 	$(Q)mv $(RTE_SDK)/doc/images/*.pdf $(RTE_SDK)/doc/latex/
 	$(Q)sed -i s/darkgray/headercolour/g $(RTE_SDK)/doc/latex/doxygen.sty
 	$(Q)cp $(RTE_SDK)/doc/gen/doxygen_pdf/Makefile_doxygen $(RTE_SDK)/doc/latex/Makefile
 	$(Q)$(MAKE) -C $(RTE_SDK)/doc/latex
-	$(Q)cp $(RTE_SDK)/doc/latex/refman.pdf $(RTE_SDK)/doc/pdf/api/api.pdf
+	$(Q)mv $(RTE_SDK)/doc/latex/refman.pdf $(RTE_SDK)/doc/api_gen.pdf
+	$(Q)rm -rf $(RTE_SDK)/doc/latex
 
 .PHONY: docclean
 docclean:
 	$(Q)$(MAKE) -C $(RTE_SDK)/doc/images $@ BASEDOCDIR=.. DOCDIR=images
 	$(Q)$(MAKE) -f $(RTE_SDK)/doc/rst/Makefile -C $(RTE_SDK)/doc/pdf $@ BASEDOCDIR=.. DOCDIR=rst
-	$(Q)rm -rf $(RTE_SDK)/doc/pdf/api $(RTE_SDK)/doc/latex
+	$(Q)rm -rf $(RTE_SDK)/doc/latex

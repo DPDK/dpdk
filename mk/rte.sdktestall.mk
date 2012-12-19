@@ -56,9 +56,3 @@ testall: $(TESTALL_TARGETS)
 %_testall:
 	@echo ================== Test $*
 	$(Q)$(MAKE) test O=$*
-
-#
-# import autotests in documentation
-#
-testimport:
-	$(Q)$(RTE_SDK)/scripts/import_autotest.sh $(TESTALL_CONFIGS)
