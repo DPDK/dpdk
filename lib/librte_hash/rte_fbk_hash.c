@@ -122,7 +122,7 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 			(params->entries_per_bucket == 0) ||
 			(params->entries_per_bucket > params->entries) ||
 			(params->entries > RTE_FBK_HASH_ENTRIES_MAX) ||
-			(params->entries_per_bucket > RTE_FBK_HASH_ENTRIES_MAX)){
+			(params->entries_per_bucket > RTE_FBK_HASH_ENTRIES_PER_BUCKET_MAX)){
 		rte_errno = EINVAL;
 		return NULL;
 	}
