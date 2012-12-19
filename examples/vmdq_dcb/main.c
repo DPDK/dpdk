@@ -37,12 +37,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <assert.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <inttypes.h>
+#include <getopt.h>
 
 #include <rte_common.h>
 #include <rte_log.h>
@@ -83,11 +83,11 @@
 #define MBUF_CACHE_SIZE 64
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 
-/* Basic application settings */
-#define NUM_POOLS ETH_16_POOLS /* can be ETH_16_POOLS or ETH_32_POOLS */
-
 #define RX_PORT 0
 #define TX_PORT 1
+
+/* number of pools (if user does not specify any, 16 by default */
+static enum rte_eth_nb_pools num_pools = ETH_16_POOLS;
 
 /*
  * RX and TX Prefetch, Host, and Write-back threshold values should be
@@ -138,7 +138,7 @@ static const struct rte_eth_conf vmdq_dcb_conf_default = {
 		 * appropriate values
 		 */
 		.vmdq_dcb_conf = {
-			.nb_queue_pools = NUM_POOLS,
+			.nb_queue_pools = ETH_16_POOLS,
 			.enable_default_pool = 0,
 			.default_pool = 0,
 			.nb_pool_maps = 0,
@@ -170,6 +170,7 @@ get_eth_conf(struct rte_eth_conf *eth_conf, enum rte_eth_nb_pools num_pools)
 
 	conf.nb_queue_pools = num_pools;
 	conf.enable_default_pool = 0;
+	conf.default_pool = 0; /* set explicit value, even if not used */
 	conf.nb_pool_maps = sizeof( vlan_tags )/sizeof( vlan_tags[ 0 ]);
 	for (i = 0; i < conf.nb_pool_maps; i++){
 		conf.pool_map[i].vlan_id = vlan_tags[ i ];
@@ -178,9 +179,9 @@ get_eth_conf(struct rte_eth_conf *eth_conf, enum rte_eth_nb_pools num_pools)
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++){
 		conf.dcb_queue[i] = (uint8_t)(i % (NUM_QUEUES/num_pools));
 	}
-	rte_memcpy(eth_conf, &vmdq_dcb_conf_default, sizeof(*eth_conf));
-	rte_memcpy(&eth_conf->rx_adv_conf.vmdq_dcb_conf, &conf,
-		   sizeof(eth_conf->rx_adv_conf.vmdq_dcb_conf));
+	(void)(rte_memcpy(eth_conf, &vmdq_dcb_conf_default, sizeof(*eth_conf)));
+	(void)(rte_memcpy(&eth_conf->rx_adv_conf.vmdq_dcb_conf, &conf,
+		   sizeof(eth_conf->rx_adv_conf.vmdq_dcb_conf)));
 	return 0;
 }
 
@@ -198,7 +199,9 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	int retval;
 	uint16_t q;
 
-	get_eth_conf(&port_conf, NUM_POOLS);
+	retval = get_eth_conf(&port_conf, num_pools);
+	if (retval < 0)
+		return retval;
 
 	if (port >= rte_eth_dev_count()) return -1;
 
@@ -228,6 +231,70 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	return 0;
 }
 
+/* Check num_pools parameter and set it if OK*/
+static int
+vmdq_parse_num_pools(const char *q_arg)
+{
+	char *end = NULL;
+	int n;
+
+	/* parse number string */
+	n = strtol(q_arg, &end, 10);
+	if ((q_arg[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return -1;
+	if (n != 16 && n != 32)
+		return -1;
+	if (n == 16)
+		num_pools = ETH_16_POOLS;
+	else
+		num_pools = ETH_32_POOLS;
+
+	return 0;
+}
+
+/* Display usage */
+static void
+vmdq_usage(const char *prgname)
+{
+	printf("%s [EAL options] -- [-nb-pools NP]\n"
+	       "  -nb-pools NP: number of pools (16 default, 32)\n",
+	       prgname);
+}
+
+/*  Parse the argument (num_pools) given in the command line of the application */
+static int
+vmdq_parse_args(int argc, char **argv)
+{
+	int opt;
+	int option_index;
+	const char *prgname = argv[0];
+
+	static struct option long_option[] = {
+		{"nb-pools", required_argument, NULL, 0},
+		{NULL, 0, 0, 0}
+	};
+
+	/* Parse command line */
+	while ((opt = getopt_long_only(argc, argv, "",long_option,&option_index)) != EOF) {
+		switch (opt) {
+		case 0:
+			if (vmdq_parse_num_pools(optarg) == -1){
+				printf("invalid number of pools\n");
+				vmdq_usage(prgname);
+				return -1;
+			}
+			break;
+		default:
+			vmdq_usage(prgname);
+			return -1;
+		}
+	}
+	return 0;
+
+
+}
+
+
 #ifndef RTE_EXEC_ENV_BAREMETAL
 /* When we receive a HUP signal, print out our stats */
 static void
@@ -235,8 +302,8 @@ sighup_handler(int signum)
 {
 	unsigned q;
 	for (q = 0; q < NUM_QUEUES; q ++) {
-		if (q % (NUM_QUEUES/NUM_POOLS) == 0)
-			printf("\nPool %u: ", q/(NUM_QUEUES/NUM_POOLS));
+		if (q % (NUM_QUEUES/num_pools) == 0)
+			printf("\nPool %u: ", q/(NUM_QUEUES/num_pools));
 		printf("%lu ", rxPackets[ q ]);
 	}
 	printf("\nFinished handling signal %d\n", signum);
@@ -288,15 +355,25 @@ MAIN(int argc, char *argv[])
 	struct rte_mempool *mbuf_pool;
 	unsigned lcore_id;
 	uintptr_t i;
+	int ret;
 
 #ifndef RTE_EXEC_ENV_BAREMETAL
 	signal(SIGHUP, sighup_handler);
 #endif
 
-	if (rte_eal_init(argc, argv) < 0)
+	/* init EAL */
+	ret = rte_eal_init(argc, argv);
+	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
-	if (rte_igb_pmd_init() != 0 ||
-			rte_ixgbe_pmd_init() != 0 ||
+	argc -= ret;
+	argv += ret;
+
+	/* parse app arguments */
+	ret = vmdq_parse_args(argc, argv);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Invalid VMDQ argument\n");
+
+	if (rte_ixgbe_pmd_init() != 0 ||
 			rte_eal_pci_probe() != 0)
 		rte_exit(EXIT_FAILURE, "Error with NIC driver initialization\n");
 
