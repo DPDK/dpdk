@@ -77,22 +77,16 @@
 #define PMD_DEBUG_TRACE(fmt, args...)
 #endif
 
-/* define two macros for quick checking for restricting functions to primary
- * instance only. First macro is for functions returning an int - and therefore
- * an error code, second macro is for functions returning null.
- */
-#define PROC_PRIMARY_OR_ERR() do { \
+/* Macros for checking for restricting functions to primary instance only */
+#define PROC_PRIMARY_OR_ERR_RET(retval) do { \
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) { \
-		PMD_DEBUG_TRACE("Cannot run %s in secondary processes\n", \
-							__func__); \
-			return (-E_RTE_SECONDARY); \
-		} \
+		PMD_DEBUG_TRACE("Cannot run in secondary processes\n"); \
+		return (retval); \
+	} \
 } while(0)
-
 #define PROC_PRIMARY_OR_RET() do { \
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) { \
-		PMD_DEBUG_TRACE("Cannot run %s in secondary processes\n", \
-							__func__); \
+		PMD_DEBUG_TRACE("Cannot run in secondary processes\n"); \
 		return; \
 	} \
 } while(0)
@@ -158,8 +152,10 @@ rte_eth_dev_allocate(void)
 {
 	struct rte_eth_dev *eth_dev;
 
-	if (nb_ports == RTE_MAX_ETHPORTS)
+	if (nb_ports == RTE_MAX_ETHPORTS) {
+		PMD_DEBUG_TRACE("Reached maximum number of ethernet ports\n");
 		return NULL;
+	}
 
 	if (rte_eth_dev_data == NULL)
 		rte_eth_dev_data_alloc();
@@ -184,13 +180,12 @@ rte_eth_dev_init(struct rte_pci_driver *pci_drv,
 	if (eth_dev == NULL)
 		return -ENOMEM;
 
-
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY){
 		eth_dev->data->dev_private = rte_zmalloc("ethdev private structure",
 				  eth_drv->dev_private_size,
 				  CACHE_LINE_SIZE);
 		if (eth_dev->data->dev_private == NULL)
-			return -ENOMEM;
+			rte_panic("Cannot allocate memzone for private port data\n");
 	}
 	eth_dev->pci_dev = pci_dev;
 	eth_dev->driver = eth_drv;
@@ -256,7 +251,7 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 
 	/* This function is only safe when called from the primary process
 	 * in a multi-process setup*/
-	PROC_PRIMARY_OR_ERR();
+	PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	if (port_id >= nb_ports || port_id >= RTE_MAX_ETHPORTS) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
@@ -269,8 +264,8 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 
 	if (dev->data->dev_started) {
 		PMD_DEBUG_TRACE(
-		    "port %d must be stopped to allow configuration", port_id);
-		return -EBUSY;
+		    "port %d must be stopped to allow configuration\n", port_id);
+		return (-EBUSY);
 	}
 
 	/*
@@ -280,22 +275,22 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 */
 	(*dev->dev_ops->dev_infos_get)(dev, &dev_info);
 	if (nb_rx_q > dev_info.max_rx_queues) {
-		PMD_DEBUG_TRACE("ethdev port_id=%d nb_rx_queues=%d > %d",
+		PMD_DEBUG_TRACE("ethdev port_id=%d nb_rx_queues=%d > %d\n",
 				port_id, nb_rx_q, dev_info.max_rx_queues);
 		return (-EINVAL);
 	}
 	if (nb_rx_q == 0) {
-		PMD_DEBUG_TRACE("ethdev port_id=%d nb_rx_q == 0", port_id);
+		PMD_DEBUG_TRACE("ethdev port_id=%d nb_rx_q == 0\n", port_id);
 		return (-EINVAL);
 	}
 
 	if (nb_tx_q > dev_info.max_tx_queues) {
-		PMD_DEBUG_TRACE("ethdev port_id=%d nb_tx_queues=%d > %d",
+		PMD_DEBUG_TRACE("ethdev port_id=%d nb_tx_queues=%d > %d\n",
 				port_id, nb_tx_q, dev_info.max_tx_queues);
 		return (-EINVAL);
 	}
 	if (nb_tx_q == 0) {
-		PMD_DEBUG_TRACE("ethdev port_id=%d nb_tx_q == 0", port_id);
+		PMD_DEBUG_TRACE("ethdev port_id=%d nb_tx_q == 0\n", port_id);
 		return (-EINVAL);
 	}
 
@@ -310,7 +305,7 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		if (dev_conf->rxmode.max_rx_pkt_len >
 		    dev_info.max_rx_pktlen) {
 			PMD_DEBUG_TRACE("ethdev port_id=%d max_rx_pkt_len %u"
-				" > max valid value %u",
+				" > max valid value %u\n",
 				port_id,
 				(unsigned)dev_conf->rxmode.max_rx_pkt_len,
 				(unsigned)dev_info.max_rx_pktlen);
@@ -326,7 +321,7 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 
 		if (nb_rx_q != ETH_VMDQ_DCB_NUM_QUEUES) {
 			PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB, nb_rx_q "
-					"!= %d",
+					"!= %d\n",
 					port_id, ETH_VMDQ_DCB_NUM_QUEUES);
 			return (-EINVAL);
 		}
@@ -334,8 +329,7 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		if (! (conf->nb_queue_pools == ETH_16_POOLS ||
 		       conf->nb_queue_pools == ETH_32_POOLS)) {
 		    PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB selected, "
-				    "nb_queue_pools != %d or nb_queue_pools "
-				    "!= %d",
+				    "nb_queue_pools must be %d or %d\n",
 				    port_id, ETH_16_POOLS, ETH_32_POOLS);
 		    return (-EINVAL);
 		}
@@ -401,7 +395,7 @@ rte_eth_dev_start(uint8_t port_id)
 
 	/* This function is only safe when called from the primary process
 	 * in a multi-process setup*/
-	PROC_PRIMARY_OR_ERR();
+	PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	if (port_id >= nb_ports) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
@@ -456,6 +450,7 @@ rte_eth_dev_close(uint8_t port_id)
 	}
 
 	dev = &rte_eth_devices[port_id];
+
 	FUNC_PTR_OR_RET(*dev->dev_ops->dev_close);
 	dev->data->dev_started = 0;
 	(*dev->dev_ops->dev_close)(dev);
@@ -473,7 +468,7 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 
 	/* This function is only safe when called from the primary process
 	 * in a multi-process setup*/
-	PROC_PRIMARY_OR_ERR();
+	PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	if (port_id >= nb_ports) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
@@ -487,7 +482,7 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 
 	if (dev->data->dev_started) {
 		PMD_DEBUG_TRACE(
-		    "port %d must be stopped to allow configuration", port_id);
+		    "port %d must be stopped to allow configuration\n", port_id);
 		return -EBUSY;
 	}
 
@@ -535,7 +530,7 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 
 	/* This function is only safe when called from the primary process
 	 * in a multi-process setup*/
-	PROC_PRIMARY_OR_ERR();
+	PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	if (port_id >= nb_ports) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
@@ -549,7 +544,7 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 
 	if (dev->data->dev_started) {
 		PMD_DEBUG_TRACE(
-		    "port %d must be stopped to allow configuration", port_id);
+		    "port %d must be stopped to allow configuration\n", port_id);
 		return -EBUSY;
 	}
 
@@ -779,12 +774,12 @@ rte_eth_dev_vlan_filter(uint8_t port_id, uint16_t vlan_id, int on)
 		PMD_DEBUG_TRACE("port %d: vlan-filtering disabled\n", port_id);
 		return (-ENOSYS);
 	}
+
 	if (vlan_id > 4095) {
 		PMD_DEBUG_TRACE("(port_id=%d) invalid vlan_id=%u > 4095\n",
 				port_id, (unsigned) vlan_id);
 		return (-EINVAL);
 	}
-
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_filter_set, -ENOTSUP);
 	(*dev->dev_ops->vlan_filter_set)(dev, vlan_id, on);
 	return (0);
@@ -814,19 +809,14 @@ rte_eth_dev_fdir_add_signature_filter(uint8_t port_id,
 	     || fdir_filter->l4type == RTE_FDIR_L4TYPE_NONE)
 	    && (fdir_filter->port_src || fdir_filter->port_dst)) {
 		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and " \
-				"None l4type source & destinations ports " \
-				"should be null!");
+				"None l4type, source & destinations ports " \
+				"should be null!\n");
 		return (-EINVAL);
 	}
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fdir_add_signature_filter, -ENOTSUP);
-	if (*dev->dev_ops->fdir_add_signature_filter)
-		return (*dev->dev_ops->fdir_add_signature_filter)(dev,
-								  fdir_filter,
-								  queue);
-
-	PMD_DEBUG_TRACE("port %d: FDIR feature not supported\n", port_id);
-	return (-ENOTSUP);
+	return (*dev->dev_ops->fdir_add_signature_filter)(dev, fdir_filter,
+								queue);
 }
 
 int
@@ -853,20 +843,15 @@ rte_eth_dev_fdir_update_signature_filter(uint8_t port_id,
 	     || fdir_filter->l4type == RTE_FDIR_L4TYPE_NONE)
 	    && (fdir_filter->port_src || fdir_filter->port_dst)) {
 		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and " \
-				"None l4type source & destinations ports " \
-				"should be null!");
+				"None l4type, source & destinations ports " \
+				"should be null!\n");
 		return (-EINVAL);
 	}
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fdir_update_signature_filter, -ENOTSUP);
-	if (*dev->dev_ops->fdir_update_signature_filter)
-		return (*dev->dev_ops->fdir_update_signature_filter)(dev,
-								     fdir_filter,
-								     queue);
+	return (*dev->dev_ops->fdir_update_signature_filter)(dev, fdir_filter,
+								queue);
 
-
-	PMD_DEBUG_TRACE("port %d: FDIR feature not supported\n", port_id);
-	return (-ENOTSUP);
 }
 
 int
@@ -893,17 +878,12 @@ rte_eth_dev_fdir_remove_signature_filter(uint8_t port_id,
 	    && (fdir_filter->port_src || fdir_filter->port_dst)) {
 		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and " \
 				"None l4type source & destinations ports " \
-				"should be null!");
+				"should be null!\n");
 		return (-EINVAL);
 	}
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fdir_remove_signature_filter, -ENOTSUP);
-	if (*dev->dev_ops->fdir_remove_signature_filter)
-		return (*dev->dev_ops->fdir_remove_signature_filter)(dev,
-								     fdir_filter);
-
-	PMD_DEBUG_TRACE("port %d: FDIR feature not supported\n", port_id);
-	return (-ENOTSUP);
+	return (*dev->dev_ops->fdir_remove_signature_filter)(dev, fdir_filter);
 }
 
 int
@@ -923,13 +903,9 @@ rte_eth_dev_fdir_get_infos(uint8_t port_id, struct rte_eth_fdir *fdir)
 	}
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fdir_infos_get, -ENOTSUP);
-	if (*dev->dev_ops->fdir_infos_get) {
-		(*dev->dev_ops->fdir_infos_get)(dev, fdir);
-		return (0);
-	}
 
-	PMD_DEBUG_TRACE("port %d: FDIR feature not supported\n", port_id);
-	return (-ENOTSUP);
+	(*dev->dev_ops->fdir_infos_get)(dev, fdir);
+	return (0);
 }
 
 int
@@ -957,8 +933,8 @@ rte_eth_dev_fdir_add_perfect_filter(uint8_t port_id,
 	     || fdir_filter->l4type == RTE_FDIR_L4TYPE_NONE)
 	    && (fdir_filter->port_src || fdir_filter->port_dst)) {
 		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and " \
-				"None l4type source & destinations ports " \
-				"should be null!");
+				"None l4type, source & destinations ports " \
+				"should be null!\n");
 		return (-EINVAL);
 	}
 
@@ -967,13 +943,9 @@ rte_eth_dev_fdir_add_perfect_filter(uint8_t port_id,
 		return (-ENOTSUP);
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fdir_add_perfect_filter, -ENOTSUP);
-	if  (*dev->dev_ops->fdir_add_perfect_filter)
-		return (*dev->dev_ops->fdir_add_perfect_filter)(dev, fdir_filter,
+	return (*dev->dev_ops->fdir_add_perfect_filter)(dev, fdir_filter,
 								soft_id, queue,
 								drop);
-
-	PMD_DEBUG_TRACE("port %d: FDIR feature not supported\n", port_id);
-	return (-ENOTSUP);
 }
 
 int
@@ -1001,8 +973,8 @@ rte_eth_dev_fdir_update_perfect_filter(uint8_t port_id,
 	     || fdir_filter->l4type == RTE_FDIR_L4TYPE_NONE)
 	    && (fdir_filter->port_src || fdir_filter->port_dst)) {
 		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and " \
-				"None l4type source & destinations ports " \
-				"should be null!");
+				"None l4type, source & destinations ports " \
+				"should be null!\n");
 		return (-EINVAL);
 	}
 
@@ -1011,15 +983,8 @@ rte_eth_dev_fdir_update_perfect_filter(uint8_t port_id,
 		return (-ENOTSUP);
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fdir_update_perfect_filter, -ENOTSUP);
-	if  (*dev->dev_ops->fdir_update_perfect_filter)
-		return (*dev->dev_ops->fdir_update_perfect_filter)(dev,
-								   fdir_filter,
-								   soft_id,
-								   queue,
-								   drop);
-
-	PMD_DEBUG_TRACE("port %d: FDIR feature not supported\n", port_id);
-	return (-ENOTSUP);
+	return (*dev->dev_ops->fdir_update_perfect_filter)(dev, fdir_filter,
+							soft_id, queue, drop);
 }
 
 int
@@ -1046,8 +1011,8 @@ rte_eth_dev_fdir_remove_perfect_filter(uint8_t port_id,
 	     || fdir_filter->l4type == RTE_FDIR_L4TYPE_NONE)
 	    && (fdir_filter->port_src || fdir_filter->port_dst)) {
 		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and " \
-				"None l4type source & destinations ports " \
-				"should be null!");
+				"None l4type, source & destinations ports " \
+				"should be null!\n");
 		return (-EINVAL);
 	}
 
@@ -1056,13 +1021,8 @@ rte_eth_dev_fdir_remove_perfect_filter(uint8_t port_id,
 		return (-ENOTSUP);
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fdir_remove_perfect_filter, -ENOTSUP);
-	if  (*dev->dev_ops->fdir_remove_perfect_filter)
-		return (*dev->dev_ops->fdir_remove_perfect_filter)(dev,
-								   fdir_filter,
-								   soft_id);
-
-	PMD_DEBUG_TRACE("port %d: FDIR feature not supported\n", port_id);
-	return -ENOTSUP;
+	return (*dev->dev_ops->fdir_remove_perfect_filter)(dev, fdir_filter,
+								soft_id);
 }
 
 int
@@ -1086,12 +1046,7 @@ rte_eth_dev_fdir_set_masks(uint8_t port_id, struct rte_fdir_masks *fdir_mask)
 		return (-ENOTSUP);
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fdir_set_masks, -ENOTSUP);
-	if  (*dev->dev_ops->fdir_set_masks)
-		return (*dev->dev_ops->fdir_set_masks)(dev, fdir_mask);
-
-	PMD_DEBUG_TRACE("port %d: FDIR feature not supported\n",
-			port_id);
-	return -ENOTSUP;
+	return (*dev->dev_ops->fdir_set_masks)(dev, fdir_mask);
 }
 
 int
@@ -1130,7 +1085,6 @@ rte_eth_led_on(uint8_t port_id)
 	}
 
 	dev = &rte_eth_devices[port_id];
-
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_led_on, -ENOTSUP);
 	return ((*dev->dev_ops->dev_led_on)(dev));
 }
@@ -1146,7 +1100,6 @@ rte_eth_led_off(uint8_t port_id)
 	}
 
 	dev = &rte_eth_devices[port_id];
-
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_led_off, -ENOTSUP);
 	return ((*dev->dev_ops->dev_led_off)(dev));
 }
@@ -1185,8 +1138,8 @@ rte_eth_dev_mac_addr_add(uint8_t port_id, struct ether_addr *addr,
 		return (-ENODEV);
 	}
 	dev = &rte_eth_devices[port_id];
-
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->mac_addr_add, -ENOTSUP);
+
 	if (is_zero_ether_addr(addr)) {
 		PMD_DEBUG_TRACE("port %d: Cannot add NULL MAC address\n", port_id);
 		return (-EINVAL);
@@ -1223,8 +1176,8 @@ rte_eth_dev_mac_addr_remove(uint8_t port_id, struct ether_addr *addr)
 		return (-ENODEV);
 	}
 	dev = &rte_eth_devices[port_id];
-
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->mac_addr_remove, -ENOTSUP);
+
 	index = get_mac_addr_index(port_id, addr);
 	if (index == 0) {
 		PMD_DEBUG_TRACE("port %d: Cannot remove default MAC address\n", port_id);
@@ -1253,7 +1206,6 @@ rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
 		return 0;
 	}
 	dev = &rte_eth_devices[port_id];
-
 	FUNC_PTR_OR_ERR_RET(*dev->rx_pkt_burst, -ENOTSUP);
 	if (queue_id >= dev->data->nb_rx_queues) {
 		PMD_DEBUG_TRACE("Invalid RX queue_id=%d\n", queue_id);

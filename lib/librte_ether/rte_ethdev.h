@@ -120,7 +120,6 @@
  * Any other configuration will not be stored and will need to be re-entered
  * after a call to rte_eth_dev_start().
  *
- *
  * Finally, a network application can close an Ethernet device by invoking the
  * rte_eth_dev_close() function.
  *
@@ -239,13 +238,13 @@ enum rte_eth_rx_mq_mode {
 struct rte_eth_rxmode {
 	/** The multi-queue packet distribution mode to be used, e.g. RSS. */
 	enum rte_eth_rx_mq_mode mq_mode;
-	uint32_t max_rx_pkt_len;    /**< Only used if jumbo_frame enabled. */
-	uint16_t split_hdr_size;    /**< hdr buf size (header_split enabled).*/
-	uint8_t header_split   : 1, /**< Header Split enable. */
-		hw_ip_checksum : 1, /**< IP/UDP/TCP checksum offload enable. */
-		hw_vlan_filter : 1, /**< VLAN filter enable. */
-		jumbo_frame    : 1, /**< Jumbo Frame Receipt enable. */
-		hw_strip_crc   : 1; /**< Enable CRC stripping by hardware. */
+	uint32_t max_rx_pkt_len;  /**< Only used if jumbo_frame enabled. */
+	uint16_t split_hdr_size;  /**< hdr buf size (header_split enabled).*/
+	uint8_t header_split : 1, /**< Header Split enable. */
+		hw_ip_checksum   : 1, /**< IP/UDP/TCP checksum offload enable. */
+		hw_vlan_filter   : 1, /**< VLAN filter enable. */
+		jumbo_frame      : 1, /**< Jumbo Frame Receipt enable. */
+		hw_strip_crc     : 1; /**< Enable CRC stripping by hardware. */
 };
 
 /**
@@ -409,10 +408,10 @@ struct rte_fdir_conf {
  *  Possible l4type of FDIR filters.
  */
 enum rte_l4type {
-	RTE_FDIR_L4TYPE_NONE = 0,       /**< Nnoe. */
+	RTE_FDIR_L4TYPE_NONE = 0,       /**< None. */
 	RTE_FDIR_L4TYPE_UDP,            /**< UDP. */
 	RTE_FDIR_L4TYPE_TCP,            /**< TCP. */
-	RTE_FDIR_L4TYPE_SCTP,     	/**< SCTP. */
+	RTE_FDIR_L4TYPE_SCTP,           /**< SCTP. */
 };
 
 /**
@@ -446,33 +445,38 @@ struct rte_fdir_filter {
 /**
  *  A structure used to configure FDIR masks that are used by the device
  *  to match the various fields of RX packet headers.
+ *  @note The only_ip_flow field has the opposite meaning compared to other
+ *  masks!
  */
 struct rte_fdir_masks {
-	/** When set to 1, packet l4type is not relevant in filters, and
+	/** When set to 1, packet l4type is \b NOT relevant in filters, and
 	   source and destination port masks must be set to zero. */
 	uint8_t only_ip_flow;
-	uint8_t vlan_id; /**< If set to 1, vlan_id is relevant in filters. */
-	uint8_t vlan_prio; /**< If set to 1, vlan_prio is relevant in filters. */
-	uint8_t flexbytes; /**< If set to 1, flexbytes is relevant in filters. */
+	/** If set to 1, vlan_id is relevant in filters. */
+	uint8_t vlan_id;
+	/** If set to 1, vlan_prio is relevant in filters. */
+	uint8_t vlan_prio;
+	/** If set to 1, flexbytes is relevant in filters. */
+	uint8_t flexbytes;
 	/** Mask of Destination IPv4 Address. All bits set to 1 define the
-	   relevant bits to use in the destination address of an IPv4 packet
-	   when matching it against FDIR filters. */
+	    relevant bits to use in the destination address of an IPv4 packet
+	    when matching it against FDIR filters. */
 	uint32_t dst_ipv4_mask;
 	/** Mask of Source IPv4 Address. All bits set to 1 define
-	   the relevant bits to use in the source address of an IPv4 packet
-	   when matching it against FDIR filters. */
+	    the relevant bits to use in the source address of an IPv4 packet
+	    when matching it against FDIR filters. */
 	uint32_t src_ipv4_mask;
 	/** Mask of Source IPv6 Address. All bits set to 1 define the
-	   relevant BYTES to use in the source address of an IPv6 packet
-	   when matching it against FDIR filters. */
+	    relevant BYTES to use in the source address of an IPv6 packet
+	    when matching it against FDIR filters. */
 	uint16_t src_ipv6_mask;
 	/** Mask of Source Port. All bits set to 1 define the relevant
-	   bits to use in the source port of an IP packets when matching it
-	   against FDIR filters. */
+	    bits to use in the source port of an IP packets when matching it
+	    against FDIR filters. */
 	uint16_t src_port_mask;
 	/** Mask of Destination Port. All bits set to 1 define the relevant
-	   bits to use in the destination port of an IP packet when matching it
-	   against FDIR filters. */
+	    bits to use in the destination port of an IP packet when matching it
+	    against FDIR filters. */
 	uint16_t dst_port_mask;
 };
 
@@ -559,43 +563,43 @@ TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
 
 typedef int  (*eth_dev_configure_t)(struct rte_eth_dev *dev, uint16_t nb_rx_q,
 				    uint16_t nb_tx_q);
-/**< Ethernet device configuration. */
+/**< @internal Ethernet device configuration. */
 
 typedef int  (*eth_dev_start_t)(struct rte_eth_dev *dev);
-/**< Function used to start a configured Ethernet device. */
+/**< @internal Function used to start a configured Ethernet device. */
 
 typedef void (*eth_dev_stop_t)(struct rte_eth_dev *dev);
-/**< Function used to stop a configured Ethernet device. */
+/**< @internal Function used to stop a configured Ethernet device. */
 
 typedef void (*eth_dev_close_t)(struct rte_eth_dev *dev);
 /**< @internal Function used to close a configured Ethernet device. */
 
 typedef void (*eth_promiscuous_enable_t)(struct rte_eth_dev *dev);
-/**< Function used to enable the RX promiscuous mode of an Ethernet device. */
+/**< @internal Function used to enable the RX promiscuous mode of an Ethernet device. */
 
 typedef void (*eth_promiscuous_disable_t)(struct rte_eth_dev *dev);
-/**< Function used to disable the RX promiscuous mode of an Ethernet device. */
+/**< @internal Function used to disable the RX promiscuous mode of an Ethernet device. */
 
 typedef void (*eth_allmulticast_enable_t)(struct rte_eth_dev *dev);
-/**< Enable the receipt of all multicast packets by an Ethernet device. */
+/**< @internal Enable the receipt of all multicast packets by an Ethernet device. */
 
 typedef void (*eth_allmulticast_disable_t)(struct rte_eth_dev *dev);
-/**< Disable the receipt of all multicast packets by an Ethernet device. */
+/**< @internal Disable the receipt of all multicast packets by an Ethernet device. */
 
 typedef int (*eth_link_update_t)(struct rte_eth_dev *dev,
 				int wait_to_complete);
-/**< Get link speed, duplex mode and state (up/down) of an Ethernet device. */
+/**< @internal Get link speed, duplex mode and state (up/down) of an Ethernet device. */
 
 typedef void (*eth_stats_get_t)(struct rte_eth_dev *dev,
 				struct rte_eth_stats *igb_stats);
-/**< Get global I/O statistics of an Ethernet device. */
+/**< @internal Get global I/O statistics of an Ethernet device. */
 
 typedef void (*eth_stats_reset_t)(struct rte_eth_dev *dev);
-/**< Reset global I/O statistics of an Ethernet device to 0. */
+/**< @internal Reset global I/O statistics of an Ethernet device to 0. */
 
 typedef void (*eth_dev_infos_get_t)(struct rte_eth_dev *dev,
 				    struct rte_eth_dev_info *dev_info);
-/**< Get specific informations of an Ethernet device. */
+/**< @internal Get specific informations of an Ethernet device. */
 
 typedef int (*eth_rx_queue_setup_t)(struct rte_eth_dev *dev,
 				    uint16_t rx_queue_id,
@@ -603,90 +607,90 @@ typedef int (*eth_rx_queue_setup_t)(struct rte_eth_dev *dev,
 				    unsigned int socket_id,
 				    const struct rte_eth_rxconf *rx_conf,
 				    struct rte_mempool *mb_pool);
-/**< Set up a receive queue of an Ethernet device. */
+/**< @internal Set up a receive queue of an Ethernet device. */
 
 typedef int (*eth_tx_queue_setup_t)(struct rte_eth_dev *dev,
 				    uint16_t tx_queue_id,
 				    uint16_t nb_tx_desc,
 				    unsigned int socket_id,
 				    const struct rte_eth_txconf *tx_conf);
-/**< Setup a transmit queue of an Ethernet device. */
+/**< @internal Setup a transmit queue of an Ethernet device. */
 
 typedef void (*vlan_filter_set_t)(struct rte_eth_dev *dev,
 				  uint16_t vlan_id,
 				  int on);
-/**< Enable/Disable filtering of a VLAN Tag Identifier by an Ethernet device. */
+/**< @internal filtering of a VLAN Tag Identifier by an Ethernet device. */
 
 typedef uint16_t (*eth_rx_burst_t)(struct igb_rx_queue *rxq,
 				   struct rte_mbuf **rx_pkts,
 				   uint16_t nb_pkts);
-/**< Retrieve input packets from a receive queue of an Ethernet device. */
+/**< @internal Retrieve input packets from a receive queue of an Ethernet device. */
 
 typedef uint16_t (*eth_tx_burst_t)(struct igb_tx_queue *txq,
 				   struct rte_mbuf **tx_pkts,
 				   uint16_t nb_pkts);
-/**< Send output packets on a transmit queue of an Ethernet device. */
+/**< @internal Send output packets on a transmit queue of an Ethernet device. */
 
 typedef int (*fdir_add_signature_filter_t)(struct rte_eth_dev *dev,
 					   struct rte_fdir_filter *fdir_ftr,
 					   uint8_t rx_queue);
-/**< Setup a new signature filter rule on an Ethernet device */
+/**< @internal Setup a new signature filter rule on an Ethernet device */
 
 typedef int (*fdir_update_signature_filter_t)(struct rte_eth_dev *dev,
 					      struct rte_fdir_filter *fdir_ftr,
 					      uint8_t rx_queue);
-/**< Update a signature filter rule on an Ethernet device */
+/**< @internal Update a signature filter rule on an Ethernet device */
 
 typedef int (*fdir_remove_signature_filter_t)(struct rte_eth_dev *dev,
 					      struct rte_fdir_filter *fdir_ftr);
-/**< Remove a  signature filter rule on an Ethernet device */
+/**< @internal Remove a  signature filter rule on an Ethernet device */
 
 typedef void (*fdir_infos_get_t)(struct rte_eth_dev *dev,
 				 struct rte_eth_fdir *fdir);
-/**< Get information about fdir status */
+/**< @internal Get information about fdir status */
 
 typedef int (*fdir_add_perfect_filter_t)(struct rte_eth_dev *dev,
 					 struct rte_fdir_filter *fdir_ftr,
 					 uint16_t soft_id, uint8_t rx_queue,
 					 uint8_t drop);
-/**< Setup a new perfect filter rule on an Ethernet device */
+/**< @internal Setup a new perfect filter rule on an Ethernet device */
 
 typedef int (*fdir_update_perfect_filter_t)(struct rte_eth_dev *dev,
 					    struct rte_fdir_filter *fdir_ftr,
 					    uint16_t soft_id, uint8_t rx_queue,
 					    uint8_t drop);
-/**< Update a perfect filter rule on an Ethernet device */
+/**< @internal Update a perfect filter rule on an Ethernet device */
 
 typedef int (*fdir_remove_perfect_filter_t)(struct rte_eth_dev *dev,
 					    struct rte_fdir_filter *fdir_ftr,
 					    uint16_t soft_id);
-/**< Remove a perfect filter rule on an Ethernet device */
+/**< @internal Remove a perfect filter rule on an Ethernet device */
 
 typedef int (*fdir_set_masks_t)(struct rte_eth_dev *dev,
 				struct rte_fdir_masks *fdir_masks);
-/**< Setup flow director masks on an Ethernet device */
+/**< @internal Setup flow director masks on an Ethernet device */
 
 typedef int (*flow_ctrl_set_t)(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
-/**< Setup flow control parameter on an Ethernet device */
+/**< @internal Setup flow control parameter on an Ethernet device */
 
 typedef int (*eth_dev_led_on_t)(struct rte_eth_dev *dev);
-/**<  Turn on SW controllable LED on an Ethernet device */
+/**< @internal Turn on SW controllable LED on an Ethernet device */
 
 typedef int (*eth_dev_led_off_t)(struct rte_eth_dev *dev);
-/**<  Turn off SW controllable LED on an Ethernet device */
+/**< @internal Turn off SW controllable LED on an Ethernet device */
 
 typedef void (*eth_mac_addr_remove_t)(struct rte_eth_dev *dev, uint32_t index);
-/**< Remove MAC address from receive address register */
+/**< @internal Remove MAC address from receive address register */
 
 typedef void (*eth_mac_addr_add_t)(struct rte_eth_dev *dev,
 				  struct ether_addr *mac_addr,
 				  uint32_t index,
 				  uint32_t vmdq);
-/**< Set a MAC address into Receive Address Address Register */
+/**< @internal Set a MAC address into Receive Address Address Register */
 
 /**
- * A structure containing the functions exported by an Ethernet driver.
+ * @internal A structure containing the functions exported by an Ethernet driver.
  */
 struct eth_dev_ops {
 	eth_dev_configure_t        dev_configure; /**< Configure device. */
@@ -701,7 +705,7 @@ struct eth_dev_ops {
 	eth_stats_get_t            stats_get;     /**< Get device statistics. */
 	eth_stats_reset_t          stats_reset;   /**< Reset device statistics. */
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
-	vlan_filter_set_t          vlan_filter_set; /**< Filter VLAN on/off. */
+	vlan_filter_set_t          vlan_filter_set;  /**< Filter VLAN Setup. */
 	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device RX queue.*/
 	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue.*/
 	eth_dev_led_on_t           dev_led_on;    /**< Turn on LED. */
@@ -729,6 +733,7 @@ struct eth_dev_ops {
 };
 
 /**
+ * @internal
  * The generic data structure associated with each ethernet device.
  *
  * Pointers to burst-oriented packet receive and transmit functions are
@@ -748,6 +753,7 @@ struct rte_eth_dev {
 };
 
 /**
+ * @internal
  * The data part, with no function pointers, associated with each ethernet device.
  *
  * This structure is safe to place in shared memory to be common among different
@@ -777,6 +783,7 @@ struct rte_eth_dev_data {
 };
 
 /**
+ * @internal
  * The pool of *rte_eth_dev* structures. The size of the pool
  * is configured at compile-time in the <rte_ethdev.c> file.
  */
@@ -795,6 +802,7 @@ extern uint8_t rte_eth_dev_count(void);
 
 struct eth_driver;
 /**
+ * @internal
  * Initialization function of an Ethernet driver invoked for each matching
  * Ethernet PCI device detected during the PCI probing phase.
  *
@@ -829,6 +837,7 @@ typedef int (*eth_dev_init_t)(struct eth_driver  *eth_drv,
 			      struct rte_eth_dev *eth_dev);
 
 /**
+ * @internal
  * The structure associated with a PMD Ethernet driver.
  *
  * Each Ethernet driver acts as a PCI driver and is represented by a generic
@@ -847,6 +856,7 @@ struct eth_driver {
 };
 
 /**
+ * @internal
  * A function invoked by the initialization function of an Ethernet driver
  * to simultaneously register itself as a PCI driver and as an Ethernet
  * Poll Mode Driver (PMD).
@@ -1755,7 +1765,7 @@ int  rte_eth_led_off(uint8_t port_id);
  *   The pointer to the structure of the flow control parameters.
  * @return
  *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support flow director mode.
+ *   - (-ENOTSUP) if hardware doesn't support flow control mode.
  *   - (-ENODEV)  if *port_id* invalid.
  *   - (-EINVAL)  if bad parameter
  *   - (-EIO)     if flow control setup failure
