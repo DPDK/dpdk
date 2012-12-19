@@ -174,6 +174,9 @@ static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
 		       "- set flow_ctrl rx on|off tx on|off high_water low_water "
 						"pause_time send_xon port_id \n"
 		       "    Set the link flow control parameter on the port \n"
+		       "- set pfc_ctrl rx on|off tx on|off high_water low_water "
+						"pause_time priority port_id \n"
+		       "    Set the priority flow control parameter on the port \n"
 		       "- write reg port_id reg_off value\n"
 		       "    Set value of a port register\n"
 		       "- write regfield port_id reg_off bit_x bit_y value\n"
@@ -2627,6 +2630,109 @@ cmdline_parse_inst_t cmd_link_flow_control_set = {
 	},
 };
 
+/* *** SETUP ETHERNET PIRORITY FLOW CONTROL *** */
+struct cmd_priority_flow_ctrl_set_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t pfc_ctrl;
+	cmdline_fixed_string_t rx;
+	cmdline_fixed_string_t rx_pfc_mode;
+	cmdline_fixed_string_t tx;
+	cmdline_fixed_string_t tx_pfc_mode;
+	uint32_t high_water;
+	uint32_t low_water;
+	uint16_t pause_time;
+	uint8_t  priority;
+	uint8_t  port_id;
+};
+
+static void
+cmd_priority_flow_ctrl_set_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	struct cmd_priority_flow_ctrl_set_result *res = parsed_result;
+	struct rte_eth_pfc_conf pfc_conf;
+	int rx_fc_enable, tx_fc_enable;
+	int ret;
+
+	/*
+	 * Rx on/off, flow control is enabled/disabled on RX side. This can indicate
+	 * the RTE_FC_TX_PAUSE, Transmit pause frame at the Rx side.
+	 * Tx on/off, flow control is enabled/disabled on TX side. This can indicate
+	 * the RTE_FC_RX_PAUSE, Respond to the pause frame at the Tx side.
+	 */
+	static enum rte_eth_fc_mode rx_tx_onoff_2_pfc_mode[2][2] = {
+			{RTE_FC_NONE, RTE_FC_RX_PAUSE}, {RTE_FC_TX_PAUSE, RTE_FC_FULL}
+	};
+
+	rx_fc_enable = (!strncmp(res->rx_pfc_mode, "on",2)) ? 1 : 0;
+	tx_fc_enable = (!strncmp(res->tx_pfc_mode, "on",2)) ? 1 : 0;
+	pfc_conf.fc.mode       = rx_tx_onoff_2_pfc_mode[rx_fc_enable][tx_fc_enable];
+	pfc_conf.fc.high_water = res->high_water;
+	pfc_conf.fc.low_water  = res->low_water;
+	pfc_conf.fc.pause_time = res->pause_time;
+	pfc_conf.priority      = res->priority;
+
+	ret = rte_eth_dev_priority_flow_ctrl_set(res->port_id, &pfc_conf);
+	if (ret != 0)
+		printf("bad priority flow contrl parameter, return code = %d \n", ret);
+}
+
+cmdline_parse_token_string_t cmd_pfc_set_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_priority_flow_ctrl_set_result,
+				set, "set");
+cmdline_parse_token_string_t cmd_pfc_set_flow_ctrl =
+	TOKEN_STRING_INITIALIZER(struct cmd_priority_flow_ctrl_set_result,
+				pfc_ctrl, "pfc_ctrl");
+cmdline_parse_token_string_t cmd_pfc_set_rx =
+	TOKEN_STRING_INITIALIZER(struct cmd_priority_flow_ctrl_set_result,
+				rx, "rx");
+cmdline_parse_token_string_t cmd_pfc_set_rx_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_priority_flow_ctrl_set_result,
+				rx_pfc_mode, "on#off");
+cmdline_parse_token_string_t cmd_pfc_set_tx =
+	TOKEN_STRING_INITIALIZER(struct cmd_priority_flow_ctrl_set_result,
+				tx, "tx");
+cmdline_parse_token_string_t cmd_pfc_set_tx_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_priority_flow_ctrl_set_result,
+				tx_pfc_mode, "on#off");
+cmdline_parse_token_num_t cmd_pfc_set_high_water =
+	TOKEN_NUM_INITIALIZER(struct cmd_priority_flow_ctrl_set_result,
+				high_water, UINT32);
+cmdline_parse_token_num_t cmd_pfc_set_low_water =
+	TOKEN_NUM_INITIALIZER(struct cmd_priority_flow_ctrl_set_result,
+				low_water, UINT32);
+cmdline_parse_token_num_t cmd_pfc_set_pause_time =
+	TOKEN_NUM_INITIALIZER(struct cmd_priority_flow_ctrl_set_result,
+				pause_time, UINT16);
+cmdline_parse_token_num_t cmd_pfc_set_priority =
+	TOKEN_NUM_INITIALIZER(struct cmd_priority_flow_ctrl_set_result,
+				priority, UINT8);
+cmdline_parse_token_num_t cmd_pfc_set_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_priority_flow_ctrl_set_result,
+				port_id, UINT8);
+
+cmdline_parse_inst_t cmd_priority_flow_control_set = {
+	.f = cmd_priority_flow_ctrl_set_parsed,
+	.data = NULL,
+	.help_str = "Configure the Ethernet priority flow control: set pfc_ctrl rx on|off\n\
+			tx on|off high_water low_water pause_time priority port_id",
+	.tokens = {
+		(void *)&cmd_pfc_set_set,
+		(void *)&cmd_pfc_set_flow_ctrl,
+		(void *)&cmd_pfc_set_rx,
+		(void *)&cmd_pfc_set_rx_mode,
+		(void *)&cmd_pfc_set_tx,
+		(void *)&cmd_pfc_set_tx_mode,
+		(void *)&cmd_pfc_set_high_water,
+		(void *)&cmd_pfc_set_low_water,
+		(void *)&cmd_pfc_set_pause_time,
+		(void *)&cmd_pfc_set_priority,
+		(void *)&cmd_pfc_set_portid,
+		NULL,
+	},
+};
+
 /* *** RESET CONFIGURATION *** */
 struct cmd_reset_result {
 	cmdline_fixed_string_t reset;
@@ -3361,6 +3467,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_reset,
 	(cmdline_parse_inst_t *)&cmd_tx_cksum_set,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
+	(cmdline_parse_inst_t *)&cmd_priority_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_config_dcb,
 	(cmdline_parse_inst_t *)&cmd_read_reg,
 	(cmdline_parse_inst_t *)&cmd_read_reg_bit_field,
