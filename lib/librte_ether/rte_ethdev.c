@@ -1381,13 +1381,30 @@ rte_eth_dev_flow_ctrl_set(uint8_t port_id, struct rte_eth_fc_conf *fc_conf)
 	}
 
 	dev = &rte_eth_devices[port_id];
-
-	/* High water, low water validation are device specific */
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->flow_ctrl_set, -ENOTSUP);
-	if  (*dev->dev_ops->flow_ctrl_set)
-		return (*dev->dev_ops->flow_ctrl_set)(dev, fc_conf);
+	return (*dev->dev_ops->flow_ctrl_set)(dev, fc_conf);
+}
 
-	return -ENOTSUP;
+int
+rte_eth_dev_priority_flow_ctrl_set(uint8_t port_id, struct rte_eth_pfc_conf *pfc_conf)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+
+	if (pfc_conf->priority > (ETH_DCB_NUM_USER_PRIORITIES - 1)) {
+		PMD_DEBUG_TRACE("Invalid priority, only 0-7 allowed\n");
+		return (-EINVAL);
+	}
+
+	dev = &rte_eth_devices[port_id];
+	/* High water, low water validation are device specific */
+	if  (*dev->dev_ops->priority_flow_ctrl_set)
+		return (*dev->dev_ops->priority_flow_ctrl_set)(dev, pfc_conf);
+	return (-ENOTSUP);
 }
 
 int

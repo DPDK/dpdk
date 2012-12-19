@@ -440,6 +440,16 @@ struct rte_eth_fc_conf {
 };
 
 /**
+ * A structure used to configure Ethernet priority flow control parameter.
+ * These parameters will be configured into the register of the NIC.
+ * Please refer to the corresponding data sheet for proper value.
+ */
+struct rte_eth_pfc_conf {
+	struct rte_eth_fc_conf fc; /**< General flow control parameter. */
+	uint8_t priority;          /**< VLAN User Priority. */
+};
+
+/**
  *  Flow Director setting modes: none (default), signature or perfect.
  */
 enum rte_fdir_mode {
@@ -791,6 +801,10 @@ typedef int (*flow_ctrl_set_t)(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
 /**< @internal Setup flow control parameter on an Ethernet device */
 
+typedef int (*priority_flow_ctrl_set_t)(struct rte_eth_dev *dev,
+				struct rte_eth_pfc_conf *pfc_conf);
+/**< @internal Setup priority flow control parameter on an Ethernet device */
+
 typedef int (*eth_dev_led_on_t)(struct rte_eth_dev *dev);
 /**< @internal Turn on SW controllable LED on an Ethernet device */
 
@@ -835,6 +849,7 @@ struct eth_dev_ops {
 	eth_dev_led_on_t           dev_led_on;    /**< Turn on LED. */
 	eth_dev_led_off_t          dev_led_off;   /**< Turn off LED. */
 	flow_ctrl_set_t            flow_ctrl_set; /**< Setup flow control. */
+	priority_flow_ctrl_set_t   priority_flow_ctrl_set; /**< Setup priority flow control.*/
 	eth_mac_addr_remove_t      mac_addr_remove; /**< Remove MAC address */
 	eth_mac_addr_add_t         mac_addr_add;  /**< Add a MAC address */
 
@@ -2015,6 +2030,24 @@ int  rte_eth_led_off(uint8_t port_id);
  */
 int rte_eth_dev_flow_ctrl_set(uint8_t port_id,
 				struct rte_eth_fc_conf *fc_conf);
+
+/**
+ * Configure the Ethernet priority flow control under DCB environment 
+ * for Ethernet device. 
+ * 
+ * @param port_id
+ * The port identifier of the Ethernet device.
+ * @param pfc_conf
+ * The pointer to the structure of the priority flow control parameters.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support priority flow control mode.
+ *   - (-ENODEV)  if *port_id* invalid.
+ *   - (-EINVAL)  if bad parameter
+ *   - (-EIO)     if flow control setup failure
+ */
+int rte_eth_dev_priority_flow_ctrl_set(uint8_t port_id,
+				struct rte_eth_pfc_conf *pfc_conf);
 
 /**
  * Add a MAC address to an internal array of addresses used to enable whitelist
