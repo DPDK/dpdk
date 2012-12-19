@@ -92,12 +92,41 @@
 #error "APP_LOOKUP_METHOD set to incorrect value"
 #endif
 
+#ifndef IPv6_BYTES
+#define IPv6_BYTES_FMT "%02x%02x:%02x%02x:%02x%02x:%02x%02x:"\
+                       "%02x%02x:%02x%02x:%02x%02x:%02x%02x"
+#define IPv6_BYTES(addr) \
+	addr[0],  addr[1], addr[2],  addr[3], \
+	addr[4],  addr[5], addr[6],  addr[7], \
+	addr[8],  addr[9], addr[10], addr[11],\
+	addr[12], addr[13],addr[14], addr[15]
+#endif
+
+
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1
 
 #define MAX_PORTS 32
 
+#define MAX_JUMBO_PKT_LEN  9600
+
+#define IPV6_ADDR_LEN 16
+
+#define MEMPOOL_CACHE_SIZE 256
+
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
-#define NB_MBUF   8192
+
+/*
+ * This expression is used to calculate the number of mbufs needed depending on user input, taking
+ *  into account memory for rx and tx hardware rings, cache per lcore and mtable per port per lcore.
+ *  RTE_MAX is used to ensure that NB_MBUF never goes below a minimum value of 8192
+ */
+
+#define NB_MBUF RTE_MAX	(																	\
+				(nb_ports*nb_rx_queue*RTE_TEST_RX_DESC_DEFAULT +							\
+				nb_ports*nb_lcores*MAX_PKT_BURST +											\
+				nb_ports*n_tx_queue*RTE_TEST_TX_DESC_DEFAULT +								\
+				nb_lcores*MEMPOOL_CACHE_SIZE),												\
+				(unsigned)8192)
 
 /*
  * RX and TX Prefetch, Host, and Write-back threshold values should be
@@ -184,6 +213,7 @@ static uint16_t nb_lcore_params = sizeof(lcore_params_array_default) /
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
+		.max_rx_pkt_len = ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 		.header_split   = 0, /**< Header Split disabled */
 		.hw_ip_checksum = 1, /**< IP checksum offload enabled */
@@ -194,7 +224,7 @@ static struct rte_eth_conf port_conf = {
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IPV4,
+			.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6,
 		},
 	},
 	.txmode = {
@@ -208,6 +238,7 @@ static const struct rte_eth_rxconf rx_conf = {
 		.hthresh = RX_HTHRESH,
 		.wthresh = RX_WTHRESH,
 	},
+	.rx_free_thresh = 32,
 };
 
 static const struct rte_eth_txconf tx_conf = {
@@ -218,6 +249,7 @@ static const struct rte_eth_txconf tx_conf = {
 	},
 	.tx_free_thresh = 0, /* Use PMD default values */
 	.tx_rs_thresh = 0, /* Use PMD default values */
+	.txq_flags = 0x0,
 };
 
 static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
@@ -238,49 +270,90 @@ struct ipv4_5tuple {
 	uint32_t ip_src;
 	uint16_t port_dst;
 	uint16_t port_src;
-	uint8_t proto;
+	uint8_t  proto;
 } __attribute__((__packed__));
 
-struct l3fwd_route {
+struct ipv6_5tuple {
+	uint8_t  ip_dst[IPV6_ADDR_LEN];
+	uint8_t  ip_src[IPV6_ADDR_LEN];
+	uint16_t port_dst;
+	uint16_t port_src;
+	uint8_t  proto;
+} __attribute__((__packed__));
+
+struct ipv4_l3fwd_route {
 	struct ipv4_5tuple key;
 	uint8_t if_out;
 };
 
-static struct l3fwd_route l3fwd_route_array[] = {
+struct ipv6_l3fwd_route {
+	struct ipv6_5tuple key;
+	uint8_t if_out;
+};
+
+static struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {
 	{{IPv4(100,10,0,1), IPv4(200,10,0,1), 101, 11, IPPROTO_TCP}, 0},
 	{{IPv4(100,20,0,2), IPv4(200,20,0,2), 102, 12, IPPROTO_TCP}, 1},
 	{{IPv4(100,30,0,3), IPv4(200,30,0,3), 103, 13, IPPROTO_TCP}, 2},
 	{{IPv4(100,40,0,4), IPv4(200,40,0,4), 104, 14, IPPROTO_TCP}, 3},
 };
 
+static struct ipv6_l3fwd_route ipv6_l3fwd_route_array[] = {
+	{
+		{
+			{0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			 0x02, 0x1b, 0x21, 0xff, 0xfe, 0x91, 0x38, 0x05},
+			{0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			 0x02, 0x1e, 0x67, 0xff, 0xfe, 0x0d, 0xb6, 0x0a},
+			 1, 10, IPPROTO_UDP
+		}, 4
+	},
+};
+
 typedef struct rte_hash lookup_struct_t;
-static lookup_struct_t *l3fwd_lookup_struct[NB_SOCKETS];
+static lookup_struct_t *ipv4_l3fwd_lookup_struct[NB_SOCKETS];
+static lookup_struct_t *ipv6_l3fwd_lookup_struct[NB_SOCKETS];
 
 #define L3FWD_HASH_ENTRIES	1024
-struct rte_hash_parameters l3fwd_hash_params = {
-	.name = "l3fwd_hash_0",
+
+struct rte_hash_parameters ipv4_l3fwd_hash_params = {
+	.name = "ipv4_l3fwd_hash_0",
 	.entries = L3FWD_HASH_ENTRIES,
 	.bucket_entries = 4,
 	.key_len = sizeof(struct ipv4_5tuple),
-	.hash_func = rte_hash_crc,
+	.hash_func = DEFAULT_HASH_FUNC,
 	.hash_func_init_val = 0,
 	.socket_id = SOCKET0,
 };
 
-#define L3FWD_NUM_ROUTES \
-	(sizeof(l3fwd_route_array) / sizeof(l3fwd_route_array[0]))
+struct rte_hash_parameters ipv6_l3fwd_hash_params = {
+	.name = "ipv6_l3fwd_hash_0",
+	.entries = L3FWD_HASH_ENTRIES,
+	.bucket_entries = 4,
+	.key_len = sizeof(struct ipv6_5tuple),
+	.hash_func = DEFAULT_HASH_FUNC,
+	.hash_func_init_val = 0,
+	.socket_id = SOCKET0,
+};
 
-static uint8_t l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
+#define IPV4_L3FWD_NUM_ROUTES \
+	(sizeof(ipv4_l3fwd_route_array) / sizeof(ipv4_l3fwd_route_array[0]))
+
+#define IPV6_L3FWD_NUM_ROUTES \
+	(sizeof(ipv6_l3fwd_route_array) / sizeof(ipv6_l3fwd_route_array[0]))
+
+static uint8_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
+static uint8_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
 #endif
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
-struct l3fwd_route {
+struct ipv4_l3fwd_route {
 	uint32_t ip;
 	uint8_t  depth;
 	uint8_t  if_out;
 };
 
-static struct l3fwd_route l3fwd_route_array[] = {
+static struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {
 	{IPv4(1,1,1,0), 24, 0},
 	{IPv4(2,1,1,0), 24, 1},
 	{IPv4(3,1,1,0), 24, 2},
@@ -291,13 +364,13 @@ static struct l3fwd_route l3fwd_route_array[] = {
 	{IPv4(8,1,1,0), 24, 7},
 };
 
-#define L3FWD_NUM_ROUTES \
-	(sizeof(l3fwd_route_array) / sizeof(l3fwd_route_array[0]))
+#define IPV4_L3FWD_NUM_ROUTES \
+	(sizeof(ipv4_l3fwd_route_array) / sizeof(ipv4_l3fwd_route_array[0]))
 
-#define L3FWD_LPM_MAX_RULES     1024
+#define IPV4_L3FWD_LPM_MAX_RULES     1024
 
 typedef struct rte_lpm lookup_struct_t;
-static lookup_struct_t *l3fwd_lookup_struct[NB_SOCKETS];
+static lookup_struct_t *ipv4_l3fwd_lookup_struct[NB_SOCKETS];
 #endif
 
 struct lcore_conf {
@@ -305,7 +378,8 @@ struct lcore_conf {
 	struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
 	uint16_t tx_queue_id[MAX_PORTS];
 	struct mbuf_table tx_mbufs[MAX_PORTS];
-	lookup_struct_t * lookup_struct;
+	lookup_struct_t * ipv4_lookup_struct;
+	lookup_struct_t * ipv6_lookup_struct;
 } __rte_cache_aligned;
 
 static struct lcore_conf lcore_conf[RTE_MAX_LCORE];
@@ -399,14 +473,22 @@ is_valid_ipv4_pkt(struct ipv4_hdr *pkt, uint32_t link_len)
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 static void
-print_key(struct ipv4_5tuple key)
+print_ipv4_key(struct ipv4_5tuple key)
 {
 	printf("IP dst = %08x, IP src = %08x, port dst = %d, port src = %d, proto = %d\n",
-	       (unsigned)key.ip_dst, (unsigned)key.ip_src, key.port_dst, key.port_src, key.proto);
+			(unsigned)key.ip_dst, (unsigned)key.ip_src, key.port_dst, key.port_src, key.proto);
+}
+static void
+print_ipv6_key(struct ipv6_5tuple key)
+{
+	printf( "IP dst = " IPv6_BYTES_FMT ", IP src = " IPv6_BYTES_FMT ", "
+	        "port dst = %d, port src = %d, proto = %d\n",
+	        IPv6_BYTES(key.ip_dst), IPv6_BYTES(key.ip_src),
+	        key.port_dst, key.port_src, key.proto);
 }
 
 static inline uint8_t
-get_dst_port(struct ipv4_hdr *ipv4_hdr,  uint8_t portid, lookup_struct_t * l3fwd_lookup_struct)
+get_ipv4_dst_port(struct ipv4_hdr *ipv4_hdr,  uint8_t portid, lookup_struct_t * ipv4_l3fwd_lookup_struct)
 {
 	struct ipv4_5tuple key;
 	struct tcp_hdr *tcp;
@@ -435,65 +517,134 @@ get_dst_port(struct ipv4_hdr *ipv4_hdr,  uint8_t portid, lookup_struct_t * l3fwd
 	default:
 		key.port_dst = 0;
 		key.port_src = 0;
+		break;
 	}
 
 	/* Find destination port */
-	ret = rte_hash_lookup(l3fwd_lookup_struct, (const void *)&key);
-	return (uint8_t)((ret < 0)? portid : l3fwd_out_if[ret]);
+	ret = rte_hash_lookup(ipv4_l3fwd_lookup_struct, (const void *)&key);
+	return (uint8_t)((ret < 0)? portid : ipv4_l3fwd_out_if[ret]);
+}
+
+static inline uint8_t
+get_ipv6_dst_port(struct ipv6_hdr *ipv6_hdr,  uint8_t portid, lookup_struct_t * ipv6_l3fwd_lookup_struct)
+{
+	struct ipv6_5tuple key;
+	struct tcp_hdr *tcp;
+	struct udp_hdr *udp;
+	int ret = 0;
+
+	memcpy(key.ip_dst, ipv6_hdr->dst_addr, IPV6_ADDR_LEN);
+	memcpy(key.ip_src, ipv6_hdr->src_addr, IPV6_ADDR_LEN);
+
+	key.proto = ipv6_hdr->proto;
+
+	switch (ipv6_hdr->proto) {
+	case IPPROTO_TCP:
+		tcp = (struct tcp_hdr *)((unsigned char *) ipv6_hdr +
+					sizeof(struct ipv6_hdr));
+		key.port_dst = rte_be_to_cpu_16(tcp->dst_port);
+		key.port_src = rte_be_to_cpu_16(tcp->src_port);
+		break;
+
+	case IPPROTO_UDP:
+		udp = (struct udp_hdr *)((unsigned char *) ipv6_hdr +
+					sizeof(struct ipv6_hdr));
+		key.port_dst = rte_be_to_cpu_16(udp->dst_port);
+		key.port_src = rte_be_to_cpu_16(udp->src_port);
+		break;
+
+	default:
+		key.port_dst = 0;
+		key.port_src = 0;
+		break;
+	}
+
+	/* Find destination port */
+	ret = rte_hash_lookup(ipv6_l3fwd_lookup_struct, (const void *)&key);
+	return (uint8_t)((ret < 0)? portid : ipv6_l3fwd_out_if[ret]);
 }
 #endif
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
 static inline uint8_t
-get_dst_port(struct ipv4_hdr *ipv4_hdr,  uint8_t portid, lookup_struct_t * l3fwd_lookup_struct)
+get_ipv4_dst_port(struct ipv4_hdr *ipv4_hdr,  uint8_t portid, lookup_struct_t * ipv4_l3fwd_lookup_struct)
 {
 	uint8_t next_hop;
 
-	return (uint8_t) ((rte_lpm_lookup(l3fwd_lookup_struct,
+	return (uint8_t) ((rte_lpm_lookup(ipv4_l3fwd_lookup_struct,
 			rte_be_to_cpu_32(ipv4_hdr->dst_addr), &next_hop) == 0)?
 			next_hop : portid);
 }
 #endif
 
 static inline void
-l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, lookup_struct_t * l3fwd_lookup_struct)
+l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qconf)
 {
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
-	void *tmp;
+	void *d_addr_bytes;
 	uint8_t dst_port;
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
-	ipv4_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m, unsigned char *) +
+	if (m->ol_flags & PKT_RX_IPV4_HDR) {
+		/* Handle IPv4 headers.*/
+		ipv4_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m, unsigned char *) +
 				sizeof(struct ether_hdr));
 
 #ifdef DO_RFC_1812_CHECKS
-	/* Check to make sure the packet is valid (RFC1812) */
-	if (is_valid_ipv4_pkt(ipv4_hdr, m->pkt.pkt_len) < 0) {
-		rte_pktmbuf_free(m);
-		return;
-	}
+		/* Check to make sure the packet is valid (RFC1812) */
+		if (is_valid_ipv4_pkt(ipv4_hdr, m->pkt.pkt_len) < 0) {
+			rte_pktmbuf_free(m);
+			return;
+		}
 #endif
 
-	dst_port = get_dst_port(ipv4_hdr, portid, l3fwd_lookup_struct);
-	if (dst_port >= MAX_PORTS || (enabled_port_mask & 1 << dst_port) == 0)
-		dst_port = portid;
+		dst_port = get_ipv4_dst_port(ipv4_hdr, portid, qconf->ipv4_lookup_struct);
+		if (dst_port >= MAX_PORTS || (enabled_port_mask & 1 << dst_port) == 0)
+			dst_port = portid;
 
-	/* 00:09:c0:00:00:xx */
-	tmp = &eth_hdr->d_addr.addr_bytes[0];
-	*((uint64_t *)tmp) = 0x000000c00900 + (dst_port << 24);
+		/* 02:00:00:00:00:xx */
+		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
+		*((uint64_t *)d_addr_bytes) = 0x000000000002 + ((uint64_t)dst_port << 40);
 
 #ifdef DO_RFC_1812_CHECKS
-	/* Update time to live and header checksum */
-	--(ipv4_hdr->time_to_live);
-	++(ipv4_hdr->hdr_checksum);
+		/* Update time to live and header checksum */
+		--(ipv4_hdr->time_to_live);
+		++(ipv4_hdr->hdr_checksum);
 #endif
 
-	/* src addr */
-	ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
+		/* src addr */
+		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
 
-	send_single_packet(m, dst_port);
+		send_single_packet(m, dst_port);
+	}
+	else {
+		/* Handle IPv6 headers.*/
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
+		struct ipv6_hdr *ipv6_hdr;
+
+		ipv6_hdr = (struct ipv6_hdr *)(rte_pktmbuf_mtod(m, unsigned char *) +
+				sizeof(struct ether_hdr));
+
+		dst_port = get_ipv6_dst_port(ipv6_hdr, portid, qconf->ipv6_lookup_struct);
+
+		if (dst_port >= MAX_PORTS || (enabled_port_mask & 1 << dst_port) == 0)
+			dst_port = portid;
+
+		/* 02:00:00:00:00:xx */
+		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
+		*((uint64_t *)d_addr_bytes) = 0x000000000002 + ((uint64_t)dst_port << 40);
+
+		/* src addr */
+		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
+
+		send_single_packet(m, dst_port);
+#else
+		/* We don't currently handle IPv6 packets in LPM mode. */
+		rte_pktmbuf_free(m);
+#endif
+	}
 
 }
 
@@ -572,12 +723,12 @@ main_loop(__attribute__((unused)) void *dummy)
 			for (j = 0; j < (nb_rx - PREFETCH_OFFSET); j++) {
 				rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[
 						j + PREFETCH_OFFSET], void *));
-				l3fwd_simple_forward(pkts_burst[j], portid, qconf->lookup_struct);
+				l3fwd_simple_forward(pkts_burst[j], portid, qconf);
 			}
 
 			/* Forward remaining prefetched packets */
 			for (; j < nb_rx; j++) {
-				l3fwd_simple_forward(pkts_burst[j], portid, qconf->lookup_struct);
+				l3fwd_simple_forward(pkts_burst[j], portid, qconf);
 			}
 		}
 	}
@@ -672,11 +823,31 @@ static void
 print_usage(const char *prgname)
 {
 	printf ("%s [EAL options] -- -p PORTMASK -P"
-		"  [--config (port,queue,lcore)[,(port,queue,lcore]]\n"
+		"  [--config (port,queue,lcore)[,(port,queue,lcore]]"
+		"  [--enable-jumbo [--max-pkt-len PKTLEN]]\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
+		"  -P : enable promiscuous mode\n"
 		"  --config (port,queue,lcore): rx queues configuration\n"
-		"  --no-numa: optional, disable numa awareness\n",
+		"  --no-numa: optional, disable numa awareness\n"
+		"  --enable-jumbo: enable jumbo frame"
+		" which max packet len is PKTLEN in decimal (64-9600)\n",
 		prgname);
+}
+
+static int parse_max_pkt_len(const char *pktlen)
+{
+	char *end = NULL;
+	unsigned long len;
+
+	/* parse decimal string */
+	len = strtoul(pktlen, &end, 10);
+	if ((pktlen[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return -1;
+
+	if (len == 0)
+		return -1;
+
+	return len;
 }
 
 static int
@@ -758,6 +929,7 @@ parse_args(int argc, char **argv)
 	static struct option lgopts[] = {
 		{"config", 1, 0, 0},
 		{"no-numa", 0, 0, 0},
+		{"enable-jumbo", 0, 0, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -783,7 +955,7 @@ parse_args(int argc, char **argv)
 
 		/* long options */
 		case 0:
-			if (!strcmp(lgopts[option_index].name, "config")) {
+			if (!strncmp(lgopts[option_index].name, "config", 6)) {
 				ret = parse_config(optarg);
 				if (ret) {
 					printf("invalid config\n");
@@ -792,10 +964,31 @@ parse_args(int argc, char **argv)
 				}
 			}
 
-			if (!strcmp(lgopts[option_index].name, "no-numa")) {
+			if (!strncmp(lgopts[option_index].name, "no-numa", 7)) {
 				printf("numa is disabled \n");
 				numa_on = 0;
 			}
+			
+			if (!strncmp(lgopts[option_index].name, "enable-jumbo", 12)) {
+				struct option lenopts = {"max-pkt-len", required_argument, 0, 0};
+
+				printf("jumbo frame is enabled \n");
+				port_conf.rxmode.jumbo_frame = 1;
+	
+				/* if no max-pkt-len set, use the default value ETHER_MAX_LEN */	
+				if (0 == getopt_long(argc, argvopt, "", &lenopts, &option_index)) {
+					ret = parse_max_pkt_len(optarg);
+					if ((ret < 64) || (ret > MAX_JUMBO_PKT_LEN)){
+						printf("invalid packet length\n");
+						print_usage(prgname);
+						return -1;
+					}
+					port_conf.rxmode.max_rx_pkt_len = ret;
+				}
+				printf("set jumbo frame max packet length to %u\n", 
+						(unsigned int)port_conf.rxmode.max_rx_pkt_len);
+			}
+			
 			break;
 
 		default:
@@ -832,26 +1025,49 @@ setup_hash(int socketid)
 	int ret;
 	char s[64];
 
-	/* create  hashes */
-	rte_snprintf(s, sizeof(s), "l3fwd_hash_%d", socketid);
-	l3fwd_hash_params.name = s;
-	l3fwd_hash_params.socket_id = socketid;
-	l3fwd_lookup_struct[socketid] = rte_hash_create(&l3fwd_hash_params);
-	if (l3fwd_lookup_struct[socketid] == NULL)
+	/* create ipv4 hash */
+	rte_snprintf(s, sizeof(s), "ipv4_l3fwd_hash_%d", socketid);
+	ipv4_l3fwd_hash_params.name = s;
+	ipv4_l3fwd_hash_params.socket_id = socketid;
+	ipv4_l3fwd_lookup_struct[socketid] = rte_hash_create(&ipv4_l3fwd_hash_params);
+	if (ipv4_l3fwd_lookup_struct[socketid] == NULL)
 		rte_exit(EXIT_FAILURE, "Unable to create the l3fwd hash on "
 				"socket %d\n", socketid);
 
-	/* populate the hash */
-	for (i = 0; i < L3FWD_NUM_ROUTES; i++) {
-		ret = rte_hash_add_key (l3fwd_lookup_struct[socketid],
-				(void *) &l3fwd_route_array[i].key);
+	/* create ipv6 hash */
+	rte_snprintf(s, sizeof(s), "ipv6_l3fwd_hash_%d", socketid);
+	ipv6_l3fwd_hash_params.name = s;
+	ipv6_l3fwd_hash_params.socket_id = socketid;
+	ipv6_l3fwd_lookup_struct[socketid] = rte_hash_create(&ipv6_l3fwd_hash_params);
+	if (ipv6_l3fwd_lookup_struct[socketid] == NULL)
+		rte_exit(EXIT_FAILURE, "Unable to create the l3fwd hash on "
+				"socket %d\n", socketid);
+
+
+	/* populate the ipv4 hash */
+	for (i = 0; i < IPV4_L3FWD_NUM_ROUTES; i++) {
+		ret = rte_hash_add_key (ipv4_l3fwd_lookup_struct[socketid],
+				(void *) &ipv4_l3fwd_route_array[i].key);
 		if (ret < 0) {
 			rte_exit(EXIT_FAILURE, "Unable to add entry %u to the"
 				"l3fwd hash on socket %d\n", i, socketid);
 		}
-		l3fwd_out_if[ret] = l3fwd_route_array[i].if_out;
+		ipv4_l3fwd_out_if[ret] = ipv4_l3fwd_route_array[i].if_out;
 		printf("Hash: Adding key\n");
-		print_key(l3fwd_route_array[i].key);
+		print_ipv4_key(ipv4_l3fwd_route_array[i].key);
+	}
+
+	/* populate the ipv6 hash */
+	for (i = 0; i < IPV6_L3FWD_NUM_ROUTES; i++) {
+		ret = rte_hash_add_key (ipv6_l3fwd_lookup_struct[socketid],
+				(void *) &ipv6_l3fwd_route_array[i].key);
+		if (ret < 0) {
+			rte_exit(EXIT_FAILURE, "Unable to add entry %u to the"
+				"l3fwd hash on socket %d\n", i, socketid);
+		}
+		ipv6_l3fwd_out_if[ret] = ipv6_l3fwd_route_array[i].if_out;
+		printf("Hash: Adding key\n");
+		print_ipv6_key(ipv6_l3fwd_route_array[i].key);
 	}
 }
 #endif
@@ -865,19 +1081,19 @@ setup_lpm(int socketid)
 	char s[64];
 
 	/* create the LPM table */
-	rte_snprintf(s, sizeof(s), "L3FWD_LPM_%d", socketid);
-	l3fwd_lookup_struct[socketid] = rte_lpm_create(s, socketid,
-				L3FWD_LPM_MAX_RULES, RTE_LPM_MEMZONE);
-	if (l3fwd_lookup_struct[socketid] == NULL)
+	rte_snprintf(s, sizeof(s), "IPV4_L3FWD_LPM_%d", socketid);
+	ipv4_l3fwd_lookup_struct[socketid] = rte_lpm_create(s, socketid,
+				IPV4_L3FWD_LPM_MAX_RULES, 0);
+	if (ipv4_l3fwd_lookup_struct[socketid] == NULL)
 		rte_exit(EXIT_FAILURE, "Unable to create the l3fwd LPM table"
 				" on socket %d\n", socketid);
 
 	/* populate the LPM table */
-	for (i = 0; i < L3FWD_NUM_ROUTES; i++) {
-		ret = rte_lpm_add(l3fwd_lookup_struct[socketid],
-			l3fwd_route_array[i].ip,
-			l3fwd_route_array[i].depth,
-			l3fwd_route_array[i].if_out);
+	for (i = 0; i < IPV4_L3FWD_NUM_ROUTES; i++) {
+		ret = rte_lpm_add(ipv4_l3fwd_lookup_struct[socketid],
+			ipv4_l3fwd_route_array[i].ip,
+			ipv4_l3fwd_route_array[i].depth,
+			ipv4_l3fwd_route_array[i].if_out);
 
 		if (ret < 0) {
 			rte_exit(EXIT_FAILURE, "Unable to add entry %u to the "
@@ -886,15 +1102,15 @@ setup_lpm(int socketid)
 		}
 
 		printf("LPM: Adding route 0x%08x / %d (%d)\n",
-			(unsigned)l3fwd_route_array[i].ip,
-			l3fwd_route_array[i].depth,
-			l3fwd_route_array[i].if_out);
+			(unsigned)ipv4_l3fwd_route_array[i].ip,
+			ipv4_l3fwd_route_array[i].depth,
+			ipv4_l3fwd_route_array[i].if_out);
 	}
 }
 #endif
 
 static int
-init_mem(void)
+init_mem(unsigned nb_mbuf)
 {
 	struct lcore_conf *qconf;
 	int socketid;
@@ -917,7 +1133,7 @@ init_mem(void)
 		if (pktmbuf_pool[socketid] == NULL) {
 			rte_snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
 			pktmbuf_pool[socketid] =
-				rte_mempool_create(s, NB_MBUF, MBUF_SIZE, 32,
+				rte_mempool_create(s, nb_mbuf, MBUF_SIZE, MEMPOOL_CACHE_SIZE,
 					sizeof(struct rte_pktmbuf_pool_private),
 					rte_pktmbuf_pool_init, NULL,
 					rte_pktmbuf_init, NULL,
@@ -935,7 +1151,10 @@ init_mem(void)
 #endif
 		}
 		qconf = &lcore_conf[lcore_id];
-		qconf->lookup_struct = l3fwd_lookup_struct[socketid];
+		qconf->ipv4_lookup_struct = ipv4_l3fwd_lookup_struct[socketid];
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
+		qconf->ipv6_lookup_struct = ipv6_l3fwd_lookup_struct[socketid];
+#endif
 	}
 	return 0;
 }
@@ -1025,9 +1244,6 @@ MAIN(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "init_lcore_rx_queues failed\n");
 
-	ret = init_mem();
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "init_mem failed\n");
 
 	/* init driver(s) */
 	if (rte_pmd_init_all() < 0)
@@ -1073,6 +1289,10 @@ MAIN(int argc, char **argv)
 		print_ethaddr(" Address:", &ports_eth_addr[portid]);
 		printf(", ");
 
+		/* init memory */
+		ret = init_mem(NB_MBUF);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE, "init_mem failed\n");
 
 		/* init one TX queue per couple (lcore,port) */
 		queueid = 0;
@@ -1120,7 +1340,7 @@ MAIN(int argc, char **argv)
 			fflush(stdout);
 
 			ret = rte_eth_rx_queue_setup(portid, queueid, nb_rxd,
- 				        socketid, &rx_conf, pktmbuf_pool[socketid]);
+				        socketid, &rx_conf, pktmbuf_pool[socketid]);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup: err=%d,"
 						"port=%d\n", ret, portid);
