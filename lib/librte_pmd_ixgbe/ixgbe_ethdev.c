@@ -108,9 +108,23 @@ static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 					     uint8_t is_rx);
 static void ixgbe_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
-static void ixgbe_vlan_filter_set(struct rte_eth_dev *dev,
-				  uint16_t vlan_id,
+static int ixgbe_vlan_filter_set(struct rte_eth_dev *dev,
+		uint16_t vlan_id, int on);
+static void ixgbe_vlan_tpid_set(struct rte_eth_dev *dev, uint16_t tpid_id);
+static void ixgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev, 
+		uint16_t queue, bool on);
+static void ixgbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue,
 				  int on);
+static void ixgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static void ixgbe_vlan_hw_filter_enable(struct rte_eth_dev *dev);
+static void ixgbe_vlan_hw_filter_disable(struct rte_eth_dev *dev);
+static void ixgbe_vlan_hw_strip_enable_all(struct rte_eth_dev *dev);
+static void ixgbe_vlan_hw_strip_disable_all(struct rte_eth_dev *dev);
+static void ixgbe_vlan_hw_strip_enable(struct rte_eth_dev *dev, uint16_t queue);
+static void ixgbe_vlan_hw_strip_disable(struct rte_eth_dev *dev, uint16_t queue);
+static void ixgbe_vlan_hw_extend_enable(struct rte_eth_dev *dev);
+static void ixgbe_vlan_hw_extend_disable(struct rte_eth_dev *dev);
+
 static int ixgbe_dev_led_on(struct rte_eth_dev *dev);
 static int ixgbe_dev_led_off(struct rte_eth_dev *dev);
 static int  ixgbe_flow_ctrl_set(struct rte_eth_dev *dev,
@@ -135,6 +149,13 @@ static void ixgbevf_dev_stop(struct rte_eth_dev *dev);
 static void ixgbevf_intr_disable(struct ixgbe_hw *hw);
 static void ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 static void ixgbevf_dev_stats_reset(struct rte_eth_dev *dev);
+static int ixgbevf_vlan_filter_set(struct rte_eth_dev *dev, 
+		uint16_t vlan_id, int on);
+static void ixgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev,
+		uint16_t queue, int on);
+static void ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
+
 
 /*
  *  * Define VF Stats MACRO for Non "cleared on read" register
@@ -154,6 +175,24 @@ static void ixgbevf_dev_stats_reset(struct rte_eth_dev *dev);
 	cur += (0x1000000000LL + latest - last) & 0xFFFFFFFFFLL; \
 	last = latest;                                           \
 }
+
+#define IXGBE_SET_HWSTRIP(h, q) do{\
+		uint32_t idx = (q) / (sizeof ((h)->bitmap[0]) * NBBY); \
+		uint32_t bit = (q) % (sizeof ((h)->bitmap[0]) * NBBY); \
+		(h)->bitmap[idx] |= 1 << bit;\
+	}while(0)
+	
+#define IXGBE_CLEAR_HWSTRIP(h, q) do{\
+		uint32_t idx = (q) / (sizeof ((h)->bitmap[0]) * NBBY); \
+		uint32_t bit = (q) % (sizeof ((h)->bitmap[0]) * NBBY); \
+		(h)->bitmap[idx] &= ~(1 << bit);\
+	}while(0)
+ 
+#define IXGBE_GET_HWSTRIP(h, q, r) do{\
+		uint32_t idx = (q) / (sizeof ((h)->bitmap[0]) * NBBY); \
+		uint32_t bit = (q) % (sizeof ((h)->bitmap[0]) * NBBY); \
+		(r) = (h)->bitmap[idx] >> bit & 1;\
+	}while(0)
 
 /*
  * The set of PCI devices this driver supports
@@ -196,6 +235,9 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.queue_stats_mapping_set = ixgbe_dev_queue_stats_mapping_set,
 	.dev_infos_get        = ixgbe_dev_info_get,
 	.vlan_filter_set      = ixgbe_vlan_filter_set,
+	.vlan_tpid_set        = ixgbe_vlan_tpid_set,
+	.vlan_offload_set     = ixgbe_vlan_offload_set,
+	.vlan_strip_queue_set = ixgbe_vlan_strip_queue_set,
 	.rx_queue_setup       = ixgbe_dev_rx_queue_setup,
 	.rx_queue_release     = ixgbe_dev_rx_queue_release,
 	.tx_queue_setup       = ixgbe_dev_tx_queue_setup,
@@ -230,6 +272,9 @@ static struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.dev_close            = ixgbevf_dev_stop,
 
 	.dev_infos_get        = ixgbe_dev_info_get,
+	.vlan_filter_set      = ixgbevf_vlan_filter_set,
+	.vlan_strip_queue_set = ixgbevf_vlan_strip_queue_set,
+	.vlan_offload_set     = ixgbevf_vlan_offload_set,
 	.rx_queue_setup       = ixgbe_dev_rx_queue_setup,
 	.rx_queue_release     = ixgbe_dev_rx_queue_release,
 	.tx_queue_setup       = ixgbe_dev_tx_queue_setup,
@@ -439,6 +484,10 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct ixgbe_vfta * shadow_vfta =
 		IXGBE_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
+	struct ixgbe_hwstrip *hwstrip = 
+		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(eth_dev->data->dev_private);
+	struct ixgbe_dcb_config *dcb_config =
+		IXGBE_DEV_PRIVATE_TO_DCB_CFG(eth_dev->data->dev_private);
 	uint32_t ctrl_ext;
 	uint16_t csum;
 	int diag, i;
@@ -541,6 +590,9 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	/* initialize the vfta */
 	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
 
+	/* initialize the hw strip bitmap*/
+	memset(hwstrip, 0, sizeof(*hwstrip));
+
 	/* let hardware know driver is loaded */
 	ctrl_ext = IXGBE_READ_REG(hw, IXGBE_CTRL_EXT);
 	ctrl_ext |= IXGBE_CTRL_EXT_DRV_LOAD;
@@ -575,6 +627,10 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	struct rte_pci_device *pci_dev;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	int diag;
+	struct ixgbe_vfta * shadow_vfta =
+		IXGBE_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
+	struct ixgbe_hwstrip *hwstrip = 
+		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(eth_dev->data->dev_private);
 
 	PMD_INIT_LOG(DEBUG, "eth_ixgbevf_dev_init");
 
@@ -584,6 +640,12 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->hw_addr = (void *)pci_dev->mem_resource.addr;
+
+	/* initialize the vfta */
+	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
+
+	/* initialize the hw strip bitmap*/
+	memset(hwstrip, 0, sizeof(*hwstrip));
 
 	/* Initialize the shared code */
 	diag = ixgbe_init_shared_code(hw);
@@ -683,7 +745,7 @@ rte_ixgbevf_pmd_init(void)
 	return (0);
 }
 
-static void
+static int
 ixgbe_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
 	struct ixgbe_hw *hw =
@@ -705,16 +767,35 @@ ixgbe_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 
 	/* update local VFTA copy */
 	shadow_vfta->vfta[vid_idx] = vfta;
+
+	return 0;
 }
 
 static void
-ixgbe_vlan_hw_support_disable(struct rte_eth_dev *dev)
+ixgbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
+{
+	if (on)
+		ixgbe_vlan_hw_strip_enable(dev, queue);
+	else
+		ixgbe_vlan_hw_strip_disable(dev, queue);
+}
+
+static void
+ixgbe_vlan_tpid_set(struct rte_eth_dev *dev, uint16_t tpid)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Only the high 16-bits is valid */
+	IXGBE_WRITE_REG(hw, IXGBE_EXVET, tpid << 16);
+}
+
+static void
+ixgbe_vlan_hw_filter_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t vlnctrl;
-	uint32_t rxdctl;
-	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -722,28 +803,17 @@ ixgbe_vlan_hw_support_disable(struct rte_eth_dev *dev)
 	vlnctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
 	vlnctrl &= ~IXGBE_VLNCTRL_VFE;
 
-	if (hw->mac.type == ixgbe_mac_82598EB)
-		vlnctrl &= ~IXGBE_VLNCTRL_VME;
-	else {
-		/* On 82599 the VLAN enable is per/queue in RXDCTL */
-		for (i = 0; i < dev->data->nb_rx_queues; i++) {
-			rxdctl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(i));
-			rxdctl &= ~IXGBE_RXDCTL_VME;
-			IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(i), rxdctl);
-		}
-	}
 	IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlnctrl);
 }
 
 static void
-ixgbe_vlan_hw_support_enable(struct rte_eth_dev *dev)
+ixgbe_vlan_hw_filter_enable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_vfta * shadow_vfta =
 		IXGBE_DEV_PRIVATE_TO_VFTA(dev->data->dev_private);
 	uint32_t vlnctrl;
-	uint32_t rxdctl;
 	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE();
@@ -753,16 +823,6 @@ ixgbe_vlan_hw_support_enable(struct rte_eth_dev *dev)
 	vlnctrl &= ~IXGBE_VLNCTRL_CFIEN;
 	vlnctrl |= IXGBE_VLNCTRL_VFE;
 
-	if (hw->mac.type == ixgbe_mac_82598EB)
-		vlnctrl |= IXGBE_VLNCTRL_VME;
-	else {
-		/* On 82599 the VLAN enable is per/queue in RXDCTL */
-		for (i = 0; i < dev->data->nb_rx_queues; i++) {
-			rxdctl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(i));
-			rxdctl |= IXGBE_RXDCTL_VME;
-			IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(i), rxdctl);
-		}
-	}
 	IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlnctrl);
 
 	/* write whatever is in local vfta copy */
@@ -770,18 +830,203 @@ ixgbe_vlan_hw_support_enable(struct rte_eth_dev *dev)
 		IXGBE_WRITE_REG(hw, IXGBE_VFTA(i), shadow_vfta->vfta[i]);
 }
 
-static int
-ixgbe_dev_configure(struct rte_eth_dev *dev, uint16_t nb_rx_q, uint16_t nb_tx_q)
+static void 
+ixgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev, uint16_t queue, bool on)
 {
-	struct ixgbe_interrupt *intr =
-		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
-	int diag;
+	struct ixgbe_hwstrip *hwstrip = 
+		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(dev->data->dev_private);
+
+	if(queue >= IXGBE_MAX_RX_QUEUE_NUM)
+		return;
+
+	if (on)
+		IXGBE_SET_HWSTRIP(hwstrip, queue);
+	else
+		IXGBE_CLEAR_HWSTRIP(hwstrip, queue);
+}
+
+static void
+ixgbe_vlan_hw_strip_disable(struct rte_eth_dev *dev, uint16_t queue)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t ctrl;
 
 	PMD_INIT_FUNC_TRACE();
 
+	if (hw->mac.type == ixgbe_mac_82598EB) {
+		/* No queue level support */
+		PMD_INIT_LOG(INFO, "82598EB not support queue level hw strip");
+		return;
+	}
+	else {
+		/* Other 10G NIC, the VLAN strip can be setup per queue in RXDCTL */
+		ctrl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(queue));
+		ctrl &= ~IXGBE_RXDCTL_VME;
+		IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(queue), ctrl);
+	}
+	/* record those setting for HW strip per queue */
+	ixgbe_vlan_hw_strip_bitmap_set(dev, queue, 0);
+}
+
+static void
+ixgbe_vlan_hw_strip_enable(struct rte_eth_dev *dev, uint16_t queue)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t ctrl;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (hw->mac.type == ixgbe_mac_82598EB) {
+		/* No queue level supported */
+		PMD_INIT_LOG(INFO, "82598EB not support queue level hw strip");
+		return;
+	}
+	else {
+		/* Other 10G NIC, the VLAN strip can be setup per queue in RXDCTL */
+		ctrl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(queue));
+		ctrl |= IXGBE_RXDCTL_VME;
+		IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(queue), ctrl);
+	}
+	/* record those setting for HW strip per queue */
+	ixgbe_vlan_hw_strip_bitmap_set(dev, queue, 1);
+}
+
+static void
+ixgbe_vlan_hw_strip_disable_all(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t ctrl;
+	uint16_t i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (hw->mac.type == ixgbe_mac_82598EB) {
+		ctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
+		ctrl &= ~IXGBE_VLNCTRL_VME;
+		IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, ctrl);
+	}
+	else {
+		/* Other 10G NIC, the VLAN strip can be setup per queue in RXDCTL */
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			ctrl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(i));
+			ctrl &= ~IXGBE_RXDCTL_VME;
+			IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(i), ctrl);
+
+			/* record those setting for HW strip per queue */
+			ixgbe_vlan_hw_strip_bitmap_set(dev, i, 0);
+		}
+	}
+}
+
+static void
+ixgbe_vlan_hw_strip_enable_all(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t ctrl;
+	uint16_t i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (hw->mac.type == ixgbe_mac_82598EB) {
+		ctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
+		ctrl |= IXGBE_VLNCTRL_VME;
+		IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, ctrl);
+	}
+	else {
+		/* Other 10G NIC, the VLAN strip can be setup per queue in RXDCTL */
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			ctrl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(i));
+			ctrl |= IXGBE_RXDCTL_VME;
+			IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(i), ctrl);
+
+			/* record those setting for HW strip per queue */
+			ixgbe_vlan_hw_strip_bitmap_set(dev, i, 1);			
+		}
+	}
+}
+
+static void
+ixgbe_vlan_hw_extend_disable(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t ctrl;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* DMATXCTRL: Geric Double VLAN Disable */
+	ctrl = IXGBE_READ_REG(hw, IXGBE_DMATXCTL);
+	ctrl &= ~IXGBE_DMATXCTL_GDV;
+	IXGBE_WRITE_REG(hw, IXGBE_DMATXCTL, ctrl);
+
+	/* CTRL_EXT: Global Double VLAN Disable */
+	ctrl = IXGBE_READ_REG(hw, IXGBE_CTRL_EXT);
+	ctrl &= ~IXGBE_EXTENDED_VLAN;
+	IXGBE_WRITE_REG(hw, IXGBE_CTRL_EXT, ctrl);
+
+}
+
+static void
+ixgbe_vlan_hw_extend_enable(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t ctrl;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* DMATXCTRL: Geric Double VLAN Enable */
+	ctrl  = IXGBE_READ_REG(hw, IXGBE_DMATXCTL);
+	ctrl |= IXGBE_DMATXCTL_GDV;
+	IXGBE_WRITE_REG(hw, IXGBE_DMATXCTL, ctrl);
+
+	/* CTRL_EXT: Global Double VLAN Enable */
+	ctrl  = IXGBE_READ_REG(hw, IXGBE_CTRL_EXT);
+	ctrl |= IXGBE_EXTENDED_VLAN;
+	IXGBE_WRITE_REG(hw, IXGBE_CTRL_EXT, ctrl);
+
+	/*
+	 * VET EXT field in the EXVET register = 0x8100 by default
+	 * So no need to change. Same to VT field of DMATXCTL register
+	 */
+}
+
+static void
+ixgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	if(mask & ETH_VLAN_STRIP_MASK){
+		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+			ixgbe_vlan_hw_strip_enable_all(dev);
+		else
+			ixgbe_vlan_hw_strip_disable_all(dev);
 	}
 
+	if(mask & ETH_VLAN_FILTER_MASK){
+		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+			ixgbe_vlan_hw_filter_enable(dev);
+		else
+			ixgbe_vlan_hw_filter_disable(dev);
 	}
+
+	if(mask & ETH_VLAN_EXTEND_MASK){
+		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
+			ixgbe_vlan_hw_extend_enable(dev);
+		else
+			ixgbe_vlan_hw_extend_disable(dev);
+	}
+}
+
+static int
+ixgbe_dev_configure(struct rte_eth_dev *dev)
+{
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
 
 	/* set flag to update link status after init */
 	intr->flags |= IXGBE_FLAG_NEED_LINK_UPDATE;
@@ -885,14 +1130,9 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 			goto error;
 	}
 
-	/*
-	 * If VLAN filtering is enabled, set up VLAN tag offload and filtering
-	 * and restore VFTA.
-	 */
-	if (dev->data->dev_conf.rxmode.hw_vlan_filter)
-		ixgbe_vlan_hw_support_enable(dev);
-	else
-		ixgbe_vlan_hw_support_disable(dev);
+	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK | \
+		ETH_VLAN_EXTEND_MASK;
+	ixgbe_vlan_offload_set(dev, mask);
 
 	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_NONE) {
 		err = ixgbe_fdir_configure(dev);
@@ -1659,6 +1899,15 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR,"Unable to initialize RX hardware\n");
 		return err;
 	}
+	
+	/* Set vfta */
+	ixgbevf_set_vfta_all(dev,1);
+
+	/* Set HW strip */
+	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK | \
+		ETH_VLAN_EXTEND_MASK;
+	ixgbevf_vlan_offload_set(dev, mask);
+
 	ixgbevf_dev_rxtx_start(dev);
 
 	return 0;
@@ -1677,3 +1926,94 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 	/* reprogram the RAR[0] in case user changed it. */
 	ixgbe_set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
 }
+
+static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_vfta * shadow_vfta =
+		IXGBE_DEV_PRIVATE_TO_VFTA(dev->data->dev_private);
+	int i = 0, j = 0, vfta = 0, mask = 1;
+
+	for (i = 0; i < IXGBE_VFTA_SIZE; i++){
+		vfta = shadow_vfta->vfta[i];
+		if(vfta){
+			mask = 1;
+			for (j = 0; j < 32; j++){
+				if(vfta & mask)
+					ixgbe_set_vfta(hw, (i<<5)+j, 0, on);
+				mask<<=1;
+			}
+		}
+	}
+
+}
+
+static int
+ixgbevf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_vfta * shadow_vfta =
+		IXGBE_DEV_PRIVATE_TO_VFTA(dev->data->dev_private);
+	uint32_t vid_idx = 0;
+	uint32_t vid_bit = 0;
+	int ret = 0;
+	
+	PMD_INIT_FUNC_TRACE();
+
+	/* vind is not used in VF driver, set to 0, check ixgbe_set_vfta_vf */
+	ret = ixgbe_set_vfta(hw, vlan_id, 0, !!on);
+	if(ret){
+		PMD_INIT_LOG(ERR, "Unable to set VF vlan");
+		return ret;
+	}
+	vid_idx = (uint32_t) ((vlan_id >> 5) & 0x7F);
+	vid_bit = (uint32_t) (1 << (vlan_id & 0x1F));
+
+	/* Save what we set and retore it after device reset */
+	if (on)
+		shadow_vfta->vfta[vid_idx] |= vid_bit;
+	else
+		shadow_vfta->vfta[vid_idx] &= ~vid_bit;
+
+	return 0;
+}
+
+static void
+ixgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t ctrl;
+
+	PMD_INIT_FUNC_TRACE();
+	
+	if(queue >= hw->mac.max_rx_queues)
+		return;
+
+	ctrl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(queue));
+	if(on)
+		ctrl |= IXGBE_RXDCTL_VME;
+	else 
+		ctrl &= ~IXGBE_RXDCTL_VME;
+	IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(queue), ctrl);
+
+	ixgbe_vlan_hw_strip_bitmap_set( dev, queue, on);
+}
+
+static void
+ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t i, on = 0;
+
+	/* VF function only support hw strip feature, others are not support */
+	if(mask & ETH_VLAN_STRIP_MASK){
+		on = !!(dev->data->dev_conf.rxmode.hw_vlan_strip);
+
+		for(i=0; i < hw->mac.max_rx_queues; i++)
+			ixgbevf_vlan_strip_queue_set(dev,i,on);
+	}
+}
+

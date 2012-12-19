@@ -49,7 +49,10 @@
 #define IXGBE_RXDADV_ERR_CKSUM_MSK  3
 #define IXGBE_ADVTXD_MACLEN_SHIFT   9          /* Bit shift for l2_len */
 #define IXGBE_NB_STAT_MAPPING_REGS  32
+#define IXGBE_EXTENDED_VLAN	  (uint32_t)(1 << 26) /* EXTENDED VLAN ENABLE */
 #define IXGBE_VFTA_SIZE 128
+#define IXGBE_HWSTRIP_BITMAP_SIZE (IXGBE_MAX_RX_QUEUE_NUM / (sizeof(uint32_t) * NBBY))
+
 
 /*
  * Information about the fdir mode.
@@ -75,9 +78,12 @@ struct ixgbe_stat_mapping_registers {
 	uint32_t rqsmr[IXGBE_NB_STAT_MAPPING_REGS];
 };
 
-/* local VFTA copy */
 struct ixgbe_vfta {
 	uint32_t vfta[IXGBE_VFTA_SIZE];
+};
+
+struct ixgbe_hwstrip {
+	uint32_t bitmap[IXGBE_HWSTRIP_BITMAP_SIZE];
 };
 
 /*
@@ -90,6 +96,7 @@ struct ixgbe_adapter {
 	struct ixgbe_interrupt      intr;
 	struct ixgbe_stat_mapping_registers stat_mappings;
 	struct ixgbe_vfta           shadow_vfta;
+	struct ixgbe_hwstrip		hwstrip;
 };
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
@@ -110,6 +117,8 @@ struct ixgbe_adapter {
 #define IXGBE_DEV_PRIVATE_TO_VFTA(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->shadow_vfta)
 
+#define IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->hwstrip)
 
 /*
  * RX/TX function prototypes
