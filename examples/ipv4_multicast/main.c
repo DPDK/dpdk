@@ -69,7 +69,6 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
-#include <rte_hash_crc.h>
 #include <rte_fbk_hash.h>
 #include <rte_ip.h>
 
@@ -470,7 +469,7 @@ static __attribute__((noreturn)) int
 main_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
-	uint32_t lcore_id;
+	unsigned lcore_id;
 	int i, j, nb_rx;
 	uint8_t portid;
 	struct lcore_queue_conf *qconf;
