@@ -156,14 +156,22 @@ enum rte_cpu_flag_t {
  * Function for checking a CPU flag availability
  *
  * @param flag
- * 	CPU flag to query CPU for
+ *     CPU flag to query CPU for
  * @return
- *  1 if flag is available
- *  0 if flag is not available
- *  -ENOENT if flag is invalid
+ *     1 if flag is available
+ *     0 if flag is not available
+ *     -ENOENT if flag is invalid
  */
 int
 rte_cpu_get_flag_enabled(enum rte_cpu_flag_t flag);
+
+/**
+ * This function checks that the currently used CPU supports the CPU features
+ * that were specified at compile time. It is called automatically within the
+ * EAL, so does not need to be used by applications.
+ */
+void
+rte_cpu_check_supported(void);
 
 #ifdef __cplusplus
 }
