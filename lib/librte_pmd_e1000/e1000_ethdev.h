@@ -49,8 +49,8 @@
 #define E1000_RXD_ERR_CKSUM_BIT     29 
 #define E1000_RXD_ERR_CKSUM_MSK     3
 #define E1000_ADVTXD_MACLEN_SHIFT   9          /* Bit shift for l2_len */
-
-#define E1000_VFTA_SIZE 128
+#define E1000_CTRL_EXT_EXTEND_VLAN  (1<<26)    /* EXTENDED VLAN */
+#define IGB_VFTA_SIZE 128
 
 /* structure for interrupt relative data */
 struct e1000_interrupt {
@@ -59,7 +59,7 @@ struct e1000_interrupt {
 
 /* local vfta copy */
 struct e1000_vfta {
-	uint32_t vfta[E1000_VFTA_SIZE];
+	uint32_t vfta[IGB_VFTA_SIZE];
 };
 
 /*

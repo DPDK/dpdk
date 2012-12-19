@@ -85,11 +85,19 @@ static void igb_hw_control_acquire(struct e1000_hw *hw);
 static void igb_hw_control_release(struct e1000_hw *hw);
 static void igb_init_manageability(struct e1000_hw *hw);
 static void igb_release_manageability(struct e1000_hw *hw);
-static void igb_vlan_hw_support_enable(struct rte_eth_dev *dev);
-static void igb_vlan_hw_support_disable(struct rte_eth_dev *dev);
-static void eth_igb_vlan_filter_set(struct rte_eth_dev *dev,
-				      uint16_t vlan_id,
-				      int on);
+
+static int eth_igb_vlan_filter_set(struct rte_eth_dev *dev,
+		uint16_t vlan_id, int on);
+static void eth_igb_vlan_tpid_set(struct rte_eth_dev *dev, uint16_t tpid_id);
+static void eth_igb_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+
+static void igb_vlan_hw_filter_enable(struct rte_eth_dev *dev);
+static void igb_vlan_hw_filter_disable(struct rte_eth_dev *dev);
+static void igb_vlan_hw_strip_enable(struct rte_eth_dev *dev);
+static void igb_vlan_hw_strip_disable(struct rte_eth_dev *dev);
+static void igb_vlan_hw_extend_enable(struct rte_eth_dev *dev);
+static void igb_vlan_hw_extend_disable(struct rte_eth_dev *dev);
+
 static int eth_igb_led_on(struct rte_eth_dev *dev);
 static int eth_igb_led_off(struct rte_eth_dev *dev);
 
@@ -166,6 +174,8 @@ static struct eth_dev_ops eth_igb_ops = {
 	.stats_reset          = eth_igb_stats_reset,
 	.dev_infos_get        = eth_igb_infos_get,
 	.vlan_filter_set      = eth_igb_vlan_filter_set,
+	.vlan_tpid_set        = eth_igb_vlan_tpid_set,
+	.vlan_offload_set     = eth_igb_vlan_offload_set,
 	.rx_queue_setup       = eth_igb_rx_queue_setup,
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
 	.dev_led_on           = eth_igb_led_on,
@@ -576,13 +586,11 @@ eth_igb_start(struct rte_eth_dev *dev)
 	e1000_clear_hw_cntrs_base_generic(hw);
 
 	/*
-	 * If VLAN filtering is enabled, set up VLAN tag offload and filtering
-	 * and restore the VFTA.
+	 * VLAN Offload Settings
 	 */
-	if (dev->data->dev_conf.rxmode.hw_vlan_filter)
-		igb_vlan_hw_support_enable(dev);
-	else
-		igb_vlan_hw_support_disable(dev);
+	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK | \
+			ETH_VLAN_EXTEND_MASK;
+	eth_igb_vlan_offload_set(dev, mask);
 
 	/*
 	 * Configure the Interrupt Moderation register (EITR) with the maximum
@@ -1258,7 +1266,7 @@ eth_igb_allmulticast_disable(struct rte_eth_dev *dev)
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
 }
 
-static void
+static int
 eth_igb_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
 	struct e1000_hw *hw =
@@ -1281,10 +1289,37 @@ eth_igb_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 
 	/* update local VFTA copy */
 	shadow_vfta->vfta[vid_idx] = vfta;
+
+	return 0;
 }
 
 static void
-igb_vlan_hw_support_enable(struct rte_eth_dev *dev)
+eth_igb_vlan_tpid_set(struct rte_eth_dev *dev, uint16_t tpid)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t reg = ETHER_TYPE_VLAN ;
+
+	reg |= (tpid << 16);
+	E1000_WRITE_REG(hw, E1000_VET, reg);
+}
+
+static void
+igb_vlan_hw_filter_disable(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t reg;
+
+	/* Filter Table Disable */
+	reg = E1000_READ_REG(hw, E1000_RCTL);
+	reg &= ~E1000_RCTL_CFIEN;
+	reg &= ~E1000_RCTL_VFE;
+	E1000_WRITE_REG(hw, E1000_RCTL, reg);
+}
+
+static void
+igb_vlan_hw_filter_enable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1293,38 +1328,102 @@ igb_vlan_hw_support_enable(struct rte_eth_dev *dev)
 	uint32_t reg;
 	int i;
 
-	/* VLAN Mode Enable */
-	reg = E1000_READ_REG(hw, E1000_CTRL);
-	reg |= E1000_CTRL_VME;
-	E1000_WRITE_REG(hw, E1000_CTRL, reg);
-
-	/* Filter Table Enable */
+	/* Filter Table Enable, CFI not used for packet acceptance */
 	reg = E1000_READ_REG(hw, E1000_RCTL);
 	reg &= ~E1000_RCTL_CFIEN;
 	reg |= E1000_RCTL_VFE;
 	E1000_WRITE_REG(hw, E1000_RCTL, reg);
 
-	/* Update maximum frame size */
-	reg = E1000_READ_REG(hw, E1000_RLPML);
-	reg += VLAN_TAG_SIZE;
-	E1000_WRITE_REG(hw, E1000_RLPML, reg);
-
 	/* restore VFTA table */
-	for (i = 0; i < E1000_VFTA_SIZE; i++)
+	for (i = 0; i < IGB_VFTA_SIZE; i++)
 		E1000_WRITE_REG_ARRAY(hw, E1000_VFTA, i, shadow_vfta->vfta[i]);
 }
 
 static void
-igb_vlan_hw_support_disable(struct rte_eth_dev *dev)
+igb_vlan_hw_strip_disable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t reg;
 
-	/* VLAN Mode disable */
+	/* VLAN Mode Disable */
 	reg = E1000_READ_REG(hw, E1000_CTRL);
 	reg &= ~E1000_CTRL_VME;
 	E1000_WRITE_REG(hw, E1000_CTRL, reg);
+
+	/* Update maximum frame size */
+	E1000_WRITE_REG(hw, E1000_RLPML,
+		dev->data->dev_conf.rxmode.max_rx_pkt_len + VLAN_TAG_SIZE);
+}
+
+static void
+igb_vlan_hw_strip_enable(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t reg;
+
+	/* VLAN Mode Enable */
+	reg = E1000_READ_REG(hw, E1000_CTRL);
+	reg |= E1000_CTRL_VME;
+	E1000_WRITE_REG(hw, E1000_CTRL, reg);
+
+	/* Update maximum frame size */
+	E1000_WRITE_REG(hw, E1000_RLPML,
+		dev->data->dev_conf.rxmode.max_rx_pkt_len);
+
+}
+
+static void
+igb_vlan_hw_extend_disable(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t reg;
+
+	/* CTRL_EXT: Extended VLAN */
+	reg = E1000_READ_REG(hw, E1000_CTRL_EXT);
+	reg &= ~E1000_CTRL_EXT_EXTEND_VLAN;
+	E1000_WRITE_REG(hw, E1000_CTRL_EXT, reg);
+
+}
+
+static void
+igb_vlan_hw_extend_enable(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t reg;
+
+	/* CTRL_EXT: Extended VLAN */
+	reg = E1000_READ_REG(hw, E1000_CTRL_EXT);
+	reg |= E1000_CTRL_EXT_EXTEND_VLAN;
+	E1000_WRITE_REG(hw, E1000_CTRL_EXT, reg);
+}
+
+static void
+eth_igb_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	if(mask & ETH_VLAN_STRIP_MASK){
+		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+			igb_vlan_hw_strip_enable(dev);
+		else
+			igb_vlan_hw_strip_disable(dev);
+	}
+	
+	if(mask & ETH_VLAN_FILTER_MASK){
+		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+			igb_vlan_hw_filter_enable(dev);
+		else
+			igb_vlan_hw_filter_disable(dev);
+	}
+	
+	if(mask & ETH_VLAN_EXTEND_MASK){
+		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
+			igb_vlan_hw_extend_enable(dev);
+		else
+			igb_vlan_hw_extend_disable(dev);
+	}
 }
 
 static void
