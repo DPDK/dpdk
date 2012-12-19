@@ -61,6 +61,7 @@
 
 TAILQ_HEAD(rte_mempool_list, rte_mempool);
 
+#define CACHE_FLUSHTHRESH_MULTIPLIER 1.5
 
 /*
  * return the greatest common divisor between a and b (fast algorithm)
@@ -252,11 +253,11 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	mp->ring = r;
 	mp->size = n;
 	mp->flags = flags;
-	mp->bulk_default = 1;
 	mp->elt_size = elt_size;
 	mp->header_size = header_size;
 	mp->trailer_size = trailer_size;
 	mp->cache_size = cache_size;
+	mp->cache_flushthresh = (uint32_t)(cache_size * CACHE_FLUSHTHRESH_MULTIPLIER);
 	mp->private_data_size = private_data_size;
 
 	/* call the initializer */
@@ -379,7 +380,7 @@ mempool_audit_cache(const struct rte_mempool *mp)
 	/* check cache size consistency */
 	unsigned lcore_id;
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		if (mp->local_cache[lcore_id].len > mp->cache_size) {
+		if (mp->local_cache[lcore_id].len > mp->cache_flushthresh) {
 			RTE_LOG(CRIT, MEMPOOL, "badness on cache[%u]\n",
 				lcore_id);
 			rte_panic("MEMPOOL: invalid cache len\n");
@@ -414,7 +415,6 @@ rte_mempool_dump(const struct rte_mempool *mp)
 	printf("  flags=%x\n", mp->flags);
 	printf("  ring=<%s>@%p\n", mp->ring->name, mp->ring);
 	printf("  size=%"PRIu32"\n", mp->size);
-	printf("  bulk_default=%"PRIu32"\n", mp->bulk_default);
 	printf("  header_size=%"PRIu32"\n", mp->header_size);
 	printf("  elt_size=%"PRIu32"\n", mp->elt_size);
 	printf("  trailer_size=%"PRIu32"\n", mp->trailer_size);
