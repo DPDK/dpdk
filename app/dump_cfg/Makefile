@@ -29,7 +29,6 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 
-#
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
@@ -37,12 +36,12 @@ APP = dump_cfg
 
 CFLAGS += $(WERROR_FLAGS)
 
-#
 # all source are stored in SRCS-y
-#
-SRCS-y := dump_cfg_main.c
+
+SRCS-y := main.c
 
 # this application needs libraries first
-DEPDIRS-y += lib
+ DEPDIRS-y += lib
 
-include $(RTE_SDK)/mk/rte.app.mk
+ include $(RTE_SDK)/mk/rte.app.mk
+
