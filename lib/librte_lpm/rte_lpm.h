@@ -52,40 +52,50 @@ extern "C" {
 #endif
 
 /** Max number of characters in LPM name. */
-#define RTE_LPM_NAMESIZE	32
+#define RTE_LPM_NAMESIZE                32
 
-/** Possible location to allocate memory. */
-#define RTE_LPM_HEAP	0
+/** @deprecated Possible location to allocate memory. This was for last
+ * parameter of rte_lpm_create(), but is now redundant. The LPM table is always
+ * allocated in memory using librte_malloc which uses a memzone. */
+#define RTE_LPM_HEAP                    0
 
-/** Possible location to allocate memory. */
-#define RTE_LPM_MEMZONE	1
+/** @deprecated Possible location to allocate memory. This was for last
+ * parameter of rte_lpm_create(), but is now redundant. The LPM table is always
+ * allocated in memory using librte_malloc which uses a memzone. */
+#define RTE_LPM_MEMZONE                 1
 
 /** Maximum depth value possible for IPv4 LPM. */
-#define RTE_LPM_MAX_DEPTH 32
+#define RTE_LPM_MAX_DEPTH               32
 
-/** Total number of tbl24 entries. */
-#define RTE_LPM_TBL24_NUM_ENTRIES (1 << 24)
+/** @internal Total number of tbl24 entries. */
+#define RTE_LPM_TBL24_NUM_ENTRIES       (1 << 24)
 
-/** Number of entries in a tbl8 group. */
-#define RTE_LPM_TBL8_GROUP_NUM_ENTRIES 256
+/** @internal Number of entries in a tbl8 group. */
+#define RTE_LPM_TBL8_GROUP_NUM_ENTRIES  256
 
-/** Total number of tbl8 groups in the tbl8. */
-#define RTE_LPM_TBL8_NUM_GROUPS 256
+/** @internal Total number of tbl8 groups in the tbl8. */
+#define RTE_LPM_TBL8_NUM_GROUPS         256
 
-/** Total number of tbl8 entries. */
-#define RTE_LPM_TBL8_NUM_ENTRIES (RTE_LPM_TBL8_NUM_GROUPS *                   \
+/** @internal Total number of tbl8 entries. */
+#define RTE_LPM_TBL8_NUM_ENTRIES        (RTE_LPM_TBL8_NUM_GROUPS * \
 					RTE_LPM_TBL8_GROUP_NUM_ENTRIES)
 
-/** Macro to enable/disable run-time checks. */
+/** @internal Macro to enable/disable run-time checks. */
 #if defined(RTE_LIBRTE_LPM_DEBUG)
-#define RTE_LPM_RETURN_IF_TRUE(cond, retval) do {                             \
-	if (cond) return (retval);                                            \
+#define RTE_LPM_RETURN_IF_TRUE(cond, retval) do { \
+	if (cond) return (retval);                \
 } while (0)
 #else
 #define RTE_LPM_RETURN_IF_TRUE(cond, retval)
 #endif
 
-/** Tbl24 entry structure. */
+/** @internal bitmask with valid and ext_entry/valid_group fields set */
+#define RTE_LPM_VALID_EXT_ENTRY_BITMASK 0x0300
+
+/** Bitmask used to indicate successful lookup */
+#define RTE_LPM_LOOKUP_SUCCESS          0x0100
+
+/** @internal Tbl24 entry structure. */
 struct rte_lpm_tbl24_entry {
 	/* Using single uint8_t to store 3 values. */
 	uint8_t valid     :1; /**< Validation flag. */
@@ -98,7 +108,7 @@ struct rte_lpm_tbl24_entry {
 	};
 };
 
-/** Tbl8 entry structure. */
+/** @internal Tbl8 entry structure. */
 struct rte_lpm_tbl8_entry {
 	/* Using single uint8_t to store 3 values. */
 	uint8_t valid       :1; /**< Validation flag. */
@@ -107,19 +117,19 @@ struct rte_lpm_tbl8_entry {
 	uint8_t next_hop; /**< next hop. */
 };
 
-/** Rule structure. */
+/** @internal Rule structure. */
 struct rte_lpm_rule {
 	uint32_t ip; /**< Rule IP address. */
 	uint8_t  next_hop; /**< Rule next hop. */
 };
 
-/** LPM structure. */
+/** @internal LPM structure. */
 struct rte_lpm {
 	TAILQ_ENTRY(rte_lpm) next;      /**< Next in list. */
 
 	/* LPM metadata. */
 	char name[RTE_LPM_NAMESIZE];        /**< Name of the lpm. */
-	int mem_location; /**< Location of memory to be allocated. */
+	int mem_location; /**< @deprecated @see RTE_LPM_HEAP and RTE_LPM_MEMZONE. */
 	uint32_t max_rules_per_depth; /**< Max. balanced rules per lpm. */
 	uint32_t used_rules_at_depth[RTE_LPM_MAX_DEPTH]; /**< Rules / depth. */
 

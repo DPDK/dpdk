@@ -67,17 +67,17 @@ enum valid_flag {
 /* Macro to enable/disable run-time checks. */
 #if defined(RTE_LIBRTE_LPM_DEBUG)
 #include <rte_debug.h>
-#define VERIFY_DEPTH(depth) do {                                                  \
-	if ((depth == 0) || (depth > RTE_LPM_MAX_DEPTH))                          \
-		rte_panic("LPM: Invalid depth (%u) at line %d", depth, __LINE__); \
+#define VERIFY_DEPTH(depth) do {                                \
+	if ((depth == 0) || (depth > RTE_LPM_MAX_DEPTH))        \
+		rte_panic("LPM: Invalid depth (%u) at line %d", \
+				(unsigned)(depth), __LINE__);   \
 } while (0)
 #else
 #define VERIFY_DEPTH(depth)
 #endif
 
 /*
- * Function Name: depth_to_mask
- * Usage	: Converts a given depth value to its corresponding mask value.
+ * Converts a given depth value to its corresponding mask value.
  *
  * depth  (IN)		: range = 1 - 32
  * mask   (OUT)		: 32bit mask
@@ -94,11 +94,7 @@ depth_to_mask(uint8_t depth)
 }
 
 /*
- * Function Name: depth_to_range
- * Usage	: Converts given depth value to its corresponding range value.
- *
- * (IN)  depth
- * (OUT) mask
+ * Converts given depth value to its corresponding range value.
  */
 static inline uint32_t __attribute__((pure))
 depth_to_range(uint8_t depth)
@@ -142,10 +138,7 @@ rte_lpm_find_existing(const char *name)
 }
 
 /*
- * Function Name 	: rte_lpm_create
- * Usage		: Allocates memory for LPM object
- *
- * rte_lpm (RETURN)
+ * Allocates memory for LPM object
  */
 struct rte_lpm *
 rte_lpm_create(const char *name, int socket_id, int max_rules,
@@ -232,8 +225,7 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 }
 
 /*
- * Function Name 	: free
- * Usage: Deallocates memory for given LPM table.
+ * Deallocates memory for given LPM table.
  */
 void
 rte_lpm_free(struct rte_lpm *lpm)
@@ -250,8 +242,7 @@ rte_lpm_free(struct rte_lpm *lpm)
 }
 
 /*
- * Function Name: rule_add
- * Usage	: Adds a rule to the rule table.
+ * Adds a rule to the rule table.
  *
  * NOTE: The rule table is split into 32 groups. Each group contains rules that
  * apply to a specific prefix depth (i.e. group 1 contains rules that apply to
@@ -274,7 +265,7 @@ rule_add(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 	rule_index = rule_gindex;
 	/* Last rule = Last used rule in this rule group. */
 	last_rule = rule_gindex + lpm->used_rules_at_depth[depth - 1];
-
+		
 	/* Scan through rule group to see if rule already exists. */
 	for (rule_index = rule_gindex; rule_index < last_rule; rule_index++) {
 
@@ -304,8 +295,7 @@ rule_add(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 }
 
 /*
- * Function Name: rule_delete
- * Usage	: Delete a rule from the rule table.
+ * Delete a rule from the rule table.
  * NOTE: Valid range for depth parameter is 1 .. 32 inclusive.
  */
 static inline void
@@ -328,8 +318,7 @@ rule_delete(struct rte_lpm *lpm, int32_t rule_index, uint8_t depth)
 
 
 /*
- * Function Name: rule_find
- * Usage	: Finds a rule in rule table.
+ * Finds a rule in rule table.
  * NOTE: Valid range for depth parameter is 1 .. 32 inclusive.
  */
 static inline int32_t
@@ -354,8 +343,7 @@ rule_find(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth)
 }
 
 /*
- * Function Name: tbl8_alloc
- * Usage	: Find, clean and allocate a tbl8.
+ * Find, clean and allocate a tbl8.
  */
 static inline int32_t
 tbl8_alloc(struct rte_lpm_tbl8_entry *tbl8)
@@ -426,7 +414,7 @@ add_depth_small(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 
 		/* If tbl24 entry is valid and extended calculate the index
 		 * into tbl8. */
-		tbl8_index = lpm->tbl24[tbl24_index].tbl8_gindex *
+		tbl8_index = lpm->tbl24[tbl24_index].tbl8_gindex * 
 				RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
 		tbl8_group_end = tbl8_index + RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
 
@@ -586,24 +574,20 @@ add_depth_big(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 }
 
 /*
- * Function Name 	: rte_lpm_add
- * Usage		: Add a route
- *
- *(IN) lpm_handle,
- *(IN) ip
- *(IN) depth
- *(IN) next_hop
+ * Add a route
  */
 int
 rte_lpm_add(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 		uint8_t next_hop)
 {
 	int32_t rule_index, status = 0;
-	uint32_t ip_masked = (ip & depth_to_mask(depth));
+	uint32_t ip_masked;
 
 	/* Check user arguments. */
 	if ((lpm == NULL) || (depth < 1) || (depth > RTE_LPM_MAX_DEPTH))
 		return -EINVAL;
+
+	ip_masked = ip & depth_to_mask(depth);
 
 	/* Add the rule to the rule table. */
 	rule_index = rule_add(lpm, ip_masked, depth, next_hop);
@@ -673,6 +657,7 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
 		 * associated with this rule.
 		 */
 		for (i = tbl24_index; i < (tbl24_index + tbl24_range); i++) {
+			
 			if (lpm->tbl24[i].ext_entry == 0 &&
 					lpm->tbl24[i].depth <= depth ) {
 				lpm->tbl24[i].valid = INVALID;
@@ -683,6 +668,7 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
 				 * to be a rule with depth >= 25 in the
 				 * associated TBL8 group.
 				 */
+
 				tbl8_group_index = lpm->tbl24[i].tbl8_gindex;
 				tbl8_index = tbl8_group_index *
 						RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
@@ -736,7 +722,7 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
 				tbl8_group_index = lpm->tbl24[i].tbl8_gindex;
 				tbl8_index = tbl8_group_index *
 						RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
-
+				
 				for (j = tbl8_index; j < (tbl8_index +
 					RTE_LPM_TBL8_GROUP_NUM_ENTRIES); j++) {
 
@@ -751,8 +737,7 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
 }
 
 /*
- * Function Name: tbl8_recycle_check
- * Usage	: Checks if table 8 group can be recycled.
+ * Checks if table 8 group can be recycled.
  *
  * Return of -EEXIST means tbl8 is in use and thus can not be recycled.
  * Return of -EINVAL means tbl8 is empty and thus can be recycled
@@ -888,12 +873,7 @@ delete_depth_big(struct rte_lpm *lpm, uint32_t ip_masked,
 }
 
 /*
- * Function Name: rte_lpm_delete
- * Usage	: Deletes a rule
- *
- *(IN) lpm_handle,
- *(IN) ip
- *(IN) depth
+ * Deletes a rule
  */
 int
 rte_lpm_delete(struct rte_lpm *lpm, uint32_t ip, uint8_t depth)
@@ -947,10 +927,7 @@ rte_lpm_delete(struct rte_lpm *lpm, uint32_t ip, uint8_t depth)
 }
 
 /*
- * Function Name: rte_lpm_delete_all
- * Usage	: Delete all rules from the LPM table.
- *
- *(IN)	lpm_handle
+ * Delete all rules from the LPM table.
  */
 void
 rte_lpm_delete_all(struct rte_lpm *lpm)
