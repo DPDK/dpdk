@@ -66,6 +66,7 @@
 #include <rte_debug.h>
 
 #include "eal_internal_cfg.h"
+#include "eal_filesystem.h"
 #include "eal_private.h"
 
 /**
@@ -108,7 +109,6 @@ struct uio_resource {
 TAILQ_HEAD(uio_res_list, uio_resource);
 
 static struct uio_res_list *uio_res_list = NULL;
-static int pci_parse_sysfs_value(const char *filename, unsigned long *val);
 
 /*
  * Check that a kernel module is loaded. Returns 0 on success, or if the
@@ -366,7 +366,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	/* get mapping offset */
 	rte_snprintf(filename, sizeof(filename),
 		 "%s/maps/map0/offset", dirname2);
-	if (pci_parse_sysfs_value(filename, &offset) < 0) {
+	if (eal_parse_sysfs_value(filename, &offset) < 0) {
 		RTE_LOG(ERR, EAL, "%s(): cannot parse offset\n",
 			__func__);
 		return -1;
@@ -375,7 +375,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	/* get mapping size */
 	rte_snprintf(filename, sizeof(filename),
 		 "%s/maps/map0/size", dirname2);
-	if (pci_parse_sysfs_value(filename, &size) < 0) {
+	if (eal_parse_sysfs_value(filename, &size) < 0) {
 		RTE_LOG(ERR, EAL, "%s(): cannot parse size\n",
 			__func__);
 		return -1;
@@ -465,37 +465,6 @@ error:
 	return -1;
 }
 
-/* parse a sysfs file containing one integer value */
-static int
-pci_parse_sysfs_value(const char *filename, unsigned long *val)
-{
-	FILE *f;
-	char buf[BUFSIZ];
-	char *end = NULL;
-
-	f = fopen(filename, "r");
-	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): cannot open sysfs value %s\n",
-			__func__, filename);
-		return -1;
-	}
-
-	if (fgets(buf, sizeof(buf), f) == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): cannot read sysfs value %s\n",
-			__func__, filename);
-		fclose(f);
-		return -1;
-	}
-	*val = strtoul(buf, &end, 0);
-	if ((buf[0] == '\0') || (end == NULL) || (*end != '\n')) {
-		RTE_LOG(ERR, EAL, "%s(): cannot parse sysfs value %s\n",
-				__func__, filename);
-		fclose(f);
-		return -1;
-	}
-	fclose(f);
-	return 0;
-}
 
 /* Scan one pci sysfs entry, and fill the devices list from it. */
 static int
@@ -519,7 +488,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 
 	/* get vendor id */
 	rte_snprintf(filename, sizeof(filename), "%s/vendor", dirname);
-	if (pci_parse_sysfs_value(filename, &tmp) < 0) {
+	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
 		free(dev);
 		return -1;
 	}
@@ -527,7 +496,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 
 	/* get device id */
 	rte_snprintf(filename, sizeof(filename), "%s/device", dirname);
-	if (pci_parse_sysfs_value(filename, &tmp) < 0) {
+	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
 		free(dev);
 		return -1;
 	}
@@ -536,7 +505,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	/* get subsystem_vendor id */
 	rte_snprintf(filename, sizeof(filename), "%s/subsystem_vendor",
 		 dirname);
-	if (pci_parse_sysfs_value(filename, &tmp) < 0) {
+	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
 		free(dev);
 		return -1;
 	}
@@ -545,7 +514,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	/* get subsystem_device id */
 	rte_snprintf(filename, sizeof(filename), "%s/subsystem_device",
 		 dirname);
-	if (pci_parse_sysfs_value(filename, &tmp) < 0) {
+	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
 		free(dev);
 		return -1;
 	}

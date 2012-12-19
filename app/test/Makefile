@@ -71,6 +71,7 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_eal_flags.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_alarm.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_interrupts.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_version.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_eal_fs.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

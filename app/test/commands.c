@@ -93,6 +93,8 @@ static void cmd_autotest_parsed(void *parsed_result,
 
 	if (all || !strcmp(res->autotest, "version_autotest"))
 		ret |= test_version();
+	if (all || !strcmp(res->autotest, "eal_fs_autotest"))
+		ret |= test_eal_fs();
 	if (all || !strcmp(res->autotest, "debug_autotest"))
 		ret |= test_debug();
 	if (all || !strcmp(res->autotest, "pci_autotest"))
@@ -177,7 +179,7 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"string_autotest#multiprocess_autotest#"
 			"cpuflags_autotest#eal_flags_autotest#"
 			"alarm_autotest#interrupt_autotest#"
-			"version_autotest#"
+			"version_autotest#eal_fs_autotest#"
 			"all_autotests");
 
 cmdline_parse_inst_t cmd_autotest = {

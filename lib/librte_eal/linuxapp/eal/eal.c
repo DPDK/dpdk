@@ -70,7 +70,7 @@
 #include "eal_private.h"
 #include "eal_thread.h"
 #include "eal_internal_cfg.h"
-#include "eal_fs_paths.h"
+#include "eal_filesystem.h"
 #include "eal_hugepages.h"
 
 #define OPT_HUGE_DIR    "huge-dir"
@@ -130,6 +130,38 @@ rte_eal_get_configuration(void)
 {
 	return &rte_config;
 }
+
+/* parse a sysfs (or other) file containing one integer value */
+int
+eal_parse_sysfs_value(const char *filename, unsigned long *val)
+{
+	FILE *f;
+	char buf[BUFSIZ];
+	char *end = NULL;
+
+	if ((f = fopen(filename, "r")) == NULL) {
+		RTE_LOG(ERR, EAL, "%s(): cannot open sysfs value %s\n",
+			__func__, filename);
+		return -1;
+	}
+
+	if (fgets(buf, sizeof(buf), f) == NULL) {
+		RTE_LOG(ERR, EAL, "%s(): cannot read sysfs value %s\n",
+			__func__, filename);
+		fclose(f);
+		return -1;
+	}
+	*val = strtoul(buf, &end, 0);
+	if ((buf[0] == '\0') || (end == NULL) || (*end != '\n')) {
+		RTE_LOG(ERR, EAL, "%s(): cannot parse sysfs value %s\n",
+				__func__, filename);
+		fclose(f);
+		return -1;
+	}
+	fclose(f);
+	return 0;
+}
+
 
 /* create memory configuration in shared/mmap memory. Take out
  * a write lock on the memsegs, so we can auto-detect primary/secondary.

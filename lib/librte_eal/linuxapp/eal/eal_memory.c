@@ -63,7 +63,7 @@
 
 #include "eal_private.h"
 #include "eal_internal_cfg.h"
-#include "eal_fs_paths.h"
+#include "eal_filesystem.h"
 #include "eal_hugepages.h"
 
 /**

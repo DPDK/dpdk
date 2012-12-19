@@ -79,6 +79,8 @@ int test_eal_flags(void);
 int test_alarm(void);
 int test_interrupt(void);
 int test_version(void);
+int test_eal_fs(void);
+
 int test_pci_run;
 
 #endif

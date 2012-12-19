@@ -56,6 +56,7 @@
 #include "rte_string_fns.h"
 #include "eal_internal_cfg.h"
 #include "eal_hugepages.h"
+#include "eal_filesystem.h"
 
 static const char sys_dir_path[] = "/sys/kernel/mm/hugepages";
 
@@ -68,10 +69,9 @@ get_num_hugepages(const char *subdir)
 
 	rte_snprintf(path, sizeof(path), "%s/%s/%s",
 			sys_dir_path, subdir, nr_hp_file);
-	FILE *fd = fopen(path, "r");
-	if (fd == NULL || fscanf(fd, "%u", &num_pages) != 1)
-		rte_panic("Error reading file '%s'\n", path);
-	fclose(fd);
+
+	if (eal_parse_sysfs_value(path, &num_pages) < 0)
+		return 0;
 
 	return num_pages;
 }

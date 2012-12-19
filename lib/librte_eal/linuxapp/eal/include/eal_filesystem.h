@@ -34,14 +34,21 @@
 
 /**
  * @file
- * Paths used for storing hugepage and config info for multi-process support.
+ * Stores functions and path defines for files and directories
+ * on the filesystem for Linux, that are used by the Linux EAL.
  */
 
-#ifndef _EAL_LINUXAPP_FS_PATHS_H
-#define _EAL_LINUXAPP_FS_PATHS_H
+#ifndef _EAL_LINUXAPP_FILESYSTEM_H
+#define _EAL_LINUXAPP_FILESYSTEM_H
 
 /** Path of rte config file. */
 #define RUNTIME_CONFIG_FMT "%s/.%s_config"
+
+#include <stdint.h>
+#include <limits.h>
+#include <unistd.h>
+#include <rte_string_fns.h>
+#include "eal_internal_cfg.h"
 
 static const char *default_config_dir = "/var/run";
 
@@ -91,5 +98,8 @@ eal_get_hugefile_path(char *buffer, size_t buflen, const char *hugedir, int f_id
 /** define the default filename prefix for the %s values above */
 #define HUGEFILE_PREFIX_DEFAULT "rte"
 
+/** Function to read a single numeric value from a file on the filesystem.
+ * Used to read information from files on /sys */
+int eal_parse_sysfs_value(const char *filename, unsigned long *val);
 
-#endif /* _EAL_LINUXAPP_FS_PATHS_H */
+#endif /* _EAL_LINUXAPP_FILESYSTEM_H */
