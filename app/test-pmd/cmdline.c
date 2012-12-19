@@ -217,7 +217,7 @@ static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
 		       "    ip_src_address port_src dst ip_dst_address port_dst\n"
 		       "    flexbytes flexbytes_values vlan vlan_id soft soft_id\n"
 		       "- set_masks_filter port_id only_ip_flow 0|1 src_mask\n"
-		       "    ip_src_mask  port_src_mask dst_mask ip_dst_mask\n"
+		       "    ip_src_mask port_src_mask dst_mask ip_dst_mask\n"
 		       "    port_dst_mask flexbytes 0|1 vlan_id 0|1 vlan_prio 0|1\n"
 		       "- set_ipv6_masks_filter port_id only_ip_flow 0|1 src_mask\n"
 		       "    ip_src_mask port_src_mask dst_mask ip_dst_mask\n"
@@ -1481,7 +1481,7 @@ cmdline_parse_token_num_t cmd_pkt_filter_masks_port_src_mask =
 			      port_src_mask, UINT16);
 cmdline_parse_token_string_t cmd_pkt_filter_masks_dst_mask =
 	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_masks_result,
-				 src_mask, "dst_mask");
+				 dst_mask, "dst_mask");
 cmdline_parse_token_num_t cmd_pkt_filter_masks_ip_dst_mask =
 	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
 			      ip_dst_mask, UINT32);
