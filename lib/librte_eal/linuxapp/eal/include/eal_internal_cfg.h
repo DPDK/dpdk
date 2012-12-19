@@ -40,6 +40,8 @@
 #ifndef _EAL_LINUXAPP_INTERNAL_CFG
 #define _EAL_LINUXAPP_INTERNAL_CFG
 
+#include <rte_eal.h>
+
 #define MAX_HUGEPAGE_SIZES 3  /**< support up to 3 page sizes */
 
 /*
@@ -49,7 +51,8 @@
 struct hugepage_info {
 	uint64_t hugepage_sz;   /**< size of a huge page */
 	const char *hugedir;    /**< dir where hugetlbfs is mounted */
-	uint32_t num_pages;     /**< number of hugepages of that size */
+	uint32_t num_pages[RTE_MAX_NUMA_NODES];
+				/**< number of hugepages of that size on each socket */
 };
 
 /**
@@ -64,6 +67,9 @@ struct internal_config {
 	volatile unsigned no_hpet;        /**< true to disable HPET */
 	volatile unsigned no_shconf;      /**< true if there is no shared config */
 	volatile enum rte_proc_type_t process_type; /* multi-process proc type */
+	/* true to try allocating memory on specific sockets */
+	volatile unsigned force_sockets;
+	volatile uint64_t socket_mem[RTE_MAX_NUMA_NODES]; /**< amount of memory per socket*/
 	const char *hugefile_prefix;      /**< the base filename of hugetlbfs files */
 	const char *hugepage_dir;         /**< specific hugetlbfs directory to use */
 

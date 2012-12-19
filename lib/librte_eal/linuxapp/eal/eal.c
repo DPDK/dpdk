@@ -80,10 +80,13 @@
 #define OPT_NO_PCI      "no-pci"
 #define OPT_NO_HUGE     "no-huge"
 #define OPT_FILE_PREFIX "file-prefix"
+#define OPT_SOCKET_MEM  "socket-mem"
 
 #define RTE_EAL_BLACKLIST_SIZE	0x100
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
+
+#define SOCKET_MEM_STRLEN (RTE_MAX_NUMA_NODES * 10)
 
 #define GET_BLACKLIST_FIELD(in, fd, lim, dlm)                   \
 {                                                               \
@@ -293,6 +296,8 @@ eal_usage(const char *prgname)
 	       "                 (multiple -b options are allowed)\n"
 	       "  -m MB        : memory to allocate (see also --"OPT_SOCKET_MEM")\n"
 	       "  -r NUM       : force number of memory ranks (don't detect)\n"
+	       "  --"OPT_SOCKET_MEM" : memory to allocate on specific \n"
+		   "                 sockets (use comma separated values)\n"
 	       "  --"OPT_HUGE_DIR"   : directory where hugetlbfs is mounted\n"
 	       "  --"OPT_PROC_TYPE"  : type of this process\n"
 	       "  --"OPT_FILE_PREFIX": prefix for hugepage filenames\n"
@@ -339,16 +344,69 @@ eal_parse_coremask(const char *coremask)
 	return 0;
 }
 
+static int
+eal_parse_socket_mem(char *socket_mem)
+{
+	char * arg[RTE_MAX_NUMA_NODES];
+	char *end;
+	int arg_num, i, len;
+	uint64_t total_mem = 0;
+
+	len = strnlen(socket_mem, SOCKET_MEM_STRLEN);
+	if (len == SOCKET_MEM_STRLEN) {
+		RTE_LOG(ERR, EAL, "--socket-mem is too long\n");
+		return -1;
+	}
+
+	/* all other error cases will be caught later */
+	if (!isdigit(socket_mem[len-1]))
+		return -1;
+
+	/* split the optarg into separate socket values */
+	arg_num = rte_strsplit(socket_mem, len,
+			arg, RTE_MAX_NUMA_NODES, ',');
+
+	/* if split failed, or 0 arguments */
+	if (arg_num <= 0)
+		return -1;
+
+	internal_config.force_sockets = 1;
+
+	/* parse each defined socket option */
+	errno = 0;
+	for (i = 0; i < arg_num; i++) {
+		end = NULL;
+		internal_config.socket_mem[i] = strtoull(arg[i], &end, 10);
+
+		/* check for invalid input */
+		if ((errno != 0)  ||
+				(arg[i][0] == '\0') || (end == NULL) || (*end != '\0'))
+			return -1;
+		internal_config.socket_mem[i] *= 1024ULL;
+		internal_config.socket_mem[i] *= 1024ULL;
+		total_mem += internal_config.socket_mem[i];
+	}
+
+	/* check if we have a positive amount of total memory */
+	if (total_mem == 0)
+		return -1;
+
+	return 0;
+}
+
 static inline uint64_t
 eal_get_hugepage_mem_size(void)
 {
 	uint64_t size = 0;
-	unsigned i;
+	unsigned i, j;
 
-	for (i = 0; i < internal_config.num_hugepage_sizes; i++){
+	for (i = 0; i < internal_config.num_hugepage_sizes; i++) {
 		struct hugepage_info *hpi = &internal_config.hugepage_info[i];
-		if (hpi->hugedir != NULL)
-			size += hpi->hugepage_sz * hpi->num_pages;
+		if (hpi->hugedir != NULL) {
+			for (j = 0; j < RTE_MAX_NUMA_NODES; j++) {
+				size += hpi->hugepage_sz * hpi->num_pages[j];
+			}
+		}
 	}
 
 	return (size);
@@ -401,7 +459,7 @@ eal_parse_blacklist_opt(const char *optarg, size_t idx)
 static int
 eal_parse_args(int argc, char **argv)
 {
-	int opt, ret;
+	int opt, ret, i;
 	char **argvopt;
 	int option_index;
 	int coremask_ok = 0;
@@ -415,6 +473,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_NO_SHCONF, 0, 0, 0},
 		{OPT_PROC_TYPE, 1, 0, 0},
 		{OPT_FILE_PREFIX, 1, 0, 0},
+		{OPT_SOCKET_MEM, 1, 0, 0},
 		{0, 0, 0, 0}
 	};
 
@@ -425,11 +484,15 @@ eal_parse_args(int argc, char **argv)
 	internal_config.force_nchannel = 0;
 	internal_config.hugefile_prefix = HUGEFILE_PREFIX_DEFAULT;
 	internal_config.hugepage_dir = NULL;
+	internal_config.force_sockets = 0;
 #ifdef RTE_LIBEAL_USE_HPET
 	internal_config.no_hpet = 0;
 #else
 	internal_config.no_hpet = 1;
 #endif
+	/* zero out the NUMA config */
+	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
+		internal_config.socket_mem[i] = 0;
 
 	while ((opt = getopt_long(argc, argvopt, "b:c:m:n:r:v",
 				  lgopts, &option_index)) != EOF) {
@@ -508,6 +571,14 @@ eal_parse_args(int argc, char **argv)
 			else if (!strcmp(lgopts[option_index].name, OPT_FILE_PREFIX)) {
 				internal_config.hugefile_prefix = optarg;
 			}
+			else if (!strcmp(lgopts[option_index].name, OPT_SOCKET_MEM)) {
+				if (eal_parse_socket_mem(optarg) < 0) {
+					RTE_LOG(ERR, EAL, "invalid parameters for --"
+							OPT_SOCKET_MEM "\n");
+					eal_usage(prgname);
+					return -1;
+				}
+			}
 			break;
 
 		default:
@@ -541,6 +612,21 @@ eal_parse_args(int argc, char **argv)
 		eal_usage(prgname);
 		return -1;
 	}
+	if (internal_config.memory > 0 && internal_config.force_sockets == 1) {
+		RTE_LOG(ERR, EAL, "Options -m and --socket-mem cannot be specified "
+				"at the same time\n");
+		eal_usage(prgname);
+		return -1;
+	}
+	/* --no-huge doesn't make sense with either -m or --socket-mem */
+	if (internal_config.no_hugetlbfs &&
+			(internal_config.memory > 0 ||
+					internal_config.force_sockets == 1)) {
+		RTE_LOG(ERR, EAL, "Options -m or --socket-mem cannot be specified "
+				"together with --no-huge!\n");
+		eal_usage(prgname);
+		return -1;
+	}
 
 	if (blacklist_index > 0)
 		rte_eal_pci_set_blacklist(eal_dev_blacklist, blacklist_index);
@@ -548,9 +634,33 @@ eal_parse_args(int argc, char **argv)
 	if (optind >= 0)
 		argv[optind-1] = prgname;
 
+	/* if no memory amounts were requested, this will result in 0 and
+	 * will be overriden later, right after eal_hugepage_info_init() */
+	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
+		internal_config.memory += internal_config.socket_mem[i];
+
 	ret = optind-1;
 	optind = 0; /* reset getopt lib */
 	return ret;
+}
+
+static void
+eal_check_mem_on_local_socket(void)
+{
+	const struct rte_memseg *ms;
+	int i, socket_id;
+
+	socket_id = rte_lcore_to_socket_id(rte_config.master_lcore);
+
+	ms = rte_eal_get_physmem_layout();
+
+	for (i = 0; i < RTE_MAX_MEMSEG; i++)
+		if (ms[i].socket_id == socket_id &&
+				ms[i].len > 0)
+			return;
+
+	RTE_LOG(WARNING, EAL, "WARNING: Master core has no "
+			"memory on local socket!\n");
 }
 
 /* Launch threads, called at application init(). */
@@ -572,7 +682,7 @@ rte_eal_init(int argc, char **argv)
 	if (eal_hugepage_info_init() < 0)
 		rte_panic("Cannot get hugepage information\n");
 
-	if (internal_config.memory == 0) {
+	if (internal_config.memory == 0 && internal_config.force_sockets == 0) {
 		if (internal_config.no_hugetlbfs)
 			internal_config.memory = MEMSIZE_IF_NO_HUGE_PAGE;
 		else
@@ -611,6 +721,8 @@ rte_eal_init(int argc, char **argv)
 
 	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%x)\n",
 		rte_config.master_lcore, (int)thread_id);
+
+	eal_check_mem_on_local_socket();
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 

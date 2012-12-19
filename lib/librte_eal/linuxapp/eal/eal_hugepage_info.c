@@ -174,6 +174,11 @@ swap_hpi(struct hugepage_info *a, struct hugepage_info *b)
 	memcpy(b, buf, sizeof(*a));
 }
 
+/*
+ * when we initialize the hugepage info, everything goes
+ * to socket 0 by default. it will later get sorted by memory
+ * initialization procedure.
+ */
 int
 eal_hugepage_info_init(void)
 {
@@ -192,16 +197,27 @@ eal_hugepage_info_init(void)
 			struct hugepage_info *hpi = \
 					&internal_config.hugepage_info[num_sizes];
 			hpi->hugepage_sz = rte_str_to_size(&dirent->d_name[dirent_start_len]);
-			hpi->num_pages = get_num_hugepages(dirent->d_name);
 			hpi->hugedir = get_hugepage_dir(hpi->hugepage_sz);
+
+			/* first, check if we have a mountpoint */
 			if (hpi->hugedir == NULL){
 				RTE_LOG(INFO, EAL, "%u hugepages of size %llu reserved, "\
 						"but no mounted hugetlbfs found for that size\n",
-						hpi->num_pages,
+						(unsigned) get_num_hugepages(dirent->d_name),
 						(unsigned long long)hpi->hugepage_sz);
-				hpi->num_pages = 0;
-			} else
+			} else {
+				/* for now, put all pages into socket 0,
+				 * later they will be sorted */
+				hpi->num_pages[0] = get_num_hugepages(dirent->d_name);
+
+#ifndef RTE_ARCH_X86_64
+				/* for 32-bit systems, limit number of hugepages to 1GB per page size */
+				hpi->num_pages[0] = RTE_MIN(hpi->num_pages[0],
+						RTE_PGSIZE_1G / hpi->hugepage_sz);
+#endif
+
 				num_sizes++;
+			}
 		}
 		dirent = readdir(dir);
 	}
@@ -221,8 +237,9 @@ eal_hugepage_info_init(void)
 	/* now we have all info, check we have at least one valid size */
 	for (i = 0; i < num_sizes; i++)
 		if (internal_config.hugepage_info[i].hugedir != NULL &&
-				internal_config.hugepage_info[i].num_pages > 0)
+				internal_config.hugepage_info[i].num_pages[0] > 0)
 			return 0;
+
 	/* no valid hugepage mounts available, return error */
 	return -1;
 }
