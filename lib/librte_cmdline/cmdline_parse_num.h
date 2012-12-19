@@ -75,9 +75,6 @@ enum cmdline_numtype {
 	INT16,
 	INT32,
 	INT64
-#ifndef NO_PARSE_FLOAT
-	,FLOAT
-#endif
 };
 
 struct cmdline_token_num_data {
@@ -97,18 +94,17 @@ int cmdline_parse_num(cmdline_parse_token_hdr_t *tk,
 int cmdline_get_help_num(cmdline_parse_token_hdr_t *tk,
 			 char *dstbuf, unsigned int size);
 
-/*
- * Warning! Not compatible with C++!
- */
-#define TOKEN_NUM_INITIALIZER(structure, field, numtype)   \
-{							   \
-	.hdr = {					   \
-		.ops = &cmdline_token_num_ops,		   \
-		.offset = offsetof(structure, field),	   \
-	},						   \
-	.num_data = {					   \
-		.type = numtype,			   \
-	},						   \
+#define TOKEN_NUM_INITIALIZER(structure, field, numtype)    \
+{                                                           \
+	/* hdr */                                               \
+	{                                                       \
+		&cmdline_token_num_ops,         /* ops */           \
+		offsetof(structure, field),     /* offset */        \
+	},                                                      \
+	/* num_data */                                          \
+	{                                                       \
+		numtype,                        /* type */          \
+	},                                                      \
 }
 
 #ifdef __cplusplus

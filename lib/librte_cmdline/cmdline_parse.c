@@ -124,7 +124,7 @@ nb_common_chars(const char * s1, const char * s2)
 {
 	unsigned int i=0;
 
-	while (*s1==*s2 && *s1 && *s2) {
+	while (*s1==*s2 && *s1) {
 		s1++;
 		s2++;
 		i++;
@@ -228,10 +228,15 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 	int parse_it = 0;
 	int err = CMDLINE_PARSE_NOMATCH;
 	int tok;
-	cmdline_parse_ctx_t *ctx = cl->ctx;
+	cmdline_parse_ctx_t *ctx;
 #ifdef RTE_LIBRTE_CMDLINE_DEBUG
 	char debug_buf[BUFSIZ];
 #endif
+
+	if (!cl || !buf)
+		return CMDLINE_PARSE_BAD_ARGS;
+
+	ctx = cl->ctx;
 
 	/*
 	 * - look if the buffer contains at least one line
@@ -342,7 +347,12 @@ cmdline_complete(struct cmdline *cl, const char *buf, int *state,
 	unsigned int nb_non_completable;
 	int local_state = 0;
 	const char *help_str;
-	cmdline_parse_ctx_t *ctx = cl->ctx;
+	cmdline_parse_ctx_t *ctx;
+
+	if (!cl || !buf || !state || !dst)
+		return -1;
+
+	ctx = cl->ctx;
 
 	debug_printf("%s called\n", __func__);
 	memset(&token_hdr, 0, sizeof(token_hdr));
@@ -423,6 +433,7 @@ cmdline_complete(struct cmdline *cl, const char *buf, int *state,
 				}
 			}
 		next:
+			debug_printf("next\n");
 			inst_num ++;
 			inst = ctx[inst_num];
 		}

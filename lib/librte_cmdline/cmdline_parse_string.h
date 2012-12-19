@@ -91,18 +91,17 @@ int cmdline_complete_get_elt_string(cmdline_parse_token_hdr_t *tk, int idx,
 int cmdline_get_help_string(cmdline_parse_token_hdr_t *tk, char *dstbuf,
 			    unsigned int size);
 
-/*
- * Warning! Not compatible with C++!
- */
 #define TOKEN_STRING_INITIALIZER(structure, field, string)  \
-{							    \
-	.hdr = {					    \
-		.ops = &cmdline_token_string_ops,	    \
-		.offset = offsetof(structure, field),	    \
-	},						    \
-	.string_data = {				    \
-		.str = string,				    \
-	},						    \
+{                                                           \
+	/* hdr */                                               \
+	{                                                       \
+		&cmdline_token_string_ops,      /* ops */           \
+		offsetof(structure, field),     /* offset */        \
+	},                                                      \
+	/* string_data */                                       \
+	{                                                       \
+		string,                         /* str */           \
+	},                                                      \
 }
 
 #ifdef __cplusplus

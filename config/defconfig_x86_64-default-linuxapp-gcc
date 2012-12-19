@@ -192,6 +192,7 @@ CONFIG_RTE_MALLOC_PER_NUMA_NODE=y
 # Compile librte_cmdline
 #
 CONFIG_RTE_LIBRTE_CMDLINE=y
+CONFIG_RTE_LIBRTE_CMDLINE_DEBUG=n
 
 #
 # Compile librte_hash

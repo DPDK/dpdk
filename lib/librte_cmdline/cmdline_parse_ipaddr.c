@@ -105,6 +105,8 @@ struct cmdline_token_ops cmdline_token_ipaddr_ops = {
 
 #define INADDRSZ 4
 #define IN6ADDRSZ 16
+#define PREFIXMAX 128
+#define V4PREFIXMAX 32
 
 /*
  * WARNING: Don't even consider trying to compile this on a system where
@@ -207,10 +209,11 @@ inet_pton6(const char *src, unsigned char *dst)
 {
 	static const char xdigits_l[] = "0123456789abcdef",
 		xdigits_u[] = "0123456789ABCDEF";
-	unsigned char tmp[IN6ADDRSZ], *tp, *endp, *colonp;
-	const char *xdigits, *curtok;
-	int ch, saw_xdigit, count_xdigit;
-	unsigned int val;
+	unsigned char tmp[IN6ADDRSZ], *tp = 0, *endp = 0, *colonp = 0;
+	const char *xdigits = 0, *curtok = 0;
+	int ch = 0, saw_xdigit = 0, count_xdigit = 0;
+	unsigned int val = 0;
+	unsigned dbloct_count = 0;
 
 	memset((tp = tmp), '\0', IN6ADDRSZ);
 	endp = tp + IN6ADDRSZ;
@@ -222,6 +225,7 @@ inet_pton6(const char *src, unsigned char *dst)
 	curtok = src;
 	saw_xdigit = count_xdigit = 0;
 	val = 0;
+
 	while ((ch = *src++) != '\0') {
 		const char *pch;
 
@@ -255,6 +259,7 @@ inet_pton6(const char *src, unsigned char *dst)
 			saw_xdigit = 0;
 			count_xdigit = 0;
 			val = 0;
+			dbloct_count++;
 			continue;
 		}
 		if (ch == '.' && ((tp + INADDRSZ) <= endp) &&
@@ -262,6 +267,7 @@ inet_pton6(const char *src, unsigned char *dst)
 			tp += INADDRSZ;
 			saw_xdigit = 0;
 			count_xdigit = 0;
+			dbloct_count += 2;
 			break;  /* '\0' was seen by inet_pton4(). */
 		}
 		return (0);
@@ -271,8 +277,13 @@ inet_pton6(const char *src, unsigned char *dst)
 			return (0);
 		*tp++ = (unsigned char) ((val >> 8) & 0xff);
 		*tp++ = (unsigned char) (val & 0xff);
+		dbloct_count++;
 	}
 	if (colonp != NULL) {
+		/* if we already have 8 double octets, having a colon means error */
+		if (dbloct_count == 8)
+			return 0;
+
 		/*
 		 * Since some memmove()'s erroneously fail to handle
 		 * overlapping regions, we'll do the shift by hand.
@@ -295,15 +306,17 @@ inet_pton6(const char *src, unsigned char *dst)
 int
 cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
 {
-	struct cmdline_token_ipaddr *tk2 = (struct cmdline_token_ipaddr *)tk;
+	struct cmdline_token_ipaddr *tk2;
 	unsigned int token_len = 0;
 	char ip_str[INET6_ADDRSTRLEN+4+1]; /* '+4' is for prefixlen (if any) */
 	cmdline_ipaddr_t ipaddr;
 	char *prefix, *prefix_end;
-	long prefixlen;
+	long prefixlen = 0;
 
-	if (! *buf)
+	if (!buf || !tk || ! *buf)
 		return -1;
+
+	tk2 = (struct cmdline_token_ipaddr *)tk;
 
 	while (!cmdline_isendoftoken(buf[token_len]))
 		token_len++;
@@ -323,7 +336,8 @@ cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
 		prefix ++;
 		errno = 0;
 		prefixlen = strtol(prefix, &prefix_end, 10);
-		if (errno || (*prefix_end != '\0') )
+		if (errno || (*prefix_end != '\0')
+			|| prefixlen < 0 || prefixlen > PREFIXMAX)
 			return -1;
 		ipaddr.prefixlen = prefixlen;
 	}
@@ -333,16 +347,17 @@ cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
 
 	/* convert the IP addr */
 	if ((tk2->ipaddr_data.flags & CMDLINE_IPADDR_V4) &&
-	    my_inet_pton(AF_INET, ip_str, &ipaddr.addr.ipv4) == 1) {
+	    my_inet_pton(AF_INET, ip_str, &ipaddr.addr.ipv4) == 1 &&
+		prefixlen <= V4PREFIXMAX) {
 		ipaddr.family = AF_INET;
-		if (res != NULL)
+		if (res)
 			memcpy(res, &ipaddr, sizeof(ipaddr));
 		return token_len;
 	}
 	if ((tk2->ipaddr_data.flags & CMDLINE_IPADDR_V6) &&
 	    my_inet_pton(AF_INET6, ip_str, &ipaddr.addr.ipv6) == 1) {
 		ipaddr.family = AF_INET6;
-		if (res != NULL)
+		if (res)
 			memcpy(res, &ipaddr, sizeof(ipaddr));
 		return token_len;
 	}
@@ -353,7 +368,12 @@ cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
 int cmdline_get_help_ipaddr(cmdline_parse_token_hdr_t *tk, char *dstbuf,
 			    unsigned int size)
 {
-	struct cmdline_token_ipaddr *tk2 = (struct cmdline_token_ipaddr *)tk;
+	struct cmdline_token_ipaddr *tk2;
+
+	if (!tk || !dstbuf)
+		return -1;
+
+	tk2 = (struct cmdline_token_ipaddr *)tk;
 
 	switch (tk2->ipaddr_data.flags) {
 	case CMDLINE_IPADDR_V4:

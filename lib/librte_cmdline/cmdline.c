@@ -104,7 +104,12 @@ int
 cmdline_write_char(struct rdline *rdl, char c)
 {
 	int ret = -1;
-	struct cmdline *cl = rdl->opaque;
+	struct cmdline *cl;
+
+	if (!rdl)
+		return -1;
+
+	cl = rdl->opaque;
 
 	if (cl->s_out >= 0)
 		ret = write(cl->s_out, &c, 1);
@@ -116,6 +121,8 @@ cmdline_write_char(struct rdline *rdl, char c)
 void
 cmdline_set_prompt(struct cmdline *cl, const char *prompt)
 {
+	if (!cl || !prompt)
+		return;
 	rte_snprintf(cl->prompt, sizeof(cl->prompt), "%s", prompt);
 }
 
@@ -123,6 +130,10 @@ struct cmdline *
 cmdline_new(cmdline_parse_ctx_t *ctx, const char *prompt, int s_in, int s_out)
 {
 	struct cmdline *cl;
+
+	if (!ctx || !prompt)
+		return NULL;
+
 	cl = malloc(sizeof(struct cmdline));
 	if (cl == NULL)
 		return NULL;
@@ -144,6 +155,10 @@ void
 cmdline_free(struct cmdline *cl)
 {
 	dprintf("called\n");
+
+	if (!cl)
+		return;
+
 	if (cl->s_in > 2)
 		close(cl->s_in);
 	if (cl->s_out != cl->s_in && cl->s_out > 2)
@@ -155,6 +170,9 @@ void
 cmdline_printf(const struct cmdline *cl, const char *fmt, ...)
 {
 	va_list ap;
+
+	if (!cl || !fmt)
+		return;
 
 #ifdef _GNU_SOURCE
 	if (cl->s_out < 0)
@@ -192,6 +210,9 @@ cmdline_in(struct cmdline *cl, const char *buf, int size)
 	int ret = 0;
 	int i, same;
 
+	if (!cl || !buf)
+		return -1;
+
 	for (i=0; i<size; i++) {
 		ret = rdline_char_in(&cl->rdl, buf[i]);
 
@@ -221,6 +242,8 @@ cmdline_in(struct cmdline *cl, const char *buf, int size)
 void
 cmdline_quit(struct cmdline *cl)
 {
+	if (!cl)
+		return;
 	rdline_quit(&cl->rdl);
 }
 
@@ -228,6 +251,9 @@ void
 cmdline_interact(struct cmdline *cl)
 {
 	char c;
+
+	if (!cl)
+		return;
 
 	c = -1;
 	while (1) {

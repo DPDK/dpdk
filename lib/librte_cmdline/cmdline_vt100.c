@@ -101,6 +101,8 @@ const char *cmdline_vt100_commands[] = {
 void
 vt100_init(struct cmdline_vt100 *vt)
 {
+	if (!vt)
+		return;
 	vt->state = CMDLINE_VT100_INIT;
 }
 
@@ -130,6 +132,9 @@ vt100_parser(struct cmdline_vt100 *vt, char ch)
 {
 	unsigned int size;
 	uint8_t c = (uint8_t) ch;
+
+	if (!vt)
+		return -1;
 
 	if (vt->bufpos >= CMDLINE_VT100_BUF_SIZE) {
 		vt->state = CMDLINE_VT100_INIT;

@@ -136,10 +136,12 @@ cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 {
 	unsigned int token_len = 0;
 	char portlist_str[PORTLIST_TOKEN_SIZE+1];
-	cmdline_portlist_t *pl = res;
+	cmdline_portlist_t *pl;
 
-	if (! *buf)
+	if (!buf || ! *buf)
 		return (-1);
+
+	pl = res;
 
 	while (!cmdline_isendoftoken(buf[token_len]) &&
 	    (token_len < PORTLIST_TOKEN_SIZE))
@@ -148,24 +150,26 @@ cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 	if (token_len >= PORTLIST_TOKEN_SIZE)
 		return (-1);
 
-	if (pl == NULL)
-		return (token_len);
-
 	rte_snprintf(portlist_str, token_len+1, "%s", buf);
 
-	pl->map = 0;
-	if (strcmp("all", portlist_str) == 0)
-		pl->map	= UINT32_MAX;
-	else if (parse_ports(pl, portlist_str) != 0)
-		return (-1);
+	if (pl) {
+		pl->map = 0;
+		if (strcmp("all", portlist_str) == 0)
+			pl->map	= UINT32_MAX;
+		else if (parse_ports(pl, portlist_str) != 0)
+			return (-1);
+	}
 
 	return token_len;
 }
 
-int cmdline_get_help_portlist(cmdline_parse_token_hdr_t *tk, char *dstbuf,
-			    unsigned int size)
+int
+cmdline_get_help_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
+		char *dstbuf, unsigned int size)
 {
-	(void)tk;
-	rte_snprintf(dstbuf, size, "range of ports as 3,4-6,8-19,20");
+	int ret;
+	ret = rte_snprintf(dstbuf, size, "range of ports as 3,4-6,8-19,20");
+	if (ret < 0)
+		return -1;
 	return 0;
 }

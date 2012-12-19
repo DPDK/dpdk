@@ -82,8 +82,9 @@ struct cmdline_token_ops cmdline_token_etheraddr_ops = {
 	.get_help = cmdline_get_help_etheraddr,
 };
 
-
-#define ETHER_ADDRSTRLEN 18
+/* the format can be either XX:XX:XX:XX:XX:XX or XXXX:XXXX:XXXX */
+#define ETHER_ADDRSTRLENLONG 18
+#define ETHER_ADDRSTRLENSHORT 15
 
 #ifdef __linux__
 #define ea_oct ether_addr_octet
@@ -140,17 +141,18 @@ cmdline_parse_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 			const char *buf, void *res)
 {
 	unsigned int token_len = 0;
-	char ether_str[ETHER_ADDRSTRLEN+1];
+	char ether_str[ETHER_ADDRSTRLENLONG+1];
 	struct ether_addr *tmp;
 
-	if (! *buf)
+	if (!buf || ! *buf)
 		return -1;
 
 	while (!cmdline_isendoftoken(buf[token_len]))
 		token_len++;
 
-	/* if token is too big... */
-	if (token_len >= ETHER_ADDRSTRLEN)
+	/* if token doesn't match possible string lengths... */
+	if ((token_len != ETHER_ADDRSTRLENLONG - 1) &&
+			(token_len != ETHER_ADDRSTRLENSHORT - 1))
 		return -1;
 
 	rte_snprintf(ether_str, token_len+1, "%s", buf);
@@ -158,14 +160,19 @@ cmdline_parse_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 	tmp = my_ether_aton(ether_str);
 	if (tmp == NULL)
 		return -1;
-
-	memcpy(res, tmp, sizeof(struct ether_addr));
+	if (res)
+		memcpy(res, tmp, sizeof(struct ether_addr));
 	return token_len;
 }
 
-int cmdline_get_help_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
+int
+cmdline_get_help_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 			       char *dstbuf, unsigned int size)
 {
-	rte_snprintf(dstbuf, size, "Ethernet address");
+	int ret;
+
+	ret = rte_snprintf(dstbuf, size, "Ethernet address");
+	if (ret < 0)
+		return -1;
 	return 0;
 }

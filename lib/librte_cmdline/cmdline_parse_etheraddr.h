@@ -66,10 +66,6 @@
 extern "C" {
 #endif
 
-struct cmdline_token_etheraddr_data {
-	uint8_t flags;
-};
-
 struct cmdline_token_etheraddr {
 	struct cmdline_token_hdr hdr;
 };
@@ -82,15 +78,13 @@ int cmdline_parse_etheraddr(cmdline_parse_token_hdr_t *tk, const char *srcbuf,
 int cmdline_get_help_etheraddr(cmdline_parse_token_hdr_t *tk, char *dstbuf,
 			       unsigned int size);
 
-/*
- * Warning! Not compatible with C++!
- */
-#define TOKEN_ETHERADDR_INITIALIZER(structure, field)	    \
-{							    \
-	.hdr = {					    \
-		.ops = &cmdline_token_etheraddr_ops,	    \
-		.offset = offsetof(structure, field),	    \
-	},						    \
+#define TOKEN_ETHERADDR_INITIALIZER(structure, field)       \
+{                                                           \
+	/* hdr */                                               \
+	{                                                       \
+		&cmdline_token_etheraddr_ops,   /* ops */           \
+		offsetof(structure, field),     /* offset */        \
+	},                                                      \
 }
 
 #ifdef __cplusplus

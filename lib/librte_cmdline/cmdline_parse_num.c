@@ -90,8 +90,6 @@ enum num_parse_state_t {
 	DEC_NEG,
 	BIN,
 	HEX,
-	FLOAT_POS,
-	FLOAT_NEG,
 
 	ERROR,
 
@@ -102,17 +100,12 @@ enum num_parse_state_t {
 	BIN_OK,
 	DEC_NEG_OK,
 	DEC_POS_OK,
-	FLOAT_POS_OK,
-	FLOAT_NEG_OK
 };
 
 /* Keep it sync with enum in .h */
 static const char * num_help[] = {
 	"UINT8", "UINT16", "UINT32", "UINT64",
 	"INT8", "INT16", "INT32", "INT64",
-#ifdef CMDLINE_HAVE_FLOAT
-	"FLOAT",
-#endif
 };
 
 static inline int
@@ -128,18 +121,24 @@ add_to_res(unsigned int c, uint64_t *res, unsigned int base)
 }
 
 
-/* parse an int or a float */
+/* parse an int */
 int
 cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res)
 {
 	struct cmdline_token_num_data nd;
 	enum num_parse_state_t st = START;
-	const char * buf = srcbuf;
-	char c = *buf;
+	const char * buf;
+	char c;
 	uint64_t res1 = 0;
-#ifdef CMDLINE_HAVE_FLOAT
-	uint64_t res2 = 0, res3 = 1;
-#endif
+
+	if (!tk)
+		return -1;
+
+	if (!srcbuf || !*srcbuf)
+		return -1;
+
+	buf = srcbuf;
+	c = *buf;
 
 	memcpy(&nd, &((struct cmdline_token_num *)tk)->num_data, sizeof(nd));
 
@@ -153,12 +152,6 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res)
 			else if (c == '0') {
 				st = ZERO_OK;
 			}
-#ifdef CMDLINE_HAVE_FLOAT
-			else if (c == '.') {
-				st = FLOAT_POS;
-				res1 = 0;
-			}
-#endif
 			else if (c >= '1' && c <= '9') {
 				if (add_to_res(c - '0', &res1, 10) < 0)
 					st = ERROR;
@@ -177,12 +170,6 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res)
 			else if (c == 'b') {
 				st = BIN;
 			}
-#ifdef CMDLINE_HAVE_FLOAT
-			else if (c == '.') {
-				st = FLOAT_POS;
-				res1 = 0;
-			}
-#endif
 			else if (c >= '0' && c <= '7') {
 				if (add_to_res(c - '0', &res1, 10) < 0)
 					st = ERROR;
@@ -201,12 +188,6 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res)
 				else
 					st = DEC_NEG_OK;
 			}
-#ifdef CMDLINE_HAVE_FLOAT
-			else if (c == '.') {
-				res1 = 0;
-				st = FLOAT_NEG;
-			}
-#endif
 			else {
 				st = ERROR;
 			}
@@ -217,11 +198,6 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res)
 				if (add_to_res(c - '0', &res1, 10) < 0)
 					st = ERROR;
 			}
-#ifdef CMDLINE_HAVE_FLOAT
-			else if (c == '.') {
-				st = FLOAT_NEG;
-			}
-#endif
 			else {
 				st = ERROR;
 			}
@@ -232,11 +208,6 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res)
 				if (add_to_res(c - '0', &res1, 10) < 0)
 					st = ERROR;
 			}
-#ifdef CMDLINE_HAVE_FLOAT
-			else if (c == '.') {
-				st = FLOAT_POS;
-			}
-#endif
 			else {
 				st = ERROR;
 			}
@@ -286,70 +257,12 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res)
 				st = ERROR;
 			}
 			break;
-
-#ifdef CMDLINE_HAVE_FLOAT
-		case FLOAT_POS:
-			if (c >= '0' && c <= '9') {
-				if (add_to_res(c - '0', &res2, 10) < 0)
-					st = ERROR;
-				else
-					st = FLOAT_POS_OK;
-				res3 = 10;
-			}
-			else {
-				st = ERROR;
-			}
-			break;
-
-		case FLOAT_NEG:
-			if (c >= '0' && c <= '9') {
-				if (add_to_res(c - '0', &res2, 10) < 0)
-					st = ERROR;
-				else
-					st = FLOAT_NEG_OK;
-				res3 = 10;
-			}
-			else {
-				st = ERROR;
-			}
-			break;
-
-		case FLOAT_POS_OK:
-			if (c >= '0' && c <= '9') {
-				if (add_to_res(c - '0', &res2, 10) < 0)
-					st = ERROR;
-				if (add_to_res(0, &res3, 10) < 0)
-					st = ERROR;
-			}
-			else {
-				st = ERROR;
-			}
-			break;
-
-		case FLOAT_NEG_OK:
-			if (c >= '0' && c <= '9') {
-				if (add_to_res(c - '0', &res2, 10) < 0)
-					st = ERROR;
-				if (add_to_res(0, &res3, 10) < 0)
-					st = ERROR;
-			}
-			else {
-				st = ERROR;
-			}
-			break;
-#endif
-
 		default:
 			debug_printf("not impl ");
 
 		}
 
-#ifdef CMDLINE_HAVE_FLOAT
-		debug_printf("(%"PRIu32")  (%"PRIu32")  (%"PRIu32")\n",
-			     res1, res2, res3);
-#else
-		debug_printf("(%"PRIu32")\n", res1);
-#endif
+		debug_printf("(%"PRIu64")\n", res1);
 
 		buf ++;
 		c = *buf;
@@ -366,47 +279,37 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res)
 	case OCTAL_OK:
 	case BIN_OK:
 		if ( nd.type == INT8 && res1 <= INT8_MAX ) {
-			if (res)
-				*(int8_t *)res = (int8_t) res1;
+			if (res) *(int8_t *)res = (int8_t) res1;
 			return (buf-srcbuf);
 		}
 		else if ( nd.type == INT16 && res1 <= INT16_MAX ) {
-			if (res)
-				*(int16_t *)res = (int16_t) res1;
+			if (res) *(int16_t *)res = (int16_t) res1;
 			return (buf-srcbuf);
 		}
 		else if ( nd.type == INT32 && res1 <= INT32_MAX ) {
-			if (res)
-				*(int32_t *)res = (int32_t) res1;
+			if (res) *(int32_t *)res = (int32_t) res1;
+			return (buf-srcbuf);
+		}
+		else if ( nd.type == INT64 && res1 <= INT64_MAX ) {
+			if (res) *(int64_t *)res = (int64_t) res1;
 			return (buf-srcbuf);
 		}
 		else if ( nd.type == UINT8 && res1 <= UINT8_MAX ) {
-			if (res)
-				*(uint8_t *)res = (uint8_t) res1;
+			if (res) *(uint8_t *)res = (uint8_t) res1;
 			return (buf-srcbuf);
 		}
 		else if (nd.type == UINT16  && res1 <= UINT16_MAX ) {
-			if (res)
-				*(uint16_t *)res = (uint16_t) res1;
+			if (res) *(uint16_t *)res = (uint16_t) res1;
 			return (buf-srcbuf);
 		}
-		else if ( nd.type == UINT32 ) {
-			if (res)
-				*(uint32_t *)res = (uint32_t) res1;
+		else if ( nd.type == UINT32 && res1 <= UINT32_MAX ) {
+			if (res) *(uint32_t *)res = (uint32_t) res1;
 			return (buf-srcbuf);
 		}
 		else if ( nd.type == UINT64 ) {
-			if (res)
-				*(uint64_t *)res = res1;
+			if (res) *(uint64_t *)res = res1;
 			return (buf-srcbuf);
 		}
-#ifdef CMDLINE_HAVE_FLOAT
-		else if ( nd.type == FLOAT ) {
-			if (res)
-				*(float *)res = (float)res1;
-			return (buf-srcbuf);
-		}
-#endif
 		else {
 			return -1;
 		}
@@ -414,59 +317,25 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res)
 
 	case DEC_NEG_OK:
 		if ( nd.type == INT8 && res1 <= INT8_MAX + 1 ) {
-			if (res)
-				*(int8_t *)res = (int8_t) (-res1);
+			if (res) *(int8_t *)res = (int8_t) (-res1);
 			return (buf-srcbuf);
 		}
 		else if ( nd.type == INT16 && res1 <= (uint16_t)INT16_MAX + 1 ) {
-			if (res)
-				*(int16_t *)res = (int16_t) (-res1);
+			if (res) *(int16_t *)res = (int16_t) (-res1);
 			return (buf-srcbuf);
 		}
 		else if ( nd.type == INT32 && res1 <= (uint32_t)INT32_MAX + 1 ) {
-			if (res)
-				*(int32_t *)res = (int32_t) (-res1);
+			if (res) *(int32_t *)res = (int32_t) (-res1);
 			return (buf-srcbuf);
 		}
-#ifdef CMDLINE_HAVE_FLOAT
-		else if ( nd.type == FLOAT ) {
-			if (res)
-				*(float *)res = - (float)res1;
+		else if ( nd.type == INT64 && res1 <= (uint64_t)INT64_MAX + 1 ) {
+			if (res) *(int64_t *)res = (int64_t) (-res1);
 			return (buf-srcbuf);
-		}
-#endif
-		else {
-			return -1;
-		}
-		break;
-
-#ifdef CMDLINE_HAVE_FLOAT
-	case FLOAT_POS:
-	case FLOAT_POS_OK:
-		if ( nd.type == FLOAT ) {
-			if (res)
-				*(float *)res = (float)res1 + ((float)res2 / (float)res3);
-			return (buf-srcbuf);
-
 		}
 		else {
 			return -1;
 		}
 		break;
-
-	case FLOAT_NEG:
-	case FLOAT_NEG_OK:
-		if ( nd.type == FLOAT ) {
-			if (res)
-				*(float *)res = - ((float)res1 + ((float)res2 / (float)res3));
-			return (buf-srcbuf);
-
-		}
-		else {
-			return -1;
-		}
-		break;
-#endif
 	default:
 		debug_printf("error\n");
 		return -1;
@@ -474,11 +343,15 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res)
 }
 
 
-/* parse an int or a float */
+/* parse an int */
 int
 cmdline_get_help_num(cmdline_parse_token_hdr_t *tk, char *dstbuf, unsigned int size)
 {
 	struct cmdline_token_num_data nd;
+	int ret;
+
+	if (!tk)
+		return -1;
 
 	memcpy(&nd, &((struct cmdline_token_num *)tk)->num_data, sizeof(nd));
 
@@ -486,7 +359,9 @@ cmdline_get_help_num(cmdline_parse_token_hdr_t *tk, char *dstbuf, unsigned int s
 	/* if (nd.type >= (sizeof(num_help)/sizeof(const char *))) */
 	/* return -1; */
 
-	rte_snprintf(dstbuf, size, "%s", num_help[nd.type]);
+	ret = rte_snprintf(dstbuf, size, "%s", num_help[nd.type]);
+	if (ret < 0)
+		return -1;
 	dstbuf[size-1] = '\0';
 	return 0;
 }

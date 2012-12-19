@@ -61,18 +61,22 @@
 
 #include <string.h>
 #include <errno.h>
+#include <stdio.h>
 
 #include "cmdline_cirbuf.h"
 
 
-void
+int
 cirbuf_init(struct cirbuf *cbuf, char *buf, unsigned int start, unsigned int maxlen)
 {
+	if (!cbuf || !buf)
+		return -EINVAL;
 	cbuf->maxlen = maxlen;
 	cbuf->len = 0;
 	cbuf->start = start;
 	cbuf->end = start;
 	cbuf->buf = buf;
+	return 0;
 }
 
 /* multiple add */
@@ -82,7 +86,7 @@ cirbuf_add_buf_head(struct cirbuf *cbuf, const char *c, unsigned int n)
 {
 	unsigned int e;
 
-	if (!n || n > CIRBUF_GET_FREELEN(cbuf))
+	if (!cbuf || !c || !n || n > CIRBUF_GET_FREELEN(cbuf))
 		return -EINVAL;
 
 	e = CIRBUF_IS_EMPTY(cbuf) ? 1 : 0;
@@ -113,7 +117,7 @@ cirbuf_add_buf_tail(struct cirbuf *cbuf, const char *c, unsigned int n)
 {
 	unsigned int e;
 
-	if (!n || n > CIRBUF_GET_FREELEN(cbuf))
+	if (!cbuf || !c || !n || n > CIRBUF_GET_FREELEN(cbuf))
 		return -EINVAL;
 
 	e = CIRBUF_IS_EMPTY(cbuf) ? 1 : 0;
@@ -232,8 +236,12 @@ __cirbuf_shift_right(struct cirbuf *cbuf)
 }
 
 /* XXX we could do a better algorithm here... */
-void cirbuf_align_left(struct cirbuf * cbuf)
+int
+cirbuf_align_left(struct cirbuf * cbuf)
 {
+	if (!cbuf)
+		return -EINVAL;
+
 	if (cbuf->start < cbuf->maxlen/2) {
 		while (cbuf->start != 0) {
 			__cirbuf_shift_left(cbuf);
@@ -244,11 +252,17 @@ void cirbuf_align_left(struct cirbuf * cbuf)
 			__cirbuf_shift_right(cbuf);
 		}
 	}
+
+	return 0;
 }
 
 /* XXX we could do a better algorithm here... */
-void cirbuf_align_right(struct cirbuf * cbuf)
+int
+cirbuf_align_right(struct cirbuf * cbuf)
 {
+	if (!cbuf)
+		return -EINVAL;
+
 	if (cbuf->start >= cbuf->maxlen/2) {
 		while (cbuf->end != cbuf->maxlen-1) {
 			__cirbuf_shift_left(cbuf);
@@ -259,6 +273,8 @@ void cirbuf_align_right(struct cirbuf * cbuf)
 			__cirbuf_shift_right(cbuf);
 		}
 	}
+
+	return 0;
 }
 
 /* buffer del */
@@ -266,7 +282,7 @@ void cirbuf_align_right(struct cirbuf * cbuf)
 int
 cirbuf_del_buf_head(struct cirbuf *cbuf, unsigned int size)
 {
-	if (!size || size > CIRBUF_GET_LEN(cbuf))
+	if (!cbuf || !size || size > CIRBUF_GET_LEN(cbuf))
 		return -EINVAL;
 
 	cbuf->len -= size;
@@ -286,7 +302,7 @@ cirbuf_del_buf_head(struct cirbuf *cbuf, unsigned int size)
 int
 cirbuf_del_buf_tail(struct cirbuf *cbuf, unsigned int size)
 {
-	if (!size || size > CIRBUF_GET_LEN(cbuf))
+	if (!cbuf || !size || size > CIRBUF_GET_LEN(cbuf))
 		return -EINVAL;
 
 	cbuf->len -= size;
@@ -364,6 +380,9 @@ cirbuf_get_buf_head(struct cirbuf *cbuf, char *c, unsigned int size)
 {
 	unsigned int n;
 
+	if (!cbuf || !c)
+		return -EINVAL;
+
 	n = (size < CIRBUF_GET_LEN(cbuf)) ? size : CIRBUF_GET_LEN(cbuf);
 
 	if (!n)
@@ -374,13 +393,20 @@ cirbuf_get_buf_head(struct cirbuf *cbuf, char *c, unsigned int size)
 		memcpy(c, cbuf->buf + cbuf->start , n);
 	}
 	else {
-		dprintf("s[%d] -> d[%d] (%d)\n", cbuf->start, 0,
-			cbuf->maxlen - cbuf->start);
-		dprintf("s[%d] -> d[%d] (%d)\n", 0,cbuf->maxlen - cbuf->start,
-			n - cbuf->maxlen + cbuf->start);
-		memcpy(c, cbuf->buf + cbuf->start , cbuf->maxlen - cbuf->start);
-		memcpy(c + cbuf->maxlen - cbuf->start, cbuf->buf,
-		       n - cbuf->maxlen + cbuf->start);
+		/* check if we need to go from end to the beginning */
+		if (n <= cbuf->maxlen - cbuf->start) {
+			dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->start, n);
+			memcpy(c, cbuf->buf + cbuf->start , n);
+		}
+		else {
+			dprintf("s[%d] -> d[%d] (%d)\n", cbuf->start, 0,
+				cbuf->maxlen - cbuf->start);
+			dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->maxlen - cbuf->start,
+				n - cbuf->maxlen + cbuf->start);
+			memcpy(c, cbuf->buf + cbuf->start , cbuf->maxlen - cbuf->start);
+			memcpy(c + cbuf->maxlen - cbuf->start, cbuf->buf,
+				   n - cbuf->maxlen + cbuf->start);
+		}
 	}
 	return n;
 }
@@ -392,6 +418,9 @@ cirbuf_get_buf_tail(struct cirbuf *cbuf, char *c, unsigned int size)
 {
 	unsigned int n;
 
+	if (!cbuf || !c)
+		return -EINVAL;
+
 	n = (size < CIRBUF_GET_LEN(cbuf)) ? size : CIRBUF_GET_LEN(cbuf);
 
 	if (!n)
@@ -402,15 +431,21 @@ cirbuf_get_buf_tail(struct cirbuf *cbuf, char *c, unsigned int size)
 		memcpy(c, cbuf->buf + cbuf->end - n + 1, n);
 	}
 	else {
-		dprintf("s[%d] -> d[%d] (%d)\n", 0,
-			cbuf->maxlen - cbuf->start, cbuf->end + 1);
-		dprintf("s[%d] -> d[%d] (%d)\n",
-			cbuf->maxlen - n + cbuf->end + 1, 0, n - cbuf->end - 1);
-
-		memcpy(c + cbuf->maxlen - cbuf->start,
-		       cbuf->buf, cbuf->end + 1);
-		memcpy(c, cbuf->buf + cbuf->maxlen - n + cbuf->end +1,
-		       n - cbuf->end - 1);
+		/* check if we need to go from end to the beginning */
+		if (n <= cbuf->end + 1) {
+			dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->end - n + 1, n);
+			memcpy(c, cbuf->buf + cbuf->end - n + 1, n);
+		}
+		else {
+			dprintf("s[%d] -> d[%d] (%d)\n", 0,
+				cbuf->maxlen - cbuf->start, cbuf->end + 1);
+			dprintf("s[%d] -> d[%d] (%d)\n",
+				cbuf->maxlen - n + cbuf->end + 1, 0, n - cbuf->end - 1);
+			memcpy(c + cbuf->maxlen - cbuf->start,
+					       cbuf->buf, cbuf->end + 1);
+			memcpy(c, cbuf->buf + cbuf->maxlen - n + cbuf->end +1,
+				   n - cbuf->end - 1);
+		}
 	}
 	return n;
 }

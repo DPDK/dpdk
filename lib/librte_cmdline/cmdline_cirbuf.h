@@ -77,9 +77,7 @@ struct cirbuf {
 	char *buf;
 };
 
-/* #define CIRBUF_DEBUG */
-
-#ifdef CIRBUF_DEBUG
+#ifdef RTE_LIBRTE_CMDLINE_DEBUG
 #define dprintf(fmt, ...) printf("line %3.3d - " fmt, __LINE__, ##__VA_ARGS__)
 #else
 #define dprintf(args...) do {} while(0)
@@ -89,7 +87,7 @@ struct cirbuf {
 /**
  * Init the circular buffer
  */
-void cirbuf_init(struct cirbuf *cbuf, char *buf, unsigned int start, unsigned int maxlen);
+int cirbuf_init(struct cirbuf *cbuf, char *buf, unsigned int start, unsigned int maxlen);
 
 
 /**
@@ -233,12 +231,12 @@ int cirbuf_get_buf_tail(struct cirbuf *cbuf, char *c, unsigned int size);
 /**
  * Set the start of the data to the index 0 of the internal buffer.
  */
-void cirbuf_align_left(struct cirbuf *cbuf);
+int cirbuf_align_left(struct cirbuf *cbuf);
 
 /**
  * Set the end of the data to the last index of the internal buffer.
  */
-void cirbuf_align_right(struct cirbuf *cbuf);
+int cirbuf_align_right(struct cirbuf *cbuf);
 
 #ifdef __cplusplus
 }

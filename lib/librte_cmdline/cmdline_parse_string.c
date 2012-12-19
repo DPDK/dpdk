@@ -108,13 +108,17 @@ get_next_token(const char *s)
 int
 cmdline_parse_string(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
 {
-	struct cmdline_token_string *tk2 = (struct cmdline_token_string *)tk;
-	struct cmdline_token_string_data *sd = &tk2->string_data;
+	struct cmdline_token_string *tk2;
+	struct cmdline_token_string_data *sd;
 	unsigned int token_len;
 	const char *str;
 
-	if (! *buf)
+	if (!tk || !buf || ! *buf)
 		return -1;
+
+	tk2 = (struct cmdline_token_string *)tk;
+
+	sd = &tk2->string_data;
 
 	/* fixed string */
 	if (sd->str) {
@@ -143,7 +147,7 @@ cmdline_parse_string(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
 	}
 	/* unspecified string */
 	else {
-		token_len=0;
+		token_len = 0;
 		while(!cmdline_isendoftoken(buf[token_len]) &&
 		      token_len < (STR_TOKEN_SIZE-1))
 			token_len++;
@@ -160,15 +164,22 @@ cmdline_parse_string(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
 		*((char *)res + token_len) = 0;
 	}
 
+
 	return token_len;
 }
 
 int cmdline_complete_get_nb_string(cmdline_parse_token_hdr_t *tk)
 {
-	struct cmdline_token_string *tk2 = (struct cmdline_token_string *)tk;
-	struct cmdline_token_string_data *sd = &tk2->string_data;;
-	int ret=1;
+	struct cmdline_token_string *tk2;
+	struct cmdline_token_string_data *sd;
 	const char *str;
+	int ret = 1;
+
+	if (!tk)
+		return -1;
+
+	tk2 = (struct cmdline_token_string *)tk;
+	sd = &tk2->string_data;
 
 	if (!sd->str)
 		return 0;
@@ -183,10 +194,16 @@ int cmdline_complete_get_nb_string(cmdline_parse_token_hdr_t *tk)
 int cmdline_complete_get_elt_string(cmdline_parse_token_hdr_t *tk, int idx,
 				    char *dstbuf, unsigned int size)
 {
-	struct cmdline_token_string *tk2 = (struct cmdline_token_string *)tk;
-	struct cmdline_token_string_data *sd = &tk2->string_data;;
+	struct cmdline_token_string *tk2;
+	struct cmdline_token_string_data *sd;
 	const char *s;
 	unsigned int len;
+
+	if (!tk || !dstbuf || idx < 0)
+		return -1;
+
+	tk2 = (struct cmdline_token_string *)tk;
+	sd = &tk2->string_data;
 
 	s = sd->str;
 
@@ -209,9 +226,15 @@ int cmdline_complete_get_elt_string(cmdline_parse_token_hdr_t *tk, int idx,
 int cmdline_get_help_string(cmdline_parse_token_hdr_t *tk, char *dstbuf,
 			    unsigned int size)
 {
-	struct cmdline_token_string *tk2 = (struct cmdline_token_string *)tk;
-	struct cmdline_token_string_data *sd = &tk2->string_data;;
+	struct cmdline_token_string *tk2;
+	struct cmdline_token_string_data *sd;
 	const char *s;
+
+	if (!tk || !dstbuf)
+		return -1;
+
+	tk2 = (struct cmdline_token_string *)tk;
+	sd = &tk2->string_data;
 
 	s = sd->str;
 

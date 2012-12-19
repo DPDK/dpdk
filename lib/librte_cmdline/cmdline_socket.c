@@ -77,6 +77,11 @@ struct cmdline *
 cmdline_file_new(cmdline_parse_ctx_t *ctx, const char *prompt, const char *path)
 {
 	int fd;
+
+	/* everything else is checked in cmdline_new() */
+	if (!path)
+		return NULL;
+
 	fd = open(path, O_RDONLY, 0);
 	if (fd < 0) {
 		dprintf("open() failed\n");
@@ -102,7 +107,8 @@ cmdline_stdin_new(cmdline_parse_ctx_t *ctx, const char *prompt)
 	cl = cmdline_new(ctx, prompt, 0, 1);
 
 #ifdef RTE_EXEC_ENV_LINUXAPP
-	memcpy(&cl->oldterm, &oldterm, sizeof(term));
+	if (cl)
+		memcpy(&cl->oldterm, &oldterm, sizeof(term));
 #endif
 	return cl;
 }
@@ -110,6 +116,9 @@ cmdline_stdin_new(cmdline_parse_ctx_t *ctx, const char *prompt)
 void
 cmdline_stdin_exit(struct cmdline *cl)
 {
+	if (!cl)
+		return;
+
 #ifdef RTE_EXEC_ENV_LINUXAPP
 	tcsetattr(fileno(stdin), TCSANOW, &cl->oldterm);
 #else

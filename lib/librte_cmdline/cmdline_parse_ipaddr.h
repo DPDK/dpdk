@@ -97,93 +97,87 @@ int cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *srcbuf,
 int cmdline_get_help_ipaddr(cmdline_parse_token_hdr_t *tk, char *dstbuf,
 			    unsigned int size);
 
-/*
- * Warning! Not compatible with C++!
- */
-#define TOKEN_IPADDR_INITIALIZER(structure, field)	    \
-{							    \
-	.hdr = {					    \
-		.ops = &cmdline_token_ipaddr_ops,	    \
-		.offset = offsetof(structure, field),	    \
-	},						    \
-	.ipaddr_data = {				    \
-		.flags = CMDLINE_IPADDR_V4 |		    \
-		CMDLINE_IPADDR_V6,			    \
-	},						    \
+#define TOKEN_IPADDR_INITIALIZER(structure, field)      \
+{                                                       \
+	/* hdr */                                           \
+	{                                                   \
+		&cmdline_token_ipaddr_ops,      /* ops */       \
+		offsetof(structure, field),     /* offset */    \
+	},                                                  \
+	/* ipaddr_data */                                   \
+	{                                                   \
+		CMDLINE_IPADDR_V4 |             /* flags */     \
+		CMDLINE_IPADDR_V6,                              \
+	},                                                  \
 }
 
-/*
- * Warning! Not compatible with C++!
- */
-#define TOKEN_IPV4_INITIALIZER(structure, field)	    \
-{							    \
-	.hdr = {					    \
-		.ops = &cmdline_token_ipaddr_ops,	    \
-		.offset = offsetof(structure, field),	    \
-	},						    \
-	.ipaddr_data = {				    \
-		.flags = CMDLINE_IPADDR_V4,		    \
-	},						    \
+#define TOKEN_IPV4_INITIALIZER(structure, field)        \
+{                                                       \
+	/* hdr */                                           \
+	{                                                   \
+		&cmdline_token_ipaddr_ops,      /* ops */       \
+		offsetof(structure, field),     /* offset */    \
+	},                                                  \
+	/* ipaddr_data */                                   \
+	{                                                   \
+		CMDLINE_IPADDR_V4,              /* flags */     \
+	},                                                  \
 }
 
-/*
- * Warning! Not compatible with C++!
- */
-#define TOKEN_IPV6_INITIALIZER(structure, field)	    \
-{							    \
-	.hdr = {					    \
-		.ops = &cmdline_token_ipaddr_ops,	    \
-		.offset = offsetof(structure, field),	    \
-	},						    \
-	.ipaddr_data = {				    \
-		.flags = CMDLINE_IPADDR_V6,		    \
-	},						    \
+#define TOKEN_IPV6_INITIALIZER(structure, field)        \
+{                                                       \
+	/* hdr */                                           \
+	{                                                   \
+		&cmdline_token_ipaddr_ops,      /* ops */       \
+		offsetof(structure, field),     /* offset */    \
+	},                                                  \
+	/* ipaddr_data */                                   \
+	{                                                   \
+		CMDLINE_IPADDR_V6,              /* flags */     \
+	},                                                  \
 }
 
-/*
- * Warning! Not compatible with C++!
- */
-#define TOKEN_IPNET_INITIALIZER(structure, field)	    \
-{							    \
-	.hdr = {					    \
-		.ops = &cmdline_token_ipaddr_ops,	    \
-		.offset = offsetof(structure, field),	    \
-	},						    \
-	.ipaddr_data = {				    \
-		.flags = CMDLINE_IPADDR_V4 |		    \
-		CMDLINE_IPADDR_V6 |			    \
-		CMDLINE_IPADDR_NETWORK,			    \
-	},						    \
+#define TOKEN_IPNET_INITIALIZER(structure, field)       \
+{                                                       \
+	/* hdr */                                           \
+	{                                                   \
+		&cmdline_token_ipaddr_ops,      /* ops */       \
+		offsetof(structure, field),     /* offset */    \
+	},                                                  \
+	/* ipaddr_data */                                   \
+	{                                                   \
+		CMDLINE_IPADDR_V4 |             /* flags */     \
+		CMDLINE_IPADDR_V6 |                             \
+		CMDLINE_IPADDR_NETWORK,                         \
+	},                                                  \
 }
 
-/*
- * Warning! Not compatible with C++!
- */
-#define TOKEN_IPV4NET_INITIALIZER(structure, field)	    \
-{							    \
-	.hdr = {					    \
-		.ops = &cmdline_token_ipaddr_ops,	    \
-		.offset = offsetof(structure, field),	    \
-	},						    \
-	.ipaddr_data = {				    \
-		.flags = CMDLINE_IPADDR_V4 |		    \
-		CMDLINE_IPADDR_NETWORK,			    \
-	},						    \
+#define TOKEN_IPV4NET_INITIALIZER(structure, field)     \
+{                                                       \
+	/* hdr */                                           \
+	{                                                   \
+		&cmdline_token_ipaddr_ops,      /* ops */       \
+		offsetof(structure, field),     /* offset */    \
+	},                                                  \
+	/* ipaddr_data */                                   \
+	{                                                   \
+		CMDLINE_IPADDR_V4 |             /* flags */     \
+		CMDLINE_IPADDR_NETWORK,                         \
+	},                                                  \
 }
 
-/*
- * Warning! Not compatible with C++!
- */
-#define TOKEN_IPV6NET_INITIALIZER(structure, field)	    \
-{							    \
-	.hdr = {					    \
-		.ops = &cmdline_token_ipaddr_ops,	    \
-		.offset = offsetof(structure, field),	    \
-	},						    \
-	.ipaddr_data = {				    \
-		.flags = CMDLINE_IPADDR_V4 |		    \
-		CMDLINE_IPADDR_NETWORK,			    \
-	},						    \
+#define TOKEN_IPV6NET_INITIALIZER(structure, field)     \
+{                                                       \
+	/* hdr */                                           \
+	{                                                   \
+		&cmdline_token_ipaddr_ops,      /* ops */       \
+		offsetof(structure, field),     /* offset */    \
+	},                                                  \
+	/* ipaddr_data */                                   \
+	{                                                   \
+		CMDLINE_IPADDR_V4 |             /* flags */     \
+		CMDLINE_IPADDR_NETWORK,                         \
+	},                                                  \
 }
 
 #ifdef __cplusplus

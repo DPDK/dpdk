@@ -125,17 +125,13 @@ struct rdline {
 	char prompt[RDLINE_PROMPT_SIZE];
 	unsigned int prompt_size;
 
-#ifndef NO_RDLINE_KILL_BUF
 	char kill_buf[RDLINE_BUF_SIZE];
 	unsigned int kill_size;
-#endif
 
-#ifndef NO_RDLINE_HISTORY
 	/* history */
 	struct cirbuf history;
 	char history_buf[RDLINE_HISTORY_BUF_SIZE];
 	int history_cur_line;
-#endif
 
 	/* callbacks and func pointers */
 	rdline_write_char_t *write_char;
@@ -159,7 +155,7 @@ struct rdline {
  * \param complete A pointer to the function to execute when the
  *                 user completes the buffer.
  */
-void rdline_init(struct rdline *rdl,
+int rdline_init(struct rdline *rdl,
 		 rdline_write_char_t *write_char,
 		 rdline_validate_t *validate,
 		 rdline_complete_t *complete);

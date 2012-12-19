@@ -64,6 +64,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdarg.h>
+#include <errno.h>
 #include <ctype.h>
 
 #include "cmdline_cirbuf.h"
@@ -73,11 +74,9 @@ static void rdline_puts(struct rdline *rdl, const char *buf);
 static void rdline_miniprintf(struct rdline *rdl,
 			      const char *buf, unsigned int val);
 
-#ifndef NO_RDLINE_HISTORY
 static void rdline_remove_old_history_item(struct rdline *rdl);
 static void rdline_remove_first_history_item(struct rdline *rdl);
 static unsigned int rdline_get_history_size(struct rdline *rdl);
-#endif /* !NO_RDLINE_HISTORY */
 
 
 /* isblank() needs _XOPEN_SOURCE >= 600 || _ISOC99_SOURCE, so use our
@@ -91,26 +90,29 @@ isblank2(char c)
 	return 0;
 }
 
-void
+int
 rdline_init(struct rdline *rdl,
 		 rdline_write_char_t *write_char,
 		 rdline_validate_t *validate,
 		 rdline_complete_t *complete)
 {
+	if (!rdl || !write_char || !validate || !complete)
+		return -EINVAL;
 	memset(rdl, 0, sizeof(*rdl));
 	rdl->validate = validate;
 	rdl->complete = complete;
 	rdl->write_char = write_char;
 	rdl->status = RDLINE_INIT;
-#ifndef NO_RDLINE_HISTORY
-	cirbuf_init(&rdl->history, rdl->history_buf, 0, RDLINE_HISTORY_BUF_SIZE);
-#endif /* !NO_RDLINE_HISTORY */
+	return cirbuf_init(&rdl->history, rdl->history_buf, 0, RDLINE_HISTORY_BUF_SIZE);
 }
 
 void
 rdline_newline(struct rdline *rdl, const char *prompt)
 {
 	unsigned int i;
+
+	if (!rdl || !prompt)
+		return;
 
 	vt100_init(&rdl->vt100);
 	cirbuf_init(&rdl->left, rdl->left_buf, 0, RDLINE_BUF_SIZE);
@@ -124,46 +126,52 @@ rdline_newline(struct rdline *rdl, const char *prompt)
 		rdl->write_char(rdl, rdl->prompt[i]);
 	rdl->status = RDLINE_RUNNING;
 
-#ifndef NO_RDLINE_HISTORY
 	rdl->history_cur_line = -1;
-#endif /* !NO_RDLINE_HISTORY */
 }
 
 void
 rdline_stop(struct rdline *rdl)
 {
+	if (!rdl)
+		return;
 	rdl->status = RDLINE_INIT;
 }
 
 void
 rdline_quit(struct rdline *rdl)
 {
+	if (!rdl)
+		return;
 	rdl->status = RDLINE_EXITED;
 }
 
 void
 rdline_restart(struct rdline *rdl)
 {
+	if (!rdl)
+		return;
 	rdl->status = RDLINE_RUNNING;
 }
 
 void
 rdline_reset(struct rdline *rdl)
 {
+	if (!rdl)
+		return;
 	vt100_init(&rdl->vt100);
 	cirbuf_init(&rdl->left, rdl->left_buf, 0, RDLINE_BUF_SIZE);
 	cirbuf_init(&rdl->right, rdl->right_buf, 0, RDLINE_BUF_SIZE);
 
 	rdl->status = RDLINE_RUNNING;
 
-#ifndef NO_RDLINE_HISTORY
 	rdl->history_cur_line = -1;
-#endif	/* !NO_RDLINE_HISTORY */
 }
 
 const char *
 rdline_get_buffer(struct rdline *rdl)
 {
+	if (!rdl)
+		return NULL;
 	unsigned int len_l, len_r;
 	cirbuf_align_left(&rdl->left);
 	cirbuf_align_left(&rdl->right);
@@ -201,6 +209,9 @@ rdline_redisplay(struct rdline *rdl)
 	unsigned int i;
 	char tmp;
 
+	if (!rdl)
+		return;
+
 	rdline_puts(rdl, vt100_home);
 	for (i=0 ; i<rdl->prompt_size ; i++)
 		rdl->write_char(rdl, rdl->prompt[i]);
@@ -216,9 +227,10 @@ rdline_char_in(struct rdline *rdl, char c)
 	unsigned int i;
 	int cmd;
 	char tmp;
-#ifndef NO_RDLINE_HISTORY
 	char *buf;
-#endif
+
+	if (!rdl)
+		return -EINVAL;
 
 	if (rdl->status == RDLINE_EXITED)
 		return RDLINE_RES_EXITED;
@@ -231,6 +243,7 @@ rdline_char_in(struct rdline *rdl, char c)
 
 	if (cmd >= 0) {
 		switch (cmd) {
+		/* move caret 1 char to the left */
 		case CMDLINE_KEY_CTRL_B:
 		case CMDLINE_KEY_LEFT_ARR:
 			if (CIRBUF_IS_EMPTY(&rdl->left))
@@ -241,6 +254,7 @@ rdline_char_in(struct rdline *rdl, char c)
 			rdline_puts(rdl, vt100_left_arr);
 			break;
 
+		/* move caret 1 char to the right */
 		case CMDLINE_KEY_CTRL_F:
 		case CMDLINE_KEY_RIGHT_ARR:
 			if (CIRBUF_IS_EMPTY(&rdl->right))
@@ -251,6 +265,8 @@ rdline_char_in(struct rdline *rdl, char c)
 			rdline_puts(rdl, vt100_right_arr);
 			break;
 
+		/* move caret 1 word to the left */
+		/* keyboard equivalent: Alt+B */
 		case CMDLINE_KEY_WLEFT:
 			while (! CIRBUF_IS_EMPTY(&rdl->left) &&
 			       (tmp = cirbuf_get_tail(&rdl->left)) &&
@@ -268,6 +284,8 @@ rdline_char_in(struct rdline *rdl, char c)
 			}
 			break;
 
+		/* move caret 1 word to the right */
+		/* keyboard equivalent: Alt+F */
 		case CMDLINE_KEY_WRIGHT:
 			while (! CIRBUF_IS_EMPTY(&rdl->right) &&
 			       (tmp = cirbuf_get_head(&rdl->right)) &&
@@ -285,6 +303,33 @@ rdline_char_in(struct rdline *rdl, char c)
 			}
 			break;
 
+		/* move caret to the left */
+		case CMDLINE_KEY_CTRL_A:
+			if (CIRBUF_IS_EMPTY(&rdl->left))
+				break;
+			rdline_miniprintf(rdl, vt100_multi_left,
+						CIRBUF_GET_LEN(&rdl->left));
+			while (! CIRBUF_IS_EMPTY(&rdl->left)) {
+				tmp = cirbuf_get_tail(&rdl->left);
+				cirbuf_del_tail(&rdl->left);
+				cirbuf_add_head(&rdl->right, tmp);
+			}
+			break;
+
+		/* move caret to the right */
+		case CMDLINE_KEY_CTRL_E:
+			if (CIRBUF_IS_EMPTY(&rdl->right))
+				break;
+			rdline_miniprintf(rdl, vt100_multi_right,
+						CIRBUF_GET_LEN(&rdl->right));
+			while (! CIRBUF_IS_EMPTY(&rdl->right)) {
+				tmp = cirbuf_get_head(&rdl->right);
+				cirbuf_del_head(&rdl->right);
+				cirbuf_add_tail(&rdl->left, tmp);
+			}
+			break;
+
+		/* delete 1 char from the left */
 		case CMDLINE_KEY_BKSPACE:
 			if(!cirbuf_del_tail_safe(&rdl->left)) {
 				rdline_puts(rdl, vt100_bs);
@@ -292,6 +337,20 @@ rdline_char_in(struct rdline *rdl, char c)
 			}
 			break;
 
+		/* delete 1 char from the right */
+		case CMDLINE_KEY_SUPPR:
+		case CMDLINE_KEY_CTRL_D:
+			if (cmd == CMDLINE_KEY_CTRL_D &&
+			    CIRBUF_IS_EMPTY(&rdl->left) &&
+			    CIRBUF_IS_EMPTY(&rdl->right)) {
+				return RDLINE_RES_EOF;
+			}
+			if (!cirbuf_del_head_safe(&rdl->right)) {
+				display_right_buffer(rdl, 1);
+			}
+			break;
+
+		/* delete 1 word from the left */
 		case CMDLINE_KEY_META_BKSPACE:
 		case CMDLINE_KEY_CTRL_W:
 			while (! CIRBUF_IS_EMPTY(&rdl->left) && isblank2(cirbuf_get_tail(&rdl->left))) {
@@ -305,6 +364,7 @@ rdline_char_in(struct rdline *rdl, char c)
 			display_right_buffer(rdl, 1);
 			break;
 
+		/* delete 1 word from the right */
 		case CMDLINE_KEY_META_D:
 			while (! CIRBUF_IS_EMPTY(&rdl->right) && isblank2(cirbuf_get_head(&rdl->right)))
 				cirbuf_del_head(&rdl->right);
@@ -313,43 +373,7 @@ rdline_char_in(struct rdline *rdl, char c)
 			display_right_buffer(rdl, 1);
 			break;
 
-		case CMDLINE_KEY_SUPPR:
-		case CMDLINE_KEY_CTRL_D:
-			if (cmd == CMDLINE_KEY_CTRL_D &&
-			    CIRBUF_IS_EMPTY(&rdl->left) &&
-			    CIRBUF_IS_EMPTY(&rdl->right)) {
-				return RDLINE_RES_EOF;
-			}
-			if (!cirbuf_del_head_safe(&rdl->right)) {
-				display_right_buffer(rdl, 1);
-			}
-			break;
-
-		case CMDLINE_KEY_CTRL_A:
-			if (CIRBUF_IS_EMPTY(&rdl->left))
-				break;
-			rdline_miniprintf(rdl, vt100_multi_left,
-					    CIRBUF_GET_LEN(&rdl->left));
-			while (! CIRBUF_IS_EMPTY(&rdl->left)) {
-				tmp = cirbuf_get_tail(&rdl->left);
-				cirbuf_del_tail(&rdl->left);
-				cirbuf_add_head(&rdl->right, tmp);
-			}
-			break;
-
-		case CMDLINE_KEY_CTRL_E:
-			if (CIRBUF_IS_EMPTY(&rdl->right))
-				break;
-			rdline_miniprintf(rdl, vt100_multi_right,
-					    CIRBUF_GET_LEN(&rdl->right));
-			while (! CIRBUF_IS_EMPTY(&rdl->right)) {
-				tmp = cirbuf_get_head(&rdl->right);
-				cirbuf_del_head(&rdl->right);
-				cirbuf_add_tail(&rdl->left, tmp);
-			}
-			break;
-
-#ifndef NO_RDLINE_KILL_BUF
+		/* set kill buffer to contents on the right side of caret */
 		case CMDLINE_KEY_CTRL_K:
 			cirbuf_get_buf_head(&rdl->right, rdl->kill_buf, RDLINE_BUF_SIZE);
 			rdl->kill_size = CIRBUF_GET_LEN(&rdl->right);
@@ -357,6 +381,7 @@ rdline_char_in(struct rdline *rdl, char c)
 			rdline_puts(rdl, vt100_clear_right);
 			break;
 
+		/* paste contents of kill buffer to the left side of caret */
 		case CMDLINE_KEY_CTRL_Y:
 			i=0;
 			while(CIRBUF_GET_LEN(&rdl->right) + CIRBUF_GET_LEN(&rdl->left) <
@@ -368,17 +393,19 @@ rdline_char_in(struct rdline *rdl, char c)
 			}
 			display_right_buffer(rdl, 0);
 			break;
-#endif /* !NO_RDLINE_KILL_BUF */
 
+		/* clear and newline */
 		case CMDLINE_KEY_CTRL_C:
 			rdline_puts(rdl, "\r\n");
 			rdline_newline(rdl, rdl->prompt);
 			break;
 
+		/* redisplay (helps when prompt is lost in other output) */
 		case CMDLINE_KEY_CTRL_L:
 			rdline_redisplay(rdl);
 			break;
 
+		/* autocomplete */
 		case CMDLINE_KEY_TAB:
 		case CMDLINE_KEY_HELP:
 			cirbuf_align_left(&rdl->left);
@@ -434,15 +461,14 @@ rdline_char_in(struct rdline *rdl, char c)
 			}
 			return RDLINE_RES_COMPLETE;
 
+		/* complete buffer */
 		case CMDLINE_KEY_RETURN:
 		case CMDLINE_KEY_RETURN2:
 			rdline_get_buffer(rdl);
 			rdl->status = RDLINE_INIT;
 			rdline_puts(rdl, "\r\n");
-#ifndef NO_RDLINE_HISTORY
 			if (rdl->history_cur_line != -1)
 				rdline_remove_first_history_item(rdl);
-#endif
 
 			if (rdl->validate)
 				rdl->validate(rdl, rdl->left_buf, CIRBUF_GET_LEN(&rdl->left)+2);
@@ -451,7 +477,7 @@ rdline_char_in(struct rdline *rdl, char c)
 				return RDLINE_RES_EXITED;
 			return RDLINE_RES_VALIDATED;
 
-#ifndef NO_RDLINE_HISTORY
+		/* previous element in history */
 		case CMDLINE_KEY_UP_ARR:
 		case CMDLINE_KEY_CTRL_P:
 			if (rdl->history_cur_line == 0) {
@@ -474,6 +500,7 @@ rdline_char_in(struct rdline *rdl, char c)
 			rdline_redisplay(rdl);
 			break;
 
+		/* next element in history */
 		case CMDLINE_KEY_DOWN_ARR:
 		case CMDLINE_KEY_CTRL_N:
 			if (rdl->history_cur_line - 1 < 0)
@@ -490,7 +517,6 @@ rdline_char_in(struct rdline *rdl, char c)
 			rdline_redisplay(rdl);
 
 			break;
-#endif /* !NO_RDLINE_HISTORY */
 
 
 		default:
@@ -519,7 +545,6 @@ rdline_char_in(struct rdline *rdl, char c)
 
 /* HISTORY */
 
-#ifndef NO_RDLINE_HISTORY
 static void
 rdline_remove_old_history_item(struct rdline * rdl)
 {
@@ -571,6 +596,9 @@ rdline_get_history_item(struct rdline * rdl, unsigned int idx)
 {
 	unsigned int len, i, tmp;
 
+	if (!rdl)
+		return NULL;
+
 	len = rdline_get_history_size(rdl);
 	if ( idx >= len ) {
 		return NULL;
@@ -593,6 +621,9 @@ int
 rdline_add_history(struct rdline * rdl, const char * buf)
 {
 	unsigned int len, i;
+
+	if (!rdl || !buf)
+		return -EINVAL;
 
 	len = strnlen(buf, RDLINE_BUF_SIZE);
 	for (i=0; i<len ; i++) {
@@ -618,17 +649,10 @@ rdline_add_history(struct rdline * rdl, const char * buf)
 void
 rdline_clear_history(struct rdline * rdl)
 {
+	if (!rdl)
+		return;
 	cirbuf_init(&rdl->history, rdl->history_buf, 0, RDLINE_HISTORY_BUF_SIZE);
 }
-
-#else /* !NO_RDLINE_HISTORY */
-
-int rdline_add_history(struct rdline * rdl, const char * buf) {return -1;}
-void rdline_clear_history(struct rdline * rdl) {}
-char * rdline_get_history_item(struct rdline * rdl, unsigned int i) {return NULL;}
-
-
-#endif /* !NO_RDLINE_HISTORY */
 
 
 /* STATIC USEFUL FUNCS */

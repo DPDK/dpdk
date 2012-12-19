@@ -74,13 +74,8 @@ typedef struct cmdline_portlist {
 	uint32_t		map;
 } cmdline_portlist_t;
 
-struct cmdline_token_portlist_data {
-	uint8_t		flags;
-};
-
 struct cmdline_token_portlist {
 	struct cmdline_token_hdr hdr;
-	struct cmdline_token_portlist_data range_data;
 };
 typedef struct cmdline_token_portlist cmdline_parse_token_portlist_t;
 
@@ -91,18 +86,13 @@ int cmdline_parse_portlist(cmdline_parse_token_hdr_t *tk,
 int cmdline_get_help_portlist(cmdline_parse_token_hdr_t *tk,
 			 char *dstbuf, unsigned int size);
 
-/*
- * Warning! Not compatible with C++!
- */
-#define TOKEN_PORTLIST_INITIALIZER(structure, field)		\
-{								\
-	.hdr = {						\
-		.ops = &cmdline_token_portlist_ops,		\
-		.offset = offsetof(structure, field),		\
-	},							\
-	.range_data = {						\
-		.flags = 0,					\
-	},							\
+#define TOKEN_PORTLIST_INITIALIZER(structure, field)        \
+{                                                           \
+	/* hdr */                                               \
+	{                                                       \
+		&cmdline_token_portlist_ops,    /* ops */           \
+		offsetof(structure, field),     /* offset */        \
+	},                                                      \
 }
 
 #ifdef __cplusplus
