@@ -149,8 +149,10 @@ static int eth_ixgbevf_dev_init(struct eth_driver *eth_drv,
 static int  ixgbevf_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_start(struct rte_eth_dev *dev);
 static void ixgbevf_dev_stop(struct rte_eth_dev *dev);
+static void ixgbevf_dev_close(struct rte_eth_dev *dev);
 static void ixgbevf_intr_disable(struct ixgbe_hw *hw);
-static void ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+static void ixgbevf_dev_stats_get(struct rte_eth_dev *dev,
+		struct rte_eth_stats *stats);
 static void ixgbevf_dev_stats_reset(struct rte_eth_dev *dev);
 static int ixgbevf_vlan_filter_set(struct rte_eth_dev *dev, 
 		uint16_t vlan_id, int on);
@@ -161,8 +163,8 @@ static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
 
 
 /*
- *  * Define VF Stats MACRO for Non "cleared on read" register
- *   */
+ * Define VF Stats MACRO for Non "cleared on read" register
+ */
 #define UPDATE_VF_STAT(reg, last, cur)	                        \
 {                                                               \
 	u32 latest = IXGBE_READ_REG(hw, reg);                   \
@@ -202,8 +204,7 @@ static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
  */
 static struct rte_pci_id pci_id_ixgbe_map[] = {
 
-#undef RTE_LIBRTE_IGB_PMD
-#define RTE_PCI_DEV_ID_DECL(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
+#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"
 
 { .vendor_id = 0, /* sentinel */ },
@@ -214,13 +215,11 @@ static struct rte_pci_id pci_id_ixgbe_map[] = {
  * The set of PCI devices this driver supports (for 82599 VF)
  */
 static struct rte_pci_id pci_id_ixgbevf_map[] = {
-{
-	.vendor_id = PCI_VENDOR_ID_INTEL,
-	.device_id = IXGBE_DEV_ID_82599_VF,
-	.subsystem_vendor_id = PCI_ANY_ID,
-	.subsystem_device_id = PCI_ANY_ID,
-},
+
+#define RTE_PCI_DEV_ID_DECL_IXGBEVF(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
+#include "rte_pci_dev_ids.h"
 { .vendor_id = 0, /* sentinel */ },
+
 };
 
 static struct eth_dev_ops ixgbe_eth_dev_ops = {
@@ -273,8 +272,7 @@ static struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.link_update          = ixgbe_dev_link_update,
 	.stats_get            = ixgbevf_dev_stats_get,
 	.stats_reset          = ixgbevf_dev_stats_reset,
-	.dev_close            = ixgbevf_dev_stop,
-
+	.dev_close            = ixgbevf_dev_close,
 	.dev_infos_get        = ixgbe_dev_info_get,
 	.vlan_filter_set      = ixgbevf_vlan_filter_set,
 	.vlan_strip_queue_set = ixgbevf_vlan_strip_queue_set,
@@ -732,7 +730,7 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 		default:
 			PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", diag);
-			return (diag);
+			return (-EIO);
 	}
 
 	PMD_INIT_LOG(DEBUG, "\nport %d vendorID=0x%x deviceID=0x%x mac.type=%s\n",
@@ -1093,6 +1091,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int err, link_up = 0, negotiate = 0;
 	uint32_t speed = 0;
+	int mask = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1120,7 +1119,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	err = ixgbe_dev_rx_init(dev);
 	if (err) {
 		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware\n");
-		return err;
+		goto error;
 	}
 
 	ixgbe_dev_rxtx_start(dev);
@@ -1164,7 +1163,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	default:
 		PMD_INIT_LOG(ERR, "Invalid link_speed (%u) for port %u\n",
 				dev->data->dev_conf.link_speed, dev->data->port_id);
-		return -EINVAL;
+		goto error;
 	}
 
 	err = ixgbe_setup_link(hw, speed, negotiate, link_up);
@@ -2129,6 +2128,8 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf* conf = &dev->data->dev_conf;
 
+	PMD_INIT_LOG(DEBUG, "\nConfigured Virtual Function port id: %d\n",
+		dev->data->port_id);
 
 		/*
 		 * VF has no ability to enable/disable HW CRC
@@ -2152,14 +2153,17 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 static int
 ixgbevf_dev_start(struct rte_eth_dev *dev)
 {
-	int err = 0;
+	int err, mask = 0;
+	
 	PMD_INIT_LOG(DEBUG, "ixgbevf_dev_start");
 
 	ixgbevf_dev_tx_init(dev);
+
+	/* This can fail when allocating mbufs for descriptor rings */
 	err = ixgbevf_dev_rx_init(dev);
-	if(err){
+	if (err) {
+		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware (%d)\n", err);
 		ixgbe_dev_clear_queues(dev);
-		PMD_INIT_LOG(ERR,"Unable to initialize RX hardware\n");
 		return err;
 	}
 	
@@ -2183,9 +2187,29 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_LOG(DEBUG, "ixgbevf_dev_stop");
 
-	ixgbe_reset_hw(hw);
-	hw->adapter_stopped = 0;
+	hw->adapter_stopped = TRUE;
 	ixgbe_stop_adapter(hw);
+
+	/* 
+	  * Clear what we set, but we still keep shadow_vfta to 
+	  * restore after device starts
+	  */
+	ixgbevf_set_vfta_all(dev,0);
+
+	ixgbe_dev_clear_queues(dev);
+}
+
+static void
+ixgbevf_dev_close(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_INIT_LOG(DEBUG, "ixgbevf_dev_close");
+
+	ixgbe_reset_hw(hw);
+
+	ixgbevf_dev_stop(dev);
+
 	/* reprogram the RAR[0] in case user changed it. */
 	ixgbe_set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
 }

@@ -163,10 +163,11 @@ enum ixgbe_advctx_num {
 /**
  * Structure to check if new context need be built
  */
+
 struct ixgbe_advctx_info {
 	uint16_t flags;           /**< ol_flags for context build. */
 	uint32_t cmp_mask;        /**< compare mask for vlan_macip_lens */
-	uint32_t vlan_macip_lens; /**< vlan, mac ip length. */
+	union rte_vlan_macip vlan_macip_lens; /**< vlan, mac ip length. */
 };
 
 /**
@@ -541,7 +542,8 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 
 	txq->ctx_cache[ctx_idx].flags = ol_flags;
 	txq->ctx_cache[ctx_idx].cmp_mask = cmp_mask;
-	txq->ctx_cache[ctx_idx].vlan_macip_lens = vlan_macip_lens & cmp_mask;
+	txq->ctx_cache[ctx_idx].vlan_macip_lens.data =
+		vlan_macip_lens & cmp_mask;
 
 	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
 	ctx_txd->vlan_macip_lens = rte_cpu_to_le_32(vlan_macip_lens);
@@ -559,7 +561,7 @@ what_advctx_update(struct igb_tx_queue *txq, uint16_t flags,
 {
 	/* If match with the current used context */
 	if (likely((txq->ctx_cache[txq->ctx_curr].flags == flags) &&
-		(txq->ctx_cache[txq->ctx_curr].vlan_macip_lens ==
+		(txq->ctx_cache[txq->ctx_curr].vlan_macip_lens.data ==
 		(txq->ctx_cache[txq->ctx_curr].cmp_mask & vlan_macip_lens)))) {
 			return txq->ctx_curr;
 	}
@@ -567,7 +569,7 @@ what_advctx_update(struct igb_tx_queue *txq, uint16_t flags,
 	/* What if match with the next context  */
 	txq->ctx_curr ^= 1;
 	if (likely((txq->ctx_cache[txq->ctx_curr].flags == flags) &&
-		(txq->ctx_cache[txq->ctx_curr].vlan_macip_lens ==
+		(txq->ctx_cache[txq->ctx_curr].vlan_macip_lens.data ==
 		(txq->ctx_cache[txq->ctx_curr].cmp_mask & vlan_macip_lens)))) {
 			return txq->ctx_curr;
 	}
@@ -711,15 +713,14 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * are needed for offload functionality.
 		 */
 		ol_flags = tx_pkt->ol_flags;
-		vlan_macip_lens = tx_pkt->pkt.vlan_tci << 16 |
-				tx_pkt->pkt.l2_len << IXGBE_ADVTXD_MACLEN_SHIFT |
-				tx_pkt->pkt.l3_len;
+		vlan_macip_lens = tx_pkt->pkt.vlan_macip.data;
 
 		/* If hardware offload required */
 		tx_ol_req = ol_flags & PKT_TX_OFFLOAD_MASK;
 		if (tx_ol_req) {
 			/* If new context need be built or reuse the exist ctx. */
-			ctx = what_advctx_update(txq, tx_ol_req, vlan_macip_lens);
+			ctx = what_advctx_update(txq, tx_ol_req,
+				vlan_macip_lens);
 			/* Only allocate context descriptor if required*/
 			new_ctx = (ctx == IXGBE_CTX_NUM);
 			ctx = txq->ctx_curr;
@@ -1384,7 +1385,8 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
-		rxm->pkt.vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
+		rxm->pkt.vlan_macip.f.vlan_tci =
+			rte_le_to_cpu_16(rxd.wb.upper.vlan);
 
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
 		pkt_flags = (pkt_flags | rx_desc_status_to_pkt_flags(staterr));
@@ -1626,7 +1628,7 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * The vlan_tci field is only valid when PKT_RX_VLAN_PKT is
 		 * set in the pkt_flags field.
 		 */
-		first_seg->pkt.vlan_tci =
+		first_seg->pkt.vlan_macip.f.vlan_tci =
 				rte_le_to_cpu_16(rxd.wb.upper.vlan);
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
@@ -1870,7 +1872,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		RTE_LOG(ERR, PMD,
 			     "tx_rs_thresh must be less than the "
 			     "number of TX descriptors minus 2. "
-			     "(tx_rs_thresh=%u port=%d queue=%d)",
+			     "(tx_rs_thresh=%u port=%d queue=%d)\n",
 			     tx_rs_thresh, dev->data->port_id, queue_idx);
 		return -(EINVAL);
 	}
@@ -1879,7 +1881,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			     "tx_rs_thresh must be less than the "
 			     "tx_free_thresh must be less than the "
 			     "number of TX descriptors minus 3. "
-			     "(tx_free_thresh=%u port=%d queue=%d)",
+			     "(tx_free_thresh=%u port=%d queue=%d)\n",
 			     tx_free_thresh, dev->data->port_id, queue_idx);
 		return -(EINVAL);
 	}
@@ -1910,10 +1912,9 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	 */
 	if ((tx_rs_thresh > 1) && (tx_conf->tx_thresh.wthresh != 0)) {
 		RTE_LOG(ERR, PMD,
-			     "TX WTHRESH should be set to 0 if "
+			     "TX WTHRESH must be set to 0 if "
 			     "tx_rs_thresh is greater than 1. "
-			     "TX WTHRESH will be set to 0. "
-			     "(tx_rs_thresh=%u port=%d queue=%d)",
+			     "(tx_rs_thresh=%u port=%d queue=%d)\n",
 			     tx_rs_thresh,
 			     dev->data->port_id, queue_idx);
 		return -(EINVAL);
@@ -2016,9 +2017,11 @@ ixgbe_rx_queue_release_mbufs(struct igb_rx_queue *rxq)
 static void
 ixgbe_rx_queue_release(struct igb_rx_queue *rxq)
 {
+	if (rxq != NULL) {
 	ixgbe_rx_queue_release_mbufs(rxq);
 	rte_free(rxq->sw_ring);
 	rte_free(rxq);
+	}
 }
 
 void
@@ -2066,11 +2069,12 @@ check_rx_burst_bulk_alloc_preconditions(struct igb_rx_queue *rxq)
 	return ret;
 }
 
-/* (Re)set dynamic igb_rx_queue fields to defaults */
+/* Reset dynamic igb_rx_queue fields back to defaults */
 static void
 ixgbe_reset_rx_queue(struct igb_rx_queue *rxq)
 {
 	unsigned i;
+	uint16_t len;
 
 	/*
 	 * By default, the Rx queue setup function allocates enough memory for
@@ -2131,6 +2135,8 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	const struct rte_memzone *rz;
 	struct igb_rx_queue *rxq;
 	struct ixgbe_hw     *hw;
+	int use_def_burst_func = 1;
+	uint16_t len;
 
 	PMD_INIT_FUNC_TRACE();
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -2162,9 +2168,10 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->port_id = dev->data->port_id;
 	rxq->crc_len = (uint8_t) ((dev->data->dev_conf.rxmode.hw_strip_crc) ? 0 :
 				  ETHER_CRC_LEN);
+	rxq->drop_en = rx_conf->rx_drop_en;
 
 	/*
-	 * Allocate TX ring hardware descriptors. A memzone large enough to
+	 * Allocate RX ring hardware descriptors. A memzone large enough to
 	 * handle the maximum ring size is allocated in order to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
@@ -2197,7 +2204,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	len = nb_desc;
 #endif
 	rxq->sw_ring = rte_zmalloc("rxq->sw_ring",
-				   sizeof(struct igb_rx_entry) * nb_desc,
+				   sizeof(struct igb_rx_entry) * len,
 				   CACHE_LINE_SIZE);
 	if (rxq->sw_ring == NULL) {
 		ixgbe_rx_queue_release(rxq);
@@ -2240,17 +2247,22 @@ ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 {
 	unsigned i;
 
+	PMD_INIT_FUNC_TRACE();
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		struct igb_tx_queue *txq = dev->data->tx_queues[i];
+		if (txq != NULL) {
 		ixgbe_tx_queue_release_mbufs(txq);
 		ixgbe_reset_tx_queue(txq);
+	}
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct igb_rx_queue *rxq = dev->data->rx_queues[i];
+		if (rxq != NULL) {
 		ixgbe_rx_queue_release_mbufs(rxq);
 		ixgbe_reset_rx_queue(rxq);
+	}
 	}
 }
 
@@ -2964,6 +2976,14 @@ ixgbe_alloc_rx_queue_mbufs(struct igb_rx_queue *rxq)
 				     (unsigned) rxq->queue_id);
 			return (-ENOMEM);
 		}
+
+		rte_mbuf_refcnt_set(mbuf, 1);
+		mbuf->type = RTE_MBUF_PKT;
+		mbuf->pkt.next = NULL;
+		mbuf->pkt.data = (char *)mbuf->buf_addr + RTE_PKTMBUF_HEADROOM;
+		mbuf->pkt.nb_segs = 1;
+		mbuf->pkt.in_port = rxq->port_id;
+
 		dma_addr =
 			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mbuf));
 		rxd = &rxq->rx_ring[i];
@@ -3087,6 +3107,10 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 #endif
 			srrctl = IXGBE_SRRCTL_DESCTYPE_ADV_ONEBUF;
 
+		/* Set if packets are dropped when no descriptors available */
+		if (rxq->drop_en)
+			srrctl |= IXGBE_SRRCTL_DROP_EN;
+
 		/*
 		 * Configure the RX buffer size in the BSIZEPACKET field of
 		 * the SRRCTL register of the queue.
@@ -3103,7 +3127,8 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 
 		buf_size = (uint16_t) ((srrctl & IXGBE_SRRCTL_BSIZEPKT_MASK) <<
 				       IXGBE_SRRCTL_BSIZEPKT_SHIFT);
-		if (dev->data->dev_conf.rxmode.max_rx_pkt_len > buf_size){
+		if (dev->data->dev_conf.rxmode.max_rx_pkt_len +
+				IXGBE_RX_BUF_THRESHOLD > buf_size){
 			dev->data->scattered_rx = 1;
 			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
 		}
@@ -3201,7 +3226,7 @@ ixgbe_dev_tx_init(struct rte_eth_dev *dev)
 			case ixgbe_mac_82598EB:
 				txctrl = IXGBE_READ_REG(hw,
 							IXGBE_DCA_TXCTRL(i));
-				txctrl &= ~IXGBE_DCA_TXCTRL_TX_WB_RO_EN;
+				txctrl &= ~IXGBE_DCA_TXCTRL_DESC_WRO_EN;
 				IXGBE_WRITE_REG(hw, IXGBE_DCA_TXCTRL(i),
 						txctrl);
 				break;
@@ -3211,7 +3236,7 @@ ixgbe_dev_tx_init(struct rte_eth_dev *dev)
 			default:
 				txctrl = IXGBE_READ_REG(hw,
 						IXGBE_DCA_TXCTRL_82599(i));
-				txctrl &= ~IXGBE_DCA_TXCTRL_TX_WB_RO_EN;
+				txctrl &= ~IXGBE_DCA_TXCTRL_DESC_WRO_EN;
 				IXGBE_WRITE_REG(hw, IXGBE_DCA_TXCTRL_82599(i),
 						txctrl);
 				break;
@@ -3337,9 +3362,9 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 
 		/* Allocate buffers for descriptor rings */
 		ret = ixgbe_alloc_rx_queue_mbufs(rxq);
-		if (ret){
-			return -1;
-		}
+		if (ret)
+			return ret;
+
 		/* Setup the Base and Length of the Rx Descriptor Rings */
 		bus_addr = rxq->rx_ring_phys_addr;
 
@@ -3377,6 +3402,10 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 #endif
 			srrctl = IXGBE_SRRCTL_DESCTYPE_ADV_ONEBUF;
 
+		/* Set if packets are dropped when no descriptors available */
+		if (rxq->drop_en)
+			srrctl |= IXGBE_SRRCTL_DROP_EN;
+
 		/*
 		 * Configure the RX buffer size in the BSIZEPACKET field of
 		 * the SRRCTL register of the queue.
@@ -3402,6 +3431,7 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
 		}
 	}
+
 	return 0;
 }
 
@@ -3440,7 +3470,7 @@ ixgbevf_dev_tx_init(struct rte_eth_dev *dev)
 		 */
 		txctrl = IXGBE_READ_REG(hw,
 				IXGBE_VFDCA_TXCTRL(i));
-		txctrl &= ~IXGBE_DCA_TXCTRL_TX_WB_RO_EN;
+		txctrl &= ~IXGBE_DCA_TXCTRL_DESC_WRO_EN;
 		IXGBE_WRITE_REG(hw, IXGBE_VFDCA_TXCTRL(i),
 				txctrl);
 	}

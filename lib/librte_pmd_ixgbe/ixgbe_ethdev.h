@@ -54,6 +54,11 @@
 #define IXGBE_NB_STAT_MAPPING_REGS  32
 #define IXGBE_EXTENDED_VLAN	  (uint32_t)(1 << 26) /* EXTENDED VLAN ENABLE */
 #define IXGBE_VFTA_SIZE 128
+#define IXGBE_RX_BUF_THRESHOLD 4
+#define IXGBE_MAX_RX_QUEUE_NUM	128
+#ifndef NBBY
+#define NBBY	8	/* number of bits in a byte */
+#endif
 #define IXGBE_HWSTRIP_BITMAP_SIZE (IXGBE_MAX_RX_QUEUE_NUM / (sizeof(uint32_t) * NBBY))
 
 
