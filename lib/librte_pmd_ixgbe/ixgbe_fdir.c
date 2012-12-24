@@ -564,23 +564,21 @@ ixgbe_fdir_remove_signature_filter(struct rte_eth_dev *dev,
 }
 
 /**
- * This is based on ixgbe_get_fdirtcpm_82599(), in ixgbe/ixgbe_82599.c. It no
- * longer does the byte reordering
+ * Reverse the bits in FDIR registers that store 2 x 16 bit masks.
  *
- *  generate a tcp port from atr_input_masks
- *  @input_mask: mask to be bit swapped
+ *  @hi_dword: Bits 31:16 mask to be bit swapped.
+ *  @lo_dword: Bits 15:0  mask to be bit swapped.
  *
- *  The source and destination port masks for flow director are bit swapped
- *  in that bit 15 effects bit 0, 14 effects 1, 13, 2 etc.  In order to
- *  generate a correctly swapped value we need to bit swap the mask and that
- *  is what is accomplished by this function.
- **/
+ *  Flow director uses several registers to store 2 x 16 bit masks with the
+ *  bits reversed such as FDIRTCPM, FDIRUDPM and FDIRIP6M. The LS bit of the
+ *  mask affects the MS bit/byte of the target. This function reverses the
+ *  bits in these masks.
+ *  **/
 static uint32_t
-get_fdirtcpm_82599(struct rte_fdir_masks *input_mask)
+reverse_fdir_bitmasks(uint16_t hi_dword, uint16_t lo_dword)
 {
-	u32 mask = input_mask->dst_port_mask;
-	mask <<= IXGBE_FDIRTCPM_DPORTM_SHIFT;
-	mask |= input_mask->src_port_mask;
+	u32 mask = hi_dword << 16;
+	mask |= lo_dword;
 	mask = ((mask & 0x55555555) << 1) | ((mask & 0xAAAAAAAA) >> 1);
 	mask = ((mask & 0x33333333) << 2) | ((mask & 0xCCCCCCCC) >> 2);
 	mask = ((mask & 0x0F0F0F0F) << 4) | ((mask & 0xF0F0F0F0) >> 4);
@@ -601,9 +599,10 @@ static int
 fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 		struct rte_fdir_masks *input_mask)
 {
-	/* mask VM pool and IPv6 since it is currently not supported */
-	u32 fdirm = IXGBE_FDIRM_POOL | IXGBE_FDIRM_DIPv6;
-	u32 fdirtcpm;
+	/* mask VM pool since it is currently not supported */
+	u32 fdirm = IXGBE_FDIRM_POOL;
+	u32 fdirtcpm;  /* TCP source and destination port masks. */
+	u32 fdiripv6m; /* IPv6 source and destination masks. */
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -612,9 +611,6 @@ fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 	 * are zero, then assume a full mask for that field.  Also assume that
 	 * a VLAN of 0 is unspecified, so mask that out as well.  L4type
 	 * cannot be masked out in this implementation.
-	 *
-	 * This also assumes IPv4 only.  IPv6 masking isn't supported at this
-	 * point in time.
 	 */
 	if (input_mask->only_ip_flow) {
 		/* use the L4 protocol mask for raw IPv4/IPv6 traffic */
@@ -624,6 +620,10 @@ fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 			return -EINVAL;
 		}
 	}
+
+	if (!input_mask->comp_ipv6_dst)
+		/* mask DIPV6 */
+		fdirm |= IXGBE_FDIRM_DIPv6;
 
 	if (!input_mask->vlan_id)
 		/* mask VLAN ID*/
@@ -640,17 +640,27 @@ fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRM, fdirm);
 
 	/* store the TCP/UDP port masks, bit reversed from port layout */
-	fdirtcpm = get_fdirtcpm_82599(input_mask);
+	fdirtcpm = reverse_fdir_bitmasks(input_mask->dst_port_mask,
+	                                 input_mask->src_port_mask);
 
 	/* write both the same so that UDP and TCP use the same mask */
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRTCPM, ~fdirtcpm);
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRUDPM, ~fdirtcpm);
 
-	/* store source and destination IP masks (big-enian) */
+	if (!input_mask->set_ipv6_mask) {
+		/* Store source and destination IPv4 masks (big-endian) */
 	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIP4M,
 			IXGBE_NTOHL(~input_mask->src_ipv4_mask));
 	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRDIP4M,
 			IXGBE_NTOHL(~input_mask->dst_ipv4_mask));
+	}
+	else {
+		/* Store source and destination IPv6 masks (bit reversed) */
+		fdiripv6m = reverse_fdir_bitmasks(input_mask->dst_ipv6_mask,
+		                                  input_mask->src_ipv6_mask);
+
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRIP6M, ~fdiripv6m);
+	}
 
 	return IXGBE_SUCCESS;
 }
