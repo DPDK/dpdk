@@ -43,7 +43,7 @@ define install_rule
 $(addprefix $(RTE_OUTPUT)/$(1)/,$(notdir $(2))): $(2)
 	@echo "  INSTALL-FILE $(addprefix $(1)/,$(notdir $(2)))"
 	@[ -d $(RTE_OUTPUT)/$(1) ] || mkdir -p $(RTE_OUTPUT)/$(1)
-	@cp -rf $$(<) $(RTE_OUTPUT)/$(1)
+	$(Q)cp -rf $$(<) $(RTE_OUTPUT)/$(1)
 endef
 
 $(foreach dir,$(INSTALL-DIRS-y),\
