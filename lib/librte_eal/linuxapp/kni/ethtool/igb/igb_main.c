@@ -190,11 +190,25 @@ static int igb_runtime_resume(struct device *dev);
 static int igb_runtime_idle(struct device *dev);
 #endif /* CONFIG_PM_RUNTIME */
 static const struct dev_pm_ops igb_pm_ops = {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,34)
+	.suspend = igb_suspend,
+	.resume = igb_resume,
+	.freeze = igb_suspend,
+	.thaw = igb_resume,
+	.poweroff = igb_suspend,
+	.restore = igb_resume,
+#ifdef CONFIG_PM_RUNTIME
+	.runtime_suspend = igb_runtime_suspend,
+	.runtime_resume = igb_runtime_resume,
+	.runtime_idle = igb_runtime_idle,
+#endif
+#else /* Linux >= 2.6.34 */
 	SET_SYSTEM_SLEEP_PM_OPS(igb_suspend, igb_resume)
 #ifdef CONFIG_PM_RUNTIME
 	SET_RUNTIME_PM_OPS(igb_runtime_suspend, igb_runtime_resume,
 			igb_runtime_idle)
 #endif /* CONFIG_PM_RUNTIME */
+#endif /* Linux version */
 };
 #endif /* HAVE_SYSTEM_SLEEP_PM_OPS */
 #endif /* CONFIG_PM */
