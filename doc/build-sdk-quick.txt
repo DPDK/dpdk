@@ -5,17 +5,18 @@ Build commands
 	all         same as build (default rule)
 	build       build in a configured directory
 	clean       remove files but keep configuration
-	install     build many targets (wildcard allowed)
+	install     build many targets (wildcard allowed) and install in DESTDIR
 	uninstall   remove all installed targets
 Build variables
-	CROSS            toolchain prefix
 	EXTRA_CPPFLAGS   preprocessor options
 	EXTRA_CFLAGS     compiler options
 	EXTRA_LDFLAGS    linker options
 	RTE_KERNELDIR    linux headers path
-	V   verbose
-	D   debug dependencies
-	O   output directory (default: build/ - install default: ./)
-	T   target template (install default: *) - used with config or install
+	CROSS     toolchain prefix
+	V         verbose
+	D         debug dependencies
+	O         build directory (default: build/ - install default: ./)
+	DESTDIR   second-stage install directory
+	T         target template (install default: *) - used with config or install
 			format: <arch-machine-execenv-toolchain>
 			templates in config/defconfig_*
