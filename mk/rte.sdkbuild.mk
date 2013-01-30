@@ -30,6 +30,8 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 
 
+# If DESTDIR variable is given, install binary dpdk
+
 #
 # include rte.vars.mk if config file exists
 #
@@ -60,6 +62,20 @@ CLEANDIRS = $(addsuffix _clean,$(ROOTDIRS-y) $(ROOTDIRS-n) $(ROOTDIRS-))
 .PHONY: build
 build: $(ROOTDIRS-y)
 	@echo Build complete
+ifneq ($(DESTDIR),)
+	$(Q)mkdir -p $(DESTDIR)
+	$(Q)tar -C $(RTE_SDK) -cf - mk | tar -C $(DESTDIR) -x \
+	  --keep-newer-files --warning=no-ignore-newer -f -
+	$(Q)mkdir -p $(DESTDIR)/`basename $(RTE_OUTPUT)`
+	$(Q)tar -C $(RTE_OUTPUT) -chf - \
+	  --exclude app --exclude hostapp --exclude build \
+	  --exclude Makefile --exclude .depdirs . | \
+	  tar -C $(DESTDIR)/`basename $(RTE_OUTPUT)` -x --keep-newer-files \
+	  --warning=no-ignore-newer -f -
+	$(Q)install -D $(RTE_OUTPUT)/app/testpmd \
+	  $(DESTDIR)/`basename $(RTE_OUTPUT)`/app/testpmd
+	@echo Installation in $(DESTDIR) complete
+endif
 
 .PHONY: clean
 clean: $(CLEANDIRS)
