@@ -57,7 +57,9 @@ install: $(INSTALL_TARGETS)
 
 %_install:
 	@echo ================== Installing $*
-	$(Q)$(MAKE) config T=$* O=$(BUILD_DIR)/$*
+	$(Q)if [ ! -f $(BUILD_DIR)/$*/.config ]; then \
+		$(MAKE) config T=$* O=$(BUILD_DIR)/$*; \
+	fi
 	$(Q)$(MAKE) all O=$(BUILD_DIR)/$*
 
 #
