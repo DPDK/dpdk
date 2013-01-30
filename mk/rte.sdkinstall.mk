@@ -30,10 +30,11 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 
 
+# Build directory is given with O=
 ifdef O
-ifeq ("$(origin O)", "command line")
-$(error "Cannot use O= with install target")
-endif
+BUILD_DIR=$(O)
+else
+BUILD_DIR=.
 endif
 
 # Targets to install can be specified in command line. It can be a
@@ -56,8 +57,8 @@ install: $(INSTALL_TARGETS)
 
 %_install:
 	@echo ================== Installing $*
-	$(Q)$(MAKE) config T=$* O=$*
-	$(Q)$(MAKE) all O=$*
+	$(Q)$(MAKE) config T=$* O=$(BUILD_DIR)/$*
+	$(Q)$(MAKE) all O=$(BUILD_DIR)/$*
 
 #
 # uninstall: remove all built sdk
@@ -70,6 +71,4 @@ uninstall: $(UNINSTALL_TARGETS)
 
 %_uninstall:
 	@echo ================== Uninstalling $*
-	$(Q)rm -rf $*
-
-
+	$(Q)rm -rf $(BUILD_DIR)/$*
