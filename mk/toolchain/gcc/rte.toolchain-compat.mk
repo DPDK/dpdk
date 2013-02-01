@@ -59,7 +59,7 @@ else
 # GCC 4.6.x - added support for corei7, corei7-avx
 # GCC 4.7.x - added support for fsgsbase, rdrnd, f16c, core-avx-i, core-avx2
 
-	ifeq ($(shell test $(GCC_MINOR_VERSION) -lt 7 && echo 1), 1)
+	ifeq ($(shell test $(GCC_MINOR_VERSION) -le 7 && echo 1), 1)
 		MACHINE_CFLAGS := $(patsubst -march=core-avx-i,-march=corei7-avx,$(MACHINE_CFLAGS))
 		MACHINE_CFLAGS := $(patsubst -march=core-avx2,-march=corei7-avx,$(MACHINE_CFLAGS))
 	endif
