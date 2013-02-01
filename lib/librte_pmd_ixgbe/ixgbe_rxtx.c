@@ -686,7 +686,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_used;
 	uint16_t tx_ol_req;
 	uint32_t vlan_macip_lens;
-	uint32_t ctx;
+	uint32_t ctx = 0;
 	uint32_t new_ctx;
 
 	txq = tx_queue;

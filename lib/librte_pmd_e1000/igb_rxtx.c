@@ -336,8 +336,8 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t tx_last;
 	uint16_t nb_tx;
 	uint16_t tx_ol_req;
-	uint32_t new_ctx;
-	uint32_t ctx;
+	uint32_t new_ctx = 0;
+	uint32_t ctx = 0;
 	uint32_t vlan_macip_lens;
 
 	txq = tx_queue;
