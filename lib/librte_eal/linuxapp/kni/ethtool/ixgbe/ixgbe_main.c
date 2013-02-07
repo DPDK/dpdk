@@ -314,6 +314,9 @@ void ixgbe_vlan_mode(struct net_device *netdev, u32 features)
 #endif
 {
 	struct ixgbe_adapter *adapter = netdev_priv(netdev);
+#ifdef HAVE_8021P_SUPPORT
+	bool enable;
+#endif
 #ifdef HAVE_VLAN_RX_REGISTER
 
 	//if (!test_bit(__IXGBE_DOWN, &adapter->state))
@@ -326,9 +329,9 @@ void ixgbe_vlan_mode(struct net_device *netdev, u32 features)
 #endif
 #ifdef HAVE_8021P_SUPPORT
 #ifdef HAVE_VLAN_RX_REGISTER
-	bool enable = (grp || (adapter->flags & IXGBE_FLAG_DCB_ENABLED));
+	enable = (grp || (adapter->flags & IXGBE_FLAG_DCB_ENABLED));
 #else
-	bool enable = !!(features & NETIF_F_HW_VLAN_RX);
+	enable = !!(features & NETIF_F_HW_VLAN_RX);
 #endif
 	if (enable)
 		/* enable VLAN tag insert/strip */
