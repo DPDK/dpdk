@@ -457,6 +457,8 @@ eal_parse_coremask(const char *coremask)
 		cfg->lcore_role[idx] = ROLE_OFF;
 	if(count == 0)
 		return -1;
+	/* Update the count of enabled logical cores of the EAL configuration */
+	cfg->lcore_count = count;
 	return 0;
 }
 
@@ -894,6 +896,9 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_log_early_init() < 0)
 		rte_panic("Cannot init early logs\n");
 
+	if (rte_eal_cpu_init() < 0)
+		rte_panic("Cannot detect lcores\n");
+
 	fctret = eal_parse_args(argc, argv);
 	if (fctret < 0)
 		exit(1);
@@ -928,9 +933,6 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_iopl_init() == 0)
 		rte_config.flags |= EAL_FLG_HIGH_IOPL;
 	
-	if (rte_eal_cpu_init() < 0)
-		rte_panic("Cannot detect lcores\n");
-
 	if (rte_eal_memory_init() < 0)
 		rte_panic("Cannot init memory\n");
 
