@@ -255,7 +255,11 @@ igbuio_pci_release_iomem(struct uio_info *info)
 	}
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0)
 static int __devinit
+#else
+static int
+#endif
 igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 {
 	struct rte_uio_pci_dev *udev;
