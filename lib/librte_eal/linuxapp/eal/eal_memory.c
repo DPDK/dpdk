@@ -995,7 +995,7 @@ rte_eal_hugepage_init(void)
 		mcfg->memseg[0].phys_addr = (phys_addr_t)(uintptr_t)addr;
 		mcfg->memseg[0].addr = addr;
 		mcfg->memseg[0].len = internal_config.memory;
-		mcfg->memseg[0].socket_id = 0;
+		mcfg->memseg[0].socket_id = SOCKET_ID_ANY;
 		return 0;
 	}
 
