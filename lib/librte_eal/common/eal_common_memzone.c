@@ -150,6 +150,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, uint64_t len,
 
 		/* bad socket ID */
 		if (socket_id != SOCKET_ID_ANY &&
+		    free_memseg[i].socket_id != SOCKET_ID_ANY &&
 		    socket_id != free_memseg[i].socket_id)
 			continue;
 
