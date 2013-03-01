@@ -955,15 +955,21 @@ rte_mempool_empty(const struct rte_mempool *mp)
  * @return
  *   The physical address of the elt element.
  */
-static inline phys_addr_t rte_mempool_virt2phy(const struct rte_mempool *mp,
-	const void *elt)
+static inline phys_addr_t
+rte_mempool_virt2phy(const struct rte_mempool *mp, const void *elt)
 {
-	uintptr_t off;
-
-	off = (const char *)elt - (const char *)mp;
-	return mp->phys_addr + off;
+	if (rte_eal_has_hugepages()) {
+		uintptr_t offset = (const char *)elt - (const char *)mp;
+		return mp->phys_addr + offset;
+	} else {
+		/*
+		 * If huge pages are disabled, we cannot assume the
+		 * memory region to be physically contiguous.
+		 * Lookup for each element.
+		 */
+		return rte_mem_virt2phy(elt);
+	}
 }
-
 
 /**
  * Check the consistency of mempool objects.
