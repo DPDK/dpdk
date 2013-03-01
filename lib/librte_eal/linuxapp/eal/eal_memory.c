@@ -780,7 +780,7 @@ rte_eal_hugepage_init(void)
 	/* get pointer to global configuration */
 	mcfg = rte_eal_get_configuration()->mem_config;
 
-	/* for debug purposes, hugetlbfs can be disabled */
+	/* hugetlbfs can be disabled */
 	if (internal_config.no_hugetlbfs) {
 		addr = malloc(internal_config.memory);
 		mcfg->memseg[0].phys_addr = (phys_addr_t)(uintptr_t)addr;
