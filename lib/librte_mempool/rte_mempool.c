@@ -35,6 +35,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include <inttypes.h>
 #include <errno.h>
 #include <sys/queue.h>
@@ -284,6 +285,23 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 		sz->trailer_size = new_size - sz->header_size - sz->elt_size;
 	}
 
+	if (! rte_eal_has_hugepages()) {
+		/*
+		 * compute trailer size so that pool elements fit exactly in
+		 * a standard page
+		 */
+		int page_size = getpagesize();
+		int new_size = page_size - sz->header_size - sz->elt_size;
+		if (new_size < 0 || (unsigned int)new_size < sz->trailer_size) {
+			printf("When hugepages are disabled, pool objects "
+			       "can't exceed PAGE_SIZE: %d + %d + %d > %d\n",
+			       sz->header_size, sz->elt_size, sz->trailer_size,
+			       page_size);
+			return 0;
+		}
+		sz->trailer_size = new_size;
+	}
+
 	/* this is the size of an object, including header and trailer */
 	sz->total_size = sz->header_size + sz->elt_size + sz->trailer_size;
 
@@ -392,8 +410,10 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	size_t mempool_size;
 	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
 	int rg_flags = 0;
-	void *obj; 
+	void *obj;
 	struct rte_mempool_objsz objsz;
+	void *startaddr;
+	int page_size = getpagesize();
 
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_mempool) &
@@ -447,7 +467,10 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		rg_flags |= RING_F_SC_DEQ;
 
 	/* calculate mempool object sizes. */
-	rte_mempool_calc_obj_size(elt_size, flags, &objsz);
+	if (!rte_mempool_calc_obj_size(elt_size, flags, &objsz)) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
 
 	rte_rwlock_write_lock(RTE_EAL_MEMPOOL_RWLOCK);
 
@@ -467,6 +490,18 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	private_data_size = (private_data_size +
 			     CACHE_LINE_MASK) & (~CACHE_LINE_MASK);
 
+	if (! rte_eal_has_hugepages()) {
+		/*
+		 * expand private data size to a whole page, so that the
+		 * first pool element will start on a new standard page
+		 */
+		int head = sizeof(struct rte_mempool);
+		int new_size = (private_data_size + head) % page_size;
+		if (new_size) {
+			private_data_size += page_size - new_size;
+		}
+	}
+
 	/*
  	 * If user provided an external memory buffer, then use it to
  	 * store mempool objects. Otherwise reserve memzone big enough to
@@ -476,6 +511,15 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	if (vaddr == NULL)
 		mempool_size += (size_t)objsz.total_size * n;
 			
+	if (! rte_eal_has_hugepages()) {
+		/*
+		 * we want the memory pool to start on a page boundary,
+		 * because pool elements crossing page boundaries would
+		 * result in discontiguous physical addresses
+		 */
+		mempool_size += page_size;
+	}
+
 	rte_snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT, name);
 
 	mz = rte_memzone_reserve(mz_name, mempool_size, socket_id, mz_flags);
@@ -487,8 +531,20 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	if (mz == NULL)
 		goto exit;
 
+	if (rte_eal_has_hugepages()) {
+		startaddr = (void*)mz->addr;
+	} else {
+		/* align memory pool start address on a page boundary */
+		unsigned long addr = (unsigned long)mz->addr;
+		if (addr & (page_size - 1)) {
+			addr += page_size;
+			addr &= ~(page_size - 1);
+		}
+		startaddr = (void*)addr;
+	}
+
 	/* init the mempool structure */
-	mp = mz->addr;
+	mp = startaddr;
 	memset(mp, 0, sizeof(*mp));
 	rte_snprintf(mp->name, sizeof(mp->name), "%s", name);
 	mp->phys_addr = mz->phys_addr;
