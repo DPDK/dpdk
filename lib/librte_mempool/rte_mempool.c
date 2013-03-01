@@ -35,6 +35,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include <inttypes.h>
 #include <errno.h>
 #include <sys/queue.h>
@@ -138,6 +139,8 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	uint32_t header_size, trailer_size;
 	unsigned i;
 	void *obj;
+	void *startaddr;
+	int page_size = getpagesize();
 
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_mempool) &
@@ -226,6 +229,20 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 						trailer_size);
 		trailer_size = new_size - header_size - elt_size;
 	}
+	if (! rte_eal_has_hugepages()) {
+		/*
+		 * compute trailer size so that pool elements fit exactly in
+		 * a standard page
+		 */
+		int new_size = page_size - header_size - elt_size;
+		if (new_size < 0 || (unsigned int)new_size < trailer_size) {
+			printf("When hugepages are disabled, pool objects "
+			       "can't exceed PAGE_SIZE: %d + %d + %d > %d\n",
+			       header_size, elt_size, trailer_size, page_size);
+			return NULL;
+		}
+		trailer_size = new_size;
+	}
 
 	/* this is the size of an object, including header and trailer */
 	total_elt_size = header_size + elt_size + trailer_size;
@@ -234,8 +251,31 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	 * cache-aligned */
 	private_data_size = (private_data_size +
 			     CACHE_LINE_MASK) & (~CACHE_LINE_MASK);
+
+	if (! rte_eal_has_hugepages()) {
+		/*
+		 * expand private data size to a whole page, so that the
+		 * first pool element will start on a new standard page
+		 */
+		int head = sizeof(struct rte_mempool);
+		int new_size = (private_data_size + head) % page_size;
+		if (new_size) {
+			private_data_size += page_size - new_size;
+		}
+	}
+
 	mempool_size = total_elt_size * n +
 		sizeof(struct rte_mempool) + private_data_size;
+
+	if (! rte_eal_has_hugepages()) {
+		/*
+		 * we want the memory pool to start on a page boundary,
+		 * because pool elements crossing page boundaries would
+		 * result in discontiguous physical addresses
+		 */
+		mempool_size += page_size;
+	}
+
 	rte_snprintf(mz_name, sizeof(mz_name), "MP_%s", name);
 
 	mz = rte_memzone_reserve(mz_name, mempool_size, socket_id, mz_flags);
@@ -247,8 +287,20 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	if (mz == NULL)
 		goto exit;
 
+	if (rte_eal_has_hugepages()) {
+		startaddr = (void*)mz->addr;
+	} else {
+		/* align memory pool start address on a page boundary */
+		unsigned long addr = (unsigned long)mz->addr;
+		if (addr & (page_size - 1)) {
+			addr += page_size;
+			addr &= ~(page_size - 1);
+		}
+		startaddr = (void*)addr;
+	}
+
 	/* init the mempool structure */
-	mp = mz->addr;
+	mp = startaddr;
 	memset(mp, 0, sizeof(*mp));
 	rte_snprintf(mp->name, sizeof(mp->name), "%s", name);
 	mp->phys_addr = mz->phys_addr;
