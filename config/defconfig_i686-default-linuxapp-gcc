@@ -222,9 +222,9 @@ CONFIG_RTE_LIBRTE_LPM_DEBUG=n
 CONFIG_RTE_LIBRTE_NET=y
 
 #
-# Compile librte_kni
+# KNI is not supported on 32-bit
 #
-CONFIG_RTE_LIBRTE_KNI=y
+CONFIG_RTE_LIBRTE_KNI=n
 
 #
 # Enable warning directives
