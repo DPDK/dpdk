@@ -118,9 +118,10 @@ rdline_newline(struct rdline *rdl, const char *prompt)
 	cirbuf_init(&rdl->left, rdl->left_buf, 0, RDLINE_BUF_SIZE);
 	cirbuf_init(&rdl->right, rdl->right_buf, 0, RDLINE_BUF_SIZE);
 
+	rdl->prompt_size = strnlen(prompt, RDLINE_PROMPT_SIZE-1);
 	if (prompt != rdl->prompt)
-		memcpy(rdl->prompt, prompt, sizeof(rdl->prompt)-1);
-	rdl->prompt_size = strnlen(prompt, RDLINE_PROMPT_SIZE);
+		memcpy(rdl->prompt, prompt, rdl->prompt_size);
+	rdl->prompt[RDLINE_PROMPT_SIZE-1] = '\0';
 
 	for (i=0 ; i<rdl->prompt_size ; i++)
 		rdl->write_char(rdl, rdl->prompt[i]);
