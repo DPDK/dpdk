@@ -85,6 +85,8 @@ int test_version(void);
 int test_eal_fs(void);
 int test_cmdline(void);
 int test_func_reentrancy(void);
+int test_pmac_pm(void);
+int test_pmac_acl(void);
 
 int test_pci_run;
 

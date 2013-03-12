@@ -291,6 +291,25 @@ parallel_test_group_list = [
 		},
 	]
 },
+{
+	"Prefix" :	"group_7",
+	"Memory" :	"400",
+	"Tests" :
+	[
+		{
+		 "Name" :	"Access list control autotest",
+		 "Command" : 	"acl_autotest",
+		 "Func" :	default_autotest,
+		 "Report" :	None,
+		},
+		{
+		 "Name" :	"Pattern match autotest",
+		 "Command" : 	"pm_autotest",
+		 "Func" :	default_autotest,
+		 "Report" :	None,
+		},
+	]
+},
 ]
 
 # tests that should not be run when any other tests are running

@@ -46,6 +46,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += librte_pmd_ixgbe
 DIRS-$(CONFIG_RTE_LIBRTE_HASH) += librte_hash
 DIRS-$(CONFIG_RTE_LIBRTE_LPM) += librte_lpm
 DIRS-$(CONFIG_RTE_LIBRTE_NET) += librte_net
+DIRS-$(CONFIG_RTE_LIBRTE_PMAC) += librte_pmac
 
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
