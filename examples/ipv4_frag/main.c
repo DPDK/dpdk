@@ -639,10 +639,10 @@ MAIN(int argc, char **argv)
 		       qconf->n_rx_queue == (unsigned)rx_queue_per_lcore) {
 
 			rx_lcore_id ++;
-			qconf = &lcore_queue_conf[rx_lcore_id];
-
 			if (rx_lcore_id >= RTE_MAX_LCORE)
 				rte_exit(EXIT_FAILURE, "Not enough cores\n");
+
+			qconf = &lcore_queue_conf[rx_lcore_id];
 		}
 		qconf->rx_queue_list[qconf->n_rx_queue] = portid;
 		qconf->n_rx_queue++;
