@@ -260,6 +260,26 @@ rte_pause (void)
 	asm volatile ("pause");
 }
 
+/**
+ * Searches the input parameter for the least significant set bit
+ * (starting from zero).
+ * If a least significant 1 bit is found, its bit index is returned.
+ * If the content of the input paramer is zero, then the content of the return
+ * value is undefined.
+ * @param v
+ *     input parameter, should not be zero.
+ * @return
+ *     least significant set bit in the input parameter.
+ */
+static inline uint32_t
+rte_bsf32(uint32_t v)
+{
+	asm("bsf %1,%0"
+		: "=r" (v)
+		: "rm" (v));
+	return (v);
+}
+
 #ifndef offsetof
 /** Return the offset of a field in a structure. */
 #define offsetof(TYPE, MEMBER)  __builtin_offsetof (TYPE, MEMBER)
