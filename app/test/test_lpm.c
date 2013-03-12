@@ -938,9 +938,9 @@ test14(void)
 	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, 256 * 32, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
-	ip = IPv4(0, 0, 0, 0);
 	depth = 32;
 	next_hop_add = 100;
+	ip = IPv4(0, 0, 0, 0);
 
 	/* Add 256 rules that require a tbl8 extension */
 	for (; ip <= IPv4(0, 0, 255, 0); ip += 256) {

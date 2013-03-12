@@ -1532,7 +1532,7 @@ cmd_vlan_offload_parsed(void *parsed_result,
 	str[i]='\0';
 	tmp = strtoul(str, NULL, 0);
 	/* If port_id greater that what portid_t can represent, return */
-	if(tmp > 255)
+	if(tmp >= RTE_MAX_ETHPORTS)
 		return;
 	port_id = (portid_t)tmp;
 

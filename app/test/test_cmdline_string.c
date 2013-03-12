@@ -66,7 +66,10 @@ struct string_elt_str string_elt_strs[] = {
 		{"one#two\nwith\nnewlines#three", "two\nwith\nnewlines", 1},
 };
 
-
+#if CMDLINE_TEST_BUFSIZE < STR_TOKEN_SIZE
+#undef CMDLINE_TEST_BUFSIZE
+#define CMDLINE_TEST_BUFSIZE STR_TOKEN_SIZE
+#endif
 
 struct string_nb_str {
 	const char * str;	/* parsed string */

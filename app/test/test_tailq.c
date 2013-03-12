@@ -114,11 +114,53 @@ test_tailq_lookup(void)
 	return 0;
 }
 
+/* test for deprecated functions - mainly for coverage */
+static int
+test_tailq_deprecated(void)
+{
+	struct rte_dummy_head *d_head;
+
+	/* since TAILQ_RESERVE is not able to create new tailqs,
+	 * we should find an existing one (IOW, RTE_TAILQ_RESERVE behaves identical
+	 * to RTE_TAILQ_LOOKUP).
+	 *
+	 * PCI_RESOURCE_LIST tailq is guaranteed to
+	 * be present in any DPDK app. */
+	d_head = RTE_TAILQ_RESERVE("PCI_RESOURCE_LIST", rte_dummy_head);
+	if (d_head == NULL)
+		do_return("Error finding PCI_RESOURCE_LIST\n");
+
+	d_head = RTE_TAILQ_LOOKUP("PCI_RESOURCE_LIST", rte_dummy_head);
+	if (d_head == NULL)
+		do_return("Error finding PCI_RESOURCE_LIST\n");
+
+	/* try doing that with non-existent names */
+	d_head = RTE_TAILQ_RESERVE("random name", rte_dummy_head);
+	if (d_head != NULL)
+		do_return("Non-existent tailq found!\n");
+
+	d_head = RTE_TAILQ_LOOKUP("random name", rte_dummy_head);
+	if (d_head != NULL)
+		do_return("Non-existent tailq found!\n");
+
+	/* try doing the same with NULL names */
+	d_head = RTE_TAILQ_RESERVE(NULL, rte_dummy_head);
+	if (d_head != NULL)
+		do_return("NULL tailq found!\n");
+
+	d_head = RTE_TAILQ_LOOKUP(NULL, rte_dummy_head);
+	if (d_head != NULL)
+		do_return("NULL tailq found!\n");
+
+	return 0;
+}
+
 int
 test_tailq(void)
 {
 	int ret = 0;
 	ret |= test_tailq_create();
 	ret |= test_tailq_lookup();
+	ret |= test_tailq_deprecated();
 	return ret;
 }

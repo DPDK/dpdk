@@ -115,7 +115,8 @@ process_hugefiles(const char * prefix, enum hugepage_action action)
 
 	const int prefix_len = rte_snprintf(hugefile_prefix,
 			sizeof(hugefile_prefix), "%smap_", prefix);
-	if (prefix_len <= 0 || prefix_len >= (int)sizeof(hugefile_prefix)) {
+	if (prefix_len <= 0 || prefix_len >= (int)sizeof(hugefile_prefix)
+			|| prefix_len >= (int)sizeof(dirent->d_name)) {
 		printf("Error creating hugefile filename prefix\n");
 		return -1;
 	}
@@ -229,6 +230,11 @@ get_number_of_sockets(void)
 
 	/* check if directory exists */
 	if ((dir = opendir(nodedir)) == NULL) {
+		/* if errno==ENOENT this means we don't have NUMA support */
+		if (errno == ENOENT) {
+			printf("No NUMA nodes detected: assuming 1 available socket\n");
+			return 1;
+		}
 		printf("Error opening %s: %s\n", nodedir, strerror(errno));
 		return -1;
 	}
