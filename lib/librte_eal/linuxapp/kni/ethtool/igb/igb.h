@@ -53,7 +53,7 @@
 struct igb_adapter;
 
 #if defined(CONFIG_DCA) || defined(CONFIG_DCA_MODULE)
-#define IGB_DCA
+//#define IGB_DCA
 #endif
 #ifdef IGB_DCA
 #include <linux/dca.h>
