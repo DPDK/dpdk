@@ -9146,15 +9146,6 @@ err_alloc_etherdev:
 
 void igb_kni_remove(struct pci_dev *pdev)
 {
-	struct net_device *netdev = pci_get_drvdata(pdev);
-	struct igb_adapter *adapter = netdev_priv(netdev);
-	struct e1000_hw *hw = &adapter->hw;
-
-	iounmap(hw->hw_addr);
-
-	if (hw->flash_address)
-		iounmap(hw->flash_address);
-
 	pci_disable_device(pdev);
 }
 

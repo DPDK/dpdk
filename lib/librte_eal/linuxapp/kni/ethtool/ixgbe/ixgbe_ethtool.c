@@ -2664,6 +2664,7 @@ static int ixgbe_add_ethtool_fdir_entry(struct ixgbe_adapter *adapter,
 
 	spin_unlock(&adapter->fdir_perfect_lock);
 
+	kfree(input);
 	return err;
 err_out_w_lock:
 	spin_unlock(&adapter->fdir_perfect_lock);

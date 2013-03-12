@@ -2939,10 +2939,6 @@ err_alloc_etherdev:
  **/
 void ixgbe_kni_remove(struct pci_dev *pdev)
 {
-	struct ixgbe_adapter *adapter = pci_get_drvdata(pdev);
-
-	iounmap(adapter->hw.hw_addr);
-
 	pci_disable_device(pdev);
 }
 

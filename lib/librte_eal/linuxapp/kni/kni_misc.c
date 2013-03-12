@@ -76,18 +76,6 @@ static struct miscdevice kni_misc = {
 	.fops = &kni_fops,
 };
 
-/* Array of the kni supported PCI device ids */
-static struct pci_device_id kni_pci_ids[] = {
-	/* EM and IGB to be supported in future */
-	//#define RTE_PCI_DEV_ID_DECL_EM(vend, dev) {PCI_DEVICE(vend, dev)},
-	#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) {PCI_DEVICE(vend, dev)},
-	#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) {PCI_DEVICE(vend, dev)},
-	#include <rte_pci_dev_ids.h>
-	{ 0, },
-};
-
-MODULE_DEVICE_TABLE(pci, kni_pci_ids);
-
 /* loopback mode */
 static char *lo_mode = NULL;
 
@@ -220,25 +208,6 @@ kni_thread(void *unused)
 }
 
 static int
-kni_check_pci_device_id(uint16_t vendor_id, uint16_t device_id)
-{
-	int i, total = sizeof(kni_pci_ids)/sizeof(struct pci_device_id);
-	struct pci_device_id *p;
-
-	/* Check if the vendor id/device id are supported */
-	for (i = 0; i < total; i++) {
-		p = &kni_pci_ids[i];
-		if (p->vendor != vendor_id && p->vendor != PCI_ANY_ID)
-			continue;
-		if (p->device != device_id && p->device != PCI_ANY_ID)
-			continue;
-		return 0;
-	}
-
-	return -1;
-}
-
-static int
 kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 {
 	int ret;
@@ -262,14 +231,6 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 	if (ret) {
 		KNI_ERR("copy_from_user");
 		return -EIO;
-	}
-
-	/* Check if the PCI id is supported by KNI */
-	ret = kni_check_pci_device_id(dev_info.vendor_id, dev_info.device_id);
-	if (ret < 0) {
-		KNI_ERR("Invalid vendor_id: %x or device_id: %x\n",
-				dev_info.vendor_id, dev_info.device_id);
-		return -EINVAL;
 	}
 
 	net_dev = alloc_netdev(sizeof(struct kni_dev), dev_info.name,
