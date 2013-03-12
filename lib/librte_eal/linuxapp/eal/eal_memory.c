@@ -970,6 +970,18 @@ rte_eal_hugepage_init(void)
 		hugepage[i].memseg_id = j;
 	}
 
+	if (i < nrpages) {
+		RTE_LOG(ERR, EAL, "Can only reserve %d pages "
+			"from %d requested\n"
+			"Current %s=%d is not enough\n"
+			"Please either increase it or request less amount "
+			"of memory.\n",
+			i, nrpages, RTE_STR(CONFIG_RTE_MAX_MEMSEG),
+			RTE_MAX_MEMSEG);
+		return (-ENOMEM);
+	}
+	
+
 	return 0;
 
 
