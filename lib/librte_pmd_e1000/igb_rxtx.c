@@ -1717,8 +1717,8 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.hw_strip_crc) {
 		rctl |= E1000_RCTL_SECRC; /* Strip Ethernet CRC. */
 
-		/* set STRCRC bit in all queues for Powerville */
-		if (hw->mac.type == e1000_i350) {
+		/* set STRCRC bit in all queues for Powerville/Springville */
+		if (hw->mac.type == e1000_i350 || hw->mac.type == e1000_i210) {
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
 				uint32_t dvmolr = E1000_READ_REG(hw,
 					E1000_DVMOLR(i));
@@ -1729,8 +1729,8 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	} else {
 		rctl &= ~E1000_RCTL_SECRC; /* Do not Strip Ethernet CRC. */
 
-		/* clear STRCRC bit in all queues for Powerville */
-		if (hw->mac.type == e1000_i350) {
+		/* clear STRCRC bit in all queues for Powerville/Springville */
+		if (hw->mac.type == e1000_i350 || hw->mac.type == e1000_i210) {
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
 				uint32_t dvmolr = E1000_READ_REG(hw,
 					E1000_DVMOLR(i));
