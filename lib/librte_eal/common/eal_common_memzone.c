@@ -198,7 +198,9 @@ memzone_reserve_aligned_thread_unsafe(const char *name, uint64_t len,
 			return memzone_reserve_aligned_thread_unsafe(name, len - align,
 					socket_id, 0, align);
 
-		RTE_LOG(ERR, EAL, "%s(): No appropriate segment found\n", __func__);
+		RTE_LOG(ERR, EAL, "%s(%s, %" PRIu64 ", %d): "
+			"No appropriate segment found\n",
+			__func__, name, requested_len, socket_id);
 		rte_errno = ENOMEM;
 		return NULL;
 	}

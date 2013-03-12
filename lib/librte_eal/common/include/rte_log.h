@@ -276,7 +276,7 @@ int rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap);
  *   - Negative on error.
  */
 #define RTE_LOG(l, t, ...)					\
-	(((RTE_LOG_ ## l <= RTE_LOG_LEVEL) &&			\
+	(void)(((RTE_LOG_ ## l <= RTE_LOG_LEVEL) &&			\
 	  (RTE_LOG_ ## l <= rte_logs.level) &&			\
 	  (RTE_LOGTYPE_ ## t & rte_logs.type)) ?		\
 	 rte_log(RTE_LOG_ ## l,					\

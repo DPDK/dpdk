@@ -95,7 +95,7 @@ rte_dump_physmem_layout(void)
 		if (mcfg->memseg[i].addr == NULL)
 			break;
 
-		printf("Segment %o: phys:0x%"PRIx64", len:0x%"PRIx64", "
+		printf("Segment %u: phys:0x%"PRIx64", len:0x%"PRIx64", "
 		       "virt:%p, socket_id:%"PRId32", "
 		       "hugepage_sz:0x%"PRIx64", nchannel:%"PRIx32", "
 		       "nrank:%"PRIx32"\n", i,
