@@ -110,7 +110,7 @@ malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
 	end_elem = RTE_PTR_ALIGN_FLOOR(end_elem, CACHE_LINE_SIZE);
 
 	const unsigned elem_size = (uintptr_t)end_elem - (uintptr_t)start_elem;
-	malloc_elem_init(start_elem, heap, elem_size);
+	malloc_elem_init(start_elem, heap, mz, elem_size);
 	malloc_elem_mkend(end_elem, start_elem);
 
 	start_elem->next_free = heap->free_head;
