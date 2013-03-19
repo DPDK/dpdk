@@ -57,9 +57,10 @@
  */
 void
 malloc_elem_init(struct malloc_elem *elem,
-		struct malloc_heap *heap, size_t size)
+		struct malloc_heap *heap, const struct rte_memzone *mz, size_t size)
 {
 	elem->heap = heap;
+	elem->mz = mz;
 	elem->prev = elem->next_free = NULL;
 	elem->state = ELEM_FREE;
 	elem->size = size;
@@ -74,7 +75,7 @@ malloc_elem_init(struct malloc_elem *elem,
 void
 malloc_elem_mkend(struct malloc_elem *elem, struct malloc_elem *prev)
 {
-	malloc_elem_init(elem, prev->heap, 0);
+	malloc_elem_init(elem, prev->heap, prev->mz, 0);
 	elem->prev = prev;
 	elem->state = ELEM_BUSY; /* mark busy so its never merged */
 }
@@ -117,7 +118,7 @@ split_elem(struct malloc_elem *elem, struct malloc_elem *split_pt)
 	const unsigned old_elem_size = (uintptr_t)split_pt - (uintptr_t)elem;
 	const unsigned new_elem_size = elem->size - old_elem_size;
 
-	malloc_elem_init(split_pt, elem->heap, new_elem_size);
+	malloc_elem_init(split_pt, elem->heap, elem->mz, new_elem_size);
 	split_pt->prev = elem;
 	next_elem->prev = split_pt;
 	elem->size = old_elem_size;
