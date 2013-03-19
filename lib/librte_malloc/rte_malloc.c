@@ -228,3 +228,15 @@ rte_malloc_set_limit(__rte_unused const char *type,
 {
 	return 0;
 }
+
+/*
+ * Return the physical address of a virtual address obtained through rte_malloc
+ */
+phys_addr_t
+rte_malloc_virt2phy(const void *addr)
+{
+	const struct malloc_elem *elem = malloc_elem_from_data(addr);
+	if (elem == NULL)
+		return 0;
+	return elem->mz->phys_addr + ((uintptr_t)addr - (uintptr_t)elem->mz->addr);
+}

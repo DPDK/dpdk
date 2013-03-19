@@ -48,6 +48,7 @@ struct malloc_elem {
 	struct malloc_heap *heap;
 	struct malloc_elem *volatile prev;      /* points to prev elem in memzone */
 	struct malloc_elem *volatile next_free; /* to make list of free elements */
+	const struct rte_memzone *mz;
 	volatile enum elem_state state;
 	uint32_t pad;
 	size_t size;
@@ -134,6 +135,7 @@ malloc_elem_from_data(const void *data)
 void
 malloc_elem_init(struct malloc_elem *elem,
 		struct malloc_heap *heap,
+		const struct rte_memzone *mz,
 		size_t size);
 
 /*

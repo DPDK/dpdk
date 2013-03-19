@@ -42,6 +42,7 @@
  */
 
 #include <stddef.h>
+#include <rte_memory.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -318,6 +319,19 @@ rte_malloc_dump_stats(const char *type);
  */
 int
 rte_malloc_set_limit(const char *type, size_t max);
+
+/**
+ * Return the physical address of a virtual address obtained through
+ * rte_malloc
+ *
+ * @param addr
+ *   Adress obtained from a previous rte_malloc call
+ * @return
+ *   NULL on error
+ *   otherwise return physical address of the buffer
+ */
+phys_addr_t
+rte_malloc_virt2phy(const void *addr);
 
 #ifdef __cplusplus
 }
