@@ -3463,7 +3463,7 @@ static inline void __kc_skb_frag_unref(skb_frag_t *frag)
 #endif
 /*****************************************************************************/
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0) )
-typedef u32 netdev_features_t;
+typedef u32 kni_netdev_features_t;
 #undef PCI_EXP_TYPE_RC_EC
 #define  PCI_EXP_TYPE_RC_EC	0xa	/* Root Complex Event Collector */
 #ifndef CONFIG_BQL
@@ -3475,6 +3475,7 @@ typedef u32 netdev_features_t;
 #define netdev_reset_queue(_n) do {} while (0)
 #endif
 #else /* ! < 3.3.0 */
+typedef netdev_features_t kni_netdev_features_t;
 #define HAVE_INT_NDO_VLAN_RX_ADD_VID
 #ifdef ETHTOOL_SRXNTUPLE
 #undef ETHTOOL_SRXNTUPLE
