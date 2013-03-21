@@ -1834,8 +1834,8 @@ void igb_reset(struct igb_adapter *adapter)
 }
 
 #ifdef HAVE_NDO_SET_FEATURES
-static netdev_features_t igb_fix_features(struct net_device *netdev,
-					  netdev_features_t features)
+static kni_netdev_features_t igb_fix_features(struct net_device *netdev,
+					      kni_netdev_features_t features)
 {
 	/*
 	 * Since there is no support for separate tx vlan accel
@@ -1852,7 +1852,7 @@ static netdev_features_t igb_fix_features(struct net_device *netdev,
 }
 
 static int igb_set_features(struct net_device *netdev,
-			    netdev_features_t features)
+			    kni_netdev_features_t features)
 {
 	u32 changed = netdev->features ^ features;
 
