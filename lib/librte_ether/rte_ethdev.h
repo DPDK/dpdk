@@ -400,9 +400,9 @@ struct rte_fdir_conf {
 	enum rte_fdir_mode mode; /**< Flow Director mode. */
 	enum rte_fdir_pballoc_type pballoc; /**< Space for FDIR filters. */
 	enum rte_fdir_status_mode status;  /**< How to report FDIR hash. */
-	/* Offset of flexbytes field in RX packets (in 16-bit word units). */
+	/** Offset of flexbytes field in RX packets (in 16-bit word units). */
 	uint8_t flexbytes_offset;
-	/* RX queue of packets matching a "drop" filter in perfect mode. */
+	/** RX queue of packets matching a "drop" filter in perfect mode. */
 	uint8_t drop_queue;
 };
 
@@ -410,7 +410,7 @@ struct rte_fdir_conf {
  *  Possible l4type of FDIR filters.
  */
 enum rte_l4type {
-	RTE_FDIR_L4TYPE_NONE = 0,       /**< Nnoe. */
+	RTE_FDIR_L4TYPE_NONE = 0,       /**< None. */
 	RTE_FDIR_L4TYPE_UDP,            /**< UDP. */
 	RTE_FDIR_L4TYPE_TCP,            /**< TCP. */
 	RTE_FDIR_L4TYPE_SCTP,     	/**< SCTP. */

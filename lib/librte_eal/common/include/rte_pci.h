@@ -153,9 +153,9 @@ struct rte_pci_driver {
 	uint32_t drv_flags;                     /**< Flags contolling handling of device. */
 };
 
-/**< Device needs igb_uio kernel module */
+/** Device needs igb_uio kernel module */
 #define RTE_PCI_DRV_NEED_IGB_UIO 0x0001
-/**< Device driver must be registered several times until failure */
+/** Device driver must be registered several times until failure */
 #define RTE_PCI_DRV_MULTIPLE 0x0002
 
 /**
