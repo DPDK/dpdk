@@ -34,7 +34,7 @@
 /**
  * @file
  *
- * Definitions of warnings for use of various insecure functions
+ * String-related functions as replacement for libc equivalents
  */
 
 #ifndef _RTE_STRING_FNS_H_
@@ -104,7 +104,7 @@ einval_error:
  * Takes string "string" parameter and splits it at character "delim"
  * up to maxtokens-1 times - to give "maxtokens" resulting tokens. Like
  * strtok or strsep functions, this modifies its input string, by replacing
- * instances of "delim" with '\0'. All resultant tokens are returned in the
+ * instances of "delim" with '\\0'. All resultant tokens are returned in the
  * "tokens" array which must have enough entries to hold "maxtokens".
  *
  * @param string
