@@ -75,8 +75,8 @@ void rte_dump_registers(void);
  * @param args
  *   The variable list of arguments.
  */
-#define rte_panic_(func, format, ...) __rte_panic(func, format "%.0s", __VA_ARGS__)
 #define rte_panic(...) rte_panic_(__func__, __VA_ARGS__, "dummy")
+#define rte_panic_(func, format, ...) __rte_panic(func, format "%.0s", __VA_ARGS__)
 
 #define	RTE_VERIFY(exp)	do {                                                  \
 	if (!(exp))                                                           \
