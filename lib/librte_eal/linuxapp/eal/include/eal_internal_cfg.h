@@ -69,8 +69,8 @@ struct internal_config {
 	volatile unsigned vmware_tsc_map; /**< true to use VMware TSC mapping instead of native TSC */
 	volatile unsigned no_shconf;      /**< true if there is no shared config */
 	volatile int syslog_facility;	  /**< facility passed to openlog() */
-	volatile enum rte_proc_type_t process_type; /* multi-process proc type */
-	/* true to try allocating memory on specific sockets */
+	volatile enum rte_proc_type_t process_type; /**< multi-process proc type */
+	/** true to try allocating memory on specific sockets */
 	volatile unsigned force_sockets;
 	volatile uint64_t socket_mem[RTE_MAX_NUMA_NODES]; /**< amount of memory per socket*/
 	const char *hugefile_prefix;      /**< the base filename of hugetlbfs files */
