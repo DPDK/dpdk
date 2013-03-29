@@ -214,7 +214,18 @@ int rte_eal_init(int argc, char **argv);
 	}								\
 } while(0)
 
- 
+/**
+ * Whether EAL is using huge pages (disabled by --no-huge option).
+ * The no-huge mode cannot be used with UIO poll-mode drivers like igb/ixgbe.
+ * It is useful for NIC drivers (e.g. librte_pmd_mlx4, librte_pmd_vmxnet3) or
+ * crypto drivers (e.g. librte_crypto_nitrox) provided by third-parties such
+ * as 6WIND.
+ *
+ * @return
+ *   Nonzero if hugepages are enabled.
+ */
+int rte_eal_has_hugepages(void);
+
 #ifdef __cplusplus
 }
 #endif
