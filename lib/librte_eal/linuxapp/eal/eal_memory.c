@@ -1142,7 +1142,7 @@ rte_eal_memdevice_init(void)
 int
 rte_eal_memory_init(void)
 {
-	RTE_LOG(INFO, EAL, "Setting up hugepage memory...\n");
+	RTE_LOG(INFO, EAL, "Setting up memory...\n");
 	const int retval = rte_eal_process_type() == RTE_PROC_PRIMARY ?
 			rte_eal_hugepage_init() :
 			rte_eal_hugepage_attach();
