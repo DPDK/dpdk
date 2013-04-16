@@ -754,6 +754,27 @@ struct rte_eth_conf {
  * an Ethernet device, such as the controlling driver of the device,
  * its PCI context, etc...
  */
+
+/**
+ * RX offload capabilities of a device.
+ */
+#define DEV_RX_OFFLOAD_VLAN_STRIP  0x00000001
+#define DEV_RX_OFFLOAD_IPV4_CKSUM  0x00000002
+#define DEV_RX_OFFLOAD_UDP_CKSUM   0x00000004
+#define DEV_RX_OFFLOAD_TCP_CKSUM   0x00000008
+#define DEV_RX_OFFLOAD_TCP_LRO     0x00000010
+
+/**
+ * TX offload capabilities of a device.
+ */
+#define DEV_TX_OFFLOAD_VLAN_INSERT 0x00000001
+#define DEV_TX_OFFLOAD_IPV4_CKSUM  0x00000002
+#define DEV_TX_OFFLOAD_UDP_CKSUM   0x00000004
+#define DEV_TX_OFFLOAD_TCP_CKSUM   0x00000008
+#define DEV_TX_OFFLOAD_SCTP_CKSUM  0x00000010
+#define DEV_TX_OFFLOAD_TCP_TSO     0x00000020
+#define DEV_TX_OFFLOAD_UDP_TSO     0x00000040
+
 struct rte_eth_dev_info {
 	struct rte_pci_device *pci_dev; /**< Device PCI information. */
 	const char *driver_name; /**< Device Driver name. */
@@ -766,6 +787,8 @@ struct rte_eth_dev_info {
 	/** Maximum number of hash MAC addresses for MTA and UTA. */
 	uint16_t max_vfs; /**< Maximum number of VFs. */
 	uint16_t max_vmdq_pools; /**< Maximum number of VMDq pools. */
+	uint32_t rx_offload_capa; /**< Device RX offload capabilities. */
+	uint32_t tx_offload_capa; /**< Device TX offload capabilities. */
 };
 
 struct rte_eth_dev;
