@@ -67,13 +67,32 @@ extern "C" {
 #define RTE_VER_PATCH_LEVEL 0
 
 /**
+ * Patch release number i.e. the w in x.y.zrw
+ */
+#define RTE_VER_PATCH_RELEASE 0
+
+/**
+ * Macro to compute a version number usable for comparisons
+ */
+#define RTE_VERSION_NUM(a,b,c,d) ((a) << 24 | (b) << 16 | (c) << 8 | (d))
+
+/**
+ * All version numbers in one to compare with RTE_VERSION_NUM()
+ */
+#define RTE_VERSION RTE_VERSION_NUM( \
+			RTE_VER_MAJOR, \
+			RTE_VER_MINOR, \
+			RTE_VER_PATCH_LEVEL, \
+			RTE_VER_PATCH_RELEASE)
+
+/**
  * Extra string to be appended to version number,
  * for example: pre1, EAR, final etc.
  */
 #define RTE_VER_SUFFIX ""
 
 /**
- * Function returning string of version number: "RTE x.y.z"
+ * Function returning string of version number: "RTE x.y.zrw"
  * @return
  *     string
  */
@@ -83,13 +102,15 @@ rte_version(void) {
 		return RTE_VER_PREFIX" "
 				RTE_STR(RTE_VER_MAJOR)"."
 				RTE_STR(RTE_VER_MINOR)"."
-				RTE_STR(RTE_VER_PATCH_LEVEL)
+				RTE_STR(RTE_VER_PATCH_LEVEL)"r"
+				RTE_STR(RTE_VER_PATCH_RELEASE)
 				"-"RTE_VER_SUFFIX;
 	else
 		return RTE_VER_PREFIX" "
 				RTE_STR(RTE_VER_MAJOR)"."
 				RTE_STR(RTE_VER_MINOR)"."
-				RTE_STR(RTE_VER_PATCH_LEVEL);
+				RTE_STR(RTE_VER_PATCH_LEVEL)"r"
+				RTE_STR(RTE_VER_PATCH_RELEASE);
 }
 
 #ifdef __cplusplus
