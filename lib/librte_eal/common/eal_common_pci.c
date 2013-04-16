@@ -121,9 +121,11 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 		if (rte_eal_pci_probe_one_driver(dr, dev))
 			continue;
 		/* initialize subsequent driver instances for this device */
-		if (dr->drv_flags & RTE_PCI_DRV_MULTIPLE)
+		if ((dr->drv_flags & RTE_PCI_DRV_MULTIPLE) &&
+		    (!dev->blacklisted)) {
 			while (rte_eal_pci_probe_one_driver(dr, dev) == 0)
 				;
+		}
 		return 0;
 	}
 	return -1;
