@@ -50,7 +50,6 @@
 extern "C" {
 #endif
 
-#define RTE_VERSION 1 /**< The version of the RTE configuration structure. */
 #define RTE_MAGIC 19820526 /**< Magic number written by the main partition when ready. */
 
 /**

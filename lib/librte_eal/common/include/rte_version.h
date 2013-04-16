@@ -63,10 +63,22 @@ extern "C" {
  */
 #define RTE_VER_PATCH_LEVEL 3
 
+/**
+ * Patch release number i.e. the w in x.y.zrw
+ */
+#define RTE_VER_PATCH_RELEASE 2
+
+#define RTE_VERSION_NUM(a,b,c,d) ((a) << 24 | (b) << 16 | (c) << 8 | (d))
+#define RTE_VERSION RTE_VERSION_NUM( \
+			RTE_VER_MAJOR, \
+			RTE_VER_MINOR, \
+			RTE_VER_PATCH_LEVEL, \
+			RTE_VER_PATCH_RELEASE)
+
 #define RTE_VER_PREFIX "RTE"
 
 /**
- * Function returning string of version number: "RTE x.y.z"
+ * Function returning string of version number: "RTE x.y.zrw"
  * @return
  *     string
  */
@@ -75,7 +87,8 @@ rte_version(void) {
 	return RTE_VER_PREFIX" "
 			RTE_STR(RTE_VER_MAJOR)"."
 			RTE_STR(RTE_VER_MINOR)"."
-			RTE_STR(RTE_VER_PATCH_LEVEL);
+			RTE_STR(RTE_VER_PATCH_LEVEL)"r"
+			RTE_STR(RTE_VER_PATCH_RELEASE);
 }
 
 #ifdef __cplusplus
