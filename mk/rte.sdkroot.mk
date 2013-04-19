@@ -89,63 +89,31 @@ default: all
 
 .PHONY: config
 config:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkconfig.mk config
+	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkconfig.mk $@
 
-.PHONY: test
-test:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktest.mk test
-
-.PHONY: fast_test ring_test mempool_test
-fast_test ring_test mempool_test:
+.PHONY: test fast_test ring_test mempool_test
+test fast_test ring_test mempool_test:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktest.mk $@
 
-.PHONY: testall
-testall:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktestall.mk testall
+.PHONY: testall testimport
+testall testimport:
+	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktestall.mk $@
 
-.PHONY: testimport
-testimport:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktestall.mk testimport
+.PHONY: install uninstall
+install uninstall:
+	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkinstall.mk $@
 
-.PHONY: install
-install:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkinstall.mk install
+.PHONY: doc pdfdoc doxydoc docclean
+doc pdfdoc doxydoc docclean:
+	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdoc.mk $@
 
-.PHONY: uninstall
-uninstall:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkinstall.mk uninstall
+.PHONY: depdirs depgraph
+depdirs depgraph:
+	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdepdirs.mk $@
 
-.PHONY: doc
-doc:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdoc.mk doc
-
-.PHONY: pdfdoc
-pdfdoc:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdoc.mk pdfdoc
-
-.PHONY: doxydoc
-doxydoc:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdoc.mk doxydoc
-
-.PHONY: docclean
-docclean:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdoc.mk docclean
-
-.PHONY: depdirs
-depdirs:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdepdirs.mk depdirs
-
-.PHONY: depgraph
-depgraph:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdepdirs.mk depgraph
-
-.PHONY: gcovclean
-gcovclean:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkgcov.mk gcovclean
-
-.PHONY: gcov
-gcov:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkgcov.mk gcov
+.PHONY: gcov gcovclean
+gcov gcovclean:
+	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkgcov.mk $@
 
 .PHONY: help
 help:
