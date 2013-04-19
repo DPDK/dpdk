@@ -103,9 +103,10 @@ testall testimport:
 install uninstall:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkinstall.mk $@
 
-.PHONY: doc doc-clean
-doc doc-clean:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdoc.mk $@
+.PHONY: doc
+doc: doc-all
+doc-%:
+	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdoc.mk $*
 
 .PHONY: depdirs depgraph
 depdirs depgraph:

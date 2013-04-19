@@ -1,6 +1,7 @@
 #   BSD LICENSE
 # 
 #   Copyright(c) 2010-2012 Intel Corporation. All rights reserved.
+#   Copyright(c) 2013 6WIND.
 #   All rights reserved.
 # 
 #   Redistribution and use in source and binary forms, with or without 
@@ -37,8 +38,26 @@ $(error "Cannot use T= with doc target")
 endif
 endif
 
-.PHONY: doc
-doc:
+.PHONY: all
+all: htmlapi
 
-.PHONY: doc-clean
-doc-clean:
+.PHONY: clean
+clean: htmlapi-clean
+
+.PHONY: htmlapi
+htmlapi: htmlapi-clean
+	@echo 'doxygen for API...'
+	$(Q)mkdir -p $(RTE_OUTPUT)/doc/html
+	$(Q)(cat $(RTE_SDK)/doc/doxy-api.conf         && \
+	    echo OUTPUT_DIRECTORY = $(RTE_OUTPUT)/doc && \
+	    echo HTML_OUTPUT      = html/api          && \
+	    echo GENERATE_HTML    = YES               && \
+	    echo GENERATE_LATEX   = NO                && \
+	    echo GENERATE_MAN     = NO                )| \
+	    doxygen -
+	$(Q)$(RTE_SDK)/doc/doxy-html-custom.sh $(RTE_OUTPUT)/doc/html/api/doxygen.css
+
+.PHONY: htmlapi-clean
+htmlapi-clean:
+	$(Q)rm -f $O/doc/html/api/*
+	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/html/api 2>&- || true
