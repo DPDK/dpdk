@@ -101,8 +101,8 @@ testall:
 install uninstall:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkinstall.mk $@
 
-.PHONY: doc pdfdoc doxydoc docclean
-doc pdfdoc doxydoc docclean:
+.PHONY: doc doc-clean
+doc doc-clean:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdoc.mk $@
 
 .PHONY: depdirs depgraph
