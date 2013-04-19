@@ -103,8 +103,8 @@ testall testimport:
 install uninstall:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkinstall.mk $@
 
-.PHONY: doc pdfdoc doxydoc docclean
-doc pdfdoc doxydoc docclean:
+.PHONY: doc doc-clean
+doc doc-clean:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdoc.mk $@
 
 .PHONY: depdirs depgraph
@@ -114,11 +114,6 @@ depdirs depgraph:
 .PHONY: gcov gcovclean
 gcov gcovclean:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkgcov.mk $@
-
-.PHONY: help
-help:
-	@sed -e '1,/.*==================================.*/ d' \
-		doc/rst/developers_reference/sdk_mkhelp.rst
 
 # all other build targets
 %:

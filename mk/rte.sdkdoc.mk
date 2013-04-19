@@ -31,12 +31,6 @@
 # 
 #  version: DPDK.L.1.2.3-3
 
-ifdef O
-ifeq ("$(origin O)", "command line")
-$(error "Cannot use O= with doc target")
-endif
-endif
-
 ifdef T
 ifeq ("$(origin T)", "command line")
 $(error "Cannot use T= with doc target")
@@ -45,29 +39,6 @@ endif
 
 .PHONY: doc
 doc:
-	$(Q)$(MAKE) -C $(RTE_SDK)/doc/images $@ BASEDOCDIR=.. DOCDIR=images
-	$(Q)$(MAKE) -f $(RTE_SDK)/doc/rst/Makefile -C $(RTE_SDK)/doc/pdf pdfdoc BASEDOCDIR=.. DOCDIR=rst
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdoc.mk doxydoc
 
-.PHONY: pdfdoc
-pdfdoc:
-	$(Q)$(MAKE) -C $(RTE_SDK)/doc/images $@ BASEDOCDIR=.. DOCDIR=images
-	$(Q)$(MAKE) -f $(RTE_SDK)/doc/rst/Makefile -C $(RTE_SDK)/doc/pdf $@ BASEDOCDIR=.. DOCDIR=rst
-
-.PHONY: doxydoc
-doxydoc:
-	$(Q)$(MAKE) -C $(RTE_SDK)/doc/images $@ BASEDOCDIR=.. DOCDIR=images
-	$(Q)mkdir -p $(RTE_SDK)/doc/latex
-	$(Q)mkdir -p $(RTE_SDK)/doc/pdf/api
-	$(Q)cat $(RTE_SDK)/doc/gen/doxygen_pdf/Doxyfile | doxygen -
-	$(Q)mv $(RTE_SDK)/doc/images/*.pdf $(RTE_SDK)/doc/latex/
-	$(Q)sed -i s/darkgray/headercolour/g $(RTE_SDK)/doc/latex/doxygen.sty
-	$(Q)cp $(RTE_SDK)/doc/gen/doxygen_pdf/Makefile_doxygen $(RTE_SDK)/doc/latex/Makefile
-	$(Q)$(MAKE) -C $(RTE_SDK)/doc/latex
-	$(Q)cp $(RTE_SDK)/doc/latex/refman.pdf $(RTE_SDK)/doc/pdf/api/api.pdf
-
-.PHONY: docclean
-docclean:
-	$(Q)$(MAKE) -C $(RTE_SDK)/doc/images $@ BASEDOCDIR=.. DOCDIR=images
-	$(Q)$(MAKE) -f $(RTE_SDK)/doc/rst/Makefile -C $(RTE_SDK)/doc/pdf $@ BASEDOCDIR=.. DOCDIR=rst
-	$(Q)rm -rf $(RTE_SDK)/doc/pdf/api $(RTE_SDK)/doc/latex
+.PHONY: doc-clean
+doc-clean:
