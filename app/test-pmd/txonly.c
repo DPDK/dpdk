@@ -93,11 +93,8 @@ static inline struct rte_mbuf *
 tx_mbuf_alloc(struct rte_mempool *mp)
 {
 	struct rte_mbuf *m;
-	void *mb;
 
-	if (rte_mempool_get(mp, &mb) < 0)
-		return NULL;
-	m = (struct rte_mbuf *)mb;
+	m = __rte_mbuf_raw_alloc(mp);
 	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
 	return m;
 }
