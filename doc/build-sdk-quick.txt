@@ -1,0 +1,21 @@
+Basic build
+	make config T=x86_64-default-linuxapp-gcc && make
+Build commands
+	config      get configuration from target template (T=)
+	all         same as build (default rule)
+	build       build in a configured directory
+	clean       remove files but keep configuration
+	install     build many targets (wildcard allowed) in fixed directories
+	uninstall   remove all installed targets
+Build variables
+	CROSS            toolchain prefix
+	EXTRA_CPPFLAGS   preprocessor options
+	EXTRA_CFLAGS     compiler options
+	EXTRA_LDFLAGS    linker options
+	RTE_KERNELDIR    linux headers path
+	V   verbose
+	D   debug dependencies
+	O   output directory (default: build/)   - cannot be used with install
+	T   target template (install default: *) - used with config or install
+			format: <arch-machine-execenv-toolchain>
+			templates in config/defconfig_*
