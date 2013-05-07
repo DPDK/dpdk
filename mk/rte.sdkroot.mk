@@ -101,8 +101,9 @@ testall:
 install uninstall:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkinstall.mk $@
 
-.PHONY: doc
+.PHONY: doc help
 doc: doc-all
+help: doc-help
 doc-%:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdoc.mk $*
 
