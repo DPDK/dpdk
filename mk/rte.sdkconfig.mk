@@ -40,14 +40,16 @@ INSTALL_CONFIGS := $(filter-out %~,\
 	$(wildcard $(RTE_SRCDIR)/config/defconfig_*)))
 INSTALL_TARGETS := $(addsuffix _install,$(INSTALL_CONFIGS))
 
+.PHONY: showconfigs
+showconfigs:
+	@$(foreach CONFIG, $(INSTALL_CONFIGS), echo $(CONFIG);)
+
 .PHONY: config
 ifeq ($(RTE_CONFIG_TEMPLATE),)
 config:
-	@echo -n "No template specified. Use T=template " ; \
-	echo "among the following list:" ; \
-	for t in $(INSTALL_CONFIGS); do \
-		echo "  $$t" ; \
-	done
+	@printf "No template specified. "
+	@echo "Use T=template among the following list:"
+	@$(MAKE) -rR showconfigs | sed 's,^,  ,'
 else
 config: $(RTE_OUTPUT)/include/rte_config.h $(RTE_OUTPUT)/Makefile
 	$(Q)$(MAKE) depdirs
