@@ -37,6 +37,11 @@ $(error "Cannot use T= with doc target")
 endif
 endif
 
+.PHONY: help
+help:
+	@cat $(RTE_SDK)/doc/build-sdk-quick.txt
+	@$(MAKE) -rR showconfigs | sed 's,^,\t\t\t\t,'
+
 .PHONY: all
 all: htmlapi
 
