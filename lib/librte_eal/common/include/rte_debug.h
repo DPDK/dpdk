@@ -86,6 +86,7 @@ void rte_dump_registers(void);
  * documentation.
  */
 void __rte_panic(const char *funcname , const char *format, ...)
+	__attribute__((cold))
 	__attribute__((noreturn))
 	__attribute__((format(printf, 2, 3)));
 

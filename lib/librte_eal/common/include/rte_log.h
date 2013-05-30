@@ -217,6 +217,7 @@ int rte_log_add_in_history(const char *buf, size_t size);
  *   - Negative on error.
  */
 int rte_log(uint32_t level, uint32_t logtype, const char *format, ...)
+	__attribute__((cold))
 	__attribute__((format(printf, 3, 4)));
 
 /**
