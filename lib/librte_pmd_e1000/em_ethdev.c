@@ -233,7 +233,7 @@ eth_em_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		return 0;
 	}
 
-	hw->hw_addr = (void *)pci_dev->mem_resource.addr;
+	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->device_id = pci_dev->id.device_id;
 
 	/* For ICH8 support we'll need to map the flash memory BAR */

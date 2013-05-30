@@ -375,8 +375,9 @@ port_pci_reg_read(struct rte_port *port, uint32_t reg_off)
 	void *reg_addr;
 	uint32_t reg_v;
 
-	reg_addr = (void *)((char *)port->dev_info.pci_dev->mem_resource.addr +
-			    reg_off);
+	reg_addr = (void *)
+		((char *)port->dev_info.pci_dev->mem_resource[0].addr +
+			reg_off);
 	reg_v = *((volatile uint32_t *)reg_addr);
 	return rte_le_to_cpu_32(reg_v);
 }
@@ -389,8 +390,9 @@ port_pci_reg_write(struct rte_port *port, uint32_t reg_off, uint32_t reg_v)
 {
 	void *reg_addr;
 
-	reg_addr = (void *)((char *)port->dev_info.pci_dev->mem_resource.addr +
-			    reg_off);
+	reg_addr = (void *)
+		((char *)port->dev_info.pci_dev->mem_resource[0].addr +
+			reg_off);
 	*((volatile uint32_t *)reg_addr) = rte_cpu_to_le_32(reg_v);
 }
 

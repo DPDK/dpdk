@@ -555,7 +555,7 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	/* Vendor and Device ID need to be set before init of shared code */
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
-	hw->hw_addr = (void *)pci_dev->mem_resource.addr;
+	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 
 	/* Initialize the shared code */
 	diag = ixgbe_init_shared_code(hw);
@@ -687,7 +687,7 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
-	hw->hw_addr = (void *)pci_dev->mem_resource.addr;
+	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 
 	/* initialize the vfta */
 	memset(shadow_vfta, 0, sizeof(*shadow_vfta));

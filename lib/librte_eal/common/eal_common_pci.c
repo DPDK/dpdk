@@ -152,12 +152,19 @@ rte_eal_pci_probe(void)
 static int
 pci_dump_one_device(struct rte_pci_device *dev)
 {
+	int i;
+
 	printf(PCI_PRI_FMT, dev->addr.domain, dev->addr.bus,
 	       dev->addr.devid, dev->addr.function);
 	printf(" - vendor:%x device:%x\n", dev->id.vendor_id,
 	       dev->id.device_id);
-	printf("   %16.16"PRIx64" %16.16"PRIx64"\n",
-	       dev->mem_resource.phys_addr, dev->mem_resource.len);
+
+	for (i = 0; i != sizeof(dev->mem_resource) /
+		sizeof(dev->mem_resource[0]); i++) {
+		printf("   %16.16"PRIx64" %16.16"PRIx64"\n",
+			dev->mem_resource[i].phys_addr, 
+			dev->mem_resource[i].len);
+	}
 	return 0;
 }
 

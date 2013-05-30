@@ -258,6 +258,9 @@ igbuio_pci_setup_iomem(struct pci_dev *dev, struct uio_info *info,
 	unsigned long addr, len;
 	void *internal_addr;
 
+	if (sizeof(info->mem) / sizeof (info->mem[0]) <= n)  
+		return (EINVAL);
+
 	addr = pci_resource_start(dev, pci_bar);
 	len = pci_resource_len(dev, pci_bar);
 	if (addr == 0 || len == 0)
@@ -273,6 +276,29 @@ igbuio_pci_setup_iomem(struct pci_dev *dev, struct uio_info *info,
 	return 0;
 }
 
+/* Get pci port io resources described by bar #pci_bar in uio resource n. */
+static int
+igbuio_pci_setup_ioport(struct pci_dev *dev, struct uio_info *info,
+		int n, int pci_bar, const char *name)
+{
+	unsigned long addr, len;
+
+	if (sizeof(info->port) / sizeof (info->port[0]) <= n)  
+		return (EINVAL);
+
+	addr = pci_resource_start(dev, pci_bar);
+	len = pci_resource_len(dev, pci_bar);
+	if (addr == 0 || len == 0)
+		return (-1);
+
+	info->port[n].name = name;
+	info->port[n].start = addr;
+	info->port[n].size = len;
+	info->port[n].porttype = UIO_PORT_X86;
+
+	return (0);
+}
+
 /* Unmap previously ioremap'd resources */
 static void
 igbuio_pci_release_iomem(struct uio_info *info)
@@ -282,6 +308,44 @@ igbuio_pci_release_iomem(struct uio_info *info)
 		if (info->mem[i].internal_addr)
 			iounmap(info->mem[i].internal_addr);
 	}
+}
+
+static int
+igbuio_setup_bars(struct pci_dev *dev, struct uio_info *info)
+{
+	int i, iom, iop, ret;
+	unsigned long flags;
+	static const char *bar_names[PCI_STD_RESOURCE_END + 1]  = {
+		"BAR0",
+		"BAR1",
+		"BAR2",
+		"BAR3",
+		"BAR4",
+		"BAR5",
+	};
+
+	iom = 0;
+	iop = 0;
+
+	for (i = 0; i != sizeof(bar_names) / sizeof(bar_names[0]); i++) {
+		if (pci_resource_len(dev, i) != 0 &&
+				pci_resource_start(dev, i) != 0) {
+			flags = pci_resource_flags(dev, i);
+			if (flags & IORESOURCE_MEM) {
+				if ((ret = igbuio_pci_setup_iomem(dev, info,
+						iom, i, bar_names[i])) != 0)
+					return (ret);
+				iom++;
+			} else if (flags & IORESOURCE_IO) {
+				if ((ret = igbuio_pci_setup_ioport(dev, info,
+						iop, i, bar_names[i])) != 0)
+					return (ret);
+				iop++;
+			}
+		}
+	}
+
+	return ((iom != 0) ? ret : ENOENT);
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0)
@@ -306,13 +370,6 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		goto fail_free;
 	}
 
-	/* XXX should we use 64 bits ? */
-	/* set 32-bit DMA mask */
-	if (pci_set_dma_mask(dev,(uint64_t)0xffffffff)) {
-		printk(KERN_ERR "Cannot set DMA mask\n");
-		goto fail_disable;
-	}
-
 	/*
 	 * reserve device's PCI memory regions for use by this
 	 * module
@@ -326,8 +383,17 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	pci_set_master(dev);
 
 	/* remap IO memory */
-	if (igbuio_pci_setup_iomem(dev, &udev->info, 0, 0, "config"))
-		goto fail_release_regions;
+	if (igbuio_setup_bars(dev, &udev->info))
+		goto fail_release_iomem;
+
+	/* set 64-bit DMA mask */
+	if (pci_set_dma_mask(dev,  DMA_BIT_MASK(64))) {
+		printk(KERN_ERR "Cannot set DMA mask\n");
+		goto fail_release_iomem;
+	} else if (pci_set_consistent_dma_mask(dev, DMA_BIT_MASK(64))) {
+		printk(KERN_ERR "Cannot set consistent DMA mask\n");
+		goto fail_release_iomem;
+	}
 
 	/* fill uio infos */
 	udev->info.name = "Intel IGB UIO";
@@ -384,7 +450,6 @@ fail_release_iomem:
 	igbuio_pci_release_iomem(&udev->info);
 	if (udev->mode == IGBUIO_MSIX_INTR_MODE)
 		pci_disable_msix(udev->pdev);
-fail_release_regions:
 	pci_release_regions(dev);
 fail_disable:
 	pci_disable_device(dev);

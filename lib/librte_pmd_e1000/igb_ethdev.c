@@ -299,10 +299,9 @@ eth_igb_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		return 0;
 	}
 
-	hw->hw_addr= (void *)pci_dev->mem_resource.addr;
+	hw->hw_addr= (void *)pci_dev->mem_resource[0].addr;
 
 	igb_identify_hardware(eth_dev);
-
 	if (e1000_setup_init_funcs(hw, TRUE) != E1000_SUCCESS) {
 		error = -EIO;
 		goto err_late;
@@ -415,7 +414,7 @@ eth_igbvf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
-	hw->hw_addr = (void *)pci_dev->mem_resource.addr;
+	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 
 	/* Initialize the shared code */
 	diag = e1000_setup_init_funcs(hw, TRUE);

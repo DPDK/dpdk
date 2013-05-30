@@ -308,7 +308,7 @@ port_reg_off_is_invalid(portid_t port_id, uint32_t reg_off)
 		       (unsigned)reg_off);
 		return 1;
 	}
-	pci_len = ports[port_id].dev_info.pci_dev->mem_resource.len;
+	pci_len = ports[port_id].dev_info.pci_dev->mem_resource[0].len;
 	if (reg_off >= pci_len) {
 		printf("Port %d: register offset %u (0x%X) out of port PCI "
 		       "resource (length=%"PRIu64")\n",
