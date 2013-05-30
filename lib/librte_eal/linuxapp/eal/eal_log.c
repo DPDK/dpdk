@@ -119,7 +119,7 @@ static cookie_io_functions_t console_log_func = {
  * once memzones are available.
  */
 int
-rte_eal_log_init(void)
+rte_eal_log_init(const char *id, int facility)
 {
 	FILE *log_stream;
 
@@ -127,7 +127,7 @@ rte_eal_log_init(void)
 	if (log_stream == NULL)
 		return -1;
 
-	openlog("rte", LOG_NDELAY | LOG_PID, LOG_DAEMON);
+	openlog(id, LOG_NDELAY | LOG_PID, facility);
 
 	if (rte_eal_common_log_init(log_stream) < 0)
 		return -1;

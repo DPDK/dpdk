@@ -115,7 +115,7 @@ int rte_eal_log_early_init(void);
  * @return
  *   0 on success, negative on error
  */
-int rte_eal_log_init(void);
+int rte_eal_log_init(const char *id, int facility);
 
 /**
  * Init the default log stream

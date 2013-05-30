@@ -65,6 +65,7 @@ struct internal_config {
 	volatile unsigned no_hpet;        /* true to disable HPET */
 	volatile unsigned vmware_tsc_map; /* true to use VMware TSC mapping instead of native TSC */
 	volatile unsigned no_shconf;      /* true if there is no shared config */
+	volatile int syslog_facility;	  /* facility passed to openlog() */
 	volatile enum rte_proc_type_t process_type; /* multi-process proc type */
 	const char *hugefile_prefix;      /* the base filename of hugetlbfs files */
 	const char *hugepage_dir;         /* specific hugetlbfs directory to use */
