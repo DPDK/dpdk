@@ -404,9 +404,14 @@ void rte_timer_manage(void)
 	union rte_timer_status status;
 	struct rte_timer *tim, *tim2;
 	unsigned lcore_id = rte_lcore_id();
-	uint64_t cur_time = rte_get_hpet_cycles();
+	uint64_t cur_time;
 	int ret;
 
+	/* optimize for the case where per-cpu list is empty */
+	if (LIST_EMPTY(&priv_timer[lcore_id].pending))
+		return;
+
+	cur_time = rte_get_hpet_cycles();
 	__TIMER_STAT_ADD(manage, 1);
 
 	/* browse ordered list, add expired timers in 'expired' list */
