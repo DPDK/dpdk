@@ -40,6 +40,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <syslog.h>
 #include <getopt.h>
 #include <sys/file.h>
 #include <fcntl.h>
@@ -87,6 +88,7 @@
 #define OPT_NO_HUGE     "no-huge"
 #define OPT_FILE_PREFIX "file-prefix"
 #define OPT_SOCKET_MEM  "socket-mem"
+#define OPT_SYSLOG      "syslog"
 
 #define RTE_EAL_BLACKLIST_SIZE	0x100
 
@@ -338,6 +340,7 @@ eal_usage(const char *prgname)
 	       "  -r NUM       : force number of memory ranks (don't detect)\n"
 	       "  --"OPT_SOCKET_MEM" : memory to allocate on specific \n"
 		   "                 sockets (use comma separated values)\n"
+	       "  --"OPT_SYSLOG"     : set syslog facility\n"
 	       "  --"OPT_HUGE_DIR"   : directory where hugetlbfs is mounted\n"
 	       "  --"OPT_PROC_TYPE"  : type of this process\n"
 	       "  --"OPT_FILE_PREFIX": prefix for hugepage filenames\n"
@@ -494,6 +497,44 @@ eal_parse_blacklist_opt(const char *optarg, size_t idx)
 	return (idx);
 }
 
+static int
+eal_parse_syslog(const char *facility)
+{
+	int i;
+	static struct {
+		const char *name;
+		int value;
+	} map[] = {
+		{ "auth", LOG_AUTH },
+		{ "cron", LOG_CRON },
+		{ "daemon", LOG_DAEMON },
+		{ "ftp", LOG_FTP },
+		{ "kern", LOG_KERN },
+		{ "lpr", LOG_LPR },
+		{ "mail", LOG_MAIL },
+		{ "news", LOG_NEWS },
+		{ "syslog", LOG_SYSLOG },
+		{ "user", LOG_USER },
+		{ "uucp", LOG_UUCP },
+		{ "local0", LOG_LOCAL0 },
+		{ "local1", LOG_LOCAL1 },
+		{ "local2", LOG_LOCAL2 },
+		{ "local3", LOG_LOCAL3 },
+		{ "local4", LOG_LOCAL4 },
+		{ "local5", LOG_LOCAL5 },
+		{ "local6", LOG_LOCAL6 },
+		{ "local7", LOG_LOCAL7 },
+		{ NULL, 0 }
+	};
+
+	for (i = 0; map[i].name; i++) {
+		if (!strcmp(facility, map[i].name)) {
+			internal_config.syslog_facility = map[i].value;
+			return 0;
+		}
+	}
+	return -1;
+}
 
 /* Parse the argument given in the command line of the application */
 static int
@@ -514,6 +555,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_PROC_TYPE, 1, 0, 0},
 		{OPT_FILE_PREFIX, 1, 0, 0},
 		{OPT_SOCKET_MEM, 1, 0, 0},
+		{OPT_SYSLOG, 1, 0, 0},
 		{0, 0, 0, 0}
 	};
 	struct shared_driver *solib;
@@ -526,6 +568,7 @@ eal_parse_args(int argc, char **argv)
 	internal_config.hugefile_prefix = HUGEFILE_PREFIX_DEFAULT;
 	internal_config.hugepage_dir = NULL;
 	internal_config.force_sockets = 0;
+	internal_config.syslog_facility = LOG_DAEMON;
 #ifdef RTE_LIBEAL_USE_HPET
 	internal_config.no_hpet = 0;
 #else
@@ -636,6 +679,14 @@ eal_parse_args(int argc, char **argv)
 					return -1;
 				}
 			}
+			else if (!strcmp(lgopts[option_index].name, OPT_SYSLOG)) {
+				if (eal_parse_syslog(optarg) < 0) {
+					RTE_LOG(ERR, EAL, "invalid parameters for --"
+							OPT_SYSLOG "\n");
+					eal_usage(prgname);
+					return -1;
+				}
+			}
 			break;
 
 		default:
@@ -741,10 +792,14 @@ rte_eal_init(int argc, char **argv)
 	int i, fctret, ret;
 	pthread_t thread_id;
 	static rte_atomic32_t run_once = RTE_ATOMIC32_INIT(0);
+	const char *logid;
 	struct shared_driver *solib = NULL;
 
 	if (!rte_atomic32_test_and_set(&run_once))
 		return -1;
+
+	logid = strrchr(argv[0], '/');
+	logid = strdup(logid ? logid + 1: argv[0]);
 
 	thread_id = pthread_self();
 
@@ -786,7 +841,7 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_tailqs_init() < 0)
 		rte_panic("Cannot init tail queues for objects\n");
 
-	if (rte_eal_log_init() < 0)
+	if (rte_eal_log_init(logid, internal_config.syslog_facility) < 0)
 		rte_panic("Cannot init logs\n");
 
 	if (rte_eal_alarm_init() < 0)

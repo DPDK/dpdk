@@ -67,6 +67,7 @@ struct internal_config {
 	volatile unsigned no_pci;         /**< true to disable PCI */
 	volatile unsigned no_hpet;        /**< true to disable HPET */
 	volatile unsigned no_shconf;      /**< true if there is no shared config */
+	volatile int syslog_facility;	  /**< facility passed to openlog() */
 	volatile enum rte_proc_type_t process_type; /* multi-process proc type */
 	/* true to try allocating memory on specific sockets */
 	volatile unsigned force_sockets;
