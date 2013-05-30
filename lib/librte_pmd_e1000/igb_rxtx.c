@@ -1230,6 +1230,8 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->pthresh = tx_conf->tx_thresh.pthresh;
 	txq->hthresh = tx_conf->tx_thresh.hthresh;
 	txq->wthresh = tx_conf->tx_thresh.wthresh;
+	if (txq->wthresh > 0 && hw->mac.type == e1000_82576)
+		txq->wthresh = 1;
 	txq->queue_id = queue_idx;
 	txq->reg_idx = (uint16_t)((RTE_ETH_DEV_SRIOV(dev).active == 0) ?
 		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
@@ -1346,6 +1348,8 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->pthresh = rx_conf->rx_thresh.pthresh;
 	rxq->hthresh = rx_conf->rx_thresh.hthresh;
 	rxq->wthresh = rx_conf->rx_thresh.wthresh;
+	if (rxq->wthresh > 0 && hw->mac.type == e1000_82576)
+		rxq->wthresh = 1;
 	rxq->drop_en = rx_conf->rx_drop_en;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 	rxq->queue_id = queue_idx;
