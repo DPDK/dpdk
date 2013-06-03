@@ -85,6 +85,8 @@
 #define IXGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define IXGBE_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
 
+#define IXGBEVF_PMD_NAME "rte_ixgbevf_pmd" /* PMD name */
+
 #define IXGBE_QUEUE_STAT_COUNTERS (sizeof(hw_stats->qprc) / sizeof(hw_stats->qprc[0]))
 
 static int eth_ixgbe_dev_init(struct eth_driver *eth_drv,
@@ -116,10 +118,6 @@ static void ixgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev,
 static void ixgbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue,
 		int on);
 static void ixgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask);
-static void ixgbe_vlan_hw_filter_enable(struct rte_eth_dev *dev);
-static void ixgbe_vlan_hw_filter_disable(struct rte_eth_dev *dev);
-static void ixgbe_vlan_hw_strip_enable_all(struct rte_eth_dev *dev);
-static void ixgbe_vlan_hw_strip_disable_all(struct rte_eth_dev *dev);
 static void ixgbe_vlan_hw_strip_enable(struct rte_eth_dev *dev, uint16_t queue);
 static void ixgbe_vlan_hw_strip_disable(struct rte_eth_dev *dev, uint16_t queue);
 static void ixgbe_vlan_hw_extend_enable(struct rte_eth_dev *dev);
@@ -164,7 +162,6 @@ static void ixgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev,
 		uint16_t queue, int on);
 static void ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
-
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -360,6 +357,23 @@ ixgbe_is_sfp(struct ixgbe_hw *hw)
 	default:
 		return 0;
 	}
+}
+
+static inline int32_t
+ixgbe_pf_reset_hw(struct ixgbe_hw *hw)
+{
+	uint32_t ctrl_ext;
+	int32_t status;
+
+	status = ixgbe_reset_hw(hw);
+
+	ctrl_ext = IXGBE_READ_REG(hw, IXGBE_CTRL_EXT);
+	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
+	ctrl_ext |= IXGBE_CTRL_EXT_PFRSTD;
+	IXGBE_WRITE_REG(hw, IXGBE_CTRL_EXT, ctrl_ext);
+	IXGBE_WRITE_FLUSH(hw);
+
+	return status;
 }
 
 static inline void
@@ -665,10 +679,16 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	/* initialize the hw strip bitmap*/
 	memset(hwstrip, 0, sizeof(*hwstrip));
 
-	/* let hardware know driver is loaded */
+	/* initialize PF if max_vfs not zero */
+	ixgbe_pf_host_init(eth_dev);
+
 	ctrl_ext = IXGBE_READ_REG(hw, IXGBE_CTRL_EXT);
+	/* let hardware know driver is loaded */
 	ctrl_ext |= IXGBE_CTRL_EXT_DRV_LOAD;
+	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
+	ctrl_ext |= IXGBE_CTRL_EXT_PFRSTD;
 	IXGBE_WRITE_REG(hw, IXGBE_CTRL_EXT, ctrl_ext);
+	IXGBE_WRITE_FLUSH(hw);
 
 	if (ixgbe_is_sfp(hw) && hw->phy.sfp_type != ixgbe_sfp_type_not_present)
 		PMD_INIT_LOG(DEBUG,
@@ -740,8 +760,14 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	hw->mac.num_rar_entries = hw->mac.max_rx_queues;
 	diag = hw->mac.ops.reset_hw(hw);
+
 	if (diag != IXGBE_SUCCESS) {
 		PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", diag);
+			RTE_LOG(ERR, PMD, "\tThe MAC address is not valid.\n"
+					"\tThe most likely cause of this error is that the VM host\n"
+					"\thas not assigned a valid MAC address to this VF device.\n"
+					"\tPlease consult the DPDK Release Notes (FAQ section) for\n"
+					"\ta possible solution to this problem.\n");
 		return (diag);
 	}
 
@@ -754,6 +780,7 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 			ETHER_ADDR_LEN * hw->mac.num_rar_entries);
 		return -ENOMEM;
 	}
+
 	/* Copy the permanent MAC address */
 	ether_addr_copy((struct ether_addr *) hw->mac.perm_addr,
 			&eth_dev->data->mac_addrs[0]);
@@ -876,7 +903,7 @@ ixgbe_vlan_tpid_set(struct rte_eth_dev *dev, uint16_t tpid)
 	IXGBE_WRITE_REG(hw, IXGBE_EXVET, tpid << 16);
 }
 
-static void
+void
 ixgbe_vlan_hw_filter_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
@@ -892,7 +919,7 @@ ixgbe_vlan_hw_filter_disable(struct rte_eth_dev *dev)
 	IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlnctrl);
 }
 
-static void
+void
 ixgbe_vlan_hw_filter_enable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
@@ -979,7 +1006,7 @@ ixgbe_vlan_hw_strip_enable(struct rte_eth_dev *dev, uint16_t queue)
 	ixgbe_vlan_hw_strip_bitmap_set(dev, queue, 1);
 }
 
-static void
+void
 ixgbe_vlan_hw_strip_disable_all(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
@@ -1007,7 +1034,7 @@ ixgbe_vlan_hw_strip_disable_all(struct rte_eth_dev *dev)
 	}
 }
 
-static void
+void
 ixgbe_vlan_hw_strip_enable_all(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
@@ -1132,6 +1159,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	int err, link_up = 0, negotiate = 0;
 	uint32_t speed = 0;
 	int mask = 0;
+	int status;
 	
 	PMD_INIT_FUNC_TRACE();
 
@@ -1150,8 +1178,13 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 
 	/* reinitialize adapter
 	 * this calls reset and start */
-	ixgbe_init_hw(hw);
+	status = ixgbe_pf_reset_hw(hw);
+	if (status != 0)
+		return -1;
 	hw->mac.ops.start_hw(hw);
+
+	/* configure PF module if SRIOV enabled */
+	ixgbe_pf_host_configure(dev);
 
 	/* initialize transmission unit */
 	ixgbe_dev_tx_init(dev);
@@ -1257,7 +1290,7 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	ixgbe_disable_intr(hw);
 
 	/* reset the NIC */
-	ixgbe_reset_hw(hw);
+	ixgbe_pf_reset_hw(hw);
 	hw->adapter_stopped = FALSE;
 
 	/* stop adapter */
@@ -1285,8 +1318,7 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	ixgbe_reset_hw(hw);
-
+	ixgbe_pf_reset_hw(hw);
 
 	ixgbe_dev_stop(dev);
 	hw->adapter_stopped = 1;
@@ -1721,6 +1753,9 @@ ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 		intr->flags |= IXGBE_FLAG_NEED_LINK_UPDATE;
 	}
 
+	if (eicr & IXGBE_EICR_MAILBOX)
+		intr->flags |= IXGBE_FLAG_MAILBOX;
+
 	return 0;
 }
 
@@ -1779,6 +1814,11 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev)
 
 	PMD_DRV_LOG(DEBUG, "intr action type %d\n", intr->flags);
 
+	if (intr->flags & IXGBE_FLAG_MAILBOX) {
+		ixgbe_pf_mbx_process(dev);
+		intr->flags &= ~IXGBE_FLAG_MAILBOX;
+	} 
+
 	if (intr->flags & IXGBE_FLAG_NEED_LINK_UPDATE) {
 		/* get the link status before link update, for predicting later */
 		memset(&link, 0, sizeof(link));
@@ -1834,6 +1874,13 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t eicr;
+
+	eicr = IXGBE_READ_REG(hw, IXGBE_EICR);
+	if (eicr & IXGBE_EICR_MAILBOX)
+		ixgbe_pf_mbx_process(dev);
 
 	if (intr->flags & IXGBE_FLAG_NEED_LINK_UPDATE) {
 		ixgbe_dev_link_update(dev, 0);
@@ -1842,7 +1889,7 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
 	}
 
-	PMD_DRV_LOG(DEBUG, "enable intr in delayed handler\n");
+	PMD_DRV_LOG(DEBUG, "enable intr in delayed handler S[%08x]\n", eicr);
 	ixgbe_enable_intr(dev);
 	rte_intr_enable(&(dev->pci_dev->intr_handle));
 }

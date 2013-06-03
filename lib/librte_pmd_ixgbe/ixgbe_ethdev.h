@@ -40,6 +40,7 @@
 
 /* need update link, bit flag */
 #define IXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
+#define IXGBE_FLAG_MAILBOX          (uint32_t)(1 << 1)
 
 /*
  * Defines that were not part of ixgbe_type.h as they are not used by the
@@ -96,6 +97,22 @@ struct ixgbe_hwstrip {
 };
 
 /*
+ * VF data which used by PF host only
+ */
+#define IXGBE_MAX_VF_MC_ENTRIES		30
+struct ixgbe_vf_info {
+	uint8_t vf_mac_addresses[ETHER_ADDR_LEN];
+	uint16_t vf_mc_hashes[IXGBE_MAX_VF_MC_ENTRIES];
+	uint16_t num_vf_mc_hashes;
+	uint16_t default_vf_vlan_id;
+	uint16_t vlans_enabled;
+	bool clear_to_send;
+	uint16_t tx_rate;
+	uint16_t vlan_count;
+	uint8_t spoofchk_enabled;
+};
+
+/*
  * Structure to store private data for each driver instance (for each port).
  */
 struct ixgbe_adapter {
@@ -107,6 +124,7 @@ struct ixgbe_adapter {
 	struct ixgbe_vfta           shadow_vfta;
 	struct ixgbe_hwstrip		hwstrip;
 	struct ixgbe_dcb_config     dcb_config;
+	struct ixgbe_vf_info        *vfdata;
 };
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
@@ -132,6 +150,9 @@ struct ixgbe_adapter {
 
 #define IXGBE_DEV_PRIVATE_TO_DCB_CFG(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->dcb_config)
+
+#define IXGBE_DEV_PRIVATE_TO_P_VFDATA(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->vfdata)
 
 /*
  * RX/TX function prototypes
@@ -215,5 +236,23 @@ int ixgbe_fdir_set_masks(struct rte_eth_dev *dev,
 		struct rte_fdir_masks *fdir_masks);
 
 void ixgbe_configure_dcb(struct rte_eth_dev *dev);
+
+/*
+ * misc function prototypes
+ */
+void ixgbe_vlan_hw_filter_enable(struct rte_eth_dev *dev);
+
+void ixgbe_vlan_hw_filter_disable(struct rte_eth_dev *dev);
+
+void ixgbe_vlan_hw_strip_enable_all(struct rte_eth_dev *dev);
+
+void ixgbe_vlan_hw_strip_disable_all(struct rte_eth_dev *dev);
+
+void ixgbe_pf_host_init(struct rte_eth_dev *eth_dev);
+
+void ixgbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
+
+int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev);
+
 
 #endif /* _IXGBE_ETHDEV_H_ */
