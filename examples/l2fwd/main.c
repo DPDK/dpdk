@@ -583,6 +583,7 @@ MAIN(int argc, char **argv)
 	struct rte_eth_dev_info dev_info;
 	int ret;
 	uint8_t nb_ports;
+	uint8_t nb_ports_available;
 	uint8_t portid, last_port;
 	unsigned lcore_id, rx_lcore_id;
 	unsigned nb_ports_in_mask = 0;
@@ -648,7 +649,7 @@ MAIN(int argc, char **argv)
 
 		rte_eth_dev_info_get(portid, &dev_info);
 	}
-	if (nb_ports_in_mask < 2 || nb_ports_in_mask % 2) {
+	if (nb_ports_in_mask % 2) {
 		printf("Notice: odd number of ports in portmask.\n");
 		l2fwd_dst_ports[last_port] = last_port;
 	}
@@ -680,11 +681,14 @@ MAIN(int argc, char **argv)
 		printf("Lcore %u: RX port %u\n", rx_lcore_id, (unsigned) portid);
 	}
 
+	nb_ports_available = nb_ports;
+
 	/* Initialise each port */
 	for (portid = 0; portid < nb_ports; portid++) {
 		/* skip ports that are not enabled */
 		if ((l2fwd_enabled_port_mask & (1 << portid)) == 0) {
 			printf("Skipping disabled port %u\n", (unsigned) portid);
+			nb_ports_available--;
 			continue;
 		}
 		/* init port */
@@ -735,6 +739,11 @@ MAIN(int argc, char **argv)
 
 		/* initialize port stats */
 		memset(&port_statistics, 0, sizeof(port_statistics));
+	}
+
+	if (!nb_ports_available) {
+		rte_exit(EXIT_FAILURE,
+			"All available ports are disabled. Please set portmask.\n");
 	}
 
 	check_all_ports_link_status(nb_ports, l2fwd_enabled_port_mask);
