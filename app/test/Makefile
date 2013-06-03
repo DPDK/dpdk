@@ -53,6 +53,7 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_spinlock.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_memory.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_memzone.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_ring.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_ring_perf.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_rwlock.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_timer.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_mempool.c

@@ -50,10 +50,10 @@ DIR := $(shell basename $(RTE_OUTPUT))
 PHONY: test fast_test
 
 coverage: BLACKLIST=-Mempool_perf,Memcpy_perf,Hash_perf
-fast_test: BLACKLIST=-Ring,Mempool_perf,Memcpy_perf,Hash_perf,Lpm6
-ring_test: WHITELIST=Ring
+fast_test: BLACKLIST=-Ring_perf,Mempool_perf,Memcpy_perf,Hash_perf,Lpm6
+ring_test: WHITELIST=Ring,Ring_perf
 mempool_test: WHITELIST=Mempool,Mempool_perf
-perf_test:WHITELIST=Mempool_perf,Memcpy_perf,Hash_perf,Ring
+perf_test:WHITELIST=Mempool_perf,Memcpy_perf,Hash_perf,Ring_perf
 test fast_test ring_test mempool_test perf_test:
 	@mkdir -p $(AUTOTEST_DIR) ; \
 	cd $(AUTOTEST_DIR) ; \

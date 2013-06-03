@@ -236,6 +236,12 @@ parallel_test_group_list = [
 		 "Func" :	default_autotest,
 		 "Report" :	None,
 		},
+		{
+		 "Name" :	"Ring autotest",
+		 "Command" : 	"ring_autotest",
+		 "Func" :	default_autotest,
+		 "Report" :	None,
+		},
 	]
 },
 {
@@ -432,9 +438,9 @@ non_parallel_test_group_list = [
 	"Tests" :	
 	[
 		{
-		 "Name" :	"Ring autotest",
-		 "Command" : 	"ring_autotest",
-		 "Func" :	ring_autotest,
+		 "Name" :	"Ring performance autotest",
+		 "Command" : 	"ring_perf_autotest",
+		 "Func" :	default_autotest,
 		 "Report" :	None,
 		},
 	]

@@ -273,7 +273,7 @@ def timer_autotest(child, test_name):
 def ring_autotest(child, test_name):
 	child.sendline(test_name)
 	index = child.expect(["Test OK", "Test Failed",
-		pexpect.TIMEOUT], timeout = 1500)
+		pexpect.TIMEOUT], timeout = 15)
 	if index == 1:
 		return -1, "Fail"
 	elif index == 2:

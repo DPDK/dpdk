@@ -157,6 +157,8 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret |= test_cycles();
 	if (all || !strcmp(res->autotest, "ring_autotest"))
 		ret |= test_ring();
+	if (all || !strcmp(res->autotest, "ring_perf_autotest"))
+		ret |= test_ring_perf();
 	if (all || !strcmp(res->autotest, "timer_autotest"))
 		ret |= test_timer();
 	if (all || !strcmp(res->autotest, "mempool_autotest"))
@@ -211,6 +213,7 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"version_autotest#eal_fs_autotest#"
 			"cmdline_autotest#func_reentrancy_autotest#"
 			"mempool_perf_autotest#hash_perf_autotest#"
+			"memcpy_perf_autotest#ring_perf_autotest#"
 			"red_autotest#meter_autotest#sched_autotest#"
 			"memcpy_perf_autotest#kni_autotest#"
 			"pm_autotest#acl_autotest#power_autotest#"
