@@ -58,6 +58,7 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_string_fns.h>
+#include <rte_hexdump.h>
 
 /*
  * ctrlmbuf constructor, given as a callback function to
@@ -139,33 +140,6 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	m->pkt.in_port = 0xff;
 }
 
-static void
-rte_pktmbuf_hexdump(const void *buf, unsigned int len)
-{
-	unsigned int i, out, ofs;
-	const unsigned char *data = buf;
-#define LINE_LEN 80
-	char line[LINE_LEN];
-
-	printf("  dump data at 0x%p, len=%u\n", data, len);
-	ofs = 0;
-	while (ofs < len) {
-		out = rte_snprintf(line, LINE_LEN, "  %08X", ofs);
-		for (i = 0; ofs+i < len && i < 16; i++)
-			out += rte_snprintf(line+out, LINE_LEN - out, " %02X",
-					data[ofs+i]&0xff);
-		for (; i <= 16; i++)
-			out += rte_snprintf(line+out, LINE_LEN - out, "   ");
-		for (i = 0; ofs < len && i < 16; i++, ofs++) {
-			unsigned char c = data[ofs];
-			if (!isascii(c) || !isprint(c))
-				c = '.';
-			out += rte_snprintf(line+out, LINE_LEN - out, "%c", c);
-		}
-		printf("%s\n", line);
-	}
-}
-
 /* do some sanity checks on a mbuf: panic if it fails */
 void
 rte_mbuf_sanity_check(const struct rte_mbuf *m, enum rte_mbuf_type t,
@@ -243,7 +217,7 @@ rte_pktmbuf_dump(const struct rte_mbuf *m, unsigned dump_len)
 		if (len > m->pkt.data_len)
 			len = m->pkt.data_len;
 		if (len != 0)
-			rte_pktmbuf_hexdump(m->pkt.data, len);
+			rte_hexdump(NULL, m->pkt.data, len);
 		dump_len -= len;
 		m = m->pkt.next;
 		nb_segs --;

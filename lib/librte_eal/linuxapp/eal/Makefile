@@ -66,6 +66,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_memory.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_tailqs.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_errno.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_cpuflags.c
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_hexdump.c
 
 CFLAGS_eal.o := -D_GNU_SOURCE
 CFLAGS_eal_thread.o := -D_GNU_SOURCE

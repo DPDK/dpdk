@@ -58,6 +58,7 @@
 #include <rte_random.h>
 #include <rte_common.h>
 #include <rte_errno.h>
+#include <rte_hexdump.h>
 
 #include <cmdline_parse.h>
 
@@ -696,8 +697,8 @@ test_ring_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		test_hexdump("src", src, cur_src - src);
-		test_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump("src", src, cur_src - src);
+		rte_hexdump("dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -742,8 +743,8 @@ test_ring_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		test_hexdump("src", src, cur_src - src);
-		test_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump("src", src, cur_src - src);
+		rte_hexdump("dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -764,8 +765,8 @@ test_ring_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		test_hexdump("src", src, cur_src - src);
-		test_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump("src", src, cur_src - src);
+		rte_hexdump("dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -810,8 +811,8 @@ test_ring_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		test_hexdump("src", src, cur_src - src);
-		test_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump("src", src, cur_src - src);
+		rte_hexdump("dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -905,8 +906,8 @@ test_ring_burst_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		test_hexdump("src", src, cur_src - src);
-		test_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump("src", src, cur_src - src);
+		rte_hexdump("dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -971,8 +972,8 @@ test_ring_burst_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		test_hexdump("src", src, cur_src - src);
-		test_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump("src", src, cur_src - src);
+		rte_hexdump("dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -1020,8 +1021,8 @@ test_ring_burst_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		test_hexdump("src", src, cur_src - src);
-		test_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump("src", src, cur_src - src);
+		rte_hexdump("dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -1043,8 +1044,8 @@ test_ring_burst_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		test_hexdump("src", src, cur_src - src);
-		test_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump("src", src, cur_src - src);
+		rte_hexdump("dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -1093,8 +1094,8 @@ test_ring_burst_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		test_hexdump("src", src, cur_src - src);
-		test_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump("src", src, cur_src - src);
+		rte_hexdump("dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}

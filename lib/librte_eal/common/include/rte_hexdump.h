@@ -32,60 +32,53 @@
  * 
  */
 
-#ifndef _TEST_H_
-#define _TEST_H_
+#ifndef _RTE_HEXDUMP_H_
+#define _RTE_HEXDUMP_H_
 
-/* icc on baremetal gives us troubles with function named 'main' */
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define main _main
+/**
+ * @file
+ * Simple API to dump out memory in a special hex format.
+ */
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#define RECURSIVE_ENV_VAR "RTE_TEST_RECURSIVE"
+/**
+* Dump out memory in a special hex dump format.
+*
+* @param title
+* 		If not NULL this string is printed as a header to the output.
+* @param buf
+* 		This is the buffer address to print out.
+* @param len
+* 		The number of bytes to dump out
+* @return
+* 		None.
+*/
 
-extern const char *prgname;
+extern void
+rte_hexdump(const char * title, const void * buf, unsigned int len);
 
-extern cmdline_parse_ctx_t main_ctx[];
+/**
+* Dump out memory in a hex format with colons between bytes.
+*
+* @param title
+* 		If not NULL this string is printed as a header to the output.
+* @param buf
+* 		This is the buffer address to print out.
+* @param len
+* 		The number of bytes to dump out
+* @return
+* 		None.
+*/
 
-int main(int argc, char **argv);
+void
+rte_memdump(const char * title, const void * buf, unsigned int len);
 
-int test_pci(void);
-int test_memory(void);
-int test_per_lcore(void);
-int test_spinlock(void);
-int test_rwlock(void);
-int test_atomic(void);
-int test_byteorder(void);
-int test_prefetch(void);
-int test_cycles(void);
-int test_logs(void);
-int test_memzone(void);
-int test_ring(void);
-int test_mempool(void);
-int test_mempool_perf(void);
-int test_mbuf(void);
-int test_timer(void);
-int test_malloc(void);
-int test_memcpy(void);
-int test_memcpy_perf(void);
-int test_hash(void);
-int test_hash_perf(void);
-int test_lpm(void);
-int test_debug(void);
-int test_errno(void);
-int test_tailq(void);
-int test_string_fns(void);
-int test_mp_secondary(void);
-int test_cpuflags(void);
-int test_eal_flags(void);
-int test_alarm(void);
-int test_interrupt(void);
-int test_version(void);
-int test_eal_fs(void);
-int test_cmdline(void);
-int test_func_reentrancy(void);
-int test_pmac_pm(void);
-int test_pmac_acl(void);
 
-int test_pci_run;
-
+#ifdef __cplusplus
+}
 #endif
+
+#endif /* _RTE_HEXDUMP_H_ */
