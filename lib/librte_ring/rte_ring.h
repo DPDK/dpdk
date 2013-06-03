@@ -159,16 +159,23 @@ struct rte_ring {
 		uint32_t mask;           /**< Mask (size-1) of ring. */
 		volatile uint32_t head;  /**< Consumer head. */
 		volatile uint32_t tail;  /**< Consumer tail. */
+#ifdef RTE_RING_SPLIT_PROD_CONS
 	} cons __rte_cache_aligned;
-
+#else
+	} cons;
+#endif
 
 #ifdef RTE_LIBRTE_RING_DEBUG
 	struct rte_ring_debug_stats stats[RTE_MAX_LCORE];
 #endif
 
-	void * volatile ring[0] \
-			__rte_cache_aligned; /**< Memory space of ring starts here. */
+	void * ring[0] __rte_cache_aligned; /**< Memory space of ring starts here.
+	 	 	 	 	 	 	 	 	 	 * not volatile so need to be careful
+	 	 	 	 	 	 	 	 	 	 * about compiler re-ordering */
 };
+
+/* dummy assembly operation to prevent compiler re-ordering of instructions */
+#define COMPILER_BARRIER() do { asm volatile("" ::: "memory"); } while(0)
 
 #define RING_F_SP_ENQ 0x0001 /**< The default enqueue is "single-producer". */
 #define RING_F_SC_DEQ 0x0002 /**< The default dequeue is "single-consumer". */
@@ -261,6 +268,58 @@ int rte_ring_set_water_mark(struct rte_ring *r, unsigned count);
  */
 void rte_ring_dump(const struct rte_ring *r);
 
+/* the actual enqueue of pointers on the ring. 
+ * Placed here since identical code needed in both
+ * single and multi producer enqueue functions */
+#define ENQUEUE_PTRS() do { \
+	const uint32_t size = r->prod.size; \
+	uint32_t idx = prod_head & mask; \
+	if (likely(idx + n < size)) { \
+		for (i = 0; i < (n & ((~(unsigned)0x3))); i+=4, idx+=4) { \
+			r->ring[idx] = obj_table[i]; \
+			r->ring[idx+1] = obj_table[i+1]; \
+			r->ring[idx+2] = obj_table[i+2]; \
+			r->ring[idx+3] = obj_table[i+3]; \
+		} \
+		switch (n & 0x3) { \
+			case 3: r->ring[idx++] = obj_table[i++]; \
+			case 2: r->ring[idx++] = obj_table[i++]; \
+			case 1: r->ring[idx++] = obj_table[i++]; \
+		} \
+	} else { \
+		for (i = 0; idx < size; i++, idx++)\
+			r->ring[idx] = obj_table[i]; \
+		for (idx = 0; i < n; i++, idx++) \
+			r->ring[idx] = obj_table[i]; \
+	} \
+} while(0)
+
+/* the actual copy of pointers on the ring to obj_table. 
+ * Placed here since identical code needed in both
+ * single and multi consumer dequeue functions */
+#define DEQUEUE_PTRS() do { \
+	uint32_t idx = cons_head & mask; \
+	const uint32_t size = r->cons.size; \
+	if (likely(idx + n < size)) { \
+		for (i = 0; i < (n & (~(unsigned)0x3)); i+=4, idx+=4) {\
+			obj_table[i] = r->ring[idx]; \
+			obj_table[i+1] = r->ring[idx+1]; \
+			obj_table[i+2] = r->ring[idx+2]; \
+			obj_table[i+3] = r->ring[idx+3]; \
+		} \
+		switch (n & 0x3) { \
+			case 3: obj_table[i++] = r->ring[idx++]; \
+			case 2: obj_table[i++] = r->ring[idx++]; \
+			case 1: obj_table[i++] = r->ring[idx++]; \
+		} \
+	} else { \
+		for (i = 0; idx < size; i++, idx++) \
+			obj_table[i] = r->ring[idx]; \
+		for (idx = 0; i < n; i++, idx++) \
+			obj_table[i] = r->ring[idx]; \
+	} \
+} while (0)
+
 /**
  * @internal Enqueue several objects on the ring (multi-producers safe).
  *
@@ -286,7 +345,7 @@ void rte_ring_dump(const struct rte_ring *r);
  *   if behavior = RTE_RING_QUEUE_VARIABLE
  *   - n: Actual number of objects enqueued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 			 unsigned n, enum rte_ring_queue_behavior behavior)
 {
@@ -334,9 +393,8 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	} while (unlikely(success == 0));
 
 	/* write entries in ring */
-	for (i = 0; likely(i < n); i++)
-		r->ring[(prod_head + i) & mask] = obj_table[i];
-	rte_wmb();
+	ENQUEUE_PTRS();
+	COMPILER_BARRIER();
 
 	/* if we exceed the watermark */
 	if (unlikely(((mask + 1) - free_entries + n) > r->prod.watermark)) {
@@ -382,7 +440,7 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
  *   if behavior = RTE_RING_QUEUE_VARIABLE
  *   - n: Actual number of objects enqueued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 			 unsigned n, enum rte_ring_queue_behavior behavior)
 {
@@ -421,9 +479,8 @@ __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	r->prod.head = prod_next;
 
 	/* write entries in ring */
-	for (i = 0; likely(i < n); i++)
-		r->ring[(prod_head + i) & mask] = obj_table[i];
-	rte_wmb();
+	ENQUEUE_PTRS();
+	COMPILER_BARRIER();
 
 	/* if we exceed the watermark */
 	if (unlikely(((mask + 1) - free_entries + n) > r->prod.watermark)) {
@@ -467,7 +524,7 @@ __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
  *   - n: Actual number of objects dequeued.
  */
 
-static inline int
+static inline int __attribute__((always_inline))
 __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 		 unsigned n, enum rte_ring_queue_behavior behavior)
 {
@@ -492,7 +549,7 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 		entries = (prod_tail - cons_head);
 
 		/* Set the actual entries for dequeue */
-		if (unlikely(n > entries)) {
+		if (n > entries) {
 			if (behavior == RTE_RING_QUEUE_FIXED) {
 				__RING_STAT_ADD(r, deq_fail, n);
 				return -ENOENT;
@@ -513,10 +570,8 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 	} while (unlikely(success == 0));
 
 	/* copy in table */
-	rte_rmb();
-	for (i = 0; likely(i < n); i++) {
-		obj_table[i] = r->ring[(cons_head + i) & mask];
-	}
+	DEQUEUE_PTRS();
+	COMPILER_BARRIER();
 
 	/*
 	 * If there are other dequeues in progress that preceded us,
@@ -554,7 +609,7 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
  *   if behavior = RTE_RING_QUEUE_VARIABLE
  *   - n: Actual number of objects dequeued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 		 unsigned n, enum rte_ring_queue_behavior behavior)
 {
@@ -571,7 +626,7 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 	 * and size(ring)-1. */
 	entries = prod_tail - cons_head;
 
-	if (unlikely(n > entries)) {
+	if (n > entries) {
 		if (behavior == RTE_RING_QUEUE_FIXED) {
 			__RING_STAT_ADD(r, deq_fail, n);
 			return -ENOENT;
@@ -590,10 +645,8 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 	r->cons.head = cons_next;
 
 	/* copy in table */
-	rte_rmb();
-	for (i = 0; likely(i < n); i++) {
-		obj_table[i] = r->ring[(cons_head + i) & mask];
-	}
+	DEQUEUE_PTRS();
+	COMPILER_BARRIER();
 
 	__RING_STAT_ADD(r, deq_success, n);
 	r->cons.tail = cons_next;
@@ -618,7 +671,7 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
  *     high water mark is exceeded.
  *   - -ENOBUFS: Not enough room in the ring to enqueue, no object is enqueued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_mp_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
 			 unsigned n)
 {
@@ -640,7 +693,7 @@ rte_ring_mp_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
  *     high water mark is exceeded.
  *   - -ENOBUFS: Not enough room in the ring to enqueue; no object is enqueued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_sp_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
 			 unsigned n)
 {
@@ -666,7 +719,7 @@ rte_ring_sp_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
  *     high water mark is exceeded.
  *   - -ENOBUFS: Not enough room in the ring to enqueue; no object is enqueued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
 		      unsigned n)
 {
@@ -692,7 +745,7 @@ rte_ring_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
  *     high water mark is exceeded.
  *   - -ENOBUFS: Not enough room in the ring to enqueue; no object is enqueued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_mp_enqueue(struct rte_ring *r, void *obj)
 {
 	return rte_ring_mp_enqueue_bulk(r, &obj, 1);
@@ -711,7 +764,7 @@ rte_ring_mp_enqueue(struct rte_ring *r, void *obj)
  *     high water mark is exceeded.
  *   - -ENOBUFS: Not enough room in the ring to enqueue; no object is enqueued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_sp_enqueue(struct rte_ring *r, void *obj)
 {
 	return rte_ring_sp_enqueue_bulk(r, &obj, 1);
@@ -734,7 +787,7 @@ rte_ring_sp_enqueue(struct rte_ring *r, void *obj)
  *     high water mark is exceeded.
  *   - -ENOBUFS: Not enough room in the ring to enqueue; no object is enqueued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_enqueue(struct rte_ring *r, void *obj)
 {
 	if (r->prod.sp_enqueue)
@@ -760,7 +813,7 @@ rte_ring_enqueue(struct rte_ring *r, void *obj)
  *   - -ENOENT: Not enough entries in the ring to dequeue; no object is
  *     dequeued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_mc_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	return __rte_ring_mc_do_dequeue(r, obj_table, n, RTE_RING_QUEUE_FIXED);
@@ -781,7 +834,7 @@ rte_ring_mc_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned n)
  *   - -ENOENT: Not enough entries in the ring to dequeue; no object is
  *     dequeued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_sc_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	return __rte_ring_sc_do_dequeue(r, obj_table, n, RTE_RING_QUEUE_FIXED);
@@ -805,7 +858,7 @@ rte_ring_sc_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned n)
  *   - -ENOENT: Not enough entries in the ring to dequeue, no object is
  *     dequeued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	if (r->cons.sc_dequeue)
@@ -829,7 +882,7 @@ rte_ring_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned n)
  *   - -ENOENT: Not enough entries in the ring to dequeue; no object is
  *     dequeued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_mc_dequeue(struct rte_ring *r, void **obj_p)
 {
 	return rte_ring_mc_dequeue_bulk(r, obj_p, 1);
@@ -847,7 +900,7 @@ rte_ring_mc_dequeue(struct rte_ring *r, void **obj_p)
  *   - -ENOENT: Not enough entries in the ring to dequeue, no object is
  *     dequeued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_sc_dequeue(struct rte_ring *r, void **obj_p)
 {
 	return rte_ring_sc_dequeue_bulk(r, obj_p, 1);
@@ -869,7 +922,7 @@ rte_ring_sc_dequeue(struct rte_ring *r, void **obj_p)
  *   - -ENOENT: Not enough entries in the ring to dequeue, no object is
  *     dequeued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_dequeue(struct rte_ring *r, void **obj_p)
 {
 	if (r->cons.sc_dequeue)
@@ -976,7 +1029,7 @@ struct rte_ring *rte_ring_lookup(const char *name);
  * @return
  *   - n: Actual number of objects enqueued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_mp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned n)
 {
@@ -995,7 +1048,7 @@ rte_ring_mp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects enqueued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_sp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned n)
 {
@@ -1018,7 +1071,7 @@ rte_ring_sp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects enqueued.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 		      unsigned n)
 {
@@ -1045,7 +1098,7 @@ rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects dequeued, 0 if ring is empty
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_mc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	return __rte_ring_mc_do_dequeue(r, obj_table, n, RTE_RING_QUEUE_VARIABLE);
@@ -1065,7 +1118,7 @@ rte_ring_mc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
  * @return
  *   - n: Actual number of objects dequeued, 0 if ring is empty
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_sc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	return __rte_ring_sc_do_dequeue(r, obj_table, n, RTE_RING_QUEUE_VARIABLE);
@@ -1087,7 +1140,7 @@ rte_ring_sc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
  * @return
  *   - Number of objects dequeued, or a negative error code on error
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_ring_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	if (r->cons.sc_dequeue)

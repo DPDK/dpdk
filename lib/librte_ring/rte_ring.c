@@ -110,8 +110,10 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_ring) &
 			  CACHE_LINE_MASK) != 0);
+#ifdef RTE_RING_SPLIT_PROD_CONS
 	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, cons) &
 			  CACHE_LINE_MASK) != 0);
+#endif
 	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, prod) &
 			  CACHE_LINE_MASK) != 0);
 #ifdef RTE_LIBRTE_RING_DEBUG
