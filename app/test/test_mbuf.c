@@ -458,7 +458,59 @@ test_pktmbuf_pool(void)
 	return ret;
 }
 
+/*
+ * test that the pointer to the data on a packet mbuf is set properly
+ */
+static int
+test_pktmbuf_pool_ptr(void)
+{
+	unsigned i;
+	struct rte_mbuf *m[NB_MBUF];
+	int ret = 0;
+		
+	for (i=0; i<NB_MBUF; i++)
+		m[i] = NULL;
 
+	/* alloc NB_MBUF mbufs */
+	for (i=0; i<NB_MBUF; i++) {
+		m[i] = rte_pktmbuf_alloc(pktmbuf_pool);
+		if (m[i] == NULL) {
+			printf("rte_pktmbuf_alloc() failed (%u)\n", i);
+			ret = -1;
+		}
+		m[i]->pkt.data = RTE_PTR_ADD(m[i]->pkt.data, 64);
+	}
+
+	/* free them */
+	for (i=0; i<NB_MBUF; i++) {
+		if (m[i] != NULL)
+			rte_pktmbuf_free(m[i]);
+	}
+	
+	for (i=0; i<NB_MBUF; i++)
+		m[i] = NULL;
+		
+	/* alloc NB_MBUF mbufs */
+	for (i=0; i<NB_MBUF; i++) {
+		m[i] = rte_pktmbuf_alloc(pktmbuf_pool);
+		if (m[i] == NULL) {
+			printf("rte_pktmbuf_alloc() failed (%u)\n", i);
+			ret = -1;
+		}
+		if (m[i]->pkt.data != RTE_PTR_ADD(m[i]->buf_addr, RTE_PKTMBUF_HEADROOM)) {
+			printf ("pkt.data pointer not set properly\n");
+			ret = -1;
+		}
+	}
+
+	/* free them */
+	for (i=0; i<NB_MBUF; i++) {
+		if (m[i] != NULL)
+			rte_pktmbuf_free(m[i]);
+	}
+
+	return ret;
+}
 
 static int
 test_pktmbuf_free_segment(void)
@@ -810,6 +862,12 @@ test_mbuf(void)
 	/* do it another time to check that all mbufs were freed */
 	if (test_pktmbuf_pool() < 0) {
 		printf("test_mbuf_pool() failed (2)\n");
+		return -1;
+	}
+	
+	/* test that the pointer to the data on a packet mbuf is set properly */
+	if (test_pktmbuf_pool_ptr() < 0) {
+		printf("test_pktmbuf_pool_ptr() failed\n");
 		return -1;
 	}
 
