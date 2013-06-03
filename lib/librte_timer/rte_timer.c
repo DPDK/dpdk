@@ -387,7 +387,8 @@ rte_timer_stop(struct rte_timer *tim)
 void
 rte_timer_stop_sync(struct rte_timer *tim)
 {
-	while (rte_timer_stop(tim) != 0);
+	while (rte_timer_stop(tim) != 0)
+		rte_pause();
 }
 
 /* Test the PENDING status of the timer handle tim */
