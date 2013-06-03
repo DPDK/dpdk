@@ -318,7 +318,8 @@ static inline uint8_t
 get_output_port(uint8_t input_port)
 {
 	RTE_BUILD_BUG_ON((RTE_MAX_ETHPORTS & 1) != 0);
-	return (uint8_t)(input_port ^ 1);
+	/* Simple scheme to map consecutive ports. */
+        return (uint8_t)(input_port ^ 1);
 }
 
 /* main processing loop */
