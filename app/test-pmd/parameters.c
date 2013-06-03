@@ -83,92 +83,93 @@ usage(char* progname)
 	printf("usage: %s [--interactive|-i] [--help|-h] | ["
 	       "--coremask=COREMASK --portmask=PORTMASK --numa "
 	       "--mbuf-size= | --total-num-mbufs= | "
+	       "--nb-cores= | --nb-ports= | "
 	       "--eth-peers-configfile= | "
-	       "--eth-peer=X,M:M:M:M:M:M | --nb-cores= | --nb-ports= | "
+	       "--eth-peer=X,M:M:M:M:M:M | "
 	       "--pkt-filter-mode= |"
 	       "--rss-ip | --rss-udp | "
 	       "--rxpt= | --rxht= | --rxwt= | --rxfreet= | "
 	       "--txpt= | --txht= | --txwt= | --txfreet= | "
 	       "--txrst= | --txqflags= ]\n",
 	       progname);
-	printf("  --interactive: run in interactive mode\n");
-	printf("  --help:   display this message and quit\n");
-	printf("  --eth-peers-configfile=name of file with ethernet addresses "
-	       "of peer ports\n");
-	printf("  --eth-peer=X,M:M:M:M:M:M set the mac address of the X peer "
-	       "port (0 <= X < %d)\n", RTE_MAX_ETHPORTS);
-	printf("  --nb-cores=N set the number of forwarding cores"
-	       " (1 <= N <= %d)\n", nb_lcores);
-	printf("  --nb-ports=N set the number of forwarding ports"
-	       " (1 <= N <= %d)\n", nb_ports);
+	printf("  --interactive: run in interactive mode.\n");
+	printf("  --help: display this message and quit.\n");
+	printf("  --nb-cores=N: set the number of forwarding cores "
+	       "(1 <= N <= %d).\n", nb_lcores);
+	printf("  --nb-ports=N: set the number of forwarding ports "
+	       "(1 <= N <= %d).\n", nb_ports);
 	printf("  --coremask=COREMASK: hexadecimal bitmask of cores running "
 	       "the packet forwarding test. The master lcore is reserved for "
-	       "command line parsing only, and can not be masked on for running"
-	       "the packet forwarding\n");
+	       "command line parsing only, and cannot be masked on for "
+	       "packet forwarding.\n");
 	printf("  --portmask=PORTMASK: hexadecimal bitmask of ports used "
-	       "by the packet forwarding test\n");
+	       "by the packet forwarding test.\n");
 	printf("  --numa: enable NUMA-aware allocation of RX/TX rings and of "
-	       " RX memory buffers (mbufs)\n");
-	printf("  --mbuf-size=N set the data size of mbuf to N bytes\n");
-	printf("  --total-num-mbufs=N set the number of mbufs to be allocated "
-	       "in mbuf pools\n");
-	printf("  --max-pkt-len=N set the maximum size of packet to N bytes\n");
-	printf("  --pkt-filter-mode=N: set Flow director mode "
-	       "( N: none (default mode) or signature or perfect)\n");
-	printf("  --pkt-filter-report-hash=N: set Flow director report mode "
-	       "( N: none  or match (default) or always)\n");
-	printf("  --pkt-filter-size=N: set Flow director mode "
-	       "( N: 64K (default mode) or 128K or 256K)\n");
-	printf("  --pkt-filter-flexbytes-offset=N: set flexbytes-offset."
-	       " The offset is defined in word units counted from the"
-	       " first byte of the destination Ethernet MAC address."
-	       " 0 <= N <= 32\n");
-	printf("  --pkt-filter-drop-queue=N: set drop-queue."
-	       " In perfect mode, when you add a rule with queue -1"
-	       " the packet will be enqueued into the rx drop-queue."
-	       " If the drop-queue doesn't exist, the packet is dropped."
-	       " By default drop-queue=127\n");
-	printf("  --crc-strip: enable CRC stripping by hardware\n");
-	printf("  --enable-rx-cksum: enable rx hardware checksum offload\n");
-	printf("  --disable-hw-vlan: disable hardware vlan\n");
-	printf("  --enable-drop-en: enable per queue packet drop\n");
-	printf("  --disable-rss: disable rss\n");
+	       "RX memory buffers (mbufs).\n");
+	printf("  --mbuf-size=N: set the data size of mbuf to N bytes.\n");
+	printf("  --total-num-mbufs=N: set the number of mbufs to be allocated "
+	       "in mbuf pools.\n");
+	printf("  --max-pkt-len=N: set the maximum size of packet to N bytes.\n");
+	printf("  --eth-peers-configfile=name: config file with ethernet addresses "
+	       "of peer ports.\n");
+	printf("  --eth-peer=X,M:M:M:M:M:M: set the MAC address of the X peer "
+	       "port (0 <= X < %d).\n", RTE_MAX_ETHPORTS);
+	printf("  --pkt-filter-mode=N: set Flow Director mode "
+	       "(N: none (default mode) or signature or perfect).\n");
+	printf("  --pkt-filter-report-hash=N: set Flow Director report mode "
+	       "(N: none  or match (default) or always).\n");
+	printf("  --pkt-filter-size=N: set Flow Director mode "
+	       "(N: 64K (default mode) or 128K or 256K).\n");
+	printf("  --pkt-filter-flexbytes-offset=N: set flexbytes-offset. "
+	       "The offset is defined in word units counted from the "
+	       "first byte of the destination Ethernet MAC address. "
+	       "0 <= N <= 32.\n");
+	printf("  --pkt-filter-drop-queue=N: set drop-queue. "
+	       "In perfect mode, when you add a rule with queue = -1 "
+	       "the packet will be enqueued into the rx drop-queue. "
+	       "If the drop-queue doesn't exist, the packet is dropped. "
+	       "By default drop-queue=127.\n");
+	printf("  --crc-strip: enable CRC stripping by hardware.\n");
+	printf("  --enable-rx-cksum: enable rx hardware checksum offload.\n");
+	printf("  --disable-hw-vlan: disable hardware vlan.\n");
+	printf("  --enable-drop-en: enable per queue packet drop.\n");
+	printf("  --disable-rss: disable rss.\n");
 	printf("  --port-topology=N: set port topology (N: paired (default) or "
-	       "chained)\n");
-	printf("  --rss-ip:  set RSS functions to IPv4/IPv6 only \n");
-	printf("  --rss-udp: set RSS functions to IPv4/IPv6 + UDP\n");
-	printf("  --rxq=N    set the number of RX queues per port to N\n");
-	printf("  --rxd=N    set the number of descriptors in RX rings to N\n");
-	printf("  --txq=N    set the number of TX queues per port to N\n");
-	printf("  --txd=N    set the number of descriptors in TX rings to N\n");
-	printf("  --burst=N  set the number of packets per burst to N\n");
-	printf("  --mbcache=N  set the cache of mbuf memory pool to N\n");
-	printf("  --rxpt=N   set prefetch threshold register of RX rings to N"
-	       " (0 <= N <= 16)\n");
-	printf("  --rxht=N  set the host threshold register of RX rings to N"
-	       " (0 <= N <= 16)\n");
-	printf("  --rxfreet=N set the free threshold of RX descriptors to N"
-	       " (0 <= N < value of rxd)\n");
-	printf("  --rxwt=N  set the write-back threshold register of RX rings"
-	       " to N (0 <= N <= 16)\n");
-	printf("  --txpt=N  set the prefetch threshold register of TX rings"
-	       " to N (0 <= N <= 16)\n");
-	printf("  --txht=N  set the nhost threshold register of TX rings to N"
-	       " (0 <= N <= 16)\n");
-	printf("  --txwt=N  set the write-back threshold register of TX rings"
-	       " to N (0 <= N <= 16)\n");
-	printf("  --txfreet=N set the transmit free threshold of TX rings to N"
-	       " (0 <= N <= value of txd)\n");
-	printf("  --txrst=N set the transmit RS bit threshold of TX rings to N"
-	       " (0 <= N <= value of txd)\n");
-	printf("  --txqflags=0xXXXXXXXX hexidecimal bitmask of TX queue flags"
-	       " (0 <= N <= 0x7FFFFFFF)\n");
-	printf("  --tx-queue-stats-mapping (port,queue,mapping)[,(port,queue,mapping]:"
-	       " tx queues statistics counters mapping"
-	       " (0 <= mapping <= %d)\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
-	printf("  --rx-queue-stats-mapping (port,queue,mapping)[,(port,queue,mapping]:"
-	       " rx queues statistics counters mapping"
-	       " (0 <= mapping <= %d)\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
+	       "chained).\n");
+	printf("  --rss-ip: set RSS functions to IPv4/IPv6 only .\n");
+	printf("  --rss-udp: set RSS functions to IPv4/IPv6 + UDP.\n");
+	printf("  --rxq=N: set the number of RX queues per port to N.\n");
+	printf("  --rxd=N: set the number of descriptors in RX rings to N.\n");
+	printf("  --txq=N: set the number of TX queues per port to N.\n");
+	printf("  --txd=N: set the number of descriptors in TX rings to N.\n");
+	printf("  --burst=N: set the number of packets per burst to N.\n");
+	printf("  --mbcache=N: set the cache of mbuf memory pool to N.\n");
+	printf("  --rxpt=N: set prefetch threshold register of RX rings to N "
+	       "(0 <= N <= 16).\n");
+	printf("  --rxht=N: set the host threshold register of RX rings to N "
+	       "(0 <= N <= 16).\n");
+	printf("  --rxfreet=N: set the free threshold of RX descriptors to N "
+	       "(0 <= N < value of rxd).\n");
+	printf("  --rxwt=N: set the write-back threshold register of RX rings "
+	       "to N (0 <= N <= 16).\n");
+	printf("  --txpt=N: set the prefetch threshold register of TX rings "
+	       "to N (0 <= N <= 16).\n");
+	printf("  --txht=N: set the nhost threshold register of TX rings to N "
+	       "(0 <= N <= 16).\n");
+	printf("  --txwt=N: set the write-back threshold register of TX rings "
+	       "to N (0 <= N <= 16).\n");
+	printf("  --txfreet=N: set the transmit free threshold of TX rings to N "
+	       "(0 <= N <= value of txd).\n");
+	printf("  --txrst=N: set the transmit RS bit threshold of TX rings to N "
+	       "(0 <= N <= value of txd).\n");
+	printf("  --txqflags=0xXXXXXXXX: hexadecimal bitmask of TX queue flags "
+	       "(0 <= N <= 0x7FFFFFFF).\n");
+	printf("  --tx-queue-stats-mapping=(port,queue,mapping)[,(port,queue,mapping]: "
+	       "tx queues statistics counters mapping "
+	       "(0 <= mapping <= %d).\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
+	printf("  --rx-queue-stats-mapping=(port,queue,mapping)[,(port,queue,mapping]: "
+	       "rx queues statistics counters mapping "
+	       "(0 <= mapping <= %d).\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
 }
 
 static int
@@ -180,7 +181,7 @@ init_peer_eth_addrs(char *config_filename)
 
 	config_file = fopen(config_filename, "r");
 	if (config_file == NULL) {
-		perror("open log file failed\n");
+		perror("Failed to open eth config file\n");
 		return -1;
 	}
 
@@ -190,7 +191,7 @@ init_peer_eth_addrs(char *config_filename)
 			break;
 
 		if (cmdline_parse_etheraddr(NULL, buf, &peer_eth_addrs[i]) < 0 ){
-			printf("bad format of mac address on line %d\n", i);
+			printf("Bad MAC address format on line %d\n", i+1);
 			fclose(config_file);
 			return -1;
 		}
@@ -339,7 +340,7 @@ launch_args_parse(int argc, char** argv)
 		{ "portmask",			1, 0, 0 },
 		{ "numa",			0, 0, 0 },
 		{ "mbuf-size",			1, 0, 0 },
-		{ "total-num-mbufs",			1, 0, 0 },
+		{ "total-num-mbufs",		1, 0, 0 },
 		{ "max-pkt-len",		1, 0, 0 },
 		{ "pkt-filter-mode",            1, 0, 0 },
 		{ "pkt-filter-report-hash",     1, 0, 0 },

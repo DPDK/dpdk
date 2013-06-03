@@ -83,200 +83,395 @@
 
 static void cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue);
 
-/* *** HELP *** */
-struct cmd_help_result {
+/* *** Help command with introduction. *** */
+struct cmd_help_brief_result {
 	cmdline_fixed_string_t help;
 };
 
-static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
-			    struct cmdline *cl,
-			    __attribute__((unused)) void *data)
+static void cmd_help_brief_parsed(__attribute__((unused)) void *parsed_result,
+                                  struct cmdline *cl,
+                                  __attribute__((unused)) void *data)
 {
-	cmdline_printf(cl,
-		       "\n"
-		       "TEST PMD\n"
-		       "--------\n"
-		       "\n"
-		       "This commandline can be used to configure forwarding\n"
-		       "\n");
-	cmdline_printf(cl,
-		       "Display informations:\n"
-		       "---------------------\n"
-		       "- show port info|stats|fdir|stat_qmap X|all\n"
-		       "    Diplays information or stats or stats queue mapping on port X, or all\n"
-		       "- clear port stats X|all\n"
-		       "    Clear stats for port X, or all\n"
-		       "- show config rxtx|cores|fwd\n"
-		       "    Displays the given configuration\n"
-		       "- read reg port_id reg_off\n"
-		       "    Displays value of a port register\n"
-		       "- read regfield port_id reg_off bit_x bit_y\n"
-		       "    Displays value of a port register bit field\n"
-		       "- read regbit port_id reg_off bit_x\n"
-		       "    Displays value of a port register bit\n"
-		       "- read rxd port_id queue_id rxd_id\n"
-		       "    Displays a RX descriptor of a port RX queue\n"
-		       "- read txd port_id queue_id txd_id\n"
-		       "    Displays a TX descriptor of a port TX queue\n"
-		       "\n");
-	cmdline_printf(cl,
-		       "Configure:\n"
-		       "----------\n"
-		       "Modifications are taken into account once "
-		       "forwarding is restarted.\n"
-		       "- set default\n"
-		       "    Set forwarding to default configuration\n"
-		       "- set nbport|nbcore|burst|verbose X\n"
-		       "    Set number of ports, number of cores, number "
-		       "of packets per burst,\n    or verbose level to X\n"
-		       "- set txpkts x[,y]*\n"
-		       "    Set the length of each segment of TXONLY packets\n"
-		       "- set coremask|portmask X\n"
-		       "    Set the hexadecimal mask of forwarding cores / "
-		       "forwarding ports\n"
-		       "- set corelist|portlist x[,y]*\n"
-		       "    Set the list of forwarding cores / forwarding "
-		       "ports\n"
-		       "- vlan set strip|filter|qinq on/off port_id\n"
-		       "    Set the VLAN strip, filter, QinQ(extended) on a port"
-		       "- rx_vlan add/rm vlan_id|all port_id\n"
-		       "    Set the VLAN filter table, add/remove vlan_id, or all "
-		       "identifiers, to/from the set of VLAN Identifiers\n"
-		       "filtered by port_id\n"
-		       "- rx_vlan set tpid value port_id\n"
-		       "    Set Outer VLAN TPID for Packet Filtering on a port \n"
-		       "- tx_vlan set vlan_id port_id\n"
-		       "    Set hardware insertion of VLAN ID in packets sent on a port\n"
-		       "- tx_vlan reset port_id\n"
-		       "    Disable hardware insertion of a VLAN header in "
-		       "packets sent on port_id\n"
-		       "- tx_checksum set mask port_id\n"
-		       "    Enable hardware insertion of checksum offload with "
-		       "the 4-bit mask (0~0xf)\n    in packets sent on port_id\n"
-		       "    Please check the NIC datasheet for HW limits\n"
-		       "      bit 0 - insert ip checksum offload if set \n"
-		       "      bit 1 - insert udp checksum offload if set \n"
-		       "      bit 2 - insert tcp checksum offload if set\n"
-		       "      bit 3 - insert sctp checksum offload if set\n"
-#ifdef RTE_LIBRTE_IEEE1588
-		       "- set fwd io|mac|rxonly|txonly|csum|ieee1588\n"
-		       "    Set IO, MAC, RXONLY, TXONLY, CSUM or IEEE1588 "
-		       "packet forwarding mode\n"
-#else
-		       "- set fwd io|mac|rxonly|txonly|csum\n"
-		       "    Set IO, MAC, RXONLY, CSUM or TXONLY packet "
-		       "forwarding mode\n"
-#endif
-		       "- mac_addr add|remove X <xx:xx:xx:xx:xx:xx>\n"
-		       "    Add/Remove the MAC address <xx:xx:xx:xx:xx:xx> on port X\n"
-		       "- set promisc|allmulti [all|X] on|off\n"
-		       "    Set/unset promisc|allmulti mode on port X, or all\n"
-		       "- set flow_ctrl rx on|off tx on|off high_water low_water "
-						"pause_time send_xon port_id \n"
-		       "    Set the link flow control parameter on the port \n"
-		       "- set pfc_ctrl rx on|off tx on|off high_water low_water "
-						"pause_time priority port_id \n"
-		       "    Set the priority flow control parameter on the port \n"
-		       "- write reg port_id reg_off value\n"
-		       "    Set value of a port register\n"
-		       "- write regfield port_id reg_off bit_x bit_y value\n"
-		       "    Set bit field value of a port register\n"
-		       "- write regbit port_id reg_off bit_x value\n"
-		       "    Set bit value of a port register\n"
-		       "- set stat_qmap tx|rx port_id queue_id qmapping\n"
-		       "    Set statistics mapping (qmapping 0..15) for tx|rx queue_id on port_id\n"
-		       "    e.g., 'set stat_qmap rx 0 2 5' sets rx queue 2 on port 0 to mapping 5\n"
-		       "\n");
-	cmdline_printf(cl,
-		       "Control forwarding:\n"
-		       "-------------------\n"
-		       "- start\n"
-		       "    Start packet forwarding with current config\n"
-		       "- start tx_first\n"
-		       "    Start packet forwarding with current config"
-		       " after sending one burst\n    of packets\n"
-		       "- stop\n"
-		       "    Stop packet forwarding, and displays accumulated"
-		       " stats\n"
-		       "\n");
-	cmdline_printf(cl,
-		       "Flow director mode:\n"
-		       "-------------------\n"
-		       "- add_signature_filter port_id ip|udp|tcp|sctp src\n"
-		       "    ip_src_address port_src dst ip_dst_address port_dst\n"
-		       "    flexbytes flexbytes_values vlan vlan_id queue queue_id\n"
-		       "- upd_signature_filter port_id ip|udp|tcp|sctp src \n"
-		       "    ip_src_address port_src dst ip_dst_address port_dst\n"
-		       "    flexbytes flexbytes_values vlan vlan_id queue queue_id\n"
-		       "- rm_signature_filter port_id ip|udp|tcp|sctp src\n"
-		       "    ip_src_address port_src dst ip_dst_address port_dst\n"
-		       "    flexbytes flexbytes_values vlan vlan_id\n"
-		       "- add_perfect_filter port_id ip|udp|tcp|sctp src\n"
-		       "    ip_src_address port_src dst ip_dst_address port_dst\n"
-		       "    flexbytes flexbytes_values vlan vlan_id queue \n"
-		       "    queue_id soft soft_id\n"
-		       "- upd_perfect_filter port_id ip|udp|tcp|sctp src\n"
-		       "    ip_src_address port_src dst ip_dst_address port_dst\n"
-		       "    flexbytes flexbytes_values vlan vlan_id queue queue_id\n"
-		       "- rm_perfect_filter port_id ip|udp|tcp|sctp src\n"
-		       "    ip_src_address port_src dst ip_dst_address port_dst\n"
-		       "    flexbytes flexbytes_values vlan vlan_id soft soft_id\n"
-		       "- set_masks_filter port_id only_ip_flow 0|1 src_mask\n"
-		       "    ip_src_mask port_src_mask dst_mask ip_dst_mask\n"
-		       "    port_dst_mask flexbytes 0|1 vlan_id 0|1 vlan_prio 0|1\n"
-		       "- set_ipv6_masks_filter port_id only_ip_flow 0|1 src_mask\n"
-		       "    ip_src_mask port_src_mask dst_mask ip_dst_mask\n"
-		       "    port_dst_mask flexbytes 0|1 vlan_id 0|1\n"
-		       "    vlan_prio 0|1 compare_dst 0|1\n"
-		       "\n");
-	cmdline_printf(cl,
-		       "Port Operations:\n"
-		       "--------------\n"
-		       "- port start|stop|close all|X\n"
-		       "    start/stop/close all ports or port X\n"
-		       "- port config all|X speed 10|100|1000|10000|auto "
-		       "duplex half|full|auto\n"
-		       "    set speed for all ports or port X\n"
-		       "- port config all rxq|txq|rxd|txd value\n"
-		       "    set number for rxq/txq/rxd/txd\n"
-		       "- port config all max-pkt-len value\n"
-		       "    set the max packet lenght\n"
-		       "- port config all crc-strip|rx-cksum|hw-vlan|drop-en on|off\n"
-		       "    set crc-strip/rx-checksum/hardware-vlan/drop_en on or off"
-		       "\n"
-		       "- port config all rss ip|udp|none\n"
-		       "    set rss mode\n"
-		       "- port config port-id dcb vt on|off nb-tcs pfc on|off\n"
-		       "    set dcb mode\n"
-		       "- port config all burst value\n"
-		       "    set the number of packet per burst\n"
-		       "- port config all txpt|txht|txwt|rxpt|rxht|rxwt value\n"
-		       "    set ring prefetch/host/writeback threshold for "
-		       "tx/rx queue\n"
-		       "- port config all txfreet|txrst|rxfreet value\n"
-		       "    set free threshold for rx/tx, or set tx rs bit "
-		       "threshold\n"
-		       "\n");
-	cmdline_printf(cl,
-		       "Misc:\n"
-		       "-----\n"
-		       "- quit\n"
-		       "    Quit to prompt in linux, and reboot on baremetal\n"
-		       "\n");
+	cmdline_printf(
+		cl,
+		"\n"
+		"Help is available for the following sections:\n\n"
+		"    help control    : Start and stop forwarding.\n"
+		"    help display    : Displaying port, stats and config "
+		"information.\n"
+		"    help config     : Configuration information.\n"
+		"    help ports      : Configuring ports.\n"
+		"    help flowdir    : Flow Director filter help.\n"
+		"    help registers  : Reading and setting port registers.\n"
+		"    help all        : All of the above sections.\n\n"
+	);
+
 }
 
-cmdline_parse_token_string_t cmd_help_help =
-	TOKEN_STRING_INITIALIZER(struct cmd_help_result, help, "help");
+cmdline_parse_token_string_t cmd_help_brief_help =
+	TOKEN_STRING_INITIALIZER(struct cmd_help_brief_result, help, "help");
 
-cmdline_parse_inst_t cmd_help = {
-	.f = cmd_help_parsed,
+cmdline_parse_inst_t cmd_help_brief = {
+	.f = cmd_help_brief_parsed,
 	.data = NULL,
 	.help_str = "show help",
 	.tokens = {
-		(void *)&cmd_help_help,
+		(void *)&cmd_help_brief_help,
 		NULL,
 	},
 };
+
+/* *** Help command with help sections. *** */
+struct cmd_help_long_result {
+	cmdline_fixed_string_t help;
+	cmdline_fixed_string_t section;
+};
+
+static void cmd_help_long_parsed(void *parsed_result,
+                                 struct cmdline *cl,
+                                 __attribute__((unused)) void *data)
+{
+	int show_all = 0;
+	struct cmd_help_long_result *res = parsed_result;
+
+	if (!strcmp(res->section, "all"))
+		show_all = 1;
+
+	if (show_all || !strcmp(res->section, "control")) {
+
+		cmdline_printf(
+			cl,
+			"\n"
+			"Control forwarding:\n"
+			"-------------------\n\n"
+
+			"start\n"
+			"    Start packet forwarding with current configuration.\n\n"
+
+			"start tx_first\n"
+			"    Start packet forwarding with current config"
+			" after sending one burst of packets.\n\n"
+
+			"stop\n"
+			"    Stop packet forwarding, and display accumulated"
+			" statistics.\n\n"
+
+			"quit\n"
+			"    Quit to prompt in Linux and reboot on Baremetal.\n\n"
+		);
+	}
+
+	if (show_all || !strcmp(res->section, "display")) {
+
+		cmdline_printf(
+			cl,
+			"\n"
+			"Display:\n"
+			"--------\n\n"
+
+			"show port (info|stats|fdir|stat_qmap) (port_id|all)\n"
+			"    Display information for port_id, or all.\n\n"
+
+			"clear port (info|stats|fdir|stat_qmap) (port_id|all)\n"
+			"    Clear information for port_id, or all.\n\n"
+
+			"show config (rxtx|cores|fwd)\n"
+			"    Display the given configuration.\n\n"
+
+			"read rxd (port_id) (queue_id) (rxd_id)\n"
+			"    Display an RX descriptor of a port RX queue.\n\n"
+
+			"read txd (port_id) (queue_id) (txd_id)\n"
+			"    Display a TX descriptor of a port TX queue.\n\n"
+		);
+	}
+
+	if (show_all || !strcmp(res->section, "config")) {
+		cmdline_printf(
+			cl,
+			"\n"
+			"Configuration:\n"
+			"--------------\n"
+			"Configuration changes only become active when"
+			" forwarding is started/restarted.\n\n"
+
+			"set default\n"
+			"    Reset forwarding to the default configuration.\n\n"
+
+			"set verbose (level)\n"
+			"    Set the debug verbosity level X.\n\n"
+
+			"set nbport (num)\n"
+			"    Set number of ports.\n\n"
+
+			"set nbcore (num)\n"
+			"    Set number of cores.\n\n"
+
+			"set coremask (mask)\n"
+			"    Set the forwarding cores hexadecimal mask.\n\n"
+
+			"set portmask (mask)\n"
+			"    Set the forwarding ports hexadecimal mask.\n\n"
+
+			"set burst (num)\n"
+			"    Set number of packets per burst.\n\n"
+
+			"set txpkts (x[,y]*)\n"
+			"    Set the length of each segment of TXONLY"
+			" packets.\n\n"
+
+			"set corelist (x[,y]*)\n"
+			"    Set the list of forwarding cores.\n\n"
+
+			"set portlist (x[,y]*)\n"
+			"    Set the list of forwarding ports.\n\n"
+
+			"vlan set strip (on|off) (port_id)\n"
+			"    Set the VLAN strip on a port.\n\n"
+
+			"vlan set filter (on|off) (port_id)\n"
+			"    Set the VLAN filter on a port.\n\n"
+
+			"vlan set qinq (on|off) (port_id)\n"
+			"    Set the VLAN QinQ (extended queue in queue)"
+			" on a port.\n\n"
+
+			"vlan set tpid (value) (port_id)\n"
+			"    Set the outer VLAN TPID for Packet Filtering on"
+			" a port\n\n"
+
+			"rx_vlan add (vlan_id|all) (port_id)\n"
+			"    Add a vlan_id, or all identifiers, to the set"
+			" of VLAN identifiers filtered by port_id.\n\n"
+
+			"rx_vlan rm (vlan_id|all) (port_id)\n"
+			"    Remove a vlan_id, or all identifiers, from the set"
+			" of VLAN identifiers filtered by port_id.\n\n"
+
+			"tx_vlan set vlan_id (port_id)\n"
+			"    Set hardware insertion of VLAN ID in packets sent"
+			" on a port.\n\n"
+
+			"tx_vlan reset (port_id)\n"
+			"    Disable hardware insertion of a VLAN header in"
+			" packets sent on a port.\n\n"
+
+			"tx_checksum set mask (port_id)\n"
+			"    Enable hardware insertion of checksum offload with"
+			" the 4-bit mask, 0~0xf, in packets sent on a port.\n"
+			"        bit 0 - insert ip   checksum offload if set\n"
+			"        bit 1 - insert udp  checksum offload if set\n"
+			"        bit 2 - insert tcp  checksum offload if set\n"
+			"        bit 3 - insert sctp checksum offload if set\n"
+			"    Please check the NIC datasheet for HW limits.\n\n"
+
+#ifdef RTE_LIBRTE_IEEE1588
+			"set fwd (io|mac|rxonly|txonly|csum|ieee1588)\n"
+			"    Set IO, MAC, RXONLY, CSUM or TXONLY or ieee1588"
+			" packet forwarding mode.\n\n"
+
+#else
+			"set fwd (io|mac|rxonly|txonly|csum)\n"
+			"    Set IO, MAC, RXONLY, CSUM or TXONLY packet"
+			" forwarding mode.\n\n"
+
+#endif
+			"mac_addr add (port_id) (XX:XX:XX:XX:XX:XX)\n"
+			"    Add a MAC address on port_id.\n\n"
+
+			"mac_addr remove (port_id) (XX:XX:XX:XX:XX:XX)\n"
+			"    Remove a MAC address from port_id.\n\n"
+
+			"set promisc (port_id|all) (on|off)\n"
+			"    Set the promiscuous mode on port_id, or all.\n\n"
+
+			"set allmulti (port_id|all) (on|off)\n"
+			"    Set the allmulti mode on port_id, or all.\n\n"
+
+			"set flow_ctrl rx (on|off) tx (on|off) (high_water)"
+			" (low_water) (pause_time) (send_xon) (port_id)\n"
+			"    Set the link flow control parameter on a port.\n\n"
+
+			"set pfc_ctrl rx (on|off) tx (on|off) (high_water)"
+			" (low_water) (pause_time) (priority) (port_id)\n"
+			"    Set the priority flow control parameter on a"
+			" port.\n\n"
+
+			"set stat_qmap (tx|rx) (port_id) (queue_id) (qmapping)\n"
+			"    Set statistics mapping (qmapping 0..15) for RX/TX"
+			" queue on port.\n"
+			"    e.g., 'set stat_qmap rx 0 2 5' sets rx queue 2"
+			" on port 0 to mapping 5.\n\n"
+		);
+	}
+
+
+	if (show_all || !strcmp(res->section, "flowdir")) {
+
+		cmdline_printf(
+			cl,
+			"\n"
+			"Flow director mode:\n"
+			"-------------------\n\n"
+
+			"add_signature_filter (port_id) (ip|udp|tcp|sctp)"
+			" src (src_ip_address) (src_port)"
+			" dst (dst_ip_address) (dst_port)"
+			" flexbytes (flexbytes_values) vlan (vlan_id)"
+			" queue (queue_id)\n"
+			"    Add a signature filter.\n\n"
+
+			"upd_signature_filter (port_id) (ip|udp|tcp|sctp)"
+			" src (src_ip_address) (src_port)"
+			" dst (dst_ip_address) (dst_port)"
+			" flexbytes (flexbytes_values) vlan (vlan_id)"
+			" queue (queue_id)\n"
+			"    Update a signature filter.\n\n"
+
+			"rm_signature_filter (port_id) (ip|udp|tcp|sctp)"
+			" src (src_ip_address) (src_port)"
+			" dst (dst_ip_address) (dst_port)"
+			" flexbytes (flexbytes_values) vlan (vlan_id)\n"
+			"    Remove a signature filter.\n\n"
+
+			"add_perfect_filter (port_id) (ip|udp|tcp|sctp)"
+			" src (src_ip_address) (src_port)"
+			" dst (dst_ip_address) (dst_port)"
+			" flexbytes (flexbytes_values) vlan (vlan_id)"
+			" queue (queue_id) soft (soft_id)\n"
+			"    Add a perfect filter.\n\n"
+
+			"upd_perfect_filter (port_id) (ip|udp|tcp|sctp)"
+			" src (src_ip_address) (src_port)"
+			" dst (dst_ip_address) (dst_port)"
+			" flexbytes (flexbytes_values) vlan (vlan_id)"
+			" queue (queue_id)\n"
+			"    Update a perfect filter.\n\n"
+
+			"rm_perfect_filter (port_id) (ip|udp|tcp|sctp)"
+			" src (src_ip_address) (src_port)"
+			" dst (dst_ip_address) (dst_port)"
+			" flexbytes (flexbytes_values) vlan (vlan_id)"
+			" soft (soft_id)\n"
+			"    Remove a perfect filter.\n\n"
+
+			"set_masks_filter (port_id) only_ip_flow (0|1)"
+			" src_mask (ip_src_mask) (src_port_mask)"
+			" dst_mask (ip_dst_mask) (dst_port_mask)"
+			" flexbytes (0|1) vlan_id (0|1) vlan_prio (0|1)\n"
+			"    Set IPv4 filter masks.\n\n"
+
+			"set_ipv6_masks_filter (port_id) only_ip_flow (0|1)"
+			" src_mask (ip_src_mask) (src_port_mask)"
+			" dst_mask (ip_dst_mask) (dst_port_mask)"
+			" flexbytes (0|1) vlan_id (0|1) vlan_prio (0|1)"
+			" compare_dst (0|1)\n"
+			"    Set IPv6 filter masks.\n\n"
+		);
+	}
+
+	if (show_all || !strcmp(res->section, "ports")) {
+
+		cmdline_printf(
+			cl,
+			"\n"
+			"Port Operations:\n"
+			"----------------\n\n"
+
+			"port start (port_id|all)\n"
+			"    Start all ports or port_id.\n\n"
+
+			"port stop (port_id|all)\n"
+			"    Stop all ports or port_id.\n\n"
+
+			"port close (port_id|all)\n"
+			"    Close all ports or port_id.\n\n"
+
+			"port config (port_id|all) speed (10|100|1000|10000|auto)"
+			" duplex (half|full|auto)\n"
+			"    Set speed and duplex for all ports or port_id\n\n"
+
+			"port config all (rxq|txq|rxd|txd) (value)\n"
+			"    Set number for rxq/txq/rxd/txd.\n\n"
+
+			"port config all max-pkt-len (value)\n"
+			"    Set the max packet length.\n\n"
+
+			"port config all (crc-strip|rx-cksum|hw-vlan|drop-en)"
+			" (on|off)\n"
+			"    Set crc-strip/rx-checksum/hardware-vlan/drop_en"
+			" for ports.\n\n"
+
+			"port config all rss (ip|udp|none)\n"
+			"    Set the RSS mode.\n\n"
+
+			"port config (port_id) dcb vt (on|off) (traffic_class)"
+			" pfc (on|off)\n"
+			"    Set the DCB mode.\n\n"
+
+			"port config all burst (value)\n"
+			"    Set the number of packets per burst.\n\n"
+
+			"port config all (txpt|txht|txwt|rxpt|rxht|rxwt)"
+			" (value)\n"
+			"    Set the ring prefetch/host/writeback threshold"
+			" for tx/rx queue.\n\n"
+
+			"port config all (txfreet|txrst|rxfreet) (value)\n"
+			"    Set free threshold for rx/tx, or set"
+			" tx rs bit threshold.\n\n"
+		);
+	}
+
+	if (show_all || !strcmp(res->section, "registers")) {
+
+		cmdline_printf(
+			cl,
+			"\n"
+			"Registers:\n"
+			"----------\n\n"
+
+			"read reg (port_id) (address)\n"
+			"    Display value of a port register.\n\n"
+
+			"read regfield (port_id) (address) (bit_x) (bit_y)\n"
+			"    Display a port register bit field.\n\n"
+
+			"read regbit (port_id) (address) (bit_x)\n"
+			"    Display a single port register bit.\n\n"
+
+			"write reg (port_id) (address) (value)\n"
+			"    Set value of a port register.\n\n"
+
+			"write regfield (port_id) (address) (bit_x) (bit_y)"
+			" (value)\n"
+			"    Set bit field of a port register.\n\n"
+
+			"write regbit (port_id) (address) (bit_x) (value)\n"
+			"    Set single bit value of a port register.\n\n"
+		);
+	}
+}
+
+cmdline_parse_token_string_t cmd_help_long_help =
+	TOKEN_STRING_INITIALIZER(struct cmd_help_long_result, help, "help");
+
+cmdline_parse_token_string_t cmd_help_long_section =
+	TOKEN_STRING_INITIALIZER(struct cmd_help_long_result, section,
+			"all#control#display#config#flowdir#"
+			"ports#registers");
+
+cmdline_parse_inst_t cmd_help_long = {
+	.f = cmd_help_long_parsed,
+	.data = NULL,
+	.help_str = "show help",
+	.tokens = {
+		(void *)&cmd_help_long_help,
+		(void *)&cmd_help_long_section,
+		NULL,
+	},
+};
+
 
 /* *** start/stop/close all ports *** */
 struct cmd_operate_port_result {
@@ -888,11 +1083,11 @@ cmdline_parse_inst_t cmd_config_rss = {
 struct cmd_config_dcb {
 	cmdline_fixed_string_t port;
 	cmdline_fixed_string_t config;
-	uint8_t port_id; 
+	uint8_t port_id;
 	cmdline_fixed_string_t dcb;
 	cmdline_fixed_string_t vt;
 	cmdline_fixed_string_t vt_en;
-	uint8_t num_tcs; 
+	uint8_t num_tcs;
 	cmdline_fixed_string_t pfc;
 	cmdline_fixed_string_t pfc_en;
 };
@@ -906,14 +1101,14 @@ cmd_config_dcb_parsed(void *parsed_result,
 	struct dcb_config dcb_conf;
 	portid_t port_id = res->port_id;
 	struct rte_port *port;
-	
+
 	port = &ports[port_id];
 	/** Check if the port is not started **/
 	if (port->port_status != RTE_PORT_STOPPED) {
 		printf("Please stop port %d first\n",port_id);
 		return;
 	}
-		
+
 	dcb_conf.num_tcs = (enum rte_eth_nb_tcs) res->num_tcs;
 	if ((dcb_conf.num_tcs != ETH_4_TCS) && (dcb_conf.num_tcs != ETH_8_TCS)){
 		printf("The invalid number of traffic class,only 4 or 8 allowed\n");
@@ -921,8 +1116,8 @@ cmd_config_dcb_parsed(void *parsed_result,
 	}
 
 	/* DCB in VT mode */
-	if (!strncmp(res->vt_en, "on",2)) 
-		dcb_conf.dcb_mode = DCB_VT_ENABLED;	
+	if (!strncmp(res->vt_en, "on",2))
+		dcb_conf.dcb_mode = DCB_VT_ENABLED;
 	else
 		dcb_conf.dcb_mode = DCB_ENABLED;
 
@@ -939,7 +1134,7 @@ cmd_config_dcb_parsed(void *parsed_result,
 
 	cmd_reconfig_device_queue(port_id, 1, 1);
 }
- 
+
 cmdline_parse_token_string_t cmd_config_dcb_port =
         TOKEN_STRING_INITIALIZER(struct cmd_config_dcb, port, "port");
 cmdline_parse_token_string_t cmd_config_dcb_config =
@@ -1513,12 +1708,12 @@ cmd_vlan_offload_parsed(void *parsed_result,
 			  __attribute__((unused)) void *data)
 {
 	int on;
-	struct cmd_vlan_offload_result *res = parsed_result;	
+	struct cmd_vlan_offload_result *res = parsed_result;
 	char *str;
 	int i, len = 0;
 	portid_t port_id = 0;
 	unsigned int tmp;
-	
+
 	str = res->port_id;
 	len = strnlen(str, STR_TOKEN_SIZE);
 	i = 0;
@@ -1526,7 +1721,7 @@ cmd_vlan_offload_parsed(void *parsed_result,
 	while(i < len){
 		if(str[i] == ',')
 			break;
-		
+
 		i++;
 	}
 	str[i]='\0';
@@ -1553,7 +1748,7 @@ cmd_vlan_offload_parsed(void *parsed_result,
 		/* If queue_id greater that what 16-bits can represent, return */
 		if(tmp > 0xffff)
 			return;
-		
+
 		queue_id = (uint16_t)tmp;
 		rx_vlan_strip_set_on_queue(port_id, queue_id, on);
 	}
@@ -3442,7 +3637,8 @@ cmdline_parse_inst_t cmd_set_qmap = {
 
 /* list of instructions */
 cmdline_parse_ctx_t main_ctx[] = {
-	(cmdline_parse_inst_t *)&cmd_help,
+	(cmdline_parse_inst_t *)&cmd_help_brief,
+	(cmdline_parse_inst_t *)&cmd_help_long,
 	(cmdline_parse_inst_t *)&cmd_quit,
 	(cmdline_parse_inst_t *)&cmd_showport,
 	(cmdline_parse_inst_t *)&cmd_showportall,
