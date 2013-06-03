@@ -364,6 +364,19 @@ non_parallel_test_group_list = [
 	]
 },
 {
+	"Prefix" :      "power",
+	"Memory" :      all_sockets(512),
+	"Tests" :
+	[
+		{
+		 "Name" :       "Power autotest",
+		 "Command" :    "power_autotest",
+		 "Func" :       default_autotest,
+		 "Report" :     None,
+		},
+	]
+},
+{
 	"Prefix" :	"lpm6",
 	"Memory" :	"512",
 	"Tests" :

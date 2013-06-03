@@ -32,62 +32,15 @@
  * 
  */
 
-#ifndef _TEST_H_
-#define _TEST_H_
+#ifndef _MAIN_H_
+#define _MAIN_H_
 
-/* icc on baremetal gives us troubles with function named 'main' */
 #ifdef RTE_EXEC_ENV_BAREMETAL
-#define main _main
+#define MAIN _main
+#else
+#define MAIN main
 #endif
 
-#define RECURSIVE_ENV_VAR "RTE_TEST_RECURSIVE"
+int MAIN(int argc, char **argv);
 
-extern const char *prgname;
-
-extern cmdline_parse_ctx_t main_ctx[];
-
-int main(int argc, char **argv);
-
-int test_pci(void);
-int test_memory(void);
-int test_per_lcore(void);
-int test_spinlock(void);
-int test_rwlock(void);
-int test_atomic(void);
-int test_byteorder(void);
-int test_prefetch(void);
-int test_cycles(void);
-int test_logs(void);
-int test_memzone(void);
-int test_ring(void);
-int test_mempool(void);
-int test_mempool_perf(void);
-int test_mbuf(void);
-int test_timer(void);
-int test_malloc(void);
-int test_memcpy(void);
-int test_memcpy_perf(void);
-int test_hash(void);
-int test_hash_perf(void);
-int test_lpm(void);
-int test_lpm6(void);
-int test_debug(void);
-int test_errno(void);
-int test_tailq(void);
-int test_string_fns(void);
-int test_mp_secondary(void);
-int test_cpuflags(void);
-int test_eal_flags(void);
-int test_alarm(void);
-int test_interrupt(void);
-int test_version(void);
-int test_eal_fs(void);
-int test_cmdline(void);
-int test_func_reentrancy(void);
-int test_pmac_pm(void);
-int test_pmac_acl(void);
-int test_power(void);
-
-int test_pci_run;
-
-#endif
+#endif /* _MAIN_H_ */
