@@ -1608,9 +1608,13 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.jumbo_frame == 1) {
 		rctl |= E1000_RCTL_LPE;
 
-		/* Set maximum packet length. */
+		/*
+		 * Set maximum packet length by default, and might be updated
+		 * together with enabling/disabling dual VLAN.
+		 */
 		E1000_WRITE_REG(hw, E1000_RLPML,
-				dev->data->dev_conf.rxmode.max_rx_pkt_len);
+			dev->data->dev_conf.rxmode.max_rx_pkt_len +
+						VLAN_TAG_SIZE);
 	} else
 		rctl &= ~E1000_RCTL_LPE;
 
@@ -1667,8 +1671,9 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 						E1000_SRRCTL_BSIZEPKT_MASK) <<
 					       E1000_SRRCTL_BSIZEPKT_SHIFT);
 
-			if (dev->data->dev_conf.rxmode.max_rx_pkt_len + VLAN_TAG_SIZE
-					> buf_size){
+			/* It adds dual VLAN length for supporting dual VLAN */
+			if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
+						2 * VLAN_TAG_SIZE) > buf_size){
 				dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
 				dev->data->scattered_rx = 1;
 			}
@@ -1912,7 +1917,9 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 						E1000_SRRCTL_BSIZEPKT_MASK) <<
 					       E1000_SRRCTL_BSIZEPKT_SHIFT);
 
-			if (dev->data->dev_conf.rxmode.max_rx_pkt_len > buf_size){
+			/* It adds dual VLAN length for supporting dual VLAN */
+			if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
+						2 * VLAN_TAG_SIZE) > buf_size){
 				dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
 				dev->data->scattered_rx = 1;
 			}

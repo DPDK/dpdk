@@ -1363,10 +1363,6 @@ igb_vlan_hw_strip_disable(struct rte_eth_dev *dev)
 	reg = E1000_READ_REG(hw, E1000_CTRL);
 	reg &= ~E1000_CTRL_VME;
 	E1000_WRITE_REG(hw, E1000_CTRL, reg);
-
-	/* Update maximum frame size */
-	E1000_WRITE_REG(hw, E1000_RLPML,
-		dev->data->dev_conf.rxmode.max_rx_pkt_len + VLAN_TAG_SIZE);
 }
 
 static void
@@ -1380,11 +1376,6 @@ igb_vlan_hw_strip_enable(struct rte_eth_dev *dev)
 	reg = E1000_READ_REG(hw, E1000_CTRL);
 	reg |= E1000_CTRL_VME;
 	E1000_WRITE_REG(hw, E1000_CTRL, reg);
-
-	/* Update maximum frame size */
-	E1000_WRITE_REG(hw, E1000_RLPML,
-		dev->data->dev_conf.rxmode.max_rx_pkt_len);
-
 }
 
 static void
@@ -1399,6 +1390,11 @@ igb_vlan_hw_extend_disable(struct rte_eth_dev *dev)
 	reg &= ~E1000_CTRL_EXT_EXTEND_VLAN;
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, reg);
 
+	/* Update maximum packet length */
+	if (dev->data->dev_conf.rxmode.jumbo_frame == 1)
+		E1000_WRITE_REG(hw, E1000_RLPML,
+			dev->data->dev_conf.rxmode.max_rx_pkt_len +
+						VLAN_TAG_SIZE);
 }
 
 static void
@@ -1412,6 +1408,12 @@ igb_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 	reg = E1000_READ_REG(hw, E1000_CTRL_EXT);
 	reg |= E1000_CTRL_EXT_EXTEND_VLAN;
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, reg);
+
+	/* Update maximum packet length */
+	if (dev->data->dev_conf.rxmode.jumbo_frame == 1)
+		E1000_WRITE_REG(hw, E1000_RLPML,
+			dev->data->dev_conf.rxmode.max_rx_pkt_len +
+						2 * VLAN_TAG_SIZE);
 }
 
 static void
