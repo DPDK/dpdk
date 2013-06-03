@@ -131,6 +131,10 @@ static int  ixgbe_flow_ctrl_set(struct rte_eth_dev *dev,
 		struct rte_eth_fc_conf *fc_conf);
 static int ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 		struct rte_eth_pfc_conf *pfc_conf);
+static int ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
+		struct rte_eth_rss_reta *reta_conf);
+static int ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
+		struct rte_eth_rss_reta *reta_conf);	
 static void ixgbe_dev_link_status_print(struct rte_eth_dev *dev);
 static int ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
@@ -258,6 +262,8 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.fdir_update_perfect_filter   = ixgbe_fdir_update_perfect_filter,
 	.fdir_remove_perfect_filter   = ixgbe_fdir_remove_perfect_filter,
 	.fdir_set_masks               = ixgbe_fdir_set_masks,
+	.reta_update          = ixgbe_dev_rss_reta_update,
+	.reta_query           = ixgbe_dev_rss_reta_query,
 };
 
 /*
@@ -2130,6 +2136,79 @@ ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *p
 	PMD_INIT_LOG(ERR, "ixgbe_dcb_pfc_enable = 0x%x \n", err);
 	return -EIO;
 }	
+
+static int 
+ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
+				struct rte_eth_rss_reta *reta_conf)
+{	
+	uint8_t i,j,mask;
+	uint32_t reta;
+	struct ixgbe_hw *hw = 
+			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+	/*  
+	* Update Redirection Table RETA[n],n=0...31,The redirection table has 
+	* 128-entries in 32 registers
+	 */ 
+	for(i = 0; i < ETH_RSS_RETA_NUM_ENTRIES; i += 4) {
+		if (i < ETH_RSS_RETA_NUM_ENTRIES/2) 
+			mask = (uint8_t)((reta_conf->mask_lo >> i) & 0xF);
+		else
+			mask = (uint8_t)((reta_conf->mask_hi >> 
+				(i - ETH_RSS_RETA_NUM_ENTRIES/2)) & 0xF);
+		if (mask != 0) {
+			reta = 0;
+			if (mask != 0xF)
+				reta = IXGBE_READ_REG(hw,IXGBE_RETA(i >> 2));
+
+			for (j = 0; j < 4; j++) {
+				if (mask & (0x1 << j)) {
+					if (mask != 0xF)
+						reta &= ~(0xFF << 8 * j);
+					reta |= reta_conf->reta[i + j] << 8*j;
+				}
+			}
+			IXGBE_WRITE_REG(hw, IXGBE_RETA(i >> 2),reta);
+		}
+	}
+
+	return 0;
+}
+
+static int
+ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
+				struct rte_eth_rss_reta *reta_conf)
+{
+	uint8_t i,j,mask;
+	uint32_t reta;
+	struct ixgbe_hw *hw =
+			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	
+	PMD_INIT_FUNC_TRACE();
+	/* 
+	 * Read Redirection Table RETA[n],n=0...31,The redirection table has 
+	 * 128-entries in 32 registers
+	 */
+	for(i = 0; i < ETH_RSS_RETA_NUM_ENTRIES; i += 4) {
+		if (i < ETH_RSS_RETA_NUM_ENTRIES/2)
+			mask = (uint8_t)((reta_conf->mask_lo >> i) & 0xF);
+		else
+			mask = (uint8_t)((reta_conf->mask_hi >> 
+				(i - ETH_RSS_RETA_NUM_ENTRIES/2)) & 0xF);
+
+		if (mask != 0) {
+			reta = IXGBE_READ_REG(hw,IXGBE_RETA(i >> 2));
+			for (j = 0; j < 4; j++) {
+				if (mask & (0x1 << j))
+					reta_conf->reta[i + j] = 
+						(uint8_t)((reta >> 8 * j) & 0xFF);
+			} 
+		}
+	}
+
+	return 0;		
+}
 
 static void
 ixgbe_add_rar(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
