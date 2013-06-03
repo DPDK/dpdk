@@ -119,6 +119,10 @@ static int igbvf_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
 static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on);
 static void igbvf_set_vfta_all(struct rte_eth_dev *dev, bool on);
+static int eth_igb_rss_reta_update(struct rte_eth_dev *dev,
+		 struct rte_eth_rss_reta *reta_conf);
+static int eth_igb_rss_reta_query(struct rte_eth_dev *dev,
+		struct rte_eth_rss_reta *reta_conf);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -184,6 +188,8 @@ static struct eth_dev_ops eth_igb_ops = {
 	.flow_ctrl_set        = eth_igb_flow_ctrl_set,
 	.mac_addr_add         = eth_igb_rar_set,
 	.mac_addr_remove      = eth_igb_rar_clear,
+	.reta_update          = eth_igb_rss_reta_update,
+	.reta_query           = eth_igb_rss_reta_query,
 };
 
 /*
@@ -1895,3 +1901,74 @@ igbvf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	return 0;
 }
 
+static int
+eth_igb_rss_reta_update(struct rte_eth_dev *dev,
+                                struct rte_eth_rss_reta *reta_conf)
+{
+	uint8_t i,j,mask;
+	uint32_t reta;	
+	struct e1000_hw *hw =
+			E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private); 
+	
+	/*    
+	 * Update Redirection Table RETA[n],n=0...31,The redirection table has 
+	 * 128-entries in 32 registers 
+	 */ 
+	for(i = 0; i < ETH_RSS_RETA_NUM_ENTRIES; i += 4) {  
+		if (i < ETH_RSS_RETA_NUM_ENTRIES/2) 
+			mask = (uint8_t)((reta_conf->mask_lo >> i) & 0xF);
+		else
+			mask = (uint8_t)((reta_conf->mask_hi >>
+				(i - ETH_RSS_RETA_NUM_ENTRIES/2)) & 0xF);
+		if (mask != 0) {
+			reta = 0;
+			/* If all 4 entries were set,don't need read RETA register */
+			if (mask != 0xF)  
+				reta = E1000_READ_REG(hw,E1000_RETA(i >> 2));
+
+			for (j = 0; j < 4; j++) {
+				if (mask & (0x1 << j)) {
+					if (mask != 0xF)
+						reta &= ~(0xFF << 8 * j);
+					reta |= reta_conf->reta[i + j] << 8 * j;
+				}
+			}
+			E1000_WRITE_REG(hw, E1000_RETA(i >> 2),reta);
+		}
+	}
+
+	return 0;
+}
+
+static int
+eth_igb_rss_reta_query(struct rte_eth_dev *dev,
+                                struct rte_eth_rss_reta *reta_conf)
+{
+	uint8_t i,j,mask;
+	uint32_t reta;
+	struct e1000_hw *hw = 
+			E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* 
+	 * Read Redirection Table RETA[n],n=0...31,The redirection table has 
+	 * 128-entries in 32 registers
+	 */
+	for(i = 0; i < ETH_RSS_RETA_NUM_ENTRIES; i += 4) {
+		if (i < ETH_RSS_RETA_NUM_ENTRIES/2)
+			mask = (uint8_t)((reta_conf->mask_lo >> i) & 0xF);
+		else
+			mask = (uint8_t)((reta_conf->mask_hi >>
+				(i - ETH_RSS_RETA_NUM_ENTRIES/2)) & 0xF);
+
+		if (mask != 0) {
+			reta = E1000_READ_REG(hw,E1000_RETA(i >> 2));
+			for (j = 0; j < 4; j++) {
+				if (mask & (0x1 << j))
+					reta_conf->reta[i + j] =
+						(uint8_t)((reta >> 8 * j) & 0xFF);
+			}
+		}
+	}
+ 
+	return 0;
+}
