@@ -955,6 +955,16 @@ struct vlan_ethhdr {
 	#define __devexit_p(x) &(x)
 #endif
 
+#else
+	/* For Kernel 3.8 these are not defined - so undefine all */
+	#undef __devexit_p
+	#undef __devexit
+	#undef __devinit
+	#undef __devinitdata
+	#define __devexit_p(x) &(x)
+	#define __devexit
+	#define __devinit
+	#define __devinitdata
 #endif /* 2.4.17 => 2.4.13 */
 
 /*****************************************************************************/

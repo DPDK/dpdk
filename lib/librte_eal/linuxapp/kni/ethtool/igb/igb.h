@@ -44,6 +44,7 @@
 #include <linux/ethtool.h>
 #endif
 
+#undef HAVE_HW_TIME_STAMP
 #ifdef HAVE_HW_TIME_STAMP
 #include <linux/clocksource.h>
 #include <linux/timecompare.h>
