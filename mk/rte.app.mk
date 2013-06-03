@@ -101,6 +101,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_PMAC),y)
 LDLIBS += -lrte_pmac
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_METER),y)
+LDLIBS += -lrte_meter
+endif
+
 LDLIBS += --start-group
 
 ifeq ($(CONFIG_RTE_LIBRTE_ETHER),y)

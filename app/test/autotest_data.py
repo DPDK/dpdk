@@ -78,6 +78,12 @@ parallel_test_group_list = [
 		 "Report" :	None,
 		},
 		{
+		 "Name" :	"Meter autotest",
+		 "Command" : 	"meter_autotest",
+		 "Func" :	default_autotest,
+		 "Report" :	None,
+		},
+		{
 		 "Name" :	"Dump log history",
 		 "Command" :	"dump_log_history",
 		 "Func" :	dump_autotest,

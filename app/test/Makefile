@@ -85,6 +85,7 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_ipaddr.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_cirbuf.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_string.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_lib.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_meter.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_pmac_pm.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_pmac_acl.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_power.c

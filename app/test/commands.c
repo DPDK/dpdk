@@ -167,6 +167,8 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret |= test_memcpy_perf();
 	if (all || !strcmp(res->autotest, "func_reentrancy_autotest"))
 		ret |= test_func_reentrancy();
+	if (all || !strcmp(res->autotest, "meter_autotest"))
+		ret |= test_meter();
 	if (all || !strcmp(res->autotest, "pm_autotest"))
 		ret |= test_pmac_pm();
 	if (all || !strcmp(res->autotest, "acl_autotest"))
@@ -201,6 +203,7 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"version_autotest#eal_fs_autotest#"
 			"cmdline_autotest#func_reentrancy_autotest#"
 			"mempool_perf_autotest#hash_perf_autotest#"
+			"meter_autotest#"
 			"memcpy_perf_autotest#pm_autotest#"
 			"acl_autotest#power_autotest#"
 			"all_autotests");

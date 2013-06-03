@@ -32,63 +32,34 @@
  * 
  */
 
-#ifndef _TEST_H_
-#define _TEST_H_
+#ifndef __INCLUDE_RTE_POLICER_H__
+#define __INCLUDE_RTE_POLICER_H__
 
-/* icc on baremetal gives us troubles with function named 'main' */
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define main _main
-#endif
+#include <stdint.h>
+#include <rte_meter.h>
 
-#define RECURSIVE_ENV_VAR "RTE_TEST_RECURSIVE"
+enum rte_phb_action {
+	e_RTE_PHB_ACTION_GREEN = e_RTE_METER_GREEN,
+	e_RTE_PHB_ACTION_YELLOW = e_RTE_METER_YELLOW,
+	e_RTE_PHB_ACTION_RED = e_RTE_METER_RED,
+	e_RTE_PHB_ACTION_DROP = 3,
+};
 
-extern const char *prgname;
+struct rte_phb {
+	enum rte_phb_action actions[e_RTE_METER_COLORS][e_RTE_METER_COLORS];
+};
 
-extern cmdline_parse_ctx_t main_ctx[];
+int
+rte_phb_config(struct rte_phb *phb_table, uint32_t phb_table_index, 
+	enum rte_meter_color pre_meter, enum rte_meter_color post_meter, enum rte_phb_action action);
 
-int main(int argc, char **argv);
-
-int test_pci(void);
-int test_memory(void);
-int test_per_lcore(void);
-int test_spinlock(void);
-int test_rwlock(void);
-int test_atomic(void);
-int test_byteorder(void);
-int test_prefetch(void);
-int test_cycles(void);
-int test_logs(void);
-int test_memzone(void);
-int test_ring(void);
-int test_mempool(void);
-int test_mempool_perf(void);
-int test_mbuf(void);
-int test_timer(void);
-int test_malloc(void);
-int test_memcpy(void);
-int test_memcpy_perf(void);
-int test_hash(void);
-int test_hash_perf(void);
-int test_lpm(void);
-int test_lpm6(void);
-int test_debug(void);
-int test_errno(void);
-int test_tailq(void);
-int test_string_fns(void);
-int test_mp_secondary(void);
-int test_cpuflags(void);
-int test_eal_flags(void);
-int test_alarm(void);
-int test_interrupt(void);
-int test_version(void);
-int test_eal_fs(void);
-int test_cmdline(void);
-int test_func_reentrancy(void);
-int test_meter(void);
-int test_pmac_pm(void);
-int test_pmac_acl(void);
-int test_power(void);
-
-int test_pci_run;
+static inline enum rte_phb_action
+policer_run(struct rte_phb *phb_table, uint32_t phb_table_index, enum rte_meter_color pre_meter, enum rte_meter_color post_meter)
+{
+	struct rte_phb *phb = &phb_table[phb_table_index];
+	enum rte_phb_action action = phb->actions[pre_meter][post_meter];
+	
+	return action;
+}
 
 #endif
