@@ -383,7 +383,7 @@ test_parse_string_valid(void)
 			return -1;
 		}
 		if (strncmp(buf, string_elt_strs[i].result,
-				sizeof(string_elt_strs[i].result)) != 0) {
+				sizeof(buf)) != 0) {
 			printf("Error: result mismatch!\n");
 			return -1;
 		}
