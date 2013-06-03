@@ -247,7 +247,7 @@ struct igb_tx_queue {
  * Check for descriptors with their DD bit set and free mbufs.
  * Return the total number of buffers freed.
  */
-static inline int
+static inline int __attribute__((always_inline))
 ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 {
 	struct igb_tx_entry *txep;
