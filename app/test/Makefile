@@ -64,6 +64,7 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_memcpy_perf.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_hash.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_hash_perf.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_lpm.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_lpm6.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_debug.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_errno.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_tailq.c

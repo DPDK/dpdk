@@ -129,6 +129,8 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret |= test_hash_perf();
 	if (all || !strcmp(res->autotest, "lpm_autotest"))
 		ret |= test_lpm();
+	if (all || !strcmp(res->autotest, "lpm6_autotest"))
+		ret |= test_lpm6();
 	if (all || !strcmp(res->autotest, "cpuflags_autotest"))
 		ret |= test_cpuflags();
 	if (all || !strcmp(res->autotest, "cmdline_autotest"))
@@ -189,6 +191,7 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"timer_autotest#malloc_autotest#"
 			"memcpy_autotest#hash_autotest#"
 			"lpm_autotest#debug_autotest#"
+			"lpm6_autotest#debug_autotest#"
 			"errno_autotest#tailq_autotest#"
 			"string_autotest#multiprocess_autotest#"
 			"cpuflags_autotest#eal_flags_autotest#"

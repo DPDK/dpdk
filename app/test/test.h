@@ -70,6 +70,7 @@ int test_memcpy_perf(void);
 int test_hash(void);
 int test_hash_perf(void);
 int test_lpm(void);
+int test_lpm6(void);
 int test_debug(void);
 int test_errno(void);
 int test_tailq(void);

@@ -77,6 +77,8 @@ rte_tailq_elem(RTE_TAILQ_FBK_HASH, "RTE_FBK_HASH")
 
 rte_tailq_elem(RTE_TAILQ_LPM, "RTE_LPM")
 
+rte_tailq_elem(RTE_TAILQ_LPM6, "RTE_LPM6")
+
 rte_tailq_elem(RTE_TAILQ_PM, "RTE_PM")
 
 rte_tailq_elem(RTE_TAILQ_ACL, "RTE_ACL")

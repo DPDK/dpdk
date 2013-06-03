@@ -50,7 +50,7 @@ DIR := $(shell basename $(RTE_OUTPUT))
 PHONY: test fast_test
 
 coverage: BLACKLIST=-Mempool_perf,Memcpy_perf,Hash_perf
-fast_test: BLACKLIST=-Ring,Mempool_perf,Memcpy_perf,Hash_perf
+fast_test: BLACKLIST=-Ring,Mempool_perf,Memcpy_perf,Hash_perf,Lpm6
 ring_test: WHITELIST=Ring
 mempool_test: WHITELIST=Mempool,Mempool_perf
 perf_test:WHITELIST=Mempool_perf,Memcpy_perf,Hash_perf,Ring

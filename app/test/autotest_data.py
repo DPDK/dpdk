@@ -364,6 +364,19 @@ non_parallel_test_group_list = [
 	]
 },
 {
+	"Prefix" :	"lpm6",
+	"Memory" :	"512",
+	"Tests" :
+	[
+		{
+                 "Name" :       "LPM6 autotest",
+                 "Command" :    "lpm6_autotest",
+                 "Func" :       default_autotest,
+                 "Report" :     None,
+                },
+	]
+},
+{
 	"Prefix":	"ring_perf",
 	"Memory" :	all_sockets(512),
 	"Tests" :	
