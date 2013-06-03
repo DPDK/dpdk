@@ -774,6 +774,20 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 		dev->max_vfs = (uint16_t)tmp;
 	}
 
+	/* get numa node */
+	rte_snprintf(filename, sizeof(filename), "%s/numa_node",
+		 dirname);
+	if (access(filename, R_OK) != 0) {
+		/* if no NUMA support just set node to 0 */
+		dev->numa_node = -1;
+	} else {
+		if (eal_parse_sysfs_value(filename, &tmp) < 0) {
+			free(dev);
+			return -1;
+		}
+		dev->numa_node = tmp;
+	}
+
 	/* parse resources */
 	rte_snprintf(filename, sizeof(filename), "%s/resource", dirname);
 	if (pci_parse_sysfs_resource(filename, dev) < 0) {
@@ -922,6 +936,12 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		if (id_table->subsystem_device_id != dev->id.subsystem_device_id &&
 				id_table->subsystem_device_id != PCI_ANY_ID)
 			continue;
+
+		struct rte_pci_addr *loc = &dev->addr;
+
+		RTE_LOG(DEBUG, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
+				loc->domain, loc->bus, loc->devid, loc->function,
+				dev->numa_node);
 
 		RTE_LOG(DEBUG, EAL, "  probe driver: %x:%x %s\n", dev->id.vendor_id,
 				dev->id.device_id, dr->name);
