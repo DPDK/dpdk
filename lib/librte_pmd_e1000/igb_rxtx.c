@@ -126,6 +126,7 @@ struct igb_rx_queue {
 	uint16_t            nb_rx_hold; /**< number of held free RX desc. */
 	uint16_t            rx_free_thresh; /**< max free RX desc to hold. */
 	uint16_t            queue_id;   /**< RX queue index. */
+	uint16_t            reg_idx;    /**< RX queue register index. */
 	uint8_t             port_id;    /**< Device port identifier. */
 	uint8_t             pthresh;    /**< Prefetch threshold register. */
 	uint8_t             hthresh;    /**< Host threshold register. */
@@ -166,6 +167,7 @@ struct igb_tx_queue {
 	uint16_t               tx_head;
 	/**< Index of first used TX descriptor. */
 	uint16_t               queue_id; /**< TX queue index. */
+	uint16_t               reg_idx;  /**< TX queue register index. */
 	uint8_t                port_id;  /**< Device port identifier. */
 	uint8_t                pthresh;  /**< Prefetch threshold register. */
 	uint8_t                hthresh;  /**< Host threshold register. */
@@ -1229,9 +1231,11 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->hthresh = tx_conf->tx_thresh.hthresh;
 	txq->wthresh = tx_conf->tx_thresh.wthresh;
 	txq->queue_id = queue_idx;
+	txq->reg_idx = (uint16_t)((RTE_ETH_DEV_SRIOV(dev).active == 0) ?
+		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	txq->port_id = dev->data->port_id;
 
-	txq->tdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_TDT(queue_idx));
+	txq->tdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_TDT(txq->reg_idx));
 	txq->tx_ring_phys_addr = (uint64_t) tz->phys_addr;
 	txq->tx_ring = (union e1000_adv_tx_desc *) tz->addr;
 
@@ -1345,6 +1349,8 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->drop_en = rx_conf->rx_drop_en;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 	rxq->queue_id = queue_idx;
+	rxq->reg_idx = (uint16_t)((RTE_ETH_DEV_SRIOV(dev).active == 0) ?
+		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	rxq->port_id = dev->data->port_id;
 	rxq->crc_len = (uint8_t) ((dev->data->dev_conf.rxmode.hw_strip_crc) ? 0 :
 				  ETHER_CRC_LEN);
@@ -1360,8 +1366,8 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 		igb_rx_queue_release(rxq);
 		return (-ENOMEM);
 	}
-	rxq->rdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDT(queue_idx));
-	rxq->rdh_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDH(queue_idx));
+	rxq->rdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDT(rxq->reg_idx));
+	rxq->rdh_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDH(rxq->reg_idx));
 	rxq->rx_ring_phys_addr = (uint64_t) rz->phys_addr;
 	rxq->rx_ring = (union e1000_adv_rx_desc *) rz->addr;
 
@@ -1641,12 +1647,12 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 							0 : ETHER_CRC_LEN);
 
 		bus_addr = rxq->rx_ring_phys_addr;
-		E1000_WRITE_REG(hw, E1000_RDLEN(i),
+		E1000_WRITE_REG(hw, E1000_RDLEN(rxq->reg_idx),
 				rxq->nb_rx_desc *
 				sizeof(union e1000_adv_rx_desc));
-		E1000_WRITE_REG(hw, E1000_RDBAH(i),
+		E1000_WRITE_REG(hw, E1000_RDBAH(rxq->reg_idx),
 				(uint32_t)(bus_addr >> 32));
-		E1000_WRITE_REG(hw, E1000_RDBAL(i), (uint32_t)bus_addr);
+		E1000_WRITE_REG(hw, E1000_RDBAL(rxq->reg_idx), (uint32_t)bus_addr);
 
 		srrctl = E1000_SRRCTL_DESCTYPE_ADV_ONEBUF;
 
@@ -1691,16 +1697,16 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		if (rxq->drop_en)
 			srrctl |= E1000_SRRCTL_DROP_EN;
 
-		E1000_WRITE_REG(hw, E1000_SRRCTL(i), srrctl);
+		E1000_WRITE_REG(hw, E1000_SRRCTL(rxq->reg_idx), srrctl);
 
 		/* Enable this RX queue. */
-		rxdctl = E1000_READ_REG(hw, E1000_RXDCTL(i));
+		rxdctl = E1000_READ_REG(hw, E1000_RXDCTL(rxq->reg_idx));
 		rxdctl |= E1000_RXDCTL_QUEUE_ENABLE;
 		rxdctl &= 0xFFF00000;
 		rxdctl |= (rxq->pthresh & 0x1F);
 		rxdctl |= ((rxq->hthresh & 0x1F) << 8);
 		rxdctl |= ((rxq->wthresh & 0x1F) << 16);
-		E1000_WRITE_REG(hw, E1000_RXDCTL(i), rxdctl);
+		E1000_WRITE_REG(hw, E1000_RXDCTL(rxq->reg_idx), rxdctl);
 	}
 
 	/*
@@ -1753,10 +1759,11 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		/* set STRCRC bit in all queues for Powerville/Springville */
 		if (hw->mac.type == e1000_i350 || hw->mac.type == e1000_i210) {
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
+				rxq = dev->data->rx_queues[i];
 				uint32_t dvmolr = E1000_READ_REG(hw,
-					E1000_DVMOLR(i));
+					E1000_DVMOLR(rxq->reg_idx));
 				dvmolr |= E1000_DVMOLR_STRCRC;
-				E1000_WRITE_REG(hw, E1000_DVMOLR(i), dvmolr);
+				E1000_WRITE_REG(hw, E1000_DVMOLR(rxq->reg_idx), dvmolr);
 			}
 		}
 	} else {
@@ -1765,10 +1772,11 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		/* clear STRCRC bit in all queues for Powerville/Springville */
 		if (hw->mac.type == e1000_i350 || hw->mac.type == e1000_i210) {
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
+				rxq = dev->data->rx_queues[i];
 				uint32_t dvmolr = E1000_READ_REG(hw,
-					E1000_DVMOLR(i));
+					E1000_DVMOLR(rxq->reg_idx));
 				dvmolr &= ~E1000_DVMOLR_STRCRC;
-				E1000_WRITE_REG(hw, E1000_DVMOLR(i), dvmolr);
+				E1000_WRITE_REG(hw, E1000_DVMOLR(rxq->reg_idx), dvmolr);
 			}
 		}
 	}
@@ -1792,8 +1800,8 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	 */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
-		E1000_WRITE_REG(hw, E1000_RDH(i), 0);
-		E1000_WRITE_REG(hw, E1000_RDT(i), rxq->nb_rx_desc - 1);
+		E1000_WRITE_REG(hw, E1000_RDH(rxq->reg_idx), 0);
+		E1000_WRITE_REG(hw, E1000_RDT(rxq->reg_idx), rxq->nb_rx_desc - 1);
 	}
 
 	return 0;
@@ -1821,24 +1829,24 @@ eth_igb_tx_init(struct rte_eth_dev *dev)
 		txq = dev->data->tx_queues[i];
 		bus_addr = txq->tx_ring_phys_addr;
 
-		E1000_WRITE_REG(hw, E1000_TDLEN(i),
+		E1000_WRITE_REG(hw, E1000_TDLEN(txq->reg_idx),
 				txq->nb_tx_desc *
 				sizeof(union e1000_adv_tx_desc));
-		E1000_WRITE_REG(hw, E1000_TDBAH(i),
+		E1000_WRITE_REG(hw, E1000_TDBAH(txq->reg_idx),
 				(uint32_t)(bus_addr >> 32));
-		E1000_WRITE_REG(hw, E1000_TDBAL(i), (uint32_t)bus_addr);
+		E1000_WRITE_REG(hw, E1000_TDBAL(txq->reg_idx), (uint32_t)bus_addr);
 
 		/* Setup the HW Tx Head and Tail descriptor pointers. */
-		E1000_WRITE_REG(hw, E1000_TDT(i), 0);
-		E1000_WRITE_REG(hw, E1000_TDH(i), 0);
+		E1000_WRITE_REG(hw, E1000_TDT(txq->reg_idx), 0);
+		E1000_WRITE_REG(hw, E1000_TDH(txq->reg_idx), 0);
 
 		/* Setup Transmit threshold registers. */
-		txdctl = E1000_READ_REG(hw, E1000_TXDCTL(i));
+		txdctl = E1000_READ_REG(hw, E1000_TXDCTL(txq->reg_idx));
 		txdctl |= txq->pthresh & 0x1F;
 		txdctl |= ((txq->hthresh & 0x1F) << 8);
 		txdctl |= ((txq->wthresh & 0x1F) << 16);
 		txdctl |= E1000_TXDCTL_QUEUE_ENABLE;
-		E1000_WRITE_REG(hw, E1000_TXDCTL(i), txdctl);
+		E1000_WRITE_REG(hw, E1000_TXDCTL(txq->reg_idx), txdctl);
 	}
 
 	/* Program the Transmit Control Register. */

@@ -37,6 +37,7 @@
 
 /* need update link, bit flag */
 #define E1000_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
+#define E1000_FLAG_MAILBOX          (uint32_t)(1 << 1)
 
 /*
  * Defines that were not part of e1000_hw.h as they are not used by the FreeBSD
@@ -64,6 +65,21 @@ struct e1000_vfta {
 };
 
 /*
+ * VF data which used by PF host only
+ */
+#define E1000_MAX_VF_MC_ENTRIES         30
+struct e1000_vf_info {
+	uint8_t vf_mac_addresses[ETHER_ADDR_LEN];
+	uint16_t vf_mc_hashes[E1000_MAX_VF_MC_ENTRIES];
+	uint16_t num_vf_mc_hashes;
+	uint16_t default_vf_vlan_id;
+	uint16_t vlans_enabled;
+	uint16_t pf_qos;
+	uint16_t vlan_count;
+	uint16_t tx_rate;
+};
+
+/*
  * Structure to store private data for each driver instance (for each port).
  */
 struct e1000_adapter {
@@ -71,6 +87,7 @@ struct e1000_adapter {
 	struct e1000_hw_stats   stats;
 	struct e1000_interrupt  intr;
 	struct e1000_vfta       shadow_vfta;
+	struct e1000_vf_info    *vfdata;
 };
 
 #define E1000_DEV_PRIVATE_TO_HW(adapter) \
@@ -84,6 +101,9 @@ struct e1000_adapter {
 
 #define E1000_DEV_PRIVATE_TO_VFTA(adapter) \
 	(&((struct e1000_adapter *)adapter)->shadow_vfta)
+
+#define E1000_DEV_PRIVATE_TO_P_VFDATA(adapter) \
+        (&((struct e1000_adapter *)adapter)->vfdata)
 
 /*
  * RX/TX IGB function prototypes
@@ -120,6 +140,15 @@ uint16_t eth_igb_recv_scattered_pkts(void *rxq,
 int eth_igbvf_rx_init(struct rte_eth_dev *dev);
 
 void eth_igbvf_tx_init(struct rte_eth_dev *dev);
+
+/*
+ * misc function prototypes
+ */
+void igb_pf_host_init(struct rte_eth_dev *eth_dev);
+ 
+void igb_pf_mbx_process(struct rte_eth_dev *eth_dev);
+ 
+int igb_pf_host_configure(struct rte_eth_dev *eth_dev);
 
 /*
  * RX/TX EM function prototypes

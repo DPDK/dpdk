@@ -139,6 +139,8 @@ static int eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 #define IGB_LINK_UPDATE_CHECK_TIMEOUT  90  /* 9s */
 #define IGB_LINK_UPDATE_CHECK_INTERVAL 100 /* ms */
 
+#define IGBVF_PMD_NAME "rte_igbvf_pmd"     /* PMD name */
+
 static enum e1000_fc_mode igb_fc_setting = e1000_fc_full;
 
 /*
@@ -284,6 +286,23 @@ igb_intr_disable(struct e1000_hw *hw)
 	E1000_WRITE_FLUSH(hw);
 }
 
+static inline int32_t
+igb_pf_reset_hw(struct e1000_hw *hw)
+{
+	uint32_t ctrl_ext;
+	int32_t status;
+ 
+	status = e1000_reset_hw(hw);
+ 
+	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
+	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
+	ctrl_ext |= E1000_CTRL_EXT_PFRSTD;
+	E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext);
+	E1000_WRITE_FLUSH(hw);
+ 
+	return status;
+}
+ 
 static void
 igb_identify_hardware(struct rte_eth_dev *dev)
 {
@@ -310,6 +329,7 @@ eth_igb_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		E1000_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct e1000_vfta * shadow_vfta =
 			E1000_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
+	uint32_t ctrl_ext;
 
 	pci_dev = eth_dev->pci_dev;
 	eth_dev->dev_ops = &eth_igb_ops;
@@ -350,7 +370,7 @@ eth_igb_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	 * Start from a known state, this is important in reading the nvm
 	 * and mac from that.
 	 */
-	e1000_reset_hw(hw);
+	igb_pf_reset_hw(hw);
 
 	/* Make sure we have a good EEPROM before we read from it */
 	if (e1000_validate_nvm_checksum(hw) < 0) {
@@ -405,6 +425,15 @@ eth_igb_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		PMD_INIT_LOG(ERR, "PHY reset is blocked due to"
 					"SOL/IDER session");
 	}
+
+	/* initialize PF if max_vfs not zero */
+	igb_pf_host_init(eth_dev);
+ 
+	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
+	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
+	ctrl_ext |= E1000_CTRL_EXT_PFRSTD;
+	E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext);
+	E1000_WRITE_FLUSH(hw);
 
 	PMD_INIT_LOG(INFO, "port_id %d vendorID=0x%x deviceID=0x%x\n",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
@@ -461,7 +490,7 @@ eth_igbvf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	/* Disable the interrupts for VF */
 	igbvf_intr_disable(hw);
-
+	
 	diag = hw->mac.ops.reset_hw(hw);
 
 	/* Allocate memory for storing MAC addresses */
@@ -474,6 +503,7 @@ eth_igbvf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 			ETHER_ADDR_LEN * hw->mac.rar_entry_count);
 		return -ENOMEM;
 	}
+	
 	/* Copy the permanent MAC address */
 	ether_addr_copy((struct ether_addr *) hw->mac.perm_addr,
 			&eth_dev->data->mac_addrs[0]);
@@ -556,6 +586,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret, i, mask;
+	uint32_t ctrl_ext;
 
 	PMD_INIT_LOG(DEBUG, ">>");
 
@@ -584,6 +615,15 @@ eth_igb_start(struct rte_eth_dev *dev)
 	}
 
 	E1000_WRITE_REG(hw, E1000_VET, ETHER_TYPE_VLAN);
+
+	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
+	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
+	ctrl_ext |= E1000_CTRL_EXT_PFRSTD;
+	E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext);
+	E1000_WRITE_FLUSH(hw);
+
+	/* configure PF module if SRIOV enabled */
+	igb_pf_host_configure(dev);
 
 	/* Configure for OS presence */
 	igb_init_manageability(hw);
@@ -714,7 +754,7 @@ eth_igb_stop(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 
 	igb_intr_disable(hw);
-	e1000_reset_hw(hw);
+	igb_pf_reset_hw(hw);
 	E1000_WRITE_REG(hw, E1000_WUC, 0);
 
 	/* Power down the phy. Needed to make the link go Down */
@@ -806,7 +846,7 @@ igb_hardware_init(struct e1000_hw *hw)
 		hw->fc.requested_mode = e1000_fc_none;
 
 	/* Issue a global reset */
-	e1000_reset_hw(hw);
+	igb_pf_reset_hw(hw);
 	E1000_WRITE_REG(hw, E1000_WUC, 0);
 
 	diag = e1000_init_hw(hw);
@@ -1493,6 +1533,9 @@ eth_igb_interrupt_get_status(struct rte_eth_dev *dev)
 		intr->flags |= E1000_FLAG_NEED_LINK_UPDATE;
 	}
 
+	if (icr & E1000_ICR_VMMB) 
+		intr->flags |= E1000_FLAG_MAILBOX;
+
 	return 0;
 }
 
@@ -1517,6 +1560,10 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 	int ret;
 
+	if (intr->flags & E1000_FLAG_MAILBOX) {
+		igb_pf_mbx_process(dev);
+		intr->flags &= ~E1000_FLAG_MAILBOX;
+	}
 
 	igb_intr_enable(dev);
 	rte_intr_enable(&(dev->pci_dev->intr_handle));
@@ -1650,13 +1697,18 @@ eth_igb_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	return (-EIO);
 }
 
+#define E1000_RAH_POOLSEL_SHIFT      (18)
 static void
 eth_igb_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 	        uint32_t index, __rte_unused uint32_t pool)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t rah;
 
 	e1000_rar_set(hw, mac_addr->addr_bytes, index);
+	rah = E1000_READ_REG(hw, E1000_RAH(index));
+	rah |= (0x1 << (E1000_RAH_POOLSEL_SHIFT + pool));
+	E1000_WRITE_REG(hw, E1000_RAH(index), rah);
 }
 
 static void
