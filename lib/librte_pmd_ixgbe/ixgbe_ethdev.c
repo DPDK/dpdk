@@ -1205,8 +1205,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* Turn on the laser */
-	if (hw->phy.multispeed_fiber)
-		ixgbe_enable_tx_laser(hw);
+	ixgbe_enable_tx_laser(hw);
 
 	err = ixgbe_check_link(hw, &speed, &link_up, 0);
 	if (err)
@@ -1297,8 +1296,7 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	ixgbe_stop_adapter(hw);
 
 	/* Turn off the laser */
-	if (hw->phy.multispeed_fiber)
-		ixgbe_disable_tx_laser(hw);
+	ixgbe_disable_tx_laser(hw);
 
 	ixgbe_dev_clear_queues(dev);
 
