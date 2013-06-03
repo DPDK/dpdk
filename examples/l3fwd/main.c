@@ -43,6 +43,7 @@
 #include <errno.h>
 #include <getopt.h>
 
+#include <tmmintrin.h>
 #include <rte_common.h>
 #include <rte_byteorder.h>
 #include <rte_log.h>
@@ -79,15 +80,17 @@
 #define APP_LOOKUP_LPM                  1
 #define DO_RFC_1812_CHECKS
 
-//#define APP_LOOKUP_METHOD             APP_LOOKUP_EXACT_MATCH
 #ifndef APP_LOOKUP_METHOD
 #define APP_LOOKUP_METHOD             APP_LOOKUP_LPM
 #endif
+
+#define ENABLE_MULTI_BUFFER_OPTIMIZE	1
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 #include <rte_hash.h>
 #elif (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
 #include <rte_lpm.h>
+#include <rte_lpm6.h>
 #else
 #error "APP_LOOKUP_METHOD set to incorrect value"
 #endif
@@ -145,7 +148,7 @@
 #define TX_HTHRESH 0  /**< Default values of TX host threshold reg. */
 #define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
 
-#define MAX_PKT_BURST 32
+#define MAX_PKT_BURST     32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
 #define NB_SOCKETS 8
@@ -168,6 +171,10 @@ static struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 static uint32_t enabled_port_mask = 0;
 static int promiscuous_on = 0; /**< Ports set in promiscuous mode off by default. */
 static int numa_on = 1; /**< NUMA is enabled by default. */
+
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)	
+static int ipv6 = 0; /**< ipv6 is false by default. */
+#endif
 
 struct mbuf_table {
 	uint16_t len;
@@ -237,7 +244,7 @@ static const struct rte_eth_rxconf rx_conf = {
 	.rx_free_thresh = 32,
 };
 
-static const struct rte_eth_txconf tx_conf = {
+static struct rte_eth_txconf tx_conf = {
 	.tx_thresh = {
 		.pthresh = TX_PTHRESH,
 		.hthresh = TX_HTHRESH,
@@ -245,11 +252,15 @@ static const struct rte_eth_txconf tx_conf = {
 	},
 	.tx_free_thresh = 0, /* Use PMD default values */
 	.tx_rs_thresh = 0, /* Use PMD default values */
-	.txq_flags = 0x0,
+	.txq_flags = (ETH_TXQ_FLAGS_NOMULTSEGS |
+			ETH_TXQ_FLAGS_NOVLANOFFL |
+			ETH_TXQ_FLAGS_NOXSUMSCTP |
+			ETH_TXQ_FLAGS_NOXSUMUDP |
+			ETH_TXQ_FLAGS_NOXSUMTCP)
+
 };
 
 static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
-
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 
@@ -262,20 +273,49 @@ static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
 #endif
 
 struct ipv4_5tuple {
-	uint32_t ip_dst;
-	uint32_t ip_src;
-	uint16_t port_dst;
-	uint16_t port_src;
-	uint8_t  proto;
+        uint32_t ip_dst;
+        uint32_t ip_src;
+        uint16_t port_dst;
+        uint16_t port_src;
+        uint8_t  proto;
 } __attribute__((__packed__));
 
+union ipv4_5tuple_host {
+	struct {
+		uint8_t  pad0;
+		uint8_t  proto;
+		uint16_t pad1;
+		uint32_t ip_src;
+		uint32_t ip_dst;
+		uint16_t port_src;
+		uint16_t port_dst;
+	};
+	__m128i xmm;
+};
+
+#define XMM_NUM_IN_IPV6_5TUPLE 3
+
 struct ipv6_5tuple {
-	uint8_t  ip_dst[IPV6_ADDR_LEN];
-	uint8_t  ip_src[IPV6_ADDR_LEN];
-	uint16_t port_dst;
-	uint16_t port_src;
-	uint8_t  proto;
+        uint8_t  ip_dst[IPV6_ADDR_LEN];
+        uint8_t  ip_src[IPV6_ADDR_LEN];
+        uint16_t port_dst;
+        uint16_t port_src;
+        uint8_t  proto;
 } __attribute__((__packed__));
+
+union ipv6_5tuple_host {
+	struct {
+		uint16_t pad0;
+		uint8_t  proto;
+		uint8_t  pad1;
+		uint8_t  ip_src[IPV6_ADDR_LEN];
+		uint8_t  ip_dst[IPV6_ADDR_LEN];
+		uint16_t port_src;
+		uint16_t port_dst;
+		uint64_t reserve;
+	};
+	__m128i xmm[XMM_NUM_IN_IPV6_5TUPLE];
+};
 
 struct ipv4_l3fwd_route {
 	struct ipv4_5tuple key;
@@ -288,49 +328,117 @@ struct ipv6_l3fwd_route {
 };
 
 static struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {
-	{{IPv4(100,10,0,1), IPv4(200,10,0,1), 101, 11, IPPROTO_TCP}, 0},
-	{{IPv4(100,20,0,2), IPv4(200,20,0,2), 102, 12, IPPROTO_TCP}, 1},
-	{{IPv4(100,30,0,3), IPv4(200,30,0,3), 103, 13, IPPROTO_TCP}, 2},
-	{{IPv4(100,40,0,4), IPv4(200,40,0,4), 104, 14, IPPROTO_TCP}, 3},
+	{{IPv4(101,0,0,0), IPv4(100,10,0,1),  101, 11, IPPROTO_TCP}, 0},
+	{{IPv4(201,0,0,0), IPv4(200,20,0,1),  102, 12, IPPROTO_TCP}, 1},
+	{{IPv4(111,0,0,0), IPv4(100,30,0,1),  101, 11, IPPROTO_TCP}, 2},
+	{{IPv4(211,0,0,0), IPv4(200,40,0,1),  102, 12, IPPROTO_TCP}, 3},
 };
 
 static struct ipv6_l3fwd_route ipv6_l3fwd_route_array[] = {
-	{
-		{
-			{0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			 0x02, 0x1b, 0x21, 0xff, 0xfe, 0x91, 0x38, 0x05},
-			{0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			 0x02, 0x1e, 0x67, 0xff, 0xfe, 0x0d, 0xb6, 0x0a},
-			 1, 10, IPPROTO_UDP
-		}, 4
-	},
+	{{
+	{0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0x1e, 0x67, 0xff, 0xfe, 0, 0, 0},
+	{0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0x1b, 0x21, 0xff, 0xfe, 0x91, 0x38, 0x05},
+	101, 11, IPPROTO_TCP}, 0},
+
+	{{
+	{0xfe, 0x90, 0, 0, 0, 0, 0, 0, 0x02, 0x1e, 0x67, 0xff, 0xfe, 0, 0, 0},
+	{0xfe, 0x90, 0, 0, 0, 0, 0, 0, 0x02, 0x1b, 0x21, 0xff, 0xfe, 0x91, 0x38, 0x05},
+	102, 12, IPPROTO_TCP}, 1},
+	
+	{{
+	{0xfe, 0xa0, 0, 0, 0, 0, 0, 0, 0x02, 0x1e, 0x67, 0xff, 0xfe, 0, 0, 0},
+	{0xfe, 0xa0, 0, 0, 0, 0, 0, 0, 0x02, 0x1b, 0x21, 0xff, 0xfe, 0x91, 0x38, 0x05},
+	101, 11, IPPROTO_TCP}, 2},
+
+	{{
+	{0xfe, 0xb0, 0, 0, 0, 0, 0, 0, 0x02, 0x1e, 0x67, 0xff, 0xfe, 0, 0, 0},
+	{0xfe, 0xb0, 0, 0, 0, 0, 0, 0, 0x02, 0x1b, 0x21, 0xff, 0xfe, 0x91, 0x38, 0x05},
+	102, 12, IPPROTO_TCP}, 3},
 };
 
 typedef struct rte_hash lookup_struct_t;
 static lookup_struct_t *ipv4_l3fwd_lookup_struct[NB_SOCKETS];
 static lookup_struct_t *ipv6_l3fwd_lookup_struct[NB_SOCKETS];
 
-#define L3FWD_HASH_ENTRIES	1024
+#ifdef RTE_ARCH_X86_64
+/* default to 4 million hash entries (approx) */
+#define L3FWD_HASH_ENTRIES		1024*1024*4
+#else
+/* 32-bit has less address-space for hugepage memory, limit to 1M entries */
+#define L3FWD_HASH_ENTRIES		1024*1024*1
+#endif
+#define HASH_ENTRY_NUMBER_DEFAULT	4
+ 
+static uint32_t hash_entry_number = HASH_ENTRY_NUMBER_DEFAULT;
 
-struct rte_hash_parameters ipv4_l3fwd_hash_params = {
-	.name = "ipv4_l3fwd_hash_0",
-	.entries = L3FWD_HASH_ENTRIES,
-	.bucket_entries = 4,
-	.key_len = sizeof(struct ipv4_5tuple),
-	.hash_func = DEFAULT_HASH_FUNC,
-	.hash_func_init_val = 0,
-	.socket_id = 0,
-};
+static inline uint32_t
+ipv4_hash_crc(const void *data, __rte_unused uint32_t data_len,
+	uint32_t init_val)
+{
+	const union ipv4_5tuple_host *k;
+	uint32_t t;
+	const uint32_t *p;
 
-struct rte_hash_parameters ipv6_l3fwd_hash_params = {
-	.name = "ipv6_l3fwd_hash_0",
-	.entries = L3FWD_HASH_ENTRIES,
-	.bucket_entries = 4,
-	.key_len = sizeof(struct ipv6_5tuple),
-	.hash_func = DEFAULT_HASH_FUNC,
-	.hash_func_init_val = 0,
-	.socket_id = 0,
-};
+	k = data;
+	t = k->proto;
+	p = (const uint32_t *)&k->port_src;
+
+#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+	init_val = rte_hash_crc_4byte(t, init_val);
+	init_val = rte_hash_crc_4byte(k->ip_src, init_val);
+	init_val = rte_hash_crc_4byte(k->ip_dst, init_val);
+	init_val = rte_hash_crc_4byte(*p, init_val);
+#else /* RTE_MACHINE_CPUFLAG_SSE4_2 */
+	init_val = rte_jhash_1word(t, init_val);
+	init_val = rte_jhash_1word(k->ip_src, init_val);
+	init_val = rte_jhash_1word(k->ip_dst, init_val);
+	init_val = rte_jhash_1word(*p, init_val);
+#endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
+	return (init_val);
+}
+
+static inline uint32_t
+ipv6_hash_crc(const void *data, __rte_unused uint32_t data_len, uint32_t init_val)
+{
+	const union ipv6_5tuple_host *k;
+	uint32_t t;
+	const uint32_t *p;
+#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+	const uint32_t  *ip_src0, *ip_src1, *ip_src2, *ip_src3;
+	const uint32_t  *ip_dst0, *ip_dst1, *ip_dst2, *ip_dst3;
+#endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
+ 
+	k = data;
+	t = k->proto;
+	p = (const uint32_t *)&k->port_src;
+ 
+#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+	ip_src0 = (const uint32_t *) k->ip_src;
+	ip_src1 = (const uint32_t *)(k->ip_src+4);
+	ip_src2 = (const uint32_t *)(k->ip_src+8);
+	ip_src3 = (const uint32_t *)(k->ip_src+12);
+	ip_dst0 = (const uint32_t *) k->ip_dst;
+	ip_dst1 = (const uint32_t *)(k->ip_dst+4);
+	ip_dst2 = (const uint32_t *)(k->ip_dst+8);
+	ip_dst3 = (const uint32_t *)(k->ip_dst+12);
+	init_val = rte_hash_crc_4byte(t, init_val);
+	init_val = rte_hash_crc_4byte(*ip_src0, init_val);
+	init_val = rte_hash_crc_4byte(*ip_src1, init_val);
+	init_val = rte_hash_crc_4byte(*ip_src2, init_val);
+	init_val = rte_hash_crc_4byte(*ip_src3, init_val);
+	init_val = rte_hash_crc_4byte(*ip_dst0, init_val);
+	init_val = rte_hash_crc_4byte(*ip_dst1, init_val);
+	init_val = rte_hash_crc_4byte(*ip_dst2, init_val);
+	init_val = rte_hash_crc_4byte(*ip_dst3, init_val);
+	init_val = rte_hash_crc_4byte(*p, init_val);
+#else /* RTE_MACHINE_CPUFLAG_SSE4_2 */
+	init_val = rte_jhash_1word(t, init_val);
+	init_val = rte_jhash(k->ip_src, sizeof(uint8_t) * IPV6_ADDR_LEN, init_val);
+	init_val = rte_jhash(k->ip_dst, sizeof(uint8_t) * IPV6_ADDR_LEN, init_val);
+	init_val = rte_jhash_1word(*p, init_val);
+#endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
+	return (init_val);
+}
 
 #define IPV4_L3FWD_NUM_ROUTES \
 	(sizeof(ipv4_l3fwd_route_array) / sizeof(ipv4_l3fwd_route_array[0]))
@@ -340,11 +448,18 @@ struct rte_hash_parameters ipv6_l3fwd_hash_params = {
 
 static uint8_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
 static uint8_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
+
 #endif
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
 struct ipv4_l3fwd_route {
 	uint32_t ip;
+	uint8_t  depth;
+	uint8_t  if_out;
+};
+
+struct ipv6_l3fwd_route {
+	uint8_t ip[16];
 	uint8_t  depth;
 	uint8_t  if_out;
 };
@@ -360,13 +475,30 @@ static struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {
 	{IPv4(8,1,1,0), 24, 7},
 };
 
+static struct ipv6_l3fwd_route ipv6_l3fwd_route_array[] = {
+	{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 0},
+	{{2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 1},
+	{{3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 2},
+	{{4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 3},
+	{{5,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 4},
+	{{6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 5},
+	{{7,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 6},
+	{{8,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 7},
+};
+
 #define IPV4_L3FWD_NUM_ROUTES \
 	(sizeof(ipv4_l3fwd_route_array) / sizeof(ipv4_l3fwd_route_array[0]))
+#define IPV6_L3FWD_NUM_ROUTES \
+	(sizeof(ipv6_l3fwd_route_array) / sizeof(ipv6_l3fwd_route_array[0]))
 
-#define IPV4_L3FWD_LPM_MAX_RULES     1024
+#define IPV4_L3FWD_LPM_MAX_RULES         1024
+#define IPV6_L3FWD_LPM_MAX_RULES         1024
+#define IPV6_L3FWD_LPM_NUMBER_TBL8S (1 << 16)
 
 typedef struct rte_lpm lookup_struct_t;
+typedef struct rte_lpm6 lookup6_struct_t;
 static lookup_struct_t *ipv4_l3fwd_lookup_struct[NB_SOCKETS];
+static lookup6_struct_t *ipv6_l3fwd_lookup_struct[NB_SOCKETS];
 #endif
 
 struct lcore_conf {
@@ -375,7 +507,11 @@ struct lcore_conf {
 	uint16_t tx_queue_id[RTE_MAX_ETHPORTS];
 	struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
 	lookup_struct_t * ipv4_lookup_struct;
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
+	lookup6_struct_t * ipv6_lookup_struct;
+#else
 	lookup_struct_t * ipv6_lookup_struct;
+#endif
 } __rte_cache_aligned;
 
 static struct lcore_conf lcore_conf[RTE_MAX_LCORE];
@@ -468,92 +604,41 @@ is_valid_ipv4_pkt(struct ipv4_hdr *pkt, uint32_t link_len)
 #endif
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
-static void
-print_ipv4_key(struct ipv4_5tuple key)
-{
-	printf("IP dst = %08x, IP src = %08x, port dst = %d, port src = %d, proto = %d\n",
-			(unsigned)key.ip_dst, (unsigned)key.ip_src, key.port_dst, key.port_src, key.proto);
-}
-static void
-print_ipv6_key(struct ipv6_5tuple key)
-{
-	printf( "IP dst = " IPv6_BYTES_FMT ", IP src = " IPv6_BYTES_FMT ", "
-	        "port dst = %d, port src = %d, proto = %d\n",
-	        IPv6_BYTES(key.ip_dst), IPv6_BYTES(key.ip_src),
-	        key.port_dst, key.port_src, key.proto);
-}
 
+static __m128i mask0;
+static __m128i mask1;
+static __m128i mask2;
 static inline uint8_t
-get_ipv4_dst_port(struct ipv4_hdr *ipv4_hdr,  uint8_t portid, lookup_struct_t * ipv4_l3fwd_lookup_struct)
+get_ipv4_dst_port(void *ipv4_hdr, uint8_t portid, lookup_struct_t * ipv4_l3fwd_lookup_struct)
 {
-	struct ipv4_5tuple key;
-	struct tcp_hdr *tcp;
-	struct udp_hdr *udp;
 	int ret = 0;
-
-	key.ip_dst = rte_be_to_cpu_32(ipv4_hdr->dst_addr);
-	key.ip_src = rte_be_to_cpu_32(ipv4_hdr->src_addr);
-	key.proto = ipv4_hdr->next_proto_id;
-
-	switch (ipv4_hdr->next_proto_id) {
-	case IPPROTO_TCP:
-		tcp = (struct tcp_hdr *)((unsigned char *) ipv4_hdr +
-					sizeof(struct ipv4_hdr));
-		key.port_dst = rte_be_to_cpu_16(tcp->dst_port);
-		key.port_src = rte_be_to_cpu_16(tcp->src_port);
-		break;
-
-	case IPPROTO_UDP:
-		udp = (struct udp_hdr *)((unsigned char *) ipv4_hdr +
-					sizeof(struct ipv4_hdr));
-		key.port_dst = rte_be_to_cpu_16(udp->dst_port);
-		key.port_src = rte_be_to_cpu_16(udp->src_port);
-		break;
-
-	default:
-		key.port_dst = 0;
-		key.port_src = 0;
-		break;
-	}
-
+	union ipv4_5tuple_host key;
+	
+	ipv4_hdr = (uint8_t *)ipv4_hdr + offsetof(struct ipv4_hdr, time_to_live);
+	__m128i data = _mm_loadu_si128((__m128i*)(ipv4_hdr));
+	/* Get 5 tuple: dst port, src port, dst IP address, src IP address and protocol */
+	key.xmm = _mm_and_si128(data, mask0);
 	/* Find destination port */
 	ret = rte_hash_lookup(ipv4_l3fwd_lookup_struct, (const void *)&key);
 	return (uint8_t)((ret < 0)? portid : ipv4_l3fwd_out_if[ret]);
 }
 
 static inline uint8_t
-get_ipv6_dst_port(struct ipv6_hdr *ipv6_hdr,  uint8_t portid, lookup_struct_t * ipv6_l3fwd_lookup_struct)
+get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, lookup_struct_t * ipv6_l3fwd_lookup_struct)
 {
-	struct ipv6_5tuple key;
-	struct tcp_hdr *tcp;
-	struct udp_hdr *udp;
 	int ret = 0;
+	union ipv6_5tuple_host key;
 
-	memcpy(key.ip_dst, ipv6_hdr->dst_addr, IPV6_ADDR_LEN);
-	memcpy(key.ip_src, ipv6_hdr->src_addr, IPV6_ADDR_LEN);
-
-	key.proto = ipv6_hdr->proto;
-
-	switch (ipv6_hdr->proto) {
-	case IPPROTO_TCP:
-		tcp = (struct tcp_hdr *)((unsigned char *) ipv6_hdr +
-					sizeof(struct ipv6_hdr));
-		key.port_dst = rte_be_to_cpu_16(tcp->dst_port);
-		key.port_src = rte_be_to_cpu_16(tcp->src_port);
-		break;
-
-	case IPPROTO_UDP:
-		udp = (struct udp_hdr *)((unsigned char *) ipv6_hdr +
-					sizeof(struct ipv6_hdr));
-		key.port_dst = rte_be_to_cpu_16(udp->dst_port);
-		key.port_src = rte_be_to_cpu_16(udp->src_port);
-		break;
-
-	default:
-		key.port_dst = 0;
-		key.port_src = 0;
-		break;
-	}
+	ipv6_hdr = (uint8_t *)ipv6_hdr + offsetof(struct ipv6_hdr, payload_len);
+	__m128i data0 = _mm_loadu_si128((__m128i*)(ipv6_hdr));
+	__m128i data1 = _mm_loadu_si128((__m128i*)(((uint8_t*)ipv6_hdr)+sizeof(__m128i)));
+	__m128i data2 = _mm_loadu_si128((__m128i*)(((uint8_t*)ipv6_hdr)+sizeof(__m128i)+sizeof(__m128i)));
+	/* Get part of 5 tuple: src IP address lower 96 bits and protocol */
+	key.xmm[0] = _mm_and_si128(data0, mask1);
+	/* Get part of 5 tuple: dst IP address lower 96 bits and src IP address higher 32 bits */
+	key.xmm[1] = data1;
+	/* Get part of 5 tuple: dst port and src port and dst IP address higher 32 bits */
+	key.xmm[2] = _mm_and_si128(data2, mask2);
 
 	/* Find destination port */
 	ret = rte_hash_lookup(ipv6_l3fwd_lookup_struct, (const void *)&key);
@@ -563,17 +648,247 @@ get_ipv6_dst_port(struct ipv6_hdr *ipv6_hdr,  uint8_t portid, lookup_struct_t * 
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
 static inline uint8_t
-get_ipv4_dst_port(struct ipv4_hdr *ipv4_hdr,  uint8_t portid, lookup_struct_t * ipv4_l3fwd_lookup_struct)
+get_ipv4_dst_port(void *ipv4_hdr,  uint8_t portid, lookup_struct_t * ipv4_l3fwd_lookup_struct)
 {
 	uint8_t next_hop;
 
 	return (uint8_t) ((rte_lpm_lookup(ipv4_l3fwd_lookup_struct,
-			rte_be_to_cpu_32(ipv4_hdr->dst_addr), &next_hop) == 0)?
+			rte_be_to_cpu_32(((struct ipv4_hdr*)ipv4_hdr)->dst_addr), &next_hop) == 0)?
+			next_hop : portid);
+}
+
+static inline uint8_t
+get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, lookup6_struct_t * ipv6_l3fwd_lookup_struct)
+{
+	uint8_t next_hop;
+	return (uint8_t) ((rte_lpm6_lookup(ipv6_l3fwd_lookup_struct,
+			((struct ipv6_hdr*)ipv6_hdr)->dst_addr, &next_hop) == 0)?
 			next_hop : portid);
 }
 #endif
 
-static inline void
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH) & (ENABLE_MULTI_BUFFER_OPTIMIZE == 1)
+static inline void l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qconf);
+
+#define MASK_ALL_PKTS    0xf
+#define EXECLUDE_1ST_PKT 0xe
+#define EXECLUDE_2ND_PKT 0xd
+#define EXECLUDE_3RD_PKT 0xb
+#define EXECLUDE_4TH_PKT 0x7
+
+static inline void 
+simple_ipv4_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *qconf)
+{
+	struct ether_hdr *eth_hdr[4];
+	struct ipv4_hdr *ipv4_hdr[4];
+	void *d_addr_bytes[4];
+	uint8_t dst_port[4];
+	int32_t ret[4];
+	union ipv4_5tuple_host key[4];
+	__m128i data[4];
+
+	eth_hdr[0] = rte_pktmbuf_mtod(m[0], struct ether_hdr *);
+	eth_hdr[1] = rte_pktmbuf_mtod(m[1], struct ether_hdr *);
+	eth_hdr[2] = rte_pktmbuf_mtod(m[2], struct ether_hdr *);
+	eth_hdr[3] = rte_pktmbuf_mtod(m[3], struct ether_hdr *);
+
+	/* Handle IPv4 headers.*/
+	ipv4_hdr[0] = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m[0], unsigned char *) +
+			sizeof(struct ether_hdr));
+	ipv4_hdr[1] = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m[1], unsigned char *) +
+			sizeof(struct ether_hdr));
+	ipv4_hdr[2] = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m[2], unsigned char *) +
+			sizeof(struct ether_hdr));
+	ipv4_hdr[3] = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m[3], unsigned char *) +
+			sizeof(struct ether_hdr));
+
+#ifdef DO_RFC_1812_CHECKS
+	/* Check to make sure the packet is valid (RFC1812) */
+	uint8_t valid_mask = MASK_ALL_PKTS;
+	if (is_valid_ipv4_pkt(ipv4_hdr[0], m[0]->pkt.pkt_len) < 0) {
+		rte_pktmbuf_free(m[0]);
+		valid_mask &= EXECLUDE_1ST_PKT;
+	}
+	if (is_valid_ipv4_pkt(ipv4_hdr[1], m[1]->pkt.pkt_len) < 0) {
+		rte_pktmbuf_free(m[1]);
+		valid_mask &= EXECLUDE_2ND_PKT;
+	}
+	if (is_valid_ipv4_pkt(ipv4_hdr[2], m[2]->pkt.pkt_len) < 0) {
+		rte_pktmbuf_free(m[2]);
+		valid_mask &= EXECLUDE_3RD_PKT;
+	}
+	if (is_valid_ipv4_pkt(ipv4_hdr[3], m[3]->pkt.pkt_len) < 0) {
+		rte_pktmbuf_free(m[3]);
+		valid_mask &= EXECLUDE_4TH_PKT;
+	}
+	if (unlikely(valid_mask != MASK_ALL_PKTS)) {
+		if (valid_mask == 0){
+			return;
+		} else {
+			uint8_t i = 0;
+			for (i = 0; i < 4; i++) {
+				if ((0x1 << i) & valid_mask) {
+					l3fwd_simple_forward(m[i], portid, qconf);
+				}
+			}
+			return;
+		}
+	}
+#endif // End of #ifdef DO_RFC_1812_CHECKS
+
+	data[0] = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m[0], unsigned char *) +
+		sizeof(struct ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
+	data[1] = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m[1], unsigned char *) +
+		sizeof(struct ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
+	data[2] = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m[2], unsigned char *) +
+		sizeof(struct ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
+	data[3] = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m[3], unsigned char *) +
+		sizeof(struct ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
+
+	key[0].xmm = _mm_and_si128(data[0], mask0);
+	key[1].xmm = _mm_and_si128(data[1], mask0);
+	key[2].xmm = _mm_and_si128(data[2], mask0);
+	key[3].xmm = _mm_and_si128(data[3], mask0);
+
+	const void *key_array[4] = {&key[0], &key[1], &key[2],&key[3]};
+	rte_hash_lookup_multi(qconf->ipv4_lookup_struct, &key_array[0], 4, ret);
+	dst_port[0] = (uint8_t) ((ret[0] < 0) ? portid : ipv4_l3fwd_out_if[ret[0]]);
+	dst_port[1] = (uint8_t) ((ret[1] < 0) ? portid : ipv4_l3fwd_out_if[ret[1]]);
+	dst_port[2] = (uint8_t) ((ret[2] < 0) ? portid : ipv4_l3fwd_out_if[ret[2]]);
+	dst_port[3] = (uint8_t) ((ret[3] < 0) ? portid : ipv4_l3fwd_out_if[ret[3]]);
+	
+	if (dst_port[0] >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port[0]) == 0)
+		dst_port[0] = portid;
+	if (dst_port[1] >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port[1]) == 0)
+		dst_port[1] = portid;
+	if (dst_port[2] >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port[2]) == 0)
+		dst_port[2] = portid;
+	if (dst_port[3] >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port[3]) == 0)
+		dst_port[3] = portid;
+
+	/* 02:00:00:00:00:xx */
+	d_addr_bytes[0] = &eth_hdr[0]->d_addr.addr_bytes[0];
+	d_addr_bytes[1] = &eth_hdr[1]->d_addr.addr_bytes[0];
+	d_addr_bytes[2] = &eth_hdr[2]->d_addr.addr_bytes[0];
+	d_addr_bytes[3] = &eth_hdr[3]->d_addr.addr_bytes[0];
+	*((uint64_t *)d_addr_bytes[0]) = 0x000000000002 + ((uint64_t)dst_port[0] << 40);
+	*((uint64_t *)d_addr_bytes[1]) = 0x000000000002 + ((uint64_t)dst_port[1] << 40);
+	*((uint64_t *)d_addr_bytes[2]) = 0x000000000002 + ((uint64_t)dst_port[2] << 40);
+	*((uint64_t *)d_addr_bytes[3]) = 0x000000000002 + ((uint64_t)dst_port[3] << 40);
+
+#ifdef DO_RFC_1812_CHECKS
+	/* Update time to live and header checksum */
+	--(ipv4_hdr[0]->time_to_live);
+	--(ipv4_hdr[1]->time_to_live);
+	--(ipv4_hdr[2]->time_to_live);
+	--(ipv4_hdr[3]->time_to_live);
+	++(ipv4_hdr[0]->hdr_checksum);
+	++(ipv4_hdr[1]->hdr_checksum);
+	++(ipv4_hdr[2]->hdr_checksum);
+	++(ipv4_hdr[3]->hdr_checksum);
+#endif
+
+	/* src addr */
+	ether_addr_copy(&ports_eth_addr[dst_port[0]], &eth_hdr[0]->s_addr);
+	ether_addr_copy(&ports_eth_addr[dst_port[1]], &eth_hdr[1]->s_addr);
+	ether_addr_copy(&ports_eth_addr[dst_port[2]], &eth_hdr[2]->s_addr);
+	ether_addr_copy(&ports_eth_addr[dst_port[3]], &eth_hdr[3]->s_addr);
+
+	send_single_packet(m[0], (uint8_t)dst_port[0]);
+	send_single_packet(m[1], (uint8_t)dst_port[1]);
+	send_single_packet(m[2], (uint8_t)dst_port[2]);
+	send_single_packet(m[3], (uint8_t)dst_port[3]);
+
+}
+
+static inline void get_ipv6_5tuple(struct rte_mbuf* m0, __m128i mask0, __m128i mask1,
+				 union ipv6_5tuple_host * key)
+{
+        __m128i tmpdata0 = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m0, unsigned char *) 
+			+ sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len)));
+        __m128i tmpdata1 = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m0, unsigned char *) 
+			+ sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len) 
+			+  sizeof(__m128i)));
+        __m128i tmpdata2 = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m0, unsigned char *) 
+			+ sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len) 
+			+ sizeof(__m128i) + sizeof(__m128i)));
+        key->xmm[0] = _mm_and_si128(tmpdata0, mask0);
+        key->xmm[1] = tmpdata1;
+        key->xmm[2] = _mm_and_si128(tmpdata2, mask1);
+	return;
+}
+
+static inline void 
+simple_ipv6_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *qconf)
+{
+	struct ether_hdr *eth_hdr[4];
+	__attribute__((unused)) struct ipv6_hdr *ipv6_hdr[4];
+	void *d_addr_bytes[4];
+	uint8_t dst_port[4];
+	int32_t ret[4];
+	union ipv6_5tuple_host key[4];
+
+	eth_hdr[0] = rte_pktmbuf_mtod(m[0], struct ether_hdr *);
+	eth_hdr[1] = rte_pktmbuf_mtod(m[1], struct ether_hdr *);
+	eth_hdr[2] = rte_pktmbuf_mtod(m[2], struct ether_hdr *);
+	eth_hdr[3] = rte_pktmbuf_mtod(m[3], struct ether_hdr *);
+
+	/* Handle IPv6 headers.*/
+	ipv6_hdr[0] = (struct ipv6_hdr *)(rte_pktmbuf_mtod(m[0], unsigned char *) +
+			sizeof(struct ether_hdr));
+	ipv6_hdr[1] = (struct ipv6_hdr *)(rte_pktmbuf_mtod(m[1], unsigned char *) +
+			sizeof(struct ether_hdr));
+	ipv6_hdr[2] = (struct ipv6_hdr *)(rte_pktmbuf_mtod(m[2], unsigned char *) +
+			sizeof(struct ether_hdr));
+	ipv6_hdr[3] = (struct ipv6_hdr *)(rte_pktmbuf_mtod(m[3], unsigned char *) +
+			sizeof(struct ether_hdr));
+
+	get_ipv6_5tuple(m[0], mask1, mask2, &key[0]);
+	get_ipv6_5tuple(m[1], mask1, mask2, &key[1]);
+	get_ipv6_5tuple(m[2], mask1, mask2, &key[2]);
+	get_ipv6_5tuple(m[3], mask1, mask2, &key[3]);
+	
+	const void *key_array[4] = {&key[0], &key[1], &key[2],&key[3]};
+	rte_hash_lookup_multi(qconf->ipv6_lookup_struct, &key_array[0], 4, ret);
+	dst_port[0] = (uint8_t) ((ret[0] < 0)? portid:ipv6_l3fwd_out_if[ret[0]]);
+	dst_port[1] = (uint8_t) ((ret[1] < 0)? portid:ipv6_l3fwd_out_if[ret[1]]);
+	dst_port[2] = (uint8_t) ((ret[2] < 0)? portid:ipv6_l3fwd_out_if[ret[2]]);
+	dst_port[3] = (uint8_t) ((ret[3] < 0)? portid:ipv6_l3fwd_out_if[ret[3]]);
+
+	if (dst_port[0] >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port[0]) == 0)
+		dst_port[0] = portid;
+	if (dst_port[1] >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port[1]) == 0)
+		dst_port[1] = portid;
+	if (dst_port[2] >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port[2]) == 0)
+		dst_port[2] = portid;
+	if (dst_port[3] >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port[3]) == 0)
+		dst_port[3] = portid;
+
+	/* 02:00:00:00:00:xx */
+	d_addr_bytes[0] = &eth_hdr[0]->d_addr.addr_bytes[0];
+	d_addr_bytes[1] = &eth_hdr[1]->d_addr.addr_bytes[0];
+	d_addr_bytes[2] = &eth_hdr[2]->d_addr.addr_bytes[0];
+	d_addr_bytes[3] = &eth_hdr[3]->d_addr.addr_bytes[0];
+	*((uint64_t *)d_addr_bytes[0]) = 0x000000000002 + ((uint64_t)dst_port[0] << 40);
+	*((uint64_t *)d_addr_bytes[1]) = 0x000000000002 + ((uint64_t)dst_port[1] << 40);
+	*((uint64_t *)d_addr_bytes[2]) = 0x000000000002 + ((uint64_t)dst_port[2] << 40);
+	*((uint64_t *)d_addr_bytes[3]) = 0x000000000002 + ((uint64_t)dst_port[3] << 40);
+
+	/* src addr */
+	ether_addr_copy(&ports_eth_addr[dst_port[0]], &eth_hdr[0]->s_addr);
+	ether_addr_copy(&ports_eth_addr[dst_port[1]], &eth_hdr[1]->s_addr);
+	ether_addr_copy(&ports_eth_addr[dst_port[2]], &eth_hdr[2]->s_addr);
+	ether_addr_copy(&ports_eth_addr[dst_port[3]], &eth_hdr[3]->s_addr);
+
+	send_single_packet(m[0], (uint8_t)dst_port[0]);
+	send_single_packet(m[1], (uint8_t)dst_port[1]);
+	send_single_packet(m[2], (uint8_t)dst_port[2]);
+	send_single_packet(m[3], (uint8_t)dst_port[3]);
+
+}
+#endif // End of #if(APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)&(ENABLE_MULTI_BUFFER_OPTIMIZE == 1)
+
+static inline __attribute__((always_inline)) void
 l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qconf)
 {
 	struct ether_hdr *eth_hdr;
@@ -614,10 +929,9 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
 
 		send_single_packet(m, dst_port);
-	}
-	else {
+
+	} else {
 		/* Handle IPv6 headers.*/
-#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 		struct ipv6_hdr *ipv6_hdr;
 
 		ipv6_hdr = (struct ipv6_hdr *)(rte_pktmbuf_mtod(m, unsigned char *) +
@@ -636,10 +950,6 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
 
 		send_single_packet(m, dst_port);
-#else
-		/* We don't currently handle IPv6 packets in LPM mode. */
-		rte_pktmbuf_free(m);
-#endif
 	}
 
 }
@@ -706,11 +1016,41 @@ main_loop(__attribute__((unused)) void *dummy)
 		 * Read packet from RX queues
 		 */
 		for (i = 0; i < qconf->n_rx_queue; ++i) {
-
 			portid = qconf->rx_queue_list[i].port_id;
 			queueid = qconf->rx_queue_list[i].queue_id;
 			nb_rx = rte_eth_rx_burst(portid, queueid, pkts_burst, MAX_PKT_BURST);
-
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH) & (ENABLE_MULTI_BUFFER_OPTIMIZE == 1)
+			{
+				/* Send nb_rx - nb_rx%4 packets in groups of 4.*/
+				int32_t n = RTE_ALIGN_FLOOR(nb_rx, 4);
+				for (j = 0; j < n ; j+=4) {
+					uint32_t ol_flag = pkts_burst[j]->ol_flags 
+							& pkts_burst[j+1]->ol_flags
+							& pkts_burst[j+2]->ol_flags 
+							& pkts_burst[j+3]->ol_flags;
+					if (ol_flag & PKT_RX_IPV4_HDR ) {
+						simple_ipv4_fwd_4pkts(&pkts_burst[j], 
+									portid, qconf);
+					} else if (ol_flag & PKT_RX_IPV6_HDR) {
+						simple_ipv6_fwd_4pkts(&pkts_burst[j], 
+									portid, qconf);
+					} else {
+						l3fwd_simple_forward(pkts_burst[j], 
+									portid, qconf);
+						l3fwd_simple_forward(pkts_burst[j+1], 
+									portid, qconf);
+						l3fwd_simple_forward(pkts_burst[j+2], 
+									portid, qconf);
+						l3fwd_simple_forward(pkts_burst[j+3], 
+									portid, qconf);
+					} 
+				} 
+				for (; j < nb_rx ; j++) {
+					l3fwd_simple_forward(pkts_burst[j], 
+								portid, qconf);
+				}
+			}
+#else			 
 			/* Prefetch first packets */
 			for (j = 0; j < PREFETCH_OFFSET && j < nb_rx; j++) {
 				rte_prefetch0(rte_pktmbuf_mtod(
@@ -728,6 +1068,7 @@ main_loop(__attribute__((unused)) void *dummy)
 			for (; j < nb_rx; j++) {
 				l3fwd_simple_forward(pkts_burst[j], portid, qconf);
 			}
+#endif // End of #if((ENABLE_MULTI_BUFFER_OPTIMIZE == 1)&(APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH))
 		}
 	}
 }
@@ -827,8 +1168,10 @@ print_usage(const char *prgname)
 		"  -P : enable promiscuous mode\n"
 		"  --config (port,queue,lcore): rx queues configuration\n"
 		"  --no-numa: optional, disable numa awareness\n"
+		"  --ipv6: optional, specify it if running ipv6 packets\n"
 		"  --enable-jumbo: enable jumbo frame"
-		" which max packet len is PKTLEN in decimal (64-9600)\n",
+		" which max packet len is PKTLEN in decimal (64-9600)\n"
+		"  --hash-entry-num: specify the hash entry number in hexadecimal to be setup\n",
 		prgname);
 }
 
@@ -864,6 +1207,24 @@ parse_portmask(const char *portmask)
 
 	return pm;
 }
+
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
+static int
+parse_hash_entry_number(const char *hash_entry_num)
+{
+	char *end = NULL;
+	unsigned long hash_en;
+	/* parse hexadecimal string */
+	hash_en = strtoul(hash_entry_num, &end, 16);
+	if ((hash_entry_num[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return -1;
+
+	if (hash_en == 0)
+		return -1;
+
+	return hash_en;
+}
+#endif
 
 static int
 parse_config(const char *q_arg)
@@ -916,6 +1277,12 @@ parse_config(const char *q_arg)
 	return 0;
 }
 
+#define CMD_LINE_OPT_CONFIG "config"
+#define CMD_LINE_OPT_NO_NUMA "no-numa"
+#define CMD_LINE_OPT_IPV6 "ipv6"
+#define CMD_LINE_OPT_ENABLE_JUMBO "enable-jumbo"
+#define CMD_LINE_OPT_HASH_ENTRY_NUM "hash-entry-num"
+
 /* Parse the argument given in the command line of the application */
 static int
 parse_args(int argc, char **argv)
@@ -925,9 +1292,11 @@ parse_args(int argc, char **argv)
 	int option_index;
 	char *prgname = argv[0];
 	static struct option lgopts[] = {
-		{"config", 1, 0, 0},
-		{"no-numa", 0, 0, 0},
-		{"enable-jumbo", 0, 0, 0},
+		{CMD_LINE_OPT_CONFIG, 1, 0, 0},
+		{CMD_LINE_OPT_NO_NUMA, 0, 0, 0},
+		{CMD_LINE_OPT_IPV6, 0, 0, 0},
+		{CMD_LINE_OPT_ENABLE_JUMBO, 0, 0, 0},
+		{CMD_LINE_OPT_HASH_ENTRY_NUM, 1, 0, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -953,7 +1322,8 @@ parse_args(int argc, char **argv)
 
 		/* long options */
 		case 0:
-			if (!strncmp(lgopts[option_index].name, "config", 6)) {
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_CONFIG, 
+				sizeof (CMD_LINE_OPT_CONFIG))) {
 				ret = parse_config(optarg);
 				if (ret) {
 					printf("invalid config\n");
@@ -962,16 +1332,27 @@ parse_args(int argc, char **argv)
 				}
 			}
 
-			if (!strncmp(lgopts[option_index].name, "no-numa", 7)) {
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_NO_NUMA, 
+				sizeof(CMD_LINE_OPT_NO_NUMA))) {
 				printf("numa is disabled \n");
 				numa_on = 0;
 			}
 			
-			if (!strncmp(lgopts[option_index].name, "enable-jumbo", 12)) {
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)	
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_IPV6, 
+				sizeof(CMD_LINE_OPT_IPV6))) {
+				printf("ipv6 is specified \n");
+				ipv6 = 1;
+			}
+#endif
+
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_ENABLE_JUMBO, 
+				sizeof (CMD_LINE_OPT_ENABLE_JUMBO))) {
 				struct option lenopts = {"max-pkt-len", required_argument, 0, 0};
 
-				printf("jumbo frame is enabled \n");
+				printf("jumbo frame is enabled - disabling simple TX path\n");
 				port_conf.rxmode.jumbo_frame = 1;
+				tx_conf.txq_flags = 0;
 	
 				/* if no max-pkt-len set, use the default value ETHER_MAX_LEN */	
 				if (0 == getopt_long(argc, argvopt, "", &lenopts, &option_index)) {
@@ -986,7 +1367,19 @@ parse_args(int argc, char **argv)
 				printf("set jumbo frame max packet length to %u\n", 
 						(unsigned int)port_conf.rxmode.max_rx_pkt_len);
 			}
-			
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_HASH_ENTRY_NUM, 
+				sizeof(CMD_LINE_OPT_HASH_ENTRY_NUM))) {
+				ret = parse_hash_entry_number(optarg);
+				if ((ret > 0) && (ret <= L3FWD_HASH_ENTRIES)) {
+					hash_entry_number = ret;
+				} else {
+					printf("invalid hash entry number\n");
+					print_usage(prgname);
+					return -1;
+				}
+			}
+#endif
 			break;
 
 		default:
@@ -1016,12 +1409,188 @@ print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 }
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
+
+static void convert_ipv4_5tuple(struct ipv4_5tuple* key1,
+		union ipv4_5tuple_host* key2)
+{
+	key2->ip_dst = rte_cpu_to_be_32(key1->ip_dst);
+	key2->ip_src = rte_cpu_to_be_32(key1->ip_src);
+	key2->port_dst = rte_cpu_to_be_16(key1->port_dst);
+	key2->port_src = rte_cpu_to_be_16(key1->port_src);
+	key2->proto = key1->proto;
+	key2->pad0 = 0;
+	key2->pad1 = 0;
+	return;
+}
+
+static void convert_ipv6_5tuple(struct ipv6_5tuple* key1,
+                union ipv6_5tuple_host* key2)
+{
+	uint32_t i;
+	for (i = 0; i < 16; i++)
+	{
+		key2->ip_dst[i] = key1->ip_dst[i];
+		key2->ip_src[i] = key1->ip_src[i];
+	}
+	key2->port_dst = rte_cpu_to_be_16(key1->port_dst);
+	key2->port_src = rte_cpu_to_be_16(key1->port_src);
+	key2->proto = key1->proto;
+	key2->pad0 = 0;
+	key2->pad1 = 0;
+	key2->reserve = 0;
+	return;
+}
+
+#define BYTE_VALUE_MAX 256
+#define ALL_32_BITS 0xffffffff
+#define BIT_8_TO_15 0x0000ff00
+static inline void
+populate_ipv4_few_flow_into_table(const struct rte_hash* h)
+{
+	uint32_t i;
+	int32_t ret;
+	uint32_t array_len = sizeof(ipv4_l3fwd_route_array)/sizeof(ipv4_l3fwd_route_array[0]); 
+
+	mask0 = _mm_set_epi32(ALL_32_BITS, ALL_32_BITS, ALL_32_BITS, BIT_8_TO_15);
+	for (i = 0; i < array_len; i++) {
+		struct ipv4_l3fwd_route  entry;
+		union ipv4_5tuple_host newkey;
+		entry = ipv4_l3fwd_route_array[i];
+		convert_ipv4_5tuple(&entry.key, &newkey);
+		ret = rte_hash_add_key (h,(void *) &newkey);
+		if (ret < 0) {
+			rte_exit(EXIT_FAILURE, "Unable to add entry %u to the"
+                                "l3fwd hash.\n", i);
+		}
+		ipv4_l3fwd_out_if[ret] = entry.if_out;
+	}
+	printf("Hash: Adding 0x%x keys\n", array_len);
+}
+
+#define BIT_16_TO_23 0x00ff0000
+static inline void
+populate_ipv6_few_flow_into_table(const struct rte_hash* h)
+{
+	uint32_t i;
+	int32_t ret;
+	uint32_t array_len = sizeof(ipv6_l3fwd_route_array)/sizeof(ipv6_l3fwd_route_array[0]); 
+
+	mask1 = _mm_set_epi32(ALL_32_BITS, ALL_32_BITS, ALL_32_BITS, BIT_16_TO_23);
+	mask2 = _mm_set_epi32(0, 0, ALL_32_BITS, ALL_32_BITS);
+	for (i = 0; i < array_len; i++) {
+		struct ipv6_l3fwd_route entry;
+		union ipv6_5tuple_host newkey;
+		entry = ipv6_l3fwd_route_array[i];
+		convert_ipv6_5tuple(&entry.key, &newkey);
+		ret = rte_hash_add_key (h, (void *) &newkey);
+		if (ret < 0) {
+			rte_exit(EXIT_FAILURE, "Unable to add entry %u to the"
+                                "l3fwd hash.\n", i);
+		}
+		ipv6_l3fwd_out_if[ret] = entry.if_out;
+	}
+	printf("Hash: Adding 0x%xkeys\n", array_len);
+}
+
+#define NUMBER_PORT_USED 4
+static inline void
+populate_ipv4_many_flow_into_table(const struct rte_hash* h,
+                unsigned int nr_flow)
+{
+	unsigned i;
+	mask0 = _mm_set_epi32(ALL_32_BITS, ALL_32_BITS, ALL_32_BITS, BIT_8_TO_15);
+	for (i = 0; i < nr_flow; i++) {
+		struct ipv4_l3fwd_route entry;
+		union ipv4_5tuple_host newkey;
+		uint8_t a = (uint8_t) ((i/NUMBER_PORT_USED)%BYTE_VALUE_MAX);
+		uint8_t b = (uint8_t) (((i/NUMBER_PORT_USED)/BYTE_VALUE_MAX)%BYTE_VALUE_MAX);
+		uint8_t c = (uint8_t) ((i/NUMBER_PORT_USED)/(BYTE_VALUE_MAX*BYTE_VALUE_MAX));
+		/* Create the ipv4 exact match flow */
+		switch (i & (NUMBER_PORT_USED -1)) {
+		case 0:
+			entry = ipv4_l3fwd_route_array[0];
+			entry.key.ip_dst = IPv4(101,c,b,a);
+			break;
+		case 1:
+			entry = ipv4_l3fwd_route_array[1];
+			entry.key.ip_dst = IPv4(201,c,b,a);
+			break;
+		case 2:
+			entry = ipv4_l3fwd_route_array[2];
+			entry.key.ip_dst = IPv4(111,c,b,a);
+			break;
+		case 3:
+			entry = ipv4_l3fwd_route_array[3];
+			entry.key.ip_dst = IPv4(211,c,b,a);
+			break;
+		};
+		convert_ipv4_5tuple(&entry.key, &newkey);
+		int32_t ret = rte_hash_add_key(h,(void *) &newkey);
+		if (ret < 0) {
+			rte_exit(EXIT_FAILURE, "Unable to add entry %u\n", i);
+		}
+		ipv4_l3fwd_out_if[ret] = (uint8_t) entry.if_out;
+
+	}
+	printf("Hash: Adding 0x%x keys\n", nr_flow);
+}
+
+static inline void
+populate_ipv6_many_flow_into_table(const struct rte_hash* h,
+                unsigned int nr_flow)
+{
+	unsigned i;
+	mask1 = _mm_set_epi32(ALL_32_BITS, ALL_32_BITS, ALL_32_BITS, BIT_16_TO_23);
+	mask2 = _mm_set_epi32(0, 0, ALL_32_BITS, ALL_32_BITS);
+	for (i = 0; i < nr_flow; i++) {
+		struct ipv6_l3fwd_route entry;
+		union ipv6_5tuple_host newkey;
+		uint8_t a = (uint8_t) ((i/NUMBER_PORT_USED)%BYTE_VALUE_MAX);
+		uint8_t b = (uint8_t) (((i/NUMBER_PORT_USED)/BYTE_VALUE_MAX)%BYTE_VALUE_MAX);
+		uint8_t c = (uint8_t) ((i/NUMBER_PORT_USED)/(BYTE_VALUE_MAX*BYTE_VALUE_MAX));
+		/* Create the ipv6 exact match flow */
+		switch (i & (NUMBER_PORT_USED - 1)) {
+		case 0: entry = ipv6_l3fwd_route_array[0]; break;
+		case 1: entry = ipv6_l3fwd_route_array[1]; break;
+		case 2: entry = ipv6_l3fwd_route_array[2]; break;
+		case 3: entry = ipv6_l3fwd_route_array[3]; break;
+		};
+		entry.key.ip_dst[13] = c;
+		entry.key.ip_dst[14] = b;
+		entry.key.ip_dst[15] = a;
+		convert_ipv6_5tuple(&entry.key, &newkey);
+		int32_t ret = rte_hash_add_key(h,(void *) &newkey);
+		if (ret < 0) {
+			rte_exit(EXIT_FAILURE, "Unable to add entry %u\n", i);
+		}
+		ipv6_l3fwd_out_if[ret] = (uint8_t) entry.if_out;
+
+	}
+	printf("Hash: Adding 0x%x keys\n", nr_flow);
+}
+
 static void
 setup_hash(int socketid)
 {
-	unsigned i;
-	int ret;
-	char s[64];
+    struct rte_hash_parameters ipv4_l3fwd_hash_params = {
+        .name = NULL,
+        .entries = L3FWD_HASH_ENTRIES,
+        .bucket_entries = 4,
+        .key_len = sizeof(union ipv4_5tuple_host),
+        .hash_func = ipv4_hash_crc,
+        .hash_func_init_val = 0,
+    };
+
+    struct rte_hash_parameters ipv6_l3fwd_hash_params = {
+        .name = NULL,
+        .entries = L3FWD_HASH_ENTRIES,
+        .bucket_entries = 4,
+        .key_len = sizeof(union ipv6_5tuple_host),
+        .hash_func = ipv6_hash_crc,
+        .hash_func_init_val = 0,
+    };
+
+    char s[64];
 
 	/* create ipv4 hash */
 	rte_snprintf(s, sizeof(s), "ipv4_l3fwd_hash_%d", socketid);
@@ -1041,31 +1610,28 @@ setup_hash(int socketid)
 		rte_exit(EXIT_FAILURE, "Unable to create the l3fwd hash on "
 				"socket %d\n", socketid);
 
-
-	/* populate the ipv4 hash */
-	for (i = 0; i < IPV4_L3FWD_NUM_ROUTES; i++) {
-		ret = rte_hash_add_key (ipv4_l3fwd_lookup_struct[socketid],
-				(void *) &ipv4_l3fwd_route_array[i].key);
-		if (ret < 0) {
-			rte_exit(EXIT_FAILURE, "Unable to add entry %u to the"
-				"l3fwd hash on socket %d\n", i, socketid);
+	if (hash_entry_number != HASH_ENTRY_NUMBER_DEFAULT) {
+		/* For testing hash matching with a large number of flows we
+		 * generate millions of IP 5-tuples with an incremented dst
+		 * address to initialize the hash table. */
+		if (ipv6 == 0) {
+			/* populate the ipv4 hash */
+			populate_ipv4_many_flow_into_table(
+				ipv4_l3fwd_lookup_struct[socketid], hash_entry_number);
+		} else {
+			/* populate the ipv6 hash */
+			populate_ipv6_many_flow_into_table(
+				ipv6_l3fwd_lookup_struct[socketid], hash_entry_number);
 		}
-		ipv4_l3fwd_out_if[ret] = ipv4_l3fwd_route_array[i].if_out;
-		printf("Hash: Adding key\n");
-		print_ipv4_key(ipv4_l3fwd_route_array[i].key);
-	}
-
-	/* populate the ipv6 hash */
-	for (i = 0; i < IPV6_L3FWD_NUM_ROUTES; i++) {
-		ret = rte_hash_add_key (ipv6_l3fwd_lookup_struct[socketid],
-				(void *) &ipv6_l3fwd_route_array[i].key);
-		if (ret < 0) {
-			rte_exit(EXIT_FAILURE, "Unable to add entry %u to the"
-				"l3fwd hash on socket %d\n", i, socketid);
+	} else {
+		/* Use data in ipv4/ipv6 l3fwd lookup table directly to initialize the hash table */
+		if (ipv6 == 0) {
+			/* populate the ipv4 hash */
+			populate_ipv4_few_flow_into_table(ipv4_l3fwd_lookup_struct[socketid]);
+		} else {
+			/* populate the ipv6 hash */
+			populate_ipv6_few_flow_into_table(ipv6_l3fwd_lookup_struct[socketid]);
 		}
-		ipv6_l3fwd_out_if[ret] = ipv6_l3fwd_route_array[i].if_out;
-		printf("Hash: Adding key\n");
-		print_ipv6_key(ipv6_l3fwd_route_array[i].key);
 	}
 }
 #endif
@@ -1074,6 +1640,7 @@ setup_hash(int socketid)
 static void
 setup_lpm(int socketid)
 {
+	struct rte_lpm6_config config;
 	unsigned i;
 	int ret;
 	char s[64];
@@ -1103,6 +1670,37 @@ setup_lpm(int socketid)
 			(unsigned)ipv4_l3fwd_route_array[i].ip,
 			ipv4_l3fwd_route_array[i].depth,
 			ipv4_l3fwd_route_array[i].if_out);
+	}
+	
+	/* create the LPM6 table */
+	rte_snprintf(s, sizeof(s), "IPV6_L3FWD_LPM_%d", socketid);
+	
+	config.max_rules = IPV6_L3FWD_LPM_MAX_RULES;
+	config.number_tbl8s = IPV6_L3FWD_LPM_NUMBER_TBL8S;
+	config.flags = 0;
+	ipv6_l3fwd_lookup_struct[socketid] = rte_lpm6_create(s, socketid,
+				&config);
+	if (ipv6_l3fwd_lookup_struct[socketid] == NULL)
+		rte_exit(EXIT_FAILURE, "Unable to create the l3fwd LPM table"
+				" on socket %d\n", socketid);
+
+	/* populate the LPM table */
+	for (i = 0; i < IPV6_L3FWD_NUM_ROUTES; i++) {
+		ret = rte_lpm6_add(ipv6_l3fwd_lookup_struct[socketid],
+			ipv6_l3fwd_route_array[i].ip,
+			ipv6_l3fwd_route_array[i].depth,
+			ipv6_l3fwd_route_array[i].if_out);
+
+		if (ret < 0) {
+			rte_exit(EXIT_FAILURE, "Unable to add entry %u to the "
+				"l3fwd LPM table on socket %d\n",
+				i, socketid);
+		}
+
+		printf("LPM: Adding route %s / %d (%d)\n",
+			"IPV6",
+			ipv6_l3fwd_route_array[i].depth,
+			ipv6_l3fwd_route_array[i].if_out);
 	}
 }
 #endif
@@ -1150,9 +1748,7 @@ init_mem(unsigned nb_mbuf)
 		}
 		qconf = &lcore_conf[lcore_id];
 		qconf->ipv4_lookup_struct = ipv4_l3fwd_lookup_struct[socketid];
-#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 		qconf->ipv6_lookup_struct = ipv6_l3fwd_lookup_struct[socketid];
-#endif
 	}
 	return 0;
 }
