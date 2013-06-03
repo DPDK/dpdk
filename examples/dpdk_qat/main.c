@@ -96,7 +96,7 @@
 #define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
 
 #define MAX_PKT_BURST 32
-#define BURST_TX_DRAIN 200000ULL /* around 100us at 2 Ghz */
+#define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
 #define TX_QUEUE_FLUSH_MASK 0xFFFFFFFF
 #define TSC_COUNT_LIMIT 1000
@@ -327,6 +327,7 @@ main_loop(__attribute__((unused)) void *dummy)
 {
 	uint32_t lcoreid;
 	struct lcore_conf *qconf;
+	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
 
 	lcoreid = rte_lcore_id();
 	qconf = &lcore_conf[lcoreid];
@@ -346,7 +347,7 @@ main_loop(__attribute__((unused)) void *dummy)
 			tsc = rte_rdtsc();
 
 			diff_tsc = tsc - qconf->tsc;
-			if (unlikely(diff_tsc > BURST_TX_DRAIN)) {
+			if (unlikely(diff_tsc > drain_tsc)) {
 				nic_tx_flush_queues(qconf);
 				crypto_flush_tx_queue(lcoreid);
 				qconf->tsc = tsc;

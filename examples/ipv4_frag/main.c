@@ -111,7 +111,7 @@
 #define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
 
 #define MAX_PKT_BURST	32
-#define BURST_TX_DRAIN 200000ULL /* around 100us at 2 Ghz */
+#define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
 /* Configure how many packets ahead to prefetch, when reading packets */
 #define PREFETCH_OFFSET	3
@@ -309,11 +309,13 @@ main_loop(__attribute__((unused)) void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	unsigned lcore_id;
-	uint64_t prev_tsc = 0;
-	uint64_t diff_tsc, cur_tsc;
+	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	int i, j, nb_rx;
 	uint8_t portid;
 	struct lcore_queue_conf *qconf;
+	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
+
+	prev_tsc = 0;
 
 	lcore_id = rte_lcore_id();
 	qconf = &lcore_queue_conf[lcore_id];
@@ -340,7 +342,7 @@ main_loop(__attribute__((unused)) void *dummy)
 		 * TX burst queue drain
 		 */
 		diff_tsc = cur_tsc - prev_tsc;
-		if (unlikely(diff_tsc > BURST_TX_DRAIN)) {
+		if (unlikely(diff_tsc > drain_tsc)) {
 
 			/*
 			 * This could be optimized (use queueid instead of

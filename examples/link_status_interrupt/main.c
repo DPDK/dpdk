@@ -99,7 +99,7 @@
 #define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
 
 #define MAX_PKT_BURST 32
-#define BURST_TX_DRAIN 200000ULL /* around 100us at 2 Ghz */
+#define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
 /*
  * Configurable number of RX/TX ring descriptors
@@ -317,11 +317,12 @@ lsi_main_loop(void)
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct rte_mbuf *m;
 	unsigned lcore_id;
-	uint64_t prev_tsc = 0;
-	uint64_t diff_tsc, cur_tsc, timer_tsc;
+	uint64_t prev_tsc, diff_tsc, cur_tsc, timer_tsc;
 	unsigned i, j, portid, nb_rx;
 	struct lcore_queue_conf *qconf;
+	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
 
+	prev_tsc = 0;
 	timer_tsc = 0;
 
 	lcore_id = rte_lcore_id();
@@ -349,7 +350,7 @@ lsi_main_loop(void)
 		 * TX burst queue drain
 		 */
 		diff_tsc = cur_tsc - prev_tsc;
-		if (unlikely(diff_tsc > BURST_TX_DRAIN)) {
+		if (unlikely(diff_tsc > drain_tsc)) {
 
 			/* this could be optimized (use queueid instead of
 			 * portid), but it is not called so often */

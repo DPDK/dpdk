@@ -113,7 +113,7 @@
 #define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
 
 #define MAX_PKT_BURST 32
-#define BURST_TX_DRAIN 200000ULL /* around 100us at 2 Ghz */
+#define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
 /* Configure how many packets ahead to prefetch, when reading packets */
 #define PREFETCH_OFFSET	3
@@ -450,9 +450,10 @@ send_timeout_burst(struct lcore_queue_conf *qconf)
 {
 	uint64_t cur_tsc;
 	uint8_t portid;
+	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
 
 	cur_tsc = rte_rdtsc();
-	if (likely (cur_tsc < qconf->tx_tsc + BURST_TX_DRAIN))
+	if (likely (cur_tsc < qconf->tx_tsc + drain_tsc))
 		return;
 
 	for (portid = 0; portid < MAX_PORTS; portid++) {
