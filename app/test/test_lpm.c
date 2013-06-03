@@ -47,12 +47,12 @@
 #include <rte_ip.h>
 #include <time.h>
 
+#include "test.h"
+
 #ifdef RTE_LIBRTE_LPM
 
 #include "rte_lpm.h"
 #include "test_lpm_routes.h"
-
-#include "test.h"
 
 #define TEST_LPM_ASSERT(cond) do {                                            \
 	if (!(cond)) {                                                        \
@@ -1281,7 +1281,7 @@ test_lpm(void)
 	return global_status;
 }
 
-#else
+#else /* RTE_LIBRTE_LPM */
 
 int
 test_lpm(void)
@@ -1290,4 +1290,4 @@ test_lpm(void)
 	return 0;
 }
 
-#endif
+#endif /* RTE_LIBRTE_LPM */

@@ -70,9 +70,16 @@
 #include <rte_debug.h>
 #include <rte_log.h>
 #include <rte_mempool.h>
+
+#ifdef RTE_LIBRTE_HASH
 #include <rte_hash.h>
 #include <rte_fbk_hash.h>
+#endif /* RTE_LIBRTE_HASH */
+
+#ifdef RTE_LIBRTE_LPM
 #include <rte_lpm.h>
+#endif /* RTE_LIBRTE_LPM */
+
 #include <rte_string_fns.h>
 
 #include "process.h"
@@ -196,6 +203,7 @@ run_object_creation_tests(void)
 	}
 	printf("# Checked rte_mempool_create() OK\n");
 
+#ifdef RTE_LIBRTE_HASH
 	const struct rte_hash_parameters hash_params = { .name = "test_mp_hash" };
 	rte_errno=0;
 	if ((rte_hash_create(&hash_params) != NULL) &&
@@ -213,7 +221,9 @@ run_object_creation_tests(void)
 		return -1;
 	}
 	printf("# Checked rte_fbk_hash_create() OK\n");
+#endif
 
+#ifdef RTE_LIBRTE_LPM
 	rte_errno=0;
 	if ((rte_lpm_create("test_lpm", size, rte_socket_id(), 0) != NULL) &&
 	    (rte_lpm_find_existing("test_lpm") == NULL)){
@@ -221,6 +231,7 @@ run_object_creation_tests(void)
 		return -1;
 	}
 	printf("# Checked rte_lpm_create() OK\n");
+#endif
 
 	/* Run a test_pci call */
 	if (test_pci() != 0) {
