@@ -97,24 +97,22 @@ static inline uint32_t
 rte_jhash(const void *key, uint32_t length, uint32_t initval)
 {
 	uint32_t a, b, c, len;
-	const uint8_t *k = (const uint8_t *) key;
+	const uint8_t *k = (const uint8_t *)key;
+	const uint32_t *k32 = (const uint32_t *)key;
 
 	len = length;
 	a = b = RTE_JHASH_GOLDEN_RATIO;
 	c = initval;
 
 	while (len >= 12) {
-		a += (k[0] + ((uint32_t)k[1] << 8) + ((uint32_t)k[2] << 16) +
-		      ((uint32_t)k[3] << 24));
-		b += (k[4] + ((uint32_t)k[5] << 8) + ((uint32_t)k[6] << 16) +
-		      ((uint32_t)k[7] << 24));
-		c += (k[8] + ((uint32_t)k[9] << 8) + ((uint32_t)k[10] << 16) +
-		      ((uint32_t)k[11] << 24));
+		a += k32[0];
+		b += k32[1];
+		c += k32[2];
 
 		__rte_jhash_mix(a,b,c);
 
-		k += 12;
-		len -= 12;
+		k += (3 * sizeof(uint32_t)), k32 += 3;
+		len -= (3 * sizeof(uint32_t));
 	}
 
 	c += length;
