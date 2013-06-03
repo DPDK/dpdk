@@ -103,8 +103,6 @@
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN 200000ULL /* around 100us at 2 Ghz */
 
-#define SOCKET0 0
-
 /*
  * Configurable number of RX/TX ring descriptors
  */
@@ -663,7 +661,7 @@ MAIN(int argc, char **argv)
 				   sizeof(struct rte_pktmbuf_pool_private),
 				   rte_pktmbuf_pool_init, NULL,
 				   rte_pktmbuf_init, NULL,
-				   SOCKET0, 0);
+				   rte_socket_id(), 0);
 	if (lsi_pktmbuf_pool == NULL)
 		rte_panic("Cannot init mbuf pool\n");
 
@@ -762,7 +760,7 @@ MAIN(int argc, char **argv)
 		/* init one RX queue */
 		fflush(stdout);
 		ret = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
-					     SOCKET0, &rx_conf,
+					     rte_eth_dev_socket_id(portid), &rx_conf,
 					     lsi_pktmbuf_pool);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup: err=%d, port=%u\n",
@@ -771,7 +769,7 @@ MAIN(int argc, char **argv)
 		/* init one TX queue logical core on each port */
 		fflush(stdout);
 		ret = rte_eth_tx_queue_setup(portid, 0, nb_txd,
-				SOCKET0, &tx_conf);
+				rte_eth_dev_socket_id(portid), &tx_conf);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d,port=%u\n",
 				  ret, (unsigned) portid);

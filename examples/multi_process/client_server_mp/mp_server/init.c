@@ -146,7 +146,7 @@ init_mbuf_pools(void)
 	pktmbuf_pool = rte_mempool_create(PKTMBUF_POOL_NAME, num_mbufs,
 			MBUF_SIZE, MBUF_CACHE_SIZE,
 			sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init,
-			NULL, rte_pktmbuf_init, NULL, SOCKET0, NO_FLAGS );
+			NULL, rte_pktmbuf_init, NULL, rte_socket_id(), NO_FLAGS );
 
 	return (pktmbuf_pool == NULL); /* 0  on success */
 }
@@ -185,13 +185,13 @@ init_port(uint8_t port_num)
 
 	for (q = 0; q < rx_rings; q++) {
 		retval = rte_eth_rx_queue_setup(port_num, q, rx_ring_size,
-				SOCKET0, &rx_conf_default, pktmbuf_pool);
+				rte_eth_dev_socket_id(port_num), &rx_conf_default, pktmbuf_pool);
 		if (retval < 0) return retval;
 	}
 
 	for ( q = 0; q < tx_rings; q ++ ) {
 		retval = rte_eth_tx_queue_setup(port_num, q, tx_ring_size,
-				SOCKET0, &tx_conf_default);
+				rte_eth_dev_socket_id(port_num), &tx_conf_default);
 		if (retval < 0) return retval;
 	}
 
@@ -214,6 +214,8 @@ static int
 init_shm_rings(void)
 {
 	unsigned i;
+	unsigned socket_id;
+	const char * q_name;
 	const unsigned ringsize = CLIENT_QUEUE_RINGSIZE;
 
 	clients = rte_malloc("client details",
@@ -223,8 +225,10 @@ init_shm_rings(void)
 
 	for (i = 0; i < num_clients; i++) {
 		/* Create an RX queue for each client */
-		clients[i].rx_q = rte_ring_create(get_rx_queue_name(i),
-				ringsize, SOCKET0,
+		socket_id = rte_socket_id();
+		q_name = get_rx_queue_name(i);
+		clients[i].rx_q = rte_ring_create(q_name,
+				ringsize, socket_id,
 				RING_F_SP_ENQ | RING_F_SC_DEQ ); /* single prod, single cons */
 		if (clients[i].rx_q == NULL)
 			rte_exit(EXIT_FAILURE, "Cannot create rx ring queue for client %u\n", i);

@@ -79,9 +79,6 @@
 #define FATAL_ERROR(fmt, args...)       rte_exit(EXIT_FAILURE, fmt "\n", ##args)
 #define PRINT_INFO(fmt, args...)        RTE_LOG(INFO, APP, fmt "\n", ##args)
 
-/* NUMA socket to allocate mbuf pool on */
-#define SOCKET                  0
-
 /* Max ports than can be used (each port is associated with two lcores) */
 #define MAX_PORTS               (RTE_MAX_LCORE / 2)
 
@@ -457,13 +454,14 @@ init_port(uint8_t port)
 		FATAL_ERROR("Could not configure port%u (%d)",
 		            (unsigned)port, ret);
 
-	ret = rte_eth_rx_queue_setup(port, 0, NB_RXD, SOCKET, &rx_conf,
-	                             pktmbuf_pool);
+	ret = rte_eth_rx_queue_setup(port, 0, NB_RXD, rte_eth_dev_socket_id(port),
+                                 &rx_conf, pktmbuf_pool);
 	if (ret < 0)
 		FATAL_ERROR("Could not setup up RX queue for port%u (%d)",
 		            (unsigned)port, ret);
 
-	ret = rte_eth_tx_queue_setup(port, 0, NB_TXD, SOCKET, &tx_conf);
+	ret = rte_eth_tx_queue_setup(port, 0, NB_TXD, rte_eth_dev_socket_id(port),
+                                 &tx_conf);
 	if (ret < 0)
 		FATAL_ERROR("Could not setup up TX queue for port%u (%d)",
 		            (unsigned)port, ret);
@@ -557,7 +555,7 @@ main(int argc, char** argv)
 			MEMPOOL_CACHE_SZ,
 			sizeof(struct rte_pktmbuf_pool_private),
 			rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
-			SOCKET, 0);
+			rte_socket_id(), 0);
 	if (pktmbuf_pool == NULL) {
 		FATAL_ERROR("Could not initialise mbuf pool");
 		return -1;

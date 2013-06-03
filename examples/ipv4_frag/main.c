@@ -115,8 +115,6 @@
 #define MAX_PKT_BURST	32
 #define BURST_TX_DRAIN 200000ULL /* around 100us at 2 Ghz */
 
-#define SOCKET0 0
-
 /* Configure how many packets ahead to prefetch, when reading packets */
 #define PREFETCH_OFFSET	3
 
@@ -597,7 +595,7 @@ MAIN(int argc, char **argv)
 				   sizeof(struct rte_pktmbuf_pool_private),
 				   rte_pktmbuf_pool_init, NULL,
 				   rte_pktmbuf_init, NULL,
-				   SOCKET0, 0);
+				   rte_socket_id(), 0);
 	if (pool_direct == NULL)
 		rte_panic("Cannot init direct mbuf pool\n");
 
@@ -607,7 +605,7 @@ MAIN(int argc, char **argv)
 				   0,
 				   NULL, NULL,
 				   rte_pktmbuf_init, NULL,
-				   SOCKET0, 0);
+				   rte_socket_id(), 0);
 	if (pool_indirect == NULL)
 		rte_panic("Cannot init indirect mbuf pool\n");
 
@@ -671,7 +669,7 @@ MAIN(int argc, char **argv)
 		printf("rxq=%d ", queueid);
 		fflush(stdout);
 		ret = rte_eth_rx_queue_setup(portid, queueid, nb_rxd,
-					     SOCKET0, &rx_conf,
+					     rte_eth_dev_socket_id(portid), &rx_conf,
 					     pool_direct);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: "
@@ -686,7 +684,7 @@ MAIN(int argc, char **argv)
 			printf("txq=%u,%d ", lcore_id, queueid);
 			fflush(stdout);
 			ret = rte_eth_tx_queue_setup(portid, queueid, nb_txd,
-						     SOCKET0, &tx_conf);
+						     rte_eth_dev_socket_id(portid), &tx_conf);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: "
 					"err=%d, port=%d\n", ret, portid);
@@ -712,7 +710,7 @@ MAIN(int argc, char **argv)
 	check_all_ports_link_status((uint8_t)nb_ports, enabled_port_mask);
 
 	/* create the LPM table */
-	l3fwd_lpm = rte_lpm_create("L3FWD_LPM", SOCKET0, L3FWD_LPM_MAX_RULES, 0);
+	l3fwd_lpm = rte_lpm_create("L3FWD_LPM", rte_socket_id(), L3FWD_LPM_MAX_RULES, 0);
 	if (l3fwd_lpm == NULL)
 		rte_panic("Unable to create the l3fwd LPM table\n");
 

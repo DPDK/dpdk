@@ -152,8 +152,6 @@
 
 #define NB_SOCKETS 8
 
-#define SOCKET0 0
-
 /* Configure how many packets ahead to prefetch, when reading packets */
 #define PREFETCH_OFFSET	3
 
@@ -323,7 +321,7 @@ struct rte_hash_parameters ipv4_l3fwd_hash_params = {
 	.key_len = sizeof(struct ipv4_5tuple),
 	.hash_func = DEFAULT_HASH_FUNC,
 	.hash_func_init_val = 0,
-	.socket_id = SOCKET0,
+	.socket_id = 0,
 };
 
 struct rte_hash_parameters ipv6_l3fwd_hash_params = {
@@ -333,7 +331,7 @@ struct rte_hash_parameters ipv6_l3fwd_hash_params = {
 	.key_len = sizeof(struct ipv6_5tuple),
 	.hash_func = DEFAULT_HASH_FUNC,
 	.hash_func_init_val = 0,
-	.socket_id = SOCKET0,
+	.socket_id = 0,
 };
 
 #define IPV4_L3FWD_NUM_ROUTES \

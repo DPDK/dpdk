@@ -98,8 +98,6 @@
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN 200000ULL /* around 100us at 2 Ghz */
 
-#define SOCKET0 0
-
 #define TX_QUEUE_FLUSH_MASK 0xFFFFFFFF
 #define TSC_COUNT_LIMIT 1000
 

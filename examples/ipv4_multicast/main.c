@@ -115,8 +115,6 @@
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN 200000ULL /* around 100us at 2 Ghz */
 
-#define SOCKET0 0
-
 /* Configure how many packets ahead to prefetch, when reading packets */
 #define PREFETCH_OFFSET	3
 
@@ -205,7 +203,7 @@ static struct rte_fbk_hash_params mcast_hash_params = {
 	.name = "MCAST_HASH",
 	.entries = 1024,
 	.entries_per_bucket = 4,
-	.socket_id = SOCKET0,
+	.socket_id = 0,
 	.hash_func = NULL,
 	.init_val = 0,
 };
@@ -638,6 +636,7 @@ init_mcast_hash(void)
 {
 	uint32_t i;
 
+	mcast_hash_params.socket_id = rte_socket_id();
 	mcast_hash = rte_fbk_hash_create(&mcast_hash_params);
 	if (mcast_hash == NULL){
 		return -1;
@@ -735,21 +734,21 @@ MAIN(int argc, char **argv)
 	packet_pool = rte_mempool_create("packet_pool", NB_PKT_MBUF,
 	    PKT_MBUF_SIZE, 32, sizeof(struct rte_pktmbuf_pool_private),
 	    rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
-	    SOCKET0, 0);
+	    rte_socket_id(), 0);
 
 	if (packet_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init packet mbuf pool\n");
 
 	header_pool = rte_mempool_create("header_pool", NB_HDR_MBUF,
 	    HDR_MBUF_SIZE, 32, 0, NULL, NULL, rte_pktmbuf_init, NULL,
-	    SOCKET0, 0);
+	    rte_socket_id(), 0);
 
 	if (header_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init header mbuf pool\n");
 
 	clone_pool = rte_mempool_create("clone_pool", NB_CLONE_MBUF,
 	    CLONE_MBUF_SIZE, 32, 0, NULL, NULL, rte_pktmbuf_init, NULL,
-	    SOCKET0, 0);
+	    rte_socket_id(), 0);
 
 	if (clone_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init clone mbuf pool\n");
@@ -815,7 +814,7 @@ MAIN(int argc, char **argv)
 		printf("rxq=%hu ", queueid);
 		fflush(stdout);
 		ret = rte_eth_rx_queue_setup(portid, queueid, nb_rxd,
-					     SOCKET0, &rx_conf,
+					     rte_eth_dev_socket_id(portid), &rx_conf,
 					     packet_pool);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d, port=%d\n",
@@ -830,7 +829,7 @@ MAIN(int argc, char **argv)
 			printf("txq=%u,%hu ", lcore_id, queueid);
 			fflush(stdout);
 			ret = rte_eth_tx_queue_setup(portid, queueid, nb_txd,
-						     SOCKET0, &tx_conf);
+						     rte_lcore_to_socket_id(lcore_id), &tx_conf);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d, "
 					  "port=%d\n", ret, portid);

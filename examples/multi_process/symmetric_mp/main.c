@@ -80,8 +80,6 @@
 
 #define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 
-#define SOCKET0 0
-
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUFS 64*1024 /* use 64k mbufs */
 #define MBUF_CACHE_SIZE 256
@@ -280,7 +278,7 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 
 	for (q = 0; q < rx_rings; q ++) {
 		retval = rte_eth_rx_queue_setup(port, q, RX_RING_SIZE,
-				SOCKET0, &rx_conf_default,
+				rte_eth_dev_socket_id(port), &rx_conf_default,
 				mbuf_pool);
 		if (retval < 0)
 			return retval;
@@ -288,7 +286,7 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 
 	for (q = 0; q < tx_rings; q ++) {
 		retval = rte_eth_tx_queue_setup(port, q, RX_RING_SIZE,
-				SOCKET0, &tx_conf_default);
+				rte_eth_dev_socket_id(port), &tx_conf_default);
 		if (retval < 0)
 			return retval;
 	}
@@ -482,7 +480,7 @@ main(int argc, char **argv)
 					MBUF_CACHE_SIZE, sizeof(struct rte_pktmbuf_pool_private),
 					rte_pktmbuf_pool_init, NULL,
 					rte_pktmbuf_init, NULL,
-					SOCKET0, 0);
+					rte_socket_id(), 0);
 	if (mp == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get memory pool for buffers\n");
 

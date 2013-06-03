@@ -74,9 +74,6 @@
 #include "main.h"
 
 /* basic constants used in application */
-#define SOCKET0 0
-#define SOCKET1 1
-
 #define NUM_QUEUES 128
 
 #define NUM_MBUFS 64*1024
@@ -211,7 +208,7 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 
 	for (q = 0; q < rxRings; q ++) {
 		retval = rte_eth_rx_queue_setup(port, q, rxRingSize,
-						SOCKET0, &rx_conf_default,
+						rte_eth_dev_socket_id(port), &rx_conf_default,
 						mbuf_pool);
 		if (retval < 0)
 			return retval;
@@ -219,7 +216,7 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 
 	for (q = 0; q < txRings; q ++) {
 		retval = rte_eth_tx_queue_setup(port, q, txRingSize,
-						SOCKET0, &tx_conf_default);
+						rte_eth_dev_socket_id(port), &tx_conf_default);
 		if (retval < 0)
 			return retval;
 	}
@@ -388,7 +385,7 @@ MAIN(int argc, char *argv[])
 				       sizeof(struct rte_pktmbuf_pool_private),
 				       rte_pktmbuf_pool_init, NULL,
 				       rte_pktmbuf_init, NULL,
-				       SOCKET0, 0);
+				       rte_socket_id(), 0);
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 

@@ -75,8 +75,6 @@
 
 #define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 
-#define SOCKET0 0
-
 static const char *_MSG_POOL = "MSG_POOL";
 static const char *_SEC_2_PRI = "SEC_2_PRI";
 static const char *_PRI_2_SEC = "PRI_2_SEC";
@@ -122,12 +120,12 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Cannot init EAL\n");
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY){
-		send_ring = rte_ring_create(_PRI_2_SEC, ring_size, SOCKET0, flags);
-		recv_ring = rte_ring_create(_SEC_2_PRI, ring_size, SOCKET0, flags);
+		send_ring = rte_ring_create(_PRI_2_SEC, ring_size, rte_socket_id(), flags);
+		recv_ring = rte_ring_create(_SEC_2_PRI, ring_size, rte_socket_id(), flags);
 		message_pool = rte_mempool_create(_MSG_POOL, pool_size,
 				string_size, pool_cache, priv_data_sz,
 				NULL, NULL, NULL, NULL,
-				SOCKET0, flags);
+				rte_socket_id(), flags);
 	} else {
 		recv_ring = rte_ring_lookup(_PRI_2_SEC);
 		send_ring = rte_ring_lookup(_SEC_2_PRI);
