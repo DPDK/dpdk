@@ -75,8 +75,6 @@
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
-#define L2FWD_MAX_PORTS 32
-
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   8192
 
@@ -111,13 +109,13 @@ static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
-static struct ether_addr l2fwd_ports_eth_addr[L2FWD_MAX_PORTS];
+static struct ether_addr l2fwd_ports_eth_addr[RTE_MAX_ETHPORTS];
 
 /* mask of enabled ports */
 static uint32_t l2fwd_enabled_port_mask = 0;
 
 /* list of enabled ports */
-static uint32_t l2fwd_dst_ports[L2FWD_MAX_PORTS];
+static uint32_t l2fwd_dst_ports[RTE_MAX_ETHPORTS];
 
 static unsigned int l2fwd_rx_queue_per_lcore = 1;
 
@@ -131,7 +129,7 @@ struct mbuf_table {
 struct lcore_queue_conf {
 	unsigned n_rx_port;
 	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
-	struct mbuf_table tx_mbufs[L2FWD_MAX_PORTS];
+	struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
 
 } __rte_cache_aligned;
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
@@ -176,7 +174,7 @@ struct l2fwd_port_statistics {
 	uint64_t rx;
 	uint64_t dropped;
 } __rte_cache_aligned;
-struct l2fwd_port_statistics port_statistics[L2FWD_MAX_PORTS];
+struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 
 /* A tsc-based timer responsible for triggering statistics printout */
 #define TIMER_MILLISECOND 2000000ULL /* around 1ms at 2 Ghz */
@@ -202,7 +200,7 @@ print_stats(void)
 
 	printf("\nPort statistics ====================================");
 
-	for (portid = 0; portid < L2FWD_MAX_PORTS; portid++) {
+	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
 		/* skip disabled ports */
 		if ((l2fwd_enabled_port_mask & (1 << portid)) == 0)
 			continue;
@@ -336,7 +334,7 @@ l2fwd_main_loop(void)
 		diff_tsc = cur_tsc - prev_tsc;
 		if (unlikely(diff_tsc > BURST_TX_DRAIN)) {
 
-			for (portid = 0; portid < L2FWD_MAX_PORTS; portid++) {
+			for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
 				if (qconf->tx_mbufs[portid].len == 0)
 					continue;
 				l2fwd_send_burst(&lcore_queue_conf[lcore_id],
@@ -622,11 +620,11 @@ MAIN(int argc, char **argv)
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
-	if (nb_ports > L2FWD_MAX_PORTS)
-		nb_ports = L2FWD_MAX_PORTS;
+	if (nb_ports > RTE_MAX_ETHPORTS)
+		nb_ports = RTE_MAX_ETHPORTS;
 
 	/* reset l2fwd_dst_ports */
-	for (portid = 0; portid < L2FWD_MAX_PORTS; portid++)
+	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)
 		l2fwd_dst_ports[portid] = 0;
 	last_port = 0;
 

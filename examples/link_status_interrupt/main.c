@@ -76,8 +76,6 @@
 
 #define RTE_LOGTYPE_LSI RTE_LOGTYPE_USER1
 
-#define LSI_MAX_PORTS 32
-
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   8192
 
@@ -112,7 +110,7 @@ static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
-static struct ether_addr lsi_ports_eth_addr[LSI_MAX_PORTS];
+static struct ether_addr lsi_ports_eth_addr[RTE_MAX_ETHPORTS];
 
 /* mask of enabled ports */
 static uint32_t lsi_enabled_port_mask = 0;
@@ -120,7 +118,7 @@ static uint32_t lsi_enabled_port_mask = 0;
 static unsigned int lsi_rx_queue_per_lcore = 1;
 
 /* destination port for L2 forwarding */
-static unsigned lsi_dst_ports[LSI_MAX_PORTS] = {0};
+static unsigned lsi_dst_ports[RTE_MAX_ETHPORTS] = {0};
 
 #define MAX_PKT_BURST 32
 struct mbuf_table {
@@ -134,7 +132,7 @@ struct lcore_queue_conf {
 	unsigned n_rx_port;
 	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
 	unsigned tx_queue_id;
-	struct mbuf_table tx_mbufs[LSI_MAX_PORTS];
+	struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
 
 } __rte_cache_aligned;
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
@@ -182,7 +180,7 @@ struct lsi_port_statistics {
 	uint64_t rx;
 	uint64_t dropped;
 } __rte_cache_aligned;
-struct lsi_port_statistics port_statistics[LSI_MAX_PORTS];
+struct lsi_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 
 /* A tsc-based timer responsible for triggering statistics printout */
 #define TIMER_MILLISECOND 2000000ULL /* around 1ms at 2 Ghz */
@@ -209,7 +207,7 @@ print_stats(void)
 
 	printf("\nPort statistics ====================================");
 
-	for (portid = 0; portid < LSI_MAX_PORTS; portid++) {
+	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
 		/* skip ports that are not enabled */
 		if ((lsi_enabled_port_mask & (1 << portid)) == 0)
 			continue;
@@ -355,7 +353,7 @@ lsi_main_loop(void)
 
 			/* this could be optimized (use queueid instead of
 			 * portid), but it is not called so often */
-			for (portid = 0; portid < LSI_MAX_PORTS; portid++) {
+			for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
 				if (qconf->tx_mbufs[portid].len == 0)
 					continue;
 				lsi_send_burst(&lcore_queue_conf[lcore_id],
@@ -676,8 +674,8 @@ MAIN(int argc, char **argv)
 	if (nb_ports == 0)
 		rte_panic("No Ethernet port - bye\n");
 
-	if (nb_ports > LSI_MAX_PORTS)
-		nb_ports = LSI_MAX_PORTS;
+	if (nb_ports > RTE_MAX_ETHPORTS)
+		nb_ports = RTE_MAX_ETHPORTS;
 
 	/*
 	 * Each logical core is assigned a dedicated TX queue on each port.

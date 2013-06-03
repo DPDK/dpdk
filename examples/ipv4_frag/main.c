@@ -77,8 +77,6 @@
 
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1
 
-#define MAX_PORTS 32
-
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 
 /* allow max jumbo frame 9.5 KB */
@@ -127,7 +125,7 @@ static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
-static struct ether_addr ports_eth_addr[MAX_PORTS];
+static struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 static struct ether_addr remote_eth_addr =
 	{{0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff}};
 
@@ -148,8 +146,8 @@ struct mbuf_table {
 struct lcore_queue_conf {
 	uint16_t n_rx_queue;
 	uint8_t rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
-	uint16_t tx_queue_id[MAX_PORTS];
-	struct mbuf_table tx_mbufs[MAX_PORTS];
+	uint16_t tx_queue_id[RTE_MAX_ETHPORTS];
+	struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
 
 } __rte_cache_aligned;
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
@@ -348,7 +346,7 @@ main_loop(__attribute__((unused)) void *dummy)
 			 * This could be optimized (use queueid instead of
 			 * portid), but it is not called so often
 			 */
-			for (portid = 0; portid < MAX_PORTS; portid++) {
+			for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
 				if (qconf->tx_mbufs[portid].len == 0)
 					continue;
 				send_burst(&lcore_queue_conf[lcore_id],
@@ -617,8 +615,8 @@ MAIN(int argc, char **argv)
 		rte_panic("Cannot probe PCI\n");
 
 	nb_ports = rte_eth_dev_count();
-	if (nb_ports > MAX_PORTS)
-		nb_ports = MAX_PORTS;
+	if (nb_ports > RTE_MAX_ETHPORTS)
+		nb_ports = RTE_MAX_ETHPORTS;
 
 	nb_lcores = rte_lcore_count();
 

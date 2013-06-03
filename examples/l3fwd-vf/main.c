@@ -94,8 +94,6 @@
 
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1
 
-#define MAX_PORTS 32
-
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   8192
 
@@ -137,7 +135,7 @@ static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
-static struct ether_addr ports_eth_addr[MAX_PORTS];
+static struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
@@ -303,7 +301,7 @@ struct lcore_conf {
 	uint16_t n_rx_queue;
 	struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
 	uint16_t tx_queue_id;
-	struct mbuf_table tx_mbufs[MAX_PORTS];
+	struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
 	lookup_struct_t * lookup_struct;
 } __rte_cache_aligned;
 
@@ -476,7 +474,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, lookup_struct_t * l3fwd
 #endif
 
 	dst_port = get_dst_port(ipv4_hdr, portid, l3fwd_lookup_struct);
-	if (dst_port >= MAX_PORTS || (enabled_port_mask & 1 << dst_port) == 0)
+	if (dst_port >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port) == 0)
 		dst_port = portid;
 
 	/* 02:00:00:00:00:xx */
@@ -540,7 +538,7 @@ main_loop(__attribute__((unused)) void *dummy)
 			 * This could be optimized (use queueid instead of
 			 * portid), but it is not called so often
 			 */
-			for (portid = 0; portid < MAX_PORTS; portid++) {
+			for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
 				if (qconf->tx_mbufs[portid].len == 0)
 					continue;
 				send_burst(&lcore_conf[lcore_id],
@@ -975,8 +973,8 @@ MAIN(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 
 	nb_ports = rte_eth_dev_count();
-	if (nb_ports > MAX_PORTS)
-		nb_ports = MAX_PORTS;
+	if (nb_ports > RTE_MAX_ETHPORTS)
+		nb_ports = RTE_MAX_ETHPORTS;
 
 	if (check_port_config(nb_ports) < 0)
 		rte_exit(EXIT_FAILURE, "check_port_config failed\n");
