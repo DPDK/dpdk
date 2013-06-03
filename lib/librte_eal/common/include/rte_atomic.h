@@ -64,7 +64,7 @@ extern "C" {
  * Guarantees that the LOAD and STORE operations generated before the
  * barrier occur before the LOAD and STORE operations generated after.
  */
-#define rte_mb()  asm volatile("mfence;" : : : "memory")
+#define	rte_mb() _mm_mfence()
 
 /**
  * Write memory barrier.
@@ -72,7 +72,7 @@ extern "C" {
  * Guarantees that the STORE operations generated before the barrier
  * occur before the STORE operations generated after.
  */
-#define rte_wmb() asm volatile("sfence;" : : : "memory")
+#define	rte_wmb() _mm_sfence()
 
 /**
  * Read memory barrier.
@@ -80,7 +80,7 @@ extern "C" {
  * Guarantees that the LOAD operations generated before the barrier
  * occur before the LOAD operations generated after.
  */
-#define rte_rmb() asm volatile("lfence;" : : : "memory")
+#define	rte_rmb() _mm_lfence()
 
 #include <emmintrin.h>
 
