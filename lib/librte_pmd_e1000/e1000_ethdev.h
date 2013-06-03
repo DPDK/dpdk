@@ -97,6 +97,9 @@ int eth_igb_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		const struct rte_eth_rxconf *rx_conf,
 		struct rte_mempool *mb_pool);
 
+uint32_t eth_igb_rx_queue_count(struct rte_eth_dev *dev, 
+		uint16_t rx_queue_id);
+
 int eth_igb_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);

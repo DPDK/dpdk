@@ -117,6 +117,7 @@ struct igb_rx_queue {
 	volatile union e1000_adv_rx_desc *rx_ring; /**< RX ring virtual address. */
 	uint64_t            rx_ring_phys_addr; /**< RX ring DMA address. */
 	volatile uint32_t   *rdt_reg_addr; /**< RDT register address. */
+	volatile uint32_t   *rdh_reg_addr; /**< RDH register address. */
 	struct igb_rx_entry *sw_ring;   /**< address of RX software ring. */
 	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet. */
 	struct rte_mbuf *pkt_last_seg;  /**< Last segment of current packet. */
@@ -1360,6 +1361,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 		return (-ENOMEM);
 	}
 	rxq->rdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDT(queue_idx));
+	rxq->rdh_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDH(queue_idx));
 	rxq->rx_ring_phys_addr = (uint64_t) rz->phys_addr;
 	rxq->rx_ring = (union e1000_adv_rx_desc *) rz->addr;
 
@@ -1378,6 +1380,31 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	igb_reset_rx_queue(rxq);
 
 	return 0;
+}
+
+uint32_t 
+eth_igb_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct igb_rx_queue *rxq;
+	uint32_t nb_pkts_available;
+	uint32_t rx_rdh;
+	uint32_t rx_id;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues) {
+		PMD_RX_LOG(DEBUG,"Invalid RX queue_id=%d\n", rx_queue_id);
+		return 0;
+	}
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+	rx_id = (uint16_t) ((rxq->rx_tail == 0) ? (rxq->nb_rx_desc - 1) :
+							(rxq->rx_tail - 1));
+	rx_rdh = E1000_PCI_REG(rxq->rdh_reg_addr);
+	if (rx_rdh > rx_id) 
+		nb_pkts_available = rx_rdh - rx_id;
+	else
+		nb_pkts_available = rx_rdh - rx_id + rxq->nb_rx_desc;
+	
+	return (nb_pkts_available);
 }
 
 void

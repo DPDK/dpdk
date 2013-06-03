@@ -181,6 +181,7 @@ static struct eth_dev_ops eth_igb_ops = {
 	.vlan_offload_set     = eth_igb_vlan_offload_set,
 	.rx_queue_setup       = eth_igb_rx_queue_setup,
 	.rx_queue_release     = eth_igb_rx_queue_release,
+	.rx_queue_count       = eth_igb_rx_queue_count,
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
 	.tx_queue_release     = eth_igb_tx_queue_release,
 	.dev_led_on           = eth_igb_led_on,
