@@ -409,7 +409,8 @@ static inline struct rte_mbuf *__rte_mbuf_raw_alloc(struct rte_mempool *mp)
  * @param m
  *   The mbuf to be freed.
  */
-static inline void __rte_mbuf_raw_free(struct rte_mbuf *m)
+static inline void __attribute__((always_inline))
+__rte_mbuf_raw_free(struct rte_mbuf *m)
 {
 #ifdef RTE_MBUF_SCATTER_GATHER
 	RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(m) == 0);
@@ -668,7 +669,8 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
  * @param m
  *   The packet mbuf segment to be freed.
  */
-static inline void rte_pktmbuf_free_seg(struct rte_mbuf *m)
+static inline void __attribute__((always_inline))
+rte_pktmbuf_free_seg(struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 0);
 
