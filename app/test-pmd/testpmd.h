@@ -506,6 +506,7 @@ void fdir_update_perfect_filter(portid_t port_id, uint16_t soft_id,
 void fdir_remove_perfect_filter(portid_t port_id, uint16_t soft_id,
 				struct rte_fdir_filter *fdir_filter);
 void fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks);
+void port_rss_reta_info(portid_t port_id, struct rte_eth_rss_reta *reta_conf);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the

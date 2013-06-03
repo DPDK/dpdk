@@ -405,6 +405,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port config all rss (ip|udp|none)\n"
 			"    Set the RSS mode.\n\n"
 
+			"port config port-id rss reta (hash,queue)[,(hash,queue)]\n"
+			"    Set the RSS redirection table.\n\n"
+
 			"port config (port_id) dcb vt (on|off) (traffic_class)"
 			" pfc (on|off)\n"
 			"    Set the DCB mode.\n\n"
@@ -1075,6 +1078,182 @@ cmdline_parse_inst_t cmd_config_rss = {
 		(void *)&cmd_config_rss_all,
 		(void *)&cmd_config_rss_name,
 		(void *)&cmd_config_rss_value,
+		NULL,
+	},
+};
+
+/* *** Configure RSS RETA *** */
+struct cmd_config_rss_reta {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	uint8_t port_id;
+	cmdline_fixed_string_t name;
+	cmdline_fixed_string_t list_name;
+	cmdline_fixed_string_t list_of_items;
+};
+
+static int
+parse_reta_config(const char *str, struct rte_eth_rss_reta *reta_conf)
+{
+	int i;
+	unsigned size;
+	uint8_t hash_index;
+	uint8_t nb_queue;
+	char s[256];
+	const char *p, *p0 = str;
+	char *end;
+	enum fieldnames {
+		FLD_HASH_INDEX = 0,
+		FLD_QUEUE,
+		_NUM_FLD
+	};
+	unsigned long int_fld[_NUM_FLD];
+	char *str_fld[_NUM_FLD];
+
+	while ((p = strchr(p0,'(')) != NULL) {
+		++p;
+		if((p0 = strchr(p,')')) == NULL)
+			return -1;
+
+		size = p0 - p;
+		if(size >= sizeof(s))
+			return -1;
+
+		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
+			return -1;
+		for (i = 0; i < _NUM_FLD; i++) {
+			errno = 0;
+			int_fld[i] = strtoul(str_fld[i], &end, 0);
+			if (errno != 0 || end == str_fld[i] || int_fld[i] > 255)
+				return -1;
+		}
+
+		hash_index = (uint8_t)int_fld[FLD_HASH_INDEX];
+		nb_queue = (uint8_t)int_fld[FLD_QUEUE];
+
+		if (hash_index >= ETH_RSS_RETA_NUM_ENTRIES) {
+			printf("Invalid RETA hash index=%d",hash_index);
+			return -1;
+		}
+
+		if (hash_index < ETH_RSS_RETA_NUM_ENTRIES/2)
+			reta_conf->mask_lo |= (1ULL << hash_index);
+		else
+			reta_conf->mask_hi |= (1ULL << (hash_index - ETH_RSS_RETA_NUM_ENTRIES/2));
+
+		reta_conf->reta[hash_index] = nb_queue;
+	}
+
+	return 0;
+}
+
+static void
+cmd_set_rss_reta_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	int ret;
+	struct rte_eth_rss_reta reta_conf;
+	struct cmd_config_rss_reta *res = parsed_result;
+
+	memset(&reta_conf,0,sizeof(struct rte_eth_rss_reta));
+	if (!strcmp(res->list_name, "reta")) {
+		if (parse_reta_config(res->list_of_items, &reta_conf)) {
+			printf("Invalid RSS Redirection Table config entered\n");
+			return;
+		}
+		ret = rte_eth_dev_rss_reta_update(res->port_id, &reta_conf);
+		if (ret != 0)
+			printf("Bad redirection table parameter, return code = %d \n",ret);
+	}
+}
+
+cmdline_parse_token_string_t cmd_config_rss_reta_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_reta, port, "port");
+cmdline_parse_token_string_t cmd_config_rss_reta_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_reta, keyword, "config");
+cmdline_parse_token_num_t cmd_config_rss_reta_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rss_reta, port_id, UINT8);
+cmdline_parse_token_string_t cmd_config_rss_reta_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_reta, name, "rss");
+cmdline_parse_token_string_t cmd_config_rss_reta_list_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_reta, list_name, "reta");
+cmdline_parse_token_string_t cmd_config_rss_reta_list_of_items =
+        TOKEN_STRING_INITIALIZER(struct cmd_config_rss_reta, list_of_items,
+                                 NULL);
+cmdline_parse_inst_t cmd_config_rss_reta = {
+	.f = cmd_set_rss_reta_parsed,
+	.data = NULL,
+	.help_str = "port config X rss reta (hash,queue)[,(hash,queue)]",
+	.tokens = {
+		(void *)&cmd_config_rss_reta_port,
+		(void *)&cmd_config_rss_reta_keyword,
+		(void *)&cmd_config_rss_reta_port_id,
+		(void *)&cmd_config_rss_reta_name,
+		(void *)&cmd_config_rss_reta_list_name,
+		(void *)&cmd_config_rss_reta_list_of_items,
+		NULL,
+	},
+};
+
+/* *** SHOW PORT INFO *** */
+struct cmd_showport_reta {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+	cmdline_fixed_string_t rss;
+	cmdline_fixed_string_t reta;
+	uint64_t mask_lo;
+	uint64_t mask_hi;
+};
+
+static void cmd_showport_reta_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_showport_reta *res = parsed_result;
+	struct rte_eth_rss_reta reta_conf;
+
+	if ((res->mask_lo == 0) && (res->mask_hi == 0)) {
+		printf("Invalid RSS Redirection Table config entered\n");
+		return;
+	}
+
+	reta_conf.mask_lo = res->mask_lo;
+	reta_conf.mask_hi = res->mask_hi;
+
+	port_rss_reta_info(res->port_id,&reta_conf);
+}
+
+cmdline_parse_token_string_t cmd_showport_reta_show =
+        TOKEN_STRING_INITIALIZER(struct  cmd_showport_reta, show, "show");
+cmdline_parse_token_string_t cmd_showport_reta_port =
+        TOKEN_STRING_INITIALIZER(struct  cmd_showport_reta, port, "port");
+cmdline_parse_token_num_t cmd_showport_reta_port_id =
+        TOKEN_NUM_INITIALIZER(struct cmd_showport_reta, port_id, UINT8);
+cmdline_parse_token_string_t cmd_showport_reta_rss =
+        TOKEN_STRING_INITIALIZER(struct cmd_showport_reta, rss, "rss");
+cmdline_parse_token_string_t cmd_showport_reta_reta =
+        TOKEN_STRING_INITIALIZER(struct cmd_showport_reta, reta, "reta");
+cmdline_parse_token_num_t cmd_showport_reta_mask_lo =
+        TOKEN_NUM_INITIALIZER(struct cmd_showport_reta,mask_lo,UINT64);
+cmdline_parse_token_num_t cmd_showport_reta_mask_hi =
+	TOKEN_NUM_INITIALIZER(struct cmd_showport_reta,mask_hi,UINT64);
+
+cmdline_parse_inst_t cmd_showport_reta = {
+	.f = cmd_showport_reta_parsed,
+	.data = NULL,
+	.help_str = "show port X rss reta mask_lo mask_hi (X = port number)\n\
+			(mask_lo and mask_hi is UINT64)",
+	.tokens = {
+		(void *)&cmd_showport_reta_show,
+		(void *)&cmd_showport_reta_port,
+		(void *)&cmd_showport_reta_port_id,
+		(void *)&cmd_showport_reta_rss,
+		(void *)&cmd_showport_reta_reta,
+		(void *)&cmd_showport_reta_mask_lo,
+		(void *)&cmd_showport_reta_mask_hi,
 		NULL,
 	},
 };
@@ -3691,6 +3870,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_max_pkt_len,
 	(cmdline_parse_inst_t *)&cmd_config_rx_mode_flag,
 	(cmdline_parse_inst_t *)&cmd_config_rss,
+	(cmdline_parse_inst_t *)&cmd_config_rss_reta,
+	(cmdline_parse_inst_t *)&cmd_showport_reta,
 	(cmdline_parse_inst_t *)&cmd_config_burst,
 	(cmdline_parse_inst_t *)&cmd_config_thresh,
 	(cmdline_parse_inst_t *)&cmd_config_threshold,

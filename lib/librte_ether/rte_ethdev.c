@@ -1417,6 +1417,78 @@ rte_eth_dev_priority_flow_ctrl_set(uint8_t port_id, struct rte_eth_pfc_conf *pfc
 }
 
 int
+rte_eth_dev_rss_reta_update(uint8_t port_id, struct rte_eth_rss_reta *reta_conf)
+{
+	struct rte_eth_dev *dev;
+	uint8_t i,j;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+
+	/* Invalid mask bit(s) setting */
+	if ((reta_conf->mask_lo == 0) && (reta_conf->mask_hi == 0)) {
+		PMD_DEBUG_TRACE("Invalid update mask bits for port=%d\n",port_id);
+		return (-EINVAL);
+	}
+
+	if (reta_conf->mask_lo != 0) {
+		for (i = 0; i < ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
+			if ((reta_conf->mask_lo & (1ULL << i)) &&
+				(reta_conf->reta[i] >= ETH_RSS_RETA_MAX_QUEUE)) {
+				PMD_DEBUG_TRACE("RETA hash index output"
+					"configration for port=%d,invalid"
+					"queue=%d\n",port_id,reta_conf->reta[i]);
+
+				return (-EINVAL);
+			} 
+		}
+	}
+
+	if (reta_conf->mask_hi != 0) {
+		for (i = 0; i< ETH_RSS_RETA_NUM_ENTRIES/2; i++) {	
+			j = (uint8_t)(i + ETH_RSS_RETA_NUM_ENTRIES/2);
+
+			/* Check if the max entry >= 128 */
+			if ((reta_conf->mask_hi & (1ULL << i)) && 
+				(reta_conf->reta[j] >= ETH_RSS_RETA_MAX_QUEUE)) {
+				PMD_DEBUG_TRACE("RETA hash index output"
+					"configration for port=%d,invalid"
+					"queue=%d\n",port_id,reta_conf->reta[j]);
+
+				return (-EINVAL);
+			}
+		}
+	}
+
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->reta_update, -ENOTSUP);
+	return (*dev->dev_ops->reta_update)(dev, reta_conf);
+}
+
+int 
+rte_eth_dev_rss_reta_query(uint8_t port_id, struct rte_eth_rss_reta *reta_conf)
+{
+	struct rte_eth_dev *dev;
+	
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+
+	if((reta_conf->mask_lo == 0) && (reta_conf->mask_hi == 0)) {
+		PMD_DEBUG_TRACE("Invalid update mask bits for the port=%d\n",port_id);
+		return (-EINVAL);
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->reta_query, -ENOTSUP);
+	return (*dev->dev_ops->reta_query)(dev, reta_conf);
+}
+
+int
 rte_eth_led_on(uint8_t port_id)
 {
 	struct rte_eth_dev *dev;

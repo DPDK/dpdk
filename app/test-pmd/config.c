@@ -640,6 +640,40 @@ rxtx_config_display(void)
 	       tx_rs_thresh, txq_flags);
 }
 
+void
+port_rss_reta_info(portid_t port_id,struct rte_eth_rss_reta *reta_conf)
+{
+	uint8_t i,j;
+	int ret;
+
+	if (port_id_is_invalid(port_id)) 
+		return;
+
+	ret = rte_eth_dev_rss_reta_query(port_id, reta_conf);
+	if (ret != 0) {
+		printf("Failed to get RSS RETA info, return code = %d\n", ret);
+		return;
+	}
+
+	if (reta_conf->mask_lo != 0) {
+		for (i = 0; i< ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
+			if (reta_conf->mask_lo & (uint64_t)(1ULL << i))
+				printf("RSS RETA configuration: hash index=%d,"
+					"queue=%d\n",i,reta_conf->reta[i]);	
+		}
+	}
+	
+	if (reta_conf->mask_hi != 0) {
+		for (i = 0; i< ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
+			if(reta_conf->mask_hi & (uint64_t)(1ULL << i)) {
+				j = (uint8_t)(i + ETH_RSS_RETA_NUM_ENTRIES/2);		
+				printf("RSS RETA configuration: hash index=%d,"
+					"queue=%d\n",j,reta_conf->reta[j]);
+			}
+		}
+	}
+}
+
 /*
  * Setup forwarding configuration for each logical core.
  */

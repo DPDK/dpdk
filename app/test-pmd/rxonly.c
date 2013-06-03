@@ -158,8 +158,10 @@ pkt_burst_receive(struct fwd_stream *fs)
 		printf(" - type=0x%04x - length=%u - nb_segs=%d",
 		       eth_type, (unsigned) mb->pkt.pkt_len,
 		       (int)mb->pkt.nb_segs);
-		if (ol_flags & PKT_RX_RSS_HASH)
+		if (ol_flags & PKT_RX_RSS_HASH) {
 			printf(" - RSS hash=0x%x", (unsigned) mb->pkt.hash.rss);
+			printf(" - RSS queue=0x%x",(unsigned) fs->rx_queue);
+		}
 		else if (ol_flags & PKT_RX_FDIR)
 			printf(" - FDIR hash=0x%x - FDIR id=0x%x ",
 			       mb->pkt.hash.fdir.hash, mb->pkt.hash.fdir.id);

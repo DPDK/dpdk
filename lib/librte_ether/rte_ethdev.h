@@ -306,6 +306,9 @@ struct rte_eth_rss_conf {
 #define ETH_RSS_IPV4_UDP    0x0040 /**< IPv4/UDP packet. */
 #define ETH_RSS_IPV6_UDP    0x0080 /**< IPv6/UDP packet. */
 #define ETH_RSS_IPV6_UDP_EX 0x0100 /**< IPv6/UDP with extension headers. */
+/* Definitions used for redirection table entry size */
+#define ETH_RSS_RETA_NUM_ENTRIES 128
+#define ETH_RSS_RETA_MAX_QUEUE   16  
 
 /* Definitions used for VMDQ and DCB functionality */
 #define ETH_VMDQ_MAX_VLAN_FILTERS   64 /**< Maximum nb. of VMDQ vlan filters. */
@@ -326,6 +329,18 @@ struct rte_eth_rss_conf {
 #define ETH_VLAN_STRIP_MASK   0x0001 /**< VLAN Strip  setting mask */
 #define ETH_VLAN_FILTER_MASK  0x0002 /**< VLAN Filter  setting mask*/
 #define ETH_VLAN_EXTEND_MASK  0x0004 /**< VLAN Extend  setting mask*/
+
+/**
+ * A structure used to configure Redirection Table of  the Receive Side
+ * Scaling (RSS) feature of an Ethernet port.
+ */
+struct rte_eth_rss_reta {
+	/** First 64 mask bits indicate which entry(s) need to updated/queried. */
+	uint64_t mask_lo; 
+	/** Second 64 mask bits indicate which entry(s) need to updated/queried. */
+	uint64_t mask_hi; 
+	uint8_t reta[ETH_RSS_RETA_NUM_ENTRIES];  /**< 128 RETA entries*/
+};
 
 /**
  * This enum indicates the possible number of traffic classes
@@ -813,6 +828,14 @@ typedef int (*priority_flow_ctrl_set_t)(struct rte_eth_dev *dev,
 				struct rte_eth_pfc_conf *pfc_conf);
 /**< @internal Setup priority flow control parameter on an Ethernet device */
 
+typedef int (*reta_update_t)(struct rte_eth_dev *dev,
+				struct rte_eth_rss_reta *reta_conf);
+/**< @internal Update RSS redirection table on an Ethernet device */
+
+typedef int (*reta_query_t)(struct rte_eth_dev *dev,
+				struct rte_eth_rss_reta *reta_conf);
+/**< @internal Query RSS redirection table on an Ethernet device */
+
 typedef int (*eth_dev_led_on_t)(struct rte_eth_dev *dev);
 /**< @internal Turn on SW controllable LED on an Ethernet device */
 
@@ -877,6 +900,10 @@ struct eth_dev_ops {
 	fdir_remove_perfect_filter_t fdir_remove_perfect_filter;
 	/** Setup masks for FDIR filtering. */
 	fdir_set_masks_t fdir_set_masks;
+	/** Update redirection table. */
+	reta_update_t reta_update;
+	/** Query redirection table. */
+	reta_query_t reta_query;
 };
 
 /**
@@ -2106,6 +2133,35 @@ int rte_eth_dev_mac_addr_add(uint8_t port, struct ether_addr *mac_addr,
  */
 int rte_eth_dev_mac_addr_remove(uint8_t port, struct ether_addr *mac_addr);
 
+/**
+ * Update Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
+ * 
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param reta_conf 
+ *    RETA to update.
+ * @return
+ *   - (0) if successful. 
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_dev_rss_reta_update(uint8_t port, 
+			struct rte_eth_rss_reta *reta_conf);
+
+ /**
+ * Query Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
+ *  
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param reta_conf 
+ *   RETA to query.
+ * @return
+ *   - (0) if successful. 
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_dev_rss_reta_query(uint8_t port, 
+			struct rte_eth_rss_reta *reta_conf);
 
 #ifdef __cplusplus
 }
