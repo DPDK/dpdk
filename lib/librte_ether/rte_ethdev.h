@@ -356,8 +356,10 @@ enum rte_eth_nb_tcs {
  * in VMDQ+DCB configurations.
  */
 enum rte_eth_nb_pools {
+	ETH_8_POOLS  =  8, /**<  8 pools with DCB. */
 	ETH_16_POOLS = 16, /**< 16 pools with DCB. */
-	ETH_32_POOLS = 32  /**< 32 pools with DCB. */
+	ETH_32_POOLS = 32, /**< 32 pools with DCB. */
+	ETH_64_POOLS = 64  /**< 32 pools with DCB. */
 };
 
 /* This structure may be extended in future. */
@@ -931,6 +933,14 @@ struct rte_eth_dev {
 	struct rte_eth_dev_cb_list callbacks; /**< User application callbacks */
 };
 
+struct rte_eth_dev_sriov {
+	uint8_t active;               /**< SRIOV is active with 16, 32 or 64 pools */
+	uint8_t nb_q_per_pool;        /**< rx queue number per pool */
+	uint16_t def_vmdq_idx;        /**< Default pool num used for PF */
+	uint16_t def_pool_q_idx;      /**< Default pool queue start reg index */
+};
+#define RTE_ETH_DEV_SRIOV(dev)         ((dev)->data->sriov)
+
 /**
  * @internal
  * The data part, with no function pointers, associated with each ethernet device.
@@ -943,6 +953,8 @@ struct rte_eth_dev_data {
 	void **tx_queues; /**< Array of pointers to TX queues. */
 	uint16_t nb_rx_queues; /**< Number of RX queues. */
 	uint16_t nb_tx_queues; /**< Number of TX queues. */
+	
+	struct rte_eth_dev_sriov sriov;    /**< SRIOV data */
 
 	void *dev_private;              /**< PMD-specific private data */
 
