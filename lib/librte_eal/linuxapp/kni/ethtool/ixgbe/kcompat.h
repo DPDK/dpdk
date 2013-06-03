@@ -2947,6 +2947,7 @@ extern u8 _kc_netdev_get_prio_tc_map(struct net_device *dev, u8 up);
  * updated the kernel version to 2.6.40.x and they back-ported 3.0 features
  * like set_phys_id for ethtool.
  */
+#undef ETHTOOL_GRXRINGS
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(2,6,40) )
 #ifdef ETHTOOL_GRXRINGS
 #ifndef FLOW_EXT
