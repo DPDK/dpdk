@@ -340,7 +340,7 @@ class AutotestRunner:
 		
 		# create a pool of worker threads
 		if not "baremetal" in self.target:
-			pool = multiprocessing.Pool(processes=4)
+			pool = multiprocessing.Pool(processes=1)
 		else:
 			# we can't be sure running baremetal tests in parallel
 			# will work, so let's stay on the safe side
