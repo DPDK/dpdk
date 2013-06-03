@@ -84,7 +84,8 @@ get_num_hugepages(const char *subdir)
 		return 0;
 
 	if (num_pages == 0)
-		RTE_LOG(ERR, EAL, "Error - no free hugepages available!\n");
+		RTE_LOG(WARNING, EAL, "No free hugepages reported in %s\n",
+				subdir);
 
 	return (int32_t)num_pages;
 }
@@ -284,10 +285,12 @@ eal_hugepage_info_init(void)
 
 			/* first, check if we have a mountpoint */
 			if (hpi->hugedir == NULL){
-				RTE_LOG(INFO, EAL, "%u hugepages of size %llu reserved, "\
-						"but no mounted hugetlbfs found for that size\n",
-						(unsigned) get_num_hugepages(dirent->d_name),
-						(unsigned long long)hpi->hugepage_sz);
+				int32_t num_pages;
+				if ((num_pages = get_num_hugepages(dirent->d_name)) > 0)
+					RTE_LOG(INFO, EAL, "%u hugepages of size %llu reserved, "\
+							"but no mounted hugetlbfs found for that size\n",
+							(unsigned)num_pages,
+							(unsigned long long)hpi->hugepage_sz);
 			} else {
 				/* try to obtain a writelock */
 				hpi->lock_descriptor = open(hpi->hugedir, O_RDONLY);

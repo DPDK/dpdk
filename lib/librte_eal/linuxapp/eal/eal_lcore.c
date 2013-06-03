@@ -100,7 +100,7 @@ cpu_socket_id(unsigned lcore_id)
 	}
 	closedir(d);
 	if (endptr == NULL || *endptr!='\0' || endptr == e->d_name+prefix_len) {
-		RTE_LOG(ERR, EAL, "Error reading numa node link "
+		RTE_LOG(WARNING, EAL, "Cannot read numa node link "
 				"for lcore %u - using physical package id instead\n",
 				lcore_id);
 

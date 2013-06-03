@@ -166,7 +166,7 @@ int rte_eal_wait_lcore(unsigned slave_id);
  * rte_eal_wait_lcore() for every lcore. The return values are
  * ignored.
  *
- * After a call to rte_eal_mp_wait_lcores(), the caller can assume
+ * After a call to rte_eal_mp_wait_lcore(), the caller can assume
  * that all slave lcores are in a WAIT state.
  */
 void rte_eal_mp_wait_lcore(void);
