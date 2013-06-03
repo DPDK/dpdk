@@ -757,6 +757,15 @@ eth_igb_stop(struct rte_eth_dev *dev)
 	igb_pf_reset_hw(hw);
 	E1000_WRITE_REG(hw, E1000_WUC, 0);
 
+	/* Set bit for Go Link disconnect */
+	if (hw->mac.type >= e1000_82580) {
+		uint32_t phpm_reg;
+
+		phpm_reg = E1000_READ_REG(hw, E1000_82580_PHY_POWER_MGMT);
+		phpm_reg |= E1000_82580_PM_GO_LINKD;
+		E1000_WRITE_REG(hw, E1000_82580_PHY_POWER_MGMT, phpm_reg);
+	}
+
 	/* Power down the phy. Needed to make the link go Down */
 	e1000_power_down_phy(hw);
 
@@ -777,6 +786,15 @@ eth_igb_close(struct rte_eth_dev *dev)
 	e1000_phy_hw_reset(hw);
 	igb_release_manageability(hw);
 	igb_hw_control_release(hw);
+
+	/* Clear bit for Go Link disconnect */
+	if (hw->mac.type >= e1000_82580) {
+		uint32_t phpm_reg;
+
+		phpm_reg = E1000_READ_REG(hw, E1000_82580_PHY_POWER_MGMT);
+		phpm_reg &= ~E1000_82580_PM_GO_LINKD;
+		E1000_WRITE_REG(hw, E1000_82580_PHY_POWER_MGMT, phpm_reg);
+	}
 
 	igb_dev_clear_queues(dev);
 
