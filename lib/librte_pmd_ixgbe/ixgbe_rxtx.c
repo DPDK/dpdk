@@ -1986,10 +1986,15 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
 	if (((txq->txq_flags & IXGBE_SIMPLE_FLAGS) == IXGBE_SIMPLE_FLAGS) &&
-	    (txq->tx_rs_thresh >= RTE_PMD_IXGBE_TX_MAX_BURST))
+	    (txq->tx_rs_thresh >= RTE_PMD_IXGBE_TX_MAX_BURST)) {
+		PMD_INIT_LOG(INFO, "Using simple tx code path\n");
 		dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
-	else
+	} else {
+		PMD_INIT_LOG(INFO, "Using full-featured tx code path\n");
+		PMD_INIT_LOG(INFO, " - txq_flags = %lx [IXGBE_SIMPLE_FLAGS=%lx]\n", (long unsigned)txq->txq_flags, (long unsigned)IXGBE_SIMPLE_FLAGS);
+		PMD_INIT_LOG(INFO, " - tx_rs_thresh = %lu [RTE_PMD_IXGBE_TX_MAX_BURST=%lu]\n", (long unsigned)txq->tx_rs_thresh, (long unsigned)RTE_PMD_IXGBE_TX_MAX_BURST);
 		dev->tx_pkt_burst = ixgbe_xmit_pkts;
+	}
 
 	return (0);
 }
