@@ -141,10 +141,6 @@ rte_eal_pci_probe(void)
 
 	TAILQ_FOREACH(dev, &device_list, next)
 		pci_probe_all_drivers(dev);
-	#ifdef RTE_EAL_UNBIND_PORTS
-		if (atexit(rte_eal_pci_exit) != 0)
-			RTE_LOG(ERR, EAL, "atexit failure\n");
-	#endif
 	return 0;
 }
 
@@ -184,6 +180,13 @@ void
 rte_eal_pci_register(struct rte_pci_driver *driver)
 {
 	TAILQ_INSERT_TAIL(&driver_list, driver, next);
+}
+
+/* unregister a driver */
+void
+rte_eal_pci_unregister(struct rte_pci_driver *driver)
+{
+	TAILQ_REMOVE(&driver_list, driver, next);
 }
 
 void

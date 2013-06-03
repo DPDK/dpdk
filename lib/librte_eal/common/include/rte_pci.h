@@ -141,7 +141,6 @@ struct rte_pci_device {
 	struct rte_pci_id id;                   /**< PCI ID. */
 	struct rte_pci_resource mem_resource[PCI_MAX_RESOURCE];   /**< PCI Memory Resource */
 	struct rte_intr_handle intr_handle;     /**< Interrupt handle */
-	char previous_dr[PATH_MAX];             /**< path for pre-dpdk driver*/
 	const struct rte_pci_driver *driver;    /**< Associated driver */
 	unsigned int blacklisted:1;             /**< Device is blacklisted */
 };
@@ -183,15 +182,12 @@ struct rte_pci_driver {
 	uint32_t drv_flags;                     /**< Flags contolling handling of device. */
 };
 
-/**< Device needs igb_uio kernel module */
+#ifdef RTE_EAL_UNBIND_PORTS
+/** Device needs igb_uio kernel module */
 #define RTE_PCI_DRV_NEED_IGB_UIO 0x0001
-/**< Device driver must be registered several times until failure */
+#endif
+/** Device driver must be registered several times until failure */
 #define RTE_PCI_DRV_MULTIPLE 0x0002
-
-/**
- * Perform clean up of pci drivers on application exits.
- * */
-void rte_eal_pci_exit(void);
 
 /**
  * Probe the PCI bus for registered drivers.
@@ -219,6 +215,15 @@ void rte_eal_pci_dump(void);
  *   to be registered.
  */
 void rte_eal_pci_register(struct rte_pci_driver *driver);
+
+/**
+ * Unregister a PCI driver.
+ *
+ * @param driver
+ *   A pointer to a rte_pci_driver structure describing the driver
+ *   to be unregistered.
+ */
+void rte_eal_pci_unregister(struct rte_pci_driver *driver);
 
 /**
  * Register a list of PCI locations that will be blacklisted (not used by DPDK).

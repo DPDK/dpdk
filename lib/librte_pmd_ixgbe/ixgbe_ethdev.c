@@ -769,7 +769,9 @@ static struct eth_driver rte_ixgbe_pmd = {
 	{
 		.name = "rte_ixgbe_pmd",
 		.id_table = pci_id_ixgbe_map,
+#ifdef RTE_EAL_UNBIND_PORTS
 		.drv_flags = RTE_PCI_DRV_NEED_IGB_UIO,
+#endif
 	},
 	.eth_dev_init = eth_ixgbe_dev_init,
 	.dev_private_size = sizeof(struct ixgbe_adapter),
@@ -782,7 +784,9 @@ static struct eth_driver rte_ixgbevf_pmd = {
 	{
 		.name = "rte_ixgbevf_pmd",
 		.id_table = pci_id_ixgbevf_map,
+#ifdef RTE_EAL_UNBIND_PORTS
 		.drv_flags = RTE_PCI_DRV_NEED_IGB_UIO,
+#endif
 	},
 	.eth_dev_init = eth_ixgbevf_dev_init,
 	.dev_private_size = sizeof(struct ixgbe_adapter),

@@ -325,11 +325,49 @@ grep_meminfo()
 }
 
 #
-# List all hugepage file references
+# Calls pci_unbind.py --status to show the NIC and what they
+# are all bound to, in terms of drivers.
 #
-ls_mnt_huge()
+show_nics()
 {
-	ls -lh /mnt/huge
+	if  /sbin/lsmod  | grep -q igb_uio ; then 
+		${RTE_SDK}/tools/pci_unbind.py --status
+	else 
+		echo "# Please load the 'igb_uio' kernel module before querying or "
+		echo "# adjusting NIC device bindings"
+	fi
+}
+
+#
+# Uses pci_unbind.py to move devices to work with igb_uio
+#
+bind_nics()
+{
+	if  /sbin/lsmod  | grep -q igb_uio ; then 
+		${RTE_SDK}/tools/pci_unbind.py --status
+		echo ""
+		echo -n "Enter PCI address of device to bind to IGB UIO driver: "
+		read PCI_PATH
+		sudo ${RTE_SDK}/tools/pci_unbind.py -b igb_uio $PCI_PATH && echo "OK"
+	else 
+		echo "# Please load the 'igb_uio' kernel module before querying or "
+		echo "# adjusting NIC device bindings"
+	fi
+}
+
+#
+# Uses pci_unbind.py to move devices to work with kernel drivers again
+#
+unbind_nics()
+{
+	${RTE_SDK}/tools/pci_unbind.py --status
+	echo ""
+	echo -n "Enter PCI address of device to bind to IGB UIO driver: "
+	read PCI_PATH
+	echo ""
+	echo -n "Enter name of kernel driver to bind the device to: "
+	read DRV
+	sudo ${RTE_SDK}/tools/pci_unbind.py -b $DRV $PCI_PATH && echo "OK"
 }
 
 #
@@ -368,6 +406,12 @@ step2_func()
 
 	TEXT[4]="Setup hugepage mappings for NUMA systems"
 	FUNC[4]="set_numa_pages"
+
+	TEXT[5]="Display current Ethernet device settings"
+	FUNC[5]="show_nics"
+
+	TEXT[6]="Bind Ethernet device to IGB UIO module"
+	FUNC[6]="bind_nics"
 }
 
 #
@@ -394,8 +438,6 @@ step4_func()
 	TEXT[1]="List hugepage info from /proc/meminfo"
 	FUNC[1]="grep_meminfo"
 
-	TEXT[2]="List hugepage files in /mnt/huge"
-	FUNC[2]="ls_mnt_huge"
 }
 
 #
@@ -408,14 +450,17 @@ step5_func()
 	TEXT[1]="Uninstall all targets"
 	FUNC[1]="uninstall_targets"
 
-	TEXT[2]="Remove IGB UIO module"
-	FUNC[2]="remove_igb_uio_module"
+	TEXT[2]="Unbind NICs from IGB UIO driver"
+	FUNC[2]="unbind_nics"
 
-	TEXT[3]="Remove KNI module"
-	FUNC[3]="remove_kni_module"
+	TEXT[3]="Remove IGB UIO module"
+	FUNC[3]="remove_igb_uio_module"
 
-	TEXT[4]="Remove hugepage mappings"
-	FUNC[4]="clear_huge_pages"
+	TEXT[4]="Remove KNI module"
+	FUNC[4]="remove_kni_module"
+
+	TEXT[5]="Remove hugepage mappings"
+	FUNC[5]="clear_huge_pages"
 }
 
 STEPS[1]="step1_func"

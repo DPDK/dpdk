@@ -174,13 +174,20 @@ def check_modules():
         sys.exit(1)
     depmod_output = check_output(["depmod", "-n", modpath]).splitlines()
     for line in depmod_output:
-        if not line.startswith(mod):
+        if not line.startswith("alias"):
             continue
-        if line.endswith(mod+".ko:"):
+        if not line.endswith(mod):
             continue
         lineparts = line.split()
-        module_dev_ids.append({"Vendor": int(lineparts[1],0), 
-                               "Device": int(lineparts[2],0)})
+        if not(lineparts[1].startswith("pci:")):
+            continue;
+        else:
+            lineparts[1] = lineparts[1][4:]
+        vendor = lineparts[1][:9]
+        device = lineparts[1][9:18]
+        if vendor.startswith("v") and device.startswith("d"):
+            module_dev_ids.append({"Vendor": int(vendor[1:],16), 
+                                   "Device": int(device[1:],16)})
 
 def is_supported_device(dev_id):
     '''return true if device is supported by igb_uio, false otherwise'''

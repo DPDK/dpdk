@@ -95,7 +95,9 @@ struct rte_pci_driver my_driver = {
 	.name = "test_driver",
 	.devinit = my_driver_init,
 	.id_table = my_driver_id,
+#ifdef RTE_EAL_UNBIND_PORTS
 	.drv_flags = RTE_PCI_DRV_NEED_IGB_UIO,
+#endif
 };
 
 struct rte_pci_driver my_driver2 = {
@@ -182,5 +184,11 @@ test_pci(void)
 	}
 
 	test_pci_run = 1;
+	if (driver_registered == 1) {
+		rte_eal_pci_unregister(&my_driver);
+		rte_eal_pci_unregister(&my_driver2);
+		driver_registered = 0;
+	}
+
 	return 0;
 }
