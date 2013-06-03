@@ -1095,7 +1095,7 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 	if ((mz = rte_memzone_lookup(z_name)) != 0)
 		return (mz);
 
-	return rte_memzone_reserve(z_name, (uint64_t) ring_size, socket_id, 0);
+	return rte_memzone_reserve(z_name, ring_size, socket_id, 0);
 }
 
 static void

@@ -35,6 +35,8 @@
 #ifndef RTE_LINUXAPP_HUGEPAGES_H_
 #define RTE_LINUXAPP_HUGEPAGES_H_
 
+#include <stddef.h>
+
 #define MAX_HUGEPAGE_PATH PATH_MAX
 
 /**
@@ -45,7 +47,7 @@ struct hugepage {
 	void *orig_va;      /**< virtual addr of first mmap() */
 	void *final_va;     /**< virtual addr of 2nd mmap() */
 	uint64_t physaddr;  /**< physical addr */
-	uint64_t size;      /**< the page size */
+	size_t size;        /**< the page size */
 	int socket_id;      /**< NUMA socket ID */
 	int file_id;        /**< the '%d' in HUGEFILE_FMT */
 	int memseg_id;      /**< the memory segment to which page belongs */

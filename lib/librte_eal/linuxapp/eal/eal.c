@@ -416,7 +416,7 @@ eal_parse_socket_mem(char *socket_mem)
 	return 0;
 }
 
-static inline uint64_t
+static inline size_t
 eal_get_hugepage_mem_size(void)
 {
 	uint64_t size = 0;
@@ -431,7 +431,7 @@ eal_get_hugepage_mem_size(void)
 		}
 	}
 
-	return (size);
+	return (size < SIZE_MAX) ? (size_t)(size) : SIZE_MAX;
 }
 
 static enum rte_proc_type_t

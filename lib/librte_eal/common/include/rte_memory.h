@@ -42,6 +42,7 @@
  */
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,8 +78,8 @@ struct rte_memseg {
 		void *addr;         /**< Start virtual address. */
 		uint64_t addr_64;   /**< Makes sure addr is always 64 bits */
 	};
-	uint64_t len;               /**< Length of the segment. */
-	uint64_t hugepage_sz;       /**< The pagesize of underlying memory */
+	size_t len;               /**< Length of the segment. */
+	size_t hugepage_sz;       /**< The pagesize of underlying memory */
 	int32_t socket_id;          /**< NUMA socket ID. */
 	uint32_t nchannel;          /**< Number of channels. */
 	uint32_t nrank;             /**< Number of ranks. */

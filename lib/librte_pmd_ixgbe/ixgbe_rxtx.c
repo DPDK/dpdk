@@ -1744,7 +1744,7 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 	if (mz)
 		return mz;
 
-	return rte_memzone_reserve_aligned(z_name, (uint64_t) ring_size,
+	return rte_memzone_reserve_aligned(z_name, ring_size,
 			socket_id, 0, IXGBE_ALIGN);
 }
 

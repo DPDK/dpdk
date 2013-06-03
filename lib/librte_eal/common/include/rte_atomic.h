@@ -51,10 +51,12 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include "arch/rte_atomic.h"
 
-
-#ifdef __DOXYGEN__
+#if RTE_MAX_LCORE == 1
+#define MPLOCKED                        /**< No need to insert MP lock prefix. */
+#else
+#define MPLOCKED        "lock ; "       /**< Insert MP lock prefix. */
+#endif
 
 /**
  * General memory barrier.
@@ -80,6 +82,11 @@ extern "C" {
  */
 #define rte_rmb() asm volatile("lfence;" : : : "memory")
 
+/**
+ * @file
+ * Atomic Operations on x86_64
+ */
+
 /*------------------------- 16 bit atomic operations -------------------------*/
 
 /**
@@ -99,7 +106,22 @@ extern "C" {
  *   Non-zero on success; 0 on failure.
  */
 static inline int
-rte_atomic16_cmpset(volatile uint16_t *dst, uint16_t exp, uint16_t src);
+rte_atomic16_cmpset(volatile uint16_t *dst, uint16_t exp, uint16_t src)
+{
+	uint8_t res;
+
+	asm volatile(
+			MPLOCKED
+			"cmpxchgw %[src], %[dst];"
+			"sete %[res];"
+			: [res] "=a" (res),     /* output */
+			  [dst] "=m" (*dst)
+			: [src] "r" (src),      /* input */
+			  "a" (exp),
+			  "m" (*dst)
+			: "memory");            /* no-clobber list */
+	return res;
+}
 
 /**
  * The atomic counter structure.
@@ -134,7 +156,10 @@ rte_atomic16_init(rte_atomic16_t *v)
  *   The value of the counter.
  */
 static inline int16_t
-rte_atomic16_read(const rte_atomic16_t *v);
+rte_atomic16_read(const rte_atomic16_t *v)
+{
+	return v->cnt;
+}
 
 /**
  * Atomically set a counter to a 16-bit value.
@@ -145,7 +170,10 @@ rte_atomic16_read(const rte_atomic16_t *v);
  *   The new value for the counter.
  */
 static inline void
-rte_atomic16_set(rte_atomic16_t *v, int16_t new_value);
+rte_atomic16_set(rte_atomic16_t *v, int16_t new_value)
+{
+	v->cnt = new_value;
+}
 
 /**
  * Atomically add a 16-bit value to an atomic counter.
@@ -156,7 +184,10 @@ rte_atomic16_set(rte_atomic16_t *v, int16_t new_value);
  *   The value to be added to the counter.
  */
 static inline void
-rte_atomic16_add(rte_atomic16_t *v, int16_t inc);
+rte_atomic16_add(rte_atomic16_t *v, int16_t inc)
+{
+	__sync_fetch_and_add(&v->cnt, inc);
+}
 
 /**
  * Atomically subtract a 16-bit value from an atomic counter.
@@ -167,7 +198,10 @@ rte_atomic16_add(rte_atomic16_t *v, int16_t inc);
  *   The value to be subtracted from the counter.
  */
 static inline void
-rte_atomic16_sub(rte_atomic16_t *v, int16_t dec);
+rte_atomic16_sub(rte_atomic16_t *v, int16_t dec)
+{
+	__sync_fetch_and_sub(&v->cnt, dec);
+}
 
 /**
  * Atomically increment a counter by one.
@@ -176,7 +210,15 @@ rte_atomic16_sub(rte_atomic16_t *v, int16_t dec);
  *   A pointer to the atomic counter.
  */
 static inline void
-rte_atomic16_inc(rte_atomic16_t *v);
+rte_atomic16_inc(rte_atomic16_t *v)
+{
+	asm volatile(
+			MPLOCKED
+			"incw %[cnt]"
+			: [cnt] "=m" (v->cnt)   /* output */
+			: "m" (v->cnt)          /* input */
+			);
+}
 
 /**
  * Atomically decrement a counter by one.
@@ -185,7 +227,15 @@ rte_atomic16_inc(rte_atomic16_t *v);
  *   A pointer to the atomic counter.
  */
 static inline void
-rte_atomic16_dec(rte_atomic16_t *v);
+rte_atomic16_dec(rte_atomic16_t *v)
+{
+	asm volatile(
+			MPLOCKED
+			"decw %[cnt]"
+			: [cnt] "=m" (v->cnt)   /* output */
+			: "m" (v->cnt)          /* input */
+			);
+}
 
 /**
  * Atomically add a 16-bit value to a counter and return the result.
@@ -201,7 +251,10 @@ rte_atomic16_dec(rte_atomic16_t *v);
  *   The value of v after the addition.
  */
 static inline int16_t
-rte_atomic16_add_return(rte_atomic16_t *v, int16_t inc);
+rte_atomic16_add_return(rte_atomic16_t *v, int16_t inc)
+{
+	return __sync_add_and_fetch(&v->cnt, inc);
+}
 
 /**
  * Atomically subtract a 16-bit value from a counter and return
@@ -218,7 +271,10 @@ rte_atomic16_add_return(rte_atomic16_t *v, int16_t inc);
  *   The value of v after the subtraction.
  */
 static inline int16_t
-rte_atomic16_sub_return(rte_atomic16_t *v, int16_t dec);
+rte_atomic16_sub_return(rte_atomic16_t *v, int16_t dec)
+{
+	return __sync_sub_and_fetch(&v->cnt, dec);
+}
 
 /**
  * Atomically increment a 16-bit counter by one and test.
@@ -231,8 +287,19 @@ rte_atomic16_sub_return(rte_atomic16_t *v, int16_t dec);
  * @return
  *   True if the result after the increment operation is 0; false otherwise.
  */
-static inline int
-rte_atomic16_inc_and_test(rte_atomic16_t *v);
+static inline int rte_atomic16_inc_and_test(rte_atomic16_t *v)
+{
+	uint8_t ret;
+
+	asm volatile(
+			MPLOCKED
+			"incw %[cnt] ; "
+			"sete %[ret]"
+			: [cnt] "+m" (v->cnt),  /* output */
+			  [ret] "=qm" (ret)
+			);
+	return (ret != 0);
+}
 
 /**
  * Atomically decrement a 16-bit counter by one and test.
@@ -245,8 +312,18 @@ rte_atomic16_inc_and_test(rte_atomic16_t *v);
  * @return
  *   True if the result after the decrement operation is 0; false otherwise.
  */
-static inline int
-rte_atomic16_dec_and_test(rte_atomic16_t *v);
+static inline int rte_atomic16_dec_and_test(rte_atomic16_t *v)
+{
+	uint8_t ret;
+
+	asm volatile(MPLOCKED
+			"decw %[cnt] ; "
+			"sete %[ret]"
+			: [cnt] "+m" (v->cnt),  /* output */
+			  [ret] "=qm" (ret)
+			);
+	return (ret != 0);
+}
 
 /**
  * Atomically test and set a 16-bit atomic counter.
@@ -259,8 +336,10 @@ rte_atomic16_dec_and_test(rte_atomic16_t *v);
  * @return
  *   0 if failed; else 1, success.
  */
-static inline int
-rte_atomic16_test_and_set(rte_atomic16_t *v);
+static inline int rte_atomic16_test_and_set(rte_atomic16_t *v)
+{
+	return rte_atomic16_cmpset((volatile uint16_t *)&v->cnt, 0, 1);
+}
 
 /**
  * Atomically set a 16-bit counter to 0.
@@ -268,8 +347,10 @@ rte_atomic16_test_and_set(rte_atomic16_t *v);
  * @param v
  *   A pointer to the atomic counter.
  */
-static inline void
-rte_atomic16_clear(rte_atomic16_t *v);
+static inline void rte_atomic16_clear(rte_atomic16_t *v)
+{
+	v->cnt = 0;
+}
 
 /*------------------------- 32 bit atomic operations -------------------------*/
 
@@ -290,7 +371,22 @@ rte_atomic16_clear(rte_atomic16_t *v);
  *   Non-zero on success; 0 on failure.
  */
 static inline int
-rte_atomic32_cmpset(volatile uint32_t *dst, uint32_t exp, uint32_t src);
+rte_atomic32_cmpset(volatile uint32_t *dst, uint32_t exp, uint32_t src)
+{
+	uint8_t res;
+
+	asm volatile(
+			MPLOCKED
+			"cmpxchgl %[src], %[dst];"
+			"sete %[res];"
+			: [res] "=a" (res),     /* output */
+			  [dst] "=m" (*dst)
+			: [src] "r" (src),      /* input */
+			  "a" (exp),
+			  "m" (*dst)
+			: "memory");            /* no-clobber list */
+	return res;
+}
 
 /**
  * The atomic counter structure.
@@ -311,7 +407,10 @@ typedef struct {
  *   A pointer to the atomic counter.
  */
 static inline void
-rte_atomic32_init(rte_atomic32_t *v);
+rte_atomic32_init(rte_atomic32_t *v)
+{
+	v->cnt = 0;
+}
 
 /**
  * Atomically read a 32-bit value from a counter.
@@ -322,7 +421,10 @@ rte_atomic32_init(rte_atomic32_t *v);
  *   The value of the counter.
  */
 static inline int32_t
-rte_atomic32_read(const rte_atomic32_t *v);
+rte_atomic32_read(const rte_atomic32_t *v)
+{
+	return v->cnt;
+}
 
 /**
  * Atomically set a counter to a 32-bit value.
@@ -333,7 +435,10 @@ rte_atomic32_read(const rte_atomic32_t *v);
  *   The new value for the counter.
  */
 static inline void
-rte_atomic32_set(rte_atomic32_t *v, int32_t new_value);
+rte_atomic32_set(rte_atomic32_t *v, int32_t new_value)
+{
+	v->cnt = new_value;
+}
 
 /**
  * Atomically add a 32-bit value to an atomic counter.
@@ -344,7 +449,10 @@ rte_atomic32_set(rte_atomic32_t *v, int32_t new_value);
  *   The value to be added to the counter.
  */
 static inline void
-rte_atomic32_add(rte_atomic32_t *v, int32_t inc);
+rte_atomic32_add(rte_atomic32_t *v, int32_t inc)
+{
+	__sync_fetch_and_add(&v->cnt, inc);
+}
 
 /**
  * Atomically subtract a 32-bit value from an atomic counter.
@@ -355,7 +463,10 @@ rte_atomic32_add(rte_atomic32_t *v, int32_t inc);
  *   The value to be subtracted from the counter.
  */
 static inline void
-rte_atomic32_sub(rte_atomic32_t *v, int32_t dec);
+rte_atomic32_sub(rte_atomic32_t *v, int32_t dec)
+{
+	__sync_fetch_and_sub(&v->cnt, dec);
+}
 
 /**
  * Atomically increment a counter by one.
@@ -364,7 +475,15 @@ rte_atomic32_sub(rte_atomic32_t *v, int32_t dec);
  *   A pointer to the atomic counter.
  */
 static inline void
-rte_atomic32_inc(rte_atomic32_t *v);
+rte_atomic32_inc(rte_atomic32_t *v)
+{
+	asm volatile(
+			MPLOCKED
+			"incl %[cnt]"
+			: [cnt] "=m" (v->cnt)   /* output */
+			: "m" (v->cnt)          /* input */
+			);
+}
 
 /**
  * Atomically decrement a counter by one.
@@ -373,7 +492,15 @@ rte_atomic32_inc(rte_atomic32_t *v);
  *   A pointer to the atomic counter.
  */
 static inline void
-rte_atomic32_dec(rte_atomic32_t *v);
+rte_atomic32_dec(rte_atomic32_t *v)
+{
+	asm volatile(
+			MPLOCKED
+			"decl %[cnt]"
+			: [cnt] "=m" (v->cnt)   /* output */
+			: "m" (v->cnt)          /* input */
+			);
+}
 
 /**
  * Atomically add a 32-bit value to a counter and return the result.
@@ -389,7 +516,10 @@ rte_atomic32_dec(rte_atomic32_t *v);
  *   The value of v after the addition.
  */
 static inline int32_t
-rte_atomic32_add_return(rte_atomic32_t *v, int32_t inc);
+rte_atomic32_add_return(rte_atomic32_t *v, int32_t inc)
+{
+	return __sync_add_and_fetch(&v->cnt, inc);
+}
 
 /**
  * Atomically subtract a 32-bit value from a counter and return
@@ -406,7 +536,10 @@ rte_atomic32_add_return(rte_atomic32_t *v, int32_t inc);
  *   The value of v after the subtraction.
  */
 static inline int32_t
-rte_atomic32_sub_return(rte_atomic32_t *v, int32_t dec);
+rte_atomic32_sub_return(rte_atomic32_t *v, int32_t dec)
+{
+	return __sync_sub_and_fetch(&v->cnt, dec);
+}
 
 /**
  * Atomically increment a 32-bit counter by one and test.
@@ -419,8 +552,19 @@ rte_atomic32_sub_return(rte_atomic32_t *v, int32_t dec);
  * @return
  *   True if the result after the increment operation is 0; false otherwise.
  */
-static inline int
-rte_atomic32_inc_and_test(rte_atomic32_t *v);
+static inline int rte_atomic32_inc_and_test(rte_atomic32_t *v)
+{
+	uint8_t ret;
+
+	asm volatile(
+			MPLOCKED
+			"incl %[cnt] ; "
+			"sete %[ret]"
+			: [cnt] "+m" (v->cnt),  /* output */
+			  [ret] "=qm" (ret)
+			);
+	return (ret != 0);
+}
 
 /**
  * Atomically decrement a 32-bit counter by one and test.
@@ -433,8 +577,18 @@ rte_atomic32_inc_and_test(rte_atomic32_t *v);
  * @return
  *   True if the result after the decrement operation is 0; false otherwise.
  */
-static inline int
-rte_atomic32_dec_and_test(rte_atomic32_t *v);
+static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
+{
+	uint8_t ret;
+
+	asm volatile(MPLOCKED
+			"decl %[cnt] ; "
+			"sete %[ret]"
+			: [cnt] "+m" (v->cnt),  /* output */
+			  [ret] "=qm" (ret)
+			);
+	return (ret != 0);
+}
 
 /**
  * Atomically test and set a 32-bit atomic counter.
@@ -447,8 +601,10 @@ rte_atomic32_dec_and_test(rte_atomic32_t *v);
  * @return
  *   0 if failed; else 1, success.
  */
-static inline int
-rte_atomic32_test_and_set(rte_atomic32_t *v);
+static inline int rte_atomic32_test_and_set(rte_atomic32_t *v)
+{
+	return rte_atomic32_cmpset((volatile uint32_t *)&v->cnt, 0, 1);
+}
 
 /**
  * Atomically set a 32-bit counter to 0.
@@ -456,8 +612,16 @@ rte_atomic32_test_and_set(rte_atomic32_t *v);
  * @param v
  *   A pointer to the atomic counter.
  */
-static inline void
-rte_atomic32_clear(rte_atomic32_t *v);
+static inline void rte_atomic32_clear(rte_atomic32_t *v)
+{
+	v->cnt = 0;
+}
+
+/* any other functions are in arch specific files */
+#include "arch/rte_atomic.h"
+
+
+#ifdef __DOXYGEN__
 
 /*------------------------- 64 bit atomic operations -------------------------*/
 

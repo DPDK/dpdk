@@ -76,9 +76,9 @@ struct rte_memzone {
 		void *addr;                   /**< Start virtual address. */
 		uint64_t addr_64;             /**< Makes sure addr is always 64-bits */
 	};
-	uint64_t len;                     /**< Length of the memzone. */
+	size_t len;                       /**< Length of the memzone. */
 
-	uint64_t hugepage_sz;             /**< The page size of underlying memory */
+	size_t hugepage_sz;               /**< The page size of underlying memory */
 
 	int32_t socket_id;                /**< NUMA socket ID. */
 
@@ -124,7 +124,7 @@ struct rte_memzone {
  *    - EINVAL - invalid parameters
  */
 const struct rte_memzone *rte_memzone_reserve(const char *name,
-					      uint64_t len, int socket_id,
+					      size_t len, int socket_id,
 					      unsigned flags);
 
 /**
@@ -171,7 +171,7 @@ const struct rte_memzone *rte_memzone_reserve(const char *name,
  *    - EINVAL - invalid parameters
  */
 const struct rte_memzone *rte_memzone_reserve_aligned(const char *name,
-					      uint64_t len, int socket_id, unsigned flags,
+					      size_t len, int socket_id, unsigned flags,
 					      unsigned align);
 
 /**

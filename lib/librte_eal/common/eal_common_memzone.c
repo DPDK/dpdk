@@ -83,7 +83,7 @@ memzone_lookup_thread_unsafe(const char *name)
  * allocation cannot be done, return NULL.
  */
 const struct rte_memzone *
-rte_memzone_reserve(const char *name, uint64_t len, int socket_id,
+rte_memzone_reserve(const char *name, size_t len, int socket_id,
 		      unsigned flags)
 {
 	return rte_memzone_reserve_aligned(name,
@@ -91,14 +91,15 @@ rte_memzone_reserve(const char *name, uint64_t len, int socket_id,
 }
 
 static const struct rte_memzone *
-memzone_reserve_aligned_thread_unsafe(const char *name, uint64_t len,
+memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		int socket_id, unsigned flags, unsigned align)
 {
 	struct rte_mem_config *mcfg;
 	unsigned i = 0;
 	int memseg_idx = -1;
-	uint64_t addr_offset, requested_len;
-	uint64_t memseg_len = 0;
+	uint64_t addr_offset;
+	size_t requested_len;
+	size_t memseg_len = 0;
 	phys_addr_t memseg_physaddr;
 	void *memseg_addr;
 
@@ -120,9 +121,13 @@ memzone_reserve_aligned_thread_unsafe(const char *name, uint64_t len,
 		return NULL;
 	}
 
-	/* align length on cache boundary */
+	/* align length on cache boundary. Check for overflow before doing so */
+	if (len > SIZE_MAX - CACHE_LINE_MASK) {
+		rte_errno = EINVAL; /* requested size too big */
+		return NULL;
+	}
 	len += CACHE_LINE_MASK;
-	len &= ~((uint64_t) CACHE_LINE_MASK);
+	len &= ~((size_t) CACHE_LINE_MASK);
 
 	/* save original length */
 	requested_len = len;
@@ -198,7 +203,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, uint64_t len,
 			return memzone_reserve_aligned_thread_unsafe(name, len - align,
 					socket_id, 0, align);
 
-		RTE_LOG(ERR, EAL, "%s(%s, %" PRIu64 ", %d): "
+		RTE_LOG(ERR, EAL, "%s(%s, %zu, %d): "
 			"No appropriate segment found\n",
 			__func__, name, requested_len, socket_id);
 		rte_errno = ENOMEM;
@@ -211,14 +216,15 @@ memzone_reserve_aligned_thread_unsafe(const char *name, uint64_t len,
 
 	/* save aligned physical and virtual addresses */
 	memseg_physaddr = free_memseg[memseg_idx].phys_addr + addr_offset;
-	memseg_addr = RTE_PTR_ADD(free_memseg[memseg_idx].addr, (uintptr_t) addr_offset);
+	memseg_addr = RTE_PTR_ADD(free_memseg[memseg_idx].addr,
+			(uintptr_t) addr_offset);
 
 	/* if we are looking for a biggest memzone */
 	if (requested_len == 0)
 		requested_len = memseg_len - addr_offset;
 
 	/* set length to correct value */
-	len = addr_offset + requested_len;
+	len = (size_t)addr_offset + requested_len;
 
 	/* update our internal state */
 	free_memseg[memseg_idx].len -= len;
@@ -244,7 +250,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, uint64_t len,
  * specified alignment). If the allocation cannot be done, return NULL.
  */
 const struct rte_memzone *
-rte_memzone_reserve_aligned(const char *name, uint64_t len,
+rte_memzone_reserve_aligned(const char *name, size_t len,
 		int socket_id, unsigned flags, unsigned align)
 {
 	struct rte_mem_config *mcfg;
@@ -316,7 +322,7 @@ rte_memzone_dump(void)
 	for (i=0; i<RTE_MAX_MEMZONE; i++) {
 		if (mcfg->memzone[i].addr == NULL)
 			break;
-		printf("Zone %o: name:<%s>, phys:0x%"PRIx64", len:0x%"PRIx64""
+		printf("Zone %o: name:<%s>, phys:0x%"PRIx64", len:0x%zx"
 		       ", virt:%p, socket_id:%"PRId32", flags:%"PRIx32"\n", i,
 		       mcfg->memzone[i].name,
 		       mcfg->memzone[i].phys_addr,

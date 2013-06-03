@@ -190,13 +190,13 @@ increase_open_file_limit(void)
  * which is a multiple of hugepage size.
  */
 static void *
-get_virtual_area(uint64_t *size, uint64_t hugepage_sz)
+get_virtual_area(size_t *size, size_t hugepage_sz)
 {
 	void *addr;
 	int fd;
 	long aligned_addr;
 
-	RTE_LOG(INFO, EAL, "Ask a virtual area of 0x%"PRIx64" bytes\n", *size);
+	RTE_LOG(INFO, EAL, "Ask a virtual area of 0x%zu bytes\n", *size);
 
 	fd = open("/dev/zero", O_RDONLY);
 	if (fd < 0){
@@ -224,7 +224,7 @@ get_virtual_area(uint64_t *size, uint64_t hugepage_sz)
 	aligned_addr &= (~(hugepage_sz - 1));
 	addr = (void *)(aligned_addr);
 
-	RTE_LOG(INFO, EAL, "Virtual area found at %p (size = 0x%"PRIx64")\n",
+	RTE_LOG(INFO, EAL, "Virtual area found at %p (size = 0x%zx)\n",
 		addr, *size);
 
 	return addr;
@@ -245,10 +245,10 @@ map_all_hugepages(struct hugepage *hugepg_tbl,
 	unsigned i;
 	void *virtaddr;
 	void *vma_addr = NULL;
-	uint64_t vma_len = 0;
+	size_t vma_len = 0;
 
 	for (i = 0; i < hpi->num_pages[0]; i++) {
-		uint64_t hugepage_sz = hpi->hugepage_sz;
+		size_t hugepage_sz = hpi->hugepage_sz;
 
 		if (orig) {
 			hugepg_tbl[i].file_id = i;

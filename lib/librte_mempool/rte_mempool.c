@@ -133,7 +133,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	struct rte_mempool *mp = NULL;
 	struct rte_ring *r;
 	const struct rte_memzone *mz;
-	uint64_t mempool_size, total_elt_size;
+	size_t mempool_size, total_elt_size;
 	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
 	int rg_flags = 0;
 	uint32_t header_size, trailer_size;

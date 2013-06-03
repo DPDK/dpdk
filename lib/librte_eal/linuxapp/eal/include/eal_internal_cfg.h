@@ -49,7 +49,7 @@
  * mount points of hugepages
  */
 struct hugepage_info {
-	uint64_t hugepage_sz;   /**< size of a huge page */
+	size_t hugepage_sz;   /**< size of a huge page */
 	const char *hugedir;    /**< dir where hugetlbfs is mounted */
 	uint32_t num_pages[RTE_MAX_NUMA_NODES];
 				/**< number of hugepages of that size on each socket */
@@ -60,7 +60,7 @@ struct hugepage_info {
  * internal configuration
  */
 struct internal_config {
-	volatile uint64_t memory;         /**< amount of asked memory */
+	volatile size_t memory;           /**< amount of asked memory */
 	volatile unsigned force_nchannel; /**< force number of channels */
 	volatile unsigned force_nrank;    /**< force number of ranks */
 	volatile unsigned no_hugetlbfs;   /**< true to disable hugetlbfs */
