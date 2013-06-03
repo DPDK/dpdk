@@ -49,12 +49,14 @@ please change the definition of the RTE_TARGET environment variable)
 endif
 
 LBITS := $(shell uname -p)
-ifneq ($(CONFIG_RTE_ARCH),"x86_64")
+ifeq ($(CROSS_COMPILE),)
+    ifneq ($(CONFIG_RTE_ARCH),"x86_64")
         ifneq ($(LBITS),i686)
         $(error The RTE_TARGET chosen is not compatible with this environment \
         (x86_64), for this application. Please change the definition of the \
         RTE_TARGET environment variable, or run the application on a 32-bit OS)
         endif
+    endif
 endif
 
 # binary name
