@@ -639,8 +639,8 @@ MAIN(int argc, char **argv)
 	struct lcore_queue_conf *qconf;
 	struct rte_eth_dev_info dev_info;
 	int ret;
-	unsigned int nb_ports;
-	unsigned portid, portid_last = 0;
+	uint8_t nb_ports;
+	uint8_t portid, portid_last = 0;
 	unsigned lcore_id, rx_lcore_id;
 	unsigned nb_ports_in_mask = 0;
 
@@ -699,7 +699,7 @@ MAIN(int argc, char **argv)
 
 		nb_ports_in_mask++;
 
-		rte_eth_dev_info_get((uint8_t) portid, &dev_info);
+		rte_eth_dev_info_get(portid, &dev_info);
 	}
 	if (nb_ports_in_mask < 2 || nb_ports_in_mask % 2)
 		rte_exit(EXIT_FAILURE, "Current enabled port number is %u, "
@@ -730,61 +730,61 @@ MAIN(int argc, char **argv)
 
 		qconf->rx_port_list[qconf->n_rx_port] = portid;
 		qconf->n_rx_port++;
-		printf("Lcore %u: RX port %u\n",rx_lcore_id, portid);
+		printf("Lcore %u: RX port %u\n",rx_lcore_id, (unsigned) portid);
 	}
 
 	/* Initialise each port */
 	for (portid = 0; portid < nb_ports; portid++) {
 		/* skip ports that are not enabled */
 		if ((lsi_enabled_port_mask & (1 << portid)) == 0) {
-			printf("Skipping disabled port %u\n", portid);
+			printf("Skipping disabled port %u\n", (unsigned) portid);
 			continue;
 		}
 		/* init port */
-		printf("Initializing port %u... ", portid);
+		printf("Initializing port %u... ", (unsigned) portid);
 		fflush(stdout);
-		ret = rte_eth_dev_configure((uint8_t) portid, 1, 1, &port_conf);
+		ret = rte_eth_dev_configure(portid, 1, 1, &port_conf);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n",
-				  ret, portid);
+				  ret, (unsigned) portid);
 
 		/* register lsi interrupt callback, need to be after
 		 * rte_eth_dev_configure(). if (intr_conf.lsc == 0), no
 		 * lsc interrupt will be present, and below callback to
 		 * be registered will never be called.
 		 */
-		rte_eth_dev_callback_register((uint8_t)portid,
+		rte_eth_dev_callback_register(portid,
 			RTE_ETH_EVENT_INTR_LSC, lsi_event_callback, NULL);
 
-		rte_eth_macaddr_get((uint8_t) portid,
+		rte_eth_macaddr_get(portid,
 				    &lsi_ports_eth_addr[portid]);
 
 		/* init one RX queue */
 		fflush(stdout);
-		ret = rte_eth_rx_queue_setup((uint8_t) portid, 0, nb_rxd,
+		ret = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
 					     SOCKET0, &rx_conf,
 					     lsi_pktmbuf_pool);
 		if (ret < 0)
-			rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d, port=%u\n",
-				  ret, portid);
+			rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup: err=%d, port=%u\n",
+				  ret, (unsigned) portid);
 
 		/* init one TX queue logical core on each port */
 		fflush(stdout);
-		ret = rte_eth_tx_queue_setup((uint8_t) portid, 0, nb_txd,
+		ret = rte_eth_tx_queue_setup(portid, 0, nb_txd,
 				SOCKET0, &tx_conf);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d,port=%u\n",
-				  ret, portid);
+				  ret, (unsigned) portid);
 
 		/* Start device */
-		ret = rte_eth_dev_start((uint8_t) portid);
+		ret = rte_eth_dev_start(portid);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_dev_start: err=%d, port=%u\n",
-				  ret, portid);
+				  ret, (unsigned) portid);
 		printf("done:\n");
 
 		printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
-				portid,
+				(unsigned) portid,
 				lsi_ports_eth_addr[portid].addr_bytes[0],
 				lsi_ports_eth_addr[portid].addr_bytes[1],
 				lsi_ports_eth_addr[portid].addr_bytes[2],
@@ -796,7 +796,7 @@ MAIN(int argc, char **argv)
 		memset(&port_statistics, 0, sizeof(port_statistics));
 	}
 
-	check_all_ports_link_status((uint8_t)nb_ports, lsi_enabled_port_mask);
+	check_all_ports_link_status(nb_ports, lsi_enabled_port_mask);
 
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(lsi_launch_one_lcore, NULL, CALL_MASTER);

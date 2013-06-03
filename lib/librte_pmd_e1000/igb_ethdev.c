@@ -1550,7 +1550,8 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev)
  *  void
  */
 static void
-eth_igb_interrupt_handler(struct rte_intr_handle *handle, void *param)
+eth_igb_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
+							void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 
@@ -1829,7 +1830,8 @@ static void igbvf_set_vfta_all(struct rte_eth_dev *dev, bool on)
 			mask = 1;
 			for (j = 0; j < 32; j++){
 				if(vfta & mask)
-					igbvf_set_vfta(hw, (i<<5)+j, on);
+					igbvf_set_vfta(hw,
+						(uint16_t)((i<<5)+j), on);
 				mask<<=1;
 			}
 		}

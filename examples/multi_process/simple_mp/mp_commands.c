@@ -75,7 +75,7 @@ static void cmd_send_parsed(void *parsed_result,
 		__attribute__((unused)) struct cmdline *cl,
 		__attribute__((unused)) void *data)
 {
-	void *msg;
+	void *msg = NULL;
 	struct cmd_send_result *res = parsed_result;
 
 	if (rte_mempool_get(message_pool, &msg) < 0)

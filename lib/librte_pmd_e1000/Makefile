@@ -40,6 +40,25 @@ LIB = librte_pmd_e1000.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+ifeq ($(CC), icc)
+#
+# CFLAGS for icc
+#
+CFLAGS_LAD = -wd177 -wd181 -wd188 -wd869 -wd2259
+else
+#
+# CFLAGS for gcc
+#
+CFLAGS_LAD = -Wno-uninitialized -Wno-unused-parameter
+CFLAGS_LAD += -Wno-unused-variable
+endif
+
+#
+# Add extra flags for LAD source files to disable warnings in them
+#
+LAD_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(RTE_SDK)/lib/librte_pmd_e1000/e1000/*.c)))
+$(foreach obj, $(LAD_OBJS), $(eval CFLAGS_$(obj)+=$(CFLAGS_LAD)))
+
 VPATH += $(RTE_SDK)/lib/librte_pmd_e1000/e1000
 
 #

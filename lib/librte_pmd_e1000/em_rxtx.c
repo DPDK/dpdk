@@ -229,19 +229,20 @@ em_set_xmit_ctx(struct em_tx_queue* txq,
 	cmd_len = E1000_TXD_CMD_DEXT | E1000_TXD_DTYP_C;
 
 	l2len = hdrlen.f.l2_len;
-	ipcse = l2len + hdrlen.f.l3_len;
+	ipcse = (uint16_t)(l2len + hdrlen.f.l3_len);
 
 	/* setup IPCS* fields */
-	ctx.lower_setup.ip_fields.ipcss = l2len;
-	ctx.lower_setup.ip_fields.ipcso =l2len +
-		offsetof(struct ipv4_hdr, hdr_checksum);
+	ctx.lower_setup.ip_fields.ipcss = (uint8_t)l2len;
+	ctx.lower_setup.ip_fields.ipcso = (uint8_t)(l2len +
+			offsetof(struct ipv4_hdr, hdr_checksum));
 
 	/*
 	 * When doing checksum or TCP segmentation with IPv6 headers,
 	 * IPCSE field should be set t0 0.
 	 */
 	if (flags & PKT_TX_IP_CKSUM) {
-		ctx.lower_setup.ip_fields.ipcse = rte_cpu_to_le_16(ipcse - 1);
+		ctx.lower_setup.ip_fields.ipcse =
+			(uint16_t)rte_cpu_to_le_16(ipcse - 1);
 		cmd_len |= E1000_TXD_CMD_IP;
 		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
 	} else {
@@ -249,18 +250,18 @@ em_set_xmit_ctx(struct em_tx_queue* txq,
 	}
 
 	/* setup TUCS* fields */
-	ctx.upper_setup.tcp_fields.tucss = ipcse;
+	ctx.upper_setup.tcp_fields.tucss = (uint8_t)ipcse;
 	ctx.upper_setup.tcp_fields.tucse = 0;
 
 	switch (flags & PKT_TX_L4_MASK) {
 	case PKT_TX_UDP_CKSUM:
-		ctx.upper_setup.tcp_fields.tucso = ipcse +
-			offsetof(struct udp_hdr, dgram_cksum);
+		ctx.upper_setup.tcp_fields.tucso = (uint8_t)(ipcse +
+				offsetof(struct udp_hdr, dgram_cksum));
 		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
 		break;
 	case PKT_TX_TCP_CKSUM:
-		ctx.upper_setup.tcp_fields.tucso = ipcse +
-			offsetof(struct tcp_hdr, cksum);
+		ctx.upper_setup.tcp_fields.tucso = (uint8_t)(ipcse +
+				offsetof(struct tcp_hdr, cksum));
 		cmd_len |= E1000_TXD_CMD_TCP;
 		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
 		break;
@@ -308,9 +309,9 @@ em_xmit_cleanup(struct em_tx_queue *txq)
 	uint16_t nb_tx_to_clean;
 
 	/* Determine the last descriptor needing to be cleaned */
-	desc_to_clean_to = last_desc_cleaned + txq->tx_rs_thresh;
+	desc_to_clean_to = (uint16_t)(last_desc_cleaned + txq->tx_rs_thresh);
 	if (desc_to_clean_to >= nb_tx_desc)
-		desc_to_clean_to = desc_to_clean_to - nb_tx_desc;
+		desc_to_clean_to = (uint16_t)(desc_to_clean_to - nb_tx_desc);
 
 	/* Check to make sure the last descriptor to clean is done */
 	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
@@ -327,10 +328,11 @@ em_xmit_cleanup(struct em_tx_queue *txq)
 
 	/* Figure out how many descriptors will be cleaned */
 	if (last_desc_cleaned > desc_to_clean_to)
-		nb_tx_to_clean = ((nb_tx_desc - last_desc_cleaned) +
-			desc_to_clean_to);
+		nb_tx_to_clean = (uint16_t)((nb_tx_desc - last_desc_cleaned) +
+							desc_to_clean_to);
 	else
-		nb_tx_to_clean = desc_to_clean_to - last_desc_cleaned;
+		nb_tx_to_clean = (uint16_t)(desc_to_clean_to -
+						last_desc_cleaned);
 
 	PMD_TX_FREE_LOG(DEBUG,
 			"Cleaning %4u TX descriptors: %4u to %4u "
@@ -348,7 +350,7 @@ em_xmit_cleanup(struct em_tx_queue *txq)
 
 	/* Update the txq to reflect the last descriptor that was cleaned */
 	txq->last_desc_cleaned = desc_to_clean_to;
-	txq->nb_tx_free += nb_tx_to_clean;
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + nb_tx_to_clean);
 
 	/* No Error */
 	return (0);
@@ -416,7 +418,8 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		ol_flags = tx_pkt->ol_flags;
 
 		/* If hardware offload required */
-		tx_ol_req = ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK);
+		tx_ol_req = (uint16_t)(ol_flags & (PKT_TX_IP_CKSUM |
+							PKT_TX_L4_MASK));
 		if (tx_ol_req) {
 			hdrlen = tx_pkt->pkt.vlan_macip;
 			/* If new context to be built or reuse the exist ctx. */
@@ -431,7 +434,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * This will always be the number of segments + the number of
 		 * Context descriptors required to transmit the packet
 		 */
-		nb_used = tx_pkt->pkt.nb_segs + new_ctx;
+		nb_used = (uint16_t)(tx_pkt->pkt.nb_segs + new_ctx);
 
 		/*
 		 * The number of descriptors that must be allocated for a
@@ -580,8 +583,8 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * The last packet data descriptor needs End Of Packet (EOP)
 		 */
 		cmd_type_len |= E1000_TXD_CMD_EOP;
-		txq->nb_tx_used += nb_used;
-		txq->nb_tx_free -= nb_used;
+		txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + nb_used);
+		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
 
 		/* Set RS bit only on threshold packets' last descriptor */
 		if (txq->nb_tx_used >= txq->tx_rs_thresh) {
@@ -624,8 +627,8 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status)
 	uint16_t pkt_flags;
 
 	/* Check if VLAN present */
-	pkt_flags = (uint16_t) (rx_status & E1000_RXD_STAT_VP) ?
-		PKT_RX_VLAN_PKT : 0;
+	pkt_flags = (uint16_t)((rx_status & E1000_RXD_STAT_VP) ?
+						PKT_RX_VLAN_PKT : 0);
 
 	return pkt_flags;
 }
@@ -777,7 +780,8 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->pkt.in_port = rxq->port_id;
 
 		rxm->ol_flags = rx_desc_status_to_pkt_flags(status);
-		rxm->ol_flags |= rx_desc_error_to_pkt_flags(rxd.errors);
+		rxm->ol_flags = (uint16_t)(rxm->ol_flags |
+				rx_desc_error_to_pkt_flags(rxd.errors));
 
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
 		rxm->pkt.vlan_macip.f.vlan_tci = rte_le_to_cpu_16(rxd.special);
@@ -1002,7 +1006,8 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->pkt.in_port = rxq->port_id;
 
 		first_seg->ol_flags = rx_desc_status_to_pkt_flags(status);
-		first_seg->ol_flags |= rx_desc_error_to_pkt_flags(rxd.errors);
+		first_seg->ol_flags = (uint16_t)(first_seg->ol_flags |
+					rx_desc_error_to_pkt_flags(rxd.errors));
 
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
 		rxm->pkt.vlan_macip.f.vlan_tci = rte_le_to_cpu_16(rxd.special);
@@ -1192,28 +1197,27 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 
 	tx_free_thresh = tx_conf->tx_free_thresh;
 	if (tx_free_thresh == 0)
-		tx_free_thresh = RTE_MIN(nb_desc / 4, DEFAULT_TX_FREE_THRESH);
+		tx_free_thresh = (uint16_t)RTE_MIN(nb_desc / 4,
+					DEFAULT_TX_FREE_THRESH);
 
 	tx_rs_thresh = tx_conf->tx_rs_thresh;
 	if (tx_rs_thresh == 0)
-		tx_rs_thresh = RTE_MIN(tx_free_thresh, DEFAULT_TX_RS_THRESH);
+		tx_rs_thresh = (uint16_t)RTE_MIN(tx_free_thresh,
+					DEFAULT_TX_RS_THRESH);
 
 	if (tx_free_thresh >= (nb_desc - 3)) {
-		RTE_LOG(ERR, PMD,
-			"tx_free_thresh must be less than the "
-			"number of TX descriptors minus 3. "
-			"(tx_free_thresh=%u port=%d queue=%d)\n",
-			tx_free_thresh, dev->data->port_id, queue_idx);
+		RTE_LOG(ERR, PMD, "tx_free_thresh must be less than the "
+			"number of TX descriptors minus 3. (tx_free_thresh=%u "
+			"port=%d queue=%d)\n", (unsigned int)tx_free_thresh,
+				(int)dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
 	if (tx_rs_thresh > tx_free_thresh) {
-		RTE_LOG(ERR, PMD,
-			"tx_rs_thresh must be less than or equal to "
-			"tx_free_thresh. "
-			"(tx_free_thresh=%u tx_rs_thresh=%u "
-			"port=%d queue=%d)\n",
-			tx_free_thresh, tx_rs_thresh, dev->data->port_id,
-			queue_idx);
+		RTE_LOG(ERR, PMD, "tx_rs_thresh must be less than or equal to "
+			"tx_free_thresh. (tx_free_thresh=%u tx_rs_thresh=%u "
+			"port=%d queue=%d)\n", (unsigned int)tx_free_thresh,
+			(unsigned int)tx_rs_thresh, (int)dev->data->port_id,
+							(int)queue_idx);
 		return -(EINVAL);
 	}
 
@@ -1224,11 +1228,10 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	 * accumulates WTHRESH descriptors.
 	 */
 	if (tx_conf->tx_thresh.wthresh != 0 && tx_rs_thresh != 1) {
-		RTE_LOG(ERR, PMD,
-			"TX WTHRESH must be set to 0 if "
-			"tx_rs_thresh is greater than 1. "
-			"(tx_rs_thresh=%u port=%d queue=%d)\n",
-			tx_rs_thresh, dev->data->port_id, queue_idx);
+		RTE_LOG(ERR, PMD, "TX WTHRESH must be set to 0 if "
+			"tx_rs_thresh is greater than 1. (tx_rs_thresh=%u "
+			"port=%d queue=%d)\n", (unsigned int)tx_rs_thresh,
+				(int)dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
 
@@ -1436,7 +1439,7 @@ em_dev_clear_queues(struct rte_eth_dev *dev)
  * Returns (BSIZE | BSEX | FLXBUF) fields of RCTL register.
  */
 static uint32_t
-em_rctl_bsize(enum e1000_mac_type hwtyp, uint32_t *bufsz)
+em_rctl_bsize(__rte_unused enum e1000_mac_type hwtyp, uint32_t *bufsz)
 {
 	/*
 	 * For BSIZE & BSEX all configurable sizes are:

@@ -37,8 +37,34 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_pmd_ixgbe.a
 
-CFLAGS += -O3 -Wno-deprecated
+CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+
+ifeq ($(CC), icc)
+#
+# CFLAGS for icc
+#
+CFLAGS_LAD = -wd174 -wd593 -wd869 -wd981 -wd2259
+else 
+#
+# CFLAGS for gcc
+#
+ifneq ($(shell test $(GCC_MAJOR_VERSION) -le 4 -a $(GCC_MINOR_VERSION) -le 3 && echo 1), 1)
+CFLAGS     += -Wno-deprecated
+endif
+CFLAGS_LAD = -Wno-unused-parameter -Wno-unused-value
+CFLAGS_LAD += -Wno-strict-aliasing -Wno-format-extra-args
+
+ifeq ($(shell test $(GCC_MAJOR_VERSION) -ge 4 -a $(GCC_MINOR_VERSION) -ge 6 && echo 1), 1)
+CFLAGS_ixgbe_common.o += -Wno-unused-but-set-variable
+endif
+endif
+
+#
+# Add extra flags for LAD source files to disable warnings in them
+#
+LAD_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(RTE_SDK)/lib/librte_pmd_ixgbe/ixgbe/*.c)))
+$(foreach obj, $(LAD_OBJS), $(eval CFLAGS_$(obj)+=$(CFLAGS_LAD)))
 
 VPATH += $(RTE_SDK)/lib/librte_pmd_ixgbe/ixgbe
 

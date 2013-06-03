@@ -364,7 +364,7 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		ol_flags = tx_pkt->ol_flags;
 		vlan_macip_lens = tx_pkt->pkt.vlan_macip.data;
-		tx_ol_req = (ol_flags & PKT_TX_OFFLOAD_MASK);
+		tx_ol_req = (uint16_t)(ol_flags & PKT_TX_OFFLOAD_MASK);
 
 		/* If a Context Descriptor need be built . */
 		if (tx_ol_req) {
@@ -569,15 +569,15 @@ rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
 		0, 0, 0, 0,
 	};
 
-	pkt_flags = (uint16_t) (hl_tp_rs & E1000_RXDADV_PKTTYPE_ETQF) ?
+	pkt_flags = (uint16_t)((hl_tp_rs & E1000_RXDADV_PKTTYPE_ETQF) ?
 				ip_pkt_etqf_map[(hl_tp_rs >> 4) & 0x07] :
-				ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F];
+				ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F]);
 #else
-	pkt_flags = (uint16_t) (hl_tp_rs & E1000_RXDADV_PKTTYPE_ETQF) ? 0 :
-				ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F];
+	pkt_flags = (uint16_t)((hl_tp_rs & E1000_RXDADV_PKTTYPE_ETQF) ? 0 :
+				ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F]);
 #endif
-	return pkt_flags | (uint16_t) (((hl_tp_rs & 0x0F) == 0) ? 0 :
-					PKT_RX_RSS_HASH);
+	return (uint16_t)(pkt_flags | (((hl_tp_rs & 0x0F) == 0) ?
+						0 : PKT_RX_RSS_HASH));
 }
 
 static inline uint16_t
@@ -586,11 +586,12 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status)
 	uint16_t pkt_flags;
 
 	/* Check if VLAN present */
-	pkt_flags = (uint16_t) (rx_status & E1000_RXD_STAT_VP) ? PKT_RX_VLAN_PKT : 0;
+	pkt_flags = (uint16_t)((rx_status & E1000_RXD_STAT_VP) ?
+						PKT_RX_VLAN_PKT : 0);
 
 #if defined(RTE_LIBRTE_IEEE1588)
 	if (rx_status & E1000_RXD_STAT_TMST)
-		pkt_flags = pkt_flags | PKT_RX_IEEE1588_TMST;
+		pkt_flags = (uint16_t)(pkt_flags | PKT_RX_IEEE1588_TMST);
 #endif
 	return pkt_flags;
 }
@@ -750,10 +751,10 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			rte_le_to_cpu_16(rxd.wb.upper.vlan);
 
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
-		pkt_flags = (pkt_flags |
-					rx_desc_status_to_pkt_flags(staterr));
-		pkt_flags = (pkt_flags |
-					rx_desc_error_to_pkt_flags(staterr));
+		pkt_flags = (uint16_t)(pkt_flags |
+				rx_desc_status_to_pkt_flags(staterr));
+		pkt_flags = (uint16_t)(pkt_flags |
+				rx_desc_error_to_pkt_flags(staterr));
 		rxm->ol_flags = pkt_flags;
 
 		/*
@@ -987,8 +988,10 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			rte_le_to_cpu_16(rxd.wb.upper.vlan);
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
-		pkt_flags = (pkt_flags | rx_desc_status_to_pkt_flags(staterr));
-		pkt_flags = (pkt_flags | rx_desc_error_to_pkt_flags(staterr));
+		pkt_flags = (uint16_t)(pkt_flags |
+				rx_desc_status_to_pkt_flags(staterr));
+		pkt_flags = (uint16_t)(pkt_flags |
+				rx_desc_error_to_pkt_flags(staterr));
 		first_seg->ol_flags = pkt_flags;
 
 		/* Prefetch data of first segment, if configured to do so. */
@@ -1137,7 +1140,7 @@ igb_reset_tx_queue(struct igb_tx_queue *txq, struct rte_eth_dev *dev)
 	}
 
 	/* Initialize ring entries */
-	prev = txq->nb_tx_desc - 1;
+	prev = (uint16_t)(txq->nb_tx_desc - 1);
 	for (i = 0; i < txq->nb_tx_desc; i++) {
 		volatile union e1000_adv_tx_desc *txd = &(txq->tx_ring[i]);
 

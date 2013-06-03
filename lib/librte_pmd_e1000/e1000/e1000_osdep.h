@@ -46,24 +46,6 @@
 
 #include "../e1000_logs.h"
 
-/* Remove some compiler warnings for the files in this dir */
-#ifdef __INTEL_COMPILER
-#pragma warning(disable:2259) /* conversion may lose significant bits */
-#pragma warning(disable:869)  /* Parameter was never referenced */
-#pragma warning(disable:181)  /* Arg incompatible with format string */
-#pragma warning(disable:188)  /* enumerated type mixed with another type */
-#pragma warning(disable:1599) /* declaration hides variable */
-#pragma warning(disable:177)  /* declared but never referenced */
-#else
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wformat"
-#pragma GCC diagnostic ignored "-Wuninitialized"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#if (((__GNUC__) >= 4) && ((__GNUC_MINOR__) >= 7))
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-#endif
-
 #define DELAY(x) rte_delay_us(x)
 #define usec_delay(x) DELAY(x)
 #define msec_delay(x) DELAY(1000*(x))
@@ -140,7 +122,7 @@ static inline uint32_t e1000_read_addr(volatile void* addr)
 
 #define	E1000_ACCESS_PANIC(x, hw, reg, value) \
 	rte_panic("%s:%u\t" RTE_STR(x) "(%p, 0x%x, 0x%x)", \
-		__FILE__, __LINE__, (hw), (reg), (value))
+		__FILE__, __LINE__, (hw), (reg), (unsigned int)(value))
 
 /*
  * To be able to do IO write, we need to map IO BAR

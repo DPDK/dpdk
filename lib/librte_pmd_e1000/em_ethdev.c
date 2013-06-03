@@ -1321,7 +1321,8 @@ eth_em_interrupt_action(struct rte_eth_dev *dev)
  *  void
  */
 static void
-eth_em_interrupt_handler(struct rte_intr_handle *handle, void *param)
+eth_em_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
+							void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 

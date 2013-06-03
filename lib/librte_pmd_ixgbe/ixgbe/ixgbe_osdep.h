@@ -47,31 +47,6 @@
 
 #include "../ixgbe_logs.h"
 
-/* Remove some compiler warnings for the files in this dir */
-#ifdef __INTEL_COMPILER
-#pragma warning(disable:2259) /* Conversion may lose significant bits */
-#pragma warning(disable:869)  /* Parameter was never referenced */
-#pragma warning(disable:181)  /* Arg incompatible with format string */
-#pragma warning(disable:1419) /* External declaration in primary source file */
-#pragma warning(disable:111)  /* Statement is unreachable */
-#pragma warning(disable:981)  /* Operands are evaluated in unspecified order */
-#pragma warning(disable:593)  /* Variable was set but never used */
-#pragma warning(disable:174)  /* expression has no effect */
-#else
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wformat"
-#pragma GCC diagnostic ignored "-Wuninitialized"
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
-#pragma GCC diagnostic ignored "-Wunused-value"
-#pragma GCC diagnostic ignored "-Wformat-extra-args"
-#if (((__GNUC__) >= 4) && ((__GNUC_MINOR__) >= 6))
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-#endif
-#if (((__GNUC__) >= 4) && ((__GNUC_MINOR__) >= 7))
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-#endif
-
 #define ASSERT(x) if(!(x)) rte_panic("IXGBE: x")
 
 #define DELAY(x) rte_delay_us(x)

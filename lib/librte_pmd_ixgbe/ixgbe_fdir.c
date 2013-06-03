@@ -501,8 +501,8 @@ ixgbe_fdir_update_signature_filter(struct rte_eth_dev *dev,
  * that it can be used for removing signature and perfect filters.
  */
 static s32
-fdir_erase_filter_82599(struct ixgbe_hw *hw, union ixgbe_atr_input *input,
-		uint32_t fdirhash)
+fdir_erase_filter_82599(struct ixgbe_hw *hw,
+	__rte_unused union ixgbe_atr_input *input, uint32_t fdirhash)
 {
 	u32 fdircmd = 0;
 	u32 retry_count;

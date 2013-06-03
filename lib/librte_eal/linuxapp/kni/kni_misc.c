@@ -263,19 +263,19 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 	kni->mbuf_size = dev_info.mbuf_size;
 
 	KNI_PRINT("tx_phys:          0x%016llx, tx_q addr:          0x%p\n",
-						dev_info.tx_phys, kni->tx_q);
+						(unsigned long long) dev_info.tx_phys, kni->tx_q);
 	KNI_PRINT("rx_phys:          0x%016llx, rx_q addr:          0x%p\n",
-						dev_info.rx_phys, kni->rx_q);
+						(unsigned long long) dev_info.rx_phys, kni->rx_q);
 	KNI_PRINT("alloc_phys:       0x%016llx, alloc_q addr:       0x%p\n",
-					dev_info.alloc_phys, kni->alloc_q);
+					(unsigned long long) dev_info.alloc_phys, kni->alloc_q);
 	KNI_PRINT("free_phys:        0x%016llx, free_q addr:        0x%p\n",
-					dev_info.free_phys, kni->free_q);
+					(unsigned long long) dev_info.free_phys, kni->free_q);
 	KNI_PRINT("req_phys:         0x%016llx, req_q addr:         0x%p\n",
-					dev_info.req_phys, kni->req_q);
+					(unsigned long long) dev_info.req_phys, kni->req_q);
 	KNI_PRINT("resp_phys:        0x%016llx, resp_q addr:        0x%p\n",
-					dev_info.resp_phys, kni->resp_q);
+					(unsigned long long) dev_info.resp_phys, kni->resp_q);
 	KNI_PRINT("mbuf_phys:        0x%016llx, mbuf_kva:           0x%p\n",
-					dev_info.mbuf_phys, kni->mbuf_kva);
+					(unsigned long long) dev_info.mbuf_phys, kni->mbuf_kva);
 	KNI_PRINT("mbuf_va:          0x%p\n", dev_info.mbuf_va);
 	KNI_PRINT("mbuf_size:        %u\n", kni->mbuf_size);
 

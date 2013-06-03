@@ -615,7 +615,7 @@ parse_pci_addr_format(const char *buf, int bufsize, uint16_t *domain,
 
 	/* now convert to int values */
 	errno = 0;
-	*domain = (uint8_t)strtoul(splitaddr.domain, NULL, 16);
+	*domain = (uint16_t)strtoul(splitaddr.domain, NULL, 16);
 	*bus = (uint8_t)strtoul(splitaddr.bus, NULL, 16);
 	*devid = (uint8_t)strtoul(splitaddr.devid, NULL, 16);
 	*function = (uint8_t)strtoul(splitaddr.function, NULL, 10);

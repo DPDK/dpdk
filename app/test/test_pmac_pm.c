@@ -231,7 +231,7 @@ split_buffer_search(struct rte_pm_ctx * pmx, struct rte_pm_build_opt * bopt)
 
 	int len, seg_len, total_len;
 	int i, j, n_seg;
-	int cur_match, num_matches, total_matches;
+	int cur_match, num_matches, total_matches = 0;
 
 	/* chain matching */
 	for (i = 0; i < pm_test_buf_len; i++) {
@@ -334,7 +334,7 @@ single_buffer_search(struct rte_pm_ctx * pmx, struct rte_pm_build_opt * bopt)
 	struct rte_pm_inbuf in_buf;
 
 	int i, j, len;
-	int match, num_matches, total_matches;
+	int match, num_matches, total_matches = 0;
 
 	/* look at same segment three times */
 	for (i = 0; i < pm_test_buf_len; i++) {

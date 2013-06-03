@@ -283,10 +283,10 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 	}
 
 	/* buffers were freed, update counters */
-	txq->nb_tx_free += txq->tx_rs_thresh;
-	txq->tx_next_dd += txq->tx_rs_thresh;
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
+	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
 	if (txq->tx_next_dd >= txq->nb_tx_desc)
-		txq->tx_next_dd = txq->tx_rs_thresh - 1;
+		txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
 
 	return txq->tx_rs_thresh;
 }
@@ -397,12 +397,12 @@ tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		ixgbe_tx_free_bufs(txq);
 
 	/* Only use descriptors that are available */
-	nb_pkts = RTE_MIN(txq->nb_tx_free, nb_pkts);
+	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
 	if (unlikely(nb_pkts == 0))
 		return 0;
 
 	/* Use exactly nb_pkts descriptors */
-	txq->nb_tx_free -= nb_pkts;
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
 
 	/*
 	 * At this point, we know there are enough descriptors in the
@@ -417,7 +417,7 @@ tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	 * the processing looks just like the "bottom" part anyway...
 	 */
 	if ((txq->tx_tail + nb_pkts) > txq->nb_tx_desc) {
-		n = txq->nb_tx_desc - txq->tx_tail;
+		n = (uint16_t)(txq->nb_tx_desc - txq->tx_tail);
 		ixgbe_tx_fill_hw_ring(txq, tx_pkts, n);
 
 		/*
@@ -427,14 +427,14 @@ tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 */
 		tx_r[txq->tx_next_rs].read.cmd_type_len |=
 			rte_cpu_to_le_32(IXGBE_ADVTXD_DCMD_RS);
-		txq->tx_next_rs = txq->tx_rs_thresh - 1;
+		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 
 		txq->tx_tail = 0;
 	}
 
 	/* Fill H/W descriptor ring with mbuf data */
-	ixgbe_tx_fill_hw_ring(txq, tx_pkts + n, nb_pkts - n);
-	txq->tx_tail += (nb_pkts - n);
+	ixgbe_tx_fill_hw_ring(txq, tx_pkts + n, (uint16_t)(nb_pkts - n));
+	txq->tx_tail = (uint16_t)(txq->tx_tail + (nb_pkts - n));
 
 	/*
 	 * Determine if RS bit should be set
@@ -446,9 +446,10 @@ tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	if (txq->tx_tail > txq->tx_next_rs) {
 		tx_r[txq->tx_next_rs].read.cmd_type_len |=
 			rte_cpu_to_le_32(IXGBE_ADVTXD_DCMD_RS);
-		txq->tx_next_rs += txq->tx_rs_thresh;
+		txq->tx_next_rs = (uint16_t)(txq->tx_next_rs +
+						txq->tx_rs_thresh);
 		if (txq->tx_next_rs >= txq->nb_tx_desc)
-			txq->tx_next_rs = txq->tx_rs_thresh - 1;
+			txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 	}
 
 	/*
@@ -479,10 +480,10 @@ ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 	nb_tx = 0;
 	while (nb_pkts) {
 		uint16_t ret, n;
-		n = RTE_MIN(nb_pkts, RTE_PMD_IXGBE_TX_MAX_BURST);
+		n = (uint16_t)RTE_MIN(nb_pkts, RTE_PMD_IXGBE_TX_MAX_BURST);
 		ret = tx_xmit_pkts(tx_queue, &(tx_pkts[nb_tx]), n);
-		nb_tx += ret;
-		nb_pkts -= ret;
+		nb_tx = (uint16_t)(nb_tx + ret);
+		nb_pkts = (uint16_t)(nb_pkts - ret);
 		if (ret < n)
 			break;
 	}
@@ -617,9 +618,9 @@ ixgbe_xmit_cleanup(struct igb_tx_queue *txq)
 	uint16_t nb_tx_to_clean;
 
 	/* Determine the last descriptor needing to be cleaned */
-	desc_to_clean_to = last_desc_cleaned + txq->tx_rs_thresh;
+	desc_to_clean_to = (uint16_t)(last_desc_cleaned + txq->tx_rs_thresh);
 	if (desc_to_clean_to >= nb_tx_desc)
-		desc_to_clean_to = desc_to_clean_to - nb_tx_desc;
+		desc_to_clean_to = (uint16_t)(desc_to_clean_to - nb_tx_desc);
 
 	/* Check to make sure the last descriptor to clean is done */
 	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
@@ -636,10 +637,11 @@ ixgbe_xmit_cleanup(struct igb_tx_queue *txq)
 
 	/* Figure out how many descriptors will be cleaned */
 	if (last_desc_cleaned > desc_to_clean_to)
-		nb_tx_to_clean = ((nb_tx_desc - last_desc_cleaned) +
-				  desc_to_clean_to);
+		nb_tx_to_clean = (uint16_t)((nb_tx_desc - last_desc_cleaned) +
+							desc_to_clean_to);
 	else
-		nb_tx_to_clean = desc_to_clean_to - last_desc_cleaned;
+		nb_tx_to_clean = (uint16_t)(desc_to_clean_to -
+						last_desc_cleaned);
 
 	PMD_TX_FREE_LOG(DEBUG,
 			"Cleaning %4u TX descriptors: %4u to %4u "
@@ -657,7 +659,7 @@ ixgbe_xmit_cleanup(struct igb_tx_queue *txq)
 
 	/* Update the txq to reflect the last descriptor that was cleaned */
 	txq->last_desc_cleaned = desc_to_clean_to;
-	txq->nb_tx_free += nb_tx_to_clean;
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + nb_tx_to_clean);
 
 	/* No Error */
 	return (0);
@@ -716,7 +718,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		vlan_macip_lens = tx_pkt->pkt.vlan_macip.data;
 
 		/* If hardware offload required */
-		tx_ol_req = ol_flags & PKT_TX_OFFLOAD_MASK;
+		tx_ol_req = (uint16_t)(ol_flags & PKT_TX_OFFLOAD_MASK);
 		if (tx_ol_req) {
 			/* If new context need be built or reuse the exist ctx. */
 			ctx = what_advctx_update(txq, tx_ol_req,
@@ -731,7 +733,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * This will always be the number of segments + the number of
 		 * Context descriptors required to transmit the packet
 		 */
-		nb_used = tx_pkt->pkt.nb_segs + new_ctx;
+		nb_used = (uint16_t)(tx_pkt->pkt.nb_segs + new_ctx);
 
 		/*
 		 * The number of descriptors that must be allocated for a
@@ -909,8 +911,8 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * The last packet data descriptor needs End Of Packet (EOP)
 		 */
 		cmd_type_len |= IXGBE_TXD_CMD_EOP;
-		txq->nb_tx_used += nb_used;
-		txq->nb_tx_free -= nb_used;
+		txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + nb_used);
+		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
 
 		/* Set RS bit only on threshold packets' last descriptor */
 		if (txq->nb_tx_used >= txq->tx_rs_thresh) {
@@ -979,7 +981,7 @@ rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
 				ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F]);
 
 #endif
-	return (pkt_flags | ip_rss_types_map[hl_tp_rs & 0xF]);
+	return (uint16_t)(pkt_flags | ip_rss_types_map[hl_tp_rs & 0xF]);
 }
 
 static inline uint16_t
@@ -992,11 +994,12 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status)
 	 * Do not check whether L3/L4 rx checksum done by NIC or not,
 	 * That can be found from rte_eth_rxmode.hw_ip_checksum flag
 	 */
-	pkt_flags = (uint16_t) (rx_status & IXGBE_RXD_STAT_VP) ? PKT_RX_VLAN_PKT : 0;
+	pkt_flags = (uint16_t)((rx_status & IXGBE_RXD_STAT_VP) ?
+						PKT_RX_VLAN_PKT : 0);
 
 #ifdef RTE_LIBRTE_IEEE1588
 	if (rx_status & IXGBE_RXD_STAT_TMST)
-		pkt_flags = (pkt_flags | PKT_RX_IEEE1588_TMST);
+		pkt_flags = (uint16_t)(pkt_flags | PKT_RX_IEEE1588_TMST);
 #endif
 	return pkt_flags;
 }
@@ -1069,7 +1072,8 @@ ixgbe_rx_scan_hw_ring(struct igb_rx_queue *rxq)
 		/* Translate descriptor info to mbuf format */
 		for (j = 0; j < nb_dd; ++j) {
 			mb = rxep[j].mbuf;
-			pkt_len = rxdp[j].wb.upper.length - rxq->crc_len;
+			pkt_len = (uint16_t)(rxdp[j].wb.upper.length -
+							rxq->crc_len);
 			mb->pkt.data_len = pkt_len;
 			mb->pkt.pkt_len = pkt_len;
 			mb->pkt.vlan_macip.f.vlan_tci = rxdp[j].wb.upper.vlan;
@@ -1079,8 +1083,10 @@ ixgbe_rx_scan_hw_ring(struct igb_rx_queue *rxq)
 			mb->ol_flags  = rx_desc_hlen_type_rss_to_pkt_flags(
 					rxdp[j].wb.lower.lo_dword.data);
 			/* reuse status field from scan list */
-			mb->ol_flags |= rx_desc_status_to_pkt_flags(s[j]);
-			mb->ol_flags |= rx_desc_error_to_pkt_flags(s[j]);
+			mb->ol_flags = (uint16_t)(mb->ol_flags |
+					rx_desc_status_to_pkt_flags(s[j]));
+			mb->ol_flags = (uint16_t)(mb->ol_flags |
+					rx_desc_error_to_pkt_flags(s[j]));
 		}
 
 		/* Move mbuf pointers from the S/W ring to the stage */
@@ -1094,8 +1100,10 @@ ixgbe_rx_scan_hw_ring(struct igb_rx_queue *rxq)
 	}
 
 	/* clear software ring entries so we can cleanup correctly */
-	for (i = 0; i < nb_rx; ++i)
+	for (i = 0; i < nb_rx; ++i) {
 		rxq->sw_ring[rxq->rx_tail + i].mbuf = NULL;
+	}
+
 
 	return nb_rx;
 }
@@ -1111,7 +1119,8 @@ ixgbe_rx_alloc_bufs(struct igb_rx_queue *rxq)
 	int diag, i;
 
 	/* allocate buffers in bulk directly into the S/W ring */
-	alloc_idx = rxq->rx_free_trigger - (rxq->rx_free_thresh - 1);
+	alloc_idx = (uint16_t)(rxq->rx_free_trigger -
+				(rxq->rx_free_thresh - 1));
 	rxep = &rxq->sw_ring[alloc_idx];
 	diag = rte_mempool_get_bulk(rxq->mb_pool, (void *)rxep,
 				    rxq->rx_free_thresh);
@@ -1140,9 +1149,10 @@ ixgbe_rx_alloc_bufs(struct igb_rx_queue *rxq)
 	IXGBE_PCI_REG_WRITE(rxq->rdt_reg_addr, rxq->rx_free_trigger);
 
 	/* update state of internal queue structure */
-	rxq->rx_free_trigger += rxq->rx_free_thresh;
+	rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_trigger +
+						rxq->rx_free_thresh);
 	if (rxq->rx_free_trigger >= rxq->nb_rx_desc)
-		rxq->rx_free_trigger = (rxq->rx_free_thresh - 1);
+		rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_thresh - 1);
 
 	/* no errors */
 	return 0;
@@ -1156,15 +1166,15 @@ ixgbe_rx_fill_from_stage(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	int i;
 
 	/* how many packets are ready to return? */
-	nb_pkts = RTE_MIN(nb_pkts, rxq->rx_nb_avail);
+	nb_pkts = (uint16_t)RTE_MIN(nb_pkts, rxq->rx_nb_avail);
 
 	/* copy mbuf pointers to the application's packet list */
 	for (i = 0; i < nb_pkts; ++i)
 		rx_pkts[i] = stage[i];
 
 	/* update internal queue state */
-	rxq->rx_nb_avail -= nb_pkts;
-	rxq->rx_next_avail += nb_pkts;
+	rxq->rx_nb_avail = (uint16_t)(rxq->rx_nb_avail - nb_pkts);
+	rxq->rx_next_avail = (uint16_t)(rxq->rx_next_avail + nb_pkts);
 
 	return nb_pkts;
 }
@@ -1181,12 +1191,12 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		return ixgbe_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
 
 	/* Scan the H/W ring for packets to receive */
-	nb_rx = ixgbe_rx_scan_hw_ring(rxq);
+	nb_rx = (uint16_t)ixgbe_rx_scan_hw_ring(rxq);
 
 	/* update internal queue state */
 	rxq->rx_next_avail = 0;
 	rxq->rx_nb_avail = nb_rx;
-	rxq->rx_tail += nb_rx;
+	rxq->rx_tail = (uint16_t)(rxq->rx_tail + nb_rx);
 
 	/* if required, allocate new buffers to replenish descriptors */
 	if (rxq->rx_tail > rxq->rx_free_trigger) {
@@ -1204,7 +1214,7 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			 * allocate new buffers to replenish the old ones.
 			 */
 			rxq->rx_nb_avail = 0;
-			rxq->rx_tail -= nb_rx;
+			rxq->rx_tail = (uint16_t)(rxq->rx_tail - nb_rx);
 			for (i = 0, j = rxq->rx_tail; i < nb_rx; ++i, ++j)
 				rxq->sw_ring[j].mbuf = rxq->rx_stage[i];
 
@@ -1239,10 +1249,10 @@ ixgbe_recv_pkts_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_rx = 0;
 	while (nb_pkts) {
 		uint16_t ret, n;
-		n = RTE_MIN(nb_pkts, RTE_PMD_IXGBE_RX_MAX_BURST);
+		n = (uint16_t)RTE_MIN(nb_pkts, RTE_PMD_IXGBE_RX_MAX_BURST);
 		ret = rx_recv_pkts(rx_queue, &rx_pkts[nb_rx], n);
-		nb_rx += ret;
-		nb_pkts -= ret;
+		nb_rx = (uint16_t)(nb_rx + ret);
+		nb_pkts = (uint16_t)(nb_pkts - ret);
 		if (ret < n)
 			break;
 	}
@@ -1389,8 +1399,10 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			rte_le_to_cpu_16(rxd.wb.upper.vlan);
 
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
-		pkt_flags = (pkt_flags | rx_desc_status_to_pkt_flags(staterr));
-		pkt_flags = (pkt_flags | rx_desc_error_to_pkt_flags(staterr));
+		pkt_flags = (uint16_t)(pkt_flags |
+				rx_desc_status_to_pkt_flags(staterr));
+		pkt_flags = (uint16_t)(pkt_flags |
+				rx_desc_error_to_pkt_flags(staterr));
 		rxm->ol_flags = pkt_flags;
 
 		if (likely(pkt_flags & PKT_RX_RSS_HASH))
@@ -1632,10 +1644,10 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				rte_le_to_cpu_16(rxd.wb.upper.vlan);
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
-		pkt_flags = (pkt_flags |
-					rx_desc_status_to_pkt_flags(staterr));
-		pkt_flags = (pkt_flags |
-					rx_desc_error_to_pkt_flags(staterr));
+		pkt_flags = (uint16_t)(pkt_flags |
+				rx_desc_status_to_pkt_flags(staterr));
+		pkt_flags = (uint16_t)(pkt_flags |
+				rx_desc_error_to_pkt_flags(staterr));
 		first_seg->ol_flags = pkt_flags;
 
 		if (likely(pkt_flags & PKT_RX_RSS_HASH))
@@ -1802,8 +1814,8 @@ ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
 		prev = i;
 	}
 
-	txq->tx_next_dd = txq->tx_rs_thresh - 1;
-	txq->tx_next_rs = txq->tx_rs_thresh - 1;
+	txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
+	txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 
 	txq->tx_tail = 0;
 	txq->nb_tx_used = 0;
@@ -1864,43 +1876,38 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	 * H/W race condition, hence the maximum threshold constraints.
 	 * When set to zero use default values.
 	 */
-	tx_rs_thresh = (tx_conf->tx_rs_thresh) ?
-			tx_conf->tx_rs_thresh : DEFAULT_TX_RS_THRESH;
-	tx_free_thresh = (tx_conf->tx_free_thresh) ?
-			tx_conf->tx_free_thresh : DEFAULT_TX_FREE_THRESH;
+	tx_rs_thresh = (uint16_t)((tx_conf->tx_rs_thresh) ?
+			tx_conf->tx_rs_thresh : DEFAULT_TX_RS_THRESH);
+	tx_free_thresh = (uint16_t)((tx_conf->tx_free_thresh) ?
+			tx_conf->tx_free_thresh : DEFAULT_TX_FREE_THRESH);
 	if (tx_rs_thresh >= (nb_desc - 2)) {
-		RTE_LOG(ERR, PMD,
-			     "tx_rs_thresh must be less than the "
-			     "number of TX descriptors minus 2. "
-			     "(tx_rs_thresh=%u port=%d queue=%d)\n",
-			     tx_rs_thresh, dev->data->port_id, queue_idx);
+		RTE_LOG(ERR, PMD, "tx_rs_thresh must be less than the number "
+			"of TX descriptors minus 2. (tx_rs_thresh=%u port=%d "
+				"queue=%d)\n", (unsigned int)tx_rs_thresh,
+				(int)dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
 	if (tx_free_thresh >= (nb_desc - 3)) {
-		RTE_LOG(ERR, PMD,
-			     "tx_rs_thresh must be less than the "
-			     "tx_free_thresh must be less than the "
-			     "number of TX descriptors minus 3. "
-			     "(tx_free_thresh=%u port=%d queue=%d)\n",
-			     tx_free_thresh, dev->data->port_id, queue_idx);
+		RTE_LOG(ERR, PMD, "tx_rs_thresh must be less than the "
+			"tx_free_thresh must be less than the number of TX "
+			"descriptors minus 3. (tx_free_thresh=%u port=%d "
+				"queue=%d)\n", (unsigned int)tx_free_thresh,
+				(int)dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
 	if (tx_rs_thresh > tx_free_thresh) {
-		RTE_LOG(ERR, PMD,
-			     "tx_rs_thresh must be less than or equal to "
-			     "tx_free_thresh. "
-			     "(tx_free_thresh=%u tx_rs_thresh=%u "
-			     "port=%d queue=%d)\n",
-			     tx_free_thresh, tx_rs_thresh,
-			     dev->data->port_id, queue_idx);
+		RTE_LOG(ERR, PMD, "tx_rs_thresh must be less than or equal to "
+			"tx_free_thresh. (tx_free_thresh=%u tx_rs_thresh=%u "
+			"port=%d queue=%d)\n", (unsigned int)tx_free_thresh,
+			(unsigned int)tx_rs_thresh, (int)dev->data->port_id,
+							(int)queue_idx);
 		return -(EINVAL);
 	}
 	if ((nb_desc % tx_rs_thresh) != 0) {
-		RTE_LOG(ERR, PMD,
-			     "tx_rs_thresh must be a divisor of the"
-			     "number of TX descriptors. "
-			     "(tx_rs_thresh=%u port=%d queue=%d)\n",
-			     tx_rs_thresh, dev->data->port_id, queue_idx);
+		RTE_LOG(ERR, PMD, "tx_rs_thresh must be a divisor of the "
+			"number of TX descriptors. (tx_rs_thresh=%u port=%d "
+				"queue=%d)\n", (unsigned int)tx_rs_thresh,
+				(int)dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
 
@@ -1911,12 +1918,10 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	 * accumulates WTHRESH descriptors.
 	 */
 	if ((tx_rs_thresh > 1) && (tx_conf->tx_thresh.wthresh != 0)) {
-		RTE_LOG(ERR, PMD,
-			     "TX WTHRESH must be set to 0 if "
-			     "tx_rs_thresh is greater than 1. "
-			     "(tx_rs_thresh=%u port=%d queue=%d)\n",
-			     tx_rs_thresh,
-			     dev->data->port_id, queue_idx);
+		RTE_LOG(ERR, PMD, "TX WTHRESH must be set to 0 if "
+			"tx_rs_thresh is greater than 1. (tx_rs_thresh=%u "
+			"port=%d queue=%d)\n", (unsigned int)tx_rs_thresh,
+				(int)dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
 
@@ -2039,7 +2044,11 @@ ixgbe_dev_rx_queue_release(void *rxq)
  *           function must be used.
  */
 static inline int
+#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 check_rx_burst_bulk_alloc_preconditions(struct igb_rx_queue *rxq)
+#else
+check_rx_burst_bulk_alloc_preconditions(__rte_unused struct igb_rx_queue *rxq)
+#endif
 {
 	int ret = 0;
 
@@ -2089,7 +2098,7 @@ ixgbe_reset_rx_queue(struct igb_rx_queue *rxq)
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 	if (check_rx_burst_bulk_alloc_preconditions(rxq) == 0)
 		/* zero out extra memory */
-		len = rxq->nb_rx_desc + RTE_PMD_IXGBE_RX_MAX_BURST;
+		len = (uint16_t)(rxq->nb_rx_desc + RTE_PMD_IXGBE_RX_MAX_BURST);
 	else
 #endif
 		/* do not zero out extra memory */
@@ -2116,7 +2125,7 @@ ixgbe_reset_rx_queue(struct igb_rx_queue *rxq)
 
 	rxq->rx_nb_avail = 0;
 	rxq->rx_next_avail = 0;
-	rxq->rx_free_trigger = rxq->rx_free_thresh - 1;
+	rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_thresh - 1);
 #endif /* RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC */
 	rxq->rx_tail = 0;
 	rxq->nb_rx_hold = 0;
@@ -2166,8 +2175,8 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 	rxq->queue_id = queue_idx;
 	rxq->port_id = dev->data->port_id;
-	rxq->crc_len = (uint8_t) ((dev->data->dev_conf.rxmode.hw_strip_crc) ? 0 :
-				  ETHER_CRC_LEN);
+	rxq->crc_len = (uint8_t) ((dev->data->dev_conf.rxmode.hw_strip_crc) ?
+							0 : ETHER_CRC_LEN);
 	rxq->drop_en = rx_conf->rx_drop_en;
 
 	/*
@@ -2199,7 +2208,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 * function does not access an invalid memory region.
 	 */
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
-	len = nb_desc + RTE_PMD_IXGBE_RX_MAX_BURST;
+	len = (uint16_t)(nb_desc + RTE_PMD_IXGBE_RX_MAX_BURST);
 #else
 	len = nb_desc;
 #endif
@@ -2583,7 +2592,8 @@ ixgbe_vmdq_dcb_rx_config(struct rte_eth_dev *dev,
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
 		j = vmdq_rx_conf->dcb_queue[i];
 		tc = &dcb_config->tc_config[j];
-		tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap = (1 << j);
+		tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap =
+						(uint8_t)(1 << j);
 	}
 }
 
@@ -2610,46 +2620,51 @@ ixgbe_dcb_vt_tx_config(struct rte_eth_dev *dev,
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
 		j = vmdq_tx_conf->dcb_queue[i];
 		tc = &dcb_config->tc_config[j];
-		tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap = (1 << j);
+		tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap =
+						(uint8_t)(1 << j);
 	}
 	return;
 }
 
 static void 
-ixgbe_dcb_rx_config(struct rte_eth_dev *dev,struct ixgbe_dcb_config *dcb_config)
+ixgbe_dcb_rx_config(struct rte_eth_dev *dev,
+		struct ixgbe_dcb_config *dcb_config)
 {
 	struct rte_eth_dcb_rx_conf *rx_conf =
 			&dev->data->dev_conf.rx_adv_conf.dcb_rx_conf;
 	struct ixgbe_dcb_tc_config *tc;
 	uint8_t i,j;
 
-	dcb_config->num_tcs.pg_tcs = rx_conf->nb_tcs;
-	dcb_config->num_tcs.pfc_tcs = rx_conf->nb_tcs;
+	dcb_config->num_tcs.pg_tcs = (uint8_t)rx_conf->nb_tcs;
+	dcb_config->num_tcs.pfc_tcs = (uint8_t)rx_conf->nb_tcs;
 	
 	/* User Priority to Traffic Class mapping */ 
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
 		j = rx_conf->dcb_queue[i];
 		tc = &dcb_config->tc_config[j];
-		tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap = (1 << j);
+		tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap =
+						(uint8_t)(1 << j);
 	}
 }
 
 static void 
-ixgbe_dcb_tx_config(struct rte_eth_dev *dev,struct ixgbe_dcb_config *dcb_config)
+ixgbe_dcb_tx_config(struct rte_eth_dev *dev,
+		struct ixgbe_dcb_config *dcb_config)
 {
 	struct rte_eth_dcb_tx_conf *tx_conf =
 			&dev->data->dev_conf.tx_adv_conf.dcb_tx_conf;
 	struct ixgbe_dcb_tc_config *tc;
 	uint8_t i,j;
 
-	dcb_config->num_tcs.pg_tcs = tx_conf->nb_tcs;
-	dcb_config->num_tcs.pfc_tcs = tx_conf->nb_tcs;
+	dcb_config->num_tcs.pg_tcs = (uint8_t)tx_conf->nb_tcs;
+	dcb_config->num_tcs.pfc_tcs = (uint8_t)tx_conf->nb_tcs;
     
 	/* User Priority to Traffic Class mapping */ 
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
 		j = tx_conf->dcb_queue[i];
 		tc = &dcb_config->tc_config[j];
-		tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap = (1 << j);
+		tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap =
+						(uint8_t)(1 << j);
 	}
 }
 
@@ -2842,7 +2857,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		uint8_t j = 4;
 		uint8_t mask = 0xFF;
 		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES - 4; i++) 
-			mask &= ~ (1 << map[i]);
+			mask = (uint8_t)(mask & (~ (1 << map[i])));
 		for (i = 0; mask && (i < IXGBE_DCB_MAX_TRAFFIC_CLASS); i++) {
 			if ((mask & 0x1) && (j < ETH_DCB_NUM_USER_PRIORITIES))
 				map[j++] = i;
@@ -2851,8 +2866,10 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		/* Re-configure 4 TCs BW */
 		for (i = 0; i < nb_tcs; i++) {
 			tc = &dcb_config->tc_config[i];
-			tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent = 100 / nb_tcs;
-			tc->path[IXGBE_DCB_RX_CONFIG].bwg_percent = 100 / nb_tcs;
+			tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent =
+						(uint8_t)(100 / nb_tcs);
+			tc->path[IXGBE_DCB_RX_CONFIG].bwg_percent =
+						(uint8_t)(100 / nb_tcs);
 		}
 		for (; i < IXGBE_DCB_MAX_TRAFFIC_CLASS; i++) {
 			tc = &dcb_config->tc_config[i];

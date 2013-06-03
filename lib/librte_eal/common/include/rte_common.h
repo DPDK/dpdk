@@ -122,7 +122,7 @@ rte_align_floor_int(uintptr_t ptr, uintptr_t align)
  * power-of-two value.
  */
 #define RTE_ALIGN_FLOOR(val, align) \
-	(typeof(val))(val & (~((typeof(val))(align - 1))))
+	(typeof(val))((val) & (~((typeof(val))((align) - 1))))
 
 /**
  * Macro to align a pointer to a given power-of-two. The resultant
@@ -131,7 +131,7 @@ rte_align_floor_int(uintptr_t ptr, uintptr_t align)
  * must be a power-of-two value.
  */
 #define RTE_PTR_ALIGN_CEIL(ptr, align) \
-	RTE_PTR_ALIGN_FLOOR(RTE_PTR_ADD(ptr, align - 1), align)
+	RTE_PTR_ALIGN_FLOOR(RTE_PTR_ADD(ptr, (align) - 1), align)
 
 /**
  * Macro to align a value to a given power-of-two. The resultant value
@@ -140,7 +140,7 @@ rte_align_floor_int(uintptr_t ptr, uintptr_t align)
  * value.
  */
 #define RTE_ALIGN_CEIL(val, align) \
-	RTE_ALIGN_FLOOR((val + ((typeof(val)) align - 1)), align)
+	RTE_ALIGN_FLOOR(((val) + ((typeof(val)) (align) - 1)), align)
 
 /**
  * Macro to align a pointer to a given power-of-two. The resultant

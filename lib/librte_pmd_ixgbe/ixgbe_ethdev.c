@@ -414,12 +414,12 @@ ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 	PMD_INIT_LOG(INFO, "Setting port %d, %s queue_id %d to stat index %d\n",
 		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX", queue_id, stat_idx);
 
-	n = queue_id / NB_QMAP_FIELDS_PER_QSM_REG;
+	n = (uint8_t)(queue_id / NB_QMAP_FIELDS_PER_QSM_REG);
 	if (n >= IXGBE_NB_STAT_MAPPING_REGS) {
 		PMD_INIT_LOG(ERR, "Nb of stat mapping registers exceeded\n");
 		return -EIO;
 	}
-	offset = queue_id % NB_QMAP_FIELDS_PER_QSM_REG;
+	offset = (uint8_t)(queue_id % NB_QMAP_FIELDS_PER_QSM_REG);
 
 	/* Now clear any previous stat_idx set */
 	clearing_mask <<= (QSM_REG_NB_BITS_PER_QMAP_FIELD * offset);
@@ -478,16 +478,18 @@ ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config)
 {
 	uint8_t i;
 	struct ixgbe_dcb_tc_config *tc;
-	int dcb_max_tc = IXGBE_DCB_MAX_TRAFFIC_CLASS;
+	uint8_t dcb_max_tc = IXGBE_DCB_MAX_TRAFFIC_CLASS;
 
 	dcb_config->num_tcs.pg_tcs = dcb_max_tc;
 	dcb_config->num_tcs.pfc_tcs = dcb_max_tc;
 	for (i = 0; i < dcb_max_tc; i++) {
 		tc = &dcb_config->tc_config[i];
 		tc->path[IXGBE_DCB_TX_CONFIG].bwg_id = i;
-		tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent = 100/dcb_max_tc + (i & 1);
+		tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent =
+				 (uint8_t)(100/dcb_max_tc + (i & 1));
 		tc->path[IXGBE_DCB_RX_CONFIG].bwg_id = i;
-		tc->path[IXGBE_DCB_RX_CONFIG].bwg_percent = 100/dcb_max_tc + (i & 1);
+		tc->path[IXGBE_DCB_RX_CONFIG].bwg_percent = 
+				 (uint8_t)(100/dcb_max_tc + (i & 1));
 		tc->pfc = ixgbe_dcb_pfc_disabled;
 	}
 
@@ -1326,12 +1328,12 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	hw_stats->gprc += IXGBE_READ_REG(hw, IXGBE_GPRC);
 
 	if (hw->mac.type != ixgbe_mac_82598EB) {
-		hw_stats->gorc += IXGBE_READ_REG(hw, IXGBE_GORCL) +
-		    ((u64)IXGBE_READ_REG(hw, IXGBE_GORCH) << 32);
-		hw_stats->gotc += IXGBE_READ_REG(hw, IXGBE_GOTCL) +
-		    ((u64)IXGBE_READ_REG(hw, IXGBE_GOTCH) << 32);
-		hw_stats->tor += IXGBE_READ_REG(hw, IXGBE_TORL) +
-		    ((u64)IXGBE_READ_REG(hw, IXGBE_TORH) << 32);
+		hw_stats->gorc += IXGBE_READ_REG(hw, IXGBE_GORCL);
+		hw_stats->gorc += ((u64)IXGBE_READ_REG(hw, IXGBE_GORCH) << 32);
+		hw_stats->gotc += IXGBE_READ_REG(hw, IXGBE_GOTCL);
+		hw_stats->gotc += ((u64)IXGBE_READ_REG(hw, IXGBE_GOTCH) << 32);
+		hw_stats->tor += IXGBE_READ_REG(hw, IXGBE_TORL);
+		hw_stats->tor += ((u64)IXGBE_READ_REG(hw, IXGBE_TORH) << 32);
 		hw_stats->lxonrxc += IXGBE_READ_REG(hw, IXGBE_LXONRXCNT);
 		hw_stats->lxoffrxc += IXGBE_READ_REG(hw, IXGBE_LXOFFRXCNT);
 	} else {
@@ -1506,8 +1508,8 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	dev_info->max_rx_queues = hw->mac.max_rx_queues;
-	dev_info->max_tx_queues = hw->mac.max_tx_queues;
+	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
+	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
 	dev_info->min_rx_bufsize = 1024; /* cf BSIZEPACKET in SRRCTL register */
 	dev_info->max_rx_pktlen = 15872; /* includes CRC, cf MAXFRS register */
 	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
@@ -1792,7 +1794,8 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
  *  void
  */
 static void
-ixgbe_dev_interrupt_handler(struct rte_intr_handle *handle, void *param)
+ixgbe_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
+							void *param)
 {
 	int64_t timeout;
 	struct rte_eth_link link;
@@ -2297,7 +2300,8 @@ ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t i, on = 0;
+	uint16_t i;
+	int on = 0;
 
 	/* VF function only support hw strip feature, others are not support */
 	if(mask & ETH_VLAN_STRIP_MASK){
@@ -2307,4 +2311,3 @@ ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			ixgbevf_vlan_strip_queue_set(dev,i,on);
 	}
 }
-
