@@ -146,6 +146,37 @@ enum rte_proc_type_t rte_eal_process_type(void);
  *   - On failure, a negative error value.
  */
 int rte_eal_init(int argc, char **argv);
+/**
+ * Usage function typedef used by the application usage function.
+ *
+ * Use this function typedef to define and call rte_set_applcation_usage_hook()
+ * routine.
+ */
+typedef void	(*rte_usage_hook_t)(const char * prgname);
+
+/**
+ * Add application usage routine callout from the eal_usage() routine.
+ *
+ * This function allows the application to include its usage message
+ * in the EAL system usage message. The routine rte_set_application_usage_hook()
+ * needs to be called before the rte_eal_init() routine in the application.
+ *
+ * This routine is optional for the application and will behave as if the set
+ * routine was never called as the default behavior.
+ *
+ * @param func
+ *   The func argument is a function pointer to the application usage routine.
+ *   Called function is defined using rte_usage_hook_t typedef, which is of
+ *   the form void rte_usage_func(const char * prgname).
+ *
+ *   Calling this routine with a NULL value will reset the usage hook routine and
+ *   return the current value, which could be NULL.
+ * @return
+ *   - Returns the current value of the rte_application_usage pointer to allow
+ *     the caller to daisy chain the usage routines if needing more then one.
+ */
+rte_usage_hook_t
+rte_set_application_usage_hook( rte_usage_hook_t usage_func );
 
 /**
  * macro to get the lock of tailq in mem_config 

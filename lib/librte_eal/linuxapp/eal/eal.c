@@ -103,6 +103,8 @@
 	(in) = end + 1;                                         \
 }
 
+/* Allow the application to print its usage message too if set */
+static rte_usage_hook_t	rte_application_usage_hook = NULL;
 /* early configuration structure, when memory config is not mmapped */
 static struct rte_mem_config early_mem_config;
 
@@ -329,6 +331,24 @@ eal_usage(const char *prgname)
 	       "  --"OPT_NO_HPET"  : disable hpet\n"
 	       "  --"OPT_NO_SHCONF": no shared config (mmap'd files)\n\n",
 	       prgname);
+	/* Allow the application to print its usage message too if hook is set */
+	if ( rte_application_usage_hook ) {
+		printf("===== Application Usage =====\n\n");
+		rte_application_usage_hook(prgname);
+	}
+}
+
+/* Set a per-application usage message */
+rte_usage_hook_t
+rte_set_application_usage_hook( rte_usage_hook_t usage_func )
+{
+	rte_usage_hook_t	old_func;
+
+	/* Will be NULL on the first call to denote the last usage routine. */
+	old_func					= rte_application_usage_hook;
+	rte_application_usage_hook	= usage_func;
+
+	return old_func;
 }
 
 /*

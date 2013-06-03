@@ -138,6 +138,26 @@ test_exit(void)
 
 #endif
 
+static void
+dummy_app_usage(const char *progname)
+{
+	RTE_SET_USED(progname);
+}
+
+static int
+test_usage(void)
+{
+	if (rte_set_application_usage_hook(dummy_app_usage) != NULL) {
+		printf("Non-NULL value returned for initial usage hook\n");
+		return -1;
+	}
+	if (rte_set_application_usage_hook(NULL) != dummy_app_usage) {
+		printf("Incorrect value returned for application usage hook\n");
+		return -1;
+	}
+	return 0;
+}
+
 int
 test_debug(void)
 {
@@ -146,6 +166,8 @@ test_debug(void)
 	if (test_panic() < 0)
 		return -1;
 	if (test_exit() < 0)
+		return -1;
+	if (test_usage() < 0)
 		return -1;
 	return 0;
 }
