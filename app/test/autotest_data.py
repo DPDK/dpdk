@@ -271,7 +271,7 @@ parallel_test_group_list = [
 },
 {
 	"Prefix":	"group_6",
-	"Memory" :	all_sockets(588),
+	"Memory" :	all_sockets(600),
 	"Tests" :	
 	[
 		{
@@ -297,7 +297,13 @@ parallel_test_group_list = [
 		 "Command" : 	"prefetch_autotest",
 		 "Func" :	default_autotest,
 		 "Report" :	None,
-		},
+		 },
+		{
+		 "Name" :"Red autotest",
+		 "Command" : "red_autotest",
+		 "Func" :default_autotest,
+		 "Report" :None,
+		 },
 	]
 },
 {
@@ -317,6 +323,12 @@ parallel_test_group_list = [
 		 "Func" :	default_autotest,
 		 "Report" :	None,
 		},
+		 {
+		 "Name" :"Sched autotest",
+		 "Command" : "sched_autotest",
+		 "Func" :default_autotest,
+		 "Report" :None,
+		 },
 	]
 },
 ]

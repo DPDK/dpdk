@@ -105,6 +105,12 @@ ifeq ($(CONFIG_RTE_LIBRTE_METER),y)
 LDLIBS += -lrte_meter
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_SCHED),y)
+LDLIBS += -lrte_sched
+LDLIBS += -lm
+LDLIBS += -lrt
+endif
+
 LDLIBS += --start-group
 
 ifeq ($(CONFIG_RTE_LIBRTE_ETHER),y)

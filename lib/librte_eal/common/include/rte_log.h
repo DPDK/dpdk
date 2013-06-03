@@ -74,6 +74,7 @@ extern struct rte_logs rte_logs;
 #define RTE_LOGTYPE_PMAC    0x00000200 /**< Log related to PMAC. */
 #define RTE_LOGTYPE_POWER   0x00000400 /**< Log related to power. */
 #define RTE_LOGTYPE_METER   0x00000800 /**< Log related to QoS meter. */
+#define RTE_LOGTYPE_SCHED   0x00001000 /**< Log related to QoS port scheduler. */
 
 /* these log types can be used in an application */
 #define RTE_LOGTYPE_USER1   0x01000000 /**< User-defined log type 1. */

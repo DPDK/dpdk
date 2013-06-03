@@ -158,6 +158,7 @@ struct rte_pktmbuf {
 			uint16_t hash;
 			uint16_t id;
 		} fdir;             /**< Filter identifier if FDIR enabled */
+		uint32_t sched;     /**< Hierarchical scheduler */
 	} hash;                 /**< hash information */
 };
 
