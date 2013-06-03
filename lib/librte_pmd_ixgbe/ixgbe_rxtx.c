@@ -2491,6 +2491,7 @@ ixgbe_vmdq_dcb_configure(struct rte_eth_dev *dev)
 	} else {
 		vt_ctl |= IXGBE_VT_CTL_DIS_DEFPL;
 	}
+
 	IXGBE_WRITE_REG(hw, IXGBE_VT_CTL, vt_ctl);
 
 	/* RTRUP2TC: mapping user priorities to traffic classes (TCs) */
@@ -2846,7 +2847,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	switch(dev->data->dev_conf.rxmode.mq_mode){
-	case ETH_VMDQ_DCB:
+	case ETH_MQ_RX_VMDQ_DCB:
 		dcb_config->vt_mode = true;
 		if (hw->mac.type != ixgbe_mac_82598EB) {
 			config_dcb_rx = DCB_RX_CONFIG;
@@ -2859,7 +2860,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 			ixgbe_vmdq_dcb_configure(dev);
 		}
 		break;
-	case ETH_DCB_RX:
+	case ETH_MQ_RX_DCB:
 		dcb_config->vt_mode = false;
 		config_dcb_rx = DCB_RX_CONFIG;
 		/* Get dcb TX configuration parameters from rte_eth_conf */
@@ -2872,7 +2873,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		break;
 	}
 	switch (dev->data->dev_conf.txmode.mq_mode) {
-	case ETH_VMDQ_DCB_TX:
+	case ETH_MQ_TX_VMDQ_DCB:
 		dcb_config->vt_mode = true;
 		config_dcb_tx = DCB_TX_CONFIG;
 		/* get DCB and VT TX configuration parameters from rte_eth_conf */
@@ -2881,9 +2882,9 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		ixgbe_vmdq_dcb_hw_tx_config(dev,dcb_config);
 		break;
 
-	case ETH_DCB_TX:
+	case ETH_MQ_TX_DCB:
 		dcb_config->vt_mode = false;
-		config_dcb_tx = DCB_RX_CONFIG;
+		config_dcb_tx = DCB_TX_CONFIG;
 		/*get DCB TX configuration parameters from rte_eth_conf*/
 		ixgbe_dcb_tx_config(dev,dcb_config);
 		/*Configure general DCB TX parameters*/
@@ -3010,15 +3011,26 @@ void ixgbe_configure_dcb(struct rte_eth_dev *dev)
 {
 	struct ixgbe_dcb_config *dcb_cfg =
 			IXGBE_DEV_PRIVATE_TO_DCB_CFG(dev->data->dev_private); 
+	struct rte_eth_conf *dev_conf = &(dev->data->dev_conf);
 	
 	PMD_INIT_FUNC_TRACE();	
+	
+	/* check support mq_mode for DCB */
+	if ((dev_conf->rxmode.mq_mode != ETH_MQ_RX_VMDQ_DCB) ||
+	    (dev_conf->rxmode.mq_mode != ETH_MQ_RX_DCB)) 
+		return;
+
+	if ((dev_conf->txmode.mq_mode != ETH_MQ_TX_VMDQ_DCB) ||
+	    (dev_conf->txmode.mq_mode != ETH_MQ_TX_DCB)) 
+		return;
+
+	if ((dev->data->nb_rx_queues != ETH_DCB_NUM_QUEUES) ||
+	    (dev->data->nb_tx_queues != ETH_DCB_NUM_QUEUES))
+		return;
+
 	/** Configure DCB hardware **/
-	if(((dev->data->dev_conf.rxmode.mq_mode != ETH_RSS) && 
-		(dev->data->nb_rx_queues == ETH_DCB_NUM_QUEUES))||
-			((dev->data->dev_conf.txmode.mq_mode != ETH_DCB_NONE) && 
-			    (dev->data->nb_tx_queues == ETH_DCB_NUM_QUEUES))) {
-		ixgbe_dcb_hw_configure(dev,dcb_cfg);
-	}
+	ixgbe_dcb_hw_configure(dev,dcb_cfg);
+	
 	return;
 }
 
@@ -3053,6 +3065,115 @@ ixgbe_alloc_rx_queue_mbufs(struct igb_rx_queue *rxq)
 		rxd->read.pkt_addr = dma_addr;
 		rxe[i].mbuf = mbuf;
 	}
+
+	return 0;
+}
+
+static int
+ixgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = 
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->mac.type == ixgbe_mac_82598EB)
+		return 0;
+
+	if (RTE_ETH_DEV_SRIOV(dev).active == 0) {
+		/* 
+	 	 * SRIOV inactive scheme
+		 * any DCB/RSS w/o VMDq multi-queue setting
+		 */
+		if (dev->data->nb_rx_queues > 1)
+			switch (dev->data->dev_conf.rxmode.mq_mode) {
+			case ETH_MQ_RX_NONE:
+				/* if mq_mode not assign, we use rss mode.*/
+			case ETH_MQ_RX_RSS:
+				ixgbe_rss_configure(dev);
+				break;
+
+			case ETH_MQ_RX_VMDQ_DCB:
+				ixgbe_vmdq_dcb_configure(dev);
+				break;
+				
+			default: ixgbe_rss_disable(dev);
+			}
+		else
+			ixgbe_rss_disable(dev);
+	} else {
+		switch (RTE_ETH_DEV_SRIOV(dev).active) {
+		/*
+		 * SRIOV active scheme
+		 * FIXME if support DCB/RSS together with VMDq & SRIOV
+		 */
+		case ETH_64_POOLS:
+			IXGBE_WRITE_REG(hw, IXGBE_MRQC, IXGBE_MRQC_VMDQEN);
+			break;
+
+		case ETH_32_POOLS:
+			IXGBE_WRITE_REG(hw, IXGBE_MRQC, IXGBE_MRQC_VMDQRT4TCEN);
+			break;
+		
+		case ETH_16_POOLS:
+			IXGBE_WRITE_REG(hw, IXGBE_MRQC, IXGBE_MRQC_VMDQRT8TCEN);
+			break;
+		default:
+			RTE_LOG(ERR, PMD, "invalid pool number in IOV mode\n");
+		}
+	}
+
+	return 0;
+}
+
+static int
+ixgbe_dev_mq_tx_configure(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = 
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t mtqc;
+	uint32_t rttdcs;
+
+	if (hw->mac.type == ixgbe_mac_82598EB)
+		return 0;
+
+	/* disable arbiter before setting MTQC */
+	rttdcs = IXGBE_READ_REG(hw, IXGBE_RTTDCS);
+	rttdcs |= IXGBE_RTTDCS_ARBDIS;
+	IXGBE_WRITE_REG(hw, IXGBE_RTTDCS, rttdcs);
+
+	if (RTE_ETH_DEV_SRIOV(dev).active == 0) {
+		/* 
+	 	 * SRIOV inactive scheme
+		 * any DCB w/o VMDq multi-queue setting
+	 	 */
+		mtqc = IXGBE_MTQC_64Q_1PB;
+	} else {
+		switch (RTE_ETH_DEV_SRIOV(dev).active) {
+
+		/*
+		 * SRIOV active scheme
+		 * FIXME if support DCB together with VMDq & SRIOV
+		 */
+		case ETH_64_POOLS:
+			mtqc = IXGBE_MTQC_VT_ENA | IXGBE_MTQC_64VF;
+			break;
+		case ETH_32_POOLS:
+			mtqc = IXGBE_MTQC_VT_ENA | IXGBE_MTQC_32VF;
+			break;
+		case ETH_16_POOLS:
+			mtqc = IXGBE_MTQC_VT_ENA | IXGBE_MTQC_RT_ENA | 
+				IXGBE_MTQC_8TC_8TQ;
+			break;
+		default:
+			mtqc = IXGBE_MTQC_64Q_1PB;
+			RTE_LOG(ERR, PMD, "invalid pool number in IOV mode\n");
+		}
+	}
+	
+	IXGBE_WRITE_REG(hw, IXGBE_MTQC, mtqc);
+
+	/* re-enable arbiter */
+	rttdcs &= ~IXGBE_RTTDCS_ARBDIS;
+	IXGBE_WRITE_REG(hw, IXGBE_RTTDCS, rttdcs);
 
 	return 0;
 }
@@ -3185,7 +3306,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 				       RTE_PKTMBUF_HEADROOM);
 		srrctl |= ((buf_size >> IXGBE_SRRCTL_BSIZEPKT_SHIFT) &
 			   IXGBE_SRRCTL_BSIZEPKT_MASK);
-		IXGBE_WRITE_REG(hw, IXGBE_SRRCTL(i), srrctl);
+		IXGBE_WRITE_REG(hw, IXGBE_SRRCTL(rxq->reg_idx), srrctl);
 
 		buf_size = (uint16_t) ((srrctl & IXGBE_SRRCTL_BSIZEPKT_MASK) <<
 				       IXGBE_SRRCTL_BSIZEPKT_SHIFT);
@@ -3199,24 +3320,9 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	}
 
 	/*
-	 * Configure RSS if device configured with multiple RX queues.
+	 * Device configured with multiple RX queues.
 	 */
-	if (hw->mac.type == ixgbe_mac_82599EB) {
-		if (dev->data->nb_rx_queues > 1)
-			switch (dev->data->dev_conf.rxmode.mq_mode) {
-				case ETH_RSS:
-					ixgbe_rss_configure(dev);
-					break;
-
-				case ETH_VMDQ_DCB:
-					ixgbe_vmdq_dcb_configure(dev);
-					break;
-
-				default: ixgbe_rss_disable(dev);
-			}
-		else
-			ixgbe_rss_disable(dev);
-	}
+	ixgbe_dev_mq_rx_configure(dev);
 
 	/*
 	 * Setup the Checksum Register.
@@ -3256,7 +3362,6 @@ ixgbe_dev_tx_init(struct rte_eth_dev *dev)
 	uint64_t bus_addr;
 	uint32_t hlreg0;
 	uint32_t txctrl;
-	uint32_t rttdcs;
 	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE();
@@ -3299,26 +3404,16 @@ ixgbe_dev_tx_init(struct rte_eth_dev *dev)
 			case ixgbe_mac_X540:
 			default:
 				txctrl = IXGBE_READ_REG(hw,
-						IXGBE_DCA_TXCTRL_82599(i));
+						IXGBE_DCA_TXCTRL_82599(txq->reg_idx));
 				txctrl &= ~IXGBE_DCA_TXCTRL_DESC_WRO_EN;
-				IXGBE_WRITE_REG(hw, IXGBE_DCA_TXCTRL_82599(i),
+				IXGBE_WRITE_REG(hw, IXGBE_DCA_TXCTRL_82599(txq->reg_idx),
 						txctrl);
 				break;
 		}
 	}
 
-	if (hw->mac.type != ixgbe_mac_82598EB) {
-		/* disable arbiter before setting MTQC */
-		rttdcs = IXGBE_READ_REG(hw, IXGBE_RTTDCS);
-		rttdcs |= IXGBE_RTTDCS_ARBDIS;
-		IXGBE_WRITE_REG(hw, IXGBE_RTTDCS, rttdcs);
-
-		IXGBE_WRITE_REG(hw, IXGBE_MTQC, IXGBE_MTQC_64Q_1PB);
-
-		/* re-enable arbiter */
-		rttdcs &= ~IXGBE_RTTDCS_ARBDIS;
-		IXGBE_WRITE_REG(hw, IXGBE_RTTDCS, rttdcs);
-	}
+	/* Device configured with multiple TX queues. */
+	ixgbe_dev_mq_tx_configure(dev);
 }
 
 /*
