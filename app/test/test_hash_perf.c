@@ -51,6 +51,11 @@
 #include <rte_eal.h>
 #include <rte_ip.h>
 #include <rte_string_fns.h>
+#include <cmdline_parse.h>
+
+#include "test.h"
+
+#ifdef RTE_LIBRTE_HASH
 
 #include <rte_hash.h>
 #include <rte_fbk_hash.h>
@@ -59,11 +64,6 @@
 #ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 #include <rte_hash_crc.h>
 #endif
-#include <cmdline_parse.h>
-
-#include "test.h"
-
-#ifdef RTE_LIBRTE_HASH
 
 /* Types of hash table performance test that can be performed */
 enum hash_test_t {
@@ -773,7 +773,7 @@ int test_hash_perf(void)
 		return -1;
 	return 0;
 }
-#else
+#else /* RTE_LIBRTE_HASH */
 
 int
 test_hash_perf(void)
@@ -782,4 +782,4 @@ test_hash_perf(void)
 	return 0;
 }
 
-#endif
+#endif /* RTE_LIBRTE_HASH */

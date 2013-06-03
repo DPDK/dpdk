@@ -261,18 +261,17 @@ rte_hash_free(struct rte_hash *h)
 	rte_free(h);
 }
 
-int32_t
-rte_hash_add_key(const struct rte_hash *h, const void *key)
+static inline int32_t
+__rte_hash_add_key_with_hash(const struct rte_hash *h, 
+				const void *key, hash_sig_t sig)
 {
-	hash_sig_t sig, *sig_bucket;
+	hash_sig_t *sig_bucket;
 	uint8_t *key_bucket;
 	uint32_t bucket_index, i;
 	int32_t pos;
 
-	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
-
 	/* Get the hash signature and bucket index */
-	sig = h->hash_func(key, h->key_len, h->hash_func_init_val) | h->sig_msb;
+	sig |= h->sig_msb;
 	bucket_index = sig & h->bucket_bitmask;
 	sig_bucket = get_sig_tbl_bucket(h, bucket_index);
 	key_bucket = get_key_tbl_bucket(h, bucket_index);
@@ -299,16 +298,30 @@ rte_hash_add_key(const struct rte_hash *h, const void *key)
 }
 
 int32_t
-rte_hash_del_key(const struct rte_hash *h, const void *key)
+rte_hash_add_key_with_hash(const struct rte_hash *h, 
+				const void *key, hash_sig_t sig)
 {
-	hash_sig_t sig, *sig_bucket;
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+	return __rte_hash_add_key_with_hash(h, key, sig);
+}
+
+int32_t
+rte_hash_add_key(const struct rte_hash *h, const void *key)
+{
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+	return __rte_hash_add_key_with_hash(h, key, rte_hash_hash(h, key));
+}
+
+static inline int32_t
+__rte_hash_del_key_with_hash(const struct rte_hash *h, 
+				const void *key, hash_sig_t sig)
+{
+	hash_sig_t *sig_bucket;
 	uint8_t *key_bucket;
 	uint32_t bucket_index, i;
 
-	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
-
 	/* Get the hash signature and bucket index */
-	sig = h->hash_func(key, h->key_len, h->hash_func_init_val) | h->sig_msb;
+	sig = sig | h->sig_msb;
 	bucket_index = sig & h->bucket_bitmask;
 	sig_bucket = get_sig_tbl_bucket(h, bucket_index);
 	key_bucket = get_key_tbl_bucket(h, bucket_index);
@@ -327,16 +340,30 @@ rte_hash_del_key(const struct rte_hash *h, const void *key)
 }
 
 int32_t
-rte_hash_lookup(const struct rte_hash *h, const void *key)
+rte_hash_del_key_with_hash(const struct rte_hash *h, 
+				const void *key, hash_sig_t sig)
 {
-	hash_sig_t sig, *sig_bucket;
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+	return __rte_hash_del_key_with_hash(h, key, sig);
+}
+
+int32_t
+rte_hash_del_key(const struct rte_hash *h, const void *key)
+{
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+	return __rte_hash_del_key_with_hash(h, key, rte_hash_hash(h, key));
+}
+
+static inline int32_t
+__rte_hash_lookup_with_hash(const struct rte_hash *h, 
+			const void *key, hash_sig_t sig)
+{
+	hash_sig_t *sig_bucket;
 	uint8_t *key_bucket;
 	uint32_t bucket_index, i;
 
-	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
-
 	/* Get the hash signature and bucket index */
-	sig = h->hash_func(key, h->key_len, h->hash_func_init_val) | h->sig_msb;
+	sig |= h->sig_msb;
 	bucket_index = sig & h->bucket_bitmask;
 	sig_bucket = get_sig_tbl_bucket(h, bucket_index);
 	key_bucket = get_key_tbl_bucket(h, bucket_index);
@@ -353,15 +380,30 @@ rte_hash_lookup(const struct rte_hash *h, const void *key)
 	return -ENOENT;
 }
 
+int32_t
+rte_hash_lookup_with_hash(const struct rte_hash *h, 
+			const void *key, hash_sig_t sig)
+{
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+	return __rte_hash_lookup_with_hash(h, key, sig);
+}
+
+int32_t
+rte_hash_lookup(const struct rte_hash *h, const void *key)
+{
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+	return __rte_hash_lookup_with_hash(h, key, rte_hash_hash(h, key));
+}
+
 int
-rte_hash_lookup_multi(const struct rte_hash *h, const void **keys,
+rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 		      uint32_t num_keys, int32_t *positions)
 {
 	uint32_t i, j, bucket_index;
-	hash_sig_t sigs[RTE_HASH_LOOKUP_MULTI_MAX];
+	hash_sig_t sigs[RTE_HASH_LOOKUP_BULK_MAX];
 
 	RETURN_IF_TRUE(((h == NULL) || (keys == NULL) || (num_keys == 0) ||
-			(num_keys > RTE_HASH_LOOKUP_MULTI_MAX) ||
+			(num_keys > RTE_HASH_LOOKUP_BULK_MAX) ||
 			(positions == NULL)), -EINVAL);
 
 	/* Get the hash signature and bucket index */

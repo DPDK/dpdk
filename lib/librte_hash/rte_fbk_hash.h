@@ -139,9 +139,9 @@ rte_fbk_hash_get_bucket(const struct rte_fbk_hash_table *ht, uint32_t key)
 			ht->bucket_shift;
 }
 
-
 /**
- * Add a key to an existing hash table. This operation is not multi-thread safe
+ * Add a key to an existing hash table with bucket id. 
+ * This operation is not multi-thread safe
  * and should only be called from one thread.
  *
  * @param ht
@@ -150,12 +150,14 @@ rte_fbk_hash_get_bucket(const struct rte_fbk_hash_table *ht, uint32_t key)
  *   Key to add to the hash table.
  * @param value
  *   Value to associate with key.
+ * @param bucket
+ *   Bucket to associate with key.
  * @return
  *   0 if ok, or negative value on error.
  */
 static inline int
-rte_fbk_hash_add_key(struct rte_fbk_hash_table *ht,
-			uint32_t key, uint16_t value)
+rte_fbk_hash_add_key_with_bucket(struct rte_fbk_hash_table *ht,
+			uint32_t key, uint16_t value, uint32_t bucket)
 {
 	/*
 	 * The writing of a new value to the hash table is done as a single
@@ -166,7 +168,6 @@ rte_fbk_hash_add_key(struct rte_fbk_hash_table *ht,
 	const uint64_t new_entry = ((uint64_t)(key) << 32) |
 			((uint64_t)(value) << 16) |
 			1;  /* 1 = is_entry bit. */
-	const uint32_t bucket = rte_fbk_hash_get_bucket(ht, key);
 	uint32_t i;
 
 	for (i = 0; i < ht->entries_per_bucket; i++) {
@@ -187,20 +188,44 @@ rte_fbk_hash_add_key(struct rte_fbk_hash_table *ht,
 }
 
 /**
- * Remove a key from an existing hash table. This operation is not multi-thread
+ * Add a key to an existing hash table. This operation is not multi-thread safe
+ * and should only be called from one thread.
+ *
+ * @param ht
+ *   Hash table to add the key to.
+ * @param key
+ *   Key to add to the hash table.
+ * @param value
+ *   Value to associate with key.
+ * @return
+ *   0 if ok, or negative value on error.
+ */
+static inline int
+rte_fbk_hash_add_key(struct rte_fbk_hash_table *ht,
+			uint32_t key, uint16_t value)
+{
+	return rte_fbk_hash_add_key_with_bucket(ht, 
+				key, value, rte_fbk_hash_get_bucket(ht, key));
+}
+
+/**
+ * Remove a key with a given bucket id from an existing hash table. 
+ * This operation is not multi-thread
  * safe and should only be called from one thread.
  *
  * @param ht
  *   Hash table to remove the key from.
  * @param key
  *   Key to remove from the hash table.
+ * @param bucket
+ *   Bucket id associate with key.
  * @return
  *   0 if ok, or negative value on error.
  */
 static inline int
-rte_fbk_hash_delete_key(struct rte_fbk_hash_table *ht, uint32_t key)
+rte_fbk_hash_delete_key_with_bucket(struct rte_fbk_hash_table *ht, 
+					uint32_t key, uint32_t bucket)
 {
-	const uint32_t bucket = rte_fbk_hash_get_bucket(ht, key);
 	uint32_t last_entry = ht->entries_per_bucket - 1;
 	uint32_t i, j;
 
@@ -230,19 +255,40 @@ rte_fbk_hash_delete_key(struct rte_fbk_hash_table *ht, uint32_t key)
 }
 
 /**
- * Find a key in the hash table. This operation is multi-thread safe.
+ * Remove a key from an existing hash table. This operation is not multi-thread
+ * safe and should only be called from one thread.
+ *
+ * @param ht
+ *   Hash table to remove the key from.
+ * @param key
+ *   Key to remove from the hash table.
+ * @return
+ *   0 if ok, or negative value on error.
+ */
+static inline int
+rte_fbk_hash_delete_key(struct rte_fbk_hash_table *ht, uint32_t key)
+{
+	return rte_fbk_hash_delete_key_with_bucket(ht, 
+				key, rte_fbk_hash_get_bucket(ht, key));
+}
+
+/**
+ * Find a key in the hash table with a given bucketid. 
+ * This operation is multi-thread safe.
  *
  * @param ht
  *   Hash table to look in.
  * @param key
  *   Key to find.
+ * @param bucket
+ *   Bucket associate to the key.
  * @return
  *   The value that was associated with the key, or negative value on error.
  */
 static inline int
-rte_fbk_hash_lookup(const struct rte_fbk_hash_table *ht, uint32_t key)
+rte_fbk_hash_lookup_with_bucket(const struct rte_fbk_hash_table *ht, 
+				uint32_t key, uint32_t bucket)
 {
-	const uint32_t bucket = rte_fbk_hash_get_bucket(ht, key);
 	union rte_fbk_hash_entry current_entry;
 	uint32_t i;
 
@@ -257,6 +303,23 @@ rte_fbk_hash_lookup(const struct rte_fbk_hash_table *ht, uint32_t key)
 		}
 	}
 	return -ENOENT; /* Key didn't exist. */
+}
+
+/**
+ * Find a key in the hash table. This operation is multi-thread safe.
+ *
+ * @param ht
+ *   Hash table to look in.
+ * @param key
+ *   Key to find.
+ * @return
+ *   The value that was associated with the key, or negative value on error.
+ */
+static inline int
+rte_fbk_hash_lookup(const struct rte_fbk_hash_table *ht, uint32_t key)
+{
+	return rte_fbk_hash_lookup_with_bucket(ht,
+				key, rte_fbk_hash_get_bucket(ht, key));
 }
 
 /**
