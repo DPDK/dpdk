@@ -74,7 +74,7 @@ static void eth_igb_infos_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int  eth_igb_flow_ctrl_set(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
-static int eth_igb_interrupt_setup(struct rte_eth_dev *dev);
+static int eth_igb_lsc_interrupt_setup(struct rte_eth_dev *dev);
 static int eth_igb_interrupt_get_status(struct rte_eth_dev *dev);
 static int eth_igb_interrupt_action(struct rte_eth_dev *dev);
 static void eth_igb_interrupt_handler(struct rte_intr_handle *handle,
@@ -258,6 +258,25 @@ rte_igb_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static inline void
+igb_intr_enable(struct rte_eth_dev *dev)
+{
+	struct e1000_interrupt *intr =
+		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+ 
+	E1000_WRITE_REG(hw, E1000_IMS, intr->mask);
+	E1000_WRITE_FLUSH(hw);
+}
+
+static void
+igb_intr_disable(struct e1000_hw *hw)
+{
+	E1000_WRITE_REG(hw, E1000_IMC, ~0);
+	E1000_WRITE_FLUSH(hw);
+}
+
 static void
 igb_identify_hardware(struct rte_eth_dev *dev)
 {
@@ -387,6 +406,12 @@ eth_igb_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	rte_intr_callback_register(&(pci_dev->intr_handle),
 		eth_igb_interrupt_handler, (void *)eth_dev);
 
+	/* enable uio intr after callback register */
+	rte_intr_enable(&(pci_dev->intr_handle));
+        
+	/* enable support intr */
+	igb_intr_enable(eth_dev);
+	
 	return 0;
 
 err_late:
@@ -523,8 +548,6 @@ eth_igb_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_LOG(DEBUG, ">>");
 
-	igb_intr_disable(hw);
-
 	/* Power up the phy. Needed to make the link go Up */
 	e1000_power_up_phy(hw);
 
@@ -649,14 +672,11 @@ eth_igb_start(struct rte_eth_dev *dev)
 	e1000_setup_link(hw);
 
 	/* check if lsc interrupt feature is enabled */
-	if (dev->data->dev_conf.intr_conf.lsc != 0) {
-		ret = eth_igb_interrupt_setup(dev);
-		if (ret) {
-			PMD_INIT_LOG(ERR, "Unable to setup interrupts");
-			igb_dev_clear_queues(dev);
-			return ret;
-		}
-	}
+	if (dev->data->dev_conf.intr_conf.lsc != 0)
+		ret = eth_igb_lsc_interrupt_setup(dev);
+
+        /* resume enabled intr since hw reset */
+        igb_intr_enable(dev);
 
 	PMD_INIT_LOG(DEBUG, "<<");
 
@@ -1408,12 +1428,6 @@ eth_igb_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 }
 
-static void
-igb_intr_disable(struct e1000_hw *hw)
-{
-	E1000_WRITE_REG(hw, E1000_IMC, ~0);
-	E1000_WRITE_FLUSH(hw);
-}
 
 /**
  * It enables the interrupt mask and then enable the interrupt.
@@ -1426,14 +1440,12 @@ igb_intr_disable(struct e1000_hw *hw)
  *  - On failure, a negative value.
  */
 static int
-eth_igb_interrupt_setup(struct rte_eth_dev *dev)
+eth_igb_lsc_interrupt_setup(struct rte_eth_dev *dev)
 {
-	struct e1000_hw *hw =
-		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_interrupt *intr =
+		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 
-	E1000_WRITE_REG(hw, E1000_IMS, E1000_ICR_LSC);
-	E1000_WRITE_FLUSH(hw);
-	rte_intr_enable(&(dev->pci_dev->intr_handle));
+	intr->mask |= E1000_ICR_LSC;
 
 	return 0;
 }
@@ -1458,8 +1470,12 @@ eth_igb_interrupt_get_status(struct rte_eth_dev *dev)
 	struct e1000_interrupt *intr =
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 
+	igb_intr_disable(hw);
+
 	/* read-on-clear nic registers here */
 	icr = E1000_READ_REG(hw, E1000_ICR);
+
+	intr->flags = 0;
 	if (icr & E1000_ICR_LSC) {
 		intr->flags |= E1000_FLAG_NEED_LINK_UPDATE;
 	}
@@ -1488,51 +1504,54 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 	int ret;
 
-	if (!(intr->flags & E1000_FLAG_NEED_LINK_UPDATE))
-		return -1;
 
-	intr->flags &= ~E1000_FLAG_NEED_LINK_UPDATE;
+	igb_intr_enable(dev);
 	rte_intr_enable(&(dev->pci_dev->intr_handle));
 
-	/* set get_link_status to check register later */
-	hw->mac.get_link_status = 1;
-	ret = eth_igb_link_update(dev, 0);
+	if (intr->flags & E1000_FLAG_NEED_LINK_UPDATE) {
+		intr->flags &= ~E1000_FLAG_NEED_LINK_UPDATE;
 
-	/* check if link has changed */
-	if (ret < 0)
-		return 0;
+		/* set get_link_status to check register later */
+		hw->mac.get_link_status = 1;
+		ret = eth_igb_link_update(dev, 0);
 
-	memset(&link, 0, sizeof(link));
-	rte_igb_dev_atomic_read_link_status(dev, &link);
-	if (link.link_status) {
-		PMD_INIT_LOG(INFO,
-			" Port %d: Link Up - speed %u Mbps - %s\n",
-			dev->data->port_id, (unsigned)link.link_speed,
-			link.link_duplex == ETH_LINK_FULL_DUPLEX ?
-				"full-duplex" : "half-duplex");
-	} else {
-		PMD_INIT_LOG(INFO, " Port %d: Link Down\n",
-					dev->data->port_id);
+		/* check if link has changed */
+		if (ret < 0)
+			return 0;
+
+		memset(&link, 0, sizeof(link));
+		rte_igb_dev_atomic_read_link_status(dev, &link);
+		if (link.link_status) {
+			PMD_INIT_LOG(INFO,
+				" Port %d: Link Up - speed %u Mbps - %s\n",
+				dev->data->port_id, (unsigned)link.link_speed,
+				link.link_duplex == ETH_LINK_FULL_DUPLEX ?
+					"full-duplex" : "half-duplex");
+		} else {
+			PMD_INIT_LOG(INFO, " Port %d: Link Down\n",
+						dev->data->port_id);
+		}
+		PMD_INIT_LOG(INFO, "PCI Address: %04d:%02d:%02d:%d",
+					dev->pci_dev->addr.domain,
+					dev->pci_dev->addr.bus,
+					dev->pci_dev->addr.devid,
+					dev->pci_dev->addr.function);
+		tctl = E1000_READ_REG(hw, E1000_TCTL);
+		rctl = E1000_READ_REG(hw, E1000_RCTL);
+		if (link.link_status) {
+			/* enable Tx/Rx */
+			tctl |= E1000_TCTL_EN;
+			rctl |= E1000_RCTL_EN;
+		} else {
+			/* disable Tx/Rx */
+			tctl &= ~E1000_TCTL_EN;
+			rctl &= ~E1000_RCTL_EN;
+		}
+		E1000_WRITE_REG(hw, E1000_TCTL, tctl);
+		E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+		E1000_WRITE_FLUSH(hw);
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
 	}
-	PMD_INIT_LOG(INFO, "PCI Address: %04d:%02d:%02d:%d",
-				dev->pci_dev->addr.domain,
-				dev->pci_dev->addr.bus,
-				dev->pci_dev->addr.devid,
-				dev->pci_dev->addr.function);
-	tctl = E1000_READ_REG(hw, E1000_TCTL);
-	rctl = E1000_READ_REG(hw, E1000_RCTL);
-	if (link.link_status) {
-		/* enable Tx/Rx */
-		tctl |= E1000_TCTL_EN;
-		rctl |= E1000_RCTL_EN;
-	} else {
-		/* disable Tx/Rx */
-		tctl &= ~E1000_TCTL_EN;
-		rctl &= ~E1000_RCTL_EN;
-	}
-	E1000_WRITE_REG(hw, E1000_TCTL, tctl);
-	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
-	E1000_WRITE_FLUSH(hw);
 
 	return 0;
 }
@@ -1556,7 +1575,6 @@ eth_igb_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 
 	eth_igb_interrupt_get_status(dev);
 	eth_igb_interrupt_action(dev);
-	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
 }
 
 static int
@@ -1648,7 +1666,7 @@ igbvf_intr_disable(struct e1000_hw *hw)
 	PMD_INIT_LOG(DEBUG, "igbvf_intr_disable");
 
 	/* Clear interrupt mask to stop from interrupts being generated */
-	E1000_WRITE_REG(hw, E1000_EIMC, ~0);
+	E1000_WRITE_REG(hw, E1000_EIMC, 0xFFFF);
 
 	E1000_WRITE_FLUSH(hw);
 }
@@ -1665,7 +1683,7 @@ igbvf_stop_adapter(struct rte_eth_dev *dev)
 	eth_igb_infos_get(dev, &dev_info);
 
 	/* Clear interrupt mask to stop from interrupts being generated */
-	E1000_WRITE_REG(hw, E1000_EIMC, ~0);
+	igbvf_intr_disable(hw);
 
 	/* Clear any pending interrupts, flush previous writes */
 	E1000_READ_REG(hw, E1000_EICR);
@@ -1752,9 +1770,13 @@ igbvf_dev_configure(struct rte_eth_dev *dev)
 static int
 igbvf_dev_start(struct rte_eth_dev *dev)
 {
+	struct e1000_hw *hw = 
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret;
 
 	PMD_INIT_LOG(DEBUG, "igbvf_dev_start");
+
+	hw->mac.ops.reset_hw(hw);
 
 	/* Set all vfta */
 	igbvf_set_vfta_all(dev,1);

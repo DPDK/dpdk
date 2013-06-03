@@ -55,6 +55,7 @@
 /* structure for interrupt relative data */
 struct e1000_interrupt {
 	uint32_t flags;
+	uint32_t mask;
 };
 
 /* local vfta copy */

@@ -132,7 +132,7 @@ static int  ixgbe_flow_ctrl_set(struct rte_eth_dev *dev,
 static int ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 		struct rte_eth_pfc_conf *pfc_conf);
 static void ixgbe_dev_link_status_print(struct rte_eth_dev *dev);
-static int ixgbe_dev_interrupt_setup(struct rte_eth_dev *dev);
+static int ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_action(struct rte_eth_dev *dev);
 static void ixgbe_dev_interrupt_handler(struct rte_intr_handle *handle,
@@ -352,6 +352,18 @@ ixgbe_is_sfp(struct ixgbe_hw *hw)
 	default:
 		return 0;
 	}
+}
+
+static inline void
+ixgbe_enable_intr(struct rte_eth_dev *dev)
+{
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	struct ixgbe_hw *hw = 
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	
+	IXGBE_WRITE_REG(hw, IXGBE_EIMS, intr->mask);
+	IXGBE_WRITE_FLUSH(hw);
 }
 
 /*
@@ -577,8 +589,6 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	}
 	hw->fc.send_xon = 1;
 
-	ixgbe_disable_intr(hw);
-
 	/* Make sure we have a good EEPROM before we read from it */
 	diag = ixgbe_validate_eeprom_checksum(hw, &csum);
 	if (diag != IXGBE_SUCCESS) {
@@ -615,6 +625,9 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		PMD_INIT_LOG(ERR, "Hardware Initialization Failure: %d", diag);
 		return -EIO;
 	}
+
+	/* disable interrupt */
+	ixgbe_disable_intr(hw);
 
 	/* pick up the PCI bus settings for reporting later */
 	ixgbe_get_bus_info(hw);
@@ -661,6 +674,12 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	rte_intr_callback_register(&(pci_dev->intr_handle),
 		ixgbe_dev_interrupt_handler, (void *)eth_dev);
+
+	/* enable uio intr after callback register */
+	rte_intr_enable(&(pci_dev->intr_handle));
+
+	/* enable support intr */
+	ixgbe_enable_intr(eth_dev);
 
 	return 0;
 }
@@ -1117,10 +1136,11 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	/* reinitialize adapter
 	 * this calls reset and start */
 	ixgbe_init_hw(hw);
+	hw->mac.ops.start_hw(hw);
 
 	/* initialize transmission unit */
 	ixgbe_dev_tx_init(dev);
-
+      
 	/* This can fail when allocating mbufs for descriptor rings */
 	err = ixgbe_dev_rx_init(dev);
 	if (err) {
@@ -1177,11 +1197,11 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		goto error;
 
 	/* check if lsc interrupt is enabled */
-	if (dev->data->dev_conf.intr_conf.lsc != 0) {
-		err = ixgbe_dev_interrupt_setup(dev);
-		if (err)
-			goto error;
-	}
+	if (dev->data->dev_conf.intr_conf.lsc != 0)
+		ixgbe_dev_lsc_interrupt_setup(dev);
+
+	/* resume enabled intr since hw reset */
+	ixgbe_enable_intr(dev);
 
 	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK | \
 		ETH_VLAN_EXTEND_MASK;
@@ -1644,14 +1664,13 @@ ixgbe_dev_allmulticast_disable(struct rte_eth_dev *dev)
  *  - On failure, a negative value.
  */
 static int
-ixgbe_dev_interrupt_setup(struct rte_eth_dev *dev)
+ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev)
 {
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 
 	ixgbe_dev_link_status_print(dev);
-	IXGBE_WRITE_REG(hw, IXGBE_EIMS, IXGBE_EICR_LSC);
-	IXGBE_WRITE_FLUSH(hw);
-	rte_intr_enable(&(dev->pci_dev->intr_handle));
+	intr->mask |= IXGBE_EICR_LSC;
 
 	return 0;
 }
@@ -1674,12 +1693,14 @@ ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 
-	IXGBE_WRITE_REG(hw, IXGBE_EIMC, IXGBE_EICR_LSC);
-	IXGBE_WRITE_FLUSH(hw);
+	/* clear all cause mask */
+	ixgbe_disable_intr(hw);
 
 	/* read-on-clear nic registers here */
 	eicr = IXGBE_READ_REG(hw, IXGBE_EICR);
-	PMD_INIT_LOG(INFO, "eicr %x", eicr);
+	PMD_DRV_LOG(INFO, "eicr %x", eicr);
+	
+	intr->flags = 0;
 	if (eicr & IXGBE_EICR_LSC) {
 		/* set flag for async link update */
 		intr->flags |= IXGBE_FLAG_NEED_LINK_UPDATE;
@@ -1737,11 +1758,43 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev)
 {
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	int64_t timeout;
+	struct rte_eth_link link;
+	int intr_enable_delay = false;	
 
-	if (!(intr->flags & IXGBE_FLAG_NEED_LINK_UPDATE)) {
-		return -1;
+	PMD_DRV_LOG(DEBUG, "intr action type %d\n", intr->flags);
+
+	if (intr->flags & IXGBE_FLAG_NEED_LINK_UPDATE) {
+		/* get the link status before link update, for predicting later */
+		memset(&link, 0, sizeof(link));
+		rte_ixgbe_dev_atomic_read_link_status(dev, &link);
+
+		ixgbe_dev_link_update(dev, 0);
+
+		/* likely to up */
+		if (!link.link_status)
+			/* handle it 1 sec later, wait it being stable */
+			timeout = IXGBE_LINK_UP_CHECK_TIMEOUT;
+		/* likely to down */
+		else
+			/* handle it 4 sec later, wait it being stable */
+			timeout = IXGBE_LINK_DOWN_CHECK_TIMEOUT;
+		
+		ixgbe_dev_link_status_print(dev);
+
+		intr_enable_delay = true;
+	} 
+
+	if (intr_enable_delay) {
+		if (rte_eal_alarm_set(timeout * 1000,
+				      ixgbe_dev_interrupt_delayed_handler, (void*)dev) < 0)
+			PMD_DRV_LOG(ERR, "Error setting alarm");
+	} else {
+		PMD_DRV_LOG(DEBUG, "enable intr immediately");
+		ixgbe_enable_intr(dev);
+		rte_intr_enable(&(dev->pci_dev->intr_handle));
 	}
-	ixgbe_dev_link_update(dev, 0);
+			
 
 	return 0;
 }
@@ -1766,19 +1819,17 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
-	struct ixgbe_hw *hw =
-		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	IXGBE_READ_REG(hw, IXGBE_EICR);
-	ixgbe_dev_interrupt_action(dev);
 	if (intr->flags & IXGBE_FLAG_NEED_LINK_UPDATE) {
+		ixgbe_dev_link_update(dev, 0);
 		intr->flags &= ~IXGBE_FLAG_NEED_LINK_UPDATE;
-		rte_intr_enable(&(dev->pci_dev->intr_handle));
-		IXGBE_WRITE_REG(hw, IXGBE_EIMS, IXGBE_EICR_LSC);
-		IXGBE_WRITE_FLUSH(hw);
 		ixgbe_dev_link_status_print(dev);
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
 	}
+
+	PMD_DRV_LOG(DEBUG, "enable intr in delayed handler\n");
+	ixgbe_enable_intr(dev);
+	rte_intr_enable(&(dev->pci_dev->intr_handle));
 }
 
 /**
@@ -1797,34 +1848,9 @@ static void
 ixgbe_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 							void *param)
 {
-	int64_t timeout;
-	struct rte_eth_link link;
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
-	struct ixgbe_interrupt *intr =
-		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
-
-	/* get the link status before link update, for predicting later */
-	memset(&link, 0, sizeof(link));
-	rte_ixgbe_dev_atomic_read_link_status(dev, &link);
 	ixgbe_dev_interrupt_get_status(dev);
 	ixgbe_dev_interrupt_action(dev);
-
-	if (!(intr->flags & IXGBE_FLAG_NEED_LINK_UPDATE))
-		return;
-
-	/* likely to up */
-	if (!link.link_status)
-		/* handle it 1 sec later, wait it being stable */
-		timeout = IXGBE_LINK_UP_CHECK_TIMEOUT;
-	/* likely to down */
-	else
-		/* handle it 4 sec later, wait it being stable */
-		timeout = IXGBE_LINK_DOWN_CHECK_TIMEOUT;
-
-	ixgbe_dev_link_status_print(dev);
-	if (rte_eal_alarm_set(timeout * 1000,
-		ixgbe_dev_interrupt_delayed_handler, param) < 0)
-		PMD_INIT_LOG(ERR, "Error setting alarm");
 }
 
 static int
@@ -2160,9 +2186,13 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 static int
 ixgbevf_dev_start(struct rte_eth_dev *dev)
 {
+	struct ixgbe_hw *hw = 
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int err, mask = 0;
 	
 	PMD_INIT_LOG(DEBUG, "ixgbevf_dev_start");
+
+	hw->mac.ops.reset_hw(hw);
 
 	ixgbevf_dev_tx_init(dev);
 

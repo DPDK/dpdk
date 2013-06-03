@@ -124,6 +124,7 @@ struct rte_eth_dev_callback {
 	rte_eth_dev_cb_fn cb_fn;                /**< Callback address */
 	void *cb_arg;                           /**< Parameter for callback */
 	enum rte_eth_event_type event;          /**< Interrupt event type */
+	uint32_t active;                        /**< Callback is executing */
 };
 
 enum {
@@ -1575,40 +1576,38 @@ rte_eth_dev_callback_register(uint8_t port_id,
 			enum rte_eth_event_type event,
 			rte_eth_dev_cb_fn cb_fn, void *cb_arg)
 {
-	int ret = -1;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_callback *user_cb = NULL;
+	struct rte_eth_dev_callback *user_cb;
 
 	if (!cb_fn)
-		return -1;
+		return (-EINVAL);
 	if (port_id >= nb_ports) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return -1;
+		return (-EINVAL);
 	}
+
 	dev = &rte_eth_devices[port_id];
 	rte_spinlock_lock(&rte_eth_dev_cb_lock);
+
 	TAILQ_FOREACH(user_cb, &(dev->callbacks), next) {
 		if (user_cb->cb_fn == cb_fn &&
 			user_cb->cb_arg == cb_arg &&
 			user_cb->event == event) {
-			ret = 0;
-			goto out;
+			break;
 		}
 	}
-	user_cb = rte_malloc("INTR_USER_CALLBACK",
-		sizeof(struct rte_eth_dev_callback), 0);
-	if (!user_cb)
-		goto out;
-	user_cb->cb_fn = cb_fn;
-	user_cb->cb_arg = cb_arg;
-	user_cb->event = event;
-	TAILQ_INSERT_TAIL(&(dev->callbacks), user_cb, next);
-	ret = 0;
 
-out:
+	/* create a new callback. */
+	if (user_cb == NULL && (user_cb = rte_zmalloc("INTR_USER_CALLBACK",
+			sizeof(struct rte_eth_dev_callback), 0)) != NULL) {
+		user_cb->cb_fn = cb_fn;
+		user_cb->cb_arg = cb_arg;
+		user_cb->event = event;
+		TAILQ_INSERT_TAIL(&(dev->callbacks), user_cb, next);
+	}
+
 	rte_spinlock_unlock(&rte_eth_dev_cb_lock);
-
-	return ret;
+	return ((user_cb == NULL) ? -ENOMEM : 0);
 }
 
 int
@@ -1616,38 +1615,51 @@ rte_eth_dev_callback_unregister(uint8_t port_id,
 			enum rte_eth_event_type event,
 			rte_eth_dev_cb_fn cb_fn, void *cb_arg)
 {
-	int ret = -1;
+	int ret;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_callback *cb_lst = NULL;
+	struct rte_eth_dev_callback *cb, *next;
 
 	if (!cb_fn)
-		return -1;
+		return (-EINVAL);
 	if (port_id >= nb_ports) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return -1;
+		return (-EINVAL);
 	}
+
 	dev = &rte_eth_devices[port_id];
 	rte_spinlock_lock(&rte_eth_dev_cb_lock);
-	TAILQ_FOREACH(cb_lst, &(dev->callbacks), next) {
-		if (cb_lst->cb_fn != cb_fn || cb_lst->event != event)
+
+	ret = 0;
+	for (cb = TAILQ_FIRST(&dev->callbacks); cb != NULL; cb = next) {
+
+		next = TAILQ_NEXT(cb, next);
+
+		if (cb->cb_fn != cb_fn || cb->event != event ||
+				(cb->cb_arg != (void *)-1 &&
+				cb->cb_arg != cb_arg))
 			continue;
-		if (cb_lst->cb_arg == (void *)-1 ||
-				cb_lst->cb_arg == cb_arg) {
-			TAILQ_REMOVE(&(dev->callbacks), cb_lst, next);
-			rte_free(cb_lst);
-			ret = 0;
+
+		/*
+		 * if this callback is not executing right now,
+		 * then remove it.
+		 */
+		if (cb->active == 0) {
+			TAILQ_REMOVE(&(dev->callbacks), cb, next);
+			rte_free(cb);
+		} else {
+			ret = -EAGAIN;
 		}
 	}
 
 	rte_spinlock_unlock(&rte_eth_dev_cb_lock);
-
-	return ret;
+	return (ret);
 }
 
 void
-_rte_eth_dev_callback_process(struct rte_eth_dev *dev, enum rte_eth_event_type event)
+_rte_eth_dev_callback_process(struct rte_eth_dev *dev,
+	enum rte_eth_event_type event)
 {
-	struct rte_eth_dev_callback *cb_lst = NULL;
+	struct rte_eth_dev_callback *cb_lst;
 	struct rte_eth_dev_callback dev_cb;
 
 	rte_spinlock_lock(&rte_eth_dev_cb_lock);
@@ -1655,11 +1667,12 @@ _rte_eth_dev_callback_process(struct rte_eth_dev *dev, enum rte_eth_event_type e
 		if (cb_lst->cb_fn == NULL || cb_lst->event != event)
 			continue;
 		dev_cb = *cb_lst;
+		cb_lst->active = 1;
 		rte_spinlock_unlock(&rte_eth_dev_cb_lock);
 		dev_cb.cb_fn(dev->data->port_id, dev_cb.event,
 						dev_cb.cb_arg);
 		rte_spinlock_lock(&rte_eth_dev_cb_lock);
+		cb_lst->active = 0;
 	}
 	rte_spinlock_unlock(&rte_eth_dev_cb_lock);
 }
-

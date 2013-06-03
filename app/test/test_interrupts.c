@@ -171,13 +171,16 @@ static void
 test_interrupt_callback(struct rte_intr_handle *intr_handle, void *arg)
 {
 	if (test_interrupt_handle_sanity_check(intr_handle) < 0) {
-		printf("null or invalid intr_handle for %s\n", __FUNCTION__);
+		printf("null or invalid intr_handle for %s\n", __func__);
+		flag = -1;
 		return;
 	}
 
 	if (rte_intr_callback_unregister(intr_handle,
-			test_interrupt_callback, arg) <= 0) {
-		printf("fail to unregister callback\n");
+			test_interrupt_callback, arg) >= 0) {
+		printf("%s: unexpectedly able to unregister itself\n",
+			__func__);
+		flag = -1;
 		return;
 	}
 
@@ -188,15 +191,12 @@ test_interrupt_callback(struct rte_intr_handle *intr_handle, void *arg)
 }
 
 static void
-test_interrupt_callback_1(struct rte_intr_handle *intr_handle, void *arg)
+test_interrupt_callback_1(struct rte_intr_handle *intr_handle,
+	__attribute__((unused)) void *arg)
 {
 	if (test_interrupt_handle_sanity_check(intr_handle) < 0) {
-		printf("null or invalid intr_handle for %s\n", __FUNCTION__);
-		return;
-	}
-	if (rte_intr_callback_unregister(intr_handle,
-			test_interrupt_callback_1, arg) <= 0) {
-		printf("fail to unregister callback\n");
+		printf("null or invalid intr_handle for %s\n", __func__);
+		flag = -1;
 		return;
 	}
 }
@@ -281,7 +281,7 @@ test_interrupt_disable(void)
 int
 test_interrupt(void)
 {
-	int count = 0, ret = -1;
+	int count, ret;
 	struct rte_intr_handle test_intr_handle;
 
 	if (test_interrupt_init() < 0) {
@@ -290,6 +290,8 @@ test_interrupt(void)
 	}
 
 	printf("check if callback registered can be called\n");
+
+	ret = -1;
 
 	/* check if callback registered can be called */
 	flag = 0;
@@ -305,13 +307,28 @@ test_interrupt(void)
 		goto out;
 	}
 	/* check flag in 3 seconds */
-	while (flag == 0 && count++ < 3)
+	for (count = 0; flag == 0 && count < 3; count++)
 		rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
+
+	rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
+
+	if ((ret = rte_intr_callback_unregister(&test_intr_handle,
+			test_interrupt_callback, NULL)) < 0) {
+		printf("rte_intr_callback_unregister() failed with error "
+			"code: %d\n", ret);
+		goto out;
+	}
+
+	ret = -1;
+	
 	if (flag == 0) {
 		printf("registered callback has not been called\n");
 		goto out;
+	} else if (flag < 0) {
+		printf("registered callback failed\n");
+		ret = flag;
+		goto out;
 	}
-	rte_delay_ms(1000);
 
 	printf("start register/unregister test\n");
 
@@ -386,18 +403,18 @@ test_interrupt(void)
 			"for all\n");
 		goto out;
 	}
-	rte_delay_ms(1000);
+	rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
 
 	printf("start interrupt enable/disable test\n");
 
 	/* check interrupt enable/disable functions */
 	if (test_interrupt_enable() < 0)
 		goto out;
-	rte_delay_ms(1000);
+	rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
 
 	if (test_interrupt_disable() < 0)
 		goto out;
-	rte_delay_ms(1000);
+	rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
 
 	ret = 0;
 
@@ -409,7 +426,7 @@ out:
 	rte_intr_callback_unregister(&test_intr_handle,
 			test_interrupt_callback_1, (void *)-1);
 
-	rte_delay_ms(2000);
+	rte_delay_ms(2 * TEST_INTERRUPT_CHECK_INTERVAL);
 	/* deinit */
 	test_interrupt_deinit();
 

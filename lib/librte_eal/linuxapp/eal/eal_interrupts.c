@@ -105,6 +105,7 @@ struct rte_intr_source {
 	TAILQ_ENTRY(rte_intr_source) next;
 	struct rte_intr_handle intr_handle; /**< interrupt handle */
 	struct rte_intr_cb_list callbacks;  /**< user callbacks */
+	uint32_t active;
 };
 
 /* global spinlock for interrupt data operation */
@@ -123,9 +124,11 @@ int
 rte_intr_callback_register(struct rte_intr_handle *intr_handle,
 			rte_intr_callback_fn cb, void *cb_arg)
 {
-	int ret = -1;
+	int ret, wake_thread;
 	struct rte_intr_source *src;
-	int wake_thread = 0;
+	struct rte_intr_callback *callback;
+
+	wake_thread = 0;
 
 	/* first do parameter checking */
 	if (intr_handle == NULL || intr_handle->fd < 0 || cb == NULL) {
@@ -135,8 +138,7 @@ rte_intr_callback_register(struct rte_intr_handle *intr_handle,
 	}
 
 	/* allocate a new interrupt callback entity */
-	struct rte_intr_callback *callback =
-		rte_zmalloc("interrupt callback list",
+	callback = rte_zmalloc("interrupt callback list",
 				sizeof(*callback), 0);
 	if (callback == NULL) {
 		RTE_LOG(ERR, EAL, "Can not allocate memory\n");
@@ -148,34 +150,37 @@ rte_intr_callback_register(struct rte_intr_handle *intr_handle,
 	rte_spinlock_lock(&intr_lock);
 
 	/* check if there is at least one callback registered for the fd */
-	TAILQ_FOREACH(src, &intr_sources, next)
-	if (src->intr_handle.fd == intr_handle->fd) {
-		if (src->callbacks.tqh_first == NULL)
+	TAILQ_FOREACH(src, &intr_sources, next) {
+		if (src->intr_handle.fd == intr_handle->fd) {
 			/* we had no interrupts for this */
-			wake_thread = 1;
+			if TAILQ_EMPTY(&src->callbacks)
+				wake_thread = 1;
 
-		TAILQ_INSERT_TAIL(&(src->callbacks), callback, next);
-		break;
+			TAILQ_INSERT_TAIL(&(src->callbacks), callback, next);
+			ret = 0;
+			break;
+		}
 	}
 
-	/* No callback registered for this fd */
-	if (src == NULL){
-		/* no existing callbacks for this - add new source */
-		src = rte_zmalloc("interrupt source list", sizeof(*src), 0);
-		if (src == NULL){
+	/* no existing callbacks for this - add new source */
+	if (src == NULL) {
+		if ((src = rte_zmalloc("interrupt source list",
+				sizeof(*src), 0)) == NULL) {
 			RTE_LOG(ERR, EAL, "Can not allocate memory\n");
+			rte_free(callback);
 			ret = -ENOMEM;
-			goto error;
+		} else {
+			src->intr_handle = *intr_handle;
+			TAILQ_INIT(&src->callbacks);
+			TAILQ_INSERT_TAIL(&(src->callbacks), callback, next);
+			TAILQ_INSERT_TAIL(&intr_sources, src, next);
+			wake_thread = 1;
+			ret = 0;
 		}
-		src->intr_handle = *intr_handle;
-		TAILQ_INIT(&src->callbacks);
-
-		TAILQ_INSERT_TAIL(&intr_sources, src, next);
-		TAILQ_INSERT_TAIL(&(src->callbacks), callback, next);
-		wake_thread = 1;
 	}
 
 	rte_spinlock_unlock(&intr_lock);
+
 	/**
 	 * check if need to notify the pipe fd waited by epoll_wait to
 	 * rebuild the wait list.
@@ -184,21 +189,16 @@ rte_intr_callback_register(struct rte_intr_handle *intr_handle,
 		if (write(intr_pipe.writefd, "1", 1) < 0)
 			return -EPIPE;
 
-	return 0;
-
-error:
-	rte_spinlock_unlock(&intr_lock);
-
-	return ret;
+	return (ret);
 }
 
 int
 rte_intr_callback_unregister(struct rte_intr_handle *intr_handle,
 			rte_intr_callback_fn cb_fn, void *cb_arg)
 {
-	int ret = -1;
+	int ret;
 	struct rte_intr_source *src;
-	struct rte_intr_callback *cb;
+	struct rte_intr_callback *cb, *next;
 
 	/* do parameter checking first */
 	if (intr_handle == NULL || intr_handle->fd < 0) {
@@ -217,39 +217,43 @@ rte_intr_callback_unregister(struct rte_intr_handle *intr_handle,
 	/* No interrupt source registered for the fd */
 	if (src == NULL) {
 		ret = -ENOENT;
-		goto error;
-	}
 
-	ret = 0;
-	TAILQ_FOREACH(cb, &src->callbacks, next) {
-		if (cb->cb_fn != cb_fn)
-			continue;
-		if (cb_arg == (void *)-1 || cb->cb_arg == cb_arg) {
-			TAILQ_REMOVE(&src->callbacks, cb, next);
-			rte_free(cb);
-			ret ++;
+	/* interrupt source has some active callbacks right now. */
+	} else if (src->active != 0) {
+		ret = -EAGAIN;
+
+	/* ok to remove. */
+	} else {
+		ret = 0;
+
+		/*walk through the callbacks and remove all that match. */
+		for (cb = TAILQ_FIRST(&src->callbacks); cb != NULL; cb = next) {
+
+			next = TAILQ_NEXT(cb, next);
+
+			if (cb->cb_fn == cb_fn && (cb_arg == (void *)-1 ||
+					cb->cb_arg == cb_arg)) {
+				TAILQ_REMOVE(&src->callbacks, cb, next);
+				rte_free(cb);
+				ret++;
+			}
 		}
 
-		if (src->callbacks.tqh_first == NULL) {
+		/* all callbacks for that source are removed. */
+		if (TAILQ_EMPTY(&src->callbacks)) {
 			TAILQ_REMOVE(&intr_sources, src, next);
 			rte_free(src);
 		}
 	}
 
+	rte_spinlock_unlock(&intr_lock);
+
 	/* notify the pipe fd waited by epoll_wait to rebuild the wait list */
-	if (write(intr_pipe.writefd, "1", 1) < 0) {
+	if (ret >= 0 && write(intr_pipe.writefd, "1", 1) < 0) {
 		ret = -EPIPE;
-		goto error;
 	}
 
-	rte_spinlock_unlock(&intr_lock);
-
-	return ret;
-
-error:
-	rte_spinlock_unlock(&intr_lock);
-
-	return ret;
+	return (ret);
 }
 
 int
@@ -319,13 +323,14 @@ rte_intr_disable(struct rte_intr_handle *intr_handle)
 static int
 eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 {
-	int n, i, active_cb, bytes_read;
+	int n, bytes_read;
 	struct rte_intr_source *src;
 	struct rte_intr_callback *cb;
 	union rte_intr_read_buffer buf;
-	struct rte_intr_callback active_cbs[32];
+	struct rte_intr_callback active_cb;
 
 	for (n = 0; n < nfds; n++) {
+
 		/**
 		 * if the pipe fd is ready to read, return out to
 		 * rebuild the wait list.
@@ -346,15 +351,8 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 			continue;
 		}
 
-		/* for this source, make a copy of all the callbacks,
-		 * then unlock the lock, so the callbacks can
-		 * themselves manipulate the list for future
-		 * instances.
-		 */
-		active_cb = 0;
-		memset(active_cbs, 0, sizeof(active_cbs));
-		TAILQ_FOREACH(cb, &src->callbacks, next)
-			active_cbs[active_cb++] = *cb;
+		/* mark this interrupt source as active and release the lock. */
+		src->active = 1;
 		rte_spinlock_unlock(&intr_lock);
 
 		/* set the length to be read dor different handle type */
@@ -369,32 +367,47 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 			bytes_read = 1;
 			break;
 		}
+
 		/**
 		 * read out to clear the ready-to-be-read flag
 		 * for epoll_wait.
 		 */
 		bytes_read = read(events[n].data.fd, &buf, bytes_read);
+
 		if (bytes_read < 0) {
 			RTE_LOG(ERR, EAL, "Error reading from file descriptor"
 				" %d, error: %d\n", events[n].data.fd, errno);
-			continue;
 		}
 		else if (bytes_read == 0) {
 			RTE_LOG(ERR, EAL,
 				"Read nothing from file descriptor %d.\n",
 							events[n].data.fd);
-			continue;
 		}
-		/**
-		 * Finally, call all callbacks from the copy
-		 * we made earlier.
-		 */
-		for (i = 0; i < active_cb; i++) {
-			if (active_cbs[i].cb_fn == NULL)
-				continue;
-			active_cbs[i].cb_fn(&src->intr_handle,
-					active_cbs[i].cb_arg);
+
+		/* grab a lock, again to call callbacks and update status. */
+		rte_spinlock_lock(&intr_lock);
+
+		if (bytes_read > 0) {
+
+			/* Finally, call all callbacks. */
+			TAILQ_FOREACH(cb, &src->callbacks, next) {
+
+				/* make a copy and unlock. */
+				active_cb = *cb;
+				rte_spinlock_unlock(&intr_lock);
+
+				/* call the actual callback */
+				active_cb.cb_fn(&src->intr_handle,
+					active_cb.cb_arg);
+
+				/*get the lcok back. */
+				rte_spinlock_lock(&intr_lock);
+			}
 		}
+
+		/* we done with that interrupt source, release it. */
+		src->active = 0;
+		rte_spinlock_unlock(&intr_lock);
 	}
 
 	return 0;

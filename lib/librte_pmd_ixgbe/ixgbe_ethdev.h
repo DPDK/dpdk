@@ -79,6 +79,7 @@ struct ixgbe_hw_fdir_info {
 /* structure for interrupt relative data */
 struct ixgbe_interrupt {
 	uint32_t flags;
+	uint32_t mask;
 };
 
 struct ixgbe_stat_mapping_registers {
