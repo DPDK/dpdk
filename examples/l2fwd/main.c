@@ -313,7 +313,7 @@ l2fwd_main_loop(void)
 
 	if (qconf->n_rx_port == 0) {
 		RTE_LOG(INFO, L2FWD, "lcore %u has nothing to do\n", lcore_id);
-		while(1);
+		return;
 	}
 
 	RTE_LOG(INFO, L2FWD, "entering main loop on lcore %u\n", lcore_id);

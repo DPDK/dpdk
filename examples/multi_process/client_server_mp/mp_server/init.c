@@ -250,21 +250,21 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 	for (count = 0; count <= MAX_CHECK_TIME; count++) {
 		all_ports_up = 1;
 		for (portid = 0; portid < port_num; portid++) {
-			if ((port_mask & (1 << portid)) == 0)
+			if ((port_mask & (1 << ports->id[portid])) == 0)
 				continue;
 			memset(&link, 0, sizeof(link));
-			rte_eth_link_get_nowait(portid, &link);
+			rte_eth_link_get_nowait(ports->id[portid], &link);
 			/* print link status if flag set */
 			if (print_flag == 1) {
 				if (link.link_status)
 					printf("Port %d Link Up - speed %u "
-						"Mbps - %s\n", (uint8_t)portid,
+						"Mbps - %s\n", ports->id[portid],
 						(unsigned)link.link_speed,
 				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 					("full-duplex") : ("half-duplex\n"));
 				else
 					printf("Port %d Link Down\n",
-						(uint8_t)portid);
+						(uint8_t)ports->id[portid]);
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */

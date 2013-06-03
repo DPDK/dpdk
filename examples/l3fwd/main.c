@@ -645,7 +645,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 }
 
 /* main processing loop */
-static __attribute__((noreturn)) int
+static int
 main_loop(__attribute__((unused)) void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
@@ -663,7 +663,7 @@ main_loop(__attribute__((unused)) void *dummy)
 
 	if (qconf->n_rx_queue == 0) {
 		RTE_LOG(INFO, L3FWD, "lcore %u has nothing to do\n", lcore_id);
-		while(1);
+		return 0;
 	}
 
 	RTE_LOG(INFO, L3FWD, "entering main loop on lcore %u\n", lcore_id);

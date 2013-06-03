@@ -138,8 +138,8 @@ do_stats_display(void)
 		const volatile struct tx_stats *tx = &ports->tx_stats[i];
 		for (j = 0; j < ports->num_ports; j++){
 			/* assign to local variables here, save re-reading volatile vars */
-			const uint64_t tx_val = tx->tx[j];
-			const uint64_t drop_val = tx->tx_drop[j];
+			const uint64_t tx_val = tx->tx[ports->id[j]];
+			const uint64_t drop_val = tx->tx_drop[ports->id[j]];
 			port_tx[j] += tx_val;
 			port_tx_drop[j] += drop_val;
 			client_tx[i] += tx_val;
@@ -199,12 +199,6 @@ sleep_lcore(__attribute__((unused)) void *dummy)
 		/* Loop forever: sleep always returns 0 or <= param */
 		while (sleep(sleeptime) <= sleeptime)
 			do_stats_display();
-	}
-	else {
-		const unsigned sleeptime = 100;
-		printf("Putting core %u to sleep\n", rte_lcore_id());
-		while (sleep(sleeptime) <= sleeptime)
-			; /* loop doing nothing */
 	}
 	return 0;
 }

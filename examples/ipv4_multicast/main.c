@@ -464,7 +464,7 @@ send_timeout_burst(struct lcore_queue_conf *qconf)
 }
 
 /* main processing loop */
-static __attribute__((noreturn)) int
+static int
 main_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
@@ -480,7 +480,7 @@ main_loop(__rte_unused void *dummy)
 	if (qconf->n_rx_queue == 0) {
 		RTE_LOG(INFO, IPv4_MULTICAST, "lcore %u has nothing to do\n",
 		    lcore_id);
-		while(1);
+		return 0;
 	}
 
 	RTE_LOG(INFO, IPv4_MULTICAST, "entering main loop on lcore %u\n",

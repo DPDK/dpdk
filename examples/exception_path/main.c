@@ -245,21 +245,21 @@ static int tap_create(char *name)
 }
 
 /* Main processing loop */
-static  __attribute__((noreturn)) int
+static int
 main_loop(__attribute__((unused)) void *arg)
 {
 	const unsigned lcore_id = rte_lcore_id();
 	char tap_name[IFNAMSIZ];
 	int tap_fd;
 
-	/* Create new tap interface */
-	rte_snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
-	tap_fd = tap_create(tap_name);
-	if (tap_fd < 0)
-		FATAL_ERROR("Could not create tap interface \"%s\" (%d)",
-		            tap_name, tap_fd);
-
 	if ((1 << lcore_id) & input_cores_mask) {
+		/* Create new tap interface */
+		rte_snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
+		tap_fd = tap_create(tap_name);
+		if (tap_fd < 0)
+			FATAL_ERROR("Could not create tap interface \"%s\" (%d)",
+					tap_name, tap_fd);
+
 		PRINT_INFO("Lcore %u is reading from port %u and writing to %s",
 		           lcore_id, (unsigned)port_ids[lcore_id], tap_name);
 		fflush(stdout);
@@ -286,6 +286,13 @@ main_loop(__attribute__((unused)) void *arg)
 		}
 	}
 	else if ((1 << lcore_id) & output_cores_mask) {
+		/* Create new tap interface */
+		rte_snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
+		tap_fd = tap_create(tap_name);
+		if (tap_fd < 0)
+			FATAL_ERROR("Could not create tap interface \"%s\" (%d)",
+					tap_name, tap_fd);
+
 		PRINT_INFO("Lcore %u is reading from %s and writing to port %u",
 		           lcore_id, tap_name, (unsigned)port_ids[lcore_id]);
 		fflush(stdout);
@@ -318,8 +325,7 @@ main_loop(__attribute__((unused)) void *arg)
 	}
 	else {
 		PRINT_INFO("Lcore %u has nothing to do", lcore_id);
-		for (;;)
-			; /* loop doing nothing */
+		return 0;
 	}
 	/*
 	 * Tap file is closed automatically when program exits. Putting close()

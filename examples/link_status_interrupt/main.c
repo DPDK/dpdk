@@ -330,7 +330,7 @@ lsi_main_loop(void)
 
 	if (qconf->n_rx_port == 0) {
 		RTE_LOG(INFO, LSI, "lcore %u has nothing to do\n", lcore_id);
-		while(1);
+		return;
 	}
 
 	RTE_LOG(INFO, LSI, "entering main loop on lcore %u\n", lcore_id);
