@@ -70,7 +70,7 @@ parallel_test_group_list = [
 		 "Command" : 	"debug_autotest",
 		 "Func" :	default_autotest,
 		 "Report" :	None,
-		},
+		},	
 		{
 		 "Name" :	"Errno autotest",
 		 "Command" : 	"errno_autotest",
@@ -83,6 +83,12 @@ parallel_test_group_list = [
 		 "Func" :	default_autotest,
 		 "Report" :	None,
 		},
+		{
+		 "Name" :	"Common autotest",
+		 "Command" : 	"common_autotest",
+		 "Func" :	default_autotest,
+		 "Report" :	None,
+		},	
 		{
 		 "Name" :	"Dump log history",
 		 "Command" :	"dump_log_history",

@@ -181,6 +181,8 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret |= test_pmac_acl();
 	if (all || !strcmp(res->autotest, "power_autotest"))
 		ret |= test_power();
+	if (all || !strcmp(res->autotest, "common_autotest"))
+		ret |= test_common();
 
 	if (ret == 0)
 		printf("Test OK\n");
@@ -212,7 +214,7 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"red_autotest#meter_autotest#sched_autotest#"
 			"memcpy_perf_autotest#kni_autotest#"
 			"pm_autotest#acl_autotest#power_autotest#"
-			"all_autotests");
+			"common_autotest#all_autotests");
 
 cmdline_parse_inst_t cmd_autotest = {
 	.f = cmd_autotest_parsed,  /* function to call */

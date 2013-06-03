@@ -91,6 +91,7 @@ int test_pmac_pm(void);
 int test_pmac_acl(void);
 int test_kni(void);
 int test_power(void);
+int test_common(void);
 
 int test_pci_run;
 
