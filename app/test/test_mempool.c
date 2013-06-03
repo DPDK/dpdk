@@ -224,11 +224,11 @@ static int test_mempool_single_producer(void)
 	unsigned int i;
 	void *obj = NULL;
 	uint64_t start_cycles, end_cycles;
-	uint64_t duration = rte_get_hpet_hz() * 8;
+	uint64_t duration = rte_get_timer_hz() * 8;
 
-	start_cycles = rte_get_hpet_cycles();
+	start_cycles = rte_get_timer_cycles();
 	while (1) {
-		end_cycles = rte_get_hpet_cycles();
+		end_cycles = rte_get_timer_cycles();
 		/* duration uses up, stop producing */
 		if (start_cycles + duration < end_cycles)
 			break;
@@ -264,11 +264,11 @@ static int test_mempool_single_consumer(void)
 	unsigned int i;
 	void * obj;
 	uint64_t start_cycles, end_cycles;
-	uint64_t duration = rte_get_hpet_hz() * 5;
+	uint64_t duration = rte_get_timer_hz() * 5;
 
-	start_cycles = rte_get_hpet_cycles();
+	start_cycles = rte_get_timer_cycles();
 	while (1) {
-		end_cycles = rte_get_hpet_cycles();
+		end_cycles = rte_get_timer_cycles();
 		/* duration uses up, stop consuming */
 		if (start_cycles + duration < end_cycles)
 			break;

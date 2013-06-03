@@ -858,8 +858,8 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_intr_init() < 0)
 		rte_panic("Cannot init interrupt-handling thread\n");
 
-	if (rte_eal_hpet_init() < 0)
-		rte_panic("Cannot init HPET\n");
+	if (rte_eal_timer_init() < 0)
+		rte_panic("Cannot init HPET or TSC timers\n");
 
 	if (rte_eal_pci_init() < 0)
 		rte_panic("Cannot init PCI\n");

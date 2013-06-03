@@ -52,9 +52,13 @@
 #include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_timer.h>
+#include <rte_cycles.h>
+#include <rte_log.h>
 #include <rte_string_fns.h>
 
 #include "test.h"
+
+#define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 
 const char *prgname; /* to be set to argv[0] */
 
@@ -114,6 +118,14 @@ main(int argc, char **argv)
 	if ((recursive_call = getenv(RECURSIVE_ENV_VAR)) != NULL)
 		return do_recursive_call();
 #endif
+
+#ifdef RTE_LIBEAL_USE_HPET
+	if (rte_eal_hpet_init(1) < 0)
+#endif
+		RTE_LOG(INFO, APP,
+				"HPET is not enabled, using TSC as default timer\n");
+
+
 
 	cl = cmdline_stdin_new(main_ctx, "RTE>>");
 	if (cl == NULL) {

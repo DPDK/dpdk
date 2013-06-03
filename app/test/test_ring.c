@@ -477,7 +477,7 @@ do_one_ring_test(unsigned enq_core_count, unsigned deq_core_count,
 static int
 check_live_watermark_change(__attribute__((unused)) void *dummy)
 {
-	uint64_t hz = rte_get_hpet_hz();
+	uint64_t hz = rte_get_timer_hz();
 	void *obj_table[MAX_BULK];
 	unsigned watermark, watermark_old = 16;
 	uint64_t cur_time, end_time;
@@ -487,7 +487,7 @@ check_live_watermark_change(__attribute__((unused)) void *dummy)
 
 	/* init the object table */
 	memset(obj_table, 0, sizeof(obj_table));
-	end_time = rte_get_hpet_cycles() + (hz * 2);
+	end_time = rte_get_timer_cycles() + (hz * 2);
 
 	/* check that bulk and watermark are 4 and 32 (respectively) */
 	while (diff >= 0) {
@@ -525,7 +525,7 @@ check_live_watermark_change(__attribute__((unused)) void *dummy)
 			}
 		}
 
-		cur_time = rte_get_hpet_cycles();
+		cur_time = rte_get_timer_cycles();
 		diff = end_time - cur_time;
 	}
 

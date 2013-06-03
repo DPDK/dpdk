@@ -182,7 +182,7 @@ def timer_autotest(child, test_name):
 	i = 0
 	child.sendline(test_name)
 
-	index = child.expect(["Start timer stress tests \(30 seconds\)",
+	index = child.expect(["Start timer stress tests \(20 seconds\)",
 		"Test Failed",
 		pexpect.TIMEOUT], timeout = 10)
 
@@ -191,7 +191,7 @@ def timer_autotest(child, test_name):
 	elif index == 2:
 		return -1, "Fail [Timeout]"
 
-	index = child.expect(["Start timer basic tests \(30 seconds\)",
+	index = child.expect(["Start timer basic tests \(20 seconds\)",
 		"Test Failed",
 		pexpect.TIMEOUT], timeout = 40)
 

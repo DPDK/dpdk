@@ -103,6 +103,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <sys/queue.h>
+#include <math.h>
 
 #include <cmdline_parse.h>
 
@@ -122,7 +123,7 @@
 
 #include "test.h"
 
-#define TEST_DURATION_S 30 /* in seconds */
+#define TEST_DURATION_S 20 /* in seconds */
 #define NB_TIMER 4
 
 #define RTE_LOGTYPE_TESTTIMER RTE_LOGTYPE_USER3
@@ -140,7 +141,7 @@ static struct mytimerinfo mytiminfo[NB_TIMER];
 static void timer_basic_cb(struct rte_timer *tim, void *arg);
 
 static void
-mytimer_reset(struct mytimerinfo *timinfo, unsigned ticks,
+mytimer_reset(struct mytimerinfo *timinfo, uint64_t ticks,
 	      enum rte_timer_type type, unsigned tim_lcore,
 	      rte_timer_cb_t fct)
 {
@@ -155,7 +156,7 @@ timer_stress_cb(__attribute__((unused)) struct rte_timer *tim,
 {
 	long r;
 	unsigned lcore_id = rte_lcore_id();
-	uint64_t hz = rte_get_hpet_hz();
+	uint64_t hz = rte_get_timer_hz();
 
 	if (rte_timer_pending(tim))
 		return;
@@ -178,7 +179,7 @@ timer_stress_cb(__attribute__((unused)) struct rte_timer *tim,
 static int
 timer_stress_main_loop(__attribute__((unused)) void *arg)
 {
-	uint64_t hz = rte_get_hpet_hz();
+	uint64_t hz = rte_get_timer_hz();
 	unsigned lcore_id = rte_lcore_id();
 	uint64_t cur_time;
 	int64_t diff = 0;
@@ -204,7 +205,7 @@ timer_stress_main_loop(__attribute__((unused)) void *arg)
 		else if ((r & 0xff) == 1) {
 			rte_timer_stop_sync(&mytiminfo[0].tim);
 		}
-		cur_time = rte_get_hpet_cycles();
+		cur_time = rte_get_timer_cycles();
 		diff = end_time - cur_time;
 	}
 
@@ -219,9 +220,9 @@ static void
 timer_basic_cb(struct rte_timer *tim, void *arg)
 {
 	struct mytimerinfo *timinfo = arg;
-	uint64_t hz = rte_get_hpet_hz();
+	uint64_t hz = rte_get_timer_hz();
 	unsigned lcore_id = rte_lcore_id();
-	uint64_t cur_time = rte_get_hpet_cycles();
+	uint64_t cur_time = rte_get_timer_cycles();
 
 	if (rte_timer_pending(tim))
 		return;
@@ -274,7 +275,7 @@ timer_basic_cb(struct rte_timer *tim, void *arg)
 static int
 timer_basic_main_loop(__attribute__((unused)) void *arg)
 {
-	uint64_t hz = rte_get_hpet_hz();
+	uint64_t hz = rte_get_timer_hz();
 	unsigned lcore_id = rte_lcore_id();
 	uint64_t cur_time;
 	int64_t diff = 0;
@@ -301,11 +302,48 @@ timer_basic_main_loop(__attribute__((unused)) void *arg)
 		 * (3 us = 6000 cycles at 2 Ghz) */
 		rte_delay_us(3);
 
-		cur_time = rte_get_hpet_cycles();
+		cur_time = rte_get_timer_cycles();
 		diff = end_time - cur_time;
 	}
 	RTE_LOG(INFO, TESTTIMER, "core %u finished\n", lcore_id);
 
+	return 0;
+}
+
+static int
+timer_sanity_check(void)
+{
+#ifdef RTE_LIBEAL_USE_HPET
+	if (eal_timer_source != EAL_TIMER_HPET) {
+		printf("Not using HPET, can't sanity check timer sources\n");
+		return 0;
+	}
+
+	const uint64_t t_hz = rte_get_tsc_hz();
+	const uint64_t h_hz = rte_get_hpet_hz();
+	printf("Hertz values: TSC = %"PRIu64", HPET = %"PRIu64"\n", t_hz, h_hz);
+
+	const uint64_t tsc_start = rte_get_tsc_cycles();
+	const uint64_t hpet_start = rte_get_hpet_cycles();
+	rte_delay_ms(100); /* delay 1/10 second */
+	const uint64_t tsc_end = rte_get_tsc_cycles();
+	const uint64_t hpet_end = rte_get_hpet_cycles();
+	printf("Measured cycles: TSC = %"PRIu64", HPET = %"PRIu64"\n",
+			tsc_end-tsc_start, hpet_end-hpet_start);
+
+	const double tsc_time = (double)(tsc_end - tsc_start)/t_hz;
+	const double hpet_time = (double)(hpet_end - hpet_start)/h_hz;
+	/* get the percentage that the times differ by */
+	const double time_diff = fabs(tsc_time - hpet_time)*100/tsc_time;
+	printf("Measured time: TSC = %.4f, HPET = %.4f\n", tsc_time, hpet_time);
+
+	printf("Elapsed time measured by TSC and HPET differ by %f%%\n",
+			time_diff);
+	if (time_diff > 0.1) {
+		printf("Error times differ by >0.1%%");
+		return -1;
+	}
+#endif
 	return 0;
 }
 
@@ -315,6 +353,12 @@ test_timer(void)
 	unsigned i;
 	uint64_t cur_time;
 	uint64_t hz;
+
+	/* sanity check our timer sources and timer config values */
+	if (timer_sanity_check() < 0) {
+		printf("Timer sanity checks failed\n");
+		return -1;
+	}
 
 	if (rte_lcore_count() < 2) {
 		printf("not enough lcores for this test\n");
@@ -329,8 +373,8 @@ test_timer(void)
 	}
 
 	/* calculate the "end of test" time */
-	cur_time = rte_get_hpet_cycles();
-	hz = rte_get_hpet_hz();
+	cur_time = rte_get_timer_cycles();
+	hz = rte_get_timer_hz();
 	end_time = cur_time + (hz * TEST_DURATION_S);
 
 	/* start other cores */
@@ -342,8 +386,8 @@ test_timer(void)
 	rte_timer_stop_sync(&mytiminfo[0].tim);
 
 	/* calculate the "end of test" time */
-	cur_time = rte_get_hpet_cycles();
-	hz = rte_get_hpet_hz();
+	cur_time = rte_get_timer_cycles();
+	hz = rte_get_timer_hz();
 	end_time = cur_time + (hz * TEST_DURATION_S);
 
 	/* start other cores */

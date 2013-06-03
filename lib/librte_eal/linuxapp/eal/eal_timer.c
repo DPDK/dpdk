@@ -35,13 +35,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <stdint.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <sys/mman.h>
 #include <sys/queue.h>
-#include <unistd.h>
 #include <pthread.h>
 #include <errno.h>
 
@@ -52,9 +51,17 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_eal.h>
+#include <rte_debug.h>
 
 #include "eal_private.h"
 #include "eal_internal_cfg.h"
+
+enum timer_source eal_timer_source = EAL_TIMER_HPET;
+
+/* The frequency of the RDTSC timer resolution */
+static uint64_t eal_tsc_resolution_hz = 0;
+
+#ifdef RTE_LIBEAL_USE_HPET
 
 #define DEV_HPET "/dev/hpet"
 
@@ -98,10 +105,11 @@ struct eal_hpet_regs {
 /* Mmap'd hpet registers */
 static volatile struct eal_hpet_regs *eal_hpet = NULL;
 
-/* Period at which the counter increments in femtoseconds (10^-15 seconds). */
+/* Period at which the HPET counter increments in
+ * femtoseconds (10^-15 seconds). */
 static uint32_t eal_hpet_resolution_fs = 0;
 
-/* Frequency of the counter in Hz */
+/* Frequency of the HPET counter in Hz */
 static uint64_t eal_hpet_resolution_hz = 0;
 
 /* Incremented 4 times during one 32bits hpet full count */
@@ -114,7 +122,7 @@ static pthread_t msb_inc_thread_id;
  * containing used to process MSB of the HPET (unfortunatelly, we need
  * this because hpet is 32 bits by default under linux).
  */
-static __attribute__((noreturn)) void *
+static void
 hpet_msb_inc(__attribute__((unused)) void *arg)
 {
 	uint32_t t;
@@ -127,76 +135,12 @@ hpet_msb_inc(__attribute__((unused)) void *arg)
 	}
 }
 
-static inline void
-set_rdtsc_freq(void)
-{
-	uint64_t start;
-
-	start = rte_rdtsc();
-	sleep(1);
-	eal_hpet_resolution_hz = rte_rdtsc() - start;
-	eal_hpet_resolution_fs = (uint32_t)
-			((1.0 / eal_hpet_resolution_hz) / 1e-15);
-}
-
-/*
- * Open and mmap /dev/hpet (high precision event timer) that will
- * provide our time reference.
- */
-int
-rte_eal_hpet_init(void)
-{
-	int fd, ret;
-
-	if (internal_config.no_hpet) {
-		goto use_rdtsc;
-	}
-
-	fd = open(DEV_HPET, O_RDONLY);
-	if (fd < 0) {
-		RTE_LOG(WARNING, EAL, "WARNING: Cannot open "DEV_HPET": %s! "
-				"The TSC will be used instead.\n",
-			strerror(errno));
-		goto use_rdtsc;
-	}
-	eal_hpet = mmap(NULL, 1024, PROT_READ, MAP_SHARED, fd, 0);
-	if (eal_hpet == MAP_FAILED) {
-		RTE_LOG(WARNING, EAL, "WARNING: Cannot mmap "DEV_HPET"! "
-				"The TSC will be used instead.\n");
-		close(fd);
-		goto use_rdtsc;
-	}
-	close(fd);
-
-	eal_hpet_resolution_fs = (uint32_t)((eal_hpet->capabilities &
-					CLK_PERIOD_MASK) >>
-					CLK_PERIOD_SHIFT);
-
-	eal_hpet_resolution_hz = (1000ULL*1000ULL*1000ULL*1000ULL*1000ULL) /
-		(uint64_t)eal_hpet_resolution_fs;
-
-	eal_hpet_msb = (eal_hpet->counter_l >> 30);
-
-	/* create a thread that will increment a global variable for
-	 * msb (hpet is 32 bits by default under linux) */
-	ret = pthread_create(&msb_inc_thread_id, NULL, hpet_msb_inc, NULL);
-	if (ret < 0) {
-		RTE_LOG(WARNING, EAL, "WARNING: Cannot create HPET timer thread! "
-				"The TSC will be used instead.\n");
-		goto use_rdtsc;
-	}
-
-	return 0;
-
-use_rdtsc:
-	internal_config.no_hpet = 1;
-	set_rdtsc_freq();
-	return 0;
-}
-
 uint64_t
 rte_get_hpet_hz(void)
 {
+	if(internal_config.no_hpet)
+		rte_panic("Error, HPET called, but no HPET present\n");
+
 	return eal_hpet_resolution_hz;
 }
 
@@ -207,8 +151,7 @@ rte_get_hpet_cycles(void)
 	uint64_t ret;
 
 	if(internal_config.no_hpet)
-		/* fallback to rdtsc */
-		return rte_rdtsc();
+		rte_panic("Error, HPET called, but no HPET present\n");
 
 	t = eal_hpet->counter_l;
 	msb = eal_hpet_msb;
@@ -218,14 +161,149 @@ rte_get_hpet_cycles(void)
 	return ret;
 }
 
+#endif
+
+
 void
 rte_delay_us(unsigned us)
 {
-	uint64_t start;
-	uint64_t ticks;
-	ticks = (uint64_t)us * 1000ULL * 1000ULL * 1000ULL;
-	ticks /= eal_hpet_resolution_fs;
-	start = rte_get_hpet_cycles();
-	while ((rte_get_hpet_cycles() - start) < ticks)
+	const uint64_t start = rte_get_timer_cycles();
+	const uint64_t ticks = (uint64_t)us * rte_get_timer_hz() / 1E6;
+	while ((rte_get_timer_cycles() - start) < ticks)
 		rte_pause();
+}
+
+uint64_t
+rte_get_tsc_hz(void)
+{
+	return eal_tsc_resolution_hz;
+}
+
+
+#ifdef RTE_LIBEAL_USE_HPET
+/*
+ * Open and mmap /dev/hpet (high precision event timer) that will
+ * provide our time reference.
+ */
+int
+rte_eal_hpet_init(int make_default)
+{
+	int fd, ret;
+
+	if (internal_config.no_hpet) {
+		RTE_LOG(INFO, EAL, "HPET is disabled\n");
+		return -1;
+	}
+
+	fd = open(DEV_HPET, O_RDONLY);
+	if (fd < 0) {
+		RTE_LOG(ERR, EAL, "ERROR: Cannot open "DEV_HPET": %s!\n",
+			strerror(errno));
+		internal_config.no_hpet = 1;
+		return -1;
+	}
+	eal_hpet = mmap(NULL, 1024, PROT_READ, MAP_SHARED, fd, 0);
+	if (eal_hpet == MAP_FAILED) {
+		RTE_LOG(ERR, EAL, "ERROR: Cannot mmap "DEV_HPET"!\n"
+				"Please enable CONFIG_HPET_MMAP in your kernel configuration "
+				"to allow HPET support.\n"
+				"To run without using HPET, set CONFIG_RTE_LIBEAL_USE_HPET=n "
+				"in your build configuration or use '--no-hpet' EAL flag.\n");
+		close(fd);
+		internal_config.no_hpet = 1;
+		return -1;
+	}
+	close(fd);
+
+	eal_hpet_resolution_fs = (uint32_t)((eal_hpet->capabilities &
+					CLK_PERIOD_MASK) >>
+					CLK_PERIOD_SHIFT);
+
+	eal_hpet_resolution_hz = (1000ULL*1000ULL*1000ULL*1000ULL*1000ULL) /
+		(uint64_t)eal_hpet_resolution_fs;
+
+	RTE_LOG(INFO, EAL, "HPET frequency is ~%"PRIu64" kHz\n",
+			eal_hpet_resolution_hz/1000);
+
+	eal_hpet_msb = (eal_hpet->counter_l >> 30);
+
+	/* create a thread that will increment a global variable for
+	 * msb (hpet is 32 bits by default under linux) */
+	ret = pthread_create(&msb_inc_thread_id, NULL,
+			(void *(*)(void *))hpet_msb_inc, NULL);
+	if (ret < 0) {
+		RTE_LOG(ERR, EAL, "ERROR: Cannot create HPET timer thread!\n");
+		internal_config.no_hpet = 1;
+		return -1;
+	}
+
+	if (make_default)
+		eal_timer_source = EAL_TIMER_HPET;
+	return 0;
+}
+#endif
+
+static int
+set_tsc_freq_from_clock(void)
+{
+#ifdef CLOCK_MONOTONIC_RAW
+#define NS_PER_SEC 1E9
+
+	struct timespec sleeptime = {.tv_nsec = 5E8 }; /* 1/2 second */
+
+	struct timespec t_start, t_end;
+
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &t_start) == 0) {
+		uint64_t ns, end, start = rte_rdtsc();
+		nanosleep(&sleeptime,NULL);
+		clock_gettime(CLOCK_MONOTONIC_RAW, &t_end);
+		end = rte_rdtsc();
+		ns = ((t_end.tv_sec - t_start.tv_sec) * NS_PER_SEC);
+		ns += (t_end.tv_nsec - t_start.tv_nsec);
+
+		double secs = (double)ns/NS_PER_SEC;
+		eal_tsc_resolution_hz = (uint64_t)((end - start)/secs);
+		return 0;
+	}
+#endif
+	return -1;
+}
+
+static void
+set_tsc_freq_fallback(void)
+{
+	RTE_LOG(WARNING, EAL, "WARNING: clock_gettime cannot use "
+			"CLOCK_MONOTONIC_RAW and HPET is not available"
+			" - clock timings may be less accurate.\n");
+	/* assume that the sleep(1) will sleep for 1 second */
+	uint64_t start = rte_rdtsc();
+	sleep(1);
+	eal_tsc_resolution_hz = rte_rdtsc() - start;
+}
+/*
+ * This function measures the TSC frequency. It uses a variety of approaches.
+ *
+ * 1. If kernel provides CLOCK_MONOTONIC_RAW we use that to tune the TSC value
+ * 2. If kernel does not provide that, and we have HPET support, tune using HPET
+ * 3. Lastly, if neither of the above can be used, just sleep for 1 second and
+ * tune off that, printing a warning about inaccuracy of timing
+ */
+static void
+set_tsc_freq(void)
+{
+	if (set_tsc_freq_from_clock() < 0)
+		set_tsc_freq_fallback();
+
+	RTE_LOG(INFO, EAL, "TSC frequency is ~%"PRIu64" KHz\n",
+			eal_tsc_resolution_hz/1000);
+}
+
+int
+rte_eal_timer_init(void)
+{
+
+	eal_timer_source = EAL_TIMER_TSC;
+
+	set_tsc_freq();
+	return 0;
 }

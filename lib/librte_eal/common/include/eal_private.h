@@ -35,6 +35,8 @@
 #ifndef _EAL_PRIVATE_H_
 #define _EAL_PRIVATE_H_
 
+#include <stdio.h>
+
 /**
  * Initialize the memzone subsystem (private to eal).
  *
@@ -84,17 +86,18 @@ int rte_eal_cpu_init(void);
 int rte_eal_memory_init(void);
 
 /**
- * Configure HPET
+ * Configure timers
  *
  * This function is private to EAL.
  *
  * Mmap memory areas used by HPET (high precision event timer) that will
- * provide our time reference.
+ * provide our time reference, and configure the TSC frequency also for it
+ * to be used as a reference.
  *
  * @return
  *   0 on success, negative on error
  */
-int rte_eal_hpet_init(void);
+int rte_eal_timer_init(void);
 
 /**
  * Init early logs

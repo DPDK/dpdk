@@ -60,14 +60,14 @@ test_cycles(void)
 {
 	unsigned i;
 	uint64_t start_cycles, cycles, prev_cycles;
-	uint64_t hz = rte_get_hpet_hz();
+	uint64_t hz = rte_get_timer_hz();
 	uint64_t max_inc = (hz / 100); /* 10 ms max between 2 reads */
 
 	/* check that the timer is always incrementing */
-	start_cycles = rte_get_hpet_cycles();
+	start_cycles = rte_get_timer_cycles();
 	prev_cycles = start_cycles;
 	for (i=0; i<N; i++) {
-		cycles = rte_get_hpet_cycles();
+		cycles = rte_get_timer_cycles();
 		if ((uint64_t)(cycles - prev_cycles) > max_inc) {
 			printf("increment too high or going backwards\n");
 			return -1;
@@ -76,9 +76,9 @@ test_cycles(void)
 	}
 
 	/* check that waiting 1 second is precise */
-	prev_cycles = rte_get_hpet_cycles();
+	prev_cycles = rte_get_timer_cycles();
 	rte_delay_us(1000000);
-	cycles = rte_get_hpet_cycles();
+	cycles = rte_get_timer_cycles();
 
 	if ((uint64_t)(cycles - prev_cycles) > (hz + max_inc)) {
 		printf("delay_us is not accurate: too long\n");

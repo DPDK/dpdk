@@ -139,7 +139,7 @@ static int
 load_loop_fn(void *func_param)
 {
 	uint64_t time_diff = 0, begin;
-	uint64_t hz = rte_get_hpet_hz();
+	uint64_t hz = rte_get_timer_hz();
 	uint64_t lcount = 0;
 	const int use_lock = *(int*)func_param;
 	const unsigned lcore = rte_lcore_id();
@@ -148,7 +148,7 @@ load_loop_fn(void *func_param)
 	if (lcore != rte_get_master_lcore())
 		while (rte_atomic32_read(&synchro) == 0);
 
-	begin = rte_get_hpet_cycles();
+	begin = rte_get_timer_cycles();
 	while (time_diff / hz < TIME_S) {
 		if (use_lock)
 			rte_spinlock_lock(&lk);
@@ -157,7 +157,7 @@ load_loop_fn(void *func_param)
 			rte_spinlock_unlock(&lk);
 		/* delay to make lock duty cycle slighlty realistic */
 		rte_delay_us(1);
-		time_diff = rte_get_hpet_cycles() - begin;
+		time_diff = rte_get_timer_cycles() - begin;
 	}
 	lock_count[lcore] = lcount;
 	return 0;

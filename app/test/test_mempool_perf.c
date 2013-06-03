@@ -140,7 +140,7 @@ per_lcore_mempool_test(__attribute__((unused)) void *arg)
 	unsigned lcore_id = rte_lcore_id();
 	int ret;
 	uint64_t start_cycles, end_cycles;
-	uint64_t time_diff = 0, hz = rte_get_hpet_hz();
+	uint64_t time_diff = 0, hz = rte_get_timer_hz();
 
 	/* n_get_bulk and n_put_bulk must be divisors of n_keep */
 	if (((n_keep / n_get_bulk) * n_get_bulk) != n_keep)
@@ -154,7 +154,7 @@ per_lcore_mempool_test(__attribute__((unused)) void *arg)
 	if (lcore_id != rte_get_master_lcore())
 		while (rte_atomic32_read(&synchro) == 0);
 
-	start_cycles = rte_get_hpet_cycles();
+	start_cycles = rte_get_timer_cycles();
 
 	while (time_diff/hz < TIME_S) {
 		for (i = 0; likely(i < (N/n_keep)); i++) {
@@ -180,7 +180,7 @@ per_lcore_mempool_test(__attribute__((unused)) void *arg)
 				idx += n_put_bulk;
 			}
 		}
-		end_cycles = rte_get_hpet_cycles();
+		end_cycles = rte_get_timer_cycles();
 		time_diff = end_cycles - start_cycles;
 		stats[lcore_id].enq_count += N;
 	}

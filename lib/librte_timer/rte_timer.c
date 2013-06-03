@@ -203,7 +203,7 @@ timer_set_running_state(struct rte_timer *tim)
 static void
 timer_add(struct rte_timer *tim, unsigned tim_lcore, int local_is_locked)
 {
-	uint64_t cur_time = rte_get_hpet_cycles();
+	uint64_t cur_time = rte_get_timer_cycles();
 	unsigned lcore_id = rte_lcore_id();
 	struct rte_timer *t, *t_prev;
 
@@ -322,7 +322,7 @@ rte_timer_reset(struct rte_timer *tim, uint64_t ticks,
 		enum rte_timer_type type, unsigned tim_lcore,
 		rte_timer_cb_t fct, void *arg)
 {
-	uint64_t cur_time = rte_get_hpet_cycles();
+	uint64_t cur_time = rte_get_timer_cycles();
 	uint64_t period;
 
 	if (unlikely((tim_lcore != (unsigned)LCORE_ID_ANY) &&
@@ -406,12 +406,11 @@ void rte_timer_manage(void)
 	uint64_t cur_time;
 	int ret;
 
+	__TIMER_STAT_ADD(manage, 1);
 	/* optimize for the case where per-cpu list is empty */
 	if (LIST_EMPTY(&priv_timer[lcore_id].pending))
 		return;
-
-	cur_time = rte_get_hpet_cycles();
-	__TIMER_STAT_ADD(manage, 1);
+	cur_time = rte_get_timer_cycles();
 
 	/* browse ordered list, add expired timers in 'expired' list */
 	rte_spinlock_lock(&priv_timer[lcore_id].list_lock);

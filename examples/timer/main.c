@@ -84,7 +84,7 @@ timer1_cb(__attribute__((unused)) struct rte_timer *tim,
 	printf("%s() on lcore %u\n", __func__, lcore_id);
 
 	/* reload it on another lcore */
-	hz = rte_get_hpet_hz();
+	hz = rte_get_timer_hz();
 	lcore_id = rte_get_next_lcore(lcore_id, 0, 1);
 	rte_timer_reset(tim, hz/3, SINGLE, lcore_id, timer1_cb, NULL);
 }
@@ -135,7 +135,7 @@ MAIN(int argc, char **argv)
 	rte_timer_init(&timer1);
 
 	/* load timer0, every second, on master lcore, reloaded automatically */
-	hz = rte_get_hpet_hz();
+	hz = rte_get_timer_hz();
 	lcore_id = rte_lcore_id();
 	rte_timer_reset(&timer0, hz, PERIODICAL, lcore_id, timer0_cb, NULL);
 

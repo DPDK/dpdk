@@ -131,6 +131,7 @@ endif
 
 ifeq ($(CONFIG_RTE_LIBC),y)
 LDLIBS += -lc
+LDLIBS += -lm
 endif
 
 ifeq ($(CONFIG_RTE_LIBGLOSS),y)
