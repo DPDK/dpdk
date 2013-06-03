@@ -393,7 +393,14 @@ test_multi_alloc_statistics(void)
 	void *p3 = rte_malloc_socket("add2", size,align, socket);
 	if (!p3)
 		return -1;
+
 	rte_malloc_get_socket_stats(socket,&second_stats);
+
+	rte_free(p2);
+	rte_free(p3);
+
+	/* After freeing both allocations check stats return to original */
+	rte_malloc_get_socket_stats(socket, &post_stats);
 
 	/*
 	 * Check that no new blocks added after small allocations
@@ -420,10 +427,8 @@ test_multi_alloc_statistics(void)
 		return -1;
 	}
 
-	/* 2 Free blocks smaller 11M, larger 11M + (11M - 2048)  */
-	if (second_stats.greatest_free_size !=
-			(rte_str_to_size(MALLOC_MEMZONE_SIZE) * 2) -
-			2048 - trailer_size) {
+	/* Make sure that we didn't touch our greatest chunk: 2 * 11M)  */
+	if (second_stats.greatest_free_size != pre_stats.greatest_free_size) {
 		printf("Incorrect heap statistics: Greatest free size \n");
 		return -1;
 	}
@@ -432,10 +437,7 @@ test_multi_alloc_statistics(void)
 		printf("Incorrect heap statistics: Free size \n");
 		return -1;
 	}
-	rte_free(p2);
-	rte_free(p3);
-	/* After freeing both allocations check stats return to original */
-	rte_malloc_get_socket_stats(socket, &post_stats);
+
 	if ((post_stats.heap_totalsz_bytes != pre_stats.heap_totalsz_bytes) &&
 			(post_stats.heap_freesz_bytes!=pre_stats.heap_freesz_bytes) &&
 			(post_stats.heap_allocsz_bytes!=pre_stats.heap_allocsz_bytes)&&
@@ -450,7 +452,7 @@ test_multi_alloc_statistics(void)
 static int
 test_memzone_size_alloc(void)
 {
-	void *p1 = rte_malloc("BIG", rte_str_to_size(MALLOC_MEMZONE_SIZE) - 128, 64);
+	void *p1 = rte_malloc("BIG", (size_t)(rte_str_to_size(MALLOC_MEMZONE_SIZE) - 128), 64);
 	if (!p1)
 		return -1;
 	rte_free(p1);

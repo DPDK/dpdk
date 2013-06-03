@@ -153,15 +153,27 @@ static struct malloc_elem *
 find_suitable_element(struct malloc_heap *heap, size_t size,
 		unsigned align, struct malloc_elem **prev)
 {
-	struct malloc_elem *elem = heap->free_head;
+	struct malloc_elem *elem, *min_elem, *min_prev;
+	size_t min_sz;
+
+	elem = heap->free_head;
+	min_elem = NULL;
+	min_prev = NULL;
+	min_sz = (size_t) SIZE_MAX;
 	*prev = NULL;
+
 	while(elem){
-		if (malloc_elem_can_hold(elem, size, align))
-			break;
-		*prev = elem;
+		if (malloc_elem_can_hold(elem, size, align)) {
+			if (min_sz > elem->size) {
+				min_elem = elem;
+				*prev = min_prev;
+				min_sz = elem->size;
+			}
+		}
+		min_prev = elem;
 		elem = elem->next_free;
 	}
-	return elem;
+	return (min_elem);
 }
 
 /*

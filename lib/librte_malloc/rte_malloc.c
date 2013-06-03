@@ -43,6 +43,7 @@
 #include <rte_memzone.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_branch_prediction.h>
 #include <rte_debug.h>
 #include <rte_launch.h>
@@ -54,7 +55,6 @@
 #include <rte_malloc.h>
 #include "malloc_elem.h"
 #include "malloc_heap.h"
-#include "malloc_heap.c"
 
 
 /* Free the memory space back to heap */
