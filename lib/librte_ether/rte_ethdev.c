@@ -530,10 +530,14 @@ rte_eth_dev_config_restore(uint8_t port_id)
 	struct rte_eth_dev_info dev_info;
 	struct ether_addr addr;
 	uint16_t i;
+	uint32_t pool = 0;
 
 	dev = &rte_eth_devices[port_id];
 
 	rte_eth_dev_info_get(port_id, &dev_info);
+
+	if (RTE_ETH_DEV_SRIOV(dev).active)
+		pool = RTE_ETH_DEV_SRIOV(dev).def_vmdq_idx;
 
 	/* replay MAC address configuration */
 	for (i = 0; i < dev_info.max_mac_addrs; i++) {
@@ -545,7 +549,7 @@ rte_eth_dev_config_restore(uint8_t port_id)
 
 		/* add address to the hardware */
 		if  (*dev->dev_ops->mac_addr_add)
-			(*dev->dev_ops->mac_addr_add)(dev, &addr, i, 0);
+			(*dev->dev_ops->mac_addr_add)(dev, &addr, i, pool);
 		else {
 			PMD_DEBUG_TRACE("port %d: MAC address array not supported\n",
 					port_id);
