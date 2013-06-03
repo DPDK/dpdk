@@ -88,6 +88,68 @@ igbuio_get_uio_pci_dev(struct uio_info *info)
 	return container_of(info, struct rte_uio_pci_dev, info);
 }
 
+/* sriov sysfs */
+int local_pci_num_vf(struct pci_dev *dev)
+{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,34)
+	struct iov {
+		int pos;
+		int nres;
+		u32 cap;
+		u16 ctrl;
+		u16 total;
+		u16 initial;
+		u16 nr_virtfn;
+	} *iov = (struct iov*)dev->sriov;
+
+	if (!dev->is_physfn)
+		return 0;
+	
+	return iov->nr_virtfn;
+#else
+	return pci_num_vf(dev);
+#endif
+}
+
+static ssize_t
+show_max_vfs(struct device *dev, struct device_attribute *attr,
+	     char *buf)
+{
+	return snprintf(buf, 10, "%u\n", local_pci_num_vf(
+				container_of(dev, struct pci_dev, dev)));
+}
+
+static ssize_t
+store_max_vfs(struct device *dev, struct device_attribute *attr,
+	      const char *buf, size_t count)
+{
+	int err = 0;
+	unsigned long max_vfs;
+	struct pci_dev *pdev = container_of(dev, struct pci_dev, dev);
+
+	if (0 != strict_strtoul(buf, 0, &max_vfs))
+		return -EINVAL;
+
+	if (0 == max_vfs)
+		pci_disable_sriov(pdev);
+	else if (0 == local_pci_num_vf(pdev))
+		err = pci_enable_sriov(pdev, max_vfs);
+	else /* do nothing if change max_vfs number */
+		err = -EINVAL;
+
+	return err ? err : count;							
+}
+
+static DEVICE_ATTR(max_vfs, S_IRUGO | S_IWUSR, show_max_vfs, store_max_vfs);
+static struct attribute *dev_attrs[] = {
+	&dev_attr_max_vfs.attr,
+        NULL,
+};
+
+static const struct attribute_group dev_attr_grp = {
+	.attrs = dev_attrs,
+};
+
 static inline int
 pci_lock(struct pci_dev * pdev)
 {
@@ -438,6 +500,9 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	pci_set_drvdata(dev, udev);
 	igbuio_pci_irqcontrol(&udev->info, 0);
 
+	if (sysfs_create_group(&dev->dev.kobj, &dev_attr_grp))
+		goto fail_release_iomem;
+
 	/* register uio driver */
 	if (uio_register_device(&dev->dev, &udev->info))
 		goto fail_release_iomem;
@@ -447,6 +512,7 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	return 0;
 
 fail_release_iomem:
+	sysfs_remove_group(&dev->dev.kobj, &dev_attr_grp);
 	igbuio_pci_release_iomem(&udev->info);
 	if (udev->mode == IGBUIO_MSIX_INTR_MODE)
 		pci_disable_msix(udev->pdev);
@@ -469,6 +535,7 @@ igbuio_pci_remove(struct pci_dev *dev)
 		return;
 	}
 
+	sysfs_remove_group(&dev->dev.kobj, &dev_attr_grp);
 	uio_unregister_device(info);
 	igbuio_pci_release_iomem(info);
 	if (((struct rte_uio_pci_dev *)info->priv)->mode ==

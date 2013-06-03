@@ -766,6 +766,14 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	}
 	dev->id.subsystem_device_id = (uint16_t)tmp;
 
+	/* get max_vfs */
+	dev->max_vfs = 0;
+	rte_snprintf(filename, sizeof(filename), "%s/max_vfs", dirname);
+	if (!access(filename, F_OK) && 
+	    eal_parse_sysfs_value(filename, &tmp) == 0) {
+		dev->max_vfs = (uint16_t)tmp;
+	}
+
 	/* parse resources */
 	rte_snprintf(filename, sizeof(filename), "%s/resource", dirname);
 	if (pci_parse_sysfs_resource(filename, dev) < 0) {
