@@ -507,12 +507,50 @@ test_no_huge_flag(void)
 static int
 test_misc_flags(void)
 {
+	FILE * hugedir_handle = NULL;
+	char line[PATH_MAX] = {0};
+	char hugepath[PATH_MAX] = {0};
 	char prefix[PATH_MAX], tmp[PATH_MAX];
+	unsigned i, isempty = 1;
+
 	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
 	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+
+	/*
+	 * get first valid hugepage path
+	 */
+
+	/* get hugetlbfs mountpoints from /proc/mounts */
+	hugedir_handle = fopen("/proc/mounts", "r");
+
+	if (hugedir_handle == NULL) {
+		printf("Error opening /proc/mounts!\n");
+		return -1;
+	}
+
+	/* read /proc/mounts */
+	while (fgets(line, sizeof(line), hugedir_handle) != NULL) {
+
+		/* find first valid hugepath */
+		if (get_hugepage_path(line, sizeof(line), hugepath, sizeof(hugepath)))
+			break;
+	}
+
+	fclose(hugedir_handle);
+
+	/* check if path is not empty */
+	for (i = 0; i < sizeof(hugepath); i++)
+		if (hugepath[i] != '\0')
+			isempty = 0;
+
+	if (isempty) {
+		printf("No mounted hugepage dir found!\n");
+		return -1;
+	}
+
 
 	/* check that some general flags don't prevent things from working.
 	 * All cases, apart from the first, app should run.
@@ -525,6 +563,29 @@ test_misc_flags(void)
 	const char *argv1[] = {prgname, prefix, mp_flag, "-c", "1", "--no-pci"};
 	/* With -v */
 	const char *argv2[] = {prgname, prefix, mp_flag, "-c", "1", "-v"};
+	/* With valid --syslog */
+	const char *argv3[] = {prgname, prefix, mp_flag, "-c", "1",
+			"--syslog", "syslog"};
+	/* With empty --syslog (should fail) */
+	const char *argv4[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog"};
+	/* With invalid --syslog */
+	const char *argv5[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog", "error"};
+	/* With no-sh-conf */
+	const char *argv6[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+			"--no-shconf", "--file-prefix=noshconf" };
+	/* With --huge-dir */
+	const char *argv7[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+			"--file-prefix=hugedir", "--huge-dir", hugepath};
+	/* With empty --huge-dir (should fail) */
+	const char *argv8[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+			"--file-prefix=hugedir", "--huge-dir"};
+	/* With invalid --huge-dir */
+	const char *argv9[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+			"--file-prefix=hugedir", "--huge-dir", "invalid"};
+	/* Secondary process with invalid --huge-dir (should run as flag has no
+	 * effect on secondary processes) */
+	const char *argv10[] = {prgname, prefix, mp_flag, "-c", "1", "--huge-dir", "invalid"};
+
 
 	if (launch_proc(argv0) == 0) {
 		printf("Error - process ran ok with invalid flag\n");
@@ -536,6 +597,38 @@ test_misc_flags(void)
 	}
 	if (launch_proc(argv2) != 0) {
 		printf("Error - process did not run ok with -v flag\n");
+		return -1;
+	}
+	if (launch_proc(argv3) != 0) {
+		printf("Error - process did not run ok with --syslog flag\n");
+		return -1;
+	}
+	if (launch_proc(argv4) == 0) {
+		printf("Error - process run ok with empty --syslog flag\n");
+		return -1;
+	}
+	if (launch_proc(argv5) == 0) {
+		printf("Error - process run ok with invalid --syslog flag\n");
+		return -1;
+	}
+	if (launch_proc(argv6) != 0) {
+		printf("Error - process did not run ok with --no-shconf flag\n");
+		return -1;
+	}
+	if (launch_proc(argv7) != 0) {
+		printf("Error - process did not run ok with --huge-dir flag\n");
+		return -1;
+	}
+	if (launch_proc(argv8) == 0) {
+		printf("Error - process run ok with empty --huge-dir flag\n");
+		return -1;
+	}
+	if (launch_proc(argv9) == 0) {
+		printf("Error - process run ok with invalid --huge-dir flag\n");
+		return -1;
+	}
+	if (launch_proc(argv10) != 0) {
+		printf("Error - secondary process did not run ok with invalid --huge-dir flag\n");
 		return -1;
 	}
 	return 0;
