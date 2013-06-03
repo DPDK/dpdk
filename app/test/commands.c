@@ -173,6 +173,8 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret |= test_sched();
 	if (all || !strcmp(res->autotest, "meter_autotest"))
 		ret |= test_meter();
+	if (all || !strcmp(res->autotest, "kni_autotest"))
+		ret |= test_kni();
 	if (all || !strcmp(res->autotest, "pm_autotest"))
 		ret |= test_pmac_pm();
 	if (all || !strcmp(res->autotest, "acl_autotest"))
@@ -208,8 +210,8 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"cmdline_autotest#func_reentrancy_autotest#"
 			"mempool_perf_autotest#hash_perf_autotest#"
 			"red_autotest#meter_autotest#sched_autotest#"
-			"memcpy_perf_autotest#pm_autotest#"
-			"acl_autotest#power_autotest#"
+			"memcpy_perf_autotest#kni_autotest#"
+			"pm_autotest#acl_autotest#power_autotest#"
 			"all_autotests");
 
 cmdline_parse_inst_t cmd_autotest = {

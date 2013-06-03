@@ -337,6 +337,19 @@ parallel_test_group_list = [
 non_parallel_test_group_list = [
 
 {
+	"Prefix" :	"kni",
+	"Memory" :	"512",
+	"Tests" :
+	[
+		{
+		 "Name" :	"KNI autotest",
+		 "Command" :	"kni_autotest",
+		 "Func" :	default_autotest,
+		 "Report" :	None,
+		},
+	]
+},
+{
 	"Prefix":	"mempool_perf",
 	"Memory" :	all_sockets(256),
 	"Tests" :	

@@ -132,7 +132,7 @@ kni_net_open(struct net_device *dev)
 	struct rte_kni_request req;
 	struct kni_dev *kni = netdev_priv(dev);
 
-	KNI_DBG("kni_net_open %d\n", kni->idx);
+	KNI_DBG("kni_net_open %d\n", kni->port_id);
 
 	/*
 	 * Assign the hardware address of the board: use "\0KNIx", where
@@ -144,7 +144,7 @@ kni_net_open(struct net_device *dev)
 		memcpy(dev->dev_addr, kni->lad_dev->dev_addr, ETH_ALEN);
 	else {
 		memcpy(dev->dev_addr, "\0KNI0", ETH_ALEN);
-		dev->dev_addr[ETH_ALEN-1] += kni->idx; /* \0KNI1 */
+		dev->dev_addr[ETH_ALEN-1] += kni->port_id; /* \0KNI1 */
 	}
 
 	netif_start_queue(dev);
@@ -247,7 +247,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 			skb->ip_summed = CHECKSUM_UNNECESSARY;
 
 			/* Call netif interface */
-			netif_rx(skb);
+			netif_receive_skb(skb);
 
 			/* Update statistics */
 			kni->stats.rx_bytes += len;
@@ -543,7 +543,7 @@ static int
 kni_net_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
 	struct kni_dev *kni = netdev_priv(dev);
-	KNI_DBG("kni_net_ioctl %d\n", kni->idx);
+	KNI_DBG("kni_net_ioctl %d\n", kni->port_id);
 
 	return 0;
 }

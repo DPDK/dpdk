@@ -88,6 +88,7 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_lib.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_red.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_sched.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_meter.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_kni.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_pmac_pm.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_pmac_acl.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_power.c

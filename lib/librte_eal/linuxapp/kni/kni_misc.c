@@ -28,6 +28,7 @@
 #include <linux/netdevice.h>
 #include <linux/pci.h>
 #include <linux/kthread.h>
+#include <linux/rwsem.h>
 
 #include <exec-env/rte_kni_common.h>
 #include "kni_dev.h"
@@ -79,13 +80,16 @@ static struct miscdevice kni_misc = {
 /* loopback mode */
 static char *lo_mode = NULL;
 
-static struct kni_dev *kni_devs[KNI_MAX_DEVICES];
-static volatile int num_devs;  /* number of kni devices */
-
 #define KNI_DEV_IN_USE_BIT_NUM 0 /* Bit number for device in use */
 
 static volatile unsigned long device_in_use; /* device in use flag */
 static struct task_struct *kni_kthread;
+
+/* kni list lock */
+static DECLARE_RWSEM(kni_list_lock);
+
+/* kni list */
+static struct list_head kni_list_head = LIST_HEAD_INIT(kni_list_head);
 
 static int __init
 kni_init(void)
@@ -122,9 +126,6 @@ kni_open(struct inode *inode, struct file *file)
 	if (test_and_set_bit(KNI_DEV_IN_USE_BIT_NUM, &device_in_use))
 		return -EBUSY;
 
-	memset(kni_devs, 0, sizeof(kni_devs));
-	num_devs = 0;
-
 	/* Create kernel thread for RX */
 	kni_kthread = kthread_run(kni_thread, NULL, "kni_thread");
 	if (IS_ERR(kni_kthread)) {
@@ -140,7 +141,7 @@ kni_open(struct inode *inode, struct file *file)
 static int
 kni_release(struct inode *inode, struct file *file)
 {
-	int i;
+	struct kni_dev *dev, *n;
 
 	KNI_PRINT("Stopping KNI thread...");
 
@@ -148,28 +149,26 @@ kni_release(struct inode *inode, struct file *file)
 	kthread_stop(kni_kthread);
 	kni_kthread = NULL;
 
-	for (i = 0; i < KNI_MAX_DEVICES; i++) {
-		if (kni_devs[i] != NULL) {
-			/* Call the remove part to restore pci dev */
-			switch (kni_devs[i]->device_id) {
-			#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) case (dev):
-			#include <rte_pci_dev_ids.h>
-				igb_kni_remove(kni_devs[i]->pci_dev);
-				break;
-			#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) case (dev):
-			#include <rte_pci_dev_ids.h>
-				ixgbe_kni_remove(kni_devs[i]->pci_dev);
-				break;
-			default:
-				break;
-			}
-
-			unregister_netdev(kni_devs[i]->net_dev);
-			free_netdev(kni_devs[i]->net_dev);
-			kni_devs[i] = NULL;
+	down_write(&kni_list_lock);
+	list_for_each_entry_safe(dev, n, &kni_list_head, list) {
+		/* Call the remove part to restore pci dev */
+		switch (dev->device_id) {
+		#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) case (dev):
+		#include <rte_pci_dev_ids.h>
+			igb_kni_remove(dev->pci_dev);
+			break;
+		#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) case (dev):
+		#include <rte_pci_dev_ids.h>
+			ixgbe_kni_remove(dev->pci_dev);
+			break;
+		default:
+			break;
 		}
+		unregister_netdev(dev->net_dev);
+		free_netdev(dev->net_dev);
+		list_del(&dev->list);
 	}
-	num_devs = 0;
+	up_write(&kni_list_lock);
 
 	/* Clear the bit of device in use */
 	clear_bit(KNI_DEV_IN_USE_BIT_NUM, &device_in_use);
@@ -182,22 +181,20 @@ kni_release(struct inode *inode, struct file *file)
 static int
 kni_thread(void *unused)
 {
-	int i, j;
+	int j;
+	struct kni_dev *dev, *n;
 
 	KNI_PRINT("Kernel thread for KNI started\n");
 	while (!kthread_should_stop()) {
-		int n_devs = num_devs;
+		down_read(&kni_list_lock);
 		for (j = 0; j < KNI_RX_LOOP_NUM; j++) {
-			for (i = 0; i < n_devs; i++) {
-				/* This shouldn't be needed */
-				if (kni_devs[i]) {
-					kni_net_rx(kni_devs[i]);
-					kni_net_poll_resp(kni_devs[i]);
-				}
-				else
-					KNI_ERR("kni_thread -no kni found!!!");
+			list_for_each_entry_safe(dev, n,
+					&kni_list_head, list) {
+				kni_net_rx(dev);
+				kni_net_poll_resp(dev);
 			}
 		}
+		up_read(&kni_list_lock);
 		/* reschedule out for a while */
 		schedule_timeout_interruptible(usecs_to_jiffies( \
 				KNI_KTHREAD_RESCHEDULE_INTERVAL));
@@ -216,22 +213,31 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 	struct pci_dev *found_pci = NULL;
 	struct net_device *net_dev = NULL;
 	struct net_device *lad_dev = NULL;
-	struct kni_dev *kni;
+	struct kni_dev *kni, *dev, *n;
 
-	if (num_devs == KNI_MAX_DEVICES)
-		return -EBUSY;
-
+	printk(KERN_INFO "KNI: Creating kni...\n");
 	/* Check the buffer size, to avoid warning */
 	if (_IOC_SIZE(ioctl_num) > sizeof(dev_info))
 		return -EINVAL;
 
 	/* Copy kni info from user space */
-	ret = copy_from_user(&dev_info, (void *)ioctl_param,
-					_IOC_SIZE(ioctl_num));
+	ret = copy_from_user(&dev_info, (void *)ioctl_param, sizeof(dev_info));
 	if (ret) {
-		KNI_ERR("copy_from_user");
+		KNI_ERR("copy_from_user in kni_ioctl_create");
 		return -EIO;
 	}
+
+	/* Check if it has been created */
+	down_read(&kni_list_lock);
+	list_for_each_entry_safe(dev, n, &kni_list_head, list) {
+		if (dev->port_id == dev_info.port_id) {
+			up_read(&kni_list_lock);
+			KNI_ERR("Port %d has already been created\n",
+						dev_info.port_id);
+			return -EINVAL;
+		}
+	}
+	up_read(&kni_list_lock);
 
 	net_dev = alloc_netdev(sizeof(struct kni_dev), dev_info.name,
 							kni_net_init);
@@ -243,7 +249,7 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 	kni = netdev_priv(net_dev);
 
 	kni->net_dev = net_dev;
-	kni->idx = num_devs;
+	kni->port_id = dev_info.port_id;
 
 	/* Translate user space info into kernel space info */
 	kni->tx_q = phys_to_virt(dev_info.tx_phys);
@@ -337,9 +343,59 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 		return -ENODEV;
 	}
 
-	kni_devs[num_devs++] = kni;
+	down_write(&kni_list_lock);
+	list_add(&kni->list, &kni_list_head);
+	up_write(&kni_list_lock);
+	printk(KERN_INFO "KNI: Successfully create kni for port %d\n",
+						dev_info.port_id);
 
 	return 0;
+}
+
+static int
+kni_ioctl_release(unsigned int ioctl_num, unsigned long ioctl_param)
+{
+	int ret = -EINVAL;
+	uint8_t port_id;
+	struct kni_dev *dev, *n;
+
+	if (_IOC_SIZE(ioctl_num) > sizeof(port_id))
+			return -EINVAL;
+
+	ret = copy_from_user(&port_id, (void *)ioctl_param, sizeof(port_id));
+	if (ret) {
+		KNI_ERR("copy_from_user in kni_ioctl_release");
+		return -EIO;
+	}
+
+	down_write(&kni_list_lock);
+	list_for_each_entry_safe(dev, n, &kni_list_head, list) {
+		if (dev->port_id != port_id)
+			continue;
+
+		switch (dev->device_id) {
+		#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) case (dev):
+		#include <rte_pci_dev_ids.h>
+			igb_kni_remove(dev->pci_dev);
+			break;
+		#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) case (dev):
+		#include <rte_pci_dev_ids.h>
+			ixgbe_kni_remove(dev->pci_dev);
+			break;
+		default:
+			break;
+		}
+		unregister_netdev(dev->net_dev);
+		free_netdev(dev->net_dev);
+		list_del(&dev->list);
+		ret = 0;
+		break;
+	}
+	up_write(&kni_list_lock);
+	printk(KERN_INFO "KNI: %s release kni for port %d\n",
+		(ret == 0 ? "Successfully" : "Unsuccessfully"), port_id);
+
+	return ret;
 }
 
 static int
@@ -360,6 +416,9 @@ kni_ioctl(struct inode *inode,
 		break;
 	case _IOC_NR(RTE_KNI_IOCTL_CREATE):
 		ret = kni_ioctl_create(ioctl_num, ioctl_param);
+		break;
+	case _IOC_NR(RTE_KNI_IOCTL_RELEASE):
+		ret = kni_ioctl_release(ioctl_num, ioctl_param);
 		break;
 	default:
 		KNI_DBG("IOCTL default \n");

@@ -31,6 +31,7 @@
 #include <linux/sched.h>
 #include <linux/netdevice.h>
 #include <linux/spinlock.h>
+#include <linux/list.h>
 
 #define KNI_KTHREAD_RESCHEDULE_INTERVAL 10 /* us */
 
@@ -38,9 +39,12 @@
  * A structure describing the private information for a kni device.
  */
 struct kni_dev {
+	/* kni list */
+	struct list_head list;
+
 	struct net_device_stats stats;
 	int status;
-	int idx;
+	int port_id;
 
 	/* wait queue for req/resp */
 	wait_queue_head_t wq;

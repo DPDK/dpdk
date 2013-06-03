@@ -70,7 +70,7 @@ extern struct rte_logs rte_logs;
 #define RTE_LOGTYPE_PMD     0x00000020 /**< Log related to poll mode driver. */
 #define RTE_LOGTYPE_HASH    0x00000040 /**< Log related to hash table. */
 #define RTE_LOGTYPE_LPM     0x00000080 /**< Log related to LPM. */
-#define RTE_LOGTYPE_KNI     0X00000100 /**< Log related to KNI. */
+#define RTE_LOGTYPE_KNI     0x00000100 /**< Log related to KNI. */
 #define RTE_LOGTYPE_PMAC    0x00000200 /**< Log related to PMAC. */
 #define RTE_LOGTYPE_POWER   0x00000400 /**< Log related to power. */
 #define RTE_LOGTYPE_METER   0x00000800 /**< Log related to QoS meter. */

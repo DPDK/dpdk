@@ -87,6 +87,34 @@ extern struct rte_kni *rte_kni_create(uint8_t port_id, unsigned mbuf_size,
 		struct rte_mempool *pktmbuf_pool, struct rte_kni_ops *ops);
 
 /**
+ * Release kni interface according to the context. It will also release the
+ * paired KNI interface in kernel space. All processing on the specific kni
+ * context need to be stopped before calling this interface.
+ *
+ * @param kni
+ *  The pointer to the context of an existant kni interface.
+ *
+ * @return
+ *  - 0 indicates success.
+ *  - negative value indicates failure.
+ */
+extern int rte_kni_release(struct rte_kni *kni);
+
+/**
+ * It is used to handle the request mbufs sent from kernel space. 
+ * Then analyzes it and calls the specific actions for the specific requests.
+ * Finally constructs the response mbuf and puts it back to the resp_q.
+ *
+ * @param kni
+ *  The pointer to the context of an existant kni interface.
+ *
+ * @return
+ *  - 0 
+ *  - negative value indicates failure.
+ */
+extern int rte_kni_handle_request(struct rte_kni *kni);
+
+/**
  * Retrieve a burst of packets from a kni interface. The retrieved packets are
  * stored in rte_mbuf structures whose pointers are supplied in the array of
  * mbufs, and the maximum number is indicated by num. It handles the freeing of
@@ -135,6 +163,46 @@ extern unsigned rte_kni_tx_burst(struct rte_kni *kni,
  *  On failure: ~0x0
  */
 extern uint8_t rte_kni_get_port_id(struct rte_kni *kni);
+
+/**
+ * Get kni context information of the port.  
+ *
+ * @port_id
+ *  the port id.
+ *
+ * @return 
+ *  On success: Pointer to kni interface.
+ *  On failure: NULL
+ */
+extern struct rte_kni * rte_kni_info_get(uint8_t port_id);
+
+/**
+ * Register kni request handling for a specified port,and it can
+ * be called by master process or slave process.
+ *
+ * @param kni 
+ *  pointer to struct rte_kni. 
+ * @param ops 
+ *  ponter to struct rte_kni_ops.
+ *
+ * @return
+ *  On success: 0
+ *  On failure: -1
+ */
+extern int rte_kni_register_handlers(struct rte_kni *kni,
+			struct rte_kni_ops *ops);
+
+/**
+ *  Unregister kni request handling for a specified port.
+ * 
+ *  @param kni 
+ *   pointer to struct rte_kni. 
+ *
+ *  @return
+ *   On success: 0
+ *   On failure: -1
+ */
+extern int rte_kni_unregister_handlers(struct rte_kni *kni);
 
 #ifdef __cplusplus
 }

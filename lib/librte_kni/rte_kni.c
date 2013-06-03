@@ -61,6 +61,8 @@
 
 #define KNI_REQUEST_MBUF_NUM_MAX      32
 
+#define KNI_MZ_CHECK(mz) do { if (mz) goto fail; } while (0)
+
 /**
  * KNI context
  */
@@ -78,16 +80,33 @@ struct rte_kni {
 	/* For request & response */
 	struct rte_kni_fifo *req_q;         /**< Request queue */
 	struct rte_kni_fifo *resp_q;        /**< Response queue */
-	void * sync_addr;					/**< Req/Resp Mem address */
+	void * sync_addr;                   /**< Req/Resp Mem address */
 
 	struct rte_kni_ops ops;             /**< operations for request */
+	uint8_t port_in_use : 1;             /**< kni creation flag */
+};
+
+enum kni_ops_status {
+	KNI_REQ_NO_REGISTER = 0,
+	KNI_REQ_REGISTERED,
 };
 
 static void kni_free_mbufs(struct rte_kni *kni);
 static void kni_allocate_mbufs(struct rte_kni *kni);
 
-static int kni_fd = -1;
+static volatile int kni_fd = -1;
 
+static const struct rte_memzone *
+kni_memzone_reserve(const char *name, size_t len, int socket_id,
+						unsigned flags)
+{
+	const struct rte_memzone *mz = rte_memzone_lookup(name);
+
+	if (mz == NULL)
+		mz = rte_memzone_reserve(name, len, socket_id, flags);
+
+	return mz;
+}
 
 struct rte_kni *
 rte_kni_create(uint8_t port_id,
@@ -95,15 +114,17 @@ rte_kni_create(uint8_t port_id,
 		struct rte_mempool *pktmbuf_pool,
 		struct rte_kni_ops *ops)
 {
+	int ret;
 	struct rte_kni_device_info dev_info;
 	struct rte_eth_dev_info eth_dev_info;
 	struct rte_kni *ctx;
 	char itf_name[IFNAMSIZ];
 #define OBJNAMSIZ 32
 	char obj_name[OBJNAMSIZ];
+	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 
-	if (port_id >= RTE_MAX_ETHPORTS || pktmbuf_pool == NULL || !ops)
+	if (port_id >= RTE_MAX_ETHPORTS || pktmbuf_pool == NULL)
 		return NULL;
 
 	/* Check FD and open once */
@@ -128,11 +149,21 @@ rte_kni_create(uint8_t port_id,
 	dev_info.function = eth_dev_info.pci_dev->addr.function;
 	dev_info.vendor_id = eth_dev_info.pci_dev->id.vendor_id;
 	dev_info.device_id = eth_dev_info.pci_dev->id.device_id;
+	dev_info.port_id = port_id;
 
-	ctx = rte_zmalloc("kni devs", sizeof(struct rte_kni), 0);
-	if (ctx == NULL)
-		rte_panic("Cannot allocate memory for kni dev\n");
-	memcpy(&ctx->ops, ops, sizeof(struct rte_kni_ops));
+	rte_snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "KNI_INFO_%d", port_id);
+	mz = kni_memzone_reserve(mz_name, sizeof(struct rte_kni), 
+				SOCKET_ID_ANY, 0);
+	KNI_MZ_CHECK(mz == NULL);
+	ctx = mz->addr;
+
+	if (ctx->port_in_use != 0) {
+		RTE_LOG(ERR, KNI, "Port %d has been used\n", port_id);
+		goto fail;
+	}
+	memset(ctx, 0, sizeof(struct rte_kni));
+	if (ops)
+		memcpy(&ctx->ops, ops, sizeof(struct rte_kni_ops));
 
 	rte_snprintf(itf_name, IFNAMSIZ, "vEth%u", port_id);
 	rte_snprintf(ctx->name, IFNAMSIZ, itf_name);
@@ -140,73 +171,64 @@ rte_kni_create(uint8_t port_id,
 
 	/* TX RING */
 	rte_snprintf(obj_name, OBJNAMSIZ, "kni_tx_%d", port_id);
-	mz = rte_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
-	if (mz == NULL || mz->addr == NULL)
-		rte_panic("Cannot create kni_tx_%d queue\n", port_id);
+	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MZ_CHECK(mz == NULL);
 	ctx->tx_q = mz->addr;
 	kni_fifo_init(ctx->tx_q, KNI_FIFO_COUNT_MAX);
 	dev_info.tx_phys = mz->phys_addr;
 
 	/* RX RING */
 	rte_snprintf(obj_name, OBJNAMSIZ, "kni_rx_%d", port_id);
-	mz = rte_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
-	if (mz == NULL || mz->addr == NULL)
-		rte_panic("Cannot create kni_rx_%d queue\n", port_id);
+	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MZ_CHECK(mz == NULL);
 	ctx->rx_q = mz->addr;
 	kni_fifo_init(ctx->rx_q, KNI_FIFO_COUNT_MAX);
 	dev_info.rx_phys = mz->phys_addr;
 
 	/* ALLOC RING */
 	rte_snprintf(obj_name, OBJNAMSIZ, "kni_alloc_%d", port_id);
-	mz = rte_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
-	if (mz == NULL || mz->addr == NULL)
-		rte_panic("Cannot create kni_alloc_%d queue\n", port_id);
+	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MZ_CHECK(mz == NULL);
 	ctx->alloc_q = mz->addr;
 	kni_fifo_init(ctx->alloc_q, KNI_FIFO_COUNT_MAX);
 	dev_info.alloc_phys = mz->phys_addr;
 
 	/* FREE RING */
 	rte_snprintf(obj_name, OBJNAMSIZ, "kni_free_%d", port_id);
-	mz = rte_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
-	if (mz == NULL || mz->addr == NULL)
-		rte_panic("Cannot create kni_free_%d queue\n", port_id);
+	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MZ_CHECK(mz == NULL);
 	ctx->free_q = mz->addr;
 	kni_fifo_init(ctx->free_q, KNI_FIFO_COUNT_MAX);
 	dev_info.free_phys = mz->phys_addr;
 
 	/* Request RING */
 	rte_snprintf(obj_name, OBJNAMSIZ, "kni_req_%d", port_id);
-	mz = rte_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
-	if (mz == NULL || mz->addr == NULL)
-		rte_panic("Cannot create kni_req_%d ring\n", port_id);
+	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MZ_CHECK(mz == NULL);
 	ctx->req_q = mz->addr;
 	kni_fifo_init(ctx->req_q, KNI_FIFO_COUNT_MAX);
 	dev_info.req_phys = mz->phys_addr;
 
 	/* Response RING */
 	rte_snprintf(obj_name, OBJNAMSIZ, "kni_resp_%d", port_id);
-	mz = rte_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
-	if (mz == NULL || mz->addr == NULL)
-		rte_panic("Cannot create kni_resp_%d ring\n", port_id);
+	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MZ_CHECK(mz == NULL);
 	ctx->resp_q = mz->addr;
 	kni_fifo_init(ctx->resp_q, KNI_FIFO_COUNT_MAX);
 	dev_info.resp_phys = mz->phys_addr;
 
 	/* Req/Resp sync mem area */
 	rte_snprintf(obj_name, OBJNAMSIZ, "kni_sync_%d", port_id);
-	mz = rte_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
-	if (mz == NULL || mz->addr == NULL)
-		rte_panic("Cannot create kni_sync_%d mem\n", port_id);
+	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MZ_CHECK(mz == NULL);
 	ctx->sync_addr = mz->addr;
 	dev_info.sync_va = mz->addr;
 	dev_info.sync_phys = mz->phys_addr;
 
 	/* MBUF mempool */
-	mz = rte_memzone_lookup("MP_mbuf_pool");
-	if (mz == NULL) {
-		RTE_LOG(ERR, KNI, "Can not find MP_mbuf_pool\n");
-		goto fail;
-	}
+	rte_snprintf(mz_name, sizeof(mz_name), "MP_%s", pktmbuf_pool->name);
+	mz = rte_memzone_lookup(mz_name);
+	KNI_MZ_CHECK(mz == NULL);
 	dev_info.mbuf_va = mz->addr;
 	dev_info.mbuf_phys = mz->phys_addr;
 	ctx->pktmbuf_pool = pktmbuf_pool;
@@ -216,28 +238,54 @@ rte_kni_create(uint8_t port_id,
 	/* Configure the buffer size which will be checked in kernel module */
 	dev_info.mbuf_size = ctx->mbuf_size;
 
-	if (ioctl(kni_fd, RTE_KNI_IOCTL_CREATE, &dev_info) < 0) {
-		RTE_LOG(ERR, KNI, "Fail to create kni device\n");
-		goto fail;
-	}
+	ret = ioctl(kni_fd, RTE_KNI_IOCTL_CREATE, &dev_info);
+	KNI_MZ_CHECK(ret < 0);
+
+	ctx->port_in_use = 1;
 
 	return ctx;
 
 fail:
-	if (ctx != NULL)
-		rte_free(ctx);
 
 	return NULL;
 }
 
-/**
- * It is called in the same lcore of receiving packets, and polls the request
- * mbufs sent from kernel space. Then analyzes it and calls the specific
- * actions for the specific requests. Finally constructs the response mbuf and
- * puts it back to the resp_q.
- */
-static int
-kni_request_handler(struct rte_kni *kni)
+static void
+kni_free_fifo(struct rte_kni_fifo *fifo)
+{
+	int ret;
+	struct rte_mbuf *pkt;
+
+	do {
+		ret = kni_fifo_get(fifo, (void **)&pkt, 1);
+		if (ret)
+			rte_pktmbuf_free(pkt);
+	} while (ret);
+}
+
+int
+rte_kni_release(struct rte_kni *kni)
+{
+	if (!kni || kni->port_in_use == 0)
+		return -1;
+
+	if (ioctl(kni_fd, RTE_KNI_IOCTL_RELEASE, &kni->port_id) < 0) {
+		RTE_LOG(ERR, KNI, "Fail to release kni device\n");
+		return -1;
+	}
+
+	/* mbufs in all fifo should be released, except request/response */
+	kni_free_fifo(kni->tx_q);
+	kni_free_fifo(kni->rx_q);
+	kni_free_fifo(kni->alloc_q);
+	kni_free_fifo(kni->free_q);
+	memset(kni, 0, sizeof(struct rte_kni));
+
+	return 0;
+}
+
+int
+rte_kni_handle_request(struct rte_kni *kni)
 {
 	unsigned ret;
 	struct rte_kni_request *req;
@@ -289,9 +337,6 @@ rte_kni_tx_burst(struct rte_kni *kni, struct rte_mbuf **mbufs, unsigned num)
 
 	/* Get mbufs from free_q and then free them */
 	kni_free_mbufs(kni);
-
-	/* Handle the requests from kernel space */
-	kni_request_handler(kni);
 
 	return ret;
 }
@@ -365,3 +410,81 @@ rte_kni_get_port_id(struct rte_kni *kni)
 	return kni->port_id;
 }
 
+struct rte_kni *
+rte_kni_info_get(uint8_t port_id)
+{
+	struct rte_kni *kni;
+	const struct rte_memzone *mz;
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+
+	if(port_id >= RTE_MAX_ETHPORTS) 
+		return NULL;
+
+	rte_snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "KNI_INFO_%d", port_id);
+	mz = rte_memzone_lookup(mz_name);
+	if (NULL == mz)
+		return NULL;
+
+	kni = mz->addr;
+	if (0 == kni->port_in_use)
+		return NULL;
+	
+	return kni;
+}
+
+static enum kni_ops_status
+kni_check_request_register(struct rte_kni_ops *ops)
+{
+	/* check if KNI request ops has been registered*/
+	if( NULL == ops )
+		return KNI_REQ_NO_REGISTER;
+		 
+	if((NULL == ops->change_mtu) && (NULL == ops->config_network_if))
+		return KNI_REQ_NO_REGISTER;
+
+	return KNI_REQ_REGISTERED;
+}
+
+int
+rte_kni_register_handlers(struct rte_kni *kni,struct rte_kni_ops *ops)
+{
+	enum kni_ops_status req_status;
+	
+	if (NULL == ops) {
+		RTE_LOG(ERR, KNI, "Invalid KNI request operation.\n");
+		return -1;
+	}
+
+	if (NULL == kni) {
+		RTE_LOG(ERR, KNI, "Invalid kni info.\n");
+		return -1;
+	}
+
+	req_status = kni_check_request_register(&kni->ops);
+	if ( KNI_REQ_REGISTERED == req_status) {
+		RTE_LOG(ERR, KNI, "The KNI request operation"
+					"has already registered.\n");
+		return -1;
+	}
+
+	memcpy(&kni->ops, ops, sizeof(struct rte_kni_ops));	
+	return 0;
+}
+
+int
+rte_kni_unregister_handlers(struct rte_kni *kni)
+{
+	if (NULL == kni) {
+		RTE_LOG(ERR, KNI, "Invalid kni info.\n");
+		return -1;
+	}
+	
+	if (NULL == &kni->ops) {
+		RTE_LOG(ERR, KNI, "The invalid  KNI unregister operation.\n");
+		return -1;
+	}
+	
+	kni->ops.change_mtu = NULL;
+	kni->ops.config_network_if = NULL;
+	return 0;
+}

@@ -107,6 +107,9 @@
 /* Total octets in the FCS */
 #define KNI_ENET_FCS_SIZE       4
 
+#define KNI_US_PER_SECOND       1000000
+#define KNI_SECOND_PER_DAY      86400
+
 /*
  * RX and TX Prefetch, Host, and Write-back threshold values should be
  * carefully set for optimal performance. Consult the network
@@ -209,6 +212,8 @@ static struct rte_kni_ops kni_ops = {
 	.config_network_if = kni_config_network_interface,
 };
 
+static rte_atomic32_t kni_stop = RTE_ATOMIC32_INIT(0);
+
 /* Print out statistics on packets handled */
 static void
 print_stats(void)
@@ -235,7 +240,7 @@ print_stats(void)
 	printf("======  ==============  ============  ============  ============  ============\n");
 }
 
-/* Custom handling of signals to handle stats */
+/* Custom handling of signals to handle stats and kni processing */
 static void
 signal_handler(int signum)
 {
@@ -250,6 +255,14 @@ signal_handler(int signum)
 		printf("\n**Statistics have been reset**\n");
 		return;
 	}
+
+	/* When we receive a RTMIN signal, stop kni processing */
+	if (signum == SIGRTMIN) {
+		printf("SIGRTMIN is received, and the KNI processing is "
+							"going to stop\n");
+		rte_atomic32_inc(&kni_stop);
+		return;
+        }
 }
 
 static void
@@ -290,6 +303,7 @@ kni_ingress(struct rte_kni *kni)
 	num = rte_kni_tx_burst(kni, pkts_burst, nb_rx);
 	kni_stats[port_id].rx_packets += num;
 
+	rte_kni_handle_request(kni);
 	if (unlikely(num < nb_rx)) {
 		/* Free mbufs not tx to kni interface */
 		kni_burst_free_mbufs(&pkts_burst[num], nb_rx - num);
@@ -329,18 +343,14 @@ kni_egress(struct rte_kni *kni)
 }
 
 /* Main processing loop */
-static __attribute__((noreturn)) int
+static int
 main_loop(__rte_unused void *arg)
 {
 	uint8_t pid;
 	const unsigned lcore_id = rte_lcore_id();
 	struct rte_kni *kni = kni_lcore_to_kni(lcore_id);
 
-	if (kni == NULL) {
-		RTE_LOG(INFO, APP, "Lcore %u has nothing to do\n", lcore_id);
-		for (;;)
-			; /* loop doing nothing */
-	} else {
+	if (kni != NULL) {
 		pid = rte_kni_get_port_id(kni);
 		if (pid >= RTE_MAX_ETHPORTS)
 			rte_exit(EXIT_FAILURE, "Failure: port id >= %d\n",
@@ -353,8 +363,13 @@ main_loop(__rte_unused void *arg)
 			fflush(stdout);
 
 			/* rx loop */
-			while (1)
+			while (1) {
+				int32_t flag = rte_atomic32_read(&kni_stop);
+
+				if (flag)
+					break;
 				kni_ingress(kni);
+			}
 		} else if (kni_port_info[pid].lcore_id_egress == lcore_id) {
 			/* Running on lcores for output packets */
 			RTE_LOG(INFO, APP, "Lcore %u is writing to port %d\n",
@@ -362,15 +377,20 @@ main_loop(__rte_unused void *arg)
 			fflush(stdout);
 
 			/* tx loop */
-			while (1)
+			while (1) {
+				int32_t flag = rte_atomic32_read(&kni_stop);
+
+				if (flag)
+					break;
 				kni_egress(kni);
-		} else {
-			RTE_LOG(INFO, APP, "Lcore %u has nothing to do\n",
-								lcore_id);
-			for (;;)
-				; /* loop doing nothing */
+			}
 		}
 	}
+
+	/* fallthrough to here if we don't have any work */
+	RTE_LOG(INFO, APP, "Lcore %u has nothing to do\n", lcore_id);
+
+	return 0;
 }
 
 /* Display usage instructions */
@@ -379,10 +399,11 @@ print_usage(const char *prgname)
 {
 	RTE_LOG(INFO, APP, "\nUsage: %s [EAL options] -- -p PORTMASK "
 					"-i IN_CORES -o OUT_CORES\n"
-	           "    -p PORTMASK: hex bitmask of ports to use\n"
-	           "    -i IN_CORES: hex bitmask of cores which read "
+		   "    -p PORTMASK: hex bitmask of ports to use\n"
+		   "    -i IN_CORES: hex bitmask of cores which read "
 		   "from NIC\n"
-	           "    -o OUT_CORES: hex bitmask of cores which write to NIC\n",
+		   "    -o OUT_CORES: hex bitmask of cores which write "
+		   "to NIC\n",
 	           prgname);
 }
 
@@ -436,7 +457,7 @@ kni_setup_port_affinities(uint8_t nb_port)
 		}
 
 		if (in_lcore != 0) {
-			/* It is be for packet receiving */
+			/* It is for packet receiving */
 			while ((rx_port < nb_port) &&
 					((ports_mask & (1 << rx_port)) == 0))
 				rx_port++;
@@ -702,6 +723,7 @@ main(int argc, char** argv)
 	/* Associate signal_hanlder function with USR signals */
 	signal(SIGUSR1, signal_handler);
 	signal(SIGUSR2, signal_handler);
+	signal(SIGRTMIN, signal_handler);
 
 	/* Initialise EAL */
 	ret = rte_eal_init(argc, argv);
@@ -779,6 +801,13 @@ main(int argc, char** argv)
 	RTE_LCORE_FOREACH_SLAVE(i) {
 		if (rte_eal_wait_lcore(i) < 0)
 			return -1;
+	}
+
+	for (port = 0; port < nb_sys_ports; port++) {
+		struct rte_kni *kni = kni_port_info[port].kni;
+
+		if (kni != NULL)
+			rte_kni_release(kni);
 	}
 
 	return 0;

@@ -144,6 +144,7 @@ struct rte_kni_device_info
 	uint8_t bus;                  /**< Device bus */
 	uint8_t devid;                /**< Device ID */
 	uint8_t function;             /**< Device function. */
+	uint8_t port_id;              /**< Port ID */
 
 	/* mbuf size */
 	unsigned mbuf_size;
@@ -151,7 +152,8 @@ struct rte_kni_device_info
 
 #define KNI_DEVICE "kni"
 
-#define RTE_KNI_IOCTL_TEST   _IOWR(0, 1, int)
-#define RTE_KNI_IOCTL_CREATE _IOWR(0, 2, struct rte_kni_device_info)
+#define RTE_KNI_IOCTL_TEST    _IOWR(0, 1, int)
+#define RTE_KNI_IOCTL_CREATE  _IOWR(0, 2, struct rte_kni_device_info)
+#define RTE_KNI_IOCTL_RELEASE _IOWR(0, 3, uint8_t)
 
 #endif /* _RTE_KNI_COMMON_H_ */
