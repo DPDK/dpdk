@@ -105,6 +105,18 @@ struct ipv4_hdr {
 					   (((c) & 0xff) << 8)  | \
 					   ((d) & 0xff))
 
+/* Fragment Offset * Flags. */
+#define	IPV4_HDR_DF_SHIFT	14
+#define	IPV4_HDR_MF_SHIFT	13
+#define	IPV4_HDR_FO_SHIFT	3
+
+#define	IPV4_HDR_DF_FLAG	(1 << IPV4_HDR_DF_SHIFT)
+#define	IPV4_HDR_MF_FLAG	(1 << IPV4_HDR_MF_SHIFT)
+
+#define	IPV4_HDR_OFFSET_MASK	((1 << IPV4_HDR_MF_SHIFT) - 1)
+
+#define	IPV4_HDR_OFFSET_UNITS	8
+
 /* IPv4 protocols */
 #define IPPROTO_IP         0  /**< dummy for IP */
 #define IPPROTO_HOPOPTS    0  /**< IP6 hop-by-hop options */
