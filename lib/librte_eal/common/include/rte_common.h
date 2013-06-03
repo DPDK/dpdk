@@ -50,7 +50,7 @@ extern "C" {
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
-
+#include <emmintrin.h>
 
 /*********** Macros to eliminate unused variable warnings ********/
 
@@ -257,7 +257,7 @@ rte_align32pow2(uint32_t x)
 static inline void
 rte_pause (void)
 {
-	asm volatile ("pause");
+	_mm_pause();
 }
 
 /**

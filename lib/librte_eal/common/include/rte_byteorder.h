@@ -152,26 +152,44 @@ static inline uint64_t rte_arch_bswap64(uint64_t x)
 }
 #endif /* RTE_ARCH_X86_64 */
 
+
 /**
  * Swap bytes in a 16-bit value.
  */
 #define rte_bswap16(x) ((uint16_t)(__builtin_constant_p(x) ?		\
 				   rte_constant_bswap16(x) :		\
-				   rte_arch_bswap16(x)))		\
+				   rte_arch_bswap16(x)))
 
+#ifndef RTE_FORCE_INTRINSICS
 /**
  * Swap bytes in a 32-bit value.
  */
 #define rte_bswap32(x) ((uint32_t)(__builtin_constant_p(x) ?		\
 				   rte_constant_bswap32(x) :		\
-				   rte_arch_bswap32(x)))		\
+				   rte_arch_bswap32(x)))
 
 /**
  * Swap bytes in a 64-bit value.
  */
 #define rte_bswap64(x) ((uint64_t)(__builtin_constant_p(x) ?		\
 				   rte_constant_bswap64(x) :		\
-				   rte_arch_bswap64(x)))		\
+				   rte_arch_bswap64(x)))
+
+#else
+
+/* __builtin_bswap16 is only available gcc 4.8 and upwards */
+
+/**
+ * Swap bytes in a 32-bit value.
+ */
+#define rte_bswap32(x) __builtin_bswap32(x)
+
+/**
+ * Swap bytes in a 64-bit value.
+ */
+#define rte_bswap64(x) __builtin_bswap64(x)
+
+#endif
 
 /**
  * Convert a 16-bit value from CPU order to little endian.

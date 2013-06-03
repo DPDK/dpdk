@@ -70,6 +70,12 @@ CONFIG_RTE_TOOLCHAIN="gcc"
 CONFIG_RTE_TOOLCHAIN_GCC=y
 
 #
+# Use intrinsics or assembly code for key routines
+#
+CONFIG_RTE_FORCE_INTRINSICS=n
+
+#
+#
 # Compile libc directory
 #
 CONFIG_RTE_LIBC=n
