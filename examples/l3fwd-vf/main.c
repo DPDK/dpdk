@@ -42,6 +42,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <getopt.h>
+#include <signal.h>
 
 #include <rte_common.h>
 #include <rte_byteorder.h>
@@ -678,6 +679,24 @@ print_usage(const char *prgname)
 		prgname);
 }
 
+/* Custom handling of signals to handle process terminal */
+static void
+signal_handler(int signum)
+{
+	uint8_t portid;
+	uint8_t nb_ports = rte_eth_dev_count();
+
+	/* When we receive a SIGINT signal */
+	if (signum == SIGINT) {
+		for (portid = 0; portid < nb_ports; portid++) {
+			/* skip ports that are not enabled */
+			if ((enabled_port_mask & (1 << portid)) == 0) 
+				continue;
+			rte_eth_dev_close(portid); 
+		}
+	}
+	rte_exit(EXIT_SUCCESS, "\n User forced exit\n");
+}
 static int
 parse_portmask(const char *portmask)
 {
@@ -944,6 +963,7 @@ MAIN(int argc, char **argv)
 	unsigned lcore_id;
 	uint8_t portid, nb_rx_queue, queue, socketid;
 
+	signal(SIGINT, signal_handler);
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
