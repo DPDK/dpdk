@@ -1234,6 +1234,19 @@ extern int rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 				  uint16_t nb_tx_desc, unsigned int socket_id,
 				  const struct rte_eth_txconf *tx_conf);
 
+/*
+ * Return the NUMA socket to which an Ethernet device is connected
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device
+ * @return
+ *   The NUMA socket id to which the Ethernet device is connected or
+ *   a default of zero if the socket could not be determined.
+ *   -1 is returned is the port_id value is out of range.
+ */
+extern int rte_eth_dev_socket_id(uint8_t port_id);
+
+
 /**
  * Start an Ethernet device.
  *

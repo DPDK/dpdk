@@ -91,6 +91,12 @@ uint8_t interactive = 0;
 uint8_t numa_support = 0; /**< No numa support by default */
 
 /*
+ * In UMA mode,all memory is allocated from socket 0 if --socket-num is 
+ * not configured.
+ */
+uint8_t socket_num = UMA_NO_CONFIG; 
+
+/*
  * Record the Ethernet address of peer target ports to which packets are
  * forwarded.
  * Must be instanciated with the ethernet addresses of peer traffic generator
@@ -429,7 +435,9 @@ init_config(void)
 	struct rte_mempool *mbp;
 	unsigned int nb_mbuf_per_pool;
 	lcoreid_t  lc_id;
+	uint8_t port_per_socket[MAX_SOCKET];
 
+	memset(port_per_socket,0,MAX_SOCKET);
 	/* Configuration of logical cores. */
 	fwd_lcores = rte_zmalloc("testpmd: fwd_lcores",
 				sizeof(struct fwd_lcore *) * nb_lcores,
@@ -452,27 +460,29 @@ init_config(void)
 	/*
 	 * Create pools of mbuf.
 	 * If NUMA support is disabled, create a single pool of mbuf in
-	 * socket 0 memory.
+	 * socket 0 memory by default.
 	 * Otherwise, create a pool of mbuf in the memory of sockets 0 and 1.
 	 *
 	 * Use the maximum value of nb_rxd and nb_txd here, then nb_rxd and
 	 * nb_txd can be configured at run time.
 	 */
-	if (param_total_num_mbufs)
+	if (param_total_num_mbufs) 
 		nb_mbuf_per_pool = param_total_num_mbufs;
 	else {
 		nb_mbuf_per_pool = RTE_TEST_RX_DESC_MAX + (nb_lcores * mb_mempool_cache)
 				+ RTE_TEST_TX_DESC_MAX + MAX_PKT_BURST;
-		nb_mbuf_per_pool = (nb_mbuf_per_pool * nb_ports);
-	}
-	if (numa_support) {
-		nb_mbuf_per_pool /= 2;
-		mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, 0);
-		mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, 1);
-	} else {
-		mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, 0);
+		
+		if (!numa_support) 
+			nb_mbuf_per_pool = (nb_mbuf_per_pool * nb_ports);
 	}
 
+	if (!numa_support) {
+		if (socket_num == UMA_NO_CONFIG)
+			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, 0);
+		else
+			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool,
+						 socket_num);
+	}
 	/*
 	 * Records which Mbuf pool to use by each logical core, if needed.
 	 */
@@ -491,18 +501,41 @@ init_config(void)
 		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d struct rte_port) "
 							"failed\n", nb_ports);
 	}
-
+	
 	for (pid = 0; pid < nb_ports; pid++) {
 		port = &ports[pid];
 		rte_eth_dev_info_get(pid, &port->dev_info);
+
+		if (numa_support) {
+			if (port_numa[pid] != NUMA_NO_CONFIG) 
+				port_per_socket[port_numa[pid]]++;
+			else {
+				uint32_t socket_id = rte_eth_dev_socket_id(pid);
+				port_per_socket[socket_id]++; 
+			}
+		}
 
 		/* set flag to initialize port/queue */
 		port->need_reconfig = 1;
 		port->need_reconfig_queues = 1;
 	}
 
-	init_port_config();
+	if (numa_support) {
+		uint8_t i;
+		unsigned int nb_mbuf;
 
+		if (param_total_num_mbufs)
+			nb_mbuf_per_pool = nb_mbuf_per_pool/nb_ports;
+
+		for (i = 0; i < MAX_SOCKET; i++) {
+			nb_mbuf = (nb_mbuf_per_pool * 
+						port_per_socket[i]);
+			if (nb_mbuf) 
+				mbuf_pool_create(mbuf_data_size,
+						nb_mbuf,i);
+		}
+	}
+	init_port_config();
 	/* Configuration of packet forwarding streams. */
 	if (init_fwd_streams() < 0)
 		rte_exit(EXIT_FAILURE, "FAIL from init_fwd_streams()\n");
@@ -530,10 +563,14 @@ init_fwd_streams(void)
 				port->dev_info.max_tx_queues);
 			return -1;
 		}
-		if (numa_support)
-			port->socket_id = (pid < (nb_ports >> 1)) ? 0 : 1;
-		else
-			port->socket_id = 0;
+		if (numa_support) 
+			port->socket_id = rte_eth_dev_socket_id(pid);
+		else {
+			if (socket_num == UMA_NO_CONFIG)	 
+				port->socket_id = 0;
+			else 
+				port->socket_id = socket_num;	
+		}
 	}
 
 	nb_fwd_streams_new = (streamid_t)(nb_ports * nb_rxq);
@@ -1102,7 +1139,8 @@ start_port(portid_t pid)
 		if (port->need_reconfig > 0) {
 			port->need_reconfig = 0;
 
-			printf("Configuring Port %d\n", pi);
+			printf("Configuring Port %d (socket %d)\n", pi,
+					rte_eth_dev_socket_id(pi));
 			/* configure port */
 			diag = rte_eth_dev_configure(pi, nb_rxq, nb_txq,
 						&(port->dev_conf));
@@ -1117,14 +1155,20 @@ start_port(portid_t pid)
 				return;
 			}
 		}
-
 		if (port->need_reconfig_queues > 0) {
 			port->need_reconfig_queues = 0;
-
 			/* setup tx queues */
 			for (qi = 0; qi < nb_txq; qi++) {
-				diag = rte_eth_tx_queue_setup(pi, qi, nb_txd,
-					port->socket_id, &(port->tx_conf));
+				if ((numa_support) &&
+					(txring_numa[pi] != NUMA_NO_CONFIG)) 
+					diag = rte_eth_tx_queue_setup(pi, qi,
+						nb_txd,txring_numa[pi],
+						&(port->tx_conf));
+				else
+					diag = rte_eth_tx_queue_setup(pi, qi, 
+						nb_txd,port->socket_id,
+						&(port->tx_conf));
+					
 				if (diag == 0)
 					continue;
 
@@ -1141,11 +1185,31 @@ start_port(portid_t pid)
 			}
 			/* setup rx queues */
 			for (qi = 0; qi < nb_rxq; qi++) {
-				diag = rte_eth_rx_queue_setup(pi, qi, nb_rxd,
-					port->socket_id, &(port->rx_conf),
-					mbuf_pool_find(port->socket_id));
+				if ((numa_support) && 
+					(rxring_numa[pi] != NUMA_NO_CONFIG)) {
+					struct rte_mempool * mp = 
+						mbuf_pool_find(rxring_numa[pi]);
+					if (mp == NULL) {
+						printf("Failed to setup RX queue:"
+							"No mempool allocation"
+							"on the socket %d\n",
+							rxring_numa[pi]);
+						return;
+					}
+					
+					diag = rte_eth_rx_queue_setup(pi, qi,
+					     nb_rxd,rxring_numa[pi],
+					     &(port->rx_conf),mp);
+				}
+				else
+					diag = rte_eth_rx_queue_setup(pi, qi, 
+					     nb_rxd,port->socket_id,
+					     &(port->rx_conf),
+				             mbuf_pool_find(port->socket_id));
+
 				if (diag == 0)
 					continue;
+
 
 				/* Fail to setup rx queue, return */
 				if (rte_atomic16_cmpset(&(port->port_status),
@@ -1159,7 +1223,6 @@ start_port(portid_t pid)
 				return;
 			}
 		}
-
 		/* start port */
 		if (rte_eth_dev_start(pi) < 0) {
 			printf("Fail to start port %d\n", pi);

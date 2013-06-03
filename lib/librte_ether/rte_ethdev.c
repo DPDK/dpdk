@@ -241,6 +241,14 @@ rte_eth_driver_register(struct eth_driver *eth_drv)
 	rte_eal_pci_register(&eth_drv->pci_drv);
 }
 
+int
+rte_eth_dev_socket_id(uint8_t port_id)
+{
+	if (port_id >= nb_ports)
+		return -1;
+	return rte_eth_devices[port_id].pci_dev->numa_node;
+}
+
 uint8_t
 rte_eth_dev_count(void)
 {

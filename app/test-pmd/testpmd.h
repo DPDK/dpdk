@@ -69,6 +69,9 @@ int main(int argc, char **argv);
 #define CACHE_LINE_SIZE_ROUNDUP(size) \
 	(CACHE_LINE_SIZE * ((size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE))
 
+#define NUMA_NO_CONFIG 0xFF
+#define UMA_NO_CONFIG  0xFF
+
 typedef uint8_t  lcoreid_t;
 typedef uint8_t  portid_t;
 typedef uint16_t queueid_t;
@@ -267,6 +270,28 @@ extern uint16_t verbose_level; /**< Drives messages being displayed, if any. */
 extern uint8_t  interactive;
 extern uint8_t  numa_support; /**< set by "--numa" parameter */
 extern uint16_t port_topology; /**< set by "--port-topology" parameter */
+
+#define MAX_SOCKET 2 /*MAX SOCKET:currently, it is 2 */
+
+/*
+ * Store specified sockets on which memory pool to be used by ports 
+ * is allocated. 
+ */
+uint8_t port_numa[RTE_MAX_ETHPORTS];
+
+/*
+ * Store specified sockets on which RX ring to be used by ports
+ * is allocated. 
+ */
+uint8_t rxring_numa[RTE_MAX_ETHPORTS];
+
+/*
+ * Store specified sockets on which TX ring to be used by ports
+ * is allocated. 
+ */
+uint8_t txring_numa[RTE_MAX_ETHPORTS];
+
+extern uint8_t socket_num;
 
 /*
  * Configuration of logical cores:

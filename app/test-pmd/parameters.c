@@ -106,6 +106,15 @@ usage(char* progname)
 	       "by the packet forwarding test.\n");
 	printf("  --numa: enable NUMA-aware allocation of RX/TX rings and of "
 	       "RX memory buffers (mbufs).\n");
+	printf("  --port-numa-config=(port,socket)[,(port,socket)]: "
+	       "specify the socket on which the memory pool "
+	       "used by the port will be allocated.\n");
+	printf("  --ring-numa-config=(port,flag,socket)[,(port,flag,socket)]: "
+	       "specify the socket on which the TX/RX rings for "
+	       "the port will be allocated "
+	       "(flag: 1 for RX; 2 for TX; 3 for RX and TX).\n");
+	printf(" --socket-num=N: set socket from which all memory is allocated "
+	       "in NUMA mode.\n");
 	printf("  --mbuf-size=N: set the data size of mbuf to N bytes.\n");
 	printf("  --total-num-mbufs=N: set the number of mbufs to be allocated "
 	       "in mbuf pools.\n");
@@ -319,6 +328,135 @@ parse_queue_stats_mapping_config(const char *q_arg, int is_rx)
 	return 0;
 }
 
+static int
+parse_portnuma_config(const char *q_arg)
+{
+	char s[256];
+	const char *p, *p0 = q_arg;
+	char *end;
+	uint8_t i,port_id,socket_id;
+	unsigned size;
+	enum fieldnames {
+		FLD_PORT = 0,
+		FLD_SOCKET,
+		_NUM_FLD
+	};
+	unsigned long int_fld[_NUM_FLD];
+	char *str_fld[_NUM_FLD];	
+
+	/* reset from value set at definition */
+	while ((p = strchr(p0,'(')) != NULL) {
+		++p;
+		if((p0 = strchr(p,')')) == NULL)
+			return -1;
+
+		size = p0 - p;
+		if(size >= sizeof(s))
+			return -1;
+
+		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
+			return -1;
+		for (i = 0; i < _NUM_FLD; i++) {
+			errno = 0;
+			int_fld[i] = strtoul(str_fld[i], &end, 0);
+			if (errno != 0 || end == str_fld[i] || int_fld[i] > 255)
+				return -1;
+		}
+		port_id = (uint8_t)int_fld[FLD_PORT];
+		if (port_id >= nb_ports) {
+			printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+			return -1;
+		}
+		socket_id = (uint8_t)int_fld[FLD_SOCKET];
+		if(socket_id >= MAX_SOCKET) {
+			printf("Invalid socket id, range is [0, %d]\n",
+				 MAX_SOCKET - 1);
+			return -1;
+		}
+		port_numa[port_id] = socket_id;
+	}
+
+	return 0;
+}
+
+static int
+parse_ringnuma_config(const char *q_arg)
+{
+	char s[256];
+	const char *p, *p0 = q_arg;
+	char *end;
+	uint8_t i,port_id,ring_flag,socket_id;
+	unsigned size;
+	enum fieldnames {
+		FLD_PORT = 0,
+		FLD_FLAG,
+		FLD_SOCKET,
+		_NUM_FLD
+	};
+	unsigned long int_fld[_NUM_FLD];
+	char *str_fld[_NUM_FLD];	
+	#define RX_RING_ONLY 0x1
+	#define TX_RING_ONLY 0x2
+	#define RXTX_RING    0x3
+
+	/* reset from value set at definition */
+	while ((p = strchr(p0,'(')) != NULL) {
+		++p;
+		if((p0 = strchr(p,')')) == NULL)
+			return -1;
+
+		size = p0 - p;
+		if(size >= sizeof(s))
+			return -1;
+
+		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
+			return -1;
+		for (i = 0; i < _NUM_FLD; i++) {
+			errno = 0;
+			int_fld[i] = strtoul(str_fld[i], &end, 0);
+			if (errno != 0 || end == str_fld[i] || int_fld[i] > 255)
+				return -1;
+		}
+		port_id = (uint8_t)int_fld[FLD_PORT];
+		if (port_id >= nb_ports) {
+			printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+			return -1;
+		}
+		socket_id = (uint8_t)int_fld[FLD_SOCKET];
+		if (socket_id >= MAX_SOCKET) {
+			printf("Invalid socket id, range is [0, %d]\n",
+				MAX_SOCKET - 1);
+			return -1;
+		}
+		ring_flag = (uint8_t)int_fld[FLD_FLAG];
+		if ((ring_flag < RX_RING_ONLY) || (ring_flag > RXTX_RING)) {
+			printf("Invalid ring-flag=%d config for port =%d\n",
+				ring_flag,port_id);
+			return -1;
+		}
+
+		switch (ring_flag & RXTX_RING) {
+		case RX_RING_ONLY:
+			rxring_numa[port_id] = socket_id;
+			break;
+		case TX_RING_ONLY:
+			txring_numa[port_id] = socket_id;
+			break;
+		case RXTX_RING:
+			rxring_numa[port_id] = socket_id;
+			txring_numa[port_id] = socket_id;
+			break;
+		default:
+			printf("Invalid ring-flag=%d config for port=%d\n",
+				ring_flag,port_id);
+			break;
+		}
+	}	
+	
+	return 0;
+}
 
 void
 launch_args_parse(int argc, char** argv)
@@ -339,6 +477,9 @@ launch_args_parse(int argc, char** argv)
 		{ "coremask",			1, 0, 0 },
 		{ "portmask",			1, 0, 0 },
 		{ "numa",			0, 0, 0 },
+		{ "port-numa-config",           1, 0, 0 },
+		{ "ring-numa-config",           1, 0, 0 },
+		{ "socket-num",			1, 0, 0 },	
 		{ "mbuf-size",			1, 0, 0 },
 		{ "total-num-mbufs",		1, 0, 0 },
 		{ "max-pkt-len",		1, 0, 0 },
@@ -445,8 +586,30 @@ launch_args_parse(int argc, char** argv)
 				parse_fwd_coremask(optarg);
 			if (!strcmp(lgopts[opt_idx].name, "portmask"))
 				parse_fwd_portmask(optarg);
-			if (!strcmp(lgopts[opt_idx].name, "numa"))
+			if (!strcmp(lgopts[opt_idx].name, "numa")) {
 				numa_support = 1;
+				memset(port_numa,NUMA_NO_CONFIG,RTE_MAX_ETHPORTS);
+				memset(rxring_numa,NUMA_NO_CONFIG,RTE_MAX_ETHPORTS);
+				memset(txring_numa,NUMA_NO_CONFIG,RTE_MAX_ETHPORTS);
+			}
+			if (!strcmp(lgopts[opt_idx].name, "port-numa-config")) {
+				if (parse_portnuma_config(optarg))
+					rte_exit(EXIT_FAILURE,
+					   "invalid port-numa configuration\n");
+			}
+			if (!strcmp(lgopts[opt_idx].name, "ring-numa-config"))
+				if (parse_ringnuma_config(optarg))
+					rte_exit(EXIT_FAILURE,
+					   "invalid ring-numa configuration\n");
+			if (!strcmp(lgopts[opt_idx].name, "socket-num")) {
+				n = atoi(optarg);
+				if(n < MAX_SOCKET)
+					socket_num = (uint8_t)n;
+				else
+					rte_exit(EXIT_FAILURE,
+						"The socket number should be < %d\n",
+						MAX_SOCKET);
+			}
 			if (!strcmp(lgopts[opt_idx].name, "mbuf-size")) {
 				n = atoi(optarg);
 				if (n > 0 && n <= 0xFFFF)

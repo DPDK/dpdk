@@ -237,6 +237,8 @@ port_infos_display(portid_t port_id)
 	struct rte_port *port;
 	struct rte_eth_link link;
 	int vlan_offload;
+	int socket_id;
+	struct rte_mempool * mp;
 	static const char *info_border = "*********************";
 
 	if (port_id >= nb_ports) {
@@ -245,9 +247,20 @@ port_infos_display(portid_t port_id)
 	}
 	port = &ports[port_id];
 	rte_eth_link_get_nowait(port_id, &link);
+	socket_id = rte_eth_dev_socket_id(port_id);
 	printf("\n%s Infos for port %-2d %s\n",
 	       info_border, port_id, info_border);
 	print_ethaddr("MAC address: ", &port->eth_addr);
+	printf("\nConnect to socket: %d",socket_id);
+
+	if (port_numa[port_id] != NUMA_NO_CONFIG) {
+		mp = mbuf_pool_find(port_numa[port_id]);
+		if (mp)
+			printf("\nmemory allocation on the socket: %d",
+							port_numa[port_id]);
+	} else
+		printf("\nmemory allocation on the socket: %d",socket_id);
+
 	printf("\nLink status: %s\n", (link.link_status) ? ("up") : ("down"));
 	printf("Link speed: %u Mbps\n", (unsigned) link.link_speed);
 	printf("Link duplex: %s\n", (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
