@@ -451,7 +451,7 @@ void rte_mempool_dump(const struct rte_mempool *mp);
  * @param is_mp
  *   Mono-producer (0) or multi-producers (1).
  */
-static inline void
+static inline void __attribute__((always_inline))
 __mempool_put_bulk(struct rte_mempool *mp, void * const *obj_table,
 		    unsigned n, int is_mp)
 {
@@ -532,7 +532,7 @@ ring_enqueue:
  * @param n
  *   The number of objects to add in the mempool from the obj_table.
  */
-static inline void
+static inline void __attribute__((always_inline))
 rte_mempool_mp_put_bulk(struct rte_mempool *mp, void * const *obj_table,
 			unsigned n)
 {
@@ -572,7 +572,7 @@ rte_mempool_sp_put_bulk(struct rte_mempool *mp, void * const *obj_table,
  * @param n
  *   The number of objects to add in the mempool from obj_table.
  */
-static inline void
+static inline void __attribute__((always_inline))
 rte_mempool_put_bulk(struct rte_mempool *mp, void * const *obj_table,
 		     unsigned n)
 {
@@ -588,7 +588,7 @@ rte_mempool_put_bulk(struct rte_mempool *mp, void * const *obj_table,
  * @param obj
  *   A pointer to the object to be added.
  */
-static inline void
+static inline void __attribute__((always_inline))
 rte_mempool_mp_put(struct rte_mempool *mp, void *obj)
 {
 	rte_mempool_mp_put_bulk(mp, &obj, 1);
@@ -602,7 +602,7 @@ rte_mempool_mp_put(struct rte_mempool *mp, void *obj)
  * @param obj
  *   A pointer to the object to be added.
  */
-static inline void
+static inline void __attribute__((always_inline))
 rte_mempool_sp_put(struct rte_mempool *mp, void *obj)
 {
 	rte_mempool_sp_put_bulk(mp, &obj, 1);
@@ -620,7 +620,7 @@ rte_mempool_sp_put(struct rte_mempool *mp, void *obj)
  * @param obj
  *   A pointer to the object to be added.
  */
-static inline void
+static inline void __attribute__((always_inline))
 rte_mempool_put(struct rte_mempool *mp, void *obj)
 {
 	rte_mempool_put_bulk(mp, &obj, 1);
@@ -640,7 +640,7 @@ rte_mempool_put(struct rte_mempool *mp, void *obj)
  *   - >=0: Success; number of objects supplied.
  *   - <0: Error; code of ring dequeue function.
  */
-static inline int
+static inline int __attribute__((always_inline))
 __mempool_get_bulk(struct rte_mempool *mp, void **obj_table,
 		   unsigned n, int is_mc)
 {
@@ -728,7 +728,7 @@ ring_dequeue:
  *   - 0: Success; objects taken.
  *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_mempool_mc_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
 {
 	int ret;
@@ -757,7 +757,7 @@ rte_mempool_mc_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
  *   - -ENOENT: Not enough entries in the mempool; no object is
  *     retrieved.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_mempool_sc_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
 {
 	int ret;
@@ -789,7 +789,7 @@ rte_mempool_sc_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
  *   - 0: Success; objects taken
  *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_mempool_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
 {
 	int ret;
@@ -816,7 +816,7 @@ rte_mempool_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
  *   - 0: Success; objects taken.
  *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_mempool_mc_get(struct rte_mempool *mp, void **obj_p)
 {
 	return rte_mempool_mc_get_bulk(mp, obj_p, 1);
@@ -838,7 +838,7 @@ rte_mempool_mc_get(struct rte_mempool *mp, void **obj_p)
  *   - 0: Success; objects taken.
  *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_mempool_sc_get(struct rte_mempool *mp, void **obj_p)
 {
 	return rte_mempool_sc_get_bulk(mp, obj_p, 1);
@@ -864,7 +864,7 @@ rte_mempool_sc_get(struct rte_mempool *mp, void **obj_p)
  *   - 0: Success; objects taken.
  *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
  */
-static inline int
+static inline int __attribute__((always_inline))
 rte_mempool_get(struct rte_mempool *mp, void **obj_p)
 {
 	return rte_mempool_get_bulk(mp, obj_p, 1);
@@ -885,7 +885,12 @@ rte_mempool_get(struct rte_mempool *mp, void **obj_p)
 unsigned rte_mempool_count(const struct rte_mempool *mp);
 
 /**
- * Return the number of free entries in the mempool.
+ * Return the number of free entries in the mempool ring.
+ * i.e. how many entries can be freed back to the mempool.
+ *
+ * NOTE: This corresponds to the number of elements *allocated* from the
+ * memory pool, not the number of elements in the pool itself. To count
+ * the number elements currently available in the pool, use "rte_mempool_count"
  *
  * When cache is enabled, this function has to browse the length of
  * all lcores, so it should not be used in a data path, but only for
