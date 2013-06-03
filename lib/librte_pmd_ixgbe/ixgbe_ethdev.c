@@ -568,6 +568,9 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
+#ifdef RTE_LIBRTE_IXGBE_ALLOW_UNSUPPORTED_SFP
+	hw->allow_unsupported_sfp = 1;
+#endif
 
 	/* Initialize the shared code */
 	diag = ixgbe_init_shared_code(hw);
