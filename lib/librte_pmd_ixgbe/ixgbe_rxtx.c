@@ -3175,8 +3175,10 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 
 		buf_size = (uint16_t) ((srrctl & IXGBE_SRRCTL_BSIZEPKT_MASK) <<
 				       IXGBE_SRRCTL_BSIZEPKT_SHIFT);
-		if (dev->data->dev_conf.rxmode.max_rx_pkt_len +
-				IXGBE_RX_BUF_THRESHOLD > buf_size){
+
+		/* It adds dual VLAN length for supporting dual VLAN */
+		if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
+				2 * IXGBE_VLAN_TAG_SIZE) > buf_size){
 			dev->data->scattered_rx = 1;
 			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
 		}
@@ -3474,7 +3476,10 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 
 		buf_size = (uint16_t) ((srrctl & IXGBE_SRRCTL_BSIZEPKT_MASK) <<
 				       IXGBE_SRRCTL_BSIZEPKT_SHIFT);
-		if (dev->data->dev_conf.rxmode.max_rx_pkt_len > buf_size){
+
+		/* It adds dual VLAN length for supporting dual VLAN */
+		if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
+				2 * IXGBE_VLAN_TAG_SIZE) > buf_size) {
 			dev->data->scattered_rx = 1;
 			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
 		}
