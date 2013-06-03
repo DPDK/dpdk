@@ -1649,6 +1649,20 @@ rte_eth_tx_burst(uint8_t port_id, uint16_t queue_id,
 	return (*dev->tx_pkt_burst)(dev->data->tx_queues[queue_id],
 						tx_pkts, nb_pkts);
 }
+
+uint32_t
+rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return 0;
+	}
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_count, -ENOTSUP);
+	return (*dev->dev_ops->rx_queue_count)(dev, queue_id);	
+}
 #endif
 
 int
