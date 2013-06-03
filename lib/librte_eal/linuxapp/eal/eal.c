@@ -782,13 +782,9 @@ rte_eal_init(int argc, char **argv)
 	int i, fctret, ret;
 	pthread_t thread_id;
 	static rte_atomic32_t run_once = RTE_ATOMIC32_INIT(0);
-	const char *logid;
 
 	if (!rte_atomic32_test_and_set(&run_once))
 		return -1;
-
-	logid = strrchr(argv[0], '/');
-	logid = strdup(logid ? logid + 1: argv[0]);
 
 	thread_id = pthread_self();
 
@@ -830,7 +826,7 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_tailqs_init() < 0)
 		rte_panic("Cannot init tail queues for objects\n");
 
-	if (rte_eal_log_init(logid, internal_config.syslog_facility) < 0)
+	if (rte_eal_log_init(argv[0], internal_config.syslog_facility) < 0)
 		rte_panic("Cannot init logs\n");
 
 	if (rte_eal_alarm_init() < 0)
