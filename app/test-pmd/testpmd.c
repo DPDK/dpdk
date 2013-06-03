@@ -1562,8 +1562,8 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 		}
  
 		/*set DCB mode of RX and TX of multiple queues*/
-		eth_conf->rxmode.mq_mode = ETH_VMDQ_DCB;
-		eth_conf->txmode.mq_mode = ETH_VMDQ_DCB_TX;
+		eth_conf->rxmode.mq_mode = ETH_MQ_RX_VMDQ_DCB;
+		eth_conf->txmode.mq_mode = ETH_MQ_TX_VMDQ_DCB;
 		if (dcb_conf->pfc_en)
 			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT|ETH_DCB_PFC_SUPPORT;
 		else
@@ -1591,8 +1591,8 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 			rx_conf.dcb_queue[i] = i;
 			tx_conf.dcb_queue[i] = i;
 		}
-		eth_conf->rxmode.mq_mode = ETH_DCB_RX;
-		eth_conf->txmode.mq_mode = ETH_DCB_TX;
+		eth_conf->rxmode.mq_mode = ETH_MQ_RX_DCB;
+		eth_conf->txmode.mq_mode = ETH_MQ_TX_DCB;
 		if (dcb_conf->pfc_en)
 			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT|ETH_DCB_PFC_SUPPORT;
 		else

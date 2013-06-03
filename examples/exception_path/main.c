@@ -149,7 +149,7 @@ static const struct rte_eth_conf port_conf = {
 		.hw_strip_crc = 0,      /* CRC stripped by hardware */
 	},
 	.txmode = {
-		.mq_mode = ETH_DCB_NONE,
+		.mq_mode = ETH_MQ_TX_NONE,
 	},
 };
 

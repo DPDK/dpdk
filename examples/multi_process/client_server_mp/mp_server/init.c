@@ -164,7 +164,7 @@ init_port(uint8_t port_num)
 	/* for port configuration all features are off by default */
 	const struct rte_eth_conf port_conf = {
 		.rxmode = {
-			.mq_mode = ETH_RSS
+			.mq_mode = ETH_MQ_RX_RSS
 		}
 	};
 	const uint16_t rx_rings = 1, tx_rings = num_clients;

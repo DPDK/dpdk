@@ -122,7 +122,7 @@ static const struct rte_eth_txconf tx_conf_default = {
 /* empty vmdq+dcb configuration structure. Filled in programatically */
 static const struct rte_eth_conf vmdq_dcb_conf_default = {
 	.rxmode = {
-		.mq_mode        = ETH_VMDQ_DCB,
+		.mq_mode        = ETH_MQ_RX_VMDQ_DCB,
 		.split_hdr_size = 0,
 		.header_split   = 0, /**< Header Split disabled */
 		.hw_ip_checksum = 0, /**< IP checksum offload disabled */
@@ -130,7 +130,7 @@ static const struct rte_eth_conf vmdq_dcb_conf_default = {
 		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
 	},
 	.txmode = {
-		.mq_mode = ETH_DCB_NONE,
+		.mq_mode = ETH_MQ_TX_NONE,
 	},
 	.rx_adv_conf = {
 		/*

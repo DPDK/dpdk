@@ -331,6 +331,150 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 	return (0);
 }
 
+static int
+rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
+		      const struct rte_eth_conf *dev_conf)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+
+	if (RTE_ETH_DEV_SRIOV(dev).active != 0) {
+		/* check multi-queue mode */
+		if ((dev_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) || 
+		    (dev_conf->rxmode.mq_mode == ETH_MQ_RX_DCB) ||
+		    (dev_conf->rxmode.mq_mode == ETH_MQ_RX_DCB_RSS) ||
+		    (dev_conf->txmode.mq_mode == ETH_MQ_TX_DCB)) {
+			/* SRIOV only works in VMDq enable mode */
+			PMD_DEBUG_TRACE("ethdev port_id=%d SRIOV active, "
+					"wrong VMDQ mq_mode rx %d tx %d\n", 
+					port_id, dev_conf->rxmode.mq_mode,
+					dev_conf->txmode.mq_mode);
+			return (-EINVAL);
+		}
+
+		switch (dev_conf->rxmode.mq_mode) {
+		case ETH_MQ_RX_VMDQ_RSS:
+		case ETH_MQ_RX_VMDQ_DCB:
+		case ETH_MQ_RX_VMDQ_DCB_RSS:
+			/* DCB/RSS VMDQ in SRIOV mode, not implement yet */
+			PMD_DEBUG_TRACE("ethdev port_id=%d SRIOV active, "
+					"unsupported VMDQ mq_mode rx %d\n", 
+					port_id, dev_conf->rxmode.mq_mode);
+			return (-EINVAL);
+		default: /* ETH_MQ_RX_VMDQ_ONLY or ETH_MQ_RX_NONE */
+			/* if nothing mq mode configure, use default scheme */
+			dev->data->dev_conf.rxmode.mq_mode = ETH_MQ_RX_VMDQ_ONLY;
+			if (RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool > 1)
+				RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool = 1;
+			break;
+		}
+
+		switch (dev_conf->txmode.mq_mode) {
+		case ETH_MQ_TX_VMDQ_DCB:
+			/* DCB VMDQ in SRIOV mode, not implement yet */
+			PMD_DEBUG_TRACE("ethdev port_id=%d SRIOV active, "
+					"unsupported VMDQ mq_mode tx %d\n", 
+					port_id, dev_conf->txmode.mq_mode);
+			return (-EINVAL);
+		default: /* ETH_MQ_TX_VMDQ_ONLY or ETH_MQ_TX_NONE */
+			/* if nothing mq mode configure, use default scheme */
+			dev->data->dev_conf.txmode.mq_mode = ETH_MQ_TX_VMDQ_ONLY;
+			if (RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool > 1)
+				RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool = 1;
+			break;
+		}
+
+		/* check valid queue number */
+		if ((nb_rx_q > RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool) ||
+		    (nb_tx_q > RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool)) {
+			PMD_DEBUG_TRACE("ethdev port_id=%d SRIOV active, "
+				    "queue number must less equal to %d\n", 
+					port_id, RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool);
+			return (-EINVAL);
+		}
+	} else {
+		/* For vmdb+dcb mode check our configuration before we go further */
+		if (dev_conf->rxmode.mq_mode == ETH_MQ_RX_VMDQ_DCB) {
+			const struct rte_eth_vmdq_dcb_conf *conf;
+			
+			if (nb_rx_q != ETH_VMDQ_DCB_NUM_QUEUES) {
+				PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB, nb_rx_q "
+						"!= %d\n",
+						port_id, ETH_VMDQ_DCB_NUM_QUEUES);
+				return (-EINVAL);
+			}
+			conf = &(dev_conf->rx_adv_conf.vmdq_dcb_conf);
+			if (! (conf->nb_queue_pools == ETH_16_POOLS ||
+			       conf->nb_queue_pools == ETH_32_POOLS)) {
+				PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB selected, "
+						"nb_queue_pools must be %d or %d\n",
+						port_id, ETH_16_POOLS, ETH_32_POOLS);
+				return (-EINVAL);
+			}
+		}
+		if (dev_conf->txmode.mq_mode == ETH_MQ_TX_VMDQ_DCB) {
+			const struct rte_eth_vmdq_dcb_tx_conf *conf;
+			
+			if (nb_tx_q != ETH_VMDQ_DCB_NUM_QUEUES) {
+				PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB, nb_tx_q "
+						"!= %d\n",
+						port_id, ETH_VMDQ_DCB_NUM_QUEUES);
+				return (-EINVAL);
+			}
+			conf = &(dev_conf->tx_adv_conf.vmdq_dcb_tx_conf);
+			if (! (conf->nb_queue_pools == ETH_16_POOLS ||
+			       conf->nb_queue_pools == ETH_32_POOLS)) {
+				PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB selected, "
+						"nb_queue_pools != %d or nb_queue_pools "
+						"!= %d\n",
+						port_id, ETH_16_POOLS, ETH_32_POOLS);
+				return (-EINVAL);
+			}
+		}
+		
+		/* For DCB mode check our configuration before we go further */
+		if (dev_conf->rxmode.mq_mode == ETH_MQ_RX_DCB) {
+			const struct rte_eth_dcb_rx_conf *conf;
+			
+			if (nb_rx_q != ETH_DCB_NUM_QUEUES) {
+				PMD_DEBUG_TRACE("ethdev port_id=%d DCB, nb_rx_q "
+						"!= %d\n",
+						port_id, ETH_DCB_NUM_QUEUES);
+				return (-EINVAL);
+			}
+			conf = &(dev_conf->rx_adv_conf.dcb_rx_conf);
+			if (! (conf->nb_tcs == ETH_4_TCS ||
+			       conf->nb_tcs == ETH_8_TCS)) {
+				PMD_DEBUG_TRACE("ethdev port_id=%d DCB selected, "
+						"nb_tcs != %d or nb_tcs "
+						"!= %d\n",
+						port_id, ETH_4_TCS, ETH_8_TCS);
+				return (-EINVAL);
+			}
+		}
+		
+		if (dev_conf->txmode.mq_mode == ETH_MQ_TX_DCB) {
+			const struct rte_eth_dcb_tx_conf *conf;
+			
+			if (nb_tx_q != ETH_DCB_NUM_QUEUES) {
+				PMD_DEBUG_TRACE("ethdev port_id=%d DCB, nb_tx_q "
+						"!= %d\n",
+						port_id, ETH_DCB_NUM_QUEUES);
+				return (-EINVAL);
+			}
+			conf = &(dev_conf->tx_adv_conf.dcb_tx_conf);
+			if (! (conf->nb_tcs == ETH_4_TCS ||
+			       conf->nb_tcs == ETH_8_TCS)) {
+				PMD_DEBUG_TRACE("ethdev port_id=%d DCB selected, "
+						"nb_tcs != %d or nb_tcs "
+						"!= %d\n",
+						port_id, ETH_4_TCS, ETH_8_TCS);
+				return (-EINVAL);
+			}
+		}
+	}
+	return 0;
+}
+
 int
 rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		      const struct rte_eth_conf *dev_conf)
@@ -413,84 +557,12 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		/* Use default value */
 		dev->data->dev_conf.rxmode.max_rx_pkt_len = ETHER_MAX_LEN;
 
-	/* For vmdb+dcb mode check our configuration before we go further */
-	if (dev_conf->rxmode.mq_mode == ETH_VMDQ_DCB) {
-		const struct rte_eth_vmdq_dcb_conf *conf;
-
-		if (nb_rx_q != ETH_VMDQ_DCB_NUM_QUEUES) {
-			PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB, nb_rx_q "
-					"!= %d\n",
-					port_id, ETH_VMDQ_DCB_NUM_QUEUES);
-			return (-EINVAL);
-		}
-		conf = &(dev_conf->rx_adv_conf.vmdq_dcb_conf);
-		if (! (conf->nb_queue_pools == ETH_16_POOLS ||
-		       conf->nb_queue_pools == ETH_32_POOLS)) {
-		    PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB selected, "
-				    "nb_queue_pools must be %d or %d\n",
-				    port_id, ETH_16_POOLS, ETH_32_POOLS);
-		    return (-EINVAL);
-		}
-	}
-	if (dev_conf->txmode.mq_mode == ETH_VMDQ_DCB_TX) {
-		const struct rte_eth_vmdq_dcb_tx_conf *conf;
-
-		if (nb_tx_q != ETH_VMDQ_DCB_NUM_QUEUES) {
-			PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB, nb_tx_q "
-					"!= %d\n",
-					port_id, ETH_VMDQ_DCB_NUM_QUEUES);
-			return (-EINVAL);
-		}
-		conf = &(dev_conf->tx_adv_conf.vmdq_dcb_tx_conf);
-		if (! (conf->nb_queue_pools == ETH_16_POOLS ||
-		       conf->nb_queue_pools == ETH_32_POOLS)) {
-			PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB selected, "
-				    "nb_queue_pools != %d or nb_queue_pools "
-				    "!= %d\n",
-				    port_id, ETH_16_POOLS, ETH_32_POOLS);
-			return (-EINVAL);
-		}
-	}
-	
-	/* For DCB mode check our configuration before we go further */
-	if (dev_conf->rxmode.mq_mode == ETH_DCB_RX) {
-		const struct rte_eth_dcb_rx_conf *conf;
-
-		if (nb_rx_q != ETH_DCB_NUM_QUEUES) {
-			PMD_DEBUG_TRACE("ethdev port_id=%d DCB, nb_rx_q "
-					"!= %d\n",
-					port_id, ETH_DCB_NUM_QUEUES);
-			return (-EINVAL);
-		}
-		conf = &(dev_conf->rx_adv_conf.dcb_rx_conf);
-		if (! (conf->nb_tcs == ETH_4_TCS ||
-		       conf->nb_tcs == ETH_8_TCS)) {
-			PMD_DEBUG_TRACE("ethdev port_id=%d DCB selected, "
-				    "nb_tcs != %d or nb_tcs "
-				    "!= %d\n",
-				    port_id, ETH_4_TCS, ETH_8_TCS);
-			return (-EINVAL);
-		}
-	}
-
-	if (dev_conf->txmode.mq_mode == ETH_DCB_TX) {
-		const struct rte_eth_dcb_tx_conf *conf;
-
-		if (nb_tx_q != ETH_DCB_NUM_QUEUES) {
-			PMD_DEBUG_TRACE("ethdev port_id=%d DCB, nb_tx_q "
-					"!= %d\n",
-					port_id, ETH_DCB_NUM_QUEUES);
-			return (-EINVAL);
-		}
-		conf = &(dev_conf->tx_adv_conf.dcb_tx_conf);
-		if (! (conf->nb_tcs == ETH_4_TCS ||
-		       conf->nb_tcs == ETH_8_TCS)) {
-			PMD_DEBUG_TRACE("ethdev port_id=%d DCB selected, "
-				    "nb_tcs != %d or nb_tcs "
-				    "!= %d\n",
-				    port_id, ETH_4_TCS, ETH_8_TCS);
-			return (-EINVAL);
-		}
+	/* multipe queue mode checking */
+	diag = rte_eth_dev_check_mq_mode(port_id, nb_rx_q, nb_tx_q, dev_conf);
+	if (diag != 0) {
+		PMD_DEBUG_TRACE("port%d rte_eth_dev_check_mq_mode = %d\n",
+				port_id, diag);
+		return diag;
 	}
 
 	/*
