@@ -81,26 +81,6 @@
 #define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
 #define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
-/* Pseudo Header for IPv4/UDP/TCP checksum */
-struct psd_header {
-	uint32_t src_addr; /* IP address of source host. */
-	uint32_t dst_addr; /* IP address of destination host(s). */
-	uint8_t  zero;     /* zero. */
-	uint8_t  proto;    /* L4 protocol type. */
-	uint16_t len;      /* L4 length. */
-} __attribute__((__packed__));
-
-
-/* Pseudo Header for IPv6/UDP/TCP checksum */
-struct ipv6_psd_header {
-	uint8_t src_addr[16]; /* IP address of source host. */
-	uint8_t dst_addr[16]; /* IP address of destination host(s). */
-	uint32_t len;         /* L4 length. */
-	uint8_t  zero[3];     /* zero. */
-	uint8_t  proto;       /* L4 protocol. */
-} __attribute__((__packed__));
-
-
 static inline uint16_t
 get_16b_sum(uint16_t *ptr16, uint32_t nr)
 {
@@ -135,30 +115,48 @@ get_ipv4_cksum(struct ipv4_hdr *ipv4_hdr)
 static inline uint16_t
 get_ipv4_psd_sum (struct ipv4_hdr * ip_hdr)
 {
-	struct psd_header psd_hdr;
+	/* Pseudo Header for IPv4/UDP/TCP checksum */
+	union ipv4_psd_header {
+		struct {
+			uint32_t src_addr; /* IP address of source host. */
+			uint32_t dst_addr; /* IP address of destination host(s). */
+			uint8_t  zero;     /* zero. */
+			uint8_t  proto;    /* L4 protocol type. */
+			uint16_t len;      /* L4 length. */
+		} __attribute__((__packed__));
+		uint16_t u16_arr[0];
+	} psd_hdr;
+
 	psd_hdr.src_addr = ip_hdr->src_addr;
 	psd_hdr.dst_addr = ip_hdr->dst_addr;
 	psd_hdr.zero     = 0;
 	psd_hdr.proto    = ip_hdr->next_proto_id;
 	psd_hdr.len      = rte_cpu_to_be_16((uint16_t)(rte_be_to_cpu_16(ip_hdr->total_length)
 				- sizeof(struct ipv4_hdr)));
-	return get_16b_sum((uint16_t*)&psd_hdr, sizeof(struct psd_header));
+	return get_16b_sum(psd_hdr.u16_arr, sizeof(psd_hdr));
 }
 
 static inline uint16_t
 get_ipv6_psd_sum (struct ipv6_hdr * ip_hdr)
 {
-	struct ipv6_psd_header psd_hdr;
-	rte_memcpy(&psd_hdr.src_addr, ip_hdr->src_addr, sizeof(ip_hdr->src_addr)
-			+ sizeof(ip_hdr->dst_addr));
+	/* Pseudo Header for IPv6/UDP/TCP checksum */
+	union ipv6_psd_header {
+		struct {
+			uint8_t src_addr[16]; /* IP address of source host. */
+			uint8_t dst_addr[16]; /* IP address of destination host(s). */
+			uint32_t len;         /* L4 length. */
+			uint32_t proto;       /* L4 protocol - top 3 bytes must be zero */
+		} __attribute__((__packed__));
 
-	psd_hdr.zero[0]   = 0;
-	psd_hdr.zero[1]   = 0;
-	psd_hdr.zero[2]   = 0;
-	psd_hdr.proto     = ip_hdr->proto;
+		uint16_t u16_arr[0]; /* allow use as 16-bit values with safe aliasing */
+	} psd_hdr;
+
+	rte_memcpy(&psd_hdr.src_addr, ip_hdr->src_addr,
+			sizeof(ip_hdr->src_addr) + sizeof(ip_hdr->dst_addr));
 	psd_hdr.len       = ip_hdr->payload_len;
+	psd_hdr.proto     = (ip_hdr->proto << 24);
 
-	return get_16b_sum((uint16_t*)&psd_hdr, sizeof(struct ipv6_psd_header));
+	return get_16b_sum(psd_hdr.u16_arr, sizeof(psd_hdr));
 }
 
 static inline uint16_t
