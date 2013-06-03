@@ -1584,6 +1584,36 @@ igb_alloc_rx_queue_mbufs(struct igb_rx_queue *rxq)
 	return 0;
 }
 
+#define E1000_MRQC_DEF_Q_SHIFT               (3)
+static int
+igb_dev_mq_rx_configure(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t mrqc;
+ 
+	if (RTE_ETH_DEV_SRIOV(dev).active == ETH_8_POOLS) {
+		/*
+	 	* SRIOV active scheme
+	 	* FIXME if support RSS together with VMDq & SRIOV
+	 	*/
+		mrqc = E1000_MRQC_ENABLE_VMDQ;
+		/* 011b Def_Q ignore, according to VT_CTL.DEF_PL */
+		mrqc |= 0x3 << E1000_MRQC_DEF_Q_SHIFT;
+		E1000_WRITE_REG(hw, E1000_MRQC, mrqc);
+	} else if(RTE_ETH_DEV_SRIOV(dev).active == 0) { 
+		/*
+	 	* SRIOV inactive scheme
+	 	*/
+		if (dev->data->nb_rx_queues > 1)
+			igb_rss_configure(dev);
+		else
+			igb_rss_disable(dev);
+	}
+ 
+	return 0;
+}
+ 
 int
 eth_igb_rx_init(struct rte_eth_dev *dev)
 {
@@ -1733,10 +1763,7 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	/*
 	 * Configure RSS if device configured with multiple RX queues.
 	 */
-	if (dev->data->nb_rx_queues > 1)
-		igb_rss_configure(dev);
-	else
-		igb_rss_disable(dev);
+	igb_dev_mq_rx_configure(dev);
 
 	/*
 	 * Setup the Checksum Register.
