@@ -147,6 +147,7 @@ static struct eth_dev_ops eth_em_ops = {
 	.vlan_offload_set     = eth_em_vlan_offload_set,
 	.rx_queue_setup       = eth_em_rx_queue_setup,
 	.rx_queue_release     = eth_em_rx_queue_release,
+	.rx_queue_count       = eth_em_rx_queue_count,	
 	.tx_queue_setup       = eth_em_tx_queue_setup,
 	.tx_queue_release     = eth_em_tx_queue_release,
 	.dev_led_on           = eth_em_led_on,
