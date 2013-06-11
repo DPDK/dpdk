@@ -69,23 +69,43 @@ void rte_free(void *addr)
  * Allocate memory on specified heap.
  */
 void *
-rte_malloc_socket(const char *type, size_t size, unsigned align, int socket)
+rte_malloc_socket(const char *type, size_t size, unsigned align, int socket_arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int socket, i;
+	void *ret;
 
 	/* return NULL if size is 0 or alignment is not power-of-2 */
 	if (size == 0 || !rte_is_power_of_2(align))
 		return NULL;
 
-	if (socket == SOCKET_ID_ANY)
+	if (socket_arg == SOCKET_ID_ANY)
 		socket = malloc_get_numa_socket();
+	else
+		socket = socket_arg;
 
 	/* Check socket parameter */
 	if (socket >= RTE_MAX_NUMA_NODES)
 		return NULL;
 
-	return malloc_heap_alloc(&mcfg->malloc_heaps[socket], type,
-			size, align == 0 ? 1 : align);
+	ret = malloc_heap_alloc(&mcfg->malloc_heaps[socket], type,
+				size, align == 0 ? 1 : align);
+	if (ret != NULL || socket_arg != SOCKET_ID_ANY)
+		return ret;
+
+	/* try other heaps */
+	for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
+		/* we already tried this one */
+		if (i == socket)
+			continue;
+
+		ret = malloc_heap_alloc(&mcfg->malloc_heaps[i], type,
+					size, align == 0 ? 1 : align);
+		if (ret != NULL)
+			return ret;
+	}
+
+	return NULL;
 }
 
 /*
