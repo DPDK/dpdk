@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2012 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2012-2013 6WIND.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without 
@@ -43,6 +44,7 @@
 #include <syslog.h>
 #include <getopt.h>
 #include <fcntl.h>
+#include <dlfcn.h>
 #include <stddef.h>
 #include <errno.h>
 #include <limits.h>
@@ -100,6 +102,20 @@
 	(fd) = (typeof (fd))val;                                \
 	(in) = end + 1;                                         \
 }
+
+TAILQ_HEAD(shared_driver_list, shared_driver);
+
+/* Definition for shared object drivers. */
+struct shared_driver {
+	TAILQ_ENTRY(shared_driver) next;
+
+	char    name[PATH_MAX];
+	void*   lib_handle;
+};
+
+/* List of external loadable drivers */
+static struct shared_driver_list solib_list =
+TAILQ_HEAD_INITIALIZER(solib_list);
 
 /* early configuration structure, when memory config is not mmapped */
 static struct rte_mem_config early_mem_config;
@@ -267,6 +283,7 @@ eal_usage(const char *prgname)
 	       "               (multiple -b options are alowed)\n"
 	       "  -m MB      : memory to allocate (default = size of hugemem)\n"
 	       "  -r NUM     : force number of memory ranks (don't detect)\n"
+	       "  -d LIB.so  : add driver (can be used multiple times)\n"
 	       "  --"OPT_SYSLOG"   : set syslog facility\n"
 	       "  --"OPT_HUGE_DIR" : directory where hugetlbfs is mounted\n"
 	       "  --"OPT_PROC_TYPE": type of this process\n"
@@ -434,6 +451,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_SYSLOG, 1, 0, 0},
 		{0, 0, 0, 0}
 	};
+	struct shared_driver *solib;
 
 	argvopt = argv;
 
@@ -451,7 +469,7 @@ eal_parse_args(int argc, char **argv)
 
 	internal_config.vmware_tsc_map = 0;
 
-	while ((opt = getopt_long(argc, argvopt, "b:c:m:n:r:v",
+	while ((opt = getopt_long(argc, argvopt, "b:c:d:m:n:r:v",
 				  lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -471,6 +489,18 @@ eal_parse_args(int argc, char **argv)
 				return -1;
 			}
 			coremask_ok = 1;
+			break;
+		/* force loading of external driver */
+		case 'd':
+			solib = malloc(sizeof(*solib));
+			if (solib == NULL) {
+				RTE_LOG(ERR, EAL, "malloc(solib) failed\n");
+				return -1;
+			}
+			memset(solib, 0, sizeof(*solib));
+			strncpy(solib->name, optarg, PATH_MAX-1);
+			solib->name[PATH_MAX-1] = 0;
+			TAILQ_INSERT_TAIL(&solib_list, solib, next);
 			break;
 		/* size of memory */
 		case 'm':
@@ -591,6 +621,7 @@ rte_eal_init(int argc, char **argv)
 	int i, fctret, ret;
 	pthread_t thread_id;
 	const char *logid;
+	struct shared_driver *solib = NULL;
 
 	logid = strrchr(argv[0], '/');
 	logid = strdup(logid ? logid + 1: argv[0]);
@@ -680,6 +711,18 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	eal_thread_init_master(rte_config.master_lcore);
+
+	TAILQ_FOREACH(solib, &solib_list, next) {
+		solib->lib_handle = dlopen(solib->name, RTLD_NOW);
+		if ((solib->lib_handle == NULL) && (solib->name[0] != '/')) {
+			/* relative path: try again with "./" prefix */
+			char sopath[PATH_MAX];
+			snprintf(sopath, sizeof(sopath), "./%s", solib->name);
+			solib->lib_handle = dlopen(sopath, RTLD_NOW);
+		}
+		if (solib->lib_handle == NULL)
+			RTE_LOG(WARNING, EAL, "%s\n", dlerror());
+	}
 
 	return fctret;
 }
