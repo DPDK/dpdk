@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2013 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2012-2013 6WIND S.A.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without
@@ -41,6 +42,8 @@
 #include <syslog.h>
 #include <getopt.h>
 #include <sys/file.h>
+#include <fcntl.h>
+#include <dlfcn.h>
 #include <stddef.h>
 #include <errno.h>
 #include <limits.h>
@@ -116,6 +119,21 @@
 
 /* Allow the application to print its usage message too if set */
 static rte_usage_hook_t	rte_application_usage_hook = NULL;
+
+TAILQ_HEAD(shared_driver_list, shared_driver);
+
+/* Definition for shared object drivers. */
+struct shared_driver {
+	TAILQ_ENTRY(shared_driver) next;
+
+	char    name[PATH_MAX];
+	void*   lib_handle;
+};
+
+/* List of external loadable drivers */
+static struct shared_driver_list solib_list =
+TAILQ_HEAD_INITIALIZER(solib_list);
+
 /* early configuration structure, when memory config is not mmapped */
 static struct rte_mem_config early_mem_config;
 
@@ -329,6 +347,7 @@ eal_usage(const char *prgname)
 	       "  -c COREMASK  : A hexadecimal bitmask of cores to run on\n"
 	       "  -n NUM       : Number of memory channels\n"
 		   "  -v           : Display version information on startup\n"
+	       "  -d LIB.so    : add driver (can be used multiple times)\n"
 	       "  -b <domain:bus:devid.func>: to prevent EAL from using specified "
            "PCI device\n"
 	       "                 (multiple -b options are allowed)\n"
@@ -601,6 +620,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_SYSLOG, 1, NULL, 0},
 		{0, 0, 0, 0}
 	};
+	struct shared_driver *solib;
 
 	argvopt = argv;
 
@@ -626,7 +646,7 @@ eal_parse_args(int argc, char **argv)
 
 	internal_config.vmware_tsc_map = 0;
 
-	while ((opt = getopt_long(argc, argvopt, "b:c:m:n:r:v",
+	while ((opt = getopt_long(argc, argvopt, "b:c:d:m:n:r:v",
 				  lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -646,6 +666,18 @@ eal_parse_args(int argc, char **argv)
 				return -1;
 			}
 			coremask_ok = 1;
+			break;
+		/* force loading of external driver */
+		case 'd':
+			solib = malloc(sizeof(*solib));
+			if (solib == NULL) {
+				RTE_LOG(ERR, EAL, "malloc(solib) failed\n");
+				return -1;
+			}
+			memset(solib, 0, sizeof(*solib));
+			strncpy(solib->name, optarg, PATH_MAX-1);
+			solib->name[PATH_MAX-1] = 0;
+			TAILQ_INSERT_TAIL(&solib_list, solib, next);
 			break;
 		/* size of memory */
 		case 'm':
@@ -852,6 +884,7 @@ rte_eal_init(int argc, char **argv)
 	int i, fctret, ret;
 	pthread_t thread_id;
 	static rte_atomic32_t run_once = RTE_ATOMIC32_INIT(0);
+	struct shared_driver *solib = NULL;
 
 	if (!rte_atomic32_test_and_set(&run_once))
 		return -1;
@@ -925,15 +958,27 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_pci_init() < 0)
 		rte_panic("Cannot init PCI\n");
 
-	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%x)\n",
-		rte_config.master_lcore, (int)thread_id);
-
 	eal_check_mem_on_local_socket();
 
 	rte_eal_mcfg_complete();
 
 	if (rte_eal_non_pci_ethdev_init() < 0)
 		rte_panic("Cannot init non-PCI eth_devs\n");
+
+	TAILQ_FOREACH(solib, &solib_list, next) {
+		solib->lib_handle = dlopen(solib->name, RTLD_NOW);
+		if ((solib->lib_handle == NULL) && (solib->name[0] != '/')) {
+			/* relative path: try again with "./" prefix */
+			char sopath[PATH_MAX];
+			snprintf(sopath, sizeof(sopath), "./%s", solib->name);
+			solib->lib_handle = dlopen(sopath, RTLD_NOW);
+		}
+		if (solib->lib_handle == NULL)
+			RTE_LOG(WARNING, EAL, "%s\n", dlerror());
+	}
+
+	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%x)\n",
+		rte_config.master_lcore, (int)thread_id);
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 
