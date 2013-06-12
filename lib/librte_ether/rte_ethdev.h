@@ -320,6 +320,7 @@ struct rte_eth_vmdq_dcb_conf {
  * For future extensions.
  */
 struct rte_eth_txmode {
+	int reserved[]; /* force size of struct to be 0 */
 };
 
 /**
