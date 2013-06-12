@@ -62,6 +62,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define _FILE_OFFSET_BITS 64
 #include <errno.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -338,54 +339,66 @@ unmap_all_hugepages_orig(struct hugepage *hugepg_tbl, struct hugepage_info *hpi)
 	return 0;
 }
 
+/* Lock page in physical memory and prevent from swapping. */
+int
+rte_mem_lock_page(const void *virt)
+{
+	unsigned long virtual = (unsigned long)virt;
+	int page_size = getpagesize();
+	unsigned long aligned = (virtual & ~ (page_size - 1));
+	return mlock((void*)aligned, page_size);
+}
+
 /*
- * For each hugepage in hugepg_tbl, fill the physaddr value. We find
- * it by browsing the /proc/self/pagemap special file.
+ * Get physical address of any mapped virtual address in the current process.
+ */
+phys_addr_t
+rte_mem_virt2phy(const void *virt)
+{
+	int fdmem;
+	uint64_t page;
+	off_t offset;
+	unsigned long virtual = (unsigned long)virt;
+	int page_size = getpagesize();
+
+	fdmem = open("/proc/self/pagemap", O_RDONLY);
+	if (fdmem < 0) {
+		RTE_LOG(ERR, EAL, "%s(): cannot open /proc/self/pagemap: %s\n",
+		                  __func__, strerror(errno));
+		return RTE_BAD_PHYS_ADDR;
+	}
+	offset = (off_t) (virtual / page_size) * sizeof(uint64_t);
+	if (lseek(fdmem, offset, SEEK_SET) == (off_t) -1) {
+		RTE_LOG(ERR, EAL, "%s(): seek error in /proc/self/pagemap: %s\n",
+		                  __func__, strerror(errno));
+		close(fdmem);
+		return RTE_BAD_PHYS_ADDR;
+	}
+	if (read(fdmem, &page, sizeof(uint64_t)) <= 0) {
+		RTE_LOG(ERR, EAL, "%s(): cannot read /proc/self/pagemap: %s\n",
+		                  __func__, strerror(errno));
+		close(fdmem);
+		return RTE_BAD_PHYS_ADDR;
+	}
+	close (fdmem);
+
+	/* pfn (page frame number) are bits 0-54 (see pagemap.txt in Linux doc) */
+	return ((page & 0x7fffffffffffffULL) * page_size) + (virtual % page_size);
+}
+
+/*
+ * For each hugepage in hugepg_tbl, fill the physaddr value.
  */
 static int
 find_physaddr(struct hugepage *hugepg_tbl, struct hugepage_info *hpi)
 {
-	int fd;
 	unsigned i;
-	uint64_t page;
-	unsigned long virt_pfn;
-	int page_size;
-
-	/* standard page size */
-	page_size = getpagesize();
-
-	fd = open("/proc/self/pagemap", O_RDONLY);
-	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "%s(): cannot open /proc/self/pagemap: %s\n",
-			__func__, strerror(errno));
-		return -1;
-	}
 
 	for (i = 0; i < hpi->num_pages[0]; i++) {
-		off_t offset;
-		virt_pfn = (unsigned long)hugepg_tbl[i].orig_va /
-			page_size;
-		offset = sizeof(uint64_t) * virt_pfn;
-		if (lseek(fd, offset, SEEK_SET) == (off_t) -1) {
-			RTE_LOG(ERR, EAL, "%s(): seek error in /proc/self/pagemap: %s\n",
-					__func__, strerror(errno));
-			close(fd);
+		hugepg_tbl[i].physaddr = rte_mem_virt2phy(hugepg_tbl[i].orig_va);
+		if (hugepg_tbl[i].physaddr == RTE_BAD_PHYS_ADDR)
 			return -1;
-		}
-		if (read(fd, &page, sizeof(uint64_t)) < 0) {
-			RTE_LOG(ERR, EAL, "%s(): cannot read /proc/self/pagemap: %s\n",
-					__func__, strerror(errno));
-			close(fd);
-			return -1;
-		}
-
-		/*
-		 * the pfn (page frame number) are bits 0-54 (see
-		 * pagemap.txt in linux Documentation)
-		 */
-		hugepg_tbl[i].physaddr = ((page & 0x7fffffffffffffULL) * page_size);
 	}
-	close(fd);
 	return 0;
 }
 
