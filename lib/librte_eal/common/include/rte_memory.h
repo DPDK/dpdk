@@ -70,6 +70,7 @@ enum rte_page_sizes {
 #ifndef __KERNEL__ /* so we can include this header in kernel modules */
 typedef uint64_t phys_addr_t; /**< Physical address definition. */
 #endif
+#define RTE_BAD_PHYS_ADDR ((phys_addr_t)-1)
 
 /**
  * Physical memory segment descriptor.
@@ -87,6 +88,27 @@ struct rte_memseg {
 	uint32_t nrank;             /**< Number of ranks. */
 } __attribute__((__packed__));
 
+/**
+ * Lock page in physical memory and prevent from swapping.
+ *
+ * @param virt
+ *   The virtual address.
+ * @return
+ *   0 on success, negative on error.
+ */
+int rte_mem_lock_page(const void *virt);
+
+/**
+ * Get physical address of any mapped virtual address in the current process.
+ * It is found by browsing the /proc/self/pagemap special file.
+ * The page must be locked.
+ *
+ * @param virt
+ *   The virtual address.
+ * @return
+ *   The physical address or RTE_BAD_PHYS_ADDR on error.
+ */
+phys_addr_t rte_mem_virt2phy(const void *virt);
 
 /**
  * Get the layout of the available physical memory.
