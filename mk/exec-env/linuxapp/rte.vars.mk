@@ -42,10 +42,13 @@
 #
 
 EXECENV_CFLAGS  = -pthread
-EXECENV_LDFLAGS =
+EXECENV_LDFLAGS = -export-dynamic
 EXECENV_ASFLAGS =
 
 # force applications to link with gcc/icc instead of using ld
 LINK_USING_CC := 1
 
-export EXECENV_CFLAGS EXECENV_LDFLAGS EXECENV_ASFLAGS
+# Add library to the group to resolve symbols
+EXECENV_LDLIBS = -ldl
+
+export EXECENV_CFLAGS EXECENV_LDFLAGS EXECENV_ASFLAGS EXECENV_LDLIBS
