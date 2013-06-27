@@ -192,6 +192,10 @@ struct rte_eth_stats {
 	uint64_t rx_nombuf; /**< Total number of RX mbuf allocation failures. */
 	uint64_t fdirmatch; /**< Total number of RX packets matching a filter. */
 	uint64_t fdirmiss;  /**< Total number of RX packets not matching any filter. */
+	uint64_t tx_pause_xon;  /**< Total nb. of XON pause frame sent. */
+	uint64_t rx_pause_xon;  /**< Total nb. of XON pause frame received. */
+	uint64_t tx_pause_xoff; /**< Total nb. of XOFF pause frame sent. */
+	uint64_t rx_pause_xoff; /**< Total nb. of XOFF pause frame received. */
 	uint64_t q_ipackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	/**< Total number of queue RX packets. */
 	uint64_t q_opackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
