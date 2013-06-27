@@ -725,6 +725,16 @@ fwd_port_stats_display(portid_t port_id, struct rte_eth_stats *stats)
 		if (stats->rx_nombuf > 0)
 			printf("  RX-nombufs:%14"PRIu64"\n", stats->rx_nombuf);
 	}
+
+	/* Display statistics of XON/XOFF pause frames, if any. */
+	if ((stats->tx_pause_xon  | stats->rx_pause_xon |
+	     stats->tx_pause_xoff | stats->rx_pause_xoff) > 0) {
+		printf("  RX-XOFF:    %-14"PRIu64" RX-XON:     %-14"PRIu64"\n",
+		       stats->rx_pause_xoff, stats->rx_pause_xon);
+		printf("  TX-XOFF:    %-14"PRIu64" TX-XON:     %-14"PRIu64"\n",
+		       stats->tx_pause_xoff, stats->tx_pause_xon);
+	}
+
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 	if (port->rx_stream)
 		pkt_burst_stats_display("RX",
