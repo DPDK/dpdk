@@ -167,6 +167,14 @@ nic_stats_display(portid_t port_id)
 		}
 	}
 
+	/* Display statistics of XON/XOFF pause frames, if any. */
+	if ((stats.tx_pause_xon  | stats.rx_pause_xon |
+	     stats.tx_pause_xoff | stats.rx_pause_xoff) > 0) {
+		printf("  RX-XOFF:    %-10"PRIu64" RX-XON:    %-10"PRIu64"\n",
+		       stats.rx_pause_xoff, stats.rx_pause_xon);
+		printf("  TX-XOFF:    %-10"PRIu64" TX-XON:    %-10"PRIu64"\n",
+		       stats.tx_pause_xoff, stats.tx_pause_xon);
+	}
 	printf("  %s############################%s\n",
 	       nic_stats_border, nic_stats_border);
 }

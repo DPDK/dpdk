@@ -801,6 +801,12 @@ eth_em_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 	rte_stats->opackets = stats->gptc;
 	rte_stats->ibytes   = stats->gorc;
 	rte_stats->obytes   = stats->gotc;
+
+	/* XON/XOFF pause frames stats registers */
+	rte_stats->tx_pause_xon  = stats->xontxc;
+	rte_stats->rx_pause_xon  = stats->xonrxc;
+	rte_stats->tx_pause_xoff = stats->xofftxc;
+	rte_stats->rx_pause_xoff = stats->xoffrxc;
 }
 
 static void

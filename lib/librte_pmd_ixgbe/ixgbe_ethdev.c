@@ -1425,6 +1425,12 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	stats->oerrors  = 0;
 
+	/* XON/XOFF pause frames */
+	stats->tx_pause_xon  = hw_stats->lxontxc;
+	stats->rx_pause_xon  = hw_stats->lxonrxc;
+	stats->tx_pause_xoff = hw_stats->lxofftxc;
+	stats->rx_pause_xoff = hw_stats->lxoffrxc;
+
 	/* Flow Director Stats registers */
 	hw_stats->fdirmatch += IXGBE_READ_REG(hw, IXGBE_FDIRMATCH);
 	hw_stats->fdirmiss += IXGBE_READ_REG(hw, IXGBE_FDIRMISS);

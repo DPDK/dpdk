@@ -911,6 +911,12 @@ eth_igb_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 	/* Tx Errors */
 	rte_stats->oerrors = stats->ecol + stats->latecol;
 
+	/* XON/XOFF pause frames */
+	rte_stats->tx_pause_xon  = stats->xontxc;
+	rte_stats->rx_pause_xon  = stats->xonrxc;
+	rte_stats->tx_pause_xoff = stats->xofftxc;
+	rte_stats->rx_pause_xoff = stats->xoffrxc;
+
 	rte_stats->ipackets = stats->gprc;
 	rte_stats->opackets = stats->gptc;
 	rte_stats->ibytes   = stats->gorc;
