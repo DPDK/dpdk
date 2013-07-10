@@ -974,10 +974,16 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		}
 
 #ifdef RTE_EAL_UNBIND_PORTS
-		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO)
+		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO) {
 			/* unbind driver and load uio resources for Intel NICs */
 			if (pci_switch_module(dr, dev, 1, IGB_UIO_NAME) < 0)
 				return -1;
+		} else if (dr->drv_flags & RTE_PCI_DRV_FORCE_UNBIND &&
+		           rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			/* unbind current driver */
+			if (pci_unbind_kernel_driver(dev) < 0)
+				return -1;
+		}
 #else
 		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO)
 			/* just map resources for Intel NICs */
