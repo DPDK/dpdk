@@ -2559,7 +2559,7 @@ cmd_link_flow_ctrl_set_parsed(void *parsed_result,
 	 * the RTE_FC_RX_PAUSE, Respond to the pause frame at the Tx side.
 	 */
 	static enum rte_eth_fc_mode rx_tx_onoff_2_lfc_mode[2][2] = {
-			{RTE_FC_NONE, RTE_FC_RX_PAUSE}, {RTE_FC_TX_PAUSE, RTE_FC_FULL}
+			{RTE_FC_NONE, RTE_FC_TX_PAUSE}, {RTE_FC_RX_PAUSE, RTE_FC_FULL}
 	};
 
 	rx_fc_enable = (!strcmp(res->rx_lfc_mode, "on")) ? 1 : 0;
