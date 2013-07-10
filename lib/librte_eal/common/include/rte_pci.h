@@ -187,6 +187,8 @@ struct rte_pci_driver {
 #define RTE_PCI_DRV_NEED_IGB_UIO 0x0001
 /**< Device driver must be registered several times until failure */
 #define RTE_PCI_DRV_MULTIPLE 0x0002
+/** Device needs to be unbound even if no module is provided */
+#define RTE_PCI_DRV_FORCE_UNBIND 0x0004
 
 /**
  * Perform clean up of pci drivers on application exits.
