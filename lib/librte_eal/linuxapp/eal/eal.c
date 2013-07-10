@@ -801,12 +801,24 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_pci_init() < 0)
 		rte_panic("Cannot init PCI\n");
 
-	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%x)\n",
-		rte_config.master_lcore, (int)thread_id);
-
 	eal_check_mem_on_local_socket();
 
 	rte_eal_mcfg_complete();
+
+	TAILQ_FOREACH(solib, &solib_list, next) {
+		solib->lib_handle = dlopen(solib->name, RTLD_NOW);
+		if ((solib->lib_handle == NULL) && (solib->name[0] != '/')) {
+			/* relative path: try again with "./" prefix */
+			char sopath[PATH_MAX];
+			snprintf(sopath, sizeof(sopath), "./%s", solib->name);
+			solib->lib_handle = dlopen(sopath, RTLD_NOW);
+		}
+		if (solib->lib_handle == NULL)
+			RTE_LOG(WARNING, EAL, "%s\n", dlerror());
+	}
+
+	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%x)\n",
+		rte_config.master_lcore, (int)thread_id);
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 
@@ -829,18 +841,6 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	eal_thread_init_master(rte_config.master_lcore);
-
-	TAILQ_FOREACH(solib, &solib_list, next) {
-		solib->lib_handle = dlopen(solib->name, RTLD_NOW);
-		if ((solib->lib_handle == NULL) && (solib->name[0] != '/')) {
-			/* relative path: try again with "./" prefix */
-			char sopath[PATH_MAX];
-			snprintf(sopath, sizeof(sopath), "./%s", solib->name);
-			solib->lib_handle = dlopen(sopath, RTLD_NOW);
-		}
-		if (solib->lib_handle == NULL)
-			RTE_LOG(WARNING, EAL, "%s\n", dlerror());
-	}
 
 	/*
 	 * Launch a dummy function on all slave lcores, so that master lcore
