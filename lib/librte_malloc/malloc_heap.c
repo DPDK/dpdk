@@ -201,7 +201,7 @@ malloc_heap_alloc(struct malloc_heap *heap,
  * Function to retrieve data for heap on given socket
  */
 int
-malloc_heap_get_stats(struct malloc_heap *heap,
+malloc_heap_get_stats(const struct malloc_heap *heap,
 		struct rte_malloc_socket_stats *socket_stats)
 {
 	if (!heap->initialised)

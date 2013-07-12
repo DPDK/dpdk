@@ -273,7 +273,7 @@ rte_free(void *ptr);
  *   0 on success
  */
 int
-rte_malloc_validate(void *ptr, size_t *size);
+rte_malloc_validate(const void *ptr, size_t *size);
 
 /**
  * Get heap statistics for the specified heap.
