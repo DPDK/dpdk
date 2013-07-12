@@ -69,12 +69,12 @@ extern "C" {
 /**
  * add a byte-value offset from a pointer
  */
-#define RTE_PTR_ADD(ptr, x) ((typeof(ptr))((uintptr_t)(ptr) + (x)))
+#define RTE_PTR_ADD(ptr, x) ((void*)((uintptr_t)(ptr) + (x)))
 
 /**
  * subtract a byte-value offset from a pointer
  */
-#define RTE_PTR_SUB(ptr, x) ((typeof(ptr))((uintptr_t)ptr - (x)))
+#define RTE_PTR_SUB(ptr, x) ((void*)((uintptr_t)ptr - (x)))
 
 /**
  * get the difference between two pointer values, i.e. how far apart
@@ -130,7 +130,7 @@ rte_align_floor_int(uintptr_t ptr, uintptr_t align)
  * must be a power-of-two value.
  */
 #define RTE_PTR_ALIGN_CEIL(ptr, align) \
-	RTE_PTR_ALIGN_FLOOR(RTE_PTR_ADD(ptr, (align) - 1), align)
+	RTE_PTR_ALIGN_FLOOR((typeof(ptr))RTE_PTR_ADD(ptr, (align) - 1), align)
 
 /**
  * Macro to align a value to a given power-of-two. The resultant value
