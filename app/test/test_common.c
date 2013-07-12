@@ -62,9 +62,9 @@ test_macros(int __rte_unused unused_parm)
 
 	RTE_SET_USED(unused);
 
-	if (RTE_PTR_ADD(SMALLER, PTR_DIFF) != BIGGER)
+	if ((uintptr_t)RTE_PTR_ADD(SMALLER, PTR_DIFF) != BIGGER)
 		FAIL_MACRO(RTE_PTR_ADD);
-	if (RTE_PTR_SUB(BIGGER, PTR_DIFF) != SMALLER)
+	if ((uintptr_t)RTE_PTR_SUB(BIGGER, PTR_DIFF) != SMALLER)
 		FAIL_MACRO(RTE_PTR_SUB);
 	if (RTE_PTR_DIFF(BIGGER, SMALLER) != PTR_DIFF)
 		FAIL_MACRO(RTE_PTR_DIFF);
