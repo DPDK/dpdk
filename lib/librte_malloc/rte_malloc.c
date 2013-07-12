@@ -168,9 +168,9 @@ rte_realloc(void *ptr, size_t size, unsigned align)
 }
 
 int
-rte_malloc_validate(void *ptr, size_t *size)
+rte_malloc_validate(const void *ptr, size_t *size)
 {
-	struct malloc_elem *elem = malloc_elem_from_data(ptr);
+	const struct malloc_elem *elem = malloc_elem_from_data(ptr);
 	if (!malloc_elem_cookies_ok(elem))
 		return -1;
 	if (size != NULL)
