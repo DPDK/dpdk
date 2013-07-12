@@ -61,7 +61,7 @@ static const unsigned MALLOC_ELEM_TRAILER_LEN = 0;
 
 /* dummy function - just check if pointer is non-null */
 static inline int
-malloc_elem_cookies_ok(struct malloc_elem *elem){ return elem != NULL; }
+malloc_elem_cookies_ok(const struct malloc_elem *elem){ return elem != NULL; }
 
 /* dummy function - no header if malloc_debug is not enabled */
 static inline void
@@ -99,7 +99,7 @@ set_trailer(struct malloc_elem *elem)
 
 /* check that the header and trailer cookies are set correctly */
 static inline int
-malloc_elem_cookies_ok(struct malloc_elem *elem)
+malloc_elem_cookies_ok(const struct malloc_elem *elem)
 {
 	return (elem != NULL &&
 			MALLOC_ELEM_HEADER(elem) == MALLOC_HEADER_COOKIE &&
@@ -116,7 +116,7 @@ static const unsigned MALLOC_ELEM_HEADER_LEN = sizeof(struct malloc_elem);
  * the actual malloc_elem header for that block.
  */
 static inline struct malloc_elem *
-malloc_elem_from_data(void *data)
+malloc_elem_from_data(const void *data)
 {
 	if (data == NULL)
 		return NULL;
