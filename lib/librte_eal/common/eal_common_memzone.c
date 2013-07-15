@@ -259,9 +259,6 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 			return memzone_reserve_aligned_thread_unsafe(name,
 				len, socket_id, 0, align, bound);
 
-		RTE_LOG(ERR, EAL, "%s(%s, %zu, %d): "
-			"No appropriate segment found\n",
-			__func__, name, requested_len, socket_id);
 		rte_errno = ENOMEM;
 		return NULL;
 	}
