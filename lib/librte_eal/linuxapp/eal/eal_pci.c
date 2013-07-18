@@ -991,15 +991,6 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 			return -1;
 #endif
 
-		/* We always should have BAR0 mapped */
-		if (rte_eal_process_type() == RTE_PROC_PRIMARY && 
-			dev->mem_resource[0].addr == NULL) {
-			RTE_LOG(ERR, EAL,
-				"%s(): BAR0 is not mapped\n",
-				__func__);
-			return (-1);
-		}
- 
 		/* reference driver structure */
 		dev->driver = dr;
 
