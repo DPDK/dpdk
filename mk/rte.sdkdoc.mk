@@ -48,6 +48,8 @@ htmlapi: htmlapi-clean
 	@echo 'doxygen for API...'
 	$(Q)mkdir -p $(RTE_OUTPUT)/doc/html
 	$(Q)(cat $(RTE_SDK)/doc/doxy-api.conf         && \
+	    printf 'PROJECT_NUMBER = '                && \
+	                      $(MAKE) -rR showversion && \
 	    echo OUTPUT_DIRECTORY = $(RTE_OUTPUT)/doc && \
 	    echo HTML_OUTPUT      = html/api          && \
 	    echo GENERATE_HTML    = YES               && \
