@@ -29,6 +29,12 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+.PHONY: showversion
+showversion:
+	@sed -rn 's,^#define RTE_VER_[A-Z_]*[[:space:]]+([0-9]+).*,\1,p' \
+		$(RTE_SRCDIR)/lib/librte_eal/common/include/rte_version.h | \
+		tr '\n' '.' | sed -r 's,\.([0-9]+)\.$$,r\1\n,'
+
 INSTALL_CONFIGS := $(filter-out %~,\
 	$(patsubst $(RTE_SRCDIR)/config/defconfig_%,%,\
 	$(wildcard $(RTE_SRCDIR)/config/defconfig_*)))
