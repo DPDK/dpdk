@@ -405,7 +405,7 @@ static struct rte_timer power_timers[RTE_MAX_LCORE];
 
 static inline uint32_t power_idle_heuristic(uint32_t zero_rx_packet_count);
 static inline enum freq_scale_hint_t power_freq_scaleup_heuristic( \
-				unsigned lcore_id, uint32_t rx_ring_length);
+			unsigned lcore_id, uint8_t port_id, uint16_t queue_id);
 
 /* exit signal handler */
 static void
@@ -769,34 +769,33 @@ power_idle_heuristic(uint32_t zero_rx_packet_count)
 }
 
 static inline enum freq_scale_hint_t
-power_freq_scaleup_heuristic(unsigned lcore_id, uint32_t rx_ring_length)
+power_freq_scaleup_heuristic(unsigned lcore_id,
+			     uint8_t port_id,
+			     uint16_t queue_id)
 {
 /**
  * HW Rx queue size is 128 by default, Rx burst read at maximum 32 entries
  * per iteration
  */
 #define FREQ_GEAR1_RX_PACKET_THRESHOLD             MAX_PKT_BURST
-#define FREQ_GEAR2_RX_PACKET_THRESHOLD             64
-#define FREQ_GEAR3_RX_PACKET_THRESHOLD             96
+#define FREQ_GEAR2_RX_PACKET_THRESHOLD             (MAX_PKT_BURST*2)
+#define FREQ_GEAR3_RX_PACKET_THRESHOLD             (MAX_PKT_BURST*3)
 #define FREQ_UP_TREND1_ACC   1
 #define FREQ_UP_TREND2_ACC   100
 #define FREQ_UP_THRESHOLD    10000
 
-	/**
-	 * there are received packets to process, staying at C0 state while
-	 * trying to scale up frequency depending on how many entries on h/w
-	 * queue. Determine frequency scaleup trend based on availiable entries
-	 * on Rx queues.
-	 */
-	if (rx_ring_length > FREQ_GEAR3_RX_PACKET_THRESHOLD) {
+	if (likely(rte_eth_rx_descriptor_done(port_id, queue_id,
+			FREQ_GEAR3_RX_PACKET_THRESHOLD) > 0)) {
 		stats[lcore_id].trend = 0;
 		return FREQ_HIGHEST;
-	} else if (rx_ring_length > FREQ_GEAR2_RX_PACKET_THRESHOLD)
+	} else if (likely(rte_eth_rx_descriptor_done(port_id, queue_id,
+			FREQ_GEAR2_RX_PACKET_THRESHOLD) > 0))
 		stats[lcore_id].trend += FREQ_UP_TREND2_ACC;
-	else if (rx_ring_length > FREQ_GEAR1_RX_PACKET_THRESHOLD)
+	else if (likely(rte_eth_rx_descriptor_done(port_id, queue_id,
+			FREQ_GEAR1_RX_PACKET_THRESHOLD) > 0))
 		stats[lcore_id].trend += FREQ_UP_TREND1_ACC;
 
-	if (stats[lcore_id].trend > FREQ_UP_THRESHOLD) {
+	if (likely(stats[lcore_id].trend > FREQ_UP_THRESHOLD)) {
 		stats[lcore_id].trend = 0;
 		return FREQ_HIGHER;
 	}
@@ -816,7 +815,6 @@ main_loop(__attribute__((unused)) void *dummy)
 	uint8_t portid, queueid;
 	struct lcore_conf *qconf;
 	struct lcore_rx_queue *rx_queue;
-	uint32_t rx_ring_length;
 	enum freq_scale_hint_t lcore_scaleup_hint;
 	
 	uint32_t lcore_rx_idle_count = 0;
@@ -908,15 +906,6 @@ main_loop(__attribute__((unused)) void *dummy)
 					rx_queue->zero_rx_packet_count);
 				lcore_rx_idle_count++;
 			} else {
-				/**
-				 * get availiable descriptor number via MMIO read is costly,
-                                 * so only do it when recent poll returns maximum number. 
-				 */
-				if (nb_rx >= MAX_PKT_BURST)
-				     rx_ring_length = rte_eth_rx_queue_count(portid, queueid);
-				else 
-				     rx_ring_length = 0;
-
 				rx_queue->zero_rx_packet_count = 0;
 
 				/**
@@ -927,7 +916,7 @@ main_loop(__attribute__((unused)) void *dummy)
 				 */
 				rx_queue->freq_up_hint =
 					power_freq_scaleup_heuristic(lcore_id,
-							rx_ring_length);
+							portid, queueid);
  			}
 
 			/* Prefetch first packets */
