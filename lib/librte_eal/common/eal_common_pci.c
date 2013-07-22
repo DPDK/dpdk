@@ -115,10 +115,16 @@ static int
 pci_probe_all_drivers(struct rte_pci_device *dev)
 {
 	struct rte_pci_driver *dr = NULL;
+	int rc;
 
 	dev->blacklisted = !!is_blacklisted(dev);
 	TAILQ_FOREACH(dr, &driver_list, next) {
-		if (rte_eal_pci_probe_one_driver(dr, dev))
+		rc = rte_eal_pci_probe_one_driver(dr, dev);
+		if (rc < 0)
+			/* negative value is an error */
+			break;
+		if (rc > 0)
+			/* positive value means driver not found */
 			continue;
 		/* initialize subsequent driver instances for this device */
 		if ((dr->drv_flags & RTE_PCI_DRV_MULTIPLE) &&

@@ -978,7 +978,8 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		/* call the driver devinit() function */
 		return dr->devinit(dr, dev);
 	}
-	return -1;
+	/* return positive value if driver is not found */
+	return 1;
 }
 
 /* Init the PCI EAL subsystem */
