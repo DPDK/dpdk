@@ -274,10 +274,7 @@ rte_pause (void)
 static inline uint32_t
 rte_bsf32(uint32_t v)
 {
-	asm("bsf %1,%0"
-		: "=r" (v)
-		: "rm" (v));
-	return (v);
+	return (__builtin_ctz(v));
 }
 
 #ifndef offsetof
