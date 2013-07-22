@@ -982,6 +982,40 @@ rte_eal_hugepage_attach(void)
 		goto error;
 	}
 
+	/* map all segments into memory to make sure we get the addrs */
+	for (s = 0; s < RTE_MAX_MEMSEG; ++s) {
+		void *base_addr;
+
+		/*
+		 * the first memory segment with len==0 is the one that
+		 * follows the last valid segment.
+		 */
+		if (mcfg->memseg[s].len == 0)
+			break;
+
+		/*
+		 * fdzero is mmapped to get a contiguous block of virtual
+		 * addresses of the appropriate memseg size.
+		 * use mmap to get identical addresses as the primary process.
+		 */
+		base_addr = mmap(mcfg->memseg[s].addr, mcfg->memseg[s].len,
+				 PROT_READ, MAP_PRIVATE, fd_zero, 0);
+		if (base_addr == MAP_FAILED ||
+		    base_addr != mcfg->memseg[s].addr) {
+			RTE_LOG(ERR, EAL, "Could not mmap %llu bytes "
+				"in /dev/zero to requested address [%p]\n",
+				(unsigned long long)mcfg->memseg[s].len,
+				mcfg->memseg[s].addr);
+			if (aslr_enabled() > 0) {
+				RTE_LOG(ERR, EAL, "It is recommended to "
+					"disable ASLR in the kernel "
+					"and retry running both primary "
+					"and secondary processes\n");
+			}
+			goto error;
+		}
+	}
+
 	size = getFileSize(fd_hugepage);
 	hp = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd_hugepage, 0);
 	if (hp == NULL) {
@@ -992,27 +1026,16 @@ rte_eal_hugepage_attach(void)
 	num_hp = size / sizeof(struct hugepage);
 	RTE_LOG(DEBUG, EAL, "Analysing %u hugepages\n", num_hp);
 
+	s = 0;
 	while (s < RTE_MAX_MEMSEG && mcfg->memseg[s].len > 0){
 		void *addr, *base_addr;
 		uintptr_t offset = 0;
 
-		/* fdzero is mmapped to get a contiguous block of virtual addresses
-		 * get a block of free memory of the appropriate size -
-		 * use mmap to attempt to get an identical address as server.
+		/*
+		 * free previously mapped memory so we can map the
+		 * hugepages into the space
 		 */
-		base_addr = mmap(mcfg->memseg[s].addr, mcfg->memseg[s].len,
-				PROT_READ, MAP_PRIVATE, fd_zero, 0);
-		if (base_addr == MAP_FAILED || base_addr != mcfg->memseg[s].addr) {
-			RTE_LOG(ERR, EAL, "Could not mmap %llu bytes "
-				"in /dev/zero to requested address [%p]\n",
-				(unsigned long long)mcfg->memseg[s].len,
-				mcfg->memseg[s].addr);
-			if (aslr_enabled() > 0)
-				RTE_LOG(ERR, EAL, "It is recommended to disable ASLR in the kernel "
-						"and retry running both primary and secondary processes\n");
-			goto error;
-		}
-		/* free memory so we can map the hugepages into the space */
+		base_addr = mcfg->memseg[s].addr;
 		munmap(base_addr, mcfg->memseg[s].len);
 
 		/* find the hugepages for this segment and map them
@@ -1042,6 +1065,8 @@ rte_eal_hugepage_attach(void)
 				(unsigned long long)mcfg->memseg[s].len);
 		s++;
 	}
+	/* unmap the hugepage config file, since we are done using it */
+	munmap((void *)(uintptr_t)hp, size);
 	close(fd_zero);
 	close(fd_hugepage);
 	return 0;
