@@ -57,7 +57,7 @@ extern "C" {
 
 #define MBUF_SIZE (1528 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define APP_RING_SIZE (8*1024)
-#define NB_MBUF   (64*1024*32)
+#define NB_MBUF   (2*1024*1024)
 
 #define MAX_PKT_RX_BURST 64
 #define PKT_ENQUEUE 64
@@ -159,6 +159,7 @@ struct ring_thresh
 
 extern uint32_t nb_pfc;
 extern const char *cfg_profile;
+extern int mp_size;
 extern struct flow_conf qos_conf[];
 extern int app_pipe_to_profile[MAX_SCHED_SUBPORTS][MAX_SCHED_PIPES];
 

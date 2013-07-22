@@ -81,6 +81,7 @@ struct ring_thresh tx_thresh = {
 
 uint32_t nb_pfc;
 const char *cfg_profile = NULL;
+int mp_size = NB_MBUF;
 struct flow_conf qos_conf[MAX_DATA_STREAMS];
 
 static const struct rte_eth_conf port_conf = {
@@ -343,7 +344,7 @@ int app_init(void)
 
 		/* create the mbuf pools for each RX Port */
 		rte_snprintf(pool_name, MAX_NAME_LEN, "mbuf_pool%u", i);
-		qos_conf[i].mbuf_pool = rte_mempool_create(pool_name, NB_MBUF, MBUF_SIZE,
+		qos_conf[i].mbuf_pool = rte_mempool_create(pool_name, mp_size, MBUF_SIZE,
 						burst_conf.rx_burst * 4,
 						sizeof(struct rte_pktmbuf_pool_private),
 						rte_pktmbuf_pool_init, NULL,
@@ -365,7 +366,7 @@ int app_init(void)
 			 rte_get_timer_hz());
 	
 	RTE_LOG(INFO, APP, "Ring sizes: NIC RX = %u, Mempool = %d SW queue = %u,"
-			 "NIC TX = %u\n", ring_conf.rx_size, NB_MBUF, ring_conf.ring_size,
+			 "NIC TX = %u\n", ring_conf.rx_size, mp_size, ring_conf.ring_size,
 			 ring_conf.tx_size);
 
 	RTE_LOG(INFO, APP, "Burst sizes: RX read = %hu, RX write = %hu,\n"

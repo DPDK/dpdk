@@ -85,6 +85,7 @@ static const char usage[] =
 	"               QoS enqueue size (default value is %u)                          \n"
 	"           C = QoS dequeue size (default value is %u)                          \n"
 	"           D = Worker lcore write burst size to NIC TX (default value is %u)   \n"
+	"    --msz M : Mempool size (in number of mbufs) for each pfc (default %u)      \n"
 	"    --rth \"A, B, C\" :   RX queue threshold parameters                        \n"
 	"           A = RX prefetch threshold (default value is %u)                     \n"
 	"           B = RX host threshold (default value is %u)                         \n"
@@ -102,7 +103,8 @@ app_usage(const char *prgname)
 {
 	printf(usage, prgname, app_master_core,
 		APP_RX_DESC_DEFAULT, APP_RING_SIZE, APP_TX_DESC_DEFAULT,
-		MAX_PKT_RX_BURST, PKT_ENQUEUE, PKT_DEQUEUE, MAX_PKT_TX_BURST,
+		MAX_PKT_RX_BURST, PKT_ENQUEUE, PKT_DEQUEUE,
+		MAX_PKT_TX_BURST, NB_MBUF,
 		RX_PTHRESH, RX_HTHRESH, RX_WTHRESH,
 		TX_PTHRESH, TX_HTHRESH, TX_WTHRESH
 		);
@@ -336,6 +338,7 @@ app_parse_args(int argc, char **argv)
 		{ "mst", 1, 0, 0 },
 		{ "rsz", 1, 0, 0 },
 		{ "bsz", 1, 0, 0 },
+		{ "msz", 1, 0, 0 },
 		{ "rth", 1, 0, 0 },
 		{ "tth", 1, 0, 0 },
 		{ "cfg", 1, 0, 0 },
@@ -384,6 +387,14 @@ app_parse_args(int argc, char **argv)
 					ret = app_parse_burst_conf(optarg);
 					if (ret) {
 						RTE_LOG(ERR, APP, "Invalid burst configuration %s\n", optarg);
+						return -1;
+					}
+					break;
+				}
+				if (str_is(optname, "msz")) {
+					mp_size = atoi(optarg);
+					if (mp_size <= 0) {
+						RTE_LOG(ERR, APP, "Invalid mempool size %s\n", optarg);
 						return -1;
 					}
 					break;
