@@ -1420,10 +1420,10 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 uint32_t 
 eth_em_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
+#define EM_RXQ_SCAN_INTERVAL 4
+	volatile struct e1000_rx_desc *rxdp;
 	struct em_rx_queue *rxq;
-	uint32_t nb_pkts_available;
-	uint32_t rx_rdh;
-	uint32_t rx_id;
+	uint32_t desc = 0;
 
 	if (rx_queue_id >= dev->data->nb_rx_queues) {
 		PMD_RX_LOG(DEBUG,"Invalid RX queue_id=%d\n", rx_queue_id);
@@ -1431,15 +1431,18 @@ eth_em_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 
 	rxq = dev->data->rx_queues[rx_queue_id];
-	rx_id = (uint16_t) ((rxq->rx_tail == 0) ? (rxq->nb_rx_desc - 1) :
-							(rxq->rx_tail - 1));
-	rx_rdh = E1000_PCI_REG(rxq->rdh_reg_addr);
-	if (rx_rdh > rx_id) 
-		nb_pkts_available = rx_rdh - rx_id;
-	else 
-		nb_pkts_available = rx_rdh - rx_id + rxq->nb_rx_desc;
-	
-	return (nb_pkts_available);	
+	rxdp = &(rxq->rx_ring[rxq->rx_tail]);
+
+	while ((desc < rxq->nb_rx_desc) &&
+		(rxdp->status & E1000_RXD_STAT_DD)) {
+		desc += EM_RXQ_SCAN_INTERVAL;
+		rxdp += EM_RXQ_SCAN_INTERVAL;
+		if (rxq->rx_tail + desc >= rxq->nb_rx_desc)
+			rxdp = &(rxq->rx_ring[rxq->rx_tail +
+				desc - rxq->nb_rx_desc]);
+	}
+
+	return desc;
 }
 
 void
