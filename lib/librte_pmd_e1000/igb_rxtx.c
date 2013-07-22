@@ -1416,6 +1416,23 @@ eth_igb_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	return 0;
 }
 
+int
+eth_igb_rx_descriptor_done(void *rx_queue, uint16_t offset)
+{
+	volatile union e1000_adv_rx_desc *rxdp;
+	struct igb_rx_queue *rxq = rx_queue;
+	uint32_t desc;
+
+	if (unlikely(offset >= rxq->nb_rx_desc))
+		return 0;
+	desc = rxq->rx_tail + offset;
+	if (desc >= rxq->nb_rx_desc)
+		desc -= rxq->nb_rx_desc;
+
+	rxdp = &rxq->rx_ring[desc];
+	return !!(rxdp->wb.upper.status_error & E1000_RXD_STAT_DD);
+}
+
 void
 igb_dev_clear_queues(struct rte_eth_dev *dev)
 {

@@ -1445,6 +1445,23 @@ eth_em_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	return desc;
 }
 
+int
+eth_em_rx_descriptor_done(void *rx_queue, uint16_t offset)
+{
+	volatile struct e1000_rx_desc *rxdp;
+	struct em_rx_queue *rxq = rx_queue;
+	uint16_t desc;
+
+	if (unlikely(offset >= rxq->nb_rx_desc))
+		return 0;
+	desc = rxq->rx_tail + offset;
+	if (desc >= rxq->nb_rx_desc)
+		desc -= rxq->nb_rx_desc;
+
+	rxdp = &rxq->rx_ring[desc];
+	return !!(rxdp->status & E1000_RXD_STAT_DD);
+}
+
 void
 em_dev_clear_queues(struct rte_eth_dev *dev)
 {

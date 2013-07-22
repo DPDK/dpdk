@@ -148,6 +148,7 @@ static struct eth_dev_ops eth_em_ops = {
 	.rx_queue_setup       = eth_em_rx_queue_setup,
 	.rx_queue_release     = eth_em_rx_queue_release,
 	.rx_queue_count       = eth_em_rx_queue_count,
+	.rx_descriptor_done   = eth_em_rx_descriptor_done,
 	.tx_queue_setup       = eth_em_tx_queue_setup,
 	.tx_queue_release     = eth_em_tx_queue_release,
 	.dev_led_on           = eth_em_led_on,

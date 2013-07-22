@@ -184,6 +184,7 @@ static struct eth_dev_ops eth_igb_ops = {
 	.rx_queue_setup       = eth_igb_rx_queue_setup,
 	.rx_queue_release     = eth_igb_rx_queue_release,
 	.rx_queue_count       = eth_igb_rx_queue_count,
+	.rx_descriptor_done   = eth_igb_rx_descriptor_done,
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
 	.tx_queue_release     = eth_igb_tx_queue_release,
 	.dev_led_on           = eth_igb_led_on,
