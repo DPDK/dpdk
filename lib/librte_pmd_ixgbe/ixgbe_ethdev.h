@@ -175,6 +175,8 @@ int  ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 uint32_t ixgbe_dev_rx_queue_count(struct rte_eth_dev *dev, 
 		uint16_t rx_queue_id);
 
+int ixgbe_dev_rx_descriptor_done(void *rx_queue, uint16_t offset);
+
 int ixgbe_dev_rx_init(struct rte_eth_dev *dev);
 
 void ixgbe_dev_tx_init(struct rte_eth_dev *dev);
