@@ -249,7 +249,7 @@ struct rte_sched_port {
 	uint32_t pipe_exhaustion;
 
 	/* Bitmap */
-	struct rte_bitmap bmp;
+	struct rte_bitmap *bmp;
 	uint32_t grinder_base_bmp_pos[RTE_SCHED_PORT_N_GRINDERS] __rte_aligned_16;
 	
 	/* Grinders */
@@ -408,7 +408,7 @@ rte_sched_port_get_array_base(struct rte_sched_port_params *params, enum rte_sch
 	uint32_t size_queue = n_queues_per_port * sizeof(struct rte_sched_queue);
 	uint32_t size_queue_extra = n_queues_per_port * sizeof(struct rte_sched_queue_extra);
 	uint32_t size_pipe_profiles = RTE_SCHED_PIPE_PROFILES_PER_PORT * sizeof(struct rte_sched_pipe_profile);
-	uint32_t size_bmp_array = n_queues_per_port / 8;
+	uint32_t size_bmp_array = rte_bitmap_get_memory_footprint(n_queues_per_port);
 	uint32_t size_per_pipe_queue_array, size_queue_array;
 	
 	uint32_t base, i;
@@ -606,7 +606,7 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 {
 	struct rte_sched_port *port = NULL;
 	const struct rte_memzone *mz = NULL;
-	uint32_t mem_size, i;
+	uint32_t mem_size, bmp_mem_size, n_queues_per_port, i;
 	
 	/* Check user parameters. Determine the amount of memory to allocate */
 	mem_size = rte_sched_port_get_memory_footprint(params);
@@ -686,7 +686,10 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	rte_sched_port_config_pipe_profile_table(port, params);
 	
 	/* Bitmap */
-	if (rte_bitmap_init(&port->bmp, port->bmp_array, rte_sched_port_queues_per_port(port)) != 0) {
+	n_queues_per_port = rte_sched_port_queues_per_port(port);
+	bmp_mem_size = rte_bitmap_get_memory_footprint(n_queues_per_port);
+	port->bmp = rte_bitmap_init(n_queues_per_port, port->bmp_array, bmp_mem_size);
+	if (port->bmp == NULL) {
 		RTE_LOG(INFO, SCHED, "Bitmap init error\n");
 		return NULL;
 	}
@@ -704,7 +707,7 @@ rte_sched_port_free(struct rte_sched_port *port)
 	if (port == NULL){
 		return;
 	}
-	rte_bitmap_free(&port->bmp);
+	rte_bitmap_free(port->bmp);
 	
 	return;
 }
@@ -1106,7 +1109,7 @@ debug_pipe_is_empty(struct rte_sched_port *port, uint32_t pindex)
 	
 	for (i = 0; i < 16; i ++){
 		uint32_t queue_empty = rte_sched_port_queue_is_empty(port, qindex + i);
-		uint32_t bmp_bit_clear = (rte_bitmap_get(&port->bmp, qindex + i) == 0);
+		uint32_t bmp_bit_clear = (rte_bitmap_get(port->bmp, qindex + i) == 0);
 		
 		if (queue_empty != bmp_bit_clear){
 			rte_panic("Queue status mismatch for queue %u of pipe %u\n", i, pindex);
@@ -1182,7 +1185,7 @@ rte_sched_port_enqueue_qwa_prefetch0(struct rte_sched_port *port, uint32_t qinde
 	q_qw = qbase + (q->qw & (qsize - 1));
 	
 	rte_prefetch0(q_qw);
-	rte_bitmap_prefetch0(&port->bmp, qindex);
+	rte_bitmap_prefetch0(port->bmp, qindex);
 }
 
 static inline int
@@ -1211,7 +1214,7 @@ rte_sched_port_enqueue_qwa(struct rte_sched_port *port, uint32_t qindex, struct 
 	q->qw ++;
 	
 	/* Activate queue in the port bitmap */
-	rte_bitmap_set(&port->bmp, qindex);
+	rte_bitmap_set(port->bmp, qindex);
 	
 	/* Statistics */
 #ifdef RTE_SCHED_COLLECT_STATS
@@ -1638,7 +1641,7 @@ grinder_schedule(struct rte_sched_port *port, uint32_t pos)
 	if (queue->qr == queue->qw) {
 		uint32_t qindex = grinder->qindex[grinder->qpos];
 
-		rte_bitmap_clear(&port->bmp, qindex);
+		rte_bitmap_clear(port->bmp, qindex);
 		grinder->qmask &= ~(1 << grinder->qpos);
 		grinder->wrr_mask[grinder->qpos] = 0;
 		rte_sched_port_set_queue_empty_timestamp(port, qindex);
@@ -1804,7 +1807,7 @@ grinder_next_pipe(struct rte_sched_port *port, uint32_t pos)
 		uint32_t bmp_pos = 0;
 		
 		/* Get another non-empty pipe group */		
-		if (unlikely(rte_bitmap_scan(&port->bmp, &bmp_pos, &bmp_slab) <= 0)) {
+		if (unlikely(rte_bitmap_scan(port->bmp, &bmp_pos, &bmp_slab) <= 0)) {
 			return 0;
 		}
 		

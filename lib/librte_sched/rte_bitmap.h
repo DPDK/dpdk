@@ -65,6 +65,7 @@ extern "C" {
  *
  ***/
  
+#include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_memory.h>
 #include <rte_branch_prediction.h>
@@ -75,11 +76,6 @@ extern "C" {
 #endif
 #if RTE_BITMAP_OPTIMIZATIONS
 #include <tmmintrin.h>
-#endif
-
-/** Number of elements in array1. Each element in array1 is a 64-bit slab. */
-#ifndef RTE_BITMAP_ARRAY1_SIZE
-#define RTE_BITMAP_ARRAY1_SIZE                   16
 #endif
 
 /* Slab */
@@ -98,7 +94,8 @@ extern "C" {
 
 /** Bitmap data structure */
 struct rte_bitmap {
-	uint64_t array1[RTE_BITMAP_ARRAY1_SIZE]; /**< Bitmap array1 */
+	/* Context for array1 and array2 */
+	uint64_t *array1;                        /**< Bitmap array1 */
 	uint64_t *array2;                        /**< Bitmap array2 */
 	uint32_t array1_size;                    /**< Number of 64-bit slabs in array1 that are actually used */
 	uint32_t array2_size;                    /**< Number of 64-bit slabs in array2 */
@@ -108,12 +105,15 @@ struct rte_bitmap {
 	uint32_t offset1; /**< Bitmap scan: Offset of current bit within current array1 slab */
 	uint32_t index2;  /**< Bitmap scan: Index of current array2 slab */
 	uint32_t go2;     /**< Bitmap scan: Go/stop condition for current array2 cache line */
-} __rte_cache_aligned;
+	
+	/* Storage space for array1 and array2 */
+	uint8_t memory[0];
+};
 
 static inline void
 __rte_bitmap_index1_inc(struct rte_bitmap *bmp)
 {
-	bmp->index1 = (bmp->index1 + 1) & (RTE_BITMAP_ARRAY1_SIZE - 1);
+	bmp->index1 = (bmp->index1 + 1) & (bmp->array1_size - 1);
 }
 
 static inline uint64_t
@@ -165,15 +165,65 @@ rte_bsf64(uint64_t slab, uint32_t *pos)
 
 #endif
 
+static inline uint32_t
+__rte_bitmap_get_memory_footprint(uint32_t n_bits, 
+	uint32_t *array1_byte_offset, uint32_t *array1_slabs,
+	uint32_t *array2_byte_offset, uint32_t *array2_slabs)
+{
+	uint32_t n_slabs_context, n_slabs_array1, n_cache_lines_context_and_array1;
+	uint32_t n_cache_lines_array2;
+	uint32_t n_bytes_total;
+	
+	n_cache_lines_array2 = (n_bits + RTE_BITMAP_CL_BIT_SIZE - 1) / RTE_BITMAP_CL_BIT_SIZE;
+	n_slabs_array1 = (n_cache_lines_array2 + RTE_BITMAP_SLAB_BIT_SIZE - 1) / RTE_BITMAP_SLAB_BIT_SIZE;
+	n_slabs_array1 = rte_align32pow2(n_slabs_array1);
+	n_slabs_context = (sizeof(struct rte_bitmap) + (RTE_BITMAP_SLAB_BIT_SIZE / 8) - 1) / (RTE_BITMAP_SLAB_BIT_SIZE / 8);
+	n_cache_lines_context_and_array1 = (n_slabs_context + n_slabs_array1 + RTE_BITMAP_CL_SLAB_SIZE - 1) / RTE_BITMAP_CL_SLAB_SIZE;
+	n_bytes_total = (n_cache_lines_context_and_array1 + n_cache_lines_array2) * CACHE_LINE_SIZE;
+	
+	if (array1_byte_offset) {
+		*array1_byte_offset = n_slabs_context * (RTE_BITMAP_SLAB_BIT_SIZE / 8);
+	}
+	if (array1_slabs) {
+		*array1_slabs = n_slabs_array1;
+	}
+	if (array2_byte_offset) {
+		*array2_byte_offset = n_cache_lines_context_and_array1 * CACHE_LINE_SIZE;
+	}
+	if (array2_slabs) {
+		*array2_slabs = n_cache_lines_array2 * RTE_BITMAP_CL_SLAB_SIZE;
+	}
+	
+	return n_bytes_total;
+}
+
 static inline void
 __rte_bitmap_scan_init(struct rte_bitmap *bmp)
 {
-	bmp->index1 = RTE_BITMAP_ARRAY1_SIZE - 1;
+	bmp->index1 = bmp->array1_size - 1;
 	bmp->offset1 = RTE_BITMAP_SLAB_BIT_SIZE - 1;
 	__rte_bitmap_index2_set(bmp);
 	bmp->index2 += RTE_BITMAP_CL_SLAB_SIZE;
 
 	bmp->go2 = 0;
+}
+
+/**
+ * Bitmap memory footprint calculation
+ *
+ * @param n_bits
+ *   Number of bits in the bitmap
+ * @return
+ *   Bitmap memory footprint measured in bytes on success, 0 on error
+ */
+static inline uint32_t
+rte_bitmap_get_memory_footprint(uint32_t n_bits) {
+	/* Check input arguments */
+	if (n_bits == 0) {
+		return 0;
+	}
+	
+	return __rte_bitmap_get_memory_footprint(n_bits, NULL, NULL, NULL, NULL);
 }
 
 /**
@@ -188,32 +238,41 @@ __rte_bitmap_scan_init(struct rte_bitmap *bmp)
  * @return
  *   0 upon success, error code otherwise
  */
-static inline int 
-rte_bitmap_init(struct rte_bitmap *bmp, uint8_t *array2, uint32_t n_bits)
+static inline struct rte_bitmap * 
+rte_bitmap_init(uint32_t n_bits, uint8_t *mem, uint32_t mem_size)
 {
-	uint32_t array1_size, array2_size;
+	struct rte_bitmap *bmp;
+	uint32_t array1_byte_offset, array1_slabs, array2_byte_offset, array2_slabs;
+	uint32_t size;
 
 	/* Check input arguments */
-	if ((bmp == NULL) || 
-	    (array2 == NULL) || (((uintptr_t) array2) & CACHE_LINE_MASK) ||
-		(n_bits == 0) || (n_bits & RTE_BITMAP_CL_BIT_MASK)){
-		return -1;
+	if (n_bits == 0) {
+		return NULL;
 	}
-
-	array2_size = n_bits / RTE_BITMAP_SLAB_BIT_SIZE;
-	array1_size = ((n_bits / RTE_BITMAP_CL_BIT_SIZE) + (RTE_BITMAP_SLAB_BIT_SIZE - 1)) / RTE_BITMAP_SLAB_BIT_SIZE;
-	if (array1_size > RTE_BITMAP_ARRAY1_SIZE){
-		return -1;
+	
+	if ((mem == NULL) || (((uintptr_t) mem) & CACHE_LINE_MASK)) {
+		return NULL;
+	}
+	
+	size = __rte_bitmap_get_memory_footprint(n_bits, 
+		&array1_byte_offset, &array1_slabs, 
+		&array2_byte_offset, &array2_slabs);
+	if (size < mem_size) {
+		return NULL;
 	}
 	
 	/* Setup bitmap */
-	memset(bmp, 0, sizeof(struct rte_bitmap));
-	bmp->array2 = (uint64_t *) array2;
-	bmp->array1_size = array1_size;
-	bmp->array2_size = array2_size;
+	memset(mem, 0, size);
+	bmp = (struct rte_bitmap *) mem;
+
+	bmp->array1 = (uint64_t *) &mem[array1_byte_offset];
+	bmp->array1_size = array1_slabs;
+	bmp->array2 = (uint64_t *) &mem[array2_byte_offset];
+	bmp->array2_size = array2_slabs;
+	
 	__rte_bitmap_scan_init(bmp);
 	
-	return 0;
+	return bmp;
 }
 
 /**
@@ -244,7 +303,7 @@ rte_bitmap_free(struct rte_bitmap *bmp)
 static inline void
 rte_bitmap_reset(struct rte_bitmap *bmp)
 {
-	memset(bmp->array1, 0, sizeof(bmp->array1));
+	memset(bmp->array1, 0, bmp->array1_size * sizeof(uint64_t));
 	memset(bmp->array2, 0, bmp->array2_size * sizeof(uint64_t));
 	__rte_bitmap_scan_init(bmp);
 }
@@ -419,7 +478,7 @@ __rte_bitmap_scan_search(struct rte_bitmap *bmp)
 	bmp->offset1 = 0;
 	
 	/* Look for another array1 slab */
-	for (i = 0; i < RTE_BITMAP_ARRAY1_SIZE; i ++, __rte_bitmap_index1_inc(bmp)) {
+	for (i = 0; i < bmp->array1_size; i ++, __rte_bitmap_index1_inc(bmp)) {
 		value1 = bmp->array1[bmp->index1];
 		
 		if (rte_bsf64(value1, &bmp->offset1)) {
