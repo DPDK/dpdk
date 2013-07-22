@@ -181,9 +181,6 @@ static struct rte_sched_subport_params subport_params[MAX_SCHED_SUBPORTS] = {
 
 		.tc_rate = {1250000000, 1250000000, 1250000000, 1250000000},
 		.tc_period = 10,
-#ifdef RTE_SCHED_SUBPORT_TC_OV
-		.tc_ov_period = 10,
-#endif
 	},
 };
 
@@ -195,7 +192,7 @@ static struct rte_sched_pipe_params pipe_profiles[RTE_SCHED_PIPE_PROFILES_PER_PO
 		.tc_rate = {305175, 305175, 305175, 305175}, 
 		.tc_period = 40,
 #ifdef RTE_SCHED_SUBPORT_TC_OV
-		.tc_ov_weight = {1, 1, 1, 1},
+		.tc_ov_weight = 1,
 #endif
 		
 		.wrr_weights = {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1},

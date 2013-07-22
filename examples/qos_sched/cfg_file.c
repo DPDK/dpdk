@@ -472,21 +472,9 @@ cfg_load_pipe(struct cfg_file *cfg, struct rte_sched_pipe_params *pipe_params)
 			pipe_params[j].tc_rate[3] = (uint32_t)atoi(entry);
 
 #ifdef RTE_SCHED_SUBPORT_TC_OV
-		entry = cfg_get_entry(cfg, pipe_name, "tc 0 oversubscription weight");
-		if (entry)
-			pipe_params[j].tc_ov_weight[0] = (uint8_t)atoi(entry);
-			
-		entry = cfg_get_entry(cfg, pipe_name, "tc 1 oversubscription weight");
-		if (entry)
-			pipe_params[j].tc_ov_weight[1] = (uint8_t)atoi(entry);
-			
-		entry = cfg_get_entry(cfg, pipe_name, "tc 2 oversubscription weight");
-		if (entry)
-			pipe_params[j].tc_ov_weight[2] = (uint8_t)atoi(entry);
-			
 		entry = cfg_get_entry(cfg, pipe_name, "tc 3 oversubscription weight");
 		if (entry)
-			pipe_params[j].tc_ov_weight[3] = (uint8_t)atoi(entry);
+			pipe_params[j].tc_ov_weight = (uint8_t)atoi(entry);
 #endif
 
 		entry = cfg_get_entry(cfg, pipe_name, "tc 0 wrr weights");
@@ -560,12 +548,6 @@ cfg_load_subport(struct cfg_file *cfg, struct rte_sched_subport_params *subport_
 			entry = cfg_get_entry(cfg, sec_name, "tc period");
 			if (entry)
 				subport_params[i].tc_period = (uint32_t)atoi(entry);
-
-#ifdef RTE_SCHED_SUBPORT_TC_OV
-			entry = cfg_get_entry(cfg, sec_name, "tc oversubscription period");
-			if (entry)
-				subport_params[i].tc_ov_period = (uint32_t)atoi(entry);
-#endif
 
 			entry = cfg_get_entry(cfg, sec_name, "tc 0 rate");
 			if (entry)

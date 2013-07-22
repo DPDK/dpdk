@@ -126,9 +126,6 @@ struct rte_sched_subport_params {
 	/* Subport traffic classes */
 	uint32_t tc_rate[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE]; /**< Subport traffic class rates (measured in bytes per second) */
 	uint32_t tc_period;              /**< Enforcement period for traffic class rates (measured in milliseconds) */
-#ifdef RTE_SCHED_SUBPORT_TC_OV
-	uint32_t tc_ov_period;           /**< Enforcement period for traffic class oversubscription (measured in milliseconds) */
-#endif
 };
 
 /** Subport statistics */
@@ -160,8 +157,7 @@ struct rte_sched_pipe_params {
 	uint32_t tc_rate[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE]; /**< Pipe traffic class rates (measured in bytes per second) */
 	uint32_t tc_period;              /**< Enforcement period for pipe traffic class rates (measured in milliseconds) */
 #ifdef RTE_SCHED_SUBPORT_TC_OV
-	uint8_t tc_ov_weight[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE]; /**< Traffic class weights to be used for the 
-	                                      current pipe in the event of subport traffic class oversubscription */
+	uint8_t tc_ov_weight;            /**< Weight for the current pipe in the event of subport traffic class 3 oversubscription */
 #endif
 	
 	/* Pipe queues */
