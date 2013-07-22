@@ -778,9 +778,9 @@ typedef int (*eth_tx_queue_setup_t)(struct rte_eth_dev *dev,
 typedef void (*eth_queue_release_t)(void *queue);
 /**< @internal Release memory resources allocated by given RX/TX queue. */
 
-typedef uint32_t (*eth_rx_queue_count_t)(struct rte_eth_dev *dev, 
-						uint16_t rx_queue_id);
-/**< Get number of available descriptors on a receive queue of an Ethernet device. */
+typedef uint32_t (*eth_rx_queue_count_t)(struct rte_eth_dev *dev,
+					 uint16_t rx_queue_id);
+/**< @Get number of available descriptors on a receive queue of an Ethernet device. */
 
 typedef int (*vlan_filter_set_t)(struct rte_eth_dev *dev,
 				  uint16_t vlan_id,
@@ -1711,6 +1711,16 @@ rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
 }
 #endif
 
+/**
+ * Get the number of used descriptors in a specific queue
+ *
+ * @param port_id
+ *  The port identifier of the Ethernet device.
+ * @param queue_id
+ *  The queue id on the specific port.
+ * @return
+ *  The number of used descriptors in the specific queue.
+ */
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 extern uint32_t rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id);
 #else
