@@ -231,6 +231,7 @@ struct rte_sched_port {
 	uint32_t n_subports_per_port;
 	uint32_t n_pipes_per_subport;
 	uint32_t rate;
+	uint32_t mtu;
 	uint32_t frame_overhead;
 	uint16_t qsize[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 	uint32_t n_pipe_profiles;
@@ -324,14 +325,19 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 		return -4;
 	}
 	
+	/* mtu */
+	if (params->mtu == 0) {
+		return -5;
+	}
+	
 	/* n_subports_per_port: non-zero, power of 2 */
 	if ((params->n_subports_per_port == 0) || (!rte_is_power_of_2(params->n_subports_per_port))) {
-		return -5;
+		return -6;
 	}
 
 	/* n_pipes_per_subport: non-zero, power of 2 */
 	if ((params->n_pipes_per_subport == 0) || (!rte_is_power_of_2(params->n_pipes_per_subport))) {
-		return -6;
+		return -7;
 	}
 	
 	/* qsize: non-zero, power of 2, no bigger than 32K (due to 16-bit read/write pointers) */
@@ -339,7 +345,7 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 		uint16_t qsize = params->qsize[i];
 		
 		if ((qsize == 0) || (!rte_is_power_of_2(qsize))) {
-			return -7;
+			return -8;
 		}
 	}
 	
@@ -347,7 +353,7 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 	if ((params->pipe_profiles == NULL) || 
 	    (params->n_pipe_profiles == 0) ||
 	    (params->n_pipe_profiles > RTE_SCHED_PIPE_PROFILES_PER_PORT)) {
-		return -8;
+		return -9;
 	}
 	
 	for (i = 0; i < params->n_pipe_profiles; i ++) {
@@ -355,24 +361,24 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 		
 		/* TB rate: non-zero, not greater than port rate */
 		if ((p->tb_rate == 0) || (p->tb_rate > params->rate)) {
-			return -9;
+			return -10;
 		}
 		
 		/* TB size: non-zero */
 		if (p->tb_size == 0) {
-			return -10;
+			return -11;
 		}
 
 		/* TC rate: non-zero, less than pipe rate */
 		for (j = 0; j < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; j ++) {
 			if ((p->tc_rate[j] == 0) || (p->tc_rate[j] > p->tb_rate)) {
-				return -11;
+				return -12;
 			}
 		}
 		
 		/* TC period: non-zero */
 		if (p->tc_period == 0) {
-			return -12;
+			return -13;
 		}
 
 #ifdef RTE_SCHED_SUBPORT_TC_OV
@@ -387,7 +393,7 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 		/* Queue WRR weights: non-zero */
 		for (j = 0; j < RTE_SCHED_QUEUES_PER_PIPE; j ++) {
 			if (p->wrr_weights[j] == 0) {
-				return -14;
+				return -15;
 			}
 		}
 	}
@@ -635,6 +641,7 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	port->n_subports_per_port = params->n_subports_per_port;
 	port->n_pipes_per_subport = params->n_pipes_per_subport;
 	port->rate = params->rate;
+	port->mtu = params->mtu + params->frame_overhead;
 	port->frame_overhead = params->frame_overhead;
 	memcpy(port->qsize, params->qsize, sizeof(params->qsize));
 	port->n_pipe_profiles = params->n_pipe_profiles;

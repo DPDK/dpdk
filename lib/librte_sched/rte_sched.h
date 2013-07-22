@@ -184,6 +184,7 @@ struct rte_sched_port_params {
 	const char *name;                /**< Literal string to be associated to the current port scheduler instance */
 	int socket;                      /**< CPU socket ID where the memory for port scheduler should be allocated */
 	uint32_t rate;                   /**< Output port rate (measured in bytes per second) */
+	uint32_t mtu;                    /**< Maximum Ethernet frame size (measured in bytes). Should not include the framing overhead. */
 	uint32_t frame_overhead;         /**< Framing overhead per packet (measured in bytes) */
 	uint32_t n_subports_per_port;    /**< Number of subports for the current port scheduler instance*/
 	uint32_t n_pipes_per_subport;    /**< Number of pipes for each port scheduler subport */

@@ -206,6 +206,7 @@ struct rte_sched_port_params port_params = {
 	.name = "port_0",
 	.socket = 0, /* computed */
 	.rate = 0, /* computed */
+	.mtu = 6 + 6 + 4 + 4 + 2 + 1500,
 	.frame_overhead = RTE_SCHED_FRAME_OVERHEAD_DEFAULT,
 	.n_subports_per_port = 1,
 	.n_pipes_per_subport = 4096,
