@@ -203,9 +203,10 @@ ipv4_frag_lookup(struct ipv4_frag_tbl *tbl,
 }
 
 static inline void
-ipv4_frag_tbl_del(struct ipv4_frag_tbl *tbl,  struct ipv4_frag_pkt *fp)
+ipv4_frag_tbl_del(struct ipv4_frag_tbl *tbl, struct ipv4_frag_death_row *dr,
+	struct ipv4_frag_pkt *fp)
 {
-	ipv4_frag_free(fp);
+	ipv4_frag_free(fp, dr);
 	IPV4_FRAG_KEY_INVALIDATE(&fp->key);
 	TAILQ_REMOVE(&tbl->lru, fp, lru);
 	tbl->use_entries--;
@@ -224,10 +225,10 @@ ipv4_frag_tbl_add(struct ipv4_frag_tbl *tbl,  struct ipv4_frag_pkt *fp,
 }
 
 static inline void
-ipv4_frag_tbl_reuse(struct ipv4_frag_tbl *tbl,  struct ipv4_frag_pkt *fp,
-	uint64_t tms)
+ipv4_frag_tbl_reuse(struct ipv4_frag_tbl *tbl, struct ipv4_frag_death_row *dr,
+	struct ipv4_frag_pkt *fp, uint64_t tms)
 {
-	ipv4_frag_free(fp);
+	ipv4_frag_free(fp, dr);
 	ipv4_frag_reset(fp, tms);
 	TAILQ_REMOVE(&tbl->lru, fp, lru);
 	TAILQ_INSERT_TAIL(&tbl->lru, fp, lru);
@@ -240,8 +241,8 @@ ipv4_frag_tbl_reuse(struct ipv4_frag_tbl *tbl,  struct ipv4_frag_pkt *fp,
  * If the entry is stale, then free and reuse it.
  */
 static inline struct ipv4_frag_pkt *
-ipv4_frag_find(struct ipv4_frag_tbl *tbl, const struct ipv4_frag_key *key,
-	uint64_t tms)
+ipv4_frag_find(struct ipv4_frag_tbl *tbl, struct ipv4_frag_death_row *dr,
+	const struct ipv4_frag_key *key, uint64_t tms)
 {
 	struct ipv4_frag_pkt *pkt, *free, *stale, *lru;
 	uint64_t max_cycles;
@@ -260,7 +261,7 @@ ipv4_frag_find(struct ipv4_frag_tbl *tbl, const struct ipv4_frag_key *key,
 
 		/*timed-out entry, free and invalidate it*/
 		if (stale != NULL) {
-			ipv4_frag_tbl_del(tbl, stale);
+			ipv4_frag_tbl_del(tbl, dr, stale);
 			free = stale;
 
 		/*
@@ -272,7 +273,7 @@ ipv4_frag_find(struct ipv4_frag_tbl *tbl, const struct ipv4_frag_key *key,
 				tbl->max_entries <= tbl->use_entries) {
 			lru = TAILQ_FIRST(&tbl->lru);
 			if (max_cycles + lru->start < tms) {
-				ipv4_frag_tbl_del(tbl,  lru);
+				ipv4_frag_tbl_del(tbl, dr, lru);
 			} else {
 				free = NULL;
 				IPV4_FRAG_TBL_STAT_UPDATE(&tbl->stat,
@@ -292,7 +293,7 @@ ipv4_frag_find(struct ipv4_frag_tbl *tbl, const struct ipv4_frag_key *key,
 	 * and reuse it.
 	 */
 	} else if (max_cycles + pkt->start < tms) {
-		ipv4_frag_tbl_reuse(tbl,  pkt, tms);
+		ipv4_frag_tbl_reuse(tbl, dr, pkt, tms);
 	}
 
 	IPV4_FRAG_TBL_STAT_UPDATE(&tbl->stat, fail_total, (pkt == NULL));

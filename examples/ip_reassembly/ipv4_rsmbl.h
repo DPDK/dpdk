@@ -69,7 +69,7 @@ struct ipv4_frag_key {
 
 #define	IPV4_FRAG_KEY_CMP(k1, k2)	\
 	(((k1)->src_dst ^ (k2)->src_dst) | ((k1)->id ^ (k2)->id))
-	
+
 
 /*
  * Fragmented packet to reassemble.
@@ -84,6 +84,14 @@ struct ipv4_frag_pkt {
 	uint32_t             last_idx;    /* index of next entry to fill */
 	struct ipv4_frag     frags[MAX_FRAG_NUM];
 } __rte_cache_aligned;
+
+
+struct ipv4_frag_death_row {
+	uint32_t cnt;
+	struct rte_mbuf *row[MAX_PKT_BURST * (MAX_FRAG_NUM + 1)];
+};
+
+#define	IPV4_FRAG_MBUF2DR(dr, mb)	((dr)->row[(dr)->cnt++] = (mb))
 
 /* logging macros. */
 
@@ -112,18 +120,42 @@ ipv4_frag_reset(struct ipv4_frag_pkt *fp, uint64_t tms)
 }
 
 static inline void
-ipv4_frag_free(struct ipv4_frag_pkt *fp)
+ipv4_frag_free(struct ipv4_frag_pkt *fp, struct ipv4_frag_death_row *dr)
 {
-	uint32_t i;
+	uint32_t i, k;
 
+	k = dr->cnt;
 	for (i = 0; i != fp->last_idx; i++) {
 		if (fp->frags[i].mb != NULL) {
-			rte_pktmbuf_free(fp->frags[i].mb);
+			dr->row[k++] = fp->frags[i].mb;
 			fp->frags[i].mb = NULL;
 		}
 	}
 
 	fp->last_idx = 0;
+	dr->cnt = k;
+}
+
+static inline void
+ipv4_frag_free_death_row(struct ipv4_frag_death_row *dr, uint32_t prefetch)
+{
+	uint32_t i, k, n;
+
+	k = RTE_MIN(prefetch, dr->cnt);
+	n = dr->cnt;
+
+	for (i = 0; i != k; i++) 
+		rte_prefetch0(dr->row[i]);
+
+	for (i = 0; i != n - k; i++) {
+		rte_prefetch0(dr->row[i + k]);
+		rte_pktmbuf_free(dr->row[i]);
+	}
+
+	for (; i != n; i++)
+		rte_pktmbuf_free(dr->row[i]);
+
+	dr->cnt = 0;
 }
 
 /*
@@ -214,8 +246,8 @@ ipv4_frag_reassemble(const struct ipv4_frag_pkt *fp)
 }
 
 static inline struct rte_mbuf *
-ipv4_frag_process(struct ipv4_frag_pkt *fp, struct rte_mbuf *mb,
-	uint16_t ofs, uint16_t len, uint16_t more_frags)
+ipv4_frag_process(struct ipv4_frag_pkt *fp, struct ipv4_frag_death_row *dr,
+	struct rte_mbuf *mb, uint16_t ofs, uint16_t len, uint16_t more_frags)
 {
 	uint32_t idx;
 
@@ -259,9 +291,9 @@ ipv4_frag_process(struct ipv4_frag_pkt *fp, struct rte_mbuf *mb,
 			fp->frags[LAST_FRAG_IDX].len);
 
 		/* free all fragments, invalidate the entry. */
-		ipv4_frag_free(fp);
+		ipv4_frag_free(fp, dr);
 		IPV4_FRAG_KEY_INVALIDATE(&fp->key);
-		rte_pktmbuf_free(mb);
+		IPV4_FRAG_MBUF2DR(dr, mb);
 
 		return (NULL);
 	}
@@ -300,7 +332,7 @@ ipv4_frag_process(struct ipv4_frag_pkt *fp, struct rte_mbuf *mb,
 			fp->frags[LAST_FRAG_IDX].len);
 
 		/* free associated resources. */
-		ipv4_frag_free(fp);
+		ipv4_frag_free(fp, dr);
 	}
 
 	/* we are done with that entry, invalidate it. */
@@ -331,8 +363,9 @@ ipv4_frag_process(struct ipv4_frag_pkt *fp, struct rte_mbuf *mb,
  *   - not all fragments of the packet are collected yet.
  */
 static inline struct rte_mbuf *
-ipv4_frag_mbuf(struct ipv4_frag_tbl *tbl, struct rte_mbuf *mb, uint64_t tms,
-	struct ipv4_hdr *ip_hdr, uint16_t ip_ofs, uint16_t ip_flag)
+ipv4_frag_mbuf(struct ipv4_frag_tbl *tbl, struct ipv4_frag_death_row *dr,
+	struct rte_mbuf *mb, uint64_t tms, struct ipv4_hdr *ip_hdr,
+	uint16_t ip_ofs, uint16_t ip_flag)
 {
 	struct ipv4_frag_pkt *fp;
 	struct ipv4_frag_key key;
@@ -358,8 +391,8 @@ ipv4_frag_mbuf(struct ipv4_frag_tbl *tbl, struct rte_mbuf *mb, uint64_t tms,
 		tbl->use_entries);
 
 	/* try to find/add entry into the fragment's table. */
-	if ((fp = ipv4_frag_find(tbl, &key, tms)) == NULL) {
-		rte_pktmbuf_free(mb);
+	if ((fp = ipv4_frag_find(tbl, dr, &key, tms)) == NULL) {
+		IPV4_FRAG_MBUF2DR(dr, mb);
 		return (NULL);
 	}
 
@@ -374,7 +407,7 @@ ipv4_frag_mbuf(struct ipv4_frag_tbl *tbl, struct rte_mbuf *mb, uint64_t tms,
 		
 
 	/* process the fragmented packet. */
-	mb = ipv4_frag_process(fp, mb, ip_ofs, ip_len, ip_flag);
+	mb = ipv4_frag_process(fp, dr, mb, ip_ofs, ip_len, ip_flag);
 	ipv4_frag_inuse(tbl, fp);
 
 	IPV4_FRAG_LOG(DEBUG, "%s:%d:\n"
