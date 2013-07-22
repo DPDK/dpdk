@@ -1739,6 +1739,21 @@ rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id)
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_count, -ENOTSUP);
 	return (*dev->dev_ops->rx_queue_count)(dev, queue_id);	
 }
+
+int
+rte_eth_rx_descriptor_done(uint8_t port_id, uint16_t queue_id, uint16_t offset)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_descriptor_done, -ENOTSUP);
+	return (*dev->dev_ops->rx_descriptor_done)( \
+		dev->data->rx_queues[queue_id], offset);
+}
 #endif
 
 int

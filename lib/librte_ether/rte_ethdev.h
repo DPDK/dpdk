@@ -782,6 +782,9 @@ typedef uint32_t (*eth_rx_queue_count_t)(struct rte_eth_dev *dev,
 					 uint16_t rx_queue_id);
 /**< @Get number of available descriptors on a receive queue of an Ethernet device. */
 
+typedef int (*eth_rx_descriptor_done_t)(void *rxq, uint16_t offset);
+/**< @Check DD bit of specific RX descriptor */
+
 typedef int (*vlan_filter_set_t)(struct rte_eth_dev *dev,
 				  uint16_t vlan_id,
 				  int on);
@@ -904,6 +907,7 @@ struct eth_dev_ops {
 	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device RX queue.*/
 	eth_queue_release_t        rx_queue_release;/**< Release RX queue.*/
 	eth_rx_queue_count_t       rx_queue_count; /**< Get Rx queue count. */
+	eth_rx_descriptor_done_t   rx_descriptor_done;  /**< Check rxd DD bit */
 	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue.*/
 	eth_queue_release_t        tx_queue_release;/**< Release TX queue.*/
 	eth_dev_led_on_t           dev_led_on;    /**< Turn on LED. */
@@ -1731,6 +1735,36 @@ rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id)
  
         dev = &rte_eth_devices[port_id];
         return (*dev->dev_ops->rx_queue_count)(dev, queue_id);
+}
+#endif
+
+/**
+ * Check if the DD bit of the specific RX descriptor in the queue has been set
+ *
+ * @param port_id
+ *  The port identifier of the Ethernet device.
+ * @param queue_id
+ *  The queue id on the specific port.
+ * @offset
+ *  The offset of the descriptor ID from tail.
+ * @return
+ *  - (1) if the specific DD bit is set.
+ *  - (0) if the specific DD bit is not set.
+ *  - (-ENODEV) if *port_id* invalid.
+ */
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+extern int rte_eth_rx_descriptor_done(uint8_t port_id,
+				      uint16_t queue_id,
+				      uint16_t offset);
+#else
+static inline int
+rte_eth_rx_descriptor_done(uint8_t port_id, uint16_t queue_id, uint16_t offset)
+{
+	struct rte_eth_dev *dev;
+
+	dev = &rte_eth_devices[port_id];
+	return (*dev->dev_ops->rx_descriptor_done)( \
+		dev->data->rx_queues[queue_id], offset);
 }
 #endif
 
