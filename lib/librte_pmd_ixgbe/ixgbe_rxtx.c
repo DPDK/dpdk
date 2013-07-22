@@ -3036,16 +3036,11 @@ void ixgbe_configure_dcb(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();	
 	
 	/* check support mq_mode for DCB */
-	if ((dev_conf->rxmode.mq_mode != ETH_MQ_RX_VMDQ_DCB) ||
+	if ((dev_conf->rxmode.mq_mode != ETH_MQ_RX_VMDQ_DCB) && 
 	    (dev_conf->rxmode.mq_mode != ETH_MQ_RX_DCB)) 
 		return;
 
-	if ((dev_conf->txmode.mq_mode != ETH_MQ_TX_VMDQ_DCB) ||
-	    (dev_conf->txmode.mq_mode != ETH_MQ_TX_DCB)) 
-		return;
-
-	if ((dev->data->nb_rx_queues != ETH_DCB_NUM_QUEUES) ||
-	    (dev->data->nb_tx_queues != ETH_DCB_NUM_QUEUES))
+	if (dev->data->nb_rx_queues != ETH_DCB_NUM_QUEUES)
 		return;
 
 	/** Configure DCB hardware **/
