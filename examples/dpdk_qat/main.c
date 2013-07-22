@@ -119,6 +119,9 @@ static struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 static unsigned enabled_port_mask = 0;
 static int promiscuous_on = 1; /**< Ports set in promiscuous mode on by default. */
 
+/* list of enabled ports */
+static uint32_t dst_ports[RTE_MAX_ETHPORTS];
+
 struct mbuf_table {
 	uint16_t len;
 	struct rte_mbuf *m_table[MAX_PKT_BURST];
@@ -314,14 +317,6 @@ nic_tx_send_packet(struct rte_mbuf *pkt, uint8_t port)
 	qconf->tx_mbufs[port].len = len;
 }
 
-static inline uint8_t
-get_output_port(uint8_t input_port)
-{
-	RTE_BUILD_BUG_ON((RTE_MAX_ETHPORTS & 1) != 0);
-	/* Simple scheme to map consecutive ports. */
-        return (uint8_t)(input_port ^ 1);
-}
-
 /* main processing loop */
 static __attribute__((noreturn)) int
 main_loop(__attribute__((unused)) void *dummy)
@@ -389,10 +384,10 @@ main_loop(__attribute__((unused)) void *dummy)
 			}
 		}
 
-		port = get_output_port(pkt->pkt.in_port);
+		port = dst_ports[pkt->pkt.in_port];
 
 		/* Transmit the packet */
-		nic_tx_send_packet(pkt, port);
+		nic_tx_send_packet(pkt, (uint8_t)port);
 	}
 }
 
@@ -686,7 +681,8 @@ MAIN(int argc, char **argv)
 	uint16_t queueid;
 	unsigned lcoreid;
 	uint32_t nb_tx_queue;
-	uint8_t portid, nb_rx_queue, queue, socketid;
+	uint8_t portid, nb_rx_queue, queue, socketid, last_port;
+        unsigned nb_ports_in_mask = 0;
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -730,6 +726,33 @@ MAIN(int argc, char **argv)
 
 	if (check_port_config(nb_ports) < 0)
 		rte_panic("check_port_config failed\n");
+
+        /* reset dst_ports */
+        for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)
+                dst_ports[portid] = 0;
+        last_port = 0;
+
+        /*
+         * Each logical core is assigned a dedicated TX queue on each port.
+         */
+        for (portid = 0; portid < nb_ports; portid++) {
+                /* skip ports that are not enabled */
+                if ((enabled_port_mask & (1 << portid)) == 0)
+                        continue;
+
+                if (nb_ports_in_mask % 2) {
+                        dst_ports[portid] = last_port;
+                        dst_ports[last_port] = portid;
+                }
+                else
+                        last_port = portid;
+
+                nb_ports_in_mask++;
+        }
+        if (nb_ports_in_mask % 2) {
+                printf("Notice: odd number of ports in portmask.\n");
+                dst_ports[last_port] = last_port;
+        }
 
 	/* initialize all ports */
 	for (portid = 0; portid < nb_ports; portid++) {
