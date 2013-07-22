@@ -201,7 +201,7 @@ static struct rte_sched_pipe_params pipe_profiles[RTE_SCHED_PIPE_PROFILES_PER_PO
 };
 
 struct rte_sched_port_params port_params = {
-	.name = "port_0",
+	.name = "port_scheduler_0",
 	.socket = 0, /* computed */
 	.rate = 0, /* computed */
 	.mtu = 6 + 6 + 4 + 4 + 2 + 1500,
@@ -210,7 +210,7 @@ struct rte_sched_port_params port_params = {
 	.n_pipes_per_subport = 4096,
 	.qsize = {64, 64, 64, 64},
 	.pipe_profiles = pipe_profiles,
-	.n_pipe_profiles = 1,
+	.n_pipe_profiles = sizeof(pipe_profiles) / sizeof(struct rte_sched_pipe_params),
 
 #ifdef RTE_SCHED_RED
 	.red_params = {
@@ -353,8 +353,6 @@ int app_init(void)
 						0);
 		if (qos_conf[i].mbuf_pool == NULL)
 			rte_exit(EXIT_FAILURE, "Cannot init mbuf pool for socket %u\n", i);
-
-		//printf("MP = %d\n", rte_mempool_count(qos_conf[i].app_pktmbuf_pool));
 
 		app_init_port(qos_conf[i].rx_port, qos_conf[i].mbuf_pool);
 		app_init_port(qos_conf[i].tx_port, qos_conf[i].mbuf_pool);
