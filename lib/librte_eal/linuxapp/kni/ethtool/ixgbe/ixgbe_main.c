@@ -331,7 +331,7 @@ void ixgbe_vlan_mode(struct net_device *netdev, u32 features)
 #ifdef HAVE_VLAN_RX_REGISTER
 	enable = (grp || (adapter->flags & IXGBE_FLAG_DCB_ENABLED));
 #else
-	enable = !!(features & NETIF_F_HW_VLAN_RX);
+	enable = !!(features & NETIF_F_HW_VLAN_CTAG_RX);
 #endif
 	if (enable)
 		/* enable VLAN tag insert/strip */
@@ -629,7 +629,7 @@ void ixgbe_set_rx_mode(struct net_device *netdev)
 				vmolr |= IXGBE_VMOLR_ROMPE;
 			}
 		}
-#ifdef NETIF_F_HW_VLAN_TX
+#ifdef NETIF_F_HW_VLAN_CTAG_TX
 		/* enable hardware vlan filtering */
 		vlnctrl |= IXGBE_VLNCTRL_VFE;
 #endif
@@ -812,7 +812,7 @@ static void ixgbe_configure(struct ixgbe_adapter *adapter)
 	ixgbe_configure_dcb(adapter);
 
 	ixgbe_set_rx_mode(adapter->netdev);
-#ifdef NETIF_F_HW_VLAN_TX
+#ifdef NETIF_F_HW_VLAN_CTAG_TX
 	ixgbe_restore_vlan(adapter);
 #endif
 
@@ -2514,9 +2514,9 @@ int ixgbe_kni_probe(struct pci_dev *pdev,
 	netdev->features |= NETIF_F_IPV6_CSUM;
 #endif
 
-#ifdef NETIF_F_HW_VLAN_TX
-	netdev->features |= NETIF_F_HW_VLAN_TX |
-			    NETIF_F_HW_VLAN_RX;
+#ifdef NETIF_F_HW_VLAN_CTAG_TX
+	netdev->features |= NETIF_F_HW_VLAN_CTAG_TX |
+			    NETIF_F_HW_VLAN_CTAG_RX;
 #endif
 #ifdef NETIF_F_TSO
 	netdev->features |= NETIF_F_TSO;
@@ -2548,9 +2548,9 @@ int ixgbe_kni_probe(struct pci_dev *pdev,
 #endif /* NETIF_F_GRO */
 #endif
 
-#ifdef NETIF_F_HW_VLAN_TX
+#ifdef NETIF_F_HW_VLAN_CTAG_TX
 	/* set this bit last since it cannot be part of hw_features */
-	netdev->features |= NETIF_F_HW_VLAN_FILTER;
+	netdev->features |= NETIF_F_HW_VLAN_CTAG_FILTER;
 #endif
 	switch (adapter->hw.mac.type) {
 	case ixgbe_mac_82599EB:
