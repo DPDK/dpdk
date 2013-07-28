@@ -287,7 +287,17 @@ struct msix_entry {
 #define IS_ALIGNED(x,a)         (((x) % ((typeof(x))(a))) == 0)
 #endif
 
-#ifndef NETIF_F_HW_VLAN_TX
+#if !defined NETIF_F_HW_VLAN_CTAG_TX     && defined NETIF_F_HW_VLAN_TX
+#define      NETIF_F_HW_VLAN_CTAG_TX                NETIF_F_HW_VLAN_TX
+#endif
+#if !defined NETIF_F_HW_VLAN_CTAG_RX     && defined NETIF_F_HW_VLAN_RX
+#define      NETIF_F_HW_VLAN_CTAG_RX                NETIF_F_HW_VLAN_RX
+#endif
+#if !defined NETIF_F_HW_VLAN_CTAG_FILTER && defined NETIF_F_HW_VLAN_FILTER
+#define      NETIF_F_HW_VLAN_CTAG_FILTER            NETIF_F_HW_VLAN_FILTER
+#endif
+
+#ifndef NETIF_F_HW_VLAN_CTAG_TX
 struct _kc_vlan_ethhdr {
 	unsigned char	h_dest[ETH_ALEN];
 	unsigned char	h_source[ETH_ALEN];
@@ -3050,4 +3060,19 @@ typedef netdev_features_t kni_netdev_features_t;
 #else
 #define HAVE_FDB_OPS
 #endif /* < 3.5.0 */
+
+/*****************************************************************************/
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0) )
+
+#define __kc__vlan_hwaccel_put_tag(skb, vlan_tci) \
+	__vlan_hwaccel_put_tag(skb, vlan_tci)
+
+#else
+
+#define HAVE_VLAN_PROTO
+#define __kc__vlan_hwaccel_put_tag(skb, vlan_tci) \
+	__vlan_hwaccel_put_tag(skb, htons(ETH_P_8021Q), vlan_tci)
+
+#endif /* < 3.10.0 */
+
 #endif /* _KCOMPAT_H_ */

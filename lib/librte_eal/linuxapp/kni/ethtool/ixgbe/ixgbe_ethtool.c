@@ -2162,7 +2162,7 @@ static int ixgbe_set_tso(struct net_device *netdev, u32 data)
 #endif
 	} else {
 #ifndef HAVE_NETDEV_VLAN_FEATURES
-#ifdef NETIF_F_HW_VLAN_TX
+#ifdef NETIF_F_HW_VLAN_CTAG_TX
 		struct ixgbe_adapter *adapter = netdev_priv(netdev);
 		/* disable TSO on all VLANs if they're present */
 		if (adapter->vlgrp) {

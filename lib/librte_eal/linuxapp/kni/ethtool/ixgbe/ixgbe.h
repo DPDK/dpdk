@@ -42,7 +42,7 @@
 #ifdef SIOCETHTOOL
 #include <linux/ethtool.h>
 #endif
-#ifdef NETIF_F_HW_VLAN_TX
+#ifdef NETIF_F_HW_VLAN_CTAG_TX
 #include <linux/if_vlan.h>
 #endif
 #if defined(CONFIG_DCA) || defined(CONFIG_DCA_MODULE)
@@ -549,13 +549,13 @@ struct ixgbe_therm_proc_data {
 
 /* board specific private data structure */
 struct ixgbe_adapter {
-#ifdef NETIF_F_HW_VLAN_TX
+#ifdef NETIF_F_HW_VLAN_CTAG_TX
 #ifdef HAVE_VLAN_RX_REGISTER
 	struct vlan_group *vlgrp; /* must be first, see ixgbe_receive_skb */
 #else
 	unsigned long active_vlans[BITS_TO_LONGS(VLAN_N_VID)];
 #endif
-#endif /* NETIF_F_HW_VLAN_TX */
+#endif /* NETIF_F_HW_VLAN_CTAG_TX */
 	/* OS defined structs */
 	struct net_device *netdev;
 	struct pci_dev *pdev;

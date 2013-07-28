@@ -151,7 +151,10 @@ static void igb_reset_task(struct work_struct *);
 #ifdef HAVE_VLAN_RX_REGISTER
 static void igb_vlan_mode(struct net_device *, struct vlan_group *);
 #endif
-#ifdef HAVE_INT_NDO_VLAN_RX_ADD_VID
+#ifdef HAVE_VLAN_PROTO
+static int igb_vlan_rx_add_vid(struct net_device *, __be16, u16);
+static int igb_vlan_rx_kill_vid(struct net_device *, __be16, u16);
+#elif defined HAVE_INT_NDO_VLAN_RX_ADD_VID
 static int igb_vlan_rx_add_vid(struct net_device *, u16);
 static int igb_vlan_rx_kill_vid(struct net_device *, u16);
 #else
@@ -1838,8 +1841,8 @@ static kni_netdev_features_t igb_fix_features(struct net_device *netdev,
 	 * Since there is no support for separate tx vlan accel
 	 * enabled make sure tx flag is cleared if rx is.
 	 */
-	if (!(features & NETIF_F_HW_VLAN_RX))
-		features &= ~NETIF_F_HW_VLAN_TX;
+	if (!(features & NETIF_F_HW_VLAN_CTAG_RX))
+		features &= ~NETIF_F_HW_VLAN_CTAG_TX;
 
 	/* If Rx checksum is disabled, then LRO should also be disabled */
 	if (!(features & NETIF_F_RXCSUM))
@@ -1853,7 +1856,7 @@ static int igb_set_features(struct net_device *netdev,
 {
 	u32 changed = netdev->features ^ features;
 
-	if (changed & NETIF_F_HW_VLAN_RX)
+	if (changed & NETIF_F_HW_VLAN_CTAG_RX)
 		igb_vlan_mode(netdev, features);
 
 	return 0;
@@ -1929,7 +1932,7 @@ void igb_assign_vmdq_netdev_ops(struct net_device *vnetdev)
 #ifdef HAVE_TX_TIMEOUT
 	dev->tx_timeout = &igb_vmdq_tx_timeout;
 #endif
-#ifdef NETIF_F_HW_VLAN_TX
+#ifdef NETIF_F_HW_VLAN_CTAG_TX
 	dev->vlan_rx_register = &igb_vmdq_vlan_rx_register;
 	dev->vlan_rx_add_vid = &igb_vmdq_vlan_rx_add_vid;
 	dev->vlan_rx_kill_vid = &igb_vmdq_vlan_rx_kill_vid;
@@ -2169,8 +2172,8 @@ static int __devinit igb_probe(struct pci_dev *pdev,
 #ifdef HAVE_NDO_SET_FEATURES
 			    NETIF_F_RXCSUM |
 #endif
-			    NETIF_F_HW_VLAN_RX |
-			    NETIF_F_HW_VLAN_TX;
+			    NETIF_F_HW_VLAN_CTAG_RX |
+			    NETIF_F_HW_VLAN_CTAG_TX;
 
 #ifdef HAVE_NDO_SET_FEATURES
 	/* copy netdev features into list of user selectable features */
@@ -2189,7 +2192,7 @@ static int __devinit igb_probe(struct pci_dev *pdev,
 #endif
 
 	/* set this bit last since it cannot be part of hw_features */
-	netdev->features |= NETIF_F_HW_VLAN_FILTER;
+	netdev->features |= NETIF_F_HW_VLAN_CTAG_FILTER;
 
 #ifdef HAVE_NETDEV_VLAN_FEATURES
 	netdev->vlan_features |= NETIF_F_TSO |
@@ -6678,7 +6681,7 @@ static void igb_rx_vlan(struct igb_ring *ring,
 	} else {
 		IGB_CB(skb)->vid = 0;
 #else
-		__vlan_hwaccel_put_tag(skb, vid);
+		__kc__vlan_hwaccel_put_tag(skb, vid);
 #endif
 	}
 }
@@ -7726,7 +7729,7 @@ void igb_vlan_mode(struct net_device *netdev, u32 features)
 	if (!test_bit(__IGB_DOWN, &adapter->state))
 		igb_irq_enable(adapter);
 #else
-	bool enable = !!(features & NETIF_F_HW_VLAN_RX);
+	bool enable = !!(features & NETIF_F_HW_VLAN_CTAG_RX);
 #endif
 
 	if (enable) {
@@ -7766,7 +7769,7 @@ void igb_vlan_mode(struct net_device *netdev, u32 features)
 #else
 		struct net_device *vnetdev;
 		vnetdev = adapter->vmdq_netdev[i-1];
-		enable = !!(vnetdev->features & NETIF_F_HW_VLAN_RX);
+		enable = !!(vnetdev->features & NETIF_F_HW_VLAN_CTAG_RX);
 #endif
 		igb_set_vf_vlan_strip(adapter, 
 				      adapter->vfs_allocated_count + i,
@@ -7777,7 +7780,9 @@ void igb_vlan_mode(struct net_device *netdev, u32 features)
 	igb_rlpml_set(adapter);
 }
 
-#ifdef HAVE_INT_NDO_VLAN_RX_ADD_VID
+#ifdef HAVE_VLAN_PROTO
+static int igb_vlan_rx_add_vid(struct net_device *netdev, __be16 proto, u16 vid)
+#elif defined HAVE_INT_NDO_VLAN_RX_ADD_VID
 static int igb_vlan_rx_add_vid(struct net_device *netdev, u16 vid)
 #else
 static void igb_vlan_rx_add_vid(struct net_device *netdev, u16 vid)
@@ -7816,7 +7821,9 @@ static void igb_vlan_rx_add_vid(struct net_device *netdev, u16 vid)
 #endif
 }
 
-#ifdef HAVE_INT_NDO_VLAN_RX_ADD_VID
+#ifdef HAVE_VLAN_PROTO
+static int igb_vlan_rx_kill_vid(struct net_device *netdev, __be16 proto, u16 vid)
+#elif defined HAVE_INT_NDO_VLAN_RX_ADD_VID
 static int igb_vlan_rx_kill_vid(struct net_device *netdev, u16 vid)
 #else
 static void igb_vlan_rx_kill_vid(struct net_device *netdev, u16 vid)
@@ -7860,7 +7867,11 @@ static void igb_restore_vlan(struct igb_adapter *adapter)
 		for (vid = 0; vid < VLAN_N_VID; vid++) {
 			if (!vlan_group_get_device(adapter->vlgrp, vid))
 				continue;
+#ifdef HAVE_VLAN_PROTO
+			igb_vlan_rx_add_vid(adapter->netdev, htons(ETH_P_8021Q), vid);
+#else
 			igb_vlan_rx_add_vid(adapter->netdev, vid);
+#endif
 		}
 	}
 #else
@@ -7869,7 +7880,11 @@ static void igb_restore_vlan(struct igb_adapter *adapter)
 	igb_vlan_mode(adapter->netdev, adapter->netdev->features);
 
 	for_each_set_bit(vid, adapter->active_vlans, VLAN_N_VID)
+#ifdef HAVE_VLAN_PROTO
+		igb_vlan_rx_add_vid(adapter->netdev, htons(ETH_P_8021Q), vid);
+#else
 		igb_vlan_rx_add_vid(adapter->netdev, vid);
+#endif
 #endif
 }
 
@@ -8859,8 +8874,8 @@ int igb_kni_probe(struct pci_dev *pdev,
 #ifdef HAVE_NDO_SET_FEATURES
 			    NETIF_F_RXCSUM |
 #endif
-			    NETIF_F_HW_VLAN_RX |
-			    NETIF_F_HW_VLAN_TX;
+			    NETIF_F_HW_VLAN_CTAG_RX |
+			    NETIF_F_HW_VLAN_CTAG_TX;
 
 #ifdef HAVE_NDO_SET_FEATURES
 	/* copy netdev features into list of user selectable features */
@@ -8879,7 +8894,7 @@ int igb_kni_probe(struct pci_dev *pdev,
 #endif
 
 	/* set this bit last since it cannot be part of hw_features */
-	netdev->features |= NETIF_F_HW_VLAN_FILTER;
+	netdev->features |= NETIF_F_HW_VLAN_CTAG_FILTER;
 
 #ifdef HAVE_NETDEV_VLAN_FEATURES
 	netdev->vlan_features |= NETIF_F_TSO |
