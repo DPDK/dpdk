@@ -1213,19 +1213,6 @@ static inline void INIT_HLIST_NODE(struct hlist_node *h)
 	h->next = NULL;
 	h->pprev = NULL;
 }
-#define hlist_entry(ptr, type, member) container_of(ptr,type,member)
-
-#define hlist_for_each_entry(tpos, pos, head, member)                    \
-	for (pos = (head)->first;                                        \
-	     pos && ({ prefetch(pos->next); 1;}) &&                      \
-		({ tpos = hlist_entry(pos, typeof(*tpos), member); 1;}); \
-	     pos = pos->next)
-
-#define hlist_for_each_entry_safe(tpos, pos, n, head, member)            \
-	for (pos = (head)->first;                                        \
-	     pos && ({ n = pos->next; 1; }) &&                           \
-		({ tpos = hlist_entry(pos, typeof(*tpos), member); 1;}); \
-	     pos = n)
 
 #ifndef might_sleep
 #define might_sleep()
@@ -3106,4 +3093,30 @@ typedef netdev_features_t kni_netdev_features_t;
 #else
 #define HAVE_FDB_OPS
 #endif /* < 3.5.0 */
+
+/*****************************************************************************/
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0) )
+
+#undef  hlist_entry
+#define hlist_entry(ptr, type, member) \
+	container_of(ptr,type,member)
+
+#undef  hlist_entry_safe
+#define hlist_entry_safe(ptr, type, member) \
+	(ptr) ? hlist_entry(ptr, type, member) : NULL
+
+#undef  hlist_for_each_entry
+#define hlist_for_each_entry(pos, head, member) \
+	for (pos = hlist_entry_safe((head)->first, typeof(*(pos)), member); \
+	     pos;                                                           \
+	     pos = hlist_entry_safe((pos)->member.next, typeof(*(pos)), member))
+
+#undef  hlist_for_each_entry_safe
+#define hlist_for_each_entry_safe(pos, n, head, member) \
+	for (pos = hlist_entry_safe((head)->first, typeof(*pos), member); \
+	     pos && ({ n = pos->member.next; 1; });                       \
+	     pos = hlist_entry_safe(n, typeof(*pos), member))
+
+#endif /* < 3.9.0 */
+
 #endif /* _KCOMPAT_H_ */
