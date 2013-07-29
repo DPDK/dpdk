@@ -30,6 +30,8 @@
 #ifndef _IGB_H_
 #define _IGB_H_
 
+#include "kcompat.h"
+
 #include <linux/kobject.h>
 
 #ifndef IGB_NO_LRO
@@ -62,9 +64,6 @@ struct igb_adapter;
 #ifndef HAVE_HW_TIME_STAMP
 #undef IGB_PER_PKT_TIMESTAMP
 #endif
-
-
-#include "kcompat.h"
 
 #ifdef HAVE_SCTP
 #include <linux/sctp.h>

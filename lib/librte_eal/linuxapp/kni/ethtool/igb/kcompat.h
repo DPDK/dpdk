@@ -3040,4 +3040,27 @@ typedef netdev_features_t kni_netdev_features_t;
 #else
 #define HAVE_FDB_OPS
 #endif /* < 3.5.0 */
+
+/*****************************************************************************/
+/* 3.8 */
+
+/* timecompare has been removed and HW_TIME_STAMP is not used by KNI ethtool */
+#undef HAVE_HW_TIME_STAMP
+
+#ifndef __devinit
+#define __devinit
+#endif
+
+#ifndef __devinitdata
+#define __devinitdata
+#endif
+
+#ifndef __devexit
+#define __devexit
+#endif
+
+#ifndef __devexit_p
+#define __devexit_p
+#endif
+
 #endif /* _KCOMPAT_H_ */
