@@ -382,8 +382,7 @@ test_parse_string_valid(void)
 			printf("Error: getting string element failed!\n");
 			return -1;
 		}
-		if (strncmp(buf, string_elt_strs[i].result,
-				sizeof(string_elt_strs[i].result)) != 0) {
+		if (strcmp(buf, string_elt_strs[i].result) != 0) {
 			printf("Error: result mismatch!\n");
 			return -1;
 		}
