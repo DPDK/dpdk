@@ -42,6 +42,7 @@
  */
 
 #include <stddef.h>
+#include <rte_memory.h>
 
 #ifdef __cplusplus
 extern "C" {
