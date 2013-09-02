@@ -1743,8 +1743,7 @@ igb_dev_mq_rx_configure(struct rte_eth_dev *dev)
 		/*
 	 	* SRIOV inactive scheme
 	 	*/
-		if (dev->data->nb_rx_queues > 1)
-			switch (dev->data->dev_conf.rxmode.mq_mode) {
+		switch (dev->data->dev_conf.rxmode.mq_mode) {
 			case ETH_MQ_RX_RSS:
 				igb_rss_configure(dev);
 				break;
@@ -1757,9 +1756,7 @@ igb_dev_mq_rx_configure(struct rte_eth_dev *dev)
 			default: 
 				igb_rss_disable(dev);
 				break;
-			}
-		else
-			igb_rss_disable(dev);
+		}
 	}
  
 	return 0;
