@@ -3212,8 +3212,7 @@ ixgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	 	 * SRIOV inactive scheme
 		 * any DCB/RSS w/o VMDq multi-queue setting
 		 */
-		if (dev->data->nb_rx_queues > 1)
-			switch (dev->data->dev_conf.rxmode.mq_mode) {
+		switch (dev->data->dev_conf.rxmode.mq_mode) {
 			case ETH_MQ_RX_RSS:
 				ixgbe_rss_configure(dev);
 				break;
@@ -3229,9 +3228,7 @@ ixgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 			case ETH_MQ_RX_NONE:
 				/* if mq_mode is none, disable rss mode.*/
 			default: ixgbe_rss_disable(dev);
-			}
-		else
-			ixgbe_rss_disable(dev);
+		}
 	} else {
 		switch (RTE_ETH_DEV_SRIOV(dev).active) {
 		/*
