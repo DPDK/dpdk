@@ -1745,8 +1745,6 @@ igb_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	 	*/
 		if (dev->data->nb_rx_queues > 1)
 			switch (dev->data->dev_conf.rxmode.mq_mode) {
-			case ETH_MQ_RX_NONE:
-				/* if mq_mode not assign, we use rss mode.*/
 			case ETH_MQ_RX_RSS:
 				igb_rss_configure(dev);
 				break;
@@ -1754,6 +1752,8 @@ igb_dev_mq_rx_configure(struct rte_eth_dev *dev)
 				/*Configure general VMDQ only RX parameters*/
 				igb_vmdq_rx_hw_configure(dev); 
 				break;
+			case ETH_MQ_RX_NONE:
+				/* if mq_mode is none, disable rss mode.*/
 			default: 
 				igb_rss_disable(dev);
 				break;
