@@ -514,6 +514,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	}
 
 	memset(dev, 0, sizeof(*dev));
+	dev->intr_handle.fd = -1;
 	dev->addr.domain = domain;
 	dev->addr.bus = bus;
 	dev->addr.devid = devid;
@@ -718,7 +719,7 @@ pci_exit_process(struct rte_pci_device *dev)
 		RTE_LOG(ERR, EAL, "Error with munmap\n");
 		return -1;
 	}
-	if (close(dev->intr_handle.fd) == -1){
+	if ((dev->intr_handle.fd != -1) && (close(dev->intr_handle.fd) == -1)) {
 		RTE_LOG(ERR, EAL, "Error closing interrupt handle\n");
 		return -1;
 	}
