@@ -70,7 +70,7 @@ extern "C" {
 /**
  * Patch release number i.e. the w in x.y.zrw
  */
-#define RTE_VER_PATCH_RELEASE 2
+#define RTE_VER_PATCH_RELEASE 3
 
 /**
  * Macro to compute a version number usable for comparisons
