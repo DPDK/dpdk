@@ -261,9 +261,7 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 	void **rxq;
 	unsigned i;
 
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_release, -ENOTSUP);
-
-	if (dev->data->rx_queues == NULL) {
+	if (dev->data->rx_queues == NULL) { /* first time configuration */
 		dev->data->rx_queues = rte_zmalloc("ethdev->rx_queues",
 				sizeof(dev->data->rx_queues[0]) * nb_queues,
 				CACHE_LINE_SIZE);
@@ -271,7 +269,9 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 			dev->data->nb_rx_queues = 0;
 			return -(ENOMEM);
 		}
-	} else {
+	} else { /* re-configure */
+		FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_release, -ENOTSUP);
+
 		rxq = dev->data->rx_queues;
 
 		for (i = nb_queues; i < old_nb_queues; i++)
@@ -299,9 +299,7 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 	void **txq;
 	unsigned i;
 
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_release, -ENOTSUP);
-
-	if (dev->data->tx_queues == NULL) {
+	if (dev->data->tx_queues == NULL) { /* first time configuration */
 		dev->data->tx_queues = rte_zmalloc("ethdev->tx_queues",
 				sizeof(dev->data->tx_queues[0]) * nb_queues,
 				CACHE_LINE_SIZE);
@@ -309,7 +307,9 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 			dev->data->nb_tx_queues = 0;
 			return -(ENOMEM);
 		}
-	} else {
+	} else { /* re-configure */
+		FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_release, -ENOTSUP);
+
 		txq = dev->data->tx_queues;
 
 		for (i = nb_queues; i < old_nb_queues; i++)
