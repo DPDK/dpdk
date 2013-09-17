@@ -913,13 +913,6 @@ int
 rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *dev)
 {
 	struct rte_pci_id *id_table;
-#ifdef RTE_EAL_UNBIND_PORTS
-	const char *module_name = NULL;
-	int uio_status = -1;
-
-	if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO)
-		module_name = IGB_UIO_NAME;
-#endif
 
 	for (id_table = dr->id_table ; id_table->vendor_id != 0; id_table++) {
 
@@ -953,14 +946,15 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		}
 
 #ifdef RTE_EAL_UNBIND_PORTS
-		/* Unbind PCI devices if needed */
-		if (module_name != NULL)
-			if (pci_switch_module(dr, dev, uio_status, module_name) < 0)
+		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO)
+			/* unbind driver and load uio resources for Intel NICs */
+			if (pci_switch_module(dr, dev, 1, IGB_UIO_NAME) < 0)
 				return -1;
 #else
-		/* just map the NIC resources */
-		if (pci_uio_map_resource(dev) < 0)
-			return -1;
+		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO)
+			/* just map resources for Intel NICs */
+			if (pci_uio_map_resource(dev) < 0)
+				return -1;
 #endif
 
 		/* reference driver structure */

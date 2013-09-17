@@ -280,9 +280,7 @@ static struct eth_driver rte_em_pmd = {
 	{
 		.name = "rte_em_pmd",
 		.id_table = pci_id_em_map,
-#ifdef RTE_EAL_UNBIND_PORTS
 		.drv_flags = RTE_PCI_DRV_NEED_IGB_UIO,
-#endif
 	},
 	.eth_dev_init = eth_em_dev_init,
 	.dev_private_size = sizeof(struct e1000_adapter),
