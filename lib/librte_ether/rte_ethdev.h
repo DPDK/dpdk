@@ -1134,6 +1134,17 @@ extern struct rte_eth_dev rte_eth_devices[];
  */
 extern uint8_t rte_eth_dev_count(void);
 
+/**
+ * Function for internal use by dummy drivers primarily, e.g. ring-based
+ * driver.
+ * Allocates a new ethdev slot for an ethernet device and returns the pointer
+ * to that slot for the driver to use.
+ *
+ * @return
+ *   - Slot in the rte_dev_devices array for a new device;
+ */
+struct rte_eth_dev *rte_eth_dev_allocate(void);
+
 struct eth_driver;
 /**
  * @internal

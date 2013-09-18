@@ -152,7 +152,7 @@ rte_eth_dev_data_alloc(void)
 				RTE_MAX_ETHPORTS * sizeof(*rte_eth_dev_data));
 }
 
-static inline struct rte_eth_dev *
+struct rte_eth_dev *
 rte_eth_dev_allocate(void)
 {
 	struct rte_eth_dev *eth_dev;
