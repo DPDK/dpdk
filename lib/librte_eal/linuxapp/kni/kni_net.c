@@ -535,8 +535,8 @@ kni_net_tx_timeout (struct net_device *dev)
 static int
 kni_net_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
-	struct kni_dev *kni = netdev_priv(dev);
-	KNI_DBG("kni_net_ioctl %d\n", kni->port_id);
+	KNI_DBG("kni_net_ioctl %d\n",
+		((struct kni_dev *)netdev_priv(dev))->group_id);
 
 	return 0;
 }

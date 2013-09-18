@@ -200,6 +200,21 @@ kni_thread(void *unused)
 }
 
 static int
+kni_check_param(struct kni_dev *kni, struct rte_kni_device_info *dev)
+{
+	if (!kni || !dev)
+		return -1;
+
+	/* Check if network name has been used */
+	if (!strncmp(kni->name, dev->name, RTE_KNI_NAMESIZE)) {
+		KNI_ERR("KNI name %s duplicated\n", dev->name);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
 kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 {
 	int ret;
@@ -225,10 +240,8 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 	/* Check if it has been created */
 	down_read(&kni_list_lock);
 	list_for_each_entry_safe(dev, n, &kni_list_head, list) {
-		if (dev->port_id == dev_info.port_id) {
+		if (kni_check_param(dev, &dev_info) < 0) {
 			up_read(&kni_list_lock);
-			KNI_ERR("Port %d has already been created\n",
-						dev_info.port_id);
 			return -EINVAL;
 		}
 	}
@@ -244,7 +257,8 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 	kni = netdev_priv(net_dev);
 
 	kni->net_dev = net_dev;
-	kni->port_id = dev_info.port_id;
+	kni->group_id = dev_info.group_id;
+	strncpy(kni->name, dev_info.name, RTE_KNI_NAMESIZE);
 
 	/* Translate user space info into kernel space info */
 	kni->tx_q = phys_to_virt(dev_info.tx_phys);
@@ -353,21 +367,25 @@ static int
 kni_ioctl_release(unsigned int ioctl_num, unsigned long ioctl_param)
 {
 	int ret = -EINVAL;
-	uint8_t port_id;
 	struct kni_dev *dev, *n;
+	struct rte_kni_device_info dev_info;
 
-	if (_IOC_SIZE(ioctl_num) > sizeof(port_id))
+	if (_IOC_SIZE(ioctl_num) > sizeof(dev_info))
 			return -EINVAL;
 
-	ret = copy_from_user(&port_id, (void *)ioctl_param, sizeof(port_id));
+	ret = copy_from_user(&dev_info, (void *)ioctl_param, sizeof(dev_info));
 	if (ret) {
 		KNI_ERR("copy_from_user in kni_ioctl_release");
 		return -EIO;
 	}
 
+	/* Release the network device according to its name */
+	if (strlen(dev_info.name) == 0)
+		return ret;
+
 	down_write(&kni_list_lock);
 	list_for_each_entry_safe(dev, n, &kni_list_head, list) {
-		if (dev->port_id != port_id)
+		if (strncmp(dev->name, dev_info.name, RTE_KNI_NAMESIZE) != 0)
 			continue;
 
 		switch (dev->device_id) {
@@ -389,8 +407,8 @@ kni_ioctl_release(unsigned int ioctl_num, unsigned long ioctl_param)
 		break;
 	}
 	up_write(&kni_list_lock);
-	printk(KERN_INFO "KNI: %s release kni for port %d\n",
-		(ret == 0 ? "Successfully" : "Unsuccessfully"), port_id);
+	printk(KERN_INFO "KNI: %s release kni named %s\n",
+		(ret == 0 ? "Successfully" : "Unsuccessfully"), dev_info.name);
 
 	return ret;
 }

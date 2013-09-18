@@ -63,6 +63,11 @@
 #include <linux/if.h>
 #endif
 
+/**
+ * KNI name is part of memzone name.
+ */
+#define RTE_KNI_NAMESIZE 32
+
 /*
  * Request id.
  */
@@ -118,9 +123,8 @@ struct rte_kni_mbuf {
  * Struct used to create a KNI device. Passed to the kernel in IOCTL call
  */
 
-struct rte_kni_device_info
-{
-	char name[IFNAMSIZ];
+struct rte_kni_device_info {
+	char name[RTE_KNI_NAMESIZE];  /**< Network device name for KNI */
 
 	phys_addr_t tx_phys;
 	phys_addr_t rx_phys;
@@ -143,7 +147,11 @@ struct rte_kni_device_info
 	uint8_t bus;                  /**< Device bus */
 	uint8_t devid;                /**< Device ID */
 	uint8_t function;             /**< Device function. */
-	uint8_t port_id;              /**< Port ID */
+
+	uint16_t group_id;            /**< Group ID */
+	uint32_t core_id;             /**< core ID to bind for kernel thread */
+
+	uint8_t force_bind : 1;       /**< Flag for kernel thread binding */
 
 	/* mbuf size */
 	unsigned mbuf_size;
@@ -153,6 +161,6 @@ struct rte_kni_device_info
 
 #define RTE_KNI_IOCTL_TEST    _IOWR(0, 1, int)
 #define RTE_KNI_IOCTL_CREATE  _IOWR(0, 2, struct rte_kni_device_info)
-#define RTE_KNI_IOCTL_RELEASE _IOWR(0, 3, uint8_t)
+#define RTE_KNI_IOCTL_RELEASE _IOWR(0, 3, struct rte_kni_device_info)
 
 #endif /* _RTE_KNI_COMMON_H_ */

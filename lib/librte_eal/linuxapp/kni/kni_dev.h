@@ -32,6 +32,7 @@
 #include <linux/spinlock.h>
 #include <linux/list.h>
 
+#include <exec-env/rte_kni_common.h>
 #define KNI_KTHREAD_RESCHEDULE_INTERVAL 10 /* us */
 
 /**
@@ -44,7 +45,8 @@ struct kni_dev {
 
 	struct net_device_stats stats;
 	int status;
-	int port_id;
+	uint16_t group_id;           /* Group ID of a group of KNI devices */
+	char name[RTE_KNI_NAMESIZE]; /* Network device name */
 
 	/* wait queue for req/resp */
 	wait_queue_head_t wq;
