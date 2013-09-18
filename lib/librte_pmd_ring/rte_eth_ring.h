@@ -31,45 +31,34 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <inttypes.h>
-#include <rte_string_fns.h>
-#ifdef RTE_LIBRTE_PMD_RING
-#include <rte_eth_ring.h>
+#ifndef _RTE_ETH_RING_H_
+#define _RTE_ETH_RING_H_
+
+#ifdef __cplusplus
+extern "C" {
 #endif
-#include "eal_private.h"
 
-struct device_init {
-	const char *dev_prefix;
-	int (*init_fn)(const char*, const char *);
-};
+#include <rte_ring.h>
 
-#define NUM_DEV_TYPES (sizeof(dev_types)/sizeof(dev_types[0]))
-struct device_init dev_types[] = {
-#ifdef RTE_LIBRTE_PMD_RING
-		{
-			.dev_prefix = RTE_ETH_RING_PARAM_NAME,
-			.init_fn = rte_pmd_ring_init
-		},
-#endif
-		{
-			.dev_prefix = "-nodev-",
-			.init_fn = NULL
-		}
-};
+#define RTE_ETH_RING_PARAM_NAME "eth_ring"
 
-int
-rte_eal_non_pci_ethdev_init(void)
-{
-	uint8_t i, j;
-	for (i = 0; i < NUM_DEV_TYPES; i++) {
-		for (j = 0; j < RTE_MAX_ETHPORTS; j++) {
-			const char *params;
-			char buf[16];
-			rte_snprintf(buf, sizeof(buf), "%s%"PRIu8,
-					dev_types[i].dev_prefix, j);
-			if (eal_dev_is_whitelisted(buf, &params))
-				dev_types[i].init_fn(buf, params);
-		}
-	}
-	return 0;
+int rte_eth_from_rings(struct rte_ring * const rx_queues[],
+		const unsigned nb_rx_queues,
+		struct rte_ring *const tx_queues[],
+		const unsigned nb_tx_queues,
+		const unsigned numa_node);
+
+int rte_eth_ring_pair_create(const char *name, const unsigned numa_node);
+int rte_eth_ring_pair_attach(const char *name, const unsigned numa_node);
+
+/**
+ * For use by the EAL only. Called as part of EAL init to set up any dummy NICs
+ * configured on command line.
+ */
+int rte_pmd_ring_init(const char *name, const char *params);
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif

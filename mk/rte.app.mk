@@ -116,6 +116,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_ETHER),y)
 LDLIBS += -lethdev
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)
+LDLIBS += -lrte_pmd_ring
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_MALLOC),y)
 LDLIBS += -lrte_malloc
 endif

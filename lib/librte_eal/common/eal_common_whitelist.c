@@ -45,6 +45,9 @@
 #include <rte_debug.h>
 #include <rte_pci.h>
 #include <ctype.h>
+#ifdef RTE_LIBRTE_PMD_RING
+#include <rte_eth_ring.h>
+#endif
 #include "eal_private.h"
 
 static char dev_list_str[4096];
@@ -91,6 +94,9 @@ is_valid_wl_entry(const char *device_str, size_t dev_buf_len)
 {
 #define NUM_PREFIXES (sizeof(non_pci_prefixes)/sizeof(non_pci_prefixes[0]))
 	static const char *non_pci_prefixes[] = {
+#ifdef  RTE_LIBRTE_PMD_RING
+			RTE_ETH_RING_PARAM_NAME,
+#endif
 			"-nodev-" /* dummy value to prevent compiler warnings */
 	};
 	static uint8_t prefix_counts[NUM_PREFIXES] = {0};
