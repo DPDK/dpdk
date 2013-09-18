@@ -179,6 +179,8 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.function = conf->addr.function;
 	dev_info.vendor_id = conf->id.vendor_id;
 	dev_info.device_id = conf->id.device_id;
+	dev_info.core_id = conf->core_id;
+	dev_info.force_bind = conf->force_bind;
 	dev_info.group_id = conf->group_id;
 	dev_info.mbuf_size = conf->mbuf_size;
 

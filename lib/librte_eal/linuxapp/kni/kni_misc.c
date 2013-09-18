@@ -58,9 +58,14 @@ static int kni_ioctl(struct inode *inode, unsigned int ioctl_num,
 					unsigned long ioctl_param);
 static int kni_compat_ioctl(struct inode *inode, unsigned int ioctl_num,
 						unsigned long ioctl_param);
+static int kni_dev_remove(struct kni_dev *dev);
 
-/* kni kernel thread for rx */
-static int kni_thread(void *unused);
+static int __init kni_parse_kthread_mode(void);
+
+/* KNI processing for single kernel thread mode */
+static int kni_thread_single(void *unused);
+/* KNI processing for multiple kernel thread mode */
+static int kni_thread_multiple(void *param);
 
 static struct file_operations kni_fops = {
 	.owner = THIS_MODULE,
@@ -79,6 +84,10 @@ static struct miscdevice kni_misc = {
 /* loopback mode */
 static char *lo_mode = NULL;
 
+/* Kernel thread mode */
+static char *kthread_mode = NULL;
+static unsigned multiple_kthread_on = 0;
+
 #define KNI_DEV_IN_USE_BIT_NUM 0 /* Bit number for device in use */
 
 static volatile unsigned long device_in_use; /* device in use flag */
@@ -95,9 +104,14 @@ kni_init(void)
 {
 	KNI_PRINT("######## DPDK kni module loading ########\n");
 
+	if (kni_parse_kthread_mode() < 0) {
+		KNI_ERR("Invalid parameter for kthread_mode\n");
+		return -EINVAL;
+	}
+
 	if (misc_register(&kni_misc) != 0) {
 		KNI_ERR("Misc registration failed\n");
-		return 1;
+		return -EPERM;
 	}
 
 	/* Clear the bit of device in use */
@@ -118,6 +132,22 @@ kni_exit(void)
 	KNI_PRINT("####### DPDK kni module unloaded  #######\n");
 }
 
+static int __init
+kni_parse_kthread_mode(void)
+{
+	if (!kthread_mode)
+		return 0;
+
+	if (strcmp(kthread_mode, "single") == 0)
+		return 0;
+	else if (strcmp(kthread_mode, "multiple") == 0)
+		multiple_kthread_on = 1;
+	else
+		return -1;
+
+	return 0;
+}
+
 static int
 kni_open(struct inode *inode, struct file *file)
 {
@@ -125,12 +155,18 @@ kni_open(struct inode *inode, struct file *file)
 	if (test_and_set_bit(KNI_DEV_IN_USE_BIT_NUM, &device_in_use))
 		return -EBUSY;
 
-	/* Create kernel thread for RX */
-	kni_kthread = kthread_run(kni_thread, NULL, "kni_thread");
-	if (IS_ERR(kni_kthread)) {
-		KNI_ERR("Unable to create kernel threaed\n");
-		return PTR_ERR(kni_kthread);
-	}
+	/* Create kernel thread for single mode */
+	if (multiple_kthread_on == 0) {
+		KNI_PRINT("Single kernel thread for all KNI devices\n");
+		/* Create kernel thread for RX */
+		kni_kthread = kthread_run(kni_thread_single, NULL,
+						"kni_single");
+		if (IS_ERR(kni_kthread)) {
+			KNI_ERR("Unable to create kernel threaed\n");
+			return PTR_ERR(kni_kthread);
+		}
+	} else
+		KNI_PRINT("Multiple kernel thread mode enabled\n");
 
 	KNI_PRINT("/dev/kni opened\n");
 
@@ -142,27 +178,22 @@ kni_release(struct inode *inode, struct file *file)
 {
 	struct kni_dev *dev, *n;
 
-	/* Stop kernel thread */
-	kthread_stop(kni_kthread);
-	kni_kthread = NULL;
+	/* Stop kernel thread for single mode */
+	if (multiple_kthread_on == 0) {
+		/* Stop kernel thread */
+		kthread_stop(kni_kthread);
+		kni_kthread = NULL;
+	}
 
 	down_write(&kni_list_lock);
 	list_for_each_entry_safe(dev, n, &kni_list_head, list) {
-		/* Call the remove part to restore pci dev */
-		switch (dev->device_id) {
-		#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) case (dev):
-		#include <rte_pci_dev_ids.h>
-			igb_kni_remove(dev->pci_dev);
-			break;
-		#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) case (dev):
-		#include <rte_pci_dev_ids.h>
-			ixgbe_kni_remove(dev->pci_dev);
-			break;
-		default:
-			break;
+		/* Stop kernel thread for multiple mode */
+		if (multiple_kthread_on && dev->pthread != NULL) {
+			kthread_stop(dev->pthread);
+			dev->pthread = NULL;
 		}
-		unregister_netdev(dev->net_dev);
-		free_netdev(dev->net_dev);
+
+		kni_dev_remove(dev);
 		list_del(&dev->list);
 	}
 	up_write(&kni_list_lock);
@@ -176,7 +207,7 @@ kni_release(struct inode *inode, struct file *file)
 }
 
 static int
-kni_thread(void *unused)
+kni_thread_single(void *unused)
 {
 	int j;
 	struct kni_dev *dev, *n;
@@ -194,6 +225,51 @@ kni_thread(void *unused)
 		/* reschedule out for a while */
 		schedule_timeout_interruptible(usecs_to_jiffies( \
 				KNI_KTHREAD_RESCHEDULE_INTERVAL));
+	}
+
+	return 0;
+}
+
+static int
+kni_thread_multiple(void *param)
+{
+	int j;
+	struct kni_dev *dev = (struct kni_dev *)param;
+
+	while (!kthread_should_stop()) {
+		for (j = 0; j < KNI_RX_LOOP_NUM; j++) {
+			kni_net_rx(dev);
+			kni_net_poll_resp(dev);
+		}
+		schedule_timeout_interruptible(usecs_to_jiffies( \
+				KNI_KTHREAD_RESCHEDULE_INTERVAL));
+	}
+
+	return 0;
+}
+
+static int
+kni_dev_remove(struct kni_dev *dev)
+{
+	if (!dev)
+		return -ENODEV;
+
+	switch (dev->device_id) {
+	#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) case (dev):
+	#include <rte_pci_dev_ids.h>
+		igb_kni_remove(dev->pci_dev);
+		break;
+	#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) case (dev):
+	#include <rte_pci_dev_ids.h>
+		ixgbe_kni_remove(dev->pci_dev);
+		break;
+	default:
+		break;
+	}
+
+	if (dev->net_dev) {
+		unregister_netdev(dev->net_dev);
+		free_netdev(dev->net_dev);
 	}
 
 	return 0;
@@ -237,6 +313,16 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 		return -EIO;
 	}
 
+	/**
+	 * Check if the cpu core id is valid for binding,
+	 * for multiple kernel thread mode.
+	 */
+	if (multiple_kthread_on && dev_info.force_bind &&
+				!cpu_online(dev_info.core_id)) {
+		KNI_ERR("cpu %u is not online\n", dev_info.core_id);
+		return -EINVAL;
+	}
+
 	/* Check if it has been created */
 	down_read(&kni_list_lock);
 	list_for_each_entry_safe(dev, n, &kni_list_head, list) {
@@ -258,6 +344,7 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 
 	kni->net_dev = net_dev;
 	kni->group_id = dev_info.group_id;
+	kni->core_id = dev_info.core_id;
 	strncpy(kni->name, dev_info.name, RTE_KNI_NAMESIZE);
 
 	/* Translate user space info into kernel space info */
@@ -352,8 +439,25 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 	if (ret) {
 		KNI_ERR("error %i registering device \"%s\"\n",
 					ret, dev_info.name);
-		free_netdev(net_dev);
+		kni_dev_remove(kni);
 		return -ENODEV;
+	}
+
+	/**
+	 * Create a new kernel thread for multiple mode, set its core affinity,
+	 * and finally wake it up.
+	 */
+	if (multiple_kthread_on) {
+		kni->pthread = kthread_create(kni_thread_multiple,
+					      (void *)kni,
+					      "kni_%s", kni->name);
+		if (IS_ERR(kni->pthread)) {
+			kni_dev_remove(kni);
+			return -ECANCELED;
+		}
+		if (dev_info.force_bind)
+			kthread_bind(kni->pthread, kni->core_id);
+		wake_up_process(kni->pthread);
 	}
 
 	down_write(&kni_list_lock);
@@ -388,20 +492,12 @@ kni_ioctl_release(unsigned int ioctl_num, unsigned long ioctl_param)
 		if (strncmp(dev->name, dev_info.name, RTE_KNI_NAMESIZE) != 0)
 			continue;
 
-		switch (dev->device_id) {
-		#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) case (dev):
-		#include <rte_pci_dev_ids.h>
-			igb_kni_remove(dev->pci_dev);
-			break;
-		#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) case (dev):
-		#include <rte_pci_dev_ids.h>
-			ixgbe_kni_remove(dev->pci_dev);
-			break;
-		default:
-			break;
+		if (multiple_kthread_on && dev->pthread != NULL) {
+			kthread_stop(dev->pthread);
+			dev->pthread = NULL;
 		}
-		unregister_netdev(dev->net_dev);
-		free_netdev(dev->net_dev);
+
+		kni_dev_remove(dev);
 		list_del(&dev->list);
 		ret = 0;
 		break;
@@ -463,6 +559,14 @@ MODULE_PARM_DESC(lo_mode,
 "    lo_mode_none        Kernel loopback disabled\n"
 "    lo_mode_fifo        Enable kernel loopback with fifo\n"
 "    lo_mode_fifo_skb    Enable kernel loopback with fifo and skb buffer\n"
+"\n"
+);
+
+module_param(kthread_mode, charp, S_IRUGO);
+MODULE_PARM_DESC(kthread_mode,
+"Kernel thread mode (default=single):\n"
+"    single    Single kernel thread mode enabled.\n"
+"    multiple  Multiple kernel thread mode enabled.\n"
 "\n"
 );
 

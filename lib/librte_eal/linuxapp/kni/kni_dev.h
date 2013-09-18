@@ -33,7 +33,7 @@
 #include <linux/list.h>
 
 #include <exec-env/rte_kni_common.h>
-#define KNI_KTHREAD_RESCHEDULE_INTERVAL 10 /* us */
+#define KNI_KTHREAD_RESCHEDULE_INTERVAL 5 /* us */
 
 /**
  * A structure describing the private information for a kni device.
@@ -46,7 +46,9 @@ struct kni_dev {
 	struct net_device_stats stats;
 	int status;
 	uint16_t group_id;           /* Group ID of a group of KNI devices */
+	unsigned core_id;            /* Core ID to bind */
 	char name[RTE_KNI_NAMESIZE]; /* Network device name */
+	struct task_struct *pthread;
 
 	/* wait queue for req/resp */
 	wait_queue_head_t wq;
