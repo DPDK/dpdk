@@ -275,6 +275,8 @@ CONFIG_RTE_SCHED_PORT_N_GRINDERS=8
 # Compile librte_kni
 #
 CONFIG_RTE_LIBRTE_KNI=y
+CONFIG_RTE_LIBRTE_KNI_DEBUG=n
+CONFIG_RTE_KNI_KO_DEBUG=n
 
 #
 # Enable warning directives

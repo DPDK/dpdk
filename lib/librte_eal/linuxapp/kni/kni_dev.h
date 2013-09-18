@@ -89,11 +89,10 @@ struct kni_dev {
 	unsigned long synchro;
 };
 
-#define DEBUG_KNI
 
 #define KNI_ERR(args...) printk(KERN_DEBUG "KNI: Error: " args)
 #define KNI_PRINT(args...) printk(KERN_DEBUG "KNI: " args)
-#ifdef DEBUG_KNI
+#ifdef RTE_KNI_KO_DEBUG
 	#define KNI_DBG(args...) printk(KERN_DEBUG "KNI: " args)
 #else
 	#define KNI_DBG(args...)

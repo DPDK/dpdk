@@ -142,8 +142,6 @@ kni_release(struct inode *inode, struct file *file)
 {
 	struct kni_dev *dev, *n;
 
-	KNI_PRINT("Stopping KNI thread...");
-
 	/* Stop kernel thread */
 	kthread_stop(kni_kthread);
 	kni_kthread = NULL;
@@ -183,7 +181,6 @@ kni_thread(void *unused)
 	int j;
 	struct kni_dev *dev, *n;
 
-	KNI_PRINT("Kernel thread for KNI started\n");
 	while (!kthread_should_stop()) {
 		down_read(&kni_list_lock);
 		for (j = 0; j < KNI_RX_LOOP_NUM; j++) {
@@ -198,7 +195,6 @@ kni_thread(void *unused)
 		schedule_timeout_interruptible(usecs_to_jiffies( \
 				KNI_KTHREAD_RESCHEDULE_INTERVAL));
 	}
-	KNI_PRINT("Kernel thread for KNI stopped\n");
 
 	return 0;
 }
@@ -266,32 +262,38 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 
 	kni->mbuf_size = dev_info.mbuf_size;
 
-	KNI_PRINT("tx_phys:          0x%016llx, tx_q addr:          0x%p\n",
-						(unsigned long long) dev_info.tx_phys, kni->tx_q);
-	KNI_PRINT("rx_phys:          0x%016llx, rx_q addr:          0x%p\n",
-						(unsigned long long) dev_info.rx_phys, kni->rx_q);
-	KNI_PRINT("alloc_phys:       0x%016llx, alloc_q addr:       0x%p\n",
-					(unsigned long long) dev_info.alloc_phys, kni->alloc_q);
-	KNI_PRINT("free_phys:        0x%016llx, free_q addr:        0x%p\n",
-					(unsigned long long) dev_info.free_phys, kni->free_q);
-	KNI_PRINT("req_phys:         0x%016llx, req_q addr:         0x%p\n",
-					(unsigned long long) dev_info.req_phys, kni->req_q);
-	KNI_PRINT("resp_phys:        0x%016llx, resp_q addr:        0x%p\n",
-					(unsigned long long) dev_info.resp_phys, kni->resp_q);
-	KNI_PRINT("mbuf_phys:        0x%016llx, mbuf_kva:           0x%p\n",
-					(unsigned long long) dev_info.mbuf_phys, kni->mbuf_kva);
-	KNI_PRINT("mbuf_va:          0x%p\n", dev_info.mbuf_va);
-	KNI_PRINT("mbuf_size:        %u\n", kni->mbuf_size);
+	KNI_PRINT("tx_phys:      0x%016llx, tx_q addr:      0x%p\n",
+		(unsigned long long) dev_info.tx_phys, kni->tx_q);
+	KNI_PRINT("rx_phys:      0x%016llx, rx_q addr:      0x%p\n",
+		(unsigned long long) dev_info.rx_phys, kni->rx_q);
+	KNI_PRINT("alloc_phys:   0x%016llx, alloc_q addr:   0x%p\n",
+		(unsigned long long) dev_info.alloc_phys, kni->alloc_q);
+	KNI_PRINT("free_phys:    0x%016llx, free_q addr:    0x%p\n",
+		(unsigned long long) dev_info.free_phys, kni->free_q);
+	KNI_PRINT("req_phys:     0x%016llx, req_q addr:     0x%p\n",
+		(unsigned long long) dev_info.req_phys, kni->req_q);
+	KNI_PRINT("resp_phys:    0x%016llx, resp_q addr:    0x%p\n",
+		(unsigned long long) dev_info.resp_phys, kni->resp_q);
+	KNI_PRINT("mbuf_phys:    0x%016llx, mbuf_kva:       0x%p\n",
+		(unsigned long long) dev_info.mbuf_phys, kni->mbuf_kva);
+	KNI_PRINT("mbuf_va:      0x%p\n", dev_info.mbuf_va);
+	KNI_PRINT("mbuf_size:    %u\n", kni->mbuf_size);
 
-	KNI_DBG("PCI: %02x:%02x.%02x %04x:%04x\n", dev_info.bus, dev_info.devid,
-			dev_info.function, dev_info.vendor_id, dev_info.device_id);
+	KNI_DBG("PCI: %02x:%02x.%02x %04x:%04x\n",
+					dev_info.bus,
+					dev_info.devid,
+					dev_info.function,
+					dev_info.vendor_id,
+					dev_info.device_id);
 
 	pci = pci_get_device(dev_info.vendor_id, dev_info.device_id, NULL);
 
 	/* Support Ethtool */
 	while (pci) {
-		KNI_PRINT("pci_bus: %02x:%02x:%02x \n", pci->bus->number,
-				PCI_SLOT(pci->devfn), PCI_FUNC(pci->devfn));
+		KNI_PRINT("pci_bus: %02x:%02x:%02x \n",
+					pci->bus->number,
+					PCI_SLOT(pci->devfn),
+					PCI_FUNC(pci->devfn));
 
 		if ((pci->bus->number == dev_info.bus) &&
 			(PCI_SLOT(pci->devfn) == dev_info.devid) &&
@@ -343,8 +345,6 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 	down_write(&kni_list_lock);
 	list_add(&kni->list, &kni_list_head);
 	up_write(&kni_list_lock);
-	printk(KERN_INFO "KNI: Successfully create kni for port %d\n",
-						dev_info.port_id);
 
 	return 0;
 }
