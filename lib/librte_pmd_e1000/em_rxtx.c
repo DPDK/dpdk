@@ -1449,7 +1449,7 @@ eth_em_rx_descriptor_done(void *rx_queue, uint16_t offset)
 {
 	volatile struct e1000_rx_desc *rxdp;
 	struct em_rx_queue *rxq = rx_queue;
-	uint16_t desc;
+	uint32_t desc;
 
 	if (unlikely(offset >= rxq->nb_rx_desc))
 		return 0;
