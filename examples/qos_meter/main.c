@@ -166,19 +166,30 @@ app_configure_flow_table(void)
 }
 
 static inline void
+app_set_pkt_color(uint8_t *pkt_data, enum policer_action color)
+{
+	pkt_data[APP_PKT_COLOR_POS] = (uint8_t)color;
+}
+
+static inline int
 app_pkt_handle(struct rte_mbuf *pkt, uint64_t time)
 {
-	uint8_t color;
-
+	uint8_t input_color, output_color;
 	uint8_t *pkt_data = rte_pktmbuf_mtod(pkt, uint8_t *);
 	uint32_t pkt_len = rte_pktmbuf_pkt_len(pkt) - sizeof(struct ether_hdr);
 	uint8_t flow_id = (uint8_t)(pkt_data[APP_PKT_FLOW_POS] & (APP_FLOWS_MAX - 1));
-	color = pkt_data[APP_PKT_COLOR_POS];
+	input_color = pkt_data[APP_PKT_COLOR_POS];
+	enum policer_action action;
 
 	/* color input is not used for blind modes */
-	color = (uint8_t) FUNC_METER(&app_flows[flow_id], time, pkt_len,
-			(enum rte_meter_color) color);
-	pkt_data[APP_PKT_COLOR_POS] = color;
+	output_color = (uint8_t) FUNC_METER(&app_flows[flow_id], time, pkt_len,
+		(enum rte_meter_color) input_color);
+
+	/* Apply policing and set the output color */
+	action = policer_table[input_color][output_color];
+	app_set_pkt_color(pkt_data, action);
+
+	return action;
 }
 
 
@@ -229,12 +240,13 @@ main_loop(__attribute__((unused)) void *dummy)
 		for (i = 0; i < nb_rx; i ++) {
 			struct rte_mbuf *pkt = pkts_rx[i];
 			
-			/* Handle current packet*/
-			app_pkt_handle(pkt, current_time);
-			
-			/* Write current packet in the output buffer */
-			pkts_tx[pkts_tx_len] = pkt;
-			pkts_tx_len ++;
+			/* Handle current packet */
+			if (app_pkt_handle(pkt, current_time) == DROP)
+				rte_pktmbuf_free(pkt);
+			else {
+				pkts_tx[pkts_tx_len] = pkt;
+				pkts_tx_len ++;
+			}
 			
 			/* Write packets from output buffer to NIC TX when full burst is available */
 			if (unlikely(pkts_tx_len == PKT_TX_BURST_MAX)) {

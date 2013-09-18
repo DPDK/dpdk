@@ -34,6 +34,20 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
+enum policer_action {
+        GREEN = e_RTE_METER_GREEN,
+        YELLOW = e_RTE_METER_YELLOW,
+        RED = e_RTE_METER_RED,
+        DROP = 3,
+};
+
+enum policer_action policer_table[e_RTE_METER_COLORS][e_RTE_METER_COLORS] =
+{
+	{ GREEN, RED, RED},
+	{ DROP, YELLOW, RED},
+	{ DROP, DROP, RED}
+};
+
 #ifdef RTE_EXEC_ENV_BAREMETAL
 #define MAIN _main
 #else
