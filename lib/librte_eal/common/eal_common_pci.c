@@ -75,6 +75,8 @@
 #include <rte_memzone.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
+#include <rte_string_fns.h>
+#include <rte_common.h>
 
 #include "eal_private.h"
 
@@ -136,6 +138,24 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 }
 
 /*
+ * Check if a device is ok to use according to whitelist rules.
+ */
+static int
+pcidev_is_whitelisted(struct rte_pci_device *dev)
+{
+	char buf[16];
+	if (dev->addr.domain == 0) {
+		rte_snprintf(buf, sizeof(buf), PCI_SHORT_PRI_FMT, dev->addr.bus,
+				dev->addr.devid, dev->addr.function);
+		if (eal_dev_is_whitelisted(buf, NULL))
+			return 1;
+	}
+	rte_snprintf(buf, sizeof(buf), PCI_PRI_FMT, dev->addr.domain,dev->addr.bus,
+			dev->addr.devid, dev->addr.function);
+	return eal_dev_is_whitelisted(buf, NULL);
+}
+
+/*
  * Scan the content of the PCI bus, and call the devinit() function for
  * all registered drivers that have a matching entry in its id_table
  * for discovered devices.
@@ -146,7 +166,13 @@ rte_eal_pci_probe(void)
 	struct rte_pci_device *dev = NULL;
 
 	TAILQ_FOREACH(dev, &device_list, next)
-		pci_probe_all_drivers(dev);
+		if (!eal_dev_whitelist_exists())
+			pci_probe_all_drivers(dev);
+		else if (pcidev_is_whitelisted(dev) && pci_probe_all_drivers(dev) < 0 )
+				rte_exit(EXIT_FAILURE, "Requested device " PCI_PRI_FMT
+						" cannot be used\n", dev->addr.domain,dev->addr.bus,
+						dev->addr.devid, dev->addr.function);
+
 	return 0;
 }
 

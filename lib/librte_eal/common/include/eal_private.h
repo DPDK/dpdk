@@ -174,4 +174,42 @@ int rte_eal_intr_init(void);
  */
 int rte_eal_alarm_init(void);
 
+/**
+ * When parsing command-line args add a new entry to the whitelist string
+ * to be parsed, i.e. this is used to join multiple --use-device flags together
+ *
+ * This function is private to EAL
+ */
+int eal_dev_whitelist_add_entry(const char *entry);
+
+/**
+ * Returns true if whitelist parameters are available for parsing,
+ * false otherwise.
+ *
+ * This function is private to EAL
+ */
+int eal_dev_whitelist_exists(void);
+
+/**
+ * Parse the combined whitelist options into a single white-list for later use.
+ *
+ * This function is private to EAL
+ */
+int eal_dev_whitelist_parse(void);
+
+/**
+ * Check if a particular device is whitelisted or not. Returns true if the
+ * device is in the whitelist.
+ *
+ * This function is private to EAL
+ */
+int eal_dev_is_whitelisted(const char *device_str, const char **params);
+
+/**
+ * This function clears the whitelist settings.
+ *
+ * This function is private to the EAL.
+ */
+void eal_dev_whitelist_clear(void);
+
 #endif /* _EAL_PRIVATE_H_ */

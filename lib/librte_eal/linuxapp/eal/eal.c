@@ -87,6 +87,7 @@
 #define OPT_NO_HUGE     "no-huge"
 #define OPT_FILE_PREFIX "file-prefix"
 #define OPT_SOCKET_MEM  "socket-mem"
+#define OPT_USE_DEVICE  "use-device"
 #define OPT_SYSLOG      "syslog"
 
 #define RTE_EAL_BLACKLIST_SIZE	0x100
@@ -335,6 +336,9 @@ eal_usage(const char *prgname)
 	       "  --"OPT_HUGE_DIR"   : directory where hugetlbfs is mounted\n"
 	       "  --"OPT_PROC_TYPE"  : type of this process\n"
 	       "  --"OPT_FILE_PREFIX": prefix for hugepage filenames\n"
+	       "  --"OPT_USE_DEVICE": use the specified ethernet device(s) only."
+	    		   "Use comma-separate <[domain:]bus:devid.func> values.\n"
+	       "               [NOTE: Cannot be used with -b option]\n"
 	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of "
 	    		   "native RDTSC\n"
 	       "\nEAL options for DEBUG use only:\n"
@@ -589,6 +593,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_PROC_TYPE, 1, 0, 0},
 		{OPT_FILE_PREFIX, 1, 0, 0},
 		{OPT_SOCKET_MEM, 1, 0, 0},
+		{OPT_USE_DEVICE, 1, 0, 0},
 		{OPT_SYSLOG, 1, NULL, 0},
 		{0, 0, 0, 0}
 	};
@@ -705,6 +710,9 @@ eal_parse_args(int argc, char **argv)
 					return -1;
 				}
 			}
+			else if (!strcmp(lgopts[option_index].name, OPT_USE_DEVICE)) {
+				eal_dev_whitelist_add_entry(optarg);
+			}
 			else if (!strcmp(lgopts[option_index].name, OPT_SYSLOG)) {
 				if (eal_parse_syslog(optarg) < 0) {
 					RTE_LOG(ERR, EAL, "invalid parameters for --"
@@ -762,8 +770,21 @@ eal_parse_args(int argc, char **argv)
 		return -1;
 	}
 
-	if (blacklist_index > 0)
+	/* if no blacklist, parse a whitelist */
+	if (blacklist_index > 0) {
+		if (eal_dev_whitelist_exists()) {
+			RTE_LOG(ERR, EAL, "Error: blacklist [-b] and whitelist "
+					"[--use-device] options cannot be used at the same time\n");
+			eal_usage(prgname);
+			return -1;
+		}
 		rte_eal_pci_set_blacklist(eal_dev_blacklist, blacklist_index);
+	} else {
+		if (eal_dev_whitelist_exists() && eal_dev_whitelist_parse() < 0) {
+			RTE_LOG(ERR,EAL, "Error parsing whitelist[--use-device] options\n");
+			return -1;
+		}
+	}
 
 	if (optind >= 0)
 		argv[optind-1] = prgname;
