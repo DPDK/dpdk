@@ -31,54 +31,41 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <inttypes.h>
-#include <rte_string_fns.h>
-#ifdef RTE_LIBRTE_PMD_RING
-#include <rte_eth_ring.h>
-#endif
-#ifdef RTE_LIBRTE_PMD_PCAP
-#include <rte_eth_pcap.h>
-#endif
-#include "eal_private.h"
+#ifndef _RTE_ETH_ARG_PARSER_H_
+#define _RTE_ETH_ARG_PARSER_H_
 
-struct device_init {
-	const char *dev_prefix;
-	int (*init_fn)(const char*, const char *);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define RTE_ETH_PCAP_ARG_PARSER_MAX_ARGS 32
+
+typedef int (*arg_handler_t)(char*, void*);
+
+struct key_value {
+	char *key;
+	char *value;
 };
 
-#define NUM_DEV_TYPES (sizeof(dev_types)/sizeof(dev_types[0]))
-struct device_init dev_types[] = {
-#ifdef RTE_LIBRTE_PMD_RING
-		{
-			.dev_prefix = RTE_ETH_RING_PARAM_NAME,
-			.init_fn = rte_pmd_ring_init
-		},
-#endif
-#ifdef RTE_LIBRTE_PMD_PCAP
-		{
-			.dev_prefix = RTE_ETH_PCAP_PARAM_NAME,
-			.init_fn = rte_pmd_pcap_init
-		},
-#endif
-		{
-			.dev_prefix = "-nodev-",
-			.init_fn = NULL
-		}
+struct args_dict {
+	unsigned index;
+	size_t size;
+	struct key_value pairs[RTE_ETH_PCAP_ARG_PARSER_MAX_ARGS];
 };
 
-int
-rte_eal_non_pci_ethdev_init(void)
-{
-	uint8_t i, j;
-	for (i = 0; i < NUM_DEV_TYPES; i++) {
-		for (j = 0; j < RTE_MAX_ETHPORTS; j++) {
-			const char *params;
-			char buf[16];
-			rte_snprintf(buf, sizeof(buf), "%s%"PRIu8,
-					dev_types[i].dev_prefix, j);
-			if (eal_dev_is_whitelisted(buf, &params))
-				dev_types[i].init_fn(buf, params);
-		}
-	}
-	return 0;
+int rte_eth_pcap_tokenize_args(struct args_dict *dict, const char *name,
+		const char *args);
+int rte_eth_pcap_init_args_dict(struct args_dict *dict);
+int rte_eth_pcap_add_pair_to_dict(struct args_dict *dict, char *key, char *val);
+int rte_eth_pcap_parse_args(struct args_dict *dict, const char* name,
+		const char *args, const char *valids[]);
+int rte_eth_pcap_post_process_arguments(struct args_dict *dict,
+		const char *arg_name, arg_handler_t handler, void *extra_args);
+unsigned rte_eth_pcap_num_of_args(struct args_dict *dict, const char *key);
+void rte_eth_pcap_free_dict(struct args_dict *dict);
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif

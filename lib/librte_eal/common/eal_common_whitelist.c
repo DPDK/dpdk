@@ -48,6 +48,9 @@
 #ifdef RTE_LIBRTE_PMD_RING
 #include <rte_eth_ring.h>
 #endif
+#ifdef RTE_LIBRTE_PMD_PCAP
+#include <rte_eth_pcap.h>
+#endif
 #include "eal_private.h"
 
 static char dev_list_str[4096];
@@ -96,6 +99,9 @@ is_valid_wl_entry(const char *device_str, size_t dev_buf_len)
 	static const char *non_pci_prefixes[] = {
 #ifdef  RTE_LIBRTE_PMD_RING
 			RTE_ETH_RING_PARAM_NAME,
+#endif
+#ifdef RTE_LIBRTE_PMD_PCAP
+			RTE_ETH_PCAP_PARAM_NAME,
 #endif
 			"-nodev-" /* dummy value to prevent compiler warnings */
 	};

@@ -177,6 +177,11 @@ CONFIG_RTE_PMD_RING_MAX_RX_RINGS=16
 CONFIG_RTE_PMD_RING_MAX_TX_RINGS=16
 
 #
+# Compile software PMD backed by PCAP files
+#
+CONFIG_RTE_LIBRTE_PMD_PCAP=n
+
+#
 # Compile librte_ring
 #
 CONFIG_RTE_LIBRTE_RING=y
