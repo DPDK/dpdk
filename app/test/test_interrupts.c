@@ -45,15 +45,21 @@
 
 #define TEST_INTERRUPT_CHECK_INTERVAL 1000 /* ms */
 
-enum test_interrupt_handl_type {
+/* predefined interrupt handle types */
+enum test_interrupt_handle_type {
 	TEST_INTERRUPT_HANDLE_INVALID,
 	TEST_INTERRUPT_HANDLE_VALID,
+	TEST_INTERRUPT_HANDLE_VALID_UIO,
+	TEST_INTERRUPT_HANDLE_VALID_ALARM,
 	TEST_INTERRUPT_HANDLE_CASE1,
 	TEST_INTERRUPT_HANDLE_MAX
 };
 
+/* flag of if callback is called */
 static volatile int flag;
 static struct rte_intr_handle intr_handles[TEST_INTERRUPT_HANDLE_MAX];
+static enum test_interrupt_handle_type test_intr_type =
+				TEST_INTERRUPT_HANDLE_MAX;
 
 #ifdef RTE_EXEC_ENV_LINUXAPP
 union intr_pipefds{
@@ -68,6 +74,9 @@ union intr_pipefds{
 
 static union intr_pipefds pfds;
 
+/**
+ * Check if the interrupt handle is valid.
+ */
 static inline int
 test_interrupt_handle_sanity_check(struct rte_intr_handle *intr_handle)
 {
@@ -77,6 +86,9 @@ test_interrupt_handle_sanity_check(struct rte_intr_handle *intr_handle)
 	return 0;
 }
 
+/**
+ * Initialization for interrupt test.
+ */
 static int
 test_interrupt_init(void)
 {
@@ -84,17 +96,30 @@ test_interrupt_init(void)
 		return -1;
 
 	intr_handles[TEST_INTERRUPT_HANDLE_INVALID].fd = -1;
-	intr_handles[TEST_INTERRUPT_HANDLE_INVALID].type = RTE_INTR_HANDLE_UNKNOWN;
+	intr_handles[TEST_INTERRUPT_HANDLE_INVALID].type =
+					RTE_INTR_HANDLE_UNKNOWN;
 
 	intr_handles[TEST_INTERRUPT_HANDLE_VALID].fd = pfds.readfd;
-	intr_handles[TEST_INTERRUPT_HANDLE_VALID].type = RTE_INTR_HANDLE_UNKNOWN;
+	intr_handles[TEST_INTERRUPT_HANDLE_VALID].type =
+					RTE_INTR_HANDLE_UNKNOWN;
 
-	intr_handles[TEST_INTERRUPT_HANDLE_CASE1].fd = pfds.readfd;
-	intr_handles[TEST_INTERRUPT_HANDLE_CASE1].type = RTE_INTR_HANDLE_ALARM;
+	intr_handles[TEST_INTERRUPT_HANDLE_VALID_UIO].fd = pfds.readfd;
+	intr_handles[TEST_INTERRUPT_HANDLE_VALID_UIO].type =
+					RTE_INTR_HANDLE_UIO;
+
+	intr_handles[TEST_INTERRUPT_HANDLE_VALID_ALARM].fd = pfds.readfd;
+	intr_handles[TEST_INTERRUPT_HANDLE_VALID_ALARM].type =
+					RTE_INTR_HANDLE_ALARM;
+
+	intr_handles[TEST_INTERRUPT_HANDLE_CASE1].fd = pfds.writefd;
+	intr_handles[TEST_INTERRUPT_HANDLE_CASE1].type = RTE_INTR_HANDLE_UIO;
 
 	return 0;
 }
 
+/**
+ * Deinitialization for interrupt test.
+ */
 static int
 test_interrupt_deinit(void)
 {
@@ -104,6 +129,9 @@ test_interrupt_deinit(void)
 	return 0;
 }
 
+/**
+ * Write the pipe to simulate an interrupt.
+ */
 static int
 test_interrupt_trigger_interrupt(void)
 {
@@ -113,6 +141,9 @@ test_interrupt_trigger_interrupt(void)
 	return 0;
 }
 
+/**
+ * Check if two interrupt handles are the same.
+ */
 static int
 test_interrupt_handle_compare(struct rte_intr_handle *intr_handle_l,
 				struct rte_intr_handle *intr_handle_r)
@@ -166,9 +197,18 @@ test_interrupt_handle_compare(struct rte_intr_handle *intr_handle_l,
 }
 #endif /* RTE_EXEC_ENV_LINUXAPP */
 
+/**
+ * Callback for the test interrupt.
+ */
 static void
 test_interrupt_callback(struct rte_intr_handle *intr_handle, void *arg)
 {
+	if (test_intr_type >= TEST_INTERRUPT_HANDLE_MAX) {
+		printf("invalid interrupt type\n");
+		flag = -1;
+		return;
+	}
+
 	if (test_interrupt_handle_sanity_check(intr_handle) < 0) {
 		printf("null or invalid intr_handle for %s\n", __func__);
 		flag = -1;
@@ -184,11 +224,13 @@ test_interrupt_callback(struct rte_intr_handle *intr_handle, void *arg)
 	}
 
 	if (test_interrupt_handle_compare(intr_handle,
-		&(intr_handles[TEST_INTERRUPT_HANDLE_VALID])) == 0) {
+			&(intr_handles[test_intr_type])) == 0)
 		flag = 1;
-	}
 }
 
+/**
+ * Callback for the test interrupt.
+ */
 static void
 test_interrupt_callback_1(struct rte_intr_handle *intr_handle,
 	__attribute__((unused)) void *arg)
@@ -200,6 +242,9 @@ test_interrupt_callback_1(struct rte_intr_handle *intr_handle,
 	}
 }
 
+/**
+ * Tests for rte_intr_enable().
+ */
 static int
 test_interrupt_enable(void)
 {
@@ -228,7 +273,21 @@ test_interrupt_enable(void)
 	}
 
 	/* check with specific valid intr_handle */
+	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID_ALARM];
+	if (rte_intr_enable(&test_intr_handle) == 0) {
+		printf("unexpectedly enable a specific intr_handle "
+			"successfully\n");
+		return -1;
+	}
+
+	/* check with valid handler and its type */
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_CASE1];
+	if (rte_intr_enable(&test_intr_handle) < 0) {
+		printf("fail to enable interrupt on a simulated handler\n");
+		return -1;
+	}
+
+	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID_UIO];
 	if (rte_intr_enable(&test_intr_handle) == 0) {
 		printf("unexpectedly enable a specific intr_handle "
 			"successfully\n");
@@ -238,6 +297,9 @@ test_interrupt_enable(void)
 	return 0;
 }
 
+/**
+ * Tests for rte_intr_disable().
+ */
 static int
 test_interrupt_disable(void)
 {
@@ -267,7 +329,21 @@ test_interrupt_disable(void)
 	}
 
 	/* check with specific valid intr_handle */
+	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID_ALARM];
+	if (rte_intr_disable(&test_intr_handle) == 0) {
+		printf("unexpectedly disable a specific intr_handle "
+			"successfully\n");
+		return -1;
+	}
+
+	/* check with valid handler and its type */
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_CASE1];
+	if (rte_intr_disable(&test_intr_handle) < 0) {
+		printf("fail to disable interrupt on a simulated handler\n");
+		return -1;
+	}
+
+	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID_UIO];
 	if (rte_intr_disable(&test_intr_handle) == 0) {
 		printf("unexpectedly disable a specific intr_handle "
 			"successfully\n");
@@ -277,60 +353,85 @@ test_interrupt_disable(void)
 	return 0;
 }
 
-int
-test_interrupt(void)
+/**
+ * Check the full path of a specified type of interrupt simulated.
+ */
+static int
+test_interrupt_full_path_check(enum test_interrupt_handle_type intr_type)
 {
-	int count, ret;
+	int count;
 	struct rte_intr_handle test_intr_handle;
 
-	if (test_interrupt_init() < 0) {
-		printf("fail to do test init\n");
-		return -1;
-	}
-
-	printf("check if callback registered can be called\n");
-
-	ret = -1;
-
-	/* check if callback registered can be called */
 	flag = 0;
-	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID];
+	test_intr_handle = intr_handles[intr_type];
+	test_intr_type = intr_type;
 	if (rte_intr_callback_register(&test_intr_handle,
 			test_interrupt_callback, NULL) < 0) {
 		printf("fail to register callback\n");
-		goto out;
+		return -1;
 	}
-	/* trigger an interrupt and then check if the callback can be called */
-	if (test_interrupt_trigger_interrupt() < 0) {
-		printf("fail to trigger an interrupt\n");
-		goto out;
-	}
+
+	if (test_interrupt_trigger_interrupt() < 0)
+		return -1;
+
 	/* check flag in 3 seconds */
 	for (count = 0; flag == 0 && count < 3; count++)
 		rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
 
 	rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
+	if (rte_intr_callback_unregister(&test_intr_handle,
+			test_interrupt_callback, NULL) < 0)
+		return -1;
 
-	if ((ret = rte_intr_callback_unregister(&test_intr_handle,
-			test_interrupt_callback, NULL)) < 0) {
-		printf("rte_intr_callback_unregister() failed with error "
-			"code: %d\n", ret);
+	if (flag == 0) {
+		printf("callback has not been called\n");
+		return -1;
+	} else if (flag < 0) {
+		printf("it has internal error in callback\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * Main function of testing interrupt.
+ */
+int
+test_interrupt(void)
+{
+	int ret = -1;
+	struct rte_intr_handle test_intr_handle;
+
+	if (test_interrupt_init() < 0) {
+		printf("fail to initialize for testing interrupt\n");
+		return -1;
+	}
+
+	printf("Check unknown valid interrupt full path\n");
+	if (test_interrupt_full_path_check(TEST_INTERRUPT_HANDLE_VALID) < 0) {
+		printf("failure occured during checking unknown valid "
+						"interrupt full path\n");
 		goto out;
 	}
 
-	ret = -1;
-	
-	if (flag == 0) {
-		printf("registered callback has not been called\n");
+	printf("Check valid UIO interrupt full path\n");
+	if (test_interrupt_full_path_check(TEST_INTERRUPT_HANDLE_VALID_UIO)
+									< 0) {
+		printf("failure occured during checking valid UIO interrupt "
+								"full path\n");
 		goto out;
-	} else if (flag < 0) {
-		printf("registered callback failed\n");
-		ret = flag;
+	}
+
+	printf("Check valid alarm interrupt full path\n");
+	if (test_interrupt_full_path_check(TEST_INTERRUPT_HANDLE_VALID_ALARM)
+									< 0) {
+		printf("failure occured during checking valid alarm "
+						"interrupt full path\n");
 		goto out;
 	}
 
 	printf("start register/unregister test\n");
-
 	/* check if it will fail to register cb with intr_handle = NULL */
 	if (rte_intr_callback_register(NULL, test_interrupt_callback,
 							NULL) == 0) {
@@ -388,7 +489,8 @@ test_interrupt(void)
 	/* check if it will fail to unregister with invalid parameter */
 	if (rte_intr_callback_unregister(&test_intr_handle,
 			test_interrupt_callback, (void *)0xff) != 0) {
-		printf("unexpectedly unregisters successfully with invalid arg\n");
+		printf("unexpectedly unregisters successfully with "
+							"invalid arg\n");
 		goto out;
 	}
 	if (rte_intr_callback_unregister(&test_intr_handle,
@@ -405,21 +507,37 @@ test_interrupt(void)
 	rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
 
 	printf("start interrupt enable/disable test\n");
-
 	/* check interrupt enable/disable functions */
-	if (test_interrupt_enable() < 0)
+	if (test_interrupt_enable() < 0) {
+		printf("fail to check interrupt enabling\n");
 		goto out;
+	}
 	rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
 
-	if (test_interrupt_disable() < 0)
+	if (test_interrupt_disable() < 0) {
+		printf("fail to check interrupt disabling\n");
 		goto out;
+	}
 	rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
 
 	ret = 0;
 
 out:
+	printf("Clearing for interrupt tests\n");
 	/* clear registered callbacks */
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID];
+	rte_intr_callback_unregister(&test_intr_handle,
+			test_interrupt_callback, (void *)-1);
+	rte_intr_callback_unregister(&test_intr_handle,
+			test_interrupt_callback_1, (void *)-1);
+
+	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID_UIO];
+	rte_intr_callback_unregister(&test_intr_handle,
+			test_interrupt_callback, (void *)-1);
+	rte_intr_callback_unregister(&test_intr_handle,
+			test_interrupt_callback_1, (void *)-1);
+
+	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID_ALARM];
 	rte_intr_callback_unregister(&test_intr_handle,
 			test_interrupt_callback, (void *)-1);
 	rte_intr_callback_unregister(&test_intr_handle,
