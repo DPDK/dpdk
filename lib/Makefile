@@ -54,4 +54,5 @@ ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
 endif
 
+include $(RTE_SDK)/mk/rte.sharelib.mk
 include $(RTE_SDK)/mk/rte.subdir.mk

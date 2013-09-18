@@ -39,11 +39,19 @@
 #
 # examples for RTE_EXEC_ENV: linuxapp, baremetal
 #
-
+ifeq ($(RTE_BUILD_SHARED_LIB),y)
+EXECENV_CFLAGS  = -pthread -fPIC
+else
 EXECENV_CFLAGS  = -pthread
+endif
+
 EXECENV_LDFLAGS = 
 EXECENV_LDLIBS  = -lrt -lm
 EXECENV_ASFLAGS =
+
+ifeq ($(RTE_BUILD_SHARED_LIB),y)
+EXECENV_LDLIBS += -lgcc_s
+endif
 
 # force applications to link with gcc/icc instead of using ld
 LINK_USING_CC := 1

@@ -190,17 +190,33 @@ rte_cpu_get_features(struct cpuid_parameters_t params)
 {
 	int eax, ebx, ecx, edx;            /* registers */
 
-	asm volatile ("cpuid"
-	              /* output */
-	              : "=a" (eax),
-	                "=b" (ebx),
-	                "=c" (ecx),
-	                "=d" (edx)
-	              /* input */
-	              : "a" (params.eax),
-	                "b" (params.ebx),
-	                "c" (params.ecx),
-	                "d" (params.edx));
+#ifndef __PIC__
+   asm volatile ("cpuid"
+                 /* output */
+                 : "=a" (eax),
+                   "=b" (ebx),
+                   "=c" (ecx),
+                   "=d" (edx)
+                 /* input */
+                 : "a" (params.eax),
+                   "b" (params.ebx),
+                   "c" (params.ecx),
+                   "d" (params.edx));
+#else
+	asm volatile ( 
+            "mov %%ebx, %%edi\n"
+            "cpuid\n"
+            "xchgl %%ebx, %%edi;\n"
+            : "=a" (eax),
+              "=D" (ebx),
+              "=c" (ecx),
+              "=d" (edx)
+            /* input */
+            : "a" (params.eax),
+              "D" (params.ebx),
+              "c" (params.ecx),
+              "d" (params.edx));
+#endif
 
 	switch (params.return_register) {
 	case REG_EAX:

@@ -63,6 +63,10 @@ ifneq ($(BUILDING_RTE_SDK),)
   RTE_TOOLCHAIN := $(CONFIG_RTE_TOOLCHAIN:"%"=%)
   RTE_TARGET := $(RTE_ARCH)-$(RTE_MACHINE)-$(RTE_EXEC_ENV)-$(RTE_TOOLCHAIN)
   RTE_SDK_BIN := $(RTE_OUTPUT)
+  RTE_BUILD_SHARED_LIB := $(CONFIG_RTE_BUILD_SHARED_LIB:"%"=%)
+  ifeq ($(RTE_BUILD_SHARED_LIB),)
+    RTE_BUILD_SHARED_LIB := n
+  endif
 endif
 
 # RTE_TARGET is deducted from config when we are building the SDK.

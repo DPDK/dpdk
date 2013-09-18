@@ -38,6 +38,10 @@ include $(RTE_SDK)/mk/internal/rte.depdirs-pre.mk
 # VPATH contains at least SRCDIR
 VPATH += $(SRCDIR)
 
+ifeq ($(RTE_BUILD_SHARED_LIB),y)
+LIB := $(patsubst %.a,%.so,$(LIB))
+endif
+
 _BUILD = $(LIB)
 _INSTALL = $(INSTALL-FILES-y) $(SYMLINK-FILES-y) $(RTE_OUTPUT)/lib/$(LIB)
 _CLEAN = doclean
@@ -64,25 +68,50 @@ O_TO_A_DO = @set -e; \
 	$(O_TO_A) && \
 	echo $(O_TO_A_CMD) > $(call exe2cmd,$(@))
 
+O_TO_S = $(LD) $(CPU_LDFLAGS) -z muldefs -share $(OBJS-y) -o $(LIB)
+O_TO_S_STR = $(subst ','\'',$(O_TO_S)) #'# fix syntax highlight
+O_TO_S_DISP = $(if $(V),"$(O_TO_S_STR)","  LD $(@)")
+O_TO_S_DO = @set -e; \
+	echo $(O_TO_S_DISP); \
+	$(O_TO_S) && \
+	echo $(O_TO_S_CMD) > $(call exe2cmd,$(@))
+
 -include .$(LIB).cmd
 
 #
 # Archive objects in .a file if needed
 #
+ifeq ($(RTE_BUILD_SHARED_LIB),y)
 $(LIB): $(OBJS-y) $(DEP_$(LIB)) FORCE
 	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	$(if $(D),\
 		@echo -n "$< -> $@ " ; \
 		echo -n "file_missing=$(call boolean,$(file_missing)) " ; \
-		echo -n "cmdline_changed=$(call boolean,$(call cmdline_changed,$(O_TO_A_STR))) " ; \
+		echo -n "cmdline_changed=$(call boolean,$(call cmdline_changed,$(O_TO_S_STR))) " ; \
 		echo -n "depfile_missing=$(call boolean,$(depfile_missing)) " ; \
 		echo "depfile_newer=$(call boolean,$(depfile_newer)) ")
 	$(if $(or \
 		$(file_missing),\
-		$(call cmdline_changed,$(O_TO_A_STR)),\
+		$(call cmdline_changed,$(O_TO_S_STR)),\
 		$(depfile_missing),\
 		$(depfile_newer)),\
-		$(O_TO_A_DO))
+		$(O_TO_S_DO))
+else
+$(LIB): $(OBJS-y) $(DEP_$(LIB)) FORCE
+	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
+	$(if $(D),\
+	    @echo -n "$< -> $@ " ; \
+	    echo -n "file_missing=$(call boolean,$(file_missing)) " ; \
+	    echo -n "cmdline_changed=$(call boolean,$(call cmdline_changed,$(O_TO_A_STR))) " ; \
+	    echo -n "depfile_missing=$(call boolean,$(depfile_missing)) " ; \
+	    echo "depfile_newer=$(call boolean,$(depfile_newer)) ")
+	$(if $(or \
+	    $(file_missing),\
+	    $(call cmdline_changed,$(O_TO_A_STR)),\
+	    $(depfile_missing),\
+	    $(depfile_newer)),\
+	    $(O_TO_A_DO))
+endif
 
 #
 # install lib in $(RTE_OUTPUT)/lib

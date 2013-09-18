@@ -83,17 +83,33 @@ rte_atomic64_cmpset(volatile uint64_t *dst, uint64_t exp, uint64_t src)
 	_exp.u64 = exp;
 	_src.u64 = src;
 
+#ifndef __PIC__
+    asm volatile (
+            MPLOCKED
+            "cmpxchg8b (%[dst]);"
+            "setz %[res];"
+            : [res] "=a" (res)      /* result in eax */
+            : [dst] "S" (dst),      /* esi */
+             "b" (_src.l32),       /* ebx */
+             "c" (_src.h32),       /* ecx */
+             "a" (_exp.l32),       /* eax */
+             "d" (_exp.h32)        /* edx */
+			: "memory" );           /* no-clobber list */
+#else
 	asm volatile (
+            "mov %%ebx, %%edi\n"
 			MPLOCKED
 			"cmpxchg8b (%[dst]);"
 			"setz %[res];"
+            "xchgl %%ebx, %%edi;\n"
 			: [res] "=a" (res)      /* result in eax */
 			: [dst] "S" (dst),      /* esi */
-			  "b" (_src.l32),       /* ebx */
+			  "D" (_src.l32),       /* ebx */
 			  "c" (_src.h32),       /* ecx */
 			  "a" (_exp.l32),       /* eax */
 			  "d" (_exp.h32)        /* edx */
 			: "memory" );           /* no-clobber list */
+#endif
 
 	return res;
 }

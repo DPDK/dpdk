@@ -74,6 +74,11 @@ CONFIG_RTE_TOOLCHAIN_GCC=y
 CONFIG_RTE_FORCE_INTRINSICS=n
 
 #
+# Compile to share library
+#
+CONFIG_RTE_BUILD_SHARED_LIB=n
+
+#
 #
 # Compile libc directory
 #
