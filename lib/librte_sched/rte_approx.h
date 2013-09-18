@@ -58,7 +58,7 @@ extern "C" {
  * @param d
  *   Precision for the rational approximation
  * @param p
- *   Pointer to pre-allocated space where the numerator of the rational
+ *   Pointer to pre-allocated space where the numerator of the rational 
  *   approximation will be stored when operation is successful
  * @param q
  *   Pointer to pre-allocated space where the denominator of the rational

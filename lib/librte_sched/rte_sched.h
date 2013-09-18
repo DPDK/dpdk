@@ -47,7 +47,7 @@ extern "C" {
  * for the current network node.
  *
  * The scheduler supports thousands of packet queues grouped under a 5-level hierarchy:
- *     1. Port:
+ *     1. Port: 
  *           - Typical usage: output Ethernet port;
  *           - Multiple ports are scheduled in round robin order with equal priority;
  *     2. Subport:
@@ -56,11 +56,11 @@ extern "C" {
  *           - Upper limit enforced per traffic class at subport level;
  *           - Lower priority traffic classes able to reuse subport bandwidth currently
  *             unused by higher priority traffic classes of the same subport;
- *           - When any subport traffic class is oversubscribed (configuration time
- *             event), the usage of subport member pipes with high demand for that
- *             traffic class pipes is truncated to a dynamically adjusted value with no
+ *           - When any subport traffic class is oversubscribed (configuration time 
+ *             event), the usage of subport member pipes with high demand for that 
+ *             traffic class pipes is truncated to a dynamically adjusted value with no 
  *             impact to low demand pipes;
- *     3. Pipe:
+ *     3. Pipe: 
  *           - Typical usage: individual user/subscriber;
  *           - Traffic shaping using the token bucket algorithm (one bucket per pipe);
  *     4. Traffic class:
@@ -69,9 +69,9 @@ extern "C" {
  *           - Lower priority traffic classes able to reuse pipe bandwidth currently
  *             unused by higher priority traffic classes of the same pipe;
  *     5. Queue:
- *           - Typical usage: queue hosting packets from one or multiple connections
+ *           - Typical usage: queue hosting packets from one or multiple connections 
  *             of same traffic class belonging to the same user;
- *           - Weighted Round Robin (WRR) is used to service the queues within same
+ *           - Weighted Round Robin (WRR) is used to service the queues within same 
  *             pipe traffic class.
  *
  ***/
@@ -293,7 +293,7 @@ rte_sched_port_get_memory_footprint(struct rte_sched_port_params *params);
  * @param subport_id
  *   Subport ID
  * @param stats
- *   Pointer to pre-allocated subport statistics structure where the statistics
+ *   Pointer to pre-allocated subport statistics structure where the statistics 
  *   counters should be stored
  * @param tc_ov
  *   Pointer to pre-allocated 4-entry array where the oversubscription status for
@@ -315,7 +315,7 @@ rte_sched_subport_read_stats(struct rte_sched_port *port,
  * @param queue_id
  *   Queue ID within port scheduler
  * @param stats
- *   Pointer to pre-allocated subport statistics structure where the statistics
+ *   Pointer to pre-allocated subport statistics structure where the statistics 
  *   counters should be stored
  * @param qlen
  *   Pointer to pre-allocated variable where the current queue length should be stored.
@@ -376,7 +376,7 @@ rte_sched_port_pkt_write(struct rte_mbuf *pkt,
  *   Traffic class ID within pipe (0 .. 3)
  * @param queue
  *   Queue ID within pipe traffic class (0 .. 3)
- *  
+ *   
  */
 static inline void
 rte_sched_port_pkt_read_tree_path(struct rte_mbuf *pkt, uint32_t *subport, uint32_t *pipe, uint32_t *traffic_class, uint32_t *queue)
@@ -425,7 +425,7 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
  * @param port
  *   Handle to port scheduler instance
  * @param pkts
- *   Pre-allocated packet descriptor array where the packets dequeued from the port
+ *   Pre-allocated packet descriptor array where the packets dequeued from the port 
  *   scheduler should be stored
  * @param n_pkts
  *   Number of packets to dequeue from the port scheduler

@@ -528,10 +528,10 @@ __rte_bitmap_scan_read(struct rte_bitmap *bmp, uint32_t *pos, uint64_t *slab)
  * @param slab
  *   When function call returns 1, slab contains the value of the entire 64-bit
  *   slab where the bit indicated by pos is located. Slabs are always 64-bit
- *   aligned, so the position of the first bit of the slab (this bit is not
+ *   aligned, so the position of the first bit of the slab (this bit is not 
  *   necessarily set) is pos / 64. Once a slab has been returned by the bitmap
  *   scan operation, the internal pointers of the bitmap are updated to point
- *   after this slab, so the same slab will not be returned again if it
+ *   after this slab, so the same slab will not be returned again if it 
  *   contains more than one bit which is set. When function call returns 0,
  *   slab is not modified.
  * @return

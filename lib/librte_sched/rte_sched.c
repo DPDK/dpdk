@@ -1274,11 +1274,11 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
  * of prefetching the data structures. The naming convention is presented in the
  * diagram below:
  * 
- *   p00  _______   p10  _______   p20  _______   p30  _______      
+ *   p00  _______   p10  _______   p20  _______   p30  _______       
  * ----->|       |----->|       |----->|       |----->|       |----->
- *       |   0   |      |   1   |      |   2   |      |   3   |     
+ *       |   0   |      |   1   |      |   2   |      |   3   |      
  * ----->|_______|----->|_______|----->|_______|----->|_______|----->
- *   p01            p11            p21            p31               
+ *   p01            p11            p21            p31                
  *
  ***/
 int
@@ -1568,6 +1568,8 @@ grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
 
 #endif /* RTE_SCHED_TS_CREDITS_UPDATE, RTE_SCHED_SUBPORT_TC_OV */
 
+#if RTE_SCHED_TS_CREDITS_CHECK
+
 #ifndef RTE_SCHED_SUBPORT_TC_OV
 
 static inline int
@@ -1646,6 +1648,8 @@ grinder_credits_check(struct rte_sched_port *port, uint32_t pos)
 }
 
 #endif /* RTE_SCHED_SUBPORT_TC_OV */
+
+#endif /* RTE_SCHED_TS_CREDITS_CHECK */
 
 static inline int 
 grinder_schedule(struct rte_sched_port *port, uint32_t pos)
