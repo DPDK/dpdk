@@ -654,12 +654,11 @@ __mempool_get_bulk(struct rte_mempool *mp, void **obj_table,
 	unsigned lcore_id = rte_lcore_id();
 	uint32_t cache_size = mp->cache_size;
 
-	cache = &mp->local_cache[lcore_id];
-
 	/* cache is not enabled or single consumer */
 	if (unlikely(cache_size == 0 || is_mc == 0 || n >= cache_size))
 		goto ring_dequeue;
 
+	cache = &mp->local_cache[lcore_id];
 	cache_objs = cache->objs;
 
 	/* Can this be satisfied from the cache? */
