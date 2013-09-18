@@ -62,6 +62,8 @@ extern "C" {
 #define ETHER_MAX_JUMBO_FRAME_LEN \
 	0x3F00 /**< Maximum Jumbo frame length, including CRC. */
 
+#define ETHER_MAX_VLAN_ID  4095 /**< Maximum VLAN ID. */
+
 /**
  * Ethernet address:
  * A universally administered address is uniquely assigned to a device by its
