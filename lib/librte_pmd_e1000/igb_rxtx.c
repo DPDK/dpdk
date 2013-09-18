@@ -195,6 +195,11 @@ struct igb_tx_queue {
 #define rte_packet_prefetch(p)	do {} while(0)
 #endif
 
+/*
+ * Macro for VMDq feature for 1 GbE NIC.
+ */
+#define E1000_VMOLR_SIZE			(8)
+
 /*********************************************************************
  *
  *  TX function
@@ -1568,6 +1573,118 @@ igb_rss_configure(struct rte_eth_dev *dev)
 	E1000_WRITE_REG(hw, E1000_MRQC, mrqc);
 }
 
+/*
+ * Check if the mac type support VMDq or not.
+ * Return 1 if it supports, otherwise, return 0.
+ */
+static int
+igb_is_vmdq_supported(const struct rte_eth_dev *dev)
+{
+	const struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	
+	switch (hw->mac.type) { 
+	case e1000_82576: 
+	case e1000_82580: 
+	case e1000_i350: 
+		return 1;
+	case e1000_82540: 
+	case e1000_82541: 
+	case e1000_82542: 
+	case e1000_82543: 
+	case e1000_82544: 
+	case e1000_82545: 
+	case e1000_82546: 
+	case e1000_82547: 
+	case e1000_82571: 
+	case e1000_82572: 
+	case e1000_82573: 
+	case e1000_82574: 
+	case e1000_82583: 
+	case e1000_i210: 
+	case e1000_i211: 
+	default:
+		PMD_INIT_LOG(ERR, "Cannot support VMDq feature\n");
+		return 0;
+	}
+}
+
+static int
+igb_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_vmdq_rx_conf *cfg;
+	struct e1000_hw *hw;
+	uint32_t mrqc, vt_ctl, vmolr, rctl;
+	int i;
+ 
+ 	PMD_INIT_LOG(DEBUG, ">>");
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	cfg = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
+
+	/* Check if mac type can support VMDq, return value of 0 means NOT support */
+	if (igb_is_vmdq_supported(dev) == 0)
+		return -1;
+
+	igb_rss_disable(dev);
+	
+	/* RCTL: eanble VLAN filter */
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
+	rctl |= E1000_RCTL_VFE;
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+	/* MRQC: enable vmdq */
+	mrqc = E1000_READ_REG(hw, E1000_MRQC);
+	mrqc |= E1000_MRQC_ENABLE_VMDQ; 
+	E1000_WRITE_REG(hw, E1000_MRQC, mrqc);
+ 
+	/* VTCTL:  pool selection according to VLAN tag */
+	vt_ctl = E1000_READ_REG(hw, E1000_VT_CTL);
+	if (cfg->enable_default_pool) 
+		vt_ctl |= (cfg->default_pool << E1000_VT_CTL_DEFAULT_POOL_SHIFT);
+	vt_ctl |= E1000_VT_CTL_IGNORE_MAC;
+	E1000_WRITE_REG(hw, E1000_VT_CTL, vt_ctl);
+	
+	/* 
+	 * VMOLR: set STRVLAN as 1 if IGMAC in VTCTL is set as 1
+ 	 * Both 82576 and 82580 support it 
+ 	 */
+	if (hw->mac.type != e1000_i350) {
+		for (i = 0; i < E1000_VMOLR_SIZE; i++) {
+			vmolr = E1000_READ_REG(hw, E1000_VMOLR(i));
+			vmolr |= E1000_VMOLR_STRVLAN;
+			E1000_WRITE_REG(hw, E1000_VMOLR(i), vmolr);
+		}
+	}
+
+	/* VFTA - enable all vlan filters */
+	for (i = 0; i < IGB_VFTA_SIZE; i++) 
+		E1000_WRITE_REG(hw, (E1000_VFTA+(i*4)), UINT32_MAX);
+	
+	/* VFRE: 8 pools enabling for rx, both 82576 and i350 support it */
+	if (hw->mac.type != e1000_82580)
+		E1000_WRITE_REG(hw, E1000_VFRE, E1000_MBVFICR_VFREQ_MASK);
+ 
+	/*
+	 * RAH/RAL - allow pools to read specific mac addresses
+	 * In this case, all pools should be able to read from mac addr 0
+	 */
+	E1000_WRITE_REG(hw, E1000_RAH(0), (E1000_RAH_AV | UINT16_MAX));
+	E1000_WRITE_REG(hw, E1000_RAL(0), UINT32_MAX);
+
+	/* VLVF: set up filters for vlan tags as configured */
+	for (i = 0; i < cfg->nb_pool_maps; i++) {
+		/* set vlan id in VF register and set the valid bit */
+		E1000_WRITE_REG(hw, E1000_VLVF(i), (E1000_VLVF_VLANID_ENABLE | \
+                        (cfg->pool_map[i].vlan_id & ETH_VLAN_ID_MAX) | \
+			((cfg->pool_map[i].pools << E1000_VLVF_POOLSEL_SHIFT ) & \
+			E1000_VLVF_POOLSEL_MASK)));
+	}
+
+	E1000_WRITE_FLUSH(hw);
+	
+	return 0;
+}
+
+
 /*********************************************************************
  *
  *  Enable receive unit.
@@ -1625,7 +1742,20 @@ igb_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	 	* SRIOV inactive scheme
 	 	*/
 		if (dev->data->nb_rx_queues > 1)
-			igb_rss_configure(dev);
+			switch (dev->data->dev_conf.rxmode.mq_mode) {
+			case ETH_MQ_RX_NONE:
+				/* if mq_mode not assign, we use rss mode.*/
+			case ETH_MQ_RX_RSS:
+				igb_rss_configure(dev);
+				break;
+			case ETH_MQ_RX_VMDQ_ONLY:
+				/*Configure general VMDQ only RX parameters*/
+				igb_vmdq_rx_hw_configure(dev); 
+				break;
+			default: 
+				igb_rss_disable(dev);
+				break;
+			}
 		else
 			igb_rss_disable(dev);
 	}
@@ -1784,6 +1914,9 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	 */
 	igb_dev_mq_rx_configure(dev);
 
+	/* Update the rctl since igb_dev_mq_rx_configure may change its value */
+	rctl |= E1000_READ_REG(hw, E1000_RCTL);
+
 	/*
 	 * Setup the Checksum Register.
 	 * Receive Full-Packet Checksum Offload is mutually exclusive with RSS.
@@ -1833,7 +1966,8 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		(hw->mac.mc_filter_type << E1000_RCTL_MO_SHIFT);
 
 	/* Make sure VLAN Filters are off. */
-	rctl &= ~E1000_RCTL_VFE;
+	if (dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_VMDQ_ONLY)
+		rctl &= ~E1000_RCTL_VFE;
 	/* Don't store bad packets. */
 	rctl &= ~E1000_RCTL_SBP;
 

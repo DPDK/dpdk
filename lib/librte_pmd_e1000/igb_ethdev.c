@@ -563,6 +563,17 @@ rte_igb_pmd_init(void)
 	return 0;
 }
 
+static void
+igb_vmdq_vlan_hw_filter_enable(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	/* RCTL: enable VLAN filter since VMDq always use VLAN filter */
+	uint32_t rctl = E1000_READ_REG(hw, E1000_RCTL);
+	rctl |= E1000_RCTL_VFE;
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+}
+
 /*
  * VF Driver initialization routine.
  * Invoked one at EAL init time.
@@ -659,6 +670,11 @@ eth_igb_start(struct rte_eth_dev *dev)
 			ETH_VLAN_EXTEND_MASK;
 	eth_igb_vlan_offload_set(dev, mask);
 
+	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_VMDQ_ONLY) {
+		/* Enable VLAN filter since VMDq always use VLAN filter */
+		igb_vmdq_vlan_hw_filter_enable(dev);
+	}
+		
 	/*
 	 * Configure the Interrupt Moderation register (EITR) with the maximum
 	 * possible value (0xFFFF) to minimize "System Partial Write" issued by
@@ -1118,42 +1134,50 @@ eth_igb_infos_get(struct rte_eth_dev *dev,
 	case e1000_82575:
 		dev_info->max_rx_queues = 4;
 		dev_info->max_tx_queues = 4;
+		dev_info->max_vmdq_pools = 0;
 		break;
 
 	case e1000_82576:
 		dev_info->max_rx_queues = 16;
 		dev_info->max_tx_queues = 16;
+		dev_info->max_vmdq_pools = ETH_8_POOLS;
 		break;
 
 	case e1000_82580:
 		dev_info->max_rx_queues = 8;
 		dev_info->max_tx_queues = 8;
+		dev_info->max_vmdq_pools = ETH_8_POOLS;
 		break;
 
 	case e1000_i350:
 		dev_info->max_rx_queues = 8;
 		dev_info->max_tx_queues = 8;
+		dev_info->max_vmdq_pools = ETH_8_POOLS;
 		break;
 
 	case e1000_i210:
 		dev_info->max_rx_queues = 4;
 		dev_info->max_tx_queues = 4;
+		dev_info->max_vmdq_pools = 0;
 		break;
 
 	case e1000_vfadapt:
 		dev_info->max_rx_queues = 2;
 		dev_info->max_tx_queues = 2;
+		dev_info->max_vmdq_pools = 0;
 		break;
 
 	case e1000_vfadapt_i350:
 		dev_info->max_rx_queues = 1;
 		dev_info->max_tx_queues = 1;
+		dev_info->max_vmdq_pools = 0;
 		break;
 
 	default:
 		/* Should not happen */
 		dev_info->max_rx_queues = 0;
 		dev_info->max_tx_queues = 0;
+		dev_info->max_vmdq_pools = 0;
 	}
 }
 
