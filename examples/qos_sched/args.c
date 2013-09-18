@@ -68,6 +68,7 @@ static const char usage[] =
 	"           multiple pfc can be configured in command line                      \n"
 	"                                                                               \n"
 	"Application optional parameters:                                               \n"
+        "    --i     : run in interactive mode (default value is %u)                    \n"
 	"    --mst I : master core index (default value is %u)                          \n" 
 	"    --rsz \"A, B, C\" :   Ring sizes                                           \n"
 	"           A = Size (in number of buffer descriptors) of each of the NIC RX    \n"
@@ -100,7 +101,7 @@ static const char usage[] =
 static void
 app_usage(const char *prgname)
 {
-	printf(usage, prgname, app_master_core,
+	printf(usage, prgname, APP_INTERACTIVE_DEFAULT, app_master_core,
 		APP_RX_DESC_DEFAULT, APP_RING_SIZE, APP_TX_DESC_DEFAULT,
 		MAX_PKT_RX_BURST, PKT_ENQUEUE, PKT_DEQUEUE,
 		MAX_PKT_TX_BURST, NB_MBUF,
@@ -355,10 +356,14 @@ app_parse_args(int argc, char **argv)
 	/* set en_US locale to print big numbers with ',' */
 	setlocale(LC_NUMERIC, "en_US.utf-8");
 
-	while ((opt = getopt_long(argc, argv, "",
+	while ((opt = getopt_long(argc, argv, "i",
 		lgopts, &option_index)) != EOF) {
 
 			switch (opt) {
+			case 'i':
+				printf("Interactive-mode selected\n");
+				interactive = 1;
+				break;
 			/* long options */
 			case 0:
 				optname = lgopts[option_index].name;

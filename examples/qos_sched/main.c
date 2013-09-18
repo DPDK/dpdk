@@ -52,6 +52,9 @@
 #define APP_WT_MODE   2
 #define APP_TX_MODE   4
 
+uint8_t interactive = APP_INTERACTIVE_DEFAULT;
+uint32_t qavg_period = APP_QAVG_PERIOD;
+uint32_t qavg_ntimes = APP_QAVG_NTIMES;
 
 /* main processing loop */
 static int
@@ -167,7 +170,7 @@ app_main_loop(__attribute__((unused))void *dummy)
 	return 0;
 }
 
-static void
+void
 app_stat(void)
 {
 	uint32_t i;
@@ -215,8 +218,6 @@ app_stat(void)
 	}
 }
 
-
-
 int
 MAIN(int argc, char **argv)
 {
@@ -230,16 +231,21 @@ MAIN(int argc, char **argv)
 	if (ret < 0)
 		return -1;
 
-
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(app_main_loop, NULL, SKIP_MASTER);
-	
-	/* print statistics every second */
-	while(1) {
+
+	if (interactive) {
 		sleep(1);
-		app_stat();
+		prompt();
 	}
+	else {
+		/* print statistics every second */
+		while(1) {
+			sleep(1);
+			app_stat();
+		}
+	}
+
+	return 0;
 }
-
-
 

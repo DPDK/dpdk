@@ -356,7 +356,7 @@ int app_init(void)
 		app_init_port(qos_conf[i].rx_port, qos_conf[i].mbuf_pool);
 		app_init_port(qos_conf[i].tx_port, qos_conf[i].mbuf_pool);
 		
-		qos_conf[i].sched_port = app_init_sched_port(qos_conf[i].rx_port, socket);
+		qos_conf[i].sched_port = app_init_sched_port(qos_conf[i].tx_port, socket);
 	}
 
 	RTE_LOG(INFO, APP, "time stamp clock running at %" PRIu64 " Hz\n",

@@ -47,7 +47,7 @@ endif
 APP = qos_sched
 
 # all source are stored in SRCS-y
-SRCS-y := main.c args.c init.c app_thread.c cfg_file.c
+SRCS-y := main.c args.c init.c app_thread.c cfg_file.c cmdline.c stats.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

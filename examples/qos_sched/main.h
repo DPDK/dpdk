@@ -51,6 +51,8 @@ extern "C" {
 /*
  * Configurable number of RX/TX ring descriptors
  */
+#define APP_INTERACTIVE_DEFAULT 0
+
 #define APP_RX_DESC_DEFAULT 128
 #define APP_TX_DESC_DEFAULT 256
 
@@ -86,6 +88,9 @@ extern "C" {
 #else
 #define APP_STATS_ADD(stat,val) do {(void) (val);} while (0)
 #endif
+
+#define APP_QAVG_NTIMES 10
+#define APP_QAVG_PERIOD 100
 
 struct thread_stat
 {
@@ -156,6 +161,9 @@ struct ring_thresh
 	uint8_t wthresh; /**< Ring writeback threshold. */
 };
 
+extern uint8_t interactive;
+extern uint32_t qavg_period;
+extern uint32_t qavg_ntimes;
 extern uint32_t nb_pfc;
 extern const char *cfg_profile;
 extern int mp_size;
@@ -173,11 +181,20 @@ int MAIN(int argc, char **argv);
 int app_parse_args(int argc, char **argv);
 int app_init(void);
 
+void prompt(void);
 void app_rx_thread(struct thread_conf **qconf);
 void app_tx_thread(struct thread_conf **qconf);
 void app_worker_thread(struct thread_conf **qconf);
 void app_mixed_thread(struct thread_conf **qconf);
 
+void app_stat(void);
+int subport_stat(uint8_t port_id, uint32_t subport_id);
+int pipe_stat(uint8_t port_id, uint32_t subport_id, uint32_t pipe_id);
+int qavg_q(uint8_t port_id, uint32_t subport_id, uint32_t pipe_id, uint8_t tc, uint8_t q);
+int qavg_tcpipe(uint8_t port_id, uint32_t subport_id, uint32_t pipe_id, uint8_t tc);
+int qavg_pipe(uint8_t port_id, uint32_t subport_id, uint32_t pipe_id);
+int qavg_tcsubport(uint8_t port_id, uint32_t subport_id, uint8_t tc);
+int qavg_subport(uint8_t port_id, uint32_t subport_id);
 
 #ifdef __cplusplus
 }
