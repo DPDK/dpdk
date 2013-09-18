@@ -83,6 +83,8 @@
 
 #define IXGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define IXGBE_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
+#define IXGBE_VMDQ_NUM_UC_MAC         4096 /* Maximum nb. of UC MAC addr. */
+
 
 #define IXGBEVF_PMD_NAME "rte_ixgbevf_pmd" /* PMD name */
 
@@ -161,6 +163,22 @@ static void ixgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev,
 		uint16_t queue, int on);
 static void ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
+
+/* For Eth VMDQ APIs support */
+static int ixgbe_uc_hash_table_set(struct rte_eth_dev *dev, struct
+		ether_addr* mac_addr,uint8_t on);
+static int ixgbe_uc_all_hash_table_set(struct rte_eth_dev *dev,uint8_t on);
+static int  ixgbe_set_pool_rx_mode(struct rte_eth_dev *dev,  uint16_t pool, 
+		uint16_t rx_mask, uint8_t on);
+static int ixgbe_set_pool_rx(struct rte_eth_dev *dev,uint16_t pool,uint8_t on);
+static int ixgbe_set_pool_tx(struct rte_eth_dev *dev,uint16_t pool,uint8_t on);
+static int ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan, 
+		uint64_t pool_mask,uint8_t vlan_on);
+static int ixgbe_mirror_rule_set(struct rte_eth_dev *dev, 
+		struct rte_eth_vmdq_mirror_conf *mirror_conf, 
+		uint8_t rule_id, uint8_t on);
+static int ixgbe_mirror_rule_reset(struct rte_eth_dev *dev,
+		uint8_t	rule_id);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -252,6 +270,14 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.priority_flow_ctrl_set = ixgbe_priority_flow_ctrl_set,
 	.mac_addr_add         = ixgbe_add_rar,
 	.mac_addr_remove      = ixgbe_remove_rar,
+	.uc_hash_table_set    = ixgbe_uc_hash_table_set,
+	.uc_all_hash_table_set  = ixgbe_uc_all_hash_table_set,
+	.mirror_rule_set   	= ixgbe_mirror_rule_set,
+	.mirror_rule_reset 	= ixgbe_mirror_rule_reset,
+	.set_vf_rx_mode       = ixgbe_set_pool_rx_mode,
+	.set_vf_rx            = ixgbe_set_pool_rx,
+	.set_vf_tx            = ixgbe_set_pool_tx,
+	.set_vf_vlan_filter   = ixgbe_set_pool_vlan_filter,
 	.fdir_add_signature_filter    = ixgbe_fdir_add_signature_filter,
 	.fdir_update_signature_filter = ixgbe_fdir_update_signature_filter,
 	.fdir_remove_signature_filter = ixgbe_fdir_remove_signature_filter,
@@ -671,6 +697,16 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	/* Copy the permanent MAC address */
 	ether_addr_copy((struct ether_addr *) hw->mac.perm_addr,
 			&eth_dev->data->mac_addrs[0]);
+	
+	/* Allocate memory for storing hash filter MAC addresses */
+	eth_dev->data->hash_mac_addrs = rte_zmalloc("ixgbe", ETHER_ADDR_LEN *
+			IXGBE_VMDQ_NUM_UC_MAC, 0);
+	if (eth_dev->data->hash_mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR,
+			"Failed to allocate %d bytes needed to store MAC addresses",
+			ETHER_ADDR_LEN * IXGBE_VMDQ_NUM_UC_MAC);
+		return -ENOMEM;
+	}
 
 	/* initialize the vfta */
 	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
@@ -1144,6 +1180,17 @@ ixgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 }
 
+static void
+ixgbe_vmdq_vlan_hw_filter_enable(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	/* VLNCTRL: enable vlan filtering and allow all vlan tags through */
+	uint32_t vlanctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
+	vlanctrl |= IXGBE_VLNCTRL_VFE ; /* enable vlan filters */
+	IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlanctrl);
+}
+
 static int
 ixgbe_dev_configure(struct rte_eth_dev *dev)
 {
@@ -1264,7 +1311,12 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK | \
 		ETH_VLAN_EXTEND_MASK;
 	ixgbe_vlan_offload_set(dev, mask);
-	
+
+	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_VMDQ_ONLY) {
+		/* Enable vlan filtering for VMDq */
+		ixgbe_vmdq_vlan_hw_filter_enable(dev);
+	}	
+
 	/* Configure DCB hw */
 	ixgbe_configure_dcb(dev); 
 
@@ -1589,6 +1641,12 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 1024; /* cf BSIZEPACKET in SRRCTL register */
 	dev_info->max_rx_pktlen = 15872; /* includes CRC, cf MAXFRS register */
 	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
+	dev_info->max_hash_mac_addrs = IXGBE_VMDQ_NUM_UC_MAC;
+	dev_info->max_vfs = dev->pci_dev->max_vfs;
+	if (hw->mac.type == ixgbe_mac_82598EB)
+		dev_info->max_vmdq_pools = ETH_16_POOLS;
+	else
+		dev_info->max_vmdq_pools = ETH_64_POOLS;
 }
 
 /* return 0 means link status changed, -1 means not changed */
@@ -2484,4 +2542,399 @@ ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		for(i=0; i < hw->mac.max_rx_queues; i++)
 			ixgbevf_vlan_strip_queue_set(dev,i,on);
 	}
+}
+
+static int
+ixgbe_vmdq_mode_check(struct ixgbe_hw *hw)
+{
+	uint32_t reg_val;
+	
+	/* we only need to do this if VMDq is enabled */
+	reg_val = IXGBE_READ_REG(hw, IXGBE_VT_CTL);
+	if (!(reg_val & IXGBE_VT_CTL_VT_ENABLE)) {
+		PMD_INIT_LOG(ERR, "VMDq must be enabled for this setting\n");
+		return (-1);
+	}
+	
+	return 0;
+}
+
+static uint32_t 
+ixgbe_uta_vector(struct ixgbe_hw *hw, struct ether_addr* uc_addr)
+{
+	uint32_t vector = 0;
+	switch (hw->mac.mc_filter_type) {
+	case 0:   /* use bits [47:36] of the address */
+		vector = ((uc_addr->addr_bytes[4] >> 4) | 
+			(((uint16_t)uc_addr->addr_bytes[5]) << 4));
+		break;
+	case 1:   /* use bits [46:35] of the address */
+		vector = ((uc_addr->addr_bytes[4] >> 3) | 
+			(((uint16_t)uc_addr->addr_bytes[5]) << 5));
+		break;
+	case 2:   /* use bits [45:34] of the address */
+		vector = ((uc_addr->addr_bytes[4] >> 2) | 
+			(((uint16_t)uc_addr->addr_bytes[5]) << 6));
+		break;
+	case 3:   /* use bits [43:32] of the address */
+		vector = ((uc_addr->addr_bytes[4]) | 
+			(((uint16_t)uc_addr->addr_bytes[5]) << 8));
+		break;
+	default:  /* Invalid mc_filter_type */
+		break;
+	}
+
+	/* vector can only be 12-bits or boundary will be exceeded */
+	vector &= 0xFFF;
+	return vector;
+}
+
+static int 
+ixgbe_uc_hash_table_set(struct rte_eth_dev *dev,struct ether_addr* mac_addr,
+			       uint8_t on)
+{
+	uint32_t vector;
+	uint32_t uta_idx;
+	uint32_t reg_val;
+	uint32_t uta_shift;
+	uint32_t rc;
+	const uint32_t ixgbe_uta_idx_mask = 0x7F;
+	const uint32_t ixgbe_uta_bit_shift = 5;
+	const uint32_t ixgbe_uta_bit_mask = (0x1 << ixgbe_uta_bit_shift) - 1;
+	const uint32_t bit1 = 0x1;
+	
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_uta_info *uta_info =
+		IXGBE_DEV_PRIVATE_TO_UTA(dev->data->dev_private);
+	
+	/* The UTA table only exists on 82599 hardware and newer */
+	if (hw->mac.type < ixgbe_mac_82599EB)
+		return (-ENOTSUP);
+	
+	vector = ixgbe_uta_vector(hw,mac_addr);
+	uta_idx = (vector >> ixgbe_uta_bit_shift) & ixgbe_uta_idx_mask;
+	uta_shift = vector & ixgbe_uta_bit_mask;
+	
+	rc = ((uta_info->uta_shadow[uta_idx] >> uta_shift & bit1) != 0);
+	if(rc == on)
+		return 0;
+	
+	reg_val = IXGBE_READ_REG(hw, IXGBE_UTA(uta_idx));
+	if (on) {
+		uta_info->uta_in_use++;
+		reg_val |= (bit1 << uta_shift);
+		uta_info->uta_shadow[uta_idx] |= (bit1 << uta_shift);
+	} else {
+		uta_info->uta_in_use--;
+		reg_val &= ~(bit1 << uta_shift);
+		uta_info->uta_shadow[uta_idx] &= ~(bit1 << uta_shift);
+	}
+	
+	IXGBE_WRITE_REG(hw, IXGBE_UTA(uta_idx), reg_val);
+	
+	if (uta_info->uta_in_use > 0)
+		IXGBE_WRITE_REG(hw, IXGBE_MCSTCTRL,
+				IXGBE_MCSTCTRL_MFE | hw->mac.mc_filter_type);
+	else
+		IXGBE_WRITE_REG(hw, IXGBE_MCSTCTRL,hw->mac.mc_filter_type);
+	
+	return 0;
+}
+
+static int
+ixgbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on)
+{
+	int i;
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_uta_info *uta_info =
+		IXGBE_DEV_PRIVATE_TO_UTA(dev->data->dev_private);
+
+	/* The UTA table only exists on 82599 hardware and newer */
+	if (hw->mac.type < ixgbe_mac_82599EB)
+		return (-ENOTSUP);
+	
+	if(on) {
+		for (i = 0; i < ETH_VMDQ_NUM_UC_HASH_ARRAY; i++) {
+			uta_info->uta_shadow[i] = ~0;
+			IXGBE_WRITE_REG(hw, IXGBE_UTA(i), ~0);
+		}
+	} else {
+		for (i = 0; i < ETH_VMDQ_NUM_UC_HASH_ARRAY; i++) {
+			uta_info->uta_shadow[i] = 0;
+			IXGBE_WRITE_REG(hw, IXGBE_UTA(i), 0);
+		}
+	}
+	return 0;
+	
+}
+static int
+ixgbe_set_pool_rx_mode(struct rte_eth_dev *dev, uint16_t pool,
+			       uint16_t rx_mask, uint8_t on)
+{
+	int val = 0;
+	
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t vmolr = IXGBE_READ_REG(hw, IXGBE_VMOLR(pool));
+	
+	if (hw->mac.type == ixgbe_mac_82598EB) {
+		PMD_INIT_LOG(ERR, "setting VF receive mode set should be done"
+			" on 82599 hardware and newer\n");
+		return (-ENOTSUP);
+	}
+	if (ixgbe_vmdq_mode_check(hw) < 0)
+		return (-ENOTSUP);
+
+	if (rx_mask & ETH_VMDQ_ACCEPT_UNTAG )
+		val |= IXGBE_VMOLR_AUPE;
+	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_MC )
+		val |= IXGBE_VMOLR_ROMPE;
+	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_UC)
+		val |= IXGBE_VMOLR_ROPE;
+	if (rx_mask & ETH_VMDQ_ACCEPT_BROADCAST)
+		val |= IXGBE_VMOLR_BAM;
+	if (rx_mask & ETH_VMDQ_ACCEPT_MULTICAST)
+		val |= IXGBE_VMOLR_MPE;
+
+	if (on)
+		vmolr |= val;
+	else 
+		vmolr &= ~val;
+
+	IXGBE_WRITE_REG(hw, IXGBE_VMOLR(pool), vmolr);
+	
+	return 0;
+}
+
+static int
+ixgbe_set_pool_rx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
+{
+	uint32_t reg,addr;
+	uint32_t val;
+	const uint8_t bit1 = 0x1;
+	
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (ixgbe_vmdq_mode_check(hw) < 0)
+		return (-ENOTSUP);
+	
+	addr = IXGBE_VFRE(pool >= ETH_64_POOLS/2);
+	reg = IXGBE_READ_REG(hw, addr);
+	val = bit1 << pool;
+
+	if (on)
+		reg |= val;
+	else
+		reg &= ~val;
+	
+	IXGBE_WRITE_REG(hw, addr,reg);
+	
+	return 0;
+}
+
+static int
+ixgbe_set_pool_tx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
+{
+	uint32_t reg,addr;
+	uint32_t val;
+	const uint8_t bit1 = 0x1;
+	
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (ixgbe_vmdq_mode_check(hw) < 0)
+		return (-ENOTSUP);
+	
+	addr = IXGBE_VFTE(pool >= ETH_64_POOLS/2);
+	reg = IXGBE_READ_REG(hw, addr);
+	val = bit1 << pool;
+
+	if (on)
+		reg |= val;
+	else
+		reg &= ~val;
+	
+	IXGBE_WRITE_REG(hw, addr,reg);
+	
+	return 0;
+}
+
+static int 
+ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan,
+			uint64_t pool_mask, uint8_t vlan_on)
+{
+	int ret = 0;
+	uint16_t pool_idx;
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	
+	if (ixgbe_vmdq_mode_check(hw) < 0)
+		return (-ENOTSUP);
+	for (pool_idx = 0; pool_idx < ETH_64_POOLS; pool_idx++) {
+		if (pool_mask & ((uint64_t)(1ULL << pool_idx))) 
+			ret = hw->mac.ops.set_vfta(hw,vlan,pool_idx,vlan_on);
+			if (ret < 0) 
+				return ret;	
+	}
+
+	return ret;
+}
+
+static int
+ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
+			struct rte_eth_vmdq_mirror_conf *mirror_conf, 
+			uint8_t rule_id, uint8_t on)
+{
+	uint32_t mr_ctl,vlvf;
+	uint32_t mp_lsb = 0;
+	uint32_t mv_msb = 0;
+	uint32_t mv_lsb = 0;
+	uint32_t mp_msb = 0;
+	uint8_t i = 0;
+	int reg_index = 0;
+	uint64_t vlan_mask = 0;
+	
+	const uint8_t pool_mask_offset = 32;
+	const uint8_t vlan_mask_offset = 32;
+	const uint8_t dst_pool_offset = 8;
+	const uint8_t rule_mr_offset  = 4;
+	const uint8_t mirror_rule_mask= 0x0F;
+
+	struct ixgbe_mirror_info *mr_info =
+			(IXGBE_DEV_PRIVATE_TO_PFDATA(dev->data->dev_private));
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (ixgbe_vmdq_mode_check(hw) < 0)
+		return (-ENOTSUP);
+
+	/* Check if vlan mask is valid */
+	if ((mirror_conf->rule_type_mask & ETH_VMDQ_VLAN_MIRROR) && (on)) {
+		if (mirror_conf->vlan.vlan_mask == 0)
+			return (-EINVAL);
+	}
+
+	/* Check if vlan id is valid and find conresponding VLAN ID index in VLVF */
+	if (mirror_conf->rule_type_mask & ETH_VMDQ_VLAN_MIRROR) {
+		for (i = 0;i < IXGBE_VLVF_ENTRIES; i++) {
+			if (mirror_conf->vlan.vlan_mask & (1ULL << i)) {
+				/* search vlan id related pool vlan filter index */
+				reg_index = ixgbe_find_vlvf_slot(hw,
+						mirror_conf->vlan.vlan_id[i]);
+				if(reg_index < 0)
+					return (-EINVAL);
+				vlvf = IXGBE_READ_REG(hw, IXGBE_VLVF(reg_index));
+				if ((vlvf & IXGBE_VLVF_VIEN) &&
+					((vlvf & IXGBE_VLVF_VLANID_MASK)
+						== mirror_conf->vlan.vlan_id[i]))
+					vlan_mask |= (1ULL << reg_index);
+				else
+					return (-EINVAL);
+			}
+		}
+
+		if (on) {
+			mv_lsb = vlan_mask & 0xFFFFFFFF;
+			mv_msb = vlan_mask >> vlan_mask_offset;
+			
+			mr_info->mr_conf[rule_id].vlan.vlan_mask =
+						mirror_conf->vlan.vlan_mask;
+			for(i = 0 ;i < ETH_VMDQ_MAX_VLAN_FILTERS; i++) {
+				if(mirror_conf->vlan.vlan_mask & (1ULL << i))
+					mr_info->mr_conf[rule_id].vlan.vlan_id[i] =
+						mirror_conf->vlan.vlan_id[i];
+			}
+		} else {
+			mv_lsb = 0;
+			mv_msb = 0;
+			mr_info->mr_conf[rule_id].vlan.vlan_mask = 0;
+			for(i = 0 ;i < ETH_VMDQ_MAX_VLAN_FILTERS; i++)
+				mr_info->mr_conf[rule_id].vlan.vlan_id[i] = 0;
+		}
+	}
+
+	/*
+	 * if enable pool mirror, write related pool mask register,if disable 
+	 * pool mirror, clear PFMRVM register
+	 */
+	if (mirror_conf->rule_type_mask & ETH_VMDQ_POOL_MIRROR) {
+		if (on) { 
+			mp_lsb = mirror_conf->pool_mask & 0xFFFFFFFF;
+			mp_msb = mirror_conf->pool_mask >> pool_mask_offset;
+			mr_info->mr_conf[rule_id].pool_mask = 
+					mirror_conf->pool_mask;
+			
+		} else {
+			mp_lsb = 0;
+			mp_msb = 0;
+			mr_info->mr_conf[rule_id].pool_mask = 0;
+		}
+	}
+	
+	/* read  mirror control register and recalculate it */
+	mr_ctl = IXGBE_READ_REG(hw,IXGBE_MRCTL(rule_id));
+
+	if (on) {
+		mr_ctl |= mirror_conf->rule_type_mask;
+		mr_ctl &= mirror_rule_mask;
+		mr_ctl |= mirror_conf->dst_pool << dst_pool_offset;
+	} else
+		mr_ctl &= ~(mirror_conf->rule_type_mask & mirror_rule_mask);
+
+	mr_info->mr_conf[rule_id].rule_type_mask = (uint8_t)(mr_ctl & mirror_rule_mask);
+	mr_info->mr_conf[rule_id].dst_pool = mirror_conf->dst_pool;
+
+	/* write mirrror control  register */
+	IXGBE_WRITE_REG(hw, IXGBE_MRCTL(rule_id), mr_ctl);
+	
+        /* write pool mirrror control  register */
+	if (mirror_conf->rule_type_mask & ETH_VMDQ_POOL_MIRROR) {
+		IXGBE_WRITE_REG(hw, IXGBE_VMRVM(rule_id), mp_lsb);
+		IXGBE_WRITE_REG(hw, IXGBE_VMRVM(rule_id + rule_mr_offset),
+				mp_msb);
+	}
+	/* write VLAN mirrror control  register */
+	if (mirror_conf->rule_type_mask & ETH_VMDQ_VLAN_MIRROR) {
+		IXGBE_WRITE_REG(hw, IXGBE_VMRVLAN(rule_id), mv_lsb);
+		IXGBE_WRITE_REG(hw, IXGBE_VMRVLAN(rule_id + rule_mr_offset),
+				mv_msb);
+	}
+
+	return 0;
+}
+
+static int 
+ixgbe_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t rule_id)
+{
+	int mr_ctl = 0;
+	uint32_t lsb_val = 0;
+	uint32_t msb_val = 0;
+	const uint8_t rule_mr_offset = 4;
+	
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_mirror_info *mr_info = 
+		(IXGBE_DEV_PRIVATE_TO_PFDATA(dev->data->dev_private));
+	
+	if (ixgbe_vmdq_mode_check(hw) < 0)
+		return (-ENOTSUP);
+
+	memset(&mr_info->mr_conf[rule_id], 0,
+		sizeof(struct rte_eth_vmdq_mirror_conf));
+
+	/* clear PFVMCTL register */
+	IXGBE_WRITE_REG(hw, IXGBE_MRCTL(rule_id), mr_ctl);
+
+	/* clear pool mask register */
+	IXGBE_WRITE_REG(hw, IXGBE_VMRVM(rule_id), lsb_val);
+	IXGBE_WRITE_REG(hw, IXGBE_VMRVM(rule_id + rule_mr_offset), msb_val);
+
+	/* clear vlan mask register */
+	IXGBE_WRITE_REG(hw, IXGBE_VMRVLAN(rule_id), lsb_val);
+	IXGBE_WRITE_REG(hw, IXGBE_VMRVLAN(rule_id + rule_mr_offset), msb_val);
+
+	return 0;
 }

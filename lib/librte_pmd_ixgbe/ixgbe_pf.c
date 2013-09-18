@@ -104,6 +104,10 @@ void ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 {
 	struct ixgbe_vf_info **vfinfo = 
 		IXGBE_DEV_PRIVATE_TO_P_VFDATA(eth_dev->data->dev_private);
+	struct ixgbe_mirror_info *mirror_info =
+        IXGBE_DEV_PRIVATE_TO_PFDATA(eth_dev->data->dev_private);
+	struct ixgbe_uta_info *uta_info =
+        IXGBE_DEV_PRIVATE_TO_UTA(eth_dev->data->dev_private);
 	struct ixgbe_hw *hw = 
 		IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	uint16_t vf_num;
@@ -118,6 +122,10 @@ void ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 	*vfinfo = rte_zmalloc("vf_info", sizeof(struct ixgbe_vf_info) * vf_num, 0);
 	if (*vfinfo == NULL)
 		rte_panic("Cannot allocate memory for private VF data\n");
+
+	memset(mirror_info,0,sizeof(struct ixgbe_mirror_info));
+	memset(uta_info,0,sizeof(struct ixgbe_uta_info));
+	hw->mac.mc_filter_type = 0;
 
 	if (vf_num >= ETH_32_POOLS) {
 		nb_queue = 2;
@@ -266,8 +274,6 @@ set_rx_mode(struct rte_eth_dev *dev)
 	if (dev_data->promiscuous) {
 		fctrl |= (IXGBE_FCTRL_UPE | IXGBE_FCTRL_MPE);
 		vmolr |= (IXGBE_VMOLR_ROPE | IXGBE_VMOLR_MPE);
-		/* don't hardware filter vlans in promisc mode */
-		ixgbe_vlan_hw_filter_disable(dev);
 	} else {
 		if (dev_data->all_multicast) {
 			fctrl |= IXGBE_FCTRL_MPE;
@@ -275,7 +281,6 @@ set_rx_mode(struct rte_eth_dev *dev)
 		} else {
 			vmolr |= IXGBE_VMOLR_ROMPE;
 		}
-		ixgbe_vlan_hw_filter_enable(dev);
 	}
 
 	if (hw->mac.type != ixgbe_mac_82598EB) {

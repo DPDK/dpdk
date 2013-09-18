@@ -99,6 +99,20 @@ struct ixgbe_hwstrip {
  * VF data which used by PF host only
  */
 #define IXGBE_MAX_VF_MC_ENTRIES		30
+#define IXGBE_MAX_MR_RULE_ENTRIES	4 /* number of mirroring rules supported */
+#define IXGBE_MAX_UTA                   128	
+
+struct ixgbe_uta_info {
+	uint8_t  uc_filter_type;
+	uint16_t uta_in_use;
+	uint32_t uta_shadow[IXGBE_MAX_UTA];
+};
+
+struct ixgbe_mirror_info {
+	struct rte_eth_vmdq_mirror_conf mr_conf[ETH_VMDQ_NUM_MIRROR_RULE]; 
+	/**< store PF mirror rules configuration*/
+};
+
 struct ixgbe_vf_info {
 	uint8_t vf_mac_addresses[ETHER_ADDR_LEN];
 	uint16_t vf_mc_hashes[IXGBE_MAX_VF_MC_ENTRIES];
@@ -123,7 +137,9 @@ struct ixgbe_adapter {
 	struct ixgbe_vfta           shadow_vfta;
 	struct ixgbe_hwstrip		hwstrip;
 	struct ixgbe_dcb_config     dcb_config;
+	struct ixgbe_mirror_info    mr_data;
 	struct ixgbe_vf_info        *vfdata;
+	struct ixgbe_uta_info       uta_info;
 };
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
@@ -152,6 +168,12 @@ struct ixgbe_adapter {
 
 #define IXGBE_DEV_PRIVATE_TO_P_VFDATA(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->vfdata)
+
+#define IXGBE_DEV_PRIVATE_TO_PFDATA(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->mr_data)
+
+#define IXGBE_DEV_PRIVATE_TO_UTA(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->uta_info)
 
 /*
  * RX/TX function prototypes
@@ -254,6 +276,5 @@ void ixgbe_pf_host_init(struct rte_eth_dev *eth_dev);
 void ixgbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
 
 int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev);
-
 
 #endif /* _IXGBE_ETHDEV_H_ */

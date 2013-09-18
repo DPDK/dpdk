@@ -3048,6 +3048,120 @@ void ixgbe_configure_dcb(struct rte_eth_dev *dev)
 	return;
 }
 
+/*
+ * VMDq only support for 10 GbE NIC.
+ */
+static void
+ixgbe_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_vmdq_rx_conf *cfg;
+	struct ixgbe_hw *hw;
+	enum rte_eth_nb_pools num_pools;
+	uint32_t mrqc, vt_ctl, vlanctrl;
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	cfg = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
+	num_pools = cfg->nb_queue_pools;
+
+	ixgbe_rss_disable(dev);
+
+	/* MRQC: enable vmdq */
+	mrqc = IXGBE_MRQC_VMDQEN;
+	IXGBE_WRITE_REG(hw, IXGBE_MRQC, mrqc);
+
+	/* PFVTCTL: turn on virtualisation and set the default pool */
+	vt_ctl = IXGBE_VT_CTL_VT_ENABLE | IXGBE_VT_CTL_REPLEN;
+	if (cfg->enable_default_pool)
+		vt_ctl |= (cfg->default_pool << IXGBE_VT_CTL_POOL_SHIFT);
+	else
+		vt_ctl |= IXGBE_VT_CTL_DIS_DEFPL;
+
+	IXGBE_WRITE_REG(hw, IXGBE_VT_CTL, vt_ctl);
+
+	/* VLNCTRL: enable vlan filtering and allow all vlan tags through */
+	vlanctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
+	vlanctrl |= IXGBE_VLNCTRL_VFE ; /* enable vlan filters */
+	IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlanctrl);
+
+	/* VFTA - enable all vlan filters */
+	for (i = 0; i < NUM_VFTA_REGISTERS; i++) 
+		IXGBE_WRITE_REG(hw, IXGBE_VFTA(i), UINT32_MAX);
+
+	/* VFRE: pool enabling for receive - 64 */
+	IXGBE_WRITE_REG(hw, IXGBE_VFRE(0), UINT32_MAX);
+	if (num_pools == ETH_64_POOLS)
+		IXGBE_WRITE_REG(hw, IXGBE_VFRE(1), UINT32_MAX);
+
+	/*
+	 * MPSAR - allow pools to read specific mac addresses
+	 * In this case, all pools should be able to read from mac addr 0
+	 */
+	IXGBE_WRITE_REG(hw, IXGBE_MPSAR_LO(0), UINT32_MAX);
+	IXGBE_WRITE_REG(hw, IXGBE_MPSAR_HI(0), UINT32_MAX);
+
+	/* PFVLVF, PFVLVFB: set up filters for vlan tags as configured */
+	for (i = 0; i < cfg->nb_pool_maps; i++) {
+		/* set vlan id in VF register and set the valid bit */
+		IXGBE_WRITE_REG(hw, IXGBE_VLVF(i), (IXGBE_VLVF_VIEN | \
+				(cfg->pool_map[i].vlan_id & IXGBE_RXD_VLAN_ID_MASK)));
+		/*
+		 * Put the allowed pools in VFB reg. As we only have 16 or 64
+		 * pools, we only need to use the first half of the register
+		 * i.e. bits 0-31
+		 */
+		if (((cfg->pool_map[i].pools >> 32) & UINT32_MAX) == 0) 
+			IXGBE_WRITE_REG(hw, IXGBE_VLVFB(i*2), \
+					(cfg->pool_map[i].pools & UINT32_MAX));
+		else
+			IXGBE_WRITE_REG(hw, IXGBE_VLVFB((i*2+1)), \
+					((cfg->pool_map[i].pools >> 32) \
+					& UINT32_MAX));
+
+	}
+
+	IXGBE_WRITE_FLUSH(hw);
+}
+
+/*
+ * ixgbe_dcb_config_tx_hw_config - Configure general VMDq TX parameters
+ * @hw: pointer to hardware structure
+ */
+static void 
+ixgbe_vmdq_tx_hw_configure(struct ixgbe_hw *hw)
+{
+	uint32_t reg;
+	uint32_t q;
+	
+	PMD_INIT_FUNC_TRACE();
+	/*PF VF Transmit Enable*/
+	IXGBE_WRITE_REG(hw, IXGBE_VFTE(0), UINT32_MAX);
+	IXGBE_WRITE_REG(hw, IXGBE_VFTE(1), UINT32_MAX);
+
+	/* Disable the Tx desc arbiter so that MTQC can be changed */
+	reg = IXGBE_READ_REG(hw, IXGBE_RTTDCS);
+	reg |= IXGBE_RTTDCS_ARBDIS;
+	IXGBE_WRITE_REG(hw, IXGBE_RTTDCS, reg);
+
+	reg = IXGBE_MTQC_VT_ENA | IXGBE_MTQC_64VF;
+	IXGBE_WRITE_REG(hw, IXGBE_MTQC, reg);
+
+	/* Disable drop for all queues */
+	for (q = 0; q < IXGBE_MAX_RX_QUEUE_NUM; q++)
+		IXGBE_WRITE_REG(hw, IXGBE_QDE,
+	          (IXGBE_QDE_WRITE | (q << IXGBE_QDE_IDX_SHIFT)));
+
+	/* Enable the Tx desc arbiter */
+	reg = IXGBE_READ_REG(hw, IXGBE_RTTDCS);
+	reg &= ~IXGBE_RTTDCS_ARBDIS;
+	IXGBE_WRITE_REG(hw, IXGBE_RTTDCS, reg);
+
+	IXGBE_WRITE_FLUSH(hw);
+
+	return;
+}
+
 static int
 ixgbe_alloc_rx_queue_mbufs(struct igb_rx_queue *rxq)
 {
@@ -3108,7 +3222,11 @@ ixgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 			case ETH_MQ_RX_VMDQ_DCB:
 				ixgbe_vmdq_dcb_configure(dev);
 				break;
-				
+	
+			case ETH_MQ_RX_VMDQ_ONLY:
+				ixgbe_vmdq_rx_hw_configure(dev);
+				break;
+			
 			default: ixgbe_rss_disable(dev);
 			}
 		else
@@ -3159,7 +3277,12 @@ ixgbe_dev_mq_tx_configure(struct rte_eth_dev *dev)
 	 	 * SRIOV inactive scheme
 		 * any DCB w/o VMDq multi-queue setting
 	 	 */
-		mtqc = IXGBE_MTQC_64Q_1PB;
+		if (dev->data->dev_conf.txmode.mq_mode == ETH_MQ_TX_VMDQ_ONLY)
+			ixgbe_vmdq_tx_hw_configure(hw);
+		else {
+			mtqc = IXGBE_MTQC_64Q_1PB;
+			IXGBE_WRITE_REG(hw, IXGBE_MTQC, mtqc);
+		}
 	} else {
 		switch (RTE_ETH_DEV_SRIOV(dev).active) {
 
@@ -3181,9 +3304,8 @@ ixgbe_dev_mq_tx_configure(struct rte_eth_dev *dev)
 			mtqc = IXGBE_MTQC_64Q_1PB;
 			RTE_LOG(ERR, PMD, "invalid pool number in IOV mode\n");
 		}
+		IXGBE_WRITE_REG(hw, IXGBE_MTQC, mtqc);
 	}
-	
-	IXGBE_WRITE_REG(hw, IXGBE_MTQC, mtqc);
 
 	/* re-enable arbiter */
 	rttdcs &= ~IXGBE_RTTDCS_ARBDIS;
@@ -3212,7 +3334,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	uint16_t buf_size;
 	uint16_t i;
 	int ret;
-
+	
 	PMD_INIT_FUNC_TRACE();
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -3361,7 +3483,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		rdrxctl &= ~IXGBE_RDRXCTL_RSCFRSTSIZE;
 		IXGBE_WRITE_REG(hw, IXGBE_RDRXCTL, rdrxctl);
 	}
-
+	
 	return 0;
 }
 
