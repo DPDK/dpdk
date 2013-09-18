@@ -59,18 +59,18 @@ extern "C" {
 /**
  * Minor version number i.e. the y in x.y.z
  */
-#define RTE_VER_MINOR 4
+#define RTE_VER_MINOR 5
 
 /**
  * Patch level number i.e. the z in x.y.z
  */
-#define RTE_VER_PATCH_LEVEL 1
+#define RTE_VER_PATCH_LEVEL 0
 
 /**
  * Extra string to be appended to version number,
  * for example: pre1, EAR, final etc.
  */
-#define RTE_VER_SUFFIX ""
+#define RTE_VER_SUFFIX "pre-release"
 
 /**
  * Function returning string of version number: "RTE x.y.z"
