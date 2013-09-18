@@ -162,6 +162,10 @@ build: _postbuild
 
 exe2cmd = $(strip $(call dotfile,$(patsubst %,%.cmd,$(1))))
 
+ifeq ($(RTE_BUILD_COMBINE_LIBS),y)
+LDLIBS += -l$(RTE_LIBNAME)
+endif
+
 ifeq ($(LINK_USING_CC),1)
 comma := ,
 LDLIBS := $(addprefix -Wl$(comma),$(LDLIBS))

@@ -76,6 +76,24 @@ O_TO_S_DO = @set -e; \
 	$(O_TO_S) && \
 	echo $(O_TO_S_CMD) > $(call exe2cmd,$(@))
 
+ifeq ($(RTE_BUILD_SHARED_LIB),n)
+O_TO_C = $(AR) crus $(LIB_ONE) $(OBJS-y)
+O_TO_C_STR = $(subst ','\'',$(O_TO_C)) #'# fix syntax highlight
+O_TO_C_DISP = $(if $(V),"$(O_TO_C_STR)","  AR_C $(@)")
+O_TO_C_DO = @set -e; \
+	$(lib_dir) \
+	$(copy_obj)
+else
+O_TO_C = $(LD) -z muldefs -share $(OBJS-y) -o $(LIB_ONE)
+O_TO_C_STR = $(subst ','\'',$(O_TO_C)) #'# fix syntax highlight
+O_TO_C_DISP = $(if $(V),"$(O_TO_C_STR)","  LD_C $(@)")
+O_TO_C_DO = @set -e; \
+	$(lib_dir) \
+	$(copy_obj)
+endif
+
+copy_obj = cp -f $(OBJS-y) $(RTE_OUTPUT)/build/lib;
+lib_dir = [ -d $(RTE_OUTPUT)/lib ] || mkdir -p $(RTE_OUTPUT)/lib;
 -include .$(LIB).cmd
 
 #
@@ -96,6 +114,14 @@ $(LIB): $(OBJS-y) $(DEP_$(LIB)) FORCE
 		$(depfile_missing),\
 		$(depfile_newer)),\
 		$(O_TO_S_DO))
+ifeq ($(RTE_BUILD_COMBINE_LIBS),y)
+	$(if $(or \
+        $(file_missing),\
+        $(call cmdline_changed,$(O_TO_C_STR)),\
+        $(depfile_missing),\
+        $(depfile_newer)),\
+        $(O_TO_C_DO))
+endif
 else
 $(LIB): $(OBJS-y) $(DEP_$(LIB)) FORCE
 	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
@@ -111,6 +137,14 @@ $(LIB): $(OBJS-y) $(DEP_$(LIB)) FORCE
 	    $(depfile_missing),\
 	    $(depfile_newer)),\
 	    $(O_TO_A_DO))
+ifeq ($(RTE_BUILD_COMBINE_LIBS),y)
+	$(if $(or \
+        $(file_missing),\
+        $(call cmdline_changed,$(O_TO_C_STR)),\
+        $(depfile_missing),\
+        $(depfile_newer)),\
+        $(O_TO_C_DO))
+endif
 endif
 
 #
