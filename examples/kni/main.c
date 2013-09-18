@@ -109,8 +109,23 @@
 #define KNI_US_PER_SECOND       1000000
 #define KNI_SECOND_PER_DAY      86400
 
+#define KNI_MAX_KTHREAD 32
 /*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
+ * Structure of port parameters
+ */
+struct kni_port_params {
+	uint8_t port_id;/* Port ID */
+	unsigned lcore_rx; /* lcore ID for RX */
+	unsigned lcore_tx; /* lcore ID for TX */
+	uint32_t nb_lcore_k; /* Number of lcores for KNI multi kernel threads */
+	uint32_t nb_kni; /* Number of KNI devices to be created */
+	unsigned lcore_k[KNI_MAX_KTHREAD]; /* lcore ID list for kthreads */
+	struct rte_kni *kni[KNI_MAX_KTHREAD]; /* KNI context pointers */
+} __rte_cache_aligned;
+
+static struct kni_port_params *kni_port_params_array[RTE_MAX_ETHPORTS];
+
+/* RX and TX Prefetch, Host, and Write-back threshold values should be
  * carefully set for optimal performance. Consult the network
  * controller's datasheet and supporting DPDK documentation for guidance
  * on how these parameters should be set.
@@ -160,12 +175,8 @@ static struct rte_mempool * pktmbuf_pool = NULL;
 
 /* Mask of enabled ports */
 static uint32_t ports_mask = 0;
-
-/* Mask of cores that read from NIC and write to tap */
-static uint32_t input_cores_mask = 0;
-
-/* Mask of cores that read from tap and write to NIC */
-static uint32_t output_cores_mask = 0;
+/* Ports set in promiscuous mode off by default. */
+static int promiscuous_on = 0;
 
 /* Structure type for recording kni interface specific stats */
 struct kni_interface_stats {
@@ -182,34 +193,11 @@ struct kni_interface_stats {
 	uint64_t tx_dropped;
 };
 
-/* Structure type for recording port specific information */
-struct kni_port_info_t {
-	/* lcore id for ingress */
-	unsigned lcore_id_ingress;
-
-	/* lcore id for egress */
-	unsigned lcore_id_egress;
-
-	/* pointer to kni interface */
-	struct rte_kni *kni;
-};
-
-/* kni port specific information array*/
-static struct kni_port_info_t kni_port_info[RTE_MAX_ETHPORTS];
-
 /* kni device statistics array */
 static struct kni_interface_stats kni_stats[RTE_MAX_ETHPORTS];
 
-/* Get the pointer to kni interface */
-static struct rte_kni * kni_lcore_to_kni(unsigned lcore_id);
-
 static int kni_change_mtu(uint8_t port_id, unsigned new_mtu);
 static int kni_config_network_interface(uint8_t port_id, uint8_t if_up);
-
-static struct rte_kni_ops kni_ops = {
-	.change_mtu = kni_change_mtu,
-	.config_network_if = kni_config_network_interface,
-};
 
 static rte_atomic32_t kni_stop = RTE_ATOMIC32_INIT(0);
 
@@ -224,13 +212,13 @@ print_stats(void)
 	       " Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    tx_dropped\n"
 	       "------  --------------  ------------  ------------  ------------  ------------\n");
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-		if (kni_port_info[i].kni == NULL)
+		if (!kni_port_params_array[i])
 			continue;
 
 		printf("%7d %10u/%2u %13"PRIu64" %13"PRIu64" %13"PRIu64" "
 							"%13"PRIu64"\n", i,
-					kni_port_info[i].lcore_id_ingress,
-					kni_port_info[i].lcore_id_egress,
+					kni_port_params_array[i]->lcore_rx,
+					kni_port_params_array[i]->lcore_tx,
 						kni_stats[i].rx_packets,
 						kni_stats[i].rx_dropped,
 						kni_stats[i].tx_packets,
@@ -282,31 +270,35 @@ kni_burst_free_mbufs(struct rte_mbuf **pkts, unsigned num)
  * Interface to burst rx and enqueue mbufs into rx_q
  */
 static void
-kni_ingress(struct rte_kni *kni)
+kni_ingress(struct kni_port_params *p)
 {
-	uint8_t port_id = rte_kni_get_port_id(kni);
+	uint8_t i, port_id;
 	unsigned nb_rx, num;
+	uint32_t nb_kni;
 	struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
 
-	if (kni == NULL || port_id >= RTE_MAX_ETHPORTS)
+	if (p == NULL)
 		return;
 
-	/* Burst rx from eth */
-	nb_rx = rte_eth_rx_burst(port_id, 0, pkts_burst, PKT_BURST_SZ);
-	if (nb_rx > PKT_BURST_SZ) {
-		RTE_LOG(ERR, APP, "Error receiving from eth\n");
-		return;
-	}
+	nb_kni = p->nb_kni;
+	port_id = p->port_id;
+	for (i = 0; i < nb_kni; i++) {
+		/* Burst rx from eth */
+		nb_rx = rte_eth_rx_burst(port_id, 0, pkts_burst, PKT_BURST_SZ);
+		if (unlikely(nb_rx > PKT_BURST_SZ)) {
+			RTE_LOG(ERR, APP, "Error receiving from eth\n");
+			return;
+		}
+		/* Burst tx to kni */
+		num = rte_kni_tx_burst(p->kni[i], pkts_burst, nb_rx);
+		kni_stats[port_id].rx_packets += num;
 
-	/* Burst tx to kni */
-	num = rte_kni_tx_burst(kni, pkts_burst, nb_rx);
-	kni_stats[port_id].rx_packets += num;
-
-	rte_kni_handle_request(kni);
-	if (unlikely(num < nb_rx)) {
-		/* Free mbufs not tx to kni interface */
-		kni_burst_free_mbufs(&pkts_burst[num], nb_rx - num);
-		kni_stats[port_id].rx_dropped += nb_rx - num;
+		rte_kni_handle_request(p->kni[i]);
+		if (unlikely(num < nb_rx)) {
+			/* Free mbufs not tx to kni interface */
+			kni_burst_free_mbufs(&pkts_burst[num], nb_rx - num);
+			kni_stats[port_id].rx_dropped += nb_rx - num;
+		}
 	}
 }
 
@@ -314,80 +306,87 @@ kni_ingress(struct rte_kni *kni)
  * Interface to dequeue mbufs from tx_q and burst tx
  */
 static void
-kni_egress(struct rte_kni *kni)
+kni_egress(struct kni_port_params *p)
 {
-	uint8_t port_id = rte_kni_get_port_id(kni);;
+	uint8_t i, port_id;
 	unsigned nb_tx, num;
+	uint32_t nb_kni;
 	struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
 
-	if (kni == NULL || port_id >= RTE_MAX_ETHPORTS)
+	if (p == NULL)
 		return;
 
-	/* Burst rx from kni */
-	num = rte_kni_rx_burst(kni, pkts_burst, PKT_BURST_SZ);
-	if (num > PKT_BURST_SZ) {
-		RTE_LOG(ERR, APP, "Error receiving from KNI\n");
-		return;
-	}
-
-	/* Burst tx to eth */
-	nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, (uint16_t)num);
-	kni_stats[port_id].tx_packets += nb_tx;
-
-	if (unlikely(nb_tx < num)) {
-		/* Free mbufs not tx to NIC */
-		kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
-		kni_stats[port_id].tx_dropped += num - nb_tx;
+	nb_kni = p->nb_kni;
+	port_id = p->port_id;
+	for (i = 0; i < nb_kni; i++) {
+		/* Burst rx from kni */
+		num = rte_kni_rx_burst(p->kni[i], pkts_burst, PKT_BURST_SZ);
+		if (unlikely(num > PKT_BURST_SZ)) {
+			RTE_LOG(ERR, APP, "Error receiving from KNI\n");
+			return;
+		}
+		/* Burst tx to eth */
+		nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, (uint16_t)num);
+		kni_stats[port_id].tx_packets += nb_tx;
+		if (unlikely(nb_tx < num)) {
+			/* Free mbufs not tx to NIC */
+			kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
+			kni_stats[port_id].tx_dropped += num - nb_tx;
+		}
 	}
 }
 
-/* Main processing loop */
 static int
 main_loop(__rte_unused void *arg)
 {
-	uint8_t pid;
+	uint8_t i, nb_ports = rte_eth_dev_count();
+	int32_t f_stop;
 	const unsigned lcore_id = rte_lcore_id();
-	struct rte_kni *kni = kni_lcore_to_kni(lcore_id);
+	enum lcore_rxtx {
+		LCORE_NONE,
+		LCORE_RX,
+		LCORE_TX,
+		LCORE_MAX
+	};
+	enum lcore_rxtx flag = LCORE_NONE;
 
-	if (kni != NULL) {
-		pid = rte_kni_get_port_id(kni);
-		if (pid >= RTE_MAX_ETHPORTS)
-			rte_exit(EXIT_FAILURE, "Failure: port id >= %d\n",
-							RTE_MAX_ETHPORTS);
-
-		if (kni_port_info[pid].lcore_id_ingress == lcore_id) {
-			/* Running on lcores for input packets */
-			RTE_LOG(INFO, APP, "Lcore %u is reading from "
-						"port %d\n", lcore_id, pid);
-			fflush(stdout);
-
-			/* rx loop */
-			while (1) {
-				int32_t flag = rte_atomic32_read(&kni_stop);
-
-				if (flag)
-					break;
-				kni_ingress(kni);
-			}
-		} else if (kni_port_info[pid].lcore_id_egress == lcore_id) {
-			/* Running on lcores for output packets */
-			RTE_LOG(INFO, APP, "Lcore %u is writing to port %d\n",
-							lcore_id, pid);
-			fflush(stdout);
-
-			/* tx loop */
-			while (1) {
-				int32_t flag = rte_atomic32_read(&kni_stop);
-
-				if (flag)
-					break;
-				kni_egress(kni);
-			}
+	nb_ports = (uint8_t)(nb_ports < RTE_MAX_ETHPORTS ?
+				nb_ports : RTE_MAX_ETHPORTS);
+	for (i = 0; i < nb_ports; i++) {
+		if (!kni_port_params_array[i])
+			continue;
+		if (kni_port_params_array[i]->lcore_rx == (uint8_t)lcore_id) {
+			flag = LCORE_RX;
+			break;
+		} else if (kni_port_params_array[i]->lcore_tx ==
+						(uint8_t)lcore_id) {
+			flag = LCORE_TX;
+			break;
 		}
 	}
 
-	/* fallthrough to here if we don't have any work */
-	RTE_LOG(INFO, APP, "Lcore %u has nothing to do\n", lcore_id);
+	if (flag == LCORE_RX) {
+		RTE_LOG(INFO, APP, "Lcore %u is reading from port %d\n",
+					kni_port_params_array[i]->lcore_rx,
+					kni_port_params_array[i]->port_id);
+		while (1) {
+			f_stop = rte_atomic32_read(&kni_stop);
+			if (f_stop)
+				break;
+			kni_ingress(kni_port_params_array[i]);
+		}
+	} else if (flag == LCORE_TX) {
+		RTE_LOG(INFO, APP, "Lcore %u is writing to port %d\n",
+					kni_port_params_array[i]->lcore_tx,
+					kni_port_params_array[i]->port_id);
+		while (1) {
+			f_stop = rte_atomic32_read(&kni_stop);
+			if (f_stop)
+				break;
+			kni_egress(kni_port_params_array[i]);
+		}
+	} else
+		RTE_LOG(INFO, APP, "Lcore %u has nothing to do\n", lcore_id);
 
 	return 0;
 }
@@ -396,13 +395,13 @@ main_loop(__rte_unused void *arg)
 static void
 print_usage(const char *prgname)
 {
-	RTE_LOG(INFO, APP, "\nUsage: %s [EAL options] -- -p PORTMASK "
-					"-i IN_CORES -o OUT_CORES\n"
+	RTE_LOG(INFO, APP, "\nUsage: %s [EAL options] -- -p PORTMASK -P "
+		   "[--config (port,lcore_rx,lcore_tx,lcore_kthread...)"
+		   "[,(port,lcore_rx,lcore_tx,lcore_kthread...)]]\n"
 		   "    -p PORTMASK: hex bitmask of ports to use\n"
-		   "    -i IN_CORES: hex bitmask of cores which read "
-		   "from NIC\n"
-		   "    -o OUT_CORES: hex bitmask of cores which write "
-		   "to NIC\n",
+		   "    -P : enable promiscuous mode\n"
+		   "    --config (port,lcore_rx,lcore_tx,lcore_kthread...): "
+		   "port and lcore configurations\n",
 	           prgname);
 }
 
@@ -420,137 +419,201 @@ parse_unsigned(const char *portmask)
 	return (uint32_t)num;
 }
 
-static int
-kni_setup_port_affinities(uint8_t nb_port)
+static void
+print_config(void)
 {
-	unsigned i;
-	uint32_t in_lcore, out_lcore;
-	uint8_t rx_port = 0, tx_port = 0;
-	uint8_t pid;
+	uint32_t i, j;
+	struct kni_port_params **p = kni_port_params_array;
 
-	if (nb_port > RTE_MAX_ETHPORTS) {
-		RTE_LOG(ERR, APP, "The number of ports exceeds the maximum "
-					"number of 0x%x\n", RTE_MAX_ETHPORTS);
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+		if (!p[i])
+			continue;
+		RTE_LOG(DEBUG, APP, "Port ID: %d\n", p[i]->port_id);
+		RTE_LOG(DEBUG, APP, "Rx lcore ID: %u, Tx lcore ID: %u\n",
+					p[i]->lcore_rx, p[i]->lcore_tx);
+		for (j = 0; j < p[i]->nb_lcore_k; j++)
+			RTE_LOG(DEBUG, APP, "Kernel thread lcore ID: %u\n",
+							p[i]->lcore_k[j]);
+	}
+}
+
+static int
+parse_config(const char *arg)
+{
+	const char *p, *p0 = arg;
+	char s[256], *end;
+	unsigned size;
+	enum fieldnames {
+		FLD_PORT = 0,
+		FLD_LCORE_RX,
+		FLD_LCORE_TX,
+		_NUM_FLD = KNI_MAX_KTHREAD + 3,
+	};
+	int i, j, nb_token;
+	char *str_fld[_NUM_FLD];
+	unsigned long int_fld[_NUM_FLD];
+	uint8_t port_id, nb_kni_port_params = 0;
+
+	memset(&kni_port_params_array, 0, sizeof(kni_port_params_array));
+	while (((p = strchr(p0, '(')) != NULL) &&
+		nb_kni_port_params < RTE_MAX_ETHPORTS) {
+		p++;
+		if ((p0 = strchr(p, ')')) == NULL)
+			goto fail;
+		size = p0 - p;
+		if (size >= sizeof(s)) {
+			printf("Invalid config parameters\n");
+			goto fail;
+		}
+		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		nb_token = rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',');
+		if (nb_token <= FLD_LCORE_TX) {
+			printf("Invalid config parameters\n");
+			goto fail;
+		}
+		for (i = 0; i < nb_token; i++) {
+			errno = 0;
+			int_fld[i] = strtoul(str_fld[i], &end, 0);
+			if (errno != 0 || end == str_fld[i]) {
+				printf("Invalid config parameters\n");
+				goto fail;
+			}
+		}
+
+		i = 0;
+		port_id = (uint8_t)int_fld[i++];
+		if (port_id >= RTE_MAX_ETHPORTS) {
+			printf("Port ID %d could not exceed the maximum %d\n",
+						port_id, RTE_MAX_ETHPORTS);
+			goto fail;
+		}
+		if (kni_port_params_array[port_id]) {
+			printf("Port %d has been configured\n", port_id);
+			goto fail;
+		}
+		kni_port_params_array[port_id] = 
+			(struct kni_port_params*)rte_zmalloc("KNI_port_params",
+			sizeof(struct kni_port_params), CACHE_LINE_SIZE);
+		kni_port_params_array[port_id]->port_id = port_id;
+		kni_port_params_array[port_id]->lcore_rx =
+					(uint8_t)int_fld[i++];
+		kni_port_params_array[port_id]->lcore_tx =
+					(uint8_t)int_fld[i++];
+		if (kni_port_params_array[port_id]->lcore_rx >= RTE_MAX_LCORE ||
+		kni_port_params_array[port_id]->lcore_tx >= RTE_MAX_LCORE) {
+			printf("lcore_rx %u or lcore_tx %u ID could not "
+						"exceed the maximum %u\n",
+				kni_port_params_array[port_id]->lcore_rx,
+				kni_port_params_array[port_id]->lcore_tx,
+						(unsigned)RTE_MAX_LCORE);
+			goto fail;
+		}
+		for (j = 0; i < nb_token && j < KNI_MAX_KTHREAD; i++, j++)
+			kni_port_params_array[port_id]->lcore_k[j] =
+						(uint8_t)int_fld[i];
+		kni_port_params_array[port_id]->nb_lcore_k = j;
+	}
+	print_config();
+
+	return 0;
+
+fail:
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+		if (kni_port_params_array[i]) {
+			rte_free(kni_port_params_array[i]);
+			kni_port_params_array[i] = NULL;
+		}
+	}
+
+	return -1;
+}
+
+static int
+validate_parameters(uint32_t portmask)
+{
+	uint32_t i;
+
+	if (!portmask) {
+		printf("No port configured in port mask\n");
 		return -1;
 	}
 
-	RTE_LCORE_FOREACH(i) {
-		in_lcore = input_cores_mask & (1 << i);
-		out_lcore = output_cores_mask & (1 << i);
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+		if (((portmask & (1 << i)) && !kni_port_params_array[i]) ||
+			(!(portmask & (1 << i)) && kni_port_params_array[i]))
+			rte_exit(EXIT_FAILURE, "portmask is not consistent "
+				"to port ids specified in --config\n");
 
-		/* Check if it is in input lcore or output lcore mask */
-		if (in_lcore == 0 && out_lcore == 0)
-			continue;
+		if (kni_port_params_array[i] && !rte_lcore_is_enabled(\
+			(unsigned)(kni_port_params_array[i]->lcore_rx)))
+			rte_exit(EXIT_FAILURE, "lcore id %u for "
+					"port %d receiving not enabled\n",
+					kni_port_params_array[i]->lcore_rx,
+					kni_port_params_array[i]->port_id);
 
-		/* Check if it is in both input lcore and output lcore mask */
-		if (in_lcore != 0 && out_lcore != 0) {
-			RTE_LOG(ERR, APP, "Lcore 0x%x can not be used in both "
-				"input lcore and output lcore mask\n", i);
-			return -1;
-		}
-
-		/* Check if the lcore is enabled or not */
-		if (rte_lcore_is_enabled(i) == 0) {
-			RTE_LOG(ERR, APP, "Lcore 0x%x is not enabled\n", i);
-			return -1;
-		}
-
-		if (in_lcore != 0) {
-			/* It is for packet receiving */
-			while ((rx_port < nb_port) &&
-					((ports_mask & (1 << rx_port)) == 0))
-				rx_port++;
-
-			if (rx_port >= nb_port) {
-				RTE_LOG(ERR, APP, "There is no enough ports "
-						"for ingress lcores\n");
-				return -1;
-			}
-			kni_port_info[rx_port].lcore_id_ingress = i;
-			rx_port++;
-		} else {
-			/* It is for packet transmitting */
-			while ((tx_port < nb_port) &&
-					((ports_mask & (1 << tx_port)) == 0))
-				tx_port++;
-
-			if (tx_port >= nb_port) {
-				RTE_LOG(ERR, APP, "There is no enough ports "
-						"for engree lcores\n");
-				return -1;
-			}
-			kni_port_info[tx_port].lcore_id_egress = i;
-			tx_port++;
-		}
-	}
-
-	/* Display all the port/lcore affinity */
-	for (pid = 0; pid < nb_port; pid++) {
-		RTE_LOG(INFO, APP, "Port%d, ingress lcore id: %u, "
-						"egress lcore id: %u\n", pid,
-				kni_port_info[pid].lcore_id_ingress,
-				kni_port_info[pid].lcore_id_egress);
+		if (kni_port_params_array[i] && !rte_lcore_is_enabled(\
+			(unsigned)(kni_port_params_array[i]->lcore_tx)))
+			rte_exit(EXIT_FAILURE, "lcore id %u for "
+					"port %d transmitting not enabled\n",
+					kni_port_params_array[i]->lcore_tx,
+					kni_port_params_array[i]->port_id);
+			
 	}
 
 	return 0;
 }
 
-static struct rte_kni *
-kni_lcore_to_kni(unsigned lcore_id)
-{
-	uint8_t pid;
-	struct kni_port_info_t *p = kni_port_info;
-
-	for (pid = 0; pid < RTE_MAX_ETHPORTS; pid++) {
-		if (p[pid].kni != NULL && (p[pid].lcore_id_ingress == lcore_id
-					|| p[pid].lcore_id_egress == lcore_id))
-			return p[pid].kni;
-	}
-
-	return NULL;
-}
+#define CMDLINE_OPT_CONFIG  "config"
 
 /* Parse the arguments given in the command line of the application */
-static void
+static int
 parse_args(int argc, char **argv)
 {
-	int opt;
+	int opt, longindex, ret = 0;
 	const char *prgname = argv[0];
+	static struct option longopts[] = {
+		{CMDLINE_OPT_CONFIG, required_argument, NULL, 0},
+		{NULL, 0, NULL, 0}
+	};
 
 	/* Disable printing messages within getopt() */
 	opterr = 0;
 
 	/* Parse command line */
-	while ((opt = getopt(argc, argv, "i:o:p:")) != EOF) {
+	while ((opt = getopt_long(argc, argv, "p:P", longopts,
+						&longindex)) != EOF) {
 		switch (opt) {
-		case 'i':
-			input_cores_mask = parse_unsigned(optarg);
-			break;
-		case 'o':
-			output_cores_mask = parse_unsigned(optarg);
-			break;
 		case 'p':
 			ports_mask = parse_unsigned(optarg);
 			break;
+		case 'P':
+			promiscuous_on = 1;
+			break;
+		case 0:
+			if (!strncmp(longopts[longindex].name,
+				     CMDLINE_OPT_CONFIG,
+				     sizeof(CMDLINE_OPT_CONFIG))) {
+				ret = parse_config(optarg);
+				if (ret) {
+					printf("Invalid config\n");
+					print_usage(prgname);
+					return -1;
+				}
+			}
+			break;
 		default:
 			print_usage(prgname);
-			rte_exit(EXIT_FAILURE, "Invalid option specified");
+			rte_exit(EXIT_FAILURE, "Invalid option specified\n");
 		}
 	}
 
 	/* Check that options were parsed ok */
-	if (input_cores_mask == 0) {
+	if (validate_parameters(ports_mask) < 0) {
 		print_usage(prgname);
-		rte_exit(EXIT_FAILURE, "IN_CORES not specified correctly");
+		rte_exit(EXIT_FAILURE, "Invalid parameters\n");
 	}
-	if (output_cores_mask == 0) {
-		print_usage(prgname);
-		rte_exit(EXIT_FAILURE, "OUT_CORES not specified correctly");
-	}
-	if (ports_mask == 0) {
-		print_usage(prgname);
-		rte_exit(EXIT_FAILURE, "PORTMASK not specified correctly");
-	}
+
+	return ret;
 }
 
 /* Initialise a single port on an Ethernet device */
@@ -564,27 +627,28 @@ init_port(uint8_t port)
 	fflush(stdout);
 	ret = rte_eth_dev_configure(port, 1, 1, &port_conf);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Could not configure port%u (%d)",
+		rte_exit(EXIT_FAILURE, "Could not configure port%u (%d)\n",
 		            (unsigned)port, ret);
 
-	ret = rte_eth_rx_queue_setup(port, 0, NB_RXD, rte_eth_dev_socket_id(port),
-                                 &rx_conf, pktmbuf_pool);
+	ret = rte_eth_rx_queue_setup(port, 0, NB_RXD,
+		rte_eth_dev_socket_id(port), &rx_conf, pktmbuf_pool);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Could not setup up RX queue for "
-					"port%u (%d)", (unsigned)port, ret);
+				"port%u (%d)\n", (unsigned)port, ret);
 
-	ret = rte_eth_tx_queue_setup(port, 0, NB_TXD, rte_eth_dev_socket_id(port),
-                                 &tx_conf);
+	ret = rte_eth_tx_queue_setup(port, 0, NB_TXD,
+		rte_eth_dev_socket_id(port), &tx_conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Could not setup up TX queue for "
-					"port%u (%d)", (unsigned)port, ret);
+				"port%u (%d)\n", (unsigned)port, ret);
 
 	ret = rte_eth_dev_start(port);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Could not start port%u (%d)",
+		rte_exit(EXIT_FAILURE, "Could not start port%u (%d)\n",
 						(unsigned)port, ret);
 
-	rte_eth_promiscuous_enable(port);
+	if (promiscuous_on)
+		rte_eth_promiscuous_enable(port);
 }
 
 /* Check the link status of all ports in up to 9s, and print them finally */
@@ -596,7 +660,7 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 	uint8_t portid, count, all_ports_up, print_flag = 0;
 	struct rte_eth_link link;
 
-	printf("\nChecking link status");
+	printf("\nChecking link status\n");
 	fflush(stdout);
 	for (count = 0; count <= MAX_CHECK_TIME; count++) {
 		all_ports_up = 1;
@@ -711,13 +775,90 @@ kni_config_network_interface(uint8_t port_id, uint8_t if_up)
 	return ret;
 }
 
+static int
+kni_alloc(uint8_t port_id)
+{
+	uint8_t i;
+	struct rte_kni *kni;
+	struct rte_kni_conf conf;
+	struct kni_port_params **params = kni_port_params_array;
+
+	if (port_id >= RTE_MAX_ETHPORTS || !params[port_id])
+		return -1;
+
+	params[port_id]->nb_kni = params[port_id]->nb_lcore_k ?
+				params[port_id]->nb_lcore_k : 1;
+
+	for (i = 0; i < params[port_id]->nb_kni; i++) {
+		/* Clear conf at first */
+		memset(&conf, 0, sizeof(conf));
+		if (params[port_id]->nb_lcore_k) {
+			rte_snprintf(conf.name, RTE_KNI_NAMESIZE,
+					"vEth%u_%u", port_id, i);
+			conf.core_id = params[port_id]->lcore_k[i];
+			conf.force_bind = 1;
+		} else
+			rte_snprintf(conf.name, RTE_KNI_NAMESIZE,
+						"vEth%u", port_id);
+		conf.group_id = (uint16_t)port_id;
+		conf.mbuf_size = MAX_PACKET_SZ;
+		/*
+		 * The first KNI device associated to a port
+		 * is the master, for multiple kernel thread
+		 * environment.
+		 */
+		if (i == 0) {
+			struct rte_kni_ops ops;
+			struct rte_eth_dev_info dev_info;
+
+			memset(&dev_info, 0, sizeof(dev_info));
+			rte_eth_dev_info_get(port_id, &dev_info);
+			conf.addr = dev_info.pci_dev->addr;
+			conf.id = dev_info.pci_dev->id;
+
+			memset(&ops, 0, sizeof(ops));
+			ops.port_id = port_id;
+			ops.change_mtu = kni_change_mtu;
+			ops.config_network_if = kni_config_network_interface;
+
+			kni = rte_kni_alloc(pktmbuf_pool, &conf, &ops);
+		} else
+			kni = rte_kni_alloc(pktmbuf_pool, &conf, NULL);
+
+		if (!kni)
+			rte_exit(EXIT_FAILURE, "Fail to create kni for "
+						"port: %d\n", port_id);
+		params[port_id]->kni[i] = kni;
+	}
+
+	return 0;
+}
+
+static int
+kni_free_kni(uint8_t port_id)
+{
+	uint8_t i;
+	struct kni_port_params **p = kni_port_params_array;
+
+	if (port_id >= RTE_MAX_ETHPORTS || !p[port_id])
+		return -1;
+
+	for (i = 0; i < p[i]->nb_kni; i++) {
+		rte_kni_release(p[i]->kni[i]);
+		p[i]->kni[i] = NULL;
+	}
+	rte_eth_dev_stop(port_id);
+
+	return 0;
+}
+
 /* Initialise ports/queues etc. and start main loop on each core */
 int
 main(int argc, char** argv)
 {
 	int ret;
-	unsigned i, cfg_ports = 0;
 	uint8_t nb_sys_ports, port;
+	unsigned i;
 
 	/* Associate signal_hanlder function with USR signals */
 	signal(SIGUSR1, signal_handler);
@@ -727,12 +868,14 @@ main(int argc, char** argv)
 	/* Initialise EAL */
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Could not initialise EAL (%d)", ret);
+		rte_exit(EXIT_FAILURE, "Could not initialise EAL (%d)\n", ret);
 	argc -= ret;
 	argv += ret;
 
 	/* Parse application arguments (after the EAL ones) */
-	parse_args(argc, argv);
+	ret = parse_args(argc, argv);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Could not parse input parameters\n");
 
 	/* Create the mbuf pool */
 	pktmbuf_pool = rte_mempool_create("mbuf_pool", NB_MBUF, MBUF_SZ,
@@ -741,57 +884,45 @@ main(int argc, char** argv)
 			rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
 			rte_socket_id(), 0);
 	if (pktmbuf_pool == NULL) {
-		rte_exit(EXIT_FAILURE, "Could not initialise mbuf pool");
+		rte_exit(EXIT_FAILURE, "Could not initialise mbuf pool\n");
 		return -1;
 	}
 
 	/* Initialise PMD driver(s) */
 	ret = rte_pmd_init_all();
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Could not initialise PMD (%d)", ret);
+		rte_exit(EXIT_FAILURE, "Could not initialise PMD (%d)\n", ret);
 
 	/* Scan PCI bus for recognised devices */
 	ret = rte_eal_pci_probe();
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Could not probe PCI (%d)", ret);
+		rte_exit(EXIT_FAILURE, "Could not probe PCI (%d)\n", ret);
 
 	/* Get number of ports found in scan */
 	nb_sys_ports = rte_eth_dev_count();
 	if (nb_sys_ports == 0)
 		rte_exit(EXIT_FAILURE, "No supported Ethernet devices found - "
 			"check that CONFIG_RTE_LIBRTE_IGB_PMD=y and/or "
-			"CONFIG_RTE_LIBRTE_IXGBE_PMD=y in the config file");
-	/* Find the number of configured ports in the port mask */
-	for (i = 0; i < sizeof(ports_mask) * 8; i++)
-		cfg_ports += !! (ports_mask & (1 << i));
+			"CONFIG_RTE_LIBRTE_IXGBE_PMD=y in the config file\n");
 
-	if (cfg_ports > nb_sys_ports)
-		rte_exit(EXIT_FAILURE, "Port mask requires more ports than "
-								"available");
-
-	if (kni_setup_port_affinities(nb_sys_ports) < 0)
-		rte_exit(EXIT_FAILURE, "Fail to setup port affinities\n");	
+	/* Check if the configured port ID is valid */
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
+		if (kni_port_params_array[i] && i >= nb_sys_ports)
+			rte_exit(EXIT_FAILURE, "Configured invalid "
+						"port ID %u\n", i);
 
 	/* Initialise each port */
 	for (port = 0; port < nb_sys_ports; port++) {
-		struct rte_kni *kni;
-
 		/* Skip ports that are not enabled */
-		if ((ports_mask & (1 << port)) == 0) {
+		if (!(ports_mask & (1 << port)))
 			continue;
-		}
 		init_port(port);
 
 		if (port >= RTE_MAX_ETHPORTS)
 			rte_exit(EXIT_FAILURE, "Can not use more than "
 				"%d ports for kni\n", RTE_MAX_ETHPORTS);
 
-		kni = rte_kni_create(port, MAX_PACKET_SZ, pktmbuf_pool,
-								&kni_ops);
-		if (kni == NULL)
-			rte_exit(EXIT_FAILURE, "Fail to create kni dev "
-						"for port: %d\n", port);
-		kni_port_info[port].kni = kni;
+		kni_alloc(port);
 	}
 	check_all_ports_link_status(nb_sys_ports, ports_mask);
 
@@ -802,12 +933,17 @@ main(int argc, char** argv)
 			return -1;
 	}
 
+	/* Release resources */
 	for (port = 0; port < nb_sys_ports; port++) {
-		struct rte_kni *kni = kni_port_info[port].kni;
-
-		if (kni != NULL)
-			rte_kni_release(kni);
+		if (!(ports_mask & (1 << port)))
+			continue;
+		kni_free_kni(port);
 	}
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
+		if (kni_port_params_array[i]) {
+			rte_free(kni_port_params_array[i]);
+			kni_port_params_array[i] = NULL;
+		}
 
 	return 0;
 }
