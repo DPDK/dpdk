@@ -49,7 +49,6 @@ extern "C" {
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
-#include <emmintrin.h>
 
 /*********** Macros to eliminate unused variable warnings ********/
 
@@ -250,6 +249,8 @@ rte_align32pow2(uint32_t x)
 
 /*********** Other general functions / macros ********/
 
+#ifdef __SSE2__
+#include <emmintrin.h>
 /**
  * PAUSE instruction for tight loops (avoid busy waiting)
  */
@@ -258,6 +259,10 @@ rte_pause (void)
 {
 	_mm_pause();
 }
+#else
+static inline void
+rte_pause(void) {}
+#endif
 
 /**
  * Searches the input parameter for the least significant set bit
