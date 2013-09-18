@@ -572,13 +572,9 @@ kni_net_change_mtu(struct net_device *dev, int new_mtu)
 void
 kni_net_poll_resp(struct kni_dev *kni)
 {
-	int i = kni_fifo_count(kni->resp_q);
-
-	if (i) {
+	if (kni_fifo_count(kni->resp_q))
 		wake_up_interruptible(&kni->wq);
-	}
 }
-
 
 /*
  * It can be called to process the request.
@@ -620,7 +616,6 @@ kni_net_process_request(struct kni_dev *kni, struct rte_kni_request *req)
 		ret = -ENODATA;
 		goto fail;
 	}
-
 
 	memcpy(req, kni->sync_kva, sizeof(struct rte_kni_request));
 	ret = 0;
@@ -726,4 +721,3 @@ kni_net_config_lo_mode(char *lo_str)
 	} else
 		KNI_PRINT("Incognizant parameter, loopback disabled");
 }
-

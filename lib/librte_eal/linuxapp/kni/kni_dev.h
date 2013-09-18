@@ -37,6 +37,7 @@
 /**
  * A structure describing the private information for a kni device.
  */
+
 struct kni_dev {
 	/* kni list */
 	struct list_head list;

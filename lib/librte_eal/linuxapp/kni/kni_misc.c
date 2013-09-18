@@ -258,7 +258,6 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 
 	kni->req_q = phys_to_virt(dev_info.req_phys);
 	kni->resp_q = phys_to_virt(dev_info.resp_phys);
-
 	kni->sync_va = dev_info.sync_va;
 	kni->sync_kva = phys_to_virt(dev_info.sync_phys);
 
@@ -298,13 +297,13 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 			(PCI_SLOT(pci->devfn) == dev_info.devid) &&
 			(PCI_FUNC(pci->devfn) == dev_info.function)) {
 			found_pci = pci;
-
 			switch (dev_info.device_id) {
 			#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) case (dev):
 			#include <rte_pci_dev_ids.h>
 				ret = igb_kni_probe(found_pci, &lad_dev);
 				break;
-			#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) case (dev):
+			#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) \
+							case (dev):
 			#include <rte_pci_dev_ids.h>
 				ret = ixgbe_kni_probe(found_pci, &lad_dev);
 				break;
@@ -313,12 +312,12 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 				break;
 			}
 
-			KNI_DBG("PCI found: pci=0x%p, lad_dev=0x%p\n", pci, lad_dev);
+			KNI_DBG("PCI found: pci=0x%p, lad_dev=0x%p\n",
+							pci, lad_dev);
 			if (ret == 0) {
 				kni->lad_dev = lad_dev;
 				kni_set_ethtool_ops(kni->net_dev);
-			}
-			else {
+			} else {
 				KNI_ERR("Device not supported by ethtool");
 				kni->lad_dev = NULL;
 			}
@@ -327,17 +326,16 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 			kni->device_id = dev_info.device_id;
 			break;
 		}
-		pci = pci_get_device(dev_info.vendor_id, dev_info.device_id,
-									pci);
+		pci = pci_get_device(dev_info.vendor_id,
+				dev_info.device_id, pci);
 	}
-
 	if (pci)
 		pci_dev_put(pci);
 
 	ret = register_netdev(net_dev);
 	if (ret) {
-		KNI_ERR("error %i registering device \"%s\"\n", ret,
-							dev_info.name);
+		KNI_ERR("error %i registering device \"%s\"\n",
+					ret, dev_info.name);
 		free_netdev(net_dev);
 		return -ENODEV;
 	}

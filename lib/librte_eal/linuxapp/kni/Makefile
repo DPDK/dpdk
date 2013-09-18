@@ -41,7 +41,9 @@ MODULE = rte_kni
 #
 MODULE_CFLAGS += -I$(SRCDIR) --param max-inline-insns-single=50
 MODULE_CFLAGS += -I$(RTE_OUTPUT)/include -I$(SRCDIR)/ethtool/ixgbe -I$(SRCDIR)/ethtool/igb
+MODULE_CFLAGS += -include $(RTE_OUTPUT)/include/rte_config.h
 MODULE_CFLAGS += -Wall -Werror
+MODULE_CFLAGS += -include $(RTE_OUTPUT)/include/rte_config.h
 
 # this lib needs main eal
 DEPDIRS-y += lib/librte_eal/linuxapp/eal

@@ -403,7 +403,7 @@ kni_allocate_mbufs(struct rte_kni *kni)
 uint8_t
 rte_kni_get_port_id(struct rte_kni *kni)
 {
-	if (kni == NULL)
+	if (!kni)
 		return ~0x0;
 
 	return kni->port_id;
@@ -421,13 +421,13 @@ rte_kni_info_get(uint8_t port_id)
 
 	rte_snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "KNI_INFO_%d", port_id);
 	mz = rte_memzone_lookup(mz_name);
-	if (NULL == mz)
+	if (!mz)
 		return NULL;
 
 	kni = mz->addr;
 	if (0 == kni->port_in_use)
 		return NULL;
-	
+
 	return kni;
 }
 
