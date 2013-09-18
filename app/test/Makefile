@@ -97,6 +97,13 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_timer_perf.c
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+# Disable warnings of deprecated-declarations in test_kni.c
+ifeq ($(CC), icc)
+CFLAGS_test_kni.o += -wd1478
+else
+CFLAGS_test_kni.o += -Wno-deprecated-declarations
+endif
+
 # this application needs libraries first
 DEPDIRS-$(CONFIG_RTE_APP_TEST) += lib
 

@@ -42,12 +42,13 @@
 #include "test.h"
 
 #ifdef RTE_LIBRTE_KNI
+#include <rte_string_fns.h>
 #include <rte_mempool.h>
 #include <rte_ethdev.h>
 #include <rte_cycles.h>
 #include <rte_kni.h>
 
-#define NB_MBUF          (8192 * 16)
+#define NB_MBUF          8192
 #define MAX_PACKET_SZ    2048
 #define MBUF_SZ \
 	(MAX_PACKET_SZ + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
@@ -58,7 +59,8 @@
 #define NB_TXD           512
 #define KNI_TIMEOUT_MS   5000 /* ms */
 
-#define IFCONFIG "/sbin/ifconfig"
+#define IFCONFIG      "/sbin/ifconfig "
+#define TEST_KNI_PORT "test_kni_port"
 
 /* The threshold number of mbufs to be transmitted or received. */
 #define KNI_NUM_MBUF_THRESHOLD 100
@@ -175,11 +177,11 @@ test_kni_loop(__rte_unused void *arg)
 	if (lcore_id == lcore_master) {
 		rte_delay_ms(KNI_TIMEOUT_MS);
 		/* tests of handling kernel request */
-		if (system(IFCONFIG " vEth0 up") == -1)
+		if (system(IFCONFIG TEST_KNI_PORT" up") == -1)
 			ret = -1;
-		if (system(IFCONFIG " vEth0 mtu 1400") == -1)
+		if (system(IFCONFIG TEST_KNI_PORT" mtu 1400") == -1)
 			ret = -1;
-		if (system(IFCONFIG " vEth0 down") == -1)
+		if (system(IFCONFIG TEST_KNI_PORT" down") == -1)
 			ret = -1;
 		rte_delay_ms(KNI_TIMEOUT_MS);
 		test_kni_processing_flag = 1;
@@ -248,25 +250,171 @@ test_kni_allocate_lcores(void)
 }
 
 static int
-test_kni_processing(uint8_t pid, struct rte_mempool *mp)
+test_kni_register_handler_mp(void)
+{
+#define TEST_KNI_HANDLE_REQ_COUNT    10  /* 5s */
+#define TEST_KNI_HANDLE_REQ_INTERVAL 500 /* ms */
+#define TEST_KNI_MTU                 1450
+#define TEST_KNI_MTU_STR             " 1450"
+	int pid;
+
+	pid = fork();
+	if (pid < 0) {
+		printf("Failed to fork a process\n");
+		return -1;
+	} else if (pid == 0) {
+		int i;
+		struct rte_kni *kni = rte_kni_get(TEST_KNI_PORT);
+		struct rte_kni_ops ops = {
+			.change_mtu = kni_change_mtu,
+			.config_network_if = NULL,
+		};
+
+		if (!kni) {
+			printf("Failed to get KNI named %s\n", TEST_KNI_PORT);
+			exit(-1);
+		}
+
+		kni_pkt_mtu = 0;
+
+		/* Check with the invalid parameters */
+		if (rte_kni_register_handlers(kni, NULL) == 0) {
+			printf("Unexpectedly register successuflly "
+					"with NULL ops pointer\n");
+			exit(-1);
+		}
+		if (rte_kni_register_handlers(NULL, &ops) == 0) {
+			printf("Unexpectedly register successfully "
+					"to NULL KNI device pointer\n");
+			exit(-1);
+		}
+
+		if (rte_kni_register_handlers(kni, &ops)) {
+			printf("Fail to register ops\n");
+			exit(-1);
+		}
+
+		/* Check registering again after it has been registered */
+		if (rte_kni_register_handlers(kni, &ops) == 0) {
+			printf("Unexpectedly register successfully after "
+					"it has already been registered\n");
+			exit(-1);
+		}
+
+		/**
+		 * Handle the request of setting MTU,
+		 * with registered handlers.
+		 */
+		for (i = 0; i < TEST_KNI_HANDLE_REQ_COUNT; i++) {
+			rte_kni_handle_request(kni);
+			if (kni_pkt_mtu == TEST_KNI_MTU)
+				break;
+			rte_delay_ms(TEST_KNI_HANDLE_REQ_INTERVAL);
+		}
+		if (i >= TEST_KNI_HANDLE_REQ_COUNT) {
+			printf("MTU has not been set\n");
+			exit(-1);
+		}
+
+		kni_pkt_mtu = 0;
+		if (rte_kni_unregister_handlers(kni) < 0) {
+			printf("Fail to unregister ops\n");
+			exit(-1);
+		}
+
+		/* Check with invalid parameter */
+		if (rte_kni_unregister_handlers(NULL) == 0) {
+			exit(-1);
+		}
+
+		/**
+		 * Handle the request of setting MTU,
+		 * without registered handlers.
+		 */
+		for (i = 0; i < TEST_KNI_HANDLE_REQ_COUNT; i++) {
+			rte_kni_handle_request(kni);
+			if (kni_pkt_mtu != 0)
+				break;
+			rte_delay_ms(TEST_KNI_HANDLE_REQ_INTERVAL);
+		}
+		if (kni_pkt_mtu != 0) {
+			printf("MTU shouldn't be set\n");
+			exit(-1);
+		}
+
+		exit(0);
+	} else {
+		int p_ret, status;
+
+		rte_delay_ms(1000);
+		if (system(IFCONFIG TEST_KNI_PORT " mtu" TEST_KNI_MTU_STR)
+								== -1)
+			return -1;
+
+		rte_delay_ms(1000);
+		if (system(IFCONFIG TEST_KNI_PORT " mtu" TEST_KNI_MTU_STR)
+								== -1)
+			return -1;
+
+		p_ret = wait(&status);
+		if (!WIFEXITED(status)) {
+			printf("Child process (%d) exit abnormally\n", p_ret);
+			return -1;
+		}
+		if (WEXITSTATUS(status) != 0) {
+			printf("Child process exit with failure\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int
+test_kni_processing(uint8_t port_id, struct rte_mempool *mp)
 {
 	int ret = 0;
 	unsigned i;
 	struct rte_kni *kni;
-	int p_id,p_ret;
-	int status;
+	struct rte_kni_conf conf;
+	struct rte_eth_dev_info info;
+	struct rte_kni_ops ops;
 
 	if (!mp)
 		return -1;
 
+	memset(&conf, 0, sizeof(conf));
+	memset(&info, 0, sizeof(info));
+	memset(&ops, 0, sizeof(ops));
+
+	rte_eth_dev_info_get(port_id, &info);
+	conf.addr = info.pci_dev->addr;
+	conf.id = info.pci_dev->id;
+	rte_snprintf(conf.name, sizeof(conf.name), TEST_KNI_PORT);
+
+	/* core id 1 configured for kernel thread */
+	conf.core_id = 1;
+	conf.force_bind = 1;
+	conf.mbuf_size = MAX_PACKET_SZ;
+	conf.group_id = (uint16_t)port_id;
+
+	ops = kni_ops;
+	ops.port_id = port_id;
+
 	/* basic test of kni processing */
-	kni = rte_kni_create(pid, MAX_PACKET_SZ, mp, &kni_ops);
+	kni = rte_kni_alloc(mp, &conf, &ops);
 	if (!kni) {
 		printf("fail to create kni\n");
 		return -1;
 	}
-	if (rte_kni_get_port_id(kni) != pid) {
+	if (rte_kni_get_port_id(kni) != port_id) {
 		printf("fail to get port id\n");
+		ret = -1;
+		goto fail_kni;
+	}
+
+	if (rte_kni_info_get(RTE_MAX_ETHPORTS)) {
+		printf("Unexpectedly get a KNI successfully\n");
 		ret = -1;
 		goto fail_kni;
 	}
@@ -276,73 +424,16 @@ test_kni_processing(uint8_t pid, struct rte_mempool *mp)
 	stats.ingress = 0;
 	stats.egress = 0;
 
-	/* create a subprocess to test the APIs of supporting multi-process */
-	p_id = fork();
-	if (p_id == 0) {
-		struct rte_kni *kni_test;
-	#define TEST_MTU_SIZE  1450
-		kni_test = rte_kni_info_get(RTE_MAX_ETHPORTS);
-		if (kni_test) {
-			printf("unexpectedly gets kni successfully with an invalid "
-									"port id\n");
-			exit(-1);
-		}
-		kni_test = rte_kni_info_get(pid);
-		if (NULL == kni_test) {
-			printf("Failed to get KNI info of the port %d\n",pid);
-			exit(-1);
-		}
-		struct rte_kni_ops kni_ops_test = {
-			.change_mtu = kni_change_mtu,
-			.config_network_if = NULL,
-		};
-		/* test of registering kni with NULL ops */	
-		if (rte_kni_register_handlers(kni_test,NULL) == 0) {
-			printf("unexpectedly register kni successfully"
-						"with NULL ops\n");
-			exit(-1);
-		}
-		if (rte_kni_register_handlers(kni_test,&kni_ops_test) < 0) {
-			printf("Failed to register KNI request handler"
-						"of the port %d\n",pid);
-			exit(-1);
-		}
-		if (system(IFCONFIG " vEth0 mtu 1450") == -1) 
-			exit(-1);
-		
-		rte_kni_handle_request(kni_test);
-		if (kni_pkt_mtu != TEST_MTU_SIZE) {
-			printf("Failed to change kni MTU\n");
-			exit(-1) ;
-		}
-
-		/* test of unregistering kni request */
-		kni_pkt_mtu = 0;
-		if (rte_kni_unregister_handlers(kni_test) < 0) {
-			printf("Failed to unregister kni request handlers\n");
-			exit(-1);
-		}
-		if (system(IFCONFIG " vEth0 mtu 1450") == -1)
-			exit(-1);
-
-		rte_kni_handle_request(kni_test);
-		if (kni_pkt_mtu != 0) {
-			printf("Failed to test kni unregister handlers\n");
-			exit(-1);		
-		}
-		exit(0);
-	}else if (p_id < 0) {
-		printf("Failed to fork a process\n");
-		return -1;
-	}else {
-		p_ret = wait(&status);
-		if (WIFEXITED(status)) 
-			printf("test of multi-process api passed.\n");
-		else {
-			printf("KNI test:The child process %d exit abnormally./n",p_ret);
-			return -1;
-		}
+	/**
+	 * Check multiple processes support on
+	 * registerring/unregisterring handlers.
+	 */
+	if (test_kni_register_handler_mp() < 0) {
+		printf("fail to check multiple process support\n");
+		ret = -1;
+		goto fail_kni;
 	}
+
 	rte_eal_mp_remote_launch(test_kni_loop, NULL, CALL_MASTER);
 	RTE_LCORE_FOREACH_SLAVE(i) {
 		if (rte_eal_wait_lcore(i) < 0) {
@@ -362,14 +453,6 @@ test_kni_processing(uint8_t pid, struct rte_mempool *mp)
 		goto fail_kni;
 	}
 
-	/* test of creating kni on a port which has been used for a kni */
-	if (rte_kni_create(pid, MAX_PACKET_SZ, mp, &kni_ops) != NULL) {
-		printf("should not create a kni successfully for a port which"
-						"has been used for a kni\n");
-		ret = -1;
-		goto fail_kni;
-	}
-
 	if (rte_kni_release(kni) < 0) {
 		printf("fail to release kni\n");
 		return -1;
@@ -383,7 +466,7 @@ test_kni_processing(uint8_t pid, struct rte_mempool *mp)
 	}
 
 	/* test of reusing memzone */
-	kni = rte_kni_create(pid, MAX_PACKET_SZ, mp, &kni_ops);
+	kni = rte_kni_alloc(mp, &conf, &ops);
 	if (!kni) {
 		printf("fail to create kni\n");
 		return -1;
@@ -409,9 +492,12 @@ int
 test_kni(void)
 {
 	int ret = -1;
-	uint8_t nb_ports, pid;
+	uint8_t nb_ports, port_id;
 	struct rte_kni *kni;
-	struct rte_mempool * mp;
+	struct rte_mempool *mp;
+	struct rte_kni_conf conf;
+	struct rte_eth_dev_info info;
+	struct rte_kni_ops ops;
 
 	if (test_kni_allocate_lcores() < 0) {
 		printf("No enough lcores for kni processing\n");
@@ -441,69 +527,89 @@ test_kni(void)
 	}
 
 	/* configuring port 0 for the test is enough */
-	pid = 0;
-	ret = rte_eth_dev_configure(pid, 1, 1, &port_conf);
+	port_id = 0;
+	ret = rte_eth_dev_configure(port_id, 1, 1, &port_conf);
 	if (ret < 0) {
-		printf("fail to configure port %d\n", pid);
+		printf("fail to configure port %d\n", port_id);
 		return -1;
 	}
 
-	ret = rte_eth_rx_queue_setup(pid, 0, NB_RXD, SOCKET, &rx_conf, mp);
+	ret = rte_eth_rx_queue_setup(port_id, 0, NB_RXD, SOCKET, &rx_conf, mp);
 	if (ret < 0) {
-		printf("fail to setup rx queue for port %d\n", pid);
+		printf("fail to setup rx queue for port %d\n", port_id);
 		return -1;
 	}
 
-	ret = rte_eth_tx_queue_setup(pid, 0, NB_TXD, SOCKET, &tx_conf);
+	ret = rte_eth_tx_queue_setup(port_id, 0, NB_TXD, SOCKET, &tx_conf);
 	if (ret < 0) {
-		printf("fail to setup tx queue for port %d\n", pid);
+		printf("fail to setup tx queue for port %d\n", port_id);
 		return -1;
 	}
 
-	ret = rte_eth_dev_start(pid);
+	ret = rte_eth_dev_start(port_id);
 	if (ret < 0) {
-		printf("fail to start port %d\n", pid);
+		printf("fail to start port %d\n", port_id);
 		return -1;
 	}
-
-	rte_eth_promiscuous_enable(pid);
+	rte_eth_promiscuous_enable(port_id);
 
 	/* basic test of kni processing */
-	ret = test_kni_processing(pid, mp);
+	ret = test_kni_processing(port_id, mp);
 	if (ret < 0)
 		goto fail;
 
-	/* test of creating kni with port id exceeds the maximum */
-	kni = rte_kni_create(RTE_MAX_ETHPORTS, MAX_PACKET_SZ, mp, &kni_ops);
-	if (kni) {
-		printf("unexpectedly creates kni successfully with an invalid "
-								"port id\n");
-		goto fail;
-	}
+	/* test of allocating KNI with NULL mempool pointer */
+	memset(&info, 0, sizeof(info));
+	memset(&conf, 0, sizeof(conf));
+	memset(&ops, 0, sizeof(ops));
+	rte_eth_dev_info_get(port_id, &info);
+	conf.addr = info.pci_dev->addr;
+	conf.id = info.pci_dev->id;
+	conf.group_id = (uint16_t)port_id;
+	conf.mbuf_size = MAX_PACKET_SZ;
 
-	/* test of creating kni with NULL mempool pointer */
-	kni = rte_kni_create(pid, MAX_PACKET_SZ, NULL, &kni_ops);
+	ops = kni_ops;
+	ops.port_id = port_id;
+	kni = rte_kni_alloc(NULL, &conf, &ops);
 	if (kni) {
+		ret = -1;
 		printf("unexpectedly creates kni successfully with NULL "
 							"mempool pointer\n");
 		goto fail;
 	}
 
-	/* test of creating kni with NULL ops */
-	kni = rte_kni_create(pid, MAX_PACKET_SZ, mp, NULL);
-	if (!kni) { 
-		printf("unexpectedly creates kni falied with NULL ops\n");
+	/* test of allocating KNI without configurations */
+	kni = rte_kni_alloc(mp, NULL, NULL);
+	if (kni) {
+		ret = -1;
+		printf("Unexpectedly allocate KNI device successfully "
+					"without configurations\n");
 		goto fail;
 	}
 
-	/* test of releasing kni with NULL ops */
-	if (rte_kni_release(kni) < 0) {
-		printf("fail to release kni\n");
+	/* test of allocating KNI without a name */
+	memset(&conf, 0, sizeof(conf));
+	memset(&info, 0, sizeof(info));
+	memset(&ops, 0, sizeof(ops));
+	rte_eth_dev_info_get(port_id, &info);
+	conf.addr = info.pci_dev->addr;
+	conf.id = info.pci_dev->id;
+	conf.group_id = (uint16_t)port_id;
+	conf.mbuf_size = MAX_PACKET_SZ;
+
+	ops = kni_ops;
+	ops.port_id = port_id;
+	kni = rte_kni_alloc(mp, &conf, &ops);
+	if (kni) {
+		ret = -1;
+		printf("Unexpectedly allocate a KNI device successfully "
+						"without a name\n");
 		goto fail;
-	}	
+	}
 
 	/* test of getting port id according to NULL kni context */
 	if (rte_kni_get_port_id(NULL) < RTE_MAX_ETHPORTS) {
+		ret = -1;
 		printf("unexpectedly get port id successfully by NULL kni "
 								"pointer\n");
 		goto fail;
@@ -512,14 +618,69 @@ test_kni(void)
 	/* test of releasing NULL kni context */
 	ret = rte_kni_release(NULL);
 	if (ret == 0) {
+		ret = -1;
 		printf("unexpectedly release kni successfully\n");
+		goto fail;
+	}
+
+	/* test of handling request on NULL device pointer */
+	ret = rte_kni_handle_request(NULL);
+	if (ret == 0) {
+		ret = -1;
+		printf("Unexpectedly handle request on NULL device pointer\n");
+		goto fail;
+	}
+
+	/* test of getting KNI device with pointer to NULL */
+	kni = rte_kni_get(NULL);
+	if (kni) {
+		ret = -1;
+		printf("Unexpectedly get a KNI device with "
+					"NULL name pointer\n");
+		goto fail;
+	}
+
+	/* test of getting KNI device with an zero length name string */
+	memset(&conf, 0, sizeof(conf));
+	kni = rte_kni_get(conf.name);
+	if (kni) {
+		ret = -1;
+		printf("Unexpectedly get a KNI device with "
+				"zero length name string\n");
+		goto fail;
+	}
+
+	/* test of getting KNI device with an invalid string name */
+	memset(&conf, 0, sizeof(conf));
+	rte_snprintf(conf.name, sizeof(conf.name), "testing");
+	kni = rte_kni_get(conf.name);
+	if (kni) {
+		ret = -1;
+		printf("Unexpectedly get a KNI device with "
+				"a never used name string\n");
+		goto fail;
+	}
+
+	/* test the interface of creating a KNI, for backward compatibility */
+	memset(&ops, 0, sizeof(ops));
+	ops = kni_ops;
+	kni = rte_kni_create(port_id, MAX_PACKET_SZ, mp, &ops);
+	if (!kni) {
+		ret = -1;
+		printf("Fail to create a KNI device for port %d\n", port_id);
+		goto fail;
+	}
+
+	ret = rte_kni_release(kni);
+	if (ret < 0) {
+		printf("Fail to release a KNI device\n");
 		goto fail;
 	}
 
 	ret = 0;
 
 fail:
-	rte_eth_dev_stop(pid);
+	rte_eth_dev_stop(port_id);
 
 	return ret;
 }
