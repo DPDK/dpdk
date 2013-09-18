@@ -42,7 +42,7 @@
 
 EXECENV_CFLAGS  = -pthread
 EXECENV_LDFLAGS = 
-EXECENV_LDLIBS  = -lrt
+EXECENV_LDLIBS  = -lrt -lm
 EXECENV_ASFLAGS =
 
 # force applications to link with gcc/icc instead of using ld
