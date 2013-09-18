@@ -47,6 +47,8 @@
 #include <errno.h>
 #include <sys/mman.h>
 #include <sys/queue.h>
+#include <sys/user.h>
+#include <linux/binfmts.h>
 
 #include <rte_common.h>
 #include <rte_debug.h>
@@ -92,6 +94,8 @@
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
 #define SOCKET_MEM_STRLEN (RTE_MAX_NUMA_NODES * 10)
+
+#define BITS_PER_HEX 4
 
 #define GET_BLACKLIST_FIELD(in, fd, lim, dlm)                   \
 {                                                               \
@@ -365,33 +369,67 @@ rte_set_application_usage_hook( rte_usage_hook_t usage_func )
  * the global configuration (core role and core count) with the parsed
  * value.
  */
+static int xdigit2val(unsigned char c)
+{
+	int val;
+	if(isdigit(c)) 
+		val = c - '0';
+	else if(isupper(c))
+		val = c - 'A' + 10;
+	else 
+		val = c - 'a' + 10;
+	return val;
+}
 static int
 eal_parse_coremask(const char *coremask)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
-	unsigned i;
-	char *end = NULL;
-	unsigned long long cm;
+	int i, j, idx = 0 ;
 	unsigned count = 0;
+	char c;
+	int val;
 
-	/* parse hexadecimal string */
-	cm = strtoull(coremask, &end, 16);
-	if ((coremask[0] == '\0') || (end == NULL) || (*end != '\0') || (cm == 0))
+	if (coremask == NULL)
+		return -1;
+	/* Remove all blank characters ahead and after .
+	 * Remove 0x/0X if exists.
+	 */
+	while (isblank(*coremask))
+		coremask++;
+	if (coremask[0] == '0' && ((coremask[1] == 'x')
+		||  (coremask[1] == 'X')) )
+		coremask += 2;
+	i = strnlen(coremask, MAX_ARG_STRLEN);
+	while ((i > 0) && isblank(coremask[i - 1]))
+		i--;
+	if (i == 0)
 		return -1;
 
-	RTE_LOG(DEBUG, EAL, "coremask set to %llx\n", cm);
-	/* set core role and core count */
-	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		if ((1ULL << i) & cm) {
-			if (count == 0)
-				cfg->master_lcore = i;
-			cfg->lcore_role[i] = ROLE_RTE;
-			count++;
+	for (i = i - 1; i >= 0 && idx < RTE_MAX_LCORE; i--) {
+		c = coremask[i];
+		if (isxdigit(c) == 0) {
+			/* invalid characters */
+			return (-1);
 		}
-		else {
-			cfg->lcore_role[i] = ROLE_OFF;
+		val = xdigit2val(c);
+		for(j = 0; j < BITS_PER_HEX && idx < RTE_MAX_LCORE; j++, idx++) {
+			if((1 << j) & val) {
+				cfg->lcore_role[idx] = ROLE_RTE;
+				if(count == 0)
+					cfg->master_lcore = idx;
+				count++;
+			} else  {
+				cfg->lcore_role[idx] = ROLE_OFF;
+			}
 		}
 	}
+	for(; i >= 0; i--)
+		if(coremask[i] != '0')
+			return -1;
+	for(; idx < RTE_MAX_LCORE; idx++)
+		cfg->lcore_role[idx] = ROLE_OFF;
+	if(count == 0)
+		return -1;
 	return 0;
 }
 
