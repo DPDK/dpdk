@@ -178,6 +178,8 @@ usage(char* progname)
 	printf("  --rx-queue-stats-mapping=(port,queue,mapping)[,(port,queue,mapping]: "
 	       "rx queues statistics counters mapping "
 	       "(0 <= mapping <= %d).\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
+	printf("  --no-flush-rx:  avoids flushing all rx streams before"
+	       " starts forwarding\n");
 }
 
 static int
@@ -513,6 +515,7 @@ launch_args_parse(int argc, char** argv)
 		{ "rxfreet",                    1, 0, 0 },
 		{ "tx-queue-stats-mapping",	1, 0, 0 },
 		{ "rx-queue-stats-mapping",	1, 0, 0 },
+		{ "no-flush-rx",	0, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -933,6 +936,9 @@ launch_args_parse(int argc, char** argv)
 						 "invalid RX queue statistics mapping config entered\n");
 				}
 			}
+			if (!strcmp(lgopts[opt_idx].name, "no-flush-rx"))
+				no_flush_rx = 1;
+
 			break;
 		case 'h':
 			usage(argv[0]);

@@ -247,6 +247,18 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Remove a vlan_id, or all identifiers, from the set"
 			" of VLAN identifiers filtered by port_id.\n\n"
 
+			"rx_vlan add (vlan_id) port (port_id) vf (vf_mask)\n"
+			"    Add a vlan_id, to the set of VLAN identifiers"
+			"filtered for VF(s) from port_id.\n\n"
+			
+			"rx_vlan rm (vlan_id) port (port_id) vf (vf_mask)\n"
+			"    Remove a vlan_id, to the set of VLAN identifiers"
+			"filtered for VF(s) from port_id.\n\n"			
+
+			"rx_vlan set tpid (value) (port_id)\n"
+			"    Set the outer VLAN TPID for Packet Filtering on"
+			" a port\n\n"
+
 			"tx_vlan set vlan_id (port_id)\n"
 			"    Set hardware insertion of VLAN ID in packets sent"
 			" on a port.\n\n"
@@ -281,6 +293,13 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"mac_addr remove (port_id) (XX:XX:XX:XX:XX:XX)\n"
 			"    Remove a MAC address from port_id.\n\n"
 
+			"mac_addr add port (port_id) vf (vf_id) (mac_address)\n"
+			"    Add a MAC address for a VF on the port.\n\n"
+			
+			"set port (port_id) uta (mac_address|all) (on|off)\n"
+			"    Add/Remove a or all unicast hash filter(s)" 
+			"from port X.\n\n"
+
 			"set promisc (port_id|all) (on|off)\n"
 			"    Set the promiscuous mode on port_id, or all.\n\n"
 
@@ -301,6 +320,37 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" queue on port.\n"
 			"    e.g., 'set stat_qmap rx 0 2 5' sets rx queue 2"
 			" on port 0 to mapping 5.\n\n"
+
+			"set port (port_id) vf (vf_id) rx|tx on|off \n"
+			"    Enable/Disable a VF receive/tranmit from a port\n\n"
+
+			"set port (port_id) vf (vf_id) rxmode (AUPE|ROPE|BAM"
+			"|MPE) (on|off)\n"
+			"    AUPE:accepts untagged VLAN;"
+			"ROPE:accept unicast hash\n\n"
+			"    BAM:accepts broadcast packets;"
+			"MPE:accepts all multicast packets\n\n"
+			"    Enable/Disable a VF receive mode of a port\n\n"
+			
+			"set port (port_id) mirror-rule (rule_id)" 
+			"(pool-mirror|vlan-mirror)\n"
+			" (poolmask|vlanid[,vlanid]*) dst-pool (pool_id) (on|off)\n"
+			"   Set pool or vlan type mirror rule on a port.\n"
+			"   e.g., 'set port 0 mirror-rule 0 vlan-mirror 0,1"
+			" dst-pool 0 on' enable mirror traffic with vlan 0,1"
+			" to pool 0.\n\n"
+
+			"set port (port_id) mirror-rule (rule_id)"
+			"(uplink-mirror|downlink-mirror) dst-pool"
+			"(pool_id) (on|off)\n"
+			"   Set uplink or downlink type mirror rule on a port.\n"
+			"   e.g., 'set port 0 mirror-rule 0 uplink-mirror dst-pool"
+			" 0 on' enable mirror income traffic to pool 0.\n\n"
+
+			"reset port (port_id) mirror-rule (rule_id)\n"
+			"   Reset a mirror rule.\n\n"
+
+			""
 		);
 	}
 
@@ -2197,6 +2247,45 @@ cmdline_parse_inst_t cmd_tx_cksum_set = {
 	},
 };
 
+/* *** ENABLE/DISABLE FLUSH ON RX STREAMS *** */
+struct cmd_set_flush_rx {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t flush_rx;
+	cmdline_fixed_string_t mode;
+};
+
+static void
+cmd_set_flush_rx_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_flush_rx *res = parsed_result;
+	no_flush_rx = (uint8_t)((strcmp(res->mode, "on") == 0) ? 0 : 1);
+}
+
+cmdline_parse_token_string_t cmd_setflushrx_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_flush_rx,
+			set, "set");
+cmdline_parse_token_string_t cmd_setflushrx_flush_rx =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_flush_rx,
+			flush_rx, "flush_rx");
+cmdline_parse_token_string_t cmd_setflushrx_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_flush_rx,
+			mode, "on#off");
+
+
+cmdline_parse_inst_t cmd_set_flush_rx = {
+	.f = cmd_set_flush_rx_parsed,
+	.help_str = "set flush_rx on|off: enable/disable flush on rx streams",
+	.data = NULL,
+	.tokens = {
+		(void *)&cmd_setflushrx_set,
+		(void *)&cmd_setflushrx_flush_rx,
+		(void *)&cmd_setflushrx_mode,
+		NULL,
+	},
+};
+
 /* *** SET FORWARDING MODE *** */
 struct cmd_set_fwd_mode_result {
 	cmdline_fixed_string_t set;
@@ -3811,6 +3900,652 @@ cmdline_parse_inst_t cmd_set_qmap = {
 	},
 };
 
+/* *** CONFIGURE UNICAST HASH TABLE *** */
+struct cmd_set_uc_hash_table {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+	cmdline_fixed_string_t what;
+	struct ether_addr address;
+	cmdline_fixed_string_t mode;
+};
+
+static void
+cmd_set_uc_hash_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	int ret=0;
+	struct cmd_set_uc_hash_table *res = parsed_result;
+	
+	int is_on = (strcmp(res->mode, "on") == 0) ? 1 : 0;
+	
+	if (strcmp(res->what, "uta") == 0)
+		ret = rte_eth_dev_uc_hash_table_set(res->port_id, 
+						&res->address,(uint8_t)is_on);
+	if (ret < 0)
+		printf("bad unicast hash table parameter, return code = %d \n", ret);
+	
+}
+
+cmdline_parse_token_string_t cmd_set_uc_hash_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_hash_table,
+				 set, "set");
+cmdline_parse_token_string_t cmd_set_uc_hash_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_hash_table,
+				 port, "port");
+cmdline_parse_token_num_t cmd_set_uc_hash_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_uc_hash_table,
+			      port_id, UINT8);
+cmdline_parse_token_string_t cmd_set_uc_hash_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_hash_table,
+				 what, "uta");
+cmdline_parse_token_etheraddr_t cmd_set_uc_hash_mac =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_uc_hash_table, 
+				address);
+cmdline_parse_token_string_t cmd_set_uc_hash_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_hash_table,
+				 mode, "on#off");
+
+cmdline_parse_inst_t cmd_set_uc_hash_filter = {
+	.f = cmd_set_uc_hash_parsed,
+	.data = NULL,
+	.help_str = "set port X uta Y on|off(X = port number,Y = MAC address)",
+	.tokens = {
+		(void *)&cmd_set_uc_hash_set,
+		(void *)&cmd_set_uc_hash_port,
+		(void *)&cmd_set_uc_hash_portid,
+		(void *)&cmd_set_uc_hash_what,
+		(void *)&cmd_set_uc_hash_mac,
+		(void *)&cmd_set_uc_hash_mode,
+		NULL,
+	},
+};
+
+struct cmd_set_uc_all_hash_table {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+	cmdline_fixed_string_t what;
+	cmdline_fixed_string_t value;
+	cmdline_fixed_string_t mode;
+};
+
+static void
+cmd_set_uc_all_hash_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	int ret=0;
+	struct cmd_set_uc_all_hash_table *res = parsed_result;
+	
+	int is_on = (strcmp(res->mode, "on") == 0) ? 1 : 0;
+	
+	if ((strcmp(res->what, "uta") == 0) && 
+		(strcmp(res->value, "all") == 0))
+		ret = rte_eth_dev_uc_all_hash_table_set(res->port_id,(uint8_t) is_on);
+	if (ret < 0)
+		printf("bad unicast hash table parameter," 
+			"return code = %d \n", ret);
+}
+
+cmdline_parse_token_string_t cmd_set_uc_all_hash_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table,
+				 set, "set");
+cmdline_parse_token_string_t cmd_set_uc_all_hash_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table,
+				 port, "port");
+cmdline_parse_token_num_t cmd_set_uc_all_hash_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_uc_all_hash_table,
+			      port_id, UINT8);
+cmdline_parse_token_string_t cmd_set_uc_all_hash_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table,
+				 what, "uta");
+cmdline_parse_token_string_t cmd_set_uc_all_hash_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table, 
+				value,"all");
+cmdline_parse_token_string_t cmd_set_uc_all_hash_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table,
+				 mode, "on#off");
+
+cmdline_parse_inst_t cmd_set_uc_all_hash_filter = {
+	.f = cmd_set_uc_all_hash_parsed,
+	.data = NULL,
+	.help_str = "set port X uta all on|off (X = port number)",
+	.tokens = {
+		(void *)&cmd_set_uc_all_hash_set,
+		(void *)&cmd_set_uc_all_hash_port,
+		(void *)&cmd_set_uc_all_hash_portid,
+		(void *)&cmd_set_uc_all_hash_what,
+		(void *)&cmd_set_uc_all_hash_value,
+		(void *)&cmd_set_uc_all_hash_mode,
+		NULL,
+	},
+};
+
+/* *** CONFIGURE VF TRAFFIC CONTROL *** */
+struct cmd_set_vf_traffic {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+	cmdline_fixed_string_t vf;
+	uint8_t vf_id;
+	cmdline_fixed_string_t what;
+	cmdline_fixed_string_t mode;
+};
+
+static void
+cmd_set_vf_traffic_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	struct cmd_set_vf_traffic *res = parsed_result;
+	int is_rx = (strcmp(res->what, "rx") == 0) ? 1 : 0;
+	int is_on = (strcmp(res->mode, "on") == 0) ? 1 : 0;
+
+	set_vf_traffic(res->port_id, (uint8_t)is_rx, res->vf_id,(uint8_t) is_on);
+}
+
+cmdline_parse_token_string_t cmd_setvf_traffic_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_traffic,
+				 set, "set");
+cmdline_parse_token_string_t cmd_setvf_traffic_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_traffic,
+				 port, "port");
+cmdline_parse_token_num_t cmd_setvf_traffic_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_vf_traffic,
+			      port_id, UINT8);
+cmdline_parse_token_string_t cmd_setvf_traffic_vf =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_traffic,
+				 vf, "vf");
+cmdline_parse_token_num_t cmd_setvf_traffic_vfid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_vf_traffic,
+			      vf_id, UINT8);
+cmdline_parse_token_string_t cmd_setvf_traffic_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_traffic,
+				 what, "tx#rx");
+cmdline_parse_token_string_t cmd_setvf_traffic_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_traffic,
+				 mode, "on#off");
+
+cmdline_parse_inst_t cmd_set_vf_traffic = {
+	.f = cmd_set_vf_traffic_parsed,
+	.data = NULL,
+	.help_str = "set port X vf Y rx|tx on|off (X = port number,Y = vf id)",
+	.tokens = {
+		(void *)&cmd_setvf_traffic_set,
+		(void *)&cmd_setvf_traffic_port,
+		(void *)&cmd_setvf_traffic_portid,
+		(void *)&cmd_setvf_traffic_vf,
+		(void *)&cmd_setvf_traffic_vfid,
+		(void *)&cmd_setvf_traffic_what,
+		(void *)&cmd_setvf_traffic_mode,
+		NULL,
+	},
+};
+
+/* *** CONFIGURE VF RECEIVE MODE *** */
+struct cmd_set_vf_rxmode {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+	cmdline_fixed_string_t vf;
+	uint8_t vf_id;
+	cmdline_fixed_string_t what;
+	cmdline_fixed_string_t mode;
+	cmdline_fixed_string_t on;
+};
+
+static void
+cmd_set_vf_rxmode_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	int ret;
+	uint16_t rx_mode = 0;
+	struct cmd_set_vf_rxmode *res = parsed_result;
+	
+	int is_on = (strcmp(res->on, "on") == 0) ? 1 : 0;
+	if (!strcmp(res->what,"rxmode")) {
+		if (!strcmp(res->mode, "AUPE"))
+			rx_mode |= ETH_VMDQ_ACCEPT_UNTAG;
+		else if (!strcmp(res->mode, "ROPE"))
+			rx_mode |= ETH_VMDQ_ACCEPT_HASH_UC;
+		else if (!strcmp(res->mode, "BAM"))
+			rx_mode |= ETH_VMDQ_ACCEPT_BROADCAST;
+		else if (!strncmp(res->mode, "MPE",3))
+			rx_mode |= ETH_VMDQ_ACCEPT_MULTICAST;
+	}
+
+	ret = rte_eth_dev_set_vf_rxmode(res->port_id,res->vf_id,rx_mode,(uint8_t)is_on);
+	if (ret < 0)
+		printf("bad VF receive mode parameter, return code = %d \n",
+		ret);
+}
+
+cmdline_parse_token_string_t cmd_set_vf_rxmode_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_rxmode,
+				 set, "set");
+cmdline_parse_token_string_t cmd_set_vf_rxmode_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_rxmode,
+				 port, "port");
+cmdline_parse_token_num_t cmd_set_vf_rxmode_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_vf_rxmode,
+			      port_id, UINT8);
+cmdline_parse_token_string_t cmd_set_vf_rxmode_vf =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_rxmode,
+				 vf, "vf");
+cmdline_parse_token_num_t cmd_set_vf_rxmode_vfid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_vf_rxmode,
+			      vf_id, UINT8);
+cmdline_parse_token_string_t cmd_set_vf_rxmode_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_rxmode,
+				 what, "rxmode");
+cmdline_parse_token_string_t cmd_set_vf_rxmode_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_rxmode,
+				 mode, "AUPE#ROPE#BAM#MPE");
+cmdline_parse_token_string_t cmd_set_vf_rxmode_on =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_rxmode,
+				 on, "on#off");
+
+cmdline_parse_inst_t cmd_set_vf_rxmode = {
+	.f = cmd_set_vf_rxmode_parsed,
+	.data = NULL,
+	.help_str = "set port X vf Y rxmode AUPE|ROPE|BAM|MPE on|off",
+	.tokens = {
+		(void *)&cmd_set_vf_rxmode_set,
+		(void *)&cmd_set_vf_rxmode_port,
+		(void *)&cmd_set_vf_rxmode_portid,
+		(void *)&cmd_set_vf_rxmode_vf,
+		(void *)&cmd_set_vf_rxmode_vfid,
+		(void *)&cmd_set_vf_rxmode_what,
+		(void *)&cmd_set_vf_rxmode_mode,
+		(void *)&cmd_set_vf_rxmode_on,
+		NULL,
+	},
+};
+
+/* *** ADD MAC ADDRESS FILTER FOR A VF OF A PORT *** */
+struct cmd_vf_mac_addr_result {
+	cmdline_fixed_string_t mac_addr_cmd;
+	cmdline_fixed_string_t what;
+	cmdline_fixed_string_t port;
+	uint8_t port_num;
+	cmdline_fixed_string_t vf;
+	uint8_t vf_num;
+	struct ether_addr address;
+};
+
+static void cmd_vf_mac_addr_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_vf_mac_addr_result *res = parsed_result;
+	int ret = 0;
+
+	if (strcmp(res->what, "add") == 0)
+		ret = rte_eth_dev_mac_addr_add(res->port_num, 
+					&res->address, res->vf_num);
+	if(ret < 0)
+		printf("vf_mac_addr_cmd error: (%s)\n", strerror(-ret));
+
+}
+
+cmdline_parse_token_string_t cmd_vf_mac_addr_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result,
+				mac_addr_cmd,"mac_addr");
+cmdline_parse_token_string_t cmd_vf_mac_addr_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result, 
+				what,"add");
+cmdline_parse_token_string_t cmd_vf_mac_addr_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result, 
+				port,"port");
+cmdline_parse_token_num_t cmd_vf_mac_addr_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_mac_addr_result, 
+				port_num, UINT8);
+cmdline_parse_token_string_t cmd_vf_mac_addr_vf =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result, 
+				vf,"vf");
+cmdline_parse_token_num_t cmd_vf_mac_addr_vfnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_mac_addr_result,
+				vf_num, UINT8);
+cmdline_parse_token_etheraddr_t cmd_vf_mac_addr_addr =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_vf_mac_addr_result, 
+				address);
+
+cmdline_parse_inst_t cmd_vf_mac_addr_filter = {
+	.f = cmd_vf_mac_addr_parsed,
+	.data = (void *)0,
+	.help_str = "mac_addr add port X vf Y ethaddr:(X = port number,"
+	"Y = VF number)add MAC address filtering for a VF on port X",
+	.tokens = {
+		(void *)&cmd_vf_mac_addr_cmd,
+		(void *)&cmd_vf_mac_addr_what,
+		(void *)&cmd_vf_mac_addr_port,
+		(void *)&cmd_vf_mac_addr_portnum,
+		(void *)&cmd_vf_mac_addr_vf,
+		(void *)&cmd_vf_mac_addr_vfnum,
+		(void *)&cmd_vf_mac_addr_addr,
+		NULL,
+	},
+};
+
+/* *** ADD/REMOVE A VLAN IDENTIFIER TO/FROM A PORT VLAN RX FILTER *** */
+struct cmd_vf_rx_vlan_filter {
+	cmdline_fixed_string_t rx_vlan;
+	cmdline_fixed_string_t what;
+	uint16_t vlan_id;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+	cmdline_fixed_string_t vf;
+	uint64_t vf_mask;
+};
+
+static void
+cmd_vf_rx_vlan_filter_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	struct cmd_vf_rx_vlan_filter *res = parsed_result;
+
+	if (!strcmp(res->what, "add"))
+		set_vf_rx_vlan(res->port_id, res->vlan_id,res->vf_mask, 1);
+	else
+		set_vf_rx_vlan(res->port_id, res->vlan_id,res->vf_mask, 0);
+}
+
+cmdline_parse_token_string_t cmd_vf_rx_vlan_filter_rx_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rx_vlan_filter,
+				 rx_vlan, "rx_vlan");
+cmdline_parse_token_string_t cmd_vf_rx_vlan_filter_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rx_vlan_filter,
+				 what, "add#rm");
+cmdline_parse_token_num_t cmd_vf_rx_vlan_filter_vlanid =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_rx_vlan_filter,
+			      vlan_id, UINT16);
+cmdline_parse_token_string_t cmd_vf_rx_vlan_filter_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rx_vlan_filter,
+				 port, "port");
+cmdline_parse_token_num_t cmd_vf_rx_vlan_filter_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_rx_vlan_filter,
+			      port_id, UINT8);
+cmdline_parse_token_string_t cmd_vf_rx_vlan_filter_vf =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rx_vlan_filter,
+				 vf, "vf");
+cmdline_parse_token_num_t cmd_vf_rx_vlan_filter_vf_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_rx_vlan_filter,
+			      vf_mask, UINT64);
+
+cmdline_parse_inst_t cmd_vf_rxvlan_filter = {
+	.f = cmd_vf_rx_vlan_filter_parsed,
+	.data = NULL,
+	.help_str = "rx_vlan add|rm X port Y vf Z (X = VLAN ID,"
+		"Y = port number,Z = hexadecimal VF mask)",
+	.tokens = {
+		(void *)&cmd_vf_rx_vlan_filter_rx_vlan,
+		(void *)&cmd_vf_rx_vlan_filter_what,
+		(void *)&cmd_vf_rx_vlan_filter_vlanid,
+		(void *)&cmd_vf_rx_vlan_filter_port,
+		(void *)&cmd_vf_rx_vlan_filter_portid,
+		(void *)&cmd_vf_rx_vlan_filter_vf,
+		(void *)&cmd_vf_rx_vlan_filter_vf_mask,
+		NULL,
+	},
+};
+
+/* *** CONFIGURE VM MIRROR VLAN/POOL RULE *** */
+struct cmd_set_mirror_mask_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+	cmdline_fixed_string_t mirror;
+	uint8_t rule_id;
+	cmdline_fixed_string_t what;
+	cmdline_fixed_string_t value;
+	cmdline_fixed_string_t dstpool;
+	uint8_t dstpool_id;
+	cmdline_fixed_string_t on;
+};
+
+cmdline_parse_token_string_t cmd_mirror_mask_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_mask_result,
+				set, "set");
+cmdline_parse_token_string_t cmd_mirror_mask_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_mask_result,
+				port, "port");
+cmdline_parse_token_string_t cmd_mirror_mask_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_mirror_mask_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_mirror_mask_mirror =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_mask_result,
+				mirror, "mirror-rule");
+cmdline_parse_token_num_t cmd_mirror_mask_ruleid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_mirror_mask_result,
+				rule_id, UINT8);
+cmdline_parse_token_string_t cmd_mirror_mask_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_mask_result,
+				what, "pool-mirror#vlan-mirror");
+cmdline_parse_token_string_t cmd_mirror_mask_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_mask_result,
+				value, NULL);
+cmdline_parse_token_string_t cmd_mirror_mask_dstpool =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_mask_result,
+				dstpool, "dst-pool");
+cmdline_parse_token_num_t cmd_mirror_mask_poolid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_mirror_mask_result,
+				dstpool_id, UINT8);
+cmdline_parse_token_string_t cmd_mirror_mask_on =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_mask_result,
+				on, "on#off");
+
+static void
+cmd_set_mirror_mask_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	int ret,nb_item,i;
+	struct cmd_set_mirror_mask_result *res = parsed_result;
+	struct rte_eth_vmdq_mirror_conf mr_conf;
+
+	memset(&mr_conf,0,sizeof(struct rte_eth_vmdq_mirror_conf));
+
+	unsigned int vlan_list[ETH_VMDQ_MAX_VLAN_FILTERS];
+
+	mr_conf.dst_pool = res->dstpool_id;
+
+	if (!strcmp(res->what, "pool-mirror")) {
+		mr_conf.pool_mask = strtoull(res->value,NULL,16);
+		mr_conf.rule_type_mask = ETH_VMDQ_POOL_MIRROR;
+	} else if(!strcmp(res->what, "vlan-mirror")) {
+		mr_conf.rule_type_mask = ETH_VMDQ_VLAN_MIRROR;
+		nb_item = parse_item_list(res->value, "core",
+					ETH_VMDQ_MAX_VLAN_FILTERS,vlan_list,1);
+		if (nb_item <= 0)
+			return;
+
+		for(i=0; i < nb_item; i++) {
+			if (vlan_list[i] > ETHER_MAX_VLAN_ID) {
+				printf("Invalid vlan_id: must be < 4096\n");
+				return;
+			}
+
+			mr_conf.vlan.vlan_id[i] = (uint16_t)vlan_list[i];
+			mr_conf.vlan.vlan_mask |= 1ULL << i;
+		}
+	}
+
+	if(!strcmp(res->on, "on"))
+		ret = rte_eth_mirror_rule_set(res->port_id,&mr_conf,
+						res->rule_id, 1);
+	else
+		ret = rte_eth_mirror_rule_set(res->port_id,&mr_conf,
+						res->rule_id, 0);
+	if(ret < 0)
+		printf("mirror rule add error: (%s)\n", strerror(-ret));
+}
+
+cmdline_parse_inst_t cmd_set_mirror_mask = {
+		.f = cmd_set_mirror_mask_parsed,
+		.data = NULL,
+		.help_str = "set port X mirror-rule Y pool-mirror|vlan-mirror " 
+				"pool_mask|vlan_id[,vlan_id]* dst-pool Z on|off",
+		.tokens = {
+			(void *)&cmd_mirror_mask_set,
+			(void *)&cmd_mirror_mask_port,
+			(void *)&cmd_mirror_mask_portid,
+			(void *)&cmd_mirror_mask_mirror,
+			(void *)&cmd_mirror_mask_ruleid,
+			(void *)&cmd_mirror_mask_what,
+			(void *)&cmd_mirror_mask_value,
+			(void *)&cmd_mirror_mask_dstpool,
+			(void *)&cmd_mirror_mask_poolid,
+			(void *)&cmd_mirror_mask_on,
+			NULL,
+		},
+};
+
+/* *** CONFIGURE VM MIRROR UDLINK/DOWNLINK RULE *** */
+struct cmd_set_mirror_link_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+	cmdline_fixed_string_t mirror;
+	uint8_t rule_id;
+	cmdline_fixed_string_t what;
+	cmdline_fixed_string_t dstpool;
+	uint8_t dstpool_id;
+	cmdline_fixed_string_t on;
+};
+
+cmdline_parse_token_string_t cmd_mirror_link_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_link_result,
+				 set, "set");
+cmdline_parse_token_string_t cmd_mirror_link_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_link_result,
+				port, "port");
+cmdline_parse_token_string_t cmd_mirror_link_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_mirror_link_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_mirror_link_mirror =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_link_result,
+				mirror, "mirror-rule");
+cmdline_parse_token_num_t cmd_mirror_link_ruleid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_mirror_link_result,
+			    rule_id, UINT8);
+cmdline_parse_token_string_t cmd_mirror_link_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_link_result,
+				what, "uplink-mirror#downlink-mirror");
+cmdline_parse_token_string_t cmd_mirror_link_dstpool =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_link_result,
+				dstpool, "dst-pool");
+cmdline_parse_token_num_t cmd_mirror_link_poolid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_mirror_link_result,
+				dstpool_id, UINT8);
+cmdline_parse_token_string_t cmd_mirror_link_on =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_link_result,
+				on, "on#off");
+
+static void
+cmd_set_mirror_link_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	int ret;
+	struct cmd_set_mirror_link_result *res = parsed_result;
+	struct rte_eth_vmdq_mirror_conf mr_conf;
+
+	memset(&mr_conf,0,sizeof(struct rte_eth_vmdq_mirror_conf));
+	if(!strcmp(res->what, "uplink-mirror")) {
+		mr_conf.rule_type_mask = ETH_VMDQ_UPLINK_MIRROR;
+	}else if(!strcmp(res->what, "downlink-mirror"))
+		mr_conf.rule_type_mask = ETH_VMDQ_DOWNLIN_MIRROR;
+
+	mr_conf.dst_pool = res->dstpool_id;
+
+	if(!strcmp(res->on, "on"))
+		ret = rte_eth_mirror_rule_set(res->port_id,&mr_conf,
+						res->rule_id, 1);
+	else
+		ret = rte_eth_mirror_rule_set(res->port_id,&mr_conf,
+						res->rule_id, 0);
+
+	/* check the return value and print it if is < 0 */
+	if(ret < 0)
+		printf("mirror rule add error: (%s)\n", strerror(-ret));
+
+}
+
+cmdline_parse_inst_t cmd_set_mirror_link = {
+		.f = cmd_set_mirror_link_parsed,
+		.data = NULL,
+		.help_str = "set port X mirror-rule Y uplink-mirror|"
+			"downlink-mirror dst-pool Z on|off",
+		.tokens = {
+			(void *)&cmd_mirror_link_set,
+			(void *)&cmd_mirror_link_port,
+			(void *)&cmd_mirror_link_portid,
+			(void *)&cmd_mirror_link_mirror,
+			(void *)&cmd_mirror_link_ruleid,
+			(void *)&cmd_mirror_link_what,
+			(void *)&cmd_mirror_link_dstpool,
+			(void *)&cmd_mirror_link_poolid,
+			(void *)&cmd_mirror_link_on,
+			NULL,
+		},
+};
+
+/* *** RESET VM MIRROR RULE *** */
+struct cmd_rm_mirror_rule_result {
+	cmdline_fixed_string_t reset;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+	cmdline_fixed_string_t mirror;
+	uint8_t rule_id;
+};
+
+cmdline_parse_token_string_t cmd_rm_mirror_rule_reset =
+	TOKEN_STRING_INITIALIZER(struct cmd_rm_mirror_rule_result,
+				 reset, "reset");
+cmdline_parse_token_string_t cmd_rm_mirror_rule_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_rm_mirror_rule_result,
+				port, "port");
+cmdline_parse_token_string_t cmd_rm_mirror_rule_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_rm_mirror_rule_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_rm_mirror_rule_mirror =
+	TOKEN_STRING_INITIALIZER(struct cmd_rm_mirror_rule_result,
+				mirror, "mirror-rule");
+cmdline_parse_token_num_t cmd_rm_mirror_rule_ruleid =
+	TOKEN_NUM_INITIALIZER(struct cmd_rm_mirror_rule_result,
+				rule_id, UINT8);
+
+static void
+cmd_reset_mirror_rule_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	int ret;
+	struct cmd_set_mirror_link_result *res = parsed_result;
+        /* check rule_id */
+	ret = rte_eth_mirror_rule_reset(res->port_id,res->rule_id);
+	if(ret < 0)
+		printf("mirror rule remove error: (%s)\n", strerror(-ret));
+}
+
+cmdline_parse_inst_t cmd_reset_mirror_rule = {
+		.f = cmd_reset_mirror_rule_parsed,
+		.data = NULL,
+		.help_str = "reset port X mirror-rule Y",
+		.tokens = {
+			(void *)&cmd_rm_mirror_rule_reset,
+			(void *)&cmd_rm_mirror_rule_port,
+			(void *)&cmd_rm_mirror_rule_portid,
+			(void *)&cmd_rm_mirror_rule_mirror,
+			(void *)&cmd_rm_mirror_rule_ruleid,
+			NULL,
+		},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -3833,6 +4568,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_promisc_mode_all,
 	(cmdline_parse_inst_t *)&cmd_set_allmulti_mode_one,
 	(cmdline_parse_inst_t *)&cmd_set_allmulti_mode_all,
+	(cmdline_parse_inst_t *)&cmd_set_flush_rx,
 	(cmdline_parse_inst_t *)&cmd_vlan_offload,
 	(cmdline_parse_inst_t *)&cmd_vlan_tpid,
 	(cmdline_parse_inst_t *)&cmd_rx_vlan_filter_all,
@@ -3874,6 +4610,15 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_burst,
 	(cmdline_parse_inst_t *)&cmd_config_thresh,
 	(cmdline_parse_inst_t *)&cmd_config_threshold,
+	(cmdline_parse_inst_t *)&cmd_set_vf_rxmode,
+	(cmdline_parse_inst_t *)&cmd_set_uc_hash_filter,
+	(cmdline_parse_inst_t *)&cmd_set_uc_all_hash_filter,
+	(cmdline_parse_inst_t *)&cmd_vf_mac_addr_filter ,
+	(cmdline_parse_inst_t *)&cmd_set_vf_traffic,
+	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
+	(cmdline_parse_inst_t *)&cmd_set_mirror_mask,
+	(cmdline_parse_inst_t *)&cmd_set_mirror_link,
+	(cmdline_parse_inst_t *)&cmd_reset_mirror_rule,
 	NULL,
 };
 

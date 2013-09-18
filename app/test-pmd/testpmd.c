@@ -243,6 +243,12 @@ uint16_t rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6; /* RSS IP by default. */
  */
 uint16_t port_topology = PORT_TOPOLOGY_PAIRED; /* Ports are paired by default */
 
+
+/*
+ * Avoids to flush all the RX streams before starts forwarding.
+ */
+uint8_t no_flush_rx = 0; /* flush by default */
+
 /*
  * Ethernet device configuration.
  */
@@ -776,20 +782,22 @@ fwd_stream_stats_display(streamid_t stream_id)
 }
 
 static void
-flush_all_rx_queues(void)
+flush_fwd_rx_queues(void)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	portid_t  rxp;
+	portid_t port_id;
 	queueid_t rxq;
 	uint16_t  nb_rx;
 	uint16_t  i;
 	uint8_t   j;
 
 	for (j = 0; j < 2; j++) {
-		for (rxp = 0; rxp < nb_ports; rxp++) {
+		for (rxp = 0; rxp < cur_fwd_config.nb_fwd_ports; rxp++) {
 			for (rxq = 0; rxq < nb_rxq; rxq++) {
+				port_id = fwd_ports_ids[rxp];
 				do {
-					nb_rx = rte_eth_rx_burst(rxp, rxq,
+					nb_rx = rte_eth_rx_burst(port_id, rxq,
 						pkts_burst, MAX_PKT_BURST);
 					for (i = 0; i < nb_rx; i++)
 						rte_pktmbuf_free(pkts_burst[i]);
@@ -892,12 +900,27 @@ start_packet_forwarding(int with_tx_first)
 		printf("Packet forwarding already started\n");
 		return;
 	}
-	if((dcb_test) && (nb_fwd_lcores == 1)) {
-		printf("In DCB mode,the nb forwarding cores should be larger than 1.\n");
-		return;
+	if(dcb_test) {
+		for (i = 0; i < nb_fwd_ports; i++) {
+			pt_id = fwd_ports_ids[i];
+			port = &ports[pt_id];
+			if (!port->dcb_flag) {
+				printf("In DCB mode, all forwarding ports must "
+                                       "be configured in this mode.\n");
+				return;
+			}
+		}
+		if (nb_fwd_lcores == 1) {
+			printf("In DCB mode,the nb forwarding cores "
+                               "should be larger than 1.\n");
+			return;
+		}
 	}
 	test_done = 0;
-	flush_all_rx_queues();
+
+	if(!no_flush_rx)
+		flush_fwd_rx_queues();
+
 	fwd_config_setup();
 	rxtx_config_display();
 
@@ -1030,7 +1053,7 @@ stop_packet_forwarding(void)
 	total_rx_dropped = 0;
 	total_tx_dropped = 0;
 	total_rx_nombuf  = 0;
-	for (i = 0; i < ((cur_fwd_config.nb_fwd_ports + 1) & ~0x1); i++) {
+	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
 		pt_id = fwd_ports_ids[i];
 
 		port = &ports[pt_id];
@@ -1646,6 +1669,8 @@ init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf)
  
 	rte_eth_macaddr_get(pid, &rte_port->eth_addr);
 	map_port_queue_stats_mapping_registers(pid, rte_port);
+
+	rte_port->dcb_flag = 1;
  
 	return 0;
 }

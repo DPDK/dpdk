@@ -270,6 +270,8 @@ port_infos_display(portid_t port_id)
 	       rte_eth_allmulticast_get(port_id) ? "enabled" : "disabled");
 	printf("Maximum number of MAC addresses: %u\n",
 	       (unsigned int)(port->dev_info.max_mac_addrs));
+	printf("Maximum number of MAC addresses of hash filtering: %u\n",
+	       (unsigned int)(port->dev_info.max_hash_mac_addrs));
 
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
 	if (vlan_offload >= 0){
@@ -893,7 +895,7 @@ dcb_rxq_2_txq_mapping(queueid_t rxq, queueid_t *txq)
  *    - TxPk = (RxPi + 1) if RxPi is even, (RxPi - 1) if RxPi is odd
  *    - TxQl = RxQj
  * In non-VT mode,
- *    - TxPk = (RxPi + 1) if RxPi is even, (RxPi - 1) if RxPi is odd 
+ *    - TxPk = (RxPi + 1) if RxPi is even, (RxPi - 1) if RxPi is odd  
  *    There is a mapping of RxQj to TxQl to be required,and the mapping was implemented
  *    in dcb_rxq_2_txq_mapping function.
  */
@@ -905,7 +907,7 @@ dcb_fwd_config_setup(void)
 	queueid_t  rxq;
 	queueid_t  nb_q;
 	lcoreid_t  lc_id;
-	uint8_t sm_id;
+	uint16_t sm_id;
 
 	nb_q = nb_rxq;
 
@@ -1096,7 +1098,7 @@ set_fwd_ports_list(unsigned int *portlist, unsigned int nb_pt)
 	for (i = 0; i < nb_pt; i++) {
 		port_id = (portid_t) portlist[i];
 		if (port_id >= nb_ports) {
-			printf("Invalid port id %u > %u\n",
+			printf("Invalid port id %u >= %u\n",
 			       (unsigned int) port_id,
 			       (unsigned int) nb_ports);
 			return;
@@ -1589,3 +1591,42 @@ fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks)
 	printf("rte_eth_dev_set_masks_filter for port_id=%d failed "
 	       "diag=%d\n", port_id, diag);
 }
+
+void 
+set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
+{
+	int diag;
+	
+	if (port_id_is_invalid(port_id))
+		return;
+	if (is_rx)
+		diag = rte_eth_dev_set_vf_rx(port_id,vf,on);
+	else
+		diag = rte_eth_dev_set_vf_tx(port_id,vf,on);
+	if (diag == 0)
+		return;
+	if(is_rx)	
+		printf("rte_eth_dev_set_vf_rx for port_id=%d failed "
+	       		"diag=%d\n", port_id, diag);
+	else
+		printf("rte_eth_dev_set_vf_tx for port_id=%d failed "
+	       		"diag=%d\n", port_id, diag);
+		
+}
+
+void
+set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id, uint64_t vf_mask, uint8_t on)
+{
+	int diag;
+
+	if (port_id_is_invalid(port_id))
+		return;
+	if (vlan_id_is_invalid(vlan_id))
+		return;
+	diag = rte_eth_dev_set_vf_vlan_filter(port_id, vlan_id, vf_mask, on);
+	if (diag == 0)
+		return;
+	printf("rte_eth_dev_set_vf_vlan_filter for port_id=%d failed "
+	       "diag=%d\n", port_id, diag);
+}
+

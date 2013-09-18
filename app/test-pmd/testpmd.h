@@ -149,6 +149,7 @@ struct rte_port {
 	uint8_t                 need_reconfig;  /**< need reconfiguring port or not */
 	uint8_t                 need_reconfig_queues; /**< need reconfiguring queues or not */
 	uint8_t                 rss_flag;   /**< enable rss or not */
+	uint8_t			dcb_flag;   /**< enable dcb */
 	struct rte_eth_rxconf   rx_conf;    /**< rx configuration */
 	struct rte_eth_txconf   tx_conf;    /**< tx configuration */
 };
@@ -269,6 +270,7 @@ extern uint16_t verbose_level; /**< Drives messages being displayed, if any. */
 extern uint8_t  interactive;
 extern uint8_t  numa_support; /**< set by "--numa" parameter */
 extern uint16_t port_topology; /**< set by "--port-topology" parameter */
+extern uint8_t no_flush_rx; /**<set by "--no-flush-rx" parameter */
 
 #define MAX_SOCKET 2 /*MAX SOCKET:currently, it is 2 */
 
@@ -506,6 +508,9 @@ void fdir_remove_perfect_filter(portid_t port_id, uint16_t soft_id,
 				struct rte_fdir_filter *fdir_filter);
 void fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks);
 void port_rss_reta_info(portid_t port_id, struct rte_eth_rss_reta *reta_conf);
+void set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on);
+void set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id, 
+		uint64_t vf_mask, uint8_t on);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the
