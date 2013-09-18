@@ -96,7 +96,8 @@ rte_exit(int exit_code, const char *format, ...)
 	rte_log_set_history(0);
 
 	if (exit_code != 0)
-		RTE_LOG(CRIT, EAL, "Error - exiting with code: %d\nCause: ", exit_code);
+		RTE_LOG(CRIT, EAL, "Error - exiting with code: %d\n"
+				"  Cause: ", exit_code);
 
 	va_start(ap, format);
 	rte_vlog(RTE_LOG_CRIT, RTE_LOGTYPE_EAL, format, ap);

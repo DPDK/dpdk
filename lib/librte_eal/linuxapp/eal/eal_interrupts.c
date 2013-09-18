@@ -373,15 +373,13 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 		 */
 		bytes_read = read(events[n].data.fd, &buf, bytes_read);
 
-		if (bytes_read < 0) {
-			RTE_LOG(ERR, EAL, "Error reading from file descriptor"
-				" %d, error: %d\n", events[n].data.fd, errno);
-		}
-		else if (bytes_read == 0) {
-			RTE_LOG(ERR, EAL,
-				"Read nothing from file descriptor %d.\n",
-							events[n].data.fd);
-		}
+		if (bytes_read < 0)
+			RTE_LOG(ERR, EAL, "Error reading from file "
+				"descriptor %d: %s\n", events[n].data.fd,
+							strerror(errno));
+		else if (bytes_read == 0)
+			RTE_LOG(ERR, EAL, "Read nothing from file "
+				"descriptor %d\n", events[n].data.fd);
 
 		/* grab a lock, again to call callbacks and update status. */
 		rte_spinlock_lock(&intr_lock);

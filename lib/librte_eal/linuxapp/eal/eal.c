@@ -337,7 +337,8 @@ eal_usage(const char *prgname)
 	       "  --"OPT_NO_HUGE"  : use malloc instead of hugetlbfs\n"
 	       "  --"OPT_NO_PCI"   : disable pci\n"
 	       "  --"OPT_NO_HPET"  : disable hpet\n"
-	       "  --"OPT_NO_SHCONF": no shared config (mmap'd files)\n\n",
+	       "  --"OPT_NO_SHCONF": no shared config (mmap'd files)\n"
+	       "\n",
 	       prgname);
 	/* Allow the application to print its usage message too if hook is set */
 	if ( rte_application_usage_hook ) {
@@ -542,7 +543,6 @@ eal_parse_blacklist_opt(const char *optarg, size_t idx)
 	idx += 1;
 	return (idx);
 }
-
 
 /* Parse the argument given in the command line of the application */
 static int
