@@ -190,9 +190,18 @@ def timer_autotest(child, test_name):
 	elif index == 2:
 		return -1, "Fail [Timeout]"
 
-	index = child.expect(["Start timer basic tests \(20 seconds\)",
+	index = child.expect(["Start timer stress tests 2",
 		"Test Failed",
 		pexpect.TIMEOUT], timeout = 40)
+
+	if index == 1:
+		return -1, "Fail"
+	elif index == 2:
+		return -1, "Fail [Timeout]"
+
+	index = child.expect(["Start timer basic tests \(20 seconds\)",
+		"Test Failed",
+		pexpect.TIMEOUT], timeout = 20)
 
 	if index == 1:
 		return -1, "Fail"

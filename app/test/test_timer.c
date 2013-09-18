@@ -35,7 +35,7 @@
  * Timer
  * =====
  *
- * #. Stress tests.
+ * #. Stress test 1.
  *
  *    The objective of the timer stress tests is to check that there are no
  *    race conditions in list and status management. This test launches,
@@ -53,6 +53,23 @@
  *      on another core (same probability), or stopped (same
  *      probability).
  *
+ * # Stress test 2.
+ *
+ *    The objective of this test is similar to the first in that it attempts
+ *    to find if there are any race conditions in the timer library. However,
+ *    it is less complex in terms of operations performed and duration, as it
+ *    is designed to have a predictable outcome that can be tested.
+ *
+ *    - A set of timers is initialized for use by the test
+ *    - All cores then simultaneously are set to schedule all the timers at
+ *      the same time, so conflicts should occur.
+ *    - Then there is a delay while we wait for the timers to expire
+ *    - Then the master lcore calls timer_manage() and we check that all
+ *      timers have had their callbacks called exactly once - no more no less.
+ *    - Then we repeat the process, except after setting up the timers, we have
+ *      all cores randomly reschedule them.
+ *    - Again we check that the expected number of callbacks has occurred when
+ *      we call timer-manage.
  *
  * #. Basic test.
  *
@@ -119,6 +136,7 @@
 #include <rte_atomic.h>
 #include <rte_timer.h>
 #include <rte_random.h>
+#include <rte_malloc.h>
 
 #include "test.h"
 
@@ -190,8 +208,8 @@ timer_stress_main_loop(__attribute__((unused)) void *arg)
 		rte_timer_manage();
 
 		/* simulate the processing of a packet
-		 * (3 us = 6000 cycles at 2 Ghz) */
-		rte_delay_us(3);
+		 * (1 us = 2000 cycles at 2 Ghz) */
+		rte_delay_us(1);
 
 		/* randomly stop or reset timer */
 		r = rte_rand();
@@ -210,6 +228,99 @@ timer_stress_main_loop(__attribute__((unused)) void *arg)
 
 	lcore_id = rte_lcore_id();
 	RTE_LOG(INFO, TESTTIMER, "core %u finished\n", lcore_id);
+
+	return 0;
+}
+
+static volatile int cb_count = 0;
+
+/* callback for second stress test. will only be called
+ * on master lcore */
+static void
+timer_stress2_cb(struct rte_timer *tim __rte_unused, void *arg __rte_unused)
+{
+	cb_count++;
+}
+
+#define NB_STRESS2_TIMERS 8192
+
+static int
+timer_stress2_main_loop(__attribute__((unused)) void *arg)
+{
+	static struct rte_timer *timers;
+	int i;
+	static volatile int ready = 0;
+	uint64_t delay = rte_get_timer_hz() / 4;
+	unsigned lcore_id = rte_lcore_id();
+
+	if (lcore_id == rte_get_master_lcore()) {
+		timers = rte_malloc(NULL, sizeof(*timers) * NB_STRESS2_TIMERS, 0);
+		if (timers == NULL) {
+			printf("Test Failed\n");
+			printf("- Cannot allocate memory for timers\n" );
+			return -1;
+		}
+		for (i = 0; i < NB_STRESS2_TIMERS; i++)
+			rte_timer_init(&timers[i]);
+		ready = 1;
+	} else {
+		while (!ready)
+			rte_pause();
+	}
+
+	/* have all cores schedule all timers on master lcore */
+	for (i = 0; i < NB_STRESS2_TIMERS; i++)
+		rte_timer_reset(&timers[i], delay, SINGLE, rte_get_master_lcore(),
+				timer_stress2_cb, NULL);
+
+	ready = 0;
+	rte_delay_ms(500);
+
+	/* now check that we get the right number of callbacks */
+	if (lcore_id == rte_get_master_lcore()) {
+		rte_timer_manage();
+		if (cb_count != NB_STRESS2_TIMERS) {
+			printf("Test Failed\n");
+			printf("- Stress test 2, part 1 failed\n");
+			printf("- Expected %d callbacks, got %d\n", NB_STRESS2_TIMERS,
+					cb_count);
+			return -1;
+		}
+		ready  = 1;
+	} else {
+		while (!ready)
+			rte_pause();
+	}
+
+	/* now test again, just stop and restart timers at random after init*/
+	for (i = 0; i < NB_STRESS2_TIMERS; i++)
+		rte_timer_reset(&timers[i], delay, SINGLE, rte_get_master_lcore(),
+				timer_stress2_cb, NULL);
+	cb_count = 0;
+
+	/* pick random timer to reset, stopping them first half the time */
+	for (i = 0; i < 100000; i++) {
+		int r = rand() % NB_STRESS2_TIMERS;
+		if (i % 2)
+			rte_timer_stop(&timers[r]);
+		rte_timer_reset(&timers[r], delay, SINGLE, rte_get_master_lcore(),
+				timer_stress2_cb, NULL);
+	}
+
+	rte_delay_ms(500);
+
+	/* now check that we get the right number of callbacks */
+	if (lcore_id == rte_get_master_lcore()) {
+		rte_timer_manage();
+		if (cb_count != NB_STRESS2_TIMERS) {
+			printf("Test Failed\n");
+			printf("- Stress test 2, part 2 failed\n");
+			printf("- Expected %d callbacks, got %d\n", NB_STRESS2_TIMERS,
+					cb_count);
+			return -1;
+		}
+		printf("Test OK\n");
+	}
 
 	return 0;
 }
@@ -383,6 +494,11 @@ test_timer(void)
 
 	/* stop timer 0 used for stress test */
 	rte_timer_stop_sync(&mytiminfo[0].tim);
+
+	/* run a second, slightly different set of stress tests */
+	printf("Start timer stress tests 2\n");
+	rte_eal_mp_remote_launch(timer_stress2_main_loop, NULL, CALL_MASTER);
+	rte_eal_mp_wait_lcore();
 
 	/* calculate the "end of test" time */
 	cur_time = rte_get_timer_cycles();
