@@ -1037,7 +1037,8 @@ rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info)
 	FUNC_PTR_OR_RET(*dev->dev_ops->dev_infos_get);
 	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
 	dev_info->pci_dev = dev->pci_dev;
-	dev_info->driver_name = dev->driver->pci_drv.name;
+	if (dev->driver)
+		dev_info->driver_name = dev->driver->pci_drv.name;
 }
 
 void
