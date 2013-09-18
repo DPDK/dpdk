@@ -94,6 +94,7 @@ do_recursive_call(void)
 		if (strcmp(actions[i].env_var, recursive_call) == 0)
 			return (actions[i].action_fn)();
 	}
+	printf("ERROR - missing action to take for %s\n", recursive_call);
 	return -1;
 }
 #endif

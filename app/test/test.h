@@ -43,6 +43,8 @@
 
 extern const char *prgname;
 
+#include <cmdline_parse.h>
+
 extern cmdline_parse_ctx_t main_ctx[];
 
 int main(int argc, char **argv);
