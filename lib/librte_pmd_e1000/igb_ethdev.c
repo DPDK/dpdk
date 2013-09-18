@@ -726,8 +726,8 @@ eth_igb_start(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.intr_conf.lsc != 0)
 		ret = eth_igb_lsc_interrupt_setup(dev);
 
-        /* resume enabled intr since hw reset */
-        igb_intr_enable(dev);
+	/* resume enabled intr since hw reset */
+	igb_intr_enable(dev);
 
 	PMD_INIT_LOG(DEBUG, "<<");
 

@@ -186,5 +186,4 @@ uint16_t eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 uint16_t eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
 
-
 #endif /* _E1000_ETHDEV_H_ */
