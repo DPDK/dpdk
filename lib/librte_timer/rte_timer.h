@@ -65,7 +65,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <sys/queue.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -117,15 +116,17 @@ struct rte_timer;
  */
 typedef void (rte_timer_cb_t)(struct rte_timer *, void *);
 
+#define MAX_SKIPLIST_DEPTH 10
+
 /**
  * A structure describing a timer in RTE.
  */
 struct rte_timer
 {
-	LIST_ENTRY(rte_timer) next;    /**< Next and prev in list. */
+	uint64_t expire;       /**< Time when timer expire. */
+	struct rte_timer *sl_next[MAX_SKIPLIST_DEPTH];
 	volatile union rte_timer_status status; /**< Status of timer. */
 	uint64_t period;       /**< Period of timer (0 if not periodic). */
-	uint64_t expire;       /**< Time when timer expire. */
 	rte_timer_cb_t *f;     /**< Callback function. */
 	void *arg;             /**< Argument to callback function. */
 };
@@ -135,10 +136,10 @@ struct rte_timer
 /**
  * A C++ static initializer for a timer structure.
  */
-#define RTE_TIMER_INITIALIZER {                 \
-	{0, 0},                                 \
-	{{RTE_TIMER_STOP, RTE_TIMER_NO_OWNER}}, \
+#define RTE_TIMER_INITIALIZER {             \
 	0,                                      \
+	{NULL},                                 \
+	{{RTE_TIMER_STOP, RTE_TIMER_NO_OWNER}}, \
 	0,                                      \
 	NULL,                                   \
 	NULL,                                   \

@@ -34,7 +34,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <sys/queue.h>
 #include <inttypes.h>
 
 #include <rte_atomic.h>
@@ -50,20 +49,22 @@
 #include <rte_lcore.h>
 #include <rte_branch_prediction.h>
 #include <rte_spinlock.h>
+#include <rte_random.h>
 
 #include "rte_timer.h"
 
 LIST_HEAD(rte_timer_list, rte_timer);
 
 struct priv_timer {
-	struct rte_timer_list pending;  /**< list of pending timers */
-	struct rte_timer_list expired;  /**< list of expired timers */
-	struct rte_timer_list done;     /**< list of done timers */
+	struct rte_timer pending_head;  /**< dummy timer instance to head up list */
 	rte_spinlock_t list_lock;       /**< lock to protect list access */
 
 	/** per-core variable that true if a timer was updated on this
 	 *  core since last reset of the variable */
 	int updated;
+
+	/** track the current depth of the skiplist */
+	unsigned curr_skiplist_depth;
 
 	unsigned prev_lcore;              /**< used for lcore round robin */
 
@@ -86,25 +87,16 @@ static struct priv_timer priv_timer[RTE_MAX_LCORE];
 #define __TIMER_STAT_ADD(name, n) do {} while(0)
 #endif
 
-/* this macro allow to modify var while browsing the list */
-#define LIST_FOREACH_SAFE(var, var2, head, field)		       \
-	for ((var) = ((head)->lh_first),			       \
-		     (var2) = ((var) ? ((var)->field.le_next) : NULL); \
-	     (var);						       \
-	     (var) = (var2),					       \
-		     (var2) = ((var) ? ((var)->field.le_next) : NULL))
-
-
 /* Init the timer library. */
 void
 rte_timer_subsystem_init(void)
 {
 	unsigned lcore_id;
 
+	/* since priv_timer is static, it's zeroed by default, so only init some
+	 * fields.
+	 */
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id ++) {
-		LIST_INIT(&priv_timer[lcore_id].pending);
-		LIST_INIT(&priv_timer[lcore_id].expired);
-		LIST_INIT(&priv_timer[lcore_id].done);
 		rte_spinlock_init(&priv_timer[lcore_id].list_lock);
 		priv_timer[lcore_id].prev_lcore = lcore_id;
 	}
@@ -137,7 +129,7 @@ timer_set_config_state(struct rte_timer *tim,
 	lcore_id = rte_lcore_id();
 
 	/* wait that the timer is in correct status before update,
-	 * and mark it as beeing configured */
+	 * and mark it as being configured */
 	while (success == 0) {
 		prev_status.u32 = tim->status.u32;
 
@@ -146,12 +138,12 @@ timer_set_config_state(struct rte_timer *tim,
 		    (unsigned)prev_status.owner != lcore_id)
 			return -1;
 
-		/* timer is beeing configured on another core */
+		/* timer is being configured on another core */
 		if (prev_status.state == RTE_TIMER_CONFIG)
 			return -1;
 
 		/* here, we know that timer is stopped or pending,
-		 * mark it atomically as beeing configured */
+		 * mark it atomically as being configured */
 		status.state = RTE_TIMER_CONFIG;
 		status.owner = (int16_t)lcore_id;
 		success = rte_atomic32_cmpset(&tim->status.u32,
@@ -195,6 +187,83 @@ timer_set_running_state(struct rte_timer *tim)
 }
 
 /*
+ * Return a skiplist level for a new entry.
+ * This probabalistically gives a level with p=1/4 that an entry at level n
+ * will also appear at level n+1.
+ */
+static uint32_t
+timer_get_skiplist_level(unsigned curr_depth)
+{
+#ifdef RTE_LIBRTE_TIMER_DEBUG
+	static uint32_t i, count = 0;
+	static uint32_t levels[MAX_SKIPLIST_DEPTH] = {0};
+#endif
+
+	/* probability value is 1/4, i.e. all at level 0, 1 in 4 is at level 1,
+	 * 1 in 16 at level 2, 1 in 64 at level 3, etc. Calculated using lowest
+	 * bit position of a (pseudo)random number.
+	 */
+	uint32_t rand = rte_rand() & (UINT32_MAX - 1);
+	uint32_t level = rand == 0 ? MAX_SKIPLIST_DEPTH : (rte_bsf32(rand)-1) / 2;
+
+	/* limit the levels used to one above our current level, so we don't,
+	 * for instance, have a level 0 and a level 7 without anything between
+	 */
+	if (level > curr_depth)
+		level = curr_depth;
+	if (level >= MAX_SKIPLIST_DEPTH)
+		level = MAX_SKIPLIST_DEPTH-1;
+#ifdef RTE_LIBRTE_TIMER_DEBUG
+	count ++;
+	levels[level]++;
+	if (count % 10000 == 0)
+		for (i = 0; i < MAX_SKIPLIST_DEPTH; i++)
+			printf("Level %u: %u\n", (unsigned)i, (unsigned)levels[i]);
+#endif
+	return level;
+}
+
+/*
+ * For a given time value, get the entries at each level which
+ * are <= that time value.
+ */
+static void
+timer_get_prev_entries(uint64_t time_val, unsigned tim_lcore,
+		struct rte_timer **prev)
+{
+	unsigned lvl = priv_timer[tim_lcore].curr_skiplist_depth;
+	prev[lvl] = &priv_timer[tim_lcore].pending_head;
+	while(lvl != 0) {
+		lvl--;
+		prev[lvl] = prev[lvl+1];
+		while (prev[lvl]->sl_next[lvl] &&
+				prev[lvl]->sl_next[lvl]->expire <= time_val)
+			prev[lvl] = prev[lvl]->sl_next[lvl];
+	}
+}
+
+/*
+ * Given a timer node in the skiplist, find the previous entries for it at
+ * all skiplist levels.
+ */
+static void
+timer_get_prev_entries_for_node(struct rte_timer *tim, unsigned tim_lcore,
+		struct rte_timer **prev)
+{
+	int i;
+	/* to get a specific entry in the list, look for just lower than the time
+	 * values, and then increment on each level individually if necessary
+	 */
+	timer_get_prev_entries(tim->expire - 1, tim_lcore, prev);
+	for (i = priv_timer[tim_lcore].curr_skiplist_depth - 1; i >= 0; i--) {
+		while (prev[i]->sl_next[i] != NULL &&
+				prev[i]->sl_next[i] != tim &&
+				prev[i]->sl_next[i]->expire <= tim->expire)
+			prev[i] = prev[i]->sl_next[i];
+	}
+}
+
+/*
  * add in list, lock if needed
  * timer must be in config state
  * timer must not be in a list
@@ -202,9 +271,9 @@ timer_set_running_state(struct rte_timer *tim)
 static void
 timer_add(struct rte_timer *tim, unsigned tim_lcore, int local_is_locked)
 {
-	uint64_t cur_time = rte_get_timer_cycles();
 	unsigned lcore_id = rte_lcore_id();
-	struct rte_timer *t, *t_prev;
+	unsigned lvl;
+	struct rte_timer *prev[MAX_SKIPLIST_DEPTH+1];
 
 	/* if timer needs to be scheduled on another core, we need to
 	 * lock the list; if it is on local core, we need to lock if
@@ -212,30 +281,29 @@ timer_add(struct rte_timer *tim, unsigned tim_lcore, int local_is_locked)
 	if (tim_lcore != lcore_id || !local_is_locked)
 		rte_spinlock_lock(&priv_timer[tim_lcore].list_lock);
 
-	t = LIST_FIRST(&priv_timer[tim_lcore].pending);
+	/* find where exactly this element goes in the list of elements
+	 * for each depth. */
+	timer_get_prev_entries(tim->expire, tim_lcore, prev);
 
-	/* list is empty or 'tim' will expire before 't' */
-	if (t == NULL || ((int64_t)(tim->expire - cur_time) <
-			  (int64_t)(t->expire - cur_time))) {
-		LIST_INSERT_HEAD(&priv_timer[tim_lcore].pending, tim, next);
+	/* now assign it a new level and add at that level */
+	const unsigned tim_level = timer_get_skiplist_level(
+			priv_timer[tim_lcore].curr_skiplist_depth);
+	if (tim_level == priv_timer[tim_lcore].curr_skiplist_depth)
+		priv_timer[tim_lcore].curr_skiplist_depth++;
+
+	lvl = tim_level;
+	while (lvl > 0) {
+		tim->sl_next[lvl] = prev[lvl]->sl_next[lvl];
+		prev[lvl]->sl_next[lvl] = tim;
+		lvl--;
 	}
-	else {
-		t_prev = t;
+	tim->sl_next[0] = prev[0]->sl_next[0];
+	prev[0]->sl_next[0] = tim;
 
-		/* find an element that will expire after 'tim' */
-		LIST_FOREACH(t, &priv_timer[tim_lcore].pending, next) {
-			if ((int64_t)(tim->expire - cur_time) <
-			    (int64_t)(t->expire - cur_time)) {
-				LIST_INSERT_BEFORE(t, tim, next);
-				break;
-			}
-			t_prev = t;
-		}
-
-		/* not found, insert at the end of the list */
-		if (t == NULL)
-			LIST_INSERT_AFTER(t_prev, tim, next);
-	}
+	/* save the lowest list entry into the expire field of the dummy hdr
+	 * NOTE: this is not atomic on 32-bit*/
+	priv_timer[tim_lcore].pending_head.expire = priv_timer[tim_lcore].\
+			pending_head.sl_next[0]->expire;
 
 	if (tim_lcore != lcore_id || !local_is_locked)
 		rte_spinlock_unlock(&priv_timer[tim_lcore].list_lock);
@@ -247,9 +315,13 @@ timer_add(struct rte_timer *tim, unsigned tim_lcore, int local_is_locked)
  * timer must be in a list
  */
 static void
-timer_del(struct rte_timer *tim, unsigned prev_owner, int local_is_locked)
+timer_del(struct rte_timer *tim, union rte_timer_status prev_status,
+		int local_is_locked)
 {
 	unsigned lcore_id = rte_lcore_id();
+	unsigned prev_owner = prev_status.owner;
+	int i;
+	struct rte_timer *prev[MAX_SKIPLIST_DEPTH+1];
 
 	/* if timer needs is pending another core, we need to lock the
 	 * list; if it is on local core, we need to lock if we are not
@@ -257,7 +329,25 @@ timer_del(struct rte_timer *tim, unsigned prev_owner, int local_is_locked)
 	if (prev_owner != lcore_id || !local_is_locked)
 		rte_spinlock_lock(&priv_timer[prev_owner].list_lock);
 
-	LIST_REMOVE(tim, next);
+	/* save the lowest list entry into the expire field of the dummy hdr.
+	 * NOTE: this is not atomic on 32-bit */
+	if (tim == priv_timer[prev_owner].pending_head.sl_next[0])
+		priv_timer[prev_owner].pending_head.expire =
+				((tim->sl_next[0] == NULL) ? 0 : tim->sl_next[0]->expire);
+
+	/* adjust pointers from previous entries to point past this */
+	timer_get_prev_entries_for_node(tim, prev_owner, prev);
+	for (i = priv_timer[prev_owner].curr_skiplist_depth - 1; i >= 0; i--) {
+		if (prev[i]->sl_next[i] == tim)
+			prev[i]->sl_next[i] = tim->sl_next[i];
+	}
+
+	/* in case we deleted last entry at a level, adjust down max level */
+	for (i = priv_timer[prev_owner].curr_skiplist_depth - 1; i >= 0; i--)
+		if (priv_timer[prev_owner].pending_head.sl_next[i] == NULL)
+			priv_timer[prev_owner].curr_skiplist_depth --;
+		else
+			break;
 
 	if (prev_owner != lcore_id || !local_is_locked)
 		rte_spinlock_unlock(&priv_timer[prev_owner].list_lock);
@@ -282,7 +372,7 @@ __rte_timer_reset(struct rte_timer *tim, uint64_t expire,
 	}
 
 	/* wait that the timer is in correct status before update,
-	 * and mark it as beeing configured */
+	 * and mark it as being configured */
 	ret = timer_set_config_state(tim, &prev_status);
 	if (ret < 0)
 		return -1;
@@ -291,9 +381,8 @@ __rte_timer_reset(struct rte_timer *tim, uint64_t expire,
 	priv_timer[lcore_id].updated = 1;
 
 	/* remove it from list */
-	if (prev_status.state == RTE_TIMER_PENDING ||
-	    prev_status.state == RTE_TIMER_RUNNING) {
-		timer_del(tim, prev_status.owner, local_is_locked);
+	if (prev_status.state == RTE_TIMER_PENDING) {
+		timer_del(tim, prev_status, local_is_locked);
 		__TIMER_STAT_ADD(pending, -1);
 	}
 
@@ -358,7 +447,7 @@ rte_timer_stop(struct rte_timer *tim)
 	int ret;
 
 	/* wait that the timer is in correct status before update,
-	 * and mark it as beeing configured */
+	 * and mark it as being configured */
 	ret = timer_set_config_state(tim, &prev_status);
 	if (ret < 0)
 		return -1;
@@ -367,9 +456,8 @@ rte_timer_stop(struct rte_timer *tim)
 	priv_timer[lcore_id].updated = 1;
 
 	/* remove it from list */
-	if (prev_status.state == RTE_TIMER_PENDING ||
-	    prev_status.state == RTE_TIMER_RUNNING) {
-		timer_del(tim, prev_status.owner, 0);
+	if (prev_status.state == RTE_TIMER_PENDING) {
+		timer_del(tim, prev_status, 0);
 		__TIMER_STAT_ADD(pending, -1);
 	}
 
@@ -401,36 +489,51 @@ rte_timer_pending(struct rte_timer *tim)
 void rte_timer_manage(void)
 {
 	union rte_timer_status status;
-	struct rte_timer *tim, *tim2;
+	struct rte_timer *tim, *next_tim;
 	unsigned lcore_id = rte_lcore_id();
+	struct rte_timer *prev[MAX_SKIPLIST_DEPTH + 1];
 	uint64_t cur_time;
-	int ret;
+	int i, ret;
 
 	__TIMER_STAT_ADD(manage, 1);
 	/* optimize for the case where per-cpu list is empty */
-	if (LIST_EMPTY(&priv_timer[lcore_id].pending))
+	if (priv_timer[lcore_id].pending_head.sl_next[0] == NULL)
 		return;
 	cur_time = rte_get_timer_cycles();
+
+#ifdef RTE_ARCH_X86_64
+	/* on 64-bit the value cached in the pending_head.expired will be updated
+	 * atomically, so we can consult that for a quick check here outside the
+	 * lock */
+	if (likely(priv_timer[lcore_id].pending_head.expire > cur_time))
+		return;
+#endif
 
 	/* browse ordered list, add expired timers in 'expired' list */
 	rte_spinlock_lock(&priv_timer[lcore_id].list_lock);
 
-	LIST_FOREACH_SAFE(tim, tim2, &priv_timer[lcore_id].pending, next) {
-		if ((int64_t)(cur_time - tim->expire) < 0)
-			break;
+	/* if nothing to do just unlock and return */
+	if (priv_timer[lcore_id].pending_head.sl_next[0] == NULL ||
+			priv_timer[lcore_id].pending_head.sl_next[0]->expire > cur_time)
+		goto done;
 
-		LIST_REMOVE(tim, next);
-		LIST_INSERT_HEAD(&priv_timer[lcore_id].expired, tim, next);
+	/* save start of list of expired timers */
+	tim = priv_timer[lcore_id].pending_head.sl_next[0];
+
+	/* break the existing list at current time point */
+	timer_get_prev_entries(cur_time, lcore_id, prev);
+	for (i = priv_timer[lcore_id].curr_skiplist_depth -1; i >= 0; i--) {
+		priv_timer[lcore_id].pending_head.sl_next[i] = prev[i]->sl_next[i];
+		if (prev[i]->sl_next[i] == NULL)
+			priv_timer[lcore_id].curr_skiplist_depth--;
+		prev[i] ->sl_next[i] = NULL;
 	}
 
+	/* now scan expired list and call callbacks */
+	for ( ; tim != NULL; tim = next_tim) {
+		next_tim = tim->sl_next[0];
 
-	/* for each timer of 'expired' list, check state and execute callback */
-	while ((tim = LIST_FIRST(&priv_timer[lcore_id].expired)) != NULL) {
 		ret = timer_set_running_state(tim);
-
-		/* remove from expired list, and add it in done list */
-		LIST_REMOVE(tim, next);
-		LIST_INSERT_HEAD(&priv_timer[lcore_id].done, tim, next);
 
 		/* this timer was not pending, continue */
 		if (ret < 0)
@@ -452,7 +555,6 @@ void rte_timer_manage(void)
 
 		if (tim->period == 0) {
 			/* remove from done list and mark timer as stopped */
-			LIST_REMOVE(tim, next);
 			__TIMER_STAT_ADD(pending, -1);
 			status.state = RTE_TIMER_STOP;
 			status.owner = RTE_TIMER_NO_OWNER;
@@ -460,26 +562,21 @@ void rte_timer_manage(void)
 			tim->status.u32 = status.u32;
 		}
 		else {
-			/* keep it in done list and mark timer as pending */
+			/* keep it in list and mark timer as pending */
 			status.state = RTE_TIMER_PENDING;
 			status.owner = (int16_t)lcore_id;
 			rte_wmb();
 			tim->status.u32 = status.u32;
+			__rte_timer_reset(tim, cur_time + tim->period,
+					tim->period, lcore_id, tim->f, tim->arg, 1);
 		}
 	}
 
-	/* finally, browse done list, some timer may have to be
-	 * rescheduled automatically */
-	LIST_FOREACH_SAFE(tim, tim2, &priv_timer[lcore_id].done, next) {
-
-		/* reset may fail if timer is beeing modified, in this
-		 * case the timer will remain in 'done' list until the
-		 * core that is modifying it remove it */
-		__rte_timer_reset(tim, cur_time + tim->period,
-				  tim->period, lcore_id, tim->f,
-				  tim->arg, 1);
-	}
-
+	/* update the next to expire timer value */
+	priv_timer[lcore_id].pending_head.expire =
+			(priv_timer[lcore_id].pending_head.sl_next[0] == NULL) ? 0 :
+					priv_timer[lcore_id].pending_head.sl_next[0]->expire;
+done:
 	/* job finished, unlock the list lock */
 	rte_spinlock_unlock(&priv_timer[lcore_id].list_lock);
 }
