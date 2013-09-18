@@ -46,6 +46,9 @@ extern "C" {
 
 #include <stdint.h>
 
+#include <rte_memcpy.h>
+#include <rte_random.h>
+
 #define ETHER_ADDR_LEN  6 /**< Length of Ethernet address. */
 #define ETHER_TYPE_LEN  2 /**< Length of Ethernet type field. */
 #define ETHER_CRC_LEN   4 /**< Length of Ethernet CRC. */
@@ -193,6 +196,22 @@ static inline int is_local_admin_ether_addr(const struct ether_addr *ea)
 static inline int is_valid_assigned_ether_addr(const struct ether_addr *ea)
 {
 	return (is_unicast_ether_addr(ea) && (! is_zero_ether_addr(ea)));
+}
+
+/**
+ * Generate a random Ethernet address that is locally administered
+ * and not multicast.
+ * @param addr
+ *   A pointer to Ethernet address.
+ */
+static inline void eth_random_addr(uint8_t *addr)
+{
+	uint64_t rand = rte_rand();
+	uint8_t *p = (uint8_t*)&rand;
+
+	rte_memcpy(addr, p, ETHER_ADDR_LEN);
+	addr[0] &= ~ETHER_GROUP_ADDR;       /* clear multicast bit */
+	addr[0] |= ETHER_LOCAL_ADMIN_ADDR;  /* set local assignment bit */
 }
 
 /**

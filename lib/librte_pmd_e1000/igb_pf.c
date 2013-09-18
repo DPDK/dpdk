@@ -54,17 +54,6 @@
 #include "e1000/e1000_hw.h"
 #include "e1000_ethdev.h"
 
-static inline 
-void eth_random_addr(uint8_t *addr)
-{
-	uint64_t rand = rte_rand();
-	uint8_t *p = (uint8_t*)&rand;
-
-	rte_memcpy(addr, p, ETHER_ADDR_LEN);
-	addr[0] &= 0xfe;	/* clear multicast bit */
-	addr[0] |= 0x02;	/* set local assignment bit (IEEE802) */
-}
-
 static inline uint16_t
 dev_num_vf(struct rte_eth_dev *eth_dev)
 {
