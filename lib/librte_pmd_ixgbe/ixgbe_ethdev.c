@@ -732,6 +732,18 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	PMD_INIT_LOG(DEBUG, "eth_ixgbevf_dev_init");
 
 	eth_dev->dev_ops = &ixgbevf_eth_dev_ops;
+	eth_dev->rx_pkt_burst = &ixgbe_recv_pkts;
+	eth_dev->tx_pkt_burst = &ixgbe_xmit_pkts;
+
+	/* for secondary processes, we don't initialise any further as primary
+	 * has already done this work. Only check we don't need a different
+	 * RX function */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY){
+		if (eth_dev->data->scattered_rx)
+			eth_dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
+		return 0;
+	}
+
 	pci_dev = eth_dev->pci_dev;
 
 	hw->device_id = pci_dev->id.device_id;
