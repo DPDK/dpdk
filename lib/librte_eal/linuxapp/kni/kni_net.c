@@ -131,20 +131,14 @@ kni_net_open(struct net_device *dev)
 	struct rte_kni_request req;
 	struct kni_dev *kni = netdev_priv(dev);
 
-	KNI_DBG("kni_net_open %d\n", kni->port_id);
-
-	/*
-	 * Assign the hardware address of the board: use "\0KNIx", where
-	 * x is KNI index. The first byte is '\0' to avoid being a multicast
-	 * address (the first byte of multicast addrs is odd).
-	 */
-
 	if (kni->lad_dev)
 		memcpy(dev->dev_addr, kni->lad_dev->dev_addr, ETH_ALEN);
-	else {
-		memcpy(dev->dev_addr, "\0KNI0", ETH_ALEN);
-		dev->dev_addr[ETH_ALEN-1] += kni->port_id; /* \0KNI1 */
-	}
+	else
+		/*
+		 * Generate random mac address. eth_random_addr() is the newer
+		 * version of generating mac address in linux kernel.
+		 */
+		random_ether_addr(dev->dev_addr);
 
 	netif_start_queue(dev);
 
