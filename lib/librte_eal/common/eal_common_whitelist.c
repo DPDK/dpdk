@@ -89,6 +89,11 @@ eal_dev_whitelist_exists(void)
 static int
 is_valid_wl_entry(const char *device_str, size_t dev_buf_len)
 {
+#define NUM_PREFIXES (sizeof(non_pci_prefixes)/sizeof(non_pci_prefixes[0]))
+	static const char *non_pci_prefixes[] = {
+			"-nodev-" /* dummy value to prevent compiler warnings */
+	};
+	static uint8_t prefix_counts[NUM_PREFIXES] = {0};
 	char buf[16];
 	unsigned i;
 	struct rte_pci_addr pci_addr = { .domain = 0 };
@@ -102,6 +107,14 @@ is_valid_wl_entry(const char *device_str, size_t dev_buf_len)
 		size_t n = rte_snprintf(buf, sizeof(buf), PCI_PRI_FMT, pci_addr.domain,
 				pci_addr.bus, pci_addr.devid, pci_addr.function);
 		return (n == dev_buf_len) && (!strncmp(buf, device_str, dev_buf_len));
+	}
+	for (i = 0; i < NUM_PREFIXES; i++) {
+		size_t n = rte_snprintf(buf, sizeof(buf), "%s%u",
+				non_pci_prefixes[i], prefix_counts[i]);
+		if ((n == dev_buf_len) && (!strncmp(buf, device_str, dev_buf_len))) {
+			prefix_counts[i]++;
+			return 1;
+		}
 	}
 	return 0;
 }

@@ -212,4 +212,11 @@ int eal_dev_is_whitelisted(const char *device_str, const char **params);
  */
 void eal_dev_whitelist_clear(void);
 
+/**
+ * This function initialises any non-PCI i.e. dummy ethernet devices
+ *
+ * This function is private to the EAL.
+ */
+int rte_eal_non_pci_ethdev_init(void);
+
 #endif /* _EAL_PRIVATE_H_ */
