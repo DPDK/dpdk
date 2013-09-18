@@ -176,8 +176,6 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret |= test_meter();
 	if (all || !strcmp(res->autotest, "kni_autotest"))
 		ret |= test_kni();
-	if (all || !strcmp(res->autotest, "pm_autotest"))
-		ret |= test_pmac_pm();
 	if (all || !strcmp(res->autotest, "acl_autotest"))
 		ret |= test_pmac_acl();
 	if (all || !strcmp(res->autotest, "power_autotest"))
