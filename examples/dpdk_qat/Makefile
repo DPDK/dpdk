@@ -70,12 +70,19 @@ CFLAGS += -I$(ICP_ROOT)/quickassist/include \
 		-I$(ICP_ROOT)/quickassist/include/lac \
 		-I$(ICP_ROOT)/quickassist/lookaside/access_layer/include
 
+# From CRF 1.2 driver, library was renamed to libicp_qa_al.a 
+ifneq ($(wildcard $(ICP_ROOT)/build/icp_qa_al.a),)
+ICP_LIBRARY_PATH = $(ICP_ROOT)/build/icp_qa_al.a
+else
+ICP_LIBRARY_PATH = $(ICP_ROOT)/build/libicp_qa_al.a
+endif
+
 LDLIBS += -L$(ICP_ROOT)/build
-LDLIBS += $(ICP_ROOT)/build/icp_qa_al.a \
-		-lz \
-		-losal \
-		-ladf_proxy \
-		-lcrypto
+LDLIBS += $(ICP_LIBRARY_PATH) \
+                -lz \
+                -losal \
+                -ladf_proxy \
+                -lcrypto
 
 # workaround for a gcc bug with noreturn attribute
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
