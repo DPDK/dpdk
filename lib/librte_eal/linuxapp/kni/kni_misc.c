@@ -193,6 +193,9 @@ kni_release(struct inode *inode, struct file *file)
 			dev->pthread = NULL;
 		}
 
+#ifdef RTE_KNI_VHOST
+		kni_vhost_backend_release(dev);
+#endif
 		kni_dev_remove(dev);
 		list_del(&dev->list);
 	}
@@ -217,7 +220,11 @@ kni_thread_single(void *unused)
 		for (j = 0; j < KNI_RX_LOOP_NUM; j++) {
 			list_for_each_entry_safe(dev, n,
 					&kni_list_head, list) {
+#ifdef RTE_KNI_VHOST
+				kni_chk_vhost_rx(dev);
+#else
 				kni_net_rx(dev);
+#endif
 				kni_net_poll_resp(dev);
 			}
 		}
@@ -238,7 +245,11 @@ kni_thread_multiple(void *param)
 
 	while (!kthread_should_stop()) {
 		for (j = 0; j < KNI_RX_LOOP_NUM; j++) {
+#ifdef RTE_KNI_VHOST
+			kni_chk_vhost_rx(dev);
+#else
 			kni_net_rx(dev);
+#endif
 			kni_net_poll_resp(dev);
 		}
 		schedule_timeout_interruptible(usecs_to_jiffies( \
@@ -361,6 +372,10 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 	kni->mbuf_kva = phys_to_virt(dev_info.mbuf_phys);
 	kni->mbuf_va = dev_info.mbuf_va;
 
+#ifdef RTE_KNI_VHOST
+	kni->vhost_queue = NULL;
+	kni->vq_status = BE_STOP;
+#endif
 	kni->mbuf_size = dev_info.mbuf_size;
 
 	KNI_PRINT("tx_phys:      0x%016llx, tx_q addr:      0x%p\n",
@@ -443,6 +458,10 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 		return -ENODEV;
 	}
 
+#ifdef RTE_KNI_VHOST
+	kni_vhost_init(kni);
+#endif
+
 	/**
 	 * Create a new kernel thread for multiple mode, set its core affinity,
 	 * and finally wake it up.
@@ -497,6 +516,9 @@ kni_ioctl_release(unsigned int ioctl_num, unsigned long ioctl_param)
 			dev->pthread = NULL;
 		}
 
+#ifdef RTE_KNI_VHOST
+		kni_vhost_backend_release(dev);
+#endif
 		kni_dev_remove(dev);
 		list_del(&dev->list);
 		ret = 0;

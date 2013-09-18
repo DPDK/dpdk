@@ -32,6 +32,10 @@
 #include <linux/spinlock.h>
 #include <linux/list.h>
 
+#ifdef RTE_KNI_VHOST
+#include <net/sock.h>
+#endif
+
 #include <exec-env/rte_kni_common.h>
 #define KNI_KTHREAD_RESCHEDULE_INTERVAL 5 /* us */
 
@@ -91,8 +95,16 @@ struct kni_dev {
 
 	/* synchro for request processing */
 	unsigned long synchro;
-};
 
+#ifdef RTE_KNI_VHOST
+	struct kni_vhost_queue* vhost_queue;
+	volatile enum {
+		BE_STOP = 0x1,
+		BE_START = 0x2,
+		BE_FINISH = 0x4,
+	}vq_status;
+#endif
+};
 
 #define KNI_ERR(args...) printk(KERN_DEBUG "KNI: Error: " args)
 #define KNI_PRINT(args...) printk(KERN_DEBUG "KNI: " args)
@@ -102,4 +114,37 @@ struct kni_dev {
 	#define KNI_DBG(args...)
 #endif
 
+#ifdef RTE_KNI_VHOST
+unsigned int 
+kni_poll(struct file *file, struct socket *sock, poll_table * wait);
+int kni_chk_vhost_rx(struct kni_dev *kni);
+int kni_vhost_init(struct kni_dev *kni);
+int kni_vhost_backend_release(struct kni_dev *kni);
+
+struct kni_vhost_queue {
+	struct sock sk;
+	struct socket *sock;
+	int vnet_hdr_sz;
+	struct kni_dev *kni;
+	int sockfd;
+	unsigned int flags;
+	struct sk_buff* cache;
+	struct rte_kni_fifo* fifo;
+};
+
 #endif
+
+#ifdef RTE_KNI_VHOST_DEBUG_RX
+	#define KNI_DBG_RX(args...) printk(KERN_DEBUG "KNI RX: " args)
+#else
+	#define KNI_DBG_RX(args...)
+#endif
+
+#ifdef RTE_KNI_VHOST_DEBUG_TX
+	#define KNI_DBG_TX(args...) printk(KERN_DEBUG "KNI TX: " args)
+#else
+	#define KNI_DBG_TX(args...)
+#endif
+
+#endif
+

@@ -379,6 +379,18 @@ kni_net_rx(struct kni_dev *kni)
 /*
  * Transmit a packet (called by the kernel)
  */
+#ifdef RTE_KNI_VHOST
+static int
+kni_net_tx(struct sk_buff *skb, struct net_device *dev)
+{
+	struct kni_dev *kni = netdev_priv(dev);
+	
+	dev_kfree_skb(skb);
+	kni->stats.tx_dropped++;
+	
+	return NETDEV_TX_OK;
+}
+#else
 static int
 kni_net_tx(struct sk_buff *skb, struct net_device *dev)
 {
@@ -451,6 +463,7 @@ drop:
 
 	return NETDEV_TX_OK;
 }
+#endif
 
 /*
  * Deal with a transmit timeout.

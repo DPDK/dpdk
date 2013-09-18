@@ -79,5 +79,6 @@ SRCS-y += ethtool/igb/igb_vmdq.c
 SRCS-y += kni_misc.c
 SRCS-y += kni_net.c
 SRCS-y += kni_ethtool.c
+SRCS-$(CONFIG_RTE_KNI_VHOST) += kni_vhost.c
 
 include $(RTE_SDK)/mk/rte.module.mk
