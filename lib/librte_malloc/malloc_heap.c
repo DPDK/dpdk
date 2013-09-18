@@ -78,17 +78,28 @@ static int
 malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
 {
 	const unsigned mz_flags = 0;
-	const size_t min_size = get_malloc_memzone_size();
+	const size_t block_size = get_malloc_memzone_size();
 	/* ensure the data we want to allocate will fit in the memzone */
-	size_t mz_size = size + align + MALLOC_ELEM_OVERHEAD * 2;
-	if (mz_size < min_size)
-		mz_size = min_size;
+	const size_t min_size = size + align + MALLOC_ELEM_OVERHEAD * 2;
+	const struct rte_memzone *mz = NULL;
+
+	size_t mz_size = min_size;
+	if (mz_size < block_size)
+		mz_size = block_size;
 
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	rte_snprintf(mz_name, sizeof(mz_name), "MALLOC_S%u_HEAP_%u",
 			heap->numa_socket, heap->mz_count++);
-	const struct rte_memzone *mz = rte_memzone_reserve(mz_name, mz_size,
-			heap->numa_socket, mz_flags);
+
+	/* try getting a block. if we fail and we don't need as big a block
+	 * as given in the config, we can shrink our request and try again
+	 */
+	do {
+		mz = rte_memzone_reserve(mz_name, mz_size,
+				heap->numa_socket, mz_flags);
+		if (mz == NULL)
+			mz_size /= 2;
+	} while (mz == NULL && mz_size > min_size);
 	if (mz == NULL)
 		return -1;
 
