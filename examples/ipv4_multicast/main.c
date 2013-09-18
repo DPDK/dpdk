@@ -714,7 +714,7 @@ MAIN(int argc, char **argv)
 	struct lcore_queue_conf *qconf;
 	int ret;
 	uint16_t queueid;
-	unsigned lcore_id = 0, rx_lcore_id = 0;;
+	unsigned lcore_id = 0, rx_lcore_id = 0;
 	uint32_t n_tx_queue, nb_lcores;
 	uint8_t portid;
 

@@ -571,7 +571,7 @@ MAIN(int argc, char **argv)
 	int ret;
 	unsigned nb_ports, i;
 	uint16_t queueid = 0;
-	unsigned lcore_id = 0, rx_lcore_id = 0;;
+	unsigned lcore_id = 0, rx_lcore_id = 0;
 	uint32_t n_tx_queue, nb_lcores;
 	uint8_t portid;
 

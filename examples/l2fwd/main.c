@@ -226,7 +226,7 @@ print_stats(void)
 	printf("\n====================================================\n");
 }
 
-/* Send the packet on an output interface */
+/* Send the burst of packets on an output interface */
 static int
 l2fwd_send_burst(struct lcore_queue_conf *qconf, unsigned n, uint8_t port)
 {
@@ -248,7 +248,7 @@ l2fwd_send_burst(struct lcore_queue_conf *qconf, unsigned n, uint8_t port)
 	return 0;
 }
 
-/* Send the packet on an output interface */
+/* Enqueue packets for TX and prepare them to be sent */
 static int
 l2fwd_send_packet(struct rte_mbuf *m, uint8_t port)
 {
