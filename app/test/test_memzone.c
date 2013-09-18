@@ -296,7 +296,7 @@ test_memzone_reserve_max(void)
 			/* check if the memzone is in our memseg and subtract length */
 			if ((config->mem_config->memzone[memzone_idx].addr >=
 					ms[memseg_idx].addr) &&
-					(config->mem_config->memzone[memzone_idx].addr <=
+					(config->mem_config->memzone[memzone_idx].addr <
 					(RTE_PTR_ADD(ms[memseg_idx].addr, ms[memseg_idx].len)))) {
 				/* since the zones can now be aligned and occasionally skip
 				 * some space, we should calculate the length based on
@@ -389,7 +389,7 @@ test_memzone_reserve_max_aligned(void)
 			/* check if the memzone is in our memseg and subtract length */
 			if ((config->mem_config->memzone[memzone_idx].addr >=
 					ms[memseg_idx].addr) &&
-					(config->mem_config->memzone[memzone_idx].addr <=
+					(config->mem_config->memzone[memzone_idx].addr <
 					(RTE_PTR_ADD(ms[memseg_idx].addr, ms[memseg_idx].len)))) {
 				/* since the zones can now be aligned and occasionally skip
 				 * some space, we should calculate the length based on
