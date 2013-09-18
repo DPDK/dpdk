@@ -4,32 +4,31 @@
  *   Copyright(c) 2010-2013 Intel Corporation. All rights reserved.
  *   All rights reserved.
  * 
- *   Redistribution and use in source and binary forms, with or without 
- *   modification, are permitted provided that the following conditions 
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
  *   are met:
  * 
- *     * Redistributions of source code must retain the above copyright 
+ *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright 
- *       notice, this list of conditions and the following disclaimer in 
- *       the documentation and/or other materials provided with the 
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
  *       distribution.
- *     * Neither the name of Intel Corporation nor the names of its 
- *       contributors may be used to endorse or promote products derived 
+ *     * Neither the name of Intel Corporation nor the names of its
+ *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
  * 
- *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
- *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
- *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
- *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
- *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY 
- *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
- *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
  */
 
 #ifndef __INCLUDE_RTE_SCHED_H__
@@ -48,7 +47,7 @@ extern "C" {
  * for the current network node.
  *
  * The scheduler supports thousands of packet queues grouped under a 5-level hierarchy:
- *     1. Port: 
+ *     1. Port:
  *           - Typical usage: output Ethernet port;
  *           - Multiple ports are scheduled in round robin order with equal priority;
  *     2. Subport:
@@ -57,11 +56,11 @@ extern "C" {
  *           - Upper limit enforced per traffic class at subport level;
  *           - Lower priority traffic classes able to reuse subport bandwidth currently
  *             unused by higher priority traffic classes of the same subport;
- *           - When any subport traffic class is oversubscribed (configuration time 
- *             event), the usage of subport member pipes with high demand for that 
- *             traffic class pipes is truncated to a dynamically adjusted value with no 
+ *           - When any subport traffic class is oversubscribed (configuration time
+ *             event), the usage of subport member pipes with high demand for that
+ *             traffic class pipes is truncated to a dynamically adjusted value with no
  *             impact to low demand pipes;
- *     3. Pipe: 
+ *     3. Pipe:
  *           - Typical usage: individual user/subscriber;
  *           - Traffic shaping using the token bucket algorithm (one bucket per pipe);
  *     4. Traffic class:
@@ -70,9 +69,9 @@ extern "C" {
  *           - Lower priority traffic classes able to reuse pipe bandwidth currently
  *             unused by higher priority traffic classes of the same pipe;
  *     5. Queue:
- *           - Typical usage: queue hosting packets from one or multiple connections 
+ *           - Typical usage: queue hosting packets from one or multiple connections
  *             of same traffic class belonging to the same user;
- *           - Weighted Round Robin (WRR) is used to service the queues within same 
+ *           - Weighted Round Robin (WRR) is used to service the queues within same
  *             pipe traffic class.
  *
  ***/
@@ -294,7 +293,7 @@ rte_sched_port_get_memory_footprint(struct rte_sched_port_params *params);
  * @param subport_id
  *   Subport ID
  * @param stats
- *   Pointer to pre-allocated subport statistics structure where the statistics 
+ *   Pointer to pre-allocated subport statistics structure where the statistics
  *   counters should be stored
  * @param tc_ov
  *   Pointer to pre-allocated 4-entry array where the oversubscription status for
@@ -316,7 +315,7 @@ rte_sched_subport_read_stats(struct rte_sched_port *port,
  * @param queue_id
  *   Queue ID within port scheduler
  * @param stats
- *   Pointer to pre-allocated subport statistics structure where the statistics 
+ *   Pointer to pre-allocated subport statistics structure where the statistics
  *   counters should be stored
  * @param qlen
  *   Pointer to pre-allocated variable where the current queue length should be stored.
@@ -377,7 +376,7 @@ rte_sched_port_pkt_write(struct rte_mbuf *pkt,
  *   Traffic class ID within pipe (0 .. 3)
  * @param queue
  *   Queue ID within pipe traffic class (0 .. 3)
- *   
+ *  
  */
 static inline void
 rte_sched_port_pkt_read_tree_path(struct rte_mbuf *pkt, uint32_t *subport, uint32_t *pipe, uint32_t *traffic_class, uint32_t *queue)
@@ -426,7 +425,7 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
  * @param port
  *   Handle to port scheduler instance
  * @param pkts
- *   Pre-allocated packet descriptor array where the packets dequeued from the port 
+ *   Pre-allocated packet descriptor array where the packets dequeued from the port
  *   scheduler should be stored
  * @param n_pkts
  *   Number of packets to dequeue from the port scheduler

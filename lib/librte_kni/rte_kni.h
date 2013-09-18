@@ -4,32 +4,31 @@
  *   Copyright(c) 2010-2013 Intel Corporation. All rights reserved.
  *   All rights reserved.
  * 
- *   Redistribution and use in source and binary forms, with or without 
- *   modification, are permitted provided that the following conditions 
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
  *   are met:
  * 
- *     * Redistributions of source code must retain the above copyright 
+ *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright 
- *       notice, this list of conditions and the following disclaimer in 
- *       the documentation and/or other materials provided with the 
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
  *       distribution.
- *     * Neither the name of Intel Corporation nor the names of its 
- *       contributors may be used to endorse or promote products derived 
+ *     * Neither the name of Intel Corporation nor the names of its
+ *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
  * 
- *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
- *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
- *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
- *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
- *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY 
- *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
- *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
  */
 
 #ifndef _RTE_KNI_H_
@@ -109,7 +108,7 @@ extern int rte_kni_release(struct rte_kni *kni);
  *  The pointer to the context of an existant kni interface.
  *
  * @return
- *  - 0 
+ *  - 0
  *  - negative value indicates failure.
  */
 extern int rte_kni_handle_request(struct rte_kni *kni);
@@ -181,7 +180,7 @@ extern struct rte_kni * rte_kni_info_get(uint8_t port_id);
  * be called by master process or slave process.
  *
  * @param kni 
- *  pointer to struct rte_kni. 
+ *  pointer to struct rte_kni.
  * @param ops 
  *  ponter to struct rte_kni_ops.
  *
@@ -195,8 +194,8 @@ extern int rte_kni_register_handlers(struct rte_kni *kni,
 /**
  *  Unregister kni request handling for a specified port.
  * 
- *  @param kni 
- *   pointer to struct rte_kni. 
+ *  @param kni
+ *   pointer to struct rte_kni.
  *
  *  @return
  *   On success: 0
