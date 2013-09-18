@@ -92,6 +92,7 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_kni.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_pmac_acl.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_power.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_common.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_timer_perf.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

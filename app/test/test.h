@@ -64,6 +64,7 @@ int test_mempool(void);
 int test_mempool_perf(void);
 int test_mbuf(void);
 int test_timer(void);
+int test_timer_perf(void);
 int test_malloc(void);
 int test_memcpy(void);
 int test_memcpy_perf(void);

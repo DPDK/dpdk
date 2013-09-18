@@ -444,5 +444,17 @@ non_parallel_test_group_list = [
 		},
 	]
 },
-
+{
+	"Prefix":	"timer_perf",
+	"Memory" :	all_sockets(512),
+	"Tests" :	
+	[
+		{
+		 "Name" :	"Timer performance autotest",
+		 "Command" : 	"timer_perf_autotest",
+		 "Func" :	default_autotest,
+		 "Report" :	None,
+		},
+	]
+},
 ]
