@@ -553,28 +553,15 @@ eal_parse_proc_type(const char *arg)
 	return RTE_PROC_INVALID;
 }
 
-static int
-eal_parse_blacklist(const char *input,  struct rte_pci_addr *dev2bl)
-{
-	GET_BLACKLIST_FIELD(input, dev2bl->domain, UINT16_MAX, ':');
-	GET_BLACKLIST_FIELD(input, dev2bl->bus, UINT8_MAX, ':');
-	GET_BLACKLIST_FIELD(input, dev2bl->devid, UINT8_MAX, '.');
-	GET_BLACKLIST_FIELD(input, dev2bl->function, UINT8_MAX, 0);
-	return (0);
-}
-
 static ssize_t
 eal_parse_blacklist_opt(const char *optarg, size_t idx)
 {
 	if (idx >= sizeof (eal_dev_blacklist) / sizeof (eal_dev_blacklist[0])) {
-		RTE_LOG(ERR, EAL,
-		    "%s - too many devices to blacklist...\n",
-		    optarg);
+		RTE_LOG(ERR, EAL, "%s - too many devices to blacklist...\n", optarg);
 		return (-EINVAL);
-	} else if (eal_parse_blacklist(optarg, eal_dev_blacklist + idx) != 0) {
-		RTE_LOG(ERR, EAL,
-		    "%s - invalid device to blacklist...\n",
-		    optarg);
+	} else if (eal_parse_pci_DomBDF(optarg, eal_dev_blacklist + idx) < 0 &&
+			eal_parse_pci_BDF(optarg, eal_dev_blacklist + idx) < 0) {
+		RTE_LOG(ERR, EAL, "%s - invalid device to blacklist...\n", optarg);
 		return (-EINVAL);
 	}
 
@@ -590,7 +577,7 @@ eal_parse_args(int argc, char **argv)
 	char **argvopt;
 	int option_index;
 	int coremask_ok = 0;
-	ssize_t blacklist_index = 0;;
+	ssize_t blacklist_index = 0;
 	char *prgname = argv[0];
 	static struct option lgopts[] = {
 		{OPT_NO_HUGE, 0, 0, 0},
