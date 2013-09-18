@@ -964,6 +964,7 @@ rte_eth_stats_get(uint8_t port_id, struct rte_eth_stats *stats)
 		return;
 	}
 	dev = &rte_eth_devices[port_id];
+	memset(stats, 0, sizeof(*stats));
 
 	FUNC_PTR_OR_RET(*dev->dev_ops->stats_get);
 	(*dev->dev_ops->stats_get)(dev, stats);
