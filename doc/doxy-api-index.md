@@ -37,6 +37,7 @@ There are many libraries, so their headers may be grouped by topics:
 
 - **device**:
   [ethdev]             (@ref rte_ethdev.h),
+  [KNI]                (@ref rte_kni.h),
   [PCI]                (@ref rte_pci.h),
   [PCI IDs]            (@ref rte_pci_dev_ids.h)
 
@@ -57,17 +58,18 @@ There are many libraries, so their headers may be grouped by topics:
   [rwlock]             (@ref rte_rwlock.h),
   [spinlock]           (@ref rte_spinlock.h)
 
-- **cpu arch**:
+- **CPU arch**:
   [branch prediction]  (@ref rte_branch_prediction.h),
   [cache prefetch]     (@ref rte_prefetch.h),
   [byte order]         (@ref rte_byteorder.h),
   [CPU flags]          (@ref rte_cpuflags.h)
 
-- **cpu multicore**:
+- **CPU multicore**:
   [interrupts]         (@ref rte_interrupts.h),
   [launch]             (@ref rte_launch.h),
   [lcore]              (@ref rte_lcore.h),
-  [per-lcore]          (@ref rte_per_lcore.h)
+  [per-lcore]          (@ref rte_per_lcore.h),
+  [power/freq]         (@ref rte_power.h)
 
 - **layers**:
   [ethernet]           (@ref rte_ether.h),
@@ -76,6 +78,11 @@ There are many libraries, so their headers may be grouped by topics:
   [TCP]                (@ref rte_tcp.h),
   [UDP]                (@ref rte_udp.h),
   [LPM route]          (@ref rte_lpm.h)
+
+- **QoS**:
+  [metering]           (@ref rte_meter.h),
+  [scheduler]          (@ref rte_sched.h),
+  [RED congestion]     (@ref rte_red.h)
 
 - **hashes**:
   [hash]               (@ref rte_hash.h),
@@ -86,7 +93,8 @@ There are many libraries, so their headers may be grouped by topics:
 - **containers**:
   [mbuf]               (@ref rte_mbuf.h),
   [ring]               (@ref rte_ring.h),
-  [tailq]              (@ref rte_tailq.h)
+  [tailq]              (@ref rte_tailq.h),
+  [bitmap]             (@ref rte_bitmap.h)
 
 - **debug**:
   [debug]              (@ref rte_debug.h),
@@ -97,6 +105,7 @@ There are many libraries, so their headers may be grouped by topics:
 - **misc**:
   [EAL config]         (@ref rte_eal.h),
   [common]             (@ref rte_common.h),
+  [approx fraction]    (@ref rte_approx.h),
   [random]             (@ref rte_random.h),
   [string]             (@ref rte_string_fns.h),
   [version]            (@ref rte_version.h)
