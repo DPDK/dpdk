@@ -63,8 +63,9 @@
  * This file contains a list of the PCI device IDs recognised by DPDK, which
  * can be used to fill out an array of structures describing the devices.
  *
- * Currently three families of devices are recognised: those supported by the
- * IGB driver, by EM driver, and those supported by the IXGBE driver.
+ * Currently four families of devices are recognised: those supported by the
+ * IGB driver, by EM driver, those supported by the IXGBE driver, and by virtio
+ * driver which is a para virtualization driver running in guest virtual machine.
  * The inclusion of these in an array built using this file depends on the
  * definition of
  * RTE_PCI_DEV_ID_DECL_EM
@@ -72,6 +73,7 @@
  * RTE_PCI_DEV_ID_DECL_IGBVF
  * RTE_PCI_DEV_ID_DECL_IXGBE
  * RTE_PCI_DEV_ID_DECL_IXGBEVF
+ * RTE_PCI_DEV_ID_DECL_VIRTIO
  * at the time when this file is included.
  *
  * In order to populate an array, the user of this file must define this macro:
@@ -112,9 +114,18 @@
 #define RTE_PCI_DEV_ID_DECL_IXGBEVF(vend, dev)
 #endif
 
+#ifndef RTE_PCI_DEV_ID_DECL_VIRTIO
+#define RTE_PCI_DEV_ID_DECL_VIRTIO(vend, dev)
+#endif
+
 #ifndef PCI_VENDOR_ID_INTEL
 /** Vendor ID used by Intel devices */
 #define PCI_VENDOR_ID_INTEL 0x8086
+#endif
+
+#ifndef PCI_VENDOR_ID_QUMRANET
+/** Vendor ID used by virtio devices */
+#define PCI_VENDOR_ID_QUMRANET 0x1AF4
 #endif
 
 /******************** Physical EM devices from e1000_hw.h ********************/
@@ -417,6 +428,12 @@ RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_82599_VF_HV)
 RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X540_VF)
 RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X540_VF_HV)
 
+/****************** Virtio devices from virtio.h ******************/
+
+#define QUMRANET_DEV_ID_VIRTIO                   	0x1000
+
+RTE_PCI_DEV_ID_DECL_VIRTIO(PCI_VENDOR_ID_QUMRANET, QUMRANET_DEV_ID_VIRTIO)
+
 /*
  * Undef all RTE_PCI_DEV_ID_DECL_* here.
  */
@@ -425,3 +442,4 @@ RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X540_VF_HV)
 #undef RTE_PCI_DEV_ID_DECL_IGBVF
 #undef RTE_PCI_DEV_ID_DECL_IXGBE
 #undef RTE_PCI_DEV_ID_DECL_IXGBEVF
+#undef RTE_PCI_DEV_ID_DECL_VIRTIO

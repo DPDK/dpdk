@@ -65,6 +65,7 @@
 #include <rte_string_fns.h>
 #include <rte_debug.h>
 
+#include "rte_pci_dev_ids.h"
 #include "eal_filesystem.h"
 #include "eal_private.h"
 
@@ -467,10 +468,12 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	struct dirent *e;
 	DIR *dir;
 	char dirname[PATH_MAX];
+	char filename[PATH_MAX];
 	char dirname2[PATH_MAX];
 	char devname[PATH_MAX]; /* contains the /dev/uioX */
 	void *mapaddr;
 	unsigned uio_num;
+	unsigned long start,size;
 	uint64_t phaddr;
 	uint64_t offset;
 	uint64_t pagesz;
@@ -482,7 +485,8 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	dev->intr_handle.fd = -1;
 
 	/* secondary processes - use already recorded details */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if ((rte_eal_process_type() != RTE_PROC_PRIMARY) &&
+		(dev->id.vendor_id != PCI_VENDOR_ID_QUMRANET))
 		return (pci_uio_map_secondary(dev));
 
 	/* depending on kernel version, uio can be located in uio/uioX
@@ -544,17 +548,42 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		return -1;
 	}
 
+	if(dev->id.vendor_id == PCI_VENDOR_ID_QUMRANET) {
+		/* get portio size */
+		rte_snprintf(filename, sizeof(filename),
+			 "%s/portio/port0/size", dirname2);
+		if (eal_parse_sysfs_value(filename, &size) < 0) {
+			RTE_LOG(ERR, EAL, "%s(): cannot parse size\n",
+				__func__);
+			return -1;
+		}
+
+		/* get portio start */
+		rte_snprintf(filename, sizeof(filename),
+			 "%s/portio/port0/start", dirname2);
+		if (eal_parse_sysfs_value(filename, &start) < 0) {
+			RTE_LOG(ERR, EAL, "%s(): cannot parse portio start\n",
+				__func__);
+			return -1;
+		}
+		dev->mem_resource[0].addr = (void *)(uintptr_t)start;
+		dev->mem_resource[0].len =  (uint64_t)size;
+		RTE_LOG(DEBUG, EAL, "PCI Port IO found start=0x%lx with size=0x%lx\n", start, size);
+		/* rte_virtio_pmd does not need any other bar even if available */
+		return (0);
+	}
+	
 	/* allocate the mapping details for secondary processes*/
 	if ((uio_res = rte_zmalloc("UIO_RES", sizeof (*uio_res), 0)) == NULL) {
 		RTE_LOG(ERR, EAL,
 			"%s(): cannot store uio mmap details\n", __func__);
 		return (-1);
 	}
- 
+
 	rte_snprintf(devname, sizeof(devname), "/dev/uio%u", uio_num);
 	rte_snprintf(uio_res->path, sizeof(uio_res->path), "%s", devname);
 	memcpy(&uio_res->pci_addr, &dev->addr, sizeof(uio_res->pci_addr));
- 
+
 	/* collect info about device mappings */
 	if ((nb_maps = pci_uio_get_mappings(dirname2, uio_res->maps,
 			sizeof (uio_res->maps) / sizeof (uio_res->maps[0])))

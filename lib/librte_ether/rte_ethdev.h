@@ -1258,6 +1258,15 @@ extern int rte_ixgbe_pmd_init(void);
 extern int rte_ixgbevf_pmd_init(void);
 
 /**
+ * The initialization function of the driver for Qumranet virtio-net
+ * Ethernet devices.
+ * Invoked once at EAL start time.
+ * @return
+ *   0 on success
+ */
+extern int rte_virtio_pmd_init(void);
+
+/**
  * The initialization function of *all* supported and enabled drivers.
  * Right now, the following PMDs are supported:
  *  - igb
@@ -1305,6 +1314,13 @@ int rte_pmd_init_all(void)
 		return (ret);
 	}
 #endif /* RTE_LIBRTE_IXGBE_PMD */
+
+#ifdef RTE_LIBRTE_VIRTIO_PMD
+	if ((ret = rte_virtio_pmd_init()) != 0) {
+		RTE_LOG(ERR, PMD, "Cannot init virtio PMD\n");
+		return (ret);
+	}
+#endif /* RTE_LIBRTE_VIRTIO_PMD */
 
 	if (ret == -ENODEV)
 		RTE_LOG(ERR, PMD, "No PMD(s) are configured\n");

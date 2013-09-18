@@ -72,8 +72,8 @@ ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)
 LDLIBS += -lrte_pmd_ixgbe
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_MBUF),y)
-LDLIBS += -lrte_mbuf
+ifeq ($(CONFIG_RTE_LIBRTE_VIRTIO_PMD),y)
+LDLIBS += -lrte_pmd_virtio
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_CMDLINE),y)
@@ -111,6 +111,10 @@ LDLIBS += -lrt
 endif
 
 LDLIBS += --start-group
+
+ifeq ($(CONFIG_RTE_LIBRTE_MBUF),y)
+LDLIBS += -lrte_mbuf
+endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_ETHER),y)
 LDLIBS += -lethdev
