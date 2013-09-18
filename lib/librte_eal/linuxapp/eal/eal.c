@@ -47,6 +47,7 @@
 #include <errno.h>
 #include <sys/mman.h>
 #include <sys/queue.h>
+#include <sys/io.h>
 #include <sys/user.h>
 #include <linux/binfmts.h>
 
@@ -96,6 +97,8 @@
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
 #define SOCKET_MEM_STRLEN (RTE_MAX_NUMA_NODES * 10)
+
+#define HIGHEST_RPL 3
 
 #define BITS_PER_HEX 4
 
@@ -833,6 +836,15 @@ rte_eal_mcfg_complete(void)
 		rte_config.mem_config->magic = RTE_MAGIC;
 }
 
+/*
+ * Request iopl priviledge for all RPL, returns 0 on success
+ */
+static int
+rte_eal_iopl_init(void)
+{
+	return iopl(HIGHEST_RPL);
+}
+
 /* Launch threads, called at application init(). */
 int
 rte_eal_init(int argc, char **argv)
@@ -879,6 +891,9 @@ rte_eal_init(int argc, char **argv)
 	rte_srand(rte_rdtsc());
 
 	rte_config_init();
+
+	if (rte_eal_iopl_init() == 0)
+		rte_config.flags |= EAL_FLG_HIGH_IOPL;
 	
 	if (rte_eal_cpu_init() < 0)
 		rte_panic("Cannot detect lcores\n");

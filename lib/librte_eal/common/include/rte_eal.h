@@ -83,12 +83,18 @@ struct rte_config {
 	/** Primary or secondary configuration */
 	enum rte_proc_type_t process_type;
 
+	/** A set of general status flags */
+	unsigned flags;
+
 	/**
 	 * Pointer to memory configuration, which may be shared across multiple
 	 * Intel DPDK instances
 	 */
 	struct rte_mem_config *mem_config;
 } __attribute__((__packed__));
+
+/* Flag definitions for rte_config flags */
+#define EAL_FLG_HIGH_IOPL 1 /**< indicates high IO privilage in a linux env */
 
 /**
  * Get the global configuration structure.
