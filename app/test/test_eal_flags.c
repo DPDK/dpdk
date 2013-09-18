@@ -57,6 +57,7 @@
 #define no_hpet "--no-hpet"
 #define no_huge "--no-huge"
 #define no_shconf "--no-shconf"
+#define use_device "--use-device"
 #define memtest "memtest"
 #define memtest1 "memtest1"
 #define memtest2 "memtest2"
@@ -269,8 +270,112 @@ get_current_prefix(char * prefix, int size)
 	return prefix;
 }
 
+/* extra function prototypes for internal eal function to test in whitelist 
+ * ICC 12 doesn't approve of this practice, so temporarily disable warnings for it */
+#ifdef __INTEL_COMPILER
+#pragma warning disable 1419
+#endif
+extern int eal_dev_whitelist_exists(void);
+extern int eal_dev_whitelist_add_entry(const char *);
+extern int eal_dev_whitelist_parse(void);
+extern int eal_dev_is_whitelisted(const char *);
+extern void eal_dev_whitelist_clear(void);
+#ifdef __INTEL_COMPILER
+#pragma warning enable 1419
+#endif
+
 /*
- * Test that the app doesn't run without invalid blacklist option.
+ * Test that the app doesn't run with invalid whitelist option.
+ * Final tests ensures it does run with valid options as sanity check (one
+ * test for with Domain+BDF, second for just with BDF)
+ */
+static int
+test_whitelist_flag(void)
+{
+	unsigned i;
+	char prefix[PATH_MAX], tmp[PATH_MAX];
+	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
+		printf("Error - unable to get current prefix!\n");
+		return -1;
+	}
+	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+
+	const char *wlinval[][11] = {
+		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+				use_device, "error", "", ""},
+		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+				use_device, "0:0:0", "", ""},
+		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+				use_device, "0:error:0.1", "", ""},
+		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+				use_device, "0:0:0.1error", "", ""},
+		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+				use_device, "error0:0:0.1", "", ""},
+		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+				use_device, "0:0:0.1.2", "", ""},
+		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+				use_device, "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x",
+				use_device, "y,z,1,2,3,4,5,6,7,8,9,0"},
+	};
+	/* Test with valid whitelist option */
+	const char *wlval1[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+			use_device, "00FF:09:0B.3"};
+	const char *wlval2[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+			use_device, "09:0B.3,0a:0b.1"};
+	const char *wlval3[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+			use_device, "09:0B.3;type=test,08:00.1;type=normal"};
+
+	for (i = 0; i < sizeof(wlinval) / sizeof(wlinval[0]); i++) {
+		if (launch_proc(wlinval[i]) == 0) {
+			printf("Error - process did run ok with invalid "
+			    "whitelist parameter\n");
+			return -1;
+		}
+	}
+	if (launch_proc(wlval1) != 0 ) {
+		printf("Error - process did not run ok with valid whitelist\n");
+		return -1;
+	}
+	if (launch_proc(wlval2) != 0 ) {
+		printf("Error - process did not run ok with valid whitelist value set\n");
+		return -1;
+	}
+	if (launch_proc(wlval3) != 0 ) {
+		printf("Error - process did not run ok with valid whitelist + args\n");
+		return -1;
+	}
+
+	/* extra-sanity checks of whitelists - to be run only if no whitelist */
+	if (eal_dev_whitelist_exists())
+		return 0;
+
+	/* check that whitelist_parse returns error without whitelist */
+	if (eal_dev_whitelist_parse() != -1) {
+		printf("ERROR: calling whitelist parse without a whitelist doesn't "
+				"return an error\n");
+		return -1;
+	}
+	if (!eal_dev_is_whitelisted("adevice")) {
+		printf("Whitelist lookup does not return true if no whitelist\n");
+		return -1;
+	}
+	eal_dev_whitelist_add_entry("0000:00:00.0");
+	eal_dev_whitelist_parse();
+	if (eal_dev_is_whitelisted("adevice")) {
+		printf("Whitelist lookup does not return false for unlisted dev\n");
+		return -1;
+	}
+	if (!eal_dev_is_whitelisted("0000:00:00.0")) {
+		printf("Whitelist lookup does not return true for whitelisted dev\n");
+		return -1;
+	}
+	eal_dev_whitelist_clear();
+
+	return 0;
+}
+
+/*
+ * Test that the app doesn't run with invalid blacklist option.
  * Final test ensures it does run with valid options as sanity check
  */
 static int
@@ -927,6 +1032,12 @@ test_eal_flags(void)
 	ret = test_no_huge_flag();
 	if (ret < 0) {
 		printf("Error in test_no_huge_flag()\n");
+		return ret;
+	}
+
+	ret = test_whitelist_flag();
+	if (ret < 0) {
+		printf("Error in test_invalid_whitelist_flag()\n");
 		return ret;
 	}
 

@@ -79,6 +79,7 @@ do_recursive_call(void)
 			{ "test_missing_c_flag", no_action },
 			{ "test_missing_n_flag", no_action },
 			{ "test_no_hpet_flag", no_action },
+			{ "test_whitelist_flag", no_action },
 			{ "test_invalid_b_flag", no_action },
 			{ "test_invalid_r_flag", no_action },
 			{ "test_misc_flags", no_action },
