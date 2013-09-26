@@ -1261,6 +1261,11 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	/* Turn on the laser */
 	ixgbe_enable_tx_laser(hw);
 
+	/* Skip link setup if loopback mode is enabled for 82599. */
+	if (hw->mac.type == ixgbe_mac_82599EB &&
+			dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_82599_TX_RX)
+		goto skip_link_setup;
+
 	err = ixgbe_check_link(hw, &speed, &link_up, 0);
 	if (err)
 		goto error;
@@ -1296,6 +1301,8 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	err = ixgbe_setup_link(hw, speed, negotiate, link_up);
 	if (err)
 		goto error;
+
+skip_link_setup:
 
 	/* check if lsc interrupt is enabled */
 	if (dev->data->dev_conf.intr_conf.lsc != 0)

@@ -728,6 +728,11 @@ struct rte_eth_conf {
 	/**< ETH_LINK_[HALF_DUPLEX|FULL_DUPLEX], or 0 for autonegotation */
 	struct rte_eth_rxmode rxmode; /**< Port RX configuration. */
 	struct rte_eth_txmode txmode; /**< Port TX configuration. */
+	uint32_t lpbk_mode; /**< Loopback operation mode. By default the value
+			         is 0, meaning the loopback mode is disabled.
+				 Read the datasheet of given ethernet controller
+				 for details. The possible values of this field
+				 are defined in implementation of each driver. */
 	union {
 		struct rte_eth_rss_conf rss_conf; /**< Port RSS configuration */
 		struct rte_eth_vmdq_dcb_conf vmdq_dcb_conf;
