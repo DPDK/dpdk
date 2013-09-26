@@ -78,6 +78,7 @@
 #include "ixgbe/ixgbe_vf.h"
 #include "ixgbe_ethdev.h"
 #include "ixgbe/ixgbe_dcb.h"
+#include "ixgbe/ixgbe_common.h"
 
 
 #define RTE_PMD_IXGBE_TX_MAX_BURST 32
@@ -3252,6 +3253,13 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	} else
 		hlreg0 &= ~IXGBE_HLREG0_JUMBOEN;
 
+	/*
+	 * If loopback mode is configured for 82599, set LPBK bit.
+	 */
+	if (hw->mac.type == ixgbe_mac_82599EB &&
+			dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_82599_TX_RX)
+		hlreg0 |= IXGBE_HLREG0_LPBK;
+
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 
 	/* Setup RX queues */
@@ -3432,6 +3440,34 @@ ixgbe_dev_tx_init(struct rte_eth_dev *dev)
 }
 
 /*
+ * Set up link for 82599 loopback mode Tx->Rx.
+ */
+static inline void
+ixgbe_setup_loopback_link_82599(struct ixgbe_hw *hw)
+{
+	DEBUGFUNC("ixgbe_setup_loopback_link_82599");
+
+	if (ixgbe_verify_lesm_fw_enabled_82599(hw)) {
+		if (hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_MAC_CSR_SM) !=
+				IXGBE_SUCCESS) {
+			PMD_INIT_LOG(ERR, "Could not enable loopback mode\n");
+			/* ignore error */
+			return;
+		}
+	}
+
+	/* Restart link */
+	IXGBE_WRITE_REG(hw,
+			IXGBE_AUTOC,
+			IXGBE_AUTOC_LMS_10G_LINK_NO_AN | IXGBE_AUTOC_FLU);
+	ixgbe_reset_pipeline_82599(hw);
+
+	hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_MAC_CSR_SM);
+	msec_delay(50);
+}
+
+
+/*
  * Start Transmit and Receive Units.
  */
 void
@@ -3509,6 +3545,12 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 		rxctrl |= IXGBE_RXCTRL_DMBYPS;
 	rxctrl |= IXGBE_RXCTRL_RXEN;
 	hw->mac.ops.enable_rx_dma(hw, rxctrl);
+
+	/* If loopback mode is enabled for 82599, set up the link accordingly */
+	if (hw->mac.type == ixgbe_mac_82599EB &&
+			dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_82599_TX_RX)
+		ixgbe_setup_loopback_link_82599(hw);
+
 }
 
 
