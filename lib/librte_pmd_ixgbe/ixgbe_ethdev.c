@@ -771,6 +771,21 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	return 0;
 }
 
+static void ixgbevf_get_queue_num(struct ixgbe_hw *hw)
+{
+	/* Traffic classes are not supported by now */
+	unsigned int tcs, tc;
+
+	/*
+	 * Must let PF know we are at mailbox API version 1.1.
+	 * Otherwise PF won't answer properly.
+	 * In case that PF fails to provide Rx/Tx queue number,
+	 * max_tx_queues and max_rx_queues remain to be 1.
+	 */
+	if (!ixgbevf_negotiate_api_version(hw, ixgbe_mbox_api_11))
+		ixgbevf_get_queues(hw, &tcs, &tc);
+}
+
 /*
  * Virtual Function device init
  */
@@ -838,6 +853,9 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 					"\ta possible solution to this problem.\n");
 		return (diag);
 	}
+
+	/* Get Rx/Tx queue count via mailbox, which is ready after reset_hw */
+	ixgbevf_get_queue_num(hw);
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("ixgbevf", ETHER_ADDR_LEN *
