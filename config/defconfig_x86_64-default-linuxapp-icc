@@ -74,6 +74,16 @@ CONFIG_RTE_TOOLCHAIN_ICC=y
 CONFIG_RTE_FORCE_INTRINSICS=n
 
 #
+# Compile to share library
+#
+CONFIG_RTE_BUILD_SHARED_LIB=n
+
+#
+# Combine to one single library
+#
+CONFIG_RTE_BUILD_COMBINE_LIBS=n
+CONFIG_RTE_LIBNAME="intel_dpdk"
+
 #
 # Compile libc directory
 #
