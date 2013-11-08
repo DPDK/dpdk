@@ -158,8 +158,9 @@ void e1000_init_function_pointers_vf(struct e1000_hw *hw)
  *  In addition, the MAC registers to access PHY/NVM don't exist so we don't
  *  even want any SW to attempt to use them.
  **/
-STATIC s32 e1000_acquire_vf(struct e1000_hw *hw)
+STATIC s32 e1000_acquire_vf(struct e1000_hw E1000_UNUSEDARG *hw)
 {
+	UNREFERENCED_1PARAMETER(hw);
 	return -E1000_ERR_PHY;
 }
 
@@ -171,8 +172,9 @@ STATIC s32 e1000_acquire_vf(struct e1000_hw *hw)
  *  In addition, the MAC registers to access PHY/NVM don't exist so we don't
  *  even want any SW to attempt to use them.
  **/
-STATIC void e1000_release_vf(struct e1000_hw *hw)
+STATIC void e1000_release_vf(struct e1000_hw E1000_UNUSEDARG *hw)
 {
+	UNREFERENCED_1PARAMETER(hw);
 	return;
 }
 
@@ -182,9 +184,10 @@ STATIC void e1000_release_vf(struct e1000_hw *hw)
  *
  *  Virtual functions cannot change link.
  **/
-STATIC s32 e1000_setup_link_vf(struct e1000_hw *hw)
+STATIC s32 e1000_setup_link_vf(struct e1000_hw E1000_UNUSEDARG *hw)
 {
 	DEBUGFUNC("e1000_setup_link_vf");
+	UNREFERENCED_1PARAMETER(hw);
 
 	return E1000_SUCCESS;
 }
@@ -319,13 +322,15 @@ STATIC s32 e1000_init_hw_vf(struct e1000_hw *hw)
  *  @addr: pointer to the receive address
  *  @index receive address array register
  **/
-STATIC void e1000_rar_set_vf(struct e1000_hw *hw, u8 * addr, u32 index)
+STATIC void e1000_rar_set_vf(struct e1000_hw *hw, u8 *addr,
+			     u32 E1000_UNUSEDARG index)
 {
 	struct e1000_mbx_info *mbx = &hw->mbx;
 	u32 msgbuf[3];
 	u8 *msg_addr = (u8 *)(&msgbuf[1]);
 	s32 ret_val;
 
+	UNREFERENCED_1PARAMETER(index);
 	memset(msgbuf, 0, 12);
 	msgbuf[0] = E1000_VF_SET_MAC_ADDR;
 	memcpy(msg_addr, addr, 6);

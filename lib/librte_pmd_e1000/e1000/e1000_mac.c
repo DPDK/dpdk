@@ -87,9 +87,10 @@ void e1000_init_mac_ops_generic(struct e1000_hw *hw)
  *  e1000_null_ops_generic - No-op function, returns 0
  *  @hw: pointer to the HW structure
  **/
-s32 e1000_null_ops_generic(struct e1000_hw *hw)
+s32 e1000_null_ops_generic(struct e1000_hw E1000_UNUSEDARG *hw)
 {
 	DEBUGFUNC("e1000_null_ops_generic");
+	UNREFERENCED_1PARAMETER(hw);
 	return E1000_SUCCESS;
 }
 
@@ -97,9 +98,10 @@ s32 e1000_null_ops_generic(struct e1000_hw *hw)
  *  e1000_null_mac_generic - No-op function, return void
  *  @hw: pointer to the HW structure
  **/
-void e1000_null_mac_generic(struct e1000_hw *hw)
+void e1000_null_mac_generic(struct e1000_hw E1000_UNUSEDARG *hw)
 {
 	DEBUGFUNC("e1000_null_mac_generic");
+	UNREFERENCED_1PARAMETER(hw);
 	return;
 }
 
@@ -107,9 +109,11 @@ void e1000_null_mac_generic(struct e1000_hw *hw)
  *  e1000_null_link_info - No-op function, return 0
  *  @hw: pointer to the HW structure
  **/
-s32 e1000_null_link_info(struct e1000_hw *hw, u16 *s, u16 *d)
+s32 e1000_null_link_info(struct e1000_hw E1000_UNUSEDARG *hw,
+			 u16 E1000_UNUSEDARG *s, u16 E1000_UNUSEDARG *d)
 {
 	DEBUGFUNC("e1000_null_link_info");
+	UNREFERENCED_3PARAMETER(hw, s, d);
 	return E1000_SUCCESS;
 }
 
@@ -117,9 +121,10 @@ s32 e1000_null_link_info(struct e1000_hw *hw, u16 *s, u16 *d)
  *  e1000_null_mng_mode - No-op function, return false
  *  @hw: pointer to the HW structure
  **/
-bool e1000_null_mng_mode(struct e1000_hw *hw)
+bool e1000_null_mng_mode(struct e1000_hw E1000_UNUSEDARG *hw)
 {
 	DEBUGFUNC("e1000_null_mng_mode");
+	UNREFERENCED_1PARAMETER(hw);
 	return false;
 }
 
@@ -127,9 +132,11 @@ bool e1000_null_mng_mode(struct e1000_hw *hw)
  *  e1000_null_update_mc - No-op function, return void
  *  @hw: pointer to the HW structure
  **/
-void e1000_null_update_mc(struct e1000_hw *hw, u8 *h, u32 a)
+void e1000_null_update_mc(struct e1000_hw E1000_UNUSEDARG *hw,
+			  u8 E1000_UNUSEDARG *h, u32 E1000_UNUSEDARG a)
 {
 	DEBUGFUNC("e1000_null_update_mc");
+	UNREFERENCED_3PARAMETER(hw, h, a);
 	return;
 }
 
@@ -137,9 +144,11 @@ void e1000_null_update_mc(struct e1000_hw *hw, u8 *h, u32 a)
  *  e1000_null_write_vfta - No-op function, return void
  *  @hw: pointer to the HW structure
  **/
-void e1000_null_write_vfta(struct e1000_hw *hw, u32 a, u32 b)
+void e1000_null_write_vfta(struct e1000_hw E1000_UNUSEDARG *hw,
+			   u32 E1000_UNUSEDARG a, u32 E1000_UNUSEDARG b)
 {
 	DEBUGFUNC("e1000_null_write_vfta");
+	UNREFERENCED_3PARAMETER(hw, a, b);
 	return;
 }
 
@@ -147,9 +156,11 @@ void e1000_null_write_vfta(struct e1000_hw *hw, u32 a, u32 b)
  *  e1000_null_rar_set - No-op function, return void
  *  @hw: pointer to the HW structure
  **/
-void e1000_null_rar_set(struct e1000_hw *hw, u8 *h, u32 a)
+void e1000_null_rar_set(struct e1000_hw E1000_UNUSEDARG *hw,
+			u8 E1000_UNUSEDARG *h, u32 E1000_UNUSEDARG a)
 {
 	DEBUGFUNC("e1000_null_rar_set");
+	UNREFERENCED_3PARAMETER(hw, h, a);
 	return;
 }
 
@@ -1668,10 +1679,11 @@ s32 e1000_get_speed_and_duplex_copper_generic(struct e1000_hw *hw, u16 *speed,
  *  Sets the speed and duplex to gigabit full duplex (the only possible option)
  *  for fiber/serdes links.
  **/
-s32 e1000_get_speed_and_duplex_fiber_serdes_generic(struct e1000_hw *hw,
+s32 e1000_get_speed_and_duplex_fiber_serdes_generic(struct e1000_hw E1000_UNUSEDARG *hw,
 						    u16 *speed, u16 *duplex)
 {
 	DEBUGFUNC("e1000_get_speed_and_duplex_fiber_serdes_generic");
+	UNREFERENCED_1PARAMETER(hw);
 
 	*speed = SPEED_1000;
 	*duplex = FULL_DUPLEX;
@@ -2168,9 +2180,10 @@ STATIC s32 e1000_validate_mdi_setting_generic(struct e1000_hw *hw)
  *  Validate the MDI/MDIx setting, allowing for auto-crossover during forced
  *  operation.
  **/
-s32 e1000_validate_mdi_setting_crossover_generic(struct e1000_hw *hw)
+s32 e1000_validate_mdi_setting_crossover_generic(struct e1000_hw E1000_UNUSEDARG *hw)
 {
 	DEBUGFUNC("e1000_validate_mdi_setting_crossover_generic");
+	UNREFERENCED_1PARAMETER(hw);
 
 	return E1000_SUCCESS;
 }

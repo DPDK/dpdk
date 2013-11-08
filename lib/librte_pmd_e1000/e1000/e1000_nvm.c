@@ -62,9 +62,12 @@ void e1000_init_nvm_ops_generic(struct e1000_hw *hw)
  *  e1000_null_nvm_read - No-op function, return 0
  *  @hw: pointer to the HW structure
  **/
-s32 e1000_null_read_nvm(struct e1000_hw *hw, u16 a, u16 b, u16 *c)
+s32 e1000_null_read_nvm(struct e1000_hw E1000_UNUSEDARG *hw,
+			u16 E1000_UNUSEDARG a, u16 E1000_UNUSEDARG b,
+			u16 E1000_UNUSEDARG *c)
 {
 	DEBUGFUNC("e1000_null_read_nvm");
+	UNREFERENCED_4PARAMETER(hw, a, b, c);
 	return E1000_SUCCESS;
 }
 
@@ -72,9 +75,10 @@ s32 e1000_null_read_nvm(struct e1000_hw *hw, u16 a, u16 b, u16 *c)
  *  e1000_null_nvm_generic - No-op function, return void
  *  @hw: pointer to the HW structure
  **/
-void e1000_null_nvm_generic(struct e1000_hw *hw)
+void e1000_null_nvm_generic(struct e1000_hw E1000_UNUSEDARG *hw)
 {
 	DEBUGFUNC("e1000_null_nvm_generic");
+	UNREFERENCED_1PARAMETER(hw);
 	return;
 }
 
@@ -82,9 +86,11 @@ void e1000_null_nvm_generic(struct e1000_hw *hw)
  *  e1000_null_led_default - No-op function, return 0
  *  @hw: pointer to the HW structure
  **/
-s32 e1000_null_led_default(struct e1000_hw *hw, u16 *data)
+s32 e1000_null_led_default(struct e1000_hw E1000_UNUSEDARG *hw,
+			   u16 E1000_UNUSEDARG *data)
 {
 	DEBUGFUNC("e1000_null_led_default");
+	UNREFERENCED_2PARAMETER(hw, data);
 	return E1000_SUCCESS;
 }
 
@@ -92,9 +98,12 @@ s32 e1000_null_led_default(struct e1000_hw *hw, u16 *data)
  *  e1000_null_write_nvm - No-op function, return 0
  *  @hw: pointer to the HW structure
  **/
-s32 e1000_null_write_nvm(struct e1000_hw *hw, u16 a, u16 b, u16 *c)
+s32 e1000_null_write_nvm(struct e1000_hw E1000_UNUSEDARG *hw,
+			 u16 E1000_UNUSEDARG a, u16 E1000_UNUSEDARG b,
+			 u16 E1000_UNUSEDARG *c)
 {
 	DEBUGFUNC("e1000_null_write_nvm");
+	UNREFERENCED_4PARAMETER(hw, a, b, c);
 	return E1000_SUCCESS;
 }
 

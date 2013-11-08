@@ -59,6 +59,12 @@
 #define DEBUGOUT6(S, args...)   DEBUGOUT(S, ##args)
 #define DEBUGOUT7(S, args...)   DEBUGOUT(S, ##args)
 
+#define UNREFERENCED_PARAMETER(_p)
+#define UNREFERENCED_1PARAMETER(_p)
+#define UNREFERENCED_2PARAMETER(_p, _q)
+#define UNREFERENCED_3PARAMETER(_p, _q, _r)
+#define UNREFERENCED_4PARAMETER(_p, _q, _r, _s)
+
 #define FALSE			0
 #define TRUE			1
 

@@ -102,9 +102,11 @@ void e1000_init_phy_ops_generic(struct e1000_hw *hw)
  *  e1000_null_set_page - No-op function, return 0
  *  @hw: pointer to the HW structure
  **/
-s32 e1000_null_set_page(struct e1000_hw *hw, u16 data)
+s32 e1000_null_set_page(struct e1000_hw E1000_UNUSEDARG *hw,
+			u16 E1000_UNUSEDARG data)
 {
 	DEBUGFUNC("e1000_null_set_page");
+	UNREFERENCED_2PARAMETER(hw, data);
 	return E1000_SUCCESS;
 }
 
@@ -112,9 +114,11 @@ s32 e1000_null_set_page(struct e1000_hw *hw, u16 data)
  *  e1000_null_read_reg - No-op function, return 0
  *  @hw: pointer to the HW structure
  **/
-s32 e1000_null_read_reg(struct e1000_hw *hw, u32 offset, u16 *data)
+s32 e1000_null_read_reg(struct e1000_hw E1000_UNUSEDARG *hw,
+			u32 E1000_UNUSEDARG offset, u16 E1000_UNUSEDARG *data)
 {
 	DEBUGFUNC("e1000_null_read_reg");
+	UNREFERENCED_3PARAMETER(hw, offset, data);
 	return E1000_SUCCESS;
 }
 
@@ -122,9 +126,10 @@ s32 e1000_null_read_reg(struct e1000_hw *hw, u32 offset, u16 *data)
  *  e1000_null_phy_generic - No-op function, return void
  *  @hw: pointer to the HW structure
  **/
-void e1000_null_phy_generic(struct e1000_hw *hw)
+void e1000_null_phy_generic(struct e1000_hw E1000_UNUSEDARG *hw)
 {
 	DEBUGFUNC("e1000_null_phy_generic");
+	UNREFERENCED_1PARAMETER(hw);
 	return;
 }
 
@@ -132,9 +137,11 @@ void e1000_null_phy_generic(struct e1000_hw *hw)
  *  e1000_null_lplu_state - No-op function, return 0
  *  @hw: pointer to the HW structure
  **/
-s32 e1000_null_lplu_state(struct e1000_hw *hw, bool active)
+s32 e1000_null_lplu_state(struct e1000_hw E1000_UNUSEDARG *hw,
+			  bool E1000_UNUSEDARG active)
 {
 	DEBUGFUNC("e1000_null_lplu_state");
+	UNREFERENCED_2PARAMETER(hw, active);
 	return E1000_SUCCESS;
 }
 
@@ -142,9 +149,11 @@ s32 e1000_null_lplu_state(struct e1000_hw *hw, bool active)
  *  e1000_null_write_reg - No-op function, return 0
  *  @hw: pointer to the HW structure
  **/
-s32 e1000_null_write_reg(struct e1000_hw *hw, u32 offset, u16 data)
+s32 e1000_null_write_reg(struct e1000_hw E1000_UNUSEDARG *hw,
+			 u32 E1000_UNUSEDARG offset, u16 E1000_UNUSEDARG data)
 {
 	DEBUGFUNC("e1000_null_write_reg");
+	UNREFERENCED_3PARAMETER(hw, offset, data);
 	return E1000_SUCCESS;
 }
 
@@ -156,10 +165,13 @@ s32 e1000_null_write_reg(struct e1000_hw *hw, u32 offset, u16 data)
  *  @data: data value read
  *
  **/
-s32 e1000_read_i2c_byte_null(struct e1000_hw *hw, u8 byte_offset,
-			     u8 dev_addr, u8 *data)
+s32 e1000_read_i2c_byte_null(struct e1000_hw E1000_UNUSEDARG *hw,
+			     u8 E1000_UNUSEDARG byte_offset,
+			     u8 E1000_UNUSEDARG dev_addr,
+			     u8 E1000_UNUSEDARG *data)
 {
 	DEBUGFUNC("e1000_read_i2c_byte_null");
+	UNREFERENCED_4PARAMETER(hw, byte_offset, dev_addr, data);
 	return E1000_SUCCESS;
 }
 
@@ -171,10 +183,13 @@ s32 e1000_read_i2c_byte_null(struct e1000_hw *hw, u8 byte_offset,
  *  @data: data value to write
  *
  **/
-s32 e1000_write_i2c_byte_null(struct e1000_hw *hw, u8 byte_offset,
-			      u8 dev_addr, u8 data)
+s32 e1000_write_i2c_byte_null(struct e1000_hw E1000_UNUSEDARG *hw,
+			      u8 E1000_UNUSEDARG byte_offset,
+			      u8 E1000_UNUSEDARG dev_addr,
+			      u8 E1000_UNUSEDARG data)
 {
 	DEBUGFUNC("e1000_write_i2c_byte_null");
+	UNREFERENCED_4PARAMETER(hw, byte_offset, dev_addr, data);
 	return E1000_SUCCESS;
 }
 
@@ -2843,9 +2858,10 @@ s32 e1000_phy_hw_reset_generic(struct e1000_hw *hw)
  *  Generic function to wait 10 milli-seconds for configuration to complete
  *  and return success.
  **/
-s32 e1000_get_cfg_done_generic(struct e1000_hw *hw)
+s32 e1000_get_cfg_done_generic(struct e1000_hw E1000_UNUSEDARG *hw)
 {
 	DEBUGFUNC("e1000_get_cfg_done_generic");
+	UNREFERENCED_1PARAMETER(hw);
 
 	msec_delay_irq(10);
 

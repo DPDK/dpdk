@@ -1887,4 +1887,7 @@ POSSIBILITY OF SUCH DAMAGE.
 /* Lan ID bit field offset in status register */
 #define E1000_STATUS_LAN_ID_OFFSET	2
 #define E1000_VFTA_ENTRIES		128
+#ifndef E1000_UNUSEDARG
+#define E1000_UNUSEDARG
+#endif /* E1000_UNUSEDARG */
 #endif /* _E1000_DEFINES_H_ */
