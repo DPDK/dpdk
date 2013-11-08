@@ -152,6 +152,7 @@ static inline uint64_t rte_arch_bswap64(uint64_t x)
 #endif /* RTE_ARCH_X86_64 */
 
 
+#ifndef RTE_FORCE_INTRINSICS
 /**
  * Swap bytes in a 16-bit value.
  */
@@ -159,7 +160,6 @@ static inline uint64_t rte_arch_bswap64(uint64_t x)
 				   rte_constant_bswap16(x) :		\
 				   rte_arch_bswap16(x)))
 
-#ifndef RTE_FORCE_INTRINSICS
 /**
  * Swap bytes in a 32-bit value.
  */
@@ -176,7 +176,17 @@ static inline uint64_t rte_arch_bswap64(uint64_t x)
 
 #else
 
-/* __builtin_bswap16 is only available gcc 4.8 and upwards */
+/**
+ * Swap bytes in a 16-bit value.
+ * __builtin_bswap16 is only available gcc 4.8 and upwards
+ */
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8)
+#define rte_bswap16(x) __builtin_bswap16(x)
+#else
+#define rte_bswap16(x) ((uint16_t)(__builtin_constant_p(x) ?		\
+				   rte_constant_bswap16(x) :		\
+				   rte_arch_bswap16(x)))
+#endif
 
 /**
  * Swap bytes in a 32-bit value.
