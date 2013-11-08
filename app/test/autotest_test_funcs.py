@@ -59,7 +59,7 @@ def dump_autotest(child, test_name):
 # reads output and waits for Test OK
 def memory_autotest(child, test_name):
 	child.sendline(test_name)
-	regexp = "phys:0x[0-9a-f]*, len:0x([0-9a-f]*), virt:0x[0-9a-f]*, socket_id:[0-9]*"
+	regexp = "phys:0x[0-9a-f]*, len:([0-9]*), virt:0x[0-9a-f]*, socket_id:[0-9]*"
 	index = child.expect([regexp, pexpect.TIMEOUT], timeout = 180)
 	if index != 0:
 		return -1, "Fail [Timeout]"
