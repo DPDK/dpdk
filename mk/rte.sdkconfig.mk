@@ -54,12 +54,9 @@ else
 $(RTE_OUTPUT)/.config: $(RTE_CONFIG_TEMPLATE) FORCE
 	@[ -d $(RTE_OUTPUT) ] || mkdir -p $(RTE_OUTPUT)
 	$(Q)if [ "$(RTE_CONFIG_TEMPLATE)" != "" -a -f "$(RTE_CONFIG_TEMPLATE)" ]; then \
-		if grep -q '#include' $(RTE_CONFIG_TEMPLATE) ; then \
-			$(CPP) -undef -C -P -x assembler-with-cpp -fdirectives-only \
-			-o $(RTE_OUTPUT)/.config_tmp $(RTE_CONFIG_TEMPLATE) ; \
-		else \
-			cp $(RTE_CONFIG_TEMPLATE) $(RTE_OUTPUT)/.config_tmp ; \
-		fi ; \
+		$(CPP) -undef -P -x assembler-with-cpp \
+		-fdirectives-only -ffreestanding \
+		-o $(RTE_OUTPUT)/.config_tmp $(RTE_CONFIG_TEMPLATE) ; \
 		if ! cmp -s $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config; then \
 			cp $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config ; \
 		fi ; \
