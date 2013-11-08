@@ -64,6 +64,7 @@
 #include "ixgbe/ixgbe_vf.h"
 #include "ixgbe/ixgbe_common.h"
 #include "ixgbe_ethdev.h"
+#include "ixgbe_bypass.h"
 
 /*
  * High threshold controlling when to start sending XOFF frames. Must be at
@@ -288,6 +289,17 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.fdir_set_masks               = ixgbe_fdir_set_masks,
 	.reta_update          = ixgbe_dev_rss_reta_update,
 	.reta_query           = ixgbe_dev_rss_reta_query,
+#ifdef RTE_NIC_BYPASS
+	.bypass_init          = ixgbe_bypass_init,
+	.bypass_state_set     = ixgbe_bypass_state_store,
+	.bypass_state_show    = ixgbe_bypass_state_show,
+	.bypass_event_set     = ixgbe_bypass_event_store,
+	.bypass_event_show    = ixgbe_bypass_event_show,
+	.bypass_wd_timeout_set  = ixgbe_bypass_wd_timeout_store,
+	.bypass_wd_timeout_show = ixgbe_bypass_wd_timeout_show,
+	.bypass_ver_show      = ixgbe_bypass_ver_show,
+	.bypass_wd_reset      = ixgbe_bypass_wd_reset,
+#endif /* RTE_NIC_BYPASS */
 };
 
 /*
@@ -620,7 +632,12 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 #endif
 
 	/* Initialize the shared code */
+#ifdef RTE_NIC_BYPASS
+	diag = ixgbe_bypass_init_shared_code(hw);
+#else
 	diag = ixgbe_init_shared_code(hw);
+#endif /* RTE_NIC_BYPASS */
+
 	if (diag != IXGBE_SUCCESS) {
 		PMD_INIT_LOG(ERR, "Shared code init failed: %d", diag);
 		return -EIO;
@@ -646,7 +663,11 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		return -EIO;
 	}
 
+#ifdef RTE_NIC_BYPASS
+	diag = ixgbe_bypass_init_hw(hw);
+#else
 	diag = ixgbe_init_hw(hw);
+#endif /* RTE_NIC_BYPASS */
 
 	/*
 	 * Devices with copper phys will fail to initialise if ixgbe_init_hw()

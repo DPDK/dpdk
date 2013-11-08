@@ -46,6 +46,7 @@
 #include <rte_byteorder.h>
 
 #include "../ixgbe_logs.h"
+#include "../ixgbe_bypass_defines.h"
 
 #define ASSERT(x) if(!(x)) rte_panic("IXGBE: x")
 

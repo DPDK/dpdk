@@ -36,6 +36,7 @@
 #include "ixgbe/ixgbe_dcb.h"
 #include "ixgbe/ixgbe_dcb_82599.h"
 #include "ixgbe/ixgbe_dcb_82598.h"
+#include "ixgbe_bypass.h"
 
 /* need update link, bit flag */
 #define IXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
@@ -140,6 +141,9 @@ struct ixgbe_adapter {
 	struct ixgbe_mirror_info    mr_data;
 	struct ixgbe_vf_info        *vfdata;
 	struct ixgbe_uta_info       uta_info;
+#ifdef RTE_NIC_BYPASS
+	struct ixgbe_bypass_info    bps;
+#endif /* RTE_NIC_BYPASS */
 };
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
