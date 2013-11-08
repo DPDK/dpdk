@@ -524,7 +524,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		/* first try uio%d */
 		errno = 0;
 		uio_num = strtoull(e->d_name + shortprefix_len, &endptr, 10);
-		if (errno == 0 && endptr != e->d_name) {
+		if (errno == 0 && endptr != (e->d_name + shortprefix_len)) {
 			rte_snprintf(dirname2, sizeof(dirname2),
 				 "%s/uio%u", dirname, uio_num);
 			break;
@@ -533,7 +533,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		/* then try uio:uio%d */
 		errno = 0;
 		uio_num = strtoull(e->d_name + longprefix_len, &endptr, 10);
-		if (errno == 0 && endptr != e->d_name) {
+		if (errno == 0 && endptr != (e->d_name + longprefix_len)) {
 			rte_snprintf(dirname2, sizeof(dirname2),
 				 "%s/uio:uio%u", dirname, uio_num);
 			break;
