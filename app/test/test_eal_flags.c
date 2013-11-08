@@ -278,7 +278,7 @@ get_current_prefix(char * prefix, int size)
 extern int eal_dev_whitelist_exists(void);
 extern int eal_dev_whitelist_add_entry(const char *);
 extern int eal_dev_whitelist_parse(void);
-extern int eal_dev_is_whitelisted(const char *);
+extern int eal_dev_is_whitelisted(const char *, const char **);
 extern void eal_dev_whitelist_clear(void);
 #ifdef __INTEL_COMPILER
 #pragma warning enable 1419
@@ -355,17 +355,17 @@ test_whitelist_flag(void)
 				"return an error\n");
 		return -1;
 	}
-	if (!eal_dev_is_whitelisted("adevice")) {
-		printf("Whitelist lookup does not return true if no whitelist\n");
+	if (eal_dev_is_whitelisted("adevice", NULL)) {
+		printf("Whitelist lookup does not return false if no whitelist\n");
 		return -1;
 	}
 	eal_dev_whitelist_add_entry("0000:00:00.0");
 	eal_dev_whitelist_parse();
-	if (eal_dev_is_whitelisted("adevice")) {
+	if (eal_dev_is_whitelisted("adevice", NULL)) {
 		printf("Whitelist lookup does not return false for unlisted dev\n");
 		return -1;
 	}
-	if (!eal_dev_is_whitelisted("0000:00:00.0")) {
+	if (!eal_dev_is_whitelisted("0000:00:00.0", NULL)) {
 		printf("Whitelist lookup does not return true for whitelisted dev\n");
 		return -1;
 	}
