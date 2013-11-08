@@ -219,6 +219,18 @@
 #define E1000_DEV_ID_PCH_D_HV_DC              0x10F0
 #define E1000_DEV_ID_PCH2_LV_LM               0x1502
 #define E1000_DEV_ID_PCH2_LV_V                0x1503
+#define E1000_DEV_ID_PCH_LPT_I217_LM          0x153A
+#define E1000_DEV_ID_PCH_LPT_I217_V           0x153B
+#define E1000_DEV_ID_PCH_LPTLP_I218_LM	      0x155A
+#define E1000_DEV_ID_PCH_LPTLP_I218_V	      0x1559
+#ifdef NAHUM6_LPTH_I218_HW
+#define E1000_DEV_ID_PCH_I218_LM2             0x15A0
+#define E1000_DEV_ID_PCH_I218_V2              0x15A1
+#endif /* NAHUM6_LPTH_I218_HW */
+#ifdef NAHUM6_WPT_HW
+#define E1000_DEV_ID_PCH_I218_LM3             0x15A2 /* Wildcat Point PCH */
+#define E1000_DEV_ID_PCH_I218_V3              0x15A3 /* Wildcat Point PCH */
+#endif /* NAHUM6_WPT_HW */
 
 /*
  * Tested (supported) on VM emulated HW.
@@ -279,7 +291,12 @@ RTE_PCI_DEV_ID_DECL_EM(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_82574LA)
 #define E1000_DEV_ID_I210_FIBER                 0x1536
 #define E1000_DEV_ID_I210_SERDES                0x1537
 #define E1000_DEV_ID_I210_SGMII                 0x1538
+#define E1000_DEV_ID_I210_COPPER_FLASHLESS      0x157B
+#define E1000_DEV_ID_I210_SERDES_FLASHLESS      0x157C
 #define E1000_DEV_ID_I211_COPPER                0x1539
+#define E1000_DEV_ID_I354_BACKPLANE_1GBPS       0x1F40
+#define E1000_DEV_ID_I354_SGMII                 0x1F41
+#define E1000_DEV_ID_I354_BACKPLANE_2_5GBPS     0x1F45
 #define E1000_DEV_ID_DH89XXCC_SGMII             0x0438
 #define E1000_DEV_ID_DH89XXCC_SERDES            0x043A
 #define E1000_DEV_ID_DH89XXCC_BACKPLANE         0x043C

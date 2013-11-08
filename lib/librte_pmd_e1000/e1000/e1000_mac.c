@@ -69,12 +69,8 @@ void e1000_init_mac_ops_generic(struct e1000_hw *hw)
 	mac->ops.setup_link = e1000_null_ops_generic;
 	mac->ops.get_link_up_info = e1000_null_link_info;
 	mac->ops.check_for_link = e1000_null_ops_generic;
-	mac->ops.wait_autoneg = e1000_wait_autoneg_generic;
 	/* Management */
 	mac->ops.check_mng_mode = e1000_null_mng_mode;
-	mac->ops.mng_host_if_write = e1000_mng_host_if_write_generic;
-	mac->ops.mng_write_cmd_header = e1000_mng_write_cmd_header_generic;
-	mac->ops.mng_enable_host_if = e1000_mng_enable_host_if_generic;
 	/* VLAN, MC, etc. */
 	mac->ops.update_mc_addr_list = e1000_null_update_mc;
 	mac->ops.clear_vfta = e1000_null_mac_generic;
@@ -944,6 +940,7 @@ s32 e1000_set_default_fc_generic(struct e1000_hw *hw)
 {
 	s32 ret_val;
 	u16 nvm_data;
+	u16 nvm_offset = 0;
 
 	DEBUGFUNC("e1000_set_default_fc_generic");
 
@@ -955,7 +952,18 @@ s32 e1000_set_default_fc_generic(struct e1000_hw *hw)
 	 * control setting, then the variable hw->fc will
 	 * be initialized based on a value in the EEPROM.
 	 */
-	ret_val = hw->nvm.ops.read(hw, NVM_INIT_CONTROL2_REG, 1, &nvm_data);
+	if (hw->mac.type == e1000_i350) {
+		nvm_offset = NVM_82580_LAN_FUNC_OFFSET(hw->bus.func);
+		ret_val = hw->nvm.ops.read(hw,
+					   NVM_INIT_CONTROL2_REG +
+					   nvm_offset,
+					   1, &nvm_data);
+	} else {
+		ret_val = hw->nvm.ops.read(hw,
+					   NVM_INIT_CONTROL2_REG,
+					   1, &nvm_data);
+	}
+
 
 	if (ret_val) {
 		DEBUGOUT("NVM Read Error\n");
@@ -1945,16 +1953,28 @@ s32 e1000_blink_led_generic(struct e1000_hw *hw)
 		ledctl_blink = E1000_LEDCTL_LED0_BLINK |
 		     (E1000_LEDCTL_MODE_LED_ON << E1000_LEDCTL_LED0_MODE_SHIFT);
 	} else {
-		/*
-		 * set the blink bit for each LED that's "on" (0x0E)
-		 * in ledctl_mode2
+		/* Set the blink bit for each LED that's "on" (0x0E)
+		 * (or "off" if inverted) in ledctl_mode2.  The blink
+		 * logic in hardware only works when mode is set to "on"
+		 * so it must be changed accordingly when the mode is
+		 * "off" and inverted.
 		 */
 		ledctl_blink = hw->mac.ledctl_mode2;
-		for (i = 0; i < 4; i++)
-			if (((hw->mac.ledctl_mode2 >> (i * 8)) & 0xFF) ==
-			    E1000_LEDCTL_MODE_LED_ON)
-				ledctl_blink |= (E1000_LEDCTL_LED0_BLINK <<
-						 (i * 8));
+		for (i = 0; i < 32; i += 8) {
+			u32 mode = (hw->mac.ledctl_mode2 >> i) &
+			    E1000_LEDCTL_LED0_MODE_MASK;
+			u32 led_default = hw->mac.ledctl_default >> i;
+
+			if ((!(led_default & E1000_LEDCTL_LED0_IVRT) &&
+			     (mode == E1000_LEDCTL_MODE_LED_ON)) ||
+			    ((led_default & E1000_LEDCTL_LED0_IVRT) &&
+			     (mode == E1000_LEDCTL_MODE_LED_OFF))) {
+				ledctl_blink &=
+				    ~(E1000_LEDCTL_LED0_MODE_MASK << i);
+				ledctl_blink |= (E1000_LEDCTL_LED0_BLINK |
+						 E1000_LEDCTL_MODE_LED_ON) << i;
+			}
+		}
 	}
 
 	E1000_WRITE_REG(hw, E1000_LEDCTL, ledctl_blink);

@@ -147,7 +147,7 @@ bool e1000_enable_tx_pkt_filtering_generic(struct e1000_hw *hw)
 	/* If we can't read from the host interface for whatever
 	 * reason, disable filtering.
 	 */
-	ret_val = hw->mac.ops.mng_enable_host_if(hw);
+	ret_val = e1000_mng_enable_host_if_generic(hw);
 	if (ret_val != E1000_SUCCESS) {
 		hw->mac.tx_pkt_filtering = false;
 		return hw->mac.tx_pkt_filtering;
@@ -308,18 +308,18 @@ s32 e1000_mng_write_dhcp_info_generic(struct e1000_hw *hw, u8 *buffer,
 	hdr.checksum = 0;
 
 	/* Enable the host interface */
-	ret_val = hw->mac.ops.mng_enable_host_if(hw);
+	ret_val = e1000_mng_enable_host_if_generic(hw);
 	if (ret_val)
 		return ret_val;
 
 	/* Populate the host interface with the contents of "buffer". */
-	ret_val = hw->mac.ops.mng_host_if_write(hw, buffer, length,
-						sizeof(hdr), &(hdr.checksum));
+	ret_val = e1000_mng_host_if_write_generic(hw, buffer, length,
+						  sizeof(hdr), &(hdr.checksum));
 	if (ret_val)
 		return ret_val;
 
 	/* Write the manageability command header */
-	ret_val = hw->mac.ops.mng_write_cmd_header(hw, &hdr);
+	ret_val = e1000_mng_write_cmd_header_generic(hw, &hdr);
 	if (ret_val)
 		return ret_val;
 

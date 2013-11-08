@@ -48,6 +48,7 @@
 
 #define DELAY(x) rte_delay_us(x)
 #define usec_delay(x) DELAY(x)
+#define usec_delay_irq(x) DELAY(x)
 #define msec_delay(x) DELAY(1000*(x))
 #define msec_delay_irq(x) DELAY(1000*(x))
 
@@ -108,6 +109,19 @@ static inline uint32_t e1000_read_addr(volatile void* addr)
 {
 	return E1000_PCI_REG(addr);
 }
+
+/* Necessary defines */
+#define E1000_MRQC_ENABLE_MASK                  0x00000007
+#define E1000_MRQC_RSS_FIELD_IPV6_EX		0x00080000
+#define E1000_ALL_FULL_DUPLEX   ( \
+        ADVERTISE_10_FULL | ADVERTISE_100_FULL | ADVERTISE_1000_FULL)
+
+#define M88E1543_E_PHY_ID    0x01410EA0
+#define NAHUM6LP_HW 
+#define ULP_SUPPORT
+
+#define E1000_RCTL_DTYP_MASK	0x00000C00 /* Descriptor type mask */
+#define E1000_MRQC_RSS_FIELD_IPV6_EX            0x00080000
 
 /* Register READ/WRITE macros */
 

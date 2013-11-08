@@ -50,6 +50,8 @@ struct e1000_hw;
 #define E1000_RXDCTL_QUEUE_ENABLE	0x02000000 /* Ena specific Rx Queue */
 
 /* SRRCTL bit definitions */
+#define E1000_SRRCTL(_n)	((_n) < 4 ? (0x0280C + ((_n) * 0x100)) : \
+				 (0x0C00C + ((_n) * 0x40)))
 #define E1000_SRRCTL_BSIZEPKT_SHIFT		10 /* Shift _right_ */
 #define E1000_SRRCTL_BSIZEHDRSIZE_MASK		0x00000F00
 #define E1000_SRRCTL_BSIZEHDRSIZE_SHIFT		2  /* Shift _left_ */

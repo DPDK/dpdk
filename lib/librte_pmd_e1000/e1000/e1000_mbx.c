@@ -751,6 +751,7 @@ s32 e1000_init_mbx_params_pf(struct e1000_hw *hw)
 	switch (hw->mac.type) {
 	case e1000_82576:
 	case e1000_i350:
+	case e1000_i354:
 		mbx->timeout = 0;
 		mbx->usec_delay = 0;
 

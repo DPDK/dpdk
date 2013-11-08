@@ -775,6 +775,12 @@ s32 e1000_read_pba_string_generic(struct e1000_hw *hw, u8 *pba_num,
 
 	DEBUGFUNC("e1000_read_pba_string_generic");
 
+	if ((hw->mac.type >= e1000_i210) &&
+	    !e1000_get_flash_presence_i210(hw)) {
+		DEBUGOUT("Flashless no PBA string\n");
+		return -E1000_ERR_NVM_PBA_SECTION;
+	}
+
 	if (pba_num == NULL) {
 		DEBUGOUT("PBA string buffer was null\n");
 		return -E1000_ERR_INVALID_ARGUMENT;
@@ -920,6 +926,41 @@ s32 e1000_read_pba_length_generic(struct e1000_hw *hw, u32 *pba_num_size)
 	 * and subtract 2 because length field is included in length.
 	 */
 	*pba_num_size = ((u32)length * 2) - 1;
+
+	return E1000_SUCCESS;
+}
+
+/**
+ *  e1000_read_pba_num_generic - Read device part number
+ *  @hw: pointer to the HW structure
+ *  @pba_num: pointer to device part number
+ *
+ *  Reads the product board assembly (PBA) number from the EEPROM and stores
+ *  the value in pba_num.
+ **/
+s32 e1000_read_pba_num_generic(struct e1000_hw *hw, u32 *pba_num)
+{
+	s32 ret_val;
+	u16 nvm_data;
+
+	DEBUGFUNC("e1000_read_pba_num_generic");
+
+	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_0, 1, &nvm_data);
+	if (ret_val) {
+		DEBUGOUT("NVM Read Error\n");
+		return ret_val;
+	} else if (nvm_data == NVM_PBA_PTR_GUARD) {
+		DEBUGOUT("NVM Not Supported\n");
+		return -E1000_NOT_IMPLEMENTED;
+	}
+	*pba_num = (u32)(nvm_data << 16);
+
+	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_1, 1, &nvm_data);
+	if (ret_val) {
+		DEBUGOUT("NVM Read Error\n");
+		return ret_val;
+	}
+	*pba_num |= nvm_data;
 
 	return E1000_SUCCESS;
 }
@@ -1235,12 +1276,15 @@ STATIC void e1000_reload_nvm_generic(struct e1000_hw *hw)
  **/
 void e1000_get_fw_version(struct e1000_hw *hw, struct e1000_fw_version *fw_vers)
 {
-	u16 eeprom_verh, eeprom_verl, fw_version;
+	u16 eeprom_verh, eeprom_verl, etrack_test, fw_version;
+	u8 q, hval, rem, result;
 	u16 comb_verh, comb_verl, comb_offset;
 
 	memset(fw_vers, 0, sizeof(struct e1000_fw_version));
 
-	/* this code only applies to certain mac types */
+	/* basic eeprom version numbers, bits used vary by part and by tool
+	 * used to create the nvm images */
+	/* Check which data format we have */
 	switch (hw->mac.type) {
 	case e1000_i211:
 		e1000_read_invm_version(hw, fw_vers);
@@ -1248,26 +1292,28 @@ void e1000_get_fw_version(struct e1000_hw *hw, struct e1000_fw_version *fw_vers)
 	case e1000_82575:
 	case e1000_82576:
 	case e1000_82580:
-	case e1000_i350:
-	case e1000_i210:
+		hw->nvm.ops.read(hw, NVM_ETRACK_HIWORD, 1, &etrack_test);
+		/* Use this format, unless EETRACK ID exists,
+		 * then use alternate format
+		 */
+		if ((etrack_test &  NVM_MAJOR_MASK) != NVM_ETRACK_VALID) {
+			hw->nvm.ops.read(hw, NVM_VERSION, 1, &fw_version);
+			fw_vers->eep_major = (fw_version & NVM_MAJOR_MASK)
+					      >> NVM_MAJOR_SHIFT;
+			fw_vers->eep_minor = (fw_version & NVM_MINOR_MASK)
+					      >> NVM_MINOR_SHIFT;
+			fw_vers->eep_build = (fw_version & NVM_IMAGE_ID_MASK);
+			goto etrack_id;
+		}
 		break;
-	default:
-		return;
-	}
-
-	/* basic eeprom version numbers */
-	hw->nvm.ops.read(hw, NVM_VERSION, 1, &fw_version);
-	fw_vers->eep_major = (fw_version & NVM_MAJOR_MASK) >> NVM_MAJOR_SHIFT;
-	fw_vers->eep_minor = (fw_version & NVM_MINOR_MASK);
-
-	/* etrack id */
-	hw->nvm.ops.read(hw, NVM_ETRACK_WORD, 1, &eeprom_verl);
-	hw->nvm.ops.read(hw, (NVM_ETRACK_WORD + 1), 1, &eeprom_verh);
-	fw_vers->etrack_id = (eeprom_verh << NVM_ETRACK_SHIFT) | eeprom_verl;
-
-	switch (hw->mac.type) {
 	case e1000_i210:
+		if (!(e1000_get_flash_presence_i210(hw))) {
+			e1000_read_invm_version(hw, fw_vers);
+			return;
+		}
+		/* fall through */
 	case e1000_i350:
+		hw->nvm.ops.read(hw, NVM_ETRACK_HIWORD, 1, &etrack_test);
 		/* find combo image version */
 		hw->nvm.ops.read(hw, NVM_COMB_VER_PTR, 1, &comb_offset);
 		if ((comb_offset != 0x0) &&
@@ -1294,9 +1340,36 @@ void e1000_get_fw_version(struct e1000_hw *hw, struct e1000_fw_version *fw_vers)
 			}
 		}
 		break;
-
 	default:
-		break;
+		hw->nvm.ops.read(hw, NVM_ETRACK_HIWORD, 1, &etrack_test);
+		return;
+	}
+	hw->nvm.ops.read(hw, NVM_VERSION, 1, &fw_version);
+	fw_vers->eep_major = (fw_version & NVM_MAJOR_MASK)
+			      >> NVM_MAJOR_SHIFT;
+
+	/* check for old style version format in newer images*/
+	if ((fw_version & NVM_NEW_DEC_MASK) == 0x0) {
+		eeprom_verl = (fw_version & NVM_COMB_VER_MASK);
+	} else {
+		eeprom_verl = (fw_version & NVM_MINOR_MASK)
+				>> NVM_MINOR_SHIFT;
+	}
+	/* Convert minor value to hex before assigning to output struct
+	 * Val to be converted will not be higher than 99, per tool output
+	 */
+	q = eeprom_verl / NVM_HEX_CONV;
+	hval = q * NVM_HEX_TENS;
+	rem = eeprom_verl % NVM_HEX_CONV;
+	result = hval + rem;
+	fw_vers->eep_minor = result;
+
+etrack_id:
+	if ((etrack_test &  NVM_MAJOR_MASK) == NVM_ETRACK_VALID) {
+		hw->nvm.ops.read(hw, NVM_ETRACK_WORD, 1, &eeprom_verl);
+		hw->nvm.ops.read(hw, (NVM_ETRACK_WORD + 1), 1, &eeprom_verh);
+		fw_vers->etrack_id = (eeprom_verh << NVM_ETRACK_SHIFT)
+			| eeprom_verl;
 	}
 	return;
 }

@@ -77,13 +77,11 @@ s32  e1000_read_phy_reg_igp_locked(struct e1000_hw *hw, u32 offset, u16 *data);
 s32  e1000_read_phy_reg_m88(struct e1000_hw *hw, u32 offset, u16 *data);
 s32  e1000_set_d3_lplu_state_generic(struct e1000_hw *hw, bool active);
 s32  e1000_setup_copper_link_generic(struct e1000_hw *hw);
-s32  e1000_wait_autoneg_generic(struct e1000_hw *hw);
 s32  e1000_write_kmrn_reg_generic(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_write_kmrn_reg_locked(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_write_phy_reg_igp(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_write_phy_reg_igp_locked(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_write_phy_reg_m88(struct e1000_hw *hw, u32 offset, u16 data);
-s32  e1000_phy_reset_dsp(struct e1000_hw *hw);
 s32  e1000_phy_has_link_generic(struct e1000_hw *hw, u32 iterations,
 				u32 usec_interval, bool *success);
 s32  e1000_phy_init_script_igp3(struct e1000_hw *hw);
@@ -117,6 +115,10 @@ s32  e1000_phy_force_speed_duplex_82577(struct e1000_hw *hw);
 s32  e1000_get_cable_length_82577(struct e1000_hw *hw);
 s32  e1000_write_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
+s32 e1000_read_phy_reg_mphy(struct e1000_hw *hw, u32 address, u32 *data);
+s32 e1000_write_phy_reg_mphy(struct e1000_hw *hw, u32 address, u32 data,
+			     bool line_override);
+bool e1000_is_mphy_ready(struct e1000_hw *hw);
 
 #define E1000_MAX_PHY_ADDR		8
 
@@ -126,7 +128,6 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 #define IGP01E1000_PHY_PORT_CTRL	0x12 /* Control */
 #define IGP01E1000_PHY_LINK_HEALTH	0x13 /* PHY Link Health */
 #define IGP01E1000_GMII_FIFO		0x14 /* GMII FIFO */
-#define IGP01E1000_PHY_CHANNEL_QUALITY	0x15 /* PHY Channel Quality */
 #define IGP02E1000_PHY_POWER_MGMT	0x19 /* Power Management */
 #define IGP01E1000_PHY_PAGE_SELECT	0x1F /* Page Select */
 #define BM_PHY_PAGE_SELECT		22   /* Page Select for BM */
@@ -146,7 +147,6 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 
 /* BM/HV Specific Registers */
 #define BM_PORT_CTRL_PAGE		769
-#define BM_PCIE_PAGE			770
 #define BM_WUC_PAGE			800
 #define BM_WUC_ADDRESS_OPCODE		0x11
 #define BM_WUC_DATA_OPCODE		0x12
@@ -187,7 +187,6 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 #define I82577_PHY_STATUS2_MDIX			0x0800
 #define I82577_PHY_STATUS2_SPEED_MASK		0x0300
 #define I82577_PHY_STATUS2_SPEED_1000MBPS	0x0200
-#define I82577_PHY_STATUS2_SPEED_100MBPS	0x0100
 
 /* I82577 PHY Control 2 */
 #define I82577_PHY_CTRL2_MANUAL_MDIX		0x0200
@@ -205,13 +204,17 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 #define E1000_82580_PM_D3_LPLU		0x0004 /* For all other states */
 #define E1000_82580_PM_GO_LINKD		0x0020 /* Go Link Disconnect */
 
+#define E1000_MPHY_DIS_ACCESS		0x80000000 /* disable_access bit */
+#define E1000_MPHY_ENA_ACCESS		0x40000000 /* enable_access bit */
+#define E1000_MPHY_BUSY			0x00010000 /* busy bit */
+#define E1000_MPHY_ADDRESS_FNC_OVERRIDE	0x20000000 /* fnc_override bit */
+#define E1000_MPHY_ADDRESS_MASK		0x0000FFFF /* address mask */
+
 /* BM PHY Copper Specific Control 1 */
 #define BM_CS_CTRL1			16
-#define BM_CS_CTRL1_ENERGY_DETECT	0x0300 /* Enable Energy Detect */
 
 /* BM PHY Copper Specific Status */
 #define BM_CS_STATUS			17
-#define BM_CS_STATUS_ENERGY_DETECT	0x0010 /* Energy Detect Status */
 #define BM_CS_STATUS_LINK_UP		0x0400
 #define BM_CS_STATUS_RESOLVED		0x0800
 #define BM_CS_STATUS_SPEED_MASK		0xC000
@@ -257,9 +260,6 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 #define IGP02E1000_AGC_LENGTH_MASK	0x7F
 #define IGP02E1000_AGC_RANGE		15
 
-#define IGP03E1000_PHY_MISC_CTRL	0x1B
-#define IGP03E1000_PHY_MISC_DUPLEX_MANUAL_SET	0x1000 /* Manually Set Duplex */
-
 #define E1000_CABLE_LENGTH_UNDEFINED	0xFF
 
 #define E1000_KMRNCTRLSTA_OFFSET	0x001F0000
@@ -273,13 +273,11 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 #define E1000_KMRNCTRLSTA_DIAG_NELPBK	0x1000 /* Nearend Loopback mode */
 #define E1000_KMRNCTRLSTA_K1_CONFIG	0x7
 #define E1000_KMRNCTRLSTA_K1_ENABLE	0x0002 /* enable K1 */
-#define E1000_KMRNCTRLSTA_UNBLOCK_RX	0x0004 /* unblock Kumeran Rx in K0/K1 */
-#define E1000_KMRNCTRLSTA_PLL_STOP_EN	0x0008 /* enable PLL stop in K1 mode */
-
 #define E1000_KMRNCTRLSTA_HD_CTRL	0x10   /* Kumeran HD Control */
-#define E1000_KMRNCTRLSTA_K0_CTRL	0x1E   /* Kumeran K0s Control */
-#define E1000_KMRNCTRLSTA_K0_GBE_EN	0x1000 /* ena K0s mode for 1G link */
-#define E1000_KMRNCTRLSTA_K0_100_EN	0x2000 /* ena K0s mode for 10/100 lnk */
+#if !defined(EXTERNAL_RELEASE) || (defined(NAHUM6LP_HW) && defined(ULP_IN_D0_SUPPORT))
+#define E1000_KMRNCTRLSTA_OP_MODES	0x1F   /* Kumeran Modes of Operation */
+#define E1000_KMRNCTRLSTA_OP_MODES_LSC2CSC	0x0002 /* change LSC to CSC */
+#endif /* !EXTERNAL_RELEASE || (NAHUM6LP_HW && ULP_IN_D0_SUPPORT) */
 
 #define IFE_PHY_EXTENDED_STATUS_CONTROL	0x10
 #define IFE_PHY_SPECIAL_CONTROL		0x11 /* 100BaseTx PHY Special Ctrl */
@@ -292,7 +290,6 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 /* IFE PHY Special Control */
 #define IFE_PSC_AUTO_POLARITY_DISABLE	0x0010
 #define IFE_PSC_FORCE_POLARITY		0x0020
-#define IFE_PSC_DISABLE_DYNAMIC_POWER_DOWN	0x0100
 
 /* IFE PHY Special Control and LED Control */
 #define IFE_PSCL_PROBE_MODE		0x0020
