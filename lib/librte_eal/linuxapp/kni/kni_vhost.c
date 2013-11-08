@@ -31,6 +31,7 @@
 #include <linux/nsproxy.h>
 #include <linux/sched.h>
 #include <linux/if_tun.h>
+#include <linux/version.h>
 
 #include "kni_dev.h" 
 #include "kni_fifo.h"
@@ -38,6 +39,34 @@
 #define RX_BURST_SZ 4
 
 extern void put_unused_fd(unsigned int fd);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
+extern struct file*
+sock_alloc_file(struct socket *sock, 
+		int flags, const char *dname);
+
+extern int get_unused_fd_flags(unsigned flags);
+
+extern void fd_install(unsigned int fd, struct file *file);
+
+static int kni_sock_map_fd(struct socket *sock)
+{
+	struct file *file;
+	int fd = get_unused_fd_flags(0);
+	if (fd < 0)
+		return fd;
+
+	file = sock_alloc_file(sock, 0, NULL);
+	if (IS_ERR(file)) {
+		put_unused_fd(fd);
+		return PTR_ERR(file);
+	}
+	fd_install(fd, file);
+	return fd;
+}
+#else
+#define kni_sock_map_fd(s)             sock_map_fd(s, 0)
+#endif
 
 static struct proto kni_raw_proto = {
 	.name = "kni_vhost",
@@ -598,7 +627,7 @@ kni_vhost_backend_init(struct kni_dev *kni)
 	if (err)
 		goto free_sk;
 
-	sockfd = sock_map_fd(q->sock, 0);
+	sockfd = kni_sock_map_fd(q->sock);
 	if (sockfd < 0) {
 		err = sockfd;
 		goto free_sock;
