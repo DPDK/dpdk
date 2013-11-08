@@ -1155,6 +1155,11 @@ eth_igb_infos_get(struct rte_eth_dev *dev,
 		dev_info->max_vmdq_pools = ETH_8_POOLS;
 		break;
 
+	case e1000_i354:
+		dev_info->max_rx_queues = 8;
+		dev_info->max_tx_queues = 8;
+		break;
+
 	case e1000_i210:
 		dev_info->max_rx_queues = 4;
 		dev_info->max_tx_queues = 4;
