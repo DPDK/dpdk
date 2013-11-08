@@ -34,10 +34,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef _E1000_MAC_H_
 #define _E1000_MAC_H_
 
-/*
- * Functions that should not be called directly from drivers but can be used
- * by other files in this 'shared code'
- */
 void e1000_init_mac_ops_generic(struct e1000_hw *hw);
 void e1000_null_mac_generic(struct e1000_hw *hw);
 s32  e1000_null_ops_generic(struct e1000_hw *hw);

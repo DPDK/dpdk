@@ -882,8 +882,7 @@ POSSIBILITY OF SUCH DAMAGE.
 	E1000_IMS_RXDMT0 |    \
 	E1000_IMS_RXSEQ)
 
-/*
- * This defines the bits that are set in the Interrupt Mask
+/* This defines the bits that are set in the Interrupt Mask
  * Set/Read Register.  Each bit is documented below:
  *   o RXT0   = Receiver Timer Interrupt (ring 0)
  *   o TXDW   = Transmit Descriptor Written Back
@@ -1030,8 +1029,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define VLAN_TAG_SIZE			4    /* 802.3ac tag (not DMA'd) */
 #define E1000_VLAN_FILTER_TBL_SIZE	128  /* VLAN Filter Table (4096 bits) */
 
-/* Receive Address */
-/*
+/* Receive Address
  * Number of high/low register pairs in the RAR. The RAR (Receive Address
  * Registers) holds the directed and multicast addresses that we monitor.
  * Technically, we have 16 spots.  However, we reserve one of these spots
@@ -1558,8 +1556,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define MAX_PHY_REG_ADDRESS		0x1F  /* 5 bit address bus (0-0x1F) */
 #define MAX_PHY_MULTI_PAGE_REG		0xF
 
-/* Bit definitions for valid PHY IDs. */
-/*
+/* Bit definitions for valid PHY IDs.
  * I = Integrated
  * E = External
  */
@@ -1632,8 +1629,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define M88E1000_PSSR_REV_POLARITY	0x0002 /* 1=Polarity reversed */
 #define M88E1000_PSSR_DOWNSHIFT		0x0020 /* 1=Downshifted */
 #define M88E1000_PSSR_MDIX		0x0040 /* 1=MDIX; 0=MDI */
-/*
- * 0 = <50M
+/* 0 = <50M
  * 1 = 50-80M
  * 2 = 80-110M
  * 3 = 110-140M
@@ -1660,8 +1656,7 @@ POSSIBILITY OF SUCH DAMAGE.
  * within 1ms in 1000BASE-T
  */
 #define M88E1000_EPSCR_DOWN_NO_IDLE	0x8000
-/*
- * Number of times we will attempt to autonegotiate before downshifting if we
+/* Number of times we will attempt to autonegotiate before downshifting if we
  * are the master
  */
 #define M88E1000_EPSCR_MASTER_DOWNSHIFT_MASK	0x0C00
@@ -1669,8 +1664,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define M88E1000_EPSCR_MASTER_DOWNSHIFT_2X	0x0400
 #define M88E1000_EPSCR_MASTER_DOWNSHIFT_3X	0x0800
 #define M88E1000_EPSCR_MASTER_DOWNSHIFT_4X	0x0C00
-/*
- * Number of times we will attempt to autonegotiate before downshifting if we
+/* Number of times we will attempt to autonegotiate before downshifting if we
  * are the slave
  */
 #define M88E1000_EPSCR_SLAVE_DOWNSHIFT_MASK	0x0300
@@ -1697,8 +1691,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 /* I347AT4 Extended PHY Specific Control Register */
 
-/*
- * Number of times we will attempt to autonegotiate before downshifting if we
+/* Number of times we will attempt to autonegotiate before downshifting if we
  * are the master
  */
 #define I347AT4_PSCR_DOWNSHIFT_ENABLE	0x0800
@@ -1735,8 +1728,7 @@ POSSIBILITY OF SUCH DAMAGE.
 /* BME1000 PHY Specific Control Register */
 #define BME1000_PSCR_ENABLE_DOWNSHIFT	0x0800 /* 1 = enable downshift */
 
-/*
- * Bits...
+/* Bits...
  * 15-5: page
  * 4-0: register offset
  */
@@ -1881,7 +1873,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_PROXYFC_ARP_DIRECTED	0x00000020 /* Directed ARP Proxy Ena */
 #define E1000_PROXYFC_IPV4		0x00000040 /* Directed IPv4 Enable */
 #define E1000_PROXYFC_IPV6		0x00000080 /* Directed IPv6 Enable */
-#define E1000_PROXYFC_NS		0x00000200 /* IPv4 NBRHD Solicitation */
+#define E1000_PROXYFC_NS		0x00000200 /* IPv6 Neighbor Solicitation */
 #define E1000_PROXYFC_ARP		0x00000800 /* ARP Request Proxy Ena */
 /* Proxy Status */
 #define E1000_PROXYS_CLEAR		0xFFFFFFFF /* Clear */

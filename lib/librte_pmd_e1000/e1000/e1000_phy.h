@@ -173,7 +173,7 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 #define I82577_ADDR_REG			16
 #define I82577_CFG_REG			22
 #define I82577_CFG_ASSERT_CRS_ON_TX	(1 << 15)
-#define I82577_CFG_ENABLE_DOWNSHIFT	(3 << 10) /* auto downshift 100/10 */
+#define I82577_CFG_ENABLE_DOWNSHIFT	(3 << 10) /* auto downshift */
 #define I82577_CTRL_REG			23
 
 /* 82577 specific PHY registers */
@@ -253,7 +253,7 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 #define IGP02E1000_PHY_AGC_C		0x14B1
 #define IGP02E1000_PHY_AGC_D		0x18B1
 
-#define IGP02E1000_AGC_LENGTH_SHIFT	9   /* Course - 15:13, Fine - 12:9 */
+#define IGP02E1000_AGC_LENGTH_SHIFT	9   /* Course=15:13, Fine=12:9 */
 #define IGP02E1000_AGC_LENGTH_MASK	0x7F
 #define IGP02E1000_AGC_RANGE		15
 
@@ -282,8 +282,8 @@ s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 #define E1000_KMRNCTRLSTA_K0_100_EN	0x2000 /* ena K0s mode for 10/100 lnk */
 
 #define IFE_PHY_EXTENDED_STATUS_CONTROL	0x10
-#define IFE_PHY_SPECIAL_CONTROL		0x11 /* 100BaseTx PHY Special Control */
-#define IFE_PHY_SPECIAL_CONTROL_LED	0x1B /* PHY Special and LED Control */
+#define IFE_PHY_SPECIAL_CONTROL		0x11 /* 100BaseTx PHY Special Ctrl */
+#define IFE_PHY_SPECIAL_CONTROL_LED	0x1B /* PHY Special and LED Ctrl */
 #define IFE_PHY_MDIX_CONTROL		0x1C /* MDI/MDI-X Control */
 
 /* IFE PHY Extended Status Control */

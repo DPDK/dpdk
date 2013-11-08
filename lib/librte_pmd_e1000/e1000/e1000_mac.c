@@ -387,7 +387,7 @@ void e1000_init_rx_addrs_generic(struct e1000_hw *hw, u16 rar_count)
 s32 e1000_check_alt_mac_addr_generic(struct e1000_hw *hw)
 {
 	u32 i;
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 	u16 offset, nvm_alt_mac_addr_offset, nvm_data;
 	u8 alt_mac_addr[ETH_ADDR_LEN];
 
@@ -1498,10 +1498,9 @@ s32 e1000_config_fc_after_link_up_generic(struct e1000_hw *hw)
 	 * has completed, and if so, how the PHY and link partner has
 	 * flow control configured.
 	 */
-	if ((hw->phy.media_type == e1000_media_type_internal_serdes)
-		&& mac->autoneg) {
-		/*
-		 * Read the PCS_LSTS and check to see if AutoNeg
+	if ((hw->phy.media_type == e1000_media_type_internal_serdes) &&
+	    mac->autoneg) {
+		/* Read the PCS_LSTS and check to see if AutoNeg
 		 * has completed.
 		 */
 		pcs_status_reg = E1000_READ_REG(hw, E1000_PCS_LSTAT);

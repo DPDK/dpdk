@@ -71,7 +71,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_IVAR	0x000E4  /* Interrupt Vector Allocation Register - RW */
 #define E1000_SVCR	0x000F0
 #define E1000_SVT	0x000F4
-#define E1000_LPIC  0x000FC  /* Low Power IDLE control */
+#define E1000_LPIC	0x000FC  /* Low Power IDLE control */
 #define E1000_RCTL	0x00100  /* Rx Control - RW */
 #define E1000_FCTTV	0x00170  /* Flow Control Transmit Timer Value - RW */
 #define E1000_TXCW	0x00178  /* Tx Configuration Word - RW */
@@ -202,8 +202,7 @@ POSSIBILITY OF SUCH DAMAGE.
 /* Queues packet buffer size masks where _n can be 0-3 and _s 0-63 [kB] */
 #define E1000_I210_TXPBS_SIZE(_n, _s)	((_s) << (6 * _n))
 
-/*
- * Convenience macros
+/* Convenience macros
  *
  * Note: "_n" is the queue number of the register to be written to.
  *
@@ -415,8 +414,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_LSECTXKEY1(_n)	(0x0B030 + (0x04 * (_n)))
 #define E1000_LSECRXSA(_n)	(0x0B310 + (0x04 * (_n))) /* Rx SAs - RW */
 #define E1000_LSECRXPN(_n)	(0x0B330 + (0x04 * (_n))) /* Rx SAs - RW */
-/*
- * LinkSec Rx Keys  - where _n is the SA no. and _m the 4 dwords of the 128 bit
+/* LinkSec Rx Keys  - where _n is the SA no. and _m the 4 dwords of the 128 bit
  * key - RW.
  */
 #define E1000_LSECRXKEY(_n, _m)	(0x0B350 + (0x10 * (_n)) + (0x04 * (_m)))

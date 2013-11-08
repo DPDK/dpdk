@@ -373,7 +373,7 @@ bool e1000_enable_mng_pass_thru(struct e1000_hw *hw)
 			return true;
 	} else if ((manc & E1000_MANC_SMBUS_EN) &&
 		   !(manc & E1000_MANC_ASF_EN)) {
-			return true;
+		return true;
 	}
 
 	return false;

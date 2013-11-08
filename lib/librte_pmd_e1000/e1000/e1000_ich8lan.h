@@ -62,11 +62,11 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #define ICH_FLASH_REG_MAPSIZE		0x00A0
 
-#define E1000_ICH_FWSM_RSPCIPHY		0x00000040 /* Reset PHY on PCI Reset */
+#define E1000_ICH_FWSM_RSPCIPHY	0x00000040 /* Reset PHY on PCI Reset */
 #define E1000_ICH_FWSM_DISSW		0x10000000 /* FW Disables SW Writes */
 /* FW established a valid mode */
-#define E1000_ICH_FWSM_FW_VALID		0x00008000
-#define E1000_ICH_FWSM_PCIM2PCI		0x01000000 /* ME PCIm-to-PCI active */
+#define E1000_ICH_FWSM_FW_VALID	0x00008000
+#define E1000_ICH_FWSM_PCIM2PCI	0x01000000 /* ME PCIm-to-PCI active */
 #define E1000_ICH_FWSM_PCIM2PCI_COUNT	2000
 
 #define E1000_ICH_MNG_IAMT_MODE		0x2
@@ -104,7 +104,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_FEXT_PHY_CABLE_DISCONNECTED	0x00000004
 
 #define E1000_FEXTNVM_SW_CONFIG		1
-#define E1000_FEXTNVM_SW_CONFIG_ICH8M	(1 << 27) /* Bit redefined for ICH8M */
+#define E1000_FEXTNVM_SW_CONFIG_ICH8M	(1 << 27) /* different on ICH8M */
 
 #define E1000_FEXTNVM3	0x0003C  /* Future Extended NVM 3 - RW */
 #define E1000_FEXTNVM3_PHY_CFG_COUNTER_MASK	0x0C000000
@@ -122,8 +122,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #define PHY_PAGE_SHIFT		5
 #define PHY_REG(page, reg)	(((page) << PHY_PAGE_SHIFT) | \
 				 ((reg) & MAX_PHY_REG_ADDRESS))
-#define IGP3_KMRN_DIAG		PHY_REG(770, 19) /* KMRN Diagnostic */
-#define IGP3_VR_CTRL		PHY_REG(776, 18) /* Voltage Regulator Control */
+#define IGP3_KMRN_DIAG	PHY_REG(770, 19) /* KMRN Diagnostic */
+#define IGP3_VR_CTRL	PHY_REG(776, 18) /* Voltage Regulator Control */
 #define IGP3_CAPABILITY		PHY_REG(776, 19) /* Capability */
 #define IGP3_PM_CTRL		PHY_REG(769, 20) /* Power Management Control */
 
@@ -170,19 +170,20 @@ POSSIBILITY OF SUCH DAMAGE.
 #define HV_MUX_DATA_CTRL_GEN_TO_MAC	0x0400
 #define HV_MUX_DATA_CTRL_FORCE_SPEED	0x0004
 #define HV_STATS_PAGE	778
-#define HV_SCC_UPPER	PHY_REG(HV_STATS_PAGE, 16) /* Single Collision Count */
+/* Half-duplex collision counts */
+#define HV_SCC_UPPER	PHY_REG(HV_STATS_PAGE, 16) /* Single Collision */
 #define HV_SCC_LOWER	PHY_REG(HV_STATS_PAGE, 17)
-#define HV_ECOL_UPPER	PHY_REG(HV_STATS_PAGE, 18) /* Excessive Coll. Count */
+#define HV_ECOL_UPPER	PHY_REG(HV_STATS_PAGE, 18) /* Excessive Coll. */
 #define HV_ECOL_LOWER	PHY_REG(HV_STATS_PAGE, 19)
-#define HV_MCC_UPPER	PHY_REG(HV_STATS_PAGE, 20) /* Multiple Coll. Count */
+#define HV_MCC_UPPER	PHY_REG(HV_STATS_PAGE, 20) /* Multiple Collision */
 #define HV_MCC_LOWER	PHY_REG(HV_STATS_PAGE, 21)
-#define HV_LATECOL_UPPER PHY_REG(HV_STATS_PAGE, 23) /* Late Collision Count */
+#define HV_LATECOL_UPPER PHY_REG(HV_STATS_PAGE, 23) /* Late Collision */
 #define HV_LATECOL_LOWER PHY_REG(HV_STATS_PAGE, 24)
-#define HV_COLC_UPPER	PHY_REG(HV_STATS_PAGE, 25) /* Collision Count */
+#define HV_COLC_UPPER	PHY_REG(HV_STATS_PAGE, 25) /* Collision */
 #define HV_COLC_LOWER	PHY_REG(HV_STATS_PAGE, 26)
 #define HV_DC_UPPER	PHY_REG(HV_STATS_PAGE, 27) /* Defer Count */
 #define HV_DC_LOWER	PHY_REG(HV_STATS_PAGE, 28)
-#define HV_TNCRS_UPPER	PHY_REG(HV_STATS_PAGE, 29) /* Transmit with no CRS */
+#define HV_TNCRS_UPPER	PHY_REG(HV_STATS_PAGE, 29) /* Tx with no CRS */
 #define HV_TNCRS_LOWER	PHY_REG(HV_STATS_PAGE, 30)
 
 #define E1000_FCRTV_PCH	0x05F40 /* PCH Flow Control Refresh Timer Value */
@@ -262,8 +263,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #define I82579_EEE_CAPABILITY		0x0410 /* IEEE MMD Register 3.20 */
 #define I82579_EEE_ADVERTISEMENT	0x040E /* IEEE MMD Register 7.60 */
 #define I82579_EEE_LP_ABILITY		0x040F /* IEEE MMD Register 7.61 */
-#define I82579_EEE_100_SUPPORTED	(1 << 1) /* 100BaseTx EEE supported */
-#define I82579_EEE_1000_SUPPORTED	(1 << 2) /* 1000BaseTx EEE supported */
+#define I82579_EEE_100_SUPPORTED	(1 << 1) /* 100BaseTx EEE */
+#define I82579_EEE_1000_SUPPORTED	(1 << 2) /* 1000BaseTx EEE */
 #define I217_EEE_PCS_STATUS	0x9401   /* IEEE MMD Register 3.1 */
 #define I217_EEE_CAPABILITY	0x8000   /* IEEE MMD Register 3.20 */
 #define I217_EEE_ADVERTISEMENT	0x8001   /* IEEE MMD Register 7.60 */

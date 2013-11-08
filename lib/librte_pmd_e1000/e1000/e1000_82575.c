@@ -333,6 +333,7 @@ s32 e1000_init_nvm_params_82575(struct e1000_hw *hw)
 	} else {
 		nvm->type = e1000_nvm_flash_hw;
 	}
+
 	/* Function Pointers */
 	nvm->ops.acquire = e1000_acquire_nvm_82575;
 	nvm->ops.release = e1000_release_nvm_82575;
@@ -1801,15 +1802,14 @@ STATIC s32 e1000_set_sfp_media_type_82575(struct e1000_hw *hw)
 	}
 	if (ret_val != E1000_SUCCESS)
 		goto out;
+
 	ret_val = e1000_read_sfp_data_byte(hw,
 			E1000_I2CCMD_SFP_DATA_ADDR(E1000_SFF_ETH_FLAGS_OFFSET),
 			(u8 *)eth_flags);
 	if (ret_val != E1000_SUCCESS)
 		goto out;
-	/*
-	 * Check if there is some SFP
-	 * module plugged and powered
-	 */
+
+	/* Check if there is some SFP module plugged and powered */
 	if ((tranceiver_type == E1000_SFF_IDENTIFIER_SFP) ||
 	    (tranceiver_type == E1000_SFF_IDENTIFIER_SFF)) {
 		dev_spec->module_plugged = true;
@@ -1822,9 +1822,9 @@ STATIC s32 e1000_set_sfp_media_type_82575(struct e1000_hw *hw)
 			dev_spec->sgmii_active = true;
 			hw->phy.media_type = e1000_media_type_copper;
 		} else {
-				hw->phy.media_type = e1000_media_type_unknown;
-				DEBUGOUT("PHY module has not been recognized\n");
-				goto out;
+			hw->phy.media_type = e1000_media_type_unknown;
+			DEBUGOUT("PHY module has not been recognized\n");
+			goto out;
 		}
 	} else {
 		hw->phy.media_type = e1000_media_type_unknown;

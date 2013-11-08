@@ -50,21 +50,21 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_KMRNCTRLSTA_OPMODE_MASK		0x000C
 #define E1000_KMRNCTRLSTA_OPMODE_INBAND_MDIO	0x0004
 
-#define E1000_TCTL_EXT_GCEX_MASK 0x000FFC00 /* Gigabit Carry Extend Padding */
+#define E1000_TCTL_EXT_GCEX_MASK 0x000FFC00 /* Gig Carry Extend Padding */
 #define DEFAULT_TCTL_EXT_GCEX_80003ES2LAN	0x00010000
 
 #define DEFAULT_TIPG_IPGT_1000_80003ES2LAN	0x8
 #define DEFAULT_TIPG_IPGT_10_100_80003ES2LAN	0x9
 
 /* GG82563 PHY Specific Status Register (Page 0, Register 16 */
-#define GG82563_PSCR_POLARITY_REVERSAL_DISABLE	0x0002 /* 1=Reversal Disabled */
+#define GG82563_PSCR_POLARITY_REVERSAL_DISABLE	0x0002 /* 1=Reversal Dis */
 #define GG82563_PSCR_CROSSOVER_MODE_MASK	0x0060
 #define GG82563_PSCR_CROSSOVER_MODE_MDI		0x0000 /* 00=Manual MDI */
 #define GG82563_PSCR_CROSSOVER_MODE_MDIX	0x0020 /* 01=Manual MDIX */
 #define GG82563_PSCR_CROSSOVER_MODE_AUTO	0x0060 /* 11=Auto crossover */
 
 /* PHY Specific Control Register 2 (Page 0, Register 26) */
-#define GG82563_PSCR2_REVERSE_AUTO_NEG		0x2000 /* 1=Reverse Auto-Nego */
+#define GG82563_PSCR2_REVERSE_AUTO_NEG		0x2000 /* 1=Reverse Auto-Neg */
 
 /* MAC Specific Control Register (Page 2, Register 21) */
 /* Tx clock speed for Link Down and 1000BASE-T for the following speeds */

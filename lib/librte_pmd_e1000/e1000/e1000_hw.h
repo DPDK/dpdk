@@ -122,7 +122,6 @@ struct e1000_hw;
 #define E1000_DEV_ID_ICH10_D_BM_LM		0x10DE
 #define E1000_DEV_ID_ICH10_D_BM_LF		0x10DF
 #define E1000_DEV_ID_ICH10_D_BM_V		0x1525
-
 #define E1000_DEV_ID_PCH_M_HV_LM		0x10EA
 #define E1000_DEV_ID_PCH_M_HV_LC		0x10EB
 #define E1000_DEV_ID_PCH_D_HV_DM		0x10EF
@@ -166,6 +165,7 @@ struct e1000_hw;
 #define E1000_DEV_ID_DH89XXCC_SERDES		0x043A
 #define E1000_DEV_ID_DH89XXCC_BACKPLANE		0x043C
 #define E1000_DEV_ID_DH89XXCC_SFP		0x0440
+
 #define E1000_REVISION_0	0
 #define E1000_REVISION_1	1
 #define E1000_REVISION_2	2
@@ -653,13 +653,13 @@ struct e1000_host_mng_command_info {
 #include "e1000_manage.h"
 #include "e1000_mbx.h"
 
+/* Function pointers for the MAC. */
 struct e1000_mac_operations {
-	/* Function pointers for the MAC. */
 	s32  (*init_params)(struct e1000_hw *);
 	s32  (*id_led_init)(struct e1000_hw *);
 	s32  (*blink_led)(struct e1000_hw *);
+	bool (*check_mng_mode)(struct e1000_hw *);
 	s32  (*check_for_link)(struct e1000_hw *);
-	bool (*check_mng_mode)(struct e1000_hw *hw);
 	s32  (*cleanup_led)(struct e1000_hw *);
 	void (*clear_hw_cntrs)(struct e1000_hw *);
 	void (*clear_vfta)(struct e1000_hw *);
@@ -690,8 +690,7 @@ struct e1000_mac_operations {
 	void (*release_swfw_sync)(struct e1000_hw *, u16);
 };
 
-/*
- * When to use various PHY register access functions:
+/* When to use various PHY register access functions:
  *
  *                 Func   Caller
  *   Function      Does   Does    When to use
@@ -733,6 +732,7 @@ struct e1000_phy_operations {
 	s32 (*write_i2c_byte)(struct e1000_hw *, u8, u8, u8);
 };
 
+/* Function pointers for the NVM. */
 struct e1000_nvm_operations {
 	s32  (*init_params)(struct e1000_hw *);
 	s32  (*acquire)(struct e1000_hw *);
@@ -917,7 +917,7 @@ struct e1000_shadow_ram {
 	bool modified;
 };
 
-#define E1000_SHADOW_RAM_WORDS  2048
+#define E1000_SHADOW_RAM_WORDS		2048
 
 struct e1000_dev_spec_ich8lan {
 	bool kmrn_lock_loss_workaround_enabled;

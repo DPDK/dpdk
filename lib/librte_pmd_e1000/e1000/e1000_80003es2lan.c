@@ -37,9 +37,6 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "e1000_api.h"
 
-STATIC s32  e1000_init_phy_params_80003es2lan(struct e1000_hw *hw);
-STATIC s32  e1000_init_nvm_params_80003es2lan(struct e1000_hw *hw);
-STATIC s32  e1000_init_mac_params_80003es2lan(struct e1000_hw *hw);
 STATIC s32  e1000_acquire_phy_80003es2lan(struct e1000_hw *hw);
 STATIC void e1000_release_phy_80003es2lan(struct e1000_hw *hw);
 STATIC s32  e1000_acquire_nvm_80003es2lan(struct e1000_hw *hw);
@@ -69,7 +66,6 @@ static s32  e1000_read_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
 					    u16 *data);
 static s32  e1000_write_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
 					     u16 data);
-static s32  e1000_copper_link_setup_gg82563_80003es2lan(struct e1000_hw *hw);
 static void e1000_initialize_hw_bits_80003es2lan(struct e1000_hw *hw);
 static void e1000_release_swfw_sync_80003es2lan(struct e1000_hw *hw, u16 mask);
 STATIC s32  e1000_read_mac_addr_80003es2lan(struct e1000_hw *hw);
@@ -760,7 +756,7 @@ STATIC s32 e1000_phy_force_speed_duplex_80003es2lan(struct e1000_hw *hw)
 STATIC s32 e1000_get_cable_length_80003es2lan(struct e1000_hw *hw)
 {
 	struct e1000_phy_info *phy = &hw->phy;
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 	u16 phy_data, index;
 
 	DEBUGFUNC("e1000_get_cable_length_80003es2lan");
@@ -889,9 +885,9 @@ STATIC s32 e1000_init_hw_80003es2lan(struct e1000_hw *hw)
 
 	/* Initialize identification LED */
 	ret_val = mac->ops.id_led_init(hw);
+	/* An error is not fatal and we should not stop init due to this */
 	if (ret_val)
 		DEBUGOUT("Error initializing identification LED\n");
-		/* This is not fatal and we should not stop init due to this */
 
 	/* Disabling VLAN filtering */
 	DEBUGOUT("Initializing the IEEE VLAN\n");
@@ -917,14 +913,14 @@ STATIC s32 e1000_init_hw_80003es2lan(struct e1000_hw *hw)
 
 	/* Set the transmit descriptor write-back policy */
 	reg_data = E1000_READ_REG(hw, E1000_TXDCTL(0));
-	reg_data = (reg_data & ~E1000_TXDCTL_WTHRESH) |
-		   E1000_TXDCTL_FULL_TX_DESC_WB | E1000_TXDCTL_COUNT_DESC;
+	reg_data = ((reg_data & ~E1000_TXDCTL_WTHRESH) |
+		    E1000_TXDCTL_FULL_TX_DESC_WB | E1000_TXDCTL_COUNT_DESC);
 	E1000_WRITE_REG(hw, E1000_TXDCTL(0), reg_data);
 
 	/* ...for both queues. */
 	reg_data = E1000_READ_REG(hw, E1000_TXDCTL(1));
-	reg_data = (reg_data & ~E1000_TXDCTL_WTHRESH) |
-		   E1000_TXDCTL_FULL_TX_DESC_WB | E1000_TXDCTL_COUNT_DESC;
+	reg_data = ((reg_data & ~E1000_TXDCTL_WTHRESH) |
+		    E1000_TXDCTL_FULL_TX_DESC_WB | E1000_TXDCTL_COUNT_DESC);
 	E1000_WRITE_REG(hw, E1000_TXDCTL(1), reg_data);
 
 	/* Enable retransmit on late collisions */
@@ -951,10 +947,9 @@ STATIC s32 e1000_init_hw_80003es2lan(struct e1000_hw *hw)
 	/* default to true to enable the MDIC W/A */
 	hw->dev_spec._80003es2lan.mdic_wa_enable = true;
 
-	ret_val = e1000_read_kmrn_reg_80003es2lan(hw,
-						 E1000_KMRNCTRLSTA_OFFSET >>
-						 E1000_KMRNCTRLSTA_OFFSET_SHIFT,
-						 &i);
+	ret_val =
+	    e1000_read_kmrn_reg_80003es2lan(hw, E1000_KMRNCTRLSTA_OFFSET >>
+					    E1000_KMRNCTRLSTA_OFFSET_SHIFT, &i);
 	if (!ret_val) {
 		if ((i & E1000_KMRNCTRLSTA_OPMODE_MASK) ==
 		     E1000_KMRNCTRLSTA_OPMODE_INBAND_MDIO)
@@ -1028,7 +1023,7 @@ static s32 e1000_copper_link_setup_gg82563_80003es2lan(struct e1000_hw *hw)
 {
 	struct e1000_phy_info *phy = &hw->phy;
 	s32 ret_val;
-	u32 ctrl_ext;
+	u32 reg;
 	u16 data;
 
 	DEBUGFUNC("e1000_copper_link_setup_gg82563_80003es2lan");
@@ -1093,20 +1088,19 @@ static s32 e1000_copper_link_setup_gg82563_80003es2lan(struct e1000_hw *hw)
 	}
 
 	/* Bypass Rx and Tx FIFO's */
-	ret_val = e1000_write_kmrn_reg_80003es2lan(hw,
-					E1000_KMRNCTRLSTA_OFFSET_FIFO_CTRL,
-					E1000_KMRNCTRLSTA_FIFO_CTRL_RX_BYPASS |
-					E1000_KMRNCTRLSTA_FIFO_CTRL_TX_BYPASS);
+	reg = E1000_KMRNCTRLSTA_OFFSET_FIFO_CTRL;
+	data = (E1000_KMRNCTRLSTA_FIFO_CTRL_RX_BYPASS |
+		E1000_KMRNCTRLSTA_FIFO_CTRL_TX_BYPASS);
+	ret_val = e1000_write_kmrn_reg_80003es2lan(hw, reg, data);
 	if (ret_val)
 		return ret_val;
 
-	ret_val = e1000_read_kmrn_reg_80003es2lan(hw,
-				E1000_KMRNCTRLSTA_OFFSET_MAC2PHY_OPMODE, &data);
+	reg = E1000_KMRNCTRLSTA_OFFSET_MAC2PHY_OPMODE;
+	ret_val = e1000_read_kmrn_reg_80003es2lan(hw, reg, &data);
 	if (ret_val)
 		return ret_val;
 	data |= E1000_KMRNCTRLSTA_OPMODE_E_IDLE;
-	ret_val = e1000_write_kmrn_reg_80003es2lan(hw,
-				E1000_KMRNCTRLSTA_OFFSET_MAC2PHY_OPMODE, data);
+	ret_val = e1000_write_kmrn_reg_80003es2lan(hw, reg, data);
 	if (ret_val)
 		return ret_val;
 
@@ -1119,9 +1113,9 @@ static s32 e1000_copper_link_setup_gg82563_80003es2lan(struct e1000_hw *hw)
 	if (ret_val)
 		return ret_val;
 
-	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
-	ctrl_ext &= ~(E1000_CTRL_EXT_LINK_MODE_MASK);
-	E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext);
+	reg = E1000_READ_REG(hw, E1000_CTRL_EXT);
+	reg &= ~E1000_CTRL_EXT_LINK_MODE_MASK;
+	E1000_WRITE_REG(hw, E1000_CTRL_EXT, reg);
 
 	ret_val = hw->phy.ops.read_reg(hw, GG82563_PHY_PWR_MGMT_CTRL, &data);
 	if (ret_val)
@@ -1203,13 +1197,17 @@ STATIC s32 e1000_setup_copper_link_80003es2lan(struct e1000_hw *hw)
 						   reg_data);
 	if (ret_val)
 		return ret_val;
-	ret_val = e1000_read_kmrn_reg_80003es2lan(hw,
-				E1000_KMRNCTRLSTA_OFFSET_INB_CTRL, &reg_data);
+	ret_val =
+	    e1000_read_kmrn_reg_80003es2lan(hw,
+					    E1000_KMRNCTRLSTA_OFFSET_INB_CTRL,
+					    &reg_data);
 	if (ret_val)
 		return ret_val;
 	reg_data |= E1000_KMRNCTRLSTA_INB_CTRL_DIS_PADDING;
-	ret_val = e1000_write_kmrn_reg_80003es2lan(hw,
-				E1000_KMRNCTRLSTA_OFFSET_INB_CTRL, reg_data);
+	ret_val =
+	    e1000_write_kmrn_reg_80003es2lan(hw,
+					     E1000_KMRNCTRLSTA_OFFSET_INB_CTRL,
+					     reg_data);
 	if (ret_val)
 		return ret_val;
 
@@ -1269,9 +1267,10 @@ static s32 e1000_cfg_kmrn_10_100_80003es2lan(struct e1000_hw *hw, u16 duplex)
 	DEBUGFUNC("e1000_configure_kmrn_for_10_100");
 
 	reg_data = E1000_KMRNCTRLSTA_HD_CTRL_10_100_DEFAULT;
-	ret_val = e1000_write_kmrn_reg_80003es2lan(hw,
-				       E1000_KMRNCTRLSTA_OFFSET_HD_CTRL,
-				       reg_data);
+	ret_val =
+	    e1000_write_kmrn_reg_80003es2lan(hw,
+					     E1000_KMRNCTRLSTA_OFFSET_HD_CTRL,
+					     reg_data);
 	if (ret_val)
 		return ret_val;
 
@@ -1319,8 +1318,10 @@ static s32 e1000_cfg_kmrn_1000_80003es2lan(struct e1000_hw *hw)
 	DEBUGFUNC("e1000_configure_kmrn_for_1000");
 
 	reg_data = E1000_KMRNCTRLSTA_HD_CTRL_1000_DEFAULT;
-	ret_val = e1000_write_kmrn_reg_80003es2lan(hw,
-				E1000_KMRNCTRLSTA_OFFSET_HD_CTRL, reg_data);
+	ret_val =
+	    e1000_write_kmrn_reg_80003es2lan(hw,
+					     E1000_KMRNCTRLSTA_OFFSET_HD_CTRL,
+					     reg_data);
 	if (ret_val)
 		return ret_val;
 
@@ -1362,7 +1363,7 @@ static s32 e1000_read_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
 					   u16 *data)
 {
 	u32 kmrnctrlsta;
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	DEBUGFUNC("e1000_read_kmrn_reg_80003es2lan");
 
@@ -1399,7 +1400,7 @@ static s32 e1000_write_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
 					    u16 data)
 {
 	u32 kmrnctrlsta;
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	DEBUGFUNC("e1000_write_kmrn_reg_80003es2lan");
 
@@ -1425,7 +1426,7 @@ static s32 e1000_write_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
  **/
 STATIC s32 e1000_read_mac_addr_80003es2lan(struct e1000_hw *hw)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	DEBUGFUNC("e1000_read_mac_addr_80003es2lan");
 

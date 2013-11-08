@@ -49,9 +49,6 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "e1000_api.h"
 
-STATIC s32  e1000_init_phy_params_82571(struct e1000_hw *hw);
-STATIC s32  e1000_init_nvm_params_82571(struct e1000_hw *hw);
-STATIC s32  e1000_init_mac_params_82571(struct e1000_hw *hw);
 STATIC s32  e1000_acquire_nvm_82571(struct e1000_hw *hw);
 STATIC void e1000_release_nvm_82571(struct e1000_hw *hw);
 STATIC s32  e1000_write_nvm_82571(struct e1000_hw *hw, u16 offset,
@@ -76,7 +73,6 @@ static s32  e1000_get_hw_semaphore_82571(struct e1000_hw *hw);
 static s32  e1000_fix_nvm_checksum_82571(struct e1000_hw *hw);
 static s32  e1000_get_phy_id_82571(struct e1000_hw *hw);
 static void e1000_put_hw_semaphore_82571(struct e1000_hw *hw);
-static s32  e1000_get_hw_semaphore_82573(struct e1000_hw *hw);
 static void e1000_put_hw_semaphore_82573(struct e1000_hw *hw);
 static s32  e1000_get_hw_semaphore_82574(struct e1000_hw *hw);
 static void e1000_put_hw_semaphore_82574(struct e1000_hw *hw);
@@ -603,15 +599,13 @@ static s32 e1000_get_hw_semaphore_82573(struct e1000_hw *hw)
 	DEBUGFUNC("e1000_get_hw_semaphore_82573");
 
 	extcnf_ctrl = E1000_READ_REG(hw, E1000_EXTCNF_CTRL);
-	extcnf_ctrl |= E1000_EXTCNF_CTRL_MDIO_SW_OWNERSHIP;
 	do {
+		extcnf_ctrl |= E1000_EXTCNF_CTRL_MDIO_SW_OWNERSHIP;
 		E1000_WRITE_REG(hw, E1000_EXTCNF_CTRL, extcnf_ctrl);
 		extcnf_ctrl = E1000_READ_REG(hw, E1000_EXTCNF_CTRL);
 
 		if (extcnf_ctrl & E1000_EXTCNF_CTRL_MDIO_SW_OWNERSHIP)
 			break;
-
-		extcnf_ctrl |= E1000_EXTCNF_CTRL_MDIO_SW_OWNERSHIP;
 
 		msec_delay(2);
 		i++;
@@ -932,9 +926,9 @@ static s32 e1000_write_nvm_eewr_82571(struct e1000_hw *hw, u16 offset,
 	}
 
 	for (i = 0; i < words; i++) {
-		eewr = (data[i] << E1000_NVM_RW_REG_DATA) |
-		       ((offset+i) << E1000_NVM_RW_ADDR_SHIFT) |
-		       E1000_NVM_RW_REG_START;
+		eewr = ((data[i] << E1000_NVM_RW_REG_DATA) |
+			((offset + i) << E1000_NVM_RW_ADDR_SHIFT) |
+			E1000_NVM_RW_REG_START);
 
 		ret_val = e1000_poll_eerd_eewr_done(hw, E1000_NVM_POLL_WRITE);
 		if (ret_val)
@@ -1198,9 +1192,9 @@ STATIC s32 e1000_init_hw_82571(struct e1000_hw *hw)
 
 	/* Initialize identification LED */
 	ret_val = mac->ops.id_led_init(hw);
+	/* An error is not fatal and we should not stop init due to this */
 	if (ret_val)
 		DEBUGOUT("Error initializing identification LED\n");
-		/* This is not fatal and we should not stop init due to this */
 
 	/* Disabling VLAN filtering */
 	DEBUGOUT("Initializing the IEEE VLAN\n");
@@ -1225,8 +1219,8 @@ STATIC s32 e1000_init_hw_82571(struct e1000_hw *hw)
 
 	/* Set the transmit descriptor write-back policy */
 	reg_data = E1000_READ_REG(hw, E1000_TXDCTL(0));
-	reg_data = (reg_data & ~E1000_TXDCTL_WTHRESH) |
-		   E1000_TXDCTL_FULL_TX_DESC_WB | E1000_TXDCTL_COUNT_DESC;
+	reg_data = ((reg_data & ~E1000_TXDCTL_WTHRESH) |
+		    E1000_TXDCTL_FULL_TX_DESC_WB | E1000_TXDCTL_COUNT_DESC);
 	E1000_WRITE_REG(hw, E1000_TXDCTL(0), reg_data);
 
 	/* ...for both queues. */
@@ -1242,9 +1236,9 @@ STATIC s32 e1000_init_hw_82571(struct e1000_hw *hw)
 		break;
 	default:
 		reg_data = E1000_READ_REG(hw, E1000_TXDCTL(1));
-		reg_data = (reg_data & ~E1000_TXDCTL_WTHRESH) |
-			   E1000_TXDCTL_FULL_TX_DESC_WB |
-			   E1000_TXDCTL_COUNT_DESC;
+		reg_data = ((reg_data & ~E1000_TXDCTL_WTHRESH) |
+			    E1000_TXDCTL_FULL_TX_DESC_WB |
+			    E1000_TXDCTL_COUNT_DESC);
 		E1000_WRITE_REG(hw, E1000_TXDCTL(1), reg_data);
 		break;
 	}
@@ -1496,7 +1490,7 @@ bool e1000_check_phy_82574(struct e1000_hw *hw)
 {
 	u16 status_1kbt = 0;
 	u16 receive_errors = 0;
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	DEBUGFUNC("e1000_check_phy_82574");
 
@@ -1655,13 +1649,12 @@ STATIC s32 e1000_check_for_serdes_link_82571(struct e1000_hw *hw)
 
 	ctrl = E1000_READ_REG(hw, E1000_CTRL);
 	status = E1000_READ_REG(hw, E1000_STATUS);
-	rxcw = E1000_READ_REG(hw, E1000_RXCW);
+	E1000_READ_REG(hw, E1000_RXCW);
 	/* SYNCH bit and IV bit are sticky */
 	usec_delay(10);
 	rxcw = E1000_READ_REG(hw, E1000_RXCW);
 
 	if ((rxcw & E1000_RXCW_SYNCH) && !(rxcw & E1000_RXCW_IV)) {
-
 		/* Receiver is synchronized with no invalid bits.  */
 		switch (mac->serdes_link_state) {
 		case e1000_serdes_link_autoneg_complete:
@@ -1939,7 +1932,7 @@ STATIC s32 e1000_read_mac_addr_82571(struct e1000_hw *hw)
 	DEBUGFUNC("e1000_read_mac_addr_82571");
 
 	if (hw->mac.type == e1000_82571) {
-		s32 ret_val = E1000_SUCCESS;
+		s32 ret_val;
 
 		/* If there's an alternate MAC address place it in RAR0
 		 * so that it will override the Si installed default perm
