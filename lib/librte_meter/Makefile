@@ -37,7 +37,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_meter.a
 
 CFLAGS += -O3
-CFLAGS += -g
 CFLAGS += $(WERROR_FLAGS)
 
 #
