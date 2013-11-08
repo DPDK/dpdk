@@ -272,6 +272,10 @@ extern uint8_t  numa_support; /**< set by "--numa" parameter */
 extern uint16_t port_topology; /**< set by "--port-topology" parameter */
 extern uint8_t no_flush_rx; /**<set by "--no-flush-rx" parameter */
 
+#ifdef RTE_NIC_BYPASS
+extern uint32_t bypass_timeout; /**< Store the NIC bypass watchdog timeout */
+#endif
+
 #define MAX_SOCKET 2 /*MAX SOCKET:currently, it is 2 */
 
 /*

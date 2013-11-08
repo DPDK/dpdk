@@ -243,11 +243,20 @@ uint16_t rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6; /* RSS IP by default. */
  */
 uint16_t port_topology = PORT_TOPOLOGY_PAIRED; /* Ports are paired by default */
 
-
 /*
  * Avoids to flush all the RX streams before starts forwarding.
  */
 uint8_t no_flush_rx = 0; /* flush by default */
+
+/*
+ * NIC bypass mode configuration options.
+ */
+#ifdef RTE_NIC_BYPASS
+
+/* The NIC bypass watchdog timeout. */
+uint32_t bypass_timeout = RTE_BYPASS_TMT_OFF; 
+
+#endif
 
 /*
  * Ethernet device configuration.
@@ -1542,6 +1551,9 @@ init_port_config(void)
 		rte_eth_macaddr_get(pid, &port->eth_addr);
 
 		map_port_queue_stats_mapping_registers(pid, port);
+#ifdef RTE_NIC_BYPASS
+		rte_eth_dev_bypass_init(pid);
+#endif
 	}
 }
 

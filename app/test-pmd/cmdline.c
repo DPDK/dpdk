@@ -77,10 +77,15 @@
 #include <cmdline_parse_etheraddr.h>
 #include <cmdline_socket.h>
 #include <cmdline.h>
+#include <rte_pci_dev_ids.h>
 
 #include "testpmd.h"
 
 static void cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue);
+
+#ifdef RTE_NIC_BYPASS
+uint8_t bypass_is_supported(portid_t port_id);
+#endif
 
 /* *** Help command with introduction. *** */
 struct cmd_help_brief_result {
@@ -350,7 +355,35 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"reset port (port_id) mirror-rule (rule_id)\n"
 			"   Reset a mirror rule.\n\n"
 
-			""
+			"set flush_rx (on|off)\n"
+			"   Flush (default) or don't flush RX streams before"
+			" forwarding. Mainly used with PCAP drivers.\n\n"
+
+			#ifdef RTE_NIC_BYPASS
+			"set bypass mode (normal|bypass|isolate) (port_id)\n"
+			"   Set the bypass mode for the lowest port on bypass enabled"
+			" NIC.\n\n"
+
+			"set bypass event (timeout|os_on|os_off|power_on|power_off) "
+			"mode (normal|bypass|isolate) (port_id)\n"
+			"   Set the event required to initiate specified bypass mode for"
+			" the lowest port on a bypass enabled NIC where:\n"
+			"       timeout   = enable bypass after watchdog timeout.\n"
+			"       os_on     = enable bypass when OS/board is powered on.\n"
+			"       os_off    = enable bypass when OS/board is powered off.\n"
+			"       power_on  = enable bypass when power supply is turned on.\n"
+			"       power_off = enable bypass when power supply is turned off."
+			"\n\n"
+
+			"set bypass timeout (0|1.5|2|3|4|8|16|32)\n"
+			"   Set the bypass watchdog timeout to 'n' seconds"
+			" where 0 = instant.\n\n"
+
+			"show bypass config (port_id)\n"
+			"   Show the bypass configuration for a bypass enabled NIC"
+			" using the lowest port on the NIC.\n\n"
+#endif
+
 		);
 	}
 
@@ -2285,6 +2318,337 @@ cmdline_parse_inst_t cmd_set_flush_rx = {
 		NULL,
 	},
 };
+
+#ifdef RTE_NIC_BYPASS
+/* *** SET NIC BYPASS MODE *** */
+struct cmd_set_bypass_mode_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bypass;
+	cmdline_fixed_string_t mode;
+	cmdline_fixed_string_t value;
+	uint8_t port_id;
+};
+
+static void
+cmd_set_bypass_mode_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bypass_mode_result *res = parsed_result;
+	portid_t port_id = res->port_id;
+	uint32_t bypass_mode = RTE_BYPASS_MODE_NORMAL;
+
+	if (!bypass_is_supported(port_id))
+		return;
+
+	if (!strcmp(res->value, "bypass"))
+		bypass_mode = RTE_BYPASS_MODE_BYPASS;
+	else if (!strcmp(res->value, "isolate"))
+		bypass_mode = RTE_BYPASS_MODE_ISOLATE;
+	else
+		bypass_mode = RTE_BYPASS_MODE_NORMAL;
+
+	/* Set the bypass mode for the relevant port. */
+	if (0 != rte_eth_dev_bypass_state_set(port_id, &bypass_mode)) {
+		printf("\t Failed to set bypass mode for port = %d.\n", port_id);
+	}
+}
+
+cmdline_parse_token_string_t cmd_setbypass_mode_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_mode_result,
+			set, "set");
+cmdline_parse_token_string_t cmd_setbypass_mode_bypass =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_mode_result,
+			bypass, "bypass");
+cmdline_parse_token_string_t cmd_setbypass_mode_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_mode_result,
+			mode, "mode");
+cmdline_parse_token_string_t cmd_setbypass_mode_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_mode_result,
+			value, "normal#bypass#isolate");
+cmdline_parse_token_num_t cmd_setbypass_mode_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_bypass_mode_result,
+				port_id, UINT8);
+
+cmdline_parse_inst_t cmd_set_bypass_mode = {
+	.f = cmd_set_bypass_mode_parsed,
+	.help_str = "set bypass mode (normal|bypass|isolate) (port_id): "
+	            "Set the NIC bypass mode for port_id",
+	.data = NULL,
+	.tokens = {
+		(void *)&cmd_setbypass_mode_set,
+		(void *)&cmd_setbypass_mode_bypass,
+		(void *)&cmd_setbypass_mode_mode,
+		(void *)&cmd_setbypass_mode_value,
+		(void *)&cmd_setbypass_mode_port,
+		NULL,
+	},
+};
+
+/* *** SET NIC BYPASS EVENT *** */
+struct cmd_set_bypass_event_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bypass;
+	cmdline_fixed_string_t event;
+	cmdline_fixed_string_t event_value;
+	cmdline_fixed_string_t mode;
+	cmdline_fixed_string_t mode_value;
+	uint8_t port_id;
+};
+
+static void
+cmd_set_bypass_event_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	int32_t rc;
+	struct cmd_set_bypass_event_result *res = parsed_result;
+	portid_t port_id = res->port_id;
+	uint32_t bypass_event = RTE_BYPASS_EVENT_NONE;
+	uint32_t bypass_mode = RTE_BYPASS_MODE_NORMAL;
+
+	if (!bypass_is_supported(port_id))
+		return;
+
+	if (!strcmp(res->event_value, "timeout"))
+		bypass_event = RTE_BYPASS_EVENT_TIMEOUT;
+	else if (!strcmp(res->event_value, "os_on"))
+		bypass_event = RTE_BYPASS_EVENT_OS_ON;
+	else if (!strcmp(res->event_value, "os_off"))
+		bypass_event = RTE_BYPASS_EVENT_OS_OFF;
+	else if (!strcmp(res->event_value, "power_on"))
+		bypass_event = RTE_BYPASS_EVENT_POWER_ON;
+	else if (!strcmp(res->event_value, "power_off"))
+		bypass_event = RTE_BYPASS_EVENT_POWER_OFF;
+	else
+		bypass_event = RTE_BYPASS_EVENT_NONE;
+
+	if (!strcmp(res->mode_value, "bypass"))
+		bypass_mode = RTE_BYPASS_MODE_BYPASS;
+	else if (!strcmp(res->mode_value, "isolate"))
+		bypass_mode = RTE_BYPASS_MODE_ISOLATE;
+	else
+		bypass_mode = RTE_BYPASS_MODE_NORMAL;
+
+	/* Set the watchdog timeout. */
+	if (bypass_event == RTE_BYPASS_EVENT_TIMEOUT) {
+
+		rc = -EINVAL;
+		if (!RTE_BYPASS_TMT_VALID(bypass_timeout) ||
+				(rc = rte_eth_dev_wd_timeout_store(port_id,
+				bypass_timeout)) != 0) {
+			printf("Failed to set timeout value %u "
+				"for port %d, errto code: %d.\n",
+				bypass_timeout, port_id, rc);
+		}
+	}
+
+	/* Set the bypass event to transition to bypass mode. */
+	if (0 != rte_eth_dev_bypass_event_store(port_id,
+			bypass_event, bypass_mode)) {
+		printf("\t Failed to set bypass event for port = %d.\n", port_id);
+	}
+
+}
+
+cmdline_parse_token_string_t cmd_setbypass_event_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_event_result,
+			set, "set");
+cmdline_parse_token_string_t cmd_setbypass_event_bypass =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_event_result,
+			bypass, "bypass");
+cmdline_parse_token_string_t cmd_setbypass_event_event =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_event_result,
+			event, "event");
+cmdline_parse_token_string_t cmd_setbypass_event_event_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_event_result,
+			event_value, "none#timeout#os_off#os_on#power_on#power_off");
+cmdline_parse_token_string_t cmd_setbypass_event_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_event_result,
+			mode, "mode");
+cmdline_parse_token_string_t cmd_setbypass_event_mode_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_event_result,
+			mode_value, "normal#bypass#isolate");
+cmdline_parse_token_num_t cmd_setbypass_event_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_bypass_event_result,
+				port_id, UINT8);
+
+cmdline_parse_inst_t cmd_set_bypass_event = {
+	.f = cmd_set_bypass_event_parsed,
+	.help_str = "set bypass event (timeout|os_on|os_off|power_on|power_off) "
+	            "mode (normal|bypass|isolate) (port_id): "
+	            "Set the NIC bypass event mode for port_id",
+	.data = NULL,
+	.tokens = {
+		(void *)&cmd_setbypass_event_set,
+		(void *)&cmd_setbypass_event_bypass,
+		(void *)&cmd_setbypass_event_event,
+		(void *)&cmd_setbypass_event_event_value,
+		(void *)&cmd_setbypass_event_mode,
+		(void *)&cmd_setbypass_event_mode_value,
+		(void *)&cmd_setbypass_event_port,
+		NULL,
+	},
+};
+
+
+/* *** SET NIC BYPASS TIMEOUT *** */
+struct cmd_set_bypass_timeout_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bypass;
+	cmdline_fixed_string_t timeout;
+	cmdline_fixed_string_t value;
+};
+
+static void
+cmd_set_bypass_timeout_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bypass_timeout_result *res = parsed_result;
+
+	if (!strcmp(res->value, "1.5"))
+		bypass_timeout = RTE_BYPASS_TMT_1_5_SEC;
+	else if (!strcmp(res->value, "2"))
+		bypass_timeout = RTE_BYPASS_TMT_2_SEC;
+	else if (!strcmp(res->value, "3"))
+		bypass_timeout = RTE_BYPASS_TMT_3_SEC;
+	else if (!strcmp(res->value, "4"))
+		bypass_timeout = RTE_BYPASS_TMT_4_SEC;
+	else if (!strcmp(res->value, "8"))
+		bypass_timeout = RTE_BYPASS_TMT_8_SEC;
+	else if (!strcmp(res->value, "16"))
+		bypass_timeout = RTE_BYPASS_TMT_16_SEC;
+	else if (!strcmp(res->value, "32"))
+		bypass_timeout = RTE_BYPASS_TMT_32_SEC;
+	else
+		bypass_timeout = RTE_BYPASS_TMT_OFF;
+}
+
+cmdline_parse_token_string_t cmd_setbypass_timeout_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_timeout_result,
+			set, "set");
+cmdline_parse_token_string_t cmd_setbypass_timeout_bypass =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_timeout_result,
+			bypass, "bypass");
+cmdline_parse_token_string_t cmd_setbypass_timeout_timeout =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_timeout_result,
+			timeout, "timeout");
+cmdline_parse_token_string_t cmd_setbypass_timeout_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bypass_timeout_result,
+			value, "0#1.5#2#3#4#8#16#32");
+
+cmdline_parse_inst_t cmd_set_bypass_timeout = {
+	.f = cmd_set_bypass_timeout_parsed,
+	.help_str = "set bypass timeout (0|1.5|2|3|4|8|16|32) seconds: "
+	            "Set the NIC bypass watchdog timeout",
+	.data = NULL,
+	.tokens = {
+		(void *)&cmd_setbypass_timeout_set,
+		(void *)&cmd_setbypass_timeout_bypass,
+		(void *)&cmd_setbypass_timeout_timeout,
+		(void *)&cmd_setbypass_timeout_value,
+		NULL,
+	},
+};
+
+/* *** SHOW NIC BYPASS MODE *** */
+struct cmd_show_bypass_config_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t bypass;
+	cmdline_fixed_string_t config;
+	uint8_t port_id;
+};
+
+static void
+cmd_show_bypass_config_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_show_bypass_config_result *res = parsed_result;
+	uint32_t event_mode;
+	uint32_t bypass_mode;
+	portid_t port_id = res->port_id;
+	uint32_t timeout = bypass_timeout;
+	int i;
+
+	static const char * const timeouts[RTE_BYPASS_TMT_NUM] =
+		{"off", "1.5", "2", "3", "4", "8", "16", "32"};
+	static const char * const modes[RTE_BYPASS_MODE_NUM] =
+		{"UNKNOWN", "normal", "bypass", "isolate"};
+	static const char * const events[RTE_BYPASS_EVENT_NUM] = {
+		"NONE",
+		"OS/board on",
+		"power supply on",
+		"OS/board off",
+		"power supply off",
+		"timeout"};
+	int num_events = (sizeof events) / (sizeof events[0]);
+
+	if (!bypass_is_supported(port_id))
+		return;
+
+	/* Display the bypass mode.*/
+	if (0 != rte_eth_dev_bypass_state_show(port_id, &bypass_mode)) {
+		printf("\tFailed to get bypass mode for port = %d\n", port_id);
+		return;
+	}
+	else {
+		if (!RTE_BYPASS_MODE_VALID(bypass_mode))
+			bypass_mode = RTE_BYPASS_MODE_NONE;
+
+		printf("\tbypass mode    = %s\n",  modes[bypass_mode]);
+	}
+
+	/* Display the bypass timeout.*/
+	if (!RTE_BYPASS_TMT_VALID(timeout))
+		timeout = RTE_BYPASS_TMT_OFF;
+
+	printf("\tbypass timeout = %s\n", timeouts[timeout]);
+
+	/* Display the bypass events and associated modes. */
+	for (i = RTE_BYPASS_EVENT_START; i < num_events; i++) {
+
+		if (0 != rte_eth_dev_bypass_event_show(port_id, i, &event_mode)) {
+			printf("\tFailed to get bypass mode for event = %s\n",
+				events[i]);
+		} else {
+			if (!RTE_BYPASS_MODE_VALID(event_mode))
+				event_mode = RTE_BYPASS_MODE_NONE;
+
+			printf("\tbypass event: %-16s = %s\n", events[i],
+				modes[event_mode]);
+		}
+	}
+}
+
+cmdline_parse_token_string_t cmd_showbypass_config_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_bypass_config_result,
+			show, "show");
+cmdline_parse_token_string_t cmd_showbypass_config_bypass =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_bypass_config_result,
+			bypass, "bypass");
+cmdline_parse_token_string_t cmd_showbypass_config_config =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_bypass_config_result,
+			config, "config");
+cmdline_parse_token_num_t cmd_showbypass_config_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_bypass_config_result,
+				port_id, UINT8);
+
+cmdline_parse_inst_t cmd_show_bypass_config = {
+	.f = cmd_show_bypass_config_parsed,
+	.help_str = "show bypass config (port_id): "
+	            "Show the NIC bypass config for port_id",
+	.data = NULL,
+	.tokens = {
+		(void *)&cmd_showbypass_config_show,
+		(void *)&cmd_showbypass_config_bypass,
+		(void *)&cmd_showbypass_config_config,
+		(void *)&cmd_showbypass_config_port,
+		NULL,
+	},
+};
+#endif
 
 /* *** SET FORWARDING MODE *** */
 struct cmd_set_fwd_mode_result {
@@ -4569,6 +4933,12 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_allmulti_mode_one,
 	(cmdline_parse_inst_t *)&cmd_set_allmulti_mode_all,
 	(cmdline_parse_inst_t *)&cmd_set_flush_rx,
+#ifdef RTE_NIC_BYPASS
+	(cmdline_parse_inst_t *)&cmd_set_bypass_mode,
+	(cmdline_parse_inst_t *)&cmd_set_bypass_event,
+	(cmdline_parse_inst_t *)&cmd_set_bypass_timeout,
+	(cmdline_parse_inst_t *)&cmd_show_bypass_config,
+#endif
 	(cmdline_parse_inst_t *)&cmd_vlan_offload,
 	(cmdline_parse_inst_t *)&cmd_vlan_tpid,
 	(cmdline_parse_inst_t *)&cmd_rx_vlan_filter_all,
@@ -4659,3 +5029,30 @@ cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue)
 		}
 	}
 }
+
+#ifdef RTE_NIC_BYPASS
+uint8_t
+bypass_is_supported(portid_t port_id)
+{
+	struct rte_port   *port;
+	struct rte_pci_id *pci_id;
+
+	if (port_id >= nb_ports) {
+		printf("\tPort id must be less than %d.\n", nb_ports);
+		return 0;
+	}
+
+	/* Get the device id. */
+	port    = &ports[port_id];
+	pci_id = &port->dev_info.pci_dev->id;
+
+	/* Check if NIC supports bypass. */
+	if (pci_id->device_id == IXGBE_DEV_ID_82599_BYPASS) {
+		return 1;
+	}
+	else {
+		printf("\tBypass not supported for port_id = %d.\n", port_id);
+		return 0;
+	}
+}
+#endif
