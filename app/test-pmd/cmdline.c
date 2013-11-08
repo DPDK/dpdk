@@ -233,6 +233,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"vlan set strip (on|off) (port_id)\n"
 			"    Set the VLAN strip on a port.\n\n"
 
+			"vlan set stripq (on|off) (port_id,queue_id)\n"
+			"    Set the VLAN strip for a queue on a port.\n\n"
+
 			"vlan set filter (on|off) (port_id)\n"
 			"    Set the VLAN filter on a port.\n\n"
 
@@ -347,8 +350,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" to pool 0.\n\n"
 
 			"set port (port_id) mirror-rule (rule_id)"
-			"(uplink-mirror|downlink-mirror) dst-pool"
-			"(pool_id) (on|off)\n"
+			" (uplink-mirror|downlink-mirror) dst-pool"
+			" (pool_id) (on|off)\n"
 			"   Set uplink or downlink type mirror rule on a port.\n"
 			"   e.g., 'set port 0 mirror-rule 0 uplink-mirror dst-pool"
 			" 0 on' enable mirror income traffic to pool 0.\n\n"
@@ -1280,7 +1283,7 @@ cmdline_parse_inst_t cmd_config_rss_reta = {
 	},
 };
 
-/* *** SHOW PORT INFO *** */
+/* *** SHOW PORT RETA INFO *** */
 struct cmd_showport_reta {
 	cmdline_fixed_string_t show;
 	cmdline_fixed_string_t port;
@@ -2004,8 +2007,10 @@ cmd_vlan_offload_parsed(void *parsed_result,
 		uint16_t queue_id = 0;
 
 		/* No queue_id, return */
-		if(i + 1 >= len)
+		if(i + 1 >= len) {
+			printf("must specify (port,queue_id)\n");
 			return;
+		}
 		tmp = strtoul(str + i + 1, NULL, 0);
 		/* If queue_id greater that what 16-bits can represent, return */
 		if(tmp > 0xffff)

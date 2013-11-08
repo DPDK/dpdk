@@ -112,7 +112,7 @@ usage(char* progname)
 	       "specify the socket on which the TX/RX rings for "
 	       "the port will be allocated "
 	       "(flag: 1 for RX; 2 for TX; 3 for RX and TX).\n");
-	printf(" --socket-num=N: set socket from which all memory is allocated "
+	printf("  --socket-num=N: set socket from which all memory is allocated "
 	       "in NUMA mode.\n");
 	printf("  --mbuf-size=N: set the data size of mbuf to N bytes.\n");
 	printf("  --total-num-mbufs=N: set the number of mbufs to be allocated "
@@ -178,8 +178,8 @@ usage(char* progname)
 	printf("  --rx-queue-stats-mapping=(port,queue,mapping)[,(port,queue,mapping]: "
 	       "rx queues statistics counters mapping "
 	       "(0 <= mapping <= %d).\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
-	printf("  --no-flush-rx:  avoids flushing all rx streams before"
-	       " starts forwarding\n");
+	printf("  --no-flush-rx: Don't flush RX streams before forwarding."
+	       " Used mainly with PCAP drivers.\n");
 }
 
 static int
