@@ -182,6 +182,12 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_I350_DA4:
 		mac->type = e1000_i350;
 		break;
+	case E1000_DEV_ID_I354_BACKPLANE_1GBPS:
+	case E1000_DEV_ID_I354_SGMII:
+	case E1000_DEV_ID_I354_BACKPLANE_2_5GBPS:
+		mac->type = e1000_i354;
+		break;
+
 	default:
 		/* Should never have loaded on this device */
 		ret_val = -E1000_ERR_MAC_INIT;

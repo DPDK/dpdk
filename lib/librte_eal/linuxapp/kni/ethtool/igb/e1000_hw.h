@@ -56,6 +56,9 @@ struct e1000_hw;
 #define E1000_DEV_ID_I350_SERDES		0x1523
 #define E1000_DEV_ID_I350_SGMII			0x1524
 #define E1000_DEV_ID_I350_DA4			0x1546
+#define E1000_DEV_ID_I354_BACKPLANE_1GBPS       0x1F40
+#define E1000_DEV_ID_I354_SGMII                 0x1F41
+#define E1000_DEV_ID_I354_BACKPLANE_2_5GBPS     0x1F45
 #define E1000_DEV_ID_DH89XXCC_SGMII		0x0438
 #define E1000_DEV_ID_DH89XXCC_SERDES		0x043A
 #define E1000_DEV_ID_DH89XXCC_BACKPLANE		0x043C
@@ -82,6 +85,7 @@ enum e1000_mac_type {
 	e1000_82576,
 	e1000_82580,
 	e1000_i350,
+	e1000_i354,
 	e1000_num_macs  /* List is 1-based, so subtract 1 for true count. */
 };
 
