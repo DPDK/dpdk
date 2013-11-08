@@ -81,8 +81,8 @@ vtpci_write_dev_config(struct virtio_hw *hw, uint64_t offset,
 	}
 }
 
-uint64_t
-vtpci_negotiate_features(struct virtio_hw *hw, uint64_t guest_features)
+uint32_t
+vtpci_negotiate_features(struct virtio_hw *hw, uint32_t guest_features)
 {
 	uint32_t features;
 	/*

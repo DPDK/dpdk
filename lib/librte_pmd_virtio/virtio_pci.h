@@ -223,7 +223,7 @@ struct virtio_net_config {
 	outl_p((unsigned int)(value), (VIRTIO_PCI_REG_ADDR((hw), (reg))))
 
 static inline int
-vtpci_with_feature(struct virtio_hw *hw, uint64_t feature)
+vtpci_with_feature(struct virtio_hw *hw, uint32_t feature)
 {
 	return ((hw->guest_features & feature) != 0);
 }
@@ -239,9 +239,7 @@ uint8_t vtpci_get_status(struct virtio_hw *);
 
 void vtpci_set_status(struct virtio_hw *, uint8_t);
 
-int vtpci_with_feature(struct virtio_hw *, uint64_t);
-
-uint64_t vtpci_negotiate_features(struct virtio_hw *, uint64_t);
+uint32_t vtpci_negotiate_features(struct virtio_hw *, uint32_t);
 
 void vtpci_write_dev_config(struct virtio_hw *, uint64_t, void *, int);
 
