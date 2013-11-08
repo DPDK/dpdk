@@ -42,7 +42,7 @@ CFLAGS += $(WERROR_FLAGS)
 #
 # all source are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += rte_eth_ring.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += rte_eth_ring.c
 
 #
 # Export include files
@@ -50,7 +50,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += rte_eth_ring.c
 SYMLINK-y-include += rte_eth_ring.h
 
 # this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += lib/librte_eal lib/librte_ring
-DEPDIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += lib/librte_mbuf lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_RING) += lib/librte_eal lib/librte_ring
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_RING) += lib/librte_mbuf lib/librte_ether
 
 include $(RTE_SDK)/mk/rte.lib.mk
