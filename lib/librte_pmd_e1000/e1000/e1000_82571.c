@@ -1007,6 +1007,8 @@ STATIC s32 e1000_set_d0_lplu_state_82571(struct e1000_hw *hw, bool active)
 		/* When LPLU is enabled, we should disable SmartSpeed */
 		ret_val = phy->ops.read_reg(hw, IGP01E1000_PHY_PORT_CONFIG,
 					    &data);
+		if (ret_val)
+			return ret_val;
 		data &= ~IGP01E1000_PSCFR_SMART_SPEED;
 		ret_val = phy->ops.write_reg(hw, IGP01E1000_PHY_PORT_CONFIG,
 					     data);
@@ -1916,6 +1918,8 @@ static s32 e1000_fix_nvm_checksum_82571(struct e1000_hw *hw)
 			if (ret_val)
 				return ret_val;
 			ret_val = nvm->ops.update(hw);
+			if (ret_val)
+				return ret_val;
 		}
 	}
 
