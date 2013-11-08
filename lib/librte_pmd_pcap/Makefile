@@ -42,8 +42,8 @@ CFLAGS += $(WERROR_FLAGS)
 #
 # all source are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += rte_eth_pcap.c
-SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += rte_eth_pcap_arg_parser.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += rte_eth_pcap.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += rte_eth_pcap_arg_parser.c
 
 
 #
@@ -53,6 +53,6 @@ SYMLINK-y-include += rte_eth_pcap.h
 SYMLINK-y-include += rte_eth_pcap_arg_parser.h
 
 # this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += lib/librte_mbuf lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += lib/librte_mbuf lib/librte_ether
 
 include $(RTE_SDK)/mk/rte.lib.mk
