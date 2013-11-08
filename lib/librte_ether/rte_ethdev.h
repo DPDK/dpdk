@@ -987,6 +987,61 @@ typedef int (*eth_mirror_rule_reset_t)(struct rte_eth_dev *dev,
 				  uint8_t rule_id);
 /**< @internal Remove a traffic mirroring rule on an Ethernet device */
 
+#ifdef RTE_NIC_BYPASS
+
+enum {
+	RTE_BYPASS_MODE_NONE,
+	RTE_BYPASS_MODE_NORMAL,
+	RTE_BYPASS_MODE_BYPASS,
+	RTE_BYPASS_MODE_ISOLATE,
+	RTE_BYPASS_MODE_NUM,
+};
+
+#define	RTE_BYPASS_MODE_VALID(x)	\
+	((x) > RTE_BYPASS_MODE_NONE && (x) < RTE_BYPASS_MODE_NUM)
+
+enum {
+	RTE_BYPASS_EVENT_NONE,
+	RTE_BYPASS_EVENT_START,
+	RTE_BYPASS_EVENT_OS_ON = RTE_BYPASS_EVENT_START,
+	RTE_BYPASS_EVENT_POWER_ON,
+	RTE_BYPASS_EVENT_OS_OFF,
+	RTE_BYPASS_EVENT_POWER_OFF,
+	RTE_BYPASS_EVENT_TIMEOUT,
+	RTE_BYPASS_EVENT_NUM
+};
+
+#define	RTE_BYPASS_EVENT_VALID(x)	\
+	((x) > RTE_BYPASS_EVENT_NONE && (x) < RTE_BYPASS_MODE_NUM)
+
+enum {
+	RTE_BYPASS_TMT_OFF,     /* timeout disabled. */
+	RTE_BYPASS_TMT_1_5_SEC, /* timeout for 1.5 seconds */
+	RTE_BYPASS_TMT_2_SEC,   /* timeout for 2 seconds */
+	RTE_BYPASS_TMT_3_SEC,   /* timeout for 3 seconds */
+	RTE_BYPASS_TMT_4_SEC,   /* timeout for 4 seconds */
+	RTE_BYPASS_TMT_8_SEC,   /* timeout for 8 seconds */
+	RTE_BYPASS_TMT_16_SEC,  /* timeout for 16 seconds */
+	RTE_BYPASS_TMT_32_SEC,  /* timeout for 32 seconds */
+	RTE_BYPASS_TMT_NUM
+};
+
+#define	RTE_BYPASS_TMT_VALID(x)	\
+	((x) == RTE_BYPASS_TMT_OFF || \
+	((x) > RTE_BYPASS_TMT_OFF && (x) < RTE_BYPASS_TMT_NUM))
+
+typedef void (*bypass_init_t)(struct rte_eth_dev *dev);
+typedef int32_t (*bypass_state_set_t)(struct rte_eth_dev *dev, uint32_t *new_state);
+typedef int32_t (*bypass_state_show_t)(struct rte_eth_dev *dev, uint32_t *state);
+typedef int32_t (*bypass_event_set_t)(struct rte_eth_dev *dev, uint32_t state, uint32_t event);
+typedef int32_t (*bypass_event_show_t)(struct rte_eth_dev *dev, uint32_t event_shift, uint32_t *event);
+typedef int32_t (*bypass_wd_timeout_set_t)(struct rte_eth_dev *dev, uint32_t timeout);
+typedef int32_t (*bypass_wd_timeout_show_t)(struct rte_eth_dev *dev, uint32_t *wd_timeout);
+typedef int32_t (*bypass_ver_show_t)(struct rte_eth_dev *dev, uint32_t *ver);
+typedef int32_t (*bypass_wd_reset_t)(struct rte_eth_dev *dev);
+#endif
+
+
 /**
  * @internal A structure containing the functions exported by an Ethernet driver.
  */
@@ -1050,6 +1105,19 @@ struct eth_dev_ops {
 	reta_update_t reta_update;
 	/** Query redirection table. */
 	reta_query_t reta_query;
+  /* bypass control */
+#ifdef RTE_NIC_BYPASS
+  bypass_init_t bypass_init;
+  bypass_state_set_t bypass_state_set;
+  bypass_state_show_t bypass_state_show;
+  bypass_event_set_t bypass_event_set;
+  bypass_event_show_t bypass_event_show;
+  bypass_wd_timeout_set_t bypass_wd_timeout_set;
+  bypass_wd_timeout_show_t bypass_wd_timeout_show;
+  bypass_ver_show_t bypass_ver_show;
+  bypass_wd_reset_t bypass_wd_reset;
+#endif
+
 };
 
 /**
@@ -2404,7 +2472,7 @@ int rte_eth_dev_rss_reta_query(uint8_t port,
 			struct rte_eth_rss_reta *reta_conf);
  
  /**
- * Updates unicast hash table for receiving packet with the given destionation
+ * Updates unicast hash table for receiving packet with the given destination
  * MAC address, and the packet is routed to all VFs for which the RX mode is 
  * accept packets that match the unicast hash table.
  *  
@@ -2571,6 +2639,171 @@ int rte_eth_mirror_rule_set(uint8_t port_id,
  */
 int rte_eth_mirror_rule_reset(uint8_t port_id,
 					 uint8_t rule_id);
+
+/**
+ * Initialize bypass logic. This function needs to be called before
+ * executing any other bypass API.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_dev_bypass_init(uint8_t port);
+
+/**
+ * Return bypass state.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param state
+ *   The return bypass state.
+ *   - (1) Normal mode
+ *   - (2) Bypass mode
+ *   - (3) Isolate mode
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_dev_bypass_state_show(uint8_t port, uint32_t *state);
+
+/**
+ * Set bypass state
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param state
+ *   The current bypass state.
+ *   - (1) Normal mode
+ *   - (2) Bypass mode
+ *   - (3) Isolate mode
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_dev_bypass_state_set(uint8_t port, uint32_t *new_state);
+
+/**
+ * Return bypass state when given event occurs.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param event
+ *   The bypass event
+ *   - (1) Main power on (power button is pushed)
+ *   - (2) Auxiliary power on (power supply is being plugged)
+ *   - (3) Main power off (system shutdown and power supply is left plugged in)
+ *   - (4) Auxiliary power off (power supply is being unplugged)
+ *   - (5) Display or set the watchdog timer
+ * @param state
+ *   The bypass state when given event occurred.
+ *   - (1) Normal mode
+ *   - (2) Bypass mode
+ *   - (3) Isolate mode
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_dev_bypass_event_show(uint8_t port, uint32_t event, uint32_t *state);
+
+/**
+ * Set bypass state when given event occurs.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param event
+ *   The bypass event
+ *   - (1) Main power on (power button is pushed)
+ *   - (2) Auxiliary power on (power supply is being plugged)
+ *   - (3) Main power off (system shutdown and power supply is left plugged in)
+ *   - (4) Auxiliary power off (power supply is being unplugged)
+ *   - (5) Display or set the watchdog timer
+ * @param state
+ *   The assigned state when given event occurs.
+ *   - (1) Normal mode
+ *   - (2) Bypass mode
+ *   - (3) Isolate mode
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_dev_bypass_event_store(uint8_t port, uint32_t event, uint32_t state);
+
+/**
+ * Set bypass watchdog timeout count.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param state
+ *   The timeout to be set.
+ *   - (0) 0 seconds (timer is off)
+ *   - (1) 1.5 seconds
+ *   - (2) 2 seconds
+ *   - (3) 3 seconds
+ *   - (4) 4 seconds
+ *   - (5) 8 seconds
+ *   - (6) 16 seconds
+ *   - (7) 32 seconds
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_dev_wd_timeout_store(uint8_t port, uint32_t timeout);
+
+/**
+ * Get bypass firmware version.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param ver
+ *   The firmware version
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_dev_bypass_ver_show(uint8_t port, uint32_t *ver);
+
+/**
+ * Return bypass watchdog timeout in seconds
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param wd_timeout
+ *   The return watchdog timeout. "0" represents timer expired
+ *   - (0) 0 seconds (timer is off)
+ *   - (1) 1.5 seconds
+ *   - (2) 2 seconds
+ *   - (3) 3 seconds
+ *   - (4) 4 seconds
+ *   - (5) 8 seconds
+ *   - (6) 16 seconds
+ *   - (7) 32 seconds
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_dev_bypass_wd_timeout_show(uint8_t port, uint32_t *wd_timeout);
+
+/**
+ * Reset bypass watchdog timer
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_dev_bypass_wd_reset(uint8_t port);
 
 #ifdef __cplusplus
 }
