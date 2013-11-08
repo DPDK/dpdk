@@ -220,14 +220,14 @@ rte_eth_from_rings(struct rte_ring *const rx_queues[],
 	struct rte_eth_dev *eth_dev = NULL;
 	unsigned i;
 
-	RTE_LOG(INFO, PMD, "Creating rings-backed ethdev on numa socket %u\n",
-			numa_node);
-
 	/* do some paramter checking */
 	if (rx_queues == NULL && nb_rx_queues > 0)
 		goto error;
 	if (tx_queues == NULL && nb_tx_queues > 0)
 		goto error;
+
+	RTE_LOG(INFO, PMD, "Creating rings-backed ethdev on numa socket %u\n",
+			numa_node);
 
 	/* now do all data allocation - for eth_dev structure, dummy pci driver
 	 * and internal (private) data
