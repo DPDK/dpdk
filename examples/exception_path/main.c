@@ -156,10 +156,10 @@ static struct rte_mempool * pktmbuf_pool = NULL;
 static uint32_t ports_mask = 0;
 
 /* Mask of cores that read from NIC and write to tap */
-static uint32_t input_cores_mask = 0;
+static uint64_t input_cores_mask = 0;
 
 /* Mask of cores that read from tap and write to NIC */
-static uint32_t output_cores_mask = 0;
+static uint64_t output_cores_mask = 0;
 
 /* Array storing port_id that is associated with each lcore */
 static uint8_t port_ids[RTE_MAX_LCORE];
@@ -251,7 +251,7 @@ main_loop(__attribute__((unused)) void *arg)
 	char tap_name[IFNAMSIZ];
 	int tap_fd;
 
-	if ((1 << lcore_id) & input_cores_mask) {
+	if ((1ULL << lcore_id) & input_cores_mask) {
 		/* Create new tap interface */
 		rte_snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
 		tap_fd = tap_create(tap_name);
@@ -284,7 +284,7 @@ main_loop(__attribute__((unused)) void *arg)
 			}
 		}
 	}
-	else if ((1 << lcore_id) & output_cores_mask) {
+	else if ((1ULL << lcore_id) & output_cores_mask) {
 		/* Create new tap interface */
 		rte_snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
 		tap_fd = tap_create(tap_name);
@@ -344,30 +344,30 @@ print_usage(const char *prgname)
 }
 
 /* Convert string to unsigned number. 0 is returned if error occurs */
-static uint32_t
+static uint64_t
 parse_unsigned(const char *portmask)
 {
 	char *end = NULL;
-	unsigned long num;
+	uint64_t num;
 
-	num = strtoul(portmask, &end, 16);
+	num = strtoull(portmask, &end, 16);
 	if ((portmask[0] == '\0') || (end == NULL) || (*end != '\0'))
 		return 0;
 
-	return (uint32_t)num;
+	return (uint64_t)num;
 }
 
 /* Record affinities between ports and lcores in global port_ids[] array */
 static void
 setup_port_lcore_affinities(void)
 {
-	unsigned i;
+	unsigned long i;
 	uint8_t tx_port = 0;
 	uint8_t rx_port = 0;
 
 	/* Setup port_ids[] array, and check masks were ok */
 	RTE_LCORE_FOREACH(i) {
-		if (input_cores_mask & (1 << i)) {
+		if (input_cores_mask & (1ULL << i)) {
 			/* Skip ports that are not enabled */
 			while ((ports_mask & (1 << rx_port)) == 0) {
 				rx_port++;
@@ -377,7 +377,7 @@ setup_port_lcore_affinities(void)
 
 			port_ids[i] = rx_port++;
 		}
-		else if (output_cores_mask & (1 << i)) {
+		else if (output_cores_mask & (1ULL << i)) {
 			/* Skip ports that are not enabled */
 			while ((ports_mask & (1 << tx_port)) == 0) {
 				tx_port++;
