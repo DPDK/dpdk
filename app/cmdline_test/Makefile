@@ -39,8 +39,8 @@ APP = cmdline_test
 #
 # all sources are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_APP_TEST) += cmdline_test.c
-SRCS-$(CONFIG_RTE_APP_TEST) += commands.c
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_test.c
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += commands.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
