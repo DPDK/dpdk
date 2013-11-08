@@ -323,6 +323,12 @@ parallel_test_group_list = [
 	"Tests" :
 	[
 		{
+		 "Name" :	"PMD ring autotest",
+		 "Command" :	"ring_pmd_autotest",
+		 "Func" :	default_autotest,
+		 "Report" :	None,
+		},
+		{
 		 "Name" :	"Access list control autotest",
 		 "Command" : 	"acl_autotest",
 		 "Func" :	default_autotest,
