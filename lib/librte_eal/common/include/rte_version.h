@@ -64,13 +64,13 @@ extern "C" {
 /**
  * Patch level number i.e. the z in x.y.z
  */
-#define RTE_VER_PATCH_LEVEL 0
+#define RTE_VER_PATCH_LEVEL 1
 
 /**
  * Extra string to be appended to version number,
  * for example: pre1, EAR, final etc.
  */
-#define RTE_VER_SUFFIX "pre-release"
+#define RTE_VER_SUFFIX ""
 
 /**
  * Function returning string of version number: "RTE x.y.z"
