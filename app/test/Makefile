@@ -89,10 +89,13 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_red.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_sched.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_meter.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_kni.c
-SRCS-$(CONFIG_RTE_APP_TEST) += test_pmac_acl.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_power.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_common.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_timer_perf.c
+
+ifeq ($(CONFIG_RTE_APP_TEST),y)
+SRCS-$(CONFIG_RTE_LIBRTE_ACL) += test_acl.c
+endif
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

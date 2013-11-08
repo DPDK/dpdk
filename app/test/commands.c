@@ -178,12 +178,14 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret |= test_meter();
 	if (all || !strcmp(res->autotest, "kni_autotest"))
 		ret |= test_kni();
-	if (all || !strcmp(res->autotest, "acl_autotest"))
-		ret |= test_pmac_acl();
 	if (all || !strcmp(res->autotest, "power_autotest"))
 		ret |= test_power();
 	if (all || !strcmp(res->autotest, "common_autotest"))
 		ret |= test_common();
+#ifdef RTE_LIBRTE_ACL
+	if (all || !strcmp(res->autotest, "acl_autotest"))
+		ret |= test_acl();
+#endif /* RTE_LIBRTE_ACL */
 
 	if (ret == 0)
 		printf("Test OK\n");
@@ -215,7 +217,11 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"memcpy_perf_autotest#ring_perf_autotest#"
 			"red_autotest#meter_autotest#sched_autotest#"
 			"memcpy_perf_autotest#kni_autotest#"
-			"pm_autotest#acl_autotest#power_autotest#"
+			"pm_autotest#"
+#ifdef RTE_LIBRTE_ACL
+			"acl_autotest#"
+#endif
+			"power_autotest#"
 			"timer_perf_autotest#"
 			"common_autotest#all_autotests");
 

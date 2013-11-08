@@ -90,7 +90,7 @@ int test_func_reentrancy(void);
 int test_red(void);
 int test_sched(void);
 int test_meter(void);
-int test_pmac_acl(void);
+int test_acl(void);
 int test_kni(void);
 int test_power(void);
 int test_common(void);

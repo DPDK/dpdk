@@ -31,8 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TEST_PMAC_ACL_H_
-#define TEST_PMAC_ACL_H_
+#ifndef TEST_ACL_H_
+#define TEST_ACL_H_
 
 struct ipv4_7tuple {
     	uint16_t vlan;
@@ -630,4 +630,4 @@ struct ipv4_7tuple acl_test_data[] = {
 		}, /* should not match */
 };
 
-#endif /* TEST_PMAC_ACL_H_ */
+#endif /* TEST_ACL_H_ */

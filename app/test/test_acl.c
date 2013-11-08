@@ -41,13 +41,13 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_PMAC
+#ifdef RTE_LIBRTE_ACL
 
 #include <rte_byteorder.h>
 #include <rte_ip.h>
 #include <rte_acl.h>
 
-#include "test_pmac_acl.h"
+#include "test_acl.h"
 
 #define LEN RTE_ACL_MAX_CATEGORIES
 
@@ -404,7 +404,7 @@ test_create_find_add(void)
 		goto err;
 	}
 
-	/* try to find existing PM contexts */
+	/* try to find existing ACL contexts */
 	tmp = rte_acl_find_existing(acx_name);
 	if (tmp != acx) {
 		printf("Line %i: Finding %s failed!\n", __LINE__, acx_name);
@@ -424,7 +424,7 @@ test_create_find_add(void)
 	/* try to find non-existing context */
 	tmp = rte_acl_find_existing("invalid");
 	if (tmp != NULL) {
-		printf("Line %i: Non-existent PM context found!\n", __LINE__);
+		printf("Line %i: Non-existent ACL context found!\n", __LINE__);
 		goto err;
 	}
 
@@ -858,7 +858,7 @@ test_misc(void)
 }
 
 int
-test_pmac_acl(void)
+test_acl(void)
 {
 	if (test_invalid_parameters() < 0)
 		return -1;
@@ -878,10 +878,10 @@ test_pmac_acl(void)
 #else
 
 int
-test_pmac_acl(void)
+test_acl(void)
 {
-	printf("This binary was not compiled with PMAC support!\n");
+	printf("This binary was not compiled with ACL support!\n");
 	return 0;
 }
 
-#endif /* RTE_LIBRTE_PMAC */
+#endif /* RTE_LIBRTE_ACL */

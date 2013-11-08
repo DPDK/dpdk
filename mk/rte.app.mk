@@ -96,8 +96,8 @@ ifeq ($(CONFIG_RTE_LIBRTE_POWER),y)
 LDLIBS += -lrte_power
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_PMAC),y)
-LDLIBS += -lrte_pmac
+ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
+LDLIBS += -lrte_acl
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_METER),y)
