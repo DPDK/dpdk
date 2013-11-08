@@ -44,7 +44,7 @@ APP = l3fwd-vf
 # all source are stored in SRCS-y
 SRCS-y := main.c
 
-CFLAGS += -O3
+CFLAGS += -O3 $(USER_FLAGS)
 CFLAGS += $(WERROR_FLAGS)
 
 # workaround for a gcc bug with noreturn attribute

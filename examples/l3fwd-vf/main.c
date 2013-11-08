@@ -94,8 +94,22 @@
 
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1
 
+#define MEMPOOL_CACHE_SIZE 256
+
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
-#define NB_MBUF   8192
+
+/*
+ * This expression is used to calculate the number of mbufs needed depending on user input, taking
+ *  into account memory for rx and tx hardware rings, cache per lcore and mtable per port per lcore.
+ *  RTE_MAX is used to ensure that NB_MBUF never goes below a minimum value of 8192
+ */
+
+#define NB_MBUF RTE_MAX	(																	\
+				(nb_ports*nb_rx_queue*RTE_TEST_RX_DESC_DEFAULT +							\
+				nb_ports*nb_lcores*MAX_PKT_BURST +											\
+				nb_ports*n_tx_queue*RTE_TEST_TX_DESC_DEFAULT +								\
+				nb_lcores*MEMPOOL_CACHE_SIZE),												\
+				(unsigned)8192)
 
 /*
  * RX and TX Prefetch, Host, and Write-back threshold values should be
@@ -181,12 +195,13 @@ static uint16_t nb_lcore_params = sizeof(lcore_params_array_default) /
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
+		.max_rx_pkt_len = ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 		.header_split   = 0, /**< Header Split disabled */
 		.hw_ip_checksum = 1, /**< IP checksum offload enabled */
 		.hw_vlan_filter = 0, /**< VLAN filtering disabled */
 		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
-		.hw_strip_crc   = 1, /**< CRC stripped by hardware */
+		.hw_strip_crc   = 0, /**< CRC stripped by hardware */
 	},
 	.rx_adv_conf = {
 		.rss_conf = {
@@ -205,6 +220,7 @@ static const struct rte_eth_rxconf rx_conf = {
 		.hthresh = RX_HTHRESH,
 		.wthresh = RX_WTHRESH,
 	},
+	.rx_free_thresh = 32,
 };
 
 static const struct rte_eth_txconf tx_conf = {
@@ -215,6 +231,11 @@ static const struct rte_eth_txconf tx_conf = {
 	},
 	.tx_free_thresh = 0, /* Use PMD default values */
 	.tx_rs_thresh = 0, /* Use PMD default values */
+	.txq_flags = (ETH_TXQ_FLAGS_NOMULTSEGS |
+		      ETH_TXQ_FLAGS_NOVLANOFFL |
+		      ETH_TXQ_FLAGS_NOXSUMSCTP |
+		      ETH_TXQ_FLAGS_NOXSUMUDP |
+		      ETH_TXQ_FLAGS_NOXSUMTCP)
 };
 
 static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
@@ -907,7 +928,7 @@ setup_lpm(int socketid)
 #endif
 
 static int
-init_mem(void)
+init_mem(unsigned nb_mbuf)
 {
 	struct lcore_conf *qconf;
 	int socketid;
@@ -930,7 +951,8 @@ init_mem(void)
 		if (pktmbuf_pool[socketid] == NULL) {
 			rte_snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
 			pktmbuf_pool[socketid] =
-				rte_mempool_create(s, NB_MBUF, MBUF_SIZE, 32,
+				rte_mempool_create(s, nb_mbuf, MBUF_SIZE, 
+						   MEMPOOL_CACHE_SIZE,
 					sizeof(struct rte_pktmbuf_pool_private),
 					rte_pktmbuf_pool_init, NULL,
 					rte_pktmbuf_init, NULL,
@@ -960,6 +982,8 @@ MAIN(int argc, char **argv)
 	unsigned nb_ports;
 	uint16_t queueid;
 	unsigned lcore_id;
+	uint32_t nb_lcores;
+	uint16_t n_tx_queue;
 	uint8_t portid, nb_rx_queue, queue, socketid;
 
 	signal(SIGINT, signal_handler);
@@ -982,10 +1006,6 @@ MAIN(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "init_lcore_rx_queues failed\n");
 
-	ret = init_mem();
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "init_mem failed\n");
-
 	/* init driver */
 	if (rte_pmd_init_all() < 0)
 		rte_exit(EXIT_FAILURE, "Cannot init pmd\n");
@@ -999,6 +1019,8 @@ MAIN(int argc, char **argv)
 
 	if (check_port_config(nb_ports) < 0)
 		rte_exit(EXIT_FAILURE, "check_port_config failed\n");
+
+	nb_lcores = rte_lcore_count();
 
 	/* initialize all ports */
 	for (portid = 0; portid < nb_ports; portid++) {
@@ -1014,10 +1036,11 @@ MAIN(int argc, char **argv)
 
 		/* must always equal(=1) */
 		nb_rx_queue = get_port_n_rx_queues(portid);
+		n_tx_queue = MAX_TX_QUEUE_PER_PORT;
 
 		printf("Creating queues: nb_rxq=%d nb_txq=%u... ",
 			nb_rx_queue, (unsigned)1 );
-		ret = rte_eth_dev_configure(portid, nb_rx_queue, 1, &port_conf);
+		ret = rte_eth_dev_configure(portid, nb_rx_queue, n_tx_queue, &port_conf);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%d\n",
 				ret, portid);
@@ -1026,10 +1049,14 @@ MAIN(int argc, char **argv)
 		print_ethaddr(" Address:", &ports_eth_addr[portid]);
 		printf(", ");
 
-		/* init one TX queue */
-		socketid = 0;
+		ret = init_mem(NB_MBUF);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE, "init_mem failed\n");
 
-		printf("txq=%d,%d ", 0, socketid);
+		/* init one TX queue */
+		socketid = (uint8_t)rte_lcore_to_socket_id(rte_get_master_lcore());
+
+		printf("txq=%d,%d,%d ", portid, 0, socketid);
 		fflush(stdout);
 		ret = rte_eth_tx_queue_setup(portid, 0, nb_txd,
 						 socketid, &tx_conf);
