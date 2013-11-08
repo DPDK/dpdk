@@ -396,8 +396,7 @@ static s32 e1000_ready_nvm_eeprom(struct e1000_hw *hw)
 		E1000_WRITE_FLUSH(hw);
 		usec_delay(1);
 
-		/*
-		 * Read "Status Register" repeatedly until the LSB is cleared.
+		/* Read "Status Register" repeatedly until the LSB is cleared.
 		 * The EEPROM will signal that the command has been completed
 		 * by clearing bit 0 of the internal status register.  If it's
 		 * not cleared within 'timeout', then error out.
@@ -442,8 +441,7 @@ s32 e1000_read_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 
 	DEBUGFUNC("e1000_read_nvm_spi");
 
-	/*
-	 * A check for invalid values:  offset too large, too many words,
+	/* A check for invalid values:  offset too large, too many words,
 	 * and not enough words.
 	 */
 	if ((offset >= nvm->word_size) || (words > (nvm->word_size - offset)) ||
@@ -469,8 +467,7 @@ s32 e1000_read_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 	e1000_shift_out_eec_bits(hw, read_opcode, nvm->opcode_bits);
 	e1000_shift_out_eec_bits(hw, (u16)(offset*2), nvm->address_bits);
 
-	/*
-	 * Read the data.  SPI NVMs increment the address with each byte
+	/* Read the data.  SPI NVMs increment the address with each byte
 	 * read and will roll over if reading beyond the end.  This allows
 	 * us to read the whole NVM from any offset
 	 */
@@ -504,8 +501,7 @@ s32 e1000_read_nvm_microwire(struct e1000_hw *hw, u16 offset, u16 words,
 
 	DEBUGFUNC("e1000_read_nvm_microwire");
 
-	/*
-	 * A check for invalid values:  offset too large, too many words,
+	/* A check for invalid values:  offset too large, too many words,
 	 * and not enough words.
 	 */
 	if ((offset >= nvm->word_size) || (words > (nvm->word_size - offset)) ||
@@ -528,8 +524,7 @@ s32 e1000_read_nvm_microwire(struct e1000_hw *hw, u16 offset, u16 words,
 		e1000_shift_out_eec_bits(hw, (u16)(offset + i),
 					nvm->address_bits);
 
-		/*
-		 * Read the data.  For microwire, each word requires the
+		/* Read the data.  For microwire, each word requires the
 		 * overhead of setup and tear-down.
 		 */
 		data[i] = e1000_shift_in_eec_bits(hw, 16);
@@ -559,8 +554,7 @@ s32 e1000_read_nvm_eerd(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 
 	DEBUGFUNC("e1000_read_nvm_eerd");
 
-	/*
-	 * A check for invalid values:  offset too large, too many words,
+	/* A check for invalid values:  offset too large, too many words,
 	 * too many words for the offset, and not enough words.
 	 */
 	if ((offset >= nvm->word_size) || (words > (nvm->word_size - offset)) ||
@@ -605,8 +599,7 @@ s32 e1000_write_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 
 	DEBUGFUNC("e1000_write_nvm_spi");
 
-	/*
-	 * A check for invalid values:  offset too large, too many words,
+	/* A check for invalid values:  offset too large, too many words,
 	 * and not enough words.
 	 */
 	if ((offset >= nvm->word_size) || (words > (nvm->word_size - offset)) ||
@@ -636,8 +629,7 @@ s32 e1000_write_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 
 		e1000_standby_nvm(hw);
 
-		/*
-		 * Some SPI eeproms use the 8th address bit embedded in the
+		/* Some SPI eeproms use the 8th address bit embedded in the
 		 * opcode
 		 */
 		if ((nvm->address_bits == 8) && (offset >= 128))
@@ -690,8 +682,7 @@ s32 e1000_write_nvm_microwire(struct e1000_hw *hw, u16 offset, u16 words,
 
 	DEBUGFUNC("e1000_write_nvm_microwire");
 
-	/*
-	 * A check for invalid values:  offset too large, too many words,
+	/* A check for invalid values:  offset too large, too many words,
 	 * and not enough words.
 	 */
 	if ((offset >= nvm->word_size) || (words > (nvm->word_size - offset)) ||
@@ -792,8 +783,7 @@ s32 e1000_read_pba_string_generic(struct e1000_hw *hw, u8 *pba_num,
 		return ret_val;
 	}
 
-	/*
-	 * if nvm_data is not ptr guard the PBA must be in legacy format which
+	/* if nvm_data is not ptr guard the PBA must be in legacy format which
 	 * means pba_ptr is actually our second data word for the PBA number
 	 * and we can decode it into an ascii string
 	 */
@@ -917,8 +907,7 @@ s32 e1000_read_pba_length_generic(struct e1000_hw *hw, u32 *pba_num_size)
 		return -E1000_ERR_NVM_PBA_SECTION;
 	}
 
-	/*
-	 * Convert from length in u16 values to u8 chars, add 1 for NULL,
+	/* Convert from length in u16 values to u8 chars, add 1 for NULL,
 	 * and subtract 2 because length field is included in length.
 	 */
 	*pba_num_size = ((u32)length * 2) - 1;

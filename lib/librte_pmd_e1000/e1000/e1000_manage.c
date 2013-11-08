@@ -144,8 +144,7 @@ bool e1000_enable_tx_pkt_filtering_generic(struct e1000_hw *hw)
 		return hw->mac.tx_pkt_filtering;
 	}
 
-	/*
-	 * If we can't read from the host interface for whatever
+	/* If we can't read from the host interface for whatever
 	 * reason, disable filtering.
 	 */
 	ret_val = hw->mac.ops.mng_enable_host_if(hw);
@@ -164,8 +163,7 @@ bool e1000_enable_tx_pkt_filtering_generic(struct e1000_hw *hw)
 	hdr->checksum = 0;
 	csum = e1000_calculate_checksum((u8 *)hdr,
 					E1000_MNG_DHCP_COOKIE_LENGTH);
-	/*
-	 * If either the checksums or signature don't match, then
+	/* If either the checksums or signature don't match, then
 	 * the cookie area isn't considered valid, in which case we
 	 * take the safe route of assuming Tx filtering is enabled.
 	 */
@@ -258,8 +256,7 @@ s32 e1000_mng_host_if_write_generic(struct e1000_hw *hw, u8 *buffer,
 	/* Calculate length in DWORDs */
 	length >>= 2;
 
-	/*
-	 * The device driver writes the relevant command block into the
+	/* The device driver writes the relevant command block into the
 	 * ram area.
 	 */
 	for (i = 0; i < length; i++) {
@@ -423,8 +420,7 @@ s32 e1000_host_interface_command(struct e1000_hw *hw, u8 *buffer, u32 length)
 	/* Calculate length in DWORDs */
 	length >>= 2;
 
-	/*
-	 * The device driver writes the relevant command block
+	/* The device driver writes the relevant command block
 	 * into the ram area.
 	 */
 	for (i = 0; i < length; i++)
@@ -536,8 +532,7 @@ s32 e1000_load_firmware(struct e1000_hw *hw, u8 *buffer, u32 length)
 	/* Calculate length in DWORDs */
 	length >>= 2;
 
-	/*
-	 * The device driver writes the relevant FW code block
+	/* The device driver writes the relevant FW code block
 	 * into the ram area in DWORDs via 1kB ram addressing window.
 	 */
 	for (i = 0; i < length; i++) {

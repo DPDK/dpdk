@@ -31,8 +31,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 ***************************************************************************/
 
-/*
- * 82571EB Gigabit Ethernet Controller
+/* 82571EB Gigabit Ethernet Controller
  * 82571EB Gigabit Ethernet Controller (Copper)
  * 82571EB Gigabit Ethernet Controller (Fiber)
  * 82571EB Dual Port Gigabit Mezzanine Adapter
@@ -238,8 +237,7 @@ STATIC s32 e1000_init_nvm_params_82571(struct e1000_hw *hw)
 		if (((eecd >> 15) & 0x3) == 0x3) {
 			nvm->type = e1000_nvm_flash_hw;
 			nvm->word_size = 2048;
-			/*
-			 * Autonomous Flash update bit must be cleared due
+			/* Autonomous Flash update bit must be cleared due
 			 * to Flash update issue.
 			 */
 			eecd &= ~E1000_EECD_AUPDEN;
@@ -251,8 +249,7 @@ STATIC s32 e1000_init_nvm_params_82571(struct e1000_hw *hw)
 		nvm->type = e1000_nvm_eeprom_spi;
 		size = (u16)((eecd & E1000_EECD_SIZE_EX_MASK) >>
 			     E1000_EECD_SIZE_EX_SHIFT);
-		/*
-		 * Added to a constant, "size" becomes the left-shift value
+		/* Added to a constant, "size" becomes the left-shift value
 		 * for setting word_size.
 		 */
 		size += NVM_WORD_SIZE_BASE_SHIFT;
@@ -379,8 +376,7 @@ STATIC s32 e1000_init_mac_params_82571(struct e1000_hw *hw)
 
 		/* FWSM register */
 		mac->has_fwsm = true;
-		/*
-		 * ARC supported; valid only if manageability features are
+		/* ARC supported; valid only if manageability features are
 		 * enabled.
 		 */
 		mac->arc_subsystem_valid = !!(E1000_READ_REG(hw, E1000_FWSM) &
@@ -402,8 +398,7 @@ STATIC s32 e1000_init_mac_params_82571(struct e1000_hw *hw)
 		break;
 	}
 
-	/*
-	 * Ensure that the inter-port SWSM.SMBI lock bit is clear before
+	/* Ensure that the inter-port SWSM.SMBI lock bit is clear before
 	 * first NVM or PHY acess. This should be done for single-port
 	 * devices, and for one port only on dual-port devices so that
 	 * for those devices we can still use the SMBI lock to synchronize
@@ -441,10 +436,7 @@ STATIC s32 e1000_init_mac_params_82571(struct e1000_hw *hw)
 		E1000_WRITE_REG(hw, E1000_SWSM, swsm & ~E1000_SWSM_SMBI);
 	}
 
-	/*
-	 * Initialze device specific counter of SMBI acquisition
-	 * timeouts.
-	 */
+	/* Initialze device specific counter of SMBI acquisition timeouts. */
 	 hw->dev_spec._82571.smb_counter = 0;
 
 	return E1000_SUCCESS;
@@ -483,8 +475,7 @@ static s32 e1000_get_phy_id_82571(struct e1000_hw *hw)
 	switch (hw->mac.type) {
 	case e1000_82571:
 	case e1000_82572:
-		/*
-		 * The 82571 firmware may still be configuring the PHY.
+		/* The 82571 firmware may still be configuring the PHY.
 		 * In this case, we cannot access the PHY until the
 		 * configuration is done.  So we explicitly set the
 		 * PHY ID.
@@ -532,8 +523,7 @@ static s32 e1000_get_hw_semaphore_82571(struct e1000_hw *hw)
 
 	DEBUGFUNC("e1000_get_hw_semaphore_82571");
 
-	/*
-	 * If we have timedout 3 times on trying to acquire
+	/* If we have timedout 3 times on trying to acquire
 	 * the inter-port SMBI semaphore, there is old code
 	 * operating on the other port, and it is not
 	 * releasing SMBI. Modify the number of times that
@@ -850,8 +840,7 @@ STATIC s32 e1000_update_nvm_checksum_82571(struct e1000_hw *hw)
 	if (ret_val)
 		return ret_val;
 
-	/*
-	 * If our nvm is an EEPROM, then we're done
+	/* If our nvm is an EEPROM, then we're done
 	 * otherwise, commit the checksum to the flash NVM.
 	 */
 	if (hw->nvm.type != e1000_nvm_flash_hw)
@@ -869,8 +858,7 @@ STATIC s32 e1000_update_nvm_checksum_82571(struct e1000_hw *hw)
 
 	/* Reset the firmware if using STM opcode. */
 	if ((E1000_READ_REG(hw, E1000_FLOP) & 0xFF00) == E1000_STM_OPCODE) {
-		/*
-		 * The enabling of and the actual reset must be done
+		/* The enabling of and the actual reset must be done
 		 * in two write cycles.
 		 */
 		E1000_WRITE_REG(hw, E1000_HICR, E1000_HICR_FW_RESET_ENABLE);
@@ -934,8 +922,7 @@ static s32 e1000_write_nvm_eewr_82571(struct e1000_hw *hw, u16 offset,
 
 	DEBUGFUNC("e1000_write_nvm_eewr_82571");
 
-	/*
-	 * A check for invalid values:  offset too large, too many words,
+	/* A check for invalid values:  offset too large, too many words,
 	 * and not enough words.
 	 */
 	if ((offset >= nvm->word_size) || (words > (nvm->word_size - offset)) ||
@@ -1035,8 +1022,7 @@ STATIC s32 e1000_set_d0_lplu_state_82571(struct e1000_hw *hw, bool active)
 		data &= ~IGP02E1000_PM_D0_LPLU;
 		ret_val = phy->ops.write_reg(hw, IGP02E1000_PHY_POWER_MGMT,
 					     data);
-		/*
-		 * LPLU and SmartSpeed are mutually exclusive.  LPLU is used
+		/* LPLU and SmartSpeed are mutually exclusive.  LPLU is used
 		 * during Dx states where the power conservation is most
 		 * important.  During driver activity we should enable
 		 * SmartSpeed, so performance is maintained.
@@ -1086,8 +1072,7 @@ STATIC s32 e1000_reset_hw_82571(struct e1000_hw *hw)
 
 	DEBUGFUNC("e1000_reset_hw_82571");
 
-	/*
-	 * Prevent the PCI-E bus from sticking if there is no TLP connection
+	/* Prevent the PCI-E bus from sticking if there is no TLP connection
 	 * on the last TLP read/write transaction when MAC is reset.
 	 */
 	ret_val = e1000_disable_pcie_master_generic(hw);
@@ -1105,8 +1090,7 @@ STATIC s32 e1000_reset_hw_82571(struct e1000_hw *hw)
 
 	msec_delay(10);
 
-	/*
-	 * Must acquire the MDIO ownership before MAC reset.
+	/* Must acquire the MDIO ownership before MAC reset.
 	 * Ownership defaults to firmware after a reset.
 	 */
 	switch (hw->mac.type) {
@@ -1151,8 +1135,7 @@ STATIC s32 e1000_reset_hw_82571(struct e1000_hw *hw)
 		/* We don't want to continue accessing MAC registers. */
 		return ret_val;
 
-	/*
-	 * Phy configuration from NVM just starts after EECD_AUTO_RD is set.
+	/* Phy configuration from NVM just starts after EECD_AUTO_RD is set.
 	 * Need to wait for Phy configuration completion before accessing
 	 * NVM and Phy.
 	 */
@@ -1160,8 +1143,7 @@ STATIC s32 e1000_reset_hw_82571(struct e1000_hw *hw)
 	switch (hw->mac.type) {
 	case e1000_82571:
 	case e1000_82572:
-		/*
-		 * REQ and GNT bits need to be cleared when using AUTO_RD
+		/* REQ and GNT bits need to be cleared when using AUTO_RD
 		 * to access the EEPROM.
 		 */
 		eecd = E1000_READ_REG(hw, E1000_EECD);
@@ -1224,8 +1206,7 @@ STATIC s32 e1000_init_hw_82571(struct e1000_hw *hw)
 	DEBUGOUT("Initializing the IEEE VLAN\n");
 	mac->ops.clear_vfta(hw);
 
-	/* Setup the receive address. */
-	/*
+	/* Setup the receive address.
 	 * If, however, a locally administered address was assigned to the
 	 * 82571, we must reserve a RAR for it to work around an issue where
 	 * resetting one port will reload the MAC on the other port.
@@ -1268,8 +1249,7 @@ STATIC s32 e1000_init_hw_82571(struct e1000_hw *hw)
 		break;
 	}
 
-	/*
-	 * Clear all of the statistics registers (clear on read).  It is
+	/* Clear all of the statistics registers (clear on read).  It is
 	 * important that we do this after we have tried to establish link
 	 * because the symbol error count will increment wildly if there
 	 * is no link.
@@ -1368,8 +1348,7 @@ static void e1000_initialize_hw_bits_82571(struct e1000_hw *hw)
 		E1000_WRITE_REG(hw, E1000_PBA_ECC, reg);
 	}
 
-	/*
-	 * Workaround for hardware errata.
+	/* Workaround for hardware errata.
 	 * Ensure that DMA Dynamic Clock gating is disabled on 82571 and 82572
 	 */
 	if ((hw->mac.type == e1000_82571) ||
@@ -1379,8 +1358,7 @@ static void e1000_initialize_hw_bits_82571(struct e1000_hw *hw)
 		E1000_WRITE_REG(hw, E1000_CTRL_EXT, reg);
 	}
 
-	/*
-	 * Disable IPv6 extension header parsing because some malformed
+	/* Disable IPv6 extension header parsing because some malformed
 	 * IPv6 headers can hang the Rx.
 	 */
 	if (hw->mac.type <= e1000_82573) {
@@ -1397,8 +1375,7 @@ static void e1000_initialize_hw_bits_82571(struct e1000_hw *hw)
 		reg |= (1 << 22);
 		E1000_WRITE_REG(hw, E1000_GCR, reg);
 
-		/*
-		 * Workaround for hardware errata.
+		/* Workaround for hardware errata.
 		 * apply workaround for hardware errata documented in errata
 		 * docs Fixes issue where some error prone or unreliable PCIe
 		 * completions are occurring, particularly with ASPM enabled.
@@ -1436,8 +1413,7 @@ STATIC void e1000_clear_vfta_82571(struct e1000_hw *hw)
 	case e1000_82574:
 	case e1000_82583:
 		if (hw->mng_cookie.vlan_id != 0) {
-			/*
-			 * The VFTA is a 4096b bit-field, each identifying
+			/* The VFTA is a 4096b bit-field, each identifying
 			 * a single VLAN ID.  The following operations
 			 * determine which 32b entry (i.e. offset) into the
 			 * array we want to set the VLAN ID (i.e. bit) of
@@ -1455,8 +1431,7 @@ STATIC void e1000_clear_vfta_82571(struct e1000_hw *hw)
 		break;
 	}
 	for (offset = 0; offset < E1000_VLAN_FILTER_TBL_SIZE; offset++) {
-		/*
-		 * If the offset we want to clear is the same offset of the
+		/* If the offset we want to clear is the same offset of the
 		 * manageability VLAN ID, then clear all bits except that of
 		 * the manageability unit.
 		 */
@@ -1498,8 +1473,7 @@ STATIC s32 e1000_led_on_82574(struct e1000_hw *hw)
 
 	ctrl = hw->mac.ledctl_mode2;
 	if (!(E1000_STATUS_LU & E1000_READ_REG(hw, E1000_STATUS))) {
-		/*
-		 * If no link, then turn LED on by setting the invert bit
+		/* If no link, then turn LED on by setting the invert bit
 		 * for each LED that's "on" (0x0E) in ledctl_mode2.
 		 */
 		for (i = 0; i < 4; i++)
@@ -1526,8 +1500,7 @@ bool e1000_check_phy_82574(struct e1000_hw *hw)
 
 	DEBUGFUNC("e1000_check_phy_82574");
 
-	/*
-	 * Read PHY Receive Error counter first, if its is max - all F's then
+	/* Read PHY Receive Error counter first, if its is max - all F's then
 	 * read the Base1000T status register If both are max then PHY is hung.
 	 */
 	ret_val = hw->phy.ops.read_reg(hw, E1000_RECEIVE_ERROR_COUNTER,
@@ -1562,8 +1535,7 @@ STATIC s32 e1000_setup_link_82571(struct e1000_hw *hw)
 {
 	DEBUGFUNC("e1000_setup_link_82571");
 
-	/*
-	 * 82573 does not have a word in the NVM to determine
+	/* 82573 does not have a word in the NVM to determine
 	 * the default flow control setting, so we explicitly
 	 * set it to full.
 	 */
@@ -1634,8 +1606,7 @@ STATIC s32 e1000_setup_fiber_serdes_link_82571(struct e1000_hw *hw)
 	switch (hw->mac.type) {
 	case e1000_82571:
 	case e1000_82572:
-		/*
-		 * If SerDes loopback mode is entered, there is no form
+		/* If SerDes loopback mode is entered, there is no form
 		 * of reset to take the adapter out of that mode.  So we
 		 * have to explicitly take the adapter out of loopback
 		 * mode.  This prevents drivers from twiddling their thumbs
@@ -1695,8 +1666,7 @@ STATIC s32 e1000_check_for_serdes_link_82571(struct e1000_hw *hw)
 		switch (mac->serdes_link_state) {
 		case e1000_serdes_link_autoneg_complete:
 			if (!(status & E1000_STATUS_LU)) {
-				/*
-				 * We have lost link, retry autoneg before
+				/* We have lost link, retry autoneg before
 				 * reporting link failure
 				 */
 				mac->serdes_link_state =
@@ -1709,8 +1679,7 @@ STATIC s32 e1000_check_for_serdes_link_82571(struct e1000_hw *hw)
 			break;
 
 		case e1000_serdes_link_forced_up:
-			/*
-			 * If we are receiving /C/ ordered sets, re-enable
+			/* If we are receiving /C/ ordered sets, re-enable
 			 * auto-negotiation in the TXCW register and disable
 			 * forced link in the Device Control register in an
 			 * attempt to auto-negotiate with our link partner.
@@ -1731,8 +1700,7 @@ STATIC s32 e1000_check_for_serdes_link_82571(struct e1000_hw *hw)
 
 		case e1000_serdes_link_autoneg_progress:
 			if (rxcw & E1000_RXCW_C) {
-				/*
-				 * We received /C/ ordered sets, meaning the
+				/* We received /C/ ordered sets, meaning the
 				 * link partner has autonegotiated, and we can
 				 * trust the Link Up (LU) status bit.
 				 */
@@ -1748,8 +1716,7 @@ STATIC s32 e1000_check_for_serdes_link_82571(struct e1000_hw *hw)
 					DEBUGOUT("AN_PROG   -> DOWN\n");
 				}
 			} else {
-				/*
-				 * The link partner did not autoneg.
+				/* The link partner did not autoneg.
 				 * Force link up and full duplex, and change
 				 * state to forced.
 				 */
@@ -1774,8 +1741,7 @@ STATIC s32 e1000_check_for_serdes_link_82571(struct e1000_hw *hw)
 
 		case e1000_serdes_link_down:
 		default:
-			/*
-			 * The link was down but the receiver has now gained
+			/* The link was down but the receiver has now gained
 			 * valid sync, so lets see if we can bring the link
 			 * up.
 			 */
@@ -1794,8 +1760,7 @@ STATIC s32 e1000_check_for_serdes_link_82571(struct e1000_hw *hw)
 			mac->serdes_link_state = e1000_serdes_link_down;
 			DEBUGOUT("ANYSTATE  -> DOWN\n");
 		} else {
-			/*
-			 * Check several times, if SYNCH bit and CONFIG
+			/* Check several times, if SYNCH bit and CONFIG
 			 * bit both are consistently 1 then simply ignore
 			 * the IV bit and restart Autoneg
 			 */
@@ -1901,8 +1866,7 @@ void e1000_set_laa_state_82571(struct e1000_hw *hw, bool state)
 
 	/* If workaround is activated... */
 	if (state)
-		/*
-		 * Hold a copy of the LAA in RAR[14] This is done so that
+		/* Hold a copy of the LAA in RAR[14] This is done so that
 		 * between the time RAR[0] gets clobbered and the time it
 		 * gets fixed, the actual LAA is in one of the RARs and no
 		 * incoming packets directed to this port are dropped.
@@ -1934,8 +1898,7 @@ static s32 e1000_fix_nvm_checksum_82571(struct e1000_hw *hw)
 	if (nvm->type != e1000_nvm_flash_hw)
 		return E1000_SUCCESS;
 
-	/*
-	 * Check bit 4 of word 10h.  If it is 0, firmware is done updating
+	/* Check bit 4 of word 10h.  If it is 0, firmware is done updating
 	 * 10h-12h.  Checksum may need to be fixed.
 	 */
 	ret_val = nvm->ops.read(hw, 0x10, 1, &data);
@@ -1943,8 +1906,7 @@ static s32 e1000_fix_nvm_checksum_82571(struct e1000_hw *hw)
 		return ret_val;
 
 	if (!(data & 0x10)) {
-		/*
-		 * Read 0x23 and check bit 15.  This bit is a 1
+		/* Read 0x23 and check bit 15.  This bit is a 1
 		 * when the checksum has already been fixed.  If
 		 * the checksum is still wrong and this bit is a
 		 * 1, we need to return bad checksum.  Otherwise,
@@ -1979,8 +1941,7 @@ STATIC s32 e1000_read_mac_addr_82571(struct e1000_hw *hw)
 	if (hw->mac.type == e1000_82571) {
 		s32 ret_val = E1000_SUCCESS;
 
-		/*
-		 * If there's an alternate MAC address place it in RAR0
+		/* If there's an alternate MAC address place it in RAR0
 		 * so that it will override the Si installed default perm
 		 * address.
 		 */
