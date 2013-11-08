@@ -1041,7 +1041,8 @@ ixgbe_rx_scan_hw_ring(struct igb_rx_queue *rxq)
 	struct igb_rx_entry *rxep;
 	struct rte_mbuf *mb;
 	uint16_t pkt_len;
-	int s[LOOK_AHEAD], nb_dd;
+	uint32_t s[LOOK_AHEAD];
+	int nb_dd;
 	int i, j, nb_rx = 0;
 
 
@@ -1064,12 +1065,12 @@ ixgbe_rx_scan_hw_ring(struct igb_rx_queue *rxq)
 		for (j = LOOK_AHEAD-1; j >= 0; --j)
 			s[j] = rxdp[j].wb.upper.status_error;
 
-		/* Clear everything but the status bits (LSB) */
-		for (j = 0; j < LOOK_AHEAD; ++j)
-			s[j] &= IXGBE_RXDADV_STAT_DD;
+		nb_dd = 0;
+		/* add to nd_dd when the status bit is set (LSB) */
+		for (j = 0; j < LOOK_AHEAD; ++j) {
+			nb_dd += s[j] & IXGBE_RXDADV_STAT_DD;
+		}
 
-		/* Compute how many status bits were set */
-		nb_dd = s[0]+s[1]+s[2]+s[3]+s[4]+s[5]+s[6]+s[7];
 		nb_rx += nb_dd;
 
 		/* Translate descriptor info to mbuf format */
