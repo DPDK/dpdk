@@ -340,7 +340,7 @@ eal_usage(const char *prgname)
 	       "  --"OPT_HUGE_DIR"   : directory where hugetlbfs is mounted\n"
 	       "  --"OPT_PROC_TYPE"  : type of this process\n"
 	       "  --"OPT_FILE_PREFIX": prefix for hugepage filenames\n"
-	       "  --"OPT_USE_DEVICE": use the specified ethernet device(s) only."
+	       "  --"OPT_USE_DEVICE": use the specified ethernet device(s) only. "
 	    		   "Use comma-separate <[domain:]bus:devid.func> values.\n"
 	       "               [NOTE: Cannot be used with -b option]\n"
 	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of "
