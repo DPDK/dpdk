@@ -1793,9 +1793,12 @@ main(int argc, char** argv)
 	for (port_id = 0; port_id < nb_ports; port_id++)
 		rte_eth_promiscuous_enable(port_id);
 
+#ifdef RTE_LIBRTE_CMDLINE
 	if (interactive == 1)
 		prompt();
-	else {
+	else
+#endif
+	{
 		char c;
 		int rc;
 

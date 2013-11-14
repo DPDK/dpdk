@@ -44,7 +44,9 @@ CFLAGS += $(WERROR_FLAGS)
 #
 SRCS-$(CONFIG_RTE_TEST_PMD) := testpmd.c
 SRCS-$(CONFIG_RTE_TEST_PMD) += parameters.c
+ifeq ($(CONFIG_RTE_LIBRTE_CMDLINE),y)
 SRCS-$(CONFIG_RTE_TEST_PMD) += cmdline.c
+endif
 SRCS-$(CONFIG_RTE_TEST_PMD) += config.c
 SRCS-$(CONFIG_RTE_TEST_PMD) += iofwd.c
 SRCS-$(CONFIG_RTE_TEST_PMD) += macfwd.c

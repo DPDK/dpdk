@@ -71,27 +71,37 @@
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
+#ifdef RTE_LIBRTE_CMDLINE
 #include <cmdline_parse.h>
 #include <cmdline_parse_etheraddr.h>
+#endif
 
 #include "testpmd.h"
 
 static void
 usage(char* progname)
 {
-	printf("usage: %s [--interactive|-i] [--help|-h] | ["
+	printf("usage: %s "
+#ifdef RTE_LIBRTE_CMDLINE
+	       "[--interactive|-i] "
+#endif
+	       "[--help|-h] | ["
 	       "--coremask=COREMASK --portmask=PORTMASK --numa "
 	       "--mbuf-size= | --total-num-mbufs= | "
 	       "--nb-cores= | --nb-ports= | "
+#ifdef RTE_LIBRTE_CMDLINE
 	       "--eth-peers-configfile= | "
 	       "--eth-peer=X,M:M:M:M:M:M | "
+#endif
 	       "--pkt-filter-mode= |"
 	       "--rss-ip | --rss-udp | "
 	       "--rxpt= | --rxht= | --rxwt= | --rxfreet= | "
 	       "--txpt= | --txht= | --txwt= | --txfreet= | "
 	       "--txrst= | --txqflags= ]\n",
 	       progname);
+#ifdef RTE_LIBRTE_CMDLINE
 	printf("  --interactive: run in interactive mode.\n");
+#endif
 	printf("  --help: display this message and quit.\n");
 	printf("  --nb-cores=N: set the number of forwarding cores "
 	       "(1 <= N <= %d).\n", nb_lcores);
@@ -118,10 +128,12 @@ usage(char* progname)
 	printf("  --total-num-mbufs=N: set the number of mbufs to be allocated "
 	       "in mbuf pools.\n");
 	printf("  --max-pkt-len=N: set the maximum size of packet to N bytes.\n");
+#ifdef RTE_LIBRTE_CMDLINE
 	printf("  --eth-peers-configfile=name: config file with ethernet addresses "
 	       "of peer ports.\n");
 	printf("  --eth-peer=X,M:M:M:M:M:M: set the MAC address of the X peer "
 	       "port (0 <= X < %d).\n", RTE_MAX_ETHPORTS);
+#endif
 	printf("  --pkt-filter-mode=N: set Flow Director mode "
 	       "(N: none (default mode) or signature or perfect).\n");
 	printf("  --pkt-filter-report-hash=N: set Flow Director report mode "
@@ -182,6 +194,7 @@ usage(char* progname)
 	       " Used mainly with PCAP drivers.\n");
 }
 
+#ifdef RTE_LIBRTE_CMDLINE
 static int
 init_peer_eth_addrs(char *config_filename)
 {
@@ -210,6 +223,7 @@ init_peer_eth_addrs(char *config_filename)
 	nb_peer_eth_addrs = (portid_t) i;
 	return 0;
 }
+#endif
 
 /*
  * Parse the coremask given as argument (hexadecimal string) and set
@@ -469,9 +483,11 @@ launch_args_parse(int argc, char** argv)
 
 	static struct option lgopts[] = {
 		{ "help",			0, 0, 0 },
+#ifdef RTE_LIBRTE_CMDLINE
 		{ "interactive",		0, 0, 0 },
 		{ "eth-peers-configfile",	1, 0, 0 },
 		{ "eth-peer",			1, 0, 0 },
+#endif
 		{ "ports",			1, 0, 0 },
 		{ "nb-cores",			1, 0, 0 },
 		{ "nb-ports",			1, 0, 0 },
@@ -522,18 +538,26 @@ launch_args_parse(int argc, char** argv)
 
 	argvopt = argv;
 
-	while ((opt = getopt_long(argc, argvopt, "ih",
+#ifdef RTE_LIBRTE_CMDLINE
+#define SHORTOPTS "ih"
+#else
+#define SHORTOPTS "h"
+#endif
+	while ((opt = getopt_long(argc, argvopt, SHORTOPTS,
 				 lgopts, &opt_idx)) != EOF) {
 		switch (opt) {
+#ifdef RTE_LIBRTE_CMDLINE
 		case 'i':
 			printf("Interactive-mode selected\n");
 			interactive = 1;
 			break;
+#endif
 		case 0: /*long options */
 			if (!strcmp(lgopts[opt_idx].name, "help")) {
 				usage(argv[0]);
 				rte_exit(EXIT_SUCCESS, "Displayed help\n");
 			}
+#ifdef RTE_LIBRTE_CMDLINE
 			if (!strcmp(lgopts[opt_idx].name, "interactive")) {
 				printf("Interactive-mode selected\n");
 				interactive = 1;
@@ -567,6 +591,7 @@ launch_args_parse(int argc, char** argv)
 						peer_addr[c];
 				nb_peer_eth_addrs++;
 			}
+#endif
 			if (!strcmp(lgopts[opt_idx].name, "nb-ports")) {
 				n = atoi(optarg);
 				if (n > 0 && n <= nb_ports)
