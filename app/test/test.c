@@ -41,10 +41,13 @@
 #include <ctype.h>
 #include <sys/queue.h>
 
+#ifdef RTE_LIBRTE_CMDLINE
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
 #include <cmdline_socket.h>
 #include <cmdline.h>
+extern cmdline_parse_ctx_t main_ctx[];
+#endif
 
 #include <rte_memory.h>
 #include <rte_memzone.h>
@@ -102,7 +105,9 @@ do_recursive_call(void)
 int
 main(int argc, char **argv)
 {
+#ifdef RTE_LIBRTE_CMDLINE
 	struct cmdline *cl;
+#endif
 	int ret;
 
 	ret = rte_eal_init(argc, argv);
@@ -127,13 +132,14 @@ main(int argc, char **argv)
 				"HPET is not enabled, using TSC as default timer\n");
 
 
-
+#ifdef RTE_LIBRTE_CMDLINE
 	cl = cmdline_stdin_new(main_ctx, "RTE>>");
 	if (cl == NULL) {
 		return -1;
 	}
 	cmdline_interact(cl);
 	cmdline_stdin_exit(cl);
+#endif
 
 	return 0;
 }

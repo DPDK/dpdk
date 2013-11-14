@@ -60,8 +60,6 @@
 #include <rte_random.h>
 #include <rte_cycles.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 
 #define MBUF_SIZE               2048

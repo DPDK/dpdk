@@ -58,8 +58,6 @@
 #include <rte_spinlock.h>
 #include <rte_malloc.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 
 /*

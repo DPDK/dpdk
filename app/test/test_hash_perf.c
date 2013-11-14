@@ -50,7 +50,6 @@
 #include <rte_eal.h>
 #include <rte_ip.h>
 #include <rte_string_fns.h>
-#include <cmdline_parse.h>
 
 #include "test.h"
 

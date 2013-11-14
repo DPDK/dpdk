@@ -37,8 +37,6 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 
 #if defined(RTE_LIBRTE_SCHED) && defined(RTE_ARCH_X86_64)
