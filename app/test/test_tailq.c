@@ -37,8 +37,6 @@
 #include <errno.h>
 #include <sys/queue.h>
 
-#include <cmdline_parse.h>
-
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_string_fns.h>

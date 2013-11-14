@@ -36,8 +36,6 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include <cmdline_parse.h>
-
 #include <rte_byteorder.h>
 
 #include "test.h"

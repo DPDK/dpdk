@@ -33,7 +33,6 @@
 
 #include <stdio.h>
 
-#include <cmdline_parse.h>
 #include <errno.h>
 #include <stdint.h>
 #include <rte_cpuflags.h>

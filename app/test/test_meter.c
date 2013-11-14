@@ -37,8 +37,6 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 
 #ifdef RTE_LIBRTE_METER

@@ -34,8 +34,6 @@
 #include <string.h>
 #include <errno.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 
 #ifdef RTE_LIBRTE_ACL

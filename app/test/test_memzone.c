@@ -36,8 +36,6 @@
 #include <inttypes.h>
 #include <sys/queue.h>
 
-#include <cmdline_parse.h>
-
 #include <rte_random.h>
 #include <rte_cycles.h>
 #include <rte_memory.h>

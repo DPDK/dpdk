@@ -39,7 +39,7 @@ APP = test
 #
 # all sources are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_APP_TEST) := commands.c
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) := commands.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_pci.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_prefetch.c
@@ -78,13 +78,13 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_version.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_eal_fs.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_func_reentrancy.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline.c
-SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_num.c
-SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_etheraddr.c
-SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_portlist.c
-SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_ipaddr.c
-SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_cirbuf.c
-SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_string.c
-SRCS-$(CONFIG_RTE_APP_TEST) += test_cmdline_lib.c
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_num.c
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_etheraddr.c
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_portlist.c
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_ipaddr.c
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_cirbuf.c
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_string.c
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_lib.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_red.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_sched.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_meter.c

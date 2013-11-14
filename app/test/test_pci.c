@@ -36,8 +36,6 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
-#include <cmdline_parse.h>
-
 #include <rte_interrupts.h>
 #include <rte_pci.h>
 

@@ -38,8 +38,6 @@
 #include <rte_cycles.h>
 #include <rte_launch.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 
 /*

@@ -59,8 +59,6 @@
 #include <rte_errno.h>
 #include <rte_hexdump.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 
 /*

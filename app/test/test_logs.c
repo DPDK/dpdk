@@ -36,8 +36,6 @@
 #include <stdarg.h>
 #include <sys/queue.h>
 
-#include <cmdline_parse.h>
-
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>

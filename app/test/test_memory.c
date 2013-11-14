@@ -34,8 +34,6 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include <cmdline_parse.h>
-
 #include <rte_memory.h>
 #include <rte_common.h>
 

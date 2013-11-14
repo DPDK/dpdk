@@ -39,8 +39,6 @@
 
 #include <rte_string_fns.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 
 #define LOG(...) do {\

@@ -33,14 +33,13 @@
 
 #include <stdio.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 #include "test_cmdline.h"
 
 int
 test_cmdline(void)
 {
+#ifdef CONFIG_RTE_LIBRTE_CMDLINE
 	printf("Testind parsing ethernet addresses...\n");
 	if (test_parse_etheraddr_valid() < 0)
 		return -1;
@@ -88,6 +87,9 @@ test_cmdline(void)
 	printf("Testing library functions...\n");
 	if (test_cmdline_lib() < 0)
 		return -1;
+#else
+	printf("The cmdline library is not included in this build\n");
+#endif
 	return 0;
 }
 

@@ -40,7 +40,6 @@
 #include <sys/time.h>
 #include <time.h>
 #include <math.h>
-#include <cmdline_parse.h>
 
 #include "test.h"
 

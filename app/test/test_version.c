@@ -35,8 +35,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#include <cmdline_parse.h>
-
 #include <rte_common.h>
 #include <rte_version.h>
 

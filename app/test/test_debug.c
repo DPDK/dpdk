@@ -36,8 +36,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <cmdline_parse.h>
-
 #include <rte_debug.h>
 #include <rte_common.h>
 #include <rte_eal.h>
