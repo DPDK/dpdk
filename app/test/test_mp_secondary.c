@@ -33,8 +33,6 @@
 
 #include <stdio.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 
 #ifndef RTE_EXEC_ENV_BAREMETAL

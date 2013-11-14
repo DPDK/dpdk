@@ -70,8 +70,6 @@
 
 #include <rte_string_fns.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 
 typedef int (*case_func_t)(void* arg);

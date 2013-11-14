@@ -37,8 +37,6 @@
 #include <string.h>
 #include <sys/wait.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 
 #ifdef RTE_LIBRTE_KNI

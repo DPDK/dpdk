@@ -36,7 +36,6 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/queue.h>
-#include <cmdline_parse.h>
 
 #include <time.h>
 

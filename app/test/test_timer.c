@@ -121,8 +121,6 @@
 #include <sys/queue.h>
 #include <math.h>
 
-#include <cmdline_parse.h>
-
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_memory.h>

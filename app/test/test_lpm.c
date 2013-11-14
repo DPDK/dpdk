@@ -36,7 +36,6 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/queue.h>
-#include <cmdline_parse.h>
 
 #include <rte_common.h>
 #include <rte_cycles.h>

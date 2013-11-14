@@ -31,8 +31,6 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 #ifndef RTE_EXEC_ENV_BAREMETAL
 #include <stdio.h>

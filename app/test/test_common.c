@@ -36,8 +36,6 @@
 #include <rte_common.h>
 #include <rte_hexdump.h>
 
-#include <cmdline_parse.h>
-
 #include "test.h"
 
 #define MAX_NUM 1 << 20
