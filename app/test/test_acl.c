@@ -34,8 +34,6 @@
 #include <string.h>
 #include <errno.h>
 
-#include <cmdline_parse.h>
-
 #include <rte_string_fns.h>
 #include <rte_mbuf.h>
 
