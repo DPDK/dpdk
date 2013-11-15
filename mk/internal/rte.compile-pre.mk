@@ -84,7 +84,7 @@ C_TO_O = $(CC) -Wp,-MD,$(call obj2dep,$(@)).tmp $(CFLAGS) \
 C_TO_O_STR = $(subst ','\'',$(C_TO_O)) #'# fix syntax highlight
 C_TO_O_DISP = $(if $(V),"$(C_TO_O_STR)","  CC $(@)")
 endif
-C_TO_O_CMD = "cmd_$@ = $(C_TO_O_STR)"
+C_TO_O_CMD = 'cmd_$@ = $(C_TO_O_STR)'
 C_TO_O_DO = @set -e; \
 	echo $(C_TO_O_DISP); \
 	$(C_TO_O) && \
@@ -99,7 +99,7 @@ compare = $(strip $(subst $(1),,$(2)) $(subst $(2),,$(1)))
 file_missing = $(call compare,$(wildcard $@),$@)
 
 # return a non-empty string if cmdline changed
-cmdline_changed = $(call compare,$(cmd_$@),$(1))
+cmdline_changed = $(call compare,$(strip $(cmd_$@)),$(strip $(1)))
 
 # return a non-empty string if a dependency file does not exist
 depfile_missing = $(call compare,$(wildcard $(dep_$@)),$(dep_$@))
@@ -127,12 +127,12 @@ boolean = $(if $1,1,0)
 	$(if $(D),\
 		@echo -n "$< -> $@ " ; \
 		echo -n "file_missing=$(call boolean,$(file_missing)) " ; \
-		echo -n "cmdline_changed=$(call boolean,$(call cmdline_changed,$(C_TO_O_STR))) " ; \
+		echo -n "cmdline_changed=$(call boolean,$(call cmdline_changed,$(C_TO_O))) " ; \
 		echo -n "depfile_missing=$(call boolean,$(depfile_missing)) " ; \
 		echo "depfile_newer=$(call boolean,$(depfile_newer))")
 	$(if $(or \
 		$(file_missing),\
-		$(call cmdline_changed,$(C_TO_O_STR)),\
+		$(call cmdline_changed,$(C_TO_O)),\
 		$(depfile_missing),\
 		$(depfile_newer)),\
 		$(C_TO_O_DO))
