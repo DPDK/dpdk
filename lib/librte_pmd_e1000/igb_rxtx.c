@@ -1134,16 +1134,15 @@ igb_reset_tx_queue_stat(struct igb_tx_queue *txq)
 static void
 igb_reset_tx_queue(struct igb_tx_queue *txq, struct rte_eth_dev *dev)
 {
+	static const union e1000_adv_tx_desc zeroed_desc;
 	struct igb_tx_entry *txe = txq->sw_ring;
-	uint32_t size;
 	uint16_t i, prev;
 	struct e1000_hw *hw;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	size = sizeof(union e1000_adv_tx_desc) * txq->nb_tx_desc;
 	/* Zero out HW ring memory */
-	for (i = 0; i < size; i++) {
-		((volatile char *)txq->tx_ring)[i] = 0;
+	for (i = 0; i < txq->nb_tx_desc; i++) {
+		txq->tx_ring[i] = zeroed_desc;
 	}
 
 	/* Initialize ring entries */
@@ -1297,13 +1296,12 @@ eth_igb_rx_queue_release(void *rxq)
 static void
 igb_reset_rx_queue(struct igb_rx_queue *rxq)
 {
-	unsigned size;
+	static const union e1000_adv_rx_desc zeroed_desc;
 	unsigned i;
 
 	/* Zero out HW ring memory */
-	size = sizeof(union e1000_adv_rx_desc) * rxq->nb_rx_desc;
-	for (i = 0; i < size; i++) {
-		((volatile char *)rxq->rx_ring)[i] = 0;
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		rxq->rx_ring[i] = zeroed_desc;
 	}
 
 	rxq->rx_tail = 0;

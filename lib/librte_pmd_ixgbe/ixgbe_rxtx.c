@@ -1799,12 +1799,13 @@ ixgbe_dev_tx_queue_release(void *txq)
 static void
 ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
 {
+	static const union ixgbe_adv_tx_desc zeroed_desc;
 	struct igb_tx_entry *txe = txq->sw_ring;
 	uint16_t prev, i;
 
 	/* Zero out HW ring memory */
-	for (i = 0; i < sizeof(union ixgbe_adv_tx_desc) * txq->nb_tx_desc; i++) {
-		((volatile char *)txq->tx_ring)[i] = 0;
+	for (i = 0; i < txq->nb_tx_desc; i++) {
+		txq->tx_ring[i] = zeroed_desc;
 	}
 
 	/* Initialize SW ring entries */
@@ -2093,6 +2094,7 @@ check_rx_burst_bulk_alloc_preconditions(__rte_unused struct igb_rx_queue *rxq)
 static void
 ixgbe_reset_rx_queue(struct igb_rx_queue *rxq)
 {
+	static const union ixgbe_adv_rx_desc zeroed_desc;
 	unsigned i;
 	uint16_t len;
 
@@ -2120,8 +2122,8 @@ ixgbe_reset_rx_queue(struct igb_rx_queue *rxq)
 	 * the H/W ring so look-ahead logic in Rx Burst bulk alloc function
 	 * reads extra memory as zeros.
 	 */
-	for (i = 0; i < len * sizeof(union ixgbe_adv_rx_desc); i++) {
-		((volatile char *)rxq->rx_ring)[i] = 0;
+	for (i = 0; i < len; i++) {
+		rxq->rx_ring[i] = zeroed_desc;
 	}
 
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
