@@ -198,7 +198,7 @@ ifeq ($(LINK_USING_CC),1)
 comma := ,
 LDLIBS := $(addprefix -Wl$(comma),$(LDLIBS))
 LDFLAGS := $(addprefix -Wl$(comma),$(LDFLAGS))
-EXTRA_LDFLAGS := $(addprefix -Wl$(comma),$(EXTRA_LDFLAGS))
+override EXTRA_LDFLAGS := $(addprefix -Wl$(comma),$(EXTRA_LDFLAGS))
 O_TO_EXE = $(CC) $(CFLAGS) $(LDFLAGS_$(@)) \
 	-Wl,-Map=$(@).map,--cref -o $@ $(OBJS-y) $(LDFLAGS) $(EXTRA_LDFLAGS) $(LDLIBS)
 else
