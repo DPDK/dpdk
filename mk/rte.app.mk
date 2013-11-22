@@ -170,7 +170,10 @@ LDLIBS += -lrte_cmdline
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
-LDLIBS += -lrte_pmd_pcap -lpcap
+LDLIBS += -lrte_pmd_pcap
+LIBPCAP_LDFLAGS ?= $(shell pcap-config --libs)
+$(if $(LIBPCAP_LDFLAGS),,$(error LIBPCAP_LDFLAGS is undefined))
+LDLIBS += $(LIBPCAP_LDFLAGS)
 endif
 
 LDLIBS += $(EXECENV_LDLIBS)
