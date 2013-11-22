@@ -37,7 +37,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <pcap/pcap.h>
+#include <pcap.h>
 
 #define RTE_ETH_PCAP_PARAM_NAME "eth_pcap"
 
