@@ -13,6 +13,7 @@ Build variables
 	EXTRA_LDFLAGS    linker options
 	LIBPCAP_CFLAGS   libpcap compiler options
 	LIBPCAP_LDFLAGS  libpcap linker options
+	RTE_KERNELDIR    linux headers path
 	CROSS     toolchain prefix
 	V         verbose
 	D         debug dependencies
