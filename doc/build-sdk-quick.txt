@@ -11,6 +11,8 @@ Build variables
 	EXTRA_CPPFLAGS   preprocessor options
 	EXTRA_CFLAGS     compiler options
 	EXTRA_LDFLAGS    linker options
+	LIBPCAP_CFLAGS   libpcap compiler options
+	LIBPCAP_LDFLAGS  libpcap linker options
 	CROSS     toolchain prefix
 	V         verbose
 	D         debug dependencies
