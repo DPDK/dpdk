@@ -39,6 +39,12 @@ extern "C" {
 #endif
 #include <pcap.h>
 
+#ifdef pcap_sendpacket
+#define PCAP_CAN_SEND
+#else
+#undef PCAP_CAN_SEND
+#endif
+
 #define RTE_ETH_PCAP_PARAM_NAME "eth_pcap"
 
 int rte_eth_from_pcaps(pcap_t * const rx_queues[],
