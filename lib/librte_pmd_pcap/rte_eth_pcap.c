@@ -118,32 +118,47 @@ eth_pcap_rx(void *queue,
 	struct pcap_pkthdr header;
 	const u_char *packet;
 	struct rte_mbuf *mbuf;
-	static struct rte_mbuf *mbufs[RTE_ETH_PCAP_MBUFS] = { 0 };
 	struct pcap_rx_queue *pcap_q = queue;
+	struct rte_pktmbuf_pool_private *mbp_priv;
 	uint16_t num_rx = 0;
+	uint16_t buf_size;
 
 	if (unlikely(pcap_q->pcap == NULL || nb_pkts == 0))
 		return 0;
-
-	if(unlikely(!mbufs[0]))
-		for (i = 0; i < RTE_ETH_PCAP_MBUFS; i++)
-			mbufs[i] = rte_pktmbuf_alloc(pcap_q->mb_pool);
 
 	/* Reads the given number of packets from the pcap file one by one
 	 * and copies the packet data into a newly allocated mbuf to return.
 	 */
 	for (i = 0; i < nb_pkts; i++) {
-		mbuf = mbufs[i % RTE_ETH_PCAP_MBUFS];
+		/* Get the next PCAP packet */
 		packet = pcap_next(pcap_q->pcap, &header);
 		if (unlikely(packet == NULL))
 			break;
+		else 
+			mbuf = rte_pktmbuf_alloc(pcap_q->mb_pool);
 		if (unlikely(mbuf == NULL))
 			break;
-		rte_memcpy(mbuf->pkt.data, packet, header.len);
-		mbuf->pkt.data_len = (uint16_t)header.len;
-		mbuf->pkt.pkt_len = mbuf->pkt.data_len;
-		bufs[i] = mbuf;
-		num_rx++;
+
+		/* Now get the space available for data in the mbuf */
+		mbp_priv = (struct rte_pktmbuf_pool_private *)
+				((char *)pcap_q->mb_pool + sizeof(struct rte_mempool));
+		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
+				RTE_PKTMBUF_HEADROOM);
+
+		if (header.len <= buf_size) {
+			/* pcap packet will fit in the mbuf, go ahead and copy */
+			rte_memcpy(mbuf->pkt.data, packet, header.len);
+			mbuf->pkt.data_len = (uint16_t)header.len;
+			mbuf->pkt.pkt_len = mbuf->pkt.data_len;
+			bufs[i] = mbuf;
+			num_rx++;
+		} else {
+			/* pcap packet will not fit in the mbuf, so drop packet */
+			RTE_LOG(ERR, PMD, 
+					"PCAP packet %d bytes will not fit in mbuf (%d bytes)\n",
+					header.len, buf_size);
+			rte_pktmbuf_free(mbuf);
+		}
 	}
 	pcap_q->rx_pkts += num_rx;
 	return num_rx;
