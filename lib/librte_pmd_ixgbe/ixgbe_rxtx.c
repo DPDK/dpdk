@@ -1799,7 +1799,8 @@ ixgbe_dev_tx_queue_release(void *txq)
 static void
 ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
 {
-	static const union ixgbe_adv_tx_desc zeroed_desc;
+	static const union ixgbe_adv_tx_desc zeroed_desc = { .read = {
+		.buffer_addr = 0 }};
 	struct igb_tx_entry *txe = txq->sw_ring;
 	uint16_t prev, i;
 
@@ -2094,7 +2095,8 @@ check_rx_burst_bulk_alloc_preconditions(__rte_unused struct igb_rx_queue *rxq)
 static void
 ixgbe_reset_rx_queue(struct igb_rx_queue *rxq)
 {
-	static const union ixgbe_adv_rx_desc zeroed_desc;
+	static const union ixgbe_adv_rx_desc zeroed_desc = { .read = {
+		.pkt_addr = 0 }};
 	unsigned i;
 	uint16_t len;
 
