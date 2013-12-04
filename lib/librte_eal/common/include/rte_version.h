@@ -64,7 +64,7 @@ extern "C" {
 /**
  * Patch level number i.e. the z in x.y.z
  */
-#define RTE_VER_PATCH_LEVEL 1
+#define RTE_VER_PATCH_LEVEL 2
 
 /**
  * Extra string to be appended to version number,
