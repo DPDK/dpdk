@@ -824,6 +824,7 @@ delete_depth_big(struct rte_lpm *lpm, uint32_t ip_masked,
 		struct rte_lpm_tbl8_entry new_tbl8_entry = {
 			.valid = VALID,
 			.depth = sub_rule_depth,
+			.valid_group = lpm->tbl8[tbl8_group_start].valid_group,
 			.next_hop = lpm->rules_tbl[sub_rule_index].next_hop,
 		};
 
