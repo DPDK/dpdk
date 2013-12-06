@@ -42,7 +42,6 @@ endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
 LIBPCAP_CFLAGS ?= $(shell pcap-config --cflags)
-$(if $(LIBPCAP_CFLAGS),,$(error LIBPCAP_CFLAGS is undefined))
 EXTERNAL_LIB_CFLAGS += $(LIBPCAP_CFLAGS)
 endif
 
