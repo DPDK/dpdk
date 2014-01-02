@@ -128,13 +128,6 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	len += CACHE_LINE_MASK;
 	len &= ~((size_t) CACHE_LINE_MASK);
 
-	/* save original length */
-	requested_len = len;
-
-	/* reserve extra space for future alignment */
-	if (len)
-		len += align;
-
 	/* save requested length */
 	requested_len = len;
 
