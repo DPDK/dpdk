@@ -46,7 +46,6 @@
 #define RTE_ETH_PCAP_SNAPLEN 4096
 #define RTE_ETH_PCAP_PROMISC 1
 #define RTE_ETH_PCAP_TIMEOUT -1
-#define RTE_ETH_PCAP_MBUFS 64
 #define ETH_PCAP_RX_PCAP_ARG  	"rx_pcap"
 #define ETH_PCAP_TX_PCAP_ARG  	"tx_pcap"
 #define ETH_PCAP_RX_IFACE_ARG 	"rx_iface"
