@@ -1813,9 +1813,9 @@ ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
 		volatile union ixgbe_adv_tx_desc *txd = &txq->tx_ring[i];
 		txd->wb.status = IXGBE_TXD_STAT_DD;
 		txe[i].mbuf = NULL;
-		txe[i].last_id = (uint16_t)i;
-		txe[prev].next_id = (uint16_t)i;
-		prev = (uint16_t)i;
+		txe[i].last_id = i;
+		txe[prev].next_id = i;
+		prev = i;
 	}
 
 	txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
