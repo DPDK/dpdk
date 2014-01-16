@@ -1546,6 +1546,9 @@ init_port_config(void)
 		if (nb_rxq > 0) {
 			port->dev_conf.rx_adv_conf.rss_conf.rss_key = NULL;
 			port->dev_conf.rx_adv_conf.rss_conf.rss_hf = rss_hf;
+			if (rss_hf != 0) {
+				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
+			}
 		} else {
 			port->dev_conf.rx_adv_conf.rss_conf.rss_key = NULL;
 			port->dev_conf.rx_adv_conf.rss_conf.rss_hf = 0;
