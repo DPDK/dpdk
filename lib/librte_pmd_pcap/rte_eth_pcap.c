@@ -38,6 +38,7 @@
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
+#include <net/if.h>
 
 #include "rte_eth_pcap.h"
 #include "rte_eth_pcap_arg_parser.h"
@@ -85,6 +86,8 @@ struct tx_pcaps {
 struct pmd_internals {
 	unsigned nb_rx_queues;
 	unsigned nb_tx_queues;
+
+	int if_index;
 
 	struct pcap_rx_queue rx_queue[RTE_PMD_RING_MAX_RX_RINGS];
 	struct pcap_tx_queue tx_queue[RTE_PMD_RING_MAX_TX_RINGS];
@@ -300,6 +303,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 {
 	struct pmd_internals *internals = dev->data->dev_private;
 	dev_info->driver_name = drivername;
+	dev_info->if_index = internals->if_index;
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_rx_pktlen = (uint32_t) -1;
 	dev_info->max_rx_queues = (uint16_t)internals->nb_rx_queues;
@@ -543,10 +547,19 @@ rte_pmd_init_internals(const unsigned nb_rx_queues,
 		const unsigned nb_tx_queues,
 		const unsigned numa_node,
 		struct pmd_internals **internals,
-		struct rte_eth_dev **eth_dev)
+		struct rte_eth_dev **eth_dev,
+		struct args_dict *dict)
 {
 	struct rte_eth_dev_data *data = NULL;
 	struct rte_pci_device *pci_dev = NULL;
+	unsigned k_idx;
+	struct key_value *pair = NULL;
+
+	for (k_idx = 0; k_idx < dict->index; k_idx++) {
+		pair = &dict->pairs[k_idx];
+		if (strstr(pair->key, ETH_PCAP_IFACE_ARG) != NULL)
+			break;
+	}
 
 	RTE_LOG(INFO, PMD,
 			"Creating pcap-backed ethdev on numa socket %u\n", numa_node);
@@ -583,6 +596,11 @@ rte_pmd_init_internals(const unsigned nb_rx_queues,
 	(*internals)->nb_rx_queues = nb_rx_queues;
 	(*internals)->nb_tx_queues = nb_tx_queues;
 
+	if (pair == NULL)
+		(*internals)->if_index = 0;
+	else
+		(*internals)->if_index = if_nametoindex(pair->value);
+
 	pci_dev->numa_node = numa_node;
 
 	data->dev_private = *internals;
@@ -612,7 +630,8 @@ rte_eth_from_pcaps_n_dumpers(pcap_t * const rx_queues[],
 		const unsigned nb_rx_queues,
 		pcap_dumper_t * const tx_queues[],
 		const unsigned nb_tx_queues,
-		const unsigned numa_node)
+		const unsigned numa_node,
+		struct args_dict *dict)
 {
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
@@ -625,7 +644,7 @@ rte_eth_from_pcaps_n_dumpers(pcap_t * const rx_queues[],
 		return -1;
 
 	if (rte_pmd_init_internals(nb_rx_queues, nb_tx_queues, numa_node,
-			&internals, &eth_dev) < 0)
+		        &internals, &eth_dev, dict) < 0)
 		return -1;
 
 	for (i = 0; i < nb_rx_queues; i++) {
@@ -646,7 +665,8 @@ rte_eth_from_pcaps(pcap_t * const rx_queues[],
 		const unsigned nb_rx_queues,
 		pcap_t * const tx_queues[],
 		const unsigned nb_tx_queues,
-		const unsigned numa_node)
+		const unsigned numa_node,
+		struct args_dict *dict)
 {
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
@@ -659,7 +679,7 @@ rte_eth_from_pcaps(pcap_t * const rx_queues[],
 		return -1;
 
 	if (rte_pmd_init_internals(nb_rx_queues, nb_tx_queues, numa_node,
-			&internals, &eth_dev) < 0)
+		        &internals, &eth_dev, dict) < 0)
 		return -1;
 
 	for (i = 0; i < nb_rx_queues; i++) {
@@ -707,7 +727,7 @@ rte_pmd_pcap_init(const char *name, const char *params)
 		if (ret < 0)
 			return -1;
 
-		return rte_eth_from_pcaps(pcaps.pcaps, 1, pcaps.pcaps, 1, numa_node);
+		return rte_eth_from_pcaps(pcaps.pcaps, 1, pcaps.pcaps, 1, numa_node, &dict);
 	}
 
 	/*
@@ -748,10 +768,10 @@ rte_pmd_pcap_init(const char *name, const char *params)
 
 	if (using_dumpers)
 		return rte_eth_from_pcaps_n_dumpers(pcaps.pcaps, pcaps.num_of_rx,
-				dumpers.dumpers, dumpers.num_of_tx, numa_node);
+			        dumpers.dumpers, dumpers.num_of_tx, numa_node, &dict);
 
 	return rte_eth_from_pcaps(pcaps.pcaps, pcaps.num_of_rx, dumpers.pcaps,
-			dumpers.num_of_tx, numa_node);
+			dumpers.num_of_tx, numa_node, &dict);
 
 }
 
