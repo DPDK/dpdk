@@ -787,6 +787,8 @@ struct rte_eth_conf {
 struct rte_eth_dev_info {
 	struct rte_pci_device *pci_dev; /**< Device PCI information. */
 	const char *driver_name; /**< Device Driver name. */
+	unsigned int if_index; /**< Index to bound host interface, or 0 if none.
+		Use if_indextoname() to translate into an interface name. */
 	uint32_t min_rx_bufsize; /**< Minimum size of RX buffer. */
 	uint32_t max_rx_pktlen; /**< Maximum configurable length of RX pkt. */
 	uint16_t max_rx_queues; /**< Maximum number of RX queues. */
