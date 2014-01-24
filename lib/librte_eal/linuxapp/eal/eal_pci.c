@@ -460,34 +460,20 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 	return -1;
 }
 
-/* map the PCI resource of a PCI device in virtual memory */
-static int
-pci_uio_map_resource(struct rte_pci_device *dev)
+/*
+ * Return the uioX char device used for a pci device. On success, return
+ * the UIO number and fill dstbuf string with the path of the device in
+ * sysfs. On error, return a negative value. In this case dstbuf is
+ * invalid.
+ */
+static int pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
+			   unsigned int buflen)
 {
-	int i, j;
+	struct rte_pci_addr *loc = &dev->addr;
+	unsigned int uio_num;
 	struct dirent *e;
 	DIR *dir;
 	char dirname[PATH_MAX];
-	char filename[PATH_MAX];
-	char dirname2[PATH_MAX];
-	char devname[PATH_MAX]; /* contains the /dev/uioX */
-	void *mapaddr;
-	unsigned uio_num;
-	unsigned long start,size;
-	uint64_t phaddr;
-	uint64_t offset;
-	uint64_t pagesz;
-	ssize_t nb_maps;
-	struct rte_pci_addr *loc = &dev->addr;
-	struct uio_resource *uio_res;
-	struct uio_map *maps;
-
-	dev->intr_handle.fd = -1;
-
-	/* secondary processes - use already recorded details */
-	if ((rte_eal_process_type() != RTE_PROC_PRIMARY) &&
-		(dev->id.vendor_id != PCI_VENDOR_ID_QUMRANET))
-		return (pci_uio_map_secondary(dev));
 
 	/* depending on kernel version, uio can be located in uio/uioX
 	 * or uio:uioX */
@@ -525,8 +511,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		errno = 0;
 		uio_num = strtoull(e->d_name + shortprefix_len, &endptr, 10);
 		if (errno == 0 && endptr != (e->d_name + shortprefix_len)) {
-			rte_snprintf(dirname2, sizeof(dirname2),
-				 "%s/uio%u", dirname, uio_num);
+			rte_snprintf(dstbuf, buflen, "%s/uio%u", dirname, uio_num);
 			break;
 		}
 
@@ -534,15 +519,48 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		errno = 0;
 		uio_num = strtoull(e->d_name + longprefix_len, &endptr, 10);
 		if (errno == 0 && endptr != (e->d_name + longprefix_len)) {
-			rte_snprintf(dirname2, sizeof(dirname2),
-				 "%s/uio:uio%u", dirname, uio_num);
+			rte_snprintf(dstbuf, buflen, "%s/uio:uio%u", dirname, uio_num);
 			break;
 		}
 	}
 	closedir(dir);
 
 	/* No uio resource found */
-	if (e == NULL) {
+	if (e == NULL)
+		return -1;
+
+	return 0;
+}
+
+/* map the PCI resource of a PCI device in virtual memory */
+static int
+pci_uio_map_resource(struct rte_pci_device *dev)
+{
+	int i, j;
+	char dirname[PATH_MAX];
+	char filename[PATH_MAX];
+	char devname[PATH_MAX]; /* contains the /dev/uioX */
+	void *mapaddr;
+	int uio_num;
+	unsigned long start,size;
+	uint64_t phaddr;
+	uint64_t offset;
+	uint64_t pagesz;
+	ssize_t nb_maps;
+	struct rte_pci_addr *loc = &dev->addr;
+	struct uio_resource *uio_res;
+	struct uio_map *maps;
+
+	dev->intr_handle.fd = -1;
+
+	/* secondary processes - use already recorded details */
+	if ((rte_eal_process_type() != RTE_PROC_PRIMARY) &&
+	    (dev->id.vendor_id != PCI_VENDOR_ID_QUMRANET))
+		return (pci_uio_map_secondary(dev));
+
+	/* find uio resource */
+	uio_num = pci_get_uio_dev(dev, dirname, sizeof(dirname));
+	if (uio_num < 0) {
 		RTE_LOG(WARNING, EAL, "  "PCI_PRI_FMT" not managed by UIO driver, "
 				"skipping\n", loc->domain, loc->bus, loc->devid, loc->function);
 		return -1;
@@ -551,7 +569,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	if(dev->id.vendor_id == PCI_VENDOR_ID_QUMRANET) {
 		/* get portio size */
 		rte_snprintf(filename, sizeof(filename),
-			 "%s/portio/port0/size", dirname2);
+			 "%s/portio/port0/size", dirname);
 		if (eal_parse_sysfs_value(filename, &size) < 0) {
 			RTE_LOG(ERR, EAL, "%s(): cannot parse size\n",
 				__func__);
@@ -560,7 +578,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 		/* get portio start */
 		rte_snprintf(filename, sizeof(filename),
-			 "%s/portio/port0/start", dirname2);
+			 "%s/portio/port0/start", dirname);
 		if (eal_parse_sysfs_value(filename, &start) < 0) {
 			RTE_LOG(ERR, EAL, "%s(): cannot parse portio start\n",
 				__func__);
@@ -585,7 +603,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	memcpy(&uio_res->pci_addr, &dev->addr, sizeof(uio_res->pci_addr));
 
 	/* collect info about device mappings */
-	if ((nb_maps = pci_uio_get_mappings(dirname2, uio_res->maps,
+	if ((nb_maps = pci_uio_get_mappings(dirname, uio_res->maps,
 			sizeof (uio_res->maps) / sizeof (uio_res->maps[0])))
 			< 0)
 		return (nb_maps);
