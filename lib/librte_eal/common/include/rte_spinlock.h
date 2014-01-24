@@ -98,7 +98,7 @@ rte_spinlock_lock(rte_spinlock_t *sl)
 			"jz 3f\n"
 			"2:\n"
 			"pause\n"
-			"cmp $0, %[locked]\n"
+			"cmpl $0, %[locked]\n"
 			"jnz 2b\n"
 			"jmp 1b\n"
 			"3:\n"
