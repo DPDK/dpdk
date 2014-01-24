@@ -1037,6 +1037,7 @@ rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info)
 	/* Default device offload capabilities to zero */
 	dev_info->rx_offload_capa = 0;
 	dev_info->tx_offload_capa = 0;
+	dev_info->if_index = 0;
 	FUNC_PTR_OR_RET(*dev->dev_ops->dev_infos_get);
 	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
 	dev_info->pci_dev = dev->pci_dev;
