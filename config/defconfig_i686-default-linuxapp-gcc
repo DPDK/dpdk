@@ -140,6 +140,11 @@ CONFIG_RTE_LIBRTE_EAL_BAREMETAL=n
 CONFIG_RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT=y
 
 #
+# Compile the argument parser library
+#
+CONFIG_RTE_LIBRTE_KVARGS=y
+
+#
 # Compile generic ethernet library
 #
 CONFIG_RTE_LIBRTE_ETHER=y
