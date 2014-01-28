@@ -70,35 +70,19 @@ struct rte_kvargs_pair {
 
 /** Store a list of key/value associations */
 struct rte_kvargs {
+	char *str;      /**< copy of the argument string */
 	unsigned count; /**< number of entries in the list */
 	struct rte_kvargs_pair pairs[RTE_KVARGS_MAX]; /**< list of key/values */
 };
 
 /**
- * Initialize an empty rte_kvargs structure
+ * Allocate a rte_kvargs and store key/value associations from a string
  *
- * Set the content of the rte_kvargs structure given as a parameter
- * to an empty list of key/value.
+ * The function allocates and fills a rte_kvargs structure from a given
+ * string whose format is key1=value1;key2=value2;...
  *
- * @param kvlist
- *   The rte_kvargs structure
+ * The structure can be freed with rte_kvargs_free().
  *
- * @return
- *   - 0 on success
- *   - Negative on error
- */
-int rte_kvargs_init(struct rte_kvargs *kvlist);
-
-/**
- * Append key/value associations in a rte_kvargs structure from a string
- *
- * The function fills a rte_kvargs structure from a string whose format
- * is key1=value1;key2=value2;...
- * The key/value associations are appended to those which are already
- * present in the rte_kvargs structure.
- *
- * @param kvlist
- *   The rte_kvargs structure
  * @param args
  *   The input string containing the key/value associations
  * @param valid_keys
@@ -106,11 +90,21 @@ int rte_kvargs_init(struct rte_kvargs *kvlist);
  *   This argument is ignored if NULL
  *
  * @return
- *   - 0 on success
- *   - Negative on error
+ *   - A pointer to an allocated rte_kvargs structure on success
+ *   - NULL on error
  */
-int rte_kvargs_parse(struct rte_kvargs *kvlist,
-	const char *args, const char *valid_keys[]);
+struct rte_kvargs *rte_kvargs_parse(const char *args, const char *valid_keys[]);
+
+/**
+ * Free a rte_kvargs structure
+ *
+ * Free a rte_kvargs structure previously allocated with
+ * rte_kvargs_parse().
+ *
+ * @param kvlist
+ *   The rte_kvargs structure
+ */
+void rte_kvargs_free(struct rte_kvargs *kvlist);
 
 /**
  * Call a handler function for each key/value matching the key
