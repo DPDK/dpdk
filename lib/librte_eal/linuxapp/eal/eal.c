@@ -94,6 +94,7 @@
 #define OPT_SOCKET_MEM  "socket-mem"
 #define OPT_USE_DEVICE  "use-device"
 #define OPT_SYSLOG      "syslog"
+#define OPT_CREATE_UIO_DEV "create-uio-dev"
 
 #define RTE_EAL_BLACKLIST_SIZE	0x100
 
@@ -352,6 +353,7 @@ eal_usage(const char *prgname)
 	       "               [NOTE: Cannot be used with -b option]\n"
 	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of "
 	    		   "native RDTSC\n"
+	       "  --"OPT_CREATE_UIO_DEV": create /dev/uioX (usually done by hotplug)\n"
 	       "\nEAL options for DEBUG use only:\n"
 	       "  --"OPT_NO_HUGE"  : use malloc instead of hugetlbfs\n"
 	       "  --"OPT_NO_PCI"   : disable pci\n"
@@ -608,6 +610,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_SOCKET_MEM, 1, 0, 0},
 		{OPT_USE_DEVICE, 1, 0, 0},
 		{OPT_SYSLOG, 1, NULL, 0},
+		{OPT_CREATE_UIO_DEV, 1, NULL, 0},
 		{0, 0, 0, 0}
 	};
 	struct shared_driver *solib;
@@ -746,6 +749,9 @@ eal_parse_args(int argc, char **argv)
 					eal_usage(prgname);
 					return -1;
 				}
+			}
+			else if (!strcmp(lgopts[option_index].name, OPT_CREATE_UIO_DEV)) {
+				internal_config.create_uio_dev = 1;
 			}
 			break;
 
