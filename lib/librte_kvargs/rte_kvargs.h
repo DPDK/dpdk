@@ -64,7 +64,7 @@ extern "C" {
 #define RTE_KVARGS_KV_DELIM	"="
 
 /** Type of callback function used by rte_kvargs_process() */
-typedef int (*arg_handler_t)(const char *value, void *opaque);
+typedef int (*arg_handler_t)(const char *key, const char *value, void *opaque);
 
 /** A key/value association */
 struct rte_kvargs_pair {

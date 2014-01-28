@@ -161,7 +161,7 @@ rte_kvargs_process(const struct rte_kvargs *kvlist,
 	for (i = 0; i < kvlist->count; i++) {
 		pair = &kvlist->pairs[i];
 		if (strcmp(pair->key, key_match) == 0) {
-			if ((*handler)(pair->value, opaque_arg) < 0)
+			if ((*handler)(pair->key, pair->value, opaque_arg) < 0)
 				return -1;
 		}
 	}
