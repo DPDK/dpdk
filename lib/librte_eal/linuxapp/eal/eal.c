@@ -94,6 +94,7 @@
 #define OPT_SYSLOG      "syslog"
 #define OPT_BASE_VIRTADDR   "base-virtaddr"
 #define OPT_XEN_DOM0    "xen-dom0"
+#define OPT_CREATE_UIO_DEV "create-uio-dev"
 
 #define RTE_EAL_BLACKLIST_SIZE	0x100
 
@@ -355,6 +356,7 @@ eal_usage(const char *prgname)
 	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of "
 	    		   "native RDTSC\n"
 	       "  --"OPT_BASE_VIRTADDR": specify base virtual address\n"
+	       "  --"OPT_CREATE_UIO_DEV": create /dev/uioX (usually done by hotplug)\n"
 	       "\nEAL options for DEBUG use only:\n"
 	       "  --"OPT_NO_HUGE"  : use malloc instead of hugetlbfs\n"
 	       "  --"OPT_NO_PCI"   : disable pci\n"
@@ -638,6 +640,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_SYSLOG, 1, NULL, 0},
 		{OPT_BASE_VIRTADDR, 1, 0, 0},
 		{OPT_XEN_DOM0, 0, 0, 0},
+		{OPT_CREATE_UIO_DEV, 1, NULL, 0},
 		{0, 0, 0, 0}
 	};
 	struct shared_driver *solib;
@@ -796,6 +799,9 @@ eal_parse_args(int argc, char **argv)
 					eal_usage(prgname);
 					return -1;
 				}
+			}
+			else if (!strcmp(lgopts[option_index].name, OPT_CREATE_UIO_DEV)) {
+				internal_config.create_uio_dev = 1;
 			}
 			break;
 

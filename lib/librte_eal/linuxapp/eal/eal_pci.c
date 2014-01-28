@@ -460,6 +460,47 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 	return -1;
 }
 
+static int pci_mknod_uio_dev(const char *sysfs_uio_path, unsigned uio_num)
+{
+	FILE *f;
+	char filename[PATH_MAX];
+	int ret;
+	unsigned major, minor;
+	dev_t dev;
+
+	/* get the name of the sysfs file that contains the major and minor
+	 * of the uio device and read its content */
+	rte_snprintf(filename, sizeof(filename), "%s/dev", sysfs_uio_path);
+
+	f = fopen(filename, "r");
+	if (f == NULL) {
+		RTE_LOG(ERR, EAL, "%s(): cannot open sysfs to get major:minor\n",
+			__func__);
+		return -1;
+	}
+
+	ret = fscanf(f, "%d:%d", &major, &minor);
+	if (ret != 2) {
+		RTE_LOG(ERR, EAL, "%s(): cannot parse sysfs to get major:minor\n",
+			__func__);
+		fclose(f);
+		return -1;
+	}
+	fclose(f);
+
+	/* create the char device "mknod /dev/uioX c major minor" */
+	rte_snprintf(filename, sizeof(filename), "/dev/uio%u", uio_num);
+	dev = makedev(major, minor);
+	ret = mknod(filename, S_IFCHR | S_IRUSR | S_IWUSR, dev);
+	if (f == NULL) {
+		RTE_LOG(ERR, EAL, "%s(): mknod() failed %s\n",
+			__func__, strerror(errno));
+		return -1;
+	}
+
+	return ret;
+}
+
 /*
  * Return the uioX char device used for a pci device. On success, return
  * the UIO number and fill dstbuf string with the path of the device in
@@ -529,7 +570,11 @@ static int pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 	if (e == NULL)
 		return -1;
 
-	return 0;
+	/* create uio device if we've been asked to */
+	if (internal_config.create_uio_dev && pci_mknod_uio_dev(dstbuf, uio_num) < 0)
+		RTE_LOG(WARNING, EAL, "Cannot create /dev/uio%u\n", uio_num);
+
+	return uio_num;
 }
 
 /* map the PCI resource of a PCI device in virtual memory */
