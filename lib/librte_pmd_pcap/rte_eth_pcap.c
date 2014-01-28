@@ -674,6 +674,8 @@ rte_pmd_pcap_init(const char *name, const char *params)
 	struct rx_pcaps pcaps;
 	struct tx_pcaps dumpers;
 
+	RTE_LOG(INFO, PMD, "Initializing pmd_pcap for %s\n", name);
+
 	rte_kvargs_init(&kvlist);
 
 	numa_node = rte_socket_id();
@@ -682,7 +684,7 @@ rte_pmd_pcap_init(const char *name, const char *params)
 	start_cycles = rte_get_timer_cycles();
 	hz = rte_get_timer_hz();
 
-	if (rte_kvargs_parse(&kvlist, name, params, valid_arguments) < 0)
+	if (rte_kvargs_parse(&kvlist, params, valid_arguments) < 0)
 		return -1;
 
 	/*

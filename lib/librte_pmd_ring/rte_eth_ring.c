@@ -384,6 +384,8 @@ rte_eth_ring_pair_attach(const char *name, const unsigned numa_node)
 int
 rte_pmd_ring_init(const char *name, const char *params)
 {
+	RTE_LOG(INFO, PMD, "Initializing pmd_ring for %s\n", name);
+
 	if (params == NULL)
 		eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
 	else {
