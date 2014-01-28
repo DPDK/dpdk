@@ -71,7 +71,6 @@ struct rte_kvargs_pair {
 /** Store a list of key/value associations */
 struct rte_kvargs {
 	unsigned count; /**< number of entries in the list */
-	size_t size;    /**< maximum number of entries */
 	struct rte_kvargs_pair pairs[RTE_KVARGS_MAX]; /**< list of key/values */
 };
 
