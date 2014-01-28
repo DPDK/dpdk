@@ -34,23 +34,12 @@
 #include <string.h>
 #include <sys/user.h>
 #include <linux/binfmts.h>
+#include <stdlib.h>
 
-#include <rte_malloc.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
 
 #include "rte_kvargs.h"
-
-/*
- * Initialize a rte_kvargs structure to an empty key/value list.
- */
-int
-rte_kvargs_init(struct rte_kvargs *kvlist)
-{
-	kvlist->count = 0;
-	memset(kvlist->pairs, 0, sizeof(kvlist->pairs));
-	return 0;
-}
 
 /*
  * Add a key-value pair at the end of a given key/value list.
@@ -93,7 +82,6 @@ static int
 rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *params)
 {
 	unsigned i, count;
-	char *args;
 	char *pairs[RTE_KVARGS_MAX];
 	char *pair[2];
 
@@ -106,13 +94,13 @@ rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *params)
 	/* Copy the const char *params to a modifiable string
 	 * to pass to rte_strsplit
 	 */
-	args = strdup(params);
-	if(args == NULL){
+	kvlist->str = strdup(params);
+	if (kvlist->str == NULL) {
 		RTE_LOG(ERR, PMD, "Cannot parse arguments: not enough memory\n");
 		return -1;
 	}
 
-	count = rte_strsplit(args, strnlen(args, MAX_ARG_STRLEN), pairs,
+	count = rte_strsplit(kvlist->str, strnlen(kvlist->str, MAX_ARG_STRLEN), pairs,
 			RTE_KVARGS_MAX, RTE_KVARGS_PAIRS_DELIM);
 
 	for (i = 0; i < count; i++) {
@@ -127,17 +115,13 @@ rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *params)
 			RTE_LOG(ERR, PMD,
 				"Cannot parse arguments: wrong key or value\n"
 				"params=<%s>\n", params);
-			goto error;
+			return -1;
 		}
 
 		if (rte_kvargs_add_pair(kvlist, pair[0], pair[1]) < 0)
-			goto error;
+			return -1;
 	}
 	return 0;
-
-error:
-	rte_free(args);
-	return -1;
 }
 
 /*
@@ -222,25 +206,39 @@ rte_kvargs_process(const struct rte_kvargs *kvlist,
 	return 0;
 }
 
+/* free the rte_kvargs structure */
+void
+rte_kvargs_free(struct rte_kvargs *kvlist)
+{
+	if (kvlist->str != NULL)
+		free(kvlist->str);
+	free(kvlist);
+}
+
 /*
  * Parse the arguments "key=value;key=value;..." string and return
  * an allocated structure that contains a key/value list. Also
  * check if only valid keys were used.
  */
-int
-rte_kvargs_parse(struct rte_kvargs *kvlist,
-		const char *args,
-		const char *valid_keys[])
+struct rte_kvargs *
+rte_kvargs_parse(const char *args, const char *valid_keys[])
 {
+	struct rte_kvargs *kvlist;
 
-	int ret;
+	kvlist = malloc(sizeof(*kvlist));
+	if (kvlist == NULL)
+		return NULL;
+	memset(kvlist, 0, sizeof(*kvlist));
 
-	ret = rte_kvargs_tokenize(kvlist, args);
-	if (ret < 0)
-		return ret;
+	if (rte_kvargs_tokenize(kvlist, args) < 0) {
+		rte_kvargs_free(kvlist);
+		return NULL;
+	}
 
-	if (valid_keys == NULL)
-		return 0;
+	if (valid_keys != NULL && check_for_valid_keys(kvlist, valid_keys) < 0) {
+		rte_kvargs_free(kvlist);
+		return NULL;
+	}
 
-	return check_for_valid_keys(kvlist, valid_keys);
+	return kvlist;
 }

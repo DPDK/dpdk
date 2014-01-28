@@ -702,13 +702,11 @@ rte_pmd_pcap_init(const char *name, const char *params)
 {
 	unsigned numa_node, using_dumpers = 0;
 	int ret;
-	struct rte_kvargs kvlist;
+	struct rte_kvargs *kvlist;
 	struct rx_pcaps pcaps;
 	struct tx_pcaps dumpers;
 
 	RTE_LOG(INFO, PMD, "Initializing pmd_pcap for %s\n", name);
-
-	rte_kvargs_init(&kvlist);
 
 	numa_node = rte_socket_id();
 
@@ -716,16 +714,17 @@ rte_pmd_pcap_init(const char *name, const char *params)
 	start_cycles = rte_get_timer_cycles();
 	hz = rte_get_timer_hz();
 
-	if (rte_kvargs_parse(&kvlist, params, valid_arguments) < 0)
+	kvlist = rte_kvargs_parse(params, valid_arguments);
+	if (kvlist == NULL)
 		return -1;
 
 	/*
 	 * If iface argument is passed we open the NICs and use them for
 	 * reading / writing
 	 */
-	if (rte_kvargs_count(&kvlist, ETH_PCAP_IFACE_ARG) == 1) {
+	if (rte_kvargs_count(kvlist, ETH_PCAP_IFACE_ARG) == 1) {
 
-		ret = rte_kvargs_process(&kvlist, ETH_PCAP_IFACE_ARG,
+		ret = rte_kvargs_process(kvlist, ETH_PCAP_IFACE_ARG,
 				&open_rx_tx_iface, &pcaps.pcaps[0]);
 		if (ret < 0)
 			return -1;
@@ -737,13 +736,13 @@ rte_pmd_pcap_init(const char *name, const char *params)
 	 * We check whether we want to open a RX stream from a real NIC or a
 	 * pcap file
 	 */
-	if ((pcaps.num_of_rx = rte_kvargs_count(&kvlist, ETH_PCAP_RX_PCAP_ARG))) {
-		ret = rte_kvargs_process(&kvlist, ETH_PCAP_RX_PCAP_ARG,
+	if ((pcaps.num_of_rx = rte_kvargs_count(kvlist, ETH_PCAP_RX_PCAP_ARG))) {
+		ret = rte_kvargs_process(kvlist, ETH_PCAP_RX_PCAP_ARG,
 				&open_rx_pcap, &pcaps);
 	} else {
-		pcaps.num_of_rx = rte_kvargs_count(&kvlist,
+		pcaps.num_of_rx = rte_kvargs_count(kvlist,
 				ETH_PCAP_RX_IFACE_ARG);
-		ret = rte_kvargs_process(&kvlist, ETH_PCAP_RX_IFACE_ARG,
+		ret = rte_kvargs_process(kvlist, ETH_PCAP_RX_IFACE_ARG,
 				&open_rx_iface, &pcaps);
 	}
 
@@ -754,15 +753,15 @@ rte_pmd_pcap_init(const char *name, const char *params)
 	 * We check whether we want to open a TX stream to a real NIC or a
 	 * pcap file
 	 */
-	if ((dumpers.num_of_tx = rte_kvargs_count(&kvlist,
+	if ((dumpers.num_of_tx = rte_kvargs_count(kvlist,
 			ETH_PCAP_TX_PCAP_ARG))) {
-		ret = rte_kvargs_process(&kvlist, ETH_PCAP_TX_PCAP_ARG,
+		ret = rte_kvargs_process(kvlist, ETH_PCAP_TX_PCAP_ARG,
 				&open_tx_pcap, &dumpers);
 		using_dumpers = 1;
 	} else {
-		dumpers.num_of_tx = rte_kvargs_count(&kvlist,
+		dumpers.num_of_tx = rte_kvargs_count(kvlist,
 				ETH_PCAP_TX_IFACE_ARG);
-		ret = rte_kvargs_process(&kvlist, ETH_PCAP_TX_IFACE_ARG,
+		ret = rte_kvargs_process(kvlist, ETH_PCAP_TX_IFACE_ARG,
 				&open_tx_iface, &dumpers);
 	}
 
