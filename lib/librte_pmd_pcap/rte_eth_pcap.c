@@ -419,10 +419,10 @@ static struct eth_dev_ops ops = {
  * reference of it for use it later on.
  */
 static int
-open_rx_pcap(char *value, void *extra_args)
+open_rx_pcap(const char *value, void *extra_args)
 {
 	unsigned i;
-	char *pcap_filename = value;
+	const char *pcap_filename = value;
 	struct rx_pcaps *pcaps = extra_args;
 	pcap_t *rx_pcap;
 
@@ -442,10 +442,10 @@ open_rx_pcap(char *value, void *extra_args)
  * for use it later on.
  */
 static int
-open_tx_pcap(char *value, void *extra_args)
+open_tx_pcap(const char *value, void *extra_args)
 {
 	unsigned i;
-	char *pcap_filename = value;
+	const char *pcap_filename = value;
 	struct tx_pcaps *dumpers = extra_args;
 	pcap_t *tx_pcap;
 	pcap_dumper_t *dumper;
@@ -492,7 +492,7 @@ open_iface_live(const char *iface, pcap_t **pcap) {
  * Opens an interface for reading and writing
  */
 static inline int
-open_rx_tx_iface(char *value, void *extra_args)
+open_rx_tx_iface(const char *value, void *extra_args)
 {
 	const char *iface = value;
 	pcap_t **pcap = extra_args;
@@ -506,7 +506,7 @@ open_rx_tx_iface(char *value, void *extra_args)
  * Opens a NIC for reading packets from it
  */
 static inline int
-open_rx_iface(char *value, void *extra_args)
+open_rx_iface(const char *value, void *extra_args)
 {
 	unsigned i;
 	const char *iface = value;
@@ -526,7 +526,7 @@ open_rx_iface(char *value, void *extra_args)
  * Opens a NIC for writing packets to it
  */
 static inline int
-open_tx_iface(char *value, void *extra_args)
+open_tx_iface(const char *value, void *extra_args)
 {
 	unsigned i;
 	const char *iface = value;
