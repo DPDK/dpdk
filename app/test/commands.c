@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2013 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without
@@ -191,6 +192,10 @@ static void cmd_autotest_parsed(void *parsed_result,
 	if (all || !strcmp(res->autotest, "acl_autotest"))
 		ret |= test_acl();
 #endif /* RTE_LIBRTE_ACL */
+#ifdef RTE_LIBRTE_KVARGS
+	if (all || !strcmp(res->autotest, "kvargs_autotest"))
+		ret |= test_kvargs();
+#endif /* RTE_LIBRTE_KVARGS */
 
 	if (ret == 0)
 		printf("Test OK\n");
@@ -230,6 +235,9 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"timer_perf_autotest#"
 #ifdef RTE_LIBRTE_PMD_RING
 			"ring_pmd_autotest#"
+#endif
+#ifdef RTE_LIBRTE_KVARGS
+			"kvargs_autotest#"
 #endif
 			"common_autotest#all_autotests");
 
