@@ -42,6 +42,10 @@
  * This module can be used to parse arguments whose format is
  * key1=value1;key2=value2;key3=value3;...
  *
+ * The same key can appear several times with the same or a different
+ * value. Indeed, the arguments are stored as a list of key/values
+ * associations and not as a dictionary.
+ *
  * This file provides some helpers that are especially used by virtual
  * ethernet devices at initialization for arguments parsing.
  */
@@ -54,10 +58,10 @@ extern "C" {
 #define RTE_KVARGS_MAX 32
 
 /** separator character used between each pair */
-#define RTE_KVARGS_PAIRS_DELIM	';'
+#define RTE_KVARGS_PAIRS_DELIM	";"
 
 /** separator character used between key and value */
-#define RTE_KVARGS_KV_DELIM	'='
+#define RTE_KVARGS_KV_DELIM	"="
 
 /** Type of callback function used by rte_kvargs_process() */
 typedef int (*arg_handler_t)(char *value, void *opaque);
