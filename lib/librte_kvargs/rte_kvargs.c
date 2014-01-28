@@ -48,8 +48,7 @@ int
 rte_kvargs_init(struct rte_kvargs *kvlist)
 {
 	kvlist->count = 0;
-	kvlist->size = RTE_KVARGS_MAX;
-	memset(kvlist->pairs, 0, kvlist->size);
+	memset(kvlist->pairs, 0, sizeof(kvlist->pairs));
 	return 0;
 }
 
@@ -64,7 +63,7 @@ rte_kvargs_add_pair(struct rte_kvargs *kvlist, char *key, char *val)
 	struct rte_kvargs_pair* entry;
 
 	/* is the list full? */
-	if (kvlist->count >= kvlist->size) {
+	if (kvlist->count >= RTE_KVARGS_MAX) {
 		RTE_LOG(ERR, PMD, "Couldn't add %s, key/value list is full\n", key);
 		return -1;
 	}
