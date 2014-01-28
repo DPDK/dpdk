@@ -94,9 +94,10 @@ is_valid_key(const char *valid[], const char *key_match)
 {
 	const char **valid_ptr;
 
-	for (valid_ptr = valid; *valid_ptr != NULL; valid_ptr++)
-		if (strstr(key_match, *valid_ptr) != NULL)
+	for (valid_ptr = valid; *valid_ptr != NULL; valid_ptr++) {
+		if (strcmp(key_match, *valid_ptr) == 0)
 			return 1;
+	}
 	return 0;
 }
 
@@ -159,7 +160,7 @@ rte_kvargs_process(const struct rte_kvargs *kvlist,
 
 	for (i = 0; i < kvlist->count; i++) {
 		pair = &kvlist->pairs[i];
-		if (strstr(pair->key, key_match) != NULL) {
+		if (strcmp(pair->key, key_match) == 0) {
 			if ((*handler)(pair->value, opaque_arg) < 0)
 				return -1;
 		}
