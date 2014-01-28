@@ -100,8 +100,6 @@ int rte_kvargs_init(struct rte_kvargs *kvlist);
  *
  * @param kvlist
  *   The rte_kvargs structure
- * @param name
- *   The name of the driver
  * @param args
  *   The input string containing the key/value associations
  * @param valid_keys
@@ -112,7 +110,7 @@ int rte_kvargs_init(struct rte_kvargs *kvlist);
  *   - 0 on success
  *   - Negative on error
  */
-int rte_kvargs_parse(struct rte_kvargs *kvlist, const char *name,
+int rte_kvargs_parse(struct rte_kvargs *kvlist,
 	const char *args, const char *valid_keys[]);
 
 /**

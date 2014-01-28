@@ -91,8 +91,7 @@ rte_kvargs_add_pair(struct rte_kvargs *kvlist, char *key, char *val)
  * strtok() is used so the params string will be copied to be modified.
  */
 static int
-rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *name,
-	const char *params)
+rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *params)
 {
 	unsigned i, count;
 	char *args;
@@ -101,7 +100,7 @@ rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *name,
 
 	/* If params are empty, nothing to do */
 	if (params == NULL || params[0] == 0) {
-		RTE_LOG(ERR, PMD, "Couldn't parse %s device, empty arguments\n", name);
+		RTE_LOG(ERR, PMD, "Cannot parse empty arguments\n");
 		return -1;
 	}
 
@@ -110,7 +109,7 @@ rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *name,
 	 */
 	args = strdup(params);
 	if(args == NULL){
-		RTE_LOG(ERR, PMD, "Couldn't parse %s device \n", name);
+		RTE_LOG(ERR, PMD, "Cannot parse arguments: not enough memory\n");
 		return -1;
 	}
 
@@ -127,7 +126,8 @@ rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *name,
 		if (pair[0] == NULL || pair[1] == NULL || pair[0][0] == 0
 				|| pair[1][0] == 0) {
 			RTE_LOG(ERR, PMD,
-					"Couldn't parse %s device, wrong key or value \n", name);
+				"Cannot parse arguments: wrong key or value\n"
+				"params=<%s>\n", params);
 			goto error;
 		}
 
@@ -230,14 +230,13 @@ rte_kvargs_process(const struct rte_kvargs *kvlist,
  */
 int
 rte_kvargs_parse(struct rte_kvargs *kvlist,
-		const char *name,
 		const char *args,
 		const char *valid_keys[])
 {
 
 	int ret;
 
-	ret = rte_kvargs_tokenize(kvlist, name, args);
+	ret = rte_kvargs_tokenize(kvlist, args);
 	if (ret < 0)
 		return ret;
 
