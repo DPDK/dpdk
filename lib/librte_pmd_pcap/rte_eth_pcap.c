@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without
@@ -38,9 +39,9 @@
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
+#include <rte_kvargs.h>
 
 #include "rte_eth_pcap.h"
-#include "rte_eth_pcap_arg_parser.h"
 
 #define RTE_ETH_PCAP_SNAPSHOT_LEN 65535
 #define RTE_ETH_PCAP_SNAPLEN 4096
@@ -669,11 +670,11 @@ rte_pmd_pcap_init(const char *name, const char *params)
 {
 	unsigned numa_node, using_dumpers = 0;
 	int ret;
-	struct args_dict dict;
+	struct rte_kvargs kvlist;
 	struct rx_pcaps pcaps;
 	struct tx_pcaps dumpers;
 
-	rte_eth_pcap_init_args_dict(&dict);
+	rte_kvargs_init(&kvlist);
 
 	numa_node = rte_socket_id();
 
@@ -681,16 +682,16 @@ rte_pmd_pcap_init(const char *name, const char *params)
 	start_cycles = rte_get_timer_cycles();
 	hz = rte_get_timer_hz();
 
-	if (rte_eth_pcap_parse_args(&dict, name, params, valid_arguments) < 0)
+	if (rte_kvargs_parse(&kvlist, name, params, valid_arguments) < 0)
 		return -1;
 
 	/*
 	 * If iface argument is passed we open the NICs and use them for
 	 * reading / writing
 	 */
-	if (rte_eth_pcap_num_of_args(&dict, ETH_PCAP_IFACE_ARG) == 1) {
+	if (rte_kvargs_count(&kvlist, ETH_PCAP_IFACE_ARG) == 1) {
 
-		ret = rte_eth_pcap_post_process_arguments(&dict, ETH_PCAP_IFACE_ARG,
+		ret = rte_kvargs_process(&kvlist, ETH_PCAP_IFACE_ARG,
 				&open_rx_tx_iface, &pcaps.pcaps[0]);
 		if (ret < 0)
 			return -1;
@@ -702,13 +703,13 @@ rte_pmd_pcap_init(const char *name, const char *params)
 	 * We check whether we want to open a RX stream from a real NIC or a
 	 * pcap file
 	 */
-	if ((pcaps.num_of_rx = rte_eth_pcap_num_of_args(&dict, ETH_PCAP_RX_PCAP_ARG))) {
-		ret = rte_eth_pcap_post_process_arguments(&dict, ETH_PCAP_RX_PCAP_ARG,
+	if ((pcaps.num_of_rx = rte_kvargs_count(&kvlist, ETH_PCAP_RX_PCAP_ARG))) {
+		ret = rte_kvargs_process(&kvlist, ETH_PCAP_RX_PCAP_ARG,
 				&open_rx_pcap, &pcaps);
 	} else {
-		pcaps.num_of_rx = rte_eth_pcap_num_of_args(&dict,
+		pcaps.num_of_rx = rte_kvargs_count(&kvlist,
 				ETH_PCAP_RX_IFACE_ARG);
-		ret = rte_eth_pcap_post_process_arguments(&dict, ETH_PCAP_RX_IFACE_ARG,
+		ret = rte_kvargs_process(&kvlist, ETH_PCAP_RX_IFACE_ARG,
 				&open_rx_iface, &pcaps);
 	}
 
@@ -719,15 +720,15 @@ rte_pmd_pcap_init(const char *name, const char *params)
 	 * We check whether we want to open a TX stream to a real NIC or a
 	 * pcap file
 	 */
-	if ((dumpers.num_of_tx = rte_eth_pcap_num_of_args(&dict,
+	if ((dumpers.num_of_tx = rte_kvargs_count(&kvlist,
 			ETH_PCAP_TX_PCAP_ARG))) {
-		ret = rte_eth_pcap_post_process_arguments(&dict, ETH_PCAP_TX_PCAP_ARG,
+		ret = rte_kvargs_process(&kvlist, ETH_PCAP_TX_PCAP_ARG,
 				&open_tx_pcap, &dumpers);
 		using_dumpers = 1;
 	} else {
-		dumpers.num_of_tx = rte_eth_pcap_num_of_args(&dict,
+		dumpers.num_of_tx = rte_kvargs_count(&kvlist,
 				ETH_PCAP_TX_IFACE_ARG);
-		ret = rte_eth_pcap_post_process_arguments(&dict, ETH_PCAP_TX_IFACE_ARG,
+		ret = rte_kvargs_process(&kvlist, ETH_PCAP_TX_IFACE_ARG,
 				&open_tx_iface, &dumpers);
 	}
 
