@@ -112,6 +112,10 @@ endif
 
 LDLIBS += --start-group
 
+ifeq ($(CONFIG_RTE_LIBRTE_KVARGS),y)
+LDLIBS += -lrte_kvargs
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_MBUF),y)
 LDLIBS += -lrte_mbuf
 endif

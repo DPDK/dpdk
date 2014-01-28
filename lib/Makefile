@@ -52,6 +52,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_POWER) += librte_power
 DIRS-$(CONFIG_RTE_LIBRTE_METER) += librte_meter
 DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += librte_sched
 DIRS-$(CONFIG_RTE_LIBRTE_ACL) += librte_acl
+DIRS-$(CONFIG_RTE_LIBRTE_KVARGS) += librte_kvargs
 
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
