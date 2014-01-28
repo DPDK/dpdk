@@ -97,6 +97,7 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_ivshmem.c
 ifeq ($(CONFIG_RTE_APP_TEST),y)
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += test_acl.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += test_pmd_ring.c
+SRCS-$(CONFIG_RTE_LIBRTE_KVARGS) += test_kvargs.c
 endif
 
 CFLAGS += -O3
