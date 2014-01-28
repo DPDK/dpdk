@@ -120,7 +120,8 @@ void rte_kvargs_free(struct rte_kvargs *kvlist);
  * @param kvlist
  *   The rte_kvargs structure
  * @param key_match
- *   The key on which the handler should be called
+ *   The key on which the handler should be called, or NULL to process handler
+ *   on all associations
  * @param handler
  *   The function to call for each matching key
  * @param opaque_arg
@@ -139,7 +140,7 @@ int rte_kvargs_process(const struct rte_kvargs *kvlist,
  * @param kvlist
  *   The rte_kvargs structure
  * @param key_match
- *   The key that should match
+ *   The key that should match, or NULL to count all associations
 
  * @return
  *   The number of entries
