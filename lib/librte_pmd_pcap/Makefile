@@ -1,6 +1,7 @@
 #   BSD LICENSE
 # 
 #   Copyright(c) 2010-2013 Intel Corporation. All rights reserved.
+#   Copyright(c) 2014 6WIND S.A.
 #   All rights reserved.
 # 
 #   Redistribution and use in source and binary forms, with or without
@@ -43,16 +44,15 @@ CFLAGS += $(WERROR_FLAGS)
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += rte_eth_pcap.c
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += rte_eth_pcap_arg_parser.c
-
 
 #
 # Export include files
 #
 SYMLINK-y-include += rte_eth_pcap.h
-SYMLINK-y-include += rte_eth_pcap_arg_parser.h
 
 # this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += lib/librte_mbuf lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += lib/librte_kvargs
 
 include $(RTE_SDK)/mk/rte.lib.mk
