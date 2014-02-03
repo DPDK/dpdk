@@ -34,7 +34,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 # library name
 #
-LIB = librte_pmd_virtio.a
+LIB = librte_pmd_virtio_uio.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

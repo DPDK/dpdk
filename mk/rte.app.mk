@@ -79,7 +79,7 @@ LDLIBS += -lrte_pmd_ixgbe
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_VIRTIO_PMD),y)
-LDLIBS += -lrte_pmd_virtio
+LDLIBS += -lrte_pmd_virtio_uio
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_VMXNET3_PMD),y)
