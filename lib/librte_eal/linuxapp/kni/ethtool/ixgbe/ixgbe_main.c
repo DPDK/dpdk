@@ -525,7 +525,7 @@ int ixgbe_del_mac_filter(struct ixgbe_adapter *adapter, u8* addr, u16 queue)
 	if (is_zero_ether_addr(addr))
 		return 0;
 	for (i = 0; i < hw->mac.num_rar_entries; i++) {
-		if (!compare_ether_addr(addr, adapter->mac_table[i].addr) &&
+		if (ether_addr_equal(addr, adapter->mac_table[i].addr) &&
 		    adapter->mac_table[i].queue == queue) {
 			adapter->mac_table[i].state |= IXGBE_MAC_STATE_MODIFIED;
 			adapter->mac_table[i].state &= ~IXGBE_MAC_STATE_IN_USE;
