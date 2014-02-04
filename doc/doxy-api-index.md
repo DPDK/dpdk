@@ -96,6 +96,12 @@ There are many libraries, so their headers may be grouped by topics:
   [tailq]              (@ref rte_tailq.h),
   [bitmap]             (@ref rte_bitmap.h)
 
+- **basic**:
+  [approx fraction]    (@ref rte_approx.h),
+  [random]             (@ref rte_random.h),
+  [key/value args]     (@ref rte_kvargs.h),
+  [string]             (@ref rte_string_fns.h),
+
 - **debug**:
   [debug]              (@ref rte_debug.h),
   [log]                (@ref rte_log.h),
@@ -105,7 +111,4 @@ There are many libraries, so their headers may be grouped by topics:
 - **misc**:
   [EAL config]         (@ref rte_eal.h),
   [common]             (@ref rte_common.h),
-  [approx fraction]    (@ref rte_approx.h),
-  [random]             (@ref rte_random.h),
-  [string]             (@ref rte_string_fns.h),
   [version]            (@ref rte_version.h)
