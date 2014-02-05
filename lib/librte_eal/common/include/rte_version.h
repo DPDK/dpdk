@@ -59,12 +59,12 @@ extern "C" {
 /**
  * Minor version number i.e. the y in x.y.z
  */
-#define RTE_VER_MINOR 5
+#define RTE_VER_MINOR 6
 
 /**
  * Patch level number i.e. the z in x.y.z
  */
-#define RTE_VER_PATCH_LEVEL 2
+#define RTE_VER_PATCH_LEVEL 0
 
 /**
  * Extra string to be appended to version number,
