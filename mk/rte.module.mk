@@ -77,7 +77,8 @@ build: _postbuild
 # build module
 $(MODULE).ko: $(SRCS_LINKS)
 	@if [ ! -f $(notdir Makefile) ]; then ln -nfs $(SRCDIR)/Makefile . ; fi
-	@$(MAKE) -C $(RTE_KERNELDIR) M=$(CURDIR) O=$(RTE_KERNELDIR)
+	@$(MAKE) -C $(RTE_KERNELDIR) M=$(CURDIR) O=$(RTE_KERNELDIR) \
+		CROSS_COMPILE=$(CROSS)
 
 # install module in $(RTE_OUTPUT)/kmod
 $(RTE_OUTPUT)/kmod/$(MODULE).ko: $(MODULE).ko
