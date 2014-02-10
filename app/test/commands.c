@@ -86,113 +86,105 @@ static void cmd_autotest_parsed(void *parsed_result,
 {
 	struct cmd_autotest_result *res = parsed_result;
 	int ret = 0;
-	int all = 0;
 
-	if (!strcmp(res->autotest, "all_autotests"))
-		all = 1;
-
-	if (all || !strcmp(res->autotest, "version_autotest"))
-		ret |= test_version();
-	if (all || !strcmp(res->autotest, "eal_fs_autotest"))
-		ret |= test_eal_fs();
-	if (all || !strcmp(res->autotest, "debug_autotest"))
-		ret |= test_debug();
-	if (all || !strcmp(res->autotest, "pci_autotest"))
-		ret |= test_pci();
-	if (all || !strcmp(res->autotest, "prefetch_autotest"))
-		ret |= test_prefetch();
-	if (all || !strcmp(res->autotest, "byteorder_autotest"))
-		ret |= test_byteorder();
-	if (all || !strcmp(res->autotest, "per_lcore_autotest"))
-		ret |= test_per_lcore();
-	if (all || !strcmp(res->autotest, "atomic_autotest"))
-		ret |= test_atomic();
-	if (all || !strcmp(res->autotest, "malloc_autotest"))
-		ret |= test_malloc();
-	if (all || !strcmp(res->autotest, "spinlock_autotest"))
-		ret |= test_spinlock();
-	if (all || !strcmp(res->autotest, "memory_autotest"))
-		ret |= test_memory();
-	if (all || !strcmp(res->autotest, "memzone_autotest"))
-		ret |= test_memzone();
-	if (all || !strcmp(res->autotest, "rwlock_autotest"))
-		ret |= test_rwlock();
-	if (all || !strcmp(res->autotest, "mbuf_autotest"))
-		ret |= test_mbuf();
-	if (all || !strcmp(res->autotest, "logs_autotest"))
-		ret |= test_logs();
-	if (all || !strcmp(res->autotest, "errno_autotest"))
-		ret |= test_errno();
-	if (all || !strcmp(res->autotest, "hash_autotest"))
-		ret |= test_hash();
-	if (all || !strcmp(res->autotest, "hash_perf_autotest"))
-		ret |= test_hash_perf();
-	if (all || !strcmp(res->autotest, "lpm_autotest"))
-		ret |= test_lpm();
-	if (all || !strcmp(res->autotest, "lpm6_autotest"))
-		ret |= test_lpm6();
-	if (all || !strcmp(res->autotest, "cpuflags_autotest"))
-		ret |= test_cpuflags();
-	if (all || !strcmp(res->autotest, "cmdline_autotest"))
-		ret |= test_cmdline();
-	/* tailq autotest must go after all lpm and hashs tests or any other
-	 * tests which need to create tailq objects (ring and mempool are implicitly
-	 * created in earlier tests so can go later)
-	 */
-	if (all || !strcmp(res->autotest, "tailq_autotest"))
-		ret |= test_tailq();
-	if (all || !strcmp(res->autotest, "multiprocess_autotest"))
-		ret |= test_mp_secondary();
-	if (all || !strcmp(res->autotest, "memcpy_autotest"))
-		ret |= test_memcpy();
-	if (all || !strcmp(res->autotest, "string_autotest"))
-		ret |= test_string_fns();
-	if (all || !strcmp(res->autotest, "eal_flags_autotest"))
-		ret |= test_eal_flags();
-	if (all || !strcmp(res->autotest, "alarm_autotest"))
-		ret |= test_alarm();
-	if (all || !strcmp(res->autotest, "interrupt_autotest"))
-		ret |= test_interrupt();
-	if (all || !strcmp(res->autotest, "cycles_autotest"))
-		ret |= test_cycles();
-	if (all || !strcmp(res->autotest, "ring_autotest"))
-		ret |= test_ring();
-	if (all || !strcmp(res->autotest, "ring_perf_autotest"))
-		ret |= test_ring_perf();
-	if (all || !strcmp(res->autotest, "timer_autotest"))
-		ret |= test_timer();
-	if (all || !strcmp(res->autotest, "timer_perf_autotest"))
-		ret |= test_timer_perf();
-	if (all || !strcmp(res->autotest, "mempool_autotest"))
-		ret |= test_mempool();
-	if (all || !strcmp(res->autotest, "mempool_perf_autotest"))
-		ret |= test_mempool_perf();
-	if (all || !strcmp(res->autotest, "memcpy_perf_autotest"))
-		ret |= test_memcpy_perf();
-	if (all || !strcmp(res->autotest, "func_reentrancy_autotest"))
-		ret |= test_func_reentrancy();
-	if (all || !strcmp(res->autotest, "red_autotest"))
-		ret |= test_red();
-	if (all || !strcmp(res->autotest, "sched_autotest"))
-		ret |= test_sched();
-	if (all || !strcmp(res->autotest, "meter_autotest"))
-		ret |= test_meter();
-	if (all || !strcmp(res->autotest, "kni_autotest"))
-		ret |= test_kni();
-	if (all || !strcmp(res->autotest, "power_autotest"))
-		ret |= test_power();
-	if (all || !strcmp(res->autotest, "common_autotest"))
-		ret |= test_common();
-	if (all || !strcmp(res->autotest, "ivshmem_autotest"))
+	if (!strcmp(res->autotest, "version_autotest"))
+		ret = test_version();
+	if (!strcmp(res->autotest, "eal_fs_autotest"))
+		ret = test_eal_fs();
+	if (!strcmp(res->autotest, "debug_autotest"))
+		ret = test_debug();
+	if (!strcmp(res->autotest, "pci_autotest"))
+		ret = test_pci();
+	if (!strcmp(res->autotest, "prefetch_autotest"))
+		ret = test_prefetch();
+	if (!strcmp(res->autotest, "byteorder_autotest"))
+		ret = test_byteorder();
+	if (!strcmp(res->autotest, "per_lcore_autotest"))
+		ret = test_per_lcore();
+	if (!strcmp(res->autotest, "atomic_autotest"))
+		ret = test_atomic();
+	if (!strcmp(res->autotest, "malloc_autotest"))
+		ret = test_malloc();
+	if (!strcmp(res->autotest, "spinlock_autotest"))
+		ret = test_spinlock();
+	if (!strcmp(res->autotest, "memory_autotest"))
+		ret = test_memory();
+	if (!strcmp(res->autotest, "memzone_autotest"))
+		ret = test_memzone();
+	if (!strcmp(res->autotest, "rwlock_autotest"))
+		ret = test_rwlock();
+	if (!strcmp(res->autotest, "mbuf_autotest"))
+		ret = test_mbuf();
+	if (!strcmp(res->autotest, "logs_autotest"))
+		ret = test_logs();
+	if (!strcmp(res->autotest, "errno_autotest"))
+		ret = test_errno();
+	if (!strcmp(res->autotest, "hash_autotest"))
+		ret = test_hash();
+	if (!strcmp(res->autotest, "hash_perf_autotest"))
+		ret = test_hash_perf();
+	if (!strcmp(res->autotest, "lpm_autotest"))
+		ret = test_lpm();
+	if (!strcmp(res->autotest, "lpm6_autotest"))
+		ret = test_lpm6();
+	if (!strcmp(res->autotest, "cpuflags_autotest"))
+		ret = test_cpuflags();
+	if (!strcmp(res->autotest, "cmdline_autotest"))
+		ret = test_cmdline();
+	if (!strcmp(res->autotest, "tailq_autotest"))
+		ret = test_tailq();
+	if (!strcmp(res->autotest, "multiprocess_autotest"))
+		ret = test_mp_secondary();
+	if (!strcmp(res->autotest, "memcpy_autotest"))
+		ret = test_memcpy();
+	if (!strcmp(res->autotest, "string_autotest"))
+		ret = test_string_fns();
+	if (!strcmp(res->autotest, "eal_flags_autotest"))
+		ret = test_eal_flags();
+	if (!strcmp(res->autotest, "alarm_autotest"))
+		ret = test_alarm();
+	if (!strcmp(res->autotest, "interrupt_autotest"))
+		ret = test_interrupt();
+	if (!strcmp(res->autotest, "cycles_autotest"))
+		ret = test_cycles();
+	if (!strcmp(res->autotest, "ring_autotest"))
+		ret = test_ring();
+	if (!strcmp(res->autotest, "ring_perf_autotest"))
+		ret = test_ring_perf();
+	if (!strcmp(res->autotest, "timer_autotest"))
+		ret = test_timer();
+	if (!strcmp(res->autotest, "timer_perf_autotest"))
+		ret = test_timer_perf();
+	if (!strcmp(res->autotest, "mempool_autotest"))
+		ret = test_mempool();
+	if (!strcmp(res->autotest, "mempool_perf_autotest"))
+		ret = test_mempool_perf();
+	if (!strcmp(res->autotest, "memcpy_perf_autotest"))
+		ret = test_memcpy_perf();
+	if (!strcmp(res->autotest, "func_reentrancy_autotest"))
+		ret = test_func_reentrancy();
+	if (!strcmp(res->autotest, "red_autotest"))
+		ret = test_red();
+	if (!strcmp(res->autotest, "sched_autotest"))
+		ret = test_sched();
+	if (!strcmp(res->autotest, "meter_autotest"))
+		ret = test_meter();
+	if (!strcmp(res->autotest, "kni_autotest"))
+		ret = test_kni();
+	if (!strcmp(res->autotest, "power_autotest"))
+		ret = test_power();
+	if (!strcmp(res->autotest, "common_autotest"))
+		ret = test_common();
+	if (!strcmp(res->autotest, "ivshmem_autotest"))
 		ret = test_ivshmem();
 #ifdef RTE_LIBRTE_PMD_RING
-	if (all || !strcmp(res->autotest, "ring_pmd_autotest"))
-		ret |= test_pmd_ring();
+	if (!strcmp(res->autotest, "ring_pmd_autotest"))
+		ret = test_pmd_ring();
 #endif /* RTE_LIBRTE_PMD_RING */
 
 #ifdef RTE_LIBRTE_ACL
-	if (all || !strcmp(res->autotest, "acl_autotest"))
-		ret |= test_acl();
+	if (!strcmp(res->autotest, "acl_autotest"))
+		ret = test_acl();
 #endif /* RTE_LIBRTE_ACL */
 
 	if (ret == 0)
@@ -234,7 +226,7 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 #ifdef RTE_LIBRTE_PMD_RING
 			"ring_pmd_autotest#"
 #endif
-			"common_autotest#all_autotests");
+			"common_autotest");
 
 cmdline_parse_inst_t cmd_autotest = {
 	.f = cmd_autotest_parsed,  /* function to call */
