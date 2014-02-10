@@ -87,6 +87,7 @@
 #define SHA384_AUTH_KEY_LENGTH_IN_BYTES		(384 / 8)
 #define SHA512_AUTH_KEY_LENGTH_IN_BYTES		(512 / 8)
 #define MD5_AUTH_KEY_LENGTH_IN_BYTES		(128 / 8)
+#define KASUMI_AUTH_KEY_LENGTH_IN_BYTES		(128 / 8)
 
 /* HASH DIGEST LENGHTS */
 #define AES_XCBC_DIGEST_LENGTH_IN_BYTES		(128 / 8)
@@ -98,6 +99,7 @@
 #define SHA256_DIGEST_LENGTH_IN_BYTES		(256 / 8)
 #define SHA384_DIGEST_LENGTH_IN_BYTES		(384 / 8)
 #define SHA512_DIGEST_LENGTH_IN_BYTES		(512 / 8)
+#define KASUMI_DIGEST_LENGTH_IN_BYTES		(32 / 8)
 
 #define IV_LENGTH_16_BYTES	(16)
 #define IV_LENGTH_8_BYTES	(8)
@@ -422,6 +424,12 @@ initCySymSession(const int pkt_cipher_alg,
 		sessionSetupData.cipherSetupData.cipherKeyLenInBytes =
 				KEY_SIZE_128_IN_BYTES;
 		break;
+	case CIPHER_KASUMI_F8:
+		sessionSetupData.cipherSetupData.cipherAlgorithm =
+				CPA_CY_SYM_CIPHER_KASUMI_F8;
+		sessionSetupData.cipherSetupData.cipherKeyLenInBytes =
+				KEY_SIZE_128_IN_BYTES;
+		break;
 	default:
 		printf("Crypto: Undefined Cipher specified\n");
 		break;
@@ -484,6 +492,11 @@ initCySymSession(const int pkt_cipher_alg,
 		sessionSetupData.hashSetupData.digestResultLenInBytes =
 				SHA512_DIGEST_LENGTH_IN_BYTES;
 		break;
+	case HASH_KASUMI_F9:
+		sessionSetupData.hashSetupData.hashAlgorithm = CPA_CY_SYM_HASH_KASUMI_F9;
+		sessionSetupData.hashSetupData.digestResultLenInBytes =
+				KASUMI_DIGEST_LENGTH_IN_BYTES;
+		break;
 	default:
 		printf("Crypto: Undefined Hash specified\n");
 		break;
@@ -526,6 +539,10 @@ initCySymSession(const int pkt_cipher_alg,
 			case HASH_SHA512:
 				sessionSetupData.hashSetupData.authModeSetupData.authKeyLenInBytes =
 						SHA512_AUTH_KEY_LENGTH_IN_BYTES;
+				break;
+			case HASH_KASUMI_F9:
+				sessionSetupData.hashSetupData.authModeSetupData.authKeyLenInBytes =
+						KASUMI_AUTH_KEY_LENGTH_IN_BYTES;
 				break;
 			default:
 				printf("Crypto: Undefined Hash specified\n");
@@ -590,6 +607,9 @@ initSessionDataTables(struct qa_core_conf *qaCoreConf,uint32_t lcore_id)
 	CpaStatus status = CPA_STATUS_FAIL;
 	for (i = 0; i < NUM_CRYPTO; i++) {
 		for (j = 0; j < NUM_HMAC; j++) {
+			if (((i == CIPHER_KASUMI_F8) && (j != NO_HASH) && (j != HASH_KASUMI_F9)) ||
+				((i != NO_CIPHER) && (i != CIPHER_KASUMI_F8) && (j == HASH_KASUMI_F9)))
+				continue;
 			status = initCySymSession(i, j, CPA_CY_SYM_HASH_MODE_AUTH,
 					CPA_CY_SYM_CIPHER_DIRECTION_ENCRYPT,
 					&qaCoreConf->encryptSessionHandleTbl[i][j],

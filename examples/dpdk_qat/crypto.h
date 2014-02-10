@@ -44,6 +44,7 @@ enum cipher_alg {
 	CIPHER_DES3_CBC,
 	CIPHER_AES,
 	CIPHER_AES_CBC_128,
+	CIPHER_KASUMI_F8,
 	NUM_CRYPTO,
 };
 
@@ -59,6 +60,7 @@ enum hash_alg {
 	HASH_SHA512,
 	HASH_AES_XCBC,
 	HASH_AES_XCBC_96,
+	HASH_KASUMI_F9,
 	NUM_HMAC,
 };
 
