@@ -54,5 +54,6 @@ SYMLINK-y-include += rte_eth_pcap_arg_parser.h
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += lib/librte_mbuf lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += lib/librte_malloc
 
 include $(RTE_SDK)/mk/rte.lib.mk
