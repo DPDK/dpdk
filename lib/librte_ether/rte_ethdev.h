@@ -1336,6 +1336,16 @@ extern int rte_ixgbevf_pmd_init(void);
 extern int rte_virtio_pmd_init(void);
 
 /**
+ * The initialization function of the driver for VMware VMXNET3
+ * Ethernet devices.
+ * Invoked once at EAL start time.
+ * @return
+ *   0 on success
+ */
+extern int rte_vmxnet3_pmd_init(void);
+
+
+/**
  * The initialization function of *all* supported and enabled drivers.
  * Right now, the following PMDs are supported:
  *  - igb
@@ -1343,6 +1353,8 @@ extern int rte_virtio_pmd_init(void);
  *  - em
  *  - ixgbe
  *  - ixgbevf
+ *  - virtio
+ *  - vmxnet3
  * This function is invoked once at EAL start time.
  * @return
  *   0 on success.
@@ -1390,6 +1402,13 @@ int rte_pmd_init_all(void)
 		return (ret);
 	}
 #endif /* RTE_LIBRTE_VIRTIO_PMD */
+
+#ifdef RTE_LIBRTE_VMXNET3_PMD
+	if ((ret = rte_vmxnet3_pmd_init()) != 0) {
+		RTE_LOG(ERR, PMD, "Cannot init vmxnet3 PMD\n");
+		return (ret);
+	}
+#endif /* RTE_LIBRTE_VMXNET3_PMD */
 
 	if (ret == -ENODEV)
 		RTE_LOG(ERR, PMD, "No PMD(s) are configured\n");
