@@ -173,9 +173,6 @@ struct rte_ring {
 	 	 	 	 	 	 	 	 	 	 * about compiler re-ordering */
 };
 
-/* dummy assembly operation to prevent compiler re-ordering of instructions */
-#define COMPILER_BARRIER() do { asm volatile("" ::: "memory"); } while(0)
-
 #define RING_F_SP_ENQ 0x0001 /**< The default enqueue is "single-producer". */
 #define RING_F_SC_DEQ 0x0002 /**< The default dequeue is "single-consumer". */
 #define RTE_RING_QUOT_EXCEED (1 << 31)  /**< Quota exceed for burst ops */
@@ -393,7 +390,7 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 
 	/* write entries in ring */
 	ENQUEUE_PTRS();
-	COMPILER_BARRIER();
+	rte_compiler_barrier();
 
 	/* if we exceed the watermark */
 	if (unlikely(((mask + 1) - free_entries + n) > r->prod.watermark)) {
@@ -479,7 +476,7 @@ __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 
 	/* write entries in ring */
 	ENQUEUE_PTRS();
-	COMPILER_BARRIER();
+	rte_compiler_barrier();
 
 	/* if we exceed the watermark */
 	if (unlikely(((mask + 1) - free_entries + n) > r->prod.watermark)) {
@@ -570,7 +567,7 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 
 	/* copy in table */
 	DEQUEUE_PTRS();
-	COMPILER_BARRIER();
+	rte_compiler_barrier();
 
 	/*
 	 * If there are other dequeues in progress that preceded us,
@@ -645,7 +642,7 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 
 	/* copy in table */
 	DEQUEUE_PTRS();
-	COMPILER_BARRIER();
+	rte_compiler_barrier();
 
 	__RING_STAT_ADD(r, deq_success, n);
 	r->cons.tail = cons_next;

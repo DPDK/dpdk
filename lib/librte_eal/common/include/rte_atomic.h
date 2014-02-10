@@ -81,6 +81,16 @@ extern "C" {
  */
 #define	rte_rmb() _mm_lfence()
 
+/**
+ * Compiler barrier.
+ *
+ * Guarantees that operation reordering does not occur at compile time 
+ * for operations directly before and after the barrier.
+ */
+#define	rte_compiler_barrier() do {		\
+	asm volatile ("" : : : "memory");	\
+} while(0)
+
 #include <emmintrin.h>
 
 /**
