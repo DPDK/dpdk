@@ -29,35 +29,33 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include $(RTE_SDK)/mk/rte.vars.mk
+#
+# exec-env:
+#
+#   - define EXECENV_CFLAGS variable (overriden by cmdline)
+#   - define EXECENV_LDFLAGS variable (overriden by cmdline)
+#   - define EXECENV_ASFLAGS variable (overriden by cmdline)
+#   - may override any previously defined variable
+#
+# examples for RTE_EXEC_ENV: linuxapp, baremetal
+#
+ifeq ($(RTE_BUILD_SHARED_LIB),y)
+EXECENV_CFLAGS  = -pthread -fPIC
+else
+EXECENV_CFLAGS  = -pthread
+endif
 
-# library name
-LIB = librte_cmdline.a
+EXECENV_LDFLAGS = 
+EXECENV_LDLIBS  = -lexecinfo
+EXECENV_ASFLAGS =
 
-CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
+ifeq ($(RTE_BUILD_SHARED_LIB),y)
+EXECENV_LDLIBS += -lgcc_s
+endif
 
-# all source are stored in SRCS-y
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) := cmdline.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_cirbuf.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse_etheraddr.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse_ipaddr.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse_num.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse_string.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_rdline.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_vt100.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_socket.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse_portlist.c
+# force applications to link with gcc/icc instead of using ld
+LINK_USING_CC := 1
 
-CFLAGS += -D_GNU_SOURCE
+BSDMAKE=/usr/bin/make
 
-# install includes
-INCS := cmdline.h cmdline_parse.h cmdline_parse_num.h cmdline_parse_ipaddr.h
-INCS += cmdline_parse_etheraddr.h cmdline_parse_string.h cmdline_rdline.h
-INCS += cmdline_vt100.h cmdline_socket.h cmdline_cirbuf.h cmdline_parse_portlist.h
-SYMLINK-$(CONFIG_RTE_LIBRTE_CMDLINE)-include := $(INCS)
-
-# this lib needs eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += lib/librte_eal
-
-include $(RTE_SDK)/mk/rte.lib.mk
+export EXECENV_CFLAGS EXECENV_LDFLAGS EXECENV_ASFLAGS

@@ -133,3 +133,65 @@ rte_eal_log_init(const char *id, int facility)
 	return 0;
 }
 
+/* early logs */
+
+/*
+ * early log function, used during boot when mempool (hence log
+ * history) is not available
+ */
+static ssize_t
+early_log_write(__attribute__((unused)) void *c, const char *buf, size_t size)
+{
+	ssize_t ret;
+	ret = fwrite(buf, size, 1, stdout);
+	fflush(stdout);
+	if (ret == 0)
+		return -1;
+	return ret;
+}
+
+static ssize_t
+early_log_read(__attribute__((unused)) void *c,
+	       __attribute__((unused)) char *buf,
+	       __attribute__((unused)) size_t size)
+{
+	return 0;
+}
+
+static int
+early_log_seek(__attribute__((unused)) void *c,
+	       __attribute__((unused)) off64_t *offset,
+	       __attribute__((unused)) int whence)
+{
+	return -1;
+}
+
+static int
+early_log_close(__attribute__((unused)) void *c)
+{
+	return 0;
+}
+
+static cookie_io_functions_t early_log_func = {
+	.read  = early_log_read,
+	.write = early_log_write,
+	.seek  = early_log_seek,
+	.close = early_log_close
+};
+static FILE *early_log_stream;
+
+/*
+ * init the log library, called by rte_eal_init() to enable early
+ * logs
+ */
+int
+rte_eal_log_early_init(void)
+{
+	early_log_stream = fopencookie(NULL, "w+", early_log_func);
+	if (early_log_stream == NULL) {
+		printf("Cannot configure early_log_stream\n");
+		return -1;
+	}
+	rte_openlog_stream(early_log_stream);
+	return 0;
+}

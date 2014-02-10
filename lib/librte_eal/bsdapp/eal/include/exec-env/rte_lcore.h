@@ -31,44 +31,37 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
-
-#include <rte_per_lcore.h>
-#include <rte_errno.h>
-#include <rte_string_fns.h>
-
-RTE_DEFINE_PER_LCORE(int, _rte_errno);
-
-const char *
-rte_strerror(int errnum)
-{
-#define RETVAL_SZ 256
-	static RTE_DEFINE_PER_LCORE(char[RETVAL_SZ], retval);
-
-	/* since some implementations of strerror_r throw an error
-	 * themselves if errnum is too big, we handle that case here */
-	if (errnum > RTE_MAX_ERRNO)
-		rte_snprintf(RTE_PER_LCORE(retval), RETVAL_SZ,
-#ifdef RTE_EXEC_ENV_BSDAPP
-				"Unknown error: %d", errnum);
-#else
-				"Unknown error %d", errnum);
+#ifndef _RTE_LCORE_H_
+#error "don't include this file directly, please include generic <rte_lcore.h>"
 #endif
-	else
-		switch (errnum){
-		case E_RTE_SECONDARY:
-			return "Invalid call in secondary process";
-		case E_RTE_NO_CONFIG:
-			return "Missing rte_config structure";
-		case E_RTE_NO_TAILQ:
-			return "No TAILQ initialised";
-		default:
-			strerror_r(errnum, RTE_PER_LCORE(retval), RETVAL_SZ);
-		}
 
-	return RTE_PER_LCORE(retval);
-}
+#ifndef _RTE_LINUXAPP_LCORE_H_
+#define _RTE_LINUXAPP_LCORE_H_
+
+/**
+ * @file
+ * API for lcore and socket manipulation in linuxapp environment
+ */
+
+/**
+ * structure storing internal configuration (per-lcore)
+ */
+struct lcore_config {
+	unsigned detected;         /**< true if lcore was detected */
+	pthread_t thread_id;       /**< pthread identifier */
+	int pipe_master2slave[2];  /**< communication pipe with master */
+	int pipe_slave2master[2];  /**< communication pipe with master */
+	lcore_function_t * volatile f;         /**< function to call */
+	void * volatile arg;       /**< argument of function */
+	volatile int ret;          /**< return value of function */
+	volatile enum rte_lcore_state_t state; /**< lcore state */
+	unsigned socket_id;        /**< physical socket id for this lcore */
+	unsigned core_id;          /**< core number on socket for this lcore */
+};
+
+/**
+ * internal configuration (per-lcore)
+ */
+extern struct lcore_config lcore_config[RTE_MAX_LCORE];
+
+#endif /* _RTE_LINUXAPP_LCORE_H_ */

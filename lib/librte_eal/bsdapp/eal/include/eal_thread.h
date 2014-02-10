@@ -31,44 +31,23 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
+#ifndef _EAL_LINUXAPP_THREAD_H_
+#define _EAL_LINUXAPP_THREAD_H_
 
-#include <rte_per_lcore.h>
-#include <rte_errno.h>
-#include <rte_string_fns.h>
+/**
+ * basic loop of thread, called for each thread by eal_init().
+ *
+ * @param arg
+ *   opaque pointer
+ */
+__attribute__((noreturn)) void *eal_thread_loop(void *arg);
 
-RTE_DEFINE_PER_LCORE(int, _rte_errno);
+/**
+ * Init per-lcore info for master thread
+ *
+ * @param lcore_id
+ *   identifier of master lcore
+ */
+void eal_thread_init_master(unsigned lcore_id);
 
-const char *
-rte_strerror(int errnum)
-{
-#define RETVAL_SZ 256
-	static RTE_DEFINE_PER_LCORE(char[RETVAL_SZ], retval);
-
-	/* since some implementations of strerror_r throw an error
-	 * themselves if errnum is too big, we handle that case here */
-	if (errnum > RTE_MAX_ERRNO)
-		rte_snprintf(RTE_PER_LCORE(retval), RETVAL_SZ,
-#ifdef RTE_EXEC_ENV_BSDAPP
-				"Unknown error: %d", errnum);
-#else
-				"Unknown error %d", errnum);
-#endif
-	else
-		switch (errnum){
-		case E_RTE_SECONDARY:
-			return "Invalid call in secondary process";
-		case E_RTE_NO_CONFIG:
-			return "Missing rte_config structure";
-		case E_RTE_NO_TAILQ:
-			return "No TAILQ initialised";
-		default:
-			strerror_r(errnum, RTE_PER_LCORE(retval), RETVAL_SZ);
-		}
-
-	return RTE_PER_LCORE(retval);
-}
+#endif /* _EAL_LINUXAPP_PRIVATE_H_ */

@@ -47,6 +47,7 @@
 #include <dirent.h>
 #include <sys/wait.h>
 #include <sys/file.h>
+#include <limits.h>
 
 #include <rte_debug.h>
 #include <rte_string_fns.h>
@@ -217,6 +218,7 @@ end:
 	return result;
 }
 
+#ifdef RTE_EXEC_ENV_LINUXAPP
 /*
  * count the number of "node*" files in /sys/devices/system/node/
  */
@@ -246,6 +248,7 @@ get_number_of_sockets(void)
 	closedir(dir);
 	return result;
 }
+#endif
 
 static char*
 get_current_prefix(char * prefix, int size)
@@ -293,12 +296,17 @@ static int
 test_whitelist_flag(void)
 {
 	unsigned i;
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target doesn't support prefixes at this point */
+	const char * prefix = "";
+#else
 	char prefix[PATH_MAX], tmp[PATH_MAX];
 	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
 	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+#endif
 
 	const char *wlinval[][11] = {
 		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
@@ -381,12 +389,17 @@ test_whitelist_flag(void)
 static int
 test_invalid_b_flag(void)
 {
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target doesn't support prefixes at this point */
+	const char * prefix = "";
+#else
 	char prefix[PATH_MAX], tmp[PATH_MAX];
 	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
 	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+#endif
 
 	const char *blinval[][9] = {
 		{prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-b", "error"},
@@ -422,12 +435,17 @@ test_invalid_b_flag(void)
 static int
 test_invalid_r_flag(void)
 {
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target doesn't support prefixes at this point */
+	const char * prefix = "";
+#else
 	char prefix[PATH_MAX], tmp[PATH_MAX];
 	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
 	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+#endif
 
 	const char *rinval[][9] = {
 			{prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-r", "error"},
@@ -461,12 +479,17 @@ test_invalid_r_flag(void)
 static int
 test_missing_c_flag(void)
 {
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target doesn't support prefixes at this point */
+	const char * prefix = "";
+#else
 	char prefix[PATH_MAX], tmp[PATH_MAX];
 	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
 	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+#endif
 
 	/* -c flag but no coremask value */
 	const char *argv1[] = { prgname, prefix, mp_flag, "-n", "3", "-c"};
@@ -499,12 +522,17 @@ test_missing_c_flag(void)
 static int
 test_missing_n_flag(void)
 {
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target doesn't support prefixes at this point */
+	const char * prefix = "";
+#else
 	char prefix[PATH_MAX], tmp[PATH_MAX];
 	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
 	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+#endif
 
 	/* -n flag but no value */
 	const char *argv1[] = { prgname, prefix, no_huge, no_shconf, "-c", "1", "-n"};
@@ -538,6 +566,10 @@ static int
 test_no_hpet_flag(void)
 {
 	char prefix[PATH_MAX], tmp[PATH_MAX];
+
+#ifdef RTE_EXEC_ENV_BSDAPP
+	return 0;
+#endif
 	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
 		printf("Error - unable to get current prefix!\n");
 		return -1;
@@ -567,26 +599,25 @@ test_no_hpet_flag(void)
 static int
 test_no_huge_flag(void)
 {
-	char prefix[PATH_MAX], tmp[PATH_MAX];
-	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
-		printf("Error - unable to get current prefix!\n");
-		return -1;
-	}
-	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target doesn't support prefixes at this point, and we also need to
+	 * run another primary process here */
+	const char * prefix = no_shconf;
+#else
+	const char * prefix = "--file-prefix=nohuge";
+#endif
 
 	/* With --no-huge */
-	const char *argv1[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2",
-			"--file-prefix=nohuge"};
+	const char *argv1[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2"};
 	/* With --no-huge and -m */
-	const char *argv2[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2", "-m", "2",
-			"--file-prefix=nohuge"};
+	const char *argv2[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2", "-m", "2"};
+
 	/* With --no-huge and --socket-mem */
 	const char *argv3[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2",
-			"--socket-mem=2", "--file-prefix=nohuge"};
+			"--socket-mem=2"};
 	/* With --no-huge, -m and --socket-mem */
 	const char *argv4[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2",
-			"-m", "2", "--socket-mem=2", "--file-prefix=nohuge"};
-
+			"-m", "2", "--socket-mem=2"};
 	if (launch_proc(argv1) != 0) {
 		printf("Error - process did not run ok with --no-huge flag\n");
 		return -1;
@@ -595,6 +626,11 @@ test_no_huge_flag(void)
 		printf("Error - process run ok with --no-huge and -m flags\n");
 		return -1;
 	}
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target does not support NUMA, hence no --socket-mem tests */
+	return 0;
+#endif
+
 	if (launch_proc(argv3) == 0) {
 		printf("Error - process run ok with --no-huge and --socket-mem "
 				"flags\n");
@@ -611,12 +647,17 @@ test_no_huge_flag(void)
 static int
 test_misc_flags(void)
 {
+	char hugepath[PATH_MAX] = {0};
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target doesn't support prefixes at this point */
+	const char * prefix = "";
+	const char * nosh_prefix = "";
+#else
+	char prefix[PATH_MAX], tmp[PATH_MAX];
+	const char * nosh_prefix = "--file-prefix=noshconf";
 	FILE * hugedir_handle = NULL;
 	char line[PATH_MAX] = {0};
-	char hugepath[PATH_MAX] = {0};
-	char prefix[PATH_MAX], tmp[PATH_MAX];
 	unsigned i, isempty = 1;
-
 	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
 		printf("Error - unable to get current prefix!\n");
 		return -1;
@@ -654,6 +695,7 @@ test_misc_flags(void)
 		printf("No mounted hugepage dir found!\n");
 		return -1;
 	}
+#endif
 
 
 	/* check that some general flags don't prevent things from working.
@@ -676,7 +718,11 @@ test_misc_flags(void)
 	const char *argv5[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog", "error"};
 	/* With no-sh-conf */
 	const char *argv6[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
-			"--no-shconf", "--file-prefix=noshconf" };
+			no_shconf, nosh_prefix };
+
+#ifdef RTE_EXEC_ENV_BSDAPP
+	return 0;
+#endif
 	/* With --huge-dir */
 	const char *argv7[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
 			"--file-prefix=hugedir", "--huge-dir", hugepath};
@@ -719,6 +765,9 @@ test_misc_flags(void)
 		printf("Error - process did not run ok with --no-shconf flag\n");
 		return -1;
 	}
+#ifdef RTE_EXEC_ENV_BSDAPP
+	return 0;
+#endif
 	if (launch_proc(argv7) != 0) {
 		printf("Error - process did not run ok with --huge-dir flag\n");
 		return -1;
@@ -751,6 +800,10 @@ test_file_prefix(void)
 	 * 6. run a primary process with memtest2 prefix
 	 * 7. check that only memtest2 hugefiles are present in the hugedir
 	 */
+
+#ifdef RTE_EXEC_ENV_BSDAPP
+	return 0;
+#endif
 
 	/* this should fail unless the test itself is run with "memtest" prefix */
 	const char *argv0[] = {prgname, mp_flag, "-c", "1", "-n", "2", "-m", "2",
@@ -852,13 +905,17 @@ test_file_prefix(void)
 static int
 test_memory_flags(void)
 {
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target doesn't support prefixes at this point */
+	const char * prefix = "";
+#else
 	char prefix[PATH_MAX], tmp[PATH_MAX];
 	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
 	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
-
+#endif
 	/* valid -m flag */
 	const char *argv0[] = {prgname, "-c", "10", "-n", "2",
 			"--file-prefix=" memtest, "-m", "2"};
@@ -899,7 +956,12 @@ test_memory_flags(void)
 	 * extra 2 megs on socket that doesn't exist on current system */
 	char invalid_socket_mem[SOCKET_MEM_STRLEN];
 	char buf[SOCKET_MEM_STRLEN];	/* to avoid copying string onto itself */
+
+#ifdef RTE_EXEC_ENV_BSDAPP
+	int i, num_sockets = 1;
+#else
 	int i, num_sockets = get_number_of_sockets();
+#endif
 
 	if (num_sockets <= 0 || num_sockets > RTE_MAX_NUMA_NODES) {
 		printf("Error - cannot get number of sockets!\n");
@@ -944,9 +1006,14 @@ test_memory_flags(void)
 			"--file-prefix=" memtest, valid_socket_mem};
 
 	if (launch_proc(argv0) != 0) {
-		printf("Error - process failed with valid -m flag!\n");
+		printf("Error - secondary process failed with valid -m flag !\n");
 		return -1;
 	}
+
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* no other tests are applicable to BSD */
+	return 0;
+#endif
 
 	if (launch_proc(argv1) != 0) {
 		printf("Error - secondary process failed with valid -m flag !\n");

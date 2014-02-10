@@ -31,44 +31,37 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
-
-#include <rte_per_lcore.h>
-#include <rte_errno.h>
-#include <rte_string_fns.h>
-
-RTE_DEFINE_PER_LCORE(int, _rte_errno);
-
-const char *
-rte_strerror(int errnum)
-{
-#define RETVAL_SZ 256
-	static RTE_DEFINE_PER_LCORE(char[RETVAL_SZ], retval);
-
-	/* since some implementations of strerror_r throw an error
-	 * themselves if errnum is too big, we handle that case here */
-	if (errnum > RTE_MAX_ERRNO)
-		rte_snprintf(RTE_PER_LCORE(retval), RETVAL_SZ,
-#ifdef RTE_EXEC_ENV_BSDAPP
-				"Unknown error: %d", errnum);
-#else
-				"Unknown error %d", errnum);
+#ifndef _RTE_PER_LCORE_H_
+#error "don't include this file directly, please include generic <rte_per_lcore.h>"
 #endif
-	else
-		switch (errnum){
-		case E_RTE_SECONDARY:
-			return "Invalid call in secondary process";
-		case E_RTE_NO_CONFIG:
-			return "Missing rte_config structure";
-		case E_RTE_NO_TAILQ:
-			return "No TAILQ initialised";
-		default:
-			strerror_r(errnum, RTE_PER_LCORE(retval), RETVAL_SZ);
-		}
 
-	return RTE_PER_LCORE(retval);
-}
+#ifndef _RTE_LINUXAPP_PER_LCORE_H_
+#define _RTE_LINUXAPP_PER_LCORE_H_
+
+/**
+ * @file
+ * Per-lcore variables in RTE on linuxapp environment
+ */
+
+#include <pthread.h>
+
+/**
+ * Macro to define a per lcore variable "var" of type "type", don't
+ * use keywords like "static" or "volatile" in type, just prefix the
+ * whole macro.
+ */
+#define RTE_DEFINE_PER_LCORE(type, name)			\
+	__thread __typeof__(type) per_lcore_##name
+
+/**
+ * Macro to declare an extern per lcore variable "var" of type "type"
+ */
+#define RTE_DECLARE_PER_LCORE(type, name)			\
+	extern __thread __typeof__(type) per_lcore_##name
+
+/**
+ * Read/write the per-lcore variable value
+ */
+#define RTE_PER_LCORE(name) (per_lcore_##name)
+
+#endif /* _RTE_LINUXAPP_PER_LCORE_H_ */

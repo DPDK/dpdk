@@ -31,44 +31,24 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
-
-#include <rte_per_lcore.h>
-#include <rte_errno.h>
-#include <rte_string_fns.h>
-
-RTE_DEFINE_PER_LCORE(int, _rte_errno);
-
-const char *
-rte_strerror(int errnum)
-{
-#define RETVAL_SZ 256
-	static RTE_DEFINE_PER_LCORE(char[RETVAL_SZ], retval);
-
-	/* since some implementations of strerror_r throw an error
-	 * themselves if errnum is too big, we handle that case here */
-	if (errnum > RTE_MAX_ERRNO)
-		rte_snprintf(RTE_PER_LCORE(retval), RETVAL_SZ,
-#ifdef RTE_EXEC_ENV_BSDAPP
-				"Unknown error: %d", errnum);
-#else
-				"Unknown error %d", errnum);
+#ifndef _RTE_INTERRUPTS_H_
+#error "don't include this file directly, please include generic <rte_interrupts.h>"
 #endif
-	else
-		switch (errnum){
-		case E_RTE_SECONDARY:
-			return "Invalid call in secondary process";
-		case E_RTE_NO_CONFIG:
-			return "Missing rte_config structure";
-		case E_RTE_NO_TAILQ:
-			return "No TAILQ initialised";
-		default:
-			strerror_r(errnum, RTE_PER_LCORE(retval), RETVAL_SZ);
-		}
 
-	return RTE_PER_LCORE(retval);
-}
+#ifndef _RTE_LINUXAPP_INTERRUPTS_H_
+#define _RTE_LINUXAPP_INTERRUPTS_H_
+
+enum rte_intr_handle_type {
+	RTE_INTR_HANDLE_UNKNOWN = 0,
+	RTE_INTR_HANDLE_UIO,      /**< uio device handle */
+	RTE_INTR_HANDLE_ALARM,    /**< alarm handle */
+	RTE_INTR_HANDLE_MAX
+};
+
+/** Handle for interrupts. */
+struct rte_intr_handle {
+	int fd;                          /**< file descriptor */
+	enum rte_intr_handle_type type;  /**< handle type */
+};
+
+#endif /* _RTE_LINUXAPP_INTERRUPTS_H_ */

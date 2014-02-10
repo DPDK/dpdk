@@ -1,0 +1,297 @@
+#   BSD LICENSE
+# 
+#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   All rights reserved.
+# 
+#   Redistribution and use in source and binary forms, with or without
+#   modification, are permitted provided that the following conditions
+#   are met:
+# 
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in
+#       the documentation and/or other materials provided with the
+#       distribution.
+#     * Neither the name of Intel Corporation nor the names of its
+#       contributors may be used to endorse or promote products derived
+#       from this software without specific prior written permission.
+# 
+#   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+#   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+#   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+#   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+#   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+#   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+#   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+#   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+#
+# define executive environment
+#
+# CONFIG_RTE_EXEC_ENV can be linuxapp, baremetal, bsdapp
+#
+CONFIG_RTE_EXEC_ENV="bsdapp"
+CONFIG_RTE_EXEC_ENV_BSDAPP=y
+
+#
+# machine can define specific variables or action for a specific board
+# RTE_MACHINE can be:
+# default  nothing specific
+# native   current machine
+# atm      Intel® Atom™ microarchitecture
+# nhm      Intel® microarchitecture code name Nehalem
+# wsm      Intel® microarchitecture code name Westmere
+# snb      Intel® microarchitecture code name Sandy Bridge
+# ivb      Intel® microarchitecture code name Ivy Bridge
+#
+# Note: if your compiler does not support the relevant -march options,
+# it will be compiled with whatever latest processor the compiler supports!
+#
+CONFIG_RTE_MACHINE="native"
+
+#
+# define the architecture we compile for.
+# CONFIG_RTE_ARCH can be i686, x86_64, x86_64_32
+#
+CONFIG_RTE_ARCH="x86_64"
+CONFIG_RTE_ARCH_X86_64=y
+
+#
+# The compiler we use.
+# Can be gcc or icc.
+#
+CONFIG_RTE_TOOLCHAIN="gcc"
+CONFIG_RTE_TOOLCHAIN_GCC=y
+
+#
+# Use intrinsics or assembly code for key routines
+#
+CONFIG_RTE_FORCE_INTRINSICS=n
+
+#
+# Compile to share library
+#
+CONFIG_RTE_LIBNAME=intel_dpdk
+CONFIG_RTE_BUILD_SHARED_LIB=n
+
+#
+# Combine to one single library
+#
+CONFIG_RTE_BUILD_COMBINE_LIBS=n
+
+#
+# Compile Environment Abstraction Layer
+#
+CONFIG_RTE_LIBRTE_EAL=y
+CONFIG_RTE_MAX_LCORE=64
+CONFIG_RTE_MAX_NUMA_NODES=8
+CONFIG_RTE_MAX_MEMSEG=256
+CONFIG_RTE_MAX_MEMZONE=2560
+CONFIG_RTE_MAX_TAILQ=32
+CONFIG_RTE_LOG_LEVEL=8
+CONFIG_RTE_LOG_HISTORY=256
+CONFIG_RTE_EAL_ALLOW_INV_SOCKET_ID=n
+CONFIG_RTE_EAL_ALWAYS_PANIC_ON_ERROR=n
+
+#
+# FreeBSD contiguous memory driver settings
+#
+CONFIG_RTE_CONTIGMEM_MAX_NUM_BUFS=64
+CONFIG_RTE_CONTIGMEM_DEFAULT_NUM_BUFS=2
+CONFIG_RTE_CONTIGMEM_DEFAULT_BUF_SIZE=1024*1024*1024
+
+#
+# Compile Environment Abstraction Layer for BSD
+#
+CONFIG_RTE_LIBRTE_EAL_BSDAPP=y
+
+#
+# Compile Environment Abstraction Layer for linux
+#
+CONFIG_RTE_LIBRTE_EAL_LINUXAPP=n
+
+#
+# Compile Environment Abstraction Layer for Bare metal
+#
+CONFIG_RTE_LIBRTE_EAL_BAREMETAL=n
+
+#
+# Compile Environment Abstraction Layer to support Vmware TSC map
+# 
+CONFIG_RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT=y
+
+#
+# Compile generic ethernet library
+#
+CONFIG_RTE_LIBRTE_ETHER=y
+CONFIG_RTE_LIBRTE_ETHDEV_DEBUG=n
+CONFIG_RTE_MAX_ETHPORTS=32
+CONFIG_RTE_LIBRTE_IEEE1588=n
+CONFIG_RTE_ETHDEV_QUEUE_STAT_CNTRS=16
+
+#
+# Compile burst-oriented IGB & EM PMD drivers
+#
+CONFIG_RTE_LIBRTE_EM_PMD=y
+CONFIG_RTE_LIBRTE_IGB_PMD=y
+CONFIG_RTE_LIBRTE_E1000_DEBUG_INIT=n
+CONFIG_RTE_LIBRTE_E1000_DEBUG_RX=n
+CONFIG_RTE_LIBRTE_E1000_DEBUG_TX=n
+CONFIG_RTE_LIBRTE_E1000_DEBUG_TX_FREE=n
+CONFIG_RTE_LIBRTE_E1000_DEBUG_DRIVER=n
+CONFIG_RTE_LIBRTE_E1000_PF_DISABLE_STRIP_CRC=n
+
+#
+# Compile burst-oriented IXGBE PMD driver
+#
+CONFIG_RTE_LIBRTE_IXGBE_PMD=y
+CONFIG_RTE_LIBRTE_IXGBE_DEBUG_INIT=n
+CONFIG_RTE_LIBRTE_IXGBE_DEBUG_RX=n
+CONFIG_RTE_LIBRTE_IXGBE_DEBUG_TX=n
+CONFIG_RTE_LIBRTE_IXGBE_DEBUG_TX_FREE=n
+CONFIG_RTE_LIBRTE_IXGBE_DEBUG_DRIVER=n
+CONFIG_RTE_LIBRTE_IXGBE_PF_DISABLE_STRIP_CRC=n
+CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=y
+CONFIG_RTE_LIBRTE_IXGBE_ALLOW_UNSUPPORTED_SFP=n
+
+#
+# Compile burst-oriented VIRTIO PMD driver
+#
+CONFIG_RTE_LIBRTE_VIRTIO_PMD=n
+CONFIG_RTE_LIBRTE_VIRTIO_DEBUG_INIT=n
+CONFIG_RTE_LIBRTE_VIRTIO_DEBUG_RX=n
+CONFIG_RTE_LIBRTE_VIRTIO_DEBUG_TX=n
+CONFIG_RTE_LIBRTE_VIRTIO_DEBUG_DRIVER=n
+CONFIG_RTE_LIBRTE_VIRTIO_DEBUG_DUMP=n
+
+#
+# Compile example software rings based PMD
+#
+CONFIG_RTE_LIBRTE_PMD_RING=y
+CONFIG_RTE_PMD_RING_MAX_RX_RINGS=16
+CONFIG_RTE_PMD_RING_MAX_TX_RINGS=16
+
+#
+# Compile software PMD backed by PCAP files
+#
+CONFIG_RTE_LIBRTE_PMD_PCAP=y
+
+#
+# Do prefetch of packet data within PMD driver receive function
+#
+CONFIG_RTE_PMD_PACKET_PREFETCH=y
+
+#
+# Compile librte_ring
+#
+CONFIG_RTE_LIBRTE_RING=y
+CONFIG_RTE_LIBRTE_RING_DEBUG=n
+CONFIG_RTE_RING_SPLIT_PROD_CONS=n
+
+#
+# Compile librte_mempool
+#
+CONFIG_RTE_LIBRTE_MEMPOOL=y
+CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE=512
+CONFIG_RTE_LIBRTE_MEMPOOL_DEBUG=n
+
+#
+# Compile librte_mbuf
+#
+CONFIG_RTE_LIBRTE_MBUF=y
+CONFIG_RTE_LIBRTE_MBUF_DEBUG=n
+CONFIG_RTE_MBUF_SCATTER_GATHER=y
+CONFIG_RTE_MBUF_REFCNT_ATOMIC=y
+CONFIG_RTE_PKTMBUF_HEADROOM=128
+
+#
+# Compile librte_timer
+#
+CONFIG_RTE_LIBRTE_TIMER=y
+CONFIG_RTE_LIBRTE_TIMER_DEBUG=n
+
+#
+# Compile librte_malloc
+#
+CONFIG_RTE_LIBRTE_MALLOC=y
+CONFIG_RTE_LIBRTE_MALLOC_DEBUG=n
+CONFIG_RTE_MALLOC_MEMZONE_SIZE=11M
+
+#
+# Compile librte_cmdline
+#
+CONFIG_RTE_LIBRTE_CMDLINE=y
+CONFIG_RTE_LIBRTE_CMDLINE_DEBUG=n
+
+#
+# Compile librte_hash
+#
+CONFIG_RTE_LIBRTE_HASH=y
+CONFIG_RTE_LIBRTE_HASH_DEBUG=n
+
+#
+# Compile librte_lpm
+#
+CONFIG_RTE_LIBRTE_LPM=y
+CONFIG_RTE_LIBRTE_LPM_DEBUG=n
+
+#
+# Compile librte_power
+#
+CONFIG_RTE_LIBRTE_POWER=n
+CONFIG_RTE_LIBRTE_POWER_DEBUG=n
+CONFIG_RTE_MAX_LCORE_FREQS=64
+
+#
+# Compile librte_net
+#
+CONFIG_RTE_LIBRTE_NET=y
+
+#
+# Compile librte_meter
+#
+CONFIG_RTE_LIBRTE_METER=y
+
+#
+# Compile librte_sched
+#
+CONFIG_RTE_LIBRTE_SCHED=y
+CONFIG_RTE_SCHED_RED=n
+CONFIG_RTE_SCHED_COLLECT_STATS=n
+CONFIG_RTE_SCHED_SUBPORT_TC_OV=n
+CONFIG_RTE_SCHED_PORT_N_GRINDERS=8
+
+#
+# Compile the test application
+# Compile librte_kni
+#
+CONFIG_RTE_LIBRTE_KNI=n
+CONFIG_RTE_LIBRTE_KNI_DEBUG=n
+CONFIG_RTE_KNI_KO_DEBUG=n
+CONFIG_RTE_KNI_VHOST=n
+CONFIG_RTE_KNI_VHOST_MAX_CACHE_SIZE=1024
+CONFIG_RTE_KNI_VHOST_VNET_HDR_EN=n
+CONFIG_RTE_KNI_VHOST_DEBUG_RX=n
+CONFIG_RTE_KNI_VHOST_DEBUG_TX=n
+
+#
+# Enable warning directives
+#
+CONFIG_RTE_INSECURE_FUNCTION_WARNING=n
+
+#
+# Compile the test application
+#
+CONFIG_RTE_APP_TEST=y
+
+#
+# Compile the PMD test application
+#
+CONFIG_RTE_TEST_PMD=y
+CONFIG_RTE_TEST_PMD_RECORD_CORE_CYCLES=n
+CONFIG_RTE_TEST_PMD_RECORD_BURST_STATS=n

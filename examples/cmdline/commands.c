@@ -67,7 +67,11 @@
 #include <netinet/in.h>
 #include <termios.h>
 #ifndef __linux__
-#include <net/socket.h>
+	#ifdef __FreeBSD__
+		#include <sys/socket.h>
+	#else
+		#include <net/socket.h>
+	#endif
 #endif
 
 #include <cmdline_rdline.h>

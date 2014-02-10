@@ -65,10 +65,6 @@
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
-#include <netinet/in.h>
-#ifndef __linux__
-#include <net/socket.h>
-#endif
 
 #include <rte_string_fns.h>
 #include "cmdline_parse.h"

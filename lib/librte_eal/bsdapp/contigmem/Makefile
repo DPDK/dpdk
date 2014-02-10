@@ -31,33 +31,22 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-# library name
-LIB = librte_cmdline.a
+#
+# module name and path
+#
+MODULE = contigmem
 
-CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
+#
+# CFLAGS
+#
+MODULE_CFLAGS += -I$(SRCDIR) 
+MODULE_CFLAGS += -I$(RTE_OUTPUT)/include
+MODULE_CFLAGS += -Winline -Wall -Werror
+MODULE_CFLAGS += -include $(RTE_OUTPUT)/include/rte_config.h
 
+#
 # all source are stored in SRCS-y
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) := cmdline.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_cirbuf.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse_etheraddr.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse_ipaddr.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse_num.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse_string.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_rdline.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_vt100.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_socket.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse_portlist.c
+#
+SRCS-y := contigmem.c
 
-CFLAGS += -D_GNU_SOURCE
-
-# install includes
-INCS := cmdline.h cmdline_parse.h cmdline_parse_num.h cmdline_parse_ipaddr.h
-INCS += cmdline_parse_etheraddr.h cmdline_parse_string.h cmdline_rdline.h
-INCS += cmdline_vt100.h cmdline_socket.h cmdline_cirbuf.h cmdline_parse_portlist.h
-SYMLINK-$(CONFIG_RTE_LIBRTE_CMDLINE)-include := $(INCS)
-
-# this lib needs eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += lib/librte_eal
-
-include $(RTE_SDK)/mk/rte.lib.mk
+include $(RTE_SDK)/mk/rte.bsdmodule.mk

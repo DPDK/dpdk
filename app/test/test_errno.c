@@ -49,7 +49,12 @@ test_errno(void)
 {
 	const char *rte_retval;
 	const char *libc_retval;
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD has a colon in the string, unlike linux */
+	const char unknown_code_result[] = "Unknown error: %d";
+#else
 	const char unknown_code_result[] = "Unknown error %d";
+#endif
 	char expected_libc_retval[sizeof(unknown_code_result)+3];
 
 	/* use a small selection of standard errors for testing */

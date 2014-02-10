@@ -41,7 +41,11 @@
 #include <unistd.h>
 #include <inttypes.h>
 #ifndef __linux__
+#ifndef __FreeBSD__
 #include <net/socket.h>
+#else
+#include <sys/socket.h>
+#endif
 #endif
 #include <netinet/in.h>
 

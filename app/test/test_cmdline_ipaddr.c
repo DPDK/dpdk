@@ -37,7 +37,11 @@
 #include <netinet/in.h>
 
 #ifndef __linux__
+#ifndef __FreeBSD__
 #include <net/socket.h>
+#else
+#include <sys/socket.h>
+#endif
 #endif
 
 #include <rte_string_fns.h>
@@ -56,13 +60,17 @@
 		(((x & 0xFF) << 8) | ((x & 0xFF00) >> 8))
 
 /* create IPv6 address, swapping bytes where needed */
+#ifndef s6_addr16
+# define s6_addr16      __u6_addr.__u6_addr16
+#endif
 #define IP6(a,b,c,d,e,f,g,h) .ipv6 = \
 		{.s6_addr16 = \
 		{U16_SWAP(a),U16_SWAP(b),U16_SWAP(c),U16_SWAP(d),\
 		 U16_SWAP(e),U16_SWAP(f),U16_SWAP(g),U16_SWAP(h)}}
 
 /** these are defined in netinet/in.h but not present in linux headers */
-#ifdef __linux__
+#ifndef NIPQUAD
+
 #define NIPQUAD_FMT "%u.%u.%u.%u"
 #define NIPQUAD(addr)				\
 	(unsigned)((unsigned char *)&addr)[0],	\
@@ -88,6 +96,7 @@
 	(unsigned)((addr).s6_addr[13]),			\
 	(unsigned)((addr).s6_addr[14]),			\
 	(unsigned)((addr).s6_addr[15])
+
 #endif
 
 

@@ -31,44 +31,37 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef RTE_LINUXAPP_HUGEPAGES_H_
+#define RTE_LINUXAPP_HUGEPAGES_H_
+
+#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
+#include <limits.h>
 
-#include <rte_per_lcore.h>
-#include <rte_errno.h>
-#include <rte_string_fns.h>
+#define MAX_HUGEPAGE_PATH PATH_MAX
 
-RTE_DEFINE_PER_LCORE(int, _rte_errno);
-
-const char *
-rte_strerror(int errnum)
-{
-#define RETVAL_SZ 256
-	static RTE_DEFINE_PER_LCORE(char[RETVAL_SZ], retval);
-
-	/* since some implementations of strerror_r throw an error
-	 * themselves if errnum is too big, we handle that case here */
-	if (errnum > RTE_MAX_ERRNO)
-		rte_snprintf(RTE_PER_LCORE(retval), RETVAL_SZ,
-#ifdef RTE_EXEC_ENV_BSDAPP
-				"Unknown error: %d", errnum);
-#else
-				"Unknown error %d", errnum);
+/**
+ * Structure used to store informations about hugepages that we mapped
+ * through the files in hugetlbfs.
+ */
+struct hugepage_file {
+	void *orig_va;      /**< virtual addr of first mmap() */
+	void *final_va;     /**< virtual addr of 2nd mmap() */
+	uint64_t physaddr;  /**< physical addr */
+	size_t size;        /**< the page size */
+	int socket_id;      /**< NUMA socket ID */
+	int file_id;        /**< the '%d' in HUGEFILE_FMT */
+	int memseg_id;      /**< the memory segment to which page belongs */
+#ifdef RTE_EAL_SINGLE_FILE_SEGMENTS
+	int repeated;		/**< number of times the page size is repeated */
 #endif
-	else
-		switch (errnum){
-		case E_RTE_SECONDARY:
-			return "Invalid call in secondary process";
-		case E_RTE_NO_CONFIG:
-			return "Missing rte_config structure";
-		case E_RTE_NO_TAILQ:
-			return "No TAILQ initialised";
-		default:
-			strerror_r(errnum, RTE_PER_LCORE(retval), RETVAL_SZ);
-		}
+	char filepath[MAX_HUGEPAGE_PATH]; /**< path to backing file on filesystem */
+};
 
-	return RTE_PER_LCORE(retval);
-}
+/**
+ * Read the information from linux on what hugepages are available
+ * for the EAL to use
+ */
+int eal_hugepage_info_init(void);
+
+#endif /* EAL_HUGEPAGES_H_ */

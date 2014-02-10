@@ -54,7 +54,9 @@ enum rte_page_sizes {
 };
 
 #define SOCKET_ID_ANY -1                    /**< Any NUMA socket. */
+#ifndef CACHE_LINE_SIZE
 #define CACHE_LINE_SIZE 64                  /**< Cache line size. */
+#endif
 #define CACHE_LINE_MASK (CACHE_LINE_SIZE-1) /**< Cache line mask. */
 
 #define CACHE_LINE_ROUNDUP(size) \

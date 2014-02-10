@@ -68,7 +68,7 @@ clean: $(CLEANDIRS)
 	@[ -d $(RTE_OUTPUT)/include ] || mkdir -p $(RTE_OUTPUT)/include
 	@$(RTE_SDK)/scripts/gen-config-h.sh $(RTE_OUTPUT)/.config \
 		> $(RTE_OUTPUT)/include/rte_config.h
-	$(Q)$(MAKE) -f $(RTE_SDK)/Makefile gcovclean
+	$(Q)$(MAKE) -f $(RTE_SDK)/GNUmakefile gcovclean
 	@echo Clean complete
 
 .SECONDEXPANSION:

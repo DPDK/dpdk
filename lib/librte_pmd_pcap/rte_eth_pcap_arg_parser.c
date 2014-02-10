@@ -31,8 +31,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <string.h>
-#include <sys/user.h>
-#include <linux/binfmts.h>
+#include <unistd.h>
 
 #include <rte_malloc.h>
 #include <rte_log.h>
@@ -121,14 +120,14 @@ rte_eth_pcap_tokenize_args(struct args_dict *dict,
 		return -1;
 	}
 
-	num_of_pairs = rte_strsplit(args, strnlen(args, MAX_ARG_STRLEN), pairs,
+	num_of_pairs = rte_strsplit(args, strnlen(args, sysconf(_SC_ARG_MAX)), pairs,
 			RTE_ETH_PCAP_ARG_PARSER_MAX_ARGS, RTE_ETH_PCAP_PAIRS_DELIM);
 
 	for (i = 0; i < num_of_pairs; i++) {
 		pair[0] = NULL;
 		pair[1] = NULL;
 
-		rte_strsplit(pairs[i], strnlen(pairs[i], MAX_ARG_STRLEN), pair, 2,
+		rte_strsplit(pairs[i], strnlen(pairs[i], sysconf(_SC_ARG_MAX)), pair, 2,
 				RTE_ETH_PCAP_KEY_VALUE_DELIM);
 
 		if (pair[0] == NULL || pair[1] == NULL || pair[0][0] == 0

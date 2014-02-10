@@ -31,44 +31,72 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
+#include <unistd.h>
+#include <sys/sysctl.h>
 
-#include <rte_per_lcore.h>
-#include <rte_errno.h>
-#include <rte_string_fns.h>
+#include <rte_log.h>
+#include <rte_eal.h>
+#include <rte_lcore.h>
+#include <rte_common.h>
+#include <rte_debug.h>
 
-RTE_DEFINE_PER_LCORE(int, _rte_errno);
+#include "eal_private.h"
 
-const char *
-rte_strerror(int errnum)
+/* No topology information available on FreeBSD including NUMA info */
+#define cpu_core_id(X) 0
+#define cpu_socket_id(X) 0
+
+static int
+get_ncpus(void)
 {
-#define RETVAL_SZ 256
-	static RTE_DEFINE_PER_LCORE(char[RETVAL_SZ], retval);
+	int mib[2] = {CTL_HW, HW_NCPU};
+	int ncpu;
+	size_t len = sizeof(ncpu);
 
-	/* since some implementations of strerror_r throw an error
-	 * themselves if errnum is too big, we handle that case here */
-	if (errnum > RTE_MAX_ERRNO)
-		rte_snprintf(RTE_PER_LCORE(retval), RETVAL_SZ,
-#ifdef RTE_EXEC_ENV_BSDAPP
-				"Unknown error: %d", errnum);
-#else
-				"Unknown error %d", errnum);
-#endif
-	else
-		switch (errnum){
-		case E_RTE_SECONDARY:
-			return "Invalid call in secondary process";
-		case E_RTE_NO_CONFIG:
-			return "Missing rte_config structure";
-		case E_RTE_NO_TAILQ:
-			return "No TAILQ initialised";
-		default:
-			strerror_r(errnum, RTE_PER_LCORE(retval), RETVAL_SZ);
+	sysctl(mib, 2, &ncpu, &len, NULL, 0);
+	RTE_LOG(INFO, EAL, "Sysctl reports %d cpus\n", ncpu);
+	return ncpu;
+}
+
+/*
+ * fill the cpu_info structure with as much info as we can get.
+ * code is similar to linux version, but sadly available info is less.
+ */
+int
+rte_eal_cpu_init(void)
+{
+	/* pointer to global configuration */
+	struct rte_config *config = rte_eal_get_configuration();
+	unsigned lcore_id;
+	unsigned count = 0;
+
+	const unsigned ncpus = get_ncpus();
+
+	/* disable lcores that were not detected */
+	RTE_LCORE_FOREACH(lcore_id) {
+
+		lcore_config[lcore_id].detected = (lcore_id < ncpus);
+		if (lcore_config[lcore_id].detected == 0) {
+			RTE_LOG(DEBUG, EAL, "Skip lcore %u (not detected)\n", lcore_id);
+			config->lcore_role[lcore_id] = ROLE_OFF;
+			continue;
 		}
+		count++;
+		lcore_config[lcore_id].core_id = cpu_core_id(lcore_id);
+		lcore_config[lcore_id].socket_id = cpu_socket_id(lcore_id);
+		if (lcore_config[lcore_id].socket_id >= RTE_MAX_NUMA_NODES)
+#ifdef RTE_EAL_ALLOW_INV_SOCKET_ID
+			lcore_config[lcore_id].socket_id = 0;
+#else
+			rte_panic("Socket ID (%u) is greater than "
+				"RTE_MAX_NUMA_NODES (%d)\n",
+				lcore_config[lcore_id].socket_id, RTE_MAX_NUMA_NODES);
+#endif
+		RTE_LOG(DEBUG, EAL, "Detected lcore %u\n",
+				lcore_id);
+	}
 
-	return RTE_PER_LCORE(retval);
+	config->lcore_count = count;
+
+	return 0;
 }

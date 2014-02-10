@@ -53,6 +53,11 @@ test_parse_sysfs_value(void)
 	unsigned valid_number;
 	unsigned long retval = 0;
 
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD doesn't have /proc/pid/fd */
+	return 0;
+#endif
+
 	printf("Testing function eal_parse_sysfs_value()\n");
 
 	/* get a temporary filename to use for all tests - create temp file handle and then

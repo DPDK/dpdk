@@ -36,6 +36,14 @@
 
 #ifndef RTE_EXEC_ENV_BAREMETAL
 
+#ifdef RTE_EXEC_ENV_BSDAPP
+#define self "curproc"
+#define exe "file"
+#else
+#define self "self"
+#define exe "exe"
+#endif
+
 /*
  * launches a second copy of the test process using the given argv parameters,
  * which should include argv[0] as the process name. To identify in the
@@ -61,7 +69,7 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 		/* close all open file descriptors, check /proc/self/fd to only
 		 * call close on open fds. Exclude fds 0, 1 and 2*/
 		for (fd = getdtablesize(); fd > 2; fd-- ) {
-			rte_snprintf(path, sizeof(path), "/proc/self/fd/%d", fd);
+			rte_snprintf(path, sizeof(path), "/proc/" exe "/fd/%d", fd);
 			if (access(path, F_OK) == 0)
 				close(fd);
 		}
@@ -73,7 +81,7 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 		/* set the environment variable */
 		if (setenv(RECURSIVE_ENV_VAR, env_value, 1) != 0)
 			rte_panic("Cannot export environment variable\n");
-		if (execv("/proc/self/exe", argv_cpy) < 0)
+		if (execv("/proc/" self "/" exe, argv_cpy) < 0)
 			rte_panic("Cannot exec\n");
 	}
 	/* parent process does a wait */

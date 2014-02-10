@@ -31,44 +31,41 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
+#include <rte_common.h>
+#include <rte_interrupts.h>
+#include "eal_private.h"
 
-#include <rte_per_lcore.h>
-#include <rte_errno.h>
-#include <rte_string_fns.h>
-
-RTE_DEFINE_PER_LCORE(int, _rte_errno);
-
-const char *
-rte_strerror(int errnum)
+int
+rte_intr_callback_register(struct rte_intr_handle *intr_handle __rte_unused,
+			rte_intr_callback_fn cb __rte_unused, 
+			void *cb_arg __rte_unused)
 {
-#define RETVAL_SZ 256
-	static RTE_DEFINE_PER_LCORE(char[RETVAL_SZ], retval);
-
-	/* since some implementations of strerror_r throw an error
-	 * themselves if errnum is too big, we handle that case here */
-	if (errnum > RTE_MAX_ERRNO)
-		rte_snprintf(RTE_PER_LCORE(retval), RETVAL_SZ,
-#ifdef RTE_EXEC_ENV_BSDAPP
-				"Unknown error: %d", errnum);
-#else
-				"Unknown error %d", errnum);
-#endif
-	else
-		switch (errnum){
-		case E_RTE_SECONDARY:
-			return "Invalid call in secondary process";
-		case E_RTE_NO_CONFIG:
-			return "Missing rte_config structure";
-		case E_RTE_NO_TAILQ:
-			return "No TAILQ initialised";
-		default:
-			strerror_r(errnum, RTE_PER_LCORE(retval), RETVAL_SZ);
-		}
-
-	return RTE_PER_LCORE(retval);
+	return -ENOTSUP;
 }
+
+int
+rte_intr_callback_unregister(struct rte_intr_handle *intr_handle __rte_unused,
+			rte_intr_callback_fn cb_fn __rte_unused, 
+			void *cb_arg __rte_unused)
+{
+	return -ENOTSUP;
+}
+
+int
+rte_intr_enable(struct rte_intr_handle *intr_handle __rte_unused)
+{
+	return -ENOTSUP;
+}
+
+int
+rte_intr_disable(struct rte_intr_handle *intr_handle __rte_unused)
+{
+	return -ENOTSUP;
+}
+
+int
+rte_eal_intr_init(void)
+{
+	return 0;
+}
+

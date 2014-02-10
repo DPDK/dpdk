@@ -53,6 +53,7 @@
 #include <sys/wait.h>
 #include <libgen.h>
 #include <dirent.h>
+#include <limits.h>
 
 #include <rte_common.h>
 #include <rte_memory.h>
