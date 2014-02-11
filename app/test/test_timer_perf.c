@@ -31,6 +31,9 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "test.h"
+
+#ifdef RTE_LIBRTE_TIMER
 #include <stdio.h>
 #include <unistd.h>
 #include <inttypes.h>
@@ -40,7 +43,6 @@
 #include <rte_lcore.h>
 #include <rte_random.h>
 #include <rte_malloc.h>
-#include "test.h"
 
 #define MAX_ITERATIONS 1000000
 
@@ -156,3 +158,13 @@ test_timer_perf(void)
 
 	return 0;
 }
+
+#else
+
+int
+test_timer_perf(void)
+{
+	return 0;
+}
+
+#endif
