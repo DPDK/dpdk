@@ -80,6 +80,7 @@ static struct pci_device_id igbuio_pci_ids[] = {
 #define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) {PCI_DEVICE(vend, dev)},
 #define RTE_PCI_DEV_ID_DECL_IXGBEVF(vend, dev) {PCI_DEVICE(vend, dev)},
 #define RTE_PCI_DEV_ID_DECL_VIRTIO(vend, dev) {PCI_DEVICE(vend, dev)},
+#define RTE_PCI_DEV_ID_DECL_VMXNET3(vend, dev) {PCI_DEVICE(vend, dev)},
 #include <rte_pci_dev_ids.h>
 { 0, },
 };
