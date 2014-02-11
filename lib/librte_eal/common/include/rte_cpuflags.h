@@ -126,11 +126,13 @@ enum rte_cpu_flag_t {
 	/* (EAX 07h, ECX 0h) EBX features */
 	RTE_CPUFLAG_FSGSBASE,               /**< FSGSBASE */
 	RTE_CPUFLAG_BMI1,                   /**< BMI1 */
+	RTE_CPUFLAG_HLE,                    /**< Hardware Lock elision */
 	RTE_CPUFLAG_AVX2,                   /**< AVX2 */
 	RTE_CPUFLAG_SMEP,                   /**< SMEP */
 	RTE_CPUFLAG_BMI2,                   /**< BMI2 */
 	RTE_CPUFLAG_ERMS,                   /**< ERMS */
 	RTE_CPUFLAG_INVPCID,                /**< INVPCID */
+	RTE_CPUFLAG_RTM,                    /**< Transactional memory */
 
 	/* (EAX 80000001h) ECX features */
 	RTE_CPUFLAG_LAHF_SAHF,              /**< LAHF_SAHF */

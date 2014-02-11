@@ -161,11 +161,13 @@ static const struct feature_entry cpu_feature_table[] = {
 
 	{FEAT_DEF(FSGSBASE),          {0x7, 0, 0, 0, REG_EBX}, 0x00000001},
 	{FEAT_DEF(BMI1),              {0x7, 0, 0, 0, REG_EBX}, 0x00000004},
-	{FEAT_DEF(AVX2),              {0x7, 0, 0, 0, REG_EBX}, 0x00000010},
+	{FEAT_DEF(HLE),               {0x7, 0, 0, 0, REG_EBX}, 0x00000010},
+	{FEAT_DEF(AVX2),              {0x7, 0, 0, 0, REG_EBX}, 0x00000020},
 	{FEAT_DEF(SMEP),              {0x7, 0, 0, 0, REG_EBX}, 0x00000040},
 	{FEAT_DEF(BMI2),              {0x7, 0, 0, 0, REG_EBX}, 0x00000080},
 	{FEAT_DEF(ERMS),              {0x7, 0, 0, 0, REG_EBX}, 0x00000100},
 	{FEAT_DEF(INVPCID),           {0x7, 0, 0, 0, REG_EBX}, 0x00000400},
+	{FEAT_DEF(RTM),               {0x7, 0, 0, 0, REG_EBX}, 0x00000800},
 
 	{FEAT_DEF(LAHF_SAHF),  {0x80000001, 0, 0, 0, REG_ECX}, 0x00000001},
 	{FEAT_DEF(LZCNT),      {0x80000001, 0, 0, 0, REG_ECX}, 0x00000010},
