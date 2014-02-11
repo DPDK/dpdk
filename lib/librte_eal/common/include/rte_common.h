@@ -49,6 +49,7 @@ extern "C" {
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 
 /*********** Macros to eliminate unused variable warnings ********/
 
@@ -68,7 +69,7 @@ extern "C" {
 /**
  * add a byte-value offset from a pointer
  */
-#define RTE_PTR_ADD(ptr, x) ((typeof(ptr))((uintptr_t)ptr + (x)))
+#define RTE_PTR_ADD(ptr, x) ((typeof(ptr))((uintptr_t)(ptr) + (x)))
 
 /**
  * subtract a byte-value offset from a pointer
@@ -227,6 +228,29 @@ rte_align32pow2(uint32_t x)
 	return x + 1;
 }
 
+/**
+ * Aligns 64b input parameter to the next power of 2
+ *
+ * @param x
+ *   The 64b value to algin
+ *
+ * @return
+ *   Input parameter aligned to the next power of 2
+ */
+static inline uint64_t
+rte_align64pow2(uint64_t v)
+{
+	v--;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+	v |= v >> 32;
+
+	return v + 1;
+}
+
 /*********** Macros for calculating min and max **********/
 
 /**
@@ -289,6 +313,13 @@ rte_bsf32(uint32_t v)
 #define _RTE_STR(x) #x
 /** Take a macro value and get a string version of it */
 #define RTE_STR(x) _RTE_STR(x)
+
+/** Mask value of type <tp> for the first <ln> bit set. */
+#define	RTE_LEN2MASK(ln, tp)	\
+	((tp)((uint64_t)-1 >> (sizeof(uint64_t) * CHAR_BIT - (ln))))
+
+/** Number of elements in the array. */
+#define	RTE_DIM(a)	(sizeof (a) / sizeof ((a)[0]))
 
 /**
  * Converts a numeric string to the equivalent uint64_t value.
