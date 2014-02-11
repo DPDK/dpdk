@@ -130,6 +130,7 @@ static const struct rte_eth_rxconf rx_conf_default = {
 		.hthresh = RX_HTHRESH,
 		.wthresh = RX_WTHRESH,
 	},
+	.rx_drop_en = 1,
 };
 
 /*
@@ -472,7 +473,7 @@ sighup_handler(int signum)
  * Main thread that does the work, reading from INPUT_PORT
  * and writing to OUTPUT_PORT
  */
-static  __attribute__((noreturn)) int
+static int
 lcore_main(__attribute__((__unused__)) void* dummy)
 {
 	const uint16_t lcore_id = (uint16_t)rte_lcore_id();
@@ -503,6 +504,11 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 
 	printf("core %u(lcore %u) reading queues %i-%i\n", (unsigned)core_id, 
 		(unsigned)lcore_id, startQueue, endQueue - 1);
+
+	if (startQueue == endQueue) {
+		printf("lcore %u has nothing to do\n", lcore_id);
+		return (0);
+	}
 
 	for (;;) {
 		struct rte_mbuf *buf[MAX_PKT_BURST];

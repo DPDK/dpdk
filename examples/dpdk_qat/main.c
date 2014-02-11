@@ -159,6 +159,7 @@ static uint16_t nb_lcore_params = sizeof(lcore_params_array_default) /
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
+		.mq_mode	= ETH_MQ_RX_RSS,
 		.split_hdr_size = 0,
 		.header_split   = 0, /**< Header Split disabled */
 		.hw_ip_checksum = 1, /**< IP checksum offload enabled */

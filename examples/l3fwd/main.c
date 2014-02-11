@@ -215,6 +215,7 @@ static uint16_t nb_lcore_params = sizeof(lcore_params_array_default) /
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
+		.mq_mode = ETH_MQ_RX_RSS,
 		.max_rx_pkt_len = ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 		.header_split   = 0, /**< Header Split disabled */
@@ -1505,6 +1506,7 @@ populate_ipv4_many_flow_into_table(const struct rte_hash* h,
 		uint8_t b = (uint8_t) (((i/NUMBER_PORT_USED)/BYTE_VALUE_MAX)%BYTE_VALUE_MAX);
 		uint8_t c = (uint8_t) ((i/NUMBER_PORT_USED)/(BYTE_VALUE_MAX*BYTE_VALUE_MAX));
 		/* Create the ipv4 exact match flow */
+		memset(&entry, 0, sizeof(entry));
 		switch (i & (NUMBER_PORT_USED -1)) {
 		case 0:
 			entry = ipv4_l3fwd_route_array[0];
@@ -1548,6 +1550,7 @@ populate_ipv6_many_flow_into_table(const struct rte_hash* h,
 		uint8_t b = (uint8_t) (((i/NUMBER_PORT_USED)/BYTE_VALUE_MAX)%BYTE_VALUE_MAX);
 		uint8_t c = (uint8_t) ((i/NUMBER_PORT_USED)/(BYTE_VALUE_MAX*BYTE_VALUE_MAX));
 		/* Create the ipv6 exact match flow */
+		memset(&entry, 0, sizeof(entry));
 		switch (i & (NUMBER_PORT_USED - 1)) {
 		case 0: entry = ipv6_l3fwd_route_array[0]; break;
 		case 1: entry = ipv6_l3fwd_route_array[1]; break;

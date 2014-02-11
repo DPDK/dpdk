@@ -240,7 +240,7 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 {
 	struct rte_eth_conf port_conf = {
 			.rxmode = {
-				.mq_mode = ETH_MQ_RX_RSS,
+				.mq_mode	= ETH_MQ_RX_RSS,
 				.split_hdr_size = 0,
 				.header_split   = 0, /**< Header Split disabled */
 				.hw_ip_checksum = 1, /**< IP checksum offload enabled */
@@ -284,7 +284,7 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 	}
 
 	for (q = 0; q < tx_rings; q ++) {
-		retval = rte_eth_tx_queue_setup(port, q, RX_RING_SIZE,
+		retval = rte_eth_tx_queue_setup(port, q, TX_RING_SIZE,
 				rte_eth_dev_socket_id(port), &tx_conf_default);
 		if (retval < 0)
 			return retval;

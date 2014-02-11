@@ -163,6 +163,11 @@ static const struct rte_eth_txconf tx_conf = {
 	},
 	.tx_free_thresh = 0, /* Use PMD default values */
 	.tx_rs_thresh = 0, /* Use PMD default values */
+	/*
+	* As the example won't handle mult-segments and offload cases,
+	* set the flag by default.
+	*/
+	.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | ETH_TXQ_FLAGS_NOOFFLOADS,
 };
 
 struct rte_mempool * l2fwd_pktmbuf_pool = NULL;

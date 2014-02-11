@@ -82,6 +82,7 @@ static struct rte_mempool *pool = NULL;
  ***/
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
+		.mq_mode	= ETH_MQ_RX_RSS,
 		.max_rx_pkt_len = ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 		.header_split   = 0,
@@ -150,7 +151,6 @@ struct rte_meter_trtcm_params app_trtcm_params[] = {
 	{.cir = 1000000 * 46,  .pir = 1500000 * 46,  .cbs = 2048, .pbs = 2048},
 };
 
-#define DIM(a)   (sizeof (a) / sizeof ((a)[0]))
 #define APP_FLOWS_MAX  256
 
 FLOW_METER app_flows[APP_FLOWS_MAX];
@@ -160,7 +160,7 @@ app_configure_flow_table(void)
 {
 	uint32_t i, j;
 
-	for (i = 0, j = 0; i < APP_FLOWS_MAX; i ++, j = (j + 1) % DIM(PARAMS)){
+	for (i = 0, j = 0; i < APP_FLOWS_MAX; i ++, j = (j + 1) % RTE_DIM(PARAMS)){
 		FUNC_CONFIG(&app_flows[i], &PARAMS[j]);
 	}
 }

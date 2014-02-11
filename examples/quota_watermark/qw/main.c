@@ -97,7 +97,7 @@ static void send_pause_frame(uint8_t port_id, uint16_t duration)
     ether_addr_copy(&mac_addr, &hdr->s_addr);
 
     void *tmp = &hdr->d_addr.addr_bytes[0];
-    *((uint64_t *)tmp) = 0x010000C28001;
+    *((uint64_t *)tmp) = 0x010000C28001ULL;
 
     hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_FLOW_CONTROL);
 
