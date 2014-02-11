@@ -332,7 +332,7 @@ struct rte_acl_ipv4vlan_rule acl_test_rules[] = {
 		/* matches all packets with protocol that have 0x5 in them */
 		{
 				.data = {.userdata = 22, .category_mask = ACL_ALLOW_MASK,
-						.priority = 2},
+						.priority = 1},
 				.proto = 0x5,
 				.proto_mask = 0x5,
 				.src_port_low = 0,
