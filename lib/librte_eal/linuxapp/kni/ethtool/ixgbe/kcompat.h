@@ -2372,11 +2372,12 @@ static inline void __kc_skb_queue_head_init(struct sk_buff_head *list)
 }
 #define __skb_queue_head_init(_q) __kc_skb_queue_head_init(_q)
 #endif
+#endif /* < 2.6.28 */
+
 #ifndef skb_add_rx_frag
 #define skb_add_rx_frag _kc_skb_add_rx_frag
 extern void _kc_skb_add_rx_frag(struct sk_buff *, int, struct page *, int, int);
 #endif
-#endif /* < 2.6.28 */
 
 /*****************************************************************************/
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(2,6,29) )
@@ -3116,4 +3117,16 @@ typedef u32 netdev_features_t;
 #define NETIF_F_HW_VLAN_FILTER NETIF_F_HW_VLAN_CTAG_FILTER
 #endif /* >= 3.10.0 */
 
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0) )
+#ifdef CONFIG_PCI_IOV
+extern int __kc_pci_vfs_assigned(struct pci_dev *dev);
+#else
+static inline int __kc_pci_vfs_assigned(struct pci_dev *dev)
+{
+        return 0;
+}
+#endif
+#define pci_vfs_assigned(dev) __kc_pci_vfs_assigned(dev)
+
+#endif
 #endif /* _KCOMPAT_H_ */

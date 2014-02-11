@@ -1,7 +1,7 @@
 /*******************************************************************************
 
   Intel(R) Gigabit Ethernet Linux driver
-  Copyright(c) 2007-2012 Intel Corporation.
+  Copyright(c) 2007-2013 Intel Corporation.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms and conditions of the GNU General Public License,
@@ -59,12 +59,12 @@
  */
 
 #define IGB_PARAM(X, desc) \
-	static const int __devinitdata X[IGB_MAX_NIC+1] = IGB_PARAM_INIT; \
+	static const int X[IGB_MAX_NIC+1] = IGB_PARAM_INIT; \
 	MODULE_PARM(X, "1-" __MODULE_STRING(IGB_MAX_NIC) "i"); \
 	MODULE_PARM_DESC(X, desc);
 #else
 #define IGB_PARAM(X, desc) \
-	static int __devinitdata X[IGB_MAX_NIC+1] = IGB_PARAM_INIT; \
+	static int X[IGB_MAX_NIC+1] = IGB_PARAM_INIT; \
 	static unsigned int num_##X; \
 	module_param_array_named(X, X, int, &num_##X, 0); \
 	MODULE_PARM_DESC(X, desc);
@@ -134,7 +134,7 @@ IGB_PARAM(LLISize, "Low Latency Interrupt on Packet Size (0-1500), default 0=off
  *
  * Default Value:  1
  */
-IGB_PARAM(RSS, "Number of Receive-Side Scaling Descriptor Queues (0-8), default 1=number of cpus");
+IGB_PARAM(RSS, "Number of Receive-Side Scaling Descriptor Queues (0-8), default 1, 0=number of cpus");
 
 #define DEFAULT_RSS       1
 #define MAX_RSS           8
@@ -175,6 +175,25 @@ IGB_PARAM(max_vfs, "Number of Virtual Functions: 0 = disable, 1-7 enable, defaul
 IGB_PARAM(MDD, "Malicious Driver Detection (0/1), default 1 = enabled. "
 	  "Only available when max_vfs is greater than 0");
 
+#ifdef DEBUG
+
+/* Disable Hardware Reset on Tx Hang
+ *
+ * Valid Range: 0, 1
+ *
+ * Default Value: 0 (disabled, i.e. h/w will reset)
+ */
+IGB_PARAM(DisableHwReset, "Disable reset of hardware on Tx hang");
+
+/* Dump Transmit and Receive buffers
+ *
+ * Valid Range: 0, 1
+ *
+ * Default Value: 0
+ */
+IGB_PARAM(DumpBuffers, "Dump Tx/Rx buffers on Tx hang or by request");
+
+#endif /* DEBUG */
 
 /* QueuePairs (Enable TX/RX queue pairs for interrupt handling)
  *
@@ -182,7 +201,7 @@ IGB_PARAM(MDD, "Malicious Driver Detection (0/1), default 1 = enabled. "
  *
  * Default Value:  1
  */
-IGB_PARAM(QueuePairs, "Enable TX/RX queue pairs for interrupt handling (0,1), default 1=on");
+IGB_PARAM(QueuePairs, "Enable Tx/Rx queue pairs for interrupt handling (0,1), default 1=on");
 
 #define DEFAULT_QUEUE_PAIRS           1
 #define MAX_QUEUE_PAIRS               1
@@ -236,9 +255,9 @@ struct igb_option {
 	} arg;
 };
 
-static int __devinit igb_validate_option(unsigned int *value,
-                                         struct igb_option *opt,
-                                         struct igb_adapter *adapter)
+static int igb_validate_option(unsigned int *value,
+			       struct igb_option *opt,
+			       struct igb_adapter *adapter)
 {
 	if (*value == OPTION_UNSET) {
 		*value = opt->def;
@@ -297,7 +316,7 @@ static int __devinit igb_validate_option(unsigned int *value,
  * in a variable in the adapter structure.
  **/
 
-void __devinit igb_check_options(struct igb_adapter *adapter)
+void igb_check_options(struct igb_adapter *adapter)
 {
 	int bd = adapter->bd_number;
 	struct e1000_hw *hw = &adapter->hw;
@@ -330,7 +349,7 @@ void __devinit igb_check_options(struct igb_adapter *adapter)
 			case 0:
 				DPRINTK(PROBE, INFO, "%s turned off\n",
 				        opt.name);
-				if(hw->mac.type >= e1000_i350)
+				if (hw->mac.type >= e1000_i350)
 					adapter->dmac = IGB_DMAC_DISABLE;
 				adapter->rx_itr_setting = itr;
 				break;
@@ -489,6 +508,9 @@ void __devinit igb_check_options(struct igb_adapter *adapter)
 			switch (hw->mac.type) {
 			case e1000_82575:
 			case e1000_82580:
+			case e1000_i210:
+			case e1000_i211:
+			case e1000_i354:
 				adapter->vfs_allocated_count = 0;
 				DPRINTK(PROBE, INFO, "SR-IOV option max_vfs not supported.\n");
 			default:
@@ -505,6 +527,8 @@ void __devinit igb_check_options(struct igb_adapter *adapter)
 			.arg  = { .r = { .min = MIN_VMDQ,
 					 .max = (MAX_VMDQ - adapter->vfs_allocated_count) } }
 		};
+		if ((hw->mac.type != e1000_i210) ||
+		    (hw->mac.type != e1000_i211)) {
 #ifdef module_param_array
 		if (num_VMDQ > bd) {
 #endif
@@ -529,6 +553,11 @@ void __devinit igb_check_options(struct igb_adapter *adapter)
 			adapter->vmdq_pools = 0;
 		}
 #endif
+
+	} else {
+		DPRINTK(PROBE, INFO, "VMDq option is not supported.\n");
+		adapter->vmdq_pools = opt.def;
+	}
 	}
 	{ /* RSS - Enable RSS multiqueue receives */
 		struct igb_option opt = {
@@ -540,30 +569,48 @@ void __devinit igb_check_options(struct igb_adapter *adapter)
 					 .max = MAX_RSS } }
 		};
 
-		if (adapter->vmdq_pools) {
-			switch (hw->mac.type) {
-#ifndef CONFIG_IGB_VMDQ_NETDEV
-			case e1000_82576:
-				opt.arg.r.max = 2;
-				break;
-			case e1000_82575:
-				if (adapter->vmdq_pools == 2)
-					opt.arg.r.max = 3;
-				if (adapter->vmdq_pools <= 2)
-					break;
-#endif
-			default:
-				opt.arg.r.max = 1;
-				break;
-			}
-		}
-
 		switch (hw->mac.type) {
 		case e1000_82575:
+#ifndef CONFIG_IGB_VMDQ_NETDEV
+			if (!!adapter->vmdq_pools) {
+				if (adapter->vmdq_pools <= 2) {
+					if (adapter->vmdq_pools == 2)
+						opt.arg.r.max = 3;
+				} else {
+					opt.arg.r.max = 1;
+				}
+			} else {
+				opt.arg.r.max = 4;
+			}
+#else
+			opt.arg.r.max = !!adapter->vmdq_pools ? 1 : 4;
+#endif /* CONFIG_IGB_VMDQ_NETDEV */
+			break;
+		case e1000_i210:
 			opt.arg.r.max = 4;
 			break;
-		default:
+		case e1000_i211:
+			opt.arg.r.max = 2;
 			break;
+		case e1000_82576:
+#ifndef CONFIG_IGB_VMDQ_NETDEV
+			if (!!adapter->vmdq_pools)
+				opt.arg.r.max = 2;
+			break;
+#endif /* CONFIG_IGB_VMDQ_NETDEV */
+		case e1000_82580:
+		case e1000_i350:
+		case e1000_i354:
+		default:
+			if (!!adapter->vmdq_pools)
+				opt.arg.r.max = 1;
+			break;
+		}
+
+		if (adapter->int_mode != IGB_INT_MODE_MSIX) {
+			DPRINTK(PROBE, INFO, "RSS is not supported when in MSI/Legacy Interrupt mode, %s\n",
+				opt.err);
+			opt.arg.r.max = 1;
 		}
 
 #ifdef module_param_array
@@ -587,10 +634,10 @@ void __devinit igb_check_options(struct igb_adapter *adapter)
 		}
 #endif
 	}
-	{ /* QueuePairs - Enable TX/RX queue pairs for interrupt handling */
+	{ /* QueuePairs - Enable Tx/Rx queue pairs for interrupt handling */
 		struct igb_option opt = {
 			.type = enable_option,
-			.name = "QueuePairs - TX/RX queue pairs for interrupt handling",
+			.name = "QueuePairs - Tx/Rx queue pairs for interrupt handling",
 			.err  = "defaulting to Enabled",
 			.def  = OPTION_ENABLED
 		};
@@ -599,20 +646,32 @@ void __devinit igb_check_options(struct igb_adapter *adapter)
 #endif
 			unsigned int qp = QueuePairs[bd];
 			/*
-			 * we must enable queue pairs if the number of queues
-			 * exceeds the number of avaialble interrupts.  We are
-			 * limited to 10, or 3 per unallocated vf.
+			 * We must enable queue pairs if the number of queues
+			 * exceeds the number of available interrupts. We are
+			 * limited to 10, or 3 per unallocated vf. On I210 and
+			 * I211 devices, we are limited to 5 interrupts.
+			 * However, since I211 only supports 2 queues, we do not
+			 * need to check and override the user option.
 			 */
-			if ((adapter->rss_queues > 4) ||
-			    (adapter->vmdq_pools > 4) ||
-			    ((adapter->rss_queues > 1) &&
-			     ((adapter->vmdq_pools > 3) ||
-			      (adapter->vfs_allocated_count > 6)))) {
-				if (qp == OPTION_DISABLED) {
+			if (qp == OPTION_DISABLED) {
+				if (adapter->rss_queues > 4)
 					qp = OPTION_ENABLED;
-					DPRINTK(PROBE, INFO,
-					        "Number of queues exceeds available interrupts, %s\n",opt.err);
-				}
+
+				if (adapter->vmdq_pools > 4)
+					qp = OPTION_ENABLED;
+
+				if (adapter->rss_queues > 1 &&
+				    (adapter->vmdq_pools > 3 ||
+				     adapter->vfs_allocated_count > 6))
+					qp = OPTION_ENABLED;
+
+				if (hw->mac.type == e1000_i210 &&
+				    adapter->rss_queues > 2)
+					qp = OPTION_ENABLED;
+
+				if (qp == OPTION_ENABLED)
+					DPRINTK(PROBE, INFO, "Number of queues exceeds available interrupts, %s\n",
+						opt.err);
 			}
 			igb_validate_option(&qp, &opt, adapter);
 			adapter->flags |= qp ? IGB_FLAG_QUEUE_PAIRS : 0;
@@ -762,52 +821,6 @@ void __devinit igb_check_options(struct igb_adapter *adapter)
 #endif
 	}
 #endif /* IGB_NO_LRO */
-	{ /* Node assignment */
-		static struct igb_option opt = {
-			.type = range_option,
-			.name = "Node to start on",
-			.err  = "defaulting to -1",
-#ifdef HAVE_EARLY_VMALLOC_NODE
-			.def  = 0,
-#else
-			.def  = -1,
-#endif
-			.arg  = { .r = { .min = 0,
-					 .max = (MAX_NUMNODES - 1)}}
-		};
-		int node_param = opt.def;
-
-		/* if the default was zero then we need to set the
-		 * default value to an online node, which is not
-		 * necessarily zero, and the constant initializer
-		 * above can't take first_online_node */
-		if (node_param == 0)
-			/* must set opt.def for validate */
-			opt.def = node_param = first_online_node;
-
-#ifdef module_param_array
-		if (num_Node > bd) {
-#endif
-			node_param = Node[bd];
-			igb_validate_option((uint *)&node_param, &opt, adapter);
-
-			if (node_param != OPTION_UNSET) {
-				DPRINTK(PROBE, INFO, "node set to %d\n", node_param);
-			}
-#ifdef module_param_array
-		}
-#endif
-
-		/* check sanity of the value */
-		if (node_param != -1 && !node_online(node_param)) {
-			DPRINTK(PROBE, INFO,
-			        "ignoring node set to invalid value %d\n",
-			        node_param);
-			node_param = opt.def;
-		}
-
-		adapter->node = node_param;
-	}
 	{ /* MDD - Enable Malicious Driver Detection. Only available when
 	     SR-IOV is enabled. */
 		struct igb_option opt = {

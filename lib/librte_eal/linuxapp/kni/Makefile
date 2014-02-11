@@ -61,6 +61,7 @@ SRCS-y += ethtool/ixgbe/ixgbe_phy.c
 SRCS-y += ethtool/ixgbe/kcompat.c
 
 SRCS-y += ethtool/igb/e1000_82575.c
+SRCS-y += ethtool/igb/e1000_i210.c
 SRCS-y += ethtool/igb/e1000_api.c
 SRCS-y += ethtool/igb/e1000_mac.c
 SRCS-y += ethtool/igb/e1000_manage.c
@@ -68,11 +69,13 @@ SRCS-y += ethtool/igb/e1000_mbx.c
 SRCS-y += ethtool/igb/e1000_nvm.c
 SRCS-y += ethtool/igb/e1000_phy.c
 SRCS-y += ethtool/igb/igb_ethtool.c
+SRCS-y += ethtool/igb/igb_hwmon.c
 SRCS-y += ethtool/igb/igb_main.c
+SRCS-y += ethtool/igb/igb_debugfs.c
 SRCS-y += ethtool/igb/igb_param.c
 SRCS-y += ethtool/igb/igb_procfs.c
-SRCS-y += ethtool/igb/igb_sysfs.c
 SRCS-y += ethtool/igb/igb_vmdq.c
+#SRCS-y += ethtool/igb/igb_ptp.c
 #SRCS-y += ethtool/igb/kcompat.c
 
 SRCS-y += kni_misc.c

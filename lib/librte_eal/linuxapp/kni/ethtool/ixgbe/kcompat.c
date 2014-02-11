@@ -378,6 +378,56 @@ int _kc_snprintf(char * buf, size_t size, const char *fmt, ...)
 }
 #endif /* < 2.4.8 */
 
+
+
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0) )
+#ifdef CONFIG_PCI_IOV
+int __kc_pci_vfs_assigned(struct pci_dev *dev)
+{
+        unsigned int vfs_assigned = 0;
+#ifdef HAVE_PCI_DEV_FLAGS_ASSIGNED
+        int pos;
+        struct pci_dev *vfdev;
+        unsigned short dev_id;
+
+        /* only search if we are a PF */
+        if (!dev->is_physfn)
+                return 0;
+
+        /* find SR-IOV capability */
+        pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_SRIOV);
+        if (!pos)
+                return 0;
+
+        /*
+ *          * determine the device ID for the VFs, the vendor ID will be the
+ *                   * same as the PF so there is no need to check for that one
+ *                            */
+        pci_read_config_word(dev, pos + PCI_SRIOV_VF_DID, &dev_id);
+
+        /* loop through all the VFs to see if we own any that are assigned */
+       vfdev = pci_get_device(dev->vendor, dev_id, NULL);
+        while (vfdev) {
+                /*
+ *                  * It is considered assigned if it is a virtual function with
+ *                                   * our dev as the physical function and the assigned bit is set
+ *                                                    */
+               if (vfdev->is_virtfn && (vfdev->physfn == dev) &&
+                   (vfdev->dev_flags & PCI_DEV_FLAGS_ASSIGNED))
+                       vfs_assigned++;
+
+               vfdev = pci_get_device(dev->vendor, dev_id, vfdev);
+       }
+
+#endif /* HAVE_PCI_DEV_FLAGS_ASSIGNED */
+        return vfs_assigned;
+}
+
+#endif /* CONFIG_PCI_IOV */
+#endif /* 3.10.0 */
+
+
+
 /*****************************************************************************/
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(2,4,13) )
 
@@ -1040,7 +1090,9 @@ _kc_pci_wake_from_d3(struct pci_dev *dev, bool enable)
 out:
 	return err;
 }
+#endif /* < 2.6.28 */
 
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,4,0) )
 void _kc_skb_add_rx_frag(struct sk_buff *skb, int i, struct page *page,
 			 int off, int size)
 {
@@ -1049,7 +1101,7 @@ void _kc_skb_add_rx_frag(struct sk_buff *skb, int i, struct page *page,
 	skb->data_len += size;
 	skb->truesize += size;
 }
-#endif /* < 2.6.28 */
+#endif /* < 3.4.0 */
 
 /*****************************************************************************/
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(2,6,30) )
