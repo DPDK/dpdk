@@ -43,8 +43,8 @@ def num_sockets():
 		return 1
 	return result
 
-# multiply given number for all sockets
-# e.g. 32 becomes 32,32 or 32,32,32,32 etc.
+# spread given number for all sockets
+# e.g. 32 becomes 16,16 or 8,8,8,8 etc.
 def all_sockets(num):
 	mem_per_socket = num / num_sockets()
 	return ",".join([str(mem_per_socket)] * num_sockets())
@@ -165,7 +165,7 @@ parallel_test_group_list = [
 },
 {
 	"Prefix":	"group_3",
-	"Memory" :	all_sockets(256),
+	"Memory" :	all_sockets(1024),
 	"Tests" :	
 	[
 		{
@@ -444,19 +444,6 @@ non_parallel_test_group_list = [
 	]
 },
 {
-	"Prefix":	"ring_perf",
-	"Memory" :	all_sockets(512),
-	"Tests" :	
-	[
-		{
-		 "Name" :	"Ring performance autotest",
-		 "Command" : 	"ring_perf_autotest",
-		 "Func" :	default_autotest,
-		 "Report" :	None,
-		},
-	]
-},
-{
 	"Prefix":	"timer_perf",
 	"Memory" :	all_sockets(512),
 	"Tests" :	
@@ -464,6 +451,23 @@ non_parallel_test_group_list = [
 		{
 		 "Name" :	"Timer performance autotest",
 		 "Command" : 	"timer_perf_autotest",
+		 "Func" :	default_autotest,
+		 "Report" :	None,
+		},
+	]
+},
+							
+#
+# Please always make sure that ring_perf is the last test!
+#
+{
+	"Prefix":	"ring_perf",
+	"Memory" :	all_sockets(512),
+	"Tests" :	
+	[
+		{
+		 "Name" :	"Ring performance autotest",
+		 "Command" : 	"ring_perf_autotest",
 		 "Func" :	default_autotest,
 		 "Report" :	None,
 		},
