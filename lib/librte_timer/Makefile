@@ -34,7 +34,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # library name
 LIB = librte_timer.a
 
-CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
+CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_TIMER) := rte_timer.c
