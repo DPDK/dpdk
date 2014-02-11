@@ -82,6 +82,7 @@ struct rte_memzone {
 	int32_t socket_id;                /**< NUMA socket ID. */
 
 	uint32_t flags;                   /**< Characteristics of this memzone. */
+	uint32_t memseg_id;             /** <store the memzone is from which memseg. */
 } __attribute__((__packed__));
 
 /**
@@ -142,8 +143,6 @@ const struct rte_memzone *rte_memzone_reserve(const char *name,
  * @param len
  *   The size of the memory to be reserved. If it
  *   is 0, the biggest contiguous zone will be reserved.
- * @param align
- *   Alignment for resulting memzone. Must be a power of 2.
  * @param socket_id
  *   The socket identifier in the case of
  *   NUMA. The value can be SOCKET_ID_ANY if there is no NUMA
@@ -158,6 +157,8 @@ const struct rte_memzone *rte_memzone_reserve(const char *name,
  *                                  If this flag is not set, the function
  *                                  will return error on an unavailable size
  *                                  request.
+ * @param align
+ *   Alignment for resulting memzone. Must be a power of 2.
  * @return
  *   A pointer to a correctly-filled read-only memzone descriptor, or NULL
  *   on error.
@@ -170,8 +171,61 @@ const struct rte_memzone *rte_memzone_reserve(const char *name,
  *    - EINVAL - invalid parameters
  */
 const struct rte_memzone *rte_memzone_reserve_aligned(const char *name,
-					      size_t len, int socket_id, unsigned flags,
-					      unsigned align);
+			size_t len, int socket_id,
+			unsigned flags, unsigned align);
+
+/**
+ * Reserve a portion of physical memory with specified alignment and
+ * boundary.
+ *
+ * This function reserves some memory with specified alignment and
+ * boundary, and returns a pointer to a correctly filled memzone
+ * descriptor. If the allocation cannot be done or if the alignment
+ * or boundary are not a power of 2, returns NULL.
+ * Memory buffer is reserved in a way, that it wouldn't cross specified
+ * boundary. That implies that requested length should be less or equal
+ * then boundary.
+ * Note: A reserved zone cannot be freed.
+ *
+ * @param name
+ *   The name of the memzone. If it already exists, the function will
+ *   fail and return NULL.
+ * @param len
+ *   The size of the memory to be reserved. If it
+ *   is 0, the biggest contiguous zone will be reserved.
+ * @param socket_id
+ *   The socket identifier in the case of
+ *   NUMA. The value can be SOCKET_ID_ANY if there is no NUMA
+ *   constraint for the reserved zone.
+ * @param flags
+ *   The flags parameter is used to request memzones to be
+ *   taken from 1GB or 2MB hugepages.
+ *   - RTE_MEMZONE_2MB - Reserve from 2MB pages
+ *   - RTE_MEMZONE_1GB - Reserve from 1GB pages
+ *   - RTE_MEMZONE_SIZE_HINT_ONLY - Allow alternative page size to be used if
+ *                                  the requested page size is unavailable.
+ *                                  If this flag is not set, the function
+ *                                  will return error on an unavailable size
+ *                                  request.
+ * @param align
+ *   Alignment for resulting memzone. Must be a power of 2.
+ * @param bound
+ *   Boundary for resulting memzone. Must be a power of 2 or zero.
+ *   Zero value implies no boundary condition.
+ * @return
+ *   A pointer to a correctly-filled read-only memzone descriptor, or NULL
+ *   on error.
+ *   On error case, rte_errno will be set appropriately:
+ *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
+ *    - E_RTE_SECONDARY - function was called from a secondary process instance
+ *    - ENOSPC - the maximum number of memzones has already been allocated
+ *    - EEXIST - a memzone with the same name already exists
+ *    - ENOMEM - no appropriate memory area found in which to create memzone
+ *    - EINVAL - invalid parameters
+ */
+const struct rte_memzone *rte_memzone_reserve_bounded(const char *name,
+			size_t len, int socket_id,
+			unsigned flags, unsigned align, unsigned bound);
 
 /**
  * Lookup for a memzone.

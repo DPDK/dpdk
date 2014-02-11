@@ -89,14 +89,49 @@ rte_memzone_reserve(const char *name, size_t len, int socket_id,
 			len, socket_id, flags, CACHE_LINE_SIZE);
 }
 
+/*
+ * Helper function for memzone_reserve_aligned_thread_unsafe().
+ * Calculate address offset from the start of the segment.
+ * Align offset in that way that it satisfy istart alignmnet and
+ * buffer of the  requested length would not cross specified boundary.
+ */
+static inline phys_addr_t
+align_phys_boundary(const struct rte_memseg *ms, size_t len, size_t align,
+	size_t bound)
+{
+	phys_addr_t addr_offset, bmask, end, start;
+	size_t step;
+
+	step = RTE_MAX(align, bound);
+	bmask = ~((phys_addr_t)bound - 1);
+
+	/* calculate offset to closest alignment */
+	start = RTE_ALIGN_CEIL(ms->phys_addr, align);
+	addr_offset = start - ms->phys_addr;
+
+	while (addr_offset + len < ms->len) {
+
+		/* check, do we meet boundary condition */
+		end = start + len - (len != 0);
+		if ((start & bmask) == (end & bmask))
+			break;
+
+		/* calculate next offset */
+		start = RTE_ALIGN_CEIL(start + 1, step);
+		addr_offset = start - ms->phys_addr;
+	}
+
+	return (addr_offset);
+}
+
 static const struct rte_memzone *
 memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
-		int socket_id, unsigned flags, unsigned align)
+		int socket_id, unsigned flags, unsigned align, unsigned bound)
 {
 	struct rte_mem_config *mcfg;
 	unsigned i = 0;
 	int memseg_idx = -1;
-	uint64_t addr_offset;
+	uint64_t addr_offset, seg_offset = 0;
 	size_t requested_len;
 	size_t memseg_len = 0;
 	phys_addr_t memseg_physaddr;
@@ -120,20 +155,37 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		return NULL;
 	}
 
+	/* if alignment is not a power of two */
+	if (!rte_is_power_of_2(align)) {
+		RTE_LOG(ERR, EAL, "%s(): Invalid alignment: %u\n", __func__,
+				align);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	/* alignment less than cache size is not allowed */
+	if (align < CACHE_LINE_SIZE)
+		align = CACHE_LINE_SIZE;
+
+
 	/* align length on cache boundary. Check for overflow before doing so */
 	if (len > SIZE_MAX - CACHE_LINE_MASK) {
 		rte_errno = EINVAL; /* requested size too big */
 		return NULL;
 	}
+
 	len += CACHE_LINE_MASK;
 	len &= ~((size_t) CACHE_LINE_MASK);
 
-	/* save requested length */
-	requested_len = len;
+	/* save minimal requested  length */
+	requested_len = RTE_MAX((size_t)CACHE_LINE_SIZE,  len);
 
-	/* reserve extra space for future alignment */
-	if (len)
-		len += align;
+	/* check that boundary condition is valid */
+	if (bound != 0 &&
+			(requested_len > bound || !rte_is_power_of_2(bound))) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
 
 	/* find the smallest segment matching requirements */
 	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
@@ -150,8 +202,15 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		    socket_id != free_memseg[i].socket_id)
 			continue;
 
+		/*
+		 * calculate offset to closest alignment that
+		 * meets boundary conditions.
+		 */
+		addr_offset = align_phys_boundary(free_memseg + i,
+			requested_len, align, bound);
+
 		/* check len */
-		if (len != 0 && len > free_memseg[i].len)
+		if ((requested_len + addr_offset) > free_memseg[i].len)
 			continue;
 
 		/* check flags for hugepage sizes */
@@ -166,21 +225,26 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		if (memseg_idx == -1) {
 			memseg_idx = i;
 			memseg_len = free_memseg[i].len;
+			seg_offset = addr_offset;
 		}
 		/* find the biggest contiguous zone */
 		else if (len == 0) {
 			if (free_memseg[i].len > memseg_len) {
 				memseg_idx = i;
 				memseg_len = free_memseg[i].len;
+				seg_offset = addr_offset;
 			}
 		}
 		/*
 		 * find the smallest (we already checked that current
 		 * zone length is > len
 		 */
-		else if (free_memseg[i].len < memseg_len) {
+		else if (free_memseg[i].len + align < memseg_len ||
+				(free_memseg[i].len <= memseg_len + align &&
+				addr_offset < seg_offset)) {
 			memseg_idx = i;
 			memseg_len = free_memseg[i].len;
+			seg_offset = addr_offset;
 		}
 	}
 
@@ -192,8 +256,8 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		 */
 		if ((flags & RTE_MEMZONE_SIZE_HINT_ONLY)  &&
 		    ((flags & RTE_MEMZONE_1GB) || (flags & RTE_MEMZONE_2MB)))
-			return memzone_reserve_aligned_thread_unsafe(name, len - align,
-					socket_id, 0, align);
+			return memzone_reserve_aligned_thread_unsafe(name,
+				len, socket_id, 0, align, bound);
 
 		RTE_LOG(ERR, EAL, "%s(%s, %zu, %d): "
 			"No appropriate segment found\n",
@@ -202,21 +266,22 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		return NULL;
 	}
 
-	/* get offset needed to adjust alignment */
-	addr_offset = RTE_ALIGN_CEIL(free_memseg[memseg_idx].phys_addr, align) -
-			free_memseg[memseg_idx].phys_addr;
-
 	/* save aligned physical and virtual addresses */
-	memseg_physaddr = free_memseg[memseg_idx].phys_addr + addr_offset;
+	memseg_physaddr = free_memseg[memseg_idx].phys_addr + seg_offset;
 	memseg_addr = RTE_PTR_ADD(free_memseg[memseg_idx].addr,
-			(uintptr_t) addr_offset);
+			(uintptr_t) seg_offset);
 
 	/* if we are looking for a biggest memzone */
-	if (requested_len == 0)
-		requested_len = memseg_len - addr_offset;
+	if (len == 0) {
+		if (bound == 0)
+			requested_len = memseg_len - seg_offset;
+		else
+			requested_len = RTE_ALIGN_CEIL(memseg_physaddr + 1,
+				bound) - memseg_physaddr;
+	}
 
 	/* set length to correct value */
-	len = (size_t)addr_offset + requested_len;
+	len = (size_t)seg_offset + requested_len;
 
 	/* update our internal state */
 	free_memseg[memseg_idx].len -= len;
@@ -233,6 +298,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	mz->hugepage_sz = free_memseg[memseg_idx].hugepage_sz;
 	mz->socket_id = free_memseg[memseg_idx].socket_id;
 	mz->flags = 0;
+	mz->memseg_id = memseg_idx;
 
 	return mz;
 }
@@ -254,17 +320,36 @@ rte_memzone_reserve_aligned(const char *name, size_t len,
 		return NULL;
 	}
 
-	/* if alignment is not a power of two */
-	if (!rte_is_power_of_2(align)) {
-		RTE_LOG(ERR, EAL, "%s(): Invalid alignment: %u\n", __func__,
-				align);
+	/* get pointer to global configuration */
+	mcfg = rte_eal_get_configuration()->mem_config;
+
+	rte_rwlock_write_lock(&mcfg->mlock);
+
+	mz = memzone_reserve_aligned_thread_unsafe(
+		name, len, socket_id, flags, align, 0);
+
+	rte_rwlock_write_unlock(&mcfg->mlock);
+
+	return mz;
+}
+
+/*
+ * Return a pointer to a correctly filled memzone descriptor (with a
+ * specified alignment and boundary).
+ * If the allocation cannot be done, return NULL.
+ */
+const struct rte_memzone *
+rte_memzone_reserve_bounded(const char *name, size_t len,
+		int socket_id, unsigned flags, unsigned align, unsigned bound)
+{
+	struct rte_mem_config *mcfg;
+	const struct rte_memzone *mz = NULL;
+
+	/* both sizes cannot be explicitly called for */
+	if ((flags & RTE_MEMZONE_1GB) && (flags & RTE_MEMZONE_2MB)) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
-
-	/* alignment less than cache size is not allowed */
-	if (align < CACHE_LINE_SIZE)
-		align = CACHE_LINE_SIZE;
 
 	/* get pointer to global configuration */
 	mcfg = rte_eal_get_configuration()->mem_config;
@@ -272,12 +357,13 @@ rte_memzone_reserve_aligned(const char *name, size_t len,
 	rte_rwlock_write_lock(&mcfg->mlock);
 
 	mz = memzone_reserve_aligned_thread_unsafe(
-		name, len, socket_id, flags, align);
+		name, len, socket_id, flags, align, bound);
 
 	rte_rwlock_write_unlock(&mcfg->mlock);
 
 	return mz;
 }
+
 
 /*
  * Lookup for the memzone identified by the given name
