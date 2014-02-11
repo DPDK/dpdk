@@ -64,6 +64,12 @@ LDLIBS += -lrte_kni
 endif
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_IVSHMEM),y)
+ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
+LDLIBS += -lrte_ivshmem
+endif
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_E1000_PMD),y)
 LDLIBS += -lrte_pmd_e1000
 endif

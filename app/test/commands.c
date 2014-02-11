@@ -184,6 +184,8 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret |= test_power();
 	if (all || !strcmp(res->autotest, "common_autotest"))
 		ret |= test_common();
+	if (all || !strcmp(res->autotest, "ivshmem_autotest"))
+		ret = test_ivshmem();
 #ifdef RTE_LIBRTE_PMD_RING
 	if (all || !strcmp(res->autotest, "ring_pmd_autotest"))
 		ret |= test_pmd_ring();
@@ -224,7 +226,7 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"memcpy_perf_autotest#ring_perf_autotest#"
 			"red_autotest#meter_autotest#sched_autotest#"
 			"memcpy_perf_autotest#kni_autotest#"
-			"pm_autotest#"
+			"pm_autotest#ivshmem_autotest#"
 #ifdef RTE_LIBRTE_ACL
 			"acl_autotest#"
 #endif

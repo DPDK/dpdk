@@ -41,6 +41,7 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_ring
 CFLAGS += -I$(RTE_SDK)/lib/librte_mempool
 CFLAGS += -I$(RTE_SDK)/lib/librte_malloc
 CFLAGS += -I$(RTE_SDK)/lib/librte_ether
+CFLAGS += -I$(RTE_SDK)/lib/librte_ivshmem
 CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_ring
 CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_pcap
 CFLAGS += $(WERROR_FLAGS) -O3
@@ -57,6 +58,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_lcore.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_timer.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_interrupts.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_alarm.c
+ifeq ($(CONFIG_RTE_LIBRTE_IVSHMEM),y)
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_ivshmem.c
+endif
 
 # from common dir
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_memzone.c
@@ -75,6 +79,9 @@ CFLAGS_eal.o := -D_GNU_SOURCE
 CFLAGS_eal_thread.o := -D_GNU_SOURCE
 CFLAGS_eal_log.o := -D_GNU_SOURCE
 CFLAGS_eal_common_log.o := -D_GNU_SOURCE
+CFLAGS_eal_hugepage_info.o := -D_GNU_SOURCE
+CFLAGS_eal_pci.o := -D_GNU_SOURCE
+CFLAGS_eal_common_whitelist.o := -D_GNU_SOURCE
 
 # workaround for a gcc bug with noreturn attribute
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603

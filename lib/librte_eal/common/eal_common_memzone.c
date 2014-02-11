@@ -479,11 +479,17 @@ rte_eal_memzone_init(void)
 
 	rte_rwlock_write_lock(&mcfg->mlock);
 
-	/* duplicate the memsegs from config */
-	memcpy(free_memseg, memseg, sizeof(struct rte_memseg) * RTE_MAX_MEMSEG);
+	/* fill in uninitialized free_memsegs */
+	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
+		if (memseg[i].addr == NULL)
+			break;
+		if (free_memseg[i].addr != NULL)
+			continue;
+		memcpy(&free_memseg[i], &memseg[i], sizeof(struct rte_memseg));
+	}
 
 	/* make all zones cache-aligned */
-	for (i=0; i<RTE_MAX_MEMSEG; i++) {
+	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
 		if (free_memseg[i].addr == NULL)
 			break;
 		if (memseg_sanitize(&free_memseg[i]) < 0) {

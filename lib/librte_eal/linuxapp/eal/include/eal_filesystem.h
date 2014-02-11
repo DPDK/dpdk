@@ -46,6 +46,8 @@
 #include <stdint.h>
 #include <limits.h>
 #include <unistd.h>
+#include <stdlib.h>
+
 #include <rte_string_fns.h>
 #include "eal_internal_cfg.h"
 
@@ -84,6 +86,7 @@ eal_hugepage_info_path(void)
 
 /** String format for hugepage map files. */
 #define HUGEFILE_FMT "%s/%smap_%d"
+#define TEMP_HUGEFILE_FMT "%s/%smap_temp_%d"
 
 static inline const char *
 eal_get_hugefile_path(char *buffer, size_t buflen, const char *hugedir, int f_id)
@@ -93,6 +96,17 @@ eal_get_hugefile_path(char *buffer, size_t buflen, const char *hugedir, int f_id
 	buffer[buflen - 1] = '\0';
 	return buffer;
 }
+
+#ifdef RTE_EAL_SINGLE_FILE_SEGMENTS
+static inline const char *
+eal_get_hugefile_temp_path(char *buffer, size_t buflen, const char *hugedir, int f_id)
+{
+	rte_snprintf(buffer, buflen, TEMP_HUGEFILE_FMT, hugedir,
+			internal_config.hugefile_prefix, f_id);
+	buffer[buflen - 1] = '\0';
+	return buffer;
+}
+#endif
 
 /** define the default filename prefix for the %s values above */
 #define HUGEFILE_PREFIX_DEFAULT "rte"

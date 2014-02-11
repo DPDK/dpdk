@@ -935,6 +935,14 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_cpu_init() < 0)
 		rte_panic("Cannot detect lcores\n");
 
+	if (rte_eal_pci_init() < 0)
+		rte_panic("Cannot init PCI\n");
+
+#ifdef RTE_LIBRTE_IVSHMEM
+	if (rte_eal_ivshmem_init() < 0)
+		rte_panic("Cannot init IVSHMEM\n");
+#endif
+
 	if (rte_eal_memory_init() < 0)
 		rte_panic("Cannot init memory\n");
 
@@ -947,6 +955,11 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_tailqs_init() < 0)
 		rte_panic("Cannot init tail queues for objects\n");
 
+#ifdef RTE_LIBRTE_IVSHMEM
+	if (rte_eal_ivshmem_obj_init() < 0)
+		rte_panic("Cannot init IVSHMEM objects\n");
+#endif
+
 	if (rte_eal_log_init(argv[0], internal_config.syslog_facility) < 0)
 		rte_panic("Cannot init logs\n");
 
@@ -958,9 +971,6 @@ rte_eal_init(int argc, char **argv)
 
 	if (rte_eal_timer_init() < 0)
 		rte_panic("Cannot init HPET or TSC timers\n");
-
-	if (rte_eal_pci_init() < 0)
-		rte_panic("Cannot init PCI\n");
 
 	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%x)\n",
 		rte_config.master_lcore, (int)thread_id);

@@ -95,6 +95,7 @@ int test_kni(void);
 int test_power(void);
 int test_common(void);
 int test_pmd_ring(void);
+int test_ivshmem(void);
 
 int test_pci_run;
 

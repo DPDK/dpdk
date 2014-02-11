@@ -175,6 +175,12 @@ parallel_test_group_list = [
 		 "Report" :	None,
 		},
 		{
+		 "Name" :	"IVSHMEM autotest",
+		 "Command" : 	"ivshmem_autotest",
+		 "Func" :	default_autotest,
+		 "Report" :	None,
+		},
+		{
 		 "Name" :	"Memcpy autotest",
 		 "Command" : 	"memcpy_autotest",
 		 "Func" :	default_autotest,

@@ -86,6 +86,7 @@ do_recursive_call(void)
 			{ "test_memory_flags", no_action },
 			{ "test_file_prefix", no_action },
 			{ "test_no_huge_flag", no_action },
+			{ "test_ivshmem", test_ivshmem },
 	};
 
 	if (recursive_call == NULL)
