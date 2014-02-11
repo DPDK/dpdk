@@ -51,6 +51,8 @@ SRCS-y := main.c args.c init.c app_thread.c cfg_file.c cmdline.c stats.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS_args.o := -D_GNU_SOURCE
+CFLAGS_cfg_file.o := -D_GNU_SOURCE
 
 LDLIBS += -lrte_sched
 

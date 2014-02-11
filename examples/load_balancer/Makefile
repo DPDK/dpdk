@@ -46,6 +46,7 @@ SRCS-y := main.c config.c init.c runtime.c
 
 CFLAGS += -O3 -g
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS_config.o := -D_GNU_SOURCE
 
 # workaround for a gcc bug with noreturn attribute
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603

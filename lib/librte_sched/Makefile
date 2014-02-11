@@ -39,6 +39,8 @@ LIB = librte_sched.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+CFLAGS_rte_red.o := -D_GNU_SOURCE
+
 #
 # all source are stored in SRCS-y
 #

@@ -46,5 +46,6 @@ SRCS-y := main.c commands.c parse_obj_list.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS_parse_obj_list.o := -D_GNU_SOURCE
 
 include $(RTE_SDK)/mk/rte.extapp.mk
