@@ -53,7 +53,6 @@
 #pragma warning(disable:181)        /* Arg incompatible with format string */
 #endif
 
-#define DIM(x) (sizeof(x)/sizeof(x[0]))
 #define TEST_HZ_PER_KHZ 1000
 #define TEST_NSEC_MARGIN 500        /**< nanosecond margin when calculating clk freq */
 
@@ -429,7 +428,7 @@ static uint32_t  ft_enqueued[] ={0};
 
 static struct test_rte_red_config ft_tconfig =  {
 	.rconfig = ft_wrconfig,
-	.num_cfg = DIM(ft_wrconfig),
+	.num_cfg = RTE_DIM(ft_wrconfig),
 	.wq_log2 = ft_wq_log2,
 	.min_th = 32,
 	.max_th = 128,
@@ -438,7 +437,7 @@ static struct test_rte_red_config ft_tconfig =  {
 
 static struct test_queue ft_tqueue = {
 	.rdata = ft_rtdata,
-	.num_queues = DIM(ft_rtdata),
+	.num_queues = RTE_DIM(ft_rtdata),
 	.qconfig = ft_qconfig,
 	.q = ft_q,
 	.q_ramp_up = 1000000,
@@ -522,7 +521,7 @@ static enum test_result func_test1(struct test_config *tcfg)
 
 	printf("%s", tcfg->htxt); 
 
-	for (i = 0; i < DIM(ft1_tlevels); i++) {
+	for (i = 0; i < RTE_DIM(ft1_tlevels); i++) {
 		const char *label = NULL;
 		uint32_t avg = 0;
 		double drop_rate = 0.0;
@@ -598,7 +597,7 @@ static struct rte_red_config ft2_rconfig[10];
 
 static struct test_rte_red_config ft2_tconfig =  {
 	.rconfig = ft2_rconfig,
-	.num_cfg = DIM(ft2_rconfig),
+	.num_cfg = RTE_DIM(ft2_rconfig),
 	.wq_log2 = ft2_wq_log2,
 	.min_th = 32,
 	.max_th = 128,
@@ -706,7 +705,7 @@ static uint32_t ft3_tlevel[] = {1022};
 
 static struct test_rte_red_config ft3_tconfig =  {
 	.rconfig = ft_wrconfig,
-	.num_cfg = DIM(ft_wrconfig),
+	.num_cfg = RTE_DIM(ft_wrconfig),
 	.wq_log2 = ft_wq_log2,
 	.min_th = 32,
 	.max_th = 1023,
@@ -820,7 +819,7 @@ static uint8_t ft4_wq_log2[] = {11};
 
 static struct test_rte_red_config ft4_tconfig =  {
 	.rconfig = ft_wrconfig,
-	.num_cfg = DIM(ft_wrconfig),
+	.num_cfg = RTE_DIM(ft_wrconfig),
 	.min_th = 32,
 	.max_th = 1023,
 	.wq_log2 = ft4_wq_log2,
@@ -829,7 +828,7 @@ static struct test_rte_red_config ft4_tconfig =  {
 
 static struct test_queue ft4_tqueue = {
 	.rdata = ft_rtdata,
-	.num_queues = DIM(ft_rtdata),
+	.num_queues = RTE_DIM(ft_rtdata),
 	.qconfig = ft_qconfig,
 	.q = ft_q,
 	.q_ramp_up = 1000000,
@@ -968,7 +967,7 @@ static uint32_t ft5_enqueued[] = {0, 0, 0, 0};
 
 static struct test_rte_red_config ft5_tconfig =  {
 	.rconfig = ft5_config,
-	.num_cfg = DIM(ft5_config),
+	.num_cfg = RTE_DIM(ft5_config),
 	.min_th = 32,
 	.max_th = 128,
 	.wq_log2 = ft5_wq_log2,
@@ -977,7 +976,7 @@ static struct test_rte_red_config ft5_tconfig =  {
 
 static struct test_queue ft5_tqueue = {
 	.rdata = ft5_data,
-	.num_queues = DIM(ft5_data),
+	.num_queues = RTE_DIM(ft5_data),
 	.qconfig = ft_qconfig,
 	.q = ft5_q,
 	.q_ramp_up = 1000000,
@@ -1106,7 +1105,7 @@ static uint32_t ft6_q[4];
 
 static struct test_rte_red_config ft6_tconfig =  {
 	.rconfig = ft6_config,
-	.num_cfg = DIM(ft6_config),
+	.num_cfg = RTE_DIM(ft6_config),
 	.min_th = 32,
 	.max_th = 1023,
 	.wq_log2 = ft6_wq_log2,
@@ -1115,7 +1114,7 @@ static struct test_rte_red_config ft6_tconfig =  {
 
 static struct test_queue ft6_tqueue = {
 	.rdata = ft6_data,
-	.num_queues = DIM(ft6_data),
+	.num_queues = RTE_DIM(ft6_data),
 	.qconfig = ft_qconfig,
 	.q = ft6_q,
 	.q_ramp_up = 1000000,
@@ -1239,7 +1238,7 @@ static uint32_t pt_enqueued[] = {0};
 
 static struct test_rte_red_config pt_tconfig =  {
 	.rconfig = pt_wrconfig,
-	.num_cfg = DIM(pt_wrconfig),
+	.num_cfg = RTE_DIM(pt_wrconfig),
 	.wq_log2 = pt_wq_log2,
 	.min_th = 32,
 	.max_th = 128,
@@ -1248,7 +1247,7 @@ static struct test_rte_red_config pt_tconfig =  {
 
 static struct test_queue pt_tqueue = {
 	.rdata = pt_rtdata,
-	.num_queues = DIM(pt_rtdata),
+	.num_queues = RTE_DIM(pt_rtdata),
 	.qconfig = pt_qconfig,
 	.q = pt_q,
 	.q_ramp_up = 1000000,
@@ -1601,7 +1600,7 @@ static uint8_t ovfl_wq_log2[] = {12};
 
 static struct test_rte_red_config ovfl_tconfig =  {
 	.rconfig = ovfl_wrconfig,
-	.num_cfg = DIM(ovfl_wrconfig),
+	.num_cfg = RTE_DIM(ovfl_wrconfig),
 	.wq_log2 = ovfl_wq_log2,
 	.min_th = 32,
 	.max_th = 1023,
@@ -1610,7 +1609,7 @@ static struct test_rte_red_config ovfl_tconfig =  {
 
 static struct test_queue ovfl_tqueue = {
 	.rdata = ovfl_rtdata,
-	.num_queues = DIM(ovfl_rtdata),
+	.num_queues = RTE_DIM(ovfl_rtdata),
 	.qconfig = ovfl_qconfig,
 	.q = ovfl_q,
 	.q_ramp_up = 1000000,
@@ -1872,8 +1871,8 @@ int test_red(void)
 	if (test_invalid_parameters() < 0)
 		return -1;
 
-	run_tests(func_tests, DIM(func_tests), &num_tests, &num_pass);
-	run_tests(perf_tests, DIM(perf_tests), &num_tests, &num_pass);
+	run_tests(func_tests, RTE_DIM(func_tests), &num_tests, &num_pass);
+	run_tests(perf_tests, RTE_DIM(perf_tests), &num_tests, &num_pass);
 
 	if (num_pass == num_tests) {
 		printf("[total: %u, pass: %u]\n", num_tests, num_pass);

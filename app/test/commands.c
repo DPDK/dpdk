@@ -64,7 +64,6 @@
 #include <rte_ring.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
-#include <rte_timer.h>
 
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
@@ -215,7 +214,7 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"timer_autotest#malloc_autotest#"
 			"memcpy_autotest#hash_autotest#"
 			"lpm_autotest#debug_autotest#"
-			"lpm6_autotest#debug_autotest#"
+			"lpm6_autotest#"
 			"errno_autotest#tailq_autotest#"
 			"string_autotest#multiprocess_autotest#"
 			"cpuflags_autotest#eal_flags_autotest#"

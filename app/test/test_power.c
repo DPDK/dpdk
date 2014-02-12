@@ -200,7 +200,7 @@ check_power_set_freq(void)
 						TEST_POWER_LCORE_ID);
 		return -1;
 	}
-	ret = rte_power_set_freq(TEST_POWER_LCORE_ID, 3);
+	ret = rte_power_set_freq(TEST_POWER_LCORE_ID, total_freq_num - 1);
 	if (ret < 0) {
 		printf("Fail to set freq index on lcore %u\n",
 					TEST_POWER_LCORE_ID);
@@ -208,7 +208,7 @@ check_power_set_freq(void)
 	}
 
 	/* Check the current frequency */
-	ret = check_cur_freq(TEST_POWER_LCORE_ID, 3);
+	ret = check_cur_freq(TEST_POWER_LCORE_ID, total_freq_num - 1);
 	if (ret < 0)
 		return -1;
 
@@ -415,6 +415,12 @@ test_power(void)
 	ret = check_power_freqs();
 	if (ret < 0)
 		goto fail_all;
+
+	if (total_freq_num < 2) {
+		rte_power_exit(TEST_POWER_LCORE_ID);
+		printf("Frequency can not be changed due to CPU itself\n");
+		return 0;
+	}
 
 	ret = check_power_get_freq();
 	if (ret < 0)

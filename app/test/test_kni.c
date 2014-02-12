@@ -210,6 +210,7 @@ test_kni_loop(__rte_unused void *arg)
 					rte_pktmbuf_free(pkts_burst[i]);
 				}
 			}
+			rte_delay_ms(10);
 		}
 	} else if (lcore_id == lcore_egress) {
 		while (1) {
@@ -220,6 +221,7 @@ test_kni_loop(__rte_unused void *arg)
 			stats.egress += num;
 			for (nb_tx = 0; nb_tx < num; nb_tx++)
 				rte_pktmbuf_free(pkts_burst[nb_tx]);
+			rte_delay_ms(10);
 		}
 	}
 
