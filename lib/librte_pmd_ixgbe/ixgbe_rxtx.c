@@ -79,11 +79,8 @@
 #include "ixgbe/ixgbe_common.h"
 
 
-#define RTE_PMD_IXGBE_TX_MAX_BURST 32
+#include "ixgbe_rxtx.h"
 
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
-#define RTE_PMD_IXGBE_RX_MAX_BURST 32
-#endif
 
 static inline struct rte_mbuf *
 rte_rxmbuf_alloc(struct rte_mempool *mp)
@@ -94,116 +91,6 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 	__rte_mbuf_sanity_check_raw(m, RTE_MBUF_PKT, 0);
 	return (m);
 }
-
-#define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	(uint64_t) ((mb)->buf_physaddr + (uint64_t)((char *)((mb)->pkt.data) - \
-	(char *)(mb)->buf_addr))
-
-#define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
-	(uint64_t) ((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
-
-/**
- * Structure associated with each descriptor of the RX ring of a RX queue.
- */
-struct igb_rx_entry {
-	struct rte_mbuf *mbuf; /**< mbuf associated with RX descriptor. */
-};
-
-/**
- * Structure associated with each descriptor of the TX ring of a TX queue.
- */
-struct igb_tx_entry {
-	struct rte_mbuf *mbuf; /**< mbuf associated with TX desc, if any. */
-	uint16_t next_id; /**< Index of next descriptor in ring. */
-	uint16_t last_id; /**< Index of last scattered descriptor. */
-};
-
-/**
- * Structure associated with each RX queue.
- */
-struct igb_rx_queue {
-	struct rte_mempool  *mb_pool; /**< mbuf pool to populate RX ring. */
-	volatile union ixgbe_adv_rx_desc *rx_ring; /**< RX ring virtual address. */
-	uint64_t            rx_ring_phys_addr; /**< RX ring DMA address. */
-	volatile uint32_t   *rdt_reg_addr; /**< RDT register address. */
-	volatile uint32_t   *rdh_reg_addr; /**< RDH register address. */
-	struct igb_rx_entry *sw_ring; /**< address of RX software ring. */
-	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet. */
-	struct rte_mbuf *pkt_last_seg; /**< Last segment of current packet. */
-	uint16_t            nb_rx_desc; /**< number of RX descriptors. */
-	uint16_t            rx_tail;  /**< current value of RDT register. */
-	uint16_t            nb_rx_hold; /**< number of held free RX desc. */
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
-	uint16_t rx_nb_avail; /**< nr of staged pkts ready to ret to app */
-	uint16_t rx_next_avail; /**< idx of next staged pkt to ret to app */
-	uint16_t rx_free_trigger; /**< triggers rx buffer allocation */
-#endif
-	uint16_t            rx_free_thresh; /**< max free RX desc to hold. */
-	uint16_t            queue_id; /**< RX queue index. */
-	uint16_t            reg_idx;  /**< RX queue register index. */
-	uint8_t             port_id;  /**< Device port identifier. */
-	uint8_t             crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
-	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
-	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
-	struct rte_mbuf fake_mbuf;
-	/** hold packets to return to application */
-	struct rte_mbuf *rx_stage[RTE_PMD_IXGBE_RX_MAX_BURST*2];
-#endif
-};
-
-/**
- * IXGBE CTX Constants
- */
-enum ixgbe_advctx_num {
-	IXGBE_CTX_0    = 0, /**< CTX0 */
-	IXGBE_CTX_1    = 1, /**< CTX1  */
-	IXGBE_CTX_NUM  = 2, /**< CTX NUMBER  */
-};
-
-/**
- * Structure to check if new context need be built
- */
-
-struct ixgbe_advctx_info {
-	uint16_t flags;           /**< ol_flags for context build. */
-	uint32_t cmp_mask;        /**< compare mask for vlan_macip_lens */
-	union rte_vlan_macip vlan_macip_lens; /**< vlan, mac ip length. */
-};
-
-/**
- * Structure associated with each TX queue.
- */
-struct igb_tx_queue {
-	/** TX ring virtual address. */
-	volatile union ixgbe_adv_tx_desc *tx_ring;
-	uint64_t            tx_ring_phys_addr; /**< TX ring DMA address. */
-	struct igb_tx_entry *sw_ring;      /**< virtual address of SW ring. */
-	volatile uint32_t   *tdt_reg_addr; /**< Address of TDT register. */
-	uint16_t            nb_tx_desc;    /**< number of TX descriptors. */
-	uint16_t            tx_tail;       /**< current value of TDT reg. */
-	uint16_t            tx_free_thresh;/**< minimum TX before freeing. */
-	/** Number of TX descriptors to use before RS bit is set. */
-	uint16_t            tx_rs_thresh;
-	/** Number of TX descriptors used since RS bit was set. */
-	uint16_t            nb_tx_used;
-	/** Index to last TX descriptor to have been cleaned. */
-	uint16_t            last_desc_cleaned;
-	/** Total number of TX descriptors ready to be allocated. */
-	uint16_t            nb_tx_free;
-	uint16_t tx_next_dd; /**< next desc to scan for DD bit */
-	uint16_t tx_next_rs; /**< next desc to set RS bit */
-	uint16_t            queue_id;      /**< TX queue index. */
-	uint16_t            reg_idx;       /**< TX queue register index. */
-	uint8_t             port_id;       /**< Device port identifier. */
-	uint8_t             pthresh;       /**< Prefetch threshold register. */
-	uint8_t             hthresh;       /**< Host threshold register. */
-	uint8_t             wthresh;       /**< Write-back threshold reg. */
-	uint32_t txq_flags; /**< Holds flags for this TXq */
-	uint32_t            ctx_curr;      /**< Hardware context states. */
-	/** Hardware context0 history. */
-	struct ixgbe_advctx_info ctx_cache[IXGBE_CTX_NUM];
-};
 
 
 #if 1
@@ -219,31 +106,11 @@ struct igb_tx_queue {
 #define rte_ixgbe_prefetch(p)   do {} while(0)
 #endif
 
-#ifdef RTE_PMD_PACKET_PREFETCH
-#define rte_packet_prefetch(p)  rte_prefetch1(p)
-#else
-#define rte_packet_prefetch(p)  do {} while(0)
-#endif
-
 /*********************************************************************
  *
  *  TX functions
  *
  **********************************************************************/
-
-/*
- * The "simple" TX queue functions require that the following
- * flags are set when the TX queue is configured:
- *  - ETH_TXQ_FLAGS_NOMULTSEGS
- *  - ETH_TXQ_FLAGS_NOVLANOFFL
- *  - ETH_TXQ_FLAGS_NOXSUMSCTP
- *  - ETH_TXQ_FLAGS_NOXSUMUDP
- *  - ETH_TXQ_FLAGS_NOXSUMTCP
- * and that the RS bit threshold (tx_rs_thresh) is at least equal to
- * RTE_PMD_IXGBE_TX_MAX_BURST.
- */
-#define IXGBE_SIMPLE_FLAGS ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
-			    ETH_TXQ_FLAGS_NOOFFLOADS)
 
 /*
  * Check for descriptors with their DD bit set and free mbufs.
@@ -292,19 +159,6 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 
 	return txq->tx_rs_thresh;
 }
-
-/*
- * Populate descriptors with the following info:
- * 1.) buffer_addr = phys_addr + headroom
- * 2.) cmd_type_len = DCMD_DTYP_FLAGS | pkt_len
- * 3.) olinfo_status = pkt_len << PAYLEN_SHIFT
- */
-
-/* Defines for Tx descriptor */
-#define DCMD_DTYP_FLAGS (IXGBE_ADVTXD_DTYP_DATA |\
-			 IXGBE_ADVTXD_DCMD_IFCS |\
-			 IXGBE_ADVTXD_DCMD_DEXT |\
-			 IXGBE_ADVTXD_DCMD_EOP)
 
 /* Populate 4 descriptors with data from 4 mbufs */
 static inline void
@@ -1782,11 +1636,19 @@ ixgbe_tx_queue_release_mbufs(struct igb_tx_queue *txq)
 }
 
 static void
+ixgbe_tx_free_swring(struct igb_tx_queue *txq)
+{
+	if (txq != NULL && 
+	    txq->sw_ring != NULL)
+		rte_free(txq->sw_ring);
+}
+
+static void
 ixgbe_tx_queue_release(struct igb_tx_queue *txq)
 {
-	if (txq != NULL) {
-		ixgbe_tx_queue_release_mbufs(txq);
-		rte_free(txq->sw_ring);
+	if (txq != NULL && txq->ops != NULL) {
+		txq->ops->release_mbufs(txq);
+		txq->ops->free_swring(txq);
 		rte_free(txq);
 	}
 }
@@ -1837,6 +1699,12 @@ ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
 	memset((void*)&txq->ctx_cache, 0,
 		IXGBE_CTX_NUM * sizeof(struct ixgbe_advctx_info));
 }
+
+static struct ixgbe_txq_ops def_txq_ops = {
+	.release_mbufs = ixgbe_tx_queue_release_mbufs,
+	.free_swring = ixgbe_tx_free_swring,
+	.reset = ixgbe_reset_tx_queue,
+};
 
 int
 ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
@@ -1967,6 +1835,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	txq->port_id = dev->data->port_id;
 	txq->txq_flags = tx_conf->txq_flags;
+	txq->ops = &def_txq_ops;
 
 	/*
 	 * Modification to set VFTDT for virtual function if vf is detected
@@ -1984,8 +1853,8 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocate software ring */
 	txq->sw_ring = rte_zmalloc_socket("txq->sw_ring",
-				   sizeof(struct igb_tx_entry) * nb_desc,
-				   CACHE_LINE_SIZE, socket_id);
+				sizeof(struct igb_tx_entry) * nb_desc,
+				CACHE_LINE_SIZE, socket_id);
 	if (txq->sw_ring == NULL) {
 		ixgbe_tx_queue_release(txq);
 		return (-ENOMEM);
@@ -1993,21 +1862,30 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
 		     txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
 
-	ixgbe_reset_tx_queue(txq);
-
-	dev->data->tx_queues[queue_idx] = txq;
-
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
 	if (((txq->txq_flags & IXGBE_SIMPLE_FLAGS) == IXGBE_SIMPLE_FLAGS) &&
 	    (txq->tx_rs_thresh >= RTE_PMD_IXGBE_TX_MAX_BURST)) {
 		PMD_INIT_LOG(INFO, "Using simple tx code path\n");
-		dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
+#ifdef RTE_IXGBE_INC_VECTOR
+		if (txq->tx_rs_thresh <= RTE_IXGBE_TX_MAX_FREE_BUF_SZ &&
+		    ixgbe_txq_vec_setup(txq, socket_id) == 0) {
+			PMD_INIT_LOG(INFO, "Vector tx enabled.\n");
+			dev->tx_pkt_burst = ixgbe_xmit_pkts_vec;
+		}
+		else
+#endif
+			dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
 	} else {
 		PMD_INIT_LOG(INFO, "Using full-featured tx code path\n");
 		PMD_INIT_LOG(INFO, " - txq_flags = %lx [IXGBE_SIMPLE_FLAGS=%lx]\n", (long unsigned)txq->txq_flags, (long unsigned)IXGBE_SIMPLE_FLAGS);
 		PMD_INIT_LOG(INFO, " - tx_rs_thresh = %lu [RTE_PMD_IXGBE_TX_MAX_BURST=%lu]\n", (long unsigned)txq->tx_rs_thresh, (long unsigned)RTE_PMD_IXGBE_TX_MAX_BURST);
 		dev->tx_pkt_burst = ixgbe_xmit_pkts;
 	}
+
+	txq->ops->reset(txq);
+
+	dev->data->tx_queues[queue_idx] = txq;
+
 
 	return (0);
 }
@@ -2207,12 +2085,17 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 * resizing in later calls to the queue setup function.
 	 */
 	rz = ring_dma_zone_reserve(dev, "rx_ring", queue_idx,
-			IXGBE_MAX_RING_DESC * sizeof(union ixgbe_adv_rx_desc),
-			socket_id);
+				   RX_RING_SZ, socket_id);
 	if (rz == NULL) {
 		ixgbe_rx_queue_release(rxq);
 		return (-ENOMEM);
 	}
+
+	/*
+	 * Zero init all the descriptors in the ring. 
+	 */
+	memset (rz->addr, 0, RX_RING_SZ);
+
 	/*
 	 * Modified to setup VFRDT for Virtual Function
 	 */
@@ -2269,6 +2152,13 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			     "used on port=%d, queue=%d.\n",
 			     rxq->port_id, rxq->queue_id);
 		dev->rx_pkt_burst = ixgbe_recv_pkts_bulk_alloc;
+#ifdef RTE_IXGBE_INC_VECTOR
+		if (!ixgbe_rx_vec_condition_check(dev)) {
+			PMD_INIT_LOG(INFO, "Vector rx enabled.\n");
+			ixgbe_rxq_vec_setup(rxq, socket_id);
+			dev->rx_pkt_burst = ixgbe_recv_pkts_vec;
+		}
+#endif
 #endif
 	} else {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions "
@@ -2339,8 +2229,8 @@ ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		struct igb_tx_queue *txq = dev->data->tx_queues[i];
 		if (txq != NULL) {
-			ixgbe_tx_queue_release_mbufs(txq);
-			ixgbe_reset_tx_queue(txq);
+			txq->ops->release_mbufs(txq);
+			txq->ops->reset(txq);
 		}
 	}
 
