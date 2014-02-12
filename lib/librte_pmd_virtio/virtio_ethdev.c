@@ -252,6 +252,15 @@ virtio_dev_cq_queue_setup(struct rte_eth_dev *dev,
 	return (0);
 }
 
+static void
+virtio_dev_close(struct rte_eth_dev *dev)
+{
+	PMD_INIT_LOG(DEBUG, "virtio_dev_close");
+
+	virtio_dev_stop(dev);
+}
+
+
 /*
  * dev_ops for virtio, bare necessities for basic operation
  */
@@ -259,6 +268,7 @@ static struct eth_dev_ops virtio_eth_dev_ops = {
 	.dev_configure         = virtio_dev_configure,
 	.dev_start             = virtio_dev_start,
 	.dev_stop              = virtio_dev_stop,
+	.dev_close             = virtio_dev_close,
 
 	.dev_infos_get         = virtio_dev_info_get,
 	.stats_get             = virtio_dev_stats_get,
