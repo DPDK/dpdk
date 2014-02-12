@@ -91,6 +91,7 @@
 #define OPT_SOCKET_MEM  "socket-mem"
 #define OPT_USE_DEVICE  "use-device"
 #define OPT_SYSLOG      "syslog"
+#define OPT_BASE_VIRTADDR   "base-virtaddr"
 
 #define RTE_EAL_BLACKLIST_SIZE	0x100
 
@@ -309,13 +310,13 @@ eal_hugedirs_unlock(void)
 	for (i = 0; i < MAX_HUGEPAGE_SIZES; i++)
 	{
 		/* skip uninitialized */
-		if (internal_config.hugepage_info[i].lock_descriptor == 0)
+		if (internal_config.hugepage_info[i].lock_descriptor < 0)
 			continue;
 		/* unlock hugepage file */
 		flock(internal_config.hugepage_info[i].lock_descriptor, LOCK_UN);
 		close(internal_config.hugepage_info[i].lock_descriptor);
 		/* reset the field */
-		internal_config.hugepage_info[i].lock_descriptor = 0;
+		internal_config.hugepage_info[i].lock_descriptor = -1;
 	}
 }
 
@@ -345,6 +346,7 @@ eal_usage(const char *prgname)
 	       "               [NOTE: Cannot be used with -b option]\n"
 	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of "
 	    		   "native RDTSC\n"
+	       "  --"OPT_BASE_VIRTADDR": specify base virtual address\n"
 	       "\nEAL options for DEBUG use only:\n"
 	       "  --"OPT_NO_HUGE"  : use malloc instead of hugetlbfs\n"
 	       "  --"OPT_NO_PCI"   : disable pci\n"
@@ -530,6 +532,31 @@ eal_parse_socket_mem(char *socket_mem)
 	return 0;
 }
 
+static int
+eal_parse_base_virtaddr(const char *arg)
+{
+	char *end;
+	uint64_t addr;
+
+	addr = strtoull(arg, &end, 16);
+
+	/* check for errors */
+	if ((errno != 0) || (arg[0] == '\0') || end == NULL || (*end != '\0'))
+		return -1;
+
+	/* make sure we don't exceed 32-bit boundary on 32-bit target */
+#ifndef RTE_ARCH_X86_64
+	if (addr >= UINTPTR_MAX)
+		return -1;
+#endif
+
+	/* align the addr on 2M boundary */
+	addr = RTE_PTR_ALIGN_CEIL(addr, RTE_PGSIZE_2M);
+
+	internal_config.base_virtaddr = (uintptr_t) addr;
+	return 0;
+}
+
 static inline size_t
 eal_get_hugepage_mem_size(void)
 {
@@ -599,6 +626,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_SOCKET_MEM, 1, 0, 0},
 		{OPT_USE_DEVICE, 1, 0, 0},
 		{OPT_SYSLOG, 1, NULL, 0},
+		{OPT_BASE_VIRTADDR, 1, 0, 0},
 		{0, 0, 0, 0}
 	};
 
@@ -622,9 +650,10 @@ eal_parse_args(int argc, char **argv)
 
 	/* zero out hugedir descriptors */
 	for (i = 0; i < MAX_HUGEPAGE_SIZES; i++)
-		internal_config.hugepage_info[i].lock_descriptor = 0;
+		internal_config.hugepage_info[i].lock_descriptor = -1;
 
 	internal_config.vmware_tsc_map = 0;
+	internal_config.base_virtaddr = 0;
 
 	while ((opt = getopt_long(argc, argvopt, "b:c:m:n:r:v",
 				  lgopts, &option_index)) != EOF) {
@@ -721,6 +750,14 @@ eal_parse_args(int argc, char **argv)
 				if (eal_parse_syslog(optarg) < 0) {
 					RTE_LOG(ERR, EAL, "invalid parameters for --"
 							OPT_SYSLOG "\n");
+					eal_usage(prgname);
+					return -1;
+				}
+			}
+			else if (!strcmp(lgopts[option_index].name, OPT_BASE_VIRTADDR)) {
+				if (eal_parse_base_virtaddr(optarg) < 0) {
+					RTE_LOG(ERR, EAL, "invalid parameter for --"
+							OPT_BASE_VIRTADDR "\n");
 					eal_usage(prgname);
 					return -1;
 				}

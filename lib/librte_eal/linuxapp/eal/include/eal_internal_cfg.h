@@ -71,7 +71,8 @@ struct internal_config {
 	volatile enum rte_proc_type_t process_type; /* multi-process proc type */
 	/* true to try allocating memory on specific sockets */
 	volatile unsigned force_sockets;
-	volatile uint64_t socket_mem[RTE_MAX_NUMA_NODES]; /**< amount of memory per socket*/
+	volatile uint64_t socket_mem[RTE_MAX_NUMA_NODES]; /**< amount of memory per socket */
+	uintptr_t base_virtaddr;          /**< base address to try and reserve memory from */
 	volatile int syslog_facility;	  /**< facility passed to openlog() */
 	const char *hugefile_prefix;      /**< the base filename of hugetlbfs files */
 	const char *hugepage_dir;         /**< specific hugetlbfs directory to use */

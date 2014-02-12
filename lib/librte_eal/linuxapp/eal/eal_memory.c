@@ -109,6 +109,7 @@
  * zone as well as a physical contiguous zone.
  */
 
+static uint64_t baseaddr_offset;
 
 #define RANDOMIZE_VA_SPACE_FILE "/proc/sys/kernel/randomize_va_space"
 
@@ -156,7 +157,13 @@ get_virtual_area(size_t *size, size_t hugepage_sz)
 	int fd;
 	long aligned_addr;
 
-	RTE_LOG(INFO, EAL, "Ask a virtual area of 0x%zu bytes\n", *size);
+	if (internal_config.base_virtaddr != 0) {
+		addr = (void*) (uintptr_t) (internal_config.base_virtaddr +
+				baseaddr_offset);
+	}
+	else addr = NULL;
+
+	RTE_LOG(INFO, EAL, "Ask a virtual area of 0x%zx bytes\n", *size);
 
 	fd = open("/dev/zero", O_RDONLY);
 	if (fd < 0){
@@ -164,7 +171,8 @@ get_virtual_area(size_t *size, size_t hugepage_sz)
 		return NULL;
 	}
 	do {
-		addr = mmap(NULL, (*size) + hugepage_sz, PROT_READ, MAP_PRIVATE, fd, 0);
+		addr = mmap(addr,
+				(*size) + hugepage_sz, PROT_READ, MAP_PRIVATE, fd, 0);
 		if (addr == MAP_FAILED)
 			*size -= hugepage_sz;
 	} while (addr == MAP_FAILED && *size > 0);
@@ -186,6 +194,9 @@ get_virtual_area(size_t *size, size_t hugepage_sz)
 
 	RTE_LOG(INFO, EAL, "Virtual area found at %p (size = 0x%zx)\n",
 		addr, *size);
+
+	/* increment offset */
+	baseaddr_offset += *size;
 
 	return addr;
 }
