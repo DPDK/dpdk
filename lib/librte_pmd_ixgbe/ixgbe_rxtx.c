@@ -1758,8 +1758,13 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 	if (mz)
 		return mz;
 
+#ifdef RTE_LIBRTE_XEN_DOM0
+	return rte_memzone_reserve_bounded(z_name, ring_size,
+	 	socket_id, 0, IXGBE_ALIGN, RTE_PGSIZE_2M);
+#else
 	return rte_memzone_reserve_aligned(z_name, ring_size,
-			socket_id, 0, IXGBE_ALIGN);
+		socket_id, 0, IXGBE_ALIGN);
+#endif
 }
 
 static void
@@ -1971,8 +1976,11 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		txq->tdt_reg_addr = IXGBE_PCI_REG_ADDR(hw, IXGBE_VFTDT(queue_idx));
 	else
 		txq->tdt_reg_addr = IXGBE_PCI_REG_ADDR(hw, IXGBE_TDT(txq->reg_idx));
-
+#ifndef	RTE_LIBRTE_XEN_DOM0 
 	txq->tx_ring_phys_addr = (uint64_t) tz->phys_addr;
+#else
+	txq->tx_ring_phys_addr = rte_mem_phy2mch(tz->memseg_id, tz->phys_addr);
+#endif
 	txq->tx_ring = (union ixgbe_adv_tx_desc *) tz->addr;
 
 	/* Allocate software ring */
@@ -2221,8 +2229,11 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		rxq->rdh_reg_addr =
 			IXGBE_PCI_REG_ADDR(hw, IXGBE_RDH(rxq->reg_idx));
 	}
-
+#ifndef RTE_LIBRTE_XEN_DOM0
 	rxq->rx_ring_phys_addr = (uint64_t) rz->phys_addr;
+#else
+	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr);
+#endif
 	rxq->rx_ring = (union ixgbe_adv_rx_desc *) rz->addr;
 
 	/*
@@ -3440,8 +3451,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		 * The value is in 1 KB resolution. Valid values can be from
 		 * 1 KB to 16 KB.
 		 */
-		mbp_priv = (struct rte_pktmbuf_pool_private *)
-			((char *)rxq->mb_pool + sizeof(struct rte_mempool));
+		mbp_priv = rte_mempool_get_priv(rxq->mb_pool);
 		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
 				       RTE_PKTMBUF_HEADROOM);
 		srrctl |= ((buf_size >> IXGBE_SRRCTL_BSIZEPKT_SHIFT) &
@@ -3712,8 +3722,7 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 		 * The value is in 1 KB resolution. Valid values can be from
 		 * 1 KB to 16 KB.
 		 */
-		mbp_priv = (struct rte_pktmbuf_pool_private *)
-			((char *)rxq->mb_pool + sizeof(struct rte_mempool));
+		mbp_priv = rte_mempool_get_priv(rxq->mb_pool);
 		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
 				       RTE_PKTMBUF_HEADROOM);
 		srrctl |= ((buf_size >> IXGBE_SRRCTL_BSIZEPKT_SHIFT) &

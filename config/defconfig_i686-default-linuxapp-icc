@@ -293,6 +293,11 @@ CONFIG_RTE_KNI_VHOST_DEBUG_RX=n
 CONFIG_RTE_KNI_VHOST_DEBUG_TX=n
 
 #
+#Compile Xen domain0 support
+#
+CONFIG_RTE_LIBRTE_XEN_DOM0=n
+
+#
 # Enable warning directives
 #
 CONFIG_RTE_INSECURE_FUNCTION_WARNING=n

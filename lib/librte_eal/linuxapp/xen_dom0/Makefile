@@ -32,40 +32,25 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 #
-# library name
+# module name and path
 #
-APP = testpmd
+MODULE = rte_dom0_mm
 
-CFLAGS += -O3
-CFLAGS += $(WERROR_FLAGS)
+#
+# CFLAGS
+#
+MODULE_CFLAGS += -I$(SRCDIR) --param max-inline-insns-single=50
+MODULE_CFLAGS += -I$(RTE_OUTPUT)/include 
+MODULE_CFLAGS += -include $(RTE_OUTPUT)/include/rte_config.h
+MODULE_CFLAGS += -Wall -Werror
 
-ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
-LDFLAGS += -lpcap
-endif
+# this lib needs main eal
+DEPDIRS-y += lib/librte_eal/linuxapp/eal
 
 #
 # all source are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_TEST_PMD) := testpmd.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += parameters.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += cmdline.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += config.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += iofwd.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += macfwd.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += rxonly.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += txonly.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += csumonly.c
-ifeq ($(CONFIG_RTE_LIBRTE_IEEE1588),y)
-SRCS-$(CONFIG_RTE_TEST_PMD) += ieee1588fwd.c
-endif
-SRCS-$(CONFIG_RTE_TEST_PMD) += mempool_anon.c
 
-ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
-CFLAGS_mempool_anon.o := -D_GNU_SOURCE
-endif
-CFLAGS_cmdline.o := -D_GNU_SOURCE
+SRCS-y += dom0_mm_misc.c
 
-# this application needs libraries first
-DEPDIRS-$(CONFIG_RTE_TEST_PMD) += lib
-
-include $(RTE_SDK)/mk/rte.app.mk
+include $(RTE_SDK)/mk/rte.module.mk

@@ -757,8 +757,7 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 				(int) sizeof(struct rte_pktmbuf_pool_private));
 		return (-ENOSPC);
 	}
-	mbp_priv = (struct rte_pktmbuf_pool_private *)
-		((char *)mp + sizeof(struct rte_mempool));
+	mbp_priv = rte_mempool_get_priv(mp);
 	if ((uint32_t) (mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM) <
 	    dev_info.min_rx_bufsize) {
 		PMD_DEBUG_TRACE("%s mbuf_data_room_size %d < %d "

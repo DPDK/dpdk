@@ -36,5 +36,8 @@ DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal
 ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
 DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += kni
 endif
+ifeq ($(CONFIG_RTE_LIBRTE_XEN_DOM0),y)
+DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += xen_dom0
+endif
 
 include $(RTE_SDK)/mk/rte.subdir.mk

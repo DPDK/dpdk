@@ -939,6 +939,9 @@ main(int argc, char** argv)
 			continue;
 		kni_free_kni(port);
 	}
+#ifdef RTE_LIBRTE_XEN_DOM0
+	rte_kni_close();
+#endif
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
 		if (kni_port_params_array[i]) {
 			rte_free(kni_port_params_array[i]);

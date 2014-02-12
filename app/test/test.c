@@ -50,10 +50,12 @@
 #include <rte_memzone.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
-#include <rte_timer.h>
 #include <rte_cycles.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
+#ifdef RTE_LIBRTE_TIMER
+#include <rte_timer.h>
+#endif
 
 #include "test.h"
 
@@ -82,7 +84,11 @@ do_recursive_call(void)
 			{ "test_whitelist_flag", no_action },
 			{ "test_invalid_b_flag", no_action },
 			{ "test_invalid_r_flag", no_action },
+#ifdef RTE_LIBRTE_XEN_DOM0
+			{ "test_dom0_misc_flags", no_action },
+#else
 			{ "test_misc_flags", no_action },
+#endif
 			{ "test_memory_flags", no_action },
 			{ "test_file_prefix", no_action },
 			{ "test_no_huge_flag", no_action },
@@ -110,7 +116,9 @@ main(int argc, char **argv)
 	if (ret < 0)
 		return -1;
 
+#ifdef RTE_LIBRTE_TIMER
 	rte_timer_subsystem_init();
+#endif
 
 	argv += ret;
 

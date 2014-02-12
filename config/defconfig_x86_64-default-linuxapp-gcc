@@ -195,6 +195,9 @@ CONFIG_RTE_PMD_RING_MAX_TX_RINGS=16
 #
 CONFIG_RTE_LIBRTE_PMD_PCAP=n
 
+
+CONFIG_RTE_LIBRTE_PMD_XENVIRT=n
+
 #
 # Do prefetch of packet data within PMD driver receive function
 #
@@ -292,6 +295,11 @@ CONFIG_RTE_KNI_VHOST_MAX_CACHE_SIZE=1024
 CONFIG_RTE_KNI_VHOST_VNET_HDR_EN=n
 CONFIG_RTE_KNI_VHOST_DEBUG_RX=n
 CONFIG_RTE_KNI_VHOST_DEBUG_TX=n
+
+#
+#Compile Xen domain0 support
+#
+CONFIG_RTE_LIBRTE_XEN_DOM0=n
 
 #
 # Enable warning directives

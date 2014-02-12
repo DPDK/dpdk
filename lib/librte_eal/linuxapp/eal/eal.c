@@ -48,8 +48,6 @@
 #include <sys/mman.h>
 #include <sys/queue.h>
 #include <sys/io.h>
-#include <sys/user.h>
-#include <linux/binfmts.h>
 
 #include <rte_common.h>
 #include <rte_debug.h>
@@ -92,6 +90,7 @@
 #define OPT_USE_DEVICE  "use-device"
 #define OPT_SYSLOG      "syslog"
 #define OPT_BASE_VIRTADDR   "base-virtaddr"
+#define OPT_XEN_DOM0    "xen-dom0"
 
 #define RTE_EAL_BLACKLIST_SIZE	0x100
 
@@ -335,6 +334,8 @@ eal_usage(const char *prgname)
 	       "                 (multiple -b options are allowed)\n"
 	       "  -m MB        : memory to allocate (see also --"OPT_SOCKET_MEM")\n"
 	       "  -r NUM       : force number of memory ranks (don't detect)\n"
+	       "  --"OPT_XEN_DOM0" : support application running on Xen Domain0 "
+			   "without hugetlbfs\n"
 	       "  --"OPT_SYSLOG"     : set syslog facility\n"
 	       "  --"OPT_SOCKET_MEM" : memory to allocate on specific \n"
 		   "                 sockets (use comma separated values)\n"
@@ -409,7 +410,7 @@ eal_parse_coremask(const char *coremask)
 	if (coremask[0] == '0' && ((coremask[1] == 'x')
 		||  (coremask[1] == 'X')) )
 		coremask += 2;
-	i = strnlen(coremask, MAX_ARG_STRLEN);
+	i = strnlen(coremask, PATH_MAX);
 	while ((i > 0) && isblank(coremask[i - 1]))
 		i--;
 	if (i == 0)
@@ -627,6 +628,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_USE_DEVICE, 1, 0, 0},
 		{OPT_SYSLOG, 1, NULL, 0},
 		{OPT_BASE_VIRTADDR, 1, 0, 0},
+		{OPT_XEN_DOM0, 0, 0, 0},
 		{0, 0, 0, 0}
 	};
 
@@ -639,6 +641,7 @@ eal_parse_args(int argc, char **argv)
 	internal_config.hugepage_dir = NULL;
 	internal_config.force_sockets = 0;
 	internal_config.syslog_facility = LOG_DAEMON;
+	internal_config.xen_dom0_support = 0;
 #ifdef RTE_LIBEAL_USE_HPET
 	internal_config.no_hpet = 0;
 #else
@@ -713,6 +716,16 @@ eal_parse_args(int argc, char **argv)
 		case 0:
 			if (!strcmp(lgopts[option_index].name, OPT_NO_HUGE)) {
 				internal_config.no_hugetlbfs = 1;
+			}
+			if (!strcmp(lgopts[option_index].name, OPT_XEN_DOM0)) {
+		#ifdef RTE_LIBRTE_XEN_DOM0
+				internal_config.xen_dom0_support = 1;
+		#else
+				RTE_LOG(ERR, EAL, "Can't support DPDK app "
+					"running on Dom0, please configure"
+					" RTE_LIBRTE_XEN_DOM0=y\n");
+				return -1;
+		#endif 
 			}
 			else if (!strcmp(lgopts[option_index].name, OPT_NO_PCI)) {
 				internal_config.no_pci = 1;
@@ -810,7 +823,13 @@ eal_parse_args(int argc, char **argv)
 		eal_usage(prgname);
 		return -1;
 	}
-
+	/* --xen-dom0 doesn't make sense with --socket-mem */
+	if (internal_config.xen_dom0_support && internal_config.force_sockets == 1) {
+		RTE_LOG(ERR, EAL, "Options --socket-mem cannot be specified "
+					"together with --xen_dom0!\n");
+		eal_usage(prgname);
+		return -1;
+	}
 	/* if no blacklist, parse a whitelist */
 	if (blacklist_index > 0) {
 		if (eal_dev_whitelist_exists()) {
@@ -904,6 +923,7 @@ rte_eal_init(int argc, char **argv)
 
 	if (internal_config.no_hugetlbfs == 0 &&
 			internal_config.process_type != RTE_PROC_SECONDARY &&
+			internal_config.xen_dom0_support == 0 &&
 			eal_hugepage_info_init() < 0)
 		rte_panic("Cannot get hugepage information\n");
 

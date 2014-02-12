@@ -126,12 +126,14 @@ test_mempool_basic(void)
 
 	printf("get private data\n");
 	if (rte_mempool_get_priv(mp) !=
-			(char*) mp + sizeof(struct rte_mempool))
+			(char*) mp + MEMPOOL_HEADER_SIZE(mp, mp->pg_num))
 		return -1;
 
 	printf("get physical address of an object\n");
-	if (rte_mempool_virt2phy(mp, obj) !=
-			(phys_addr_t) (mp->phys_addr + (phys_addr_t) ((char*) obj - (char*) mp)))
+	if (MEMPOOL_IS_CONTIG(mp) &&
+			rte_mempool_virt2phy(mp, obj) !=
+			(phys_addr_t) (mp->phys_addr +
+			(phys_addr_t) ((char*) obj - (char*) mp)))
 		return -1;
 
 	printf("put the object back\n");
@@ -428,6 +430,33 @@ test_mempool_same_name_twice_creation(void)
 	return 0;
 }
 
+/*
+ * BAsic test for mempool_xmem functions.
+ */
+static int
+test_mempool_xmem_misc(void)
+{
+	uint32_t elt_num, total_size;
+	size_t sz;
+	ssize_t usz;
+
+	elt_num = MAX_KEEP;
+	total_size = rte_mempool_calc_obj_size(MEMPOOL_ELT_SIZE, 0, NULL);
+	sz = rte_mempool_xmem_size(elt_num, total_size, MEMPOOL_PG_SHIFT_MAX);
+
+	usz = rte_mempool_xmem_usage(NULL, elt_num, total_size, 0, 1,
+		MEMPOOL_PG_SHIFT_MAX);
+
+	if(sz != (size_t)usz)  {
+		printf("failure @ %s: rte_mempool_xmem_usage(%u, %u) "
+			"returns: %#zx, while expected: %#zx;\n",
+			__func__, elt_num, total_size, sz, (size_t)usz);
+		return (-1);
+	}
+
+	return (0);
+}
+
 int
 test_mempool(void)
 {
@@ -485,6 +514,9 @@ test_mempool(void)
 		return -1;
 
 	if (test_mempool_same_name_twice_creation() < 0)
+		return -1;
+
+	if (test_mempool_xmem_misc() < 0)
 		return -1;
 
 	rte_mempool_list_dump();

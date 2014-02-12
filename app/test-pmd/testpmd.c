@@ -72,8 +72,12 @@
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
+#ifdef RTE_LIBRTE_PMD_XENVIRT
+#include <rte_eth_xenvirt.h>
+#endif
 
 #include "testpmd.h"
+#include "mempool_osdep.h"
 
 uint16_t verbose_level = 0; /**< Silent by default. */
 
@@ -94,6 +98,11 @@ uint8_t numa_support = 0; /**< No numa support by default */
  * not configured.
  */
 uint8_t socket_num = UMA_NO_CONFIG; 
+
+/*
+ * Use ANONYMOUS mapped memory (might be not physically continuous) for mbufs.
+ */
+uint8_t mp_anon = 0;
 
 /*
  * Record the Ethernet address of peer target ports to which packets are
@@ -407,8 +416,7 @@ testpmd_mbuf_pool_ctor(struct rte_mempool *mp,
 		return;
 	}
 	mbp_ctor_arg = (struct mbuf_pool_ctor_arg *) opaque_arg;
-	mbp_priv = (struct rte_pktmbuf_pool_private *)
-		((char *)mp + sizeof(struct rte_mempool));
+	mbp_priv = rte_mempool_get_priv(mp);
 	mbp_priv->mbuf_data_room_size = mbp_ctor_arg->seg_buf_size;
 }
 
@@ -429,15 +437,40 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 	mb_ctor_arg.seg_buf_size = mbp_ctor_arg.seg_buf_size;
 	mb_size = mb_ctor_arg.seg_buf_offset + mb_ctor_arg.seg_buf_size;
 	mbuf_poolname_build(socket_id, pool_name, sizeof(pool_name));
-	rte_mp = rte_mempool_create(pool_name, nb_mbuf, (unsigned) mb_size,
+
+#ifdef RTE_LIBRTE_PMD_XENVIRT
+	rte_mp = rte_mempool_gntalloc_create(pool_name, nb_mbuf, mb_size,
+                                   (unsigned) mb_mempool_cache,
+                                   sizeof(struct rte_pktmbuf_pool_private),
+                                   testpmd_mbuf_pool_ctor, &mbp_ctor_arg,
+                                   testpmd_mbuf_ctor, &mb_ctor_arg,
+                                   socket_id, 0);
+
+
+
+#else
+	if (mp_anon != 0)
+		rte_mp = mempool_anon_create(pool_name, nb_mbuf, mb_size,
 				    (unsigned) mb_mempool_cache,
 				    sizeof(struct rte_pktmbuf_pool_private),
 				    testpmd_mbuf_pool_ctor, &mbp_ctor_arg,
 				    testpmd_mbuf_ctor, &mb_ctor_arg,
 				    socket_id, 0);
+	else 
+		rte_mp = rte_mempool_create(pool_name, nb_mbuf, mb_size,
+				    (unsigned) mb_mempool_cache,
+				    sizeof(struct rte_pktmbuf_pool_private),
+				    testpmd_mbuf_pool_ctor, &mbp_ctor_arg,
+				    testpmd_mbuf_ctor, &mb_ctor_arg,
+				    socket_id, 0);
+
+#endif
+
 	if (rte_mp == NULL) {
 		rte_exit(EXIT_FAILURE, "Creation of mbuf pool for socket %u "
 						"failed\n", socket_id);
+	} else if (verbose_level > 0) {
+		rte_mempool_dump(rte_mp);
 	}
 }
 
@@ -1136,7 +1169,7 @@ all_ports_started(void)
 	return 1;
 }
 
-void
+int
 start_port(portid_t pid)
 {
 	int diag, need_check_link_status = 0;
@@ -1146,12 +1179,12 @@ start_port(portid_t pid)
 
 	if (test_done == 0) {
 		printf("Please stop forwarding first\n");
-		return;
+		return -1;
 	}
 
 	if (init_fwd_streams() < 0) {
 		printf("Fail from init_fwd_streams()\n");
-		return;
+		return -1;
 	}
 	
 	if(dcb_config)
@@ -1183,7 +1216,7 @@ start_port(portid_t pid)
 				printf("Fail to configure port %d\n", pi);
 				/* try to reconfigure port next time */
 				port->need_reconfig = 1;
-				return;
+				return -1;
 			}
 		}
 		if (port->need_reconfig_queues > 0) {
@@ -1212,7 +1245,7 @@ start_port(portid_t pid)
 				printf("Fail to configure port %d tx queues\n", pi);
 				/* try to reconfigure queues next time */
 				port->need_reconfig_queues = 1;
-				return;
+				return -1;
 			}
 			/* setup rx queues */
 			for (qi = 0; qi < nb_rxq; qi++) {
@@ -1225,7 +1258,7 @@ start_port(portid_t pid)
 							"No mempool allocation"
 							"on the socket %d\n",
 							rxring_numa[pi]);
-						return;
+						return -1;
 					}
 					
 					diag = rte_eth_rx_queue_setup(pi, qi,
@@ -1251,7 +1284,7 @@ start_port(portid_t pid)
 				printf("Fail to configure port %d rx queues\n", pi);
 				/* try to reconfigure queues next time */
 				port->need_reconfig_queues = 1;
-				return;
+				return -1;
 			}
 		}
 		/* start port */
@@ -1280,6 +1313,7 @@ start_port(portid_t pid)
 		printf("Please stop the ports first\n");
 
 	printf("Done\n");
+	return 0;
 }
 
 void
@@ -1732,7 +1766,8 @@ main(int argc, char** argv)
 		       nb_rxq, nb_txq);
 
 	init_config();
-	start_port(RTE_PORT_ALL);
+	if (start_port(RTE_PORT_ALL) != 0)
+		rte_exit(EXIT_FAILURE, "Start ports failed\n");
 
 	/* set all ports to promiscuous mode by default */
 	for (port_id = 0; port_id < nb_ports; port_id++)

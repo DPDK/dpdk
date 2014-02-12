@@ -984,6 +984,17 @@ rte_eal_hugepage_init(void)
 		return 0;
 	}
 
+/* check if app runs on Xen Dom0 */
+	if (internal_config.xen_dom0_support) {
+#ifdef RTE_LIBRTE_XEN_DOM0
+		/* use dom0_mm kernel driver to init memory */
+		if (rte_xen_dom0_memory_init() < 0)
+			return -1;
+		else
+			return 0;
+#endif
+	}
+
 
 	/* calculate total number of hugepages available. at this point we haven't
 	 * yet started sorting them so they all are on socket 0 */
@@ -1269,6 +1280,17 @@ rte_eal_hugepage_attach(void)
 				"(ASLR) is enabled in the kernel.\n");
 		RTE_LOG(WARNING, EAL, "   This may cause issues with mapping memory "
 				"into secondary processes\n");
+	}
+
+	if (internal_config.xen_dom0_support) {
+#ifdef RTE_LIBRTE_XEN_DOM0
+		if (rte_xen_dom0_memory_attach() < 0) {
+			RTE_LOG(ERR, EAL,"Failed to attach memory setments of primay "
+					"process\n");
+			return -1;
+		}
+		return 0;
+#endif
 	}
 
 	fd_zero = open("/dev/zero", O_RDONLY);

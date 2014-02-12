@@ -1101,7 +1101,12 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 	if ((mz = rte_memzone_lookup(z_name)) != 0)
 		return (mz);
 
+#ifdef RTE_LIBRTE_XEN_DOM0 
+	return rte_memzone_reserve_bounded(z_name, ring_size,
+			socket_id, 0, CACHE_LINE_SIZE, RTE_PGSIZE_2M);
+#else
 	return rte_memzone_reserve(z_name, ring_size, socket_id, 0);
+#endif
 }
 
 static void
@@ -1277,7 +1282,11 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->port_id = dev->data->port_id;
 
 	txq->tdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_TDT(queue_idx));
+#ifndef RTE_LIBRTE_XEN_DOM0
 	txq->tx_ring_phys_addr = (uint64_t) tz->phys_addr;
+#else   
+	txq->tx_ring_phys_addr = rte_mem_phy2mch(tz->memseg_id, tz->phys_addr);
+#endif
 	txq->tx_ring = (struct e1000_data_desc *) tz->addr;
 
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
@@ -1404,8 +1413,12 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 				0 : ETHER_CRC_LEN);
 
 	rxq->rdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDT(queue_idx));
-	rxq->rdh_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDH(queue_idx));	
+	rxq->rdh_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDH(queue_idx));
+#ifndef RTE_LIBRTE_XEN_DOM0	
 	rxq->rx_ring_phys_addr = (uint64_t) rz->phys_addr;
+#else
+	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr); 
+#endif 
 	rxq->rx_ring = (struct e1000_rx_desc *) rz->addr;
 
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",

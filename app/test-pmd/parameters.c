@@ -478,6 +478,7 @@ launch_args_parse(int argc, char** argv)
 		{ "coremask",			1, 0, 0 },
 		{ "portmask",			1, 0, 0 },
 		{ "numa",			0, 0, 0 },
+		{ "mp-anon",			0, 0, 0 },
 		{ "port-numa-config",           1, 0, 0 },
 		{ "ring-numa-config",           1, 0, 0 },
 		{ "socket-num",			1, 0, 0 },	
@@ -593,6 +594,9 @@ launch_args_parse(int argc, char** argv)
 				memset(port_numa,NUMA_NO_CONFIG,RTE_MAX_ETHPORTS);
 				memset(rxring_numa,NUMA_NO_CONFIG,RTE_MAX_ETHPORTS);
 				memset(txring_numa,NUMA_NO_CONFIG,RTE_MAX_ETHPORTS);
+			}
+			if (!strcmp(lgopts[opt_idx].name, "mp-anon")) {
+				mp_anon = 1;
 			}
 			if (!strcmp(lgopts[opt_idx].name, "port-numa-config")) {
 				if (parse_portnuma_config(optarg))

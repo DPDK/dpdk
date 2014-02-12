@@ -974,10 +974,12 @@ pkt_fwd_config_display(struct fwd_config *cfg)
 	streamid_t sm_id;
 
 	printf("%s packet forwarding - ports=%d - cores=%d - streams=%d - "
-	       "NUMA support %s\n",
-	       cfg->fwd_eng->fwd_mode_name,
-	       cfg->nb_fwd_ports, cfg->nb_fwd_lcores, cfg->nb_fwd_streams,
-	       numa_support == 1 ? "enabled" : "disabled");
+		"NUMA support %s, MP over anonymous pages %s\n",
+		cfg->fwd_eng->fwd_mode_name,
+		cfg->nb_fwd_ports, cfg->nb_fwd_lcores, cfg->nb_fwd_streams,
+		numa_support == 1 ? "enabled" : "disabled",
+		mp_anon != 0 ? "enabled" : "disabled");
+
 	for (lc_id = 0; lc_id < cfg->nb_fwd_lcores; lc_id++) {
 		printf("Logical Core %u (socket %u) forwards packets on "
 		       "%d streams:",

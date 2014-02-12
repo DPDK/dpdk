@@ -1086,8 +1086,13 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 	if (mz)
 		return mz;
 
+#ifdef RTE_LIBRTE_XEN_DOM0
+	return rte_memzone_reserve_bounded(z_name, ring_size,
+			socket_id, 0, IGB_ALIGN, RTE_PGSIZE_2M);
+#else
 	return rte_memzone_reserve_aligned(z_name, ring_size,
 			socket_id, 0, IGB_ALIGN);
+#endif
 }
 
 static void
@@ -1240,9 +1245,12 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->port_id = dev->data->port_id;
 
 	txq->tdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_TDT(txq->reg_idx));
+#ifndef RTE_LIBRTE_XEN_DOM0
 	txq->tx_ring_phys_addr = (uint64_t) tz->phys_addr;
-	txq->tx_ring = (union e1000_adv_tx_desc *) tz->addr;
-
+#else
+	txq->tx_ring_phys_addr = rte_mem_phy2mch(tz->memseg_id, tz->phys_addr);
+#endif
+	 txq->tx_ring = (union e1000_adv_tx_desc *) tz->addr;
 	/* Allocate software ring */
 	txq->sw_ring = rte_zmalloc("txq->sw_ring",
 				   sizeof(struct igb_tx_entry) * nb_desc,
@@ -1372,7 +1380,11 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 	rxq->rdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDT(rxq->reg_idx));
 	rxq->rdh_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDH(rxq->reg_idx));
+#ifndef RTE_LIBRTE_XEN_DOM0
 	rxq->rx_ring_phys_addr = (uint64_t) rz->phys_addr;
+#else
+	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr); 
+#endif 
 	rxq->rx_ring = (union e1000_adv_rx_desc *) rz->addr;
 
 	/* Allocate software ring. */
@@ -1838,8 +1850,7 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		/*
 		 * Configure RX buffer size.
 		 */
-		mbp_priv = (struct rte_pktmbuf_pool_private *)
-			((char *)rxq->mb_pool + sizeof(struct rte_mempool));
+		mbp_priv = rte_mempool_get_priv(rxq->mb_pool);
 		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
 				       RTE_PKTMBUF_HEADROOM);
 		if (buf_size >= 1024) {
@@ -2093,8 +2104,7 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 		/*
 		 * Configure RX buffer size.
 		 */
-		mbp_priv = (struct rte_pktmbuf_pool_private *)
-			((char *)rxq->mb_pool + sizeof(struct rte_mempool));
+		mbp_priv = rte_mempool_get_priv(rxq->mb_pool);
 		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
 				       RTE_PKTMBUF_HEADROOM);
 		if (buf_size >= 1024) {

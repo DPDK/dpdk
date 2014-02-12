@@ -30,6 +30,10 @@
 #include <linux/msi.h>
 #include <linux/version.h>
 
+#ifdef CONFIG_XEN_DOM0 
+#include <xen/xen.h>
+#endif
+
 /**
  * MSI-X related macros, copy from linux/pci_regs.h in kernel 2.6.39,
  * but none of them in kernel 2.6.35.
@@ -312,6 +316,48 @@ spin_unlock:
 	return ret;
 }
 
+#ifdef CONFIG_XEN_DOM0
+static int
+igbuio_dom0_mmap_phys(struct uio_info *info, struct vm_area_struct *vma)
+{
+	int idx;
+	idx = (int)vma->vm_pgoff;
+	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+	vma->vm_page_prot.pgprot |= _PAGE_IOMAP;
+
+	return remap_pfn_range(vma,
+			vma->vm_start,
+			info->mem[idx].addr >> PAGE_SHIFT,
+			vma->vm_end - vma->vm_start,
+			vma->vm_page_prot);
+}
+
+/**
+ * This is uio device mmap method which will use igbuio mmap for Xen 
+ * Dom0 enviroment.
+ */
+static int
+igbuio_dom0_pci_mmap(struct uio_info *info, struct vm_area_struct *vma)
+{
+	int idx;
+
+	if (vma->vm_pgoff >= MAX_UIO_MAPS) 
+		return -EINVAL;
+	if(info->mem[vma->vm_pgoff].size == 0)
+		return  -EINVAL;
+
+	idx = (int)vma->vm_pgoff;
+	switch (info->mem[idx].memtype) {
+	case UIO_MEM_PHYS:
+		return igbuio_dom0_mmap_phys(info, vma);
+	case UIO_MEM_LOGICAL:
+	case UIO_MEM_VIRTUAL:
+	default:
+		return -EINVAL;
+	}
+}       
+#endif
+
 /* Remap pci resources described by bar #pci_bar in uio resource n. */
 static int
 igbuio_pci_setup_iomem(struct pci_dev *dev, struct uio_info *info,
@@ -462,6 +508,11 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	udev->info.version = "0.1";
 	udev->info.handler = igbuio_pci_irqhandler;
 	udev->info.irqcontrol = igbuio_pci_irqcontrol;
+#ifdef CONFIG_XEN_DOM0
+	/* check if the driver run on Xen Dom0 */
+	if (xen_initial_domain())
+		udev->info.mmap = igbuio_dom0_pci_mmap;
+#endif
 	udev->info.priv = udev;
 	udev->pdev = dev;
 	udev->mode = 0; /* set the default value for interrupt mode */

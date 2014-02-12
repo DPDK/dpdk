@@ -644,6 +644,72 @@ test_no_huge_flag(void)
 	return 0;
 }
 
+#ifdef RTE_LIBRTE_XEN_DOM0
+static int
+test_dom0_misc_flags(void)
+{
+	char prefix[PATH_MAX], tmp[PATH_MAX];
+
+	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
+		printf("Error - unable to get current prefix!\n");
+		return -1;
+	}
+	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+
+	/* check that some general flags don't prevent things from working.
+	 * All cases, apart from the first, app should run.
+	 * No futher testing of output done.
+	 */
+	/* sanity check - failure with invalid option */
+	const char *argv0[] = {prgname, prefix, mp_flag, "-c", "1", "--invalid-opt"};
+
+	/* With --no-pci */
+	const char *argv1[] = {prgname, prefix, mp_flag, "-c", "1", "--no-pci"};
+	/* With -v */
+	const char *argv2[] = {prgname, prefix, mp_flag, "-c", "1", "-v"};
+	/* With valid --syslog */
+	const char *argv3[] = {prgname, prefix, mp_flag, "-c", "1",
+			"--syslog", "syslog"};
+	/* With empty --syslog (should fail) */
+	const char *argv4[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog"};
+	/* With invalid --syslog */
+	const char *argv5[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog", "error"};
+	/* With no-sh-conf */
+	const char *argv6[] = {prgname, "-c", "1", "-n", "2", "-m", "20",
+			"--no-shconf", "--file-prefix=noshconf" };
+
+	if (launch_proc(argv0) == 0) {
+		printf("Error - process ran ok with invalid flag\n");
+		return -1;
+	}
+	if (launch_proc(argv1) != 0) {
+		printf("Error - process did not run ok with --no-pci flag\n");
+		return -1;
+	}
+	if (launch_proc(argv2) != 0) {
+		printf("Error - process did not run ok with -v flag\n");
+		return -1;
+	}
+	if (launch_proc(argv3) != 0) {
+		printf("Error - process did not run ok with --syslog flag\n");
+		return -1;
+	}
+	if (launch_proc(argv4) == 0) {
+		printf("Error - process run ok with empty --syslog flag\n");
+		return -1;
+	}
+	if (launch_proc(argv5) == 0) {
+		printf("Error - process run ok with invalid --syslog flag\n");
+		return -1;
+	}
+	if (launch_proc(argv6) != 0) {
+		printf("Error - process did not run ok with --no-shconf flag\n");
+		return -1;
+	}
+	
+	return 0;
+}
+#else
 static int
 test_misc_flags(void)
 {
@@ -736,6 +802,10 @@ test_misc_flags(void)
 	 * effect on secondary processes) */
 	const char *argv10[] = {prgname, prefix, mp_flag, "-c", "1", "--huge-dir", "invalid"};
 
+	/* try running with base-virtaddr param */
+	const char *argv11[] = {prgname, "--file-prefix=virtaddr",
+			"-c", "1", "-n", "2", "--base-virtaddr=0x12345678"};
+
 
 	if (launch_proc(argv0) == 0) {
 		printf("Error - process ran ok with invalid flag\n");
@@ -784,8 +854,13 @@ test_misc_flags(void)
 		printf("Error - secondary process did not run ok with invalid --huge-dir flag\n");
 		return -1;
 	}
+	if (launch_proc(argv11) != 0) {
+		printf("Error - process did not run ok with --base-virtaddr parameter\n");
+		return -1;
+	}
 	return 0;
 }
+#endif
 
 static int
 test_file_prefix(void)
@@ -822,6 +897,9 @@ test_file_prefix(void)
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
+#ifdef RTE_LIBRTE_XEN_DOM0
+	return 0;
+#endif
 
 	/* check if files for current prefix are present */
 	if (process_hugefiles(prefix, HUGEPAGE_CHECK_EXISTS) != 1) {
@@ -905,6 +983,7 @@ test_file_prefix(void)
 static int
 test_memory_flags(void)
 {
+	const char* mem_size = NULL;
 #ifdef RTE_EXEC_ENV_BSDAPP
 	/* BSD target doesn't support prefixes at this point */
 	const char * prefix = "";
@@ -916,13 +995,20 @@ test_memory_flags(void)
 	}
 	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
-	/* valid -m flag */
-	const char *argv0[] = {prgname, "-c", "10", "-n", "2",
-			"--file-prefix=" memtest, "-m", "2"};
+#ifdef RTE_LIBRTE_XEN_DOM0
+	mem_size = "30";
+#else
+	mem_size = "2";
+#endif
+
 
 	/* valid -m flag and mp flag */
-	const char *argv1[] = {prgname, prefix, mp_flag, "-c", "10",
-			"-n", "2", "-m", "2"};
+	const char *argv0[] = {prgname, prefix, mp_flag, "-c", "10",
+			"-n", "2", "-m", mem_size};
+
+	/* valid -m flag */
+	const char *argv1[] = {prgname, "-c", "10", "-n", "2",
+			"--file-prefix=" memtest, "-m", mem_size};
 
 	/* invalid (zero) --socket-mem flag */
 	const char *argv2[] = {prgname, "-c", "10", "-n", "2",
@@ -1016,10 +1102,12 @@ test_memory_flags(void)
 #endif
 
 	if (launch_proc(argv1) != 0) {
-		printf("Error - secondary process failed with valid -m flag !\n");
+		printf("Error - process failed with valid -m flag!\n");
 		return -1;
 	}
-
+#ifdef RTE_LIBRTE_XEN_DOM0
+	return 0;
+#endif
 	if (launch_proc(argv2) == 0) {
 		printf("Error - process run ok with invalid (zero) --socket-mem!\n");
 		return -1;
@@ -1132,7 +1220,11 @@ test_eal_flags(void)
 		return ret;
 	}
 
+#ifdef RTE_LIBRTE_XEN_DOM0
+	ret = test_dom0_misc_flags();
+#else
 	ret = test_misc_flags();
+#endif
 	if (ret < 0) {
 		printf("Error in test_misc_flags()");
 		return ret;

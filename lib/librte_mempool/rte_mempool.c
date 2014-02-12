@@ -119,6 +119,232 @@ static unsigned optimize_object_size(unsigned obj_size)
 	return new_obj_size * CACHE_LINE_SIZE;
 }
 
+static void
+mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
+	rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg)
+{
+	struct rte_mempool **mpp;
+
+	obj = (char *)obj + mp->header_size;
+
+	/* set mempool ptr in header */
+	mpp = __mempool_from_obj(obj);
+	*mpp = mp;
+
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	__mempool_write_header_cookie(obj, 1);
+	__mempool_write_trailer_cookie(obj);
+#endif
+	/* call the initializer */
+	if (obj_init)
+		obj_init(mp, obj_init_arg, obj, obj_idx);
+
+	/* enqueue in ring */
+	rte_ring_sp_enqueue(mp->ring, obj);
+}
+
+uint32_t
+rte_mempool_obj_iter(void *vaddr, uint32_t elt_num, size_t elt_sz, size_t align,
+	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
+	rte_mempool_obj_iter_t obj_iter, void *obj_iter_arg)
+{
+	uint32_t i, j, k;
+	uint32_t pgn;
+	uintptr_t end, start, va;
+	uintptr_t pg_sz;
+
+	pg_sz = (uintptr_t)1 << pg_shift;
+	va = (uintptr_t)vaddr;
+
+	i = 0;
+	j = 0;
+
+	while (i != elt_num && j != pg_num) {
+
+		start = RTE_ALIGN_CEIL(va, align);
+		end = start + elt_sz;
+
+		pgn = (end >> pg_shift) - (start >> pg_shift);
+		pgn += j;
+
+		/* do we have enough space left for the next element. */
+		if (pgn >= pg_num)
+			break;
+
+		for (k = j;
+				k != pgn &&
+				paddr[k] + pg_sz == paddr[k + 1];
+				k++)
+			;
+
+		/*
+		 * if next pgn chunks of memory physically continuous,
+		 * use it to create next element.
+		 * otherwise, just skip that chunk unused.
+		 */
+		if (k == pgn) {
+			if (obj_iter != NULL)
+				obj_iter(obj_iter_arg, (void *)start,
+					(void *)end, i);
+			va = end;
+			j = pgn;
+			i++;
+		} else {
+			va = RTE_ALIGN_CEIL((va + 1), pg_sz);
+			j++;
+		}
+	}
+
+	return (i);
+}
+
+/*
+ * Populate  mempool with the objects.
+ */
+
+struct mempool_populate_arg {
+	struct rte_mempool     *mp;
+	rte_mempool_obj_ctor_t *obj_init;
+	void                   *obj_init_arg;
+};
+
+static void
+mempool_obj_populate(void *arg, void *start, void *end, uint32_t idx)
+{
+	struct mempool_populate_arg *pa = arg;
+
+	mempool_add_elem(pa->mp, start, idx, pa->obj_init, pa->obj_init_arg);
+	pa->mp->elt_va_end = (uintptr_t)end;
+}
+
+static void
+mempool_populate(struct rte_mempool *mp, size_t num, size_t align,
+	rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg)
+{
+	uint32_t elt_sz;
+	struct mempool_populate_arg arg;
+
+	elt_sz = mp->elt_size + mp->header_size + mp->trailer_size;
+	arg.mp = mp;
+	arg.obj_init = obj_init;
+	arg.obj_init_arg = obj_init_arg;
+
+	mp->size = rte_mempool_obj_iter((void *)mp->elt_va_start,
+		num, elt_sz, align,
+		mp->elt_pa, mp->pg_num, mp->pg_shift,
+		mempool_obj_populate, &arg);
+}
+
+uint32_t
+rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
+	struct rte_mempool_objsz *sz)
+{
+	struct rte_mempool_objsz lsz;
+
+	sz = (sz != NULL) ? sz : &lsz;
+
+	/*
+	 * In header, we have at least the pointer to the pool, and
+	 * optionaly a 64 bits cookie.
+	 */
+	sz->header_size = 0;
+	sz->header_size += sizeof(struct rte_mempool *); /* ptr to pool */
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	sz->header_size += sizeof(uint64_t); /* cookie */
+#endif
+	if ((flags & MEMPOOL_F_NO_CACHE_ALIGN) == 0)
+		sz->header_size = RTE_ALIGN_CEIL(sz->header_size,
+			CACHE_LINE_SIZE);
+
+	/* trailer contains the cookie in debug mode */
+	sz->trailer_size = 0;
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	sz->trailer_size += sizeof(uint64_t); /* cookie */
+#endif
+	/* element size is 8 bytes-aligned at least */
+	sz->elt_size = RTE_ALIGN_CEIL(elt_size, sizeof(uint64_t));
+
+	/* expand trailer to next cache line */
+	if ((flags & MEMPOOL_F_NO_CACHE_ALIGN) == 0) {
+		sz->total_size = sz->header_size + sz->elt_size +
+			sz->trailer_size;
+		sz->trailer_size += ((CACHE_LINE_SIZE -
+				  (sz->total_size & CACHE_LINE_MASK)) &
+				 CACHE_LINE_MASK);
+	}
+
+	/*
+	 * increase trailer to add padding between objects in order to
+	 * spread them accross memory channels/ranks
+	 */
+	if ((flags & MEMPOOL_F_NO_SPREAD) == 0) {
+		unsigned new_size;
+		new_size = optimize_object_size(sz->header_size + sz->elt_size +
+			sz->trailer_size);
+		sz->trailer_size = new_size - sz->header_size - sz->elt_size;
+	}
+
+	/* this is the size of an object, including header and trailer */
+	sz->total_size = sz->header_size + sz->elt_size + sz->trailer_size;
+
+	return (sz->total_size);
+}
+
+
+/*
+ * Calculate maximum amount of memory required to store given number of objects.
+ */
+size_t
+rte_mempool_xmem_size(uint32_t elt_num, size_t elt_sz, uint32_t pg_shift)
+{
+	size_t n, pg_num, pg_sz, sz;
+
+	pg_sz = (size_t)1 << pg_shift;
+
+	if ((n = pg_sz / elt_sz) > 0) {
+		pg_num = (elt_num + n - 1) / n;
+		sz = pg_num << pg_shift;
+	} else {
+		sz = RTE_ALIGN_CEIL(elt_sz, pg_sz) * elt_num;
+	}
+
+	return (sz);
+}
+
+/*
+ * Calculate how much memory would be actually required with the
+ * given memory footprint to store required number of elements.
+ */
+static void
+mempool_lelem_iter(void *arg, __rte_unused void *start, void *end,
+        __rte_unused uint32_t idx)
+{
+        *(uintptr_t *)arg = (uintptr_t)end;
+}
+
+ssize_t
+rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t elt_sz,
+	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift)
+{
+	uint32_t n;
+	uintptr_t va, uv;
+	size_t pg_sz, usz;
+
+	pg_sz = (size_t)1 << pg_shift;
+	va = (uintptr_t)vaddr;
+	uv = va;
+
+	if ((n = rte_mempool_obj_iter(vaddr, elt_num, elt_sz, 1,
+			paddr, pg_num, pg_shift, mempool_lelem_iter,
+			&uv)) != elt_num) {
+		return (-n);
+	}
+
+	uv = RTE_ALIGN_CEIL(uv, pg_sz);
+	usz = uv - va;
+	return (usz);
+}
+
 /* create the mempool */
 struct rte_mempool *
 rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
@@ -127,17 +353,47 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		   rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
 		   int socket_id, unsigned flags)
 {
+#ifdef RTE_LIBRTE_XEN_DOM0
+	return (rte_dom0_mempool_create(name, n, elt_size,
+		cache_size, private_data_size,
+		mp_init, mp_init_arg,
+		obj_init, obj_init_arg,
+		socket_id, flags));
+#else
+	return (rte_mempool_xmem_create(name, n, elt_size,
+		cache_size, private_data_size,
+		mp_init, mp_init_arg,
+		obj_init, obj_init_arg,
+		socket_id, flags,
+		NULL, NULL, MEMPOOL_PG_NUM_DEFAULT, MEMPOOL_PG_SHIFT_MAX));
+#endif
+}
+
+/*
+ * Create the mempool over already allocated chunk of memory.
+ * That external memory buffer can consists of physically disjoint pages.
+ * Setting vaddr to NULL, makes mempool to fallback to original behaviour
+ * and allocate space for mempool and it's elements as one big chunk of
+ * physically continuos memory.
+ * */
+struct rte_mempool *
+rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
+		unsigned cache_size, unsigned private_data_size,
+		rte_mempool_ctor_t *mp_init, void *mp_init_arg,
+		rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
+		int socket_id, unsigned flags, void *vaddr,
+		const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift)
+{
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	char rg_name[RTE_RING_NAMESIZE];
 	struct rte_mempool *mp = NULL;
 	struct rte_ring *r;
 	const struct rte_memzone *mz;
-	size_t mempool_size, total_elt_size;
+	size_t mempool_size;
 	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
 	int rg_flags = 0;
-	uint32_t header_size, trailer_size;
-	unsigned i;
-	void *obj;
+	void *obj; 
+	struct rte_mempool_objsz objsz;
 
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_mempool) &
@@ -156,13 +412,26 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 #endif
 
 	/* check that we have an initialised tail queue */
-	if (RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL, rte_mempool_list) == NULL) {
+	if (RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL,
+			rte_mempool_list) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
 		return NULL;	
 	}
 	
 	/* asked cache too big */
-	if (cache_size > RTE_MEMPOOL_CACHE_MAX_SIZE){
+	if (cache_size > RTE_MEMPOOL_CACHE_MAX_SIZE) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	/* check that we have both VA and PA */
+	if (vaddr != NULL && paddr == NULL) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	/* Check that pg_num and pg_shift parameters are valid. */
+	if (pg_num < RTE_DIM(mp->elt_pa) || pg_shift > MEMPOOL_PG_SHIFT_MAX) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -177,6 +446,9 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	if (flags & MEMPOOL_F_SC_GET)
 		rg_flags |= RING_F_SC_DEQ;
 
+	/* calculate mempool object sizes. */
+	rte_mempool_calc_obj_size(elt_size, flags, &objsz);
+
 	rte_rwlock_write_lock(RTE_EAL_MEMPOOL_RWLOCK);
 
 	/* allocate the ring that will be used to store objects */
@@ -189,53 +461,21 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		goto exit;
 
 	/*
-	 * In header, we have at least the pointer to the pool, and
-	 * optionaly a 64 bits cookie.
+	 * reserve a memory zone for this mempool: private data is
+	 * cache-aligned
 	 */
-	header_size = 0;
-	header_size += sizeof(struct rte_mempool *); /* ptr to pool */
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-	header_size += sizeof(uint64_t); /* cookie */
-#endif
-	if ((flags & MEMPOOL_F_NO_CACHE_ALIGN) == 0)
-		header_size = (header_size + CACHE_LINE_MASK) & (~CACHE_LINE_MASK);
-
-	/* trailer contains the cookie in debug mode */
-	trailer_size = 0;
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-	trailer_size += sizeof(uint64_t); /* cookie */
-#endif
-	/* element size is 8 bytes-aligned at least */
-	elt_size = (elt_size + 7) & (~7);
-
-	/* expand trailer to next cache line */
-	if ((flags & MEMPOOL_F_NO_CACHE_ALIGN) == 0) {
-		total_elt_size = header_size + elt_size + trailer_size;
-		trailer_size += ((CACHE_LINE_SIZE -
-				  (total_elt_size & CACHE_LINE_MASK)) &
-				 CACHE_LINE_MASK);
-	}
-
-	/*
-	 * increase trailer to add padding between objects in order to
-	 * spread them accross memory channels/ranks
-	 */
-	if ((flags & MEMPOOL_F_NO_SPREAD) == 0) {
-		unsigned new_size;
-		new_size = optimize_object_size(header_size + elt_size +
-						trailer_size);
-		trailer_size = new_size - header_size - elt_size;
-	}
-
-	/* this is the size of an object, including header and trailer */
-	total_elt_size = header_size + elt_size + trailer_size;
-
-	/* reserve a memory zone for this mempool: private data is
-	 * cache-aligned */
 	private_data_size = (private_data_size +
 			     CACHE_LINE_MASK) & (~CACHE_LINE_MASK);
-	mempool_size = total_elt_size * n +
-		sizeof(struct rte_mempool) + private_data_size;
+
+	/*
+ 	 * If user provided an external memory buffer, then use it to
+ 	 * store mempool objects. Otherwise reserve memzone big enough to
+ 	 * hold mempool header and metadata plus mempool objects.
+ 	 */
+	mempool_size = MEMPOOL_HEADER_SIZE(mp, pg_num) + private_data_size;
+	if (vaddr == NULL)
+		mempool_size += (size_t)objsz.total_size * n;
+			
 	rte_snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT, name);
 
 	mz = rte_memzone_reserve(mz_name, mempool_size, socket_id, mz_flags);
@@ -255,39 +495,42 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	mp->ring = r;
 	mp->size = n;
 	mp->flags = flags;
-	mp->elt_size = elt_size;
-	mp->header_size = header_size;
-	mp->trailer_size = trailer_size;
+	mp->elt_size = objsz.elt_size;
+	mp->header_size = objsz.header_size;
+	mp->trailer_size = objsz.trailer_size;
 	mp->cache_size = cache_size;
-	mp->cache_flushthresh = (uint32_t)(cache_size * CACHE_FLUSHTHRESH_MULTIPLIER);
+	mp->cache_flushthresh = (uint32_t)
+		(cache_size * CACHE_FLUSHTHRESH_MULTIPLIER);
 	mp->private_data_size = private_data_size;
+
+	/* calculate address of the first element for continuous mempool. */
+	obj = (char *)mp + MEMPOOL_HEADER_SIZE(mp, pg_num) +
+		private_data_size;
+
+	/* populate address translation fields. */
+	mp->pg_num = pg_num;
+	mp->pg_shift = pg_shift;
+	mp->pg_mask = RTE_LEN2MASK(mp->pg_shift, typeof(mp->pg_mask));
+
+	/* mempool elements allocated together with mempool */
+	if (vaddr == NULL) {
+		mp->elt_va_start = (uintptr_t)obj;
+		mp->elt_pa[0] = mp->phys_addr +
+			(mp->elt_va_start - (uintptr_t)mp);
+
+	/* mempool elements in a separate chunk of memory. */
+	} else {
+		mp->elt_va_start = (uintptr_t)vaddr;
+		memcpy(mp->elt_pa, paddr, sizeof (mp->elt_pa[0]) * pg_num);
+	}
+
+	mp->elt_va_end = mp->elt_va_start;
 
 	/* call the initializer */
 	if (mp_init)
 		mp_init(mp, mp_init_arg);
 
-	/* fill the headers and trailers, and add objects in ring */
-	obj = (char *)mp + sizeof(struct rte_mempool) + private_data_size;
-	for (i = 0; i < n; i++) {
-		struct rte_mempool **mpp;
-		obj = (char *)obj + header_size;
-
-		/* set mempool ptr in header */
-		mpp = __mempool_from_obj(obj);
-		*mpp = mp;
-
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-		__mempool_write_header_cookie(obj, 1);
-		__mempool_write_trailer_cookie(obj);
-#endif
-		/* call the initializer */
-		if (obj_init)
-			obj_init(mp, obj_init_arg, obj, i);
-
-		/* enqueue in ring */
-		rte_ring_sp_enqueue(mp->ring, obj);
-		obj = (char *)obj + elt_size + trailer_size;
-	}
+	mempool_populate(mp, n, 1, obj_init, obj_init_arg);
 
 	RTE_EAL_TAILQ_INSERT_TAIL(RTE_TAILQ_MEMPOOL, rte_mempool_list, mp);
 
@@ -355,21 +598,56 @@ rte_mempool_dump_cache(const struct rte_mempool *mp)
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
+
+struct mempool_audit_arg {
+	const struct rte_mempool *mp;
+	uintptr_t obj_end;
+	uint32_t obj_num;
+};
+
+static void
+mempool_obj_audit(void *arg, void *start, void *end, uint32_t idx)
+{
+	struct mempool_audit_arg *pa = arg;
+	void *obj;
+
+	obj = (char *)start + pa->mp->header_size;
+	pa->obj_end = (uintptr_t)end;
+	pa->obj_num = idx + 1;
+	__mempool_check_cookies(pa->mp, &obj, 1, 2);
+}
+
 static void
 mempool_audit_cookies(const struct rte_mempool *mp)
 {
-	unsigned i;
-	void *obj;
-	void * const *obj_table;
+	uint32_t elt_sz, num;
+	struct mempool_audit_arg arg;
 
-	obj = (char *)mp + sizeof(struct rte_mempool) + mp->private_data_size;
-	for (i = 0; i < mp->size; i++) {
-		obj = (char *)obj + mp->header_size;
-		obj_table = &obj;
-		__mempool_check_cookies(mp, obj_table, 1, 2);
-		obj = (char *)obj + mp->elt_size + mp->trailer_size;
+	elt_sz = mp->elt_size + mp->header_size + mp->trailer_size;
+
+	arg.mp = mp;
+	arg.obj_end = mp->elt_va_start;
+	arg.obj_num = 0;
+
+	num = rte_mempool_obj_iter((void *)mp->elt_va_start,
+		mp->size, elt_sz, 1,
+		mp->elt_pa, mp->pg_num, mp->pg_shift,
+		mempool_obj_audit, &arg);
+
+	if (num != mp->size) {
+			rte_panic("rte_mempool_obj_iter(mempool=%p, size=%u) "
+			"iterated only over %u elements\n",
+			mp, mp->size, num);
+	} else if (arg.obj_end != mp->elt_va_end || arg.obj_num != mp->size) {
+			rte_panic("rte_mempool_obj_iter(mempool=%p, size=%u) "
+			"last callback va_end: %#tx (%#tx expeceted), "
+			"num of objects: %u (%u expected)\n", 
+			mp, mp->size,
+			arg.obj_end, mp->elt_va_end,
+			arg.obj_num, mp->size);
 	}
 }
+
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic error "-Wcast-qual"
 #endif
@@ -422,12 +700,26 @@ rte_mempool_dump(const struct rte_mempool *mp)
 	printf("mempool <%s>@%p\n", mp->name, mp);
 	printf("  flags=%x\n", mp->flags);
 	printf("  ring=<%s>@%p\n", mp->ring->name, mp->ring);
+	printf("  phys_addr=0x%" PRIx64 "\n", mp->phys_addr);
 	printf("  size=%"PRIu32"\n", mp->size);
 	printf("  header_size=%"PRIu32"\n", mp->header_size);
 	printf("  elt_size=%"PRIu32"\n", mp->elt_size);
 	printf("  trailer_size=%"PRIu32"\n", mp->trailer_size);
 	printf("  total_obj_size=%"PRIu32"\n",
 	       mp->header_size + mp->elt_size + mp->trailer_size);
+
+	printf("  private_data_size=%"PRIu32"\n", mp->private_data_size);
+	printf("  pg_num=%"PRIu32"\n", mp->pg_num);
+	printf("  pg_shift=%"PRIu32"\n", mp->pg_shift);
+	printf("  pg_mask=%#tx\n", mp->pg_mask);
+	printf("  elt_va_start=%#tx\n", mp->elt_va_start);
+	printf("  elt_va_end=%#tx\n", mp->elt_va_end);
+	printf("  elt_pa[0]=0x%" PRIx64 "\n", mp->elt_pa[0]);
+
+	if (mp->size != 0)
+		printf("  avg bytes/object=%#Lf\n",
+			(long double)(mp->elt_va_end - mp->elt_va_start) /
+			mp->size);
 
 	cache_count = rte_mempool_dump_cache(mp);
 	common_count = rte_ring_count(mp->ring);

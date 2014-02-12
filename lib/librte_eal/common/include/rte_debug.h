@@ -78,6 +78,11 @@ void rte_dump_registers(void);
 #define rte_panic_(func, format, ...) __rte_panic(func, format "%.0s", __VA_ARGS__)
 #define rte_panic(...) rte_panic_(__func__, __VA_ARGS__, "dummy")
 
+#define	RTE_VERIFY(exp)	do {                                                  \
+	if (!(exp))                                                           \
+		rte_panic("line %d\tassert \"" #exp "\" failed\n", __LINE__); \
+} while (0)
+
 /*
  * Provide notification of a critical non-recoverable error and stop.
  *

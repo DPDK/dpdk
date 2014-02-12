@@ -493,14 +493,14 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	 * or uio:uioX */
 
 	rte_snprintf(dirname, sizeof(dirname),
-	         "/sys/bus/pci/devices/" PCI_PRI_FMT "/uio",
+	         SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/uio",
 	         loc->domain, loc->bus, loc->devid, loc->function);
 
 	dir = opendir(dirname);
 	if (dir == NULL) {
 		/* retry with the parent directory */
 		rte_snprintf(dirname, sizeof(dirname),
-		         "/sys/bus/pci/devices/" PCI_PRI_FMT,
+		         SYSFS_PCI_DEVICES "/" PCI_PRI_FMT,
 		         loc->domain, loc->bus, loc->devid, loc->function);
 		dir = opendir(dirname);
 

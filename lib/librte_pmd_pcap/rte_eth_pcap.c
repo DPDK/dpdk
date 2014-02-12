@@ -140,8 +140,7 @@ eth_pcap_rx(void *queue,
 			break;
 
 		/* Now get the space available for data in the mbuf */
-		mbp_priv = (struct rte_pktmbuf_pool_private *)
-				((char *)pcap_q->mb_pool + sizeof(struct rte_mempool));
+		mbp_priv =  rte_mempool_get_priv(pcap_q->mb_pool);
 		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
 				RTE_PKTMBUF_HEADROOM);
 

@@ -271,6 +271,7 @@ extern uint8_t  interactive;
 extern uint8_t  numa_support; /**< set by "--numa" parameter */
 extern uint16_t port_topology; /**< set by "--port-topology" parameter */
 extern uint8_t no_flush_rx; /**<set by "--no-flush-rx" parameter */
+extern uint8_t  mp_anon; /**< set by "--mp-anon" parameter */
 
 #ifdef RTE_NIC_BYPASS
 extern uint32_t bypass_timeout; /**< Store the NIC bypass watchdog timeout */
@@ -489,7 +490,7 @@ void start_packet_forwarding(int with_tx_first);
 void stop_packet_forwarding(void);
 void init_port_config(void);
 int init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf);
-void start_port(portid_t pid);
+int start_port(portid_t pid);
 void stop_port(portid_t pid);
 void close_port(portid_t pid);
 int all_ports_stopped(void);

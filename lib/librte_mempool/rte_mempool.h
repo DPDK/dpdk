@@ -108,13 +108,35 @@ struct rte_mempool_cache {
 } __rte_cache_aligned;
 #endif /* RTE_MEMPOOL_CACHE_MAX_SIZE > 0 */
 
+struct rte_mempool_objsz {
+	uint32_t elt_size;     /**< Size of an element. */
+	uint32_t header_size;  /**< Size of header (before elt). */
+	uint32_t trailer_size; /**< Size of trailer (after elt). */
+	uint32_t total_size;
+	/**< Total size of an object (header + elt + trailer). */
+};
+
 #define RTE_MEMPOOL_NAMESIZE 32 /**< Maximum length of a memory pool. */
 #define RTE_MEMPOOL_MZ_PREFIX "MP_"
 
 /* "MP_<name>" */
 #define	RTE_MEMPOOL_MZ_FORMAT	RTE_MEMPOOL_MZ_PREFIX "%s"
 
+#ifdef RTE_LIBRTE_XEN_DOM0
+
+/* "<name>_MP_elt" */
+#define	RTE_MEMPOOL_OBJ_NAME	"%s_" RTE_MEMPOOL_MZ_PREFIX "elt"
+
+#else
+
 #define	RTE_MEMPOOL_OBJ_NAME	RTE_MEMPOOL_MZ_FORMAT
+
+#endif /* RTE_LIBRTE_XEN_DOM0 */
+
+#define	MEMPOOL_PG_SHIFT_MAX	(sizeof(uintptr_t) * CHAR_BIT - 1)
+
+/** Mempool over one chunk of physically continuous memory */
+#define	MEMPOOL_PG_NUM_DEFAULT	1
 
 /**
  * The RTE mempool structure.
@@ -128,7 +150,8 @@ struct rte_mempool {
 	int flags;                       /**< Flags of the mempool. */
 	uint32_t size;                   /**< Size of the mempool. */
 	uint32_t cache_size;             /**< Size of per-lcore local cache. */
-	uint32_t cache_flushthresh;      /**< Threshold before we flush excess elements. */
+	uint32_t cache_flushthresh;
+	/**< Threshold before we flush excess elements. */
 
 	uint32_t elt_size;               /**< Size of an element. */
 	uint32_t header_size;            /**< Size of header (before elt). */
@@ -145,6 +168,20 @@ struct rte_mempool {
 	/** Per-lcore statistics. */
 	struct rte_mempool_debug_stats stats[RTE_MAX_LCORE];
 #endif
+
+	/* Address translation support, starts from next cache line. */
+
+	/** Number of elements in the elt_pa array. */
+	uint32_t    pg_num __rte_cache_aligned;
+	uint32_t    pg_shift;     /**< LOG2 of the physical pages. */
+	uintptr_t   pg_mask;      /**< physical page mask value. */
+	uintptr_t   elt_va_start;
+	/**< Virtual address of the first mempool object. */
+	uintptr_t   elt_va_end;
+	/**< Virtual address of the <size + 1> mempool object. */
+	phys_addr_t elt_pa[MEMPOOL_PG_NUM_DEFAULT];
+	/**< Array of physical pages addresses for the mempool objects buffer. */
+
 }  __rte_cache_aligned;
 
 #define MEMPOOL_F_NO_SPREAD      0x0001 /**< Do not spread in memory. */
@@ -170,6 +207,24 @@ struct rte_mempool {
 #else
 #define __MEMPOOL_STAT_ADD(mp, name, n) do {} while(0)
 #endif
+
+/**
+ * Calculates size of the mempool header.
+ * @param mp
+ *   Pointer to the memory pool.
+ * @param pgn 
+ *   Number of page used to store mempool objects.
+ */
+#define	MEMPOOL_HEADER_SIZE(mp, pgn)	(sizeof(*(mp)) + \
+	RTE_ALIGN_CEIL(((pgn) - RTE_DIM((mp)->elt_pa)) * \
+	sizeof ((mp)->elt_pa[0]), CACHE_LINE_SIZE))
+
+/**
+ * Returns TRUE if whole mempool is allocated in one contiguous block of memory.
+ */
+#define	MEMPOOL_IS_CONTIG(mp)                      \
+	((mp)->pg_num == MEMPOOL_PG_NUM_DEFAULT && \
+	(mp)->phys_addr == (mp)->elt_pa[0])
 
 /**
  * @internal Get a pointer to a mempool pointer in the object header.
@@ -332,6 +387,49 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 #endif /* RTE_LIBRTE_MEMPOOL_DEBUG */
 
 /**
+ * An mempool's object iterator callback function.
+ */
+typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
+	void * /*obj_start*/,
+	void * /*obj_end*/,
+	uint32_t /*obj_index */);
+
+/*
+ * Iterates across objects of the given size and alignment in the
+ * provided chunk of memory. The given memory buffer can consist of
+ * disjoint physical pages.
+ * For each object calls the provided callback (if any).
+ * Used to populate mempool, walk through all elements of the mempool,
+ * estimate how many elements of the given size could be created in the given
+ * memory buffer.
+ * @param vaddr
+ *   Virtual address of the memory buffer.
+ * @param elt_num
+ *   Maximum number of objects to iterate through.
+ * @param elt_sz
+ *   Size of each object.
+ * @param paddr
+ *   Array of phyiscall addresses of the pages that comprises given memory
+ *   buffer.
+ * @param pg_num
+ *   Number of elements in the paddr array.
+ * @param pg_shift
+ *   LOG2 of the physical pages size.
+ * @param obj_iter
+ *   Object iterator callback function (could be NULL).
+ * @param obj_iter_arg
+ *   User defined Prameter for the object iterator callback function.
+ *
+ * @return
+ *   Number of objects iterated through.
+ */
+
+uint32_t rte_mempool_obj_iter(void *vaddr,
+	uint32_t elt_num, size_t elt_sz, size_t align,
+	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
+	rte_mempool_obj_iter_t obj_iter, void *obj_iter_arg);
+
+/**
  * An object constructor callback function for mempool.
  *
  * Arguments are the mempool, the opaque pointer given by the user in
@@ -354,6 +452,8 @@ typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
  *
  * This function uses ``memzone_reserve()`` to allocate memory. The
  * pool contains n elements of elt_size. Its size is set to n.
+ * All elements of the mempool are allocated together with the mempool header,
+ * in one physically continuous chunk of memory.
  *
  * @param name
  *   The name of the mempool.
@@ -435,6 +535,199 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		   rte_mempool_ctor_t *mp_init, void *mp_init_arg,
 		   rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
 		   int socket_id, unsigned flags);
+
+/**
+ * Creates a new mempool named *name* in memory.
+ *
+ * This function uses ``memzone_reserve()`` to allocate memory. The
+ * pool contains n elements of elt_size. Its size is set to n.
+ * Depending on the input parameters, mempool elements can be either allocated
+ * together with the mempool header, or an externally provided memory buffer
+ * could be used to store mempool objects. In later case, that external
+ * memory buffer can consist of set of disjoint phyiscal pages.
+ *
+ * @param name
+ *   The name of the mempool.
+ * @param n
+ *   The number of elements in the mempool. The optimum size (in terms of
+ *   memory usage) for a mempool is when n is a power of two minus one:
+ *   n = (2^q - 1).
+ * @param elt_size
+ *   The size of each element.
+ * @param cache_size
+ *   If cache_size is non-zero, the rte_mempool library will try to
+ *   limit the accesses to the common lockless pool, by maintaining a
+ *   per-lcore object cache. This argument must be lower or equal to
+ *   CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE. It is advised to choose
+ *   cache_size to have "n modulo cache_size == 0": if this is
+ *   not the case, some elements will always stay in the pool and will
+ *   never be used. The access to the per-lcore table is of course
+ *   faster than the multi-producer/consumer pool. The cache can be
+ *   disabled if the cache_size argument is set to 0; it can be useful to
+ *   avoid loosing objects in cache. Note that even if not used, the
+ *   memory space for cache is always reserved in a mempool structure,
+ *   except if CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE is set to 0.
+ * @param private_data_size
+ *   The size of the private data appended after the mempool
+ *   structure. This is useful for storing some private data after the
+ *   mempool structure, as is done for rte_mbuf_pool for example.
+ * @param mp_init
+ *   A function pointer that is called for initialization of the pool,
+ *   before object initialization. The user can initialize the private
+ *   data in this function if needed. This parameter can be NULL if
+ *   not needed.
+ * @param mp_init_arg
+ *   An opaque pointer to data that can be used in the mempool
+ *   constructor function.
+ * @param obj_init
+ *   A function pointer that is called for each object at
+ *   initialization of the pool. The user can set some meta data in
+ *   objects if needed. This parameter can be NULL if not needed.
+ *   The obj_init() function takes the mempool pointer, the init_arg,
+ *   the object pointer and the object number as parameters.
+ * @param obj_init_arg
+ *   An opaque pointer to data that can be used as an argument for
+ *   each call to the object constructor function.
+ * @param socket_id
+ *   The *socket_id* argument is the socket identifier in the case of
+ *   NUMA. The value can be *SOCKET_ID_ANY* if there is no NUMA
+ *   constraint for the reserved zone.
+ * @param flags
+ *   The *flags* arguments is an OR of following flags:
+ *   - MEMPOOL_F_NO_SPREAD: By default, objects addresses are spread
+ *     between channels in RAM: the pool allocator will add padding
+ *     between objects depending on the hardware configuration. See
+ *     Memory alignment constraints for details. If this flag is set,
+ *     the allocator will just align them to a cache line.
+ *   - MEMPOOL_F_NO_CACHE_ALIGN: By default, the returned objects are
+ *     cache-aligned. This flag removes this constraint, and no
+ *     padding will be present between objects. This flag implies
+ *     MEMPOOL_F_NO_SPREAD.
+ *   - MEMPOOL_F_SP_PUT: If this flag is set, the default behavior
+ *     when using rte_mempool_put() or rte_mempool_put_bulk() is
+ *     "single-producer". Otherwise, it is "multi-producers".
+ *   - MEMPOOL_F_SC_GET: If this flag is set, the default behavior
+ *     when using rte_mempool_get() or rte_mempool_get_bulk() is
+ *     "single-consumer". Otherwise, it is "multi-consumers".
+ * @param vaddr
+ *   Virtual address of the externally allocated memory buffer.
+ *   Will be used to store mempool objects.
+ * @param paddr
+ *   Array of phyiscall addresses of the pages that comprises given memory
+ *   buffer.
+ * @param pg_num
+ *   Number of elements in the paddr array.
+ * @param pg_shift
+ *   LOG2 of the physical pages size.
+ * @return
+ *   The pointer to the new allocated mempool, on success. NULL on error
+ *   with rte_errno set appropriately. Possible rte_errno values include:
+ *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
+ *    - E_RTE_SECONDARY - function was called from a secondary process instance
+ *    - E_RTE_NO_TAILQ - no tailq list could be got for the ring or mempool list
+ *    - EINVAL - cache size provided is too large
+ *    - ENOSPC - the maximum number of memzones has already been allocated
+ *    - EEXIST - a memzone with the same name already exists
+ *    - ENOMEM - no appropriate memory area found in which to create memzone
+ */
+struct rte_mempool *
+rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
+		unsigned cache_size, unsigned private_data_size,
+		rte_mempool_ctor_t *mp_init, void *mp_init_arg,
+		rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
+		int socket_id, unsigned flags, void *vaddr,
+		const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift);
+
+#ifdef RTE_LIBRTE_XEN_DOM0
+/**
+ * Creates a new mempool named *name* in memory on Xen Dom0.
+ *
+ * This function uses ``rte_mempool_xmem_create()`` to allocate memory. The
+ * pool contains n elements of elt_size. Its size is set to n.
+ * All elements of the mempool are allocated together with the mempool header,
+ * and memory buffer can consist of set of disjoint phyiscal pages.
+ *
+ * @param name
+ *   The name of the mempool.
+ * @param n
+ *   The number of elements in the mempool. The optimum size (in terms of
+ *   memory usage) for a mempool is when n is a power of two minus one:
+ *   n = (2^q - 1).
+ * @param elt_size
+ *   The size of each element.
+ * @param cache_size
+ *   If cache_size is non-zero, the rte_mempool library will try to
+ *   limit the accesses to the common lockless pool, by maintaining a
+ *   per-lcore object cache. This argument must be lower or equal to
+ *   CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE. It is advised to choose
+ *   cache_size to have "n modulo cache_size == 0": if this is
+ *   not the case, some elements will always stay in the pool and will
+ *   never be used. The access to the per-lcore table is of course
+ *   faster than the multi-producer/consumer pool. The cache can be
+ *   disabled if the cache_size argument is set to 0; it can be useful to
+ *   avoid loosing objects in cache. Note that even if not used, the
+ *   memory space for cache is always reserved in a mempool structure,
+ *   except if CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE is set to 0.
+ * @param private_data_size
+ *   The size of the private data appended after the mempool
+ *   structure. This is useful for storing some private data after the
+ *   mempool structure, as is done for rte_mbuf_pool for example.
+ * @param mp_init
+ *   A function pointer that is called for initialization of the pool,
+ *   before object initialization. The user can initialize the private
+ *   data in this function if needed. This parameter can be NULL if
+ *   not needed.
+ * @param mp_init_arg
+ *   An opaque pointer to data that can be used in the mempool
+ *   constructor function.
+ * @param obj_init
+ *   A function pointer that is called for each object at
+ *   initialization of the pool. The user can set some meta data in
+ *   objects if needed. This parameter can be NULL if not needed.
+ *   The obj_init() function takes the mempool pointer, the init_arg,
+ *   the object pointer and the object number as parameters.
+ * @param obj_init_arg
+ *   An opaque pointer to data that can be used as an argument for
+ *   each call to the object constructor function.
+ * @param socket_id
+ *   The *socket_id* argument is the socket identifier in the case of
+ *   NUMA. The value can be *SOCKET_ID_ANY* if there is no NUMA
+ *   constraint for the reserved zone.
+ * @param flags
+ *   The *flags* arguments is an OR of following flags:
+ *   - MEMPOOL_F_NO_SPREAD: By default, objects addresses are spread
+ *     between channels in RAM: the pool allocator will add padding
+ *     between objects depending on the hardware configuration. See
+ *     Memory alignment constraints for details. If this flag is set,
+ *     the allocator will just align them to a cache line.
+ *   - MEMPOOL_F_NO_CACHE_ALIGN: By default, the returned objects are
+ *     cache-aligned. This flag removes this constraint, and no
+ *     padding will be present between objects. This flag implies
+ *     MEMPOOL_F_NO_SPREAD.
+ *   - MEMPOOL_F_SP_PUT: If this flag is set, the default behavior
+ *     when using rte_mempool_put() or rte_mempool_put_bulk() is
+ *     "single-producer". Otherwise, it is "multi-producers".
+ *   - MEMPOOL_F_SC_GET: If this flag is set, the default behavior
+ *     when using rte_mempool_get() or rte_mempool_get_bulk() is
+ *     "single-consumer". Otherwise, it is "multi-consumers".
+ * @return
+ *   The pointer to the new allocated mempool, on success. NULL on error
+ *   with rte_errno set appropriately. Possible rte_errno values include:
+ *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
+ *    - E_RTE_SECONDARY - function was called from a secondary process instance
+ *    - E_RTE_NO_TAILQ - no tailq list could be got for the ring or mempool list
+ *    - EINVAL - cache size provided is too large
+ *    - ENOSPC - the maximum number of memzones has already been allocated
+ *    - EEXIST - a memzone with the same name already exists
+ *    - ENOMEM - no appropriate memory area found in which to create memzone
+ */
+struct rte_mempool *
+rte_dom0_mempool_create(const char *name, unsigned n, unsigned elt_size,
+		unsigned cache_size, unsigned private_data_size,
+		rte_mempool_ctor_t *mp_init, void *mp_init_arg,
+		rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
+		int socket_id, unsigned flags);
+#endif
 
 /**
  * Dump the status of the mempool to the console.
@@ -959,13 +1252,13 @@ rte_mempool_empty(const struct rte_mempool *mp)
  * @return
  *   The physical address of the elt element.
  */
-static inline phys_addr_t rte_mempool_virt2phy(const struct rte_mempool *mp,
-	const void *elt)
+static inline phys_addr_t
+rte_mempool_virt2phy(const struct rte_mempool *mp, const void *elt)
 {
 	uintptr_t off;
 
-	off = (const char *)elt - (const char *)mp;
-	return mp->phys_addr + off;
+	off = (const char *)elt - (const char *)mp->elt_va_start;
+	return (mp->elt_pa[off >> mp->pg_shift] + (off & mp->pg_mask));
 }
 
 
@@ -991,7 +1284,7 @@ void rte_mempool_audit(const struct rte_mempool *mp);
  */
 static inline void *rte_mempool_get_priv(struct rte_mempool *mp)
 {
-	return (char *)mp + sizeof(struct rte_mempool);
+	return (char *)mp + MEMPOOL_HEADER_SIZE(mp, mp->pg_num);
 }
 
 /**
@@ -1005,12 +1298,72 @@ void rte_mempool_list_dump(void);
  * @param name
  *   The name of the mempool.
  * @return
- *   The pointer to the mempool matching the name, or NULL if not found.NULL on error
+ *   The pointer to the mempool matching the name, or NULL if not found.
+ *   NULL on error
  *   with rte_errno set appropriately. Possible rte_errno values include:
  *    - ENOENT - required entry not available to return.
  *
  */
 struct rte_mempool *rte_mempool_lookup(const char *name);
+
+/**
+ * Given a desired size of the mempool element and mempool flags,
+ * caluclates header, trailer, body and total sizes of the mempool object.
+ * @param elt_size
+ *   The size of each element.
+ * @param flags
+ *   The flags used for the mempool creation.
+ *   Consult rte_mempool_create() for more information about possible values.
+ *   The size of each element.
+ * @return
+ *   Total size of the mempool object.
+ */
+uint32_t rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
+	struct rte_mempool_objsz *sz);
+
+/**
+ * Calculate maximum amount of memory required to store given number of objects.
+ * Assumes that the memory buffer will be alligned at page boundary.
+ * Note, that if object size is bigger then page size, then it assumes that
+ * we have a subsets of physically continuous  pages big enough to store
+ * at least one object.
+ * @param elt_num
+ *   Number of elements.
+ * @param elt_sz
+ *   The size of each element.
+ * @param pg_shift
+ *   LOG2 of the physical pages size.
+ * @return
+ *   Required memory size aligned at page boundary.
+ */
+size_t rte_mempool_xmem_size(uint32_t elt_num, size_t elt_sz,
+	uint32_t pg_shift);
+
+/**
+ * Calculate how much memory would be actually required with the given
+ * memory footprint to store required number of objects.
+ * @param vaddr
+ *   Virtual address of the externally allocated memory buffer.
+ *   Will be used to store mempool objects.
+ * @param elt_num
+ *   Number of elements.
+ * @param elt_sz
+ *   The size of each element.
+ * @param paddr
+ *   Array of phyiscall addresses of the pages that comprises given memory
+ *   buffer.
+ * @param pg_num
+ *   Number of elements in the paddr array.
+ * @param pg_shift
+ *   LOG2 of the physical pages size.
+ * @return
+ *   Number of bytes needed to store given number of objects,
+ *   aligned to the given page size.
+ *   If provided memory buffer is not big enough:
+ *   (-1) * actual number of elemnts that can be stored in that buffer.
+ */
+ssize_t rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t elt_sz,
+	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift);
 
 #ifdef __cplusplus
 }
