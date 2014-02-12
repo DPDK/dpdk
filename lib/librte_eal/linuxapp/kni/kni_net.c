@@ -331,7 +331,6 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 			skb_reserve(skb, 2);
 			memcpy(skb_put(skb, len), data_kva, len);
 			skb->dev = dev;
-			skb->protocol = eth_type_trans(skb, dev);
 			skb->ip_summed = CHECKSUM_UNNECESSARY;
 			dev_kfree_skb(skb);
 		}
@@ -347,7 +346,6 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 			skb_reserve(skb, 2);
 			memcpy(skb_put(skb, len), data_kva, len);
 			skb->dev = dev;
-			skb->protocol = eth_type_trans(skb, dev);
 			skb->ip_summed = CHECKSUM_UNNECESSARY;
 
 			kni->stats.rx_bytes += len;
