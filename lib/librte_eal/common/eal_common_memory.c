@@ -96,7 +96,7 @@ rte_dump_physmem_layout(void)
 
 		printf("Segment %u: phys:0x%"PRIx64", len:%zu, "
 		       "virt:%p, socket_id:%"PRId32", "
-		       "hugepage_sz:0x%zu, nchannel:%"PRIx32", "
+		       "hugepage_sz:%zu, nchannel:%"PRIx32", "
 		       "nrank:%"PRIx32"\n", i,
 		       mcfg->memseg[i].phys_addr,
 		       mcfg->memseg[i].len,

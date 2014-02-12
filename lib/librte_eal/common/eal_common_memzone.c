@@ -321,7 +321,7 @@ rte_memzone_dump(void)
 	for (i=0; i<RTE_MAX_MEMZONE; i++) {
 		if (mcfg->memzone[i].addr == NULL)
 			break;
-		printf("Zone %o: name:<%s>, phys:0x%"PRIx64", len:0x%zx"
+		printf("Zone %u: name:<%s>, phys:0x%"PRIx64", len:0x%zx"
 		       ", virt:%p, socket_id:%"PRId32", flags:%"PRIx32"\n", i,
 		       mcfg->memzone[i].name,
 		       mcfg->memzone[i].phys_addr,

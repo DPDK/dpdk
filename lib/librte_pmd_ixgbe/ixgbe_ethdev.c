@@ -711,7 +711,8 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 			hw->mac.num_rar_entries, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR,
-			"Failed to allocate %d bytes needed to store MAC addresses",
+			"Failed to allocate %u bytes needed to store "
+			"MAC addresses",
 			ETHER_ADDR_LEN * hw->mac.num_rar_entries);
 		return -ENOMEM;
 	}
@@ -844,7 +845,8 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 			hw->mac.num_rar_entries, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR,
-			"Failed to allocate %d bytes needed to store MAC addresses",
+			"Failed to allocate %u bytes needed to store "
+			"MAC addresses",
 			ETHER_ADDR_LEN * hw->mac.num_rar_entries);
 		return -ENOMEM;
 	}
@@ -1245,7 +1247,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	/* IXGBE devices don't support half duplex */
 	if ((dev->data->dev_conf.link_duplex != ETH_LINK_AUTONEG_DUPLEX) &&
 			(dev->data->dev_conf.link_duplex != ETH_LINK_FULL_DUPLEX)) {
-		PMD_INIT_LOG(ERR, "Invalid link_duplex (%u) for port %u\n",
+		PMD_INIT_LOG(ERR, "Invalid link_duplex (%hu) for port %hhu\n",
 				dev->data->dev_conf.link_duplex,
 				dev->data->port_id);
 		return -EINVAL;
@@ -1313,8 +1315,9 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		speed = IXGBE_LINK_SPEED_10GB_FULL;
 		break;
 	default:
-		PMD_INIT_LOG(ERR, "Invalid link_speed (%u) for port %u\n",
-				dev->data->dev_conf.link_speed, dev->data->port_id);
+		PMD_INIT_LOG(ERR, "Invalid link_speed (%hu) for port %hhu\n",
+				dev->data->dev_conf.link_speed,
+				dev->data->port_id);
 		goto error;
 	}
 
