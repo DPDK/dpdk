@@ -54,6 +54,11 @@
 #include <rte_spinlock.h>
 #include <eal_private.h>
 
+#ifndef	TFD_NONBLOCK
+#include <fcntl.h>
+#define	TFD_NONBLOCK	O_NONBLOCK
+#endif
+
 #define NS_PER_US 1000
 #define US_PER_MS 1000
 #define MS_PER_S 1000
