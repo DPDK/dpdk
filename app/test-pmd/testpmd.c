@@ -143,6 +143,7 @@ streamid_t nb_fwd_streams;       /**< Is equal to (nb_ports * nb_rxq). */
 struct fwd_engine * fwd_engines[] = {
 	&io_fwd_engine,
 	&mac_fwd_engine,
+	&mac_retry_fwd_engine,
 	&rx_only_engine,
 	&tx_only_engine,
 	&csum_fwd_engine,

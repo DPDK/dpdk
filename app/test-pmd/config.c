@@ -980,6 +980,9 @@ pkt_fwd_config_display(struct fwd_config *cfg)
 		numa_support == 1 ? "enabled" : "disabled",
 		mp_anon != 0 ? "enabled" : "disabled");
 
+	if (strcmp(cfg->fwd_eng->fwd_mode_name, "mac_retry") == 0)
+		printf("TX retry num: %u, delay between TX retries: %uus\n",
+			burst_tx_retry_num, burst_tx_delay_time);
 	for (lc_id = 0; lc_id < cfg->nb_fwd_lcores; lc_id++) {
 		printf("Logical Core %u (socket %u) forwards packets on "
 		       "%d streams:",

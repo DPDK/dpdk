@@ -224,6 +224,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set burst (num)\n"
 			"    Set number of packets per burst.\n\n"
 
+			"set burst tx delay (microseconds) retry (num)\n"
+			"    Set the transmit delay time and number of retries"
+			" in mac_retry forwarding mode.\n\n"
+
 			"set txpkts (x[,y]*)\n"
 			"    Set the length of each segment of TXONLY"
 			" packets.\n\n"
@@ -289,13 +293,13 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Please check the NIC datasheet for HW limits.\n\n"
 
 #ifdef RTE_LIBRTE_IEEE1588
-			"set fwd (io|mac|rxonly|txonly|csum|ieee1588)\n"
-			"    Set IO, MAC, RXONLY, CSUM or TXONLY or ieee1588"
+			"set fwd (io|mac|mac_retry|rxonly|txonly|csum|ieee1588)\n"
+			"    Set IO, MAC, MAC_RETRY, RXONLY, CSUM or TXONLY or ieee1588"
 			" packet forwarding mode.\n\n"
 
 #else
-			"set fwd (io|mac|rxonly|txonly|csum)\n"
-			"    Set IO, MAC, RXONLY, CSUM or TXONLY packet"
+			"set fwd (io|mac|mac_retry|rxonly|txonly|csum)\n"
+			"    Set IO, MAC, MAC_RETRY, RXONLY, CSUM or TXONLY packet"
 			" forwarding mode.\n\n"
 
 #endif
@@ -2683,25 +2687,83 @@ cmdline_parse_token_string_t cmd_setfwd_fwd =
 cmdline_parse_token_string_t cmd_setfwd_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_mode_result, mode,
 #ifdef RTE_LIBRTE_IEEE1588
-				 "io#mac#rxonly#txonly#csum#ieee1588");
+				 "io#mac#mac_retry#rxonly#txonly#csum#ieee1588");
 #else
-				 "io#mac#rxonly#txonly#csum");
+				 "io#mac#mac_retry#rxonly#txonly#csum");
 #endif
 
 cmdline_parse_inst_t cmd_set_fwd_mode = {
 	.f = cmd_set_fwd_mode_parsed,
 	.data = NULL,
 #ifdef RTE_LIBRTE_IEEE1588
-	.help_str = "set fwd io|mac|rxonly|txonly|csum|ieee1588 - set IO, MAC,"
-	" RXONLY, TXONLY, CSUM or IEEE1588 packet forwarding mode",
+	.help_str = "set fwd io|mac|mac_retry|rxonly|txonly|csum|ieee1588 - set IO, MAC,"
+	" MAC_RETRY, RXONLY, TXONLY, CSUM or IEEE1588 packet forwarding mode",
 #else
-	.help_str = "set fwd io|mac|rxonly|txonly|csum - set IO, MAC,"
-	" RXONLY, CSUM or TXONLY packet forwarding mode",
+	.help_str = "set fwd io|mac|mac_retry|rxonly|txonly|csum - set IO, MAC,"
+	" MAC_RETRY, RXONLY, CSUM or TXONLY packet forwarding mode",
 #endif
 	.tokens = {
 		(void *)&cmd_setfwd_set,
 		(void *)&cmd_setfwd_fwd,
 		(void *)&cmd_setfwd_mode,
+		NULL,
+	},
+};
+
+/* *** SET BURST TX DELAY TIME RETRY NUMBER *** */
+struct cmd_set_burst_tx_retry_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t burst;
+	cmdline_fixed_string_t tx;
+	cmdline_fixed_string_t delay;
+	uint32_t time;
+	cmdline_fixed_string_t retry;
+	uint32_t retry_num;
+};
+
+static void cmd_set_burst_tx_retry_parsed(void *parsed_result,
+					__attribute__((unused)) struct cmdline *cl,
+					__attribute__((unused)) void *data)
+{
+	struct cmd_set_burst_tx_retry_result *res = parsed_result;
+
+	if (!strcmp(res->set, "set") && !strcmp(res->burst, "burst")
+		&& !strcmp(res->tx, "tx")) {
+		if (!strcmp(res->delay, "delay"))
+			burst_tx_delay_time = res->time;	
+		if (!strcmp(res->retry, "retry"))
+			burst_tx_retry_num = res->retry_num;	
+	}
+
+}
+
+cmdline_parse_token_string_t cmd_set_burst_tx_retry_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_burst_tx_retry_result, set, "set");
+cmdline_parse_token_string_t cmd_set_burst_tx_retry_burst =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_burst_tx_retry_result, burst,
+				 "burst");
+cmdline_parse_token_string_t cmd_set_burst_tx_retry_tx =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_burst_tx_retry_result, tx, "tx");
+cmdline_parse_token_string_t cmd_set_burst_tx_retry_delay =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_burst_tx_retry_result, delay, "delay");
+cmdline_parse_token_num_t cmd_set_burst_tx_retry_time =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_burst_tx_retry_result, time, UINT32);
+cmdline_parse_token_string_t cmd_set_burst_tx_retry_retry =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_burst_tx_retry_result, retry, "retry");
+cmdline_parse_token_num_t cmd_set_burst_tx_retry_retry_num =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_burst_tx_retry_result, retry_num, UINT32);
+
+cmdline_parse_inst_t cmd_set_burst_tx_retry = {
+	.f = cmd_set_burst_tx_retry_parsed,
+	.help_str = "set burst tx delay (time_by_useconds) retry (retry_num)",
+	.tokens = {
+		(void *)&cmd_set_burst_tx_retry_set,
+		(void *)&cmd_set_burst_tx_retry_burst,
+		(void *)&cmd_set_burst_tx_retry_tx,
+		(void *)&cmd_set_burst_tx_retry_delay,
+		(void *)&cmd_set_burst_tx_retry_time,
+		(void *)&cmd_set_burst_tx_retry_retry,
+		(void *)&cmd_set_burst_tx_retry_retry_num,
 		NULL,
 	},
 };
@@ -4952,6 +5014,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_fwd_list,
 	(cmdline_parse_inst_t *)&cmd_set_fwd_mask,
 	(cmdline_parse_inst_t *)&cmd_set_fwd_mode,
+	(cmdline_parse_inst_t *)&cmd_set_burst_tx_retry,
 	(cmdline_parse_inst_t *)&cmd_set_promisc_mode_one,
 	(cmdline_parse_inst_t *)&cmd_set_promisc_mode_all,
 	(cmdline_parse_inst_t *)&cmd_set_allmulti_mode_one,

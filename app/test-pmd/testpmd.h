@@ -198,6 +198,7 @@ struct fwd_engine {
 
 extern struct fwd_engine io_fwd_engine;
 extern struct fwd_engine mac_fwd_engine;
+extern struct fwd_engine mac_retry_fwd_engine;
 extern struct fwd_engine rx_only_engine;
 extern struct fwd_engine tx_only_engine;
 extern struct fwd_engine csum_fwd_engine;
@@ -362,6 +363,9 @@ extern struct fwd_stream **fwd_streams;
 
 extern portid_t nb_peer_eth_addrs; /**< Number of peer ethernet addresses. */
 extern struct ether_addr peer_eth_addrs[RTE_MAX_ETHPORTS];
+
+extern uint32_t burst_tx_delay_time; /**< Burst tx delay time(us) for mac-retry. */
+extern uint32_t burst_tx_retry_num;  /**< Burst tx retry number for mac-retry. */
 
 static inline unsigned int
 lcore_num(void)
