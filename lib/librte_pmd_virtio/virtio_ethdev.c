@@ -606,7 +606,7 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 	struct rte_eth_link link, old;
 	uint16_t status;
 	struct virtio_hw *hw =
-			VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	memset(&link, 0, sizeof(link));
 	virtio_dev_atomic_read_link_status(dev, &link);
 	old = link;

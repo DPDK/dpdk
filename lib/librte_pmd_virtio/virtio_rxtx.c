@@ -37,6 +37,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <rte_cycles.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_branch_prediction.h>
@@ -81,12 +82,14 @@ virtio_dev_vring_start(struct rte_eth_dev *dev, struct virtqueue *vq, int queue_
 	PMD_INIT_FUNC_TRACE();
 
 	/*
- 	 * Reinitialise since virtio port might have been stopped and restarted
- 	 */
+	* Reinitialise since virtio port might have been stopped and restarted
+	*/
 	memset(vq->vq_ring_virt_mem, 0, vq->vq_ring_size);
 	vring_init(vr, size, ring_mem, vq->vq_alignment);
 	vq->vq_used_cons_idx = 0;
 	vq->vq_desc_head_idx = 0;
+	vq->vq_avail_idx = 0;
+	vq->vq_desc_tail_idx = vq->vq_nentries - 1;
 	vq->vq_free_cnt = vq->vq_nentries;
 	memset(vq->vq_descx, 0, sizeof(struct vq_desc_extra) * vq->vq_nentries);
 
@@ -125,6 +128,7 @@ virtio_dev_vring_start(struct rte_eth_dev *dev, struct virtqueue *vq, int queue_
 			}
 			nbufs++;
 		}
+		vq_update_avail_idx(vq);
 		PMD_INIT_LOG(DEBUG, "Allocated %d bufs\n", nbufs);
 		VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_SEL, VTNET_SQ_RQ_QUEUE_IDX);
 		VIRTIO_WRITE_REG_4(vq->hw, VIRTIO_PCI_QUEUE_PFN,
@@ -229,6 +233,7 @@ virtio_discard_rxbuf(struct virtqueue *vq, struct rte_mbuf *m)
 }
 
 #define VIRTIO_MBUF_BURST_SZ 64
+#define DESC_PER_CACHELINE (CACHE_LINE_SIZE / sizeof(struct vring_desc))
 uint16_t
 virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -247,8 +252,10 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	num = (uint16_t)(likely(nb_used <= nb_pkts) ? nb_used : nb_pkts);
 	num = (uint16_t)(likely(num <= VIRTIO_MBUF_BURST_SZ) ? num : VIRTIO_MBUF_BURST_SZ);
+	if (likely(num > DESC_PER_CACHELINE))
+		num = num - ((rxvq->vq_used_cons_idx + num) % DESC_PER_CACHELINE);
 	if(num == 0) return 0;
-	num = virtqueue_dequeue_burst(rxvq, rcv_pkts, len, num);
+	num = virtqueue_dequeue_burst_rx(rxvq, rcv_pkts, len, num);
 	PMD_RX_LOG(DEBUG, "used:%d dequeue:%d\n", nb_used, num);
 	for (i = 0; i < num ; i ++) {
 		rxm = rcv_pkts[i];
@@ -293,6 +300,8 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			PMD_RX_LOG(DEBUG, "Notified\n");
 		}
 	}
+	vq_update_avail_idx(rxvq);
+	
 	return (nb_rx);
 }
 
@@ -301,13 +310,11 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct virtqueue *txvq = tx_queue;
 	struct rte_mbuf *txm;
-	uint16_t nb_used, nb_tx, count, num, i;
+	uint16_t nb_used, nb_tx, num;
 	int error;
-	uint32_t len[VIRTIO_MBUF_BURST_SZ];
-	struct rte_mbuf *snd_pkts[VIRTIO_MBUF_BURST_SZ];
 	struct virtio_hw *hw;
 
-	nb_tx = count = 0;
+	nb_tx = 0;
 
 	if (unlikely(nb_pkts < 1))
 		return (nb_pkts);
@@ -319,20 +326,17 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	hw = txvq->hw;
 	num = (uint16_t)(likely(nb_used < VIRTIO_MBUF_BURST_SZ) ? nb_used : VIRTIO_MBUF_BURST_SZ);
-	num = virtqueue_dequeue_burst(txvq, snd_pkts, len, num);
-	for (i = 0; i < num ; i ++) {
-		rte_pktmbuf_free_seg(snd_pkts[i]);
-	}
 
-	while (count++ < nb_pkts) {
+	while (nb_tx < nb_pkts) {
+		if (virtqueue_full(txvq) && num) {
+			virtqueue_dequeue_pkt_tx(txvq);
+			num--;
+		}
 		if(!virtqueue_full(txvq)) {
 			txm = tx_pkts[nb_tx];
-			/************************************************/
-			/*****        Enqueue Packet buffers        *****/
-			/************************************************/
+			/* Enqueue Packet buffers */
 			error = virtqueue_enqueue_xmit(txvq, txm);
 			if (unlikely(error)) {
-				//	rte_pktmbuf_free_seg(txm); /* the upper application will free this packet */
 				if (error == ENOSPC)
 					PMD_TX_LOG(ERR, "virtqueue_enqueue Free count = 0\n");
 				else if (error == EMSGSIZE)
@@ -345,10 +349,11 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			hw->eth_stats.obytes += txm->pkt.data_len;
 		} else {
 			PMD_TX_LOG(ERR, "No free tx descriptors to transmit\n");
-			virtqueue_notify(txvq);
 			break;
 		}
 	}
+	vq_update_avail_idx(txvq);
+
 	hw->eth_stats.opackets += nb_tx;
 
 	if(unlikely(virtqueue_kick_prepare(txvq))) {
