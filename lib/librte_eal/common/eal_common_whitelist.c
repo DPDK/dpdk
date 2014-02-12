@@ -51,6 +51,9 @@
 #ifdef RTE_LIBRTE_PMD_PCAP
 #include <rte_eth_pcap.h>
 #endif
+#ifdef RTE_LIBRTE_PMD_XENVIRT
+#include <rte_eth_xenvirt.h>
+#endif
 #include "eal_private.h"
 
 static char dev_list_str[4096];
@@ -102,6 +105,9 @@ is_valid_wl_entry(const char *device_str, size_t dev_buf_len)
 #endif
 #ifdef RTE_LIBRTE_PMD_PCAP
 			RTE_ETH_PCAP_PARAM_NAME,
+#endif
+#ifdef RTE_LIBRTE_PMD_XENVIRT
+			RTE_ETH_XENVIRT_PARAM_NAME,
 #endif
 			"-nodev-" /* dummy value to prevent compiler warnings */
 	};

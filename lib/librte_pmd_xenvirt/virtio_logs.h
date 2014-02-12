@@ -31,63 +31,40 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <inttypes.h>
-#include <rte_string_fns.h>
-#ifdef RTE_LIBRTE_PMD_RING
-#include <rte_eth_ring.h>
-#endif
-#ifdef RTE_LIBRTE_PMD_PCAP
-#include <rte_eth_pcap.h>
-#endif
-#ifdef RTE_LIBRTE_PMD_XENVIRT
-#include <rte_eth_xenvirt.h>
-#endif
-#include "eal_private.h"
+#ifndef _VIRTIO_LOGS_H_
+#define _VIRTIO_LOGS_H_
 
-struct device_init {
-	const char *dev_prefix;
-	int (*init_fn)(const char*, const char *);
-};
+#include <rte_log.h>
 
-#define NUM_DEV_TYPES (sizeof(dev_types)/sizeof(dev_types[0]))
-struct device_init dev_types[] = {
-#ifdef RTE_LIBRTE_PMD_RING
-		{
-			.dev_prefix = RTE_ETH_RING_PARAM_NAME,
-			.init_fn = rte_pmd_ring_init
-		},
+#ifdef RTE_LIBRTE_VIRTIO_DEBUG_INIT
+#define PMD_INIT_LOG(level, fmt, args...) \
+	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+#define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
+#else
+#define PMD_INIT_LOG(level, fmt, args...) do { } while(0)
+#define PMD_INIT_FUNC_TRACE() do { } while(0)
 #endif
-#ifdef RTE_LIBRTE_PMD_PCAP
-		{
-			.dev_prefix = RTE_ETH_PCAP_PARAM_NAME,
-			.init_fn = rte_pmd_pcap_init
-		},
-#endif
-#ifdef RTE_LIBRTE_PMD_XENVIRT
-		{
-			.dev_prefix = RTE_ETH_XENVIRT_PARAM_NAME,
-			.init_fn = rte_pmd_xenvirt_init
-		},
-#endif
-		{
-			.dev_prefix = "-nodev-",
-			.init_fn = NULL
-		}
-};
 
-int
-rte_eal_non_pci_ethdev_init(void)
-{
-	uint8_t i, j;
-	for (i = 0; i < NUM_DEV_TYPES; i++) {
-		for (j = 0; j < RTE_MAX_ETHPORTS; j++) {
-			const char *params;
-			char buf[16];
-			rte_snprintf(buf, sizeof(buf), "%s%"PRIu8,
-					dev_types[i].dev_prefix, j);
-			if (eal_dev_is_whitelisted(buf, &params))
-				dev_types[i].init_fn(buf, params);
-		}
-	}
-	return 0;
-}
+#ifdef RTE_LIBRTE_VIRTIO_DEBUG_RX
+#define PMD_RX_LOG(level, fmt, args...) \
+	RTE_LOG(level, PMD, "%s() rx: " fmt , __func__, ## args)
+#else
+#define PMD_RX_LOG(level, fmt, args...) do { } while(0)
+#endif
+
+#ifdef RTE_LIBRTE_VIRTIO_DEBUG_TX
+#define PMD_TX_LOG(level, fmt, args...) \
+	RTE_LOG(level, PMD, "%s() tx: " fmt , __func__, ## args)
+#else
+#define PMD_TX_LOG(level, fmt, args...) do { } while(0)
+#endif
+
+
+#ifdef RTE_LIBRTE_VIRTIO_DEBUG_DRIVER
+#define PMD_DRV_LOG(level, fmt, args...) \
+	RTE_LOG(level, PMD, "%s(): " fmt , __func__, ## args)
+#else
+#define PMD_DRV_LOG(level, fmt, args...) do { } while(0)
+#endif
+
+#endif /* _VIRTIO_LOGS_H_ */

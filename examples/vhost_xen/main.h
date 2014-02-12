@@ -31,63 +31,55 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <inttypes.h>
-#include <rte_string_fns.h>
-#ifdef RTE_LIBRTE_PMD_RING
-#include <rte_eth_ring.h>
-#endif
-#ifdef RTE_LIBRTE_PMD_PCAP
-#include <rte_eth_pcap.h>
-#endif
-#ifdef RTE_LIBRTE_PMD_XENVIRT
-#include <rte_eth_xenvirt.h>
-#endif
-#include "eal_private.h"
+#ifndef _MAIN_H_
+#define _MAIN_H_
 
-struct device_init {
-	const char *dev_prefix;
-	int (*init_fn)(const char*, const char *);
-};
+#ifdef RTE_EXEC_ENV_BAREMETAL
+#define MAIN _main
+#else
+#define MAIN main
+#endif
 
-#define NUM_DEV_TYPES (sizeof(dev_types)/sizeof(dev_types[0]))
-struct device_init dev_types[] = {
-#ifdef RTE_LIBRTE_PMD_RING
-		{
-			.dev_prefix = RTE_ETH_RING_PARAM_NAME,
-			.init_fn = rte_pmd_ring_init
-		},
-#endif
-#ifdef RTE_LIBRTE_PMD_PCAP
-		{
-			.dev_prefix = RTE_ETH_PCAP_PARAM_NAME,
-			.init_fn = rte_pmd_pcap_init
-		},
-#endif
-#ifdef RTE_LIBRTE_PMD_XENVIRT
-		{
-			.dev_prefix = RTE_ETH_XENVIRT_PARAM_NAME,
-			.init_fn = rte_pmd_xenvirt_init
-		},
-#endif
-		{
-			.dev_prefix = "-nodev-",
-			.init_fn = NULL
-		}
-};
+//#define DEBUG
 
-int
-rte_eal_non_pci_ethdev_init(void)
+#ifdef DEBUG
+#define LOG_LEVEL RTE_LOG_DEBUG
+#define LOG_DEBUG(log_type, fmt, args...) \
+	RTE_LOG(DEBUG, log_type, fmt, ##args)
+#else
+#define LOG_LEVEL RTE_LOG_INFO
+#define LOG_DEBUG(log_type, fmt, args...) do{} while(0)
+#endif
+
+/* Macros for printing using RTE_LOG */
+#define RTE_LOGTYPE_CONFIG RTE_LOGTYPE_USER1
+#define RTE_LOGTYPE_DATA RTE_LOGTYPE_USER2
+#define RTE_LOGTYPE_PORT RTE_LOGTYPE_USER3
+
+/*
+ * Device linked list structure for data path.
+ */
+struct virtio_net_data_ll
 {
-	uint8_t i, j;
-	for (i = 0; i < NUM_DEV_TYPES; i++) {
-		for (j = 0; j < RTE_MAX_ETHPORTS; j++) {
-			const char *params;
-			char buf[16];
-			rte_snprintf(buf, sizeof(buf), "%s%"PRIu8,
-					dev_types[i].dev_prefix, j);
-			if (eal_dev_is_whitelisted(buf, &params))
-				dev_types[i].init_fn(buf, params);
-		}
-	}
-	return 0;
-}
+	struct virtio_net          *dev;   /* Pointer to device created by configuration core. */
+	struct virtio_net_data_ll  *next;  /* Pointer to next device in linked list. */
+};
+
+/*
+ * Structure containing data core specific information.
+ */
+struct lcore_ll_info
+{
+	struct virtio_net_data_ll    *ll_root_free; 	/* Pointer to head in free linked list. */
+	struct virtio_net_data_ll    *ll_root_used;	    /* Pointer to head of used linked list. */
+	uint32_t                      device_num;       /* Number of devices on lcore. */
+	volatile  uint8_t             dev_removal_flag; /* Flag to synchronize device removal. */
+};
+
+struct lcore_info
+{
+	struct lcore_ll_info	*lcore_ll;	/* Pointer to data core specific lcore_ll_info struct */
+};
+
+int MAIN(int argc, char **argv);
+#endif /* _MAIN_H_ */

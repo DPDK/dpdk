@@ -31,33 +31,28 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBC) += libc
-DIRS-$(CONFIG_RTE_LIBRTE_EAL) += librte_eal
-DIRS-$(CONFIG_RTE_LIBRTE_MALLOC) += librte_malloc
-DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring
-DIRS-$(CONFIG_RTE_LIBRTE_MEMPOOL) += librte_mempool
-DIRS-$(CONFIG_RTE_LIBRTE_MBUF) += librte_mbuf
-DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += librte_timer
-DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
-DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ether
-DIRS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += librte_pmd_e1000
-DIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += librte_pmd_ixgbe
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_RING) += librte_pmd_ring
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += librte_pmd_pcap
-DIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += librte_pmd_virtio
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += librte_pmd_xenvirt
-DIRS-$(CONFIG_RTE_LIBRTE_HASH) += librte_hash
-DIRS-$(CONFIG_RTE_LIBRTE_LPM) += librte_lpm
-DIRS-$(CONFIG_RTE_LIBRTE_NET) += librte_net
-DIRS-$(CONFIG_RTE_LIBRTE_POWER) += librte_power
-DIRS-$(CONFIG_RTE_LIBRTE_METER) += librte_meter
-DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += librte_sched
-DIRS-$(CONFIG_RTE_LIBRTE_ACL) += librte_acl
+#
+# library name
+#
+LIB = librte_pmd_xenvirt.a
 
-ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
-DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
-DIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += librte_ivshmem
-endif
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
 
-include $(RTE_SDK)/mk/rte.sharelib.mk
-include $(RTE_SDK)/mk/rte.subdir.mk
+#
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += rte_eth_xenvirt.c rte_mempool_gntalloc.c rte_xen_lib.c
+
+#
+# Export include files
+#
+SYMLINK-y-include += rte_eth_xenvirt.h
+
+# this lib depends upon:
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += lib/librte_eal lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += lib/librte_mempool lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += lib/librte_net lib/librte_malloc
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += lib/librte_cmdline
+
+include $(RTE_SDK)/mk/rte.lib.mk

@@ -31,63 +31,40 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <inttypes.h>
-#include <rte_string_fns.h>
-#ifdef RTE_LIBRTE_PMD_RING
-#include <rte_eth_ring.h>
-#endif
-#ifdef RTE_LIBRTE_PMD_PCAP
-#include <rte_eth_pcap.h>
-#endif
-#ifdef RTE_LIBRTE_PMD_XENVIRT
-#include <rte_eth_xenvirt.h>
-#endif
-#include "eal_private.h"
+#ifndef _RTE_ETH_XENVIRT_H_
+#define _RTE_ETH_XENVIRT_H_
 
-struct device_init {
-	const char *dev_prefix;
-	int (*init_fn)(const char*, const char *);
-};
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#define NUM_DEV_TYPES (sizeof(dev_types)/sizeof(dev_types[0]))
-struct device_init dev_types[] = {
-#ifdef RTE_LIBRTE_PMD_RING
-		{
-			.dev_prefix = RTE_ETH_RING_PARAM_NAME,
-			.init_fn = rte_pmd_ring_init
-		},
-#endif
-#ifdef RTE_LIBRTE_PMD_PCAP
-		{
-			.dev_prefix = RTE_ETH_PCAP_PARAM_NAME,
-			.init_fn = rte_pmd_pcap_init
-		},
-#endif
-#ifdef RTE_LIBRTE_PMD_XENVIRT
-		{
-			.dev_prefix = RTE_ETH_XENVIRT_PARAM_NAME,
-			.init_fn = rte_pmd_xenvirt_init
-		},
-#endif
-		{
-			.dev_prefix = "-nodev-",
-			.init_fn = NULL
-		}
-};
+#include <rte_mempool.h>
+#include <rte_ring.h>
 
-int
-rte_eal_non_pci_ethdev_init(void)
-{
-	uint8_t i, j;
-	for (i = 0; i < NUM_DEV_TYPES; i++) {
-		for (j = 0; j < RTE_MAX_ETHPORTS; j++) {
-			const char *params;
-			char buf[16];
-			rte_snprintf(buf, sizeof(buf), "%s%"PRIu8,
-					dev_types[i].dev_prefix, j);
-			if (eal_dev_is_whitelisted(buf, &params))
-				dev_types[i].init_fn(buf, params);
-		}
-	}
-	return 0;
+#define RTE_ETH_XENVIRT_PARAM_NAME "eth_xenvirt"
+
+/**
+ * For use by the EAL only. Called as part of EAL init to set up any dummy NICs
+ * configured on command line.
+ */
+int rte_pmd_xenvirt_init(const char *name, const char *params);
+
+/**
+ * Creates mempool for xen virtio PMD.
+ * This function uses memzone_reserve to allocate memory for meta data,
+ * and uses grant alloc driver to allocate memory for data area.
+ * The input parameters are exactly the same as rte_mempool_create.
+ */
+struct rte_mempool *
+rte_mempool_gntalloc_create(const char *name, unsigned elt_num, unsigned elt_size,
+		   unsigned cache_size, unsigned private_data_size,
+		   rte_mempool_ctor_t *mp_init, void *mp_init_arg,
+		   rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
+		   int socket_id, unsigned flags);
+
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif

@@ -29,35 +29,23 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include $(RTE_SDK)/mk/rte.vars.mk
-
-DIRS-$(CONFIG_RTE_LIBC) += libc
-DIRS-$(CONFIG_RTE_LIBRTE_EAL) += librte_eal
-DIRS-$(CONFIG_RTE_LIBRTE_MALLOC) += librte_malloc
-DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring
-DIRS-$(CONFIG_RTE_LIBRTE_MEMPOOL) += librte_mempool
-DIRS-$(CONFIG_RTE_LIBRTE_MBUF) += librte_mbuf
-DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += librte_timer
-DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
-DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ether
-DIRS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += librte_pmd_e1000
-DIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += librte_pmd_ixgbe
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_RING) += librte_pmd_ring
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += librte_pmd_pcap
-DIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += librte_pmd_virtio
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += librte_pmd_xenvirt
-DIRS-$(CONFIG_RTE_LIBRTE_HASH) += librte_hash
-DIRS-$(CONFIG_RTE_LIBRTE_LPM) += librte_lpm
-DIRS-$(CONFIG_RTE_LIBRTE_NET) += librte_net
-DIRS-$(CONFIG_RTE_LIBRTE_POWER) += librte_power
-DIRS-$(CONFIG_RTE_LIBRTE_METER) += librte_meter
-DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += librte_sched
-DIRS-$(CONFIG_RTE_LIBRTE_ACL) += librte_acl
-
-ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
-DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
-DIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += librte_ivshmem
+ifeq ($(RTE_SDK),)
+$(error "Please define RTE_SDK environment variable")
 endif
 
-include $(RTE_SDK)/mk/rte.sharelib.mk
-include $(RTE_SDK)/mk/rte.subdir.mk
+# Default target, can be overriden by command line or environment
+RTE_TARGET ?= x86_64-default-linuxapp-gcc
+
+include $(RTE_SDK)/mk/rte.vars.mk
+
+# binary name
+APP = vhost-switch
+
+# all source are stored in SRCS-y
+SRCS-y := main.c vhost_monitor.c xenstore_parse.c
+
+CFLAGS += -O2 -I/usr/local/include -D_FILE_OFFSET_BITS=64 -Wno-unused-parameter
+CFLAGS += $(WERROR_FLAGS)
+LDFLAGS += -lxenstore
+
+include $(RTE_SDK)/mk/rte.extapp.mk
