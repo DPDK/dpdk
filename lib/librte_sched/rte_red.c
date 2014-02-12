@@ -34,12 +34,11 @@
 #include <math.h>
 #include "rte_red.h"
 #include <rte_random.h>
+#include <rte_common.h>
 
 #ifdef __INTEL_COMPILER
 #pragma warning(disable:2259) /* conversion may lose significant bits */
 #endif
-
-#define DIM(x) (sizeof(x)/sizeof(x[0]))
 
 static int rte_red_init_done = 0;     /**< Flag to indicate that global initialisation is done */
 uint32_t rte_red_rand_val = 0;        /**< Random value cache */
@@ -68,9 +67,9 @@ __rte_red_init_tables(void)
 	double table_size = 0.0;
 
 	scale = (double)(1 << RTE_RED_SCALING);
-	table_size = (double)(DIM(rte_red_pow2_frac_inv));
+	table_size = (double)(RTE_DIM(rte_red_pow2_frac_inv));
 
-	for (i = 0; i < DIM(rte_red_pow2_frac_inv); i++) {
+	for (i = 0; i < RTE_DIM(rte_red_pow2_frac_inv); i++) {
 		double m = (double)i;
 		
 		rte_red_pow2_frac_inv[i] = (uint16_t) round(scale / pow(2, m / table_size));
@@ -78,7 +77,7 @@ __rte_red_init_tables(void)
 	
 	scale = 1024.0;
 
-	RTE_RED_ASSERT(RTE_RED_WQ_LOG2_NUM == DIM(rte_red_log2_1_minus_Wq));
+	RTE_RED_ASSERT(RTE_RED_WQ_LOG2_NUM == RTE_DIM(rte_red_log2_1_minus_Wq));
 
 	for (i = RTE_RED_WQ_LOG2_MIN; i <= RTE_RED_WQ_LOG2_MAX; i++) {
 		double n = (double)i;
