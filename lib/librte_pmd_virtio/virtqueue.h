@@ -191,14 +191,14 @@ virtqueue_full(const struct virtqueue *vq)
 
 #define VIRTQUEUE_NUSED(vq) ((uint16_t)((vq)->vq_ring.used->idx - (vq)->vq_used_cons_idx))
 
-static inline void
+static inline void __attribute__((always_inline))
 vq_update_avail_idx(struct virtqueue *vq)
 {
 	rte_compiler_barrier();
 	vq->vq_ring.avail->idx = vq->vq_avail_idx;
 }
 
-static inline void
+static inline void __attribute__((always_inline))
 vq_update_avail_ring(struct virtqueue *vq, uint16_t desc_idx)
 {
 	uint16_t avail_idx;
@@ -213,12 +213,13 @@ vq_update_avail_ring(struct virtqueue *vq, uint16_t desc_idx)
 	vq->vq_avail_idx++;
 }
 
-static inline int virtqueue_kick_prepare(struct virtqueue * vq)
+static inline int __attribute__((always_inline))
+virtqueue_kick_prepare(struct virtqueue * vq)
 {
 	return !(vq->vq_ring.used->flags & VRING_USED_F_NO_NOTIFY);
 }
 
-static inline void
+static inline void __attribute__((always_inline))
 virtqueue_notify(struct virtqueue *vq)
 {
 	/* 
@@ -229,7 +230,7 @@ virtqueue_notify(struct virtqueue *vq)
 	VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_NOTIFY, vq->vq_queue_index);
 }
 
-static inline void
+static inline void __attribute__((always_inline))
 vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 {
 	struct vring_desc *dp, *dp_tail;
@@ -262,7 +263,7 @@ vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 	dp->next = VQ_RING_DESC_CHAIN_END;
 }
 
-static inline int
+static inline int __attribute__((always_inline))
 virtqueue_enqueue_recv_refill(struct virtqueue *vq, struct rte_mbuf *cookie)
 {
 	struct vq_desc_extra *dxp;
@@ -300,7 +301,7 @@ virtqueue_enqueue_recv_refill(struct virtqueue *vq, struct rte_mbuf *cookie)
 	return (0);
 }
 
-static inline int
+static inline int __attribute__((always_inline))
 virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 {
 	struct vq_desc_extra *dxp;
@@ -341,7 +342,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	return (0);
 }
 
-static inline uint16_t
+static inline uint16_t __attribute__((always_inline))
 virtqueue_dequeue_burst_rx(struct virtqueue *vq, struct rte_mbuf **rx_pkts, uint32_t *len, uint16_t num)
 {
 	struct vring_used_elem *uep;
@@ -371,7 +372,7 @@ virtqueue_dequeue_burst_rx(struct virtqueue *vq, struct rte_mbuf **rx_pkts, uint
 	return (i);
 }
 
-static inline uint16_t
+static inline uint16_t __attribute__((always_inline))
 virtqueue_dequeue_pkt_tx(struct virtqueue *vq)
 {
         struct vring_used_elem *uep;
