@@ -523,3 +523,12 @@ rte_kni_unregister_handlers(struct rte_kni *kni)
 	kni->ops.config_network_if = NULL;
 	return 0;
 }
+void 
+rte_kni_close(void)
+{
+	if (kni_fd < 0)
+		return;
+
+	close(kni_fd);
+	kni_fd = -1;	
+}
