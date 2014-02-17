@@ -3391,6 +3391,8 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	if (hw->mac.type == ixgbe_mac_82599EB &&
 			dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_82599_TX_RX)
 		hlreg0 |= IXGBE_HLREG0_LPBK;
+	else
+		hlreg0 &= ~IXGBE_HLREG0_LPBK;
 
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 
