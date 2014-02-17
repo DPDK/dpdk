@@ -163,7 +163,7 @@ rte_eal_cpu_init(void)
 		lcore_config[lcore_id].core_id = cpu_core_id(lcore_id);
 		lcore_config[lcore_id].socket_id = cpu_socket_id(lcore_id);
 		if (lcore_config[lcore_id].socket_id >= RTE_MAX_NUMA_NODES)
-#ifdef CONFIG_RTE_EAL_ALLOW_INV_SOCKET_ID
+#ifdef RTE_EAL_ALLOW_INV_SOCKET_ID
 			lcore_config[lcore_id].socket_id = 0;
 #else
 			rte_panic("Socket ID (%u) is greater than "
