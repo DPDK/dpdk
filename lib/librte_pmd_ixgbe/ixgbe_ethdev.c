@@ -1394,6 +1394,9 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_vf_info *vfinfo = 
+		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
+	int vf;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1406,6 +1409,10 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 
 	/* stop adapter */
 	ixgbe_stop_adapter(hw);
+
+	for (vf = 0; vfinfo != NULL && 
+		     vf < dev->pci_dev->max_vfs; vf++)
+		vfinfo[vf].clear_to_send = false;
 
 	/* Turn off the laser */
 	ixgbe_disable_tx_laser(hw);

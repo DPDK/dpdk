@@ -473,6 +473,8 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 	uint32_t msgbuf[IXGBE_VFMAILBOX_SIZE];
 	int32_t retval;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_vf_info *vfinfo = 
+		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
 
 	retval = ixgbe_read_mbx(hw, msgbuf, mbx_size, vf);
 	if (retval) {
@@ -489,7 +491,9 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 
 	/* perform VF reset */
 	if (msgbuf[0] == IXGBE_VF_RESET) {
-		return ixgbe_vf_reset(dev, vf, msgbuf);
+		int ret = ixgbe_vf_reset(dev, vf, msgbuf);
+		vfinfo[vf].clear_to_send = true;
+		return ret;
 	}
 
 	/* check & process VF to PF mailbox message */
@@ -531,8 +535,11 @@ ixgbe_rcv_ack_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 	uint32_t msg = IXGBE_VT_MSGTYPE_NACK;
 	struct ixgbe_hw *hw = 
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_vf_info *vfinfo = 
+		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
 
-	ixgbe_write_mbx(hw, &msg, 1, vf);
+	if (!vfinfo[vf].clear_to_send)
+		ixgbe_write_mbx(hw, &msg, 1, vf);
 }
 
 void ixgbe_pf_mbx_process(struct rte_eth_dev *eth_dev)
