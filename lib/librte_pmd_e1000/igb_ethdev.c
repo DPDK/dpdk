@@ -637,7 +637,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 		return (-EIO);
 	}
 
-	E1000_WRITE_REG(hw, E1000_VET, ETHER_TYPE_VLAN);
+	E1000_WRITE_REG(hw, E1000_VET, ETHER_TYPE_VLAN << 16 | ETHER_TYPE_VLAN);
 
 	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
 	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
@@ -899,7 +899,7 @@ igb_hardware_init(struct e1000_hw *hw)
 	if (diag < 0)
 		return (diag);
 
-	E1000_WRITE_REG(hw, E1000_VET, ETHER_TYPE_VLAN);
+	E1000_WRITE_REG(hw, E1000_VET, ETHER_TYPE_VLAN << 16 | ETHER_TYPE_VLAN);
 	e1000_get_phy_info(hw);
 	e1000_check_for_link(hw);
 
