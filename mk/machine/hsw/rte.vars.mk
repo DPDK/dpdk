@@ -30,47 +30,29 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #
-# CPUID-related options
+# machine:
 #
-# This was added to support compiler versions which might not support all the
-# flags we need
+#   - can define ARCH variable (overriden by cmdline value)
+#   - can define CROSS variable (overriden by cmdline value)
+#   - define MACHINE_CFLAGS variable (overriden by cmdline value)
+#   - define MACHINE_LDFLAGS variable (overriden by cmdline value)
+#   - define MACHINE_ASFLAGS variable (overriden by cmdline value)
+#   - can define CPU_CFLAGS variable (overriden by cmdline value) that
+#     overrides the one defined in arch.
+#   - can define CPU_LDFLAGS variable (overriden by cmdline value) that
+#     overrides the one defined in arch.
+#   - can define CPU_ASFLAGS variable (overriden by cmdline value) that
+#     overrides the one defined in arch.
+#   - may override any previously defined variable
 #
 
-# find out ICC version
+# ARCH =
+# CROSS =
+# MACHINE_CFLAGS =
+# MACHINE_LDFLAGS =
+# MACHINE_ASFLAGS =
+# CPU_CFLAGS =
+# CPU_LDFLAGS =
+# CPU_ASFLAGS =
 
-ICC_MAJOR_VERSION = $(shell icc -dumpversion | cut -f1 -d.)
-
-ifeq ($(shell test $(ICC_MAJOR_VERSION) -lt 12 && echo 1), 1)
-	MACHINE_CFLAGS = -xSSE3
-$(warning You are not using ICC 12.x or higher. This is neither supported, nor tested.)
-
-else
-# proceed to adjust compiler flags
-
-	ICC_MINOR_VERSION = $(shell icc -dumpversion | cut -f2 -d.)
-
-# replace GCC flags with ICC flags
-	# if icc version >= 12
-	ifeq ($(shell test $(ICC_MAJOR_VERSION) -ge 12 && echo 1), 1)
-		# Atom
-		MACHINE_CFLAGS := $(patsubst -march=atom,-xSSSE3_ATOM -march=atom,$(MACHINE_CFLAGS))
-		# nehalem/westmere
-		MACHINE_CFLAGS := $(patsubst -march=corei7,-xSSE4.2 -march=corei7,$(MACHINE_CFLAGS))
-		# sandy bridge
-		MACHINE_CFLAGS := $(patsubst -march=corei7-avx,-xAVX,$(MACHINE_CFLAGS))
-		# ivy bridge
-		MACHINE_CFLAGS := $(patsubst -march=core-avx-i,-xCORE-AVX-I,$(MACHINE_CFLAGS))
-		# hsw
-		MACHINE_CFLAGS := $(patsubst -march=core-avx2,-xCORE-AVX2,$(MACHINE_CFLAGS))
-		# remove westmere flags
-		MACHINE_CFLAGS := $(filter-out -mpclmul -maes,$(MACHINE_CFLAGS))
-	endif
-	# if icc version == 12.0
-	ifeq ($(shell test $(ICC_MAJOR_VERSION) -eq 12 && test $(ICC_MINOR_VERSION) -eq 0 && echo 1), 1)
-		# Atom
-		MACHINE_CFLAGS := $(patsubst -xSSSE3_ATOM,-xSSE3_ATOM,$(MACHINE_CFLAGS))
-		# remove march options
-		MACHINE_CFLAGS := $(patsubst -march=%,-xSSE3,$(MACHINE_CFLAGS))
-	endif
-endif
-
+MACHINE_CFLAGS = -march=core-avx2

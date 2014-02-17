@@ -59,7 +59,7 @@ else
 
 	ifeq ($(shell test $(GCC_MINOR_VERSION) -le 7 && echo 1), 1)
 		MACHINE_CFLAGS := $(patsubst -march=core-avx-i,-march=corei7-avx,$(MACHINE_CFLAGS))
-		MACHINE_CFLAGS := $(patsubst -march=core-avx2,-march=corei7-avx,$(MACHINE_CFLAGS))
+		MACHINE_CFLAGS := $(patsubst -march=core-avx2,-march=core-avx2,$(MACHINE_CFLAGS))
 	endif
 	ifeq ($(shell test $(GCC_MINOR_VERSION) -lt 6 && echo 1), 1)
 		MACHINE_CFLAGS := $(patsubst -march=corei7-avx,-march=core2 -maes -mpclmul -mavx,$(MACHINE_CFLAGS))
