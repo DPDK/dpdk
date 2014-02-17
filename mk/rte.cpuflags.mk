@@ -29,30 +29,72 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#
-# machine:
-#
-#   - can define ARCH variable (overriden by cmdline value)
-#   - can define CROSS variable (overriden by cmdline value)
-#   - define MACHINE_CFLAGS variable (overriden by cmdline value)
-#   - define MACHINE_LDFLAGS variable (overriden by cmdline value)
-#   - define MACHINE_ASFLAGS variable (overriden by cmdline value)
-#   - can define CPU_CFLAGS variable (overriden by cmdline value) that
-#     overrides the one defined in arch.
-#   - can define CPU_LDFLAGS variable (overriden by cmdline value) that
-#     overrides the one defined in arch.
-#   - can define CPU_ASFLAGS variable (overriden by cmdline value) that
-#     overrides the one defined in arch.
-#   - may override any previously defined variable
-#
+# this makefile is called from the generic rte.vars.mk and is
+# used to set the RTE_CPUFLAG_* environment variables giving details
+# of what instruction sets the target cpu supports.
 
-# ARCH =
-# CROSS =
-# MACHINE_CFLAGS =
-# MACHINE_LDFLAGS =
-# MACHINE_ASFLAGS =
-# CPU_CFLAGS =
-# CPU_LDFLAGS =
-# CPU_ASFLAGS =
+AUTO_CPUFLAGS := $(shell $(CC) $(MACHINE_CFLAGS) -dM -E - < /dev/null)
 
-MACHINE_CFLAGS = -march=core-avx-i
+# adding flags to CPUFLAGS
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__SSE__),)
+CPUFLAGS += SSE
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__SSE2__),)
+CPUFLAGS += SSE2
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__SSE3__),)
+CPUFLAGS += SSE3
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__SSSE3__),)
+CPUFLAGS += SSSE3
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__SSE4_1__),)
+CPUFLAGS += SSE4_1
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__SSE4_2__),)
+CPUFLAGS += SSE4_2
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__AES__),)
+CPUFLAGS += AES
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__PCLMUL__),)
+CPUFLAGS += PCLMULQDQ
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__AVX__),)
+CPUFLAGS += AVX
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__RDRND__),)
+CPUFLAGS += RDRAND
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__FSGSBASE__),)
+CPUFLAGS += FSGSBASE
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__F16C__),)
+CPUFLAGS += F16C
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__AVX2__),)
+CPUFLAGS += AVX2
+endif
+
+MACHINE_CFLAGS += $(addprefix -DRTE_MACHINE_CPUFLAG_,$(CPUFLAGS))
+
+# To strip whitespace
+comma:= ,
+empty:=
+space:= $(empty) $(empty)
+CPUFLAGSTMP1 := $(addprefix RTE_CPUFLAG_,$(CPUFLAGS))
+CPUFLAGSTMP2 := $(subst $(space),$(comma),$(CPUFLAGSTMP1))
+MACHINE_CFLAGS += -DRTE_COMPILE_TIME_CPUFLAGS=$(CPUFLAGSTMP2)

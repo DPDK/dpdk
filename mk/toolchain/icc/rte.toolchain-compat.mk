@@ -71,12 +71,4 @@ else
 		MACHINE_CFLAGS := $(patsubst -march=%,-xSSE3,$(MACHINE_CFLAGS))
 	endif
 endif
-MACHINE_CFLAGS += $(addprefix -DRTE_MACHINE_CPUFLAG_,$(CPUFLAGS))
 
-# To strip whitespace
-comma:= ,
-empty:=
-space:= $(empty) $(empty)
-CPUFLAGSTMP1 := $(addprefix RTE_CPUFLAG_,$(CPUFLAGS))
-CPUFLAGSTMP2 := $(subst $(space),$(comma),$(CPUFLAGSTMP1))
-MACHINE_CFLAGS += -DRTE_COMPILE_TIME_CPUFLAGS=$(CPUFLAGSTMP2)

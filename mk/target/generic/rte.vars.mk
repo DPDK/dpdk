@@ -102,6 +102,10 @@ include $(RTE_SDK)/mk/exec-env/$(RTE_EXEC_ENV)/rte.vars.mk
 # provided by Kbuild framework.
 ifeq ($(KERNELRELEASE),)
 
+# now that the environment is mostly set up, including the machine type we will
+# be passing to the compiler, set up the specific CPU flags based on that info.
+include $(RTE_SDK)/mk/rte.cpuflags.mk
+
 # merge all CFLAGS
 CFLAGS := $(CPU_CFLAGS) $(EXECENV_CFLAGS) $(TOOLCHAIN_CFLAGS) $(MACHINE_CFLAGS)
 CFLAGS += $(TARGET_CFLAGS)
