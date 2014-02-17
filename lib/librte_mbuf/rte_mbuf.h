@@ -659,17 +659,9 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 
 #endif /* RTE_MBUF_SCATTER_GATHER */
 
-/**
- * Free a segment of a packet mbuf into its original mempool.
- *
- * Free an mbuf, without parsing other segments in case of chained
- * buffers.
- *
- * @param m
- *   The packet mbuf segment to be freed.
- */
-static inline void __attribute__((always_inline))
-rte_pktmbuf_free_seg(struct rte_mbuf *m)
+
+static inline struct rte_mbuf* __attribute__((always_inline))
+__rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 0);
 
@@ -690,10 +682,27 @@ rte_pktmbuf_free_seg(struct rte_mbuf *m)
 				__rte_mbuf_raw_free(md);
 		}
 #endif
-		__rte_mbuf_raw_free(m);
+		return(m);
 #ifdef RTE_MBUF_SCATTER_GATHER
 	}
+	return (NULL);
 #endif
+}
+
+/**
+ * Free a segment of a packet mbuf into its original mempool.
+ *
+ * Free an mbuf, without parsing other segments in case of chained
+ * buffers.
+ *
+ * @param m
+ *   The packet mbuf segment to be freed.
+ */
+static inline void __attribute__((always_inline))
+rte_pktmbuf_free_seg(struct rte_mbuf *m)
+{
+	if (likely(NULL != (m = __rte_pktmbuf_prefree_seg(m))))
+		__rte_mbuf_raw_free(m);
 }
 
 /**
