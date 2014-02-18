@@ -1568,16 +1568,22 @@ init_port_config(void)
 		port = &ports[pid];
 		port->dev_conf.rxmode = rx_mode;
 		port->dev_conf.fdir_conf = fdir_conf;
-		if (nb_rxq > 0) {
+		if (nb_rxq > 1) {
 			port->dev_conf.rx_adv_conf.rss_conf.rss_key = NULL;
 			port->dev_conf.rx_adv_conf.rss_conf.rss_hf = rss_hf;
-			if (rss_hf != 0) {
-				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
-			}
 		} else {
 			port->dev_conf.rx_adv_conf.rss_conf.rss_key = NULL;
 			port->dev_conf.rx_adv_conf.rss_conf.rss_hf = 0;
 		}
+
+		/* In SR-IOV mode, RSS mode is not available */
+		if (port->dcb_flag == 0 && port->dev_info.max_vfs == 0) {
+			if( port->dev_conf.rx_adv_conf.rss_conf.rss_hf != 0)
+				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
+			else
+				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;        
+		}
+
 		port->rx_conf.rx_thresh = rx_thresh;
 		port->rx_conf.rx_free_thresh = rx_free_thresh;
 		port->rx_conf.rx_drop_en = rx_drop_en;
