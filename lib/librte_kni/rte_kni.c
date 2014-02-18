@@ -248,7 +248,8 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.sync_phys = mz->phys_addr;
 
 	/* MBUF mempool */
-	rte_snprintf(mz_name, sizeof(mz_name), "MP_%s", pktmbuf_pool->name);
+	rte_snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_OBJ_NAME,
+		pktmbuf_pool->name);
 	mz = rte_memzone_lookup(mz_name);
 	KNI_MZ_CHECK(mz == NULL);
 	dev_info.mbuf_va = mz->addr;

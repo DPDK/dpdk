@@ -124,6 +124,7 @@ struct rte_ring_debug_stats {
 #endif
 
 #define RTE_RING_NAMESIZE 32 /**< The maximum length of a ring name. */
+#define RTE_RING_MZ_PREFIX "RG_"
 
 /**
  * An RTE ring structure.

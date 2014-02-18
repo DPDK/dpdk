@@ -109,6 +109,12 @@ struct rte_mempool_cache {
 #endif /* RTE_MEMPOOL_CACHE_MAX_SIZE > 0 */
 
 #define RTE_MEMPOOL_NAMESIZE 32 /**< Maximum length of a memory pool. */
+#define RTE_MEMPOOL_MZ_PREFIX "MP_"
+
+/* "MP_<name>" */
+#define	RTE_MEMPOOL_MZ_FORMAT	RTE_MEMPOOL_MZ_PREFIX "%s"
+
+#define	RTE_MEMPOOL_OBJ_NAME	RTE_MEMPOOL_MZ_FORMAT
 
 /**
  * The RTE mempool structure.

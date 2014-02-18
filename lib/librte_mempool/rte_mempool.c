@@ -183,7 +183,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	/* Ring functions will return appropriate errors if we are
 	 * running as a secondary process etc., so no checks made
 	 * in this function for that condition */
-	rte_snprintf(rg_name, sizeof(rg_name), "MP_%s", name);
+	rte_snprintf(rg_name, sizeof(rg_name), RTE_MEMPOOL_MZ_FORMAT, name);
 	r = rte_ring_create(rg_name, rte_align32pow2(n+1), socket_id, rg_flags);
 	if (r == NULL)
 		goto exit;
@@ -236,7 +236,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 			     CACHE_LINE_MASK) & (~CACHE_LINE_MASK);
 	mempool_size = total_elt_size * n +
 		sizeof(struct rte_mempool) + private_data_size;
-	rte_snprintf(mz_name, sizeof(mz_name), "MP_%s", name);
+	rte_snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT, name);
 
 	mz = rte_memzone_reserve(mz_name, mempool_size, socket_id, mz_flags);
 
