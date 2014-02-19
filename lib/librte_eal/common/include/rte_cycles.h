@@ -76,6 +76,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <rte_debug.h>
+#include <rte_atomic.h>
 
 #ifdef RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT
 /** Global switch to use VMWARE mapping of TSC instead of RDTSC */
@@ -125,6 +126,19 @@ rte_rdtsc(void)
 		     "=a" (tsc.lo_32),
 		     "=d" (tsc.hi_32));
 	return tsc.tsc_64;
+}
+
+/**
+ * Read the TSC register precisely where function is called.
+ *
+ * @return
+ *   The TSC for this lcore.
+ */
+static inline uint64_t
+rte_rdtsc_precise(void)
+{
+	rte_mb();
+	return rte_rdtsc();
 }
 
 /**
