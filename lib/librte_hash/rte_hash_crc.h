@@ -60,7 +60,7 @@ extern "C" {
 static inline uint32_t
 rte_hash_crc_4byte(uint32_t data, uint32_t init_val)
 {
-	return _mm_crc32_u32(data, init_val);
+	return _mm_crc32_u32(init_val, data);
 }
 
 /**
