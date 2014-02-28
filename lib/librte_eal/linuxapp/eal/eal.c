@@ -563,9 +563,9 @@ eal_parse_base_virtaddr(const char *arg)
 #endif
 
 	/* align the addr on 2M boundary */
-	addr = RTE_PTR_ALIGN_CEIL(addr, RTE_PGSIZE_2M);
+	internal_config.base_virtaddr = RTE_PTR_ALIGN_CEIL((uintptr_t)addr,
+	                                                   RTE_PGSIZE_2M);
 
-	internal_config.base_virtaddr = (uintptr_t) addr;
 	return 0;
 }
 
