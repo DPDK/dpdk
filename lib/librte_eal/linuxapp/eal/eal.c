@@ -612,7 +612,7 @@ eal_parse_use_device(const char *optarg)
 		return -1;
 
 	/* remove arguments in 'dup' string */
-	sep = strchr(dup, ';');
+	sep = strchr(dup, ',');
 	if (sep != NULL)
 		*sep = '\0';
 

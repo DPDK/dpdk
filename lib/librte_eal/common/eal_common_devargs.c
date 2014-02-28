@@ -69,8 +69,8 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	memset(devargs, 0, sizeof(*devargs));
 	devargs->type = devtype;
 
-	/* set the first ';' to '\0' to split name and arguments */
-	sep = strchr(buf, ';');
+	/* set the first ',' to '\0' to split name and arguments */
+	sep = strchr(buf, ',');
 	if (sep != NULL) {
 		sep[0] = '\0';
 		snprintf(devargs->args, sizeof(devargs->args), "%s", sep + 1);

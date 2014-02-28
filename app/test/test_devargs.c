@@ -67,7 +67,7 @@ test_devargs(void)
 		goto fail;
 	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, "0000:5:00.0") < 0)
 		goto fail;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI, "04:00.0;arg=val") < 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI, "04:00.0,arg=val") < 0)
 		goto fail;
 	if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI, "0000:01:00.1") < 0)
 		goto fail;
@@ -79,20 +79,20 @@ test_devargs(void)
 		goto fail;
 	if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, "eth_ring0") < 0)
 		goto fail;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, "eth_ring1;key=val;k2=val2") < 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, "eth_ring1,key=val,k2=val2") < 0)
 		goto fail;
 	if (rte_eal_devargs_type_count(RTE_DEVTYPE_VIRTUAL) != 2)
 		goto fail;
 	free_devargs_list();
 
 	/* check virtual device with argument parsing */
-	if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, "eth_ring1;k1=val;k2=val2") < 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, "eth_ring1,k1=val,k2=val2") < 0)
 		goto fail;
 	devargs = TAILQ_FIRST(&devargs_list);
 	if (strncmp(devargs->virtual.drv_name, "eth_ring1",
 			sizeof(devargs->virtual.drv_name) != 0))
 		goto fail;
-	if (strncmp(devargs->args, "k1=val;k2=val2", sizeof(devargs->args) != 0))
+	if (strncmp(devargs->args, "k1=val,k2=val2", sizeof(devargs->args) != 0))
 		goto fail;
 	free_devargs_list();
 
@@ -116,7 +116,7 @@ test_devargs(void)
 		goto fail;
 	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, "foo") == 0)
 		goto fail;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, ";") == 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, ",") == 0)
 		goto fail;
 	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, "000f:0:0") == 0)
 		goto fail;

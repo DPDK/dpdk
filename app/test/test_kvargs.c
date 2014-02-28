@@ -84,7 +84,7 @@ static int test_valid_kvargs(void)
 	rte_kvargs_free(kvlist);
 
 	/* first test without valid_keys */
-	args = "foo=1234;check=value0;check=value1";
+	args = "foo=1234,check=value0,check=value1";
 	valid_keys = NULL;
 	kvlist = rte_kvargs_parse(args, valid_keys);
 	if (kvlist == NULL) {
@@ -145,7 +145,7 @@ static int test_valid_kvargs(void)
 	rte_kvargs_free(kvlist);
 
 	/* second test using valid_keys */
-	args = "foo=droids;check=value0;check=value1;check=wrong_value";
+	args = "foo=droids,check=value0,check=value1,check=wrong_value";
 	valid_keys = valid_keys_list;
 	kvlist = rte_kvargs_parse(args, valid_keys);
 	if (kvlist == NULL) {
@@ -190,11 +190,11 @@ static int test_invalid_kvargs(void)
 	/* list of argument that should fail */
 	const char *args_list[] = {
 		"wrong-key=x",     /* key not in valid_keys_list */
-		"foo=1;foo=",      /* empty value */
-		"foo=1;;foo=2",    /* empty key/value */
-		"foo=1;foo",       /* no value */
-		"foo=1;=2",        /* no key */
-		";=",              /* also test with a smiley */
+		"foo=1,foo=",      /* empty value */
+		"foo=1,,foo=2",    /* empty key/value */
+		"foo=1,foo",       /* no value */
+		"foo=1,=2",        /* no key */
+		",=",              /* also test with a smiley */
 		NULL };
 	const char **args;
 	const char *valid_keys_list[] = { "foo", "check", NULL };

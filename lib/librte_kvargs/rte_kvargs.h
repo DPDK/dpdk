@@ -40,7 +40,7 @@
  * RTE Argument parsing
  *
  * This module can be used to parse arguments whose format is
- * key1=value1;key2=value2;key3=value3;...
+ * key1=value1,key2=value2,key3=value3,...
  *
  * The same key can appear several times with the same or a different
  * value. Indeed, the arguments are stored as a list of key/values
@@ -58,7 +58,7 @@ extern "C" {
 #define RTE_KVARGS_MAX 32
 
 /** separator character used between each pair */
-#define RTE_KVARGS_PAIRS_DELIM	";"
+#define RTE_KVARGS_PAIRS_DELIM	","
 
 /** separator character used between key and value */
 #define RTE_KVARGS_KV_DELIM	"="
@@ -83,7 +83,7 @@ struct rte_kvargs {
  * Allocate a rte_kvargs and store key/value associations from a string
  *
  * The function allocates and fills a rte_kvargs structure from a given
- * string whose format is key1=value1;key2=value2;...
+ * string whose format is key1=value1,key2=value2,...
  *
  * The structure can be freed with rte_kvargs_free().
  *

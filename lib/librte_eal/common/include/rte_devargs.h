@@ -101,12 +101,12 @@ extern struct rte_devargs_list devargs_list;
  * Add a device to the user device list
  *
  * For PCI devices, the format of arguments string is "PCI_ADDR" or
- * "PCI_ADDR;key=val;key2=val2;...". Examples: "08:00.1", "0000:5:00.0",
- * "04:00.0;arg=val".
+ * "PCI_ADDR,key=val,key2=val2,...". Examples: "08:00.1", "0000:5:00.0",
+ * "04:00.0,arg=val".
  *
  * For virtual devices, the format of arguments string is "DRIVER_NAME*"
- * or "DRIVER_NAME*;key=val;key2=val2;...". Examples: "eth_ring",
- * "eth_ring0", "eth_pmdAnything;arg=0:arg2=1". The validity of the
+ * or "DRIVER_NAME*,key=val,key2=val2,...". Examples: "eth_ring",
+ * "eth_ring0", "eth_pmdAnything,arg=0:arg2=1". The validity of the
  * driver name is not checked by this function, it is done when probing
  * the drivers.
  *

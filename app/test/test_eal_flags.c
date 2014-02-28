@@ -313,8 +313,8 @@ test_whitelist_flag(void)
 	const char *wlval2[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
 			use_device, "09:0B.3", use_device, "0a:0b.1"};
 	const char *wlval3[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-			use_device, "09:0B.3;type=test",
-			use_device, "08:00.1;type=normal"};
+			use_device, "09:0B.3,type=test",
+			use_device, "08:00.1,type=normal"};
 
 	for (i = 0; i < sizeof(wlinval) / sizeof(wlinval[0]); i++) {
 		if (launch_proc(wlinval[i]) == 0) {
