@@ -1,6 +1,7 @@
 #   BSD LICENSE
 # 
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2014 6WIND S.A.
 #   All rights reserved.
 # 
 #   Redistribution and use in source and binary forms, with or without
@@ -57,6 +58,8 @@ LDLIBS += -L$(RTE_SDK_BIN)/lib
 # Order is important: from higher level to lower level
 #
 ifeq ($(NO_AUTOLIBS),)
+
+LDLIBS += --whole-archive
 
 ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
@@ -176,6 +179,8 @@ endif
 LDLIBS += $(EXECENV_LDLIBS)
 
 LDLIBS += --end-group
+
+LDLIBS += --no-whole-archive
 
 endif # ifeq ($(NO_AUTOLIBS),)
 
