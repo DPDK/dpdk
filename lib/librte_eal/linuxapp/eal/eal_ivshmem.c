@@ -854,7 +854,7 @@ int rte_eal_ivshmem_init(void)
 	}
 	else {
 
-		TAILQ_FOREACH(dev, &device_list, next) {
+		TAILQ_FOREACH(dev, &pci_device_list, next) {
 
 			if (is_ivshmem_device(dev)) {
 

@@ -131,7 +131,7 @@ blacklist_all_devices(void)
 
 	memset(blacklist, 0, sizeof (blacklist));
 
-	TAILQ_FOREACH(dev, &device_list, next) {
+	TAILQ_FOREACH(dev, &pci_device_list, next) {
 		if (idx >= sizeof (blacklist) / sizeof (blacklist[0])) {
 			printf("Error: too many devices to blacklist");
 			break;

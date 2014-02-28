@@ -80,8 +80,8 @@
 
 #include "eal_private.h"
 
-struct pci_driver_list driver_list;
-struct pci_device_list device_list;
+struct pci_driver_list pci_driver_list;
+struct pci_device_list pci_device_list;
 
 static struct rte_pci_addr *dev_blacklist = NULL;
 static unsigned dev_blacklist_size = 0;
@@ -119,7 +119,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 	int rc;
 
 	dev->blacklisted = !!is_blacklisted(dev);
-	TAILQ_FOREACH(dr, &driver_list, next) {
+	TAILQ_FOREACH(dr, &pci_driver_list, next) {
 		rc = rte_eal_pci_probe_one_driver(dr, dev);
 		if (rc < 0)
 			/* negative value is an error */
@@ -165,7 +165,7 @@ rte_eal_pci_probe(void)
 {
 	struct rte_pci_device *dev = NULL;
 
-	TAILQ_FOREACH(dev, &device_list, next)
+	TAILQ_FOREACH(dev, &pci_device_list, next)
 		if (!eal_dev_whitelist_exists())
 			pci_probe_all_drivers(dev);
 		else if (pcidev_is_whitelisted(dev) && pci_probe_all_drivers(dev) < 0 )
@@ -202,7 +202,7 @@ rte_eal_pci_dump(void)
 {
 	struct rte_pci_device *dev = NULL;
 
-	TAILQ_FOREACH(dev, &device_list, next) {
+	TAILQ_FOREACH(dev, &pci_device_list, next) {
 		pci_dump_one_device(dev);
 	}
 }
@@ -211,14 +211,14 @@ rte_eal_pci_dump(void)
 void
 rte_eal_pci_register(struct rte_pci_driver *driver)
 {
-	TAILQ_INSERT_TAIL(&driver_list, driver, next);
+	TAILQ_INSERT_TAIL(&pci_driver_list, driver, next);
 }
 
 /* unregister a driver */
 void
 rte_eal_pci_unregister(struct rte_pci_driver *driver)
 {
-	TAILQ_REMOVE(&driver_list, driver, next);
+	TAILQ_REMOVE(&pci_driver_list, driver, next);
 }
 
 void

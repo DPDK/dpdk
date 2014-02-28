@@ -85,8 +85,8 @@ extern "C" {
 TAILQ_HEAD(pci_device_list, rte_pci_device); /**< PCI devices in D-linked Q. */
 TAILQ_HEAD(pci_driver_list, rte_pci_driver); /**< PCI drivers in D-linked Q. */
 
-extern struct pci_driver_list driver_list; /**< Global list of PCI drivers. */
-extern struct pci_device_list device_list; /**< Global list of PCI devices. */
+extern struct pci_driver_list pci_driver_list; /**< Global list of PCI drivers. */
+extern struct pci_device_list pci_device_list; /**< Global list of PCI devices. */
 
 /** Pathname of PCI devices directory. */
 #define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"

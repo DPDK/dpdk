@@ -888,13 +888,13 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	}
 
 	/* device is valid, add in list (sorted) */
-	if (TAILQ_EMPTY(&device_list)) {
-		TAILQ_INSERT_TAIL(&device_list, dev, next);
+	if (TAILQ_EMPTY(&pci_device_list)) {
+		TAILQ_INSERT_TAIL(&pci_device_list, dev, next);
 	}	
 	else {
 		struct rte_pci_device *dev2 = NULL;
 
-		TAILQ_FOREACH(dev2, &device_list, next) {
+		TAILQ_FOREACH(dev2, &pci_device_list, next) {
 			if (pci_addr_comparison(&dev->addr, &dev2->addr))
 				continue;
 			else {
@@ -902,7 +902,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 				return 0;
 			}
 		}
-		TAILQ_INSERT_TAIL(&device_list, dev, next);
+		TAILQ_INSERT_TAIL(&pci_device_list, dev, next);
 	}
 				
 	return 0;
@@ -1068,8 +1068,8 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 int
 rte_eal_pci_init(void)
 {
-	TAILQ_INIT(&driver_list);
-	TAILQ_INIT(&device_list);
+	TAILQ_INIT(&pci_driver_list);
+	TAILQ_INIT(&pci_device_list);
 	uio_res_list = RTE_TAILQ_RESERVE_BY_IDX(RTE_TAILQ_PCI, uio_res_list);
 
 	/* for debug purposes, PCI can be disabled */
