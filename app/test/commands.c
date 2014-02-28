@@ -65,6 +65,7 @@
 #include <rte_ring.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
+#include <rte_devargs.h>
 
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
@@ -285,12 +286,15 @@ static void cmd_dump_parsed(void *parsed_result,
 		rte_ring_list_dump();
 	else if (!strcmp(res->dump, "dump_mempool"))
 		rte_mempool_list_dump();
+	else if (!strcmp(res->dump, "dump_devargs"))
+		rte_eal_devargs_dump();
 }
 
 cmdline_parse_token_string_t cmd_dump_dump =
 	TOKEN_STRING_INITIALIZER(struct cmd_dump_result, dump,
 				 "dump_physmem#dump_memzone#dump_log_history#"
-				 "dump_struct_sizes#dump_ring#dump_mempool");
+				 "dump_struct_sizes#dump_ring#dump_mempool#"
+				 "dump_devargs");
 
 cmdline_parse_inst_t cmd_dump = {
 	.f = cmd_dump_parsed,  /* function to call */
