@@ -290,16 +290,6 @@ void rte_eal_pci_register(struct rte_pci_driver *driver);
  */
 void rte_eal_pci_unregister(struct rte_pci_driver *driver);
 
-/**
- * Register a list of PCI locations that will be blacklisted (not used by DPDK).
- *
- * @param blacklist
- *   List of PCI device addresses that will not be used by DPDK.
- * @param size
- *   Number of items in the list.
- */
-void rte_eal_pci_set_blacklist(struct rte_pci_addr *blacklist, unsigned size);
-
 #ifdef __cplusplus
 }
 #endif

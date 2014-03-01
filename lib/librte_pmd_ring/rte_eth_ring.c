@@ -386,7 +386,7 @@ rte_pmd_ring_init(const char *name, const char *params)
 {
 	RTE_LOG(INFO, PMD, "Initializing pmd_ring for %s\n", name);
 
-	if (params == NULL)
+	if (params == NULL || params[0] == '\0')
 		eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
 	else {
 		RTE_LOG(INFO, PMD, "Ignoring unsupported parameters when creating"

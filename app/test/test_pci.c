@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without
@@ -38,11 +39,10 @@
 
 #include <rte_interrupts.h>
 #include <rte_pci.h>
+#include <rte_devargs.h>
 
 #include "test.h"
 
-
-#define	TEST_BLACKLIST_NUM	0x100
 
 /*
  * PCI test
@@ -58,7 +58,6 @@
 int test_pci_run = 0; /* value checked by the multiprocess test */
 static unsigned pci_dev_count;
 static unsigned driver_registered = 0;
-static struct rte_pci_addr blacklist[TEST_BLACKLIST_NUM];
 
 static int my_driver_init(struct rte_pci_driver *dr,
 			  struct rte_pci_device *dev);
@@ -116,37 +115,42 @@ my_driver_init(__attribute__((unused)) struct rte_pci_driver *dr,
 }
 
 static void
-blacklist_clear(void)
-{
-	rte_eal_pci_set_blacklist(NULL, 0);
-}
-
-
-
-static void
 blacklist_all_devices(void)
 {
 	struct rte_pci_device *dev = NULL;
-	unsigned idx = 0;
-
-	memset(blacklist, 0, sizeof (blacklist));
+	unsigned i = 0;
+	char pci_addr_str[16];
 
 	TAILQ_FOREACH(dev, &pci_device_list, next) {
-		if (idx >= sizeof (blacklist) / sizeof (blacklist[0])) {
-			printf("Error: too many devices to blacklist");
+		snprintf(pci_addr_str, sizeof(pci_addr_str), PCI_PRI_FMT,
+			dev->addr.domain, dev->addr.bus, dev->addr.devid,
+			dev->addr.function);
+		if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI,
+				pci_addr_str) < 0) {
+			printf("Error: cannot blacklist <%s>", pci_addr_str);
 			break;
 		}
-		blacklist[idx] = dev->addr;
-		++idx;
+		i++;
 	}
+	printf("%u devices blacklisted\n", i);
+}
 
-	rte_eal_pci_set_blacklist(blacklist, idx);
-	printf("%u devices blacklisted\n", idx);
+/* clear devargs list that was modified by the test */
+static void free_devargs_list(void)
+{
+	struct rte_devargs *devargs;
+
+	while (!TAILQ_EMPTY(&devargs_list)) {
+		devargs = TAILQ_FIRST(&devargs_list);
+		TAILQ_REMOVE(&devargs_list, devargs, next);
+		free(devargs);
+	}
 }
 
 int
 test_pci(void)
 {
+	struct rte_devargs_list save_devargs_list;
 
 	printf("Dump all devices\n");
 	rte_eal_pci_dump();
@@ -165,13 +169,18 @@ test_pci(void)
 		return -1;
 	}
 
+	/* save the real devargs_list */
+	save_devargs_list = devargs_list;
+	TAILQ_INIT(&devargs_list);
+
 	blacklist_all_devices();
 
 	pci_dev_count = 0;
 	printf("Scan bus with all devices blacklisted\n");
 	rte_eal_pci_probe();
 
-	blacklist_clear();
+	free_devargs_list();
+	devargs_list = save_devargs_list;
 
 	if (pci_dev_count != 0) {
 		printf("not all devices are blacklisted\n");

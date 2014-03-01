@@ -61,6 +61,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <string.h>
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -77,29 +78,23 @@
 #include <rte_eal.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
+#include <rte_devargs.h>
 
 #include "eal_private.h"
 
 struct pci_driver_list pci_driver_list;
 struct pci_device_list pci_device_list;
 
-static struct rte_pci_addr *dev_blacklist = NULL;
-static unsigned dev_blacklist_size = 0;
-
 static int is_blacklisted(struct rte_pci_device *dev)
 {
-	struct rte_pci_addr *loc = &dev->addr;
-	unsigned i;
+	struct rte_devargs *devargs;
 
-	for (i = 0; i < dev_blacklist_size; i++) {
-		if ((loc->domain == dev_blacklist[i].domain) &&
-				(loc->bus == dev_blacklist[i].bus) &&
-				(loc->devid == dev_blacklist[i].devid) &&
-				(loc->function == dev_blacklist[i].function)) {
+	TAILQ_FOREACH(devargs, &devargs_list, next) {
+		if (devargs->type != RTE_DEVTYPE_BLACKLISTED_PCI)
+			continue;
+		if (!memcmp(&dev->addr, &devargs->pci.addr, sizeof(dev->addr)))
 			return 1;
-		}
 	}
-
 	return 0;           /* not in blacklist */
 }
 
@@ -143,16 +138,15 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 static int
 pcidev_is_whitelisted(struct rte_pci_device *dev)
 {
-	char buf[16];
-	if (dev->addr.domain == 0) {
-		rte_snprintf(buf, sizeof(buf), PCI_SHORT_PRI_FMT, dev->addr.bus,
-				dev->addr.devid, dev->addr.function);
-		if (eal_dev_is_whitelisted(buf, NULL))
+	struct rte_devargs *devargs;
+
+	TAILQ_FOREACH(devargs, &devargs_list, next) {
+		if (devargs->type != RTE_DEVTYPE_WHITELISTED_PCI)
+			continue;
+		if (!memcmp(&dev->addr, &devargs->pci.addr, sizeof(dev->addr)))
 			return 1;
 	}
-	rte_snprintf(buf, sizeof(buf), PCI_PRI_FMT, dev->addr.domain,dev->addr.bus,
-			dev->addr.devid, dev->addr.function);
-	return eal_dev_is_whitelisted(buf, NULL);
+	return 0;
 }
 
 /*
@@ -164,14 +158,19 @@ int
 rte_eal_pci_probe(void)
 {
 	struct rte_pci_device *dev = NULL;
+	int probe_all = 0;
 
-	TAILQ_FOREACH(dev, &pci_device_list, next)
-		if (!eal_dev_whitelist_exists())
+	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) == 0)
+		probe_all = 1;
+
+	TAILQ_FOREACH(dev, &pci_device_list, next) {
+		if (probe_all)
 			pci_probe_all_drivers(dev);
-		else if (pcidev_is_whitelisted(dev) && pci_probe_all_drivers(dev) < 0 )
-				rte_exit(EXIT_FAILURE, "Requested device " PCI_PRI_FMT
-						" cannot be used\n", dev->addr.domain,dev->addr.bus,
-						dev->addr.devid, dev->addr.function);
+		else if (pcidev_is_whitelisted(dev) && pci_probe_all_drivers(dev) < 0)
+			rte_exit(EXIT_FAILURE, "Requested device " PCI_PRI_FMT
+				 " cannot be used\n", dev->addr.domain, dev->addr.bus,
+				 dev->addr.devid, dev->addr.function);
+	}
 
 	return 0;
 }
@@ -219,11 +218,4 @@ void
 rte_eal_pci_unregister(struct rte_pci_driver *driver)
 {
 	TAILQ_REMOVE(&pci_driver_list, driver, next);
-}
-
-void
-rte_eal_pci_set_blacklist(struct rte_pci_addr *blacklist, unsigned size)
-{
-	dev_blacklist = blacklist;
-	dev_blacklist_size = size;
 }

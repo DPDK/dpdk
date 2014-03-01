@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without
@@ -31,6 +32,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <string.h>
 #include <inttypes.h>
 #include <rte_string_fns.h>
 #ifdef RTE_LIBRTE_PMD_RING
@@ -42,6 +44,8 @@
 #ifdef RTE_LIBRTE_PMD_XENVIRT
 #include <rte_eth_xenvirt.h>
 #endif
+#include <rte_debug.h>
+#include <rte_devargs.h>
 #include "eal_private.h"
 
 struct device_init {
@@ -78,15 +82,29 @@ struct device_init dev_types[] = {
 int
 rte_eal_non_pci_ethdev_init(void)
 {
-	uint8_t i, j;
-	for (i = 0; i < NUM_DEV_TYPES; i++) {
-		for (j = 0; j < RTE_MAX_ETHPORTS; j++) {
-			const char *params;
-			char buf[16];
-			rte_snprintf(buf, sizeof(buf), "%s%"PRIu8,
-					dev_types[i].dev_prefix, j);
-			if (eal_dev_is_whitelisted(buf, &params))
-				dev_types[i].init_fn(buf, params);
+	struct rte_devargs *devargs;
+	uint8_t i;
+
+	/* call the init function for each virtual device */
+	TAILQ_FOREACH(devargs, &devargs_list, next) {
+
+		if (devargs->type != RTE_DEVTYPE_VIRTUAL)
+			continue;
+
+		for (i = 0; i < NUM_DEV_TYPES; i++) {
+			/* search a driver prefix in virtual device name */
+			if (!strncmp(dev_types[i].dev_prefix,
+				    devargs->virtual.drv_name,
+				     sizeof(dev_types[i].dev_prefix) - 1)) {
+				dev_types[i].init_fn(devargs->virtual.drv_name,
+						     devargs->args);
+				break;
+			}
+		}
+
+		if (i == NUM_DEV_TYPES) {
+			rte_panic("no driver found for %s\n",
+				  devargs->virtual.drv_name);
 		}
 	}
 	return 0;

@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without
@@ -271,20 +272,6 @@ get_current_prefix(char * prefix, int size)
 	return prefix;
 }
 
-/* extra function prototypes for internal eal function to test in whitelist 
- * ICC 12 doesn't approve of this practice, so temporarily disable warnings for it */
-#ifdef __INTEL_COMPILER
-#pragma warning disable 1419
-#endif
-extern int eal_dev_whitelist_exists(void);
-extern int eal_dev_whitelist_add_entry(const char *);
-extern int eal_dev_whitelist_parse(void);
-extern int eal_dev_is_whitelisted(const char *, const char **);
-extern void eal_dev_whitelist_clear(void);
-#ifdef __INTEL_COMPILER
-#pragma warning enable 1419
-#endif
-
 /*
  * Test that the app doesn't run with invalid whitelist option.
  * Final tests ensures it does run with valid options as sanity check (one
@@ -319,17 +306,15 @@ test_whitelist_flag(void)
 				use_device, "error0:0:0.1", "", ""},
 		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
 				use_device, "0:0:0.1.2", "", ""},
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-				use_device, "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x",
-				use_device, "y,z,1,2,3,4,5,6,7,8,9,0"},
 	};
 	/* Test with valid whitelist option */
 	const char *wlval1[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
 			use_device, "00FF:09:0B.3"};
 	const char *wlval2[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-			use_device, "09:0B.3,0a:0b.1"};
+			use_device, "09:0B.3", use_device, "0a:0b.1"};
 	const char *wlval3[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-			use_device, "09:0B.3;type=test,08:00.1;type=normal"};
+			use_device, "09:0B.3;type=test",
+			use_device, "08:00.1;type=normal"};
 
 	for (i = 0; i < sizeof(wlinval) / sizeof(wlinval[0]); i++) {
 		if (launch_proc(wlinval[i]) == 0) {
@@ -350,32 +335,6 @@ test_whitelist_flag(void)
 		printf("Error - process did not run ok with valid whitelist + args\n");
 		return -1;
 	}
-
-	/* extra-sanity checks of whitelists - to be run only if no whitelist */
-	if (eal_dev_whitelist_exists())
-		return 0;
-
-	/* check that whitelist_parse returns error without whitelist */
-	if (eal_dev_whitelist_parse() != -1) {
-		printf("ERROR: calling whitelist parse without a whitelist doesn't "
-				"return an error\n");
-		return -1;
-	}
-	if (eal_dev_is_whitelisted("adevice", NULL)) {
-		printf("Whitelist lookup does not return false if no whitelist\n");
-		return -1;
-	}
-	eal_dev_whitelist_add_entry("0000:00:00.0");
-	eal_dev_whitelist_parse();
-	if (eal_dev_is_whitelisted("adevice", NULL)) {
-		printf("Whitelist lookup does not return false for unlisted dev\n");
-		return -1;
-	}
-	if (!eal_dev_is_whitelisted("0000:00:00.0", NULL)) {
-		printf("Whitelist lookup does not return true for whitelisted dev\n");
-		return -1;
-	}
-	eal_dev_whitelist_clear();
 
 	return 0;
 }
