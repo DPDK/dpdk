@@ -93,6 +93,7 @@ int test_common(void);
 int test_pmd_ring(void);
 int test_ivshmem(void);
 int test_kvargs(void);
+int test_devargs(void);
 
 int test_pci_run;
 

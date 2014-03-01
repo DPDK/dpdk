@@ -93,6 +93,7 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_power.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_common.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_timer_perf.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_ivshmem.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_devargs.c
 
 ifeq ($(CONFIG_RTE_APP_TEST),y)
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += test_acl.c
