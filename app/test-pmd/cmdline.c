@@ -2,6 +2,7 @@
  *   BSD LICENSE
  * 
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
  * 
  *   Redistribution and use in source and binary forms, with or without
@@ -72,6 +73,7 @@
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
+#include <rte_devargs.h>
 
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
@@ -4998,6 +5000,115 @@ cmdline_parse_inst_t cmd_reset_mirror_rule = {
 
 /* ******************************************************************************** */
 
+struct cmd_dump_result {
+	cmdline_fixed_string_t dump;
+};
+
+static void
+dump_struct_sizes(void)
+{
+#define DUMP_SIZE(t) printf("sizeof(" #t ") = %u\n", (unsigned)sizeof(t));
+	DUMP_SIZE(struct rte_mbuf);
+	DUMP_SIZE(struct rte_pktmbuf);
+	DUMP_SIZE(struct rte_ctrlmbuf);
+	DUMP_SIZE(struct rte_mempool);
+	DUMP_SIZE(struct rte_ring);
+#undef DUMP_SIZE
+}
+
+static void cmd_dump_parsed(void *parsed_result,
+			    __attribute__((unused)) struct cmdline *cl,
+			    __attribute__((unused)) void *data)
+{
+	struct cmd_dump_result *res = parsed_result;
+
+	if (!strcmp(res->dump, "dump_physmem"))
+		rte_dump_physmem_layout();
+	else if (!strcmp(res->dump, "dump_memzone"))
+		rte_memzone_dump();
+	else if (!strcmp(res->dump, "dump_log_history"))
+		rte_log_dump_history();
+	else if (!strcmp(res->dump, "dump_struct_sizes"))
+		dump_struct_sizes();
+	else if (!strcmp(res->dump, "dump_ring"))
+		rte_ring_list_dump();
+	else if (!strcmp(res->dump, "dump_mempool"))
+		rte_mempool_list_dump();
+	else if (!strcmp(res->dump, "dump_devargs"))
+		rte_eal_devargs_dump();
+}
+
+cmdline_parse_token_string_t cmd_dump_dump =
+	TOKEN_STRING_INITIALIZER(struct cmd_dump_result, dump,
+		"dump_physmem#"
+		"dump_memzone#"
+		"dump_log_history#"
+		"dump_struct_sizes#"
+		"dump_ring#"
+		"dump_mempool#"
+		"dump_devargs");
+
+cmdline_parse_inst_t cmd_dump = {
+	.f = cmd_dump_parsed,  /* function to call */
+	.data = NULL,      /* 2nd arg of func */
+	.help_str = "dump status",
+	.tokens = {        /* token list, NULL terminated */
+		(void *)&cmd_dump_dump,
+		NULL,
+	},
+};
+
+/* ******************************************************************************** */
+
+struct cmd_dump_one_result {
+	cmdline_fixed_string_t dump;
+	cmdline_fixed_string_t name;
+};
+
+static void cmd_dump_one_parsed(void *parsed_result, struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_dump_one_result *res = parsed_result;
+
+	if (!strcmp(res->dump, "dump_ring")) {
+		struct rte_ring *r;
+		r = rte_ring_lookup(res->name);
+		if (r == NULL) {
+			cmdline_printf(cl, "Cannot find ring\n");
+			return;
+		}
+		rte_ring_dump(r);
+	} else if (!strcmp(res->dump, "dump_mempool")) {
+		struct rte_mempool *mp;
+		mp = rte_mempool_lookup(res->name);
+		if (mp == NULL) {
+			cmdline_printf(cl, "Cannot find mempool\n");
+			return;
+		}
+		rte_mempool_dump(mp);
+	}
+}
+
+cmdline_parse_token_string_t cmd_dump_one_dump =
+	TOKEN_STRING_INITIALIZER(struct cmd_dump_one_result, dump,
+				 "dump_ring#dump_mempool");
+
+cmdline_parse_token_string_t cmd_dump_one_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_dump_one_result, name, NULL);
+
+cmdline_parse_inst_t cmd_dump_one = {
+	.f = cmd_dump_one_parsed,  /* function to call */
+	.data = NULL,      /* 2nd arg of func */
+	.help_str = "dump one ring/mempool: dump_ring|dump_mempool <name>",
+	.tokens = {        /* token list, NULL terminated */
+		(void *)&cmd_dump_one_dump,
+		(void *)&cmd_dump_one_name,
+		NULL,
+	},
+};
+
+/* ******************************************************************************** */
+
 /* list of instructions */
 cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_help_brief,
@@ -5076,6 +5187,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_mirror_mask,
 	(cmdline_parse_inst_t *)&cmd_set_mirror_link,
 	(cmdline_parse_inst_t *)&cmd_reset_mirror_rule,
+	(cmdline_parse_inst_t *)&cmd_dump,
+	(cmdline_parse_inst_t *)&cmd_dump_one,
 	NULL,
 };
 
