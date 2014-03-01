@@ -57,7 +57,8 @@
 #define no_hpet "--no-hpet"
 #define no_huge "--no-huge"
 #define no_shconf "--no-shconf"
-#define use_device "--use-device"
+#define pci_whitelist "--pci-whitelist"
+#define vdev "--vdev"
 #define memtest "memtest"
 #define memtest1 "memtest1"
 #define memtest2 "memtest2"
@@ -295,26 +296,30 @@ test_whitelist_flag(void)
 
 	const char *wlinval[][11] = {
 		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-				use_device, "error", "", ""},
+				pci_whitelist, "error", "", ""},
 		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-				use_device, "0:0:0", "", ""},
+				pci_whitelist, "0:0:0", "", ""},
 		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-				use_device, "0:error:0.1", "", ""},
+				pci_whitelist, "0:error:0.1", "", ""},
 		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-				use_device, "0:0:0.1error", "", ""},
+				pci_whitelist, "0:0:0.1error", "", ""},
 		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-				use_device, "error0:0:0.1", "", ""},
+				pci_whitelist, "error0:0:0.1", "", ""},
 		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-				use_device, "0:0:0.1.2", "", ""},
+				pci_whitelist, "0:0:0.1.2", "", ""},
 	};
 	/* Test with valid whitelist option */
 	const char *wlval1[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-			use_device, "00FF:09:0B.3"};
+			pci_whitelist, "00FF:09:0B.3"};
 	const char *wlval2[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-			use_device, "09:0B.3", use_device, "0a:0b.1"};
+			pci_whitelist, "09:0B.3", pci_whitelist, "0a:0b.1"};
 	const char *wlval3[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
-			use_device, "09:0B.3,type=test",
-			use_device, "08:00.1,type=normal"};
+			pci_whitelist, "09:0B.3,type=test",
+			pci_whitelist, "08:00.1,type=normal",
+#ifdef CONFIG_RTE_LIBRTE_PMD_RING
+			vdev, "eth_ring,arg=test",
+#endif
+	};
 
 	for (i = 0; i < sizeof(wlinval) / sizeof(wlinval[0]); i++) {
 		if (launch_proc(wlinval[i]) == 0) {
