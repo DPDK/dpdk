@@ -32,7 +32,7 @@
  */
 /*   BSD LICENSE
  *
- *   Copyright(c) 2013 6WIND.
+ *   Copyright 2013-2014 6WIND S.A.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -136,6 +136,8 @@ struct rte_pci_addr {
 	uint8_t function;               /**< Device function. */
 };
 
+struct rte_devargs;
+
 /**
  * A structure describing a PCI device.
  */
@@ -148,7 +150,7 @@ struct rte_pci_device {
 	const struct rte_pci_driver *driver;    /**< Associated driver */
 	uint16_t max_vfs;                       /**< sriov enable if not zero */
 	int numa_node;                          /**< NUMA node connection */
-	unsigned int blacklisted:1;             /**< Device is blacklisted */
+	struct rte_devargs *devargs;            /**< Device user arguments */
 };
 
 /** Any PCI device identifier (vendor, device, ...) */

@@ -32,7 +32,7 @@
  */
 /*   BSD LICENSE
  *
- *   Copyright(c) 2013 6WIND.
+ *   Copyright 2013-2014 6WIND S.A.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -85,17 +85,18 @@
 struct pci_driver_list pci_driver_list;
 struct pci_device_list pci_device_list;
 
-static int is_blacklisted(struct rte_pci_device *dev)
+static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 {
 	struct rte_devargs *devargs;
 
 	TAILQ_FOREACH(devargs, &devargs_list, next) {
-		if (devargs->type != RTE_DEVTYPE_BLACKLISTED_PCI)
+		if (devargs->type != RTE_DEVTYPE_BLACKLISTED_PCI &&
+			devargs->type != RTE_DEVTYPE_WHITELISTED_PCI)
 			continue;
 		if (!memcmp(&dev->addr, &devargs->pci.addr, sizeof(dev->addr)))
-			return 1;
+			return devargs;
 	}
-	return 0;           /* not in blacklist */
+	return NULL;
 }
 
 /*
@@ -113,7 +114,6 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 	struct rte_pci_driver *dr = NULL;
 	int rc;
 
-	dev->blacklisted = !!is_blacklisted(dev);
 	TAILQ_FOREACH(dr, &pci_driver_list, next) {
 		rc = rte_eal_pci_probe_one_driver(dr, dev);
 		if (rc < 0)
@@ -124,29 +124,13 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 			continue;
 		/* initialize subsequent driver instances for this device */
 		if ((dr->drv_flags & RTE_PCI_DRV_MULTIPLE) &&
-				(!dev->blacklisted))
+			(dev->devargs == NULL ||
+				dev->devargs->type != RTE_DEVTYPE_BLACKLISTED_PCI))
 			while (rte_eal_pci_probe_one_driver(dr, dev) == 0)
 				;
 		return 0;
 	}
 	return -1;
-}
-
-/*
- * Check if a device is ok to use according to whitelist rules.
- */
-static int
-pcidev_is_whitelisted(struct rte_pci_device *dev)
-{
-	struct rte_devargs *devargs;
-
-	TAILQ_FOREACH(devargs, &devargs_list, next) {
-		if (devargs->type != RTE_DEVTYPE_WHITELISTED_PCI)
-			continue;
-		if (!memcmp(&dev->addr, &devargs->pci.addr, sizeof(dev->addr)))
-			return 1;
-	}
-	return 0;
 }
 
 /*
@@ -158,15 +142,25 @@ int
 rte_eal_pci_probe(void)
 {
 	struct rte_pci_device *dev = NULL;
+	struct rte_devargs *devargs;
 	int probe_all = 0;
 
 	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) == 0)
 		probe_all = 1;
 
 	TAILQ_FOREACH(dev, &pci_device_list, next) {
+
+		/* set devargs in PCI structure */
+		devargs = pci_devargs_lookup(dev);
+		if (devargs != NULL)
+			dev->devargs = devargs;
+
+		/* probe all or only whitelisted devices */
 		if (probe_all)
 			pci_probe_all_drivers(dev);
-		else if (pcidev_is_whitelisted(dev) && pci_probe_all_drivers(dev) < 0)
+		else if (devargs != NULL &&
+			devargs->type == RTE_DEVTYPE_WHITELISTED_PCI &&
+			pci_probe_all_drivers(dev) < 0)
 			rte_exit(EXIT_FAILURE, "Requested device " PCI_PRI_FMT
 				 " cannot be used\n", dev->addr.domain, dev->addr.bus,
 				 dev->addr.devid, dev->addr.function);
