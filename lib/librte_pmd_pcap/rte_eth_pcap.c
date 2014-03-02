@@ -549,15 +549,15 @@ rte_pmd_init_internals(const unsigned nb_rx_queues,
 		const unsigned numa_node,
 		struct pmd_internals **internals,
 		struct rte_eth_dev **eth_dev,
-		struct args_dict *dict)
+		struct rte_kvargs *kvlist)
 {
 	struct rte_eth_dev_data *data = NULL;
 	struct rte_pci_device *pci_dev = NULL;
 	unsigned k_idx;
-	struct key_value *pair = NULL;
+	struct rte_kvargs_pair *pair = NULL;
 
-	for (k_idx = 0; k_idx < dict->index; k_idx++) {
-		pair = &dict->pairs[k_idx];
+	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
+		pair = &kvlist->pairs[k_idx];
 		if (strstr(pair->key, ETH_PCAP_IFACE_ARG) != NULL)
 			break;
 	}
@@ -626,13 +626,13 @@ rte_pmd_init_internals(const unsigned nb_rx_queues,
 	return -1;
 }
 
-int
+static int
 rte_eth_from_pcaps_n_dumpers(pcap_t * const rx_queues[],
 		const unsigned nb_rx_queues,
 		pcap_dumper_t * const tx_queues[],
 		const unsigned nb_tx_queues,
 		const unsigned numa_node,
-		struct args_dict *dict)
+		struct rte_kvargs *kvlist)
 {
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
@@ -645,7 +645,7 @@ rte_eth_from_pcaps_n_dumpers(pcap_t * const rx_queues[],
 		return -1;
 
 	if (rte_pmd_init_internals(nb_rx_queues, nb_tx_queues, numa_node,
-		        &internals, &eth_dev, dict) < 0)
+			&internals, &eth_dev, kvlist) < 0)
 		return -1;
 
 	for (i = 0; i < nb_rx_queues; i++) {
@@ -661,13 +661,13 @@ rte_eth_from_pcaps_n_dumpers(pcap_t * const rx_queues[],
 	return 0;
 }
 
-int
+static int
 rte_eth_from_pcaps(pcap_t * const rx_queues[],
 		const unsigned nb_rx_queues,
 		pcap_t * const tx_queues[],
 		const unsigned nb_tx_queues,
 		const unsigned numa_node,
-		struct args_dict *dict)
+		struct rte_kvargs *kvlist)
 {
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
@@ -680,7 +680,7 @@ rte_eth_from_pcaps(pcap_t * const rx_queues[],
 		return -1;
 
 	if (rte_pmd_init_internals(nb_rx_queues, nb_tx_queues, numa_node,
-		        &internals, &eth_dev, dict) < 0)
+			&internals, &eth_dev, kvlist) < 0)
 		return -1;
 
 	for (i = 0; i < nb_rx_queues; i++) {
@@ -729,7 +729,8 @@ rte_pmd_pcap_init(const char *name, const char *params)
 		if (ret < 0)
 			return -1;
 
-		return rte_eth_from_pcaps(pcaps.pcaps, 1, pcaps.pcaps, 1, numa_node, &dict);
+		return rte_eth_from_pcaps(pcaps.pcaps, 1, pcaps.pcaps, 1,
+				numa_node, kvlist);
 	}
 
 	/*
@@ -770,10 +771,10 @@ rte_pmd_pcap_init(const char *name, const char *params)
 
 	if (using_dumpers)
 		return rte_eth_from_pcaps_n_dumpers(pcaps.pcaps, pcaps.num_of_rx,
-			        dumpers.dumpers, dumpers.num_of_tx, numa_node, &dict);
+				dumpers.dumpers, dumpers.num_of_tx, numa_node, kvlist);
 
 	return rte_eth_from_pcaps(pcaps.pcaps, pcaps.num_of_rx, dumpers.pcaps,
-			dumpers.num_of_tx, numa_node, &dict);
+			dumpers.num_of_tx, numa_node, kvlist);
 
 }
 

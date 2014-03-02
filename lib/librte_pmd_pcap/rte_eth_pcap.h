@@ -47,23 +47,6 @@ extern "C" {
 
 #define RTE_ETH_PCAP_PARAM_NAME "eth_pcap"
 
-/* struct args_dict is declared in rte_eth_pcap_args_parser.h */
-struct args_dict;
-
-int rte_eth_from_pcaps(pcap_t * const rx_queues[],
-		const unsigned nb_rx_queues,
-		pcap_t * const tx_queues[],
-		const unsigned nb_tx_queues,
-		const unsigned numa_node,
-		struct args_dict *dict);
-
-int rte_eth_from_pcaps_n_dumpers(pcap_t * const rx_queues[],
-		const unsigned nb_rx_queues,
-		pcap_dumper_t * const tx_queues[],
-		const unsigned nb_tx_queues,
-		const unsigned numa_node,
-		struct args_dict *dict);
-
 /**
  * For use by the EAL only. Called as part of EAL init to set up any dummy NICs
  * configured on command line.
