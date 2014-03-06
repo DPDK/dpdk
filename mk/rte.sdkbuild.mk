@@ -40,13 +40,6 @@ else
   include $(RTE_SDK)/mk/rte.vars.mk
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
-LIBPCAP_CFLAGS ?= $(shell pcap-config --cflags)
-EXTERNAL_LIB_CFLAGS += $(LIBPCAP_CFLAGS)
-endif
-
-export EXTERNAL_LIB_CFLAGS
-
 #
 # include .depdirs and define rules to order priorities between build
 # of directories.

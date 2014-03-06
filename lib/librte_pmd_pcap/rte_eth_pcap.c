@@ -217,7 +217,6 @@ eth_pcap_tx_dumper(void *queue,
 	return num_tx;
 }
 
-#ifdef PCAP_CAN_SEND
 /*
  * Callback to handle sending packets through a real NIC.
  */
@@ -248,17 +247,6 @@ eth_pcap_tx(void *queue,
 	tx_queue->err_pkts += nb_pkts - num_tx;
 	return num_tx;
 }
-#else
-static uint16_t
-eth_pcap_tx(__rte_unused void *queue,
-		__rte_unused struct rte_mbuf **bufs,
-		__rte_unused uint16_t nb_pkts)
-{
-	RTE_LOG(ERR, PMD, "pcap library cannot send packets, please rebuild "
-	                  "with a more up to date libpcap\n");
-	return -1;
-}
-#endif
 
 static int
 eth_dev_start(struct rte_eth_dev *dev)
