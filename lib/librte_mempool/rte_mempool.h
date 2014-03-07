@@ -314,6 +314,7 @@ static inline void __mempool_write_trailer_cookie(void *obj)
  */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 #ifndef __INTEL_COMPILER
+#pragma GCC push_options
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
 static inline void __mempool_check_cookies(const struct rte_mempool *mp,
@@ -380,7 +381,7 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 	}
 }
 #ifndef __INTEL_COMPILER
-#pragma GCC diagnostic error "-Wcast-qual"
+#pragma GCC pop_options
 #endif
 #else
 #define __mempool_check_cookies(mp, obj_table_const, n, free) do {} while(0)
