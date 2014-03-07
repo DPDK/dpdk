@@ -472,7 +472,7 @@ create_shared_config(void)
 	rte_snprintf(path, sizeof(path), IVSHMEM_CONFIG_PATH,
 			internal_config.hugefile_prefix);
 
-	fd = open(path, O_CREAT | O_RDWR);
+	fd = open(path, O_CREAT | O_RDWR, 0600);
 
 	if (fd < 0) {
 		RTE_LOG(ERR, EAL, "Could not open %s: %s\n", path, strerror(errno));
@@ -486,7 +486,10 @@ create_shared_config(void)
 		return -1;
 	}
 
-	ftruncate(fd, sizeof(struct ivshmem_shared_config));
+	if (ftruncate(fd, sizeof(struct ivshmem_shared_config)) < 0) {
+		RTE_LOG(ERR, EAL, "ftruncate failed: %s\n", strerror(errno));
+		return -1;
+	}
 
 	ivshmem_config = mmap(NULL, sizeof(struct ivshmem_shared_config),
 			PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
