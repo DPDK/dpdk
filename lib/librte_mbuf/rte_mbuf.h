@@ -624,6 +624,7 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
 	mi->pkt.next = NULL;
 	mi->pkt.pkt_len = mi->pkt.data_len;
 	mi->pkt.nb_segs = 1;
+	mi->ol_flags = md->ol_flags;
 
 	__rte_mbuf_sanity_check(mi, RTE_MBUF_PKT, 1);
 	__rte_mbuf_sanity_check(md, RTE_MBUF_PKT, 0);
