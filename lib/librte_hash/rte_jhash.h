@@ -149,7 +149,7 @@ rte_jhash(const void *key, uint32_t length, uint32_t initval)
  *   Calculated hash value.
  */
 static inline uint32_t
-rte_jhash2(uint32_t *k, uint32_t length, uint32_t initval)
+rte_jhash2(const uint32_t *k, uint32_t length, uint32_t initval)
 {
 	uint32_t a, b, c, len;
 
