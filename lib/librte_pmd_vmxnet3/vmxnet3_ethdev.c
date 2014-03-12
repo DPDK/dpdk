@@ -267,9 +267,7 @@ static struct eth_driver rte_vmxnet3_pmd = {
 	{
 		.name = "rte_vmxnet3_pmd",
 		.id_table = pci_id_vmxnet3_map,
-#ifdef RTE_EAL_UNBIND_PORTS
 		.drv_flags = RTE_PCI_DRV_NEED_IGB_UIO,
-#endif
 	},
 	.eth_dev_init = eth_vmxnet3_dev_init,
 	.dev_private_size = sizeof(struct vmxnet3_adapter),
