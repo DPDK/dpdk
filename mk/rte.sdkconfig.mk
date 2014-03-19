@@ -114,6 +114,7 @@ checkconfig:
 	fi
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkconfig.mk \
 		headerconfig NODOTCONF=1
+	$(Q)$(MAKE) -s depdirs
 
 .PHONY: FORCE
 FORCE:

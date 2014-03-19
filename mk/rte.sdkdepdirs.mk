@@ -38,8 +38,9 @@ endif
 
 # use a "for" in a shell to process dependencies: we don't want this
 # task to be run in parallel.
-..PHONY: depdirs
-depdirs:
+.PHONY: depdirs
+depdirs: $(RTE_OUTPUT)/.depdirs
+$(RTE_OUTPUT)/.depdirs: $(RTE_OUTPUT)/.config
 	@rm -f $(RTE_OUTPUT)/.depdirs ; \
 	for d in $(ROOTDIRS-y); do \
 		if [ -f $(RTE_SRCDIR)/$$d/Makefile ]; then \
