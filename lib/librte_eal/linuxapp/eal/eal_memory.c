@@ -61,7 +61,6 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define _FILE_OFFSET_BITS 64
 #include <errno.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -114,30 +113,16 @@ static uint64_t baseaddr_offset;
 
 #define RANDOMIZE_VA_SPACE_FILE "/proc/sys/kernel/randomize_va_space"
 
-/* Lock page in physical memory and prevent from swapping. */
-int
-rte_mem_lock_page(const void *virt)
-{
-	unsigned long virtual = (unsigned long)virt;
-	int page_size = getpagesize();
-	unsigned long aligned = (virtual & ~ (page_size - 1));
-	return mlock((void*)aligned, page_size);
-}
-
-/*
- * Get physical address of any mapped virtual address in the current process.
- */
-phys_addr_t
-rte_mem_virt2phy(const void *virtaddr)
+static uint64_t
+get_physaddr(void * virtaddr)
 {
 	int fd;
-	uint64_t page, physaddr, virtual;
+	uint64_t page, physaddr;
 	unsigned long virt_pfn;
 	int page_size;
 
 	/* standard page size */
 	page_size = getpagesize();
-	virtual = (uint64_t) virtaddr;
 
 	fd = open("/proc/self/pagemap", O_RDONLY);
 	if (fd < 0) {
@@ -166,7 +151,7 @@ rte_mem_virt2phy(const void *virtaddr)
 	 * the pfn (page frame number) are bits 0-54 (see
 	 * pagemap.txt in linux Documentation)
 	 */
-	physaddr = ((page & 0x7fffffffffffffULL) * page_size) + (virtual % page_size);
+	physaddr = ((page & 0x7fffffffffffffULL) * page_size);
 	close(fd);
 	return physaddr;
 }
@@ -182,8 +167,8 @@ find_physaddrs(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 	phys_addr_t addr;
 
 	for (i = 0; i < hpi->num_pages[0]; i++) {
-		addr = rte_mem_virt2phy(hugepg_tbl[i].orig_va);
-		if (addr == RTE_BAD_PHYS_ADDR)
+		addr = get_physaddr(hugepg_tbl[i].orig_va);
+		if (addr == (phys_addr_t) -1)
 			return -1;
 		hugepg_tbl[i].physaddr = addr;
 	}
@@ -508,9 +493,9 @@ remap_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 		rte_snprintf(hugepg_tbl[page_idx].filepath, MAX_HUGEPAGE_PATH, "%s",
 				filepath);
 
-		physaddr = rte_mem_virt2phy(vma_addr);
+		physaddr = get_physaddr(vma_addr);
 
-		if (physaddr == RTE_BAD_PHYS_ADDR)
+		if (physaddr == (phys_addr_t) -1)
 			return -1;
 
 		hugepg_tbl[page_idx].final_va = vma_addr;
@@ -531,7 +516,7 @@ remap_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 
 			expected_physaddr = hugepg_tbl[page_idx].physaddr + offset;
 			page_addr = RTE_PTR_ADD(vma_addr, offset);
-			physaddr = rte_mem_virt2phy(page_addr);
+			physaddr = get_physaddr(page_addr);
 
 			if (physaddr != expected_physaddr) {
 				RTE_LOG(ERR, EAL, "Segment sanity check failed: wrong physaddr "
