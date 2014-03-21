@@ -83,7 +83,7 @@ LDLIBS += -lrte_pmd_virtio_uio
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_VMXNET3_PMD),y)
-LDLIBS += -lrte_pmd_vmxnet3
+LDLIBS += -lrte_pmd_vmxnet3_uio
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_TIMER),y)

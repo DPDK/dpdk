@@ -34,7 +34,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 # library name
 #
-LIB = librte_pmd_vmxnet3.a
+LIB = librte_pmd_vmxnet3_uio.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
