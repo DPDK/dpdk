@@ -182,7 +182,7 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
+	if (hw->mac.type != ixgbe_mac_82599EB && hw->mac.type !=ixgbe_mac_X540)
 		return -ENOSYS;
 
 	err = configure_fdir_flags(&dev->data->dev_conf.fdir_conf, &fdirctrl);
@@ -464,7 +464,7 @@ fdir_add_update_signature_filter(struct rte_eth_dev *dev,
 	union ixgbe_atr_input input;
 	int err;
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
+	if (hw->mac.type != ixgbe_mac_82599EB && hw->mac.type !=ixgbe_mac_X540)
 		return -ENOSYS;
 
 	err = fdir_filter_to_atr_input(fdir_filter, &input);
@@ -550,7 +550,7 @@ ixgbe_fdir_remove_signature_filter(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
+	if (hw->mac.type != ixgbe_mac_82599EB && hw->mac.type !=ixgbe_mac_X540)
 		return -ENOSYS;
 
 	err = fdir_filter_to_atr_input(fdir_filter, &input);
@@ -674,7 +674,7 @@ ixgbe_fdir_set_masks(struct rte_eth_dev *dev, struct rte_fdir_masks *fdir_masks)
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
+	if (hw->mac.type != ixgbe_mac_82599EB && hw->mac.type !=ixgbe_mac_X540)
 		return -ENOSYS;
 
 	err = ixgbe_reinit_fdir_tables_82599(hw);
@@ -784,7 +784,7 @@ fdir_add_update_perfect_filter(struct rte_eth_dev *dev,
 	union ixgbe_atr_input input;
 	int err;
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
+	if (hw->mac.type != ixgbe_mac_82599EB && hw->mac.type !=ixgbe_mac_X540)
 		return -ENOSYS;
 
 	err = fdir_filter_to_atr_input(fdir_filter, &input);
@@ -836,7 +836,7 @@ ixgbe_fdir_remove_perfect_filter(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
+	if (hw->mac.type != ixgbe_mac_82599EB && hw->mac.type !=ixgbe_mac_X540)
 		return -ENOSYS;
 
 	err = fdir_filter_to_atr_input(fdir_filter, &input);
@@ -859,7 +859,7 @@ ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir *fdir)
 			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 	uint32_t reg;
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
+	if (hw->mac.type != ixgbe_mac_82599EB && hw->mac.type !=ixgbe_mac_X540)
 		return;
 
 	/* Get the information from registers */
