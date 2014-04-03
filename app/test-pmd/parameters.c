@@ -85,7 +85,7 @@ usage(char* progname)
 #ifdef RTE_LIBRTE_CMDLINE
 	       "[--interactive|-i] "
 #endif
-	       "[--help|-h] | ["
+	       "[--help|-h] | [--auto-start|-a] | ["
 	       "--coremask=COREMASK --portmask=PORTMASK --numa "
 	       "--mbuf-size= | --total-num-mbufs= | "
 	       "--nb-cores= | --nb-ports= | "
@@ -102,6 +102,8 @@ usage(char* progname)
 #ifdef RTE_LIBRTE_CMDLINE
 	printf("  --interactive: run in interactive mode.\n");
 #endif
+	printf("  --auto-start: start forwarding on init "
+	       "[always when non-interactive].\n");
 	printf("  --help: display this message and quit.\n");
 	printf("  --nb-cores=N: set the number of forwarding cores "
 	       "(1 <= N <= %d).\n", nb_lcores);
@@ -485,6 +487,7 @@ launch_args_parse(int argc, char** argv)
 		{ "help",			0, 0, 0 },
 #ifdef RTE_LIBRTE_CMDLINE
 		{ "interactive",		0, 0, 0 },
+		{ "auto-start",			0, 0, 0 },
 		{ "eth-peers-configfile",	1, 0, 0 },
 		{ "eth-peer",			1, 0, 0 },
 #endif
@@ -539,11 +542,11 @@ launch_args_parse(int argc, char** argv)
 	argvopt = argv;
 
 #ifdef RTE_LIBRTE_CMDLINE
-#define SHORTOPTS "ih"
+#define SHORTOPTS "i"
 #else
-#define SHORTOPTS "h"
+#define SHORTOPTS ""
 #endif
-	while ((opt = getopt_long(argc, argvopt, SHORTOPTS,
+	while ((opt = getopt_long(argc, argvopt, SHORTOPTS "ah",
 				 lgopts, &opt_idx)) != EOF) {
 		switch (opt) {
 #ifdef RTE_LIBRTE_CMDLINE
@@ -552,6 +555,11 @@ launch_args_parse(int argc, char** argv)
 			interactive = 1;
 			break;
 #endif
+		case 'a':
+			printf("Auto-start selected\n");
+			auto_start = 1;
+			break;
+
 		case 0: /*long options */
 			if (!strcmp(lgopts[opt_idx].name, "help")) {
 				usage(argv[0]);
@@ -561,6 +569,10 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "interactive")) {
 				printf("Interactive-mode selected\n");
 				interactive = 1;
+			}
+			if (!strcmp(lgopts[opt_idx].name, "auto-start")) {
+				printf("Auto-start selected\n");
+				auto_start = 1;
 			}
 			if (!strcmp(lgopts[opt_idx].name,
 				    "eth-peers-configfile")) {

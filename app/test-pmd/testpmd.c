@@ -83,6 +83,7 @@ uint16_t verbose_level = 0; /**< Silent by default. */
 
 /* use master core for command line ? */
 uint8_t interactive = 0;
+uint8_t auto_start = 0;
 
 /*
  * NUMA support configuration.
@@ -1830,9 +1831,13 @@ main(int argc, char** argv)
 		rte_eth_promiscuous_enable(port_id);
 
 #ifdef RTE_LIBRTE_CMDLINE
-	if (interactive == 1)
+	if (interactive == 1) {
+		if (auto_start) {
+			printf("Start automatic packet forwarding\n");
+			start_packet_forwarding(0);
+		}
 		prompt();
-	else
+	} else
 #endif
 	{
 		char c;
