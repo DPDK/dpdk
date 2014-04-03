@@ -158,6 +158,7 @@ usage(char* progname)
 	printf("  --disable-rss: disable rss.\n");
 	printf("  --port-topology=N: set port topology (N: paired (default) or "
 	       "chained).\n");
+	printf("  --forward-mode=N: set forwarding mode.\n");
 	printf("  --rss-ip: set RSS functions to IPv4/IPv6 only .\n");
 	printf("  --rss-udp: set RSS functions to IPv4/IPv6 + UDP.\n");
 	printf("  --rxq=N: set the number of RX queues per port to N.\n");
@@ -515,6 +516,7 @@ launch_args_parse(int argc, char** argv)
 		{ "enable-drop-en",            0, 0, 0 },
 		{ "disable-rss",                0, 0, 0 },
 		{ "port-topology",              1, 0, 0 },
+		{ "forward-mode",               1, 0, 0 },
 		{ "rss-ip",			0, 0, 0 },
 		{ "rss-udp",			0, 0, 0 },
 		{ "rxq",			1, 0, 0 },
@@ -775,6 +777,8 @@ launch_args_parse(int argc, char** argv)
 						 " must be: paired or chained \n",
 						 optarg);
 			}
+			if (!strcmp(lgopts[opt_idx].name, "forward-mode"))
+				set_pkt_forwarding_mode(optarg);
 			if (!strcmp(lgopts[opt_idx].name, "rss-ip"))
 				rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6;
 			if (!strcmp(lgopts[opt_idx].name, "rss-udp"))
