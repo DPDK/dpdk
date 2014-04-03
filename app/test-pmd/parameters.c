@@ -756,6 +756,8 @@ launch_args_parse(int argc, char** argv)
 					port_topology = PORT_TOPOLOGY_PAIRED;
 				else if (!strcmp(optarg, "chained"))
 					port_topology = PORT_TOPOLOGY_CHAINED;
+				else if (!strcmp(optarg, "loop"))
+					port_topology = PORT_TOPOLOGY_LOOP;
 				else
 					rte_exit(EXIT_FAILURE, "port-topology %s invalid -"
 						 " must be: paired or chained \n",

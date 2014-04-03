@@ -731,7 +731,8 @@ simple_fwd_config_setup(void)
 	portid_t j;
 	portid_t inc = 2;
 
-	if (port_topology == PORT_TOPOLOGY_CHAINED) {
+	if (port_topology == PORT_TOPOLOGY_CHAINED ||
+	    port_topology == PORT_TOPOLOGY_LOOP) {
 		inc = 1;
 	} else if (nb_fwd_ports % 2) {
 		printf("\nWarning! Cannot handle an odd number of ports "
@@ -759,7 +760,10 @@ simple_fwd_config_setup(void)
 	setup_fwd_config_of_each_lcore(&cur_fwd_config);
 
 	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i = (portid_t) (i + inc)) {
-		j = (portid_t) ((i + 1) % cur_fwd_config.nb_fwd_ports);
+		if (port_topology != PORT_TOPOLOGY_LOOP)
+			j = (portid_t) ((i + 1) % cur_fwd_config.nb_fwd_ports);
+		else
+			j = i;
 		fwd_streams[i]->rx_port   = fwd_ports_ids[i];
 		fwd_streams[i]->rx_queue  = 0;
 		fwd_streams[i]->tx_port   = fwd_ports_ids[j];
@@ -823,10 +827,18 @@ rss_fwd_config_setup(void)
 		struct fwd_stream *fs;
 
 		fs = fwd_streams[lc_id];
+
 		if ((rxp & 0x1) == 0)
 			txp = (portid_t) (rxp + 1);
 		else
 			txp = (portid_t) (rxp - 1);
+		/*
+		 * if we are in loopback, simply send stuff out through the
+		 * ingress port
+		 */
+		if (port_topology == PORT_TOPOLOGY_LOOP)
+			txp = rxp;
+
 		fs->rx_port = fwd_ports_ids[rxp];
 		fs->rx_queue = rxq;
 		fs->tx_port = fwd_ports_ids[txp];
