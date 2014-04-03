@@ -200,6 +200,7 @@ struct fwd_engine {
 extern struct fwd_engine io_fwd_engine;
 extern struct fwd_engine mac_fwd_engine;
 extern struct fwd_engine mac_retry_fwd_engine;
+extern struct fwd_engine mac_swap_engine;
 extern struct fwd_engine rx_only_engine;
 extern struct fwd_engine tx_only_engine;
 extern struct fwd_engine csum_fwd_engine;

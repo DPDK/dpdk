@@ -145,6 +145,7 @@ struct fwd_engine * fwd_engines[] = {
 	&io_fwd_engine,
 	&mac_fwd_engine,
 	&mac_retry_fwd_engine,
+	&mac_swap_engine,
 	&rx_only_engine,
 	&tx_only_engine,
 	&csum_fwd_engine,

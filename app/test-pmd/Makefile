@@ -55,6 +55,7 @@ SRCS-$(CONFIG_RTE_TEST_PMD) += config.c
 SRCS-$(CONFIG_RTE_TEST_PMD) += iofwd.c
 SRCS-$(CONFIG_RTE_TEST_PMD) += macfwd.c
 SRCS-$(CONFIG_RTE_TEST_PMD) += macfwd-retry.c
+SRCS-$(CONFIG_RTE_TEST_PMD) += macswap.c
 SRCS-$(CONFIG_RTE_TEST_PMD) += rxonly.c
 SRCS-$(CONFIG_RTE_TEST_PMD) += txonly.c
 SRCS-$(CONFIG_RTE_TEST_PMD) += csumonly.c
