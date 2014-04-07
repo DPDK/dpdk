@@ -279,35 +279,6 @@ check_tsc_flags(void)
 }
 
 static int
-set_tsc_freq_from_cpuinfo(void)
-{
-	char line[256];
-	FILE *stream;
-	double dmhz;
-
-	stream = fopen("/proc/cpuinfo", "r");
-	if (!stream) {
-		RTE_LOG(WARNING, EAL, "WARNING: Unable to open /proc/cpuinfo\n");
-		return -1;
-	}
-
-	while (fgets(line, sizeof line, stream)) {
-		if (sscanf(line, "cpu MHz\t: %lf", &dmhz) == 1) {
-			eal_tsc_resolution_hz = (uint64_t)(dmhz * 1000000UL);
-			break;
-		}
-	}
-
-	fclose(stream);
-
-	if (!eal_tsc_resolution_hz) {
-		RTE_LOG(WARNING, EAL, "WARNING: Cannot read CPU clock from cpuinfo\n");
-		return -1;
-	}
-	return 0;
-}
-
-static int
 set_tsc_freq_from_clock(void)
 {
 #ifdef CLOCK_MONOTONIC_RAW
@@ -355,9 +326,8 @@ set_tsc_freq_fallback(void)
 static void
 set_tsc_freq(void)
 {
-	if (set_tsc_freq_from_cpuinfo() < 0 &&
-	    set_tsc_freq_from_clock() < 0)
-	    set_tsc_freq_fallback();
+	if (set_tsc_freq_from_clock() < 0)
+		set_tsc_freq_fallback();
 
 	RTE_LOG(INFO, EAL, "TSC frequency is ~%"PRIu64" KHz\n",
 			eal_tsc_resolution_hz/1000);
