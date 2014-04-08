@@ -587,6 +587,39 @@ ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config)
 } 
 
 /*
+ * Ensure that all locks are released before first NVM or PHY access
+ */
+static void
+ixgbe_swfw_lock_reset(struct ixgbe_hw *hw)
+{
+	uint16_t mask;
+
+	/*
+	 * Phy lock should not fail in this early stage. If this is the case,
+	 * it is due to an improper exit of the application.
+	 * So force the release of the faulty lock. Release of common lock
+	 * is done automatically by swfw_sync function.
+	 */
+	mask = IXGBE_GSSR_PHY0_SM << hw->bus.func;
+	if (ixgbe_acquire_swfw_semaphore(hw, mask) < 0) {
+		   DEBUGOUT1("SWFW phy%d lock released", hw->bus.func);
+	}
+	ixgbe_release_swfw_semaphore(hw, mask);
+
+	/*
+	 * These ones are more tricky since they are common to all ports; but
+	 * swfw_sync retries last long enough (1s) to be almost sure that if
+	 * lock can not be taken it is due to an improper lock of the
+	 * semaphore.
+	 */
+	mask = IXGBE_GSSR_EEP_SM | IXGBE_GSSR_MAC_CSR_SM | IXGBE_GSSR_SW_MNG_SM;
+	if (ixgbe_acquire_swfw_semaphore(hw, mask) < 0) {
+		   DEBUGOUT("SWFW common locks released");
+	}
+	ixgbe_release_swfw_semaphore(hw, mask);
+}
+
+/*
  * This function is based on code in ixgbe_attach() in ixgbe/ixgbe.c.
  * It returns 0 on success.
  */
@@ -642,6 +675,12 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		PMD_INIT_LOG(ERR, "Shared code init failed: %d", diag);
 		return -EIO;
 	}
+
+	/* pick up the PCI bus settings for reporting later */
+	ixgbe_get_bus_info(hw);
+
+	/* Unlock any pending hardware semaphore */
+	ixgbe_swfw_lock_reset(hw);
 
 	/* Initialize DCB configuration*/
 	memset(dcb_config, 0, sizeof(struct ixgbe_dcb_config));
@@ -699,9 +738,6 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	/* disable interrupt */
 	ixgbe_disable_intr(hw);
-
-	/* pick up the PCI bus settings for reporting later */
-	ixgbe_get_bus_info(hw);
 
 	/* reset mappings for queue statistics hw counters*/
 	ixgbe_reset_qstat_mappings(hw);
