@@ -320,6 +320,61 @@ igb_identify_hardware(struct rte_eth_dev *dev)
 }
 
 static int
+igb_reset_swfw_lock(struct e1000_hw *hw)
+{
+	int ret_val;
+
+	/*
+	 * Do mac ops initialization manually here, since we will need
+	 * some function pointers set by this call.
+	 */
+	ret_val = e1000_init_mac_params(hw);
+	if (ret_val)
+		return ret_val;
+
+	/*
+	 * SMBI lock should not fail in this early stage. If this is the case,
+	 * it is due to an improper exit of the application.
+	 * So force the release of the faulty lock.
+	 */
+	if (e1000_get_hw_semaphore_generic(hw) < 0) {
+		DEBUGOUT("SMBI lock released");
+	}
+	e1000_put_hw_semaphore_generic(hw);
+
+	if (hw->mac.ops.acquire_swfw_sync != NULL) {
+		uint16_t mask;
+
+		/*
+		 * Phy lock should not fail in this early stage. If this is the case,
+		 * it is due to an improper exit of the application.
+		 * So force the release of the faulty lock.
+		 */
+		mask = E1000_SWFW_PHY0_SM << hw->bus.func;
+		if (hw->bus.func > E1000_FUNC_1)
+			mask <<= 2;
+		if (hw->mac.ops.acquire_swfw_sync(hw, mask) < 0) {
+			DEBUGOUT1("SWFW phy%d lock released", hw->bus.func);
+		}
+		hw->mac.ops.release_swfw_sync(hw, mask);
+
+		/*
+		 * This one is more tricky since it is common to all ports; but
+		 * swfw_sync retries last long enough (1s) to be almost sure that if
+		 * lock can not be taken it is due to an improper lock of the
+		 * semaphore.
+		 */
+		mask = E1000_SWFW_EEP_SM;
+		if (hw->mac.ops.acquire_swfw_sync(hw, mask) < 0) {
+			DEBUGOUT("SWFW common locks released");
+		}
+		hw->mac.ops.release_swfw_sync(hw, mask);
+	}
+
+	return E1000_SUCCESS;
+}
+
+static int
 eth_igb_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		   struct rte_eth_dev *eth_dev)
 {
@@ -348,12 +403,24 @@ eth_igb_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	hw->hw_addr= (void *)pci_dev->mem_resource[0].addr;
 
 	igb_identify_hardware(eth_dev);
-	if (e1000_setup_init_funcs(hw, TRUE) != E1000_SUCCESS) {
+	if (e1000_setup_init_funcs(hw, FALSE) != E1000_SUCCESS) {
 		error = -EIO;
 		goto err_late;
 	}
 
 	e1000_get_bus_info(hw);
+
+	/* Reset any pending lock */
+	if (igb_reset_swfw_lock(hw) != E1000_SUCCESS) {
+		error = -EIO;
+		goto err_late;
+	}
+
+	/* Finish initialization */
+	if (e1000_setup_init_funcs(hw, TRUE) != E1000_SUCCESS) {
+		error = -EIO;
+		goto err_late;
+	}
 
 	hw->mac.autoneg = 1;
 	hw->phy.autoneg_wait_to_complete = 0;
