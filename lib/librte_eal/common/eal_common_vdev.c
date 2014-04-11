@@ -80,7 +80,7 @@ struct device_init dev_types[] = {
 };
 
 int
-rte_eal_non_pci_ethdev_init(void)
+rte_eal_vdev_init(void)
 {
 	struct rte_devargs *devargs;
 	uint8_t i;

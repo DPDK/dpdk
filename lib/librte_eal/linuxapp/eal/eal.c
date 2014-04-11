@@ -1046,8 +1046,8 @@ rte_eal_init(int argc, char **argv)
 
 	rte_eal_mcfg_complete();
 
-	if (rte_eal_non_pci_ethdev_init() < 0)
-		rte_panic("Cannot init non-PCI eth_devs\n");
+	if (rte_eal_vdev_init() < 0)
+		rte_panic("Cannot init virtual devices\n");
 
 	TAILQ_FOREACH(solib, &solib_list, next) {
 		solib->lib_handle = dlopen(solib->name, RTLD_NOW);
