@@ -315,12 +315,12 @@ test_pmd_ring_init(void)
 
 	printf("Testing ring pmd init\n");
 
-	if (rte_pmd_ring_init(name1, params_null) < 0) {
+	if (rte_pmd_ring_devinit(name1, params_null) < 0) {
 		printf("Testing ring pmd init fail\n");
 		return -1;
 	}
 
-	if (rte_pmd_ring_init(name2, params) < 0) {
+	if (rte_pmd_ring_devinit(name2, params) < 0) {
 		printf("Testing ring pmd init fail\n");
 		return -1;
 	}
@@ -372,7 +372,7 @@ test_pmd_ring_init(void)
 	rte_eth_dev_stop(RXTX_PORT2);
 
 	/* Test init same name pmd ring */
-	rte_pmd_ring_init(name1, params_null);
+	rte_pmd_ring_devinit(name1, params_null);
 	return 0;
 }
 

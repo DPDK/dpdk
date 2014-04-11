@@ -40,8 +40,6 @@ extern "C" {
 
 #include <rte_ring.h>
 
-#define RTE_ETH_RING_PARAM_NAME "eth_ring"
-
 int rte_eth_from_rings(struct rte_ring * const rx_queues[],
 		const unsigned nb_rx_queues,
 		struct rte_ring *const tx_queues[],
@@ -52,10 +50,10 @@ int rte_eth_ring_pair_create(const char *name, const unsigned numa_node);
 int rte_eth_ring_pair_attach(const char *name, const unsigned numa_node);
 
 /**
- * For use by the EAL only. Called as part of EAL init to set up any dummy NICs
+ * For use by test apps only. Called as part of EAL init to set up any dummy NICs
  * configured on command line.
  */
-int rte_pmd_ring_init(const char *name, const char *params);
+int rte_pmd_ring_devinit(const char *name, const char *params);
 
 #ifdef __cplusplus
 }

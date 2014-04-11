@@ -40,10 +40,11 @@
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
 #include <rte_kvargs.h>
+#include <rte_vdev.h>
 
 #include <net/if.h>
 
-#include "rte_eth_pcap.h"
+#include <pcap.h>
 
 #define RTE_ETH_PCAP_SNAPSHOT_LEN 65535
 #define RTE_ETH_PCAP_SNAPLEN 4096
@@ -685,8 +686,8 @@ rte_eth_from_pcaps(pcap_t * const rx_queues[],
 }
 
 
-int
-rte_pmd_pcap_init(const char *name, const char *params)
+static int
+rte_pmd_pcap_devinit(const char *name, const char *params)
 {
 	unsigned numa_node, using_dumpers = 0;
 	int ret;
@@ -766,3 +767,14 @@ rte_pmd_pcap_init(const char *name, const char *params)
 
 }
 
+static struct rte_vdev_driver pmd_pcap_drv = {
+	.name = "eth_pcap",
+	.init = rte_pmd_pcap_devinit,
+};
+
+__attribute__((constructor))
+static void
+rte_pmd_pcap_init(void)
+{
+	rte_eal_vdev_driver_register(&pmd_pcap_drv);
+}

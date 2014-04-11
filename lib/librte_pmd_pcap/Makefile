@@ -48,7 +48,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += rte_eth_pcap.c
 #
 # Export include files
 #
-SYMLINK-y-include += rte_eth_pcap.h
+SYMLINK-y-include +=
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += lib/librte_mbuf

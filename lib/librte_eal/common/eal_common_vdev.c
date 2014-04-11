@@ -34,56 +34,43 @@
 
 #include <string.h>
 #include <inttypes.h>
-#include <rte_string_fns.h>
-#ifdef RTE_LIBRTE_PMD_RING
-#include <rte_eth_ring.h>
-#endif
-#ifdef RTE_LIBRTE_PMD_PCAP
-#include <rte_eth_pcap.h>
-#endif
-#ifdef RTE_LIBRTE_PMD_XENVIRT
-#include <rte_eth_xenvirt.h>
-#endif
+#include <sys/queue.h>
+
+#include <rte_vdev.h>
+#include <rte_devargs.h>
 #include <rte_debug.h>
 #include <rte_devargs.h>
+
 #include "eal_private.h"
 
-struct device_init {
-	const char *dev_prefix;
-	int (*init_fn)(const char*, const char *);
-};
+/** Global list of virtual device drivers. */
+static struct rte_vdev_driver_list vdev_driver_list =
+	TAILQ_HEAD_INITIALIZER(vdev_driver_list);
 
-#define NUM_DEV_TYPES (sizeof(dev_types)/sizeof(dev_types[0]))
-struct device_init dev_types[] = {
-#ifdef RTE_LIBRTE_PMD_RING
-		{
-			.dev_prefix = RTE_ETH_RING_PARAM_NAME,
-			.init_fn = rte_pmd_ring_init
-		},
-#endif
-#ifdef RTE_LIBRTE_PMD_PCAP
-		{
-			.dev_prefix = RTE_ETH_PCAP_PARAM_NAME,
-			.init_fn = rte_pmd_pcap_init
-		},
-#endif
-#ifdef RTE_LIBRTE_PMD_XENVIRT
-		{
-			.dev_prefix = RTE_ETH_XENVIRT_PARAM_NAME,
-			.init_fn = rte_pmd_xenvirt_init
-		},
-#endif
-		{
-			.dev_prefix = "-nodev-",
-			.init_fn = NULL
-		}
-};
+/* register a driver */
+void
+rte_eal_vdev_driver_register(struct rte_vdev_driver *driver)
+{
+	TAILQ_INSERT_TAIL(&vdev_driver_list, driver, next);
+}
+
+/* unregister a driver */
+void
+rte_eal_vdev_driver_unregister(struct rte_vdev_driver *driver)
+{
+	TAILQ_REMOVE(&vdev_driver_list, driver, next);
+}
 
 int
 rte_eal_vdev_init(void)
 {
 	struct rte_devargs *devargs;
-	uint8_t i;
+	struct rte_vdev_driver *driver;
+
+	/* No need to register drivers that are embeded in DPDK
+	 * (pmd_pcap, pmd_ring, ...). The initialization function have
+	 * the ((constructor)) attribute so they will register at
+	 * startup. */
 
 	/* call the init function for each virtual device */
 	TAILQ_FOREACH(devargs, &devargs_list, next) {
@@ -91,18 +78,17 @@ rte_eal_vdev_init(void)
 		if (devargs->type != RTE_DEVTYPE_VIRTUAL)
 			continue;
 
-		for (i = 0; i < NUM_DEV_TYPES; i++) {
+		TAILQ_FOREACH(driver, &vdev_driver_list, next) {
 			/* search a driver prefix in virtual device name */
-			if (!strncmp(dev_types[i].dev_prefix,
-				    devargs->virtual.drv_name,
-				     sizeof(dev_types[i].dev_prefix) - 1)) {
-				dev_types[i].init_fn(devargs->virtual.drv_name,
-						     devargs->args);
+			if (!strncmp(driver->name, devargs->virtual.drv_name,
+					strlen(driver->name))) {
+				driver->init(devargs->virtual.drv_name,
+					devargs->args);
 				break;
 			}
 		}
 
-		if (i == NUM_DEV_TYPES) {
+		if (driver == NULL) {
 			rte_panic("no driver found for %s\n",
 				  devargs->virtual.drv_name);
 		}

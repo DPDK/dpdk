@@ -688,8 +688,8 @@ err:
 
 
 /*TODO: Support multiple process model */
-int
-rte_pmd_xenvirt_init(const char *name, const char *params)
+static int
+rte_pmd_xenvirt_devinit(const char *name, const char *params)
 {
 	if (virtio_idx == 0) {
 		if (xenstore_init() != 0) {
@@ -703,4 +703,16 @@ rte_pmd_xenvirt_init(const char *name, const char *params)
 	}
 	eth_dev_xenvirt_create(name, params, rte_socket_id(), DEV_CREATE);
 	return 0;
+}
+
+static struct rte_vdev_driver pmd_xenvirt_drv = {
+	.name = "eth_xenvirt",
+	.init = rte_pmd_xenvirt_devinit,
+};
+
+__attribute__((constructor))
+static void
+rte_pmd_xenvirt_init(void)
+{
+	rte_eal_vdev_driver_register(&pmd_xenvirt_drv);
 }

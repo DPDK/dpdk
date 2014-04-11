@@ -41,14 +41,6 @@ extern "C" {
 #include <rte_mempool.h>
 #include <rte_ring.h>
 
-#define RTE_ETH_XENVIRT_PARAM_NAME "eth_xenvirt"
-
-/**
- * For use by the EAL only. Called as part of EAL init to set up any dummy NICs
- * configured on command line.
- */
-int rte_pmd_xenvirt_init(const char *name, const char *params);
-
 /**
  * Creates mempool for xen virtio PMD.
  * This function uses memzone_reserve to allocate memory for meta data,

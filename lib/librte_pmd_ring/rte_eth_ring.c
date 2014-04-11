@@ -37,6 +37,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
+#include <rte_vdev.h>
 
 struct ring_queue {
 	struct rte_ring *rng;
@@ -382,7 +383,7 @@ rte_eth_ring_pair_attach(const char *name, const unsigned numa_node)
 }
 
 int
-rte_pmd_ring_init(const char *name, const char *params)
+rte_pmd_ring_devinit(const char *name, const char *params)
 {
 	RTE_LOG(INFO, PMD, "Initializing pmd_ring for %s\n", name);
 
@@ -394,4 +395,16 @@ rte_pmd_ring_init(const char *name, const char *params)
 		eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
 	}
 	return 0;
+}
+
+static struct rte_vdev_driver pmd_ring_drv = {
+	.name = "eth_ring",
+	.init = rte_pmd_ring_devinit,
+};
+
+__attribute__((constructor))
+static void
+rte_pmd_ring_init(void)
+{
+	rte_eal_vdev_driver_register(&pmd_ring_drv);
 }
