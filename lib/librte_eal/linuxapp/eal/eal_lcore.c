@@ -181,6 +181,9 @@ rte_eal_cpu_init(void)
 	}
 	/* Set the count of enabled logical cores of the EAL configuration */
 	config->lcore_count = count;
+	RTE_LOG(DEBUG, EAL, "Support maximum %u logical core(s) by configuration.\n",
+		RTE_MAX_LCORE);
+	RTE_LOG(DEBUG, EAL, "Detected %u lcore(s)\n", config->lcore_count);
 
 	return 0;
 }
