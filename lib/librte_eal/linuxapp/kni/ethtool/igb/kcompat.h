@@ -2837,6 +2837,12 @@ static inline bool pci_is_pcie(struct pci_dev *dev)
 #define HAVE_ETHTOOL_GET_TS_INFO
 #endif /* RHEL >= 6.4 && RHEL < 7.0 */
 
+#if (RHEL_RELEASE_CODE && \
+     (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6,5)) && \
+     (RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7,0)))
+#define HAVE_RHEL6_NETDEV_OPS_EXT_FDB
+#endif /* RHEL >= 6.5 && RHEL < 7.0 */
+
 #else /* < 2.6.33 */
 #if defined(CONFIG_FCOE) || defined(CONFIG_FCOE_MODULE)
 #ifndef HAVE_NETDEV_OPS_FCOE_GETWWN

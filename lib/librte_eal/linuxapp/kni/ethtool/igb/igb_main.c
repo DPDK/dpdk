@@ -2294,12 +2294,14 @@ static const struct net_device_ops igb_netdev_ops = {
 #ifdef HAVE_VLAN_RX_REGISTER
 	.ndo_vlan_rx_register	= igb_vlan_mode,
 #endif
+#ifndef HAVE_RHEL6_NETDEV_OPS_EXT_FDB
 #ifdef NTF_SELF
 	.ndo_fdb_add		= igb_ndo_fdb_add,
 #ifndef USE_DEFAULT_FDB_DEL_DUMP
 	.ndo_fdb_del		= igb_ndo_fdb_del,
 	.ndo_fdb_dump		= igb_ndo_fdb_dump,
 #endif
+#endif /* ! HAVE_RHEL6_NETDEV_OPS_EXT_FDB */
 #ifdef HAVE_BRIDGE_ATTRIBS
 	.ndo_bridge_setlink	= igb_ndo_bridge_setlink,
 	.ndo_bridge_getlink	= igb_ndo_bridge_getlink,
