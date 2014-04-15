@@ -475,6 +475,27 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 	}
 }
 
+/*
+ * Check given socket id is valid or not with NUMA mode,
+ * if valid, return 0, else return -1
+ */
+static int
+check_socket_id(const unsigned int socket_id)
+{
+	static int warning_once = 0;
+
+	if (socket_id >= MAX_SOCKET) {
+		if (!warning_once && numa_support)
+			printf("Warning: NUMA should be configured manually by"
+			       " using --port-numa-config and"
+			       " --ring-numa-config parameters along with"
+			       " --numa.\n");
+		warning_once = 1;
+		return -1;
+	}
+	return 0;
+}
+
 static void
 init_config(void)
 {
@@ -559,6 +580,10 @@ init_config(void)
 				port_per_socket[port_numa[pid]]++;
 			else {
 				uint32_t socket_id = rte_eth_dev_socket_id(pid);
+
+				/* if socket_id is invalid, set to 0 */
+				if (check_socket_id(socket_id) < 0)
+					socket_id = 0;
 				port_per_socket[socket_id]++; 
 			}
 		}
@@ -611,8 +636,17 @@ init_fwd_streams(void)
 				port->dev_info.max_tx_queues);
 			return -1;
 		}
-		if (numa_support) 
-			port->socket_id = rte_eth_dev_socket_id(pid);
+		if (numa_support) {
+			if (port_numa[pid] != NUMA_NO_CONFIG)
+				port->socket_id = port_numa[pid];
+			else {
+				port->socket_id = rte_eth_dev_socket_id(pid);
+
+				/* if socket_id is invalid, set to 0 */
+				if (check_socket_id(port->socket_id) < 0)
+					port->socket_id = 0;
+			}
+		}
 		else {
 			if (socket_num == UMA_NO_CONFIG)	 
 				port->socket_id = 0;
@@ -1215,7 +1249,7 @@ start_port(portid_t pid)
 			port->need_reconfig = 0;
 
 			printf("Configuring Port %d (socket %d)\n", pi,
-					rte_eth_dev_socket_id(pi));
+					port->socket_id);
 			/* configure port */
 			diag = rte_eth_dev_configure(pi, nb_rxq, nb_txq,
 						&(port->dev_conf));
