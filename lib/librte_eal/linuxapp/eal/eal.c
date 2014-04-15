@@ -441,6 +441,11 @@ eal_parse_coremask(const char *coremask)
 		val = xdigit2val(c);
 		for(j = 0; j < BITS_PER_HEX && idx < RTE_MAX_LCORE; j++, idx++) {
 			if((1 << j) & val) {
+				if (!lcore_config[idx].detected) {
+					RTE_LOG(ERR, EAL, "lcore %u "
+					        "unavailable\n", idx);
+					return -1;
+				}
 				cfg->lcore_role[idx] = ROLE_RTE;
 				if(count == 0)
 					cfg->master_lcore = idx;
