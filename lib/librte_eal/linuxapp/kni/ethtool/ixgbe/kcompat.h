@@ -3107,10 +3107,12 @@ typedef netdev_features_t kni_netdev_features_t;
 
 /*****************************************************************************/
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,5,0) )
+#if !(RHEL_RELEASE_CODE && RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6,4))
 static inline bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
 {
 	return !compare_ether_addr(addr1, addr2);
 }
+#endif
 #else
 #define HAVE_FDB_OPS
 #endif /* < 3.5.0 */

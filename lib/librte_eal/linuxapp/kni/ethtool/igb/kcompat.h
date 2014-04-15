@@ -3534,16 +3534,19 @@ extern void _kc_skb_add_rx_frag(struct sk_buff *, int, struct page *,
 /*****************************************************************************/
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,5,0) )
 #define skb_tx_timestamp(skb) do {} while (0)
+#if !(RHEL_RELEASE_CODE && RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6,4))
 static inline bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
 {
 	return !compare_ether_addr(addr1, addr2);
 }
+#endif
 #else
 #define HAVE_FDB_OPS
 #define HAVE_ETHTOOL_GET_TS_INFO
 #endif /* < 3.5.0 */
 
 /*****************************************************************************/
+#include <linux/mdio.h>
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0) )
 #define PCI_EXP_LNKCAP2		44	/* Link Capability 2 */
 
@@ -3565,8 +3568,6 @@ static inline bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
 #ifndef MDIO_EEE_10GKR
 #define MDIO_EEE_10GKR		0x0040	/* 10G KR EEE cap */
 #endif
-#else /* < 3.6.0 */
-#include <linux/mdio.h>
 #endif /* < 3.6.0 */
 
 /******************************************************************************/
@@ -3584,6 +3585,8 @@ static inline bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
 #define ADVERTISED_40000baseSR4_Full	(1 << 25)
 #define ADVERTISED_40000baseLR4_Full	(1 << 26)
 #endif
+
+#if !defined(ETHTOOL_GEEE) || (RHEL_RELEASE_CODE && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(6,4))
 /**
  * mmd_eee_cap_to_ethtool_sup_t
  * @eee_cap: value of the MMD EEE Capability register
@@ -3666,6 +3669,7 @@ static inline u16 ethtool_adv_to_mmd_eee_adv_t(u32 adv)
 
 	return reg;
 }
+#endif
 
 #ifndef pci_pcie_type
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24) )
@@ -3687,7 +3691,8 @@ static inline u8 pci_pcie_type(struct pci_dev *pdev)
 
 #define ptp_clock_register(caps, args...) ptp_clock_register(caps)
 
-#if !(SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(11,3,0))
+#if !(SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(11,3,0)) && \
+    !(RHEL_RELEASE_CODE && RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6,5))
 int __kc_pcie_capability_read_word(struct pci_dev *dev, int pos, u16 *val);
 #define pcie_capability_read_word(d,p,v) __kc_pcie_capability_read_word(d,p,v)
 int __kc_pcie_capability_write_word(struct pci_dev *dev, int pos, u16 val);
@@ -3704,7 +3709,8 @@ static inline int pcie_capability_clear_word(struct pci_dev *dev, int pos,
 {
 	return __kc_pcie_capability_clear_and_set_word(dev, pos, clear, 0);
 }
-#endif /* !(SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(11,3,0)) */
+#endif /* !(SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(11,3,0)) && \
+          !(RHEL_RELEASE_CODE && RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6,5)) */
 
 #if (SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(11,3,0))
 #define USE_CONST_DEV_UC_CHAR
@@ -3727,7 +3733,8 @@ static inline int pcie_capability_clear_word(struct pci_dev *dev, int pos,
 /* Reserved Ethernet Addresses per IEEE 802.1Q */
 static const u8 eth_reserved_addr_base[ETH_ALEN] __aligned(2) = {
 	0x01, 0x80, 0xc2, 0x00, 0x00, 0x00 };
-#if !(SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(11,3,0))
+#if !(SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(11,3,0)) &&\
+    !(RHEL_RELEASE_CODE && RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6,5))
 static inline bool is_link_local_ether_addr(const u8 *addr)
 {
 	__be16 *a = (__be16 *)addr;
