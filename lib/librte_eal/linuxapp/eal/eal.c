@@ -1054,12 +1054,6 @@ rte_eal_init(int argc, char **argv)
 	TAILQ_FOREACH(solib, &solib_list, next) {
 		RTE_LOG(INFO, EAL, "open shared lib %s\n", solib->name);
 		solib->lib_handle = dlopen(solib->name, RTLD_NOW);
-		if ((solib->lib_handle == NULL) && (solib->name[0] != '/')) {
-			/* relative path: try again with "./" prefix */
-			char sopath[PATH_MAX];
-			snprintf(sopath, sizeof(sopath), "./%s", solib->name);
-			solib->lib_handle = dlopen(sopath, RTLD_NOW);
-		}
 		if (solib->lib_handle == NULL)
 			RTE_LOG(WARNING, EAL, "%s\n", dlerror());
 	}
