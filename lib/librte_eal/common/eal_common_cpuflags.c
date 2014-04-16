@@ -255,7 +255,7 @@ rte_cpu_check_supported(void)
 	unsigned i;
 	int ret;
 
-	for (i = 0; i < sizeof(compile_time_flags)/sizeof(compile_time_flags[0]); i++)
+	for (i = 0; i < sizeof(compile_time_flags)/sizeof(compile_time_flags[0]); i++) {
 		ret = rte_cpu_get_flag_enabled(compile_time_flags[i]);
 
 		if (ret < 0) {
@@ -271,4 +271,5 @@ rte_cpu_check_supported(void)
 			        cpu_feature_table[compile_time_flags[i]].name);
 			exit(1);
 		}
+	}
 }
