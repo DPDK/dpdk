@@ -82,6 +82,8 @@ malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
 	/* ensure the data we want to allocate will fit in the memzone */
 	const size_t min_size = size + align + MALLOC_ELEM_OVERHEAD * 2;
 	const struct rte_memzone *mz = NULL;
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	unsigned numa_socket = heap - mcfg->malloc_heaps;
 
 	size_t mz_size = min_size;
 	if (mz_size < block_size)
@@ -89,14 +91,14 @@ malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
 
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	rte_snprintf(mz_name, sizeof(mz_name), "MALLOC_S%u_HEAP_%u",
-			heap->numa_socket, heap->mz_count++);
+		     numa_socket, heap->mz_count++);
 
 	/* try getting a block. if we fail and we don't need as big a block
 	 * as given in the config, we can shrink our request and try again
 	 */
 	do {
-		mz = rte_memzone_reserve(mz_name, mz_size,
-				heap->numa_socket, mz_flags);
+		mz = rte_memzone_reserve(mz_name, mz_size, numa_socket,
+					 mz_flags);
 		if (mz == NULL)
 			mz_size /= 2;
 	} while (mz == NULL && mz_size > min_size);
@@ -141,11 +143,6 @@ malloc_heap_init(struct malloc_heap *heap)
 			heap->mz_count = 0;
 			heap->alloc_count = 0;
 			heap->total_size = 0;
-			/*
-			 * Find NUMA socket of heap that is being initialised, so that
-			 * malloc_heaps[n].numa_socket == n
-			 */
-			heap->numa_socket = heap - mcfg->malloc_heaps;
 			rte_spinlock_init(&heap->lock);
 			heap->initialised = INITIALISED;
 		}

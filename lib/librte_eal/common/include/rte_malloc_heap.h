@@ -48,7 +48,6 @@ enum heap_state {
  */
 struct malloc_heap {
 	enum heap_state volatile initialised;
-	unsigned numa_socket;
 	rte_spinlock_t lock;
 	struct malloc_elem * volatile free_head;
 	unsigned mz_count;
