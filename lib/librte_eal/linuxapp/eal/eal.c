@@ -289,8 +289,6 @@ eal_proc_type_detect(void)
 static void
 rte_config_init(void)
 {
-	/* set the magic in configuration structure */
-	rte_config.magic = RTE_MAGIC;
 	rte_config.process_type = (internal_config.process_type == RTE_PROC_AUTO) ?
 			eal_proc_type_detect() : /* for auto, detect the type */
 			internal_config.process_type; /* otherwise use what's already set */

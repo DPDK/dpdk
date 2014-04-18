@@ -71,10 +71,6 @@ enum rte_proc_type_t {
  * The global RTE configuration structure.
  */
 struct rte_config {
-	uint32_t version; /**< Configuration [structure] version. */
-	uint32_t magic;   /**< Magic number - Sanity check. */
-
-
 	uint32_t master_lcore;       /**< Id of the master lcore */
 	uint32_t lcore_count;        /**< Number of available logical cores. */
 	enum rte_lcore_role_t lcore_role[RTE_MAX_LCORE]; /**< State of cores. */
