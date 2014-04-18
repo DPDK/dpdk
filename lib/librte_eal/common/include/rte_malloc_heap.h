@@ -37,17 +37,10 @@
 #include <stddef.h>
 #include <rte_spinlock.h>
 
-enum heap_state {
-	NOT_INITIALISED = 0,
-	INITIALISING,
-	INITIALISED
-};
-
 /**
  * Structure to hold malloc heap
  */
 struct malloc_heap {
-	enum heap_state volatile initialised;
 	rte_spinlock_t lock;
 	struct malloc_elem * volatile free_head;
 	unsigned mz_count;

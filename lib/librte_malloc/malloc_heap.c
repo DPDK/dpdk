@@ -123,33 +123,6 @@ malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
 }
 
 /*
- * initialise a malloc heap object. The heap is locked with a private
- * lock while being initialised. This function should only be called the
- * first time a thread calls malloc - if even then, as heaps are per-socket
- * not per-thread.
- */
-static void
-malloc_heap_init(struct malloc_heap *heap)
-{
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-
-	rte_eal_mcfg_wait_complete(mcfg);
-	while (heap->initialised != INITIALISED) {
-		if (rte_atomic32_cmpset(
-				(volatile uint32_t*)&heap->initialised,
-				NOT_INITIALISED, INITIALISING)) {
-
-			heap->free_head = NULL;
-			heap->mz_count = 0;
-			heap->alloc_count = 0;
-			heap->total_size = 0;
-			rte_spinlock_init(&heap->lock);
-			heap->initialised = INITIALISED;
-		}
-	}
-}
-
-/*
  * Iterates through the freelist for a heap to find a free element
  * which can store data of the required size and with the requested alignment.
  * Returns null on failure, or pointer to element on success, with the pointer
@@ -193,9 +166,6 @@ void *
 malloc_heap_alloc(struct malloc_heap *heap,
 		const char *type __attribute__((unused)), size_t size, unsigned align)
 {
-	if (!heap->initialised)
-		malloc_heap_init(heap);
-
 	size = CACHE_LINE_ROUNDUP(size);
 	align = CACHE_LINE_ROUNDUP(align);
 	rte_spinlock_lock(&heap->lock);
@@ -223,9 +193,6 @@ int
 malloc_heap_get_stats(const struct malloc_heap *heap,
 		struct rte_malloc_socket_stats *socket_stats)
 {
-	if (!heap->initialised)
-		return -1;
-
 	struct malloc_elem *elem = heap->free_head;
 
 	/* Initialise variables for heap */
