@@ -73,10 +73,6 @@ LDLIBS += -lrte_ivshmem
 endif
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_E1000_PMD),y)
-LDLIBS += -lrte_pmd_e1000
-endif
-
 ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)
 LDLIBS += -lrte_pmd_ixgbe
 endif
@@ -168,6 +164,10 @@ LDLIBS += -lxenstore
 endif
 
 ifeq ($(RTE_BUILD_SHARED_LIB),n)
+
+ifeq ($(CONFIG_RTE_LIBRTE_E1000_PMD),y)
+LDLIBS += -lrte_pmd_e1000
+endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)
 LDLIBS += -lrte_pmd_ring

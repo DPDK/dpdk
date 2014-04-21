@@ -51,6 +51,7 @@
 #include <rte_eal.h>
 #include <rte_atomic.h>
 #include <rte_malloc.h>
+#include <rte_dev.h>
 
 #include "e1000_logs.h"
 #include "e1000/e1000_api.h"
@@ -285,8 +286,8 @@ static struct eth_driver rte_em_pmd = {
 	.dev_private_size = sizeof(struct e1000_adapter),
 };
 
-int
-rte_em_pmd_init(void)
+static int
+rte_em_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
 {
 	rte_eth_driver_register(&rte_em_pmd);
 	return 0;
@@ -1433,3 +1434,10 @@ eth_em_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 
 	e1000_rar_set(hw, addr, index);
 }
+
+struct rte_driver em_pmd_drv = {
+	.type = PMD_PDEV,
+	.init = rte_em_pmd_init,
+};
+
+PMD_REGISTER_DRIVER(em_pmd_drv);
