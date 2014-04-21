@@ -158,14 +158,13 @@ ifeq ($(CONFIG_RTE_LIBRTE_EAL),y)
 LDLIBS += -lrte_eal
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_CMDLINE),y)
+LDLIBS += -lrte_cmdline
+endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_XENVIRT),y)
 LDLIBS += -lrte_pmd_xenvirt
 LDLIBS += -lxenstore
-endif
-
-ifeq ($(CONFIG_RTE_LIBRTE_CMDLINE),y)
-LDLIBS += -lrte_cmdline
 endif
 
 ifeq ($(RTE_BUILD_SHARED_LIB),n)

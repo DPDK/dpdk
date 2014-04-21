@@ -53,6 +53,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
+#include <rte_vdev.h>
 #include <cmdline_parse.h>
 #include <cmdline_parse_etheraddr.h>
 
@@ -710,9 +711,4 @@ static struct rte_vdev_driver pmd_xenvirt_drv = {
 	.init = rte_pmd_xenvirt_devinit,
 };
 
-__attribute__((constructor))
-static void
-rte_pmd_xenvirt_init(void)
-{
-	rte_eal_vdev_driver_register(&pmd_xenvirt_drv);
-}
+PMD_REGISTER_DRIVER(pmd_xenvirt_drv, PMD_VDEV);
