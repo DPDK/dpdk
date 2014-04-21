@@ -889,11 +889,6 @@ main(int argc, char** argv)
 		return -1;
 	}
 
-	/* Initialise PMD driver(s) */
-	ret = rte_pmd_init_all();
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Could not initialise PMD (%d)\n", ret);
-
 	/* Scan PCI bus for recognised devices */
 	ret = rte_eal_pci_probe();
 	if (ret < 0)

@@ -40,7 +40,7 @@
 static inline int
 init_drivers(void)
 {
-	if (rte_pmd_init_all() < 0 || rte_eal_pci_probe() < 0)
+	if (rte_eal_pci_probe() < 0)
 		return -1;
 
 	return 0;

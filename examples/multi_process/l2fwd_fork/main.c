@@ -1050,10 +1050,6 @@ MAIN(int argc, char **argv)
 	for (i = 0; i < RTE_MAX_LCORE; i++)
 		lcore_resource[i].lcore_id = i;
 	
-	/* init driver(s) */
-	if (rte_pmd_init_all() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot init pmd\n");
-
 	if (rte_eal_pci_probe() < 0)
 		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 

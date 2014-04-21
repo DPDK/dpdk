@@ -138,11 +138,6 @@ init_dpdk(void)
 {
     int ret;
 
-    /* Initialize the PMD */
-    ret = rte_pmd_init_all();
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "Failed to initialize poll mode drivers (error %d)\n", ret);
-
     /* Bind the drivers to usable devices */
     ret = rte_eal_pci_probe();
     if (ret < 0)

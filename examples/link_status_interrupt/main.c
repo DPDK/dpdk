@@ -663,10 +663,6 @@ MAIN(int argc, char **argv)
 	if (lsi_pktmbuf_pool == NULL)
 		rte_panic("Cannot init mbuf pool\n");
 
-	/* init driver(s) */
-	if (rte_pmd_init_all() < 0)
-		rte_panic("Cannot init pmd\n");
-
 	if (rte_eal_pci_probe() < 0)
 		rte_panic("Cannot probe PCI\n");
 

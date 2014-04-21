@@ -608,10 +608,6 @@ MAIN(int argc, char **argv)
 	if (pool_indirect == NULL)
 		rte_panic("Cannot init indirect mbuf pool\n");
 
-	/* init driver */
-	if (rte_pmd_init_all() < 0)
-		rte_panic("Cannot init PMD\n");
-
 	if (rte_eal_pci_probe() < 0)
 		rte_panic("Cannot probe PCI\n");
 

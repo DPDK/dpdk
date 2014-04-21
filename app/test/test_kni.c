@@ -509,11 +509,6 @@ test_kni(void)
 		printf("fail to create mempool for kni\n");
 		return -1;
 	}
-	ret = rte_pmd_init_all();
-	if (ret < 0) {
-		printf("fail to initialize PMD\n");
-		return -1;
-	}
 	ret = rte_eal_pci_probe();
 	if (ret < 0) {
 		printf("fail to probe PCI devices\n");

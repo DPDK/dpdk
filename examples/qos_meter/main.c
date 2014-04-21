@@ -386,10 +386,6 @@ MAIN(int argc, char **argv)
 	if (pool == NULL)
 		rte_exit(EXIT_FAILURE, "Buffer pool creation error\n");
 
-	/* PMD init */
-	if (rte_pmd_init_all() < 0)
-		rte_exit(EXIT_FAILURE, "PMD init error\n");
-
 	if (rte_eal_pci_probe() < 0)
 		rte_exit(EXIT_FAILURE, "PCI probe error\n");
 

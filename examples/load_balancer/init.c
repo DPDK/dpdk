@@ -450,12 +450,6 @@ app_init_nics(void)
 	int ret;
 	uint32_t n_rx_queues, n_tx_queues;
 
-	/* Init driver */
-	printf("Initializing the PMD driver ...\n");
-	if (rte_pmd_init_all() < 0) {
-		rte_panic("Cannot init PMD\n");
-	}
-
 	if (rte_eal_pci_probe() < 0) {
 		rte_panic("Cannot probe PCI\n");
 	}

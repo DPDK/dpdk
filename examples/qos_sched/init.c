@@ -305,10 +305,6 @@ int app_init(void)
 	char ring_name[MAX_NAME_LEN];
 	char pool_name[MAX_NAME_LEN];
 
-	/* init driver(s) */
-	if (rte_pmd_init_all() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot init PMD\n");
-
 	if (rte_eal_pci_probe() < 0)
 		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 

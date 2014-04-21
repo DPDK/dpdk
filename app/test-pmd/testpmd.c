@@ -1806,9 +1806,6 @@ main(int argc, char** argv)
 	if (diag < 0)
 		rte_panic("Cannot init EAL\n");
 
-	if (rte_pmd_init_all())
-		rte_panic("Cannot init PMD\n");
-
 	if (rte_eal_pci_probe())
 		rte_panic("Cannot probe PCI\n");
 

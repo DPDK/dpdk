@@ -294,10 +294,6 @@ int main(int argc, char *argv[])
 	if (ports.num == 0)
 		rte_exit(EXIT_FAILURE, "no ports specified\n");
 
-	err = rte_pmd_init_all();
-	if (err < 0)
-		rte_exit(EXIT_FAILURE, "rte_pmd_init_all(): error %d\n", err);
-
 	err = rte_eal_pci_probe();
 	if (err < 0)
 		rte_exit(EXIT_FAILURE, "rte_eal_pci_probe(): error %d\n", err);

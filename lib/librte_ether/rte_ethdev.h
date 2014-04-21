@@ -1316,33 +1316,6 @@ struct eth_driver {
 extern void rte_eth_driver_register(struct eth_driver *eth_drv);
 
 /**
- * The initialization function of *all* supported and enabled drivers.
- * Right now, the following PMDs are supported:
- *  - igb
- *  - igbvf
- *  - em
- *  - ixgbe
- *  - ixgbevf
- *  - virtio
- *  - vmxnet3
- * This function is invoked once at EAL start time.
- * @return
- *   0 on success.
- *   Error code of the device initialization failure,
- *   -ENODEV if there are no drivers available
- *   (e.g. if all driver config options are = n).
- */
-static inline
-int rte_pmd_init_all(void)
-{
-	int ret = 0;
-
-	if (ret == -ENODEV)
-		RTE_LOG(ERR, PMD, "No PMD(s) are configured\n");
-	return (ret);
-}
-
-/**
  * Configure an Ethernet device.
  * This function must be invoked first before any other function in the
  * Ethernet API. This function can also be re-invoked when a device is in the
