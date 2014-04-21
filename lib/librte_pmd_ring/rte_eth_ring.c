@@ -38,6 +38,16 @@
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
 #include <rte_vdev.h>
+#include <rte_kvargs.h>
+
+#define ETH_RING_NUMA_NODE_ACTION_ARG	"nodeaction"
+#define ETH_RING_ACTION_CREATE		"CREATE"
+#define ETH_RING_ACTION_ATTACH		"ATTACH"
+
+static const char *valid_arguments[] = {
+	ETH_RING_NUMA_NODE_ACTION_ARG,
+	NULL
+};
 
 struct ring_queue {
 	struct rte_ring *rng;
@@ -373,28 +383,141 @@ eth_dev_ring_pair_create(const char *name, const unsigned numa_node,
 int
 rte_eth_ring_pair_create(const char *name, const unsigned numa_node)
 {
+	RTE_LOG(WARNING, PMD, "rte_eth_ring_pair_create is deprecated\n");
 	return eth_dev_ring_pair_create(name, numa_node, DEV_CREATE);
 }
 
 int
 rte_eth_ring_pair_attach(const char *name, const unsigned numa_node)
 {
+	RTE_LOG(WARNING, PMD, "rte_eth_ring_pair_attach is deprecated\n");
 	return eth_dev_ring_pair_create(name, numa_node, DEV_ATTACH);
+}
+
+struct node_action_pair {
+	char name[PATH_MAX];
+	unsigned node;
+	enum dev_action action;
+};
+
+struct node_action_list {
+	unsigned total;
+	unsigned count;
+	struct node_action_pair *list;
+};
+
+static int parse_kvlist (const char *key __rte_unused, const char *value, void *data)
+{
+	struct node_action_list *info = data;
+	int ret;
+	char *name;
+	char *action;
+	char *node;
+	char *end;
+
+	name = strdup(value);
+
+	ret = -EINVAL;
+
+	if (!name) {
+		RTE_LOG(WARNING, PMD, "command line paramter is empty for ring pmd!\n");
+		goto out;
+	}
+
+	node = strchr(name, ':');
+	if (!node) {
+		RTE_LOG(WARNING, PMD, "could not parse node value from %s", name);
+		goto out;
+	}
+
+	*node = '\0';
+	node++;
+
+	action = strchr(node, ':');
+	if (!action) {
+		RTE_LOG(WARNING, PMD, "could not action value from %s", node);
+		goto out;
+	}
+
+	*action = '\0';
+	action++;
+
+	/*
+	 * Need to do some sanity checking here
+	 */
+
+	if (strcmp(action, ETH_RING_ACTION_ATTACH) == 0)
+		info->list[info->count].action = DEV_ATTACH;
+	else if (strcmp(action, ETH_RING_ACTION_CREATE) == 0)
+		info->list[info->count].action = DEV_CREATE;
+	else
+		goto out;
+
+	errno = 0;
+	info->list[info->count].node = strtol(node, &end, 10);
+
+	if ((errno != 0) || (*end != '\0')) {
+		RTE_LOG(WARNING, PMD, "node value %s is unparseable as a number\n", node);
+		goto out;
+	}
+
+	rte_snprintf(info->list[info->count].name, sizeof(info->list[info->count].name), "%s", name);
+
+	info->count++;
+
+	ret = 0;
+out:
+	free(name);
+	return ret;
 }
 
 int
 rte_pmd_ring_devinit(const char *name, const char *params)
 {
+	struct rte_kvargs *kvlist;
+	int ret = 0;
+	struct node_action_list *info = NULL;
+
 	RTE_LOG(INFO, PMD, "Initializing pmd_ring for %s\n", name);
 
 	if (params == NULL || params[0] == '\0')
 		eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
 	else {
-		RTE_LOG(INFO, PMD, "Ignoring unsupported parameters when creating"
-				" rings-backed ethernet device\n");
-		eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
+		kvlist = rte_kvargs_parse(params, valid_arguments);
+
+		if (!kvlist) {
+			RTE_LOG(INFO, PMD, "Ignoring unsupported parameters when creating"
+					" rings-backed ethernet device\n");
+			eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
+			return 0;
+		} else {
+			eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
+			ret = rte_kvargs_count(kvlist, ETH_RING_NUMA_NODE_ACTION_ARG);
+			info = rte_zmalloc("struct node_action_list", sizeof(struct node_action_list) +
+					   (sizeof(struct node_action_pair) * ret), 0);
+			if (!info)
+				goto out;
+
+			info->total = ret;
+			info->list = (struct node_action_pair*)(info + 1);
+
+			ret = rte_kvargs_process(kvlist, ETH_RING_NUMA_NODE_ACTION_ARG,
+						 parse_kvlist, info);
+
+			if (ret < 0)
+				goto out_free;
+
+			for (info->count = 0; info->count < info->total; info->count++) {
+				eth_dev_ring_pair_create(name, info->list[info->count].node,
+						    info->list[info->count].action);
+			}
+		}
 	}
-	return 0;
+
+out_free:
+	rte_free(info);
+out:
+	return ret;
 }
 
 static struct rte_vdev_driver pmd_ring_drv = {
@@ -402,9 +525,4 @@ static struct rte_vdev_driver pmd_ring_drv = {
 	.init = rte_pmd_ring_devinit,
 };
 
-__attribute__((constructor))
-static void
-rte_pmd_ring_init(void)
-{
-	rte_eal_vdev_driver_register(&pmd_ring_drv);
-}
+PMD_REGISTER_DRIVER(pmd_ring_drv, PMD_VDEV);
