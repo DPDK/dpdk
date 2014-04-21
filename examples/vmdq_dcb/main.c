@@ -455,10 +455,6 @@ MAIN(int argc, char *argv[])
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid VMDQ argument\n");
 
-	if (rte_ixgbe_pmd_init() != 0 ||
-			rte_eal_pci_probe() != 0)
-		rte_exit(EXIT_FAILURE, "Error with NIC driver initialization\n");
-	
 	cores = rte_lcore_count();
 	if ((cores & (cores - 1)) != 0 || cores > 128) {
 		rte_exit(EXIT_FAILURE,"This program can only run on an even"

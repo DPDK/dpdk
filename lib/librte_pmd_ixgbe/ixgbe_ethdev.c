@@ -58,6 +58,7 @@
 #include <rte_ethdev.h>
 #include <rte_atomic.h>
 #include <rte_malloc.h>
+#include <rte_dev.h>
 
 #include "ixgbe_logs.h"
 #include "ixgbe/ixgbe_api.h"
@@ -955,8 +956,8 @@ static struct eth_driver rte_ixgbevf_pmd = {
  * Invoked once at EAL init time.
  * Register itself as the [Poll Mode] Driver of PCI IXGBE devices.
  */
-int
-rte_ixgbe_pmd_init(void)
+static int
+rte_ixgbe_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
 {
 	PMD_INIT_FUNC_TRACE();
 
@@ -3060,3 +3061,10 @@ ixgbe_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t rule_id)
 
 	return 0;
 }
+
+static struct rte_driver rte_ixgbe_driver = {
+	.type = PMD_PDEV,
+	.init = rte_ixgbe_pmd_init,
+};
+
+PMD_REGISTER_DRIVER(rte_ixgbe_driver);

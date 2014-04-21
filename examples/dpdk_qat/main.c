@@ -696,12 +696,6 @@ MAIN(int argc, char **argv)
 	if (ret < 0)
 		return -1;
 
-	/* init driver */
-#ifdef RTE_LIBRTE_IXGBE_PMD
-	if (rte_ixgbe_pmd_init() < 0)
-		rte_panic("Cannot init ixgbe pmd\n");
-#endif
-
 	if (rte_eal_pci_probe() < 0)
 		rte_panic("Cannot probe PCI\n");
 
