@@ -60,6 +60,7 @@
 #include <rte_atomic.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
+#include <rte_dev.h>
 
 #include "vmxnet3/vmxnet3_defs.h"
 
@@ -278,8 +279,8 @@ static struct eth_driver rte_vmxnet3_pmd = {
  * Invoked once at EAL init time.
  * Register itself as the [Poll Mode] Driver of Virtual PCI VMXNET3 devices.
  */
-int
-rte_vmxnet3_pmd_init(void)
+static int
+rte_vmxnet3_pmd_init(const char *name __rte_unused, const char *param __rte_unused)
 {
 	PMD_INIT_FUNC_TRACE();
 
@@ -763,3 +764,10 @@ vmxnet3_process_events(struct vmxnet3_hw *hw)
 
 }
 #endif
+
+static struct rte_driver rte_vmxnet3_driver = {
+	.type = PMD_PDEV,
+	.init = rte_vmxnet3_pmd_init,
+};
+
+PMD_REGISTER_DRIVER(rte_vmxnet3_driver);
