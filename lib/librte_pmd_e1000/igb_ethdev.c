@@ -643,8 +643,8 @@ igb_vmdq_vlan_hw_filter_enable(struct rte_eth_dev *dev)
  * Invoked one at EAL init time.
  * Register itself as the [Virtual Poll Mode] Driver of PCI IGB devices.
  */
-int
-rte_igbvf_pmd_init(void)
+static int
+rte_igbvf_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
 {
 	DEBUGFUNC("rte_igbvf_pmd_init");
 
@@ -2189,4 +2189,10 @@ static struct rte_driver pmd_igb_drv = {
 	.init = rte_igb_pmd_init,
 };
 
+static struct rte_driver pmd_igbvf_drv = {
+	.type = PMD_PDEV,
+	.init = rte_igbvf_pmd_init,
+};
+
 PMD_REGISTER_DRIVER(pmd_igb_drv);
+PMD_REGISTER_DRIVER(pmd_igbvf_drv);
