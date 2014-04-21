@@ -970,8 +970,8 @@ rte_ixgbe_pmd_init(const char *name __rte_unused, const char *params __rte_unuse
  * Invoked one at EAL init time.
  * Register itself as the [Virtual Poll Mode] Driver of PCI niantic devices.
  */
-int
-rte_ixgbevf_pmd_init(void)
+static int
+rte_ixgbevf_pmd_init(const char *name __rte_unused, const char *param __rte_unused)
 {
 	DEBUGFUNC("rte_ixgbevf_pmd_init");
 
@@ -3067,4 +3067,10 @@ static struct rte_driver rte_ixgbe_driver = {
 	.init = rte_ixgbe_pmd_init,
 };
 
+static struct rte_driver rte_ixgbevf_driver = {
+	.type = PMD_PDEV,
+	.init = rte_ixgbevf_pmd_init,
+};
+
 PMD_REGISTER_DRIVER(rte_ixgbe_driver);
+PMD_REGISTER_DRIVER(rte_ixgbevf_driver);
