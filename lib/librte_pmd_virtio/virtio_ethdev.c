@@ -53,6 +53,7 @@
 
 #include <rte_memory.h>
 #include <rte_eal.h>
+#include <rte_dev.h>
 
 #include "virtio_ethdev.h"
 #include "virtio_pci.h"
@@ -617,8 +618,8 @@ static struct eth_driver rte_virtio_pmd = {
  * Register itself as the [Poll Mode] Driver of PCI virtio devices.
  * Returns 0 on success.
  */
-int
-rte_virtio_pmd_init(void)
+static int
+rte_virtio_pmd_init(const char *name __rte_unused, const char *param __rte_unused)
 {
 	rte_eth_driver_register(&rte_virtio_pmd);
 	return (0);
@@ -774,3 +775,10 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_pktlen = VIRTIO_MAX_RX_PKTLEN;
 	dev_info->max_mac_addrs = VIRTIO_MAX_MAC_ADDRS;
 }
+
+static struct rte_driver rte_virtio_driver = {
+	.type = PMD_PDEV,
+	.init = rte_virtio_pmd_init,
+};
+
+PMD_REGISTER_DRIVER(rte_virtio_driver);

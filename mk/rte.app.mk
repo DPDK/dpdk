@@ -73,10 +73,6 @@ LDLIBS += -lrte_ivshmem
 endif
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_VIRTIO_PMD),y)
-LDLIBS += -lrte_pmd_virtio_uio
-endif
-
 ifeq ($(CONFIG_RTE_LIBRTE_VMXNET3_PMD),y)
 LDLIBS += -lrte_pmd_vmxnet3_uio
 endif
@@ -160,6 +156,10 @@ LDLIBS += -lxenstore
 endif
 
 ifeq ($(RTE_BUILD_SHARED_LIB),n)
+
+ifeq ($(CONFIG_RTE_LIBRTE_VIRTIO_PMD),y)
+LDLIBS += -lrte_pmd_virtio_uio
+endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)
 LDLIBS += -lrte_pmd_ixgbe
