@@ -83,6 +83,24 @@ void rte_eal_vdev_driver_register(struct rte_vdev_driver *driver);
  */
 void rte_eal_vdev_driver_unregister(struct rte_vdev_driver *driver);
 
+enum rte_pmd_driver_type {
+	PMD_VDEV = 1
+};
+
+extern void rte_eal_nonpci_dev_init_register(const char *name, int (*dev_initfn)(const char *, const char *));
+#define PMD_REGISTER_DRIVER(d, t)\
+void devinitfn_ ##d(void);\
+void __attribute__((constructor, used)) devinitfn_ ##d(void)\
+{\
+	enum rte_pmd_driver_type _t = (t);\
+	switch(_t)\
+	{\
+		case PMD_VDEV:\
+			rte_eal_vdev_driver_register(&d);\
+			break;\
+	};\
+}
+
 #ifdef __cplusplus
 }
 #endif
