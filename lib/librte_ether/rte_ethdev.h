@@ -1316,15 +1316,6 @@ struct eth_driver {
 extern void rte_eth_driver_register(struct eth_driver *eth_drv);
 
 /**
- * The initialization function of the driver for
- * Intel(r) IGB Gigabit Ethernet Controller devices.
- * This function is invoked once at EAL start time.
- * @return
- *   0 on success
- */
-extern int rte_igb_pmd_init(void);
-
-/**
  * The initialization function of the driver for 1Gbps Intel IGB_VF
  * Ethernet devices.
  * Invoked once at EAL start time.
@@ -1393,10 +1384,6 @@ int rte_pmd_init_all(void)
 	int ret = -ENODEV;
 
 #ifdef RTE_LIBRTE_IGB_PMD
-	if ((ret = rte_igb_pmd_init()) != 0) {
-		RTE_LOG(ERR, PMD, "Cannot init igb PMD\n");
-		return (ret);
-	}
 	if ((ret = rte_igbvf_pmd_init()) != 0) {
 		RTE_LOG(ERR, PMD, "Cannot init igbvf PMD\n");
 		return (ret);

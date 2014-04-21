@@ -51,6 +51,7 @@
 #include <rte_eal.h>
 #include <rte_atomic.h>
 #include <rte_malloc.h>
+#include <rte_dev.h>
 
 #include "e1000_logs.h"
 #include "e1000/e1000_api.h"
@@ -619,8 +620,8 @@ static struct eth_driver rte_igbvf_pmd = {
 	.dev_private_size = sizeof(struct e1000_adapter),
 };
 
-int
-rte_igb_pmd_init(void)
+static int
+rte_igb_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
 {
 	rte_eth_driver_register(&rte_igb_pmd);
 	return 0;
@@ -2182,3 +2183,10 @@ eth_igb_rss_reta_query(struct rte_eth_dev *dev,
  
 	return 0;
 }
+
+static struct rte_driver pmd_igb_drv = {
+        .type = PMD_PDEV,
+	.init = rte_igb_pmd_init,
+};
+
+PMD_REGISTER_DRIVER(pmd_igb_drv);
