@@ -40,7 +40,7 @@
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
 #include <rte_kvargs.h>
-#include <rte_vdev.h>
+#include <rte_dev.h>
 
 #include <net/if.h>
 
@@ -767,9 +767,10 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 
 }
 
-static struct rte_vdev_driver pmd_pcap_drv = {
+static struct rte_driver pmd_pcap_drv = {
 	.name = "eth_pcap",
+	.type = PMD_VDEV,
 	.init = rte_pmd_pcap_devinit,
 };
 
-PMD_REGISTER_DRIVER(pmd_pcap_drv, PMD_VDEV);
+PMD_REGISTER_DRIVER(pmd_pcap_drv);

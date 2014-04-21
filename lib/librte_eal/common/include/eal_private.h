@@ -201,6 +201,6 @@ int rte_eal_alarm_init(void);
  *
  * This function is private to the EAL.
  */
-int rte_eal_vdev_init(void);
+int rte_eal_dev_init(void);
 
 #endif /* _EAL_PRIVATE_H_ */

@@ -37,7 +37,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
-#include <rte_vdev.h>
+#include <rte_dev.h>
 #include <rte_kvargs.h>
 
 #define ETH_RING_NUMA_NODE_ACTION_ARG	"nodeaction"
@@ -520,9 +520,10 @@ out:
 	return ret;
 }
 
-static struct rte_vdev_driver pmd_ring_drv = {
+static struct rte_driver pmd_ring_drv = {
 	.name = "eth_ring",
+	.type = PMD_VDEV,
 	.init = rte_pmd_ring_devinit,
 };
 
-PMD_REGISTER_DRIVER(pmd_ring_drv, PMD_VDEV);
+PMD_REGISTER_DRIVER(pmd_ring_drv);

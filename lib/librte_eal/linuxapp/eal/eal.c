@@ -1061,8 +1061,8 @@ rte_eal_init(int argc, char **argv)
 	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%x)\n",
 		rte_config.master_lcore, (int)thread_id);
 
-	if (rte_eal_vdev_init() < 0)
-		rte_panic("Cannot init virtual devices\n");
+	if (rte_eal_dev_init() < 0)
+		rte_panic("Cannot init pmd devices\n");
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 

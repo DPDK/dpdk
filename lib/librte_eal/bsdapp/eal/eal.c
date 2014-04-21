@@ -875,8 +875,8 @@ rte_eal_init(int argc, char **argv)
 
 	rte_eal_mcfg_complete();
 
-	if (rte_eal_vdev_init() < 0)
-		rte_panic("Cannot init virtual devices\n");
+	if (rte_eal_dev_init() < 0)
+		rte_panic("Cannot init pmd devices\n");
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 
