@@ -772,9 +772,4 @@ static struct rte_vdev_driver pmd_pcap_drv = {
 	.init = rte_pmd_pcap_devinit,
 };
 
-__attribute__((constructor))
-static void
-rte_pmd_pcap_init(void)
-{
-	rte_eal_vdev_driver_register(&pmd_pcap_drv);
-}
+PMD_REGISTER_DRIVER(pmd_pcap_drv, PMD_VDEV);

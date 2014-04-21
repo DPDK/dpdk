@@ -172,8 +172,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_CMDLINE),y)
 LDLIBS += -lrte_cmdline
 endif
 
+ifeq ($(RTE_BUILD_SHARED_LIB),n)
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
 LDLIBS += -lrte_pmd_pcap -lpcap
+endif
 endif
 
 LDLIBS += $(EXECENV_LDLIBS)
