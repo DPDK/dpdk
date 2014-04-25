@@ -88,7 +88,10 @@
 #define OPT_NO_HUGE     "no-huge"
 #define OPT_FILE_PREFIX "file-prefix"
 #define OPT_SOCKET_MEM  "socket-mem"
-#define OPT_USE_DEVICE  "use-device"
+#define OPT_USE_DEVICE "use-device"
+#define OPT_PCI_WHITELIST "pci-whitelist"
+#define OPT_PCI_BLACKLIST "pci-blacklist"
+#define OPT_VDEV        "vdev"
 #define OPT_SYSLOG      "syslog"
 
 #define RTE_EAL_BLACKLIST_SIZE	0x100
@@ -311,11 +314,17 @@ eal_usage(const char *prgname)
 	       "  -m MB        : memory to allocate\n"
 	       "  -r NUM       : force number of memory ranks (don't detect)\n"
 	       "  --"OPT_PROC_TYPE"  : type of this process\n"
-	       " --"OPT_USE_DEVICE": use the specified ethernet device(s) only.\n"
-	       " The argument format is <[domain:]bus:devid.func> to add\n"
-	       " a PCI device to the white list or <driver><id>[;key=val;...]\n"
-	       " to add a virtual device.\n"
-	       " [NOTE: PCI whitelist cannot be used with -b option]\n"
+	       "  --"OPT_PCI_BLACKLIST", -b: add a PCI device in black list.\n"
+	       "               Prevent EAL from using this PCI device. The argument\n"
+	       "               format is <domain:bus:devid.func>.\n"
+	       "  --"OPT_PCI_WHITELIST", -w: add a PCI device in white list.\n"
+	       "               Only use the specified PCI devices. The argument format\n"
+	       "               is <[domain:]bus:devid.func>. This option can be present\n"
+	       "               several times (once per device).\n"
+	       "               [NOTE: PCI whitelist cannot be used with -b option]\n"
+	       "  --"OPT_VDEV": add a virtual device.\n"
+	       "               The argument format is <driver><id>[,key=val,...]\n"
+	       "               (ex: --vdev=eth_pcap0,iface=eth2).\n"
 	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of "
 	    		   "native RDTSC\n"
 	       "\nEAL options for DEBUG use only:\n"
@@ -483,33 +492,6 @@ eal_parse_proc_type(const char *arg)
 	return RTE_PROC_INVALID;
 }
 
-static int
-eal_parse_use_device(const char *optarg)
-{
-	struct rte_pci_addr addr;
-	char *dup, *sep;
-
-	dup = strdup(optarg);
-	if (dup == NULL)
-		return -1;
-
-	/* remove arguments in 'dup' string */
-	sep = strchr(dup, ',');
-	if (sep != NULL)
-		*sep = '\0';
-
-	/* if argument is a PCI address, it's a whitelisted device */
-	if (eal_parse_pci_DomBDF(dup, &addr) == 0 ||
-		eal_parse_pci_BDF(dup, &addr) == 0) {
-		rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, optarg);
-	} else {
-		rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, optarg);
-	}
-
-	free(dup);
-	return 0;
-}
-
 /* Parse the argument given in the command line of the application */
 static int
 eal_parse_args(int argc, char **argv)
@@ -529,7 +511,9 @@ eal_parse_args(int argc, char **argv)
 		{OPT_PROC_TYPE, 1, 0, 0},
 		{OPT_FILE_PREFIX, 1, 0, 0},
 		{OPT_SOCKET_MEM, 1, 0, 0},
-		{OPT_USE_DEVICE, 1, 0, 0},
+		{OPT_PCI_WHITELIST, 1, 0, 0},
+		{OPT_PCI_BLACKLIST, 1, 0, 0},
+		{OPT_VDEV, 1, 0, 0},
 		{OPT_SYSLOG, 1, NULL, 0},
 		{0, 0, 0, 0}
 	};
@@ -558,7 +542,7 @@ eal_parse_args(int argc, char **argv)
 
 	internal_config.vmware_tsc_map = 0;
 
-	while ((opt = getopt_long(argc, argvopt, "b:c:m:n:r:v",
+	while ((opt = getopt_long(argc, argvopt, "b:w:c:m:n:r:v",
 				  lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -568,6 +552,14 @@ eal_parse_args(int argc, char **argv)
 					optarg) < 0) {
 				eal_usage(prgname);
 				return (-1);
+			}
+			break;
+		/* whitelist */
+		case 'w':
+			if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI,
+					optarg) < 0) {
+				eal_usage(prgname);
+				return -1;
 			}
 			break;
 		/* coremask */
@@ -648,9 +640,28 @@ eal_parse_args(int argc, char **argv)
 				return -1;
 			}
 			else if (!strcmp(lgopts[option_index].name, OPT_USE_DEVICE)) {
-				if (eal_parse_use_device(optarg) < 0) {
-					RTE_LOG(ERR, EAL, "invalid parameters for --"
-						OPT_USE_DEVICE "\n");
+				printf("The --use-device option is deprecated, please use\n"
+					"--whitelist or --vdev instead.\n");
+				eal_usage(prgname);
+				return -1;
+			}
+			else if (!strcmp(lgopts[option_index].name, OPT_PCI_BLACKLIST)) {
+				if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI,
+						optarg) < 0) {
+					eal_usage(prgname);
+					return -1;
+				}
+			}
+			else if (!strcmp(lgopts[option_index].name, OPT_PCI_WHITELIST)) {
+				if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI,
+						optarg) < 0) {
+					eal_usage(prgname);
+					return -1;
+				}
+			}
+			else if (!strcmp(lgopts[option_index].name, OPT_VDEV)) {
+				if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL,
+						optarg) < 0) {
 					eal_usage(prgname);
 					return -1;
 				}
@@ -715,7 +726,7 @@ eal_parse_args(int argc, char **argv)
 	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) != 0 &&
 		rte_eal_devargs_type_count(RTE_DEVTYPE_BLACKLISTED_PCI) != 0) {
 		RTE_LOG(ERR, EAL, "Error: blacklist [-b] and whitelist "
-			"[--use-device] options cannot be used at the same time\n");
+			"[-w] options cannot be used at the same time\n");
 		eal_usage(prgname);
 		return -1;
 	}
