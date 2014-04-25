@@ -47,6 +47,18 @@
 
 #define PAGE_SIZE (sysconf(_SC_PAGESIZE))
 
+/*
+ * Get physical address of any mapped virtual address in the current process.
+ */
+phys_addr_t
+rte_mem_virt2phy(const void *virtaddr)
+{
+	/* XXX not implemented. This function is only used by
+	 * rte_mempool_virt2phy() when hugepages are disabled. */
+	(void)virtaddr;
+	return RTE_BAD_PHYS_ADDR;
+}
+
 static int
 rte_eal_contigmem_init(void)
 {
