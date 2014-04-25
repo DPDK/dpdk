@@ -66,6 +66,7 @@
 #include <rte_malloc.h>
 #include <rte_string_fns.h>
 #include <rte_debug.h>
+#include <rte_devargs.h>
 
 #include "rte_pci_dev_ids.h"
 #include "eal_filesystem.h"
@@ -471,7 +472,9 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 				dev->id.device_id, dr->name);
 
 		/* no initialization when blacklisted, return without error */
-		if (dev->blacklisted) {
+		if (dev->devargs != NULL &&
+			dev->devargs->type == RTE_DEVTYPE_BLACKLISTED_PCI) {
+
 			RTE_LOG(DEBUG, EAL, "  Device is blacklisted, not initializing\n");
 			return 0;
 		}
