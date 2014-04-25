@@ -759,6 +759,12 @@ rte_eal_mcfg_complete(void)
 		rte_config.mem_config->magic = RTE_MAGIC;
 }
 
+/* return non-zero if hugepages are enabled. */
+int rte_eal_has_hugepages(void)
+{
+	return !internal_config.no_hugetlbfs;
+}
+
 /* Abstraction for port I/0 privilage */
 static int
 rte_eal_iopl_init(void)
