@@ -30,3 +30,6 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 _BUILD_TARGETS := _prebuild _build _postbuild
+
+comma := ,
+linkerprefix = $(subst -Wl$(comma)-L,-L,$(addprefix -Wl$(comma),$1))
