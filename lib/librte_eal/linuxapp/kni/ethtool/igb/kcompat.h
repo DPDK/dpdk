@@ -3691,8 +3691,7 @@ static inline u8 pci_pcie_type(struct pci_dev *pdev)
 
 #define ptp_clock_register(caps, args...) ptp_clock_register(caps)
 
-#if !(SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(11,3,0)) && \
-    !(RHEL_RELEASE_CODE && RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6,5))
+#ifndef PCI_EXP_LNKSTA2
 int __kc_pcie_capability_read_word(struct pci_dev *dev, int pos, u16 *val);
 #define pcie_capability_read_word(d,p,v) __kc_pcie_capability_read_word(d,p,v)
 int __kc_pcie_capability_write_word(struct pci_dev *dev, int pos, u16 val);
@@ -3709,8 +3708,7 @@ static inline int pcie_capability_clear_word(struct pci_dev *dev, int pos,
 {
 	return __kc_pcie_capability_clear_and_set_word(dev, pos, clear, 0);
 }
-#endif /* !(SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(11,3,0)) && \
-          !(RHEL_RELEASE_CODE && RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6,5)) */
+#endif /* !PCI_EXP_LNKSTA2 */
 
 #if (SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(11,3,0))
 #define USE_CONST_DEV_UC_CHAR
