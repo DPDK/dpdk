@@ -60,6 +60,7 @@ SRCS-$(CONFIG_RTE_TEST_PMD) += flowgen.c
 SRCS-$(CONFIG_RTE_TEST_PMD) += rxonly.c
 SRCS-$(CONFIG_RTE_TEST_PMD) += txonly.c
 SRCS-$(CONFIG_RTE_TEST_PMD) += csumonly.c
+SRCS-$(CONFIG_RTE_TEST_PMD) += icmpecho.c
 ifeq ($(CONFIG_RTE_LIBRTE_IEEE1588),y)
 SRCS-$(CONFIG_RTE_TEST_PMD) += ieee1588fwd.c
 endif

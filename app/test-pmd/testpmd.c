@@ -150,6 +150,7 @@ struct fwd_engine * fwd_engines[] = {
 	&rx_only_engine,
 	&tx_only_engine,
 	&csum_fwd_engine,
+	&icmp_echo_engine,
 #ifdef RTE_LIBRTE_IEEE1588
 	&ieee1588_fwd_engine,
 #endif

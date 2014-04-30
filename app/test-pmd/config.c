@@ -970,10 +970,69 @@ dcb_fwd_config_setup(void)
 	}
 }
 
+static void
+icmp_echo_config_setup(void)
+{
+	portid_t  rxp;
+	queueid_t rxq;
+	lcoreid_t lc_id;
+	uint16_t  sm_id;
+
+	if ((nb_txq * nb_fwd_ports) < nb_fwd_lcores)
+		cur_fwd_config.nb_fwd_lcores = (lcoreid_t)
+			(nb_txq * nb_fwd_ports);
+	else
+		cur_fwd_config.nb_fwd_lcores = (lcoreid_t) nb_fwd_lcores;
+	cur_fwd_config.nb_fwd_ports = nb_fwd_ports;
+	cur_fwd_config.nb_fwd_streams =
+		(streamid_t) (nb_rxq * cur_fwd_config.nb_fwd_ports);
+	if (cur_fwd_config.nb_fwd_streams < cur_fwd_config.nb_fwd_lcores)
+		cur_fwd_config.nb_fwd_lcores =
+			(lcoreid_t)cur_fwd_config.nb_fwd_streams;
+	if (verbose_level > 0) {
+		printf("%s fwd_cores=%d fwd_ports=%d fwd_streams=%d\n",
+		       __FUNCTION__,
+		       cur_fwd_config.nb_fwd_lcores,
+		       cur_fwd_config.nb_fwd_ports,
+		       cur_fwd_config.nb_fwd_streams);
+	}
+
+	/* reinitialize forwarding streams */
+	init_fwd_streams();
+	setup_fwd_config_of_each_lcore(&cur_fwd_config);
+	rxp = 0; rxq = 0;
+	for (lc_id = 0; lc_id < cur_fwd_config.nb_fwd_lcores; lc_id++) {
+		if (verbose_level > 0)
+			printf("  core=%d: \n", lc_id);
+		for (sm_id = 0; sm_id < fwd_lcores[lc_id]->stream_nb; sm_id++) {
+			struct fwd_stream *fs;
+			fs = fwd_streams[fwd_lcores[lc_id]->stream_idx + sm_id];
+			fs->rx_port = fwd_ports_ids[rxp];
+			fs->rx_queue = rxq;
+			fs->tx_port = fs->rx_port;
+			fs->tx_queue = lc_id;
+			fs->peer_addr = fs->tx_port;
+			if (verbose_level > 0)
+				printf("  stream=%d port=%d rxq=%d txq=%d\n",
+				       sm_id, fs->rx_port, fs->rx_queue,
+				       fs->tx_queue);
+			rxq = (queueid_t) (rxq + 1);
+			if (rxq == nb_rxq) {
+				rxq = 0;
+				rxp = (portid_t) (rxp + 1);
+			}
+		}
+	}
+}
+
 void
 fwd_config_setup(void)
 {
 	cur_fwd_config.fwd_eng = cur_fwd_eng;
+	if (strcmp(cur_fwd_eng->fwd_mode_name, "icmpecho") == 0) {
+		icmp_echo_config_setup();
+		return;
+	}
 	if ((nb_rxq > 1) && (nb_txq > 1)){
 		if (dcb_config)
 			dcb_fwd_config_setup();
