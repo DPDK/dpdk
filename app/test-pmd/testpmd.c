@@ -1227,6 +1227,7 @@ start_port(portid_t pid)
 	portid_t pi;
 	queueid_t qi;
 	struct rte_port *port;
+	uint8_t *mac_addr;
 
 	if (test_done == 0) {
 		printf("Please stop forwarding first\n");
@@ -1353,6 +1354,11 @@ start_port(portid_t pid)
 		if (rte_atomic16_cmpset(&(port->port_status),
 			RTE_PORT_HANDLING, RTE_PORT_STARTED) == 0)
 			printf("Port %d can not be set into started\n", pi);
+
+		mac_addr = port->eth_addr.addr_bytes;
+		printf("Port %d: %02X:%02X:%02X:%02X:%02X:%02X\n", pi,
+		       mac_addr[0], mac_addr[1], mac_addr[2],
+		       mac_addr[3], mac_addr[4], mac_addr[5]);
 
 		/* at least one port started, need checking link status */
 		need_check_link_status = 1;
