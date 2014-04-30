@@ -158,7 +158,6 @@ rte_eal_cpu_init(void)
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		lcore_config[lcore_id].detected = cpu_detected(lcore_id);
 		if (lcore_config[lcore_id].detected == 0) {
-			RTE_LOG(DEBUG, EAL, "Skip lcore %u (not detected)\n", lcore_id);
 			config->lcore_role[lcore_id] = ROLE_OFF;
 			continue;
 		}
