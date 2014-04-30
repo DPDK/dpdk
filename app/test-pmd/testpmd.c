@@ -552,15 +552,6 @@ init_config(void)
 			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool,
 						 socket_num);
 	}
-	/*
-	 * Records which Mbuf pool to use by each logical core, if needed.
-	 */
-	for (lc_id = 0; lc_id < nb_lcores; lc_id++) {
-		mbp = mbuf_pool_find(rte_lcore_to_socket_id(lc_id));
-		if (mbp == NULL)
-			mbp = mbuf_pool_find(0);
-		fwd_lcores[lc_id]->mbp = mbp;
-	}
 
 	/* Configuration of Ethernet ports. */
 	ports = rte_zmalloc("testpmd: ports",
@@ -609,6 +600,17 @@ init_config(void)
 		}
 	}
 	init_port_config();
+
+	/*
+	 * Records which Mbuf pool to use by each logical core, if needed.
+	 */
+	for (lc_id = 0; lc_id < nb_lcores; lc_id++) {
+		mbp = mbuf_pool_find(rte_lcore_to_socket_id(lc_id));
+		if (mbp == NULL)
+			mbp = mbuf_pool_find(0);
+		fwd_lcores[lc_id]->mbp = mbp;
+	}
+
 	/* Configuration of packet forwarding streams. */
 	if (init_fwd_streams() < 0)
 		rte_exit(EXIT_FAILURE, "FAIL from init_fwd_streams()\n");
