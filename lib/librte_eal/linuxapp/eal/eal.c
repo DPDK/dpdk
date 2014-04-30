@@ -1058,11 +1058,13 @@ rte_eal_init(int argc, char **argv)
 			RTE_LOG(WARNING, EAL, "%s\n", dlerror());
 	}
 
-	if (rte_eal_vdev_init() < 0)
-		rte_panic("Cannot init virtual devices\n");
+	eal_thread_init_master(rte_config.master_lcore);
 
 	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%x)\n",
 		rte_config.master_lcore, (int)thread_id);
+
+	if (rte_eal_vdev_init() < 0)
+		rte_panic("Cannot init virtual devices\n");
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 
@@ -1083,8 +1085,6 @@ rte_eal_init(int argc, char **argv)
 		if (ret != 0)
 			rte_panic("Cannot create thread\n");
 	}
-
-	eal_thread_init_master(rte_config.master_lcore);
 
 	/*
 	 * Launch a dummy function on all slave lcores, so that master lcore
