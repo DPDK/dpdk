@@ -197,6 +197,8 @@ usage(char* progname)
 	printf("  --no-flush-rx: Don't flush RX streams before forwarding."
 	       " Used mainly with PCAP drivers.\n");
 	printf("  --txpkts=X[,Y]*: set TX segment sizes.\n");
+	printf("  --disable-link-check: disable check on link status when "
+	       "starting/stopping ports.\n");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -587,6 +589,7 @@ launch_args_parse(int argc, char** argv)
 		{ "rx-queue-stats-mapping",	1, 0, 0 },
 		{ "no-flush-rx",	0, 0, 0 },
 		{ "txpkts",			1, 0, 0 },
+		{ "disable-link-check",		0, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -1044,6 +1047,8 @@ launch_args_parse(int argc, char** argv)
 			}
 			if (!strcmp(lgopts[opt_idx].name, "no-flush-rx"))
 				no_flush_rx = 1;
+			if (!strcmp(lgopts[opt_idx].name, "disable-link-check"))
+				no_link_check = 1;
 
 			break;
 		case 'h':

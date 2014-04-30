@@ -263,6 +263,11 @@ uint16_t port_topology = PORT_TOPOLOGY_PAIRED; /* Ports are paired by default */
 uint8_t no_flush_rx = 0; /* flush by default */
 
 /*
+ * Avoids to check link status when starting/stopping a port.
+ */
+uint8_t no_link_check = 0; /* check by default */
+
+/*
  * NIC bypass mode configuration options.
  */
 #ifdef RTE_NIC_BYPASS
@@ -1364,7 +1369,7 @@ start_port(portid_t pid)
 		need_check_link_status = 1;
 	}
 
-	if (need_check_link_status)
+	if (need_check_link_status && !no_link_check)
 		check_all_ports_link_status(nb_ports, RTE_PORT_ALL);
 	else
 		printf("Please stop the ports first\n");
@@ -1406,7 +1411,7 @@ stop_port(portid_t pid)
 			printf("Port %d can not be set into stopped\n", pi);
 		need_check_link_status = 1;
 	}
-	if (need_check_link_status)
+	if (need_check_link_status && !no_link_check)
 		check_all_ports_link_status(nb_ports, RTE_PORT_ALL);
 
 	printf("Done\n");

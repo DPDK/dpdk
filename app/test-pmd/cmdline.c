@@ -2328,6 +2328,46 @@ cmdline_parse_inst_t cmd_set_flush_rx = {
 	},
 };
 
+/* *** ENABLE/DISABLE LINK STATUS CHECK *** */
+struct cmd_set_link_check {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t link_check;
+	cmdline_fixed_string_t mode;
+};
+
+static void
+cmd_set_link_check_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_link_check *res = parsed_result;
+	no_link_check = (uint8_t)((strcmp(res->mode, "on") == 0) ? 0 : 1);
+}
+
+cmdline_parse_token_string_t cmd_setlinkcheck_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_check,
+			set, "set");
+cmdline_parse_token_string_t cmd_setlinkcheck_link_check =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_check,
+			link_check, "link_check");
+cmdline_parse_token_string_t cmd_setlinkcheck_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_check,
+			mode, "on#off");
+
+
+cmdline_parse_inst_t cmd_set_link_check = {
+	.f = cmd_set_link_check_parsed,
+	.help_str = "set link_check on|off: enable/disable link status check "
+	            "when starting/stopping a port",
+	.data = NULL,
+	.tokens = {
+		(void *)&cmd_setlinkcheck_set,
+		(void *)&cmd_setlinkcheck_link_check,
+		(void *)&cmd_setlinkcheck_mode,
+		NULL,
+	},
+};
+
 #ifdef RTE_NIC_BYPASS
 /* *** SET NIC BYPASS MODE *** */
 struct cmd_set_bypass_mode_result {
@@ -5136,6 +5176,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_allmulti_mode_one,
 	(cmdline_parse_inst_t *)&cmd_set_allmulti_mode_all,
 	(cmdline_parse_inst_t *)&cmd_set_flush_rx,
+	(cmdline_parse_inst_t *)&cmd_set_link_check,
 #ifdef RTE_NIC_BYPASS
 	(cmdline_parse_inst_t *)&cmd_set_bypass_mode,
 	(cmdline_parse_inst_t *)&cmd_set_bypass_event,
