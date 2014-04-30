@@ -31,7 +31,7 @@
 
 # name includes full version because there is no ABI stability yet
 Name: dpdk-core-1.6.0
-Version: r1
+Version: r2
 %define fullversion 1.6.0%{version}
 Release: 1
 Packager: packaging@6wind.com
