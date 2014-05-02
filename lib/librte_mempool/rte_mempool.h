@@ -1380,6 +1380,17 @@ size_t rte_mempool_xmem_size(uint32_t elt_num, size_t elt_sz,
 ssize_t rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t elt_sz,
 	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift);
 
+/**
+ * Walk list of all memory pools
+ *
+ * @param func
+ *   Iterator function
+ * @param arg
+ *   Argument passed to iterator
+ */
+void rte_mempool_walk(void (*func)(const struct rte_mempool *, void *arg),
+		      void *arg);
+
 #ifdef __cplusplus
 }
 #endif

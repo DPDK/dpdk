@@ -856,3 +856,24 @@ rte_mempool_lookup(const char *name)
 
 	return mp;
 }
+
+void rte_mempool_walk(void (*func)(const struct rte_mempool *, void *),
+		      void *arg)
+{
+	struct rte_mempool *mp = NULL;
+	struct rte_mempool_list *mempool_list;
+
+	if ((mempool_list =
+	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL, rte_mempool_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return;
+	}
+
+	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
+
+	TAILQ_FOREACH(mp, mempool_list, next) {
+		(*func)(mp, arg);
+	}
+
+	rte_rwlock_read_unlock(RTE_EAL_MEMPOOL_RWLOCK);
+}
