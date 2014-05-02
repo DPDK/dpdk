@@ -252,6 +252,17 @@ const struct rte_memzone *rte_memzone_lookup(const char *name);
  */
 void rte_memzone_dump(FILE *);
 
+/**
+ * Walk list of all memzones
+ *
+ * @param func
+ *   Iterator function
+ * @param arg
+ *   Argument passed to iterator
+ */
+void rte_memzone_walk(void (*func)(const struct rte_memzone *, void *arg),
+		      void *arg);
+
 #ifdef __cplusplus
 }
 #endif

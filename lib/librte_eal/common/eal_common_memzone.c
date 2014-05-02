@@ -505,3 +505,20 @@ rte_eal_memzone_init(void)
 
 	return 0;
 }
+
+/* Walk all reserved memory zones */
+void rte_memzone_walk(void (*func)(const struct rte_memzone *, void *),
+		      void *arg)
+{
+	struct rte_mem_config *mcfg;
+	unsigned i;
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+
+	rte_rwlock_read_lock(&mcfg->mlock);
+	for (i=0; i<RTE_MAX_MEMZONE; i++) {
+		if (mcfg->memzone[i].addr != NULL)
+			(*func)(&mcfg->memzone[i], arg);
+	}
+	rte_rwlock_read_unlock(&mcfg->mlock);
+}
