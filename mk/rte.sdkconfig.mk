@@ -35,9 +35,9 @@ showversion:
 		$(RTE_SRCDIR)/lib/librte_eal/common/include/rte_version.h | \
 		tr '\n' '.' | sed -r 's,\.([0-9]+)\.$$,r\1\n,'
 
-INSTALL_CONFIGS := $(filter-out %~,\
+INSTALL_CONFIGS := $(sort $(filter-out %~,\
 	$(patsubst $(RTE_SRCDIR)/config/defconfig_%,%,\
-	$(wildcard $(RTE_SRCDIR)/config/defconfig_*)))
+	$(wildcard $(RTE_SRCDIR)/config/defconfig_*))))
 INSTALL_TARGETS := $(addsuffix _install,$(INSTALL_CONFIGS))
 
 .PHONY: showconfigs
