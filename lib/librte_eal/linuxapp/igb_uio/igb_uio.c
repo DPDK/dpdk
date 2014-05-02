@@ -339,7 +339,7 @@ igbuio_dom0_mmap_phys(struct uio_info *info, struct vm_area_struct *vma)
 
 /**
  * This is uio device mmap method which will use igbuio mmap for Xen 
- * Dom0 enviroment.
+ * Dom0 environment.
  */
 static int
 igbuio_dom0_pci_mmap(struct uio_info *info, struct vm_area_struct *vma)

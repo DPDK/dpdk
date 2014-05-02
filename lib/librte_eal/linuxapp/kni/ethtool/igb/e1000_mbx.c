@@ -60,7 +60,7 @@ static s32 e1000_null_mbx_transact(struct e1000_hw E1000_UNUSEDARG *hw,
  *  @size: Length of buffer
  *  @mbx_id: id of mailbox to read
  *
- *  returns SUCCESS if it successfuly read message from buffer
+ *  returns SUCCESS if it successfully read message from buffer
  **/
 s32 e1000_read_mbx(struct e1000_hw *hw, u32 *msg, u16 size, u16 mbx_id)
 {

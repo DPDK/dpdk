@@ -780,7 +780,7 @@ int rte_eal_has_hugepages(void)
 	return !internal_config.no_hugetlbfs;
 }
 
-/* Abstraction for port I/0 privilage */
+/* Abstraction for port I/0 privilege */
 static int
 rte_eal_iopl_init(void)
 {

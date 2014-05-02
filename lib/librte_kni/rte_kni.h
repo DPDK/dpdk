@@ -140,7 +140,7 @@ extern struct rte_kni *rte_kni_create(uint8_t port_id,
  * context need to be stopped before calling this interface.
  *
  * @param kni
- *  The pointer to the context of an existant KNI interface.
+ *  The pointer to the context of an existent KNI interface.
  *
  * @return
  *  - 0 indicates success.
@@ -154,7 +154,7 @@ extern int rte_kni_release(struct rte_kni *kni);
  * Finally constructs the response mbuf and puts it back to the resp_q.
  *
  * @param kni
- *  The pointer to the context of an existant KNI interface.
+ *  The pointer to the context of an existent KNI interface.
  *
  * @return
  *  - 0 

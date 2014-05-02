@@ -995,7 +995,7 @@ rte_atomic64_add(rte_atomic64_t *v, int64_t inc)
  * @param v
  *   A pointer to the atomic counter.
  * @param dec
- *   The value to be substracted from the counter.
+ *   The value to be subtracted from the counter.
  */
 static inline void
 rte_atomic64_sub(rte_atomic64_t *v, int64_t dec)
@@ -1050,14 +1050,14 @@ rte_atomic64_add_return(rte_atomic64_t *v, int64_t inc)
  * Subtract a 64-bit value from an atomic counter and return the result.
  *
  * Atomically subtracts the 64-bit value (dec) from the atomic counter (v)
- * and returns the value of v after the substraction.
+ * and returns the value of v after the subtraction.
  *
  * @param v
  *   A pointer to the atomic counter.
  * @param dec
- *   The value to be substracted from the counter.
+ *   The value to be subtracted from the counter.
  * @return
- *   The value of v after the substraction.
+ *   The value of v after the subtraction.
  */
 static inline int64_t
 rte_atomic64_sub_return(rte_atomic64_t *v, int64_t dec)
@@ -1090,7 +1090,7 @@ static inline int rte_atomic64_inc_and_test(rte_atomic64_t *v)
  * @param v
  *   A pointer to the atomic counter.
  * @return
- *   True if the result after substraction is 0; false otherwise.
+ *   True if the result after subtraction is 0; false otherwise.
  */
 static inline int rte_atomic64_dec_and_test(rte_atomic64_t *v)
 {

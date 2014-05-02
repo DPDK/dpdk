@@ -180,7 +180,7 @@ void igb_vmdq_set_rx_mode(struct net_device *dev)
 		} else {
 			/*
 			 * Write addresses to the MTA, if the attempt fails
-			 * then we should just turn on promiscous mode so
+			 * then we should just turn on promiscuous mode so
 			 * that we can at least receive multicast traffic
 			 */
 			if (igb_write_mc_addr_list(adapter->netdev) != 0)
@@ -190,7 +190,7 @@ void igb_vmdq_set_rx_mode(struct net_device *dev)
 		/*
 		 * Write addresses to available RAR registers, if there is not
 		 * sufficient space to store all the addresses then enable
-		 * unicast promiscous mode
+		 * unicast promiscuous mode
 		 */
 		if (igb_write_vm_addr_list(dev) < 0)
 			vmolr |= E1000_VMOLR_UPE;

@@ -1703,7 +1703,7 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 		 * limit for packet length, jumbo frame of any size
 		 * can be accepted, thus we have to enable scattered
 		 * rx if jumbo frames are enabled (or if buffer size
-		 * is too small to accomodate non-jumbo packets)
+		 * is too small to accommodate non-jumbo packets)
 		 * to avoid splitting packets that don't fit into
 		 * one buffer.
 		 */

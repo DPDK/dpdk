@@ -224,7 +224,7 @@ dom0_memory_free(struct dom0_mm_data * mm_data)
 	if (num_block == 0)
 		return -1;
 
-	/* free memory and destory contiguous region in Xen*/
+	/* free memory and destroy contiguous region in Xen*/
 	for (i = 0; i< num_block; i++) {
 		vstart = mm_data->block_info[i].vir_addr;
 		if (vstart) {

@@ -1966,7 +1966,7 @@ ixgbe_dev_link_status_print(struct rte_eth_dev *dev)
 }
 
 /*
- * It executes link_update after knowing an interrupt occured.
+ * It executes link_update after knowing an interrupt occurred.
  *
  * @param dev
  *  Pointer to struct rte_eth_dev.

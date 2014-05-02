@@ -93,7 +93,7 @@ static unsigned get_gcd(unsigned a, unsigned b)
 }
 
 /*
- * Depending on memory configuration, objects addresses are spreaded
+ * Depending on memory configuration, objects addresses are spread
  * between channels and ranks in RAM: the pool allocator will add
  * padding between objects. This function return the new size of the
  * object.
@@ -275,7 +275,7 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 
 	/*
 	 * increase trailer to add padding between objects in order to
-	 * spread them accross memory channels/ranks
+	 * spread them across memory channels/ranks
 	 */
 	if ((flags & MEMPOOL_F_NO_SPREAD) == 0) {
 		unsigned new_size;

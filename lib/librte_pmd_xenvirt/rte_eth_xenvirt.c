@@ -374,7 +374,7 @@ eth_link_update(struct rte_eth_dev *dev __rte_unused,
 
 /*
  * Create shared vring between guest and host.
- * Memory is allocated through grant alloc driver, so it is not physical continous.
+ * Memory is allocated through grant alloc driver, so it is not physical continuous.
  */
 static void *
 gntalloc_vring_create(int queue_type, uint32_t size, int vtidx)

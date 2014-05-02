@@ -297,7 +297,7 @@ vmxnet3_xmit_pkts( void *tx_queue, struct rte_mbuf **tx_pkts,
 
 			txd = (Vmxnet3_TxDesc *)(txq->cmd_ring.base + txq->cmd_ring.next2fill);
 
-			/* Fill the tx decriptor */
+			/* Fill the tx descriptor */
 			tbi = txq->cmd_ring.buf_info + txq->cmd_ring.next2fill;
 			tbi->bufPA = RTE_MBUF_DATA_DMA_ADDR(txm);
 			txd->addr = tbi->bufPA;

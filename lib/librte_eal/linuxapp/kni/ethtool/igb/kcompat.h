@@ -3618,7 +3618,7 @@ static inline u32 mmd_eee_cap_to_ethtool_sup_t(u16 eee_cap)
  * mmd_eee_adv_to_ethtool_adv_t
  * @eee_adv: value of the MMD EEE Advertisement/Link Partner Ability registers
  *
- * A small helper function that translates the MMD EEE Advertisment (7.60)
+ * A small helper function that translates the MMD EEE Advertisement (7.60)
  * and MMD EEE Link Partner Ability (7.61) bits to ethtool advertisement
  * settings.
  */

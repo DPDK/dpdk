@@ -276,7 +276,7 @@ rte_intr_enable(struct rte_intr_handle *intr_handle)
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
 		return -1;
-	/* unkown handle type */
+	/* unknown handle type */
 	default:
 		RTE_LOG(ERR, EAL,
 			"Unknown handle type of fd %d\n",
@@ -308,7 +308,7 @@ rte_intr_disable(struct rte_intr_handle *intr_handle)
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
 		return -1;
-	/* unkown handle type */
+	/* unknown handle type */
 	default:
 		RTE_LOG(ERR, EAL,
 			"Unknown handle type of fd %d\n",

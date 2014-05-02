@@ -2139,7 +2139,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		     rxq->sw_ring, rxq->rx_ring, rxq->rx_ring_phys_addr);
 
 	/*
-	 * Certain constaints must be met in order to use the bulk buffer
+	 * Certain constraints must be met in order to use the bulk buffer
 	 * allocation Rx burst function.
 	 */
 	use_def_burst_func = check_rx_burst_bulk_alloc_preconditions(rxq);

@@ -144,7 +144,7 @@ void
 virtio_dev_rxtx_start(struct rte_eth_dev *dev)
 {
 	/*
-	 * Start recieve and transmit vrings
+	 * Start receive and transmit vrings
 	 * -	Setup vring structure for all queues
 	 * -	Initialize descriptor for the rx vring
 	 * -	Allocate blank mbufs for the each rx descriptor

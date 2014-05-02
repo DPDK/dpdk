@@ -92,7 +92,7 @@ struct igb_adapter;
 #define IGB_20K_ITR                      196
 #define IGB_70K_ITR                       56
 
-/* Interrupt modes, as used by the IntMode paramter */
+/* Interrupt modes, as used by the IntMode parameter */
 #define IGB_INT_MODE_LEGACY                0
 #define IGB_INT_MODE_MSI                   1
 #define IGB_INT_MODE_MSIX                  2

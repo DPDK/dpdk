@@ -89,7 +89,7 @@ struct rte_config {
 } __attribute__((__packed__));
 
 /* Flag definitions for rte_config flags */
-#define EAL_FLG_HIGH_IOPL 1 /**< indicates high IO privilage in a linux env */
+#define EAL_FLG_HIGH_IOPL 1 /**< indicates high IO privilege in a linux env */
 
 /**
  * Get the global configuration structure.

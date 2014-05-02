@@ -45,7 +45,7 @@
 extern "C" {
 #endif
 
-/** Interupt handle */
+/** Interrupt handle */
 struct rte_intr_handle;
 
 /** Function to be registered for the specific interrupt */

@@ -91,7 +91,7 @@ struct igb_tx_entry_v {
 };
 
 /**
- * continous entry sequence, gather by the same mempool 
+ * continuous entry sequence, gather by the same mempool
  */
 struct igb_tx_entry_seq {
 	const struct rte_mempool* pool;
@@ -165,7 +165,7 @@ struct igb_tx_queue {
 	uint64_t            tx_ring_phys_addr; /**< TX ring DMA address. */
 	struct igb_tx_entry *sw_ring;      /**< virtual address of SW ring. */
 #ifdef RTE_IXGBE_INC_VECTOR
-	/** continous tx entry sequence within the same mempool */
+	/** continuous tx entry sequence within the same mempool */
 	struct igb_tx_entry_seq *sw_ring_seq; 
 #endif
 	volatile uint32_t   *tdt_reg_addr; /**< Address of TDT register. */

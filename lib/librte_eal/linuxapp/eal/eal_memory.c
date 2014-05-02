@@ -221,7 +221,7 @@ aslr_enabled(void)
 }
 
 /*
- * Try to mmap *size bytes in /dev/zero. If it is succesful, return the
+ * Try to mmap *size bytes in /dev/zero. If it is successful, return the
  * pointer to the mmap'd area and keep *size unmodified. Else, retry
  * with a smaller zone: decrease *size by hugepage_sz until it reaches
  * 0. In this case, return NULL. Note: this function returns an address

@@ -74,7 +74,7 @@ static int xen_fd = -1;
 static const char sys_dir_path[] = "/sys/kernel/mm/dom0-mm/memsize-mB";
 
 /*
- * Try to mmap *size bytes in /dev/zero. If it is succesful, return the
+ * Try to mmap *size bytes in /dev/zero. If it is successful, return the
  * pointer to the mmap'd area and keep *size unmodified. Else, retry
  * with a smaller zone: decrease *size by mem_size until it reaches
  * 0. In this case, return NULL. Note: this function returns an address

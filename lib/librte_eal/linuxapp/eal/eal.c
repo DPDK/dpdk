@@ -941,7 +941,7 @@ rte_eal_mcfg_complete(void)
 }
 
 /*
- * Request iopl priviledge for all RPL, returns 0 on success
+ * Request iopl privilege for all RPL, returns 0 on success
  */
 static int
 rte_eal_iopl_init(void)

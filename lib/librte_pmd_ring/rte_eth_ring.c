@@ -221,7 +221,7 @@ rte_eth_from_rings(struct rte_ring *const rx_queues[],
 	struct rte_eth_dev *eth_dev = NULL;
 	unsigned i;
 
-	/* do some paramter checking */
+	/* do some parameter checking */
 	if (rx_queues == NULL && nb_rx_queues > 0)
 		goto error;
 	if (tx_queues == NULL && nb_tx_queues > 0)

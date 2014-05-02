@@ -92,7 +92,7 @@ struct rte_kni_request {
 
 /*
  * Fifo struct mapped in a shared memory. It describes a circular buffer FIFO
- * Write and read should wrap arround. Fifo is empty when write == read
+ * Write and read should wrap around. Fifo is empty when write == read
  * Writing should never overwrite the read position
  */
 struct rte_kni_fifo {

@@ -474,7 +474,7 @@ typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
  *   never be used. The access to the per-lcore table is of course
  *   faster than the multi-producer/consumer pool. The cache can be
  *   disabled if the cache_size argument is set to 0; it can be useful to
- *   avoid loosing objects in cache. Note that even if not used, the
+ *   avoid losing objects in cache. Note that even if not used, the
  *   memory space for cache is always reserved in a mempool structure,
  *   except if CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE is set to 0.
  * @param private_data_size
@@ -565,7 +565,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
  *   never be used. The access to the per-lcore table is of course
  *   faster than the multi-producer/consumer pool. The cache can be
  *   disabled if the cache_size argument is set to 0; it can be useful to
- *   avoid loosing objects in cache. Note that even if not used, the
+ *   avoid losing objects in cache. Note that even if not used, the
  *   memory space for cache is always reserved in a mempool structure,
  *   except if CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE is set to 0.
  * @param private_data_size
@@ -666,7 +666,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
  *   never be used. The access to the per-lcore table is of course
  *   faster than the multi-producer/consumer pool. The cache can be
  *   disabled if the cache_size argument is set to 0; it can be useful to
- *   avoid loosing objects in cache. Note that even if not used, the
+ *   avoid losing objects in cache. Note that even if not used, the
  *   memory space for cache is always reserved in a mempool structure,
  *   except if CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE is set to 0.
  * @param private_data_size
@@ -1332,7 +1332,7 @@ uint32_t rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 
 /**
  * Calculate maximum amount of memory required to store given number of objects.
- * Assumes that the memory buffer will be alligned at page boundary.
+ * Assumes that the memory buffer will be aligned at page boundary.
  * Note, that if object size is bigger then page size, then it assumes that
  * we have a subsets of physically continuous  pages big enough to store
  * at least one object.
