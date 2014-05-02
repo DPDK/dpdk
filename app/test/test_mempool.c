@@ -110,12 +110,12 @@ test_mempool_basic(void)
 	unsigned i, j;
 
 	/* dump the mempool status */
-	rte_mempool_dump(mp);
+	rte_mempool_dump(stdout, mp);
 
 	printf("get an object\n");
 	if (rte_mempool_get(mp, &obj) < 0)
 		return -1;
-	rte_mempool_dump(mp);
+	rte_mempool_dump(stdout, mp);
 
 	/* tests that improve coverage */
 	printf("get object count\n");
@@ -136,7 +136,7 @@ test_mempool_basic(void)
 
 	printf("put the object back\n");
 	rte_mempool_put(mp, obj);
-	rte_mempool_dump(mp);
+	rte_mempool_dump(stdout, mp);
 
 	printf("get 2 objects\n");
 	if (rte_mempool_get(mp, &obj) < 0)
@@ -145,12 +145,12 @@ test_mempool_basic(void)
 		rte_mempool_put(mp, obj);
 		return -1;
 	}
-	rte_mempool_dump(mp);
+	rte_mempool_dump(stdout, mp);
 
 	printf("put the objects back\n");
 	rte_mempool_put(mp, obj);
 	rte_mempool_put(mp, obj2);
-	rte_mempool_dump(mp);
+	rte_mempool_dump(stdout, mp);
 
 	/*
 	 * get many objects: we cannot get them all because the cache
@@ -488,7 +488,7 @@ test_mempool(void)
 		return -1;
 	}
 
-	rte_mempool_list_dump();
+	rte_mempool_list_dump(stdout);
 
 	/* basic tests without cache */
 	mp = mp_nocache;
@@ -517,7 +517,7 @@ test_mempool(void)
 	if (test_mempool_xmem_misc() < 0)
 		return -1;
 
-	rte_mempool_list_dump();
+	rte_mempool_list_dump(stdout);
 
 	return 0;
 }

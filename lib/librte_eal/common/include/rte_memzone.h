@@ -51,6 +51,7 @@
  * be done at initialization time only.
  */
 
+#include <stdio.h>
 #include <rte_memory.h>
 
 #ifdef __cplusplus
@@ -245,8 +246,11 @@ const struct rte_memzone *rte_memzone_lookup(const char *name);
 
 /**
  * Dump all reserved memzones to the console.
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_memzone_dump(void);
+void rte_memzone_dump(FILE *);
 
 #ifdef __cplusplus
 }

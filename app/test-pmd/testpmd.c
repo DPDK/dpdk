@@ -480,7 +480,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		rte_exit(EXIT_FAILURE, "Creation of mbuf pool for socket %u "
 						"failed\n", socket_id);
 	} else if (verbose_level > 0) {
-		rte_mempool_dump(rte_mp);
+		rte_mempool_dump(stdout, rte_mp);
 	}
 }
 

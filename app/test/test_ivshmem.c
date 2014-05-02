@@ -263,10 +263,10 @@ test_ivshmem_api_test(void)
 	ASSERT(strnlen(buf, sizeof(buf)) != 0, "Buffer is empty");
 
 	/* make sure we don't segfault */
-	rte_ivshmem_metadata_dump(NULL);
+	rte_ivshmem_metadata_dump(stdout, NULL);
 
 	/* dump our metadata */
-	rte_ivshmem_metadata_dump(METADATA_NAME);
+	rte_ivshmem_metadata_dump(stdout, METADATA_NAME);
 
 	return 0;
 }

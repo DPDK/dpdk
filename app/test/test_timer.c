@@ -515,7 +515,7 @@ test_timer(void)
 		rte_timer_stop_sync(&mytiminfo[i].tim);
 	}
 
-	rte_timer_dump_stats();
+	rte_timer_dump_stats(stdout);
 
 	return 0;
 }

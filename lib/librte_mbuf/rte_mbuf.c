@@ -193,16 +193,16 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, enum rte_mbuf_type t,
 
 /* dump a mbuf on console */
 void
-rte_pktmbuf_dump(const struct rte_mbuf *m, unsigned dump_len)
+rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 {
 	unsigned int len;
 	unsigned nb_segs;
 
 	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
 
-	printf("dump mbuf at 0x%p, phys=%"PRIx64", buf_len=%u\n",
+	fprintf(f, "dump mbuf at 0x%p, phys=%"PRIx64", buf_len=%u\n",
 	       m, (uint64_t)m->buf_physaddr, (unsigned)m->buf_len);
-	printf("  pkt_len=%"PRIu32", ol_flags=%"PRIx16", nb_segs=%u, "
+	fprintf(f, "  pkt_len=%"PRIu32", ol_flags=%"PRIx16", nb_segs=%u, "
 	       "in_port=%u\n", m->pkt.pkt_len, m->ol_flags,
 	       (unsigned)m->pkt.nb_segs, (unsigned)m->pkt.in_port);
 	nb_segs = m->pkt.nb_segs;
@@ -210,13 +210,13 @@ rte_pktmbuf_dump(const struct rte_mbuf *m, unsigned dump_len)
 	while (m && nb_segs != 0) {
 		__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 0);
 
-		printf("  segment at 0x%p, data=0x%p, data_len=%u\n",
+		fprintf(f, "  segment at 0x%p, data=0x%p, data_len=%u\n",
 		       m, m->pkt.data, (unsigned)m->pkt.data_len);
 		len = dump_len;
 		if (len > m->pkt.data_len)
 			len = m->pkt.data_len;
 		if (len != 0)
-			rte_hexdump(NULL, m->pkt.data, len);
+			rte_hexdump(f, NULL, m->pkt.data, len);
 		dump_len -= len;
 		m = m->pkt.next;
 		nb_segs --;

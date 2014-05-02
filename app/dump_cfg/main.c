@@ -79,15 +79,15 @@ MAIN(int argc, char **argv)
 		rte_panic("Cannot init EAL\n");
 
 	printf("----------- MEMORY_SEGMENTS -----------\n");
-	rte_dump_physmem_layout();
+	rte_dump_physmem_layout(stdout);
 	printf("--------- END_MEMORY_SEGMENTS ---------\n");
 
 	printf("------------ MEMORY_ZONES -------------\n");
-	rte_memzone_dump();
+	rte_memzone_dump(stdout);
 	printf("---------- END_MEMORY_ZONES -----------\n");
 
 	printf("------------- TAIL_QUEUES -------------\n");
-	rte_dump_tailq();
+	rte_dump_tailq(stdout);
 	printf("---------- END_TAIL_QUEUES ------------\n");
 
 	return 0;

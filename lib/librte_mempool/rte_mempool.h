@@ -59,6 +59,7 @@
  * that won't work as rte_lcore_id() will not return a correct value.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <errno.h>
@@ -733,10 +734,12 @@ rte_dom0_mempool_create(const char *name, unsigned n, unsigned elt_size,
 /**
  * Dump the status of the mempool to the console.
  *
+ * @param f
+ *   A pointer to a file for output
  * @param mp
  *   A pointer to the mempool structure.
  */
-void rte_mempool_dump(const struct rte_mempool *mp);
+void rte_mempool_dump(FILE *f, const struct rte_mempool *mp);
 
 /**
  * @internal Put several objects back in the mempool; used internally.
@@ -1298,8 +1301,11 @@ static inline void *rte_mempool_get_priv(struct rte_mempool *mp)
 
 /**
  * Dump the status of all mempools on the console
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_mempool_list_dump(void);
+void rte_mempool_list_dump(FILE *f);
 
 /**
  * Search a mempool from its name

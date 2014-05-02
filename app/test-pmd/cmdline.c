@@ -5068,19 +5068,19 @@ static void cmd_dump_parsed(void *parsed_result,
 	struct cmd_dump_result *res = parsed_result;
 
 	if (!strcmp(res->dump, "dump_physmem"))
-		rte_dump_physmem_layout();
+		rte_dump_physmem_layout(stdout);
 	else if (!strcmp(res->dump, "dump_memzone"))
-		rte_memzone_dump();
+		rte_memzone_dump(stdout);
 	else if (!strcmp(res->dump, "dump_log_history"))
-		rte_log_dump_history();
+		rte_log_dump_history(stdout);
 	else if (!strcmp(res->dump, "dump_struct_sizes"))
 		dump_struct_sizes();
 	else if (!strcmp(res->dump, "dump_ring"))
-		rte_ring_list_dump();
+		rte_ring_list_dump(stdout);
 	else if (!strcmp(res->dump, "dump_mempool"))
-		rte_mempool_list_dump();
+		rte_mempool_list_dump(stdout);
 	else if (!strcmp(res->dump, "dump_devargs"))
-		rte_eal_devargs_dump();
+		rte_eal_devargs_dump(stdout);
 }
 
 cmdline_parse_token_string_t cmd_dump_dump =
@@ -5122,7 +5122,7 @@ static void cmd_dump_one_parsed(void *parsed_result, struct cmdline *cl,
 			cmdline_printf(cl, "Cannot find ring\n");
 			return;
 		}
-		rte_ring_dump(r);
+		rte_ring_dump(stdout, r);
 	} else if (!strcmp(res->dump, "dump_mempool")) {
 		struct rte_mempool *mp;
 		mp = rte_mempool_lookup(res->name);
@@ -5130,7 +5130,7 @@ static void cmd_dump_one_parsed(void *parsed_result, struct cmdline *cl,
 			cmdline_printf(cl, "Cannot find mempool\n");
 			return;
 		}
-		rte_mempool_dump(mp);
+		rte_mempool_dump(stdout, mp);
 	}
 }
 

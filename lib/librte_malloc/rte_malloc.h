@@ -40,6 +40,7 @@
  * from hugepages.
  */
 
+#include <stdio.h>
 #include <stddef.h>
 #include <rte_memory.h>
 
@@ -296,12 +297,14 @@ rte_malloc_get_socket_stats(int socket,
  * Dump for the specified type to the console. If the type argument is
  * NULL, all memory types will be dumped.
  *
+ * @param f
+ *   A pointer to a file for output
  * @param type
  *   A string identifying the type of objects to dump, or NULL
  *   to dump all objects.
  */
 void
-rte_malloc_dump_stats(const char *type);
+rte_malloc_dump_stats(FILE *f, const char *type);
 
 /**
  * Set the maximum amount of allocated memory for this type.

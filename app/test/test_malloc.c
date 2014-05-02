@@ -162,7 +162,7 @@ test_align_overlap_per_lcore(__attribute__((unused)) void *arg)
 		rte_free(p2);
 		rte_free(p3);
 	}
-	rte_malloc_dump_stats("dummy");
+	rte_malloc_dump_stats(stdout, "dummy");
 
 	return ret;
 }
@@ -258,7 +258,7 @@ test_reordered_free_per_lcore(__attribute__((unused)) void *arg)
 			break;
 		}
 	}
-	rte_malloc_dump_stats("dummy");
+	rte_malloc_dump_stats(stdout, "dummy");
 
 	return ret;
 }
@@ -365,7 +365,7 @@ test_multi_alloc_statistics(void)
 	if (!p1)
 		return -1;
 	rte_free(p1);
-	rte_malloc_dump_stats("stats");
+	rte_malloc_dump_stats(stdout, "stats");
 
 	rte_malloc_get_socket_stats(socket,&post_stats);
 	/* Check statistics reported are correct */
@@ -466,7 +466,7 @@ test_rte_malloc_type_limits(void)
 	 */
 	const char *typename = "limit_test";
 	rte_malloc_set_limit(typename, 64 * 1024);
-	rte_malloc_dump_stats(typename);
+	rte_malloc_dump_stats(stdout, typename);
 	return 0;
 }
 

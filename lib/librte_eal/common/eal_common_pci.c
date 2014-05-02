@@ -171,18 +171,18 @@ rte_eal_pci_probe(void)
 
 /* dump one device */
 static int
-pci_dump_one_device(struct rte_pci_device *dev)
+pci_dump_one_device(FILE *f, struct rte_pci_device *dev)
 {
 	int i;
 
-	printf(PCI_PRI_FMT, dev->addr.domain, dev->addr.bus,
+	fprintf(f, PCI_PRI_FMT, dev->addr.domain, dev->addr.bus,
 	       dev->addr.devid, dev->addr.function);
-	printf(" - vendor:%x device:%x\n", dev->id.vendor_id,
+	fprintf(f, " - vendor:%x device:%x\n", dev->id.vendor_id,
 	       dev->id.device_id);
 
 	for (i = 0; i != sizeof(dev->mem_resource) /
 		sizeof(dev->mem_resource[0]); i++) {
-		printf("   %16.16"PRIx64" %16.16"PRIx64"\n",
+		fprintf(f, "   %16.16"PRIx64" %16.16"PRIx64"\n",
 			dev->mem_resource[i].phys_addr, 
 			dev->mem_resource[i].len);
 	}
@@ -191,12 +191,12 @@ pci_dump_one_device(struct rte_pci_device *dev)
 
 /* dump devices on the bus */
 void
-rte_eal_pci_dump(void)
+rte_eal_pci_dump(FILE *f)
 {
 	struct rte_pci_device *dev = NULL;
 
 	TAILQ_FOREACH(dev, &pci_device_list, next) {
-		pci_dump_one_device(dev);
+		pci_dump_one_device(f, dev);
 	}
 }
 

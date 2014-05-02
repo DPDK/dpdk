@@ -161,8 +161,8 @@ per_lcore_mempool_test(__attribute__((unused)) void *arg)
 				ret = rte_mempool_get_bulk(mp, &obj_table[idx],
 							   n_get_bulk);
 				if (unlikely(ret < 0)) {
-					rte_mempool_dump(mp);
-					rte_ring_dump(mp->ring);
+					rte_mempool_dump(stdout, mp);
+					rte_ring_dump(stdout, mp->ring);
 					/* in this case, objects are lost... */
 					return -1;
 				}
@@ -325,7 +325,7 @@ test_mempool_perf(void)
 	if (do_one_mempool_test(rte_lcore_count()) < 0)
 		return -1;
 
-	rte_mempool_list_dump();
+	rte_mempool_list_dump(stdout);
 
 	return 0;
 }

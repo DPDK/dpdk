@@ -582,7 +582,7 @@ done:
 }
 
 /* dump statistics about timers */
-void rte_timer_dump_stats(void)
+void rte_timer_dump_stats(FILE *f)
 {
 #ifdef RTE_LIBRTE_TIMER_DEBUG
 	struct rte_timer_debug_stats sum;
@@ -595,12 +595,12 @@ void rte_timer_dump_stats(void)
 		sum.manage += priv_timer[lcore_id].stats.manage;
 		sum.pending += priv_timer[lcore_id].stats.pending;
 	}
-	printf("Timer statistics:\n");
-	printf("  reset = %"PRIu64"\n", sum.reset);
-	printf("  stop = %"PRIu64"\n", sum.stop);
-	printf("  manage = %"PRIu64"\n", sum.manage);
-	printf("  pending = %"PRIu64"\n", sum.pending);
+	fprintf(f, "Timer statistics:\n");
+	fprintf(f, "  reset = %"PRIu64"\n", sum.reset);
+	fprintf(f, "  stop = %"PRIu64"\n", sum.stop);
+	fprintf(f, "  manage = %"PRIu64"\n", sum.manage);
+	fprintf(f, "  pending = %"PRIu64"\n", sum.pending);
 #else
-	printf("No timer statistics, RTE_LIBRTE_TIMER_DEBUG is disabled\n");
+	fprintf(f, "No timer statistics, RTE_LIBRTE_TIMER_DEBUG is disabled\n");
 #endif
 }

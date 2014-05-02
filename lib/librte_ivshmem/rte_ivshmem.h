@@ -150,10 +150,12 @@ int rte_ivshmem_metadata_cmdline_generate(char *buffer, unsigned size,
 /**
  * Dump all metadata entries from a given metadata file to the console.
  *
+ * @param f
+ *   A pointer to a file for output
  * @name
  *  Name of the metadata file to be dumped to console.
  */
-void rte_ivshmem_metadata_dump(const char *name);
+void rte_ivshmem_metadata_dump(FILE *f, const char *name);
 
 
 #ifdef __cplusplus

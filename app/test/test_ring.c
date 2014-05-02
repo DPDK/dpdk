@@ -112,7 +112,7 @@ static struct rte_ring *r;
 	if (!(exp)) {							\
 		printf("error at %s:%d\tcondition " #exp " failed\n",	\
 		    __func__, __LINE__);				\
-		rte_ring_dump(r);					\
+		rte_ring_dump(stdout, r);				\
 		return (-1);						\
 	}
 
@@ -273,7 +273,7 @@ test_ring_basic_full_empty(void * const src[], void *dst[])
 
 		/* check data */
 		TEST_RING_VERIFY(0 == memcmp(src, dst, rsz));
-		rte_ring_dump(r);
+		rte_ring_dump(stdout, r);
 	}
 	return (0);
 }
@@ -341,8 +341,8 @@ test_ring_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		rte_hexdump("src", src, cur_src - src);
-		rte_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump(stdout, "src", src, cur_src - src);
+		rte_hexdump(stdout, "dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -387,8 +387,8 @@ test_ring_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		rte_hexdump("src", src, cur_src - src);
-		rte_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump(stdout, "src", src, cur_src - src);
+		rte_hexdump(stdout, "dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -409,8 +409,8 @@ test_ring_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		rte_hexdump("src", src, cur_src - src);
-		rte_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump(stdout, "src", src, cur_src - src);
+		rte_hexdump(stdout, "dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -455,8 +455,8 @@ test_ring_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		rte_hexdump("src", src, cur_src - src);
-		rte_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump(stdout, "src", src, cur_src - src);
+		rte_hexdump(stdout, "dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -550,8 +550,8 @@ test_ring_burst_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		rte_hexdump("src", src, cur_src - src);
-		rte_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump(stdout, "src", src, cur_src - src);
+		rte_hexdump(stdout, "dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -616,8 +616,8 @@ test_ring_burst_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		rte_hexdump("src", src, cur_src - src);
-		rte_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump(stdout, "src", src, cur_src - src);
+		rte_hexdump(stdout, "dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -665,8 +665,8 @@ test_ring_burst_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		rte_hexdump("src", src, cur_src - src);
-		rte_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump(stdout, "src", src, cur_src - src);
+		rte_hexdump(stdout, "dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -688,8 +688,8 @@ test_ring_burst_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		rte_hexdump("src", src, cur_src - src);
-		rte_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump(stdout, "src", src, cur_src - src);
+		rte_hexdump(stdout, "dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -738,8 +738,8 @@ test_ring_burst_basic(void)
 
 	/* check data */
 	if (memcmp(src, dst, cur_dst - dst)) {
-		rte_hexdump("src", src, cur_src - src);
-		rte_hexdump("dst", dst, cur_dst - dst);
+		rte_hexdump(stdout, "src", src, cur_src - src);
+		rte_hexdump(stdout, "dst", dst, cur_dst - dst);
 		printf("data after dequeue is not the same\n");
 		goto fail;
 	}
@@ -1388,7 +1388,7 @@ test_ring(void)
 		return -1;
 
 	/* dump the ring status */
-	rte_ring_list_dump();
+	rte_ring_list_dump(stdout);
 
 	return 0;
 }

@@ -91,6 +91,7 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
 #include <stdint.h>
 #include <sys/queue.h>
 #include <errno.h>
@@ -317,10 +318,12 @@ int rte_ring_set_water_mark(struct rte_ring *r, unsigned count);
 /**
  * Dump the status of the ring to the console.
  *
+ * @param f
+ *   A pointer to a file for output
  * @param r
  *   A pointer to the ring structure.
  */
-void rte_ring_dump(const struct rte_ring *r);
+void rte_ring_dump(FILE *f, const struct rte_ring *r);
 
 /* the actual enqueue of pointers on the ring. 
  * Placed here since identical code needed in both
@@ -1053,8 +1056,11 @@ rte_ring_free_count(const struct rte_ring *r)
 
 /**
  * Dump the status of all rings on the console
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_ring_list_dump(void);
+void rte_ring_list_dump(FILE *f);
 
 /**
  * Search a ring from its name

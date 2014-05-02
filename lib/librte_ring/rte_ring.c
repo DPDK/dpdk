@@ -216,26 +216,26 @@ rte_ring_set_water_mark(struct rte_ring *r, unsigned count)
 
 /* dump the status of the ring on the console */
 void
-rte_ring_dump(const struct rte_ring *r)
+rte_ring_dump(FILE *f, const struct rte_ring *r)
 {
 #ifdef RTE_LIBRTE_RING_DEBUG
 	struct rte_ring_debug_stats sum;
 	unsigned lcore_id;
 #endif
 
-	printf("ring <%s>@%p\n", r->name, r);
-	printf("  flags=%x\n", r->flags);
-	printf("  size=%"PRIu32"\n", r->prod.size);
-	printf("  ct=%"PRIu32"\n", r->cons.tail);
-	printf("  ch=%"PRIu32"\n", r->cons.head);
-	printf("  pt=%"PRIu32"\n", r->prod.tail);
-	printf("  ph=%"PRIu32"\n", r->prod.head);
-	printf("  used=%u\n", rte_ring_count(r));
-	printf("  avail=%u\n", rte_ring_free_count(r));
+	fprintf(f, "ring <%s>@%p\n", r->name, r);
+	fprintf(f, "  flags=%x\n", r->flags);
+	fprintf(f, "  size=%"PRIu32"\n", r->prod.size);
+	fprintf(f, "  ct=%"PRIu32"\n", r->cons.tail);
+	fprintf(f, "  ch=%"PRIu32"\n", r->cons.head);
+	fprintf(f, "  pt=%"PRIu32"\n", r->prod.tail);
+	fprintf(f, "  ph=%"PRIu32"\n", r->prod.head);
+	fprintf(f, "  used=%u\n", rte_ring_count(r));
+	fprintf(f, "  avail=%u\n", rte_ring_free_count(r));
 	if (r->prod.watermark == r->prod.size)
-		printf("  watermark=0\n");
+		fprintf(f, "  watermark=0\n");
 	else
-		printf("  watermark=%"PRIu32"\n", r->prod.watermark);
+		fprintf(f, "  watermark=%"PRIu32"\n", r->prod.watermark);
 
 	/* sum and dump statistics */
 #ifdef RTE_LIBRTE_RING_DEBUG
@@ -252,25 +252,25 @@ rte_ring_dump(const struct rte_ring *r)
 		sum.deq_fail_bulk += r->stats[lcore_id].deq_fail_bulk;
 		sum.deq_fail_objs += r->stats[lcore_id].deq_fail_objs;
 	}
-	printf("  size=%"PRIu32"\n", r->prod.size);
-	printf("  enq_success_bulk=%"PRIu64"\n", sum.enq_success_bulk);
-	printf("  enq_success_objs=%"PRIu64"\n", sum.enq_success_objs);
-	printf("  enq_quota_bulk=%"PRIu64"\n", sum.enq_quota_bulk);
-	printf("  enq_quota_objs=%"PRIu64"\n", sum.enq_quota_objs);
-	printf("  enq_fail_bulk=%"PRIu64"\n", sum.enq_fail_bulk);
-	printf("  enq_fail_objs=%"PRIu64"\n", sum.enq_fail_objs);
-	printf("  deq_success_bulk=%"PRIu64"\n", sum.deq_success_bulk);
-	printf("  deq_success_objs=%"PRIu64"\n", sum.deq_success_objs);
-	printf("  deq_fail_bulk=%"PRIu64"\n", sum.deq_fail_bulk);
-	printf("  deq_fail_objs=%"PRIu64"\n", sum.deq_fail_objs);
+	fprintf(f, "  size=%"PRIu32"\n", r->prod.size);
+	fprintf(f, "  enq_success_bulk=%"PRIu64"\n", sum.enq_success_bulk);
+	fprintf(f, "  enq_success_objs=%"PRIu64"\n", sum.enq_success_objs);
+	fprintf(f, "  enq_quota_bulk=%"PRIu64"\n", sum.enq_quota_bulk);
+	fprintf(f, "  enq_quota_objs=%"PRIu64"\n", sum.enq_quota_objs);
+	fprintf(f, "  enq_fail_bulk=%"PRIu64"\n", sum.enq_fail_bulk);
+	fprintf(f, "  enq_fail_objs=%"PRIu64"\n", sum.enq_fail_objs);
+	fprintf(f, "  deq_success_bulk=%"PRIu64"\n", sum.deq_success_bulk);
+	fprintf(f, "  deq_success_objs=%"PRIu64"\n", sum.deq_success_objs);
+	fprintf(f, "  deq_fail_bulk=%"PRIu64"\n", sum.deq_fail_bulk);
+	fprintf(f, "  deq_fail_objs=%"PRIu64"\n", sum.deq_fail_objs);
 #else
-	printf("  no statistics available\n");
+	fprintf(f, "  no statistics available\n");
 #endif
 }
 
 /* dump the status of all rings on the console */
 void
-rte_ring_list_dump(void)
+rte_ring_list_dump(FILE *f)
 {
 	const struct rte_ring *mp;
 	struct rte_ring_list *ring_list;
@@ -285,7 +285,7 @@ rte_ring_list_dump(void)
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 
 	TAILQ_FOREACH(mp, ring_list, next) {
-		rte_ring_dump(mp);
+		rte_ring_dump(f, mp);
 	}
 
 	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);

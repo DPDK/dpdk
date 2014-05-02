@@ -83,8 +83,8 @@ test_misc(void)
 	if (rte_bsf32(129))
 		FAIL("rte_bsf32");
 
-	rte_memdump("test", memdump, sizeof(memdump));
-	rte_hexdump("test", memdump, sizeof(memdump));
+	rte_memdump(stdout, "test", memdump, sizeof(memdump));
+	rte_hexdump(stdout, "test", memdump, sizeof(memdump));
 
 	rte_pause();
 

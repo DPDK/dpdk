@@ -271,8 +271,11 @@ int rte_eal_pci_probe(void);
 
 /**
  * Dump the content of the PCI bus.
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_eal_pci_dump(void);
+void rte_eal_pci_dump(FILE *f);
 
 /**
  * Register a PCI driver.

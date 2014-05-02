@@ -202,9 +202,9 @@ int rte_log_cur_msg_logtype(void)
 	return log_cur_msg[lcore_id].logtype;
 }
 
-/* Dump log history on console */
+/* Dump log history to file */
 void
-rte_log_dump_history(void)
+rte_log_dump_history(FILE *out)
 {
 	struct log_history_list tmp_log_history;
 	struct log_history *hist_buf;
@@ -230,7 +230,7 @@ rte_log_dump_history(void)
 		STAILQ_REMOVE_HEAD(&tmp_log_history, next);
 
 		/* write on stdout */
-		if (fwrite(hist_buf->buf, hist_buf->size, 1, stdout) == 0) {
+		if (fwrite(hist_buf->buf, hist_buf->size, 1, out) == 0) {
 			rte_mempool_mp_put(log_history_mp, hist_buf);
 			break;
 		}
@@ -238,7 +238,7 @@ rte_log_dump_history(void)
 		/* put back message structure in pool */
 		rte_mempool_mp_put(log_history_mp, hist_buf);
 	}
-	fflush(stdout);
+	fflush(out);
 
 	rte_spinlock_unlock(&log_dump_lock);
 }

@@ -63,6 +63,7 @@
  * design of this library.
  */
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -321,8 +322,11 @@ void rte_timer_manage(void);
 
 /**
  * Dump statistics about timers.
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_timer_dump_stats(void);
+void rte_timer_dump_stats(FILE *f);
 
 #ifdef __cplusplus
 }

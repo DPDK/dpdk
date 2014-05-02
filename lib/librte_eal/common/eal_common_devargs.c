@@ -122,31 +122,31 @@ rte_eal_devargs_type_count(enum rte_devtype devtype)
 
 /* dump the user devices on the console */
 void
-rte_eal_devargs_dump(void)
+rte_eal_devargs_dump(FILE *f)
 {
 	struct rte_devargs *devargs;
 
-	printf("User device white list:\n");
+	fprintf(f, "User device white list:\n");
 	TAILQ_FOREACH(devargs, &devargs_list, next) {
 		if (devargs->type == RTE_DEVTYPE_WHITELISTED_PCI)
-			printf("  PCI whitelist " PCI_PRI_FMT " %s\n",
+			fprintf(f, "  PCI whitelist " PCI_PRI_FMT " %s\n",
 			       devargs->pci.addr.domain,
 			       devargs->pci.addr.bus,
 			       devargs->pci.addr.devid,
 			       devargs->pci.addr.function,
 			       devargs->args);
 		else if (devargs->type == RTE_DEVTYPE_BLACKLISTED_PCI)
-			printf("  PCI blacklist " PCI_PRI_FMT " %s\n",
+			fprintf(f, "  PCI blacklist " PCI_PRI_FMT " %s\n",
 			       devargs->pci.addr.domain,
 			       devargs->pci.addr.bus,
 			       devargs->pci.addr.devid,
 			       devargs->pci.addr.function,
 			       devargs->args);
 		else if (devargs->type == RTE_DEVTYPE_VIRTUAL)
-			printf("  VIRTUAL %s %s\n",
+			fprintf(f, "  VIRTUAL %s %s\n",
 			       devargs->virtual.drv_name,
 			       devargs->args);
 		else
-			printf("  UNKNOWN %s\n", devargs->args);
+			fprintf(f, "  UNKNOWN %s\n", devargs->args);
 	}
 }

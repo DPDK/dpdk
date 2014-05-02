@@ -158,7 +158,7 @@ test_pktmbuf_with_non_ascii_data(void)
 	memset(data, 0xff, rte_pktmbuf_pkt_len(m));
 	if (!rte_pktmbuf_is_contiguous(m))
 		GOTO_FAIL("Buffer should be continuous");
-	rte_pktmbuf_dump(m, MBUF_TEST_DATA_LEN);
+	rte_pktmbuf_dump(stdout, m, MBUF_TEST_DATA_LEN);
 
 	rte_pktmbuf_free(m);
 
@@ -191,7 +191,7 @@ test_one_pktmbuf(void)
 	if (rte_pktmbuf_pkt_len(m) != 0)
 		GOTO_FAIL("Bad length");
 
-	rte_pktmbuf_dump(m, 0);
+	rte_pktmbuf_dump(stdout, m, 0);
 
 	/* append data */
 
@@ -205,8 +205,8 @@ test_one_pktmbuf(void)
 	memset(data, 0x66, rte_pktmbuf_pkt_len(m));
 	if (!rte_pktmbuf_is_contiguous(m))
 		GOTO_FAIL("Buffer should be continuous");
-	rte_pktmbuf_dump(m, MBUF_TEST_DATA_LEN);
-	rte_pktmbuf_dump(m, 2*MBUF_TEST_DATA_LEN);
+	rte_pktmbuf_dump(stdout, m, MBUF_TEST_DATA_LEN);
+	rte_pktmbuf_dump(stdout, m, 2*MBUF_TEST_DATA_LEN);
 
 	/* this append should fail */
 
@@ -274,7 +274,7 @@ test_one_pktmbuf(void)
 
 	rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
 	rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 0);
-	rte_pktmbuf_dump(m, 0);
+	rte_pktmbuf_dump(stdout, m, 0);
 
 	/* this prepend should fail */
 
@@ -713,8 +713,8 @@ test_refcnt_mbuf(void)
 		rte_panic("refernced mbufs: %u, freed mbufs: %u\n",
 		          tref, refcnt_lcore[master]);
 
-	rte_mempool_dump(refcnt_pool);
-	rte_ring_dump(refcnt_mbuf_ring);
+	rte_mempool_dump(stdout, refcnt_pool);
+	rte_ring_dump(stdout, refcnt_mbuf_ring);
 
 #endif
 	return (0);

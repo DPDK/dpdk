@@ -82,7 +82,7 @@ rte_eal_get_physmem_size(void)
 
 /* Dump the physical memory layout on console */
 void
-rte_dump_physmem_layout(void)
+rte_dump_physmem_layout(FILE *f)
 {
 	const struct rte_mem_config *mcfg;
 	unsigned i = 0;
@@ -94,7 +94,7 @@ rte_dump_physmem_layout(void)
 		if (mcfg->memseg[i].addr == NULL)
 			break;
 
-		printf("Segment %u: phys:0x%"PRIx64", len:%zu, "
+		fprintf(f, "Segment %u: phys:0x%"PRIx64", len:%zu, "
 		       "virt:%p, socket_id:%"PRId32", "
 		       "hugepage_sz:%zu, nchannel:%"PRIx32", "
 		       "nrank:%"PRIx32"\n", i,

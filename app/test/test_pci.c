@@ -153,7 +153,7 @@ test_pci(void)
 	struct rte_devargs_list save_devargs_list;
 
 	printf("Dump all devices\n");
-	rte_eal_pci_dump();
+	rte_eal_pci_dump(stdout);
 	if (driver_registered == 0) {
 		rte_eal_pci_register(&my_driver);
 		rte_eal_pci_register(&my_driver2);

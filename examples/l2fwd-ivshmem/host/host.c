@@ -243,7 +243,7 @@ generate_ivshmem_cmdline(const char *config_name)
 	if (print_to_file(cmdline, config_name) < 0)
 		return -1;
 
-	rte_ivshmem_metadata_dump(config_name);
+	rte_ivshmem_metadata_dump(stdout, config_name);
 	return 0;
 }
 

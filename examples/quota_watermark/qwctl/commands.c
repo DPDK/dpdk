@@ -193,7 +193,7 @@ cmd_show_handler(__attribute__((unused)) void *parsed_result,
         if (ring == NULL)
             cmdline_printf(cl, "Cannot find ring \"%s\"\n", tokens->variable);
         else
-            rte_ring_dump(ring);
+            rte_ring_dump(stdout, ring);
     }
 }
 

@@ -385,7 +385,7 @@ rte_memzone_lookup(const char *name)
 
 /* Dump all reserved memory zones on console */
 void
-rte_memzone_dump(void)
+rte_memzone_dump(FILE *f)
 {
 	struct rte_mem_config *mcfg;
 	unsigned i = 0;
@@ -398,7 +398,7 @@ rte_memzone_dump(void)
 	for (i=0; i<RTE_MAX_MEMZONE; i++) {
 		if (mcfg->memzone[i].addr == NULL)
 			break;
-		printf("Zone %u: name:<%s>, phys:0x%"PRIx64", len:0x%zx"
+		fprintf(f, "Zone %u: name:<%s>, phys:0x%"PRIx64", len:0x%zx"
 		       ", virt:%p, socket_id:%"PRId32", flags:%"PRIx32"\n", i,
 		       mcfg->memzone[i].name,
 		       mcfg->memzone[i].phys_addr,

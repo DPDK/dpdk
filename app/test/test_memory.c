@@ -63,7 +63,7 @@ test_memory(void)
 	 * that at least one line is dumped
 	 */
 	printf("Dump memory layout\n");
-	rte_dump_physmem_layout();
+	rte_dump_physmem_layout(stdout);
 
 	/* check that memory size is != 0 */
 	s = rte_eal_get_physmem_size();

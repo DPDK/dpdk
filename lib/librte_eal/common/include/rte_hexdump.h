@@ -46,6 +46,8 @@ extern "C" {
 /**
 * Dump out memory in a special hex dump format.
 *
+* @param f
+*   		A pointer to a file for output
 * @param title
 * 		If not NULL this string is printed as a header to the output.
 * @param buf
@@ -57,11 +59,13 @@ extern "C" {
 */
 
 extern void
-rte_hexdump(const char * title, const void * buf, unsigned int len);
+rte_hexdump(FILE *f, const char * title, const void * buf, unsigned int len);
 
 /**
 * Dump out memory in a hex format with colons between bytes.
 *
+* @param f
+*   		A pointer to a file for output
 * @param title
 * 		If not NULL this string is printed as a header to the output.
 * @param buf
@@ -73,7 +77,7 @@ rte_hexdump(const char * title, const void * buf, unsigned int len);
 */
 
 void
-rte_memdump(const char * title, const void * buf, unsigned int len);
+rte_memdump(FILE *f, const char * title, const void * buf, unsigned int len);
 
 
 #ifdef __cplusplus

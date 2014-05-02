@@ -821,9 +821,8 @@ rte_ivshmem_metadata_cmdline_generate(char *buffer, unsigned size, const char *n
 	return 0;
 }
 
-
 void
-rte_ivshmem_metadata_dump(const char *name)
+rte_ivshmem_metadata_dump(FILE *f, const char *name)
 {
 	unsigned i = 0;
 	struct ivshmem_config * config;
@@ -850,7 +849,7 @@ rte_ivshmem_metadata_dump(const char *name)
 
 	while (entry->mz.addr != NULL && i < RTE_DIM(config->metadata->entry)) {
 
-		printf("Entry %u: name:<%-20s>, phys:0x%-15lx, len:0x%-15lx, "
+		fprintf(f, "Entry %u: name:<%-20s>, phys:0x%-15lx, len:0x%-15lx, "
 			"virt:%-15p, off:0x%-15lx\n",
 			i,
 			entry->mz.name,
@@ -861,7 +860,7 @@ rte_ivshmem_metadata_dump(const char *name)
 		i++;
 
 #ifdef RTE_LIBRTE_IVSHMEM_DEBUG
-		printf("\tHugepage files:\n");
+		fprintf(f, "\tHugepage files:\n");
 
 		hugepage_sz = entry->mz.hugepage_sz;
 		addr = RTE_ALIGN_FLOOR(entry->mz.addr_64, hugepage_sz);
@@ -873,7 +872,7 @@ rte_ivshmem_metadata_dump(const char *name)
 
 			get_hugefile_by_virt_addr(addr, &e);
 
-			printf("\t0x%"PRIx64 "-0x%" PRIx64 " offset: 0x%" PRIx64 " %s\n",
+			fprintf(f, "\t0x%"PRIx64 "-0x%" PRIx64 " offset: 0x%" PRIx64 " %s\n",
 					addr, addr + hugepage_sz, e.offset, e.filepath);
 		}
 #endif

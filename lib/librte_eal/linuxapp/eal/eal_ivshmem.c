@@ -825,8 +825,8 @@ rte_eal_ivshmem_obj_init(void)
 	}
 
 #ifdef RTE_LIBRTE_IVSHMEM_DEBUG
-	rte_memzone_dump();
-	rte_ring_list_dump();
+	rte_memzone_dump(stdout);
+	rte_ring_list_dump(stdout);
 #endif
 
 	return 0;

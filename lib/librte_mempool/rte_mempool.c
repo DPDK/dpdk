@@ -625,25 +625,25 @@ rte_mempool_count(const struct rte_mempool *mp)
 
 /* dump the cache status */
 static unsigned
-rte_mempool_dump_cache(const struct rte_mempool *mp)
+rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)
 {
 #if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
 	unsigned lcore_id;
 	unsigned count = 0;
 	unsigned cache_count;
 
-	printf("  cache infos:\n");
-	printf("    cache_size=%"PRIu32"\n", mp->cache_size);
+	fprintf(f, "  cache infos:\n");
+	fprintf(f, "    cache_size=%"PRIu32"\n", mp->cache_size);
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		cache_count = mp->local_cache[lcore_id].len;
-		printf("    cache_count[%u]=%u\n", lcore_id, cache_count);
+		fprintf(f, "    cache_count[%u]=%u\n", lcore_id, cache_count);
 		count += cache_count;
 	}
-	printf("    total_cache_count=%u\n", count);
+	fprintf(f, "    total_cache_count=%u\n", count);
 	return count;
 #else
 	RTE_SET_USED(mp);
-	printf("  cache disabled\n");
+	fprintf(f, "  cache disabled\n");
 	return 0;
 #endif
 }
@@ -743,7 +743,7 @@ rte_mempool_audit(const struct rte_mempool *mp)
 
 /* dump the status of the mempool on the console */
 void
-rte_mempool_dump(const struct rte_mempool *mp)
+rte_mempool_dump(FILE *f, const struct rte_mempool *mp)
 {
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	struct rte_mempool_debug_stats sum;
@@ -752,35 +752,35 @@ rte_mempool_dump(const struct rte_mempool *mp)
 	unsigned common_count;
 	unsigned cache_count;
 
-	printf("mempool <%s>@%p\n", mp->name, mp);
-	printf("  flags=%x\n", mp->flags);
-	printf("  ring=<%s>@%p\n", mp->ring->name, mp->ring);
-	printf("  phys_addr=0x%" PRIx64 "\n", mp->phys_addr);
-	printf("  size=%"PRIu32"\n", mp->size);
-	printf("  header_size=%"PRIu32"\n", mp->header_size);
-	printf("  elt_size=%"PRIu32"\n", mp->elt_size);
-	printf("  trailer_size=%"PRIu32"\n", mp->trailer_size);
-	printf("  total_obj_size=%"PRIu32"\n",
+	fprintf(f, "mempool <%s>@%p\n", mp->name, mp);
+	fprintf(f, "  flags=%x\n", mp->flags);
+	fprintf(f, "  ring=<%s>@%p\n", mp->ring->name, mp->ring);
+	fprintf(f, "  phys_addr=0x%" PRIx64 "\n", mp->phys_addr);
+	fprintf(f, "  size=%"PRIu32"\n", mp->size);
+	fprintf(f, "  header_size=%"PRIu32"\n", mp->header_size);
+	fprintf(f, "  elt_size=%"PRIu32"\n", mp->elt_size);
+	fprintf(f, "  trailer_size=%"PRIu32"\n", mp->trailer_size);
+	fprintf(f, "  total_obj_size=%"PRIu32"\n",
 	       mp->header_size + mp->elt_size + mp->trailer_size);
 
-	printf("  private_data_size=%"PRIu32"\n", mp->private_data_size);
-	printf("  pg_num=%"PRIu32"\n", mp->pg_num);
-	printf("  pg_shift=%"PRIu32"\n", mp->pg_shift);
-	printf("  pg_mask=%#tx\n", mp->pg_mask);
-	printf("  elt_va_start=%#tx\n", mp->elt_va_start);
-	printf("  elt_va_end=%#tx\n", mp->elt_va_end);
-	printf("  elt_pa[0]=0x%" PRIx64 "\n", mp->elt_pa[0]);
+	fprintf(f, "  private_data_size=%"PRIu32"\n", mp->private_data_size);
+	fprintf(f, "  pg_num=%"PRIu32"\n", mp->pg_num);
+	fprintf(f, "  pg_shift=%"PRIu32"\n", mp->pg_shift);
+	fprintf(f, "  pg_mask=%#tx\n", mp->pg_mask);
+	fprintf(f, "  elt_va_start=%#tx\n", mp->elt_va_start);
+	fprintf(f, "  elt_va_end=%#tx\n", mp->elt_va_end);
+	fprintf(f, "  elt_pa[0]=0x%" PRIx64 "\n", mp->elt_pa[0]);
 
 	if (mp->size != 0)
-		printf("  avg bytes/object=%#Lf\n",
+		fprintf(f, "  avg bytes/object=%#Lf\n",
 			(long double)(mp->elt_va_end - mp->elt_va_start) /
 			mp->size);
 
-	cache_count = rte_mempool_dump_cache(mp);
+	cache_count = rte_mempool_dump_cache(f, mp);
 	common_count = rte_ring_count(mp->ring);
 	if ((cache_count + common_count) > mp->size)
 		common_count = mp->size - cache_count;
-	printf("  common_pool_count=%u\n", common_count);
+	fprintf(f, "  common_pool_count=%u\n", common_count);
 
 	/* sum and dump statistics */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
@@ -793,15 +793,15 @@ rte_mempool_dump(const struct rte_mempool *mp)
 		sum.get_fail_bulk += mp->stats[lcore_id].get_fail_bulk;
 		sum.get_fail_objs += mp->stats[lcore_id].get_fail_objs;
 	}
-	printf("  stats:\n");
-	printf("    put_bulk=%"PRIu64"\n", sum.put_bulk);
-	printf("    put_objs=%"PRIu64"\n", sum.put_objs);
-	printf("    get_success_bulk=%"PRIu64"\n", sum.get_success_bulk);
-	printf("    get_success_objs=%"PRIu64"\n", sum.get_success_objs);
-	printf("    get_fail_bulk=%"PRIu64"\n", sum.get_fail_bulk);
-	printf("    get_fail_objs=%"PRIu64"\n", sum.get_fail_objs);
+	fprintf(f, "  stats:\n");
+	fprintf(f, "    put_bulk=%"PRIu64"\n", sum.put_bulk);
+	fprintf(f, "    put_objs=%"PRIu64"\n", sum.put_objs);
+	fprintf(f, "    get_success_bulk=%"PRIu64"\n", sum.get_success_bulk);
+	fprintf(f, "    get_success_objs=%"PRIu64"\n", sum.get_success_objs);
+	fprintf(f, "    get_fail_bulk=%"PRIu64"\n", sum.get_fail_bulk);
+	fprintf(f, "    get_fail_objs=%"PRIu64"\n", sum.get_fail_objs);
 #else
-	printf("  no statistics available\n");
+	fprintf(f, "  no statistics available\n");
 #endif
 
 	rte_mempool_audit(mp);
@@ -809,7 +809,7 @@ rte_mempool_dump(const struct rte_mempool *mp)
 
 /* dump the status of all mempools on the console */
 void
-rte_mempool_list_dump(void)
+rte_mempool_list_dump(FILE *f)
 {
 	const struct rte_mempool *mp = NULL;
 	struct rte_mempool_list *mempool_list;
@@ -823,7 +823,7 @@ rte_mempool_list_dump(void)
 	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
 
 	TAILQ_FOREACH(mp, mempool_list, next) {
-		rte_mempool_dump(mp);
+		rte_mempool_dump(f, mp);
 	}
 
 	rte_rwlock_read_unlock(RTE_EAL_MEMPOOL_RWLOCK);

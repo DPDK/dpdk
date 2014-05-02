@@ -86,7 +86,7 @@ test_logs(void)
 	RTE_LOG(DEBUG, TESTAPP1, "this is a debug level message\n");
 	RTE_LOG(DEBUG, TESTAPP2, "debug level message (not displayed)\n");
 
-	rte_log_dump_history();
+	rte_log_dump_history(stdout);
 
 	return 0;
 }

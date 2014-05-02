@@ -48,6 +48,7 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
 #include <sys/queue.h>
 #include <rte_pci.h>
 
@@ -135,8 +136,11 @@ rte_eal_devargs_type_count(enum rte_devtype devtype);
 
 /**
  * This function dumps the list of user device and their arguments.
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_eal_devargs_dump(void);
+void rte_eal_devargs_dump(FILE *f);
 
 #ifdef __cplusplus
 }

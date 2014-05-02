@@ -108,7 +108,7 @@ rte_eal_tailq_reserve_by_idx(const unsigned tailq_idx)
 }
 
 void
-rte_dump_tailq(void)
+rte_dump_tailq(FILE *f)
 {
 	struct rte_mem_config *mcfg;
 	unsigned i = 0;
@@ -120,7 +120,7 @@ rte_dump_tailq(void)
 		const struct rte_tailq_head *tailq = &mcfg->tailq_head[i];
 		const struct rte_dummy_head *head = &tailq->tailq_head;
 
-		printf("Tailq %u: qname:<%s>, tqh_first:%p, tqh_last:%p\n", i,
+		fprintf(f, "Tailq %u: qname:<%s>, tqh_first:%p, tqh_last:%p\n", i,
 		       (rte_tailq_names[i] != NULL ? rte_tailq_names[i]:"nil"),
 		       head->tqh_first, head->tqh_last);
 	}

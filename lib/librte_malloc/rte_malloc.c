@@ -217,7 +217,7 @@ rte_malloc_get_socket_stats(int socket,
  * Print stats on memory type. If type is NULL, info on all types is printed
  */
 void
-rte_malloc_dump_stats(__rte_unused const char *type)
+rte_malloc_dump_stats(FILE *f, __rte_unused const char *type)
 {
 	unsigned int socket;
 	struct rte_malloc_socket_stats sock_stats;
@@ -226,14 +226,14 @@ rte_malloc_dump_stats(__rte_unused const char *type)
 		if ((rte_malloc_get_socket_stats(socket, &sock_stats) < 0))
 			continue;
 
-		printf("Socket:%u\n", socket);
-		printf("\tHeap_size:%zu,\n", sock_stats.heap_totalsz_bytes);
-		printf("\tFree_size:%zu,\n", sock_stats.heap_freesz_bytes);
-		printf("\tAlloc_size:%zu,\n", sock_stats.heap_allocsz_bytes);
-		printf("\tGreatest_free_size:%zu,\n",
+		fprintf(f, "Socket:%u\n", socket);
+		fprintf(f, "\tHeap_size:%zu,\n", sock_stats.heap_totalsz_bytes);
+		fprintf(f, "\tFree_size:%zu,\n", sock_stats.heap_freesz_bytes);
+		fprintf(f, "\tAlloc_size:%zu,\n", sock_stats.heap_allocsz_bytes);
+		fprintf(f, "\tGreatest_free_size:%zu,\n",
 				sock_stats.greatest_free_size);
-		printf("\tAlloc_count:%u,\n",sock_stats.alloc_count);
-		printf("\tFree_count:%u,\n", sock_stats.free_count);
+		fprintf(f, "\tAlloc_count:%u,\n",sock_stats.alloc_count);
+		fprintf(f, "\tFree_count:%u,\n", sock_stats.free_count);
 	}
 	return;
 }

@@ -173,9 +173,12 @@ int rte_log_cur_msg_logtype(void);
 void rte_log_set_history(int enable);
 
 /**
- * Dump the log history to the console.
+ * Dump the log history to a file
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_log_dump_history(void);
+void rte_log_dump_history(FILE *f);
 
 /**
  * Add a log message to the history.

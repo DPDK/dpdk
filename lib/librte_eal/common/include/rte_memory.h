@@ -139,8 +139,11 @@ const struct rte_memseg *rte_eal_get_physmem_layout(void);
 
 /**
  * Dump the physical memory layout to the console.
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_dump_physmem_layout(void);
+void rte_dump_physmem_layout(FILE *f);
 
 /**
  * Get the total amount of available physical memory.

@@ -294,9 +294,9 @@ test_memzone_reserve_max(void)
 
 			/* check if the memzone is in our memseg and subtract length */
 			if ((config->mem_config->memzone[memzone_idx].addr >=
-					ms[memseg_idx].addr) &&
-					(config->mem_config->memzone[memzone_idx].addr <
-					(RTE_PTR_ADD(ms[memseg_idx].addr, ms[memseg_idx].len)))) {
+			     ms[memseg_idx].addr) &&
+			    (config->mem_config->memzone[memzone_idx].addr <
+			     (RTE_PTR_ADD(ms[memseg_idx].addr, ms[memseg_idx].len)))) {
 				/* since the zones can now be aligned and occasionally skip
 				 * some space, we should calculate the length based on
 				 * reported length and start addresses difference. Addresses
@@ -304,11 +304,11 @@ test_memzone_reserve_max(void)
 				 * them being in the right order.
 				 */
 				len -= RTE_PTR_DIFF(
-						config->mem_config->memzone[memzone_idx].addr,
-						last_addr);
+						    config->mem_config->memzone[memzone_idx].addr,
+						    last_addr);
 				len -= config->mem_config->memzone[memzone_idx].len;
 				last_addr = RTE_PTR_ADD(config->mem_config->memzone[memzone_idx].addr,
-						(size_t) config->mem_config->memzone[memzone_idx].len);
+							(size_t) config->mem_config->memzone[memzone_idx].len);
 			}
 		}
 
@@ -326,17 +326,17 @@ test_memzone_reserve_max(void)
 	mz = rte_memzone_reserve("max_zone", 0, SOCKET_ID_ANY, 0);
 	if (mz == NULL){
 		printf("Failed to reserve a big chunk of memory\n");
-		rte_dump_physmem_layout();
-		rte_memzone_dump();
+		rte_dump_physmem_layout(stdout);
+		rte_memzone_dump(stdout);
 		return -1;
 	}
 
 	if (mz->len != maxlen) {
 		printf("Memzone reserve with 0 size did not return bigest block\n");
 		printf("Expected size = %zu, actual size = %zu\n",
-				maxlen, mz->len);
-		rte_dump_physmem_layout();
-		rte_memzone_dump();
+		       maxlen, mz->len);
+		rte_dump_physmem_layout(stdout);
+		rte_memzone_dump(stdout);
 
 		return -1;
 	}
@@ -422,8 +422,8 @@ test_memzone_reserve_max_aligned(void)
 			SOCKET_ID_ANY, 0, align);
 	if (mz == NULL){
 		printf("Failed to reserve a big chunk of memory\n");
-		rte_dump_physmem_layout();
-		rte_memzone_dump();
+		rte_dump_physmem_layout(stdout);
+		rte_memzone_dump(stdout);
 		return -1;
 	}
 
@@ -432,8 +432,8 @@ test_memzone_reserve_max_aligned(void)
 				" bigest block\n", align);
 		printf("Expected size = %zu, actual size = %zu\n",
 				maxlen, mz->len);
-		rte_dump_physmem_layout();
-		rte_memzone_dump();
+		rte_dump_physmem_layout(stdout);
+		rte_memzone_dump(stdout);
 
 		return -1;
 	}
@@ -947,7 +947,7 @@ test_memzone(void)
 	if (memzone1 == NULL || memzone2 == NULL || memzone4 == NULL)
 		return -1;
 
-	rte_memzone_dump();
+	rte_memzone_dump(stdout);
 
 	/* check cache-line alignments */
 	printf("check alignments and lengths\n");

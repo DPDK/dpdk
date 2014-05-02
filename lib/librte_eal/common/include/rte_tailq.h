@@ -170,8 +170,11 @@ struct rte_tailq_head *rte_eal_tailq_reserve_by_idx(const unsigned idx);
 
 /**
  * Dump tail queues to the console.
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_dump_tailq(void);
+void rte_dump_tailq(FILE *f);
 
 /**
  * Lookup for a tail queue.

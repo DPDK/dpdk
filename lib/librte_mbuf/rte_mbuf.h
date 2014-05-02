@@ -1026,13 +1026,15 @@ static inline int rte_pktmbuf_is_contiguous(const struct rte_mbuf *m)
  * Dump all fields for the given packet mbuf and all its associated
  * segments (in the case of a chained buffer).
  *
+ * @param f
+ *   A pointer to a file for output
  * @param m
  *   The packet mbuf.
  * @param dump_len
  *   If dump_len != 0, also dump the "dump_len" first data bytes of
  *   the packet.
  */
-void rte_pktmbuf_dump(const struct rte_mbuf *m, unsigned dump_len);
+void rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len);
 
 #ifdef __cplusplus
 }
