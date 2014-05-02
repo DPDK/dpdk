@@ -67,6 +67,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += eal_common_memory.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += eal_common_tailqs.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += eal_common_errno.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += eal_common_cpuflags.c
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += eal_common_string_fns.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += eal_common_hexdump.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += eal_common_devargs.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += eal_common_vdev.c

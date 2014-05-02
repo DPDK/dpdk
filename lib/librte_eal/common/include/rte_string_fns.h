@@ -44,11 +44,6 @@
 extern "C" {
 #endif
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <errno.h>
-
 /**
  * Safer version of snprintf that writes up to buflen characters to
  * the output buffer and ensures that the resultant string is null-terminated,
@@ -72,33 +67,8 @@ extern "C" {
  *   buffer been sufficiently big.
  *
  */
-static inline int
-rte_snprintf(char *buffer, int buflen, const char *format, ...)
-{
-	int len;
-	va_list ap;
-
-	if (buffer == NULL && buflen != 0)
-		goto einval_error;
-	if (format == NULL) {
-		if (buflen > 0)
-			buffer[0] = '\0';
-		goto einval_error;
-	}
-
-	va_start(ap, format);
-	len = vsnprintf(buffer, buflen, format, ap);
-	va_end(ap);
-	if (len >= buflen && buflen > 0)
-		buffer[buflen - 1] = '\0';
-
-	return len;
-
-einval_error:
-	errno = EINVAL;
-	return -1;
-}
-
+int
+rte_snprintf(char *buffer, int buflen, const char *format, ...);
 
 /**
  * Takes string "string" parameter and splits it at character "delim"
@@ -126,38 +96,12 @@ einval_error:
  * @return
  *   The number of tokens in the tokens array.
  */
-static inline int
+int
 rte_strsplit(char *string, int stringlen,
-		char **tokens, int maxtokens, char delim)
-{
-	int i, tok = 0;
-	int tokstart = 1; /* first token is right at start of string */
-
-	if (string == NULL || tokens == NULL)
-		goto einval_error;
-
-	for (i = 0; i < stringlen; i++) {
-		if (string[i] == '\0' || tok >= maxtokens)
-			break;
-		if (tokstart) {
-			tokstart = 0;
-			tokens[tok++] = &string[i];
-		}
-		if (string[i] == delim) {
-			string[i] = '\0';
-			tokstart = 1;
-		}
-	}
-	return tok;
-
-einval_error:
-	errno = EINVAL;
-	return -1;
-}
+             char **tokens, int maxtokens, char delim);
 
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif /* RTE_STRING_FNS_H */

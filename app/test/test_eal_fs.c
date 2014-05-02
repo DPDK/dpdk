@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 /* eal_filesystem.h is not a public header file, so use relative path */
 #include "../../lib/librte_eal/linuxapp/eal/include/eal_filesystem.h"
