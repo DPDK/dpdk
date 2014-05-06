@@ -809,19 +809,30 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	return 0;
 }
 
-static void ixgbevf_get_queue_num(struct ixgbe_hw *hw)
-{
-	/* Traffic classes are not supported by now */
-	unsigned int tcs, tc;
 
-	/*
-	 * Must let PF know we are at mailbox API version 1.1.
-	 * Otherwise PF won't answer properly.
-	 * In case that PF fails to provide Rx/Tx queue number,
-	 * max_tx_queues and max_rx_queues remain to be 1.
-	 */
-	if (!ixgbevf_negotiate_api_version(hw, ixgbe_mbox_api_11))
-		ixgbevf_get_queues(hw, &tcs, &tc);
+/*
+ * Negotiate mailbox API version with the PF.
+ * After reset API version is always set to the basic one (ixgbe_mbox_api_10).
+ * Then we try to negotiate starting with the most recent one.
+ * If all negotiation attempts fail, then we will proceed with
+ * the default one (ixgbe_mbox_api_10).
+ */
+static void
+ixgbevf_negotiate_api(struct ixgbe_hw *hw)
+{
+	int32_t i;
+
+	/* start with highest supported, proceed down */
+	static const enum ixgbe_pfvf_api_rev sup_ver[] = {
+		ixgbe_mbox_api_11,
+		ixgbe_mbox_api_10,
+	};
+
+	for (i = 0;
+			i != RTE_DIM(sup_ver) &&
+			ixgbevf_negotiate_api_version(hw, sup_ver[i]) != 0;
+			i++)
+		;
 }
 
 /*
@@ -831,9 +842,11 @@ static int
 eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		     struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev;
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	int diag;
+	uint32_t tc, tcs;
+	struct rte_pci_device *pci_dev;
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct ixgbe_vfta * shadow_vfta =
 		IXGBE_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
 	struct ixgbe_hwstrip *hwstrip = 
@@ -892,8 +905,11 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		return (diag);
 	}
 
+	/* negotiate mailbox API version to use with the PF. */
+	ixgbevf_negotiate_api(hw);
+
 	/* Get Rx/Tx queue count via mailbox, which is ready after reset_hw */
-	ixgbevf_get_queue_num(hw);
+	ixgbevf_get_queues(hw, &tcs, &tc);
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("ixgbevf", ETHER_ADDR_LEN *
@@ -2518,6 +2534,9 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "ixgbevf_dev_start");
 
 	hw->mac.ops.reset_hw(hw);
+
+	/* negotiate mailbox API version to use with the PF. */
+	ixgbevf_negotiate_api(hw);
 
 	ixgbevf_dev_tx_init(dev);
 

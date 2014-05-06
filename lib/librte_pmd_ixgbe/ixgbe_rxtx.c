@@ -3594,6 +3594,10 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
+	/* setup MTU */
+	ixgbevf_rlpml_set_vf(hw,
+		(uint16_t)dev->data->dev_conf.rxmode.max_rx_pkt_len);
+
 	/* Setup RX queues */
 	dev->rx_pkt_burst = ixgbe_recv_pkts;
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {

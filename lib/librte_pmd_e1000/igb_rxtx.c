@@ -2077,6 +2077,11 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
+	/* setup MTU */
+	e1000_rlpml_set_vf(hw,
+		(uint16_t)(dev->data->dev_conf.rxmode.max_rx_pkt_len +
+		VLAN_TAG_SIZE));
+
 	/* Configure and enable each RX queue. */
 	rctl_bsize = 0;
 	dev->rx_pkt_burst = eth_igb_recv_pkts;
