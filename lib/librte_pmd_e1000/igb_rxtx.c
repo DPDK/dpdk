@@ -2154,7 +2154,7 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 		rxdctl &= 0xFFF00000;
 		rxdctl |= (rxq->pthresh & 0x1F);
 		rxdctl |= ((rxq->hthresh & 0x1F) << 8);
-		if (hw->mac.type == e1000_82576) {
+		if (hw->mac.type == e1000_vfadapt) {
 			/* 
 			 * Workaround of 82576 VF Erratum
 			 * force set WTHRESH to 1 
