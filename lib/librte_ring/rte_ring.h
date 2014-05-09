@@ -199,6 +199,22 @@ struct rte_ring {
 #endif
 
 /**
+ * Calculate the memory size needed for a ring
+ *
+ * This function returns the number of bytes needed for a ring, given
+ * the number of elements in it. This value is the sum of the size of
+ * the structure rte_ring and the size of the memory needed by the
+ * objects pointers. The value is aligned to a cache line size.
+ *
+ * @param count
+ *   The number of elements in the ring (must be a power of 2).
+ * @return
+ *   - The memory size needed for the ring on success.
+ *   - -EINVAL if count is not a power of 2.
+ */
+ssize_t rte_ring_get_memsize(unsigned count);
+
+/**
  * Create a new ring named *name* in memory.
  *
  * This function uses ``memzone_reserve()`` to allocate memory. Its size is

@@ -94,6 +94,25 @@ TAILQ_HEAD(rte_ring_list, rte_ring);
 /* true if x is a power of 2 */
 #define POWEROF2(x) ((((x)-1) & (x)) == 0)
 
+/* return the size of memory occupied by a ring */
+ssize_t
+rte_ring_get_memsize(unsigned count)
+{
+	ssize_t sz;
+
+	/* count must be a power of 2 */
+	if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK )) {
+		RTE_LOG(ERR, RING,
+			"Requested size is invalid, must be power of 2, and "
+			"do not exceed the size limit %u\n", RTE_RING_SZ_MASK);
+		return -EINVAL;
+	}
+
+	sz = sizeof(struct rte_ring) + count * sizeof(void *);
+	sz = RTE_ALIGN(sz, CACHE_LINE_SIZE);
+	return sz;
+}
+
 /* create the ring */
 struct rte_ring *
 rte_ring_create(const char *name, unsigned count, int socket_id,
@@ -102,7 +121,7 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	struct rte_ring *r;
 	const struct rte_memzone *mz;
-	size_t ring_size;
+	ssize_t ring_size;
 	int mz_flags = 0;
 	struct rte_ring_list* ring_list = NULL;
 
@@ -129,16 +148,13 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 		return NULL;	
 	}
 
-	/* count must be a power of 2 */
-	if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK )) {
-		rte_errno = EINVAL;
-		RTE_LOG(ERR, RING, "Requested size is invalid, must be power of 2, and "
-				"do not exceed the size limit %u\n", RTE_RING_SZ_MASK);
+	ring_size = rte_ring_get_memsize(count);
+	if (ring_size < 0) {
+		rte_errno = ring_size;
 		return NULL;
 	}
 
 	rte_snprintf(mz_name, sizeof(mz_name), "%s%s", RTE_RING_MZ_PREFIX, name);
-	ring_size = count * sizeof(void *) + sizeof(struct rte_ring);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
