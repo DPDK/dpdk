@@ -107,9 +107,6 @@ TAILQ_HEAD(uio_res_list, uio_resource);
 static struct uio_res_list *uio_res_list = NULL;
 static int pci_parse_sysfs_value(const char *filename, uint64_t *val);
 
-/* forward prototype of function called in pci_switch_module below */
-static int pci_uio_map_resource(struct rte_pci_device *dev);
-
 #ifdef RTE_EAL_UNBIND_PORTS
 #define PROC_MODULES "/proc/modules"
 
@@ -279,12 +276,11 @@ error:
 
 static int
 pci_switch_module(struct rte_pci_driver *dr, struct rte_pci_device *dev,
-		int uio_status, const char *module_name)
+		  const char *module_name)
 {
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		/* check that our driver is loaded */
-		if (uio_status != 0 &&
-				(uio_status = pci_uio_check_module(module_name)) != 0)
+		if (pci_uio_check_module(module_name) != 0)
 			rte_exit(EXIT_FAILURE, "The %s module is required by the "
 					"%s driver\n", module_name, dr->name);
 
@@ -294,9 +290,6 @@ pci_switch_module(struct rte_pci_driver *dr, struct rte_pci_device *dev,
 		if (pci_uio_bind_device(dev, module_name) < 0)
 			return -1;
 	}
-	/* map the NIC resources */
-	if (pci_uio_map_resource(dev) < 0)
-		return -1;
 
 	return 0;
 }
@@ -1012,8 +1005,8 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 
 #ifdef RTE_EAL_UNBIND_PORTS
 		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO) {
-			/* unbind driver and load uio resources for Intel NICs */
-			if (pci_switch_module(dr, dev, 1, IGB_UIO_NAME) < 0)
+			/* unbind current driver and bind on igb_uio */
+			if (pci_switch_module(dr, dev, IGB_UIO_NAME) < 0)
 				return -1;
 		} else if (dr->drv_flags & RTE_PCI_DRV_FORCE_UNBIND &&
 		           rte_eal_process_type() == RTE_PROC_PRIMARY) {
@@ -1021,12 +1014,13 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 			if (pci_unbind_kernel_driver(dev) < 0)
 				return -1;
 		}
-#else
-		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO)
-			/* just map resources for Intel NICs */
+#endif
+
+		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO) {
+			/* map resources for devices that use igb_uio */
 			if (pci_uio_map_resource(dev) < 0)
 				return -1;
-#endif
+		}
 
 		/* reference driver structure */
 		dev->driver = dr;
