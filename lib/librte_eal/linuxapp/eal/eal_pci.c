@@ -107,6 +107,45 @@ TAILQ_HEAD(uio_res_list, uio_resource);
 static struct uio_res_list *uio_res_list = NULL;
 static int pci_parse_sysfs_value(const char *filename, uint64_t *val);
 
+/* unbind kernel driver for this device */
+static int
+pci_unbind_kernel_driver(struct rte_pci_device *dev)
+{
+	int n;
+	FILE *f;
+	char filename[PATH_MAX];
+	char buf[BUFSIZ];
+	struct rte_pci_addr *loc = &dev->addr;
+
+	/* open /sys/bus/pci/devices/AAAA:BB:CC.D/driver */
+	rte_snprintf(filename, sizeof(filename),
+	         SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/driver/unbind",
+	         loc->domain, loc->bus, loc->devid, loc->function);
+
+	f = fopen(filename, "w");
+	if (f == NULL) /* device was not bound */
+		return 0;
+
+	n = rte_snprintf(buf, sizeof(buf), PCI_PRI_FMT "\n",
+	             loc->domain, loc->bus, loc->devid, loc->function);
+	if ((n < 0) || (n >= (int)sizeof(buf))) {
+		RTE_LOG(ERR, EAL, "%s(): rte_snprintf failed\n", __func__);
+		goto error;
+	}
+	if (fwrite(buf, n, 1, f) == 0) {
+		RTE_LOG(ERR, EAL, "%s(): could not write to %s\n", __func__,
+				filename);
+		goto error;
+	}
+
+	fclose(f);
+	return 0;
+
+error:
+	fclose(f);
+	return -1;
+}
+
 #ifdef RTE_EAL_UNBIND_PORTS
 #define PROC_MODULES "/proc/modules"
 
@@ -233,46 +272,6 @@ pci_uio_bind_device(struct rte_pci_device *dev, const char *module_name)
 	pci_bind_device(dev, uio_bind);
 	return 0;
 }
-
-/* unbind kernel driver for this device */
-static int
-pci_unbind_kernel_driver(struct rte_pci_device *dev)
-{
-	int n;
-	FILE *f;
-	char filename[PATH_MAX];
-	char buf[BUFSIZ];
-	struct rte_pci_addr *loc = &dev->addr;
-
-	/* open /sys/bus/pci/devices/AAAA:BB:CC.D/driver */
-	rte_snprintf(filename, sizeof(filename),
-	         SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/driver/unbind",
-	         loc->domain, loc->bus, loc->devid, loc->function);
-
-	f = fopen(filename, "w");
-	if (f == NULL) /* device was not bound */
-		return 0;
-
-	n = rte_snprintf(buf, sizeof(buf), PCI_PRI_FMT "\n",
-	             loc->domain, loc->bus, loc->devid, loc->function);
-	if ((n < 0) || (n >= (int)sizeof(buf))) {
-		RTE_LOG(ERR, EAL, "%s(): rte_snprintf failed\n", __func__);
-		goto error;
-	}
-	if (fwrite(buf, n, 1, f) == 0) {
-		RTE_LOG(ERR, EAL, "%s(): could not write to %s\n", __func__,
-				filename);
-		goto error;
-	}
-
-	fclose(f);
-	return 0;
-
-error:
-	fclose(f);
-	return -1;
-}
-
 
 static int
 pci_switch_module(struct rte_pci_driver *dr, struct rte_pci_device *dev,
@@ -1008,17 +1007,17 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 			/* unbind current driver and bind on igb_uio */
 			if (pci_switch_module(dr, dev, IGB_UIO_NAME) < 0)
 				return -1;
-		} else if (dr->drv_flags & RTE_PCI_DRV_FORCE_UNBIND &&
-		           rte_eal_process_type() == RTE_PROC_PRIMARY) {
-			/* unbind current driver */
-			if (pci_unbind_kernel_driver(dev) < 0)
-				return -1;
 		}
 #endif
 
 		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO) {
 			/* map resources for devices that use igb_uio */
 			if (pci_uio_map_resource(dev) < 0)
+				return -1;
+		} else if (dr->drv_flags & RTE_PCI_DRV_FORCE_UNBIND &&
+		           rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			/* unbind current driver */
+			if (pci_unbind_kernel_driver(dev) < 0)
 				return -1;
 		}
 
