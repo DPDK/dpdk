@@ -146,155 +146,6 @@ error:
 	return -1;
 }
 
-#ifdef RTE_EAL_UNBIND_PORTS
-#define PROC_MODULES "/proc/modules"
-
-#define IGB_UIO_NAME "igb_uio"
-
-#define UIO_DRV_PATH  "/sys/bus/pci/drivers/%s"
-
-/* maximum time to wait that /dev/uioX appears */
-#define UIO_DEV_WAIT_TIMEOUT 3 /* seconds */
-
-/*
- * Check that a kernel module is loaded. Returns 0 on success, or if the
- * parameter is NULL, or -1 if the module is not loaded.
- */
-static int
-pci_uio_check_module(const char *module_name)
-{
-	FILE *f;
-	unsigned i;
-	char buf[BUFSIZ];
-
-	if (module_name == NULL)
-		return 0;
-
-	f = fopen(PROC_MODULES, "r");
-	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot open "PROC_MODULES": %s\n", 
-				strerror(errno));
-		return -1;
-	}
-
-	while(fgets(buf, sizeof(buf), f) != NULL) {
-
-		for (i = 0; i < sizeof(buf) && buf[i] != '\0'; i++) {
-			if (isspace(buf[i]))
-			    buf[i] = '\0';
-		}
-
-		if (strncmp(buf, module_name, sizeof(buf)) == 0) {
-			fclose(f);
-			return 0;
-		}
-	}
-	fclose(f);
-	return -1;
-}
-
-/* bind a PCI to the kernel module driver */
-static int
-pci_bind_device(struct rte_pci_device *dev, char dr_path[])
-{
-	FILE *f;
-	int n;
-	char buf[BUFSIZ];
-	char dev_bind[PATH_MAX];
-	struct rte_pci_addr *loc = &dev->addr;
-
-	n = rte_snprintf(dev_bind, sizeof(dev_bind), "%s/bind", dr_path);
-	if ((n < 0) || (n >= (int)sizeof(buf))) {
-		RTE_LOG(ERR, EAL, "Cannot rte_snprintf device bind path\n");
-		return -1;
-	}
-
-	f = fopen(dev_bind, "w");
-	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot open %s\n", dev_bind);
-		return -1;
-	}
-	n = rte_snprintf(buf, sizeof(buf), PCI_PRI_FMT "\n",
-	                 loc->domain, loc->bus, loc->devid, loc->function);
-	if ((n < 0) || (n >= (int)sizeof(buf))) {
-		RTE_LOG(ERR, EAL, "Cannot rte_snprintf PCI infos\n");
-		fclose(f);
-		return -1;
-	}
-	if (fwrite(buf, n, 1, f) == 0) {
-		fclose(f);
-		return -1;
-	}
-
-	fclose(f);
-	return 0;
-}
-
-static int
-pci_uio_bind_device(struct rte_pci_device *dev, const char *module_name)
-{
-	FILE *f;
-	int n;
-	char buf[BUFSIZ];
-	char uio_newid[PATH_MAX];
-	char uio_bind[PATH_MAX];
-
-	n = rte_snprintf(uio_newid, sizeof(uio_newid), UIO_DRV_PATH "/new_id", module_name);
-	if ((n < 0) || (n >= (int)sizeof(uio_newid))) {
-		RTE_LOG(ERR, EAL, "Cannot rte_snprintf uio_newid name\n");
-		return -1;
-	}
-
-	n = rte_snprintf(uio_bind, sizeof(uio_bind), UIO_DRV_PATH, module_name);
-	if ((n < 0) || (n >= (int)sizeof(uio_bind))) {
-		RTE_LOG(ERR, EAL, "Cannot rte_snprintf uio_bind name\n");
-		return -1;
-	}
-
-	n = rte_snprintf(buf, sizeof(buf), "%x %x\n",
-			dev->id.vendor_id, dev->id.device_id);
-	if ((n < 0) || (n >= (int)sizeof(buf))) {
-		RTE_LOG(ERR, EAL, "Cannot rte_snprintf vendor_id/device_id\n");
-		return -1;
-	}
-
-	f = fopen(uio_newid, "w");
-	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot open %s\n", uio_newid);
-		return -1;
-	}
-	if (fwrite(buf, n, 1, f) == 0) {
-		fclose(f);
-		return -1;
-	}
-	fclose(f);
-
-	pci_bind_device(dev, uio_bind);
-	return 0;
-}
-
-static int
-pci_switch_module(struct rte_pci_driver *dr, struct rte_pci_device *dev,
-		  const char *module_name)
-{
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		/* check that our driver is loaded */
-		if (pci_uio_check_module(module_name) != 0)
-			rte_exit(EXIT_FAILURE, "The %s module is required by the "
-					"%s driver\n", module_name, dr->name);
-
-		/* unbind current driver, bind ours */
-		if (pci_unbind_kernel_driver(dev) < 0)
-			return -1;
-		if (pci_uio_bind_device(dev, module_name) < 0)
-			return -1;
-	}
-
-	return 0;
-}
-
-#endif /* ifdef EAL_UNBIND_PORTS */
-
 /* map a particular resource from a file */
 static void *
 pci_map_resource(void *requested_addr, const char *devname, off_t offset,
@@ -303,24 +154,10 @@ pci_map_resource(void *requested_addr, const char *devname, off_t offset,
 	int fd;
 	void *mapaddr;
 
-#ifdef RTE_EAL_UNBIND_PORTS
-	/*
-	 * open devname, and mmap it: it can take some time to
-	 * appear, so we wait some time before returning an error
-	 */
-	unsigned n;
-	for (n = 0; n < UIO_DEV_WAIT_TIMEOUT*10; n++) {
-		errno = 0;
-		if ((fd = open(devname, O_RDWR)) < 0 && errno != ENOENT)
-			break;
-		usleep(100000);
-	}
-#else
 	/*
 	 * open devname, to mmap it
 	 */
 	fd = open(devname, O_RDWR);
-#endif
 	if (fd < 0) {
 		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
 			devname, strerror(errno));
@@ -1001,14 +838,6 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 			RTE_LOG(DEBUG, EAL, "  Device is blacklisted, not initializing\n");
 			return 0;
 		}
-
-#ifdef RTE_EAL_UNBIND_PORTS
-		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO) {
-			/* unbind current driver and bind on igb_uio */
-			if (pci_switch_module(dr, dev, IGB_UIO_NAME) < 0)
-				return -1;
-		}
-#endif
 
 		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO) {
 			/* map resources for devices that use igb_uio */
