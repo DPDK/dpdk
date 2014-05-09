@@ -31,9 +31,16 @@
 
 .PHONY: showversion
 showversion:
-	@sed -rn 's,^#define RTE_VER_[A-Z_]*[[:space:]]+([0-9]+).*,\1,p' \
-		$(RTE_SRCDIR)/lib/librte_eal/common/include/rte_version.h | \
-		tr '\n' '.' | sed -r 's,\.([0-9]+)\.$$,r\1\n,'
+	@set -- \
+		$$(sed -rne 's,^#define RTE_VER_[A-Z_]*[[:space:]]+([0-9]+).*,\1,p' \
+			-e 's,^#define RTE_VER_SUFFIX[[:space:]]+"(.*)",\1,p' \
+			$(RTE_SRCDIR)/lib/librte_eal/common/include/rte_version.h) ;\
+		printf '%d.%d.%d' "$$1" "$$2" "$$3"; \
+		if [ -z "$$4" ]; then echo; \
+		else printf '%s' "$$4"; \
+			if [ $$5 -lt 16 ] ; then echo $$5; \
+			else echo $$(($$5 - 16)); fi; \
+		fi
 
 INSTALL_CONFIGS := $(sort $(filter-out %~,\
 	$(patsubst $(RTE_SRCDIR)/config/defconfig_%,%,\
