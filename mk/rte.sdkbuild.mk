@@ -63,7 +63,7 @@ build: $(ROOTDIRS-y)
 	@echo Build complete
 ifneq ($(DESTDIR),)
 	$(Q)mkdir -p $(DESTDIR)
-	$(Q)tar -C $(RTE_SDK) -cf - mk | tar -C $(DESTDIR) -x \
+	$(Q)tar -C $(RTE_SDK) -cf - mk scripts/*.sh | tar -C $(DESTDIR) -x \
 	  --keep-newer-files --warning=no-ignore-newer -f -
 	$(Q)mkdir -p $(DESTDIR)/`basename $(RTE_OUTPUT)`
 	$(Q)tar -C $(RTE_OUTPUT) -chf - \
