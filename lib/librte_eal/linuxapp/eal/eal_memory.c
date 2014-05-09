@@ -881,13 +881,53 @@ calc_num_pages_per_socket(uint64_t * memory,
 	if (num_hp_info == 0)
 		return -1;
 
-	for (socket = 0; socket < RTE_MAX_NUMA_NODES && total_mem != 0; socket++) {
-		/* if specific memory amounts per socket weren't requested */
-		if (internal_config.force_sockets == 0) {
-			/* take whatever is available */
-			memory[socket] = RTE_MIN(get_socket_mem_size(socket),
-					total_mem);
+	/* if specific memory amounts per socket weren't requested */
+	if (internal_config.force_sockets == 0) {
+		int cpu_per_socket[RTE_MAX_NUMA_NODES];
+		size_t default_size, total_size;
+		unsigned lcore_id;
+
+		/* Compute number of cores per socket */
+		memset(cpu_per_socket, 0, sizeof(cpu_per_socket));
+		RTE_LCORE_FOREACH(lcore_id) {
+			cpu_per_socket[rte_lcore_to_socket_id(lcore_id)]++;
 		}
+
+		/*
+		 * Automatically spread requested memory amongst detected sockets according
+		 * to number of cores from cpu mask present on each socket
+		 */
+		total_size = internal_config.memory;
+		for (socket = 0; socket < RTE_MAX_NUMA_NODES && total_size != 0; socket++) {
+
+			/* Set memory amount per socket */
+			default_size = (internal_config.memory * cpu_per_socket[socket])
+			                / rte_lcore_count();
+
+			/* Limit to maximum available memory on socket */
+			default_size = RTE_MIN(default_size, get_socket_mem_size(socket));
+
+			/* Update sizes */
+			memory[socket] = default_size;
+			total_size -= default_size;
+		}
+
+		/*
+		 * If some memory is remaining, try to allocate it by getting all
+		 * available memory from sockets, one after the other
+		 */
+		for (socket = 0; socket < RTE_MAX_NUMA_NODES && total_size != 0; socket++) {
+			/* take whatever is available */
+			default_size = RTE_MIN(get_socket_mem_size(socket) - memory[socket],
+			                       total_size);
+
+			/* Update sizes */
+			memory[socket] += default_size;
+			total_size -= default_size;
+		}
+	}
+
+	for (socket = 0; socket < RTE_MAX_NUMA_NODES && total_mem != 0; socket++) {
 		/* skips if the memory on specific socket wasn't requested */
 		for (i = 0; i < num_hp_info && memory[socket] != 0; i++){
 			hp_used[i].hugedir = hp_info[i].hugedir;
