@@ -649,11 +649,13 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	memcpy(&uio_res->pci_addr, &dev->addr, sizeof(uio_res->pci_addr));
 
 	/* collect info about device mappings */
-	if ((nb_maps = pci_uio_get_mappings(dirname, uio_res->maps,
-			sizeof (uio_res->maps) / sizeof (uio_res->maps[0])))
-			< 0)
+	nb_maps = pci_uio_get_mappings(dirname, uio_res->maps,
+				       RTE_DIM(uio_res->maps));
+	if (nb_maps < 0) {
+		rte_free(uio_res);
 		return (nb_maps);
- 
+	}
+
 	uio_res->nb_maps = nb_maps;
 
 	/* Map all BARs */
@@ -678,6 +680,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 					(mapaddr = pci_map_resource(dev,
 					NULL, devname, (off_t)offset,
 					(size_t)maps[j].size)) == NULL) {
+				rte_free(uio_res);
 				return (-1);
 			}
  
