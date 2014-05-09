@@ -113,18 +113,10 @@ rte_ring_get_memsize(unsigned count)
 	return sz;
 }
 
-/* create the ring */
-struct rte_ring *
-rte_ring_create(const char *name, unsigned count, int socket_id,
-		unsigned flags)
+int
+rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
+	unsigned flags)
 {
-	char mz_name[RTE_MEMZONE_NAMESIZE];
-	struct rte_ring *r;
-	const struct rte_memzone *mz;
-	ssize_t ring_size;
-	int mz_flags = 0;
-	struct rte_ring_list* ring_list = NULL;
-
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_ring) &
 			  CACHE_LINE_MASK) != 0);
@@ -141,11 +133,38 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 			  CACHE_LINE_MASK) != 0);
 #endif
 
+	/* init the ring structure */
+	memset(r, 0, sizeof(*r));
+	rte_snprintf(r->name, sizeof(r->name), "%s", name);
+	r->flags = flags;
+	r->prod.watermark = count;
+	r->prod.sp_enqueue = !!(flags & RING_F_SP_ENQ);
+	r->cons.sc_dequeue = !!(flags & RING_F_SC_DEQ);
+	r->prod.size = r->cons.size = count;
+	r->prod.mask = r->cons.mask = count-1;
+	r->prod.head = r->cons.head = 0;
+	r->prod.tail = r->cons.tail = 0;
+
+	return 0;
+}
+
+/* create the ring */
+struct rte_ring *
+rte_ring_create(const char *name, unsigned count, int socket_id,
+		unsigned flags)
+{
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	struct rte_ring *r;
+	const struct rte_memzone *mz;
+	ssize_t ring_size;
+	int mz_flags = 0;
+	struct rte_ring_list* ring_list = NULL;
+
 	/* check that we have an initialised tail queue */
-	if ((ring_list = 
+	if ((ring_list =
 	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_RING, rte_ring_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;	
+		return NULL;
 	}
 
 	ring_size = rte_ring_get_memsize(count);
@@ -164,26 +183,16 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	mz = rte_memzone_reserve(mz_name, ring_size, socket_id, mz_flags);
 	if (mz != NULL) {
 		r = mz->addr;
-
-		/* init the ring structure */
-		memset(r, 0, sizeof(*r));
-		rte_snprintf(r->name, sizeof(r->name), "%s", name);
-		r->flags = flags;
-		r->prod.watermark = count;
-		r->prod.sp_enqueue = !!(flags & RING_F_SP_ENQ);
-		r->cons.sc_dequeue = !!(flags & RING_F_SC_DEQ);
-		r->prod.size = r->cons.size = count;
-		r->prod.mask = r->cons.mask = count-1;
-		r->prod.head = r->cons.head = 0;
-		r->prod.tail = r->cons.tail = 0;
-
+		/* no need to check return value here, we already checked the
+		 * arguments above */
+		rte_ring_init(r, name, count, flags);
 		TAILQ_INSERT_TAIL(ring_list, r, next);
 	} else {
 		r = NULL;
 		RTE_LOG(ERR, RING, "Cannot reserve memory\n");
 	}
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
-	
+
 	return r;
 }
 

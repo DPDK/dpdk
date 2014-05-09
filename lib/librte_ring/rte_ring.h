@@ -215,13 +215,54 @@ struct rte_ring {
 ssize_t rte_ring_get_memsize(unsigned count);
 
 /**
+ * Initialize a ring structure.
+ *
+ * Initialize a ring structure in memory pointed by "r". The size of the
+ * memory area must be large enough to store the ring structure and the
+ * object table. It is advised to use rte_ring_get_memsize() to get the
+ * appropriate size.
+ *
+ * The ring size is set to *count*, which must be a power of two. Water
+ * marking is disabled by default. The real usable ring size is
+ * *count-1* instead of *count* to differentiate a free ring from an
+ * empty ring.
+ *
+ * The ring is not added in RTE_TAILQ_RING global list. Indeed, the
+ * memory given by the caller may not be shareable among dpdk
+ * processes.
+ *
+ * @param r
+ *   The pointer to the ring structure followed by the objects table.
+ * @param name
+ *   The name of the ring.
+ * @param count
+ *   The number of elements in the ring (must be a power of 2).
+ * @param flags
+ *   An OR of the following:
+ *    - RING_F_SP_ENQ: If this flag is set, the default behavior when
+ *      using ``rte_ring_enqueue()`` or ``rte_ring_enqueue_bulk()``
+ *      is "single-producer". Otherwise, it is "multi-producers".
+ *    - RING_F_SC_DEQ: If this flag is set, the default behavior when
+ *      using ``rte_ring_dequeue()`` or ``rte_ring_dequeue_bulk()``
+ *      is "single-consumer". Otherwise, it is "multi-consumers".
+ * @return
+ *   0 on success, or a negative value on error.
+ */
+int rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
+	unsigned flags);
+
+/**
  * Create a new ring named *name* in memory.
  *
- * This function uses ``memzone_reserve()`` to allocate memory. Its size is
- * set to *count*, which must be a power of two. Water marking is
- * disabled by default.
- * Note that the real usable ring size is *count-1* instead of
- * *count*.
+ * This function uses ``memzone_reserve()`` to allocate memory. Then it
+ * calls rte_ring_init() to initialize an empty ring.
+ *
+ * The new ring size is set to *count*, which must be a power of
+ * two. Water marking is disabled by default. The real usable ring size
+ * is *count-1* instead of *count* to differentiate a free ring from an
+ * empty ring.
+ *
+ * The ring is added in RTE_TAILQ_RING list.
  *
  * @param name
  *   The name of the ring.
