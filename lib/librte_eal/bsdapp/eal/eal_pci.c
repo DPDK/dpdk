@@ -108,8 +108,14 @@ TAILQ_HEAD(uio_res_list, uio_resource);
 
 static struct uio_res_list *uio_res_list = NULL;
 
-/* forward prototype of function called in pci_switch_module below */
-static int pci_uio_map_resource(struct rte_pci_device *dev);
+/* unbind kernel driver for this device */
+static int
+pci_unbind_kernel_driver(struct rte_pci_device *dev)
+{
+	RTE_LOG(ERR, EAL, "RTE_PCI_DRV_FORCE_UNBIND flag is not implemented "
+		"for BSD\n");
+	return -ENOTSUP;
+}
 
 /* map a particular resource from a file */
 static void *
@@ -214,6 +220,11 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	dev->intr_handle.fd = -1;
 
+	/* secondary processes - use already recorded details */
+	if ((rte_eal_process_type() != RTE_PROC_PRIMARY) &&
+		(dev->id.vendor_id != PCI_VENDOR_ID_QUMRANET))
+		return (pci_uio_map_secondary(dev));
+
 	rte_snprintf(devname, sizeof(devname), "/dev/uio@pci:%u:%u:%u",
 			dev->addr.bus, dev->addr.devid, dev->addr.function);
 
@@ -222,11 +233,6 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 				"skipping\n", loc->domain, loc->bus, loc->devid, loc->function);
 		return -1;
 	}
-
-	/* secondary processes - use already recorded details */
-	if ((rte_eal_process_type() != RTE_PROC_PRIMARY) &&
-		(dev->id.vendor_id != PCI_VENDOR_ID_QUMRANET))
-		return (pci_uio_map_secondary(dev));
 
 	if(dev->id.vendor_id == PCI_VENDOR_ID_QUMRANET) {
 		/* I/O port address already assigned */
@@ -479,19 +485,17 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 			return 0;
 		}
 
-		/* just map the NIC resources */
-		if (pci_uio_map_resource(dev) < 0)
-			return -1;
-
-		/* We always should have BAR0 mapped */
-		if (rte_eal_process_type() == RTE_PROC_PRIMARY && 
-			dev->mem_resource[0].addr == NULL) {
-			RTE_LOG(ERR, EAL,
-				"%s(): BAR0 is not mapped\n",
-				__func__);
-			return (-1);
+		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO) {
+			/* map resources for devices that use igb_uio */
+			if (pci_uio_map_resource(dev) < 0)
+				return -1;
+		} else if (dr->drv_flags & RTE_PCI_DRV_FORCE_UNBIND &&
+		           rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			/* unbind current driver */
+			if (pci_unbind_kernel_driver(dev) < 0)
+				return -1;
 		}
- 
+
 		/* reference driver structure */
 		dev->driver = dr;
 
