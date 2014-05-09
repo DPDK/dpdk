@@ -36,6 +36,9 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#ifdef RTE_EXEC_ENV_LINUXAPP
+#include <dirent.h>
+#endif
 
 #include <rte_ethdev.h>
 #include <rte_memcpy.h>
@@ -392,6 +395,103 @@ virtio_negotiate_features(struct virtio_hw *hw)
 	hw->guest_features = vtpci_negotiate_features(hw, guest_features);
 }
 
+#ifdef RTE_EXEC_ENV_LINUXAPP
+static int
+parse_sysfs_value(const char *filename, unsigned long *val)
+{
+	FILE *f;
+	char buf[BUFSIZ];
+	char *end = NULL;
+
+	if ((f = fopen(filename, "r")) == NULL) {
+		PMD_INIT_LOG(ERR, "%s(): cannot open sysfs value %s\n",
+			     __func__, filename);
+		return -1;
+	}
+
+	if (fgets(buf, sizeof(buf), f) == NULL) {
+		PMD_INIT_LOG(ERR, "%s(): cannot read sysfs value %s\n",
+			     __func__, filename);
+		fclose(f);
+		return -1;
+	}
+	*val = strtoul(buf, &end, 0);
+	if ((buf[0] == '\0') || (end == NULL) || (*end != '\n')) {
+		PMD_INIT_LOG(ERR, "%s(): cannot parse sysfs value %s\n",
+			     __func__, filename);
+		fclose(f);
+		return -1;
+	}
+	fclose(f);
+	return 0;
+}
+
+static int get_uio_dev(struct rte_pci_addr *loc, char *buf, unsigned int buflen)
+{
+	unsigned int uio_num;
+	struct dirent *e;
+	DIR *dir;
+	char dirname[PATH_MAX];
+
+	/* depending on kernel version, uio can be located in uio/uioX
+	 * or uio:uioX */
+	rte_snprintf(dirname, sizeof(dirname),
+	         SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/uio",
+	         loc->domain, loc->bus, loc->devid, loc->function);
+	dir = opendir(dirname);
+	if (dir == NULL) {
+		/* retry with the parent directory */
+		rte_snprintf(dirname, sizeof(dirname),
+		         SYSFS_PCI_DEVICES "/" PCI_PRI_FMT,
+		         loc->domain, loc->bus, loc->devid, loc->function);
+		dir = opendir(dirname);
+
+		if (dir == NULL) {
+			PMD_INIT_LOG(ERR, "Cannot opendir %s\n", dirname);
+			return -1;
+		}
+	}
+
+	/* take the first file starting with "uio" */
+	while ((e = readdir(dir)) != NULL) {
+		/* format could be uio%d ...*/
+		int shortprefix_len = sizeof("uio") - 1;
+		/* ... or uio:uio%d */
+		int longprefix_len = sizeof("uio:uio") - 1;
+		char *endptr;
+
+		if (strncmp(e->d_name, "uio", 3) != 0)
+			continue;
+
+		/* first try uio%d */
+		errno = 0;
+		uio_num = strtoull(e->d_name + shortprefix_len, &endptr, 10);
+		if (errno == 0 && endptr != (e->d_name + shortprefix_len)) {
+			rte_snprintf(buf, buflen, "%s/uio%u", dirname, uio_num);
+			break;
+		}
+
+		/* then try uio:uio%d */
+		errno = 0;
+		uio_num = strtoull(e->d_name + longprefix_len, &endptr, 10);
+		if (errno == 0 && endptr != (e->d_name + longprefix_len)) {
+			rte_snprintf(buf, buflen, "%s/uio:uio%u", dirname,
+				     uio_num);
+			break;
+		}
+	}
+	closedir(dir);
+
+	/* No uio resource found */
+	if (e == NULL) {
+		PMD_INIT_LOG(ERR, "Could not find uio resource\n");
+		return -1;
+	}
+
+	return 0;
+}
+#endif
+
 /*
  * This function is based on probe() function in virtio_pci.c
  * It returns 0 on success.
@@ -426,6 +526,38 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
+#ifdef RTE_EXEC_ENV_LINUXAPP
+	{
+		char dirname[PATH_MAX];
+		char filename[PATH_MAX];
+		unsigned long start,size;
+
+		if (get_uio_dev(&pci_dev->addr, dirname, sizeof(dirname)) < 0)
+			return -1;
+
+		/* get portio size */
+		rte_snprintf(filename, sizeof(filename),
+			     "%s/portio/port0/size", dirname);
+		if (parse_sysfs_value(filename, &size) < 0) {
+			PMD_INIT_LOG(ERR, "%s(): cannot parse size\n",
+				     __func__);
+			return -1;
+		}
+
+		/* get portio start */
+		rte_snprintf(filename, sizeof(filename),
+			     "%s/portio/port0/start", dirname);
+		if (parse_sysfs_value(filename, &start) < 0) {
+			PMD_INIT_LOG(ERR, "%s(): cannot parse portio start\n",
+				     __func__);
+			return -1;
+		}
+		pci_dev->mem_resource[0].addr = (void *)(uintptr_t)start;
+		pci_dev->mem_resource[0].len =  (uint64_t)size;
+		PMD_INIT_LOG(DEBUG, "PCI Port IO found start=0x%lx with "
+			     "size=0x%lx\n", start, size);
+	}
+#endif
 	hw->io_base = (uint32_t)(uintptr_t)pci_dev->mem_resource[0].addr;
 
 	hw->max_rx_queues = VIRTIO_MAX_RX_QUEUES;
@@ -474,7 +606,6 @@ static struct eth_driver rte_virtio_pmd = {
 	{
 		.name = "rte_virtio_pmd",
 		.id_table = pci_id_virtio_map,
-		.drv_flags = RTE_PCI_DRV_NEED_IGB_UIO,
 	},
 	.eth_dev_init = eth_virtio_dev_init,
 	.dev_private_size = sizeof(struct virtio_adapter),

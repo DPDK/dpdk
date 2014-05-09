@@ -221,8 +221,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	dev->intr_handle.fd = -1;
 
 	/* secondary processes - use already recorded details */
-	if ((rte_eal_process_type() != RTE_PROC_PRIMARY) &&
-		(dev->id.vendor_id != PCI_VENDOR_ID_QUMRANET))
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return (pci_uio_map_secondary(dev));
 
 	rte_snprintf(devname, sizeof(devname), "/dev/uio@pci:%u:%u:%u",
@@ -234,12 +233,6 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		return -1;
 	}
 
-	if(dev->id.vendor_id == PCI_VENDOR_ID_QUMRANET) {
-		/* I/O port address already assigned */
-		/* rte_virtio_pmd does not need any other bar even if available */
-		return (0);
-	}
-	
 	/* allocate the mapping details for secondary processes*/
 	if ((uio_res = rte_zmalloc("UIO_RES", sizeof (*uio_res), 0)) == NULL) {
 		RTE_LOG(ERR, EAL,

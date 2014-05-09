@@ -584,11 +584,9 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 {
 	int i, j;
 	char dirname[PATH_MAX];
-	char filename[PATH_MAX];
 	char devname[PATH_MAX]; /* contains the /dev/uioX */
 	void *mapaddr;
 	int uio_num;
-	unsigned long start,size;
 	uint64_t phaddr;
 	uint64_t offset;
 	uint64_t pagesz;
@@ -600,8 +598,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	dev->intr_handle.fd = -1;
 
 	/* secondary processes - use already recorded details */
-	if ((rte_eal_process_type() != RTE_PROC_PRIMARY) &&
-	    (dev->id.vendor_id != PCI_VENDOR_ID_QUMRANET))
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return (pci_uio_map_secondary(dev));
 
 	/* find uio resource */
@@ -612,31 +609,6 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		return -1;
 	}
 
-	if(dev->id.vendor_id == PCI_VENDOR_ID_QUMRANET) {
-		/* get portio size */
-		rte_snprintf(filename, sizeof(filename),
-			 "%s/portio/port0/size", dirname);
-		if (eal_parse_sysfs_value(filename, &size) < 0) {
-			RTE_LOG(ERR, EAL, "%s(): cannot parse size\n",
-				__func__);
-			return -1;
-		}
-
-		/* get portio start */
-		rte_snprintf(filename, sizeof(filename),
-			 "%s/portio/port0/start", dirname);
-		if (eal_parse_sysfs_value(filename, &start) < 0) {
-			RTE_LOG(ERR, EAL, "%s(): cannot parse portio start\n",
-				__func__);
-			return -1;
-		}
-		dev->mem_resource[0].addr = (void *)(uintptr_t)start;
-		dev->mem_resource[0].len =  (uint64_t)size;
-		RTE_LOG(DEBUG, EAL, "PCI Port IO found start=0x%lx with size=0x%lx\n", start, size);
-		/* rte_virtio_pmd does not need any other bar even if available */
-		return (0);
-	}
-	
 	/* allocate the mapping details for secondary processes*/
 	if ((uio_res = rte_zmalloc("UIO_RES", sizeof (*uio_res), 0)) == NULL) {
 		RTE_LOG(ERR, EAL,
