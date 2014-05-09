@@ -119,8 +119,8 @@ pci_unbind_kernel_driver(struct rte_pci_device *dev)
 
 /* map a particular resource from a file */
 static void *
-pci_map_resource(struct rte_pci_device *dev, void *requested_addr, 
-		const char *devname, off_t offset, size_t size)
+pci_map_resource(void *requested_addr, const char *devname, off_t offset,
+		 size_t size)
 {
 	int fd;
 	void *mapaddr;
@@ -130,7 +130,7 @@ pci_map_resource(struct rte_pci_device *dev, void *requested_addr,
 	 */
 	fd = open(devname, O_RDWR);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n", 
+		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
 			devname, strerror(errno));
 		goto fail;
 	}
@@ -138,25 +138,14 @@ pci_map_resource(struct rte_pci_device *dev, void *requested_addr,
 	/* Map the PCI memory resource of device */
 	mapaddr = mmap(requested_addr, size, PROT_READ | PROT_WRITE,
 			MAP_SHARED, fd, offset);
+	close(fd);
 	if (mapaddr == MAP_FAILED ||
 			(requested_addr != NULL && mapaddr != requested_addr)) {
 		RTE_LOG(ERR, EAL, "%s(): cannot mmap(%s(%d), %p, 0x%lx, 0x%lx):"
-			" %s (%p)\n", __func__, devname, fd, requested_addr, 
+			" %s (%p)\n", __func__, devname, fd, requested_addr,
 			(unsigned long)size, (unsigned long)offset,
 			strerror(errno), mapaddr);
-		close(fd);
 		goto fail;
-	}
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		/* save fd if in primary process */
-		dev->intr_handle.fd = fd;
-		dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
-	} else {
-		/* fd is not needed in slave process, close it */
-		dev->intr_handle.fd = -1;
-		dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
-		close(fd);
 	}
 
 	RTE_LOG(DEBUG, EAL, "  PCI memory mapped at %p\n", mapaddr);
@@ -164,9 +153,6 @@ pci_map_resource(struct rte_pci_device *dev, void *requested_addr,
 	return mapaddr;
 
 fail:
-	dev->intr_handle.fd = -1;
-	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
-
 	return NULL;
 }
 
@@ -179,19 +165,19 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 {
         size_t i;
         struct uio_resource *uio_res;
- 
+
 	TAILQ_FOREACH(uio_res, uio_res_list, next) {
- 
+
 		/* skip this element if it doesn't match our PCI address */
 		if (memcmp(&uio_res->pci_addr, &dev->addr, sizeof(dev->addr)))
 			continue;
-                
+
 		for (i = 0; i != uio_res->nb_maps; i++) {
-			if (pci_map_resource(dev, uio_res->maps[i].addr,
-					uio_res->path,
-					(off_t)uio_res->maps[i].offset,
-					(size_t)uio_res->maps[i].size) != 
-					uio_res->maps[i].addr) {
+			if (pci_map_resource(uio_res->maps[i].addr,
+					     uio_res->path,
+					     (off_t)uio_res->maps[i].offset,
+					     (size_t)uio_res->maps[i].size)
+			    != uio_res->maps[i].addr) {
 				RTE_LOG(ERR, EAL,
 					"Cannot mmap device resource\n");
 				return (-1);
@@ -219,6 +205,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	struct uio_map *maps;
 
 	dev->intr_handle.fd = -1;
+	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
 
 	/* secondary processes - use already recorded details */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -233,6 +220,15 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		return -1;
 	}
 
+	/* save fd if in primary process */
+	dev->intr_handle.fd = open(devname, O_RDWR);
+	if (dev->intr_handle.fd < 0) {
+		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
+			devname, strerror(errno));
+		return -1;
+	}
+	dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
+
 	/* allocate the mapping details for secondary processes*/
 	if ((uio_res = rte_zmalloc("UIO_RES", sizeof (*uio_res), 0)) == NULL) {
 		RTE_LOG(ERR, EAL,
@@ -246,7 +242,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	/* Map all BARs */
 	pagesz = sysconf(_SC_PAGESIZE);
- 
+
 	maps = uio_res->maps;
 	for (i = uio_res->nb_maps = 0; i != PCI_MAX_RESOURCE; i++) {
 
@@ -254,16 +250,16 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		/* skip empty BAR */
 		if ((phaddr = dev->mem_resource[i].phys_addr) == 0)
 			continue;
- 
+
 		/* if matching map is found, then use it */
 		offset = i * pagesz;
 		maps[j].offset = offset;
 		maps[j].phaddr = dev->mem_resource[i].phys_addr;
 		maps[j].size = dev->mem_resource[i].len;
 		if (maps[j].addr != NULL ||
-				(mapaddr = pci_map_resource(dev,
-				NULL, devname, (off_t)offset,
-				(size_t)maps[j].size)) == NULL) {
+		    (mapaddr = pci_map_resource(NULL, devname, (off_t)offset,
+						(size_t)maps[j].size)
+		    ) == NULL) {
 			rte_free(uio_res);
 			return (-1);
 		}
