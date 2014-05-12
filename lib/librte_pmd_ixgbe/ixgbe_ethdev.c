@@ -182,6 +182,11 @@ static int ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 static int ixgbe_mirror_rule_reset(struct rte_eth_dev *dev,
 		uint8_t	rule_id);
 
+static void ixgbevf_add_mac_addr(struct rte_eth_dev *dev,
+				 struct ether_addr *mac_addr,
+				 uint32_t index, uint32_t pool);
+static void ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
+
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
  */
@@ -324,6 +329,8 @@ static struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.rx_queue_release     = ixgbe_dev_rx_queue_release,
 	.tx_queue_setup       = ixgbe_dev_tx_queue_setup,
 	.tx_queue_release     = ixgbe_dev_tx_queue_release,
+	.mac_addr_add         = ixgbevf_add_mac_addr,
+	.mac_addr_remove      = ixgbevf_remove_mac_addr,
 };
 
 /**
@@ -892,7 +899,7 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	/* Disable the interrupts for VF */
 	ixgbevf_intr_disable(hw);
 
-	hw->mac.num_rar_entries = hw->mac.max_rx_queues;
+	hw->mac.num_rar_entries = 128; /* The MAX of the underlying PF */
 	diag = hw->mac.ops.reset_hw(hw);
 
 	if (diag != IXGBE_SUCCESS) {
@@ -3079,6 +3086,50 @@ ixgbe_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t rule_id)
 	IXGBE_WRITE_REG(hw, IXGBE_VMRVLAN(rule_id + rule_mr_offset), msb_val);
 
 	return 0;
+}
+
+static void
+ixgbevf_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+		     __attribute__((unused)) uint32_t index,
+		     __attribute__((unused)) uint32_t pool)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int diag;
+
+	diag = ixgbevf_set_uc_addr_vf(hw, 2, mac_addr->addr_bytes);
+	if (diag == 0)
+		return;
+	PMD_DRV_LOG(ERR, "Unable to add MAC address - diag=%d", diag);
+}
+
+static void
+ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ether_addr *dev_mac_addrs;
+	uint32_t i;
+	int diag;
+
+	/*
+	 * The IXGBE_VF_SET_MACVLAN command of the ixgbe-pf driver does
+	 * not support the deletion of a given MAC address.
+	 * Instead, it imposes to delete all MAC addresses, then to add again
+	 * all MAC address with the exception of the one to be deleted.
+	 */
+	(void) ixgbevf_set_uc_addr_vf(hw, 0, NULL);
+
+	/* Add again all MAC addresses, excepted the deleted one. */
+	dev_mac_addrs = dev->data->mac_addrs;
+	for (i = 0; i < hw->mac.num_rar_entries; i++) {
+		/* Skip the deleted MAC address */
+		if (i == index)
+			continue;
+		diag = ixgbevf_set_uc_addr_vf(hw, 2,
+					      dev_mac_addrs[i].addr_bytes);
+		if (diag != 0)
+			PMD_DRV_LOG(ERR, "Adding MAC address failed diag=%d",
+				    diag);
+	}
 }
 
 static struct rte_driver rte_ixgbe_driver = {
