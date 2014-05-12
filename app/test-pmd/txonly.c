@@ -76,8 +76,8 @@
 #define UDP_SRC_PORT 1024
 #define UDP_DST_PORT 1024
 
-#define IP_SRC_ADDR ((192 << 24) | (168 << 16) | (0 << 8) | 1)
-#define IP_DST_ADDR ((192 << 24) | (168 << 16) | (0 << 8) | 2)
+#define IP_SRC_ADDR ((192U << 24) | (168 << 16) | (0 << 8) | 1)
+#define IP_DST_ADDR ((192U << 24) | (168 << 16) | (0 << 8) | 2)
 
 #define IP_DEFTTL  64   /* from RFC 1340. */
 #define IP_VERSION 0x40
