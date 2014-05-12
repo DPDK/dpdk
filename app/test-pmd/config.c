@@ -100,12 +100,12 @@ static void
 print_ethaddr(const char *name, struct ether_addr *eth_addr)
 {
 	printf("%s%02X:%02X:%02X:%02X:%02X:%02X", name,
-	       eth_addr->addr_bytes[0],
-	       eth_addr->addr_bytes[1],
-	       eth_addr->addr_bytes[2],
-	       eth_addr->addr_bytes[3],
-	       eth_addr->addr_bytes[4],
-	       eth_addr->addr_bytes[5]);
+	       (unsigned int)eth_addr->addr_bytes[0],
+	       (unsigned int)eth_addr->addr_bytes[1],
+	       (unsigned int)eth_addr->addr_bytes[2],
+	       (unsigned int)eth_addr->addr_bytes[3],
+	       (unsigned int)eth_addr->addr_bytes[4],
+	       (unsigned int)eth_addr->addr_bytes[5]);
 }
 
 void
@@ -256,7 +256,7 @@ port_infos_display(portid_t port_id)
 	printf("\n%s Infos for port %-2d %s\n",
 	       info_border, port_id, info_border);
 	print_ethaddr("MAC address: ", &port->eth_addr);
-	printf("\nConnect to socket: %d", port->socket_id);
+	printf("\nConnect to socket: %u", port->socket_id);
 
 	if (port_numa[port_id] != NUMA_NO_CONFIG) {
 		mp = mbuf_pool_find(port_numa[port_id]);
@@ -264,7 +264,7 @@ port_infos_display(portid_t port_id)
 			printf("\nmemory allocation on the socket: %d",
 							port_numa[port_id]);
 	} else
-		printf("\nmemory allocation on the socket: %d",port->socket_id);
+		printf("\nmemory allocation on the socket: %u",port->socket_id);
 
 	printf("\nLink status: %s\n", (link.link_status) ? ("up") : ("down"));
 	printf("Link speed: %u Mbps\n", (unsigned) link.link_speed);

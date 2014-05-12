@@ -1250,7 +1250,7 @@ start_port(portid_t pid)
 		if (port->need_reconfig > 0) {
 			port->need_reconfig = 0;
 
-			printf("Configuring Port %d (socket %d)\n", pi,
+			printf("Configuring Port %d (socket %u)\n", pi,
 					port->socket_id);
 			/* configure port */
 			diag = rte_eth_dev_configure(pi, nb_rxq, nb_txq,
