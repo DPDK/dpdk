@@ -3096,6 +3096,13 @@ ixgbevf_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int diag;
 
+	/*
+	 * On a 82599 VF, adding again the same MAC addr is not an idempotent
+	 * operation. Trap this case to avoid exhausting the [very limited]
+	 * set of PF resources used to store VF MAC addresses.
+	 */
+	if (memcmp(hw->mac.perm_addr, mac_addr, sizeof(struct ether_addr)) == 0)
+		return;
 	diag = ixgbevf_set_uc_addr_vf(hw, 2, mac_addr->addr_bytes);
 	if (diag == 0)
 		return;
