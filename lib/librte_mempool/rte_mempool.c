@@ -114,8 +114,7 @@ static unsigned optimize_object_size(unsigned obj_size)
 
 	/* process new object size */
 	new_obj_size = (obj_size + CACHE_LINE_MASK) / CACHE_LINE_SIZE;
-	while (get_gcd(new_obj_size, nrank * nchan) != 1 ||
-			get_gcd(nchan, new_obj_size) != 1)
+	while (get_gcd(new_obj_size, nrank * nchan) != 1)
 		new_obj_size++;
 	return new_obj_size * CACHE_LINE_SIZE;
 }
