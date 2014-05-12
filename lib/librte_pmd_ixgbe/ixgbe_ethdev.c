@@ -3113,7 +3113,8 @@ static void
 ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ether_addr *dev_mac_addrs;
+	struct ether_addr *perm_addr = (struct ether_addr *) hw->mac.perm_addr;
+	struct ether_addr *mac_addr;
 	uint32_t i;
 	int diag;
 
@@ -3121,20 +3122,37 @@ ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 	 * The IXGBE_VF_SET_MACVLAN command of the ixgbe-pf driver does
 	 * not support the deletion of a given MAC address.
 	 * Instead, it imposes to delete all MAC addresses, then to add again
-	 * all MAC address with the exception of the one to be deleted.
+	 * all MAC addresses with the exception of the one to be deleted.
 	 */
 	(void) ixgbevf_set_uc_addr_vf(hw, 0, NULL);
 
-	/* Add again all MAC addresses, excepted the deleted one. */
-	dev_mac_addrs = dev->data->mac_addrs;
-	for (i = 0; i < hw->mac.num_rar_entries; i++) {
+	/*
+	 * Add again all MAC addresses, with the exception of the deleted one
+	 * and of the permanent MAC address.
+	 */
+	for (i = 0, mac_addr = dev->data->mac_addrs;
+	     i < hw->mac.num_rar_entries; i++, mac_addr++) {
 		/* Skip the deleted MAC address */
 		if (i == index)
 			continue;
-		diag = ixgbevf_set_uc_addr_vf(hw, 2,
-					      dev_mac_addrs[i].addr_bytes);
+		/* Skip NULL MAC addresses */
+		if (is_zero_ether_addr(mac_addr))
+			continue;
+		/* Skip the permanent MAC address */
+		if (memcmp(perm_addr, mac_addr, sizeof(struct ether_addr)) == 0)
+			continue;
+		diag = ixgbevf_set_uc_addr_vf(hw, 2, mac_addr->addr_bytes);
 		if (diag != 0)
-			PMD_DRV_LOG(ERR, "Adding MAC address failed diag=%d",
+			PMD_DRV_LOG(ERR,
+				    "Adding again MAC address "
+				    "%02x:%02x:%02x:%02x:%02x:%02x failed "
+				    "diag=%d",
+				    mac_addr->addr_bytes[0],
+				    mac_addr->addr_bytes[1],
+				    mac_addr->addr_bytes[2],
+				    mac_addr->addr_bytes[3],
+				    mac_addr->addr_bytes[4],
+				    mac_addr->addr_bytes[5],
 				    diag);
 	}
 }
