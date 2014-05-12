@@ -58,6 +58,7 @@
 #include <rte_ethdev.h>
 #include <rte_atomic.h>
 #include <rte_malloc.h>
+#include <rte_random.h>
 #include <rte_dev.h>
 
 #include "ixgbe_logs.h"
@@ -842,6 +843,22 @@ ixgbevf_negotiate_api(struct ixgbe_hw *hw)
 		;
 }
 
+static void
+generate_random_mac_addr(struct ether_addr *mac_addr)
+{
+	uint64_t random;
+
+	/* Set Organizationally Unique Identifier (OUI) prefix. */
+	mac_addr->addr_bytes[0] = 0x00;
+	mac_addr->addr_bytes[1] = 0x09;
+	mac_addr->addr_bytes[2] = 0xC0;
+	/* Force indication of locally assigned MAC address. */
+	mac_addr->addr_bytes[0] |= ETHER_LOCAL_ADMIN_ADDR;
+	/* Generate the last 3 bytes of the MAC address with a random number. */
+	random = rte_rand();
+	memcpy(&mac_addr->addr_bytes[3], &random, 3);
+}
+
 /*
  * Virtual Function device init
  */
@@ -858,6 +875,7 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		IXGBE_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
 	struct ixgbe_hwstrip *hwstrip = 
 		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(eth_dev->data->dev_private);
+	struct ether_addr *perm_addr = (struct ether_addr *) hw->mac.perm_addr;
 
 	PMD_INIT_LOG(DEBUG, "eth_ixgbevf_dev_init");
 
@@ -902,13 +920,13 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	hw->mac.num_rar_entries = 128; /* The MAX of the underlying PF */
 	diag = hw->mac.ops.reset_hw(hw);
 
-	if (diag != IXGBE_SUCCESS) {
+	/*
+	 * The VF reset operation returns the IXGBE_ERR_INVALID_MAC_ADDR when
+	 * the underlying PF driver has not assigned a MAC address to the VF.
+	 * In this case, assign a random MAC address.
+	 */
+	if ((diag != IXGBE_SUCCESS) && (diag != IXGBE_ERR_INVALID_MAC_ADDR)) {
 		PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", diag);
-			RTE_LOG(ERR, PMD, "\tThe MAC address is not valid.\n"
-					"\tThe most likely cause of this error is that the VM host\n"
-					"\thas not assigned a valid MAC address to this VF device.\n"
-					"\tPlease consult the DPDK Release Notes (FAQ section) for\n"
-					"\ta possible solution to this problem.\n");
 		return (diag);
 	}
 
@@ -929,9 +947,29 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		return -ENOMEM;
 	}
 
+	/* Generate a random MAC address, if none was assigned by PF. */
+	if (is_zero_ether_addr(perm_addr)) {
+		generate_random_mac_addr(perm_addr);
+		diag = ixgbe_set_rar_vf(hw, 1, perm_addr->addr_bytes, 0, 1);
+		if (diag) {
+			rte_free(eth_dev->data->mac_addrs);
+			eth_dev->data->mac_addrs = NULL;
+			return diag;
+		}
+		RTE_LOG(INFO, PMD,
+			"\tVF MAC address not assigned by Host PF\n"
+			"\tAssign randomly generated MAC address "
+			"%02x:%02x:%02x:%02x:%02x:%02x\n",
+			perm_addr->addr_bytes[0],
+			perm_addr->addr_bytes[1],
+			perm_addr->addr_bytes[2],
+			perm_addr->addr_bytes[3],
+			perm_addr->addr_bytes[4],
+			perm_addr->addr_bytes[5]);
+	}
+
 	/* Copy the permanent MAC address */
-	ether_addr_copy((struct ether_addr *) hw->mac.perm_addr,
-			&eth_dev->data->mac_addrs[0]);
+	ether_addr_copy(perm_addr, &eth_dev->data->mac_addrs[0]);
 
 	/* reset the hardware with the new settings */
 	diag = hw->mac.ops.start_hw(hw);
