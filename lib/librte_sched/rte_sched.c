@@ -2113,12 +2113,12 @@ rte_sched_port_time_resync(struct rte_sched_port *port)
 }
 
 static inline int
-rte_sched_port_exceptions(struct rte_sched_port *port)
+rte_sched_port_exceptions(struct rte_sched_port *port, int second_pass)
 {
 	int exceptions;
 
 	/* Check if any exception flag is set */
-	exceptions = (port->busy_grinders == 0) ||
+	exceptions = (second_pass && port->busy_grinders == 0) ||
 		(port->pipe_exhaustion == 1);
 	
 	/* Clear exception flags */
@@ -2140,7 +2140,8 @@ rte_sched_port_dequeue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
 	/* Take each queue in the grinder one step further */
 	for (i = 0, count = 0; ; i ++)  {
 		count += grinder_handle(port, i & (RTE_SCHED_PORT_N_GRINDERS - 1));
-		if ((count == n_pkts) || rte_sched_port_exceptions(port)) {
+		if ((count == n_pkts) ||
+		    rte_sched_port_exceptions(port, i >= RTE_SCHED_PORT_N_GRINDERS)) {
 			break;
 		}
 	}
