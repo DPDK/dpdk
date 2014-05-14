@@ -74,6 +74,7 @@ $(RTE_OUTPUT)/.config: $(RTE_CONFIG_TEMPLATE) FORCE
 		-o $(RTE_OUTPUT)/.config_tmp $(RTE_CONFIG_TEMPLATE) ; \
 		if ! cmp -s $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config; then \
 			cp $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config ; \
+			cp $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config.orig ; \
 		fi ; \
 		rm -f $(RTE_OUTPUT)/.config_tmp ; \
 	else \

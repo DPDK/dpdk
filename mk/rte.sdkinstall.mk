@@ -58,6 +58,18 @@ install: $(INSTALL_TARGETS)
 	@echo ================== Installing $*
 	$(Q)if [ ! -f $(BUILD_DIR)/$*/.config ]; then \
 		$(MAKE) config T=$* O=$(BUILD_DIR)/$*; \
+	elif cmp -s $(BUILD_DIR)/$*/.config.orig $(BUILD_DIR)/$*/.config; then \
+		$(MAKE) config T=$* O=$(BUILD_DIR)/$*; \
+	else \
+		if [ -f $(BUILD_DIR)/$*/.config.orig ] ; then \
+			tmp_build=$(BUILD_DIR)/$*/.config.tmp; \
+			$(MAKE) config T=$* O=$$tmp_build; \
+			if ! cmp -s $(BUILD_DIR)/$*/.config.orig $$tmp_build/.config ; then \
+				echo "Conflict: local config and template config have both changed"; \
+				exit 1; \
+			fi; \
+		fi; \
+		echo "Using local configuration"; \
 	fi
 	$(Q)$(MAKE) all O=$(BUILD_DIR)/$*
 
