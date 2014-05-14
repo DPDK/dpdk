@@ -1001,7 +1001,7 @@ rte_sched_port_queue_is_full(struct rte_sched_port *port, uint32_t qindex)
 {
 	struct rte_sched_queue *queue = port->queue + qindex;
 	uint16_t qsize = rte_sched_port_qsize(port, qindex);
-	uint16_t qlen = q->qw - q->qr;
+	uint16_t qlen = queue->qw - queue->qr;
 	
 	return (qlen >= qsize);
 }
