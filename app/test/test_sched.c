@@ -83,7 +83,6 @@ static struct rte_sched_pipe_params pipe_profile[] = {
 };
 
 static struct rte_sched_port_params port_param = {
-	.name = "port_0",
 	.socket = 0, /* computed */
 	.rate = 0, /* computed */
 	.mtu = 1522,
@@ -172,7 +171,6 @@ test_sched(void)
 
 	port_param.socket = 0;
 	port_param.rate = (uint64_t) 10000 * 1000 * 1000 / 8;
-	port_param.name = "port_0";
 
 	port = rte_sched_port_config(&port_param);
 	VERIFY(port != NULL, "Error config sched port\n");

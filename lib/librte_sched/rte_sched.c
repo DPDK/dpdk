@@ -37,7 +37,7 @@
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_memory.h>
-#include <rte_memzone.h>
+#include <rte_malloc.h>
 #include <rte_cycles.h>
 #include <rte_prefetch.h>
 #include <rte_branch_prediction.h>
@@ -304,11 +304,6 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 	
 	if (params == NULL) {
 		return -1;
-	}
-	
-	/* name */
-	if (params->name == NULL) {
-		return -2;
 	}
 	
 	/* socket */
@@ -613,7 +608,6 @@ struct rte_sched_port *
 rte_sched_port_config(struct rte_sched_port_params *params)
 {
 	struct rte_sched_port *port = NULL;
-	const struct rte_memzone *mz = NULL;
 	uint32_t mem_size, bmp_mem_size, n_queues_per_port, i;
 	
 	/* Check user parameters. Determine the amount of memory to allocate */
@@ -623,21 +617,10 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	}
 	
 	/* Allocate memory to store the data structures */
-	mz = rte_memzone_lookup(params->name);
-	if (mz) {
-		/* Use existing memzone, provided that its size is big enough */
-		if (mz->len < mem_size) {
-			return NULL;
-		}
-	} else {
-		/* Create new memzone */
-		mz = rte_memzone_reserve(params->name, mem_size, params->socket, 0);		
-		if (mz == NULL) {
-			return NULL;
-		}
+	port = rte_zmalloc("qos_params", mem_size, CACHE_LINE_SIZE);
+	if (port == NULL) {
+		return NULL;
 	}
-	memset(mz->addr, 0, mem_size);
-	port = (struct rte_sched_port *) mz->addr;
 
 	/* User parameters */
 	port->n_subports_per_port = params->n_subports_per_port;
@@ -716,9 +699,9 @@ rte_sched_port_free(struct rte_sched_port *port)
 	if (port == NULL){
 		return;
 	}
+
 	rte_bitmap_free(port->bmp);
-	
-	return;
+	rte_free(port);
 }
 
 static void
