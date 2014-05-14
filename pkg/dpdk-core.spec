@@ -43,7 +43,7 @@ Group: System Environment/Libraries
 License: BSD and LGPLv2 and GPLv2
 
 ExclusiveArch: i686, x86_64
-%define target %{_arch}-default-linuxapp-gcc
+%define target %{_arch}-native-linuxapp-gcc
 %define machine default
 
 BuildRequires: kernel-devel, kernel-headers, doxygen

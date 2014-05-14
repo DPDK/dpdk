@@ -38,7 +38,7 @@ $(error "Please define ICP_ROOT environment variable")
 endif
 
 # Default target, can be overriden by command line or environment
-RTE_TARGET ?= x86_64-default-linuxapp-gcc
+RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 

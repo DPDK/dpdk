@@ -1,5 +1,5 @@
 Basic build
-	make config T=x86_64-default-linuxapp-gcc && make
+	make config T=x86_64-native-linuxapp-gcc && make
 Build commands
 	config           get configuration from target template (T=)
 	all              same as build (default rule)

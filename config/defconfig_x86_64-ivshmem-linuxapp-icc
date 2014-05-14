@@ -34,7 +34,7 @@
 # use default config
 #
 
-#include "defconfig_x86_64-default-linuxapp-icc"
+#include "defconfig_x86_64-native-linuxapp-icc"
 
 #
 # Compile IVSHMEM library

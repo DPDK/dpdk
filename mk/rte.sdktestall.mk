@@ -37,7 +37,7 @@ endif
 
 # Targets to test can be specified in command line. It can be a
 # target name or a name containing jokers "*". Example:
-# x86_64-default-*-gcc
+# x86_64-native-*-gcc
 ifndef T
 T=*
 endif

@@ -35,7 +35,7 @@
 # must be executed from root
 
 # do a first build
-make config T=x86_64-default-linuxapp-gcc O=deptest
+make config T=x86_64-native-linuxapp-gcc O=deptest
 make -j8 O=deptest
 
 MOD_APP_TEST1=`stat deptest/app/test | grep Modify`

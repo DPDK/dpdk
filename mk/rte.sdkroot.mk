@@ -53,7 +53,7 @@ export BUILDING_RTE_SDK
 
 #
 # We can specify the configuration template when doing the "make
-# config". For instance: make config T=i686-default-baremetal-gcc
+# config". For instance: make config T=i686-native-baremetal-gcc
 #
 RTE_CONFIG_TEMPLATE :=
 ifdef T
