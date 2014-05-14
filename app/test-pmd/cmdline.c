@@ -294,17 +294,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"        bit 3 - insert sctp checksum offload if set\n"
 			"    Please check the NIC datasheet for HW limits.\n\n"
 
-#ifdef RTE_LIBRTE_IEEE1588
-			"set fwd (io|mac|mac_retry|rxonly|txonly|csum|ieee1588)\n"
-			"    Set IO, MAC, MAC_RETRY, RXONLY, CSUM or TXONLY or ieee1588"
-			" packet forwarding mode.\n\n"
+			"set fwd (%s)\n"
+			"    Set packet forwarding mode.\n\n"
 
-#else
-			"set fwd (io|mac|mac_retry|rxonly|txonly|csum)\n"
-			"    Set IO, MAC, MAC_RETRY, RXONLY, CSUM or TXONLY packet"
-			" forwarding mode.\n\n"
-
-#endif
 			"mac_addr add (port_id) (XX:XX:XX:XX:XX:XX)\n"
 			"    Add a MAC address on port_id.\n\n"
 
@@ -398,6 +390,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" using the lowest port on the NIC.\n\n"
 #endif
 
+			, list_pkt_forwarding_modes()
 		);
 	}
 
@@ -2688,22 +2681,12 @@ cmdline_parse_token_string_t cmd_setfwd_fwd =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_mode_result, fwd, "fwd");
 cmdline_parse_token_string_t cmd_setfwd_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_mode_result, mode,
-#ifdef RTE_LIBRTE_IEEE1588
-				 "io#mac#mac_retry#rxonly#txonly#csum#ieee1588");
-#else
-				 "io#mac#mac_retry#rxonly#txonly#csum");
-#endif
+		"" /* defined at init */);
 
 cmdline_parse_inst_t cmd_set_fwd_mode = {
 	.f = cmd_set_fwd_mode_parsed,
 	.data = NULL,
-#ifdef RTE_LIBRTE_IEEE1588
-	.help_str = "set fwd io|mac|mac_retry|rxonly|txonly|csum|ieee1588 - set IO, MAC,"
-	" MAC_RETRY, RXONLY, TXONLY, CSUM or IEEE1588 packet forwarding mode",
-#else
-	.help_str = "set fwd io|mac|mac_retry|rxonly|txonly|csum - set IO, MAC,"
-	" MAC_RETRY, RXONLY, CSUM or TXONLY packet forwarding mode",
-#endif
+	.help_str = NULL, /* defined at init */
 	.tokens = {
 		(void *)&cmd_setfwd_set,
 		(void *)&cmd_setfwd_fwd,
@@ -2711,6 +2694,28 @@ cmdline_parse_inst_t cmd_set_fwd_mode = {
 		NULL,
 	},
 };
+
+static void cmd_set_fwd_mode_init(void)
+{
+	char *modes, *c;
+	static char token[128];
+	static char help[256];
+	cmdline_parse_token_string_t *token_struct;
+
+	modes = list_pkt_forwarding_modes();
+	rte_snprintf(help, sizeof help, "set fwd %s - "
+		"set packet forwarding mode", modes);
+	cmd_set_fwd_mode.help_str = help;
+
+	/* string token separator is # */
+	for (c = token; *modes != '\0'; modes++)
+		if (*modes == '|')
+			*c++ = '#';
+		else
+			*c++ = *modes;
+	token_struct = (cmdline_parse_token_string_t*)cmd_set_fwd_mode.tokens[2];
+	token_struct->string_data.str = token;
+}
 
 /* *** SET BURST TX DELAY TIME RETRY NUMBER *** */
 struct cmd_set_burst_tx_retry_result {
@@ -5197,6 +5202,9 @@ void
 prompt(void)
 {
 	struct cmdline *cl;
+
+	/* initialize non-constant commands */
+	cmd_set_fwd_mode_init();
 
 	cl = cmdline_stdin_new(main_ctx, "testpmd> ");
 	if (cl == NULL) {

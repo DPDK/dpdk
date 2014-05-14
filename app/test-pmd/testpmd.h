@@ -491,6 +491,7 @@ void tx_cksum_set(portid_t port_id, uint8_t cksum_mask);
 void set_verbose_level(uint16_t vb_level);
 void set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs);
 void set_nb_pkt_per_burst(uint16_t pkt_burst);
+char *list_pkt_forwarding_modes(void);
 void set_pkt_forwarding_mode(const char *fwd_mode);
 void start_packet_forwarding(int with_tx_first);
 void stop_packet_forwarding(void);

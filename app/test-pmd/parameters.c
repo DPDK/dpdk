@@ -158,7 +158,8 @@ usage(char* progname)
 	printf("  --disable-rss: disable rss.\n");
 	printf("  --port-topology=N: set port topology (N: paired (default) or "
 	       "chained).\n");
-	printf("  --forward-mode=N: set forwarding mode.\n");
+	printf("  --forward-mode=N: set forwarding mode (N: %s).\n",
+	       list_pkt_forwarding_modes());
 	printf("  --rss-ip: set RSS functions to IPv4/IPv6 only .\n");
 	printf("  --rss-udp: set RSS functions to IPv4/IPv6 + UDP.\n");
 	printf("  --rxq=N: set the number of RX queues per port to N.\n");

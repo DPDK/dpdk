@@ -1231,6 +1231,25 @@ set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs)
 	tx_pkt_nb_segs = (uint8_t) nb_segs;
 }
 
+char*
+list_pkt_forwarding_modes(void)
+{
+	static char fwd_modes[128] = "";
+	const char *separator = "|";
+	struct fwd_engine *fwd_eng;
+	unsigned i = 0;
+
+	if (strlen (fwd_modes) == 0) {
+		while ((fwd_eng = fwd_engines[i++]) != NULL) {
+			strcat(fwd_modes, fwd_eng->fwd_mode_name);
+			strcat(fwd_modes, separator);
+		}
+		fwd_modes[strlen(fwd_modes) - strlen(separator)] = '\0';
+	}
+
+	return fwd_modes;
+}
+
 void
 set_pkt_forwarding_mode(const char *fwd_mode_name)
 {
