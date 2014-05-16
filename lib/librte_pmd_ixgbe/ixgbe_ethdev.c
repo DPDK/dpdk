@@ -307,6 +307,7 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.bypass_ver_show      = ixgbe_bypass_ver_show,
 	.bypass_wd_reset      = ixgbe_bypass_wd_reset,
 #endif /* RTE_NIC_BYPASS */
+	.rss_hash_update = ixgbe_dev_rss_hash_update,
 };
 
 /*

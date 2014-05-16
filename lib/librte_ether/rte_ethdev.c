@@ -1572,6 +1572,28 @@ rte_eth_dev_rss_reta_query(uint8_t port_id, struct rte_eth_rss_reta *reta_conf)
 }
 
 int
+rte_eth_dev_rss_hash_update(uint8_t port_id, struct rte_eth_rss_conf *rss_conf)
+{
+	struct rte_eth_dev *dev;
+	uint16_t rss_hash_protos;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+	rss_hash_protos = rss_conf->rss_hf;
+	if ((rss_hash_protos != 0) &&
+	    ((rss_hash_protos & ETH_RSS_PROTO_MASK) == 0)) {
+		PMD_DEBUG_TRACE("Invalid rss_hash_protos=0x%x\n",
+				rss_hash_protos);
+		return (-EINVAL);
+	}
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rss_hash_update, -ENOTSUP);
+	return (*dev->dev_ops->rss_hash_update)(dev, rss_conf);
+}
+
+int
 rte_eth_led_on(uint8_t port_id)
 {
 	struct rte_eth_dev *dev;

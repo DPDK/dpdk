@@ -331,6 +331,8 @@ struct rte_eth_rss_conf {
 #define ETH_RSS_IPV4_UDP    0x0040 /**< IPv4/UDP packet. */
 #define ETH_RSS_IPV6_UDP    0x0080 /**< IPv6/UDP packet. */
 #define ETH_RSS_IPV6_UDP_EX 0x0100 /**< IPv6/UDP with extension headers. */
+
+#define ETH_RSS_PROTO_MASK  0x01FF /**< Mask of valid RSS hash protocols */
 /* Definitions used for redirection table entry size */
 #define ETH_RSS_RETA_NUM_ENTRIES 128
 #define ETH_RSS_RETA_MAX_QUEUE   16  
@@ -966,6 +968,10 @@ typedef int (*reta_query_t)(struct rte_eth_dev *dev,
 				struct rte_eth_rss_reta *reta_conf);
 /**< @internal Query RSS redirection table on an Ethernet device */
 
+typedef int (*rss_hash_update_t)(struct rte_eth_dev *dev,
+				 struct rte_eth_rss_conf *rss_conf);
+/**< @internal Update RSS hash configuration of an Ethernet device */
+
 typedef int (*eth_dev_led_on_t)(struct rte_eth_dev *dev);
 /**< @internal Turn on SW controllable LED on an Ethernet device */
 
@@ -1153,6 +1159,8 @@ struct eth_dev_ops {
   bypass_wd_reset_t bypass_wd_reset;
 #endif
 
+	/** Configure RSS hash protocols. */
+	rss_hash_update_t rss_hash_update;
 };
 
 /**
@@ -2724,6 +2732,22 @@ int rte_eth_dev_bypass_wd_timeout_show(uint8_t port, uint32_t *wd_timeout);
  *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_bypass_wd_reset(uint8_t port);
+
+ /**
+ * Configuration of Receive Side Scaling hash computation of Ethernet device.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param rss_conf
+ *   The new configuration to use for RSS hash computation on the port.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if port identifier is invalid.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_dev_rss_hash_update(uint8_t port_id,
+				struct rte_eth_rss_conf *rss_conf);
 
 #ifdef __cplusplus
 }

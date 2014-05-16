@@ -138,6 +138,9 @@ uint16_t eth_igb_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts,
 uint16_t eth_igb_recv_scattered_pkts(void *rxq,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
+int eth_igb_rss_hash_update(struct rte_eth_dev *dev,
+			    struct rte_eth_rss_conf *rss_conf);
+
 int eth_igbvf_rx_init(struct rte_eth_dev *dev);
 
 void eth_igbvf_tx_init(struct rte_eth_dev *dev);

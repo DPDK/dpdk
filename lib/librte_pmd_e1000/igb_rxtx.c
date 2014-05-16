@@ -1519,53 +1519,28 @@ igb_rss_disable(struct rte_eth_dev *dev)
 }
 
 static void
-igb_rss_configure(struct rte_eth_dev *dev)
+igb_hw_rss_hash_set(struct e1000_hw *hw, struct rte_eth_rss_conf *rss_conf)
 {
-	struct e1000_hw *hw;
-	uint8_t *hash_key;
+	uint8_t  *hash_key;
 	uint32_t rss_key;
 	uint32_t mrqc;
-	uint32_t shift;
 	uint16_t rss_hf;
 	uint16_t i;
 
-	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	rss_hf = dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
-	if (rss_hf == 0) /* Disable RSS. */ {
-		igb_rss_disable(dev);
-		return;
-	}
-	hash_key = dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key;
-	if (hash_key == NULL)
-		hash_key = rss_intel_key; /* Default hash key. */
-
-	/* Fill in RSS hash key. */
-	for (i = 0; i < 10; i++) {
-		rss_key  = hash_key[(i * 4)];
-		rss_key |= hash_key[(i * 4) + 1] << 8;
-		rss_key |= hash_key[(i * 4) + 2] << 16;
-		rss_key |= hash_key[(i * 4) + 3] << 24;
-		E1000_WRITE_REG_ARRAY(hw, E1000_RSSRK(0), i, rss_key);
+	hash_key = rss_conf->rss_key;
+	if (hash_key != NULL) {
+		/* Fill in RSS hash key */
+		for (i = 0; i < 10; i++) {
+			rss_key  = hash_key[(i * 4)];
+			rss_key |= hash_key[(i * 4) + 1] << 8;
+			rss_key |= hash_key[(i * 4) + 2] << 16;
+			rss_key |= hash_key[(i * 4) + 3] << 24;
+			E1000_WRITE_REG_ARRAY(hw, E1000_RSSRK(0), i, rss_key);
+		}
 	}
 
-	/* Fill in redirection table. */
-	shift = (hw->mac.type == e1000_82575) ? 6 : 0;
-	for (i = 0; i < 128; i++) {
-		union e1000_reta {
-			uint32_t dword;
-			uint8_t  bytes[4];
-		} reta;
-		uint8_t q_idx;
-
-		q_idx = (uint8_t) ((dev->data->nb_rx_queues > 1) ?
-				   i % dev->data->nb_rx_queues : 0);
-		reta.bytes[i & 3] = (uint8_t) (q_idx << shift);
-		if ((i & 3) == 3)
-			E1000_WRITE_REG(hw, E1000_RETA(i >> 2), reta.dword);
-	}
-
-	/* Set configured hashing functions in MRQC register. */
+	/* Set configured hashing protocols in MRQC register */
+	rss_hf = rss_conf->rss_hf;
 	mrqc = E1000_MRQC_ENABLE_RSS_4Q; /* RSS enabled. */
 	if (rss_hf & ETH_RSS_IPV4)
 		mrqc |= E1000_MRQC_RSS_FIELD_IPV4;
@@ -1586,6 +1561,76 @@ igb_rss_configure(struct rte_eth_dev *dev)
 	if (rss_hf & ETH_RSS_IPV6_UDP_EX)
 		mrqc |= E1000_MRQC_RSS_FIELD_IPV6_UDP_EX;
 	E1000_WRITE_REG(hw, E1000_MRQC, mrqc);
+}
+
+int
+eth_igb_rss_hash_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf)
+{
+	struct e1000_hw *hw;
+	uint32_t mrqc;
+	uint16_t rss_hf;
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/*
+	 * Before changing anything, first check that the update RSS operation
+	 * does not attempt to disable RSS, if RSS was enabled at
+	 * initialization time, or does not attempt to enable RSS, if RSS was
+	 * disabled at initialization time.
+	 */
+	rss_hf = rss_conf->rss_hf;
+	mrqc = E1000_READ_REG(hw, E1000_MRQC);
+	if (!(mrqc & E1000_MRQC_ENABLE_MASK)) { /* RSS disabled */
+		if (rss_hf != 0) /* Enable RSS */
+			return -(EINVAL);
+		return 0; /* Nothing to do */
+	}
+	/* RSS enabled */
+	if (rss_hf == 0) /* Disable RSS */
+		return -(EINVAL);
+	igb_hw_rss_hash_set(hw, rss_conf);
+	return 0;
+}
+
+static void
+igb_rss_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_rss_conf rss_conf;
+	struct e1000_hw *hw;
+	uint32_t shift;
+	uint16_t i;
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Fill in redirection table. */
+	shift = (hw->mac.type == e1000_82575) ? 6 : 0;
+	for (i = 0; i < 128; i++) {
+		union e1000_reta {
+			uint32_t dword;
+			uint8_t  bytes[4];
+		} reta;
+		uint8_t q_idx;
+
+		q_idx = (uint8_t) ((dev->data->nb_rx_queues > 1) ?
+				   i % dev->data->nb_rx_queues : 0);
+		reta.bytes[i & 3] = (uint8_t) (q_idx << shift);
+		if ((i & 3) == 3)
+			E1000_WRITE_REG(hw, E1000_RETA(i >> 2), reta.dword);
+	}
+
+	/*
+	 * Configure the RSS key and the RSS protocols used to compute
+	 * the RSS hash of input packets.
+	 */
+	rss_conf = dev->data->dev_conf.rx_adv_conf.rss_conf;
+	if (rss_conf.rss_hf == 0) {
+		igb_rss_disable(dev);
+		return;
+	}
+	if (rss_conf.rss_key == NULL)
+		rss_conf.rss_key = rss_intel_key; /* Default hash key */
+	igb_hw_rss_hash_set(hw, &rss_conf);
 }
 
 /*

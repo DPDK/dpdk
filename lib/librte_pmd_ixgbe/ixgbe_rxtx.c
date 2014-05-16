@@ -2292,49 +2292,29 @@ ixgbe_rss_disable(struct rte_eth_dev *dev)
 }
 
 static void
-ixgbe_rss_configure(struct rte_eth_dev *dev)
+ixgbe_hw_rss_hash_set(struct ixgbe_hw *hw, struct rte_eth_rss_conf *rss_conf)
 {
-	struct ixgbe_hw *hw;
-	uint8_t *hash_key;
-	uint32_t rss_key;
+	uint8_t  *hash_key;
 	uint32_t mrqc;
-	uint32_t reta;
+	uint32_t rss_key;
 	uint16_t rss_hf;
 	uint16_t i;
-	uint16_t j;
 
-	PMD_INIT_FUNC_TRACE();
-	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	rss_hf = dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
-	if (rss_hf == 0) { /* Disable RSS */
-		ixgbe_rss_disable(dev);
-		return;
-	}
-	hash_key = dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key;
-	if (hash_key == NULL)
-		hash_key = rss_intel_key; /* Default hash key */
-
-	/* Fill in RSS hash key */
-	for (i = 0; i < 10; i++) {
-		rss_key  = hash_key[(i * 4)];
-		rss_key |= hash_key[(i * 4) + 1] << 8;
-		rss_key |= hash_key[(i * 4) + 2] << 16;
-		rss_key |= hash_key[(i * 4) + 3] << 24;
-		IXGBE_WRITE_REG_ARRAY(hw, IXGBE_RSSRK(0), i, rss_key);
+	hash_key = rss_conf->rss_key;
+	if (hash_key != NULL) {
+		/* Fill in RSS hash key */
+		for (i = 0; i < 10; i++) {
+			rss_key  = hash_key[(i * 4)];
+			rss_key |= hash_key[(i * 4) + 1] << 8;
+			rss_key |= hash_key[(i * 4) + 2] << 16;
+			rss_key |= hash_key[(i * 4) + 3] << 24;
+			IXGBE_WRITE_REG_ARRAY(hw, IXGBE_RSSRK(0), i, rss_key);
+		}
 	}
 
-	/* Fill in redirection table */
-	reta = 0;
-	for (i = 0, j = 0; i < 128; i++, j++) {
-		if (j == dev->data->nb_rx_queues) j = 0;
-		reta = (reta << 8) | j;
-		if ((i & 3) == 3)
-			IXGBE_WRITE_REG(hw, IXGBE_RETA(i >> 2), rte_bswap32(reta));
-	}
-
-	/* Set configured hashing functions in MRQC register */
-	mrqc = IXGBE_MRQC_RSSEN; /* RSS enable */
+	/* Set configured hashing protocols in MRQC register */
+	rss_hf = rss_conf->rss_hf;
+	mrqc = IXGBE_MRQC_RSSEN; /* Enable RSS */
 	if (rss_hf & ETH_RSS_IPV4)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV4;
 	if (rss_hf & ETH_RSS_IPV4_TCP)
@@ -2354,6 +2334,80 @@ ixgbe_rss_configure(struct rte_eth_dev *dev)
 	if (rss_hf & ETH_RSS_IPV6_UDP_EX)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV6_EX_UDP;
 	IXGBE_WRITE_REG(hw, IXGBE_MRQC, mrqc);
+}
+
+int
+ixgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct ixgbe_hw *hw;
+	uint32_t mrqc;
+	uint16_t rss_hf;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/*
+	 * Excerpt from section 7.1.2.8 Receive-Side Scaling (RSS):
+	 *     "RSS enabling cannot be done dynamically while it must be
+	 *      preceded by a software reset"
+	 * Before changing anything, first check that the update RSS operation
+	 * does not attempt to disable RSS, if RSS was enabled at
+	 * initialization time, or does not attempt to enable RSS, if RSS was
+	 * disabled at initialization time.
+	 */
+	rss_hf = rss_conf->rss_hf;
+	mrqc = IXGBE_READ_REG(hw, IXGBE_MRQC);
+	if (!(mrqc & IXGBE_MRQC_RSSEN)) { /* RSS disabled */
+		if (rss_hf != 0) /* Enable RSS */
+			return -(EINVAL);
+		return 0; /* Nothing to do */
+	}
+	/* RSS enabled */
+	if (rss_hf == 0) /* Disable RSS */
+		return -(EINVAL);
+	ixgbe_hw_rss_hash_set(hw, rss_conf);
+	return 0;
+}
+
+static void
+ixgbe_rss_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_rss_conf rss_conf;
+	struct ixgbe_hw *hw;
+	uint32_t reta;
+	uint16_t i;
+	uint16_t j;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/*
+	 * Fill in redirection table
+	 * The byte-swap is needed because NIC registers are in
+	 * little-endian order.
+	 */
+	reta = 0;
+	for (i = 0, j = 0; i < 128; i++, j++) {
+		if (j == dev->data->nb_rx_queues)
+			j = 0;
+		reta = (reta << 8) | j;
+		if ((i & 3) == 3)
+			IXGBE_WRITE_REG(hw, IXGBE_RETA(i >> 2),
+					rte_bswap32(reta));
+	}
+
+	/*
+	 * Configure the RSS key and the RSS protocols used to compute
+	 * the RSS hash of input packets.
+	 */
+	rss_conf = dev->data->dev_conf.rx_adv_conf.rss_conf;
+	if (rss_conf.rss_hf == 0) {
+		ixgbe_rss_disable(dev);
+		return;
+	}
+	if (rss_conf.rss_key == NULL)
+		rss_conf.rss_key = rss_intel_key; /* Default hash key */
+	ixgbe_hw_rss_hash_set(hw, &rss_conf);
 }
 
 #define NUM_VFTA_REGISTERS 128
