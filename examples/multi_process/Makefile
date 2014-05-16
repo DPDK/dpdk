@@ -33,15 +33,13 @@ ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif
 
+# Default target, can be overriden by command line or environment
+RTE_TARGET ?= x86_64-default-linuxapp-gcc
+
 include $(RTE_SDK)/mk/rte.vars.mk
-unexport RTE_SRCDIR RTE_OUTPUT RTE_EXTMK
 
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += $(wildcard *_mp)
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += client_server_mp
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += simple_mp
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += symmetric_mp
 
-.PHONY: all clean $(DIRS-y)
-
-all: $(DIRS-y)
-clean: $(DIRS-y)
-
-$(DIRS-y):
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+include $(RTE_SDK)/mk/rte.extsubdir.mk

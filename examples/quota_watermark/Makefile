@@ -37,14 +37,8 @@ endif
 RTE_TARGET ?= x86_64-default-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
-unexport RTE_SRCDIR RTE_OUTPUT RTE_EXTMK
 
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += $(wildcard qw*)
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += qw
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += qwctl
 
-.PHONY: all clean $(DIRS-y)
-
-all: $(DIRS-y)
-clean: $(DIRS-y)
-
-$(DIRS-y):
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+include $(RTE_SDK)/mk/rte.extsubdir.mk
