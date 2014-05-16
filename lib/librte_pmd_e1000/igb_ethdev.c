@@ -195,6 +195,7 @@ static struct eth_dev_ops eth_igb_ops = {
 	.reta_update          = eth_igb_rss_reta_update,
 	.reta_query           = eth_igb_rss_reta_query,
 	.rss_hash_update      = eth_igb_rss_hash_update,
+	.rss_hash_conf_get    = eth_igb_rss_hash_conf_get,
 };
 
 /*

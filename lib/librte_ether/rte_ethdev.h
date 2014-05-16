@@ -972,6 +972,10 @@ typedef int (*rss_hash_update_t)(struct rte_eth_dev *dev,
 				 struct rte_eth_rss_conf *rss_conf);
 /**< @internal Update RSS hash configuration of an Ethernet device */
 
+typedef int (*rss_hash_conf_get_t)(struct rte_eth_dev *dev,
+				   struct rte_eth_rss_conf *rss_conf);
+/**< @internal Get current RSS hash configuration of an Ethernet device */
+
 typedef int (*eth_dev_led_on_t)(struct rte_eth_dev *dev);
 /**< @internal Turn on SW controllable LED on an Ethernet device */
 
@@ -1161,6 +1165,8 @@ struct eth_dev_ops {
 
 	/** Configure RSS hash protocols. */
 	rss_hash_update_t rss_hash_update;
+	/** Get current RSS hash configuration. */
+	rss_hash_conf_get_t rss_hash_conf_get;
 };
 
 /**
@@ -2748,6 +2754,23 @@ int rte_eth_dev_bypass_wd_reset(uint8_t port);
  */
 int rte_eth_dev_rss_hash_update(uint8_t port_id,
 				struct rte_eth_rss_conf *rss_conf);
+
+ /**
+ * Retrieve current configuration of Receive Side Scaling hash computation
+ * of Ethernet device.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param rss_conf
+ *   Where to store the current RSS hash configuration of the Ethernet device.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if port identifier is invalid.
+ *   - (-ENOTSUP) if hardware doesn't support RSS.
+ */
+int
+rte_eth_dev_rss_hash_conf_get(uint8_t port_id,
+			      struct rte_eth_rss_conf *rss_conf);
 
 #ifdef __cplusplus
 }

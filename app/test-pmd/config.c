@@ -682,6 +682,71 @@ port_rss_reta_info(portid_t port_id,struct rte_eth_rss_reta *reta_conf)
 }
 
 /*
+ * Displays the RSS hash functions of a port, and, optionaly, the RSS hash
+ * key of the port.
+ */
+void
+port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
+{
+	struct rte_eth_rss_conf rss_conf;
+	uint8_t rss_key[10 * 4];
+	uint16_t rss_hf;
+	uint8_t i;
+	int diag;
+
+	if (port_id_is_invalid(port_id))
+		return;
+	/* Get RSS hash key if asked to display it */
+	rss_conf.rss_key = (show_rss_key) ? rss_key : NULL;
+	diag = rte_eth_dev_rss_hash_conf_get(port_id, &rss_conf);
+	if (diag != 0) {
+		switch (diag) {
+		case -ENODEV:
+			printf("port index %d invalid\n", port_id);
+			break;
+		case -ENOTSUP:
+			printf("operation not supported by device\n");
+			break;
+		default:
+			printf("operation failed - diag=%d\n", diag);
+			break;
+		}
+		return;
+	}
+	rss_hf = rss_conf.rss_hf;
+	if (rss_hf == 0) {
+		printf("RSS disabled\n");
+		return;
+	}
+	printf("RSS functions:\n ");
+	if (rss_hf & ETH_RSS_IPV4)
+		printf("ip4");
+	if (rss_hf & ETH_RSS_IPV4_TCP)
+		printf(" tcp4");
+	if (rss_hf & ETH_RSS_IPV4_UDP)
+		printf(" udp4");
+	if (rss_hf & ETH_RSS_IPV6)
+		printf(" ip6");
+	if (rss_hf & ETH_RSS_IPV6_EX)
+		printf(" ip6-ex");
+	if (rss_hf & ETH_RSS_IPV6_TCP)
+		printf(" tcp6");
+	if (rss_hf & ETH_RSS_IPV6_TCP_EX)
+		printf(" tcp6-ex");
+	if (rss_hf & ETH_RSS_IPV6_UDP)
+		printf(" udp6");
+	if (rss_hf & ETH_RSS_IPV6_UDP_EX)
+		printf(" udp6-ex");
+	printf("\n");
+	if (!show_rss_key)
+		return;
+	printf("RSS key:\n");
+	for (i = 0; i < sizeof(rss_key); i++)
+		printf("%02X", rss_key[i]);
+	printf("\n");
+}
+
+/*
  * Setup forwarding configuration for each logical core.
  */
 static void

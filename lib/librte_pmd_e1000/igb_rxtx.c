@@ -1593,6 +1593,58 @@ eth_igb_rss_hash_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+int eth_igb_rss_hash_conf_get(struct rte_eth_dev *dev,
+			      struct rte_eth_rss_conf *rss_conf)
+{
+	struct e1000_hw *hw;
+	uint8_t *hash_key;
+	uint32_t rss_key;
+	uint32_t mrqc;
+	uint16_t rss_hf;
+	uint16_t i;
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hash_key = rss_conf->rss_key;
+	if (hash_key != NULL) {
+		/* Return RSS hash key */
+		for (i = 0; i < 10; i++) {
+			rss_key = E1000_READ_REG_ARRAY(hw, E1000_RSSRK(0), i);
+			hash_key[(i * 4)] = rss_key & 0x000000FF;
+			hash_key[(i * 4) + 1] = (rss_key >> 8) & 0x000000FF;
+			hash_key[(i * 4) + 2] = (rss_key >> 16) & 0x000000FF;
+			hash_key[(i * 4) + 3] = (rss_key >> 24) & 0x000000FF;
+		}
+	}
+
+	/* Get RSS functions configured in MRQC register */
+	mrqc = E1000_READ_REG(hw, E1000_MRQC);
+	if ((mrqc & E1000_MRQC_ENABLE_RSS_4Q) == 0) { /* RSS is disabled */
+		rss_conf->rss_hf = 0;
+		return 0;
+	}
+	rss_hf = 0;
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV4)
+		rss_hf |= ETH_RSS_IPV4;
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV4_TCP)
+		rss_hf |= ETH_RSS_IPV4_TCP;
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV6)
+		rss_hf |= ETH_RSS_IPV6;
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV6_EX)
+		rss_hf |= ETH_RSS_IPV6_EX;
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV6_TCP)
+		rss_hf |= ETH_RSS_IPV6_TCP;
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV6_TCP_EX)
+		rss_hf |= ETH_RSS_IPV6_TCP_EX;
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV4_UDP)
+		rss_hf |= ETH_RSS_IPV4_UDP;
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV6_UDP)
+		rss_hf |= ETH_RSS_IPV6_UDP;
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV6_UDP_EX)
+		rss_hf |= ETH_RSS_IPV6_UDP_EX;
+	rss_conf->rss_hf = rss_hf;
+	return 0;
+}
+
 static void
 igb_rss_configure(struct rte_eth_dev *dev)
 {

@@ -238,6 +238,9 @@ uint16_t ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 int ixgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 			      struct rte_eth_rss_conf *rss_conf);
 
+int ixgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+				struct rte_eth_rss_conf *rss_conf);
+
 /*
  * Flow director function prototypes
  */
