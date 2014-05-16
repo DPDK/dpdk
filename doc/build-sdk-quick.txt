@@ -1,12 +1,14 @@
 Basic build
 	make config T=x86_64-default-linuxapp-gcc && make
 Build commands
-	config      get configuration from target template (T=)
-	all         same as build (default rule)
-	build       build in a configured directory
-	clean       remove files but keep configuration
-	install     build many targets (wildcard allowed) and install in DESTDIR
-	uninstall   remove all installed targets
+	config           get configuration from target template (T=)
+	all              same as build (default rule)
+	build            build in a configured directory
+	clean            remove files but keep configuration
+	install          build many targets (wildcard allowed) and install in DESTDIR
+	uninstall        remove all installed targets
+	examples         build examples for given targets (T=)
+	examples_clean   clean examples for given targets (T=)
 Build variables
 	EXTRA_CPPFLAGS   preprocessor options
 	EXTRA_CFLAGS     compiler options
