@@ -41,9 +41,12 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # binary name
 APP = bridge
 
+# for compat_netmap.c
+VPATH := $(SRCDIR)/../lib
+
 # all source are stored in SRCS-y
 SRCS-y := bridge.c
-SRCS-y += $(SRCDIR)/../lib/compat_netmap.c
+SRCS-y += compat_netmap.c
 
 CFLAGS += -O3 -I$(SRCDIR)/../lib -I$(SRCDIR)/../netmap
 CFLAGS += $(WERROR_FLAGS)
