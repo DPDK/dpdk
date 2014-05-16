@@ -529,6 +529,7 @@ void set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id,
 		uint64_t vf_mask, uint8_t on);
 
 void port_rss_hash_conf_show(portid_t port_id, int show_rss_key);
+void port_rss_hash_key_update(portid_t port_id, uint8_t *hash_key);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the

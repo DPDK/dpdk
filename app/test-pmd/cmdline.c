@@ -1171,6 +1171,99 @@ cmdline_parse_inst_t cmd_config_rss = {
 	},
 };
 
+/* *** configure rss hash key *** */
+struct cmd_config_rss_hash_key {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t config;
+	uint8_t port_id;
+	cmdline_fixed_string_t rss_hash_key;
+	cmdline_fixed_string_t key;
+};
+
+#define RSS_HASH_KEY_LENGTH 40
+static uint8_t
+hexa_digit_to_value(char hexa_digit)
+{
+	if ((hexa_digit >= '0') && (hexa_digit <= '9'))
+		return (uint8_t) (hexa_digit - '0');
+	if ((hexa_digit >= 'a') && (hexa_digit <= 'f'))
+		return (uint8_t) ((hexa_digit - 'a') + 10);
+	if ((hexa_digit >= 'A') && (hexa_digit <= 'F'))
+		return (uint8_t) ((hexa_digit - 'A') + 10);
+	/* Invalid hexa digit */
+	return 0xFF;
+}
+
+static uint8_t
+parse_and_check_key_hexa_digit(char *key, int idx)
+{
+	uint8_t hexa_v;
+
+	hexa_v = hexa_digit_to_value(key[idx]);
+	if (hexa_v == 0xFF)
+		printf("invalid key: character %c at position %d is not a "
+		       "valid hexa digit\n", key[idx], idx);
+	return hexa_v;
+}
+
+static void
+cmd_config_rss_hash_key_parsed(void *parsed_result,
+			       __attribute__((unused)) struct cmdline *cl,
+			       __attribute__((unused)) void *data)
+{
+	struct cmd_config_rss_hash_key *res = parsed_result;
+	uint8_t hash_key[RSS_HASH_KEY_LENGTH];
+	uint8_t xdgt0;
+	uint8_t xdgt1;
+	int i;
+
+	/* Check the length of the RSS hash key */
+	if (strlen(res->key) != (RSS_HASH_KEY_LENGTH * 2)) {
+		printf("key length: %d invalid - key must be a string of %d"
+		       "hexa-decimal numbers\n", (int) strlen(res->key),
+		       RSS_HASH_KEY_LENGTH * 2);
+		return;
+	}
+	/* Translate RSS hash key into binary representation */
+	for (i = 0; i < RSS_HASH_KEY_LENGTH; i++) {
+		xdgt0 = parse_and_check_key_hexa_digit(res->key, (i * 2));
+		if (xdgt0 == 0xFF)
+			return;
+		xdgt1 = parse_and_check_key_hexa_digit(res->key, (i * 2) + 1);
+		if (xdgt1 == 0xFF)
+			return;
+		hash_key[i] = (uint8_t) ((xdgt0 * 16) + xdgt1);
+	}
+	port_rss_hash_key_update(res->port_id, hash_key);
+}
+
+cmdline_parse_token_string_t cmd_config_rss_hash_key_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key, port, "port");
+cmdline_parse_token_string_t cmd_config_rss_hash_key_config =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key, config,
+				 "config");
+cmdline_parse_token_string_t cmd_config_rss_hash_key_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rss_hash_key, port_id, UINT8);
+cmdline_parse_token_string_t cmd_config_rss_hash_key_rss_hash_key =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key,
+				 rss_hash_key, "rss-hash-key");
+cmdline_parse_token_string_t cmd_config_rss_hash_key_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key, key, NULL);
+
+cmdline_parse_inst_t cmd_config_rss_hash_key = {
+	.f = cmd_config_rss_hash_key_parsed,
+	.data = NULL,
+	.help_str = "port config X rss-hash-key 80 hexa digits",
+	.tokens = {
+		(void *)&cmd_config_rss_hash_key_port,
+		(void *)&cmd_config_rss_hash_key_config,
+		(void *)&cmd_config_rss_hash_key_port_id,
+		(void *)&cmd_config_rss_hash_key_rss_hash_key,
+		(void *)&cmd_config_rss_hash_key_value,
+		NULL,
+	},
+};
+
 /* *** Configure RSS RETA *** */
 struct cmd_config_rss_reta {
 	cmdline_fixed_string_t port;
@@ -1392,7 +1485,7 @@ cmdline_parse_inst_t cmd_showport_rss_hash = {
 
 cmdline_parse_inst_t cmd_showport_rss_hash_key = {
 	.f = cmd_showport_rss_hash_parsed,
-	.data = "show_rss_key",
+	.data = (void *)1,
 	.help_str = "show port X rss-hash key (X = port number)\n",
 	.tokens = {
 		(void *)&cmd_showport_rss_hash_show,
@@ -5292,6 +5385,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_reset_mirror_rule,
 	(cmdline_parse_inst_t *)&cmd_showport_rss_hash,
 	(cmdline_parse_inst_t *)&cmd_showport_rss_hash_key,
+	(cmdline_parse_inst_t *)&cmd_config_rss_hash_key,
 	(cmdline_parse_inst_t *)&cmd_dump,
 	(cmdline_parse_inst_t *)&cmd_dump_one,
 	NULL,

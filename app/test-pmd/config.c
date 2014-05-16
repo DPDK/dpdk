@@ -746,6 +746,34 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 	printf("\n");
 }
 
+void
+port_rss_hash_key_update(portid_t port_id, uint8_t *hash_key)
+{
+	struct rte_eth_rss_conf rss_conf;
+	int diag;
+
+	rss_conf.rss_key = NULL;
+	diag = rte_eth_dev_rss_hash_conf_get(port_id, &rss_conf);
+	if (diag == 0) {
+		rss_conf.rss_key = hash_key;
+		diag = rte_eth_dev_rss_hash_update(port_id, &rss_conf);
+	}
+	if (diag == 0)
+		return;
+
+	switch (diag) {
+	case -ENODEV:
+		printf("port index %d invalid\n", port_id);
+		break;
+	case -ENOTSUP:
+		printf("operation not supported by device\n");
+		break;
+	default:
+		printf("operation failed - diag=%d\n", diag);
+		break;
+	}
+}
+
 /*
  * Setup forwarding configuration for each logical core.
  */
