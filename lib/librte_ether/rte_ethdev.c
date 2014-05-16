@@ -1501,6 +1501,7 @@ int
 rte_eth_dev_rss_reta_update(uint8_t port_id, struct rte_eth_rss_reta *reta_conf)
 {
 	struct rte_eth_dev *dev;
+	uint16_t max_rxq;
 	uint8_t i,j;
 
 	if (port_id >= nb_ports) {
@@ -1514,10 +1515,13 @@ rte_eth_dev_rss_reta_update(uint8_t port_id, struct rte_eth_rss_reta *reta_conf)
 		return (-EINVAL);
 	}
 
+	dev = &rte_eth_devices[port_id];
+	max_rxq = (dev->data->nb_rx_queues <= ETH_RSS_RETA_MAX_QUEUE) ?
+		dev->data->nb_rx_queues : ETH_RSS_RETA_MAX_QUEUE;
 	if (reta_conf->mask_lo != 0) {
 		for (i = 0; i < ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
 			if ((reta_conf->mask_lo & (1ULL << i)) &&
-				(reta_conf->reta[i] >= ETH_RSS_RETA_MAX_QUEUE)) {
+				(reta_conf->reta[i] >= max_rxq)) {
 				PMD_DEBUG_TRACE("RETA hash index output"
 					"configration for port=%d,invalid"
 					"queue=%d\n",port_id,reta_conf->reta[i]);
@@ -1533,7 +1537,7 @@ rte_eth_dev_rss_reta_update(uint8_t port_id, struct rte_eth_rss_reta *reta_conf)
 
 			/* Check if the max entry >= 128 */
 			if ((reta_conf->mask_hi & (1ULL << i)) && 
-				(reta_conf->reta[j] >= ETH_RSS_RETA_MAX_QUEUE)) {
+				(reta_conf->reta[j] >= max_rxq)) {
 				PMD_DEBUG_TRACE("RETA hash index output"
 					"configration for port=%d,invalid"
 					"queue=%d\n",port_id,reta_conf->reta[j]);
@@ -1542,8 +1546,6 @@ rte_eth_dev_rss_reta_update(uint8_t port_id, struct rte_eth_rss_reta *reta_conf)
 			}
 		}
 	}
-
-	dev = &rte_eth_devices[port_id];
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->reta_update, -ENOTSUP);
 	return (*dev->dev_ops->reta_update)(dev, reta_conf);
