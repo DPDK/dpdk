@@ -1124,26 +1124,22 @@ cmd_config_rss_parsed(void *parsed_result,
 			__attribute__((unused)) void *data)
 {
 	struct cmd_config_rss *res = parsed_result;
-
-	if (!all_ports_stopped()) {
-		printf("Please stop all ports first\n");
-		return;
-	}
+	struct rte_eth_rss_conf rss_conf;
+	uint8_t i;
 
 	if (!strcmp(res->value, "ip"))
-		rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6;
+		rss_conf.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6;
 	else if (!strcmp(res->value, "udp"))
-		rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6 | ETH_RSS_IPV4_UDP;
+		rss_conf.rss_hf = ETH_RSS_IPV4_UDP | ETH_RSS_IPV6_UDP;
 	else if (!strcmp(res->value, "none"))
-		rss_hf = 0;
+		rss_conf.rss_hf = 0;
 	else {
 		printf("Unknown parameter\n");
 		return;
 	}
-
-	init_port_config();
-
-	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
+	rss_conf.rss_key = NULL;
+	for (i = 0; i < rte_eth_dev_count(); i++)
+		rte_eth_dev_rss_hash_update(i, &rss_conf);
 }
 
 cmdline_parse_token_string_t cmd_config_rss_port =
