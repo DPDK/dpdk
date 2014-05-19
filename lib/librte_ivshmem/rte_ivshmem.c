@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <rte_eal_memconfig.h>
 #include <rte_memory.h>
