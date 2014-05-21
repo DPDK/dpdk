@@ -551,7 +551,7 @@ void rte_timer_manage(void)
 		tim->f(tim, tim->arg);
 
 		rte_spinlock_lock(&priv_timer[lcore_id].list_lock);
-
+		__TIMER_STAT_ADD(pending, -1);
 		/* the timer was stopped or reloaded by the callback
 		 * function, we have nothing to do here */
 		if (priv_timer[lcore_id].updated == 1)
@@ -559,7 +559,6 @@ void rte_timer_manage(void)
 
 		if (tim->period == 0) {
 			/* remove from done list and mark timer as stopped */
-			__TIMER_STAT_ADD(pending, -1);
 			status.state = RTE_TIMER_STOP;
 			status.owner = RTE_TIMER_NO_OWNER;
 			rte_wmb();
@@ -568,6 +567,7 @@ void rte_timer_manage(void)
 		else {
 			/* keep it in list and mark timer as pending */
 			status.state = RTE_TIMER_PENDING;
+			__TIMER_STAT_ADD(pending, 1);
 			status.owner = (int16_t)lcore_id;
 			rte_wmb();
 			tim->status.u32 = status.u32;
