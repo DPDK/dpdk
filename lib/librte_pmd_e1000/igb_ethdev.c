@@ -2185,7 +2185,7 @@ eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 }
 
 static struct rte_driver pmd_igb_drv = {
-        .type = PMD_PDEV,
+	.type = PMD_PDEV,
 	.init = rte_igb_pmd_init,
 };
 
