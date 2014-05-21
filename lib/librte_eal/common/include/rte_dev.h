@@ -101,7 +101,7 @@ int rte_eal_dev_init(void);
 void devinitfn_ ##d(void);\
 void __attribute__((constructor, used)) devinitfn_ ##d(void)\
 {\
-		rte_eal_driver_register(&d);\
+	rte_eal_driver_register(&d);\
 }
 
 #ifdef __cplusplus
