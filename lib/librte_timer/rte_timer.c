@@ -378,7 +378,9 @@ __rte_timer_reset(struct rte_timer *tim, uint64_t expire,
 		return -1;
 
 	__TIMER_STAT_ADD(reset, 1);
-	priv_timer[lcore_id].updated = 1;
+	if (prev_status.state == RTE_TIMER_RUNNING) {
+		priv_timer[lcore_id].updated = 1;
+	}
 
 	/* remove it from list */
 	if (prev_status.state == RTE_TIMER_PENDING) {
@@ -453,7 +455,9 @@ rte_timer_stop(struct rte_timer *tim)
 		return -1;
 
 	__TIMER_STAT_ADD(stop, 1);
-	priv_timer[lcore_id].updated = 1;
+	if (prev_status.state == RTE_TIMER_RUNNING) {
+		priv_timer[lcore_id].updated = 1;
+	}
 
 	/* remove it from list */
 	if (prev_status.state == RTE_TIMER_PENDING) {
