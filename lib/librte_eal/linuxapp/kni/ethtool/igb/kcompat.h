@@ -3586,7 +3586,7 @@ static inline bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
 #define ADVERTISED_40000baseLR4_Full	(1 << 26)
 #endif
 
-#if !defined(ETHTOOL_GEEE) || (RHEL_RELEASE_CODE && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(6,4))
+#if defined(ETHTOOL_GEEE) || (RHEL_RELEASE_CODE && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(6,4))
 /**
  * mmd_eee_cap_to_ethtool_sup_t
  * @eee_cap: value of the MMD EEE Capability register
