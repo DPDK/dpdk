@@ -82,12 +82,18 @@ MODULE_DESCRIPTION("Kernel Module for supporting DPDK running on Xen Dom0");
 static struct dom0_mm_dev dom0_dev;
 static struct kobject *dom0_kobj = NULL;
 
+static struct memblock_info *rsv_mm_info;
+
+/* Default configuration for reserved memory size(2048 MB). */
+static uint32_t rsv_memsize = 2048;
+
 static int dom0_open(struct inode *inode, struct file *file);
 static int dom0_release(struct inode *inode, struct file *file);
 static int dom0_ioctl(struct file *file, unsigned int ioctl_num,
 		unsigned long ioctl_param);
 static int dom0_mmap(struct file *file, struct vm_area_struct *vma);
-static int dom0_memory_free(struct dom0_mm_data *mm_data);
+static int dom0_memory_free(uint32_t size);
+static int dom0_memory_release(struct dom0_mm_data *mm_data);
 
 static const struct file_operations data_fops = {
 	.owner = THIS_MODULE,
@@ -100,7 +106,7 @@ static const struct file_operations data_fops = {
 static ssize_t
 show_memsize_rsvd(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, 10, "%u\n", dom0_dev.allocated_memsize);
+	return snprintf(buf, 10, "%u\n", dom0_dev.used_memsize);
 }
 
 static ssize_t
@@ -123,8 +129,7 @@ store_memsize(struct device *dev, struct device_attribute *attr,
 	if (0 == mem_size) {
 		err = -EINVAL;
 		goto fail;
-	} else if (mem_size < dom0_dev.allocated_memsize || 
-		mem_size > DOM0_CONFIG_MEMSIZE) {      
+	} else if (mem_size > (rsv_memsize - dom0_dev.used_memsize)) {
 		XEN_ERR("configure memory size fail\n");
 		err = -EINVAL;
 		goto fail;
@@ -194,7 +199,7 @@ dom0_find_memdata(const char * mem_name)
 }
 
 static int
-dom0_find_mempos(const char * mem_name)
+dom0_find_mempos(void)
 {
 	unsigned i;
 	int idx = -1;
@@ -210,9 +215,38 @@ dom0_find_mempos(const char * mem_name)
 }
 
 static int
-dom0_memory_free(struct dom0_mm_data * mm_data)
+dom0_memory_release(struct dom0_mm_data *mm_data)
 {
 	int idx;
+	uint32_t  num_block, block_id;
+
+	/* each memory block is 2M */
+	num_block = mm_data->mem_size / SIZE_PER_BLOCK;
+	if (num_block == 0)
+		return -EINVAL;
+
+	/* reset global memory data */
+	idx = dom0_find_memdata(mm_data->name);
+	if (idx >= 0) {
+		dom0_dev.used_memsize -= mm_data->mem_size;
+		dom0_dev.mm_data[idx] = NULL;
+		dom0_dev.num_mem_ctx--;
+	}
+
+	/* reset these memory blocks status as free */
+	for (idx = 0; idx < num_block; idx++) {
+		block_id = mm_data->block_num[idx];
+		rsv_mm_info[block_id].used = 0;
+	}
+
+	memset(mm_data, 0, sizeof(struct dom0_mm_data));
+	vfree(mm_data);
+	return 0;
+}
+
+static int
+dom0_memory_free(uint32_t rsv_size)
+{
 	uint64_t vstart, vaddr;
 	uint32_t i, num_block, size;
 
@@ -220,15 +254,37 @@ dom0_memory_free(struct dom0_mm_data * mm_data)
 		return -1;
 
 	/* each memory block is 2M */
-	num_block = mm_data->mem_size / 2;
+	num_block = rsv_size / SIZE_PER_BLOCK;
 	if (num_block == 0)
-		return -1;
+		return -EINVAL;
 
-	/* free memory and destroy contiguous region in Xen*/
-	for (i = 0; i< num_block; i++) {
-		vstart = mm_data->block_info[i].vir_addr;
+	/* free all memory blocks of size of 4M and destroy contiguous region */
+	for (i = 0; i < dom0_dev.num_bigblock * 2; i += 2) {
+		vstart = rsv_mm_info[i].vir_addr;
 		if (vstart) {
-			if (mm_data->block_info[i].exchange_flag) 
+			if (rsv_mm_info[i].exchange_flag)
+				xen_destroy_contiguous_region(vstart,
+						DOM0_CONTIG_NUM_ORDER);
+			if (rsv_mm_info[i + 1].exchange_flag)
+				xen_destroy_contiguous_region(vstart +
+						DOM0_MEMBLOCK_SIZE,
+						DOM0_CONTIG_NUM_ORDER);
+			size = DOM0_MEMBLOCK_SIZE * 2;
+			vaddr = vstart;
+			while (size > 0) {
+				ClearPageReserved(virt_to_page(vaddr));
+				vaddr += PAGE_SIZE;
+				size -= PAGE_SIZE;
+			}
+			free_pages(vstart, MAX_NUM_ORDER);
+		}
+	}
+
+	/* free all memory blocks size of 2M and destroy contiguous region */
+	for (; i < num_block; i++) {
+		vstart = rsv_mm_info[i].vir_addr;
+		if (vstart) {
+			if (rsv_mm_info[i].exchange_flag)
 				xen_destroy_contiguous_region(vstart, 
 					DOM0_CONTIG_NUM_ORDER);
 
@@ -243,23 +299,39 @@ dom0_memory_free(struct dom0_mm_data * mm_data)
 		}
 	}
 
-	/* reset global memory data */
-	idx = dom0_find_memdata(mm_data->name);
-	if (idx >= 0) {
-		dom0_dev.allocated_memsize -= mm_data->mem_size;
-		dom0_dev.mm_data[idx] = NULL;
-		dom0_dev.num_mem_ctx--;
-	}
-	memset(mm_data, 0, sizeof(struct dom0_mm_data));
-	vfree(mm_data);
-    
+	memset(rsv_mm_info, 0, sizeof(struct memblock_info) * num_block);
+	vfree(rsv_mm_info);
+	rsv_mm_info = NULL;
+
 	return 0;
+}
+
+static void
+find_free_memory(uint32_t count, struct dom0_mm_data *mm_data)
+{
+	uint32_t i = 0;
+	uint32_t j = 0;
+
+	while ((i < count) && (j < rsv_memsize / SIZE_PER_BLOCK)) {
+		if (rsv_mm_info[j].used == 0) {
+			mm_data->block_info[i].pfn = rsv_mm_info[j].pfn;
+			mm_data->block_info[i].vir_addr =
+				rsv_mm_info[j].vir_addr;
+			mm_data->block_info[i].mfn = rsv_mm_info[j].mfn;
+			mm_data->block_info[i].exchange_flag =
+				rsv_mm_info[j].exchange_flag;
+			mm_data->block_num[i] = j;
+			rsv_mm_info[j].used = 1;
+			i++;
+		}
+		j++;
+	}
 }
 
 /**
  * Find all memory segments in which physical addresses are contiguous.
  */
-static void 
+static void
 find_memseg(int count, struct dom0_mm_data * mm_data)
 {
 	int i = 0;
@@ -303,26 +375,63 @@ find_memseg(int count, struct dom0_mm_data * mm_data)
 	mm_data->num_memseg = idx;
 }
 
-static int 
-dom0_prepare_memsegs(struct memory_info* meminfo, struct dom0_mm_data *mm_data)
+static int
+dom0_memory_reserve(uint32_t rsv_size)
 {
 	uint64_t pfn, vstart, vaddr;
-	uint32_t i, num_block, size;
-	int idx;
-	
-	/* Allocate 2M memory once */
-	num_block = meminfo->size / 2;
+	uint32_t i, num_block, size, allocated_size = 0;
 
-	for (i = 0; i< num_block; i++) {
+	/* 2M as memory block */
+	num_block = rsv_size / SIZE_PER_BLOCK;
+
+	rsv_mm_info = vmalloc(sizeof(struct memblock_info) * num_block);
+	if (!rsv_mm_info) {
+		XEN_ERR("Unable to allocate device memory information\n");
+		return -ENOMEM;
+	}
+	memset(rsv_mm_info, 0, sizeof(struct memblock_info) * num_block);
+
+	/* try alloc size of 4M once */
+	for (i = 0; i < num_block; i += 2) {
+		vstart = (unsigned long)
+			__get_free_pages(GFP_ATOMIC, MAX_NUM_ORDER);
+		if (vstart == 0)
+			break;
+
+		dom0_dev.num_bigblock = i / 2 + 1;
+		allocated_size =  SIZE_PER_BLOCK * (i + 2);
+
+		/* size of 4M */
+		size = DOM0_MEMBLOCK_SIZE * 2;
+
+		vaddr = vstart;
+		while (size > 0) {
+			SetPageReserved(virt_to_page(vaddr));
+			vaddr += PAGE_SIZE;
+			size -= PAGE_SIZE;
+		}
+
+		pfn = virt_to_pfn(vstart);
+		rsv_mm_info[i].pfn = pfn;
+		rsv_mm_info[i].vir_addr = vstart;
+		rsv_mm_info[i + 1].pfn =
+				pfn + DOM0_MEMBLOCK_SIZE / PAGE_SIZE;
+		rsv_mm_info[i + 1].vir_addr =
+				vstart + DOM0_MEMBLOCK_SIZE;
+	}
+
+	/*if it failed to alloc 4M, and continue to alloc 2M once */
+	for (; i < num_block; i++) {
 		vstart = (unsigned long)
 			__get_free_pages(GFP_ATOMIC, DOM0_CONTIG_NUM_ORDER);
 		if (vstart == 0) {
 			XEN_ERR("allocate memory fail.\n");
-			mm_data->mem_size = 2 * i;
-			dom0_memory_free(mm_data);
+			dom0_memory_free(allocated_size);
 			return -ENOMEM;
 		}
-		
+
+		allocated_size += DOM0_MEMBLOCK_SIZE;
+
 		size = DOM0_MEMBLOCK_SIZE;
 		vaddr = vstart;
 		while (size > 0) {
@@ -331,11 +440,11 @@ dom0_prepare_memsegs(struct memory_info* meminfo, struct dom0_mm_data *mm_data)
 			size -= PAGE_SIZE;
 		}
 		pfn = virt_to_pfn(vstart);
-		mm_data->block_info[i].pfn = pfn;
-		mm_data->block_info[i].vir_addr = vstart;
+		rsv_mm_info[i].pfn = pfn;
+		rsv_mm_info[i].vir_addr = vstart;
 	}
 
-	sort_viraddr(mm_data->block_info, num_block);
+	sort_viraddr(rsv_mm_info, num_block);
 	
 	for (i = 0; i< num_block; i++) {
 
@@ -343,46 +452,57 @@ dom0_prepare_memsegs(struct memory_info* meminfo, struct dom0_mm_data *mm_data)
 		 * This API is used to exchage MFN for getting a block of  
 		 * contiguous physical addresses, its maximum size is 2M.  
 		 */
-		if (xen_create_contiguous_region(mm_data->block_info[i].vir_addr,
+		if (xen_create_contiguous_region(rsv_mm_info[i].vir_addr,
 			            DOM0_CONTIG_NUM_ORDER, 0) == 0) {
-			mm_data->block_info[i].exchange_flag = 1;
-			mm_data->block_info[i].mfn = 
-				pfn_to_mfn(mm_data->block_info[i].pfn);
+			rsv_mm_info[i].exchange_flag = 1;
+			rsv_mm_info[i].mfn =
+				pfn_to_mfn(rsv_mm_info[i].pfn);
+			rsv_mm_info[i].used = 0;
 		} else { 
 			XEN_ERR("exchange memeory fail\n");
-			mm_data->block_info[i].exchange_flag = 0;
-			mm_data->fail_times++;
-			if (mm_data->fail_times > MAX_EXCHANGE_FAIL_TIME) {
-				mm_data->mem_size = meminfo->size;
-				dom0_memory_free(mm_data);
-				return -1;
+			rsv_mm_info[i].exchange_flag = 0;
+			dom0_dev.fail_times++;
+			if (dom0_dev.fail_times > MAX_EXCHANGE_FAIL_TIME) {
+				dom0_memory_free(rsv_size);
+				return  -EFAULT;
 			}
 		}
 	}
 	
+	return 0;
+}
+
+static int
+dom0_prepare_memsegs(struct memory_info *meminfo, struct dom0_mm_data *mm_data)
+{
+	uint32_t num_block;
+	int idx;
+
+	/* check if there is a free name buffer */
+	memcpy(mm_data->name, meminfo->name, DOM0_NAME_MAX);
+	mm_data->name[DOM0_NAME_MAX - 1] = '\0';
+	idx = dom0_find_mempos();
+	if (idx < 0)
+		return -1;
+
+	num_block = meminfo->size / SIZE_PER_BLOCK;
+	/* find free memory and new memory segments*/
+	find_free_memory(num_block, mm_data);
 	find_memseg(num_block, mm_data);
-    
+
 	/* update private memory data */
 	mm_data->refcnt++;
 	mm_data->mem_size = meminfo->size;
-	memcpy(mm_data->name, meminfo->name, DOM0_NAME_MAX);
-	mm_data->name[DOM0_NAME_MAX -1] = '\0';
 
 	/* update global memory data */
-	idx = dom0_find_mempos(meminfo->name);
-	if (idx < 0) {
-		dom0_memory_free(mm_data);
-		return -1;
-	}
-	
 	dom0_dev.mm_data[idx] = mm_data;
 	dom0_dev.num_mem_ctx++;
-	dom0_dev.allocated_memsize += mm_data->mem_size;
+	dom0_dev.used_memsize += mm_data->mem_size;
 
 	return 0;
 }
 
-static int 
+static int
 dom0_check_memory (struct memory_info *meminfo)
 {
 	int idx;
@@ -403,9 +523,8 @@ dom0_check_memory (struct memory_info *meminfo)
 			meminfo->name); 
 		return -1;
 	}
-	if ((dom0_dev.allocated_memsize + mem_size) > 
-			dom0_dev.config_memsize) {
-		XEN_ERR("total memory size can't be larger than config memory size.\n");
+	if ((dom0_dev.used_memsize + mem_size) > rsv_memsize) {
+		XEN_ERR("Total size can't be larger than reserved size.\n");
 		return -1;
 	}
 
@@ -417,6 +536,12 @@ dom0_init(void)
 {
 	if (!xen_domain())
 		return -ENODEV;
+
+	if (rsv_memsize > DOM0_CONFIG_MEMSIZE) {
+		XEN_ERR("The reserved memory size cannot be greater than %d\n",
+			DOM0_CONFIG_MEMSIZE);
+		return -EINVAL;
+	}
 
 	/* Setup the misc device */
 	dom0_dev.miscdev.minor = MISC_DYNAMIC_MINOR;
@@ -439,19 +564,29 @@ dom0_init(void)
 	}
 
 	if (sysfs_create_group(dom0_kobj, &dev_attr_grp)) {
-		sysfs_remove_group(dom0_kobj, &dev_attr_grp);
 		kobject_put(dom0_kobj);
 		misc_deregister(&dom0_dev.miscdev);
 		return -EPERM;
 	}
+
+	if (dom0_memory_reserve(rsv_memsize) < 0) {
+		sysfs_remove_group(dom0_kobj, &dev_attr_grp);
+		kobject_put(dom0_kobj);
+		misc_deregister(&dom0_dev.miscdev);
+		return -ENOMEM;
+	}
 	
 	XEN_PRINT("####### DPDK Xen Dom0 module loaded  #######\n");
+
 	return 0;
 }
 
 static void __exit
 dom0_exit(void)
 {
+	if (rsv_mm_info != NULL)
+		dom0_memory_free(rsv_memsize);
+
 	sysfs_remove_group(dom0_kobj, &dev_attr_grp);
 	kobject_put(dom0_kobj);
 	misc_deregister(&dom0_dev.miscdev);
@@ -479,7 +614,7 @@ dom0_release(struct inode *inode, struct file *file)
 
 	mutex_lock(&dom0_dev.data_lock);
 	if (--mm_data->refcnt == 0) 
-		ret = dom0_memory_free(mm_data); 
+		ret = dom0_memory_release(mm_data);
 	mutex_unlock(&dom0_dev.data_lock);
 
 	file->private_data = NULL;
@@ -561,8 +696,8 @@ dom0_ioctl(struct file *file,
 			vfree(mm_data);
 			return -EINVAL;
 		}
-		
-		/* allocate memories and created memory segments*/
+
+		/* allocate memory and created memory segments*/
 		if (dom0_prepare_memsegs(&meminfo, mm_data) < 0) {
 			XEN_ERR("create memory segment fail.\n");
 			mutex_unlock(&dom0_dev.data_lock);
@@ -618,3 +753,6 @@ dom0_ioctl(struct file *file,
 
 module_init(dom0_init);
 module_exit(dom0_exit);
+
+module_param(rsv_memsize, uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(rsv_memsize, "Xen-dom0 reserved memory size(MB).\n");

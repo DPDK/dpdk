@@ -65,32 +65,40 @@
 #include <linux/spinlock.h>
 #include <exec-env/rte_dom0_common.h>
 
-#define NUM_MEM_CTX     256	  /**< Maximum number of memory context*/
+#define NUM_MEM_CTX     256  /**< Maximum number of memory context*/
 #define MAX_EXCHANGE_FAIL_TIME 5  /**< Maximum times of allowing exchange fail .*/
+#define MAX_MEMBLOCK_SIZE (2 * DOM0_MEMBLOCK_SIZE)
+#define MAX_NUM_ORDER     (DOM0_CONTIG_NUM_ORDER + 1)
+#define SIZE_PER_BLOCK    2       /** < size of per memory block(2MB)).*/
 
 /**
  * A structure describing the private information for a dom0 device.
  */
 struct dom0_mm_dev {
 	struct miscdevice miscdev;
-	uint32_t allocated_memsize;
+	uint8_t fail_times;
+	uint32_t used_memsize;
 	uint32_t num_mem_ctx;
 	uint32_t config_memsize;
-	struct  dom0_mm_data *mm_data[NUM_MEM_CTX]; 
+	uint32_t num_bigblock;
+	struct  dom0_mm_data *mm_data[NUM_MEM_CTX];
 	struct mutex data_lock;
 };
 
 struct dom0_mm_data{
-	uint8_t fail_times;
 	uint32_t refcnt;
 	uint32_t num_memseg; /**< Number of memory segment. */
 	uint32_t mem_size;   /**< Size of requesting memory. */
+
 	char name[DOM0_NAME_MAX];
 
-	/** Storing memory block information.*/
+	/** Store global memory block IDs used by an instance */
+	uint32_t block_num[DOM0_NUM_MEMBLOCK];
+
+	/** Store memory block information.*/
 	struct memblock_info block_info[DOM0_NUM_MEMBLOCK];
 
-	/** Storing memory segment information.*/	
+	/** Store memory segment information.*/
 	struct memseg_info  seg_info[DOM0_NUM_MEMSEG];
 };
 

@@ -66,9 +66,9 @@
 #define DOM0_NAME_MAX   256 
 #define DOM0_MM_DEV   "/dev/dom0_mm"
 
-#define DOM0_CONTIG_NUM_ORDER       9       /**< 2M order */
+#define DOM0_CONTIG_NUM_ORDER       9       /**< order of 2M */
 #define DOM0_NUM_MEMSEG             512     /**< Maximum nb. of memory segment. */ 
-#define DOM0_MEMBLOCK_SIZE          0x200000 /**< Maximum nb. of memory block(2M). */
+#define DOM0_MEMBLOCK_SIZE          0x200000 /**< size of memory block(2M). */
 #define DOM0_CONFIG_MEMSIZE         4096     /**< Maximum config memory size(4G). */
 #define DOM0_NUM_MEMBLOCK (DOM0_CONFIG_MEMSIZE / 2) /**< Maximum nb. of 2M memory block. */
 
@@ -99,7 +99,8 @@ struct memseg_info {
  * A structure used to store memory block information. 
  */
 struct memblock_info {
-	uint8_t  exchange_flag;
+	uint8_t exchange_flag;
+	uint8_t used;
 	uint64_t vir_addr;
 	uint64_t pfn;
 	uint64_t mfn;
