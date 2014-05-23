@@ -256,7 +256,7 @@ cmdline_interact(struct cmdline *cl)
 
 	c = -1;
 	while (1) {
-		if (read(cl->s_in, &c, 1) < 0)
+		if (read(cl->s_in, &c, 1) <= 0)
 			break;
 		if (cmdline_in(cl, &c, 1) < 0)
 			break;
