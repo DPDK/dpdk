@@ -151,7 +151,7 @@ LDLIBS += -lrte_pmd_xenvirt
 LDLIBS += -lxenstore
 endif
 
-ifeq ($(RTE_BUILD_SHARED_LIB),n)
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
 
 ifeq ($(CONFIG_RTE_LIBRTE_VMXNET3_PMD),y)
 LDLIBS += -lrte_pmd_vmxnet3_uio
