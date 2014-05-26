@@ -64,9 +64,16 @@
 
 /* Loopback operation modes */
 /* 82599 specific loopback operation types */
-#define IXGBE_LPBK_82599_NONE		0x0 /* Default value. Loopback is disabled. */
-#define IXGBE_LPBK_82599_TX_RX		0x1 /* Tx->Rx loopback operation is enabled. */
+#define IXGBE_LPBK_82599_NONE   0x0 /* Default value. Loopback is disabled. */
+#define IXGBE_LPBK_82599_TX_RX  0x1 /* Tx->Rx loopback operation is enabled. */
 
+#define IXGBE_MAX_JUMBO_FRAME_SIZE      0x2600 /* Maximum Jumbo frame size. */
+
+#define IXGBE_RTTBCNRC_RF_INT_MASK_BASE 0x000003FF
+#define IXGBE_RTTBCNRC_RF_INT_MASK_M \
+	(IXGBE_RTTBCNRC_RF_INT_MASK_BASE << IXGBE_RTTBCNRC_RF_INT_SHIFT)
+
+#define IXGBE_MAX_QUEUE_NUM_PER_VF  8
 /*
  * Information about the fdir mode.
  */
@@ -125,7 +132,7 @@ struct ixgbe_vf_info {
 	uint16_t default_vf_vlan_id;
 	uint16_t vlans_enabled;
 	bool clear_to_send;
-	uint16_t tx_rate;
+	uint16_t tx_rate[IXGBE_MAX_QUEUE_NUM_PER_VF];
 	uint16_t vlan_count;
 	uint8_t spoofchk_enabled;
 };

@@ -88,6 +88,8 @@
 #define IXGBE_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
 #define IXGBE_VMDQ_NUM_UC_MAC         4096 /* Maximum nb. of UC MAC addr. */
 
+#define IXGBE_MMW_SIZE_DEFAULT        0x4
+#define IXGBE_MMW_SIZE_JUMBO_FRAME    0x14
 
 #define IXGBEVF_PMD_NAME "rte_ixgbevf_pmd" /* PMD name */
 
@@ -184,6 +186,11 @@ static int ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 		uint8_t rule_id, uint8_t on);
 static int ixgbe_mirror_rule_reset(struct rte_eth_dev *dev,
 		uint8_t	rule_id);
+
+static int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
+		uint16_t queue_idx, uint16_t tx_rate);
+static int ixgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
+		uint16_t tx_rate, uint64_t q_msk);
 
 static void ixgbevf_add_mac_addr(struct rte_eth_dev *dev,
 				 struct ether_addr *mac_addr,
@@ -294,6 +301,8 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.set_vf_rx            = ixgbe_set_pool_rx,
 	.set_vf_tx            = ixgbe_set_pool_tx,
 	.set_vf_vlan_filter   = ixgbe_set_pool_vlan_filter,
+	.set_queue_rate_limit = ixgbe_set_queue_rate_limit,
+	.set_vf_rate_limit    = ixgbe_set_vf_rate_limit,
 	.fdir_add_signature_filter    = ixgbe_fdir_add_signature_filter,
 	.fdir_update_signature_filter = ixgbe_fdir_update_signature_filter,
 	.fdir_remove_signature_filter = ixgbe_fdir_remove_signature_filter,
@@ -1359,10 +1368,13 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_vf_info *vfinfo =
+		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
 	int err, link_up = 0, negotiate = 0;
 	uint32_t speed = 0;
 	int mask = 0;
 	int status;
+	uint16_t vf, idx;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1477,6 +1489,16 @@ skip_link_setup:
 		err = ixgbe_fdir_configure(dev);
 		if (err)
 			goto error;
+	}
+
+	/* Restore vf rate limit */
+	if (vfinfo != NULL) {
+		for (vf = 0; vf < dev->pci_dev->max_vfs; vf++)
+			for (idx = 0; idx < IXGBE_MAX_QUEUE_NUM_PER_VF; idx++)
+				if (vfinfo[vf].tx_rate[idx] != 0)
+					ixgbe_set_vf_rate_limit(dev, vf,
+						vfinfo[vf].tx_rate[idx],
+						1 << idx);
 	}
 
 	ixgbe_restore_statistics_mapping(dev);
@@ -3191,6 +3213,108 @@ ixgbe_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t rule_id)
 	/* clear vlan mask register */
 	IXGBE_WRITE_REG(hw, IXGBE_VMRVLAN(rule_id), lsb_val);
 	IXGBE_WRITE_REG(hw, IXGBE_VMRVLAN(rule_id + rule_mr_offset), msb_val);
+
+	return 0;
+}
+
+static int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
+	uint16_t queue_idx, uint16_t tx_rate)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t rf_dec, rf_int;
+	uint32_t bcnrc_val;
+	uint16_t link_speed = dev->data->dev_link.link_speed;
+
+	if (queue_idx >= hw->mac.max_tx_queues)
+		return -EINVAL;
+
+	if (tx_rate != 0) {
+		/* Calculate the rate factor values to set */
+		rf_int = (uint32_t)link_speed / (uint32_t)tx_rate;
+		rf_dec = (uint32_t)link_speed % (uint32_t)tx_rate;
+		rf_dec = (rf_dec << IXGBE_RTTBCNRC_RF_INT_SHIFT) / tx_rate;
+
+		bcnrc_val = IXGBE_RTTBCNRC_RS_ENA;
+		bcnrc_val |= ((rf_int << IXGBE_RTTBCNRC_RF_INT_SHIFT) &
+				IXGBE_RTTBCNRC_RF_INT_MASK_M);
+		bcnrc_val |= (rf_dec & IXGBE_RTTBCNRC_RF_DEC_MASK);
+	} else {
+		bcnrc_val = 0;
+	}
+
+	/*
+	 * Set global transmit compensation time to the MMW_SIZE in RTTBCNRM
+	 * register. MMW_SIZE=0x014 if 9728-byte jumbo is supported, otherwise
+	 * set as 0x4.
+	 */
+	if ((dev->data->dev_conf.rxmode.jumbo_frame == 1) &&
+		(dev->data->dev_conf.rxmode.max_rx_pkt_len >=
+				IXGBE_MAX_JUMBO_FRAME_SIZE))
+		IXGBE_WRITE_REG(hw, IXGBE_RTTBCNRM,
+			IXGBE_MMW_SIZE_JUMBO_FRAME);
+	else
+		IXGBE_WRITE_REG(hw, IXGBE_RTTBCNRM,
+			IXGBE_MMW_SIZE_DEFAULT);
+
+	/* Set RTTBCNRC of queue X */
+	IXGBE_WRITE_REG(hw, IXGBE_RTTDQSEL, queue_idx);
+	IXGBE_WRITE_REG(hw, IXGBE_RTTBCNRC, bcnrc_val);
+	IXGBE_WRITE_FLUSH(hw);
+
+	return 0;
+}
+
+static int ixgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
+	uint16_t tx_rate, uint64_t q_msk)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_vf_info *vfinfo =
+		*(IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
+	uint8_t  nb_q_per_pool = RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
+	uint32_t queue_stride =
+		IXGBE_MAX_RX_QUEUE_NUM / RTE_ETH_DEV_SRIOV(dev).active;
+	uint32_t queue_idx = vf * queue_stride, idx = 0, vf_idx;
+	uint32_t queue_end = queue_idx + nb_q_per_pool - 1;
+	uint16_t total_rate = 0;
+
+	if (queue_end >= hw->mac.max_tx_queues)
+		return -EINVAL;
+
+	if (vfinfo != NULL) {
+		for (vf_idx = 0; vf_idx < dev->pci_dev->max_vfs; vf_idx++) {
+			if (vf_idx == vf)
+				continue;
+			for (idx = 0; idx < RTE_DIM(vfinfo[vf_idx].tx_rate);
+				idx++)
+				total_rate += vfinfo[vf_idx].tx_rate[idx];
+		}
+	} else
+		return -EINVAL;
+
+	/* Store tx_rate for this vf. */
+	for (idx = 0; idx < nb_q_per_pool; idx++) {
+		if (((uint64_t)0x1 << idx) & q_msk) {
+			if (vfinfo[vf].tx_rate[idx] != tx_rate)
+				vfinfo[vf].tx_rate[idx] = tx_rate;
+			total_rate += tx_rate;
+		}
+	}
+
+	if (total_rate > dev->data->dev_link.link_speed) {
+		/*
+		 * Reset stored TX rate of the VF if it causes exceed
+		 * link speed.
+		 */
+		memset(vfinfo[vf].tx_rate, 0, sizeof(vfinfo[vf].tx_rate));
+		return -EINVAL;
+	}
+
+	/* Set RTTBCNRC of each queue/pool for vf X  */
+	for (; queue_idx <= queue_end; queue_idx++) {
+		if (0x1 & q_msk)
+			ixgbe_set_queue_rate_limit(dev, queue_idx, tx_rate);
+		q_msk = q_msk >> 1;
+	}
 
 	return 0;
 }
