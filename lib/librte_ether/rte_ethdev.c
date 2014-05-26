@@ -2113,6 +2113,77 @@ rte_eth_dev_set_vf_vlan_filter(uint8_t port_id, uint16_t vlan_id,
 						vf_mask,vlan_on);
 }
 
+int rte_eth_set_queue_rate_limit(uint8_t port_id, uint16_t queue_idx,
+					uint16_t tx_rate)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_link link;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("set queue rate limit:invalid port id=%d\n",
+				port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	rte_eth_dev_info_get(port_id, &dev_info);
+	link = dev->data->dev_link;
+
+	if (queue_idx > dev_info.max_tx_queues) {
+		PMD_DEBUG_TRACE("set queue rate limit:port %d: "
+				"invalid queue id=%d\n", port_id, queue_idx);
+		return -EINVAL;
+	}
+
+	if (tx_rate > link.link_speed) {
+		PMD_DEBUG_TRACE("set queue rate limit:invalid tx_rate=%d, "
+				"bigger than link speed= %d\n",
+			tx_rate, link_speed);
+		return -EINVAL;
+	}
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_queue_rate_limit, -ENOTSUP);
+	return (*dev->dev_ops->set_queue_rate_limit)(dev, queue_idx, tx_rate);
+}
+
+int rte_eth_set_vf_rate_limit(uint8_t port_id, uint16_t vf, uint16_t tx_rate,
+				uint64_t q_msk)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_link link;
+
+	if (q_msk == 0)
+		return 0;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("set VF rate limit:invalid port id=%d\n",
+				port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	rte_eth_dev_info_get(port_id, &dev_info);
+	link = dev->data->dev_link;
+
+	if (vf > dev_info.max_vfs) {
+		PMD_DEBUG_TRACE("set VF rate limit:port %d: "
+				"invalid vf id=%d\n", port_id, vf);
+		return -EINVAL;
+	}
+
+	if (tx_rate > link.link_speed) {
+		PMD_DEBUG_TRACE("set VF rate limit:invalid tx_rate=%d, "
+				"bigger than link speed= %d\n",
+				tx_rate, link_speed);
+		return -EINVAL;
+	}
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_vf_rate_limit, -ENOTSUP);
+	return (*dev->dev_ops->set_vf_rate_limit)(dev, vf, tx_rate, q_msk);
+}
+
 int
 rte_eth_mirror_rule_set(uint8_t port_id,
 			struct rte_eth_vmdq_mirror_conf *mirror_conf,

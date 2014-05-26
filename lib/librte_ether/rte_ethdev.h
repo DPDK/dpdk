@@ -1039,6 +1039,17 @@ typedef int (*eth_set_vf_vlan_filter_t)(struct rte_eth_dev *dev,
 				  uint8_t vlan_on);
 /**< @internal Set VF VLAN pool filter */
 
+typedef int (*eth_set_queue_rate_limit_t)(struct rte_eth_dev *dev,
+				uint16_t queue_idx,
+				uint16_t tx_rate);
+/**< @internal Set queue TX rate */
+
+typedef int (*eth_set_vf_rate_limit_t)(struct rte_eth_dev *dev,
+				uint16_t vf,
+				uint16_t tx_rate,
+				uint64_t q_msk);
+/**< @internal Set VF TX rate */
+
 typedef int (*eth_mirror_rule_set_t)(struct rte_eth_dev *dev,
 				  struct rte_eth_vmdq_mirror_conf *mirror_conf,
 				  uint8_t rule_id,
@@ -1152,6 +1163,8 @@ struct eth_dev_ops {
 	eth_set_vf_rx_t            set_vf_rx;  /**< enable/disable a VF receive */
 	eth_set_vf_tx_t            set_vf_tx;  /**< enable/disable a VF transmit */
 	eth_set_vf_vlan_filter_t   set_vf_vlan_filter;  /**< Set VF VLAN filter */
+	eth_set_queue_rate_limit_t set_queue_rate_limit;   /**< Set queue rate limit */
+	eth_set_vf_rate_limit_t    set_vf_rate_limit;   /**< Set VF rate limit */
 
 	/** Add a signature filter. */
 	fdir_add_signature_filter_t fdir_add_signature_filter;
@@ -2687,6 +2700,44 @@ int rte_eth_mirror_rule_set(uint8_t port_id,
  */
 int rte_eth_mirror_rule_reset(uint8_t port_id,
 					 uint8_t rule_id);
+
+/**
+ * Set the rate limitation for a queue on an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_idx
+ *   The queue id.
+ * @param tx_rate
+ *   The tx rate allocated from the total link speed for this queue.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support this feature.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_set_queue_rate_limit(uint8_t port_id, uint16_t queue_idx,
+			uint16_t tx_rate);
+
+/**
+ * Set the rate limitation for a vf on an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param vf
+ *   VF id.
+ * @param tx_rate
+ *   The tx rate allocated from the total link speed for this VF id.
+ * @param q_msk
+ *   The queue mask which need to set the rate.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support this feature.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_eth_set_vf_rate_limit(uint8_t port_id, uint16_t vf,
+			uint16_t tx_rate, uint64_t q_msk);
 
 /**
  * Initialize bypass logic. This function needs to be called before
