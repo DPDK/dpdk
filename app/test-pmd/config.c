@@ -1824,3 +1824,50 @@ set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id, uint64_t vf_mask, uint8_t on)
 	       "diag=%d\n", port_id, diag);
 }
 
+int
+set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate)
+{
+	int diag;
+	struct rte_eth_link link;
+
+	if (port_id_is_invalid(port_id))
+		return 1;
+	rte_eth_link_get_nowait(port_id, &link);
+	if (rate > link.link_speed) {
+		printf("Invalid rate value:%u bigger than link speed: %u\n",
+			rate, link.link_speed);
+		return 1;
+	}
+	diag = rte_eth_set_queue_rate_limit(port_id, queue_idx, rate);
+	if (diag == 0)
+		return diag;
+	printf("rte_eth_set_queue_rate_limit for port_id=%d failed diag=%d\n",
+		port_id, diag);
+	return diag;
+}
+
+int
+set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
+{
+	int diag;
+	struct rte_eth_link link;
+
+	if (q_msk == 0)
+		return 0;
+
+	if (port_id_is_invalid(port_id))
+		return 1;
+	rte_eth_link_get_nowait(port_id, &link);
+	if (rate > link.link_speed) {
+		printf("Invalid rate value:%u bigger than link speed: %u\n",
+			rate, link.link_speed);
+		return 1;
+	}
+	diag = rte_eth_set_vf_rate_limit(port_id, vf, rate, q_msk);
+	if (diag == 0)
+		return diag;
+	printf("rte_eth_set_vf_rate_limit for port_id=%d failed diag=%d\n",
+		port_id, diag);
+	return diag;
+}
+

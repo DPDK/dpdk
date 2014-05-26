@@ -347,6 +347,13 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"MPE:accepts all multicast packets\n\n"
 			"    Enable/Disable a VF receive mode of a port\n\n"
 
+			"set port (port_id) queue (queue_id) rate (rate_num)\n"
+			"    Set rate limit for a queue of a port\n\n"
+
+			"set port (port_id) vf (vf_id) rate (rate_num) "
+			"queue_mask (queue_mask_value)\n"
+			"    Set rate limit for queues in VF of a port\n\n"
+
 			"set port (port_id) mirror-rule (rule_id)"
 			"(pool-mirror|vlan-mirror)\n"
 			" (poolmask|vlanid[,vlanid]*) dst-pool (pool_id) (on|off)\n"
@@ -5019,6 +5026,152 @@ cmdline_parse_inst_t cmd_vf_rxvlan_filter = {
 	},
 };
 
+/* *** SET RATE LIMIT FOR A QUEUE OF A PORT *** */
+struct cmd_queue_rate_limit_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t port_num;
+	cmdline_fixed_string_t queue;
+	uint8_t queue_num;
+	cmdline_fixed_string_t rate;
+	uint16_t rate_num;
+};
+
+static void cmd_queue_rate_limit_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_queue_rate_limit_result *res = parsed_result;
+	int ret = 0;
+
+	if ((strcmp(res->set, "set") == 0) && (strcmp(res->port, "port") == 0)
+		&& (strcmp(res->queue, "queue") == 0)
+		&& (strcmp(res->rate, "rate") == 0))
+		ret = set_queue_rate_limit(res->port_num, res->queue_num,
+					res->rate_num);
+	if (ret < 0)
+		printf("queue_rate_limit_cmd error: (%s)\n", strerror(-ret));
+
+}
+
+cmdline_parse_token_string_t cmd_queue_rate_limit_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_rate_limit_result,
+				set, "set");
+cmdline_parse_token_string_t cmd_queue_rate_limit_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_rate_limit_result,
+				port, "port");
+cmdline_parse_token_num_t cmd_queue_rate_limit_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_rate_limit_result,
+				port_num, UINT8);
+cmdline_parse_token_string_t cmd_queue_rate_limit_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_rate_limit_result,
+				queue, "queue");
+cmdline_parse_token_num_t cmd_queue_rate_limit_queuenum =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_rate_limit_result,
+				queue_num, UINT8);
+cmdline_parse_token_string_t cmd_queue_rate_limit_rate =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_rate_limit_result,
+				rate, "rate");
+cmdline_parse_token_num_t cmd_queue_rate_limit_ratenum =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_rate_limit_result,
+				rate_num, UINT16);
+
+cmdline_parse_inst_t cmd_queue_rate_limit = {
+	.f = cmd_queue_rate_limit_parsed,
+	.data = (void *)0,
+	.help_str = "set port X queue Y rate Z:(X = port number,"
+	"Y = queue number,Z = rate number)set rate limit for a queue on port X",
+	.tokens = {
+		(void *)&cmd_queue_rate_limit_set,
+		(void *)&cmd_queue_rate_limit_port,
+		(void *)&cmd_queue_rate_limit_portnum,
+		(void *)&cmd_queue_rate_limit_queue,
+		(void *)&cmd_queue_rate_limit_queuenum,
+		(void *)&cmd_queue_rate_limit_rate,
+		(void *)&cmd_queue_rate_limit_ratenum,
+		NULL,
+	},
+};
+
+/* *** SET RATE LIMIT FOR A VF OF A PORT *** */
+struct cmd_vf_rate_limit_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t port_num;
+	cmdline_fixed_string_t vf;
+	uint8_t vf_num;
+	cmdline_fixed_string_t rate;
+	uint16_t rate_num;
+	cmdline_fixed_string_t q_msk;
+	uint64_t q_msk_val;
+};
+
+static void cmd_vf_rate_limit_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_vf_rate_limit_result *res = parsed_result;
+	int ret = 0;
+
+	if ((strcmp(res->set, "set") == 0) && (strcmp(res->port, "port") == 0)
+		&& (strcmp(res->vf, "vf") == 0)
+		&& (strcmp(res->rate, "rate") == 0)
+		&& (strcmp(res->q_msk, "queue_mask") == 0))
+		ret = set_vf_rate_limit(res->port_num, res->vf_num,
+					res->rate_num, res->q_msk_val);
+	if (ret < 0)
+		printf("vf_rate_limit_cmd error: (%s)\n", strerror(-ret));
+
+}
+
+cmdline_parse_token_string_t cmd_vf_rate_limit_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rate_limit_result,
+				set, "set");
+cmdline_parse_token_string_t cmd_vf_rate_limit_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rate_limit_result,
+				port, "port");
+cmdline_parse_token_num_t cmd_vf_rate_limit_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_rate_limit_result,
+				port_num, UINT8);
+cmdline_parse_token_string_t cmd_vf_rate_limit_vf =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rate_limit_result,
+				vf, "vf");
+cmdline_parse_token_num_t cmd_vf_rate_limit_vfnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_rate_limit_result,
+				vf_num, UINT8);
+cmdline_parse_token_string_t cmd_vf_rate_limit_rate =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rate_limit_result,
+				rate, "rate");
+cmdline_parse_token_num_t cmd_vf_rate_limit_ratenum =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_rate_limit_result,
+				rate_num, UINT16);
+cmdline_parse_token_string_t cmd_vf_rate_limit_q_msk =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rate_limit_result,
+				q_msk, "queue_mask");
+cmdline_parse_token_num_t cmd_vf_rate_limit_q_msk_val =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_rate_limit_result,
+				q_msk_val, UINT64);
+
+cmdline_parse_inst_t cmd_vf_rate_limit = {
+	.f = cmd_vf_rate_limit_parsed,
+	.data = (void *)0,
+	.help_str = "set port X vf Y rate Z queue_mask V:(X = port number,"
+	"Y = VF number,Z = rate number, V = queue mask value)set rate limit "
+	"for queues of VF on port X",
+	.tokens = {
+		(void *)&cmd_vf_rate_limit_set,
+		(void *)&cmd_vf_rate_limit_port,
+		(void *)&cmd_vf_rate_limit_portnum,
+		(void *)&cmd_vf_rate_limit_vf,
+		(void *)&cmd_vf_rate_limit_vfnum,
+		(void *)&cmd_vf_rate_limit_rate,
+		(void *)&cmd_vf_rate_limit_ratenum,
+		(void *)&cmd_vf_rate_limit_q_msk,
+		(void *)&cmd_vf_rate_limit_q_msk_val,
+		NULL,
+	},
+};
+
 /* *** CONFIGURE VM MIRROR VLAN/POOL RULE *** */
 struct cmd_set_mirror_mask_result {
 	cmdline_fixed_string_t set;
@@ -5461,6 +5614,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_vf_mac_addr_filter ,
 	(cmdline_parse_inst_t *)&cmd_set_vf_traffic,
 	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
+	(cmdline_parse_inst_t *)&cmd_queue_rate_limit,
+	(cmdline_parse_inst_t *)&cmd_vf_rate_limit,
 	(cmdline_parse_inst_t *)&cmd_set_mirror_mask,
 	(cmdline_parse_inst_t *)&cmd_set_mirror_link,
 	(cmdline_parse_inst_t *)&cmd_reset_mirror_rule,

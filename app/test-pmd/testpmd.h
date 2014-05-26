@@ -525,10 +525,16 @@ void fdir_update_perfect_filter(portid_t port_id, uint16_t soft_id,
 void fdir_remove_perfect_filter(portid_t port_id, uint16_t soft_id,
 				struct rte_fdir_filter *fdir_filter);
 void fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks);
+
 void port_rss_reta_info(portid_t port_id, struct rte_eth_rss_reta *reta_conf);
+
 void set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on);
 void set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id,
 		uint64_t vf_mask, uint8_t on);
+
+int set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate);
+int set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate,
+				uint64_t q_msk);
 
 void port_rss_hash_conf_show(portid_t port_id, int show_rss_key);
 void port_rss_hash_key_update(portid_t port_id, uint8_t *hash_key);
