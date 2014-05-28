@@ -34,6 +34,8 @@
 #ifndef _IP_FRAG_COMMON_H_
 #define _IP_FRAG_COMMON_H_
 
+#include "rte_ip_frag.h"
+
 /* Debug on/off */
 #ifdef RTE_IP_FRAG_DEBUG
 

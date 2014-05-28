@@ -34,6 +34,8 @@
 #ifndef _IPV4_RSMBL_H_
 #define _IPV4_RSMBL_H_
 
+#include "ip_frag_common.h"
+
 /**
  * @file
  * IPv4 reassemble
@@ -49,7 +51,7 @@ enum {
 	MAX_FRAG_NUM = 4,
 };
 
-struct ipv4_frag {
+struct ip_frag {
 	uint16_t ofs;
 	uint16_t len;
 	struct rte_mbuf *mb;
@@ -58,15 +60,15 @@ struct ipv4_frag {
 /*
  * Use <src addr, dst_addr, id> to uniquely indetify fragmented datagram.
  */
-struct ipv4_frag_key {
+struct ip_frag_key {
 	uint64_t  src_dst;
 	uint32_t  id;
 };
 
-#define	IPV4_FRAG_KEY_INVALIDATE(k)	((k)->src_dst = 0)
-#define	IPV4_FRAG_KEY_EMPTY(k)		((k)->src_dst == 0)
+#define	IP_FRAG_KEY_INVALIDATE(k)	((k)->src_dst = 0)
+#define	IP_FRAG_KEY_EMPTY(k)		((k)->src_dst == 0)
 
-#define	IPV4_FRAG_KEY_CMP(k1, k2)	\
+#define	IP_FRAG_KEY_CMP(k1, k2)	\
 	(((k1)->src_dst ^ (k2)->src_dst) | ((k1)->id ^ (k2)->id))
 
 
@@ -74,37 +76,37 @@ struct ipv4_frag_key {
  * Fragmented packet to reassemble.
  * First two entries in the frags[] array are for the last and first fragments.
  */
-struct ipv4_frag_pkt {
-	TAILQ_ENTRY(ipv4_frag_pkt) lru;   /* LRU list */
-	struct ipv4_frag_key key;
+struct ip_frag_pkt {
+	TAILQ_ENTRY(ip_frag_pkt) lru;   /* LRU list */
+	struct ip_frag_key key;
 	uint64_t             start;       /* creation timestamp */
 	uint32_t             total_size;  /* expected reassembled size */
 	uint32_t             frag_size;   /* size of fragments received */
 	uint32_t             last_idx;    /* index of next entry to fill */
-	struct ipv4_frag     frags[MAX_FRAG_NUM];
+	struct ip_frag     frags[MAX_FRAG_NUM];
 } __rte_cache_aligned;
 
 
-struct ipv4_frag_death_row {
+struct ip_frag_death_row {
 	uint32_t cnt;
 	struct rte_mbuf *row[MAX_PKT_BURST * (MAX_FRAG_NUM + 1)];
 };
 
-#define	IPV4_FRAG_MBUF2DR(dr, mb)	((dr)->row[(dr)->cnt++] = (mb))
+#define	IP_FRAG_MBUF2DR(dr, mb)	((dr)->row[(dr)->cnt++] = (mb))
 
 /* logging macros. */
 
-#ifdef IPV4_FRAG_DEBUG
-#define	IPV4_FRAG_LOG(lvl, fmt, args...)	RTE_LOG(lvl, USER1, fmt, ##args)
+#ifdef IP_FRAG_DEBUG
+#define	IP_FRAG_LOG(lvl, fmt, args...)	RTE_LOG(lvl, USER1, fmt, ##args)
 #else
-#define	IPV4_FRAG_LOG(lvl, fmt, args...)	do {} while(0)
-#endif /* IPV4_FRAG_DEBUG */
+#define	IP_FRAG_LOG(lvl, fmt, args...)	do {} while(0)
+#endif /* IP_FRAG_DEBUG */
 
 
 static inline void
-ipv4_frag_reset(struct ipv4_frag_pkt *fp, uint64_t tms)
+ip_frag_reset(struct ip_frag_pkt *fp, uint64_t tms)
 {
-	static const struct ipv4_frag zero_frag = {
+	static const struct ip_frag zero_frag = {
 		.ofs = 0,
 		.len = 0,
 		.mb = NULL,
@@ -119,7 +121,7 @@ ipv4_frag_reset(struct ipv4_frag_pkt *fp, uint64_t tms)
 }
 
 static inline void
-ipv4_frag_free(struct ipv4_frag_pkt *fp, struct ipv4_frag_death_row *dr)
+ip_frag_free(struct ip_frag_pkt *fp, struct ip_frag_death_row *dr)
 {
 	uint32_t i, k;
 
@@ -136,7 +138,7 @@ ipv4_frag_free(struct ipv4_frag_pkt *fp, struct ipv4_frag_death_row *dr)
 }
 
 static inline void
-ipv4_frag_free_death_row(struct ipv4_frag_death_row *dr, uint32_t prefetch)
+rte_ip_frag_free_death_row(struct ip_frag_death_row *dr, uint32_t prefetch)
 {
 	uint32_t i, k, n;
 
@@ -163,7 +165,7 @@ ipv4_frag_free_death_row(struct ipv4_frag_death_row *dr, uint32_t prefetch)
  * chains them into one mbuf.
  */
 static inline void
-ipv4_frag_chain(struct rte_mbuf *mn, struct rte_mbuf *mp)
+ip_frag_chain(struct rte_mbuf *mn, struct rte_mbuf *mp)
 {
 	struct rte_mbuf *ms;
 
@@ -188,7 +190,7 @@ ipv4_frag_chain(struct rte_mbuf *mn, struct rte_mbuf *mp)
  * Reassemble fragments into one packet.
  */
 static inline struct rte_mbuf *
-ipv4_frag_reassemble(const struct ipv4_frag_pkt *fp)
+ipv4_frag_reassemble(const struct ip_frag_pkt *fp)
 {
 	struct ipv4_hdr *ip_hdr;
 	struct rte_mbuf *m, *prev;
@@ -210,7 +212,7 @@ ipv4_frag_reassemble(const struct ipv4_frag_pkt *fp)
 			/* previous fragment found. */
 			if(fp->frags[i].ofs + fp->frags[i].len == ofs) {
 
-				ipv4_frag_chain(fp->frags[i].mb, m);
+				ip_frag_chain(fp->frags[i].mb, m);
 
 				/* update our last fragment and offset. */
 				m = fp->frags[i].mb;
@@ -225,14 +227,14 @@ ipv4_frag_reassemble(const struct ipv4_frag_pkt *fp)
 	}
 
 	/* chain with the first fragment. */
-	ipv4_frag_chain(fp->frags[FIRST_FRAG_IDX].mb, m);
+	ip_frag_chain(fp->frags[FIRST_FRAG_IDX].mb, m);
 	m = fp->frags[FIRST_FRAG_IDX].mb;
 
 	/* update mbuf fields for reassembled packet. */
 	m->ol_flags |= PKT_TX_IP_CKSUM;
 
 	/* update ipv4 header for the reassmebled packet */
-	ip_hdr = (struct ipv4_hdr*)(rte_pktmbuf_mtod(m, uint8_t *) +
+	ip_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m, uint8_t *) +
 		m->pkt.vlan_macip.f.l2_len);
 
 	ip_hdr->total_length = rte_cpu_to_be_16((uint16_t)(fp->total_size +
@@ -245,7 +247,7 @@ ipv4_frag_reassemble(const struct ipv4_frag_pkt *fp)
 }
 
 static inline struct rte_mbuf *
-ipv4_frag_process(struct ipv4_frag_pkt *fp, struct ipv4_frag_death_row *dr,
+ip_frag_process(struct ip_frag_pkt *fp, struct ip_frag_death_row *dr,
 	struct rte_mbuf *mb, uint16_t ofs, uint16_t len, uint16_t more_frags)
 {
 	uint32_t idx;
@@ -276,7 +278,7 @@ ipv4_frag_process(struct ipv4_frag_pkt *fp, struct ipv4_frag_death_row *dr,
 	if (idx >= sizeof (fp->frags) / sizeof (fp->frags[0])) {
 
 		/* report an error. */
-		IPV4_FRAG_LOG(DEBUG, "%s:%d invalid fragmented packet:\n"
+		IP_FRAG_LOG(DEBUG, "%s:%d invalid fragmented packet:\n"
 			"ipv4_frag_pkt: %p, key: <%" PRIx64 ", %#x>, "
 			"total_size: %u, frag_size: %u, last_idx: %u\n"
 			"first fragment: ofs: %u, len: %u\n"
@@ -290,9 +292,9 @@ ipv4_frag_process(struct ipv4_frag_pkt *fp, struct ipv4_frag_death_row *dr,
 			fp->frags[LAST_FRAG_IDX].len);
 
 		/* free all fragments, invalidate the entry. */
-		ipv4_frag_free(fp, dr);
-		IPV4_FRAG_KEY_INVALIDATE(&fp->key);
-		IPV4_FRAG_MBUF2DR(dr, mb);
+		ip_frag_free(fp, dr);
+		IP_FRAG_KEY_INVALIDATE(&fp->key);
+		IP_FRAG_MBUF2DR(dr, mb);
 
 		return (NULL);
 	}
@@ -317,7 +319,7 @@ ipv4_frag_process(struct ipv4_frag_pkt *fp, struct ipv4_frag_death_row *dr,
 	if (mb == NULL) {
 
 		/* report an error. */
-		IPV4_FRAG_LOG(DEBUG, "%s:%d invalid fragmented packet:\n"
+		IP_FRAG_LOG(DEBUG, "%s:%d invalid fragmented packet:\n"
 			"ipv4_frag_pkt: %p, key: <%" PRIx64 ", %#x>, "
 			"total_size: %u, frag_size: %u, last_idx: %u\n"
 			"first fragment: ofs: %u, len: %u\n"
@@ -331,11 +333,11 @@ ipv4_frag_process(struct ipv4_frag_pkt *fp, struct ipv4_frag_death_row *dr,
 			fp->frags[LAST_FRAG_IDX].len);
 
 		/* free associated resources. */
-		ipv4_frag_free(fp, dr);
+		ip_frag_free(fp, dr);
 	}
 
 	/* we are done with that entry, invalidate it. */
-	IPV4_FRAG_KEY_INVALIDATE(&fp->key);
+	IP_FRAG_KEY_INVALIDATE(&fp->key);
 	return (mb);
 }
 
@@ -362,12 +364,12 @@ ipv4_frag_process(struct ipv4_frag_pkt *fp, struct ipv4_frag_death_row *dr,
  *   - not all fragments of the packet are collected yet.
  */
 static inline struct rte_mbuf *
-ipv4_frag_mbuf(struct ipv4_frag_tbl *tbl, struct ipv4_frag_death_row *dr,
-	struct rte_mbuf *mb, uint64_t tms, struct ipv4_hdr *ip_hdr,
-	uint16_t ip_ofs, uint16_t ip_flag)
+rte_ipv4_reassemble_packet(struct ip_frag_tbl *tbl,
+		struct ip_frag_death_row *dr, struct rte_mbuf *mb, uint64_t tms,
+		struct ipv4_hdr *ip_hdr, uint16_t ip_ofs, uint16_t ip_flag)
 {
-	struct ipv4_frag_pkt *fp;
-	struct ipv4_frag_key key;
+	struct ip_frag_pkt *fp;
+	struct ip_frag_key key;
 	const uint64_t *psd;
 	uint16_t ip_len;
 
@@ -379,7 +381,7 @@ ipv4_frag_mbuf(struct ipv4_frag_tbl *tbl, struct ipv4_frag_death_row *dr,
 	ip_len = (uint16_t)(rte_be_to_cpu_16(ip_hdr->total_length) -
 		mb->pkt.vlan_macip.f.l3_len);
 
-	IPV4_FRAG_LOG(DEBUG, "%s:%d:\n"
+	IP_FRAG_LOG(DEBUG, "%s:%d:\n"
 		"mbuf: %p, tms: %" PRIu64
 		", key: <%" PRIx64 ", %#x>, ofs: %u, len: %u, flags: %#x\n"
 		"tbl: %p, max_cycles: %" PRIu64 ", entry_mask: %#x, "
@@ -390,12 +392,12 @@ ipv4_frag_mbuf(struct ipv4_frag_tbl *tbl, struct ipv4_frag_death_row *dr,
 		tbl->use_entries);
 
 	/* try to find/add entry into the fragment's table. */
-	if ((fp = ipv4_frag_find(tbl, dr, &key, tms)) == NULL) {
-		IPV4_FRAG_MBUF2DR(dr, mb);
-		return (NULL);
+	if ((fp = ip_frag_find(tbl, dr, &key, tms)) == NULL) {
+		IP_FRAG_MBUF2DR(dr, mb);
+		return NULL;
 	}
 
-	IPV4_FRAG_LOG(DEBUG, "%s:%d:\n"
+	IP_FRAG_LOG(DEBUG, "%s:%d:\n"
 		"tbl: %p, max_entries: %u, use_entries: %u\n"
 		"ipv4_frag_pkt: %p, key: <%" PRIx64 ", %#x>, start: %" PRIu64
 		", total_size: %u, frag_size: %u, last_idx: %u\n\n",
@@ -406,10 +408,10 @@ ipv4_frag_mbuf(struct ipv4_frag_tbl *tbl, struct ipv4_frag_death_row *dr,
 
 
 	/* process the fragmented packet. */
-	mb = ipv4_frag_process(fp, dr, mb, ip_ofs, ip_len, ip_flag);
-	ipv4_frag_inuse(tbl, fp);
+	mb = ip_frag_process(fp, dr, mb, ip_ofs, ip_len, ip_flag);
+	ip_frag_inuse(tbl, fp);
 
-	IPV4_FRAG_LOG(DEBUG, "%s:%d:\n"
+	IP_FRAG_LOG(DEBUG, "%s:%d:\n"
 		"mbuf: %p\n"
 		"tbl: %p, max_entries: %u, use_entries: %u\n"
 		"ipv4_frag_pkt: %p, key: <%" PRIx64 ", %#x>, start: %" PRIu64

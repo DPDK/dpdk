@@ -407,9 +407,9 @@ struct lcore_conf {
 #else
 	lookup_struct_t * ipv6_lookup_struct;
 #endif
-	struct ipv4_frag_tbl *frag_tbl[MAX_RX_QUEUE_PER_LCORE];
+	struct ip_frag_tbl *frag_tbl[MAX_RX_QUEUE_PER_LCORE];
 	struct rte_mempool *pool[MAX_RX_QUEUE_PER_LCORE];
-	struct ipv4_frag_death_row death_row;
+	struct ip_frag_death_row death_row;
 	struct mbuf_table *tx_mbufs[MAX_PORTS];
 	struct tx_lcore_stat tx_stat;
 } __rte_cache_aligned;
@@ -673,8 +673,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, uint32_t queue,
 		if (ip_flag != 0 || ip_ofs  != 0) {
 
 			struct rte_mbuf *mo;
-			struct ipv4_frag_tbl *tbl;
-			struct ipv4_frag_death_row *dr;
+			struct ip_frag_tbl *tbl;
+			struct ip_frag_death_row *dr;
 
 			tbl = qconf->frag_tbl[queue];
 			dr = &qconf->death_row;
@@ -684,7 +684,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, uint32_t queue,
 			m->pkt.vlan_macip.f.l3_len = sizeof(*ipv4_hdr);
 
 			/* process this fragment. */
-			if ((mo = ipv4_frag_mbuf(tbl, dr, m, tms, ipv4_hdr,
+			if ((mo = rte_ipv4_reassemble_packet(tbl, dr, m, tms, ipv4_hdr,
 					ip_ofs, ip_flag)) == NULL)
 				/* no packet to send out. */
 				return;
@@ -822,7 +822,7 @@ main_loop(__attribute__((unused)) void *dummy)
 					i, qconf, cur_tsc);
 			}
 
-			ipv4_frag_free_death_row(&qconf->death_row,
+			rte_ip_frag_free_death_row(&qconf->death_row,
 				PREFETCH_OFFSET);
 		}
 	}
@@ -1456,7 +1456,7 @@ setup_queue_tbl(struct lcore_conf *qconf, uint32_t lcore, int socket,
 	frag_cycles = (rte_get_tsc_hz() + MS_PER_S - 1) / MS_PER_S *
 		max_flow_ttl;
 
-	if ((qconf->frag_tbl[queue] = ipv4_frag_tbl_create(max_flow_num,
+	if ((qconf->frag_tbl[queue] = rte_ip_frag_table_create(max_flow_num,
 			IPV4_FRAG_TBL_BUCKET_ENTRIES, max_flow_num, frag_cycles,
 			socket)) == NULL)
 		rte_exit(EXIT_FAILURE, "ipv4_frag_tbl_create(%u) on "
@@ -1501,7 +1501,7 @@ queue_dump_stat(void)
 				"rxqueueid=%hhu frag tbl stat:\n",
 				lcore,  qconf->rx_queue_list[i].port_id,
 				qconf->rx_queue_list[i].queue_id);
-			ipv4_frag_tbl_dump_stat(stdout, qconf->frag_tbl[i]);
+			rte_ip_frag_table_statistics_dump(stdout, qconf->frag_tbl[i]);
 			fprintf(stdout, "TX bursts:\t%" PRIu64 "\n"
 				"TX packets _queued:\t%" PRIu64 "\n"
 				"TX packets dropped:\t%" PRIu64 "\n"
