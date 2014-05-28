@@ -71,7 +71,7 @@
 #include <rte_lpm.h>
 #include <rte_ip.h>
 
-#include "rte_ipv4_frag.h"
+#include "rte_ip_frag.h"
 #include "main.h"
 
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1

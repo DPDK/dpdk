@@ -94,7 +94,7 @@
 
 #define MAX_PKT_BURST 32
 
-#include "ipv4_rsmbl.h"
+#include "rte_ipv4_rsmbl.h"
 
 #ifndef IPv6_BYTES
 #define IPv6_BYTES_FMT "%02x%02x:%02x%02x:%02x%02x:%02x%02x:"\

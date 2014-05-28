@@ -31,37 +31,12 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBC) += libc
-DIRS-$(CONFIG_RTE_LIBRTE_EAL) += librte_eal
-DIRS-$(CONFIG_RTE_LIBRTE_MALLOC) += librte_malloc
-DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring
-DIRS-$(CONFIG_RTE_LIBRTE_MEMPOOL) += librte_mempool
-DIRS-$(CONFIG_RTE_LIBRTE_MBUF) += librte_mbuf
-DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += librte_timer
-DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
-DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ether
-DIRS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += librte_pmd_e1000
-DIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += librte_pmd_ixgbe
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_RING) += librte_pmd_ring
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += librte_pmd_pcap
-DIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += librte_pmd_virtio
-DIRS-$(CONFIG_RTE_LIBRTE_VMXNET3_PMD) += librte_pmd_vmxnet3
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += librte_pmd_xenvirt
-DIRS-$(CONFIG_RTE_LIBRTE_HASH) += librte_hash
-DIRS-$(CONFIG_RTE_LIBRTE_LPM) += librte_lpm
-DIRS-$(CONFIG_RTE_LIBRTE_ACL) += librte_acl
-DIRS-$(CONFIG_RTE_LIBRTE_NET) += librte_net
-DIRS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += librte_ip_frag
-DIRS-$(CONFIG_RTE_LIBRTE_POWER) += librte_power
-DIRS-$(CONFIG_RTE_LIBRTE_METER) += librte_meter
-DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += librte_sched
-DIRS-$(CONFIG_RTE_LIBRTE_KVARGS) += librte_kvargs
-DIRS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += librte_distributor
+# install this header file
+SYMLINK-$(CONFIG_RTE_LIBRTE_IP_FRAG)-include += rte_ip_frag.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_IP_FRAG)-include += ipv4_frag_tbl.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_IP_FRAG)-include += rte_ipv4_rsmbl.h
 
-ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
-DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
-DIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += librte_ivshmem
-endif
+# this library depends on rte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += lib/librte_mempool lib/librte_ether
 
-include $(RTE_SDK)/mk/rte.sharelib.mk
-include $(RTE_SDK)/mk/rte.subdir.mk
+include $(RTE_SDK)/mk/rte.lib.mk

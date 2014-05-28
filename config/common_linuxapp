@@ -303,6 +303,11 @@ CONFIG_RTE_MAX_LCORE_FREQS=64
 CONFIG_RTE_LIBRTE_NET=y
 
 #
+# Compile librte_ip_frag
+#
+CONFIG_RTE_LIBRTE_IP_FRAG=y
+
+#
 # Compile librte_meter
 #
 CONFIG_RTE_LIBRTE_METER=y
