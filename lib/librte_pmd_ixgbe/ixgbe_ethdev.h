@@ -212,6 +212,14 @@ void ixgbe_dev_tx_init(struct rte_eth_dev *dev);
 
 void ixgbe_dev_rxtx_start(struct rte_eth_dev *dev);
 
+int ixgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
+int ixgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
+int ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+
+int ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+
 int ixgbevf_dev_rx_init(struct rte_eth_dev *dev);
 
 void ixgbevf_dev_tx_init(struct rte_eth_dev *dev);

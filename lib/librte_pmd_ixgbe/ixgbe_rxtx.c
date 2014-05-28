@@ -1588,7 +1588,7 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  * descriptors should meet the following condition:
  *      (num_ring_desc * sizeof(rx/tx descriptor)) % 128 == 0
  */
-#define IXGBE_MIN_RING_DESC 64
+#define IXGBE_MIN_RING_DESC 32
 #define IXGBE_MAX_RING_DESC 4096
 
 /*
@@ -1836,6 +1836,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->port_id = dev->data->port_id;
 	txq->txq_flags = tx_conf->txq_flags;
 	txq->ops = &def_txq_ops;
+	txq->start_tx_per_q = tx_conf->start_tx_per_q;
 
 	/*
 	 * Modification to set VFTDT for virtual function if vf is detected
@@ -2078,6 +2079,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->crc_len = (uint8_t) ((dev->data->dev_conf.rxmode.hw_strip_crc) ?
 							0 : ETHER_CRC_LEN);
 	rxq->drop_en = rx_conf->rx_drop_en;
+	rxq->start_rx_per_q = rx_conf->start_rx_per_q;
 
 	/*
 	 * Allocate RX ring hardware descriptors. A memzone large enough to
@@ -3132,6 +3134,13 @@ ixgbe_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 
 	}
 
+	/* PFDMA Tx General Switch Control Enables VMDQ loopback */
+	if (cfg->enable_loop_back) {
+		IXGBE_WRITE_REG(hw, IXGBE_PFDTXGSWC, IXGBE_PFDTXGSWC_VT_LBEN);
+		for (i = 0; i < RTE_IXGBE_VMTXSW_REGISTER_COUNT; i++)
+			IXGBE_WRITE_REG(hw, IXGBE_VMTXSW(i), UINT32_MAX);
+	}
+
 	IXGBE_WRITE_FLUSH(hw);
 }
 
@@ -3341,7 +3350,6 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	uint32_t rxcsum;
 	uint16_t buf_size;
 	uint16_t i;
-	int ret;
 	
 	PMD_INIT_FUNC_TRACE();
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -3395,11 +3403,6 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	/* Setup RX queues */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
-
-		/* Allocate buffers for descriptor rings */
-		ret = ixgbe_alloc_rx_queue_mbufs(rxq);
-		if (ret)
-			return ret;
 
 		/*
 		 * Reset crc_len in case it was changed after queue setup by a
@@ -3607,10 +3610,8 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 	struct igb_rx_queue *rxq;
 	uint32_t txdctl;
 	uint32_t dmatxctl;
-	uint32_t rxdctl;
 	uint32_t rxctrl;
 	uint16_t i;
-	int poll_ms;
 
 	PMD_INIT_FUNC_TRACE();
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -3633,39 +3634,14 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
-		txdctl = IXGBE_READ_REG(hw, IXGBE_TXDCTL(txq->reg_idx));
-		txdctl |= IXGBE_TXDCTL_ENABLE;
-		IXGBE_WRITE_REG(hw, IXGBE_TXDCTL(txq->reg_idx), txdctl);
-
-		/* Wait until TX Enable ready */
-		if (hw->mac.type == ixgbe_mac_82599EB) {
-			poll_ms = 10;
-			do {
-				rte_delay_ms(1);
-				txdctl = IXGBE_READ_REG(hw, IXGBE_TXDCTL(txq->reg_idx));
-			} while (--poll_ms && !(txdctl & IXGBE_TXDCTL_ENABLE));
-			if (!poll_ms)
-				PMD_INIT_LOG(ERR, "Could not enable "
-					     "Tx Queue %d\n", i);
-		}
+		if (!txq->start_tx_per_q)
+			ixgbe_dev_tx_queue_start(dev, i);
 	}
+
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
-		rxdctl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(rxq->reg_idx));
-		rxdctl |= IXGBE_RXDCTL_ENABLE;
-		IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(rxq->reg_idx), rxdctl);
-
-		/* Wait until RX Enable ready */
-		poll_ms = 10;
-		do {
-			rte_delay_ms(1);
-			rxdctl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(rxq->reg_idx));
-		} while (--poll_ms && !(rxdctl & IXGBE_RXDCTL_ENABLE));
-		if (!poll_ms)
-			PMD_INIT_LOG(ERR, "Could not enable "
-				     "Rx Queue %d\n", i);
-		rte_wmb();
-		IXGBE_WRITE_REG(hw, IXGBE_RDT(rxq->reg_idx), rxq->nb_rx_desc - 1);
+		if (!rxq->start_rx_per_q)
+			ixgbe_dev_rx_queue_start(dev, i);
 	}
 
 	/* Enable Receive engine */
@@ -3682,6 +3658,195 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 
 }
 
+/*
+ * Start Receive Units for specified queue.
+ */
+int
+ixgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct ixgbe_hw     *hw;
+	struct igb_rx_queue *rxq;
+	uint32_t rxdctl;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (rx_queue_id < dev->data->nb_rx_queues) {
+		rxq = dev->data->rx_queues[rx_queue_id];
+
+		/* Allocate buffers for descriptor rings */
+		if (ixgbe_alloc_rx_queue_mbufs(rxq) != 0) {
+			PMD_INIT_LOG(ERR,
+				"Could not alloc mbuf for queue:%d\n",
+				rx_queue_id);
+			return -1;
+		}
+		rxdctl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(rxq->reg_idx));
+		rxdctl |= IXGBE_RXDCTL_ENABLE;
+		IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(rxq->reg_idx), rxdctl);
+
+		/* Wait until RX Enable ready */
+		poll_ms = RTE_IXGBE_REGISTER_POLL_WAIT_10_MS;
+		do {
+			rte_delay_ms(1);
+			rxdctl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(rxq->reg_idx));
+		} while (--poll_ms && !(rxdctl & IXGBE_RXDCTL_ENABLE));
+		if (!poll_ms)
+			PMD_INIT_LOG(ERR, "Could not enable "
+				     "Rx Queue %d\n", rx_queue_id);
+		rte_wmb();
+		IXGBE_WRITE_REG(hw, IXGBE_RDH(rxq->reg_idx), 0);
+		IXGBE_WRITE_REG(hw, IXGBE_RDT(rxq->reg_idx), rxq->nb_rx_desc - 1);
+	} else
+		return -1;
+
+	return 0;
+}
+
+/*
+ * Stop Receive Units for specified queue.
+ */
+int
+ixgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct ixgbe_hw     *hw;
+	struct igb_rx_queue *rxq;
+	uint32_t rxdctl;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (rx_queue_id < dev->data->nb_rx_queues) {
+		rxq = dev->data->rx_queues[rx_queue_id];
+
+		rxdctl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(rxq->reg_idx));
+		rxdctl &= ~IXGBE_RXDCTL_ENABLE;
+		IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(rxq->reg_idx), rxdctl);
+
+		/* Wait until RX Enable ready */
+		poll_ms = RTE_IXGBE_REGISTER_POLL_WAIT_10_MS;
+		do {
+			rte_delay_ms(1);
+			rxdctl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(rxq->reg_idx));
+		} while (--poll_ms && (rxdctl | IXGBE_RXDCTL_ENABLE));
+		if (!poll_ms)
+			PMD_INIT_LOG(ERR, "Could not disable "
+				     "Rx Queue %d\n", rx_queue_id);
+
+		rte_delay_us(RTE_IXGBE_WAIT_100_US);
+
+		ixgbe_rx_queue_release_mbufs(rxq);
+		ixgbe_reset_rx_queue(rxq);
+	} else
+		return -1;
+
+	return 0;
+}
+
+
+/*
+ * Start Transmit Units for specified queue.
+ */
+int
+ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct ixgbe_hw     *hw;
+	struct igb_tx_queue *txq;
+	uint32_t txdctl;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (tx_queue_id < dev->data->nb_tx_queues) {
+		txq = dev->data->tx_queues[tx_queue_id];
+		txdctl = IXGBE_READ_REG(hw, IXGBE_TXDCTL(txq->reg_idx));
+		txdctl |= IXGBE_TXDCTL_ENABLE;
+		IXGBE_WRITE_REG(hw, IXGBE_TXDCTL(txq->reg_idx), txdctl);
+
+		/* Wait until TX Enable ready */
+		if (hw->mac.type == ixgbe_mac_82599EB) {
+			poll_ms = RTE_IXGBE_REGISTER_POLL_WAIT_10_MS;
+			do {
+				rte_delay_ms(1);
+				txdctl = IXGBE_READ_REG(hw,
+					IXGBE_TXDCTL(txq->reg_idx));
+			} while (--poll_ms && !(txdctl & IXGBE_TXDCTL_ENABLE));
+			if (!poll_ms)
+				PMD_INIT_LOG(ERR, "Could not enable "
+					     "Tx Queue %d\n", tx_queue_id);
+		}
+		rte_wmb();
+		IXGBE_WRITE_REG(hw, IXGBE_TDH(txq->reg_idx), 0);
+		IXGBE_WRITE_REG(hw, IXGBE_TDT(txq->reg_idx), 0);
+	} else
+		return -1;
+
+	return 0;
+}
+
+/*
+ * Stop Transmit Units for specified queue.
+ */
+int
+ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct ixgbe_hw     *hw;
+	struct igb_tx_queue *txq;
+	uint32_t txdctl;
+	uint32_t txtdh, txtdt;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (tx_queue_id < dev->data->nb_tx_queues) {
+		txq = dev->data->tx_queues[tx_queue_id];
+
+		/* Wait until TX queue is empty */
+		if (hw->mac.type == ixgbe_mac_82599EB) {
+			poll_ms = RTE_IXGBE_REGISTER_POLL_WAIT_10_MS;
+			do {
+				rte_delay_us(RTE_IXGBE_WAIT_100_US);
+				txtdh = IXGBE_READ_REG(hw,
+						IXGBE_TDH(txq->reg_idx));
+				txtdt = IXGBE_READ_REG(hw,
+						IXGBE_TDT(txq->reg_idx));
+			} while (--poll_ms && (txtdh != txtdt));
+			if (!poll_ms)
+				PMD_INIT_LOG(ERR,
+				"Tx Queue %d is not empty when stopping.\n",
+				tx_queue_id);
+		}
+
+		txdctl = IXGBE_READ_REG(hw, IXGBE_TXDCTL(txq->reg_idx));
+		txdctl &= ~IXGBE_TXDCTL_ENABLE;
+		IXGBE_WRITE_REG(hw, IXGBE_TXDCTL(txq->reg_idx), txdctl);
+
+		/* Wait until TX Enable ready */
+		if (hw->mac.type == ixgbe_mac_82599EB) {
+			poll_ms = RTE_IXGBE_REGISTER_POLL_WAIT_10_MS;
+			do {
+				rte_delay_ms(1);
+				txdctl = IXGBE_READ_REG(hw,
+						IXGBE_TXDCTL(txq->reg_idx));
+			} while (--poll_ms && (txdctl | IXGBE_TXDCTL_ENABLE));
+			if (!poll_ms)
+				PMD_INIT_LOG(ERR, "Could not disable "
+					     "Tx Queue %d\n", tx_queue_id);
+		}
+
+		if (txq->ops != NULL) {
+			txq->ops->release_mbufs(txq);
+			txq->ops->reset(txq);
+		}
+	} else
+		return -1;
+
+	return 0;
+}
 
 /*
  * [VF] Initializes Receive Unit.

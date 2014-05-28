@@ -67,6 +67,10 @@
 #define rte_packet_prefetch(p)  do {} while(0)
 #endif
 
+#define RTE_IXGBE_REGISTER_POLL_WAIT_10_MS  10
+#define RTE_IXGBE_WAIT_100_US               100
+#define RTE_IXGBE_VMTXSW_REGISTER_COUNT     2
+
 /**
  * Structure associated with each descriptor of the RX ring of a RX queue.
  */
@@ -129,6 +133,7 @@ struct igb_rx_queue {
 	uint8_t             port_id;  /**< Device port identifier. */
 	uint8_t             crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
 	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
+	uint8_t             start_rx_per_q;
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
 	struct rte_mbuf fake_mbuf;
@@ -193,6 +198,7 @@ struct igb_tx_queue {
 	/** Hardware context0 history. */
 	struct ixgbe_advctx_info ctx_cache[IXGBE_CTX_NUM];
 	struct ixgbe_txq_ops *ops;          /**< txq ops */
+	uint8_t             start_tx_per_q;
 };
 
 struct ixgbe_txq_ops {
