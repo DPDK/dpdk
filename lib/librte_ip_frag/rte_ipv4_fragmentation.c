@@ -43,26 +43,12 @@
 #include <rte_ip.h>
 
 #include "rte_ip_frag.h"
+#include "ip_frag_common.h"
 
 /*
  * MAX number of fragments per packet allowed.
  */
 #define	IPV4_MAX_FRAGS_PER_PACKET	0x80
-
-/* Debug on/off */
-#ifdef RTE_IPV4_FRAG_DEBUG
-
-#define	RTE_IPV4_FRAG_ASSERT(exp)					\
-if (!(exp))	{							\
-	rte_panic("function %s, line%d\tassert \"" #exp "\" failed\n",	\
-		__func__, __LINE__);					\
-}
-
-#else /*RTE_IPV4_FRAG_DEBUG*/
-
-#define RTE_IPV4_FRAG_ASSERT(exp)	do { } while (0)
-
-#endif /*RTE_IPV4_FRAG_DEBUG*/
 
 /* Fragment Offset */
 #define	IPV4_HDR_DF_SHIFT			14
@@ -131,10 +117,10 @@ rte_ipv4_fragmentation(struct rte_mbuf *pkt_in,
 	frag_size = (uint16_t)(mtu_size - sizeof(struct ipv4_hdr));
 
 	/* Fragment size should be a multiply of 8. */
-	RTE_IPV4_FRAG_ASSERT((frag_size & IPV4_HDR_FO_MASK) == 0);
+	RTE_IP_FRAG_ASSERT((frag_size & IPV4_HDR_FO_MASK) == 0);
 
 	/* Fragment size should be a multiply of 8. */
-	RTE_IPV4_FRAG_ASSERT(IPV4_MAX_FRAGS_PER_PACKET * frag_size >=
+	RTE_IP_FRAG_ASSERT(IPV4_MAX_FRAGS_PER_PACKET * frag_size >=
 	    (uint16_t)(pkt_in->pkt.pkt_len - sizeof(struct ipv4_hdr)));
 
 	in_hdr = (struct ipv4_hdr *) pkt_in->pkt.data;
