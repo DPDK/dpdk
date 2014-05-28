@@ -45,11 +45,6 @@
 #include "rte_ip_frag.h"
 #include "ip_frag_common.h"
 
-/*
- * MAX number of fragments per packet allowed.
- */
-#define	IPV4_MAX_FRAGS_PER_PACKET	0x80
-
 /* Fragment Offset */
 #define	IPV4_HDR_DF_SHIFT			14
 #define	IPV4_HDR_MF_SHIFT			13
@@ -118,10 +113,6 @@ rte_ipv4_fragmentation(struct rte_mbuf *pkt_in,
 
 	/* Fragment size should be a multiply of 8. */
 	RTE_IP_FRAG_ASSERT((frag_size & IPV4_HDR_FO_MASK) == 0);
-
-	/* Fragment size should be a multiply of 8. */
-	RTE_IP_FRAG_ASSERT(IPV4_MAX_FRAGS_PER_PACKET * frag_size >=
-	    (uint16_t)(pkt_in->pkt.pkt_len - sizeof(struct ipv4_hdr)));
 
 	in_hdr = (struct ipv4_hdr *) pkt_in->pkt.data;
 	flag_offset = rte_cpu_to_be_16(in_hdr->fragment_offset);
