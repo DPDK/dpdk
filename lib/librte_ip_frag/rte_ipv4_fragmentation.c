@@ -96,7 +96,7 @@ static inline void __free_fragments(struct rte_mbuf *mb[], uint32_t num)
  *   Otherwise - (-1) * <errno>.
  */
 int32_t
-rte_ipv4_fragmentation(struct rte_mbuf *pkt_in,
+rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 	struct rte_mbuf **pkts_out,
 	uint16_t nb_pkts_out,
 	uint16_t mtu_size,

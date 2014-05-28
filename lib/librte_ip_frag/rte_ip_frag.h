@@ -196,7 +196,7 @@ rte_ip_frag_table_destroy( struct rte_ip_frag_tbl *tbl)
  *   in the pkts_out array.
  *   Otherwise - (-1) * errno.
  */
-int32_t rte_ipv4_fragmentation(struct rte_mbuf *pkt_in,
+int32_t rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 			struct rte_mbuf **pkts_out,
 			uint16_t nb_pkts_out, uint16_t mtu_size,
 			struct rte_mempool *pool_direct,

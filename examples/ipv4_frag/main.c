@@ -272,7 +272,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t port_in)
 		qconf->tx_mbufs[port_out].m_table[len] = m;
 		len2 = 1;
 	} else {
-		len2 = rte_ipv4_fragmentation(m,
+		len2 = rte_ipv4_fragment_packet(m,
 			&qconf->tx_mbufs[port_out].m_table[len],
 			(uint16_t)(MBUF_TABLE_SIZE - len),
 			IPV4_MTU_DEFAULT,
