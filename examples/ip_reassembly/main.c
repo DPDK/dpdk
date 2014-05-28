@@ -94,7 +94,7 @@
 
 #define MAX_PKT_BURST 32
 
-#include "rte_ipv4_rsmbl.h"
+#include "rte_ip_frag.h"
 
 #ifndef IPv6_BYTES
 #define IPv6_BYTES_FMT "%02x%02x:%02x%02x:%02x%02x:%02x%02x:"\
@@ -407,9 +407,9 @@ struct lcore_conf {
 #else
 	lookup_struct_t * ipv6_lookup_struct;
 #endif
-	struct ip_frag_tbl *frag_tbl[MAX_RX_QUEUE_PER_LCORE];
+	struct rte_ip_frag_tbl *frag_tbl[MAX_RX_QUEUE_PER_LCORE];
 	struct rte_mempool *pool[MAX_RX_QUEUE_PER_LCORE];
-	struct ip_frag_death_row death_row;
+	struct rte_ip_frag_death_row death_row;
 	struct mbuf_table *tx_mbufs[MAX_PORTS];
 	struct tx_lcore_stat tx_stat;
 } __rte_cache_aligned;
@@ -645,7 +645,6 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, uint32_t queue,
 	struct ipv4_hdr *ipv4_hdr;
 	void *d_addr_bytes;
 	uint8_t dst_port;
-	uint16_t flag_offset, ip_flag, ip_ofs;
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
@@ -665,16 +664,12 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, uint32_t queue,
 		++(ipv4_hdr->hdr_checksum);
 #endif
 
-		flag_offset = rte_be_to_cpu_16(ipv4_hdr->fragment_offset);
-		ip_ofs = (uint16_t)(flag_offset & IPV4_HDR_OFFSET_MASK);
-		ip_flag = (uint16_t)(flag_offset & IPV4_HDR_MF_FLAG);
-
 		 /* if it is a fragmented packet, then try to reassemble. */
-		if (ip_flag != 0 || ip_ofs  != 0) {
+		if (rte_ipv4_frag_pkt_is_fragmented(ipv4_hdr)) {
 
 			struct rte_mbuf *mo;
-			struct ip_frag_tbl *tbl;
-			struct ip_frag_death_row *dr;
+			struct rte_ip_frag_tbl *tbl;
+			struct rte_ip_frag_death_row *dr;
 
 			tbl = qconf->frag_tbl[queue];
 			dr = &qconf->death_row;
@@ -684,8 +679,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, uint32_t queue,
 			m->pkt.vlan_macip.f.l3_len = sizeof(*ipv4_hdr);
 
 			/* process this fragment. */
-			if ((mo = rte_ipv4_reassemble_packet(tbl, dr, m, tms, ipv4_hdr,
-					ip_ofs, ip_flag)) == NULL)
+			if ((mo = rte_ipv4_frag_reassemble_packet(tbl, dr, m, tms,
+					ipv4_hdr)) == NULL)
 				/* no packet to send out. */
 				return;
 
@@ -1469,7 +1464,8 @@ setup_queue_tbl(struct lcore_conf *qconf, uint32_t lcore, int socket,
 	 * Plus, each TX queue can hold up to <max_flow_num> packets.
 	 */
 
-	nb_mbuf = 2 * RTE_MAX(max_flow_num, 2UL * MAX_PKT_BURST) * MAX_FRAG_NUM;
+	nb_mbuf = 2 * RTE_MAX(max_flow_num, 2UL * MAX_PKT_BURST) *
+			RTE_LIBRTE_IP_FRAG_MAX_FRAG;
 	nb_mbuf *= (port_conf.rxmode.max_rx_pkt_len + BUF_SIZE - 1) / BUF_SIZE;
 	nb_mbuf += RTE_TEST_RX_DESC_DEFAULT + RTE_TEST_TX_DESC_DEFAULT;
 

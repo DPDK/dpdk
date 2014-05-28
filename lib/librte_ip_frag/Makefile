@@ -39,11 +39,13 @@ CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 
 #source files
 SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += rte_ipv4_fragmentation.c
+SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += rte_ipv4_reassembly.c
+SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += rte_ip_frag_common.c
+SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += ip_frag_internal.c
 
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_IP_FRAG)-include += rte_ip_frag.h
-SYMLINK-$(CONFIG_RTE_LIBRTE_IP_FRAG)-include += ipv4_frag_tbl.h
-SYMLINK-$(CONFIG_RTE_LIBRTE_IP_FRAG)-include += rte_ipv4_rsmbl.h
+
 
 # this library depends on rte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += lib/librte_mempool lib/librte_ether

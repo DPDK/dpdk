@@ -36,19 +36,141 @@
 
 #include "rte_ip_frag.h"
 
-/* Debug on/off */
-#ifdef RTE_IP_FRAG_DEBUG
+/* logging macros. */
+#ifdef RTE_LIBRTE_IP_FRAG_DEBUG
+
+#define	IP_FRAG_LOG(lvl, fmt, args...)	RTE_LOG(lvl, USER1, fmt, ##args)
 
 #define	RTE_IP_FRAG_ASSERT(exp)					\
 if (!(exp))	{							\
 	rte_panic("function %s, line%d\tassert \"" #exp "\" failed\n",	\
 		__func__, __LINE__);					\
 }
+#else
+#define	IP_FRAG_LOG(lvl, fmt, args...)	do {} while(0)
+#define RTE_IP_FRAG_ASSERT(exp)	do { } while(0)
+#endif /* IP_FRAG_DEBUG */
 
-#else /*RTE_IP_FRAG_DEBUG*/
+/* helper macros */
+#define	IP_FRAG_MBUF2DR(dr, mb)	((dr)->row[(dr)->cnt++] = (mb))
 
-#define RTE_IP_FRAG_ASSERT(exp)	do { } while (0)
+/* internal functions declarations */
+struct rte_mbuf * ip_frag_process(struct rte_ip_frag_pkt *fp,
+		struct rte_ip_frag_death_row *dr, struct rte_mbuf *mb,
+		uint16_t ofs, uint16_t len, uint16_t more_frags);
 
-#endif /*RTE_IP_FRAG_DEBUG*/
+struct rte_ip_frag_pkt * ip_frag_find(struct rte_ip_frag_tbl *tbl,
+		struct rte_ip_frag_death_row *dr,
+		const struct ip_frag_key *key, uint64_t tms);
 
-#endif
+struct rte_ip_frag_pkt * ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
+	const struct ip_frag_key *key, uint64_t tms,
+	struct rte_ip_frag_pkt **free, struct rte_ip_frag_pkt **stale);
+
+/* these functions need to be declared here as ip_frag_process relies on them */
+struct rte_mbuf * ipv4_frag_reassemble(const struct rte_ip_frag_pkt *fp);
+
+
+
+/*
+ * misc frag key functions
+ */
+
+/* check if key is empty */
+static inline int
+ip_frag_key_is_empty(const struct ip_frag_key * key)
+{
+	if (key->src_dst != 0)
+		return 0;
+	return 1;
+}
+
+/* empty the key */
+static inline void
+ip_frag_key_invalidate(struct ip_frag_key * key)
+{
+	key->src_dst = 0;
+}
+
+/* compare two keys */
+static inline int
+ip_frag_key_cmp(const struct ip_frag_key * k1, const struct ip_frag_key * k2)
+{
+	return k1->src_dst ^ k2->src_dst;
+}
+
+/*
+ * misc fragment functions
+ */
+
+/* put fragment on death row */
+static inline void
+ip_frag_free(struct rte_ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr)
+{
+	uint32_t i, k;
+
+	k = dr->cnt;
+	for (i = 0; i != fp->last_idx; i++) {
+		if (fp->frags[i].mb != NULL) {
+			dr->row[k++] = fp->frags[i].mb;
+			fp->frags[i].mb = NULL;
+		}
+	}
+
+	fp->last_idx = 0;
+	dr->cnt = k;
+}
+
+/* if key is empty, mark key as in use */
+static inline void
+ip_frag_inuse(struct rte_ip_frag_tbl *tbl, const struct  rte_ip_frag_pkt *fp)
+{
+	if (ip_frag_key_is_empty(&fp->key)) {
+		TAILQ_REMOVE(&tbl->lru, fp, lru);
+		tbl->use_entries--;
+	}
+}
+
+/* reset the fragment */
+static inline void
+ip_frag_reset(struct rte_ip_frag_pkt *fp, uint64_t tms)
+{
+	static const struct ip_frag zero_frag = {
+		.ofs = 0,
+		.len = 0,
+		.mb = NULL,
+	};
+
+	fp->start = tms;
+	fp->total_size = UINT32_MAX;
+	fp->frag_size = 0;
+	fp->last_idx = IP_MIN_FRAG_NUM;
+	fp->frags[IP_LAST_FRAG_IDX] = zero_frag;
+	fp->frags[IP_FIRST_FRAG_IDX] = zero_frag;
+}
+
+/* chain two mbufs */
+static inline void
+ip_frag_chain(struct rte_mbuf *mn, struct rte_mbuf *mp)
+{
+	struct rte_mbuf *ms;
+
+	/* adjust start of the last fragment data. */
+	rte_pktmbuf_adj(mp, (uint16_t)(mp->pkt.vlan_macip.f.l2_len +
+		mp->pkt.vlan_macip.f.l3_len));
+
+	/* chain two fragments. */
+	ms = rte_pktmbuf_lastseg(mn);
+	ms->pkt.next = mp;
+
+	/* accumulate number of segments and total length. */
+	mn->pkt.nb_segs = (uint8_t)(mn->pkt.nb_segs + mp->pkt.nb_segs);
+	mn->pkt.pkt_len += mp->pkt.pkt_len;
+
+	/* reset pkt_len and nb_segs for chained fragment. */
+	mp->pkt.pkt_len = mp->pkt.data_len;
+	mp->pkt.nb_segs = 1;
+}
+
+
+#endif /* _IP_FRAG_COMMON_H_ */
