@@ -44,7 +44,7 @@ endif
 DIRS-y += exception_path
 DIRS-y += helloworld
 DIRS-y += ip_reassembly
-DIRS-$(CONFIG_RTE_MBUF_SCATTER_GATHER) += ipv4_frag
+DIRS-$(CONFIG_RTE_MBUF_SCATTER_GATHER) += ip_fragmentation
 DIRS-$(CONFIG_RTE_MBUF_SCATTER_GATHER) += ipv4_multicast
 DIRS-$(CONFIG_RTE_LIBRTE_KNI) += kni
 DIRS-y += l2fwd

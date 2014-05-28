@@ -44,7 +44,7 @@ $(error This application requires RTE_MBUF_SCATTER_GATHER to be enabled)
 endif
 
 # binary name
-APP = ipv4_frag
+APP = ip_fragmentation
 
 # all source are stored in SRCS-y
 SRCS-y := main.c
