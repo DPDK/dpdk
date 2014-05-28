@@ -292,6 +292,110 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 	return (0);
 }
 
+int
+rte_eth_dev_rx_queue_start(uint8_t port_id, uint16_t rx_queue_id)
+{
+	struct rte_eth_dev *dev;
+
+	/* This function is only safe when called from the primary process
+	 * in a multi-process setup*/
+	PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	if (rx_queue_id >= dev->data->nb_rx_queues) {
+		PMD_DEBUG_TRACE("Invalid RX queue_id=%d\n", rx_queue_id);
+		return -EINVAL;
+	}
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_start, -ENOTSUP);
+
+	return dev->dev_ops->rx_queue_start(dev, rx_queue_id);
+
+}
+
+int
+rte_eth_dev_rx_queue_stop(uint8_t port_id, uint16_t rx_queue_id)
+{
+	struct rte_eth_dev *dev;
+
+	/* This function is only safe when called from the primary process
+	 * in a multi-process setup*/
+	PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	if (rx_queue_id >= dev->data->nb_rx_queues) {
+		PMD_DEBUG_TRACE("Invalid RX queue_id=%d\n", rx_queue_id);
+		return -EINVAL;
+	}
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_stop, -ENOTSUP);
+
+	return dev->dev_ops->rx_queue_stop(dev, rx_queue_id);
+
+}
+
+int
+rte_eth_dev_tx_queue_start(uint8_t port_id, uint16_t tx_queue_id)
+{
+	struct rte_eth_dev *dev;
+
+	/* This function is only safe when called from the primary process
+	 * in a multi-process setup*/
+	PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	if (tx_queue_id >= dev->data->nb_tx_queues) {
+		PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", tx_queue_id);
+		return -EINVAL;
+	}
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_start, -ENOTSUP);
+
+	return dev->dev_ops->tx_queue_start(dev, tx_queue_id);
+
+}
+
+int
+rte_eth_dev_tx_queue_stop(uint8_t port_id, uint16_t tx_queue_id)
+{
+	struct rte_eth_dev *dev;
+
+	/* This function is only safe when called from the primary process
+	 * in a multi-process setup*/
+	PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	if (tx_queue_id >= dev->data->nb_tx_queues) {
+		PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", tx_queue_id);
+		return -EINVAL;
+	}
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_stop, -ENOTSUP);
+
+	return dev->dev_ops->tx_queue_stop(dev, tx_queue_id);
+
+}
+
 static int
 rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 {

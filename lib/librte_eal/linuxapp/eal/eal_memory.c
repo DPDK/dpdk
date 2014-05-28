@@ -134,6 +134,7 @@ rte_mem_virt2phy(const void *virtaddr)
 	uint64_t page, physaddr;
 	unsigned long virt_pfn;
 	int page_size;
+	off_t offset;
 
 	/* standard page size */
 	page_size = getpagesize();
@@ -145,7 +146,6 @@ rte_mem_virt2phy(const void *virtaddr)
 		return RTE_BAD_PHYS_ADDR;
 	}
 
-	off_t offset;
 	virt_pfn = (unsigned long)virtaddr / page_size;
 	offset = sizeof(uint64_t) * virt_pfn;
 	if (lseek(fd, offset, SEEK_SET) == (off_t) -1) {

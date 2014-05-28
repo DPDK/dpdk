@@ -482,6 +482,7 @@ struct rte_eth_vmdq_rx_conf {
 	enum rte_eth_nb_pools nb_queue_pools; /**< VMDq only mode, 8 or 64 pools */
 	uint8_t enable_default_pool; /**< If non-zero, use a default pool */
 	uint8_t default_pool; /**< The default pool, if applicable */
+	uint8_t enable_loop_back; /**< Enable VT loop back */
 	uint8_t nb_pool_maps; /**< We can have up to 64 filters/mappings */
 	struct {
 		uint16_t vlan_id; /**< The vlan id of the received frame */
@@ -503,6 +504,7 @@ struct rte_eth_rxconf {
 	struct rte_eth_thresh rx_thresh; /**< RX ring threshold registers. */
 	uint16_t rx_free_thresh; /**< Drives the freeing of RX descriptors. */
 	uint8_t rx_drop_en; /**< Drop packets if no descriptors are available. */
+	uint8_t start_rx_per_q; /**< start rx per queue. */
 };
 
 #define ETH_TXQ_FLAGS_NOMULTSEGS 0x0001 /**< nb_segs=1 for all mbufs */
@@ -523,6 +525,7 @@ struct rte_eth_txconf {
 	uint16_t tx_rs_thresh; /**< Drives the setting of RS bit on TXDs. */
 	uint16_t tx_free_thresh; /**< Drives the freeing of TX buffers. */
 	uint32_t txq_flags; /**< Set flags for the Tx queue */
+	uint8_t start_tx_per_q; /**< start tx per queue. */
 };
 
 /**
@@ -861,6 +864,14 @@ typedef void (*eth_dev_infos_get_t)(struct rte_eth_dev *dev,
 				    struct rte_eth_dev_info *dev_info);
 /**< @internal Get specific informations of an Ethernet device. */
 
+typedef int (*eth_queue_start_t)(struct rte_eth_dev *dev,
+				    uint16_t queue_id);
+/**< @internal Start rx and tx of a queue of an Ethernet device. */
+
+typedef int (*eth_queue_stop_t)(struct rte_eth_dev *dev,
+				    uint16_t queue_id);
+/**< @internal Stop rx and tx of a queue of an Ethernet device. */
+
 typedef int (*eth_rx_queue_setup_t)(struct rte_eth_dev *dev,
 				    uint16_t rx_queue_id,
 				    uint16_t nb_rx_desc,
@@ -1109,6 +1120,10 @@ struct eth_dev_ops {
 	vlan_tpid_set_t            vlan_tpid_set;      /**< Outer VLAN TPID Setup. */
 	vlan_strip_queue_set_t     vlan_strip_queue_set; /**< VLAN Stripping on queue. */
 	vlan_offload_set_t         vlan_offload_set; /**< Set VLAN Offload. */
+	eth_queue_start_t          rx_queue_start;/**< Start RX for a queue.*/
+	eth_queue_stop_t           rx_queue_stop;/**< Stop RX for a queue.*/
+	eth_queue_start_t          tx_queue_start;/**< Start TX for a queue.*/
+	eth_queue_stop_t           tx_queue_stop;/**< Stop TX for a queue.*/
 	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device RX queue.*/
 	eth_queue_release_t        rx_queue_release;/**< Release RX queue.*/
 	eth_rx_queue_count_t       rx_queue_count; /**< Get Rx queue count. */
@@ -1461,6 +1476,71 @@ extern int rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
  *   -1 is returned is the port_id value is out of range.
  */
 extern int rte_eth_dev_socket_id(uint8_t port_id);
+
+/*
+ * Start specified RX queue of a port
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device
+ * @param rx_queue_id
+ *   The index of the rx queue to update the ring.
+ *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @return
+ *   - 0: Success, the transmit queue is correctly set up.
+ *   - -EINVAL: The port_id or the queue_id out of range.
+ *   - -ENOTSUP: The function not supported in PMD driver.
+ */
+extern int rte_eth_dev_rx_queue_start(uint8_t port_id, uint16_t rx_queue_id);
+
+/*
+ * Stop specified RX queue of a port
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device
+ * @param rx_queue_id
+ *   The index of the rx queue to update the ring.
+ *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @return
+ *   - 0: Success, the transmit queue is correctly set up.
+ *   - -EINVAL: The port_id or the queue_id out of range.
+ *   - -ENOTSUP: The function not supported in PMD driver.
+ */
+extern int rte_eth_dev_rx_queue_stop(uint8_t port_id, uint16_t rx_queue_id);
+
+/*
+ * Start specified TX queue of a port
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device
+ * @param tx_queue_id
+ *   The index of the tx queue to update the ring.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @return
+ *   - 0: Success, the transmit queue is correctly set up.
+ *   - -EINVAL: The port_id or the queue_id out of range.
+ *   - -ENOTSUP: The function not supported in PMD driver.
+ */
+extern int rte_eth_dev_tx_queue_start(uint8_t port_id, uint16_t tx_queue_id);
+
+/*
+ * Stop specified TX queue of a port
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device
+ * @param tx_queue_id
+ *   The index of the tx queue to update the ring.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @return
+ *   - 0: Success, the transmit queue is correctly set up.
+ *   - -EINVAL: The port_id or the queue_id out of range.
+ *   - -ENOTSUP: The function not supported in PMD driver.
+ */
+extern int rte_eth_dev_tx_queue_stop(uint8_t port_id, uint16_t tx_queue_id);
+
 
 
 /**
