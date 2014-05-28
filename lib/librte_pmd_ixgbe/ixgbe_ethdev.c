@@ -98,6 +98,8 @@ static int eth_ixgbe_dev_init(struct eth_driver *eth_drv,
 static int  ixgbe_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbe_dev_start(struct rte_eth_dev *dev);
 static void ixgbe_dev_stop(struct rte_eth_dev *dev);
+static int  ixgbe_dev_set_link_up(struct rte_eth_dev *dev);
+static int  ixgbe_dev_set_link_down(struct rte_eth_dev *dev);
 static void ixgbe_dev_close(struct rte_eth_dev *dev);
 static void ixgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -252,6 +254,8 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.dev_configure        = ixgbe_dev_configure,
 	.dev_start            = ixgbe_dev_start,
 	.dev_stop             = ixgbe_dev_stop,
+	.dev_set_link_up    = ixgbe_dev_set_link_up,
+	.dev_set_link_down  = ixgbe_dev_set_link_down,
 	.dev_close            = ixgbe_dev_close,
 	.promiscuous_enable   = ixgbe_dev_promiscuous_enable,
 	.promiscuous_disable  = ixgbe_dev_promiscuous_disable,
@@ -1522,6 +1526,65 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	/* Clear recorded link status */
 	memset(&link, 0, sizeof(link));
 	rte_ixgbe_dev_atomic_write_link_status(dev, &link);
+}
+
+/*
+ * Set device link up: enable tx laser.
+ */
+static int
+ixgbe_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (hw->mac.type == ixgbe_mac_82599EB) {
+#ifdef RTE_NIC_BYPASS
+		if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
+			/* Not suported in bypass mode */
+			PMD_INIT_LOG(ERR,
+				"\nSet link up is not supported "
+				"by device id 0x%x\n",
+				hw->device_id);
+			return -ENOTSUP;
+		}
+#endif
+		/* Turn on the laser */
+		ixgbe_enable_tx_laser(hw);
+		return 0;
+	}
+
+	PMD_INIT_LOG(ERR, "\nSet link up is not supported by device id 0x%x\n",
+		hw->device_id);
+	return -ENOTSUP;
+}
+
+/*
+ * Set device link down: disable tx laser.
+ */
+static int
+ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (hw->mac.type == ixgbe_mac_82599EB) {
+#ifdef RTE_NIC_BYPASS
+		if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
+			/* Not suported in bypass mode */
+			PMD_INIT_LOG(ERR,
+				"\nSet link down is not supported "
+				"by device id 0x%x\n",
+				 hw->device_id);
+			return -ENOTSUP;
+		}
+#endif
+		/* Turn off the laser */
+		ixgbe_disable_tx_laser(hw);
+		return 0;
+	}
+
+	PMD_INIT_LOG(ERR,
+		"\nSet link down is not supported by device id 0x%x\n",
+		 hw->device_id);
+	return -ENOTSUP;
 }
 
 /*
