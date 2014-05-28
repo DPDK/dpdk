@@ -46,6 +46,7 @@
 #include <rte_ethdev.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
+#include <rte_memory.h>
 
 #include "main.h"
 #include "virtio-net.h"
@@ -326,7 +327,7 @@ add_config_ll_entry(struct virtio_net_config_ll *new_ll_dev)
 			while ((ll_dev->next != NULL) && (ll_dev->dev.device_fh == (ll_dev->next->dev.device_fh - 1)))
 				ll_dev = ll_dev->next;
 
-			new_ll_dev->dev.device_fh++;
+			new_ll_dev->dev.device_fh = ll_dev->dev.device_fh + 1;
 			new_ll_dev->next = ll_dev->next;
 			ll_dev->next = new_ll_dev;
 		}
@@ -346,6 +347,8 @@ cleanup_device(struct virtio_net *dev)
 	/* Unmap QEMU memory file if mapped. */
 	if (dev->mem) {
 		munmap((void*)(uintptr_t)dev->mem->mapped_address, (size_t)dev->mem->mapped_size);
+		if (dev->mem->regions_hpa)
+			free(dev->mem->regions_hpa);
 		free(dev->mem);
 	}
 
@@ -590,6 +593,154 @@ set_features(struct vhost_device_ctx ctx, uint64_t *pu)
 }
 
 /*
+ * Calculate the region count of physical continous regions for one particular
+ * region of whose vhost virtual address is continous. The particular region
+ * start from vva_start, with size of 'size' in argument.
+ */
+static uint32_t check_hpa_regions(uint64_t vva_start, uint64_t size)
+{
+	uint32_t i, nregions = 0, page_size = PAGE_SIZE;
+	uint64_t cur_phys_addr = 0, next_phys_addr = 0;
+	if (vva_start % page_size) {
+		LOG_DEBUG(CONFIG,
+			"in check_countinous: vva start(%p) mod page_size(%d) "
+			"has remainder\n",
+			(void *)(uintptr_t)vva_start, page_size);
+		return 0;
+	}
+	if (size % page_size) {
+		LOG_DEBUG(CONFIG,
+			"in check_countinous: "
+			"size((%"PRIu64")) mod page_size(%d) has remainder\n",
+			size, page_size);
+		return 0;
+	}
+	for (i = 0; i < size - page_size; i = i + page_size) {
+		cur_phys_addr
+			= rte_mem_virt2phy((void *)(uintptr_t)(vva_start + i));
+		next_phys_addr = rte_mem_virt2phy(
+			(void *)(uintptr_t)(vva_start + i + page_size));
+		if ((cur_phys_addr + page_size) != next_phys_addr) {
+			++nregions;
+			LOG_DEBUG(CONFIG,
+				"in check_continuous: hva addr:(%p) is not "
+				"continuous with hva addr:(%p), diff:%d\n",
+				(void *)(uintptr_t)(vva_start + (uint64_t)i),
+				(void *)(uintptr_t)(vva_start + (uint64_t)i
+				+ page_size), page_size);
+			LOG_DEBUG(CONFIG,
+				"in check_continuous: hpa addr:(%p) is not "
+				"continuous with hpa addr:(%p), "
+				"diff:(%"PRIu64")\n",
+				(void *)(uintptr_t)cur_phys_addr,
+				(void *)(uintptr_t)next_phys_addr,
+				(next_phys_addr-cur_phys_addr));
+		}
+	}
+	return nregions;
+}
+
+/*
+ * Divide each region whose vhost virtual address is continous into a few
+ * sub-regions, make sure the physical address within each sub-region are
+ * continous. And fill offset(to GPA) and size etc. information of each
+ * sub-region into regions_hpa.
+ */
+static uint32_t fill_hpa_memory_regions(void *memory)
+{
+	uint32_t regionidx, regionidx_hpa = 0, i, k, page_size = PAGE_SIZE;
+	uint64_t cur_phys_addr = 0, next_phys_addr = 0, vva_start;
+	struct virtio_memory *virtio_memory = (struct virtio_memory *)memory;
+	struct virtio_memory_regions_hpa *mem_region_hpa
+		= virtio_memory->regions_hpa;
+
+	if (mem_region_hpa == NULL)
+		return 0;
+
+	for (regionidx = 0; regionidx < virtio_memory->nregions; regionidx++) {
+		vva_start = virtio_memory->regions[regionidx].guest_phys_address
+			+ virtio_memory->regions[regionidx].address_offset;
+		mem_region_hpa[regionidx_hpa].guest_phys_address
+			= virtio_memory->regions[regionidx].guest_phys_address;
+		mem_region_hpa[regionidx_hpa].host_phys_addr_offset =
+			rte_mem_virt2phy((void *)(uintptr_t)(vva_start))
+			- mem_region_hpa[regionidx_hpa].guest_phys_address;
+		LOG_DEBUG(CONFIG,
+			"in fill_hpa_regions: guest phys addr start[%d]:(%p)\n",
+			regionidx_hpa,
+			(void *)(uintptr_t)
+			(mem_region_hpa[regionidx_hpa].guest_phys_address));
+		LOG_DEBUG(CONFIG,
+			"in fill_hpa_regions: host  phys addr start[%d]:(%p)\n",
+			regionidx_hpa,
+			(void *)(uintptr_t)
+			(mem_region_hpa[regionidx_hpa].host_phys_addr_offset));
+		for (i = 0, k = 0;
+			i < virtio_memory->regions[regionidx].memory_size
+				- page_size;
+			i += page_size) {
+			cur_phys_addr = rte_mem_virt2phy(
+					(void *)(uintptr_t)(vva_start + i));
+			next_phys_addr = rte_mem_virt2phy(
+					(void *)(uintptr_t)(vva_start
+					+ i + page_size));
+			if ((cur_phys_addr + page_size) != next_phys_addr) {
+				mem_region_hpa[regionidx_hpa].guest_phys_address_end =
+					mem_region_hpa[regionidx_hpa].guest_phys_address
+					+ k + page_size;
+				mem_region_hpa[regionidx_hpa].memory_size
+					= k + page_size;
+				LOG_DEBUG(CONFIG, "in fill_hpa_regions: guest "
+					"phys addr end  [%d]:(%p)\n",
+					regionidx_hpa,
+					(void *)(uintptr_t)
+					(mem_region_hpa[regionidx_hpa].guest_phys_address_end));
+				LOG_DEBUG(CONFIG,
+					"in fill_hpa_regions: guest phys addr "
+					"size [%d]:(%p)\n",
+					regionidx_hpa,
+					(void *)(uintptr_t)
+					(mem_region_hpa[regionidx_hpa].memory_size));
+				mem_region_hpa[regionidx_hpa + 1].guest_phys_address
+					= mem_region_hpa[regionidx_hpa].guest_phys_address_end;
+				++regionidx_hpa;
+				mem_region_hpa[regionidx_hpa].host_phys_addr_offset =
+					next_phys_addr
+					- mem_region_hpa[regionidx_hpa].guest_phys_address;
+				LOG_DEBUG(CONFIG, "in fill_hpa_regions: guest"
+					" phys addr start[%d]:(%p)\n",
+					regionidx_hpa,
+					(void *)(uintptr_t)
+					(mem_region_hpa[regionidx_hpa].guest_phys_address));
+				LOG_DEBUG(CONFIG,
+					"in fill_hpa_regions: host  phys addr "
+					"start[%d]:(%p)\n",
+					regionidx_hpa,
+					(void *)(uintptr_t)
+					(mem_region_hpa[regionidx_hpa].host_phys_addr_offset));
+				k = 0;
+			} else {
+				k += page_size;
+			}
+		}
+		mem_region_hpa[regionidx_hpa].guest_phys_address_end
+			= mem_region_hpa[regionidx_hpa].guest_phys_address
+			+ k + page_size;
+		mem_region_hpa[regionidx_hpa].memory_size = k + page_size;
+		LOG_DEBUG(CONFIG, "in fill_hpa_regions: guest phys addr end  "
+			"[%d]:(%p)\n", regionidx_hpa,
+			(void *)(uintptr_t)
+			(mem_region_hpa[regionidx_hpa].guest_phys_address_end));
+		LOG_DEBUG(CONFIG, "in fill_hpa_regions: guest phys addr size "
+			"[%d]:(%p)\n", regionidx_hpa,
+			(void *)(uintptr_t)
+			(mem_region_hpa[regionidx_hpa].memory_size));
+		++regionidx_hpa;
+	}
+	return regionidx_hpa;
+}
+
+/*
  * Called from CUSE IOCTL: VHOST_SET_MEM_TABLE
  * This function creates and populates the memory structure for the device. This includes
  * storing offsets used to translate buffer addresses.
@@ -681,15 +832,44 @@ set_mem_table(struct vhost_device_ctx ctx, const void *mem_regions_addr, uint32_
 		}
 	}
 	mem->nregions = valid_regions;
+	mem->nregions_hpa = mem->nregions;
 	dev->mem = mem;
 
 	/*
 	 * Calculate the address offset for each region. This offset is used to identify the vhost virtual address
 	 * corresponding to a QEMU guest physical address.
 	 */
-	for (regionidx = 0; regionidx < dev->mem->nregions; regionidx++)
+	for (regionidx = 0; regionidx < dev->mem->nregions; regionidx++) {
 		dev->mem->regions[regionidx].address_offset = dev->mem->regions[regionidx].userspace_address - dev->mem->base_address
 			+ dev->mem->mapped_address - dev->mem->regions[regionidx].guest_phys_address;
+
+		dev->mem->nregions_hpa
+			+= check_hpa_regions(
+				dev->mem->regions[regionidx].guest_phys_address
+				+ dev->mem->regions[regionidx].address_offset,
+				dev->mem->regions[regionidx].memory_size);
+	}
+	if (dev->mem->regions_hpa != NULL) {
+		free(dev->mem->regions_hpa);
+		dev->mem->regions_hpa = NULL;
+	}
+
+	dev->mem->regions_hpa = (struct virtio_memory_regions_hpa *) calloc(1,
+		(sizeof(struct virtio_memory_regions_hpa)
+		* dev->mem->nregions_hpa));
+	if (dev->mem->regions_hpa == NULL) {
+		RTE_LOG(ERR, CONFIG,
+			"(%"PRIu64") Failed to allocate memory for "
+			"dev->mem->regions_hpa.\n", dev->device_fh);
+		return -1;
+	}
+	if (fill_hpa_memory_regions(
+		(void *)dev->mem) != dev->mem->nregions_hpa) {
+		RTE_LOG(ERR, CONFIG,
+			"in set_mem_table: hpa memory regions number mismatch: "
+			"[%d]\n", dev->mem->nregions_hpa);
+		return -1;
+	}
 
 	return 0;
 }
@@ -918,7 +1098,7 @@ set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	if (!(dev->flags & VIRTIO_DEV_RUNNING)) {
 		if (((int)dev->virtqueue[VIRTIO_TXQ]->backend != VIRTIO_DEV_STOPPED) &&
 			((int)dev->virtqueue[VIRTIO_RXQ]->backend != VIRTIO_DEV_STOPPED))
-			notify_ops->new_device(dev);
+			return notify_ops->new_device(dev);
 	/* Otherwise we remove it. */
 	} else
 		if (file->fd == VIRTIO_DEV_STOPPED) {
