@@ -239,8 +239,9 @@ eth_pcap_tx(void *queue,
 		mbuf = bufs[i];
 		ret = pcap_sendpacket(tx_queue->pcap, (u_char*) mbuf->pkt.data,
 				mbuf->pkt.data_len);
-		if(likely(!ret))
-			num_tx++;
+		if (unlikely(ret != 0))
+			break;
+		num_tx++;
 		rte_pktmbuf_free(mbuf);
 	}
 
