@@ -74,6 +74,17 @@
 #include "rte_ip_frag.h"
 #include "main.h"
 
+/*
+ * Default byte size for the IPv4 Maximum Transfer Unit (MTU).
+ * This value includes the size of IPv4 header.
+ */
+#define	IPV4_MTU_DEFAULT	ETHER_MTU
+
+/*
+ * Default payload in bytes for the IPv4 packet.
+ */
+#define	IPV4_DEFAULT_PAYLOAD	(IPV4_MTU_DEFAULT - sizeof(struct ipv4_hdr))
+
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1
 
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)

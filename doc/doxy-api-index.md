@@ -78,6 +78,7 @@ There are many libraries, so their headers may be grouped by topics:
   [SCTP]               (@ref rte_sctp.h),
   [TCP]                (@ref rte_tcp.h),
   [UDP]                (@ref rte_udp.h),
+  [frag/reass]         (@ref rte_ip_frag.h),
   [LPM route]          (@ref rte_lpm.h),
   [ACL]                (@ref rte_acl.h)
 

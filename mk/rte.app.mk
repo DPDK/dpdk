@@ -117,6 +117,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_MBUF),y)
 LDLIBS += -lrte_mbuf
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_IP_FRAG),y)
+LDLIBS += -lrte_ip_frag
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_ETHER),y)
 LDLIBS += -lethdev
 endif
