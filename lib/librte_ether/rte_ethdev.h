@@ -828,6 +828,12 @@ typedef int  (*eth_dev_start_t)(struct rte_eth_dev *dev);
 typedef void (*eth_dev_stop_t)(struct rte_eth_dev *dev);
 /**< @internal Function used to stop a configured Ethernet device. */
 
+typedef int  (*eth_dev_set_link_up_t)(struct rte_eth_dev *dev);
+/**< @internal Function used to link up a configured Ethernet device. */
+
+typedef int  (*eth_dev_set_link_down_t)(struct rte_eth_dev *dev);
+/**< @internal Function used to link down a configured Ethernet device. */
+
 typedef void (*eth_dev_close_t)(struct rte_eth_dev *dev);
 /**< @internal Function used to close a configured Ethernet device. */
 
@@ -1105,6 +1111,8 @@ struct eth_dev_ops {
 	eth_dev_configure_t        dev_configure; /**< Configure device. */
 	eth_dev_start_t            dev_start;     /**< Start device. */
 	eth_dev_stop_t             dev_stop;      /**< Stop device. */
+	eth_dev_set_link_up_t      dev_set_link_up;   /**< Device link up. */
+	eth_dev_set_link_down_t    dev_set_link_down; /**< Device link down. */
 	eth_dev_close_t            dev_close;     /**< Close device. */
 	eth_promiscuous_enable_t   promiscuous_enable; /**< Promiscuous ON. */
 	eth_promiscuous_disable_t  promiscuous_disable;/**< Promiscuous OFF. */
@@ -1568,6 +1576,32 @@ extern int rte_eth_dev_start(uint8_t port_id);
  *   The port identifier of the Ethernet device.
  */
 extern void rte_eth_dev_stop(uint8_t port_id);
+
+
+/**
+ * Link up an Ethernet device.
+ *
+ * Set device link up will re-enable the device rx/tx
+ * functionality after it is previously set device linked down.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @return
+ *   - 0: Success, Ethernet device linked up.
+ *   - <0: Error code of the driver device link up function.
+ */
+extern int rte_eth_dev_set_link_up(uint8_t port_id);
+
+/**
+ * Link down an Ethernet device.
+ * The device rx/tx functionality will be disabled if success,
+ * and it can be re-enabled with a call to
+ * rte_eth_dev_set_link_up()
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ */
+extern int rte_eth_dev_set_link_down(uint8_t port_id);
 
 /**
  * Close an Ethernet device. The device cannot be restarted!

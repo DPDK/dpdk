@@ -814,6 +814,44 @@ rte_eth_dev_stop(uint8_t port_id)
 	(*dev->dev_ops->dev_stop)(dev);
 }
 
+int
+rte_eth_dev_set_link_up(uint8_t port_id)
+{
+	struct rte_eth_dev *dev;
+
+	/* This function is only safe when called from the primary process
+	 * in a multi-process setup*/
+	PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -EINVAL;
+	}
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_set_link_up, -ENOTSUP);
+	return (*dev->dev_ops->dev_set_link_up)(dev);
+}
+
+int
+rte_eth_dev_set_link_down(uint8_t port_id)
+{
+	struct rte_eth_dev *dev;
+
+	/* This function is only safe when called from the primary process
+	 * in a multi-process setup*/
+	PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -EINVAL;
+	}
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_set_link_down, -ENOTSUP);
+	return (*dev->dev_ops->dev_set_link_down)(dev);
+}
+
 void
 rte_eth_dev_close(uint8_t port_id)
 {
