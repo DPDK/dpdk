@@ -174,6 +174,35 @@ rte_ip_frag_table_destroy( struct rte_ip_frag_tbl *tbl)
 }
 
 /**
+ * This function implements the fragmentation of IPv6 packets.
+ *
+ * @param pkt_in
+ *   The input packet.
+ * @param pkts_out
+ *   Array storing the output fragments.
+ * @param nb_pkts_out
+ *   Number of fragments.
+ * @param mtu_size
+ *   Size in bytes of the Maximum Transfer Unit (MTU) for the outgoing IPv6
+ *   datagrams. This value includes the size of the IPv6 header.
+ * @param pool_direct
+ *   MBUF pool used for allocating direct buffers for the output fragments.
+ * @param pool_indirect
+ *   MBUF pool used for allocating indirect buffers for the output fragments.
+ * @return
+ *   Upon successful completion - number of output fragments placed
+ *   in the pkts_out array.
+ *   Otherwise - (-1) * errno.
+ */
+int32_t
+rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
+		struct rte_mbuf **pkts_out,
+		uint16_t nb_pkts_out,
+		uint16_t mtu_size,
+		struct rte_mempool *pool_direct,
+		struct rte_mempool *pool_indirect);
+
+/**
  * IPv4 fragmentation.
  *
  * This function implements the fragmentation of IPv4 packets.
