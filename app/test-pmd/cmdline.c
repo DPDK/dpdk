@@ -3930,6 +3930,85 @@ cmdline_parse_inst_t cmd_start_tx_first = {
 	},
 };
 
+/* *** SET LINK UP *** */
+struct cmd_set_link_up_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t link_up;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+};
+
+cmdline_parse_token_string_t cmd_set_link_up_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_up_result, set, "set");
+cmdline_parse_token_string_t cmd_set_link_up_link_up =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_up_result, link_up,
+				"link-up");
+cmdline_parse_token_string_t cmd_set_link_up_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_up_result, port, "port");
+cmdline_parse_token_num_t cmd_set_link_up_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_link_up_result, port_id, UINT8);
+
+static void cmd_set_link_up_parsed(__attribute__((unused)) void *parsed_result,
+			     __attribute__((unused)) struct cmdline *cl,
+			     __attribute__((unused)) void *data)
+{
+	struct cmd_set_link_up_result *res = parsed_result;
+	dev_set_link_up(res->port_id);
+}
+
+cmdline_parse_inst_t cmd_set_link_up = {
+	.f = cmd_set_link_up_parsed,
+	.data = NULL,
+	.help_str = "set link-up port (port id)",
+	.tokens = {
+		(void *)&cmd_set_link_up_set,
+		(void *)&cmd_set_link_up_link_up,
+		(void *)&cmd_set_link_up_port,
+		(void *)&cmd_set_link_up_port_id,
+		NULL,
+	},
+};
+
+/* *** SET LINK DOWN *** */
+struct cmd_set_link_down_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t link_down;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+};
+
+cmdline_parse_token_string_t cmd_set_link_down_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_down_result, set, "set");
+cmdline_parse_token_string_t cmd_set_link_down_link_down =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_down_result, link_down,
+				"link-down");
+cmdline_parse_token_string_t cmd_set_link_down_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_down_result, port, "port");
+cmdline_parse_token_num_t cmd_set_link_down_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_link_down_result, port_id, UINT8);
+
+static void cmd_set_link_down_parsed(
+				__attribute__((unused)) void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_set_link_down_result *res = parsed_result;
+	dev_set_link_down(res->port_id);
+}
+
+cmdline_parse_inst_t cmd_set_link_down = {
+	.f = cmd_set_link_down_parsed,
+	.data = NULL,
+	.help_str = "set link-down port (port id)",
+	.tokens = {
+		(void *)&cmd_set_link_down_set,
+		(void *)&cmd_set_link_down_link_down,
+		(void *)&cmd_set_link_down_port,
+		(void *)&cmd_set_link_down_port_id,
+		NULL,
+	},
+};
+
 /* *** SHOW CFG *** */
 struct cmd_showcfg_result {
 	cmdline_fixed_string_t show;
@@ -5314,6 +5393,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_showcfg,
 	(cmdline_parse_inst_t *)&cmd_start,
 	(cmdline_parse_inst_t *)&cmd_start_tx_first,
+	(cmdline_parse_inst_t *)&cmd_set_link_up,
+	(cmdline_parse_inst_t *)&cmd_set_link_down,
 	(cmdline_parse_inst_t *)&cmd_reset,
 	(cmdline_parse_inst_t *)&cmd_set_numbers,
 	(cmdline_parse_inst_t *)&cmd_set_txpkts,

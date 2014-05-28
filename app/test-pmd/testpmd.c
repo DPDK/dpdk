@@ -1208,6 +1208,20 @@ stop_packet_forwarding(void)
 	test_done = 1;
 }
 
+void
+dev_set_link_up(portid_t pid)
+{
+	if (rte_eth_dev_set_link_up((uint8_t)pid) < 0)
+		printf("\nSet link up fail.\n");
+}
+
+void
+dev_set_link_down(portid_t pid)
+{
+	if (rte_eth_dev_set_link_down((uint8_t)pid) < 0)
+		printf("\nSet link down fail.\n");
+}
+
 static int
 all_ports_started(void)
 {

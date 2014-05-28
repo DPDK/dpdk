@@ -499,6 +499,8 @@ char *list_pkt_forwarding_modes(void);
 void set_pkt_forwarding_mode(const char *fwd_mode);
 void start_packet_forwarding(int with_tx_first);
 void stop_packet_forwarding(void);
+void dev_set_link_up(portid_t pid);
+void dev_set_link_down(portid_t pid);
 void init_port_config(void);
 int init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf);
 int start_port(portid_t pid);
