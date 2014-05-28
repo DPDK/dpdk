@@ -65,8 +65,9 @@ struct ip_frag {
 
 /** @internal <src addr, dst_addr, id> to uniquely indetify fragmented datagram. */
 struct ip_frag_key {
-	uint64_t src_dst;      /**< src address */
+	uint64_t src_dst[4];      /**< src address, first 8 bytes used for IPv4 */
 	uint32_t id;           /**< dst address */
+	uint32_t key_len;      /**< src/dst key length */
 };
 
 /*
@@ -201,6 +202,54 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 		uint16_t mtu_size,
 		struct rte_mempool *pool_direct,
 		struct rte_mempool *pool_indirect);
+
+
+/*
+ * This function implements reassembly of fragmented IPv6 packets.
+ * Incoming mbuf should have its l2_len/l3_len fields setup correctly.
+ *
+ * @param tbl
+ *   Table where to lookup/add the fragmented packet.
+ * @param dr
+ *   Death row to free buffers to
+ * @param mb
+ *   Incoming mbuf with IPv6 fragment.
+ * @param tms
+ *   Fragment arrival timestamp.
+ * @param ip_hdr
+ *   Pointer to the IPv6 header.
+ * @param frag_hdr
+ *   Pointer to the IPv6 fragment extension header.
+ * @return
+ *   Pointer to mbuf for reassembled packet, or NULL if:
+ *   - an error occured.
+ *   - not all fragments of the packet are collected yet.
+ */
+struct rte_mbuf *rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
+		struct rte_ip_frag_death_row *dr,
+		struct rte_mbuf *mb, uint64_t tms, struct ipv6_hdr *ip_hdr,
+		struct ipv6_extension_fragment *frag_hdr);
+
+/*
+ * Return a pointer to the packet's fragment header, if found.
+ * It only looks at the extension header that's right after the fixed IPv6
+ * header, and doesn't follow the whole chain of extension headers.
+ *
+ * @param hdr
+ *   Pointer to the IPv6 header.
+ * @return
+ *   Pointer to the IPv6 fragment extension header, or NULL if it's not
+ *   present.
+ */
+static inline struct ipv6_extension_fragment *
+rte_ipv6_frag_get_ipv6_fragment_header(struct ipv6_hdr *hdr)
+{
+	if (hdr->proto == IPPROTO_FRAGMENT) {
+		return (struct ipv6_extension_fragment *) ++hdr;
+	}
+	else
+		return NULL;
+}
 
 /**
  * IPv4 fragmentation.

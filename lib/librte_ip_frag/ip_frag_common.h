@@ -51,8 +51,16 @@ if (!(exp))	{							\
 #define RTE_IP_FRAG_ASSERT(exp)	do { } while(0)
 #endif /* IP_FRAG_DEBUG */
 
+#define IPV4_KEYLEN 1
+#define IPV6_KEYLEN 4
+
 /* helper macros */
 #define	IP_FRAG_MBUF2DR(dr, mb)	((dr)->row[(dr)->cnt++] = (mb))
+
+#define IPv6_KEY_BYTES(key) \
+	(key)[0], (key)[1], (key)[2], (key)[3]
+#define IPv6_KEY_BYTES_FMT \
+	"%08" PRIx64 "%08" PRIx64 "%08" PRIx64 "%08" PRIx64
 
 /* internal functions declarations */
 struct rte_mbuf * ip_frag_process(struct rte_ip_frag_pkt *fp,
@@ -69,6 +77,7 @@ struct rte_ip_frag_pkt * ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 
 /* these functions need to be declared here as ip_frag_process relies on them */
 struct rte_mbuf * ipv4_frag_reassemble(const struct rte_ip_frag_pkt *fp);
+struct rte_mbuf * ipv6_frag_reassemble(const struct rte_ip_frag_pkt *fp);
 
 
 
@@ -80,8 +89,10 @@ struct rte_mbuf * ipv4_frag_reassemble(const struct rte_ip_frag_pkt *fp);
 static inline int
 ip_frag_key_is_empty(const struct ip_frag_key * key)
 {
-	if (key->src_dst != 0)
-		return 0;
+	uint32_t i;
+	for (i = 0; i < key->key_len; i++)
+		if (key->src_dst[i] != 0)
+			return 0;
 	return 1;
 }
 
@@ -89,14 +100,20 @@ ip_frag_key_is_empty(const struct ip_frag_key * key)
 static inline void
 ip_frag_key_invalidate(struct ip_frag_key * key)
 {
-	key->src_dst = 0;
+	uint32_t i;
+	for (i = 0; i < key->key_len; i++)
+		key->src_dst[i] = 0;
 }
 
 /* compare two keys */
 static inline int
 ip_frag_key_cmp(const struct ip_frag_key * k1, const struct ip_frag_key * k2)
 {
-	return k1->src_dst ^ k2->src_dst;
+	uint32_t i, val;
+	val = k1->id ^ k2->id;
+	for (i = 0; i < k1->key_len; i++)
+		val |= k1->src_dst[i] ^ k2->src_dst[i];
+	return val;
 }
 
 /*
