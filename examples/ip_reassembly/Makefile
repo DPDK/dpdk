@@ -52,7 +52,6 @@ CFLAGS += $(WERROR_FLAGS)
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_main.o += -Wno-return-type
-CFLAGS_main.o += -DIPV4_FRAG_TBL_STAT
 endif
 
 include $(RTE_SDK)/mk/rte.extapp.mk
