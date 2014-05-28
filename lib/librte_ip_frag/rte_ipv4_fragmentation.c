@@ -60,7 +60,7 @@ if (!(exp))	{							\
 
 #else /*RTE_IPV4_FRAG_DEBUG*/
 
-#define RTE_IPV4_FRAG_ASSERT(exp)	do { } while(0)
+#define RTE_IPV4_FRAG_ASSERT(exp)	do { } while (0)
 
 #endif /*RTE_IPV4_FRAG_DEBUG*/
 
@@ -135,19 +135,19 @@ rte_ipv4_fragmentation(struct rte_mbuf *pkt_in,
 
 	/* Fragment size should be a multiply of 8. */
 	RTE_IPV4_FRAG_ASSERT(IPV4_MAX_FRAGS_PER_PACKET * frag_size >=
-	    (uint16_t)(pkt_in->pkt.pkt_len - sizeof (struct ipv4_hdr)));
+	    (uint16_t)(pkt_in->pkt.pkt_len - sizeof(struct ipv4_hdr)));
 
-	in_hdr = (struct ipv4_hdr*) pkt_in->pkt.data;
+	in_hdr = (struct ipv4_hdr *) pkt_in->pkt.data;
 	flag_offset = rte_cpu_to_be_16(in_hdr->fragment_offset);
 
 	/* If Don't Fragment flag is set */
 	if (unlikely ((flag_offset & IPV4_HDR_DF_MASK) != 0))
-		return (-ENOTSUP);
+		return -ENOTSUP;
 
 	/* Check that pkts_out is big enough to hold all fragments */
-	if (unlikely (frag_size * nb_pkts_out <
+	if (unlikely(frag_size * nb_pkts_out <
 	    (uint16_t)(pkt_in->pkt.pkt_len - sizeof (struct ipv4_hdr))))
-		return (-EINVAL);
+		return -EINVAL;
 
 	in_seg = pkt_in;
 	in_seg_data_pos = sizeof(struct ipv4_hdr);
@@ -164,7 +164,7 @@ rte_ipv4_fragmentation(struct rte_mbuf *pkt_in,
 		out_pkt = rte_pktmbuf_alloc(pool_direct);
 		if (unlikely(out_pkt == NULL)) {
 			__free_fragments(pkts_out, out_pkt_pos);
-			return (-ENOMEM);
+			return -ENOMEM;
 		}
 
 		/* Reserve space for the IP header that will be built later */
@@ -182,7 +182,7 @@ rte_ipv4_fragmentation(struct rte_mbuf *pkt_in,
 			if (unlikely(out_seg == NULL)) {
 				rte_pktmbuf_free(out_pkt);
 				__free_fragments(pkts_out, out_pkt_pos);
-				return (-ENOMEM);
+				return -ENOMEM;
 			}
 			out_seg_prev->pkt.next = out_seg;
 			out_seg_prev = out_seg;
@@ -201,18 +201,16 @@ rte_ipv4_fragmentation(struct rte_mbuf *pkt_in,
 			in_seg_data_pos += len;
 
 			/* Current output packet (i.e. fragment) done ? */
-			if (unlikely(out_pkt->pkt.pkt_len >= mtu_size)) {
+			if (unlikely(out_pkt->pkt.pkt_len >= mtu_size))
 				more_out_segs = 0;
-			}
 
 			/* Current input segment done ? */
 			if (unlikely(in_seg_data_pos == in_seg->pkt.data_len)) {
 				in_seg = in_seg->pkt.next;
 				in_seg_data_pos = 0;
 
-				if (unlikely(in_seg == NULL)) {
+				if (unlikely(in_seg == NULL))
 					more_in_segs = 0;
-				}
 			}
 		}
 
@@ -235,5 +233,5 @@ rte_ipv4_fragmentation(struct rte_mbuf *pkt_in,
 		out_pkt_pos ++;
 	}
 
-	return (out_pkt_pos);
+	return out_pkt_pos;
 }
