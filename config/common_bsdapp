@@ -272,7 +272,11 @@ CONFIG_RTE_SCHED_SUBPORT_TC_OV=n
 CONFIG_RTE_SCHED_PORT_N_GRINDERS=8
 
 #
-# Compile the test application
+# Compile the distributor library
+#
+CONFIG_RTE_LIBRTE_DISTRIBUTOR=y
+
+#
 # Compile librte_kni
 #
 CONFIG_RTE_LIBRTE_KNI=n

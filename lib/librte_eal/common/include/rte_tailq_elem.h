@@ -82,6 +82,8 @@ rte_tailq_elem(RTE_TAILQ_PM, "RTE_PM")
 
 rte_tailq_elem(RTE_TAILQ_ACL, "RTE_ACL")
 
+rte_tailq_elem(RTE_TAILQ_DISTRIBUTOR, "RTE_DISTRIBUTOR")
+
 rte_tailq_end(RTE_TAILQ_NUM)
 
 #undef rte_tailq_elem

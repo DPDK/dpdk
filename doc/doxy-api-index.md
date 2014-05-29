@@ -94,6 +94,7 @@ There are many libraries, so their headers may be grouped by topics:
 - **containers**:
   [mbuf]               (@ref rte_mbuf.h),
   [ring]               (@ref rte_ring.h),
+  [distributor]        (@ref rte_distributor.h),
   [tailq]              (@ref rte_tailq.h),
   [bitmap]             (@ref rte_bitmap.h)
 

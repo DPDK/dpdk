@@ -61,6 +61,10 @@ ifeq ($(NO_AUTOLIBS),)
 
 LDLIBS += --whole-archive
 
+ifeq ($(CONFIG_RTE_LIBRTE_DISTRIBUTOR),y)
+LDLIBS += -lrte_distributor
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 LDLIBS += -lrte_kni

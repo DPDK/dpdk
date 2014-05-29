@@ -299,7 +299,11 @@ CONFIG_RTE_SCHED_SUBPORT_TC_OV=n
 CONFIG_RTE_SCHED_PORT_N_GRINDERS=8
 
 #
-# Compile the test application
+# Compile the distributor library
+#
+CONFIG_RTE_LIBRTE_DISTRIBUTOR=y
+
+#
 # Compile librte_kni
 #
 CONFIG_RTE_LIBRTE_KNI=y
@@ -336,4 +340,3 @@ CONFIG_RTE_TEST_PMD_RECORD_BURST_STATS=n
 # Support NIC bypass logic
 #
 CONFIG_RTE_NIC_BYPASS=n
-
