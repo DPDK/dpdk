@@ -92,6 +92,8 @@ int test_power(void);
 int test_common(void);
 int test_pmd_ring(void);
 int test_ivshmem(void);
+int test_distributor(void);
+int test_distributor_perf(void);
 int test_kvargs(void);
 int test_devargs(void);
 

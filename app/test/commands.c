@@ -179,6 +179,10 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret = test_common();
 	if (!strcmp(res->autotest, "ivshmem_autotest"))
 		ret = test_ivshmem();
+	if (!strcmp(res->autotest, "distributor_autotest"))
+		ret = test_distributor();
+	if (!strcmp(res->autotest, "distributor_perf_autotest"))
+		ret = test_distributor_perf();
 	if (!strcmp(res->autotest, "devargs_autotest"))
 		ret = test_devargs();
 #ifdef RTE_LIBRTE_PMD_RING
@@ -238,7 +242,8 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 #ifdef RTE_LIBRTE_KVARGS
 			"kvargs_autotest#"
 #endif
-			"common_autotest");
+			"common_autotest#"
+			"distributor_autotest#distributor_perf_autotest");
 
 cmdline_parse_inst_t cmd_autotest = {
 	.f = cmd_autotest_parsed,  /* function to call */

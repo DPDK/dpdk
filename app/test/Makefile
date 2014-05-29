@@ -93,6 +93,8 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_power.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_common.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_timer_perf.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_ivshmem.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_distributor.c
+SRCS-$(CONFIG_RTE_APP_TEST) += test_distributor_perf.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_devargs.c
 
 ifeq ($(CONFIG_RTE_APP_TEST),y)
