@@ -242,7 +242,7 @@ vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 	vq->vq_free_cnt = (uint16_t)(vq->vq_free_cnt + dxp->ndescs);
 	if ((dp->flags & VRING_DESC_F_INDIRECT) == 0) {
 		while (dp->flags & VRING_DESC_F_NEXT) {
-			desc_idx_last = dp->next; 
+			desc_idx_last = dp->next;
 			dp = &vq->vq_ring.desc[dp->next];
 		}
 	}
@@ -259,6 +259,7 @@ vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 		dp_tail = &vq->vq_ring.desc[vq->vq_desc_tail_idx];
 		dp_tail->next = desc_idx;
 	}
+
 	vq->vq_desc_tail_idx = desc_idx_last;
 	dp->next = VQ_RING_DESC_CHAIN_END;
 }
@@ -294,7 +295,7 @@ virtqueue_enqueue_recv_refill(struct virtqueue *vq, struct rte_mbuf *cookie)
 	idx = start_dp[idx].next;
 	vq->vq_desc_head_idx = idx;
 	if (vq->vq_desc_head_idx == VQ_RING_DESC_CHAIN_END)
-		vq->vq_desc_tail_idx = idx; 
+		vq->vq_desc_tail_idx = idx;
 	vq->vq_free_cnt = (uint16_t)(vq->vq_free_cnt - needed);
 	vq_update_avail_ring(vq, head_idx);
 
@@ -335,7 +336,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	idx = start_dp[idx].next;
 	txvq->vq_desc_head_idx = idx;
 	if (txvq->vq_desc_head_idx == VQ_RING_DESC_CHAIN_END)
-		txvq->vq_desc_tail_idx = idx; 
+		txvq->vq_desc_tail_idx = idx;
 	txvq->vq_free_cnt = (uint16_t)(txvq->vq_free_cnt - needed);
 	vq_update_avail_ring(txvq, head_idx);
 
@@ -357,11 +358,13 @@ virtqueue_dequeue_burst_rx(struct virtqueue *vq, struct rte_mbuf **rx_pkts, uint
 		desc_idx = (uint16_t) uep->id;
 		len[i] = uep->len;
 		cookie = (struct rte_mbuf *)vq->vq_descx[desc_idx].cookie;
+
 		if (unlikely(cookie == NULL)) {
 			PMD_DRV_LOG(ERR, "vring descriptor with no mbuf cookie at %u\n", 
 				vq->vq_used_cons_idx);
 			break;
 		}
+
 		rte_prefetch0(cookie);
 		rte_packet_prefetch(cookie->pkt.data);
 		rx_pkts[i]  = cookie;
@@ -369,22 +372,23 @@ virtqueue_dequeue_burst_rx(struct virtqueue *vq, struct rte_mbuf **rx_pkts, uint
 		vq_ring_free_chain(vq, desc_idx);
 		vq->vq_descx[desc_idx].cookie = NULL;
 	}
+
 	return (i);
 }
 
 static inline uint16_t __attribute__((always_inline))
 virtqueue_dequeue_pkt_tx(struct virtqueue *vq)
 {
-        struct vring_used_elem *uep;
-        uint16_t used_idx, desc_idx;
+	struct vring_used_elem *uep;
+	uint16_t used_idx, desc_idx;
 
-        used_idx = (uint16_t)(vq->vq_used_cons_idx & (vq->vq_nentries - 1));
-        uep = &vq->vq_ring.used->ring[used_idx];
-        desc_idx = (uint16_t) uep->id;
-		vq->vq_used_cons_idx++;
-        vq_ring_free_chain(vq, desc_idx);
+	used_idx = (uint16_t)(vq->vq_used_cons_idx & (vq->vq_nentries - 1));
+	uep = &vq->vq_ring.used->ring[used_idx];
+	desc_idx = (uint16_t) uep->id;
+	vq->vq_used_cons_idx++;
+	vq_ring_free_chain(vq, desc_idx);
 
-        return 0;
+	return 0;
 }
 
 #ifdef  RTE_LIBRTE_VIRTIO_DEBUG_DUMP

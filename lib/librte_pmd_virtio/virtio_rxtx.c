@@ -82,14 +82,14 @@ virtio_dev_vring_start(struct rte_eth_dev *dev, struct virtqueue *vq, int queue_
 	PMD_INIT_FUNC_TRACE();
 
 	/*
-	* Reinitialise since virtio port might have been stopped and restarted
-	*/
+	 * Reinitialise since virtio port might have been stopped and restarted
+	 */
 	memset(vq->vq_ring_virt_mem, 0, vq->vq_ring_size);
 	vring_init(vr, size, ring_mem, vq->vq_alignment);
 	vq->vq_used_cons_idx = 0;
 	vq->vq_desc_head_idx = 0;
 	vq->vq_avail_idx = 0;
-	vq->vq_desc_tail_idx = vq->vq_nentries - 1;
+	vq->vq_desc_tail_idx = (uint16_t)(vq->vq_nentries - 1);
 	vq->vq_free_cnt = vq->vq_nentries;
 	memset(vq->vq_descx, 0, sizeof(struct vq_desc_extra) * vq->vq_nentries);
 
@@ -110,25 +110,31 @@ virtio_dev_vring_start(struct rte_eth_dev *dev, struct virtqueue *vq, int queue_
 	/* Only rx virtqueue needs mbufs to be allocated at initialization */
 	if (queue_type == VTNET_RQ) {
 		if (vq->mpool == NULL)
-				rte_exit(EXIT_FAILURE, "Cannot allocate initial mbufs for rx virtqueue\n");
-		 /* Allocate blank mbufs for the each rx descriptor */
+			rte_exit(EXIT_FAILURE,
+			"Cannot allocate initial mbufs for rx virtqueue\n");
+
+		/* Allocate blank mbufs for the each rx descriptor */
 		nbufs = 0;
 		error = ENOSPC;
 		while (!virtqueue_full(vq)) {
 			m = rte_rxmbuf_alloc(vq->mpool);
 			if (m == NULL)
 				break;
+
 			/******************************************
 			*         Enqueue allocated buffers        *
 			*******************************************/
 			error = virtqueue_enqueue_recv_refill(vq, m);
+
 			if (error) {
  				rte_pktmbuf_free_seg(m);
 				break;
 			}
 			nbufs++;
 		}
+
 		vq_update_avail_idx(vq);
+
 		PMD_INIT_LOG(DEBUG, "Allocated %d bufs\n", nbufs);
 		VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_SEL, VTNET_SQ_RQ_QUEUE_IDX);
 		VIRTIO_WRITE_REG_4(vq->hw, VIRTIO_PCI_QUEUE_PFN,
@@ -180,6 +186,7 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		PMD_INIT_LOG(ERR, "tvq initialization failed\n");
 		return ret;
 	}
+
 	/* Create mempool for rx mbuf allocation */
 	vq->mpool = mp;
 
@@ -254,29 +261,40 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	num = (uint16_t)(likely(num <= VIRTIO_MBUF_BURST_SZ) ? num : VIRTIO_MBUF_BURST_SZ);
 	if (likely(num > DESC_PER_CACHELINE))
 		num = num - ((rxvq->vq_used_cons_idx + num) % DESC_PER_CACHELINE);
+
 	if(num == 0) return 0;
+
 	num = virtqueue_dequeue_burst_rx(rxvq, rcv_pkts, len, num);
 	PMD_RX_LOG(DEBUG, "used:%d dequeue:%d\n", nb_used, num);
 	for (i = 0; i < num ; i ++) {
 		rxm = rcv_pkts[i];
+
 		PMD_RX_LOG(DEBUG, "packet len:%d\n", len[i]);
-		if (unlikely(len[i] < (uint32_t)hw->vtnet_hdr_size + ETHER_HDR_LEN)) {
+
+		if (unlikely(len[i]
+			< (uint32_t)hw->vtnet_hdr_size + ETHER_HDR_LEN)) {
 			PMD_RX_LOG(ERR, "Packet drop\n");
 			nb_enqueued++;
 			virtio_discard_rxbuf(rxvq, rxm);
 			hw->eth_stats.ierrors++;
 			continue;
 		}
+
 		rxm->pkt.in_port = rxvq->port_id;
 		rxm->pkt.data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
 		rxm->pkt.nb_segs = 1;
 		rxm->pkt.next = NULL;
-		rxm->pkt.pkt_len  = (uint32_t)(len[i] - sizeof(struct virtio_net_hdr));
-		rxm->pkt.data_len = (uint16_t)(len[i] - sizeof(struct virtio_net_hdr));
+		rxm->pkt.pkt_len  = (uint32_t)(len[i]
+			- sizeof(struct virtio_net_hdr));
+		rxm->pkt.data_len = (uint16_t)(len[i]
+			- sizeof(struct virtio_net_hdr));
+
 		VIRTIO_DUMP_PACKET(rxm, rxm->pkt.data_len);
+
 		rx_pkts[nb_rx++] = rxm;
 		hw->eth_stats.ibytes += len[i] - sizeof(struct virtio_net_hdr);
 	}
+
 	hw->eth_stats.ipackets += nb_rx;
 
 	/* Allocate new mbuf for the used descriptor */
@@ -294,14 +312,15 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		}
 		nb_enqueued ++;
 	}
-	if(likely(nb_enqueued)) {
-		if(unlikely(virtqueue_kick_prepare(rxvq))) {
+	if (likely(nb_enqueued)) {
+		if (unlikely(virtqueue_kick_prepare(rxvq))) {
  			virtqueue_notify(rxvq);
 			PMD_RX_LOG(DEBUG, "Notified\n");
 		}
 	}
+
 	vq_update_avail_idx(rxvq);
-	
+
 	return (nb_rx);
 }
 
@@ -332,6 +351,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			virtqueue_dequeue_pkt_tx(txvq);
 			num--;
 		}
+
 		if(!virtqueue_full(txvq)) {
 			txm = tx_pkts[nb_tx];
 			/* Enqueue Packet buffers */
@@ -360,5 +380,6 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
  		virtqueue_notify(txvq);
 		PMD_TX_LOG(DEBUG, "Notified backend after xmit\n");
 	}
+
 	return (nb_tx);
 }
