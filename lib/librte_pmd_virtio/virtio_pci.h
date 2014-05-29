@@ -192,7 +192,9 @@ struct virtio_net_config {
 	uint8_t    mac[ETHER_ADDR_LEN];
 	/* See VIRTIO_NET_F_STATUS and VIRTIO_NET_S_* above */
 	uint16_t   status;
-};
+	uint16_t   max_virtqueue_pairs;
+} __attribute__((packed));
+
 /* Value indicated in device config */
 #define VIRTIO_PCI_FLAG_MSIX  0x0020
 /*

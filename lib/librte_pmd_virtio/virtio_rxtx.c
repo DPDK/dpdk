@@ -136,14 +136,32 @@ virtio_dev_vring_start(struct rte_eth_dev *dev, struct virtqueue *vq, int queue_
 		vq_update_avail_idx(vq);
 
 		PMD_INIT_LOG(DEBUG, "Allocated %d bufs\n", nbufs);
-		VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_SEL, VTNET_SQ_RQ_QUEUE_IDX);
+
+		VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_SEL,
+			vq->vq_queue_index);
+		VIRTIO_WRITE_REG_4(vq->hw, VIRTIO_PCI_QUEUE_PFN,
+			vq->mz->phys_addr >> VIRTIO_PCI_QUEUE_ADDR_SHIFT);
+	} else if (queue_type == VTNET_TQ) {
+		VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_SEL,
+			vq->vq_queue_index);
 		VIRTIO_WRITE_REG_4(vq->hw, VIRTIO_PCI_QUEUE_PFN,
 			vq->mz->phys_addr >> VIRTIO_PCI_QUEUE_ADDR_SHIFT);
 	} else {
-		VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_SEL, VTNET_SQ_TQ_QUEUE_IDX);
+		VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_SEL,
+			vq->vq_queue_index);
 		VIRTIO_WRITE_REG_4(vq->hw, VIRTIO_PCI_QUEUE_PFN,
 			vq->mz->phys_addr >> VIRTIO_PCI_QUEUE_ADDR_SHIFT);
 	}
+}
+
+void
+virtio_dev_cq_start(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw
+		= VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	virtio_dev_vring_start(dev, hw->cvq, VTNET_CQ);
+	VIRTQUEUE_DUMP((struct virtqueue *)hw->cvq);
 }
 
 void
@@ -156,15 +174,20 @@ virtio_dev_rxtx_start(struct rte_eth_dev *dev)
 	 * -	Allocate blank mbufs for the each rx descriptor
 	 *
 	 */
+	int i;
 	PMD_INIT_FUNC_TRACE();
 
-	/* Start rx vring: by default we have 1 rx virtqueue. */
-	virtio_dev_vring_start(dev, dev->data->rx_queues[0], VTNET_RQ);
-	VIRTQUEUE_DUMP((struct virtqueue *)dev->data->rx_queues[0]);
+	/* Start rx vring. */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		virtio_dev_vring_start(dev, dev->data->rx_queues[i], VTNET_RQ);
+		VIRTQUEUE_DUMP((struct virtqueue *)dev->data->rx_queues[i]);
+	}
 
-	/* Start tx vring: by default we have 1 tx virtqueue. */
-	virtio_dev_vring_start(dev, dev->data->tx_queues[0], VTNET_TQ);
-	VIRTQUEUE_DUMP((struct virtqueue *)dev->data->tx_queues[0]);
+	/* Start tx vring. */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		virtio_dev_vring_start(dev, dev->data->tx_queues[i], VTNET_TQ);
+		VIRTQUEUE_DUMP((struct virtqueue *)dev->data->tx_queues[i]);
+	}
 }
 
 int
@@ -175,7 +198,7 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			__rte_unused const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp)
 {
-	uint8_t vtpci_queue_idx = VTNET_SQ_RQ_QUEUE_IDX;
+	uint8_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_RQ_QUEUE_IDX;
 	struct virtqueue *vq;
 	int ret;
 
@@ -208,7 +231,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			unsigned int socket_id,
 			__rte_unused const struct rte_eth_txconf *tx_conf)
 {
-	uint8_t vtpci_queue_idx = VTNET_SQ_TQ_QUEUE_IDX;
+	uint8_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
 	struct virtqueue *vq;
 	int ret;
 
@@ -293,9 +316,12 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		rx_pkts[nb_rx++] = rxm;
 		hw->eth_stats.ibytes += len[i] - sizeof(struct virtio_net_hdr);
+		hw->eth_stats.q_ibytes[rxvq->queue_id] += len[i]
+			- sizeof(struct virtio_net_hdr);
 	}
 
 	hw->eth_stats.ipackets += nb_rx;
+	hw->eth_stats.q_ipackets[rxvq->queue_id] += nb_rx;
 
 	/* Allocate new mbuf for the used descriptor */
 	error = ENOSPC;
@@ -367,6 +393,8 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			}
 	 		nb_tx++;
 			hw->eth_stats.obytes += txm->pkt.data_len;
+			hw->eth_stats.q_obytes[txvq->queue_id]
+				+= txm->pkt.data_len;
 		} else {
 			PMD_TX_LOG(ERR, "No free tx descriptors to transmit\n");
 			break;
@@ -375,6 +403,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	vq_update_avail_idx(txvq);
 
 	hw->eth_stats.opackets += nb_tx;
+	hw->eth_stats.q_opackets[txvq->queue_id] += nb_tx;
 
 	if(unlikely(virtqueue_kick_prepare(txvq))) {
  		virtqueue_notify(txvq);

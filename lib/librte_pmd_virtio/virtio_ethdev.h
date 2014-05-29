@@ -49,8 +49,8 @@
 #define PAGE_SIZE 4096
 #endif
 
-#define VIRTIO_MAX_RX_QUEUES 1
-#define VIRTIO_MAX_TX_QUEUES 1
+#define VIRTIO_MAX_RX_QUEUES 128
+#define VIRTIO_MAX_TX_QUEUES 128
 #define VIRTIO_MAX_MAC_ADDRS 1
 #define VIRTIO_MIN_RX_BUFSIZE 64
 #define VIRTIO_MAX_RX_PKTLEN  1518
@@ -59,6 +59,7 @@
 #define VTNET_FEATURES \
 	(VIRTIO_NET_F_MAC       | \
 	VIRTIO_NET_F_STATUS     | \
+	VIRTIO_NET_F_MQ         | \
 	VIRTIO_NET_F_CTRL_VQ    | \
 	VIRTIO_NET_F_CTRL_RX    | \
 	VIRTIO_NET_F_CTRL_VLAN  | \
@@ -72,6 +73,11 @@
 	VIRTIO_NET_F_GUEST_ECN  | \
 	VIRTIO_NET_F_MRG_RXBUF  | \
 	VIRTIO_RING_F_INDIRECT_DESC)
+
+/*
+ * CQ function prototype
+ */
+void virtio_dev_cq_start(struct rte_eth_dev *dev);
 
 /*
  * RX/TX function prototypes

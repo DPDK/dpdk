@@ -103,6 +103,24 @@ enum { VTNET_RQ = 0, VTNET_TQ = 1, VTNET_CQ = 2 };
 #define VIRTIO_NET_CTRL_VLAN_ADD 0
 #define VIRTIO_NET_CTRL_VLAN_DEL 1
 
+struct virtio_net_ctrl_hdr {
+	uint8_t class;
+	uint8_t cmd;
+} __attribute__((packed));
+
+typedef uint8_t virtio_net_ctrl_ack;
+
+#define VIRTIO_NET_OK     0
+#define VIRTIO_NET_ERR    1
+
+#define VIRTIO_MAX_CTRL_DATA 128
+
+struct virtio_pmd_ctrl {
+	struct virtio_net_ctrl_hdr hdr;
+	virtio_net_ctrl_ack status;
+	uint8_t data[VIRTIO_MAX_CTRL_DATA];
+};
+
 struct virtqueue {
 	char        vq_name[VIRTQUEUE_MAX_NAME_SZ];
 	struct virtio_hw         *hw;     /**< virtio_hw structure pointer. */
@@ -141,6 +159,16 @@ struct virtqueue {
 		uint16_t          ndescs;
 	} vq_descx[0];
 };
+
+/* If multiqueue is provided by host, then we suppport it. */
+#ifndef VIRTIO_NET_F_MQ
+/* Device supports Receive Flow Steering */
+#define VIRTIO_NET_F_MQ 0x400000
+#define VIRTIO_NET_CTRL_MQ   4
+#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET        0
+#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1
+#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX        0x8000
+#endif
 
 /**
  * This is the first element of the scatter-gather list.  If you don't
@@ -204,9 +232,10 @@ vq_update_avail_ring(struct virtqueue *vq, uint16_t desc_idx)
 	uint16_t avail_idx;
 	/*
 	 * Place the head of the descriptor chain into the next slot and make
-	 * it usable to the host. We wait to inform the host until after the burst 
-	 * is complete to avoid cache alignment issues with descriptors. This 
-	 * also helps to avoid any contention on the available index.
+	 * it usable to the host. The chain is made available now rather than
+	 * deferring to virtqueue_notify() in the hopes that if the host is
+	 * currently running on another CPU, we can keep it processing the new
+	 * descriptor.
 	 */
 	avail_idx = (uint16_t)(vq->vq_avail_idx & (vq->vq_nentries - 1));
 	vq->vq_ring.avail->ring[avail_idx] = desc_idx;
