@@ -447,7 +447,7 @@ dom0_memory_reserve(uint32_t rsv_size)
 			return -ENOMEM;
 		}
 
-		allocated_size += DOM0_MEMBLOCK_SIZE;
+		allocated_size += SIZE_PER_BLOCK;
 
 		size = DOM0_MEMBLOCK_SIZE;
 		vaddr = vstart;
