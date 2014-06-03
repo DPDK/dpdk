@@ -64,6 +64,7 @@
 #include <linux/errno.h>
 #include <linux/vmalloc.h>
 #include <linux/mm.h>
+#include <linux/version.h>
  
 #include <xen/xen.h>
 #include <xen/page.h>
@@ -262,6 +263,7 @@ dom0_memory_free(uint32_t rsv_size)
 	for (i = 0; i < dom0_dev.num_bigblock * 2; i += 2) {
 		vstart = rsv_mm_info[i].vir_addr;
 		if (vstart) {
+		#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
 			if (rsv_mm_info[i].exchange_flag)
 				xen_destroy_contiguous_region(vstart,
 						DOM0_CONTIG_NUM_ORDER);
@@ -269,6 +271,17 @@ dom0_memory_free(uint32_t rsv_size)
 				xen_destroy_contiguous_region(vstart +
 						DOM0_MEMBLOCK_SIZE,
 						DOM0_CONTIG_NUM_ORDER);
+		#else
+			if (rsv_mm_info[i].exchange_flag)
+				xen_destroy_contiguous_region(rsv_mm_info[i].pfn
+					* PAGE_SIZE,
+					DOM0_CONTIG_NUM_ORDER);
+			if (rsv_mm_info[i + 1].exchange_flag)
+				xen_destroy_contiguous_region(rsv_mm_info[i].pfn
+					* PAGE_SIZE + DOM0_MEMBLOCK_SIZE,
+					DOM0_CONTIG_NUM_ORDER);
+		#endif
+
 			size = DOM0_MEMBLOCK_SIZE * 2;
 			vaddr = vstart;
 			while (size > 0) {
@@ -381,6 +394,10 @@ dom0_memory_reserve(uint32_t rsv_size)
 	uint64_t pfn, vstart, vaddr;
 	uint32_t i, num_block, size, allocated_size = 0;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)
+	dma_addr_t dma_handle;
+#endif
+
 	/* 2M as memory block */
 	num_block = rsv_size / SIZE_PER_BLOCK;
 
@@ -452,8 +469,13 @@ dom0_memory_reserve(uint32_t rsv_size)
 		 * This API is used to exchage MFN for getting a block of  
 		 * contiguous physical addresses, its maximum size is 2M.  
 		 */
+	#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
 		if (xen_create_contiguous_region(rsv_mm_info[i].vir_addr,
-			            DOM0_CONTIG_NUM_ORDER, 0) == 0) {
+				DOM0_CONTIG_NUM_ORDER, 0) == 0) {
+	#else
+		if (xen_create_contiguous_region(rsv_mm_info[i].pfn * PAGE_SIZE,
+				DOM0_CONTIG_NUM_ORDER, 0, &dma_handle) == 0) {
+	#endif
 			rsv_mm_info[i].exchange_flag = 1;
 			rsv_mm_info[i].mfn =
 				pfn_to_mfn(rsv_mm_info[i].pfn);
