@@ -137,12 +137,12 @@ typedef enum {
  *	Little Endian layout of bitfields -
  *	Byte 0 :	7.....len.....0
  *	Byte 1 :	rsvd gen 13.len.8
- *	Byte 2 : 	5.msscof.0 ext1  dtype
- *	Byte 3 : 	13...msscof...6
+ *	Byte 2 :	5.msscof.0 ext1  dtype
+ *	Byte 3 :	13...msscof...6
  *
  *	Big Endian layout of bitfields -
  *	Byte 0:		13...msscof...6
- *	Byte 1 : 	5.msscof.0 ext1  dtype
+ *	Byte 1 :	5.msscof.0 ext1  dtype
  *	Byte 2 :	rsvd gen 13.len.8
  *	Byte 3 :	7.....len.....0
  *
@@ -475,7 +475,7 @@ Vmxnet3_DriverInfo;
 
 #define VMXNET3_REV1_MAGIC  0xbabefee1
 
-/* 
+/*
  * QueueDescPA must be 128 bytes aligned. It points to an array of
  * Vmxnet3_TxQueueDesc followed by an array of Vmxnet3_RxQueueDesc.
  * The number of Vmxnet3_TxQueueDesc/Vmxnet3_RxQueueDesc are specified by

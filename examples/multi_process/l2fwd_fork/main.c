@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -157,15 +157,15 @@ struct lcore_resource_struct {
 	int flags; 	    /* Set only slave need to restart or recreate */
 	unsigned lcore_id;  /*  lcore ID */
 	unsigned pair_id; 	/* dependency lcore ID on port */
-	char ring_name[2][MAX_NAME_LEN]; 	
+	char ring_name[2][MAX_NAME_LEN];
 	/* ring[0] for master send cmd, slave read */
 	/* ring[1] for slave send ack, master read */
-	struct rte_ring *ring[2]; 
+	struct rte_ring *ring[2];
 	int port_num;					/* Total port numbers */
-	uint8_t port[RTE_MAX_ETHPORTS]; /* Port id for that lcore to receive packets */		
+	uint8_t port[RTE_MAX_ETHPORTS]; /* Port id for that lcore to receive packets */
 }__attribute__((packed)) __rte_cache_aligned;
 
-static struct lcore_resource_struct lcore_resource[RTE_MAX_LCORE]; 
+static struct lcore_resource_struct lcore_resource[RTE_MAX_LCORE];
 static struct rte_mempool *message_pool;
 static rte_spinlock_t res_lock = RTE_SPINLOCK_INITIALIZER;
 /* use floating processes */
@@ -309,8 +309,8 @@ get_cpu_affinity(void)
 }
 
 /**
- * This fnciton demonstrates the approach to create ring in first instance 
- * or re-attach an existed ring in later instance. 
+ * This fnciton demonstrates the approach to create ring in first instance
+ * or re-attach an existed ring in later instance.
  **/
 static struct rte_ring *
 create_ring(const char *name, unsigned count,
@@ -320,7 +320,7 @@ create_ring(const char *name, unsigned count,
 
 	if (name == NULL)
 		return NULL;
-	
+
 	/* If already create, just attached it */
 	if (likely((ring = rte_ring_lookup(name)) != NULL))
 		return ring;
@@ -330,7 +330,7 @@ create_ring(const char *name, unsigned count,
 }
 
 /* Malloc with rte_malloc on structures that shared by master and slave */
-static int 
+static int
 l2fwd_malloc_shared_struct(void)
 {
 	port_statistics = rte_zmalloc("port_stat",
@@ -355,36 +355,36 @@ l2fwd_malloc_shared_struct(void)
 }
 
 /* Create ring which used for communicate among master and slave */
-static int 
+static int
 create_ms_ring(unsigned slaveid)
 {
 	unsigned flag = RING_F_SP_ENQ | RING_F_SC_DEQ;
 	struct lcore_resource_struct *res = &lcore_resource[slaveid];
 	unsigned socketid = rte_socket_id();
-	
+
 	/* Always assume create ring on master socket_id */
 	/* Default only create a ring size 32 */
 	snprintf(res->ring_name[0], MAX_NAME_LEN, "%s%u",
 			RING_MASTER_NAME, slaveid);
-	if ((res->ring[0] = create_ring(res->ring_name[0], NB_CORE_MSGBUF, 
+	if ((res->ring[0] = create_ring(res->ring_name[0], NB_CORE_MSGBUF,
 				socketid, flag)) == NULL) {
 		printf("Create m2s ring %s failed\n", res->ring_name[0]);
 		return -1;
 	}
-	
+
 	snprintf(res->ring_name[1], MAX_NAME_LEN, "%s%u",
 			RING_SLAVE_NAME, slaveid);
-	if ((res->ring[1] = create_ring(res->ring_name[1], NB_CORE_MSGBUF, 
+	if ((res->ring[1] = create_ring(res->ring_name[1], NB_CORE_MSGBUF,
 		socketid, flag)) == NULL) {
 		printf("Create s2m ring %s failed\n", res->ring_name[1]);
 		return -1;
-	}	
+	}
 
 	return 0;
 }
 
 /* send command to pair in paired master and slave ring */
-static inline int 
+static inline int
 sendcmd(unsigned slaveid, enum l2fwd_cmd cmd, int is_master)
 {
 	struct lcore_resource_struct *res = &lcore_resource[slaveid];
@@ -394,10 +394,10 @@ sendcmd(unsigned slaveid, enum l2fwd_cmd cmd, int is_master)
 	/* Only check master, it must be enabled and running if it is slave */
 	if (is_master && !res->enabled)
 		return -1;
-	
+
 	if (res->ring[fd] == NULL)
-		return -1;	
-	
+		return -1;
+
 	if (rte_mempool_get(message_pool, &msg) < 0) {
 		printf("Error to get message buffer\n");
 		return -1;
@@ -410,7 +410,7 @@ sendcmd(unsigned slaveid, enum l2fwd_cmd cmd, int is_master)
 		rte_mempool_put(message_pool, msg);
 		return -1;
 	}
-		
+
 	return 0;
 }
 
@@ -439,7 +439,7 @@ getcmd(unsigned slaveid, enum l2fwd_cmd *cmd, int is_master)
 }
 
 /* Master send command to slave and wait until ack received or error met */
-static int 
+static int
 master_sendcmd_with_ack(unsigned slaveid, enum l2fwd_cmd cmd)
 {
 	enum l2fwd_cmd ack_cmd;
@@ -465,7 +465,7 @@ master_sendcmd_with_ack(unsigned slaveid, enum l2fwd_cmd cmd)
 }
 
 /* restart all port that assigned to that slave lcore */
-static int 
+static int
 reset_slave_all_ports(unsigned slaveid)
 {
 	struct lcore_resource_struct *slave = &lcore_resource[slaveid];
@@ -479,12 +479,12 @@ reset_slave_all_ports(unsigned slaveid)
 		rte_eth_dev_stop(slave->port[i]);
 		snprintf(buf_name, RTE_MEMPOOL_NAMESIZE, MBUF_NAME, slave->port[i]);
 		pool = rte_mempool_lookup(buf_name);
-		if (pool) 
-			printf("Port %d mempool free object is %u(%u)\n", slave->port[i], 
+		if (pool)
+			printf("Port %d mempool free object is %u(%u)\n", slave->port[i],
 				rte_mempool_count(pool), (unsigned)NB_MBUF);
 		else
 			printf("Can't find mempool %s\n", buf_name);
-		
+
 		printf("Start port :%d\n", slave->port[i]);
 		ret = rte_eth_dev_start(slave->port[i]);
 		if (ret != 0)
@@ -493,7 +493,7 @@ reset_slave_all_ports(unsigned slaveid)
 	return ret;
 }
 
-static int 
+static int
 reset_shared_structures(unsigned slaveid)
 {
 	int ret;
@@ -503,18 +503,18 @@ reset_shared_structures(unsigned slaveid)
 	return ret;
 }
 
-/** 
- * Call this function to re-create resource that needed for slave process that 
+/**
+ * Call this function to re-create resource that needed for slave process that
  * exited in last instance
  **/
-static int 
+static int
 init_slave_res(unsigned slaveid)
 {
 	struct lcore_resource_struct *slave = &lcore_resource[slaveid];
 	enum l2fwd_cmd cmd;
-	
+
 	if (!slave->enabled) {
-		printf("Something wrong with lcore=%u enabled=%d\n",slaveid, 
+		printf("Something wrong with lcore=%u enabled=%d\n",slaveid,
 			slave->enabled);
 		return -1;
 	}
@@ -531,7 +531,7 @@ init_slave_res(unsigned slaveid)
 	return 0;
 }
 
-static int 
+static int
 recreate_one_slave(unsigned slaveid)
 {
 	int ret = 0;
@@ -539,12 +539,12 @@ recreate_one_slave(unsigned slaveid)
 	if ((ret = init_slave_res(slaveid)) != 0) {
 		printf("Init slave=%u failed\n", slaveid);
 		return ret;
-	}	
-	
+	}
+
 	if ((ret = flib_remote_launch(l2fwd_launch_one_lcore, NULL, slaveid))
 		!= 0)
 		printf("Launch slave %u failed\n", slaveid);
-	
+
 	return ret;
 }
 
@@ -604,7 +604,7 @@ back:
 	return ret;
 }
 
-static void 
+static void
 slave_exit_cb(unsigned slaveid, __attribute__((unused))int stat)
 {
 	struct lcore_resource_struct *slave = &lcore_resource[slaveid];
@@ -699,7 +699,7 @@ l2fwd_main_loop(void)
 	unsigned i, j, portid, nb_rx;
 	struct lcore_queue_conf *qconf;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
-	
+
 	prev_tsc = 0;
 
 	lcore_id = rte_lcore_id();
@@ -729,9 +729,9 @@ l2fwd_main_loop(void)
 			/* If get stop command, stop forwarding and exit */
 			if (cmd == CMD_STOP) {
 				return;
-			} 
+			}
 		}
-		
+
 		/*
 		 * TX burst queue drain
 		 */
@@ -877,7 +877,7 @@ l2fwd_parse_args(int argc, char **argv)
 		{NULL, 0, 0, 0}
 	};
 	int has_pmask = 0;
-	
+
 	argvopt = argv;
 
 	while ((opt = getopt_long(argc, argvopt, "p:q:T:f",
@@ -919,7 +919,7 @@ l2fwd_parse_args(int argc, char **argv)
 		case 'f':
 			float_proc = 1;
 			break;
-			
+
 		/* long options */
 		case 0:
 			l2fwd_usage(prgname);
@@ -1038,7 +1038,7 @@ MAIN(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "flib init error");
 
 	/**
-	  * Allocated structures that slave lcore would change. For those that slaves are 
+	  * Allocated structures that slave lcore would change. For those that slaves are
 	  * read only, needn't use malloc to share and global or static variables is ok since
 	  * slave inherit all the knowledge that master initialized.
 	  **/
@@ -1049,7 +1049,7 @@ MAIN(int argc, char **argv)
 	memset(lcore_resource, 0, sizeof(lcore_resource));
 	for (i = 0; i < RTE_MAX_LCORE; i++)
 		lcore_resource[i].lcore_id = i;
-	
+
 	if (rte_eal_pci_probe() < 0)
 		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 
@@ -1064,7 +1064,7 @@ MAIN(int argc, char **argv)
 	for (portid = 0; portid < nb_ports; portid++) {
 		/* skip ports that are not enabled */
 		if ((l2fwd_enabled_port_mask & (1 << portid)) == 0)
-			continue;	  
+			continue;
 		char buf_name[RTE_MEMPOOL_NAMESIZE];
 		flags = MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET;
 		snprintf(buf_name, RTE_MEMPOOL_NAMESIZE, MBUF_NAME, portid);
@@ -1123,7 +1123,7 @@ MAIN(int argc, char **argv)
 		/* get the lcore_id for this port */
 		/* skip master lcore */
 		while (rte_lcore_is_enabled(rx_lcore_id) == 0 ||
-			   rte_get_master_lcore() == rx_lcore_id || 
+			   rte_get_master_lcore() == rx_lcore_id ||
 		       lcore_queue_conf[rx_lcore_id].n_rx_port ==
 		       l2fwd_rx_queue_per_lcore) {
 
@@ -1143,7 +1143,7 @@ MAIN(int argc, char **argv)
 		res = &lcore_resource[rx_lcore_id];
 		res->enabled = 1;
 		res->port[res->port_num++] = portid;
-		
+
 		printf("Lcore %u: RX port %u\n", rx_lcore_id, (unsigned) portid);
 	}
 
@@ -1216,12 +1216,12 @@ MAIN(int argc, char **argv)
 
 	/* Record pair lcore */
 	/**
-	 * Since l2fwd example would create pair between different neighbour port, that's 
+	 * Since l2fwd example would create pair between different neighbour port, that's
 	 * port 0 receive and forward to port 1, the same to port 1, these 2 ports will have
 	 * dependency. If one port stopped working (killed, for example), the port need to
 	 * be stopped/started again. During the time, another port need to wait until stop/start
 	 * procedure completed. So, record the pair relationship for those lcores working
-	 * on ports. 
+	 * on ports.
 	 **/
 	for (portid = 0; portid < nb_ports; portid++) {
 		uint32_t pair_port;
@@ -1239,12 +1239,12 @@ MAIN(int argc, char **argv)
 				continue;
 			for (j = 0; j < lcore_queue_conf[i].n_rx_port;j++) {
 				if (lcore_queue_conf[i].rx_port_list[j] == portid) {
-					lcore = i;	
+					lcore = i;
 					find_lcore = 1;
 					break;
 				}
 				if (lcore_queue_conf[i].rx_port_list[j] == pair_port) {
-					pair_lcore = i;	
+					pair_lcore = i;
 					find_pair_lcore = 1;
 					break;
 				}
@@ -1261,21 +1261,21 @@ MAIN(int argc, char **argv)
 	}
 
 	/* Create message buffer for all master and slave */
-	message_pool = rte_mempool_create("ms_msg_pool", 
+	message_pool = rte_mempool_create("ms_msg_pool",
 			   NB_CORE_MSGBUF * RTE_MAX_LCORE,
 			   sizeof(enum l2fwd_cmd), NB_CORE_MSGBUF / 2,
 			   0,
 			   rte_pktmbuf_pool_init, NULL,
 			   rte_pktmbuf_init, NULL,
-			   rte_socket_id(), 0);	
+			   rte_socket_id(), 0);
 
 	if (message_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Create msg mempool failed\n");
 
 	/* Create ring for each master and slave pair, also register cb when slave leaves */
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		/** 
-		 * Only create ring and register slave_exit cb in case that core involved into 
+		/**
+		 * Only create ring and register slave_exit cb in case that core involved into
 		 * packet forwarding
 		 **/
 		if (lcore_resource[i].enabled) {
@@ -1287,7 +1287,7 @@ MAIN(int argc, char **argv)
 
 			if (flib_register_slave_exit_notify(i,
 				slave_exit_cb) != 0)
-				rte_exit(EXIT_FAILURE, 
+				rte_exit(EXIT_FAILURE,
 						"Register master_trace_slave_exit failed");
 		}
 	}
@@ -1304,19 +1304,19 @@ MAIN(int argc, char **argv)
 		diff_tsc = cur_tsc - prev_tsc;
 		/* if timer is enabled */
 		if (timer_period > 0) {
-		
+
 			/* advance the timer */
 			timer_tsc += diff_tsc;
-		
+
 			/* if timer has reached its timeout */
 			if (unlikely(timer_tsc >= (uint64_t) timer_period)) {
-		
+
 				print_stats();
 				/* reset the timer */
 				timer_tsc = 0;
 			}
 		}
-		
+
 		prev_tsc = cur_tsc;
 
 		/* Check any slave need restart or recreate */

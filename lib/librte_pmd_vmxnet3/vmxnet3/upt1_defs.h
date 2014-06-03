@@ -95,7 +95,7 @@ UPT1_RxStats;
 #define UPT1_RSS_MAX_KEY_SIZE        40
 #define UPT1_RSS_MAX_IND_TABLE_SIZE  128
 
-typedef 
+typedef
 #include "vmware_pack_begin.h"
 struct UPT1_RSSConf {
    uint16   hashType;

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -127,7 +127,7 @@ virtio_dev_vring_start(struct rte_eth_dev *dev, struct virtqueue *vq, int queue_
 			error = virtqueue_enqueue_recv_refill(vq, m);
 
 			if (error) {
- 				rte_pktmbuf_free_seg(m);
+				rte_pktmbuf_free_seg(m);
 				break;
 			}
 			nbufs++;
@@ -258,7 +258,7 @@ virtio_discard_rxbuf(struct virtqueue *vq, struct rte_mbuf *m)
 	error = virtqueue_enqueue_recv_refill(vq, m);
 	if (unlikely(error)) {
 		RTE_LOG(ERR, PMD, "cannot requeue discarded mbuf");
- 		rte_pktmbuf_free_seg(m);
+		rte_pktmbuf_free_seg(m);
 	}
 }
 
@@ -333,14 +333,14 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		}
 		error = virtqueue_enqueue_recv_refill(rxvq, new_mbuf);
 		if (unlikely(error)) {
- 			rte_pktmbuf_free_seg(new_mbuf);
+			rte_pktmbuf_free_seg(new_mbuf);
 			break;
 		}
 		nb_enqueued ++;
 	}
 	if (likely(nb_enqueued)) {
 		if (unlikely(virtqueue_kick_prepare(rxvq))) {
- 			virtqueue_notify(rxvq);
+			virtqueue_notify(rxvq);
 			PMD_RX_LOG(DEBUG, "Notified\n");
 		}
 	}
@@ -391,7 +391,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 					PMD_TX_LOG(ERR, "virtqueue_enqueue error: %d\n", error);
 				break;
 			}
-	 		nb_tx++;
+			nb_tx++;
 			hw->eth_stats.obytes += txm->pkt.data_len;
 			hw->eth_stats.q_obytes[txvq->queue_id]
 				+= txm->pkt.data_len;
@@ -406,7 +406,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	hw->eth_stats.q_opackets[txvq->queue_id] += nb_tx;
 
 	if(unlikely(virtqueue_kick_prepare(txvq))) {
- 		virtqueue_notify(txvq);
+		virtqueue_notify(txvq);
 		PMD_TX_LOG(DEBUG, "Notified backend after xmit\n");
 	}
 

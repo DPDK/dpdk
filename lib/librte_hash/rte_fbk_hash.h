@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -139,7 +139,7 @@ rte_fbk_hash_get_bucket(const struct rte_fbk_hash_table *ht, uint32_t key)
 }
 
 /**
- * Add a key to an existing hash table with bucket id. 
+ * Add a key to an existing hash table with bucket id.
  * This operation is not multi-thread safe
  * and should only be called from one thread.
  *
@@ -183,7 +183,7 @@ rte_fbk_hash_add_key_with_bucket(struct rte_fbk_hash_table *ht,
 		}
 	}
 
-	return -ENOSPC; /* No space in bucket. */	
+	return -ENOSPC; /* No space in bucket. */
 }
 
 /**
@@ -203,12 +203,12 @@ static inline int
 rte_fbk_hash_add_key(struct rte_fbk_hash_table *ht,
 			uint32_t key, uint16_t value)
 {
-	return rte_fbk_hash_add_key_with_bucket(ht, 
+	return rte_fbk_hash_add_key_with_bucket(ht,
 				key, value, rte_fbk_hash_get_bucket(ht, key));
 }
 
 /**
- * Remove a key with a given bucket id from an existing hash table. 
+ * Remove a key with a given bucket id from an existing hash table.
  * This operation is not multi-thread
  * safe and should only be called from one thread.
  *
@@ -222,7 +222,7 @@ rte_fbk_hash_add_key(struct rte_fbk_hash_table *ht,
  *   0 if ok, or negative value on error.
  */
 static inline int
-rte_fbk_hash_delete_key_with_bucket(struct rte_fbk_hash_table *ht, 
+rte_fbk_hash_delete_key_with_bucket(struct rte_fbk_hash_table *ht,
 					uint32_t key, uint32_t bucket)
 {
 	uint32_t last_entry = ht->entries_per_bucket - 1;
@@ -267,12 +267,12 @@ rte_fbk_hash_delete_key_with_bucket(struct rte_fbk_hash_table *ht,
 static inline int
 rte_fbk_hash_delete_key(struct rte_fbk_hash_table *ht, uint32_t key)
 {
-	return rte_fbk_hash_delete_key_with_bucket(ht, 
+	return rte_fbk_hash_delete_key_with_bucket(ht,
 				key, rte_fbk_hash_get_bucket(ht, key));
 }
 
 /**
- * Find a key in the hash table with a given bucketid. 
+ * Find a key in the hash table with a given bucketid.
  * This operation is multi-thread safe.
  *
  * @param ht
@@ -285,7 +285,7 @@ rte_fbk_hash_delete_key(struct rte_fbk_hash_table *ht, uint32_t key)
  *   The value that was associated with the key, or negative value on error.
  */
 static inline int
-rte_fbk_hash_lookup_with_bucket(const struct rte_fbk_hash_table *ht, 
+rte_fbk_hash_lookup_with_bucket(const struct rte_fbk_hash_table *ht,
 				uint32_t key, uint32_t bucket)
 {
 	union rte_fbk_hash_entry current_entry;

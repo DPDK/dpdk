@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -115,7 +115,7 @@ static void igbvf_dev_close(struct rte_eth_dev *dev);
 static int eth_igbvf_link_update(struct e1000_hw *hw);
 static void eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats);
 static void eth_igbvf_stats_reset(struct rte_eth_dev *dev);
-static int igbvf_vlan_filter_set(struct rte_eth_dev *dev, 
+static int igbvf_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
 static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on);
 static void igbvf_set_vfta_all(struct rte_eth_dev *dev, bool on);
@@ -277,7 +277,7 @@ igb_intr_enable(struct rte_eth_dev *dev)
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
- 
+
 	E1000_WRITE_REG(hw, E1000_IMS, intr->mask);
 	E1000_WRITE_FLUSH(hw);
 }
@@ -294,18 +294,18 @@ igb_pf_reset_hw(struct e1000_hw *hw)
 {
 	uint32_t ctrl_ext;
 	int32_t status;
- 
+
 	status = e1000_reset_hw(hw);
- 
+
 	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
 	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
 	ctrl_ext |= E1000_CTRL_EXT_PFRSTD;
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext);
 	E1000_WRITE_FLUSH(hw);
- 
+
 	return status;
 }
- 
+
 static void
 igb_identify_hardware(struct rte_eth_dev *dev)
 {
@@ -498,7 +498,7 @@ eth_igb_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	/* initialize PF if max_vfs not zero */
 	igb_pf_host_init(eth_dev);
- 
+
 	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
 	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
 	ctrl_ext |= E1000_CTRL_EXT_PFRSTD;
@@ -514,10 +514,10 @@ eth_igb_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	/* enable uio intr after callback register */
 	rte_intr_enable(&(pci_dev->intr_handle));
-        
+
 	/* enable support intr */
 	igb_intr_enable(eth_dev);
-	
+
 	return 0;
 
 err_late:
@@ -572,7 +572,7 @@ eth_igbvf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	/* Disable the interrupts for VF */
 	igbvf_intr_disable(hw);
-	
+
 	diag = hw->mac.ops.reset_hw(hw);
 
 	/* Allocate memory for storing MAC addresses */
@@ -585,7 +585,7 @@ eth_igbvf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 			ETHER_ADDR_LEN * hw->mac.rar_entry_count);
 		return -ENOMEM;
 	}
-	
+
 	/* Copy the permanent MAC address */
 	ether_addr_copy((struct ether_addr *) hw->mac.perm_addr,
 			&eth_dev->data->mac_addrs[0]);
@@ -740,7 +740,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 		/* Enable VLAN filter since VMDq always use VLAN filter */
 		igb_vmdq_vlan_hw_filter_enable(dev);
 	}
-		
+
 	/*
 	 * Configure the Interrupt Moderation register (EITR) with the maximum
 	 * possible value (0xFFFF) to minimize "System Partial Write" issued by
@@ -1607,14 +1607,14 @@ eth_igb_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		else
 			igb_vlan_hw_strip_disable(dev);
 	}
-	
+
 	if(mask & ETH_VLAN_FILTER_MASK){
 		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
 			igb_vlan_hw_filter_enable(dev);
 		else
 			igb_vlan_hw_filter_disable(dev);
 	}
-	
+
 	if(mask & ETH_VLAN_EXTEND_MASK){
 		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
 			igb_vlan_hw_extend_enable(dev);
@@ -1675,7 +1675,7 @@ eth_igb_interrupt_get_status(struct rte_eth_dev *dev)
 		intr->flags |= E1000_FLAG_NEED_LINK_UPDATE;
 	}
 
-	if (icr & E1000_ICR_VMMB) 
+	if (icr & E1000_ICR_VMMB)
 		intr->flags |= E1000_FLAG_MAILBOX;
 
 	return 0;
@@ -1993,7 +1993,7 @@ igbvf_dev_configure(struct rte_eth_dev *dev)
 static int
 igbvf_dev_start(struct rte_eth_dev *dev)
 {
-	struct e1000_hw *hw = 
+	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret;
 
@@ -2003,7 +2003,7 @@ igbvf_dev_start(struct rte_eth_dev *dev)
 
 	/* Set all vfta */
 	igbvf_set_vfta_all(dev,1);
-	
+
 	eth_igbvf_tx_init(dev);
 
 	/* This can fail when allocating mbufs for descriptor rings */
@@ -2023,9 +2023,9 @@ igbvf_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "igbvf_dev_stop");
 
 	igbvf_stop_adapter(dev);
-	
-	/* 
-	  * Clear what we set, but we still keep shadow_vfta to 
+
+	/*
+	  * Clear what we set, but we still keep shadow_vfta to
 	  * restore after device starts
 	  */
 	igbvf_set_vfta_all(dev,0);
@@ -2050,7 +2050,7 @@ static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on)
 	struct e1000_mbx_info *mbx = &hw->mbx;
 	uint32_t msgbuf[2];
 
-	/* After set vlan, vlan strip will also be enabled in igb driver*/ 
+	/* After set vlan, vlan strip will also be enabled in igb driver*/
 	msgbuf[0] = E1000_VF_SET_VLAN;
 	msgbuf[1] = vid;
 	/* Setting the 8 bit field MSG INFO to TRUE indicates "add" */
@@ -2062,7 +2062,7 @@ static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on)
 
 static void igbvf_set_vfta_all(struct rte_eth_dev *dev, bool on)
 {
-	struct e1000_hw *hw = 
+	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_vfta * shadow_vfta =
 		E1000_DEV_PRIVATE_TO_VFTA(dev->data->dev_private);
@@ -2086,14 +2086,14 @@ static void igbvf_set_vfta_all(struct rte_eth_dev *dev, bool on)
 static int
 igbvf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
-	struct e1000_hw *hw = 
+	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_vfta * shadow_vfta =
 		E1000_DEV_PRIVATE_TO_VFTA(dev->data->dev_private);
 	uint32_t vid_idx = 0;
 	uint32_t vid_bit = 0;
 	int ret = 0;
-	
+
 	PMD_INIT_LOG(DEBUG, "igbvf_vlan_filter_set");
 
 	/*vind is not used in VF driver, set to 0, check ixgbe_set_vfta_vf*/
@@ -2119,16 +2119,16 @@ eth_igb_rss_reta_update(struct rte_eth_dev *dev,
                                 struct rte_eth_rss_reta *reta_conf)
 {
 	uint8_t i,j,mask;
-	uint32_t reta;	
+	uint32_t reta;
 	struct e1000_hw *hw =
-			E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private); 
-	
-	/*    
-	 * Update Redirection Table RETA[n],n=0...31,The redirection table has 
-	 * 128-entries in 32 registers 
-	 */ 
-	for(i = 0; i < ETH_RSS_RETA_NUM_ENTRIES; i += 4) {  
-		if (i < ETH_RSS_RETA_NUM_ENTRIES/2) 
+			E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/*
+	 * Update Redirection Table RETA[n],n=0...31,The redirection table has
+	 * 128-entries in 32 registers
+	 */
+	for(i = 0; i < ETH_RSS_RETA_NUM_ENTRIES; i += 4) {
+		if (i < ETH_RSS_RETA_NUM_ENTRIES/2)
 			mask = (uint8_t)((reta_conf->mask_lo >> i) & 0xF);
 		else
 			mask = (uint8_t)((reta_conf->mask_hi >>
@@ -2136,7 +2136,7 @@ eth_igb_rss_reta_update(struct rte_eth_dev *dev,
 		if (mask != 0) {
 			reta = 0;
 			/* If all 4 entries were set,don't need read RETA register */
-			if (mask != 0xF)  
+			if (mask != 0xF)
 				reta = E1000_READ_REG(hw,E1000_RETA(i >> 2));
 
 			for (j = 0; j < 4; j++) {
@@ -2159,11 +2159,11 @@ eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 {
 	uint8_t i,j,mask;
 	uint32_t reta;
-	struct e1000_hw *hw = 
+	struct e1000_hw *hw =
 			E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	/* 
-	 * Read Redirection Table RETA[n],n=0...31,The redirection table has 
+	/*
+	 * Read Redirection Table RETA[n],n=0...31,The redirection table has
 	 * 128-entries in 32 registers
 	 */
 	for(i = 0; i < ETH_RSS_RETA_NUM_ENTRIES; i += 4) {
@@ -2182,7 +2182,7 @@ eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 			}
 		}
 	}
- 
+
 	return 0;
 }
 

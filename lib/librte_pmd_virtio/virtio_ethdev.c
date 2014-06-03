@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -239,7 +239,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	const struct rte_memzone *mz;
 	uint16_t vq_size;
 	int size;
-	struct virtio_hw *hw = 
+	struct virtio_hw *hw =
 		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct virtqueue  *vq = NULL;
 
@@ -289,7 +289,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	}
 	if (vq == NULL) {
 		PMD_INIT_LOG(ERR, "%s: Can not allocate virtqueue\n", __func__);
-		return (-ENOMEM); 
+		return (-ENOMEM);
 	}
 
 	vq->hw = hw;
@@ -315,10 +315,10 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	/*
- 	* Virtio PCI device VIRTIO_PCI_QUEUE_PF register is 32bit,
- 	* and only accepts 32 bit page frame number. 
- 	* Check if the allocated physical memory exceeds 16TB.
- 	*/
+	 * Virtio PCI device VIRTIO_PCI_QUEUE_PF register is 32bit,
+	 * and only accepts 32 bit page frame number.
+	 * Check if the allocated physical memory exceeds 16TB.
+	 */
 	if ( (mz->phys_addr + vq->vq_ring_size - 1) >> (VIRTIO_PCI_QUEUE_ADDR_SHIFT + 32) ) {
 		PMD_INIT_LOG(ERR, "vring address shouldn't be above 16TB!\n");
 		rte_free(vq);
@@ -335,7 +335,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	vq->virtio_net_hdr_mem = (void *)NULL;
 
 	if (queue_type == VTNET_TQ) {
-		/* 
+		/*
 		 * For each xmit packet, allocate a virtio_net_hdr
 		 */
 		rte_snprintf(vq_name, sizeof(vq_name), "port%d_tvq%d_hdrzone",
@@ -664,9 +664,9 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 		VIRTIO_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
 	if (RTE_PKTMBUF_HEADROOM < sizeof(struct virtio_net_hdr) ) {
-		PMD_INIT_LOG(ERR, 
+		PMD_INIT_LOG(ERR,
 			"MBUF HEADROOM should be enough to hold virtio net hdr\n");
-		return (-1); 
+		return (-1);
 	}
 
 	if (! (rte_eal_get_configuration()->flags & EAL_FLG_HIGH_IOPL)) {

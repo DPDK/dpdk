@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -105,7 +105,7 @@ struct ixgbe_hwstrip {
  */
 #define IXGBE_MAX_VF_MC_ENTRIES		30
 #define IXGBE_MAX_MR_RULE_ENTRIES	4 /* number of mirroring rules supported */
-#define IXGBE_MAX_UTA                   128	
+#define IXGBE_MAX_UTA                   128
 
 struct ixgbe_uta_info {
 	uint8_t  uc_filter_type;
@@ -114,7 +114,7 @@ struct ixgbe_uta_info {
 };
 
 struct ixgbe_mirror_info {
-	struct rte_eth_vmdq_mirror_conf mr_conf[ETH_VMDQ_NUM_MIRROR_RULE]; 
+	struct rte_eth_vmdq_mirror_conf mr_conf[ETH_VMDQ_NUM_MIRROR_RULE];
 	/**< store PF mirror rules configuration*/
 };
 
@@ -201,7 +201,7 @@ int  ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
 
-uint32_t ixgbe_dev_rx_queue_count(struct rte_eth_dev *dev, 
+uint32_t ixgbe_dev_rx_queue_count(struct rte_eth_dev *dev,
 		uint16_t rx_queue_id);
 
 int ixgbe_dev_rx_descriptor_done(void *rx_queue, uint16_t offset);

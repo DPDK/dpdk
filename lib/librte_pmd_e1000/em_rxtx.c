@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -1100,7 +1100,7 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 	if ((mz = rte_memzone_lookup(z_name)) != 0)
 		return (mz);
 
-#ifdef RTE_LIBRTE_XEN_DOM0 
+#ifdef RTE_LIBRTE_XEN_DOM0
 	return rte_memzone_reserve_bounded(z_name, ring_size,
 			socket_id, 0, CACHE_LINE_SIZE, RTE_PGSIZE_2M);
 #else
@@ -1281,7 +1281,7 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->tdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_TDT(queue_idx));
 #ifndef RTE_LIBRTE_XEN_DOM0
 	txq->tx_ring_phys_addr = (uint64_t) tz->phys_addr;
-#else   
+#else
 	txq->tx_ring_phys_addr = rte_mem_phy2mch(tz->memseg_id, tz->phys_addr);
 #endif
 	txq->tx_ring = (struct e1000_data_desc *) tz->addr;
@@ -1408,11 +1408,11 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 
 	rxq->rdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDT(queue_idx));
 	rxq->rdh_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDH(queue_idx));
-#ifndef RTE_LIBRTE_XEN_DOM0	
+#ifndef RTE_LIBRTE_XEN_DOM0
 	rxq->rx_ring_phys_addr = (uint64_t) rz->phys_addr;
 #else
-	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr); 
-#endif 
+	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr);
+#endif
 	rxq->rx_ring = (struct e1000_rx_desc *) rz->addr;
 
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
@@ -1424,7 +1424,7 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 	return (0);
 }
 
-uint32_t 
+uint32_t
 eth_em_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 #define EM_RXQ_SCAN_INTERVAL 4

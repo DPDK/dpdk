@@ -1,13 +1,13 @@
 /* -
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -235,7 +235,7 @@ nic_uio_detach(device_t dev)
 			if (PCI_BAR_IO(pci_read_config(dev, sc->bar_id[i], 4)))
 				bus_release_resource(dev, SYS_RES_IOPORT, sc->bar_id[i],
 						sc->bar_res[i]);
-			else 
+			else
 				bus_release_resource(dev, SYS_RES_MEMORY, sc->bar_id[i],
 						sc->bar_res[i]);
 		}
@@ -286,7 +286,7 @@ nic_uio_load(void)
 
 		dev = pci_find_bsf(bus, device, function);
 		if (dev != NULL)
-			for (i = 0; i < NUM_DEVICES; i++) 
+			for (i = 0; i < NUM_DEVICES; i++)
 				if (pci_get_vendor(dev) == devices[i].vend &&
 						pci_get_device(dev) == devices[i].dev)
 							device_detach(dev);

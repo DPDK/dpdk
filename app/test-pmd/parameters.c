@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -364,7 +364,7 @@ parse_portnuma_config(const char *q_arg)
 		_NUM_FLD
 	};
 	unsigned long int_fld[_NUM_FLD];
-	char *str_fld[_NUM_FLD];	
+	char *str_fld[_NUM_FLD];
 
 	/* reset from value set at definition */
 	while ((p = strchr(p0,'(')) != NULL) {
@@ -417,7 +417,7 @@ parse_ringnuma_config(const char *q_arg)
 		_NUM_FLD
 	};
 	unsigned long int_fld[_NUM_FLD];
-	char *str_fld[_NUM_FLD];	
+	char *str_fld[_NUM_FLD];
 	#define RX_RING_ONLY 0x1
 	#define TX_RING_ONLY 0x2
 	#define RXTX_RING    0x3
@@ -475,8 +475,8 @@ parse_ringnuma_config(const char *q_arg)
 				ring_flag,port_id);
 			break;
 		}
-	}	
-	
+	}
+
 	return 0;
 }
 
@@ -551,7 +551,7 @@ launch_args_parse(int argc, char** argv)
 		{ "mp-anon",			0, 0, 0 },
 		{ "port-numa-config",           1, 0, 0 },
 		{ "ring-numa-config",           1, 0, 0 },
-		{ "socket-num",			1, 0, 0 },	
+		{ "socket-num",			1, 0, 0 },
 		{ "mbuf-size",			1, 0, 0 },
 		{ "total-num-mbufs",		1, 0, 0 },
 		{ "max-pkt-len",		1, 0, 0 },

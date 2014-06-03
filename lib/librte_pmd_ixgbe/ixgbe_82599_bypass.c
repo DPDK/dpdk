@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -157,7 +157,7 @@ ixgbe_setup_mac_link_multispeed_fixed_fiber(struct ixgbe_hw *hw,
 			goto out;
 		/* Set the module link speed */
 		ixgbe_set_fiber_fixed_speed(hw, IXGBE_LINK_SPEED_10GB_FULL);
-					    
+
 		/* Set the module link speed */
 		esdp_reg |= (IXGBE_ESDP_SDP5_DIR | IXGBE_ESDP_SDP5);
 		IXGBE_WRITE_REG(hw, IXGBE_ESDP, esdp_reg);
@@ -211,7 +211,7 @@ ixgbe_setup_mac_link_multispeed_fixed_fiber(struct ixgbe_hw *hw,
 
 		/* Set the module link speed */
 		ixgbe_set_fiber_fixed_speed(hw, IXGBE_LINK_SPEED_1GB_FULL);
-						    
+
 		/* Allow module to change analog characteristics (10G->1G) */
 		msec_delay(40);
 
@@ -291,7 +291,7 @@ s32
 ixgbe_bypass_init_hw(struct ixgbe_hw *hw)
 {
 	int rc;
-	
+
 	if ((rc  = ixgbe_init_hw(hw)) == 0 &&
 			hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
 

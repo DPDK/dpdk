@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -54,7 +54,7 @@
 #define RING_SIZE 4096
 #define MAX_BURST 32
 
-/* 
+/*
  * the sizes to enqueue and dequeue in testing
  * (marked volatile so they won't be seen as compile-time constants)
  */
@@ -166,7 +166,7 @@ test_empty_dequeue(void)
 			(double)(mc_end-mc_start) / iterations);
 }
 
-/* 
+/*
  * for the separate enqueue and dequeue threads they take in one param
  * and return two. Input = burst size, output = cycle average for sp/sc & mp/mc
  */
@@ -175,9 +175,9 @@ struct thread_params {
 	double spsc, mpmc;    /* output value, the single or multi timings */
 };
 
-/* 
+/*
  * Function that uses rdtsc to measure timing for ring enqueue. Needs pair
- * thread running dequeue_bulk function 
+ * thread running dequeue_bulk function
  */
 static int
 enqueue_bulk(void *p)
@@ -210,9 +210,9 @@ enqueue_bulk(void *p)
 	return 0;
 }
 
-/* 
+/*
  * Function that uses rdtsc to measure timing for ring dequeue. Needs pair
- * thread running enqueue_bulk function 
+ * thread running enqueue_bulk function
  */
 static int
 dequeue_bulk(void *p)
@@ -245,7 +245,7 @@ dequeue_bulk(void *p)
 	return 0;
 }
 
-/* 
+/*
  * Function that calls the enqueue and dequeue bulk functions on pairs of cores.
  * used to measure ring perf between hyperthreads, cores and sockets.
  */
@@ -275,7 +275,7 @@ run_on_core_pair(struct lcore_pair *cores,
 	}
 }
 
-/* 
+/*
  * Test function that determines how long an enqueue + dequeue of a single item
  * takes on a single lcore. Result is for comparison with the bulk enq+deq.
  */
@@ -307,7 +307,7 @@ test_single_enqueue_dequeue(void)
 			(mc_end-mc_start) >> iter_shift);
 }
 
-/* 
+/*
  * Test that does both enqueue and dequeue on a core using the burst() API calls
  * instead of the bulk() calls used in other tests. Results should be the same
  * as for the bulk function called on a single lcore.

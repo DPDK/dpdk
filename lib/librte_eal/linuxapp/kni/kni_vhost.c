@@ -1,23 +1,23 @@
 /*-
  * GPL LICENSE SUMMARY
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
- * 
+ *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of version 2 of the GNU General Public License as
  *   published by the Free Software Foundation.
- * 
+ *
  *   This program is distributed in the hope that it will be useful, but
  *   WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *   General Public License for more details.
- * 
+ *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  *   The full GNU General Public License is included in this distribution
  *   in the file called LICENSE.GPL.
- * 
+ *
  *   Contact Information:
  *   Intel Corporation
  */
@@ -33,7 +33,7 @@
 #include <linux/if_tun.h>
 #include <linux/version.h>
 
-#include "kni_dev.h" 
+#include "kni_dev.h"
 #include "kni_fifo.h"
 
 #define RX_BURST_SZ 4
@@ -42,7 +42,7 @@ extern void put_unused_fd(unsigned int fd);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
 extern struct file*
-sock_alloc_file(struct socket *sock, 
+sock_alloc_file(struct socket *sock,
 		int flags, const char *dname);
 
 extern int get_unused_fd_flags(unsigned flags);
@@ -75,14 +75,14 @@ static struct proto kni_raw_proto = {
 };
 
 static inline int
-kni_vhost_net_tx(struct kni_dev *kni, struct iovec *iov, 
+kni_vhost_net_tx(struct kni_dev *kni, struct iovec *iov,
 		 unsigned offset, unsigned len)
 {
 	struct rte_kni_mbuf *pkt_kva = NULL;
 	struct rte_kni_mbuf *pkt_va = NULL;
 	int ret;
 
-	KNI_DBG_TX("tx offset=%d, len=%d, iovlen=%d\n", 
+	KNI_DBG_TX("tx offset=%d, len=%d, iovlen=%d\n",
 		   offset, len, (int)iov->iov_len);
 
 	/**
@@ -141,7 +141,7 @@ drop:
 }
 
 static inline int
-kni_vhost_net_rx(struct kni_dev *kni, struct iovec *iov, 
+kni_vhost_net_rx(struct kni_dev *kni, struct iovec *iov,
 		 unsigned offset, unsigned len)
 {
 	uint32_t pkt_len;
@@ -163,7 +163,7 @@ kni_vhost_net_rx(struct kni_dev *kni, struct iovec *iov,
 		return 0;
 
 	kva = (struct rte_kni_mbuf*)skb->data;
-	
+
 	/* free skb to cache */
 	skb->data = NULL;
 	if (unlikely(1 != kni_fifo_put(q->fifo, (void **)&skb, 1)))
@@ -174,16 +174,16 @@ kni_vhost_net_rx(struct kni_dev *kni, struct iovec *iov,
 	if (unlikely(pkt_len > len))
 		goto drop;
 
-	KNI_DBG_RX("rx offset=%d, len=%d, pkt_len=%d, iovlen=%d\n", 
+	KNI_DBG_RX("rx offset=%d, len=%d, pkt_len=%d, iovlen=%d\n",
 		   offset, len, pkt_len, (int)iov->iov_len);
 
-	data_kva = kva->data - kni->mbuf_va + kni->mbuf_kva;		
+	data_kva = kva->data - kni->mbuf_va + kni->mbuf_kva;
 	if (unlikely(memcpy_toiovecend(iov, data_kva, offset, pkt_len)))
 		goto drop;
 
 	/* Update statistics */
 	kni->stats.rx_bytes += pkt_len;
-	kni->stats.rx_packets++;	
+	kni->stats.rx_packets++;
 
 	/* enqueue mbufs into free_q */
 	va = (void*)kva - kni->mbuf_kva + kni->mbuf_va;
@@ -202,10 +202,10 @@ drop:
 	return 0;
 }
 
-static unsigned int 
+static unsigned int
 kni_sock_poll(struct file *file, struct socket *sock, poll_table * wait)
 {
-	struct kni_vhost_queue *q = 
+	struct kni_vhost_queue *q =
 		container_of(sock->sk, struct kni_vhost_queue, sk);
 	struct kni_dev *kni;
 	unsigned int mask = 0;
@@ -214,7 +214,7 @@ kni_sock_poll(struct file *file, struct socket *sock, poll_table * wait)
 		return POLLERR;
 
 	kni = q->kni;
-	KNI_DBG("start kni_poll on group %d, wq 0x%16llx\n", 
+	KNI_DBG("start kni_poll on group %d, wq 0x%16llx\n",
 		  kni->group_id, (uint64_t)sock->wq);
 
 	poll_wait(file, &sock->wq->wait, wait);
@@ -231,19 +231,19 @@ kni_sock_poll(struct file *file, struct socket *sock, poll_table * wait)
 }
 
 static inline void
-kni_vhost_enqueue(struct kni_dev *kni, struct kni_vhost_queue *q, 
+kni_vhost_enqueue(struct kni_dev *kni, struct kni_vhost_queue *q,
 		  struct sk_buff *skb, struct rte_kni_mbuf *va)
 {
 	struct rte_kni_mbuf *kva;
 
-	kva = (void *)(va) - kni->mbuf_va + kni->mbuf_kva;	       
+	kva = (void *)(va) - kni->mbuf_va + kni->mbuf_kva;
 	(skb)->data = (unsigned char*)kva;
 	(skb)->len = kva->data_len;
-	skb_queue_tail(&q->sk.sk_receive_queue, skb);	
+	skb_queue_tail(&q->sk.sk_receive_queue, skb);
 }
 
-static inline void 
-kni_vhost_enqueue_burst(struct kni_dev *kni, struct kni_vhost_queue *q, 
+static inline void
+kni_vhost_enqueue_burst(struct kni_dev *kni, struct kni_vhost_queue *q,
 	  struct sk_buff **skb, struct rte_kni_mbuf **va)
 {
 	int i;
@@ -251,7 +251,7 @@ kni_vhost_enqueue_burst(struct kni_dev *kni, struct kni_vhost_queue *q,
 		kni_vhost_enqueue(kni, q, *skb, *va);
 }
 
-int 
+int
 kni_chk_vhost_rx(struct kni_dev *kni)
 {
 	struct kni_vhost_queue *q = kni->vhost_queue;
@@ -260,7 +260,7 @@ kni_chk_vhost_rx(struct kni_dev *kni)
 	unsigned nb_burst, nb_backlog, i;
 	struct sk_buff *skb[RX_BURST_SZ];
 	struct rte_kni_mbuf *va[RX_BURST_SZ];
-	
+
 	if (unlikely(BE_STOP & kni->vq_status)) {
 		kni->vq_status |= BE_FINISH;
 		return 0;
@@ -271,21 +271,21 @@ kni_chk_vhost_rx(struct kni_dev *kni)
 
 	nb_skb = kni_fifo_count(q->fifo);
 	nb_mbuf = kni_fifo_count(kni->rx_q);
-	
+
 	nb_in = min(nb_mbuf, nb_skb);
 	nb_in = min(nb_in, (unsigned)RX_BURST_SZ);
 	nb_burst   = (nb_in & ~BURST_MASK);
 	nb_backlog = (nb_in & BURST_MASK);
-	
+
 	/* enqueue skb_queue per BURST_SIZE bulk */
 	if (0 != nb_burst) {
 		if (unlikely(RX_BURST_SZ != kni_fifo_get(
-				     kni->rx_q, (void **)&va, 
+				     kni->rx_q, (void **)&va,
 				     RX_BURST_SZ)))
 			goto except;
 
 		if (unlikely(RX_BURST_SZ != kni_fifo_get(
-				     q->fifo, (void **)&skb, 
+				     q->fifo, (void **)&skb,
 				     RX_BURST_SZ)))
 			goto except;
 
@@ -306,11 +306,11 @@ kni_chk_vhost_rx(struct kni_dev *kni)
 	}
 
 	/* Ondemand wake up */
-	if ((nb_in == RX_BURST_SZ) || (nb_skb == 0) || 
-	    ((nb_mbuf < RX_BURST_SZ) && (nb_mbuf != 0))) { 
-		wake_up_interruptible_poll(sk_sleep(&q->sk), 
+	if ((nb_in == RX_BURST_SZ) || (nb_skb == 0) ||
+	    ((nb_mbuf < RX_BURST_SZ) && (nb_mbuf != 0))) {
+		wake_up_interruptible_poll(sk_sleep(&q->sk),
 				   POLLIN | POLLRDNORM | POLLRDBAND);
-		KNI_DBG_RX("RX CHK KICK nb_mbuf %d, nb_skb %d, nb_in %d\n", 
+		KNI_DBG_RX("RX CHK KICK nb_mbuf %d, nb_skb %d, nb_in %d\n",
 			   nb_mbuf, nb_skb, nb_in);
 	}
 
@@ -324,11 +324,11 @@ except:
 	return 0;
 }
 
-static int 
+static int
 kni_sock_sndmsg(struct kiocb *iocb, struct socket *sock,
 	   struct msghdr *m, size_t total_len)
 {
- 	struct kni_vhost_queue *q = 
+ 	struct kni_vhost_queue *q =
 		container_of(sock->sk, struct kni_vhost_queue, sk);
 	int vnet_hdr_len = 0;
 	unsigned long len = total_len;
@@ -336,7 +336,7 @@ kni_sock_sndmsg(struct kiocb *iocb, struct socket *sock,
 	if (unlikely(q == NULL || q->kni == NULL))
 		return 0;
 
-	KNI_DBG_TX("kni_sndmsg len %ld, flags 0x%08x, nb_iov %d\n", 
+	KNI_DBG_TX("kni_sndmsg len %ld, flags 0x%08x, nb_iov %d\n",
 		   len, q->flags, (int)m->msg_iovlen);
 
 #ifdef RTE_KNI_VHOST_VNET_HDR_EN
@@ -354,15 +354,15 @@ kni_sock_sndmsg(struct kiocb *iocb, struct socket *sock,
 	return kni_vhost_net_tx(q->kni, m->msg_iov, vnet_hdr_len, len);
 }
 
-static int 
+static int
 kni_sock_rcvmsg(struct kiocb *iocb, struct socket *sock,
 	   struct msghdr *m, size_t len, int flags)
 {
 	int vnet_hdr_len = 0;
-	int pkt_len = 0; 
-	struct kni_vhost_queue *q = 
+	int pkt_len = 0;
+	struct kni_vhost_queue *q =
 		container_of(sock->sk, struct kni_vhost_queue, sk);
-	static struct virtio_net_hdr 
+	static struct virtio_net_hdr
 		__attribute__ ((unused)) vnet_hdr = {
 		.flags = 0,
 		.gso_type = VIRTIO_NET_HDR_GSO_NONE
@@ -379,31 +379,31 @@ kni_sock_rcvmsg(struct kiocb *iocb, struct socket *sock,
 	}
 #endif
 
-	if (unlikely(0 == (pkt_len = kni_vhost_net_rx(q->kni, 
+	if (unlikely(0 == (pkt_len = kni_vhost_net_rx(q->kni,
 		m->msg_iov, vnet_hdr_len, len))))
 		return 0;
 
 #ifdef RTE_KNI_VHOST_VNET_HDR_EN
 	/* no need to copy hdr when no pkt received */
-	if (unlikely(memcpy_toiovecend(m->msg_iov, 
+	if (unlikely(memcpy_toiovecend(m->msg_iov,
 		(void *)&vnet_hdr, 0, vnet_hdr_len)))
 		return -EFAULT;
 #endif
-	KNI_DBG_RX("kni_rcvmsg expect_len %ld, flags 0x%08x, pkt_len %d\n", 
+	KNI_DBG_RX("kni_rcvmsg expect_len %ld, flags 0x%08x, pkt_len %d\n",
 		   (unsigned long)len, q->flags, pkt_len);
 
-	return (pkt_len + vnet_hdr_len); 
+	return (pkt_len + vnet_hdr_len);
 }
 
 /* dummy tap like ioctl */
-static int 
+static int
 kni_sock_ioctl(struct socket *sock, unsigned int cmd,
 	      unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
 	struct ifreq __user *ifr = argp;
 	unsigned int __user *up = argp;
-	struct kni_vhost_queue *q = 
+	struct kni_vhost_queue *q =
 		container_of(sock->sk, struct kni_vhost_queue, sk);
 	struct kni_dev *kni;
 	unsigned int u;
@@ -452,7 +452,7 @@ kni_sock_ioctl(struct socket *sock, unsigned int cmd,
 #ifdef RTE_KNI_VHOST_VNET_HDR_EN
 		u |= IFF_VNET_HDR;
 #endif
-		if (put_user(u, up))  
+		if (put_user(u, up))
 			return -EFAULT;
 		return 0;
 
@@ -499,7 +499,7 @@ kni_sock_ioctl(struct socket *sock, unsigned int cmd,
 	}
 }
 
-static int 
+static int
 kni_sock_compat_ioctl(struct socket *sock, unsigned int cmd,
 		     unsigned long arg)
 {
@@ -516,10 +516,10 @@ do {		                                	\
 }while(0)                                               \
 
 
-static int 
+static int
 kni_sock_release(struct socket *sock)
 {
-	struct kni_vhost_queue *q = 
+	struct kni_vhost_queue *q =
 		container_of(sock->sk, struct kni_vhost_queue, sk);
 	struct kni_dev *kni;
 
@@ -540,13 +540,13 @@ kni_sock_release(struct socket *sock)
 	sock->sk = NULL;
 
 	sock_put(&q->sk);
-	
+
 	KNI_DBG("dummy sock release done\n");
 
 	return 0;
 }
 
-int 
+int
 kni_sock_getname (struct socket *sock,
 		  struct sockaddr *addr,
 		  int *sockaddr_len, int peer)
@@ -566,13 +566,13 @@ static const struct proto_ops kni_socket_ops = {
 	.compat_ioctl = kni_sock_compat_ioctl,
 };
 
-static void 
+static void
 kni_sk_write_space(struct sock *sk)
 {
 	wait_queue_head_t *wqueue;
 
-	if (!sock_writeable(sk) || 
-	    !test_and_clear_bit(SOCK_ASYNC_NOSPACE, 
+	if (!sock_writeable(sk) ||
+	    !test_and_clear_bit(SOCK_ASYNC_NOSPACE,
 				&sk->sk_socket->flags))
 		return;
 	wqueue = sk_sleep(sk);
@@ -581,10 +581,10 @@ kni_sk_write_space(struct sock *sk)
 			wqueue, POLLOUT | POLLWRNORM | POLLWRBAND);
 }
 
-static void 
+static void
 kni_sk_destruct(struct sock *sk)
 {
-	struct kni_vhost_queue *q = 
+	struct kni_vhost_queue *q =
 		container_of(sk, struct kni_vhost_queue, sk);
 
 	if (!q)
@@ -607,7 +607,7 @@ kni_sk_destruct(struct sock *sk)
 	}
 }
 
-static int 
+static int
 kni_vhost_backend_init(struct kni_dev *kni)
 {
 	struct kni_vhost_queue *q;
@@ -635,7 +635,7 @@ kni_vhost_backend_init(struct kni_dev *kni)
 
 	/* cache init */
 	q->cache = (struct sk_buff*)
-		kzalloc(RTE_KNI_VHOST_MAX_CACHE_SIZE * sizeof(struct sk_buff), 
+		kzalloc(RTE_KNI_VHOST_MAX_CACHE_SIZE * sizeof(struct sk_buff),
 			GFP_KERNEL);
 	if (!q->cache)
 		goto free_fd;
@@ -653,7 +653,7 @@ kni_vhost_backend_init(struct kni_dev *kni)
 		kni_fifo_put(fifo, (void**)&elem, 1);
 	}
 	q->fifo = fifo;
-	
+
 	/* store sockfd in vhost_queue */
 	q->sockfd = sockfd;
 
@@ -671,18 +671,18 @@ kni_vhost_backend_init(struct kni_dev *kni)
 #ifdef RTE_KNI_VHOST_VNET_HDR_EN
 	q->flags |= IFF_VNET_HDR;
 #endif
-	
+
 	/* bind kni_dev with vhost_queue */
 	q->kni = kni;
 	kni->vhost_queue = q;
-	
+
 	wmb();
 
 	kni->vq_status = BE_START;
 
 	KNI_DBG("backend init sockfd=%d, sock->wq=0x%16llx,"
-		  "sk->sk_wq=0x%16llx", 
-		  q->sockfd, (uint64_t)q->sock->wq, 
+		  "sk->sk_wq=0x%16llx",
+		  q->sockfd, (uint64_t)q->sock->wq,
 		  (uint64_t)q->sk.sk_wq);
 
 	return 0;
@@ -742,7 +742,7 @@ set_sock_en(struct device *dev, struct device_attribute *attr,
 	if (0 != strict_strtoul(buf, 0, &en))
 		return -EINVAL;
 
-	if (en) 
+	if (en)
 		err = kni_vhost_backend_init(kni);
 
 	return err ? err : count;
@@ -760,11 +760,11 @@ static const struct attribute_group dev_attr_grp = {
 	.attrs = dev_attrs,
 };
 
-int 
+int
 kni_vhost_backend_release(struct kni_dev *kni)
 {
-	struct kni_vhost_queue *q = kni->vhost_queue; 
-	
+	struct kni_vhost_queue *q = kni->vhost_queue;
+
 	if (q == NULL)
 		return 0;
 
@@ -776,7 +776,7 @@ kni_vhost_backend_release(struct kni_dev *kni)
 	return 0;
 }
 
-int 
+int
 kni_vhost_init(struct kni_dev *kni)
 {
 	struct net_device *dev = kni->net_dev;

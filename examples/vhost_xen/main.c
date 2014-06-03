@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -682,7 +682,7 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 		res_cur_idx++;
 		packet_success++;
 
-		/* mergeable is disabled then a header is required per buffer. */	
+		/* mergeable is disabled then a header is required per buffer. */
 		rte_memcpy((void *)(uintptr_t)buff_hdr_addr, (const void*)&virtio_hdr, vq->vhost_hlen);
 		if (res_cur_idx < res_end_idx) {
 			/* Prefetch descriptor index. */
@@ -982,7 +982,7 @@ virtio_dev_tx(struct virtio_net* dev, struct rte_mempool *mbuf_pool)
 		/* Setup dummy mbuf. This is copied to a real mbuf if transmitted out the physical port. */
 		m.pkt.data_len = desc->len;
 		m.pkt.data = (void*)(uintptr_t)buff_addr;
-		m.pkt.nb_segs = 1; 
+		m.pkt.nb_segs = 1;
 
 		virtio_tx_route(dev, &m, mbuf_pool, 0);
 
@@ -999,7 +999,7 @@ virtio_dev_tx(struct virtio_net* dev, struct rte_mempool *mbuf_pool)
  * This function is called by each data core. It handles all RX/TX registered with the
  * core. For TX the specific lcore linked list is used. For RX, MAC addresses are compared
  * with all devices in the main linked list.
- */ 
+ */
 static int
 switch_worker(__attribute__((unused)) void *arg)
 {
@@ -1056,11 +1056,11 @@ switch_worker(__attribute__((unused)) void *arg)
 
 		}
 
-		/* 
+		/*
 		 * Inform the configuration core that we have exited the linked list and that no devices are
 		 * in use if requested.
 		 */
-		if (lcore_ll->dev_removal_flag == REQUEST_DEV_REMOVAL) 
+		if (lcore_ll->dev_removal_flag == REQUEST_DEV_REMOVAL)
 			lcore_ll->dev_removal_flag = ACK_DEV_REMOVAL;
 
 		/*
@@ -1235,7 +1235,7 @@ init_data_ll (void)
 	return 0;
 }
 /*
- * Remove a device from the specific data core linked list and from the main linked list. The 
+ * Remove a device from the specific data core linked list and from the main linked list. The
  * rx/tx thread must be set the flag to indicate that it is safe to remove the device.
  * used.
  */
@@ -1293,8 +1293,8 @@ destroy_device (volatile struct virtio_net *dev)
 	RTE_LCORE_FOREACH_SLAVE(lcore) {
 		lcore_info[lcore].lcore_ll->dev_removal_flag = REQUEST_DEV_REMOVAL;
 	}
-	
-	/* 
+
+	/*
 	 * Once each core has set the dev_removal_flag to ACK_DEV_REMOVAL we can be sure that
 	 * they can no longer access the device removed from the linked lists and that the devices
 	 * are no longer in use.
@@ -1311,7 +1311,7 @@ destroy_device (volatile struct virtio_net *dev)
 
 	/* Decrement number of device on the lcore. */
 	lcore_info[ll_lcore_dev_cur->dev->coreid].lcore_ll->device_num--;
-	
+
 	RTE_LOG(INFO, DATA, "  #####(%"PRIu64") Device has been removed from data core\n", dev->device_fh);
 }
 
@@ -1438,7 +1438,7 @@ print_stats(void)
 
 int init_virtio_net(struct virtio_net_device_ops const * const ops);
 
-/* 
+/*
  * Main function, does initialisation and calls the per-lcore functions. The CUSE
  * device is also registered here to handle the IOCTLs.
  */

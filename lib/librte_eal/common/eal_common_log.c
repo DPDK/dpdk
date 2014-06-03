@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -298,8 +298,8 @@ rte_eal_common_log_init(FILE *default_log)
 				NULL, NULL,
 				NULL, NULL,
 				SOCKET_ID_ANY, 0);
-       
-	if ((log_history_mp == NULL) && 
+
+	if ((log_history_mp == NULL) &&
 	    ((log_history_mp = rte_mempool_lookup(LOG_HISTORY_MP_NAME)) == NULL)){
 		RTE_LOG(ERR, EAL, "%s(): cannot create log_history mempool\n",
 			__func__);

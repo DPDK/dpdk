@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -60,18 +60,18 @@ dev_num_vf(struct rte_eth_dev *eth_dev)
 	return eth_dev->pci_dev->max_vfs;
 }
 
-static inline 
+static inline
 int igb_vf_perm_addr_gen(struct rte_eth_dev *dev, uint16_t vf_num)
 {
 	unsigned char vf_mac_addr[ETHER_ADDR_LEN];
-	struct e1000_vf_info *vfinfo = 
+	struct e1000_vf_info *vfinfo =
 		*E1000_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
 	uint16_t vfn;
 
 	for (vfn = 0; vfn < vf_num; vfn++) {
 		eth_random_addr(vf_mac_addr);
 		/* keep the random address as default */
-		memcpy(vfinfo[vfn].vf_mac_addresses, vf_mac_addr, 
+		memcpy(vfinfo[vfn].vf_mac_addresses, vf_mac_addr,
 				ETHER_ADDR_LEN);
 	}
 
@@ -91,9 +91,9 @@ igb_mb_intr_setup(struct rte_eth_dev *dev)
 
 void igb_pf_host_init(struct rte_eth_dev *eth_dev)
 {
-	struct e1000_vf_info **vfinfo = 
+	struct e1000_vf_info **vfinfo =
 		E1000_DEV_PRIVATE_TO_P_VFDATA(eth_dev->data->dev_private);
-	struct e1000_hw *hw = 
+	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	uint16_t vf_num;
 	uint8_t nb_queue;
@@ -132,7 +132,7 @@ int igb_pf_host_configure(struct rte_eth_dev *eth_dev)
 {
 	uint32_t vtctl;
 	uint16_t vf_num;
-	struct e1000_hw *hw = 
+	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	uint32_t vlanctrl;
 	int i;
@@ -144,7 +144,7 @@ int igb_pf_host_configure(struct rte_eth_dev *eth_dev)
 	/* enable VMDq and set the default pool for PF */
 	vtctl = E1000_READ_REG(hw, E1000_VT_CTL);
 	vtctl &= ~E1000_VT_CTL_DEFAULT_POOL_MASK;
-	vtctl |= RTE_ETH_DEV_SRIOV(eth_dev).def_vmdq_idx 
+	vtctl |= RTE_ETH_DEV_SRIOV(eth_dev).def_vmdq_idx
 		<< E1000_VT_CTL_DEFAULT_POOL_SHIFT;
 	vtctl |= E1000_VT_CTL_VM_REPL_EN;
 	E1000_WRITE_REG(hw, E1000_VT_CTL, vtctl);
@@ -176,7 +176,7 @@ int igb_pf_host_configure(struct rte_eth_dev *eth_dev)
 	E1000_WRITE_REG(hw, E1000_RAH(0), rah);
 
 	/*
-	 * enable vlan filtering and allow all vlan tags through 
+	 * enable vlan filtering and allow all vlan tags through
 	 */
 	vlanctrl = E1000_READ_REG(hw, E1000_RCTL);
 	vlanctrl |= E1000_RCTL_VFE ; /* enable vlan filters */
@@ -186,17 +186,17 @@ int igb_pf_host_configure(struct rte_eth_dev *eth_dev)
 	for (i = 0; i < IGB_VFTA_SIZE; i++) {
 		E1000_WRITE_REG_ARRAY(hw, E1000_VFTA, i, 0xFFFFFFFF);
 	}
-	
+
 	/* Enable/Disable MAC Anti-Spoofing */
 	e1000_vmdq_set_anti_spoofing_pf(hw, FALSE, vf_num);
 
 	return 0;
 }
 
-static void 
+static void
 set_rx_mode(struct rte_eth_dev *dev)
 {
-	struct rte_eth_dev_data *dev_data = 
+	struct rte_eth_dev_data *dev_data =
 		(struct rte_eth_dev_data*)dev->data->dev_private;
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t fctrl, vmolr = E1000_VMOLR_BAM | E1000_VMOLR_AUPE;
@@ -235,21 +235,21 @@ set_rx_mode(struct rte_eth_dev *dev)
 	E1000_WRITE_REG(hw, E1000_RCTL, fctrl);
 }
 
-static inline void 
+static inline void
 igb_vf_reset_event(struct rte_eth_dev *dev, uint16_t vf)
 {
-	struct e1000_hw *hw = 
+	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_vf_info *vfinfo = 
+	struct e1000_vf_info *vfinfo =
 		*(E1000_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
 	uint32_t vmolr = E1000_READ_REG(hw, E1000_VMOLR(vf));
 
-	vmolr |= (E1000_VMOLR_ROPE | E1000_VMOLR_ROMPE | 
+	vmolr |= (E1000_VMOLR_ROPE | E1000_VMOLR_ROMPE |
 			E1000_VMOLR_BAM | E1000_VMOLR_AUPE);
 	E1000_WRITE_REG(hw, E1000_VMOLR(vf), vmolr);
 
 	E1000_WRITE_REG(hw, E1000_VMVIR(vf), 0);
-	
+
 	/* reset multicast table array for vf */
 	vfinfo[vf].num_vf_mc_hashes = 0;
 
@@ -257,7 +257,7 @@ igb_vf_reset_event(struct rte_eth_dev *dev, uint16_t vf)
 	set_rx_mode(dev);
 }
 
-static inline void 
+static inline void
 igb_vf_reset_msg(struct rte_eth_dev *dev, uint16_t vf)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -279,7 +279,7 @@ static int
 igb_vf_reset(struct rte_eth_dev *dev, uint16_t vf, uint32_t *msgbuf)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_vf_info *vfinfo = 
+	struct e1000_vf_info *vfinfo =
 		*(E1000_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
 	unsigned char *vf_mac = vfinfo[vf].vf_mac_addresses;
 	int rar_entry = hw->mac.rar_entry_count - (vf + 1);
@@ -305,7 +305,7 @@ static int
 igb_vf_set_mac_addr(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_vf_info *vfinfo = 
+	struct e1000_vf_info *vfinfo =
 		*(E1000_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
 	int rar_entry = hw->mac.rar_entry_count - (vf + 1);
 	uint8_t *new_mac = (uint8_t *)(&msgbuf[1]);
@@ -325,11 +325,11 @@ igb_vf_set_multicast(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t
 	uint32_t vector_bit;
 	uint32_t vector_reg;
 	uint32_t mta_reg;
-	int entries = (msgbuf[0] & E1000_VT_MSGINFO_MASK) >> 
+	int entries = (msgbuf[0] & E1000_VT_MSGINFO_MASK) >>
 		E1000_VT_MSGINFO_SHIFT;
 	uint16_t *hash_list = (uint16_t *)&msgbuf[1];
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_vf_info *vfinfo = 
+	struct e1000_vf_info *vfinfo =
 		*(E1000_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
 
 	/* only so many hash values supported */
@@ -366,7 +366,7 @@ igb_vf_set_vlan(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 {
 	int add, vid;
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_vf_info *vfinfo = 
+	struct e1000_vf_info *vfinfo =
 		*(E1000_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
 	uint32_t vid_idx, vid_bit, vfta;
 
@@ -379,7 +379,7 @@ igb_vf_set_vlan(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	else if (vfinfo[vf].vlan_count)
 		vfinfo[vf].vlan_count--;
 
-	vid_idx = (uint32_t)((vid >> E1000_VFTA_ENTRY_SHIFT) & 
+	vid_idx = (uint32_t)((vid >> E1000_VFTA_ENTRY_SHIFT) &
 			     E1000_VFTA_ENTRY_MASK);
 	vid_bit = (uint32_t)(1 << (vid & E1000_VFTA_ENTRY_BIT_SHIFT_MASK));
 	vfta = E1000_READ_REG_ARRAY(hw, E1000_VFTA, vid_idx);
@@ -387,14 +387,14 @@ igb_vf_set_vlan(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 		vfta |= vid_bit;
 	else
 		vfta &= ~vid_bit;
-	
+
 	E1000_WRITE_REG_ARRAY(hw, E1000_VFTA, vid_idx, vfta);
 	E1000_WRITE_FLUSH(hw);
 
 	return 0;
 }
 
-static int 
+static int
 igb_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 {
 	uint16_t mbx_size = E1000_VFMAILBOX_SIZE;
@@ -450,11 +450,11 @@ igb_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 	return retval;
 }
 
-static inline void 
+static inline void
 igb_rcv_ack_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 {
 	uint32_t msg = E1000_VT_MSGTYPE_NACK;
-	struct e1000_hw *hw = 
+	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	e1000_write_mbx(hw, &msg, 1, vf);
@@ -463,7 +463,7 @@ igb_rcv_ack_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 void igb_pf_mbx_process(struct rte_eth_dev *eth_dev)
 {
 	uint16_t vf;
-	struct e1000_hw *hw = 
+	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
 	for (vf = 0; vf < dev_num_vf(eth_dev); vf++) {

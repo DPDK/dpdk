@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -491,7 +491,7 @@ parse_config(const char *arg)
 			printf("Port %d has been configured\n", port_id);
 			goto fail;
 		}
-		kni_port_params_array[port_id] = 
+		kni_port_params_array[port_id] =
 			(struct kni_port_params*)rte_zmalloc("KNI_port_params",
 			sizeof(struct kni_port_params), CACHE_LINE_SIZE);
 		kni_port_params_array[port_id]->port_id = port_id;
@@ -557,7 +557,7 @@ validate_parameters(uint32_t portmask)
 					"port %d transmitting not enabled\n",
 					kni_port_params_array[i]->lcore_tx,
 					kni_port_params_array[i]->port_id);
-			
+
 	}
 
 	return 0;
@@ -727,7 +727,7 @@ kni_change_mtu(uint8_t port_id, unsigned new_mtu)
 	/* Set new MTU */
 	if (new_mtu > ETHER_MAX_LEN)
 		conf.rxmode.jumbo_frame = 1;
-	else 
+	else
 		conf.rxmode.jumbo_frame = 0;
 
 	/* mtu + length of header + length of FCS = max pkt length */

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -123,7 +123,7 @@ eth_xenvirt_rx(void *q, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			break;
 		}
 		if (unlikely(virtqueue_enqueue_recv_refill(rxvq, new_mbuf))) {
- 			rte_pktmbuf_free_seg(new_mbuf);
+			rte_pktmbuf_free_seg(new_mbuf);
 			break;
 		}
 	}
@@ -420,7 +420,7 @@ gntalloc_vring_create(int queue_type, uint32_t size, int vtidx)
 
 	if (queue_type == VTNET_RQ)
 		rv = rte_snprintf(key_str, sizeof(key_str), DPDK_XENSTORE_PATH"%d"RXVRING_XENSTORE_STR, vtidx);
-	else 
+	else
 		rv = rte_snprintf(key_str, sizeof(key_str), DPDK_XENSTORE_PATH"%d"TXVRING_XENSTORE_STR, vtidx);
 	if (rv == -1 || xenstore_write(key_str, val_str) == -1) {
 		gntfree(va, size, start_index);
@@ -484,10 +484,10 @@ virtio_queue_setup(struct rte_eth_dev *dev, int queue_type)
 	memset(vq->vq_ring_virt_mem, 0, vq->vq_ring_size);
 	vr = &vq->vq_ring;
 	vring_init(vr, vq_size, vq->vq_ring_virt_mem, vq->vq_alignment);
-	/* 
- 	 * Locally maintained last consumed index, this idex trails 
- 	 * vq_ring.used->idx.
- 	 */
+	/*
+	 * Locally maintained last consumed index, this idex trails
+	 * vq_ring.used->idx.
+	 */
 	vq->vq_used_cons_idx = 0;
 	vq->vq_desc_head_idx = 0;
 	vq->vq_free_cnt = vq->vq_nentries;
@@ -542,7 +542,7 @@ static struct eth_dev_ops ops = {
 };
 
 
-static int 
+static int
 rte_eth_xenvirt_parse_args(struct xenvirt_dict *dict,
 			const char *name, const char *params)
 {

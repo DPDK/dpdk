@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -76,7 +76,7 @@ struct test_queue {                 /**< Test structure for RTE_RED Queues */
 	uint32_t *qconfig;              /**< Configuration of RTE_RED queues for test */
 	uint32_t *q;                    /**< Queue size */
 	uint32_t q_ramp_up;             /**< Num of enqueues to ramp up the queue */
-	uint32_t avg_ramp_up;           /**< Average num of enqueues to ramp up the queue */ 
+	uint32_t avg_ramp_up;           /**< Average num of enqueues to ramp up the queue */
 	uint32_t avg_tolerance;         /**< Tolerance in queue average */
 	double drop_tolerance;          /**< Drop tolerance of packets not enqueued */
 };
@@ -310,7 +310,7 @@ static uint64_t get_machclk_freq(void)
 	end = rte_rdtsc();
 
 	diff = (uint64_t)(tv_end.tv_sec - tv_start.tv_sec) * USEC_PER_SEC
-		+ ((tv_end.tv_nsec - tv_start.tv_nsec + TEST_NSEC_MARGIN) / 
+		+ ((tv_end.tv_nsec - tv_start.tv_nsec + TEST_NSEC_MARGIN) /
 		   USEC_PER_MSEC); /**< diff is in micro secs */
 
 	if (diff == 0)
@@ -419,7 +419,7 @@ increase_average_qsize(struct rte_red_config *red_cfg,
 static struct rte_red_config ft_wrconfig[1];
 static struct rte_red ft_rtdata[1];
 static uint8_t ft_wq_log2[] = {9};
-static uint8_t ft_maxp_inv[] = {10}; 
+static uint8_t ft_maxp_inv[] = {10};
 static uint32_t  ft_qconfig[] = {0, 0, 1, 1};
 static uint32_t  ft_q[] ={0};
 static uint32_t  ft_dropped[] ={0};
@@ -518,7 +518,7 @@ static enum test_result func_test1(struct test_config *tcfg)
 		goto out;
 	}
 
-	printf("%s", tcfg->htxt); 
+	printf("%s", tcfg->htxt);
 
 	for (i = 0; i < RTE_DIM(ft1_tlevels); i++) {
 		const char *label = NULL;
@@ -793,10 +793,10 @@ static enum test_result func_test3(struct test_config *tcfg)
 			result = FAIL;
 		}
 
-		exp_avg = calc_exp_avg_on_empty(avg_before, 
+		exp_avg = calc_exp_avg_on_empty(avg_before,
 					      (1 << *tcfg->tconfig->wq_log2),
 					      tcfg->tvar->wait_usec);
-		avg_after = rte_red_get_avg_float(tcfg->tconfig->rconfig, 
+		avg_after = rte_red_get_avg_float(tcfg->tconfig->rconfig,
 						  tcfg->tqueue->rdata);
 		if (!check_avg(&diff, avg_after, exp_avg, (double)tcfg->tqueue->avg_tolerance))
 		        result = FAIL;
@@ -905,7 +905,7 @@ static enum test_result func_test4(struct test_config *tcfg)
 	rte_red_mark_queue_empty(tcfg->tqueue->rdata, get_port_ts());
 
 	/**
-	 * record empty time locally 
+	 * record empty time locally
 	 */
 	start = rte_rdtsc();
 
@@ -914,8 +914,8 @@ static enum test_result func_test4(struct test_config *tcfg)
 	/**
 	 * enqueue one packet to recalculate average queue size
 	 */
-	if (rte_red_enqueue(tcfg->tconfig->rconfig,  
-			    tcfg->tqueue->rdata, 
+	if (rte_red_enqueue(tcfg->tconfig->rconfig,
+			    tcfg->tqueue->rdata,
 			    *tcfg->tqueue->q,
 			    get_port_ts()) != 0) {
 		result = FAIL;
@@ -1077,7 +1077,7 @@ static enum test_result func_test5(struct test_config *tcfg)
 
 		drop_rate = calc_drop_rate(tcfg->tvar->enqueued[j],tcfg->tvar->dropped[j]);
 		drop_prob = calc_drop_prob(tcfg->tconfig->min_th, tcfg->tconfig->max_th,
-					   tcfg->tconfig->maxp_inv[tcfg->tqueue->qconfig[j]], 
+					   tcfg->tconfig->maxp_inv[tcfg->tqueue->qconfig[j]],
 					   *tcfg->tlevel);
 		if (!check_drop_rate(&diff, drop_rate, drop_prob, (double)tcfg->tqueue->drop_tolerance))
 		        result = FAIL;
@@ -1183,7 +1183,7 @@ static enum test_result func_test6(struct test_config *tcfg)
 		double exp_avg = 0;
 		double diff = 0.0;
 
-		avg_before = rte_red_get_avg_float(&tcfg->tconfig->rconfig[tcfg->tqueue->qconfig[j]], 
+		avg_before = rte_red_get_avg_float(&tcfg->tconfig->rconfig[tcfg->tqueue->qconfig[j]],
 						   &tcfg->tqueue->rdata[j]);
 
 		/**
@@ -1196,7 +1196,7 @@ static enum test_result func_test6(struct test_config *tcfg)
 		/**
 		 * enqueue one packet to recalculate average queue size
 		 */
-		if (rte_red_enqueue(&tcfg->tconfig->rconfig[tcfg->tqueue->qconfig[j]], 
+		if (rte_red_enqueue(&tcfg->tconfig->rconfig[tcfg->tqueue->qconfig[j]],
 				    &tcfg->tqueue->rdata[j],
 				    tcfg->tqueue->q[j],
 				    get_port_ts()) == 0) {
@@ -1206,7 +1206,7 @@ static enum test_result func_test6(struct test_config *tcfg)
 			result = FAIL;
 		}
 
-		exp_avg = calc_exp_avg_on_empty(avg_before, 
+		exp_avg = calc_exp_avg_on_empty(avg_before,
 				(1 << tcfg->tconfig->wq_log2[tcfg->tqueue->qconfig[j]]),
 				tcfg->tvar->wait_usec);
 		avg_after = rte_red_get_avg_float(&tcfg->tconfig->rconfig[tcfg->tqueue->qconfig[j]],
@@ -1229,7 +1229,7 @@ out:
 static struct rte_red_config pt_wrconfig[1];
 static struct rte_red pt_rtdata[1];
 static uint8_t pt_wq_log2[] = {9};
-static uint8_t pt_maxp_inv[] = {10}; 
+static uint8_t pt_maxp_inv[] = {10};
 static uint32_t pt_qconfig[] = {0};
 static uint32_t pt_q[] = {0};
 static uint32_t pt_dropped[] = {0};
@@ -1286,7 +1286,7 @@ static void enqueue_dequeue_perf(struct rte_red_config *red_cfg,
 }
 
 /**
- * Setup test structures for tests P1, P2, P3 
+ * Setup test structures for tests P1, P2, P3
  * performance tests 1, 2 and 3
  */
 static uint32_t pt1_tlevel[] = {16};
@@ -1337,8 +1337,8 @@ static struct test_config perf1_test3_config = {
 };
 
 /**
- * Performance test function to measure enqueue performance. 
- * This runs performance tests 1, 2 and 3 
+ * Performance test function to measure enqueue performance.
+ * This runs performance tests 1, 2 and 3
  */
 static enum test_result perf1_test(struct test_config *tcfg)
 {
@@ -1369,7 +1369,7 @@ static enum test_result perf1_test(struct test_config *tcfg)
 	 *  set the queue average
 	 */
 	rte_red_set_avg_int(tcfg->tconfig->rconfig, tcfg->tqueue->rdata, *tcfg->tlevel);
-	if (rte_red_get_avg_int(tcfg->tconfig->rconfig, tcfg->tqueue->rdata) 
+	if (rte_red_get_avg_int(tcfg->tconfig->rconfig, tcfg->tqueue->rdata)
 	    != *tcfg->tlevel) {
 		result = FAIL;
 		goto out;
@@ -1395,7 +1395,7 @@ out:
 }
 
 /**
- * Setup test structures for tests P4, P5, P6 
+ * Setup test structures for tests P4, P5, P6
  * performance tests 4, 5 and 6
  */
 static uint32_t pt4_tlevel[] = {16};
@@ -1469,8 +1469,8 @@ static struct test_config perf2_test6_config = {
 };
 
 /**
- * Performance test function to measure enqueue performance when the 
- * queue is empty. This runs performance tests 4, 5 and 6 
+ * Performance test function to measure enqueue performance when the
+ * queue is empty. This runs performance tests 4, 5 and 6
  */
 static enum test_result perf2_test(struct test_config *tcfg)
 {
@@ -1488,7 +1488,7 @@ static enum test_result perf2_test(struct test_config *tcfg)
 		goto out;
 	}
 
-	printf("%s", tcfg->htxt); 
+	printf("%s", tcfg->htxt);
 
 	for (i = 0; i < tcfg->tvar->num_iterations; i++) {
 		uint32_t count = 0;
@@ -1534,7 +1534,7 @@ static enum test_result perf2_test(struct test_config *tcfg)
 		 */
 		ts = get_port_ts();
 		rdtsc_prof_start(&prof);
-		ret = rte_red_enqueue(tcfg->tconfig->rconfig, tcfg->tqueue->rdata, 
+		ret = rte_red_enqueue(tcfg->tconfig->rconfig, tcfg->tqueue->rdata,
 				      *tcfg->tqueue->q, ts );
 		rdtsc_prof_end(&prof);
 
@@ -1557,7 +1557,7 @@ static enum test_result perf2_test(struct test_config *tcfg)
 			int ok = 0;
 
 			avg_after = rte_red_get_avg_float(tcfg->tconfig->rconfig, tcfg->tqueue->rdata);
-			exp_avg = calc_exp_avg_on_empty(avg_before, 
+			exp_avg = calc_exp_avg_on_empty(avg_before,
 						  (1 << *tcfg->tconfig->wq_log2),
 						  tcfg->tvar->wait_usec);
 			if (check_avg(&diff, avg_after, exp_avg, (double)tcfg->tqueue->avg_tolerance))
@@ -1589,7 +1589,7 @@ static uint32_t avg_max_bits = 0;
 
 static struct rte_red_config ovfl_wrconfig[1];
 static struct rte_red ovfl_rtdata[1];
-static uint8_t ovfl_maxp_inv[] = {10}; 
+static uint8_t ovfl_maxp_inv[] = {10};
 static uint32_t ovfl_qconfig[] = {0, 0, 1, 1};
 static uint32_t ovfl_q[] ={0};
 static uint32_t ovfl_dropped[] ={0};
@@ -1735,7 +1735,7 @@ static enum test_result ovfl_test1(struct test_config *tcfg)
 	        result = FAIL;
 
 	printf("%s", tcfg->htxt);
-	
+
 	printf("%-16u%-9u%-15u0x%08x     %-10u%-10u%-10u%-13.2lf%-13.2lf\n",
 	       avg, *tcfg->tconfig->wq_log2, RTE_RED_SCALING,
 	       avg_max, avg_max_bits,
@@ -1748,17 +1748,17 @@ out:
 /**
  * define the functional and performance tests to be executed
  */
-struct tests func_tests[] = { 
+struct tests func_tests[] = {
 	{ &func_test1_config, func_test1 },
-	{ &func_test2_config, func_test2 },		
+	{ &func_test2_config, func_test2 },
 	{ &func_test3_config, func_test3 },
 	{ &func_test4_config, func_test4 },
 	{ &func_test5_config, func_test5 },
 	{ &func_test6_config, func_test6 },
-	{ &ovfl_test1_config, ovfl_test1 }, 
+	{ &ovfl_test1_config, ovfl_test1 },
 };
 
-struct tests perf_tests[] = { 
+struct tests perf_tests[] = {
 	{ &perf1_test1_config, perf1_test },
 	{ &perf1_test2_config, perf1_test },
 	{ &perf1_test3_config, perf1_test },

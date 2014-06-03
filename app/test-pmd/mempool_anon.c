@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -72,7 +72,7 @@ get_phys_map(void *va, phys_addr_t pa[], uint32_t pg_num, uint32_t pg_sz)
 			"at offset %zu, error code: %d\n",
 			nb, PAGEMAP_FNAME, (size_t)ofs, errno);
 		rc = ENOENT;
-	} 
+	}
 
 	close(fd);
 
@@ -136,11 +136,11 @@ mempool_anon_create(const char *name, unsigned elt_num, unsigned elt_size,
 
 		if ((usz = rte_mempool_xmem_usage(va, elt_num, total_size, pa,
 				pg_num, pg_shift)) < 0) {
-			
+
 			n = -usz;
 			rc = ENOENT;
 			RTE_LOG(ERR, USER1, "%s(%s) only %u objects from %u "
-				"requested can  be created over " 
+				"requested can  be created over "
 				"mmaped region %p of %zu bytes\n",
 				__func__, name, n, elt_num, va, sz);
 		} else {
@@ -150,7 +150,7 @@ mempool_anon_create(const char *name, unsigned elt_num, unsigned elt_size,
 
 				uv = va + usz;
 				usz = sz - usz;
-				
+
 				RTE_LOG(INFO, USER1,
 					"%s(%s): unmap unused %zu of %zu "
 					"mmaped bytes @%p\n",
@@ -159,7 +159,7 @@ mempool_anon_create(const char *name, unsigned elt_num, unsigned elt_size,
 				sz -= usz;
 				pg_num = sz >> pg_shift;
 			}
-			
+
 			if ((mp = rte_mempool_xmem_create(name, elt_num,
 					elt_size, cache_size, private_data_size,
 					mp_init, mp_init_arg,
@@ -169,7 +169,7 @@ mempool_anon_create(const char *name, unsigned elt_num, unsigned elt_size,
 
 				RTE_VERIFY(elt_num == mp->size);
 		}
-	} 
+	}
 
 	if (mp == NULL) {
 		munmap(va, sz);

@@ -1,14 +1,14 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -50,11 +50,11 @@
 #define RTE_ETH_PCAP_SNAPLEN 4096
 #define RTE_ETH_PCAP_PROMISC 1
 #define RTE_ETH_PCAP_TIMEOUT -1
-#define ETH_PCAP_RX_PCAP_ARG  	"rx_pcap"
-#define ETH_PCAP_TX_PCAP_ARG  	"tx_pcap"
-#define ETH_PCAP_RX_IFACE_ARG 	"rx_iface"
-#define ETH_PCAP_TX_IFACE_ARG	"tx_iface"
-#define ETH_PCAP_IFACE_ARG		"iface"
+#define ETH_PCAP_RX_PCAP_ARG  "rx_pcap"
+#define ETH_PCAP_TX_PCAP_ARG  "tx_pcap"
+#define ETH_PCAP_RX_IFACE_ARG "rx_iface"
+#define ETH_PCAP_TX_IFACE_ARG "tx_iface"
+#define ETH_PCAP_IFACE_ARG    "iface"
 
 static char errbuf[PCAP_ERRBUF_SIZE];
 static struct timeval start_time;
@@ -139,7 +139,7 @@ eth_pcap_rx(void *queue,
 		packet = pcap_next(pcap_q->pcap, &header);
 		if (unlikely(packet == NULL))
 			break;
-		else 
+		else
 			mbuf = rte_pktmbuf_alloc(pcap_q->mb_pool);
 		if (unlikely(mbuf == NULL))
 			break;
@@ -158,7 +158,7 @@ eth_pcap_rx(void *queue,
 			num_rx++;
 		} else {
 			/* pcap packet will not fit in the mbuf, so drop packet */
-			RTE_LOG(ERR, PMD, 
+			RTE_LOG(ERR, PMD,
 					"PCAP packet %d bytes will not fit in mbuf (%d bytes)\n",
 					header.len, buf_size);
 			rte_pktmbuf_free(mbuf);

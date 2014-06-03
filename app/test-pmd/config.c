@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -653,7 +653,7 @@ port_rss_reta_info(portid_t port_id,struct rte_eth_rss_reta *reta_conf)
 	uint8_t i,j;
 	int ret;
 
-	if (port_id_is_invalid(port_id)) 
+	if (port_id_is_invalid(port_id))
 		return;
 
 	ret = rte_eth_dev_rss_reta_query(port_id, reta_conf);
@@ -666,14 +666,14 @@ port_rss_reta_info(portid_t port_id,struct rte_eth_rss_reta *reta_conf)
 		for (i = 0; i< ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
 			if (reta_conf->mask_lo & (uint64_t)(1ULL << i))
 				printf("RSS RETA configuration: hash index=%d,"
-					"queue=%d\n",i,reta_conf->reta[i]);	
+					"queue=%d\n",i,reta_conf->reta[i]);
 		}
 	}
-	
+
 	if (reta_conf->mask_hi != 0) {
 		for (i = 0; i< ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
 			if(reta_conf->mask_hi & (uint64_t)(1ULL << i)) {
-				j = (uint8_t)(i + ETH_RSS_RETA_NUM_ENTRIES/2);		
+				j = (uint8_t)(i + ETH_RSS_RETA_NUM_ENTRIES/2);
 				printf("RSS RETA configuration: hash index=%d,"
 					"queue=%d\n",j,reta_conf->reta[j]);
 			}
@@ -962,13 +962,13 @@ dcb_rxq_2_txq_mapping(queueid_t rxq, queueid_t *txq)
 	if(dcb_q_mapping == DCB_4_TCS_Q_MAPPING) {
 
 		if (rxq < 32)
-			/* tc0: 0-31 */ 
-			*txq = rxq;  
+			/* tc0: 0-31 */
+			*txq = rxq;
 		else if (rxq < 64) {
-			/* tc1: 64-95 */ 
+			/* tc1: 64-95 */
 			*txq =  (uint16_t)(rxq + 32);
-		} 
-		else {  
+		}
+		else {
 			/* tc2: 96-111;tc3:112-127 */
 			*txq =  (uint16_t)(rxq/2 + 64);
 		}
@@ -994,7 +994,7 @@ dcb_rxq_2_txq_mapping(queueid_t rxq, queueid_t *txq)
 
 /**
  * For the DCB forwarding test, each core is assigned on every port multi-transmit
- * queue. 
+ * queue.
  *
  * Each core is assigned a multi-stream, each stream being composed of
  * a RX queue to poll on a RX port for input messages, associated with
@@ -1006,7 +1006,7 @@ dcb_rxq_2_txq_mapping(queueid_t rxq, queueid_t *txq)
  *    - TxPk = (RxPi + 1) if RxPi is even, (RxPi - 1) if RxPi is odd
  *    - TxQl = RxQj
  * In non-VT mode,
- *    - TxPk = (RxPi + 1) if RxPi is even, (RxPi - 1) if RxPi is odd  
+ *    - TxPk = (RxPi + 1) if RxPi is even, (RxPi - 1) if RxPi is odd
  *    There is a mapping of RxQj to TxQl to be required,and the mapping was implemented
  *    in dcb_rxq_2_txq_mapping function.
  */
@@ -1024,7 +1024,7 @@ dcb_fwd_config_setup(void)
 
 	cur_fwd_config.nb_fwd_lcores = (lcoreid_t) nb_fwd_lcores;
 	cur_fwd_config.nb_fwd_ports = nb_fwd_ports;
-	cur_fwd_config.nb_fwd_streams = 
+	cur_fwd_config.nb_fwd_streams =
 		(streamid_t) (nb_q * cur_fwd_config.nb_fwd_ports);
 
 	/* reinitialize forwarding streams */
@@ -1182,7 +1182,7 @@ fwd_config_display(void)
 	if((dcb_config) && (nb_fwd_lcores == 1)) {
 		printf("In DCB mode,the nb forwarding cores should be larger than 1\n");
 		return;
-	} 
+	}
 	fwd_config_setup();
 	pkt_fwd_config_display(&cur_fwd_config);
 }
@@ -1786,11 +1786,11 @@ fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks)
 	       "diag=%d\n", port_id, diag);
 }
 
-void 
+void
 set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 {
 	int diag;
-	
+
 	if (port_id_is_invalid(port_id))
 		return;
 	if (is_rx)
@@ -1799,13 +1799,13 @@ set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 		diag = rte_eth_dev_set_vf_tx(port_id,vf,on);
 	if (diag == 0)
 		return;
-	if(is_rx)	
+	if(is_rx)
 		printf("rte_eth_dev_set_vf_rx for port_id=%d failed "
 	       		"diag=%d\n", port_id, diag);
 	else
 		printf("rte_eth_dev_set_vf_tx for port_id=%d failed "
 	       		"diag=%d\n", port_id, diag);
-		
+
 }
 
 void

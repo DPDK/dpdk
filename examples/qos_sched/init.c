@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -138,7 +138,7 @@ app_init_port(uint8_t portid, struct rte_mempool *mp)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d, port=%hu\n",
 		ret, portid);
-	
+
 	/* init one TX queue */
 	fflush(stdout);
 	ret = rte_eth_tx_queue_setup(portid, 0,
@@ -167,10 +167,10 @@ app_init_port(uint8_t portid, struct rte_mempool *mp)
 		printf(" Link Down\n");
 	}
 	rte_eth_promiscuous_enable(portid);
-	
+
 	/* mark port as initialized */
 	app_inited_port_mask |= 1u << portid;
-	
+
 	return 0;
 }
 
@@ -189,12 +189,12 @@ static struct rte_sched_pipe_params pipe_profiles[RTE_SCHED_PIPE_PROFILES_PER_PO
 		.tb_rate = 305175,
 		.tb_size = 1000000,
 
-		.tc_rate = {305175, 305175, 305175, 305175}, 
+		.tc_rate = {305175, 305175, 305175, 305175},
 		.tc_period = 40,
 #ifdef RTE_SCHED_SUBPORT_TC_OV
 		.tc_ov_weight = 1,
 #endif
-		
+
 		.wrr_weights = {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1},
 	},
 };
@@ -263,7 +263,7 @@ app_init_sched_port(uint32_t portid, uint32_t socketid)
 			rte_exit(EXIT_FAILURE, "Unable to config sched subport %u, err=%d\n",
 					subport, err);
 		}
-	
+
 		for (pipe = 0; pipe < port_params.n_pipes_per_subport; pipe ++) {
 			if (app_pipe_to_profile[subport][pipe] != -1) {
 				err = rte_sched_pipe_config(port, subport, pipe,
@@ -276,7 +276,7 @@ app_init_sched_port(uint32_t portid, uint32_t socketid)
 			}
 		}
 	}
-	
+
 	return port;
 }
 
@@ -285,7 +285,7 @@ app_load_cfg_profile(const char *profile)
 {
 	if (profile == NULL)
 		return 0;
-	
+
 	struct cfg_file *cfg_file = cfg_load(profile, 0);
 	if (cfg_file == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot load configuration profile %s\n", profile);
@@ -314,7 +314,7 @@ int app_init(void)
 	/* load configuration profile */
 	if (app_load_cfg_profile(cfg_profile) != 0)
 		rte_exit(EXIT_FAILURE, "Invalid configuration profile\n");
-	
+
 	/* Initialize each active flow */
 	for(i = 0; i < nb_pfc; i++) {
 		uint32_t socket = rte_lcore_to_socket_id(qos_conf[i].rx_core);
@@ -351,13 +351,13 @@ int app_init(void)
 
 		app_init_port(qos_conf[i].rx_port, qos_conf[i].mbuf_pool);
 		app_init_port(qos_conf[i].tx_port, qos_conf[i].mbuf_pool);
-		
+
 		qos_conf[i].sched_port = app_init_sched_port(qos_conf[i].tx_port, socket);
 	}
 
 	RTE_LOG(INFO, APP, "time stamp clock running at %" PRIu64 " Hz\n",
 			 rte_get_timer_hz());
-	
+
 	RTE_LOG(INFO, APP, "Ring sizes: NIC RX = %u, Mempool = %d SW queue = %u,"
 			 "NIC TX = %u\n", ring_conf.rx_size, mp_size, ring_conf.ring_size,
 			 ring_conf.tx_size);
@@ -365,7 +365,7 @@ int app_init(void)
 	RTE_LOG(INFO, APP, "Burst sizes: RX read = %hu, RX write = %hu,\n"
 						  "             Worker read/QoS enqueue = %hu,\n"
 						  "             QoS dequeue = %hu, Worker write = %hu\n",
-		burst_conf.rx_burst, burst_conf.ring_burst, burst_conf.ring_burst, 
+		burst_conf.rx_burst, burst_conf.ring_burst, burst_conf.ring_burst,
 		burst_conf.qos_dequeue, burst_conf.tx_burst);
 
 	RTE_LOG(INFO, APP, "NIC thresholds RX (p = %hhu, h = %hhu, w = %hhu),"

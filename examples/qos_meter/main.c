@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -67,7 +67,7 @@
 #endif
 
 /*
- * Buffer pool configuration 
+ * Buffer pool configuration
  *
  ***/
 #define MBUF_SIZE           (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
@@ -155,7 +155,7 @@ struct rte_meter_trtcm_params app_trtcm_params[] = {
 
 FLOW_METER app_flows[APP_FLOWS_MAX];
 
-static void 
+static void
 app_configure_flow_table(void)
 {
 	uint32_t i, j;
@@ -204,22 +204,22 @@ main_loop(__attribute__((unused)) void *dummy)
 	while (1) {
 		uint64_t time_diff;
 		int i, nb_rx;
-		
+
 		/* Mechanism to avoid stale packets in the output buffer */
 		current_time = rte_rdtsc();
 		time_diff = current_time - last_time;
 		if (unlikely(time_diff > TIME_TX_DRAIN)) {
 			int ret;
-			
+
 			if (pkts_tx_len == 0) {
 				last_time = current_time;
-				
+
 				continue;
 			}
 
 			/* Write packet burst to NIC TX */
 			ret = rte_eth_tx_burst(port_tx, NIC_TX_QUEUE, pkts_tx, pkts_tx_len);
-			
+
 			/* Free buffers for any packets not written successfully */
 			if (unlikely(ret < pkts_tx_len)) {
 				for ( ; ret < pkts_tx_len; ret ++) {
@@ -229,17 +229,17 @@ main_loop(__attribute__((unused)) void *dummy)
 
 			/* Empty the output buffer */
 			pkts_tx_len = 0;
-			
+
 			last_time = current_time;
 		}
-		
+
 		/* Read packet burst from NIC RX */
 		nb_rx = rte_eth_rx_burst(port_rx, NIC_RX_QUEUE, pkts_rx, PKT_RX_BURST_MAX);
-		
+
 		/* Handle packets */
 		for (i = 0; i < nb_rx; i ++) {
 			struct rte_mbuf *pkt = pkts_rx[i];
-			
+
 			/* Handle current packet */
 			if (app_pkt_handle(pkt, current_time) == DROP)
 				rte_pktmbuf_free(pkt);
@@ -247,19 +247,19 @@ main_loop(__attribute__((unused)) void *dummy)
 				pkts_tx[pkts_tx_len] = pkt;
 				pkts_tx_len ++;
 			}
-			
+
 			/* Write packets from output buffer to NIC TX when full burst is available */
 			if (unlikely(pkts_tx_len == PKT_TX_BURST_MAX)) {
 				/* Write packet burst to NIC TX */
 				int ret = rte_eth_tx_burst(port_tx, NIC_TX_QUEUE, pkts_tx, PKT_TX_BURST_MAX);
-				
+
 				/* Free buffers for any packets not written successfully */
 				if (unlikely(ret < PKT_TX_BURST_MAX)) {
 					for ( ; ret < PKT_TX_BURST_MAX; ret ++) {
 						rte_pktmbuf_free(pkts_tx[ret]);
 					}
 				}
-				
+
 				/* Empty the output buffer */
 				pkts_tx_len = 0;
 			}
@@ -303,7 +303,7 @@ parse_args(int argc, char **argv)
 	static struct option lgopts[] = {
 		{NULL, 0, 0, 0}
 	};
-	uint64_t port_mask, i, mask;		
+	uint64_t port_mask, i, mask;
 
 	argvopt = argv;
 
@@ -316,7 +316,7 @@ parse_args(int argc, char **argv)
 				print_usage(prgname);
 				return -1;
 			}
-			
+
 			for (i = 0, mask = 1; i < 64; i ++, mask <<= 1){
 				if (mask & port_mask){
 					port_rx = i;
@@ -332,14 +332,14 @@ parse_args(int argc, char **argv)
 					break;
 				}
 			}
-			
+
 			if (port_mask != 0) {
 				printf("invalid port mask (more than 2 ports)\n");
 				print_usage(prgname);
 				return -1;
 			}
 			break;
-			
+
 		default:
 			print_usage(prgname);
 			return -1;
@@ -370,18 +370,18 @@ MAIN(int argc, char **argv)
 	argc -= ret;
 	argv += ret;
 	if (rte_lcore_count() != 1) {
-		rte_exit(EXIT_FAILURE, "This application does not accept more than one core. " 
+		rte_exit(EXIT_FAILURE, "This application does not accept more than one core. "
 		"Please adjust the \"-c COREMASK\" parameter accordingly.\n");
 	}
-	
+
 	/* Application non-EAL arguments parse */
 	ret = parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid input arguments\n");
 
 	/* Buffer pool init */
-	pool = rte_mempool_create("pool", NB_MBUF, MBUF_SIZE, MEMPOOL_CACHE_SIZE, 
-		sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init, NULL, 
+	pool = rte_mempool_create("pool", NB_MBUF, MBUF_SIZE, MEMPOOL_CACHE_SIZE,
+		sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init, NULL,
 		rte_pktmbuf_init, NULL, rte_socket_id(), 0);
 	if (pool == NULL)
 		rte_exit(EXIT_FAILURE, "Buffer pool creation error\n");
@@ -397,7 +397,7 @@ MAIN(int argc, char **argv)
 	ret = rte_eth_rx_queue_setup(port_rx, NIC_RX_QUEUE, NIC_RX_QUEUE_DESC, rte_eth_dev_socket_id(port_rx), &rx_conf, pool);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d RX queue setup error (%d)\n", port_rx, ret);
-	
+
 	ret = rte_eth_tx_queue_setup(port_rx, NIC_TX_QUEUE, NIC_TX_QUEUE_DESC, rte_eth_dev_socket_id(port_rx), &tx_conf);
 	if (ret < 0)
 	rte_exit(EXIT_FAILURE, "Port %d TX queue setup error (%d)\n", port_rx, ret);
@@ -417,7 +417,7 @@ MAIN(int argc, char **argv)
 	ret = rte_eth_dev_start(port_rx);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d start error (%d)\n", port_rx, ret);
-		
+
 	ret = rte_eth_dev_start(port_tx);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d start error (%d)\n", port_tx, ret);
@@ -425,7 +425,7 @@ MAIN(int argc, char **argv)
 	rte_eth_promiscuous_enable(port_rx);
 
 	rte_eth_promiscuous_enable(port_tx);
-	
+
 	/* App configuration */
 	app_configure_flow_table();
 

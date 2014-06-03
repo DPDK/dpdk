@@ -1,13 +1,13 @@
 /**
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -73,7 +73,7 @@ rte_fbk_hash_find_existing(const char *name)
 	struct rte_fbk_hash_list *fbk_hash_list;
 
 	/* check that we have an initialised tail queue */
-	if ((fbk_hash_list = 
+	if ((fbk_hash_list =
 	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_FBK_HASH, rte_fbk_hash_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
 		return NULL;
@@ -111,10 +111,10 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 	struct rte_fbk_hash_list *fbk_hash_list;
 
 	/* check that we have an initialised tail queue */
-	if ((fbk_hash_list = 
+	if ((fbk_hash_list =
 	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_FBK_HASH, rte_fbk_hash_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;	
+		return NULL;
 	}
 
 	/* Error checking of parameters. */
@@ -171,9 +171,9 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 
 	TAILQ_INSERT_TAIL(fbk_hash_list, ht, next);
 
-exit:	
+exit:
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
-	
+
 	return ht;
 }
 

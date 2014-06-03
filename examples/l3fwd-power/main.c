@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -396,7 +396,7 @@ struct lcore_stats {
 	uint64_t nb_rx_processed;
 	/* total iterations looped recently */
 	uint64_t nb_iteration_looped;
-	uint32_t padding[9]; 
+	uint32_t padding[9];
 } __rte_cache_aligned;
 
 static struct lcore_conf lcore_conf[RTE_MAX_LCORE] __rte_cache_aligned;
@@ -443,7 +443,7 @@ power_timer_cb(__attribute__((unused)) struct rte_timer *tim,
 	/* accumulate total execution time in us when callback is invoked */
 	sleep_time_ratio = (float)(stats[lcore_id].sleep_time) /
 					(float)SCALING_PERIOD;
-		
+
 	/**
 	 * check whether need to scale down frequency a step if it sleep a lot.
 	 */
@@ -816,7 +816,7 @@ main_loop(__attribute__((unused)) void *dummy)
 	struct lcore_conf *qconf;
 	struct lcore_rx_queue *rx_queue;
 	enum freq_scale_hint_t lcore_scaleup_hint;
-	
+
 	uint32_t lcore_rx_idle_count = 0;
 	uint32_t lcore_idle_hint = 0;
 
@@ -949,8 +949,8 @@ main_loop(__attribute__((unused)) void *dummy)
 						lcore_scaleup_hint)
 					lcore_scaleup_hint =
 						rx_queue->freq_up_hint;
-			}	
-		
+			}
+
 			if (lcore_scaleup_hint == FREQ_HIGHEST)
 				rte_power_freq_max(lcore_id);
 			else if (lcore_scaleup_hint == FREQ_HIGHER)
@@ -1229,7 +1229,7 @@ parse_args(int argc, char **argv)
 				printf("numa is disabled \n");
 				numa_on = 0;
 			}
-			
+
 			if (!strncmp(lgopts[option_index].name,
 					"enable-jumbo", 12)) {
 				struct option lenopts =
@@ -1238,7 +1238,7 @@ parse_args(int argc, char **argv)
 
 				printf("jumbo frame is enabled \n");
 				port_conf.rxmode.jumbo_frame = 1;
-	
+
 				/**
 				 * if no max-pkt-len set, use the default value
 				 * ETHER_MAX_LEN
@@ -1259,7 +1259,7 @@ parse_args(int argc, char **argv)
 					"max packet length to %u\n",
 				(unsigned int)port_conf.rxmode.max_rx_pkt_len);
 			}
-			
+
 			break;
 
 		default:

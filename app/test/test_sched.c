@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -155,7 +155,7 @@ prepare_pkt(struct rte_mbuf *mbuf)
 /**
  * test main entrance for library sched
  */
-int 
+int
 test_sched(void)
 {
 	struct rte_mempool *mp = NULL;
@@ -175,7 +175,7 @@ test_sched(void)
 	port = rte_sched_port_config(&port_param);
 	VERIFY(port != NULL, "Error config sched port\n");
 
-	
+
 	err = rte_sched_subport_config(port, SUBPORT, subport_param);
 	VERIFY(err == 0, "Error config sched, err=%d\n", err);
 

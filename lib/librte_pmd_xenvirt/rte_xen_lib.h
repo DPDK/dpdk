@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -66,10 +66,10 @@
 
 #define MAP_FLAG	0xA5
 
-#define RTE_ETH_XENVIRT_PAIRS_DELIM	';'
-#define RTE_ETH_XENVIRT_KEY_VALUE_DELIM	'='
-#define RTE_ETH_XENVIRT_MAX_ARGS	1
-#define RTE_ETH_XENVIRT_MAC_PARAM 	"mac"
+#define RTE_ETH_XENVIRT_PAIRS_DELIM ';'
+#define RTE_ETH_XENVIRT_KEY_VALUE_DELIM '='
+#define RTE_ETH_XENVIRT_MAX_ARGS 1
+#define RTE_ETH_XENVIRT_MAC_PARAM "mac"
 struct xenvirt_dict {
 	uint8_t addr_valid;
 	struct ether_addr addr;

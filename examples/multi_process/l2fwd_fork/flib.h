@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -57,7 +57,7 @@ int flib_init(void);
  * Check that every SLAVE lcores are in WAIT state, then call
  * flib_remote_launch() for all of them. If call_master is true
  * (set to CALL_MASTER), also call the function on the master lcore.
- * 
+ *
  * @param f:
  *	function pointer need to run
  * @param arg:
@@ -69,13 +69,13 @@ int flib_init(void);
  *    - 0 : function  execute successfully
  *    - -1 :  function  execute  failed
  */
-int flib_mp_remote_launch(lcore_function_t *f, 
+int flib_mp_remote_launch(lcore_function_t *f,
 		void *arg, enum rte_rmt_call_master_t call_master);
 
 /**
  * Send a message to a slave lcore identified by slave_id to call a
  * function f with argument arg.
- * 
+ *
  * @param f:
  *	function pointer need to run
  * @param arg:
@@ -86,12 +86,12 @@ int flib_mp_remote_launch(lcore_function_t *f,
  *    - 0 : function  execute successfully
  *    - -1 :  function  execute  failed
  */
-int flib_remote_launch(lcore_function_t *f, 
+int flib_remote_launch(lcore_function_t *f,
 					void *arg, unsigned slave_id);
 
 /**
- * Query the running stat for specific slave, wont' work in with master id 
- * 
+ * Query the running stat for specific slave, wont' work in with master id
+ *
  * @param slave_id:
  *	lcore id which should not be master id
  * @return
@@ -99,12 +99,12 @@ int flib_remote_launch(lcore_function_t *f,
  *	 - ST_IDLE     : lcore is idle
  *    -  ST_RUN     : lcore is running something
  */
-enum slave_stat 
+enum slave_stat
 flib_query_slave_status(unsigned slave_id);
 
 /**
- * Register a callback function to be notified in case specific slave exit.  
- * 
+ * Register a callback function to be notified in case specific slave exit.
+ *
  * @param slave_id:
  *	lcore id which should not be master id
  * @param cb:
@@ -114,7 +114,7 @@ flib_query_slave_status(unsigned slave_id);
  *    - -EFAULT  :  argument error
  *    - -ENOENT :  slave_id not correct
  */
-int flib_register_slave_exit_notify(unsigned slave_id, 
+int flib_register_slave_exit_notify(unsigned slave_id,
 	slave_exit_notify *cb);
 
 /**

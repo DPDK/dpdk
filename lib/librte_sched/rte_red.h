@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -78,7 +78,7 @@ if (!(exp)) {                                                    \
 
 /**
  * Externs
- * 
+ *
  */
 extern uint32_t rte_red_rand_val;
 extern uint32_t rte_red_rand_seed;
@@ -87,7 +87,7 @@ extern uint16_t rte_red_pow2_frac_inv[16];
 
 /**
  * RED configuration parameters passed by user
- * 
+ *
  */
 struct rte_red_params {
 	uint16_t min_th;   /**< Minimum threshold for queue (max_th) */
@@ -116,9 +116,9 @@ struct rte_red {
 	uint64_t q_time;   /**< Start of the queue idle time (q_time) */
 };
 
-/** 
+/**
  * @brief Initialises run-time data
- *  
+ *
  * @param [in,out] data pointer to RED runtime data
  *
  * @return Operation status
@@ -128,16 +128,16 @@ struct rte_red {
 int
 rte_red_rt_data_init(struct rte_red *red);
 
-/** 
+/**
  * @brief Configures a single RED configuration parameter structure.
- * 
+ *
  * @param [in,out] config pointer to a RED configuration parameter structure
  * @param [in] wq_log2 log2 of the filter weight, valid range is:
  *             RTE_RED_WQ_LOG2_MIN <= wq_log2 <= RTE_RED_WQ_LOG2_MAX
  * @param [in] min_th queue minimum threshold in number of packets
  * @param [in] max_th queue maximum threshold in number of packets
  * @param [in] maxp_inv inverse maximum mark probability
- * 
+ *
  * @return Operation status
  * @retval 0 success
  * @retval !0 error
@@ -225,7 +225,7 @@ __rte_red_calc_qempty_factor(uint8_t wq_log2, uint16_t m)
 	return 0;
 }
 
-/** 
+/**
  * @brief Updates queue average in condition when queue is empty
  *
  * Note: packet is never dropped in this particular case.
@@ -233,7 +233,7 @@ __rte_red_calc_qempty_factor(uint8_t wq_log2, uint16_t m)
  * @param [in] config pointer to a RED configuration parameter structure
  * @param [in,out] data pointer to RED runtime data
  * @param [in] time current time stamp
- * 
+ *
  * @return Operation status
  * @retval 0 enqueue the packet
  * @retval 1 drop the packet based on max threshold criterion
@@ -245,7 +245,7 @@ rte_red_enqueue_empty(const struct rte_red_config *red_cfg,
 	const uint64_t time)
 {
 	uint64_t time_diff = 0, m = 0;
-	
+
 	RTE_RED_ASSERT(red_cfg != NULL);
 	RTE_RED_ASSERT(red != NULL);
 
@@ -259,7 +259,7 @@ rte_red_enqueue_empty(const struct rte_red_config *red_cfg,
 
 	/**
 	 * m is the number of packets that might have arrived while the queue was empty.
-	 * In this case we have time stamps provided by scheduler in byte units (bytes 
+	 * In this case we have time stamps provided by scheduler in byte units (bytes
 	 * transmitted on network port). Such time stamp translates into time units as
 	 * port speed is fixed but such approach simplifies the code.
 	 */
@@ -336,21 +336,21 @@ __rte_red_drop(const struct rte_red_config *red_cfg, struct rte_red *red)
 	/* If drop, generate and save random number to be used next time */
 	if (unlikely((rte_red_rand_val % pa_den) < pa_num)) {
 		rte_red_rand_val = rte_fast_rand();
-		
+
 		return 1;
 	}
-	
+
 	/* No drop */
 	return 0;
 }
 
-/** 
+/**
  * @brief Decides if new packet should be enqeued or dropped in queue non-empty case
  *
  * @param [in] config pointer to a RED configuration parameter structure
  * @param [in,out] data pointer to RED runtime data
  * @param [in] q current queue size (measured in packets)
- * 
+ *
  * @return Operation status
  * @retval 0 enqueue the packet
  * @retval 1 drop the packet based on max threshold criterion
@@ -376,7 +376,7 @@ rte_red_enqueue_nonempty(const struct rte_red_config *red_cfg,
 	*    avg_s = avg_s + (q << N) - (avg_s >> n)
 	*    avg_s += (q << N) - (avg_s >> n)
 	*/
-	
+
 	/* avg update */
 	red->avg += (q << RTE_RED_SCALING) - (red->avg >> red_cfg->wq_log2);
 
@@ -396,23 +396,23 @@ rte_red_enqueue_nonempty(const struct rte_red_config *red_cfg,
 		red->count = 0;
 		return 2;
 	}
-	
+
 	/* max_th <= avg: always mark the packet */
 	red->count = 0;
 	return 1;
 }
 
-/** 
+/**
  * @brief Decides if new packet should be enqeued or dropped
  * Updates run time data based on new queue size value.
  * Based on new queue average and RED configuration parameters
- * gives verdict whether to enqueue or drop the packet. 
+ * gives verdict whether to enqueue or drop the packet.
  *
  * @param [in] config pointer to a RED configuration parameter structure
  * @param [in,out] data pointer to RED runtime data
  * @param [in] q updated queue size in packets
  * @param [in] time current time stamp
- * 
+ *
  * @return Operation status
  * @retval 0 enqueue the packet
  * @retval 1 drop the packet based on max threshold criteria
@@ -434,7 +434,7 @@ rte_red_enqueue(const struct rte_red_config *red_cfg,
 	}
 }
 
-/** 
+/**
  * @brief Callback to records time that queue became empty
  *
  * @param [in,out] data pointer to RED runtime data

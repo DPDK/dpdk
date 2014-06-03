@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -192,7 +192,7 @@ contigmem_physaddr(SYSCTL_HANDLER_ARGS)
 	uint64_t	physaddr;
 	int		index = (int)(uintptr_t)arg1;
 
-	physaddr = (uint64_t)vtophys(contigmem_buffers[index]); 
+	physaddr = (uint64_t)vtophys(contigmem_buffers[index]);
 	return (sysctl_handle_64(oidp, &physaddr, 0, req));
 }
 
@@ -224,7 +224,7 @@ contigmem_mmap_single(struct cdev *cdev, vm_ooffset_t *offset, vm_size_t size,
 	if ((*offset/PAGE_SIZE) >= contigmem_num_buffers)
 		return (EINVAL);
 
-	*offset = (vm_ooffset_t)vtophys(contigmem_buffers[*offset/PAGE_SIZE]); 
+	*offset = (vm_ooffset_t)vtophys(contigmem_buffers[*offset/PAGE_SIZE]);
 	*obj = vm_pager_allocate(OBJT_DEVICE, cdev, size, nprot, *offset,
 			curthread->td_ucred);
 

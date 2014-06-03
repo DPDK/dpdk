@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -160,7 +160,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 
 	rte_snprintf(intf_name, RTE_KNI_NAMESIZE, conf->name);
 	rte_snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "KNI_INFO_%s", intf_name);
-	mz = kni_memzone_reserve(mz_name, sizeof(struct rte_kni), 
+	mz = kni_memzone_reserve(mz_name, sizeof(struct rte_kni),
 				SOCKET_ID_ANY, 0);
 	KNI_MZ_CHECK(mz == NULL);
 	ctx = mz->addr;
@@ -478,7 +478,7 @@ kni_check_request_register(struct rte_kni_ops *ops)
 	/* check if KNI request ops has been registered*/
 	if( NULL == ops )
 		return KNI_REQ_NO_REGISTER;
-		 
+
 	if((NULL == ops->change_mtu) && (NULL == ops->config_network_if))
 		return KNI_REQ_NO_REGISTER;
 
@@ -489,7 +489,7 @@ int
 rte_kni_register_handlers(struct rte_kni *kni,struct rte_kni_ops *ops)
 {
 	enum kni_ops_status req_status;
-	
+
 	if (NULL == ops) {
 		RTE_LOG(ERR, KNI, "Invalid KNI request operation.\n");
 		return -1;
@@ -507,7 +507,7 @@ rte_kni_register_handlers(struct rte_kni *kni,struct rte_kni_ops *ops)
 		return -1;
 	}
 
-	memcpy(&kni->ops, ops, sizeof(struct rte_kni_ops));	
+	memcpy(&kni->ops, ops, sizeof(struct rte_kni_ops));
 	return 0;
 }
 
@@ -518,17 +518,17 @@ rte_kni_unregister_handlers(struct rte_kni *kni)
 		RTE_LOG(ERR, KNI, "Invalid kni info.\n");
 		return -1;
 	}
-	
+
 	kni->ops.change_mtu = NULL;
 	kni->ops.config_network_if = NULL;
 	return 0;
 }
-void 
+void
 rte_kni_close(void)
 {
 	if (kni_fd < 0)
 		return;
 
 	close(kni_fd);
-	kni_fd = -1;	
+	kni_fd = -1;
 }

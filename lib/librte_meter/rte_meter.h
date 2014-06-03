@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -150,7 +150,7 @@ rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m,
 static inline enum rte_meter_color
 rte_meter_srtcm_color_aware_check(struct rte_meter_srtcm *m,
 	uint64_t time,
-	uint32_t pkt_len, 
+	uint32_t pkt_len,
 	enum rte_meter_color pkt_color);
 
 /**
@@ -194,7 +194,7 @@ rte_meter_trtcm_color_aware_check(struct rte_meter_trtcm *m,
  * Inline implementation of run-time methods
  *
  ***/
- 
+
 /* Internal data structure storing the srTCM run-time context per metered traffic flow. */
 struct rte_meter_srtcm {
 	uint64_t time; /* Time of latest update of C and E token buckets */
@@ -221,38 +221,38 @@ struct rte_meter_trtcm {
 };
 
 static inline enum rte_meter_color
-rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m, 
+rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m,
 	uint64_t time,
 	uint32_t pkt_len)
 {
 	uint64_t time_diff, n_periods, tc, te;
-	
+
 	/* Bucket update */
 	time_diff = time - m->time;
 	n_periods = time_diff / m->cir_period;
 	m->time += n_periods * m->cir_period;
-	
+
 	tc = m->tc + n_periods * m->cir_bytes_per_period;
 	if (tc > m->cbs)
 		tc = m->cbs;
-	
+
 	te = m->te + n_periods * m->cir_bytes_per_period;
 	if (te > m->ebs)
 		te = m->ebs;
-	
+
 	/* Color logic */
 	if (tc >= pkt_len) {
 		m->tc = tc - pkt_len;
 		m->te = te;
 		return e_RTE_METER_GREEN;
 	}
-	
+
 	if (te >= pkt_len) {
 		m->tc = tc;
 		m->te = te - pkt_len;
 		return e_RTE_METER_YELLOW;
 	}
-	
+
 	m->tc = tc;
 	m->te = te;
 	return e_RTE_METER_RED;
@@ -261,37 +261,37 @@ rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m,
 static inline enum rte_meter_color
 rte_meter_srtcm_color_aware_check(struct rte_meter_srtcm *m,
 	uint64_t time,
-	uint32_t pkt_len, 
+	uint32_t pkt_len,
 	enum rte_meter_color pkt_color)
 {
 	uint64_t time_diff, n_periods, tc, te;
-	
+
 	/* Bucket update */
 	time_diff = time - m->time;
 	n_periods = time_diff / m->cir_period;
 	m->time += n_periods * m->cir_period;
-	
+
 	tc = m->tc + n_periods * m->cir_bytes_per_period;
 	if (tc > m->cbs)
 		tc = m->cbs;
-	
+
 	te = m->te + n_periods * m->cir_bytes_per_period;
 	if (te > m->ebs)
 		te = m->ebs;
-	
+
 	/* Color logic */
 	if ((pkt_color == e_RTE_METER_GREEN) && (tc >= pkt_len)) {
 		m->tc = tc - pkt_len;
 		m->te = te;
 		return e_RTE_METER_GREEN;
 	}
-	
+
 	if ((pkt_color != e_RTE_METER_RED) && (te >= pkt_len)) {
 		m->tc = tc;
 		m->te = te - pkt_len;
 		return e_RTE_METER_YELLOW;
 	}
-	
+
 	m->tc = tc;
 	m->te = te;
 	return e_RTE_METER_RED;
@@ -303,7 +303,7 @@ rte_meter_trtcm_color_blind_check(struct rte_meter_trtcm *m,
 	uint32_t pkt_len)
 {
 	uint64_t time_diff_tc, time_diff_tp, n_periods_tc, n_periods_tp, tc, tp;
-	
+
 	/* Bucket update */
 	time_diff_tc = time - m->time_tc;
 	time_diff_tp = time - m->time_tp;
@@ -311,28 +311,28 @@ rte_meter_trtcm_color_blind_check(struct rte_meter_trtcm *m,
 	n_periods_tp = time_diff_tp / m->pir_period;
 	m->time_tc += n_periods_tc * m->cir_period;
 	m->time_tp += n_periods_tp * m->pir_period;
-	
+
 	tc = m->tc + n_periods_tc * m->cir_bytes_per_period;
 	if (tc > m->cbs)
 		tc = m->cbs;
-		
+
 	tp = m->tp + n_periods_tp * m->pir_bytes_per_period;
 	if (tp > m->pbs)
 		tp = m->pbs;
-	
+
 	/* Color logic */
 	if (tp < pkt_len) {
 		m->tc = tc;
 		m->tp = tp;
 		return e_RTE_METER_RED;
 	}
-	
+
 	if (tc < pkt_len) {
 		m->tc = tc;
 		m->tp = tp - pkt_len;
 		return e_RTE_METER_YELLOW;
 	}
-	
+
 	m->tc = tc - pkt_len;
 	m->tp = tp - pkt_len;
 	return e_RTE_METER_GREEN;
@@ -341,11 +341,11 @@ rte_meter_trtcm_color_blind_check(struct rte_meter_trtcm *m,
 static inline enum rte_meter_color
 rte_meter_trtcm_color_aware_check(struct rte_meter_trtcm *m,
 	uint64_t time,
-	uint32_t pkt_len, 
+	uint32_t pkt_len,
 	enum rte_meter_color pkt_color)
 {
 	uint64_t time_diff_tc, time_diff_tp, n_periods_tc, n_periods_tp, tc, tp;
-	
+
 	/* Bucket update */
 	time_diff_tc = time - m->time_tc;
 	time_diff_tp = time - m->time_tp;
@@ -353,28 +353,28 @@ rte_meter_trtcm_color_aware_check(struct rte_meter_trtcm *m,
 	n_periods_tp = time_diff_tp / m->pir_period;
 	m->time_tc += n_periods_tc * m->cir_period;
 	m->time_tp += n_periods_tp * m->pir_period;
-	
+
 	tc = m->tc + n_periods_tc * m->cir_bytes_per_period;
 	if (tc > m->cbs)
 		tc = m->cbs;
-		
+
 	tp = m->tp + n_periods_tp * m->pir_bytes_per_period;
 	if (tp > m->pbs)
 		tp = m->pbs;
-	
+
 	/* Color logic */
 	if ((pkt_color == e_RTE_METER_RED) || (tp < pkt_len)) {
 		m->tc = tc;
 		m->tp = tp;
 		return e_RTE_METER_RED;
 	}
-	
+
 	if ((pkt_color == e_RTE_METER_YELLOW) || (tc < pkt_len)) {
 		m->tc = tc;
 		m->tp = tp - pkt_len;
 		return e_RTE_METER_YELLOW;
 	}
-	
+
 	m->tc = tc - pkt_len;
 	m->tp = tp - pkt_len;
 	return e_RTE_METER_GREEN;

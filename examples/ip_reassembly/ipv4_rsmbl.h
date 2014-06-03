@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -143,7 +143,7 @@ ipv4_frag_free_death_row(struct ipv4_frag_death_row *dr, uint32_t prefetch)
 	k = RTE_MIN(prefetch, dr->cnt);
 	n = dr->cnt;
 
-	for (i = 0; i != k; i++) 
+	for (i = 0; i != k; i++)
 		rte_prefetch0(dr->row[i]);
 
 	for (i = 0; i != n - k; i++) {
@@ -170,7 +170,7 @@ ipv4_frag_chain(struct rte_mbuf *mn, struct rte_mbuf *mp)
 	/* adjust start of the last fragment data. */
 	rte_pktmbuf_adj(mp, (uint16_t)(mp->pkt.vlan_macip.f.l2_len +
 		mp->pkt.vlan_macip.f.l3_len));
-				
+
 	/* chain two fragments. */
 	ms = rte_pktmbuf_lastseg(mn);
 	ms->pkt.next = mp;
@@ -178,7 +178,7 @@ ipv4_frag_chain(struct rte_mbuf *mn, struct rte_mbuf *mp)
 	/* accumulate number of segments and total length. */
 	mn->pkt.nb_segs = (uint8_t)(mn->pkt.nb_segs + mp->pkt.nb_segs);
 	mn->pkt.pkt_len += mp->pkt.pkt_len;
-					
+
 	/* reset pkt_len and nb_segs for chained fragment. */
 	mp->pkt.pkt_len = mp->pkt.data_len;
 	mp->pkt.nb_segs = 1;
@@ -356,7 +356,7 @@ ipv4_frag_process(struct ipv4_frag_pkt *fp, struct ipv4_frag_death_row *dr,
  *   Fragment's offset (as extracted from the header).
  * @param ip_flag
  *   Fragment's MF flag.
- * @return  
+ * @return
  *   Pointer to mbuf for reassebled packet, or NULL if:
  *   - an error occured.
  *   - not all fragments of the packet are collected yet.
@@ -403,7 +403,7 @@ ipv4_frag_mbuf(struct ipv4_frag_tbl *tbl, struct ipv4_frag_death_row *dr,
 		tbl, tbl->max_entries, tbl->use_entries,
 		fp, fp->key.src_dst, fp->key.id, fp->start,
 		fp->total_size, fp->frag_size, fp->last_idx);
-		
+
 
 	/* process the fragmented packet. */
 	mb = ipv4_frag_process(fp, dr, mb, ip_ofs, ip_len, ip_flag);

@@ -1,14 +1,14 @@
 #!/usr/bin/python
 #/*
 # *   BSD LICENSE
-# * 
+# *
 # *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 # *   All rights reserved.
-# * 
+# *
 # *   Redistribution and use in source and binary forms, with or without
 # *   modification, are permitted provided that the following conditions
 # *   are met:
-# * 
+# *
 # *     * Redistributions of source code must retain the above copyright
 # *       notice, this list of conditions and the following disclaimer.
 # *     * Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
 # *     * Neither the name of Intel Corporation nor the names of its
 # *       contributors may be used to endorse or promote products derived
 # *       from this software without specific prior written permission.
-# * 
+# *
 # *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -33,23 +33,23 @@
 # */
 
 #####################################################################
-# This script is designed to modify the call to the QEMU emulator 
-# to support userspace vhost when starting a guest machine through 
-# libvirt with vhost enabled. The steps to enable this are as follows 
+# This script is designed to modify the call to the QEMU emulator
+# to support userspace vhost when starting a guest machine through
+# libvirt with vhost enabled. The steps to enable this are as follows
 # and should be run as root:
 #
 # 1. Place this script in a libvirtd's binary search PATH ($PATH)
-#    A good location would be in the same directory that the QEMU 
+#    A good location would be in the same directory that the QEMU
 #    binary is located
-#   
-# 2. Ensure that the script has the same owner/group and file 
+#
+# 2. Ensure that the script has the same owner/group and file
 #    permissions as the QEMU binary
 #
 # 3. Update the VM xml file using "virsh edit VM.xml"
 #
 #    3.a) Set the VM to use the launch script
 #
-#    	Set the emulator path contained in the 
+#    	Set the emulator path contained in the
 #		<emulator><emulator/> tags
 #
 #    	e.g replace <emulator>/usr/bin/qemu-kvm<emulator/>
@@ -62,9 +62,9 @@
 #       	<driver name="vhost"/>
 #		<interface/>
 #
-# 4. Enable libvirt to access our userpace device file by adding it to 
+# 4. Enable libvirt to access our userpace device file by adding it to
 #    controllers cgroup for libvirtd using the following steps
-#    
+#
 #   4.a) In /etc/libvirt/qemu.conf add/edit the following lines:
 #         1) cgroup_controllers = [ ... "devices", ... ]
 #		  2) clear_emulator_capabilities = 0
@@ -80,41 +80,41 @@
 #
 #   4.b) Disable SELinux or set to permissive mode
 #
-#   4.c) Mount cgroup device controller 
+#   4.c) Mount cgroup device controller
 #        "mkdir /dev/cgroup"
 #        "mount -t cgroup none /dev/cgroup -o devices"
 #
-#   4.d) Set hugetlbfs_mount variable - ( Optional ) 
-#        VMs using userspace vhost must use hugepage backed 
+#   4.d) Set hugetlbfs_mount variable - ( Optional )
+#        VMs using userspace vhost must use hugepage backed
 #        memory. This can be enabled in the libvirt XML
-#        config by adding a memory backing section to the 
+#        config by adding a memory backing section to the
 #        XML config e.g.
 #             <memoryBacking>
 #             <hugepages/>
 #             </memoryBacking>
 #        This memory backing section should be added after the
 #        <memory> and <currentMemory> sections. This will add
-#        flags "-mem-prealloc -mem-path <path>" to the QEMU 
-#        command line. The hugetlbfs_mount variable can be used 
+#        flags "-mem-prealloc -mem-path <path>" to the QEMU
+#        command line. The hugetlbfs_mount variable can be used
 #        to override the default <path> passed through by libvirt.
-# 
-#        if "-mem-prealloc" or "-mem-path <path>" are not passed 
+#
+#        if "-mem-prealloc" or "-mem-path <path>" are not passed
 #        through and a vhost device is detected then these options will
 #        be automatically added by this script. This script will detect
-#        the system hugetlbfs mount point to be used for <path>. The 
-#        default <path> for this script can be overidden by the 
+#        the system hugetlbfs mount point to be used for <path>. The
+#        default <path> for this script can be overidden by the
 #        hugetlbfs_dir variable in the configuration section of this script.
-#        
+#
 #
 #   4.e) Restart the libvirtd system process
 #        e.g. on Fedora "systemctl restart libvirtd.service"
 #
 #
 #   4.f) Edit the Configuration Parameters section of this script
-#        to point to the correct emulator location and set any 
+#        to point to the correct emulator location and set any
 #        addition options
 #
-# The script modifies the libvirtd Qemu call by modifying/adding 
+# The script modifies the libvirtd Qemu call by modifying/adding
 # options based on the configuration parameters below.
 # NOTE:
 #     emul_path and us_vhost_path must be set
@@ -125,24 +125,24 @@
 #############################################
 # Configuration Parameters
 #############################################
-#Path to QEMU binary 
+#Path to QEMU binary
 emul_path = "/usr/local/bin/qemu-system-x86_64"
 
 #Path to userspace vhost device file
-# This filename should match the --dev-basename --dev-index parameters of 
+# This filename should match the --dev-basename --dev-index parameters of
 # the command used to launch the userspace vhost sample application e.g.
 # if the sample app lauch command is:
 #    ./build/vhost-switch ..... --dev-basename usvhost --dev-index 1
 # then this variable should be set to:
-#   us_vhost_path = "/dev/usvhost-1" 
-us_vhost_path = "/dev/usvhost-1" 
+#   us_vhost_path = "/dev/usvhost-1"
+us_vhost_path = "/dev/usvhost-1"
 
 #List of additional user defined emulation options. These options will
-#be added to all Qemu calls 
+#be added to all Qemu calls
 emul_opts_user = []
 
 #List of additional user defined emulation options for vhost only.
-#These options will only be added to vhost enabled guests 
+#These options will only be added to vhost enabled guests
 emul_opts_user_vhost = []
 
 #For all VHOST enabled VMs, the VM memory is preallocated from hugetlbfs
@@ -160,13 +160,13 @@ hugetlbfs_dir = ""
 # ****** Do Not Modify Below this Line ******
 #############################################
 
-import sys, os, subprocess 
+import sys, os, subprocess
 
 
 #List of open userspace vhost file descriptors
 fd_list = []
 
-#additional virtio device flags when using userspace vhost            
+#additional virtio device flags when using userspace vhost
 vhost_flags = [ "csum=off",
                 "gso=off",
                 "guest_tso4=off",
@@ -180,7 +180,7 @@ vhost_flags = [ "csum=off",
 # Note:
 # if multiple hugetlbfs mount points exist
 # then the first one found will be used
-############################################# 
+#############################################
 def find_huge_mount():
 
     if (len(hugetlbfs_dir)):
@@ -194,7 +194,7 @@ def find_huge_mount():
         while line:
             line_split = line.split(" ")
             if line_split[2] == 'hugetlbfs':
-                huge_mount = line_split[1]                
+                huge_mount = line_split[1]
                 break
             line = f.readline()
     else:
@@ -204,14 +204,14 @@ def find_huge_mount():
     f.close
     if len(huge_mount) == 0:
         print "Failed to find hugetlbfs mount point"
-        exit (1)    
+        exit (1)
 
     return huge_mount
 
 
 #############################################
 # Get a userspace Vhost file descriptor
-############################################# 
+#############################################
 def get_vhost_fd():
 
     if (os.access(us_vhost_path, os.F_OK)):
@@ -219,7 +219,7 @@ def get_vhost_fd():
     else:
         print ("US-Vhost file %s not found" %us_vhost_path)
         exit (1)
-    
+
     return fd
 
 
@@ -227,23 +227,23 @@ def get_vhost_fd():
 # Check for vhostfd. if found then replace
 # with our own vhost fd and append any vhost
 # flags onto the end
-############################################# 
+#############################################
 def modify_netdev_arg(arg):
 	
     global fd_list
-    vhost_in_use = 0 
+    vhost_in_use = 0
     s = ''
     new_opts = []
     netdev_opts = arg.split(",")
-    
+
     for opt in netdev_opts:
         #check if vhost is used
         if "vhost" == opt[:5]:
-            vhost_in_use = 1        
+            vhost_in_use = 1
         else:
             new_opts.append(opt)
 
-    #if using vhost append vhost options 
+    #if using vhost append vhost options
     if vhost_in_use == 1:
         #append vhost on option
         new_opts.append('vhost=on')
@@ -252,11 +252,11 @@ def modify_netdev_arg(arg):
         new_opts.append('vhostfd=' + str(new_fd))
         fd_list.append(new_fd)
 
-    #concatenate all options 
+    #concatenate all options
     for opt in new_opts:
         if len(s) > 0:
 			s+=','
-        
+
         s+=opt
 
     return s	
@@ -268,23 +268,23 @@ def modify_netdev_arg(arg):
 def main():
 
     global fd_list
-    global vhost_in_use    
+    global vhost_in_use
     new_args = []
     num_cmd_args = len(sys.argv)
     emul_call = ''
     mem_prealloc_set = 0
-    mem_path_set = 0 
+    mem_path_set = 0
     num = 0;
 
     #parse the parameters
     while (num < num_cmd_args):
         arg = sys.argv[num]
-        
+
 		#Check netdev +1 parameter for vhostfd
         if arg == '-netdev':
             num_vhost_devs = len(fd_list)
             new_args.append(arg)
-            
+
             num+=1
             arg = sys.argv[num]
             mod_arg = modify_netdev_arg(arg)
@@ -311,13 +311,13 @@ def main():
         elif arg == '-mem-path':
             mem_path_set = 1
             new_args.append(arg)
-    
+
         else:
             new_args.append(arg)
 
         num+=1
 
-    #Set Qemu binary location 
+    #Set Qemu binary location
     emul_call+=emul_path
     emul_call+=" "
 
@@ -327,14 +327,14 @@ def main():
 
     #Add mempath mem options if using vhost and not already added
     if ((len(fd_list) > 0) and (mem_path_set == 0)):
-        #Detect and add hugetlbfs mount point 
+        #Detect and add hugetlbfs mount point
         mp = find_huge_mount()
         mp = "".join(["-mem-path ", mp])
         emul_call += mp
-        emul_call += " "   
-    
+        emul_call += " "
 
-    #add user options        
+
+    #add user options
     for opt in emul_opts_user:
         emul_call += opt
         emul_call += " "
@@ -353,7 +353,7 @@ def main():
         emul_call+=str(arg)
         emul_call+= " "
 
-    #Call QEMU 
+    #Call QEMU
     subprocess.call(emul_call, shell=True)
 
 

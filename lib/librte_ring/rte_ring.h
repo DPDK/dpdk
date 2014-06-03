@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -171,8 +171,8 @@ struct rte_ring {
 #endif
 
 	void * ring[0] __rte_cache_aligned; /**< Memory space of ring starts here.
-	 	 	 	 	 	 	 	 	 	 * not volatile so need to be careful
-	 	 	 	 	 	 	 	 	 	 * about compiler re-ordering */
+	                                     * not volatile so need to be careful
+	                                     * about compiler re-ordering */
 };
 
 #define RING_F_SP_ENQ 0x0001 /**< The default enqueue is "single-producer". */
@@ -325,7 +325,7 @@ int rte_ring_set_water_mark(struct rte_ring *r, unsigned count);
  */
 void rte_ring_dump(FILE *f, const struct rte_ring *r);
 
-/* the actual enqueue of pointers on the ring. 
+/* the actual enqueue of pointers on the ring.
  * Placed here since identical code needed in both
  * single and multi producer enqueue functions */
 #define ENQUEUE_PTRS() do { \
@@ -351,7 +351,7 @@ void rte_ring_dump(FILE *f, const struct rte_ring *r);
 	} \
 } while(0)
 
-/* the actual copy of pointers on the ring to obj_table. 
+/* the actual copy of pointers on the ring to obj_table.
  * Placed here since identical code needed in both
  * single and multi consumer dequeue functions */
 #define DEQUEUE_PTRS() do { \
@@ -1136,9 +1136,9 @@ rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 		      unsigned n)
 {
 	if (r->prod.sp_enqueue)
-		return 	rte_ring_sp_enqueue_burst(r, obj_table, n);
+		return rte_ring_sp_enqueue_burst(r, obj_table, n);
 	else
-		return 	rte_ring_mp_enqueue_burst(r, obj_table, n);
+		return rte_ring_mp_enqueue_burst(r, obj_table, n);
 }
 
 /**

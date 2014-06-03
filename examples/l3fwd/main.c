@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -171,7 +171,7 @@ static uint32_t enabled_port_mask = 0;
 static int promiscuous_on = 0; /**< Ports set in promiscuous mode off by default. */
 static int numa_on = 1; /**< NUMA is enabled by default. */
 
-#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)	
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 static int ipv6 = 0; /**< ipv6 is false by default. */
 #endif
 
@@ -344,7 +344,7 @@ static struct ipv6_l3fwd_route ipv6_l3fwd_route_array[] = {
 	{0xfe, 0x90, 0, 0, 0, 0, 0, 0, 0x02, 0x1e, 0x67, 0xff, 0xfe, 0, 0, 0},
 	{0xfe, 0x90, 0, 0, 0, 0, 0, 0, 0x02, 0x1b, 0x21, 0xff, 0xfe, 0x91, 0x38, 0x05},
 	102, 12, IPPROTO_TCP}, 1},
-	
+
 	{{
 	{0xfe, 0xa0, 0, 0, 0, 0, 0, 0, 0x02, 0x1e, 0x67, 0xff, 0xfe, 0, 0, 0},
 	{0xfe, 0xa0, 0, 0, 0, 0, 0, 0, 0x02, 0x1b, 0x21, 0xff, 0xfe, 0x91, 0x38, 0x05},
@@ -368,7 +368,7 @@ static lookup_struct_t *ipv6_l3fwd_lookup_struct[NB_SOCKETS];
 #define L3FWD_HASH_ENTRIES		1024*1024*1
 #endif
 #define HASH_ENTRY_NUMBER_DEFAULT	4
- 
+
 static uint32_t hash_entry_number = HASH_ENTRY_NUMBER_DEFAULT;
 
 static inline uint32_t
@@ -407,11 +407,11 @@ ipv6_hash_crc(const void *data, __rte_unused uint32_t data_len, uint32_t init_va
 	const uint32_t  *ip_src0, *ip_src1, *ip_src2, *ip_src3;
 	const uint32_t  *ip_dst0, *ip_dst1, *ip_dst2, *ip_dst3;
 #endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
- 
+
 	k = data;
 	t = k->proto;
 	p = (const uint32_t *)&k->port_src;
- 
+
 #ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 	ip_src0 = (const uint32_t *) k->ip_src;
 	ip_src1 = (const uint32_t *)(k->ip_src+4);
@@ -613,7 +613,7 @@ get_ipv4_dst_port(void *ipv4_hdr, uint8_t portid, lookup_struct_t * ipv4_l3fwd_l
 {
 	int ret = 0;
 	union ipv4_5tuple_host key;
-	
+
 	ipv4_hdr = (uint8_t *)ipv4_hdr + offsetof(struct ipv4_hdr, time_to_live);
 	__m128i data = _mm_loadu_si128((__m128i*)(ipv4_hdr));
 	/* Get 5 tuple: dst port, src port, dst IP address, src IP address and protocol */
@@ -676,7 +676,7 @@ static inline void l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, stru
 #define EXECLUDE_3RD_PKT 0xb
 #define EXECLUDE_4TH_PKT 0x7
 
-static inline void 
+static inline void
 simple_ipv4_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *qconf)
 {
 	struct ether_hdr *eth_hdr[4];
@@ -756,7 +756,7 @@ simple_ipv4_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 	dst_port[1] = (uint8_t) ((ret[1] < 0) ? portid : ipv4_l3fwd_out_if[ret[1]]);
 	dst_port[2] = (uint8_t) ((ret[2] < 0) ? portid : ipv4_l3fwd_out_if[ret[2]]);
 	dst_port[3] = (uint8_t) ((ret[3] < 0) ? portid : ipv4_l3fwd_out_if[ret[3]]);
-	
+
 	if (dst_port[0] >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port[0]) == 0)
 		dst_port[0] = portid;
 	if (dst_port[1] >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port[1]) == 0)
@@ -804,13 +804,13 @@ simple_ipv4_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 static inline void get_ipv6_5tuple(struct rte_mbuf* m0, __m128i mask0, __m128i mask1,
 				 union ipv6_5tuple_host * key)
 {
-        __m128i tmpdata0 = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m0, unsigned char *) 
+        __m128i tmpdata0 = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m0, unsigned char *)
 			+ sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len)));
-        __m128i tmpdata1 = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m0, unsigned char *) 
-			+ sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len) 
+        __m128i tmpdata1 = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m0, unsigned char *)
+			+ sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len)
 			+  sizeof(__m128i)));
-        __m128i tmpdata2 = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m0, unsigned char *) 
-			+ sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len) 
+        __m128i tmpdata2 = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m0, unsigned char *)
+			+ sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len)
 			+ sizeof(__m128i) + sizeof(__m128i)));
         key->xmm[0] = _mm_and_si128(tmpdata0, mask0);
         key->xmm[1] = tmpdata1;
@@ -818,7 +818,7 @@ static inline void get_ipv6_5tuple(struct rte_mbuf* m0, __m128i mask0, __m128i m
 	return;
 }
 
-static inline void 
+static inline void
 simple_ipv6_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *qconf)
 {
 	struct ether_hdr *eth_hdr[4];
@@ -847,7 +847,7 @@ simple_ipv6_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 	get_ipv6_5tuple(m[1], mask1, mask2, &key[1]);
 	get_ipv6_5tuple(m[2], mask1, mask2, &key[2]);
 	get_ipv6_5tuple(m[3], mask1, mask2, &key[3]);
-	
+
 	const void *key_array[4] = {&key[0], &key[1], &key[2],&key[3]};
 	rte_hash_lookup_multi(qconf->ipv6_lookup_struct, &key_array[0], 4, ret);
 	dst_port[0] = (uint8_t) ((ret[0] < 0)? portid:ipv6_l3fwd_out_if[ret[0]]);
@@ -1024,33 +1024,33 @@ main_loop(__attribute__((unused)) void *dummy)
 				/* Send nb_rx - nb_rx%4 packets in groups of 4.*/
 				int32_t n = RTE_ALIGN_FLOOR(nb_rx, 4);
 				for (j = 0; j < n ; j+=4) {
-					uint32_t ol_flag = pkts_burst[j]->ol_flags 
+					uint32_t ol_flag = pkts_burst[j]->ol_flags
 							& pkts_burst[j+1]->ol_flags
-							& pkts_burst[j+2]->ol_flags 
+							& pkts_burst[j+2]->ol_flags
 							& pkts_burst[j+3]->ol_flags;
 					if (ol_flag & PKT_RX_IPV4_HDR ) {
-						simple_ipv4_fwd_4pkts(&pkts_burst[j], 
+						simple_ipv4_fwd_4pkts(&pkts_burst[j],
 									portid, qconf);
 					} else if (ol_flag & PKT_RX_IPV6_HDR) {
-						simple_ipv6_fwd_4pkts(&pkts_burst[j], 
+						simple_ipv6_fwd_4pkts(&pkts_burst[j],
 									portid, qconf);
 					} else {
-						l3fwd_simple_forward(pkts_burst[j], 
+						l3fwd_simple_forward(pkts_burst[j],
 									portid, qconf);
-						l3fwd_simple_forward(pkts_burst[j+1], 
+						l3fwd_simple_forward(pkts_burst[j+1],
 									portid, qconf);
-						l3fwd_simple_forward(pkts_burst[j+2], 
+						l3fwd_simple_forward(pkts_burst[j+2],
 									portid, qconf);
-						l3fwd_simple_forward(pkts_burst[j+3], 
+						l3fwd_simple_forward(pkts_burst[j+3],
 									portid, qconf);
-					} 
-				} 
+					}
+				}
 				for (; j < nb_rx ; j++) {
-					l3fwd_simple_forward(pkts_burst[j], 
+					l3fwd_simple_forward(pkts_burst[j],
 								portid, qconf);
 				}
 			}
-#else			 
+#else
 			/* Prefetch first packets */
 			for (j = 0; j < PREFETCH_OFFSET && j < nb_rx; j++) {
 				rte_prefetch0(rte_pktmbuf_mtod(
@@ -1322,7 +1322,7 @@ parse_args(int argc, char **argv)
 
 		/* long options */
 		case 0:
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_CONFIG, 
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_CONFIG,
 				sizeof (CMD_LINE_OPT_CONFIG))) {
 				ret = parse_config(optarg);
 				if (ret) {
@@ -1332,29 +1332,29 @@ parse_args(int argc, char **argv)
 				}
 			}
 
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_NO_NUMA, 
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_NO_NUMA,
 				sizeof(CMD_LINE_OPT_NO_NUMA))) {
 				printf("numa is disabled \n");
 				numa_on = 0;
 			}
-			
-#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)	
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_IPV6, 
+
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_IPV6,
 				sizeof(CMD_LINE_OPT_IPV6))) {
 				printf("ipv6 is specified \n");
 				ipv6 = 1;
 			}
 #endif
 
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_ENABLE_JUMBO, 
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_ENABLE_JUMBO,
 				sizeof (CMD_LINE_OPT_ENABLE_JUMBO))) {
 				struct option lenopts = {"max-pkt-len", required_argument, 0, 0};
 
 				printf("jumbo frame is enabled - disabling simple TX path\n");
 				port_conf.rxmode.jumbo_frame = 1;
 				tx_conf.txq_flags = 0;
-	
-				/* if no max-pkt-len set, use the default value ETHER_MAX_LEN */	
+
+				/* if no max-pkt-len set, use the default value ETHER_MAX_LEN */
 				if (0 == getopt_long(argc, argvopt, "", &lenopts, &option_index)) {
 					ret = parse_max_pkt_len(optarg);
 					if ((ret < 64) || (ret > MAX_JUMBO_PKT_LEN)){
@@ -1364,11 +1364,11 @@ parse_args(int argc, char **argv)
 					}
 					port_conf.rxmode.max_rx_pkt_len = ret;
 				}
-				printf("set jumbo frame max packet length to %u\n", 
+				printf("set jumbo frame max packet length to %u\n",
 						(unsigned int)port_conf.rxmode.max_rx_pkt_len);
 			}
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_HASH_ENTRY_NUM, 
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_HASH_ENTRY_NUM,
 				sizeof(CMD_LINE_OPT_HASH_ENTRY_NUM))) {
 				ret = parse_hash_entry_number(optarg);
 				if ((ret > 0) && (ret <= L3FWD_HASH_ENTRIES)) {
@@ -1449,7 +1449,7 @@ populate_ipv4_few_flow_into_table(const struct rte_hash* h)
 {
 	uint32_t i;
 	int32_t ret;
-	uint32_t array_len = sizeof(ipv4_l3fwd_route_array)/sizeof(ipv4_l3fwd_route_array[0]); 
+	uint32_t array_len = sizeof(ipv4_l3fwd_route_array)/sizeof(ipv4_l3fwd_route_array[0]);
 
 	mask0 = _mm_set_epi32(ALL_32_BITS, ALL_32_BITS, ALL_32_BITS, BIT_8_TO_15);
 	for (i = 0; i < array_len; i++) {
@@ -1473,7 +1473,7 @@ populate_ipv6_few_flow_into_table(const struct rte_hash* h)
 {
 	uint32_t i;
 	int32_t ret;
-	uint32_t array_len = sizeof(ipv6_l3fwd_route_array)/sizeof(ipv6_l3fwd_route_array[0]); 
+	uint32_t array_len = sizeof(ipv6_l3fwd_route_array)/sizeof(ipv6_l3fwd_route_array[0]);
 
 	mask1 = _mm_set_epi32(ALL_32_BITS, ALL_32_BITS, ALL_32_BITS, BIT_16_TO_23);
 	mask2 = _mm_set_epi32(0, 0, ALL_32_BITS, ALL_32_BITS);
@@ -1673,10 +1673,10 @@ setup_lpm(int socketid)
 			ipv4_l3fwd_route_array[i].depth,
 			ipv4_l3fwd_route_array[i].if_out);
 	}
-	
+
 	/* create the LPM6 table */
 	rte_snprintf(s, sizeof(s), "IPV6_L3FWD_LPM_%d", socketid);
-	
+
 	config.max_rules = IPV6_L3FWD_LPM_MAX_RULES;
 	config.number_tbl8s = IPV6_L3FWD_LPM_NUMBER_TBL8S;
 	config.flags = 0;

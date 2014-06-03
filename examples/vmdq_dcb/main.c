@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -368,7 +368,7 @@ lcore_main(void *arg)
 	uint16_t startQueue = (uint16_t)(core_num * (NUM_QUEUES/num_cores));
 	uint16_t endQueue = (uint16_t)(startQueue + (NUM_QUEUES/num_cores));
 	uint16_t q, i, p;
-	
+
 	printf("Core %u(lcore %u) reading queues %i-%i\n", (unsigned)core_num,
 	       rte_lcore_id(), startQueue, endQueue - 1);
 
@@ -400,7 +400,7 @@ lcore_main(void *arg)
 	}
 }
 
-/* 
+/*
  * Update the global var NUM_PORTS and array PORTS according to system ports number
  * and return valid ports number
  */
@@ -408,13 +408,13 @@ static unsigned check_ports_num(unsigned nb_ports)
 {
 	unsigned valid_num_ports = num_ports;
 	unsigned portid;
- 
+
 	if (num_ports > nb_ports) {
 		printf("\nSpecified port number(%u) exceeds total system port number(%u)\n",
 			num_ports, nb_ports);
 		num_ports = nb_ports;
 	}
- 
+
 	for (portid = 0; portid < num_ports; portid ++) {
 		if (ports[portid] >= nb_ports) {
 			printf("\nSpecified port ID(%u) exceeds max system port ID(%u)\n",
@@ -460,17 +460,17 @@ MAIN(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE,"This program can only run on an even"
 				"number of cores(1-128)\n\n");
 	}
-	
+
 	nb_ports = rte_eth_dev_count();
 	if (nb_ports > RTE_MAX_ETHPORTS)
 		nb_ports = RTE_MAX_ETHPORTS;
 
-        /* 
-	 * Update the global var NUM_PORTS and global array PORTS 
-	 * and get value of var VALID_NUM_PORTS according to system ports number 
+        /*
+	 * Update the global var NUM_PORTS and global array PORTS
+	 * and get value of var VALID_NUM_PORTS according to system ports number
 	 */
 	valid_num_ports = check_ports_num(nb_ports);
- 
+
 	if (valid_num_ports < 2 || valid_num_ports % 2) {
 		printf("Current valid ports number is %u\n", valid_num_ports);
 		rte_exit(EXIT_FAILURE, "Error with valid ports number is not even or less than 2\n");
@@ -492,7 +492,7 @@ MAIN(int argc, char *argv[])
 			printf("\nSkipping disabled port %d\n", portid);
 			continue;
 		}
-		if (port_init(portid, mbuf_pool) != 0) 
+		if (port_init(portid, mbuf_pool) != 0)
 			rte_exit(EXIT_FAILURE, "Cannot initialize network ports\n");
 	}
 

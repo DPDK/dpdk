@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -92,7 +92,7 @@ struct netmap_state {
 static struct netmap_port ports[RTE_MAX_ETHPORTS];
 static struct netmap_state netmap;
 
-static struct fd_port fd_port[COMPAT_NETMAP_MAX_NOFILE]; 
+static struct fd_port fd_port[COMPAT_NETMAP_MAX_NOFILE];
 static const int next_fd_start = RLIMIT_NOFILE + 1;
 static rte_spinlock_t netmap_lock;
 
@@ -288,7 +288,7 @@ netmap_ring_setup(struct netmap_ring *ring, uint8_t port, uint32_t ringid,
 	ring->flags = 0;
 	ring->ts.tv_sec = 0;
 	ring->ts.tv_usec = 0;
-	    
+
 	for (j = 0; j < ring->num_slots; j++) {
 		ring->slot[j].buf_idx = BUF_IDX(port, ringid, j);
 		ring->slot[j].len = 0;
@@ -487,7 +487,7 @@ rx_sync_ring(struct netmap_ring *ring, uint8_t port, uint16_t ring_number,
 		ring->avail += n_rx;
 		n_free_slots -= n_rx;
 	}
-	
+
 	return 0;
 }
 
@@ -705,7 +705,7 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 
 	ret = rte_eth_dev_configure(portid, conf->nr_rx_rings,
 		conf->nr_tx_rings, conf->eth_conf);
-	                            
+
 	if (ret < 0) {
 	    RTE_LOG(ERR, USER1, "Couldn't configure port %hhu\n", portid);
 	    return (ret);
@@ -725,7 +725,7 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 
 		ret = rte_eth_rx_queue_setup(portid, i, rx_slots,
 			conf->socket_id, conf->rx_conf, conf->pool);
-	                                 
+
 		if (ret < 0) {
 			RTE_LOG(ERR, USER1,
 				"Couldn't configure RX queue %hu of "
@@ -774,7 +774,7 @@ int rte_netmap_ioctl(int fd, int op, void *param)
 	if (!FD_VALID(fd)) {
 	    errno = EBADF;
 	    return (-1);
-	} 
+	}
 
 	switch (op) {
 
@@ -829,7 +829,7 @@ rte_netmap_mmap(void *addr, size_t length,
 	return ((void *)((uintptr_t)netmap.mem + offset));
 }
 
-/** 
+/**
  * Return a "fake" file descriptor with a value above RLIMIT_NOFILE so that
  * any attempt to use that file descriptor with the usual API will fail.
  */
@@ -869,7 +869,7 @@ rte_netmap_poll(struct pollfd *fds, nfds_t nfds, int timeout)
 				fds[i].revents = 0;
 				continue;
 			}
-		
+
 			idx = FD_TO_IDX(fds[i].fd);
 			if ((port = fd_port[idx].port) >= RTE_DIM(ports) ||
                         		ports[port].fd != idx) {

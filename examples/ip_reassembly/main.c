@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -434,7 +434,7 @@ send_burst(struct lcore_conf *qconf, uint32_t thresh, uint8_t port)
 
 	if (fill >= thresh) {
 		n = RTE_MIN(len - txmb->tail, fill);
-			
+
 		k = rte_eth_tx_burst(port, qconf->tx_queue_id[port],
 			txmb->m_table + txmb->tail, (uint16_t)n);
 
@@ -471,7 +471,7 @@ send_single_packet(struct rte_mbuf *m, uint8_t port)
 		if (++txmb->tail == len)
 			txmb->tail = 0;
 	}
-		
+
 	TX_LCORE_STAT_UPDATE(&qconf->tx_stat, queue, 1);
 	txmb->m_table[txmb->head] = m;
 	if(++txmb->head == len)
@@ -685,7 +685,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, uint32_t queue,
 
 			/* process this fragment. */
 			if ((mo = ipv4_frag_mbuf(tbl, dr, m, tms, ipv4_hdr,
-					ip_ofs, ip_flag)) == NULL) 
+					ip_ofs, ip_flag)) == NULL)
 				/* no packet to send out. */
 				return;
 
@@ -958,8 +958,8 @@ parse_flow_ttl(const char *str, uint32_t min, uint32_t max, uint32_t *val)
 	char *end;
 	uint64_t v;
 
-	static const char frmt_sec[] = "s"; 
-	static const char frmt_msec[] = "ms"; 
+	static const char frmt_sec[] = "s";
+	static const char frmt_msec[] = "ms";
 
 	/* parse decimal string */
 	errno = 0;
@@ -1118,7 +1118,7 @@ parse_args(int argc, char **argv)
 				printf("numa is disabled \n");
 				numa_on = 0;
 			}
-			
+
 			if (!strncmp(lgopts[option_index].name,
 					"maxflows", 8)) {
 				if ((ret = parse_flow_num(optarg, MIN_FLOW_NUM,
@@ -1132,7 +1132,7 @@ parse_args(int argc, char **argv)
 					return (ret);
 				}
 			}
-			
+
 			if (!strncmp(lgopts[option_index].name, "flowttl", 7)) {
 				if ((ret = parse_flow_ttl(optarg, MIN_FLOW_TTL,
 						MAX_FLOW_TTL,
@@ -1151,8 +1151,8 @@ parse_args(int argc, char **argv)
 
 				printf("jumbo frame is enabled \n");
 				port_conf.rxmode.jumbo_frame = 1;
-	
-				/* if no max-pkt-len set, use the default value ETHER_MAX_LEN */	
+
+				/* if no max-pkt-len set, use the default value ETHER_MAX_LEN */
 				if (0 == getopt_long(argc, argvopt, "", &lenopts, &option_index)) {
 					ret = parse_max_pkt_len(optarg);
 					if ((ret < 64) || (ret > MAX_JUMBO_PKT_LEN)){
@@ -1162,10 +1162,10 @@ parse_args(int argc, char **argv)
 					}
 					port_conf.rxmode.max_rx_pkt_len = ret;
 				}
-				printf("set jumbo frame max packet length to %u\n", 
+				printf("set jumbo frame max packet length to %u\n",
 						(unsigned int)port_conf.rxmode.max_rx_pkt_len);
 			}
-			
+
 			break;
 
 		default:
@@ -1302,10 +1302,10 @@ setup_lpm(int socketid)
 			ipv4_l3fwd_route_array[i].depth,
 			ipv4_l3fwd_route_array[i].if_out);
 	}
-	
+
 	/* create the LPM6 table */
 	rte_snprintf(s, sizeof(s), "IPV6_L3FWD_LPM_%d", socketid);
-	
+
 	config.max_rules = IPV6_L3FWD_LPM_MAX_RULES;
 	config.number_tbl8s = IPV6_L3FWD_LPM_NUMBER_TBL8S;
 	config.flags = 0;
@@ -1467,14 +1467,14 @@ setup_queue_tbl(struct lcore_conf *qconf, uint32_t lcore, int socket,
 	 * At any given moment up to <max_flow_num * (MAX_FRAG_NUM - 1)>
 	 * mbufs could be stored int the fragment table.
 	 * Plus, each TX queue can hold up to <max_flow_num> packets.
-	 */ 
+	 */
 
 	nb_mbuf = 2 * RTE_MAX(max_flow_num, 2UL * MAX_PKT_BURST) * MAX_FRAG_NUM;
 	nb_mbuf *= (port_conf.rxmode.max_rx_pkt_len + BUF_SIZE - 1) / BUF_SIZE;
 	nb_mbuf += RTE_TEST_RX_DESC_DEFAULT + RTE_TEST_TX_DESC_DEFAULT;
 
 	nb_mbuf = RTE_MAX(nb_mbuf, (uint32_t)DEF_MBUF_NUM);
-		
+
 	rte_snprintf(buf, sizeof(buf), "mbuf_pool_%u_%u", lcore, queue);
 
 	if ((qconf->pool[queue] = rte_mempool_create(buf, nb_mbuf, MBUF_SIZE, 0,

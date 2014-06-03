@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -57,7 +57,7 @@
 #include "rte_lpm.h"
 
 TAILQ_HEAD(rte_lpm_list, rte_lpm);
- 
+
 #define MAX_DEPTH_TBL24 24
 
 enum valid_flag {
@@ -153,10 +153,10 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 	struct rte_lpm_list *lpm_list;
 
 	/* check that we have an initialised tail queue */
-	if ((lpm_list = 
+	if ((lpm_list =
 	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM, rte_lpm_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;	
+		return NULL;
 	}
 
 	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm_tbl24_entry) != 2);
@@ -197,7 +197,7 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 
 	TAILQ_INSERT_TAIL(lpm_list, lpm, next);
 
-exit:	
+exit:
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	return lpm;
@@ -251,7 +251,7 @@ rule_add(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 			/* If rule already exists update its next_hop and return. */
 			if (lpm->rules_tbl[rule_index].ip == ip_masked) {
 				lpm->rules_tbl[rule_index].next_hop = next_hop;
-	
+
 				return rule_index;
 			}
 		}
@@ -415,7 +415,7 @@ add_depth_small(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 
 		/* If tbl24 entry is valid and extended calculate the index
 		 * into tbl8. */
-		tbl8_index = lpm->tbl24[i].tbl8_gindex * 
+		tbl8_index = lpm->tbl24[i].tbl8_gindex *
 				RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
 		tbl8_group_end = tbl8_index + RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
 
@@ -660,7 +660,7 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
 		 * associated with this rule.
 		 */
 		for (i = tbl24_index; i < (tbl24_index + tbl24_range); i++) {
-			
+
 			if (lpm->tbl24[i].ext_entry == 0 &&
 					lpm->tbl24[i].depth <= depth ) {
 				lpm->tbl24[i].valid = INVALID;
@@ -721,7 +721,7 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
 				tbl8_group_index = lpm->tbl24[i].tbl8_gindex;
 				tbl8_index = tbl8_group_index *
 						RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
-				
+
 				for (j = tbl8_index; j < (tbl8_index +
 					RTE_LPM_TBL8_GROUP_NUM_ENTRIES); j++) {
 

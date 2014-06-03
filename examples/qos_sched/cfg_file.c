@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -333,7 +333,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 	entry = cfg_get_entry(cfg, "port", "number of subports per port");
 	if (entry)
 		port_params->n_subports_per_port = (uint32_t)atoi(entry);
-	
+
 	entry = cfg_get_entry(cfg, "port", "number of pipes per subport");
 	if (entry)
 		port_params->n_pipes_per_subport = (uint32_t)atoi(entry);
@@ -341,7 +341,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 	entry = cfg_get_entry(cfg, "port", "queue sizes");
 	if (entry) {
 		char *next;
-		
+
 		for(j = 0; j < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; j++) {
 			port_params->qsize[j] = (uint16_t)strtol(entry, &next, 10);
 			if (next == NULL)
@@ -420,7 +420,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 		}
 	}
 #endif /* RTE_SCHED_RED */
-	
+
 	return 0;
 }
 
@@ -457,15 +457,15 @@ cfg_load_pipe(struct cfg_file *cfg, struct rte_sched_pipe_params *pipe_params)
 		entry = cfg_get_entry(cfg, pipe_name, "tc 0 rate");
 		if (entry)
 			pipe_params[j].tc_rate[0] = (uint32_t)atoi(entry);
-			
+
 		entry = cfg_get_entry(cfg, pipe_name, "tc 1 rate");
 		if (entry)
 			pipe_params[j].tc_rate[1] = (uint32_t)atoi(entry);
-			
+
 		entry = cfg_get_entry(cfg, pipe_name, "tc 2 rate");
 		if (entry)
 			pipe_params[j].tc_rate[2] = (uint32_t)atoi(entry);
-			
+
 		entry = cfg_get_entry(cfg, pipe_name, "tc 3 rate");
 		if (entry)
 			pipe_params[j].tc_rate[3] = (uint32_t)atoi(entry);

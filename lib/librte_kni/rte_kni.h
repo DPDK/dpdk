@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -149,7 +149,7 @@ extern struct rte_kni *rte_kni_create(uint8_t port_id,
 extern int rte_kni_release(struct rte_kni *kni);
 
 /**
- * It is used to handle the request mbufs sent from kernel space. 
+ * It is used to handle the request mbufs sent from kernel space.
  * Then analyzes it and calls the specific actions for the specific requests.
  * Finally constructs the response mbuf and puts it back to the resp_q.
  *
@@ -157,7 +157,7 @@ extern int rte_kni_release(struct rte_kni *kni);
  *  The pointer to the context of an existent KNI interface.
  *
  * @return
- *  - 0 
+ *  - 0
  *  - negative value indicates failure.
  */
 extern int rte_kni_handle_request(struct rte_kni *kni);
@@ -235,7 +235,7 @@ extern struct rte_kni *rte_kni_get(const char *name);
  * @param port_id
  *  the port id.
  *
- * @return 
+ * @return
  *  On success: Pointer to KNI interface.
  *  On failure: NULL
  */
@@ -246,9 +246,9 @@ extern struct rte_kni *rte_kni_info_get(uint8_t port_id) \
  * Register KNI request handling for a specified port,and it can
  * be called by master process or slave process.
  *
- * @param kni 
- *  pointer to struct rte_kni. 
- * @param ops 
+ * @param kni
+ *  pointer to struct rte_kni.
+ * @param ops
  *  ponter to struct rte_kni_ops.
  *
  * @return
@@ -260,9 +260,9 @@ extern int rte_kni_register_handlers(struct rte_kni *kni,
 
 /**
  *  Unregister KNI request handling for a specified port.
- * 
- *  @param kni 
- *   pointer to struct rte_kni. 
+ *
+ *  @param kni
+ *   pointer to struct rte_kni.
  *
  *  @return
  *   On success: 0
@@ -272,10 +272,10 @@ extern int rte_kni_unregister_handlers(struct rte_kni *kni);
 
 /**
  *  close KNI device.
- * 
+ *
  *  @param void
  *
- *  @return 
+ *  @return
  *   void
  */
 extern void rte_kni_close(void);

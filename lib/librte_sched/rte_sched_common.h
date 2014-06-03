@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -53,7 +53,7 @@ static inline uint32_t
 rte_min_pos_4_u16(uint16_t *x)
 {
 	uint32_t pos0, pos1;
-		
+
 	pos0 = (x[0] <= x[1])? 0 : 1;
 	pos1 = (x[2] <= x[3])? 2 : 3;
 
@@ -89,24 +89,24 @@ static inline uint32_t
 rte_get_gcd(uint32_t a, uint32_t b)
 {
 	uint32_t c;
-	
+
 	if (a == 0)
 		return b;
 	if (b == 0)
 		return a;
-	
+
 	if (a < b) {
 		c = a;
 		a = b;
 		b = c;
 	}
-	
+
 	while (b != 0) {
 		c = a % b;
 		a = b;
 		b = c;
 	}
-	
+
 	return a;
 }
 

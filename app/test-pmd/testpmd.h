@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -241,7 +241,7 @@ struct dcb_config {
 	enum rte_eth_nb_tcs num_tcs;
 	uint8_t pfc_en;
 };
- 
+
 /*
  * In DCB io FWD mode, 128 RX queue to 128 TX queue mapping
  */
@@ -287,20 +287,20 @@ extern uint32_t bypass_timeout; /**< Store the NIC bypass watchdog timeout */
 #define MAX_SOCKET 2 /*MAX SOCKET:currently, it is 2 */
 
 /*
- * Store specified sockets on which memory pool to be used by ports 
- * is allocated. 
+ * Store specified sockets on which memory pool to be used by ports
+ * is allocated.
  */
 uint8_t port_numa[RTE_MAX_ETHPORTS];
 
 /*
  * Store specified sockets on which RX ring to be used by ports
- * is allocated. 
+ * is allocated.
  */
 uint8_t rxring_numa[RTE_MAX_ETHPORTS];
 
 /*
  * Store specified sockets on which TX ring to be used by ports
- * is allocated. 
+ * is allocated.
  */
 uint8_t txring_numa[RTE_MAX_ETHPORTS];
 
@@ -525,7 +525,7 @@ void fdir_remove_perfect_filter(portid_t port_id, uint16_t soft_id,
 void fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks);
 void port_rss_reta_info(portid_t port_id, struct rte_eth_rss_reta *reta_conf);
 void set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on);
-void set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id, 
+void set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id,
 		uint64_t vf_mask, uint8_t on);
 
 void port_rss_hash_conf_show(portid_t port_id, int show_rss_key);

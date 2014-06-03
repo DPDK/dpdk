@@ -1,23 +1,23 @@
 /*-
  * GPL LICENSE SUMMARY
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
- * 
+ *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of version 2 of the GNU General Public License as
  *   published by the Free Software Foundation.
- * 
+ *
  *   This program is distributed in the hope that it will be useful, but
  *   WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *   General Public License for more details.
- * 
+ *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  *   The full GNU General Public License is included in this distribution
  *   in the file called LICENSE.GPL.
- * 
+ *
  *   Contact Information:
  *   Intel Corporation
  */
@@ -30,7 +30,7 @@
 #include <linux/msi.h>
 #include <linux/version.h>
 
-#ifdef CONFIG_XEN_DOM0 
+#ifdef CONFIG_XEN_DOM0
 #include <xen/xen.h>
 #endif
 
@@ -113,7 +113,7 @@ int local_pci_num_vf(struct pci_dev *dev)
 
 	if (!dev->is_physfn)
 		return 0;
-	
+
 	return iov->nr_virtfn;
 #else
 	return pci_num_vf(dev);
@@ -146,7 +146,7 @@ store_max_vfs(struct device *dev, struct device_attribute *attr,
 	else /* do nothing if change max_vfs number */
 		err = -EINVAL;
 
-	return err ? err : count;							
+	return err ? err : count;
 }
 
 static DEVICE_ATTR(max_vfs, S_IRUGO | S_IWUSR, show_max_vfs, store_max_vfs);
@@ -338,7 +338,7 @@ igbuio_dom0_mmap_phys(struct uio_info *info, struct vm_area_struct *vma)
 }
 
 /**
- * This is uio device mmap method which will use igbuio mmap for Xen 
+ * This is uio device mmap method which will use igbuio mmap for Xen
  * Dom0 environment.
  */
 static int
@@ -346,7 +346,7 @@ igbuio_dom0_pci_mmap(struct uio_info *info, struct vm_area_struct *vma)
 {
 	int idx;
 
-	if (vma->vm_pgoff >= MAX_UIO_MAPS) 
+	if (vma->vm_pgoff >= MAX_UIO_MAPS)
 		return -EINVAL;
 	if(info->mem[vma->vm_pgoff].size == 0)
 		return  -EINVAL;
@@ -360,7 +360,7 @@ igbuio_dom0_pci_mmap(struct uio_info *info, struct vm_area_struct *vma)
 	default:
 		return -EINVAL;
 	}
-}       
+}
 #endif
 
 /* Remap pci resources described by bar #pci_bar in uio resource n. */
@@ -371,7 +371,7 @@ igbuio_pci_setup_iomem(struct pci_dev *dev, struct uio_info *info,
 	unsigned long addr, len;
 	void *internal_addr;
 
-	if (sizeof(info->mem) / sizeof (info->mem[0]) <= n)  
+	if (sizeof(info->mem) / sizeof (info->mem[0]) <= n)
 		return (EINVAL);
 
 	addr = pci_resource_start(dev, pci_bar);
@@ -396,7 +396,7 @@ igbuio_pci_setup_ioport(struct pci_dev *dev, struct uio_info *info,
 {
 	unsigned long addr, len;
 
-	if (sizeof(info->port) / sizeof (info->port[0]) <= n)  
+	if (sizeof(info->port) / sizeof (info->port[0]) <= n)
 		return (EINVAL);
 
 	addr = pci_resource_start(dev, pci_bar);

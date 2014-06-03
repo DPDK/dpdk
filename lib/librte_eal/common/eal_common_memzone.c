@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -70,7 +70,7 @@ memzone_lookup_thread_unsafe(const char *name)
 	 * zones and this function should be called at init only
 	 */
 	for (i = 0; i < RTE_MAX_MEMZONE && mcfg->memzone[i].addr != NULL; i++) {
-		if (!strncmp(name, mcfg->memzone[i].name, RTE_MEMZONE_NAMESIZE)) 
+		if (!strncmp(name, mcfg->memzone[i].name, RTE_MEMZONE_NAMESIZE))
 			return &mcfg->memzone[i];
 	}
 
@@ -373,7 +373,7 @@ rte_memzone_lookup(const char *name)
 	const struct rte_memzone *memzone = NULL;
 
 	mcfg = rte_eal_get_configuration()->mem_config;
-	
+
 	rte_rwlock_read_lock(&mcfg->mlock);
 
 	memzone = memzone_lookup_thread_unsafe(name);
@@ -464,7 +464,7 @@ rte_eal_memzone_init(void)
 
 	/* mirror the runtime memsegs from config */
 	free_memseg = mcfg->free_memseg;
-	
+
 	/* secondary processes don't need to initialise anything */
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return 0;

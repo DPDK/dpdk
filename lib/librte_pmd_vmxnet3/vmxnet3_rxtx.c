@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -184,7 +184,7 @@ vmxnet3_dev_rx_queue_release(void *rxq)
 	vmxnet3_rx_queue_t *rq = rxq;
 	if (rxq != NULL) {
 		/* Release both the cmd_rings */
-		for (i = 0; i < VMXNET3_RX_CMDRING_SIZE; i++) 
+		for (i = 0; i < VMXNET3_RX_CMDRING_SIZE; i++)
 			vmxnet3_cmd_ring_release(&rq->cmd_ring[i]);
 	}
 }
@@ -231,9 +231,9 @@ vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *txq)
 	    mbuf = txq->cmd_ring.buf_info[tcd->txdIdx].m;
 		if (unlikely(mbuf == NULL))
 			rte_panic("EOP desc does not point to a valid mbuf");
-		else 
+		else
 			rte_pktmbuf_free(mbuf);
-		
+
 
 		txq->cmd_ring.buf_info[tcd->txdIdx].m = NULL;
 		/* Mark the txd for which tcd was generated as completed */
@@ -373,7 +373,7 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t* rxq, uint8_t ring_id)
 
 		if (ring->rid == 0) {
 			 /* Usually: One HEAD type buf per packet
-			   * val = (ring->next2fill % rxq->hw->bufs_per_pkt) ? 
+			   * val = (ring->next2fill % rxq->hw->bufs_per_pkt) ?
 			   * VMXNET3_RXD_BTYPE_BODY : VMXNET3_RXD_BTYPE_HEAD;
 			   */
 
@@ -623,13 +623,13 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 	hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
- 	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOMULTSEGS) !=
+	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOMULTSEGS) !=
 		ETH_TXQ_FLAGS_NOMULTSEGS) {
 		PMD_INIT_LOG(ERR, "TX Multi segment not support yet\n");
 		return (-EINVAL);
 	}
 
-	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOOFFLOADS) != 
+	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOOFFLOADS) !=
 		ETH_TXQ_FLAGS_NOOFFLOADS) {
 		PMD_INIT_LOG(ERR, "TX not support offload function yet\n");
 		return (-EINVAL);
@@ -653,16 +653,16 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
     /* Tx vmxnet ring length should be between 512-4096 */
     if (nb_desc < VMXNET3_DEF_TX_RING_SIZE) {
-    	PMD_INIT_LOG(ERR, "VMXNET3 Tx Ring Size Min: %u\n",
+		PMD_INIT_LOG(ERR, "VMXNET3 Tx Ring Size Min: %u\n",
 					VMXNET3_DEF_TX_RING_SIZE);
-    	return -EINVAL;
+		return -EINVAL;
 	} else if (nb_desc > VMXNET3_TX_RING_MAX_SIZE) {
 		PMD_INIT_LOG(ERR, "VMXNET3 Tx Ring Size Max: %u\n",
 					VMXNET3_TX_RING_MAX_SIZE);
 		return -EINVAL;
     } else {
-    	ring->size = nb_desc;
-    	ring->size &= ~VMXNET3_RING_SIZE_MASK;
+		ring->size = nb_desc;
+		ring->size &= ~VMXNET3_RING_SIZE_MASK;
     }
     comp_ring->size = ring->size;
 
@@ -690,11 +690,11 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/* comp_ring initialization */
     comp_ring->base = ring->base + ring->size;
     comp_ring->basePA = ring->basePA +
-    					(sizeof(struct Vmxnet3_TxDesc) * ring->size);
+				(sizeof(struct Vmxnet3_TxDesc) * ring->size);
 
     /* cmd_ring0 buf_info allocation */
 	ring->buf_info = rte_zmalloc("tx_ring_buf_info",
-						ring->size * sizeof(vmxnet3_buf_info_t), CACHE_LINE_SIZE);
+				ring->size * sizeof(vmxnet3_buf_info_t), CACHE_LINE_SIZE);
 	if (ring->buf_info == NULL) {
 		PMD_INIT_LOG(ERR, "ERROR: Creating tx_buf_info structure\n");
 		return (-ENOMEM);

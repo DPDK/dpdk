@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -263,25 +263,25 @@ enum rte_eth_rx_mq_mode {
 };
 
 /**
- * for rx mq mode backward compatible 
+ * for rx mq mode backward compatible
  */
 #define ETH_RSS                       ETH_MQ_RX_RSS
 #define VMDQ_DCB                      ETH_MQ_RX_VMDQ_DCB
 #define ETH_DCB_RX                    ETH_MQ_RX_DCB
 
 /**
- * A set of values to identify what method is to be used to transmit 
+ * A set of values to identify what method is to be used to transmit
  * packets using multi-TCs.
  */
 enum rte_eth_tx_mq_mode {
-	ETH_MQ_TX_NONE    = 0, 	/**< It is in neither DCB nor VT mode. */
-	ETH_MQ_TX_DCB,         	/**< For TX side,only DCB is on. */
+	ETH_MQ_TX_NONE    = 0,  /**< It is in neither DCB nor VT mode. */
+	ETH_MQ_TX_DCB,          /**< For TX side,only DCB is on. */
 	ETH_MQ_TX_VMDQ_DCB,	/**< For TX side,both DCB and VT is on. */
 	ETH_MQ_TX_VMDQ_ONLY,    /**< Only VT on, no DCB */
 };
 
 /**
- * for tx mq mode backward compatible 
+ * for tx mq mode backward compatible
  */
 #define ETH_DCB_NONE                ETH_MQ_TX_NONE
 #define ETH_VMDQ_DCB_TX             ETH_MQ_TX_VMDQ_DCB
@@ -335,7 +335,7 @@ struct rte_eth_rss_conf {
 #define ETH_RSS_PROTO_MASK  0x01FF /**< Mask of valid RSS hash protocols */
 /* Definitions used for redirection table entry size */
 #define ETH_RSS_RETA_NUM_ENTRIES 128
-#define ETH_RSS_RETA_MAX_QUEUE   16  
+#define ETH_RSS_RETA_MAX_QUEUE   16
 
 /* Definitions used for VMDQ and DCB functionality */
 #define ETH_VMDQ_MAX_VLAN_FILTERS   64 /**< Maximum nb. of VMDQ vlan filters. */
@@ -345,7 +345,7 @@ struct rte_eth_rss_conf {
 
 /* DCB capability defines */
 #define ETH_DCB_PG_SUPPORT      0x00000001 /**< Priority Group(ETS) support. */
-#define ETH_DCB_PFC_SUPPORT     0x00000002 /**< Priority Flow Control support. */ 
+#define ETH_DCB_PFC_SUPPORT     0x00000002 /**< Priority Flow Control support. */
 
 /* Definitions used for VLAN Offload functionality */
 #define ETH_VLAN_STRIP_OFFLOAD   0x0001 /**< VLAN Strip  On/Off */
@@ -356,7 +356,7 @@ struct rte_eth_rss_conf {
 #define ETH_VLAN_STRIP_MASK   0x0001 /**< VLAN Strip  setting mask */
 #define ETH_VLAN_FILTER_MASK  0x0002 /**< VLAN Filter  setting mask*/
 #define ETH_VLAN_EXTEND_MASK  0x0004 /**< VLAN Extend  setting mask*/
-#define ETH_VLAN_ID_MAX       0x0FFF /**< VLAN ID is in lower 12 bits*/ 
+#define ETH_VLAN_ID_MAX       0x0FFF /**< VLAN ID is in lower 12 bits*/
 
 /* Definitions used for receive MAC address   */
 #define ETH_NUM_RECEIVE_MAC_ADDR  128 /**< Maximum nb. of receive mac addr. */
@@ -385,7 +385,7 @@ struct rte_eth_rss_conf {
  */
 struct rte_eth_vlan_mirror {
 	uint64_t vlan_mask; /**< mask for valid VLAN ID. */
-	uint16_t vlan_id[ETH_VMDQ_MAX_VLAN_FILTERS]; 
+	uint16_t vlan_id[ETH_VMDQ_MAX_VLAN_FILTERS];
 	/** VLAN ID list for vlan mirror. */
 };
 
@@ -405,9 +405,9 @@ struct rte_eth_vmdq_mirror_conf {
  */
 struct rte_eth_rss_reta {
 	/** First 64 mask bits indicate which entry(s) need to updated/queried. */
-	uint64_t mask_lo; 
+	uint64_t mask_lo;
 	/** Second 64 mask bits indicate which entry(s) need to updated/queried. */
-	uint64_t mask_hi; 
+	uint64_t mask_hi;
 	uint8_t reta[ETH_RSS_RETA_NUM_ENTRIES];  /**< 128 RETA entries*/
 };
 
@@ -437,13 +437,13 @@ struct rte_eth_dcb_rx_conf {
 	uint8_t dcb_queue[ETH_DCB_NUM_USER_PRIORITIES];
 	/**< Possible DCB queue,4 or 8. */
 };
- 
+
 struct rte_eth_vmdq_dcb_tx_conf {
 	enum rte_eth_nb_pools nb_queue_pools; /**< With DCB, 16 or 32 pools. */
 	uint8_t dcb_queue[ETH_DCB_NUM_USER_PRIORITIES];
 	/**< Possible DCB queue,4 or 8. */
 };
- 
+
 struct rte_eth_dcb_tx_conf {
 	enum rte_eth_nb_tcs nb_tcs; /**< Possible DCB TCs, 4 or 8 TCs. */
 	uint8_t dcb_queue[ETH_DCB_NUM_USER_PRIORITIES];
@@ -756,9 +756,9 @@ struct rte_eth_conf {
 		struct rte_eth_vmdq_tx_conf vmdq_tx_conf;
 		/**< Port vmdq TX configuration. */
 	} tx_adv_conf; /**< Port TX DCB configuration (union). */
-	/** Currently,Priority Flow Control(PFC) are supported,if DCB with PFC 
- 	    is needed,and the variable must be set ETH_DCB_PFC_SUPPORT. */ 
-	uint32_t dcb_capability_en; 
+	/** Currently,Priority Flow Control(PFC) are supported,if DCB with PFC
+	    is needed,and the variable must be set ETH_DCB_PFC_SUPPORT. */
+	uint32_t dcb_capability_en;
 	struct rte_fdir_conf fdir_conf; /**< FDIR configuration. */
 	struct rte_intr_conf intr_conf; /**< Interrupt mode configuration. */
 };
@@ -799,7 +799,7 @@ struct rte_eth_dev_info {
 	uint16_t max_rx_queues; /**< Maximum number of RX queues. */
 	uint16_t max_tx_queues; /**< Maximum number of TX queues. */
 	uint32_t max_mac_addrs; /**< Maximum number of MAC addresses. */
-	uint32_t max_hash_mac_addrs; 
+	uint32_t max_hash_mac_addrs;
 	/** Maximum number of hash MAC addresses for MTA and UTA. */
 	uint16_t max_vfs; /**< Maximum number of VFs. */
 	uint16_t max_vmdq_pools; /**< Maximum number of VMDq pools. */
@@ -1000,7 +1000,7 @@ typedef void (*eth_mac_addr_add_t)(struct rte_eth_dev *dev,
 				  struct ether_addr *mac_addr,
 				  uint32_t index,
 				  uint32_t vmdq);
-/**< @internal Set a MAC address into Receive Address Address Register */ 
+/**< @internal Set a MAC address into Receive Address Address Register */
 
 typedef int (*eth_uc_hash_table_set_t)(struct rte_eth_dev *dev,
 				  struct ether_addr *mac_addr,
@@ -1013,7 +1013,7 @@ typedef int (*eth_uc_all_hash_table_set_t)(struct rte_eth_dev *dev,
 
 typedef int (*eth_set_vf_rx_mode_t)(struct rte_eth_dev *dev,
 				  uint16_t vf,
-				  uint16_t rx_mode, 
+				  uint16_t rx_mode,
 				  uint8_t on);
 /**< @internal Set a VF receive mode */
 
@@ -1027,15 +1027,15 @@ typedef int (*eth_set_vf_tx_t)(struct rte_eth_dev *dev,
 				uint8_t on);
 /**< @internal Enable or disable a VF transmit   */
 
-typedef int (*eth_set_vf_vlan_filter_t)(struct rte_eth_dev *dev, 
-				  uint16_t vlan, 
+typedef int (*eth_set_vf_vlan_filter_t)(struct rte_eth_dev *dev,
+				  uint16_t vlan,
 				  uint64_t vf_mask,
 				  uint8_t vlan_on);
 /**< @internal Set VF VLAN pool filter */
 
 typedef int (*eth_mirror_rule_set_t)(struct rte_eth_dev *dev,
 				  struct rte_eth_vmdq_mirror_conf *mirror_conf,
-				  uint8_t rule_id, 
+				  uint8_t rule_id,
 				  uint8_t on);
 /**< @internal Add a traffic mirroring rule on an Ethernet device */
 
@@ -1224,7 +1224,7 @@ struct rte_eth_dev_data {
 	void **tx_queues; /**< Array of pointers to TX queues. */
 	uint16_t nb_rx_queues; /**< Number of RX queues. */
 	uint16_t nb_tx_queues; /**< Number of TX queues. */
-	
+
 	struct rte_eth_dev_sriov sriov;    /**< SRIOV data */
 
 	void *dev_private;              /**< PMD-specific private data */
@@ -1237,7 +1237,7 @@ struct rte_eth_dev_data {
 
 	uint64_t rx_mbuf_alloc_failed; /**< RX ring mbuf allocation failures. */
 	struct ether_addr* mac_addrs;/**< Device Ethernet Link address. */
-	uint64_t mac_pool_sel[ETH_NUM_RECEIVE_MAC_ADDR]; 
+	uint64_t mac_pool_sel[ETH_NUM_RECEIVE_MAC_ADDR];
 	/** bitmap array of associating Ethernet MAC addresses to pools */
 	struct ether_addr* hash_mac_addrs;
 	/** Device Ethernet MAC addresses of hash filtering. */
@@ -1958,7 +1958,7 @@ static inline uint32_t
 rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id)
 {
         struct rte_eth_dev *dev;
- 
+
         dev = &rte_eth_devices[port_id];
         return (*dev->dev_ops->rx_queue_count)(dev, queue_id);
 }
@@ -2402,9 +2402,9 @@ int rte_eth_dev_flow_ctrl_set(uint8_t port_id,
 				struct rte_eth_fc_conf *fc_conf);
 
 /**
- * Configure the Ethernet priority flow control under DCB environment 
- * for Ethernet device. 
- * 
+ * Configure the Ethernet priority flow control under DCB environment
+ * for Ethernet device.
+ *
  * @param port_id
  * The port identifier of the Ethernet device.
  * @param pfc_conf
@@ -2457,39 +2457,39 @@ int rte_eth_dev_mac_addr_remove(uint8_t port, struct ether_addr *mac_addr);
 
 /**
  * Update Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
- * 
+ *
  * @param port
  *   The port identifier of the Ethernet device.
- * @param reta_conf 
+ * @param reta_conf
  *    RETA to update.
  * @return
- *   - (0) if successful. 
+ *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_eth_dev_rss_reta_update(uint8_t port, 
+int rte_eth_dev_rss_reta_update(uint8_t port,
 			struct rte_eth_rss_reta *reta_conf);
 
  /**
  * Query Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
- *  
+ *
  * @param port
  *   The port identifier of the Ethernet device.
- * @param reta_conf 
+ * @param reta_conf
  *   RETA to query.
  * @return
- *   - (0) if successful. 
+ *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_eth_dev_rss_reta_query(uint8_t port, 
+int rte_eth_dev_rss_reta_query(uint8_t port,
 			struct rte_eth_rss_reta *reta_conf);
- 
+
  /**
  * Updates unicast hash table for receiving packet with the given destination
- * MAC address, and the packet is routed to all VFs for which the RX mode is 
+ * MAC address, and the packet is routed to all VFs for which the RX mode is
  * accept packets that match the unicast hash table.
- *  
+ *
  * @param port
  *   The port identifier of the Ethernet device.
  * @param addr
@@ -2498,7 +2498,7 @@ int rte_eth_dev_rss_reta_query(uint8_t port,
  *    1 - Set an unicast hash bit for receiving packets with the MAC address.
  *    0 - Clear an unicast hash bit.
  * @return
- *   - (0) if successful. 
+ *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
   *  - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
@@ -2507,18 +2507,18 @@ int rte_eth_dev_uc_hash_table_set(uint8_t port,struct ether_addr *addr,
 					uint8_t on);
 
  /**
- * Updates all unicast hash bitmaps for receiving packet with any Unicast 
- * Ethernet MAC addresses,the packet is routed to all VFs for which the RX 
+ * Updates all unicast hash bitmaps for receiving packet with any Unicast
+ * Ethernet MAC addresses,the packet is routed to all VFs for which the RX
  * mode is accept packets that match the unicast hash table.
- *  
+ *
  * @param port
  *   The port identifier of the Ethernet device.
  * @param on
- *    1 - Set all unicast hash bitmaps for receiving all the Ethernet 
+ *    1 - Set all unicast hash bitmaps for receiving all the Ethernet
  *         MAC addresses
  *    0 - Clear all unicast hash bitmaps
  * @return
- *   - (0) if successful. 
+ *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
   *  - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
@@ -2527,13 +2527,13 @@ int rte_eth_dev_uc_all_hash_table_set(uint8_t port,uint8_t on);
 
  /**
  * Set RX L2 Filtering mode of a VF of an Ethernet device.
- *  
+ *
  * @param port
  *   The port identifier of the Ethernet device.
- * @param vf 
+ * @param vf
  *   VF id.
  * @param rx_mode
- *    The RX mode mask, which  is one or more of  accepting Untagged Packets, 
+ *    The RX mode mask, which  is one or more of  accepting Untagged Packets,
  *    packets that match the PFUTA table, Broadcast and Multicast Promiscuous.
  *    ETH_VMDQ_ACCEPT_UNTAG,ETH_VMDQ_ACCEPT_HASH_UC,
  *    ETH_VMDQ_ACCEPT_BROADCAST and ETH_VMDQ_ACCEPT_MULTICAST will be used
@@ -2542,7 +2542,7 @@ int rte_eth_dev_uc_all_hash_table_set(uint8_t port,uint8_t on);
  *    1 - Enable a VF RX mode.
  *    0 - Disable a VF RX mode.
  * @return
- *   - (0) if successful. 
+ *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
@@ -2552,26 +2552,26 @@ int rte_eth_dev_set_vf_rxmode(uint8_t port, uint16_t vf, uint16_t rx_mode,
 
 /**
 * Enable or disable a VF traffic transmit of the Ethernet device.
-*  
+*
 * @param port
 *   The port identifier of the Ethernet device.
-* @param vf 
+* @param vf
 *   VF id.
 * @param on
 *    1 - Enable a VF traffic transmit.
 *    0 - Disable a VF traffic transmit.
 * @return
-*   - (0) if successful. 
+*   - (0) if successful.
 *   - (-ENODEV) if *port_id* invalid.
 *   - (-ENOTSUP) if hardware doesn't support.
 *   - (-EINVAL) if bad parameter.
 */
-int 
+int
 rte_eth_dev_set_vf_tx(uint8_t port,uint16_t vf, uint8_t on);
 
 /**
 * Enable or disable a VF traffic receive of an Ethernet device.
-*  
+*
 * @param port
 *   The port identifier of the Ethernet device.
 * @param vf
@@ -2580,18 +2580,18 @@ rte_eth_dev_set_vf_tx(uint8_t port,uint16_t vf, uint8_t on);
 *    1 - Enable a VF traffic receive.
 *    0 - Disable a VF traffic receive.
 * @return
-*   - (0) if successful. 
+*   - (0) if successful.
 *   - (-ENOTSUP) if hardware doesn't support.
 *   - (-ENODEV) if *port_id* invalid.
 *   - (-EINVAL) if bad parameter.
 */
-int 
+int
 rte_eth_dev_set_vf_rx(uint8_t port,uint16_t vf, uint8_t on);
 
 /**
 * Enable/Disable hardware VF VLAN filtering by an Ethernet device of
 * received VLAN packets tagged with a given VLAN Tag Identifier.
-* 
+*
 * @param port id
 *   The port identifier of the Ethernet device.
 * @param vlan_id
@@ -2602,16 +2602,16 @@ rte_eth_dev_set_vf_rx(uint8_t port,uint16_t vf, uint8_t on);
 *    1 - Enable VFs VLAN filtering.
 *    0 - Disable VFs VLAN filtering.
 * @return
-*   - (0) if successful. 
+*   - (0) if successful.
 *   - (-ENOTSUP) if hardware doesn't support.
 *   - (-ENODEV) if *port_id* invalid.
 *   - (-EINVAL) if bad parameter.
 */
 int
-rte_eth_dev_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id, 
+rte_eth_dev_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
 				uint64_t vf_mask,
 				uint8_t vlan_on);
- 
+
 /**
  * Set a traffic mirroring rule on an Ethernet device
  *
@@ -2634,7 +2634,7 @@ rte_eth_dev_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
  *   - (-EINVAL) if the mr_conf information is not correct.
  */
 int rte_eth_mirror_rule_set(uint8_t port_id,
-			struct rte_eth_vmdq_mirror_conf *mirror_conf, 
+			struct rte_eth_vmdq_mirror_conf *mirror_conf,
 			uint8_t rule_id,
 			uint8_t on);
 

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -68,7 +68,7 @@
 #include <exec-env/rte_dom0_common.h>
 
 #define PAGE_SIZE RTE_PGSIZE_4K
-#define DEFAUL_DOM0_NAME "dom0-mem" 
+#define DEFAUL_DOM0_NAME "dom0-mem"
 
 static int xen_fd = -1;
 static const char sys_dir_path[] = "/sys/kernel/mm/dom0-mm/memsize-mB";
@@ -139,7 +139,7 @@ get_xen_memory_size(void)
 	if (eal_parse_sysfs_value(path, &mem_size) < 0)
 		return -1;
 
-	if (mem_size == 0) 
+	if (mem_size == 0)
 		rte_exit(EXIT_FAILURE,"XEN-DOM0:the %s/%s was not"
 			" configured.\n",sys_dir_path, file_name);
 	if (mem_size % 2)
@@ -149,7 +149,7 @@ get_xen_memory_size(void)
 	if (mem_size > DOM0_CONFIG_MEMSIZE)
 		rte_exit(EXIT_FAILURE,"XEN-DOM0:the %s/%s should not be larger"
 			" than %d mB\n",sys_dir_path, file_name, DOM0_CONFIG_MEMSIZE);
-	
+
 	return mem_size;
 }
 
@@ -167,15 +167,15 @@ rte_mem_phy2mch(uint32_t memseg_id, const phys_addr_t phy_addr)
 	mfn_id = (phy_addr - memseg[memseg_id].phys_addr) / RTE_PGSIZE_2M;
 
 	/*the MFN is contiguous in 2M */
-	mfn_offset = (phy_addr - memseg[memseg_id].phys_addr) % 
+	mfn_offset = (phy_addr - memseg[memseg_id].phys_addr) %
 					RTE_PGSIZE_2M / PAGE_SIZE;
-	mfn = mfn_offset + memseg[memseg_id].mfn[mfn_id];	
-	
+	mfn = mfn_offset + memseg[memseg_id].mfn[mfn_id];
+
 	/** return mechine address */
 	return (mfn * PAGE_SIZE + phy_addr % PAGE_SIZE);
 }
 
-int 
+int
 rte_xen_dom0_memory_init(void)
 {
 	void *vir_addr, *vma_addr = NULL;
@@ -198,8 +198,8 @@ rte_xen_dom0_memory_init(void)
 		/* if we didn't satisfy total memory requirements */
 		rte_exit(EXIT_FAILURE,"Not enough memory available! Requested: %uMB,"
 				" available: %uMB\n", requested, mem_size);
-	else if (total_mem != 0) 
-		mem_size = requested; 		
+	else if (total_mem != 0)
+		mem_size = requested;
 
 	/* Check FD and open once */
 	if (xen_fd < 0) {
@@ -239,7 +239,7 @@ rte_xen_dom0_memory_init(void)
 		goto fail;
 	}
 
-	/* get all memory segements information */  
+	/* get all memory segements information */
 	ret = ioctl(xen_fd, RTE_DOM0_IOCTL_GET_MEMSEG_INFO, seginfo);
 	if (ret < 0) {
 		RTE_LOG(ERR, EAL, "XEN DOM0:failed to get memseg info.\n");
@@ -251,11 +251,11 @@ rte_xen_dom0_memory_init(void)
 	for (memseg_idx = 0; memseg_idx < num_memseg; memseg_idx++)
 	{
 		vma_len = seginfo[memseg_idx].size;
-		 
-		/** 
-		 * get the biggest virtual memory area up to vma_len. If it fails, 
-		 * vma_addr is NULL, so let the kernel provide the address. 
-		 */ 
+
+		/**
+		 * get the biggest virtual memory area up to vma_len. If it fails,
+		 * vma_addr is NULL, so let the kernel provide the address.
+		 */
 		vma_addr = xen_get_virtual_area(&vma_len, RTE_PGSIZE_2M);
 		if (vma_addr == NULL) {
 			flags = MAP_SHARED;
@@ -265,7 +265,7 @@ rte_xen_dom0_memory_init(void)
 
 		seginfo[memseg_idx].size = vma_len;
 		vir_addr = mmap(vma_addr, seginfo[memseg_idx].size,
-			PROT_READ|PROT_WRITE, flags, xen_fd, 
+			PROT_READ|PROT_WRITE, flags, xen_fd,
 			memseg_idx * page_size);
 		if (vir_addr == MAP_FAILED) {
 			RTE_LOG(ERR, EAL, "XEN DOM0:Could not mmap %s\n",
@@ -275,10 +275,10 @@ rte_xen_dom0_memory_init(void)
 		}
 
 		memseg[memseg_idx].addr = vir_addr;
-		memseg[memseg_idx].phys_addr = page_size * 
+		memseg[memseg_idx].phys_addr = page_size *
 			seginfo[memseg_idx].pfn ;
 		memseg[memseg_idx].len = seginfo[memseg_idx].size;
-		for ( i = 0; i < seginfo[memseg_idx].size / RTE_PGSIZE_2M; i++) 
+		for ( i = 0; i < seginfo[memseg_idx].size / RTE_PGSIZE_2M; i++)
 			memseg[memseg_idx].mfn[i] = seginfo[memseg_idx].mfn[i];
 
 		/* MFNs are continuous in 2M, so assume that page size is 2M */
@@ -295,7 +295,7 @@ rte_xen_dom0_memory_init(void)
 fail:
 	if (xen_fd > 0) {
 		close(xen_fd);
-		xen_fd = -1;	
+		xen_fd = -1;
 	}
 	return err;
 }
@@ -303,7 +303,7 @@ fail:
 /*
  * This creates the memory mappings in the secondary process to match that of
  * the server process. It goes through each memory segment in the DPDK runtime
- * configuration, mapping them in order to form a contiguous block in the 
+ * configuration, mapping them in order to form a contiguous block in the
  * virtual memory space
  */
 int
@@ -311,7 +311,7 @@ rte_xen_dom0_memory_attach(void)
 {
 	const struct rte_mem_config *mcfg;
 	unsigned s = 0; /* s used to track the segment number */
-	int xen_fd = -1; 
+	int xen_fd = -1;
 	int ret = -1;
 	void *vir_addr;
 	char name[DOM0_NAME_MAX] = {0};
@@ -327,7 +327,7 @@ rte_xen_dom0_memory_attach(void)
 			goto error;
 		}
 	}
-	
+
 	/* construct memory mangement name for Dom0 */
 	rte_snprintf(name, DOM0_NAME_MAX, "%s-%s",
 		internal_config.hugefile_prefix, DEFAUL_DOM0_NAME);
@@ -356,7 +356,7 @@ rte_xen_dom0_memory_attach(void)
 				"in %s to requested address [%p]\n",
 				(unsigned long long)mcfg->memseg[s].len, DOM0_MM_DEV,
 				mcfg->memseg[s].addr);
-			goto error;	
+			goto error;
 		}
 	}
 	return 0;

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -60,18 +60,18 @@ dev_num_vf(struct rte_eth_dev *eth_dev)
 	return eth_dev->pci_dev->max_vfs;
 }
 
-static inline 
+static inline
 int ixgbe_vf_perm_addr_gen(struct rte_eth_dev *dev, uint16_t vf_num)
 {
 	unsigned char vf_mac_addr[ETHER_ADDR_LEN];
-	struct ixgbe_vf_info *vfinfo = 
+	struct ixgbe_vf_info *vfinfo =
 		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
 	uint16_t vfn;
 
 	for (vfn = 0; vfn < vf_num; vfn++) {
 		eth_random_addr(vf_mac_addr);
 		/* keep the random address as default */
-		memcpy(vfinfo[vfn].vf_mac_addresses, vf_mac_addr, 
+		memcpy(vfinfo[vfn].vf_mac_addresses, vf_mac_addr,
 			   ETHER_ADDR_LEN);
 	}
 
@@ -91,13 +91,13 @@ ixgbe_mb_intr_setup(struct rte_eth_dev *dev)
 
 void ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 {
-	struct ixgbe_vf_info **vfinfo = 
+	struct ixgbe_vf_info **vfinfo =
 		IXGBE_DEV_PRIVATE_TO_P_VFDATA(eth_dev->data->dev_private);
 	struct ixgbe_mirror_info *mirror_info =
         IXGBE_DEV_PRIVATE_TO_PFDATA(eth_dev->data->dev_private);
 	struct ixgbe_uta_info *uta_info =
         IXGBE_DEV_PRIVATE_TO_UTA(eth_dev->data->dev_private);
-	struct ixgbe_hw *hw = 
+	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	uint16_t vf_num;
 	uint8_t nb_queue;
@@ -161,14 +161,14 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 	vtctl = IXGBE_READ_REG(hw, IXGBE_VT_CTL);
 	vtctl |= IXGBE_VMD_CTL_VMDQ_EN;
 	vtctl &= ~IXGBE_VT_CTL_POOL_MASK;
-	vtctl |= RTE_ETH_DEV_SRIOV(eth_dev).def_vmdq_idx 
+	vtctl |= RTE_ETH_DEV_SRIOV(eth_dev).def_vmdq_idx
 		<< IXGBE_VT_CTL_POOL_SHIFT;
 	vtctl |= IXGBE_VT_CTL_REPLEN;
 	IXGBE_WRITE_REG(hw, IXGBE_VT_CTL, vtctl);
 
-	vfre_offset = vf_num & VFRE_MASK; 
+	vfre_offset = vf_num & VFRE_MASK;
 	vfre_slot = (vf_num >> VFRE_SHIFT) > 0 ? 1 : 0;
-	
+
 	/* Enable pools reserved to PF only */
 	IXGBE_WRITE_REG(hw, IXGBE_VFRE(vfre_slot), (~0) << vfre_offset);
 	IXGBE_WRITE_REG(hw, IXGBE_VFRE(vfre_slot ^ 1), vfre_slot - 1);
@@ -193,11 +193,11 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 	 */
 	gcr_ext = IXGBE_READ_REG(hw, IXGBE_GCR_EXT);
 	gcr_ext &= ~IXGBE_GCR_EXT_VT_MODE_MASK;
-	
+
 	gpie = IXGBE_READ_REG(hw, IXGBE_GPIE);
 	gpie &= ~IXGBE_GPIE_VTMODE_MASK;
 	gpie |= IXGBE_GPIE_MSIX_MODE;
-	
+
 	switch (RTE_ETH_DEV_SRIOV(eth_dev).active) {
 	case ETH_64_POOLS:
 		gcr_ext |= IXGBE_GCR_EXT_VT_MODE_64;
@@ -216,8 +216,8 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 	IXGBE_WRITE_REG(hw, IXGBE_GCR_EXT, gcr_ext);
         IXGBE_WRITE_REG(hw, IXGBE_GPIE, gpie);
 
-        /* 
-	 * enable vlan filtering and allow all vlan tags through 
+        /*
+	 * enable vlan filtering and allow all vlan tags through
 	 */
         vlanctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
         vlanctrl |= IXGBE_VLNCTRL_VFE ; /* enable vlan filters */
@@ -227,11 +227,11 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
         for (i = 0; i < IXGBE_MAX_VFTA; i++) {
                 IXGBE_WRITE_REG(hw, IXGBE_VFTA(i), 0xFFFFFFFF);
         }
-	
+
 	/* Enable MAC Anti-Spoofing */
 	hw->mac.ops.set_mac_anti_spoofing(hw, FALSE, vf_num);
 
-	/* set flow control threshold to max to avoid tx switch hang */	
+	/* set flow control threshold to max to avoid tx switch hang */
 	for (i = 0; i < IXGBE_DCB_MAX_TRAFFIC_CLASS; i++) {
 		IXGBE_WRITE_REG(hw, IXGBE_FCRTL_82599(i), 0);
 		fcrth = IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(i)) - 32;
@@ -241,10 +241,10 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static void 
+static void
 set_rx_mode(struct rte_eth_dev *dev)
 {
-	struct rte_eth_dev_data *dev_data = 
+	struct rte_eth_dev_data *dev_data =
 		(struct rte_eth_dev_data*)dev->data->dev_private;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	u32 fctrl, vmolr = IXGBE_VMOLR_BAM | IXGBE_VMOLR_AUPE;
@@ -287,32 +287,32 @@ set_rx_mode(struct rte_eth_dev *dev)
 		ixgbe_vlan_hw_strip_disable_all(dev);
 }
 
-static inline void 
+static inline void
 ixgbe_vf_reset_event(struct rte_eth_dev *dev, uint16_t vf)
 {
-	struct ixgbe_hw *hw = 
+	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_vf_info *vfinfo = 
+	struct ixgbe_vf_info *vfinfo =
 		*(IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
 	int rar_entry = hw->mac.num_rar_entries - (vf + 1);
 	uint32_t vmolr = IXGBE_READ_REG(hw, IXGBE_VMOLR(vf));
 
-	vmolr |= (IXGBE_VMOLR_ROPE | IXGBE_VMOLR_ROMPE | 
+	vmolr |= (IXGBE_VMOLR_ROPE | IXGBE_VMOLR_ROMPE |
 			IXGBE_VMOLR_BAM | IXGBE_VMOLR_AUPE);
 	IXGBE_WRITE_REG(hw, IXGBE_VMOLR(vf), vmolr);
 
 	IXGBE_WRITE_REG(hw, IXGBE_VMVIR(vf), 0);
-	
+
 	/* reset multicast table array for vf */
 	vfinfo[vf].num_vf_mc_hashes = 0;
 
 	/* reset rx mode */
 	set_rx_mode(dev);
-	
+
 	hw->mac.ops.clear_rar(hw, rar_entry);
 }
 
-static inline void 
+static inline void
 ixgbe_vf_reset_msg(struct rte_eth_dev *dev, uint16_t vf)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -345,7 +345,7 @@ static int
 ixgbe_vf_reset(struct rte_eth_dev *dev, uint16_t vf, uint32_t *msgbuf)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_vf_info *vfinfo = 
+	struct ixgbe_vf_info *vfinfo =
 		*(IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
 	unsigned char *vf_mac = vfinfo[vf].vf_mac_addresses;
 	int rar_entry = hw->mac.num_rar_entries - (vf + 1);
@@ -372,7 +372,7 @@ static int
 ixgbe_vf_set_mac_addr(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_vf_info *vfinfo = 
+	struct ixgbe_vf_info *vfinfo =
 		*(IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
 	int rar_entry = hw->mac.num_rar_entries - (vf + 1);
 	uint8_t *new_mac = (uint8_t *)(&msgbuf[1]);
@@ -388,9 +388,9 @@ static int
 ixgbe_vf_set_multicast(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t *msgbuf)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_vf_info *vfinfo = 
+	struct ixgbe_vf_info *vfinfo =
 		*(IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
-	int nb_entries = (msgbuf[0] & IXGBE_VT_MSGINFO_MASK) >> 
+	int nb_entries = (msgbuf[0] & IXGBE_VT_MSGINFO_MASK) >>
 		IXGBE_VT_MSGINFO_SHIFT;
 	uint16_t *hash_list = (uint16_t *)&msgbuf[1];
 	uint32_t mta_idx;
@@ -400,7 +400,7 @@ ixgbe_vf_set_multicast(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32
 	const uint32_t IXGBE_MTA_BIT_MASK = (0x1 << IXGBE_MTA_BIT_SHIFT) - 1;
 	uint32_t reg_val;
 	int i;
-		
+
 	/* only so many hash values supported */
 	nb_entries = RTE_MIN(nb_entries, IXGBE_MAX_VF_MC_ENTRIES);
 
@@ -411,7 +411,7 @@ ixgbe_vf_set_multicast(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32
 	}
 
 	for (i = 0; i < vfinfo->num_vf_mc_hashes; i++) {
-		mta_idx = (vfinfo->vf_mc_hashes[i] >> IXGBE_MTA_BIT_SHIFT) 
+		mta_idx = (vfinfo->vf_mc_hashes[i] >> IXGBE_MTA_BIT_SHIFT)
 				& IXGBE_MTA_INDEX_MASK;
 		mta_shift = vfinfo->vf_mc_hashes[i] & IXGBE_MTA_BIT_MASK;
 		reg_val = IXGBE_READ_REG(hw, IXGBE_MTA(mta_idx));
@@ -427,7 +427,7 @@ ixgbe_vf_set_vlan(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 {
 	int add, vid;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_vf_info *vfinfo = 
+	struct ixgbe_vf_info *vfinfo =
 		*(IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
 
 	add = (msgbuf[0] & IXGBE_VT_MSGINFO_MASK)
@@ -441,7 +441,7 @@ ixgbe_vf_set_vlan(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	return hw->mac.ops.set_vfta(hw, vid, vf, (bool)add);
 }
 
-static int 
+static int
 ixgbe_set_vf_lpe(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t *msgbuf)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -453,7 +453,7 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t *ms
 	if (hw->mac.type != ixgbe_mac_X540)
 		return -1;
 
-	if ((max_frame < ETHER_MIN_LEN) || (max_frame > ETHER_MAX_JUMBO_FRAME_LEN)) 
+	if ((max_frame < ETHER_MIN_LEN) || (max_frame > ETHER_MAX_JUMBO_FRAME_LEN))
 		return -1;
 
 	max_frs = (IXGBE_READ_REG(hw, IXGBE_MAXFRS) &
@@ -466,14 +466,14 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t *ms
 	return 0;
 }
 
-static int 
+static int
 ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 {
 	uint16_t mbx_size = IXGBE_VFMAILBOX_SIZE;
 	uint32_t msgbuf[IXGBE_VFMAILBOX_SIZE];
 	int32_t retval;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_vf_info *vfinfo = 
+	struct ixgbe_vf_info *vfinfo =
 		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
 
 	retval = ixgbe_read_mbx(hw, msgbuf, mbx_size, vf);
@@ -529,13 +529,13 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 	return retval;
 }
 
-static inline void 
+static inline void
 ixgbe_rcv_ack_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 {
 	uint32_t msg = IXGBE_VT_MSGTYPE_NACK;
-	struct ixgbe_hw *hw = 
+	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_vf_info *vfinfo = 
+	struct ixgbe_vf_info *vfinfo =
 		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
 
 	if (!vfinfo[vf].clear_to_send)
@@ -545,7 +545,7 @@ ixgbe_rcv_ack_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 void ixgbe_pf_mbx_process(struct rte_eth_dev *eth_dev)
 {
 	uint16_t vf;
-	struct ixgbe_hw *hw = 
+	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
 	for (vf = 0; vf < dev_num_vf(eth_dev); vf++) {

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -83,7 +83,7 @@ TAILQ_HEAD(rte_lpm6_list, rte_lpm6);
 struct rte_lpm6_tbl_entry {
 	uint32_t next_hop:	21;  /**< Next hop / next table to be checked. */
 	uint32_t depth	:8;      /**< Rule depth. */
-	
+
 	/* Flags. */
 	uint32_t valid     :1;   /**< Validation flag. */
 	uint32_t valid_group :1; /**< Group validation flag. */
@@ -126,7 +126,7 @@ mask_ip(uint8_t *ip, uint8_t depth)
 {
         int16_t part_depth, mask;
         int i;
-		
+
 		part_depth = depth;
 
 		for (i = 0; i < RTE_LPM6_IPV6_ADDR_SIZE; i++) {
@@ -153,10 +153,10 @@ rte_lpm6_create(const char *name, int socket_id,
 	struct rte_lpm6_list *lpm_list;
 
 	/* Check that we have an initialised tail queue */
-	if ((lpm_list = 
+	if ((lpm_list =
 	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM6, rte_lpm6_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;	
+		return NULL;
 	}
 
 	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm6_tbl_entry) != sizeof(uint32_t));
@@ -189,7 +189,7 @@ rte_lpm6_create(const char *name, int socket_id,
 	/* Allocate memory to store the LPM data structures. */
 	lpm = (struct rte_lpm6 *)rte_zmalloc_socket(mem_name, (size_t)mem_size,
 			CACHE_LINE_SIZE, socket_id);
-			
+
 	if (lpm == NULL) {
 		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
 		goto exit;
@@ -197,7 +197,7 @@ rte_lpm6_create(const char *name, int socket_id,
 
 	lpm->rules_tbl = (struct rte_lpm6_rule *)rte_zmalloc_socket(NULL,
 			(size_t)rules_size, CACHE_LINE_SIZE, socket_id);
-			
+
 	if (lpm->rules_tbl == NULL) {
 		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
 		rte_free(lpm);
@@ -211,7 +211,7 @@ rte_lpm6_create(const char *name, int socket_id,
 
 	TAILQ_INSERT_TAIL(lpm_list, lpm, next);
 
-exit:	
+exit:
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	return lpm;
@@ -269,7 +269,7 @@ static inline int32_t
 rule_add(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t next_hop, uint8_t depth)
 {
 	uint32_t rule_index;
-		
+
 	/* Scan through rule list to see if rule already exists. */
 	for (rule_index = 0; rule_index < lpm->used_rules; rule_index++) {
 
@@ -298,7 +298,7 @@ rule_add(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t next_hop, uint8_t depth)
 
 	/* Increment the used rules counter for this rule group. */
 	lpm->used_rules++;
-	
+
 	return rule_index;
 }
 
@@ -352,7 +352,7 @@ add_step(struct rte_lpm6 *lpm, struct rte_lpm6_tbl_entry *tbl,
 	int32_t tbl8_gindex;
 	int8_t bitshift;
 	uint8_t bits_covered;
-	
+
 	/*
 	 * Calculate index to the table based on the number and position
 	 * of the bytes being inspected in this step.
@@ -360,16 +360,16 @@ add_step(struct rte_lpm6 *lpm, struct rte_lpm6_tbl_entry *tbl,
 	tbl_index = 0;
 	for (i = first_byte; i < (uint32_t)(first_byte + bytes); i++) {
 		bitshift = (int8_t)((bytes - i)*BYTE_SIZE);
-		
+
 		if (bitshift < 0) bitshift = 0;
 		tbl_index = tbl_index | ip[i-1] << bitshift;
 	}
 
 	/* Number of bits covered in this step */
 	bits_covered = (uint8_t)((bytes+first_byte-1)*BYTE_SIZE);
-	
+
 	/*
-	 * If depth if smaller than this number (ie this is the last step) 
+	 * If depth if smaller than this number (ie this is the last step)
 	 * expand the rule across the relevant positions in the table.
 	 */
 	if (depth <= bits_covered) {
@@ -390,17 +390,17 @@ add_step(struct rte_lpm6 *lpm, struct rte_lpm6_tbl_entry *tbl,
 				tbl[i] = new_tbl_entry;
 
 			} else if (tbl[i].ext_entry == 1) {
-			
+
 				/*
 				 * If tbl entry is valid and extended calculate the index
 				 * into next tbl8 and expand the rule across the data structure.
 				 */
-				tbl8_gindex = tbl[i].lpm6_tbl8_gindex * 
+				tbl8_gindex = tbl[i].lpm6_tbl8_gindex *
 						RTE_LPM6_TBL8_GROUP_NUM_ENTRIES;
 				expand_rule(lpm, tbl8_gindex, depth, next_hop);
 			}
-		}    
-		
+		}
+
 		return 0;
 	}
 	/*
@@ -414,7 +414,7 @@ add_step(struct rte_lpm6 *lpm, struct rte_lpm6_tbl_entry *tbl,
 				tbl8_gindex = (lpm->next_tbl8)++;
 			else
 				return -ENOSPC;
-			
+
 			struct rte_lpm6_tbl_entry new_tbl_entry = {
 				.lpm6_tbl8_gindex = tbl8_gindex,
 				.depth = 0,
@@ -464,11 +464,11 @@ add_step(struct rte_lpm6 *lpm, struct rte_lpm6_tbl_entry *tbl,
 
 			tbl[tbl_index] = new_tbl_entry;
 		}
-		
+
 		*tbl_next = &(lpm->tbl8[tbl[tbl_index].lpm6_tbl8_gindex *
 				RTE_LPM6_TBL8_GROUP_NUM_ENTRIES]);
 	}
-	
+
 	return 1;
 }
 
@@ -485,11 +485,11 @@ rte_lpm6_add(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
 	int status;
 	uint8_t masked_ip[RTE_LPM6_IPV6_ADDR_SIZE];
 	int i;
-	
+
 	/* Check user arguments. */
 	if ((lpm == NULL) || (depth < 1) || (depth > RTE_LPM6_MAX_DEPTH))
 		return -EINVAL;
-		
+
 	/* Copy the IP and mask it to avoid modifying user's input data. */
 	memcpy(masked_ip, ip, RTE_LPM6_IPV6_ADDR_SIZE);
 	mask_ip(masked_ip, depth);
@@ -508,11 +508,11 @@ rte_lpm6_add(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
 			depth, next_hop);
 	if (status < 0) {
 		rte_lpm6_delete(lpm, masked_ip, depth);
-		
+
 		return status;
 	}
 
-	/* 
+	/*
 	 * Inspect one by one the rest of the bytes until
 	 * the process is completed.
 	 */
@@ -522,11 +522,11 @@ rte_lpm6_add(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
 				depth, next_hop);
 		if (status < 0) {
 			rte_lpm6_delete(lpm, masked_ip, depth);
-			
+
 			return status;
 		}
 	}
-	
+
 	return status;
 }
 
@@ -541,10 +541,10 @@ lookup_step(const struct rte_lpm6 *lpm, const struct rte_lpm6_tbl_entry *tbl,
 		uint8_t first_byte, uint8_t *next_hop)
 {
 	uint32_t tbl8_index, tbl_entry;
-	
+
 	/* Take the integer value from the pointer. */
 	tbl_entry = *(const uint32_t *)tbl;
-	
+
 	/* If it is valid and extended we calculate the new pointer to return. */
 	if ((tbl_entry & RTE_LPM6_VALID_EXT_ENTRY_BITMASK) ==
 			RTE_LPM6_VALID_EXT_ENTRY_BITMASK) {
@@ -574,24 +574,24 @@ rte_lpm6_lookup(const struct rte_lpm6 *lpm, uint8_t *ip, uint8_t *next_hop)
 	int status;
 	uint8_t first_byte;
 	uint32_t tbl24_index;
-	
+
 	/* DEBUG: Check user input arguments. */
 	if ((lpm == NULL) || (ip == NULL) || (next_hop == NULL)) {
 		return -EINVAL;
 	}
-	
+
 	first_byte = LOOKUP_FIRST_BYTE;
 	tbl24_index = (ip[0] << BYTES2_SIZE) | (ip[1] << BYTE_SIZE) | ip[2];
 
 	/* Calculate pointer to the first entry to be inspected */
 	tbl = &lpm->tbl24[tbl24_index];
-	
+
 	do {
-		/* Continue inspecting following levels until success or failure */		
+		/* Continue inspecting following levels until success or failure */
 		status = lookup_step(lpm, tbl, &tbl_next, ip, first_byte++, next_hop);
 		tbl = tbl_next;
 	} while (status == 1);
-	
+
 	return status;
 }
 
@@ -622,20 +622,20 @@ rte_lpm6_lookup_bulk_func(const struct rte_lpm6 *lpm,
 
 		/* Calculate pointer to the first entry to be inspected */
 		tbl = &lpm->tbl24[tbl24_index];
-		
+
 		do {
-			/* Continue inspecting following levels until success or failure */		
+			/* Continue inspecting following levels until success or failure */
 			status = lookup_step(lpm, tbl, &tbl_next, ips[i], first_byte++,
 					&next_hop);
 			tbl = tbl_next;
 		} while (status == 1);
-		
+
 		if (status < 0)
 			next_hops[i] = -1;
 		else
 			next_hops[i] = next_hop;
 	}
-	
+
 	return 0;
 }
 
@@ -647,14 +647,14 @@ static inline int32_t
 rule_find(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth)
 {
 	uint32_t rule_index;
-	
+
 	/* Scan used rules at given depth to find rule. */
 	for (rule_index = 0; rule_index < lpm->used_rules; rule_index++) {
 		/* If rule is found return the rule index. */
 		if ((memcmp (lpm->rules_tbl[rule_index].ip, ip,
 				RTE_LPM6_IPV6_ADDR_SIZE) == 0) &&
 				lpm->rules_tbl[rule_index].depth == depth) {
-		
+
 			return rule_index;
 		}
 	}
@@ -687,7 +687,7 @@ rte_lpm6_delete(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth)
 	int32_t rule_to_delete_index;
 	uint8_t ip_masked[RTE_LPM6_IPV6_ADDR_SIZE];
 	unsigned i;
-	
+
 	/*
 	 * Check input arguments.
 	 */
@@ -714,8 +714,8 @@ rte_lpm6_delete(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth)
 
 	/* Delete the rule from the rule table. */
 	rule_delete(lpm, rule_to_delete_index);
-		
-	/* 
+
+	/*
 	 * Set all the table entries to 0 (ie delete every rule
 	 * from the data structure.
 	 */
@@ -723,8 +723,8 @@ rte_lpm6_delete(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth)
 	memset(lpm->tbl24, 0, sizeof(lpm->tbl24));
 	memset(lpm->tbl8, 0, sizeof(lpm->tbl8[0])
 			* RTE_LPM6_TBL8_GROUP_NUM_ENTRIES * lpm->number_tbl8s);
-	
-	/* 
+
+	/*
 	 * Add every rule again (except for the one that was removed from
 	 * the rules table).
 	 */
@@ -732,7 +732,7 @@ rte_lpm6_delete(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth)
 		rte_lpm6_add(lpm, lpm->rules_tbl[i].ip, lpm->rules_tbl[i].depth,
 				lpm->rules_tbl[i].next_hop);
 	}
-	
+
 	return 0;
 }
 
@@ -746,14 +746,14 @@ rte_lpm6_delete_bulk_func(struct rte_lpm6 *lpm,
 	int32_t rule_to_delete_index;
 	uint8_t ip_masked[RTE_LPM6_IPV6_ADDR_SIZE];
 	unsigned i;
-	
+
 	/*
 	 * Check input arguments.
 	 */
 	if ((lpm == NULL) || (ips == NULL) || (depths == NULL)) {
 		return -EINVAL;
 	}
-	
+
 	for (i = 0; i < n; i++) {
 		/* Copy the IP and mask it to avoid modifying user's input data. */
 		memcpy(ip_masked, ips[i], RTE_LPM6_IPV6_ADDR_SIZE);
@@ -775,8 +775,8 @@ rte_lpm6_delete_bulk_func(struct rte_lpm6 *lpm,
 		/* Delete the rule from the rule table. */
 		rule_delete(lpm, rule_to_delete_index);
 	}
-		
-	/* 
+
+	/*
 	 * Set all the table entries to 0 (ie delete every rule
 	 * from the data structure.
 	 */
@@ -784,8 +784,8 @@ rte_lpm6_delete_bulk_func(struct rte_lpm6 *lpm,
 	memset(lpm->tbl24, 0, sizeof(lpm->tbl24));
 	memset(lpm->tbl8, 0, sizeof(lpm->tbl8[0])
 			* RTE_LPM6_TBL8_GROUP_NUM_ENTRIES * lpm->number_tbl8s);
-	
-	/* 
+
+	/*
 	 * Add every rule again (except for the ones that were removed from
 	 * the rules table).
 	 */
@@ -793,7 +793,7 @@ rte_lpm6_delete_bulk_func(struct rte_lpm6 *lpm,
 		rte_lpm6_add(lpm, lpm->rules_tbl[i].ip, lpm->rules_tbl[i].depth,
 				lpm->rules_tbl[i].next_hop);
 	}
-	
+
 	return 0;
 }
 
@@ -805,7 +805,7 @@ rte_lpm6_delete_all(struct rte_lpm6 *lpm)
 {
 	/* Zero used rules counter. */
 	lpm->used_rules = 0;
-		
+
 	/* Zero next tbl8 index. */
 	lpm->next_tbl8 = 0;
 

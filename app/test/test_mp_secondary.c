@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -174,7 +174,7 @@ run_object_creation_tests(void)
 	printf("### Testing object creation - expect lots of mz reserve errors!\n");
 
 	rte_errno = 0;
-	if ((rte_memzone_reserve("test_mz", size, rte_socket_id(), 
+	if ((rte_memzone_reserve("test_mz", size, rte_socket_id(),
 				 flags) == NULL) &&
 	    (rte_memzone_lookup("test_mz") == NULL)) {
 		printf("Error: unexpected return value from rte_memzone_reserve\n");
@@ -213,7 +213,7 @@ run_object_creation_tests(void)
 
 	const struct rte_fbk_hash_params fbk_params = { .name = "test_fbk_mp_hash" };
 	rte_errno=0;
-	if ((rte_fbk_hash_create(&fbk_params) != NULL) && 
+	if ((rte_fbk_hash_create(&fbk_params) != NULL) &&
 	    (rte_fbk_hash_find_existing(fbk_params.name) == NULL)){
 		printf("Error: unexpected return value from rte_fbk_hash_create()\n");
 		return -1;

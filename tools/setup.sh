@@ -1,14 +1,14 @@
 #! /bin/bash
 
 #   BSD LICENSE
-# 
+#
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
-# 
+#
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
 #   are met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
 #     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-# 
+#
 #   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 #   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -329,9 +329,9 @@ grep_meminfo()
 #
 show_nics()
 {
-	if  /sbin/lsmod  | grep -q igb_uio ; then 
+	if  /sbin/lsmod  | grep -q igb_uio ; then
 		${RTE_SDK}/tools/igb_uio_bind.py --status
-	else 
+	else
 		echo "# Please load the 'igb_uio' kernel module before querying or "
 		echo "# adjusting NIC device bindings"
 	fi
@@ -342,13 +342,13 @@ show_nics()
 #
 bind_nics()
 {
-	if  /sbin/lsmod  | grep -q igb_uio ; then 
+	if  /sbin/lsmod  | grep -q igb_uio ; then
 		${RTE_SDK}/tools/igb_uio_bind.py --status
 		echo ""
 		echo -n "Enter PCI address of device to bind to IGB UIO driver: "
 		read PCI_PATH
 		sudo ${RTE_SDK}/tools/igb_uio_bind.py -b igb_uio $PCI_PATH && echo "OK"
-	else 
+	else
 		echo "# Please load the 'igb_uio' kernel module before querying or "
 		echo "# adjusting NIC device bindings"
 	fi

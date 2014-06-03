@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -130,7 +130,7 @@ get_xen_guest(int dom_id)
 }
 
 
-static struct xen_guest * 
+static struct xen_guest *
 add_xen_guest(int32_t dom_id)
 {
 	struct xen_guest *guest = NULL;
@@ -165,7 +165,7 @@ cleanup_device(struct virtio_net_config_ll *ll_dev)
 }
 
 /*
- * Add entry containing a device to the device configuration linked list. 
+ * Add entry containing a device to the device configuration linked list.
  */
 static void
 add_config_ll_entry(struct virtio_net_config_ll *new_ll_dev)
@@ -179,13 +179,13 @@ add_config_ll_entry(struct virtio_net_config_ll *new_ll_dev)
 			new_ll_dev->dev.device_fh = 0;
 			new_ll_dev->next = ll_dev;
 			ll_root = new_ll_dev;
-		} else {		
+		} else {
 			/* increment through the ll until we find un unused device_id,
  			 * insert the device at that entry
  			 */
 			while ((ll_dev->next != NULL) && (ll_dev->dev.device_fh == (ll_dev->next->dev.device_fh - 1)))
 				ll_dev = ll_dev->next;
-			
+
 			new_ll_dev->dev.device_fh = ll_dev->dev.device_fh + 1;
 			new_ll_dev->next = ll_dev->next;
 			ll_dev->next = new_ll_dev;
@@ -202,7 +202,7 @@ add_config_ll_entry(struct virtio_net_config_ll *new_ll_dev)
  */
 static struct virtio_net_config_ll *
 rm_config_ll_entry(struct virtio_net_config_ll *ll_dev, struct virtio_net_config_ll *ll_dev_last)
-{	
+{
 	/* First remove the device and then clean it up. */
 	if (ll_dev == ll_root) {
 		ll_root = ll_dev->next;
@@ -218,23 +218,23 @@ rm_config_ll_entry(struct virtio_net_config_ll *ll_dev, struct virtio_net_config
 /*
  * Retrieves an entry from the devices configuration linked list.
  */
-static struct virtio_net_config_ll * 
+static struct virtio_net_config_ll *
 get_config_ll_entry(unsigned int virtio_idx, unsigned int dom_id)
 {
 	struct virtio_net_config_ll *ll_dev = ll_root;
 
 	/* Loop through linked list until the dom_id is found. */
 	while (ll_dev != NULL) {
-		if (ll_dev->dev.dom_id == dom_id && ll_dev->dev.virtio_idx == virtio_idx) 
+		if (ll_dev->dev.dom_id == dom_id && ll_dev->dev.virtio_idx == virtio_idx)
 			return ll_dev;
 		ll_dev = ll_dev->next;
-	} 
+	}
 
 	return NULL;
 }
 
-/* 
- * Initialise all variables in device structure. 
+/*
+ * Initialise all variables in device structure.
  */
 static void
 init_dev(struct virtio_net *dev)
@@ -253,14 +253,14 @@ virtio_net_config_ll *new_device(unsigned int virtio_idx, struct xen_guest *gues
 	uint64_t gpa;
 	uint32_t i;
 
-	/* Setup device and virtqueues. */	
+	/* Setup device and virtqueues. */
 	new_ll_dev   = calloc(1, sizeof(struct virtio_net_config_ll));
 	virtqueue_rx = rte_zmalloc(NULL, sizeof(struct vhost_virtqueue), CACHE_LINE_SIZE);
 	virtqueue_tx = rte_zmalloc(NULL, sizeof(struct vhost_virtqueue), CACHE_LINE_SIZE);
 	if (new_ll_dev == NULL || virtqueue_rx == NULL || virtqueue_tx == NULL)
 		goto err;
 
-	new_ll_dev->dev.virtqueue_rx = virtqueue_rx;	
+	new_ll_dev->dev.virtqueue_rx = virtqueue_rx;
 	new_ll_dev->dev.virtqueue_tx = virtqueue_tx;
 	new_ll_dev->dev.dom_id       = guest->dom_id;
 	new_ll_dev->dev.virtio_idx   = virtio_idx;
@@ -285,7 +285,7 @@ virtio_net_config_ll *new_device(unsigned int virtio_idx, struct xen_guest *gues
 	new_ll_dev->dev.mem = malloc(sizeof(struct virtio_memory) + sizeof(struct virtio_memory_regions) * MAX_XENVIRT_MEMPOOL);
 	new_ll_dev->dev.mem->nregions = guest->pool_num;
 	for (i = 0; i < guest->pool_num; i++) {
-		gpa = new_ll_dev->dev.mem->regions[i].guest_phys_address = (uint64_t)guest->mempool[i].gva; 
+		gpa = new_ll_dev->dev.mem->regions[i].guest_phys_address = (uint64_t)guest->mempool[i].gva;
 		new_ll_dev->dev.mem->regions[i].guest_phys_address_end = gpa + guest->mempool[i].mempfn_num * getpagesize();
 		new_ll_dev->dev.mem->regions[i].address_offset = (uint64_t)guest->mempool[i].hva - gpa;
 	}
@@ -323,7 +323,7 @@ destroy_guest(struct xen_guest *guest)
 /*
  * This function will cleanup the device and remove it from device configuration linked list.
  */
-static void 
+static void
 destroy_device(unsigned int virtio_idx, unsigned int dom_id)
 {
 	struct virtio_net_config_ll *ll_dev_cur_ctx, *ll_dev_last = NULL;
@@ -358,7 +358,7 @@ destroy_device(unsigned int virtio_idx, unsigned int dom_id)
 
 
 
-static void 
+static void
 watch_unmap_event(void)
 {
 	int i;
@@ -396,7 +396,7 @@ _find_next_remove:
 		RTE_LOG(INFO, XENHOST, "  #####%s: destroy guest (%d)\n", __func__, guest->dom_id);
 		destroy_guest(guest);
 		goto _find_next_remove;
-	} 
+	}
 	return;
 }
 
@@ -488,7 +488,7 @@ void
 virtio_monitor_loop(void)
 {
 	char **vec;
-	xs_transaction_t th;	
+	xs_transaction_t th;
 	char *buf;
 	unsigned int len;
 	unsigned int dom_id;
@@ -526,7 +526,7 @@ virtio_monitor_loop(void)
 
 		if (buf) {
 			/* theres' some node for vhost existed */
-			if (rte_strsplit(vec[XS_WATCH_PATH], strnlen(vec[XS_WATCH_PATH], PATH_MAX), 
+			if (rte_strsplit(vec[XS_WATCH_PATH], strnlen(vec[XS_WATCH_PATH], PATH_MAX),
 						str_fld, _NUM_FLD, '/') == _NUM_FLD) {
 				if (strstr(str_fld[FLD_NODE], VIRTIO_START)) {
 					errno = 0;
@@ -575,15 +575,15 @@ virtio_monitor_loop(void)
 			}
 		}
 
-		free(vec);		
-	}	 
+		free(vec);
+	}
 	return;
 }
 
 /*
  * Register ops so that we can add/remove device to data core.
  */
-int 
+int
 init_virtio_xen(struct virtio_net_device_ops const *const ops)
 {
 	notify_ops = ops;

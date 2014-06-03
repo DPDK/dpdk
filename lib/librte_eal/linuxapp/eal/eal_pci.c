@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -195,14 +195,14 @@ pci_uio_get_mappings(const char *devname, struct uio_map maps[], size_t nb_maps)
 	uint64_t offset, size;
 
 	for (i = 0; i != nb_maps; i++) {
- 
+
 		/* check if map directory exists */
-		rte_snprintf(dirname, sizeof(dirname), 
+		rte_snprintf(dirname, sizeof(dirname),
 			"%s/maps/map%u", devname, i);
- 
+
 		if (access(dirname, F_OK) != 0)
 			break;
- 
+
 		/* get mapping offset */
 		rte_snprintf(filename, sizeof(filename),
 			"%s/offset", dirname);
@@ -212,7 +212,7 @@ pci_uio_get_mappings(const char *devname, struct uio_map maps[], size_t nb_maps)
 				__func__, dirname);
 			return (-1);
 		}
- 
+
 		/* get mapping size */
 		rte_snprintf(filename, sizeof(filename),
 			"%s/size", dirname);
@@ -222,7 +222,7 @@ pci_uio_get_mappings(const char *devname, struct uio_map maps[], size_t nb_maps)
 				__func__, dirname);
 			return (-1);
 		}
- 
+
 		/* get mapping physical address */
 		rte_snprintf(filename, sizeof(filename),
 			"%s/addr", dirname);
@@ -236,7 +236,7 @@ pci_uio_get_mappings(const char *devname, struct uio_map maps[], size_t nb_maps)
 		if ((offset > OFF_MAX) || (size > SIZE_MAX)) {
 			RTE_LOG(ERR, EAL,
 				"%s(): offset/size exceed system max value\n",
-				__func__); 
+				__func__);
 			return (-1);
 		}
 
@@ -358,7 +358,7 @@ static int pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 		/* format could be uio%d ...*/
 		int shortprefix_len = sizeof("uio") - 1;
 		/* ... or uio:uio%d */
-		int longprefix_len = sizeof("uio:uio") - 1; 
+		int longprefix_len = sizeof("uio:uio") - 1;
 		char *endptr;
 
 		if (strncmp(e->d_name, "uio", 3) != 0)
@@ -521,13 +521,13 @@ pci_parse_sysfs_resource(const char *filename, struct rte_pci_device *dev)
 	for (i = 0; i<PCI_MAX_RESOURCE; i++) {
 
 		if (fgets(buf, sizeof(buf), f) == NULL) {
-			RTE_LOG(ERR, EAL, 
+			RTE_LOG(ERR, EAL,
 				"%s(): cannot read resource\n", __func__);
 			goto error;
 		}
 
 		if (rte_strsplit(buf, sizeof(buf), res_info.ptrs, 3, ' ') != 3) {
-			RTE_LOG(ERR, EAL, 
+			RTE_LOG(ERR, EAL,
 				"%s(): bad resource format\n", __func__);
 			goto error;
 		}
@@ -536,7 +536,7 @@ pci_parse_sysfs_resource(const char *filename, struct rte_pci_device *dev)
 		end_addr = strtoull(res_info.end_addr, NULL, 16);
 		flags = strtoull(res_info.flags, NULL, 16);
 		if (errno != 0) {
-			RTE_LOG(ERR, EAL, 
+			RTE_LOG(ERR, EAL,
 				"%s(): bad resource format\n", __func__);
 			goto error;
 		}
@@ -545,7 +545,7 @@ pci_parse_sysfs_resource(const char *filename, struct rte_pci_device *dev)
 			dev->mem_resource[i].phys_addr = phys_addr;
 			dev->mem_resource[i].len = end_addr - phys_addr + 1;
 			/* not mapped for now */
-			dev->mem_resource[i].addr = NULL; 
+			dev->mem_resource[i].addr = NULL;
 		}
 	}
 	fclose(f);
@@ -556,24 +556,24 @@ error:
 	return -1;
 }
 
-/* 
- * parse a sysfs file containing one integer value 
+/*
+ * parse a sysfs file containing one integer value
  * different to the eal version, as it needs to work with 64-bit values
- */ 
-static int 
-pci_parse_sysfs_value(const char *filename, uint64_t *val) 
+ */
+static int
+pci_parse_sysfs_value(const char *filename, uint64_t *val)
 {
         FILE *f;
         char buf[BUFSIZ];
         char *end = NULL;
- 
+
         f = fopen(filename, "r");
         if (f == NULL) {
                 RTE_LOG(ERR, EAL, "%s(): cannot open sysfs value %s\n",
                         __func__, filename);
                 return -1;
         }
- 
+
         if (fgets(buf, sizeof(buf), f) == NULL) {
                 RTE_LOG(ERR, EAL, "%s(): cannot read sysfs value %s\n",
                         __func__, filename);
@@ -662,7 +662,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	/* get max_vfs */
 	dev->max_vfs = 0;
 	rte_snprintf(filename, sizeof(filename), "%s/max_vfs", dirname);
-	if (!access(filename, F_OK) && 
+	if (!access(filename, F_OK) &&
 	    eal_parse_sysfs_value(filename, &tmp) == 0) {
 		dev->max_vfs = (uint16_t)tmp;
 	}
@@ -692,7 +692,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	/* device is valid, add in list (sorted) */
 	if (TAILQ_EMPTY(&pci_device_list)) {
 		TAILQ_INSERT_TAIL(&pci_device_list, dev, next);
-	}	
+	}
 	else {
 		struct rte_pci_device *dev2 = NULL;
 
@@ -706,7 +706,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 		}
 		TAILQ_INSERT_TAIL(&pci_device_list, dev, next);
 	}
-				
+
 	return 0;
 }
 

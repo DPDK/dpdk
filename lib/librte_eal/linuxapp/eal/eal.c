@@ -1,14 +1,14 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   Copyright(c) 2012-2014 6WIND S.A.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -256,7 +256,7 @@ rte_eal_config_attach(void)
 			rte_panic("Cannot open '%s' for rte_mem_config\n", pathname);
 	}
 
-	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config), 
+	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config),
 				PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
 	close(mem_cfg_fd);
 	if (rte_mem_cfg_addr == MAP_FAILED)
@@ -358,8 +358,7 @@ eal_usage(const char *prgname)
 	       "  --"OPT_VDEV": add a virtual device.\n"
 	       "               The argument format is <driver><id>[,key=val,...]\n"
 	       "               (ex: --vdev=eth_pcap0,iface=eth2).\n"
-	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of "
-	    		   "native RDTSC\n"
+	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of native RDTSC\n"
 	       "  --"OPT_BASE_VIRTADDR": specify base virtual address\n"
 	       "  --"OPT_CREATE_UIO_DEV": create /dev/uioX (usually done by hotplug)\n"
 	       "\nEAL options for DEBUG use only:\n"
@@ -397,11 +396,11 @@ rte_set_application_usage_hook( rte_usage_hook_t usage_func )
 static int xdigit2val(unsigned char c)
 {
 	int val;
-	if(isdigit(c)) 
+	if(isdigit(c))
 		val = c - '0';
 	else if(isupper(c))
 		val = c - 'A' + 10;
-	else 
+	else
 		val = c - 'a' + 10;
 	return val;
 }
@@ -753,7 +752,7 @@ eal_parse_args(int argc, char **argv)
 					"running on Dom0, please configure"
 					" RTE_LIBRTE_XEN_DOM0=y\n");
 				return -1;
-		#endif 
+		#endif
 			}
 			else if (!strcmp(lgopts[option_index].name, OPT_NO_PCI)) {
 				internal_config.no_pci = 1;
@@ -932,7 +931,7 @@ sync_func(__attribute__((unused)) void *arg)
 	return 0;
 }
 
-inline static void 
+inline static void
 rte_eal_mcfg_complete(void)
 {
 	/* ALL shared mem_config related INIT DONE */
@@ -1007,7 +1006,7 @@ rte_eal_init(int argc, char **argv)
 
 	if (rte_eal_iopl_init() == 0)
 		rte_config.flags |= EAL_FLG_HIGH_IOPL;
-	
+
 	if (rte_eal_pci_init() < 0)
 		rte_panic("Cannot init PCI\n");
 
@@ -1021,7 +1020,7 @@ rte_eal_init(int argc, char **argv)
 
 	/* the directories are locked during eal_hugepage_info_init */
 	eal_hugedirs_unlock();
-	
+
 	if (rte_eal_memzone_init() < 0)
 		rte_panic("Cannot init memzone\n");
 

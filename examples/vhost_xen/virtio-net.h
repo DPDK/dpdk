@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -59,7 +59,7 @@ struct vhost_virtqueue
  */
 struct virtio_net
 {
-	struct vhost_virtqueue	*virtqueue_tx;	/* Contains all TX virtqueue information. */ 
+	struct vhost_virtqueue	*virtqueue_tx;	/* Contains all TX virtqueue information. */
 	struct vhost_virtqueue	*virtqueue_rx;	/* Contains all RX virtqueue information. */
 	struct virtio_memory    *mem;           /* QEMU memory and memory region information. */
 	struct ether_addr       mac_address;    /* Device MAC address (Obtained on first TX packet). */
@@ -72,7 +72,7 @@ struct virtio_net
 	volatile uint8_t        remove;         /* Device is marked for removal from the data core. */
 	uint32_t                virtio_idx;     /* Index of virtio device */
 	uint32_t                dom_id;         /* Domain id of xen guest */
-} ___rte_cache_aligned;  
+} ___rte_cache_aligned;
 
 /*
  * Device linked list structure for configuration.
@@ -84,7 +84,7 @@ struct virtio_net_config_ll
 };
 
 /*
- * Information relating to memory regions including offsets to addresses in QEMUs memory file. 
+ * Information relating to memory regions including offsets to addresses in QEMUs memory file.
  */
 struct virtio_memory_regions {
 	uint64_t	guest_phys_address;     /* Base guest physical address of region. */
@@ -95,7 +95,7 @@ struct virtio_memory_regions {
 };
 
 /*
- * Memory structure includes region and mapping information. 
+ * Memory structure includes region and mapping information.
  */
 struct virtio_memory {
 	uint32_t			nregions;	/* Number of memory regions. */

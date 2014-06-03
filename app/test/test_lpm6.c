@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -111,7 +111,7 @@ rte_lpm6_test tests6[] = {
 	test14,
 	test15,
 	test16,
-	test17,	
+	test17,
 	test18,
 	test19,
 	test20,
@@ -167,7 +167,7 @@ test0(void)
 {
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -186,12 +186,12 @@ test0(void)
 	config.max_rules = MAX_RULES;
 	lpm = rte_lpm6_create(__func__, -2, &config);
 	TEST_LPM_ASSERT(lpm == NULL);
-	
+
 	/* rte_lpm6_create: number_tbl8s is bigger than the maximum */
 	config.number_tbl8s = MAX_NUM_TBL8S + 1;
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm == NULL);
-	
+
 	/* rte_lpm6_create: config = NULL */
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, NULL);
 	TEST_LPM_ASSERT(lpm == NULL);
@@ -209,7 +209,7 @@ test1(void)
 {
 	struct rte_lpm6 *lpm1 = NULL, *lpm2 = NULL, *lpm3 = NULL;
 	struct rte_lpm6_config config;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -221,11 +221,11 @@ test1(void)
 	/* rte_lpm6_create: lpm name == LPM2 */
 	lpm2 = rte_lpm6_create("LPM2", SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm2 != NULL);
-	
+
 	/* rte_lpm6_create: lpm name == LPM2 */
 	lpm3 = rte_lpm6_create("LPM1", SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm3 == lpm1);
-	
+
 	rte_lpm6_free(lpm1);
 	rte_lpm6_free(lpm2);
 
@@ -242,7 +242,7 @@ test2(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	int32_t i;
-	
+
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
 
@@ -270,11 +270,11 @@ test3(void)
 {
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
-	
+
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
 
@@ -291,11 +291,11 @@ test4(void)
 {
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
-	
+
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	uint8_t depth = 24, next_hop = 100;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -333,7 +333,7 @@ test5(void)
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	uint8_t depth = 24;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -371,7 +371,7 @@ test6(void)
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	uint8_t next_hop_return = 0;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -383,7 +383,7 @@ test6(void)
 	/*Create vaild lpm to use in rest of test. */
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
-	
+
 	/* rte_lpm6_lookup: ip = NULL */
 	status = rte_lpm6_lookup(lpm, NULL, &next_hop_return);
 	TEST_LPM_ASSERT(status < 0);
@@ -409,7 +409,7 @@ test7(void)
 	uint8_t ip[10][16];
 	int16_t next_hop_return[10];
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -421,7 +421,7 @@ test7(void)
 	/*Create vaild lpm to use in rest of test. */
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
-	
+
 	/* rte_lpm6_lookup: ip = NULL */
 	status = rte_lpm6_lookup_bulk_func(lpm, NULL, next_hop_return, 10);
 	TEST_LPM_ASSERT(status < 0);
@@ -447,7 +447,7 @@ test8(void)
 	uint8_t ip[10][16];
 	uint8_t depth[10];
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -459,7 +459,7 @@ test8(void)
 	/*Create vaild lpm to use in rest of test. */
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
-	
+
 	/* rte_lpm6_delete: ip = NULL */
 	status = rte_lpm6_delete_bulk_func(lpm, NULL, depth, 10);
 	TEST_LPM_ASSERT(status < 0);
@@ -487,7 +487,7 @@ test9(void)
 	uint8_t depth = 16, next_hop_add = 100, next_hop_return = 0;
 	int32_t status = 0;
 	uint8_t i;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -497,16 +497,16 @@ test9(void)
 
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	for (i = 0; i < UINT8_MAX; i++) {
 		ip[2] = i;
 		status = rte_lpm6_lookup(lpm, ip, &next_hop_return);
 		TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
 	}
-	
+
 	status = rte_lpm6_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	for (i = 0; i < UINT8_MAX; i++) {
 		ip[2] = i;
 		status = rte_lpm6_lookup(lpm, ip, &next_hop_return);
@@ -531,14 +531,14 @@ test10(void)
 	uint8_t depth, next_hop_add = 100;
 	int32_t status = 0;
 	int i;
-	
+
 	config.max_rules = 127;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
 
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
-	
+
 	for (i = 1; i < 128; i++) {
 		depth = (uint8_t)i;
 		status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
@@ -574,7 +574,7 @@ test11(void)
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	uint8_t depth, next_hop_add = 100;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = 16;
 	config.flags = 0;
@@ -585,33 +585,33 @@ test11(void)
 	depth = 128;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	ip[0] = 1;
 	depth = 25;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	status = rte_lpm6_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	depth = 33;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	status = rte_lpm6_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	depth = 41;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	status = rte_lpm6_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	depth = 49;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == -ENOSPC);
-	
+
 	depth = 41;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
@@ -634,7 +634,7 @@ test12(void)
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	uint8_t depth, next_hop_add = 100;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = 16;
 	config.flags = 0;
@@ -645,12 +645,12 @@ test12(void)
 	depth = 128;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	ip[0] = 1;
 	depth = 41;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	depth = 49;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == -ENOSPC);
@@ -672,7 +672,7 @@ test13(void)
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	uint8_t depth, next_hop_add = 100;
 	int32_t status = 0;
-	
+
 	config.max_rules = 2;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -683,19 +683,19 @@ test13(void)
 	depth = 1;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	depth = 2;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	depth = 3;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == -ENOSPC);
-	
+
 	depth = 2;
 	status = rte_lpm6_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	depth = 3;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
@@ -720,14 +720,14 @@ test14(void)
 	uint8_t depth = 25, next_hop_add = 100;
 	int32_t status = 0;
 	int i, j;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
 
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
-	
+
 	for (i = 0; i < 256; i++) {
 		ip[0] = (uint8_t)i;
 		for (j = 0; j < 256; j++) {
@@ -745,7 +745,7 @@ test14(void)
 
 	ip[0] = 255;
 	ip[1] = 255;
-	ip[2] = 0;	
+	ip[2] = 0;
 	status = rte_lpm6_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status == 0);
 
@@ -771,7 +771,7 @@ test15(void)
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	uint8_t depth = 24, next_hop_add = 100, next_hop_return = 0;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -784,7 +784,7 @@ test15(void)
 
 	status = rte_lpm6_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
-	
+
 	status = rte_lpm6_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status == 0);
 
@@ -807,7 +807,7 @@ test16(void)
 	uint8_t ip[] = {12,12,1,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	uint8_t depth = 128, next_hop_add = 100, next_hop_return = 0;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -820,7 +820,7 @@ test16(void)
 
 	status = rte_lpm6_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
-	
+
 	status = rte_lpm6_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status == 0);
 
@@ -851,7 +851,7 @@ test17(void)
 	uint8_t ip2[] = {128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	uint8_t depth, next_hop_add, next_hop_return;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -875,7 +875,7 @@ test17(void)
 		TEST_LPM_ASSERT((status == 0) &&
 			(next_hop_return == next_hop_add));
 	}
-	
+
 	/* Loop with rte_lpm6_delete. */
 	for (depth = 128; depth >= 1; depth--) {
 		next_hop_add = (uint8_t) (depth - 1);
@@ -917,7 +917,7 @@ test18(void)
 	uint8_t depth, depth_1, depth_2, next_hop_add, next_hop_add_1,
 		next_hop_add_2, next_hop_return;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -935,7 +935,7 @@ test18(void)
 
 	status = rte_lpm6_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
-	
+
 	status = rte_lpm6_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status == 0);
 
@@ -963,7 +963,7 @@ test18(void)
 
 	status = rte_lpm6_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
-	
+
 	depth = 24;
 
 	status = rte_lpm6_delete(lpm, ip, depth);
@@ -1008,7 +1008,7 @@ test18(void)
 
 	status = rte_lpm6_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
-	
+
 	status = rte_lpm6_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status == 0);
 
@@ -1078,7 +1078,7 @@ test19(void)
 	uint8_t ip[16];
 	uint8_t depth, next_hop_add, next_hop_return;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -1170,7 +1170,7 @@ test19(void)
 
 	rte_lpm6_delete_all(lpm);
 
-	/* 
+	/*
 	 * Add rule that updates the next hop in TBL24 & lookup
 	 * (& delete & lookup)
 	 */
@@ -1276,7 +1276,7 @@ test20(void)
 	uint8_t ip[16];
 	uint8_t depth, next_hop_add, next_hop_return;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -1344,7 +1344,7 @@ test21(void)
 	uint8_t depth, next_hop_add;
 	int16_t next_hop_return[4];
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -1358,23 +1358,23 @@ test21(void)
 
 	status = rte_lpm6_add(lpm, ip_batch[0], depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	IPv6(ip_batch[1], 128, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	depth = 48;
 	next_hop_add = 101;
 
 	status = rte_lpm6_add(lpm, ip_batch[1], depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	IPv6(ip_batch[2], 128, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	depth = 48;
 	next_hop_add = 102;
 
 	status = rte_lpm6_add(lpm, ip_batch[2], depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	IPv6(ip_batch[3], 128, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-	
+
 	status = rte_lpm6_lookup_bulk_func(lpm, ip_batch,
 			next_hop_return, 4);
 	TEST_LPM_ASSERT(status == 0 && next_hop_return[0] == 100
@@ -1402,97 +1402,97 @@ test22(void)
 	uint8_t depth[5], next_hop_add;
 	int16_t next_hop_return[5];
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
 
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
-	
+
 	/* Adds 5 rules and look them up */
-	
+
 	IPv6(ip_batch[0], 128, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	depth[0] = 48;
 	next_hop_add = 101;
 
 	status = rte_lpm6_add(lpm, ip_batch[0], depth[0], next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	IPv6(ip_batch[1], 128, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	depth[1] = 48;
 	next_hop_add = 102;
 
 	status = rte_lpm6_add(lpm, ip_batch[1], depth[1], next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	IPv6(ip_batch[2], 128, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	depth[2] = 48;
 	next_hop_add = 103;
 
 	status = rte_lpm6_add(lpm, ip_batch[2], depth[2], next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	IPv6(ip_batch[3], 128, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	depth[3] = 48;
 	next_hop_add = 104;
 
 	status = rte_lpm6_add(lpm, ip_batch[3], depth[3], next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	IPv6(ip_batch[4], 128, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	depth[4] = 48;
 	next_hop_add = 105;
 
 	status = rte_lpm6_add(lpm, ip_batch[4], depth[4], next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	status = rte_lpm6_lookup_bulk_func(lpm, ip_batch,
 			next_hop_return, 5);
 	TEST_LPM_ASSERT(status == 0 && next_hop_return[0] == 101
 			&& next_hop_return[1] == 102 && next_hop_return[2] == 103
 			&& next_hop_return[3] == 104 && next_hop_return[4] == 105);
-			
+
 	/* Use the delete_bulk function to delete two of them. Lookup again */
-	
+
 	status = rte_lpm6_delete_bulk_func(lpm, &ip_batch[0], depth, 2);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	status = rte_lpm6_lookup_bulk_func(lpm, ip_batch,
 			next_hop_return, 5);
 	TEST_LPM_ASSERT(status == 0 && next_hop_return[0] == -1
 			&& next_hop_return[1] == -1 && next_hop_return[2] == 103
 			&& next_hop_return[3] == 104 && next_hop_return[4] == 105);
-			
+
 	/* Use the delete_bulk function to delete one more. Lookup again */
-	
+
 	status = rte_lpm6_delete_bulk_func(lpm, &ip_batch[2], depth, 1);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	status = rte_lpm6_lookup_bulk_func(lpm, ip_batch,
 			next_hop_return, 5);
 	TEST_LPM_ASSERT(status == 0 && next_hop_return[0] == -1
 			&& next_hop_return[1] == -1 && next_hop_return[2] == -1
 			&& next_hop_return[3] == 104 && next_hop_return[4] == 105);
-			
+
 	/* Use the delete_bulk function to delete two, one invalid. Lookup again */
-	
+
 	IPv6(ip_batch[4], 128, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	status = rte_lpm6_delete_bulk_func(lpm, &ip_batch[3], depth, 2);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	IPv6(ip_batch[4], 128, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	status = rte_lpm6_lookup_bulk_func(lpm, ip_batch,
 			next_hop_return, 5);
 	TEST_LPM_ASSERT(status == 0 && next_hop_return[0] == -1
 			&& next_hop_return[1] == -1 && next_hop_return[2] == -1
 			&& next_hop_return[3] == -1 && next_hop_return[4] == 105);
-			
+
 	/* Use the delete_bulk function to delete the remaining one. Lookup again */
-	
+
 	status = rte_lpm6_delete_bulk_func(lpm, &ip_batch[4], depth, 1);
 	TEST_LPM_ASSERT(status == 0);
-	
+
 	status = rte_lpm6_lookup_bulk_func(lpm, ip_batch,
 			next_hop_return, 5);
 	TEST_LPM_ASSERT(status == 0 && next_hop_return[0] == -1
@@ -1518,7 +1518,7 @@ test23(void)
 	uint8_t ip[16];
 	uint8_t depth, next_hop_add, next_hop_return;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -1562,7 +1562,7 @@ test24(void)
 {
 	struct rte_lpm6 *lpm = NULL, *result = NULL;
 	struct rte_lpm6_config config;
-	
+
 	config.max_rules = 256 * 32;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -1602,7 +1602,7 @@ test25(void)
 	uint32_t i;
 	uint8_t depth, next_hop_add, next_hop_return, next_hop_expected;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -1617,11 +1617,11 @@ test25(void)
 		status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 		TEST_LPM_ASSERT(status == 0);
 	}
-	
+
 	for (i = 0; i < 100000; i++) {
 		memcpy(ip, large_ips_table[i].ip, 16);
 		next_hop_expected = large_ips_table[i].next_hop;
-		
+
 		status = rte_lpm6_lookup(lpm, ip, &next_hop_return);
 		TEST_LPM_ASSERT((status == 0) &&
 				(next_hop_return == next_hop_expected));
@@ -1655,7 +1655,7 @@ test26(void)
 	uint8_t	next_hop_ip_20_25 = 111;
 	uint8_t next_hop_return = 0;
 	int32_t status = 0;
-	
+
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -1740,7 +1740,7 @@ test27(void)
 		next_hop_add = 128;
 		status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 		TEST_LPM_ASSERT(status == 0);
-        
+
 		depth = 112;
 		next_hop_add = 112;
 		status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
@@ -1804,7 +1804,7 @@ perf_test(void)
 	uint8_t next_hop_add = 0xAA, next_hop_return = 0;
 	int status = 0;
 	int64_t count = 0;
-	
+
 	config.max_rules = 1000000;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
@@ -1852,24 +1852,24 @@ perf_test(void)
 	printf("Average LPM Lookup: %.1f cycles (fails = %.1f%%)\n",
 			(double)total_time / ((double)ITERATIONS * BATCH_SIZE),
 			(count * 100.0) / (double)(ITERATIONS * BATCH_SIZE));
-			
+
 	/* Measure bulk Lookup */
 	total_time = 0;
 	count = 0;
-	
+
 	uint8_t ip_batch[NUM_IPS_ENTRIES][16];
 	int16_t next_hops[NUM_IPS_ENTRIES];
-	
+
 	for (i = 0; i < NUM_IPS_ENTRIES; i++)
 		memcpy(ip_batch[i], large_ips_table[i].ip, 16);
-	
+
 	for (i = 0; i < ITERATIONS; i ++) {
 
 		/* Lookup per batch */
 		begin = rte_rdtsc();
 		rte_lpm6_lookup_bulk_func(lpm, ip_batch, next_hops, NUM_IPS_ENTRIES);
 		total_time += rte_rdtsc() - begin;
-		
+
 		for (j = 0; j < NUM_IPS_ENTRIES; j++)
 			if (next_hops[j] < 0)
 				count++;
@@ -1910,7 +1910,7 @@ test_lpm6(void)
 
 	for (i = 0; i < NUM_LPM6_TESTS; i++) {
 		status = tests6[i]();
-			
+
 		if (status < 0) {
 			printf("ERROR: LPM Test %s: FAIL\n", RTE_STR(tests6[i]));
 			global_status = status;

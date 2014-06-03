@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -95,10 +95,10 @@ uint8_t auto_start = 0;
 uint8_t numa_support = 0; /**< No numa support by default */
 
 /*
- * In UMA mode,all memory is allocated from socket 0 if --socket-num is 
+ * In UMA mode,all memory is allocated from socket 0 if --socket-num is
  * not configured.
  */
-uint8_t socket_num = UMA_NO_CONFIG; 
+uint8_t socket_num = UMA_NO_CONFIG;
 
 /*
  * Use ANONYMOUS mapped memory (might be not physically continuous) for mbufs.
@@ -178,10 +178,10 @@ uint16_t mb_mempool_cache = DEF_PKT_BURST; /**< Size of mbuf mempool cache. */
 
 /* current configuration is in DCB or not,0 means it is not in DCB mode */
 uint8_t dcb_config = 0;
- 
+
 /* Whether the dcb is in testing status */
 uint8_t dcb_test = 0;
- 
+
 /* DCB on and VT on mapping is default */
 enum dcb_queue_mapping_mode dcb_q_mapping = DCB_VT_Q_MAPPING;
 
@@ -273,7 +273,7 @@ uint8_t no_link_check = 0; /* check by default */
 #ifdef RTE_NIC_BYPASS
 
 /* The NIC bypass watchdog timeout. */
-uint32_t bypass_timeout = RTE_BYPASS_TMT_OFF; 
+uint32_t bypass_timeout = RTE_BYPASS_TMT_OFF;
 
 #endif
 
@@ -466,7 +466,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 				    testpmd_mbuf_pool_ctor, &mbp_ctor_arg,
 				    testpmd_mbuf_ctor, &mb_ctor_arg,
 				    socket_id, 0);
-	else 
+	else
 		rte_mp = rte_mempool_create(pool_name, nb_mbuf, mb_size,
 				    (unsigned) mb_mempool_cache,
 				    sizeof(struct rte_pktmbuf_pool_private),
@@ -544,13 +544,13 @@ init_config(void)
 	 * Use the maximum value of nb_rxd and nb_txd here, then nb_rxd and
 	 * nb_txd can be configured at run time.
 	 */
-	if (param_total_num_mbufs) 
+	if (param_total_num_mbufs)
 		nb_mbuf_per_pool = param_total_num_mbufs;
 	else {
 		nb_mbuf_per_pool = RTE_TEST_RX_DESC_MAX + (nb_lcores * mb_mempool_cache)
 				+ RTE_TEST_TX_DESC_MAX + MAX_PKT_BURST;
-		
-		if (!numa_support) 
+
+		if (!numa_support)
 			nb_mbuf_per_pool = (nb_mbuf_per_pool * nb_ports);
 	}
 
@@ -570,13 +570,13 @@ init_config(void)
 		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d struct rte_port) "
 							"failed\n", nb_ports);
 	}
-	
+
 	for (pid = 0; pid < nb_ports; pid++) {
 		port = &ports[pid];
 		rte_eth_dev_info_get(pid, &port->dev_info);
 
 		if (numa_support) {
-			if (port_numa[pid] != NUMA_NO_CONFIG) 
+			if (port_numa[pid] != NUMA_NO_CONFIG)
 				port_per_socket[port_numa[pid]]++;
 			else {
 				uint32_t socket_id = rte_eth_dev_socket_id(pid);
@@ -584,7 +584,7 @@ init_config(void)
 				/* if socket_id is invalid, set to 0 */
 				if (check_socket_id(socket_id) < 0)
 					socket_id = 0;
-				port_per_socket[socket_id]++; 
+				port_per_socket[socket_id]++;
 			}
 		}
 
@@ -601,9 +601,9 @@ init_config(void)
 			nb_mbuf_per_pool = nb_mbuf_per_pool/nb_ports;
 
 		for (i = 0; i < MAX_SOCKET; i++) {
-			nb_mbuf = (nb_mbuf_per_pool * 
+			nb_mbuf = (nb_mbuf_per_pool *
 						port_per_socket[i]);
-			if (nb_mbuf) 
+			if (nb_mbuf)
 				mbuf_pool_create(mbuf_data_size,
 						nb_mbuf,i);
 		}
@@ -659,10 +659,10 @@ init_fwd_streams(void)
 			}
 		}
 		else {
-			if (socket_num == UMA_NO_CONFIG)	 
+			if (socket_num == UMA_NO_CONFIG)
 				port->socket_id = 0;
-			else 
-				port->socket_id = socket_num;	
+			else
+				port->socket_id = socket_num;
 		}
 	}
 
@@ -1243,7 +1243,7 @@ start_port(portid_t pid)
 		printf("Fail from init_fwd_streams()\n");
 		return -1;
 	}
-	
+
 	if(dcb_config)
 		dcb_test = 1;
 	for (pi = 0; pi < nb_ports; pi++) {
@@ -1281,15 +1281,15 @@ start_port(portid_t pid)
 			/* setup tx queues */
 			for (qi = 0; qi < nb_txq; qi++) {
 				if ((numa_support) &&
-					(txring_numa[pi] != NUMA_NO_CONFIG)) 
+					(txring_numa[pi] != NUMA_NO_CONFIG))
 					diag = rte_eth_tx_queue_setup(pi, qi,
 						nb_txd,txring_numa[pi],
 						&(port->tx_conf));
 				else
-					diag = rte_eth_tx_queue_setup(pi, qi, 
+					diag = rte_eth_tx_queue_setup(pi, qi,
 						nb_txd,port->socket_id,
 						&(port->tx_conf));
-					
+
 				if (diag == 0)
 					continue;
 
@@ -1306,9 +1306,9 @@ start_port(portid_t pid)
 			}
 			/* setup rx queues */
 			for (qi = 0; qi < nb_rxq; qi++) {
-				if ((numa_support) && 
+				if ((numa_support) &&
 					(rxring_numa[pi] != NUMA_NO_CONFIG)) {
-					struct rte_mempool * mp = 
+					struct rte_mempool * mp =
 						mbuf_pool_find(rxring_numa[pi]);
 					if (mp == NULL) {
 						printf("Failed to setup RX queue:"
@@ -1317,13 +1317,13 @@ start_port(portid_t pid)
 							rxring_numa[pi]);
 						return -1;
 					}
-					
+
 					diag = rte_eth_rx_queue_setup(pi, qi,
 					     nb_rxd,rxring_numa[pi],
 					     &(port->rx_conf),mp);
 				}
 				else
-					diag = rte_eth_rx_queue_setup(pi, qi, 
+					diag = rte_eth_rx_queue_setup(pi, qi,
 					     nb_rxd,port->socket_id,
 					     &(port->rx_conf),
 				             mbuf_pool_find(port->socket_id));
@@ -1642,7 +1642,7 @@ init_port_config(void)
 			if( port->dev_conf.rx_adv_conf.rss_conf.rss_hf != 0)
 				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
 			else
-				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;        
+				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
 		}
 
 		port->rx_conf.rx_thresh = rx_thresh;
@@ -1673,7 +1673,7 @@ static  int
 get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 {
         uint8_t i;
- 
+
  	/*
  	 * Builds up the correct configuration for dcb+vt based on the vlan tags array
  	 * given above, and the number of traffic classes available for use.
@@ -1681,7 +1681,7 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 	if (dcb_conf->dcb_mode == DCB_VT_ENABLED) {
 		struct rte_eth_vmdq_dcb_conf vmdq_rx_conf;
 		struct rte_eth_vmdq_dcb_tx_conf vmdq_tx_conf;
- 
+
 		/* VMDQ+DCB RX and TX configrations */
 		vmdq_rx_conf.enable_default_pool = 0;
 		vmdq_rx_conf.default_pool = 0;
@@ -1689,7 +1689,7 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 			(dcb_conf->num_tcs ==  ETH_4_TCS ? ETH_32_POOLS : ETH_16_POOLS);
 		vmdq_tx_conf.nb_queue_pools =
 			(dcb_conf->num_tcs ==  ETH_4_TCS ? ETH_32_POOLS : ETH_16_POOLS);
- 
+
 		vmdq_rx_conf.nb_pool_maps = sizeof( vlan_tags )/sizeof( vlan_tags[ 0 ]);
 		for (i = 0; i < vmdq_rx_conf.nb_pool_maps; i++) {
 			vmdq_rx_conf.pool_map[i].vlan_id = vlan_tags[ i ];
@@ -1699,7 +1699,7 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 			vmdq_rx_conf.dcb_queue[i] = i;
 			vmdq_tx_conf.dcb_queue[i] = i;
 		}
- 
+
 		/*set DCB mode of RX and TX of multiple queues*/
 		eth_conf->rxmode.mq_mode = ETH_MQ_RX_VMDQ_DCB;
 		eth_conf->txmode.mq_mode = ETH_MQ_TX_VMDQ_DCB;
@@ -1707,7 +1707,7 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT|ETH_DCB_PFC_SUPPORT;
 		else
 			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT;
- 
+
 		(void)(rte_memcpy(&eth_conf->rx_adv_conf.vmdq_dcb_conf, &vmdq_rx_conf,
                                 sizeof(struct rte_eth_vmdq_dcb_conf)));
 		(void)(rte_memcpy(&eth_conf->tx_adv_conf.vmdq_dcb_tx_conf, &vmdq_tx_conf,
@@ -1716,16 +1716,16 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 	else {
 		struct rte_eth_dcb_rx_conf rx_conf;
 		struct rte_eth_dcb_tx_conf tx_conf;
- 
+
 		/* queue mapping configuration of DCB RX and TX */
 		if (dcb_conf->num_tcs == ETH_4_TCS)
 			dcb_q_mapping = DCB_4_TCS_Q_MAPPING;
 		else
 			dcb_q_mapping = DCB_8_TCS_Q_MAPPING;
- 
+
 		rx_conf.nb_tcs = dcb_conf->num_tcs;
 		tx_conf.nb_tcs = dcb_conf->num_tcs;
- 
+
 		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++){
 			rx_conf.dcb_queue[i] = i;
 			tx_conf.dcb_queue[i] = i;
@@ -1736,7 +1736,7 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT|ETH_DCB_PFC_SUPPORT;
 		else
 			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT;
-		 
+
 		(void)(rte_memcpy(&eth_conf->rx_adv_conf.dcb_rx_conf, &rx_conf,
                                 sizeof(struct rte_eth_dcb_rx_conf)));
 		(void)(rte_memcpy(&eth_conf->tx_adv_conf.dcb_tx_conf, &tx_conf,
@@ -1754,25 +1754,25 @@ init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf)
 	int retval;
 	uint16_t nb_vlan;
 	uint16_t i;
- 
+
 	/* rxq and txq configuration in dcb mode */
 	nb_rxq = 128;
 	nb_txq = 128;
 	rx_free_thresh = 64;
- 
+
 	memset(&port_conf,0,sizeof(struct rte_eth_conf));
 	/* Enter DCB configuration status */
 	dcb_config = 1;
- 
+
 	nb_vlan = sizeof( vlan_tags )/sizeof( vlan_tags[ 0 ]);
 	/*set configuration of DCB in vt mode and DCB in non-vt mode*/
 	retval = get_eth_dcb_conf(&port_conf, dcb_conf);
 	if (retval < 0)
 		return retval;
- 
+
 	rte_port = &ports[pid];
 	memcpy(&rte_port->dev_conf, &port_conf,sizeof(struct rte_eth_conf));
- 
+
 	rte_port->rx_conf.rx_thresh = rx_thresh;
 	rte_port->rx_conf.rx_free_thresh = rx_free_thresh;
 	rte_port->tx_conf.tx_thresh = tx_thresh;
@@ -1783,12 +1783,12 @@ init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf)
 	for (i = 0; i < nb_vlan; i++){
 		rx_vft_set(pid, vlan_tags[i], 1);
 	}
- 
+
 	rte_eth_macaddr_get(pid, &rte_port->eth_addr);
 	map_port_queue_stats_mapping_registers(pid, rte_port);
 
 	rte_port->dcb_flag = 1;
- 
+
 	return 0;
 }
 

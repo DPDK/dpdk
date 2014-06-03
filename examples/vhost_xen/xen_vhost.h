@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -86,7 +86,7 @@ struct xen_vring {
 	uint32_t virtio_idx;    /* index of virtio device */
 	void *rxvring_addr;     /* mapped virtual address of rxvring */
 	void *txvring_addr;     /* mapped virtual address of txvring */
-	uint32_t rxpfn_num;     /* number of gpfn for rxvring */ 
+	uint32_t rxpfn_num;     /* number of gpfn for rxvring */
 	uint32_t txpfn_num;	/* number of gpfn for txvring */
 	uint32_t *rxpfn_tbl;    /* array of rxvring gpfn */
 	uint32_t *txpfn_tbl;	/* array of txvring gpfn */

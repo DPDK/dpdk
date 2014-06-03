@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -116,7 +116,7 @@ int eth_igb_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		const struct rte_eth_rxconf *rx_conf,
 		struct rte_mempool *mb_pool);
 
-uint32_t eth_igb_rx_queue_count(struct rte_eth_dev *dev, 
+uint32_t eth_igb_rx_queue_count(struct rte_eth_dev *dev,
 		uint16_t rx_queue_id);
 
 int eth_igb_rx_descriptor_done(void *rx_queue, uint16_t offset);
@@ -152,9 +152,9 @@ void eth_igbvf_tx_init(struct rte_eth_dev *dev);
  * misc function prototypes
  */
 void igb_pf_host_init(struct rte_eth_dev *eth_dev);
- 
+
 void igb_pf_mbx_process(struct rte_eth_dev *eth_dev);
- 
+
 int igb_pf_host_configure(struct rte_eth_dev *eth_dev);
 
 /*
@@ -170,7 +170,7 @@ int eth_em_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		const struct rte_eth_rxconf *rx_conf,
 		struct rte_mempool *mb_pool);
 
-uint32_t eth_em_rx_queue_count(struct rte_eth_dev *dev, 
+uint32_t eth_em_rx_queue_count(struct rte_eth_dev *dev,
 		uint16_t rx_queue_id);
 
 int eth_em_rx_descriptor_done(void *rx_queue, uint16_t offset);

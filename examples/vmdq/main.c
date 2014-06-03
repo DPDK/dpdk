@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -74,8 +74,8 @@
 
 #define MAX_QUEUES 128
 /*
- * For 10 GbE, 128 queues require roughly 
- * 128*512 (RX/TX_queue_nb * RX/TX_ring_descriptors_nb) per port. 
+ * For 10 GbE, 128 queues require roughly
+ * 128*512 (RX/TX_queue_nb * RX/TX_ring_descriptors_nb) per port.
  */
 #define NUM_MBUFS_PER_PORT (128*512)
 #define MBUF_CACHE_SIZE 64
@@ -90,7 +90,7 @@
 #define RX_PTHRESH 8 /**< Default values of RX prefetch threshold reg. */
 #define RX_HTHRESH 8 /**< Default values of RX host threshold reg. */
 #define RX_WTHRESH 4 /**< Default values of RX write-back threshold reg. */
- 
+
 /*
  * These default values are optimized for use with the Intel(R) 82599 10 GbE
  * Controller and the DPDK ixgbe PMD. Consider using other values for other
@@ -99,7 +99,7 @@
 #define TX_PTHRESH 36 /**< Default values of TX prefetch threshold reg. */
 #define TX_HTHRESH 0  /**< Default values of TX host threshold reg. */
 #define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
- 
+
 #define MAX_PKT_BURST 32
 
 /*
@@ -243,7 +243,7 @@ get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_pools)
 
 /*
  * Validate the pool number accrording to the max pool number gotten form dev_info
- * If the pool number is invalid, give the error message and return -1 
+ * If the pool number is invalid, give the error message and return -1
  */
 static inline int
 validate_num_pools(uint32_t max_nb_pools)
@@ -331,11 +331,11 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	printf("Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
 			" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
 			(unsigned)port,
-			vmdq_ports_eth_addr[port].addr_bytes[0], 
-			vmdq_ports_eth_addr[port].addr_bytes[1], 
+			vmdq_ports_eth_addr[port].addr_bytes[0],
+			vmdq_ports_eth_addr[port].addr_bytes[1],
 			vmdq_ports_eth_addr[port].addr_bytes[2],
-			vmdq_ports_eth_addr[port].addr_bytes[3], 
-			vmdq_ports_eth_addr[port].addr_bytes[4], 
+			vmdq_ports_eth_addr[port].addr_bytes[3],
+			vmdq_ports_eth_addr[port].addr_bytes[4],
 			vmdq_ports_eth_addr[port].addr_bytes[5]);
 
 	return 0;
@@ -347,7 +347,7 @@ vmdq_parse_num_pools(const char *q_arg)
 {
 	char *end = NULL;
 	int n;
- 
+
 	/* parse number string */
 	n = strtol(q_arg, &end, 10);
 	if ((q_arg[0] == '\0') || (end == NULL) || (*end != '\0'))
@@ -443,13 +443,13 @@ update_mac_address(struct rte_mbuf *m, unsigned dst_port)
 {
 	struct ether_hdr *eth;
 	void *tmp;
- 
+
 	eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
- 
+
 	/* 02:00:00:00:00:xx */
 	tmp = &eth->d_addr.addr_bytes[0];
 	*((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)dst_port << 40);
- 
+
 	/* src addr */
 	ether_addr_copy(&vmdq_ports_eth_addr[dst_port], &eth->s_addr);
 }
@@ -502,7 +502,7 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 		endQueue = (uint16_t)(startQueue + (num_queues/num_cores));
 	}
 
-	printf("core %u(lcore %u) reading queues %i-%i\n", (unsigned)core_id, 
+	printf("core %u(lcore %u) reading queues %i-%i\n", (unsigned)core_id,
 		(unsigned)lcore_id, startQueue, endQueue - 1);
 
 	if (startQueue == endQueue) {
@@ -518,7 +518,7 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 			const uint8_t sport = ports[p];
 			const uint8_t dport = ports[p ^ 1]; /* 0 <-> 1, 2 <-> 3 etc */
 
-			if ((sport == INVALID_PORT_ID) || (dport == INVALID_PORT_ID)) 
+			if ((sport == INVALID_PORT_ID) || (dport == INVALID_PORT_ID))
 				continue;
 
 			for (q = startQueue; q < endQueue; q++) {
@@ -545,10 +545,10 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 	}
 }
 
-/* 
+/*
  * Update the global var NUM_PORTS and array PORTS according to system ports number
  * and return valid ports number
- */	
+ */
 static unsigned check_ports_num(unsigned nb_ports)
 {
 	unsigned valid_num_ports = num_ports;
@@ -558,7 +558,7 @@ static unsigned check_ports_num(unsigned nb_ports)
 		printf("\nSpecified port number(%u) exceeds total system port number(%u)\n",
 			num_ports, nb_ports);
 		num_ports = nb_ports;
-	}	
+	}
 
 	for (portid = 0; portid < num_ports; portid ++) {
 		if (ports[portid] >= nb_ports) {
@@ -599,23 +599,23 @@ MAIN(int argc, char *argv[])
 
 	if (rte_eal_pci_probe() != 0)
 		rte_exit(EXIT_FAILURE, "Error with NIC driver initialization\n");
-	
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id ++) 
-		if (rte_lcore_is_enabled(lcore_id)) 
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id ++)
+		if (rte_lcore_is_enabled(lcore_id))
 			lcore_ids[core_id ++] = lcore_id;
-	
-	if (rte_lcore_count() > RTE_MAX_LCORE) 
+
+	if (rte_lcore_count() > RTE_MAX_LCORE)
 		rte_exit(EXIT_FAILURE,"Not enough cores\n");
-	
+
 	nb_ports = rte_eth_dev_count();
 	if (nb_ports > RTE_MAX_ETHPORTS)
 		nb_ports = RTE_MAX_ETHPORTS;
 
-	/* 
-   	 * Update the global var NUM_PORTS and global array PORTS 
-  	 * and get value of var VALID_NUM_PORTS according to system ports number 
-  	 */	
-	valid_num_ports = check_ports_num(nb_ports);	
+	/*
+	 * Update the global var NUM_PORTS and global array PORTS
+	 * and get value of var VALID_NUM_PORTS according to system ports number
+	 */
+	valid_num_ports = check_ports_num(nb_ports);
 
 	if (valid_num_ports < 2 || valid_num_ports % 2) {
 		printf("Current valid ports number is %u\n", valid_num_ports);
@@ -638,7 +638,7 @@ MAIN(int argc, char *argv[])
 			printf("\nSkipping disabled port %d\n", portid);
 			continue;
 		}
-		if (port_init(portid, mbuf_pool) != 0) 
+		if (port_init(portid, mbuf_pool) != 0)
 			rte_exit(EXIT_FAILURE, "Cannot initialize network ports\n");
 	}
 

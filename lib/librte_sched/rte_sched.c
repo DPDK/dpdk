@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -97,7 +97,7 @@
 #endif
 
 #define RTE_SCHED_GRINDER_PCACHE_SIZE         (64 / RTE_SCHED_QUEUES_PER_PIPE)
-	
+
 #define RTE_SCHED_PIPE_INVALID                UINT32_MAX
 
 #define RTE_SCHED_BMP_POS_INVALID             UINT32_MAX
@@ -115,7 +115,7 @@ struct rte_sched_subport {
 	uint32_t tc_credits_per_period[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 	uint32_t tc_credits[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 	uint32_t tc_period;
-	
+
 	/* TC oversubscription */
 	uint32_t tc_ov_wm;
 	uint32_t tc_ov_wm_min;
@@ -124,7 +124,7 @@ struct rte_sched_subport {
 	uint8_t tc_ov;
 	uint32_t tc_ov_n;
 	double tc_ov_rate;
-	
+
 	/* Statistics */
 	struct rte_sched_subport_stats stats;
 };
@@ -134,12 +134,12 @@ struct rte_sched_pipe_profile {
 	uint32_t tb_period;
 	uint32_t tb_credits_per_period;
 	uint32_t tb_size;
-	
+
 	/* Pipe traffic classes */
 	uint32_t tc_period;
 	uint32_t tc_credits_per_period[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 	uint8_t tc_ov_weight;
-	
+
 	/* Pipe queues */
 	uint8_t  wrr_cost[RTE_SCHED_QUEUES_PER_PIPE];
 };
@@ -151,14 +151,14 @@ struct rte_sched_pipe {
 
 	/* Pipe profile and flags */
 	uint32_t profile;
-	
+
 	/* Traffic classes (TCs) */
 	uint64_t tc_time; /* time of next update */
 	uint32_t tc_credits[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
-	
+
 	/* Weighted Round Robin (WRR) */
 	uint8_t wrr_tokens[RTE_SCHED_QUEUES_PER_PIPE];
-	
+
 	/* TC oversubscription */
 	uint32_t tc_ov_credits;
 	uint8_t tc_ov_period_id;
@@ -190,7 +190,7 @@ struct rte_sched_grinder {
 	uint32_t pcache_qindex[RTE_SCHED_GRINDER_PCACHE_SIZE];
 	uint32_t pcache_w;
 	uint32_t pcache_r;
-	
+
 	/* Current pipe */
 	enum grinder_state state;
 	uint32_t productive;
@@ -204,7 +204,7 @@ struct rte_sched_grinder {
 	uint32_t tccache_qindex[4];
 	uint32_t tccache_w;
 	uint32_t tccache_r;
-	
+
 	/* Current TC */
 	uint32_t tc_index;
 	struct rte_sched_queue *queue[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
@@ -214,7 +214,7 @@ struct rte_sched_grinder {
 	uint32_t qmask;
 	uint32_t qpos;
 	struct rte_mbuf *pkt;
-	
+
 	/* WRR */
 	uint16_t wrr_tokens[RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS];
 	uint16_t wrr_mask[RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS];
@@ -240,7 +240,7 @@ struct rte_sched_port {
 	uint64_t time_cpu_bytes;      /* Current CPU time measured in bytes */
 	uint64_t time;                /* Current NIC TX time measured in bytes */
 	double cycles_per_byte;       /* CPU cycles per byte */
-	
+
 	/* Scheduling loop detection */
 	uint32_t pipe_loop;
 	uint32_t pipe_exhaustion;
@@ -248,17 +248,17 @@ struct rte_sched_port {
 	/* Bitmap */
 	struct rte_bitmap *bmp;
 	uint32_t grinder_base_bmp_pos[RTE_SCHED_PORT_N_GRINDERS] __rte_aligned_16;
-	
+
 	/* Grinders */
 	struct rte_sched_grinder grinder[RTE_SCHED_PORT_N_GRINDERS];
 	uint32_t busy_grinders;
 	struct rte_mbuf **pkts_out;
 	uint32_t n_pkts_out;
-	
+
 	/* Queue base calculation */
 	uint32_t qsize_add[RTE_SCHED_QUEUES_PER_PIPE];
 	uint32_t qsize_sum;
-	
+
 	/* Large data structures */
 	struct rte_sched_subport *subport;
 	struct rte_sched_pipe *pipe;
@@ -301,26 +301,26 @@ static int
 rte_sched_port_check_params(struct rte_sched_port_params *params)
 {
 	uint32_t i, j;
-	
+
 	if (params == NULL) {
 		return -1;
 	}
-	
+
 	/* socket */
 	if ((params->socket < 0) || (params->socket >= RTE_MAX_NUMA_NODES)) {
 		return -3;
 	}
-	
+
 	/* rate */
 	if (params->rate == 0) {
 		return -4;
 	}
-	
+
 	/* mtu */
 	if (params->mtu == 0) {
 		return -5;
 	}
-	
+
 	/* n_subports_per_port: non-zero, power of 2 */
 	if ((params->n_subports_per_port == 0) || (!rte_is_power_of_2(params->n_subports_per_port))) {
 		return -6;
@@ -330,31 +330,31 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 	if ((params->n_pipes_per_subport == 0) || (!rte_is_power_of_2(params->n_pipes_per_subport))) {
 		return -7;
 	}
-	
+
 	/* qsize: non-zero, power of 2, no bigger than 32K (due to 16-bit read/write pointers) */
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i ++) {
 		uint16_t qsize = params->qsize[i];
-		
+
 		if ((qsize == 0) || (!rte_is_power_of_2(qsize))) {
 			return -8;
 		}
 	}
-	
+
 	/* pipe_profiles and n_pipe_profiles */
-	if ((params->pipe_profiles == NULL) || 
+	if ((params->pipe_profiles == NULL) ||
 	    (params->n_pipe_profiles == 0) ||
 	    (params->n_pipe_profiles > RTE_SCHED_PIPE_PROFILES_PER_PORT)) {
 		return -9;
 	}
-	
+
 	for (i = 0; i < params->n_pipe_profiles; i ++) {
 		struct rte_sched_pipe_params *p = params->pipe_profiles + i;
-		
+
 		/* TB rate: non-zero, not greater than port rate */
 		if ((p->tb_rate == 0) || (p->tb_rate > params->rate)) {
 			return -10;
 		}
-		
+
 		/* TB size: non-zero */
 		if (p->tb_size == 0) {
 			return -11;
@@ -366,7 +366,7 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 				return -12;
 			}
 		}
-		
+
 		/* TC period: non-zero */
 		if (p->tc_period == 0) {
 			return -13;
@@ -386,7 +386,7 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 			}
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -397,7 +397,7 @@ rte_sched_port_get_array_base(struct rte_sched_port_params *params, enum rte_sch
 	uint32_t n_pipes_per_subport = params->n_pipes_per_subport;
 	uint32_t n_pipes_per_port = n_pipes_per_subport * n_subports_per_port;
 	uint32_t n_queues_per_port = RTE_SCHED_QUEUES_PER_PIPE * n_pipes_per_subport * n_subports_per_port;
-	
+
 	uint32_t size_subport = n_subports_per_port * sizeof(struct rte_sched_subport);
 	uint32_t size_pipe = n_pipes_per_port * sizeof(struct rte_sched_pipe);
 	uint32_t size_queue = n_queues_per_port * sizeof(struct rte_sched_queue);
@@ -405,29 +405,29 @@ rte_sched_port_get_array_base(struct rte_sched_port_params *params, enum rte_sch
 	uint32_t size_pipe_profiles = RTE_SCHED_PIPE_PROFILES_PER_PORT * sizeof(struct rte_sched_pipe_profile);
 	uint32_t size_bmp_array = rte_bitmap_get_memory_footprint(n_queues_per_port);
 	uint32_t size_per_pipe_queue_array, size_queue_array;
-	
+
 	uint32_t base, i;
-	
+
 	size_per_pipe_queue_array = 0;
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i ++) {
 		size_per_pipe_queue_array += RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS * params->qsize[i] * sizeof(struct rte_mbuf *);
 	}
 	size_queue_array = n_pipes_per_port * size_per_pipe_queue_array;
-	
+
 	base = 0;
-	
+
 	if (array == e_RTE_SCHED_PORT_ARRAY_SUBPORT) return base;
 	base += CACHE_LINE_ROUNDUP(size_subport);
-	
+
 	if (array == e_RTE_SCHED_PORT_ARRAY_PIPE) return base;
 	base += CACHE_LINE_ROUNDUP(size_pipe);
 
 	if (array == e_RTE_SCHED_PORT_ARRAY_QUEUE) return base;
 	base += CACHE_LINE_ROUNDUP(size_queue);
-	
+
 	if (array == e_RTE_SCHED_PORT_ARRAY_QUEUE_EXTRA) return base;
 	base += CACHE_LINE_ROUNDUP(size_queue_extra);
-	
+
 	if (array == e_RTE_SCHED_PORT_ARRAY_PIPE_PROFILES) return base;
 	base += CACHE_LINE_ROUNDUP(size_pipe_profiles);
 
@@ -445,17 +445,17 @@ rte_sched_port_get_memory_footprint(struct rte_sched_port_params *params)
 {
 	uint32_t size0, size1;
 	int status;
-	
+
 	status = rte_sched_port_check_params(params);
 	if (status != 0) {
 		RTE_LOG(INFO, SCHED, "Port scheduler params check failed (%d)\n", status);
-		
+
 		return 0;
 	}
-	
+
 	size0 = sizeof(struct rte_sched_port);
 	size1 = rte_sched_port_get_array_base(params, e_RTE_SCHED_PORT_ARRAY_TOTAL);
-	
+
 	return (size0 + size1);
 }
 
@@ -467,7 +467,7 @@ rte_sched_port_config_qsize(struct rte_sched_port *port)
 	port->qsize_add[1] = port->qsize_add[0] + port->qsize[0];
 	port->qsize_add[2] = port->qsize_add[1] + port->qsize[0];
 	port->qsize_add[3] = port->qsize_add[2] + port->qsize[0];
-	
+
 	/* TC 1 */
 	port->qsize_add[4] = port->qsize_add[3] + port->qsize[0];
 	port->qsize_add[5] = port->qsize_add[4] + port->qsize[1];
@@ -485,37 +485,37 @@ rte_sched_port_config_qsize(struct rte_sched_port *port)
 	port->qsize_add[13] = port->qsize_add[12] + port->qsize[3];
 	port->qsize_add[14] = port->qsize_add[13] + port->qsize[3];
 	port->qsize_add[15] = port->qsize_add[14] + port->qsize[3];
-	
+
 	port->qsize_sum = port->qsize_add[15] + port->qsize[3];
 }
 
-static void 
+static void
 rte_sched_port_log_pipe_profile(struct rte_sched_port *port, uint32_t i)
 {
 	struct rte_sched_pipe_profile *p = port->pipe_profiles + i;
-	
+
 	RTE_LOG(INFO, SCHED, "Low level config for pipe profile %u:\n"
 		"\tToken bucket: period = %u, credits per period = %u, size = %u\n"
 		"\tTraffic classes: period = %u, credits per period = [%u, %u, %u, %u]\n"
 		"\tTraffic class 3 oversubscription: weight = %hhu\n"
 		"\tWRR cost: [%hhu, %hhu, %hhu, %hhu], [%hhu, %hhu, %hhu, %hhu], [%hhu, %hhu, %hhu, %hhu], [%hhu, %hhu, %hhu, %hhu]\n",
 		i,
-		
+
 		/* Token bucket */
 		p->tb_period,
 		p->tb_credits_per_period,
 		p->tb_size,
-		
+
 		/* Traffic classes */
 		p->tc_period,
 		p->tc_credits_per_period[0],
 		p->tc_credits_per_period[1],
 		p->tc_credits_per_period[2],
 		p->tc_credits_per_period[3],
-		
+
 		/* Traffic class 3 oversubscription */
 		p->tc_ov_weight,
-		
+
 		/* WRR */
 		p->wrr_cost[ 0], p->wrr_cost[ 1], p->wrr_cost[ 2], p->wrr_cost[ 3],
 		p->wrr_cost[ 4], p->wrr_cost[ 5], p->wrr_cost[ 6], p->wrr_cost[ 7],
@@ -528,7 +528,7 @@ rte_sched_time_ms_to_bytes(uint32_t time_ms, uint32_t rate)
 {
 	uint64_t time = time_ms;
 	time = (time * rate) / 1000;
-	
+
 	return time;
 }
 
@@ -536,11 +536,11 @@ static void
 rte_sched_port_config_pipe_profile_table(struct rte_sched_port *port, struct rte_sched_port_params *params)
 {
 	uint32_t i, j;
-	
+
 	for (i = 0; i < port->n_pipe_profiles; i ++) {
 		struct rte_sched_pipe_params *src = params->pipe_profiles + i;
 		struct rte_sched_pipe_profile *dst = port->pipe_profiles + i;
-		
+
 		/* Token Bucket */
 		if (src->tb_rate == params->rate) {
 			dst->tb_credits_per_period = 1;
@@ -548,11 +548,11 @@ rte_sched_port_config_pipe_profile_table(struct rte_sched_port *port, struct rte
 		} else {
 			double tb_rate = ((double) src->tb_rate) / ((double) params->rate);
 			double d = RTE_SCHED_TB_RATE_CONFIG_ERR;
-			
+
 			rte_approx(tb_rate, d, &dst->tb_credits_per_period, &dst->tb_period);
 		}
 		dst->tb_size = src->tb_size;
-		
+
 		/* Traffic Classes */
 		dst->tc_period = (uint32_t) rte_sched_time_ms_to_bytes(src->tc_period, params->rate);
 		for (j = 0; j < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; j ++) {
@@ -561,20 +561,20 @@ rte_sched_port_config_pipe_profile_table(struct rte_sched_port *port, struct rte
 #ifdef RTE_SCHED_SUBPORT_TC_OV
 		dst->tc_ov_weight = src->tc_ov_weight;
 #endif
-		
+
 		/* WRR */
 		for (j = 0; j < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; j ++) {
 			uint32_t wrr_cost[RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS];
 			uint32_t lcd, lcd1, lcd2;
 			uint32_t qindex;
-			
+
 			qindex = j * RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS;
-			
+
 			wrr_cost[0] = src->wrr_weights[qindex];
 			wrr_cost[1] = src->wrr_weights[qindex + 1];
 			wrr_cost[2] = src->wrr_weights[qindex + 2];
 			wrr_cost[3] = src->wrr_weights[qindex + 3];
-			
+
 			lcd1 = rte_get_lcd(wrr_cost[0], wrr_cost[1]);
 			lcd2 = rte_get_lcd(wrr_cost[2], wrr_cost[3]);
 			lcd = rte_get_lcd(lcd1, lcd2);
@@ -583,13 +583,13 @@ rte_sched_port_config_pipe_profile_table(struct rte_sched_port *port, struct rte
 			wrr_cost[1] = lcd / wrr_cost[1];
 			wrr_cost[2] = lcd / wrr_cost[2];
 			wrr_cost[3] = lcd / wrr_cost[3];
-			
+
 			dst->wrr_cost[qindex] = (uint8_t) wrr_cost[0];
 			dst->wrr_cost[qindex + 1] = (uint8_t) wrr_cost[1];
 			dst->wrr_cost[qindex + 2] = (uint8_t) wrr_cost[2];
 			dst->wrr_cost[qindex + 3] = (uint8_t) wrr_cost[3];
 		}
-	
+
 		rte_sched_port_log_pipe_profile(port, i);
 	}
 
@@ -597,7 +597,7 @@ rte_sched_port_config_pipe_profile_table(struct rte_sched_port *port, struct rte
 	for (i = 0; i < port->n_pipe_profiles; i ++) {
 		struct rte_sched_pipe_params *src = params->pipe_profiles + i;
 		uint32_t pipe_tc3_rate = src->tc_rate[3];
-		
+
 		if (port->pipe_tc3_rate_max < pipe_tc3_rate) {
 			port->pipe_tc3_rate_max = pipe_tc3_rate;
 		}
@@ -609,13 +609,13 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 {
 	struct rte_sched_port *port = NULL;
 	uint32_t mem_size, bmp_mem_size, n_queues_per_port, i;
-	
+
 	/* Check user parameters. Determine the amount of memory to allocate */
 	mem_size = rte_sched_port_get_memory_footprint(params);
 	if (mem_size == 0) {
 		return NULL;
 	}
-	
+
 	/* Allocate memory to store the data structures */
 	port = rte_zmalloc("qos_params", mem_size, CACHE_LINE_SIZE);
 	if (port == NULL) {
@@ -634,7 +634,7 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 #ifdef RTE_SCHED_RED
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
 		uint32_t j;
-		
+
 		for (j = 0; j < e_RTE_METER_COLORS; j++) {
 			if (rte_red_config_init(&port->red_config[i][j],
 				params->red_params[i][j].wq_log2,
@@ -661,10 +661,10 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	port->busy_grinders = 0;
 	port->pkts_out = NULL;
 	port->n_pkts_out = 0;
-	
+
 	/* Queue base calculation */
 	rte_sched_port_config_qsize(port);
-	
+
 	/* Large data structures */
 	port->subport = (struct rte_sched_subport *) (port->memory + rte_sched_port_get_array_base(params, e_RTE_SCHED_PORT_ARRAY_SUBPORT));
 	port->pipe = (struct rte_sched_pipe *) (port->memory + rte_sched_port_get_array_base(params, e_RTE_SCHED_PORT_ARRAY_PIPE));
@@ -676,7 +676,7 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 
 	/* Pipe profile table */
 	rte_sched_port_config_pipe_profile_table(port, params);
-	
+
 	/* Bitmap */
 	n_queues_per_port = rte_sched_port_queues_per_port(port);
 	bmp_mem_size = rte_bitmap_get_memory_footprint(n_queues_per_port);
@@ -688,11 +688,11 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	for (i = 0; i < RTE_SCHED_PORT_N_GRINDERS; i ++) {
 		port->grinder_base_bmp_pos[i] = RTE_SCHED_PIPE_INVALID;
 	}
-	
+
 	return port;
 }
 
-void 
+void
 rte_sched_port_free(struct rte_sched_port *port)
 {
 	/* Check user parameters */
@@ -708,65 +708,65 @@ static void
 rte_sched_port_log_subport_config(struct rte_sched_port *port, uint32_t i)
 {
 	struct rte_sched_subport *s = port->subport + i;
-	
-	RTE_LOG(INFO, SCHED, "Low level config for subport %u:\n"	
+
+	RTE_LOG(INFO, SCHED, "Low level config for subport %u:\n"
 		"\tToken bucket: period = %u, credits per period = %u, size = %u\n"
 		"\tTraffic classes: period = %u, credits per period = [%u, %u, %u, %u]\n"
 		"\tTraffic class 3 oversubscription: wm min = %u, wm max = %u\n",
 		i,
-		
+
 		/* Token bucket */
 		s->tb_period,
 		s->tb_credits_per_period,
 		s->tb_size,
-		
+
 		/* Traffic classes */
 		s->tc_period,
 		s->tc_credits_per_period[0],
 		s->tc_credits_per_period[1],
 		s->tc_credits_per_period[2],
 		s->tc_credits_per_period[3],
-		
+
 		/* Traffic class 3 oversubscription */
 		s->tc_ov_wm_min,
 		s->tc_ov_wm_max);
 }
 
 int
-rte_sched_subport_config(struct rte_sched_port *port, 
+rte_sched_subport_config(struct rte_sched_port *port,
 	uint32_t subport_id,
 	struct rte_sched_subport_params *params)
 {
 	struct rte_sched_subport *s;
 	uint32_t i;
-	
+
 	/* Check user parameters */
 	if ((port == NULL) ||
 	    (subport_id >= port->n_subports_per_port) ||
 		(params == NULL)) {
 		return -1;
 	}
-	
+
 	if ((params->tb_rate == 0) || (params->tb_rate > port->rate)) {
 		return -2;
 	}
-	
+
 	if (params->tb_size == 0) {
 		return -3;
 	}
-	
+
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i ++) {
 		if ((params->tc_rate[i] == 0) || (params->tc_rate[i] > params->tb_rate)) {
 			return -4;
 		}
 	}
-	
+
 	if (params->tc_period == 0) {
 		return -5;
 	}
-	
+
 	s = port->subport + subport_id;
-	
+
 	/* Token Bucket (TB) */
 	if (params->tb_rate == port->rate) {
 		s->tb_credits_per_period = 1;
@@ -774,13 +774,13 @@ rte_sched_subport_config(struct rte_sched_port *port,
 	} else {
 		double tb_rate = ((double) params->tb_rate) / ((double) port->rate);
 		double d = RTE_SCHED_TB_RATE_CONFIG_ERR;
-		
+
 		rte_approx(tb_rate, d, &s->tb_credits_per_period, &s->tb_period);
 	}
 	s->tb_size = params->tb_size;
 	s->tb_time = port->time;
 	s->tb_credits = s->tb_size / 2;
-	
+
 	/* Traffic Classes (TCs) */
 	s->tc_period = (uint32_t) rte_sched_time_ms_to_bytes(params->tc_period, port->rate);
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i ++) {
@@ -790,7 +790,7 @@ rte_sched_subport_config(struct rte_sched_port *port,
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i ++) {
 		s->tc_credits[i] = s->tc_credits_per_period[i];
 	}
-	
+
 #ifdef RTE_SCHED_SUBPORT_TC_OV
 	/* TC oversubscription */
 	s->tc_ov_wm_min = port->mtu;
@@ -801,15 +801,15 @@ rte_sched_subport_config(struct rte_sched_port *port,
 	s->tc_ov_n = 0;
 	s->tc_ov_rate = 0;
 #endif
-	
+
 	rte_sched_port_log_subport_config(port, subport_id);
-	
+
 	return 0;
 }
 
 int
 rte_sched_pipe_config(struct rte_sched_port *port,
-	uint32_t subport_id, 
+	uint32_t subport_id,
 	uint32_t pipe_id,
 	int32_t pipe_profile)
 {
@@ -817,7 +817,7 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 	struct rte_sched_pipe *p;
 	struct rte_sched_pipe_profile *params;
 	uint32_t deactivate, profile, i;
-	
+
 	/* Check user parameters */
 	profile = (uint32_t) pipe_profile;
 	deactivate = (pipe_profile < 0);
@@ -827,15 +827,15 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 		((!deactivate) && (profile >= port->n_pipe_profiles))) {
 		return -1;
 	}
-	
+
 	/* Check that subport configuration is valid */
 	s = port->subport + subport_id;
 	if (s->tb_period == 0) {
 		return -2;
 	}
-	
+
 	p = port->pipe + (subport_id * port->n_pipes_per_subport + pipe_id);
-	
+
 	/* Handle the case when pipe already has a valid configuration */
 	if (p->tb_time) {
 		params = port->pipe_profiles + p->profile;
@@ -844,26 +844,26 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 		double subport_tc3_rate = ((double) s->tc_credits_per_period[3]) / ((double) s->tc_period);
 		double pipe_tc3_rate = ((double) params->tc_credits_per_period[3]) / ((double) params->tc_period);
 		uint32_t tc3_ov = s->tc_ov;
-		
+
 		/* Unplug pipe from its subport */
 		s->tc_ov_n -= params->tc_ov_weight;
 		s->tc_ov_rate -= pipe_tc3_rate;
 		s->tc_ov = s->tc_ov_rate > subport_tc3_rate;
-		
+
 		if (s->tc_ov != tc3_ov) {
-			RTE_LOG(INFO, SCHED, "Subport %u TC3 oversubscription is OFF (%.4lf >= %.4lf)\n", 
+			RTE_LOG(INFO, SCHED, "Subport %u TC3 oversubscription is OFF (%.4lf >= %.4lf)\n",
 				subport_id, subport_tc3_rate, s->tc_ov_rate);
 		}
 #endif
-		
+
 		/* Reset the pipe */
 		memset(p, 0, sizeof(struct rte_sched_pipe));
 	}
-	
+
 	if (deactivate) {
 		return 0;
 	}
-	
+
 	/* Apply the new pipe configuration */
 	p->profile = profile;
 	params = port->pipe_profiles + p->profile;
@@ -871,33 +871,33 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 	/* Token Bucket (TB) */
 	p->tb_time = port->time;
 	p->tb_credits = params->tb_size / 2;
-	
+
 	/* Traffic Classes (TCs) */
 	p->tc_time = port->time + params->tc_period;
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i ++) {
 		p->tc_credits[i] = params->tc_credits_per_period[i];
 	}
-	
+
 #ifdef RTE_SCHED_SUBPORT_TC_OV
 	{
 		/* Subport TC3 oversubscription */
 		double subport_tc3_rate = ((double) s->tc_credits_per_period[3]) / ((double) s->tc_period);
 		double pipe_tc3_rate = ((double) params->tc_credits_per_period[3]) / ((double) params->tc_period);
 		uint32_t tc3_ov = s->tc_ov;
-			
+
 		s->tc_ov_n += params->tc_ov_weight;
 		s->tc_ov_rate += pipe_tc3_rate;
 		s->tc_ov = s->tc_ov_rate > subport_tc3_rate;
-		
+
 		if (s->tc_ov != tc3_ov) {
-			RTE_LOG(INFO, SCHED, "Subport %u TC3 oversubscription is ON (%.4lf < %.4lf)\n", 
+			RTE_LOG(INFO, SCHED, "Subport %u TC3 oversubscription is ON (%.4lf < %.4lf)\n",
 				subport_id, subport_tc3_rate, s->tc_ov_rate);
 		}
 		p->tc_ov_period_id = s->tc_ov_period_id;
 		p->tc_ov_credits = s->tc_ov_wm;
 	}
 #endif
-	
+
 	return 0;
 }
 
@@ -908,7 +908,7 @@ rte_sched_subport_read_stats(struct rte_sched_port *port,
 	uint32_t *tc_ov)
 {
 	struct rte_sched_subport *s;
-	
+
 	/* Check user parameters */
 	if ((port == NULL) ||
 	    (subport_id >= port->n_subports_per_port) ||
@@ -921,10 +921,10 @@ rte_sched_subport_read_stats(struct rte_sched_port *port,
 	/* Copy subport stats and clear */
 	memcpy(stats, &s->stats, sizeof(struct rte_sched_subport_stats));
 	memset(&s->stats, 0, sizeof(struct rte_sched_subport_stats));
-	
+
 	/* Subport TC ovesubscription status */
 	*tc_ov = s->tc_ov;
-	
+
 	return 0;
 }
 
@@ -936,7 +936,7 @@ rte_sched_queue_read_stats(struct rte_sched_port *port,
 {
 	struct rte_sched_queue *q;
 	struct rte_sched_queue_extra *qe;
-	
+
 	/* Check user parameters */
 	if ((port == NULL) ||
 	    (queue_id >= rte_sched_port_queues_per_port(port)) ||
@@ -950,10 +950,10 @@ rte_sched_queue_read_stats(struct rte_sched_port *port,
 	/* Copy queue stats and clear */
 	memcpy(stats, &qe->stats, sizeof(struct rte_sched_queue_stats));
 	memset(&qe->stats, 0, sizeof(struct rte_sched_queue_stats));
-	
+
 	/* Queue length */
 	*qlen = q->qw - q->qr;
-	
+
 	return 0;
 }
 
@@ -961,11 +961,11 @@ static inline uint32_t
 rte_sched_port_qindex(struct rte_sched_port *port, uint32_t subport, uint32_t pipe, uint32_t traffic_class, uint32_t queue)
 {
 	uint32_t result;
-	
+
 	result = subport * port->n_pipes_per_subport + pipe;
 	result = result * RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE + traffic_class;
 	result = result * RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS + queue;
-	
+
 	return result;
 }
 
@@ -974,7 +974,7 @@ rte_sched_port_qbase(struct rte_sched_port *port, uint32_t qindex)
 {
 	uint32_t pindex = qindex >> 4;
 	uint32_t qpos = qindex & 0xF;
-	
+
 	return (port->queue_array + pindex * port->qsize_sum + port->qsize_add[qpos]);
 }
 
@@ -982,7 +982,7 @@ static inline uint16_t
 rte_sched_port_qsize(struct rte_sched_port *port, uint32_t qindex)
 {
 	uint32_t tc = (qindex >> 2) & 0x3;
-	
+
 	return port->qsize[tc];
 }
 
@@ -992,7 +992,7 @@ static inline int
 rte_sched_port_queue_is_empty(struct rte_sched_port *port, uint32_t qindex)
 {
 	struct rte_sched_queue *queue = port->queue + qindex;
-	
+
 	return (queue->qr == queue->qw);
 }
 
@@ -1002,7 +1002,7 @@ rte_sched_port_queue_is_full(struct rte_sched_port *port, uint32_t qindex)
 	struct rte_sched_queue *queue = port->queue + qindex;
 	uint16_t qsize = rte_sched_port_qsize(port, qindex);
 	uint16_t qlen = queue->qw - queue->qr;
-	
+
 	return (qlen >= qsize);
 }
 
@@ -1016,7 +1016,7 @@ rte_sched_port_update_subport_stats(struct rte_sched_port *port, uint32_t qindex
 	struct rte_sched_subport *s = port->subport + (qindex / rte_sched_port_queues_per_subport(port));
 	uint32_t tc_index = (qindex >> 2) & 0x3;
 	uint32_t pkt_len = pkt->pkt.pkt_len;
-	
+
 	s->stats.n_pkts_tc[tc_index] += 1;
 	s->stats.n_bytes_tc[tc_index] += pkt_len;
 }
@@ -1027,7 +1027,7 @@ rte_sched_port_update_subport_stats_on_drop(struct rte_sched_port *port, uint32_
 	struct rte_sched_subport *s = port->subport + (qindex / rte_sched_port_queues_per_subport(port));
 	uint32_t tc_index = (qindex >> 2) & 0x3;
 	uint32_t pkt_len = pkt->pkt.pkt_len;
-	
+
 	s->stats.n_pkts_tc_dropped[tc_index] += 1;
 	s->stats.n_bytes_tc_dropped[tc_index] += pkt_len;
 }
@@ -1037,7 +1037,7 @@ rte_sched_port_update_queue_stats(struct rte_sched_port *port, uint32_t qindex, 
 {
 	struct rte_sched_queue_extra *qe = port->queue_extra + qindex;
 	uint32_t pkt_len = pkt->pkt.pkt_len;
-	
+
 	qe->stats.n_pkts += 1;
 	qe->stats.n_bytes += pkt_len;
 }
@@ -1047,7 +1047,7 @@ rte_sched_port_update_queue_stats_on_drop(struct rte_sched_port *port, uint32_t 
 {
 	struct rte_sched_queue_extra *qe = port->queue_extra + qindex;
 	uint32_t pkt_len = pkt->pkt.pkt_len;
-	
+
 	qe->stats.n_pkts_dropped += 1;
 	qe->stats.n_bytes_dropped += pkt_len;
 }
@@ -1064,7 +1064,7 @@ rte_sched_port_red_drop(struct rte_sched_port *port, struct rte_mbuf *pkt, uint3
     struct rte_red *red;
 	uint32_t tc_index;
 	enum rte_meter_color color;
-	
+
 	tc_index = (qindex >> 2) & 0x3;
 	color = rte_sched_port_pkt_read_color(pkt);
 	red_cfg = &port->red_config[tc_index][color];
@@ -1080,7 +1080,7 @@ rte_sched_port_set_queue_empty_timestamp(struct rte_sched_port *port, uint32_t q
 {
 	struct rte_sched_queue_extra *qe;
     struct rte_red *red;
-	
+
 	qe = port->queue_extra + qindex;
 	red = &qe->red;
 
@@ -1103,20 +1103,20 @@ debug_pipe_is_empty(struct rte_sched_port *port, uint32_t pindex)
 	uint32_t qindex, i;
 
 	qindex = pindex << 4;
-	
+
 	for (i = 0; i < 16; i ++){
 		uint32_t queue_empty = rte_sched_port_queue_is_empty(port, qindex + i);
 		uint32_t bmp_bit_clear = (rte_bitmap_get(port->bmp, qindex + i) == 0);
-		
+
 		if (queue_empty != bmp_bit_clear){
 			rte_panic("Queue status mismatch for queue %u of pipe %u\n", i, pindex);
 		}
-		
+
 		if (!queue_empty){
 			return 0;
 		}
 	}
-	
+
 	return 1;
 }
 
@@ -1125,11 +1125,11 @@ debug_check_queue_slab(struct rte_sched_port *port, uint32_t bmp_pos, uint64_t b
 {
 	uint64_t mask;
 	uint32_t i, panic;
-	
+
 	if (bmp_slab == 0){
 		rte_panic("Empty slab at position %u\n", bmp_pos);
 	}
-	
+
 	panic = 0;
 	for (i = 0, mask = 1; i < 64; i ++, mask <<= 1) {
 		if (mask & bmp_slab){
@@ -1139,7 +1139,7 @@ debug_check_queue_slab(struct rte_sched_port *port, uint32_t bmp_pos, uint64_t b
 			}
 		}
 	}
-	
+
 	if (panic){
 		rte_panic("Empty queues in slab 0x%" PRIx64 "starting at position %u\n",
 			bmp_slab, bmp_pos);
@@ -1158,7 +1158,7 @@ rte_sched_port_enqueue_qptrs_prefetch0(struct rte_sched_port *port, struct rte_m
 	uint32_t subport, pipe, traffic_class, queue, qindex;
 
 	rte_sched_port_pkt_read_tree_path(pkt, &subport, &pipe, &traffic_class, &queue);
-	
+
 	qindex = rte_sched_port_qindex(port, subport, pipe, traffic_class, queue);
 	q = port->queue + qindex;
 	rte_prefetch0(q);
@@ -1166,21 +1166,21 @@ rte_sched_port_enqueue_qptrs_prefetch0(struct rte_sched_port *port, struct rte_m
 	qe = port->queue_extra + qindex;
 	rte_prefetch0(qe);
 #endif
-	
+
 	return qindex;
 }
 
 static inline void
 rte_sched_port_enqueue_qwa_prefetch0(struct rte_sched_port *port, uint32_t qindex, struct rte_mbuf **qbase)
-{	
+{
 	struct rte_sched_queue *q;
 	struct rte_mbuf **q_qw;
-	uint16_t qsize; 
-	
+	uint16_t qsize;
+
 	q = port->queue + qindex;
 	qsize = rte_sched_port_qsize(port, qindex);
 	q_qw = qbase + (q->qw & (qsize - 1));
-	
+
 	rte_prefetch0(q_qw);
 	rte_bitmap_prefetch0(port->bmp, qindex);
 }
@@ -1205,14 +1205,14 @@ rte_sched_port_enqueue_qwa(struct rte_sched_port *port, uint32_t qindex, struct 
 #endif
 		return 0;
 	}
-	
+
 	/* Enqueue packet */
 	qbase[q->qw & (qsize - 1)] = pkt;
 	q->qw ++;
-	
+
 	/* Activate queue in the port bitmap */
 	rte_bitmap_set(port->bmp, qindex);
-	
+
 	/* Statistics */
 #ifdef RTE_SCHED_COLLECT_STATS
 	rte_sched_port_update_subport_stats(port, qindex, pkt);
@@ -1224,44 +1224,44 @@ rte_sched_port_enqueue_qwa(struct rte_sched_port *port, uint32_t qindex, struct 
 
 #if RTE_SCHED_ENQUEUE == 0
 
-int 
+int
 rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 {
 	uint32_t result, i;
-	
+
 	result = 0;
-	
+
 	for (i = 0; i < n_pkts; i ++) {
 		struct rte_mbuf *pkt;
 		struct rte_mbuf **q_base;
 		uint32_t subport, pipe, traffic_class, queue, qindex;
-		
+
 		pkt = pkts[i];
-		
+
 		rte_sched_port_pkt_read_tree_path(pkt, &subport, &pipe, &traffic_class, &queue);
 
 		qindex = rte_sched_port_qindex(port, subport, pipe, traffic_class, queue);
-		
+
 		q_base = rte_sched_port_qbase(port, qindex);
 
 		result += rte_sched_port_enqueue_qwa(port, qindex, q_base, pkt);
 	}
-	
+
 	return result;
 }
 
 #else
 
-/* The enqueue function implements a 4-level pipeline with each stage processing 
- * two different packets. The purpose of using a pipeline is to hide the latency 
+/* The enqueue function implements a 4-level pipeline with each stage processing
+ * two different packets. The purpose of using a pipeline is to hide the latency
  * of prefetching the data structures. The naming convention is presented in the
  * diagram below:
- * 
- *   p00  _______   p10  _______   p20  _______   p30  _______       
+ *
+ *   p00  _______   p10  _______   p20  _______   p30  _______
  * ----->|       |----->|       |----->|       |----->|       |----->
- *       |   0   |      |   1   |      |   2   |      |   3   |      
+ *       |   0   |      |   1   |      |   2   |      |   3   |
  * ----->|_______|----->|_______|----->|_______|----->|_______|----->
- *   p01            p11            p21            p31                
+ *   p01            p11            p21            p31
  *
  ***/
 int
@@ -1272,44 +1272,44 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
 	uint32_t q00, q01, q10, q11, q20, q21, q30, q31, q_last;
 	uint32_t r00, r01, r10, r11, r20, r21, r30, r31, r_last;
 	uint32_t result, i;
-	
+
 	result = 0;
-	
+
 	/* Less then 6 input packets available, which is not enough to feed the pipeline */
 	if (unlikely(n_pkts < 6)) {
 		struct rte_mbuf **q_base[5];
 		uint32_t q[5];
-		
+
 		/* Prefetch the mbuf structure of each packet */
 		for (i = 0; i < n_pkts; i ++) {
 			rte_prefetch0(pkts[i]);
 		}
-		
+
 		/* Prefetch the queue structure for each queue */
 		for (i = 0; i < n_pkts; i ++) {
 			q[i] = rte_sched_port_enqueue_qptrs_prefetch0(port, pkts[i]);
 		}
-		
+
 		/* Prefetch the write pointer location of each queue */
 		for (i = 0; i < n_pkts; i ++) {
 			q_base[i] = rte_sched_port_qbase(port, q[i]);
 			rte_sched_port_enqueue_qwa_prefetch0(port, q[i], q_base[i]);
 		}
-		
+
 		/* Write each packet to its queue */
 		for (i = 0; i < n_pkts; i ++) {
 			result += rte_sched_port_enqueue_qwa(port, q[i], q_base[i], pkts[i]);
 		}
-		
+
 		return result;
 	}
-	
+
 	/* Feed the first 3 stages of the pipeline (6 packets needed) */
 	pkt20 = pkts[0];
 	pkt21 = pkts[1];
 	rte_prefetch0(pkt20);
 	rte_prefetch0(pkt21);
-	
+
 	pkt10 = pkts[2];
 	pkt11 = pkts[3];
 	rte_prefetch0(pkt10);
@@ -1322,17 +1322,17 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
 	pkt01 = pkts[5];
 	rte_prefetch0(pkt00);
 	rte_prefetch0(pkt01);
-	
+
 	q10 = rte_sched_port_enqueue_qptrs_prefetch0(port, pkt10);
 	q11 = rte_sched_port_enqueue_qptrs_prefetch0(port, pkt11);
 
 	q20_base = rte_sched_port_qbase(port, q20);
-	q21_base = rte_sched_port_qbase(port, q21);	
+	q21_base = rte_sched_port_qbase(port, q21);
 	rte_sched_port_enqueue_qwa_prefetch0(port, q20, q20_base);
 	rte_sched_port_enqueue_qwa_prefetch0(port, q21, q21_base);
-	
+
 	/* Run the pipeline */
-	for (i = 6; i < (n_pkts & (~1)); i += 2) {	
+	for (i = 6; i < (n_pkts & (~1)); i += 2) {
 		/* Propagate stage inputs */
 		pkt30 = pkt20;
 		pkt31 = pkt21;
@@ -1346,34 +1346,34 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
 		q21 = q11;
 		q30_base = q20_base;
 		q31_base = q21_base;
-		
+
 		/* Stage 0: Get packets in */
 		pkt00 = pkts[i];
 		pkt01 = pkts[i + 1];
 		rte_prefetch0(pkt00);
 		rte_prefetch0(pkt01);
-		
+
 		/* Stage 1: Prefetch queue structure storing queue pointers */
 		q10 = rte_sched_port_enqueue_qptrs_prefetch0(port, pkt10);
 		q11 = rte_sched_port_enqueue_qptrs_prefetch0(port, pkt11);
-		
+
 		/* Stage 2: Prefetch queue write location */
 		q20_base = rte_sched_port_qbase(port, q20);
 		q21_base = rte_sched_port_qbase(port, q21);
 		rte_sched_port_enqueue_qwa_prefetch0(port, q20, q20_base);
 		rte_sched_port_enqueue_qwa_prefetch0(port, q21, q21_base);
-		
+
 		/* Stage 3: Write packet to queue and activate queue */
 		r30 = rte_sched_port_enqueue_qwa(port, q30, q30_base, pkt30);
 		r31 = rte_sched_port_enqueue_qwa(port, q31, q31_base, pkt31);
 		result += r30 + r31;
 	}
-	
+
 	/* Drain the pipeline (exactly 6 packets). Handle the last packet in the case
 	of an odd number of input packets. */
 	pkt_last = pkts[n_pkts - 1];
 	rte_prefetch0(pkt_last);
-	
+
 	q00 = rte_sched_port_enqueue_qptrs_prefetch0(port, pkt00);
 	q01 = rte_sched_port_enqueue_qptrs_prefetch0(port, pkt01);
 
@@ -1381,18 +1381,18 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
 	q11_base = rte_sched_port_qbase(port, q11);
 	rte_sched_port_enqueue_qwa_prefetch0(port, q10, q10_base);
 	rte_sched_port_enqueue_qwa_prefetch0(port, q11, q11_base);
-		
+
 	r20 = rte_sched_port_enqueue_qwa(port, q20, q20_base, pkt20);
 	r21 = rte_sched_port_enqueue_qwa(port, q21, q21_base, pkt21);
 	result += r20 + r21;
-	
+
 	q_last = rte_sched_port_enqueue_qptrs_prefetch0(port, pkt_last);
 
 	q00_base = rte_sched_port_qbase(port, q00);
 	q01_base = rte_sched_port_qbase(port, q01);
 	rte_sched_port_enqueue_qwa_prefetch0(port, q00, q00_base);
 	rte_sched_port_enqueue_qwa_prefetch0(port, q01, q01_base);
-	
+
 	r10 = rte_sched_port_enqueue_qwa(port, q10, q10_base, pkt10);
 	r11 = rte_sched_port_enqueue_qwa(port, q11, q11_base, pkt11);
 	result += r10 + r11;
@@ -1408,7 +1408,7 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
 		r_last = rte_sched_port_enqueue_qwa(port, q_last, q_last_base, pkt_last);
 		result += r_last;
 	}
-	
+
 	return result;
 }
 
@@ -1428,13 +1428,13 @@ grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
 	struct rte_sched_pipe *pipe = grinder->pipe;
 	struct rte_sched_pipe_profile *params = grinder->pipe_params;
 	uint64_t n_periods;
-	
+
 	/* Subport TB */
 	n_periods = (port->time - subport->tb_time) / subport->tb_period;
 	subport->tb_credits += n_periods * subport->tb_credits_per_period;
 	subport->tb_credits = rte_sched_min_val_2_u32(subport->tb_credits, subport->tb_size);
 	subport->tb_time += n_periods * subport->tb_period;
-	
+
 	/* Pipe TB */
 	n_periods = (port->time - pipe->tb_time) / params->tb_period;
 	pipe->tb_credits += n_periods * params->tb_credits_per_period;
@@ -1449,7 +1449,7 @@ grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
 		subport->tc_credits[3] = subport->tc_credits_per_period[3];
 		subport->tc_time = port->time + subport->tc_period;
 	}
-	
+
 	/* Pipe TCs */
 	if (unlikely(port->time >= pipe->tc_time)) {
 		pipe->tc_credits[0] = params->tc_credits_per_period[0];
@@ -1470,19 +1470,19 @@ grinder_tc_ov_credits_update(struct rte_sched_port *port, uint32_t pos)
 	uint32_t tc_ov_consumption[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 	uint32_t tc_ov_consumption_max;
 	uint32_t tc_ov_wm = subport->tc_ov_wm;
-	
+
 	if (subport->tc_ov == 0) {
 		return subport->tc_ov_wm_max;
 	}
-	
+
 	tc_ov_consumption[0] = subport->tc_credits_per_period[0] - subport->tc_credits[0];
 	tc_ov_consumption[1] = subport->tc_credits_per_period[1] - subport->tc_credits[1];
 	tc_ov_consumption[2] = subport->tc_credits_per_period[2] - subport->tc_credits[2];
 	tc_ov_consumption[3] = subport->tc_credits_per_period[3] - subport->tc_credits[3];
-	
-	tc_ov_consumption_max = subport->tc_credits_per_period[3] - 
+
+	tc_ov_consumption_max = subport->tc_credits_per_period[3] -
 		(tc_ov_consumption[0] + tc_ov_consumption[1] + tc_ov_consumption[2]);
-	
+
 	if (tc_ov_consumption[3] > (tc_ov_consumption_max - port->mtu)) {
 		tc_ov_wm  -= tc_ov_wm >> 7;
 		if (tc_ov_wm < subport->tc_ov_wm_min) {
@@ -1490,7 +1490,7 @@ grinder_tc_ov_credits_update(struct rte_sched_port *port, uint32_t pos)
 		}
 		return tc_ov_wm;
 	}
-	
+
 	tc_ov_wm += (tc_ov_wm >> 7) + 1;
 	if (tc_ov_wm > subport->tc_ov_wm_max) {
 		tc_ov_wm = subport->tc_ov_wm_max;
@@ -1506,13 +1506,13 @@ grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
 	struct rte_sched_pipe *pipe = grinder->pipe;
 	struct rte_sched_pipe_profile *params = grinder->pipe_params;
 	uint64_t n_periods;
-	
+
 	/* Subport TB */
 	n_periods = (port->time - subport->tb_time) / subport->tb_period;
 	subport->tb_credits += n_periods * subport->tb_credits_per_period;
 	subport->tb_credits = rte_sched_min_val_2_u32(subport->tb_credits, subport->tb_size);
 	subport->tb_time += n_periods * subport->tb_period;
-	
+
 	/* Pipe TB */
 	n_periods = (port->time - pipe->tb_time) / params->tb_period;
 	pipe->tb_credits += n_periods * params->tb_credits_per_period;
@@ -1527,7 +1527,7 @@ grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
 		subport->tc_credits[1] = subport->tc_credits_per_period[1];
 		subport->tc_credits[2] = subport->tc_credits_per_period[2];
 		subport->tc_credits[3] = subport->tc_credits_per_period[3];
-		
+
 		subport->tc_time = port->time + subport->tc_period;
 		subport->tc_ov_period_id ++;
 	}
@@ -1540,11 +1540,11 @@ grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
 		pipe->tc_credits[3] = params->tc_credits_per_period[3];
 		pipe->tc_time = port->time + params->tc_period;
 	}
-	
+
 	/* Pipe TCs - Oversubscription */
 	if (unlikely(pipe->tc_ov_period_id != subport->tc_ov_period_id)) {
 		pipe->tc_ov_credits = subport->tc_ov_wm * params->tc_ov_weight;
-		
+
 		pipe->tc_ov_period_id = subport->tc_ov_period_id;
 	}
 }
@@ -1575,11 +1575,11 @@ grinder_credits_check(struct rte_sched_port *port, uint32_t pos)
 		(pkt_len <= subport_tc_credits) &&
 		(pkt_len <= pipe_tb_credits) &&
 		(pkt_len <= pipe_tc_credits);
-	
+
 	if (!enough_credits) {
 		return 0;
 	}
-	
+
 	/* Update port credits */
 	subport->tb_credits -= pkt_len;
 	subport->tc_credits[tc_index] -= pkt_len;
@@ -1608,25 +1608,25 @@ grinder_credits_check(struct rte_sched_port *port, uint32_t pos)
 	uint32_t pipe_tc_ov_mask2[] = {0, 0, 0, UINT32_MAX};
 	uint32_t pipe_tc_ov_credits = pipe_tc_ov_mask1[tc_index];
 	int enough_credits;
-	
+
 	/* Check pipe and subport credits */
 	enough_credits = (pkt_len <= subport_tb_credits) &&
 		(pkt_len <= subport_tc_credits) &&
 		(pkt_len <= pipe_tb_credits) &&
 		(pkt_len <= pipe_tc_credits) &&
 		(pkt_len <= pipe_tc_ov_credits);
-	
+
 	if (!enough_credits) {
 		return 0;
 	}
-	
+
 	/* Update pipe and subport credits */
 	subport->tb_credits -= pkt_len;
 	subport->tc_credits[tc_index] -= pkt_len;
 	pipe->tb_credits -= pkt_len;
 	pipe->tc_credits[tc_index] -= pkt_len;
 	pipe->tc_ov_credits -= pipe_tc_ov_mask2[tc_index] & pkt_len;
-	
+
 	return 1;
 }
 
@@ -1634,7 +1634,7 @@ grinder_credits_check(struct rte_sched_port *port, uint32_t pos)
 
 #endif /* RTE_SCHED_TS_CREDITS_CHECK */
 
-static inline int 
+static inline int
 grinder_schedule(struct rte_sched_port *port, uint32_t pos)
 {
 	struct rte_sched_grinder *grinder = port->grinder + pos;
@@ -1650,7 +1650,7 @@ grinder_schedule(struct rte_sched_port *port, uint32_t pos)
 
 	/* Advance port time */
 	port->time += pkt_len;
-	
+
 	/* Send packet */
 	port->pkts_out[port->n_pkts_out ++] = pkt;
 	queue->qr ++;
@@ -1663,11 +1663,11 @@ grinder_schedule(struct rte_sched_port *port, uint32_t pos)
 		grinder->wrr_mask[grinder->qpos] = 0;
 		rte_sched_port_set_queue_empty_timestamp(port, qindex);
 	}
-	
+
 	/* Reset pipe loop detection */
 	port->pipe_loop = RTE_SCHED_PIPE_INVALID;
 	grinder->productive = 1;
-	
+
 	return 1;
 }
 
@@ -1695,13 +1695,13 @@ static inline int
 grinder_pipe_exists(struct rte_sched_port *port, uint32_t base_pipe)
 {
 	uint32_t i;
-	
+
 	for (i = 0; i < RTE_SCHED_PORT_N_GRINDERS; i ++) {
 		if (port->grinder_base_bmp_pos[i] == base_pipe) {
 			return 1;
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -1715,24 +1715,24 @@ grinder_pcache_populate(struct rte_sched_port *port, uint32_t pos, uint32_t bmp_
 
 	grinder->pcache_w = 0;
 	grinder->pcache_r = 0;
-	
+
 	w[0] = (uint16_t) bmp_slab;
 	w[1] = (uint16_t) (bmp_slab >> 16);
 	w[2] = (uint16_t) (bmp_slab >> 32);
 	w[3] = (uint16_t) (bmp_slab >> 48);
-	
+
 	grinder->pcache_qmask[grinder->pcache_w] = w[0];
 	grinder->pcache_qindex[grinder->pcache_w] = bmp_pos;
 	grinder->pcache_w += (w[0] != 0);
-	
+
 	grinder->pcache_qmask[grinder->pcache_w] = w[1];
 	grinder->pcache_qindex[grinder->pcache_w] = bmp_pos + 16;
 	grinder->pcache_w += (w[1] != 0);
-	
+
 	grinder->pcache_qmask[grinder->pcache_w] = w[2];
 	grinder->pcache_qindex[grinder->pcache_w] = bmp_pos + 32;
 	grinder->pcache_w += (w[2] != 0);
-	
+
 	grinder->pcache_qmask[grinder->pcache_w] = w[3];
 	grinder->pcache_qindex[grinder->pcache_w] = bmp_pos + 48;
 	grinder->pcache_w += (w[3] != 0);
@@ -1743,27 +1743,27 @@ grinder_tccache_populate(struct rte_sched_port *port, uint32_t pos, uint32_t qin
 {
 	struct rte_sched_grinder *grinder = port->grinder + pos;
 	uint8_t b[4];
-	
+
 	grinder->tccache_w = 0;
 	grinder->tccache_r = 0;
-	
+
 	b[0] = (uint8_t) (qmask & 0xF);
 	b[1] = (uint8_t) ((qmask >> 4) & 0xF);
 	b[2] = (uint8_t) ((qmask >> 8) & 0xF);
 	b[3] = (uint8_t) ((qmask >> 12) & 0xF);
-	
+
 	grinder->tccache_qmask[grinder->tccache_w] = b[0];
 	grinder->tccache_qindex[grinder->tccache_w] = qindex;
 	grinder->tccache_w += (b[0] != 0);
-	
+
 	grinder->tccache_qmask[grinder->tccache_w] = b[1];
 	grinder->tccache_qindex[grinder->tccache_w] = qindex + 4;
 	grinder->tccache_w += (b[1] != 0);
-	
+
 	grinder->tccache_qmask[grinder->tccache_w] = b[2];
 	grinder->tccache_qindex[grinder->tccache_w] = qindex + 8;
 	grinder->tccache_w += (b[2] != 0);
-	
+
 	grinder->tccache_qmask[grinder->tccache_w] = b[3];
 	grinder->tccache_qindex[grinder->tccache_w] = qindex + 12;
 	grinder->tccache_w += (b[3] != 0);
@@ -1774,8 +1774,8 @@ grinder_next_tc(struct rte_sched_port *port, uint32_t pos)
 {
 	struct rte_sched_grinder *grinder = port->grinder + pos;
 	struct rte_mbuf **qbase;
-	uint32_t qindex; 
-	uint16_t qsize; 
+	uint32_t qindex;
+	uint16_t qsize;
 
 	if (grinder->tccache_r == grinder->tccache_w) {
 		return 0;
@@ -1788,7 +1788,7 @@ grinder_next_tc(struct rte_sched_port *port, uint32_t pos)
 	grinder->tc_index = (qindex >> 2) & 0x3;
 	grinder->qmask = grinder->tccache_qmask[grinder->tccache_r];
 	grinder->qsize = qsize;
-	
+
 	grinder->qindex[0] = qindex;
 	grinder->qindex[1] = qindex + 1;
 	grinder->qindex[2] = qindex + 2;
@@ -1803,7 +1803,7 @@ grinder_next_tc(struct rte_sched_port *port, uint32_t pos)
 	grinder->qbase[1] = qbase + qsize;
 	grinder->qbase[2] = qbase + 2 * qsize;
 	grinder->qbase[3] = qbase + 3 * qsize;
-	
+
 	grinder->tccache_r ++;
 	return 1;
 }
@@ -1822,15 +1822,15 @@ grinder_next_pipe(struct rte_sched_port *port, uint32_t pos)
 	} else {
 		uint64_t bmp_slab = 0;
 		uint32_t bmp_pos = 0;
-		
-		/* Get another non-empty pipe group */		
+
+		/* Get another non-empty pipe group */
 		if (unlikely(rte_bitmap_scan(port->bmp, &bmp_pos, &bmp_slab) <= 0)) {
 			return 0;
 		}
-		
+
 #if RTE_SCHED_DEBUG
 		debug_check_queue_slab(port, bmp_pos, bmp_slab);
-#endif	
+#endif
 
 		/* Return if pipe group already in one of the other grinders */
 		port->grinder_base_bmp_pos[pos] = RTE_SCHED_BMP_POS_INVALID;
@@ -1838,7 +1838,7 @@ grinder_next_pipe(struct rte_sched_port *port, uint32_t pos)
 			return 0;
 		}
 		port->grinder_base_bmp_pos[pos] = bmp_pos;
-		
+
 		/* Install new pipe group into grinder's pipe cache */
 		grinder_pcache_populate(port, pos, bmp_pos, bmp_slab);
 
@@ -1846,7 +1846,7 @@ grinder_next_pipe(struct rte_sched_port *port, uint32_t pos)
 		pipe_qindex = grinder->pcache_qindex[0];
 		grinder->pcache_r = 1;
 	}
-	
+
 	/* Install new pipe in the grinder */
 	grinder->pindex = pipe_qindex >> 4;
 	grinder->subport = port->subport + (grinder->pindex / port->n_pipes_per_subport);
@@ -1856,14 +1856,14 @@ grinder_next_pipe(struct rte_sched_port *port, uint32_t pos)
 
 	grinder_tccache_populate(port, pos, pipe_qindex, pipe_qmask);
 	grinder_next_tc(port, pos);
-	
+
 	/* Check for pipe exhaustion */
 	if (grinder->pindex == port->pipe_loop) {
 		port->pipe_exhaustion = 1;
 		port->pipe_loop = RTE_SCHED_PIPE_INVALID;
 	}
-	
-	return 1;	
+
+	return 1;
 }
 
 #if RTE_SCHED_WRR == 0
@@ -1877,7 +1877,7 @@ grinder_wrr(struct rte_sched_port *port, uint32_t pos)
 {
 	struct rte_sched_grinder *grinder = port->grinder + pos;
 	uint64_t slab = grinder->qmask;
-	
+
 	if (rte_bsf64(slab, &grinder->qpos) == 0) {
 		rte_panic("grinder wrr\n");
 	}
@@ -1894,19 +1894,19 @@ grinder_wrr_load(struct rte_sched_port *port, uint32_t pos)
 	uint32_t tc_index = grinder->tc_index;
 	uint32_t qmask = grinder->qmask;
 	uint32_t qindex;
-	
+
 	qindex = tc_index * 4;
-	
+
 	grinder->wrr_tokens[0] = ((uint16_t) pipe->wrr_tokens[qindex]) << RTE_SCHED_WRR_SHIFT;
 	grinder->wrr_tokens[1] = ((uint16_t) pipe->wrr_tokens[qindex + 1]) << RTE_SCHED_WRR_SHIFT;
 	grinder->wrr_tokens[2] = ((uint16_t) pipe->wrr_tokens[qindex + 2]) << RTE_SCHED_WRR_SHIFT;
 	grinder->wrr_tokens[3] = ((uint16_t) pipe->wrr_tokens[qindex + 3]) << RTE_SCHED_WRR_SHIFT;
-	
+
 	grinder->wrr_mask[0] = (qmask & 0x1) * 0xFFFF;
 	grinder->wrr_mask[1] = ((qmask >> 1) & 0x1) * 0xFFFF;
 	grinder->wrr_mask[2] = ((qmask >> 2) & 0x1) * 0xFFFF;
 	grinder->wrr_mask[3] = ((qmask >> 3) & 0x1) * 0xFFFF;
-	
+
 	grinder->wrr_cost[0] = pipe_params->wrr_cost[qindex];
 	grinder->wrr_cost[1] = pipe_params->wrr_cost[qindex + 1];
 	grinder->wrr_cost[2] = pipe_params->wrr_cost[qindex + 2];
@@ -1920,9 +1920,9 @@ grinder_wrr_store(struct rte_sched_port *port, uint32_t pos)
 	struct rte_sched_pipe *pipe = grinder->pipe;
 	uint32_t tc_index = grinder->tc_index;
 	uint32_t qindex;
-	
+
 	qindex = tc_index * 4;
-	
+
 	pipe->wrr_tokens[qindex] = (uint8_t) ((grinder->wrr_tokens[0] & grinder->wrr_mask[0]) >> RTE_SCHED_WRR_SHIFT);
 	pipe->wrr_tokens[qindex + 1] = (uint8_t) ((grinder->wrr_tokens[1] & grinder->wrr_mask[1]) >> RTE_SCHED_WRR_SHIFT);
 	pipe->wrr_tokens[qindex + 2] = (uint8_t) ((grinder->wrr_tokens[2] & grinder->wrr_mask[2]) >> RTE_SCHED_WRR_SHIFT);
@@ -1939,10 +1939,10 @@ grinder_wrr(struct rte_sched_port *port, uint32_t pos)
 	grinder->wrr_tokens[1] |= ~grinder->wrr_mask[1];
 	grinder->wrr_tokens[2] |= ~grinder->wrr_mask[2];
 	grinder->wrr_tokens[3] |= ~grinder->wrr_mask[3];
-	
+
 	grinder->qpos = rte_min_pos_4_u16(grinder->wrr_tokens);
 	wrr_tokens_min = grinder->wrr_tokens[grinder->qpos];
-	
+
 	grinder->wrr_tokens[0] -= wrr_tokens_min;
 	grinder->wrr_tokens[1] -= wrr_tokens_min;
 	grinder->wrr_tokens[2] -= wrr_tokens_min;
@@ -1961,7 +1961,7 @@ static inline void
 grinder_prefetch_pipe(struct rte_sched_port *port, uint32_t pos)
 {
 	struct rte_sched_grinder *grinder = port->grinder + pos;
-	
+
 	rte_prefetch0(grinder->pipe);
 	rte_prefetch0(grinder->queue[0]);
 }
@@ -1971,21 +1971,21 @@ grinder_prefetch_tc_queue_arrays(struct rte_sched_port *port, uint32_t pos)
 {
 	struct rte_sched_grinder *grinder = port->grinder + pos;
 	uint16_t qsize, qr[4];
-	
+
 	qsize = grinder->qsize;
 	qr[0] = grinder->queue[0]->qr & (qsize - 1);
 	qr[1] = grinder->queue[1]->qr & (qsize - 1);
 	qr[2] = grinder->queue[2]->qr & (qsize - 1);
 	qr[3] = grinder->queue[3]->qr & (qsize - 1);
-	
+
 	rte_prefetch0(grinder->qbase[0] + qr[0]);
 	rte_prefetch0(grinder->qbase[1] + qr[1]);
 
 	grinder_wrr_load(port, pos);
 	grinder_wrr(port, pos);
-	
+
 	rte_prefetch0(grinder->qbase[2] + qr[2]);
-	rte_prefetch0(grinder->qbase[3] + qr[3]);	
+	rte_prefetch0(grinder->qbase[3] + qr[3]);
 }
 
 static inline void
@@ -1996,13 +1996,13 @@ grinder_prefetch_mbuf(struct rte_sched_port *port, uint32_t pos)
 	struct rte_mbuf **qbase = grinder->qbase[qpos];
 	uint16_t qsize = grinder->qsize;
 	uint16_t qr = grinder->queue[qpos]->qr & (qsize - 1);
-	
+
 	grinder->pkt = qbase[qr];
 	rte_prefetch0(grinder->pkt);
-	
+
 	if (unlikely((qr & 0x7) == 7)) {
 		uint16_t qr_next = (grinder->queue[qpos]->qr + 1) & (qsize - 1);
-		
+
 		rte_prefetch0(qbase + qr_next);
 	}
 }
@@ -2011,96 +2011,96 @@ static inline uint32_t
 grinder_handle(struct rte_sched_port *port, uint32_t pos)
 {
 	struct rte_sched_grinder *grinder = port->grinder + pos;
-	
+
 	switch (grinder->state) {
 	case e_GRINDER_PREFETCH_PIPE:
 	{
 		if (grinder_next_pipe(port, pos)) {
 			grinder_prefetch_pipe(port, pos);
 			port->busy_grinders ++;
-			
+
 			grinder->state = e_GRINDER_PREFETCH_TC_QUEUE_ARRAYS;
 			return 0;
 		}
-		
+
 		return 0;
 	}
 
 	case e_GRINDER_PREFETCH_TC_QUEUE_ARRAYS:
 	{
 		struct rte_sched_pipe *pipe = grinder->pipe;
-		
+
 		grinder->pipe_params = port->pipe_profiles + pipe->profile;
 		grinder_prefetch_tc_queue_arrays(port, pos);
 		grinder_credits_update(port, pos);
-		
+
 		grinder->state = e_GRINDER_PREFETCH_MBUF;
 		return 0;
 	}
-	
+
 	case e_GRINDER_PREFETCH_MBUF:
 	{
 		grinder_prefetch_mbuf(port, pos);
-		
+
 		grinder->state = e_GRINDER_READ_MBUF;
 		return 0;
 	}
-	
+
 	case e_GRINDER_READ_MBUF:
 	{
 		uint32_t result = 0;
-		
+
 		result = grinder_schedule(port, pos);
-		
+
 		/* Look for next packet within the same TC */
 		if (result && grinder->qmask) {
 			grinder_wrr(port, pos);
 			grinder_prefetch_mbuf(port, pos);
-			
+
 			return 1;
 		}
 		grinder_wrr_store(port, pos);
-		
+
 		/* Look for another active TC within same pipe */
 		if (grinder_next_tc(port, pos)) {
 			grinder_prefetch_tc_queue_arrays(port, pos);
-			
+
 			grinder->state = e_GRINDER_PREFETCH_MBUF;
 			return result;
-		}		
+		}
 		if ((grinder->productive == 0) && (port->pipe_loop == RTE_SCHED_PIPE_INVALID)) {
 			port->pipe_loop = grinder->pindex;
 		}
 		grinder_evict(port, pos);
-		
+
 		/* Look for another active pipe */
 		if (grinder_next_pipe(port, pos)) {
 			grinder_prefetch_pipe(port, pos);
-			
+
 			grinder->state = e_GRINDER_PREFETCH_TC_QUEUE_ARRAYS;
 			return result;
 		}
-		
+
 		/* No active pipe found */
 		port->busy_grinders --;
-		
+
 		grinder->state = e_GRINDER_PREFETCH_PIPE;
 		return result;
 	}
-	
+
 	default:
 		rte_panic("Algorithmic error (invalid state)\n");
 		return 0;
 	}
 }
 
-static inline void 
+static inline void
 rte_sched_port_time_resync(struct rte_sched_port *port)
 {
 	uint64_t cycles = rte_get_tsc_cycles();
 	uint64_t cycles_diff = cycles - port->time_cpu_cycles;
 	double bytes_diff = ((double) cycles_diff) / port->cycles_per_byte;
-	
+
 	/* Advance port time */
 	port->time_cpu_cycles = cycles;
 	port->time_cpu_bytes += (uint64_t) bytes_diff;
@@ -2120,10 +2120,10 @@ rte_sched_port_exceptions(struct rte_sched_port *port, int second_pass)
 	/* Check if any exception flag is set */
 	exceptions = (second_pass && port->busy_grinders == 0) ||
 		(port->pipe_exhaustion == 1);
-	
+
 	/* Clear exception flags */
 	port->pipe_exhaustion = 0;
-	
+
 	return exceptions;
 }
 
@@ -2131,12 +2131,12 @@ int
 rte_sched_port_dequeue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 {
 	uint32_t i, count;
-	
+
 	port->pkts_out = pkts;
 	port->n_pkts_out = 0;
-	
+
 	rte_sched_port_time_resync(port);
-	
+
 	/* Take each queue in the grinder one step further */
 	for (i = 0, count = 0; ; i ++)  {
 		count += grinder_handle(port, i & (RTE_SCHED_PORT_N_GRINDERS - 1));
@@ -2145,6 +2145,6 @@ rte_sched_port_dequeue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
 			break;
 		}
 	}
-	
+
 	return count;
 }

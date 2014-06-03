@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -67,7 +67,7 @@
 							(num_switching_cores*RTE_TEST_TX_DESC_DEFAULT) +\
 							(num_switching_cores*MBUF_CACHE_SIZE))
 
-#define MBUF_CACHE_SIZE 128 
+#define MBUF_CACHE_SIZE 128
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 
 /*
@@ -116,7 +116,7 @@
 #define ACK_DEV_REMOVAL 0
 
 /* Configurable number of RX/TX ring descriptors */
-#define RTE_TEST_RX_DESC_DEFAULT 1024 
+#define RTE_TEST_RX_DESC_DEFAULT 1024
 #define RTE_TEST_TX_DESC_DEFAULT 512
 
 /*
@@ -945,7 +945,7 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 		res_base_idx = vq->last_used_idx_res;
 		avail_idx = *((volatile uint16_t *)&vq->avail->idx);
 
-		free_entries = (avail_idx - res_base_idx);		
+		free_entries = (avail_idx - res_base_idx);
 		/* If retry is enabled and the queue is full then we wait and retry to avoid packet loss. */
 		if (enable_retry && unlikely(count > free_entries)) {
 			for (retry = 0; retry < burst_rx_retry_num; retry++) {
@@ -1374,14 +1374,14 @@ virtio_dev_tx(struct virtio_net* dev, struct rte_mempool *mbuf_pool)
 
 		/* Discard first buffer as it is the virtio header */
 		desc = &vq->desc[desc->next];
-			
+
 		/* Buffer address translation. */
 		buff_addr = gpa_to_vva(dev, desc->addr);
 		/* Prefetch buffer address. */
 		rte_prefetch0((void*)(uintptr_t)buff_addr);
-		
+
 		used_idx = vq->last_used_idx & (vq->size - 1);
-		
+
 		if (packet_success < (free_entries - 1)) {
 			/* Prefetch descriptor index. */
 			rte_prefetch0(&vq->desc[head[packet_success+1]]);
@@ -1482,11 +1482,11 @@ switch_worker(__attribute__((unused)) void *arg)
 		}
 
 		rte_prefetch0(lcore_ll->ll_root_used);
-		/* 
+		/*
 		 * Inform the configuration core that we have exited the linked list and that no devices are
 		 * in use if requested.
 		 */
-		if (lcore_ll->dev_removal_flag == REQUEST_DEV_REMOVAL) 
+		if (lcore_ll->dev_removal_flag == REQUEST_DEV_REMOVAL)
 			lcore_ll->dev_removal_flag = ACK_DEV_REMOVAL;
 
 		/*
@@ -2542,8 +2542,8 @@ set_irq_status (struct virtio_net *dev)
 }
 
 /*
- * Remove a device from the specific data core linked list and from the main linked list. Synchonization 
- * occurs through the use of the lcore dev_removal_flag. Device is made volatile here to avoid re-ordering 
+ * Remove a device from the specific data core linked list and from the main linked list. Synchonization
+ * occurs through the use of the lcore dev_removal_flag. Device is made volatile here to avoid re-ordering
  * of dev->remove=1 which can cause an infinite loop in the rte_pause loop.
  */
 static void
@@ -2602,8 +2602,8 @@ destroy_device (volatile struct virtio_net *dev)
 	RTE_LCORE_FOREACH_SLAVE(lcore) {
 		lcore_info[lcore].lcore_ll->dev_removal_flag = REQUEST_DEV_REMOVAL;
 	}
-	
-	/* 
+
+	/*
 	 * Once each core has set the dev_removal_flag to ACK_DEV_REMOVAL we can be sure that
 	 * they can no longer access the device removed from the linked lists and that the devices
 	 * are no longer in use.
@@ -2617,10 +2617,10 @@ destroy_device (volatile struct virtio_net *dev)
 	/* Add the entries back to the lcore and main free ll.*/
 	put_data_ll_free_entry(&lcore_info[ll_lcore_dev_cur->dev->coreid].lcore_ll->ll_root_free, ll_lcore_dev_cur);
 	put_data_ll_free_entry(&ll_root_free, ll_main_dev_cur);
-	
+
 	/* Decrement number of device on the lcore. */
 	lcore_info[ll_lcore_dev_cur->dev->coreid].lcore_ll->device_num--;
-	
+
 	RTE_LOG(INFO, DATA, "(%"PRIu64") Device has been removed from data core\n", dev->device_fh);
 
 	if (zero_copy) {
@@ -2945,9 +2945,9 @@ MAIN(int argc, char *argv[])
 		nb_ports = RTE_MAX_ETHPORTS;
 
 	/*
-   	 * Update the global var NUM_PORTS and global array PORTS
-  	 * and get value of var VALID_NUM_PORTS according to system ports number
-  	 */
+	 * Update the global var NUM_PORTS and global array PORTS
+	 * and get value of var VALID_NUM_PORTS according to system ports number
+	 */
 	valid_num_ports = check_ports_num(nb_ports);
 
 	if ((valid_num_ports ==  0) || (valid_num_ports > MAX_SUP_PORTS)) {

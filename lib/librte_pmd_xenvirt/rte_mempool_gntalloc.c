@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -89,10 +89,10 @@ _create_mempool(const char *name, unsigned elt_num, unsigned elt_size,
 	ssize_t sz, usz; /* usz: unused size */
 	/*
 	 * for each page allocated through xen_gntalloc driver,
- 	 * gref_arr:stores grant references,
- 	 * pa_arr: stores physical address,
- 	 * gnt_arr: stores all meta dat
- 	 */
+	 * gref_arr:stores grant references,
+	 * pa_arr: stores physical address,
+	 * gnt_arr: stores all meta dat
+	 */
 	uint32_t *gref_arr = NULL;
 	phys_addr_t *pa_arr = NULL;
 	struct _gntarr *gnt_arr = NULL;
@@ -159,8 +159,8 @@ _create_mempool(const char *name, unsigned elt_num, unsigned elt_size,
 	}
 
 	/*
- 	 * Check that allocated size is big enough to hold elt_num
- 	 * objects and a calcualte how many bytes are actually required.
+	 * Check that allocated size is big enough to hold elt_num
+	 * objects and a calcualte how many bytes are actually required.
 	 */
 	usz = rte_mempool_xmem_usage(va, elt_num, objsz.total_size, pa_arr, pg_num, pg_shift);
 	if (usz < 0) {
@@ -186,7 +186,7 @@ _create_mempool(const char *name, unsigned elt_num, unsigned elt_size,
 					/* shouldn't fail here */
 					RTE_LOG(ERR, PMD, "va=%p pa=%p index=%p %s\n",
 						gnt_arr[i].va,
-						(void *)gnt_arr[i].pa, 
+						(void *)gnt_arr[i].pa,
 						(void *)arg.index, strerror(errno));
 					rte_panic("gntdealloc failed when freeing pages\n");
 				}
@@ -195,7 +195,7 @@ _create_mempool(const char *name, unsigned elt_num, unsigned elt_size,
 			rpg_num = (sz - usz) >> pg_shift;
 		} else
 			rpg_num = pg_num;
-			
+
 		mp = rte_mempool_xmem_create(name, elt_num, elt_size,
 				cache_size, private_data_size,
 				mp_init, mp_init_arg,
@@ -216,7 +216,7 @@ _create_mempool(const char *name, unsigned elt_num, unsigned elt_size,
 	if (mp == NULL) {
 		i = pg_num;
 		goto mmap_failed;
-	} 
+	}
 
 /*
  * unmap only, without deallocate grant reference.
@@ -240,8 +240,8 @@ out:
 			free(pa_arr);
 
 		/* some gref has already been de-allocated from the list in the driver,
- 		 * so dealloc one by one, and it is safe to deallocate twice 
- 		 */
+		 * so dealloc one by one, and it is safe to deallocate twice
+		 */
 		if (orig_va) {
 			for (i = 0; i < pg_num; i++) {
 				arg.index = start_index + i * pg_sz;

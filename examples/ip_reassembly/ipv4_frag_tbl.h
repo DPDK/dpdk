@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -52,7 +52,7 @@
  * return a faiure.
  * Another thing timing: entries that resides in the table longer then
  * <max_cycles> are considered as invalid, and could be removed/replaced
- * byt the new ones. 
+ * byt the new ones.
  * <key, data> pair is stored together, all add/update/lookup opearions are not
  * MT safe.
  */
@@ -266,7 +266,7 @@ ipv4_frag_find(struct ipv4_frag_tbl *tbl, struct ipv4_frag_death_row *dr,
 		/*
 		 * we found a free entry, check if we can use it.
 		 * If we run out of free entries in the table, then
-		 * check if we have a timed out entry to delete. 
+		 * check if we have a timed out entry to delete.
 		 */
 		} else if (free != NULL &&
 				tbl->max_entries <= tbl->use_entries) {
@@ -349,7 +349,7 @@ ipv4_frag_tbl_create(uint32_t bucket_num, uint32_t bucket_entries,
 	}
 
 	RTE_LOG(INFO, USER1, "%s: allocated of %zu bytes at socket %d\n",
-		__func__, sz, socket_id); 
+		__func__, sz, socket_id);
 
 	tbl->max_cycles = max_cycles;
 	tbl->max_entries = max_entries;

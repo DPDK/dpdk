@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -1386,8 +1386,8 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 #ifndef RTE_LIBRTE_XEN_DOM0
 	rxq->rx_ring_phys_addr = (uint64_t) rz->phys_addr;
 #else
-	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr); 
-#endif 
+	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr);
+#endif
 	rxq->rx_ring = (union e1000_adv_rx_desc *) rz->addr;
 
 	/* Allocate software ring. */
@@ -1407,7 +1407,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
-uint32_t 
+uint32_t
 eth_igb_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 #define IGB_RXQ_SCAN_INTERVAL 4
@@ -1693,27 +1693,27 @@ static int
 igb_is_vmdq_supported(const struct rte_eth_dev *dev)
 {
 	const struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	
-	switch (hw->mac.type) { 
-	case e1000_82576: 
-	case e1000_82580: 
-	case e1000_i350: 
+
+	switch (hw->mac.type) {
+	case e1000_82576:
+	case e1000_82580:
+	case e1000_i350:
 		return 1;
-	case e1000_82540: 
-	case e1000_82541: 
-	case e1000_82542: 
-	case e1000_82543: 
-	case e1000_82544: 
-	case e1000_82545: 
-	case e1000_82546: 
-	case e1000_82547: 
-	case e1000_82571: 
-	case e1000_82572: 
-	case e1000_82573: 
-	case e1000_82574: 
-	case e1000_82583: 
-	case e1000_i210: 
-	case e1000_i211: 
+	case e1000_82540:
+	case e1000_82541:
+	case e1000_82542:
+	case e1000_82543:
+	case e1000_82544:
+	case e1000_82545:
+	case e1000_82546:
+	case e1000_82547:
+	case e1000_82571:
+	case e1000_82572:
+	case e1000_82573:
+	case e1000_82574:
+	case e1000_82583:
+	case e1000_i210:
+	case e1000_i211:
 	default:
 		PMD_INIT_LOG(ERR, "Cannot support VMDq feature\n");
 		return 0;
@@ -1727,8 +1727,8 @@ igb_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 	struct e1000_hw *hw;
 	uint32_t mrqc, vt_ctl, vmolr, rctl;
 	int i;
- 
- 	PMD_INIT_LOG(DEBUG, ">>");
+
+	PMD_INIT_LOG(DEBUG, ">>");
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	cfg = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
 
@@ -1737,7 +1737,7 @@ igb_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 		return -1;
 
 	igb_rss_disable(dev);
-	
+
 	/* RCTL: eanble VLAN filter */
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	rctl |= E1000_RCTL_VFE;
@@ -1745,20 +1745,20 @@ igb_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 
 	/* MRQC: enable vmdq */
 	mrqc = E1000_READ_REG(hw, E1000_MRQC);
-	mrqc |= E1000_MRQC_ENABLE_VMDQ; 
+	mrqc |= E1000_MRQC_ENABLE_VMDQ;
 	E1000_WRITE_REG(hw, E1000_MRQC, mrqc);
- 
+
 	/* VTCTL:  pool selection according to VLAN tag */
 	vt_ctl = E1000_READ_REG(hw, E1000_VT_CTL);
-	if (cfg->enable_default_pool) 
+	if (cfg->enable_default_pool)
 		vt_ctl |= (cfg->default_pool << E1000_VT_CTL_DEFAULT_POOL_SHIFT);
 	vt_ctl |= E1000_VT_CTL_IGNORE_MAC;
 	E1000_WRITE_REG(hw, E1000_VT_CTL, vt_ctl);
-	
-	/* 
+
+	/*
 	 * VMOLR: set STRVLAN as 1 if IGMAC in VTCTL is set as 1
- 	 * Both 82576 and 82580 support it 
- 	 */
+	 * Both 82576 and 82580 support it
+	 */
 	if (hw->mac.type != e1000_i350) {
 		for (i = 0; i < E1000_VMOLR_SIZE; i++) {
 			vmolr = E1000_READ_REG(hw, E1000_VMOLR(i));
@@ -1768,13 +1768,13 @@ igb_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 	}
 
 	/* VFTA - enable all vlan filters */
-	for (i = 0; i < IGB_VFTA_SIZE; i++) 
+	for (i = 0; i < IGB_VFTA_SIZE; i++)
 		E1000_WRITE_REG(hw, (E1000_VFTA+(i*4)), UINT32_MAX);
-	
+
 	/* VFRE: 8 pools enabling for rx, both 82576 and i350 support it */
 	if (hw->mac.type != e1000_82580)
 		E1000_WRITE_REG(hw, E1000_VFRE, E1000_MBVFICR_VFREQ_MASK);
- 
+
 	/*
 	 * RAH/RAL - allow pools to read specific mac addresses
 	 * In this case, all pools should be able to read from mac addr 0
@@ -1792,7 +1792,7 @@ igb_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 	}
 
 	E1000_WRITE_FLUSH(hw);
-	
+
 	return 0;
 }
 
@@ -1839,39 +1839,39 @@ igb_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t mrqc;
- 
+
 	if (RTE_ETH_DEV_SRIOV(dev).active == ETH_8_POOLS) {
 		/*
-	 	* SRIOV active scheme
-	 	* FIXME if support RSS together with VMDq & SRIOV
-	 	*/
+		 * SRIOV active scheme
+		 * FIXME if support RSS together with VMDq & SRIOV
+		 */
 		mrqc = E1000_MRQC_ENABLE_VMDQ;
 		/* 011b Def_Q ignore, according to VT_CTL.DEF_PL */
 		mrqc |= 0x3 << E1000_MRQC_DEF_Q_SHIFT;
 		E1000_WRITE_REG(hw, E1000_MRQC, mrqc);
-	} else if(RTE_ETH_DEV_SRIOV(dev).active == 0) { 
+	} else if(RTE_ETH_DEV_SRIOV(dev).active == 0) {
 		/*
-	 	* SRIOV inactive scheme
-	 	*/
+		 * SRIOV inactive scheme
+		 */
 		switch (dev->data->dev_conf.rxmode.mq_mode) {
 			case ETH_MQ_RX_RSS:
 				igb_rss_configure(dev);
 				break;
 			case ETH_MQ_RX_VMDQ_ONLY:
 				/*Configure general VMDQ only RX parameters*/
-				igb_vmdq_rx_hw_configure(dev); 
+				igb_vmdq_rx_hw_configure(dev);
 				break;
 			case ETH_MQ_RX_NONE:
 				/* if mq_mode is none, disable rss mode.*/
-			default: 
+			default:
 				igb_rss_disable(dev);
 				break;
 		}
 	}
- 
+
 	return 0;
 }
- 
+
 int
 eth_igb_rx_init(struct rte_eth_dev *dev)
 {
@@ -2252,9 +2252,9 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 		rxdctl |= (rxq->pthresh & 0x1F);
 		rxdctl |= ((rxq->hthresh & 0x1F) << 8);
 		if (hw->mac.type == e1000_vfadapt) {
-			/* 
+			/*
 			 * Workaround of 82576 VF Erratum
-			 * force set WTHRESH to 1 
+			 * force set WTHRESH to 1
 			 * to avoid Write-Back not triggered sometimes
 			 */
 			rxdctl |= 0x10000;
@@ -2315,12 +2315,12 @@ eth_igbvf_tx_init(struct rte_eth_dev *dev)
 		txdctl |= txq->pthresh & 0x1F;
 		txdctl |= ((txq->hthresh & 0x1F) << 8);
 		if (hw->mac.type == e1000_82576) {
-			/* 
+			/*
 			 * Workaround of 82576 VF Erratum
-			 * force set WTHRESH to 1 
+			 * force set WTHRESH to 1
 			 * to avoid Write-Back not triggered sometimes
 			 */
-			txdctl |= 0x10000; 
+			txdctl |= 0x10000;
 			PMD_INIT_LOG(DEBUG, "Force set TX WTHRESH to 1 !\n");
 		}
 		else

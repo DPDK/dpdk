@@ -1,14 +1,14 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -272,10 +272,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"rx_vlan add (vlan_id) port (port_id) vf (vf_mask)\n"
 			"    Add a vlan_id, to the set of VLAN identifiers"
 			"filtered for VF(s) from port_id.\n\n"
-			
+
 			"rx_vlan rm (vlan_id) port (port_id) vf (vf_mask)\n"
 			"    Remove a vlan_id, to the set of VLAN identifiers"
-			"filtered for VF(s) from port_id.\n\n"			
+			"filtered for VF(s) from port_id.\n\n"
 
 			"rx_vlan set tpid (value) (port_id)\n"
 			"    Set the outer VLAN TPID for Packet Filtering on"
@@ -309,9 +309,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"mac_addr add port (port_id) vf (vf_id) (mac_address)\n"
 			"    Add a MAC address for a VF on the port.\n\n"
-			
+
 			"set port (port_id) uta (mac_address|all) (on|off)\n"
-			"    Add/Remove a or all unicast hash filter(s)" 
+			"    Add/Remove a or all unicast hash filter(s)"
 			"from port X.\n\n"
 
 			"set promisc (port_id|all) (on|off)\n"
@@ -346,8 +346,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    BAM:accepts broadcast packets;"
 			"MPE:accepts all multicast packets\n\n"
 			"    Enable/Disable a VF receive mode of a port\n\n"
-			
-			"set port (port_id) mirror-rule (rule_id)" 
+
+			"set port (port_id) mirror-rule (rule_id)"
 			"(pool-mirror|vlan-mirror)\n"
 			" (poolmask|vlanid[,vlanid]*) dst-pool (pool_id) (on|off)\n"
 			"   Set pool or vlan type mirror rule on a port.\n"
@@ -2927,9 +2927,9 @@ static void cmd_set_burst_tx_retry_parsed(void *parsed_result,
 	if (!strcmp(res->set, "set") && !strcmp(res->burst, "burst")
 		&& !strcmp(res->tx, "tx")) {
 		if (!strcmp(res->delay, "delay"))
-			burst_tx_delay_time = res->time;	
+			burst_tx_delay_time = res->time;
 		if (!strcmp(res->retry, "retry"))
-			burst_tx_retry_num = res->retry_num;	
+			burst_tx_retry_num = res->retry_num;
 	}
 
 }
@@ -4564,15 +4564,15 @@ cmd_set_uc_hash_parsed(void *parsed_result,
 {
 	int ret=0;
 	struct cmd_set_uc_hash_table *res = parsed_result;
-	
+
 	int is_on = (strcmp(res->mode, "on") == 0) ? 1 : 0;
-	
+
 	if (strcmp(res->what, "uta") == 0)
-		ret = rte_eth_dev_uc_hash_table_set(res->port_id, 
+		ret = rte_eth_dev_uc_hash_table_set(res->port_id,
 						&res->address,(uint8_t)is_on);
 	if (ret < 0)
 		printf("bad unicast hash table parameter, return code = %d \n", ret);
-	
+
 }
 
 cmdline_parse_token_string_t cmd_set_uc_hash_set =
@@ -4588,7 +4588,7 @@ cmdline_parse_token_string_t cmd_set_uc_hash_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_hash_table,
 				 what, "uta");
 cmdline_parse_token_etheraddr_t cmd_set_uc_hash_mac =
-	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_uc_hash_table, 
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_uc_hash_table,
 				address);
 cmdline_parse_token_string_t cmd_set_uc_hash_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_hash_table,
@@ -4625,14 +4625,14 @@ cmd_set_uc_all_hash_parsed(void *parsed_result,
 {
 	int ret=0;
 	struct cmd_set_uc_all_hash_table *res = parsed_result;
-	
+
 	int is_on = (strcmp(res->mode, "on") == 0) ? 1 : 0;
-	
-	if ((strcmp(res->what, "uta") == 0) && 
+
+	if ((strcmp(res->what, "uta") == 0) &&
 		(strcmp(res->value, "all") == 0))
 		ret = rte_eth_dev_uc_all_hash_table_set(res->port_id,(uint8_t) is_on);
 	if (ret < 0)
-		printf("bad unicast hash table parameter," 
+		printf("bad unicast hash table parameter,"
 			"return code = %d \n", ret);
 }
 
@@ -4649,7 +4649,7 @@ cmdline_parse_token_string_t cmd_set_uc_all_hash_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table,
 				 what, "uta");
 cmdline_parse_token_string_t cmd_set_uc_all_hash_value =
-	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table, 
+	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table,
 				value,"all");
 cmdline_parse_token_string_t cmd_set_uc_all_hash_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table,
@@ -4751,7 +4751,7 @@ cmd_set_vf_rxmode_parsed(void *parsed_result,
 	int ret;
 	uint16_t rx_mode = 0;
 	struct cmd_set_vf_rxmode *res = parsed_result;
-	
+
 	int is_on = (strcmp(res->on, "on") == 0) ? 1 : 0;
 	if (!strcmp(res->what,"rxmode")) {
 		if (!strcmp(res->mode, "AUPE"))
@@ -4831,7 +4831,7 @@ static void cmd_vf_mac_addr_parsed(void *parsed_result,
 	int ret = 0;
 
 	if (strcmp(res->what, "add") == 0)
-		ret = rte_eth_dev_mac_addr_add(res->port_num, 
+		ret = rte_eth_dev_mac_addr_add(res->port_num,
 					&res->address, res->vf_num);
 	if(ret < 0)
 		printf("vf_mac_addr_cmd error: (%s)\n", strerror(-ret));
@@ -4842,22 +4842,22 @@ cmdline_parse_token_string_t cmd_vf_mac_addr_cmd =
 	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result,
 				mac_addr_cmd,"mac_addr");
 cmdline_parse_token_string_t cmd_vf_mac_addr_what =
-	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result, 
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result,
 				what,"add");
 cmdline_parse_token_string_t cmd_vf_mac_addr_port =
-	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result, 
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result,
 				port,"port");
 cmdline_parse_token_num_t cmd_vf_mac_addr_portnum =
-	TOKEN_NUM_INITIALIZER(struct cmd_vf_mac_addr_result, 
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_mac_addr_result,
 				port_num, UINT8);
 cmdline_parse_token_string_t cmd_vf_mac_addr_vf =
-	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result, 
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result,
 				vf,"vf");
 cmdline_parse_token_num_t cmd_vf_mac_addr_vfnum =
 	TOKEN_NUM_INITIALIZER(struct cmd_vf_mac_addr_result,
 				vf_num, UINT8);
 cmdline_parse_token_etheraddr_t cmd_vf_mac_addr_addr =
-	TOKEN_ETHERADDR_INITIALIZER(struct cmd_vf_mac_addr_result, 
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_vf_mac_addr_result,
 				address);
 
 cmdline_parse_inst_t cmd_vf_mac_addr_filter = {
@@ -5034,7 +5034,7 @@ cmd_set_mirror_mask_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_set_mirror_mask = {
 		.f = cmd_set_mirror_mask_parsed,
 		.data = NULL,
-		.help_str = "set port X mirror-rule Y pool-mirror|vlan-mirror " 
+		.help_str = "set port X mirror-rule Y pool-mirror|vlan-mirror "
 				"pool_mask|vlan_id[,vlan_id]* dst-pool Z on|off",
 		.tokens = {
 			(void *)&cmd_mirror_mask_set,

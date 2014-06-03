@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -434,9 +434,9 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	if (RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL,
 			rte_mempool_list) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;	
+		return NULL;
 	}
-	
+
 	/* asked cache too big */
 	if (cache_size > RTE_MEMPOOL_CACHE_MAX_SIZE) {
 		rte_errno = EINVAL;
@@ -502,14 +502,14 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	}
 
 	/*
- 	 * If user provided an external memory buffer, then use it to
- 	 * store mempool objects. Otherwise reserve memzone big enough to
- 	 * hold mempool header and metadata plus mempool objects.
- 	 */
+	 * If user provided an external memory buffer, then use it to
+	 * store mempool objects. Otherwise reserve memzone big enough to
+	 * hold mempool header and metadata plus mempool objects.
+	 */
 	mempool_size = MEMPOOL_HEADER_SIZE(mp, pg_num) + private_data_size;
 	if (vaddr == NULL)
 		mempool_size += (size_t)objsz.total_size * n;
-			
+
 	if (! rte_eal_has_hugepages()) {
 		/*
 		 * we want the memory pool to start on a page boundary,
@@ -696,7 +696,7 @@ mempool_audit_cookies(const struct rte_mempool *mp)
 	} else if (arg.obj_end != mp->elt_va_end || arg.obj_num != mp->size) {
 			rte_panic("rte_mempool_obj_iter(mempool=%p, size=%u) "
 			"last callback va_end: %#tx (%#tx expeceted), "
-			"num of objects: %u (%u expected)\n", 
+			"num of objects: %u (%u expected)\n",
 			mp, mp->size,
 			arg.obj_end, mp->elt_va_end,
 			arg.obj_num, mp->size);
@@ -814,10 +814,10 @@ rte_mempool_list_dump(FILE *f)
 	const struct rte_mempool *mp = NULL;
 	struct rte_mempool_list *mempool_list;
 
-	if ((mempool_list = 
+	if ((mempool_list =
 	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL, rte_mempool_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
-		return;	
+		return;
 	}
 
 	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
@@ -836,7 +836,7 @@ rte_mempool_lookup(const char *name)
 	struct rte_mempool *mp = NULL;
 	struct rte_mempool_list *mempool_list;
 
-	if ((mempool_list = 
+	if ((mempool_list =
 	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL, rte_mempool_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
 		return NULL;
@@ -848,9 +848,9 @@ rte_mempool_lookup(const char *name)
 		if (strncmp(name, mp->name, RTE_MEMPOOL_NAMESIZE) == 0)
 			break;
 	}
-	
+
 	rte_rwlock_read_unlock(RTE_EAL_MEMPOOL_RWLOCK);
-	
+
 	if (mp == NULL)
 		rte_errno = ENOENT;
 

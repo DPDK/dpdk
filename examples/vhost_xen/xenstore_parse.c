@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -63,7 +63,7 @@ static struct xs_handle *xs = NULL;
 
 /* gntdev file descriptor to map grant pages */
 static int d_fd = -1;
- 
+
 /*
  *  The grant node format in xenstore for vring/mpool is like:
  *  idx#_rx_vring_gref = "gref1#, gref2#, gref3#"
@@ -81,8 +81,8 @@ int cmdline_parse_etheraddr(void *tk, const char *srcbuf,
 
 /* Map grant ref refid at addr_ori*/
 static void *
-xen_grant_mmap(void *addr_ori, int domid, int refid, uint64_t *pindex) 
-{ 
+xen_grant_mmap(void *addr_ori, int domid, int refid, uint64_t *pindex)
+{
 	struct ioctl_gntdev_map_grant_ref arg;
 	void *addr = NULL;
 	int pg_sz = getpagesize();
@@ -91,31 +91,31 @@ xen_grant_mmap(void *addr_ori, int domid, int refid, uint64_t *pindex)
 	arg.refs[0].domid = domid;
 	arg.refs[0].ref = refid;
 
-	int rv = ioctl(d_fd, IOCTL_GNTDEV_MAP_GRANT_REF, &arg); 
-	if (rv) { 
+	int rv = ioctl(d_fd, IOCTL_GNTDEV_MAP_GRANT_REF, &arg);
+	if (rv) {
 		RTE_LOG(ERR, XENHOST, "  %s: (%d,%d) %s (ioctl failed)\n", __func__,
-				domid, refid, strerror(errno)); 
-		return NULL; 
-	} 
+				domid, refid, strerror(errno));
+		return NULL;
+	}
 
 	if (addr_ori == NULL)
-		addr = mmap(addr_ori, pg_sz, PROT_READ|PROT_WRITE, MAP_SHARED, 
-				d_fd, arg.index); 
+		addr = mmap(addr_ori, pg_sz, PROT_READ|PROT_WRITE, MAP_SHARED,
+				d_fd, arg.index);
 	else
 		addr = mmap(addr_ori, pg_sz, PROT_READ|PROT_WRITE, MAP_SHARED | MAP_FIXED,
-				d_fd, arg.index); 
+				d_fd, arg.index);
 
 	if (addr == MAP_FAILED) {
 		RTE_LOG(ERR, XENHOST, "  %s: (%d, %d) %s (map failed)\n", __func__,
-				domid, refid, strerror(errno)); 
-		return NULL; 
+				domid, refid, strerror(errno));
+		return NULL;
 	}
 
 	if (pindex)
 		*pindex = arg.index;
 
 	return addr;
-} 
+}
 
 /* Unmap one grant ref, and munmap must be called before this */
 static int
@@ -123,7 +123,7 @@ xen_unmap_grant_ref(uint64_t index)
 {
 	struct ioctl_gntdev_unmap_grant_ref arg;
 	int rv;
-	
+
 	arg.count = 1;
 	arg.index = index;
 	rv = ioctl(d_fd, IOCTL_GNTDEV_UNMAP_GRANT_REF, &arg);
@@ -179,7 +179,7 @@ xen_read_node(char *path, uint32_t *len)
 
 	buf = xs_read(xs, XBT_NULL, path, len);
 	return buf;
-} 
+}
 
 static int
 cal_pagenum(struct xen_gnt *gnt)
@@ -206,7 +206,7 @@ xen_free_gntnode(struct xen_gntnode *gntnode)
 		return;
 	if (gntnode->gnt_info)
 		free(gntnode->gnt_info);
-	free(gntnode);	
+	free(gntnode);
 }
 
 /*
@@ -252,7 +252,7 @@ parse_gntnode(int dom_id, char *path)
 	gnt = (struct xen_gnt *)calloc(gref_num, sizeof(struct xen_gnt));
 	if (gnt == NULL || gntnode == NULL)
 		goto err;
-	
+
 	for (i = 0; i < gref_num; i++) {
 		errno = 0;
 		gnt[i].gref = strtol(gref_list[i], &end, 0);
@@ -263,7 +263,7 @@ parse_gntnode(int dom_id, char *path)
 		}
 		addr = xen_grant_mmap(NULL, dom_id, gnt[i].gref, &index);
 		if (addr == NULL) {
-			RTE_LOG(ERR, XENHOST, "  %s: map gref %u failed\n", __func__, gnt[i].gref); 
+			RTE_LOG(ERR, XENHOST, "  %s: map gref %u failed\n", __func__, gnt[i].gref);
 			goto err;
 		}
 		RTE_LOG(INFO, XENHOST, "      %s: map gref %u to %p\n", __func__, gnt[i].gref, addr);
@@ -276,11 +276,11 @@ parse_gntnode(int dom_id, char *path)
 			RTE_LOG(INFO, XENHOST, "  %s: release gref %u failed\n", __func__, gnt[i].gref);
 			goto err;
 		}
-			
+
 	}
-	
+
 	gntnode->gnt_num  = gref_num;
-	gntnode->gnt_info = gnt;	
+	gntnode->gnt_info = gnt;
 
 	free(buf);
 	free(gref_list);
@@ -332,7 +332,7 @@ map_gntnode(struct xen_gntnode *gntnode, int domid, uint32_t **ppfn, uint32_t *p
 	pg_sz = getpagesize();
 	for (i = 0; i < gntnode->gnt_num; i++) {
 		gnt = gntnode->gnt_info + i;
-		total_pages += cal_pagenum(gnt);  
+		total_pages += cal_pagenum(gnt);
 	}
 	if ((addr = get_xen_virtual(total_pages * pg_sz, pg_sz)) == NULL) {
 		RTE_LOG(ERR, XENHOST, "  %s: failed get_xen_virtual\n", __func__);
@@ -355,7 +355,7 @@ map_gntnode(struct xen_gntnode *gntnode, int domid, uint32_t **ppfn, uint32_t *p
 				goto _end;
 			/*alternative: batch map, or through libxc*/
 			if (xen_grant_mmap(RTE_PTR_ADD(addr, pfn_num * pg_sz),
-					domid, 
+					domid,
 					gnt->gref_pfn[j * 2].gref,
 					&pindex[pfn_num]) == NULL) {
 				goto mmap_failed;
@@ -400,10 +400,10 @@ parse_mpool_va(struct xen_mempool *mempool)
 	int ret = -1;
 
 	errno = 0;
-	rte_snprintf(path, sizeof(path), 
+	rte_snprintf(path, sizeof(path),
 		XEN_VM_ROOTNODE_FMT"/%d_"XEN_GVA_SUFFIX,
 		mempool->dom_id, mempool->pool_idx);
-		
+
 	if((buf = xen_read_node(path, &len)) == NULL)
 		goto out;
 	mempool->gva = (void *)strtoul(buf, &end, 16);
@@ -411,7 +411,7 @@ parse_mpool_va(struct xen_mempool *mempool)
 		mempool->gva = NULL;
 		goto out;
 	}
-	ret = 0;	
+	ret = 0;
 out:
 	if (buf)
 		free(buf);
@@ -421,14 +421,14 @@ out:
 /*
  * map mbuf pool
  */
-static int 
+static int
 map_mempoolnode(struct xen_gntnode *gntnode,
 			struct xen_mempool *mempool)
 {
 	if (gntnode == NULL || mempool == NULL)
 		return -1;
-	
-	mempool->hva = 
+
+	mempool->hva =
 		map_gntnode(gntnode, mempool->dom_id, &mempool->mempfn_tbl, &mempool->mempfn_num, &mempool->pindex);
 
 	RTE_LOG(INFO, XENHOST, "  %s: map mempool at %p\n", __func__, (void *)mempool->hva);
@@ -444,7 +444,7 @@ cleanup_mempool(struct xen_mempool *mempool)
 {
 	int pg_sz = getpagesize();
 	uint32_t i;
-	
+
 	if (mempool->hva)
 		munmap(mempool->hva, mempool->mempfn_num * pg_sz);
 	mempool->hva = NULL;
@@ -456,7 +456,7 @@ cleanup_mempool(struct xen_mempool *mempool)
 			mempool->pool_idx,
 			mempool->mempfn_num);
 		for (i = 0; i < mempool->mempfn_num; i ++) {
-			xen_unmap_grant_ref(mempool->pindex[i]); 
+			xen_unmap_grant_ref(mempool->pindex[i]);
 		}
 	}
 	mempool->pindex = NULL;
@@ -485,10 +485,10 @@ parse_mempoolnode(struct xen_guest *guest)
 	while (1) {
 		/* check if null terminated */
 		rte_snprintf(path, sizeof(path),
-			XEN_VM_ROOTNODE_FMT"/%d_"XEN_MEMPOOL_SUFFIX, 
+			XEN_VM_ROOTNODE_FMT"/%d_"XEN_MEMPOOL_SUFFIX,
 			guest->dom_id,
 			guest->pool_num);
-		
+
 		if ((buf = xen_read_node(path, &len)) != NULL) {
 			/* this node exists */
 			free(buf);
@@ -503,7 +503,7 @@ parse_mempoolnode(struct xen_guest *guest)
 		mempool = &guest->mempool[guest->pool_num];
 		mempool->dom_id = guest->dom_id;
 		mempool->pool_idx = guest->pool_num;
-	
+
 		RTE_LOG(INFO, XENHOST, "  %s: mempool %u parse gntnode %s\n", __func__, guest->pool_num, path);
 		gntnode = parse_gntnode(guest->dom_id, path);
 		if (gntnode == NULL)
@@ -541,10 +541,10 @@ xen_map_vringflag(struct xen_vring *vring)
 	int pg_sz = getpagesize();
 	char *end;
 
-	rte_snprintf(path, sizeof(path), 
+	rte_snprintf(path, sizeof(path),
 		XEN_VM_ROOTNODE_FMT"/%d_"XEN_VRINGFLAG_SUFFIX,
 		vring->dom_id, vring->virtio_idx);
-		
+
 	if((buf = xen_read_node(path, &len)) == NULL)
 		goto err;
 
@@ -580,7 +580,7 @@ xen_map_rxvringnode(struct xen_gntnode *gntnode,
 	RTE_LOG(INFO, XENHOST, "  %s: map rx vring at %p\n", __func__, (void *)vring->rxvring_addr);
 	if (vring->rxvring_addr)
 		return 0;
-	else 
+	else
 		return -1;
 }
 
@@ -669,7 +669,7 @@ xen_parse_etheraddr(struct xen_vring *vring)
 	uint32_t len;
 	int ret = -1;
 
-	rte_snprintf(path, sizeof(path), 
+	rte_snprintf(path, sizeof(path),
 		XEN_VM_ROOTNODE_FMT"/%d_"XEN_ADDR_SUFFIX,
 		vring->dom_id, vring->virtio_idx);
 
@@ -699,12 +699,12 @@ parse_vringnode(struct xen_guest *guest, uint32_t virtio_idx)
 		XEN_VM_ROOTNODE_FMT"/%d_"XEN_RXVRING_SUFFIX,
 		guest->dom_id,
 		virtio_idx);
-	
+
 	RTE_LOG(INFO, XENHOST, "  %s: virtio %u parse rx gntnode %s\n", __func__, virtio_idx, path);
 	rx_gntnode = parse_gntnode(guest->dom_id, path);
 	if (rx_gntnode == NULL)
 		goto err;
-	
+
 	/*check if null terminated */
 	rte_snprintf(path, sizeof(path),
 		XEN_VM_ROOTNODE_FMT"/%d_"XEN_TXVRING_SUFFIX,
@@ -720,7 +720,7 @@ parse_vringnode(struct xen_guest *guest, uint32_t virtio_idx)
 	bzero(vring, sizeof(*vring));
 	vring->dom_id = guest->dom_id;
 	vring->virtio_idx = virtio_idx;
-		
+
 	if (xen_parse_etheraddr(vring) != 0)
 		goto err;
 
@@ -764,7 +764,7 @@ xen_grant_init(void)
 {
 	d_fd = open(XEN_GNTDEV_FNAME, O_RDWR);
 
-	return d_fd == -1? (-1): (0); 
+	return d_fd == -1? (-1): (0);
 }
 
 /*

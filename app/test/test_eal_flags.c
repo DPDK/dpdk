@@ -1,14 +1,14 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -162,7 +162,7 @@ process_hugefiles(const char * prefix, enum hugepage_action action)
 
 					rte_snprintf(file_path, sizeof(file_path),
 						"%s/%s", hugedir, dirent->d_name);
-					
+
 					/* remove file */
 					if (remove(file_path) < 0) {
 						printf("Error deleting %s - %s!\n",
@@ -668,7 +668,7 @@ test_dom0_misc_flags(void)
 		printf("Error - process did not run ok with --no-shconf flag\n");
 		return -1;
 	}
-	
+
 	return 0;
 }
 #else

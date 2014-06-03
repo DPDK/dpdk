@@ -1,38 +1,38 @@
 /*-
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  *   redistributing this file, you may do so under either license.
- * 
+ *
  *   GPL LICENSE SUMMARY
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
- * 
+ *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of version 2 of the GNU General Public License as
  *   published by the Free Software Foundation.
- * 
+ *
  *   This program is distributed in the hope that it will be useful, but
  *   WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *   General Public License for more details.
- * 
+ *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  *   The full GNU General Public License is included in this distribution
  *   in the file called LICENSE.GPL.
- * 
+ *
  *   Contact Information:
  *   Intel Corporation
- * 
+ *
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -42,7 +42,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -54,7 +54,7 @@
  *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  */
 
 #include <linux/module.h>
@@ -65,15 +65,15 @@
 #include <linux/vmalloc.h>
 #include <linux/mm.h>
 #include <linux/version.h>
- 
+
 #include <xen/xen.h>
 #include <xen/page.h>
 #include <xen/xen-ops.h>
 #include <xen/interface/memory.h>
- 
+
 #include <rte_config.h>
 #include <exec-env/rte_dom0_common.h>
- 
+
 #include "dom0_mm_dev.h"
 
 MODULE_LICENSE("Dual BSD/GPL");
@@ -122,8 +122,8 @@ store_memsize(struct device *dev, struct device_attribute *attr,
 {
 	int err = 0;
 	unsigned long mem_size;
-	
-	if (0 != strict_strtoul(buf, 0, &mem_size)) 
+
+	if (0 != strict_strtoul(buf, 0, &mem_size))
 		return  -EINVAL;
 
 	mutex_lock(&dom0_dev.data_lock);
@@ -134,7 +134,7 @@ store_memsize(struct device *dev, struct device_attribute *attr,
 		XEN_ERR("configure memory size fail\n");
 		err = -EINVAL;
 		goto fail;
-	} else 
+	} else
 		dom0_dev.config_memsize = mem_size;
 
 fail:
@@ -158,16 +158,16 @@ static const struct attribute_group dev_attr_grp = {
 };
 
 
-static void 
+static void
 sort_viraddr(struct memblock_info *mb, int cnt)
 {
-	int i,j; 
+	int i,j;
 	uint64_t tmp_pfn;
 	uint64_t tmp_viraddr;
 
 	/*sort virtual address and pfn */
-	for(i = 0; i < cnt; i ++) {  
-		for(j = cnt - 1; j > i; j--) {  
+	for(i = 0; i < cnt; i ++) {
+		for(j = cnt - 1; j > i; j--) {
 			if(mb[j].pfn < mb[j - 1].pfn) {
 				tmp_pfn = mb[j - 1].pfn;
 				mb[j - 1].pfn = mb[j].pfn;
@@ -176,7 +176,7 @@ sort_viraddr(struct memblock_info *mb, int cnt)
 				tmp_viraddr = mb[j - 1].vir_addr;
 				mb[j - 1].vir_addr = mb[j].vir_addr;
 				mb[j].vir_addr = tmp_viraddr;
-			} 
+			}
 		}
 	}
 }
@@ -189,10 +189,10 @@ dom0_find_memdata(const char * mem_name)
 	for(i = 0; i< NUM_MEM_CTX; i++) {
 		if(dom0_dev.mm_data[i] == NULL)
 			continue;
-		if (!strncmp(dom0_dev.mm_data[i]->name, mem_name, 
+		if (!strncmp(dom0_dev.mm_data[i]->name, mem_name,
 			sizeof(char) * DOM0_NAME_MAX)) {
 			idx = i;
-			break; 
+			break;
 		}
 	}
 
@@ -298,7 +298,7 @@ dom0_memory_free(uint32_t rsv_size)
 		vstart = rsv_mm_info[i].vir_addr;
 		if (vstart) {
 			if (rsv_mm_info[i].exchange_flag)
-				xen_destroy_contiguous_region(vstart, 
+				xen_destroy_contiguous_region(vstart,
 					DOM0_CONTIG_NUM_ORDER);
 
 			size = DOM0_MEMBLOCK_SIZE;
@@ -364,12 +364,12 @@ find_memseg(int count, struct dom0_mm_data * mm_data)
 		for (j = i + 1; j < count; j++) {
 
 			/* ignore exchange fail memory block */
-			if (mm_data->block_info[j].exchange_flag == 0) 
+			if (mm_data->block_info[j].exchange_flag == 0)
 				break;
-			
-			if (mm_data->block_info[j].pfn != 
+
+			if (mm_data->block_info[j].pfn !=
 				(mm_data->block_info[j - 1].pfn +
-					 DOM0_MEMBLOCK_SIZE / PAGE_SIZE)) 
+					 DOM0_MEMBLOCK_SIZE / PAGE_SIZE))
 			    break;
 			++k;
 			mm_data->seg_info[idx].mfn[k] = mm_data->block_info[j].mfn;
@@ -378,7 +378,7 @@ find_memseg(int count, struct dom0_mm_data * mm_data)
 		num_block = j - i;
 		zone_len = num_block * DOM0_MEMBLOCK_SIZE;
 		mm_data->seg_info[idx].size = zone_len;
-		
+
 		XEN_PRINT("memseg id=%d, size=0x%llx\n", idx, zone_len);
 		i = i+ num_block;
 		idx++;
@@ -466,8 +466,8 @@ dom0_memory_reserve(uint32_t rsv_size)
 	for (i = 0; i< num_block; i++) {
 
 		/*
-		 * This API is used to exchage MFN for getting a block of  
-		 * contiguous physical addresses, its maximum size is 2M.  
+		 * This API is used to exchage MFN for getting a block of
+		 * contiguous physical addresses, its maximum size is 2M.
 		 */
 	#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
 		if (xen_create_contiguous_region(rsv_mm_info[i].vir_addr,
@@ -480,7 +480,7 @@ dom0_memory_reserve(uint32_t rsv_size)
 			rsv_mm_info[i].mfn =
 				pfn_to_mfn(rsv_mm_info[i].pfn);
 			rsv_mm_info[i].used = 0;
-		} else { 
+		} else {
 			XEN_ERR("exchange memeory fail\n");
 			rsv_mm_info[i].exchange_flag = 0;
 			dom0_dev.fail_times++;
@@ -490,7 +490,7 @@ dom0_memory_reserve(uint32_t rsv_size)
 			}
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -535,14 +535,14 @@ dom0_check_memory (struct memory_info *meminfo)
 		++meminfo->size;
 
 	mem_size = meminfo->size;
-	if (dom0_dev.num_mem_ctx > NUM_MEM_CTX) { 
+	if (dom0_dev.num_mem_ctx > NUM_MEM_CTX) {
 		XEN_ERR("Memory data space is full in Dom0 driver\n");
 		return -1;
 	}
 	idx = dom0_find_memdata(meminfo->name);
-	if (idx >= 0) { 
-		XEN_ERR("Memory data name %s has already exsited in Dom0 driver.\n", 
-			meminfo->name); 
+	if (idx >= 0) {
+		XEN_ERR("Memory data name %s has already exsited in Dom0 driver.\n",
+			meminfo->name);
 		return -1;
 	}
 	if ((dom0_dev.used_memsize + mem_size) > rsv_memsize) {
@@ -575,13 +575,13 @@ dom0_init(void)
 		XEN_ERR("Misc device registration failed\n");
 		return -EPERM;
 	}
-	
+
 	mutex_init(&dom0_dev.data_lock);
 	dom0_kobj = kobject_create_and_add("dom0-mm", mm_kobj);
 
 	if (!dom0_kobj) {
 		XEN_ERR("dom0-mm object creation failed\n");
-		misc_deregister(&dom0_dev.miscdev);	
+		misc_deregister(&dom0_dev.miscdev);
 		return -ENOMEM;
 	}
 
@@ -597,7 +597,7 @@ dom0_init(void)
 		misc_deregister(&dom0_dev.miscdev);
 		return -ENOMEM;
 	}
-	
+
 	XEN_PRINT("####### DPDK Xen Dom0 module loaded  #######\n");
 
 	return 0;
@@ -635,7 +635,7 @@ dom0_release(struct inode *inode, struct file *file)
 		return ret;
 
 	mutex_lock(&dom0_dev.data_lock);
-	if (--mm_data->refcnt == 0) 
+	if (--mm_data->refcnt == 0)
 		ret = dom0_memory_release(mm_data);
 	mutex_unlock(&dom0_dev.data_lock);
 
@@ -644,7 +644,7 @@ dom0_release(struct inode *inode, struct file *file)
 	return ret;
 }
 
-static int 
+static int
 dom0_mmap(struct file *file, struct vm_area_struct *vm)
 {
 	int status = 0;
@@ -660,7 +660,7 @@ dom0_mmap(struct file *file, struct vm_area_struct *vm)
 		mutex_unlock(&dom0_dev.data_lock);
 		return -EINVAL;
 	}
-	
+
 	if (size > mm_data->seg_info[idx].size){
 		mutex_unlock(&dom0_dev.data_lock);
 		return -EINVAL;
@@ -694,7 +694,7 @@ dom0_ioctl(struct file *file,
 	case _IOC_NR(RTE_DOM0_IOCTL_PREPARE_MEMSEG):
 		ret = copy_from_user(&meminfo, (void *)ioctl_param,
 			sizeof(struct memory_info));
-		if (ret)  
+		if (ret)
 			return  -EFAULT;
 
 		if (mm_data != NULL) {
@@ -734,7 +734,7 @@ dom0_ioctl(struct file *file,
 	case _IOC_NR(RTE_DOM0_IOCTL_ATTACH_TO_MEMSEG):
 		ret = copy_from_user(name, (void *)ioctl_param,
 				sizeof(char) * DOM0_NAME_MAX);
-		if (ret) 
+		if (ret)
 			return -EFAULT;
 
 		mutex_lock(&dom0_dev.data_lock);
@@ -743,7 +743,7 @@ dom0_ioctl(struct file *file,
 			mutex_unlock(&dom0_dev.data_lock);
 			return -EINVAL;
 		}
-		
+
 		mm_data = dom0_dev.mm_data[idx];
 		mm_data->refcnt++;
 		file->private_data = mm_data;
@@ -751,7 +751,7 @@ dom0_ioctl(struct file *file,
 		break;
 
 	case _IOC_NR(RTE_DOM0_IOCTL_GET_NUM_MEMSEG):
-		ret = copy_to_user((void *)ioctl_param, &mm_data->num_memseg, 
+		ret = copy_to_user((void *)ioctl_param, &mm_data->num_memseg,
 				sizeof(int));
 		if (ret)
 			return -EFAULT;
@@ -759,17 +759,17 @@ dom0_ioctl(struct file *file,
 
 	case _IOC_NR(RTE_DOM0_IOCTL_GET_MEMSEG_INFO):
 		ret = copy_to_user((void *)ioctl_param,
-				&mm_data->seg_info[0], 
-				sizeof(struct memseg_info) * 
+				&mm_data->seg_info[0],
+				sizeof(struct memseg_info) *
 				mm_data->num_memseg);
-		if (ret) 
+		if (ret)
 			return -EFAULT;
 		break;
 	default:
 		XEN_PRINT("IOCTL default \n");
 		break;
 	}
-	
+
 	return 0;
 }
 

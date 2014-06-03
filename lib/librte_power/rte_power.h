@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -36,7 +36,7 @@
 
 /**
  * @file
- * RTE Power Management 
+ * RTE Power Management
  */
 
 #include <rte_common.h>
@@ -50,7 +50,7 @@ extern "C" {
 
 #define RTE_POWER_INVALID_FREQ_INDEX (~0)
 
-/** 
+/**
  * Initialize power management for a specific lcore. It will check and set the
  * governor to userspace for the lcore, get the available frequencies, and
  * prepare to set new lcore frequency.
@@ -58,7 +58,7 @@ extern "C" {
  * @param lcore_id
  *  lcore id.
  *
- * @return 
+ * @return
  *  - 0 on success.
  *  - Negative on error.
  */
@@ -71,13 +71,13 @@ int rte_power_init(unsigned lcore_id);
  * @param lcore_id
  *  lcore id.
  *
- * @return 
+ * @return
  *  - 0 on success.
  *  - Negative on error.
  */
 int rte_power_exit(unsigned lcore_id);
 
-/** 
+/**
  * Get the available frequencies of a specific lcore. The return value will be
  * the minimal one of the total number of available frequencies and the number
  * of buffer. The index of available frequencies used in other interfaces
@@ -96,7 +96,7 @@ int rte_power_exit(unsigned lcore_id);
  */
 uint32_t rte_power_freqs(unsigned lcore_id, uint32_t *freqs, uint32_t num);
 
-/** 
+/**
  * Return the current index of available frequencies of a specific lcore. It
  * will return 'RTE_POWER_INVALID_FREQ_INDEX = (~0)' if error.
  * It should be protected outside of this function for threadsafe.
@@ -104,12 +104,12 @@ uint32_t rte_power_freqs(unsigned lcore_id, uint32_t *freqs, uint32_t num);
  * @param lcore_id
  *  lcore id.
  *
- * @return 
+ * @return
  *  The current index of available frequencies.
  */
 uint32_t rte_power_get_freq(unsigned lcore_id);
 
-/** 
+/**
  * Set the new frequency for a specific lcore by indicating the index of
  * available frequencies.
  * It should be protected outside of this function for threadsafe.
@@ -126,7 +126,7 @@ uint32_t rte_power_get_freq(unsigned lcore_id);
  */
 int rte_power_set_freq(unsigned lcore_id, uint32_t index);
 
-/** 
+/**
  * Scale up the frequency of a specific lcore according to the available
  * frequencies.
  * It should be protected outside of this function for threadsafe.
@@ -141,7 +141,7 @@ int rte_power_set_freq(unsigned lcore_id, uint32_t index);
  */
 int rte_power_freq_up(unsigned lcore_id);
 
-/** 
+/**
  * Scale down the frequency of a specific lcore according to the available
  * frequencies.
  * It should be protected outside of this function for threadsafe.
@@ -154,9 +154,9 @@ int rte_power_freq_up(unsigned lcore_id);
  *  - 0 on success without frequency chnaged.
  *  - Negative on error.
  */
-int rte_power_freq_down(unsigned lcore_id); 
+int rte_power_freq_down(unsigned lcore_id);
 
-/** 
+/**
  * Scale up the frequency of a specific lcore to the highest according to the
  * available frequencies.
  * It should be protected outside of this function for threadsafe.
@@ -171,7 +171,7 @@ int rte_power_freq_down(unsigned lcore_id);
  */
 int rte_power_freq_max(unsigned lcore_id);
 
-/** 
+/**
  * Scale down the frequency of a specific lcore to the lowest according to the
  * available frequencies.
  * It should be protected outside of this function for threadsafe.

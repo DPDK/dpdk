@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -711,9 +711,9 @@ signal_handler(int signum)
 	if (signum == SIGINT) {
 		for (portid = 0; portid < nb_ports; portid++) {
 			/* skip ports that are not enabled */
-			if ((enabled_port_mask & (1 << portid)) == 0) 
+			if ((enabled_port_mask & (1 << portid)) == 0)
 				continue;
-			rte_eth_dev_close(portid); 
+			rte_eth_dev_close(portid);
 		}
 	}
 	rte_exit(EXIT_SUCCESS, "\n User forced exit\n");
@@ -952,7 +952,7 @@ init_mem(unsigned nb_mbuf)
 		if (pktmbuf_pool[socketid] == NULL) {
 			rte_snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
 			pktmbuf_pool[socketid] =
-				rte_mempool_create(s, nb_mbuf, MBUF_SIZE, 
+				rte_mempool_create(s, nb_mbuf, MBUF_SIZE,
 						   MEMPOOL_CACHE_SIZE,
 					sizeof(struct rte_pktmbuf_pool_private),
 					rte_pktmbuf_pool_init, NULL,

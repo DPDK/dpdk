@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -413,7 +413,7 @@ init_device(struct virtio_net *dev)
 	vq_offset = offsetof(struct virtio_net, mem);
 
 	/* Set everything to 0. */
-	memset((void*)(uintptr_t)((uint64_t)(uintptr_t)dev + vq_offset), 0, 
+	memset((void*)(uintptr_t)((uint64_t)(uintptr_t)dev + vq_offset), 0,
 		(sizeof(struct virtio_net) - (size_t)vq_offset));
 	memset(dev->virtqueue[VIRTIO_RXQ], 0, sizeof(struct vhost_virtqueue));
 	memset(dev->virtqueue[VIRTIO_TXQ], 0, sizeof(struct vhost_virtqueue));
@@ -996,7 +996,7 @@ eventfd_copy(struct virtio_net *dev, struct eventfd_copy *eventfd_copy)
 	/* Call the IOCTL to copy the eventfd. */
 	ret = ioctl(eventfd_link, EVENTFD_COPY, eventfd_copy);
 	close(eventfd_link);
-	
+
 	if (ret < 0) {
 		RTE_LOG(ERR, CONFIG, "(%"PRIu64") EVENTFD_COPY ioctl failed\n",  dev->device_fh);
 		return -1;

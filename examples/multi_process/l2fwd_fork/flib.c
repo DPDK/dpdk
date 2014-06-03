@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -136,9 +136,9 @@ slave_proc_func(void)
 	exit(cfg->f(cfg->arg));
 }
 
-/** 
+/**
  * function entrance ran in master thread, which will spawn slave process and wait until
- * specific slave exited. 
+ * specific slave exited.
  **/
 static int
 lcore_func(void *arg __attribute__((unused)))
@@ -173,7 +173,7 @@ lcore_func(void *arg __attribute__((unused)))
 	}
 }
 
-static int 
+static int
 lcore_id_init(void)
 {
 	int i;
@@ -199,9 +199,9 @@ flib_assign_lcore_id(void)
 	int ret;
 
 	/**
-	 * thread assigned a lcore id previously, or a  slave thread. But still have 
+	 * thread assigned a lcore id previously, or a  slave thread. But still have
 	 * a bug here: If the core mask includes core 0, and that core call this
-	 * function, it still can get a new lcore id. 
+	 * function, it still can get a new lcore id.
 	 **/
 	if (rte_lcore_id() != 0)
 		return -1;
@@ -228,7 +228,7 @@ void
 flib_free_lcore_id(unsigned lcore_id)
 {
 	/* id is not valid or belongs to pinned core id */
-	if (lcore_id >= RTE_MAX_LCORE || lcore_id == 0 || 
+	if (lcore_id >= RTE_MAX_LCORE || lcore_id == 0 ||
 		rte_lcore_is_enabled(lcore_id))
 		return;
 
@@ -236,7 +236,7 @@ flib_free_lcore_id(unsigned lcore_id)
 }
 
 int
-flib_register_slave_exit_notify(unsigned slave_id, 
+flib_register_slave_exit_notify(unsigned slave_id,
 	slave_exit_notify *cb)
 {
 	if (cb == NULL)
@@ -250,7 +250,7 @@ flib_register_slave_exit_notify(unsigned slave_id,
 	return 0;
 }
 
-enum slave_stat 
+enum slave_stat
 flib_query_slave_status(unsigned slave_id)
 {
 	if (!rte_lcore_is_enabled(slave_id))
@@ -295,7 +295,7 @@ flib_mp_remote_launch(lcore_function_t *f, void *arg,
 	return rte_eal_mp_remote_launch(lcore_func, NULL, call_master);
 }
 
-int 
+int
 flib_init(void)
 {
 	if ((core_cfg = rte_zmalloc("core_cfg",

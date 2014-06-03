@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -167,7 +167,7 @@ vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 		dp = &vq->vq_ring.desc[dp->next];
 	}
 	dxp->ndescs = 0;
-	
+
 	/*
 	 * We must append the existing free chain, if any, to the end of
 	 * newly freed chain. If the virtqueue was completely used, then
@@ -221,7 +221,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 		return -ENOSPC;
 	if (unlikely(txvq->vq_free_cnt < needed))
 		return -EMSGSIZE;
-	if (unlikely(head_idx >= txvq->vq_nentries)) 
+	if (unlikely(head_idx >= txvq->vq_nentries))
 		return -EFAULT;
 
 	dxp = &txvq->vq_descx[idx];
@@ -229,7 +229,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	dxp->ndescs = needed;
 
 	start_dp = txvq->vq_ring.desc;
-	start_dp[idx].addr  = 0; 
+	start_dp[idx].addr  = 0;
 /*
  * TODO: save one desc here?
  */
@@ -262,7 +262,7 @@ virtqueue_dequeue_burst(struct virtqueue *vq, struct rte_mbuf **rx_pkts, uint32_
 		desc_idx = (uint16_t) uep->id;
 		cookie = (struct rte_mbuf *)vq->vq_descx[desc_idx].cookie;
 		if (unlikely(cookie == NULL)) {
-			PMD_DRV_LOG(ERR, "vring descriptor with no mbuf cookie at %u\n", 
+			PMD_DRV_LOG(ERR, "vring descriptor with no mbuf cookie at %u\n",
 				vq->vq_used_cons_idx);
 			RTE_LOG(ERR, PMD, "%s: inconsistent (%u, %u)\n", __func__, used_idx , desc_idx);
 			break;

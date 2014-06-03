@@ -1,14 +1,14 @@
 #! /usr/bin/python
 #
 #   BSD LICENSE
-# 
+#
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
-# 
+#
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
 #   are met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
 #     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-# 
+#
 #   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 #   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -61,7 +61,7 @@ also be referred to by Linux interface name e.g. eth0, eth1, em0, em1, etc.
 Options:
     --help, --usage:
         Display usage information and quit
-        
+
     --status:
         Print the current status of all known network interfaces.
         For each device, it displays the PCI domain, bus, slot and function,
@@ -70,44 +70,44 @@ Options:
         driver, other relevant information will be displayed:
         * the Linux interface name e.g. if=eth0
         * the driver being used e.g. drv=igb_uio
-        * any suitable drivers not currently using that device 
-            e.g. unused=igb_uio 
+        * any suitable drivers not currently using that device
+            e.g. unused=igb_uio
         NOTE: if this flag is passed along with a bind/unbind option, the status
         display will always occur after the other operations have taken place.
-        
-    -b driver, --bind=driver: 
+
+    -b driver, --bind=driver:
         Select the driver to use or \"none\" to unbind the device
-        
-    -u, --unbind: 
+
+    -u, --unbind:
         Unbind a device (Equivalent to \"-b none\")
-        
+
     --force:
         By default, devices which are used by Linux - as indicated by having
         routes in the routing table - cannot be modified. Using the --force
         flag overrides this behavior, allowing active links to be forcibly
-        unbound. 
+        unbound.
         WARNING: This can lead to loss of network connection and should be used
         with caution.
-        
+
 Examples:
 ---------
-    
+
 To display current device status:
         %(argv0)s --status
-        
+
 To bind eth1 from the current driver and move to use igb_uio
         %(argv0)s --bind=igb_uio eth1
-        
+
 To unbind 0000:01:00.0 from using any driver
         %(argv0)s -u 0000:01:00.0
-        
+
 To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver
         %(argv0)s -b ixgbe 02:00.0 02:00.1
-    
+
     """ % locals() # replace items from local variables
 
 # This is roughly compatible with check_output function in subprocess module
-# which is only available in python 2.7. 
+# which is only available in python 2.7.
 def check_output(args, stderr=None):
     '''Run a command and capture its output'''
     return subprocess.Popen(args, stdout=subprocess.PIPE,
@@ -124,9 +124,9 @@ def find_module(mod):
                                      os.environ['RTE_TARGET'], mod)
         if exists(path):
             return path
-        
+
     # check using depmod
-    try: 
+    try:
         depmod_out = check_output(["modinfo", "-n", mod], \
                                   stderr=subprocess.STDOUT).lower()
         if "error" not in depmod_out:
@@ -135,7 +135,7 @@ def find_module(mod):
                 return path
     except: # if modinfo can't find module, it fails, so continue
         pass
-    
+
     # check for a copy based off current path
     tools_dir = dirname(abspath(sys.argv[0]))
     if (tools_dir.endswith("tools")):
@@ -150,12 +150,12 @@ def check_modules():
     '''Checks that the needed modules (igb_uio) is loaded, and then
     determine from the .ko file, what its supported device ids are'''
     global module_dev_ids
-    
+
     fd = file("/proc/modules")
     loaded_mods = fd.readlines()
     fd.close()
     mod = "igb_uio"
-    
+
     # first check if module is loaded
     found = False
     for line in loaded_mods:
@@ -165,7 +165,7 @@ def check_modules():
     if not found:
         print "Error - module %s not loaded" %mod
         sys.exit(1)
-    
+
     # now find the .ko and get list of supported vendor/dev-ids
     modpath = find_module(mod)
     if modpath is None:
@@ -185,13 +185,13 @@ def check_modules():
         vendor = lineparts[1][:9]
         device = lineparts[1][9:18]
         if vendor.startswith("v") and device.startswith("d"):
-            module_dev_ids.append({"Vendor": int(vendor[1:],16), 
+            module_dev_ids.append({"Vendor": int(vendor[1:],16),
                                    "Device": int(device[1:],16)})
 
 def is_supported_device(dev_id):
     '''return true if device is supported by igb_uio, false otherwise'''
     for dev in module_dev_ids:
-        if (dev["Vendor"] == devices[dev_id]["Vendor"] and 
+        if (dev["Vendor"] == devices[dev_id]["Vendor"] and
             dev["Device"] == devices[dev_id]["Device"]):
             return True
     return False
@@ -205,9 +205,9 @@ def get_nic_details():
     the pci addresses (domain:bus:slot.func). The values are themselves
     dictionaries - one for each NIC.'''
     global devices
-    
+
     # clear any old data
-    devices = {} 
+    devices = {}
     # first loop through and read details for all devices
     # request machine readable format, with numeric IDs
     dev = {};
@@ -228,14 +228,14 @@ def get_nic_details():
     ssh_if = []
     route = check_output(["ip", "-o", "route"])
     # filter out all lines for 169.254 routes
-    route = "\n".join(filter(lambda ln: not ln.startswith("169.254"), 
+    route = "\n".join(filter(lambda ln: not ln.startswith("169.254"),
                              route.splitlines()))
     rt_info = route.split()
     for i in xrange(len(rt_info) - 1):
         if rt_info[i] == "dev":
             ssh_if.append(rt_info[i+1])
 
-    # based on the basic info, get extended text details            
+    # based on the basic info, get extended text details
     for d in devices.keys():
         extra_info = check_output(["lspci", "-vmmks", d]).splitlines()
         # parse lspci details
@@ -254,7 +254,7 @@ def get_nic_details():
         # check if a port is used for ssh connection
         devices[d]["Ssh_if"] = False
         devices[d]["Active"] = ""
-        for _if in ssh_if: 
+        for _if in ssh_if:
             if _if in devices[d]["Interface"].split(","):
                 devices[d]["Ssh_if"] = True
                 devices[d]["Active"] = "*Active*"
@@ -275,7 +275,7 @@ def get_nic_details():
             if devices[d]["Driver_str"] in modules:
                 modules.remove(devices[d]["Driver_str"])
                 devices[d]["Module_str"] = ",".join(modules)
-    
+
 def dev_id_from_dev_name(dev_name):
     '''Take a device "name" - a string passed in by user to identify a NIC
     device, and determine the device id - i.e. the domain:bus:slot.func - for
@@ -284,7 +284,7 @@ def dev_id_from_dev_name(dev_name):
     # check if it's already a suitable index
     if dev_name in devices:
         return dev_name
-    # check if it's an index just missing the domain part 
+    # check if it's an index just missing the domain part
     elif "0000:" + dev_name in devices:
         return "0000:" + dev_name
     else:
@@ -304,13 +304,13 @@ def unbind_one(dev_id, force):
         print "%s %s %s is not currently managed by any driver\n" % \
             (dev["Slot"], dev["Device_str"], dev["Interface"])
         return
-    
+
     # prevent us disconnecting ourselves
     if dev["Ssh_if"] and not force:
         print "Routing table indicates that interface %s is active" \
             ". Skipping unbind" % (dev_id)
         return
-    
+
     # write to /sys to unbind
     filename = "/sys/bus/pci/drivers/%s/unbind" % dev["Driver_str"]
     try:
@@ -326,7 +326,7 @@ def bind_one(dev_id, driver, force):
     is already bound to a different driver, it will be unbound first'''
     dev = devices[dev_id]
     saved_driver = None # used to rollback any unbind in case of failure
-    
+
     # prevent disconnection of our ssh session
     if dev["Ssh_if"] and not force:
         print "Routing table indicates that interface %s is active" \
@@ -378,7 +378,7 @@ def display_devices(title, dev_list, extra_params = None):
     '''Displays to the user the details of a list of devices given in "dev_list"
     The "extra_params" parameter, if given, should contain a string with
     %()s fields in it for replacement by the named fields in each device's
-    dictionary.''' 
+    dictionary.'''
     strings = [] # this holds the strings to print. We sort before printing
     print "\n%s" % title
     print   "="*len(title)
@@ -429,7 +429,7 @@ def parse_args():
     if len(sys.argv) <= 1:
         usage()
         sys.exit(0)
-    
+
     try:
         opts, args = getopt.getopt(sys.argv[1:], "b:u",
                                ["help", "usage", "status", "force",
@@ -438,7 +438,7 @@ def parse_args():
         print str(error)
         print "Run '%s --usage' for further information" % sys.argv[0]
         sys.exit(1)
-        
+
     for opt, arg in opts:
         if opt == "--help" or opt == "--usage":
             usage()
@@ -455,12 +455,12 @@ def parse_args():
                 b_flag = "none"
             else:
                 b_flag = arg
-                
+
     if b_flag is None and not status_flag:
         print "Error: No action specified for devices. Please give a -b or -u option"
         print "Run '%s --usage' for further information" % sys.argv[0]
         sys.exit(1)
-    
+
     if b_flag is not None and len(args) == 0:
         print "Error: No devices specified."
         print "Run '%s --usage' for further information" % sys.argv[0]
@@ -474,7 +474,7 @@ def parse_args():
         if b_flag is not None:
             get_nic_details() # refresh if we have changed anything
         show_status()
-                        
+
 def main():
     '''program main function'''
     check_modules()
