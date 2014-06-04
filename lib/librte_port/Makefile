@@ -44,11 +44,21 @@ CFLAGS += $(WERROR_FLAGS)
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ring.c
+ifeq ($(CONFIG_RTE_LIBRTE_IP_FRAG),y)
+ifeq ($(CONFIG_RTE_MBUF_SCATTER_GATHER),y)
+SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_frag.c
+endif
+endif
 
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ethdev.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ring.h
+ifeq ($(CONFIG_RTE_LIBRTE_IP_FRAG),y)
+ifeq ($(CONFIG_RTE_MBUF_SCATTER_GATHER),y)
+SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_frag.h
+endif
+endif
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) := lib/librte_eal
@@ -56,5 +66,6 @@ DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) += lib/librte_mbuf
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) += lib/librte_mempool
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) += lib/librte_malloc
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) += lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) += lib/librte_ip_frag
 
 include $(RTE_SDK)/mk/rte.lib.mk
