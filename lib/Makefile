@@ -38,6 +38,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring
 DIRS-$(CONFIG_RTE_LIBRTE_MEMPOOL) += librte_mempool
 DIRS-$(CONFIG_RTE_LIBRTE_MBUF) += librte_mbuf
 DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += librte_timer
+DIRS-$(CONFIG_RTE_LIBRTE_CFGFILE) += librte_cfgfile
 DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
 DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ether
 DIRS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += librte_pmd_e1000
