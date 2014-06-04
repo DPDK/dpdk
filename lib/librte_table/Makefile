@@ -53,6 +53,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_hash_key32.c
 SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_hash_ext.c
 SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_hash_lru.c
 SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_array.c
+SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_stub.c
 
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table.h
@@ -64,6 +65,7 @@ endif
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_hash.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_lru.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_array.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_stub.h
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) := lib/librte_eal

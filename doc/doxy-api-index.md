@@ -114,6 +114,7 @@ There are many libraries, so their headers may be grouped by topics:
     [ACL]              (@ref rte_table_acl.h),
     [hash]             (@ref rte_table_hash.h),
     [array]            (@ref rte_table_array.h),
+    [stub]             (@ref rte_table_stub.h)
 
 - **basic**:
   [approx fraction]    (@ref rte_approx.h),
