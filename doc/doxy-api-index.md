@@ -109,6 +109,7 @@ There are many libraries, so their headers may be grouped by topics:
     [sched]            (@ref rte_port_sched.h),
     [src/sink]         (@ref rte_port_source_sink.h)
   * [table]            (@ref rte_table.h):
+    [lpm IPv4]         (@ref rte_table_lpm.h),
 
 - **basic**:
   [approx fraction]    (@ref rte_approx.h),

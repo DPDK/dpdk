@@ -42,9 +42,11 @@ CFLAGS += $(WERROR_FLAGS)
 #
 # all source are stored in SRCS-y
 #
+SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_lpm.c
 
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_lpm.h
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) := lib/librte_eal
@@ -52,5 +54,6 @@ DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_mbuf
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_mempool
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_malloc
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_port
+DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_lpm
 
 include $(RTE_SDK)/mk/rte.lib.mk
