@@ -111,6 +111,7 @@ There are many libraries, so their headers may be grouped by topics:
   * [table]            (@ref rte_table.h):
     [lpm IPv4]         (@ref rte_table_lpm.h),
     [lpm IPv6]         (@ref rte_table_lpm_ipv6.h),
+    [ACL]              (@ref rte_table_acl.h),
 
 - **basic**:
   [approx fraction]    (@ref rte_approx.h),

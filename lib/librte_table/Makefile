@@ -44,11 +44,17 @@ CFLAGS += $(WERROR_FLAGS)
 #
 SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_lpm.c
 SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_lpm_ipv6.c
+ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
+SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_acl.c
+endif
 
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_lpm.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_lpm_ipv6.h
+ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
+SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_acl.h
+endif
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) := lib/librte_eal
@@ -57,5 +63,8 @@ DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_mempool
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_malloc
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_port
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_lpm
+ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
+DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_acl
+endif
 
 include $(RTE_SDK)/mk/rte.lib.mk
