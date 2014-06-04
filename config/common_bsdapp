@@ -298,6 +298,11 @@ CONFIG_RTE_LIBRTE_DISTRIBUTOR=y
 CONFIG_RTE_LIBRTE_PORT=y
 
 #
+# Compile librte_table
+#
+CONFIG_RTE_LIBRTE_TABLE=y
+
+#
 # Compile librte_kni
 #
 CONFIG_RTE_LIBRTE_KNI=n

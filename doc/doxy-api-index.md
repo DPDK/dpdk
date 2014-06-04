@@ -108,6 +108,7 @@ There are many libraries, so their headers may be grouped by topics:
     [reass]            (@ref rte_port_ras.h),
     [sched]            (@ref rte_port_sched.h),
     [src/sink]         (@ref rte_port_source_sink.h)
+  * [table]            (@ref rte_table.h):
 
 - **basic**:
   [approx fraction]    (@ref rte_approx.h),
