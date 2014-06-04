@@ -77,6 +77,10 @@ LDLIBS += -lrte_ivshmem
 endif
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_PORT),y)
+LDLIBS += -lrte_port
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_TIMER),y)
 LDLIBS += -lrte_timer
 endif

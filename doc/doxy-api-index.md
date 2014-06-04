@@ -100,6 +100,9 @@ There are many libraries, so their headers may be grouped by topics:
   [tailq]              (@ref rte_tailq.h),
   [bitmap]             (@ref rte_bitmap.h)
 
+- **packet framework**:
+  * [port]             (@ref rte_port.h):
+
 - **basic**:
   [approx fraction]    (@ref rte_approx.h),
   [random]             (@ref rte_random.h),
