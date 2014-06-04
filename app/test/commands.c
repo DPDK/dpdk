@@ -151,6 +151,8 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret = test_cycles();
 	if (!strcmp(res->autotest, "ring_autotest"))
 		ret = test_ring();
+	if (!strcmp(res->autotest, "table_autotest"))
+		ret = test_table();
 	if (!strcmp(res->autotest, "ring_perf_autotest"))
 		ret = test_ring_perf();
 	if (!strcmp(res->autotest, "timer_autotest"))
@@ -230,7 +232,7 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"red_autotest#meter_autotest#sched_autotest#"
 			"memcpy_perf_autotest#kni_autotest#"
 			"pm_autotest#ivshmem_autotest#"
-			"devargs_autotest#"
+			"devargs_autotest#table_autotest#"
 #ifdef RTE_LIBRTE_ACL
 			"acl_autotest#"
 #endif

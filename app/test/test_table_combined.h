@@ -31,59 +31,25 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_HEXDUMP_H_
-#define _RTE_HEXDUMP_H_
-
-/**
- * @file
- * Simple API to dump out memory in a special hex format.
- */
-
-#include <stdio.h>
-
-#ifdef __cplusplus
-extern "C" {
+/* Test prototypes */
+int test_table_stub_combined(void);
+int test_table_lpm_combined(void);
+int test_table_lpm_ipv6_combined(void);
+#ifdef RTE_LIBRTE_ACL
+int test_table_acl(void);
 #endif
+int test_table_hash8unoptimized(void);
+int test_table_hash8lru(void);
+int test_table_hash8ext(void);
+int test_table_hash16unoptimized(void);
+int test_table_hash16lru(void);
+int test_table_hash16ext(void);
+int test_table_hash32unoptimized(void);
+int test_table_hash32lru(void);
+int test_table_hash32ext(void);
 
-/**
-* Dump out memory in a special hex dump format.
-*
-* @param f
-*   		A pointer to a file for output
-* @param title
-* 		If not NULL this string is printed as a header to the output.
-* @param buf
-* 		This is the buffer address to print out.
-* @param len
-* 		The number of bytes to dump out
-* @return
-* 		None.
-*/
+/* Extern variables */
+typedef int (*combined_table_test)(void);
 
-extern void
-rte_hexdump(FILE *f, const char * title, const void * buf, unsigned int len);
-
-/**
-* Dump out memory in a hex format with colons between bytes.
-*
-* @param f
-*   		A pointer to a file for output
-* @param title
-* 		If not NULL this string is printed as a header to the output.
-* @param buf
-* 		This is the buffer address to print out.
-* @param len
-* 		The number of bytes to dump out
-* @return
-* 		None.
-*/
-
-void
-rte_memdump(FILE *f, const char * title, const void * buf, unsigned int len);
-
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* _RTE_HEXDUMP_H_ */
+extern combined_table_test table_tests_combined[];
+extern unsigned n_table_tests_combined;

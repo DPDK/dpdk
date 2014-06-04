@@ -57,6 +57,7 @@ int test_cycles(void);
 int test_logs(void);
 int test_memzone(void);
 int test_ring(void);
+int test_table(void);
 int test_ring_perf(void);
 int test_mempool(void);
 int test_mempool_perf(void);
