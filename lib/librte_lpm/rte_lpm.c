@@ -619,6 +619,35 @@ rte_lpm_add(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 	return 0;
 }
 
+/*
+ * Look for a rule in the high-level rules table
+ */
+int
+rte_lpm_is_rule_present(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
+uint8_t *next_hop)
+{
+	uint32_t ip_masked;
+	int32_t rule_index;
+
+	/* Check user arguments. */
+	if ((lpm == NULL) ||
+		(next_hop == NULL) ||
+		(depth < 1) || (depth > RTE_LPM_MAX_DEPTH))
+		return -EINVAL;
+
+	/* Look for the rule using rule_find. */
+	ip_masked = ip & depth_to_mask(depth);
+	rule_index = rule_find(lpm, ip_masked, depth);
+
+	if (rule_index >= 0) {
+		*next_hop = lpm->rules_tbl[rule_index].next_hop;
+		return 1;
+	}
+
+	/* If rule is not found return 0. */
+	return 0;
+}
+
 static inline int32_t
 find_previous_rule(struct rte_lpm *lpm, uint32_t ip, uint8_t depth, uint8_t *sub_rule_depth)
 {

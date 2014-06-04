@@ -664,6 +664,37 @@ rule_find(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth)
 }
 
 /*
+ * Look for a rule in the high-level rules table
+ */
+int
+rte_lpm6_is_rule_present(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
+uint8_t *next_hop)
+{
+	uint8_t ip_masked[RTE_LPM6_IPV6_ADDR_SIZE];
+	int32_t rule_index;
+
+	/* Check user arguments. */
+	if ((lpm == NULL) || next_hop == NULL || ip == NULL ||
+			(depth < 1) || (depth > RTE_LPM6_MAX_DEPTH))
+		return -EINVAL;
+
+	/* Copy the IP and mask it to avoid modifying user's input data. */
+	memcpy(ip_masked, ip, RTE_LPM6_IPV6_ADDR_SIZE);
+	mask_ip(ip_masked, depth);
+
+	/* Look for the rule using rule_find. */
+	rule_index = rule_find(lpm, ip_masked, depth);
+
+	if (rule_index >= 0) {
+		*next_hop = lpm->rules_tbl[rule_index].next_hop;
+		return 1;
+	}
+
+	/* If rule is not found return 0. */
+	return 0;
+}
+
+/*
  * Delete a rule from the rule table.
  * NOTE: Valid range for depth parameter is 1 .. 128 inclusive.
  */

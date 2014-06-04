@@ -125,6 +125,25 @@ rte_lpm6_add(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
 		uint8_t next_hop);
 
 /**
+ * Check if a rule is present in the LPM table,
+ * and provide its next hop if it is.
+ *
+ * @param lpm
+ *   LPM object handle
+ * @param ip
+ *   IP of the rule to be searched
+ * @param depth
+ *   Depth of the rule to searched
+ * @param next_hop
+ *   Next hop of the rule (valid only if it is found)
+ * @return
+ *   1 if the rule exists, 0 if it does not, a negative value on failure
+ */
+int
+rte_lpm6_is_rule_present(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
+uint8_t *next_hop);
+
+/**
  * Delete a rule from the LPM table.
  *
  * @param lpm
