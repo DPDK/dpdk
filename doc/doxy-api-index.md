@@ -106,6 +106,7 @@ There are many libraries, so their headers may be grouped by topics:
     [ring]             (@ref rte_port_ring.h),
     [frag]             (@ref rte_port_frag.h),
     [reass]            (@ref rte_port_ras.h),
+    [sched]            (@ref rte_port_sched.h),
 
 - **basic**:
   [approx fraction]    (@ref rte_approx.h),

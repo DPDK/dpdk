@@ -50,6 +50,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_frag.c
 endif
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ras.c
 endif
+SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_sched.c
 
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port.h
@@ -61,6 +62,7 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_frag.h
 endif
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ras.h
 endif
+SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_sched.h
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) := lib/librte_eal
