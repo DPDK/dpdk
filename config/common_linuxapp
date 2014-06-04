@@ -339,6 +339,11 @@ CONFIG_RTE_LIBRTE_PORT=y
 CONFIG_RTE_LIBRTE_TABLE=y
 
 #
+# Compile librte_pipeline
+#
+CONFIG_RTE_LIBRTE_PIPELINE=y
+
+#
 # Compile librte_kni
 #
 CONFIG_RTE_LIBRTE_KNI=y

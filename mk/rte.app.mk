@@ -77,6 +77,10 @@ LDLIBS += -lrte_ivshmem
 endif
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_PIPELINE),y)
+LDLIBS += -lrte_pipeline
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_TABLE),y)
 LDLIBS += -lrte_table
 endif
