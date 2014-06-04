@@ -31,11 +31,36 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_APP_TEST) += test
-DIRS-$(CONFIG_RTE_LIBRTE_ACL) += test-acl
-DIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += test-pipeline
-DIRS-$(CONFIG_RTE_TEST_PMD) += test-pmd
-DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_test
-DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += dump_cfg
+#
+# library name
+#
+APP = testpipeline
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
+LDFLAGS += -lpcap
+endif
+
+#
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) := main.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += init.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += runtime.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_stub.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_hash.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_lpm.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_lpm_ipv6.c
+
+# include ACL lib if available
+ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_acl.c
+endif
+
+# this application needs libraries first
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += lib
+
+include $(RTE_SDK)/mk/rte.app.mk
