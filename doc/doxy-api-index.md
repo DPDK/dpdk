@@ -103,6 +103,7 @@ There are many libraries, so their headers may be grouped by topics:
 - **packet framework**:
   * [port]             (@ref rte_port.h):
     [ethdev]           (@ref rte_port_ethdev.h),
+    [ring]             (@ref rte_port_ring.h),
 
 - **basic**:
   [approx fraction]    (@ref rte_approx.h),

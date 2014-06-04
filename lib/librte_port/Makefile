@@ -43,10 +43,12 @@ CFLAGS += $(WERROR_FLAGS)
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ring.c
 
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ethdev.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ring.h
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) := lib/librte_eal
