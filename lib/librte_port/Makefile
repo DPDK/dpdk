@@ -48,6 +48,7 @@ ifeq ($(CONFIG_RTE_LIBRTE_IP_FRAG),y)
 ifeq ($(CONFIG_RTE_MBUF_SCATTER_GATHER),y)
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_frag.c
 endif
+SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ras.c
 endif
 
 # install includes
@@ -58,6 +59,7 @@ ifeq ($(CONFIG_RTE_LIBRTE_IP_FRAG),y)
 ifeq ($(CONFIG_RTE_MBUF_SCATTER_GATHER),y)
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_frag.h
 endif
+SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ras.h
 endif
 
 # this lib depends upon:

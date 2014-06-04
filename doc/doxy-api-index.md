@@ -105,6 +105,7 @@ There are many libraries, so their headers may be grouped by topics:
     [ethdev]           (@ref rte_port_ethdev.h),
     [ring]             (@ref rte_port_ring.h),
     [frag]             (@ref rte_port_frag.h),
+    [reass]            (@ref rte_port_ras.h),
 
 - **basic**:
   [approx fraction]    (@ref rte_approx.h),
