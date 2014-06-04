@@ -201,7 +201,32 @@ struct rte_mbuf {
 		struct rte_ctrlmbuf ctrl;
 		struct rte_pktmbuf pkt;
 	};
+
+	union {
+		uint8_t metadata[0];
+		uint16_t metadata16[0];
+		uint32_t metadata32[0];
+		uint64_t metadata64[0];
+	};
 } __rte_cache_aligned;
+
+#define RTE_MBUF_METADATA_UINT8(mbuf, offset)              \
+	(mbuf->metadata[offset])
+#define RTE_MBUF_METADATA_UINT16(mbuf, offset)             \
+	(mbuf->metadata16[offset/sizeof(uint16_t)])
+#define RTE_MBUF_METADATA_UINT32(mbuf, offset)             \
+	(mbuf->metadata32[offset/sizeof(uint32_t)])
+#define RTE_MBUF_METADATA_UINT64(mbuf, offset)             \
+	(mbuf->metadata64[offset/sizeof(uint64_t)])
+
+#define RTE_MBUF_METADATA_UINT8_PTR(mbuf, offset)          \
+	(&mbuf->metadata[offset])
+#define RTE_MBUF_METADATA_UINT16_PTR(mbuf, offset)         \
+	(&mbuf->metadata16[offset/sizeof(uint16_t)])
+#define RTE_MBUF_METADATA_UINT32_PTR(mbuf, offset)         \
+	(&mbuf->metadata32[offset/sizeof(uint32_t)])
+#define RTE_MBUF_METADATA_UINT64_PTR(mbuf, offset)         \
+	(&mbuf->metadata64[offset/sizeof(uint64_t)])
 
 /**
  * Given the buf_addr returns the pointer to corresponding mbuf.
