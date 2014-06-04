@@ -47,6 +47,11 @@ SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_lpm_ipv6.c
 ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
 SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_acl.c
 endif
+SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_hash_key8.c
+SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_hash_key16.c
+SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_hash_key32.c
+SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_hash_ext.c
+SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_hash_lru.c
 
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table.h
@@ -55,6 +60,8 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_lpm_ipv6.h
 ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_acl.h
 endif
+SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_hash.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_lru.h
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) := lib/librte_eal
@@ -66,5 +73,6 @@ DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_lpm
 ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_acl
 endif
+DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_hash
 
 include $(RTE_SDK)/mk/rte.lib.mk
