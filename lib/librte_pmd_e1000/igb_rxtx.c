@@ -73,6 +73,17 @@
 #include "e1000/e1000_api.h"
 #include "e1000_ethdev.h"
 
+#define IGB_RSS_OFFLOAD_ALL ( \
+		ETH_RSS_IPV4 | \
+		ETH_RSS_IPV4_TCP | \
+		ETH_RSS_IPV6 | \
+		ETH_RSS_IPV6_EX | \
+		ETH_RSS_IPV6_TCP | \
+		ETH_RSS_IPV6_TCP_EX | \
+		ETH_RSS_IPV4_UDP | \
+		ETH_RSS_IPV6_UDP | \
+		ETH_RSS_IPV6_UDP_EX)
+
 static inline struct rte_mbuf *
 rte_rxmbuf_alloc(struct rte_mempool *mp)
 {
@@ -1526,7 +1537,7 @@ igb_hw_rss_hash_set(struct e1000_hw *hw, struct rte_eth_rss_conf *rss_conf)
 	uint8_t  *hash_key;
 	uint32_t rss_key;
 	uint32_t mrqc;
-	uint16_t rss_hf;
+	uint64_t rss_hf;
 	uint16_t i;
 
 	hash_key = rss_conf->rss_key;
@@ -1571,7 +1582,7 @@ eth_igb_rss_hash_update(struct rte_eth_dev *dev,
 {
 	struct e1000_hw *hw;
 	uint32_t mrqc;
-	uint16_t rss_hf;
+	uint64_t rss_hf;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1581,7 +1592,7 @@ eth_igb_rss_hash_update(struct rte_eth_dev *dev,
 	 * initialization time, or does not attempt to enable RSS, if RSS was
 	 * disabled at initialization time.
 	 */
-	rss_hf = rss_conf->rss_hf;
+	rss_hf = rss_conf->rss_hf & IGB_RSS_OFFLOAD_ALL;
 	mrqc = E1000_READ_REG(hw, E1000_MRQC);
 	if (!(mrqc & E1000_MRQC_ENABLE_MASK)) { /* RSS disabled */
 		if (rss_hf != 0) /* Enable RSS */
@@ -1602,7 +1613,7 @@ int eth_igb_rss_hash_conf_get(struct rte_eth_dev *dev,
 	uint8_t *hash_key;
 	uint32_t rss_key;
 	uint32_t mrqc;
-	uint16_t rss_hf;
+	uint64_t rss_hf;
 	uint16_t i;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1678,7 +1689,7 @@ igb_rss_configure(struct rte_eth_dev *dev)
 	 * the RSS hash of input packets.
 	 */
 	rss_conf = dev->data->dev_conf.rx_adv_conf.rss_conf;
-	if (rss_conf.rss_hf == 0) {
+	if ((rss_conf.rss_hf & IGB_RSS_OFFLOAD_ALL) == 0) {
 		igb_rss_disable(dev);
 		return;
 	}

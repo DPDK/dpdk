@@ -311,31 +311,116 @@ struct rte_eth_rxmode {
  * A structure used to configure the Receive Side Scaling (RSS) feature
  * of an Ethernet port.
  * If not NULL, the *rss_key* pointer of the *rss_conf* structure points
- * to an array of 40 bytes holding the RSS key to use for hashing specific
- * header fields of received packets.
- * Otherwise, a default random hash key is used by the device driver.
+ * to an array holding the RSS key to use for hashing specific header
+ * fields of received packets. The length of this array should be indicated
+ * by *rss_key_len* below. Otherwise, a default random hash key is used by
+ * the device driver.
+ *
+ * The *rss_key_len* field of the *rss_conf* structure indicates the length
+ * in bytes of the array pointed by *rss_key*. To be compatible, this length
+ * will be checked in i40e only. Others assume 40 bytes to be used as before.
  *
  * The *rss_hf* field of the *rss_conf* structure indicates the different
  * types of IPv4/IPv6 packets to which the RSS hashing must be applied.
  * Supplying an *rss_hf* equal to zero disables the RSS feature.
  */
 struct rte_eth_rss_conf {
-	uint8_t  *rss_key;   /**< If not NULL, 40-byte hash key. */
-	uint16_t rss_hf;     /**< Hash functions to apply - see below. */
+	uint8_t *rss_key;    /**< If not NULL, 40-byte hash key. */
+	uint8_t rss_key_len; /**< hash key length in bytes. */
+	uint64_t rss_hf;     /**< Hash functions to apply - see below. */
 };
 
-#define ETH_RSS_IPV4        0x0001 /**< IPv4 packet. */
-#define ETH_RSS_IPV4_TCP    0x0002 /**< IPv4/TCP packet. */
-#define ETH_RSS_IPV6        0x0004 /**< IPv6 packet. */
-#define ETH_RSS_IPV6_EX     0x0008 /**< IPv6 packet with extension headers.*/
-#define ETH_RSS_IPV6_TCP    0x0010 /**< IPv6/TCP packet. */
-#define ETH_RSS_IPV6_TCP_EX 0x0020 /**< IPv6/TCP with extension headers. */
-/* Intel RSS extensions to UDP packets */
-#define ETH_RSS_IPV4_UDP    0x0040 /**< IPv4/UDP packet. */
-#define ETH_RSS_IPV6_UDP    0x0080 /**< IPv6/UDP packet. */
-#define ETH_RSS_IPV6_UDP_EX 0x0100 /**< IPv6/UDP with extension headers. */
+/* Supported RSS offloads */
+/* for 1G & 10G */
+#define ETH_RSS_IPV4_SHIFT                    0
+#define ETH_RSS_IPV4_TCP_SHIFT                1
+#define ETH_RSS_IPV6_SHIFT                    2
+#define ETH_RSS_IPV6_EX_SHIFT                 3
+#define ETH_RSS_IPV6_TCP_SHIFT                4
+#define ETH_RSS_IPV6_TCP_EX_SHIFT             5
+#define ETH_RSS_IPV4_UDP_SHIFT                6
+#define ETH_RSS_IPV6_UDP_SHIFT                7
+#define ETH_RSS_IPV6_UDP_EX_SHIFT             8
+/* for 40G only */
+#define ETH_RSS_NONF_IPV4_UDP_SHIFT           31
+#define ETH_RSS_NONF_IPV4_TCP_SHIFT           33
+#define ETH_RSS_NONF_IPV4_SCTP_SHIFT          34
+#define ETH_RSS_NONF_IPV4_OTHER_SHIFT         35
+#define ETH_RSS_FRAG_IPV4_SHIFT               36
+#define ETH_RSS_NONF_IPV6_UDP_SHIFT           41
+#define ETH_RSS_NONF_IPV6_TCP_SHIFT           43
+#define ETH_RSS_NONF_IPV6_SCTP_SHIFT          44
+#define ETH_RSS_NONF_IPV6_OTHER_SHIFT         45
+#define ETH_RSS_FRAG_IPV6_SHIFT               46
+#define ETH_RSS_FCOE_OX_SHIFT                 48
+#define ETH_RSS_FCOE_RX_SHIFT                 49
+#define ETH_RSS_FCOE_OTHER_SHIFT              50
+#define ETH_RSS_L2_PAYLOAD_SHIFT              63
 
-#define ETH_RSS_PROTO_MASK  0x01FF /**< Mask of valid RSS hash protocols */
+/* for 1G & 10G */
+#define ETH_RSS_IPV4                    ((uint16_t)1 << ETH_RSS_IPV4_SHIFT)
+#define ETH_RSS_IPV4_TCP                ((uint16_t)1 << ETH_RSS_IPV4_TCP_SHIFT)
+#define ETH_RSS_IPV6                    ((uint16_t)1 << ETH_RSS_IPV6_SHIFT)
+#define ETH_RSS_IPV6_EX                 ((uint16_t)1 << ETH_RSS_IPV6_EX_SHIFT)
+#define ETH_RSS_IPV6_TCP                ((uint16_t)1 << ETH_RSS_IPV6_TCP_SHIFT)
+#define ETH_RSS_IPV6_TCP_EX             ((uint16_t)1 << ETH_RSS_IPV6_TCP_EX_SHIFT)
+#define ETH_RSS_IPV4_UDP                ((uint16_t)1 << ETH_RSS_IPV4_UDP_SHIFT)
+#define ETH_RSS_IPV6_UDP                ((uint16_t)1 << ETH_RSS_IPV6_UDP_SHIFT)
+#define ETH_RSS_IPV6_UDP_EX             ((uint16_t)1 << ETH_RSS_IPV6_UDP_EX_SHIFT)
+/* for 40G only */
+#define ETH_RSS_NONF_IPV4_UDP           ((uint64_t)1 << ETH_RSS_NONF_IPV4_UDP_SHIFT)
+#define ETH_RSS_NONF_IPV4_TCP           ((uint64_t)1 << ETH_RSS_NONF_IPV4_TCP_SHIFT)
+#define ETH_RSS_NONF_IPV4_SCTP          ((uint64_t)1 << ETH_RSS_NONF_IPV4_SCTP_SHIFT)
+#define ETH_RSS_NONF_IPV4_OTHER         ((uint64_t)1 << ETH_RSS_NONF_IPV4_OTHER_SHIFT)
+#define ETH_RSS_FRAG_IPV4               ((uint64_t)1 << ETH_RSS_FRAG_IPV4_SHIFT)
+#define ETH_RSS_NONF_IPV6_UDP           ((uint64_t)1 << ETH_RSS_NONF_IPV6_UDP_SHIFT)
+#define ETH_RSS_NONF_IPV6_TCP           ((uint64_t)1 << ETH_RSS_NONF_IPV6_TCP_SHIFT)
+#define ETH_RSS_NONF_IPV6_SCTP          ((uint64_t)1 << ETH_RSS_NONF_IPV6_SCTP_SHIFT)
+#define ETH_RSS_NONF_IPV6_OTHER         ((uint64_t)1 << ETH_RSS_NONF_IPV6_OTHER_SHIFT)
+#define ETH_RSS_FRAG_IPV6               ((uint64_t)1 << ETH_RSS_FRAG_IPV6_SHIFT)
+#define ETH_RSS_FCOE_OX                 ((uint64_t)1 << ETH_RSS_FCOE_OX_SHIFT) /* not used */
+#define ETH_RSS_FCOE_RX                 ((uint64_t)1 << ETH_RSS_FCOE_RX_SHIFT) /* not used */
+#define ETH_RSS_FCOE_OTHER              ((uint64_t)1 << ETH_RSS_FCOE_OTHER_SHIFT) /* not used */
+#define ETH_RSS_L2_PAYLOAD              ((uint64_t)1 << ETH_RSS_L2_PAYLOAD_SHIFT)
+
+#define ETH_RSS_IP ( \
+		ETH_RSS_IPV4 | \
+		ETH_RSS_IPV6 | \
+		ETH_RSS_NONF_IPV4_OTHER | \
+		ETH_RSS_FRAG_IPV4 | \
+		ETH_RSS_NONF_IPV6_OTHER | \
+		ETH_RSS_FRAG_IPV6)
+#define ETH_RSS_UDP ( \
+		ETH_RSS_IPV4 | \
+		ETH_RSS_IPV6 | \
+		ETH_RSS_IPV4_UDP | \
+		ETH_RSS_IPV6_UDP | \
+		ETH_RSS_IPV6_UDP_EX | \
+		ETH_RSS_NONF_IPV4_UDP | \
+		ETH_RSS_NONF_IPV6_UDP)
+/**< Mask of valid RSS hash protocols */
+#define ETH_RSS_PROTO_MASK ( \
+		ETH_RSS_IPV4 | \
+		ETH_RSS_IPV4_TCP | \
+		ETH_RSS_IPV6 | \
+		ETH_RSS_IPV6_EX | \
+		ETH_RSS_IPV6_TCP | \
+		ETH_RSS_IPV6_TCP_EX | \
+		ETH_RSS_IPV4_UDP | \
+		ETH_RSS_IPV6_UDP | \
+		ETH_RSS_IPV6_UDP_EX | \
+		ETH_RSS_NONF_IPV4_UDP | \
+		ETH_RSS_NONF_IPV4_TCP | \
+		ETH_RSS_NONF_IPV4_SCTP | \
+		ETH_RSS_NONF_IPV4_OTHER | \
+		ETH_RSS_FRAG_IPV4 | \
+		ETH_RSS_NONF_IPV6_UDP | \
+		ETH_RSS_NONF_IPV6_TCP | \
+		ETH_RSS_NONF_IPV6_SCTP | \
+		ETH_RSS_NONF_IPV6_OTHER | \
+		ETH_RSS_FRAG_IPV6 | \
+		ETH_RSS_L2_PAYLOAD)
+
 /* Definitions used for redirection table entry size */
 #define ETH_RSS_RETA_NUM_ENTRIES 128
 #define ETH_RSS_RETA_MAX_QUEUE   16

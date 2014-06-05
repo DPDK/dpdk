@@ -251,7 +251,7 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 			.rx_adv_conf = {
 				.rss_conf = {
 					.rss_key = NULL,
-					.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6,
+					.rss_hf = ETH_RSS_IP,
 				},
 			},
 			.txmode = {

@@ -250,7 +250,7 @@ uint32_t txq_flags = 0; /* No flags set. */
 /*
  * Receive Side Scaling (RSS) configuration.
  */
-uint16_t rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6; /* RSS IP by default. */
+uint64_t rss_hf = ETH_RSS_IP; /* RSS IP by default. */
 
 /*
  * Port topology configuration

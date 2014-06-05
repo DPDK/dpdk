@@ -1201,9 +1201,9 @@ cmd_config_rss_parsed(void *parsed_result,
 	uint8_t i;
 
 	if (!strcmp(res->value, "ip"))
-		rss_conf.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6;
+		rss_conf.rss_hf = ETH_RSS_IP;
 	else if (!strcmp(res->value, "udp"))
-		rss_conf.rss_hf = ETH_RSS_IPV4_UDP | ETH_RSS_IPV6_UDP;
+		rss_conf.rss_hf = ETH_RSS_UDP;
 	else if (!strcmp(res->value, "none"))
 		rss_conf.rss_hf = 0;
 	else {

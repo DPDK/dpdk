@@ -326,7 +326,7 @@ extern portid_t fwd_ports_ids[RTE_MAX_ETHPORTS];
 extern struct rte_port *ports;
 
 extern struct rte_eth_rxmode rx_mode;
-extern uint16_t rss_hf;
+extern uint64_t rss_hf;
 
 extern queueid_t nb_rxq;
 extern queueid_t nb_txq;

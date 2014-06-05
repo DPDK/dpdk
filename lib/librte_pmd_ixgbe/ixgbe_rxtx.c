@@ -77,10 +77,18 @@
 #include "ixgbe_ethdev.h"
 #include "ixgbe/ixgbe_dcb.h"
 #include "ixgbe/ixgbe_common.h"
-
-
 #include "ixgbe_rxtx.h"
 
+#define IXGBE_RSS_OFFLOAD_ALL ( \
+		ETH_RSS_IPV4 | \
+		ETH_RSS_IPV4_TCP | \
+		ETH_RSS_IPV6 | \
+		ETH_RSS_IPV6_EX | \
+		ETH_RSS_IPV6_TCP | \
+		ETH_RSS_IPV6_TCP_EX | \
+		ETH_RSS_IPV4_UDP | \
+		ETH_RSS_IPV6_UDP | \
+		ETH_RSS_IPV6_UDP_EX)
 
 static inline struct rte_mbuf *
 rte_rxmbuf_alloc(struct rte_mempool *mp)
@@ -2303,7 +2311,7 @@ ixgbe_hw_rss_hash_set(struct ixgbe_hw *hw, struct rte_eth_rss_conf *rss_conf)
 	uint8_t  *hash_key;
 	uint32_t mrqc;
 	uint32_t rss_key;
-	uint16_t rss_hf;
+	uint64_t rss_hf;
 	uint16_t i;
 
 	hash_key = rss_conf->rss_key;
@@ -2348,7 +2356,7 @@ ixgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 {
 	struct ixgbe_hw *hw;
 	uint32_t mrqc;
-	uint16_t rss_hf;
+	uint64_t rss_hf;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -2361,7 +2369,7 @@ ixgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 	 * initialization time, or does not attempt to enable RSS, if RSS was
 	 * disabled at initialization time.
 	 */
-	rss_hf = rss_conf->rss_hf;
+	rss_hf = rss_conf->rss_hf & IXGBE_RSS_OFFLOAD_ALL;
 	mrqc = IXGBE_READ_REG(hw, IXGBE_MRQC);
 	if (!(mrqc & IXGBE_MRQC_RSSEN)) { /* RSS disabled */
 		if (rss_hf != 0) /* Enable RSS */
@@ -2383,7 +2391,7 @@ ixgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	uint8_t *hash_key;
 	uint32_t mrqc;
 	uint32_t rss_key;
-	uint16_t rss_hf;
+	uint64_t rss_hf;
 	uint16_t i;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -2460,7 +2468,7 @@ ixgbe_rss_configure(struct rte_eth_dev *dev)
 	 * the RSS hash of input packets.
 	 */
 	rss_conf = dev->data->dev_conf.rx_adv_conf.rss_conf;
-	if (rss_conf.rss_hf == 0) {
+	if ((rss_conf.rss_hf & IXGBE_RSS_OFFLOAD_ALL) == 0) {
 		ixgbe_rss_disable(dev);
 		return;
 	}

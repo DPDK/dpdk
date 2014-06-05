@@ -882,9 +882,16 @@ static uint8_t rss_intel_key[40] = {
 int
 vmxnet3_rss_configure(struct rte_eth_dev *dev)
 {
+#define VMXNET3_RSS_OFFLOAD_ALL ( \
+		ETH_RSS_IPV4 | \
+		ETH_RSS_IPV4_TCP | \
+		ETH_RSS_IPV6 | \
+		ETH_RSS_IPV6_TCP)
+
 	struct vmxnet3_hw *hw;
 	struct VMXNET3_RSSConf *dev_rss_conf;
 	struct rte_eth_rss_conf *port_rss_conf;
+	uint64_t rss_hf;
 	uint8_t i, j;
 
 	PMD_INIT_FUNC_TRACE();
@@ -916,13 +923,14 @@ vmxnet3_rss_configure(struct rte_eth_dev *dev)
 
 	/* loading hashType */
 	dev_rss_conf->hashType = 0;
-	if (port_rss_conf->rss_hf & ETH_RSS_IPV4)
+	rss_hf = port_rss_conf->rss_hf & VMXNET3_RSS_OFFLOAD_ALL;
+	if (rss_hf & ETH_RSS_IPV4)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_IPV4;
-	if (port_rss_conf->rss_hf & ETH_RSS_IPV4_TCP)
+	if (rss_hf & ETH_RSS_IPV4_TCP)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_TCP_IPV4;
-	if (port_rss_conf->rss_hf & ETH_RSS_IPV6)
+	if (rss_hf & ETH_RSS_IPV6)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_IPV6;
-	if (port_rss_conf->rss_hf & ETH_RSS_IPV6_TCP)
+	if (rss_hf & ETH_RSS_IPV6_TCP)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_TCP_IPV6;
 
 	return VMXNET3_SUCCESS;

@@ -832,10 +832,9 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "forward-mode"))
 				set_pkt_forwarding_mode(optarg);
 			if (!strcmp(lgopts[opt_idx].name, "rss-ip"))
-				rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6;
+				rss_hf = ETH_RSS_IP;
 			if (!strcmp(lgopts[opt_idx].name, "rss-udp"))
-				rss_hf = ETH_RSS_IPV4 |
-						ETH_RSS_IPV6 | ETH_RSS_IPV4_UDP;
+				rss_hf = ETH_RSS_UDP;
 			if (!strcmp(lgopts[opt_idx].name, "rxq")) {
 				n = atoi(optarg);
 				if (n >= 1 && n <= (int) MAX_QUEUE_ID)
