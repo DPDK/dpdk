@@ -486,7 +486,7 @@ void vlan_extend_set(portid_t port_id, int on);
 void vlan_tpid_set(portid_t port_id, uint16_t tp_id);
 void tx_vlan_set(portid_t port_id, uint16_t vlan_id);
 void tx_vlan_reset(portid_t port_id);
-
+void tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on);
 
 void set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value);
 

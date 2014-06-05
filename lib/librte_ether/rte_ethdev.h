@@ -452,7 +452,6 @@ struct rte_eth_rss_conf {
 /* Definitions used for receive MAC address   */
 #define ETH_NUM_RECEIVE_MAC_ADDR  128 /**< Maximum nb. of receive mac addr. */
 
-
 /* Definitions used for unicast hash  */
 #define ETH_VMDQ_NUM_UC_HASH_ARRAY  128 /**< Maximum nb. of UC hash array. */
 
@@ -586,6 +585,15 @@ struct rte_eth_vmdq_rx_conf {
  */
 struct rte_eth_txmode {
 	enum rte_eth_tx_mq_mode mq_mode; /**< TX multi-queues mode. */
+
+	/* For i40e specifically */
+	uint16_t pvid;
+	uint8_t hw_vlan_reject_tagged : 1,
+		/**< If set, reject sending out tagged pkts */
+		hw_vlan_reject_untagged : 1,
+		/**< If set, reject sending out untagged pkts */
+		hw_vlan_insert_pvid : 1;
+		/**< If set, enable port based VLAN insertion */
 };
 
 /**
@@ -1073,6 +1081,11 @@ typedef void (*vlan_tpid_set_t)(struct rte_eth_dev *dev,
 typedef void (*vlan_offload_set_t)(struct rte_eth_dev *dev, int mask);
 /**< @internal set VLAN offload function by an Ethernet device. */
 
+typedef int (*vlan_pvid_set_t)(struct rte_eth_dev *dev,
+			       uint16_t vlan_id,
+			       int on);
+/**< @internal set port based TX VLAN insertion by an Ethernet device. */
+
 typedef void (*vlan_strip_queue_set_t)(struct rte_eth_dev *dev,
 				  uint16_t rx_queue_id,
 				  int on);
@@ -1363,6 +1376,7 @@ struct eth_dev_ops {
 	vlan_tpid_set_t            vlan_tpid_set;      /**< Outer VLAN TPID Setup. */
 	vlan_strip_queue_set_t     vlan_strip_queue_set; /**< VLAN Stripping on queue. */
 	vlan_offload_set_t         vlan_offload_set; /**< Set VLAN Offload. */
+	vlan_pvid_set_t            vlan_pvid_set; /**< Set port based TX VLAN insertion */
 	eth_queue_start_t          rx_queue_start;/**< Start RX for a queue.*/
 	eth_queue_stop_t           rx_queue_stop;/**< Stop RX for a queue.*/
 	eth_queue_start_t          tx_queue_start;/**< Start TX for a queue.*/
@@ -2129,6 +2143,22 @@ extern int rte_eth_dev_set_vlan_offload(uint8_t port_id, int offload_mask);
  *   - (-ENODEV) if *port_id* invalid.
  */
 extern int rte_eth_dev_get_vlan_offload(uint8_t port_id);
+
+/**
+ * Set port based TX VLAN insersion on or off.
+ *
+ * @param port_id
+ *  The port identifier of the Ethernet device.
+ * @param pvid
+ *  Port based TX VLAN identifier togeth with user priority.
+ * @param on
+ *  Turn on or off the port based TX VLAN insertion.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - negative if failed.
+ */
+extern int rte_eth_dev_set_vlan_pvid(uint8_t port_id, uint16_t pvid, int on);
 
 /**
  *

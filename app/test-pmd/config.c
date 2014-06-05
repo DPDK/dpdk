@@ -1583,6 +1583,15 @@ tx_vlan_reset(portid_t port_id)
 }
 
 void
+tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on)
+{
+	if (port_id_is_invalid(port_id))
+		return;
+
+	rte_eth_dev_set_vlan_pvid(port_id, vlan_id, on);
+}
+
+void
 set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
 {
 	uint16_t i;

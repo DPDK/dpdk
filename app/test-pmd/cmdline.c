@@ -286,6 +286,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set hardware insertion of VLAN ID in packets sent"
 			" on a port.\n\n"
 
+			"tx_vlan set pvid port_id vlan_id (on|off)\n"
+			"    Set port based TX VLAN insertion.\n\n"
+
 			"tx_vlan reset (port_id)\n"
 			"    Disable hardware insertion of a VLAN header in"
 			" packets sent on a port.\n\n"
@@ -2417,6 +2420,63 @@ cmdline_parse_inst_t cmd_tx_vlan_set = {
 		(void *)&cmd_tx_vlan_set_set,
 		(void *)&cmd_tx_vlan_set_vlanid,
 		(void *)&cmd_tx_vlan_set_portid,
+		NULL,
+	},
+};
+
+/* *** ENABLE/DISABLE PORT BASED TX VLAN INSERTION *** */
+struct cmd_tx_vlan_set_pvid_result {
+	cmdline_fixed_string_t tx_vlan;
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t pvid;
+	uint8_t port_id;
+	uint16_t vlan_id;
+	cmdline_fixed_string_t mode;
+};
+
+static void
+cmd_tx_vlan_set_pvid_parsed(void *parsed_result,
+			    __attribute__((unused)) struct cmdline *cl,
+			    __attribute__((unused)) void *data)
+{
+	struct cmd_tx_vlan_set_pvid_result *res = parsed_result;
+
+	if (strcmp(res->mode, "on") == 0)
+		tx_vlan_pvid_set(res->port_id, res->vlan_id, 1);
+	else
+		tx_vlan_pvid_set(res->port_id, res->vlan_id, 0);
+}
+
+cmdline_parse_token_string_t cmd_tx_vlan_set_pvid_tx_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_vlan_set_pvid_result,
+				 tx_vlan, "tx_vlan");
+cmdline_parse_token_string_t cmd_tx_vlan_set_pvid_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_vlan_set_pvid_result,
+				 set, "set");
+cmdline_parse_token_string_t cmd_tx_vlan_set_pvid_pvid =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_vlan_set_pvid_result,
+				 pvid, "pvid");
+cmdline_parse_token_num_t cmd_tx_vlan_set_pvid_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_tx_vlan_set_pvid_result,
+			     port_id, UINT8);
+cmdline_parse_token_num_t cmd_tx_vlan_set_pvid_vlan_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_tx_vlan_set_pvid_result,
+			      vlan_id, UINT16);
+cmdline_parse_token_string_t cmd_tx_vlan_set_pvid_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_vlan_set_pvid_result,
+				 mode, "on#off");
+
+cmdline_parse_inst_t cmd_tx_vlan_set_pvid = {
+	.f = cmd_tx_vlan_set_pvid_parsed,
+	.data = NULL,
+	.help_str = "tx_vlan set pvid port_id vlan_id (on|off)",
+	.tokens = {
+		(void *)&cmd_tx_vlan_set_pvid_tx_vlan,
+		(void *)&cmd_tx_vlan_set_pvid_set,
+		(void *)&cmd_tx_vlan_set_pvid_pvid,
+		(void *)&cmd_tx_vlan_set_pvid_port_id,
+		(void *)&cmd_tx_vlan_set_pvid_vlan_id,
+		(void *)&cmd_tx_vlan_set_pvid_mode,
 		NULL,
 	},
 };
@@ -6465,6 +6525,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_rx_vlan_filter,
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_set,
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_reset,
+	(cmdline_parse_inst_t *)&cmd_tx_vlan_set_pvid,
 	(cmdline_parse_inst_t *)&cmd_tx_cksum_set,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_priority_flow_control_set,

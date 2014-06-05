@@ -1360,6 +1360,21 @@ rte_eth_dev_get_vlan_offload(uint8_t port_id)
 	return ret;
 }
 
+int
+rte_eth_dev_set_vlan_pvid(uint8_t port_id, uint16_t pvid, int on)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_pvid_set, -ENOTSUP);
+	(*dev->dev_ops->vlan_pvid_set)(dev, pvid, on);
+
+	return 0;
+}
 
 int
 rte_eth_dev_fdir_add_signature_filter(uint8_t port_id,
