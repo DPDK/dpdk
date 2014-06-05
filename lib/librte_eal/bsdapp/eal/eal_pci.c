@@ -110,7 +110,7 @@ static struct uio_res_list *uio_res_list = NULL;
 
 /* unbind kernel driver for this device */
 static int
-pci_unbind_kernel_driver(struct rte_pci_device *dev)
+pci_unbind_kernel_driver(struct rte_pci_device *dev __rte_unused)
 {
 	RTE_LOG(ERR, EAL, "RTE_PCI_DRV_FORCE_UNBIND flag is not implemented "
 		"for BSD\n");
