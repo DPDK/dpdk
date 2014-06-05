@@ -568,13 +568,43 @@ union igb_ring_dword {
 	} words;
 };
 
+#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+struct igb_ring_desc_32B {
+	union igb_ring_dword lo_dword;
+	union igb_ring_dword hi_dword;
+	union igb_ring_dword resv1;
+	union igb_ring_dword resv2;
+};
+#endif
+
 struct igb_ring_desc {
 	union igb_ring_dword lo_dword;
 	union igb_ring_dword hi_dword;
 };
 
 static void
-ring_descriptor_display(const struct rte_memzone *ring_mz, uint16_t desc_id)
+ring_rx_descriptor_display(const struct rte_memzone *ring_mz, uint16_t desc_id)
+{
+#ifdef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+	struct igb_ring_desc *ring;
+	struct igb_ring_desc rd;
+
+	ring = (struct igb_ring_desc *) ring_mz->addr;
+#else
+	struct igb_ring_desc_32B *ring;
+	struct igb_ring_desc_32B rd;
+
+	ring = (struct igb_ring_desc_32B *) ring_mz->addr;
+#endif
+	rd.lo_dword = rte_le_to_cpu_64(ring[desc_id].lo_dword);
+	rd.hi_dword = rte_le_to_cpu_64(ring[desc_id].hi_dword);
+	printf("    0x%08X - 0x%08X / 0x%08X - 0x%08X\n",
+		(unsigned)rd.lo_dword.words.lo, (unsigned)rd.lo_dword.words.hi,
+		(unsigned)rd.hi_dword.words.lo, (unsigned)rd.hi_dword.words.hi);
+}
+
+static void
+ring_tx_descriptor_display(const struct rte_memzone *ring_mz, uint16_t desc_id)
 {
 	struct igb_ring_desc *ring;
 	struct igb_ring_desc rd;
@@ -601,7 +631,7 @@ rx_ring_desc_display(portid_t port_id, queueid_t rxq_id, uint16_t rxd_id)
 	rx_mz = ring_dma_zone_lookup("rx_ring", port_id, rxq_id);
 	if (rx_mz == NULL)
 		return;
-	ring_descriptor_display(rx_mz, rxd_id);
+	ring_rx_descriptor_display(rx_mz, rxd_id);
 }
 
 void
@@ -618,7 +648,7 @@ tx_ring_desc_display(portid_t port_id, queueid_t txq_id, uint16_t txd_id)
 	tx_mz = ring_dma_zone_lookup("tx_ring", port_id, txq_id);
 	if (tx_mz == NULL)
 		return;
-	ring_descriptor_display(tx_mz, txd_id);
+	ring_tx_descriptor_display(tx_mz, txd_id);
 }
 
 void
