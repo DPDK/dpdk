@@ -86,6 +86,30 @@ struct ether_addr {
 #define ETHER_GROUP_ADDR       0x01 /**< Multicast or broadcast Eth. address. */
 
 /**
+ * Check if two Ethernet addresses are the same.
+ *
+ * @param ea1
+ *  A pointer to the first ether_addr structure containing
+ *  the ethernet address.
+ * @param ea2
+ *  A pointer to the second ether_addr structure containing
+ *  the ethernet address.
+ *
+ * @return
+ *  True  (1) if the given two ethernet address are the same;
+ *  False (0) otherwise.
+ */
+static inline int is_same_ether_addr(const struct ether_addr *ea1,
+				     const struct ether_addr *ea2)
+{
+	int i;
+	for (i = 0; i < ETHER_ADDR_LEN; i++)
+		if (ea1->addr_bytes[i] != ea2->addr_bytes[i])
+			return 0;
+	return 1;
+}
+
+/**
  * Check if an Ethernet address is filled with zeros.
  *
  * @param ea
