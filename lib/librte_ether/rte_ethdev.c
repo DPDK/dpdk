@@ -661,9 +661,13 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				(unsigned)ETHER_MIN_LEN);
 			return (-EINVAL);
 		}
-	} else
-		/* Use default value */
-		dev->data->dev_conf.rxmode.max_rx_pkt_len = ETHER_MAX_LEN;
+	} else {
+		if (dev_conf->rxmode.max_rx_pkt_len < ETHER_MIN_LEN ||
+			dev_conf->rxmode.max_rx_pkt_len > ETHER_MAX_LEN)
+			/* Use default value */
+			dev->data->dev_conf.rxmode.max_rx_pkt_len =
+							ETHER_MAX_LEN;
+	}
 
 	/* multipe queue mode checking */
 	diag = rte_eth_dev_check_mq_mode(port_id, nb_rx_q, nb_tx_q, dev_conf);
