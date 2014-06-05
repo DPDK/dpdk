@@ -233,6 +233,9 @@ struct rte_eth_link {
 #define ETH_LINK_SPEED_100      100     /**< 100 megabits/second. */
 #define ETH_LINK_SPEED_1000     1000    /**< 1 gigabits/second. */
 #define ETH_LINK_SPEED_10000    10000   /**< 10 gigabits/second. */
+#define ETH_LINK_SPEED_10G      10000   /**< alias of 10 gigabits/second. */
+#define ETH_LINK_SPEED_20G      20000   /**< 20 gigabits/second. */
+#define ETH_LINK_SPEED_40G      40000   /**< 40 gigabits/second. */
 
 #define ETH_LINK_AUTONEG_DUPLEX 0       /**< Auto-negotiate duplex. */
 #define ETH_LINK_HALF_DUPLEX    1       /**< Half-duplex connection. */
