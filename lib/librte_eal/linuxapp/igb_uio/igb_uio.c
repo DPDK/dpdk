@@ -48,6 +48,15 @@
 #define PCI_MSIX_ENTRY_CTRL_MASKBIT     1
 #endif
 
+#ifdef RTE_PCI_CONFIG
+#define PCI_SYS_FILE_BUF_SIZE      10
+#define PCI_DEV_CAP_REG            0xA4
+#define PCI_DEV_CTRL_REG           0xA8
+#define PCI_DEV_CAP_EXT_TAG_MASK   0x20
+#define PCI_DEV_CTRL_EXT_TAG_SHIFT 8
+#define PCI_DEV_CTRL_EXT_TAG_MASK  (1 << PCI_DEV_CTRL_EXT_TAG_SHIFT)
+#endif
+
 #define IGBUIO_NUM_MSI_VECTORS 1
 
 /**
@@ -123,9 +132,105 @@ store_max_vfs(struct device *dev, struct device_attribute *attr,
 	return err ? err : count;
 }
 
+#ifdef RTE_PCI_CONFIG
+static ssize_t
+show_extended_tag(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct pci_dev *pci_dev = container_of(dev, struct pci_dev, dev);
+	uint32_t val = 0;
+
+	pci_read_config_dword(pci_dev, PCI_DEV_CAP_REG, &val);
+	if (!(val & PCI_DEV_CAP_EXT_TAG_MASK)) /* Not supported */
+		return snprintf(buf, PCI_SYS_FILE_BUF_SIZE, "%s\n", "invalid");
+
+	val = 0;
+	pci_bus_read_config_dword(pci_dev->bus, pci_dev->devfn,
+					PCI_DEV_CTRL_REG, &val);
+
+	return snprintf(buf, PCI_SYS_FILE_BUF_SIZE, "%s\n",
+		(val & PCI_DEV_CTRL_EXT_TAG_MASK) ? "on" : "off");
+}
+
+static ssize_t
+store_extended_tag(struct device *dev,
+		   struct device_attribute *attr,
+		   const char *buf,
+		   size_t count)
+{
+	struct pci_dev *pci_dev = container_of(dev, struct pci_dev, dev);
+	uint32_t val = 0, enable;
+
+	if (strncmp(buf, "on", 2) == 0)
+		enable = 1;
+	else if (strncmp(buf, "off", 3) == 0)
+		enable = 0;
+	else
+		return -EINVAL;
+
+	pci_bus_read_config_dword(pci_dev->bus, pci_dev->devfn,
+					PCI_DEV_CAP_REG, &val);
+	if (!(val & PCI_DEV_CAP_EXT_TAG_MASK)) /* Not supported */
+		return -EPERM;
+
+	val = 0;
+	pci_bus_read_config_dword(pci_dev->bus, pci_dev->devfn,
+					PCI_DEV_CTRL_REG, &val);
+	if (enable)
+		val |= PCI_DEV_CTRL_EXT_TAG_MASK;
+	else
+		val &= ~PCI_DEV_CTRL_EXT_TAG_MASK;
+	pci_bus_write_config_dword(pci_dev->bus, pci_dev->devfn,
+					PCI_DEV_CTRL_REG, val);
+
+	return count;
+}
+
+static ssize_t
+show_max_read_request_size(struct device *dev,
+			   struct device_attribute *attr,
+			   char *buf)
+{
+	struct pci_dev *pci_dev = container_of(dev, struct pci_dev, dev);
+	int val = pcie_get_readrq(pci_dev);
+
+	return snprintf(buf, PCI_SYS_FILE_BUF_SIZE, "%d\n", val);
+}
+
+static ssize_t
+store_max_read_request_size(struct device *dev,
+			    struct device_attribute *attr,
+			    const char *buf,
+			    size_t count)
+{
+	struct pci_dev *pci_dev = container_of(dev, struct pci_dev, dev);
+	unsigned long size = 0;
+	int ret;
+
+	if (strict_strtoul(buf, 0, &size) != 0)
+		return -EINVAL;
+
+	ret = pcie_set_readrq(pci_dev, (int)size);
+	if (ret < 0)
+		return ret;
+
+	return count;
+}
+#endif
+
 static DEVICE_ATTR(max_vfs, S_IRUGO | S_IWUSR, show_max_vfs, store_max_vfs);
+#ifdef RTE_PCI_CONFIG
+static DEVICE_ATTR(extended_tag, S_IRUGO | S_IWUSR, show_extended_tag, \
+	store_extended_tag);
+static DEVICE_ATTR(max_read_request_size, S_IRUGO | S_IWUSR, \
+	show_max_read_request_size, store_max_read_request_size);
+#endif
+
 static struct attribute *dev_attrs[] = {
 	&dev_attr_max_vfs.attr,
+#ifdef RTE_PCI_CONFIG
+	&dev_attr_extended_tag.attr,
+	&dev_attr_max_read_request_size.attr,
+#endif
         NULL,
 };
 

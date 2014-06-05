@@ -127,6 +127,13 @@ CONFIG_RTE_EAL_IGB_UIO=y
 CONFIG_RTE_EAL_VFIO=y
 
 #
+# Special configurations in PCI Config Space for high performance
+#
+CONFIG_RTE_PCI_CONFIG=n
+CONFIG_RTE_PCI_EXTENDED_TAG=""
+CONFIG_RTE_PCI_MAX_READ_REQUEST_SIZE=0
+
+#
 # Compile Environment Abstraction Layer for linux
 #
 CONFIG_RTE_LIBRTE_EAL_LINUXAPP=y

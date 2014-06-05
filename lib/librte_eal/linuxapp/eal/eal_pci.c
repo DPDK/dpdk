@@ -393,6 +393,96 @@ error:
 	return -1;
 }
 
+#ifdef RTE_PCI_CONFIG
+static int
+pci_config_extended_tag(struct rte_pci_device *dev)
+{
+	struct rte_pci_addr *loc = &dev->addr;
+	char filename[PATH_MAX];
+	char buf[BUFSIZ];
+	FILE *f;
+
+	/* not configured, let it as is */
+	if (strncmp(RTE_PCI_EXTENDED_TAG, "on", 2) != 0 &&
+		strncmp(RTE_PCI_EXTENDED_TAG, "off", 3) != 0)
+		return 0;
+
+	rte_snprintf(filename, sizeof(filename),
+		SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/" "extended_tag",
+		loc->domain, loc->bus, loc->devid, loc->function);
+	f = fopen(filename, "rw+");
+	if (!f)
+		return -1;
+
+	fgets(buf, sizeof(buf), f);
+	if (strncmp(RTE_PCI_EXTENDED_TAG, "on", 2) == 0) {
+		/* enable Extended Tag*/
+		if (strncmp(buf, "on", 2) != 0) {
+			fseek(f, 0, SEEK_SET);
+			fputs("on", f);
+		}
+	} else {
+		/* disable Extended Tag */
+		if (strncmp(buf, "off", 3) != 0) {
+			fseek(f, 0, SEEK_SET);
+			fputs("off", f);
+		}
+	}
+	fclose(f);
+
+	return 0;
+}
+
+static int
+pci_config_max_read_request_size(struct rte_pci_device *dev)
+{
+	struct rte_pci_addr *loc = &dev->addr;
+	char filename[PATH_MAX];
+	char buf[BUFSIZ], param[BUFSIZ];
+	FILE *f;
+	/* size can be 128, 256, 512, 1024, 2048, 4096 */
+	uint32_t max_size = RTE_PCI_MAX_READ_REQUEST_SIZE;
+
+	/* not configured, let it as is */
+	if (!max_size)
+		return 0;
+
+	rte_snprintf(filename, sizeof(filename),
+		SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/" "max_read_request_size",
+			loc->domain, loc->bus, loc->devid, loc->function);
+	f = fopen(filename, "rw+");
+	if (!f)
+		return -1;
+
+	fgets(buf, sizeof(buf), f);
+	rte_snprintf(param, sizeof(param), "%d", max_size);
+
+	/* check if the size to be set is the same as current */
+	if (strcmp(buf, param) == 0) {
+		fclose(f);
+		return 0;
+	}
+	fseek(f, 0, SEEK_SET);
+	fputs(param, f);
+	fclose(f);
+
+	return 0;
+}
+
+static void
+pci_config_space_set(struct rte_pci_device *dev)
+{
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+
+	/* configure extended tag */
+	pci_config_extended_tag(dev);
+
+	/* configure max read request size */
+	pci_config_max_read_request_size(dev);
+}
+#endif
+
 static int
 pci_map_device(struct rte_pci_device *dev)
 {
@@ -460,6 +550,13 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		}
 
 		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
+#ifdef RTE_PCI_CONFIG
+			/*
+			 * Set PCIe config space for high performance.
+			 * Return value can be ignored.
+			 */
+			pci_config_space_set(dev);
+#endif
 			/* map resources for devices that use igb_uio */
 			ret = pci_map_device(dev);
 			if (ret != 0)
