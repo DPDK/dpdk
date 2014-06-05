@@ -45,6 +45,7 @@ extern "C" {
 #endif
 
 #include <sys/queue.h>
+#include <stdio.h>
 
 /** dummy structure type used by the rte_tailq APIs */
 struct rte_dummy {
