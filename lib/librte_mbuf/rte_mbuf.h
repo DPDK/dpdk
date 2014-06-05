@@ -85,6 +85,11 @@ struct rte_ctrlmbuf {
 #define PKT_RX_FDIR          0x0004 /**< RX packet with FDIR infos. */
 #define PKT_RX_L4_CKSUM_BAD  0x0008 /**< L4 cksum of RX pkt. is not OK. */
 #define PKT_RX_IP_CKSUM_BAD  0x0010 /**< IP cksum of RX pkt. is not OK. */
+#define PKT_RX_EIP_CKSUM_BAD 0x0000 /**< External IP header checksum error. */
+#define PKT_RX_OVERSIZE      0x0000 /**< Num of desc of an RX pkt oversize. */
+#define PKT_RX_HBUF_OVERFLOW 0x0000 /**< Header buffer overflow. */
+#define PKT_RX_RECIP_ERR     0x0000 /**< Hardware processing error. */
+#define PKT_RX_MAC_ERR       0x0000 /**< MAC error. */
 #define PKT_RX_IPV4_HDR      0x0020 /**< RX packet with IPv4 header. */
 #define PKT_RX_IPV4_HDR_EXT  0x0040 /**< RX packet with extended IPv4 header. */
 #define PKT_RX_IPV6_HDR      0x0080 /**< RX packet with IPv6 header. */
@@ -94,6 +99,9 @@ struct rte_ctrlmbuf {
 
 #define PKT_TX_VLAN_PKT      0x0800 /**< TX packet is a 802.1q VLAN packet. */
 #define PKT_TX_IP_CKSUM      0x1000 /**< IP cksum of TX pkt. computed by NIC. */
+#define PKT_TX_IPV4_CSUM     0x1000 /**< Alias of PKT_TX_IP_CKSUM. */
+#define PKT_TX_IPV4          PKT_RX_IPV4_HDR /**< IPv4 with no IP checksum offload. */
+#define PKT_TX_IPV6          PKT_RX_IPV6_HDR /**< IPv6 packet */
 /*
  * Bit 14~13 used for L4 packet type with checksum enabled.
  *     00: Reserved
