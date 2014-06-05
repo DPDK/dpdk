@@ -313,6 +313,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				ol_flags |= PKT_TX_IP_CKSUM;
 			}
 			else {
+				ol_flags |= PKT_TX_IPV4;
 				/* SW checksum calculation */
 				ipv4_hdr->src_addr++;
 				ipv4_hdr->hdr_checksum = get_ipv4_cksum(ipv4_hdr);
@@ -373,6 +374,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 					unsigned char *) + l2_len);
 			l3_len = sizeof(struct ipv6_hdr) ;
 			l4_proto = ipv6_hdr->proto;
+			ol_flags |= PKT_TX_IPV6;
 
 			if (l4_proto == IPPROTO_UDP) {
 				udp_hdr = (struct udp_hdr*) (rte_pktmbuf_mtod(mb,
