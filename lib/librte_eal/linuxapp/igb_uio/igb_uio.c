@@ -83,9 +83,8 @@ igbuio_get_uio_pci_dev(struct uio_info *info)
 }
 
 /* sriov sysfs */
-int local_pci_num_vf(struct pci_dev *dev)
-{
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 34)
+static int pci_num_vf(struct pci_dev *dev)
 	struct iov {
 		int pos;
 		int nres;
@@ -100,17 +99,15 @@ int local_pci_num_vf(struct pci_dev *dev)
 		return 0;
 
 	return iov->nr_virtfn;
-#else
-	return pci_num_vf(dev);
-#endif
 }
+#endif
 
 static ssize_t
 show_max_vfs(struct device *dev, struct device_attribute *attr,
 	     char *buf)
 {
-	return snprintf(buf, 10, "%u\n", local_pci_num_vf(
-				container_of(dev, struct pci_dev, dev)));
+	return snprintf(buf, 10, "%u\n",
+			pci_num_vf(container_of(dev, struct pci_dev, dev)));
 }
 
 static ssize_t
@@ -126,7 +123,7 @@ store_max_vfs(struct device *dev, struct device_attribute *attr,
 
 	if (0 == max_vfs)
 		pci_disable_sriov(pdev);
-	else if (0 == local_pci_num_vf(pdev))
+	else if (0 == pci_num_vf(pdev))
 		err = pci_enable_sriov(pdev, max_vfs);
 	else /* do nothing if change max_vfs number */
 		err = -EINVAL;
