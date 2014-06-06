@@ -589,7 +589,7 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	}
 
 	/* fill uio infos */
-	udev->info.name = "Intel IGB UIO";
+	udev->info.name = "igb_uio";
 	udev->info.version = "0.1";
 	udev->info.handler = igbuio_pci_irqhandler;
 	udev->info.irqcontrol = igbuio_pci_irqcontrol;
