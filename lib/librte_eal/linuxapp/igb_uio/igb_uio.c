@@ -540,7 +540,7 @@ igbuio_setup_bars(struct pci_dev *dev, struct uio_info *info)
 		}
 	}
 
-	return ((iom != 0) ? ret : ENOENT);
+	return (iom != 0) ? ret : -ENOENT;
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
@@ -551,6 +551,7 @@ static int
 igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 {
 	struct rte_uio_pci_dev *udev;
+	int err;
 
 	udev = kzalloc(sizeof(struct rte_uio_pci_dev), GFP_KERNEL);
 	if (!udev)
@@ -560,7 +561,8 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	 * enable device: ask low-level code to enable I/O and
 	 * memory
 	 */
-	if (pci_enable_device(dev)) {
+	err = pci_enable_device(dev);
+	if (err != 0) {
 		dev_err(&dev->dev, "Cannot enable PCI device\n");
 		goto fail_free;
 	}
@@ -569,7 +571,8 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	 * reserve device's PCI memory regions for use by this
 	 * module
 	 */
-	if (pci_request_regions(dev, "igb_uio")) {
+	err = pci_request_regions(dev, "igb_uio");
+	if (err != 0) {
 		dev_err(&dev->dev, "Cannot request regions\n");
 		goto fail_disable;
 	}
@@ -578,14 +581,19 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	pci_set_master(dev);
 
 	/* remap IO memory */
-	if (igbuio_setup_bars(dev, &udev->info))
+	err = igbuio_setup_bars(dev, &udev->info);
+	if (err != 0)
 		goto fail_release_iomem;
 
 	/* set 64-bit DMA mask */
-	if (pci_set_dma_mask(dev,  DMA_BIT_MASK(64))) {
+	err = pci_set_dma_mask(dev,  DMA_BIT_MASK(64));
+	if (err != 0) {
 		dev_err(&dev->dev, "Cannot set DMA mask\n");
 		goto fail_release_iomem;
-	} else if (pci_set_consistent_dma_mask(dev, DMA_BIT_MASK(64))) {
+	}
+
+	err = pci_set_consistent_dma_mask(dev, DMA_BIT_MASK(64));
+	if (err != 0) {
 		dev_err(&dev->dev, "Cannot set consistent DMA mask\n");
 		goto fail_release_iomem;
 	}
@@ -638,19 +646,22 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	pci_set_drvdata(dev, udev);
 	igbuio_pci_irqcontrol(&udev->info, 0);
 
-	if (sysfs_create_group(&dev->dev.kobj, &dev_attr_grp))
+	err = sysfs_create_group(&dev->dev.kobj, &dev_attr_grp);
+	if (err != 0)
 		goto fail_release_iomem;
 
 	/* register uio driver */
-	if (uio_register_device(&dev->dev, &udev->info))
-		goto fail_release_iomem;
+	err = uio_register_device(&dev->dev, &udev->info);
+	if (err != 0)
+		goto fail_remove_group;
 
 	pr_info("uio device registered with irq %lx\n", udev->info.irq);
 
 	return 0;
 
-fail_release_iomem:
+fail_remove_group:
 	sysfs_remove_group(&dev->dev.kobj, &dev_attr_grp);
+fail_release_iomem:
 	igbuio_pci_release_iomem(&udev->info);
 	if (udev->mode == RTE_INTR_MODE_MSIX)
 		pci_disable_msix(udev->pdev);
@@ -660,7 +671,7 @@ fail_disable:
 fail_free:
 	kfree(udev);
 
-	return -ENODEV;
+	return err;
 }
 
 static void
