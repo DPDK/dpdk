@@ -52,7 +52,6 @@
 struct rte_uio_pci_dev {
 	struct uio_info info;
 	struct pci_dev *pdev;
-	spinlock_t lock; /* spinlock for accessing PCI config space or msix data in multi tasks/isr */
 	enum rte_intr_mode mode;
 };
 
@@ -224,36 +223,66 @@ static const struct attribute_group dev_attr_grp = {
 	.attrs = dev_attrs,
 };
 
-static inline int
-pci_lock(struct pci_dev * pdev)
-{
-	/* Some function names changes between 3.2.0 and 3.3.0... */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-	pci_block_user_cfg_access(pdev);
-	return 1;
-#else
-	return pci_cfg_access_trylock(pdev);
-#endif
+/* Check if INTX works to control irq's.
+ * Set's INTX_DISABLE flag and reads it back
+ */
+static bool pci_intx_mask_supported(struct pci_dev *dev)
+{
+	bool mask_supported = false;
+	uint16_t orig, new
+
+	pci_block_user_cfg_access(dev);
+	pci_read_config_word(pdev, PCI_COMMAND, &orig);
+	pci_write_config_word(dev, PCI_COMMAND,
+			      orig ^ PCI_COMMAND_INTX_DISABLE);
+	pci_read_config_word(dev, PCI_COMMAND, &new);
+
+	if ((new ^ orig) & ~PCI_COMMAND_INTX_DISABLE) {
+		dev_err(&dev->dev, "Command register changed from "
+			"0x%x to 0x%x: driver or hardware bug?\n", orig, new);
+	} else if ((new ^ orig) & PCI_COMMAND_INTX_DISABLE) {
+		mask_supported = true;
+		pci_write_config_word(dev, PCI_COMMAND, orig);
+	}
+	pci_unblock_user_cfg_access(dev);
 }
 
-static inline void
-pci_unlock(struct pci_dev * pdev)
+static bool pci_check_and_mask_intx(struct pci_dev *pdev)
 {
-	/* Some function names changes between 3.2.0 and 3.3.0... */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-	pci_unblock_user_cfg_access(pdev);
-#else
-	pci_cfg_access_unlock(pdev);
-#endif
-}
+	bool pending;
+	uint32_t status;
 
-/**
+	pci_block_user_cfg_access(dev);
+	pci_read_config_dword(pdev, PCI_COMMAND, &status);
+
+	/* interrupt is not ours, goes to out */
+	pending = (((status >> 16) & PCI_STATUS_INTERRUPT) != 0);
+	if (pending) {
+		uint16_t old, new;
+
+		old = status;
+		if (state != 0)
+			new = old & (~PCI_COMMAND_INTX_DISABLE);
+		else
+			new = old | PCI_COMMAND_INTX_DISABLE;
+
+		if (old != new)
+			pci_write_config_word(pdev, PCI_COMMAND, new);
+	}
+	pci_unblock_user_cfg_access(dev);
+
+	return pending;
+}
+#endif
+
+/*
  * It masks the msix on/off of generating MSI-X messages.
  */
-static int
+static void
 igbuio_msix_mask_irq(struct msi_desc *desc, int32_t state)
 {
-	uint32_t mask_bits = desc->masked;
+	u32 mask_bits = desc->masked;
 	unsigned offset = desc->msi_attrib.entry_nr * PCI_MSIX_ENTRY_SIZE +
 						PCI_MSIX_ENTRY_VECTOR_CTRL;
 
@@ -267,48 +296,6 @@ igbuio_msix_mask_irq(struct msi_desc *desc, int32_t state)
 		readl(desc->mask_base);
 		desc->masked = mask_bits;
 	}
-
-	return 0;
-}
-
-/**
- * This function sets/clears the masks for generating LSC interrupts.
- *
- * @param info
- *   The pointer to struct uio_info.
- * @param on
- *   The on/off flag of masking LSC.
- * @return
- *   -On success, zero value.
- *   -On failure, a negative value.
- */
-static int
-igbuio_set_interrupt_mask(struct rte_uio_pci_dev *udev, int32_t state)
-{
-	struct pci_dev *pdev = udev->pdev;
-
-	if (udev->mode == RTE_INTR_MODE_MSIX) {
-		struct msi_desc *desc;
-
-		list_for_each_entry(desc, &pdev->msi_list, list) {
-			igbuio_msix_mask_irq(desc, state);
-		}
-	} else if (udev->mode == RTE_INTR_MODE_LEGACY) {
-		uint32_t status;
-		uint16_t old, new;
-
-		pci_read_config_dword(pdev, PCI_COMMAND, &status);
-		old = status;
-		if (state != 0)
-			new = old & (~PCI_COMMAND_INTX_DISABLE);
-		else
-			new = old | PCI_COMMAND_INTX_DISABLE;
-
-		if (old != new)
-			pci_write_config_word(pdev, PCI_COMMAND, new);
-	}
-
-	return 0;
 }
 
 /**
@@ -327,20 +314,20 @@ igbuio_set_interrupt_mask(struct rte_uio_pci_dev *udev, int32_t state)
 static int
 igbuio_pci_irqcontrol(struct uio_info *info, s32 irq_state)
 {
-	unsigned long flags;
 	struct rte_uio_pci_dev *udev = igbuio_get_uio_pci_dev(info);
 	struct pci_dev *pdev = udev->pdev;
 
-	spin_lock_irqsave(&udev->lock, flags);
-	if (!pci_lock(pdev)) {
-		spin_unlock_irqrestore(&udev->lock, flags);
-		return -1;
+	pci_cfg_access_lock(pdev);
+	if (udev->mode == RTE_INTR_MODE_LEGACY)
+		pci_intx(pdev, !!irq_state);
+
+	else if (udev->mode == RTE_INTR_MODE_MSIX) {
+		struct msi_desc *desc;
+
+		list_for_each_entry(desc, &pdev->msi_list, list)
+			igbuio_msix_mask_irq(desc, irq_state);
 	}
-
-	igbuio_set_interrupt_mask(udev, irq_state);
-
-	pci_unlock(pdev);
-	spin_unlock_irqrestore(&udev->lock, flags);
+	pci_cfg_access_unlock(pdev);
 
 	return 0;
 }
@@ -352,37 +339,15 @@ igbuio_pci_irqcontrol(struct uio_info *info, s32 irq_state)
 static irqreturn_t
 igbuio_pci_irqhandler(int irq, struct uio_info *info)
 {
-	irqreturn_t ret = IRQ_NONE;
-	unsigned long flags;
 	struct rte_uio_pci_dev *udev = igbuio_get_uio_pci_dev(info);
-	struct pci_dev *pdev = udev->pdev;
-	uint32_t cmd_status_dword;
-	uint16_t status;
 
-	spin_lock_irqsave(&udev->lock, flags);
-	/* block userspace PCI config reads/writes */
-	if (!pci_lock(pdev))
-		goto spin_unlock;
+	/* Legacy mode need to mask in hardware */
+	if (udev->mode == RTE_INTR_MODE_LEGACY &&
+	    !pci_check_and_mask_intx(udev->pdev))
+		return IRQ_NONE;
 
-	/* for legacy mode, interrupt maybe shared */
-	if (udev->mode == RTE_INTR_MODE_LEGACY) {
-		pci_read_config_dword(pdev, PCI_COMMAND, &cmd_status_dword);
-		status = cmd_status_dword >> 16;
-		/* interrupt is not ours, goes to out */
-		if (!(status & PCI_STATUS_INTERRUPT))
-			goto done;
-	}
-
-	igbuio_set_interrupt_mask(udev, 0);
-	ret = IRQ_HANDLED;
-done:
-	/* unblock userspace PCI config reads/writes */
-	pci_unlock(pdev);
-spin_unlock:
-	spin_unlock_irqrestore(&udev->lock, flags);
-	pr_info("irq 0x%x %s\n", irq, (ret == IRQ_HANDLED) ? "handled" : "not handled");
-
-	return ret;
+	/* Message signal mode, no share IRQ and automasked */
+	return IRQ_HANDLED;
 }
 
 #ifdef CONFIG_XEN_DOM0
@@ -591,6 +556,7 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	udev->info.version = "0.1";
 	udev->info.handler = igbuio_pci_irqhandler;
 	udev->info.irqcontrol = igbuio_pci_irqcontrol;
+	udev->info.irq = dev->irq;
 #ifdef CONFIG_XEN_DOM0
 	/* check if the driver run on Xen Dom0 */
 	if (xen_initial_domain())
@@ -598,39 +564,38 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 #endif
 	udev->info.priv = udev;
 	udev->pdev = dev;
-	udev->mode = RTE_INTR_MODE_LEGACY;
-	spin_lock_init(&udev->lock);
 
-	/* check if it need to try msix first */
-	if (igbuio_intr_mode_preferred == RTE_INTR_MODE_MSIX) {
+	switch (igbuio_intr_mode_preferred) {
+	case RTE_INTR_MODE_NONE:
+		udev->info.irq = 0;
+		break;
+	case RTE_INTR_MODE_MSIX:
 		/* Only 1 msi-x vector needed */
 		msix_entry.entry = 0;
 		if (pci_enable_msix(dev, &msix_entry, 1) == 0) {
 			dev_dbg(&dev->dev, "using MSI-X");
+			udev->info.irq = msix_entry.vector;
 			udev->mode = RTE_INTR_MODE_MSIX;
+			break;
 		}
-		else {
-			pci_disable_msix(udev->pdev);
-			pr_info("fail to enable pci msix, or not enough msix entries\n");
-		}
-	}
-	switch (udev->mode) {
-	case RTE_INTR_MODE_MSIX:
-		udev->info.irq_flags = 0;
-		udev->info.irq = msix_entry.vector;
-		break;
-	case RTE_INTR_MODE_MSI:
-		break;
+		/* fall back to INTX */
 	case RTE_INTR_MODE_LEGACY:
-		udev->info.irq_flags = IRQF_SHARED;
-		udev->info.irq = dev->irq;
+		if (pci_intx_mask_supported(dev)) {
+			dev_dbg(&dev->dev, "using INTX");
+			udev->info.irq_flags = IRQF_SHARED;
+			udev->mode = RTE_INTR_MODE_LEGACY;
+		} else {
+			dev_err(&dev->dev, "PCI INTX mask not supported\n");
+			err = -EIO;
+			goto fail_release_iomem;
+		}
 		break;
 	default:
-		break;
+		dev_err(&dev->dev, "invalid IRQ mode %u",
+			igbuio_intr_mode_preferred);
+		err = -EINVAL;
+		goto fail_release_iomem;
 	}
-
-	pci_set_drvdata(dev, udev);
-	igbuio_pci_irqcontrol(&udev->info, 0);
 
 	err = sysfs_create_group(&dev->dev.kobj, &dev_attr_grp);
 	if (err != 0)
@@ -641,7 +606,10 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	if (err != 0)
 		goto fail_remove_group;
 
-	pr_info("uio device registered with irq %lx\n", udev->info.irq);
+	pci_set_drvdata(dev, udev);
+
+	dev_info(&dev->dev, "uio device registered with irq %lx\n",
+		 udev->info.irq);
 
 	return 0;
 
