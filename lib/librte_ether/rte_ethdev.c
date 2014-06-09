@@ -764,6 +764,14 @@ rte_eth_dev_start(uint8_t port_id)
 	dev = &rte_eth_devices[port_id];
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_start, -ENOTSUP);
+
+	if (dev->data->dev_started != 0) {
+		PMD_DEBUG_TRACE("Device with port_id=%" PRIu8
+			" already started\n",
+			port_id);
+		return (0);
+	}
+
 	diag = (*dev->dev_ops->dev_start)(dev);
 	if (diag == 0)
 		dev->data->dev_started = 1;
@@ -791,6 +799,14 @@ rte_eth_dev_stop(uint8_t port_id)
 	dev = &rte_eth_devices[port_id];
 
 	FUNC_PTR_OR_RET(*dev->dev_ops->dev_stop);
+
+	if (dev->data->dev_started == 0) {
+		PMD_DEBUG_TRACE("Device with port_id=%" PRIu8
+			" already stopped\n",
+			port_id);
+		return;
+	}
+
 	dev->data->dev_started = 0;
 	(*dev->dev_ops->dev_stop)(dev);
 }
