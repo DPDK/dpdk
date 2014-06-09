@@ -1580,7 +1580,6 @@ em_alloc_rx_queue_mbufs(struct em_rx_queue *rxq)
 		if (mbuf == NULL) {
 			PMD_INIT_LOG(ERR, "RX mbuf alloc failed "
 				"queue_id=%hu\n", rxq->queue_id);
-			em_rx_queue_release(rxq);
 			return (-ENOMEM);
 		}
 
