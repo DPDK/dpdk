@@ -1802,8 +1802,10 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	/* Free memory prior to re-allocation if needed... */
-	if (dev->data->tx_queues[queue_idx] != NULL)
+	if (dev->data->tx_queues[queue_idx] != NULL) {
 		ixgbe_tx_queue_release(dev->data->tx_queues[queue_idx]);
+		dev->data->tx_queues[queue_idx] = NULL;
+	}
 
 	/* First allocate the tx queue data structure */
 	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct igb_tx_queue),
@@ -2061,8 +2063,10 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	/* Free memory prior to re-allocation if needed... */
-	if (dev->data->rx_queues[queue_idx] != NULL)
+	if (dev->data->rx_queues[queue_idx] != NULL) {
 		ixgbe_rx_queue_release(dev->data->rx_queues[queue_idx]);
+		dev->data->rx_queues[queue_idx] = NULL;
+	}
 
 	/* First allocate the rx queue data structure */
 	rxq = rte_zmalloc_socket("ethdev RX queue", sizeof(struct igb_rx_queue),

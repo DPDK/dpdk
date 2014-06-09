@@ -1212,8 +1212,10 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 			"the TX WTHRESH value to 4, 8, or 16.\n");
 
 	/* Free memory prior to re-allocation if needed */
-	if (dev->data->tx_queues[queue_idx] != NULL)
+	if (dev->data->tx_queues[queue_idx] != NULL) {
 		igb_tx_queue_release(dev->data->tx_queues[queue_idx]);
+		dev->data->tx_queues[queue_idx] = NULL;
+	}
 
 	/* First allocate the tx queue data structure */
 	txq = rte_zmalloc("ethdev TX queue", sizeof(struct igb_tx_queue),
