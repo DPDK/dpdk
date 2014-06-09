@@ -447,7 +447,8 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		    (dev_conf->rxmode.mq_mode == ETH_MQ_RX_DCB_RSS) ||
 		    (dev_conf->txmode.mq_mode == ETH_MQ_TX_DCB)) {
 			/* SRIOV only works in VMDq enable mode */
-			PMD_DEBUG_TRACE("ethdev port_id=%hhu SRIOV active, "
+			PMD_DEBUG_TRACE("ethdev port_id=%" PRIu8
+					" SRIOV active, "
 					"wrong VMDQ mq_mode rx %u tx %u\n",
 					port_id,
 					dev_conf->rxmode.mq_mode,
@@ -460,7 +461,8 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		case ETH_MQ_RX_VMDQ_DCB:
 		case ETH_MQ_RX_VMDQ_DCB_RSS:
 			/* DCB/RSS VMDQ in SRIOV mode, not implement yet */
-			PMD_DEBUG_TRACE("ethdev port_id=%hhu SRIOV active, "
+			PMD_DEBUG_TRACE("ethdev port_id=%" PRIu8
+					" SRIOV active, "
 					"unsupported VMDQ mq_mode rx %u\n",
 					port_id, dev_conf->rxmode.mq_mode);
 			return (-EINVAL);
@@ -475,7 +477,8 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		switch (dev_conf->txmode.mq_mode) {
 		case ETH_MQ_TX_VMDQ_DCB:
 			/* DCB VMDQ in SRIOV mode, not implement yet */
-			PMD_DEBUG_TRACE("ethdev port_id=%hhu SRIOV active, "
+			PMD_DEBUG_TRACE("ethdev port_id=%" PRIu8
+					" SRIOV active, "
 					"unsupported VMDQ mq_mode tx %u\n",
 					port_id, dev_conf->txmode.mq_mode);
 			return (-EINVAL);
@@ -758,7 +761,7 @@ rte_eth_dev_start(uint8_t port_id)
 	PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	if (port_id >= nb_ports) {
-		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		PMD_DEBUG_TRACE("Invalid port_id=%" PRIu8 "\n", port_id);
 		return (-EINVAL);
 	}
 	dev = &rte_eth_devices[port_id];
@@ -793,7 +796,7 @@ rte_eth_dev_stop(uint8_t port_id)
 	PROC_PRIMARY_OR_RET();
 
 	if (port_id >= nb_ports) {
-		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		PMD_DEBUG_TRACE("Invalid port_id=%" PRIu8 "\n", port_id);
 		return;
 	}
 	dev = &rte_eth_devices[port_id];
