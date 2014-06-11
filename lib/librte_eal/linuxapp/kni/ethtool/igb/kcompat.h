@@ -3534,12 +3534,11 @@ extern void _kc_skb_add_rx_frag(struct sk_buff *, int, struct page *,
 /*****************************************************************************/
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,5,0) )
 #define skb_tx_timestamp(skb) do {} while (0)
-#if !(RHEL_RELEASE_CODE && RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6,4))
-static inline bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
+static inline bool __kc_ether_addr_equal(const u8 *addr1, const u8 *addr2)
 {
 	return !compare_ether_addr(addr1, addr2);
 }
-#endif
+#define ether_addr_equal(_addr1, _addr2) __kc_ether_addr_equal((_addr1),(_addr2))
 #else
 #define HAVE_FDB_OPS
 #define HAVE_ETHTOOL_GET_TS_INFO
@@ -3586,7 +3585,6 @@ static inline bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
 #define ADVERTISED_40000baseLR4_Full	(1 << 26)
 #endif
 
-#if defined(ETHTOOL_GEEE) || (RHEL_RELEASE_CODE && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(6,4))
 /**
  * mmd_eee_cap_to_ethtool_sup_t
  * @eee_cap: value of the MMD EEE Capability register
@@ -3594,7 +3592,7 @@ static inline bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
  * A small helper function that translates MMD EEE Capability (3.20) bits
  * to ethtool supported settings.
  */
-static inline u32 mmd_eee_cap_to_ethtool_sup_t(u16 eee_cap)
+static inline u32 __kc_mmd_eee_cap_to_ethtool_sup_t(u16 eee_cap)
 {
 	u32 supported = 0;
 
@@ -3613,6 +3611,8 @@ static inline u32 mmd_eee_cap_to_ethtool_sup_t(u16 eee_cap)
 
 	return supported;
 }
+#define mmd_eee_cap_to_ethtool_sup_t(eee_cap) \
+	__kc_mmd_eee_cap_to_ethtool_sup_t(eee_cap)
 
 /**
  * mmd_eee_adv_to_ethtool_adv_t
@@ -3622,7 +3622,7 @@ static inline u32 mmd_eee_cap_to_ethtool_sup_t(u16 eee_cap)
  * and MMD EEE Link Partner Ability (7.61) bits to ethtool advertisement
  * settings.
  */
-static inline u32 mmd_eee_adv_to_ethtool_adv_t(u16 eee_adv)
+static inline u32 __kc_mmd_eee_adv_to_ethtool_adv_t(u16 eee_adv)
 {
 	u32 adv = 0;
 
@@ -3641,6 +3641,8 @@ static inline u32 mmd_eee_adv_to_ethtool_adv_t(u16 eee_adv)
 
 	return adv;
 }
+#define mmd_eee_adv_to_ethtool_adv_t(eee_adv) \
+	__kc_mmd_eee_adv_to_ethtool_adv_t(eee_adv)
 
 /**
  * ethtool_adv_to_mmd_eee_adv_t
@@ -3650,7 +3652,7 @@ static inline u32 mmd_eee_adv_to_ethtool_adv_t(u16 eee_adv)
  * to EEE advertisements for the MMD EEE Advertisement (7.60) and
  * MMD EEE Link Partner Ability (7.61) registers.
  */
-static inline u16 ethtool_adv_to_mmd_eee_adv_t(u32 adv)
+static inline u16 __kc_ethtool_adv_to_mmd_eee_adv_t(u32 adv)
 {
 	u16 reg = 0;
 
@@ -3669,7 +3671,8 @@ static inline u16 ethtool_adv_to_mmd_eee_adv_t(u32 adv)
 
 	return reg;
 }
-#endif
+#define ethtool_adv_to_mmd_eee_adv_t(adv) \
+	__kc_ethtool_adv_to_mmd_eee_adv_t(adv)
 
 #ifndef pci_pcie_type
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24) )
