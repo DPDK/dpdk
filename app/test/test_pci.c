@@ -81,7 +81,6 @@ struct rte_pci_id my_driver_id2[] = {
 /* IGB & EM NICS */
 #define RTE_PCI_DEV_ID_DECL_EM(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
-#define RTE_PCI_DEV_USE_82575EB_COPPER
 #include <rte_pci_dev_ids.h>
 
 { .vendor_id = 0, /* sentinel */ },
