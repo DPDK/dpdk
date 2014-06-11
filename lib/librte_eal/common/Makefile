@@ -39,6 +39,7 @@ INC += rte_rwlock.h rte_spinlock.h rte_tailq.h rte_interrupts.h rte_alarm.h
 INC += rte_string_fns.h rte_cpuflags.h rte_version.h rte_tailq_elem.h
 INC += rte_eal_memconfig.h rte_malloc_heap.h
 INC += rte_hexdump.h rte_devargs.h rte_dev.h
+INC += rte_common_vect.h
 
 ifeq ($(CONFIG_RTE_INSECURE_FUNCTION_WARNING),y)
 INC += rte_warnings.h
