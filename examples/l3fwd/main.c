@@ -42,8 +42,8 @@
 #include <errno.h>
 #include <getopt.h>
 
-#include <tmmintrin.h>
 #include <rte_common.h>
+#include <rte_common_vect.h>
 #include <rte_byteorder.h>
 #include <rte_log.h>
 #include <rte_memory.h>
@@ -83,7 +83,16 @@
 #define APP_LOOKUP_METHOD             APP_LOOKUP_LPM
 #endif
 
+/*
+ *  When set to zero, simple forwaring path is eanbled.
+ *  When set to one, optimized forwarding path is enabled.
+ *  Note that LPM optimisation path uses SSE4.1 instructions.
+ */
+#if ((APP_LOOKUP_METHOD == APP_LOOKUP_LPM) && !defined(__SSE4_1__))
+#define ENABLE_MULTI_BUFFER_OPTIMIZE	0
+#else
 #define ENABLE_MULTI_BUFFER_OPTIMIZE	1
+#endif
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 #include <rte_hash.h>
@@ -150,10 +159,20 @@
 #define MAX_PKT_BURST     32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
+/*
+ * Try to avoid TX buffering if we have at least MAX_TX_BURST packets to send.
+ */
+#define	MAX_TX_BURST	(MAX_PKT_BURST / 2)
+
 #define NB_SOCKETS 8
 
 /* Configure how many packets ahead to prefetch, when reading packets */
 #define PREFETCH_OFFSET	3
+
+/* Used to mark destination port as 'invalid'. */
+#define	BAD_PORT	((uint16_t)-1)
+
+#define FWDSTEP	4
 
 /*
  * Configurable number of RX/TX ring descriptors
@@ -165,6 +184,11 @@ static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
 static struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
+
+static __m128i val_eth[RTE_MAX_ETHPORTS];
+
+/* replace first 12B of the ethernet header. */
+#define	MASK_ETH	0x3f
 
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
@@ -562,6 +586,84 @@ send_single_packet(struct rte_mbuf *m, uint8_t port)
 	return 0;
 }
 
+static inline __attribute__((always_inline)) void
+send_packetsx4(struct lcore_conf *qconf, uint8_t port,
+	struct rte_mbuf *m[], uint32_t num)
+{
+	uint32_t len, j, n;
+
+	len = qconf->tx_mbufs[port].len;
+
+	/*
+	 * If TX buffer for that queue is empty, and we have enough packets,
+	 * then send them straightway.
+	 */
+	if (num >= MAX_TX_BURST && len == 0) {
+		n = rte_eth_tx_burst(port, qconf->tx_queue_id[port], m, num);
+		if (unlikely(n < num)) {
+			do {
+				rte_pktmbuf_free(m[n]);
+			} while (++n < num);
+		}
+		return;
+	}
+
+	/*
+	 * Put packets into TX buffer for that queue.
+	 */
+
+	n = len + num;
+	n = (n > MAX_PKT_BURST) ? MAX_PKT_BURST - len : num;
+
+	j = 0;
+	switch (n % FWDSTEP) {
+	while (j < n) {
+	case 0:
+		qconf->tx_mbufs[port].m_table[len + j] = m[j];
+		j++;
+	case 3:
+		qconf->tx_mbufs[port].m_table[len + j] = m[j];
+		j++;
+	case 2:
+		qconf->tx_mbufs[port].m_table[len + j] = m[j];
+		j++;
+	case 1:
+		qconf->tx_mbufs[port].m_table[len + j] = m[j];
+		j++;
+	}
+	}
+
+	len += n;
+
+	/* enough pkts to be sent */
+	if (unlikely(len == MAX_PKT_BURST)) {
+
+		send_burst(qconf, MAX_PKT_BURST, port);
+
+		/* copy rest of the packets into the TX buffer. */
+		len = num - n;
+		j = 0;
+		switch (len % FWDSTEP) {
+		while (j < len) {
+		case 0:
+			qconf->tx_mbufs[port].m_table[j] = m[n + j];
+			j++;
+		case 3:
+			qconf->tx_mbufs[port].m_table[j] = m[n + j];
+			j++;
+		case 2:
+			qconf->tx_mbufs[port].m_table[j] = m[n + j];
+			j++;
+		case 1:
+			qconf->tx_mbufs[port].m_table[j] = m[n + j];
+			j++;
+		}
+		}
+	}
+
+	qconf->tx_mbufs[port].len = len;
+}
+
 #ifdef DO_RFC_1812_CHECKS
 static inline int
 is_valid_ipv4_pkt(struct ipv4_hdr *pkt, uint32_t link_len)
@@ -647,14 +749,15 @@ get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, lookup_struct_t * ipv6_l3fwd_
 #endif
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
+
 static inline uint8_t
 get_ipv4_dst_port(void *ipv4_hdr,  uint8_t portid, lookup_struct_t * ipv4_l3fwd_lookup_struct)
 {
 	uint8_t next_hop;
 
 	return (uint8_t) ((rte_lpm_lookup(ipv4_l3fwd_lookup_struct,
-			rte_be_to_cpu_32(((struct ipv4_hdr*)ipv4_hdr)->dst_addr), &next_hop) == 0)?
-			next_hop : portid);
+		rte_be_to_cpu_32(((struct ipv4_hdr *)ipv4_hdr)->dst_addr),
+		&next_hop) == 0) ? next_hop : portid);
 }
 
 static inline uint8_t
@@ -667,7 +770,8 @@ get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, lookup6_struct_t * ipv6_l3fwd
 }
 #endif
 
-#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH) & (ENABLE_MULTI_BUFFER_OPTIMIZE == 1)
+#if ((APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH) && \
+	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
 static inline void l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qconf);
 
 #define MASK_ALL_PKTS    0xf
@@ -886,7 +990,7 @@ simple_ipv6_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 	send_single_packet(m[3], (uint8_t)dst_port[3]);
 
 }
-#endif // End of #if(APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)&(ENABLE_MULTI_BUFFER_OPTIMIZE == 1)
+#endif /* APP_LOOKUP_METHOD */
 
 static inline __attribute__((always_inline)) void
 l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qconf)
@@ -911,13 +1015,16 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 		}
 #endif
 
-		dst_port = get_ipv4_dst_port(ipv4_hdr, portid, qconf->ipv4_lookup_struct);
-		if (dst_port >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port) == 0)
+		 dst_port = get_ipv4_dst_port(ipv4_hdr, portid,
+			qconf->ipv4_lookup_struct);
+		if (dst_port >= RTE_MAX_ETHPORTS ||
+				(enabled_port_mask & 1 << dst_port) == 0)
 			dst_port = portid;
 
 		/* 02:00:00:00:00:xx */
 		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
-		*((uint64_t *)d_addr_bytes) = 0x000000000002 + ((uint64_t)dst_port << 40);
+		*((uint64_t *)d_addr_bytes) = ETHER_LOCAL_ADMIN_ADDR +
+			((uint64_t)dst_port << 40);
 
 #ifdef DO_RFC_1812_CHECKS
 		/* Update time to live and header checksum */
@@ -944,7 +1051,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 
 		/* 02:00:00:00:00:xx */
 		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
-		*((uint64_t *)d_addr_bytes) = 0x000000000002 + ((uint64_t)dst_port << 40);
+		*((uint64_t *)d_addr_bytes) = ETHER_LOCAL_ADMIN_ADDR +
+			((uint64_t)dst_port << 40);
 
 		/* src addr */
 		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
@@ -953,6 +1061,217 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 	}
 
 }
+
+#ifdef DO_RFC_1812_CHECKS
+
+#define	IPV4_MIN_VER_IHL	0x45
+#define	IPV4_MAX_VER_IHL	0x4f
+#define	IPV4_MAX_VER_IHL_DIFF	(IPV4_MAX_VER_IHL - IPV4_MIN_VER_IHL)
+
+/* Minimum value of IPV4 total length (20B) in network byte order. */
+#define	IPV4_MIN_LEN_BE	(sizeof(struct ipv4_hdr) << 8)
+
+/*
+ * From http://www.rfc-editor.org/rfc/rfc1812.txt section 5.2.2:
+ * - The IP version number must be 4.
+ * - The IP header length field must be large enough to hold the
+ *    minimum length legal IP datagram (20 bytes = 5 words).
+ * - The IP total length field must be large enough to hold the IP
+ *   datagram header, whose length is specified in the IP header length
+ *   field.
+ * If we encounter invalid IPV4 packet, then set destination port for it
+ * to BAD_PORT value.
+ */
+static inline __attribute__((always_inline)) void
+rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t flags)
+{
+	uint8_t ihl;
+
+	if ((flags & PKT_RX_IPV4_HDR) != 0) {
+
+		ihl = ipv4_hdr->version_ihl - IPV4_MIN_VER_IHL;
+
+		ipv4_hdr->time_to_live--;
+		ipv4_hdr->hdr_checksum++;
+
+		if (ihl > IPV4_MAX_VER_IHL_DIFF ||
+				((uint8_t)ipv4_hdr->total_length == 0 &&
+				ipv4_hdr->total_length < IPV4_MIN_LEN_BE)) {
+			dp[0] = BAD_PORT;
+		}
+	}
+}
+
+#else
+#define	rfc1812_process(mb, dp)	do { } while (0)
+#endif /* DO_RFC_1812_CHECKS */
+
+
+#if ((APP_LOOKUP_METHOD == APP_LOOKUP_LPM) && \
+	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
+
+static inline __attribute__((always_inline)) uint16_t
+get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
+	uint32_t dst_ipv4, uint8_t portid)
+{
+	uint8_t next_hop;
+	struct ipv6_hdr *ipv6_hdr;
+	struct ether_hdr *eth_hdr;
+
+	if (pkt->ol_flags & PKT_RX_IPV4_HDR) {
+		if (rte_lpm_lookup(qconf->ipv4_lookup_struct, dst_ipv4,
+				&next_hop) != 0)
+			next_hop = portid;
+	} else if (pkt->ol_flags & PKT_RX_IPV6_HDR) {
+		eth_hdr = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+		ipv6_hdr = (struct ipv6_hdr *)(eth_hdr + 1);
+		if (rte_lpm6_lookup(qconf->ipv6_lookup_struct,
+				ipv6_hdr->dst_addr, &next_hop) != 0)
+			next_hop = portid;
+	} else {
+		next_hop = portid;
+	}
+
+	return next_hop;
+}
+
+static inline void
+process_packet(struct lcore_conf *qconf, struct rte_mbuf *pkt,
+	uint16_t *dst_port, uint8_t portid)
+{
+	struct ether_hdr *eth_hdr;
+	struct ipv4_hdr *ipv4_hdr;
+	uint32_t dst_ipv4;
+	uint16_t dp;
+	__m128i te, ve;
+
+	eth_hdr = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+
+	dst_ipv4 = ipv4_hdr->dst_addr;
+	dst_ipv4 = rte_be_to_cpu_32(dst_ipv4);
+	dp = get_dst_port(qconf, pkt, dst_ipv4, portid);
+
+	te = _mm_load_si128((__m128i *)eth_hdr);
+	ve = val_eth[dp];
+
+	dst_port[0] = dp;
+	rfc1812_process(ipv4_hdr, dst_port, pkt->ol_flags);
+
+	te =  _mm_blend_epi16(te, ve, MASK_ETH);
+	_mm_store_si128((__m128i *)eth_hdr, te);
+}
+
+/*
+ * Read ol_flags and destination IPV4 addresses from 4 mbufs.
+ */
+static inline void
+processx4_step1(struct rte_mbuf *pkt[FWDSTEP], __m128i *dip, uint32_t *flag)
+{
+	struct ipv4_hdr *ipv4_hdr;
+	struct ether_hdr *eth_hdr;
+	uint32_t x0, x1, x2, x3;
+
+	eth_hdr = rte_pktmbuf_mtod(pkt[0], struct ether_hdr *);
+	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+	x0 = ipv4_hdr->dst_addr;
+	flag[0] = pkt[0]->ol_flags & PKT_RX_IPV4_HDR;
+
+	eth_hdr = rte_pktmbuf_mtod(pkt[1], struct ether_hdr *);
+	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+	x1 = ipv4_hdr->dst_addr;
+	flag[0] &= pkt[1]->ol_flags;
+
+	eth_hdr = rte_pktmbuf_mtod(pkt[2], struct ether_hdr *);
+	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+	x2 = ipv4_hdr->dst_addr;
+	flag[0] &= pkt[2]->ol_flags;
+
+	eth_hdr = rte_pktmbuf_mtod(pkt[3], struct ether_hdr *);
+	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+	x3 = ipv4_hdr->dst_addr;
+	flag[0] &= pkt[3]->ol_flags;
+
+	dip[0] = _mm_set_epi32(x3, x2, x1, x0);
+}
+
+/*
+ * Lookup into LPM for destination port.
+ * If lookup fails, use incoming port (portid) as destination port.
+ */
+static inline void
+processx4_step2(const struct lcore_conf *qconf, __m128i dip, uint32_t flag,
+	uint8_t portid, struct rte_mbuf *pkt[FWDSTEP], uint16_t dprt[FWDSTEP])
+{
+	rte_xmm_t dst;
+	const  __m128i bswap_mask = _mm_set_epi8(12, 13, 14, 15, 8, 9, 10, 11,
+						4, 5, 6, 7, 0, 1, 2, 3);
+
+	/* Byte swap 4 IPV4 addresses. */
+	dip = _mm_shuffle_epi8(dip, bswap_mask);
+
+	/* if all 4 packets are IPV4. */
+	if (likely(flag != 0)) {
+		rte_lpm_lookupx4(qconf->ipv4_lookup_struct, dip, dprt, portid);
+	} else {
+		dst.m = dip;
+		dprt[0] = get_dst_port(qconf, pkt[0], dst.u32[0], portid);
+		dprt[1] = get_dst_port(qconf, pkt[1], dst.u32[1], portid);
+		dprt[2] = get_dst_port(qconf, pkt[2], dst.u32[2], portid);
+		dprt[3] = get_dst_port(qconf, pkt[3], dst.u32[3], portid);
+	}
+}
+
+/*
+ * Update source and destination MAC addresses in the ethernet header.
+ * Perform RFC1812 checks and updates for IPV4 packets.
+ */
+static inline void
+processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
+{
+	__m128i te[FWDSTEP];
+	__m128i ve[FWDSTEP];
+	__m128i *p[FWDSTEP];
+
+	p[0] = (rte_pktmbuf_mtod(pkt[0], __m128i *));
+	p[1] = (rte_pktmbuf_mtod(pkt[1], __m128i *));
+	p[2] = (rte_pktmbuf_mtod(pkt[2], __m128i *));
+	p[3] = (rte_pktmbuf_mtod(pkt[3], __m128i *));
+
+	ve[0] = val_eth[dst_port[0]];
+	te[0] = _mm_load_si128(p[0]);
+
+	ve[1] = val_eth[dst_port[1]];
+	te[1] = _mm_load_si128(p[1]);
+
+	ve[2] = val_eth[dst_port[2]];
+	te[2] = _mm_load_si128(p[2]);
+
+	ve[3] = val_eth[dst_port[3]];
+	te[3] = _mm_load_si128(p[3]);
+
+	/* Update first 12 bytes, keep rest bytes intact. */
+	te[0] =  _mm_blend_epi16(te[0], ve[0], MASK_ETH);
+	te[1] =  _mm_blend_epi16(te[1], ve[1], MASK_ETH);
+	te[2] =  _mm_blend_epi16(te[2], ve[2], MASK_ETH);
+	te[3] =  _mm_blend_epi16(te[3], ve[3], MASK_ETH);
+
+	_mm_store_si128(p[0], te[0]);
+	_mm_store_si128(p[1], te[1]);
+	_mm_store_si128(p[2], te[2]);
+	_mm_store_si128(p[3], te[3]);
+
+	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[0] + 1),
+		&dst_port[0], pkt[0]->ol_flags);
+	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[1] + 1),
+		&dst_port[1], pkt[1]->ol_flags);
+	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[2] + 1),
+		&dst_port[2], pkt[2]->ol_flags);
+	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[3] + 1),
+		&dst_port[3], pkt[3]->ol_flags);
+}
+
+#endif /* APP_LOOKUP_METHOD */
 
 /* main processing loop */
 static int
@@ -964,7 +1283,16 @@ main_loop(__attribute__((unused)) void *dummy)
 	int i, j, nb_rx;
 	uint8_t portid, queueid;
 	struct lcore_conf *qconf;
-	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
+	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
+		US_PER_S * BURST_TX_DRAIN_US;
+
+#if ((APP_LOOKUP_METHOD == APP_LOOKUP_LPM) && \
+	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
+	int32_t k;
+	uint16_t dst_port[MAX_PKT_BURST];
+	__m128i dip[MAX_PKT_BURST / FWDSTEP];
+	uint32_t flag[MAX_PKT_BURST / FWDSTEP];
+#endif
 
 	prev_tsc = 0;
 
@@ -1003,7 +1331,7 @@ main_loop(__attribute__((unused)) void *dummy)
 			for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
 				if (qconf->tx_mbufs[portid].len == 0)
 					continue;
-				send_burst(&lcore_conf[lcore_id],
+				send_burst(qconf,
 					qconf->tx_mbufs[portid].len,
 					portid);
 				qconf->tx_mbufs[portid].len = 0;
@@ -1018,10 +1346,18 @@ main_loop(__attribute__((unused)) void *dummy)
 		for (i = 0; i < qconf->n_rx_queue; ++i) {
 			portid = qconf->rx_queue_list[i].port_id;
 			queueid = qconf->rx_queue_list[i].queue_id;
-			nb_rx = rte_eth_rx_burst(portid, queueid, pkts_burst, MAX_PKT_BURST);
-#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH) & (ENABLE_MULTI_BUFFER_OPTIMIZE == 1)
+			nb_rx = rte_eth_rx_burst(portid, queueid, pkts_burst,
+				MAX_PKT_BURST);
+			if (nb_rx == 0)
+				continue;
+
+#if (ENABLE_MULTI_BUFFER_OPTIMIZE == 1)
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 			{
-				/* Send nb_rx - nb_rx%4 packets in groups of 4.*/
+				/*
+				 * Send nb_rx - nb_rx%4 packets
+				 * in groups of 4.
+				 */
 				int32_t n = RTE_ALIGN_FLOOR(nb_rx, 4);
 				for (j = 0; j < n ; j+=4) {
 					uint32_t ol_flag = pkts_burst[j]->ol_flags
@@ -1050,7 +1386,71 @@ main_loop(__attribute__((unused)) void *dummy)
 								portid, qconf);
 				}
 			}
-#else
+#elif (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
+
+			k = RTE_ALIGN_FLOOR(nb_rx, FWDSTEP);
+			for (j = 0; j != k; j += FWDSTEP) {
+				processx4_step1(&pkts_burst[j],
+					&dip[j / FWDSTEP],
+					&flag[j / FWDSTEP]);
+			}
+
+			k = RTE_ALIGN_FLOOR(nb_rx, FWDSTEP);
+			for (j = 0; j != k; j += FWDSTEP) {
+				processx4_step2(qconf, dip[j / FWDSTEP],
+					flag[j / FWDSTEP], portid,
+					&pkts_burst[j], &dst_port[j]);
+			}
+
+			k = RTE_ALIGN_FLOOR(nb_rx, FWDSTEP);
+			for (j = 0; j != k; j += FWDSTEP) {
+				processx4_step3(&pkts_burst[j], &dst_port[j]);
+			}
+
+			/* Process up to last 3 packets one by one. */
+			switch (nb_rx % FWDSTEP) {
+			case 3:
+				process_packet(qconf, pkts_burst[j],
+					dst_port + j, portid);
+				j++;
+			case 2:
+				process_packet(qconf, pkts_burst[j],
+					dst_port + j, portid);
+				j++;
+			case 1:
+				process_packet(qconf, pkts_burst[j],
+					dst_port + j, portid);
+				j++;
+			}
+
+			/*
+			 * Send packets out, through destination port.
+			 * Try to group packets with the same destination port.
+			 * If destination port for the packet equals BAD_PORT,
+			 * then free the packet without sending it out.
+			 */
+			for (j = 0; j < nb_rx; j = k) {
+
+				uint16_t cn, pn = dst_port[j];
+
+				k = j;
+				do {
+					cn = dst_port[k];
+				} while (cn != BAD_PORT && pn == cn &&
+						++k < nb_rx);
+
+				send_packetsx4(qconf, pn, pkts_burst + j,
+					k - j);
+
+				if (cn == BAD_PORT) {
+					rte_pktmbuf_free(pkts_burst[k]);
+					k += 1;
+				}
+			}
+
+#endif /* APP_LOOKUP_METHOD */
+#else /* ENABLE_MULTI_BUFFER_OPTIMIZE == 0 */
+
 			/* Prefetch first packets */
 			for (j = 0; j < PREFETCH_OFFSET && j < nb_rx; j++) {
 				rte_prefetch0(rte_pktmbuf_mtod(
@@ -1061,14 +1461,17 @@ main_loop(__attribute__((unused)) void *dummy)
 			for (j = 0; j < (nb_rx - PREFETCH_OFFSET); j++) {
 				rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[
 						j + PREFETCH_OFFSET], void *));
-				l3fwd_simple_forward(pkts_burst[j], portid, qconf);
+				l3fwd_simple_forward(pkts_burst[j], portid,
+					qconf);
 			}
 
 			/* Forward remaining prefetched packets */
 			for (; j < nb_rx; j++) {
-				l3fwd_simple_forward(pkts_burst[j], portid, qconf);
+				l3fwd_simple_forward(pkts_burst[j], portid,
+					qconf);
 			}
-#endif // End of #if((ENABLE_MULTI_BUFFER_OPTIMIZE == 1)&(APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH))
+#endif /* ENABLE_MULTI_BUFFER_OPTIMIZE */
+
 		}
 	}
 }
@@ -1459,12 +1862,12 @@ populate_ipv4_few_flow_into_table(const struct rte_hash* h)
 		convert_ipv4_5tuple(&entry.key, &newkey);
 		ret = rte_hash_add_key (h,(void *) &newkey);
 		if (ret < 0) {
-			rte_exit(EXIT_FAILURE, "Unable to add entry %u to the"
-                                "l3fwd hash.\n", i);
+			rte_exit(EXIT_FAILURE, "Unable to add entry %" PRIu32
+				" to the l3fwd hash.\n", i);
 		}
 		ipv4_l3fwd_out_if[ret] = entry.if_out;
 	}
-	printf("Hash: Adding 0x%x keys\n", array_len);
+	printf("Hash: Adding 0x%" PRIx32 " keys\n", array_len);
 }
 
 #define BIT_16_TO_23 0x00ff0000
@@ -1484,12 +1887,12 @@ populate_ipv6_few_flow_into_table(const struct rte_hash* h)
 		convert_ipv6_5tuple(&entry.key, &newkey);
 		ret = rte_hash_add_key (h, (void *) &newkey);
 		if (ret < 0) {
-			rte_exit(EXIT_FAILURE, "Unable to add entry %u to the"
-                                "l3fwd hash.\n", i);
+			rte_exit(EXIT_FAILURE, "Unable to add entry %" PRIu32
+				" to the l3fwd hash.\n", i);
 		}
 		ipv6_l3fwd_out_if[ret] = entry.if_out;
 	}
-	printf("Hash: Adding 0x%xkeys\n", array_len);
+	printf("Hash: Adding 0x%" PRIx32 "keys\n", array_len);
 }
 
 #define NUMBER_PORT_USED 4
@@ -1657,6 +2060,12 @@ setup_lpm(int socketid)
 
 	/* populate the LPM table */
 	for (i = 0; i < IPV4_L3FWD_NUM_ROUTES; i++) {
+
+		/* skip unused ports */
+		if ((1 << ipv4_l3fwd_route_array[i].if_out &
+				enabled_port_mask) == 0)
+			continue;
+
 		ret = rte_lpm_add(ipv4_l3fwd_lookup_struct[socketid],
 			ipv4_l3fwd_route_array[i].ip,
 			ipv4_l3fwd_route_array[i].depth,
@@ -1688,6 +2097,12 @@ setup_lpm(int socketid)
 
 	/* populate the LPM table */
 	for (i = 0; i < IPV6_L3FWD_NUM_ROUTES; i++) {
+
+		/* skip unused ports */
+		if ((1 << ipv6_l3fwd_route_array[i].if_out &
+				enabled_port_mask) == 0)
+			continue;
+
 		ret = rte_lpm6_add(ipv6_l3fwd_lookup_struct[socketid],
 			ipv6_l3fwd_route_array[i].ip,
 			ipv6_l3fwd_route_array[i].depth,
@@ -1880,6 +2295,14 @@ MAIN(int argc, char **argv)
 		rte_eth_macaddr_get(portid, &ports_eth_addr[portid]);
 		print_ethaddr(" Address:", &ports_eth_addr[portid]);
 		printf(", ");
+
+		/*
+		 * prepare dst and src MACs for each port.
+		 */
+		*(uint64_t *)(val_eth + portid) =
+			ETHER_LOCAL_ADMIN_ADDR + ((uint64_t)portid << 40);
+		ether_addr_copy(&ports_eth_addr[portid],
+			(struct ether_addr *)(val_eth + portid) + 1);
 
 		/* init memory */
 		ret = init_mem(NB_MBUF);
