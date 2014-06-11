@@ -64,6 +64,7 @@ struct lcore_config {
 	volatile enum rte_lcore_state_t state; /**< lcore state */
 	unsigned socket_id;        /**< physical socket id for this lcore */
 	unsigned core_id;          /**< core number on socket for this lcore */
+	int core_index;            /**< relative index, starting from 0 */
 };
 
 /**
@@ -107,6 +108,25 @@ rte_lcore_count(void)
 {
 	const struct rte_config *cfg = rte_eal_get_configuration();
 	return cfg->lcore_count;
+}
+
+/**
+ * Return the index of the lcore starting from zero.
+ * The order is physical or given by command line (-l option).
+ *
+ * @param lcore_id
+ *   The targeted lcore, or -1 for the current one.
+ * @return
+ *   The relative index, or -1 if not enabled.
+ */
+static inline int
+rte_lcore_index(int lcore_id)
+{
+	if (lcore_id >= RTE_MAX_LCORE)
+		return -1;
+	if (lcore_id < 0)
+		lcore_id = rte_lcore_id();
+	return lcore_config[lcore_id].core_index;
 }
 
 /**

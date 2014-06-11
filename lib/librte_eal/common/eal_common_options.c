@@ -185,19 +185,23 @@ eal_parse_coremask(const char *coremask)
 					return -1;
 				}
 				cfg->lcore_role[idx] = ROLE_RTE;
+				lcore_config[idx].core_index = count;
 				if (count == 0)
 					cfg->master_lcore = idx;
 				count++;
 			} else {
 				cfg->lcore_role[idx] = ROLE_OFF;
+				lcore_config[idx].core_index = -1;
 			}
 		}
 	}
 	for (; i >= 0; i--)
 		if (coremask[i] != '0')
 			return -1;
-	for (; idx < RTE_MAX_LCORE; idx++)
+	for (; idx < RTE_MAX_LCORE; idx++) {
 		cfg->lcore_role[idx] = ROLE_OFF;
+		lcore_config[idx].core_index = -1;
+	}
 	if (count == 0)
 		return -1;
 	/* Update the count of enabled logical cores of the EAL configuration */
@@ -225,9 +229,11 @@ eal_parse_corelist(const char *corelist)
 	while ((i > 0) && isblank(corelist[i - 1]))
 		i--;
 
-	/* Reset core roles */
-	for (idx = 0; idx < RTE_MAX_LCORE; idx++)
+	/* Reset config */
+	for (idx = 0; idx < RTE_MAX_LCORE; idx++) {
 		cfg->lcore_role[idx] = ROLE_OFF;
+		lcore_config[idx].core_index = -1;
+	}
 
 	/* Get list of cores */
 	min = RTE_MAX_LCORE;
@@ -250,6 +256,7 @@ eal_parse_corelist(const char *corelist)
 				min = idx;
 			for (idx = min; idx <= max; idx++) {
 				cfg->lcore_role[idx] = ROLE_RTE;
+				lcore_config[idx].core_index = count;
 				if (count == 0)
 					cfg->master_lcore = idx;
 				count++;
