@@ -126,19 +126,29 @@ nic_stats_display(portid_t port_id)
 	       nic_stats_border, port_id, nic_stats_border);
 
 	if ((!port->rx_queue_stats_mapping_enabled) && (!port->tx_queue_stats_mapping_enabled)) {
-		printf("  RX-packets: %-10"PRIu64" RX-errors: %-10"PRIu64"RX-bytes: "
-		       "%-"PRIu64"\n"
-		       "  TX-packets: %-10"PRIu64" TX-errors: %-10"PRIu64"TX-bytes: "
+		printf("  RX-packets: %-10"PRIu64" RX-missed: %-10"PRIu64" RX-bytes:  "
 		       "%-"PRIu64"\n",
-		       stats.ipackets, stats.ierrors, stats.ibytes,
+		       stats.ipackets, stats.imissed, stats.ibytes);
+		printf("  RX-badcrc:  %-10"PRIu64" RX-badlen: %-10"PRIu64" RX-errors: "
+		       "%-"PRIu64"\n",
+		       stats.ibadcrc, stats.ibadlen, stats.ierrors);
+		printf("  RX-nombuf:  %-10"PRIu64"\n",
+		       stats.rx_nombuf);
+		printf("  TX-packets: %-10"PRIu64" TX-errors: %-10"PRIu64" TX-bytes:  "
+		       "%-"PRIu64"\n",
 		       stats.opackets, stats.oerrors, stats.obytes);
 	}
 	else {
 		printf("  RX-packets:              %10"PRIu64"    RX-errors: %10"PRIu64
-		       "    RX-bytes: %10"PRIu64"\n"
-		       "  TX-packets:              %10"PRIu64"    TX-errors: %10"PRIu64
+		       "    RX-bytes: %10"PRIu64"\n",
+		       stats.ipackets, stats.ierrors, stats.ibytes);
+		printf("  RX-badcrc:               %10"PRIu64"    RX-badlen: %10"PRIu64
+		       "  RX-errors:  %10"PRIu64"\n",
+		       stats.ibadcrc, stats.ibadlen, stats.ierrors);
+		printf("  RX-nombuf:               %10"PRIu64"\n",
+		       stats.rx_nombuf);
+		printf("  TX-packets:              %10"PRIu64"    TX-errors: %10"PRIu64
 		       "    TX-bytes: %10"PRIu64"\n",
-		       stats.ipackets, stats.ierrors, stats.ibytes,
 		       stats.opackets, stats.oerrors, stats.obytes);
 	}
 

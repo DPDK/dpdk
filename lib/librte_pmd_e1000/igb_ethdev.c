@@ -1140,8 +1140,13 @@ eth_igb_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 		return;
 
 	/* Rx Errors */
-	rte_stats->ierrors = stats->rxerrc + stats->crcerrs + stats->algnerrc +
-	    stats->ruc + stats->roc + stats->mpc + stats->cexterr;
+	rte_stats->ibadcrc = stats->crcerrs;
+	rte_stats->ibadlen = stats->rlec + stats->ruc + stats->roc;
+	rte_stats->imissed = stats->mpc;
+	rte_stats->ierrors = rte_stats->ibadcrc +
+	                     rte_stats->ibadlen +
+	                     rte_stats->imissed +
+	                     stats->rxerrc + stats->algnerrc + stats->cexterr;
 
 	/* Tx Errors */
 	rte_stats->oerrors = stats->ecol + stats->latecol;

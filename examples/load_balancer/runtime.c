@@ -215,7 +215,7 @@ app_lcore_io_rx(
 			printf("I/O RX %u in (NIC port %u): NIC drop ratio = %.2f avg burst size = %.2f\n",
 				lcore,
 				(unsigned) port,
-				(double) stats.ierrors / (double) (stats.ierrors + stats.ipackets),
+				(double) stats.imissed / (double) (stats.imissed + stats.ipackets),
 				((double) lp->rx.nic_queues_count[i]) / ((double) lp->rx.nic_queues_iters[i]));
 			lp->rx.nic_queues_iters[i] = 0;
 			lp->rx.nic_queues_count[i] = 0;

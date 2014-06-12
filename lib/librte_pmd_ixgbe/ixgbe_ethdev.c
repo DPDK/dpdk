@@ -1818,9 +1818,15 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	}
 
 	/* Rx Errors */
-	stats->ierrors = total_missed_rx + hw_stats->crcerrs +
-		hw_stats->rlec;
+	stats->ibadcrc  = hw_stats->crcerrs;
+	stats->ibadlen  = hw_stats->rlec + hw_stats->ruc + hw_stats->roc;
+	stats->imissed  = total_missed_rx;
+	stats->ierrors  = stats->ibadcrc +
+	                  stats->ibadlen +
+	                  stats->imissed +
+	                  hw_stats->illerrc + hw_stats->errbc;
 
+	/* Tx Errors */
 	stats->oerrors  = 0;
 
 	/* XON/XOFF pause frames */

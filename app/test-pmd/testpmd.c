@@ -770,39 +770,45 @@ fwd_port_stats_display(portid_t port_id, struct rte_eth_stats *stats)
 	if ((!port->rx_queue_stats_mapping_enabled) && (!port->tx_queue_stats_mapping_enabled)) {
 		printf("  RX-packets: %-14"PRIu64" RX-dropped: %-14"PRIu64"RX-total: "
 		       "%-"PRIu64"\n",
-		       stats->ipackets, stats->ierrors,
-		       (uint64_t) (stats->ipackets + stats->ierrors));
+		       stats->ipackets, stats->imissed,
+		       (uint64_t) (stats->ipackets + stats->imissed));
 
 		if (cur_fwd_eng == &csum_fwd_engine)
 			printf("  Bad-ipcsum: %-14"PRIu64" Bad-l4csum: %-14"PRIu64" \n",
 			       port->rx_bad_ip_csum, port->rx_bad_l4_csum);
+		if (((stats->ierrors - stats->imissed) + stats->rx_nombuf) > 0) {
+			printf("  RX-badcrc:  %-14"PRIu64" RX-badlen:  %-14"PRIu64
+			       "RX-error: %-"PRIu64"\n",
+			       stats->ibadcrc, stats->ibadlen, stats->ierrors);
+			printf("  RX-nombufs: %-14"PRIu64"\n", stats->rx_nombuf);
+		}
 
 		printf("  TX-packets: %-14"PRIu64" TX-dropped: %-14"PRIu64"TX-total: "
 		       "%-"PRIu64"\n",
 		       stats->opackets, port->tx_dropped,
 		       (uint64_t) (stats->opackets + port->tx_dropped));
-
-		if (stats->rx_nombuf > 0)
-			printf("  RX-nombufs: %-14"PRIu64"\n", stats->rx_nombuf);
-
 	}
 	else {
 		printf("  RX-packets:             %14"PRIu64"    RX-dropped:%14"PRIu64"    RX-total:"
 		       "%14"PRIu64"\n",
-		       stats->ipackets, stats->ierrors,
-		       (uint64_t) (stats->ipackets + stats->ierrors));
+		       stats->ipackets, stats->imissed,
+		       (uint64_t) (stats->ipackets + stats->imissed));
 
 		if (cur_fwd_eng == &csum_fwd_engine)
 			printf("  Bad-ipcsum:%14"PRIu64"    Bad-l4csum:%14"PRIu64"\n",
 			       port->rx_bad_ip_csum, port->rx_bad_l4_csum);
+		if (((stats->ierrors - stats->imissed) + stats->rx_nombuf) > 0) {
+			printf("  RX-badcrc:              %14"PRIu64"    RX-badlen: %14"PRIu64
+			       "    RX-error:%"PRIu64"\n",
+			       stats->ibadcrc, stats->ibadlen, stats->ierrors);
+			printf("  RX-nombufs:             %14"PRIu64"\n",
+			       stats->rx_nombuf);
+		}
 
 		printf("  TX-packets:             %14"PRIu64"    TX-dropped:%14"PRIu64"    TX-total:"
 		       "%14"PRIu64"\n",
 		       stats->opackets, port->tx_dropped,
 		       (uint64_t) (stats->opackets + port->tx_dropped));
-
-		if (stats->rx_nombuf > 0)
-			printf("  RX-nombufs:%14"PRIu64"\n", stats->rx_nombuf);
 	}
 
 	/* Display statistics of XON/XOFF pause frames, if any. */
@@ -1164,8 +1170,8 @@ stop_packet_forwarding(void)
 		port->stats.ibytes = 0;
 		stats.obytes   -= port->stats.obytes;
 		port->stats.obytes = 0;
-		stats.ierrors  -= port->stats.ierrors;
-		port->stats.ierrors = 0;
+		stats.imissed  -= port->stats.imissed;
+		port->stats.imissed = 0;
 		stats.oerrors  -= port->stats.oerrors;
 		port->stats.oerrors = 0;
 		stats.rx_nombuf -= port->stats.rx_nombuf;
@@ -1177,7 +1183,7 @@ stop_packet_forwarding(void)
 
 		total_recv += stats.ipackets;
 		total_xmit += stats.opackets;
-		total_rx_dropped += stats.ierrors;
+		total_rx_dropped += stats.imissed;
 		total_tx_dropped += port->tx_dropped;
 		total_rx_nombuf  += stats.rx_nombuf;
 

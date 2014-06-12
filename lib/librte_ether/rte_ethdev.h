@@ -186,6 +186,9 @@ struct rte_eth_stats {
 	uint64_t opackets;  /**< Total number of successfully transmitted packets.*/
 	uint64_t ibytes;    /**< Total number of successfully received bytes. */
 	uint64_t obytes;    /**< Total number of successfully transmitted bytes. */
+	uint64_t imissed;   /**< Total of RX missed packets (e.g full FIFO). */
+	uint64_t ibadcrc;   /**< Total of RX packets with CRC error. */
+	uint64_t ibadlen;   /**< Total of RX packets with bad length. */
 	uint64_t ierrors;   /**< Total number of erroneous received packets. */
 	uint64_t oerrors;   /**< Total number of failed transmitted packets. */
 	uint64_t imcasts;   /**< Total number of multicast received packets. */
