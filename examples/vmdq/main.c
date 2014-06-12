@@ -534,7 +534,7 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 					update_mac_address(buf[i], dport);
 
 				const uint16_t txCount = rte_eth_tx_burst(dport,
-					lcore_id, buf, rxCount);
+					core_id, buf, rxCount);
 
 				if (txCount != rxCount) {
 					for (i = txCount; i < rxCount; i++)
