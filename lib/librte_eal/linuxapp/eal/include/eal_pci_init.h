@@ -34,6 +34,8 @@
 #ifndef EAL_PCI_INIT_H_
 #define EAL_PCI_INIT_H_
 
+#include "eal_vfio.h"
+
 struct pci_map {
 	void *addr;
 	uint64_t offset;
@@ -62,5 +64,34 @@ void *pci_map_resource(void *requested_addr, int fd, off_t offset,
 
 /* map IGB_UIO resource prototype */
 int pci_uio_map_resource(struct rte_pci_device *dev);
+
+#ifdef VFIO_PRESENT
+
+#define VFIO_MAX_GROUPS 64
+
+int pci_vfio_enable(void);
+int pci_vfio_is_enabled(void);
+
+/* map VFIO resource prototype */
+int pci_vfio_map_resource(struct rte_pci_device *dev);
+
+/*
+ * we don't need to store device fd's anywhere since they can be obtained from
+ * the group fd via an ioctl() call.
+ */
+struct vfio_group {
+	int group_no;
+	int fd;
+};
+
+struct vfio_config {
+	int vfio_enabled;
+	int vfio_container_fd;
+	int vfio_container_has_dma;
+	int vfio_group_idx;
+	struct vfio_group vfio_groups[VFIO_MAX_GROUPS];
+};
+
+#endif
 
 #endif /* EAL_PCI_INIT_H_ */

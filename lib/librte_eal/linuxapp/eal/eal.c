@@ -649,6 +649,8 @@ eal_parse_args(int argc, char **argv)
 	internal_config.force_sockets = 0;
 	internal_config.syslog_facility = LOG_DAEMON;
 	internal_config.xen_dom0_support = 0;
+	/* if set to NONE, interrupt mode is determined automatically */
+	internal_config.vfio_intr_mode = RTE_INTR_MODE_NONE;
 #ifdef RTE_LIBEAL_USE_HPET
 	internal_config.no_hpet = 0;
 #else

@@ -40,6 +40,7 @@
 #define _EAL_LINUXAPP_INTERNAL_CFG
 
 #include <rte_eal.h>
+#include <rte_pci_dev_feature_defs.h>
 
 #define MAX_HUGEPAGE_SIZES 3  /**< support up to 3 page sizes */
 
@@ -76,6 +77,8 @@ struct internal_config {
 	volatile uint64_t socket_mem[RTE_MAX_NUMA_NODES]; /**< amount of memory per socket */
 	uintptr_t base_virtaddr;          /**< base address to try and reserve memory from */
 	volatile int syslog_facility;	  /**< facility passed to openlog() */
+	/** default interrupt mode for VFIO */
+	volatile enum rte_intr_mode vfio_intr_mode;
 	const char *hugefile_prefix;      /**< the base filename of hugetlbfs files */
 	const char *hugepage_dir;         /**< specific hugetlbfs directory to use */
 

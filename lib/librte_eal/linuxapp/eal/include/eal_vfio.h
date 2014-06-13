@@ -42,6 +42,12 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
 #include <linux/vfio.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
+#define RTE_PCI_MSIX_TABLE_BIR 0x7
+#else
+#define RTE_PCI_MSIX_TABLE_BIR PCI_MSIX_TABLE_BIR
+#endif
+
 #define VFIO_PRESENT
 #endif /* kernel version */
 #endif /* RTE_EAL_VFIO */
