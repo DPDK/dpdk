@@ -1,6 +1,7 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2014 6WIND S.A.
+#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -12,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of 6WIND S.A. nor the names of its
+#     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -33,37 +34,23 @@ $(error "Please define RTE_SDK environment variable")
 endif
 
 # Default target, can be overriden by command line or environment
-RTE_TARGET ?= x86_64-native-linuxapp-gcc
+RTE_TARGET ?= x86_64-default-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-y += cmdline
-ifneq ($(ICP_ROOT),)
-DIRS-y += dpdk_qat
-endif
-DIRS-y += exception_path
-DIRS-y += helloworld
-DIRS-y += ip_reassembly
-DIRS-$(CONFIG_RTE_MBUF_SCATTER_GATHER) += ipv4_frag
-DIRS-$(CONFIG_RTE_MBUF_SCATTER_GATHER) += ipv4_multicast
-DIRS-$(CONFIG_RTE_LIBRTE_KNI) += kni
-DIRS-y += l2fwd
-DIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += l2fwd-ivshmem
-DIRS-y += l3fwd
-DIRS-$(CONFIG_RTE_LIBRTE_ACL) += l3fwd-acl
-DIRS-y += l3fwd-power
-DIRS-y += l3fwd-vf
-DIRS-y += link_status_interrupt
-DIRS-y += load_balancer
-DIRS-y += multi_process
-DIRS-y += netmap_compat/bridge
-DIRS-$(CONFIG_RTE_LIBRTE_METER) += qos_meter
-DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += qos_sched
-DIRS-y += quota_watermark
-DIRS-y += timer
-DIRS-y += vhost
-DIRS-$(CONFIG_RTE_LIBRTE_XEN_DOM0) += vhost_xen
-DIRS-y += vmdq
-DIRS-y += vmdq_dcb
+# binary name
+APP = l3fwd-acl
 
-include $(RTE_SDK)/mk/rte.extsubdir.mk
+# all source are stored in SRCS-y
+SRCS-y := main.c
+
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+# workaround for a gcc bug with noreturn attribute
+# http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
+ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
+CFLAGS_main.o += -Wno-return-type
+endif
+
+include $(RTE_SDK)/mk/rte.extapp.mk
