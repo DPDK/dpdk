@@ -66,3 +66,8 @@ CONFIG_RTE_TOOLCHAIN_ICC=y
 # KNI is not supported on 32-bit
 #
 CONFIG_RTE_LIBRTE_KNI=n
+
+#
+# Vectorized PMD is not supported on 32-bit
+#
+CONFIG_RTE_IXGBE_INC_VECTOR=n
