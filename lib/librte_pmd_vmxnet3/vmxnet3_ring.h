@@ -79,7 +79,7 @@ vmxnet3_cmd_ring_adv_next2fill(struct vmxnet3_cmd_ring *ring)
 static inline void
 vmxnet3_cmd_ring_adv_next2comp(struct vmxnet3_cmd_ring *ring)
 {
-   VMXNET3_INC_RING_IDX_ONLY(ring->next2comp, ring->size);
+	VMXNET3_INC_RING_IDX_ONLY(ring->next2comp, ring->size);
 }
 
 static inline uint32_t
@@ -96,12 +96,12 @@ vmxnet3_cmd_ring_desc_empty(struct vmxnet3_cmd_ring *ring)
 }
 
 typedef struct vmxnet3_comp_ring {
-	uint32_t               size;
-	uint32_t               next2proc;
-	uint8_t                gen;
-	uint8_t                intr_idx;
+	uint32_t	       size;
+	uint32_t	       next2proc;
+	uint8_t		       gen;
+	uint8_t		       intr_idx;
 	Vmxnet3_GenericDesc    *base;
-	uint64_t               basePA;
+	uint64_t	       basePA;
 } vmxnet3_comp_ring_t;
 
 static inline void

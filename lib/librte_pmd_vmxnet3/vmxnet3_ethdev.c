@@ -216,24 +216,24 @@ eth_vmxnet3_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	hw->bufs_per_pkt = 1;
 
 	/* Check h/w version compatibility with driver. */
-    ver = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_VRRS);
-    PMD_INIT_LOG(DEBUG, "Harware version : %d\n", ver);
-    if (ver & 0x1)
+	ver = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_VRRS);
+	PMD_INIT_LOG(DEBUG, "Harware version : %d\n", ver);
+	if (ver & 0x1)
 		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_VRRS, 1);
-    else {
+	else {
 		PMD_INIT_LOG(ERR, "Uncompatiable h/w version, should be 0x1\n");
 		return -EIO;
-    }
+	}
 
-    /* Check UPT version compatibility with driver. */
-    ver = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_UVRS);
-    PMD_INIT_LOG(DEBUG, "UPT harware version : %d\n", ver);
-    if (ver & 0x1)
+	/* Check UPT version compatibility with driver. */
+	ver = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_UVRS);
+	PMD_INIT_LOG(DEBUG, "UPT harware version : %d\n", ver);
+	if (ver & 0x1)
 		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_UVRS, 1);
-    else {
+	else {
 		PMD_INIT_LOG(ERR, "Incompatiable UPT version.\n");
 		return -EIO;
-    }
+	}
 
 	/* Getting MAC Address */
 	mac_lo = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_MACL);
@@ -243,20 +243,20 @@ eth_vmxnet3_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("vmxnet3", ETHER_ADDR_LEN *
-			VMXNET3_MAX_MAC_ADDRS, 0);
+					       VMXNET3_MAX_MAC_ADDRS, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR,
-			"Failed to allocate %d bytes needed to store MAC addresses",
-			ETHER_ADDR_LEN * VMXNET3_MAX_MAC_ADDRS);
+			     "Failed to allocate %d bytes needed to store MAC addresses",
+			     ETHER_ADDR_LEN * VMXNET3_MAX_MAC_ADDRS);
 		return -ENOMEM;
 	}
 	/* Copy the permanent MAC address */
 	ether_addr_copy((struct ether_addr *) hw->perm_addr,
 			&eth_dev->data->mac_addrs[0]);
 
-	PMD_INIT_LOG(DEBUG, "MAC Address : %02x:%02x:%02x:%02x:%02x:%02x \n",
-	               hw->perm_addr[0], hw->perm_addr[1], hw->perm_addr[2],
-	               hw->perm_addr[3], hw->perm_addr[4], hw->perm_addr[5]);
+	PMD_INIT_LOG(DEBUG, "MAC Address : %02x:%02x:%02x:%02x:%02x:%02x\n",
+		     hw->perm_addr[0], hw->perm_addr[1], hw->perm_addr[2],
+		     hw->perm_addr[3], hw->perm_addr[4], hw->perm_addr[5]);
 
 	/* Put device in Quiesce Mode */
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_QUIESCE_DEV);
@@ -293,20 +293,20 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 {
 	const struct rte_memzone *mz;
 	struct vmxnet3_hw *hw =
-			VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+		VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	size_t size;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (dev->data->nb_rx_queues > UINT8_MAX ||
-			dev->data->nb_tx_queues > UINT8_MAX)
-		return (-EINVAL);
+	    dev->data->nb_tx_queues > UINT8_MAX)
+		return -EINVAL;
 
 	size = dev->data->nb_rx_queues * sizeof(struct Vmxnet3_TxQueueDesc) +
-	          dev->data->nb_tx_queues * sizeof (struct Vmxnet3_RxQueueDesc);
+		dev->data->nb_tx_queues * sizeof(struct Vmxnet3_RxQueueDesc);
 
 	if (size > UINT16_MAX)
-		return (-EINVAL);
+		return -EINVAL;
 
 	hw->num_rx_queues = (uint8_t)dev->data->nb_rx_queues;
 	hw->num_tx_queues = (uint8_t)dev->data->nb_tx_queues;
@@ -315,12 +315,12 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 	 * Allocate a memzone for Vmxnet3_DriverShared - Vmxnet3_DSDevRead
 	 * on current socket
 	 */
-	mz = gpa_zone_reserve(dev, sizeof (struct Vmxnet3_DriverShared),
-		"shared", rte_socket_id(), 8);
+	mz = gpa_zone_reserve(dev, sizeof(struct Vmxnet3_DriverShared),
+			      "shared", rte_socket_id(), 8);
 
 	if (mz == NULL) {
 		PMD_INIT_LOG(ERR, "ERROR: Creating shared zone\n");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	memset(mz->addr, 0, mz->len);
 
@@ -328,14 +328,14 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 	hw->sharedPA = mz->phys_addr;
 
 	/*
-	* Allocate a memzone for Vmxnet3_RxQueueDesc - Vmxnet3_TxQueueDesc
-	* on current socket
-	*/
+	 * Allocate a memzone for Vmxnet3_RxQueueDesc - Vmxnet3_TxQueueDesc
+	 * on current socket
+	 */
 	mz = gpa_zone_reserve(dev, size, "queuedesc",
-					rte_socket_id(), VMXNET3_QUEUE_DESC_ALIGN);
+			      rte_socket_id(), VMXNET3_QUEUE_DESC_ALIGN);
 	if (mz == NULL) {
 		PMD_INIT_LOG(ERR, "ERROR: Creating queue descriptors zone\n");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	memset(mz->addr, 0, mz->len);
 
@@ -345,14 +345,15 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 	hw->queueDescPA = mz->phys_addr;
 	hw->queue_desc_len = (uint16_t)size;
 
-	if(dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
+	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
 
 		/* Allocate memory structure for UPT1_RSSConf and configure */
-		mz = gpa_zone_reserve(dev, sizeof (struct VMXNET3_RSSConf), "rss_conf",
-				rte_socket_id(), CACHE_LINE_SIZE);
+		mz = gpa_zone_reserve(dev, sizeof(struct VMXNET3_RSSConf), "rss_conf",
+				      rte_socket_id(), CACHE_LINE_SIZE);
 		if (mz == NULL) {
-			PMD_INIT_LOG(ERR, "ERROR: Creating rss_conf structure zone\n");
-			return (-ENOMEM);
+			PMD_INIT_LOG(ERR,
+				     "ERROR: Creating rss_conf structure zone\n");
+			return -ENOMEM;
 		}
 		memset(mz->addr, 0, mz->len);
 
@@ -379,8 +380,8 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 
 	/* Setting up Guest OS information */
 	devRead->misc.driverInfo.gos.gosBits   = sizeof(void *) == 4 ?
-											VMXNET3_GOS_BITS_32 :
-											VMXNET3_GOS_BITS_64;
+		VMXNET3_GOS_BITS_32 :
+		VMXNET3_GOS_BITS_64;
 	devRead->misc.driverInfo.gos.gosType   = VMXNET3_GOS_TYPE_LINUX;
 	devRead->misc.driverInfo.vmxnet3RevSpt = 1;
 	devRead->misc.driverInfo.uptVerSpt     = 1;
@@ -392,11 +393,11 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	devRead->misc.numRxQueues  = hw->num_rx_queues;
 
 	/*
-	* Set number of interrupts to 1
-	* PMD disables all the interrupts but this is MUST to activate device
-	* It needs at least one interrupt for link events to handle
-	* So we'll disable it later after device activation if needed
-	*/
+	 * Set number of interrupts to 1
+	 * PMD disables all the interrupts but this is MUST to activate device
+	 * It needs at least one interrupt for link events to handle
+	 * So we'll disable it later after device activation if needed
+	 */
 	devRead->intrConf.numIntrs = 1;
 	devRead->intrConf.intrCtrl |= VMXNET3_IC_DISABLE_ALL;
 
@@ -438,35 +439,33 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	devRead->rxFilterConf.rxMode = 0;
 
 	/* Setting up feature flags */
-	if(dev->data->dev_conf.rxmode.hw_ip_checksum) {
+	if (dev->data->dev_conf.rxmode.hw_ip_checksum)
 		devRead->misc.uptFeatures |= VMXNET3_F_RXCSUM;
-	}
 
-	if(dev->data->dev_conf.rxmode.hw_vlan_strip) {
+	if (dev->data->dev_conf.rxmode.hw_vlan_strip)
 		devRead->misc.uptFeatures |= VMXNET3_F_RXVLAN;
-	}
 
-	if(port_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
+	if (port_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
 		ret = vmxnet3_rss_configure(dev);
-		if(ret != VMXNET3_SUCCESS) {
+		if (ret != VMXNET3_SUCCESS)
 			return ret;
-		}
+
 		devRead->misc.uptFeatures |= VMXNET3_F_RSS;
 		devRead->rssConfDesc.confVer = 1;
 		devRead->rssConfDesc.confLen = sizeof(struct VMXNET3_RSSConf);
 		devRead->rssConfDesc.confPA  = hw->rss_confPA;
 	}
 
-	if(dev->data->dev_conf.rxmode.hw_vlan_filter) {
+	if (dev->data->dev_conf.rxmode.hw_vlan_filter) {
 		ret = vmxnet3_vlan_configure(dev);
-		if(ret != VMXNET3_SUCCESS) {
+		if (ret != VMXNET3_SUCCESS)
 			return ret;
-		}
 	}
 
-	PMD_INIT_LOG(DEBUG, "Writing MAC Address : %02x:%02x:%02x:%02x:%02x:%02x \n",
-					hw->perm_addr[0], hw->perm_addr[1], hw->perm_addr[2],
-					hw->perm_addr[3], hw->perm_addr[4], hw->perm_addr[5]);
+	PMD_INIT_LOG(DEBUG,
+		     "Writing MAC Address : %02x:%02x:%02x:%02x:%02x:%02x\n",
+		     hw->perm_addr[0], hw->perm_addr[1], hw->perm_addr[2],
+		     hw->perm_addr[3], hw->perm_addr[4], hw->perm_addr[5]);
 
 	/* Write MAC Address back to device */
 	mac_ptr = (uint32_t *)hw->perm_addr;
@@ -493,17 +492,16 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	ret = vmxnet3_setup_driver_shared(dev);
-	if(ret != VMXNET3_SUCCESS) {
+	if (ret != VMXNET3_SUCCESS)
 		return ret;
-	}
 
 	/* Exchange shared data with device */
-	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_DSAL, VMXNET3_GET_ADDR_LO(
-	                      hw->sharedPA));
-    VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_DSAH, VMXNET3_GET_ADDR_HI(
-						  hw->sharedPA));
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_DSAL,
+			       VMXNET3_GET_ADDR_LO(hw->sharedPA));
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_DSAH,
+			       VMXNET3_GET_ADDR_HI(hw->sharedPA));
 
-    /* Activate device by register write */
+	/* Activate device by register write */
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_ACTIVATE_DEV);
 	status = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
 
@@ -520,7 +518,7 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	 * Update RxMode of the device
 	 */
 	ret = vmxnet3_dev_rxtx_init(dev);
-	if(ret != VMXNET3_SUCCESS) {
+	if (ret != VMXNET3_SUCCESS) {
 		PMD_INIT_LOG(ERR, "Device receive init in %s: UNSUCCESSFUL\n", __func__);
 		return ret;
 	}
@@ -551,7 +549,7 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if(hw->adapter_stopped == TRUE) {
+	if (hw->adapter_stopped == TRUE) {
 		PMD_INIT_LOG(DEBUG, "Device already closed.\n");
 		return;
 	}
@@ -593,7 +591,7 @@ vmxnet3_dev_close(struct rte_eth_dev *dev)
 }
 
 static void
-vmxnet3_dev_stats_get( struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	unsigned int i;
 	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -679,7 +677,8 @@ static void
 vmxnet3_dev_set_rxmode(struct vmxnet3_hw *hw, uint32_t feature, int set) {
 
 	struct Vmxnet3_RxFilterConf *rxConf = &hw->shared->devRead.rxFilterConf;
-	if(set)
+
+	if (set)
 		rxConf->rxMode = rxConf->rxMode | feature;
 	else
 		rxConf->rxMode = rxConf->rxMode & (~feature);
@@ -692,6 +691,7 @@ static void
 vmxnet3_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_PROMISC, 1);
 }
 
@@ -700,6 +700,7 @@ static void
 vmxnet3_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_PROMISC, 0);
 }
 
@@ -708,6 +709,7 @@ static void
 vmxnet3_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_ALL_MULTI, 1);
 }
 
@@ -716,6 +718,7 @@ static void
 vmxnet3_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_ALL_MULTI, 0);
 }
 
@@ -724,21 +727,22 @@ static void
 vmxnet3_process_events(struct vmxnet3_hw *hw)
 {
 	uint32_t events = hw->shared->ecr;
-	if (!events){
+
+	if (!events) {
 		PMD_INIT_LOG(ERR, "No events to process in %s()\n", __func__);
 		return;
 	}
 
 	/*
-	* ECR bits when written with 1b are cleared. Hence write
-	* events back to ECR so that the bits which were set will be reset.
-	*/
+	 * ECR bits when written with 1b are cleared. Hence write
+	 * events back to ECR so that the bits which were set will be reset.
+	 */
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_ECR, events);
 
 	/* Check if link state has changed */
-   if (events & VMXNET3_ECR_LINK){
-	   PMD_INIT_LOG(ERR, "Process events in %s(): VMXNET3_ECR_LINK event\n", __func__);
-   }
+	if (events & VMXNET3_ECR_LINK)
+		PMD_INIT_LOG(ERR,
+			     "Process events in %s(): VMXNET3_ECR_LINK event\n", __func__);
 
 	/* Check if there is an error on xmit/recv queues */
 	if (events & (VMXNET3_ECR_TQERR | VMXNET3_ECR_RQERR)) {
@@ -746,14 +750,14 @@ vmxnet3_process_events(struct vmxnet3_hw *hw)
 
 		if (hw->tqd_start->status.stopped)
 			PMD_INIT_LOG(ERR, "tq error 0x%x\n",
-                     hw->tqd_start->status.error);
+				     hw->tqd_start->status.error);
 
 		if (hw->rqd_start->status.stopped)
 			PMD_INIT_LOG(ERR, "rq error 0x%x\n",
-                     hw->rqd_start->status.error);
+				     hw->rqd_start->status.error);
 
-      /* Reset the device */
-      /* Have to reset the device */
+		/* Reset the device */
+		/* Have to reset the device */
 	}
 
 	if (events & VMXNET3_ECR_DIC)

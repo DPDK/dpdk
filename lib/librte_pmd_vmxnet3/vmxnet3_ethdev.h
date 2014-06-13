@@ -36,7 +36,7 @@
 
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
 #define VMXNET3_ASSERT(x) do { \
-	if(!(x)) rte_panic("VMXNET3: x"); \
+	if (!(x)) rte_panic("VMXNET3: x"); \
 } while(0)
 #endif
 
@@ -64,16 +64,16 @@
 /* RSS configuration structure - shared with device through GPA */
 typedef
 struct VMXNET3_RSSConf {
-   uint16_t   hashType;
-   uint16_t   hashFunc;
-   uint16_t   hashKeySize;
-   uint16_t   indTableSize;
-   uint8_t    hashKey[VMXNET3_RSS_MAX_KEY_SIZE];
-   /*
-    * indTable is only element that can be changed without
-    * device quiesce-reset-update-activation cycle
-    */
-   uint8_t    indTable[VMXNET3_RSS_MAX_IND_TABLE_SIZE];
+	uint16_t   hashType;
+	uint16_t   hashFunc;
+	uint16_t   hashKeySize;
+	uint16_t   indTableSize;
+	uint8_t    hashKey[VMXNET3_RSS_MAX_KEY_SIZE];
+	/*
+	 * indTable is only element that can be changed without
+	 * device quiesce-reset-update-activation cycle
+	 */
+	uint8_t    indTable[VMXNET3_RSS_MAX_IND_TABLE_SIZE];
 } VMXNET3_RSSConf;
 
 typedef
@@ -134,7 +134,7 @@ struct vmxnet3_adapter {
 
 #define VMXNET3_PCI_REG(reg) (*((volatile uint32_t *)(reg)))
 
-static inline uint32_t vmxnet3_read_addr(volatile void* addr)
+static inline uint32_t vmxnet3_read_addr(volatile void *addr)
 {
 	return VMXNET3_PCI_REG(addr);
 }
