@@ -1031,7 +1031,13 @@ rte_eal_hugepage_init(void)
 
 	/* hugetlbfs can be disabled */
 	if (internal_config.no_hugetlbfs) {
-		addr = malloc(internal_config.memory);
+		addr = mmap(NULL, internal_config.memory, PROT_READ | PROT_WRITE,
+				MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+		if (addr == MAP_FAILED) {
+			RTE_LOG(ERR, EAL, "%s: mmap() failed: %s\n", __func__,
+					strerror(errno));
+			return -1;
+		}
 		mcfg->memseg[0].phys_addr = (phys_addr_t)(uintptr_t)addr;
 		mcfg->memseg[0].addr = addr;
 		mcfg->memseg[0].len = internal_config.memory;
