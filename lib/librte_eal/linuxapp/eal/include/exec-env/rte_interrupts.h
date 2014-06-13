@@ -41,12 +41,16 @@
 enum rte_intr_handle_type {
 	RTE_INTR_HANDLE_UNKNOWN = 0,
 	RTE_INTR_HANDLE_UIO,      /**< uio device handle */
+	RTE_INTR_HANDLE_VFIO_LEGACY,  /**< vfio device handle (legacy) */
+	RTE_INTR_HANDLE_VFIO_MSI,     /**< vfio device handle (MSI) */
+	RTE_INTR_HANDLE_VFIO_MSIX,    /**< vfio device handle (MSIX) */
 	RTE_INTR_HANDLE_ALARM,    /**< alarm handle */
 	RTE_INTR_HANDLE_MAX
 };
 
 /** Handle for interrupts. */
 struct rte_intr_handle {
+	int vfio_dev_fd;                 /**< VFIO device file descriptor */
 	int fd;                          /**< file descriptor */
 	enum rte_intr_handle_type type;  /**< handle type */
 };

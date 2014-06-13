@@ -36,7 +36,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <sys/queue.h>
-#include <malloc.h>
 #include <stdarg.h>
 #include <unistd.h>
 #include <string.h>
@@ -44,6 +43,7 @@
 #include <inttypes.h>
 #include <sys/epoll.h>
 #include <sys/signalfd.h>
+#include <sys/ioctl.h>
 
 #include <rte_common.h>
 #include <rte_interrupts.h>
@@ -66,6 +66,7 @@
 #include <rte_spinlock.h>
 
 #include "eal_private.h"
+#include "eal_vfio.h"
 
 #define EAL_INTR_EPOLL_WAIT_FOREVER (-1)
 
@@ -87,6 +88,9 @@ union intr_pipefds{
  */
 union rte_intr_read_buffer {
 	int uio_intr_count;              /* for uio device */
+#ifdef VFIO_PRESENT
+	uint64_t vfio_intr_count;        /* for vfio device */
+#endif
 	uint64_t timerfd_num;            /* for timerfd */
 	char charbuf[16];                /* for others */
 };
@@ -118,6 +122,244 @@ static struct rte_intr_source_list intr_sources;
 
 /* interrupt handling thread */
 static pthread_t intr_thread;
+
+/* VFIO interrupts */
+#ifdef VFIO_PRESENT
+
+#define IRQ_SET_BUF_LEN  (sizeof(struct vfio_irq_set) + sizeof(int))
+
+/* enable legacy (INTx) interrupts */
+static int
+vfio_enable_intx(struct rte_intr_handle *intr_handle) {
+	struct vfio_irq_set *irq_set;
+	char irq_set_buf[IRQ_SET_BUF_LEN];
+	int len, ret;
+	int *fd_ptr;
+
+	len = sizeof(irq_set_buf);
+
+	/* enable INTx */
+	irq_set = (struct vfio_irq_set *) irq_set_buf;
+	irq_set->argsz = len;
+	irq_set->count = 1;
+	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_INTX_IRQ_INDEX;
+	irq_set->start = 0;
+	fd_ptr = (int *) &irq_set->data;
+	*fd_ptr = intr_handle->fd;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret) {
+		RTE_LOG(ERR, EAL, "Error enabling INTx interrupts for fd %d\n",
+						intr_handle->fd);
+		return -1;
+	}
+
+	/* unmask INTx after enabling */
+	memset(irq_set, 0, len);
+	len = sizeof(struct vfio_irq_set);
+	irq_set->argsz = len;
+	irq_set->count = 1;
+	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_UNMASK;
+	irq_set->index = VFIO_PCI_INTX_IRQ_INDEX;
+	irq_set->start = 0;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret) {
+		RTE_LOG(ERR, EAL, "Error unmasking INTx interrupts for fd %d\n",
+						intr_handle->fd);
+		return -1;
+	}
+	return 0;
+}
+
+/* disable legacy (INTx) interrupts */
+static int
+vfio_disable_intx(struct rte_intr_handle *intr_handle) {
+	struct vfio_irq_set *irq_set;
+	char irq_set_buf[IRQ_SET_BUF_LEN];
+	int len, ret;
+
+	len = sizeof(struct vfio_irq_set);
+
+	/* mask interrupts before disabling */
+	irq_set = (struct vfio_irq_set *) irq_set_buf;
+	irq_set->argsz = len;
+	irq_set->count = 1;
+	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_UNMASK;
+	irq_set->index = VFIO_PCI_INTX_IRQ_INDEX;
+	irq_set->start = 0;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret) {
+		RTE_LOG(ERR, EAL, "Error unmasking INTx interrupts for fd %d\n",
+						intr_handle->fd);
+		return -1;
+	}
+
+	/* disable INTx*/
+	memset(irq_set, 0, len);
+	irq_set->argsz = len;
+	irq_set->count = 0;
+	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_INTX_IRQ_INDEX;
+	irq_set->start = 0;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret) {
+		RTE_LOG(ERR, EAL,
+			"Error disabling INTx interrupts for fd %d\n", intr_handle->fd);
+		return -1;
+	}
+	return 0;
+}
+
+/* enable MSI-X interrupts */
+static int
+vfio_enable_msi(struct rte_intr_handle *intr_handle) {
+	int len, ret;
+	char irq_set_buf[IRQ_SET_BUF_LEN];
+	struct vfio_irq_set *irq_set;
+	int *fd_ptr;
+
+	len = sizeof(irq_set_buf);
+
+	irq_set = (struct vfio_irq_set *) irq_set_buf;
+	irq_set->argsz = len;
+	irq_set->count = 1;
+	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_MSI_IRQ_INDEX;
+	irq_set->start = 0;
+	fd_ptr = (int *) &irq_set->data;
+	*fd_ptr = intr_handle->fd;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret) {
+		RTE_LOG(ERR, EAL, "Error enabling MSI interrupts for fd %d\n",
+						intr_handle->fd);
+		return -1;
+	}
+
+	/* manually trigger interrupt to enable it */
+	memset(irq_set, 0, len);
+	len = sizeof(struct vfio_irq_set);
+	irq_set->argsz = len;
+	irq_set->count = 1;
+	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_MSI_IRQ_INDEX;
+	irq_set->start = 0;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret) {
+		RTE_LOG(ERR, EAL, "Error triggering MSI interrupts for fd %d\n",
+						intr_handle->fd);
+		return -1;
+	}
+	return 0;
+}
+
+/* disable MSI-X interrupts */
+static int
+vfio_disable_msi(struct rte_intr_handle *intr_handle) {
+	struct vfio_irq_set *irq_set;
+	char irq_set_buf[IRQ_SET_BUF_LEN];
+	int len, ret;
+
+	len = sizeof(struct vfio_irq_set);
+
+	irq_set = (struct vfio_irq_set *) irq_set_buf;
+	irq_set->argsz = len;
+	irq_set->count = 0;
+	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_MSI_IRQ_INDEX;
+	irq_set->start = 0;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret)
+		RTE_LOG(ERR, EAL,
+			"Error disabling MSI interrupts for fd %d\n", intr_handle->fd);
+
+	return ret;
+}
+
+/* enable MSI-X interrupts */
+static int
+vfio_enable_msix(struct rte_intr_handle *intr_handle) {
+	int len, ret;
+	char irq_set_buf[IRQ_SET_BUF_LEN];
+	struct vfio_irq_set *irq_set;
+	int *fd_ptr;
+
+	len = sizeof(irq_set_buf);
+
+	irq_set = (struct vfio_irq_set *) irq_set_buf;
+	irq_set->argsz = len;
+	irq_set->count = 1;
+	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
+	irq_set->start = 0;
+	fd_ptr = (int *) &irq_set->data;
+	*fd_ptr = intr_handle->fd;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret) {
+		RTE_LOG(ERR, EAL, "Error enabling MSI-X interrupts for fd %d\n",
+						intr_handle->fd);
+		return -1;
+	}
+
+	/* manually trigger interrupt to enable it */
+	memset(irq_set, 0, len);
+	len = sizeof(struct vfio_irq_set);
+	irq_set->argsz = len;
+	irq_set->count = 1;
+	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
+	irq_set->start = 0;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret) {
+		RTE_LOG(ERR, EAL, "Error triggering MSI-X interrupts for fd %d\n",
+						intr_handle->fd);
+		return -1;
+	}
+	return 0;
+}
+
+/* disable MSI-X interrupts */
+static int
+vfio_disable_msix(struct rte_intr_handle *intr_handle) {
+	struct vfio_irq_set *irq_set;
+	char irq_set_buf[IRQ_SET_BUF_LEN];
+	int len, ret;
+
+	len = sizeof(struct vfio_irq_set);
+
+	irq_set = (struct vfio_irq_set *) irq_set_buf;
+	irq_set->argsz = len;
+	irq_set->count = 0;
+	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
+	irq_set->start = 0;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret)
+		RTE_LOG(ERR, EAL,
+			"Error disabling MSI-X interrupts for fd %d\n", intr_handle->fd);
+
+	return ret;
+}
+#endif
 
 int
 rte_intr_callback_register(struct rte_intr_handle *intr_handle,
@@ -276,6 +518,20 @@ rte_intr_enable(struct rte_intr_handle *intr_handle)
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
 		return -1;
+#ifdef VFIO_PRESENT
+	case RTE_INTR_HANDLE_VFIO_MSIX:
+		if (vfio_enable_msix(intr_handle))
+			return -1;
+		break;
+	case RTE_INTR_HANDLE_VFIO_MSI:
+		if (vfio_enable_msi(intr_handle))
+			return -1;
+		break;
+	case RTE_INTR_HANDLE_VFIO_LEGACY:
+		if (vfio_enable_intx(intr_handle))
+			return -1;
+		break;
+#endif
 	/* unknown handle type */
 	default:
 		RTE_LOG(ERR, EAL,
@@ -300,7 +556,7 @@ rte_intr_disable(struct rte_intr_handle *intr_handle)
 	case RTE_INTR_HANDLE_UIO:
 		if (write(intr_handle->fd, &value, sizeof(value)) < 0){
 			RTE_LOG(ERR, EAL,
-				"Error enabling interrupts for fd %d\n",
+				"Error disabling interrupts for fd %d\n",
 							intr_handle->fd);
 			return -1;
 		}
@@ -308,6 +564,20 @@ rte_intr_disable(struct rte_intr_handle *intr_handle)
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
 		return -1;
+#ifdef VFIO_PRESENT
+	case RTE_INTR_HANDLE_VFIO_MSIX:
+		if (vfio_disable_msix(intr_handle))
+			return -1;
+		break;
+	case RTE_INTR_HANDLE_VFIO_MSI:
+		if (vfio_disable_msi(intr_handle))
+			return -1;
+		break;
+	case RTE_INTR_HANDLE_VFIO_LEGACY:
+		if (vfio_disable_intx(intr_handle))
+			return -1;
+		break;
+#endif
 	/* unknown handle type */
 	default:
 		RTE_LOG(ERR, EAL,
@@ -357,11 +627,18 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 		/* set the length to be read dor different handle type */
 		switch (src->intr_handle.type) {
 		case RTE_INTR_HANDLE_UIO:
-			bytes_read = 4;
+			bytes_read = sizeof(buf.uio_intr_count);
 			break;
 		case RTE_INTR_HANDLE_ALARM:
-			bytes_read = sizeof(uint64_t);
+			bytes_read = sizeof(buf.timerfd_num);
 			break;
+#ifdef VFIO_PRESENT
+		case RTE_INTR_HANDLE_VFIO_MSIX:
+		case RTE_INTR_HANDLE_VFIO_MSI:
+		case RTE_INTR_HANDLE_VFIO_LEGACY:
+			bytes_read = sizeof(buf.vfio_intr_count);
+			break;
+#endif
 		default:
 			bytes_read = 1;
 			break;
@@ -397,7 +674,7 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 				active_cb.cb_fn(&src->intr_handle,
 					active_cb.cb_arg);
 
-				/*get the lcok back. */
+				/*get the lock back. */
 				rte_spinlock_lock(&intr_lock);
 			}
 		}
