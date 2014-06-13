@@ -42,8 +42,6 @@ ETHERNET_CLASS = "0200"
 # global dict ethernet devices present. Dictionary indexed by PCI address.
 # Each device within this is itself a dictionary of device properties
 devices = {}
-# list of vendor:device pairs (again stored as dictionary) supported by igb_uio
-module_dev_ids = []
 
 def usage():
     '''Print usage information for the program'''
@@ -147,9 +145,7 @@ def find_module(mod):
                 return path
 
 def check_modules():
-    '''Checks that the needed modules (igb_uio) is loaded, and then
-    determine from the .ko file, what its supported device ids are'''
-    global module_dev_ids
+    '''Checks that igb_uio is loaded'''
 
     fd = file("/proc/modules")
     loaded_mods = fd.readlines()
@@ -166,39 +162,34 @@ def check_modules():
         print "Error - module %s not loaded" %mod
         sys.exit(1)
 
-    # now find the .ko and get list of supported vendor/dev-ids
-    modpath = find_module(mod)
-    if modpath is None:
-        print "Cannot find module file %s" % (mod + ".ko")
-        sys.exit(1)
-    depmod_output = check_output(["depmod", "-n", modpath]).splitlines()
-    for line in depmod_output:
-        if not line.startswith("alias"):
-            continue
-        if not line.endswith(mod):
-            continue
-        lineparts = line.split()
-        if not(lineparts[1].startswith("pci:")):
-            continue;
-        else:
-            lineparts[1] = lineparts[1][4:]
-        vendor = lineparts[1][:9]
-        device = lineparts[1][9:18]
-        if vendor.startswith("v") and device.startswith("d"):
-            module_dev_ids.append({"Vendor": int(vendor[1:],16),
-                                   "Device": int(device[1:],16)})
-
-def is_supported_device(dev_id):
-    '''return true if device is supported by igb_uio, false otherwise'''
-    for dev in module_dev_ids:
-        if (dev["Vendor"] == devices[dev_id]["Vendor"] and
-            dev["Device"] == devices[dev_id]["Device"]):
-            return True
-    return False
-
 def has_driver(dev_id):
     '''return true if a device is assigned to a driver. False otherwise'''
     return "Driver_str" in devices[dev_id]
+
+def get_pci_device_details(dev_id):
+    '''This function gets additional details for a PCI device'''
+    device = {}
+
+    extra_info = check_output(["lspci", "-vmmks", dev_id]).splitlines()
+
+    # parse lspci details
+    for line in extra_info:
+        if len(line) == 0:
+            continue
+        name, value = line.split("\t", 1)
+        name = name.strip(":") + "_str"
+        device[name] = value
+    # check for a unix interface name
+    sys_path = "/sys/bus/pci/devices/%s/net/" % dev_id
+    if exists(sys_path):
+        device["Interface"] = ",".join(os.listdir(sys_path))
+    else:
+        device["Interface"] = ""
+    # check if a port is used for ssh connection
+    device["Ssh_if"] = False
+    device["Active"] = ""
+
+    return device
 
 def get_nic_details():
     '''This function populates the "devices" dictionary. The keys used are
@@ -237,23 +228,10 @@ def get_nic_details():
 
     # based on the basic info, get extended text details
     for d in devices.keys():
-        extra_info = check_output(["lspci", "-vmmks", d]).splitlines()
-        # parse lspci details
-        for line in extra_info:
-            if len(line) == 0:
-                continue
-            name, value = line.split("\t", 1)
-            name = name.strip(":") + "_str"
-            devices[d][name] = value
-        # check for a unix interface name
-        sys_path = "/sys/bus/pci/devices/%s/net/" % d
-        if exists(sys_path):
-            devices[d]["Interface"] = ",".join(os.listdir(sys_path))
-        else:
-            devices[d]["Interface"] = ""
-        # check if a port is used for ssh connection
-        devices[d]["Ssh_if"] = False
-        devices[d]["Active"] = ""
+        # get additional info and add it to existing data
+        devices[d] = dict(devices[d].items() +
+                          get_pci_device_details(d).items())
+
         for _if in ssh_if:
             if _if in devices[d]["Interface"].split(","):
                 devices[d]["Ssh_if"] = True
@@ -261,14 +239,12 @@ def get_nic_details():
                 break;
 
         # add igb_uio to list of supporting modules if needed
-        if is_supported_device(d):
-            if "Module_str" in devices[d]:
-                if "igb_uio" not in devices[d]["Module_str"]:
-                    devices[d]["Module_str"] = devices[d]["Module_str"] + ",igb_uio"
-            else:
-                devices[d]["Module_str"] = "igb_uio"
-        if "Module_str" not in devices[d]:
-            devices[d]["Module_str"] = "<none>"
+        if "Module_str" in devices[d]:
+            if "igb_uio" not in devices[d]["Module_str"]:
+                devices[d]["Module_str"] = devices[d]["Module_str"] + ",igb_uio"
+        else:
+            devices[d]["Module_str"] = "igb_uio"
+
         # make sure the driver and module strings do not have any duplicates
         if has_driver(d):
             modules = devices[d]["Module_str"].split(",")
@@ -343,6 +319,22 @@ def bind_one(dev_id, driver, force):
             unbind_one(dev_id, force)
             dev["Driver_str"] = "" # clear driver string
 
+    # if we are binding to one of DPDK drivers, add PCI id's to that driver
+    if driver == "igb_uio":
+        filename = "/sys/bus/pci/drivers/%s/new_id" % driver
+        try:
+            f = open(filename, "w")
+        except:
+            print "Error: bind failed for %s - Cannot open %s" % (dev_id, filename)
+            return
+        try:
+            f.write("%04x %04x" % (dev["Vendor"], dev["Device"]))
+            f.close()
+        except:
+            print "Error: bind failed for %s - Cannot write new PCI ID to " \
+                "driver %s" % (dev_id, driver)
+            return
+
     # do the bind by writing to /sys
     filename = "/sys/bus/pci/drivers/%s/bind" % driver
     try:
@@ -356,6 +348,12 @@ def bind_one(dev_id, driver, force):
         f.write(dev_id)
         f.close()
     except:
+        # for some reason, closing dev_id after adding a new PCI ID to new_id
+        # results in IOError. however, if the device was successfully bound,
+        # we don't care for any errors and can safely ignore IOError
+        tmp = get_pci_device_details(dev_id)
+        if "Driver_str" in tmp and tmp["Driver_str"] == driver:
+            return
         print "Error: bind failed for %s - Cannot bind to driver %s" % (dev_id, driver)
         if saved_driver is not None: # restore any previous driver
             bind_one(dev_id, saved_driver, force)
