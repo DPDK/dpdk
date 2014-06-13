@@ -92,7 +92,6 @@ CFLAGS_eal_common_whitelist.o := -D_GNU_SOURCE
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_eal_thread.o += -Wno-return-type
-CFLAGS_eal_hpet.o += -Wno-return-type
 endif
 
 INC := rte_per_lcore.h rte_lcore.h rte_interrupts.h rte_kni_common.h rte_dom0_common.h
