@@ -213,8 +213,6 @@ virtio_set_multiple_queues(struct rte_eth_dev *dev, uint16_t nb_queues)
 	ctrl.hdr.cmd = VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET;
 	memcpy(ctrl.data, &nb_queues, sizeof(uint16_t));
 
-	PMD_INIT_LOG(DEBUG, "ctrl.data=%d\n", *(int *)ctrl.data);
-
 	dlen[0] = sizeof(uint16_t);
 
 	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
