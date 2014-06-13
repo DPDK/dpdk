@@ -60,11 +60,11 @@ virtqueue_detatch_unused(struct virtqueue *vq)
 	struct rte_mbuf *cookie;
 	int idx;
 
-	for(idx = 0; idx < vq->vq_nentries; idx++) {
+	for (idx = 0; idx < vq->vq_nentries; idx++) {
 		if ((cookie = vq->vq_descx[idx].cookie) != NULL) {
 			vq->vq_descx[idx].cookie = NULL;
 			return cookie;
 		}
 	}
-	return (NULL);
+	return NULL;
 }

@@ -133,7 +133,7 @@ vring_size(unsigned int num, unsigned long align)
 	size = RTE_ALIGN_CEIL(size, align);
 	size += sizeof(struct vring_used) +
 		(num * sizeof(struct vring_used_elem));
-	return (size);
+	return size;
 }
 
 static inline void
@@ -145,7 +145,7 @@ vring_init(struct vring *vr, unsigned int num, uint8_t *p,
 	vr->avail = (struct vring_avail *) (p +
 		num * sizeof(struct vring_desc));
 	vr->used = (void *)
-		RTE_ALIGN_CEIL( (uintptr_t)(&vr->avail->ring[num]), align);
+		RTE_ALIGN_CEIL((uintptr_t)(&vr->avail->ring[num]), align);
 }
 
 /*

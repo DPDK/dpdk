@@ -54,7 +54,7 @@
 #include "virtio_ethdev.h"
 #include "virtqueue.h"
 
-#ifdef  RTE_LIBRTE_VIRTIO_DEBUG_DUMP
+#ifdef RTE_LIBRTE_VIRTIO_DEBUG_DUMP
 #define VIRTIO_DUMP_PACKET(m, len) rte_pktmbuf_dump(m, len)
 #else
 #define  VIRTIO_DUMP_PACKET(m, len) do { } while (0)
@@ -68,7 +68,7 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 	m = __rte_mbuf_raw_alloc(mp);
 	__rte_mbuf_sanity_check_raw(m, RTE_MBUF_PKT, 0);
 
-	return (m);
+	return m;
 }
 
 static void
@@ -175,6 +175,7 @@ virtio_dev_rxtx_start(struct rte_eth_dev *dev)
 	 *
 	 */
 	int i;
+
 	PMD_INIT_FUNC_TRACE();
 
 	/* Start rx vring. */
@@ -214,7 +215,7 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	vq->mpool = mp;
 
 	dev->data->rx_queues[queue_idx] = vq;
-	return (0);
+	return 0;
 }
 
 /*
@@ -244,7 +245,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	dev->data->tx_queues[queue_idx] = vq;
-	return (0);
+	return 0;
 }
 
 static void
@@ -285,17 +286,18 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	if (likely(num > DESC_PER_CACHELINE))
 		num = num - ((rxvq->vq_used_cons_idx + num) % DESC_PER_CACHELINE);
 
-	if(num == 0) return 0;
+	if (num == 0)
+		return 0;
 
 	num = virtqueue_dequeue_burst_rx(rxvq, rcv_pkts, len, num);
 	PMD_RX_LOG(DEBUG, "used:%d dequeue:%d\n", nb_used, num);
-	for (i = 0; i < num ; i ++) {
+	for (i = 0; i < num ; i++) {
 		rxm = rcv_pkts[i];
 
 		PMD_RX_LOG(DEBUG, "packet len:%d\n", len[i]);
 
 		if (unlikely(len[i]
-			< (uint32_t)hw->vtnet_hdr_size + ETHER_HDR_LEN)) {
+			     < (uint32_t)hw->vtnet_hdr_size + ETHER_HDR_LEN)) {
 			PMD_RX_LOG(ERR, "Packet drop\n");
 			nb_enqueued++;
 			virtio_discard_rxbuf(rxvq, rxm);
@@ -308,9 +310,9 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->pkt.nb_segs = 1;
 		rxm->pkt.next = NULL;
 		rxm->pkt.pkt_len  = (uint32_t)(len[i]
-			- sizeof(struct virtio_net_hdr));
+					       - sizeof(struct virtio_net_hdr));
 		rxm->pkt.data_len = (uint16_t)(len[i]
-			- sizeof(struct virtio_net_hdr));
+					       - sizeof(struct virtio_net_hdr));
 
 		VIRTIO_DUMP_PACKET(rxm, rxm->pkt.data_len);
 
@@ -336,7 +338,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rte_pktmbuf_free_seg(new_mbuf);
 			break;
 		}
-		nb_enqueued ++;
+		nb_enqueued++;
 	}
 	if (likely(nb_enqueued)) {
 		if (unlikely(virtqueue_kick_prepare(rxvq))) {
@@ -347,7 +349,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	vq_update_avail_idx(rxvq);
 
-	return (nb_rx);
+	return nb_rx;
 }
 
 uint16_t
@@ -362,7 +364,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	nb_tx = 0;
 
 	if (unlikely(nb_pkts < 1))
-		return (nb_pkts);
+		return nb_pkts;
 
 	PMD_TX_LOG(DEBUG, "%d packets to xmit", nb_pkts);
 	nb_used = VIRTQUEUE_NUSED(txvq);
@@ -378,7 +380,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			num--;
 		}
 
-		if(!virtqueue_full(txvq)) {
+		if (!virtqueue_full(txvq)) {
 			txm = tx_pkts[nb_tx];
 			/* Enqueue Packet buffers */
 			error = virtqueue_enqueue_xmit(txvq, txm);
@@ -405,10 +407,10 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	hw->eth_stats.opackets += nb_tx;
 	hw->eth_stats.q_opackets[txvq->queue_id] += nb_tx;
 
-	if(unlikely(virtqueue_kick_prepare(txvq))) {
+	if (unlikely(virtqueue_kick_prepare(txvq))) {
 		virtqueue_notify(txvq);
 		PMD_TX_LOG(DEBUG, "Notified backend after xmit\n");
 	}
 
-	return (nb_tx);
+	return nb_tx;
 }

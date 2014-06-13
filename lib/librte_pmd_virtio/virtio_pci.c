@@ -92,7 +92,7 @@ vtpci_negotiate_features(struct virtio_hw *hw, uint32_t guest_features)
 	features = (hw->host_features) & guest_features;
 
 	VIRTIO_WRITE_REG_4(hw, VIRTIO_PCI_GUEST_FEATURES, features);
-	return (features);
+	return features;
 }
 
 
@@ -116,7 +116,7 @@ vtpci_reinit_complete(struct virtio_hw *hw)
 uint8_t
 vtpci_get_status(struct virtio_hw *hw)
 {
-	return (VIRTIO_READ_REG_1(hw, VIRTIO_PCI_STATUS));
+	return VIRTIO_READ_REG_1(hw, VIRTIO_PCI_STATUS);
 }
 
 void

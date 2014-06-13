@@ -110,8 +110,9 @@ virtio_send_command(struct virtqueue *vq, struct virtio_pmd_ctrl *ctrl,
 	ctrl->status = status;
 
 	if (!vq->hw->cvq) {
-		PMD_INIT_LOG(ERR, "%s(): Control queue is "
-			"not supported by this device.\n", __func__);
+		PMD_INIT_LOG(ERR,
+			     "%s(): Control queue is not supported.\n",
+			     __func__);
 		return -1;
 	}
 
@@ -257,10 +258,10 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		nb_desc = vq_size;
 	if (vq_size == 0) {
 		PMD_INIT_LOG(ERR, "%s: virtqueue does not exist\n", __func__);
-		return (-EINVAL);
+		return -EINVAL;
 	} else if (!rte_is_power_of_2(vq_size)) {
 		PMD_INIT_LOG(ERR, "%s: virtqueue size is not powerof 2\n", __func__);
-		return (-EINVAL);
+		return -EINVAL;
 	} else if (nb_desc != vq_size) {
 		PMD_INIT_LOG(ERR, "Warning: nb_desc(%d) is not equal to vq size (%d), fall to vq size\n",
 			nb_desc, vq_size);
@@ -273,13 +274,13 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
 		memcpy(vq->vq_name, vq_name, sizeof(vq->vq_name));
-	} else if(queue_type == VTNET_TQ) {
+	} else if (queue_type == VTNET_TQ) {
 		rte_snprintf(vq_name, sizeof(vq_name), "port%d_tvq%d",
 			dev->data->port_id, queue_idx);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
 		memcpy(vq->vq_name, vq_name, sizeof(vq->vq_name));
-	} else if(queue_type == VTNET_CQ) {
+	} else if (queue_type == VTNET_CQ) {
 		rte_snprintf(vq_name, sizeof(vq_name), "port%d_cvq",
 			dev->data->port_id);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
@@ -311,7 +312,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		socket_id, 0, VIRTIO_PCI_VRING_ALIGN);
 	if (mz == NULL) {
 		rte_free(vq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/*
@@ -319,10 +320,10 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	 * and only accepts 32 bit page frame number.
 	 * Check if the allocated physical memory exceeds 16TB.
 	 */
-	if ( (mz->phys_addr + vq->vq_ring_size - 1) >> (VIRTIO_PCI_QUEUE_ADDR_SHIFT + 32) ) {
+	if ((mz->phys_addr + vq->vq_ring_size - 1) >> (VIRTIO_PCI_QUEUE_ADDR_SHIFT + 32)) {
 		PMD_INIT_LOG(ERR, "vring address shouldn't be above 16TB!\n");
 		rte_free(vq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	memset(mz->addr, 0, sizeof(mz->len));
@@ -429,7 +430,7 @@ static struct eth_dev_ops virtio_eth_dev_ops = {
 	/* meaningfull only to multiple queue */
 	.tx_queue_release        = virtio_dev_tx_queue_release,
 	/* collect stats per queue */
-	.queue_stats_mapping_set = virtio_dev_queue_stats_mapping_set
+	.queue_stats_mapping_set = virtio_dev_queue_stats_mapping_set,
 };
 
 static inline int
@@ -441,9 +442,9 @@ virtio_dev_atomic_read_link_status(struct rte_eth_dev *dev,
 
 	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
 			*(uint64_t *)src) == 0)
-		return (-1);
+		return -1;
 
-	return (0);
+	return 0;
 }
 
 /**
@@ -467,9 +468,9 @@ virtio_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 
 	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
 					*(uint64_t *)src) == 0)
-		return (-1);
+		return -1;
 
-	return (0);
+	return 0;
 }
 
 static void
@@ -477,7 +478,7 @@ virtio_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct virtio_hw *hw =
 		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if(stats)
+	if (stats)
 		memcpy(stats, &hw->eth_stats, sizeof(*stats));
 }
 
@@ -516,8 +517,9 @@ static void
 virtio_negotiate_features(struct virtio_hw *hw)
 {
 	uint32_t guest_features, mask;
+
 	mask = VIRTIO_NET_F_CTRL_RX | VIRTIO_NET_F_CTRL_VLAN;
-	mask |= VIRTIO_NET_F_CSUM | VIRTIO_NET_F_GUEST_CSUM ;
+	mask |= VIRTIO_NET_F_CSUM | VIRTIO_NET_F_GUEST_CSUM;
 
 	/* TSO and LRO are only available when their corresponding
 	 * checksum offload feature is also negotiated.
@@ -559,7 +561,8 @@ parse_sysfs_value(const char *filename, unsigned long *val)
 	char buf[BUFSIZ];
 	char *end = NULL;
 
-	if ((f = fopen(filename, "r")) == NULL) {
+	f = fopen(filename, "r");
+	if (f == NULL) {
 		PMD_INIT_LOG(ERR, "%s(): cannot open sysfs value %s\n",
 			     __func__, filename);
 		return -1;
@@ -592,14 +595,14 @@ static int get_uio_dev(struct rte_pci_addr *loc, char *buf, unsigned int buflen)
 	/* depending on kernel version, uio can be located in uio/uioX
 	 * or uio:uioX */
 	rte_snprintf(dirname, sizeof(dirname),
-	         SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/uio",
-	         loc->domain, loc->bus, loc->devid, loc->function);
+		     SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/uio",
+		     loc->domain, loc->bus, loc->devid, loc->function);
 	dir = opendir(dirname);
 	if (dir == NULL) {
 		/* retry with the parent directory */
 		rte_snprintf(dirname, sizeof(dirname),
-		         SYSFS_PCI_DEVICES "/" PCI_PRI_FMT,
-		         loc->domain, loc->bus, loc->devid, loc->function);
+			     SYSFS_PCI_DEVICES "/" PCI_PRI_FMT,
+			     loc->domain, loc->bus, loc->devid, loc->function);
 		dir = opendir(dirname);
 
 		if (dir == NULL) {
@@ -663,23 +666,23 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 	struct virtio_hw *hw =
 		VIRTIO_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
-	if (RTE_PKTMBUF_HEADROOM < sizeof(struct virtio_net_hdr) ) {
+	if (RTE_PKTMBUF_HEADROOM < sizeof(struct virtio_net_hdr)) {
 		PMD_INIT_LOG(ERR,
 			"MBUF HEADROOM should be enough to hold virtio net hdr\n");
-		return (-1);
+		return -1;
 	}
 
-	if (! (rte_eal_get_configuration()->flags & EAL_FLG_HIGH_IOPL)) {
+	if (!(rte_eal_get_configuration()->flags & EAL_FLG_HIGH_IOPL)) {
 		PMD_INIT_LOG(ERR,
 			"IOPL call failed in EAL init - cannot use virtio PMD driver\n");
-		return (-1);
+		return -1;
 	}
 
 	eth_dev->dev_ops = &virtio_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &virtio_recv_pkts;
 	eth_dev->tx_pkt_burst = &virtio_xmit_pkts;
 
-	if(rte_eal_process_type() == RTE_PROC_SECONDARY)
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return 0;
 
 	pci_dev = eth_dev->pci_dev;
@@ -690,7 +693,7 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 	{
 		char dirname[PATH_MAX];
 		char filename[PATH_MAX];
-		unsigned long start,size;
+		unsigned long start, size;
 
 		if (get_uio_dev(&pci_dev->addr, dirname, sizeof(dirname)) < 0)
 			return -1;
@@ -714,8 +717,9 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 		}
 		pci_dev->mem_resource[0].addr = (void *)(uintptr_t)start;
 		pci_dev->mem_resource[0].len =  (uint64_t)size;
-		PMD_INIT_LOG(DEBUG, "PCI Port IO found start=0x%lx with "
-			     "size=0x%lx\n", start, size);
+		PMD_INIT_LOG(DEBUG,
+			     "PCI Port IO found start=0x%lx with size=0x%lx\n",
+			     start, size);
 	}
 #endif
 	hw->io_base = (uint32_t)(uintptr_t)pci_dev->mem_resource[0].addr;
@@ -731,7 +735,7 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 	virtio_negotiate_features(hw);
 
 	/* Setting up rx_header size for the device */
-	if(vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF))
+	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF))
 		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	else
 		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr);
@@ -742,15 +746,17 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 		PMD_INIT_LOG(ERR,
 			"Failed to allocate %d bytes needed to store MAC addresses",
 			ETHER_ADDR_LEN);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/* Copy the permanent MAC address to: virtio_hw */
 	virtio_get_hwaddr(hw);
 	ether_addr_copy((struct ether_addr *) hw->mac_addr,
 			&eth_dev->data->mac_addrs[0]);
-	PMD_INIT_LOG(DEBUG, "PORT MAC: %02X:%02X:%02X:%02X:%02X:%02X\n", hw->mac_addr[0],
-			hw->mac_addr[1],hw->mac_addr[2], hw->mac_addr[3], hw->mac_addr[4], hw->mac_addr[5]);
+	PMD_INIT_LOG(DEBUG,
+		     "PORT MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+		     hw->mac_addr[0], hw->mac_addr[1], hw->mac_addr[2],
+		     hw->mac_addr[3], hw->mac_addr[4], hw->mac_addr[5]);
 
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_VQ)) {
 		config = &local_config;
@@ -758,16 +764,16 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 		if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
 			offset_conf += sizeof(config->status);
 		} else {
-			PMD_INIT_LOG(DEBUG, "VIRTIO_NET_F_STATUS is "
-				"not supported\n");
+			PMD_INIT_LOG(DEBUG,
+				     "VIRTIO_NET_F_STATUS is not supported\n");
 			config->status = 0;
 		}
 
 		if (vtpci_with_feature(hw, VIRTIO_NET_F_MQ)) {
 			offset_conf += sizeof(config->max_virtqueue_pairs);
 		} else {
-			PMD_INIT_LOG(DEBUG, "VIRTIO_NET_F_MQ is "
-				"not supported\n");
+			PMD_INIT_LOG(DEBUG,
+				     "VIRTIO_NET_F_MQ is not supported\n");
 			config->max_virtqueue_pairs = 1;
 		}
 
@@ -828,7 +834,7 @@ static int
 rte_virtio_pmd_init(const char *name __rte_unused, const char *param __rte_unused)
 {
 	rte_eth_driver_register(&rte_virtio_pmd);
-	return (0);
+	return 0;
 }
 
 /*
@@ -851,7 +857,7 @@ virtio_dev_tx_queue_release(__rte_unused void *txq)
 static int
 virtio_dev_configure(__rte_unused struct rte_eth_dev *dev)
 {
-	return (0);
+	return 0;
 }
 
 
@@ -877,13 +883,13 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	virtio_dev_rxtx_start(dev);
 
 	/* Check VIRTIO_NET_F_STATUS for link status*/
-	if(vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
+	if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
 		vtpci_read_dev_config(hw,
 				offsetof(struct virtio_net_config, status),
 				&status, sizeof(status));
-		if((status & VIRTIO_NET_S_LINK_UP) == 0) {
+		if ((status & VIRTIO_NET_S_LINK_UP) == 0) {
 			PMD_INIT_LOG(ERR,     "Port: %d Link is DOWN\n", dev->data->port_id);
-			return (-EIO);
+			return -EIO;
 		} else {
 			PMD_INIT_LOG(DEBUG, "Port: %d Link is UP\n",  dev->data->port_id);
 		}
@@ -920,9 +926,10 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 {
 	struct rte_mbuf *buf;
 	int i, mbuf_num = 0;
+
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		PMD_INIT_LOG(DEBUG, "Before freeing rxq[%d] used and "
-			"unused buf\n", i);
+		PMD_INIT_LOG(DEBUG,
+			     "Before freeing rxq[%d] used and unused buf\n", i);
 		VIRTQUEUE_DUMP((struct virtqueue *)dev->data->rx_queues[i]);
 
 		while ((buf = (struct rte_mbuf *)virtqueue_detatch_unused(
@@ -932,14 +939,15 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 		}
 
 		PMD_INIT_LOG(DEBUG, "free %d mbufs\n", mbuf_num);
-		PMD_INIT_LOG(DEBUG, "After freeing rxq[%d] used and "
-			"unused buf\n", i);
+		PMD_INIT_LOG(DEBUG,
+			     "After freeing rxq[%d] used and unused buf\n", i);
 		VIRTQUEUE_DUMP((struct virtqueue *)dev->data->rx_queues[i]);
 	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		PMD_INIT_LOG(DEBUG, "Before freeing txq[%d] used and "
-			"unused bufs\n", i);
+		PMD_INIT_LOG(DEBUG,
+			     "Before freeing txq[%d] used and unused bufs\n",
+			     i);
 		VIRTQUEUE_DUMP((struct virtqueue *)dev->data->tx_queues[i]);
 
 		mbuf_num = 0;
@@ -980,34 +988,37 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 	memset(&link, 0, sizeof(link));
 	virtio_dev_atomic_read_link_status(dev, &link);
 	old = link;
-	link.link_duplex = FULL_DUPLEX ;
-	link.link_speed  = SPEED_10G ;
-	if(vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
+	link.link_duplex = FULL_DUPLEX;
+	link.link_speed  = SPEED_10G;
+	if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
 		PMD_INIT_LOG(DEBUG, "Get link status from hw\n");
 		vtpci_read_dev_config(hw,
 				offsetof(struct virtio_net_config, status),
 				&status, sizeof(status));
-		if((status & VIRTIO_NET_S_LINK_UP) == 0) {
+		if ((status & VIRTIO_NET_S_LINK_UP) == 0) {
 			link.link_status = 0;
-			PMD_INIT_LOG(DEBUG, "Port %d is down\n",dev->data->port_id);
+			PMD_INIT_LOG(DEBUG, "Port %d is down\n",
+				     dev->data->port_id);
 		} else {
 			link.link_status = 1;
-			PMD_INIT_LOG(DEBUG, "Port %d is up\n",dev->data->port_id);
+			PMD_INIT_LOG(DEBUG, "Port %d is up\n",
+				     dev->data->port_id);
 		}
 	} else {
-		link.link_status = 1;   //Link up
+		link.link_status = 1;   /* Link up */
 	}
 	virtio_dev_atomic_write_link_status(dev, &link);
-	if(old.link_status == link.link_status)
-		return (-1);
+	if (old.link_status == link.link_status)
+		return -1;
 	/*changed*/
-	return (0);
+	return 0;
 }
 
 static void
 virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct virtio_hw *hw = VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	dev_info->driver_name = dev->driver->pci_drv.name;
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;

@@ -209,12 +209,12 @@ void virtqueue_dump(struct virtqueue *vq);
 /**
  *  Get all mbufs to be freed.
  */
-struct rte_mbuf * virtqueue_detatch_unused(struct virtqueue *vq);
+struct rte_mbuf *virtqueue_detatch_unused(struct virtqueue *vq);
 
 static inline int
 virtqueue_full(const struct virtqueue *vq)
 {
-	return (vq->vq_free_cnt == 0);
+	return vq->vq_free_cnt == 0;
 }
 
 #define VIRTQUEUE_NUSED(vq) ((uint16_t)((vq)->vq_ring.used->idx - (vq)->vq_used_cons_idx))
@@ -243,7 +243,7 @@ vq_update_avail_ring(struct virtqueue *vq, uint16_t desc_idx)
 }
 
 static inline int __attribute__((always_inline))
-virtqueue_kick_prepare(struct virtqueue * vq)
+virtqueue_kick_prepare(struct virtqueue *vq)
 {
 	return !(vq->vq_ring.used->flags & VRING_USED_F_NO_NOTIFY);
 }
@@ -298,18 +298,17 @@ virtqueue_enqueue_recv_refill(struct virtqueue *vq, struct rte_mbuf *cookie)
 {
 	struct vq_desc_extra *dxp;
 	struct vring_desc *start_dp;
-	uint16_t needed;
+	uint16_t needed = 1;
 	uint16_t head_idx, idx;
-	needed = 1;
 
 	if (unlikely(vq->vq_free_cnt == 0))
-		return (-ENOSPC);
+		return -ENOSPC;
 	if (unlikely(vq->vq_free_cnt < needed))
-		return (-EMSGSIZE);
+		return -EMSGSIZE;
 
 	head_idx = vq->vq_desc_head_idx;
 	if (unlikely(head_idx >= vq->vq_nentries))
-		return (-EFAULT);
+		return -EFAULT;
 
 	idx = head_idx;
 	dxp = &vq->vq_descx[idx];
@@ -328,7 +327,7 @@ virtqueue_enqueue_recv_refill(struct virtqueue *vq, struct rte_mbuf *cookie)
 	vq->vq_free_cnt = (uint16_t)(vq->vq_free_cnt - needed);
 	vq_update_avail_ring(vq, head_idx);
 
-	return (0);
+	return 0;
 }
 
 static inline int __attribute__((always_inline))
@@ -336,16 +335,16 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 {
 	struct vq_desc_extra *dxp;
 	struct vring_desc *start_dp;
-	uint16_t needed;
+	uint16_t needed = 2;
 	uint16_t head_idx, idx;
-	needed = 2;
+
 	if (unlikely(txvq->vq_free_cnt == 0))
-		return (-ENOSPC);
+		return -ENOSPC;
 	if (unlikely(txvq->vq_free_cnt < needed))
-		return (-EMSGSIZE);
+		return -EMSGSIZE;
 	head_idx = txvq->vq_desc_head_idx;
 	if (unlikely(head_idx >= txvq->vq_nentries))
-		return (-EFAULT);
+		return -EFAULT;
 
 	idx = head_idx;
 	dxp = &txvq->vq_descx[idx];
@@ -369,7 +368,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	txvq->vq_free_cnt = (uint16_t)(txvq->vq_free_cnt - needed);
 	vq_update_avail_ring(txvq, head_idx);
 
-	return (0);
+	return 0;
 }
 
 static inline uint16_t __attribute__((always_inline))
@@ -381,7 +380,7 @@ virtqueue_dequeue_burst_rx(struct virtqueue *vq, struct rte_mbuf **rx_pkts, uint
 	uint16_t i;
 
 	/*  Caller does the check */
-	for (i = 0; i < num ; i ++) {
+	for (i = 0; i < num; i++) {
 		used_idx = (uint16_t)(vq->vq_used_cons_idx & (vq->vq_nentries - 1));
 		uep = &vq->vq_ring.used->ring[used_idx];
 		desc_idx = (uint16_t) uep->id;
@@ -402,7 +401,7 @@ virtqueue_dequeue_burst_rx(struct virtqueue *vq, struct rte_mbuf **rx_pkts, uint
 		vq->vq_descx[desc_idx].cookie = NULL;
 	}
 
-	return (i);
+	return i;
 }
 
 static inline uint16_t __attribute__((always_inline))
@@ -420,7 +419,7 @@ virtqueue_dequeue_pkt_tx(struct virtqueue *vq)
 	return 0;
 }
 
-#ifdef  RTE_LIBRTE_VIRTIO_DEBUG_DUMP
+#ifdef RTE_LIBRTE_VIRTIO_DEBUG_DUMP
 #define VIRTQUEUE_DUMP(vq) do { \
 	uint16_t used_idx, nused; \
 	used_idx = (vq)->vq_ring.used->idx; \

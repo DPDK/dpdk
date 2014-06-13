@@ -65,12 +65,12 @@ struct virtqueue;
 #define VIRTIO_PCI_QUEUE_SEL      14 /* current VQ selection (16, RW) */
 #define VIRTIO_PCI_QUEUE_NOTIFY   16 /* notify host regarding VQ (16, RW) */
 #define VIRTIO_PCI_STATUS         18 /* device status register (8, RW) */
-#define VIRTIO_PCI_ISR            19 /* interrupt status register, reading
-                                      * also clears the register (8, RO) */
+#define VIRTIO_PCI_ISR		  19 /* interrupt status register, reading
+				      * also clears the register (8, RO) */
 /* Only if MSIX is enabled: */
 #define VIRTIO_MSI_CONFIG_VECTOR  20 /* configuration change vector (16, RW) */
-#define VIRTIO_MSI_QUEUE_VECTOR   22 /* vector for selected VQ notifications
-                                      (16, RW) */
+#define VIRTIO_MSI_QUEUE_VECTOR	  22 /* vector for selected VQ notifications
+				      (16, RW) */
 
 /* The bit of the ISR which indicates a device has an interrupt. */
 #define VIRTIO_PCI_ISR_INTR   0x1
@@ -255,7 +255,7 @@ outl_p(unsigned int data, unsigned int port)
 static inline int
 vtpci_with_feature(struct virtio_hw *hw, uint32_t feature)
 {
-	return ((hw->guest_features & feature) != 0);
+	return (hw->guest_features & feature) != 0;
 }
 
 /*

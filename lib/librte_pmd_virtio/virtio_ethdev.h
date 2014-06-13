@@ -123,7 +123,7 @@ struct virtio_adapter {
  * via tcp_lro_rx().
  */
 #define VTNET_LRO_FEATURES (VIRTIO_NET_F_GUEST_TSO4 | \
-    VIRTIO_NET_F_GUEST_TSO6 | VIRTIO_NET_F_GUEST_ECN)
+			    VIRTIO_NET_F_GUEST_TSO6 | VIRTIO_NET_F_GUEST_ECN)
 
 
 #endif /* _VIRTIO_ETHDEV_H_ */
