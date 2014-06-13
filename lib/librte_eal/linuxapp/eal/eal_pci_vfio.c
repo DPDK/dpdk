@@ -304,7 +304,7 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 }
 
 /* open container fd or get an existing one */
-static int
+int
 pci_vfio_get_container_fd(void)
 {
 	int ret, vfio_container_fd;
@@ -334,13 +334,38 @@ pci_vfio_get_container_fd(void)
 		}
 
 		return vfio_container_fd;
+	} else {
+		/*
+		 * if we're in a secondary process, request container fd from the
+		 * primary process via our socket
+		 */
+		int socket_fd;
+
+		socket_fd = vfio_mp_sync_connect_to_primary();
+		if (socket_fd < 0) {
+			RTE_LOG(ERR, EAL, "  cannot connect to primary process!\n");
+			return -1;
+		}
+		if (vfio_mp_sync_send_request(socket_fd, SOCKET_REQ_CONTAINER) < 0) {
+			RTE_LOG(ERR, EAL, "  cannot request container fd!\n");
+			close(socket_fd);
+			return -1;
+		}
+		vfio_container_fd = vfio_mp_sync_receive_fd(socket_fd);
+		if (vfio_container_fd < 0) {
+			RTE_LOG(ERR, EAL, "  cannot get container fd!\n");
+			close(socket_fd);
+			return -1;
+		}
+		close(socket_fd);
+		return vfio_container_fd;
 	}
 
 	return -1;
 }
 
 /* open group fd or get an existing one */
-static int
+int
 pci_vfio_get_group_fd(int iommu_group_no)
 {
 	int i;
@@ -375,6 +400,47 @@ pci_vfio_get_group_fd(int iommu_group_no)
 		vfio_cfg.vfio_groups[vfio_cfg.vfio_group_idx].group_no = iommu_group_no;
 		vfio_cfg.vfio_groups[vfio_cfg.vfio_group_idx].fd = vfio_group_fd;
 		return vfio_group_fd;
+	}
+	/* if we're in a secondary process, request group fd from the primary
+	 * process via our socket
+	 */
+	else {
+		int socket_fd, ret;
+
+		socket_fd = vfio_mp_sync_connect_to_primary();
+
+		if (socket_fd < 0) {
+			RTE_LOG(ERR, EAL, "  cannot connect to primary process!\n");
+			return -1;
+		}
+		if (vfio_mp_sync_send_request(socket_fd, SOCKET_REQ_GROUP) < 0) {
+			RTE_LOG(ERR, EAL, "  cannot request container fd!\n");
+			close(socket_fd);
+			return -1;
+		}
+		if (vfio_mp_sync_send_request(socket_fd, iommu_group_no) < 0) {
+			RTE_LOG(ERR, EAL, "  cannot send group number!\n");
+			close(socket_fd);
+			return -1;
+		}
+		ret = vfio_mp_sync_receive_request(socket_fd);
+		switch (ret) {
+		case SOCKET_NO_FD:
+			close(socket_fd);
+			return 0;
+		case SOCKET_OK:
+			vfio_group_fd = vfio_mp_sync_receive_fd(socket_fd);
+			/* if we got the fd, return it */
+			if (vfio_group_fd > 0) {
+				close(socket_fd);
+				return vfio_group_fd;
+			}
+			/* fall-through on error */
+		default:
+			RTE_LOG(ERR, EAL, "  cannot get container fd!\n");
+			close(socket_fd);
+			return -1;
+		}
 	}
 	return -1;
 }
@@ -605,6 +671,20 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 		/* get number of registers (up to BAR5) */
 		vfio_res->nb_maps = RTE_MIN((int) device_info.num_regions,
 				VFIO_PCI_BAR5_REGION_INDEX + 1);
+	} else {
+		/* if we're in a secondary process, just find our tailq entry */
+		TAILQ_FOREACH(vfio_res, pci_res_list, next) {
+			if (memcmp(&vfio_res->pci_addr, &dev->addr, sizeof(dev->addr)))
+				continue;
+			break;
+		}
+		/* if we haven't found our tailq entry, something's wrong */
+		if (vfio_res == NULL) {
+			RTE_LOG(ERR, EAL, "  %s cannot find TAILQ entry for PCI device!\n",
+					pci_addr);
+			close(vfio_dev_fd);
+			return -1;
+		}
 	}
 
 	/* map BARs */
