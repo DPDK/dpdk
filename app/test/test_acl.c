@@ -66,7 +66,7 @@ struct rte_acl_ipv4vlan_rule acl_rule = {
 
 /* byteswap to cpu or network order */
 static void
-bswap_test_data(struct ipv4_7tuple * data, int len, int to_be)
+bswap_test_data(struct ipv4_7tuple *data, int len, int to_be)
 {
 	int i;
 
@@ -80,8 +80,7 @@ bswap_test_data(struct ipv4_7tuple * data, int len, int to_be)
 			data[i].port_src = rte_cpu_to_be_16(data[i].port_src);
 			data[i].vlan = rte_cpu_to_be_16(data[i].vlan);
 			data[i].domain = rte_cpu_to_be_16(data[i].domain);
-		}
-		else {
+		} else {
 			data[i].ip_dst = rte_be_to_cpu_32(data[i].ip_dst);
 			data[i].ip_src = rte_be_to_cpu_32(data[i].ip_src);
 			data[i].port_dst = rte_be_to_cpu_16(data[i].port_dst);
@@ -96,46 +95,12 @@ bswap_test_data(struct ipv4_7tuple * data, int len, int to_be)
  * Test scalar and SSE ACL lookup.
  */
 static int
-test_classify(void)
+test_classify_run(struct rte_acl_ctx *acx)
 {
-	struct rte_acl_ctx * acx;
 	int ret, i;
 	uint32_t result, count;
-
 	uint32_t results[RTE_DIM(acl_test_data) * RTE_ACL_MAX_CATEGORIES];
-
-	const uint8_t * data[RTE_DIM(acl_test_data)];
-
-	const uint32_t layout[RTE_ACL_IPV4VLAN_NUM] = {
-			offsetof(struct ipv4_7tuple, proto),
-			offsetof(struct ipv4_7tuple, vlan),
-			offsetof(struct ipv4_7tuple, ip_src),
-			offsetof(struct ipv4_7tuple, ip_dst),
-			offsetof(struct ipv4_7tuple, port_src),
-	};
-
-	acx = rte_acl_create(&acl_param);
-	if (acx == NULL) {
-		printf("Line %i: Error creating ACL context!\n", __LINE__);
-		return -1;
-	}
-
-	/* add rules to the context */
-	ret = rte_acl_ipv4vlan_add_rules(acx, acl_test_rules,
-			RTE_DIM(acl_test_rules));
-	if (ret != 0) {
-		printf("Line %i: Adding rules to ACL context failed!\n", __LINE__);
-		rte_acl_free(acx);
-		return -1;
-	}
-
-	/* try building the context */
-	ret = rte_acl_ipv4vlan_build(acx, layout, RTE_ACL_MAX_CATEGORIES);
-	if (ret != 0) {
-		printf("Line %i: Building ACL context failed!\n", __LINE__);
-		rte_acl_free(acx);
-		return -1;
-	}
+	const uint8_t *data[RTE_DIM(acl_test_data)];
 
 	/* swap all bytes in the data to network order */
 	bswap_test_data(acl_test_data, RTE_DIM(acl_test_data), 1);
@@ -158,12 +123,13 @@ test_classify(void)
 
 		/* check if we allow everything we should allow */
 		for (i = 0; i < (int) count; i++) {
-			result = results[i * RTE_ACL_MAX_CATEGORIES + ACL_ALLOW];
+			result =
+				results[i * RTE_ACL_MAX_CATEGORIES + ACL_ALLOW];
 			if (result != acl_test_data[i].allow) {
 				printf("Line %i: Error in allow results at %i "
-						"(expected %"PRIu32" got %"PRIu32")!\n",
-						__LINE__, i, acl_test_data[i].allow,
-						result);
+					"(expected %"PRIu32" got %"PRIu32")!\n",
+					__LINE__, i, acl_test_data[i].allow,
+					result);
 				goto err;
 			}
 		}
@@ -173,9 +139,9 @@ test_classify(void)
 			result = results[i * RTE_ACL_MAX_CATEGORIES + ACL_DENY];
 			if (result != acl_test_data[i].deny) {
 				printf("Line %i: Error in deny results at %i "
-						"(expected %"PRIu32" got %"PRIu32")!\n",
-						__LINE__, i, acl_test_data[i].deny,
-						result);
+					"(expected %"PRIu32" got %"PRIu32")!\n",
+					__LINE__, i, acl_test_data[i].deny,
+					result);
 				goto err;
 			}
 		}
@@ -183,7 +149,7 @@ test_classify(void)
 
 	/* make a quick check for scalar */
 	ret = rte_acl_classify_scalar(acx, data, results,
-					RTE_DIM(acl_test_data), RTE_ACL_MAX_CATEGORIES);
+			RTE_DIM(acl_test_data), RTE_ACL_MAX_CATEGORIES);
 	if (ret != 0) {
 		printf("Line %i: SSE classify failed!\n", __LINE__);
 		goto err;
@@ -213,21 +179,97 @@ test_classify(void)
 		}
 	}
 
-	/* free ACL context */
-	rte_acl_free(acx);
+	ret = 0;
 
+err:
 	/* swap data back to cpu order so that next time tests don't fail */
 	bswap_test_data(acl_test_data, RTE_DIM(acl_test_data), 0);
+	return ret;
+}
+
+static int
+test_classify_buid(struct rte_acl_ctx *acx)
+{
+	int ret;
+	const uint32_t layout[RTE_ACL_IPV4VLAN_NUM] = {
+			offsetof(struct ipv4_7tuple, proto),
+			offsetof(struct ipv4_7tuple, vlan),
+			offsetof(struct ipv4_7tuple, ip_src),
+			offsetof(struct ipv4_7tuple, ip_dst),
+			offsetof(struct ipv4_7tuple, port_src),
+	};
+
+	/* add rules to the context */
+	ret = rte_acl_ipv4vlan_add_rules(acx, acl_test_rules,
+			RTE_DIM(acl_test_rules));
+	if (ret != 0) {
+		printf("Line %i: Adding rules to ACL context failed!\n",
+			__LINE__);
+		return ret;
+	}
+
+	/* try building the context */
+	ret = rte_acl_ipv4vlan_build(acx, layout, RTE_ACL_MAX_CATEGORIES);
+	if (ret != 0) {
+		printf("Line %i: Building ACL context failed!\n", __LINE__);
+		return ret;
+	}
 
 	return 0;
-err:
+}
 
-	/* swap data back to cpu order so that next time tests don't fail */
-	bswap_test_data(acl_test_data, RTE_DIM(acl_test_data), 0);
+#define	TEST_CLASSIFY_ITER	4
+
+/*
+ * Test scalar and SSE ACL lookup.
+ */
+static int
+test_classify(void)
+{
+	struct rte_acl_ctx *acx;
+	int i, ret;
+
+	acx = rte_acl_create(&acl_param);
+	if (acx == NULL) {
+		printf("Line %i: Error creating ACL context!\n", __LINE__);
+		return -1;
+	}
+
+	ret = 0;
+	for (i = 0; i != TEST_CLASSIFY_ITER; i++) {
+
+		if ((i & 1) == 0)
+			rte_acl_reset(acx);
+		else
+			rte_acl_reset_rules(acx);
+
+		ret = test_classify_buid(acx);
+		if (ret != 0) {
+			printf("Line %i, iter: %d: "
+				"Adding rules to ACL context failed!\n",
+				__LINE__, i);
+			break;
+		}
+
+		ret = test_classify_run(acx);
+		if (ret != 0) {
+			printf("Line %i, iter: %d: %s failed!\n",
+				__LINE__, i, __func__);
+			break;
+		}
+
+		/* reset rules and make sure that classify still works ok. */
+		rte_acl_reset_rules(acx);
+		ret = test_classify_run(acx);
+		if (ret != 0) {
+			printf("Line %i, iter: %d: %s failed!\n",
+				__LINE__, i, __func__);
+			break;
+		}
+	}
 
 	rte_acl_free(acx);
-
-	return -1;
+	return ret;
 }
 
 /*
@@ -241,11 +283,11 @@ err:
 static int
 test_invalid_layout(void)
 {
-	struct rte_acl_ctx * acx;
+	struct rte_acl_ctx *acx;
 	int ret, i;
 
 	uint32_t results[RTE_DIM(invalid_layout_data)];
-	const uint8_t * data[RTE_DIM(invalid_layout_data)];
+	const uint8_t *data[RTE_DIM(invalid_layout_data)];
 
 	const uint32_t layout[RTE_ACL_IPV4VLAN_NUM] = {
 			/* proto points to destination port's first byte */
@@ -257,7 +299,10 @@ test_invalid_layout(void)
 			offsetof(struct ipv4_7tuple, ip_dst),
 			offsetof(struct ipv4_7tuple, ip_src),
 
-			/* we can't swap ports here, so we will swap them in the data */
+			/*
+			 * we can't swap ports here, so we will swap
+			 * them in the data
+			 */
 			offsetof(struct ipv4_7tuple, port_src),
 	};
 
@@ -274,7 +319,8 @@ test_invalid_layout(void)
 		ret = rte_acl_ipv4vlan_add_rules(acx, invalid_layout_rules,
 				RTE_DIM(invalid_layout_rules));
 		if (ret != 0) {
-			printf("Line %i: Adding rules to ACL context failed!\n", __LINE__);
+			printf("Line %i: Adding rules to ACL context failed!\n",
+				__LINE__);
 			rte_acl_free(acx);
 			return -1;
 		}
@@ -307,8 +353,10 @@ test_invalid_layout(void)
 
 	for (i = 0; i < (int) RTE_DIM(results); i++) {
 		if (results[i] != invalid_layout_data[i].allow) {
-			printf("Line %i: Wrong results at %i (result=%u, should be %u)!\n",
-					__LINE__, i, results[i], invalid_layout_data[i].allow);
+			printf("Line %i: Wrong results at %i "
+				"(result=%u, should be %u)!\n",
+				__LINE__, i, results[i],
+				invalid_layout_data[i].allow);
 			goto err;
 		}
 	}
@@ -324,8 +372,10 @@ test_invalid_layout(void)
 
 	for (i = 0; i < (int) RTE_DIM(results); i++) {
 		if (results[i] != invalid_layout_data[i].allow) {
-			printf("Line %i: Wrong results at %i (result=%u, should be %u)!\n",
-					__LINE__, i, results[i], invalid_layout_data[i].allow);
+			printf("Line %i: Wrong results at %i "
+				"(result=%u, should be %u)!\n",
+				__LINE__, i, results[i],
+				invalid_layout_data[i].allow);
 			goto err;
 		}
 	}
@@ -353,13 +403,13 @@ static int
 test_create_find_add(void)
 {
 	struct rte_acl_param param;
-	struct rte_acl_ctx * acx, *acx2, *tmp;
+	struct rte_acl_ctx *acx, *acx2, *tmp;
 	struct rte_acl_ipv4vlan_rule rules[LEN];
 
 	const uint32_t layout[RTE_ACL_IPV4VLAN_NUM] = {0};
 
-	const char * acx_name = "acx";
-	const char * acx2_name = "acx2";
+	const char *acx_name = "acx";
+	const char *acx2_name = "acx2";
 	int i, ret;
 
 	/* create two contexts */
@@ -385,8 +435,9 @@ test_create_find_add(void)
 	param.name = acx_name;
 	tmp = rte_acl_create(&param);
 	if (tmp != acx) {
-		printf("Line %i: Creating context with existing name test failed!\n",
-				__LINE__);
+		printf("Line %i: Creating context with existing name "
+			"test failed!\n",
+			__LINE__);
 		if (tmp)
 			rte_acl_free(tmp);
 		goto err;
@@ -395,8 +446,9 @@ test_create_find_add(void)
 	param.name = acx2_name;
 	tmp = rte_acl_create(&param);
 	if (tmp != acx2) {
-		printf("Line %i: Creating context with existing name test 2 failed!\n",
-				__LINE__);
+		printf("Line %i: Creating context with existing "
+			"name test 2 failed!\n",
+			__LINE__);
 		if (tmp)
 			rte_acl_free(tmp);
 		goto err;
@@ -442,9 +494,12 @@ test_create_find_add(void)
 
 	/* create dummy acl */
 	for (i = 0; i < LEN; i++) {
-		memcpy(&rules[i], &acl_rule, sizeof(struct rte_acl_ipv4vlan_rule));
-		rules[i].data.userdata = i + 1;       /* skip zero */
-		rules[i].data.category_mask = 1 << i; /* one rule per category */
+		memcpy(&rules[i], &acl_rule,
+			sizeof(struct rte_acl_ipv4vlan_rule));
+		/* skip zero */
+		rules[i].data.userdata = i + 1;
+		/* one rule per category */
+		rules[i].data.category_mask = 1 << i;
 	}
 
 	/* try filling up the context */
@@ -486,7 +541,7 @@ err:
 static int
 test_invalid_rules(void)
 {
-	struct rte_acl_ctx * acx;
+	struct rte_acl_ctx *acx;
 	int ret;
 
 	struct rte_acl_ipv4vlan_rule rule;
@@ -589,7 +644,7 @@ static int
 test_invalid_parameters(void)
 {
 	struct rte_acl_param param;
-	struct rte_acl_ctx * acx;
+	struct rte_acl_ctx *acx;
 	struct rte_acl_ipv4vlan_rule rule;
 	int result;
 
@@ -618,8 +673,7 @@ test_invalid_parameters(void)
 		printf("Line %i: ACL context creation with zero rule len "
 				"failed!\n", __LINE__);
 		return -1;
-	}
-	else
+	} else
 		rte_acl_free(acx);
 
 	/* zero max rule num */
@@ -631,8 +685,7 @@ test_invalid_parameters(void)
 		printf("Line %i: ACL context creation with zero rule num "
 				"failed!\n", __LINE__);
 		return -1;
-	}
-	else
+	} else
 		rte_acl_free(acx);
 
 	/* invalid NUMA node */
@@ -705,7 +758,8 @@ test_invalid_parameters(void)
 	/* zero count (should succeed) */
 	result = rte_acl_ipv4vlan_add_rules(acx, &rule, 0);
 	if (result != 0) {
-		printf("Line %i: Adding 0 rules to ACL context failed!\n", __LINE__);
+		printf("Line %i: Adding 0 rules to ACL context failed!\n",
+			__LINE__);
 		rte_acl_free(acx);
 		return -1;
 	}
@@ -835,7 +889,7 @@ static int
 test_misc(void)
 {
 	struct rte_acl_param param;
-	struct rte_acl_ctx * acx;
+	struct rte_acl_ctx *acx;
 
 	/* create context */
 	memcpy(&param, &acl_param, sizeof(param));
