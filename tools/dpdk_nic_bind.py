@@ -42,6 +42,8 @@ ETHERNET_CLASS = "0200"
 # global dict ethernet devices present. Dictionary indexed by PCI address.
 # Each device within this is itself a dictionary of device properties
 devices = {}
+# list of supported DPDK drivers
+dpdk_drivers = [ "igb_uio", "vfio-pci" ]
 
 def usage():
     '''Print usage information for the program'''
@@ -146,21 +148,32 @@ def find_module(mod):
 
 def check_modules():
     '''Checks that igb_uio is loaded'''
+    global dpdk_drivers
 
     fd = file("/proc/modules")
     loaded_mods = fd.readlines()
     fd.close()
-    mod = "igb_uio"
+
+    # list of supported modules
+    mods =  [{"Name" : driver, "Found" : False} for driver in dpdk_drivers]
 
     # first check if module is loaded
-    found = False
     for line in loaded_mods:
-        if line.startswith(mod):
-            found = True
-            break
-    if not found:
-        print "Error - module %s not loaded" %mod
+        for mod in mods:
+            if line.startswith(mod["Name"]):
+                mod["Found"] = True
+            # special case for vfio_pci (module is named vfio-pci,
+            # but its .ko is named vfio_pci)
+            elif line.replace("_", "-").startswith(mod["Name"]):
+                mod["Found"] = True
+
+    # check if we have at least one loaded module
+    if True not in [mod["Found"] for mod in mods]:
+        print "Error - no supported modules are loaded"
         sys.exit(1)
+
+    # change DPDK driver list to only contain drivers that are loaded
+    dpdk_drivers = [mod["Name"] for mod in mods if mod["Found"]]
 
 def has_driver(dev_id):
     '''return true if a device is assigned to a driver. False otherwise'''
@@ -196,6 +209,7 @@ def get_nic_details():
     the pci addresses (domain:bus:slot.func). The values are themselves
     dictionaries - one for each NIC.'''
     global devices
+    global dpdk_drivers
 
     # clear any old data
     devices = {}
@@ -240,10 +254,11 @@ def get_nic_details():
 
         # add igb_uio to list of supporting modules if needed
         if "Module_str" in devices[d]:
-            if "igb_uio" not in devices[d]["Module_str"]:
-                devices[d]["Module_str"] = devices[d]["Module_str"] + ",igb_uio"
+            for driver in dpdk_drivers:
+                if driver not in devices[d]["Module_str"]:
+                    devices[d]["Module_str"] = devices[d]["Module_str"] + ",%s" % driver
         else:
-            devices[d]["Module_str"] = "igb_uio"
+            devices[d]["Module_str"] = ",".join(dpdk_drivers)
 
         # make sure the driver and module strings do not have any duplicates
         if has_driver(d):
@@ -320,7 +335,7 @@ def bind_one(dev_id, driver, force):
             dev["Driver_str"] = "" # clear driver string
 
     # if we are binding to one of DPDK drivers, add PCI id's to that driver
-    if driver == "igb_uio":
+    if driver in dpdk_drivers:
         filename = "/sys/bus/pci/drivers/%s/new_id" % driver
         try:
             f = open(filename, "w")
@@ -397,21 +412,23 @@ def show_status():
     '''Function called when the script is passed the "--status" option. Displays
     to the user what devices are bound to the igb_uio driver, the kernel driver
     or to no driver'''
+    global dpdk_drivers
     kernel_drv = []
-    uio_drv = []
+    dpdk_drv = []
     no_drv = []
+
     # split our list of devices into the three categories above
     for d in devices.keys():
         if not has_driver(d):
             no_drv.append(devices[d])
             continue
-        if devices[d]["Driver_str"] == "igb_uio":
-            uio_drv.append(devices[d])
+        if devices[d]["Driver_str"] in dpdk_drivers:
+            dpdk_drv.append(devices[d])
         else:
             kernel_drv.append(devices[d])
 
     # print each category separately, so we can clearly see what's used by DPDK
-    display_devices("Network devices using IGB_UIO driver", uio_drv, \
+    display_devices("Network devices using DPDK-compatible driver", dpdk_drv, \
                     "drv=%(Driver_str)s unused=%(Module_str)s")
     display_devices("Network devices using kernel driver", kernel_drv,
                     "if=%(Interface)s drv=%(Driver_str)s unused=%(Module_str)s %(Active)s")
