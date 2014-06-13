@@ -117,16 +117,6 @@ struct vmxnet3_hw {
 	vmxnet3_mf_table_t   *mf_table;
 };
 
-/*
- * Structure to store private data for each driver instance (for each port).
- */
-struct vmxnet3_adapter {
-	struct vmxnet3_hw              hw;
-};
-
-#define VMXNET3_DEV_PRIVATE_TO_HW(adapter)\
-	(&((struct vmxnet3_adapter *)adapter)->hw)
-
 #define VMXNET3_GET_ADDR_LO(reg)   ((uint32_t)(reg))
 #define VMXNET3_GET_ADDR_HI(reg)   ((uint32_t)(((uint64_t)(reg)) >> 32))
 

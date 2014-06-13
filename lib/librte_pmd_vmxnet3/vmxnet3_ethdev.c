@@ -186,8 +186,7 @@ eth_vmxnet3_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		     struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
-	struct vmxnet3_hw *hw =
-		VMXNET3_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct vmxnet3_hw *hw = eth_dev->data->dev_private;
 	uint32_t mac_hi, mac_lo, ver;
 
 	PMD_INIT_FUNC_TRACE();
@@ -271,7 +270,7 @@ static struct eth_driver rte_vmxnet3_pmd = {
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
 	},
 	.eth_dev_init = eth_vmxnet3_dev_init,
-	.dev_private_size = sizeof(struct vmxnet3_adapter),
+	.dev_private_size = sizeof(struct vmxnet3_hw),
 };
 
 /*
@@ -292,8 +291,7 @@ static int
 vmxnet3_dev_configure(struct rte_eth_dev *dev)
 {
 	const struct rte_memzone *mz;
-	struct vmxnet3_hw *hw =
-		VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 	size_t size;
 
 	PMD_INIT_FUNC_TRACE();
@@ -368,7 +366,7 @@ static int
 vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf port_conf = dev->data->dev_conf;
-	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 	Vmxnet3_DriverShared *shared = hw->shared;
 	Vmxnet3_DSDevRead *devRead = &shared->devRead;
 	uint32_t *mac_ptr;
@@ -487,7 +485,7 @@ static int
 vmxnet3_dev_start(struct rte_eth_dev *dev)
 {
 	int status, ret;
-	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -544,8 +542,7 @@ static void
 vmxnet3_dev_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_link link;
-	struct vmxnet3_hw *hw =
-		VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -580,8 +577,7 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 static void
 vmxnet3_dev_close(struct rte_eth_dev *dev)
 {
-	struct vmxnet3_hw *hw =
-		VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -594,7 +590,7 @@ static void
 vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	unsigned int i;
-	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_GET_STATS);
 
@@ -651,7 +647,7 @@ vmxnet3_dev_info_get(__attribute__((unused))struct rte_eth_dev *dev, struct rte_
 static int
 vmxnet3_dev_link_update(struct rte_eth_dev *dev, __attribute__((unused)) int wait_to_complete)
 {
-	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 	struct rte_eth_link link;
 	uint32_t ret;
 
@@ -694,7 +690,7 @@ vmxnet3_dev_set_rxmode(struct vmxnet3_hw *hw, uint32_t feature, int set) {
 static void
 vmxnet3_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
-	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_PROMISC, 1);
 }
@@ -703,7 +699,7 @@ vmxnet3_dev_promiscuous_enable(struct rte_eth_dev *dev)
 static void
 vmxnet3_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
-	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_PROMISC, 0);
 }
@@ -712,7 +708,7 @@ vmxnet3_dev_promiscuous_disable(struct rte_eth_dev *dev)
 static void
 vmxnet3_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
-	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_ALL_MULTI, 1);
 }
@@ -721,7 +717,7 @@ vmxnet3_dev_allmulticast_enable(struct rte_eth_dev *dev)
 static void
 vmxnet3_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
-	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_ALL_MULTI, 0);
 }

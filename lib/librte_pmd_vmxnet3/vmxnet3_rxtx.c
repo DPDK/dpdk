@@ -627,15 +627,14 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			   unsigned int socket_id,
 			   __attribute__((unused)) const struct rte_eth_txconf *tx_conf)
 {
+	struct vmxnet3_hw     *hw = dev->data->dev_private;
 	const struct rte_memzone *mz;
 	struct vmxnet3_tx_queue *txq;
-	struct vmxnet3_hw     *hw;
 	struct vmxnet3_cmd_ring *ring;
 	struct vmxnet3_comp_ring *comp_ring;
 	int size;
 
 	PMD_INIT_FUNC_TRACE();
-	hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOMULTSEGS) !=
 	    ETH_TXQ_FLAGS_NOMULTSEGS) {
@@ -730,7 +729,7 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 {
 	const struct rte_memzone *mz;
 	struct vmxnet3_rx_queue *rxq;
-	struct vmxnet3_hw     *hw;
+	struct vmxnet3_hw     *hw = dev->data->dev_private;
 	struct vmxnet3_cmd_ring *ring0, *ring1, *ring;
 	struct vmxnet3_comp_ring *comp_ring;
 	int size;
@@ -740,7 +739,6 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	struct rte_pktmbuf_pool_private *mbp_priv;
 
 	PMD_INIT_FUNC_TRACE();
-	hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	mbp_priv = (struct rte_pktmbuf_pool_private *)
 		rte_mempool_get_priv(mp);
@@ -848,12 +846,12 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 int
 vmxnet3_dev_rxtx_init(struct rte_eth_dev *dev)
 {
-	struct vmxnet3_hw *hw;
+	struct vmxnet3_hw *hw = dev->data->dev_private;
+
 	int i, ret;
 	uint8_t j;
 
 	PMD_INIT_FUNC_TRACE();
-	hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	for (i = 0; i < hw->num_rx_queues; i++) {
 		vmxnet3_rx_queue_t *rxq = dev->data->rx_queues[i];
@@ -903,14 +901,14 @@ vmxnet3_rss_configure(struct rte_eth_dev *dev)
 		ETH_RSS_IPV6 | \
 		ETH_RSS_IPV6_TCP)
 
-	struct vmxnet3_hw *hw;
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 	struct VMXNET3_RSSConf *dev_rss_conf;
 	struct rte_eth_rss_conf *port_rss_conf;
 	uint64_t rss_hf;
 	uint8_t i, j;
 
 	PMD_INIT_FUNC_TRACE();
-	hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	dev_rss_conf = hw->rss_conf;
 	port_rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
 
@@ -958,7 +956,7 @@ int
 vmxnet3_vlan_configure(struct rte_eth_dev *dev)
 {
 	uint8_t i;
-	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 	uint32_t *vf_table = hw->shared->devRead.rxFilterConf.vfTable;
 
 	PMD_INIT_FUNC_TRACE();
