@@ -101,8 +101,8 @@ static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 
 /*
  * If vendor/device ID match, call the devinit() function of all
- * registered driver for the given device. Return -1 if no driver is
- * found for this device.
+ * registered driver for the given device. Return -1 if initialization
+ * failed, return 1 if no driver is found for this device.
  * For drivers with the RTE_PCI_DRV_MULTIPLE flag enabled, register
  * the same device multiple times until failure to do so.
  * It is required for non-Intel NIC drivers provided by third-parties such
@@ -118,7 +118,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 		rc = rte_eal_pci_probe_one_driver(dr, dev);
 		if (rc < 0)
 			/* negative value is an error */
-			break;
+			return -1;
 		if (rc > 0)
 			/* positive value means driver not found */
 			continue;
@@ -130,7 +130,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 				;
 		return 0;
 	}
-	return -1;
+	return 1;
 }
 
 /*
@@ -144,6 +144,7 @@ rte_eal_pci_probe(void)
 	struct rte_pci_device *dev = NULL;
 	struct rte_devargs *devargs;
 	int probe_all = 0;
+	int ret = 0;
 
 	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) == 0)
 		probe_all = 1;
@@ -157,10 +158,11 @@ rte_eal_pci_probe(void)
 
 		/* probe all or only whitelisted devices */
 		if (probe_all)
-			pci_probe_all_drivers(dev);
+			ret = pci_probe_all_drivers(dev);
 		else if (devargs != NULL &&
-			devargs->type == RTE_DEVTYPE_WHITELISTED_PCI &&
-			pci_probe_all_drivers(dev) < 0)
+			devargs->type == RTE_DEVTYPE_WHITELISTED_PCI)
+			ret = pci_probe_all_drivers(dev);
+		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Requested device " PCI_PRI_FMT
 				 " cannot be used\n", dev->addr.domain, dev->addr.bus,
 				 dev->addr.devid, dev->addr.function);

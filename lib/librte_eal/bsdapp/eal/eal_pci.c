@@ -217,7 +217,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	if (access(devname, O_RDWR) < 0) {
 		RTE_LOG(WARNING, EAL, "  "PCI_PRI_FMT" not managed by UIO driver, "
 				"skipping\n", loc->domain, loc->bus, loc->devid, loc->function);
-		return -1;
+		return 1;
 	}
 
 	/* save fd if in primary process */
@@ -440,6 +440,7 @@ int
 rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *dev)
 {
 	struct rte_pci_id *id_table;
+	int ret;
 
 	for (id_table = dr->id_table ; id_table->vendor_id != 0; id_table++) {
 
@@ -476,8 +477,9 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 
 		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO) {
 			/* map resources for devices that use igb_uio */
-			if (pci_uio_map_resource(dev) < 0)
-				return -1;
+			ret = pci_uio_map_resource(dev);
+			if (ret != 0)
+				return ret;
 		} else if (dr->drv_flags & RTE_PCI_DRV_FORCE_UNBIND &&
 		           rte_eal_process_type() == RTE_PROC_PRIMARY) {
 			/* unbind current driver */

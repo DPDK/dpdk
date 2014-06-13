@@ -401,6 +401,7 @@ int
 rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *dev)
 {
 	struct rte_pci_id *id_table;
+	int ret = 0;
 
 	for (id_table = dr->id_table ; id_table->vendor_id != 0; id_table++) {
 
@@ -431,13 +432,14 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		if (dev->devargs != NULL &&
 			dev->devargs->type == RTE_DEVTYPE_BLACKLISTED_PCI) {
 			RTE_LOG(DEBUG, EAL, "  Device is blacklisted, not initializing\n");
-			return 0;
+			return 1;
 		}
 
 		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO) {
 			/* map resources for devices that use igb_uio */
-			if (pci_uio_map_resource(dev) < 0)
-				return -1;
+			ret = pci_uio_map_resource(dev);
+			if (ret != 0)
+				return ret;
 		} else if (dr->drv_flags & RTE_PCI_DRV_FORCE_UNBIND &&
 		           rte_eal_process_type() == RTE_PROC_PRIMARY) {
 			/* unbind current driver */
