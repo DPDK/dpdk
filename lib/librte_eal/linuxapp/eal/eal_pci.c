@@ -31,39 +31,17 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
-#include <unistd.h>
-#include <inttypes.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <stdarg.h>
-#include <errno.h>
 #include <dirent.h>
-#include <limits.h>
-#include <sys/queue.h>
 #include <sys/mman.h>
-#include <sys/ioctl.h>
 
-#include <rte_interrupts.h>
 #include <rte_log.h>
 #include <rte_pci.h>
-#include <rte_common.h>
-#include <rte_launch.h>
-#include <rte_memory.h>
-#include <rte_memzone.h>
 #include <rte_tailq.h>
-#include <rte_eal.h>
 #include <rte_eal_memconfig.h>
-#include <rte_per_lcore.h>
-#include <rte_lcore.h>
 #include <rte_malloc.h>
-#include <rte_string_fns.h>
-#include <rte_debug.h>
 #include <rte_devargs.h>
 
 #include "rte_pci_dev_ids.h"
@@ -74,15 +52,12 @@
  * @file
  * PCI probing under linux
  *
- * This code is used to simulate a PCI probe by parsing information in
- * sysfs. Moreover, when a registered driver matches a device, the
- * kernel driver currently using it is unloaded and replaced by
- * igb_uio module, which is a very minimal userland driver for Intel
- * network card, only providing access to PCI BAR to applications, and
- * enabling bus master.
+ * This code is used to simulate a PCI probe by parsing information in sysfs.
+ * When a registered device matches a driver, it is then initialized with
+ * IGB_UIO driver (or doesn't initialize, if the device wasn't bound to it).
  */
 
-struct uio_map {
+struct pci_map {
 	void *addr;
 	uint64_t offset;
 	uint64_t size;
@@ -93,18 +68,18 @@ struct uio_map {
  * For multi-process we need to reproduce all PCI mappings in secondary
  * processes, so save them in a tailq.
  */
-struct uio_resource {
-	TAILQ_ENTRY(uio_resource) next;
+struct mapped_pci_resource {
+	TAILQ_ENTRY(mapped_pci_resource) next;
 
 	struct rte_pci_addr pci_addr;
 	char path[PATH_MAX];
-	size_t nb_maps;
-	struct uio_map maps[PCI_MAX_RESOURCE];
+	int nb_maps;
+	struct pci_map maps[PCI_MAX_RESOURCE];
 };
 
-TAILQ_HEAD(uio_res_list, uio_resource);
+TAILQ_HEAD(mapped_pci_res_list, mapped_pci_resource);
+static struct mapped_pci_res_list *pci_res_list;
 
-static struct uio_res_list *uio_res_list = NULL;
 static int pci_parse_sysfs_value(const char *filename, uint64_t *val);
 
 /* unbind kernel driver for this device */
@@ -148,30 +123,17 @@ error:
 
 /* map a particular resource from a file */
 static void *
-pci_map_resource(void *requested_addr, const char *devname, off_t offset,
-		 size_t size)
+pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size)
 {
-	int fd;
 	void *mapaddr;
-
-	/*
-	 * open devname, to mmap it
-	 */
-	fd = open(devname, O_RDWR);
-	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
-			devname, strerror(errno));
-		goto fail;
-	}
 
 	/* Map the PCI memory resource of device */
 	mapaddr = mmap(requested_addr, size, PROT_READ | PROT_WRITE,
 			MAP_SHARED, fd, offset);
-	close(fd);
 	if (mapaddr == MAP_FAILED ||
 			(requested_addr != NULL && mapaddr != requested_addr)) {
-		RTE_LOG(ERR, EAL, "%s(): cannot mmap(%s(%d), %p, 0x%lx, 0x%lx):"
-			" %s (%p)\n", __func__, devname, fd, requested_addr,
+		RTE_LOG(ERR, EAL, "%s(): cannot mmap(%d, %p, 0x%lx, 0x%lx): %s (%p)\n",
+			__func__, fd, requested_addr,
 			(unsigned long)size, (unsigned long)offset,
 			strerror(errno), mapaddr);
 		goto fail;
@@ -186,10 +148,10 @@ fail:
 }
 
 #define OFF_MAX              ((uint64_t)(off_t)-1)
-static ssize_t
-pci_uio_get_mappings(const char *devname, struct uio_map maps[], size_t nb_maps)
+static int
+pci_uio_get_mappings(const char *devname, struct pci_map maps[], int nb_maps)
 {
-	size_t i;
+	int i;
 	char dirname[PATH_MAX];
 	char filename[PATH_MAX];
 	uint64_t offset, size;
@@ -249,25 +211,37 @@ pci_uio_get_mappings(const char *devname, struct uio_map maps[], size_t nb_maps)
 static int
 pci_uio_map_secondary(struct rte_pci_device *dev)
 {
-        size_t i;
-        struct uio_resource *uio_res;
+	int fd, i;
+	struct mapped_pci_resource *uio_res;
 
-	TAILQ_FOREACH(uio_res, uio_res_list, next) {
+	TAILQ_FOREACH(uio_res, pci_res_list, next) {
 
 		/* skip this element if it doesn't match our PCI address */
 		if (memcmp(&uio_res->pci_addr, &dev->addr, sizeof(dev->addr)))
 			continue;
 
 		for (i = 0; i != uio_res->nb_maps; i++) {
-			if (pci_map_resource(uio_res->maps[i].addr,
-					     uio_res->path,
+			/*
+			 * open devname, to mmap it
+			 */
+			fd = open(uio_res->path, O_RDWR);
+			if (fd < 0) {
+				RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
+					uio_res->path, strerror(errno));
+				return -1;
+			}
+
+			if (pci_map_resource(uio_res->maps[i].addr, fd,
 					     (off_t)uio_res->maps[i].offset,
 					     (size_t)uio_res->maps[i].size)
 			    != uio_res->maps[i].addr) {
 				RTE_LOG(ERR, EAL,
 					"Cannot mmap device resource\n");
+				close(fd);
 				return (-1);
 			}
+			/* fd is not needed in slave process, close it */
+			close(fd);
 		}
 		return (0);
 	}
@@ -276,7 +250,8 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 	return -1;
 }
 
-static int pci_mknod_uio_dev(const char *sysfs_uio_path, unsigned uio_num)
+static int
+pci_mknod_uio_dev(const char *sysfs_uio_path, unsigned uio_num)
 {
 	FILE *f;
 	char filename[PATH_MAX];
@@ -323,7 +298,8 @@ static int pci_mknod_uio_dev(const char *sysfs_uio_path, unsigned uio_num)
  * sysfs. On error, return a negative value. In this case dstbuf is
  * invalid.
  */
-static int pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
+static int
+pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 			   unsigned int buflen)
 {
 	struct rte_pci_addr *loc = &dev->addr;
@@ -405,10 +381,10 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	uint64_t phaddr;
 	uint64_t offset;
 	uint64_t pagesz;
-	ssize_t nb_maps;
+	int nb_maps;
 	struct rte_pci_addr *loc = &dev->addr;
-	struct uio_resource *uio_res;
-	struct uio_map *maps;
+	struct mapped_pci_resource *uio_res;
+	struct pci_map *maps;
 
 	dev->intr_handle.fd = -1;
 	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
@@ -460,6 +436,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	maps = uio_res->maps;
 	for (i = 0; i != PCI_MAX_RESOURCE; i++) {
+		int fd;
 
 		/* skip empty BAR */
 		if ((phaddr = dev->mem_resource[i].phys_addr) == 0)
@@ -473,14 +450,27 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		/* if matching map is found, then use it */
 		if (j != nb_maps) {
 			offset = j * pagesz;
+
+			/*
+			 * open devname, to mmap it
+			 */
+			fd = open(devname, O_RDWR);
+			if (fd < 0) {
+				RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
+					devname, strerror(errno));
+				return -1;
+			}
+
 			if (maps[j].addr != NULL ||
-			    (mapaddr = pci_map_resource(NULL, devname,
+			    (mapaddr = pci_map_resource(NULL, fd,
 							(off_t)offset,
 							(size_t)maps[j].size)
 			    ) == NULL) {
 				rte_free(uio_res);
+				close(fd);
 				return (-1);
 			}
+			close(fd);
 
 			maps[j].addr = mapaddr;
 			maps[j].offset = offset;
@@ -488,7 +478,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		}
 	}
 
-	TAILQ_INSERT_TAIL(uio_res_list, uio_res, next);
+	TAILQ_INSERT_TAIL(pci_res_list, uio_res, next);
 
 	return (0);
 }
@@ -866,7 +856,8 @@ rte_eal_pci_init(void)
 {
 	TAILQ_INIT(&pci_driver_list);
 	TAILQ_INIT(&pci_device_list);
-	uio_res_list = RTE_TAILQ_RESERVE_BY_IDX(RTE_TAILQ_PCI, uio_res_list);
+	pci_res_list = RTE_TAILQ_RESERVE_BY_IDX(RTE_TAILQ_PCI,
+			mapped_pci_res_list);
 
 	/* for debug purposes, PCI can be disabled */
 	if (internal_config.no_pci)
