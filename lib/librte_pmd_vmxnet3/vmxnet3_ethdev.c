@@ -708,7 +708,7 @@ static void
 vmxnet3_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_PROMISC, 1);
+	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_ALL_MULTI, 1);
 }
 
 /* Allmulticast supported only if Vmxnet3_DriverShared is initialized in adapter */
@@ -716,7 +716,7 @@ static void
 vmxnet3_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_PROMISC, 0);
+	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_ALL_MULTI, 0);
 }
 
 #if PROCESS_SYS_EVENTS == 1
