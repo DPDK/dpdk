@@ -99,6 +99,7 @@
 #define OPT_BASE_VIRTADDR   "base-virtaddr"
 #define OPT_XEN_DOM0    "xen-dom0"
 #define OPT_CREATE_UIO_DEV "create-uio-dev"
+#define OPT_VFIO_INTR    "vfio-intr"
 
 #define RTE_EAL_BLACKLIST_SIZE	0x100
 
@@ -360,6 +361,8 @@ eal_usage(const char *prgname)
 	       "               (ex: --vdev=eth_pcap0,iface=eth2).\n"
 	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of native RDTSC\n"
 	       "  --"OPT_BASE_VIRTADDR": specify base virtual address\n"
+	       "  --"OPT_VFIO_INTR": specify desired interrupt mode for VFIO "
+			   "(legacy|msi|msix)\n"
 	       "  --"OPT_CREATE_UIO_DEV": create /dev/uioX (usually done by hotplug)\n"
 	       "\nEAL options for DEBUG use only:\n"
 	       "  --"OPT_NO_HUGE"  : use malloc instead of hugetlbfs\n"
@@ -578,6 +581,28 @@ eal_parse_base_virtaddr(const char *arg)
 	return 0;
 }
 
+static int
+eal_parse_vfio_intr(const char *mode)
+{
+	unsigned i;
+	static struct {
+		const char *name;
+		enum rte_intr_mode value;
+	} map[] = {
+		{ "legacy", RTE_INTR_MODE_LEGACY },
+		{ "msi", RTE_INTR_MODE_MSI },
+		{ "msix", RTE_INTR_MODE_MSIX },
+	};
+
+	for (i = 0; i < RTE_DIM(map); i++) {
+		if (!strcmp(mode, map[i].name)) {
+			internal_config.vfio_intr_mode = map[i].value;
+			return 0;
+		}
+	}
+	return -1;
+}
+
 static inline size_t
 eal_get_hugepage_mem_size(void)
 {
@@ -632,6 +657,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_PCI_BLACKLIST, 1, 0, 0},
 		{OPT_VDEV, 1, 0, 0},
 		{OPT_SYSLOG, 1, NULL, 0},
+		{OPT_VFIO_INTR, 1, NULL, 0},
 		{OPT_BASE_VIRTADDR, 1, 0, 0},
 		{OPT_XEN_DOM0, 0, 0, 0},
 		{OPT_CREATE_UIO_DEV, 1, NULL, 0},
@@ -824,6 +850,14 @@ eal_parse_args(int argc, char **argv)
 				if (eal_parse_base_virtaddr(optarg) < 0) {
 					RTE_LOG(ERR, EAL, "invalid parameter for --"
 							OPT_BASE_VIRTADDR "\n");
+					eal_usage(prgname);
+					return -1;
+				}
+			}
+			else if (!strcmp(lgopts[option_index].name, OPT_VFIO_INTR)) {
+				if (eal_parse_vfio_intr(optarg) < 0) {
+					RTE_LOG(ERR, EAL, "invalid parameters for --"
+							OPT_VFIO_INTR "\n");
 					eal_usage(prgname);
 					return -1;
 				}

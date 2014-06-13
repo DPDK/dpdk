@@ -768,6 +768,22 @@ test_misc_flags(void)
 	const char *argv11[] = {prgname, "--file-prefix=virtaddr",
 			"-c", "1", "-n", "2", "--base-virtaddr=0x12345678"};
 
+	/* try running with --vfio-intr INTx flag */
+	const char *argv12[] = {prgname, "--file-prefix=intr",
+			"-c", "1", "-n", "2", "--vfio-intr=legacy"};
+
+	/* try running with --vfio-intr MSI flag */
+	const char *argv13[] = {prgname, "--file-prefix=intr",
+			"-c", "1", "-n", "2", "--vfio-intr=msi"};
+
+	/* try running with --vfio-intr MSI-X flag */
+	const char *argv14[] = {prgname, "--file-prefix=intr",
+			"-c", "1", "-n", "2", "--vfio-intr=msix"};
+
+	/* try running with --vfio-intr invalid flag */
+	const char *argv15[] = {prgname, "--file-prefix=intr",
+			"-c", "1", "-n", "2", "--vfio-intr=invalid"};
+
 
 	if (launch_proc(argv0) == 0) {
 		printf("Error - process ran ok with invalid flag\n");
@@ -818,6 +834,26 @@ test_misc_flags(void)
 	}
 	if (launch_proc(argv11) != 0) {
 		printf("Error - process did not run ok with --base-virtaddr parameter\n");
+		return -1;
+	}
+	if (launch_proc(argv12) != 0) {
+		printf("Error - process did not run ok with "
+				"--vfio-intr INTx parameter\n");
+		return -1;
+	}
+	if (launch_proc(argv13) != 0) {
+		printf("Error - process did not run ok with "
+				"--vfio-intr MSI parameter\n");
+		return -1;
+	}
+	if (launch_proc(argv14) != 0) {
+		printf("Error - process did not run ok with "
+				"--vfio-intr MSI-X parameter\n");
+		return -1;
+	}
+	if (launch_proc(argv15) == 0) {
+		printf("Error - process run ok with "
+				"--vfio-intr invalid parameter\n");
 		return -1;
 	}
 	return 0;
