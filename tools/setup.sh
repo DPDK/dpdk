@@ -187,6 +187,54 @@ load_igb_uio_module()
 }
 
 #
+# Unloads VFIO modules.
+#
+remove_vfio_module()
+{
+	echo "Unloading any existing VFIO module"
+	/sbin/lsmod | grep -s vfio > /dev/null
+	if [ $? -eq 0 ] ; then
+		sudo /sbin/rmmod vfio-pci
+		sudo /sbin/rmmod vfio_iommu_type1
+		sudo /sbin/rmmod vfio
+	fi
+}
+
+#
+# Loads new vfio-pci (and vfio module if needed).
+#
+load_vfio_module()
+{
+	remove_vfio_module
+
+	VFIO_PATH="kernel/drivers/vfio/pci/vfio-pci.ko"
+
+	echo "Loading VFIO module"
+	/sbin/lsmod | grep -s vfio_pci > /dev/null
+	if [ $? -ne 0 ] ; then
+		if [ -f /lib/modules/$(uname -r)/$VFIO_PATH ] ; then
+			sudo /sbin/modprobe vfio-pci
+		fi
+	fi
+
+	# make sure regular users can read /dev/vfio
+	echo "chmod /dev/vfio"
+	sudo /usr/bin/chmod a+x /dev/vfio
+	if [ $? -ne 0 ] ; then
+		echo "FAIL"
+		quit
+	fi
+	echo "OK"
+
+	# check if /dev/vfio/vfio exists - that way we
+	# know we either loaded the module, or it was
+	# compiled into the kernel
+	if [ ! -e /dev/vfio/vfio ] ; then
+		echo "## ERROR: VFIO not found!"
+	fi
+}
+
+#
 # Unloads the rte_kni.ko module.
 #
 remove_kni_module()
@@ -219,6 +267,55 @@ load_kni_module()
 	if [ $? -ne 0 ] ; then
 		echo "## ERROR: Could not load kmod/rte_kni.ko."
 		quit
+	fi
+}
+
+#
+# Sets appropriate permissions on /dev/vfio/* files
+#
+set_vfio_permissions()
+{
+	# make sure regular users can read /dev/vfio
+	echo "chmod /dev/vfio"
+	sudo /usr/bin/chmod a+x /dev/vfio
+	if [ $? -ne 0 ] ; then
+		echo "FAIL"
+		quit
+	fi
+	echo "OK"
+
+	# make sure regular user can access everything inside /dev/vfio
+	echo "chmod /dev/vfio/*"
+	sudo /usr/bin/chmod 0666 /dev/vfio/*
+	if [ $? -ne 0 ] ; then
+		echo "FAIL"
+		quit
+	fi
+	echo "OK"
+
+	# since permissions are only to be set when running as
+	# regular user, we only check ulimit here
+	#
+	# warn if regular user is only allowed
+	# to memlock <64M of memory
+	MEMLOCK_AMNT=`ulimit -l`
+
+	if [ "$MEMLOCK_AMNT" != "unlimited" ] ; then
+		MEMLOCK_MB=`expr $MEMLOCK_AMNT / 1024`
+		echo ""
+		echo "Current user memlock limit: ${MEMLOCK_MB} MB"
+		echo ""
+		echo "This is the maximum amount of memory you will be"
+		echo "able to use with DPDK and VFIO if run as current user."
+		echo -n "To change this, please adjust limits.conf memlock "
+		echo "limit for current user."
+
+		if [ $MEMLOCK_AMNT -lt 65536 ] ; then
+			echo ""
+			echo "## WARNING: memlock limit is less than 64MB"
+			echo -n "## DPDK with VFIO may not be able to initialize "
+			echo "if run as current user."
+		fi
 	fi
 }
 
@@ -340,7 +437,25 @@ show_nics()
 #
 # Uses dpdk_nic_bind.py to move devices to work with igb_uio
 #
-bind_nics()
+bind_nics_to_vfio()
+{
+	if /sbin/lsmod  | grep -q vfio_pci ; then
+		${RTE_SDK}/tools/dpdk_nic_bind.py --status
+		echo ""
+		echo -n "Enter PCI address of device to bind to VFIO driver: "
+		read PCI_PATH
+		sudo ${RTE_SDK}/tools/dpdk_nic_bind.py -b vfio-pci $PCI_PATH &&
+			echo "OK"
+	else
+		echo "# Please load the 'vfio-pci' kernel module before querying or "
+		echo "# adjusting NIC device bindings"
+	fi
+}
+
+#
+# Uses dpdk_nic_bind.py to move devices to work with igb_uio
+#
+bind_nics_to_igb_uio()
 {
 	if  /sbin/lsmod  | grep -q igb_uio ; then
 		${RTE_SDK}/tools/dpdk_nic_bind.py --status
@@ -397,20 +512,29 @@ step2_func()
 	TEXT[1]="Insert IGB UIO module"
 	FUNC[1]="load_igb_uio_module"
 
-	TEXT[2]="Insert KNI module"
-	FUNC[2]="load_kni_module"
+	TEXT[2]="Insert VFIO module"
+	FUNC[2]="load_vfio_module"
 
-	TEXT[3]="Setup hugepage mappings for non-NUMA systems"
-	FUNC[3]="set_non_numa_pages"
+	TEXT[3]="Insert KNI module"
+	FUNC[3]="load_kni_module"
 
-	TEXT[4]="Setup hugepage mappings for NUMA systems"
-	FUNC[4]="set_numa_pages"
+	TEXT[4]="Setup hugepage mappings for non-NUMA systems"
+	FUNC[4]="set_non_numa_pages"
 
-	TEXT[5]="Display current Ethernet device settings"
-	FUNC[5]="show_nics"
+	TEXT[5]="Setup hugepage mappings for NUMA systems"
+	FUNC[5]="set_numa_pages"
 
-	TEXT[6]="Bind Ethernet device to IGB UIO module"
-	FUNC[6]="bind_nics"
+	TEXT[6]="Display current Ethernet device settings"
+	FUNC[6]="show_nics"
+
+	TEXT[7]="Bind Ethernet device to IGB UIO module"
+	FUNC[7]="bind_nics_to_igb_uio"
+
+	TEXT[8]="Bind Ethernet device to VFIO module"
+	FUNC[8]="bind_nics_to_vfio"
+
+	TEXT[9]="Setup VFIO permissions"
+	FUNC[9]="set_vfio_permissions"
 }
 
 #
@@ -455,11 +579,14 @@ step5_func()
 	TEXT[3]="Remove IGB UIO module"
 	FUNC[3]="remove_igb_uio_module"
 
-	TEXT[4]="Remove KNI module"
-	FUNC[4]="remove_kni_module"
+	TEXT[4]="Remove VFIO module"
+	FUNC[4]="remove_vfio_module"
 
-	TEXT[5]="Remove hugepage mappings"
-	FUNC[5]="clear_huge_pages"
+	TEXT[5]="Remove KNI module"
+	FUNC[5]="remove_kni_module"
+
+	TEXT[6]="Remove hugepage mappings"
+	FUNC[6]="clear_huge_pages"
 }
 
 STEPS[1]="step1_func"
