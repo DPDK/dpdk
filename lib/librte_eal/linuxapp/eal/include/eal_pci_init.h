@@ -57,7 +57,7 @@ struct mapped_pci_resource {
 TAILQ_HEAD(mapped_pci_res_list, mapped_pci_resource);
 extern struct mapped_pci_res_list *pci_res_list;
 
-void * pci_map_resource(void * requested_addr, int fd, off_t offset,
+void *pci_map_resource(void *requested_addr, int fd, off_t offset,
 		size_t size);
 
 /* map IGB_UIO resource prototype */

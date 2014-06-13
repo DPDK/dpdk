@@ -99,7 +99,7 @@ error:
 
 /* map a particular resource from a file */
 void *
-pci_map_resource(void * requested_addr, int fd, off_t offset, size_t size)
+pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size)
 {
 	void *mapaddr;
 

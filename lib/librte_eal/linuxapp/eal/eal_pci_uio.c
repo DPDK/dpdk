@@ -74,7 +74,7 @@ pci_uio_get_mappings(const char *devname, struct pci_map maps[], int nb_maps)
 			RTE_LOG(ERR, EAL,
 				"%s(): cannot parse offset of %s\n",
 				__func__, dirname);
-			return (-1);
+			return -1;
 		}
 
 		/* get mapping size */
@@ -84,7 +84,7 @@ pci_uio_get_mappings(const char *devname, struct pci_map maps[], int nb_maps)
 			RTE_LOG(ERR, EAL,
 				"%s(): cannot parse size of %s\n",
 				__func__, dirname);
-			return (-1);
+			return -1;
 		}
 
 		/* get mapping physical address */
@@ -94,20 +94,21 @@ pci_uio_get_mappings(const char *devname, struct pci_map maps[], int nb_maps)
 			RTE_LOG(ERR, EAL,
 				"%s(): cannot parse addr of %s\n",
 				__func__, dirname);
-			return (-1);
+			return -1;
 		}
 
 		if ((offset > OFF_MAX) || (size > SIZE_MAX)) {
 			RTE_LOG(ERR, EAL,
 				"%s(): offset/size exceed system max value\n",
 				__func__);
-			return (-1);
+			return -1;
 		}
 
 		maps[i].offset = offset;
 		maps[i].size = size;
-        }
-	return (i);
+	}
+
+	return i;
 }
 
 static int
@@ -140,12 +141,12 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 				RTE_LOG(ERR, EAL,
 					"Cannot mmap device resource\n");
 				close(fd);
-				return (-1);
+				return -1;
 			}
 			/* fd is not needed in slave process, close it */
 			close(fd);
 		}
-		return (0);
+		return 0;
 	}
 
 	RTE_LOG(ERR, EAL, "Cannot find resource for device\n");
@@ -214,15 +215,15 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 	 * or uio:uioX */
 
 	rte_snprintf(dirname, sizeof(dirname),
-	         SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/uio",
-	         loc->domain, loc->bus, loc->devid, loc->function);
+			SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/uio",
+			loc->domain, loc->bus, loc->devid, loc->function);
 
 	dir = opendir(dirname);
 	if (dir == NULL) {
 		/* retry with the parent directory */
 		rte_snprintf(dirname, sizeof(dirname),
-		         SYSFS_PCI_DEVICES "/" PCI_PRI_FMT,
-		         loc->domain, loc->bus, loc->devid, loc->function);
+				SYSFS_PCI_DEVICES "/" PCI_PRI_FMT,
+				loc->domain, loc->bus, loc->devid, loc->function);
 		dir = opendir(dirname);
 
 		if (dir == NULL) {
@@ -265,7 +266,8 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 		return -1;
 
 	/* create uio device if we've been asked to */
-	if (internal_config.create_uio_dev && pci_mknod_uio_dev(dstbuf, uio_num) < 0)
+	if (internal_config.create_uio_dev &&
+			pci_mknod_uio_dev(dstbuf, uio_num) < 0)
 		RTE_LOG(WARNING, EAL, "Cannot create /dev/uio%u\n", uio_num);
 
 	return uio_num;
@@ -293,7 +295,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	/* secondary processes - use already recorded details */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return (pci_uio_map_secondary(dev));
+		return pci_uio_map_secondary(dev);
 
 	/* find uio resource */
 	uio_num = pci_get_uio_dev(dev, dirname, sizeof(dirname));
@@ -314,10 +316,11 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
 
 	/* allocate the mapping details for secondary processes*/
-	if ((uio_res = rte_zmalloc("UIO_RES", sizeof (*uio_res), 0)) == NULL) {
+	uio_res = rte_zmalloc("UIO_RES", sizeof(*uio_res), 0);
+	if (uio_res == NULL) {
 		RTE_LOG(ERR, EAL,
 			"%s(): cannot store uio mmap details\n", __func__);
-		return (-1);
+		return -1;
 	}
 
 	rte_snprintf(uio_res->path, sizeof(uio_res->path), "%s", devname);
@@ -328,7 +331,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 				       RTE_DIM(uio_res->maps));
 	if (nb_maps < 0) {
 		rte_free(uio_res);
-		return (nb_maps);
+		return nb_maps;
 	}
 
 	uio_res->nb_maps = nb_maps;
@@ -341,7 +344,8 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		int fd;
 
 		/* skip empty BAR */
-		if ((phaddr = dev->mem_resource[i].phys_addr) == 0)
+		phaddr = dev->mem_resource[i].phys_addr;
+		if (phaddr == 0)
 			continue;
 
 		for (j = 0; j != nb_maps && (phaddr != maps[j].phaddr ||
@@ -351,6 +355,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 		/* if matching map is found, then use it */
 		if (j != nb_maps) {
+			int fail = 0;
 			offset = j * pagesz;
 
 			/*
@@ -363,14 +368,19 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 				return -1;
 			}
 
-			if (maps[j].addr != NULL ||
-			    (mapaddr = pci_map_resource(NULL, fd,
-							(off_t)offset,
-							(size_t)maps[j].size)
-			    ) == NULL) {
+			if (maps[j].addr != NULL)
+				fail = 1;
+			else {
+				mapaddr = pci_map_resource(NULL, fd, (off_t)offset,
+						(size_t)maps[j].size);
+				if (mapaddr == NULL)
+					fail = 1;
+			}
+
+			if (fail) {
 				rte_free(uio_res);
 				close(fd);
-				return (-1);
+				return -1;
 			}
 			close(fd);
 
@@ -382,7 +392,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	TAILQ_INSERT_TAIL(pci_res_list, uio_res, next);
 
-	return (0);
+	return 0;
 }
 
 /*
@@ -392,30 +402,30 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 static int
 pci_parse_sysfs_value(const char *filename, uint64_t *val)
 {
-        FILE *f;
-        char buf[BUFSIZ];
-        char *end = NULL;
+	FILE *f;
+	char buf[BUFSIZ];
+	char *end = NULL;
 
-        f = fopen(filename, "r");
-        if (f == NULL) {
-                RTE_LOG(ERR, EAL, "%s(): cannot open sysfs value %s\n",
-                        __func__, filename);
-                return -1;
-        }
+	f = fopen(filename, "r");
+	if (f == NULL) {
+		RTE_LOG(ERR, EAL, "%s(): cannot open sysfs value %s\n",
+				__func__, filename);
+		return -1;
+	}
 
-        if (fgets(buf, sizeof(buf), f) == NULL) {
-                RTE_LOG(ERR, EAL, "%s(): cannot read sysfs value %s\n",
-                        __func__, filename);
-                fclose(f);
-                return -1;
-        }
-        *val = strtoull(buf, &end, 0);
-        if ((buf[0] == '\0') || (end == NULL) || (*end != '\n')) {
-                RTE_LOG(ERR, EAL, "%s(): cannot parse sysfs value %s\n",
-                                __func__, filename);
-                fclose(f);
-                return -1;
-        }
-        fclose(f);
-        return 0;
+	if (fgets(buf, sizeof(buf), f) == NULL) {
+		RTE_LOG(ERR, EAL, "%s(): cannot read sysfs value %s\n",
+				__func__, filename);
+		fclose(f);
+		return -1;
+	}
+	*val = strtoull(buf, &end, 0);
+	if ((buf[0] == '\0') || (end == NULL) || (*end != '\n')) {
+		RTE_LOG(ERR, EAL, "%s(): cannot parse sysfs value %s\n",
+				__func__, filename);
+		fclose(f);
+		return -1;
+	}
+	fclose(f);
+	return 0;
 }
