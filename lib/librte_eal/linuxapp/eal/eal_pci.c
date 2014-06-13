@@ -435,7 +435,7 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 			return 1;
 		}
 
-		if (dr->drv_flags & RTE_PCI_DRV_NEED_IGB_UIO) {
+		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
 			/* map resources for devices that use igb_uio */
 			ret = pci_uio_map_resource(dev);
 			if (ret != 0)

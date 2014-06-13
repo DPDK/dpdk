@@ -63,7 +63,7 @@ static int my_driver_init(struct rte_pci_driver *dr,
 			  struct rte_pci_device *dev);
 
 /*
- * To test cases where RTE_PCI_DRV_NEED_IGB_UIO is set, and isn't set, two
+ * To test cases where RTE_PCI_DRV_NEED_MAPPING is set, and isn't set, two
  * drivers are created (one with IGB devices, the other with IXGBE devices).
  */
 
@@ -90,7 +90,7 @@ struct rte_pci_driver my_driver = {
 	.name = "test_driver",
 	.devinit = my_driver_init,
 	.id_table = my_driver_id,
-	.drv_flags = RTE_PCI_DRV_NEED_IGB_UIO,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
 };
 
 struct rte_pci_driver my_driver2 = {

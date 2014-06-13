@@ -190,8 +190,8 @@ struct rte_pci_driver {
 	uint32_t drv_flags;                     /**< Flags contolling handling of device. */
 };
 
-/** Device needs igb_uio kernel module */
-#define RTE_PCI_DRV_NEED_IGB_UIO 0x0001
+/** Device needs PCI BAR mapping (done with either IGB_UIO or VFIO) */
+#define RTE_PCI_DRV_NEED_MAPPING 0x0001
 /** Device driver must be registered several times until failure */
 #define RTE_PCI_DRV_MULTIPLE 0x0002
 /** Device needs to be unbound even if no module is provided */
