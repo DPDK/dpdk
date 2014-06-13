@@ -217,21 +217,21 @@ eth_vmxnet3_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	/* Check h/w version compatibility with driver. */
 	ver = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_VRRS);
-	PMD_INIT_LOG(DEBUG, "Harware version : %d\n", ver);
+	PMD_INIT_LOG(DEBUG, "Harware version : %d", ver);
 	if (ver & 0x1)
 		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_VRRS, 1);
 	else {
-		PMD_INIT_LOG(ERR, "Uncompatiable h/w version, should be 0x1\n");
+		PMD_INIT_LOG(ERR, "Uncompatiable h/w version, should be 0x1");
 		return -EIO;
 	}
 
 	/* Check UPT version compatibility with driver. */
 	ver = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_UVRS);
-	PMD_INIT_LOG(DEBUG, "UPT harware version : %d\n", ver);
+	PMD_INIT_LOG(DEBUG, "UPT harware version : %d", ver);
 	if (ver & 0x1)
 		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_UVRS, 1);
 	else {
-		PMD_INIT_LOG(ERR, "Incompatiable UPT version.\n");
+		PMD_INIT_LOG(ERR, "Incompatiable UPT version.");
 		return -EIO;
 	}
 
@@ -254,7 +254,7 @@ eth_vmxnet3_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	ether_addr_copy((struct ether_addr *) hw->perm_addr,
 			&eth_dev->data->mac_addrs[0]);
 
-	PMD_INIT_LOG(DEBUG, "MAC Address : %02x:%02x:%02x:%02x:%02x:%02x\n",
+	PMD_INIT_LOG(DEBUG, "MAC Address : %02x:%02x:%02x:%02x:%02x:%02x",
 		     hw->perm_addr[0], hw->perm_addr[1], hw->perm_addr[2],
 		     hw->perm_addr[3], hw->perm_addr[4], hw->perm_addr[5]);
 
@@ -319,7 +319,7 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 			      "shared", rte_socket_id(), 8);
 
 	if (mz == NULL) {
-		PMD_INIT_LOG(ERR, "ERROR: Creating shared zone\n");
+		PMD_INIT_LOG(ERR, "ERROR: Creating shared zone");
 		return -ENOMEM;
 	}
 	memset(mz->addr, 0, mz->len);
@@ -334,7 +334,7 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 	mz = gpa_zone_reserve(dev, size, "queuedesc",
 			      rte_socket_id(), VMXNET3_QUEUE_DESC_ALIGN);
 	if (mz == NULL) {
-		PMD_INIT_LOG(ERR, "ERROR: Creating queue descriptors zone\n");
+		PMD_INIT_LOG(ERR, "ERROR: Creating queue descriptors zone");
 		return -ENOMEM;
 	}
 	memset(mz->addr, 0, mz->len);
@@ -352,7 +352,7 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 				      rte_socket_id(), CACHE_LINE_SIZE);
 		if (mz == NULL) {
 			PMD_INIT_LOG(ERR,
-				     "ERROR: Creating rss_conf structure zone\n");
+				     "ERROR: Creating rss_conf structure zone");
 			return -ENOMEM;
 		}
 		memset(mz->addr, 0, mz->len);
@@ -463,7 +463,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	}
 
 	PMD_INIT_LOG(DEBUG,
-		     "Writing MAC Address : %02x:%02x:%02x:%02x:%02x:%02x\n",
+		     "Writing MAC Address : %02x:%02x:%02x:%02x:%02x:%02x",
 		     hw->perm_addr[0], hw->perm_addr[1], hw->perm_addr[2],
 		     hw->perm_addr[3], hw->perm_addr[4], hw->perm_addr[5]);
 
@@ -506,7 +506,7 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	status = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
 
 	if (status != 0) {
-		PMD_INIT_LOG(ERR, "Device activation in %s(): UNSUCCESSFUL\n", __func__);
+		PMD_INIT_LOG(ERR, "Device activation in %s(): UNSUCCESSFUL", __func__);
 		return -1;
 	}
 
@@ -519,7 +519,7 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	 */
 	ret = vmxnet3_dev_rxtx_init(dev);
 	if (ret != VMXNET3_SUCCESS) {
-		PMD_INIT_LOG(ERR, "Device receive init in %s: UNSUCCESSFUL\n", __func__);
+		PMD_INIT_LOG(ERR, "Device receive init in %s: UNSUCCESSFUL", __func__);
 		return ret;
 	}
 
@@ -531,7 +531,7 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	 */
 #if PROCESS_SYS_EVENTS == 1
 	events = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_ECR);
-	PMD_INIT_LOG(DEBUG, "Reading events: 0x%X\n\n", events);
+	PMD_INIT_LOG(DEBUG, "Reading events: 0x%X", events);
 	vmxnet3_process_events(hw);
 #endif
 	return status;
@@ -550,7 +550,7 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (hw->adapter_stopped == TRUE) {
-		PMD_INIT_LOG(DEBUG, "Device already closed.\n");
+		PMD_INIT_LOG(DEBUG, "Device already closed.");
 		return;
 	}
 
@@ -564,7 +564,7 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 
 	/* reset the device */
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_RESET_DEV);
-	PMD_INIT_LOG(DEBUG, "Device reset.\n");
+	PMD_INIT_LOG(DEBUG, "Device reset.");
 	hw->adapter_stopped = FALSE;
 
 	vmxnet3_dev_clear_queues(dev);
@@ -655,7 +655,7 @@ vmxnet3_dev_link_update(struct rte_eth_dev *dev, __attribute__((unused)) int wai
 	ret = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
 
 	if (!ret) {
-		PMD_INIT_LOG(ERR, "Link Status Negative : %s()\n", __func__);
+		PMD_INIT_LOG(ERR, "Link Status Negative : %s()", __func__);
 		return -1;
 	}
 
@@ -729,7 +729,7 @@ vmxnet3_process_events(struct vmxnet3_hw *hw)
 	uint32_t events = hw->shared->ecr;
 
 	if (!events) {
-		PMD_INIT_LOG(ERR, "No events to process in %s()\n", __func__);
+		PMD_INIT_LOG(ERR, "No events to process in %s()", __func__);
 		return;
 	}
 
@@ -742,18 +742,18 @@ vmxnet3_process_events(struct vmxnet3_hw *hw)
 	/* Check if link state has changed */
 	if (events & VMXNET3_ECR_LINK)
 		PMD_INIT_LOG(ERR,
-			     "Process events in %s(): VMXNET3_ECR_LINK event\n", __func__);
+			     "Process events in %s(): VMXNET3_ECR_LINK event", __func__);
 
 	/* Check if there is an error on xmit/recv queues */
 	if (events & (VMXNET3_ECR_TQERR | VMXNET3_ECR_RQERR)) {
 		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_GET_QUEUE_STATUS);
 
 		if (hw->tqd_start->status.stopped)
-			PMD_INIT_LOG(ERR, "tq error 0x%x\n",
+			PMD_INIT_LOG(ERR, "tq error 0x%x",
 				     hw->tqd_start->status.error);
 
 		if (hw->rqd_start->status.stopped)
-			PMD_INIT_LOG(ERR, "rq error 0x%x\n",
+			PMD_INIT_LOG(ERR, "rq error 0x%x",
 				     hw->rqd_start->status.error);
 
 		/* Reset the device */
@@ -761,10 +761,10 @@ vmxnet3_process_events(struct vmxnet3_hw *hw)
 	}
 
 	if (events & VMXNET3_ECR_DIC)
-		PMD_INIT_LOG(ERR, "Device implementation change event.\n");
+		PMD_INIT_LOG(ERR, "Device implementation change event.");
 
 	if (events & VMXNET3_ECR_DEBUG)
-		PMD_INIT_LOG(ERR, "Debug event generated by device.\n");
+		PMD_INIT_LOG(ERR, "Debug event generated by device.");
 
 }
 #endif
