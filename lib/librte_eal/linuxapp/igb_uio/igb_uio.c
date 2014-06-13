@@ -33,6 +33,7 @@
 #ifdef CONFIG_XEN_DOM0
 #include <xen/xen.h>
 #endif
+#include <rte_pci_dev_features.h>
 
 /**
  * MSI-X related macros, copy from linux/pci_regs.h in kernel 2.6.39,
@@ -49,14 +50,6 @@
 
 #define IGBUIO_NUM_MSI_VECTORS 1
 
-/* interrupt mode */
-enum igbuio_intr_mode {
-	IGBUIO_LEGACY_INTR_MODE = 0,
-	IGBUIO_MSI_INTR_MODE,
-	IGBUIO_MSIX_INTR_MODE,
-	IGBUIO_INTR_MODE_MAX
-};
-
 /**
  * A structure describing the private information for a uio device.
  */
@@ -64,13 +57,13 @@ struct rte_uio_pci_dev {
 	struct uio_info info;
 	struct pci_dev *pdev;
 	spinlock_t lock; /* spinlock for accessing PCI config space or msix data in multi tasks/isr */
-	enum igbuio_intr_mode mode;
+	enum rte_intr_mode mode;
 	struct msix_entry \
 		msix_entries[IGBUIO_NUM_MSI_VECTORS]; /* pointer to the msix vectors to be allocated later */
 };
 
 static char *intr_mode = NULL;
-static enum igbuio_intr_mode igbuio_intr_mode_preferred = IGBUIO_MSIX_INTR_MODE;
+static enum rte_intr_mode igbuio_intr_mode_preferred = RTE_INTR_MODE_MSIX;
 
 /* PCI device id table */
 static struct pci_device_id igbuio_pci_ids[] = {
@@ -222,14 +215,13 @@ igbuio_set_interrupt_mask(struct rte_uio_pci_dev *udev, int32_t state)
 {
 	struct pci_dev *pdev = udev->pdev;
 
-	if (udev->mode == IGBUIO_MSIX_INTR_MODE) {
+	if (udev->mode == RTE_INTR_MODE_MSIX) {
 		struct msi_desc *desc;
 
 		list_for_each_entry(desc, &pdev->msi_list, list) {
 			igbuio_msix_mask_irq(desc, state);
 		}
-	}
-	else if (udev->mode == IGBUIO_LEGACY_INTR_MODE) {
+	} else if (udev->mode == RTE_INTR_MODE_LEGACY) {
 		uint32_t status;
 		uint16_t old, new;
 
@@ -301,7 +293,7 @@ igbuio_pci_irqhandler(int irq, struct uio_info *info)
 		goto spin_unlock;
 
 	/* for legacy mode, interrupt maybe shared */
-	if (udev->mode == IGBUIO_LEGACY_INTR_MODE) {
+	if (udev->mode == RTE_INTR_MODE_LEGACY) {
 		pci_read_config_dword(pdev, PCI_COMMAND, &cmd_status_dword);
 		status = cmd_status_dword >> 16;
 		/* interrupt is not ours, goes to out */
@@ -520,18 +512,18 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 #endif
 	udev->info.priv = udev;
 	udev->pdev = dev;
-	udev->mode = 0; /* set the default value for interrupt mode */
+	udev->mode = RTE_INTR_MODE_LEGACY;
 	spin_lock_init(&udev->lock);
 
 	/* check if it need to try msix first */
-	if (igbuio_intr_mode_preferred == IGBUIO_MSIX_INTR_MODE) {
+	if (igbuio_intr_mode_preferred == RTE_INTR_MODE_MSIX) {
 		int vector;
 
 		for (vector = 0; vector < IGBUIO_NUM_MSI_VECTORS; vector ++)
 			udev->msix_entries[vector].entry = vector;
 
 		if (pci_enable_msix(udev->pdev, udev->msix_entries, IGBUIO_NUM_MSI_VECTORS) == 0) {
-			udev->mode = IGBUIO_MSIX_INTR_MODE;
+			udev->mode = RTE_INTR_MODE_MSIX;
 		}
 		else {
 			pci_disable_msix(udev->pdev);
@@ -539,13 +531,13 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		}
 	}
 	switch (udev->mode) {
-	case IGBUIO_MSIX_INTR_MODE:
+	case RTE_INTR_MODE_MSIX:
 		udev->info.irq_flags = 0;
 		udev->info.irq = udev->msix_entries[0].vector;
 		break;
-	case IGBUIO_MSI_INTR_MODE:
+	case RTE_INTR_MODE_MSI:
 		break;
-	case IGBUIO_LEGACY_INTR_MODE:
+	case RTE_INTR_MODE_LEGACY:
 		udev->info.irq_flags = IRQF_SHARED;
 		udev->info.irq = dev->irq;
 		break;
@@ -570,7 +562,7 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 fail_release_iomem:
 	sysfs_remove_group(&dev->dev.kobj, &dev_attr_grp);
 	igbuio_pci_release_iomem(&udev->info);
-	if (udev->mode == IGBUIO_MSIX_INTR_MODE)
+	if (udev->mode == RTE_INTR_MODE_MSIX)
 		pci_disable_msix(udev->pdev);
 	pci_release_regions(dev);
 fail_disable:
@@ -595,7 +587,7 @@ igbuio_pci_remove(struct pci_dev *dev)
 	uio_unregister_device(info);
 	igbuio_pci_release_iomem(info);
 	if (((struct rte_uio_pci_dev *)info->priv)->mode ==
-					IGBUIO_MSIX_INTR_MODE)
+			RTE_INTR_MODE_MSIX)
 		pci_disable_msix(dev);
 	pci_release_regions(dev);
 	pci_disable_device(dev);
@@ -611,11 +603,11 @@ igbuio_config_intr_mode(char *intr_str)
 		return 0;
 	}
 
-	if (!strcmp(intr_str, "msix")) {
-		igbuio_intr_mode_preferred = IGBUIO_MSIX_INTR_MODE;
+	if (!strcmp(intr_str, RTE_INTR_MODE_MSIX_NAME)) {
+		igbuio_intr_mode_preferred = RTE_INTR_MODE_MSIX;
 		printk(KERN_INFO "Use MSIX interrupt\n");
-	} else if (!strcmp(intr_str, "legacy")) {
-		igbuio_intr_mode_preferred = IGBUIO_LEGACY_INTR_MODE;
+	} else if (!strcmp(intr_str, RTE_INTR_MODE_LEGACY_NAME)) {
+		igbuio_intr_mode_preferred = RTE_INTR_MODE_LEGACY;
 		printk(KERN_INFO "Use legacy interrupt\n");
 	} else {
 		printk(KERN_INFO "Error: bad parameter - %s\n", intr_str);
@@ -656,8 +648,8 @@ module_exit(igbuio_pci_exit_module);
 module_param(intr_mode, charp, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(intr_mode,
 "igb_uio interrupt mode (default=msix):\n"
-"    msix       Use MSIX interrupt\n"
-"    legacy     Use Legacy interrupt\n"
+"    " RTE_INTR_MODE_MSIX_NAME "       Use MSIX interrupt\n"
+"    " RTE_INTR_MODE_LEGACY_NAME "     Use Legacy interrupt\n"
 "\n");
 
 MODULE_DESCRIPTION("UIO driver for Intel IGB PCI cards");
