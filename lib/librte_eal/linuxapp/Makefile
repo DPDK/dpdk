@@ -31,7 +31,9 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+ifeq ($(CONFIG_RTE_EAL_IGB_UIO),y)
 DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += igb_uio
+endif
 DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal
 ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
 DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += kni
