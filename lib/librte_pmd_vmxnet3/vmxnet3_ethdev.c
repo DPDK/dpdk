@@ -598,39 +598,43 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_GET_STATS);
 
-	stats->opackets = 0;
-	stats->obytes = 0;
-	stats->oerrors = 0;
-	stats->ipackets = 0;
-	stats->ibytes = 0;
-	stats->rx_nombuf = 0;
-	stats->ierrors = 0;
-	stats->imcasts  = 0;
-	stats->fdirmatch = 0;
-	stats->fdirmiss = 0;
-
+	RTE_BUILD_BUG_ON(RTE_ETHDEV_QUEUE_STAT_CNTRS < VMXNET3_MAX_TX_QUEUES);
 	for (i = 0; i < hw->num_tx_queues; i++) {
-		stats->opackets += hw->tqd_start[i].stats.ucastPktsTxOK +
-				hw->tqd_start[i].stats.mcastPktsTxOK +
-				hw->tqd_start[i].stats.bcastPktsTxOK;
-		stats->obytes   += hw->tqd_start[i].stats.ucastBytesTxOK +
-				hw->tqd_start[i].stats.mcastBytesTxOK +
-				hw->tqd_start[i].stats.bcastBytesTxOK;
-		stats->oerrors  += hw->tqd_start[i].stats.pktsTxError +
-				hw->tqd_start[i].stats.pktsTxDiscard;
+		struct UPT1_TxStats *txStats = &hw->tqd_start[i].stats;
+
+		stats->q_opackets[i] = txStats->ucastPktsTxOK +
+			txStats->mcastPktsTxOK +
+			txStats->bcastPktsTxOK;
+		stats->q_obytes[i] = txStats->ucastBytesTxOK +
+			txStats->mcastBytesTxOK +
+			txStats->bcastBytesTxOK;
+
+		stats->opackets += stats->q_opackets[i];
+		stats->obytes += stats->q_obytes[i];
+		stats->oerrors += txStats->pktsTxError +
+			txStats->pktsTxDiscard;
 	}
 
+	RTE_BUILD_BUG_ON(RTE_ETHDEV_QUEUE_STAT_CNTRS < VMXNET3_MAX_RX_QUEUES);
 	for (i = 0; i < hw->num_rx_queues; i++) {
-		stats->ipackets  += hw->rqd_start[i].stats.ucastPktsRxOK +
-				hw->rqd_start[i].stats.mcastPktsRxOK +
-				hw->rqd_start[i].stats.bcastPktsRxOK;
-		stats->ibytes    += hw->rqd_start[i].stats.ucastBytesRxOK +
-				hw->rqd_start[i].stats.mcastBytesRxOK +
-				hw->rqd_start[i].stats.bcastBytesRxOK;
-		stats->rx_nombuf += hw->rqd_start[i].stats.pktsRxOutOfBuf;
-		stats->ierrors   += hw->rqd_start[i].stats.pktsRxError;
-	}
+		struct UPT1_RxStats *rxStats = &hw->rqd_start[i].stats;
 
+		stats->q_ipackets[i] = rxStats->ucastPktsRxOK +
+			rxStats->mcastPktsRxOK +
+			rxStats->bcastPktsRxOK;
+
+		stats->q_ibytes[i] = rxStats->ucastBytesRxOK +
+			rxStats->mcastBytesRxOK +
+			rxStats->bcastBytesRxOK;
+
+		stats->ipackets += stats->q_ipackets[i];
+		stats->ibytes += stats->q_ibytes[i];
+
+		stats->q_errors[i] = rxStats->pktsRxError;
+		stats->ierrors += rxStats->pktsRxError;
+		stats->imcasts += rxStats->mcastPktsRxOK;
+		stats->rx_nombuf += rxStats->pktsRxOutOfBuf;
+	}
 }
 
 static void
