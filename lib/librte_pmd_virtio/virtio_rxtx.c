@@ -233,13 +233,13 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 }
 
 static void
-virtio_dev_vring_start(struct rte_eth_dev *dev, struct virtqueue *vq, int queue_type)
+virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 {
 	struct rte_mbuf *m;
 	int i, nbufs, error, size = vq->vq_nentries;
 	struct vring *vr = &vq->vq_ring;
 	uint8_t *ring_mem = vq->vq_ring_virt_mem;
-	char vq_name[VIRTQUEUE_MAX_NAME_SZ];
+
 	PMD_INIT_FUNC_TRACE();
 
 	/*
@@ -263,10 +263,6 @@ virtio_dev_vring_start(struct rte_eth_dev *dev, struct virtqueue *vq, int queue_
 	 * Disable device(host) interrupting guest
 	 */
 	virtqueue_disable_intr(vq);
-
-	snprintf(vq_name, sizeof(vq_name), "port_%d_rx_vq",
-					dev->data->port_id);
-	PMD_INIT_LOG(DEBUG, "vq name: %s", vq->vq_name);
 
 	/* Only rx virtqueue needs mbufs to be allocated at initialization */
 	if (queue_type == VTNET_RQ) {
@@ -321,7 +317,7 @@ virtio_dev_cq_start(struct rte_eth_dev *dev)
 	struct virtio_hw *hw
 		= VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	virtio_dev_vring_start(dev, hw->cvq, VTNET_CQ);
+	virtio_dev_vring_start(hw->cvq, VTNET_CQ);
 	VIRTQUEUE_DUMP((struct virtqueue *)hw->cvq);
 }
 
@@ -341,13 +337,13 @@ virtio_dev_rxtx_start(struct rte_eth_dev *dev)
 
 	/* Start rx vring. */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		virtio_dev_vring_start(dev, dev->data->rx_queues[i], VTNET_RQ);
+		virtio_dev_vring_start(dev->data->rx_queues[i], VTNET_RQ);
 		VIRTQUEUE_DUMP((struct virtqueue *)dev->data->rx_queues[i]);
 	}
 
 	/* Start tx vring. */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		virtio_dev_vring_start(dev, dev->data->tx_queues[i], VTNET_TQ);
+		virtio_dev_vring_start(dev->data->tx_queues[i], VTNET_TQ);
 		VIRTQUEUE_DUMP((struct virtqueue *)dev->data->tx_queues[i]);
 	}
 }

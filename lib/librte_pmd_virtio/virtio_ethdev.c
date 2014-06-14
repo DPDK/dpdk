@@ -271,20 +271,17 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			dev->data->port_id, queue_idx);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
-		memcpy(vq->vq_name, vq_name, sizeof(vq->vq_name));
 	} else if (queue_type == VTNET_TQ) {
 		snprintf(vq_name, sizeof(vq_name), "port%d_tvq%d",
 			dev->data->port_id, queue_idx);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
-		memcpy(vq->vq_name, vq_name, sizeof(vq->vq_name));
 	} else if (queue_type == VTNET_CQ) {
 		snprintf(vq_name, sizeof(vq_name), "port%d_cvq",
 			dev->data->port_id);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra),
 			CACHE_LINE_SIZE);
-		memcpy(vq->vq_name, vq_name, sizeof(vq->vq_name));
 	}
 	if (vq == NULL) {
 		PMD_INIT_LOG(ERR, "%s: Can not allocate virtqueue", __func__);

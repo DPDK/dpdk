@@ -122,7 +122,6 @@ struct virtio_pmd_ctrl {
 };
 
 struct virtqueue {
-	char        vq_name[VIRTQUEUE_MAX_NAME_SZ];
 	struct virtio_hw         *hw;     /**< virtio_hw structure pointer. */
 	const struct rte_memzone *mz;     /**< mem zone to populate RX ring. */
 	const struct rte_memzone *virtio_net_hdr_mz; /**< memzone to populate hdr. */
