@@ -179,7 +179,6 @@ struct virtio_hw {
 	uint8_t     revision_id;
 	uint8_t	    use_msix;
 	uint8_t     mac_addr[ETHER_ADDR_LEN];
-	int         adapter_stopped;
 };
 
 /*

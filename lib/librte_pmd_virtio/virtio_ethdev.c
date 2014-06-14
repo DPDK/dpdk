@@ -952,8 +952,6 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	/* Tell the host we've known how to drive the device. */
 	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER);
 
-	hw->adapter_stopped = 0;
-
 	virtio_dev_cq_start(dev);
 
 	/* Do final configuration before rx/tx engine starts */
