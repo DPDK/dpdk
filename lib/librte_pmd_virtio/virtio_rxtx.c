@@ -391,13 +391,20 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
 			uint16_t nb_desc,
 			unsigned int socket_id,
-			__rte_unused const struct rte_eth_txconf *tx_conf)
+			const struct rte_eth_txconf *tx_conf)
 {
 	uint8_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
 	struct virtqueue *vq;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
+
+	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOOFFLOADS)
+	    != ETH_TXQ_FLAGS_NOOFFLOADS) {
+		PMD_INIT_LOG(ERR, "TX checksum offload not supported\n");
+		return -EINVAL;
+	}
+
 	ret = virtio_dev_queue_setup(dev, VTNET_TQ, queue_idx, vtpci_queue_idx,
 			nb_desc, socket_id, &vq);
 	if (ret < 0) {
