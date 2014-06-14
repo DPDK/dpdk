@@ -162,21 +162,12 @@ struct virtqueue;
 #define VIRTIO_MAX_VIRTQUEUES 8
 
 struct virtio_hw {
-	uint32_t    io_base;
-	uint32_t    host_features;
-	uint32_t    guest_features;
-
 	struct virtqueue *cvq;
-
-	uint16_t    vtnet_hdr_size;
-
+	uint32_t    io_base;
+	uint32_t    guest_features;
 	uint32_t    max_tx_queues;
 	uint32_t    max_rx_queues;
-	uint16_t    device_id;
-	uint16_t    vendor_id;
-	uint16_t    subsystem_device_id;
-	uint16_t    subsystem_vendor_id;
-	uint8_t     revision_id;
+	uint16_t    vtnet_hdr_size;
 	uint8_t	    use_msix;
 	uint8_t     mac_addr[ETHER_ADDR_LEN];
 };

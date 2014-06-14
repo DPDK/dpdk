@@ -82,14 +82,14 @@ vtpci_write_dev_config(struct virtio_hw *hw, uint64_t offset,
 }
 
 uint32_t
-vtpci_negotiate_features(struct virtio_hw *hw, uint32_t guest_features)
+vtpci_negotiate_features(struct virtio_hw *hw, uint32_t host_features)
 {
 	uint32_t features;
 	/*
 	 * Limit negotiated features to what the driver, virtqueue, and
 	 * host all support.
 	 */
-	features = (hw->host_features) & guest_features;
+	features = host_features & hw->guest_features;
 
 	VIRTIO_WRITE_REG_4(hw, VIRTIO_PCI_GUEST_FEATURES, features);
 	return features;

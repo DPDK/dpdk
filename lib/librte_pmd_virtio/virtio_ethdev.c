@@ -559,7 +559,7 @@ virtio_get_hwaddr(struct virtio_hw *hw)
 static void
 virtio_negotiate_features(struct virtio_hw *hw)
 {
-	uint32_t guest_features, mask;
+	uint32_t host_features, mask;
 
 	mask = VIRTIO_NET_F_CTRL_RX | VIRTIO_NET_F_CTRL_VLAN;
 	mask |= VIRTIO_NET_F_CSUM | VIRTIO_NET_F_GUEST_CSUM;
@@ -578,20 +578,20 @@ virtio_negotiate_features(struct virtio_hw *hw)
 	mask |= VIRTIO_RING_F_INDIRECT_DESC;
 
 	/* Prepare guest_features: feature that driver wants to support */
-	guest_features = VTNET_FEATURES & ~mask;
+	hw->guest_features = VTNET_FEATURES & ~mask;
 	PMD_INIT_LOG(DEBUG, "guest_features before negotiate = %x",
 		guest_features);
 
 	/* Read device(host) feature bits */
-	hw->host_features = VIRTIO_READ_REG_4(hw, VIRTIO_PCI_HOST_FEATURES);
+	host_features = VIRTIO_READ_REG_4(hw, VIRTIO_PCI_HOST_FEATURES);
 	PMD_INIT_LOG(DEBUG, "host_features before negotiate = %x",
-		hw->host_features);
+		host_features);
 
 	/*
 	 * Negotiate features: Subset of device feature bits are written back
 	 * guest feature bits.
 	 */
-	hw->guest_features = vtpci_negotiate_features(hw, guest_features);
+	hw->guest_features = vtpci_negotiate_features(hw, host_features);
 	PMD_INIT_LOG(DEBUG, "features after negotiate = %x",
 		hw->guest_features);
 }
@@ -754,8 +754,6 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 
 	pci_dev = eth_dev->pci_dev;
 
-	hw->device_id = pci_dev->id.device_id;
-	hw->vendor_id = pci_dev->id.vendor_id;
 #ifdef RTE_EXEC_ENV_LINUXAPP
 	{
 		char dirname[PATH_MAX];
