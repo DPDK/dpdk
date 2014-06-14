@@ -154,6 +154,11 @@ struct virtqueue {
 	uint16_t vq_avail_idx;
 	phys_addr_t virtio_net_hdr_mem; /**< hdr for each xmit packet */
 
+	/* Statistics */
+	uint64_t	packets;
+	uint64_t	bytes;
+	uint64_t	errors;
+
 	struct vq_desc_extra {
 		void              *cookie;
 		uint16_t          ndescs;

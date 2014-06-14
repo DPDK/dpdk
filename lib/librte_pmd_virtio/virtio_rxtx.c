@@ -301,7 +301,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			PMD_RX_LOG(ERR, "Packet drop\n");
 			nb_enqueued++;
 			virtio_discard_rxbuf(rxvq, rxm);
-			hw->eth_stats.ierrors++;
+			rxvq->errors++;
 			continue;
 		}
 
@@ -317,20 +317,19 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		VIRTIO_DUMP_PACKET(rxm, rxm->pkt.data_len);
 
 		rx_pkts[nb_rx++] = rxm;
-		hw->eth_stats.ibytes += len[i] - sizeof(struct virtio_net_hdr);
-		hw->eth_stats.q_ibytes[rxvq->queue_id] += len[i]
-			- sizeof(struct virtio_net_hdr);
+		rxvq->bytes += len[i] - sizeof(struct virtio_net_hdr);
 	}
 
-	hw->eth_stats.ipackets += nb_rx;
-	hw->eth_stats.q_ipackets[rxvq->queue_id] += nb_rx;
+	rxvq->packets += nb_rx;
 
 	/* Allocate new mbuf for the used descriptor */
 	error = ENOSPC;
 	while (likely(!virtqueue_full(rxvq))) {
 		new_mbuf = rte_rxmbuf_alloc(rxvq->mpool);
 		if (unlikely(new_mbuf == NULL)) {
-			hw->eth_stats.rx_nombuf++;
+			struct rte_eth_dev *dev
+				= &rte_eth_devices[rxvq->port_id];
+			dev->data->rx_mbuf_alloc_failed++;
 			break;
 		}
 		error = virtqueue_enqueue_recv_refill(rxvq, new_mbuf);
@@ -359,7 +358,6 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct rte_mbuf *txm;
 	uint16_t nb_used, nb_tx, num;
 	int error;
-	struct virtio_hw *hw;
 
 	nb_tx = 0;
 
@@ -371,7 +369,6 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	rmb();
 
-	hw = txvq->hw;
 	num = (uint16_t)(likely(nb_used < VIRTIO_MBUF_BURST_SZ) ? nb_used : VIRTIO_MBUF_BURST_SZ);
 
 	while (nb_tx < nb_pkts) {
@@ -394,9 +391,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				break;
 			}
 			nb_tx++;
-			hw->eth_stats.obytes += txm->pkt.data_len;
-			hw->eth_stats.q_obytes[txvq->queue_id]
-				+= txm->pkt.data_len;
+			txvq->bytes += txm->pkt.data_len;
 		} else {
 			PMD_TX_LOG(ERR, "No free tx descriptors to transmit\n");
 			break;
@@ -404,8 +399,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	}
 	vq_update_avail_idx(txvq);
 
-	hw->eth_stats.opackets += nb_tx;
-	hw->eth_stats.q_opackets[txvq->queue_id] += nb_tx;
+	txvq->packets += nb_tx;
 
 	if (unlikely(virtqueue_kick_prepare(txvq))) {
 		virtqueue_notify(txvq);

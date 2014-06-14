@@ -180,7 +180,6 @@ struct virtio_hw {
 	uint8_t	    use_msix;
 	uint8_t     mac_addr[ETHER_ADDR_LEN];
 	int         adapter_stopped;
-	struct      rte_eth_stats eth_stats;
 };
 
 /*

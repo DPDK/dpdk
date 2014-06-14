@@ -474,19 +474,67 @@ virtio_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 static void
 virtio_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
-	struct virtio_hw *hw =
-		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if (stats)
-		memcpy(stats, &hw->eth_stats, sizeof(*stats));
+	unsigned i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		const struct virtqueue *txvq = dev->data->tx_queues[i];
+		if (txvq == NULL)
+			continue;
+
+		stats->opackets += txvq->packets;
+		stats->obytes += txvq->bytes;
+		stats->oerrors += txvq->errors;
+
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_opackets[i] = txvq->packets;
+			stats->q_obytes[i] = txvq->bytes;
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		const struct virtqueue *rxvq = dev->data->rx_queues[i];
+		if (rxvq == NULL)
+			continue;
+
+		stats->ipackets += rxvq->packets;
+		stats->ibytes += rxvq->bytes;
+		stats->ierrors += rxvq->errors;
+
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_ipackets[i] = rxvq->packets;
+			stats->q_ibytes[i] = rxvq->bytes;
+		}
+	}
+
+	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
 }
 
 static void
 virtio_dev_stats_reset(struct rte_eth_dev *dev)
 {
-	struct virtio_hw *hw =
-		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	/* Reset software totals */
-	memset(&hw->eth_stats, 0, sizeof(hw->eth_stats));
+	unsigned int i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct virtqueue *txvq = dev->data->tx_queues[i];
+		if (txvq == NULL)
+			continue;
+
+		txvq->packets = 0;
+		txvq->bytes = 0;
+		txvq->errors = 0;
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct virtqueue *rxvq = dev->data->rx_queues[i];
+		if (rxvq == NULL)
+			continue;
+
+		rxvq->packets = 0;
+		rxvq->bytes = 0;
+		rxvq->errors = 0;
+	}
+
+	dev->data->rx_mbuf_alloc_failed = 0;
 }
 
 static void
