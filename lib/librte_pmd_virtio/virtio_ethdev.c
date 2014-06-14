@@ -926,8 +926,17 @@ virtio_dev_tx_queue_release(__rte_unused void *txq)
  * It returns 0 on success.
  */
 static int
-virtio_dev_configure(__rte_unused struct rte_eth_dev *dev)
+virtio_dev_configure(struct rte_eth_dev *dev)
 {
+	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+
+	PMD_INIT_LOG(DEBUG, "configure");
+
+	if (rxmode->hw_ip_checksum) {
+		PMD_DRV_LOG(ERR, "HW IP checksum not supported");
+		return (-EINVAL);
+	}
+
 	return 0;
 }
 
