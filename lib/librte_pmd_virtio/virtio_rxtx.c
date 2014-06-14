@@ -105,13 +105,13 @@ virtio_dev_vring_start(struct rte_eth_dev *dev, struct virtqueue *vq, int queue_
 
 	snprintf(vq_name, sizeof(vq_name), "port_%d_rx_vq",
 					dev->data->port_id);
-	PMD_INIT_LOG(DEBUG, "vq name: %s\n", vq->vq_name);
+	PMD_INIT_LOG(DEBUG, "vq name: %s", vq->vq_name);
 
 	/* Only rx virtqueue needs mbufs to be allocated at initialization */
 	if (queue_type == VTNET_RQ) {
 		if (vq->mpool == NULL)
 			rte_exit(EXIT_FAILURE,
-			"Cannot allocate initial mbufs for rx virtqueue\n");
+			"Cannot allocate initial mbufs for rx virtqueue");
 
 		/* Allocate blank mbufs for the each rx descriptor */
 		nbufs = 0;
@@ -135,7 +135,7 @@ virtio_dev_vring_start(struct rte_eth_dev *dev, struct virtqueue *vq, int queue_
 
 		vq_update_avail_idx(vq);
 
-		PMD_INIT_LOG(DEBUG, "Allocated %d bufs\n", nbufs);
+		PMD_INIT_LOG(DEBUG, "Allocated %d bufs", nbufs);
 
 		VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_SEL,
 			vq->vq_queue_index);
@@ -207,7 +207,7 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	ret = virtio_dev_queue_setup(dev, VTNET_RQ, queue_idx, vtpci_queue_idx,
 			nb_desc, socket_id, &vq);
 	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "tvq initialization failed\n");
+		PMD_INIT_LOG(ERR, "tvq initialization failed");
 		return ret;
 	}
 
@@ -240,7 +240,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	ret = virtio_dev_queue_setup(dev, VTNET_TQ, queue_idx, vtpci_queue_idx,
 			nb_desc, socket_id, &vq);
 	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "rvq initialization failed\n");
+		PMD_INIT_LOG(ERR, "rvq initialization failed");
 		return ret;
 	}
 
@@ -290,15 +290,15 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		return 0;
 
 	num = virtqueue_dequeue_burst_rx(rxvq, rcv_pkts, len, num);
-	PMD_RX_LOG(DEBUG, "used:%d dequeue:%d\n", nb_used, num);
+	PMD_RX_LOG(DEBUG, "used:%d dequeue:%d", nb_used, num);
 	for (i = 0; i < num ; i++) {
 		rxm = rcv_pkts[i];
 
-		PMD_RX_LOG(DEBUG, "packet len:%d\n", len[i]);
+		PMD_RX_LOG(DEBUG, "packet len:%d", len[i]);
 
 		if (unlikely(len[i]
 			     < (uint32_t)hw->vtnet_hdr_size + ETHER_HDR_LEN)) {
-			PMD_RX_LOG(ERR, "Packet drop\n");
+			PMD_RX_LOG(ERR, "Packet drop");
 			nb_enqueued++;
 			virtio_discard_rxbuf(rxvq, rxm);
 			rxvq->errors++;
@@ -342,7 +342,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	if (likely(nb_enqueued)) {
 		if (unlikely(virtqueue_kick_prepare(rxvq))) {
 			virtqueue_notify(rxvq);
-			PMD_RX_LOG(DEBUG, "Notified\n");
+			PMD_RX_LOG(DEBUG, "Notified");
 		}
 	}
 
@@ -383,17 +383,17 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			error = virtqueue_enqueue_xmit(txvq, txm);
 			if (unlikely(error)) {
 				if (error == ENOSPC)
-					PMD_TX_LOG(ERR, "virtqueue_enqueue Free count = 0\n");
+					PMD_TX_LOG(ERR, "virtqueue_enqueue Free count = 0");
 				else if (error == EMSGSIZE)
-					PMD_TX_LOG(ERR, "virtqueue_enqueue Free count < 1\n");
+					PMD_TX_LOG(ERR, "virtqueue_enqueue Free count < 1");
 				else
-					PMD_TX_LOG(ERR, "virtqueue_enqueue error: %d\n", error);
+					PMD_TX_LOG(ERR, "virtqueue_enqueue error: %d", error);
 				break;
 			}
 			nb_tx++;
 			txvq->bytes += txm->pkt.data_len;
 		} else {
-			PMD_TX_LOG(ERR, "No free tx descriptors to transmit\n");
+			PMD_TX_LOG(ERR, "No free tx descriptors to transmit");
 			break;
 		}
 	}
@@ -403,7 +403,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	if (unlikely(virtqueue_kick_prepare(txvq))) {
 		virtqueue_notify(txvq);
-		PMD_TX_LOG(DEBUG, "Notified backend after xmit\n");
+		PMD_TX_LOG(DEBUG, "Notified backend after xmit");
 	}
 
 	return nb_tx;

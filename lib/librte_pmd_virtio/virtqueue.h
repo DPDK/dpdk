@@ -394,7 +394,7 @@ virtqueue_dequeue_burst_rx(struct virtqueue *vq, struct rte_mbuf **rx_pkts, uint
 		cookie = (struct rte_mbuf *)vq->vq_descx[desc_idx].cookie;
 
 		if (unlikely(cookie == NULL)) {
-			PMD_DRV_LOG(ERR, "vring descriptor with no mbuf cookie at %u\n",
+			PMD_DRV_LOG(ERR, "vring descriptor with no mbuf cookie at %u",
 				vq->vq_used_cons_idx);
 			break;
 		}
@@ -433,7 +433,7 @@ virtqueue_dequeue_pkt_tx(struct virtqueue *vq)
 	PMD_INIT_LOG(DEBUG, \
 	  "VQ: %s - size=%d; free=%d; used=%d; desc_head_idx=%d;" \
 	  " avail.idx=%d; used_cons_idx=%d; used.idx=%d;" \
-	  " avail.flags=0x%x; used.flags=0x%x\n", \
+	  " avail.flags=0x%x; used.flags=0x%x", \
 	  (vq)->vq_name, (vq)->vq_nentries, (vq)->vq_free_cnt, nused, \
 	  (vq)->vq_desc_head_idx, (vq)->vq_ring.avail->idx, \
 	  (vq)->vq_used_cons_idx, (vq)->vq_ring.used->idx, \
