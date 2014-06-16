@@ -647,6 +647,30 @@ static int get_uio_dev(struct rte_pci_addr *loc, char *buf, unsigned int buflen)
 
 	return 0;
 }
+
+static int
+virtio_has_msix(const struct rte_pci_addr *loc)
+{
+	DIR *d;
+	char dirname[PATH_MAX];
+
+	snprintf(dirname, sizeof(dirname),
+		     SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/msi_irqs",
+		     loc->domain, loc->bus, loc->devid, loc->function);
+
+	d = opendir(dirname);
+	if (d)
+		closedir(d);
+
+	return (d != NULL);
+}
+#else
+static int
+virtio_has_msix(const struct rte_pci_addr *loc __rte_unused)
+{
+	/* nic_uio does not enable interrupts, return 0 (false). */
+	return 0;
+}
 #endif
 
 /*
@@ -720,6 +744,7 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 			     start, size);
 	}
 #endif
+	hw->use_msix = virtio_has_msix(&pci_dev->addr);
 	hw->io_base = (uint32_t)(uintptr_t)pci_dev->mem_resource[0].addr;
 
 	/* Reset the device although not necessary at startup */

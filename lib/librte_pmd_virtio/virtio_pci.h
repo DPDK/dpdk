@@ -177,6 +177,7 @@ struct virtio_hw {
 	uint16_t    subsystem_device_id;
 	uint16_t    subsystem_vendor_id;
 	uint8_t     revision_id;
+	uint8_t	    use_msix;
 	uint8_t     mac_addr[ETHER_ADDR_LEN];
 	int         adapter_stopped;
 	struct      rte_eth_stats eth_stats;
@@ -195,13 +196,11 @@ struct virtio_net_config {
 	uint16_t   max_virtqueue_pairs;
 } __attribute__((packed));
 
-/* Value indicated in device config */
-#define VIRTIO_PCI_FLAG_MSIX  0x0020
 /*
  * The remaining space is defined by each driver as the per-driver
  * configuration space.
  */
-#define VIRTIO_PCI_CONFIG(hw) (((hw)->guest_features & VIRTIO_PCI_FLAG_MSIX) ? 24 : 20)
+#define VIRTIO_PCI_CONFIG(hw) (((hw)->use_msix) ? 24 : 20)
 
 /*
  * How many bits to shift physical queue address written to QUEUE_PFN.
