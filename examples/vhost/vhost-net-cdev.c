@@ -91,7 +91,7 @@ vhost_net_open(fuse_req_t req, struct fuse_file_info *fi)
 
 	fi->fh = err;
 
-	RTE_LOG(INFO, CONFIG, "(%"PRIu64") Device configuration started\n", fi->fh);
+	RTE_LOG(INFO, VHOST_CONFIG, "(%"PRIu64") Device configuration started\n", fi->fh);
 	fuse_reply_open(req, fi);
 }
 
@@ -105,7 +105,7 @@ vhost_net_release(fuse_req_t req, struct fuse_file_info *fi)
 	struct vhost_device_ctx ctx = fuse_req_to_vhost_ctx(req, fi);
 
 	ops->destroy_device(ctx);
-	RTE_LOG(INFO, CONFIG, "(%"PRIu64") Device released\n", ctx.fh);
+	RTE_LOG(INFO, VHOST_CONFIG, "(%"PRIu64") Device released\n", ctx.fh);
 	fuse_reply_err(req, err);
 }
 
@@ -190,32 +190,32 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 	switch(cmd)
 	{
 		case VHOST_NET_SET_BACKEND:
-			LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: VHOST_NET_SET_BACKEND\n", ctx.fh);
+			LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_NET_SET_BACKEND\n", ctx.fh);
 			VHOST_IOCTL_R(struct vhost_vring_file, file, ops->set_backend);
 			break;
 
 		case VHOST_GET_FEATURES:
-			LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: VHOST_GET_FEATURES\n", ctx.fh);
+			LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_GET_FEATURES\n", ctx.fh);
 			VHOST_IOCTL_W(uint64_t, features, ops->get_features);
 			break;
 
 		case VHOST_SET_FEATURES:
-			LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_FEATURES\n", ctx.fh);
+			LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_FEATURES\n", ctx.fh);
 			VHOST_IOCTL_R(uint64_t, features, ops->set_features);
 			break;
 
 		case VHOST_RESET_OWNER:
-			LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: VHOST_RESET_OWNER\n", ctx.fh);
+			LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_RESET_OWNER\n", ctx.fh);
 			VHOST_IOCTL(ops->reset_owner);
 			break;
 
 		case VHOST_SET_OWNER:
-			LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_OWNER\n", ctx.fh);
+			LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_OWNER\n", ctx.fh);
 			VHOST_IOCTL(ops->set_owner);
 			break;
 
 		case VHOST_SET_MEM_TABLE:
-			LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_MEM_TABLE\n", ctx.fh);
+			LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_MEM_TABLE\n", ctx.fh);
 			static struct vhost_memory mem_temp;
 
 			switch(in_bufsz){
@@ -246,45 +246,45 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 			break;
 
 		case VHOST_SET_VRING_NUM:
-			LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_VRING_NUM\n", ctx.fh);
+			LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_VRING_NUM\n", ctx.fh);
 			VHOST_IOCTL_R(struct vhost_vring_state, state, ops->set_vring_num);
 			break;
 
 		case VHOST_SET_VRING_BASE:
-			LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_VRING_BASE\n", ctx.fh);
+			LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_VRING_BASE\n", ctx.fh);
 			VHOST_IOCTL_R(struct vhost_vring_state, state, ops->set_vring_base);
 			break;
 
 		case VHOST_GET_VRING_BASE:
-			LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: VHOST_GET_VRING_BASE\n", ctx.fh);
+			LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_GET_VRING_BASE\n", ctx.fh);
 			VHOST_IOCTL_RW(uint32_t, index, struct vhost_vring_state, state, ops->get_vring_base);
 			break;
 
 		case VHOST_SET_VRING_ADDR:
-			LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_VRING_ADDR\n", ctx.fh);
+			LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_VRING_ADDR\n", ctx.fh);
 			VHOST_IOCTL_R(struct vhost_vring_addr, addr, ops->set_vring_addr);
 			break;
 
 		case VHOST_SET_VRING_KICK:
-			LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_VRING_KICK\n", ctx.fh);
+			LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_VRING_KICK\n", ctx.fh);
 			VHOST_IOCTL_R(struct vhost_vring_file, file, ops->set_vring_kick);
 			break;
 
 		case VHOST_SET_VRING_CALL:
-			LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_VRING_CALL\n", ctx.fh);
+			LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_VRING_CALL\n", ctx.fh);
 			VHOST_IOCTL_R(struct vhost_vring_file, file, ops->set_vring_call);
 			break;
 
 		default:
-			RTE_LOG(ERR, CONFIG, "(%"PRIu64") IOCTL: DOESN NOT EXIST\n", ctx.fh);
+			RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") IOCTL: DOESN NOT EXIST\n", ctx.fh);
 			result = -1;
 			fuse_reply_ioctl(req, result, NULL, 0);
 	}
 
 	if (result < 0) {
-		LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: FAIL\n", ctx.fh);
+		LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: FAIL\n", ctx.fh);
 	} else {
-		LOG_DEBUG(CONFIG, "(%"PRIu64") IOCTL: SUCCESS\n", ctx.fh);
+		LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: SUCCESS\n", ctx.fh);
 	}
 }
 
@@ -315,7 +315,7 @@ register_cuse_device(const char *base_name, int index, struct vhost_net_device_o
 	char *fuse_argv[] = {fuse_opt_dummy, fuse_opt_fore, fuse_opt_nomulti};
 
 	if (access(cuse_device_name, R_OK | W_OK) < 0) {
-		RTE_LOG(ERR, CONFIG, "Character device %s can't be accessed, maybe not exist\n", cuse_device_name);
+		RTE_LOG(ERR, VHOST_CONFIG, "Character device %s can't be accessed, maybe not exist\n", cuse_device_name);
 		return -1;
 	}
 
@@ -334,7 +334,7 @@ register_cuse_device(const char *base_name, int index, struct vhost_net_device_o
 
 	/* Check if device already exists. */
 	if (access(char_device_name, F_OK) != -1) {
-		RTE_LOG(ERR, CONFIG, "Character device %s already exists\n", char_device_name);
+		RTE_LOG(ERR, VHOST_CONFIG, "Character device %s already exists\n", char_device_name);
 		return -1;
 	}
 
