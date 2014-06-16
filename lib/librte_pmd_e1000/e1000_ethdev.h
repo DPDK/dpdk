@@ -52,6 +52,59 @@
 #define E1000_CTRL_EXT_EXTEND_VLAN  (1<<26)    /* EXTENDED VLAN */
 #define IGB_VFTA_SIZE 128
 
+#define IGB_MAX_RX_QUEUE_NUM           8
+#define IGB_MAX_RX_QUEUE_NUM_82576     16
+
+#define E1000_SYN_FILTER_ENABLE        0x00000001 /* syn filter enable field */
+#define E1000_SYN_FILTER_QUEUE         0x0000000E /* syn filter queue field */
+#define E1000_SYN_FILTER_QUEUE_SHIFT   1          /* syn filter queue field */
+#define E1000_RFCTL_SYNQFP             0x00080000 /* SYNQFP in RFCTL register */
+
+#define E1000_ETQF_ETHERTYPE           0x0000FFFF
+#define E1000_ETQF_QUEUE               0x00070000
+#define E1000_ETQF_QUEUE_SHIFT         16
+#define E1000_MAX_ETQF_FILTERS         8
+
+#define E1000_IMIR_DSTPORT             0x0000FFFF
+#define E1000_IMIR_PRIORITY            0xE0000000
+#define E1000_IMIR_EXT_SIZE_BP         0x00001000
+#define E1000_IMIR_EXT_CTRL_UGR        0x00002000
+#define E1000_IMIR_EXT_CTRL_ACK        0x00004000
+#define E1000_IMIR_EXT_CTRL_PSH        0x00008000
+#define E1000_IMIR_EXT_CTRL_RST        0x00010000
+#define E1000_IMIR_EXT_CTRL_SYN        0x00020000
+#define E1000_IMIR_EXT_CTRL_FIN        0x00040000
+#define E1000_IMIR_EXT_CTRL_BP         0x00080000
+#define E1000_MAX_TTQF_FILTERS         8
+#define E1000_2TUPLE_MAX_PRI           7
+
+#define E1000_MAX_FLEXIBLE_FILTERS       8
+#define E1000_MAX_FHFT                   4
+#define E1000_MAX_FHFT_EXT               4
+#define E1000_MAX_FLEX_FILTER_PRI        7
+#define E1000_MAX_FLEX_FILTER_LEN        128
+#define E1000_FHFT_QUEUEING_LEN          0x0000007F
+#define E1000_FHFT_QUEUEING_QUEUE        0x00000700
+#define E1000_FHFT_QUEUEING_PRIO         0x00070000
+#define E1000_FHFT_QUEUEING_OFFSET       0xFC
+#define E1000_FHFT_QUEUEING_QUEUE_SHIFT  8
+#define E1000_FHFT_QUEUEING_PRIO_SHIFT   16
+#define E1000_WUFC_FLEX_HQ               0x00004000
+
+#define E1000_SPQF_SRCPORT               0x0000FFFF
+
+#define E1000_MAX_FTQF_FILTERS           8
+#define E1000_FTQF_PROTOCOL_MASK         0x000000FF
+#define E1000_FTQF_5TUPLE_MASK_SHIFT     28
+#define E1000_FTQF_PROTOCOL_COMP_MASK    0x10000000
+#define E1000_FTQF_SOURCE_ADDR_MASK      0x20000000
+#define E1000_FTQF_DEST_ADDR_MASK        0x40000000
+#define E1000_FTQF_SOURCE_PORT_MASK      0x80000000
+#define E1000_FTQF_VF_MASK_EN            0x00008000
+#define E1000_FTQF_QUEUE_MASK            0x03ff0000
+#define E1000_FTQF_QUEUE_SHIFT           16
+#define E1000_FTQF_QUEUE_ENABLE          0x00000100
+
 /* structure for interrupt relative data */
 struct e1000_interrupt {
 	uint32_t flags;

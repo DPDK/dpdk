@@ -124,6 +124,44 @@ static int eth_igb_rss_reta_update(struct rte_eth_dev *dev,
 static int eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 		struct rte_eth_rss_reta *reta_conf);
 
+static int eth_igb_add_syn_filter(struct rte_eth_dev *dev,
+			struct rte_syn_filter *filter, uint16_t rx_queue);
+static int eth_igb_remove_syn_filter(struct rte_eth_dev *dev);
+static int eth_igb_get_syn_filter(struct rte_eth_dev *dev,
+			struct rte_syn_filter *filter, uint16_t *rx_queue);
+static int eth_igb_add_ethertype_filter(struct rte_eth_dev *dev,
+			uint16_t index,
+			struct rte_ethertype_filter *filter, uint16_t rx_queue);
+static int eth_igb_remove_ethertype_filter(struct rte_eth_dev *dev,
+			uint16_t index);
+static int eth_igb_get_ethertype_filter(struct rte_eth_dev *dev,
+			uint16_t index,
+			struct rte_ethertype_filter *filter, uint16_t *rx_queue);
+static int eth_igb_add_2tuple_filter(struct rte_eth_dev *dev,
+			uint16_t index,
+			struct rte_2tuple_filter *filter, uint16_t rx_queue);
+static int eth_igb_remove_2tuple_filter(struct rte_eth_dev *dev,
+			uint16_t index);
+static int eth_igb_get_2tuple_filter(struct rte_eth_dev *dev,
+			uint16_t index,
+			struct rte_2tuple_filter *filter, uint16_t *rx_queue);
+static int eth_igb_add_flex_filter(struct rte_eth_dev *dev,
+			uint16_t index,
+			struct rte_flex_filter *filter, uint16_t rx_queue);
+static int eth_igb_remove_flex_filter(struct rte_eth_dev *dev,
+			uint16_t index);
+static int eth_igb_get_flex_filter(struct rte_eth_dev *dev,
+			uint16_t index,
+			struct rte_flex_filter *filter, uint16_t *rx_queue);
+static int eth_igb_add_5tuple_filter(struct rte_eth_dev *dev,
+			uint16_t index,
+			struct rte_5tuple_filter *filter, uint16_t rx_queue);
+static int eth_igb_remove_5tuple_filter(struct rte_eth_dev *dev,
+			uint16_t index);
+static int eth_igb_get_5tuple_filter(struct rte_eth_dev *dev,
+			uint16_t index,
+			struct rte_5tuple_filter *filter, uint16_t *rx_queue);
+
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
  */
@@ -196,6 +234,21 @@ static struct eth_dev_ops eth_igb_ops = {
 	.reta_query           = eth_igb_rss_reta_query,
 	.rss_hash_update      = eth_igb_rss_hash_update,
 	.rss_hash_conf_get    = eth_igb_rss_hash_conf_get,
+	.add_syn_filter          = eth_igb_add_syn_filter,
+	.remove_syn_filter       = eth_igb_remove_syn_filter,
+	.get_syn_filter          = eth_igb_get_syn_filter,
+	.add_ethertype_filter    = eth_igb_add_ethertype_filter,
+	.remove_ethertype_filter = eth_igb_remove_ethertype_filter,
+	.get_ethertype_filter    = eth_igb_get_ethertype_filter,
+	.add_2tuple_filter       = eth_igb_add_2tuple_filter,
+	.remove_2tuple_filter    = eth_igb_remove_2tuple_filter,
+	.get_2tuple_filter       = eth_igb_get_2tuple_filter,
+	.add_flex_filter         = eth_igb_add_flex_filter,
+	.remove_flex_filter      = eth_igb_remove_flex_filter,
+	.get_flex_filter         = eth_igb_get_flex_filter,
+	.add_5tuple_filter       = eth_igb_add_5tuple_filter,
+	.remove_5tuple_filter    = eth_igb_remove_5tuple_filter,
+	.get_5tuple_filter       = eth_igb_get_5tuple_filter,
 };
 
 /*
@@ -2184,6 +2237,720 @@ eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 	}
 
 	return 0;
+}
+
+#define MAC_TYPE_FILTER_SUP(type)    do {\
+	if ((type) != e1000_82580 && (type) != e1000_i350 &&\
+		(type) != e1000_82576)\
+		return -ENOSYS;\
+} while (0)
+
+/*
+ * add the syn filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * filter: ponter to the filter that will be added.
+ * rx_queue: the queue id the filter assigned to.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_add_syn_filter(struct rte_eth_dev *dev,
+			struct rte_syn_filter *filter, uint16_t rx_queue)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t synqf, rfctl;
+
+	MAC_TYPE_FILTER_SUP(hw->mac.type);
+
+	if (rx_queue >= IGB_MAX_RX_QUEUE_NUM)
+		return -EINVAL;
+
+	synqf = E1000_READ_REG(hw, E1000_SYNQF(0));
+	if (synqf & E1000_SYN_FILTER_ENABLE)
+		return -EINVAL;
+
+	synqf = (uint32_t)(((rx_queue << E1000_SYN_FILTER_QUEUE_SHIFT) &
+		E1000_SYN_FILTER_QUEUE) | E1000_SYN_FILTER_ENABLE);
+
+	rfctl = E1000_READ_REG(hw, E1000_RFCTL);
+	if (filter->hig_pri)
+		rfctl |= E1000_RFCTL_SYNQFP;
+	else
+		rfctl &= ~E1000_RFCTL_SYNQFP;
+
+	E1000_WRITE_REG(hw, E1000_SYNQF(0), synqf);
+	E1000_WRITE_REG(hw, E1000_RFCTL, rfctl);
+	return 0;
+}
+
+/*
+ * remove the syn filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_remove_syn_filter(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	MAC_TYPE_FILTER_SUP(hw->mac.type);
+
+	E1000_WRITE_REG(hw, E1000_SYNQF(0), 0);
+	return 0;
+}
+
+/*
+ * get the syn filter's info
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * filter: ponter to the filter that returns.
+ * *rx_queue: pointer to the queue id the filter assigned to.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_get_syn_filter(struct rte_eth_dev *dev,
+			struct rte_syn_filter *filter, uint16_t *rx_queue)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t synqf, rfctl;
+
+	MAC_TYPE_FILTER_SUP(hw->mac.type);
+	synqf = E1000_READ_REG(hw, E1000_SYNQF(0));
+	if (synqf & E1000_SYN_FILTER_ENABLE) {
+		rfctl = E1000_READ_REG(hw, E1000_RFCTL);
+		filter->hig_pri = (rfctl & E1000_RFCTL_SYNQFP) ? 1 : 0;
+		*rx_queue = (uint8_t)((synqf & E1000_SYN_FILTER_QUEUE) >>
+				E1000_SYN_FILTER_QUEUE_SHIFT);
+		return 0;
+	}
+	return -ENOENT;
+}
+
+/*
+ * add an ethertype filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates.
+ * filter: ponter to the filter that will be added.
+ * rx_queue: the queue id the filter assigned to.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_add_ethertype_filter(struct rte_eth_dev *dev, uint16_t index,
+			struct rte_ethertype_filter *filter, uint16_t rx_queue)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t etqf;
+
+	MAC_TYPE_FILTER_SUP(hw->mac.type);
+
+	if (index >= E1000_MAX_ETQF_FILTERS || rx_queue >= IGB_MAX_RX_QUEUE_NUM)
+		return -EINVAL;
+
+	etqf = E1000_READ_REG(hw, E1000_ETQF(index));
+	if (etqf & E1000_ETQF_FILTER_ENABLE)
+		return -EINVAL;  /* filter index is in use. */
+	else
+		etqf = 0;
+
+	etqf |= E1000_ETQF_FILTER_ENABLE | E1000_ETQF_QUEUE_ENABLE;
+	etqf |= (uint32_t)(filter->ethertype & E1000_ETQF_ETHERTYPE);
+	etqf |= rx_queue << E1000_ETQF_QUEUE_SHIFT;
+
+	if (filter->priority_en) {
+		PMD_INIT_LOG(ERR, "vlan and priority (%d) is not supported"
+			" in E1000.", filter->priority);
+		return -EINVAL;
+	}
+
+	E1000_WRITE_REG(hw, E1000_ETQF(index), etqf);
+	return 0;
+}
+
+/*
+ * remove an ethertype filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_remove_ethertype_filter(struct rte_eth_dev *dev, uint16_t index)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	MAC_TYPE_FILTER_SUP(hw->mac.type);
+
+	if (index >= E1000_MAX_ETQF_FILTERS)
+		return -EINVAL;
+
+	E1000_WRITE_REG(hw, E1000_ETQF(index), 0);
+	return 0;
+}
+
+/*
+ * get an ethertype filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates.
+ * filter: ponter to the filter that will be gotten.
+ * *rx_queue: the ponited of the queue id the filter assigned to.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_get_ethertype_filter(struct rte_eth_dev *dev, uint16_t index,
+			struct rte_ethertype_filter *filter, uint16_t *rx_queue)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t etqf;
+
+	MAC_TYPE_FILTER_SUP(hw->mac.type);
+
+	if (index >= E1000_MAX_ETQF_FILTERS)
+		return -EINVAL;
+
+	etqf = E1000_READ_REG(hw, E1000_ETQF(index));
+	if (etqf & E1000_ETQF_FILTER_ENABLE) {
+		filter->ethertype = etqf & E1000_ETQF_ETHERTYPE;
+		filter->priority_en = 0;
+		*rx_queue = (etqf & E1000_ETQF_QUEUE) >> E1000_ETQF_QUEUE_SHIFT;
+		return 0;
+	}
+	return -ENOENT;
+}
+
+#define MAC_TYPE_FILTER_SUP_EXT(type)    do {\
+	if ((type) != e1000_82580 && (type) != e1000_i350)\
+		return -ENOSYS; \
+} while (0)
+
+/*
+ * add a 2tuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates.
+ * filter: ponter to the filter that will be added.
+ * rx_queue: the queue id the filter assigned to.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_add_2tuple_filter(struct rte_eth_dev *dev, uint16_t index,
+			struct rte_2tuple_filter *filter, uint16_t rx_queue)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t ttqf, imir = 0;
+	uint32_t imir_ext = 0;
+
+	MAC_TYPE_FILTER_SUP_EXT(hw->mac.type);
+
+	if (index >= E1000_MAX_TTQF_FILTERS ||
+		rx_queue >= IGB_MAX_RX_QUEUE_NUM ||
+		filter->priority > E1000_2TUPLE_MAX_PRI)
+		return -EINVAL;  /* filter index is out of range. */
+	if  (filter->tcp_flags > TCP_FLAG_ALL)
+		return -EINVAL;  /* flags is invalid. */
+
+	ttqf = E1000_READ_REG(hw, E1000_TTQF(index));
+	if (ttqf & E1000_TTQF_QUEUE_ENABLE)
+		return -EINVAL;  /* filter index is in use. */
+
+	imir = (uint32_t)(filter->dst_port & E1000_IMIR_DSTPORT);
+	if (filter->dst_port_mask == 1) /* 1b means not compare. */
+		imir |= E1000_IMIR_PORT_BP;
+	else
+		imir &= ~E1000_IMIR_PORT_BP;
+
+	imir |= filter->priority << E1000_IMIR_PRIORITY_SHIFT;
+
+	ttqf = 0;
+	ttqf |= E1000_TTQF_QUEUE_ENABLE;
+	ttqf |= (uint32_t)(rx_queue << E1000_TTQF_QUEUE_SHIFT);
+	ttqf |= (uint32_t)(filter->protocol & E1000_TTQF_PROTOCOL_MASK);
+	if (filter->protocol_mask == 1)
+		ttqf |= E1000_TTQF_MASK_ENABLE;
+	else
+		ttqf &= ~E1000_TTQF_MASK_ENABLE;
+
+	imir_ext |= E1000_IMIR_EXT_SIZE_BP;
+	/* tcp flags bits setting. */
+	if (filter->tcp_flags & TCP_FLAG_ALL) {
+		if (filter->tcp_flags & TCP_UGR_FLAG)
+			imir_ext |= E1000_IMIR_EXT_CTRL_UGR;
+		if (filter->tcp_flags & TCP_ACK_FLAG)
+			imir_ext |= E1000_IMIR_EXT_CTRL_ACK;
+		if (filter->tcp_flags & TCP_PSH_FLAG)
+			imir_ext |= E1000_IMIR_EXT_CTRL_PSH;
+		if (filter->tcp_flags & TCP_RST_FLAG)
+			imir_ext |= E1000_IMIR_EXT_CTRL_RST;
+		if (filter->tcp_flags & TCP_SYN_FLAG)
+			imir_ext |= E1000_IMIR_EXT_CTRL_SYN;
+		if (filter->tcp_flags & TCP_FIN_FLAG)
+			imir_ext |= E1000_IMIR_EXT_CTRL_FIN;
+		imir_ext &= ~E1000_IMIR_EXT_CTRL_BP;
+	} else
+		imir_ext |= E1000_IMIR_EXT_CTRL_BP;
+	E1000_WRITE_REG(hw, E1000_IMIR(index), imir);
+	E1000_WRITE_REG(hw, E1000_TTQF(index), ttqf);
+	E1000_WRITE_REG(hw, E1000_IMIREXT(index), imir_ext);
+	return 0;
+}
+
+/*
+ * remove a 2tuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_remove_2tuple_filter(struct rte_eth_dev *dev,
+			uint16_t index)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	MAC_TYPE_FILTER_SUP_EXT(hw->mac.type);
+
+	if (index >= E1000_MAX_TTQF_FILTERS)
+		return -EINVAL;  /* filter index is out of range */
+
+	E1000_WRITE_REG(hw, E1000_TTQF(index), 0);
+	E1000_WRITE_REG(hw, E1000_IMIR(index), 0);
+	E1000_WRITE_REG(hw, E1000_IMIREXT(index), 0);
+	return 0;
+}
+
+/*
+ * get a 2tuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates.
+ * filter: ponter to the filter that returns.
+ * *rx_queue: pointer of the queue id the filter assigned to.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_get_2tuple_filter(struct rte_eth_dev *dev, uint16_t index,
+			struct rte_2tuple_filter *filter, uint16_t *rx_queue)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t imir, ttqf, imir_ext;
+
+	MAC_TYPE_FILTER_SUP_EXT(hw->mac.type);
+
+	if (index >= E1000_MAX_TTQF_FILTERS)
+		return -EINVAL;  /* filter index is out of range. */
+
+	ttqf = E1000_READ_REG(hw, E1000_TTQF(index));
+	if (ttqf & E1000_TTQF_QUEUE_ENABLE) {
+		imir = E1000_READ_REG(hw, E1000_IMIR(index));
+		filter->protocol = ttqf & E1000_TTQF_PROTOCOL_MASK;
+		filter->protocol_mask = (ttqf & E1000_TTQF_MASK_ENABLE) ? 1 : 0;
+		*rx_queue = (ttqf & E1000_TTQF_RX_QUEUE_MASK) >>
+				E1000_TTQF_QUEUE_SHIFT;
+		filter->dst_port = (uint16_t)(imir & E1000_IMIR_DSTPORT);
+		filter->dst_port_mask = (imir & E1000_IMIR_PORT_BP) ? 1 : 0;
+		filter->priority = (imir & E1000_IMIR_PRIORITY) >>
+			E1000_IMIR_PRIORITY_SHIFT;
+
+		imir_ext = E1000_READ_REG(hw, E1000_IMIREXT(index));
+		if (!(imir_ext & E1000_IMIR_EXT_CTRL_BP)) {
+			if (imir_ext & E1000_IMIR_EXT_CTRL_UGR)
+				filter->tcp_flags |= TCP_UGR_FLAG;
+			if (imir_ext & E1000_IMIR_EXT_CTRL_ACK)
+				filter->tcp_flags |= TCP_ACK_FLAG;
+			if (imir_ext & E1000_IMIR_EXT_CTRL_PSH)
+				filter->tcp_flags |= TCP_PSH_FLAG;
+			if (imir_ext & E1000_IMIR_EXT_CTRL_RST)
+				filter->tcp_flags |= TCP_RST_FLAG;
+			if (imir_ext & E1000_IMIR_EXT_CTRL_SYN)
+				filter->tcp_flags |= TCP_SYN_FLAG;
+			if (imir_ext & E1000_IMIR_EXT_CTRL_FIN)
+				filter->tcp_flags |= TCP_FIN_FLAG;
+		} else
+			filter->tcp_flags = 0;
+		return 0;
+	}
+	return -ENOENT;
+}
+
+/*
+ * add a flex filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates.
+ * filter: ponter to the filter that will be added.
+ * rx_queue: the queue id the filter assigned to.
+ *
+ * @return
+ *    - On success, zero.
+ *     - On failure, a negative value.
+ */
+static int
+eth_igb_add_flex_filter(struct rte_eth_dev *dev, uint16_t index,
+			struct rte_flex_filter *filter, uint16_t rx_queue)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t wufc, en_bits = 0;
+	uint32_t queueing = 0;
+	uint32_t reg_off = 0;
+	uint8_t i, j = 0;
+
+	MAC_TYPE_FILTER_SUP_EXT(hw->mac.type);
+
+	if (index >= E1000_MAX_FLEXIBLE_FILTERS)
+		return -EINVAL;  /* filter index is out of range. */
+
+	if (filter->len == 0 || filter->len > E1000_MAX_FLEX_FILTER_LEN ||
+		filter->len % 8 != 0 ||
+		filter->priority > E1000_MAX_FLEX_FILTER_PRI)
+		return -EINVAL;
+
+	wufc = E1000_READ_REG(hw, E1000_WUFC);
+	en_bits = E1000_WUFC_FLEX_HQ | (E1000_WUFC_FLX0 << index);
+	if ((wufc & en_bits) == en_bits)
+		return -EINVAL;  /* the filter is in use. */
+
+	E1000_WRITE_REG(hw, E1000_WUFC,
+		wufc | E1000_WUFC_FLEX_HQ | (E1000_WUFC_FLX0 << index));
+
+	j = 0;
+	if (index < E1000_MAX_FHFT)
+		reg_off = E1000_FHFT(index);
+	else
+		reg_off = E1000_FHFT_EXT(index - E1000_MAX_FHFT);
+
+	for (i = 0; i < 16; i++) {
+		E1000_WRITE_REG(hw, reg_off + i*4*4, filter->dwords[j]);
+		E1000_WRITE_REG(hw, reg_off + (i*4+1)*4, filter->dwords[++j]);
+		E1000_WRITE_REG(hw, reg_off + (i*4+2)*4,
+				(uint32_t)filter->mask[i]);
+		++j;
+	}
+	queueing |= filter->len |
+		(rx_queue << E1000_FHFT_QUEUEING_QUEUE_SHIFT) |
+		(filter->priority << E1000_FHFT_QUEUEING_PRIO_SHIFT);
+	E1000_WRITE_REG(hw, reg_off + E1000_FHFT_QUEUEING_OFFSET, queueing);
+	return 0;
+}
+
+/*
+ * remove a flex filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_remove_flex_filter(struct rte_eth_dev *dev,
+				uint16_t index)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t wufc, reg_off = 0;
+	uint8_t i;
+
+	MAC_TYPE_FILTER_SUP_EXT(hw->mac.type);
+
+	if (index >= E1000_MAX_FLEXIBLE_FILTERS)
+		return -EINVAL;  /* filter index is out of range. */
+
+	wufc = E1000_READ_REG(hw, E1000_WUFC);
+	E1000_WRITE_REG(hw, E1000_WUFC, wufc & (~(E1000_WUFC_FLX0 << index)));
+
+	if (index < E1000_MAX_FHFT)
+		reg_off = E1000_FHFT(index);
+	else
+		reg_off = E1000_FHFT_EXT(index - E1000_MAX_FHFT);
+
+	for (i = 0; i < 64; i++)
+		E1000_WRITE_REG(hw, reg_off + i*4, 0);
+	return 0;
+}
+
+/*
+ * get a flex filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates.
+ * filter: ponter to the filter that returns.
+ * *rx_queue: the pointer of the queue id the filter assigned to.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_get_flex_filter(struct rte_eth_dev *dev, uint16_t index,
+			struct rte_flex_filter *filter, uint16_t *rx_queue)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t wufc, queueing, wufc_en = 0;
+	uint8_t i, j;
+
+	MAC_TYPE_FILTER_SUP_EXT(hw->mac.type);
+
+	if (index >= E1000_MAX_FLEXIBLE_FILTERS)
+		return -EINVAL;  /* filter index is out of range. */
+
+	wufc = E1000_READ_REG(hw, E1000_WUFC);
+	wufc_en = E1000_WUFC_FLEX_HQ | (E1000_WUFC_FLX0 << index);
+
+	if ((wufc & wufc_en) == wufc_en) {
+		uint32_t reg_off = 0;
+		j = 0;
+		if (index < E1000_MAX_FHFT)
+			reg_off = E1000_FHFT(index);
+		else
+			reg_off = E1000_FHFT_EXT(index - E1000_MAX_FHFT);
+
+		for (i = 0; i < 16; i++, j = i * 2) {
+			filter->dwords[j] =
+				E1000_READ_REG(hw, reg_off + i*4*4);
+			filter->dwords[j+1] =
+				E1000_READ_REG(hw, reg_off + (i*4+1)*4);
+			filter->mask[i] =
+				E1000_READ_REG(hw, reg_off + (i*4+2)*4);
+		}
+		queueing = E1000_READ_REG(hw,
+				reg_off + E1000_FHFT_QUEUEING_OFFSET);
+		filter->len = queueing & E1000_FHFT_QUEUEING_LEN;
+		filter->priority = (queueing & E1000_FHFT_QUEUEING_PRIO) >>
+			E1000_FHFT_QUEUEING_PRIO_SHIFT;
+		*rx_queue = (queueing & E1000_FHFT_QUEUEING_QUEUE) >>
+			E1000_FHFT_QUEUEING_QUEUE_SHIFT;
+		return 0;
+	}
+	return -ENOENT;
+}
+
+/*
+ * add a 5tuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates.
+ * filter: ponter to the filter that will be added.
+ * rx_queue: the queue id the filter assigned to.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_add_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
+			struct rte_5tuple_filter *filter, uint16_t rx_queue)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t ftqf, spqf = 0;
+	uint32_t imir = 0;
+	uint32_t imir_ext = 0;
+
+	if (hw->mac.type != e1000_82576)
+		return -ENOSYS;
+
+	if (index >= E1000_MAX_FTQF_FILTERS ||
+		rx_queue >= IGB_MAX_RX_QUEUE_NUM_82576)
+		return -EINVAL;  /* filter index is out of range. */
+
+	ftqf = E1000_READ_REG(hw, E1000_FTQF(index));
+	if (ftqf & E1000_FTQF_QUEUE_ENABLE)
+		return -EINVAL;  /* filter index is in use. */
+
+	ftqf = 0;
+	ftqf |= filter->protocol & E1000_FTQF_PROTOCOL_MASK;
+	if (filter->src_ip_mask == 1) /* 1b means not compare. */
+		ftqf |= E1000_FTQF_SOURCE_ADDR_MASK;
+	if (filter->dst_ip_mask == 1)
+		ftqf |= E1000_FTQF_DEST_ADDR_MASK;
+	if (filter->src_port_mask == 1)
+		ftqf |= E1000_FTQF_SOURCE_PORT_MASK;
+	if (filter->protocol_mask == 1)
+		ftqf |= E1000_FTQF_PROTOCOL_COMP_MASK;
+	ftqf |= (rx_queue << E1000_FTQF_QUEUE_SHIFT) & E1000_FTQF_QUEUE_MASK;
+	ftqf |= E1000_FTQF_VF_MASK_EN;
+	ftqf |= E1000_FTQF_QUEUE_ENABLE;
+	E1000_WRITE_REG(hw, E1000_FTQF(index), ftqf);
+	E1000_WRITE_REG(hw, E1000_DAQF(index), filter->dst_ip);
+	E1000_WRITE_REG(hw, E1000_SAQF(index), filter->src_ip);
+
+	spqf |= filter->src_port & E1000_SPQF_SRCPORT;
+	E1000_WRITE_REG(hw, E1000_SPQF(index), spqf);
+
+	imir |= (uint32_t)(filter->dst_port & E1000_IMIR_DSTPORT);
+	if (filter->dst_port_mask == 1) /* 1b means not compare. */
+		imir |= E1000_IMIR_PORT_BP;
+	else
+		imir &= ~E1000_IMIR_PORT_BP;
+	imir |= filter->priority << E1000_IMIR_PRIORITY_SHIFT;
+
+	imir_ext |= E1000_IMIR_EXT_SIZE_BP;
+	/* tcp flags bits setting. */
+	if (filter->tcp_flags & TCP_FLAG_ALL) {
+		if (filter->tcp_flags & TCP_UGR_FLAG)
+			imir_ext |= E1000_IMIR_EXT_CTRL_UGR;
+		if (filter->tcp_flags & TCP_ACK_FLAG)
+			imir_ext |= E1000_IMIR_EXT_CTRL_ACK;
+		if (filter->tcp_flags & TCP_PSH_FLAG)
+			imir_ext |= E1000_IMIR_EXT_CTRL_PSH;
+		if (filter->tcp_flags & TCP_RST_FLAG)
+			imir_ext |= E1000_IMIR_EXT_CTRL_RST;
+		if (filter->tcp_flags & TCP_SYN_FLAG)
+			imir_ext |= E1000_IMIR_EXT_CTRL_SYN;
+		if (filter->tcp_flags & TCP_FIN_FLAG)
+			imir_ext |= E1000_IMIR_EXT_CTRL_FIN;
+	} else
+		imir_ext |= E1000_IMIR_EXT_CTRL_BP;
+	E1000_WRITE_REG(hw, E1000_IMIR(index), imir);
+	E1000_WRITE_REG(hw, E1000_IMIREXT(index), imir_ext);
+	return 0;
+}
+
+/*
+ * remove a 5tuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_remove_5tuple_filter(struct rte_eth_dev *dev,
+				uint16_t index)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->mac.type != e1000_82576)
+		return -ENOSYS;
+
+	if (index >= E1000_MAX_FTQF_FILTERS)
+		return -EINVAL;  /* filter index is out of range. */
+
+	E1000_WRITE_REG(hw, E1000_FTQF(index), 0);
+	E1000_WRITE_REG(hw, E1000_DAQF(index), 0);
+	E1000_WRITE_REG(hw, E1000_SAQF(index), 0);
+	E1000_WRITE_REG(hw, E1000_SPQF(index), 0);
+	E1000_WRITE_REG(hw, E1000_IMIR(index), 0);
+	E1000_WRITE_REG(hw, E1000_IMIREXT(index), 0);
+	return 0;
+}
+
+/*
+ * get a 5tuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates
+ * filter: ponter to the filter that returns
+ * *rx_queue: pointer of the queue id the filter assigned to
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+eth_igb_get_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
+			struct rte_5tuple_filter *filter, uint16_t *rx_queue)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t spqf, ftqf, imir, imir_ext;
+
+	if (hw->mac.type != e1000_82576)
+		return -ENOSYS;
+
+	if (index >= E1000_MAX_FTQF_FILTERS)
+		return -EINVAL;  /* filter index is out of range. */
+
+	ftqf = E1000_READ_REG(hw, E1000_FTQF(index));
+	if (ftqf & E1000_FTQF_QUEUE_ENABLE) {
+		filter->src_ip_mask =
+			(ftqf & E1000_FTQF_SOURCE_ADDR_MASK) ? 1 : 0;
+		filter->dst_ip_mask =
+			(ftqf & E1000_FTQF_DEST_ADDR_MASK) ? 1 : 0;
+		filter->src_port_mask =
+			(ftqf & E1000_FTQF_SOURCE_PORT_MASK) ? 1 : 0;
+		filter->protocol_mask =
+			(ftqf & E1000_FTQF_PROTOCOL_COMP_MASK) ? 1 : 0;
+		filter->protocol =
+			(uint8_t)ftqf & E1000_FTQF_PROTOCOL_MASK;
+		*rx_queue = (uint16_t)((ftqf & E1000_FTQF_QUEUE_MASK) >>
+				E1000_FTQF_QUEUE_SHIFT);
+
+		spqf = E1000_READ_REG(hw, E1000_SPQF(index));
+		filter->src_port = spqf & E1000_SPQF_SRCPORT;
+
+		filter->dst_ip = E1000_READ_REG(hw, E1000_DAQF(index));
+		filter->src_ip = E1000_READ_REG(hw, E1000_SAQF(index));
+
+		imir = E1000_READ_REG(hw, E1000_IMIR(index));
+		filter->dst_port_mask = (imir & E1000_IMIR_PORT_BP) ? 1 : 0;
+		filter->dst_port = (uint16_t)(imir & E1000_IMIR_DSTPORT);
+		filter->priority = (imir & E1000_IMIR_PRIORITY) >>
+			E1000_IMIR_PRIORITY_SHIFT;
+
+		imir_ext = E1000_READ_REG(hw, E1000_IMIREXT(index));
+		if (!(imir_ext & E1000_IMIR_EXT_CTRL_BP)) {
+			if (imir_ext & E1000_IMIR_EXT_CTRL_UGR)
+				filter->tcp_flags |= TCP_UGR_FLAG;
+			if (imir_ext & E1000_IMIR_EXT_CTRL_ACK)
+				filter->tcp_flags |= TCP_ACK_FLAG;
+			if (imir_ext & E1000_IMIR_EXT_CTRL_PSH)
+				filter->tcp_flags |= TCP_PSH_FLAG;
+			if (imir_ext & E1000_IMIR_EXT_CTRL_RST)
+				filter->tcp_flags |= TCP_RST_FLAG;
+			if (imir_ext & E1000_IMIR_EXT_CTRL_SYN)
+				filter->tcp_flags |= TCP_SYN_FLAG;
+			if (imir_ext & E1000_IMIR_EXT_CTRL_FIN)
+				filter->tcp_flags |= TCP_FIN_FLAG;
+		} else
+			filter->tcp_flags = 0;
+		return 0;
+	}
+	return -ENOENT;
 }
 
 static struct rte_driver pmd_igb_drv = {
