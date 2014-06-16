@@ -1871,3 +1871,150 @@ set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 	return diag;
 }
 
+void
+get_ethertype_filter(uint8_t port_id, uint16_t index)
+{
+	struct rte_ethertype_filter filter;
+	int ret = 0;
+	uint16_t rx_queue;
+
+	memset(&filter, 0, sizeof(filter));
+	ret = rte_eth_dev_get_ethertype_filter(port_id, index,
+				&filter, &rx_queue);
+	if (ret < 0) {
+		if (ret == (-ENOENT))
+			printf("filter[%d] is not enabled\n", index);
+		else
+			printf("get ethertype filter fails(%s)\n", strerror(-ret));
+		return;
+	} else {
+		printf("filter[%d]:\n", index);
+		printf("    ethertype:  0x%04x\n",
+			rte_le_to_cpu_32(filter.ethertype));
+		printf("    priority: %s, %d\n",
+			filter.priority_en ? "enable" : "disable",
+			filter.priority);
+		printf("    queue: %d\n", rx_queue);
+	}
+}
+
+void
+get_syn_filter(uint8_t port_id)
+{
+	struct rte_syn_filter filter;
+	int ret = 0;
+	uint16_t rx_queue;
+
+	memset(&filter, 0, sizeof(filter));
+	ret = rte_eth_dev_get_syn_filter(port_id, &filter, &rx_queue);
+
+	if (ret < 0) {
+		if (ret == (-ENOENT))
+			printf("syn filter is not enabled\n");
+		else
+			printf("get syn filter fails(%s)\n", strerror(-ret));
+		return;
+	}
+	printf("syn filter: priority: %s, queue: %d\n",
+		filter.hig_pri ? "high" : "low",
+		rx_queue);
+}
+void
+get_2tuple_filter(uint8_t port_id, uint16_t index)
+{
+	struct rte_2tuple_filter filter;
+	int ret = 0;
+	uint16_t rx_queue;
+
+	memset(&filter, 0, sizeof(filter));
+	ret = rte_eth_dev_get_2tuple_filter(port_id, index,
+				&filter, &rx_queue);
+	if (ret < 0) {
+		if (ret == (-ENOENT))
+			printf("filter[%d] is not enabled\n", index);
+		else
+			printf("get 2tuple filter fails(%s)\n", strerror(-ret));
+		return;
+	} else {
+		printf("filter[%d]:\n", index);
+		printf("    Destination Port:     0x%04x    mask: %d\n",
+			rte_be_to_cpu_16(filter.dst_port),
+			filter.dst_port_mask ? 0 : 1);
+		printf("    protocol:  0x%02x     mask:%d     tcp_flags: 0x%02x\n",
+			filter.protocol, filter.protocol_mask ? 0 : 1,
+			filter.tcp_flags);
+		printf("    priority: %d    queue: %d\n",
+			filter.priority, rx_queue);
+	}
+}
+
+void
+get_5tuple_filter(uint8_t port_id, uint16_t index)
+{
+	struct rte_5tuple_filter filter;
+	int ret = 0;
+	uint16_t rx_queue;
+
+	memset(&filter, 0, sizeof(filter));
+	ret = rte_eth_dev_get_5tuple_filter(port_id, index,
+				&filter, &rx_queue);
+	if (ret < 0) {
+		if (ret == (-ENOENT))
+			printf("filter[%d] is not enabled\n", index);
+		else
+			printf("get 5tuple filter fails(%s)\n", strerror(-ret));
+		return;
+	} else {
+		printf("filter[%d]:\n", index);
+		printf("    Destination IP:  0x%08x    mask: %d\n",
+			(unsigned)rte_be_to_cpu_32(filter.dst_ip),
+			filter.dst_ip_mask ? 0 : 1);
+		printf("    Source IP:       0x%08x    mask: %d\n",
+			(unsigned)rte_be_to_cpu_32(filter.src_ip),
+			filter.src_ip_mask ? 0 : 1);
+		printf("    Destination Port:       0x%04x    mask: %d\n",
+			rte_be_to_cpu_16(filter.dst_port),
+			filter.dst_port_mask ? 0 : 1);
+		printf("    Source Port:       0x%04x    mask: %d\n",
+			rte_be_to_cpu_16(filter.src_port),
+			filter.src_port_mask ? 0 : 1);
+		printf("    protocol:           0x%02x    mask: %d\n",
+			filter.protocol,
+			filter.protocol_mask ? 0 : 1);
+		printf("    priority: %d    flags: 0x%02x    queue: %d\n",
+			filter.priority, filter.tcp_flags, rx_queue);
+	}
+}
+void
+get_flex_filter(uint8_t port_id, uint16_t index)
+
+{
+	struct rte_flex_filter filter;
+	int ret = 0;
+	uint16_t rx_queue;
+	int i, j;
+
+	memset(&filter, 0, sizeof(filter));
+	ret = rte_eth_dev_get_flex_filter(port_id, index,
+				&filter, &rx_queue);
+	if (ret < 0) {
+		if (ret == (-ENOENT))
+			printf("filter[%d] is not enabled\n", index);
+		else
+			printf("get flex filter fails(%s)\n", strerror(-ret));
+		return;
+	} else {
+		printf("filter[%d]: ", index);
+		printf("\n    length: %d", filter.len);
+		printf("\n    dword[]: 0x");
+		for (i = 0; i < 32; i++)
+			printf("%08x ", (unsigned)rte_be_to_cpu_32(filter.dwords[i]));
+		printf("\n    mask[]: 0b");
+		for (i = 0; i < 16; i++) {
+			for (j = 0; j < 8; j++)
+				printf("%c", (filter.mask[i] & (1 << j)) ? '1' : '0');
+		}
+		printf("\n    priority: %d    queue: %d\n",
+			filter.priority, rx_queue);
+	}
+}

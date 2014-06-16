@@ -113,6 +113,7 @@ static void cmd_help_brief_parsed(__attribute__((unused)) void *parsed_result,
 		"    help ports      : Configuring ports.\n"
 		"    help flowdir    : Flow Director filter help.\n"
 		"    help registers  : Reading and setting port registers.\n"
+		"    help filters    : Filters configuration help.\n"
 		"    help all        : All of the above sections.\n\n"
 	);
 
@@ -554,6 +555,67 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set single bit value of a port register.\n\n"
 		);
 	}
+	if (show_all || !strcmp(res->section, "filters")) {
+
+		cmdline_printf(
+			cl,
+			"\n"
+			"filters:\n"
+			"--------\n\n"
+
+			"add_ethertype_filter (port_id) ethertype (eth_value)"
+			" priority (enable|disable)(pri_value) queue (queue_id) index (idx)\n"
+			"    add an ethertype filter.\n\n"
+
+			"remove_ethertype_filter (port_id) index (idx)\n"
+			"    remove an ethertype filter.\n\n"
+
+			"get_ethertype_filter (port_id) index (idx)\n"
+			"    get info of a ethertype filter.\n\n"
+
+			"add_2tuple_filter (port_id) protocol (pro_value) (pro_mask)"
+			" dst_port (port_value) (port_mask) flags (flg_value) priority (prio_value)"
+			" queue (queue_id) index (idx)\n"
+			"    add a 2tuple filter.\n\n"
+
+			"remove_2tuple_filter (port_id) index (idx)\n"
+			"    remove a 2tuple filter.\n\n"
+
+			"get_2tuple_filter (port_id) index (idx)\n"
+			"    get info of a 2tuple filter.\n\n"
+
+			"add_5tuple_filter (port_id) dst_ip (dst_address) src_ip (src_address)"
+			" dst_port (dst_port_value) src_port (src_port_value) protocol (protocol_value)"
+			" mask (mask_value) flags (flags_value) priority (prio_value)"
+			" queue (queue_id) index (idx)\n"
+			"    add a 5tuple filter.\n\n"
+
+			"remove_5tuple_filter (port_id) index (idx)\n"
+			"    remove a 5tuple filter.\n\n"
+
+			"get_5tuple_filter (port_id) index (idx)\n"
+			"    get info of a 5tuple filter.\n\n"
+
+			"add_syn_filter (port_id) priority (high|low) queue (queue_id)"
+			"    add syn filter.\n\n"
+
+			"remove_syn_filter (port_id)"
+			"    remove syn filter.\n\n"
+
+			"get_syn_filter (port_id) "
+			"    get syn filter info.\n\n"
+
+			"add_flex_filter (port_id) len (len_value) bytes (bytes_string) mask (mask_value)"
+			" priority (prio_value) queue (queue_id) index (idx)\n"
+			"    add a flex filter.\n\n"
+
+			"remove_flex_filter (port_id) index (idx)\n"
+			"    remove a flex filter.\n\n"
+
+			"get_flex_filter (port_id) index (idx)\n"
+			"    get info of a flex filter.\n\n"
+		);
+	}
 }
 
 cmdline_parse_token_string_t cmd_help_long_help =
@@ -562,7 +624,7 @@ cmdline_parse_token_string_t cmd_help_long_help =
 cmdline_parse_token_string_t cmd_help_long_section =
 	TOKEN_STRING_INITIALIZER(struct cmd_help_long_result, section,
 			"all#control#display#config#flowdir#"
-			"ports#registers");
+			"ports#registers#filters");
 
 cmdline_parse_inst_t cmd_help_long = {
 	.f = cmd_help_long_parsed,
@@ -5534,6 +5596,836 @@ cmdline_parse_inst_t cmd_dump_one = {
 	},
 };
 
+/* *** ADD/REMOVE an ethertype FILTER *** */
+struct cmd_ethertype_filter_result {
+	cmdline_fixed_string_t filter;
+	uint8_t port_id;
+	cmdline_fixed_string_t ethertype;
+	uint16_t ethertype_value;
+	cmdline_fixed_string_t priority;
+	cmdline_fixed_string_t priority_en;
+	uint8_t priority_value;
+	cmdline_fixed_string_t queue;
+	uint16_t queue_id;
+	cmdline_fixed_string_t index;
+	uint16_t index_value;
+};
+
+static void
+cmd_ethertype_filter_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	int ret = 0;
+	struct cmd_ethertype_filter_result *res = parsed_result;
+	struct rte_ethertype_filter filter;
+
+	memset(&filter, 0, sizeof(struct rte_ethertype_filter));
+	filter.ethertype = rte_cpu_to_le_16(res->ethertype_value);
+	filter.priority = res->priority_value;
+
+	if (!strcmp(res->priority_en, "enable"))
+		filter.priority_en = 1;
+	if (!strcmp(res->filter, "add_ethertype_filter"))
+		ret = rte_eth_dev_add_ethertype_filter(res->port_id,
+				res->index_value,
+				&filter, res->queue_id);
+	else if (!strcmp(res->filter, "remove_ethertype_filter"))
+		ret = rte_eth_dev_remove_ethertype_filter(res->port_id,
+				res->index_value);
+	else if (!strcmp(res->filter, "get_ethertype_filter"))
+		get_ethertype_filter(res->port_id, res->index_value);
+
+	if (ret < 0)
+		printf("ethertype filter setting error: (%s)\n",
+			strerror(-ret));
+}
+
+cmdline_parse_token_num_t cmd_ethertype_filter_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_ethertype_filter_ethertype =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				ethertype, "ethertype");
+cmdline_parse_token_ipaddr_t cmd_ethertype_filter_ethertype_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+				ethertype_value, UINT16);
+cmdline_parse_token_string_t cmd_ethertype_filter_priority =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				priority, "priority");
+cmdline_parse_token_string_t cmd_ethertype_filter_priority_en =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				priority_en, "enable#disable");
+cmdline_parse_token_num_t cmd_ethertype_filter_priority_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+				priority_value, UINT8);
+cmdline_parse_token_string_t cmd_ethertype_filter_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				queue, "queue");
+cmdline_parse_token_num_t cmd_ethertype_filter_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+				queue_id, UINT16);
+cmdline_parse_token_string_t cmd_ethertype_filter_index =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				index, "index");
+cmdline_parse_token_num_t cmd_ethertype_filter_index_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+				index_value, UINT16);
+cmdline_parse_token_string_t cmd_ethertype_filter_add_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				filter, "add_ethertype_filter");
+cmdline_parse_inst_t cmd_add_ethertype_filter = {
+	.f = cmd_ethertype_filter_parsed,
+	.data = NULL,
+	.help_str = "add an ethertype filter",
+	.tokens = {
+		(void *)&cmd_ethertype_filter_add_filter,
+		(void *)&cmd_ethertype_filter_port_id,
+		(void *)&cmd_ethertype_filter_ethertype,
+		(void *)&cmd_ethertype_filter_ethertype_value,
+		(void *)&cmd_ethertype_filter_priority,
+		(void *)&cmd_ethertype_filter_priority_en,
+		(void *)&cmd_ethertype_filter_priority_value,
+		(void *)&cmd_ethertype_filter_queue,
+		(void *)&cmd_ethertype_filter_queue_id,
+		(void *)&cmd_ethertype_filter_index,
+		(void *)&cmd_ethertype_filter_index_value,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_ethertype_filter_remove_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				 filter, "remove_ethertype_filter");
+cmdline_parse_inst_t cmd_remove_ethertype_filter = {
+	.f = cmd_ethertype_filter_parsed,
+	.data = NULL,
+	.help_str = "remove an ethertype filter",
+	.tokens = {
+		(void *)&cmd_ethertype_filter_remove_filter,
+		(void *)&cmd_ethertype_filter_port_id,
+		(void *)&cmd_ethertype_filter_index,
+		(void *)&cmd_ethertype_filter_index_value,
+		NULL,
+	},
+};
+cmdline_parse_token_string_t cmd_ethertype_filter_get_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				 filter, "get_ethertype_filter");
+cmdline_parse_inst_t cmd_get_ethertype_filter = {
+	.f = cmd_ethertype_filter_parsed,
+	.data = NULL,
+	.help_str = "get an ethertype filter",
+	.tokens = {
+		(void *)&cmd_ethertype_filter_get_filter,
+		(void *)&cmd_ethertype_filter_port_id,
+		(void *)&cmd_ethertype_filter_index,
+		(void *)&cmd_ethertype_filter_index_value,
+		NULL,
+	},
+};
+
+/* *** set SYN filter *** */
+struct cmd_set_syn_filter_result {
+	cmdline_fixed_string_t filter;
+	uint8_t port_id;
+	cmdline_fixed_string_t priority;
+	cmdline_fixed_string_t high;
+	cmdline_fixed_string_t queue;
+	uint16_t  queue_id;
+};
+
+static void
+cmd_set_syn_filter_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	int ret = 0;
+	struct cmd_set_syn_filter_result *res = parsed_result;
+	struct rte_syn_filter filter;
+
+	if (!strcmp(res->filter, "add_syn_filter")) {
+		if (!strcmp(res->high, "high"))
+			filter.hig_pri = 1;
+		else
+			filter.hig_pri = 0;
+		ret = rte_eth_dev_add_syn_filter(res->port_id,
+				&filter, res->queue_id);
+	} else if (!strcmp(res->filter, "remove_syn_filter"))
+		ret = rte_eth_dev_remove_syn_filter(res->port_id);
+	else if (!strcmp(res->filter, "get_syn_filter"))
+		get_syn_filter(res->port_id);
+	if (ret < 0)
+		printf("syn filter setting error: (%s)\n", strerror(-ret));
+
+}
+cmdline_parse_token_string_t cmd_syn_filter_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_syn_filter_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_syn_filter_priority =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_syn_filter_result,
+				priority, "priority");
+cmdline_parse_token_string_t cmd_syn_filter_high =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_syn_filter_result,
+				high, "high#low");
+cmdline_parse_token_string_t cmd_syn_filter_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_syn_filter_result,
+				queue, "queue");
+cmdline_parse_token_num_t cmd_syn_filter_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_syn_filter_result,
+				queue_id, UINT16);
+cmdline_parse_token_string_t cmd_syn_filter_add_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_syn_filter_result,
+				filter, "add_syn_filter");
+cmdline_parse_token_string_t cmd_syn_filter_remove_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_syn_filter_result,
+				filter, "remove_syn_filter");
+cmdline_parse_inst_t cmd_add_syn_filter = {
+		.f = cmd_set_syn_filter_parsed,
+		.data = NULL,
+		.help_str = "add syn filter",
+		.tokens = {
+			(void *)&cmd_syn_filter_add_filter,
+			(void *)&cmd_syn_filter_portid,
+			(void *)&cmd_syn_filter_priority,
+			(void *)&cmd_syn_filter_high,
+			(void *)&cmd_syn_filter_queue,
+			(void *)&cmd_syn_filter_queue_id,
+			NULL,
+		},
+};
+cmdline_parse_inst_t cmd_remove_syn_filter = {
+		.f = cmd_set_syn_filter_parsed,
+		.data = NULL,
+		.help_str = "remove syn filter",
+		.tokens = {
+			(void *)&cmd_syn_filter_remove_filter,
+			(void *)&cmd_syn_filter_portid,
+			NULL,
+		},
+};
+
+cmdline_parse_token_string_t cmd_syn_filter_get_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_syn_filter_result,
+				filter, "get_syn_filter");
+
+cmdline_parse_inst_t cmd_get_syn_filter = {
+		.f = cmd_set_syn_filter_parsed,
+		.data = NULL,
+		.help_str = "get syn filter",
+		.tokens = {
+			(void *)&cmd_syn_filter_get_filter,
+			(void *)&cmd_syn_filter_portid,
+			NULL,
+		},
+};
+
+/* *** ADD/REMOVE A 2tuple FILTER *** */
+struct cmd_2tuple_filter_result {
+	cmdline_fixed_string_t filter;
+	uint8_t port_id;
+	cmdline_fixed_string_t protocol;
+	uint8_t protocol_value;
+	uint8_t protocol_mask;
+	cmdline_fixed_string_t dst_port;
+	uint16_t dst_port_value;
+	uint16_t dst_port_mask;
+	cmdline_fixed_string_t flags;
+	uint8_t flags_value;
+	cmdline_fixed_string_t priority;
+	uint8_t priority_value;
+	cmdline_fixed_string_t queue;
+	uint16_t queue_id;
+	cmdline_fixed_string_t index;
+	uint16_t index_value;
+};
+
+static void
+cmd_2tuple_filter_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	int ret = 0;
+	struct rte_2tuple_filter filter;
+	struct cmd_2tuple_filter_result *res = parsed_result;
+
+	memset(&filter, 0, sizeof(struct rte_2tuple_filter));
+
+	if (!strcmp(res->filter, "add_2tuple_filter")) {
+		/* need convert to big endian. */
+		filter.dst_port = rte_cpu_to_be_16(res->dst_port_value);
+		filter.protocol = res->protocol_value;
+		filter.dst_port_mask = (res->dst_port_mask) ? 0 : 1;
+		filter.protocol_mask = (res->protocol_mask) ? 0 : 1;
+		filter.priority = res->priority_value;
+		filter.tcp_flags = res->flags_value;
+		ret = rte_eth_dev_add_2tuple_filter(res->port_id,
+			res->index_value, &filter, res->queue_id);
+	} else if (!strcmp(res->filter, "remove_2tuple_filter"))
+		ret = rte_eth_dev_remove_2tuple_filter(res->port_id,
+			res->index_value);
+	else if (!strcmp(res->filter, "get_2tuple_filter"))
+		get_2tuple_filter(res->port_id, res->index_value);
+
+	if (ret < 0)
+		printf("2tuple filter setting error: (%s)\n", strerror(-ret));
+}
+
+cmdline_parse_token_num_t cmd_2tuple_filter_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_2tuple_filter_protocol =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				 protocol, "protocol");
+cmdline_parse_token_string_t cmd_2tuple_filter_protocol_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				 protocol_value, UINT8);
+cmdline_parse_token_num_t cmd_2tuple_filter_protocol_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				protocol_mask, UINT8);
+cmdline_parse_token_string_t cmd_2tuple_filter_dst_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				dst_port, "dst_port");
+cmdline_parse_token_num_t cmd_2tuple_filter_dst_port_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				dst_port_value, UINT16);
+cmdline_parse_token_num_t cmd_2tuple_filter_dst_port_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				dst_port_mask, UINT16);
+cmdline_parse_token_string_t cmd_2tuple_filter_flags =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				flags, "flags");
+cmdline_parse_token_string_t cmd_2tuple_filter_flags_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				flags_value, UINT8);
+cmdline_parse_token_string_t cmd_2tuple_filter_priority =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				priority, "priority");
+cmdline_parse_token_num_t cmd_2tuple_filter_priority_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				priority_value, UINT8);
+cmdline_parse_token_string_t cmd_2tuple_filter_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				queue, "queue");
+cmdline_parse_token_num_t cmd_2tuple_filter_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				queue_id, UINT16);
+cmdline_parse_token_string_t cmd_2tuple_filter_index =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				index, "index");
+cmdline_parse_token_num_t cmd_2tuple_filter_index_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				index_value, UINT16);
+cmdline_parse_token_string_t cmd_2tuple_filter_add_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				filter, "add_2tuple_filter");
+cmdline_parse_inst_t cmd_add_2tuple_filter = {
+	.f = cmd_2tuple_filter_parsed,
+	.data = NULL,
+	.help_str = "add a 2tuple filter",
+	.tokens = {
+		(void *)&cmd_2tuple_filter_add_filter,
+		(void *)&cmd_2tuple_filter_port_id,
+		(void *)&cmd_2tuple_filter_protocol,
+		(void *)&cmd_2tuple_filter_protocol_value,
+		(void *)&cmd_2tuple_filter_protocol_mask,
+		(void *)&cmd_2tuple_filter_dst_port,
+		(void *)&cmd_2tuple_filter_dst_port_value,
+		(void *)&cmd_2tuple_filter_dst_port_mask,
+		(void *)&cmd_2tuple_filter_flags,
+		(void *)&cmd_2tuple_filter_flags_value,
+		(void *)&cmd_2tuple_filter_priority,
+		(void *)&cmd_2tuple_filter_priority_value,
+		(void *)&cmd_2tuple_filter_queue,
+		(void *)&cmd_2tuple_filter_queue_id,
+		(void *)&cmd_2tuple_filter_index,
+		(void *)&cmd_2tuple_filter_index_value,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_2tuple_filter_remove_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				filter, "remove_2tuple_filter");
+cmdline_parse_inst_t cmd_remove_2tuple_filter = {
+	.f = cmd_2tuple_filter_parsed,
+	.data = NULL,
+	.help_str = "remove a 2tuple filter",
+	.tokens = {
+		(void *)&cmd_2tuple_filter_remove_filter,
+		(void *)&cmd_2tuple_filter_port_id,
+		(void *)&cmd_2tuple_filter_index,
+		(void *)&cmd_2tuple_filter_index_value,
+		NULL,
+	},
+};
+cmdline_parse_token_string_t cmd_2tuple_filter_get_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				filter, "get_2tuple_filter");
+cmdline_parse_inst_t cmd_get_2tuple_filter = {
+	.f = cmd_2tuple_filter_parsed,
+	.data = NULL,
+	.help_str = "get a 2tuple filter",
+	.tokens = {
+		(void *)&cmd_2tuple_filter_get_filter,
+		(void *)&cmd_2tuple_filter_port_id,
+		(void *)&cmd_2tuple_filter_index,
+		(void *)&cmd_2tuple_filter_index_value,
+		NULL,
+	},
+};
+
+/* *** ADD/REMOVE A 5tuple FILTER *** */
+struct cmd_5tuple_filter_result {
+	cmdline_fixed_string_t filter;
+	uint8_t  port_id;
+	cmdline_fixed_string_t dst_ip;
+	cmdline_ipaddr_t dst_ip_value;
+	cmdline_fixed_string_t src_ip;
+	cmdline_ipaddr_t src_ip_value;
+	cmdline_fixed_string_t dst_port;
+	uint16_t dst_port_value;
+	cmdline_fixed_string_t src_port;
+	uint16_t src_port_value;
+	cmdline_fixed_string_t protocol;
+	uint8_t protocol_value;
+	cmdline_fixed_string_t mask;
+	uint8_t  mask_value;
+	cmdline_fixed_string_t flags;
+	uint8_t flags_value;
+	cmdline_fixed_string_t priority;
+	uint8_t  priority_value;
+	cmdline_fixed_string_t queue;
+	uint16_t  queue_id;
+	cmdline_fixed_string_t index;
+	uint16_t  index_value;
+};
+
+static void
+cmd_5tuple_filter_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	int ret = 0;
+	struct rte_5tuple_filter filter;
+	struct cmd_5tuple_filter_result *res = parsed_result;
+
+	memset(&filter, 0, sizeof(struct rte_5tuple_filter));
+
+	if (!strcmp(res->filter, "add_5tuple_filter")) {
+		filter.dst_ip_mask = (res->mask_value & 0x10) ? 0 : 1;
+		filter.src_ip_mask = (res->mask_value & 0x08) ? 0 : 1;
+		filter.dst_port_mask = (res->mask_value & 0x04) ? 0 : 1;
+		filter.src_port_mask = (res->mask_value & 0x02) ? 0 : 1;
+		filter.protocol = res->protocol_value;
+		filter.protocol_mask = (res->mask_value & 0x01) ? 0 : 1;
+		filter.priority = res->priority_value;
+		filter.tcp_flags = res->flags_value;
+
+		if (res->dst_ip_value.family == AF_INET)
+			/* no need to convert, already big endian. */
+			filter.dst_ip = res->dst_ip_value.addr.ipv4.s_addr;
+		else {
+			if (filter.dst_ip_mask == 0) {
+				printf("can not support ipv6 involved compare.\n");
+				return;
+			}
+			filter.dst_ip = 0;
+		}
+
+		if (res->src_ip_value.family == AF_INET)
+			/* no need to convert, already big endian. */
+			filter.src_ip = res->src_ip_value.addr.ipv4.s_addr;
+		else {
+			if (filter.src_ip_mask == 0) {
+				printf("can not support ipv6 involved compare.\n");
+				return;
+			}
+			filter.src_ip = 0;
+		}
+		/* need convert to big endian. */
+		filter.dst_port = rte_cpu_to_be_16(res->dst_port_value);
+		filter.src_port = rte_cpu_to_be_16(res->src_port_value);
+
+		ret = rte_eth_dev_add_5tuple_filter(res->port_id,
+			res->index_value, &filter, res->queue_id);
+	} else if (!strcmp(res->filter, "remove_5tuple_filter"))
+		ret = rte_eth_dev_remove_5tuple_filter(res->port_id,
+			res->index_value);
+	else if (!strcmp(res->filter, "get_5tuple_filter"))
+		get_5tuple_filter(res->port_id, res->index_value);
+	if (ret < 0)
+		printf("5tuple filter setting error: (%s)\n", strerror(-ret));
+}
+
+
+cmdline_parse_token_num_t cmd_5tuple_filter_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_5tuple_filter_dst_ip =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				dst_ip, "dst_ip");
+cmdline_parse_token_ipaddr_t cmd_5tuple_filter_dst_ip_value =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_5tuple_filter_result,
+				dst_ip_value);
+cmdline_parse_token_string_t cmd_5tuple_filter_src_ip =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				src_ip, "src_ip");
+cmdline_parse_token_ipaddr_t cmd_5tuple_filter_src_ip_value =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_5tuple_filter_result,
+				src_ip_value);
+cmdline_parse_token_string_t cmd_5tuple_filter_dst_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				dst_port, "dst_port");
+cmdline_parse_token_num_t cmd_5tuple_filter_dst_port_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				dst_port_value, UINT16);
+cmdline_parse_token_string_t cmd_5tuple_filter_src_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				src_port, "src_port");
+cmdline_parse_token_num_t cmd_5tuple_filter_src_port_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				src_port_value, UINT16);
+cmdline_parse_token_string_t cmd_5tuple_filter_protocol =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				protocol, "protocol");
+cmdline_parse_token_string_t cmd_5tuple_filter_protocol_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				protocol_value, UINT8);
+cmdline_parse_token_string_t cmd_5tuple_filter_mask =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				mask, "mask");
+cmdline_parse_token_num_t cmd_5tuple_filter_mask_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				mask_value, INT8);
+cmdline_parse_token_string_t cmd_5tuple_filter_flags =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				flags, "flags");
+cmdline_parse_token_num_t cmd_5tuple_filter_flags_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				flags_value, UINT8);
+cmdline_parse_token_string_t cmd_5tuple_filter_priority =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				priority, "priority");
+cmdline_parse_token_num_t cmd_5tuple_filter_priority_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				priority_value, UINT8);
+cmdline_parse_token_string_t cmd_5tuple_filter_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				queue, "queue");
+cmdline_parse_token_num_t cmd_5tuple_filter_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				queue_id, UINT16);
+cmdline_parse_token_string_t cmd_5tuple_filter_index =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				index, "index");
+cmdline_parse_token_num_t cmd_5tuple_filter_index_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				index_value, UINT16);
+
+cmdline_parse_token_string_t cmd_5tuple_filter_add_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				 filter, "add_5tuple_filter");
+cmdline_parse_inst_t cmd_add_5tuple_filter = {
+	.f = cmd_5tuple_filter_parsed,
+	.data = NULL,
+	.help_str = "add a 5tuple filter",
+	.tokens = {
+		(void *)&cmd_5tuple_filter_add_filter,
+		(void *)&cmd_5tuple_filter_port_id,
+		(void *)&cmd_5tuple_filter_dst_ip,
+		(void *)&cmd_5tuple_filter_dst_ip_value,
+		(void *)&cmd_5tuple_filter_src_ip,
+		(void *)&cmd_5tuple_filter_src_ip_value,
+		(void *)&cmd_5tuple_filter_dst_port,
+		(void *)&cmd_5tuple_filter_dst_port_value,
+		(void *)&cmd_5tuple_filter_src_port,
+		(void *)&cmd_5tuple_filter_src_port_value,
+		(void *)&cmd_5tuple_filter_protocol,
+		(void *)&cmd_5tuple_filter_protocol_value,
+		(void *)&cmd_5tuple_filter_mask,
+		(void *)&cmd_5tuple_filter_mask_value,
+		(void *)&cmd_5tuple_filter_flags,
+		(void *)&cmd_5tuple_filter_flags_value,
+		(void *)&cmd_5tuple_filter_priority,
+		(void *)&cmd_5tuple_filter_priority_value,
+		(void *)&cmd_5tuple_filter_queue,
+		(void *)&cmd_5tuple_filter_queue_id,
+		(void *)&cmd_5tuple_filter_index,
+		(void *)&cmd_5tuple_filter_index_value,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_5tuple_filter_remove_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				filter, "remove_5tuple_filter");
+cmdline_parse_inst_t cmd_remove_5tuple_filter = {
+	.f = cmd_5tuple_filter_parsed,
+	.data = NULL,
+	.help_str = "remove a 5tuple filter",
+	.tokens = {
+		(void *)&cmd_5tuple_filter_remove_filter,
+		(void *)&cmd_5tuple_filter_port_id,
+		(void *)&cmd_5tuple_filter_index,
+		(void *)&cmd_5tuple_filter_index_value,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_5tuple_filter_get_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				filter, "get_5tuple_filter");
+cmdline_parse_inst_t cmd_get_5tuple_filter = {
+	.f = cmd_5tuple_filter_parsed,
+	.data = NULL,
+	.help_str = "get a 5tuple filter",
+	.tokens = {
+		(void *)&cmd_5tuple_filter_get_filter,
+		(void *)&cmd_5tuple_filter_port_id,
+		(void *)&cmd_5tuple_filter_index,
+		(void *)&cmd_5tuple_filter_index_value,
+		NULL,
+	},
+};
+
+/* *** ADD/REMOVE A flex FILTER *** */
+struct cmd_flex_filter_result {
+	cmdline_fixed_string_t filter;
+	uint8_t port_id;
+	cmdline_fixed_string_t len;
+	uint8_t len_value;
+	cmdline_fixed_string_t bytes;
+	cmdline_fixed_string_t bytes_value;
+	cmdline_fixed_string_t mask;
+	cmdline_fixed_string_t mask_value;
+	cmdline_fixed_string_t priority;
+	uint8_t priority_value;
+	cmdline_fixed_string_t queue;
+	uint16_t queue_id;
+	cmdline_fixed_string_t index;
+	uint16_t index_value;
+};
+
+static int xdigit2val(unsigned char c)
+{
+	int val;
+	if (isdigit(c))
+		val = c - '0';
+	else if (isupper(c))
+		val = c - 'A' + 10;
+	else
+		val = c - 'a' + 10;
+	return val;
+}
+
+static void
+cmd_flex_filter_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	int ret = 0;
+	struct rte_flex_filter filter;
+	struct cmd_flex_filter_result *res = parsed_result;
+	char *bytes_ptr, *mask_ptr;
+	uint16_t len, i, j;
+	char c;
+	int val, mod = 0;
+	uint32_t dword = 0;
+	uint8_t byte = 0;
+	uint8_t hex = 0;
+
+	if (!strcmp(res->filter, "add_flex_filter")) {
+		if (res->len_value > 128) {
+			printf("the len exceed the max length 128\n");
+			return;
+		}
+		memset(&filter, 0, sizeof(struct rte_flex_filter));
+		filter.len = res->len_value;
+		filter.priority = res->priority_value;
+		bytes_ptr = res->bytes_value;
+		mask_ptr = res->mask_value;
+
+		j = 0;
+		 /* translate bytes string to uint_32 array. */
+		if (bytes_ptr[0] == '0' && ((bytes_ptr[1] == 'x') ||
+			(bytes_ptr[1] == 'X')))
+			bytes_ptr += 2;
+		len = strnlen(bytes_ptr, res->len_value * 2);
+		if (len == 0 || (len % 8 != 0)) {
+			printf("please check len and bytes input\n");
+			return;
+		}
+		for (i = 0; i < len; i++) {
+			c = bytes_ptr[i];
+			if (isxdigit(c) == 0) {
+				/* invalid characters. */
+				printf("invalid input\n");
+				return;
+			}
+			val = xdigit2val(c);
+			mod = i % 8;
+			if (i % 2) {
+				byte |= val;
+				dword |= byte << (4 * mod - 4);
+				byte = 0;
+			} else
+				byte |= val << 4;
+			if (mod == 7) {
+				filter.dwords[j] = dword;
+				printf("dwords[%d]:%08x ", j, filter.dwords[j]);
+				j++;
+				dword = 0;
+			}
+		}
+		printf("\n");
+		 /* translate mask string to uint8_t array. */
+		j = 0;
+		if (mask_ptr[0] == '0' && ((mask_ptr[1] == 'x') ||
+			(mask_ptr[1] == 'X')))
+			mask_ptr += 2;
+		len = strnlen(mask_ptr, (res->len_value+3)/4);
+		if (len == 0) {
+			printf("invalid input\n");
+			return;
+		}
+		for (i = 0; i < len; i++) {
+			c = mask_ptr[i];
+			if (isxdigit(c) == 0) {
+				/* invalid characters. */
+				printf("invalid input\n");
+				return;
+			}
+			val = xdigit2val(c);
+			hex |= (uint8_t)(val & 0x8) >> 3;
+			hex |= (uint8_t)(val & 0x4) >> 1;
+			hex |= (uint8_t)(val & 0x2) << 1;
+			hex |= (uint8_t)(val & 0x1) << 3;
+			if (i % 2) {
+				byte |= hex << 4;
+				filter.mask[j] = byte;
+				printf("mask[%d]:%02x ", j, filter.mask[j]);
+				j++;
+				byte = 0;
+			} else
+				byte |= hex;
+			hex = 0;
+		}
+		printf("\n");
+		printf("call function rte_eth_dev_add_flex_filter: "
+			"index = %d, queue-id = %d, len = %d, priority = %d\n",
+			res->index_value, res->queue_id,
+			filter.len, filter.priority);
+		ret = rte_eth_dev_add_flex_filter(res->port_id, res->index_value,
+				&filter, res->queue_id);
+
+	} else if (!strcmp(res->filter, "remove_flex_filter"))
+		ret = rte_eth_dev_remove_flex_filter(res->port_id,
+			res->index_value);
+	else if (!strcmp(res->filter, "get_flex_filter"))
+		get_flex_filter(res->port_id, res->index_value);
+
+	if (ret < 0)
+		printf("flex filter setting error: (%s)\n", strerror(-ret));
+}
+
+cmdline_parse_token_num_t cmd_flex_filter_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_flex_filter_len =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				len, "len");
+cmdline_parse_token_string_t cmd_flex_filter_len_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
+				len_value, UINT8);
+cmdline_parse_token_string_t cmd_flex_filter_bytes =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				bytes, "bytes");
+cmdline_parse_token_string_t cmd_flex_filter_bytes_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				bytes_value, NULL);
+cmdline_parse_token_string_t cmd_flex_filter_mask =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				mask, "mask");
+cmdline_parse_token_string_t cmd_flex_filter_mask_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				mask_value, NULL);
+cmdline_parse_token_string_t cmd_flex_filter_priority =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				priority, "priority");
+cmdline_parse_token_num_t cmd_flex_filter_priority_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
+				priority_value, UINT8);
+cmdline_parse_token_string_t cmd_flex_filter_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				queue, "queue");
+cmdline_parse_token_num_t cmd_flex_filter_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
+				queue_id, UINT16);
+cmdline_parse_token_string_t cmd_flex_filter_index =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				index, "index");
+cmdline_parse_token_num_t cmd_flex_filter_index_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
+				index_value, UINT16);
+cmdline_parse_token_string_t cmd_flex_filter_add_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				filter, "add_flex_filter");
+cmdline_parse_inst_t cmd_add_flex_filter = {
+	.f = cmd_flex_filter_parsed,
+	.data = NULL,
+	.help_str = "add a flex filter",
+	.tokens = {
+		(void *)&cmd_flex_filter_add_filter,
+		(void *)&cmd_flex_filter_port_id,
+		(void *)&cmd_flex_filter_len,
+		(void *)&cmd_flex_filter_len_value,
+		(void *)&cmd_flex_filter_bytes,
+		(void *)&cmd_flex_filter_bytes_value,
+		(void *)&cmd_flex_filter_mask,
+		(void *)&cmd_flex_filter_mask_value,
+		(void *)&cmd_flex_filter_priority,
+		(void *)&cmd_flex_filter_priority_value,
+		(void *)&cmd_flex_filter_queue,
+		(void *)&cmd_flex_filter_queue_id,
+		(void *)&cmd_flex_filter_index,
+		(void *)&cmd_flex_filter_index_value,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_flex_filter_remove_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				filter, "remove_flex_filter");
+cmdline_parse_inst_t cmd_remove_flex_filter = {
+	.f = cmd_flex_filter_parsed,
+	.data = NULL,
+	.help_str = "remove a flex filter",
+	.tokens = {
+		(void *)&cmd_flex_filter_remove_filter,
+		(void *)&cmd_flex_filter_port_id,
+		(void *)&cmd_flex_filter_index,
+		(void *)&cmd_flex_filter_index_value,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_flex_filter_get_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				filter, "get_flex_filter");
+cmdline_parse_inst_t cmd_get_flex_filter = {
+	.f = cmd_flex_filter_parsed,
+	.data = NULL,
+	.help_str = "get a flex filter",
+	.tokens = {
+		(void *)&cmd_flex_filter_get_filter,
+		(void *)&cmd_flex_filter_port_id,
+		(void *)&cmd_flex_filter_index,
+		(void *)&cmd_flex_filter_index_value,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -5624,6 +6516,21 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_rss_hash_key,
 	(cmdline_parse_inst_t *)&cmd_dump,
 	(cmdline_parse_inst_t *)&cmd_dump_one,
+	(cmdline_parse_inst_t *)&cmd_add_ethertype_filter,
+	(cmdline_parse_inst_t *)&cmd_remove_ethertype_filter,
+	(cmdline_parse_inst_t *)&cmd_get_ethertype_filter,
+	(cmdline_parse_inst_t *)&cmd_add_syn_filter,
+	(cmdline_parse_inst_t *)&cmd_remove_syn_filter,
+	(cmdline_parse_inst_t *)&cmd_get_syn_filter,
+	(cmdline_parse_inst_t *)&cmd_add_2tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_remove_2tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_get_2tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_add_5tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_remove_5tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_get_5tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_add_flex_filter,
+	(cmdline_parse_inst_t *)&cmd_remove_flex_filter,
+	(cmdline_parse_inst_t *)&cmd_get_flex_filter,
 	NULL,
 };
 
