@@ -41,6 +41,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <netinet/in.h>
 
 #include <rte_byteorder.h>
 #include <rte_log.h>
@@ -2606,3 +2607,277 @@ rte_eth_dev_bypass_wd_reset(uint8_t port_id)
 	return 0;
 }
 #endif
+
+int
+rte_eth_dev_add_syn_filter(uint8_t port_id,
+			struct rte_syn_filter *filter, uint16_t rx_queue)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->add_syn_filter, -ENOTSUP);
+	return (*dev->dev_ops->add_syn_filter)(dev, filter, rx_queue);
+}
+
+int
+rte_eth_dev_remove_syn_filter(uint8_t port_id)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->remove_syn_filter, -ENOTSUP);
+	return (*dev->dev_ops->remove_syn_filter)(dev);
+}
+
+int
+rte_eth_dev_get_syn_filter(uint8_t port_id,
+			struct rte_syn_filter *filter, uint16_t *rx_queue)
+{
+	struct rte_eth_dev *dev;
+
+	if (filter == NULL || rx_queue == NULL)
+		return -EINVAL;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_syn_filter, -ENOTSUP);
+	return (*dev->dev_ops->get_syn_filter)(dev, filter, rx_queue);
+}
+
+int
+rte_eth_dev_add_ethertype_filter(uint8_t port_id, uint16_t index,
+			struct rte_ethertype_filter *filter, uint16_t rx_queue)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+	if (filter->ethertype == ETHER_TYPE_IPv4 ||
+		filter->ethertype == ETHER_TYPE_IPv6){
+		PMD_DEBUG_TRACE("IP and IPv6 are not supported"
+			" in ethertype filter\n");
+		return -EINVAL;
+	}
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->add_ethertype_filter, -ENOTSUP);
+	return (*dev->dev_ops->add_ethertype_filter)(dev, index,
+					filter, rx_queue);
+}
+
+int
+rte_eth_dev_remove_ethertype_filter(uint8_t port_id,  uint16_t index)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->remove_ethertype_filter, -ENOTSUP);
+	return (*dev->dev_ops->remove_ethertype_filter)(dev, index);
+}
+
+int
+rte_eth_dev_get_ethertype_filter(uint8_t port_id, uint16_t index,
+			struct rte_ethertype_filter *filter, uint16_t *rx_queue)
+{
+	struct rte_eth_dev *dev;
+
+	if (filter == NULL || rx_queue == NULL)
+		return -EINVAL;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_ethertype_filter, -ENOTSUP);
+	return (*dev->dev_ops->get_ethertype_filter)(dev, index,
+						filter, rx_queue);
+}
+
+int
+rte_eth_dev_add_2tuple_filter(uint8_t port_id, uint16_t index,
+			struct rte_2tuple_filter *filter, uint16_t rx_queue)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+	if (filter->protocol != IPPROTO_TCP &&
+		filter->tcp_flags != 0){
+		PMD_DEBUG_TRACE("tcp flags is 0x%x, but the protocol value"
+			" is not TCP\n",
+			filter->tcp_flags);
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->add_2tuple_filter, -ENOTSUP);
+	return (*dev->dev_ops->add_2tuple_filter)(dev, index, filter, rx_queue);
+}
+
+int
+rte_eth_dev_remove_2tuple_filter(uint8_t port_id, uint16_t index)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->remove_2tuple_filter, -ENOTSUP);
+	return (*dev->dev_ops->remove_2tuple_filter)(dev, index);
+}
+
+int
+rte_eth_dev_get_2tuple_filter(uint8_t port_id, uint16_t index,
+			struct rte_2tuple_filter *filter, uint16_t *rx_queue)
+{
+	struct rte_eth_dev *dev;
+
+	if (filter == NULL || rx_queue == NULL)
+		return -EINVAL;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_2tuple_filter, -ENOTSUP);
+	return (*dev->dev_ops->get_2tuple_filter)(dev, index, filter, rx_queue);
+}
+
+int
+rte_eth_dev_add_5tuple_filter(uint8_t port_id, uint16_t index,
+			struct rte_5tuple_filter *filter, uint16_t rx_queue)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	if (filter->protocol != IPPROTO_TCP &&
+		filter->tcp_flags != 0){
+		PMD_DEBUG_TRACE("tcp flags is 0x%x, but the protocol value"
+			" is not TCP\n",
+			filter->tcp_flags);
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->add_5tuple_filter, -ENOTSUP);
+	return (*dev->dev_ops->add_5tuple_filter)(dev, index, filter, rx_queue);
+}
+
+int
+rte_eth_dev_remove_5tuple_filter(uint8_t port_id, uint16_t index)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->remove_5tuple_filter, -ENOTSUP);
+	return (*dev->dev_ops->remove_5tuple_filter)(dev, index);
+}
+
+int
+rte_eth_dev_get_5tuple_filter(uint8_t port_id, uint16_t index,
+			struct rte_5tuple_filter *filter, uint16_t *rx_queue)
+{
+	struct rte_eth_dev *dev;
+
+	if (filter == NULL || rx_queue == NULL)
+		return -EINVAL;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_5tuple_filter, -ENOTSUP);
+	return (*dev->dev_ops->get_5tuple_filter)(dev, index, filter,
+						rx_queue);
+}
+
+int
+rte_eth_dev_add_flex_filter(uint8_t port_id, uint16_t index,
+			struct rte_flex_filter *filter, uint16_t rx_queue)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->add_flex_filter, -ENOTSUP);
+	return (*dev->dev_ops->add_flex_filter)(dev, index, filter, rx_queue);
+}
+
+int
+rte_eth_dev_remove_flex_filter(uint8_t port_id, uint16_t index)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->remove_flex_filter, -ENOTSUP);
+	return (*dev->dev_ops->remove_flex_filter)(dev, index);
+}
+
+int
+rte_eth_dev_get_flex_filter(uint8_t port_id, uint16_t index,
+			struct rte_flex_filter *filter, uint16_t *rx_queue)
+{
+	struct rte_eth_dev *dev;
+
+	if (filter == NULL || rx_queue == NULL)
+		return -EINVAL;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_flex_filter, -ENOTSUP);
+	return (*dev->dev_ops->get_flex_filter)(dev, index, filter,
+						rx_queue);
+}
