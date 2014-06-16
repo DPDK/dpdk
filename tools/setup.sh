@@ -324,13 +324,13 @@ grep_meminfo()
 }
 
 #
-# Calls igb_uio_bind.py --status to show the NIC and what they
+# Calls dpdk_nic_bind.py --status to show the NIC and what they
 # are all bound to, in terms of drivers.
 #
 show_nics()
 {
 	if  /sbin/lsmod  | grep -q igb_uio ; then
-		${RTE_SDK}/tools/igb_uio_bind.py --status
+		${RTE_SDK}/tools/dpdk_nic_bind.py --status
 	else
 		echo "# Please load the 'igb_uio' kernel module before querying or "
 		echo "# adjusting NIC device bindings"
@@ -338,16 +338,16 @@ show_nics()
 }
 
 #
-# Uses igb_uio_bind.py to move devices to work with igb_uio
+# Uses dpdk_nic_bind.py to move devices to work with igb_uio
 #
 bind_nics()
 {
 	if  /sbin/lsmod  | grep -q igb_uio ; then
-		${RTE_SDK}/tools/igb_uio_bind.py --status
+		${RTE_SDK}/tools/dpdk_nic_bind.py --status
 		echo ""
 		echo -n "Enter PCI address of device to bind to IGB UIO driver: "
 		read PCI_PATH
-		sudo ${RTE_SDK}/tools/igb_uio_bind.py -b igb_uio $PCI_PATH && echo "OK"
+		sudo ${RTE_SDK}/tools/dpdk_nic_bind.py -b igb_uio $PCI_PATH && echo "OK"
 	else
 		echo "# Please load the 'igb_uio' kernel module before querying or "
 		echo "# adjusting NIC device bindings"
@@ -355,18 +355,18 @@ bind_nics()
 }
 
 #
-# Uses igb_uio_bind.py to move devices to work with kernel drivers again
+# Uses dpdk_nic_bind.py to move devices to work with kernel drivers again
 #
 unbind_nics()
 {
-	${RTE_SDK}/tools/igb_uio_bind.py --status
+	${RTE_SDK}/tools/dpdk_nic_bind.py --status
 	echo ""
 	echo -n "Enter PCI address of device to bind to IGB UIO driver: "
 	read PCI_PATH
 	echo ""
 	echo -n "Enter name of kernel driver to bind the device to: "
 	read DRV
-	sudo ${RTE_SDK}/tools/igb_uio_bind.py -b $DRV $PCI_PATH && echo "OK"
+	sudo ${RTE_SDK}/tools/dpdk_nic_bind.py -b $DRV $PCI_PATH && echo "OK"
 }
 
 #
