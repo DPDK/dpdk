@@ -74,6 +74,30 @@
 	(IXGBE_RTTBCNRC_RF_INT_MASK_BASE << IXGBE_RTTBCNRC_RF_INT_SHIFT)
 
 #define IXGBE_MAX_QUEUE_NUM_PER_VF  8
+
+#define IXGBE_SYN_FILTER_ENABLE         0x00000001 /* syn filter enable field */
+#define IXGBE_SYN_FILTER_QUEUE          0x000000FE /* syn filter queue field */
+#define IXGBE_SYN_FILTER_QUEUE_SHIFT    1          /* syn filter queue field shift */
+#define IXGBE_SYN_FILTER_SYNQFP         0x80000000 /* syn filter SYNQFP */
+
+#define IXGBE_ETQF_UP                   0x00070000 /* ethertype filter priority field */
+#define IXGBE_ETQF_SHIFT                16
+#define IXGBE_ETQF_UP_EN                0x00080000
+#define IXGBE_ETQF_ETHERTYPE            0x0000FFFF /* ethertype filter ethertype field */
+#define IXGBE_ETQF_MAX_PRI              7
+
+#define IXGBE_SDPQF_DSTPORT             0xFFFF0000 /* dst port field */
+#define IXGBE_SDPQF_DSTPORT_SHIFT       16         /* dst port field shift */
+#define IXGBE_SDPQF_SRCPORT             0x0000FFFF /* src port field */
+
+#define IXGBE_L34T_IMIR_SIZE_BP         0x00001000
+#define IXGBE_L34T_IMIR_RESERVE         0x00080000 /* bit 13 to 19 must be set to 1000000b. */
+#define IXGBE_L34T_IMIR_LLI             0x00100000
+#define IXGBE_L34T_IMIR_QUEUE           0x0FE00000
+#define IXGBE_L34T_IMIR_QUEUE_SHIFT     21
+#define IXGBE_5TUPLE_MAX_PRI            7
+#define IXGBE_5TUPLE_MIN_PRI            1
+
 /*
  * Information about the fdir mode.
  */
@@ -155,6 +179,16 @@ struct ixgbe_adapter {
 #ifdef RTE_NIC_BYPASS
 	struct ixgbe_bypass_info    bps;
 #endif /* RTE_NIC_BYPASS */
+};
+
+/*
+ *  Possible l4type of 5tuple filters.
+ */
+enum ixgbe_5tuple_protocol {
+	IXGBE_FILTER_PROTOCOL_TCP = 0,
+	IXGBE_FILTER_PROTOCOL_UDP,
+	IXGBE_FILTER_PROTOCOL_SCTP,
+	IXGBE_FILTER_PROTOCOL_NONE,
 };
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
