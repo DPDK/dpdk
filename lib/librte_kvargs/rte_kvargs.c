@@ -48,7 +48,9 @@ static int
 rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *params)
 {
 	unsigned i;
-	char *str, *ctx1, *ctx2;
+	char *str;
+	char *ctx1 = NULL;
+	char *ctx2 = NULL;
 
 	/* Copy the const char *params to a modifiable string
 	 * to pass to rte_strsplit
