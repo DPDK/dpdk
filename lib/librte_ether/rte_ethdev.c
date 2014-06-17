@@ -884,6 +884,8 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 		       const struct rte_eth_rxconf *rx_conf,
 		       struct rte_mempool *mp)
 {
+	int ret;
+	uint32_t mbp_buf_size;
 	struct rte_eth_dev *dev;
 	struct rte_pktmbuf_pool_private *mbp_priv;
 	struct rte_eth_dev_info dev_info;
@@ -924,13 +926,14 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 		return (-ENOSPC);
 	}
 	mbp_priv = rte_mempool_get_priv(mp);
-	if ((uint32_t) (mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM) <
-	    dev_info.min_rx_bufsize) {
+	mbp_buf_size = mbp_priv->mbuf_data_room_size;
+
+	if ((mbp_buf_size - RTE_PKTMBUF_HEADROOM) < dev_info.min_rx_bufsize) {
 		PMD_DEBUG_TRACE("%s mbuf_data_room_size %d < %d "
 				"(RTE_PKTMBUF_HEADROOM=%d + min_rx_bufsize(dev)"
 				"=%d)\n",
 				mp->name,
-				(int)mbp_priv->mbuf_data_room_size,
+				(int)mbp_buf_size,
 				(int)(RTE_PKTMBUF_HEADROOM +
 				      dev_info.min_rx_bufsize),
 				(int)RTE_PKTMBUF_HEADROOM,
@@ -938,8 +941,15 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 		return (-EINVAL);
 	}
 
-	return (*dev->dev_ops->rx_queue_setup)(dev, rx_queue_id, nb_rx_desc,
-					       socket_id, rx_conf, mp);
+	ret = (*dev->dev_ops->rx_queue_setup)(dev, rx_queue_id, nb_rx_desc,
+					      socket_id, rx_conf, mp);
+	if (!ret) {
+		if (!dev->data->min_rx_buf_size ||
+		    dev->data->min_rx_buf_size > mbp_buf_size)
+			dev->data->min_rx_buf_size = mbp_buf_size;
+	}
+
+	return ret;
 }
 
 int

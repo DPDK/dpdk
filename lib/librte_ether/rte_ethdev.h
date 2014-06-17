@@ -1515,6 +1515,9 @@ struct rte_eth_dev_data {
 	struct rte_eth_conf dev_conf;   /**< Configuration applied to device. */
 	uint16_t max_frame_size;        /**< Default is ETHER_MAX_LEN (1518). */
 
+	uint32_t min_rx_buf_size;
+	/**< Common rx buffer size handled by all queues */
+
 	uint64_t rx_mbuf_alloc_failed; /**< RX ring mbuf allocation failures. */
 	struct ether_addr* mac_addrs;/**< Device Ethernet Link address. */
 	uint64_t mac_pool_sel[ETH_NUM_RECEIVE_MAC_ADDR];
