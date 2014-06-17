@@ -503,6 +503,19 @@ port_reg_set(portid_t port_id, uint32_t reg_off, uint32_t reg_v)
 	display_port_reg_value(port_id, reg_off, reg_v);
 }
 
+void
+port_mtu_set(portid_t port_id, uint16_t mtu)
+{
+	int diag;
+
+	if (port_id_is_invalid(port_id))
+		return;
+	diag = rte_eth_dev_set_mtu(port_id, mtu);
+	if (diag == 0)
+		return;
+	printf("Set MTU failed. diag=%d\n", diag);
+}
+
 /*
  * RX/TX ring descriptors display functions.
  */

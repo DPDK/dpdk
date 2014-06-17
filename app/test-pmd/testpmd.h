@@ -454,7 +454,7 @@ void fwd_config_setup(void);
 void set_def_fwd_config(void);
 int init_fwd_streams(void);
 
-
+void port_mtu_set(portid_t port_id, uint16_t mtu);
 void port_reg_bit_display(portid_t port_id, uint32_t reg_off, uint8_t bit_pos);
 void port_reg_bit_set(portid_t port_id, uint32_t reg_off, uint8_t bit_pos,
 		      uint8_t bit_v);

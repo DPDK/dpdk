@@ -527,6 +527,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port config all (txfreet|txrst|rxfreet) (value)\n"
 			"    Set free threshold for rx/tx, or set"
 			" tx rs bit threshold.\n\n"
+			"port config mtu X value\n"
+			"    Set the MTU of port X to a given value\n\n"
 		);
 	}
 
@@ -1082,6 +1084,57 @@ cmdline_parse_inst_t cmd_config_max_pkt_len = {
 		(void *)&cmd_config_max_pkt_len_all,
 		(void *)&cmd_config_max_pkt_len_name,
 		(void *)&cmd_config_max_pkt_len_value,
+		NULL,
+	},
+};
+
+/* *** configure port MTU *** */
+struct cmd_config_mtu_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t mtu;
+	uint8_t port_id;
+	uint16_t value;
+};
+
+static void
+cmd_config_mtu_parsed(void *parsed_result,
+		      __attribute__((unused)) struct cmdline *cl,
+		      __attribute__((unused)) void *data)
+{
+	struct cmd_config_mtu_result *res = parsed_result;
+
+	if (res->value < ETHER_MIN_LEN) {
+		printf("mtu cannot be less than %d\n", ETHER_MIN_LEN);
+		return;
+	}
+	port_mtu_set(res->port_id, res->value);
+}
+
+cmdline_parse_token_string_t cmd_config_mtu_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_mtu_result, port,
+				 "port");
+cmdline_parse_token_string_t cmd_config_mtu_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_mtu_result, keyword,
+				 "config");
+cmdline_parse_token_string_t cmd_config_mtu_mtu =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_mtu_result, keyword,
+				 "mtu");
+cmdline_parse_token_num_t cmd_config_mtu_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_mtu_result, port_id, UINT8);
+cmdline_parse_token_num_t cmd_config_mtu_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_mtu_result, value, UINT16);
+
+cmdline_parse_inst_t cmd_config_mtu = {
+	.f = cmd_config_mtu_parsed,
+	.data = NULL,
+	.help_str = "port config mtu value",
+	.tokens = {
+		(void *)&cmd_config_mtu_port,
+		(void *)&cmd_config_mtu_keyword,
+		(void *)&cmd_config_mtu_mtu,
+		(void *)&cmd_config_mtu_port_id,
+		(void *)&cmd_config_mtu_value,
 		NULL,
 	},
 };
@@ -6553,6 +6606,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_speed_all,
 	(cmdline_parse_inst_t *)&cmd_config_speed_specific,
 	(cmdline_parse_inst_t *)&cmd_config_rx_tx,
+	(cmdline_parse_inst_t *)&cmd_config_mtu,
 	(cmdline_parse_inst_t *)&cmd_config_max_pkt_len,
 	(cmdline_parse_inst_t *)&cmd_config_rx_mode_flag,
 	(cmdline_parse_inst_t *)&cmd_config_rss,
