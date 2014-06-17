@@ -649,6 +649,7 @@ struct rte_eth_fc_conf {
 	uint16_t send_xon;    /**< Is XON frame need be sent */
 	enum rte_eth_fc_mode mode;  /**< Link flow control mode */
 	uint8_t mac_ctrl_frame_fwd; /**< Forward MAC control frames */
+	uint8_t autoneg;      /**< Use Pause autoneg */
 };
 
 /**

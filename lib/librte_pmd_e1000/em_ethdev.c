@@ -1378,6 +1378,7 @@ eth_em_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	fc_conf->high_water = hw->fc.high_water;
 	fc_conf->low_water = hw->fc.low_water;
 	fc_conf->send_xon = hw->fc.send_xon;
+	fc_conf->autoneg = hw->mac.autoneg;
 
 	/*
 	 * Return rx_pause and tx_pause status according to actual setting of
@@ -1422,6 +1423,8 @@ eth_em_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	uint32_t rctl;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (fc_conf->autoneg != hw->mac.autoneg)
+		return -ENOTSUP;
 	rx_buf_size = em_get_rx_buffer_size(hw);
 	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x \n", rx_buf_size);
 

@@ -2309,6 +2309,7 @@ ixgbe_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	fc_conf->high_water = hw->fc.high_water[0];
 	fc_conf->low_water = hw->fc.low_water[0];
 	fc_conf->send_xon = hw->fc.send_xon;
+	fc_conf->autoneg = !hw->fc.disable_fc_autoneg;
 
 	/*
 	 * Return rx_pause status according to actual setting of
@@ -2360,6 +2361,8 @@ ixgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	PMD_INIT_FUNC_TRACE();
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (fc_conf->autoneg != !hw->fc.disable_fc_autoneg)
+		return -ENOTSUP;
 	rx_buf_size = IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(0));
 	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x \n", rx_buf_size);
 
