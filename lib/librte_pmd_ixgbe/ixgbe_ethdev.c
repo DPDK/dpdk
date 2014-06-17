@@ -220,6 +220,8 @@ static int ixgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
 static int ixgbe_get_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
 			struct rte_5tuple_filter *filter, uint16_t *rx_queue);
 
+static int ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
+
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
  */
@@ -376,6 +378,7 @@ static struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.stats_reset          = ixgbevf_dev_stats_reset,
 	.dev_close            = ixgbevf_dev_close,
 	.dev_infos_get        = ixgbe_dev_info_get,
+	.mtu_set              = ixgbevf_dev_set_mtu,
 	.vlan_filter_set      = ixgbevf_vlan_filter_set,
 	.vlan_strip_queue_set = ixgbevf_vlan_strip_queue_set,
 	.vlan_offload_set     = ixgbevf_vlan_offload_set,
@@ -3935,6 +3938,40 @@ ixgbe_get_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
 		return 0;
 	}
 	return -ENOENT;
+}
+
+static int
+ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct ixgbe_hw *hw;
+	uint32_t max_frame = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if ((mtu < ETHER_MIN_MTU) || (max_frame > ETHER_MAX_JUMBO_FRAME_LEN))
+		return -EINVAL;
+
+	/* refuse mtu that requires the support of scattered packets when this
+	 * feature has not been enabled before. */
+	if (!dev->data->scattered_rx &&
+	    (max_frame + 2 * IXGBE_VLAN_TAG_SIZE >
+	     dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM))
+		return -EINVAL;
+
+	/*
+	 * When supported by the underlying PF driver, use the IXGBE_VF_SET_MTU
+	 * request of the version 2.0 of the mailbox API.
+	 * For now, use the IXGBE_VF_SET_LPE request of the version 1.0
+	 * of the mailbox API.
+	 * This call to IXGBE_SET_LPE action won't work with ixgbe pf drivers
+	 * prior to 3.11.33 which contains the following change:
+	 * "ixgbe: Enable jumbo frames support w/ SR-IOV"
+	 */
+	ixgbevf_rlpml_set_vf(hw, max_frame);
+
+	/* update max frame size */
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame;
+	return 0;
 }
 
 static struct rte_driver rte_ixgbe_driver = {

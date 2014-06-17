@@ -3883,7 +3883,20 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	/* setup MTU */
+	/*
+	 * When the VF driver issues a IXGBE_VF_RESET request, the PF driver
+	 * disables the VF receipt of packets if the PF MTU is > 1500.
+	 * This is done to deal with 82599 limitations that imposes
+	 * the PF and all VFs to share the same MTU.
+	 * Then, the PF driver enables again the VF receipt of packet when
+	 * the VF driver issues a IXGBE_VF_SET_LPE request.
+	 * In the meantime, the VF device cannot be used, even if the VF driver
+	 * and the Guest VM network stack are ready to accept packets with a
+	 * size up to the PF MTU.
+	 * As a work-around to this PF behaviour, force the call to
+	 * ixgbevf_rlpml_set_vf even if jumbo frames are not used. This way,
+	 * VF packets received can work in all cases.
+	 */
 	ixgbevf_rlpml_set_vf(hw,
 		(uint16_t)dev->data->dev_conf.rxmode.max_rx_pkt_len);
 
