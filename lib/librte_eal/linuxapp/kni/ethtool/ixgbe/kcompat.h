@@ -3135,4 +3135,9 @@ static inline int __kc_pci_vfs_assigned(struct pci_dev *dev)
 #define pci_vfs_assigned(dev) __kc_pci_vfs_assigned(dev)
 
 #endif
+
+#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0) )
+#define SET_ETHTOOL_OPS(netdev, ops) ((netdev)->ethtool_ops = (ops))
+#endif /* >= 3.16.0 */
+
 #endif /* _KCOMPAT_H_ */

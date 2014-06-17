@@ -213,5 +213,5 @@ struct ethtool_ops kni_ethtool_ops = {
 void
 kni_set_ethtool_ops(struct net_device *netdev)
 {
-	SET_ETHTOOL_OPS(netdev, &kni_ethtool_ops);
+	netdev->ethtool_ops = &kni_ethtool_ops;
 }
