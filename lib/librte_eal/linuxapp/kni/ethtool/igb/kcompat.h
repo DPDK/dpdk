@@ -3858,4 +3858,8 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 #endif /* < RHEL7 */
 #endif /* < 3.14.0 */
 
+#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0) )
+#define HAVE_VF_MIN_MAX_TXRATE 1
+#endif /* >= 3.16.0 */
+
 #endif /* _KCOMPAT_H_ */
