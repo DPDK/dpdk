@@ -32,15 +32,12 @@
  */
 
 #include <stddef.h>
-#include <stdint.h>
 
-#include <rte_byteorder.h>
 #include <rte_jhash.h>
 #ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 #include <rte_hash_crc.h>
 #endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
 
-#include "rte_ip_frag.h"
 #include "ip_frag_common.h"
 
 #define	PRIME_VALUE	0xeaad8405

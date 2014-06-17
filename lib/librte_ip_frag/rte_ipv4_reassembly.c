@@ -31,19 +31,11 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-
 #include <stddef.h>
-#include <stdint.h>
 
-#include <rte_byteorder.h>
-#include <rte_mbuf.h>
 #include <rte_debug.h>
 #include <rte_tailq.h>
-#include <rte_malloc.h>
-#include <rte_ip.h>
 
-#include "rte_ip_frag.h"
 #include "ip_frag_common.h"
 
 /*

@@ -32,14 +32,10 @@
  */
 
 #include <stddef.h>
-#include <stdint.h>
 #include <errno.h>
 
-#include <rte_byteorder.h>
 #include <rte_memcpy.h>
-#include <rte_ip.h>
 
-#include "rte_ip_frag.h"
 #include "ip_frag_common.h"
 
 /**

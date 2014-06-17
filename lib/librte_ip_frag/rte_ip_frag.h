@@ -47,6 +47,7 @@
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
 #include <rte_ip.h>
+#include <rte_byteorder.h>
 
 enum {
 	IP_LAST_FRAG_IDX,    /**< index of last fragment */

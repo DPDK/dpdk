@@ -32,14 +32,11 @@
  */
 
 #include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 
 #include <rte_memory.h>
 #include <rte_log.h>
-#include <rte_byteorder.h>
 
-#include "rte_ip_frag.h"
 #include "ip_frag_common.h"
 
 #define	IP_FRAG_HASH_FNUM	2
