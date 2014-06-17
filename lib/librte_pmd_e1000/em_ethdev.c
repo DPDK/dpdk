@@ -77,6 +77,8 @@ static void eth_em_stats_get(struct rte_eth_dev *dev,
 static void eth_em_stats_reset(struct rte_eth_dev *dev);
 static void eth_em_infos_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
+static int eth_em_flow_ctrl_get(struct rte_eth_dev *dev,
+				struct rte_eth_fc_conf *fc_conf);
 static int eth_em_flow_ctrl_set(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
 static int eth_em_interrupt_setup(struct rte_eth_dev *dev);
@@ -153,6 +155,7 @@ static struct eth_dev_ops eth_em_ops = {
 	.tx_queue_release     = eth_em_tx_queue_release,
 	.dev_led_on           = eth_em_led_on,
 	.dev_led_off          = eth_em_led_off,
+	.flow_ctrl_get        = eth_em_flow_ctrl_get,
 	.flow_ctrl_set        = eth_em_flow_ctrl_set,
 	.mac_addr_add         = eth_em_rar_set,
 	.mac_addr_remove      = eth_em_rar_clear,
@@ -1360,6 +1363,47 @@ eth_em_led_off(struct rte_eth_dev *dev)
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	return (e1000_led_off(hw) == E1000_SUCCESS ? 0 : -ENOTSUP);
+}
+
+static int
+eth_em_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct e1000_hw *hw;
+	uint32_t ctrl;
+	int tx_pause;
+	int rx_pause;
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	fc_conf->pause_time = hw->fc.pause_time;
+	fc_conf->high_water = hw->fc.high_water;
+	fc_conf->low_water = hw->fc.low_water;
+	fc_conf->send_xon = hw->fc.send_xon;
+
+	/*
+	 * Return rx_pause and tx_pause status according to actual setting of
+	 * the TFCE and RFCE bits in the CTRL register.
+	 */
+	ctrl = E1000_READ_REG(hw, E1000_CTRL);
+	if (ctrl & E1000_CTRL_TFCE)
+		tx_pause = 1;
+	else
+		tx_pause = 0;
+
+	if (ctrl & E1000_CTRL_RFCE)
+		rx_pause = 1;
+	else
+		rx_pause = 0;
+
+	if (rx_pause && tx_pause)
+		fc_conf->mode = RTE_FC_FULL;
+	else if (rx_pause)
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+	else if (tx_pause)
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+	else
+		fc_conf->mode = RTE_FC_NONE;
+
+	return 0;
 }
 
 static int

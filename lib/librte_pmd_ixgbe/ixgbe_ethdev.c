@@ -134,8 +134,10 @@ static void ixgbe_vlan_hw_extend_disable(struct rte_eth_dev *dev);
 
 static int ixgbe_dev_led_on(struct rte_eth_dev *dev);
 static int ixgbe_dev_led_off(struct rte_eth_dev *dev);
-static int  ixgbe_flow_ctrl_set(struct rte_eth_dev *dev,
-		struct rte_eth_fc_conf *fc_conf);
+static int ixgbe_flow_ctrl_get(struct rte_eth_dev *dev,
+			       struct rte_eth_fc_conf *fc_conf);
+static int ixgbe_flow_ctrl_set(struct rte_eth_dev *dev,
+			       struct rte_eth_fc_conf *fc_conf);
 static int ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 		struct rte_eth_pfc_conf *pfc_conf);
 static int ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
@@ -307,6 +309,7 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.tx_queue_release     = ixgbe_dev_tx_queue_release,
 	.dev_led_on           = ixgbe_dev_led_on,
 	.dev_led_off          = ixgbe_dev_led_off,
+	.flow_ctrl_get        = ixgbe_flow_ctrl_get,
 	.flow_ctrl_set        = ixgbe_flow_ctrl_set,
 	.priority_flow_ctrl_set = ixgbe_priority_flow_ctrl_set,
 	.mac_addr_add         = ixgbe_add_rar,
@@ -2289,6 +2292,54 @@ ixgbe_dev_led_off(struct rte_eth_dev *dev)
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	return (ixgbe_led_off(hw, 0) == IXGBE_SUCCESS ? 0 : -ENOTSUP);
+}
+
+static int
+ixgbe_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct ixgbe_hw *hw;
+	uint32_t mflcn_reg;
+	uint32_t fccfg_reg;
+	int rx_pause;
+	int tx_pause;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	fc_conf->pause_time = hw->fc.pause_time;
+	fc_conf->high_water = hw->fc.high_water[0];
+	fc_conf->low_water = hw->fc.low_water[0];
+	fc_conf->send_xon = hw->fc.send_xon;
+
+	/*
+	 * Return rx_pause status according to actual setting of
+	 * MFLCN register.
+	 */
+	mflcn_reg = IXGBE_READ_REG(hw, IXGBE_MFLCN);
+	if (mflcn_reg & (IXGBE_MFLCN_RPFCE | IXGBE_MFLCN_RFCE))
+		rx_pause = 1;
+	else
+		rx_pause = 0;
+
+	/*
+	 * Return tx_pause status according to actual setting of
+	 * FCCFG register.
+	 */
+	fccfg_reg = IXGBE_READ_REG(hw, IXGBE_FCCFG);
+	if (fccfg_reg & (IXGBE_FCCFG_TFCE_802_3X | IXGBE_FCCFG_TFCE_PRIORITY))
+		tx_pause = 1;
+	else
+		tx_pause = 0;
+
+	if (rx_pause && tx_pause)
+		fc_conf->mode = RTE_FC_FULL;
+	else if (rx_pause)
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+	else if (tx_pause)
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+	else
+		fc_conf->mode = RTE_FC_NONE;
+
+	return 0;
 }
 
 static int

@@ -1140,8 +1140,12 @@ typedef int (*fdir_set_masks_t)(struct rte_eth_dev *dev,
 				struct rte_fdir_masks *fdir_masks);
 /**< @internal Setup flow director masks on an Ethernet device */
 
+typedef int (*flow_ctrl_get_t)(struct rte_eth_dev *dev,
+			       struct rte_eth_fc_conf *fc_conf);
+/**< @internal Get current flow control parameter on an Ethernet device */
+
 typedef int (*flow_ctrl_set_t)(struct rte_eth_dev *dev,
-				struct rte_eth_fc_conf *fc_conf);
+			       struct rte_eth_fc_conf *fc_conf);
 /**< @internal Setup flow control parameter on an Ethernet device */
 
 typedef int (*priority_flow_ctrl_set_t)(struct rte_eth_dev *dev,
@@ -1389,6 +1393,7 @@ struct eth_dev_ops {
 	eth_queue_release_t        tx_queue_release;/**< Release TX queue.*/
 	eth_dev_led_on_t           dev_led_on;    /**< Turn on LED. */
 	eth_dev_led_off_t          dev_led_off;   /**< Turn off LED. */
+	flow_ctrl_get_t            flow_ctrl_get; /**< Get flow control. */
 	flow_ctrl_set_t            flow_ctrl_set; /**< Setup flow control. */
 	priority_flow_ctrl_set_t   priority_flow_ctrl_set; /**< Setup priority flow control.*/
 	eth_mac_addr_remove_t      mac_addr_remove; /**< Remove MAC address */
@@ -2701,6 +2706,21 @@ int  rte_eth_led_on(uint8_t port_id);
 int  rte_eth_led_off(uint8_t port_id);
 
 /**
+ * Get current status of the Ethernet link flow control for Ethernet device
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param fc_conf
+ *   The pointer to the structure where to store the flow control parameters.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support flow control.
+ *   - (-ENODEV)  if *port_id* invalid.
+ */
+int rte_eth_dev_flow_ctrl_get(uint8_t port_id,
+			      struct rte_eth_fc_conf *fc_conf);
+
+/**
  * Configure the Ethernet link flow control for Ethernet device
  *
  * @param port_id
@@ -2715,7 +2735,7 @@ int  rte_eth_led_off(uint8_t port_id);
  *   - (-EIO)     if flow control setup failure
  */
 int rte_eth_dev_flow_ctrl_set(uint8_t port_id,
-				struct rte_eth_fc_conf *fc_conf);
+			      struct rte_eth_fc_conf *fc_conf);
 
 /**
  * Configure the Ethernet priority flow control under DCB environment

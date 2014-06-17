@@ -1637,6 +1637,22 @@ rte_eth_dev_fdir_set_masks(uint8_t port_id, struct rte_fdir_masks *fdir_mask)
 }
 
 int
+rte_eth_dev_flow_ctrl_get(uint8_t port_id, struct rte_eth_fc_conf *fc_conf)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->flow_ctrl_get, -ENOTSUP);
+	memset(fc_conf, 0, sizeof(*fc_conf));
+	return (*dev->dev_ops->flow_ctrl_get)(dev, fc_conf);
+}
+
+int
 rte_eth_dev_flow_ctrl_set(uint8_t port_id, struct rte_eth_fc_conf *fc_conf)
 {
 	struct rte_eth_dev *dev;
