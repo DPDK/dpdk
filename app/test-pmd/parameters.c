@@ -316,14 +316,14 @@ parse_queue_stats_mapping_config(const char *q_arg, int is_rx)
 			return -1;
 		}
 
-		if (is_rx ? (nb_rx_queue_stats_mappings >= MAX_RX_QUEUE_STATS_MAPPINGS) :
-		    (nb_tx_queue_stats_mappings >= MAX_TX_QUEUE_STATS_MAPPINGS)) {
-			printf("exceeded max number of %s queue statistics mappings: %hu\n",
-			       is_rx ? "RX" : "TX",
-			       is_rx ? nb_rx_queue_stats_mappings : nb_tx_queue_stats_mappings);
-			return -1;
-		}
 		if (!is_rx) {
+			if ((nb_tx_queue_stats_mappings >=
+						MAX_TX_QUEUE_STATS_MAPPINGS)) {
+				printf("exceeded max number of TX queue "
+						"statistics mappings: %hu\n",
+						nb_tx_queue_stats_mappings);
+				return -1;
+			}
 			tx_queue_stats_mappings_array[nb_tx_queue_stats_mappings].port_id =
 				(uint8_t)int_fld[FLD_PORT];
 			tx_queue_stats_mappings_array[nb_tx_queue_stats_mappings].queue_id =
@@ -333,6 +333,13 @@ parse_queue_stats_mapping_config(const char *q_arg, int is_rx)
 			++nb_tx_queue_stats_mappings;
 		}
 		else {
+			if ((nb_rx_queue_stats_mappings >=
+						MAX_RX_QUEUE_STATS_MAPPINGS)) {
+				printf("exceeded max number of RX queue "
+						"statistics mappings: %hu\n",
+						nb_rx_queue_stats_mappings);
+				return -1;
+			}
 			rx_queue_stats_mappings_array[nb_rx_queue_stats_mappings].port_id =
 				(uint8_t)int_fld[FLD_PORT];
 			rx_queue_stats_mappings_array[nb_rx_queue_stats_mappings].queue_id =
