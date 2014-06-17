@@ -307,7 +307,8 @@ struct rte_eth_rxmode {
 		hw_vlan_strip    : 1, /**< VLAN strip enable. */
 		hw_vlan_extend   : 1, /**< Extended VLAN enable. */
 		jumbo_frame      : 1, /**< Jumbo Frame Receipt enable. */
-		hw_strip_crc     : 1; /**< Enable CRC stripping by hardware. */
+		hw_strip_crc     : 1, /**< Enable CRC stripping by hardware. */
+		enable_scatter   : 1; /**< Enable scatter packets rx handler */
 };
 
 /**

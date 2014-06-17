@@ -3486,6 +3486,11 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		}
 	}
 
+	if (dev->data->dev_conf.rxmode.enable_scatter) {
+		dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
+		dev->data->scattered_rx = 1;
+	}
+
 	/*
 	 * Device configured with multiple RX queues.
 	 */
@@ -3959,6 +3964,11 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 			dev->data->scattered_rx = 1;
 			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
 		}
+	}
+
+	if (dev->data->dev_conf.rxmode.enable_scatter) {
+		dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
+		dev->data->scattered_rx = 1;
 	}
 
 	return 0;

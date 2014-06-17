@@ -1714,6 +1714,11 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 		}
 	}
 
+	if (dev->data->dev_conf.rxmode.enable_scatter) {
+		dev->rx_pkt_burst = eth_em_recv_scattered_pkts;
+		dev->data->scattered_rx = 1;
+	}
+
 	/*
 	 * Setup the Checksum Register.
 	 * Receive Full-Packet Checksum Offload is mutually exclusive with RSS.

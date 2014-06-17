@@ -2008,6 +2008,11 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		E1000_WRITE_REG(hw, E1000_RXDCTL(rxq->reg_idx), rxdctl);
 	}
 
+	if (dev->data->dev_conf.rxmode.enable_scatter) {
+		dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
+		dev->data->scattered_rx = 1;
+	}
+
 	/*
 	 * Setup BSIZE field of RCTL register, if needed.
 	 * Buffer sizes >= 1024 are not [supposed to be] setup in the RCTL
@@ -2275,6 +2280,11 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 		else
 			rxdctl |= ((rxq->wthresh & 0x1F) << 16);
 		E1000_WRITE_REG(hw, E1000_RXDCTL(i), rxdctl);
+	}
+
+	if (dev->data->dev_conf.rxmode.enable_scatter) {
+		dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
+		dev->data->scattered_rx = 1;
 	}
 
 	/*
