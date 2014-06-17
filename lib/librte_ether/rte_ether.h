@@ -67,6 +67,8 @@ extern "C" {
 
 #define ETHER_MAX_VLAN_ID  4095 /**< Maximum VLAN ID. */
 
+#define ETHER_MIN_MTU 68 /**< Minimum MTU for IPv4 packets, see RFC 791. */
+
 /**
  * Ethernet address:
  * A universally administered address is uniquely assigned to a device by its

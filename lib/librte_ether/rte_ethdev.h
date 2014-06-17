@@ -1071,6 +1071,9 @@ typedef uint32_t (*eth_rx_queue_count_t)(struct rte_eth_dev *dev,
 typedef int (*eth_rx_descriptor_done_t)(void *rxq, uint16_t offset);
 /**< @Check DD bit of specific RX descriptor */
 
+typedef int (*mtu_set_t)(struct rte_eth_dev *dev, uint16_t mtu);
+/**< @internal Set MTU. */
+
 typedef int (*vlan_filter_set_t)(struct rte_eth_dev *dev,
 				  uint16_t vlan_id,
 				  int on);
@@ -1378,6 +1381,7 @@ struct eth_dev_ops {
 	eth_queue_stats_mapping_set_t queue_stats_mapping_set;
 	/**< Configure per queue stat counter mapping. */
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
+	mtu_set_t                  mtu_set; /**< Set MTU. */
 	vlan_filter_set_t          vlan_filter_set;  /**< Filter VLAN Setup. */
 	vlan_tpid_set_t            vlan_tpid_set;      /**< Outer VLAN TPID Setup. */
 	vlan_strip_queue_set_t     vlan_strip_queue_set; /**< VLAN Stripping on queue. */
@@ -1514,7 +1518,7 @@ struct rte_eth_dev_data {
 	/**< Link-level information & status */
 
 	struct rte_eth_conf dev_conf;   /**< Configuration applied to device. */
-	uint16_t max_frame_size;        /**< Default is ETHER_MAX_LEN (1518). */
+	uint16_t mtu;                   /**< Maximum Transmission Unit. */
 
 	uint32_t min_rx_buf_size;
 	/**< Common rx buffer size handled by all queues */
@@ -2059,6 +2063,34 @@ extern void rte_eth_macaddr_get(uint8_t port_id, struct ether_addr *mac_addr);
  */
 extern void rte_eth_dev_info_get(uint8_t port_id,
 				 struct rte_eth_dev_info *dev_info);
+
+/**
+ * Retrieve the MTU of an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param mtu
+ *   A pointer to a uint16_t where the retrieved MTU is to be stored.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port_id* invalid.
+ */
+extern int rte_eth_dev_get_mtu(uint8_t port_id, uint16_t *mtu);
+
+/**
+ * Change the MTU of an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param mtu
+ *   A uint16_t for the MTU to be applied.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if operation is not supported.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if *mtu* invalid.
+ */
+extern int rte_eth_dev_set_mtu(uint8_t port_id, uint16_t mtu);
 
 /**
  * Enable/Disable hardware filtering by an Ethernet device of received

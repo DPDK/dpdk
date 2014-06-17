@@ -87,6 +87,8 @@ static void igb_hw_control_release(struct e1000_hw *hw);
 static void igb_init_manageability(struct e1000_hw *hw);
 static void igb_release_manageability(struct e1000_hw *hw);
 
+static int  eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
+
 static int eth_igb_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
 static void eth_igb_vlan_tpid_set(struct rte_eth_dev *dev, uint16_t tpid_id);
@@ -218,6 +220,7 @@ static struct eth_dev_ops eth_igb_ops = {
 	.stats_get            = eth_igb_stats_get,
 	.stats_reset          = eth_igb_stats_reset,
 	.dev_infos_get        = eth_igb_infos_get,
+	.mtu_set              = eth_igb_mtu_set,
 	.vlan_filter_set      = eth_igb_vlan_filter_set,
 	.vlan_tpid_set        = eth_igb_vlan_tpid_set,
 	.vlan_offload_set     = eth_igb_vlan_offload_set,
@@ -3003,6 +3006,56 @@ eth_igb_get_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
 		return 0;
 	}
 	return -ENOENT;
+}
+
+static int
+eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	uint32_t rctl;
+	struct e1000_hw *hw;
+	struct rte_eth_dev_info dev_info;
+	uint32_t frame_size = mtu + (ETHER_HDR_LEN + ETHER_CRC_LEN +
+				     VLAN_TAG_SIZE);
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+#ifdef RTE_LIBRTE_82571_SUPPORT
+	/* XXX: not bigger than max_rx_pktlen */
+	if (hw->mac.type == e1000_82571)
+		return -ENOTSUP;
+#endif
+	eth_igb_infos_get(dev, &dev_info);
+
+	/* check that mtu is within the allowed range */
+	if ((mtu < ETHER_MIN_MTU) ||
+	    (frame_size > dev_info.max_rx_pktlen))
+		return -EINVAL;
+
+	/* refuse mtu that requires the support of scattered packets when this
+	 * feature has not been enabled before. */
+	if (!dev->data->scattered_rx &&
+	    frame_size > dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)
+		return -EINVAL;
+
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
+
+	/* switch to jumbo mode if needed */
+	if (frame_size > ETHER_MAX_LEN) {
+		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		rctl |= E1000_RCTL_LPE;
+	} else {
+		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		rctl &= ~E1000_RCTL_LPE;
+	}
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+	/* update max frame size */
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+
+	E1000_WRITE_REG(hw, E1000_RLPML,
+			dev->data->dev_conf.rxmode.max_rx_pkt_len);
+
+	return 0;
 }
 
 static struct rte_driver pmd_igb_drv = {

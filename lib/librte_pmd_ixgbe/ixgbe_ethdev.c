@@ -119,6 +119,9 @@ static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 					     uint8_t is_rx);
 static void ixgbe_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
+
+static int ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
+
 static int ixgbe_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
 static void ixgbe_vlan_tpid_set(struct rte_eth_dev *dev, uint16_t tpid_id);
@@ -293,6 +296,7 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.stats_reset          = ixgbe_dev_stats_reset,
 	.queue_stats_mapping_set = ixgbe_dev_queue_stats_mapping_set,
 	.dev_infos_get        = ixgbe_dev_info_get,
+	.mtu_set              = ixgbe_dev_mtu_set,
 	.vlan_filter_set      = ixgbe_vlan_filter_set,
 	.vlan_tpid_set        = ixgbe_vlan_tpid_set,
 	.vlan_offload_set     = ixgbe_vlan_offload_set,
@@ -2704,6 +2708,52 @@ ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	ixgbe_clear_rar(hw, index);
+}
+
+static int
+ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	uint32_t hlreg0;
+	uint32_t maxfrs;
+	struct ixgbe_hw *hw;
+	struct rte_eth_dev_info dev_info;
+	uint32_t frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+
+	ixgbe_dev_info_get(dev, &dev_info);
+
+	/* check that mtu is within the allowed range */
+	if ((mtu < ETHER_MIN_MTU) || (frame_size > dev_info.max_rx_pktlen))
+		return -EINVAL;
+
+	/* refuse mtu that requires the support of scattered packets when this
+	 * feature has not been enabled before. */
+	if (!dev->data->scattered_rx &&
+	    (frame_size + 2 * IXGBE_VLAN_TAG_SIZE >
+	     dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM))
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
+
+	/* switch to jumbo mode if needed */
+	if (frame_size > ETHER_MAX_LEN) {
+		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		hlreg0 |= IXGBE_HLREG0_JUMBOEN;
+	} else {
+		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		hlreg0 &= ~IXGBE_HLREG0_JUMBOEN;
+	}
+	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
+
+	/* update max frame size */
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+
+	maxfrs = IXGBE_READ_REG(hw, IXGBE_MAXFRS);
+	maxfrs &= 0x0000FFFF;
+	maxfrs |= (dev->data->dev_conf.rxmode.max_rx_pkt_len << 16);
+	IXGBE_WRITE_REG(hw, IXGBE_MAXFRS, maxfrs);
+
+	return 0;
 }
 
 /*

@@ -94,6 +94,8 @@ static void em_hw_control_release(struct e1000_hw *hw);
 static void em_init_manageability(struct e1000_hw *hw);
 static void em_release_manageability(struct e1000_hw *hw);
 
+static int eth_em_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
+
 static int eth_em_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
 static void eth_em_vlan_offload_set(struct rte_eth_dev *dev, int mask);
@@ -145,6 +147,7 @@ static struct eth_dev_ops eth_em_ops = {
 	.stats_get            = eth_em_stats_get,
 	.stats_reset          = eth_em_stats_reset,
 	.dev_infos_get        = eth_em_infos_get,
+	.mtu_set              = eth_em_mtu_set,
 	.vlan_filter_set      = eth_em_vlan_filter_set,
 	.vlan_offload_set     = eth_em_vlan_offload_set,
 	.rx_queue_setup       = eth_em_rx_queue_setup,
@@ -1485,6 +1488,45 @@ eth_em_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 	memset(addr, 0, sizeof(addr));
 
 	e1000_rar_set(hw, addr, index);
+}
+
+static int
+eth_em_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct rte_eth_dev_info dev_info;
+	struct e1000_hw *hw;
+	uint32_t frame_size;
+	uint32_t rctl;
+
+	eth_em_infos_get(dev, &dev_info);
+	frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE;
+
+	/* check that mtu is within the allowed range */
+	if ((mtu < ETHER_MIN_MTU) || (frame_size > dev_info.max_rx_pktlen))
+		return -EINVAL;
+
+	/* refuse mtu that requires the support of scattered packets when this
+	 * feature has not been enabled before. */
+	if (!dev->data->scattered_rx &&
+	    frame_size > dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)
+		return -EINVAL;
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
+
+	/* switch to jumbo mode if needed */
+	if (frame_size > ETHER_MAX_LEN) {
+		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		rctl |= E1000_RCTL_LPE;
+	} else {
+		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		rctl &= ~E1000_RCTL_LPE;
+	}
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+	/* update max frame size */
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+	return 0;
 }
 
 struct rte_driver em_pmd_drv = {

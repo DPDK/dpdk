@@ -201,9 +201,9 @@ rte_eth_dev_init(struct rte_pci_driver *pci_drv,
 	TAILQ_INIT(&(eth_dev->callbacks));
 
 	/*
-	 * Set the default maximum frame size.
+	 * Set the default MTU.
 	 */
-	eth_dev->data->max_frame_size = ETHER_MAX_LEN;
+	eth_dev->data->mtu = ETHER_MTU;
 
 	/* Invoke PMD device initialization function */
 	diag = (*eth_drv->eth_dev_init)(eth_drv, eth_dev);
@@ -1232,6 +1232,43 @@ rte_eth_macaddr_get(uint8_t port_id, struct ether_addr *mac_addr)
 	}
 	dev = &rte_eth_devices[port_id];
 	ether_addr_copy(&dev->data->mac_addrs[0], mac_addr);
+}
+
+
+int
+rte_eth_dev_get_mtu(uint8_t port_id, uint16_t *mtu)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+
+	dev = &rte_eth_devices[port_id];
+	*mtu = dev->data->mtu;
+	return 0;
+}
+
+int
+rte_eth_dev_set_mtu(uint8_t port_id, uint16_t mtu)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-ENODEV);
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->mtu_set, -ENOTSUP);
+
+	ret = (*dev->dev_ops->mtu_set)(dev, mtu);
+	if (!ret)
+		dev->data->mtu = mtu;
+
+	return ret;
 }
 
 int
