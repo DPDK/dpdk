@@ -180,7 +180,8 @@ pci_vfio_setup_dma_maps(int vfio_container_fd)
 	ret = ioctl(vfio_container_fd, VFIO_SET_IOMMU,
 			VFIO_TYPE1_IOMMU);
 	if (ret) {
-		RTE_LOG(ERR, EAL, "  cannot set IOMMU type!\n");
+		RTE_LOG(ERR, EAL, "  cannot set IOMMU type, "
+				"error %i (%s)\n", errno, strerror(errno));
 		return -1;
 	}
 
@@ -201,7 +202,8 @@ pci_vfio_setup_dma_maps(int vfio_container_fd)
 		ret = ioctl(vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map);
 
 		if (ret) {
-			RTE_LOG(ERR, EAL, "  cannot set up DMA remapping!\n");
+			RTE_LOG(ERR, EAL, "  cannot set up DMA remapping, "
+					"error %i (%s)\n", errno, strerror(errno));
 			return -1;
 		}
 	}
@@ -253,7 +255,8 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 
 		ret = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq);
 		if (ret < 0) {
-			RTE_LOG(ERR, EAL, "  cannot get IRQ info!\n");
+			RTE_LOG(ERR, EAL, "  cannot get IRQ info, "
+					"error %i (%s)\n", errno, strerror(errno));
 			return -1;
 		}
 
@@ -271,7 +274,8 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 		/* set up an eventfd for interrupts */
 		fd = eventfd(0, 0);
 		if (fd < 0) {
-			RTE_LOG(ERR, EAL, "  cannot set up eventfd!\n");
+			RTE_LOG(ERR, EAL, "  cannot set up eventfd, "
+					"error %i (%s)\n", errno, strerror(errno));
 			return -1;
 		}
 
@@ -313,22 +317,31 @@ pci_vfio_get_container_fd(void)
 	if (internal_config.process_type == RTE_PROC_PRIMARY) {
 		vfio_container_fd = open(VFIO_CONTAINER_PATH, O_RDWR);
 		if (vfio_container_fd < 0) {
-			RTE_LOG(ERR, EAL, "  cannot open VFIO container!\n");
+			RTE_LOG(ERR, EAL, "  cannot open VFIO container, "
+					"error %i (%s)\n", errno, strerror(errno));
 			return -1;
 		}
 
 		/* check VFIO API version */
 		ret = ioctl(vfio_container_fd, VFIO_GET_API_VERSION);
 		if (ret != VFIO_API_VERSION) {
-			RTE_LOG(ERR, EAL, "  unknown VFIO API version!\n");
+			if (ret < 0)
+				RTE_LOG(ERR, EAL, "  could not get VFIO API version, "
+						"error %i (%s)\n", errno, strerror(errno));
+			else
+				RTE_LOG(ERR, EAL, "  unsupported VFIO API version!\n");
 			close(vfio_container_fd);
 			return -1;
 		}
 
 		/* check if we support IOMMU type 1 */
 		ret = ioctl(vfio_container_fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU);
-		if (!ret) {
-			RTE_LOG(ERR, EAL, "  unknown IOMMU driver!\n");
+		if (ret != 1) {
+			if (ret < 0)
+				RTE_LOG(ERR, EAL, "  could not get IOMMU type, "
+						"error %i (%s)\n", errno, strerror(errno));
+			else
+				RTE_LOG(ERR, EAL, "  unsupported IOMMU type!\n");
 			close(vfio_container_fd);
 			return -1;
 		}
@@ -564,7 +577,8 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	/* check if the group is viable */
 	ret = ioctl(vfio_group_fd, VFIO_GROUP_GET_STATUS, &group_status);
 	if (ret) {
-		RTE_LOG(ERR, EAL, "  %s cannot get group status!\n", pci_addr);
+		RTE_LOG(ERR, EAL, "  %s cannot get group status, "
+				"error %i (%s)\n", pci_addr, errno, strerror(errno));
 		close(vfio_group_fd);
 		clear_current_group();
 		return -1;
@@ -587,8 +601,8 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 		ret = ioctl(vfio_group_fd, VFIO_GROUP_SET_CONTAINER,
 				&vfio_cfg.vfio_container_fd);
 		if (ret) {
-			RTE_LOG(ERR, EAL, "  %s cannot add VFIO group to container!\n",
-					pci_addr);
+			RTE_LOG(ERR, EAL, "  %s cannot add VFIO group to container, "
+					"error %i (%s)\n", pci_addr, errno, strerror(errno));
 			close(vfio_group_fd);
 			clear_current_group();
 			return -1;
@@ -611,7 +625,8 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 			vfio_cfg.vfio_container_has_dma == 0) {
 		ret = pci_vfio_setup_dma_maps(vfio_cfg.vfio_container_fd);
 		if (ret) {
-			RTE_LOG(ERR, EAL, "  %s DMA remapping failed!\n", pci_addr);
+			RTE_LOG(ERR, EAL, "  %s DMA remapping failed, "
+					"error %i (%s)\n", pci_addr, errno, strerror(errno));
 			return -1;
 		}
 		vfio_cfg.vfio_container_has_dma = 1;
@@ -631,7 +646,8 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	/* test and setup the device */
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_INFO, &device_info);
 	if (ret) {
-		RTE_LOG(ERR, EAL, "  %s cannot get device info!\n", pci_addr);
+		RTE_LOG(ERR, EAL, "  %s cannot get device info, "
+				"error %i (%s)\n", pci_addr, errno, strerror(errno));
 		close(vfio_dev_fd);
 		return -1;
 	}
@@ -688,8 +704,8 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 		ret = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg);
 
 		if (ret) {
-			RTE_LOG(ERR, EAL, "  %s cannot get device region info!\n",
-					pci_addr);
+			RTE_LOG(ERR, EAL, "  %s cannot get device region info "
+					"error %i (%s)\n", pci_addr, errno, strerror(errno));
 			close(vfio_dev_fd);
 			if (internal_config.process_type == RTE_PROC_PRIMARY)
 				rte_free(vfio_res);
@@ -765,7 +781,7 @@ pci_vfio_enable(void)
 	if (vfio_cfg.vfio_container_fd != -1)
 		vfio_cfg.vfio_enabled = 1;
 	else
-		RTE_LOG(INFO, EAL, "VFIO driver not loaded or wrong permissions\n");
+		RTE_LOG(INFO, EAL, "VFIO support could not be initialized\n");
 
 	return 0;
 }
