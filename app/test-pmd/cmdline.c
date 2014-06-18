@@ -1367,7 +1367,7 @@ cmdline_parse_token_string_t cmd_config_rss_hash_key_port =
 cmdline_parse_token_string_t cmd_config_rss_hash_key_config =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key, config,
 				 "config");
-cmdline_parse_token_string_t cmd_config_rss_hash_key_port_id =
+cmdline_parse_token_num_t cmd_config_rss_hash_key_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_config_rss_hash_key, port_id, UINT8);
 cmdline_parse_token_string_t cmd_config_rss_hash_key_rss_hash_key =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key,
@@ -5367,7 +5367,7 @@ cmdline_parse_token_string_t cmd_mirror_mask_set =
 cmdline_parse_token_string_t cmd_mirror_mask_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_mask_result,
 				port, "port");
-cmdline_parse_token_string_t cmd_mirror_mask_portid =
+cmdline_parse_token_num_t cmd_mirror_mask_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_mirror_mask_result,
 				port_id, UINT8);
 cmdline_parse_token_string_t cmd_mirror_mask_mirror =
@@ -5477,7 +5477,7 @@ cmdline_parse_token_string_t cmd_mirror_link_set =
 cmdline_parse_token_string_t cmd_mirror_link_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_link_result,
 				port, "port");
-cmdline_parse_token_string_t cmd_mirror_link_portid =
+cmdline_parse_token_num_t cmd_mirror_link_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_mirror_link_result,
 				port_id, UINT8);
 cmdline_parse_token_string_t cmd_mirror_link_mirror =
@@ -5563,7 +5563,7 @@ cmdline_parse_token_string_t cmd_rm_mirror_rule_reset =
 cmdline_parse_token_string_t cmd_rm_mirror_rule_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_rm_mirror_rule_result,
 				port, "port");
-cmdline_parse_token_string_t cmd_rm_mirror_rule_portid =
+cmdline_parse_token_num_t cmd_rm_mirror_rule_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_rm_mirror_rule_result,
 				port_id, UINT8);
 cmdline_parse_token_string_t cmd_rm_mirror_rule_mirror =
@@ -5872,7 +5872,7 @@ cmd_set_syn_filter_parsed(void *parsed_result,
 		printf("syn filter setting error: (%s)\n", strerror(-ret));
 
 }
-cmdline_parse_token_string_t cmd_syn_filter_portid =
+cmdline_parse_token_num_t cmd_syn_filter_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_syn_filter_result,
 				port_id, UINT8);
 cmdline_parse_token_string_t cmd_syn_filter_priority =
@@ -5990,7 +5990,7 @@ cmdline_parse_token_num_t cmd_2tuple_filter_port_id =
 cmdline_parse_token_string_t cmd_2tuple_filter_protocol =
 	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
 				 protocol, "protocol");
-cmdline_parse_token_string_t cmd_2tuple_filter_protocol_value =
+cmdline_parse_token_num_t cmd_2tuple_filter_protocol_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
 				 protocol_value, UINT8);
 cmdline_parse_token_num_t cmd_2tuple_filter_protocol_mask =
@@ -6008,7 +6008,7 @@ cmdline_parse_token_num_t cmd_2tuple_filter_dst_port_mask =
 cmdline_parse_token_string_t cmd_2tuple_filter_flags =
 	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
 				flags, "flags");
-cmdline_parse_token_string_t cmd_2tuple_filter_flags_value =
+cmdline_parse_token_num_t cmd_2tuple_filter_flags_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
 				flags_value, UINT8);
 cmdline_parse_token_string_t cmd_2tuple_filter_priority =
@@ -6202,7 +6202,7 @@ cmdline_parse_token_num_t cmd_5tuple_filter_src_port_value =
 cmdline_parse_token_string_t cmd_5tuple_filter_protocol =
 	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
 				protocol, "protocol");
-cmdline_parse_token_string_t cmd_5tuple_filter_protocol_value =
+cmdline_parse_token_num_t cmd_5tuple_filter_protocol_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
 				protocol_value, UINT8);
 cmdline_parse_token_string_t cmd_5tuple_filter_mask =
@@ -6448,7 +6448,7 @@ cmdline_parse_token_num_t cmd_flex_filter_port_id =
 cmdline_parse_token_string_t cmd_flex_filter_len =
 	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
 				len, "len");
-cmdline_parse_token_string_t cmd_flex_filter_len_value =
+cmdline_parse_token_num_t cmd_flex_filter_len_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
 				len_value, UINT8);
 cmdline_parse_token_string_t cmd_flex_filter_bytes =
