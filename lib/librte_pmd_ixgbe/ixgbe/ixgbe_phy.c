@@ -47,6 +47,8 @@ STATIC void ixgbe_raise_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl);
 STATIC void ixgbe_lower_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl);
 STATIC s32 ixgbe_set_i2c_data(struct ixgbe_hw *hw, u32 *i2cctl, bool data);
 STATIC bool ixgbe_get_i2c_data(u32 *i2cctl);
+STATIC s32 ixgbe_read_i2c_sff8472_generic(struct ixgbe_hw *hw, u8 byte_offset,
+					  u8 *sff8472_data);
 
 /**
  *  ixgbe_init_phy_ops_generic - Inits PHY function ptrs
@@ -73,6 +75,7 @@ s32 ixgbe_init_phy_ops_generic(struct ixgbe_hw *hw)
 	phy->ops.get_firmware_version = ixgbe_get_phy_firmware_version_generic;
 	phy->ops.read_i2c_byte = &ixgbe_read_i2c_byte_generic;
 	phy->ops.write_i2c_byte = &ixgbe_write_i2c_byte_generic;
+	phy->ops.read_i2c_sff8472 = &ixgbe_read_i2c_sff8472_generic;
 	phy->ops.read_i2c_eeprom = &ixgbe_read_i2c_eeprom_generic;
 	phy->ops.write_i2c_eeprom = &ixgbe_write_i2c_eeprom_generic;
 	phy->ops.i2c_bus_clear = &ixgbe_i2c_bus_clear;
@@ -1459,6 +1462,22 @@ s32 ixgbe_read_i2c_eeprom_generic(struct ixgbe_hw *hw, u8 byte_offset,
 	return hw->phy.ops.read_i2c_byte(hw, byte_offset,
 					 IXGBE_I2C_EEPROM_DEV_ADDR,
 					 eeprom_data);
+}
+
+/**
+ *  ixgbe_read_i2c_sff8472_generic - Reads 8 bit word over I2C interface
+ *  @hw: pointer to hardware structure
+ *  @byte_offset: byte offset at address 0xA2
+ *  @eeprom_data: value read
+ *
+ *  Performs byte read operation to SFP module's SFF-8472 data over I2C
+ **/
+STATIC s32 ixgbe_read_i2c_sff8472_generic(struct ixgbe_hw *hw, u8 byte_offset,
+					  u8 *sff8472_data)
+{
+	return hw->phy.ops.read_i2c_byte(hw, byte_offset,
+					 IXGBE_I2C_EEPROM_DEV_ADDR2,
+					 sff8472_data);
 }
 
 /**

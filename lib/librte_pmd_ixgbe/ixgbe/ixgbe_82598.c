@@ -65,7 +65,8 @@ STATIC s32 ixgbe_clear_vmdq_82598(struct ixgbe_hw *hw, u32 rar, u32 vmdq);
 STATIC s32 ixgbe_clear_vfta_82598(struct ixgbe_hw *hw);
 STATIC void ixgbe_set_rxpba_82598(struct ixgbe_hw *hw, int num_pb,
 				  u32 headroom, int strategy);
-
+STATIC s32 ixgbe_read_i2c_sff8472_82598(struct ixgbe_hw *hw, u8 byte_offset,
+					u8 *sff8472_data);
 /**
  *  ixgbe_set_pcie_completion_timeout - set pci-e completion timeout
  *  @hw: pointer to the HW structure
@@ -161,6 +162,7 @@ s32 ixgbe_init_ops_82598(struct ixgbe_hw *hw)
 
 	/* SFP+ Module */
 	phy->ops.read_i2c_eeprom = &ixgbe_read_i2c_eeprom_82598;
+	phy->ops.read_i2c_sff8472 = &ixgbe_read_i2c_sff8472_82598;
 
 	/* Link */
 	mac->ops.check_link = &ixgbe_check_mac_link_82598;
@@ -1108,15 +1110,16 @@ s32 ixgbe_write_analog_reg8_82598(struct ixgbe_hw *hw, u32 reg, u8 val)
 }
 
 /**
- *  ixgbe_read_i2c_eeprom_82598 - Reads 8 bit word over I2C interface.
+ *  ixgbe_read_i2c_phy_82598 - Reads 8 bit word over I2C interface.
  *  @hw: pointer to hardware structure
- *  @byte_offset: EEPROM byte offset to read
+ *  @dev_addr: address to read from
+ *  @byte_offset: byte offset to read from dev_addr
  *  @eeprom_data: value read
  *
  *  Performs 8 byte read operation to SFP module's EEPROM over I2C interface.
  **/
-s32 ixgbe_read_i2c_eeprom_82598(struct ixgbe_hw *hw, u8 byte_offset,
-				u8 *eeprom_data)
+STATIC s32 ixgbe_read_i2c_phy_82598(struct ixgbe_hw *hw, u8 dev_addr,
+				    u8 byte_offset, u8 *eeprom_data)
 {
 	s32 status = IXGBE_SUCCESS;
 	u16 sfp_addr = 0;
@@ -1125,7 +1128,7 @@ s32 ixgbe_read_i2c_eeprom_82598(struct ixgbe_hw *hw, u8 byte_offset,
 	u16 gssr;
 	u32 i;
 
-	DEBUGFUNC("ixgbe_read_i2c_eeprom_82598");
+	DEBUGFUNC("ixgbe_read_i2c_phy_82598");
 
 	if (IXGBE_READ_REG(hw, IXGBE_STATUS) & IXGBE_STATUS_LAN_ID_1)
 		gssr = IXGBE_GSSR_PHY1_SM;
@@ -1141,19 +1144,19 @@ s32 ixgbe_read_i2c_eeprom_82598(struct ixgbe_hw *hw, u8 byte_offset,
 		 * 0xC30D. These registers are used to talk to the SFP+
 		 * module's EEPROM through the SDA/SCL (I2C) interface.
 		 */
-		sfp_addr = (IXGBE_I2C_EEPROM_DEV_ADDR << 8) + byte_offset;
+		sfp_addr = (dev_addr << 8) + byte_offset;
 		sfp_addr = (sfp_addr | IXGBE_I2C_EEPROM_READ_MASK);
-		hw->phy.ops.write_reg(hw,
-				      IXGBE_MDIO_PMA_PMD_SDA_SCL_ADDR,
-				      IXGBE_MDIO_PMA_PMD_DEV_TYPE,
-				      sfp_addr);
+		hw->phy.ops.write_reg_mdi(hw,
+					  IXGBE_MDIO_PMA_PMD_SDA_SCL_ADDR,
+					  IXGBE_MDIO_PMA_PMD_DEV_TYPE,
+					  sfp_addr);
 
 		/* Poll status */
 		for (i = 0; i < 100; i++) {
-			hw->phy.ops.read_reg(hw,
-					     IXGBE_MDIO_PMA_PMD_SDA_SCL_STAT,
-					     IXGBE_MDIO_PMA_PMD_DEV_TYPE,
-					     &sfp_stat);
+			hw->phy.ops.read_reg_mdi(hw,
+						IXGBE_MDIO_PMA_PMD_SDA_SCL_STAT,
+						IXGBE_MDIO_PMA_PMD_DEV_TYPE,
+						&sfp_stat);
 			sfp_stat = sfp_stat & IXGBE_I2C_EEPROM_STATUS_MASK;
 			if (sfp_stat != IXGBE_I2C_EEPROM_STATUS_IN_PROGRESS)
 				break;
@@ -1167,18 +1170,47 @@ s32 ixgbe_read_i2c_eeprom_82598(struct ixgbe_hw *hw, u8 byte_offset,
 		}
 
 		/* Read data */
-		hw->phy.ops.read_reg(hw, IXGBE_MDIO_PMA_PMD_SDA_SCL_DATA,
-				     IXGBE_MDIO_PMA_PMD_DEV_TYPE, &sfp_data);
+		hw->phy.ops.read_reg_mdi(hw, IXGBE_MDIO_PMA_PMD_SDA_SCL_DATA,
+					IXGBE_MDIO_PMA_PMD_DEV_TYPE, &sfp_data);
 
 		*eeprom_data = (u8)(sfp_data >> 8);
 	} else {
 		status = IXGBE_ERR_PHY;
-		goto out;
 	}
 
 out:
 	hw->mac.ops.release_swfw_sync(hw, gssr);
 	return status;
+}
+
+/**
+ *  ixgbe_read_i2c_eeprom_82598 - Reads 8 bit word over I2C interface.
+ *  @hw: pointer to hardware structure
+ *  @byte_offset: EEPROM byte offset to read
+ *  @eeprom_data: value read
+ *
+ *  Performs 8 byte read operation to SFP module's EEPROM over I2C interface.
+ **/
+s32 ixgbe_read_i2c_eeprom_82598(struct ixgbe_hw *hw, u8 byte_offset,
+				u8 *eeprom_data)
+{
+	return ixgbe_read_i2c_phy_82598(hw, IXGBE_I2C_EEPROM_DEV_ADDR,
+					byte_offset, eeprom_data);
+}
+
+/**
+ *  ixgbe_read_i2c_sff8472_82598 - Reads 8 bit word over I2C interface.
+ *  @hw: pointer to hardware structure
+ *  @byte_offset: byte offset at address 0xA2
+ *  @eeprom_data: value read
+ *
+ *  Performs 8 byte read operation to SFP module's SFF-8472 data over I2C
+ **/
+STATIC s32 ixgbe_read_i2c_sff8472_82598(struct ixgbe_hw *hw, u8 byte_offset,
+					u8 *sff8472_data)
+{
+	return ixgbe_read_i2c_phy_82598(hw, IXGBE_I2C_EEPROM_DEV_ADDR2,
+					byte_offset, sff8472_data);
 }
 
 /**
