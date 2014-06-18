@@ -318,7 +318,7 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_init_ops_82599");
 
-	ret_val = ixgbe_init_phy_ops_generic(hw);
+	ixgbe_init_phy_ops_generic(hw);
 	ret_val = ixgbe_init_ops_generic(hw);
 
 	/* PHY */
