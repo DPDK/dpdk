@@ -231,9 +231,7 @@ POSSIBILITY OF SUCH DAMAGE.
 /* PHY Power Management Control */
 #define HV_PM_CTRL		PHY_REG(770, 17)
 #define HV_PM_CTRL_PLL_STOP_IN_K1_GIGA	0x100
-#if !defined(EXTERNAL_RELEASE) || (defined(NAHUM6LP_HW) && defined(ULP_SUPPORT))
 #define HV_PM_CTRL_K1_ENABLE		0x4000
-#endif /* !EXTERNAL_RELEASE || (NAHUM6LP_HW && ULP_SUPPORT) */
 
 #define SW_FLAG_TIMEOUT		1000 /* SW Semaphore flag timeout in ms */
 
@@ -313,6 +311,4 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force);
 void e1000_toggle_lanphypc_pch_lpt(struct e1000_hw *hw);
 #endif /* NAHUM6LP_HW && ULP_SUPPORT */
 #endif /* _E1000_ICH8LAN_H_ */
-#ifdef C10_SUPPORT
 void e1000_demote_ltr(struct e1000_hw *hw, bool demote, bool link);
-#endif /* C10_SUPPORT */

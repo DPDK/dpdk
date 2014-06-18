@@ -62,21 +62,11 @@ POSSIBILITY OF SUCH DAMAGE.
  * Ethernet Connection I217-V
  * Ethernet Connection I218-V
  * Ethernet Connection I218-LM
-#ifdef NAHUM6_LPTH_I218_HW
- * Ethernet Connection (2) I218-LM
- * Ethernet Connection (2) I218-V
-#endif
-#ifdef NAHUM6_WPT_HW
- * Ethernet Connection (3) I218-LM
- * Ethernet Connection (3) I218-V
-#endif
  */
 
 #include "e1000_api.h"
 
-#if defined(NAHUM6LP_HW) && defined(ULP_IN_D0_SUPPORT)
 static s32 e1000_oem_bits_config_ich8lan(struct e1000_hw *hw, bool d0_state);
-#endif /* NAHUM6LP_HW && ULP_SUPPORT */
 STATIC s32  e1000_acquire_swflag_ich8lan(struct e1000_hw *hw);
 STATIC void e1000_release_swflag_ich8lan(struct e1000_hw *hw);
 STATIC s32  e1000_acquire_nvm_ich8lan(struct e1000_hw *hw);
@@ -1043,40 +1033,6 @@ update_fextnvm6:
 	return ret_val;
 }
 
-#ifdef C10_SUPPORT
-/**
- * e1000_demote_ltr - Demote/Promote the LTR value
- * @hw: pointer to the HW structure
- * @demote: boolean value to control whether we are demoting or promoting
- *    the LTR value (promoting allows deeper C-States).
- * @link: boolean value stating whether we currently have link
- *
- * Configure the LTRV register with the proper LTR value
- **/
-void e1000_demote_ltr(struct e1000_hw *hw, bool demote, bool link)
-{
-	u32 reg = link << (E1000_LTRV_REQ_SHIFT + E1000_LTRV_NOSNOOP_SHIFT) |
-		  link << E1000_LTRV_REQ_SHIFT | E1000_LTRV_SEND;
-
-	if ((hw->device_id != E1000_DEV_ID_PCH_I218_LM3) &&
-	    (hw->device_id != E1000_DEV_ID_PCH_I218_V3))
-		return;
-
-	if (demote) {
-		reg |= hw->dev_spec.ich8lan.lat_enc |
-		       (hw->dev_spec.ich8lan.lat_enc <<
-			E1000_LTRV_NOSNOOP_SHIFT);
-	} else {
-		reg |= hw->dev_spec.ich8lan.max_ltr_enc |
-		       (hw->dev_spec.ich8lan.max_ltr_enc <<
-			E1000_LTRV_NOSNOOP_SHIFT);
-	}
-
-	E1000_WRITE_REG(hw, E1000_LTRV, reg);
-	return;
-}
-
-#endif /* C10_SUPPORT */
 #if defined(NAHUM6LP_HW) && defined(ULP_SUPPORT)
 /**
  *  e1000_enable_ulp_lpt_lp - configure Ultra Low Power mode for LynxPoint-LP
@@ -1097,14 +1053,9 @@ s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx)
 	if ((hw->mac.type < e1000_pch_lpt) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPT_I217_LM) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPT_I217_V) ||
-#ifdef NAHUM6_LPTH_I218_HW
-	    (hw->device_id == E1000_DEV_ID_PCH_I218_LM2) ||
-	    (hw->device_id == E1000_DEV_ID_PCH_I218_V2) ||
-#endif
 	    (hw->dev_spec.ich8lan.ulp_state == e1000_ulp_state_on))
 		return 0;
 
-#ifdef ULP_IN_D0_SUPPORT
 	if (!to_sx) {
 		int i = 0;
 
@@ -1126,7 +1077,6 @@ s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx)
 			  i * 50);
 	}
 
-#endif /* ULP_IN_D0_SUPPORT */
 	if (E1000_READ_REG(hw, E1000_FWSM) & E1000_ICH_FWSM_FW_VALID) {
 		/* Request ME configure ULP mode in the PHY */
 		mac_reg = E1000_READ_REG(hw, E1000_H2ME);
@@ -1136,32 +1086,13 @@ s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx)
 		goto out;
 	}
 
-#ifndef ULP_IN_D0_SUPPORT
-	if (!to_sx) {
-		int i = 0;
-
-		/* Poll up to 5 seconds for Cable Disconnected indication */
-		while (!(E1000_READ_REG(hw, E1000_FEXT) &
-			 E1000_FEXT_PHY_CABLE_DISCONNECTED)) {
-			/* Bail if link is re-acquired */
-			if (E1000_READ_REG(hw, E1000_STATUS) & E1000_STATUS_LU)
-				return -E1000_ERR_PHY;
-
-			if (i++ == 100)
-				break;
-
-			msec_delay(50);
-		}
-		DEBUGOUT("CABLE_DISCONNECTED %s set after %dmsec\n",
-			 (E1000_READ_REG(hw, E1000_FEXT) &
-			  E1000_FEXT_PHY_CABLE_DISCONNECTED) ? "" : "not",
-			 i * 50);
-	}
-
-#endif /* !ULP_IN_D0_SUPPORT */
 	ret_val = hw->phy.ops.acquire(hw);
 	if (ret_val)
 		goto out;
+
+	/* During S0 Idle keep the phy in PCI-E mode */
+	if (hw->dev_spec.ich8lan.smbus_disable)
+		goto skip_smbus;
 
 	/* Force SMBus mode in PHY */
 	ret_val = e1000_read_phy_reg_hv_locked(hw, CV_SMB_CTRL, &phy_reg);
@@ -1175,7 +1106,7 @@ s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx)
 	mac_reg |= E1000_CTRL_EXT_FORCE_SMBUS;
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, mac_reg);
 
-#ifdef ULP_IN_D0_SUPPORT
+skip_smbus:
 	if (!to_sx) {
 		/* Change the 'Link Status Change' interrupt to trigger
 		 * on 'Cable Status Change'
@@ -1190,7 +1121,6 @@ s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx)
 					    phy_reg);
 	}
 
-#endif /* ULP_IN_D0_SUPPORT */
 	/* Set Inband ULP Exit, Reset to SMBus mode and
 	 * Disable SMBus Release on PERST# in PHY
 	 */
@@ -1217,7 +1147,6 @@ s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx)
 	/* Commit ULP changes in PHY by starting auto ULP configuration */
 	phy_reg |= I218_ULP_CONFIG1_START;
 	e1000_write_phy_reg_hv_locked(hw, I218_ULP_CONFIG1, phy_reg);
-#ifdef ULP_IN_D0_SUPPORT
 
 	if (!to_sx) {
 		/* Disable Tx so that the MAC doesn't send any (buffered)
@@ -1227,7 +1156,6 @@ s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx)
 		mac_reg &= ~E1000_TCTL_EN;
 		E1000_WRITE_REG(hw, E1000_TCTL, mac_reg);
 	}
-#endif
 release:
 	hw->phy.ops.release(hw);
 out:
@@ -1253,14 +1181,12 @@ out:
  *  to disable ULP mode (force=false); otherwise, for example when unloading
  *  the driver or during Sx->S0 transitions, this is called with force=true
  *  to forcibly disable ULP.
-#ifdef ULP_IN_D0_SUPPORT
 
  *  When the cable is plugged in while the device is in D0, a Cable Status
  *  Change interrupt is generated which causes this function to be called
  *  to partially disable ULP mode and restart autonegotiation.  This function
  *  is then called again due to the resulting Link Status Change interrupt
  *  to finish cleaning up after the ULP flow.
-#endif
  */
 s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 {
@@ -1272,10 +1198,6 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 	if ((hw->mac.type < e1000_pch_lpt) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPT_I217_LM) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPT_I217_V) ||
-#ifdef NAHUM6_LPTH_I218_HW
-	    (hw->device_id == E1000_DEV_ID_PCH_I218_LM2) ||
-	    (hw->device_id == E1000_DEV_ID_PCH_I218_V2) ||
-#endif
 	    (hw->dev_spec.ich8lan.ulp_state == e1000_ulp_state_off))
 		return 0;
 
@@ -1309,7 +1231,6 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 			mac_reg = E1000_READ_REG(hw, E1000_H2ME);
 			mac_reg &= ~E1000_H2ME_ULP;
 			E1000_WRITE_REG(hw, E1000_H2ME, mac_reg);
-#ifdef ULP_IN_D0_SUPPORT
 
 			/* Restore link speed advertisements and restart
 			 * Auto-negotiation
@@ -1319,21 +1240,15 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 				goto out;
 
 			ret_val = e1000_oem_bits_config_ich8lan(hw, true);
-#endif
 		}
 
 		goto out;
 	}
 
-	if (force)
-		/* Toggle LANPHYPC Value bit */
-		e1000_toggle_lanphypc_pch_lpt(hw);
-
 	ret_val = hw->phy.ops.acquire(hw);
 	if (ret_val)
 		goto out;
 
-#ifdef ULP_IN_D0_SUPPORT
 	/* Revert the change to the 'Link Status Change'
 	 * interrupt to trigger on 'Cable Status Change'
 	 */
@@ -1344,7 +1259,10 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 	phy_reg &= ~E1000_KMRNCTRLSTA_OP_MODES_LSC2CSC;
 	e1000_write_kmrn_reg_locked(hw, E1000_KMRNCTRLSTA_OP_MODES, phy_reg);
 
-#endif
+	if (force)
+		/* Toggle LANPHYPC Value bit */
+		e1000_toggle_lanphypc_pch_lpt(hw);
+
 	/* Unforce SMBus mode in PHY */
 	ret_val = e1000_read_phy_reg_hv_locked(hw, CV_SMB_CTRL, &phy_reg);
 	if (ret_val) {
@@ -1383,10 +1301,8 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 	ret_val = e1000_read_phy_reg_hv_locked(hw, I218_ULP_CONFIG1, &phy_reg);
 	if (ret_val)
 		goto release;
-#ifdef ULP_IN_D0_SUPPORT
 	/* CSC interrupt received due to ULP Indication */
 	if ((phy_reg & I218_ULP_CONFIG1_IND) || force) {
-#endif
 		phy_reg &= ~(I218_ULP_CONFIG1_IND |
 			     I218_ULP_CONFIG1_STICKY_ULP |
 			     I218_ULP_CONFIG1_RESET_TO_SMBUS |
@@ -1404,7 +1320,6 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 		mac_reg &= ~E1000_FEXTNVM7_DISABLE_SMB_PERST;
 		E1000_WRITE_REG(hw, E1000_FEXTNVM7, mac_reg);
 
-#ifdef ULP_IN_D0_SUPPORT
 		if (!force) {
 			hw->phy.ops.release(hw);
 
@@ -1431,7 +1346,6 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 	mac_reg |= E1000_TCTL_EN;
 	E1000_WRITE_REG(hw, E1000_TCTL, mac_reg);
 
-#endif
 release:
 	hw->phy.ops.release(hw);
 	if (force) {
@@ -1460,11 +1374,7 @@ static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 {
 	struct e1000_mac_info *mac = &hw->mac;
 	s32 ret_val;
-#if defined(NAHUM6LP_HW) && defined(ULP_IN_D0_SUPPORT)
 	bool link = false;
-#else
-	bool link;
-#endif
 	u16 phy_reg;
 
 	DEBUGFUNC("e1000_check_for_copper_link_ich8lan");
@@ -1477,11 +1387,9 @@ static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 	if (!mac->get_link_status)
 		return E1000_SUCCESS;
 
-#if defined(NAHUM6LP_HW) && defined(ULP_IN_D0_SUPPORT)
 	if ((hw->mac.type < e1000_pch_lpt) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPT_I217_LM) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPT_I217_V)) {
-#endif /* NAHUM6LP_HW && ULP_IN_D0_SUPPORT */
 		/* First we want to see if the MII Status Register reports
 		 * link.  If so, then we want to get the current speed/duplex
 		 * of the PHY.
@@ -1489,7 +1397,6 @@ static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 		ret_val = e1000_phy_has_link_generic(hw, 1, 0, &link);
 		if (ret_val)
 			return ret_val;
-#if defined(NAHUM6LP_HW) && defined(ULP_IN_D0_SUPPORT)
 	} else {
 		/* Check the MAC's STATUS register to determine link state
 		 * since the PHY could be inaccessible while in ULP mode.
@@ -1503,7 +1410,6 @@ static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 		if (ret_val)
 			return ret_val;
 	}
-#endif /* NAHUM6LP_HW && ULP_IN_D0_SUPPORT */
 
 	if (hw->mac.type == e1000_pchlan) {
 		ret_val = e1000_k1_gig_workaround_hv(hw, link);
@@ -1538,17 +1444,6 @@ static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 		}
 	}
 
-#if defined(NAHUM6LP_HW) && defined(NAHUM6_WPT_HW)
-	/* Work-around I218 hang issue */
-	if ((hw->device_id == E1000_DEV_ID_PCH_LPTLP_I218_LM) ||
-	    (hw->device_id == E1000_DEV_ID_PCH_LPTLP_I218_V) ||
-	    (hw->device_id == E1000_DEV_ID_PCH_I218_LM3) ||
-	    (hw->device_id == E1000_DEV_ID_PCH_I218_V3)) {
-		ret_val = e1000_k1_workaround_lpt_lp(hw, link);
-		if (ret_val)
-			return ret_val;
-	}
-#else
 	/* Work-around I218 hang issue */
 	if ((hw->device_id == E1000_DEV_ID_PCH_LPTLP_I218_LM) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPTLP_I218_V)) {
@@ -1557,7 +1452,6 @@ static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 			return ret_val;
 	}
 
-#endif /* defined(NAHUM6LP_HW) && defined(NAHUM6_WPT_HW) */
 	/* Clear link partner's EEE ability */
 	hw->dev_spec.ich8lan.eee_lp_ability = 0;
 
@@ -4901,17 +4795,6 @@ void e1000_suspend_workarounds_ich8lan(struct e1000_hw *hw)
 	if (hw->phy.type == e1000_phy_i217) {
 		u16 phy_reg, device_id = hw->device_id;
 
-#ifdef NAHUM6_WPT_HW
-		if ((device_id == E1000_DEV_ID_PCH_LPTLP_I218_LM) ||
-		    (device_id == E1000_DEV_ID_PCH_LPTLP_I218_V) ||
-		    (device_id == E1000_DEV_ID_PCH_I218_LM3) ||
-		    (device_id == E1000_DEV_ID_PCH_I218_V3)) {
-			u32 fextnvm6 = E1000_READ_REG(hw, E1000_FEXTNVM6);
-
-			E1000_WRITE_REG(hw, E1000_FEXTNVM6,
-					fextnvm6 & ~E1000_FEXTNVM6_REQ_PLL_CLK);
-		}
-#else
 		if ((device_id == E1000_DEV_ID_PCH_LPTLP_I218_LM) ||
 		    (device_id == E1000_DEV_ID_PCH_LPTLP_I218_V)) {
 			u32 fextnvm6 = E1000_READ_REG(hw, E1000_FEXTNVM6);
@@ -4919,7 +4802,6 @@ void e1000_suspend_workarounds_ich8lan(struct e1000_hw *hw)
 			E1000_WRITE_REG(hw, E1000_FEXTNVM6,
 					fextnvm6 & ~E1000_FEXTNVM6_REQ_PLL_CLK);
 		}
-#endif
 
 		ret_val = hw->phy.ops.acquire(hw);
 		if (ret_val)

@@ -132,14 +132,6 @@ struct e1000_hw;
 #define E1000_DEV_ID_PCH_LPT_I217_V		0x153B
 #define E1000_DEV_ID_PCH_LPTLP_I218_LM		0x155A
 #define E1000_DEV_ID_PCH_LPTLP_I218_V		0x1559
-#ifdef NAHUM6_LPTH_I218_HW
-#define E1000_DEV_ID_PCH_I218_LM2		0x15A0
-#define E1000_DEV_ID_PCH_I218_V2		0x15A1
-#endif /* NAHUM6_LPTH_I218_HW */
-#ifdef NAHUM6_WPT_HW
-#define E1000_DEV_ID_PCH_I218_LM3		0x15A2 /* Wildcat Point PCH */
-#define E1000_DEV_ID_PCH_I218_V3		0x15A3 /* Wildcat Point PCH */
-#endif /* NAHUM6_WPT_HW */
 #define E1000_DEV_ID_82576			0x10C9
 #define E1000_DEV_ID_82576_FIBER		0x10E6
 #define E1000_DEV_ID_82576_SERDES		0x10E7
@@ -959,10 +951,9 @@ struct e1000_dev_spec_ich8lan {
 #if defined(NAHUM6LP_HW) && defined(ULP_SUPPORT)
 	enum e1000_ulp_state ulp_state;
 #endif /* NAHUM6LP_HW && ULP_SUPPORT */
-#ifdef C10_SUPPORT
 	u16 lat_enc;
 	u16 max_ltr_enc;
-#endif
+	bool smbus_disable;
 };
 
 struct e1000_dev_spec_82575 {

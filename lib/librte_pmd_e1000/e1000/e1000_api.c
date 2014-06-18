@@ -292,14 +292,6 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_PCH_LPT_I217_V:
 	case E1000_DEV_ID_PCH_LPTLP_I218_LM:
 	case E1000_DEV_ID_PCH_LPTLP_I218_V:
-#ifdef NAHUM6_LPTH_I218_HW
-	case E1000_DEV_ID_PCH_I218_LM2:
-	case E1000_DEV_ID_PCH_I218_V2:
-#endif /* NAHUM6_LPTH_I218_HW */
-#ifdef NAHUM6_WPT_HW
-	case E1000_DEV_ID_PCH_I218_LM3:
-	case E1000_DEV_ID_PCH_I218_V3:
-#endif /* NAHUM6_WPT_HW */
 		mac->type = e1000_pch_lpt;
 		break;
 	case E1000_DEV_ID_82575EB_COPPER:
