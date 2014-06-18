@@ -925,22 +925,17 @@ s32 ixgbe_get_mac_addr_generic(struct ixgbe_hw *hw, u8 *mac_addr)
 }
 
 /**
- *  ixgbe_get_bus_info_generic - Generic set PCI bus info
+ *  ixgbe_set_pci_config_data_generic - Generic store PCI bus info
  *  @hw: pointer to hardware structure
+ *  @link_status: the link status returned by the PCI config space
  *
- *  Sets the PCI bus info (speed, width, type) within the ixgbe_hw structure
+ *  Stores the PCI bus info (speed, width, type) within the ixgbe_hw structure
  **/
-s32 ixgbe_get_bus_info_generic(struct ixgbe_hw *hw)
+void ixgbe_set_pci_config_data_generic(struct ixgbe_hw *hw, u16 link_status)
 {
 	struct ixgbe_mac_info *mac = &hw->mac;
-	u16 link_status;
-
-	DEBUGFUNC("ixgbe_get_bus_info_generic");
 
 	hw->bus.type = ixgbe_bus_type_pci_express;
-
-	/* Get the negotiated link width and speed from PCI config space */
-	link_status = IXGBE_READ_PCIE_WORD(hw, IXGBE_PCI_LINK_STATUS);
 
 	switch (link_status & IXGBE_PCI_LINK_WIDTH) {
 	case IXGBE_PCI_LINK_WIDTH_1:
@@ -976,6 +971,25 @@ s32 ixgbe_get_bus_info_generic(struct ixgbe_hw *hw)
 	}
 
 	mac->ops.set_lan_id(hw);
+}
+
+/**
+ *  ixgbe_get_bus_info_generic - Generic set PCI bus info
+ *  @hw: pointer to hardware structure
+ *
+ *  Gets the PCI bus info (speed, width, type) then calls helper function to
+ *  store this data within the ixgbe_hw structure.
+ **/
+s32 ixgbe_get_bus_info_generic(struct ixgbe_hw *hw)
+{
+	u16 link_status;
+
+	DEBUGFUNC("ixgbe_get_bus_info_generic");
+
+	/* Get the negotiated link width and speed from PCI config space */
+	link_status = IXGBE_READ_PCIE_WORD(hw, IXGBE_PCI_LINK_STATUS);
+
+	ixgbe_set_pci_config_data_generic(hw, link_status);
 
 	return IXGBE_SUCCESS;
 }

@@ -2816,6 +2816,14 @@ enum ixgbe_sfp_type {
 	ixgbe_sfp_type_1g_cu_core1 = 10,
 	ixgbe_sfp_type_1g_sx_core0 = 11,
 	ixgbe_sfp_type_1g_sx_core1 = 12,
+#ifdef SUPPORT_1000BASE_LX
+	ixgbe_sfp_type_1g_lx_core0 = 13,
+	ixgbe_sfp_type_1g_lx_core1 = 14,
+#endif /* SUPPORT_1000BASE_LX */
+#ifdef SUPPORT_10GBASE_ER
+	ixgbe_sfp_type_er_core0 = 15,
+	ixgbe_sfp_type_er_core1 = 16,
+#endif /* SUPPORT_10GBASE_ER */
 	ixgbe_sfp_type_not_present = 0xFFFE,
 	ixgbe_sfp_type_unknown = 0xFFFF
 };
@@ -3041,7 +3049,7 @@ struct ixgbe_mac_operations {
 	void (*disable_tx_laser)(struct ixgbe_hw *);
 	void (*enable_tx_laser)(struct ixgbe_hw *);
 	void (*flap_tx_laser)(struct ixgbe_hw *);
-	s32 (*setup_link)(struct ixgbe_hw *, ixgbe_link_speed, bool, bool);
+	s32 (*setup_link)(struct ixgbe_hw *, ixgbe_link_speed, bool);
 	s32 (*check_link)(struct ixgbe_hw *, ixgbe_link_speed *, bool *, bool);
 	s32 (*get_link_capabilities)(struct ixgbe_hw *, ixgbe_link_speed *,
 				     bool *);
@@ -3095,8 +3103,7 @@ struct ixgbe_phy_operations {
 	s32 (*read_reg)(struct ixgbe_hw *, u32, u32, u16 *);
 	s32 (*write_reg)(struct ixgbe_hw *, u32, u32, u16);
 	s32 (*setup_link)(struct ixgbe_hw *);
-	s32 (*setup_link_speed)(struct ixgbe_hw *, ixgbe_link_speed, bool,
-				bool);
+	s32 (*setup_link_speed)(struct ixgbe_hw *, ixgbe_link_speed, bool);
 	s32 (*check_link)(struct ixgbe_hw *, ixgbe_link_speed *, bool *);
 	s32 (*get_firmware_version)(struct ixgbe_hw *, u16 *);
 	s32 (*read_i2c_byte)(struct ixgbe_hw *, u8, u8, u8 *);
@@ -3139,6 +3146,7 @@ struct ixgbe_mac_info {
 	u32 max_rx_queues;
 	u32 orig_autoc;
 	u8  san_mac_rar_index;
+	bool get_link_status;
 	u32 orig_autoc2;
 	u16 max_msix_vectors;
 	bool arc_subsystem_valid;

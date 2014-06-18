@@ -112,14 +112,13 @@ out:
  *  ixgbe_setup_mac_link_multispeed_fixed_fiber - Set MAC link speed
  *  @hw: pointer to hardware structure
  *  @speed: new link speed
- *  @autoneg: true if autonegotiation enabled
  *  @autoneg_wait_to_complete: true when waiting for completion is needed
  *
  *  Set the link speed in the AUTOC register and restarts link.
  **/
 static s32
 ixgbe_setup_mac_link_multispeed_fixed_fiber(struct ixgbe_hw *hw,
-				     ixgbe_link_speed speed, bool autoneg,
+				     ixgbe_link_speed speed,
 				     bool autoneg_wait_to_complete)
 {
 	s32 status = IXGBE_SUCCESS;
@@ -168,7 +167,6 @@ ixgbe_setup_mac_link_multispeed_fixed_fiber(struct ixgbe_hw *hw,
 
 		status = ixgbe_setup_mac_link_82599(hw,
 						    IXGBE_LINK_SPEED_10GB_FULL,
-						    autoneg,
 						    autoneg_wait_to_complete);
 		if (status != IXGBE_SUCCESS)
 			return status;
@@ -217,7 +215,6 @@ ixgbe_setup_mac_link_multispeed_fixed_fiber(struct ixgbe_hw *hw,
 
 		status = ixgbe_setup_mac_link_82599(hw,
 						    IXGBE_LINK_SPEED_1GB_FULL,
-						    autoneg,
 						    autoneg_wait_to_complete);
 		if (status != IXGBE_SUCCESS)
 			return status;
@@ -244,7 +241,7 @@ ixgbe_setup_mac_link_multispeed_fixed_fiber(struct ixgbe_hw *hw,
 	 */
 	if (speedcnt > 1)
 		status = ixgbe_setup_mac_link_multispeed_fixed_fiber(hw,
-			highest_link_speed, autoneg, autoneg_wait_to_complete);
+			highest_link_speed, autoneg_wait_to_complete);
 
 out:
 	/* Set autoneg_advertised value based on input link speed */

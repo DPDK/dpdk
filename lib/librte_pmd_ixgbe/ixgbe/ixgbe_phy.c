@@ -570,11 +570,9 @@ s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
  *  ixgbe_setup_phy_link_speed_generic - Sets the auto advertised capabilities
  *  @hw: pointer to hardware structure
  *  @speed: new link speed
- *  @autoneg: true if autonegotiation enabled
  **/
 s32 ixgbe_setup_phy_link_speed_generic(struct ixgbe_hw *hw,
 				       ixgbe_link_speed speed,
-				       bool autoneg,
 				       bool autoneg_wait_to_complete)
 {
 	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
@@ -1077,6 +1075,16 @@ s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw)
 				else
 					hw->phy.sfp_type =
 						      ixgbe_sfp_type_srlr_core1;
+#ifdef SUPPORT_10GBASE_ER
+			} else if (comp_codes_10g &
+				   IXGBE_SFF_10GBASEER_CAPABLE) {
+				if (hw->bus.lan_id == 0)
+					hw->phy.sfp_type =
+							ixgbe_sfp_type_er_core0;
+				else
+					hw->phy.sfp_type =
+							ixgbe_sfp_type_er_core1;
+#endif /* SUPPORT_10GBASE_ER */
 			} else if (comp_codes_1g & IXGBE_SFF_1GBASET_CAPABLE) {
 				if (hw->bus.lan_id == 0)
 					hw->phy.sfp_type =
@@ -1091,6 +1099,15 @@ s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw)
 				else
 					hw->phy.sfp_type =
 						ixgbe_sfp_type_1g_sx_core1;
+#ifdef SUPPORT_1000BASE_LX
+			} else if (comp_codes_1g & IXGBE_SFF_1GBASELX_CAPABLE) {
+				if (hw->bus.lan_id == 0)
+					hw->phy.sfp_type =
+						ixgbe_sfp_type_1g_lx_core0;
+				else
+					hw->phy.sfp_type =
+						ixgbe_sfp_type_1g_lx_core1;
+#endif /* SUPPORT_1000BASE_LX */
 			} else {
 				hw->phy.sfp_type = ixgbe_sfp_type_unknown;
 			}
@@ -1178,7 +1195,11 @@ s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw)
 		if (comp_codes_10g == 0 &&
 		    !(hw->phy.sfp_type == ixgbe_sfp_type_1g_cu_core1 ||
 		      hw->phy.sfp_type == ixgbe_sfp_type_1g_cu_core0 ||
-		      hw->phy.sfp_type == ixgbe_sfp_type_1g_sx_core0  ||
+#ifdef SUPPORT_1000BASE_LX
+		      hw->phy.sfp_type == ixgbe_sfp_type_1g_lx_core0 ||
+		      hw->phy.sfp_type == ixgbe_sfp_type_1g_lx_core1 ||
+#endif
+		      hw->phy.sfp_type == ixgbe_sfp_type_1g_sx_core0 ||
 		      hw->phy.sfp_type == ixgbe_sfp_type_1g_sx_core1)) {
 			hw->phy.type = ixgbe_phy_sfp_unsupported;
 			status = IXGBE_ERR_SFP_NOT_SUPPORTED;
@@ -1193,10 +1214,18 @@ s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw)
 
 		ixgbe_get_device_caps(hw, &enforce_sfp);
 		if (!(enforce_sfp & IXGBE_DEVICE_CAPS_ALLOW_ANY_SFP) &&
-		    !((hw->phy.sfp_type == ixgbe_sfp_type_1g_cu_core0) ||
-		      (hw->phy.sfp_type == ixgbe_sfp_type_1g_cu_core1) ||
-		      (hw->phy.sfp_type == ixgbe_sfp_type_1g_sx_core0)  ||
-		      (hw->phy.sfp_type == ixgbe_sfp_type_1g_sx_core1))) {
+		    !(hw->phy.sfp_type == ixgbe_sfp_type_1g_cu_core0 ||
+		      hw->phy.sfp_type == ixgbe_sfp_type_1g_cu_core1 ||
+#ifdef SUPPORT_1000BASE_LX
+		      hw->phy.sfp_type == ixgbe_sfp_type_1g_lx_core0 ||
+		      hw->phy.sfp_type == ixgbe_sfp_type_1g_lx_core1 ||
+#endif
+#ifdef SUPPORT_10GBASE_ER
+		      hw->phy.sfp_type == ixgbe_sfp_type_er_core0 ||
+		      hw->phy.sfp_type == ixgbe_sfp_type_er_core1 ||
+#endif
+		      hw->phy.sfp_type == ixgbe_sfp_type_1g_sx_core0 ||
+		      hw->phy.sfp_type == ixgbe_sfp_type_1g_sx_core1)) {
 			/* Make sure we're a supported PHY type */
 			if (hw->phy.type == ixgbe_phy_sfp_intel) {
 				status = IXGBE_SUCCESS;
@@ -1272,10 +1301,22 @@ s32 ixgbe_get_sfp_init_sequence_offsets(struct ixgbe_hw *hw,
 	 * SR modules
 	 */
 	if (sfp_type == ixgbe_sfp_type_da_act_lmt_core0 ||
+#ifdef SUPPORT_10GBASE_ER
+	    sfp_type == ixgbe_sfp_type_er_core0 ||
+#endif /* SUPPORT_10GBASE_ER */
+#ifdef SUPPORT_1000BASE_LX
+	    sfp_type == ixgbe_sfp_type_1g_lx_core0 ||
+#endif /* SUPPORT_1000BASE_LX */
 	    sfp_type == ixgbe_sfp_type_1g_cu_core0 ||
 	    sfp_type == ixgbe_sfp_type_1g_sx_core0)
 		sfp_type = ixgbe_sfp_type_srlr_core0;
 	else if (sfp_type == ixgbe_sfp_type_da_act_lmt_core1 ||
+#ifdef SUPPORT_10GBASE_ER
+		 sfp_type == ixgbe_sfp_type_er_core1 ||
+#endif /* SUPPORT_10GBASE_ER */
+#ifdef SUPPORT_1000BASE_LX
+		 sfp_type == ixgbe_sfp_type_1g_lx_core1 ||
+#endif /* SUPPORT_1000BASE_LX */
 		 sfp_type == ixgbe_sfp_type_1g_cu_core1 ||
 		 sfp_type == ixgbe_sfp_type_1g_sx_core1)
 		sfp_type = ixgbe_sfp_type_srlr_core1;

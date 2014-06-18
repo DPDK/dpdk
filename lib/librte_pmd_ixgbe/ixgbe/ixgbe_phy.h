@@ -57,6 +57,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_SFF_1GBASET_CAPABLE	0x8
 #define IXGBE_SFF_10GBASESR_CAPABLE	0x10
 #define IXGBE_SFF_10GBASELR_CAPABLE	0x20
+#ifdef SUPPORT_10GBASE_ER
+#define IXGBE_SFF_10GBASEER_CAPABLE    0x80
+#endif /* SUPPORT_10GBASE_ER */
+#define IXGBE_SFF_ADDRESSING_MODE	0x4
 #define IXGBE_I2C_EEPROM_READ_MASK	0x100
 #define IXGBE_I2C_EEPROM_STATUS_MASK	0x3
 #define IXGBE_I2C_EEPROM_STATUS_NO_OPERATION	0x0
@@ -109,7 +113,6 @@ s32 ixgbe_write_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
 s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw);
 s32 ixgbe_setup_phy_link_speed_generic(struct ixgbe_hw *hw,
 				       ixgbe_link_speed speed,
-				       bool autoneg,
 				       bool autoneg_wait_to_complete);
 s32 ixgbe_get_copper_link_capabilities_generic(struct ixgbe_hw *hw,
 					       ixgbe_link_speed *speed,

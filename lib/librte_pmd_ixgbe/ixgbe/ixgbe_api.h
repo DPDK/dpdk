@@ -74,13 +74,12 @@ s32 ixgbe_check_phy_link(struct ixgbe_hw *hw,
 			 bool *link_up);
 s32 ixgbe_setup_phy_link_speed(struct ixgbe_hw *hw,
 			       ixgbe_link_speed speed,
-			       bool autoneg,
 			       bool autoneg_wait_to_complete);
 void ixgbe_disable_tx_laser(struct ixgbe_hw *hw);
 void ixgbe_enable_tx_laser(struct ixgbe_hw *hw);
 void ixgbe_flap_tx_laser(struct ixgbe_hw *hw);
 s32 ixgbe_setup_link(struct ixgbe_hw *hw, ixgbe_link_speed speed,
-		     bool autoneg, bool autoneg_wait_to_complete);
+		     bool autoneg_wait_to_complete);
 s32 ixgbe_check_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 		     bool *link_up, bool link_up_wait_to_complete);
 s32 ixgbe_get_link_capabilities(struct ixgbe_hw *hw, ixgbe_link_speed *speed,

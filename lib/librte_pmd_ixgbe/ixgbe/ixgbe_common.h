@@ -69,6 +69,7 @@ s32 ixgbe_get_pba_block_size(struct ixgbe_hw *hw, u16 *eeprom_buf,
 			     u32 eeprom_buf_size, u16 *pba_block_size);
 s32 ixgbe_get_mac_addr_generic(struct ixgbe_hw *hw, u8 *mac_addr);
 s32 ixgbe_get_bus_info_generic(struct ixgbe_hw *hw);
+void ixgbe_set_pci_config_data_generic(struct ixgbe_hw *hw, u16 link_status);
 void ixgbe_set_lan_id_multi_port_pcie(struct ixgbe_hw *hw);
 s32 ixgbe_stop_adapter_generic(struct ixgbe_hw *hw);
 
