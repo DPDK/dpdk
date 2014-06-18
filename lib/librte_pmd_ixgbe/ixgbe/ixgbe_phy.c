@@ -137,6 +137,35 @@ s32 ixgbe_identify_phy_generic(struct ixgbe_hw *hw)
 }
 
 /**
+ * ixgbe_check_reset_blocked - check status of MNG FW veto bit
+ * @hw: pointer to the hardware structure
+ *
+ * This function checks the MMNGC.MNG_VETO bit to see if there are
+ * any constraints on link from manageability.  For MAC's that don't
+ * have this bit just return faluse since the link can not be blocked
+ * via this method.
+ **/
+s32 ixgbe_check_reset_blocked(struct ixgbe_hw *hw)
+{
+	u32 mmngc;
+
+	DEBUGFUNC("ixgbe_check_reset_blocked");
+
+	/* If we don't have this bit, it can't be blocking */
+	if (hw->mac.type == ixgbe_mac_82598EB)
+		return false;
+
+	mmngc = IXGBE_READ_REG(hw, IXGBE_MMNGC);
+	if (mmngc & IXGBE_MMNGC_MNG_VETO) {
+		ERROR_REPORT1(IXGBE_ERROR_SOFTWARE,
+			      "MNG_VETO bit detected.\n");
+		return true;
+	}
+
+	return false;
+}
+
+/**
  *  ixgbe_validate_phy_addr - Determines phy address is valid
  *  @hw: pointer to hardware structure
  *
@@ -240,6 +269,10 @@ s32 ixgbe_reset_phy_generic(struct ixgbe_hw *hw)
 	/* Don't reset PHY if it's shut down due to overtemp. */
 	if (!hw->phy.reset_if_overtemp &&
 	    (IXGBE_ERR_OVERTEMP == hw->phy.ops.check_overtemp(hw)))
+		goto out;
+
+	/* Blocked by MNG FW so bail */
+	if (ixgbe_check_reset_blocked(hw))
 		goto out;
 
 	/*
@@ -535,6 +568,10 @@ s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
 				      autoneg_reg);
 	}
 
+	/* Blocked by MNG FW so don't reset PHY */
+	if (ixgbe_check_reset_blocked(hw))
+		return status;
+
 	/* Restart PHY autonegotiation and wait for completion */
 	hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_CONTROL,
 			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &autoneg_reg);
@@ -749,6 +786,10 @@ s32 ixgbe_setup_phy_link_tnx(struct ixgbe_hw *hw)
 				      autoneg_reg);
 	}
 
+	/* Blocked by MNG FW so don't reset PHY */
+	if (ixgbe_check_reset_blocked(hw))
+		return status;
+
 	/* Restart PHY autonegotiation and wait for completion */
 	hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_CONTROL,
 			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &autoneg_reg);
@@ -831,6 +872,10 @@ s32 ixgbe_reset_phy_nl(struct ixgbe_hw *hw)
 	u32 i;
 
 	DEBUGFUNC("ixgbe_reset_phy_nl");
+
+	/* Blocked by MNG FW so bail */
+	if (ixgbe_check_reset_blocked(hw))
+		goto out;
 
 	hw->phy.ops.read_reg(hw, IXGBE_MDIO_PHY_XS_CONTROL,
 			     IXGBE_MDIO_PHY_XS_DEV_TYPE, &phy_data);
@@ -1484,9 +1529,9 @@ s32 ixgbe_read_i2c_byte_generic(struct ixgbe_hw *hw, u8 byte_offset,
 		break;
 
 fail:
+		ixgbe_i2c_bus_clear(hw);
 		hw->mac.ops.release_swfw_sync(hw, swfw_mask);
 		msec_delay(100);
-		ixgbe_i2c_bus_clear(hw);
 		retry++;
 		if (retry < max_retry)
 			DEBUGOUT("I2C byte read error - Retrying.\n");

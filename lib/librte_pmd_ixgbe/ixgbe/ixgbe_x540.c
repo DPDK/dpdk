@@ -381,12 +381,13 @@ s32 ixgbe_read_eerd_X540(struct ixgbe_hw *hw, u16 offset, u16 *data)
 
 	DEBUGFUNC("ixgbe_read_eerd_X540");
 	if (hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_EEP_SM) ==
-	    IXGBE_SUCCESS)
+	    IXGBE_SUCCESS) {
 		status = ixgbe_read_eerd_generic(hw, offset, data);
-	else
+		hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
+	} else {
 		status = IXGBE_ERR_SWFW_SYNC;
+	}
 
-	hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
 	return status;
 }
 
@@ -406,13 +407,14 @@ s32 ixgbe_read_eerd_buffer_X540(struct ixgbe_hw *hw,
 
 	DEBUGFUNC("ixgbe_read_eerd_buffer_X540");
 	if (hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_EEP_SM) ==
-	    IXGBE_SUCCESS)
+	    IXGBE_SUCCESS) {
 		status = ixgbe_read_eerd_buffer_generic(hw, offset,
 							words, data);
-	else
+		hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
+	} else {
 		status = IXGBE_ERR_SWFW_SYNC;
+	}
 
-	hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
 	return status;
 }
 
@@ -430,12 +432,13 @@ s32 ixgbe_write_eewr_X540(struct ixgbe_hw *hw, u16 offset, u16 data)
 
 	DEBUGFUNC("ixgbe_write_eewr_X540");
 	if (hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_EEP_SM) ==
-	    IXGBE_SUCCESS)
+	    IXGBE_SUCCESS) {
 		status = ixgbe_write_eewr_generic(hw, offset, data);
-	else
+		hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
+	} else {
 		status = IXGBE_ERR_SWFW_SYNC;
+	}
 
-	hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
 	return status;
 }
 
@@ -455,13 +458,14 @@ s32 ixgbe_write_eewr_buffer_X540(struct ixgbe_hw *hw,
 
 	DEBUGFUNC("ixgbe_write_eewr_buffer_X540");
 	if (hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_EEP_SM) ==
-	    IXGBE_SUCCESS)
+	    IXGBE_SUCCESS) {
 		status = ixgbe_write_eewr_buffer_generic(hw, offset,
 							 words, data);
-	else
+		hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
+	} else {
 		status = IXGBE_ERR_SWFW_SYNC;
+	}
 
-	hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
 	return status;
 }
 
@@ -596,11 +600,11 @@ s32 ixgbe_validate_eeprom_checksum_X540(struct ixgbe_hw *hw,
 		/* If the user cares, return the calculated checksum */
 		if (checksum_val)
 			*checksum_val = checksum;
+		hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
 	} else {
 		status = IXGBE_ERR_SWFW_SYNC;
 	}
 
-	hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
 out:
 	return status;
 }
@@ -641,13 +645,12 @@ s32 ixgbe_update_eeprom_checksum_X540(struct ixgbe_hw *hw)
 		status = ixgbe_write_eewr_generic(hw, IXGBE_EEPROM_CHECKSUM,
 						  checksum);
 
-	if (status == IXGBE_SUCCESS)
-		status = ixgbe_update_flash_X540(hw);
-	else
+		if (status == IXGBE_SUCCESS)
+			status = ixgbe_update_flash_X540(hw);
+		hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
+	} else {
 		status = IXGBE_ERR_SWFW_SYNC;
 	}
-
-	hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
 
 	return status;
 }
@@ -809,6 +812,17 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
 		IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC, swfw_sync);
 		ixgbe_release_swfw_sync_semaphore(hw);
 		msec_delay(5);
+	}
+	/* If the resource is not released by other SW the SW can assume that
+	 * the other SW malfunctions. In that case the SW should clear all SW
+	 * flags that it does not own and then repeat the whole process once
+	 * again.
+	 */
+	else if (swfw_sync & swmask) {
+		ixgbe_release_swfw_sync_X540(hw, IXGBE_GSSR_EEP_SM |
+			IXGBE_GSSR_PHY0_SM | IXGBE_GSSR_PHY1_SM |
+			IXGBE_GSSR_MAC_CSR_SM);
+		ret_val = IXGBE_ERR_SWFW_SYNC;
 	}
 
 out:
