@@ -1947,6 +1947,18 @@ enum {
 #define IXGBE_ALT_SAN_MAC_ADDR_CAPS_SANMAC	0x0 /* Alt SAN MAC exists */
 #define IXGBE_ALT_SAN_MAC_ADDR_CAPS_ALTWWN	0x1 /* Alt WWN base exists */
 
+/* FW header offset */
+#define IXGBE_X540_FW_PASSTHROUGH_PATCH_CONFIG_PTR	0x4
+#define IXGBE_X540_FW_MODULE_MASK			0x7FFF
+/* 4KB multiplier */
+#define IXGBE_X540_FW_MODULE_LENGTH			0x1000
+/* version word 2 (month & day) */
+#define IXGBE_X540_FW_PATCH_VERSION_2		0x5
+/* version word 3 (silicon compatibility & year) */
+#define IXGBE_X540_FW_PATCH_VERSION_3		0x6
+/* version word 4 (major & minor numbers) */
+#define IXGBE_X540_FW_PATCH_VERSION_4		0x7
+
 #define IXGBE_DEVICE_CAPS_WOL_PORT0_1	0x4 /* WoL supported on ports 0 & 1 */
 #define IXGBE_DEVICE_CAPS_WOL_PORT0	0x8 /* WoL supported on port 0 */
 #define IXGBE_DEVICE_CAPS_WOL_MASK	0xC /* Mask for WoL capabilities */
