@@ -942,15 +942,15 @@ setup_queue_tbl(struct rx_queue *rxq, uint32_t lcore, uint32_t queue)
 	}
 
 	/*
-	 * At any given moment up to <max_flow_num * (MAX_FRAG_NUM - 1)>
+	 * At any given moment up to <max_flow_num * (MAX_FRAG_NUM)>
 	 * mbufs could be stored int the fragment table.
 	 * Plus, each TX queue can hold up to <max_flow_num> packets.
 	 */
 
-	nb_mbuf = 2 * RTE_MAX(max_flow_num, 2UL * MAX_PKT_BURST) * MAX_FRAG_NUM;
+	nb_mbuf = RTE_MAX(max_flow_num, 2UL * MAX_PKT_BURST) * MAX_FRAG_NUM;
 	nb_mbuf *= (port_conf.rxmode.max_rx_pkt_len + BUF_SIZE - 1) / BUF_SIZE;
-	nb_mbuf += RTE_TEST_RX_DESC_DEFAULT + RTE_TEST_TX_DESC_DEFAULT;
 	nb_mbuf *= 2; /* ipv4 and ipv6 */
+	nb_mbuf += RTE_TEST_RX_DESC_DEFAULT + RTE_TEST_TX_DESC_DEFAULT;
 
 	nb_mbuf = RTE_MAX(nb_mbuf, (uint32_t)NB_MBUF);
 
