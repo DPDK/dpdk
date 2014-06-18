@@ -350,7 +350,7 @@ ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 		return (tbl->last);
 
 	/* different hashing methods for IPv4 and IPv6 */
-	if (key->key_len == 1)
+	if (key->key_len == IPV4_KEYLEN)
 		ipv4_frag_hash(key, &sig1, &sig2);
 	else
 		ipv6_frag_hash(key, &sig1, &sig2);
