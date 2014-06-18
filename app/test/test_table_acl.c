@@ -42,8 +42,6 @@
 	(((c) & 0xff) << 8) |						\
 	((d) & 0xff))
 
-static const char cb_port_delim[] = ":";
-
 /*
  * Rule and trace formats definitions.
  **/
