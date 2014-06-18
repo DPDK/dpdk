@@ -134,7 +134,7 @@ s32 ixgbe_reset_hw_vf(struct ixgbe_hw *hw)
 	struct ixgbe_mbx_info *mbx = &hw->mbx;
 	u32 timeout = IXGBE_VF_INIT_TIMEOUT;
 	s32 ret_val = IXGBE_ERR_INVALID_MAC_ADDR;
-	u32 ctrl, msgbuf[IXGBE_VF_PERMADDR_MSG_LEN];
+	u32 msgbuf[IXGBE_VF_PERMADDR_MSG_LEN];
 	u8 *addr = (u8 *)(&msgbuf[1]);
 
 	DEBUGFUNC("ixgbevf_reset_hw_vf");
@@ -147,8 +147,7 @@ s32 ixgbe_reset_hw_vf(struct ixgbe_hw *hw)
 
 	DEBUGOUT("Issuing a function level reset to MAC\n");
 
-	ctrl = IXGBE_VFREAD_REG(hw, IXGBE_VFCTRL) | IXGBE_CTRL_RST;
-	IXGBE_VFWRITE_REG(hw, IXGBE_VFCTRL, ctrl);
+	IXGBE_VFWRITE_REG(hw, IXGBE_VFCTRL, IXGBE_CTRL_RST);
 	IXGBE_WRITE_FLUSH(hw);
 
 	msec_delay(50);
@@ -159,34 +158,33 @@ s32 ixgbe_reset_hw_vf(struct ixgbe_hw *hw)
 		usec_delay(5);
 	}
 
-	if (timeout) {
-		/* mailbox timeout can now become active */
-		mbx->timeout = IXGBE_VF_MBX_INIT_TIMEOUT;
+	if (!timeout)
+		return IXGBE_ERR_RESET_FAILED;
 
-		msgbuf[0] = IXGBE_VF_RESET;
-		mbx->ops.write_posted(hw, msgbuf, 1, 0);
+	/* mailbox timeout can now become active */
+	mbx->timeout = IXGBE_VF_MBX_INIT_TIMEOUT;
 
-		msec_delay(10);
+	msgbuf[0] = IXGBE_VF_RESET;
+	mbx->ops.write_posted(hw, msgbuf, 1, 0);
 
-		/*
-		 * set our "perm_addr" based on info provided by PF
-		 * also set up the mc_filter_type which is piggy backed
-		 * on the mac address in word 3
-		 */
-		ret_val = mbx->ops.read_posted(hw, msgbuf,
-					       IXGBE_VF_PERMADDR_MSG_LEN, 0);
-		if (!ret_val) {
-			if (msgbuf[0] == (IXGBE_VF_RESET |
-					  IXGBE_VT_MSGTYPE_ACK)) {
-				memcpy(hw->mac.perm_addr, addr,
-				       IXGBE_ETH_LENGTH_OF_ADDRESS);
-				hw->mac.mc_filter_type =
-					msgbuf[IXGBE_VF_MC_TYPE_WORD];
-			} else {
-				ret_val = IXGBE_ERR_INVALID_MAC_ADDR;
-			}
-		}
-	}
+	msec_delay(10);
+
+	/*
+	 * set our "perm_addr" based on info provided by PF
+	 * also set up the mc_filter_type which is piggy backed
+	 * on the mac address in word 3
+	 */
+	ret_val = mbx->ops.read_posted(hw, msgbuf,
+			IXGBE_VF_PERMADDR_MSG_LEN, 0);
+	if (ret_val)
+		return ret_val;
+
+	if (msgbuf[0] != (IXGBE_VF_RESET | IXGBE_VT_MSGTYPE_ACK) &&
+	    msgbuf[0] != (IXGBE_VF_RESET | IXGBE_VT_MSGTYPE_NACK))
+		return IXGBE_ERR_INVALID_MAC_ADDR;
+
+	memcpy(hw->mac.perm_addr, addr, IXGBE_ETH_LENGTH_OF_ADDRESS);
+	hw->mac.mc_filter_type = msgbuf[IXGBE_VF_MC_TYPE_WORD];
 
 	return ret_val;
 }
@@ -227,6 +225,8 @@ s32 ixgbe_stop_adapter_vf(struct ixgbe_hw *hw)
 		reg_val &= ~IXGBE_RXDCTL_ENABLE;
 		IXGBE_VFWRITE_REG(hw, IXGBE_VFRXDCTL(i), reg_val);
 	}
+	/* Clear packet split and pool config */
+	IXGBE_WRITE_REG(hw, IXGBE_VFPSRTYPE, 0);
 
 	/* flush all queues disables */
 	IXGBE_WRITE_FLUSH(hw);
