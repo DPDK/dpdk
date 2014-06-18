@@ -65,12 +65,12 @@ s32 ixgbe_init_shared_code(struct ixgbe_hw *hw)
 	case ixgbe_mac_82599EB:
 		status = ixgbe_init_ops_82599(hw);
 		break;
+	case ixgbe_mac_X540:
+		status = ixgbe_init_ops_X540(hw);
+		break;
 	case ixgbe_mac_82599_vf:
 	case ixgbe_mac_X540_vf:
 		status = ixgbe_init_ops_vf(hw);
-		break;
-	case ixgbe_mac_X540:
-		status = ixgbe_init_ops_X540(hw);
 		break;
 	default:
 		status = IXGBE_ERR_DEVICE_NOT_SUPPORTED;
@@ -996,6 +996,8 @@ s32 ixgbe_set_fw_drv_ver(struct ixgbe_hw *hw, u8 maj, u8 min, u8 build,
 	return ixgbe_call_func(hw, hw->mac.ops.set_fw_drv_ver, (hw, maj, min,
 			       build, ver), IXGBE_NOT_IMPLEMENTED);
 }
+
+
 
 
 /**

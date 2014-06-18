@@ -58,7 +58,7 @@ STATIC s32 ixgbe_setup_copper_link_82598(struct ixgbe_hw *hw,
 STATIC s32 ixgbe_reset_hw_82598(struct ixgbe_hw *hw);
 STATIC s32 ixgbe_clear_vmdq_82598(struct ixgbe_hw *hw, u32 rar, u32 vmdq);
 STATIC s32 ixgbe_clear_vfta_82598(struct ixgbe_hw *hw);
-static void ixgbe_set_rxpba_82598(struct ixgbe_hw *hw, int num_pb,
+STATIC void ixgbe_set_rxpba_82598(struct ixgbe_hw *hw, int num_pb,
 				  u32 headroom, int strategy);
 
 /**
@@ -964,6 +964,7 @@ STATIC s32 ixgbe_clear_vmdq_82598(struct ixgbe_hw *hw, u32 rar, u32 vmdq)
 	u32 rar_high;
 	u32 rar_entries = hw->mac.num_rar_entries;
 
+	UNREFERENCED_1PARAMETER(vmdq);
 
 	/* Make sure we are using a valid rar index range */
 	if (rar >= rar_entries) {
@@ -1337,11 +1338,12 @@ void ixgbe_enable_relaxed_ordering_82598(struct ixgbe_hw *hw)
  * @headroom: reserve n KB of headroom
  * @strategy: packet buffer allocation strategy
  **/
-static void ixgbe_set_rxpba_82598(struct ixgbe_hw *hw, int num_pb,
+STATIC void ixgbe_set_rxpba_82598(struct ixgbe_hw *hw, int num_pb,
 				  u32 headroom, int strategy)
 {
 	u32 rxpktsize = IXGBE_RXPBSIZE_64KB;
 	u8 i = 0;
+	UNREFERENCED_1PARAMETER(headroom);
 
 	if (!num_pb)
 		return;

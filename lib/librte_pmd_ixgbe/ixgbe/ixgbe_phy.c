@@ -36,17 +36,17 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_phy.h"
 #ident "$Id: ixgbe_phy.c,v 1.139 2012/05/24 23:36:12 jtkirshe Exp $"
 
-static void ixgbe_i2c_start(struct ixgbe_hw *hw);
-static void ixgbe_i2c_stop(struct ixgbe_hw *hw);
-static s32 ixgbe_clock_in_i2c_byte(struct ixgbe_hw *hw, u8 *data);
-static s32 ixgbe_clock_out_i2c_byte(struct ixgbe_hw *hw, u8 data);
-static s32 ixgbe_get_i2c_ack(struct ixgbe_hw *hw);
-static s32 ixgbe_clock_in_i2c_bit(struct ixgbe_hw *hw, bool *data);
-static s32 ixgbe_clock_out_i2c_bit(struct ixgbe_hw *hw, bool data);
-static void ixgbe_raise_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl);
-static void ixgbe_lower_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl);
-static s32 ixgbe_set_i2c_data(struct ixgbe_hw *hw, u32 *i2cctl, bool data);
-static bool ixgbe_get_i2c_data(u32 *i2cctl);
+STATIC void ixgbe_i2c_start(struct ixgbe_hw *hw);
+STATIC void ixgbe_i2c_stop(struct ixgbe_hw *hw);
+STATIC s32 ixgbe_clock_in_i2c_byte(struct ixgbe_hw *hw, u8 *data);
+STATIC s32 ixgbe_clock_out_i2c_byte(struct ixgbe_hw *hw, u8 data);
+STATIC s32 ixgbe_get_i2c_ack(struct ixgbe_hw *hw);
+STATIC s32 ixgbe_clock_in_i2c_bit(struct ixgbe_hw *hw, bool *data);
+STATIC s32 ixgbe_clock_out_i2c_bit(struct ixgbe_hw *hw, bool data);
+STATIC void ixgbe_raise_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl);
+STATIC void ixgbe_lower_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl);
+STATIC s32 ixgbe_set_i2c_data(struct ixgbe_hw *hw, u32 *i2cctl, bool data);
+STATIC bool ixgbe_get_i2c_data(u32 *i2cctl);
 
 /**
  *  ixgbe_init_phy_ops_generic - Inits PHY function ptrs
@@ -121,9 +121,14 @@ s32 ixgbe_identify_phy_generic(struct ixgbe_hw *hw)
 				break;
 			}
 		}
-		/* clear value if nothing found */
-		if (status != IXGBE_SUCCESS)
+
+		/* Certain media types do not have a phy so an address will not
+		 * be found and the code will take this path.  Caller has to
+		 * decide if it is an error or not.
+		 */
+		if (status != IXGBE_SUCCESS) {
 			hw->phy.addr = 0;
+		}
 	} else {
 		status = IXGBE_SUCCESS;
 	}
@@ -570,6 +575,7 @@ s32 ixgbe_setup_phy_link_speed_generic(struct ixgbe_hw *hw,
 				       bool autoneg,
 				       bool autoneg_wait_to_complete)
 {
+	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
 
 	DEBUGFUNC("ixgbe_setup_phy_link_speed_generic");
 
@@ -606,7 +612,7 @@ s32 ixgbe_get_copper_link_capabilities_generic(struct ixgbe_hw *hw,
 					       ixgbe_link_speed *speed,
 					       bool *autoneg)
 {
-	s32 status = IXGBE_ERR_LINK_SETUP;
+	s32 status;
 	u16 speed_ability;
 
 	DEBUGFUNC("ixgbe_get_copper_link_capabilities_generic");
@@ -781,7 +787,7 @@ s32 ixgbe_setup_phy_link_tnx(struct ixgbe_hw *hw)
 s32 ixgbe_get_phy_firmware_version_tnx(struct ixgbe_hw *hw,
 				       u16 *firmware_version)
 {
-	s32 status = IXGBE_SUCCESS;
+	s32 status;
 
 	DEBUGFUNC("ixgbe_get_phy_firmware_version_tnx");
 
@@ -800,7 +806,7 @@ s32 ixgbe_get_phy_firmware_version_tnx(struct ixgbe_hw *hw,
 s32 ixgbe_get_phy_firmware_version_generic(struct ixgbe_hw *hw,
 					   u16 *firmware_version)
 {
-	s32 status = IXGBE_SUCCESS;
+	s32 status;
 
 	DEBUGFUNC("ixgbe_get_phy_firmware_version_generic");
 
@@ -1521,7 +1527,7 @@ write_byte_out:
  *
  *  Sets I2C start condition (High -> Low on SDA while SCL is High)
  **/
-static void ixgbe_i2c_start(struct ixgbe_hw *hw)
+STATIC void ixgbe_i2c_start(struct ixgbe_hw *hw)
 {
 	u32 i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
 
@@ -1552,7 +1558,7 @@ static void ixgbe_i2c_start(struct ixgbe_hw *hw)
  *
  *  Sets I2C stop condition (Low -> High on SDA while SCL is High)
  **/
-static void ixgbe_i2c_stop(struct ixgbe_hw *hw)
+STATIC void ixgbe_i2c_stop(struct ixgbe_hw *hw)
 {
 	u32 i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
 
@@ -1578,7 +1584,7 @@ static void ixgbe_i2c_stop(struct ixgbe_hw *hw)
  *
  *  Clocks in one byte data via I2C data/clock
  **/
-static s32 ixgbe_clock_in_i2c_byte(struct ixgbe_hw *hw, u8 *data)
+STATIC s32 ixgbe_clock_in_i2c_byte(struct ixgbe_hw *hw, u8 *data)
 {
 	s32 i;
 	bool bit = 0;
@@ -1600,12 +1606,12 @@ static s32 ixgbe_clock_in_i2c_byte(struct ixgbe_hw *hw, u8 *data)
  *
  *  Clocks out one byte data via I2C data/clock
  **/
-static s32 ixgbe_clock_out_i2c_byte(struct ixgbe_hw *hw, u8 data)
+STATIC s32 ixgbe_clock_out_i2c_byte(struct ixgbe_hw *hw, u8 data)
 {
 	s32 status = IXGBE_SUCCESS;
 	s32 i;
 	u32 i2cctl;
-	bool bit = 0;
+	bool bit;
 
 	DEBUGFUNC("ixgbe_clock_out_i2c_byte");
 
@@ -1632,7 +1638,7 @@ static s32 ixgbe_clock_out_i2c_byte(struct ixgbe_hw *hw, u8 data)
  *
  *  Clocks in/out one bit via I2C data/clock
  **/
-static s32 ixgbe_get_i2c_ack(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_get_i2c_ack(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_SUCCESS;
 	u32 i = 0;
@@ -1679,7 +1685,7 @@ static s32 ixgbe_get_i2c_ack(struct ixgbe_hw *hw)
  *
  *  Clocks in one bit via I2C data/clock
  **/
-static s32 ixgbe_clock_in_i2c_bit(struct ixgbe_hw *hw, bool *data)
+STATIC s32 ixgbe_clock_in_i2c_bit(struct ixgbe_hw *hw, bool *data)
 {
 	u32 i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
 
@@ -1708,7 +1714,7 @@ static s32 ixgbe_clock_in_i2c_bit(struct ixgbe_hw *hw, bool *data)
  *
  *  Clocks out one bit via I2C data/clock
  **/
-static s32 ixgbe_clock_out_i2c_bit(struct ixgbe_hw *hw, bool data)
+STATIC s32 ixgbe_clock_out_i2c_bit(struct ixgbe_hw *hw, bool data)
 {
 	s32 status;
 	u32 i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
@@ -1742,7 +1748,7 @@ static s32 ixgbe_clock_out_i2c_bit(struct ixgbe_hw *hw, bool data)
  *
  *  Raises the I2C clock line '0'->'1'
  **/
-static void ixgbe_raise_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl)
+STATIC void ixgbe_raise_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl)
 {
 	u32 i = 0;
 	u32 timeout = IXGBE_I2C_CLOCK_STRETCHING_TIMEOUT;
@@ -1771,7 +1777,7 @@ static void ixgbe_raise_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl)
  *
  *  Lowers the I2C clock line '1'->'0'
  **/
-static void ixgbe_lower_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl)
+STATIC void ixgbe_lower_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl)
 {
 
 	DEBUGFUNC("ixgbe_lower_i2c_clk");
@@ -1793,7 +1799,7 @@ static void ixgbe_lower_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl)
  *
  *  Sets the I2C data bit
  **/
-static s32 ixgbe_set_i2c_data(struct ixgbe_hw *hw, u32 *i2cctl, bool data)
+STATIC s32 ixgbe_set_i2c_data(struct ixgbe_hw *hw, u32 *i2cctl, bool data)
 {
 	s32 status = IXGBE_SUCCESS;
 
@@ -1827,7 +1833,7 @@ static s32 ixgbe_set_i2c_data(struct ixgbe_hw *hw, u32 *i2cctl, bool data)
  *
  *  Returns the I2C data bit value
  **/
-static bool ixgbe_get_i2c_data(u32 *i2cctl)
+STATIC bool ixgbe_get_i2c_data(u32 *i2cctl)
 {
 	bool data;
 

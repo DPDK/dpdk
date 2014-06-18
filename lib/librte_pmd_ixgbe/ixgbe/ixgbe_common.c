@@ -34,28 +34,28 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_common.h"
 #include "ixgbe_phy.h"
 #include "ixgbe_api.h"
-#ident "$Id: ixgbe_common.c,v 1.349 2012/11/05 23:08:30 jtkirshe Exp $"
+#ident "$Id: ixgbe_common.c,v 1.382 2013/11/22 01:02:01 jtkirshe Exp $"
 
-static s32 ixgbe_acquire_eeprom(struct ixgbe_hw *hw);
-static s32 ixgbe_get_eeprom_semaphore(struct ixgbe_hw *hw);
-static void ixgbe_release_eeprom_semaphore(struct ixgbe_hw *hw);
-static s32 ixgbe_ready_eeprom(struct ixgbe_hw *hw);
-static void ixgbe_standby_eeprom(struct ixgbe_hw *hw);
-static void ixgbe_shift_out_eeprom_bits(struct ixgbe_hw *hw, u16 data,
+STATIC s32 ixgbe_acquire_eeprom(struct ixgbe_hw *hw);
+STATIC s32 ixgbe_get_eeprom_semaphore(struct ixgbe_hw *hw);
+STATIC void ixgbe_release_eeprom_semaphore(struct ixgbe_hw *hw);
+STATIC s32 ixgbe_ready_eeprom(struct ixgbe_hw *hw);
+STATIC void ixgbe_standby_eeprom(struct ixgbe_hw *hw);
+STATIC void ixgbe_shift_out_eeprom_bits(struct ixgbe_hw *hw, u16 data,
 					u16 count);
-static u16 ixgbe_shift_in_eeprom_bits(struct ixgbe_hw *hw, u16 count);
-static void ixgbe_raise_eeprom_clk(struct ixgbe_hw *hw, u32 *eec);
-static void ixgbe_lower_eeprom_clk(struct ixgbe_hw *hw, u32 *eec);
-static void ixgbe_release_eeprom(struct ixgbe_hw *hw);
+STATIC u16 ixgbe_shift_in_eeprom_bits(struct ixgbe_hw *hw, u16 count);
+STATIC void ixgbe_raise_eeprom_clk(struct ixgbe_hw *hw, u32 *eec);
+STATIC void ixgbe_lower_eeprom_clk(struct ixgbe_hw *hw, u32 *eec);
+STATIC void ixgbe_release_eeprom(struct ixgbe_hw *hw);
 
-static s32 ixgbe_mta_vector(struct ixgbe_hw *hw, u8 *mc_addr);
-static s32 ixgbe_get_san_mac_addr_offset(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_mta_vector(struct ixgbe_hw *hw, u8 *mc_addr);
+STATIC s32 ixgbe_get_san_mac_addr_offset(struct ixgbe_hw *hw,
 					 u16 *san_mac_offset);
-static s32 ixgbe_read_eeprom_buffer_bit_bang(struct ixgbe_hw *hw, u16 offset,
+STATIC s32 ixgbe_read_eeprom_buffer_bit_bang(struct ixgbe_hw *hw, u16 offset,
 					     u16 words, u16 *data);
-static s32 ixgbe_write_eeprom_buffer_bit_bang(struct ixgbe_hw *hw, u16 offset,
+STATIC s32 ixgbe_write_eeprom_buffer_bit_bang(struct ixgbe_hw *hw, u16 offset,
 					      u16 words, u16 *data);
-static s32 ixgbe_detect_eeprom_page_size_generic(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_detect_eeprom_page_size_generic(struct ixgbe_hw *hw,
 						 u16 offset);
 
 /**
@@ -139,13 +139,13 @@ s32 ixgbe_init_ops_generic(struct ixgbe_hw *hw)
 }
 
 /**
- *  ixgbe_device_supports_autoneg_fc - Check if phy supports autoneg flow
- *  control
- *  @hw: pointer to hardware structure
+ * ixgbe_device_supports_autoneg_fc - Check if device supports autonegotiation
+ * of flow control
+ * @hw: pointer to hardware structure
  *
- *  There are several phys that do not support autoneg flow control. This
- *  function check the device id to see if the associated phy supports
- *  autoneg flow control.
+ * This function returns true if the device supports flow control
+ * autonegotiation, and false if it does not.
+ *
  **/
 s32 ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
 {
@@ -168,7 +168,7 @@ s32 ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
  *
  *  Called at init time to set up flow control.
  **/
-static s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
 {
 	s32 ret_val = IXGBE_SUCCESS;
 	u32 reg = 0, reg_bp = 0;
@@ -1211,7 +1211,7 @@ out:
  *  If ixgbe_eeprom_update_checksum is not called after this function, the
  *  EEPROM will most likely contain an invalid checksum.
  **/
-static s32 ixgbe_write_eeprom_buffer_bit_bang(struct ixgbe_hw *hw, u16 offset,
+STATIC s32 ixgbe_write_eeprom_buffer_bit_bang(struct ixgbe_hw *hw, u16 offset,
 					      u16 words, u16 *data)
 {
 	s32 status;
@@ -1370,7 +1370,7 @@ out:
  *
  *  Reads 16 bit word(s) from EEPROM through bit-bang method
  **/
-static s32 ixgbe_read_eeprom_buffer_bit_bang(struct ixgbe_hw *hw, u16 offset,
+STATIC s32 ixgbe_read_eeprom_buffer_bit_bang(struct ixgbe_hw *hw, u16 offset,
 					     u16 words, u16 *data)
 {
 	s32 status;
@@ -1505,7 +1505,7 @@ out:
  *  This function is called only when we are writing a new large buffer
  *  at given offset so the data would be overwritten anyway.
  **/
-static s32 ixgbe_detect_eeprom_page_size_generic(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_detect_eeprom_page_size_generic(struct ixgbe_hw *hw,
 						 u16 offset)
 {
 	u16 data[IXGBE_EEPROM_PAGE_SIZE_MAX];
@@ -1658,7 +1658,7 @@ s32 ixgbe_poll_eerd_eewr_done(struct ixgbe_hw *hw, u32 ee_reg)
  *  Prepares EEPROM for access using bit-bang method. This function should
  *  be called before issuing a command to the EEPROM.
  **/
-static s32 ixgbe_acquire_eeprom(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_acquire_eeprom(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_SUCCESS;
 	u32 eec;
@@ -1712,7 +1712,7 @@ static s32 ixgbe_acquire_eeprom(struct ixgbe_hw *hw)
  *
  *  Sets the hardware semaphores so EEPROM access can occur for bit-bang method
  **/
-static s32 ixgbe_get_eeprom_semaphore(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_get_eeprom_semaphore(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_ERR_EEPROM;
 	u32 timeout = 2000;
@@ -1802,7 +1802,7 @@ static s32 ixgbe_get_eeprom_semaphore(struct ixgbe_hw *hw)
  *
  *  This function clears hardware semaphore bits.
  **/
-static void ixgbe_release_eeprom_semaphore(struct ixgbe_hw *hw)
+STATIC void ixgbe_release_eeprom_semaphore(struct ixgbe_hw *hw)
 {
 	u32 swsm;
 
@@ -1820,7 +1820,7 @@ static void ixgbe_release_eeprom_semaphore(struct ixgbe_hw *hw)
  *  ixgbe_ready_eeprom - Polls for EEPROM ready
  *  @hw: pointer to hardware structure
  **/
-static s32 ixgbe_ready_eeprom(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_ready_eeprom(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_SUCCESS;
 	u16 i;
@@ -1861,7 +1861,7 @@ static s32 ixgbe_ready_eeprom(struct ixgbe_hw *hw)
  *  ixgbe_standby_eeprom - Returns EEPROM to a "standby" state
  *  @hw: pointer to hardware structure
  **/
-static void ixgbe_standby_eeprom(struct ixgbe_hw *hw)
+STATIC void ixgbe_standby_eeprom(struct ixgbe_hw *hw)
 {
 	u32 eec;
 
@@ -1886,7 +1886,7 @@ static void ixgbe_standby_eeprom(struct ixgbe_hw *hw)
  *  @data: data to send to the EEPROM
  *  @count: number of bits to shift out
  **/
-static void ixgbe_shift_out_eeprom_bits(struct ixgbe_hw *hw, u16 data,
+STATIC void ixgbe_shift_out_eeprom_bits(struct ixgbe_hw *hw, u16 data,
 					u16 count)
 {
 	u32 eec;
@@ -1941,7 +1941,7 @@ static void ixgbe_shift_out_eeprom_bits(struct ixgbe_hw *hw, u16 data,
  *  ixgbe_shift_in_eeprom_bits - Shift data bits in from the EEPROM
  *  @hw: pointer to hardware structure
  **/
-static u16 ixgbe_shift_in_eeprom_bits(struct ixgbe_hw *hw, u16 count)
+STATIC u16 ixgbe_shift_in_eeprom_bits(struct ixgbe_hw *hw, u16 count)
 {
 	u32 eec;
 	u32 i;
@@ -1981,7 +1981,7 @@ static u16 ixgbe_shift_in_eeprom_bits(struct ixgbe_hw *hw, u16 count)
  *  @hw: pointer to hardware structure
  *  @eec: EEC register's current value
  **/
-static void ixgbe_raise_eeprom_clk(struct ixgbe_hw *hw, u32 *eec)
+STATIC void ixgbe_raise_eeprom_clk(struct ixgbe_hw *hw, u32 *eec)
 {
 	DEBUGFUNC("ixgbe_raise_eeprom_clk");
 
@@ -2000,7 +2000,7 @@ static void ixgbe_raise_eeprom_clk(struct ixgbe_hw *hw, u32 *eec)
  *  @hw: pointer to hardware structure
  *  @eecd: EECD's current value
  **/
-static void ixgbe_lower_eeprom_clk(struct ixgbe_hw *hw, u32 *eec)
+STATIC void ixgbe_lower_eeprom_clk(struct ixgbe_hw *hw, u32 *eec)
 {
 	DEBUGFUNC("ixgbe_lower_eeprom_clk");
 
@@ -2018,7 +2018,7 @@ static void ixgbe_lower_eeprom_clk(struct ixgbe_hw *hw, u32 *eec)
  *  ixgbe_release_eeprom - Release EEPROM, release semaphores
  *  @hw: pointer to hardware structure
  **/
-static void ixgbe_release_eeprom(struct ixgbe_hw *hw)
+STATIC void ixgbe_release_eeprom(struct ixgbe_hw *hw)
 {
 	u32 eec;
 
@@ -2467,7 +2467,7 @@ s32 ixgbe_update_uc_addr_list_generic(struct ixgbe_hw *hw, u8 *addr_list,
  *  by the MO field of the MCSTCTRL. The MO field is set during initialization
  *  to mc_filter_type.
  **/
-static s32 ixgbe_mta_vector(struct ixgbe_hw *hw, u8 *mc_addr)
+STATIC s32 ixgbe_mta_vector(struct ixgbe_hw *hw, u8 *mc_addr)
 {
 	u32 vector = 0;
 
@@ -2764,7 +2764,7 @@ out:
  *  Find the intersection between advertised settings and link partner's
  *  advertised settings
  **/
-static s32 ixgbe_negotiate_fc(struct ixgbe_hw *hw, u32 adv_reg, u32 lp_reg,
+STATIC s32 ixgbe_negotiate_fc(struct ixgbe_hw *hw, u32 adv_reg, u32 lp_reg,
 			      u32 adv_sym, u32 adv_asm, u32 lp_sym, u32 lp_asm)
 {
 	if ((!(adv_reg)) ||  (!(lp_reg)))
@@ -2806,7 +2806,7 @@ static s32 ixgbe_negotiate_fc(struct ixgbe_hw *hw, u32 adv_reg, u32 lp_reg,
  *
  *  Enable flow control according on 1 gig fiber.
  **/
-static s32 ixgbe_fc_autoneg_fiber(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_fc_autoneg_fiber(struct ixgbe_hw *hw)
 {
 	u32 pcs_anadv_reg, pcs_lpab_reg, linkstat;
 	s32 ret_val = IXGBE_ERR_FC_NOT_NEGOTIATED;
@@ -2841,7 +2841,7 @@ out:
  *
  *  Enable flow control according to IEEE clause 37.
  **/
-static s32 ixgbe_fc_autoneg_backplane(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_fc_autoneg_backplane(struct ixgbe_hw *hw)
 {
 	u32 links2, anlp1_reg, autoc_reg, links;
 	s32 ret_val = IXGBE_ERR_FC_NOT_NEGOTIATED;
@@ -2881,7 +2881,7 @@ out:
  *
  *  Enable flow control according to IEEE clause 37.
  **/
-static s32 ixgbe_fc_autoneg_copper(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_fc_autoneg_copper(struct ixgbe_hw *hw)
 {
 	u16 technology_ability_reg = 0;
 	u16 lp_technology_ability_reg = 0;
@@ -3278,7 +3278,7 @@ out:
  *  pointer, and returns the value at that location.  This is used in both
  *  get and set mac_addr routines.
  **/
-static s32 ixgbe_get_san_mac_addr_offset(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_get_san_mac_addr_offset(struct ixgbe_hw *hw,
 					 u16 *san_mac_offset)
 {
 	DEBUGFUNC("ixgbe_get_san_mac_addr_offset");
@@ -4135,7 +4135,7 @@ void ixgbe_enable_relaxed_ordering_gen2(struct ixgbe_hw *hw)
  *  Calculates the checksum for some buffer on a specified length.  The
  *  checksum calculated is returned.
  **/
-static u8 ixgbe_calculate_checksum(u8 *buffer, u32 length)
+u8 ixgbe_calculate_checksum(u8 *buffer, u32 length)
 {
 	u32 i;
 	u8 sum = 0;
@@ -4161,8 +4161,8 @@ static u8 ixgbe_calculate_checksum(u8 *buffer, u32 length)
  *  Communicates with the manageability block.  On success return IXGBE_SUCCESS
  *  else return IXGBE_ERR_HOST_INTERFACE_COMMAND.
  **/
-static s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
-					u32 length)
+s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
+				 u32 length)
 {
 	u32 hicr, i, bi;
 	u32 hdr_size = sizeof(struct ixgbe_hic_hdr);

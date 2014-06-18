@@ -63,3 +63,4 @@ void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask);
 s32 ixgbe_blink_led_start_X540(struct ixgbe_hw *hw, u32 index);
 s32 ixgbe_blink_led_stop_X540(struct ixgbe_hw *hw, u32 index);
 #endif /* _IXGBE_X540_H_ */
+

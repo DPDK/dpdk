@@ -282,6 +282,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_RETA(_i)		(0x05C00 + ((_i) * 4))  /* 32 of these (0-31) */
 #define IXGBE_RSSRK(_i)		(0x05C80 + ((_i) * 4))  /* 10 of these (0-9) */
 
+
 /* Flow Director registers */
 #define IXGBE_FDIRCTRL	0x0EE00
 #define IXGBE_FDIRHKEY	0x0EE68
@@ -362,6 +363,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #define IXGBE_WUPL	0x05900
 #define IXGBE_WUPM	0x05A00 /* wake up pkt memory 0x5A00-0x5A7C */
+
 #define IXGBE_FHFT(_n)	(0x09000 + (_n * 0x100)) /* Flex host filter table */
 /* Ext Flexible Host Filter Table */
 #define IXGBE_FHFT_EXT(_n)	(0x09800 + (_n * 0x100))
@@ -422,7 +424,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_WUS_FLX5		IXGBE_WUFC_FLX5
 #define IXGBE_WUS_FLX_FILTERS	IXGBE_WUFC_FLX_FILTERS
 
-/* Wake Up Packet Length */
 #define IXGBE_WUPL_LENGTH_MASK	0xFFFF
 
 /* DCB registers */
@@ -437,6 +438,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_TDTQ2TCSR(_i)	(0x0622C + ((_i) * 0x40)) /* 8 of these (0-7) */
 #define IXGBE_TDPT2TCCR(_i)	(0x0CD20 + ((_i) * 4)) /* 8 of these (0-7) */
 #define IXGBE_TDPT2TCSR(_i)	(0x0CD40 + ((_i) * 4)) /* 8 of these (0-7) */
+
 
 
 /* Security Control Registers */
@@ -1779,28 +1781,28 @@ enum {
 #define IXGBE_PBANUM_LENGTH	11
 
 /* Checksum and EEPROM pointers */
-#define IXGBE_PBANUM_PTR_GUARD	0xFAFA
-#define IXGBE_EEPROM_CHECKSUM	0x3F
-#define IXGBE_EEPROM_SUM	0xBABA
-#define IXGBE_PCIE_ANALOG_PTR	0x03
-#define IXGBE_ATLAS0_CONFIG_PTR	0x04
-#define IXGBE_PHY_PTR		0x04
-#define IXGBE_ATLAS1_CONFIG_PTR	0x05
-#define IXGBE_OPTION_ROM_PTR	0x05
-#define IXGBE_PCIE_GENERAL_PTR	0x06
-#define IXGBE_PCIE_CONFIG0_PTR	0x07
-#define IXGBE_PCIE_CONFIG1_PTR	0x08
-#define IXGBE_CORE0_PTR		0x09
-#define IXGBE_CORE1_PTR		0x0A
-#define IXGBE_MAC0_PTR		0x0B
-#define IXGBE_MAC1_PTR		0x0C
-#define IXGBE_CSR0_CONFIG_PTR	0x0D
-#define IXGBE_CSR1_CONFIG_PTR	0x0E
-#define IXGBE_FW_PTR		0x0F
-#define IXGBE_PBANUM0_PTR	0x15
-#define IXGBE_PBANUM1_PTR	0x16
-#define IXGBE_ALT_MAC_ADDR_PTR	0x37
-#define IXGBE_FREE_SPACE_PTR	0X3E
+#define IXGBE_PBANUM_PTR_GUARD		0xFAFA
+#define IXGBE_EEPROM_CHECKSUM		0x3F
+#define IXGBE_EEPROM_SUM		0xBABA
+#define IXGBE_PCIE_ANALOG_PTR		0x03
+#define IXGBE_ATLAS0_CONFIG_PTR		0x04
+#define IXGBE_PHY_PTR			0x04
+#define IXGBE_ATLAS1_CONFIG_PTR		0x05
+#define IXGBE_OPTION_ROM_PTR		0x05
+#define IXGBE_PCIE_GENERAL_PTR		0x06
+#define IXGBE_PCIE_CONFIG0_PTR		0x07
+#define IXGBE_PCIE_CONFIG1_PTR		0x08
+#define IXGBE_CORE0_PTR			0x09
+#define IXGBE_CORE1_PTR			0x0A
+#define IXGBE_MAC0_PTR			0x0B
+#define IXGBE_MAC1_PTR			0x0C
+#define IXGBE_CSR0_CONFIG_PTR		0x0D
+#define IXGBE_CSR1_CONFIG_PTR		0x0E
+#define IXGBE_FW_PTR			0x0F
+#define IXGBE_PBANUM0_PTR		0x15
+#define IXGBE_PBANUM1_PTR		0x16
+#define IXGBE_ALT_MAC_ADDR_PTR		0x37
+#define IXGBE_FREE_SPACE_PTR		0X3E
 
 #define IXGBE_SAN_MAC_ADDR_PTR		0x28
 #define IXGBE_DEVICE_CAPS		0x2C

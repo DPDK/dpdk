@@ -247,7 +247,7 @@ s32 ixgbe_stop_adapter_vf(struct ixgbe_hw *hw)
  *  by the MO field of the MCSTCTRL. The MO field is set during initialization
  *  to mc_filter_type.
  **/
-static s32 ixgbe_mta_vector(struct ixgbe_hw *hw, u8 *mc_addr)
+STATIC s32 ixgbe_mta_vector(struct ixgbe_hw *hw, u8 *mc_addr)
 {
 	u32 vector = 0;
 
@@ -275,7 +275,7 @@ static s32 ixgbe_mta_vector(struct ixgbe_hw *hw, u8 *mc_addr)
 	return vector;
 }
 
-static void ixgbevf_write_msg_read_ack(struct ixgbe_hw *hw,
+STATIC void ixgbevf_write_msg_read_ack(struct ixgbe_hw *hw,
 					u32 *msg, u16 size)
 {
 	struct ixgbe_mbx_info *mbx = &hw->mbx;
@@ -301,6 +301,7 @@ s32 ixgbe_set_rar_vf(struct ixgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 	u32 msgbuf[3];
 	u8 *msg_addr = (u8 *)(&msgbuf[1]);
 	s32 ret_val;
+	UNREFERENCED_3PARAMETER(vmdq, enable_addr, index);
 
 	memset(msgbuf, 0, 12);
 	msgbuf[0] = IXGBE_VF_SET_MAC_ADDR;
@@ -340,6 +341,7 @@ s32 ixgbe_update_mc_addr_list_vf(struct ixgbe_hw *hw, u8 *mc_addr_list,
 	u32 cnt, i;
 	u32 vmdq;
 
+	UNREFERENCED_1PARAMETER(clear);
 
 	DEBUGFUNC("ixgbe_update_mc_addr_list_vf");
 
@@ -379,6 +381,7 @@ s32 ixgbe_set_vfta_vf(struct ixgbe_hw *hw, u32 vlan, u32 vind, bool vlan_on)
 	struct ixgbe_mbx_info *mbx = &hw->mbx;
 	u32 msgbuf[2];
 	s32 ret_val;
+	UNREFERENCED_1PARAMETER(vind);
 
 	msgbuf[0] = IXGBE_VF_SET_VLAN;
 	msgbuf[1] = vlan;
@@ -403,6 +406,7 @@ s32 ixgbe_set_vfta_vf(struct ixgbe_hw *hw, u32 vlan, u32 vind, bool vlan_on)
  **/
 u32 ixgbe_get_num_of_tx_queues_vf(struct ixgbe_hw *hw)
 {
+	UNREFERENCED_1PARAMETER(hw);
 	return IXGBE_VF_MAX_TX_QUEUES;
 }
 
@@ -414,6 +418,7 @@ u32 ixgbe_get_num_of_tx_queues_vf(struct ixgbe_hw *hw)
  **/
 u32 ixgbe_get_num_of_rx_queues_vf(struct ixgbe_hw *hw)
 {
+	UNREFERENCED_1PARAMETER(hw);
 	return IXGBE_VF_MAX_RX_QUEUES;
 }
 
@@ -476,6 +481,7 @@ s32 ixgbe_setup_mac_link_vf(struct ixgbe_hw *hw,
 			    ixgbe_link_speed speed, bool autoneg,
 			    bool autoneg_wait_to_complete)
 {
+	UNREFERENCED_3PARAMETER(hw, speed, autoneg_wait_to_complete);
 	return IXGBE_SUCCESS;
 }
 
@@ -492,6 +498,7 @@ s32 ixgbe_check_mac_link_vf(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 			    bool *link_up, bool autoneg_wait_to_complete)
 {
 	u32 links_reg;
+	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
 
 	if (!(hw->mbx.ops.check_for_rst(hw, 0))) {
 		*link_up = false;

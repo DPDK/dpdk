@@ -169,6 +169,7 @@ s32 ixgbe_get_link_capabilities_X540(struct ixgbe_hw *hw,
  **/
 enum ixgbe_media_type ixgbe_get_media_type_X540(struct ixgbe_hw *hw)
 {
+	UNREFERENCED_1PARAMETER(hw);
 	return ixgbe_media_type_copper;
 }
 
@@ -650,7 +651,7 @@ s32 ixgbe_update_eeprom_checksum_X540(struct ixgbe_hw *hw)
 STATIC s32 ixgbe_update_flash_X540(struct ixgbe_hw *hw)
 {
 	u32 flup;
-	s32 status = IXGBE_ERR_EEPROM;
+	s32 status;
 
 	DEBUGFUNC("ixgbe_update_flash_X540");
 
@@ -775,7 +776,7 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
 	}
 
 	/* If the resource is not released by the FW/HW the SW can assume that
-	 * the FW/HW malfunctions. In that case the SW should sets the SW bit(s)
+	 * the FW/HW malfunctions. In that case the SW should set the SW bit(s)
 	 * of the requested resource(s) while ignoring the corresponding FW/HW
 	 * bits in the SW_FW_SYNC register.
 	 */
