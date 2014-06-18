@@ -386,6 +386,7 @@ s32 e1000_init_nvm_params_82575(struct e1000_hw *hw)
 		nvm->ops.update = e1000_update_nvm_checksum_82580;
 		break;
 	case e1000_i350:
+	case e1000_i354:
 		nvm->ops.validate = e1000_validate_nvm_checksum_i350;
 		nvm->ops.update = e1000_update_nvm_checksum_i350;
 		break;
