@@ -383,9 +383,30 @@ def unbind_all(dev_list, force=False):
 
 def bind_all(dev_list, driver, force=False):
     """Unbind method, takes a list of device locations"""
+    global devices
+
     dev_list = map(dev_id_from_dev_name, dev_list)
+
     for d in dev_list:
         bind_one(d, driver, force)
+
+    # when binding devices to a generic driver (i.e. one that doesn't have a
+    # PCI ID table), some devices that are not bound to any other driver could
+    # be bound even if no one has asked them to. hence, we check the list of
+    # drivers again, and see if some of the previously-unbound devices were
+    # erroneously bound.
+    for d in devices.keys():
+        # skip devices that were already bound or that we know should be bound
+        if "Driver_str" in devices[d] or d in dev_list:
+            continue
+
+        # update information about this device
+        devices[d] = dict(devices[d].items() +
+                          get_pci_device_details(d).items())
+
+        # check if updated information indicates that the device was bound
+        if "Driver_str" in devices[d]:
+            unbind_one(d, force)
 
 def display_devices(title, dev_list, extra_params = None):
     '''Displays to the user the details of a list of devices given in "dev_list"
