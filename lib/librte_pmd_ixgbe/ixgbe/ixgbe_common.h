@@ -160,6 +160,7 @@ void ixgbe_clear_tx_pending(struct ixgbe_hw *hw);
 
 extern s32 ixgbe_reset_pipeline_82599(struct ixgbe_hw *hw);
 extern void ixgbe_stop_mac_link_on_d3_82599(struct ixgbe_hw *hw);
+bool ixgbe_mng_enabled(struct ixgbe_hw *hw);
 
 void ixgbe_disable_rx_generic(struct ixgbe_hw *hw);
 void ixgbe_enable_rx_generic(struct ixgbe_hw *hw);

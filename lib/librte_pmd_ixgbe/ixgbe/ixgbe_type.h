@@ -800,6 +800,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_BMCIP_IPADDR_VALID	0x00000002
 
 /* Management Bit Fields and Masks */
+#define IXGBE_MANC_RCV_TCO_EN	0x00020000 /* Rcv TCO packet enable */
 #define IXGBE_MANC_EN_BMC2OS	0x10000000 /* Ena BMC2OS and OS2BMC traffic */
 #define IXGBE_MANC_EN_BMC2OS_SHIFT	28
 
@@ -1101,6 +1102,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_CTRL_RST_MASK	(IXGBE_CTRL_LNK_RST | IXGBE_CTRL_RST)
 
 /* FACTPS */
+#define IXGBE_FACTPS_MNGCG	0x20000000 /* Manageblility Clock Gated */
 #define IXGBE_FACTPS_LFS	0x40000000 /* LAN Function Select */
 
 /* MHADD Bit Masks */
