@@ -410,7 +410,11 @@ POSSIBILITY OF SUCH DAMAGE.
 /* Ext Flexible Host Filter Table */
 #define IXGBE_FHFT_EXT(_n)	(0x09800 + (_n * 0x100))
 
+/* Four Flexible Filters are supported */
 #define IXGBE_FLEXIBLE_FILTER_COUNT_MAX		4
+
+/* Six Flexible Filters are supported */
+#define IXGBE_FLEXIBLE_FILTER_COUNT_MAX_6	6
 #define IXGBE_EXT_FLEXIBLE_FILTER_COUNT_MAX	2
 
 /* Each Flexible Filter is at most 128 (0x80) bytes in length */
@@ -442,10 +446,11 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_WUFC_FLX3	0x00080000 /* Flexible Filter 3 Enable */
 #define IXGBE_WUFC_FLX4	0x00100000 /* Flexible Filter 4 Enable */
 #define IXGBE_WUFC_FLX5	0x00200000 /* Flexible Filter 5 Enable */
-#define IXGBE_WUFC_FLX_FILTERS	0x000F0000 /* Mask for 4 flex filters */
+#define IXGBE_WUFC_FLX_FILTERS		0x000F0000 /* Mask for 4 flex filters */
 /* Mask for Ext. flex filters */
 #define IXGBE_WUFC_EXT_FLX_FILTERS	0x00300000
-#define IXGBE_WUFC_ALL_FILTERS	0x003F00FF /* Mask for all wakeup filters */
+#define IXGBE_WUFC_ALL_FILTERS		0x000F00FF /* Mask all 4 flex filters */
+#define IXGBE_WUFC_ALL_FILTERS_6	0x003F00FF /* Mask all 6 flex filters */
 #define IXGBE_WUFC_FLX_OFFSET	16 /* Offset to the Flexible Filters bits */
 
 /* Wake Up Status */
@@ -1601,11 +1606,13 @@ enum {
  *	FCoE (0x8906):	 Filter 2
  *	1588 (0x88f7):	 Filter 3
  *	FIP  (0x8914):	 Filter 4
+ *	LLDP (0x88CC):	 Filter 5
  */
 #define IXGBE_ETQF_FILTER_EAPOL		0
 #define IXGBE_ETQF_FILTER_FCOE		2
 #define IXGBE_ETQF_FILTER_1588		3
 #define IXGBE_ETQF_FILTER_FIP		4
+#define IXGBE_ETQF_FILTER_LLDP		5
 /* VLAN Control Bit Masks */
 #define IXGBE_VLNCTRL_VET		0x0000FFFF  /* bits 0-15 */
 #define IXGBE_VLNCTRL_CFI		0x10000000  /* bit 28 */
