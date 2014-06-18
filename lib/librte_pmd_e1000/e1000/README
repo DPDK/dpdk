@@ -31,7 +31,7 @@
      OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 This directory contains source code of FreeBSD em & igb drivers of version
-cid-shared-code.2012.11.09 released by LAD. The sub-directory of lad/
+cid-shared-code.2014.04.21 released by LAD. The sub-directory of lad/
 contains the original source package.
 Few changes to the original FreeBSD sources were made to:
 - Adopt it for PMD usage mode:
