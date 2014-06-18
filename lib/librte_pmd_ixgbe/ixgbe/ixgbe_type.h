@@ -332,6 +332,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_FDIRSIP4M	0x0EE40
 #define IXGBE_FDIRTCPM	0x0EE44
 #define IXGBE_FDIRUDPM	0x0EE48
+#define IXGBE_FDIRSCTPM	0x0EE78
 #define IXGBE_FDIRIP6M	0x0EE74
 #define IXGBE_FDIRM	0x0EE70
 
@@ -2340,6 +2341,7 @@ enum ixgbe_fdir_pballoc_type {
 #define IXGBE_FDIRCTRL_DROP_Q_SHIFT		8
 #define IXGBE_FDIRCTRL_FLEX_SHIFT		16
 #define IXGBE_FDIRCTRL_SEARCHLIM		0x00800000
+#define IXGBE_FDIRCTRL_FILTERMODE_MASK		0x00E00000
 #define IXGBE_FDIRCTRL_MAX_LENGTH_SHIFT		24
 #define IXGBE_FDIRCTRL_FULL_THRESH_MASK		0xF0000000
 #define IXGBE_FDIRCTRL_FULL_THRESH_SHIFT	28
@@ -2394,10 +2396,11 @@ enum ixgbe_fdir_pballoc_type {
 #define IXGBE_FDIRCMD_QUEUE_EN			0x00008000
 #define IXGBE_FDIRCMD_FLOW_TYPE_SHIFT		5
 #define IXGBE_FDIRCMD_RX_QUEUE_SHIFT		16
+#define IXGBE_FDIRCMD_TUNNEL_FILTER_SHIFT	23
 #define IXGBE_FDIRCMD_VT_POOL_SHIFT		24
 #define IXGBE_FDIR_INIT_DONE_POLL		10
 #define IXGBE_FDIRCMD_CMD_POLL			10
-
+#define IXGBE_FDIRCMD_TUNNEL_FILTER		0x00800000
 #define IXGBE_FDIR_DROP_QUEUE			127
 
 #define IXGBE_STATUS_OVERHEATING_BIT		20 /* STATUS overtemp bit num */
@@ -2686,6 +2689,7 @@ typedef u32 ixgbe_physical_layer;
 #define IXGBE_ATR_L4TYPE_TCP		0x2
 #define IXGBE_ATR_L4TYPE_SCTP		0x3
 #define IXGBE_ATR_L4TYPE_IPV6_MASK	0x4
+#define IXGBE_ATR_L4TYPE_TUNNEL_MASK	0x10
 enum ixgbe_atr_flow_type {
 	IXGBE_ATR_FLOW_TYPE_IPV4	= 0x0,
 	IXGBE_ATR_FLOW_TYPE_UDPV4	= 0x1,
@@ -2695,6 +2699,14 @@ enum ixgbe_atr_flow_type {
 	IXGBE_ATR_FLOW_TYPE_UDPV6	= 0x5,
 	IXGBE_ATR_FLOW_TYPE_TCPV6	= 0x6,
 	IXGBE_ATR_FLOW_TYPE_SCTPV6	= 0x7,
+	IXGBE_ATR_FLOW_TYPE_TUNNELED_IPV4	= 0x10,
+	IXGBE_ATR_FLOW_TYPE_TUNNELED_UDPV4	= 0x11,
+	IXGBE_ATR_FLOW_TYPE_TUNNELED_TCPV4	= 0x12,
+	IXGBE_ATR_FLOW_TYPE_TUNNELED_SCTPV4	= 0x13,
+	IXGBE_ATR_FLOW_TYPE_TUNNELED_IPV6	= 0x14,
+	IXGBE_ATR_FLOW_TYPE_TUNNELED_UDPV6	= 0x15,
+	IXGBE_ATR_FLOW_TYPE_TUNNELED_TCPV6	= 0x16,
+	IXGBE_ATR_FLOW_TYPE_TUNNELED_SCTPV6	= 0x17,
 };
 
 /* Flow Director ATR input struct. */
@@ -2706,6 +2718,9 @@ union ixgbe_atr_input {
 	 * flow_type	- 1 byte
 	 * vlan_id	- 2 bytes
 	 * src_ip	- 16 bytes
+	 * inner_mac	- 6 bytes
+	 * cloud_mode	- 2 bytes
+	 * tni_vni	- 4 bytes
 	 * dst_ip	- 16 bytes
 	 * src_port	- 2 bytes
 	 * dst_port	- 2 bytes
@@ -2718,12 +2733,15 @@ union ixgbe_atr_input {
 		__be16 vlan_id;
 		__be32 dst_ip[4];
 		__be32 src_ip[4];
+		u8 inner_mac[6];
+		__be16 tunnel_type;
+		__be32 tni_vni;
 		__be16 src_port;
 		__be16 dst_port;
 		__be16 flex_bytes;
 		__be16 bkt_hash;
 	} formatted;
-	__be32 dword_stream[11];
+	__be32 dword_stream[14];
 };
 
 /* Flow Director compressed ATR hash input struct */

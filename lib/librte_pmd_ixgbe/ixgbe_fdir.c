@@ -280,9 +280,8 @@ ixgbe_atr_compute_hash_82599(union ixgbe_atr_input *atr_input,
 	flow_vm_vlan = IXGBE_NTOHL(atr_input->dword_stream[0]);
 
 	/* generate common hash dword */
-	for (i = 10; i; i -= 2)
-		common_hash_dword ^= atr_input->dword_stream[i] ^
-				     atr_input->dword_stream[i - 1];
+	for (i = 1; i <= 13; i++)
+		common_hash_dword ^= atr_input->dword_stream[i];
 
 	hi_hash_dword = IXGBE_NTOHL(common_hash_dword);
 
