@@ -41,6 +41,9 @@ POSSIBILITY OF SUCH DAMAGE.
 		IXGBE_WRITE_REG(hw, reg, (u32) value); \
 		IXGBE_WRITE_REG(hw, reg + 4, (u32) (value >> 32)); \
 	} while (0)
+#ifndef IXGBE_REMOVED
+#define IXGBE_REMOVED(a) (0)
+#endif /* IXGBE_REMOVED */
 struct ixgbe_pba {
 	u16 word[2];
 	u16 *pba_block;

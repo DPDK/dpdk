@@ -2992,6 +2992,53 @@ out:
 	}
 }
 
+/*
+ * ixgbe_pcie_timeout_poll - Return number of times to poll for completion
+ * @hw: pointer to hardware structure
+ *
+ * System-wide timeout range is encoded in PCIe Device Control2 register.
+ *
+ * Add 10% to specified maximum and return the number of times to poll for
+ * completion timeout, in units of 100 microsec.  Never return less than
+ * 800 = 80 millisec.
+ */
+STATIC u32 ixgbe_pcie_timeout_poll(struct ixgbe_hw *hw)
+{
+	s16 devctl2;
+	u32 pollcnt;
+
+	devctl2 = IXGBE_READ_PCIE_WORD(hw, IXGBE_PCI_DEVICE_CONTROL2);
+	devctl2 &= IXGBE_PCIDEVCTRL2_TIMEO_MASK;
+
+	switch (devctl2) {
+	case IXGBE_PCIDEVCTRL2_65_130ms:
+		pollcnt = 1300;		/* 130 millisec */
+		break;
+	case IXGBE_PCIDEVCTRL2_260_520ms:
+		pollcnt = 5200;		/* 520 millisec */
+		break;
+	case IXGBE_PCIDEVCTRL2_1_2s:
+		pollcnt = 20000;	/* 2 sec */
+		break;
+	case IXGBE_PCIDEVCTRL2_4_8s:
+		pollcnt = 80000;	/* 8 sec */
+		break;
+	case IXGBE_PCIDEVCTRL2_17_34s:
+		pollcnt = 34000;	/* 34 sec */
+		break;
+	case IXGBE_PCIDEVCTRL2_50_100us:	/* 100 microsecs */
+	case IXGBE_PCIDEVCTRL2_1_2ms:		/* 2 millisecs */
+	case IXGBE_PCIDEVCTRL2_16_32ms:		/* 32 millisec */
+	case IXGBE_PCIDEVCTRL2_16_32ms_def:	/* 32 millisec default */
+	default:
+		pollcnt = 800;		/* 80 millisec minimum */
+		break;
+	}
+
+	/* add 10% to spec maximum */
+	return (pollcnt * 11) / 10;
+}
+
 /**
  *  ixgbe_disable_pcie_master - Disable PCI-express master access
  *  @hw: pointer to hardware structure
@@ -3004,15 +3051,17 @@ out:
 s32 ixgbe_disable_pcie_master(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_SUCCESS;
-	u32 i;
+	u32 i, poll;
+	u16 value;
 
 	DEBUGFUNC("ixgbe_disable_pcie_master");
 
 	/* Always set this bit to ensure any future transactions are blocked */
 	IXGBE_WRITE_REG(hw, IXGBE_CTRL, IXGBE_CTRL_GIO_DIS);
 
-	/* Exit if master requets are blocked */
-	if (!(IXGBE_READ_REG(hw, IXGBE_STATUS) & IXGBE_STATUS_GIO))
+	/* Exit if master requests are blocked */
+	if (!(IXGBE_READ_REG(hw, IXGBE_STATUS) & IXGBE_STATUS_GIO) ||
+	    IXGBE_REMOVED(hw->hw_addr))
 		goto out;
 
 	/* Poll for master request bit to clear */
@@ -3037,10 +3086,13 @@ s32 ixgbe_disable_pcie_master(struct ixgbe_hw *hw)
 	 * Before proceeding, make sure that the PCIe block does not have
 	 * transactions pending.
 	 */
-	for (i = 0; i < IXGBE_PCI_MASTER_DISABLE_TIMEOUT; i++) {
+	poll = ixgbe_pcie_timeout_poll(hw);
+	for (i = 0; i < poll; i++) {
 		usec_delay(100);
-		if (!(IXGBE_READ_PCIE_WORD(hw, IXGBE_PCI_DEVICE_STATUS) &
-		    IXGBE_PCI_DEVICE_STATUS_TRANSACTION_PENDING))
+		value = IXGBE_READ_PCIE_WORD(hw, IXGBE_PCI_DEVICE_STATUS);
+		if (IXGBE_REMOVED(hw->hw_addr))
+			goto out;
+		if (!(value & IXGBE_PCI_DEVICE_STATUS_TRANSACTION_PENDING))
 			goto out;
 	}
 
@@ -3456,6 +3508,8 @@ u16 ixgbe_get_pcie_msix_count_generic(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_get_pcie_msix_count_generic");
 	msix_count = IXGBE_READ_PCIE_WORD(hw, pcie_offset);
+	if (IXGBE_REMOVED(hw->hw_addr))
+		msix_count = 0;
 	msix_count &= IXGBE_PCIE_MSIX_TBL_SZ_MASK;
 
 	/* MSI-X count is zero-based in HW */
@@ -3558,6 +3612,9 @@ s32 ixgbe_clear_vmdq_generic(struct ixgbe_hw *hw, u32 rar, u32 vmdq)
 
 	mpsar_lo = IXGBE_READ_REG(hw, IXGBE_MPSAR_LO(rar));
 	mpsar_hi = IXGBE_READ_REG(hw, IXGBE_MPSAR_HI(rar));
+
+	if (IXGBE_REMOVED(hw->hw_addr))
+		goto done;
 
 	if (!mpsar_lo && !mpsar_hi)
 		goto done;
