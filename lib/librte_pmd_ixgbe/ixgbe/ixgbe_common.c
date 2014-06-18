@@ -33,6 +33,8 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "ixgbe_common.h"
 #include "ixgbe_phy.h"
+#include "ixgbe_dcb.h"
+#include "ixgbe_dcb_82599.h"
 #include "ixgbe_api.h"
 #ident "$Id: ixgbe_common.c,v 1.382 2013/11/22 01:02:01 jtkirshe Exp $"
 
@@ -4527,3 +4529,21 @@ void ixgbe_clear_tx_pending(struct ixgbe_hw *hw)
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 }
 
+
+/**
+ * ixgbe_dcb_get_rtrup2tc_generic - read rtrup2tc reg
+ * @hw: pointer to hardware structure
+ * @map: pointer to u8 arr for returning map
+ *
+ * Read the rtrup2tc HW register and resolve its content into map
+ **/
+void ixgbe_dcb_get_rtrup2tc_generic(struct ixgbe_hw *hw, u8 *map)
+{
+	u32 reg, i;
+
+	reg = IXGBE_READ_REG(hw, IXGBE_RTRUP2TC);
+	for (i = 0; i < IXGBE_DCB_MAX_USER_PRIORITY; i++)
+		map[i] = IXGBE_RTRUP2TC_UP_MASK &
+			(reg >> (i * IXGBE_RTRUP2TC_UP_SHIFT));
+	return;
+}

@@ -173,6 +173,8 @@ s32 ixgbe_init_ops_82598(struct ixgbe_hw *hw)
 	/* Manageability interface */
 	mac->ops.set_fw_drv_ver = NULL;
 
+	mac->ops.get_rtrup2tc = NULL;
+
 	return ret_val;
 }
 

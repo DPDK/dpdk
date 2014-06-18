@@ -148,6 +148,8 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
 	/* Manageability interface */
 	mac->ops.set_fw_drv_ver = &ixgbe_set_fw_drv_ver_generic;
 
+	mac->ops.get_rtrup2tc = &ixgbe_dcb_get_rtrup2tc_generic;
+
 	return ret_val;
 }
 

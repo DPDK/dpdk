@@ -49,6 +49,8 @@ struct ixgbe_pba {
 	u16 *pba_block;
 };
 
+void ixgbe_dcb_get_rtrup2tc_generic(struct ixgbe_hw *hw, u8 *map);
+
 u16 ixgbe_get_pcie_msix_count_generic(struct ixgbe_hw *hw);
 s32 ixgbe_init_ops_generic(struct ixgbe_hw *hw);
 s32 ixgbe_init_hw_generic(struct ixgbe_hw *hw);

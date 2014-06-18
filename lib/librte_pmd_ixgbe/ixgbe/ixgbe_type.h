@@ -3075,6 +3075,7 @@ struct ixgbe_mac_operations {
 
 	/* Manageability interface */
 	s32 (*set_fw_drv_ver)(struct ixgbe_hw *, u8, u8, u8, u8);
+	void (*get_rtrup2tc)(struct ixgbe_hw *hw, u8 *map);
 };
 
 struct ixgbe_phy_operations {

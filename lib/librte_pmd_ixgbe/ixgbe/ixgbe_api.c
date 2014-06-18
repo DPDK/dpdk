@@ -36,6 +36,19 @@ POSSIBILITY OF SUCH DAMAGE.
 #ident "$Id: ixgbe_api.c,v 1.187 2012/11/08 10:11:52 jtkirshe Exp $"
 
 /**
+ * ixgbe_dcb_get_rtrup2tc - read rtrup2tc reg
+ * @hw: pointer to hardware structure
+ * @map: pointer to u8 arr for returning map
+ *
+ * Read the rtrup2tc HW register and resolve its content into map
+ **/
+void ixgbe_dcb_get_rtrup2tc(struct ixgbe_hw *hw, u8 *map)
+{
+	if (hw->mac.ops.get_rtrup2tc)
+		hw->mac.ops.get_rtrup2tc(hw, map);
+}
+
+/**
  *  ixgbe_init_shared_code - Initialize the shared code
  *  @hw: pointer to hardware structure
  *

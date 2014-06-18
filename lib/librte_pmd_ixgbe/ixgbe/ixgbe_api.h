@@ -37,6 +37,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_type.h"
 #ident "$Id: ixgbe_api.h,v 1.115 2012/08/23 23:30:15 jtkirshe Exp $"
 
+void ixgbe_dcb_get_rtrup2tc(struct ixgbe_hw *hw, u8 *map);
+
 s32 ixgbe_init_shared_code(struct ixgbe_hw *hw);
 
 extern s32 ixgbe_init_ops_82598(struct ixgbe_hw *hw);
