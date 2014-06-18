@@ -145,7 +145,7 @@ rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		"tbl: %p, max_cycles: %" PRIu64 ", entry_mask: %#x, "
 		"max_entries: %u, use_entries: %u\n\n",
 		__func__, __LINE__,
-		mb, tms, key.src_dst, key.id, ip_ofs, ip_len, ip_flag,
+		mb, tms, key.src_dst[0], key.id, ip_ofs, ip_len, ip_flag,
 		tbl, tbl->max_cycles, tbl->entry_mask, tbl->max_entries,
 		tbl->use_entries);
 
@@ -161,7 +161,7 @@ rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		", total_size: %u, frag_size: %u, last_idx: %u\n\n",
 		__func__, __LINE__,
 		tbl, tbl->max_entries, tbl->use_entries,
-		fp, fp->key.src_dst, fp->key.id, fp->start,
+		fp, fp->key.src_dst[0], fp->key.id, fp->start,
 		fp->total_size, fp->frag_size, fp->last_idx);
 
 
@@ -176,7 +176,7 @@ rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		", total_size: %u, frag_size: %u, last_idx: %u\n\n",
 		__func__, __LINE__, mb,
 		tbl, tbl->max_entries, tbl->use_entries,
-		fp, fp->key.src_dst, fp->key.id, fp->start,
+		fp, fp->key.src_dst[0], fp->key.id, fp->start,
 		fp->total_size, fp->frag_size, fp->last_idx);
 
 	return (mb);
