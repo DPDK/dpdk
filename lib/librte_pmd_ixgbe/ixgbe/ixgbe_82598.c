@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -36,7 +36,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_api.h"
 #include "ixgbe_common.h"
 #include "ixgbe_phy.h"
-#ident "$Id: ixgbe_82598.c,v 1.194 2012/03/28 00:54:08 jtkirshe Exp $"
+#ident "$Id: ixgbe_82598.c,v 1.199 2013/05/22 23:26:31 jtkirshe Exp $"
 
 #define IXGBE_82598_MAX_TX_QUEUES 32
 #define IXGBE_82598_MAX_RX_QUEUES 64

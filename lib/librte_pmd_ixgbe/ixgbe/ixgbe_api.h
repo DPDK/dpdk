@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -35,7 +35,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define _IXGBE_API_H_
 
 #include "ixgbe_type.h"
-#ident "$Id: ixgbe_api.h,v 1.115 2012/08/23 23:30:15 jtkirshe Exp $"
+#ident "$Id: ixgbe_api.h,v 1.123 2013/11/22 01:02:01 jtkirshe Exp $"
 
 void ixgbe_dcb_get_rtrup2tc(struct ixgbe_hw *hw, u8 *map);
 

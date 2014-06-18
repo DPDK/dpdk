@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -35,7 +35,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_api.h"
 #include "ixgbe_type.h"
 #include "ixgbe_vf.h"
-#ident "$Id: ixgbe_vf.c,v 1.58 2012/08/09 20:24:53 cmwyborn Exp $"
+#ident "$Id: ixgbe_vf.c,v 1.62 2013/06/27 21:30:59 jtkirshe Exp $"
 
 #ifndef IXGBE_VFWRITE_REG
 #define IXGBE_VFWRITE_REG IXGBE_WRITE_REG

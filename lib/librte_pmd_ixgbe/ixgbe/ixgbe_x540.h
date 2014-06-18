@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -35,7 +35,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define _IXGBE_X540_H_
 
 #include "ixgbe_type.h"
-#ident "$Id: ixgbe_x540.h,v 1.6 2012/08/09 20:43:58 cmwyborn Exp $"
+#ident "$Id: ixgbe_x540.h,v 1.11 2013/10/11 08:36:03 jtkirshe Exp $"
 
 s32 ixgbe_get_link_capabilities_X540(struct ixgbe_hw *hw,
 				     ixgbe_link_speed *speed, bool *autoneg);

@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -35,7 +35,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define _IXGBE_COMMON_H_
 
 #include "ixgbe_type.h"
-#ident "$Id: ixgbe_common.h,v 1.133 2012/11/05 23:08:30 jtkirshe Exp $"
+#ident "$Id: ixgbe_common.h,v 1.143 2013/11/22 01:02:01 jtkirshe Exp $"
 #define IXGBE_WRITE_REG64(hw, reg, value) \
 	do { \
 		IXGBE_WRITE_REG(hw, reg, (u32) value); \

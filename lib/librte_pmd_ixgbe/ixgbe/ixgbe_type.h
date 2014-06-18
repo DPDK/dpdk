@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -74,7 +74,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "ixgbe_osdep.h"
 
-#ident "$Id: ixgbe_type.h,v 1.552 2012/11/08 11:33:27 jtkirshe Exp $"
+#ident "$Id: ixgbe_type.h,v 1.630 2013/11/22 22:48:40 jtkirshe Exp $"
 
 /* Vendor ID */
 #define IXGBE_INTEL_VENDOR_ID			0x8086

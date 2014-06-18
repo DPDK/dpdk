@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef __IXGBE_VF_H__
 #define __IXGBE_VF_H__
-#ident "$Id: ixgbe_vf.h,v 1.34 2012/08/09 17:04:18 cmwyborn Exp $"
+#ident "$Id: ixgbe_vf.h,v 1.37 2013/11/07 08:18:53 jtkirshe Exp $"
 
 #define IXGBE_VF_IRQ_CLEAR_MASK	7
 #define IXGBE_VF_MAX_TX_QUEUES	8

@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef _IXGBE_DCB_82599_H_
 #define _IXGBE_DCB_82599_H_
-#ident "$Id: ixgbe_dcb_82599.h,v 1.33 2012/03/26 22:28:19 jtkirshe Exp $"
+#ident "$Id: ixgbe_dcb_82599.h,v 1.34 2013/03/20 21:52:47 jtkirshe Exp $"
 
 /* DCB register definitions */
 #define IXGBE_RTTDCS_TDPAC	0x00000001 /* 0 Round Robin,

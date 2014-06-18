@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -105,7 +105,7 @@ POSSIBILITY OF SUCH DAMAGE.
 /* SFP+ SFF-8472 Compliance */
 #define IXGBE_SFF_SFF_8472_UNSUP	0x00
 
-#ident "$Id: ixgbe_phy.h,v 1.48 2012/01/04 01:49:02 jtkirshe Exp $"
+#ident "$Id: ixgbe_phy.h,v 1.56 2013/09/05 23:59:49 jtkirshe Exp $"
 
 s32 ixgbe_init_phy_ops_generic(struct ixgbe_hw *hw);
 bool ixgbe_validate_phy_addr(struct ixgbe_hw *hw, u32 phy_addr);

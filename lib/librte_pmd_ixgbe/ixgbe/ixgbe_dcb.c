@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -36,7 +36,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_dcb.h"
 #include "ixgbe_dcb_82598.h"
 #include "ixgbe_dcb_82599.h"
-#ident "$Id: ixgbe_dcb.c,v 1.52 2012/05/24 02:09:56 jtkirshe Exp $"
+#ident "$Id: ixgbe_dcb.c,v 1.55 2013/11/22 01:02:01 jtkirshe Exp $"
 
 /**
  * ixgbe_dcb_calculate_tc_credits - This calculates the ieee traffic class

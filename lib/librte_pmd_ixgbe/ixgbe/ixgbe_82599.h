@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef _IXGBE_82599_H_
 #define _IXGBE_82599_H_
-#ident "$Id: ixgbe_82599.h,v 1.7 2012/10/03 07:10:29 jtkirshe Exp $"
+#ident "$Id: ixgbe_82599.h,v 1.12 2013/10/30 10:19:10 jtkirshe Exp $"
 
 s32 ixgbe_get_link_capabilities_82599(struct ixgbe_hw *hw,
 				      ixgbe_link_speed *speed, bool *autoneg);
