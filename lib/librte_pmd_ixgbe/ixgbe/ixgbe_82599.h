@@ -61,4 +61,6 @@ s32 ixgbe_identify_phy_82599(struct ixgbe_hw *hw);
 s32 ixgbe_init_phy_ops_82599(struct ixgbe_hw *hw);
 u32 ixgbe_get_supported_physical_layer_82599(struct ixgbe_hw *hw);
 s32 ixgbe_enable_rx_dma_82599(struct ixgbe_hw *hw, u32 regval);
+s32 prot_autoc_read_82599(struct ixgbe_hw *hw, bool *locked, u32 *reg_val);
+s32 prot_autoc_write_82599(struct ixgbe_hw *hw, u32 reg_val, bool locked);
 #endif /* _IXGBE_82599_H_ */

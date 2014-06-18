@@ -120,6 +120,9 @@ s32 ixgbe_acquire_swfw_sync(struct ixgbe_hw *hw, u16 mask);
 void ixgbe_release_swfw_sync(struct ixgbe_hw *hw, u16 mask);
 s32 ixgbe_disable_pcie_master(struct ixgbe_hw *hw);
 
+s32 prot_autoc_read_generic(struct ixgbe_hw *hw, bool *, u32 *reg_val);
+s32 prot_autoc_write_generic(struct ixgbe_hw *hw, u32 reg_val, bool locked);
+
 s32 ixgbe_blink_led_start_generic(struct ixgbe_hw *hw, u32 index);
 s32 ixgbe_blink_led_stop_generic(struct ixgbe_hw *hw, u32 index);
 
