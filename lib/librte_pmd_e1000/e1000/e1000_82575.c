@@ -55,7 +55,6 @@ STATIC s32  e1000_check_for_link_media_swap(struct e1000_hw *hw);
 STATIC s32  e1000_get_cfg_done_82575(struct e1000_hw *hw);
 STATIC s32  e1000_get_link_up_info_82575(struct e1000_hw *hw, u16 *speed,
 					 u16 *duplex);
-STATIC s32  e1000_init_hw_82575(struct e1000_hw *hw);
 STATIC s32  e1000_phy_hw_reset_sgmii_82575(struct e1000_hw *hw);
 STATIC s32  e1000_read_phy_reg_sgmii_82575(struct e1000_hw *hw, u32 offset,
 					   u16 *data);
@@ -449,6 +448,9 @@ STATIC s32 e1000_init_mac_params_82575(struct e1000_hw *hw)
 	else
 	mac->ops.reset_hw = e1000_reset_hw_82575;
 	/* hw initialization */
+	if ((mac->type == e1000_i210) || (mac->type == e1000_i211))
+		mac->ops.init_hw = e1000_init_hw_i210;
+	else
 	mac->ops.init_hw = e1000_init_hw_82575;
 	/* link setup */
 	mac->ops.setup_link = e1000_setup_link_generic;
@@ -1460,7 +1462,7 @@ STATIC s32 e1000_reset_hw_82575(struct e1000_hw *hw)
  *
  *  This inits the hardware readying it for operation.
  **/
-STATIC s32 e1000_init_hw_82575(struct e1000_hw *hw)
+s32 e1000_init_hw_82575(struct e1000_hw *hw)
 {
 	struct e1000_mac_info *mac = &hw->mac;
 	s32 ret_val;

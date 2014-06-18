@@ -76,6 +76,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_CTRL_EXT_EE_RST	0x00002000 /* Reinitialize from EEPROM */
 /* Physical Func Reset Done Indication */
 #define E1000_CTRL_EXT_PFRSTD	0x00004000
+#define E1000_CTRL_EXT_SDLPE	0X00040000  /* SerDes Low Power Enable */
 #define E1000_CTRL_EXT_SPD_BYPS	0x00008000 /* Speed Select Bypass */
 #define E1000_CTRL_EXT_RO_DIS	0x00020000 /* Relaxed Ordering disable */
 #define E1000_CTRL_EXT_DMA_DYN_CLK_EN	0x00080000 /* DMA Dynamic Clk Gating */
