@@ -1118,7 +1118,7 @@ MAIN(int argc, char **argv)
 			qconf = &lcore_queue_conf[rx_lcore_id];
 		}
 
-		socket = rte_eth_dev_socket_id(portid);
+		socket = rte_lcore_to_socket_id(portid);
 		if (socket == SOCKET_ID_ANY)
 			socket = 0;
 
