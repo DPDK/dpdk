@@ -523,17 +523,6 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	rte_snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
 			loc->domain, loc->bus, loc->devid, loc->function);
 
-	/* get container fd (needs to be done only once per initialization) */
-	if (vfio_cfg.vfio_container_fd == -1) {
-		int vfio_container_fd = pci_vfio_get_container_fd();
-		if (vfio_container_fd < 0) {
-			RTE_LOG(ERR, EAL, "  %s cannot open VFIO container!\n", pci_addr);
-			return -1;
-		}
-
-		vfio_cfg.vfio_container_fd = vfio_container_fd;
-	}
-
 	/* get group number */
 	iommu_group_no = pci_vfio_get_group_no(pci_addr);
 
@@ -770,10 +759,10 @@ pci_vfio_enable(void)
 		vfio_cfg.vfio_groups[i].fd = -1;
 		vfio_cfg.vfio_groups[i].group_no = -1;
 	}
-	vfio_cfg.vfio_container_fd = -1;
+	vfio_cfg.vfio_container_fd = pci_vfio_get_container_fd();
 
 	/* check if we have VFIO driver enabled */
-	if (access(VFIO_DIR, F_OK) == 0)
+	if (vfio_cfg.vfio_container_fd != -1)
 		vfio_cfg.vfio_enabled = 1;
 	else
 		RTE_LOG(INFO, EAL, "VFIO driver not loaded or wrong permissions\n");
