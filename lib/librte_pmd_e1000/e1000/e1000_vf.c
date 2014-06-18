@@ -378,7 +378,7 @@ STATIC u32 e1000_hash_mc_addr_vf(struct e1000_hw *hw, u8 *mc_addr)
 	return hash_value;
 }
 
-static void e1000_write_msg_read_ack(struct e1000_hw *hw,
+STATIC void e1000_write_msg_read_ack(struct e1000_hw *hw,
 				     u32 *msg, u16 size)
 {
 	struct e1000_mbx_info *mbx = &hw->mbx;

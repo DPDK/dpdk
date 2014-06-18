@@ -114,7 +114,7 @@ s32 e1000_null_write_nvm(struct e1000_hw E1000_UNUSEDARG *hw,
  *
  *  Enable/Raise the EEPROM clock bit.
  **/
-static void e1000_raise_eec_clk(struct e1000_hw *hw, u32 *eecd)
+STATIC void e1000_raise_eec_clk(struct e1000_hw *hw, u32 *eecd)
 {
 	*eecd = *eecd | E1000_EECD_SK;
 	E1000_WRITE_REG(hw, E1000_EECD, *eecd);
@@ -129,7 +129,7 @@ static void e1000_raise_eec_clk(struct e1000_hw *hw, u32 *eecd)
  *
  *  Clear/Lower the EEPROM clock bit.
  **/
-static void e1000_lower_eec_clk(struct e1000_hw *hw, u32 *eecd)
+STATIC void e1000_lower_eec_clk(struct e1000_hw *hw, u32 *eecd)
 {
 	*eecd = *eecd & ~E1000_EECD_SK;
 	E1000_WRITE_REG(hw, E1000_EECD, *eecd);
@@ -147,7 +147,7 @@ static void e1000_lower_eec_clk(struct e1000_hw *hw, u32 *eecd)
  *  "data" parameter will be shifted out to the EEPROM one bit at a time.
  *  In order to do this, "data" must be broken down into bits.
  **/
-static void e1000_shift_out_eec_bits(struct e1000_hw *hw, u16 data, u16 count)
+STATIC void e1000_shift_out_eec_bits(struct e1000_hw *hw, u16 data, u16 count)
 {
 	struct e1000_nvm_info *nvm = &hw->nvm;
 	u32 eecd = E1000_READ_REG(hw, E1000_EECD);
@@ -194,7 +194,7 @@ static void e1000_shift_out_eec_bits(struct e1000_hw *hw, u16 data, u16 count)
  *  "DO" bit.  During this "shifting in" process the data in "DI" bit should
  *  always be clear.
  **/
-static u16 e1000_shift_in_eec_bits(struct e1000_hw *hw, u16 count)
+STATIC u16 e1000_shift_in_eec_bits(struct e1000_hw *hw, u16 count)
 {
 	u32 eecd;
 	u32 i;
@@ -295,7 +295,7 @@ s32 e1000_acquire_nvm_generic(struct e1000_hw *hw)
  *
  *  Return the EEPROM to a standby state.
  **/
-static void e1000_standby_nvm(struct e1000_hw *hw)
+STATIC void e1000_standby_nvm(struct e1000_hw *hw)
 {
 	struct e1000_nvm_info *nvm = &hw->nvm;
 	u32 eecd = E1000_READ_REG(hw, E1000_EECD);
@@ -381,7 +381,7 @@ void e1000_release_nvm_generic(struct e1000_hw *hw)
  *
  *  Setups the EEPROM for reading and writing.
  **/
-static s32 e1000_ready_nvm_eeprom(struct e1000_hw *hw)
+STATIC s32 e1000_ready_nvm_eeprom(struct e1000_hw *hw)
 {
 	struct e1000_nvm_info *nvm = &hw->nvm;
 	u32 eecd = E1000_READ_REG(hw, E1000_EECD);

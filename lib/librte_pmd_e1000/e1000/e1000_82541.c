@@ -58,12 +58,12 @@ STATIC s32  e1000_set_d3_lplu_state_82541(struct e1000_hw *hw,
 STATIC s32  e1000_setup_led_82541(struct e1000_hw *hw);
 STATIC s32  e1000_cleanup_led_82541(struct e1000_hw *hw);
 STATIC void e1000_clear_hw_cntrs_82541(struct e1000_hw *hw);
-static s32  e1000_config_dsp_after_link_change_82541(struct e1000_hw *hw,
+STATIC s32  e1000_config_dsp_after_link_change_82541(struct e1000_hw *hw,
 						     bool link_up);
-static s32  e1000_phy_init_script_82541(struct e1000_hw *hw);
+STATIC s32  e1000_phy_init_script_82541(struct e1000_hw *hw);
 STATIC void e1000_power_down_phy_copper_82541(struct e1000_hw *hw);
 
-static const u16 e1000_igp_cable_length_table[] = {
+STATIC const u16 e1000_igp_cable_length_table[] = {
 	5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 10, 10, 10, 10, 10,
 	10, 10, 20, 20, 20, 20, 20, 25, 25, 25, 25, 25, 25, 25, 30, 30, 30, 30,
 	40, 40, 40, 40, 40, 40, 40, 40, 40, 50, 50, 50, 50, 50, 50, 50, 60, 60,
@@ -661,7 +661,7 @@ out:
  *  82541_rev_2 & 82547_rev_2 have the capability to configure the DSP when a
  *  gigabit link is achieved to improve link quality.
  **/
-static s32 e1000_config_dsp_after_link_change_82541(struct e1000_hw *hw,
+STATIC s32 e1000_config_dsp_after_link_change_82541(struct e1000_hw *hw,
 						    bool link_up)
 {
 	struct e1000_phy_info *phy = &hw->phy;
@@ -1084,7 +1084,7 @@ out:
  *
  *  Initializes the IGP PHY.
  **/
-static s32 e1000_phy_init_script_82541(struct e1000_hw *hw)
+STATIC s32 e1000_phy_init_script_82541(struct e1000_hw *hw)
 {
 	struct e1000_dev_spec_82541 *dev_spec = &hw->dev_spec._82541;
 	u32 ret_val;

@@ -80,11 +80,11 @@ STATIC s32  e1000_write_phy_reg_sgmii_82575(struct e1000_hw *hw,
 					    u32 offset, u16 data);
 STATIC void e1000_clear_hw_cntrs_82575(struct e1000_hw *hw);
 STATIC s32  e1000_acquire_swfw_sync_82575(struct e1000_hw *hw, u16 mask);
-static s32  e1000_get_pcs_speed_and_duplex_82575(struct e1000_hw *hw,
+STATIC s32  e1000_get_pcs_speed_and_duplex_82575(struct e1000_hw *hw,
 						 u16 *speed, u16 *duplex);
-static s32  e1000_get_phy_id_82575(struct e1000_hw *hw);
+STATIC s32  e1000_get_phy_id_82575(struct e1000_hw *hw);
 STATIC void e1000_release_swfw_sync_82575(struct e1000_hw *hw, u16 mask);
-static bool e1000_sgmii_active_82575(struct e1000_hw *hw);
+STATIC bool e1000_sgmii_active_82575(struct e1000_hw *hw);
 STATIC s32  e1000_reset_init_script_82575(struct e1000_hw *hw);
 STATIC s32  e1000_read_mac_addr_82575(struct e1000_hw *hw);
 STATIC void e1000_config_collision_dist_82575(struct e1000_hw *hw);
@@ -116,10 +116,11 @@ STATIC void e1000_lower_i2c_clk(struct e1000_hw *hw, u32 *i2cctl);
 STATIC s32 e1000_set_i2c_data(struct e1000_hw *hw, u32 *i2cctl, bool data);
 STATIC bool e1000_get_i2c_data(u32 *i2cctl);
 
-static const u16 e1000_82580_rxpbs_table[] = {
+STATIC const u16 e1000_82580_rxpbs_table[] = {
 	36, 72, 144, 1, 2, 4, 8, 16, 35, 70, 140 };
 #define E1000_82580_RXPBS_TABLE_SIZE \
-	(sizeof(e1000_82580_rxpbs_table)/sizeof(u16))
+	(sizeof(e1000_82580_rxpbs_table) / \
+	 sizeof(e1000_82580_rxpbs_table[0]))
 
 
 /**
@@ -1296,7 +1297,7 @@ STATIC void e1000_power_up_serdes_link_82575(struct e1000_hw *hw)
  *  Using the physical coding sub-layer (PCS), retrieve the current speed and
  *  duplex, then store the values in the pointers provided.
  **/
-static s32 e1000_get_pcs_speed_and_duplex_82575(struct e1000_hw *hw,
+STATIC s32 e1000_get_pcs_speed_and_duplex_82575(struct e1000_hw *hw,
 						u16 *speed, u16 *duplex)
 {
 	struct e1000_mac_info *mac = &hw->mac;
@@ -1928,7 +1929,7 @@ out:
  *  which can be enabled for use in the embedded applications.  Simply
  *  return the current state of the sgmii interface.
  **/
-static bool e1000_sgmii_active_82575(struct e1000_hw *hw)
+STATIC bool e1000_sgmii_active_82575(struct e1000_hw *hw)
 {
 	struct e1000_dev_spec_82575 *dev_spec = &hw->dev_spec._82575;
 	return dev_spec->sgmii_active;

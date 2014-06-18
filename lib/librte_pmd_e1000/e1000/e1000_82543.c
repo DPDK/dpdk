@@ -63,16 +63,16 @@ STATIC s32  e1000_led_off_82543(struct e1000_hw *hw);
 STATIC void e1000_write_vfta_82543(struct e1000_hw *hw, u32 offset,
 				   u32 value);
 STATIC void e1000_clear_hw_cntrs_82543(struct e1000_hw *hw);
-static s32  e1000_config_mac_to_phy_82543(struct e1000_hw *hw);
-static bool e1000_init_phy_disabled_82543(struct e1000_hw *hw);
-static void e1000_lower_mdi_clk_82543(struct e1000_hw *hw, u32 *ctrl);
-static s32  e1000_polarity_reversal_workaround_82543(struct e1000_hw *hw);
-static void e1000_raise_mdi_clk_82543(struct e1000_hw *hw, u32 *ctrl);
-static u16  e1000_shift_in_mdi_bits_82543(struct e1000_hw *hw);
-static void e1000_shift_out_mdi_bits_82543(struct e1000_hw *hw, u32 data,
+STATIC s32  e1000_config_mac_to_phy_82543(struct e1000_hw *hw);
+STATIC bool e1000_init_phy_disabled_82543(struct e1000_hw *hw);
+STATIC void e1000_lower_mdi_clk_82543(struct e1000_hw *hw, u32 *ctrl);
+STATIC s32  e1000_polarity_reversal_workaround_82543(struct e1000_hw *hw);
+STATIC void e1000_raise_mdi_clk_82543(struct e1000_hw *hw, u32 *ctrl);
+STATIC u16  e1000_shift_in_mdi_bits_82543(struct e1000_hw *hw);
+STATIC void e1000_shift_out_mdi_bits_82543(struct e1000_hw *hw, u32 data,
 					   u16 count);
-static bool e1000_tbi_compatibility_enabled_82543(struct e1000_hw *hw);
-static void e1000_set_tbi_sbp_82543(struct e1000_hw *hw, bool state);
+STATIC bool e1000_tbi_compatibility_enabled_82543(struct e1000_hw *hw);
+STATIC void e1000_set_tbi_sbp_82543(struct e1000_hw *hw, bool state);
 
 /**
  *  e1000_init_phy_params_82543 - Init PHY func ptrs.
@@ -277,7 +277,7 @@ void e1000_init_function_pointers_82543(struct e1000_hw *hw)
  *  Returns the current status of 10-bit Interface (TBI) compatibility
  *  (enabled/disabled).
  **/
-static bool e1000_tbi_compatibility_enabled_82543(struct e1000_hw *hw)
+STATIC bool e1000_tbi_compatibility_enabled_82543(struct e1000_hw *hw)
 {
 	struct e1000_dev_spec_82543 *dev_spec = &hw->dev_spec._82543;
 	bool state = false;
@@ -354,7 +354,7 @@ out:
  *
  *  Enables or disabled 10-bit Interface (TBI) store bad packet (SBP).
  **/
-static void e1000_set_tbi_sbp_82543(struct e1000_hw *hw, bool state)
+STATIC void e1000_set_tbi_sbp_82543(struct e1000_hw *hw, bool state)
 {
 	struct e1000_dev_spec_82543 *dev_spec = &hw->dev_spec._82543;
 
@@ -375,7 +375,7 @@ static void e1000_set_tbi_sbp_82543(struct e1000_hw *hw, bool state)
  *  Returns the current status of whether PHY initialization is disabled.
  *  True if PHY initialization is disabled else false.
  **/
-static bool e1000_init_phy_disabled_82543(struct e1000_hw *hw)
+STATIC bool e1000_init_phy_disabled_82543(struct e1000_hw *hw)
 {
 	struct e1000_dev_spec_82543 *dev_spec = &hw->dev_spec._82543;
 	bool ret_val;
@@ -582,7 +582,7 @@ out:
  *  Raise the management data input clock by setting the MDC bit in the control
  *  register.
  **/
-static void e1000_raise_mdi_clk_82543(struct e1000_hw *hw, u32 *ctrl)
+STATIC void e1000_raise_mdi_clk_82543(struct e1000_hw *hw, u32 *ctrl)
 {
 	/*
 	 * Raise the clock input to the Management Data Clock (by setting the
@@ -601,7 +601,7 @@ static void e1000_raise_mdi_clk_82543(struct e1000_hw *hw, u32 *ctrl)
  *  Lower the management data input clock by clearing the MDC bit in the
  *  control register.
  **/
-static void e1000_lower_mdi_clk_82543(struct e1000_hw *hw, u32 *ctrl)
+STATIC void e1000_lower_mdi_clk_82543(struct e1000_hw *hw, u32 *ctrl)
 {
 	/*
 	 * Lower the clock input to the Management Data Clock (by clearing the
@@ -622,7 +622,7 @@ static void e1000_lower_mdi_clk_82543(struct e1000_hw *hw, u32 *ctrl)
  *  "data" parameter will be shifted out to the PHY one bit at a time.
  *  In order to do this, "data" must be broken down into bits.
  **/
-static void e1000_shift_out_mdi_bits_82543(struct e1000_hw *hw, u32 data,
+STATIC void e1000_shift_out_mdi_bits_82543(struct e1000_hw *hw, u32 data,
 					   u16 count)
 {
 	u32 ctrl, mask;
@@ -674,7 +674,7 @@ static void e1000_shift_out_mdi_bits_82543(struct e1000_hw *hw, u32 data,
  *  the PHY (setting the MDC bit), and then reading the value of the data out
  *  MDIO bit.
  **/
-static u16 e1000_shift_in_mdi_bits_82543(struct e1000_hw *hw)
+STATIC u16 e1000_shift_in_mdi_bits_82543(struct e1000_hw *hw)
 {
 	u32 ctrl;
 	u16 data = 0;
@@ -759,7 +759,7 @@ out:
  *  inadvertently.  To workaround the issue, we disable the transmitter on
  *  the PHY until we have established the link partner's link parameters.
  **/
-static s32 e1000_polarity_reversal_workaround_82543(struct e1000_hw *hw)
+STATIC s32 e1000_polarity_reversal_workaround_82543(struct e1000_hw *hw)
 {
 	s32 ret_val = E1000_SUCCESS;
 	u16 mii_status_reg;
@@ -1395,7 +1395,7 @@ out:
  *  For the 82543 silicon, we need to set the MAC to match the settings
  *  of the PHY, even if the PHY is auto-negotiating.
  **/
-static s32 e1000_config_mac_to_phy_82543(struct e1000_hw *hw)
+STATIC s32 e1000_config_mac_to_phy_82543(struct e1000_hw *hw)
 {
 	u32 ctrl;
 	s32 ret_val = E1000_SUCCESS;

@@ -47,12 +47,12 @@ POSSIBILITY OF SUCH DAMAGE.
 STATIC s32  e1000_init_phy_params_82540(struct e1000_hw *hw);
 STATIC s32  e1000_init_nvm_params_82540(struct e1000_hw *hw);
 STATIC s32  e1000_init_mac_params_82540(struct e1000_hw *hw);
-static s32  e1000_adjust_serdes_amplitude_82540(struct e1000_hw *hw);
+STATIC s32  e1000_adjust_serdes_amplitude_82540(struct e1000_hw *hw);
 STATIC void e1000_clear_hw_cntrs_82540(struct e1000_hw *hw);
 STATIC s32  e1000_init_hw_82540(struct e1000_hw *hw);
 STATIC s32  e1000_reset_hw_82540(struct e1000_hw *hw);
-static s32  e1000_set_phy_mode_82540(struct e1000_hw *hw);
-static s32  e1000_set_vco_speed_82540(struct e1000_hw *hw);
+STATIC s32  e1000_set_phy_mode_82540(struct e1000_hw *hw);
+STATIC s32  e1000_set_vco_speed_82540(struct e1000_hw *hw);
 STATIC s32  e1000_setup_copper_link_82540(struct e1000_hw *hw);
 STATIC s32  e1000_setup_fiber_serdes_link_82540(struct e1000_hw *hw);
 STATIC void e1000_power_down_phy_copper_82540(struct e1000_hw *hw);
@@ -495,7 +495,7 @@ out:
  *
  *  Adjust the SERDES output amplitude based on the EEPROM settings.
  **/
-static s32 e1000_adjust_serdes_amplitude_82540(struct e1000_hw *hw)
+STATIC s32 e1000_adjust_serdes_amplitude_82540(struct e1000_hw *hw)
 {
 	s32 ret_val = E1000_SUCCESS;
 	u16 nvm_data;
@@ -525,7 +525,7 @@ out:
  *
  *  Set the VCO speed to improve Bit Error Rate (BER) performance.
  **/
-static s32 e1000_set_vco_speed_82540(struct e1000_hw *hw)
+STATIC s32 e1000_set_vco_speed_82540(struct e1000_hw *hw)
 {
 	s32  ret_val = E1000_SUCCESS;
 	u16 default_page = 0;
@@ -584,7 +584,7 @@ out:
  *    1.  Do a PHY soft reset.
  *    2.  Restart auto-negotiation or force link.
  **/
-static s32 e1000_set_phy_mode_82540(struct e1000_hw *hw)
+STATIC s32 e1000_set_phy_mode_82540(struct e1000_hw *hw)
 {
 	s32 ret_val = E1000_SUCCESS;
 	u16 nvm_data;

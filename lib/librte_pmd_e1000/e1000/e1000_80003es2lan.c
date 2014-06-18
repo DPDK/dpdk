@@ -58,16 +58,16 @@ STATIC s32  e1000_reset_hw_80003es2lan(struct e1000_hw *hw);
 STATIC s32  e1000_init_hw_80003es2lan(struct e1000_hw *hw);
 STATIC s32  e1000_setup_copper_link_80003es2lan(struct e1000_hw *hw);
 STATIC void e1000_clear_hw_cntrs_80003es2lan(struct e1000_hw *hw);
-static s32  e1000_acquire_swfw_sync_80003es2lan(struct e1000_hw *hw, u16 mask);
-static s32  e1000_cfg_kmrn_10_100_80003es2lan(struct e1000_hw *hw, u16 duplex);
-static s32  e1000_cfg_kmrn_1000_80003es2lan(struct e1000_hw *hw);
-static s32  e1000_cfg_on_link_up_80003es2lan(struct e1000_hw *hw);
-static s32  e1000_read_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
+STATIC s32  e1000_acquire_swfw_sync_80003es2lan(struct e1000_hw *hw, u16 mask);
+STATIC s32  e1000_cfg_kmrn_10_100_80003es2lan(struct e1000_hw *hw, u16 duplex);
+STATIC s32  e1000_cfg_kmrn_1000_80003es2lan(struct e1000_hw *hw);
+STATIC s32  e1000_cfg_on_link_up_80003es2lan(struct e1000_hw *hw);
+STATIC s32  e1000_read_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
 					    u16 *data);
-static s32  e1000_write_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
+STATIC s32  e1000_write_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
 					     u16 data);
-static void e1000_initialize_hw_bits_80003es2lan(struct e1000_hw *hw);
-static void e1000_release_swfw_sync_80003es2lan(struct e1000_hw *hw, u16 mask);
+STATIC void e1000_initialize_hw_bits_80003es2lan(struct e1000_hw *hw);
+STATIC void e1000_release_swfw_sync_80003es2lan(struct e1000_hw *hw, u16 mask);
 STATIC s32  e1000_read_mac_addr_80003es2lan(struct e1000_hw *hw);
 STATIC void e1000_power_down_phy_copper_80003es2lan(struct e1000_hw *hw);
 
@@ -75,7 +75,7 @@ STATIC void e1000_power_down_phy_copper_80003es2lan(struct e1000_hw *hw);
  * with a lower bound at "index" and the upper bound at
  * "index + 5".
  */
-static const u16 e1000_gg82563_cable_length_table[] = {
+STATIC const u16 e1000_gg82563_cable_length_table[] = {
 	0, 60, 115, 150, 150, 60, 115, 150, 180, 180, 0xFF };
 #define GG82563_CABLE_LENGTH_TABLE_SIZE \
 		(sizeof(e1000_gg82563_cable_length_table) / \
@@ -398,7 +398,7 @@ STATIC void e1000_release_nvm_80003es2lan(struct e1000_hw *hw)
  *  Acquire the SW/FW semaphore to access the PHY or NVM.  The mask
  *  will also specify which port we're acquiring the lock for.
  **/
-static s32 e1000_acquire_swfw_sync_80003es2lan(struct e1000_hw *hw, u16 mask)
+STATIC s32 e1000_acquire_swfw_sync_80003es2lan(struct e1000_hw *hw, u16 mask)
 {
 	u32 swfw_sync;
 	u32 swmask = mask;
@@ -445,7 +445,7 @@ static s32 e1000_acquire_swfw_sync_80003es2lan(struct e1000_hw *hw, u16 mask)
  *  Release the SW/FW semaphore used to access the PHY or NVM.  The mask
  *  will also specify which port we're releasing the lock for.
  **/
-static void e1000_release_swfw_sync_80003es2lan(struct e1000_hw *hw, u16 mask)
+STATIC void e1000_release_swfw_sync_80003es2lan(struct e1000_hw *hw, u16 mask)
 {
 	u32 swfw_sync;
 
@@ -977,7 +977,7 @@ STATIC s32 e1000_init_hw_80003es2lan(struct e1000_hw *hw)
  *
  *  Initializes required hardware-dependent bits needed for normal operation.
  **/
-static void e1000_initialize_hw_bits_80003es2lan(struct e1000_hw *hw)
+STATIC void e1000_initialize_hw_bits_80003es2lan(struct e1000_hw *hw)
 {
 	u32 reg;
 
@@ -1024,7 +1024,7 @@ static void e1000_initialize_hw_bits_80003es2lan(struct e1000_hw *hw)
  *
  *  Setup some GG82563 PHY registers for obtaining link
  **/
-static s32 e1000_copper_link_setup_gg82563_80003es2lan(struct e1000_hw *hw)
+STATIC s32 e1000_copper_link_setup_gg82563_80003es2lan(struct e1000_hw *hw)
 {
 	struct e1000_phy_info *phy = &hw->phy;
 	s32 ret_val;
@@ -1231,7 +1231,7 @@ STATIC s32 e1000_setup_copper_link_80003es2lan(struct e1000_hw *hw)
  *  Configure the KMRN interface by applying last minute quirks for
  *  10/100 operation.
  **/
-static s32 e1000_cfg_on_link_up_80003es2lan(struct e1000_hw *hw)
+STATIC s32 e1000_cfg_on_link_up_80003es2lan(struct e1000_hw *hw)
 {
 	s32 ret_val = E1000_SUCCESS;
 	u16 speed;
@@ -1262,7 +1262,7 @@ static s32 e1000_cfg_on_link_up_80003es2lan(struct e1000_hw *hw)
  *  Configure the KMRN interface by applying last minute quirks for
  *  10/100 operation.
  **/
-static s32 e1000_cfg_kmrn_10_100_80003es2lan(struct e1000_hw *hw, u16 duplex)
+STATIC s32 e1000_cfg_kmrn_10_100_80003es2lan(struct e1000_hw *hw, u16 duplex)
 {
 	s32 ret_val;
 	u32 tipg;
@@ -1313,7 +1313,7 @@ static s32 e1000_cfg_kmrn_10_100_80003es2lan(struct e1000_hw *hw, u16 duplex)
  *  Configure the KMRN interface by applying last minute quirks for
  *  gigabit operation.
  **/
-static s32 e1000_cfg_kmrn_1000_80003es2lan(struct e1000_hw *hw)
+STATIC s32 e1000_cfg_kmrn_1000_80003es2lan(struct e1000_hw *hw)
 {
 	s32 ret_val;
 	u16 reg_data, reg_data2;
@@ -1364,7 +1364,7 @@ static s32 e1000_cfg_kmrn_1000_80003es2lan(struct e1000_hw *hw)
  *  using the kumeran interface.  The information retrieved is stored in data.
  *  Release the semaphore before exiting.
  **/
-static s32 e1000_read_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
+STATIC s32 e1000_read_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
 					   u16 *data)
 {
 	u32 kmrnctrlsta;
@@ -1401,7 +1401,7 @@ static s32 e1000_read_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
  *  at the offset using the kumeran interface.  Release semaphore
  *  before exiting.
  **/
-static s32 e1000_write_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
+STATIC s32 e1000_write_kmrn_reg_80003es2lan(struct e1000_hw *hw, u32 offset,
 					    u16 data)
 {
 	u32 kmrnctrlsta;

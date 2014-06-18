@@ -308,7 +308,6 @@ s32 e1000_set_eee_pchlan(struct e1000_hw *hw);
 #if defined(NAHUM6LP_HW) && defined(ULP_SUPPORT)
 s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx);
 s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force);
-void e1000_toggle_lanphypc_pch_lpt(struct e1000_hw *hw);
 #endif /* NAHUM6LP_HW && ULP_SUPPORT */
 #endif /* _E1000_ICH8LAN_H_ */
 void e1000_demote_ltr(struct e1000_hw *hw, bool demote, bool link);

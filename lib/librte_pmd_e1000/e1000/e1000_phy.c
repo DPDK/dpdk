@@ -33,7 +33,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "e1000_api.h"
 
-static s32 e1000_wait_autoneg(struct e1000_hw *hw);
+STATIC s32 e1000_wait_autoneg(struct e1000_hw *hw);
 STATIC s32 e1000_access_phy_wakeup_reg_bm(struct e1000_hw *hw, u32 offset,
 					  u16 *data, bool read, bool page_set);
 STATIC u32 e1000_get_phy_addr_for_hv_page(u32 page);
@@ -41,13 +41,13 @@ STATIC s32 e1000_access_phy_debug_regs_hv(struct e1000_hw *hw, u32 offset,
 					  u16 *data, bool read);
 
 /* Cable length tables */
-static const u16 e1000_m88_cable_length_table[] = {
+STATIC const u16 e1000_m88_cable_length_table[] = {
 	0, 50, 80, 110, 140, 140, E1000_CABLE_LENGTH_UNDEFINED };
 #define M88E1000_CABLE_LENGTH_TABLE_SIZE \
 		(sizeof(e1000_m88_cable_length_table) / \
 		 sizeof(e1000_m88_cable_length_table[0]))
 
-static const u16 e1000_igp_2_cable_length_table[] = {
+STATIC const u16 e1000_igp_2_cable_length_table[] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 8, 11, 13, 16, 18, 21, 0, 0, 0, 3,
 	6, 10, 13, 16, 19, 23, 26, 29, 32, 35, 38, 41, 6, 10, 14, 18, 22,
 	26, 30, 33, 37, 41, 44, 48, 51, 54, 58, 61, 21, 26, 31, 35, 40,
@@ -733,7 +733,7 @@ s32 e1000_set_page_igp(struct e1000_hw *hw, u16 page)
  *  and stores the retrieved information in data.  Release any acquired
  *  semaphores before exiting.
  **/
-static s32 __e1000_read_phy_reg_igp(struct e1000_hw *hw, u32 offset, u16 *data,
+STATIC s32 __e1000_read_phy_reg_igp(struct e1000_hw *hw, u32 offset, u16 *data,
 				    bool locked)
 {
 	s32 ret_val = E1000_SUCCESS;
@@ -802,7 +802,7 @@ s32 e1000_read_phy_reg_igp_locked(struct e1000_hw *hw, u32 offset, u16 *data)
  *  Acquires semaphore, if necessary, then writes the data to PHY register
  *  at the offset.  Release any acquired semaphores before exiting.
  **/
-static s32 __e1000_write_phy_reg_igp(struct e1000_hw *hw, u32 offset, u16 data,
+STATIC s32 __e1000_write_phy_reg_igp(struct e1000_hw *hw, u32 offset, u16 data,
 				     bool locked)
 {
 	s32 ret_val = E1000_SUCCESS;
@@ -871,7 +871,7 @@ s32 e1000_write_phy_reg_igp_locked(struct e1000_hw *hw, u32 offset, u16 data)
  *  using the kumeran interface.  The information retrieved is stored in data.
  *  Release any acquired semaphores before exiting.
  **/
-static s32 __e1000_read_kmrn_reg(struct e1000_hw *hw, u32 offset, u16 *data,
+STATIC s32 __e1000_read_kmrn_reg(struct e1000_hw *hw, u32 offset, u16 *data,
 				 bool locked)
 {
 	u32 kmrnctrlsta;
@@ -946,7 +946,7 @@ s32 e1000_read_kmrn_reg_locked(struct e1000_hw *hw, u32 offset, u16 *data)
  *  at the offset using the kumeran interface.  Release any acquired semaphores
  *  before exiting.
  **/
-static s32 __e1000_write_kmrn_reg(struct e1000_hw *hw, u32 offset, u16 data,
+STATIC s32 __e1000_write_kmrn_reg(struct e1000_hw *hw, u32 offset, u16 data,
 				  bool locked)
 {
 	u32 kmrnctrlsta;
@@ -2313,7 +2313,7 @@ s32 e1000_check_polarity_ife(struct e1000_hw *hw)
  *  Waits for auto-negotiation to complete or for the auto-negotiation time
  *  limit to expire, which ever happens first.
  **/
-static s32 e1000_wait_autoneg(struct e1000_hw *hw)
+STATIC s32 e1000_wait_autoneg(struct e1000_hw *hw)
 {
 	s32 ret_val = E1000_SUCCESS;
 	u16 i, phy_status;
@@ -3092,7 +3092,7 @@ s32 e1000_determine_phy_address(struct e1000_hw *hw)
  *
  *  Returns the phy address for the page requested.
  **/
-static u32 e1000_get_phy_addr_for_bm_page(u32 page, u32 reg)
+STATIC u32 e1000_get_phy_addr_for_bm_page(u32 page, u32 reg)
 {
 	u32 phy_addr = 2;
 
@@ -3544,7 +3544,7 @@ void e1000_power_down_phy_copper(struct e1000_hw *hw)
  *  and stores the retrieved information in data.  Release any acquired
  *  semaphore before exiting.
  **/
-static s32 __e1000_read_phy_reg_hv(struct e1000_hw *hw, u32 offset, u16 *data,
+STATIC s32 __e1000_read_phy_reg_hv(struct e1000_hw *hw, u32 offset, u16 *data,
 				   bool locked, bool page_set)
 {
 	s32 ret_val;
@@ -3654,7 +3654,7 @@ s32 e1000_read_phy_reg_page_hv(struct e1000_hw *hw, u32 offset, u16 *data)
  *  Acquires semaphore, if necessary, then writes the data to PHY register
  *  at the offset.  Release any acquired semaphores before exiting.
  **/
-static s32 __e1000_write_phy_reg_hv(struct e1000_hw *hw, u32 offset, u16 data,
+STATIC s32 __e1000_write_phy_reg_hv(struct e1000_hw *hw, u32 offset, u16 data,
 				    bool locked, bool page_set)
 {
 	s32 ret_val;
@@ -4126,7 +4126,7 @@ s32 e1000_read_phy_reg_mphy(struct e1000_hw *hw, u32 address, u32 *data)
 {
 	u32 mphy_ctrl = 0;
 	bool locked = false;
-	bool ready = false;
+	bool ready;
 
 	DEBUGFUNC("e1000_read_phy_reg_mphy");
 
@@ -4188,7 +4188,7 @@ s32 e1000_write_phy_reg_mphy(struct e1000_hw *hw, u32 address, u32 data,
 {
 	u32 mphy_ctrl = 0;
 	bool locked = false;
-	bool ready = false;
+	bool ready;
 
 	DEBUGFUNC("e1000_write_phy_reg_mphy");
 

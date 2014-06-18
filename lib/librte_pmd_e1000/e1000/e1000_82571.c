@@ -69,19 +69,19 @@ STATIC s32  e1000_check_for_serdes_link_82571(struct e1000_hw *hw);
 STATIC s32  e1000_setup_fiber_serdes_link_82571(struct e1000_hw *hw);
 STATIC s32  e1000_valid_led_default_82571(struct e1000_hw *hw, u16 *data);
 STATIC void e1000_clear_hw_cntrs_82571(struct e1000_hw *hw);
-static s32  e1000_get_hw_semaphore_82571(struct e1000_hw *hw);
-static s32  e1000_fix_nvm_checksum_82571(struct e1000_hw *hw);
-static s32  e1000_get_phy_id_82571(struct e1000_hw *hw);
-static void e1000_put_hw_semaphore_82571(struct e1000_hw *hw);
-static void e1000_put_hw_semaphore_82573(struct e1000_hw *hw);
-static s32  e1000_get_hw_semaphore_82574(struct e1000_hw *hw);
-static void e1000_put_hw_semaphore_82574(struct e1000_hw *hw);
+STATIC s32  e1000_get_hw_semaphore_82571(struct e1000_hw *hw);
+STATIC s32  e1000_fix_nvm_checksum_82571(struct e1000_hw *hw);
+STATIC s32  e1000_get_phy_id_82571(struct e1000_hw *hw);
+STATIC void e1000_put_hw_semaphore_82571(struct e1000_hw *hw);
+STATIC void e1000_put_hw_semaphore_82573(struct e1000_hw *hw);
+STATIC s32  e1000_get_hw_semaphore_82574(struct e1000_hw *hw);
+STATIC void e1000_put_hw_semaphore_82574(struct e1000_hw *hw);
 STATIC s32  e1000_set_d0_lplu_state_82574(struct e1000_hw *hw,
 					  bool active);
 STATIC s32  e1000_set_d3_lplu_state_82574(struct e1000_hw *hw,
 					  bool active);
-static void e1000_initialize_hw_bits_82571(struct e1000_hw *hw);
-static s32  e1000_write_nvm_eewr_82571(struct e1000_hw *hw, u16 offset,
+STATIC void e1000_initialize_hw_bits_82571(struct e1000_hw *hw);
+STATIC s32  e1000_write_nvm_eewr_82571(struct e1000_hw *hw, u16 offset,
 				       u16 words, u16 *data);
 STATIC s32  e1000_read_mac_addr_82571(struct e1000_hw *hw);
 STATIC void e1000_power_down_phy_copper_82571(struct e1000_hw *hw);
@@ -460,7 +460,7 @@ void e1000_init_function_pointers_82571(struct e1000_hw *hw)
  *  Reads the PHY registers and stores the PHY ID and possibly the PHY
  *  revision in the hardware structure.
  **/
-static s32 e1000_get_phy_id_82571(struct e1000_hw *hw)
+STATIC s32 e1000_get_phy_id_82571(struct e1000_hw *hw)
 {
 	struct e1000_phy_info *phy = &hw->phy;
 	s32 ret_val;
@@ -510,7 +510,7 @@ static s32 e1000_get_phy_id_82571(struct e1000_hw *hw)
  *
  *  Acquire the HW semaphore to access the PHY or NVM
  **/
-static s32 e1000_get_hw_semaphore_82571(struct e1000_hw *hw)
+STATIC s32 e1000_get_hw_semaphore_82571(struct e1000_hw *hw)
 {
 	u32 swsm;
 	s32 sw_timeout = hw->nvm.word_size + 1;
@@ -571,7 +571,7 @@ static s32 e1000_get_hw_semaphore_82571(struct e1000_hw *hw)
  *
  *  Release hardware semaphore used to access the PHY or NVM
  **/
-static void e1000_put_hw_semaphore_82571(struct e1000_hw *hw)
+STATIC void e1000_put_hw_semaphore_82571(struct e1000_hw *hw)
 {
 	u32 swsm;
 
@@ -591,7 +591,7 @@ static void e1000_put_hw_semaphore_82571(struct e1000_hw *hw)
  *  Acquire the HW semaphore during reset.
  *
  **/
-static s32 e1000_get_hw_semaphore_82573(struct e1000_hw *hw)
+STATIC s32 e1000_get_hw_semaphore_82573(struct e1000_hw *hw)
 {
 	u32 extcnf_ctrl;
 	s32 i = 0;
@@ -628,7 +628,7 @@ static s32 e1000_get_hw_semaphore_82573(struct e1000_hw *hw)
  *  Release hardware semaphore used during reset.
  *
  **/
-static void e1000_put_hw_semaphore_82573(struct e1000_hw *hw)
+STATIC void e1000_put_hw_semaphore_82573(struct e1000_hw *hw)
 {
 	u32 extcnf_ctrl;
 
@@ -646,7 +646,7 @@ static void e1000_put_hw_semaphore_82573(struct e1000_hw *hw)
  *  Acquire the HW semaphore to access the PHY or NVM.
  *
  **/
-static s32 e1000_get_hw_semaphore_82574(struct e1000_hw *hw)
+STATIC s32 e1000_get_hw_semaphore_82574(struct e1000_hw *hw)
 {
 	s32 ret_val;
 
@@ -666,7 +666,7 @@ static s32 e1000_get_hw_semaphore_82574(struct e1000_hw *hw)
  *  Release hardware semaphore used to access the PHY or NVM
  *
  **/
-static void e1000_put_hw_semaphore_82574(struct e1000_hw *hw)
+STATIC void e1000_put_hw_semaphore_82574(struct e1000_hw *hw)
 {
 	DEBUGFUNC("e1000_put_hw_semaphore_82574");
 
@@ -907,7 +907,7 @@ STATIC s32 e1000_validate_nvm_checksum_82571(struct e1000_hw *hw)
  *  If e1000_update_nvm_checksum is not called after this function, the
  *  EEPROM will most likely contain an invalid checksum.
  **/
-static s32 e1000_write_nvm_eewr_82571(struct e1000_hw *hw, u16 offset,
+STATIC s32 e1000_write_nvm_eewr_82571(struct e1000_hw *hw, u16 offset,
 				      u16 words, u16 *data)
 {
 	struct e1000_nvm_info *nvm = &hw->nvm;
@@ -1266,7 +1266,7 @@ STATIC s32 e1000_init_hw_82571(struct e1000_hw *hw)
  *
  *  Initializes required hardware-dependent bits needed for normal operation.
  **/
-static void e1000_initialize_hw_bits_82571(struct e1000_hw *hw)
+STATIC void e1000_initialize_hw_bits_82571(struct e1000_hw *hw)
 {
 	u32 reg;
 
@@ -1887,7 +1887,7 @@ void e1000_set_laa_state_82571(struct e1000_hw *hw, bool state)
  *  the checksum.  Otherwise, if bit 15 is set and the checksum is incorrect,
  *  we need to return bad checksum.
  **/
-static s32 e1000_fix_nvm_checksum_82571(struct e1000_hw *hw)
+STATIC s32 e1000_fix_nvm_checksum_82571(struct e1000_hw *hw)
 {
 	struct e1000_nvm_info *nvm = &hw->nvm;
 	s32 ret_val;
