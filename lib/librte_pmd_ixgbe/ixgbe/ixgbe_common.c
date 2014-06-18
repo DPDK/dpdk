@@ -140,6 +140,9 @@ s32 ixgbe_init_ops_generic(struct ixgbe_hw *hw)
 	mac->ops.get_link_capabilities = NULL;
 	mac->ops.setup_link = NULL;
 	mac->ops.check_link = NULL;
+	mac->ops.dmac_config = NULL;
+	mac->ops.dmac_update_tcs = NULL;
+	mac->ops.dmac_config_tcs = NULL;
 
 	return IXGBE_SUCCESS;
 }
@@ -779,7 +782,7 @@ s32 ixgbe_read_pba_raw(struct ixgbe_hw *hw, u16 *eeprom_buf,
 				return ret_val;
 		} else {
 			if (eeprom_buf_size > (u32)(pba->word[1] +
-					      pba->pba_block[0])) {
+					      pba_block_size)) {
 				memcpy(pba->pba_block,
 				       &eeprom_buf[pba->word[1]],
 				       pba_block_size * sizeof(u16));

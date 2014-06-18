@@ -135,4 +135,8 @@ int ixgbevf_negotiate_api_version(struct ixgbe_hw *hw, int api);
 int ixgbevf_get_queues(struct ixgbe_hw *hw, unsigned int *num_tcs,
 		       unsigned int *default_tc);
 
+#ifdef IXGBEVF_OSDEP2
+#include "ixgbevf_osdep2.h"
+
+#endif /* IXGBEVF_OSDEP2 */
 #endif /* __IXGBE_VF_H__ */

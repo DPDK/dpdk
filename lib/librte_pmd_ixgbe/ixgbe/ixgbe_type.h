@@ -100,15 +100,22 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_DEV_ID_82599_CX4			0x10F9
 #define IXGBE_DEV_ID_82599_SFP			0x10FB
 #define IXGBE_SUBDEV_ID_82599_SFP		0x11A9
+#define IXGBE_SUBDEV_ID_82599_SFP_WOL0		0x1071
 #define IXGBE_SUBDEV_ID_82599_RNDC		0x1F72
 #define IXGBE_SUBDEV_ID_82599_560FLR		0x17D0
 #define IXGBE_SUBDEV_ID_82599_ECNA_DP		0x0470
+#define IXGBE_SUBDEV_ID_82599_SP_560FLR		0x211B
+#define IXGBE_SUBDEV_ID_82599_LOM_SFP		0x8976
+#define IXGBE_SUBDEV_ID_82599_LOM_SNAP6		0x2159
+#define IXGBE_SUBDEV_ID_82599_SFP_1OCP		0x000D
+#define IXGBE_SUBDEV_ID_82599_SFP_2OCP		0x0008
 #define IXGBE_DEV_ID_82599_BACKPLANE_FCOE	0x152A
 #define IXGBE_DEV_ID_82599_SFP_FCOE		0x1529
 #define IXGBE_DEV_ID_82599_SFP_EM		0x1507
 #define IXGBE_DEV_ID_82599_SFP_SF2		0x154D
 #define IXGBE_DEV_ID_82599_SFP_SF_QP		0x154A
 #define IXGBE_DEV_ID_82599EN_SFP		0x1557
+#define IXGBE_SUBDEV_ID_82599EN_SFP_OCP1	0x0001
 #define IXGBE_DEV_ID_82599_XAUI_LOM		0x10FC
 #define IXGBE_DEV_ID_82599_T3_LOM		0x151C
 #define IXGBE_DEV_ID_82599_VF			0x10ED
@@ -252,12 +259,12 @@ POSSIBILITY OF SUCH DAMAGE.
 				 (((_i) < 64) ? (0x0100C + ((_i) * 0x40)) : \
 				 (0x0D00C + (((_i) - 64) * 0x40))))
 #define IXGBE_RDRXCTL		0x02F00
-#define IXGBE_RDRXCTL_RSC_PUSH	0x80
 /* 8 of these 0x03C00 - 0x03C1C */
 #define IXGBE_RXPBSIZE(_i)	(0x03C00 + ((_i) * 4))
 #define IXGBE_RXCTRL		0x03000
 #define IXGBE_DROPEN		0x03D04
 #define IXGBE_RXPBSIZE_SHIFT	10
+#define IXGBE_RXPBSIZE_MASK	0x000FFC00
 
 /* Receive Registers */
 #define IXGBE_RXCSUM		0x05000
@@ -631,8 +638,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_FCPTRH		0x02414 /* FC USer Desc. PTR High */
 #define IXGBE_FCBUFF		0x02418 /* FC Buffer Control */
 #define IXGBE_FCDMARW		0x02420 /* FC Receive DMA RW */
-#define IXGBE_FCINVST0		0x03FC0 /* FC Invalid DMA Context Status Reg 0*/
-#define IXGBE_FCINVST(_i)	(IXGBE_FCINVST0 + ((_i) * 4))
 #define IXGBE_FCBUFF_VALID	(1 << 0)   /* DMA Context Valid */
 #define IXGBE_FCBUFF_BUFFSIZE	(3 << 3)   /* User Buffer Size */
 #define IXGBE_FCBUFF_WRCONTX	(1 << 7)   /* 0: Initiator, 1: Target */
@@ -780,11 +785,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_BXOFFRXC		0x041E0
 #define IXGBE_BXONTXC		0x041E4
 #define IXGBE_BXOFFTXC		0x041E8
-#define IXGBE_PCRC8ECL		0x0E810
-#define IXGBE_PCRC8ECH		0x0E811
-#define IXGBE_PCRC8ECH_MASK	0x1F
-#define IXGBE_LDPCECL		0x0E820
-#define IXGBE_LDPCECH		0x0E821
 
 /* Management */
 #define IXGBE_MAVTV(_i)		(0x05010 + ((_i) * 4)) /* 8 of these (0-7) */
@@ -929,8 +929,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_RDPROBE		0x02F20
 #define IXGBE_RDMAM		0x02F30
 #define IXGBE_RDMAD		0x02F34
-#define IXGBE_TDSTATCTL		0x07C20
-#define IXGBE_TDSTAT(_i)	(0x07C00 + ((_i) * 4)) /* 0x07C00 - 0x07C1C */
 #define IXGBE_TDHMPN		0x07F08
 #define IXGBE_TDHMPN2		0x082FC
 #define IXGBE_TXDESCIC		0x082CC
@@ -1079,7 +1077,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_RDRXCTL_RDMTS_1_2		0x00000000 /* Rx Desc Min THLD Size */
 #define IXGBE_RDRXCTL_CRCSTRIP		0x00000002 /* CRC Strip */
 #define IXGBE_RDRXCTL_MVMEN		0x00000020
+#define IXGBE_RDRXCTL_RSC_PUSH_DIS	0x00000020
 #define IXGBE_RDRXCTL_DMAIDONE		0x00000008 /* DMA init cycle done */
+#define IXGBE_RDRXCTL_RSC_PUSH		0x00000080
 #define IXGBE_RDRXCTL_AGGDIS		0x00010000 /* Aggregation disable */
 #define IXGBE_RDRXCTL_RSCFRSTSIZE	0x003E0000 /* RSC First packet size */
 #define IXGBE_RDRXCTL_RSCLLIDIS		0x00800000 /* Disable RSC compl on LLI*/
@@ -1210,6 +1210,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_MDIO_AUTO_NEG_STATUS	0x1 /* AUTO_NEG Status Reg */
 #define IXGBE_MDIO_AUTO_NEG_ADVT	0x10 /* AUTO_NEG Advt Reg */
 #define IXGBE_MDIO_AUTO_NEG_LP		0x13 /* AUTO_NEG LP Status Reg */
+#define IXGBE_MDIO_AUTO_NEG_EEE_ADVT	0x3C /* AUTO_NEG EEE Advt Reg */
+#define IXGBE_AUTO_NEG_10GBASE_EEE_ADVT	0x8  /* AUTO NEG EEE 10GBaseT Advt */
+#define IXGBE_AUTO_NEG_1000BASE_EEE_ADVT 0x4  /* AUTO NEG EEE 1000BaseT Advt */
+#define IXGBE_AUTO_NEG_100BASE_EEE_ADVT	0x2  /* AUTO NEG EEE 100BaseT Advt */
 #define IXGBE_MDIO_PHY_XS_CONTROL	0x0 /* PHY_XS Control Reg */
 #define IXGBE_MDIO_PHY_XS_RESET		0x8000 /* PHY_XS Reset */
 #define IXGBE_MDIO_PHY_ID_HIGH		0x2 /* PHY ID High Reg*/
@@ -1228,6 +1232,12 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_MDIO_PMA_PMD_SDA_SCL_ADDR	0xC30A /* PHY_XS SDA/SCL Addr Reg */
 #define IXGBE_MDIO_PMA_PMD_SDA_SCL_DATA	0xC30B /* PHY_XS SDA/SCL Data Reg */
 #define IXGBE_MDIO_PMA_PMD_SDA_SCL_STAT	0xC30C /* PHY_XS SDA/SCL Status Reg */
+
+#define IXGBE_PCRC8ECL		0x0E810 /* PCR CRC-8 Error Count Lo */
+#define IXGBE_PCRC8ECH		0x0E811 /* PCR CRC-8 Error Count Hi */
+#define IXGBE_PCRC8ECH_MASK	0x1F
+#define IXGBE_LDPCECL		0x0E820 /* PCR Uncorrected Error Count Lo */
+#define IXGBE_LDPCECH		0x0E821 /* PCR Uncorrected Error Count Hi */
 
 /* MII clause 22/28 definitions */
 #define IXGBE_MDIO_PHY_LOW_POWER_MODE	0x0800
@@ -1903,7 +1913,7 @@ enum {
 #define IXGBE_ETH_LENGTH_OF_ADDRESS	6
 
 #define IXGBE_EEPROM_PAGE_SIZE_MAX	128
-#define IXGBE_EEPROM_RD_BUFFER_MAX_COUNT	512 /* words rd in burst */
+#define IXGBE_EEPROM_RD_BUFFER_MAX_COUNT	256 /* words rd in burst */
 #define IXGBE_EEPROM_WR_BUFFER_MAX_COUNT	256 /* words wr in burst */
 #define IXGBE_EEPROM_CTRL_2		1 /* EEPROM CTRL word 2 */
 #define IXGBE_EEPROM_CCD_BIT		2
@@ -2422,7 +2432,6 @@ enum ixgbe_fdir_pballoc_type {
 #define IXGBE_FDIRCMD_TUNNEL_FILTER		0x00800000
 #define IXGBE_FDIR_DROP_QUEUE			127
 
-#define IXGBE_STATUS_OVERHEATING_BIT		20 /* STATUS overtemp bit num */
 
 /* Manageablility Host Interface defines */
 #define IXGBE_HI_MAX_BLOCK_BYTE_LENGTH	1792 /* Num of bytes in range */
@@ -3132,7 +3141,13 @@ struct ixgbe_mac_operations {
 
 	/* Manageability interface */
 	s32 (*set_fw_drv_ver)(struct ixgbe_hw *, u8, u8, u8, u8);
+	s32 (*dmac_config)(struct ixgbe_hw *hw);
+	s32 (*dmac_update_tcs)(struct ixgbe_hw *hw);
+	s32 (*dmac_config_tcs)(struct ixgbe_hw *hw);
 	void (*get_rtrup2tc)(struct ixgbe_hw *hw, u8 *map);
+	s32 (*set_eee)(struct ixgbe_hw *hw, bool enable_eee);
+	s32 (*eee_linkup)(struct ixgbe_hw *hw, bool eee_enabled);
+	void (*set_ethertype_anti_spoofing)(struct ixgbe_hw *, bool, int);
 	void (*disable_rx)(struct ixgbe_hw *hw);
 	void (*enable_rx)(struct ixgbe_hw *hw);
 };
@@ -3310,8 +3325,14 @@ struct ixgbe_hw {
 #define IXGBE_ERR_INVALID_ARGUMENT		-32
 #define IXGBE_ERR_HOST_INTERFACE_COMMAND	-33
 #define IXGBE_ERR_OUT_OF_MEM			-34
+#define IXGBE_ERR_FEATURE_NOT_SUPPORTED		-36
+#define IXGBE_ERR_EEPROM_PROTECTED_REGION	-37
 
 #define IXGBE_NOT_IMPLEMENTED			0x7FFFFFFF
 
 
+#ifdef IXGBE_OSDEP2
+#include "ixgbe_osdep2.h"
+
+#endif /* IXGBE_OSDEP2 */
 #endif /* _IXGBE_TYPE_H_ */
