@@ -1761,7 +1761,7 @@ STATIC void e1000_rar_set_pch2lan(struct e1000_hw *hw, u8 *addr, u32 index)
 	/* RAR[1-6] are owned by manageability.  Skip those and program the
 	 * next address into the SHRA register array.
 	 */
-	if (index < (u32) (hw->mac.rar_entry_count - 6)) {
+	if (index < (u32) (hw->mac.rar_entry_count)) {
 		s32 ret_val;
 
 		ret_val = e1000_acquire_swflag_ich8lan(hw);
@@ -3745,8 +3745,7 @@ STATIC s32 e1000_write_flash_data_ich8lan(struct e1000_hw *hw, u32 offset,
 
 	DEBUGFUNC("e1000_write_ich8_data");
 
-	if (size < 1 || size > 2 || data > size * 0xff ||
-	    offset > ICH_FLASH_LINEAR_ADDR_MASK)
+	if (size < 1 || size > 2 || offset > ICH_FLASH_LINEAR_ADDR_MASK)
 		return -E1000_ERR_NVM;
 
 	flash_linear_addr = ((ICH_FLASH_LINEAR_ADDR_MASK & offset) +

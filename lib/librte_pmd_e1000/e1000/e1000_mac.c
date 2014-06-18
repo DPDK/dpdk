@@ -2091,7 +2091,8 @@ s32 e1000_disable_pcie_master_generic(struct e1000_hw *hw)
 
 	while (timeout) {
 		if (!(E1000_READ_REG(hw, E1000_STATUS) &
-		      E1000_STATUS_GIO_MASTER_ENABLE))
+		      E1000_STATUS_GIO_MASTER_ENABLE) ||
+				E1000_REMOVED(hw->hw_addr))
 			break;
 		usec_delay(100);
 		timeout--;
