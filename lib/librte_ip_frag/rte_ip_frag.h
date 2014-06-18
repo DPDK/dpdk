@@ -36,9 +36,9 @@
 
 /**
  * @file
- * RTE IPv4 Fragmentation and Reassembly
+ * RTE IP Fragmentation and Reassembly
  *
- * Implementation of IPv4 packet fragmentation and reassembly.
+ * Implementation of IP packet fragmentation and reassembly.
  */
 
 #include <stdint.h>
