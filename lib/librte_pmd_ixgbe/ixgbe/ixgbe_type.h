@@ -805,6 +805,8 @@ POSSIBILITY OF SUCH DAMAGE.
 
 /* Firmware Semaphore Register */
 #define IXGBE_FWSM_MODE_MASK	0xE
+#define IXGBE_FWSM_TS_ENABLED	0x1
+#define IXGBE_FWSM_FW_MODE_PT	0x4
 
 /* ARC Subsystem registers */
 #define IXGBE_HICR		0x15F00
@@ -1716,7 +1718,8 @@ enum {
 #define IXGBE_AUTOC2_10G_KR	(0x0 << IXGBE_AUTOC2_10G_SERIAL_PMA_PMD_SHIFT)
 #define IXGBE_AUTOC2_10G_XFI	(0x1 << IXGBE_AUTOC2_10G_SERIAL_PMA_PMD_SHIFT)
 #define IXGBE_AUTOC2_10G_SFI	(0x2 << IXGBE_AUTOC2_10G_SERIAL_PMA_PMD_SHIFT)
-#define IXGBE_AUTOC2_LINK_DISABLE_MASK	0x70000000
+#define IXGBE_AUTOC2_LINK_DISABLE_ON_D3_MASK	0x50000000
+#define IXGBE_AUTOC2_LINK_DISABLE_MASK		0x70000000
 
 #define IXGBE_MACC_FLU		0x00000001
 #define IXGBE_MACC_FSV_10G	0x00030000
@@ -1889,6 +1892,8 @@ enum {
 #define IXGBE_EEPROM_PAGE_SIZE_MAX	128
 #define IXGBE_EEPROM_RD_BUFFER_MAX_COUNT	512 /* words rd in burst */
 #define IXGBE_EEPROM_WR_BUFFER_MAX_COUNT	256 /* words wr in burst */
+#define IXGBE_EEPROM_CTRL_2		1 /* EEPROM CTRL word 2 */
+#define IXGBE_EEPROM_CCD_BIT		2
 
 #ifndef IXGBE_EEPROM_GRANT_ATTEMPTS
 #define IXGBE_EEPROM_GRANT_ATTEMPTS	1000 /* EEPROM attempts to gain grant */
@@ -3208,6 +3213,7 @@ struct ixgbe_hw {
 	int api_version;
 	bool force_full_reset;
 	bool allow_unsupported_sfp;
+	bool wol_enabled;
 };
 
 #define ixgbe_call_func(hw, func, params, error) \
