@@ -346,7 +346,7 @@ ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 	max_cycles = tbl->max_cycles;
 	assoc = tbl->bucket_entries;
 
-	if (tbl->last != NULL && ip_frag_key_cmp(&tbl->last->key, key) == 0)
+	if (tbl->last != NULL && ip_frag_key_cmp(key, &tbl->last->key) == 0)
 		return (tbl->last);
 
 	/* different hashing methods for IPv4 and IPv6 */
@@ -378,7 +378,7 @@ ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 					p1, i, assoc,
 			IPv6_KEY_BYTES(p1[i].key.src_dst), p1[i].key.id, p1[i].start);
 
-		if (ip_frag_key_cmp(&p1[i].key, key) == 0)
+		if (ip_frag_key_cmp(key, &p1[i].key) == 0)
 			return (p1 + i);
 		else if (ip_frag_key_is_empty(&p1[i].key))
 			empty = (empty == NULL) ? (p1 + i) : empty;
@@ -404,7 +404,7 @@ ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 					p2, i, assoc,
 			IPv6_KEY_BYTES(p2[i].key.src_dst), p2[i].key.id, p2[i].start);
 
-		if (ip_frag_key_cmp(&p2[i].key, key) == 0)
+		if (ip_frag_key_cmp(key, &p2[i].key) == 0)
 			return (p2 + i);
 		else if (ip_frag_key_is_empty(&p2[i].key))
 			empty = (empty == NULL) ?( p2 + i) : empty;
