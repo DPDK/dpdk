@@ -38,6 +38,13 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_phy.h"
 #ident "$Id: ixgbe_82598.c,v 1.194 2012/03/28 00:54:08 jtkirshe Exp $"
 
+#define IXGBE_82598_MAX_TX_QUEUES 32
+#define IXGBE_82598_MAX_RX_QUEUES 64
+#define IXGBE_82598_RAR_ENTRIES   16
+#define IXGBE_82598_MC_TBL_SIZE  128
+#define IXGBE_82598_VFT_TBL_SIZE 128
+#define IXGBE_82598_RX_PB_SIZE   512
+
 STATIC s32 ixgbe_get_link_capabilities_82598(struct ixgbe_hw *hw,
 					     ixgbe_link_speed *speed,
 					     bool *autoneg);
@@ -145,12 +152,12 @@ s32 ixgbe_init_ops_82598(struct ixgbe_hw *hw)
 	/* Flow Control */
 	mac->ops.fc_enable = &ixgbe_fc_enable_82598;
 
-	mac->mcft_size		= 128;
-	mac->vft_size		= 128;
-	mac->num_rar_entries	= 16;
-	mac->rx_pb_size		= 512;
-	mac->max_tx_queues	= 32;
-	mac->max_rx_queues	= 64;
+	mac->mcft_size		= IXGBE_82598_MC_TBL_SIZE;
+	mac->vft_size		= IXGBE_82598_VFT_TBL_SIZE;
+	mac->num_rar_entries	= IXGBE_82598_RAR_ENTRIES;
+	mac->rx_pb_size		= IXGBE_82598_RX_PB_SIZE;
+	mac->max_rx_queues	= IXGBE_82598_MAX_RX_QUEUES;
+	mac->max_tx_queues	= IXGBE_82598_MAX_TX_QUEUES;
 	mac->max_msix_vectors	= ixgbe_get_pcie_msix_count_generic(hw);
 
 	/* SFP+ Module */

@@ -38,6 +38,13 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_phy.h"
 #ident "$Id: ixgbe_82599.c,v 1.301 2012/11/08 11:33:27 jtkirshe Exp $"
 
+#define IXGBE_82599_MAX_TX_QUEUES 128
+#define IXGBE_82599_MAX_RX_QUEUES 128
+#define IXGBE_82599_RAR_ENTRIES   128
+#define IXGBE_82599_MC_TBL_SIZE   128
+#define IXGBE_82599_VFT_TBL_SIZE  128
+#define IXGBE_82599_RX_PB_SIZE	  512
+
 STATIC s32 ixgbe_setup_copper_link_82599(struct ixgbe_hw *hw,
 					 ixgbe_link_speed speed,
 					 bool autoneg,
@@ -271,12 +278,12 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw)
 	mac->ops.setup_rxpba = &ixgbe_set_rxpba_generic;
 	ixgbe_init_mac_link_ops_82599(hw);
 
-	mac->mcft_size		= 128;
-	mac->vft_size		= 128;
-	mac->num_rar_entries	= 128;
-	mac->rx_pb_size		= 512;
-	mac->max_tx_queues	= 128;
-	mac->max_rx_queues	= 128;
+	mac->mcft_size		= IXGBE_82599_MC_TBL_SIZE;
+	mac->vft_size		= IXGBE_82599_VFT_TBL_SIZE;
+	mac->num_rar_entries	= IXGBE_82599_RAR_ENTRIES;
+	mac->rx_pb_size		= IXGBE_82599_RX_PB_SIZE;
+	mac->max_rx_queues	= IXGBE_82599_MAX_RX_QUEUES;
+	mac->max_tx_queues	= IXGBE_82599_MAX_TX_QUEUES;
 	mac->max_msix_vectors	= ixgbe_get_pcie_msix_count_generic(hw);
 
 	mac->arc_subsystem_valid = (IXGBE_READ_REG(hw, IXGBE_FWSM) &

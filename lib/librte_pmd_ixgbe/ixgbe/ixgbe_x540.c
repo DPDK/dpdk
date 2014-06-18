@@ -37,6 +37,13 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_common.h"
 #include "ixgbe_phy.h"
 
+#define IXGBE_X540_MAX_TX_QUEUES	128
+#define IXGBE_X540_MAX_RX_QUEUES	128
+#define IXGBE_X540_RAR_ENTRIES		128
+#define IXGBE_X540_MC_TBL_SIZE		128
+#define IXGBE_X540_VFT_TBL_SIZE		128
+#define IXGBE_X540_RX_PB_SIZE		384
+
 STATIC s32 ixgbe_update_flash_X540(struct ixgbe_hw *hw);
 STATIC s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw);
 STATIC s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw);
@@ -116,12 +123,12 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
 	mac->ops.check_link = &ixgbe_check_mac_link_generic;
 
 
-	mac->mcft_size		= 128;
-	mac->vft_size		= 128;
-	mac->num_rar_entries	= 128;
-	mac->rx_pb_size		= 384;
-	mac->max_tx_queues	= 128;
-	mac->max_rx_queues	= 128;
+	mac->mcft_size		= IXGBE_X540_MC_TBL_SIZE;
+	mac->vft_size		= IXGBE_X540_VFT_TBL_SIZE;
+	mac->num_rar_entries	= IXGBE_X540_RAR_ENTRIES;
+	mac->rx_pb_size		= IXGBE_X540_RX_PB_SIZE;
+	mac->max_rx_queues	= IXGBE_X540_MAX_RX_QUEUES;
+	mac->max_tx_queues	= IXGBE_X540_MAX_TX_QUEUES;
 	mac->max_msix_vectors	= ixgbe_get_pcie_msix_count_generic(hw);
 
 	/*
