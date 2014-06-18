@@ -107,7 +107,7 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 	frag_size = (uint16_t)(mtu_size - sizeof(struct ipv4_hdr));
 
 	/* Fragment size should be a multiply of 8. */
-	RTE_IP_FRAG_ASSERT((frag_size & IPV4_HDR_FO_MASK) == 0);
+	IP_FRAG_ASSERT((frag_size & IPV4_HDR_FO_MASK) == 0);
 
 	in_hdr = (struct ipv4_hdr *) pkt_in->pkt.data;
 	flag_offset = rte_cpu_to_be_16(in_hdr->fragment_offset);

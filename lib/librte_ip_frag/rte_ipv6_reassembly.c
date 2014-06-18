@@ -49,7 +49,7 @@
  * Reassemble fragments into one packet.
  */
 struct rte_mbuf *
-ipv6_frag_reassemble(const struct rte_ip_frag_pkt *fp)
+ipv6_frag_reassemble(const struct ip_frag_pkt *fp)
 {
 	struct ipv6_hdr *ip_hdr;
 	struct ipv6_extension_fragment *frag_hdr;
@@ -148,7 +148,7 @@ rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		struct rte_ip_frag_death_row *dr, struct rte_mbuf *mb, uint64_t tms,
 		struct ipv6_hdr *ip_hdr, struct ipv6_extension_fragment *frag_hdr)
 {
-	struct rte_ip_frag_pkt *fp;
+	struct ip_frag_pkt *fp;
 	struct ip_frag_key key;
 	uint16_t ip_len, ip_ofs;
 

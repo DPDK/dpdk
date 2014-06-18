@@ -41,14 +41,14 @@
 
 #define	IP_FRAG_LOG(lvl, fmt, args...)	RTE_LOG(lvl, USER1, fmt, ##args)
 
-#define	RTE_IP_FRAG_ASSERT(exp)					\
+#define	IP_FRAG_ASSERT(exp)					\
 if (!(exp))	{							\
 	rte_panic("function %s, line%d\tassert \"" #exp "\" failed\n",	\
 		__func__, __LINE__);					\
 }
 #else
 #define	IP_FRAG_LOG(lvl, fmt, args...)	do {} while(0)
-#define RTE_IP_FRAG_ASSERT(exp)	do { } while(0)
+#define IP_FRAG_ASSERT(exp)	do {} while (0)
 #endif /* IP_FRAG_DEBUG */
 
 #define IPV4_KEYLEN 1
@@ -63,21 +63,21 @@ if (!(exp))	{							\
 	"%08" PRIx64 "%08" PRIx64 "%08" PRIx64 "%08" PRIx64
 
 /* internal functions declarations */
-struct rte_mbuf * ip_frag_process(struct rte_ip_frag_pkt *fp,
+struct rte_mbuf * ip_frag_process(struct ip_frag_pkt *fp,
 		struct rte_ip_frag_death_row *dr, struct rte_mbuf *mb,
 		uint16_t ofs, uint16_t len, uint16_t more_frags);
 
-struct rte_ip_frag_pkt * ip_frag_find(struct rte_ip_frag_tbl *tbl,
+struct ip_frag_pkt * ip_frag_find(struct rte_ip_frag_tbl *tbl,
 		struct rte_ip_frag_death_row *dr,
 		const struct ip_frag_key *key, uint64_t tms);
 
-struct rte_ip_frag_pkt * ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
+struct ip_frag_pkt * ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 	const struct ip_frag_key *key, uint64_t tms,
-	struct rte_ip_frag_pkt **free, struct rte_ip_frag_pkt **stale);
+	struct ip_frag_pkt **free, struct ip_frag_pkt **stale);
 
 /* these functions need to be declared here as ip_frag_process relies on them */
-struct rte_mbuf * ipv4_frag_reassemble(const struct rte_ip_frag_pkt *fp);
-struct rte_mbuf * ipv6_frag_reassemble(const struct rte_ip_frag_pkt *fp);
+struct rte_mbuf * ipv4_frag_reassemble(const struct ip_frag_pkt *fp);
+struct rte_mbuf * ipv6_frag_reassemble(const struct ip_frag_pkt *fp);
 
 
 
@@ -122,7 +122,7 @@ ip_frag_key_cmp(const struct ip_frag_key * k1, const struct ip_frag_key * k2)
 
 /* put fragment on death row */
 static inline void
-ip_frag_free(struct rte_ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr)
+ip_frag_free(struct ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr)
 {
 	uint32_t i, k;
 
@@ -140,7 +140,7 @@ ip_frag_free(struct rte_ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr)
 
 /* if key is empty, mark key as in use */
 static inline void
-ip_frag_inuse(struct rte_ip_frag_tbl *tbl, const struct  rte_ip_frag_pkt *fp)
+ip_frag_inuse(struct rte_ip_frag_tbl *tbl, const struct  ip_frag_pkt *fp)
 {
 	if (ip_frag_key_is_empty(&fp->key)) {
 		TAILQ_REMOVE(&tbl->lru, fp, lru);
@@ -150,7 +150,7 @@ ip_frag_inuse(struct rte_ip_frag_tbl *tbl, const struct  rte_ip_frag_pkt *fp)
 
 /* reset the fragment */
 static inline void
-ip_frag_reset(struct rte_ip_frag_pkt *fp, uint64_t tms)
+ip_frag_reset(struct ip_frag_pkt *fp, uint64_t tms)
 {
 	static const struct ip_frag zero_frag = {
 		.ofs = 0,

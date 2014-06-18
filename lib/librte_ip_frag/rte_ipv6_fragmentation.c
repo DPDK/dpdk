@@ -118,7 +118,7 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 	frag_size = (uint16_t)(mtu_size - sizeof(struct ipv6_hdr));
 
 	/* Fragment size should be a multiple of 8. */
-	RTE_IP_FRAG_ASSERT((frag_size & IPV6_HDR_FO_MASK) == 0);
+	IP_FRAG_ASSERT((frag_size & IPV6_HDR_FO_MASK) == 0);
 
 	/* Check that pkts_out is big enough to hold all fragments */
 	if (unlikely (frag_size * nb_pkts_out <

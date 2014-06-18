@@ -54,7 +54,7 @@
 /* local frag table helper functions */
 static inline void
 ip_frag_tbl_del(struct rte_ip_frag_tbl *tbl, struct rte_ip_frag_death_row *dr,
-	struct rte_ip_frag_pkt *fp)
+	struct ip_frag_pkt *fp)
 {
 	ip_frag_free(fp, dr);
 	ip_frag_key_invalidate(&fp->key);
@@ -64,7 +64,7 @@ ip_frag_tbl_del(struct rte_ip_frag_tbl *tbl, struct rte_ip_frag_death_row *dr,
 }
 
 static inline void
-ip_frag_tbl_add(struct rte_ip_frag_tbl *tbl,  struct rte_ip_frag_pkt *fp,
+ip_frag_tbl_add(struct rte_ip_frag_tbl *tbl,  struct ip_frag_pkt *fp,
 	const struct ip_frag_key *key, uint64_t tms)
 {
 	fp->key = key[0];
@@ -76,7 +76,7 @@ ip_frag_tbl_add(struct rte_ip_frag_tbl *tbl,  struct rte_ip_frag_pkt *fp,
 
 static inline void
 ip_frag_tbl_reuse(struct rte_ip_frag_tbl *tbl, struct rte_ip_frag_death_row *dr,
-	struct rte_ip_frag_pkt *fp, uint64_t tms)
+	struct ip_frag_pkt *fp, uint64_t tms)
 {
 	ip_frag_free(fp, dr);
 	ip_frag_reset(fp, tms);
@@ -137,7 +137,7 @@ ipv6_frag_hash(const struct ip_frag_key *key, uint32_t *v1, uint32_t *v2)
 }
 
 struct rte_mbuf *
-ip_frag_process(struct rte_ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr,
+ip_frag_process(struct ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr,
 	struct rte_mbuf *mb, uint16_t ofs, uint16_t len, uint16_t more_frags)
 {
 	uint32_t idx;
@@ -268,11 +268,11 @@ ip_frag_process(struct rte_ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr,
  * If such entry is not present, then allocate a new one.
  * If the entry is stale, then free and reuse it.
  */
-struct rte_ip_frag_pkt *
+struct ip_frag_pkt *
 ip_frag_find(struct rte_ip_frag_tbl *tbl, struct rte_ip_frag_death_row *dr,
 	const struct ip_frag_key *key, uint64_t tms)
 {
-	struct rte_ip_frag_pkt *pkt, *free, *stale, *lru;
+	struct ip_frag_pkt *pkt, *free, *stale, *lru;
 	uint64_t max_cycles;
 
 	/*
@@ -330,13 +330,13 @@ ip_frag_find(struct rte_ip_frag_tbl *tbl, struct rte_ip_frag_death_row *dr,
 	return (pkt);
 }
 
-struct rte_ip_frag_pkt *
+struct ip_frag_pkt *
 ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 	const struct ip_frag_key *key, uint64_t tms,
-	struct rte_ip_frag_pkt **free, struct rte_ip_frag_pkt **stale)
+	struct ip_frag_pkt **free, struct ip_frag_pkt **stale)
 {
-	struct rte_ip_frag_pkt *p1, *p2;
-	struct rte_ip_frag_pkt *empty, *old;
+	struct ip_frag_pkt *p1, *p2;
+	struct ip_frag_pkt *empty, *old;
 	uint64_t max_cycles;
 	uint32_t i, assoc, sig1, sig2;
 

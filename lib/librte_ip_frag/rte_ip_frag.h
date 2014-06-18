@@ -75,8 +75,8 @@ struct ip_frag_key {
  * @internal Fragmented packet to reassemble.
  * First two entries in the frags[] array are for the last and first fragments.
  */
-struct rte_ip_frag_pkt {
-	TAILQ_ENTRY(rte_ip_frag_pkt) lru;   /**< LRU list */
+struct ip_frag_pkt {
+	TAILQ_ENTRY(ip_frag_pkt) lru;   /**< LRU list */
 	struct ip_frag_key key;           /**< fragmentation key */
 	uint64_t             start;       /**< creation timestamp */
 	uint32_t             total_size;  /**< expected reassembled size */
@@ -94,10 +94,10 @@ struct rte_ip_frag_death_row {
 	/**< mbufs to be freed */
 };
 
-TAILQ_HEAD(rte_ip_pkt_list, rte_ip_frag_pkt); /**< @internal fragments tailq */
+TAILQ_HEAD(ip_pkt_list, ip_frag_pkt); /**< @internal fragments tailq */
 
 /** fragmentation table statistics */
-struct rte_ip_frag_tbl_stat {
+struct ip_frag_tbl_stat {
 	uint64_t find_num;      /**< total # of find/insert attempts. */
 	uint64_t add_num;       /**< # of add ops. */
 	uint64_t del_num;       /**< # of del ops. */
@@ -115,10 +115,10 @@ struct rte_ip_frag_tbl {
 	uint32_t             bucket_entries;  /**< hash assocaitivity. */
 	uint32_t             nb_entries;      /**< total size of the table. */
 	uint32_t             nb_buckets;      /**< num of associativity lines. */
-	struct rte_ip_frag_pkt *last;         /**< last used entry. */
-	struct rte_ip_pkt_list lru;           /**< LRU list for table entries. */
-	struct rte_ip_frag_tbl_stat stat;     /**< statistics counters. */
-	struct rte_ip_frag_pkt pkt[0];        /**< hash table. */
+	struct ip_frag_pkt *last;         /**< last used entry. */
+	struct ip_pkt_list lru;           /**< LRU list for table entries. */
+	struct ip_frag_tbl_stat stat;     /**< statistics counters. */
+	struct ip_frag_pkt pkt[0];        /**< hash table. */
 };
 
 /** IPv6 fragment extension header */
