@@ -1202,3 +1202,15 @@ void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u16 mask)
 		hw->mac.ops.release_swfw_sync(hw, mask);
 }
 
+
+void ixgbe_disable_rx(struct ixgbe_hw *hw)
+{
+	if (hw->mac.ops.disable_rx)
+		hw->mac.ops.disable_rx(hw);
+}
+
+void ixgbe_enable_rx(struct ixgbe_hw *hw)
+{
+	if (hw->mac.ops.enable_rx)
+		hw->mac.ops.enable_rx(hw);
+}

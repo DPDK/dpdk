@@ -128,6 +128,8 @@ s32 ixgbe_init_ops_generic(struct ixgbe_hw *hw)
 	mac->ops.set_vfta = NULL;
 	mac->ops.set_vlvf = NULL;
 	mac->ops.init_uta_tables = NULL;
+	mac->ops.enable_rx = &ixgbe_enable_rx_generic;
+	mac->ops.disable_rx = &ixgbe_disable_rx_generic;
 
 	/* Flow Control */
 	mac->ops.fc_enable = &ixgbe_fc_enable_generic;
@@ -3248,7 +3250,10 @@ s32 ixgbe_enable_rx_dma_generic(struct ixgbe_hw *hw, u32 regval)
 {
 	DEBUGFUNC("ixgbe_enable_rx_dma_generic");
 
-	IXGBE_WRITE_REG(hw, IXGBE_RXCTRL, regval);
+	if (regval & IXGBE_RXCTRL_RXEN)
+		ixgbe_enable_rx(hw);
+	else
+		ixgbe_disable_rx(hw);
 
 	return IXGBE_SUCCESS;
 }
@@ -4546,4 +4551,44 @@ void ixgbe_dcb_get_rtrup2tc_generic(struct ixgbe_hw *hw, u8 *map)
 		map[i] = IXGBE_RTRUP2TC_UP_MASK &
 			(reg >> (i * IXGBE_RTRUP2TC_UP_SHIFT));
 	return;
+}
+
+void ixgbe_disable_rx_generic(struct ixgbe_hw *hw)
+{
+	u32 pfdtxgswc;
+	u32 rxctrl;
+
+	rxctrl = IXGBE_READ_REG(hw, IXGBE_RXCTRL);
+	if (rxctrl & IXGBE_RXCTRL_RXEN) {
+		if (hw->mac.type != ixgbe_mac_82598EB) {
+			pfdtxgswc = IXGBE_READ_REG(hw, IXGBE_PFDTXGSWC);
+			if (pfdtxgswc & IXGBE_PFDTXGSWC_VT_LBEN) {
+				pfdtxgswc &= ~IXGBE_PFDTXGSWC_VT_LBEN;
+				IXGBE_WRITE_REG(hw, IXGBE_PFDTXGSWC, pfdtxgswc);
+				hw->mac.set_lben = true;
+			} else {
+				hw->mac.set_lben = false;
+			}
+		}
+		rxctrl &= ~IXGBE_RXCTRL_RXEN;
+		IXGBE_WRITE_REG(hw, IXGBE_RXCTRL, rxctrl);
+	}
+}
+
+void ixgbe_enable_rx_generic(struct ixgbe_hw *hw)
+{
+	u32 pfdtxgswc;
+	u32 rxctrl;
+
+	rxctrl = IXGBE_READ_REG(hw, IXGBE_RXCTRL);
+	IXGBE_WRITE_REG(hw, IXGBE_RXCTRL, (rxctrl | IXGBE_RXCTRL_RXEN));
+
+	if (hw->mac.type != ixgbe_mac_82598EB) {
+		if (hw->mac.set_lben) {
+			pfdtxgswc = IXGBE_READ_REG(hw, IXGBE_PFDTXGSWC);
+			pfdtxgswc |= IXGBE_PFDTXGSWC_VT_LBEN;
+			IXGBE_WRITE_REG(hw, IXGBE_PFDTXGSWC, pfdtxgswc);
+			hw->mac.set_lben = false;
+		}
+	}
 }

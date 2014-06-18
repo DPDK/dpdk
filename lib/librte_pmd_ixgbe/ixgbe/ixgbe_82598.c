@@ -141,6 +141,7 @@ s32 ixgbe_init_ops_82598(struct ixgbe_hw *hw)
 	mac->ops.read_analog_reg8 = &ixgbe_read_analog_reg8_82598;
 	mac->ops.write_analog_reg8 = &ixgbe_write_analog_reg8_82598;
 	mac->ops.set_lan_id = &ixgbe_set_lan_id_multi_port_pcie_82598;
+	mac->ops.enable_rx_dma = &ixgbe_enable_rx_dma_82598;
 
 	/* RAR, Multicast, VLAN */
 	mac->ops.set_vmdq = &ixgbe_set_vmdq_82598;
@@ -1380,4 +1381,20 @@ STATIC void ixgbe_set_rxpba_82598(struct ixgbe_hw *hw, int num_pb,
 		IXGBE_WRITE_REG(hw, IXGBE_TXPBSIZE(i), IXGBE_TXPBSIZE_40KB);
 
 	return;
+}
+
+/**
+ *  ixgbe_enable_rx_dma_82598 - Enable the Rx DMA unit
+ *  @hw: pointer to hardware structure
+ *  @regval: register value to write to RXCTRL
+ *
+ *  Enables the Rx DMA unit
+ **/
+s32 ixgbe_enable_rx_dma_82598(struct ixgbe_hw *hw, u32 regval)
+{
+	DEBUGFUNC("ixgbe_enable_rx_dma_82598");
+
+	IXGBE_WRITE_REG(hw, IXGBE_RXCTRL, regval);
+
+	return IXGBE_SUCCESS;
 }

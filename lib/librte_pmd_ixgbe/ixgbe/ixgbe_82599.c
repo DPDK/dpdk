@@ -2170,7 +2170,10 @@ s32 ixgbe_enable_rx_dma_82599(struct ixgbe_hw *hw, u32 regval)
 
 	hw->mac.ops.disable_sec_rx_path(hw);
 
-	IXGBE_WRITE_REG(hw, IXGBE_RXCTRL, regval);
+	if (regval & IXGBE_RXCTRL_RXEN)
+		ixgbe_enable_rx(hw);
+	else
+		ixgbe_disable_rx(hw);
 
 	hw->mac.ops.enable_sec_rx_path(hw);
 

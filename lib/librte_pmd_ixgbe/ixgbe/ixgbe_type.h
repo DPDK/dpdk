@@ -3076,6 +3076,8 @@ struct ixgbe_mac_operations {
 	/* Manageability interface */
 	s32 (*set_fw_drv_ver)(struct ixgbe_hw *, u8, u8, u8, u8);
 	void (*get_rtrup2tc)(struct ixgbe_hw *hw, u8 *map);
+	void (*disable_rx)(struct ixgbe_hw *hw);
+	void (*enable_rx)(struct ixgbe_hw *hw);
 };
 
 struct ixgbe_phy_operations {
@@ -3136,6 +3138,7 @@ struct ixgbe_mac_info {
 	bool orig_link_settings_stored;
 	bool autotry_restart;
 	u8 flags;
+	bool set_lben;
 };
 
 struct ixgbe_phy_info {
