@@ -75,15 +75,21 @@ print "cores = ",cores
 print "sockets = ", sockets
 print ""
 
+max_processor_len = len(str(len(cores) * len(sockets) * 2 - 1))
+max_core_map_len = max_processor_len * 2 + len('[, ]') + len('Socket ')
+max_core_id_len = len(str(max(cores)))
+
+print " ".ljust(max_core_id_len + len('Core ')),
 for s in sockets:
-	print "\tSocket %s" % s,
+        print "Socket %s" % str(s).ljust(max_core_map_len - len('Socket ')),
 print ""
+print " ".ljust(max_core_id_len + len('Core ')),
 for s in sockets:
-	print "\t---------",
+        print "--------".ljust(max_core_map_len),
 print ""
 
 for c in cores:
-	print "Core %s" % c,
-	for s in sockets:
-		print "\t", core_map[(s,c)],
-	print "\n"
+        print "Core %s" % str(c).ljust(max_core_id_len),
+        for s in sockets:
+                print str(core_map[(s,c)]).ljust(max_core_map_len),
+        print "\n"
