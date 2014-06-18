@@ -93,6 +93,12 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_set_mac_type\n");
 
+	if (hw->vendor_id != IXGBE_INTEL_VENDOR_ID) {
+		ERROR_REPORT2(IXGBE_ERROR_UNSUPPORTED,
+			     "Unsupported vendor id: %x", hw->vendor_id);
+		return IXGBE_ERR_DEVICE_NOT_SUPPORTED;
+	}
+
 	switch (hw->device_id) {
 	case IXGBE_DEV_ID_82598:
 	case IXGBE_DEV_ID_82598_BX:
@@ -138,6 +144,9 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 		break;
 	default:
 		ret_val = IXGBE_ERR_DEVICE_NOT_SUPPORTED;
+		ERROR_REPORT2(IXGBE_ERROR_UNSUPPORTED,
+			     "Unsupported device id: %x",
+			     hw->device_id);
 		break;
 	}
 

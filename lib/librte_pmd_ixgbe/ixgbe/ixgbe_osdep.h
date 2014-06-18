@@ -62,6 +62,10 @@
 #define DEBUGOUT6(S, args...)   DEBUGOUT(S, ##args)
 #define DEBUGOUT7(S, args...)   DEBUGOUT(S, ##args)
 
+#define ERROR_REPORT1(e, S, args...)   DEBUGOUT(S, ##args)
+#define ERROR_REPORT2  DEBUGOUT2
+#define ERROR_REPORT3  DEBUGOUT3
+
 #define FALSE               0
 #define TRUE                1
 

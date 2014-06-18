@@ -182,7 +182,8 @@ STATIC s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
 	 * ixgbe_fc_rx_pause because it will cause us to fail at UNH.
 	 */
 	if (hw->fc.strict_ieee && hw->fc.requested_mode == ixgbe_fc_rx_pause) {
-		DEBUGOUT("ixgbe_fc_rx_pause not valid in strict IEEE mode\n");
+		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
+			   "ixgbe_fc_rx_pause not valid in strict IEEE mode\n");
 		ret_val = IXGBE_ERR_INVALID_LINK_SETTINGS;
 		goto out;
 	}
@@ -268,13 +269,14 @@ STATIC s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
 			reg_cu |= IXGBE_TAF_SYM_PAUSE | IXGBE_TAF_ASM_PAUSE;
 		break;
 	default:
-		DEBUGOUT("Flow control param set incorrectly\n");
+		ERROR_REPORT1(IXGBE_ERROR_ARGUMENT,
+			     "Flow control param set incorrectly\n");
 		ret_val = IXGBE_ERR_CONFIG;
 		goto out;
 		break;
 	}
 
-	if (hw->mac.type != ixgbe_mac_X540) {
+	if (hw->mac.type < ixgbe_mac_X540) {
 		/*
 		 * Enable auto-negotiation between the MAC & PHY;
 		 * the MAC will advertise clause 37 flow control.
@@ -325,7 +327,7 @@ STATIC s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
 				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE, reg_cu);
 	}
 
-	DEBUGOUT1("Set up FC; IXGBE_AUTOC = 0x%08X\n", reg);
+	DEBUGOUT1("Set up FC; PCS1GLCTL = 0x%08X\n", reg);
 out:
 	return ret_val;
 }
@@ -1469,16 +1471,18 @@ s32 ixgbe_read_eerd_buffer_generic(struct ixgbe_hw *hw, u16 offset,
 
 	if (words == 0) {
 		status = IXGBE_ERR_INVALID_ARGUMENT;
+		ERROR_REPORT1(IXGBE_ERROR_ARGUMENT, "Invalid EEPROM words");
 		goto out;
 	}
 
 	if (offset >= hw->eeprom.word_size) {
 		status = IXGBE_ERR_EEPROM;
+		ERROR_REPORT1(IXGBE_ERROR_ARGUMENT, "Invalid EEPROM offset");
 		goto out;
 	}
 
 	for (i = 0; i < words; i++) {
-		eerd = ((offset + i) << IXGBE_EEPROM_RW_ADDR_SHIFT) +
+		eerd = ((offset + i) << IXGBE_EEPROM_RW_ADDR_SHIFT) |
 		       IXGBE_EEPROM_RW_REG_START;
 
 		IXGBE_WRITE_REG(hw, IXGBE_EERD, eerd);
@@ -1575,11 +1579,13 @@ s32 ixgbe_write_eewr_buffer_generic(struct ixgbe_hw *hw, u16 offset,
 
 	if (words == 0) {
 		status = IXGBE_ERR_INVALID_ARGUMENT;
+		ERROR_REPORT1(IXGBE_ERROR_ARGUMENT, "Invalid EEPROM words");
 		goto out;
 	}
 
 	if (offset >= hw->eeprom.word_size) {
 		status = IXGBE_ERR_EEPROM;
+		ERROR_REPORT1(IXGBE_ERROR_ARGUMENT, "Invalid EEPROM offset");
 		goto out;
 	}
 
@@ -1648,6 +1654,11 @@ s32 ixgbe_poll_eerd_eewr_done(struct ixgbe_hw *hw, u32 ee_reg)
 		}
 		usec_delay(5);
 	}
+
+	if (i == IXGBE_EERD_EEWR_ATTEMPTS)
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			     "EEPROM read/write done polling timed out");
+
 	return status;
 }
 
@@ -1783,14 +1794,15 @@ STATIC s32 ixgbe_get_eeprom_semaphore(struct ixgbe_hw *hw)
 		 * was not granted because we don't have access to the EEPROM
 		 */
 		if (i >= timeout) {
-			DEBUGOUT("SWESMBI Software EEPROM semaphore "
-				 "not granted.\n");
+			ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			    "SWESMBI Software EEPROM semaphore not granted.\n");
 			ixgbe_release_eeprom_semaphore(hw);
 			status = IXGBE_ERR_EEPROM;
 		}
 	} else {
-		DEBUGOUT("Software semaphore SMBI between device drivers "
-			 "not granted.\n");
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			     "Software semaphore SMBI between device drivers "
+			     "not granted.\n");
 	}
 
 	return status;
@@ -2214,7 +2226,8 @@ s32 ixgbe_set_rar_generic(struct ixgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 
 	/* Make sure we are using a valid rar index range */
 	if (index >= rar_entries) {
-		DEBUGOUT1("RAR index %d is out of range.\n", index);
+		ERROR_REPORT2(IXGBE_ERROR_ARGUMENT,
+			     "RAR index %d is out of range.\n", index);
 		return IXGBE_ERR_INVALID_ARGUMENT;
 	}
 
@@ -2263,7 +2276,8 @@ s32 ixgbe_clear_rar_generic(struct ixgbe_hw *hw, u32 index)
 
 	/* Make sure we are using a valid rar index range */
 	if (index >= rar_entries) {
-		DEBUGOUT1("RAR index %d is out of range.\n", index);
+		ERROR_REPORT2(IXGBE_ERROR_ARGUMENT,
+			     "RAR index %d is out of range.\n", index);
 		return IXGBE_ERR_INVALID_ARGUMENT;
 	}
 
@@ -2706,7 +2720,8 @@ s32 ixgbe_fc_enable_generic(struct ixgbe_hw *hw)
 		fccfg_reg |= IXGBE_FCCFG_TFCE_802_3X;
 		break;
 	default:
-		DEBUGOUT("Flow control param set incorrectly\n");
+		ERROR_REPORT1(IXGBE_ERROR_ARGUMENT,
+			     "Flow control param set incorrectly\n");
 		ret_val = IXGBE_ERR_CONFIG;
 		goto out;
 		break;
@@ -2767,8 +2782,13 @@ out:
 STATIC s32 ixgbe_negotiate_fc(struct ixgbe_hw *hw, u32 adv_reg, u32 lp_reg,
 			      u32 adv_sym, u32 adv_asm, u32 lp_sym, u32 lp_asm)
 {
-	if ((!(adv_reg)) ||  (!(lp_reg)))
+	if ((!(adv_reg)) ||  (!(lp_reg))) {
+		ERROR_REPORT3(IXGBE_ERROR_UNSUPPORTED,
+			     "Local or link partner's advertised flow control "
+			     "settings are NULL. Local: %x, link partner: %x\n",
+			     adv_reg, lp_reg);
 		return IXGBE_ERR_FC_NOT_NEGOTIATED;
+	}
 
 	if ((adv_reg & adv_sym) && (lp_reg & lp_sym)) {
 		/*
@@ -2819,8 +2839,11 @@ STATIC s32 ixgbe_fc_autoneg_fiber(struct ixgbe_hw *hw)
 
 	linkstat = IXGBE_READ_REG(hw, IXGBE_PCS1GLSTA);
 	if ((!!(linkstat & IXGBE_PCS1GLSTA_AN_COMPLETE) == 0) ||
-	    (!!(linkstat & IXGBE_PCS1GLSTA_AN_TIMED_OUT) == 1))
+	    (!!(linkstat & IXGBE_PCS1GLSTA_AN_TIMED_OUT) == 1)) {
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			     "Auto-Negotiation did not complete or timed out");
 		goto out;
+	}
 
 	pcs_anadv_reg = IXGBE_READ_REG(hw, IXGBE_PCS1GANA);
 	pcs_lpab_reg = IXGBE_READ_REG(hw, IXGBE_PCS1GANLP);
@@ -2852,13 +2875,19 @@ STATIC s32 ixgbe_fc_autoneg_backplane(struct ixgbe_hw *hw)
 	 * - we are 82599 and link partner is not AN enabled
 	 */
 	links = IXGBE_READ_REG(hw, IXGBE_LINKS);
-	if ((links & IXGBE_LINKS_KX_AN_COMP) == 0)
+	if ((links & IXGBE_LINKS_KX_AN_COMP) == 0) {
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			     "Auto-Negotiation did not complete");
 		goto out;
+	}
 
 	if (hw->mac.type == ixgbe_mac_82599EB) {
 		links2 = IXGBE_READ_REG(hw, IXGBE_LINKS2);
-		if ((links2 & IXGBE_LINKS2_AN_SUPPORTED) == 0)
+		if ((links2 & IXGBE_LINKS2_AN_SUPPORTED) == 0) {
+			ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
+				     "Link partner is not AN enabled");
 			goto out;
+		}
 	}
 	/*
 	 * Read the 10g AN autoc and LP ability registers and resolve
@@ -2920,12 +2949,17 @@ void ixgbe_fc_autoneg(struct ixgbe_hw *hw)
 	 * - FC autoneg is disabled, or if
 	 * - link is not up.
 	 */
-	if (hw->fc.disable_fc_autoneg)
+	if (hw->fc.disable_fc_autoneg) {
+		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
+			     "Flow control autoneg is disabled");
 		goto out;
+	}
 
 	hw->mac.ops.check_link(hw, &speed, &link_up, false);
-	if (!link_up)
+	if (!link_up) {
+		ERROR_REPORT1(IXGBE_ERROR_SOFTWARE, "The link is down");
 		goto out;
+	}
 
 	switch (hw->phy.media_type) {
 	/* Autoneg flow control on fiber adapters */
@@ -3010,7 +3044,8 @@ s32 ixgbe_disable_pcie_master(struct ixgbe_hw *hw)
 			goto out;
 	}
 
-	DEBUGOUT("PCIe transaction pending bit also did not clear.\n");
+	ERROR_REPORT1(IXGBE_ERROR_POLLING,
+		     "PCIe transaction pending bit also did not clear.\n");
 	status = IXGBE_ERR_MASTER_REQUESTS_PENDING;
 
 out:
@@ -3281,15 +3316,23 @@ out:
 STATIC s32 ixgbe_get_san_mac_addr_offset(struct ixgbe_hw *hw,
 					 u16 *san_mac_offset)
 {
+	s32 ret_val;
+
 	DEBUGFUNC("ixgbe_get_san_mac_addr_offset");
 
 	/*
 	 * First read the EEPROM pointer to see if the MAC addresses are
 	 * available.
 	 */
-	hw->eeprom.ops.read(hw, IXGBE_SAN_MAC_ADDR_PTR, san_mac_offset);
+	ret_val = hw->eeprom.ops.read(hw, IXGBE_SAN_MAC_ADDR_PTR,
+				      san_mac_offset);
+	if (ret_val) {
+		ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+			      "eeprom at offset %d failed",
+			      IXGBE_SAN_MAC_ADDR_PTR);
+	}
 
-	return IXGBE_SUCCESS;
+	return ret_val;
 }
 
 /**
@@ -3306,6 +3349,7 @@ s32 ixgbe_get_san_mac_addr_generic(struct ixgbe_hw *hw, u8 *san_mac_addr)
 {
 	u16 san_mac_data, san_mac_offset;
 	u8 i;
+	s32 ret_val;
 
 	DEBUGFUNC("ixgbe_get_san_mac_addr_generic");
 
@@ -3313,18 +3357,9 @@ s32 ixgbe_get_san_mac_addr_generic(struct ixgbe_hw *hw, u8 *san_mac_addr)
 	 * First read the EEPROM pointer to see if the MAC addresses are
 	 * available.  If they're not, no point in calling set_lan_id() here.
 	 */
-	ixgbe_get_san_mac_addr_offset(hw, &san_mac_offset);
-
-	if ((san_mac_offset == 0) || (san_mac_offset == 0xFFFF)) {
-		/*
-		 * No addresses available in this EEPROM.  It's not an
-		 * error though, so just wipe the local address and return.
-		 */
-		for (i = 0; i < 6; i++)
-			san_mac_addr[i] = 0xFF;
-
+	ret_val = ixgbe_get_san_mac_addr_offset(hw, &san_mac_offset);
+	if (ret_val || san_mac_offset == 0 || san_mac_offset == 0xFFFF)
 		goto san_mac_addr_out;
-	}
 
 	/* make sure we know which port we need to program */
 	hw->mac.ops.set_lan_id(hw);
@@ -3332,13 +3367,27 @@ s32 ixgbe_get_san_mac_addr_generic(struct ixgbe_hw *hw, u8 *san_mac_addr)
 	(hw->bus.func) ? (san_mac_offset += IXGBE_SAN_MAC_ADDR_PORT1_OFFSET) :
 			 (san_mac_offset += IXGBE_SAN_MAC_ADDR_PORT0_OFFSET);
 	for (i = 0; i < 3; i++) {
-		hw->eeprom.ops.read(hw, san_mac_offset, &san_mac_data);
+		ret_val = hw->eeprom.ops.read(hw, san_mac_offset,
+					      &san_mac_data);
+		if (ret_val) {
+			ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+				      "eeprom read at offset %d failed",
+				      san_mac_offset);
+			goto san_mac_addr_out;
+		}
 		san_mac_addr[i * 2] = (u8)(san_mac_data);
 		san_mac_addr[i * 2 + 1] = (u8)(san_mac_data >> 8);
 		san_mac_offset++;
 	}
+	return IXGBE_SUCCESS;
 
 san_mac_addr_out:
+	/*
+	 * No addresses available in this EEPROM.  It's not an
+	 * error though, so just wipe the local address and return.
+	 */
+	for (i = 0; i < 6; i++)
+		san_mac_addr[i] = 0xFF;
 	return IXGBE_SUCCESS;
 }
 
@@ -3351,19 +3400,16 @@ san_mac_addr_out:
  **/
 s32 ixgbe_set_san_mac_addr_generic(struct ixgbe_hw *hw, u8 *san_mac_addr)
 {
-	s32 status = IXGBE_SUCCESS;
+	s32 ret_val;
 	u16 san_mac_data, san_mac_offset;
 	u8 i;
 
 	DEBUGFUNC("ixgbe_set_san_mac_addr_generic");
 
 	/* Look for SAN mac address pointer.  If not defined, return */
-	ixgbe_get_san_mac_addr_offset(hw, &san_mac_offset);
-
-	if ((san_mac_offset == 0) || (san_mac_offset == 0xFFFF)) {
-		status = IXGBE_ERR_NO_SAN_ADDR_PTR;
-		goto san_mac_addr_out;
-	}
+	ret_val = ixgbe_get_san_mac_addr_offset(hw, &san_mac_offset);
+	if (ret_val || san_mac_offset == 0 || san_mac_offset == 0xFFFF)
+		return IXGBE_ERR_NO_SAN_ADDR_PTR;
 
 	/* Make sure we know which port we need to write */
 	hw->mac.ops.set_lan_id(hw);
@@ -3378,8 +3424,7 @@ s32 ixgbe_set_san_mac_addr_generic(struct ixgbe_hw *hw, u8 *san_mac_addr)
 		san_mac_offset++;
 	}
 
-san_mac_addr_out:
-	return status;
+	return IXGBE_SUCCESS;
 }
 
 /**
@@ -3506,7 +3551,8 @@ s32 ixgbe_clear_vmdq_generic(struct ixgbe_hw *hw, u32 rar, u32 vmdq)
 
 	/* Make sure we are using a valid rar index range */
 	if (rar >= rar_entries) {
-		DEBUGOUT1("RAR index %d is out of range.\n", rar);
+		ERROR_REPORT2(IXGBE_ERROR_ARGUMENT,
+			     "RAR index %d is out of range.\n", rar);
 		return IXGBE_ERR_INVALID_ARGUMENT;
 	}
 
@@ -3555,7 +3601,8 @@ s32 ixgbe_set_vmdq_generic(struct ixgbe_hw *hw, u32 rar, u32 vmdq)
 
 	/* Make sure we are using a valid rar index range */
 	if (rar >= rar_entries) {
-		DEBUGOUT1("RAR index %d is out of range.\n", rar);
+		ERROR_REPORT2(IXGBE_ERROR_ARGUMENT,
+			     "RAR index %d is out of range.\n", rar);
 		return IXGBE_ERR_INVALID_ARGUMENT;
 	}
 
@@ -3654,7 +3701,8 @@ s32 ixgbe_find_vlvf_slot(struct ixgbe_hw *hw, u32 vlan)
 		if (first_empty_slot)
 			regindex = first_empty_slot;
 		else {
-			DEBUGOUT("No space in VLVF.\n");
+			ERROR_REPORT1(IXGBE_ERROR_SOFTWARE,
+				     "No space in VLVF.\n");
 			regindex = IXGBE_ERR_NO_SPACE;
 		}
 	}
@@ -3944,8 +3992,9 @@ s32 ixgbe_get_wwn_prefix_generic(struct ixgbe_hw *hw, u16 *wwnn_prefix,
 	*wwpn_prefix = 0xFFFF;
 
 	/* check if alternative SAN MAC is supported */
-	hw->eeprom.ops.read(hw, IXGBE_ALT_SAN_MAC_ADDR_BLK_PTR,
-			    &alt_san_mac_blk_offset);
+	offset = IXGBE_ALT_SAN_MAC_ADDR_BLK_PTR;
+	if (hw->eeprom.ops.read(hw, offset, &alt_san_mac_blk_offset))
+		goto wwn_prefix_err;
 
 	if ((alt_san_mac_blk_offset == 0) ||
 	    (alt_san_mac_blk_offset == 0xFFFF))
@@ -3953,18 +4002,28 @@ s32 ixgbe_get_wwn_prefix_generic(struct ixgbe_hw *hw, u16 *wwnn_prefix,
 
 	/* check capability in alternative san mac address block */
 	offset = alt_san_mac_blk_offset + IXGBE_ALT_SAN_MAC_ADDR_CAPS_OFFSET;
-	hw->eeprom.ops.read(hw, offset, &caps);
+	if (hw->eeprom.ops.read(hw, offset, &caps))
+		goto wwn_prefix_err;
 	if (!(caps & IXGBE_ALT_SAN_MAC_ADDR_CAPS_ALTWWN))
 		goto wwn_prefix_out;
 
 	/* get the corresponding prefix for WWNN/WWPN */
 	offset = alt_san_mac_blk_offset + IXGBE_ALT_SAN_MAC_ADDR_WWNN_OFFSET;
-	hw->eeprom.ops.read(hw, offset, wwnn_prefix);
+	if (hw->eeprom.ops.read(hw, offset, wwnn_prefix)) {
+		ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+			      "eeprom read at offset %d failed", offset);
+	}
 
 	offset = alt_san_mac_blk_offset + IXGBE_ALT_SAN_MAC_ADDR_WWPN_OFFSET;
-	hw->eeprom.ops.read(hw, offset, wwpn_prefix);
+	if (hw->eeprom.ops.read(hw, offset, wwpn_prefix))
+		goto wwn_prefix_err;
 
 wwn_prefix_out:
+	return IXGBE_SUCCESS;
+
+wwn_prefix_err:
+	ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+		      "eeprom read at offset %d failed", offset);
 	return IXGBE_SUCCESS;
 }
 

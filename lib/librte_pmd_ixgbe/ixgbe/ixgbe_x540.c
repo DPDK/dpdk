@@ -227,7 +227,8 @@ mac_reset_top:
 
 	if (ctrl & IXGBE_CTRL_RST_MASK) {
 		status = IXGBE_ERR_RESET_FAILED;
-		DEBUGOUT("Reset polling failed to complete.\n");
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			     "Reset polling failed to complete.\n");
 	}
 	msec_delay(100);
 
@@ -579,8 +580,11 @@ s32 ixgbe_validate_eeprom_checksum_X540(struct ixgbe_hw *hw,
 		 * Verify read checksum from EEPROM is the same as
 		 * calculated checksum
 		 */
-		if (read_checksum != checksum)
+		if (read_checksum != checksum) {
 			status = IXGBE_ERR_EEPROM_CHECKSUM;
+			ERROR_REPORT1(IXGBE_ERROR_INVALID_STATE,
+				     "Invalid EEPROM checksum");
+		}
 
 		/* If the user cares, return the calculated checksum */
 		if (checksum_val)
@@ -711,6 +715,11 @@ STATIC s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw)
 		}
 		usec_delay(5);
 	}
+
+	if (i == IXGBE_FLUDONE_ATTEMPTS)
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			     "Flash update status polling timed out");
+
 	return status;
 }
 
@@ -772,6 +781,8 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
 	/* Failed to get SW only semaphore */
 	if (swmask == IXGBE_GSSR_SW_MNG_SM) {
 		ret_val = IXGBE_ERR_SWFW_SYNC;
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			     "Failed to get SW only semaphore");
 		goto out;
 	}
 
@@ -866,14 +877,15 @@ STATIC s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw)
 		 * was not granted because we don't have access to the EEPROM
 		 */
 		if (i >= timeout) {
-			DEBUGOUT("REGSMP Software NVM semaphore not "
-				 "granted.\n");
+			ERROR_REPORT1(IXGBE_ERROR_POLLING,
+				"REGSMP Software NVM semaphore not granted.\n");
 			ixgbe_release_swfw_sync_semaphore(hw);
 			status = IXGBE_ERR_EEPROM;
 		}
 	} else {
-		DEBUGOUT("Software semaphore SMBI between device drivers "
-			 "not granted.\n");
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			     "Software semaphore SMBI between device drivers "
+			     "not granted.\n");
 	}
 
 	return status;

@@ -267,7 +267,8 @@ s32 ixgbe_reset_phy_generic(struct ixgbe_hw *hw)
 
 	if (ctrl & IXGBE_MDIO_PHY_XS_RESET) {
 		status = IXGBE_ERR_RESET_FAILED;
-		DEBUGOUT("PHY reset polling failed to complete.\n");
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			     "PHY reset polling failed to complete.\n");
 	}
 
 out:
@@ -558,7 +559,8 @@ s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
 
 	if (time_out == max_time_out) {
 		status = IXGBE_ERR_LINK_SETUP;
-		DEBUGOUT("ixgbe_setup_phy_link_generic: time out");
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			     "PHY autonegotiation time out");
 	}
 
 	return status;
@@ -867,6 +869,8 @@ s32 ixgbe_reset_phy_nl(struct ixgbe_hw *hw)
 		 * Read control word from PHY init contents offset
 		 */
 		ret_val = hw->eeprom.ops.read(hw, data_offset, &eword);
+		if (ret_val)
+			goto err_eeprom;
 		control = (eword & IXGBE_CONTROL_MASK_NL) >>
 			   IXGBE_CONTROL_SHIFT_NL;
 		edata = eword & IXGBE_DATA_MASK_NL;
@@ -879,10 +883,16 @@ s32 ixgbe_reset_phy_nl(struct ixgbe_hw *hw)
 		case IXGBE_DATA_NL:
 			DEBUGOUT("DATA:\n");
 			data_offset++;
-			hw->eeprom.ops.read(hw, data_offset++,
-					    &phy_offset);
+			ret_val = hw->eeprom.ops.read(hw, data_offset,
+						      &phy_offset);
+			if (ret_val)
+				goto err_eeprom;
+			data_offset++;
 			for (i = 0; i < edata; i++) {
-				hw->eeprom.ops.read(hw, data_offset, &eword);
+				ret_val = hw->eeprom.ops.read(hw, data_offset,
+							      &eword);
+				if (ret_val)
+					goto err_eeprom;
 				hw->phy.ops.write_reg(hw, phy_offset,
 						      IXGBE_TWINAX_DEV, eword);
 				DEBUGOUT2("Wrote %4.4x to %4.4x\n", eword,
@@ -914,6 +924,11 @@ s32 ixgbe_reset_phy_nl(struct ixgbe_hw *hw)
 
 out:
 	return ret_val;
+
+err_eeprom:
+	ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+		      "eeprom read at offset %d failed", data_offset);
+	return IXGBE_ERR_PHY;
 }
 
 /**
@@ -974,9 +989,7 @@ s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw)
 					     IXGBE_SFF_IDENTIFIER,
 					     &identifier);
 
-	if (status == IXGBE_ERR_SWFW_SYNC ||
-	    status == IXGBE_ERR_I2C ||
-	    status == IXGBE_ERR_SFP_NOT_PRESENT)
+	if (status != IXGBE_SUCCESS)
 		goto err_read_i2c_eeprom;
 
 	/* LAN ID is needed for sfp_type determination */
@@ -990,26 +1003,20 @@ s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw)
 						     IXGBE_SFF_1GBE_COMP_CODES,
 						     &comp_codes_1g);
 
-		if (status == IXGBE_ERR_SWFW_SYNC ||
-		    status == IXGBE_ERR_I2C ||
-		    status == IXGBE_ERR_SFP_NOT_PRESENT)
+		if (status != IXGBE_SUCCESS)
 			goto err_read_i2c_eeprom;
 
 		status = hw->phy.ops.read_i2c_eeprom(hw,
 						     IXGBE_SFF_10GBE_COMP_CODES,
 						     &comp_codes_10g);
 
-		if (status == IXGBE_ERR_SWFW_SYNC ||
-		    status == IXGBE_ERR_I2C ||
-		    status == IXGBE_ERR_SFP_NOT_PRESENT)
+		if (status != IXGBE_SUCCESS)
 			goto err_read_i2c_eeprom;
 		status = hw->phy.ops.read_i2c_eeprom(hw,
 						     IXGBE_SFF_CABLE_TECHNOLOGY,
 						     &cable_tech);
 
-		if (status == IXGBE_ERR_SWFW_SYNC ||
-		    status == IXGBE_ERR_I2C ||
-		    status == IXGBE_ERR_SFP_NOT_PRESENT)
+		if (status != IXGBE_SUCCESS)
 			goto err_read_i2c_eeprom;
 
 		 /* ID Module
@@ -1107,27 +1114,21 @@ s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw)
 						    IXGBE_SFF_VENDOR_OUI_BYTE0,
 						    &oui_bytes[0]);
 
-			if (status == IXGBE_ERR_SWFW_SYNC ||
-			    status == IXGBE_ERR_I2C ||
-			    status == IXGBE_ERR_SFP_NOT_PRESENT)
+			if (status != IXGBE_SUCCESS)
 				goto err_read_i2c_eeprom;
 
 			status = hw->phy.ops.read_i2c_eeprom(hw,
 						    IXGBE_SFF_VENDOR_OUI_BYTE1,
 						    &oui_bytes[1]);
 
-			if (status == IXGBE_ERR_SWFW_SYNC ||
-			    status == IXGBE_ERR_I2C ||
-			    status == IXGBE_ERR_SFP_NOT_PRESENT)
+			if (status != IXGBE_SUCCESS)
 				goto err_read_i2c_eeprom;
 
 			status = hw->phy.ops.read_i2c_eeprom(hw,
 						    IXGBE_SFF_VENDOR_OUI_BYTE2,
 						    &oui_bytes[2]);
 
-			if (status == IXGBE_ERR_SWFW_SYNC ||
-			    status == IXGBE_ERR_I2C ||
-			    status == IXGBE_ERR_SFP_NOT_PRESENT)
+			if (status != IXGBE_SUCCESS)
 				goto err_read_i2c_eeprom;
 
 			vendor_oui =
@@ -1280,7 +1281,12 @@ s32 ixgbe_get_sfp_init_sequence_offsets(struct ixgbe_hw *hw,
 		sfp_type = ixgbe_sfp_type_srlr_core1;
 
 	/* Read offset to PHY init contents */
-	hw->eeprom.ops.read(hw, IXGBE_PHY_INIT_OFFSET_NL, list_offset);
+	if (hw->eeprom.ops.read(hw, IXGBE_PHY_INIT_OFFSET_NL, list_offset)) {
+		ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+			      "eeprom read at offset %d failed",
+			      IXGBE_PHY_INIT_OFFSET_NL);
+		return IXGBE_ERR_SFP_NO_INIT_SEQ_PRESENT;
+	}
 
 	if ((!*list_offset) || (*list_offset == 0xFFFF))
 		return IXGBE_ERR_SFP_NO_INIT_SEQ_PRESENT;
@@ -1292,12 +1298,14 @@ s32 ixgbe_get_sfp_init_sequence_offsets(struct ixgbe_hw *hw,
 	 * Find the matching SFP ID in the EEPROM
 	 * and program the init sequence
 	 */
-	hw->eeprom.ops.read(hw, *list_offset, &sfp_id);
+	if (hw->eeprom.ops.read(hw, *list_offset, &sfp_id))
+		goto err_phy;
 
 	while (sfp_id != IXGBE_PHY_INIT_END_NL) {
 		if (sfp_id == sfp_type) {
 			(*list_offset)++;
-			hw->eeprom.ops.read(hw, *list_offset, data_offset);
+			if (hw->eeprom.ops.read(hw, *list_offset, data_offset))
+				goto err_phy;
 			if ((!*data_offset) || (*data_offset == 0xFFFF)) {
 				DEBUGOUT("SFP+ module not supported\n");
 				return IXGBE_ERR_SFP_NOT_SUPPORTED;
@@ -1307,7 +1315,7 @@ s32 ixgbe_get_sfp_init_sequence_offsets(struct ixgbe_hw *hw,
 		} else {
 			(*list_offset) += 2;
 			if (hw->eeprom.ops.read(hw, *list_offset, &sfp_id))
-				return IXGBE_ERR_PHY;
+				goto err_phy;
 		}
 	}
 
@@ -1317,6 +1325,11 @@ s32 ixgbe_get_sfp_init_sequence_offsets(struct ixgbe_hw *hw,
 	}
 
 	return IXGBE_SUCCESS;
+
+err_phy:
+	ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+		      "eeprom read at offset %d failed", *list_offset);
+	return IXGBE_ERR_PHY;
 }
 
 /**
@@ -1666,7 +1679,8 @@ STATIC s32 ixgbe_get_i2c_ack(struct ixgbe_hw *hw)
 	}
 
 	if (ack == 1) {
-		DEBUGOUT("I2C ack was not received.\n");
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			     "I2C ack was not received.\n");
 		status = IXGBE_ERR_I2C;
 	}
 
@@ -1736,7 +1750,8 @@ STATIC s32 ixgbe_clock_out_i2c_bit(struct ixgbe_hw *hw, bool data)
 		usec_delay(IXGBE_I2C_T_LOW);
 	} else {
 		status = IXGBE_ERR_I2C;
-		DEBUGOUT1("I2C data was not set to %X\n", data);
+		ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+			     "I2C data was not set to %X\n", data);
 	}
 
 	return status;
@@ -1820,7 +1835,9 @@ STATIC s32 ixgbe_set_i2c_data(struct ixgbe_hw *hw, u32 *i2cctl, bool data)
 	*i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
 	if (data != ixgbe_get_i2c_data(i2cctl)) {
 		status = IXGBE_ERR_I2C;
-		DEBUGOUT1("Error - I2C data was not set to %X.\n", data);
+		ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+			     "Error - I2C data was not set to %X.\n",
+			     data);
 	}
 
 	return status;
@@ -1907,6 +1924,7 @@ s32 ixgbe_tn_check_overtemp(struct ixgbe_hw *hw)
 		goto out;
 
 	status = IXGBE_ERR_OVERTEMP;
+	ERROR_REPORT1(IXGBE_ERROR_CAUTION, "Device over temperature");
 out:
 	return status;
 }

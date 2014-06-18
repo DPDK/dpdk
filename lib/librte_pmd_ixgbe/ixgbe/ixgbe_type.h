@@ -34,9 +34,50 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef _IXGBE_TYPE_H_
 #define _IXGBE_TYPE_H_
 
+/*
+ * The following is a brief description of the error categories used by the
+ * ERROR_REPORT* macros.
+ *
+ * - IXGBE_ERROR_INVALID_STATE
+ * This category is for errors which represent a serious failure state that is
+ * unexpected, and could be potentially harmful to device operation. It should
+ * not be used for errors relating to issues that can be worked around or
+ * ignored.
+ *
+ * - IXGBE_ERROR_POLLING
+ * This category is for errors related to polling/timeout issues and should be
+ * used in any case where the timeout occured, or a failure to obtain a lock, or
+ * failure to receive data within the time limit.
+ *
+ * - IXGBE_ERROR_CAUTION
+ * This category should be used for reporting issues that may be the cause of
+ * other errors, such as temperature warnings. It should indicate an event which
+ * could be serious, but hasn't necessarily caused problems yet.
+ *
+ * - IXGBE_ERROR_SOFTWARE
+ * This category is intended for errors due to software state preventing
+ * something. The category is not intended for errors due to bad arguments, or
+ * due to unsupported features. It should be used when a state occurs which
+ * prevents action but is not a serious issue.
+ *
+ * - IXGBE_ERROR_ARGUMENT
+ * This category is for when a bad or invalid argument is passed. It should be
+ * used whenever a function is called and error checking has detected the
+ * argument is wrong or incorrect.
+ *
+ * - IXGBE_ERROR_UNSUPPORTED
+ * This category is for errors which are due to unsupported circumstances or
+ * configuration issues. It should not be used when the issue is due to an
+ * invalid argument, but for when something has occurred that is unsupported
+ * (Ex: Flow control autonegotiation or an unsupported SFP+ module.)
+ */
+
 #include "ixgbe_osdep.h"
 
 #ident "$Id: ixgbe_type.h,v 1.552 2012/11/08 11:33:27 jtkirshe Exp $"
+
+/* Vendor ID */
+#define IXGBE_INTEL_VENDOR_ID			0x8086
 
 /* Device IDs */
 #define IXGBE_DEV_ID_82598			0x10B6

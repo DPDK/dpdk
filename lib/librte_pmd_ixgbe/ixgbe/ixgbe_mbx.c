@@ -76,10 +76,11 @@ s32 ixgbe_write_mbx(struct ixgbe_hw *hw, u32 *msg, u16 size, u16 mbx_id)
 
 	DEBUGFUNC("ixgbe_write_mbx");
 
-	if (size > mbx->size)
+	if (size > mbx->size) {
 		ret_val = IXGBE_ERR_MBX;
-
-	else if (mbx->ops.write)
+		ERROR_REPORT2(IXGBE_ERROR_ARGUMENT,
+			     "Invalid mailbox message size %d", size);
+	} else if (mbx->ops.write)
 		ret_val = mbx->ops.write(hw, msg, size, mbx_id);
 
 	return ret_val;
@@ -169,6 +170,10 @@ STATIC s32 ixgbe_poll_for_msg(struct ixgbe_hw *hw, u16 mbx_id)
 		usec_delay(mbx->usec_delay);
 	}
 
+	if (countdown == 0)
+		ERROR_REPORT2(IXGBE_ERROR_POLLING,
+			   "Polling for VF%d mailbox message timedout", mbx_id);
+
 out:
 	return countdown ? IXGBE_SUCCESS : IXGBE_ERR_MBX;
 }
@@ -196,6 +201,10 @@ STATIC s32 ixgbe_poll_for_ack(struct ixgbe_hw *hw, u16 mbx_id)
 			break;
 		usec_delay(mbx->usec_delay);
 	}
+
+	if (countdown == 0)
+		ERROR_REPORT2(IXGBE_ERROR_POLLING,
+			     "Polling for VF%d mailbox ack timedout", mbx_id);
 
 out:
 	return countdown ? IXGBE_SUCCESS : IXGBE_ERR_MBX;
@@ -643,6 +652,10 @@ STATIC s32 ixgbe_obtain_mbx_lock_pf(struct ixgbe_hw *hw, u16 vf_number)
 	p2v_mailbox = IXGBE_READ_REG(hw, IXGBE_PFMAILBOX(vf_number));
 	if (p2v_mailbox & IXGBE_PFMAILBOX_PFU)
 		ret_val = IXGBE_SUCCESS;
+	else
+		ERROR_REPORT2(IXGBE_ERROR_POLLING,
+			   "Failed to obtain mailbox lock for VF%d", vf_number);
+
 
 	return ret_val;
 }

@@ -2193,22 +2193,37 @@ STATIC s32 ixgbe_verify_fw_version_82599(struct ixgbe_hw *hw)
 	}
 
 	/* get the offset to the Firmware Module block */
-	hw->eeprom.ops.read(hw, IXGBE_FW_PTR, &fw_offset);
+	if (hw->eeprom.ops.read(hw, IXGBE_FW_PTR, &fw_offset)) {
+		ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+			      "eeprom read at offset %d failed", IXGBE_FW_PTR);
+		return IXGBE_ERR_EEPROM_VERSION;
+	}
 
 	if ((fw_offset == 0) || (fw_offset == 0xFFFF))
 		goto fw_version_out;
 
 	/* get the offset to the Pass Through Patch Configuration block */
-	hw->eeprom.ops.read(hw, (fw_offset +
+	if (hw->eeprom.ops.read(hw, (fw_offset +
 				 IXGBE_FW_PASSTHROUGH_PATCH_CONFIG_PTR),
-				 &fw_ptp_cfg_offset);
+				 &fw_ptp_cfg_offset)) {
+		ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+			      "eeprom read at offset %d failed",
+			      fw_offset +
+			      IXGBE_FW_PASSTHROUGH_PATCH_CONFIG_PTR);
+		return IXGBE_ERR_EEPROM_VERSION;
+	}
 
 	if ((fw_ptp_cfg_offset == 0) || (fw_ptp_cfg_offset == 0xFFFF))
 		goto fw_version_out;
 
 	/* get the firmware version */
-	hw->eeprom.ops.read(hw, (fw_ptp_cfg_offset +
-			    IXGBE_FW_PATCH_VERSION_4), &fw_version);
+	if (hw->eeprom.ops.read(hw, (fw_ptp_cfg_offset +
+			    IXGBE_FW_PATCH_VERSION_4), &fw_version)) {
+		ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+			      "eeprom read at offset %d failed",
+			      fw_ptp_cfg_offset + IXGBE_FW_PATCH_VERSION_4);
+		return IXGBE_ERR_EEPROM_VERSION;
+	}
 
 	if (fw_version > 0x5)
 		status = IXGBE_SUCCESS;
