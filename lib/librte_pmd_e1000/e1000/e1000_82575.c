@@ -1979,7 +1979,7 @@ STATIC s32 e1000_reset_init_script_82575(struct e1000_hw *hw)
  **/
 STATIC s32 e1000_read_mac_addr_82575(struct e1000_hw *hw)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	DEBUGFUNC("e1000_read_mac_addr_82575");
 
@@ -2611,7 +2611,7 @@ out:
  **/
 STATIC s32 e1000_validate_nvm_checksum_82580(struct e1000_hw *hw)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 	u16 eeprom_regions_count = 1;
 	u16 j, nvm_data;
 	u16 nvm_offset;
@@ -2751,7 +2751,7 @@ out:
 STATIC s32 __e1000_access_emi_reg(struct e1000_hw *hw, u16 address,
 				  u16 *data, bool read)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	DEBUGFUNC("__e1000_access_emi_reg");
 

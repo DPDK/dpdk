@@ -83,7 +83,7 @@ STATIC const u16 e1000_igp_cable_length_table[] = {
 STATIC s32 e1000_init_phy_params_82541(struct e1000_hw *hw)
 {
 	struct e1000_phy_info *phy = &hw->phy;
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	DEBUGFUNC("e1000_init_phy_params_82541");
 

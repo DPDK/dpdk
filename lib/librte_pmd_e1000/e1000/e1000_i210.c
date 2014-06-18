@@ -635,7 +635,7 @@ s32 e1000_validate_nvm_checksum_i210(struct e1000_hw *hw)
  **/
 s32 e1000_update_nvm_checksum_i210(struct e1000_hw *hw)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 	u16 checksum = 0;
 	u16 i, nvm_data;
 
@@ -714,7 +714,7 @@ bool e1000_get_flash_presence_i210(struct e1000_hw *hw)
  **/
 s32 e1000_update_flash_i210(struct e1000_hw *hw)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 	u32 flup;
 
 	DEBUGFUNC("e1000_update_flash_i210");
@@ -770,7 +770,7 @@ s32 e1000_pool_flash_update_done_i210(struct e1000_hw *hw)
  **/
 STATIC s32 e1000_init_nvm_params_i210(struct e1000_hw *hw)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 	struct e1000_nvm_info *nvm = &hw->nvm;
 
 	DEBUGFUNC("e1000_init_nvm_params_i210");
@@ -855,7 +855,7 @@ out:
 STATIC s32 __e1000_access_xmdio_reg(struct e1000_hw *hw, u16 address,
 				    u8 dev_addr, u16 *data, bool read)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	DEBUGFUNC("__e1000_access_xmdio_reg");
 

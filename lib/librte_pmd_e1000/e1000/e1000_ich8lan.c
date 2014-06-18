@@ -619,12 +619,11 @@ STATIC s32 e1000_init_nvm_params_ich8lan(struct e1000_hw *hw)
 	DEBUGFUNC("e1000_init_nvm_params_ich8lan");
 
 	/* Can't read flash registers if the register set isn't mapped. */
+	nvm->type = e1000_nvm_flash_sw;
 	if (!hw->flash_address) {
 		DEBUGOUT("ERROR: Flash registers not mapped\n");
 		return -E1000_ERR_CONFIG;
 	}
-
-	nvm->type = e1000_nvm_flash_sw;
 
 	gfpreg = E1000_READ_FLASH_REG(hw, ICH_FLASH_GFPREG);
 
