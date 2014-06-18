@@ -886,6 +886,10 @@ MAIN(int argc, char **argv)
 	if (init_mem() < 0)
 		rte_panic("Cannot initialize memory structures!\n");
 
+	/* check if portmask has non-existent ports */
+	if (enabled_port_mask & ~(RTE_LEN2MASK(nb_ports, unsigned)))
+		rte_exit(EXIT_FAILURE, "Non-existent ports in portmask!\n");
+
 	/* initialize all ports */
 	for (portid = 0; portid < nb_ports; portid++) {
 		/* skip ports that are not enabled */
