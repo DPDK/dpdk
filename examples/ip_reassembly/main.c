@@ -310,11 +310,11 @@ struct rte_lpm6_config lpm6_config = {
 static struct rte_lpm *socket_lpm[RTE_MAX_NUMA_NODES];
 static struct rte_lpm6 *socket_lpm6[RTE_MAX_NUMA_NODES];
 
-#ifdef IPV6_FRAG_TBL_STAT
+#ifdef RTE_LIBRTE_IP_FRAG_TBL_STAT
 #define TX_LCORE_STAT_UPDATE(s, f, v)   ((s)->f += (v))
 #else
 #define TX_LCORE_STAT_UPDATE(s, f, v)   do {} while (0)
-#endif /* IPV6_FRAG_TBL_STAT */
+#endif /* RTE_LIBRTE_IP_FRAG_TBL_STAT */
 
 /*
  * If number of queued packets reached given threahold, then
