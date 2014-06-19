@@ -640,6 +640,20 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	memcpy(&dev->data->dev_conf, dev_conf, sizeof(dev->data->dev_conf));
 
 	/*
+	 * If link state interrupt is enabled, check that the
+	 * device supports it.
+	 */
+	if (dev_conf->intr_conf.lsc == 1) {
+		const struct rte_pci_driver *pci_drv = &dev->driver->pci_drv;
+
+		if (!(pci_drv->drv_flags & RTE_PCI_DRV_INTR_LSC)) {
+			PMD_DEBUG_TRACE("driver %s does not support lsc\n",
+					pci_drv->name);
+			return (-EINVAL);
+		}
+	}
+
+	/*
 	 * If jumbo frames are enabled, check that the maximum RX packet
 	 * length is supported by the configured device.
 	 */

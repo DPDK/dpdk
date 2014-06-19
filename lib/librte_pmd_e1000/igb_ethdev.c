@@ -662,7 +662,7 @@ static struct eth_driver rte_igb_pmd = {
 	{
 		.name = "rte_igb_pmd",
 		.id_table = pci_id_igb_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	},
 	.eth_dev_init = eth_igb_dev_init,
 	.dev_private_size = sizeof(struct e1000_adapter),
