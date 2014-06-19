@@ -562,6 +562,7 @@ eal_parse_base_virtaddr(const char *arg)
 	char *end;
 	uint64_t addr;
 
+	errno = 0;
 	addr = strtoull(arg, &end, 16);
 
 	/* check for errors */
