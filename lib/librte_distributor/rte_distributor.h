@@ -193,7 +193,49 @@ int
 rte_distributor_return_pkt(struct rte_distributor *d, unsigned worker_id,
 		struct rte_mbuf *mbuf);
 
-/******************************************/
+/**
+ * API called by a worker to request a new packet to process.
+ * Any previous packet given to the worker is assumed to have completed
+ * processing, and may be optionally returned to the distributor via
+ * the oldpkt parameter.
+ * Unlike rte_distributor_get_pkt(), this function does not wait for a new
+ * packet to be provided by the distributor.
+ *
+ * NOTE: after calling this function, rte_distributor_poll_pkt() should
+ * be used to poll for the packet requested. The rte_distributor_get_pkt()
+ * API should *not* be used to try and retrieve the new packet.
+ *
+ * @param d
+ *   The distributor instance to be used
+ * @param worker_id
+ *   The worker instance number to use - must be less that num_workers passed
+ *   at distributor creation time.
+ * @param oldpkt
+ *   The previous packet, if any, being processed by the worker
+ */
+void
+rte_distributor_request_pkt(struct rte_distributor *d,
+		unsigned worker_id, struct rte_mbuf *oldpkt);
+
+/**
+ * API called by a worker to check for a new packet that was previously
+ * requested by a call to rte_distributor_request_pkt(). It does not wait
+ * for the new packet to be available, but returns NULL if the request has
+ * not yet been fulfilled by the distributor.
+ *
+ * @param d
+ *   The distributor instance to be used
+ * @param worker_id
+ *   The worker instance number to use - must be less that num_workers passed
+ *   at distributor creation time.
+ *
+ * @return
+ *   A new packet to be processed by the worker thread, or NULL if no
+ *   packet is yet available.
+ */
+struct rte_mbuf *
+rte_distributor_poll_pkt(struct rte_distributor *d,
+		unsigned worker_id);
 
 #ifdef __cplusplus
 }

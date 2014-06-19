@@ -103,8 +103,8 @@ TAILQ_HEAD(rte_distributor_list, rte_distributor);
 
 /**** APIs called by workers ****/
 
-struct rte_mbuf *
-rte_distributor_get_pkt(struct rte_distributor *d,
+void
+rte_distributor_request_pkt(struct rte_distributor *d,
 		unsigned worker_id, struct rte_mbuf *oldpkt)
 {
 	union rte_distributor_buffer *buf = &d->bufs[worker_id];
@@ -113,11 +113,30 @@ rte_distributor_get_pkt(struct rte_distributor *d,
 	while (unlikely(buf->bufptr64 & RTE_DISTRIB_FLAGS_MASK))
 		rte_pause();
 	buf->bufptr64 = req;
-	while (buf->bufptr64 & RTE_DISTRIB_GET_BUF)
-		rte_pause();
+}
+
+struct rte_mbuf *
+rte_distributor_poll_pkt(struct rte_distributor *d,
+		unsigned worker_id)
+{
+	union rte_distributor_buffer *buf = &d->bufs[worker_id];
+	if (buf->bufptr64 & RTE_DISTRIB_GET_BUF)
+		return NULL;
+
 	/* since bufptr64 is signed, this should be an arithmetic shift */
 	int64_t ret = buf->bufptr64 >> RTE_DISTRIB_FLAG_BITS;
 	return (struct rte_mbuf *)((uintptr_t)ret);
+}
+
+struct rte_mbuf *
+rte_distributor_get_pkt(struct rte_distributor *d,
+		unsigned worker_id, struct rte_mbuf *oldpkt)
+{
+	struct rte_mbuf *ret;
+	rte_distributor_request_pkt(d, worker_id, oldpkt);
+	while ((ret = rte_distributor_poll_pkt(d, worker_id)) == NULL)
+		rte_pause();
+	return ret;
 }
 
 int
