@@ -740,6 +740,7 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	i40e_shutdown_adminq(hw);
 
 	i40e_res_pool_destroy(&pf->qp_pool);
+	i40e_res_pool_destroy(&pf->msix_pool);
 
 	/* force a PF reset to clean anything leftover */
 	reg = I40E_READ_REG(hw, I40E_PFGEN_CTRL);
