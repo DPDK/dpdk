@@ -75,6 +75,7 @@
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
+#include <rte_malloc.h>
 #include <rte_launch.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
@@ -89,7 +90,7 @@
 
 #include "rte_ring.h"
 
-TAILQ_HEAD(rte_ring_list, rte_ring);
+TAILQ_HEAD(rte_ring_list, rte_tailq_entry);
 
 /* true if x is a power of 2 */
 #define POWEROF2(x) ((((x)-1) & (x)) == 0)
@@ -155,6 +156,7 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 {
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	struct rte_ring *r;
+	struct rte_tailq_entry *te;
 	const struct rte_memzone *mz;
 	ssize_t ring_size;
 	int mz_flags = 0;
@@ -173,6 +175,13 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 		return NULL;
 	}
 
+	te = rte_zmalloc("RING_TAILQ_ENTRY", sizeof(*te), 0);
+	if (te == NULL) {
+		RTE_LOG(ERR, RING, "Cannot reserve memory for tailq\n");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
 	snprintf(mz_name, sizeof(mz_name), "%s%s", RTE_RING_MZ_PREFIX, name);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
@@ -186,10 +195,14 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 		/* no need to check return value here, we already checked the
 		 * arguments above */
 		rte_ring_init(r, name, count, flags);
-		TAILQ_INSERT_TAIL(ring_list, r, next);
+
+		te->data = (void *) r;
+
+		TAILQ_INSERT_TAIL(ring_list, te, next);
 	} else {
 		r = NULL;
 		RTE_LOG(ERR, RING, "Cannot reserve memory\n");
+		rte_free(te);
 	}
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
@@ -272,7 +285,7 @@ rte_ring_dump(FILE *f, const struct rte_ring *r)
 void
 rte_ring_list_dump(FILE *f)
 {
-	const struct rte_ring *mp;
+	const struct rte_tailq_entry *te;
 	struct rte_ring_list *ring_list;
 
 	/* check that we have an initialised tail queue */
@@ -284,8 +297,8 @@ rte_ring_list_dump(FILE *f)
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 
-	TAILQ_FOREACH(mp, ring_list, next) {
-		rte_ring_dump(f, mp);
+	TAILQ_FOREACH(te, ring_list, next) {
+		rte_ring_dump(f, (struct rte_ring *) te->data);
 	}
 
 	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
@@ -295,7 +308,8 @@ rte_ring_list_dump(FILE *f)
 struct rte_ring *
 rte_ring_lookup(const char *name)
 {
-	struct rte_ring *r;
+	struct rte_tailq_entry *te;
+	struct rte_ring *r = NULL;
 	struct rte_ring_list *ring_list;
 
 	/* check that we have an initialized tail queue */
@@ -307,15 +321,18 @@ rte_ring_lookup(const char *name)
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 
-	TAILQ_FOREACH(r, ring_list, next) {
+	TAILQ_FOREACH(te, ring_list, next) {
+		r = (struct rte_ring *) te->data;
 		if (strncmp(name, r->name, RTE_RING_NAMESIZE) == 0)
 			break;
 	}
 
 	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
 
-	if (r == NULL)
+	if (te == NULL) {
 		rte_errno = ENOENT;
+		return NULL;
+	}
 
 	return r;
 }

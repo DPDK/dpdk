@@ -42,7 +42,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_RING) := rte_ring.c
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_RING)-include := rte_ring.h
 
-# this lib needs eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_RING) += lib/librte_eal
+# this lib needs eal and rte_malloc
+DEPDIRS-$(CONFIG_RTE_LIBRTE_RING) += lib/librte_eal lib/librte_malloc
 
 include $(RTE_SDK)/mk/rte.lib.mk

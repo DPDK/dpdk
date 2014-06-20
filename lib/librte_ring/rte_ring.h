@@ -138,8 +138,6 @@ struct rte_ring_debug_stats {
  * a problem.
  */
 struct rte_ring {
-	TAILQ_ENTRY(rte_ring) next;      /**< Next in list. */
-
 	char name[RTE_RING_NAMESIZE];    /**< Name of the ring. */
 	int flags;                       /**< Flags supplied at creation. */
 
