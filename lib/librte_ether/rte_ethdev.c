@@ -1100,11 +1100,11 @@ rte_eth_link_get(uint8_t port_id, struct rte_eth_link *eth_link)
 		return;
 	}
 	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_RET(*dev->dev_ops->link_update);
 
 	if (dev->data->dev_conf.intr_conf.lsc != 0)
 		rte_eth_dev_atomic_read_link_status(dev, eth_link);
 	else {
+		FUNC_PTR_OR_RET(*dev->dev_ops->link_update);
 		(*dev->dev_ops->link_update)(dev, 1);
 		*eth_link = dev->data->dev_link;
 	}
@@ -1120,11 +1120,11 @@ rte_eth_link_get_nowait(uint8_t port_id, struct rte_eth_link *eth_link)
 		return;
 	}
 	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_RET(*dev->dev_ops->link_update);
 
 	if (dev->data->dev_conf.intr_conf.lsc != 0)
 		rte_eth_dev_atomic_read_link_status(dev, eth_link);
 	else {
+		FUNC_PTR_OR_RET(*dev->dev_ops->link_update);
 		(*dev->dev_ops->link_update)(dev, 0);
 		*eth_link = dev->data->dev_link;
 	}
