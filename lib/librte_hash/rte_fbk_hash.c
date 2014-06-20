@@ -54,7 +54,7 @@
 
 #include "rte_fbk_hash.h"
 
-TAILQ_HEAD(rte_fbk_hash_list, rte_fbk_hash_table);
+TAILQ_HEAD(rte_fbk_hash_list, rte_tailq_entry);
 
 /**
  * Performs a lookup for an existing hash table, and returns a pointer to
@@ -69,24 +69,29 @@ TAILQ_HEAD(rte_fbk_hash_list, rte_fbk_hash_table);
 struct rte_fbk_hash_table *
 rte_fbk_hash_find_existing(const char *name)
 {
-	struct rte_fbk_hash_table *h;
+	struct rte_fbk_hash_table *h = NULL;
+	struct rte_tailq_entry *te;
 	struct rte_fbk_hash_list *fbk_hash_list;
 
 	/* check that we have an initialised tail queue */
 	if ((fbk_hash_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_FBK_HASH, rte_fbk_hash_list)) == NULL) {
+			RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_FBK_HASH,
+					rte_fbk_hash_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
 		return NULL;
 	}
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
-	TAILQ_FOREACH(h, fbk_hash_list, next) {
+	TAILQ_FOREACH(te, fbk_hash_list, next) {
+		h = (struct rte_fbk_hash_table *) te->data;
 		if (strncmp(name, h->name, RTE_FBK_HASH_NAMESIZE) == 0)
 			break;
 	}
 	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
-	if (h == NULL)
+	if (te == NULL) {
 		rte_errno = ENOENT;
+		return NULL;
+	}
 	return h;
 }
 
@@ -104,6 +109,7 @@ struct rte_fbk_hash_table *
 rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 {
 	struct rte_fbk_hash_table *ht = NULL;
+	struct rte_tailq_entry *te;
 	char hash_name[RTE_FBK_HASH_NAMESIZE];
 	const uint32_t mem_size =
 			sizeof(*ht) + (sizeof(ht->t[0]) * params->entries);
@@ -112,7 +118,8 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 
 	/* check that we have an initialised tail queue */
 	if ((fbk_hash_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_FBK_HASH, rte_fbk_hash_list)) == NULL) {
+			RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_FBK_HASH,
+					rte_fbk_hash_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
 		return NULL;
 	}
@@ -134,20 +141,28 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
 	/* guarantee there's no existing */
-	TAILQ_FOREACH(ht, fbk_hash_list, next) {
+	TAILQ_FOREACH(te, fbk_hash_list, next) {
+		ht = (struct rte_fbk_hash_table *) te->data;
 		if (strncmp(params->name, ht->name, RTE_FBK_HASH_NAMESIZE) == 0)
 			break;
 	}
-	if (ht != NULL)
+	if (te != NULL)
 		goto exit;
+
+	te = rte_zmalloc("FBK_HASH_TAILQ_ENTRY", sizeof(*te), 0);
+	if (te == NULL) {
+		RTE_LOG(ERR, HASH, "Failed to allocate tailq entry\n");
+		goto exit;
+	}
 
 	/* Allocate memory for table. */
-	ht = (struct rte_fbk_hash_table *)rte_malloc_socket(hash_name, mem_size,
+	ht = (struct rte_fbk_hash_table *)rte_zmalloc_socket(hash_name, mem_size,
 			0, params->socket_id);
-	if (ht == NULL)
+	if (ht == NULL) {
+		RTE_LOG(ERR, HASH, "Failed to allocate fbk hash table\n");
+		rte_free(te);
 		goto exit;
-
-	memset(ht, 0, mem_size);
+	}
 
 	/* Set up hash table context. */
 	snprintf(ht->name, sizeof(ht->name), "%s", params->name);
@@ -169,7 +184,9 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 		ht->init_val = RTE_FBK_HASH_INIT_VAL_DEFAULT;
 	}
 
-	TAILQ_INSERT_TAIL(fbk_hash_list, ht, next);
+	te->data = (void *) ht;
+
+	TAILQ_INSERT_TAIL(fbk_hash_list, te, next);
 
 exit:
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
@@ -186,10 +203,38 @@ exit:
 void
 rte_fbk_hash_free(struct rte_fbk_hash_table *ht)
 {
+	struct rte_tailq_entry *te;
+	struct rte_fbk_hash_list *fbk_hash_list;
+
 	if (ht == NULL)
 		return;
 
-	RTE_EAL_TAILQ_REMOVE(RTE_TAILQ_FBK_HASH, rte_fbk_hash_list, ht);
+	/* check that we have an initialised tail queue */
+	if ((fbk_hash_list =
+			RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_FBK_HASH,
+					rte_fbk_hash_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return;
+	}
+
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
+	/* find out tailq entry */
+	TAILQ_FOREACH(te, fbk_hash_list, next) {
+		if (te->data == (void *) ht)
+			break;
+	}
+
+	if (te == NULL) {
+		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+		return;
+	}
+
+	TAILQ_REMOVE(fbk_hash_list, te, next);
+
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+
 	rte_free(ht);
+	rte_free(te);
 }
 

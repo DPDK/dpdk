@@ -86,8 +86,6 @@ struct rte_hash_parameters {
 
 /** A hash table structure. */
 struct rte_hash {
-	TAILQ_ENTRY(rte_hash) next;/**< Next in list. */
-
 	char name[RTE_HASH_NAMESIZE];	/**< Name of the hash. */
 	uint32_t entries;		/**< Total table entries. */
 	uint32_t bucket_entries;	/**< Bucket entries. */

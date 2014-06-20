@@ -103,11 +103,8 @@ union rte_fbk_hash_entry {
 };
 
 
-
 /** The four-byte key hash table structure. */
 struct rte_fbk_hash_table {
-	TAILQ_ENTRY(rte_fbk_hash_table) next;	/**< Linked list. */
-
 	char name[RTE_FBK_HASH_NAMESIZE];	/**< Name of the hash. */
 	uint32_t entries;		/**< Total number of entries. */
 	uint32_t entries_per_bucket;	/**< Number of entries in a bucket. */
