@@ -182,11 +182,10 @@ static int i40e_res_pool_free(struct i40e_res_pool_info *pool,
 			uint32_t base);
 static int i40e_res_pool_alloc(struct i40e_res_pool_info *pool,
 			uint16_t num);
-static int i40e_vsi_init_vlan(struct i40e_vsi *vsi);
+static int i40e_dev_init_vlan(struct rte_eth_dev *dev);
 static int i40e_veb_release(struct i40e_veb *veb);
 static struct i40e_veb *i40e_veb_setup(struct i40e_pf *pf,
 						struct i40e_vsi *vsi);
-static int i40e_vsi_config_vlan_stripping(struct i40e_vsi *vsi, bool on);
 static int i40e_pf_config_mq_rx(struct i40e_pf *pf);
 static int i40e_vsi_config_double_vlan(struct i40e_vsi *vsi, int on);
 static int i40e_pf_disable_all_queues(struct i40e_hw *hw);
@@ -534,13 +533,7 @@ err_get_capabilities:
 static int
 i40e_dev_configure(struct rte_eth_dev *dev)
 {
-	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_vsi *vsi = pf->main_vsi;
-	int ret;
-
-	ret = i40e_vsi_init_vlan(vsi);
-
-	return ret;
+	return i40e_dev_init_vlan(dev);
 }
 
 void
@@ -1293,39 +1286,22 @@ static int
 i40e_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct i40e_vsi *vsi = pf->main_vsi;
 	struct rte_eth_dev_data *data = I40E_VSI_TO_DEV_DATA(vsi);
-	struct i40e_vsi_context ctxt;
-	uint8_t vlan_flags = 0;
-	int ret;
+	struct i40e_vsi_vlan_pvid_info info;
 
-	if (on) {
-		/**
-		 * If insert pvid is enabled, only tagged pkts are
-		 * allowed to be sent out.
-		 */
-		vlan_flags |= I40E_AQ_VSI_PVLAN_INSERT_PVID |
-				I40E_AQ_VSI_PVLAN_MODE_TAGGED;
-	} else {
-		if (data->dev_conf.txmode.hw_vlan_reject_tagged == 0)
-			vlan_flags |= I40E_AQ_VSI_PVLAN_MODE_TAGGED;
-		if (data->dev_conf.txmode.hw_vlan_reject_untagged == 0)
-			vlan_flags |= I40E_AQ_VSI_PVLAN_MODE_UNTAGGED;
+	memset(&info, 0, sizeof(info));
+	info.on = on;
+	if (info.on)
+		info.config.pvid = pvid;
+	else {
+		info.config.reject.tagged =
+				data->dev_conf.txmode.hw_vlan_reject_tagged;
+		info.config.reject.untagged =
+				data->dev_conf.txmode.hw_vlan_reject_untagged;
 	}
-	vsi->info.port_vlan_flags &= ~(I40E_AQ_VSI_PVLAN_INSERT_PVID |
-					I40E_AQ_VSI_PVLAN_MODE_MASK);
-	vsi->info.port_vlan_flags |= vlan_flags;
-	vsi->info.pvid = pvid;
-	vsi->info.valid_sections =
-		rte_cpu_to_le_16(I40E_AQ_VSI_PROP_VLAN_VALID);
-	(void)rte_memcpy(&ctxt.info, &vsi->info, sizeof(vsi->info));
-	ctxt.seid = vsi->seid;
-	ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
-	if (ret != I40E_SUCCESS)
-		PMD_DRV_LOG(INFO, "Failed to update VSI params\n");
 
-	return ret;
+	return i40e_vsi_vlan_pvid_set(vsi, &info);
 }
 
 static int
@@ -2039,6 +2015,53 @@ validate_tcmap_parameter(struct i40e_vsi *vsi, uint8_t enabled_tcmap)
 	return I40E_SUCCESS;
 }
 
+int
+i40e_vsi_vlan_pvid_set(struct i40e_vsi *vsi,
+				struct i40e_vsi_vlan_pvid_info *info)
+{
+	struct i40e_hw *hw;
+	struct i40e_vsi_context ctxt;
+	uint8_t vlan_flags = 0;
+	int ret;
+
+	if (vsi == NULL || info == NULL) {
+		PMD_DRV_LOG(ERR, "invalid parameters\n");
+		return I40E_ERR_PARAM;
+	}
+
+	if (info->on) {
+		vsi->info.pvid = info->config.pvid;
+		/**
+		 * If insert pvid is enabled, only tagged pkts are
+		 * allowed to be sent out.
+		 */
+		vlan_flags |= I40E_AQ_VSI_PVLAN_INSERT_PVID |
+				I40E_AQ_VSI_PVLAN_MODE_TAGGED;
+	} else {
+		vsi->info.pvid = 0;
+		if (info->config.reject.tagged == 0)
+			vlan_flags |= I40E_AQ_VSI_PVLAN_MODE_TAGGED;
+
+		if (info->config.reject.untagged == 0)
+			vlan_flags |= I40E_AQ_VSI_PVLAN_MODE_UNTAGGED;
+	}
+	vsi->info.port_vlan_flags &= ~(I40E_AQ_VSI_PVLAN_INSERT_PVID |
+					I40E_AQ_VSI_PVLAN_MODE_MASK);
+	vsi->info.port_vlan_flags |= vlan_flags;
+	vsi->info.valid_sections =
+		rte_cpu_to_le_16(I40E_AQ_VSI_PROP_VLAN_VALID);
+	memset(&ctxt, 0, sizeof(ctxt));
+	(void)rte_memcpy(&ctxt.info, &vsi->info, sizeof(vsi->info));
+	ctxt.seid = vsi->seid;
+
+	hw = I40E_VSI_TO_HW(vsi);
+	ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
+	if (ret != I40E_SUCCESS)
+		PMD_DRV_LOG(ERR, "Failed to update VSI params\n");
+
+	return ret;
+}
+
 static int
 i40e_vsi_update_tc_bandwidth(struct i40e_vsi *vsi, uint8_t enabled_tcmap)
 {
@@ -2574,7 +2597,7 @@ fail_mem:
 }
 
 /* Configure vlan stripping on or off */
-static int
+int
 i40e_vsi_config_vlan_stripping(struct i40e_vsi *vsi, bool on)
 {
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
@@ -2616,44 +2639,20 @@ i40e_vsi_config_vlan_stripping(struct i40e_vsi *vsi, bool on)
 }
 
 static int
-i40e_vsi_init_vlan(struct i40e_vsi *vsi)
+i40e_dev_init_vlan(struct rte_eth_dev *dev)
 {
-	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
-	struct rte_eth_dev_data *data = I40E_VSI_TO_DEV_DATA(vsi);
-	struct i40e_vsi_context ctxt;
-	uint8_t vlan_flags = 0;
+	struct rte_eth_dev_data *data = dev->data;
 	int ret;
 
-	/* Set PVID */
-	if (data->dev_conf.txmode.hw_vlan_insert_pvid == 1) {
-		/**
-		 * If insert pvid is enabled, only tagged pkts are
-		 * allowed to be sent out.
-		 */
-		vlan_flags |= I40E_AQ_VSI_PVLAN_INSERT_PVID |
-				I40E_AQ_VSI_PVLAN_MODE_TAGGED;
-	} else {
-		if (data->dev_conf.txmode.hw_vlan_reject_tagged == 0)
-			vlan_flags |= I40E_AQ_VSI_PVLAN_MODE_TAGGED;
-		if (data->dev_conf.txmode.hw_vlan_reject_untagged == 0)
-			vlan_flags |= I40E_AQ_VSI_PVLAN_MODE_UNTAGGED;
-	}
+	/* Apply vlan offload setting */
+	i40e_vlan_offload_set(dev, ETH_VLAN_STRIP_MASK);
 
-	/* Strip VLAN tag or not */
-	if (data->dev_conf.rxmode.hw_vlan_strip == 0)
-		vlan_flags |= I40E_AQ_VSI_PVLAN_EMOD_NOTHING;
+	/* Apply double-vlan setting, not implemented yet */
 
-	vsi->info.port_vlan_flags &= ~(I40E_AQ_VSI_PVLAN_MODE_MASK |
-		I40E_AQ_VSI_PVLAN_INSERT_PVID | I40E_AQ_VSI_PVLAN_EMOD_MASK);
-	vsi->info.port_vlan_flags |= vlan_flags;
-	vsi->info.pvid = data->dev_conf.txmode.pvid;
-	vsi->info.valid_sections =
-		rte_cpu_to_le_16(I40E_AQ_VSI_PROP_VLAN_VALID);
-
-	(void)rte_memcpy(&ctxt.info, &vsi->info, sizeof(vsi->info));
-	ctxt.seid = vsi->seid;
-	ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
-	if (ret != I40E_SUCCESS)
+	/* Apply pvid setting */
+	ret = i40e_vlan_pvid_set(dev, data->dev_conf.txmode.pvid,
+				data->dev_conf.txmode.hw_vlan_insert_pvid);
+	if (ret)
 		PMD_DRV_LOG(INFO, "Failed to update VSI params\n");
 
 	return ret;

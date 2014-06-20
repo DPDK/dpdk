@@ -224,6 +224,20 @@ enum pending_msg {
 	PFMSG_DRIVER_CLOSE = 0x4,
 };
 
+struct i40e_vsi_vlan_pvid_info {
+	uint16_t on;            /* Enable or disable pvid */
+	union {
+		uint16_t pvid;  /* Valid in case 'on' is set to set pvid */
+		struct {
+		/*  Valid in case 'on' is cleared. 'tagged' will reject tagged packets,
+		 *  while 'untagged' will reject untagged packets.
+		 */
+			uint8_t tagged;
+			uint8_t untagged;
+		} reject;
+	} config;
+};
+
 struct i40e_vf_rx_queues {
 	uint64_t rx_dma_addr;
 	uint32_t rx_ring_len;
@@ -295,6 +309,9 @@ int i40e_dev_link_update(struct rte_eth_dev *dev,
 			 __rte_unused int wait_to_complete);
 void i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi);
 void i40e_vsi_queues_unbind_intr(struct i40e_vsi *vsi);
+int i40e_vsi_vlan_pvid_set(struct i40e_vsi *vsi,
+				struct i40e_vsi_vlan_pvid_info *info);
+int i40e_vsi_config_vlan_stripping(struct i40e_vsi *vsi, bool on);
 
 /* I40E_DEV_PRIVATE_TO */
 #define I40E_DEV_PRIVATE_TO_PF(adapter) \
