@@ -2277,8 +2277,24 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 	def_filter.flags = I40E_AQC_MACVLAN_DEL_PERFECT_MATCH |
 				I40E_AQC_MACVLAN_DEL_IGNORE_VLAN;
 	ret = i40e_aq_remove_macvlan(hw, vsi->seid, &def_filter, 1, NULL);
-	if (ret != I40E_SUCCESS)
+	if (ret != I40E_SUCCESS) {
+		struct i40e_mac_filter *f;
+		PMD_DRV_LOG(WARNING, "Failed to remove default [mac,vlan] config\n");
+
+		/* Even failed to update default setting, still needs to add the permanent
+		 *  mac into mac list.
+		 */
+		f = rte_zmalloc("macv_filter", sizeof(*f), 0);
+		if (f == NULL) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory\n");
+			return I40E_ERR_NO_MEMORY;
+		}
+		(void)rte_memcpy(&f->macaddr.addr_bytes, hw->mac.perm_addr,
+				ETH_ADDR_LEN);
+		TAILQ_INSERT_TAIL(&vsi->mac_list, f, next);
+		vsi->mac_num++;
 		return ret;
+	}
 
 	return i40e_vsi_add_mac(vsi, (struct ether_addr *)(hw->mac.perm_addr));
 }
