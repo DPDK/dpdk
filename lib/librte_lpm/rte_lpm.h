@@ -132,8 +132,6 @@ struct rte_lpm_rule_info {
 
 /** @internal LPM structure. */
 struct rte_lpm {
-	TAILQ_ENTRY(rte_lpm) next;      /**< Next in list. */
-
 	/* LPM metadata. */
 	char name[RTE_LPM_NAMESIZE];        /**< Name of the lpm. */
 	int mem_location; /**< @deprecated @see RTE_LPM_HEAP and RTE_LPM_MEMZONE. */
