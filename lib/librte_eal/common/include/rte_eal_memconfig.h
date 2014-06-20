@@ -89,6 +89,11 @@ struct rte_mem_config {
 
 	/* Heaps of Malloc per socket */
 	struct malloc_heap malloc_heaps[RTE_MAX_NUMA_NODES];
+
+	/* address of mem_config in primary process. used to map shared config into
+	 * exact same address the primary process maps it.
+	 */
+	uint64_t mem_cfg_addr;
 } __attribute__((__packed__));
 
 

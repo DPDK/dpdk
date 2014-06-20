@@ -240,13 +240,19 @@ rte_eal_config_create(void)
 	}
 	memcpy(rte_mem_cfg_addr, &early_mem_config, sizeof(early_mem_config));
 	rte_config.mem_config = (struct rte_mem_config *) rte_mem_cfg_addr;
+
+	/* store address of the config in the config itself so that secondary
+	 * processes could later map the config into this exact location */
+	rte_config.mem_config->mem_cfg_addr = (uintptr_t) rte_mem_cfg_addr;
+
 }
 
 /* attach to an existing shared memory config */
 static void
 rte_eal_config_attach(void)
 {
-	void *rte_mem_cfg_addr;
+	struct rte_mem_config *mem_config;
+
 	const char *pathname = eal_runtime_config_path();
 
 	if (internal_config.no_shconf)
@@ -258,13 +264,40 @@ rte_eal_config_attach(void)
 			rte_panic("Cannot open '%s' for rte_mem_config\n", pathname);
 	}
 
-	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config),
-				PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
-	close(mem_cfg_fd);
-	if (rte_mem_cfg_addr == MAP_FAILED)
+	/* map it as read-only first */
+	mem_config = (struct rte_mem_config *) mmap(NULL, sizeof(*mem_config),
+			PROT_READ, MAP_SHARED, mem_cfg_fd, 0);
+	if (mem_config == MAP_FAILED)
 		rte_panic("Cannot mmap memory for rte_config\n");
 
-	rte_config.mem_config = (struct rte_mem_config *) rte_mem_cfg_addr;
+	rte_config.mem_config = mem_config;
+}
+
+/* reattach the shared config at exact memory location primary process has it */
+static void
+rte_eal_config_reattach(void)
+{
+	struct rte_mem_config *mem_config;
+	void *rte_mem_cfg_addr;
+
+	if (internal_config.no_shconf)
+		return;
+
+	/* save the address primary process has mapped shared config to */
+	rte_mem_cfg_addr = (void *) (uintptr_t) rte_config.mem_config->mem_cfg_addr;
+
+	/* unmap original config */
+	munmap(rte_config.mem_config, sizeof(struct rte_mem_config));
+
+	/* remap the config at proper address */
+	mem_config = (struct rte_mem_config *) mmap(rte_mem_cfg_addr,
+			sizeof(*mem_config), PROT_READ | PROT_WRITE, MAP_SHARED,
+			mem_cfg_fd, 0);
+	close(mem_cfg_fd);
+	if (mem_config == MAP_FAILED || mem_config != rte_mem_cfg_addr)
+		rte_panic("Cannot mmap memory for rte_config\n");
+
+	rte_config.mem_config = mem_config;
 }
 
 /* Detect if we are a primary or a secondary process */
@@ -302,6 +335,7 @@ rte_config_init(void)
 	case RTE_PROC_SECONDARY:
 		rte_eal_config_attach();
 		rte_eal_mcfg_wait_complete(rte_config.mem_config);
+		rte_eal_config_reattach();
 		break;
 	case RTE_PROC_AUTO:
 	case RTE_PROC_INVALID:
