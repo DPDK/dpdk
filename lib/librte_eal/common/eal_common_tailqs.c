@@ -118,7 +118,7 @@ rte_dump_tailq(FILE *f)
 	rte_rwlock_read_lock(&mcfg->qlock);
 	for (i=0; i < RTE_MAX_TAILQ; i++) {
 		const struct rte_tailq_head *tailq = &mcfg->tailq_head[i];
-		const struct rte_dummy_head *head = &tailq->tailq_head;
+		const struct rte_tailq_entry_head *head = &tailq->tailq_head;
 
 		fprintf(f, "Tailq %u: qname:<%s>, tqh_first:%p, tqh_last:%p\n", i,
 		       (rte_tailq_names[i] != NULL ? rte_tailq_names[i]:"nil"),

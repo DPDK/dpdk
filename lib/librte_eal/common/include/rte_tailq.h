@@ -48,11 +48,12 @@ extern "C" {
 #include <stdio.h>
 
 /** dummy structure type used by the rte_tailq APIs */
-struct rte_dummy {
-	TAILQ_ENTRY(rte_dummy) next; /**< Pointer entries for a tailq list */
+struct rte_tailq_entry {
+	TAILQ_ENTRY(rte_tailq_entry) next; /**< Pointer entries for a tailq list */
+	void *data; /**< Pointer to the data referenced by this tailq entry */
 };
 /** dummy */
-TAILQ_HEAD(rte_dummy_head, rte_dummy);
+TAILQ_HEAD(rte_tailq_entry_head, rte_tailq_entry);
 
 #define RTE_TAILQ_NAMESIZE 32
 
@@ -65,7 +66,7 @@ TAILQ_HEAD(rte_dummy_head, rte_dummy);
  * a multi-process app to find already-created elements in shared memory.
  */
 struct rte_tailq_head {
-	struct rte_dummy_head tailq_head; /**< NOTE: must be first element */
+	struct rte_tailq_entry_head tailq_head; /**< NOTE: must be first element */
 };
 
 /**
