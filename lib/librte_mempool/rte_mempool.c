@@ -45,6 +45,7 @@
 #include <rte_debug.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
+#include <rte_malloc.h>
 #include <rte_atomic.h>
 #include <rte_launch.h>
 #include <rte_tailq.h>
@@ -60,7 +61,7 @@
 
 #include "rte_mempool.h"
 
-TAILQ_HEAD(rte_mempool_list, rte_mempool);
+TAILQ_HEAD(rte_mempool_list, rte_tailq_entry);
 
 #define CACHE_FLUSHTHRESH_MULTIPLIER 1.5
 
@@ -404,6 +405,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	char rg_name[RTE_RING_NAMESIZE];
 	struct rte_mempool *mp = NULL;
+	struct rte_tailq_entry *te;
 	struct rte_ring *r;
 	const struct rte_memzone *mz;
 	size_t mempool_size;
@@ -501,6 +503,13 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		}
 	}
 
+	/* try to allocate tailq entry */
+	te = rte_zmalloc("MEMPOOL_TAILQ_ENTRY", sizeof(*te), 0);
+	if (te == NULL) {
+		RTE_LOG(ERR, MEMPOOL, "Cannot allocate tailq entry!\n");
+		goto exit;
+	}
+
 	/*
 	 * If user provided an external memory buffer, then use it to
 	 * store mempool objects. Otherwise reserve memzone big enough to
@@ -527,8 +536,10 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	 * no more memory: in this case we loose previously reserved
 	 * space for the as we cannot free it
 	 */
-	if (mz == NULL)
+	if (mz == NULL) {
+		rte_free(te);
 		goto exit;
+	}
 
 	if (rte_eal_has_hugepages()) {
 		startaddr = (void*)mz->addr;
@@ -587,7 +598,9 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 
 	mempool_populate(mp, n, 1, obj_init, obj_init_arg);
 
-	RTE_EAL_TAILQ_INSERT_TAIL(RTE_TAILQ_MEMPOOL, rte_mempool_list, mp);
+	te->data = (void *) mp;
+
+	RTE_EAL_TAILQ_INSERT_TAIL(RTE_TAILQ_MEMPOOL, rte_mempool_list, te);
 
 exit:
 	rte_rwlock_write_unlock(RTE_EAL_MEMPOOL_RWLOCK);
@@ -812,6 +825,7 @@ void
 rte_mempool_list_dump(FILE *f)
 {
 	const struct rte_mempool *mp = NULL;
+	struct rte_tailq_entry *te;
 	struct rte_mempool_list *mempool_list;
 
 	if ((mempool_list =
@@ -822,7 +836,8 @@ rte_mempool_list_dump(FILE *f)
 
 	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
 
-	TAILQ_FOREACH(mp, mempool_list, next) {
+	TAILQ_FOREACH(te, mempool_list, next) {
+		mp = (struct rte_mempool *) te->data;
 		rte_mempool_dump(f, mp);
 	}
 
@@ -834,6 +849,7 @@ struct rte_mempool *
 rte_mempool_lookup(const char *name)
 {
 	struct rte_mempool *mp = NULL;
+	struct rte_tailq_entry *te;
 	struct rte_mempool_list *mempool_list;
 
 	if ((mempool_list =
@@ -844,15 +860,18 @@ rte_mempool_lookup(const char *name)
 
 	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
 
-	TAILQ_FOREACH(mp, mempool_list, next) {
+	TAILQ_FOREACH(te, mempool_list, next) {
+		mp = (struct rte_mempool *) te->data;
 		if (strncmp(name, mp->name, RTE_MEMPOOL_NAMESIZE) == 0)
 			break;
 	}
 
 	rte_rwlock_read_unlock(RTE_EAL_MEMPOOL_RWLOCK);
 
-	if (mp == NULL)
+	if (te == NULL) {
 		rte_errno = ENOENT;
+		return NULL;
+	}
 
 	return mp;
 }
@@ -860,7 +879,7 @@ rte_mempool_lookup(const char *name)
 void rte_mempool_walk(void (*func)(const struct rte_mempool *, void *),
 		      void *arg)
 {
-	struct rte_mempool *mp = NULL;
+	struct rte_tailq_entry *te = NULL;
 	struct rte_mempool_list *mempool_list;
 
 	if ((mempool_list =
@@ -871,8 +890,8 @@ void rte_mempool_walk(void (*func)(const struct rte_mempool *, void *),
 
 	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
 
-	TAILQ_FOREACH(mp, mempool_list, next) {
-		(*func)(mp, arg);
+	TAILQ_FOREACH(te, mempool_list, next) {
+		(*func)((struct rte_mempool *) te->data, arg);
 	}
 
 	rte_rwlock_read_unlock(RTE_EAL_MEMPOOL_RWLOCK);

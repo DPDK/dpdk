@@ -143,8 +143,6 @@ struct rte_mempool_objsz {
  * The RTE mempool structure.
  */
 struct rte_mempool {
-	TAILQ_ENTRY(rte_mempool) next;   /**< Next in list. */
-
 	char name[RTE_MEMPOOL_NAMESIZE]; /**< Name of mempool. */
 	struct rte_ring *ring;           /**< Ring to store objects. */
 	phys_addr_t phys_addr;           /**< Phys. addr. of mempool struct. */

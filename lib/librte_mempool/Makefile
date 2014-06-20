@@ -44,7 +44,8 @@ endif
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_MEMPOOL)-include := rte_mempool.h
 
-# this lib needs eal
+# this lib needs eal, rte_ring and rte_malloc
 DEPDIRS-$(CONFIG_RTE_LIBRTE_MEMPOOL) += lib/librte_eal lib/librte_ring
+DEPDIRS-$(CONFIG_RTE_LIBRTE_MEMPOOL) += lib/librte_malloc
 
 include $(RTE_SDK)/mk/rte.lib.mk
