@@ -36,13 +36,14 @@
 
 #define	BIT_SIZEOF(x)	(sizeof(x) * CHAR_BIT)
 
-TAILQ_HEAD(rte_acl_list, rte_acl_ctx);
+TAILQ_HEAD(rte_acl_list, rte_tailq_entry);
 
 struct rte_acl_ctx *
 rte_acl_find_existing(const char *name)
 {
-	struct rte_acl_ctx *ctx;
+	struct rte_acl_ctx *ctx = NULL;
 	struct rte_acl_list *acl_list;
+	struct rte_tailq_entry *te;
 
 	/* check that we have an initialised tail queue */
 	acl_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_ACL, rte_acl_list);
@@ -52,27 +53,55 @@ rte_acl_find_existing(const char *name)
 	}
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
-	TAILQ_FOREACH(ctx, acl_list, next) {
+	TAILQ_FOREACH(te, acl_list, next) {
+		ctx = (struct rte_acl_ctx *) te->data;
 		if (strncmp(name, ctx->name, sizeof(ctx->name)) == 0)
 			break;
 	}
 	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
 
-	if (ctx == NULL)
+	if (te == NULL) {
 		rte_errno = ENOENT;
+		return NULL;
+	}
 	return ctx;
 }
 
 void
 rte_acl_free(struct rte_acl_ctx *ctx)
 {
+	struct rte_acl_list *acl_list;
+	struct rte_tailq_entry *te;
+
 	if (ctx == NULL)
 		return;
 
-	RTE_EAL_TAILQ_REMOVE(RTE_TAILQ_ACL, rte_acl_list, ctx);
+	/* check that we have an initialised tail queue */
+	acl_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_ACL, rte_acl_list);
+	if (acl_list == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return;
+	}
+
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
+	/* find our tailq entry */
+	TAILQ_FOREACH(te, acl_list, next) {
+		if (te->data == (void *) ctx)
+			break;
+	}
+	if (te == NULL) {
+		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+		return;
+	}
+
+	TAILQ_REMOVE(acl_list, te, next);
+
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	rte_free(ctx->mem);
 	rte_free(ctx);
+	rte_free(te);
 }
 
 struct rte_acl_ctx *
@@ -81,6 +110,7 @@ rte_acl_create(const struct rte_acl_param *param)
 	size_t sz;
 	struct rte_acl_ctx *ctx;
 	struct rte_acl_list *acl_list;
+	struct rte_tailq_entry *te;
 	char name[sizeof(ctx->name)];
 
 	/* check that we have an initialised tail queue */
@@ -105,15 +135,31 @@ rte_acl_create(const struct rte_acl_param *param)
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
 	/* if we already have one with that name */
-	TAILQ_FOREACH(ctx, acl_list, next) {
+	TAILQ_FOREACH(te, acl_list, next) {
+		ctx = (struct rte_acl_ctx *) te->data;
 		if (strncmp(param->name, ctx->name, sizeof(ctx->name)) == 0)
 			break;
 	}
 
 	/* if ACL with such name doesn't exist, then create a new one. */
-	if (ctx == NULL && (ctx = rte_zmalloc_socket(name, sz, CACHE_LINE_SIZE,
-			param->socket_id)) != NULL) {
+	if (te == NULL) {
+		ctx = NULL;
+		te = rte_zmalloc("ACL_TAILQ_ENTRY", sizeof(*te), 0);
 
+		if (te == NULL) {
+			RTE_LOG(ERR, ACL, "Cannot allocate tailq entry!\n");
+			goto exit;
+		}
+
+		ctx = rte_zmalloc_socket(name, sz, CACHE_LINE_SIZE, param->socket_id);
+
+		if (ctx == NULL) {
+			RTE_LOG(ERR, ACL,
+				"allocation of %zu bytes on socket %d for %s failed\n",
+				sz, param->socket_id, name);
+			rte_free(te);
+			goto exit;
+		}
 		/* init new allocated context. */
 		ctx->rules = ctx + 1;
 		ctx->max_rules = param->max_rule_num;
@@ -121,14 +167,12 @@ rte_acl_create(const struct rte_acl_param *param)
 		ctx->socket_id = param->socket_id;
 		snprintf(ctx->name, sizeof(ctx->name), "%s", param->name);
 
-		TAILQ_INSERT_TAIL(acl_list, ctx, next);
+		te->data = (void *) ctx;
 
-	} else if (ctx == NULL) {
-		RTE_LOG(ERR, ACL,
-			"allocation of %zu bytes on socket %d for %s failed\n",
-			sz, param->socket_id, name);
+		TAILQ_INSERT_TAIL(acl_list, te, next);
 	}
 
+exit:
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 	return ctx;
 }
@@ -232,6 +276,7 @@ rte_acl_list_dump(void)
 {
 	struct rte_acl_ctx *ctx;
 	struct rte_acl_list *acl_list;
+	struct rte_tailq_entry *te;
 
 	/* check that we have an initialised tail queue */
 	acl_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_ACL, rte_acl_list);
@@ -241,7 +286,8 @@ rte_acl_list_dump(void)
 	}
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
-	TAILQ_FOREACH(ctx, acl_list, next) {
+	TAILQ_FOREACH(te, acl_list, next) {
+		ctx = (struct rte_acl_ctx *) te->data;
 		rte_acl_dump(ctx);
 	}
 	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);

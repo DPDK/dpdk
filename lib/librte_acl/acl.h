@@ -149,7 +149,6 @@ struct rte_acl_bld_trie {
 };
 
 struct rte_acl_ctx {
-	TAILQ_ENTRY(rte_acl_ctx) next;    /**< Next in list. */
 	char                name[RTE_ACL_NAMESIZE];
 	/** Name of the ACL context. */
 	int32_t             socket_id;
