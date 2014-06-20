@@ -114,6 +114,9 @@ static void i40evf_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
 static int i40evf_vlan_filter_set(struct rte_eth_dev *dev,
 				  uint16_t vlan_id, int on);
+static void i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static int i40evf_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid,
+				int on);
 static void i40evf_dev_close(struct rte_eth_dev *dev);
 static void i40evf_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void i40evf_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -121,6 +124,7 @@ static void i40evf_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void i40evf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int i40evf_get_link_status(struct rte_eth_dev *dev,
 				  struct rte_eth_link *link);
+static int i40evf_init_vlan(struct rte_eth_dev *dev);
 static struct eth_dev_ops i40evf_eth_dev_ops = {
 	.dev_configure        = i40evf_dev_configure,
 	.dev_start            = i40evf_dev_start,
@@ -134,6 +138,8 @@ static struct eth_dev_ops i40evf_eth_dev_ops = {
 	.dev_close            = i40evf_dev_close,
 	.dev_infos_get        = i40evf_dev_info_get,
 	.vlan_filter_set      = i40evf_vlan_filter_set,
+	.vlan_offload_set     = i40evf_vlan_offload_set,
+	.vlan_pvid_set        = i40evf_vlan_pvid_set,
 	.rx_queue_setup       = i40e_dev_rx_queue_setup,
 	.rx_queue_release     = i40e_dev_rx_queue_release,
 	.tx_queue_setup       = i40e_dev_tx_queue_setup,
@@ -449,6 +455,62 @@ i40evf_config_promisc(struct rte_eth_dev *dev,
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command "
 				"CONFIG_PROMISCUOUS_MODE\n");
+	return err;
+}
+
+/* Configure vlan and double vlan offload. Use flag to specify which part to configure */
+static int
+i40evf_config_vlan_offload(struct rte_eth_dev *dev,
+				bool enable_vlan_strip)
+{
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	int err;
+	struct vf_cmd_info args;
+	struct i40e_virtchnl_vlan_offload_info offload;
+
+	offload.vsi_id = vf->vsi_res->vsi_id;
+	offload.enable_vlan_strip = enable_vlan_strip;
+
+	args.ops = I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD;
+	args.in_args = (uint8_t *)&offload;
+	args.in_args_size = sizeof(offload);
+	args.out_buffer = cmd_result_buffer;
+	args.out_size = I40E_AQ_BUF_SZ;
+
+	err = i40evf_execute_vf_cmd(dev, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command CFG_VLAN_OFFLOAD\n");
+
+	return err;
+}
+
+static int
+i40evf_config_vlan_pvid(struct rte_eth_dev *dev,
+				struct i40e_vsi_vlan_pvid_info *info)
+{
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	int err;
+	struct vf_cmd_info args;
+	struct i40e_virtchnl_pvid_info tpid_info;
+
+	if (dev == NULL || info == NULL) {
+		PMD_DRV_LOG(ERR, "invalid parameters\n");
+		return I40E_ERR_PARAM;
+	}
+
+	memset(&tpid_info, 0, sizeof(tpid_info));
+	tpid_info.vsi_id = vf->vsi_res->vsi_id;
+	(void)rte_memcpy(&tpid_info.info, info, sizeof(*info));
+
+	args.ops = I40E_VIRTCHNL_OP_CFG_VLAN_PVID;
+	args.in_args = (uint8_t *)&tpid_info;
+	args.in_args_size = sizeof(tpid_info);
+	args.out_buffer = cmd_result_buffer;
+	args.out_size = I40E_AQ_BUF_SZ;
+
+	err = i40evf_execute_vf_cmd(dev, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command CFG_VLAN_PVID\n");
 
 	return err;
 }
@@ -1062,8 +1124,71 @@ static struct rte_driver rte_i40evf_driver = {
 PMD_REGISTER_DRIVER(rte_i40evf_driver);
 
 static int
-i40evf_dev_configure(__rte_unused struct rte_eth_dev *dev)
+i40evf_dev_configure(struct rte_eth_dev *dev)
 {
+	return i40evf_init_vlan(dev);
+}
+
+static int
+i40evf_init_vlan(struct rte_eth_dev *dev)
+{
+	struct rte_eth_dev_data *data = dev->data;
+	int ret;
+
+	/* Apply vlan offload setting */
+	i40evf_vlan_offload_set(dev, ETH_VLAN_STRIP_MASK);
+
+	/* Apply pvid setting */
+	ret = i40evf_vlan_pvid_set(dev, data->dev_conf.txmode.pvid,
+				data->dev_conf.txmode.hw_vlan_insert_pvid);
+	return ret;
+}
+
+static void
+i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	bool enable_vlan_strip = 0;
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
+	/* Linux pf host doesn't support vlan offload yet */
+	if (vf->host_is_dpdk) {
+		/* Vlan stripping setting */
+		if (mask & ETH_VLAN_STRIP_MASK) {
+			/* Enable or disable VLAN stripping */
+			if (dev_conf->rxmode.hw_vlan_strip)
+				enable_vlan_strip = 1;
+			else
+				enable_vlan_strip = 0;
+
+			i40evf_config_vlan_offload(dev, enable_vlan_strip);
+		}
+	}
+}
+
+static int
+i40evf_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
+{
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	struct i40e_vsi_vlan_pvid_info info;
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
+	memset(&info, 0, sizeof(info));
+	info.on = on;
+
+	/* Linux pf host don't support vlan offload yet */
+	if (vf->host_is_dpdk) {
+		if (info.on)
+			info.config.pvid = pvid;
+		else {
+			info.config.reject.tagged =
+				dev_conf->txmode.hw_vlan_reject_tagged;
+			info.config.reject.untagged =
+				dev_conf->txmode.hw_vlan_reject_untagged;
+		}
+		return i40evf_config_vlan_pvid(dev, &info);
+	}
+
 	return 0;
 }
 
