@@ -213,6 +213,14 @@ rte_eal_config_create(void)
 	if (internal_config.no_shconf)
 		return;
 
+	/* map the config before hugepage address so that we don't waste a page */
+	if (internal_config.base_virtaddr != 0)
+		rte_mem_cfg_addr = (void *)
+			RTE_ALIGN_FLOOR(internal_config.base_virtaddr -
+			sizeof(struct rte_mem_config), sysconf(_SC_PAGE_SIZE));
+	else
+		rte_mem_cfg_addr = NULL;
+
 	if (mem_cfg_fd < 0){
 		mem_cfg_fd = open(pathname, O_RDWR | O_CREAT, 0660);
 		if (mem_cfg_fd < 0)
@@ -232,7 +240,7 @@ rte_eal_config_create(void)
 				"process running?\n", pathname);
 	}
 
-	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config),
+	rte_mem_cfg_addr = mmap(rte_mem_cfg_addr, sizeof(*rte_config.mem_config),
 				PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
 
 	if (rte_mem_cfg_addr == MAP_FAILED){
