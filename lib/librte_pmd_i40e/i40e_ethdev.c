@@ -1517,7 +1517,7 @@ i40e_allocate_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 		return I40E_ERR_PARAM;
 
 	id++;
-	rte_snprintf(z_name, sizeof(z_name), "i40e_dma_%lu", id);
+	rte_snprintf(z_name, sizeof(z_name), "i40e_dma_%"PRIu64, id);
 	mz = rte_memzone_reserve_aligned(z_name, size, 0, 0, alignment);
 	if (!mz)
 		return I40E_ERR_NO_MEMORY;

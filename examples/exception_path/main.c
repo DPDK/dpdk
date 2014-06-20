@@ -229,7 +229,7 @@ static int tap_create(char *name)
 	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
 	if (name && *name)
-		rte_snprintf(ifr.ifr_name, IFNAMSIZ, name);
+		rte_snprintf(ifr.ifr_name, IFNAMSIZ, "%s", name);
 
 	ret = ioctl(fd, TUNSETIFF, (void *) &ifr);
 	if (ret < 0) {
@@ -238,7 +238,7 @@ static int tap_create(char *name)
 	}
 
 	if (name)
-		rte_snprintf(name, IFNAMSIZ, ifr.ifr_name);
+		rte_snprintf(name, IFNAMSIZ, "%s", ifr.ifr_name);
 
 	return fd;
 }

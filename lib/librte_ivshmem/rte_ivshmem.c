@@ -777,7 +777,7 @@ rte_ivshmem_metadata_cmdline_generate(char *buffer, unsigned size, const char *n
 	/* add /dev/zero to command-line to fill the space */
 	tmplen = rte_snprintf(cmdline_ptr, remaining_len, IVSHMEM_QEMU_CMD_FD_FMT,
 			"/dev/zero",
-			0x0,
+			(uint64_t)0x0,
 			zero_size);
 
 	cmdline_ptr = RTE_PTR_ADD(cmdline_ptr, tmplen);
@@ -792,7 +792,7 @@ rte_ivshmem_metadata_cmdline_generate(char *buffer, unsigned size, const char *n
 	/* add metadata file to the end of command-line */
 	tmplen = rte_snprintf(cmdline_ptr, remaining_len, IVSHMEM_QEMU_CMD_FD_FMT,
 			cfg_file_path,
-			0x0,
+			(uint64_t)0x0,
 			METADATA_SIZE_ALIGNED);
 
 	cmdline_ptr = RTE_PTR_ADD(cmdline_ptr, tmplen);

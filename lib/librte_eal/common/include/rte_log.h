@@ -258,7 +258,8 @@ int rte_log(uint32_t level, uint32_t logtype, const char *format, ...)
  *   - 0: Success.
  *   - Negative on error.
  */
-int rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap);
+int rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
+	__attribute__((format(printf,3,0)));
 
 /**
  * Generates a log message.

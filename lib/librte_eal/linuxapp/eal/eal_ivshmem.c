@@ -918,7 +918,7 @@ int rte_eal_ivshmem_init(void)
 					ivshmem_config->pci_devs[ivshmem_config->pci_devs_idx].ioremap_addr = res->phys_addr;
 					rte_snprintf(ivshmem_config->pci_devs[ivshmem_config->pci_devs_idx].path,
 							sizeof(ivshmem_config->pci_devs[ivshmem_config->pci_devs_idx].path),
-							path);
+							"%s", path);
 
 					ivshmem_config->pci_devs_idx++;
 				}

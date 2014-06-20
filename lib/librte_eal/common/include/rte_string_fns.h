@@ -68,7 +68,8 @@ extern "C" {
  *
  */
 int
-rte_snprintf(char *buffer, int buflen, const char *format, ...);
+rte_snprintf(char *buffer, int buflen, const char *format, ...)
+	__attribute__((format(printf,3,4)));
 
 /**
  * Takes string "string" parameter and splits it at character "delim"

@@ -124,20 +124,20 @@ app_init_port(uint8_t portid, struct rte_mempool *mp)
 	tx_conf.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | ETH_TXQ_FLAGS_NOOFFLOADS;
 
 	/* init port */
-	RTE_LOG(INFO, APP, "Initializing port %hu... ", portid);
+	RTE_LOG(INFO, APP, "Initializing port %"PRIu8"... ", portid);
 	fflush(stdout);
 	ret = rte_eth_dev_configure(portid, 1, 1, &port_conf);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%hu\n",
-		ret, portid);
+		rte_exit(EXIT_FAILURE, "Cannot configure device: "
+				"err=%d, port=%"PRIu8"\n", ret, portid);
 
 	/* init one RX queue */
 	fflush(stdout);
 	ret = rte_eth_rx_queue_setup(portid, 0, (uint16_t)ring_conf.rx_size,
 		rte_eth_dev_socket_id(portid), &rx_conf, mp);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d, port=%hu\n",
-		ret, portid);
+		rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: "
+				"err=%d, port=%"PRIu8"\n", ret, portid);
 
 	/* init one TX queue */
 	fflush(stdout);
@@ -145,14 +145,13 @@ app_init_port(uint8_t portid, struct rte_mempool *mp)
 		(uint16_t)ring_conf.tx_size, rte_eth_dev_socket_id(portid), &tx_conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d, "
-		"port=%hu queue=%d\n",
-		ret, portid, 0);
+				"port=%"PRIu8" queue=%d\n", ret, portid, 0);
 
 	/* Start device */
 	ret = rte_eth_dev_start(portid);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "rte_pmd_port_start: err=%d, port=%hu\n",
-		ret, portid);
+		rte_exit(EXIT_FAILURE, "rte_pmd_port_start: "
+				"err=%d, port=%"PRIu8"\n", ret, portid);
 
 	printf("done: ");
 

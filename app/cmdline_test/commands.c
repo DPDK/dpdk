@@ -321,7 +321,7 @@ cmd_get_history_bufsize_parsed(__attribute__((unused)) void *parsed_result,
 		struct cmdline *cl,
 		__attribute__((unused)) void *data)
 {
-	cmdline_printf(cl, "History buffer size: %u\n",
+	cmdline_printf(cl, "History buffer size: %zu\n",
 			sizeof(cl->rdl.history_buf));
 }
 

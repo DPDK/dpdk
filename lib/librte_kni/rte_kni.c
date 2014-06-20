@@ -158,7 +158,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 		}
 	}
 
-	rte_snprintf(intf_name, RTE_KNI_NAMESIZE, conf->name);
+	rte_snprintf(intf_name, RTE_KNI_NAMESIZE, "%s", conf->name);
 	rte_snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "KNI_INFO_%s", intf_name);
 	mz = kni_memzone_reserve(mz_name, sizeof(struct rte_kni),
 				SOCKET_ID_ANY, 0);
@@ -184,8 +184,8 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.group_id = conf->group_id;
 	dev_info.mbuf_size = conf->mbuf_size;
 
-	rte_snprintf(ctx->name, RTE_KNI_NAMESIZE, intf_name);
-	rte_snprintf(dev_info.name, RTE_KNI_NAMESIZE, intf_name);
+	rte_snprintf(ctx->name, RTE_KNI_NAMESIZE, "%s", intf_name);
+	rte_snprintf(dev_info.name, RTE_KNI_NAMESIZE, "%s", intf_name);
 
 	RTE_LOG(INFO, KNI, "pci: %02x:%02x:%02x \t %02x:%02x\n",
 		dev_info.bus, dev_info.devid, dev_info.function,
@@ -291,7 +291,7 @@ rte_kni_release(struct rte_kni *kni)
 	if (!kni || !kni->in_use)
 		return -1;
 
-	rte_snprintf(dev_info.name, sizeof(dev_info.name), kni->name);
+	rte_snprintf(dev_info.name, sizeof(dev_info.name), "%s", kni->name);
 	if (ioctl(kni_fd, RTE_KNI_IOCTL_RELEASE, &dev_info) < 0) {
 		RTE_LOG(ERR, KNI, "Fail to release kni device\n");
 		return -1;

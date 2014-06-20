@@ -717,8 +717,8 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 
 		if (ret < 0) {
 			RTE_LOG(ERR, USER1,
-				"Couldn't configure TX queue %hhu of "
-				"port %hu\n",
+				"Couldn't configure TX queue %"PRIu16" of "
+				"port %"PRIu8"\n",
 				i, portid);
 			return (ret);
 		}
@@ -728,8 +728,8 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 
 		if (ret < 0) {
 			RTE_LOG(ERR, USER1,
-				"Couldn't configure RX queue %hu of "
-				"port %hhu\n",
+				"Couldn't configure RX queue %"PRIu16" of "
+				"port %"PRIu8"\n",
 				i, portid);
 			return (ret);
 		}

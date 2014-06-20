@@ -125,8 +125,9 @@ app_main_loop(__attribute__((unused))void *dummy)
 	/* initialize mbuf memory */
 	if (mode == APP_RX_MODE) {
 		for (i = 0; i < rx_idx; i++) {
-			RTE_LOG(INFO, APP, "flow %u lcoreid %u reading port %hu\n",
-				i, lcore_id, rx_confs[i]->rx_port);
+			RTE_LOG(INFO, APP, "flow %u lcoreid %u "
+					"reading port %"PRIu8"\n",
+					i, lcore_id, rx_confs[i]->rx_port);
 		}
 
 		app_rx_thread(rx_confs);
@@ -139,8 +140,9 @@ app_main_loop(__attribute__((unused))void *dummy)
 			if (wt_confs[i]->m_table == NULL)
 				rte_panic("flow %u unable to allocate memory buffer\n", i);
 
-			RTE_LOG(INFO, APP, "flow %u lcoreid %u sched+write port %hu\n",
-				i, lcore_id, wt_confs[i]->tx_port);
+			RTE_LOG(INFO, APP, "flow %u lcoreid %u sched+write "
+					"port %"PRIu8"\n",
+					i, lcore_id, wt_confs[i]->tx_port);
 		}
 
 		app_mixed_thread(wt_confs);
@@ -153,8 +155,9 @@ app_main_loop(__attribute__((unused))void *dummy)
 			if (tx_confs[i]->m_table == NULL)
 				rte_panic("flow %u unable to allocate memory buffer\n", i);
 
-			RTE_LOG(INFO, APP, "flow %u lcoreid %u writing port %hu\n",
-				i, lcore_id, tx_confs[i]->tx_port);
+			RTE_LOG(INFO, APP, "flow %u lcoreid %u "
+					"writing port %"PRIu8"\n",
+					i, lcore_id, tx_confs[i]->tx_port);
 		}
 
 		app_tx_thread(tx_confs);
@@ -183,18 +186,19 @@ app_stat(void)
 		struct flow_conf *flow = &qos_conf[i];
 
 		rte_eth_stats_get(flow->rx_port, &stats);
-		printf("\nRX port %hu: rx: %"PRIu64 " err: %"PRIu64 " no_mbuf: %"PRIu64 "\n",
-			flow->rx_port,
-			stats.ipackets - rx_stats[i].ipackets,
-			stats.ierrors - rx_stats[i].ierrors,
-			stats.rx_nombuf - rx_stats[i].rx_nombuf);
+		printf("\nRX port %"PRIu8": rx: %"PRIu64 " err: %"PRIu64
+				" no_mbuf: %"PRIu64 "\n",
+				flow->rx_port,
+				stats.ipackets - rx_stats[i].ipackets,
+				stats.ierrors - rx_stats[i].ierrors,
+				stats.rx_nombuf - rx_stats[i].rx_nombuf);
 		memcpy(&rx_stats[i], &stats, sizeof(stats));
 
 		rte_eth_stats_get(flow->tx_port, &stats);
-		printf("TX port %hu: tx: %" PRIu64 " err: %" PRIu64 "\n",
-			flow->tx_port,
-			stats.opackets - tx_stats[i].opackets,
-			stats.oerrors - tx_stats[i].oerrors);
+		printf("TX port %"PRIu8": tx: %" PRIu64 " err: %" PRIu64 "\n",
+				flow->tx_port,
+				stats.opackets - tx_stats[i].opackets,
+				stats.oerrors - tx_stats[i].oerrors);
 		memcpy(&tx_stats[i], &stats, sizeof(stats));
 
 		//printf("MP = %d\n", rte_mempool_count(conf->app_pktmbuf_pool));

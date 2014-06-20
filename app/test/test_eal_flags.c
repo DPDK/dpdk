@@ -268,7 +268,8 @@ get_current_prefix(char * prefix, int size)
 
 	/* copy string all the way from second char up to start of _config */
 	rte_snprintf(prefix, size, "%.*s",
-			strnlen(buf, sizeof(buf)) - sizeof("_config"), &buf[1]);
+			(int)(strnlen(buf, sizeof(buf)) - sizeof("_config")),
+			&buf[1]);
 
 	return prefix;
 }
