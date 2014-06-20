@@ -304,7 +304,8 @@ i40e_pf_host_process_cmd_get_vf_resource(struct i40e_pf_vf *vf)
 		goto send_msg;
 	}
 
-	vf_res->vf_offload_flags = I40E_VIRTCHNL_VF_OFFLOAD_L2;
+	vf_res->vf_offload_flags = I40E_VIRTCHNL_VF_OFFLOAD_L2 |
+				I40E_VIRTCHNL_VF_OFFLOAD_VLAN;
 	vf_res->max_vectors = hw->func_caps.num_msix_vectors_vf;
 	vf_res->num_queue_pairs = vf->vsi->nb_qps;
 	vf_res->num_vsis = I40E_DEFAULT_VF_VSI_NUM;
@@ -356,6 +357,7 @@ i40e_pf_host_hmc_config_rxq(struct i40e_hw *hw,
 	rx_ctx.tphhead_ena = 1;
 	rx_ctx.lrxqthresh = 2;
 	rx_ctx.crcstrip = 1;
+	rx_ctx.l2tsel = 1;
 	rx_ctx.prefena = 1;
 
 	err = i40e_clear_lan_rx_queue_context(hw, abs_queue_id);
@@ -778,6 +780,56 @@ i40e_pf_host_process_cmd_get_link_status(struct i40e_pf_vf *vf)
 				sizeof(struct rte_eth_link));
 }
 
+static int
+i40e_pf_host_process_cmd_cfg_vlan_offload(
+					struct i40e_pf_vf *vf,
+					uint8_t *msg,
+					uint16_t msglen)
+{
+	int ret = I40E_SUCCESS;
+	struct i40e_virtchnl_vlan_offload_info *offload =
+			(struct i40e_virtchnl_vlan_offload_info *)msg;
+
+	if (msg == NULL || msglen != sizeof(*offload)) {
+		ret = I40E_ERR_PARAM;
+		goto send_msg;
+	}
+
+	ret = i40e_vsi_config_vlan_stripping(vf->vsi,
+						!!offload->enable_vlan_strip);
+	if (ret != 0)
+		PMD_DRV_LOG(ERR, "Failed to configure vlan stripping\n");
+
+send_msg:
+	i40e_pf_host_send_msg_to_vf(vf, I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD,
+					ret, NULL, 0);
+
+	return ret;
+}
+
+static int
+i40e_pf_host_process_cmd_cfg_pvid(struct i40e_pf_vf *vf,
+					uint8_t *msg,
+					uint16_t msglen)
+{
+	int ret = I40E_SUCCESS;
+	struct i40e_virtchnl_pvid_info  *tpid_info =
+			(struct i40e_virtchnl_pvid_info *)msg;
+
+	if (msg == NULL || msglen != sizeof(*tpid_info)) {
+		ret = I40E_ERR_PARAM;
+		goto send_msg;
+	}
+
+	ret = i40e_vsi_vlan_pvid_set(vf->vsi, &tpid_info->info);
+
+send_msg:
+	i40e_pf_host_send_msg_to_vf(vf, I40E_VIRTCHNL_OP_CFG_VLAN_PVID,
+					ret, NULL, 0);
+
+	return ret;
+}
+
 void
 i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 			   uint16_t abs_vf_id, uint32_t opcode,
@@ -865,6 +917,14 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	case I40E_VIRTCHNL_OP_GET_LINK_STAT:
 		PMD_DRV_LOG(INFO, "OP_GET_LINK_STAT received\n");
 		i40e_pf_host_process_cmd_get_link_status(vf);
+		break;
+	case I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD:
+		PMD_DRV_LOG(INFO, "OP_CFG_VLAN_OFFLOAD received\n");
+		i40e_pf_host_process_cmd_cfg_vlan_offload(vf, msg, msglen);
+		break;
+	case I40E_VIRTCHNL_OP_CFG_VLAN_PVID:
+		PMD_DRV_LOG(INFO, "OP_CFG_VLAN_PVID received\n");
+		i40e_pf_host_process_cmd_cfg_pvid(vf, msg, msglen);
 		break;
 	 /* Don't add command supported below, which will
 	 *  return an error code.

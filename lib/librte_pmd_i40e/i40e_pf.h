@@ -55,6 +55,23 @@ enum i40e_pf_vfr_state {
 enum i40e_virtchnl_ops_DPDK {
 	/* Keep some gap between Linu PF commands and DPDK PF specific commands */
 	I40E_VIRTCHNL_OP_GET_LINK_STAT = I40E_VIRTCHNL_OP_EVENT + 0x100,
+	I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD,
+	I40E_VIRTCHNL_OP_CFG_VLAN_PVID,
+};
+struct i40e_virtchnl_vlan_offload_info {
+	uint16_t vsi_id;
+	uint8_t enable_vlan_strip;
+	uint8_t reserved;
+};
+
+/* I40E_VIRTCHNL_OP_CFG_VLAN_PVID
+ * VF sends this message to enable/disable pvid. If it's enable op, needs to specify the
+ * pvid.
+ * PF returns status code in retval.
+ */
+struct i40e_virtchnl_pvid_info {
+	uint16_t vsi_id;
+	struct i40e_vsi_vlan_pvid_info info;
 };
 
 int i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset);
