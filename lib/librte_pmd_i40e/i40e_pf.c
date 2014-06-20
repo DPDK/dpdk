@@ -419,7 +419,7 @@ i40e_pf_host_process_cmd_config_vsi_queues(struct i40e_pf_vf *vf,
 	int i;
 	struct i40e_virtchnl_queue_pair_info *qpair;
 
-	if (msglen <= sizeof(*qconfig) ||
+	if (msg == NULL || msglen <= sizeof(*qconfig) ||
 		qconfig->num_queue_pairs > vsi->nb_qps) {
 		PMD_DRV_LOG(ERR, "vsi_queue_config_info argument wrong\n");
 		ret = I40E_ERR_PARAM;
@@ -465,7 +465,7 @@ i40e_pf_host_process_cmd_config_irq_map(struct i40e_pf_vf *vf,
 	struct i40e_virtchnl_irq_map_info *irqmap =
 	    (struct i40e_virtchnl_irq_map_info *)msg;
 
-	if (msglen < sizeof(struct i40e_virtchnl_irq_map_info)) {
+	if (msg == NULL || msglen < sizeof(struct i40e_virtchnl_irq_map_info)) {
 		PMD_DRV_LOG(ERR, "buffer too short\n");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
@@ -553,7 +553,7 @@ i40e_pf_host_process_cmd_enable_queues(struct i40e_pf_vf *vf,
 	struct i40e_virtchnl_queue_select *q_sel =
 		(struct i40e_virtchnl_queue_select *)msg;
 
-	if (msglen != sizeof(*q_sel)) {
+	if (msg == NULL || msglen != sizeof(*q_sel)) {
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}
@@ -575,7 +575,7 @@ i40e_pf_host_process_cmd_disable_queues(struct i40e_pf_vf *vf,
 	struct i40e_virtchnl_queue_select *q_sel =
 		(struct i40e_virtchnl_queue_select *)msg;
 
-	if (msglen != sizeof(*q_sel)) {
+	if (msg == NULL || msglen != sizeof(*q_sel)) {
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}
@@ -600,7 +600,7 @@ i40e_pf_host_process_cmd_add_ether_address(struct i40e_pf_vf *vf,
 	int i;
 	struct ether_addr *mac;
 
-	if (msglen <= sizeof(*addr_list)) {
+	if (msg == NULL || msglen <= sizeof(*addr_list)) {
 		PMD_DRV_LOG(ERR, "add_ether_address argument too short\n");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
@@ -633,7 +633,7 @@ i40e_pf_host_process_cmd_del_ether_address(struct i40e_pf_vf *vf,
 	int i;
 	struct ether_addr *mac;
 
-	if (msglen <= sizeof(*addr_list)) {
+	if (msg == NULL || msglen <= sizeof(*addr_list)) {
 		PMD_DRV_LOG(ERR, "delete_ether_address argument too short\n");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
@@ -666,7 +666,7 @@ i40e_pf_host_process_cmd_add_vlan(struct i40e_pf_vf *vf,
 	int i;
 	uint16_t *vid;
 
-	if (msglen <= sizeof(*vlan_filter_list)) {
+	if (msg == NULL || msglen <= sizeof(*vlan_filter_list)) {
 		PMD_DRV_LOG(ERR, "add_vlan argument too short\n");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
@@ -698,7 +698,7 @@ i40e_pf_host_process_cmd_del_vlan(struct i40e_pf_vf *vf,
 	int i;
 	uint16_t *vid;
 
-	if (msglen <= sizeof(*vlan_filter_list)) {
+	if (msg == NULL || msglen <= sizeof(*vlan_filter_list)) {
 		PMD_DRV_LOG(ERR, "delete_vlan argument too short\n");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
@@ -722,13 +722,18 @@ static int
 i40e_pf_host_process_cmd_config_promisc_mode(
 					struct i40e_pf_vf *vf,
 					uint8_t *msg,
-					__rte_unused uint16_t msglen)
+					uint16_t msglen)
 {
 	int ret = I40E_SUCCESS;
 	struct i40e_virtchnl_promisc_info *promisc =
 				(struct i40e_virtchnl_promisc_info *)msg;
 	struct i40e_hw *hw = I40E_PF_TO_HW(vf->pf);
 	bool unicast = FALSE, multicast = FALSE;
+
+	if (msg == NULL || msglen != sizeof(*promisc)) {
+		ret = I40E_ERR_PARAM;
+		goto send_msg;
+	}
 
 	if (promisc->flags & I40E_FLAG_VF_UNICAST_PROMISC)
 		unicast = TRUE;
