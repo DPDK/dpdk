@@ -114,9 +114,8 @@ malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
 	const unsigned elem_size = (uintptr_t)end_elem - (uintptr_t)start_elem;
 	malloc_elem_init(start_elem, heap, mz, elem_size);
 	malloc_elem_mkend(end_elem, start_elem);
+	malloc_elem_free_list_insert(start_elem);
 
-	start_elem->next_free = heap->free_head;
-	heap->free_head = start_elem;
 	/* increase heap total size by size of new memzone */
 	heap->total_size+=mz_size - MALLOC_ELEM_OVERHEAD;
 	return 0;
@@ -125,35 +124,25 @@ malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
 /*
  * Iterates through the freelist for a heap to find a free element
  * which can store data of the required size and with the requested alignment.
- * Returns null on failure, or pointer to element on success, with the pointer
- * to the previous element in the list, if any, being returned in a parameter
- * (to make removing the element from the free list faster).
+ * Returns null on failure, or pointer to element on success.
  */
 static struct malloc_elem *
-find_suitable_element(struct malloc_heap *heap, size_t size,
-		unsigned align, struct malloc_elem **prev)
+find_suitable_element(struct malloc_heap *heap, size_t size, unsigned align)
 {
-	struct malloc_elem *elem, *min_elem, *min_prev;
-	size_t min_sz;
+	size_t idx;
+	struct malloc_elem *elem;
 
-	elem = heap->free_head;
-	min_elem = NULL;
-	min_prev = NULL;
-	min_sz = (size_t) SIZE_MAX;
-	*prev = NULL;
-
-	while(elem){
-		if (malloc_elem_can_hold(elem, size, align)) {
-			if (min_sz > elem->size) {
-				min_elem = elem;
-				*prev = min_prev;
-				min_sz = elem->size;
-			}
+	for (idx = malloc_elem_free_list_index(size);
+		idx < RTE_HEAP_NUM_FREELISTS; idx++)
+	{
+		for (elem = LIST_FIRST(&heap->free_head[idx]);
+			!!elem; elem = LIST_NEXT(elem, free_list))
+		{
+			if (malloc_elem_can_hold(elem, size, align))
+				return elem;
 		}
-		min_prev = elem;
-		elem = elem->next_free;
 	}
-	return (min_elem);
+	return NULL;
 }
 
 /*
@@ -169,15 +158,14 @@ malloc_heap_alloc(struct malloc_heap *heap,
 	size = CACHE_LINE_ROUNDUP(size);
 	align = CACHE_LINE_ROUNDUP(align);
 	rte_spinlock_lock(&heap->lock);
-	struct malloc_elem *prev, *elem = find_suitable_element(heap,
-			size, align, &prev);
+	struct malloc_elem *elem = find_suitable_element(heap, size, align);
 	if (elem == NULL){
 		if ((malloc_heap_add_memzone(heap, size, align)) == 0)
-			elem = find_suitable_element(heap, size, align, &prev);
+			elem = find_suitable_element(heap, size, align);
 	}
 
 	if (elem != NULL){
-		elem = malloc_elem_alloc(elem, size, align, prev);
+		elem = malloc_elem_alloc(elem, size, align);
 		/* increase heap's count of allocated elements */
 		heap->alloc_count++;
 	}
@@ -193,7 +181,8 @@ int
 malloc_heap_get_stats(const struct malloc_heap *heap,
 		struct rte_malloc_socket_stats *socket_stats)
 {
-	struct malloc_elem *elem = heap->free_head;
+	size_t idx;
+	struct malloc_elem *elem;
 
 	/* Initialise variables for heap */
 	socket_stats->free_count = 0;
@@ -201,13 +190,15 @@ malloc_heap_get_stats(const struct malloc_heap *heap,
 	socket_stats->greatest_free_size = 0;
 
 	/* Iterate through free list */
-	while(elem) {
-		socket_stats->free_count++;
-		socket_stats->heap_freesz_bytes += elem->size;
-		if (elem->size > socket_stats->greatest_free_size)
-			socket_stats->greatest_free_size = elem->size;
-
-		elem = elem->next_free;
+	for (idx = 0; idx < RTE_HEAP_NUM_FREELISTS; idx++) {
+		for (elem = LIST_FIRST(&heap->free_head[idx]);
+			!!elem; elem = LIST_NEXT(elem, free_list))
+		{
+			socket_stats->free_count++;
+			socket_stats->heap_freesz_bytes += elem->size;
+			if (elem->size > socket_stats->greatest_free_size)
+				socket_stats->greatest_free_size = elem->size;
+		}
 	}
 	/* Get stats on overall heap and allocated memory on this heap */
 	socket_stats->heap_totalsz_bytes = heap->total_size;

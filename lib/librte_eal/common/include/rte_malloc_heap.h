@@ -35,14 +35,18 @@
 #define _RTE_MALLOC_HEAP_H_
 
 #include <stddef.h>
+#include <sys/queue.h>
 #include <rte_spinlock.h>
+
+/* Number of free lists per heap, grouped by size. */
+#define RTE_HEAP_NUM_FREELISTS  5
 
 /**
  * Structure to hold malloc heap
  */
 struct malloc_heap {
 	rte_spinlock_t lock;
-	struct malloc_elem * volatile free_head;
+	LIST_HEAD(, malloc_elem) free_head[RTE_HEAP_NUM_FREELISTS];
 	unsigned mz_count;
 	unsigned alloc_count;
 	size_t total_size;
