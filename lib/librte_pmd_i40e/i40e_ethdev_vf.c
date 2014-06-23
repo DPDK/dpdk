@@ -471,7 +471,7 @@ i40evf_config_vlan_offload(struct rte_eth_dev *dev,
 	offload.vsi_id = vf->vsi_res->vsi_id;
 	offload.enable_vlan_strip = enable_vlan_strip;
 
-	args.ops = I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD;
+	args.ops = (enum i40e_virtchnl_ops)I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD;
 	args.in_args = (uint8_t *)&offload;
 	args.in_args_size = sizeof(offload);
 	args.out_buffer = cmd_result_buffer;
@@ -502,7 +502,7 @@ i40evf_config_vlan_pvid(struct rte_eth_dev *dev,
 	tpid_info.vsi_id = vf->vsi_res->vsi_id;
 	(void)rte_memcpy(&tpid_info.info, info, sizeof(*info));
 
-	args.ops = I40E_VIRTCHNL_OP_CFG_VLAN_PVID;
+	args.ops = (enum i40e_virtchnl_ops)I40E_VIRTCHNL_OP_CFG_VLAN_PVID;
 	args.in_args = (uint8_t *)&tpid_info;
 	args.in_args_size = sizeof(tpid_info);
 	args.out_buffer = cmd_result_buffer;
