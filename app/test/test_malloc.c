@@ -66,7 +66,7 @@
  * ======
  *
  * Allocate some dynamic memory from heap (3 areas). Check that areas
- * don't overlap an that alignment constraints match. This test is
+ * don't overlap and that alignment constraints match. This test is
  * done many times on different lcores simultaneously.
  */
 
@@ -313,9 +313,9 @@ test_big_alloc(void)
 	rte_malloc_get_socket_stats(socket,&post_stats);
 
 	/* Check statistics reported are correct */
-	/* Allocation increase, cannot be the same as before big allocation */
-	if (post_stats.heap_totalsz_bytes == pre_stats.heap_totalsz_bytes) {
-		printf("Malloc statistics are incorrect - heap_totalz_bytes\n");
+	/* Allocation may increase, or may be the same as before big allocation */
+	if (post_stats.heap_totalsz_bytes < pre_stats.heap_totalsz_bytes) {
+		printf("Malloc statistics are incorrect - heap_totalsz_bytes\n");
 		return -1;
 	}
 	/* Check that allocated size adds up correctly */
@@ -336,7 +336,8 @@ test_big_alloc(void)
 		return -1;
 	}
 	/* New blocks now available - just allocated 1 but also 1 new free */
-	if(post_stats.free_count != pre_stats.free_count ) {
+	if (post_stats.free_count != pre_stats.free_count &&
+			post_stats.free_count != pre_stats.free_count - 1) {
 		printf("Malloc statistics are incorrect - free_count\n");
 		return -1;
 	}
@@ -425,7 +426,7 @@ test_multi_alloc_statistics(void)
 	}
 
 	/* Make sure that we didn't touch our greatest chunk: 2 * 11M)  */
-	if (second_stats.greatest_free_size != pre_stats.greatest_free_size) {
+	if (post_stats.greatest_free_size != pre_stats.greatest_free_size) {
 		printf("Incorrect heap statistics: Greatest free size \n");
 		return -1;
 	}
@@ -1036,11 +1037,11 @@ test_malloc(void)
 
 	ret = test_multi_alloc_statistics();
 	if (ret < 0) {
-		printf("test_muti_alloc_statistics() failed\n");
+		printf("test_multi_alloc_statistics() failed\n");
 		return ret;
 	}
 	else
-		printf("test_muti_alloc_statistics() passed\n");
+		printf("test_multi_alloc_statistics() passed\n");
 
 	return 0;
 }
