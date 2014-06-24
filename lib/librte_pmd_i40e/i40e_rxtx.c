@@ -863,7 +863,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->ol_flags = pkt_flags;
 		if (pkt_flags & PKT_RX_RSS_HASH)
 			rxm->pkt.hash.rss =
-				rte_le_to_cpu_32(rxdp->wb.qword0.hi_dword.rss);
+				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
 
 		rx_pkts[nb_rx++] = rxm;
 	}
@@ -1016,7 +1016,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		first_seg->ol_flags = pkt_flags;
 		if (pkt_flags & PKT_RX_RSS_HASH)
 			rxm->pkt.hash.rss =
-				rte_le_to_cpu_32(rxdp->wb.qword0.hi_dword.rss);
+				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
 
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_prefetch0(first_seg->pkt.data);
