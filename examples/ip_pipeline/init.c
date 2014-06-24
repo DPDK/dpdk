@@ -427,7 +427,7 @@ app_init_rings(void)
 		struct rte_ring *ring;
 		char name[32];
 
-		rte_snprintf(name, sizeof(name), "app_ring_%u", i);
+		snprintf(name, sizeof(name), "app_ring_%u", i);
 
 		ring = rte_ring_create(
 			name,

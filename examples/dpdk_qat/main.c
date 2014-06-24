@@ -543,7 +543,7 @@ parse_config(const char *q_arg)
 		if(size >= sizeof(s))
 			return -1;
 
-		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		snprintf(s, sizeof(s), "%.*s", size, p);
 		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
 			return -1;
 		for (i = 0; i < _NUM_FLD; i++) {
@@ -654,7 +654,7 @@ init_mem(void)
 			return -1;
 		}
 		if (pktmbuf_pool[socketid] == NULL) {
-			rte_snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
+			snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
 			pktmbuf_pool[socketid] =
 				rte_mempool_create(s, NB_MBUF, MBUF_SIZE, 32,
 					sizeof(struct rte_pktmbuf_pool_private),

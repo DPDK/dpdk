@@ -258,7 +258,7 @@ xenstore_cleanup(void)
 {
 	char store_path[PATH_MAX] = {0};
 
-	if (rte_snprintf(store_path, sizeof(store_path),
+	if (snprintf(store_path, sizeof(store_path),
 		"%s%s", dompath, DPDK_XENSTORE_NODE) == -1)
 		return -1;
 
@@ -320,9 +320,9 @@ xenstore_write(const char *key_str, const char *val_str)
 		RTE_LOG(ERR, PMD, "%s: xenstore init failed\n", __func__);
 		return -1;
 	}
-	rv = rte_snprintf(grant_path, sizeof(grant_path), "%s%s", dompath, key_str);
+	rv = snprintf(grant_path, sizeof(grant_path), "%s%s", dompath, key_str);
 	if (rv == -1) {
-		RTE_LOG(ERR, PMD, "%s: rte_snprintf %s %s failed\n",
+		RTE_LOG(ERR, PMD, "%s: snprintf %s %s failed\n",
 			__func__, dompath, key_str);
 		return -1;
 	}
@@ -374,11 +374,11 @@ grant_node_create(uint32_t pg_num, uint32_t *gref_arr, phys_addr_t *pa_arr, char
 
 	while (j < pg_num) {
 		if (first) {
-			rv = rte_snprintf(val_str, str_size, "%u", gref_tmp[k]);
+			rv = snprintf(val_str, str_size, "%u", gref_tmp[k]);
 			first = 0;
 		} else {
-			rte_snprintf(tmp_str, PATH_MAX, "%s", val_str);
-			rv = rte_snprintf(val_str, str_size, "%s,%u", tmp_str, gref_tmp[k]);
+			snprintf(tmp_str, PATH_MAX, "%s", val_str);
+			rv = snprintf(val_str, str_size, "%s,%u", tmp_str, gref_tmp[k]);
 		}
 		k++;
 		if (rv == -1)
@@ -406,22 +406,22 @@ grant_gntalloc_mbuf_pool(struct rte_mempool *mpool, uint32_t pg_num, uint32_t *g
 	char key_str[PATH_MAX] = {0};
 	char val_str[PATH_MAX] = {0};
 
-	rte_snprintf(val_str, sizeof(val_str), "");
+	snprintf(val_str, sizeof(val_str), "");
 
 	if (grant_node_create(pg_num, gref_arr, pa_arr, val_str, sizeof(val_str))) {
 		return -1;
 	}
 
-	if (rte_snprintf(key_str, sizeof(key_str),
+	if (snprintf(key_str, sizeof(key_str),
 		DPDK_XENSTORE_PATH"%d"MEMPOOL_XENSTORE_STR, mempool_idx) == -1)
 		return -1;
 	if (xenstore_write(key_str, val_str) == -1)
 		return -1;
 
-	if (rte_snprintf(key_str, sizeof(key_str),
+	if (snprintf(key_str, sizeof(key_str),
 		DPDK_XENSTORE_PATH"%d"MEMPOOL_VA_XENSTORE_STR, mempool_idx) == -1)
 		return -1;
-	if (rte_snprintf(val_str, sizeof(val_str), "%p", (uintptr_t)mpool->elt_va_start) == -1)
+	if (snprintf(val_str, sizeof(val_str), "%p", (uintptr_t)mpool->elt_va_start) == -1)
 		return -1;
 	if (xenstore_write(key_str, val_str) == -1)
 		return -1;

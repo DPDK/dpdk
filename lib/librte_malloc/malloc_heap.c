@@ -90,7 +90,7 @@ malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
 		mz_size = block_size;
 
 	char mz_name[RTE_MEMZONE_NAMESIZE];
-	rte_snprintf(mz_name, sizeof(mz_name), "MALLOC_S%u_HEAP_%u",
+	snprintf(mz_name, sizeof(mz_name), "MALLOC_S%u_HEAP_%u",
 		     numa_socket, heap->mz_count++);
 
 	/* try getting a block. if we fail and we don't need as big a block

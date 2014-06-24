@@ -134,10 +134,10 @@ static void cmd_obj_del_show_parsed(void *parsed_result,
 	char ip_str[INET6_ADDRSTRLEN];
 
 	if (res->obj->ip.family == AF_INET)
-		rte_snprintf(ip_str, sizeof(ip_str), NIPQUAD_FMT,
+		snprintf(ip_str, sizeof(ip_str), NIPQUAD_FMT,
 			 NIPQUAD(res->obj->ip.addr.ipv4));
 	else
-		rte_snprintf(ip_str, sizeof(ip_str), NIP6_FMT,
+		snprintf(ip_str, sizeof(ip_str), NIP6_FMT,
 			 NIP6(res->obj->ip.addr.ipv6));
 
 	if (strcmp(res->action, "del") == 0) {
@@ -199,15 +199,15 @@ static void cmd_obj_add_parsed(void *parsed_result,
 		cmdline_printf(cl, "mem error\n");
 		return;
 	}
-	rte_snprintf(o->name, sizeof(o->name), "%s", res->name);
+	snprintf(o->name, sizeof(o->name), "%s", res->name);
 	o->ip = res->ip;
 	SLIST_INSERT_HEAD(&global_obj_list, o, next);
 
 	if (o->ip.family == AF_INET)
-		rte_snprintf(ip_str, sizeof(ip_str), NIPQUAD_FMT,
+		snprintf(ip_str, sizeof(ip_str), NIPQUAD_FMT,
 			 NIPQUAD(o->ip.addr.ipv4));
 	else
-		rte_snprintf(ip_str, sizeof(ip_str), NIP6_FMT,
+		snprintf(ip_str, sizeof(ip_str), NIP6_FMT,
 			 NIP6(o->ip.addr.ipv6));
 
 	cmdline_printf(cl, "Object %s added, ip=%s\n",

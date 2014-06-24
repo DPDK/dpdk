@@ -234,7 +234,7 @@ netmap_port_open(uint32_t idx)
 
 	port->fd = rte_netmap_open("/dev/netmap", O_RDWR);
 
-	rte_snprintf(req.nr_name, sizeof(req.nr_name), "%s", port->str);
+	snprintf(req.nr_name, sizeof(req.nr_name), "%s", port->str);
 	req.nr_version = NETMAP_API;
 	req.nr_ringid = 0;
 
@@ -244,7 +244,7 @@ netmap_port_open(uint32_t idx)
 		return (err);
 	}
 
-	rte_snprintf(req.nr_name, sizeof(req.nr_name), "%s", port->str);
+	snprintf(req.nr_name, sizeof(req.nr_name), "%s", port->str);
 	req.nr_version = NETMAP_API;
 	req.nr_ringid = 0;
 

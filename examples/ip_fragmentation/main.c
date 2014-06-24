@@ -786,7 +786,7 @@ init_mem(void)
 		if (socket_direct_pool[socket] == NULL) {
 			RTE_LOG(INFO, IP_FRAG, "Creating direct mempool on socket %i\n",
 					socket);
-			rte_snprintf(buf, sizeof(buf), "pool_direct_%i", socket);
+			snprintf(buf, sizeof(buf), "pool_direct_%i", socket);
 
 			mp = rte_mempool_create(buf, NB_MBUF,
 						   MBUF_SIZE, 32,
@@ -804,7 +804,7 @@ init_mem(void)
 		if (socket_indirect_pool[socket] == NULL) {
 			RTE_LOG(INFO, IP_FRAG, "Creating indirect mempool on socket %i\n",
 					socket);
-			rte_snprintf(buf, sizeof(buf), "pool_indirect_%i", socket);
+			snprintf(buf, sizeof(buf), "pool_indirect_%i", socket);
 
 			mp = rte_mempool_create(buf, NB_MBUF,
 							   sizeof(struct rte_mbuf), 32,
@@ -821,7 +821,7 @@ init_mem(void)
 
 		if (socket_lpm[socket] == NULL) {
 			RTE_LOG(INFO, IP_FRAG, "Creating LPM table on socket %i\n", socket);
-			rte_snprintf(buf, sizeof(buf), "IP_FRAG_LPM_%i", socket);
+			snprintf(buf, sizeof(buf), "IP_FRAG_LPM_%i", socket);
 
 			lpm = rte_lpm_create(buf, socket, LPM_MAX_RULES, 0);
 			if (lpm == NULL) {
@@ -833,7 +833,7 @@ init_mem(void)
 
 		if (socket_lpm6[socket] == NULL) {
 			RTE_LOG(INFO, IP_FRAG, "Creating LPM6 table on socket %i\n", socket);
-			rte_snprintf(buf, sizeof(buf), "IP_FRAG_LPM_%i", socket);
+			snprintf(buf, sizeof(buf), "IP_FRAG_LPM_%i", socket);
 
 			lpm6 = rte_lpm6_create("IP_FRAG_LPM6", socket, &lpm6_config);
 			if (lpm6 == NULL) {

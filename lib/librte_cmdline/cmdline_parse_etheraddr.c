@@ -154,7 +154,7 @@ cmdline_parse_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 			(token_len != ETHER_ADDRSTRLENSHORT - 1))
 		return -1;
 
-	rte_snprintf(ether_str, token_len+1, "%s", buf);
+	snprintf(ether_str, token_len+1, "%s", buf);
 
 	tmp = my_ether_aton(ether_str);
 	if (tmp == NULL)
@@ -170,7 +170,7 @@ cmdline_get_help_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk
 {
 	int ret;
 
-	ret = rte_snprintf(dstbuf, size, "Ethernet address");
+	ret = snprintf(dstbuf, size, "Ethernet address");
 	if (ret < 0)
 		return -1;
 	return 0;

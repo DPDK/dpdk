@@ -55,7 +55,7 @@ static int
 cpu_detected(unsigned lcore_id)
 {
 	char path[PATH_MAX];
-	int len = rte_snprintf(path, sizeof(path), SYS_CPU_DIR
+	int len = snprintf(path, sizeof(path), SYS_CPU_DIR
 		"/"CORE_ID_FILE, lcore_id);
 	if (len <= 0 || (unsigned)len >= sizeof(path))
 		return 0;
@@ -82,7 +82,7 @@ cpu_socket_id(unsigned lcore_id)
 	struct dirent *e;
 	char *endptr = NULL;
 
-	int len = rte_snprintf(path, sizeof(path),
+	int len = snprintf(path, sizeof(path),
 			       SYS_CPU_DIR, lcore_id);
 	if (len <= 0 || (unsigned)len >= sizeof(path))
 		goto err;
@@ -103,7 +103,7 @@ cpu_socket_id(unsigned lcore_id)
 				"for lcore %u - using physical package id instead\n",
 				lcore_id);
 
-		len = rte_snprintf(path, sizeof(path), SYS_CPU_DIR "/%s",
+		len = snprintf(path, sizeof(path), SYS_CPU_DIR "/%s",
 				lcore_id, PHYS_PKG_FILE);
 		if (len <= 0 || (unsigned)len >= sizeof(path))
 			goto err;
@@ -125,7 +125,7 @@ cpu_core_id(unsigned lcore_id)
 	char path[PATH_MAX];
 	unsigned long id;
 
-	int len = rte_snprintf(path, sizeof(path), SYS_CPU_DIR "/%s", lcore_id, CORE_ID_FILE);
+	int len = snprintf(path, sizeof(path), SYS_CPU_DIR "/%s", lcore_id, CORE_ID_FILE);
 	if (len <= 0 || (unsigned)len >= sizeof(path))
 		goto err;
 	if (eal_parse_sysfs_value(path, &id) != 0)

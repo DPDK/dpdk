@@ -397,7 +397,7 @@ current_fwd_lcore(void)
 static inline void
 mbuf_poolname_build(unsigned int sock_id, char* mp_name, int name_size)
 {
-	rte_snprintf(mp_name, name_size, "mbuf_pool_socket_%u", sock_id);
+	snprintf(mp_name, name_size, "mbuf_pool_socket_%u", sock_id);
 }
 
 static inline struct rte_mempool *

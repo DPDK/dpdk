@@ -129,7 +129,7 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 		return NULL;
 	}
 
-	rte_snprintf(hash_name, sizeof(hash_name), "FBK_%s", params->name);
+	snprintf(hash_name, sizeof(hash_name), "FBK_%s", params->name);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
@@ -150,7 +150,7 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 	memset(ht, 0, mem_size);
 
 	/* Set up hash table context. */
-	rte_snprintf(ht->name, sizeof(ht->name), "%s", params->name);
+	snprintf(ht->name, sizeof(ht->name), "%s", params->name);
 	ht->entries = params->entries;
 	ht->entries_per_bucket = params->entries_per_bucket;
 	ht->used_entries = 0;

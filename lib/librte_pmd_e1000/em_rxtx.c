@@ -1093,7 +1093,7 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 	const struct rte_memzone *mz;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 
-	rte_snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
+	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
 		dev->driver->pci_drv.name, ring_name, dev->data->port_id,
 		queue_id);
 

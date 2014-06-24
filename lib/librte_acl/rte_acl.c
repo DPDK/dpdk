@@ -96,7 +96,7 @@ rte_acl_create(const struct rte_acl_param *param)
 		return NULL;
 	}
 
-	rte_snprintf(name, sizeof(name), "ACL_%s", param->name);
+	snprintf(name, sizeof(name), "ACL_%s", param->name);
 
 	/* calculate amount of memory required for pattern set. */
 	sz = sizeof(*ctx) + param->max_rule_num * param->rule_size;
@@ -119,7 +119,7 @@ rte_acl_create(const struct rte_acl_param *param)
 		ctx->max_rules = param->max_rule_num;
 		ctx->rule_sz = param->rule_size;
 		ctx->socket_id = param->socket_id;
-		rte_snprintf(ctx->name, sizeof(ctx->name), "%s", param->name);
+		snprintf(ctx->name, sizeof(ctx->name), "%s", param->name);
 
 		TAILQ_INSERT_TAIL(acl_list, ctx, next);
 

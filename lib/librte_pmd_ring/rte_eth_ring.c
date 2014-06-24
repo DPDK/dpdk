@@ -326,7 +326,7 @@ eth_dev_ring_create(const char *name, const unsigned numa_node,
 			RTE_PMD_RING_MAX_TX_RINGS);
 
 	for (i = 0; i < num_rings; i++) {
-		rte_snprintf(rng_name, sizeof(rng_name), "ETH_RXTX%u_%s", i, name);
+		snprintf(rng_name, sizeof(rng_name), "ETH_RXTX%u_%s", i, name);
 		rxtx[i] = (action == DEV_CREATE) ?
 				rte_ring_create(rng_name, 1024, numa_node,
 						RING_F_SP_ENQ|RING_F_SC_DEQ) :
@@ -357,14 +357,14 @@ eth_dev_ring_pair_create(const char *name, const unsigned numa_node,
 			RTE_PMD_RING_MAX_TX_RINGS);
 
 	for (i = 0; i < num_rings; i++) {
-		rte_snprintf(rng_name, sizeof(rng_name), "ETH_RX%u_%s", i, name);
+		snprintf(rng_name, sizeof(rng_name), "ETH_RX%u_%s", i, name);
 		rx[i] = (action == DEV_CREATE) ?
 				rte_ring_create(rng_name, 1024, numa_node,
 						RING_F_SP_ENQ|RING_F_SC_DEQ) :
 				rte_ring_lookup(rng_name);
 		if (rx[i] == NULL)
 			return -1;
-		rte_snprintf(rng_name, sizeof(rng_name), "ETH_TX%u_%s", i, name);
+		snprintf(rng_name, sizeof(rng_name), "ETH_TX%u_%s", i, name);
 		tx[i] = (action == DEV_CREATE) ?
 				rte_ring_create(rng_name, 1024, numa_node,
 						RING_F_SP_ENQ|RING_F_SC_DEQ):
@@ -461,7 +461,7 @@ static int parse_kvlist (const char *key __rte_unused, const char *value, void *
 		goto out;
 	}
 
-	rte_snprintf(info->list[info->count].name, sizeof(info->list[info->count].name), "%s", name);
+	snprintf(info->list[info->count].name, sizeof(info->list[info->count].name), "%s", name);
 
 	info->count++;
 

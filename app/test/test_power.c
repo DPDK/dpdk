@@ -63,7 +63,7 @@ check_cur_freq(unsigned lcore_id, uint32_t idx)
 	uint32_t cur_freq;
 	int ret = -1;
 
-	if (rte_snprintf(fullpath, sizeof(fullpath),
+	if (snprintf(fullpath, sizeof(fullpath),
 		TEST_POWER_SYSFILE_CUR_FREQ, lcore_id) < 0) {
 		return 0;
 	}

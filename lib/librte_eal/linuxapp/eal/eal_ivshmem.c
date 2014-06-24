@@ -364,7 +364,7 @@ read_metadata(char * path, int path_len, int fd, uint64_t flen)
 				sizeof(struct rte_ivshmem_metadata_entry));
 
 		/* copy path */
-		rte_snprintf(ivshmem_config->segment[idx].path, path_len, "%s", path);
+		snprintf(ivshmem_config->segment[idx].path, path_len, "%s", path);
 
 		idx++;
 	}
@@ -469,7 +469,7 @@ create_shared_config(void)
 	int fd;
 
 	/* build ivshmem config file path */
-	rte_snprintf(path, sizeof(path), IVSHMEM_CONFIG_PATH,
+	snprintf(path, sizeof(path), IVSHMEM_CONFIG_PATH,
 			internal_config.hugefile_prefix);
 
 	fd = open(path, O_CREAT | O_RDWR, 0600);
@@ -520,7 +520,7 @@ open_shared_config(void)
 	int fd;
 
 	/* build ivshmem config file path */
-	rte_snprintf(path, sizeof(path), IVSHMEM_CONFIG_PATH,
+	snprintf(path, sizeof(path), IVSHMEM_CONFIG_PATH,
 			internal_config.hugefile_prefix);
 
 	fd = open(path, O_RDONLY);
@@ -869,7 +869,7 @@ int rte_eal_ivshmem_init(void)
 					continue;
 
 				/* construct pci device path */
-				rte_snprintf(path, sizeof(path), IVSHMEM_RESOURCE_PATH,
+				snprintf(path, sizeof(path), IVSHMEM_RESOURCE_PATH,
 						dev->addr.domain, dev->addr.bus, dev->addr.devid,
 						dev->addr.function);
 
@@ -916,7 +916,7 @@ int rte_eal_ivshmem_init(void)
 							dev->addr.bus, dev->addr.devid, dev->addr.function);
 
 					ivshmem_config->pci_devs[ivshmem_config->pci_devs_idx].ioremap_addr = res->phys_addr;
-					rte_snprintf(ivshmem_config->pci_devs[ivshmem_config->pci_devs_idx].path,
+					snprintf(ivshmem_config->pci_devs[ivshmem_config->pci_devs_idx].path,
 							sizeof(ivshmem_config->pci_devs[ivshmem_config->pci_devs_idx].path),
 							"%s", path);
 

@@ -390,7 +390,7 @@ test_kni_processing(uint8_t port_id, struct rte_mempool *mp)
 	rte_eth_dev_info_get(port_id, &info);
 	conf.addr = info.pci_dev->addr;
 	conf.id = info.pci_dev->id;
-	rte_snprintf(conf.name, sizeof(conf.name), TEST_KNI_PORT);
+	snprintf(conf.name, sizeof(conf.name), TEST_KNI_PORT);
 
 	/* core id 1 configured for kernel thread */
 	conf.core_id = 1;
@@ -647,7 +647,7 @@ test_kni(void)
 
 	/* test of getting KNI device with an invalid string name */
 	memset(&conf, 0, sizeof(conf));
-	rte_snprintf(conf.name, sizeof(conf.name), "testing");
+	snprintf(conf.name, sizeof(conf.name), "testing");
 	kni = rte_kni_get(conf.name);
 	if (kni) {
 		ret = -1;

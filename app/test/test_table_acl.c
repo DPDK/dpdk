@@ -364,7 +364,7 @@ setup_acl_pipeline(void)
 
 		acl_params.n_rules = 1 << 5;
 		acl_params.n_rule_fields = DIM(ipv4_defs);
-		rte_snprintf(acl_name, sizeof(acl_name), "ACL%d", i);
+		snprintf(acl_name, sizeof(acl_name), "ACL%d", i);
 		acl_params.name = acl_name;
 		memcpy(acl_params.field_format, ipv4_defs, sizeof(ipv4_defs));
 
@@ -408,7 +408,7 @@ setup_acl_pipeline(void)
 		parser = parse_cb_ipv4_rule;
 
 		for (n = 1; n <= 5; n++) {
-			rte_snprintf(line, sizeof(line), "%s", lines[n-1]);
+			snprintf(line, sizeof(line), "%s", lines[n-1]);
 			printf("PARSING [%s]\n", line);
 
 			ret = parser(line, &rule_params);
@@ -434,7 +434,7 @@ setup_acl_pipeline(void)
 
 		/* delete a few rules */
 		for (n = 2; n <= 3; n++) {
-			rte_snprintf(line, sizeof(line), "%s", lines[n-1]);
+			snprintf(line, sizeof(line), "%s", lines[n-1]);
 			printf("PARSING [%s]\n", line);
 
 			ret = parser(line, &rule_params);
@@ -461,7 +461,7 @@ setup_acl_pipeline(void)
 
 		/* Try to add duplicates */
 		for (n = 1; n <= 5; n++) {
-			rte_snprintf(line, sizeof(line), "%s", lines[n-1]);
+			snprintf(line, sizeof(line), "%s", lines[n-1]);
 			printf("PARSING [%s]\n", line);
 
 			ret = parser(line, &rule_params);

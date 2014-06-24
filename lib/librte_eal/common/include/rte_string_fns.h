@@ -45,12 +45,8 @@ extern "C" {
 #endif
 
 /**
- * Safer version of snprintf that writes up to buflen characters to
- * the output buffer and ensures that the resultant string is null-terminated,
- * that is, it writes at most buflen-1 actual string characters to buffer. The
- * return value is the number of characters which should be written to the
- * buffer, so string truncation can be detected by the caller by checking if
- * the return value is greater than or equal to the buflen.
+ * This functio is deprecated and just for backward compatibility.
+ * It is just an alternate version of snprintf.
  *
  * @param buffer
  *   The buffer into which the output is to be written
@@ -69,7 +65,8 @@ extern "C" {
  */
 int
 rte_snprintf(char *buffer, int buflen, const char *format, ...)
-	__attribute__((format(printf,3,4)));
+	__attribute__((format(printf,3,4)))
+	__attribute__((deprecated));
 
 /**
  * Takes string "string" parameter and splits it at character "delim"

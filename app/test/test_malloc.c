@@ -486,7 +486,7 @@ test_realloc(void)
 		printf("NULL pointer returned from rte_zmalloc\n");
 		return -1;
 	}
-	rte_snprintf(ptr1, size1, "%s" ,hello_str);
+	snprintf(ptr1, size1, "%s" ,hello_str);
 	char *ptr2 = rte_realloc(ptr1, size2, CACHE_LINE_SIZE);
 	if (!ptr2){
 		rte_free(ptr1);

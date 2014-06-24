@@ -146,7 +146,7 @@ test_parse_etheraddr_invalid_param(void)
 	/* try null result */
 
 	/* copy string to buffer */
-	rte_snprintf(buf, sizeof(buf), "%s",
+	snprintf(buf, sizeof(buf), "%s",
 			ether_addr_valid_strs[0].str);
 
 	ret = cmdline_parse_etheraddr(NULL, buf, NULL);

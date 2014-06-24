@@ -512,7 +512,7 @@ test_cirbuf_string_get_del_partial(void)
 	memset(tmp, 0, sizeof(tmp));
 	memset(tmp2, 0, sizeof(tmp));
 
-	rte_snprintf(tmp2, sizeof(tmp2), "%s", CIRBUF_STR_HEAD);
+	snprintf(tmp2, sizeof(tmp2), "%s", CIRBUF_STR_HEAD);
 
 	/*
 	 * initialize circular buffer

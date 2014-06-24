@@ -122,7 +122,7 @@ cmdline_set_prompt(struct cmdline *cl, const char *prompt)
 {
 	if (!cl || !prompt)
 		return;
-	rte_snprintf(cl->prompt, sizeof(cl->prompt), "%s", prompt);
+	snprintf(cl->prompt, sizeof(cl->prompt), "%s", prompt);
 }
 
 struct cmdline *

@@ -434,8 +434,8 @@ static void virtio_init(void)
 			continue;
 
 		for (j = 0; j < RTE_MAX_ETHPORTS; j++) {
-			rte_snprintf(node, PATH_MAX, "%s%d", VIRTIO_START, j);
-			rte_snprintf(path, PATH_MAX, XEN_VM_NODE_FMT,
+			snprintf(node, PATH_MAX, "%s%d", VIRTIO_START, j);
+			snprintf(path, PATH_MAX, XEN_VM_NODE_FMT,
 					dom_id, node);
 
 			th = xs_transaction_start(watch.xs);

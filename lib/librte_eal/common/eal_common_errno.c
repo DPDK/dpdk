@@ -52,7 +52,7 @@ rte_strerror(int errnum)
 	/* since some implementations of strerror_r throw an error
 	 * themselves if errnum is too big, we handle that case here */
 	if (errnum > RTE_MAX_ERRNO)
-		rte_snprintf(RTE_PER_LCORE(retval), RETVAL_SZ,
+		snprintf(RTE_PER_LCORE(retval), RETVAL_SZ,
 #ifdef RTE_EXEC_ENV_BSDAPP
 				"Unknown error: %d", errnum);
 #else

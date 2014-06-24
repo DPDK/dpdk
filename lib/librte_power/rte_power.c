@@ -158,7 +158,7 @@ power_set_governor_userspace(struct rte_power_info *pi)
 	char *s;
 	int val;
 
-	rte_snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_GOVERNOR,
+	snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_GOVERNOR,
 							pi->lcore_id);
 	f = fopen(fullpath, "rw+");
 	FOPEN_OR_ERR_RET(f, ret);
@@ -175,7 +175,7 @@ power_set_governor_userspace(struct rte_power_info *pi)
 		goto out;
 	}
 	/* Save the original governor */
-	rte_snprintf(pi->governor_ori, sizeof(pi->governor_ori), "%s", buf);
+	snprintf(pi->governor_ori, sizeof(pi->governor_ori), "%s", buf);
 
 	/* Write 'userspace' to the governor */
 	val = fseek(f, 0, SEEK_SET);
@@ -208,7 +208,7 @@ power_get_available_freqs(struct rte_power_info *pi)
 	char *freqs[RTE_MAX_LCORE_FREQS];
 	char *s;
 
-	rte_snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_AVAIL_FREQ,
+	snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_AVAIL_FREQ,
 								pi->lcore_id);
 	f = fopen(fullpath, "r");
 	FOPEN_OR_ERR_RET(f, ret);
@@ -264,7 +264,7 @@ power_init_for_setting_freq(struct rte_power_info *pi)
 	uint32_t i, freq;
 	char *s;
 
-	rte_snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_SETSPEED,
+	snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_SETSPEED,
 							pi->lcore_id);
 	f = fopen(fullpath, "rw+");
 	FOPEN_OR_ERR_RET(f, -1);
@@ -361,7 +361,7 @@ power_set_governor_original(struct rte_power_info *pi)
 	char *s;
 	int val;
 
-	rte_snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_GOVERNOR,
+	snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_GOVERNOR,
 							pi->lcore_id);
 	f = fopen(fullpath, "rw+");
 	FOPEN_OR_ERR_RET(f, ret);

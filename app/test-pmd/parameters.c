@@ -300,7 +300,7 @@ parse_queue_stats_mapping_config(const char *q_arg, int is_rx)
 		if(size >= sizeof(s))
 			return -1;
 
-		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		snprintf(s, sizeof(s), "%.*s", size, p);
 		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
 			return -1;
 		for (i = 0; i < _NUM_FLD; i++){
@@ -383,7 +383,7 @@ parse_portnuma_config(const char *q_arg)
 		if(size >= sizeof(s))
 			return -1;
 
-		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		snprintf(s, sizeof(s), "%.*s", size, p);
 		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
 			return -1;
 		for (i = 0; i < _NUM_FLD; i++) {
@@ -439,7 +439,7 @@ parse_ringnuma_config(const char *q_arg)
 		if(size >= sizeof(s))
 			return -1;
 
-		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		snprintf(s, sizeof(s), "%.*s", size, p);
 		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
 			return -1;
 		for (i = 0; i < _NUM_FLD; i++) {

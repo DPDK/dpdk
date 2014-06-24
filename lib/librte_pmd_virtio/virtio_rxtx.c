@@ -103,7 +103,7 @@ virtio_dev_vring_start(struct rte_eth_dev *dev, struct virtqueue *vq, int queue_
 	 */
 	virtqueue_disable_intr(vq);
 
-	rte_snprintf(vq_name, sizeof(vq_name), "port_%d_rx_vq",
+	snprintf(vq_name, sizeof(vq_name), "port_%d_rx_vq",
 					dev->data->port_id);
 	PMD_INIT_LOG(DEBUG, "vq name: %s\n", vq->vq_name);
 

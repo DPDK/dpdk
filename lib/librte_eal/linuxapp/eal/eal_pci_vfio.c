@@ -392,7 +392,7 @@ pci_vfio_get_group_fd(int iommu_group_no)
 
 	/* if primary, try to open the group */
 	if (internal_config.process_type == RTE_PROC_PRIMARY) {
-		rte_snprintf(filename, sizeof(filename),
+		snprintf(filename, sizeof(filename),
 				 VFIO_GROUP_FMT, iommu_group_no);
 		vfio_group_fd = open(filename, O_RDWR);
 		if (vfio_group_fd < 0) {
@@ -472,7 +472,7 @@ pci_vfio_get_group_no(const char *pci_addr)
 	memset(filename, 0, sizeof(filename));
 
 	/* try to find out IOMMU group for this device */
-	rte_snprintf(linkname, sizeof(linkname),
+	snprintf(linkname, sizeof(linkname),
 			 SYSFS_PCI_DEVICES "/%s/iommu_group", pci_addr);
 
 	ret = readlink(linkname, filename, sizeof(filename));
@@ -533,7 +533,7 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
 
 	/* store PCI address string */
-	rte_snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
+	snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
 			loc->domain, loc->bus, loc->devid, loc->function);
 
 	/* get group number */

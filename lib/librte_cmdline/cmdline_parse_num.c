@@ -358,7 +358,7 @@ cmdline_get_help_num(cmdline_parse_token_hdr_t *tk, char *dstbuf, unsigned int s
 	/* if (nd.type >= (sizeof(num_help)/sizeof(const char *))) */
 	/* return -1; */
 
-	ret = rte_snprintf(dstbuf, size, "%s", num_help[nd.type]);
+	ret = snprintf(dstbuf, size, "%s", num_help[nd.type]);
 	if (ret < 0)
 		return -1;
 	dstbuf[size-1] = '\0';

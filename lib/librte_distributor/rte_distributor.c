@@ -425,7 +425,7 @@ rte_distributor_create(const char *name,
 		return NULL;
 	}
 
-	rte_snprintf(mz_name, sizeof(mz_name), RTE_DISTRIB_PREFIX"%s", name);
+	snprintf(mz_name, sizeof(mz_name), RTE_DISTRIB_PREFIX"%s", name);
 	mz = rte_memzone_reserve(mz_name, sizeof(*d), socket_id, NO_FLAGS);
 	if (mz == NULL) {
 		rte_errno = ENOMEM;
@@ -433,7 +433,7 @@ rte_distributor_create(const char *name,
 	}
 
 	d = mz->addr;
-	rte_snprintf(d->name, sizeof(d->name), "%s", name);
+	snprintf(d->name, sizeof(d->name), "%s", name);
 	d->num_workers = num_workers;
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);

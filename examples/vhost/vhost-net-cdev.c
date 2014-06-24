@@ -325,11 +325,11 @@ register_cuse_device(const char *base_name, int index, struct vhost_net_device_o
 	 * of userspace vhost which we can then add devices to separately.
 	 */
 	if (strncmp(base_name, default_cdev, PATH_MAX)!=0) {
-		rte_snprintf(device_name, PATH_MAX, "DEVNAME=%s-%d", base_name, index);
-		rte_snprintf(char_device_name, PATH_MAX, "/dev/%s-%d", base_name, index);
+		snprintf(device_name, PATH_MAX, "DEVNAME=%s-%d", base_name, index);
+		snprintf(char_device_name, PATH_MAX, "/dev/%s-%d", base_name, index);
 	} else {
-		rte_snprintf(device_name, PATH_MAX, "DEVNAME=%s", base_name);
-		rte_snprintf(char_device_name, PATH_MAX, "/dev/%s", base_name);
+		snprintf(device_name, PATH_MAX, "DEVNAME=%s", base_name);
+		snprintf(char_device_name, PATH_MAX, "/dev/%s", base_name);
 	}
 
 	/* Check if device already exists. */

@@ -229,7 +229,7 @@ static int tap_create(char *name)
 	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
 	if (name && *name)
-		rte_snprintf(ifr.ifr_name, IFNAMSIZ, "%s", name);
+		snprintf(ifr.ifr_name, IFNAMSIZ, "%s", name);
 
 	ret = ioctl(fd, TUNSETIFF, (void *) &ifr);
 	if (ret < 0) {
@@ -238,7 +238,7 @@ static int tap_create(char *name)
 	}
 
 	if (name)
-		rte_snprintf(name, IFNAMSIZ, "%s", ifr.ifr_name);
+		snprintf(name, IFNAMSIZ, "%s", ifr.ifr_name);
 
 	return fd;
 }
@@ -253,7 +253,7 @@ main_loop(__attribute__((unused)) void *arg)
 
 	if ((1ULL << lcore_id) & input_cores_mask) {
 		/* Create new tap interface */
-		rte_snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
+		snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
 		tap_fd = tap_create(tap_name);
 		if (tap_fd < 0)
 			FATAL_ERROR("Could not create tap interface \"%s\" (%d)",
@@ -286,7 +286,7 @@ main_loop(__attribute__((unused)) void *arg)
 	}
 	else if ((1ULL << lcore_id) & output_cores_mask) {
 		/* Create new tap interface */
-		rte_snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
+		snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
 		tap_fd = tap_create(tap_name);
 		if (tap_fd < 0)
 			FATAL_ERROR("Could not create tap interface \"%s\" (%d)",

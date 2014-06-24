@@ -145,7 +145,7 @@ cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 	if (token_len >= PORTLIST_TOKEN_SIZE)
 		return (-1);
 
-	rte_snprintf(portlist_str, token_len+1, "%s", buf);
+	snprintf(portlist_str, token_len+1, "%s", buf);
 
 	if (pl) {
 		pl->map = 0;
@@ -163,7 +163,7 @@ cmdline_get_help_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 		char *dstbuf, unsigned int size)
 {
 	int ret;
-	ret = rte_snprintf(dstbuf, size, "range of ports as 3,4-6,8-19,20");
+	ret = snprintf(dstbuf, size, "range of ports as 3,4-6,8-19,20");
 	if (ret < 0)
 		return -1;
 	return 0;

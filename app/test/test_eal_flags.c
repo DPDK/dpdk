@@ -85,7 +85,7 @@ get_hugepage_path(char * src, int src_len, char * dst, int dst_len)
 		return 0;
 
 	if (strncmp(tokens[2], "hugetlbfs", sizeof("hugetlbfs")) == 0) {
-		rte_snprintf(dst, dst_len, "%s", tokens[1]);
+		snprintf(dst, dst_len, "%s", tokens[1]);
 		return 1;
 	}
 	return 0;
@@ -114,7 +114,7 @@ process_hugefiles(const char * prefix, enum hugepage_action action)
 
 	int fd, lck_result, result = 0;
 
-	const int prefix_len = rte_snprintf(hugefile_prefix,
+	const int prefix_len = snprintf(hugefile_prefix,
 			sizeof(hugefile_prefix), "%smap_", prefix);
 	if (prefix_len <= 0 || prefix_len >= (int)sizeof(hugefile_prefix)
 			|| prefix_len >= (int)sizeof(dirent->d_name)) {
@@ -160,7 +160,7 @@ process_hugefiles(const char * prefix, enum hugepage_action action)
 				{
 					char file_path[PATH_MAX] = {0};
 
-					rte_snprintf(file_path, sizeof(file_path),
+					snprintf(file_path, sizeof(file_path),
 						"%s/%s", hugedir, dirent->d_name);
 
 					/* remove file */
@@ -257,17 +257,17 @@ get_current_prefix(char * prefix, int size)
 	char buf[PATH_MAX] = {0};
 
 	/* get file for config (fd is always 3) */
-	rte_snprintf(path, sizeof(path), "/proc/self/fd/%d", 3);
+	snprintf(path, sizeof(path), "/proc/self/fd/%d", 3);
 
 	/* return NULL on error */
 	if (readlink(path, buf, sizeof(buf)) == -1)
 		return NULL;
 
 	/* get the basename */
-	rte_snprintf(buf, sizeof(buf), "%s", basename(buf));
+	snprintf(buf, sizeof(buf), "%s", basename(buf));
 
 	/* copy string all the way from second char up to start of _config */
-	rte_snprintf(prefix, size, "%.*s",
+	snprintf(prefix, size, "%.*s",
 			(int)(strnlen(buf, sizeof(buf)) - sizeof("_config")),
 			&buf[1]);
 
@@ -292,7 +292,7 @@ test_whitelist_flag(void)
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
-	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
 
 	const char *wlinval[][11] = {
@@ -361,7 +361,7 @@ test_invalid_b_flag(void)
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
-	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
 
 	const char *blinval[][9] = {
@@ -407,7 +407,7 @@ test_invalid_r_flag(void)
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
-	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
 
 	const char *rinval[][9] = {
@@ -451,7 +451,7 @@ test_missing_c_flag(void)
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
-	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
 
 	/* -c flag but no coremask value */
@@ -494,7 +494,7 @@ test_missing_n_flag(void)
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
-	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
 
 	/* -n flag but no value */
@@ -537,7 +537,7 @@ test_no_hpet_flag(void)
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
-	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 
 	/* With --no-hpet */
 	const char *argv1[] = {prgname, prefix, mp_flag, no_hpet, "-c", "1", "-n", "2"};
@@ -617,7 +617,7 @@ test_dom0_misc_flags(void)
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
-	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 
 	/* check that some general flags don't prevent things from working.
 	 * All cases, apart from the first, app should run.
@@ -691,7 +691,7 @@ test_misc_flags(void)
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
-	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 
 	/*
 	 * get first valid hugepage path
@@ -992,7 +992,7 @@ test_memory_flags(void)
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
-	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
 #ifdef RTE_LIBRTE_XEN_DOM0
 	mem_size = "30";
@@ -1053,32 +1053,32 @@ test_memory_flags(void)
 		return -1;
 	}
 
-	rte_snprintf(invalid_socket_mem, sizeof(invalid_socket_mem), "--socket-mem=");
+	snprintf(invalid_socket_mem, sizeof(invalid_socket_mem), "--socket-mem=");
 
 	/* add one extra socket */
 	for (i = 0; i < num_sockets + 1; i++) {
-		rte_snprintf(buf, sizeof(buf), "%s2", invalid_socket_mem);
-		rte_snprintf(invalid_socket_mem, sizeof(invalid_socket_mem), "%s", buf);
+		snprintf(buf, sizeof(buf), "%s2", invalid_socket_mem);
+		snprintf(invalid_socket_mem, sizeof(invalid_socket_mem), "%s", buf);
 
 		if (num_sockets + 1 - i > 1) {
-			rte_snprintf(buf, sizeof(buf), "%s,", invalid_socket_mem);
-			rte_snprintf(invalid_socket_mem, sizeof(invalid_socket_mem), "%s", buf);
+			snprintf(buf, sizeof(buf), "%s,", invalid_socket_mem);
+			snprintf(invalid_socket_mem, sizeof(invalid_socket_mem), "%s", buf);
 		}
 	}
 
 	/* construct a valid socket mask with 2 megs on each existing socket */
 	char valid_socket_mem[SOCKET_MEM_STRLEN];
 
-	rte_snprintf(valid_socket_mem, sizeof(valid_socket_mem), "--socket-mem=");
+	snprintf(valid_socket_mem, sizeof(valid_socket_mem), "--socket-mem=");
 
 	/* add one extra socket */
 	for (i = 0; i < num_sockets; i++) {
-		rte_snprintf(buf, sizeof(buf), "%s2", valid_socket_mem);
-		rte_snprintf(valid_socket_mem, sizeof(valid_socket_mem), "%s", buf);
+		snprintf(buf, sizeof(buf), "%s2", valid_socket_mem);
+		snprintf(valid_socket_mem, sizeof(valid_socket_mem), "%s", buf);
 
 		if (num_sockets - i > 1) {
-			rte_snprintf(buf, sizeof(buf), "%s,", valid_socket_mem);
-			rte_snprintf(valid_socket_mem, sizeof(valid_socket_mem), "%s", buf);
+			snprintf(buf, sizeof(buf), "%s,", valid_socket_mem);
+			snprintf(valid_socket_mem, sizeof(valid_socket_mem), "%s", buf);
 		}
 	}
 

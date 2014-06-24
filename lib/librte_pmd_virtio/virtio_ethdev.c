@@ -267,19 +267,19 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	if (queue_type == VTNET_RQ) {
-		rte_snprintf(vq_name, sizeof(vq_name), "port%d_rvq%d",
+		snprintf(vq_name, sizeof(vq_name), "port%d_rvq%d",
 			dev->data->port_id, queue_idx);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
 		memcpy(vq->vq_name, vq_name, sizeof(vq->vq_name));
 	} else if (queue_type == VTNET_TQ) {
-		rte_snprintf(vq_name, sizeof(vq_name), "port%d_tvq%d",
+		snprintf(vq_name, sizeof(vq_name), "port%d_tvq%d",
 			dev->data->port_id, queue_idx);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
 		memcpy(vq->vq_name, vq_name, sizeof(vq->vq_name));
 	} else if (queue_type == VTNET_CQ) {
-		rte_snprintf(vq_name, sizeof(vq_name), "port%d_cvq",
+		snprintf(vq_name, sizeof(vq_name), "port%d_cvq",
 			dev->data->port_id);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra),
@@ -337,7 +337,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		/*
 		 * For each xmit packet, allocate a virtio_net_hdr
 		 */
-		rte_snprintf(vq_name, sizeof(vq_name), "port%d_tvq%d_hdrzone",
+		snprintf(vq_name, sizeof(vq_name), "port%d_tvq%d_hdrzone",
 			dev->data->port_id, queue_idx);
 		vq->virtio_net_hdr_mz = rte_memzone_reserve_aligned(vq_name,
 			vq_size * sizeof(struct virtio_net_hdr),
@@ -352,7 +352,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			vq_size * sizeof(struct virtio_net_hdr));
 	} else if (queue_type == VTNET_CQ) {
 		/* Allocate a page for control vq command, data and status */
-		rte_snprintf(vq_name, sizeof(vq_name), "port%d_cvq_hdrzone",
+		snprintf(vq_name, sizeof(vq_name), "port%d_cvq_hdrzone",
 			dev->data->port_id);
 		vq->virtio_net_hdr_mz = rte_memzone_reserve_aligned(vq_name,
 			PAGE_SIZE, socket_id, 0, CACHE_LINE_SIZE);
@@ -592,13 +592,13 @@ static int get_uio_dev(struct rte_pci_addr *loc, char *buf, unsigned int buflen)
 
 	/* depending on kernel version, uio can be located in uio/uioX
 	 * or uio:uioX */
-	rte_snprintf(dirname, sizeof(dirname),
+	snprintf(dirname, sizeof(dirname),
 		     SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/uio",
 		     loc->domain, loc->bus, loc->devid, loc->function);
 	dir = opendir(dirname);
 	if (dir == NULL) {
 		/* retry with the parent directory */
-		rte_snprintf(dirname, sizeof(dirname),
+		snprintf(dirname, sizeof(dirname),
 			     SYSFS_PCI_DEVICES "/" PCI_PRI_FMT,
 			     loc->domain, loc->bus, loc->devid, loc->function);
 		dir = opendir(dirname);
@@ -624,7 +624,7 @@ static int get_uio_dev(struct rte_pci_addr *loc, char *buf, unsigned int buflen)
 		errno = 0;
 		uio_num = strtoull(e->d_name + shortprefix_len, &endptr, 10);
 		if (errno == 0 && endptr != (e->d_name + shortprefix_len)) {
-			rte_snprintf(buf, buflen, "%s/uio%u", dirname, uio_num);
+			snprintf(buf, buflen, "%s/uio%u", dirname, uio_num);
 			break;
 		}
 
@@ -632,7 +632,7 @@ static int get_uio_dev(struct rte_pci_addr *loc, char *buf, unsigned int buflen)
 		errno = 0;
 		uio_num = strtoull(e->d_name + longprefix_len, &endptr, 10);
 		if (errno == 0 && endptr != (e->d_name + longprefix_len)) {
-			rte_snprintf(buf, buflen, "%s/uio:uio%u", dirname,
+			snprintf(buf, buflen, "%s/uio:uio%u", dirname,
 				     uio_num);
 			break;
 		}
@@ -697,7 +697,7 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 			return -1;
 
 		/* get portio size */
-		rte_snprintf(filename, sizeof(filename),
+		snprintf(filename, sizeof(filename),
 			     "%s/portio/port0/size", dirname);
 		if (parse_sysfs_value(filename, &size) < 0) {
 			PMD_INIT_LOG(ERR, "%s(): cannot parse size\n",
@@ -706,7 +706,7 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 		}
 
 		/* get portio start */
-		rte_snprintf(filename, sizeof(filename),
+		snprintf(filename, sizeof(filename),
 			     "%s/portio/port0/start", dirname);
 		if (parse_sysfs_value(filename, &start) < 0) {
 			PMD_INIT_LOG(ERR, "%s(): cannot parse portio start\n",

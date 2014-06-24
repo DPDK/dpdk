@@ -129,7 +129,7 @@ ring_create_lookup(__attribute__((unused)) void *arg)
 
 	/* create/lookup new ring several times */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(ring_name, sizeof(ring_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(ring_name, sizeof(ring_name), "fr_test_%d_%d", lcore_self, i);
 		rp = rte_ring_create(ring_name, 4096, SOCKET_ID_ANY, 0);
 		if (NULL == rp)
 			return -1;
@@ -139,7 +139,7 @@ ring_create_lookup(__attribute__((unused)) void *arg)
 
 	/* verify all ring created sucessful */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(ring_name, sizeof(ring_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(ring_name, sizeof(ring_name), "fr_test_%d_%d", lcore_self, i);
 		if (rte_ring_lookup(ring_name) == NULL)
 			return -1;
 	}
@@ -179,7 +179,7 @@ mempool_create_lookup(__attribute__((unused)) void *arg)
 
 	/* create/lookup new ring several times */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d", lcore_self, i);
 		mp = rte_mempool_create(mempool_name, MEMPOOL_SIZE,
 						MEMPOOL_ELT_SIZE, 0, 0,
 						NULL, NULL,
@@ -193,7 +193,7 @@ mempool_create_lookup(__attribute__((unused)) void *arg)
 
 	/* verify all ring created sucessful */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d", lcore_self, i);
 		if (rte_mempool_lookup(mempool_name) == NULL)
 			return -1;
 	}
@@ -210,7 +210,7 @@ hash_clean(unsigned lcore_id)
 	int i;
 
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d",  lcore_id, i);
+		snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d",  lcore_id, i);
 
 		if ((handle = rte_hash_find_existing(hash_name)) != NULL)
 			rte_hash_free(handle);
@@ -246,7 +246,7 @@ hash_create_free(__attribute__((unused)) void *arg)
 
 	/* create mutiple times simultaneously */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d", lcore_self, i);
 		hash_params.name = hash_name;
 
 		handle = rte_hash_create(&hash_params);
@@ -262,7 +262,7 @@ hash_create_free(__attribute__((unused)) void *arg)
 
 	/* verify free correct */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d",  lcore_self, i);
+		snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d",  lcore_self, i);
 
 		if (NULL != rte_hash_find_existing(hash_name))
 			return -1;
@@ -279,7 +279,7 @@ fbk_clean(unsigned lcore_id)
 	int i;
 
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d",  lcore_id, i);
+		snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d",  lcore_id, i);
 
 		if ((handle = rte_fbk_hash_find_existing(fbk_name)) != NULL)
 			rte_fbk_hash_free(handle);
@@ -314,7 +314,7 @@ fbk_create_free(__attribute__((unused)) void *arg)
 
 	/* create mutiple fbk tables simultaneously */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d", lcore_self, i);
 		fbk_params.name = fbk_name;
 
 		handle = rte_fbk_hash_create(&fbk_params);
@@ -330,7 +330,7 @@ fbk_create_free(__attribute__((unused)) void *arg)
 
 	/* verify free correct */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d",  lcore_self, i);
+		snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d",  lcore_self, i);
 
 		if (NULL != rte_fbk_hash_find_existing(fbk_name))
 			return -1;
@@ -349,7 +349,7 @@ lpm_clean(unsigned lcore_id)
 	int i;
 
 	for (i = 0; i < MAX_LPM_ITER_TIMES; i++) {
-		rte_snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d",  lcore_id, i);
+		snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d",  lcore_id, i);
 
 		if ((lpm = rte_lpm_find_existing(lpm_name)) != NULL)
 			rte_lpm_free(lpm);
@@ -375,7 +375,7 @@ lpm_create_free(__attribute__((unused)) void *arg)
 
 	/* create mutiple fbk tables simultaneously */
 	for (i = 0; i < MAX_LPM_ITER_TIMES; i++) {
-		rte_snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d", lcore_self, i);
 		lpm = rte_lpm_create(lpm_name, SOCKET_ID_ANY, 4, RTE_LPM_HEAP);
 		if (NULL == lpm)
 			return -1;
@@ -389,7 +389,7 @@ lpm_create_free(__attribute__((unused)) void *arg)
 
 	/* verify free correct */
 	for (i = 0; i < MAX_LPM_ITER_TIMES; i++) {
-		rte_snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d",  lcore_self, i);
+		snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d",  lcore_self, i);
 		if (NULL != rte_lpm_find_existing(lpm_name))
 			return -1;
 	}

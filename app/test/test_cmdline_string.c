@@ -161,7 +161,7 @@ test_parse_string_invalid_param(void)
 
 	memset(&token, 0, sizeof(token));
 
-	rte_snprintf(buf, sizeof(buf), "buffer");
+	snprintf(buf, sizeof(buf), "buffer");
 
 	/* test null token */
 	if (cmdline_get_help_string(

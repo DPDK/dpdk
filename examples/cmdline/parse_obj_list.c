@@ -148,7 +148,7 @@ int complete_get_elt_obj_list(cmdline_parse_token_hdr_t *tk,
 		return -1;
 
 	if (dstbuf)
-		rte_snprintf(dstbuf, size, "%s", o->name);
+		snprintf(dstbuf, size, "%s", o->name);
 
 	return 0;
 }
@@ -157,6 +157,6 @@ int complete_get_elt_obj_list(cmdline_parse_token_hdr_t *tk,
 int get_help_obj_list(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 		      char *dstbuf, unsigned int size)
 {
-	rte_snprintf(dstbuf, size, "Obj-List");
+	snprintf(dstbuf, size, "Obj-List");
 	return 0;
 }

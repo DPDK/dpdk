@@ -92,7 +92,7 @@ get_socket_path(char *buffer, int bufsz)
 		dir = home_dir;
 
 	/* use current prefix as file path */
-	rte_snprintf(buffer, bufsz, SOCKET_PATH_FMT, dir,
+	snprintf(buffer, bufsz, SOCKET_PATH_FMT, dir,
 			internal_config.hugefile_prefix);
 }
 

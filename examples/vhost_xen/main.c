@@ -110,7 +110,7 @@
 /* Max number of devices. Limited by vmdq. */
 #define MAX_DEVICES 64
 
-/* Size of buffers used for rte_snprintfs. */
+/* Size of buffers used for snprintfs. */
 #define MAX_PRINT_BUFF 6072
 
 
@@ -538,14 +538,14 @@ static unsigned check_ports_num(unsigned nb_ports)
 	char packet[MAX_PRINT_BUFF];																					\
 																													\
 	if ((header))																									\
-		rte_snprintf(packet, MAX_PRINT_BUFF, "(%"PRIu64") Header size %d: ", (device->device_fh), (size));				\
+		snprintf(packet, MAX_PRINT_BUFF, "(%"PRIu64") Header size %d: ", (device->device_fh), (size));				\
 	else																											\
-		rte_snprintf(packet, MAX_PRINT_BUFF, "(%"PRIu64") Packet size %d: ", (device->device_fh), (size));				\
+		snprintf(packet, MAX_PRINT_BUFF, "(%"PRIu64") Packet size %d: ", (device->device_fh), (size));				\
 	for (index = 0; index < (size); index++) {																		\
-		rte_snprintf(packet + strnlen(packet, MAX_PRINT_BUFF), MAX_PRINT_BUFF - strnlen(packet, MAX_PRINT_BUFF),	\
+		snprintf(packet + strnlen(packet, MAX_PRINT_BUFF), MAX_PRINT_BUFF - strnlen(packet, MAX_PRINT_BUFF),	\
 			"%02hhx ", pkt_addr[index]);																			\
 	}																												\
-	rte_snprintf(packet + strnlen(packet, MAX_PRINT_BUFF), MAX_PRINT_BUFF - strnlen(packet, MAX_PRINT_BUFF), "\n");	\
+	snprintf(packet + strnlen(packet, MAX_PRINT_BUFF), MAX_PRINT_BUFF - strnlen(packet, MAX_PRINT_BUFF), "\n");	\
 																													\
 	LOG_DEBUG(VHOST_DATA, "%s", packet);																					\
 } while(0)

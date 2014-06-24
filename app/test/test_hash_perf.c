@@ -538,7 +538,7 @@ run_tbl_perf_test(struct tbl_perf_test_params *params)
 	char name[RTE_HASH_NAMESIZE];
 	char hashname[RTE_HASH_NAMESIZE];
 
-	rte_snprintf(name, 32, "test%u", calledCount++);
+	snprintf(name, 32, "test%u", calledCount++);
 	hash_params.name = name;
 
 	handle = rte_hash_create(&hash_params);
@@ -589,7 +589,7 @@ run_tbl_perf_test(struct tbl_perf_test_params *params)
 	default: return -1;
 	}
 
-	rte_snprintf(hashname, RTE_HASH_NAMESIZE, "%s", get_hash_name(params->hash_func));
+	snprintf(hashname, RTE_HASH_NAMESIZE, "%s", get_hash_name(params->hash_func));
 
 	printf("%-12s, %-15s, %-16u, %-7u, %-18u, %-8u, %-19.2f, %.2f\n",
 		hashname,

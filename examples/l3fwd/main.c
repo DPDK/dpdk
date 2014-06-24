@@ -1657,7 +1657,7 @@ parse_config(const char *q_arg)
 		if(size >= sizeof(s))
 			return -1;
 
-		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		snprintf(s, sizeof(s), "%.*s", size, p);
 		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
 			return -1;
 		for (i = 0; i < _NUM_FLD; i++){
@@ -1998,7 +1998,7 @@ setup_hash(int socketid)
     char s[64];
 
 	/* create ipv4 hash */
-	rte_snprintf(s, sizeof(s), "ipv4_l3fwd_hash_%d", socketid);
+	snprintf(s, sizeof(s), "ipv4_l3fwd_hash_%d", socketid);
 	ipv4_l3fwd_hash_params.name = s;
 	ipv4_l3fwd_hash_params.socket_id = socketid;
 	ipv4_l3fwd_lookup_struct[socketid] = rte_hash_create(&ipv4_l3fwd_hash_params);
@@ -2007,7 +2007,7 @@ setup_hash(int socketid)
 				"socket %d\n", socketid);
 
 	/* create ipv6 hash */
-	rte_snprintf(s, sizeof(s), "ipv6_l3fwd_hash_%d", socketid);
+	snprintf(s, sizeof(s), "ipv6_l3fwd_hash_%d", socketid);
 	ipv6_l3fwd_hash_params.name = s;
 	ipv6_l3fwd_hash_params.socket_id = socketid;
 	ipv6_l3fwd_lookup_struct[socketid] = rte_hash_create(&ipv6_l3fwd_hash_params);
@@ -2051,7 +2051,7 @@ setup_lpm(int socketid)
 	char s[64];
 
 	/* create the LPM table */
-	rte_snprintf(s, sizeof(s), "IPV4_L3FWD_LPM_%d", socketid);
+	snprintf(s, sizeof(s), "IPV4_L3FWD_LPM_%d", socketid);
 	ipv4_l3fwd_lookup_struct[socketid] = rte_lpm_create(s, socketid,
 				IPV4_L3FWD_LPM_MAX_RULES, 0);
 	if (ipv4_l3fwd_lookup_struct[socketid] == NULL)
@@ -2084,7 +2084,7 @@ setup_lpm(int socketid)
 	}
 
 	/* create the LPM6 table */
-	rte_snprintf(s, sizeof(s), "IPV6_L3FWD_LPM_%d", socketid);
+	snprintf(s, sizeof(s), "IPV6_L3FWD_LPM_%d", socketid);
 
 	config.max_rules = IPV6_L3FWD_LPM_MAX_RULES;
 	config.number_tbl8s = IPV6_L3FWD_LPM_NUMBER_TBL8S;
@@ -2144,7 +2144,7 @@ init_mem(unsigned nb_mbuf)
 				socketid, lcore_id, NB_SOCKETS);
 		}
 		if (pktmbuf_pool[socketid] == NULL) {
-			rte_snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
+			snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
 			pktmbuf_pool[socketid] =
 				rte_mempool_create(s, nb_mbuf, MBUF_SIZE, MEMPOOL_CACHE_SIZE,
 					sizeof(struct rte_pktmbuf_pool_private),

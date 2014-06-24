@@ -477,7 +477,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	/* Ring functions will return appropriate errors if we are
 	 * running as a secondary process etc., so no checks made
 	 * in this function for that condition */
-	rte_snprintf(rg_name, sizeof(rg_name), RTE_MEMPOOL_MZ_FORMAT, name);
+	snprintf(rg_name, sizeof(rg_name), RTE_MEMPOOL_MZ_FORMAT, name);
 	r = rte_ring_create(rg_name, rte_align32pow2(n+1), socket_id, rg_flags);
 	if (r == NULL)
 		goto exit;
@@ -519,7 +519,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		mempool_size += page_size;
 	}
 
-	rte_snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT, name);
+	snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT, name);
 
 	mz = rte_memzone_reserve(mz_name, mempool_size, socket_id, mz_flags);
 
@@ -545,7 +545,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	/* init the mempool structure */
 	mp = startaddr;
 	memset(mp, 0, sizeof(*mp));
-	rte_snprintf(mp->name, sizeof(mp->name), "%s", name);
+	snprintf(mp->name, sizeof(mp->name), "%s", name);
 	mp->phys_addr = mz->phys_addr;
 	mp->ring = r;
 	mp->size = n;

@@ -270,7 +270,7 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 	}
 
 #ifdef RTE_LIBRTE_CMDLINE_DEBUG
-	rte_snprintf(debug_buf, (linelen>64 ? 64 : linelen), "%s", buf);
+	snprintf(debug_buf, (linelen>64 ? 64 : linelen), "%s", buf);
 	debug_printf("Parse line : len=%d, <%s>\n", linelen, debug_buf);
 #endif
 
@@ -415,7 +415,7 @@ cmdline_complete(struct cmdline *cl, const char *buf, int *state,
 				if (!strncmp(partial_tok, tmpbuf,
 					     partial_tok_len)) {
 					if (comp_len == -1) {
-						rte_snprintf(comp_buf, sizeof(comp_buf),
+						snprintf(comp_buf, sizeof(comp_buf),
 							 "%s", tmpbuf + partial_tok_len);
 						comp_len =
 							strnlen(tmpbuf + partial_tok_len,
@@ -452,7 +452,7 @@ cmdline_complete(struct cmdline *cl, const char *buf, int *state,
 				if ((unsigned)(comp_len + 1) > size)
 					return 0;
 
-				rte_snprintf(dst, size, "%s", comp_buf);
+				snprintf(dst, size, "%s", comp_buf);
 				dst[comp_len] = 0;
 				return 2;
 			}
@@ -493,14 +493,14 @@ cmdline_complete(struct cmdline *cl, const char *buf, int *state,
 							sizeof(tmpbuf));
 				help_str = inst->help_str;
 				if (help_str)
-					rte_snprintf(dst, size, "[%s]: %s", tmpbuf,
+					snprintf(dst, size, "[%s]: %s", tmpbuf,
 						 help_str);
 				else
-					rte_snprintf(dst, size, "[%s]: No help",
+					snprintf(dst, size, "[%s]: No help",
 						 tmpbuf);
 			}
 			else {
-				rte_snprintf(dst, size, "[RETURN]");
+				snprintf(dst, size, "[RETURN]");
 			}
 			return 1;
 		}
@@ -528,16 +528,16 @@ cmdline_complete(struct cmdline *cl, const char *buf, int *state,
 					continue;
 				}
 				(*state)++;
-				l=rte_snprintf(dst, size, "%s", tmpbuf);
+				l=snprintf(dst, size, "%s", tmpbuf);
 				if (l>=0 && token_hdr.ops->get_help) {
 					token_hdr.ops->get_help(token_p, tmpbuf,
 								sizeof(tmpbuf));
 					help_str = inst->help_str;
 					if (help_str)
-						rte_snprintf(dst+l, size-l, "[%s]: %s",
+						snprintf(dst+l, size-l, "[%s]: %s",
 							 tmpbuf, help_str);
 					else
-						rte_snprintf(dst+l, size-l,
+						snprintf(dst+l, size-l,
 							 "[%s]: No help", tmpbuf);
 				}
 

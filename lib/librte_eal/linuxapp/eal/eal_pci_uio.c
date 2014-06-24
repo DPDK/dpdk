@@ -61,14 +61,14 @@ pci_uio_get_mappings(const char *devname, struct pci_map maps[], int nb_maps)
 	for (i = 0; i != nb_maps; i++) {
 
 		/* check if map directory exists */
-		rte_snprintf(dirname, sizeof(dirname),
+		snprintf(dirname, sizeof(dirname),
 			"%s/maps/map%u", devname, i);
 
 		if (access(dirname, F_OK) != 0)
 			break;
 
 		/* get mapping offset */
-		rte_snprintf(filename, sizeof(filename),
+		snprintf(filename, sizeof(filename),
 			"%s/offset", dirname);
 		if (pci_parse_sysfs_value(filename, &offset) < 0) {
 			RTE_LOG(ERR, EAL,
@@ -78,7 +78,7 @@ pci_uio_get_mappings(const char *devname, struct pci_map maps[], int nb_maps)
 		}
 
 		/* get mapping size */
-		rte_snprintf(filename, sizeof(filename),
+		snprintf(filename, sizeof(filename),
 			"%s/size", dirname);
 		if (pci_parse_sysfs_value(filename, &size) < 0) {
 			RTE_LOG(ERR, EAL,
@@ -88,7 +88,7 @@ pci_uio_get_mappings(const char *devname, struct pci_map maps[], int nb_maps)
 		}
 
 		/* get mapping physical address */
-		rte_snprintf(filename, sizeof(filename),
+		snprintf(filename, sizeof(filename),
 			"%s/addr", dirname);
 		if (pci_parse_sysfs_value(filename, &maps[i].phaddr) < 0) {
 			RTE_LOG(ERR, EAL,
@@ -164,7 +164,7 @@ pci_mknod_uio_dev(const char *sysfs_uio_path, unsigned uio_num)
 
 	/* get the name of the sysfs file that contains the major and minor
 	 * of the uio device and read its content */
-	rte_snprintf(filename, sizeof(filename), "%s/dev", sysfs_uio_path);
+	snprintf(filename, sizeof(filename), "%s/dev", sysfs_uio_path);
 
 	f = fopen(filename, "r");
 	if (f == NULL) {
@@ -183,7 +183,7 @@ pci_mknod_uio_dev(const char *sysfs_uio_path, unsigned uio_num)
 	fclose(f);
 
 	/* create the char device "mknod /dev/uioX c major minor" */
-	rte_snprintf(filename, sizeof(filename), "/dev/uio%u", uio_num);
+	snprintf(filename, sizeof(filename), "/dev/uio%u", uio_num);
 	dev = makedev(major, minor);
 	ret = mknod(filename, S_IFCHR | S_IRUSR | S_IWUSR, dev);
 	if (f == NULL) {
@@ -214,14 +214,14 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 	/* depending on kernel version, uio can be located in uio/uioX
 	 * or uio:uioX */
 
-	rte_snprintf(dirname, sizeof(dirname),
+	snprintf(dirname, sizeof(dirname),
 			SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/uio",
 			loc->domain, loc->bus, loc->devid, loc->function);
 
 	dir = opendir(dirname);
 	if (dir == NULL) {
 		/* retry with the parent directory */
-		rte_snprintf(dirname, sizeof(dirname),
+		snprintf(dirname, sizeof(dirname),
 				SYSFS_PCI_DEVICES "/" PCI_PRI_FMT,
 				loc->domain, loc->bus, loc->devid, loc->function);
 		dir = opendir(dirname);
@@ -247,7 +247,7 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 		errno = 0;
 		uio_num = strtoull(e->d_name + shortprefix_len, &endptr, 10);
 		if (errno == 0 && endptr != (e->d_name + shortprefix_len)) {
-			rte_snprintf(dstbuf, buflen, "%s/uio%u", dirname, uio_num);
+			snprintf(dstbuf, buflen, "%s/uio%u", dirname, uio_num);
 			break;
 		}
 
@@ -255,7 +255,7 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 		errno = 0;
 		uio_num = strtoull(e->d_name + longprefix_len, &endptr, 10);
 		if (errno == 0 && endptr != (e->d_name + longprefix_len)) {
-			rte_snprintf(dstbuf, buflen, "%s/uio:uio%u", dirname, uio_num);
+			snprintf(dstbuf, buflen, "%s/uio:uio%u", dirname, uio_num);
 			break;
 		}
 	}
@@ -304,7 +304,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 				"skipping\n", loc->domain, loc->bus, loc->devid, loc->function);
 		return 1;
 	}
-	rte_snprintf(devname, sizeof(devname), "/dev/uio%u", uio_num);
+	snprintf(devname, sizeof(devname), "/dev/uio%u", uio_num);
 
 	/* save fd if in primary process */
 	dev->intr_handle.fd = open(devname, O_RDWR);
@@ -323,7 +323,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		return -1;
 	}
 
-	rte_snprintf(uio_res->path, sizeof(uio_res->path), "%s", devname);
+	snprintf(uio_res->path, sizeof(uio_res->path), "%s", devname);
 	memcpy(&uio_res->pci_addr, &dev->addr, sizeof(uio_res->pci_addr));
 
 	/* collect info about device mappings */

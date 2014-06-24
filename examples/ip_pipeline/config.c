@@ -239,7 +239,7 @@ app_install_cfgfile(const char *file_name)
 		uint32_t j;
 
 		/* [core X] */
-		rte_snprintf(section_name, sizeof(section_name), "core %u", i);
+		snprintf(section_name, sizeof(section_name), "core %u", i);
 		if (!rte_cfgfile_has_section(file, section_name)) {
 			rte_panic("Config file parse error: core IDs are not "
 				"sequential (core %u missing)\n", i);

@@ -63,16 +63,16 @@ rte_hexdump(FILE *f, const char * title, const void * buf, unsigned int len)
     ofs = 0;
     while (ofs < len) {
         /* format the line in the buffer, then use printf to output to screen */
-        out = rte_snprintf(line, LINE_LEN, "%08X:", ofs);
+        out = snprintf(line, LINE_LEN, "%08X:", ofs);
         for (i = 0; ((ofs + i) < len) && (i < 16); i++)
-            out += rte_snprintf(line+out, LINE_LEN - out, " %02X", (data[ofs+i] & 0xff));
+            out += snprintf(line+out, LINE_LEN - out, " %02X", (data[ofs+i] & 0xff));
         for(; i <= 16; i++)
-            out += rte_snprintf(line+out, LINE_LEN - out, " | ");
+            out += snprintf(line+out, LINE_LEN - out, " | ");
         for(i = 0; (ofs < len) && (i < 16); i++, ofs++) {
             unsigned char c = data[ofs];
             if ( (c < ' ') || (c > '~'))
                 c = '.';
-            out += rte_snprintf(line+out, LINE_LEN - out, "%c", c);
+            out += snprintf(line+out, LINE_LEN - out, "%c", c);
         }
         fprintf(f, "%s\n", line);
     }
@@ -109,7 +109,7 @@ rte_memdump(FILE *f, const char * title, const void * buf, unsigned int len)
 			out = 0;
 			line[out] = '\0';
 		}
-		out += rte_snprintf(line+out, LINE_LEN - out, "%02x%s",
+		out += snprintf(line+out, LINE_LEN - out, "%02x%s",
 				(data[i] & 0xff), ((i+1) < len)? ":" : "");
     }
     if ( out > 0 )

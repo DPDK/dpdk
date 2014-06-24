@@ -146,7 +146,7 @@ app_init_mbuf_pools(void)
 			continue;
 		}
 
-		rte_snprintf(name, sizeof(name), "mbuf_pool_%u", socket);
+		snprintf(name, sizeof(name), "mbuf_pool_%u", socket);
 		printf("Creating the mbuf pool for socket %u ...\n", socket);
 		app.pools[socket] = rte_mempool_create(
 			name,
@@ -187,7 +187,7 @@ app_init_lpm_tables(void)
 			continue;
 		}
 
-		rte_snprintf(name, sizeof(name), "lpm_table_%u", socket);
+		snprintf(name, sizeof(name), "lpm_table_%u", socket);
 		printf("Creating the LPM table for socket %u ...\n", socket);
 		app.lpm_tables[socket] = rte_lpm_create(
 			name,
@@ -259,7 +259,7 @@ app_init_rings_rx(void)
 				lcore,
 				socket_io,
 				lcore_worker);
-			rte_snprintf(name, sizeof(name), "app_ring_rx_s%u_io%u_w%u",
+			snprintf(name, sizeof(name), "app_ring_rx_s%u_io%u_w%u",
 				socket_io,
 				lcore,
 				lcore_worker);
@@ -342,7 +342,7 @@ app_init_rings_tx(void)
 
 			printf("Creating ring to connect worker lcore %u with TX port %u (through I/O lcore %u) (socket %u) ...\n",
 				lcore, port, (unsigned)lcore_io, (unsigned)socket_io);
-			rte_snprintf(name, sizeof(name), "app_ring_tx_s%u_w%u_p%u", socket_io, lcore, port);
+			snprintf(name, sizeof(name), "app_ring_tx_s%u_w%u_p%u", socket_io, lcore, port);
 			ring = rte_ring_create(
 				name,
 				app.ring_tx_size,

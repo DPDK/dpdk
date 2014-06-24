@@ -133,7 +133,7 @@ get_xen_memory_size(void)
 	static const char *file_name;
 
 	file_name = "memsize";
-	rte_snprintf(path, sizeof(path), "%s/%s",
+	snprintf(path, sizeof(path), "%s/%s",
 			sys_dir_path, file_name);
 
 	if (eal_parse_sysfs_value(path, &mem_size) < 0)
@@ -213,7 +213,7 @@ rte_xen_dom0_memory_init(void)
 	meminfo.size = mem_size;
 
 	/* construct memory mangement name for Dom0 */
-	rte_snprintf(meminfo.name, DOM0_NAME_MAX, "%s-%s",
+	snprintf(meminfo.name, DOM0_NAME_MAX, "%s-%s",
 		internal_config.hugefile_prefix, DEFAUL_DOM0_NAME);
 
 	/* Notify kernel driver to allocate memory */
@@ -329,7 +329,7 @@ rte_xen_dom0_memory_attach(void)
 	}
 
 	/* construct memory mangement name for Dom0 */
-	rte_snprintf(name, DOM0_NAME_MAX, "%s-%s",
+	snprintf(name, DOM0_NAME_MAX, "%s-%s",
 		internal_config.hugefile_prefix, DEFAUL_DOM0_NAME);
 	/* attach to memory segments of primary process */
 	ret = ioctl(xen_fd, RTE_DOM0_IOCTL_ATTACH_TO_MEMSEG, name);

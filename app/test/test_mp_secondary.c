@@ -92,17 +92,17 @@ get_current_prefix(char * prefix, int size)
 	char buf[PATH_MAX] = {0};
 
 	/* get file for config (fd is always 3) */
-	rte_snprintf(path, sizeof(path), "/proc/self/fd/%d", 3);
+	snprintf(path, sizeof(path), "/proc/self/fd/%d", 3);
 
 	/* return NULL on error */
 	if (readlink(path, buf, sizeof(buf)) == -1)
 		return NULL;
 
 	/* get the basename */
-	rte_snprintf(buf, sizeof(buf), "%s", basename(buf));
+	snprintf(buf, sizeof(buf), "%s", basename(buf));
 
 	/* copy string all the way from second char up to start of _config */
-	rte_snprintf(prefix, size, "%.*s",
+	snprintf(prefix, size, "%.*s",
 			(int)(strnlen(buf, sizeof(buf)) - sizeof("_config")),
 			&buf[1]);
 
@@ -124,7 +124,7 @@ run_secondary_instances(void)
 
 	get_current_prefix(tmp, sizeof(tmp));
 
-	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 
 	/* good case, using secondary */
 	const char *argv1[] = {
@@ -147,7 +147,7 @@ run_secondary_instances(void)
 					"--file-prefix=ERROR"
 	};
 
-	rte_snprintf(coremask, sizeof(coremask), "%x", \
+	snprintf(coremask, sizeof(coremask), "%x", \
 			(1 << rte_get_master_lcore()));
 
 	ret |= launch_proc(argv1);

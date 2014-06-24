@@ -505,7 +505,7 @@ remap_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 			return -1;
 		}
 
-		rte_snprintf(hugepg_tbl[page_idx].filepath, MAX_HUGEPAGE_PATH, "%s",
+		snprintf(hugepg_tbl[page_idx].filepath, MAX_HUGEPAGE_PATH, "%s",
 				filepath);
 
 		physaddr = rte_mem_virt2phy(vma_addr);
@@ -591,7 +591,7 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 		return 0;
 	}
 
-	rte_snprintf(hugedir_str, sizeof(hugedir_str),
+	snprintf(hugedir_str, sizeof(hugedir_str),
 			"%s/", hpi->hugedir);
 
 	/* parse numa map */

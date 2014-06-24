@@ -168,7 +168,7 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 		return NULL;
 	}
 
-	rte_snprintf(mem_name, sizeof(mem_name), "LPM_%s", name);
+	snprintf(mem_name, sizeof(mem_name), "LPM_%s", name);
 
 	/* Determine the amount of memory to allocate. */
 	mem_size = sizeof(*lpm) + (sizeof(lpm->rules_tbl[0]) * max_rules);
@@ -193,7 +193,7 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 
 	/* Save user arguments. */
 	lpm->max_rules = max_rules;
-	rte_snprintf(lpm->name, sizeof(lpm->name), "%s", name);
+	snprintf(lpm->name, sizeof(lpm->name), "%s", name);
 
 	TAILQ_INSERT_TAIL(lpm_list, lpm, next);
 

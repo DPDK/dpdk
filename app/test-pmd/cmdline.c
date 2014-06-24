@@ -1426,7 +1426,7 @@ parse_reta_config(const char *str, struct rte_eth_rss_reta *reta_conf)
 		if(size >= sizeof(s))
 			return -1;
 
-		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		snprintf(s, sizeof(s), "%.*s", size, p);
 		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
 			return -1;
 		for (i = 0; i < _NUM_FLD; i++) {
@@ -3075,7 +3075,7 @@ static void cmd_set_fwd_mode_init(void)
 	cmdline_parse_token_string_t *token_struct;
 
 	modes = list_pkt_forwarding_modes();
-	rte_snprintf(help, sizeof help, "set fwd %s - "
+	snprintf(help, sizeof help, "set fwd %s - "
 		"set packet forwarding mode", modes);
 	cmd_set_fwd_mode.help_str = help;
 

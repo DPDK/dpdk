@@ -169,7 +169,7 @@ rte_cfgfile_load(const char *filename, int flags)
 				goto error1;
 			}
 
-			rte_snprintf(cfg->sections[curr_section]->name,
+			snprintf(cfg->sections[curr_section]->name,
 					sizeof(cfg->sections[0]->name),
 					"%s", &buffer[1]);
 		} else {
@@ -213,9 +213,9 @@ rte_cfgfile_load(const char *filename, int flags)
 
 			struct rte_cfgfile_entry *entry = sect->entries[
 				curr_entry];
-			rte_snprintf(entry->name, sizeof(entry->name), "%s",
+			snprintf(entry->name, sizeof(entry->name), "%s",
 				split[0]);
-			rte_snprintf(entry->value, sizeof(entry->value), "%s",
+			snprintf(entry->value, sizeof(entry->value), "%s",
 				split[1]);
 			_strip(entry->name, strnlen(entry->name,
 				sizeof(entry->name)));
@@ -283,7 +283,7 @@ rte_cfgfile_sections(struct rte_cfgfile *cfg, char *sections[],
 	int i;
 
 	for (i = 0; i < cfg->num_sections && i < max_sections; i++)
-		rte_snprintf(sections[i], CFG_NAME_LEN, "%s",
+		snprintf(sections[i], CFG_NAME_LEN, "%s",
 		cfg->sections[i]->name);
 
 	return i;

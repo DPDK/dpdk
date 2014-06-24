@@ -135,7 +135,7 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 
 	/* init the ring structure */
 	memset(r, 0, sizeof(*r));
-	rte_snprintf(r->name, sizeof(r->name), "%s", name);
+	snprintf(r->name, sizeof(r->name), "%s", name);
 	r->flags = flags;
 	r->prod.watermark = count;
 	r->prod.sp_enqueue = !!(flags & RING_F_SP_ENQ);
@@ -173,7 +173,7 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 		return NULL;
 	}
 
-	rte_snprintf(mz_name, sizeof(mz_name), "%s%s", RTE_RING_MZ_PREFIX, name);
+	snprintf(mz_name, sizeof(mz_name), "%s%s", RTE_RING_MZ_PREFIX, name);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 

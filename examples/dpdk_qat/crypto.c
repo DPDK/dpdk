@@ -665,7 +665,7 @@ per_core_crypto_init(uint32_t lcore_id)
 	qaCoreConf[lcore_id].numResponseAttempts = 0;
 
 	/* Initialise and reserve lcore memzone for virt2phys translation */
-	rte_snprintf(memzone_name,
+	snprintf(memzone_name,
 			RTE_MEMZONE_NAMESIZE,
 			"lcore_%u",
 			lcore_id);

@@ -66,7 +66,7 @@ test_parse_sysfs_value(void)
 		perror("mkstemp() failure");
 		goto error;
 	}
-	rte_snprintf(proc_path, sizeof(proc_path), "/proc/self/fd/%d", tmp_file_handle);
+	snprintf(proc_path, sizeof(proc_path), "/proc/self/fd/%d", tmp_file_handle);
 	if (readlink(proc_path, filename, sizeof(filename)) < 0) {
 		perror("readlink() failure");
 		goto error;

@@ -673,7 +673,7 @@ test_parse_ipaddr_invalid_param(void)
 	char buf[CMDLINE_TEST_BUFSIZE];
 	cmdline_ipaddr_t result;
 
-	rte_snprintf(buf, sizeof(buf), "1.2.3.4");
+	snprintf(buf, sizeof(buf), "1.2.3.4");
 	token.ipaddr_data.flags = CMDLINE_IPADDR_V4;
 
 	/* null token */

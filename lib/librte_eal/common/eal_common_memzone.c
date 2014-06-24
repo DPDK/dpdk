@@ -289,7 +289,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 
 	/* fill the zone in config */
 	struct rte_memzone *mz = &mcfg->memzone[mcfg->memzone_idx++];
-	rte_snprintf(mz->name, sizeof(mz->name), "%s", name);
+	snprintf(mz->name, sizeof(mz->name), "%s", name);
 	mz->phys_addr = memseg_physaddr;
 	mz->addr = memseg_addr;
 	mz->len = requested_len;

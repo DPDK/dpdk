@@ -169,7 +169,7 @@ rte_lpm6_create(const char *name, int socket_id,
 		return NULL;
 	}
 
-	rte_snprintf(mem_name, sizeof(mem_name), "LPM_%s", name);
+	snprintf(mem_name, sizeof(mem_name), "LPM_%s", name);
 
 	/* Determine the amount of memory to allocate. */
 	mem_size = sizeof(*lpm) + (sizeof(lpm->tbl8[0]) *
@@ -207,7 +207,7 @@ rte_lpm6_create(const char *name, int socket_id,
 	/* Save user arguments. */
 	lpm->max_rules = config->max_rules;
 	lpm->number_tbl8s = config->number_tbl8s;
-	rte_snprintf(lpm->name, sizeof(lpm->name), "%s", name);
+	snprintf(lpm->name, sizeof(lpm->name), "%s", name);
 
 	TAILQ_INSERT_TAIL(lpm_list, lpm, next);
 

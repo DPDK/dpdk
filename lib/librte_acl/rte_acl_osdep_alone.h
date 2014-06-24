@@ -229,7 +229,7 @@ rte_dummy_tailq(void)
 /*
  * rte_string related
  */
-#define	rte_snprintf(str, len, frmt, args...)	snprintf(str, len, frmt, ##args)
+#define	snprintf(str, len, frmt, args...)	snprintf(str, len, frmt, ##args)
 
 /*
  * rte_log related

@@ -81,7 +81,7 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 		/* close all open file descriptors, check /proc/self/fd to only
 		 * call close on open fds. Exclude fds 0, 1 and 2*/
 		for (fd = getdtablesize(); fd > 2; fd-- ) {
-			rte_snprintf(path, sizeof(path), "/proc/" exe "/fd/%d", fd);
+			snprintf(path, sizeof(path), "/proc/" exe "/fd/%d", fd);
 			if (access(path, F_OK) == 0)
 				close(fd);
 		}

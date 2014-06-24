@@ -217,7 +217,7 @@ print_to_file(const char *cmdline, const char *config_name)
 	FILE *file;
 	char path[PATH_MAX];
 
-	rte_snprintf(path, sizeof(path), QEMU_CMD_FMT, config_name);
+	snprintf(path, sizeof(path), QEMU_CMD_FMT, config_name);
 	file = fopen(path, "w");
 	if (file == NULL) {
 		RTE_LOG(ERR, L2FWD_IVSHMEM, "Could not open '%s' \n", path);
@@ -871,7 +871,7 @@ int main(int argc, char **argv)
 	for (portid = 0; portid < nb_ports_available; portid++) {
 
 		/* RX ring. SP/SC because it's only used by host and a single VM */
-		rte_snprintf(name, sizeof(name), "%s%i", RX_RING_PREFIX, portid);
+		snprintf(name, sizeof(name), "%s%i", RX_RING_PREFIX, portid);
 		r = rte_ring_create(name, NB_MBUF,
 				SOCKET_ID_ANY, RING_F_SP_ENQ | RING_F_SC_DEQ);
 		if (r == NULL)
@@ -880,7 +880,7 @@ int main(int argc, char **argv)
 		ctrl->vm_ports[portid].rx_ring = r;
 
 		/* TX ring. SP/SC because it's only used by host and a single VM */
-		rte_snprintf(name, sizeof(name), "%s%i", TX_RING_PREFIX, portid);
+		snprintf(name, sizeof(name), "%s%i", TX_RING_PREFIX, portid);
 		r = rte_ring_create(name, NB_MBUF,
 				SOCKET_ID_ANY, RING_F_SP_ENQ | RING_F_SC_DEQ);
 		if (r == NULL)

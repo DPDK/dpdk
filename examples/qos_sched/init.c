@@ -248,7 +248,7 @@ app_init_sched_port(uint32_t portid, uint32_t socketid)
 
 	port_params.socket = socketid;
 	port_params.rate = (uint64_t) link.link_speed * 1000 * 1000 / 8;
-	rte_snprintf(port_name, sizeof(port_name), "port_%d", portid);
+	snprintf(port_name, sizeof(port_name), "port_%d", portid);
 	port_params.name = port_name;
 
 	port = rte_sched_port_config(&port_params);
@@ -319,7 +319,7 @@ int app_init(void)
 		uint32_t socket = rte_lcore_to_socket_id(qos_conf[i].rx_core);
 		struct rte_ring *ring;
 
-		rte_snprintf(ring_name, MAX_NAME_LEN, "ring-%u-%u", i, qos_conf[i].rx_core);
+		snprintf(ring_name, MAX_NAME_LEN, "ring-%u-%u", i, qos_conf[i].rx_core);
 		ring = rte_ring_lookup(ring_name);
 		if (ring == NULL)
 			qos_conf[i].rx_ring = rte_ring_create(ring_name, ring_conf.ring_size,
@@ -327,7 +327,7 @@ int app_init(void)
 		else
 			qos_conf[i].rx_ring = ring;
 
-		rte_snprintf(ring_name, MAX_NAME_LEN, "ring-%u-%u", i, qos_conf[i].tx_core);
+		snprintf(ring_name, MAX_NAME_LEN, "ring-%u-%u", i, qos_conf[i].tx_core);
 		ring = rte_ring_lookup(ring_name);
 		if (ring == NULL)
 			qos_conf[i].tx_ring = rte_ring_create(ring_name, ring_conf.ring_size,
@@ -337,7 +337,7 @@ int app_init(void)
 
 
 		/* create the mbuf pools for each RX Port */
-		rte_snprintf(pool_name, MAX_NAME_LEN, "mbuf_pool%u", i);
+		snprintf(pool_name, MAX_NAME_LEN, "mbuf_pool%u", i);
 		qos_conf[i].mbuf_pool = rte_mempool_create(pool_name, mp_size, MBUF_SIZE,
 						burst_conf.rx_burst * 4,
 						sizeof(struct rte_pktmbuf_pool_private),

@@ -324,7 +324,7 @@ netmap_regif(struct nmreq *req, uint32_t idx, uint8_t port)
 	if (req->nr_ringid != 0)
 		return (-EINVAL);
 
-	rte_snprintf(nmif->ni_name, sizeof(nmif->ni_name), "%s", req->nr_name);
+	snprintf(nmif->ni_name, sizeof(nmif->ni_name), "%s", req->nr_name);
 	nmif->ni_version  = req->nr_version;
 
 	/* Netmap uses ni_(r|t)x_rings + 1 */

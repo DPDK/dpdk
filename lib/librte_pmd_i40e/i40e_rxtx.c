@@ -1829,7 +1829,7 @@ i40e_ring_dma_zone_reserve(struct rte_eth_dev *dev,
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 
-	rte_snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
+	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
 			dev->driver->pci_drv.name, ring_name,
 				dev->data->port_id, queue_id);
 	mz = rte_memzone_lookup(z_name);

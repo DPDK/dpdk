@@ -159,7 +159,7 @@ cmdline_parse_string(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
 
 	if (res) {
 		/* we are sure that token_len is < STR_TOKEN_SIZE-1 */
-		rte_snprintf(res, STR_TOKEN_SIZE, "%s", buf);
+		snprintf(res, STR_TOKEN_SIZE, "%s", buf);
 		*((char *)res + token_len) = 0;
 	}
 
@@ -239,11 +239,11 @@ int cmdline_get_help_string(cmdline_parse_token_hdr_t *tk, char *dstbuf,
 
 	if (s) {
 		if (get_next_token(s))
-			rte_snprintf(dstbuf, size, MULTISTRING_HELP);
+			snprintf(dstbuf, size, MULTISTRING_HELP);
 		else
-			rte_snprintf(dstbuf, size, FIXEDSTRING_HELP);
+			snprintf(dstbuf, size, FIXEDSTRING_HELP);
 	} else
-		rte_snprintf(dstbuf, size, ANYSTRING_HELP);
+		snprintf(dstbuf, size, ANYSTRING_HELP);
 
 	return 0;
 }

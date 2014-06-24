@@ -126,8 +126,8 @@ rte_table_acl_create(
 		&acl->memory[action_table_size + acl_rule_list_size];
 
 	/* Initialization of internal fields */
-	rte_snprintf(acl->name[0], RTE_ACL_NAMESIZE, "%s_a", p->name);
-	rte_snprintf(acl->name[1], RTE_ACL_NAMESIZE, "%s_b", p->name);
+	snprintf(acl->name[0], RTE_ACL_NAMESIZE, "%s_a", p->name);
+	snprintf(acl->name[1], RTE_ACL_NAMESIZE, "%s_b", p->name);
 	acl->name_id = 1;
 
 	acl->acl_params.name = acl->name[acl->name_id];

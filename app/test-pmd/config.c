@@ -563,7 +563,7 @@ ring_dma_zone_lookup(const char *ring_name, uint8_t port_id, uint16_t q_id)
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 
-	rte_snprintf(mz_name, sizeof(mz_name), "%s_%s_%d_%d",
+	snprintf(mz_name, sizeof(mz_name), "%s_%s_%d_%d",
 		 ports[port_id].dev_info.driver_name, ring_name, port_id, q_id);
 	mz = rte_memzone_lookup(mz_name);
 	if (mz == NULL)

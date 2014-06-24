@@ -212,7 +212,7 @@ rte_pipeline_create(struct rte_pipeline_params *params)
 	}
 
 	/* Save input parameters */
-	rte_snprintf(p->name, RTE_PIPELINE_MAX_NAME_SZ, "%s", params->name);
+	snprintf(p->name, RTE_PIPELINE_MAX_NAME_SZ, "%s", params->name);
 	p->socket_id = params->socket_id;
 	p->offset_port_id = params->offset_port_id;
 

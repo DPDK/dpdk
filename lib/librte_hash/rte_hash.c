@@ -192,7 +192,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 		return NULL;
 	}
 
-	rte_snprintf(hash_name, sizeof(hash_name), "HT_%s", params->name);
+	snprintf(hash_name, sizeof(hash_name), "HT_%s", params->name);
 
 	/* Calculate hash dimensions */
 	num_buckets = params->entries / params->bucket_entries;
@@ -227,7 +227,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	}
 
 	/* Setup hash context */
-	rte_snprintf(h->name, sizeof(h->name), "%s", params->name);
+	snprintf(h->name, sizeof(h->name), "%s", params->name);
 	h->entries = params->entries;
 	h->bucket_entries = params->bucket_entries;
 	h->key_len = params->key_len;

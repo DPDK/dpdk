@@ -71,7 +71,7 @@ get_num_hugepages(const char *subdir)
 	const char *nr_rsvd_file = "resv_hugepages";
 
 	/* first, check how many reserved pages kernel reports */
-	rte_snprintf(path, sizeof(path), "%s/%s/%s",
+	snprintf(path, sizeof(path), "%s/%s/%s",
 			sys_dir_path, subdir, nr_rsvd_file);
 
 	if (eal_parse_sysfs_value(path, &resv_pages) < 0)
@@ -86,7 +86,7 @@ get_num_hugepages(const char *subdir)
 
 	memset(path, 0, sizeof(path));
 
-	rte_snprintf(path, sizeof(path), "%s/%s/%s",
+	snprintf(path, sizeof(path), "%s/%s/%s",
 			sys_dir_path, subdir, nr_hp_file);
 
 	if (eal_parse_sysfs_value(path, &num_pages) < 0)

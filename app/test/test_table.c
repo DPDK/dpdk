@@ -125,7 +125,7 @@ app_init_rings(void)
 	for (i = 0; i < N_PORTS; i++) {
 		char name[32];
 
-		rte_snprintf(name, sizeof(name), "app_ring_rx_%u", i);
+		snprintf(name, sizeof(name), "app_ring_rx_%u", i);
 		rings_rx[i] = rte_ring_lookup(name);
 		if (rings_rx[i] == NULL) {
 			rings_rx[i] = rte_ring_create(
@@ -141,7 +141,7 @@ app_init_rings(void)
 	for (i = 0; i < N_PORTS; i++) {
 		char name[32];
 
-		rte_snprintf(name, sizeof(name), "app_ring_tx_%u", i);
+		snprintf(name, sizeof(name), "app_ring_tx_%u", i);
 		rings_tx[i] = rte_ring_lookup(name);
 		if (rings_tx[i] == NULL) {
 			rings_tx[i] = rte_ring_create(

@@ -954,7 +954,7 @@ setup_queue_tbl(struct rx_queue *rxq, uint32_t lcore, uint32_t queue)
 
 	nb_mbuf = RTE_MAX(nb_mbuf, (uint32_t)NB_MBUF);
 
-	rte_snprintf(buf, sizeof(buf), "mbuf_pool_%u_%u", lcore, queue);
+	snprintf(buf, sizeof(buf), "mbuf_pool_%u_%u", lcore, queue);
 
 	if ((rxq->pool = rte_mempool_create(buf, nb_mbuf, MBUF_SIZE, 0,
 			sizeof(struct rte_pktmbuf_pool_private),
@@ -990,7 +990,7 @@ init_mem(void)
 
 		if (socket_lpm[socket] == NULL) {
 			RTE_LOG(INFO, IP_RSMBL, "Creating LPM table on socket %i\n", socket);
-			rte_snprintf(buf, sizeof(buf), "IP_RSMBL_LPM_%i", socket);
+			snprintf(buf, sizeof(buf), "IP_RSMBL_LPM_%i", socket);
 
 			lpm = rte_lpm_create(buf, socket, LPM_MAX_RULES, 0);
 			if (lpm == NULL) {
@@ -1002,7 +1002,7 @@ init_mem(void)
 
 		if (socket_lpm6[socket] == NULL) {
 			RTE_LOG(INFO, IP_RSMBL, "Creating LPM6 table on socket %i\n", socket);
-			rte_snprintf(buf, sizeof(buf), "IP_RSMBL_LPM_%i", socket);
+			snprintf(buf, sizeof(buf), "IP_RSMBL_LPM_%i", socket);
 
 			lpm6 = rte_lpm6_create("IP_RSMBL_LPM6", socket, &lpm6_config);
 			if (lpm6 == NULL) {

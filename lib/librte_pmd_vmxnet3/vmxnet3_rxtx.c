@@ -594,7 +594,7 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 
-	rte_snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
+	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
 			dev->driver->pci_drv.name, ring_name,
 			dev->data->port_id, queue_id);
 
@@ -812,7 +812,7 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	  ring = &rxq->cmd_ring[i];
 	  ring->rid = i;
-	  rte_snprintf(mem_name, sizeof(mem_name), "rx_ring_%d_buf_info", i);
+	  snprintf(mem_name, sizeof(mem_name), "rx_ring_%d_buf_info", i);
 
 	  ring->buf_info = rte_zmalloc(mem_name, ring->size * sizeof(vmxnet3_buf_info_t), CACHE_LINE_SIZE);
 	  if (ring->buf_info == NULL) {

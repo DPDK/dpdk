@@ -400,7 +400,7 @@ parse_mpool_va(struct xen_mempool *mempool)
 	int ret = -1;
 
 	errno = 0;
-	rte_snprintf(path, sizeof(path),
+	snprintf(path, sizeof(path),
 		XEN_VM_ROOTNODE_FMT"/%d_"XEN_GVA_SUFFIX,
 		mempool->dom_id, mempool->pool_idx);
 
@@ -484,7 +484,7 @@ parse_mempoolnode(struct xen_guest *guest)
 
 	while (1) {
 		/* check if null terminated */
-		rte_snprintf(path, sizeof(path),
+		snprintf(path, sizeof(path),
 			XEN_VM_ROOTNODE_FMT"/%d_"XEN_MEMPOOL_SUFFIX,
 			guest->dom_id,
 			guest->pool_num);
@@ -541,7 +541,7 @@ xen_map_vringflag(struct xen_vring *vring)
 	int pg_sz = getpagesize();
 	char *end;
 
-	rte_snprintf(path, sizeof(path),
+	snprintf(path, sizeof(path),
 		XEN_VM_ROOTNODE_FMT"/%d_"XEN_VRINGFLAG_SUFFIX,
 		vring->dom_id, vring->virtio_idx);
 
@@ -669,7 +669,7 @@ xen_parse_etheraddr(struct xen_vring *vring)
 	uint32_t len;
 	int ret = -1;
 
-	rte_snprintf(path, sizeof(path),
+	snprintf(path, sizeof(path),
 		XEN_VM_ROOTNODE_FMT"/%d_"XEN_ADDR_SUFFIX,
 		vring->dom_id, vring->virtio_idx);
 
@@ -695,7 +695,7 @@ parse_vringnode(struct xen_guest *guest, uint32_t virtio_idx)
 	struct xen_vring *vring = NULL;
 
 	/*check if null terminated */
-	rte_snprintf(path, sizeof(path),
+	snprintf(path, sizeof(path),
 		XEN_VM_ROOTNODE_FMT"/%d_"XEN_RXVRING_SUFFIX,
 		guest->dom_id,
 		virtio_idx);
@@ -706,7 +706,7 @@ parse_vringnode(struct xen_guest *guest, uint32_t virtio_idx)
 		goto err;
 
 	/*check if null terminated */
-	rte_snprintf(path, sizeof(path),
+	snprintf(path, sizeof(path),
 		XEN_VM_ROOTNODE_FMT"/%d_"XEN_TXVRING_SUFFIX,
 		guest->dom_id,
 		virtio_idx);

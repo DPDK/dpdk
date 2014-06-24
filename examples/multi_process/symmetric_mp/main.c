@@ -347,10 +347,10 @@ lcore_main(void *arg __rte_unused)
 	/* build up message in msgbuf before printing to decrease likelihood
 	 * of multi-core message interleaving.
 	 */
-	msgbufpos += rte_snprintf(msgbuf, sizeof(msgbuf) - msgbufpos,
+	msgbufpos += snprintf(msgbuf, sizeof(msgbuf) - msgbufpos,
 			"Lcore %u using ports ", id);
 	for (p = start_port; p < end_port; p++){
-		msgbufpos += rte_snprintf(msgbuf + msgbufpos, sizeof(msgbuf) - msgbufpos,
+		msgbufpos += snprintf(msgbuf + msgbufpos, sizeof(msgbuf) - msgbufpos,
 				"%u ", (unsigned)ports[p]);
 	}
 	printf("%s\n", msgbuf);

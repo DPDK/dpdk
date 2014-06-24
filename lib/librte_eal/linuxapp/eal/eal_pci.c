@@ -69,7 +69,7 @@ pci_unbind_kernel_driver(struct rte_pci_device *dev)
 	struct rte_pci_addr *loc = &dev->addr;
 
 	/* open /sys/bus/pci/devices/AAAA:BB:CC.D/driver */
-	rte_snprintf(filename, sizeof(filename),
+	snprintf(filename, sizeof(filename),
 	         SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/driver/unbind",
 	         loc->domain, loc->bus, loc->devid, loc->function);
 
@@ -77,10 +77,10 @@ pci_unbind_kernel_driver(struct rte_pci_device *dev)
 	if (f == NULL) /* device was not bound */
 		return 0;
 
-	n = rte_snprintf(buf, sizeof(buf), PCI_PRI_FMT "\n",
+	n = snprintf(buf, sizeof(buf), PCI_PRI_FMT "\n",
 	             loc->domain, loc->bus, loc->devid, loc->function);
 	if ((n < 0) || (n >= (int)sizeof(buf))) {
-		RTE_LOG(ERR, EAL, "%s(): rte_snprintf failed\n", __func__);
+		RTE_LOG(ERR, EAL, "%s(): snprintf failed\n", __func__);
 		goto error;
 	}
 	if (fwrite(buf, n, 1, f) == 0) {
@@ -221,7 +221,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	dev->addr.function = function;
 
 	/* get vendor id */
-	rte_snprintf(filename, sizeof(filename), "%s/vendor", dirname);
+	snprintf(filename, sizeof(filename), "%s/vendor", dirname);
 	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
 		free(dev);
 		return -1;
@@ -229,7 +229,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	dev->id.vendor_id = (uint16_t)tmp;
 
 	/* get device id */
-	rte_snprintf(filename, sizeof(filename), "%s/device", dirname);
+	snprintf(filename, sizeof(filename), "%s/device", dirname);
 	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
 		free(dev);
 		return -1;
@@ -237,7 +237,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	dev->id.device_id = (uint16_t)tmp;
 
 	/* get subsystem_vendor id */
-	rte_snprintf(filename, sizeof(filename), "%s/subsystem_vendor",
+	snprintf(filename, sizeof(filename), "%s/subsystem_vendor",
 		 dirname);
 	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
 		free(dev);
@@ -246,7 +246,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	dev->id.subsystem_vendor_id = (uint16_t)tmp;
 
 	/* get subsystem_device id */
-	rte_snprintf(filename, sizeof(filename), "%s/subsystem_device",
+	snprintf(filename, sizeof(filename), "%s/subsystem_device",
 		 dirname);
 	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
 		free(dev);
@@ -256,14 +256,14 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 
 	/* get max_vfs */
 	dev->max_vfs = 0;
-	rte_snprintf(filename, sizeof(filename), "%s/max_vfs", dirname);
+	snprintf(filename, sizeof(filename), "%s/max_vfs", dirname);
 	if (!access(filename, F_OK) &&
 	    eal_parse_sysfs_value(filename, &tmp) == 0) {
 		dev->max_vfs = (uint16_t)tmp;
 	}
 
 	/* get numa node */
-	rte_snprintf(filename, sizeof(filename), "%s/numa_node",
+	snprintf(filename, sizeof(filename), "%s/numa_node",
 		 dirname);
 	if (access(filename, R_OK) != 0) {
 		/* if no NUMA support just set node to 0 */
@@ -277,7 +277,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	}
 
 	/* parse resources */
-	rte_snprintf(filename, sizeof(filename), "%s/resource", dirname);
+	snprintf(filename, sizeof(filename), "%s/resource", dirname);
 	if (pci_parse_sysfs_resource(filename, dev) < 0) {
 		RTE_LOG(ERR, EAL, "%s(): cannot parse resource\n", __func__);
 		free(dev);
@@ -380,7 +380,7 @@ pci_scan(void)
 				&bus, &devid, &function) != 0)
 			continue;
 
-		rte_snprintf(dirname, sizeof(dirname), "%s/%s", SYSFS_PCI_DEVICES,
+		snprintf(dirname, sizeof(dirname), "%s/%s", SYSFS_PCI_DEVICES,
 			 e->d_name);
 		if (pci_scan_one(dirname, domain, bus, devid, function) < 0)
 			goto error;
@@ -407,7 +407,7 @@ pci_config_extended_tag(struct rte_pci_device *dev)
 		strncmp(RTE_PCI_EXTENDED_TAG, "off", 3) != 0)
 		return 0;
 
-	rte_snprintf(filename, sizeof(filename),
+	snprintf(filename, sizeof(filename),
 		SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/" "extended_tag",
 		loc->domain, loc->bus, loc->devid, loc->function);
 	f = fopen(filename, "rw+");
@@ -447,7 +447,7 @@ pci_config_max_read_request_size(struct rte_pci_device *dev)
 	if (!max_size)
 		return 0;
 
-	rte_snprintf(filename, sizeof(filename),
+	snprintf(filename, sizeof(filename),
 		SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/" "max_read_request_size",
 			loc->domain, loc->bus, loc->devid, loc->function);
 	f = fopen(filename, "rw+");
@@ -455,7 +455,7 @@ pci_config_max_read_request_size(struct rte_pci_device *dev)
 		return -1;
 
 	fgets(buf, sizeof(buf), f);
-	rte_snprintf(param, sizeof(param), "%d", max_size);
+	snprintf(param, sizeof(param), "%d", max_size);
 
 	/* check if the size to be set is the same as current */
 	if (strcmp(buf, param) == 0) {

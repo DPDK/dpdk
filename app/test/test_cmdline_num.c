@@ -346,7 +346,7 @@ test_parse_num_invalid_param(void)
 	token.num_data.type = UINT32;
 
 	/* copy string to buffer */
-	rte_snprintf(buf, sizeof(buf), "%s",
+	snprintf(buf, sizeof(buf), "%s",
 			num_valid_positive_strs[0].str);
 
 	/* try all null */

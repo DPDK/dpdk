@@ -103,7 +103,7 @@ get_printable_mac_addr(uint8_t port)
 	if (unlikely(addresses[port][0]=='\0')){
 		struct ether_addr mac;
 		rte_eth_macaddr_get(port, &mac);
-		rte_snprintf(addresses[port], sizeof(addresses[port]),
+		snprintf(addresses[port], sizeof(addresses[port]),
 				"%02x:%02x:%02x:%02x:%02x:%02x\n",
 				mac.addr_bytes[0], mac.addr_bytes[1], mac.addr_bytes[2],
 				mac.addr_bytes[3], mac.addr_bytes[4], mac.addr_bytes[5]);

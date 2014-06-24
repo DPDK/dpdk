@@ -152,7 +152,7 @@ cfg_load(const char *filename, int flags)
 				goto error1;
 			}
 
-			rte_snprintf(cfg->sections[curr_section]->name,
+			snprintf(cfg->sections[curr_section]->name,
 					sizeof(cfg->sections[0]->name),
 					"%s", &buffer[1]);
 		}
@@ -189,8 +189,8 @@ cfg_load(const char *filename, int flags)
 			}
 
 			struct cfg_entry *entry = sect->entries[curr_entry];
-			rte_snprintf(entry->name, sizeof(entry->name), "%s", split[0]);
-			rte_snprintf(entry->value, sizeof(entry->value), "%s", split[1]);
+			snprintf(entry->name, sizeof(entry->name), "%s", split[0]);
+			snprintf(entry->value, sizeof(entry->value), "%s", split[1]);
 			_strip(entry->name, strnlen(entry->name, sizeof(entry->name)));
 			_strip(entry->value, strnlen(entry->value, sizeof(entry->value)));
 		}
@@ -249,7 +249,7 @@ cfg_sections(struct cfg_file *cfg, char *sections[], int max_sections)
 {
 	int i;
 	for (i = 0; i < cfg->num_sections && i < max_sections; i++) {
-		rte_snprintf(sections[i], CFG_NAME_LEN, "%s",  cfg->sections[i]->name);
+		snprintf(sections[i], CFG_NAME_LEN, "%s",  cfg->sections[i]->name);
 	}
 	return i;
 }
@@ -355,7 +355,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 		char str[32];
 
 		/* Parse WRED min thresholds */
-		rte_snprintf(str, sizeof(str), "tc %d wred min", j);
+		snprintf(str, sizeof(str), "tc %d wred min", j);
 		entry = cfg_get_entry(cfg, "red", str);
 		if (entry) {
 			char *next;
@@ -371,7 +371,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 		}
 
 		/* Parse WRED max thresholds */
-		rte_snprintf(str, sizeof(str), "tc %d wred max", j);
+		snprintf(str, sizeof(str), "tc %d wred max", j);
 		entry = cfg_get_entry(cfg, "red", str);
 		if (entry) {
 			char *next;
@@ -387,7 +387,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 		}
 
 		/* Parse WRED inverse mark probabilities */
-		rte_snprintf(str, sizeof(str), "tc %d wred inv prob", j);
+		snprintf(str, sizeof(str), "tc %d wred inv prob", j);
 		entry = cfg_get_entry(cfg, "red", str);
 		if (entry) {
 			char *next;
@@ -404,7 +404,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 		}
 
 		/* Parse WRED EWMA filter weights */
-		rte_snprintf(str, sizeof(str), "tc %d wred weight", j);
+		snprintf(str, sizeof(str), "tc %d wred weight", j);
 		entry = cfg_get_entry(cfg, "red", str);
 		if (entry) {
 			char *next;
@@ -440,7 +440,7 @@ cfg_load_pipe(struct cfg_file *cfg, struct rte_sched_pipe_params *pipe_params)
 
 	for (j = 0; j < profiles; j++) {
 		char pipe_name[32];
-		rte_snprintf(pipe_name, sizeof(pipe_name), "pipe profile %d", j);
+		snprintf(pipe_name, sizeof(pipe_name), "pipe profile %d", j);
 
 		entry = cfg_get_entry(cfg, pipe_name, "tb rate");
 		if (entry)
@@ -533,7 +533,7 @@ cfg_load_subport(struct cfg_file *cfg, struct rte_sched_subport_params *subport_
 
 	for (i = 0; i < MAX_SCHED_SUBPORTS; i++) {
 		char sec_name[CFG_NAME_LEN];
-		rte_snprintf(sec_name, sizeof(sec_name), "subport %d", i);
+		snprintf(sec_name, sizeof(sec_name), "subport %d", i);
 
 		if (cfg_has_section(cfg, sec_name)) {
 			entry = cfg_get_entry(cfg, sec_name, "tb rate");
@@ -592,7 +592,7 @@ cfg_load_subport(struct cfg_file *cfg, struct rte_sched_subport_params *subport_
 					for (k = begin; k <= end; k++) {
 						char profile_name[CFG_NAME_LEN];
 
-						rte_snprintf(profile_name, sizeof(profile_name),
+						snprintf(profile_name, sizeof(profile_name),
 								"pipe profile %d", profile);
 						if (cfg_has_section(cfg, profile_name))
 							app_pipe_to_profile[i][k] = profile;

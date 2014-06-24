@@ -1204,7 +1204,7 @@ setup_acl(struct rte_acl_rule *route_base,
 	int dim = ipv6 ? RTE_DIM(ipv6_defs) : RTE_DIM(ipv4_defs);
 
 	/* Create ACL contexts */
-	rte_snprintf(name, sizeof(name), "%s%d",
+	snprintf(name, sizeof(name), "%s%d",
 			ipv6 ? L3FWD_ACL_IPV6_NAME : L3FWD_ACL_IPV4_NAME,
 			socketid);
 
@@ -1709,7 +1709,7 @@ parse_config(const char *q_arg)
 		if (size >= sizeof(s))
 			return -1;
 
-		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		snprintf(s, sizeof(s), "%.*s", size, p);
 		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') !=
 				_NUM_FLD)
 			return -1;
@@ -1894,7 +1894,7 @@ init_mem(unsigned nb_mbuf)
 				socketid, lcore_id, NB_SOCKETS);
 		}
 		if (pktmbuf_pool[socketid] == NULL) {
-			rte_snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
+			snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
 			pktmbuf_pool[socketid] =
 				rte_mempool_create(s, nb_mbuf, MBUF_SIZE,
 					MEMPOOL_CACHE_SIZE,

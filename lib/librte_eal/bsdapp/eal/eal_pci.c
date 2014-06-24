@@ -211,7 +211,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return (pci_uio_map_secondary(dev));
 
-	rte_snprintf(devname, sizeof(devname), "/dev/uio@pci:%u:%u:%u",
+	snprintf(devname, sizeof(devname), "/dev/uio@pci:%u:%u:%u",
 			dev->addr.bus, dev->addr.devid, dev->addr.function);
 
 	if (access(devname, O_RDWR) < 0) {
@@ -236,7 +236,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		return (-1);
 	}
 
-	rte_snprintf(uio_res->path, sizeof(uio_res->path), "%s", devname);
+	snprintf(uio_res->path, sizeof(uio_res->path), "%s", devname);
 	memcpy(&uio_res->pci_addr, &dev->addr, sizeof(uio_res->pci_addr));
 
 

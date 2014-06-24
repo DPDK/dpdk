@@ -143,7 +143,7 @@ app_cpu_core_count(void)
 	uint32_t ncores = 0;
 
 	for(i = 0; i < RTE_MAX_LCORE; i++) {
-		len = rte_snprintf(path, sizeof(path), SYS_CPU_DIR, i);
+		len = snprintf(path, sizeof(path), SYS_CPU_DIR, i);
 		if (len <= 0 || (unsigned)len >= sizeof(path))
 			continue;
 

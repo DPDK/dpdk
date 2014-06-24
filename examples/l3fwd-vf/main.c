@@ -763,7 +763,7 @@ parse_config(const char *q_arg)
 		if(size >= sizeof(s))
 			return -1;
 
-		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		snprintf(s, sizeof(s), "%.*s", size, p);
 		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
 			return -1;
 		for (i = 0; i < _NUM_FLD; i++){
@@ -868,7 +868,7 @@ setup_hash(int socketid)
 	char s[64];
 
 	/* create  hashes */
-	rte_snprintf(s, sizeof(s), "l3fwd_hash_%d", socketid);
+	snprintf(s, sizeof(s), "l3fwd_hash_%d", socketid);
 	l3fwd_hash_params.name = s;
 	l3fwd_hash_params.socket_id = socketid;
 	l3fwd_lookup_struct[socketid] = rte_hash_create(&l3fwd_hash_params);
@@ -900,7 +900,7 @@ setup_lpm(int socketid)
 	char s[64];
 
 	/* create the LPM table */
-	rte_snprintf(s, sizeof(s), "L3FWD_LPM_%d", socketid);
+	snprintf(s, sizeof(s), "L3FWD_LPM_%d", socketid);
 	l3fwd_lookup_struct[socketid] = rte_lpm_create(s, socketid,
 				L3FWD_LPM_MAX_RULES, 0);
 	if (l3fwd_lookup_struct[socketid] == NULL)
@@ -950,7 +950,7 @@ init_mem(unsigned nb_mbuf)
 				socketid, lcore_id, NB_SOCKETS);
 		}
 		if (pktmbuf_pool[socketid] == NULL) {
-			rte_snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
+			snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
 			pktmbuf_pool[socketid] =
 				rte_mempool_create(s, nb_mbuf, MBUF_SIZE,
 						   MEMPOOL_CACHE_SIZE,

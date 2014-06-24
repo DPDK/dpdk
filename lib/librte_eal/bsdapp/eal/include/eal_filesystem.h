@@ -62,7 +62,7 @@ eal_runtime_config_path(void)
 
 	if (getuid() != 0 && home_dir != NULL)
 		directory = home_dir;
-	rte_snprintf(buffer, sizeof(buffer) - 1, RUNTIME_CONFIG_FMT, directory,
+	snprintf(buffer, sizeof(buffer) - 1, RUNTIME_CONFIG_FMT, directory,
 			internal_config.hugefile_prefix);
 	return buffer;
 }
@@ -79,7 +79,7 @@ eal_hugepage_info_path(void)
 
 	if (getuid() != 0 && home_dir != NULL)
 		directory = home_dir;
-	rte_snprintf(buffer, sizeof(buffer) - 1, HUGEPAGE_INFO_FMT, directory,
+	snprintf(buffer, sizeof(buffer) - 1, HUGEPAGE_INFO_FMT, directory,
 			internal_config.hugefile_prefix);
 	return buffer;
 }
@@ -91,7 +91,7 @@ eal_hugepage_info_path(void)
 static inline const char *
 eal_get_hugefile_path(char *buffer, size_t buflen, const char *hugedir, int f_id)
 {
-	rte_snprintf(buffer, buflen, HUGEFILE_FMT, hugedir,
+	snprintf(buffer, buflen, HUGEFILE_FMT, hugedir,
 			internal_config.hugefile_prefix, f_id);
 	buffer[buflen - 1] = '\0';
 	return buffer;
@@ -101,7 +101,7 @@ eal_get_hugefile_path(char *buffer, size_t buflen, const char *hugedir, int f_id
 static inline const char *
 eal_get_hugefile_temp_path(char *buffer, size_t buflen, const char *hugedir, int f_id)
 {
-	rte_snprintf(buffer, buflen, TEMP_HUGEFILE_FMT, hugedir,
+	snprintf(buffer, buflen, TEMP_HUGEFILE_FMT, hugedir,
 			internal_config.hugefile_prefix, f_id);
 	buffer[buflen - 1] = '\0';
 	return buffer;

@@ -211,8 +211,8 @@ gntalloc_vring_flag(int vtidx)
 	}
 
 	*(uint8_t *)ptr = MAP_FLAG;
-	rte_snprintf(val_str, sizeof(val_str), "%u", gref_tmp);
-	rte_snprintf(key_str, sizeof(key_str),
+	snprintf(val_str, sizeof(val_str), "%u", gref_tmp);
+	snprintf(key_str, sizeof(key_str),
 		DPDK_XENSTORE_PATH"%d"VRING_FLAG_STR, vtidx);
 	xenstore_write(key_str, val_str);
 }
@@ -230,10 +230,10 @@ dev_start_notify(int vtidx)
 	RTE_LOG(INFO, PMD, "%s: virtio %d is started\n", __func__, vtidx);
 	gntalloc_vring_flag(vtidx);
 
-	rte_snprintf(key_str, sizeof(key_str), "%s%s%d",
+	snprintf(key_str, sizeof(key_str), "%s%s%d",
 		DPDK_XENSTORE_PATH, EVENT_TYPE_START_STR,
 			vtidx);
-	rte_snprintf(val_str, sizeof(val_str), "1");
+	snprintf(val_str, sizeof(val_str), "1");
 	xenstore_write(key_str, val_str);
 }
 
@@ -259,11 +259,11 @@ update_mac_address(struct ether_addr *mac_addrs, int vtidx)
 		RTE_LOG(ERR, PMD, "%s: NULL pointer mac specified\n", __func__);
 		return -1;
 	}
-	rv = rte_snprintf(key_str, sizeof(key_str),
+	rv = snprintf(key_str, sizeof(key_str),
 			DPDK_XENSTORE_PATH"%d_ether_addr", vtidx);
 	if (rv == -1)
 		return rv;
-	rv = rte_snprintf(val_str, sizeof(val_str), "%02x:%02x:%02x:%02x:%02x:%02x",
+	rv = snprintf(val_str, sizeof(val_str), "%02x:%02x:%02x:%02x:%02x:%02x",
 			mac_addrs->addr_bytes[0],
 			mac_addrs->addr_bytes[1],
 			mac_addrs->addr_bytes[2],
@@ -419,9 +419,9 @@ gntalloc_vring_create(int queue_type, uint32_t size, int vtidx)
 	}
 
 	if (queue_type == VTNET_RQ)
-		rv = rte_snprintf(key_str, sizeof(key_str), DPDK_XENSTORE_PATH"%d"RXVRING_XENSTORE_STR, vtidx);
+		rv = snprintf(key_str, sizeof(key_str), DPDK_XENSTORE_PATH"%d"RXVRING_XENSTORE_STR, vtidx);
 	else
-		rv = rte_snprintf(key_str, sizeof(key_str), DPDK_XENSTORE_PATH"%d"TXVRING_XENSTORE_STR, vtidx);
+		rv = snprintf(key_str, sizeof(key_str), DPDK_XENSTORE_PATH"%d"TXVRING_XENSTORE_STR, vtidx);
 	if (rv == -1 || xenstore_write(key_str, val_str) == -1) {
 		gntfree(va, size, start_index);
 		va = NULL;
@@ -449,7 +449,7 @@ virtio_queue_setup(struct rte_eth_dev *dev, int queue_type)
 
 	/* Allocate memory for virtqueue. */
 	if (queue_type == VTNET_RQ) {
-		rte_snprintf(vq_name, sizeof(vq_name), "port%d_rvq",
+		snprintf(vq_name, sizeof(vq_name), "port%d_rvq",
 				dev->data->port_id);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
@@ -459,7 +459,7 @@ virtio_queue_setup(struct rte_eth_dev *dev, int queue_type)
 		}
 		memcpy(vq->vq_name, vq_name, sizeof(vq->vq_name));
 	} else if(queue_type == VTNET_TQ) {
-		rte_snprintf(vq_name, sizeof(vq_name), "port%d_tvq",
+		snprintf(vq_name, sizeof(vq_name), "port%d_tvq",
 			dev->data->port_id);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);

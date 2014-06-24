@@ -100,7 +100,7 @@ rte_eal_contigmem_init(void)
 				return -1;
 			}
 
-			rte_snprintf(physaddr_str, sizeof(physaddr_str), "hw.contigmem"
+			snprintf(physaddr_str, sizeof(physaddr_str), "hw.contigmem"
 					".physaddr.%d", j);
 			error = sysctlbyname(physaddr_str, &physaddr, &sysctl_size,
 					NULL, 0);

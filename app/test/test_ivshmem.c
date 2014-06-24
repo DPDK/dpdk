@@ -73,17 +73,17 @@ get_current_prefix(char * prefix, int size)
 	char buf[PATH_MAX] = {0};
 
 	/* get file for config (fd is always 3) */
-	rte_snprintf(path, sizeof(path), "/proc/self/fd/%d", 3);
+	snprintf(path, sizeof(path), "/proc/self/fd/%d", 3);
 
 	/* return NULL on error */
 	if (readlink(path, buf, sizeof(buf)) == -1)
 		return NULL;
 
 	/* get the basename */
-	rte_snprintf(buf, sizeof(buf), "%s", basename(buf));
+	snprintf(buf, sizeof(buf), "%s", basename(buf));
 
 	/* copy string all the way from second char up to start of _config */
-	rte_snprintf(prefix, size, "%.*s",
+	snprintf(prefix, size, "%.*s",
 			(int)(strnlen(buf, sizeof(buf)) - sizeof("_config")),
 			&buf[1]);
 
@@ -97,7 +97,7 @@ mmap_metadata(const char *name)
 	char pathname[PATH_MAX];
 	struct rte_ivshmem_metadata *metadata;
 
-	rte_snprintf(pathname, sizeof(pathname),
+	snprintf(pathname, sizeof(pathname),
 			"/var/run/.dpdk_ivshmem_metadata_%s", name);
 
 	fd = open(pathname, O_RDWR, 0660);
@@ -136,7 +136,7 @@ test_ivshmem_create_lots_of_memzones(void)
 			"Failed to create metadata");
 
 	for (i = 0; i < RTE_LIBRTE_IVSHMEM_MAX_ENTRIES; i++) {
-		rte_snprintf(name, sizeof(name), "mz_%i", i);
+		snprintf(name, sizeof(name), "mz_%i", i);
 
 		mz = rte_memzone_reserve(name, CACHE_LINE_SIZE, SOCKET_ID_ANY, 0);
 		ASSERT(mz != NULL, "Failed to reserve memzone");
@@ -313,7 +313,7 @@ test_ivshmem_create_multiple_metadata_configs(void)
 	struct rte_ivshmem_metadata *metadata;
 
 	for (i = 0; i < RTE_LIBRTE_IVSHMEM_MAX_METADATA_FILES / 2; i++) {
-		rte_snprintf(name, sizeof(name), "test_%d", i);
+		snprintf(name, sizeof(name), "test_%d", i);
 		rte_ivshmem_metadata_create(name);
 		metadata = mmap_metadata(name);
 
@@ -334,7 +334,7 @@ test_ivshmem_create_too_many_metadata_configs(void)
 	char name[IVSHMEM_NAME_LEN];
 
 	for (i = 0; i < RTE_LIBRTE_IVSHMEM_MAX_METADATA_FILES; i++) {
-		rte_snprintf(name, sizeof(name), "test_%d", i);
+		snprintf(name, sizeof(name), "test_%d", i);
 		ASSERT(rte_ivshmem_metadata_create(name) == 0,
 				"Create config file failed");
 	}
@@ -369,7 +369,7 @@ launch_all_tests_on_secondary_processes(void)
 
 	get_current_prefix(tmp, sizeof(tmp));
 
-	rte_snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 
 	const char *argv[] = { prgname, "-c", "1", "-n", "3",
 			"--proc-type=secondary", prefix };

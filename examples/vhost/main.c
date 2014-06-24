@@ -143,7 +143,7 @@
 /* Max number of devices. Limited by vmdq. */
 #define MAX_DEVICES 64
 
-/* Size of buffers used for rte_snprintfs. */
+/* Size of buffers used for snprintfs. */
 #define MAX_PRINT_BUFF 6072
 
 /* Maximum character device basename size. */
@@ -498,7 +498,7 @@ us_vhost_parse_basename(const char *q_arg)
 	if (strnlen(q_arg, MAX_BASENAME_SZ) > MAX_BASENAME_SZ)
 		return -1;
 	else
-		rte_snprintf((char*)&dev_basename, MAX_BASENAME_SZ, "%s", q_arg);
+		snprintf((char*)&dev_basename, MAX_BASENAME_SZ, "%s", q_arg);
 
 	return 0;
 }
@@ -837,14 +837,14 @@ static unsigned check_ports_num(unsigned nb_ports)
 	char packet[MAX_PRINT_BUFF];																					\
 																													\
 	if ((header))																									\
-		rte_snprintf(packet, MAX_PRINT_BUFF, "(%"PRIu64") Header size %d: ", (device->device_fh), (size));				\
+		snprintf(packet, MAX_PRINT_BUFF, "(%"PRIu64") Header size %d: ", (device->device_fh), (size));				\
 	else																											\
-		rte_snprintf(packet, MAX_PRINT_BUFF, "(%"PRIu64") Packet size %d: ", (device->device_fh), (size));				\
+		snprintf(packet, MAX_PRINT_BUFF, "(%"PRIu64") Packet size %d: ", (device->device_fh), (size));				\
 	for (index = 0; index < (size); index++) {																		\
-		rte_snprintf(packet + strnlen(packet, MAX_PRINT_BUFF), MAX_PRINT_BUFF - strnlen(packet, MAX_PRINT_BUFF),	\
+		snprintf(packet + strnlen(packet, MAX_PRINT_BUFF), MAX_PRINT_BUFF - strnlen(packet, MAX_PRINT_BUFF),	\
 			"%02hhx ", pkt_addr[index]);																			\
 	}																												\
-	rte_snprintf(packet + strnlen(packet, MAX_PRINT_BUFF), MAX_PRINT_BUFF - strnlen(packet, MAX_PRINT_BUFF), "\n");	\
+	snprintf(packet + strnlen(packet, MAX_PRINT_BUFF), MAX_PRINT_BUFF - strnlen(packet, MAX_PRINT_BUFF), "\n");	\
 																													\
 	LOG_DEBUG(VHOST_DATA, "%s", packet);																					\
 } while(0)
@@ -2992,9 +2992,9 @@ MAIN(int argc, char *argv[])
 			+ num_switching_cores * MAX_PKT_BURST;
 
 		for (queue_id = 0; queue_id < MAX_QUEUES; queue_id++) {
-			rte_snprintf(pool_name, sizeof(pool_name),
+			snprintf(pool_name, sizeof(pool_name),
 				"rxmbuf_pool_%u", queue_id);
-			rte_snprintf(ring_name, sizeof(ring_name),
+			snprintf(ring_name, sizeof(ring_name),
 				"rxmbuf_ring_%u", queue_id);
 			setup_mempool_tbl(rte_socket_id(), queue_id,
 				pool_name, ring_name, nb_mbuf);
@@ -3005,9 +3005,9 @@ MAIN(int argc, char *argv[])
 				+ num_switching_cores * MAX_PKT_BURST;
 
 		for (queue_id = 0; queue_id < MAX_QUEUES; queue_id++) {
-			rte_snprintf(pool_name, sizeof(pool_name),
+			snprintf(pool_name, sizeof(pool_name),
 				"txmbuf_pool_%u", queue_id);
-			rte_snprintf(ring_name, sizeof(ring_name),
+			snprintf(ring_name, sizeof(ring_name),
 				"txmbuf_ring_%u", queue_id);
 			setup_mempool_tbl(rte_socket_id(),
 				(queue_id + MAX_QUEUES),

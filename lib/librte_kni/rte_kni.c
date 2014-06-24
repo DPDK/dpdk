@@ -119,7 +119,7 @@ rte_kni_create(uint8_t port_id,
 	memset(&conf, 0, sizeof(conf));
 	rte_eth_dev_info_get(port_id, &info);
 
-	rte_snprintf(conf.name, sizeof(conf.name), "vEth%u", port_id);
+	snprintf(conf.name, sizeof(conf.name), "vEth%u", port_id);
 	conf.addr = info.pci_dev->addr;
 	conf.id = info.pci_dev->id;
 	conf.group_id = (uint16_t)port_id;
@@ -158,8 +158,8 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 		}
 	}
 
-	rte_snprintf(intf_name, RTE_KNI_NAMESIZE, "%s", conf->name);
-	rte_snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "KNI_INFO_%s", intf_name);
+	snprintf(intf_name, RTE_KNI_NAMESIZE, "%s", conf->name);
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "KNI_INFO_%s", intf_name);
 	mz = kni_memzone_reserve(mz_name, sizeof(struct rte_kni),
 				SOCKET_ID_ANY, 0);
 	KNI_MZ_CHECK(mz == NULL);
@@ -184,15 +184,15 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.group_id = conf->group_id;
 	dev_info.mbuf_size = conf->mbuf_size;
 
-	rte_snprintf(ctx->name, RTE_KNI_NAMESIZE, "%s", intf_name);
-	rte_snprintf(dev_info.name, RTE_KNI_NAMESIZE, "%s", intf_name);
+	snprintf(ctx->name, RTE_KNI_NAMESIZE, "%s", intf_name);
+	snprintf(dev_info.name, RTE_KNI_NAMESIZE, "%s", intf_name);
 
 	RTE_LOG(INFO, KNI, "pci: %02x:%02x:%02x \t %02x:%02x\n",
 		dev_info.bus, dev_info.devid, dev_info.function,
 			dev_info.vendor_id, dev_info.device_id);
 
 	/* TX RING */
-	rte_snprintf(obj_name, OBJNAMSIZ, "kni_tx_%s", intf_name);
+	snprintf(obj_name, OBJNAMSIZ, "kni_tx_%s", intf_name);
 	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
 	KNI_MZ_CHECK(mz == NULL);
 	ctx->tx_q = mz->addr;
@@ -200,7 +200,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.tx_phys = mz->phys_addr;
 
 	/* RX RING */
-	rte_snprintf(obj_name, OBJNAMSIZ, "kni_rx_%s", intf_name);
+	snprintf(obj_name, OBJNAMSIZ, "kni_rx_%s", intf_name);
 	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
 	KNI_MZ_CHECK(mz == NULL);
 	ctx->rx_q = mz->addr;
@@ -208,7 +208,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.rx_phys = mz->phys_addr;
 
 	/* ALLOC RING */
-	rte_snprintf(obj_name, OBJNAMSIZ, "kni_alloc_%s", intf_name);
+	snprintf(obj_name, OBJNAMSIZ, "kni_alloc_%s", intf_name);
 	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
 	KNI_MZ_CHECK(mz == NULL);
 	ctx->alloc_q = mz->addr;
@@ -216,7 +216,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.alloc_phys = mz->phys_addr;
 
 	/* FREE RING */
-	rte_snprintf(obj_name, OBJNAMSIZ, "kni_free_%s", intf_name);
+	snprintf(obj_name, OBJNAMSIZ, "kni_free_%s", intf_name);
 	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
 	KNI_MZ_CHECK(mz == NULL);
 	ctx->free_q = mz->addr;
@@ -224,7 +224,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.free_phys = mz->phys_addr;
 
 	/* Request RING */
-	rte_snprintf(obj_name, OBJNAMSIZ, "kni_req_%s", intf_name);
+	snprintf(obj_name, OBJNAMSIZ, "kni_req_%s", intf_name);
 	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
 	KNI_MZ_CHECK(mz == NULL);
 	ctx->req_q = mz->addr;
@@ -232,7 +232,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.req_phys = mz->phys_addr;
 
 	/* Response RING */
-	rte_snprintf(obj_name, OBJNAMSIZ, "kni_resp_%s", intf_name);
+	snprintf(obj_name, OBJNAMSIZ, "kni_resp_%s", intf_name);
 	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
 	KNI_MZ_CHECK(mz == NULL);
 	ctx->resp_q = mz->addr;
@@ -240,7 +240,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.resp_phys = mz->phys_addr;
 
 	/* Req/Resp sync mem area */
-	rte_snprintf(obj_name, OBJNAMSIZ, "kni_sync_%s", intf_name);
+	snprintf(obj_name, OBJNAMSIZ, "kni_sync_%s", intf_name);
 	mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
 	KNI_MZ_CHECK(mz == NULL);
 	ctx->sync_addr = mz->addr;
@@ -248,7 +248,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.sync_phys = mz->phys_addr;
 
 	/* MBUF mempool */
-	rte_snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_OBJ_NAME,
+	snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_OBJ_NAME,
 		pktmbuf_pool->name);
 	mz = rte_memzone_lookup(mz_name);
 	KNI_MZ_CHECK(mz == NULL);
@@ -291,7 +291,7 @@ rte_kni_release(struct rte_kni *kni)
 	if (!kni || !kni->in_use)
 		return -1;
 
-	rte_snprintf(dev_info.name, sizeof(dev_info.name), "%s", kni->name);
+	snprintf(dev_info.name, sizeof(dev_info.name), "%s", kni->name);
 	if (ioctl(kni_fd, RTE_KNI_IOCTL_RELEASE, &dev_info) < 0) {
 		RTE_LOG(ERR, KNI, "Fail to release kni device\n");
 		return -1;
@@ -444,7 +444,7 @@ rte_kni_get(const char *name)
 	if (!name || !name[0])
 		return NULL;
 
-	rte_snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "KNI_INFO_%s", name);
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "KNI_INFO_%s", name);
 	mz = rte_memzone_lookup(mz_name);
 	if (!mz)
 		return NULL;
@@ -467,7 +467,7 @@ rte_kni_info_get(uint8_t port_id)
 	if (port_id >= RTE_MAX_ETHPORTS)
 		return NULL;
 
-	rte_snprintf(name, RTE_MEMZONE_NAMESIZE, "vEth%u", port_id);
+	snprintf(name, RTE_MEMZONE_NAMESIZE, "vEth%u", port_id);
 
 	return rte_kni_get(name);
 }

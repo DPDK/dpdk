@@ -86,7 +86,7 @@ test_errno(void)
 		/* generate appropriate error string for unknown error number
 		 * and then check that this is what we got back. If not, we have
 		 * a duplicate error number that conflicts with errno.h */
-		rte_snprintf(expected_libc_retval, sizeof(expected_libc_retval),
+		snprintf(expected_libc_retval, sizeof(expected_libc_retval),
 				unknown_code_result, rte_errs[i]);
 		if ((strcmp(expected_libc_retval, libc_retval) != 0) &&
 				(strcmp("", libc_retval) != 0)){
@@ -98,7 +98,7 @@ test_errno(void)
 	/* ensure that beyond RTE_MAX_ERRNO, we always get an unknown code */
 	rte_retval = rte_strerror(RTE_MAX_ERRNO + 1);
 	libc_retval = strerror(RTE_MAX_ERRNO + 1);
-	rte_snprintf(expected_libc_retval, sizeof(expected_libc_retval),
+	snprintf(expected_libc_retval, sizeof(expected_libc_retval),
 			unknown_code_result, RTE_MAX_ERRNO + 1);
 	printf("rte_strerror: '%s', strerror: '%s'\n",
 			rte_retval, libc_retval);
