@@ -883,20 +883,6 @@ static struct rte_pci_id pci_id_i40evf_map[] = {
 };
 
 static inline int
-i40evf_dev_atomic_read_link_status(struct rte_eth_dev *dev,
-				   struct rte_eth_link *link)
-{
-	struct rte_eth_link *dst = link;
-	struct rte_eth_link *src = &(dev->data->dev_link);
-
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-					*(uint64_t *)src) == 0)
-		return -1;
-
-	return 0;
-}
-
-static inline int
 i40evf_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 				    struct rte_eth_link *link)
 {
