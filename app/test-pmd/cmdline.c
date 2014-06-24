@@ -327,6 +327,14 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set flow_ctrl rx (on|off) tx (on|off) (high_water)"
 			" (low_water) (pause_time) (send_xon) mac_ctrl_frame_fwd"
 			" (on|off) autoneg (on|off) (port_id)\n"
+			"set flow_ctrl rx (on|off) (portid)\n"
+			"set flow_ctrl tx (on|off) (portid)\n"
+			"set flow_ctrl high_water (high_water) (portid)\n"
+			"set flow_ctrl low_water (low_water) (portid)\n"
+			"set flow_ctrl pause_time (pause_time) (portid)\n"
+			"set flow_ctrl send_xon (send_xon) (portid)\n"
+			"set flow_ctrl mac_ctrl_frame_fwd (on|off) (portid)\n"
+			"set flow_ctrl autoneg (on|off) (port_id)\n"
 			"    Set the link flow control parameter on a port.\n\n"
 
 			"set pfc_ctrl rx (on|off) tx (on|off) (high_water)"
@@ -3816,9 +3824,13 @@ struct cmd_link_flow_ctrl_set_result {
 	cmdline_fixed_string_t mac_ctrl_frame_fwd_mode;
 	cmdline_fixed_string_t autoneg_str;
 	cmdline_fixed_string_t autoneg;
+	cmdline_fixed_string_t hw_str;
 	uint32_t high_water;
+	cmdline_fixed_string_t lw_str;
 	uint32_t low_water;
+	cmdline_fixed_string_t pt_str;
 	uint16_t pause_time;
+	cmdline_fixed_string_t xon_str;
 	uint16_t send_xon;
 	uint8_t  port_id;
 };
@@ -3841,15 +3853,27 @@ cmdline_parse_token_string_t cmd_lfc_set_tx =
 cmdline_parse_token_string_t cmd_lfc_set_tx_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				tx_lfc_mode, "on#off");
+cmdline_parse_token_string_t cmd_lfc_set_high_water_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
+				hw_str, "high_water");
 cmdline_parse_token_num_t cmd_lfc_set_high_water =
 	TOKEN_NUM_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				high_water, UINT32);
+cmdline_parse_token_string_t cmd_lfc_set_low_water_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
+				lw_str, "low_water");
 cmdline_parse_token_num_t cmd_lfc_set_low_water =
 	TOKEN_NUM_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				low_water, UINT32);
+cmdline_parse_token_string_t cmd_lfc_set_pause_time_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
+				pt_str, "pause_time");
 cmdline_parse_token_num_t cmd_lfc_set_pause_time =
 	TOKEN_NUM_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				pause_time, UINT16);
+cmdline_parse_token_string_t cmd_lfc_set_send_xon_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
+				xon_str, "send_xon");
 cmdline_parse_token_num_t cmd_lfc_set_send_xon =
 	TOKEN_NUM_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				send_xon, UINT16);
@@ -3868,6 +3892,11 @@ cmdline_parse_token_string_t cmd_lfc_set_autoneg =
 cmdline_parse_token_num_t cmd_lfc_set_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				port_id, UINT8);
+
+/* forward declaration */
+static void
+cmd_link_flow_ctrl_set_parsed(void *parsed_result, struct cmdline *cl,
+			      void *data);
 
 cmdline_parse_inst_t cmd_link_flow_control_set = {
 	.f = cmd_link_flow_ctrl_set_parsed,
@@ -3895,14 +3924,135 @@ autoneg on|off port_id",
 	},
 };
 
+cmdline_parse_inst_t cmd_link_flow_control_set_rx = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_rx,
+	.help_str = "Change rx flow control parameter: set flow_ctrl "
+		    "rx on|off port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_rx,
+		(void *)&cmd_lfc_set_rx_mode,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_tx = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_tx,
+	.help_str = "Change tx flow control parameter: set flow_ctrl "
+		    "tx on|off port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_tx,
+		(void *)&cmd_lfc_set_tx_mode,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_hw = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_hw,
+	.help_str = "Change high water flow control parameter: set flow_ctrl "
+		    "high_water value port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_high_water_str,
+		(void *)&cmd_lfc_set_high_water,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_lw = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_lw,
+	.help_str = "Change low water flow control parameter: set flow_ctrl "
+		    "low_water value port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_low_water_str,
+		(void *)&cmd_lfc_set_low_water,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_pt = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_pt,
+	.help_str = "Change pause time flow control parameter: set flow_ctrl "
+		    "pause_time value port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_pause_time_str,
+		(void *)&cmd_lfc_set_pause_time,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_xon = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_xon,
+	.help_str = "Change send_xon flow control parameter: set flow_ctrl "
+		    "send_xon value port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_send_xon_str,
+		(void *)&cmd_lfc_set_send_xon,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_macfwd = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_macfwd,
+	.help_str = "Change mac ctrl fwd flow control parameter: set flow_ctrl "
+		    "mac_ctrl_frame_fwd on|off port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_mac_ctrl_frame_fwd_mode,
+		(void *)&cmd_lfc_set_mac_ctrl_frame_fwd,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_autoneg = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_autoneg,
+	.help_str = "Change autoneg flow control parameter: set flow_ctrl "
+		    "autoneg on|off port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_autoneg_str,
+		(void *)&cmd_lfc_set_autoneg,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
 static void
 cmd_link_flow_ctrl_set_parsed(void *parsed_result,
-		       __attribute__((unused)) struct cmdline *cl,
-		       __attribute__((unused)) void *data)
+			      __attribute__((unused)) struct cmdline *cl,
+			      void *data)
 {
 	struct cmd_link_flow_ctrl_set_result *res = parsed_result;
+	cmdline_parse_inst_t *cmd = data;
 	struct rte_eth_fc_conf fc_conf;
-	int rx_fc_enable, tx_fc_enable, mac_ctrl_frame_fwd;
+	int rx_fc_en, tx_fc_en;
 	int ret;
 
 	/*
@@ -3915,17 +4065,52 @@ cmd_link_flow_ctrl_set_parsed(void *parsed_result,
 			{RTE_FC_NONE, RTE_FC_TX_PAUSE}, {RTE_FC_RX_PAUSE, RTE_FC_FULL}
 	};
 
-	rx_fc_enable = (!strcmp(res->rx_lfc_mode, "on")) ? 1 : 0;
-	tx_fc_enable = (!strcmp(res->tx_lfc_mode, "on")) ? 1 : 0;
-	mac_ctrl_frame_fwd = (!strcmp(res->mac_ctrl_frame_fwd_mode, "on")) ? 1 : 0;
+	/* Partial command line, retrieve current configuration */
+	if (cmd) {
+		ret = rte_eth_dev_flow_ctrl_get(res->port_id, &fc_conf);
+		if (ret != 0) {
+			printf("cannot get current flow ctrl parameters, return"
+			       "code = %d\n", ret);
+			return;
+		}
 
-	fc_conf.mode       = rx_tx_onoff_2_lfc_mode[rx_fc_enable][tx_fc_enable];
-	fc_conf.high_water = res->high_water;
-	fc_conf.low_water  = res->low_water;
-	fc_conf.pause_time = res->pause_time;
-	fc_conf.send_xon   = res->send_xon;
-	fc_conf.mac_ctrl_frame_fwd = (uint8_t)mac_ctrl_frame_fwd;
-	fc_conf.autoneg    = (!strcmp(res->autoneg, "on")) ? 1 : 0;
+		if ((fc_conf.mode == RTE_FC_RX_PAUSE) ||
+		    (fc_conf.mode == RTE_FC_FULL))
+			rx_fc_en = 1;
+		if ((fc_conf.mode == RTE_FC_TX_PAUSE) ||
+		    (fc_conf.mode == RTE_FC_FULL))
+			tx_fc_en = 1;
+	}
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_rx)
+		rx_fc_en = (!strcmp(res->rx_lfc_mode, "on")) ? 1 : 0;
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_tx)
+		tx_fc_en = (!strcmp(res->tx_lfc_mode, "on")) ? 1 : 0;
+
+	fc_conf.mode = rx_tx_onoff_2_lfc_mode[rx_fc_en][tx_fc_en];
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_hw)
+		fc_conf.high_water = res->high_water;
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_lw)
+		fc_conf.low_water = res->low_water;
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_pt)
+		fc_conf.pause_time = res->pause_time;
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_xon)
+		fc_conf.send_xon = res->send_xon;
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_macfwd) {
+		if (!strcmp(res->mac_ctrl_frame_fwd_mode, "on"))
+			fc_conf.mac_ctrl_frame_fwd = 1;
+		else
+			fc_conf.mac_ctrl_frame_fwd = 0;
+	}
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_autoneg)
+		fc_conf.autoneg = (!strcmp(res->autoneg, "on")) ? 1 : 0;
 
 	ret = rte_eth_dev_flow_ctrl_set(res->port_id, &fc_conf);
 	if (ret != 0)
@@ -6592,6 +6777,14 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_set_pvid,
 	(cmdline_parse_inst_t *)&cmd_tx_cksum_set,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_rx,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_tx,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_hw,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_lw,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_pt,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_xon,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_macfwd,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_autoneg,
 	(cmdline_parse_inst_t *)&cmd_priority_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_config_dcb,
 	(cmdline_parse_inst_t *)&cmd_read_reg,
