@@ -581,53 +581,78 @@ union igb_ring_dword {
 	} words;
 };
 
-#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
-struct igb_ring_desc_32B {
+struct igb_ring_desc_32_bytes {
 	union igb_ring_dword lo_dword;
 	union igb_ring_dword hi_dword;
 	union igb_ring_dword resv1;
 	union igb_ring_dword resv2;
 };
-#endif
 
-struct igb_ring_desc {
+struct igb_ring_desc_16_bytes {
 	union igb_ring_dword lo_dword;
 	union igb_ring_dword hi_dword;
 };
 
 static void
-ring_rx_descriptor_display(const struct rte_memzone *ring_mz, uint16_t desc_id)
+ring_rxd_display_dword(union igb_ring_dword dword)
 {
-#ifdef RTE_LIBRTE_I40E_16BYTE_RX_DESC
-	struct igb_ring_desc *ring;
-	struct igb_ring_desc rd;
+	printf("    0x%08X - 0x%08X\n", (unsigned)dword.words.lo,
+					(unsigned)dword.words.hi);
+}
 
-	ring = (struct igb_ring_desc *) ring_mz->addr;
+static void
+ring_rx_descriptor_display(const struct rte_memzone *ring_mz,
+#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+			   uint8_t port_id,
 #else
-	struct igb_ring_desc_32B *ring;
-	struct igb_ring_desc_32B rd;
-
-	ring = (struct igb_ring_desc_32B *) ring_mz->addr;
+			   __rte_unused uint8_t port_id,
 #endif
-	rd.lo_dword = rte_le_to_cpu_64(ring[desc_id].lo_dword);
-	rd.hi_dword = rte_le_to_cpu_64(ring[desc_id].hi_dword);
-	printf("    0x%08X - 0x%08X / 0x%08X - 0x%08X\n",
-		(unsigned)rd.lo_dword.words.lo, (unsigned)rd.lo_dword.words.hi,
-		(unsigned)rd.hi_dword.words.lo, (unsigned)rd.hi_dword.words.hi);
+			   uint16_t desc_id)
+{
+	struct igb_ring_desc_16_bytes *ring =
+		(struct igb_ring_desc_16_bytes *)ring_mz->addr;
+#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+	struct rte_eth_dev_info dev_info;
+
+	memset(&dev_info, 0, sizeof(dev_info));
+	rte_eth_dev_info_get(port_id, &dev_info);
+	if (strstr(dev_info.driver_name, "i40e") != NULL) {
+		/* 32 bytes RX descriptor, i40e only */
+		struct igb_ring_desc_32_bytes *ring =
+			(struct igb_ring_desc_32_bytes *)ring_mz->addr;
+
+		ring_rxd_display_dword(rte_le_to_cpu_64(
+				ring[desc_id].lo_dword));
+		ring_rxd_display_dword(rte_le_to_cpu_64(
+				ring[desc_id].hi_dword));
+		ring_rxd_display_dword(rte_le_to_cpu_64(
+				ring[desc_id].resv1));
+		ring_rxd_display_dword(rte_le_to_cpu_64(
+				ring[desc_id].resv2));
+		return;
+	}
+#endif
+	/* 16 bytes RX descriptor */
+	ring_rxd_display_dword(rte_le_to_cpu_64(
+			ring[desc_id].lo_dword));
+	ring_rxd_display_dword(rte_le_to_cpu_64(
+			ring[desc_id].hi_dword));
 }
 
 static void
 ring_tx_descriptor_display(const struct rte_memzone *ring_mz, uint16_t desc_id)
 {
-	struct igb_ring_desc *ring;
-	struct igb_ring_desc rd;
+	struct igb_ring_desc_16_bytes *ring;
+	struct igb_ring_desc_16_bytes txd;
 
-	ring = (struct igb_ring_desc *) ring_mz->addr;
-	rd.lo_dword = rte_le_to_cpu_64(ring[desc_id].lo_dword);
-	rd.hi_dword = rte_le_to_cpu_64(ring[desc_id].hi_dword);
+	ring = (struct igb_ring_desc_16_bytes *)ring_mz->addr;
+	txd.lo_dword = rte_le_to_cpu_64(ring[desc_id].lo_dword);
+	txd.hi_dword = rte_le_to_cpu_64(ring[desc_id].hi_dword);
 	printf("    0x%08X - 0x%08X / 0x%08X - 0x%08X\n",
-		(unsigned)rd.lo_dword.words.lo, (unsigned)rd.lo_dword.words.hi,
-		(unsigned)rd.hi_dword.words.lo, (unsigned)rd.hi_dword.words.hi);
+			(unsigned)txd.lo_dword.words.lo,
+			(unsigned)txd.lo_dword.words.hi,
+			(unsigned)txd.hi_dword.words.lo,
+			(unsigned)txd.hi_dword.words.hi);
 }
 
 void
@@ -644,7 +669,7 @@ rx_ring_desc_display(portid_t port_id, queueid_t rxq_id, uint16_t rxd_id)
 	rx_mz = ring_dma_zone_lookup("rx_ring", port_id, rxq_id);
 	if (rx_mz == NULL)
 		return;
-	ring_rx_descriptor_display(rx_mz, rxd_id);
+	ring_rx_descriptor_display(rx_mz, port_id, rxd_id);
 }
 
 void
