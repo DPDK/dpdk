@@ -256,19 +256,6 @@ out:
 	return status;
 }
 
-/*
- * Wrapper around ND functions to support BYPASS nic.
- */
-s32
-ixgbe_bypass_init_shared_code(struct ixgbe_hw *hw)
-{
-	if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
-		hw->mac.type = ixgbe_mac_82599EB;
-	}
-
-	return (ixgbe_init_shared_code(hw));
-}
-
 static enum ixgbe_media_type
 ixgbe_bypass_get_media_type(struct ixgbe_hw *hw)
 {
@@ -282,6 +269,27 @@ ixgbe_bypass_get_media_type(struct ixgbe_hw *hw)
 		media_type = ixgbe_get_media_type_82599(hw);
 	}
 	return (media_type);
+}
+
+/*
+ * Wrapper around shared code (base driver) to support BYPASS nic.
+ */
+s32
+ixgbe_bypass_init_shared_code(struct ixgbe_hw *hw)
+{
+	s32 ret_val;
+
+	if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
+		hw->mac.type = ixgbe_mac_82599EB;
+	}
+
+	ret_val = ixgbe_init_shared_code(hw);
+	if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
+		hw->mac.ops.get_media_type = &ixgbe_bypass_get_media_type;
+		ixgbe_init_mac_link_ops_82599(hw);
+	}
+
+	return ret_val;
 }
 
 s32
