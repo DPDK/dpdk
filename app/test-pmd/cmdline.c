@@ -3823,43 +3823,6 @@ struct cmd_link_flow_ctrl_set_result {
 	uint8_t  port_id;
 };
 
-static void
-cmd_link_flow_ctrl_set_parsed(void *parsed_result,
-		       __attribute__((unused)) struct cmdline *cl,
-		       __attribute__((unused)) void *data)
-{
-	struct cmd_link_flow_ctrl_set_result *res = parsed_result;
-	struct rte_eth_fc_conf fc_conf;
-	int rx_fc_enable, tx_fc_enable, mac_ctrl_frame_fwd;
-	int ret;
-
-	/*
-	 * Rx on/off, flow control is enabled/disabled on RX side. This can indicate
-	 * the RTE_FC_TX_PAUSE, Transmit pause frame at the Rx side.
-	 * Tx on/off, flow control is enabled/disabled on TX side. This can indicate
-	 * the RTE_FC_RX_PAUSE, Respond to the pause frame at the Tx side.
-	 */
-	static enum rte_eth_fc_mode rx_tx_onoff_2_lfc_mode[2][2] = {
-			{RTE_FC_NONE, RTE_FC_TX_PAUSE}, {RTE_FC_RX_PAUSE, RTE_FC_FULL}
-	};
-
-	rx_fc_enable = (!strcmp(res->rx_lfc_mode, "on")) ? 1 : 0;
-	tx_fc_enable = (!strcmp(res->tx_lfc_mode, "on")) ? 1 : 0;
-	mac_ctrl_frame_fwd = (!strcmp(res->mac_ctrl_frame_fwd_mode, "on")) ? 1 : 0;
-
-	fc_conf.mode       = rx_tx_onoff_2_lfc_mode[rx_fc_enable][tx_fc_enable];
-	fc_conf.high_water = res->high_water;
-	fc_conf.low_water  = res->low_water;
-	fc_conf.pause_time = res->pause_time;
-	fc_conf.send_xon   = res->send_xon;
-	fc_conf.mac_ctrl_frame_fwd = (uint8_t)mac_ctrl_frame_fwd;
-	fc_conf.autoneg    = (!strcmp(res->autoneg, "on")) ? 1 : 0;
-
-	ret = rte_eth_dev_flow_ctrl_set(res->port_id, &fc_conf);
-	if (ret != 0)
-		printf("bad flow contrl parameter, return code = %d \n", ret);
-}
-
 cmdline_parse_token_string_t cmd_lfc_set_set =
 	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				set, "set");
@@ -3931,6 +3894,43 @@ autoneg on|off port_id",
 		NULL,
 	},
 };
+
+static void
+cmd_link_flow_ctrl_set_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	struct cmd_link_flow_ctrl_set_result *res = parsed_result;
+	struct rte_eth_fc_conf fc_conf;
+	int rx_fc_enable, tx_fc_enable, mac_ctrl_frame_fwd;
+	int ret;
+
+	/*
+	 * Rx on/off, flow control is enabled/disabled on RX side. This can indicate
+	 * the RTE_FC_TX_PAUSE, Transmit pause frame at the Rx side.
+	 * Tx on/off, flow control is enabled/disabled on TX side. This can indicate
+	 * the RTE_FC_RX_PAUSE, Respond to the pause frame at the Tx side.
+	 */
+	static enum rte_eth_fc_mode rx_tx_onoff_2_lfc_mode[2][2] = {
+			{RTE_FC_NONE, RTE_FC_TX_PAUSE}, {RTE_FC_RX_PAUSE, RTE_FC_FULL}
+	};
+
+	rx_fc_enable = (!strcmp(res->rx_lfc_mode, "on")) ? 1 : 0;
+	tx_fc_enable = (!strcmp(res->tx_lfc_mode, "on")) ? 1 : 0;
+	mac_ctrl_frame_fwd = (!strcmp(res->mac_ctrl_frame_fwd_mode, "on")) ? 1 : 0;
+
+	fc_conf.mode       = rx_tx_onoff_2_lfc_mode[rx_fc_enable][tx_fc_enable];
+	fc_conf.high_water = res->high_water;
+	fc_conf.low_water  = res->low_water;
+	fc_conf.pause_time = res->pause_time;
+	fc_conf.send_xon   = res->send_xon;
+	fc_conf.mac_ctrl_frame_fwd = (uint8_t)mac_ctrl_frame_fwd;
+	fc_conf.autoneg    = (!strcmp(res->autoneg, "on")) ? 1 : 0;
+
+	ret = rte_eth_dev_flow_ctrl_set(res->port_id, &fc_conf);
+	if (ret != 0)
+		printf("bad flow contrl parameter, return code = %d \n", ret);
+}
 
 /* *** SETUP ETHERNET PIRORITY FLOW CONTROL *** */
 struct cmd_priority_flow_ctrl_set_result {
