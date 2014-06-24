@@ -56,6 +56,7 @@ CFLAGS_BASE_DRIVER += -Wno-missing-field-initializers
 CFLAGS_BASE_DRIVER += -Wno-pointer-to-int-cast
 CFLAGS_BASE_DRIVER += -Wno-format-nonliteral
 CFLAGS_BASE_DRIVER += -Wno-format-security
+CFLAGS_i40e_lan_hmc.o += -Wno-error
 endif
 OBJS_BASE_DRIVER=$(patsubst %.c,%.o,$(notdir $(wildcard $(RTE_SDK)/lib/librte_pmd_i40e/i40e/*.c)))
 $(foreach obj, $(OBJS_BASE_DRIVER), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
