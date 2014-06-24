@@ -43,20 +43,21 @@ ifeq ($(CC), icc)
 #
 # CFLAGS for icc
 #
-CFLAGS_LAD = -wd177 -wd181 -wd188 -wd869 -wd2259
+CFLAGS_BASE_DRIVER = -wd177 -wd181 -wd188 -wd869 -wd2259
 else
 #
 # CFLAGS for gcc
 #
-CFLAGS_LAD = -Wno-uninitialized -Wno-unused-parameter
-CFLAGS_LAD += -Wno-unused-variable
+CFLAGS_BASE_DRIVER = -Wno-uninitialized -Wno-unused-parameter
+CFLAGS_BASE_DRIVER += -Wno-unused-variable
 endif
 
 #
-# Add extra flags for LAD source files to disable warnings in them
+# Add extra flags for base driver files (also known as shared code)
+# to disable warnings in them
 #
-LAD_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(RTE_SDK)/lib/librte_pmd_e1000/e1000/*.c)))
-$(foreach obj, $(LAD_OBJS), $(eval CFLAGS_$(obj)+=$(CFLAGS_LAD)))
+BASE_DRIVER_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(RTE_SDK)/lib/librte_pmd_e1000/e1000/*.c)))
+$(foreach obj, $(BASE_DRIVER_OBJS), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
 
 VPATH += $(RTE_SDK)/lib/librte_pmd_e1000/e1000
 

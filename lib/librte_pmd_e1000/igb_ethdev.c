@@ -618,7 +618,7 @@ eth_igbvf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 
-	/* Initialize the shared code */
+	/* Initialize the shared code (base driver) */
 	diag = e1000_setup_init_funcs(hw, TRUE);
 	if (diag != 0) {
 		PMD_INIT_LOG(ERR, "Shared code init failed for igbvf: %d",

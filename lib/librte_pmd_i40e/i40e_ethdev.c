@@ -387,10 +387,10 @@ eth_i40e_dev_init(__rte_unused struct eth_driver *eth_drv,
 		return ret;
 	}
 
-	/* Initialize the shared code */
+	/* Initialize the shared code (base driver) */
 	ret = i40e_init_shared_code(hw);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to init shared code: %d", ret);
+		PMD_INIT_LOG(ERR, "Failed to init shared code (base driver): %d", ret);
 		return ret;
 	}
 
@@ -1497,7 +1497,7 @@ i40e_dev_rss_reta_query(struct rte_eth_dev *dev,
 }
 
 /**
- * i40e_allocate_dma_mem_d - specific memory alloc for shared code
+ * i40e_allocate_dma_mem_d - specific memory alloc for shared code (base driver)
  * @hw:   pointer to the HW structure
  * @mem:  pointer to mem struct to fill out
  * @size: size of memory requested
@@ -1531,7 +1531,7 @@ i40e_allocate_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 }
 
 /**
- * i40e_free_dma_mem_d - specific memory free for shared code
+ * i40e_free_dma_mem_d - specific memory free for shared code (base driver)
  * @hw:   pointer to the HW structure
  * @mem:  ptr to mem struct to free
  **/
@@ -1549,7 +1549,7 @@ i40e_free_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 }
 
 /**
- * i40e_allocate_virt_mem_d - specific memory alloc for shared code
+ * i40e_allocate_virt_mem_d - specific memory alloc for shared code (base driver)
  * @hw:   pointer to the HW structure
  * @mem:  pointer to mem struct to fill out
  * @size: size of memory requested
@@ -1572,7 +1572,7 @@ i40e_allocate_virt_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 }
 
 /**
- * i40e_free_virt_mem_d - specific memory free for shared code
+ * i40e_free_virt_mem_d - specific memory free for shared code (base driver)
  * @hw:   pointer to the HW structure
  * @mem:  pointer to mem struct to free
  **/

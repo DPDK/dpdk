@@ -729,7 +729,7 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	hw->allow_unsupported_sfp = 1;
 #endif
 
-	/* Initialize the shared code */
+	/* Initialize the shared code (base driver) */
 #ifdef RTE_NIC_BYPASS
 	diag = ixgbe_bypass_init_shared_code(hw);
 #else
@@ -960,7 +960,7 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	/* initialize the hw strip bitmap*/
 	memset(hwstrip, 0, sizeof(*hwstrip));
 
-	/* Initialize the shared code */
+	/* Initialize the shared code (base driver) */
 	diag = ixgbe_init_shared_code(hw);
 	if (diag != IXGBE_SUCCESS) {
 		PMD_INIT_LOG(ERR, "Shared code init failed for ixgbevf: %d", diag);

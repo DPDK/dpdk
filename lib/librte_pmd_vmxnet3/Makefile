@@ -43,7 +43,7 @@ ifeq ($(CC), icc)
 #
 # CFLAGS for icc
 #
-CFLAGS_LAD = -wd174 -wd593 -wd869 -wd981 -wd2259
+CFLAGS_BASE_DRIVER = -wd174 -wd593 -wd869 -wd981 -wd2259
 else
 #
 # CFLAGS for gcc
@@ -51,8 +51,8 @@ else
 ifneq ($(shell test $(GCC_MAJOR_VERSION) -le 4 -a $(GCC_MINOR_VERSION) -le 3 && echo 1), 1)
 CFLAGS     += -Wno-deprecated
 endif
-CFLAGS_LAD = -Wno-unused-parameter -Wno-unused-value
-CFLAGS_LAD += -Wno-strict-aliasing -Wno-format-extra-args
+CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
+CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
 
 endif
 

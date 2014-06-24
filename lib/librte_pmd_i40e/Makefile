@@ -39,26 +39,26 @@ LIB = librte_pmd_i40e.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+#
+# Add extra flags for base driver files (also known as shared code)
+# to disable warnings
+#
 ifeq ($(CC), icc)
-CFLAGS_SHARED_DRIVERS = -wd593
+CFLAGS_BASE_DRIVER = -wd593
 else
-CFLAGS_SHARED_DRIVERS =  -Wno-unused-but-set-variable
-CFLAGS_SHARED_DRIVERS += -Wno-sign-compare
-CFLAGS_SHARED_DRIVERS += -Wno-unused-value
-CFLAGS_SHARED_DRIVERS += -Wno-unused-parameter
-CFLAGS_SHARED_DRIVERS += -Wno-strict-aliasing
-CFLAGS_SHARED_DRIVERS += -Wno-format
-CFLAGS_SHARED_DRIVERS += -Wno-missing-field-initializers
-CFLAGS_SHARED_DRIVERS += -Wno-pointer-to-int-cast
-CFLAGS_SHARED_DRIVERS += -Wno-format-nonliteral
-CFLAGS_SHARED_DRIVERS += -Wno-format-security
+CFLAGS_BASE_DRIVER  = -Wno-unused-but-set-variable
+CFLAGS_BASE_DRIVER += -Wno-sign-compare
+CFLAGS_BASE_DRIVER += -Wno-unused-value
+CFLAGS_BASE_DRIVER += -Wno-unused-parameter
+CFLAGS_BASE_DRIVER += -Wno-strict-aliasing
+CFLAGS_BASE_DRIVER += -Wno-format
+CFLAGS_BASE_DRIVER += -Wno-missing-field-initializers
+CFLAGS_BASE_DRIVER += -Wno-pointer-to-int-cast
+CFLAGS_BASE_DRIVER += -Wno-format-nonliteral
+CFLAGS_BASE_DRIVER += -Wno-format-security
 endif
-
-#
-# Add extra flags for ND source files to disable warnings
-#
-SHARED_DRIVERS_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(RTE_SDK)/lib/librte_pmd_i40e/i40e/*.c)))
-$(foreach obj, $(SHARED_DRIVERS_OBJS), $(eval CFLAGS_$(obj)+=$(CFLAGS_SHARED_DRIVERS)))
+OBJS_BASE_DRIVER=$(patsubst %.c,%.o,$(notdir $(wildcard $(RTE_SDK)/lib/librte_pmd_i40e/i40e/*.c)))
+$(foreach obj, $(OBJS_BASE_DRIVER), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
 
 VPATH += $(RTE_SDK)/lib/librte_pmd_i40e/i40e
 
