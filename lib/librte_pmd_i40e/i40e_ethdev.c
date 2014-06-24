@@ -482,6 +482,10 @@ eth_i40e_dev_init(__rte_unused struct eth_driver *eth_drv,
 	}
 
 	vsi = pf->main_vsi;
+
+	/* Disable double vlan by default */
+	i40e_vsi_config_double_vlan(vsi, FALSE);
+
 	if (!vsi->max_macaddrs)
 		len = ETHER_ADDR_LEN;
 	else
