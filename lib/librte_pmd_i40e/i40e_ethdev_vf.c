@@ -871,7 +871,7 @@ i40evf_get_link_status(struct rte_eth_dev *dev, struct rte_eth_link *link)
 	}
 
 	new_link = (struct rte_eth_link *)args.out_buffer;
-	(void)rte_memcpy(link, new_link, sizeof(link));
+	(void)rte_memcpy(link, new_link, sizeof(*link));
 
 	return 0;
 }
