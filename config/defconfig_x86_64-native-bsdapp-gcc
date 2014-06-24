@@ -69,3 +69,8 @@ CONFIG_RTE_ARCH_X86_64=y
 #
 CONFIG_RTE_TOOLCHAIN="gcc"
 CONFIG_RTE_TOOLCHAIN_GCC=y
+
+#
+# GCC doesn't detect SSE4.x support correctly on BSD, so disable ACL lib
+#
+CONFIG_RTE_LIBRTE_ACL=n
