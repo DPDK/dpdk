@@ -1452,7 +1452,7 @@ i40e_dev_rss_reta_update(struct rte_eth_dev *dev,
 			l = I40E_READ_REG(hw, I40E_PFQF_HLUT(i >> 2));
 
 		for (j = 0, lut = 0; j < 4; j++) {
-			if (mask & (0x1 < j))
+			if (mask & (0x1 << j))
 				lut |= reta_conf->reta[i + j] << (8 * j);
 			else
 				lut |= l & (0xFF << (8 * j));
