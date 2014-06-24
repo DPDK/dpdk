@@ -326,7 +326,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"set flow_ctrl rx (on|off) tx (on|off) (high_water)"
 			" (low_water) (pause_time) (send_xon) mac_ctrl_frame_fwd"
-                        " (on|off) (port_id)\n"
+			" (on|off) autoneg (on|off) (port_id)\n"
 			"    Set the link flow control parameter on a port.\n\n"
 
 			"set pfc_ctrl rx (on|off) tx (on|off) (high_water)"
@@ -3814,6 +3814,8 @@ struct cmd_link_flow_ctrl_set_result {
 	cmdline_fixed_string_t tx_lfc_mode;
 	cmdline_fixed_string_t mac_ctrl_frame_fwd;
 	cmdline_fixed_string_t mac_ctrl_frame_fwd_mode;
+	cmdline_fixed_string_t autoneg_str;
+	cmdline_fixed_string_t autoneg;
 	uint32_t high_water;
 	uint32_t low_water;
 	uint16_t pause_time;
@@ -3851,6 +3853,7 @@ cmd_link_flow_ctrl_set_parsed(void *parsed_result,
 	fc_conf.pause_time = res->pause_time;
 	fc_conf.send_xon   = res->send_xon;
 	fc_conf.mac_ctrl_frame_fwd = (uint8_t)mac_ctrl_frame_fwd;
+	fc_conf.autoneg    = (!strcmp(res->autoneg, "on")) ? 1 : 0;
 
 	ret = rte_eth_dev_flow_ctrl_set(res->port_id, &fc_conf);
 	if (ret != 0)
@@ -3893,6 +3896,12 @@ cmdline_parse_token_string_t cmd_lfc_set_mac_ctrl_frame_fwd_mode =
 cmdline_parse_token_string_t cmd_lfc_set_mac_ctrl_frame_fwd =
 	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				mac_ctrl_frame_fwd_mode, "on#off");
+cmdline_parse_token_string_t cmd_lfc_set_autoneg_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
+				autoneg_str, "autoneg");
+cmdline_parse_token_string_t cmd_lfc_set_autoneg =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
+				autoneg, "on#off");
 cmdline_parse_token_num_t cmd_lfc_set_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				port_id, UINT8);
@@ -3902,7 +3911,7 @@ cmdline_parse_inst_t cmd_link_flow_control_set = {
 	.data = NULL,
 	.help_str = "Configure the Ethernet flow control: set flow_ctrl rx on|off \
 tx on|off high_water low_water pause_time send_xon mac_ctrl_frame_fwd on|off \
-port_id",
+autoneg on|off port_id",
 	.tokens = {
 		(void *)&cmd_lfc_set_set,
 		(void *)&cmd_lfc_set_flow_ctrl,
@@ -3916,6 +3925,8 @@ port_id",
 		(void *)&cmd_lfc_set_send_xon,
 		(void *)&cmd_lfc_set_mac_ctrl_frame_fwd_mode,
 		(void *)&cmd_lfc_set_mac_ctrl_frame_fwd,
+		(void *)&cmd_lfc_set_autoneg_str,
+		(void *)&cmd_lfc_set_autoneg,
 		(void *)&cmd_lfc_set_portid,
 		NULL,
 	},
