@@ -53,7 +53,11 @@ STRIP     = $(CROSS)strip
 READELF   = $(CROSS)readelf
 GCOV      = $(CROSS)gcov
 
+ifeq ("$(origin CC)", "command line")
+HOSTCC    = $(CC)
+else
 HOSTCC    = gcc
+endif
 HOSTAS    = as
 
 TOOLCHAIN_ASFLAGS =
