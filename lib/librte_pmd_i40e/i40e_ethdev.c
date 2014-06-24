@@ -2306,11 +2306,10 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 	ret = i40e_aq_remove_macvlan(hw, vsi->seid, &def_filter, 1, NULL);
 	if (ret != I40E_SUCCESS) {
 		struct i40e_mac_filter *f;
-		PMD_DRV_LOG(WARNING, "Failed to remove default [mac,vlan] config\n");
 
-		/* Even failed to update default setting, still needs to add the permanent
-		 *  mac into mac list.
-		 */
+		PMD_DRV_LOG(WARNING, "Cannot remove the default "
+						"macvlan filter\n");
+		/* It needs to add the permanent mac into mac list */
 		f = rte_zmalloc("macv_filter", sizeof(*f), 0);
 		if (f == NULL) {
 			PMD_DRV_LOG(ERR, "failed to allocate memory\n");
@@ -2320,6 +2319,7 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 				ETH_ADDR_LEN);
 		TAILQ_INSERT_TAIL(&vsi->mac_list, f, next);
 		vsi->mac_num++;
+
 		return ret;
 	}
 
@@ -2516,14 +2516,19 @@ i40e_vsi_setup(struct i40e_pf *pf,
 
 		(void)rte_memcpy(pf->dev_addr.addr_bytes, hw->mac.perm_addr,
 				ETH_ADDR_LEN);
-		ret = i40e_update_default_filter_setting(vsi);
-		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Failed to remove default "
-						"filter setting\n");
-			goto fail_msix_alloc;
-		}
-	}
-	else if (type == I40E_VSI_SRIOV) {
+
+		/**
+		 * Updating default filter settings are necessary to prevent
+		 * reception of tagged packets.
+		 * Some old firmware configurations load a default macvlan
+		 * filter which accepts both tagged and untagged packets.
+		 * The updating is to use a normal filter instead if needed.
+		 * For NVM 4.2.2 or after, the updating is not needed anymore.
+		 * The firmware with correct configurations load the default
+		 * macvlan filter which is expected and cannot be removed.
+		 */
+		i40e_update_default_filter_setting(vsi);
+	} else if (type == I40E_VSI_SRIOV) {
 		memset(&ctxt, 0, sizeof(ctxt));
 		/**
 		 * For other VSI, the uplink_seid equals to uplink VSI's
