@@ -102,9 +102,11 @@ SRCS-$(CONFIG_RTE_APP_TEST) += test_ivshmem.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_distributor.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_distributor_perf.c
 SRCS-$(CONFIG_RTE_APP_TEST) += test_devargs.c
-
+SRCS-$(CONFIG_RTE_APP_TEST) += virtual_pmd.c
+SRCS-$(CONFIG_RTE_APP_TEST) += packet_burst_generator.c
 ifeq ($(CONFIG_RTE_APP_TEST),y)
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += test_acl.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += test_link_bonding.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += test_pmd_ring.c
 SRCS-$(CONFIG_RTE_LIBRTE_KVARGS) += test_kvargs.c
 endif

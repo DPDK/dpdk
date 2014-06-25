@@ -31,74 +31,48 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _TEST_H_
-#define _TEST_H_
+#ifndef PACKET_BURST_GENERATOR_H_
+#define PACKET_BURST_GENERATOR_H_
 
-/* icc on baremetal gives us troubles with function named 'main' */
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define main _main
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#define RECURSIVE_ENV_VAR "RTE_TEST_RECURSIVE"
+#include <rte_mbuf.h>
+#include <rte_ether.h>
+#include <rte_ip.h>
+#include <rte_udp.h>
 
-extern const char *prgname;
 
-int main(int argc, char **argv);
+#define IPV4_ADDR(a, b, c, d)(((a & 0xff) << 24) | ((b & 0xff) << 16) | \
+		((c & 0xff) << 8) | (d & 0xff))
 
-int test_pci(void);
-int test_memory(void);
-int test_per_lcore(void);
-int test_spinlock(void);
-int test_rwlock(void);
-int test_atomic(void);
-int test_byteorder(void);
-int test_prefetch(void);
-int test_cycles(void);
-int test_logs(void);
-int test_memzone(void);
-int test_ring(void);
-int test_table(void);
-int test_ring_perf(void);
-int test_mempool(void);
-int test_mempool_perf(void);
-int test_mbuf(void);
-int test_timer(void);
-int test_timer_perf(void);
-int test_malloc(void);
-int test_memcpy(void);
-int test_memcpy_perf(void);
-int test_hash(void);
-int test_hash_perf(void);
-int test_lpm(void);
-int test_lpm6(void);
-int test_debug(void);
-int test_errno(void);
-int test_tailq(void);
-int test_string_fns(void);
-int test_mp_secondary(void);
-int test_cpuflags(void);
-int test_eal_flags(void);
-int test_alarm(void);
-int test_interrupt(void);
-int test_version(void);
-int test_eal_fs(void);
-int test_cmdline(void);
-int test_func_reentrancy(void);
-int test_red(void);
-int test_sched(void);
-int test_meter(void);
-int test_acl(void);
-int test_kni(void);
-int test_power(void);
-int test_common(void);
-int test_pmd_ring(void);
-int test_ivshmem(void);
-int test_distributor(void);
-int test_distributor_perf(void);
-int test_kvargs(void);
-int test_devargs(void);
-int test_link_bonding(void);
 
-int test_pci_run;
+void
+initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
+		struct ether_addr *dst_mac, uint8_t vlan_enabled, uint16_t van_id);
 
+uint16_t
+initialize_udp_header(struct udp_hdr *udp_hdr, uint16_t src_port,
+		uint16_t dst_port, uint16_t pkt_data_len);
+
+
+uint16_t
+initialize_ipv6_header(struct ipv6_hdr *ip_hdr, uint8_t *src_addr,
+		uint8_t *dst_addr, uint16_t pkt_data_len);
+
+uint16_t
+initialize_ipv4_header(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
+		uint32_t dst_addr, uint16_t pkt_data_len);
+
+int
+generate_packet_burst(struct rte_mempool *mp, struct rte_mbuf **pkts_burst,
+		struct ether_hdr *eth_hdr, uint8_t vlan_enabled, void *ip_hdr,
+		uint8_t ipv4, struct udp_hdr *udp_hdr, int nb_pkt_per_burst);
+
+#ifdef __cplusplus
+}
 #endif
+
+
+#endif /* PACKET_BURST_GENERATOR_H_ */

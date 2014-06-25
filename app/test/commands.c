@@ -159,6 +159,10 @@ static void cmd_autotest_parsed(void *parsed_result,
 		ret = test_timer();
 	if (!strcmp(res->autotest, "timer_perf_autotest"))
 		ret = test_timer_perf();
+#ifdef RTE_LIBRTE_PMD_BOND
+	if (!strcmp(res->autotest, "link_bonding_autotest"))
+		ret = test_link_bonding();
+#endif
 	if (!strcmp(res->autotest, "mempool_autotest"))
 		ret = test_mempool();
 	if (!strcmp(res->autotest, "mempool_perf_autotest"))
@@ -227,6 +231,9 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"alarm_autotest#interrupt_autotest#"
 			"version_autotest#eal_fs_autotest#"
 			"cmdline_autotest#func_reentrancy_autotest#"
+#ifdef RTE_LIBRTE_PMD_BOND
+			"link_bonding_autotest#"
+#endif
 			"mempool_perf_autotest#hash_perf_autotest#"
 			"memcpy_perf_autotest#ring_perf_autotest#"
 			"red_autotest#meter_autotest#sched_autotest#"
