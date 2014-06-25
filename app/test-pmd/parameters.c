@@ -75,6 +75,9 @@
 #include <cmdline_parse.h>
 #include <cmdline_parse_etheraddr.h>
 #endif
+#ifdef RTE_LIBRTE_PMD_BOND
+#include <rte_eth_bond.h>
+#endif
 
 #include "testpmd.h"
 

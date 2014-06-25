@@ -300,7 +300,7 @@ struct rte_fdir_conf fdir_conf = {
 	.drop_queue = 127,
 };
 
-static volatile int test_done = 1; /* stop packet forwarding when set to 1. */
+volatile int test_done = 1; /* stop packet forwarding when set to 1. */
 
 struct queue_stats_mappings tx_queue_stats_mappings_array[MAX_TX_QUEUE_STATS_MAPPINGS];
 struct queue_stats_mappings rx_queue_stats_mappings_array[MAX_RX_QUEUE_STATS_MAPPINGS];
@@ -624,6 +624,32 @@ init_config(void)
 	if (init_fwd_streams() < 0)
 		rte_exit(EXIT_FAILURE, "FAIL from init_fwd_streams()\n");
 }
+
+
+void
+reconfig(portid_t new_port_id)
+{
+	struct rte_port *port;
+
+	/* Reconfiguration of Ethernet ports. */
+	ports = rte_realloc(ports,
+			    sizeof(struct rte_port) * nb_ports,
+			    CACHE_LINE_SIZE);
+	if (ports == NULL) {
+		rte_exit(EXIT_FAILURE, "rte_realloc(%d struct rte_port) failed\n",
+				nb_ports);
+	}
+
+	port = &ports[new_port_id];
+	rte_eth_dev_info_get(new_port_id, &port->dev_info);
+
+	/* set flag to initialize port/queue */
+	port->need_reconfig = 1;
+	port->need_reconfig_queues = 1;
+
+	init_port_config();
+}
+
 
 int
 init_fwd_streams(void)
@@ -1252,7 +1278,7 @@ start_port(portid_t pid)
 	portid_t pi;
 	queueid_t qi;
 	struct rte_port *port;
-	uint8_t *mac_addr;
+	struct ether_addr mac_addr;
 
 	if (test_done == 0) {
 		printf("Please stop forwarding first\n");
@@ -1380,10 +1406,11 @@ start_port(portid_t pid)
 			RTE_PORT_HANDLING, RTE_PORT_STARTED) == 0)
 			printf("Port %d can not be set into started\n", pi);
 
-		mac_addr = port->eth_addr.addr_bytes;
+		rte_eth_macaddr_get(pi, &mac_addr);
 		printf("Port %d: %02X:%02X:%02X:%02X:%02X:%02X\n", pi,
-		       mac_addr[0], mac_addr[1], mac_addr[2],
-		       mac_addr[3], mac_addr[4], mac_addr[5]);
+				mac_addr.addr_bytes[0], mac_addr.addr_bytes[1],
+				mac_addr.addr_bytes[2], mac_addr.addr_bytes[3],
+				mac_addr.addr_bytes[4], mac_addr.addr_bytes[5]);
 
 		/* at least one port started, need checking link status */
 		need_check_link_status = 1;
@@ -1825,9 +1852,6 @@ main(int argc, char** argv)
 	diag = rte_eal_init(argc, argv);
 	if (diag < 0)
 		rte_panic("Cannot init EAL\n");
-
-	if (rte_eal_pci_probe())
-		rte_panic("Cannot probe PCI\n");
 
 	nb_ports = (portid_t) rte_eth_dev_count();
 	if (nb_ports == 0)

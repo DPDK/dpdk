@@ -281,6 +281,7 @@ extern uint16_t port_topology; /**< set by "--port-topology" parameter */
 extern uint8_t no_flush_rx; /**<set by "--no-flush-rx" parameter */
 extern uint8_t  mp_anon; /**< set by "--mp-anon" parameter */
 extern uint8_t no_link_check; /**<set by "--disable-link-check" parameter */
+extern volatile int test_done; /* stop packet forwarding when set to 1. */
 
 #ifdef RTE_NIC_BYPASS
 extern uint32_t bypass_timeout; /**< Store the NIC bypass watchdog timeout */
@@ -454,6 +455,7 @@ void fwd_config_display(void);
 void rxtx_config_display(void);
 void fwd_config_setup(void);
 void set_def_fwd_config(void);
+void reconfig(portid_t new_port_id);
 int init_fwd_streams(void);
 
 void port_mtu_set(portid_t port_id, uint16_t mtu);

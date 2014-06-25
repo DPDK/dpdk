@@ -252,6 +252,7 @@ void
 port_infos_display(portid_t port_id)
 {
 	struct rte_port *port;
+	struct ether_addr mac_addr;
 	struct rte_eth_link link;
 	int vlan_offload;
 	struct rte_mempool * mp;
@@ -265,7 +266,8 @@ port_infos_display(portid_t port_id)
 	rte_eth_link_get_nowait(port_id, &link);
 	printf("\n%s Infos for port %-2d %s\n",
 	       info_border, port_id, info_border);
-	print_ethaddr("MAC address: ", &port->eth_addr);
+	rte_eth_macaddr_get(port_id, &mac_addr);
+	print_ethaddr("MAC address: ", &mac_addr);
 	printf("\nConnect to socket: %u", port->socket_id);
 
 	if (port_numa[port_id] != NUMA_NO_CONFIG) {

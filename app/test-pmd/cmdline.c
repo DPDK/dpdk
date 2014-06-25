@@ -84,6 +84,9 @@
 #include <cmdline_socket.h>
 #include <cmdline.h>
 #include <rte_pci_dev_ids.h>
+#ifdef RTE_LIBRTE_PMD_BOND
+#include <rte_eth_bond.h>
+#endif
 
 #include "testpmd.h"
 
@@ -411,6 +414,31 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show bypass config (port_id)\n"
 			"   Show the bypass configuration for a bypass enabled NIC"
 			" using the lowest port on the NIC.\n\n"
+#endif
+#ifdef RTE_LIBRTE_PMD_BOND
+			"create bonded device (mode) (socket)\n"
+			"	Create a new bonded device with specific bonding mode and socket.\n\n"
+
+			"add bonding slave (slave_id) (port_id)\n"
+			"	Add a slave device to a bonded device.\n\n"
+
+			"remove bonding slave (slave_id) (port_id)\n"
+			"	Remove a slave device from a bonded device.\n\n"
+
+			"set bonding mode (value) (port_id)\n"
+			"	Set the bonding mode on a bonded device.\n\n"
+
+			"set bonding primary (slave_id) (port_id)\n"
+			"	Set the primary slave for a bonded device.\n\n"
+
+			"show bonding config (port_id)\n"
+			"	Show the bonding config for port_id.\n\n"
+
+			"set bonding mac_addr (port_id) (address)\n"
+			"	Set the MAC address of a bonded device.\n\n"
+
+			"set bonding xmit_balance_policy (port_id) (l2|l23|l34)\n"
+			"	Set the transmit balance policy for bonded device running in balance mode.\n\n"
 #endif
 
 			, list_pkt_forwarding_modes()
@@ -3038,6 +3066,547 @@ cmdline_parse_inst_t cmd_show_bypass_config = {
 	},
 };
 #endif
+
+#ifdef RTE_LIBRTE_PMD_BOND
+/* *** SET BONDING MODE *** */
+struct cmd_set_bonding_mode_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t mode;
+	uint8_t value;
+	uint8_t port_id;
+};
+
+static void cmd_set_bonding_mode_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bonding_mode_result *res = parsed_result;
+	portid_t port_id = res->port_id;
+
+	/* Set the bonding mode for the relevant port. */
+	if (0 != rte_eth_bond_mode_set(port_id, res->value))
+		printf("\t Failed to set bonding mode for port = %d.\n", port_id);
+}
+
+cmdline_parse_token_string_t cmd_setbonding_mode_set =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_mode_result,
+		set, "set");
+cmdline_parse_token_string_t cmd_setbonding_mode_bonding =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_mode_result,
+		bonding, "bonding");
+cmdline_parse_token_string_t cmd_setbonding_mode_mode =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_mode_result,
+		mode, "mode");
+cmdline_parse_token_num_t cmd_setbonding_mode_value =
+TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_mode_result,
+		value, UINT8);
+cmdline_parse_token_num_t cmd_setbonding_mode_port =
+TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_mode_result,
+		port_id, UINT8);
+
+cmdline_parse_inst_t cmd_set_bonding_mode = {
+		.f = cmd_set_bonding_mode_parsed,
+		.help_str = "set bonding mode (mode_value) (port_id): Set the bonding mode for port_id",
+		.data = NULL,
+		.tokens = {
+				(void *) &cmd_setbonding_mode_set,
+				(void *) &cmd_setbonding_mode_bonding,
+				(void *) &cmd_setbonding_mode_mode,
+				(void *) &cmd_setbonding_mode_value,
+				(void *) &cmd_setbonding_mode_port,
+				NULL
+		}
+};
+
+/* *** SET BALANCE XMIT POLICY *** */
+struct cmd_set_bonding_balance_xmit_policy_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t balance_xmit_policy;
+	uint8_t port_id;
+	cmdline_fixed_string_t policy;
+};
+
+static void cmd_set_bonding_balance_xmit_policy_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bonding_balance_xmit_policy_result *res = parsed_result;
+	portid_t port_id = res->port_id;
+	uint8_t policy;
+
+	if (!strcmp(res->policy, "l2")) {
+		policy = BALANCE_XMIT_POLICY_LAYER2;
+	} else if (!strcmp(res->policy, "l23")) {
+		policy = BALANCE_XMIT_POLICY_LAYER23;
+	} else if (!strcmp(res->policy, "l34")) {
+		policy = BALANCE_XMIT_POLICY_LAYER34;
+	} else {
+		printf("\t Invalid xmit policy selection");
+		return;
+	}
+
+	/* Set the bonding mode for the relevant port. */
+	if (0 != rte_eth_bond_xmit_policy_set(port_id, policy)) {
+		printf("\t Failed to set bonding balance xmit policy for port = %d.\n",
+				port_id);
+	}
+}
+
+cmdline_parse_token_string_t cmd_setbonding_balance_xmit_policy_set =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_balance_xmit_policy_result,
+		set, "set");
+cmdline_parse_token_string_t cmd_setbonding_balance_xmit_policy_bonding =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_balance_xmit_policy_result,
+		bonding, "bonding");
+cmdline_parse_token_string_t cmd_setbonding_balance_xmit_policy_balance_xmit_policy =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_balance_xmit_policy_result,
+		balance_xmit_policy, "balance_xmit_policy");
+cmdline_parse_token_num_t cmd_setbonding_balance_xmit_policy_port =
+TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_balance_xmit_policy_result,
+		port_id, UINT8);
+cmdline_parse_token_string_t cmd_setbonding_balance_xmit_policy_policy =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_balance_xmit_policy_result,
+		policy, "l2#l23#l34");
+
+cmdline_parse_inst_t cmd_set_balance_xmit_policy = {
+		.f = cmd_set_bonding_balance_xmit_policy_parsed,
+		.help_str = "set bonding balance_xmit_policy (port_id) (policy_value): Set the bonding balance_xmit_policy for port_id",
+		.data = NULL,
+		.tokens = {
+				(void *)&cmd_setbonding_balance_xmit_policy_set,
+				(void *)&cmd_setbonding_balance_xmit_policy_bonding,
+				(void *)&cmd_setbonding_balance_xmit_policy_balance_xmit_policy,
+				(void *)&cmd_setbonding_balance_xmit_policy_port,
+				(void *)&cmd_setbonding_balance_xmit_policy_policy,
+				NULL
+		}
+};
+
+/* *** SHOW NIC BONDING CONFIGURATION *** */
+struct cmd_show_bonding_config_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t config;
+	uint8_t port_id;
+};
+
+static void cmd_show_bonding_config_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_show_bonding_config_result *res = parsed_result;
+	int bonding_mode;
+	uint8_t slaves[RTE_MAX_ETHPORTS];
+	int num_slaves, num_active_slaves;
+	int primary_id;
+	int i;
+	portid_t port_id = res->port_id;
+
+	/* Display the bonding mode.*/
+	bonding_mode = rte_eth_bond_mode_get(port_id);
+	if (bonding_mode < 0) {
+		printf("\tFailed to get bonding mode for port = %d\n", port_id);
+		return;
+	} else
+		printf("\tBonding mode: %d\n", bonding_mode);
+
+	if (bonding_mode == BONDING_MODE_BALANCE) {
+		int balance_xmit_policy;
+
+		balance_xmit_policy = rte_eth_bond_xmit_policy_get(port_id);
+		if (balance_xmit_policy < 0) {
+			printf("\tFailed to get balance xmit policy for port = %d\n",
+					port_id);
+			return;
+		} else {
+			printf("\tBalance Xmit Policy: ");
+
+			switch (balance_xmit_policy) {
+			case BALANCE_XMIT_POLICY_LAYER2:
+				printf("BALANCE_XMIT_POLICY_LAYER2");
+				break;
+			case BALANCE_XMIT_POLICY_LAYER23:
+				printf("BALANCE_XMIT_POLICY_LAYER23");
+				break;
+			case BALANCE_XMIT_POLICY_LAYER34:
+				printf("BALANCE_XMIT_POLICY_LAYER34");
+				break;
+			}
+			printf("\n");
+		}
+	}
+
+	num_slaves = rte_eth_bond_slaves_get(port_id, slaves, RTE_MAX_ETHPORTS);
+
+	if (num_slaves < 0) {
+		printf("\tFailed to get slave list for port = %d\n", port_id);
+		return;
+	}
+	if (num_slaves > 0) {
+		printf("\tSlaves (%d): [", num_slaves);
+		for (i = 0; i < num_slaves - 1; i++)
+			printf("%d ", slaves[i]);
+
+		printf("%d]\n", slaves[num_slaves - 1]);
+	} else {
+		printf("\tSlaves: []\n");
+
+	}
+
+	num_active_slaves = rte_eth_bond_active_slaves_get(port_id, slaves,
+			RTE_MAX_ETHPORTS);
+
+	if (num_active_slaves < 0) {
+		printf("\tFailed to get active slave list for port = %d\n", port_id);
+		return;
+	}
+	if (num_active_slaves > 0) {
+		printf("\tActive Slaves (%d): [", num_active_slaves);
+		for (i = 0; i < num_active_slaves - 1; i++)
+			printf("%d ", slaves[i]);
+
+		printf("%d]\n", slaves[num_active_slaves - 1]);
+
+	} else {
+		printf("\tActive Slaves: []\n");
+
+	}
+
+	primary_id = rte_eth_bond_primary_get(port_id);
+	if (primary_id < 0) {
+		printf("\tFailed to get primary slave for port = %d\n", port_id);
+		return;
+	} else
+		printf("\tPrimary: [%d]\n", primary_id);
+
+}
+
+cmdline_parse_token_string_t cmd_showbonding_config_show =
+TOKEN_STRING_INITIALIZER(struct cmd_show_bonding_config_result,
+		show, "show");
+cmdline_parse_token_string_t cmd_showbonding_config_bonding =
+TOKEN_STRING_INITIALIZER(struct cmd_show_bonding_config_result,
+		bonding, "bonding");
+cmdline_parse_token_string_t cmd_showbonding_config_config =
+TOKEN_STRING_INITIALIZER(struct cmd_show_bonding_config_result,
+		config, "config");
+cmdline_parse_token_num_t cmd_showbonding_config_port =
+TOKEN_NUM_INITIALIZER(struct cmd_show_bonding_config_result,
+		port_id, UINT8);
+
+cmdline_parse_inst_t cmd_show_bonding_config = {
+		.f = cmd_show_bonding_config_parsed,
+		.help_str =	"show bonding config (port_id): Show the bonding config for port_id",
+		.data = NULL,
+		.tokens = {
+				(void *)&cmd_showbonding_config_show,
+				(void *)&cmd_showbonding_config_bonding,
+				(void *)&cmd_showbonding_config_config,
+				(void *)&cmd_showbonding_config_port,
+				NULL
+		}
+};
+
+/* *** SET BONDING PRIMARY *** */
+struct cmd_set_bonding_primary_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t primary;
+	uint8_t slave_id;
+	uint8_t port_id;
+};
+
+static void cmd_set_bonding_primary_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bonding_primary_result *res = parsed_result;
+	portid_t master_port_id = res->port_id;
+	portid_t slave_port_id = res->slave_id;
+
+	/* Set the primary slave for a bonded device. */
+	if (0 != rte_eth_bond_primary_set(master_port_id, slave_port_id)) {
+		printf("\t Failed to set primary slave for port = %d.\n",
+				master_port_id);
+		return;
+	}
+	init_port_config();
+}
+
+cmdline_parse_token_string_t cmd_setbonding_primary_set =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_primary_result,
+		set, "set");
+cmdline_parse_token_string_t cmd_setbonding_primary_bonding =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_primary_result,
+		bonding, "bonding");
+cmdline_parse_token_string_t cmd_setbonding_primary_primary =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_primary_result,
+		primary, "primary");
+cmdline_parse_token_num_t cmd_setbonding_primary_slave =
+TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_primary_result,
+		slave_id, UINT8);
+cmdline_parse_token_num_t cmd_setbonding_primary_port =
+TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_primary_result,
+		port_id, UINT8);
+
+cmdline_parse_inst_t cmd_set_bonding_primary = {
+		.f = cmd_set_bonding_primary_parsed,
+		.help_str = "set bonding primary (slave_id) (port_id): Set the primary slave for port_id",
+		.data = NULL,
+		.tokens = {
+				(void *)&cmd_setbonding_primary_set,
+				(void *)&cmd_setbonding_primary_bonding,
+				(void *)&cmd_setbonding_primary_primary,
+				(void *)&cmd_setbonding_primary_slave,
+				(void *)&cmd_setbonding_primary_port,
+				NULL
+		}
+};
+
+/* *** ADD SLAVE *** */
+struct cmd_add_bonding_slave_result {
+	cmdline_fixed_string_t add;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t slave;
+	uint8_t slave_id;
+	uint8_t port_id;
+};
+
+static void cmd_add_bonding_slave_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_add_bonding_slave_result *res = parsed_result;
+	portid_t master_port_id = res->port_id;
+	portid_t slave_port_id = res->slave_id;
+
+	/* Set the primary slave for a bonded device. */
+	if (0 != rte_eth_bond_slave_add(master_port_id, slave_port_id)) {
+		printf("\t Failed to add slave %d to master port = %d.\n",
+				slave_port_id, master_port_id);
+		return;
+	}
+	init_port_config();
+}
+
+cmdline_parse_token_string_t cmd_addbonding_slave_add =
+TOKEN_STRING_INITIALIZER(struct cmd_add_bonding_slave_result,
+		add, "add");
+cmdline_parse_token_string_t cmd_addbonding_slave_bonding =
+TOKEN_STRING_INITIALIZER(struct cmd_add_bonding_slave_result,
+		bonding, "bonding");
+cmdline_parse_token_string_t cmd_addbonding_slave_slave =
+TOKEN_STRING_INITIALIZER(struct cmd_add_bonding_slave_result,
+		slave, "slave");
+cmdline_parse_token_num_t cmd_addbonding_slave_slaveid =
+TOKEN_NUM_INITIALIZER(struct cmd_add_bonding_slave_result,
+		slave_id, UINT8);
+cmdline_parse_token_num_t cmd_addbonding_slave_port =
+TOKEN_NUM_INITIALIZER(struct cmd_add_bonding_slave_result,
+		port_id, UINT8);
+
+cmdline_parse_inst_t cmd_add_bonding_slave = {
+		.f = cmd_add_bonding_slave_parsed,
+		.help_str = "add bonding slave (slave_id) (port_id): Add a slave device to a bonded device",
+		.data = NULL,
+		.tokens = {
+				(void *)&cmd_addbonding_slave_add,
+				(void *)&cmd_addbonding_slave_bonding,
+				(void *)&cmd_addbonding_slave_slave,
+				(void *)&cmd_addbonding_slave_slaveid,
+				(void *)&cmd_addbonding_slave_port,
+				NULL
+		}
+};
+
+/* *** REMOVE SLAVE *** */
+struct cmd_remove_bonding_slave_result {
+	cmdline_fixed_string_t remove;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t slave;
+	uint8_t slave_id;
+	uint8_t port_id;
+};
+
+static void cmd_remove_bonding_slave_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_remove_bonding_slave_result *res = parsed_result;
+	portid_t master_port_id = res->port_id;
+	portid_t slave_port_id = res->slave_id;
+
+	/* Set the primary slave for a bonded device. */
+	if (0 != rte_eth_bond_slave_remove(master_port_id, slave_port_id)) {
+		printf("\t Failed to remove slave %d from master port = %d.\n",
+				slave_port_id, master_port_id);
+		return;
+	}
+	init_port_config();
+}
+
+cmdline_parse_token_string_t cmd_removebonding_slave_remove =
+		TOKEN_STRING_INITIALIZER(struct cmd_remove_bonding_slave_result,
+				remove, "remove");
+cmdline_parse_token_string_t cmd_removebonding_slave_bonding =
+		TOKEN_STRING_INITIALIZER(struct cmd_remove_bonding_slave_result,
+				bonding, "bonding");
+cmdline_parse_token_string_t cmd_removebonding_slave_slave =
+		TOKEN_STRING_INITIALIZER(struct cmd_remove_bonding_slave_result,
+				slave, "slave");
+cmdline_parse_token_num_t cmd_removebonding_slave_slaveid =
+		TOKEN_NUM_INITIALIZER(struct cmd_remove_bonding_slave_result,
+				slave_id, UINT8);
+cmdline_parse_token_num_t cmd_removebonding_slave_port =
+		TOKEN_NUM_INITIALIZER(struct cmd_remove_bonding_slave_result,
+				port_id, UINT8);
+
+cmdline_parse_inst_t cmd_remove_bonding_slave = {
+		.f = cmd_remove_bonding_slave_parsed,
+		.help_str = "remove bonding slave (slave_id) (port_id): Remove a slave device from a bonded device",
+		.data = NULL,
+		.tokens = {
+				(void *)&cmd_removebonding_slave_remove,
+				(void *)&cmd_removebonding_slave_bonding,
+				(void *)&cmd_removebonding_slave_slave,
+				(void *)&cmd_removebonding_slave_slaveid,
+				(void *)&cmd_removebonding_slave_port,
+				NULL
+		}
+};
+
+/* *** CREATE BONDED DEVICE *** */
+struct cmd_create_bonded_device_result {
+	cmdline_fixed_string_t create;
+	cmdline_fixed_string_t bonded;
+	cmdline_fixed_string_t device;
+	uint8_t mode;
+	uint8_t socket;
+};
+
+static int bond_dev_num = 0;
+
+static void cmd_create_bonded_device_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_create_bonded_device_result *res = parsed_result;
+	char ethdev_name[RTE_ETH_NAME_MAX_LEN];
+	int port_id;
+
+	if (test_done == 0) {
+		printf("Please stop forwarding first\n");
+		return;
+	}
+
+	snprintf(ethdev_name, RTE_ETH_NAME_MAX_LEN, "eth_bond_testpmd_%d",
+			bond_dev_num++);
+
+	/* Create a new bonded device. */
+	port_id = rte_eth_bond_create(ethdev_name, res->mode, res->socket);
+	if (port_id < 0) {
+		printf("\t Failed to create bonded device.\n");
+		return;
+	} else {
+		printf("Created new bonded device %s on (port %d).\n", ethdev_name,
+				port_id);
+
+		/* Update number of ports */
+		nb_ports = rte_eth_dev_count();
+		reconfig(port_id);
+		rte_eth_promiscuous_enable(port_id);
+	}
+
+}
+
+cmdline_parse_token_string_t cmd_createbonded_device_create =
+		TOKEN_STRING_INITIALIZER(struct cmd_create_bonded_device_result,
+				create, "create");
+cmdline_parse_token_string_t cmd_createbonded_device_bonded =
+		TOKEN_STRING_INITIALIZER(struct cmd_create_bonded_device_result,
+				bonded, "bonded");
+cmdline_parse_token_string_t cmd_createbonded_device_device =
+		TOKEN_STRING_INITIALIZER(struct cmd_create_bonded_device_result,
+				device, "device");
+cmdline_parse_token_num_t cmd_createbonded_device_mode =
+		TOKEN_NUM_INITIALIZER(struct cmd_create_bonded_device_result,
+				mode, UINT8);
+cmdline_parse_token_num_t cmd_createbonded_device_socket =
+		TOKEN_NUM_INITIALIZER(struct cmd_create_bonded_device_result,
+				socket, UINT8);
+
+cmdline_parse_inst_t cmd_create_bonded_device = {
+		.f = cmd_create_bonded_device_parsed,
+		.help_str = "create bonded device (mode) (socket): Create a new bonded device with specific bonding mode and socket",
+		.data = NULL,
+		.tokens = {
+				(void *)&cmd_createbonded_device_create,
+				(void *)&cmd_createbonded_device_bonded,
+				(void *)&cmd_createbonded_device_device,
+				(void *)&cmd_createbonded_device_mode,
+				(void *)&cmd_createbonded_device_socket,
+				NULL
+		}
+};
+
+/* *** SET MAC ADDRESS IN BONDED DEVICE *** */
+struct cmd_set_bond_mac_addr_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t mac_addr;
+	uint8_t port_num;
+	struct ether_addr address;
+};
+
+static void cmd_set_bond_mac_addr_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bond_mac_addr_result *res = parsed_result;
+	int ret;
+
+	if (res->port_num >= nb_ports) {
+		printf("Port id %d must be less than %d\n", res->port_num, nb_ports);
+		return;
+	}
+
+	ret = rte_eth_bond_mac_address_set(res->port_num, &res->address);
+
+	/* check the return value and print it if is < 0 */
+	if (ret < 0)
+		printf("set_bond_mac_addr error: (%s)\n", strerror(-ret));
+}
+
+cmdline_parse_token_string_t cmd_set_bond_mac_addr_set =
+		TOKEN_STRING_INITIALIZER(struct cmd_set_bond_mac_addr_result, set, "set");
+cmdline_parse_token_string_t cmd_set_bond_mac_addr_bonding =
+		TOKEN_STRING_INITIALIZER(struct cmd_set_bond_mac_addr_result, bonding,
+				"bonding");
+cmdline_parse_token_string_t cmd_set_bond_mac_addr_mac =
+		TOKEN_STRING_INITIALIZER(struct cmd_set_bond_mac_addr_result, mac_addr,
+				"mac_addr");
+cmdline_parse_token_num_t cmd_set_bond_mac_addr_portnum =
+		TOKEN_NUM_INITIALIZER(struct cmd_set_bond_mac_addr_result, port_num, UINT8);
+cmdline_parse_token_etheraddr_t cmd_set_bond_mac_addr_addr =
+		TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_bond_mac_addr_result, address);
+
+cmdline_parse_inst_t cmd_set_bond_mac_addr = {
+		.f = cmd_set_bond_mac_addr_parsed,
+		.data = (void *) 0,
+		.help_str = "set bonding mac_addr (port_id) (address): ",
+		.tokens = {
+				(void *)&cmd_set_bond_mac_addr_set,
+				(void *)&cmd_set_bond_mac_addr_bonding,
+				(void *)&cmd_set_bond_mac_addr_mac,
+				(void *)&cmd_set_bond_mac_addr_portnum,
+				(void *)&cmd_set_bond_mac_addr_addr,
+				NULL
+		}
+};
+
+#endif /* RTE_LIBRTE_PMD_BOND */
 
 /* *** SET FORWARDING MODE *** */
 struct cmd_set_fwd_mode_result {
@@ -6767,6 +7336,16 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_bypass_event,
 	(cmdline_parse_inst_t *)&cmd_set_bypass_timeout,
 	(cmdline_parse_inst_t *)&cmd_show_bypass_config,
+#endif
+#ifdef RTE_LIBRTE_PMD_BOND
+	(cmdline_parse_inst_t *) &cmd_set_bonding_mode,
+	(cmdline_parse_inst_t *) &cmd_show_bonding_config,
+	(cmdline_parse_inst_t *) &cmd_set_bonding_primary,
+	(cmdline_parse_inst_t *) &cmd_add_bonding_slave,
+	(cmdline_parse_inst_t *) &cmd_remove_bonding_slave,
+	(cmdline_parse_inst_t *) &cmd_create_bonded_device,
+	(cmdline_parse_inst_t *) &cmd_set_bond_mac_addr,
+	(cmdline_parse_inst_t *) &cmd_set_balance_xmit_policy,
 #endif
 	(cmdline_parse_inst_t *)&cmd_vlan_offload,
 	(cmdline_parse_inst_t *)&cmd_vlan_tpid,
