@@ -62,6 +62,16 @@ typedef int (rte_dev_init_t)(const char *name, const char *args);
 enum pmd_type {
 	PMD_VDEV = 0,
 	PMD_PDEV = 1,
+	PMD_BDEV = 2,	/**< Poll Mode Driver Bonded Device*/
+};
+
+#define PMD_BOND_NAME "eth_bond"
+
+/**
+ * Driver initialization */
+enum pmd_init_priority {
+	PMD_INIT_PRE_PCI_PROBE = 0,
+	PMD_INIT_POST_PCI_PROBE = 1,
 };
 
 /**
@@ -93,9 +103,9 @@ void rte_eal_driver_register(struct rte_driver *driver);
 void rte_eal_driver_unregister(struct rte_driver *driver);
 
 /**
- * Initalize all the registered drivers in this process
+ * Initialize all the registered drivers in this process
  */
-int rte_eal_dev_init(void);
+int rte_eal_dev_init(uint8_t init_priority);
 
 #define PMD_REGISTER_DRIVER(d)\
 void devinitfn_ ##d(void);\

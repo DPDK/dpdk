@@ -62,7 +62,7 @@ rte_eal_driver_unregister(struct rte_driver *driver)
 }
 
 int
-rte_eal_dev_init(void)
+rte_eal_dev_init(uint8_t init_pri)
 {
 	struct rte_devargs *devargs;
 	struct rte_driver *driver;
@@ -80,30 +80,52 @@ rte_eal_dev_init(void)
 			continue;
 
 		TAILQ_FOREACH(driver, &dev_driver_list, next) {
-			if (driver->type != PMD_VDEV)
-				continue;
+			/* RTE_DEVTYPE_VIRTUAL can only be a virtual or bonded device,
+			 * virtual devices are initialized pre PCI probing and bonded
+			 * device are post pci probing */
+			if ((driver->type == PMD_VDEV && init_pri ==
+					PMD_INIT_PRE_PCI_PROBE) ||
+				(driver->type == PMD_BDEV && init_pri ==
+						PMD_INIT_POST_PCI_PROBE)) {
 
-			/* search a driver prefix in virtual device name */
-			if (!strncmp(driver->name, devargs->virtual.drv_name,
-					strlen(driver->name))) {
-				driver->init(devargs->virtual.drv_name,
-					devargs->args);
-				break;
+				/* search a driver prefix in virtual device name */
+				if (!strncmp(driver->name, devargs->virtual.drv_name,
+						strlen(driver->name))) {
+					printf("init (%u) %s\n", init_pri, devargs->virtual.drv_name);
+					driver->init(devargs->virtual.drv_name,
+						devargs->args);
+					break;
+				}
 			}
 		}
 
-		if (driver == NULL) {
-			rte_panic("no driver found for %s\n",
-				  devargs->virtual.drv_name);
+		/* If initializing pre PCI probe, then we don't expect a bonded driver
+		 * to be found */
+		if (init_pri == PMD_INIT_PRE_PCI_PROBE &&
+				strncmp(PMD_BOND_NAME, devargs->virtual.drv_name,
+					strlen(PMD_BOND_NAME)) != 0) {
+			if (driver == NULL) {
+				rte_panic("no driver found for virtual device %s\n",
+					devargs->virtual.drv_name);
+			}
+		} else if (init_pri == PMD_INIT_POST_PCI_PROBE &&
+				strncmp(PMD_BOND_NAME, devargs->virtual.drv_name,
+					strlen(PMD_BOND_NAME)) == 0) {
+			if (driver == NULL) {
+				rte_panic("no driver found for bonded device %s\n",
+					devargs->virtual.drv_name);
+			}
 		}
 	}
 
-	/* Once the vdevs are initalized, start calling all the pdev drivers */
-	TAILQ_FOREACH(driver, &dev_driver_list, next) {
-		if (driver->type != PMD_PDEV)
-			continue;
-		/* PDEV drivers don't get passed any parameters */
-		driver->init(NULL, NULL);
+	/* Once the vdevs are initialized, start calling all the pdev drivers */
+	if (init_pri == PMD_INIT_PRE_PCI_PROBE) {
+		TAILQ_FOREACH(driver, &dev_driver_list, next) {
+			if (driver->type != PMD_PDEV)
+				continue;
+			/* PDEV drivers don't get passed any parameters */
+			driver->init(NULL, NULL);
+		}
 	}
 	return 0;
 }

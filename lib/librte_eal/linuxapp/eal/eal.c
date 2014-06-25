@@ -75,6 +75,7 @@
 #include <rte_atomic.h>
 #include <malloc_heap.h>
 #include <rte_eth_ring.h>
+#include <rte_dev.h>
 
 #include "eal_private.h"
 #include "eal_thread.h"
@@ -1097,7 +1098,7 @@ rte_eal_init(int argc, char **argv)
 	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%x)\n",
 		rte_config.master_lcore, (int)thread_id);
 
-	if (rte_eal_dev_init() < 0)
+	if (rte_eal_dev_init(PMD_INIT_PRE_PCI_PROBE) < 0)
 		rte_panic("Cannot init pmd devices\n");
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
@@ -1126,6 +1127,14 @@ rte_eal_init(int argc, char **argv)
 	 */
 	rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MASTER);
 	rte_eal_mp_wait_lcore();
+
+	/* Probe & Initialize PCI devices */
+	if (rte_eal_pci_probe())
+			rte_panic("Cannot probe PCI\n");
+
+	/* Initialize any outstanding devices */
+	if (rte_eal_dev_init(PMD_INIT_POST_PCI_PROBE) < 0)
+		rte_panic("Cannot init pmd devices\n");
 
 	return fctret;
 }
