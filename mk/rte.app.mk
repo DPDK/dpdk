@@ -170,12 +170,17 @@ ifeq ($(CONFIG_RTE_LIBRTE_CFGFILE),y)
 LDLIBS += -lrte_cfgfile
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_BOND),y)
+LDLIBS += -lrte_pmd_bond
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_XENVIRT),y)
 LDLIBS += -lrte_pmd_xenvirt
 LDLIBS += -lxenstore
 endif
 
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
+# plugins (link only if static libraries)
 
 ifeq ($(CONFIG_RTE_LIBRTE_VMXNET3_PMD),y)
 LDLIBS += -lrte_pmd_vmxnet3_uio
@@ -205,7 +210,7 @@ ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
 LDLIBS += -lrte_pmd_pcap -lpcap
 endif
 
-endif
+endif # plugins
 
 LDLIBS += $(EXECENV_LDLIBS)
 
