@@ -1497,6 +1497,8 @@ struct rte_eth_dev_sriov {
 };
 #define RTE_ETH_DEV_SRIOV(dev)         ((dev)->data->sriov)
 
+#define RTE_ETH_NAME_MAX_LEN (32)
+
 /**
  * @internal
  * The data part, with no function pointers, associated with each ethernet device.
@@ -1505,6 +1507,8 @@ struct rte_eth_dev_sriov {
  * processes in a multi-process configuration.
  */
 struct rte_eth_dev_data {
+	char name[RTE_ETH_NAME_MAX_LEN]; /**< Unique identifier name */
+
 	void **rx_queues; /**< Array of pointers to RX queues. */
 	void **tx_queues; /**< Array of pointers to TX queues. */
 	uint16_t nb_rx_queues; /**< Number of RX queues. */
@@ -1560,10 +1564,11 @@ extern uint8_t rte_eth_dev_count(void);
  * Allocates a new ethdev slot for an ethernet device and returns the pointer
  * to that slot for the driver to use.
  *
+ * @param	name	Unique identifier name for each Ethernet device
  * @return
  *   - Slot in the rte_dev_devices array for a new device;
  */
-struct rte_eth_dev *rte_eth_dev_allocate(void);
+struct rte_eth_dev *rte_eth_dev_allocate(const char *name);
 
 struct eth_driver;
 /**

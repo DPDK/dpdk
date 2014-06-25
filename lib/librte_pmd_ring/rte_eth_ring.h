@@ -40,7 +40,8 @@ extern "C" {
 
 #include <rte_ring.h>
 
-int rte_eth_from_rings(struct rte_ring * const rx_queues[],
+int rte_eth_from_rings(const char *name,
+		struct rte_ring * const rx_queues[],
 		const unsigned nb_rx_queues,
 		struct rte_ring *const tx_queues[],
 		const unsigned nb_tx_queues,

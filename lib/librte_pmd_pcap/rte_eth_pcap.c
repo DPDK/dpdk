@@ -534,7 +534,7 @@ open_tx_iface(const char *key __rte_unused, const char *value, void *extra_args)
 
 
 static int
-rte_pmd_init_internals(const unsigned nb_rx_queues,
+rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 		const unsigned nb_tx_queues,
 		const unsigned numa_node,
 		struct pmd_internals **internals,
@@ -558,20 +558,20 @@ rte_pmd_init_internals(const unsigned nb_rx_queues,
 	/* now do all data allocation - for eth_dev structure, dummy pci driver
 	 * and internal (private) data
 	 */
-	data = rte_zmalloc_socket(NULL, sizeof(*data), 0, numa_node);
+	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
 	if (data == NULL)
 		goto error;
 
-	pci_dev = rte_zmalloc_socket(NULL, sizeof(*pci_dev), 0, numa_node);
+	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, numa_node);
 	if (pci_dev == NULL)
 		goto error;
 
-	*internals = rte_zmalloc_socket(NULL, sizeof(**internals), 0, numa_node);
+	*internals = rte_zmalloc_socket(name, sizeof(**internals), 0, numa_node);
 	if (*internals == NULL)
 		goto error;
 
 	/* reserve an ethdev entry */
-	*eth_dev = rte_eth_dev_allocate();
+	*eth_dev = rte_eth_dev_allocate(name);
 	if (*eth_dev == NULL)
 		goto error;
 
@@ -617,7 +617,7 @@ rte_pmd_init_internals(const unsigned nb_rx_queues,
 }
 
 static int
-rte_eth_from_pcaps_n_dumpers(pcap_t * const rx_queues[],
+rte_eth_from_pcaps_n_dumpers(const char *name, pcap_t * const rx_queues[],
 		const unsigned nb_rx_queues,
 		pcap_dumper_t * const tx_queues[],
 		const unsigned nb_tx_queues,
@@ -634,7 +634,7 @@ rte_eth_from_pcaps_n_dumpers(pcap_t * const rx_queues[],
 	if (tx_queues == NULL && nb_tx_queues > 0)
 		return -1;
 
-	if (rte_pmd_init_internals(nb_rx_queues, nb_tx_queues, numa_node,
+	if (rte_pmd_init_internals(name, nb_rx_queues, nb_tx_queues, numa_node,
 			&internals, &eth_dev, kvlist) < 0)
 		return -1;
 
@@ -652,7 +652,7 @@ rte_eth_from_pcaps_n_dumpers(pcap_t * const rx_queues[],
 }
 
 static int
-rte_eth_from_pcaps(pcap_t * const rx_queues[],
+rte_eth_from_pcaps(const char *name, pcap_t * const rx_queues[],
 		const unsigned nb_rx_queues,
 		pcap_t * const tx_queues[],
 		const unsigned nb_tx_queues,
@@ -669,7 +669,7 @@ rte_eth_from_pcaps(pcap_t * const rx_queues[],
 	if (tx_queues == NULL && nb_tx_queues > 0)
 		return -1;
 
-	if (rte_pmd_init_internals(nb_rx_queues, nb_tx_queues, numa_node,
+	if (rte_pmd_init_internals(name, nb_rx_queues, nb_tx_queues, numa_node,
 			&internals, &eth_dev, kvlist) < 0)
 		return -1;
 
@@ -760,10 +760,10 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 		return -1;
 
 	if (using_dumpers)
-		return rte_eth_from_pcaps_n_dumpers(pcaps.pcaps, pcaps.num_of_rx,
+		return rte_eth_from_pcaps_n_dumpers(name, pcaps.pcaps, pcaps.num_of_rx,
 				dumpers.dumpers, dumpers.num_of_tx, numa_node, kvlist);
 
-	return rte_eth_from_pcaps(pcaps.pcaps, pcaps.num_of_rx, dumpers.pcaps,
+	return rte_eth_from_pcaps(name, pcaps.pcaps, pcaps.num_of_rx, dumpers.pcaps,
 			dumpers.num_of_tx, numa_node, kvlist);
 
 }

@@ -219,7 +219,7 @@ static struct eth_dev_ops ops = {
 };
 
 int
-rte_eth_from_rings(struct rte_ring *const rx_queues[],
+rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		const unsigned nb_rx_queues,
 		struct rte_ring *const tx_queues[],
 		const unsigned nb_tx_queues,
@@ -243,20 +243,20 @@ rte_eth_from_rings(struct rte_ring *const rx_queues[],
 	/* now do all data allocation - for eth_dev structure, dummy pci driver
 	 * and internal (private) data
 	 */
-	data = rte_zmalloc_socket(NULL, sizeof(*data), 0, numa_node);
+	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
 	if (data == NULL)
 		goto error;
 
-	pci_dev = rte_zmalloc_socket(NULL, sizeof(*pci_dev), 0, numa_node);
+	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, numa_node);
 	if (pci_dev == NULL)
 		goto error;
 
-	internals = rte_zmalloc_socket(NULL, sizeof(*internals), 0, numa_node);
+	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, numa_node);
 	if (internals == NULL)
 		goto error;
 
 	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate();
+	eth_dev = rte_eth_dev_allocate(name);
 	if (eth_dev == NULL)
 		goto error;
 
@@ -335,7 +335,7 @@ eth_dev_ring_create(const char *name, const unsigned numa_node,
 			return -1;
 	}
 
-	if (rte_eth_from_rings(rxtx, num_rings, rxtx, num_rings, numa_node))
+	if (rte_eth_from_rings(name, rxtx, num_rings, rxtx, num_rings, numa_node))
 		return -1;
 
 	return 0;
@@ -352,29 +352,31 @@ eth_dev_ring_pair_create(const char *name, const unsigned numa_node,
 	struct rte_ring *rx[RTE_PMD_RING_MAX_RX_RINGS];
 	struct rte_ring *tx[RTE_PMD_RING_MAX_TX_RINGS];
 	unsigned i;
-	char rng_name[RTE_RING_NAMESIZE];
+	char rx_rng_name[RTE_RING_NAMESIZE];
+	char tx_rng_name[RTE_RING_NAMESIZE];
 	unsigned num_rings = RTE_MIN(RTE_PMD_RING_MAX_RX_RINGS,
 			RTE_PMD_RING_MAX_TX_RINGS);
 
 	for (i = 0; i < num_rings; i++) {
-		snprintf(rng_name, sizeof(rng_name), "ETH_RX%u_%s", i, name);
+		snprintf(rx_rng_name, sizeof(rx_rng_name), "ETH_RX%u_%s", i, name);
 		rx[i] = (action == DEV_CREATE) ?
-				rte_ring_create(rng_name, 1024, numa_node,
+				rte_ring_create(rx_rng_name, 1024, numa_node,
 						RING_F_SP_ENQ|RING_F_SC_DEQ) :
-				rte_ring_lookup(rng_name);
+				rte_ring_lookup(rx_rng_name);
 		if (rx[i] == NULL)
 			return -1;
-		snprintf(rng_name, sizeof(rng_name), "ETH_TX%u_%s", i, name);
+		snprintf(tx_rng_name, sizeof(tx_rng_name), "ETH_TX%u_%s", i, name);
 		tx[i] = (action == DEV_CREATE) ?
-				rte_ring_create(rng_name, 1024, numa_node,
+				rte_ring_create(tx_rng_name, 1024, numa_node,
 						RING_F_SP_ENQ|RING_F_SC_DEQ):
-				rte_ring_lookup(rng_name);
+				rte_ring_lookup(tx_rng_name);
 		if (tx[i] == NULL)
 			return -1;
 	}
 
-	if (rte_eth_from_rings(rx, num_rings, tx, num_rings, numa_node) ||
-			rte_eth_from_rings(tx, num_rings, rx, num_rings, numa_node) )
+	if (rte_eth_from_rings(rx_rng_name, rx, num_rings, tx, num_rings,
+			numa_node) || rte_eth_from_rings(tx_rng_name, tx, num_rings, rx,
+					num_rings, numa_node))
 		return -1;
 
 	return 0;

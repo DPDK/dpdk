@@ -65,6 +65,7 @@
 #include <rte_mbuf.h>
 #include <rte_errno.h>
 #include <rte_spinlock.h>
+#include <rte_string_fns.h>
 
 #include "rte_ether.h"
 #include "rte_ethdev.h"
@@ -153,21 +154,39 @@ rte_eth_dev_data_alloc(void)
 				RTE_MAX_ETHPORTS * sizeof(*rte_eth_dev_data));
 }
 
+static struct rte_eth_dev *
+rte_eth_dev_allocated(const char *name)
+{
+	unsigned i;
+
+	for (i = 0; i < nb_ports; i++) {
+		if (strcmp(rte_eth_devices[i].data->name, name) == 0)
+			return &rte_eth_devices[i];
+	}
+	return NULL;
+}
+
 struct rte_eth_dev *
-rte_eth_dev_allocate(void)
+rte_eth_dev_allocate(const char *name)
 {
 	struct rte_eth_dev *eth_dev;
 
 	if (nb_ports == RTE_MAX_ETHPORTS) {
-		PMD_DEBUG_TRACE("Reached maximum number of ethernet ports\n");
+		PMD_DEBUG_TRACE("Reached maximum number of Ethernet ports\n");
 		return NULL;
 	}
 
 	if (rte_eth_dev_data == NULL)
 		rte_eth_dev_data_alloc();
 
+	if (rte_eth_dev_allocated(name) != NULL) {
+		PMD_DEBUG_TRACE("Ethernet Device with name %s already allocated!\n");
+		return NULL;
+	}
+
 	eth_dev = &rte_eth_devices[nb_ports];
 	eth_dev->data = &rte_eth_dev_data[nb_ports];
+	snprintf(eth_dev->data->name, sizeof(eth_dev->data->name), "%s", name);
 	eth_dev->data->port_id = nb_ports++;
 	return eth_dev;
 }
@@ -178,11 +197,17 @@ rte_eth_dev_init(struct rte_pci_driver *pci_drv,
 {
 	struct eth_driver    *eth_drv;
 	struct rte_eth_dev *eth_dev;
+	char ethdev_name[RTE_ETH_NAME_MAX_LEN];
+
 	int diag;
 
 	eth_drv = (struct eth_driver *)pci_drv;
 
-	eth_dev = rte_eth_dev_allocate();
+	/* Create unique Ethernet device name using PCI address */
+	snprintf(ethdev_name, RTE_ETH_NAME_MAX_LEN, "%d:%d.%d",
+			pci_dev->addr.bus, pci_dev->addr.devid, pci_dev->addr.function);
+
+	eth_dev = rte_eth_dev_allocate(ethdev_name);
 	if (eth_dev == NULL)
 		return -ENOMEM;
 
