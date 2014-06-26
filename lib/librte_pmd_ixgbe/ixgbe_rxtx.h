@@ -40,6 +40,8 @@
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 #define RTE_PMD_IXGBE_RX_MAX_BURST 32
 #define RTE_IXGBE_DESCS_PER_LOOP           4
+#elif defined(RTE_IXGBE_INC_VECTOR)
+#define RTE_IXGBE_DESCS_PER_LOOP           4
 #else
 #define RTE_IXGBE_DESCS_PER_LOOP           1
 #endif
