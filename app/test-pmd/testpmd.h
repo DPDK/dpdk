@@ -63,7 +63,7 @@ int main(int argc, char **argv);
 #define RTE_MAX_SEGS_PER_PKT 255 /**< pkt.nb_segs is a 8-bit unsigned char. */
 
 #define MAX_PKT_BURST 512
-#define DEF_PKT_BURST 16
+#define DEF_PKT_BURST 32
 
 #define CACHE_LINE_SIZE_ROUNDUP(size) \
 	(CACHE_LINE_SIZE * ((size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE))
