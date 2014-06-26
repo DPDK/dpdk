@@ -45,6 +45,12 @@ devices = {}
 # list of supported DPDK drivers
 dpdk_drivers = [ "igb_uio", "vfio-pci" ]
 
+# command-line arg flags
+b_flag = None
+status_flag = False
+force_flag = False
+args = []
+
 def usage():
     '''Print usage information for the program'''
     argv0 = basename(sys.argv[0])
@@ -168,7 +174,7 @@ def check_modules():
                 mod["Found"] = True
 
     # check if we have at least one loaded module
-    if True not in [mod["Found"] for mod in mods]:
+    if True not in [mod["Found"] for mod in mods] and b_flag is not None:
         print "Error - no supported modules are loaded"
         sys.exit(1)
 
@@ -459,9 +465,10 @@ def show_status():
 def parse_args():
     '''Parses the command-line arguments given by the user and takes the
     appropriate action for each'''
-    b_flag = None
-    status_flag = False
-    force_flag = False
+    global b_flag
+    global status_flag
+    global force_flag
+    global args
     if len(sys.argv) <= 1:
         usage()
         sys.exit(0)
@@ -492,6 +499,13 @@ def parse_args():
             else:
                 b_flag = arg
 
+def do_arg_actions():
+    '''do the actual action requested by the user'''
+    global b_flag
+    global status_flag
+    global force_flag
+    global args
+
     if b_flag is None and not status_flag:
         print "Error: No action specified for devices. Please give a -b or -u option"
         print "Run '%s --usage' for further information" % sys.argv[0]
@@ -513,9 +527,10 @@ def parse_args():
 
 def main():
     '''program main function'''
+    parse_args()
     check_modules()
     get_nic_details()
-    parse_args()
+    do_arg_actions()
 
 if __name__ == "__main__":
     main()
