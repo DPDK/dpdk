@@ -174,7 +174,7 @@ uint16_t tx_pkt_seg_lengths[RTE_MAX_SEGS_PER_PKT] = {
 uint8_t  tx_pkt_nb_segs = 1; /**< Number of segments in TXONLY packets */
 
 uint16_t nb_pkt_per_burst = DEF_PKT_BURST; /**< Number of packets per burst. */
-uint16_t mb_mempool_cache = DEF_PKT_BURST; /**< Size of mbuf mempool cache. */
+uint16_t mb_mempool_cache = DEF_MBUF_CACHE; /**< Size of mbuf mempool cache. */
 
 /* current configuration is in DCB or not,0 means it is not in DCB mode */
 uint8_t dcb_config = 0;
@@ -204,9 +204,9 @@ uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT; /**< Number of TX descriptors. */
  */
 #define RX_PTHRESH 8 /**< Default value of RX prefetch threshold register. */
 #define RX_HTHRESH 8 /**< Default value of RX host threshold register. */
-#define RX_WTHRESH 4 /**< Default value of RX write-back threshold register. */
+#define RX_WTHRESH 0 /**< Default value of RX write-back threshold register. */
 
-#define TX_PTHRESH 36 /**< Default value of TX prefetch threshold register. */
+#define TX_PTHRESH 32 /**< Default value of TX prefetch threshold register. */
 #define TX_HTHRESH 0 /**< Default value of TX host threshold register. */
 #define TX_WTHRESH 0 /**< Default value of TX write-back threshold register. */
 

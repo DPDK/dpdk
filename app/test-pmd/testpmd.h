@@ -65,6 +65,8 @@ int main(int argc, char **argv);
 #define MAX_PKT_BURST 512
 #define DEF_PKT_BURST 32
 
+#define DEF_MBUF_CACHE 250
+
 #define CACHE_LINE_SIZE_ROUNDUP(size) \
 	(CACHE_LINE_SIZE * ((size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE))
 
