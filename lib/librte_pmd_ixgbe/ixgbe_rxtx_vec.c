@@ -700,6 +700,7 @@ int ixgbe_rx_vec_condition_check(struct rte_eth_dev *dev)
 
 	return 0;
 #else
+	RTE_SET_USED(dev);
 	return -1;
 #endif
 }
