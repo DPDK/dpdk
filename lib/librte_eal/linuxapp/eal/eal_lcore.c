@@ -77,7 +77,7 @@ cpu_socket_id(unsigned lcore_id)
 	const char node_prefix[] = "node";
 	const size_t prefix_len = sizeof(node_prefix) - 1;
 	char path[PATH_MAX];
-	DIR *d;
+	DIR *d = NULL;
 	unsigned long id = 0;
 	struct dirent *e;
 	char *endptr = NULL;
@@ -97,7 +97,6 @@ cpu_socket_id(unsigned lcore_id)
 			break;
 		}
 	}
-	closedir(d);
 	if (endptr == NULL || *endptr!='\0' || endptr == e->d_name+prefix_len) {
 		RTE_LOG(WARNING, EAL, "Cannot read numa node link "
 				"for lcore %u - using physical package id instead\n",
@@ -110,9 +109,12 @@ cpu_socket_id(unsigned lcore_id)
 		if (eal_parse_sysfs_value(path, &id) != 0)
 			goto err;
 	}
+	closedir(d);
 	return (unsigned)id;
 
 err:
+	if (d)
+		closedir(d);
 	RTE_LOG(ERR, EAL, "Error getting NUMA socket information from %s "
 			"for lcore %u - assuming NUMA socket 0\n", SYS_CPU_DIR, lcore_id);
 	return 0;
