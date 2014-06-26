@@ -145,7 +145,7 @@ ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
  * gives improved performance, at the cost of losing the offload info
  * in the received packet
  */
-#ifndef RTE_IXGBE_RX_OLFLAGS_DISABLE
+#ifdef RTE_IXGBE_RX_OLFLAGS_ENABLE
 
 #define OLFLAGS_MASK     ((uint16_t)(PKT_RX_VLAN_PKT | PKT_RX_IPV4_HDR |\
 				     PKT_RX_IPV4_HDR_EXT | PKT_RX_IPV6_HDR |\
@@ -679,7 +679,7 @@ int ixgbe_rx_vec_condition_check(struct rte_eth_dev *dev)
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct rte_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
 
-#ifdef RTE_IXGBE_RX_OLFLAGS_DISABLE
+#ifndef RTE_IXGBE_RX_OLFLAGS_ENABLE
 	/* whithout rx ol_flags, no VP flag report */
 	if (rxmode->hw_vlan_strip != 0 ||
 	    rxmode->hw_vlan_extend != 0)
