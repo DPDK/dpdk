@@ -317,7 +317,7 @@ test_whitelist_flag(void)
 	const char *wlval3[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
 			pci_whitelist, "09:0B.3,type=test",
 			pci_whitelist, "08:00.1,type=normal",
-#ifdef CONFIG_RTE_LIBRTE_PMD_RING
+#ifdef RTE_LIBRTE_PMD_RING
 			vdev, "eth_ring,arg=test",
 #endif
 	};

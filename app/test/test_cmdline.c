@@ -39,7 +39,7 @@
 int
 test_cmdline(void)
 {
-#ifdef CONFIG_RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIBRTE_CMDLINE
 	printf("Testind parsing ethernet addresses...\n");
 	if (test_parse_etheraddr_valid() < 0)
 		return -1;
