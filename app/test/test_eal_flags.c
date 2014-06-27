@@ -492,7 +492,7 @@ test_invalid_r_flag(void)
 }
 
 /*
- * Test that the app doesn't run without the coremask flag. In all cases
+ * Test that the app doesn't run without the coremask/corelist flags. In all cases
  * should give an error and fail to run
  */
 static int
@@ -512,12 +512,22 @@ test_missing_c_flag(void)
 
 	/* -c flag but no coremask value */
 	const char *argv1[] = { prgname, prefix, mp_flag, "-n", "3", "-c"};
-	/* No -c flag at all */
+	/* No -c or -l flag at all */
 	const char *argv2[] = { prgname, prefix, mp_flag, "-n", "3"};
 	/* bad coremask value */
 	const char *argv3[] = { prgname, prefix, mp_flag, "-n", "3", "-c", "error" };
 	/* sanity check of tests - valid coremask value */
 	const char *argv4[] = { prgname, prefix, mp_flag, "-n", "3", "-c", "1" };
+	/* -l flag but no corelist value */
+	const char *argv5[] = { prgname, prefix, mp_flag, "-n", "3", "-l"};
+	const char *argv6[] = { prgname, prefix, mp_flag, "-n", "3", "-l", " " };
+	/* bad corelist values */
+	const char *argv7[] = { prgname, prefix, mp_flag, "-n", "3", "-l", "error" };
+	const char *argv8[] = { prgname, prefix, mp_flag, "-n", "3", "-l", "1-" };
+	const char *argv9[] = { prgname, prefix, mp_flag, "-n", "3", "-l", "1," };
+	const char *argv10[] = { prgname, prefix, mp_flag, "-n", "3", "-l", "1#2" };
+	/* sanity check test - valid corelist value */
+	const char *argv11[] = { prgname, prefix, mp_flag, "-n", "3", "-l", "1-2,3" };
 
 	if (launch_proc(argv1) == 0
 			|| launch_proc(argv2) == 0
@@ -527,6 +537,20 @@ test_missing_c_flag(void)
 	}
 	if (launch_proc(argv4) != 0) {
 		printf("Error - process did not run ok with valid coremask value\n");
+		return -1;
+	}
+
+	if (launch_proc(argv5) == 0
+			|| launch_proc(argv6) == 0
+			|| launch_proc(argv7) == 0
+			|| launch_proc(argv8) == 0
+			|| launch_proc(argv9) == 0
+			|| launch_proc(argv10) == 0) {
+		printf("Error - process ran without error with invalid -l flag\n");
+		return -1;
+	}
+	if (launch_proc(argv11) != 0) {
+		printf("Error - process did not run ok with valid corelist value\n");
 		return -1;
 	}
 	return 0;

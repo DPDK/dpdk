@@ -32,6 +32,7 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <syslog.h>
 #include <ctype.h>
@@ -55,8 +56,9 @@ const char
 eal_short_options[] =
 	"b:" /* pci-blacklist */
 	"w:" /* pci-whitelist */
-	"c:"
+	"c:" /* coremask */
 	"d:"
+	"l:" /* corelist */
 	"m:"
 	"n:"
 	"r:"
@@ -205,6 +207,67 @@ eal_parse_coremask(const char *coremask)
 }
 
 static int
+eal_parse_corelist(const char *corelist)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+	int i, idx = 0;
+	unsigned count = 0;
+	char *end = NULL;
+	int min, max;
+
+	if (corelist == NULL)
+		return -1;
+
+	/* Remove all blank characters ahead and after */
+	while (isblank(*corelist))
+		corelist++;
+	i = strnlen(corelist, sysconf(_SC_ARG_MAX));
+	while ((i > 0) && isblank(corelist[i - 1]))
+		i--;
+
+	/* Reset core roles */
+	for (idx = 0; idx < RTE_MAX_LCORE; idx++)
+		cfg->lcore_role[idx] = ROLE_OFF;
+
+	/* Get list of cores */
+	min = RTE_MAX_LCORE;
+	do {
+		while (isblank(*corelist))
+			corelist++;
+		if (*corelist == '\0')
+			return -1;
+		errno = 0;
+		idx = strtoul(corelist, &end, 10);
+		if (errno || end == NULL)
+			return -1;
+		while (isblank(*end))
+			end++;
+		if (*end == '-') {
+			min = idx;
+		} else if ((*end == ',') || (*end == '\0')) {
+			max = idx;
+			if (min == RTE_MAX_LCORE)
+				min = idx;
+			for (idx = min; idx <= max; idx++) {
+				cfg->lcore_role[idx] = ROLE_RTE;
+				if (count == 0)
+					cfg->master_lcore = idx;
+				count++;
+			}
+			min = RTE_MAX_LCORE;
+		} else
+			return -1;
+		corelist = end + 1;
+	} while (*end != '\0');
+
+	if (count == 0)
+		return -1;
+
+	lcores_parsed = 1;
+	return 0;
+}
+
+static int
 eal_parse_syslog(const char *facility, struct internal_config *conf)
 {
 	int i;
@@ -301,6 +364,13 @@ eal_parse_common_option(int opt, const char *optarg,
 	case 'c':
 		if (eal_parse_coremask(optarg) < 0) {
 			RTE_LOG(ERR, EAL, "invalid coremask\n");
+			return -1;
+		}
+		break;
+	/* corelist */
+	case 'l':
+		if (eal_parse_corelist(optarg) < 0) {
+			RTE_LOG(ERR, EAL, "invalid core list\n");
 			return -1;
 		}
 		break;
@@ -421,8 +491,8 @@ eal_check_common_options(struct internal_config *internal_cfg)
 	struct rte_config *cfg = rte_eal_get_configuration();
 
 	if (!lcores_parsed) {
-		RTE_LOG(ERR, EAL, "CPU cores must be enabled with option "
-			"-c\n");
+		RTE_LOG(ERR, EAL, "CPU cores must be enabled with options "
+			"-c or -l\n");
 		return -1;
 	}
 
@@ -470,6 +540,9 @@ eal_common_usage(void)
 	       "[--proc-type primary|secondary|auto]\n\n"
 	       "EAL common options:\n"
 	       "  -c COREMASK  : A hexadecimal bitmask of cores to run on\n"
+	       "  -l CORELIST  : List of cores to run on\n"
+	       "                 The argument format is <c1>[-c2][,c3[-c4],...]\n"
+	       "                 where c1, c2, etc are core indexes between 0 and %d\n"
 	       "  -n NUM       : Number of memory channels\n"
 	       "  -v           : Display version information on startup\n"
 	       "  -m MB        : memory to allocate (see also --"OPT_SOCKET_MEM")\n"
@@ -494,5 +567,5 @@ eal_common_usage(void)
 	       "  --"OPT_NO_PCI"   : disable pci\n"
 	       "  --"OPT_NO_HPET"  : disable hpet\n"
 	       "  --"OPT_NO_SHCONF": no shared config (mmap'd files)\n"
-	       "\n");
+	       "\n", RTE_MAX_LCORE);
 }
