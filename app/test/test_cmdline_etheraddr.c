@@ -161,13 +161,6 @@ test_parse_etheraddr_invalid_param(void)
 	/* test help function */
 	memset(&buf, 0, sizeof(buf));
 
-	/* try null buf */
-	ret = cmdline_get_help_etheraddr(NULL, NULL, sizeof(buf));
-	if (ret != -1) {
-		printf("Error: help function accepted null buffer!\n");
-		return -1;
-	}
-
 	/* coverage! */
 	ret = cmdline_get_help_etheraddr(NULL, buf, sizeof(buf));
 	if (ret < 0) {

@@ -395,13 +395,6 @@ test_parse_num_invalid_param(void)
 		return -1;
 	}
 
-	/* try null buf */
-	ret = cmdline_get_help_num((cmdline_parse_token_hdr_t*)&token, NULL, sizeof(buf));
-	if (ret != -1) {
-		printf("Error: help function accepted null buffer!\n");
-		return -1;
-	}
-
 	/* coverage! */
 	ret = cmdline_get_help_num((cmdline_parse_token_hdr_t*)&token, buf, sizeof(buf));
 	if (ret < 0) {

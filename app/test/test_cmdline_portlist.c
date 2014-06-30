@@ -164,13 +164,6 @@ test_parse_portlist_invalid_param(void)
 
 	/* test help function */
 
-	/* try null buf */
-	ret = cmdline_get_help_portlist(NULL, NULL, sizeof(buf));
-	if (ret != -1) {
-		printf("Error: help function accepted null buffer!\n");
-		return -1;
-	}
-
 	/* coverage! */
 	ret = cmdline_get_help_portlist(NULL, buf, sizeof(buf));
 	if (ret < 0) {
