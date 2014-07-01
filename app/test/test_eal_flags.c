@@ -317,9 +317,6 @@ test_whitelist_flag(void)
 	const char *wlval3[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
 			pci_whitelist, "09:0B.3,type=test",
 			pci_whitelist, "08:00.1,type=normal",
-#ifdef RTE_LIBRTE_PMD_RING
-			vdev, "eth_ring,arg=test",
-#endif
 	};
 
 	for (i = 0; i < sizeof(wlinval) / sizeof(wlinval[0]); i++) {
@@ -391,6 +388,53 @@ test_invalid_b_flag(void)
 	return 0;
 }
 
+/*
+ *  Test that the app doesn't run with invalid vdev option.
+ *  Final test ensures it does run with valid options as sanity check
+ */
+#ifdef RTE_LIBRTE_PMD_RING
+static int
+test_invalid_vdev_flag(void)
+{
+	/* Test with invalid vdev option */
+	const char *vdevinval[] = {prgname, "--file-prefix=vdev","-n", "1",
+				"-c", "1", vdev, "eth_dummy"};
+
+	/* Test with valid vdev option */
+	const char *vdevval1[] = {prgname, "--file-prefix=vdev", "-n", "1",
+	"-c", "1", vdev, "eth_ring0"};
+
+	const char *vdevval2[] = {prgname, "--file-prefix=vdev", "-n", "1",
+	"-c", "1", vdev, "eth_ring0,args=test"};
+
+	const char *vdevval3[] = {prgname, "--file-prefix=vdev", "-n", "1",
+	"-c", "1", vdev, "eth_ring0,nodeaction=r1:0:CREATE"};
+
+	if (launch_proc(vdevinval) == 0) {
+		printf("Error - process did run ok with invalid "
+			"vdev parameter\n");
+		return -1;
+	}
+
+	if (launch_proc(vdevval1) != 0) {
+		printf("Error - process did not run ok with valid vdev value\n");
+		return -1;
+	}
+
+	if (launch_proc(vdevval2) != 0) {
+		printf("Error - process did not run ok with valid vdev value,"
+			"with dummy args\n");
+		return -1;
+	}
+
+	if (launch_proc(vdevval3) != 0) {
+		printf("Error - process did not run ok with valid vdev value,"
+			"with valid args\n");
+		return -1;
+	}
+	return 0;
+}
+#endif
 
 /*
  * Test that the app doesn't run with invalid -r option.
@@ -1201,6 +1245,13 @@ test_eal_flags(void)
 		return ret;
 	}
 
+#ifdef RTE_LIBRTE_PMD_RING
+	ret = test_invalid_vdev_flag();
+	if (ret < 0) {
+		printf("Error in test_invalid_vdev_flag()\n");
+		return ret;
+	}
+#endif
 	ret = test_invalid_r_flag();
 	if (ret < 0) {
 		printf("Error in test_invalid_r_flag()\n");

@@ -86,6 +86,7 @@ do_recursive_call(void)
 			{ "test_no_hpet_flag", no_action },
 			{ "test_whitelist_flag", no_action },
 			{ "test_invalid_b_flag", no_action },
+			{ "test_invalid_vdev_flag", no_action },
 			{ "test_invalid_r_flag", no_action },
 #ifdef RTE_LIBRTE_XEN_DOM0
 			{ "test_dom0_misc_flags", no_action },
