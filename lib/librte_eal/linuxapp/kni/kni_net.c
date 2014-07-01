@@ -612,6 +612,21 @@ kni_net_rebuild_header(struct sk_buff *skb)
 	return 0;
 }
 
+/**
+ * kni_net_set_mac - Change the Ethernet Address of the KNI NIC
+ * @netdev: network interface device structure
+ * @p: pointer to an address structure
+ *
+ * Returns 0 on success, negative on failure
+ **/
+static int kni_net_set_mac(struct net_device *netdev, void *p)
+{
+	struct sockaddr *addr = p;
+	if (!is_valid_ether_addr((unsigned char *)(addr->sa_data)))
+		return -EADDRNOTAVAIL;
+	memcpy(netdev->dev_addr, addr->sa_data, netdev->addr_len);
+	return 0;
+}
 
 static const struct header_ops kni_net_header_ops = {
 	.create  = kni_net_header,
@@ -628,6 +643,7 @@ static const struct net_device_ops kni_net_netdev_ops = {
 	.ndo_do_ioctl = kni_net_ioctl,
 	.ndo_get_stats = kni_net_stats,
 	.ndo_tx_timeout = kni_net_tx_timeout,
+	.ndo_set_mac_address = kni_net_set_mac,
 };
 
 void
