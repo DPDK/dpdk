@@ -180,7 +180,7 @@ rte_eth_dev_allocate(const char *name)
 		rte_eth_dev_data_alloc();
 
 	if (rte_eth_dev_allocated(name) != NULL) {
-		PMD_DEBUG_TRACE("Ethernet Device with name %s already allocated!\n");
+		PMD_DEBUG_TRACE("Ethernet Device with name %s already allocated!\n", name);
 		return NULL;
 	}
 
