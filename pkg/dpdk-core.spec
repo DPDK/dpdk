@@ -29,24 +29,22 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# name includes full version because there is no ABI stability yet
-Name: dpdk-core-1.6.0
-Version: r2
-%define fullversion 1.6.0%{version}
+Name: dpdk
+Version: 1.6.0r2
 Release: 1
 Packager: packaging@6wind.com
 URL: http://dpdk.org
-Source: http://dpdk.org/browse/dpdk/snapshot/dpdk-%{fullversion}.tar.gz
+Source: http://dpdk.org/browse/dpdk/snapshot/dpdk-%{version}.tar.gz
 
 Summary: Intel(r) Data Plane Development Kit core
 Group: System Environment/Libraries
 License: BSD and LGPLv2 and GPLv2
 
 ExclusiveArch: i686, x86_64
-%define target %{_arch}-native-linuxapp-gcc
-%define machine default
+%global target %{_arch}-native-linuxapp-gcc
+%global machine nhm
 
-BuildRequires: kernel-devel, kernel-headers, doxygen
+BuildRequires: kernel-devel, kernel-headers, libpcap-devel, xen-devel, doxygen
 
 %description
 Intel(r) DPDK core includes kernel modules, core libraries and tools.
@@ -56,25 +54,34 @@ can support fast path applications such as 6WINDGate, pktgen, rumptcpip, etc.
 More libraries are available as extensions in other packages.
 
 %package devel
-Summary: Intel(r) Data Plane Development Kit core for development
+Summary: Intel(r) Data Plane Development Kit for development
+Requires: %{name}%{?_isa} = %{version}-%{release}
 %description devel
-Intel(r) DPDK core-devel is a set of makefiles, headers, examples and documentation
+Intel(r) DPDK devel is a set of makefiles, headers and examples
 for fast packet processing on x86 platforms.
-More libraries are available as extensions in other packages.
 
-%define destdir %{buildroot}%{_prefix}
-%define moddir  /lib/modules/%(uname -r)/extra
-%define datadir %{_datadir}/dpdk
-%define docdir  %{_docdir}/dpdk
+%package doc
+Summary: Intel(r) Data Plane Development Kit API documentation
+BuildArch: noarch
+%description doc
+Intel(r) DPDK doc explains the API details in doxygen HTML format.
+
+%global destdir %{buildroot}%{_prefix}
+%global moddir  /lib/modules/%(uname -r)/extra
+%global datadir %{_datadir}/dpdk
+%global docdir  %{_docdir}/dpdk
 
 %prep
-%setup -qn dpdk-%{fullversion}
+%setup -q
 
 %build
 make O=%{target} T=%{target} config
 sed -ri 's,(RTE_MACHINE=).*,\1%{machine},' %{target}/.config
 sed -ri 's,(RTE_APP_TEST=).*,\1n,'         %{target}/.config
 sed -ri 's,(RTE_BUILD_SHARED_LIB=).*,\1y,' %{target}/.config
+sed -ri 's,(LIBRTE_PMD_PCAP=).*,\1y,'      %{target}/.config
+sed -ri 's,(LIBRTE_PMD_XENVIRT=).*,\1y,'   %{target}/.config
+sed -ri 's,(LIBRTE_XEN_DOM0=).*,\1y,'      %{target}/.config
 make O=%{target} %{?_smp_mflags}
 make O=%{target} doc
 
@@ -97,6 +104,7 @@ rmdir %{destdir}/%{target}/doc
 mkdir -p                               %{buildroot}%{datadir}
 mv    %{destdir}/%{target}/.config     %{buildroot}%{datadir}/config
 mv    %{destdir}/%{target}             %{buildroot}%{datadir}
+mv    %{destdir}/scripts               %{buildroot}%{datadir}
 mv    %{destdir}/mk                    %{buildroot}%{datadir}
 cp -a            examples              %{buildroot}%{datadir}
 cp -a            tools                 %{buildroot}%{datadir}
@@ -116,8 +124,11 @@ ln -s            %{_libdir}            %{buildroot}%{datadir}/%{target}/lib
 %files devel
 %{_includedir}/*
 %{datadir}/mk
+%{datadir}/scripts
 %{datadir}/%{target}
 %{datadir}/examples
+
+%files doc
 %doc %{docdir}
 
 %post
