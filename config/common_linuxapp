@@ -33,7 +33,7 @@
 #
 # define executive environment
 #
-# CONFIG_RTE_EXEC_ENV can be linuxapp, baremetal
+# CONFIG_RTE_EXEC_ENV can be linuxapp, baremetal, bsdapp
 #
 CONFIG_RTE_EXEC_ENV="linuxapp"
 CONFIG_RTE_EXEC_ENV_LINUXAPP=y
