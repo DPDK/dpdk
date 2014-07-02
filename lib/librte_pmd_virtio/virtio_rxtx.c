@@ -55,7 +55,7 @@
 #include "virtqueue.h"
 
 #ifdef RTE_LIBRTE_VIRTIO_DEBUG_DUMP
-#define VIRTIO_DUMP_PACKET(m, len) rte_pktmbuf_dump(m, len)
+#define VIRTIO_DUMP_PACKET(m, len) rte_pktmbuf_dump(stdout, m, len)
 #else
 #define  VIRTIO_DUMP_PACKET(m, len) do { } while (0)
 #endif
