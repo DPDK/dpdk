@@ -31,20 +31,15 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/queue.h>
-#include <linux/binfmts.h>
-
 #include <rte_mbuf.h>
-#include <rte_cycles.h>
-#include <rte_dev.h>
-#include <rte_devargs.h>
-#include <rte_ethdev.h>
-#include <rte_ip.h>
-#include <rte_kvargs.h>
 #include <rte_malloc.h>
-#include <rte_memcpy.h>
-#include <rte_memory.h>
+#include <rte_ethdev.h>
+#include <rte_tcp.h>
 #include <rte_udp.h>
+#include <rte_ip.h>
+#include <rte_devargs.h>
+#include <rte_kvargs.h>
+#include <rte_dev.h>
 
 #include "rte_eth_bond.h"
 #include "rte_eth_bond_private.h"
