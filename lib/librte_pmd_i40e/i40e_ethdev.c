@@ -85,6 +85,8 @@
 #define I40E_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
 #define I40E_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
 
+#define I40E_PRE_TX_Q_CFG_WAIT_US       10 /* 10 us */
+
 #define I40E_RSS_OFFLOAD_ALL ( \
 	ETH_RSS_NONF_IPV4_UDP | \
 	ETH_RSS_NONF_IPV4_TCP | \
@@ -2780,6 +2782,13 @@ i40e_switch_tx_queue(struct i40e_hw *hw, uint16_t q_idx, bool on)
 	uint32_t reg;
 	uint16_t j;
 
+	/**
+	 * Set or clear TX Queue Disable flags,
+	 * which is required by hardware.
+	 */
+	i40e_pre_tx_queue_cfg(hw, q_idx, on);
+	rte_delay_us(I40E_PRE_TX_Q_CFG_WAIT_US);
+
 	/* Wait until the request is finished */
 	for (j = 0; j < I40E_CHK_Q_ENA_COUNT; j++) {
 		rte_delay_us(I40E_CHK_Q_ENA_INTERVAL_US);
@@ -2793,6 +2802,8 @@ i40e_switch_tx_queue(struct i40e_hw *hw, uint16_t q_idx, bool on)
 	if (on) {
 		if (reg & I40E_QTX_ENA_QENA_STAT_MASK)
 			return I40E_SUCCESS; /* already on, skip next steps */
+
+		I40E_WRITE_REG(hw, I40E_QTX_HEAD(q_idx), 0);
 		reg |= I40E_QTX_ENA_QENA_REQ_MASK;
 	} else {
 		if (!(reg & I40E_QTX_ENA_QENA_STAT_MASK))
@@ -2821,8 +2832,10 @@ i40e_switch_tx_queue(struct i40e_hw *hw, uint16_t q_idx, bool on)
 			(on ? "enable" : "disable"), q_idx);
 		return I40E_ERR_TIMEOUT;
 	}
+
 	return I40E_SUCCESS;
 }
+
 /* Swith on or off the tx queues */
 static int
 i40e_vsi_switch_tx_queues(struct i40e_vsi *vsi, bool on)
