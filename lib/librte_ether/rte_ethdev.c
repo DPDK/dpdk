@@ -2261,7 +2261,7 @@ int rte_eth_set_queue_rate_limit(uint8_t port_id, uint16_t queue_idx,
 	if (tx_rate > link.link_speed) {
 		PMD_DEBUG_TRACE("set queue rate limit:invalid tx_rate=%d, "
 				"bigger than link speed= %d\n",
-			tx_rate, link_speed);
+			tx_rate, link.link_speed);
 		return -EINVAL;
 	}
 
@@ -2298,7 +2298,7 @@ int rte_eth_set_vf_rate_limit(uint8_t port_id, uint16_t vf, uint16_t tx_rate,
 	if (tx_rate > link.link_speed) {
 		PMD_DEBUG_TRACE("set VF rate limit:invalid tx_rate=%d, "
 				"bigger than link speed= %d\n",
-				tx_rate, link_speed);
+				tx_rate, link.link_speed);
 		return -EINVAL;
 	}
 
