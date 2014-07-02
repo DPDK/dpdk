@@ -39,9 +39,10 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 include $(RTE_SDK)/mk/rte.vars.mk
 
 ifneq ($(CONFIG_RTE_EXEC_ENV),"linuxapp")
-$(error This application can only operate in a linuxapp environment, \
+$(info This application can only operate in a linuxapp environment, \
 please change the definition of the RTE_TARGET environment variable)
-endif
+all:
+else
 
 # binary name
 APP = qos_sched
@@ -55,3 +56,5 @@ CFLAGS_args.o := -D_GNU_SOURCE
 CFLAGS_cfg_file.o := -D_GNU_SOURCE
 
 include $(RTE_SDK)/mk/rte.extapp.mk
+
+endif
