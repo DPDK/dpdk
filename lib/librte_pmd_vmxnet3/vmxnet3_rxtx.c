@@ -90,7 +90,7 @@ static uint32_t rxprod_reg[2] = {VMXNET3_REG_RXPROD, VMXNET3_REG_RXPROD2};
 
 static inline int vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t* , uint8_t);
 static inline void vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *);
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
+#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER_NOT_USED
 static void vmxnet3_rxq_dump(struct vmxnet3_rx_queue *);
 static void vmxnet3_txq_dump(struct vmxnet3_tx_queue *);
 #endif
@@ -105,7 +105,7 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 	return (m);
 }
 
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
+#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER_NOT_USED
 static void
 vmxnet3_rxq_dump(struct vmxnet3_rx_queue *rxq)
 {
