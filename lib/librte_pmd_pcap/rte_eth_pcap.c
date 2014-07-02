@@ -719,7 +719,7 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 		if (ret < 0)
 			return -1;
 
-		return rte_eth_from_pcaps(pcaps.pcaps, 1, pcaps.pcaps, 1,
+		return rte_eth_from_pcaps(name, pcaps.pcaps, 1, pcaps.pcaps, 1,
 				numa_node, kvlist);
 	}
 
