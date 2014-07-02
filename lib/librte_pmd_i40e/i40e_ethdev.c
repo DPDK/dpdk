@@ -188,7 +188,6 @@ static struct i40e_veb *i40e_veb_setup(struct i40e_pf *pf,
 						struct i40e_vsi *vsi);
 static int i40e_pf_config_mq_rx(struct i40e_pf *pf);
 static int i40e_vsi_config_double_vlan(struct i40e_vsi *vsi, int on);
-static int i40e_pf_disable_all_queues(struct i40e_hw *hw);
 static inline int i40e_find_all_vlan_for_mac(struct i40e_vsi *vsi,
 					     struct i40e_macvlan_filter *mv_f,
 					     int num,
@@ -373,12 +372,8 @@ eth_i40e_dev_init(__rte_unused struct eth_driver *eth_drv,
 	hw->bus.device = pci_dev->addr.devid;
 	hw->bus.func = pci_dev->addr.function;
 
-	/* Disable all queues before PF reset, as required */
-	ret = i40e_pf_disable_all_queues(hw);
-	if (ret != I40E_SUCCESS) {
-		PMD_INIT_LOG(ERR, "Failed to disable queues %u\n", ret);
-		return ret;
-	}
+	/* Make sure all is clean before doing PF reset */
+	i40e_clear_hw(hw);
 
 	/* Reset here to make sure all is clean for each PF */
 	ret = i40e_pf_reset(hw);
@@ -3947,98 +3942,4 @@ i40e_pf_config_mq_rx(struct i40e_pf *pf)
 	}
 
 	return 0;
-}
-
-static int
-i40e_disable_queue(struct i40e_hw *hw, uint16_t q_idx)
-{
-	uint16_t i;
-	uint32_t reg;
-
-	/* Disable TX queue */
-	for (i = 0; i < I40E_CHK_Q_ENA_COUNT; i++) {
-		reg = I40E_READ_REG(hw, I40E_QTX_ENA(q_idx));
-		if (!(((reg >> I40E_QTX_ENA_QENA_REQ_SHIFT) & 0x1) ^
-			((reg >> I40E_QTX_ENA_QENA_STAT_SHIFT) & 0x1)))
-			break;
-		rte_delay_us(I40E_CHK_Q_ENA_INTERVAL_US);
-	}
-	if (i >= I40E_CHK_Q_ENA_COUNT) {
-		PMD_DRV_LOG(ERR, "Failed to disable "
-			"tx queue[%u]\n", q_idx);
-		return I40E_ERR_TIMEOUT;
-	}
-
-	if (reg & I40E_QTX_ENA_QENA_STAT_MASK) {
-		reg &= ~I40E_QTX_ENA_QENA_REQ_MASK;
-		I40E_WRITE_REG(hw, I40E_QTX_ENA(q_idx), reg);
-		for (i = 0; i < I40E_CHK_Q_ENA_COUNT; i++) {
-			rte_delay_us(I40E_CHK_Q_ENA_INTERVAL_US);
-			reg = I40E_READ_REG(hw, I40E_QTX_ENA(q_idx));
-			if (!(reg & I40E_QTX_ENA_QENA_REQ_MASK) &&
-				!(reg & I40E_QTX_ENA_QENA_STAT_MASK))
-				break;
-		}
-		if (i >= I40E_CHK_Q_ENA_COUNT) {
-			PMD_DRV_LOG(ERR, "Failed to disable "
-				"tx queue[%u]\n", q_idx);
-			return I40E_ERR_TIMEOUT;
-		}
-	}
-
-	/* Disable RX queue */
-	for (i = 0; i < I40E_CHK_Q_ENA_COUNT; i++) {
-		reg = I40E_READ_REG(hw, I40E_QRX_ENA(q_idx));
-		if (!((reg >> I40E_QRX_ENA_QENA_REQ_SHIFT) & 0x1) ^
-			((reg >> I40E_QRX_ENA_QENA_STAT_SHIFT) & 0x1))
-			break;
-		rte_delay_us(I40E_CHK_Q_ENA_INTERVAL_US);
-	}
-	if (i >= I40E_CHK_Q_ENA_COUNT) {
-		PMD_DRV_LOG(ERR, "Failed to disable "
-			"rx queue[%u]\n", q_idx);
-		return I40E_ERR_TIMEOUT;
-	}
-
-	if (reg & I40E_QRX_ENA_QENA_STAT_MASK) {
-		reg &= ~I40E_QRX_ENA_QENA_REQ_MASK;
-		I40E_WRITE_REG(hw, I40E_QRX_ENA(q_idx), reg);
-		for (i = 0; i < I40E_CHK_Q_ENA_COUNT; i++) {
-			rte_delay_us(I40E_CHK_Q_ENA_INTERVAL_US);
-			reg = I40E_READ_REG(hw, I40E_QRX_ENA(q_idx));
-			if (!(reg & I40E_QRX_ENA_QENA_REQ_MASK) &&
-				!(reg & I40E_QRX_ENA_QENA_STAT_MASK))
-				break;
-		}
-		if (i >= I40E_CHK_Q_ENA_COUNT) {
-			PMD_DRV_LOG(ERR, "Failed to disable "
-				"rx queue[%u]\n", q_idx);
-			return I40E_ERR_TIMEOUT;
-		}
-	}
-
-	return I40E_SUCCESS;
-}
-
-static int
-i40e_pf_disable_all_queues(struct i40e_hw *hw)
-{
-	uint32_t reg;
-	uint16_t firstq, lastq, maxq, i;
-	int ret;
-	reg = I40E_READ_REG(hw, I40E_PFLAN_QALLOC);
-	if (!(reg & I40E_PFLAN_QALLOC_VALID_MASK)) {
-		PMD_DRV_LOG(INFO, "PF queue allocation is invalid\n");
-		return I40E_ERR_PARAM;
-	}
-	firstq = reg & I40E_PFLAN_QALLOC_FIRSTQ_MASK;
-	lastq = (reg & I40E_PFLAN_QALLOC_LASTQ_MASK) >>
-			I40E_PFLAN_QALLOC_LASTQ_SHIFT;
-	maxq = lastq - firstq;
-	for (i = 0; i <= maxq; i++) {
-		ret = i40e_disable_queue(hw, i);
-		if (ret != I40E_SUCCESS)
-			return ret;
-	}
-	return I40E_SUCCESS;
 }
