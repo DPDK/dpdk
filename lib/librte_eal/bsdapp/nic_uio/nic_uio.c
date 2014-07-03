@@ -112,6 +112,7 @@ struct pci_bdf {
 #define RTE_PCI_DEV_ID_DECL_I40E(vend, dev)    {vend, dev},
 #define RTE_PCI_DEV_ID_DECL_I40EVF(vend, dev)  {vend, dev},
 #define RTE_PCI_DEV_ID_DECL_VIRTIO(vend, dev)  {vend, dev},
+#define RTE_PCI_DEV_ID_DECL_VMXNET3(vend, dev) {vend, dev},
 
 const struct device devices[] = {
 #include <rte_pci_dev_ids.h>
