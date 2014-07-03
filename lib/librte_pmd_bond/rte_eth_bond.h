@@ -35,7 +35,7 @@
 #define _RTE_ETH_BOND_H_
 
 /**
- * @file rte_bond.h
+ * @file rte_eth_bond.h
  *
  * RTE Link Bonding Ethernet Device
  * Link Bonding for 1GbE and 10GbE ports to allow the aggregation of multiple
