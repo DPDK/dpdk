@@ -139,17 +139,11 @@ app_send_burst(struct thread_conf *qconf)
 
 	do {
 		ret = rte_eth_tx_burst(qconf->tx_port, qconf->tx_queue, mbufs, (uint16_t)n);
-		if (unlikely(ret < n)) { /* we cannot drop the packets, so re-send */
-			/* update number of packets to be sent */
-			n -= ret;
-			mbufs = (struct rte_mbuf **)&mbufs[ret];
-			/* limit number of retries to avoid endless loop */
-			/* reset retry counter if some packets were sent */
-			if (likely(ret != 0)) {
-				continue;
-			}
-		}
-	} while (ret != n);
+		/* we cannot drop the packets, so re-send */
+		/* update number of packets to be sent */
+		n -= ret;
+		mbufs = (struct rte_mbuf **)&mbufs[ret];
+	} while (n);
 }
 
 
