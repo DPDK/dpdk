@@ -406,8 +406,6 @@ grant_gntalloc_mbuf_pool(struct rte_mempool *mpool, uint32_t pg_num, uint32_t *g
 	char key_str[PATH_MAX] = {0};
 	char val_str[PATH_MAX] = {0};
 
-	snprintf(val_str, sizeof(val_str), "");
-
 	if (grant_node_create(pg_num, gref_arr, pa_arr, val_str, sizeof(val_str))) {
 		return -1;
 	}
@@ -421,7 +419,7 @@ grant_gntalloc_mbuf_pool(struct rte_mempool *mpool, uint32_t pg_num, uint32_t *g
 	if (snprintf(key_str, sizeof(key_str),
 		DPDK_XENSTORE_PATH"%d"MEMPOOL_VA_XENSTORE_STR, mempool_idx) == -1)
 		return -1;
-	if (snprintf(val_str, sizeof(val_str), "%p", (uintptr_t)mpool->elt_va_start) == -1)
+	if (snprintf(val_str, sizeof(val_str), "%"PRIxPTR, (uintptr_t)mpool->elt_va_start) == -1)
 		return -1;
 	if (xenstore_write(key_str, val_str) == -1)
 		return -1;
