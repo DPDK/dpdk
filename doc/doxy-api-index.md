@@ -122,7 +122,7 @@ There are many libraries, so their headers may be grouped by topics:
   [approx fraction]    (@ref rte_approx.h),
   [random]             (@ref rte_random.h),
   [key/value args]     (@ref rte_kvargs.h),
-  [string]             (@ref rte_string_fns.h),
+  [string]             (@ref rte_string_fns.h)
 
 - **debug**:
   [debug]              (@ref rte_debug.h),
