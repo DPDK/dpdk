@@ -36,7 +36,7 @@ showversion:
 			-e 's,^#define RTE_VER_SUFFIX[[:space:]]+"(.*)",\1,p' \
 			$(RTE_SRCDIR)/lib/librte_eal/common/include/rte_version.h) ;\
 		printf '%d.%d.%d' "$$1" "$$2" "$$3"; \
-		if [ -z "$$4" ]; then echo; \
+		if [ -z "$$5" ]; then echo; \
 		else printf '%s' "$$4"; \
 			if [ $$5 -lt 16 ] ; then echo $$5; \
 			else echo $$(($$5 - 16)); fi; \
