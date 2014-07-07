@@ -920,7 +920,7 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 	struct bond_dev_private *internals;
 	struct rte_eth_link link;
 
-	int i, bonded_port_id, valid_slave, active_pos = -1;
+	int i, bonded_port_id, valid_slave = 0, active_pos = -1;
 
 	if (type != RTE_ETH_EVENT_INTR_LSC)
 		return;
