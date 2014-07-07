@@ -37,8 +37,6 @@
 #   - define TOOLCHAIN_LDFLAGS variable (overriden by cmdline value)
 #   - define TOOLCHAIN_ASFLAGS variable (overriden by cmdline value)
 #
-# examples for RTE_TOOLCHAIN: gcc, icc
-#
 
 # Warning: we do not use CROSS environment variable as icc is mainly a
 # x86->x86 compiler

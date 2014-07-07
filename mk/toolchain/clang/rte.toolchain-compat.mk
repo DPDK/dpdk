@@ -30,58 +30,14 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #
-# toolchain:
+# CPUID-related options
 #
-#   - define CC, LD, AR, AS, ... (overriden by cmdline value)
-#   - define TOOLCHAIN_CFLAGS variable (overriden by cmdline value)
-#   - define TOOLCHAIN_LDFLAGS variable (overriden by cmdline value)
-#   - define TOOLCHAIN_ASFLAGS variable (overriden by cmdline value)
+# This was added to support compiler versions which might not support all the
+# flags we need
 #
 
-CC        = $(CROSS)gcc
-CPP       = $(CROSS)cpp
-# for now, we don't use as but nasm.
-# AS      = $(CROSS)as
-AS        = nasm
-AR        = $(CROSS)ar
-LD        = $(CROSS)ld
-OBJCOPY   = $(CROSS)objcopy
-OBJDUMP   = $(CROSS)objdump
-STRIP     = $(CROSS)strip
-READELF   = $(CROSS)readelf
-GCOV      = $(CROSS)gcov
+# find out CLANG version
 
-ifeq ("$(origin CC)", "command line")
-HOSTCC    = $(CC)
-else
-HOSTCC    = gcc
-endif
-HOSTAS    = as
+CLANG_MAJOR_VERSION = $(shell $(CC) -dumpversion | cut -f1 -d.)
 
-TOOLCHAIN_ASFLAGS =
-TOOLCHAIN_CFLAGS =
-TOOLCHAIN_LDFLAGS =
-
-ifeq ($(CONFIG_RTE_LIBRTE_GCOV),y)
-TOOLCHAIN_CFLAGS += --coverage
-TOOLCHAIN_LDFLAGS += --coverage
-ifeq (,$(findstring -O0,$(EXTRA_CFLAGS)))
-  $(warning "EXTRA_CFLAGS doesn't contains -O0, coverage will be inaccurate with optimizations enabled")
-endif
-endif
-
-WERROR_FLAGS := -W -Wall -Werror -Wstrict-prototypes -Wmissing-prototypes
-WERROR_FLAGS += -Wmissing-declarations -Wold-style-definition -Wpointer-arith
-WERROR_FLAGS += -Wcast-align -Wnested-externs -Wcast-qual
-WERROR_FLAGS += -Wformat-nonliteral -Wformat-security
-
-ifeq ($(CONFIG_RTE_EXEC_ENV),"linuxapp")
-# These trigger warnings in newlib, so can't be used for baremetal
-WERROR_FLAGS += -Wundef -Wwrite-strings
-endif
-
-# process cpu flags
-include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
-
-export CC AS AR LD OBJCOPY OBJDUMP STRIP READELF
-export TOOLCHAIN_CFLAGS TOOLCHAIN_LDFLAGS TOOLCHAIN_ASFLAGS
+CLANG_MINOR_VERSION = $(shell $(CC) -dumpversion | cut -f2 -d.)

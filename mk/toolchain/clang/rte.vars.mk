@@ -38,7 +38,11 @@
 #   - define TOOLCHAIN_ASFLAGS variable (overriden by cmdline value)
 #
 
+ifeq ($(KERNELRELEASE),)
+CC        = $(CROSS)clang
+else
 CC        = $(CROSS)gcc
+endif
 CPP       = $(CROSS)cpp
 # for now, we don't use as but nasm.
 # AS      = $(CROSS)as
@@ -54,7 +58,7 @@ GCOV      = $(CROSS)gcov
 ifeq ("$(origin CC)", "command line")
 HOSTCC    = $(CC)
 else
-HOSTCC    = gcc
+HOSTCC    = clang
 endif
 HOSTAS    = as
 
@@ -62,23 +66,11 @@ TOOLCHAIN_ASFLAGS =
 TOOLCHAIN_CFLAGS =
 TOOLCHAIN_LDFLAGS =
 
-ifeq ($(CONFIG_RTE_LIBRTE_GCOV),y)
-TOOLCHAIN_CFLAGS += --coverage
-TOOLCHAIN_LDFLAGS += --coverage
-ifeq (,$(findstring -O0,$(EXTRA_CFLAGS)))
-  $(warning "EXTRA_CFLAGS doesn't contains -O0, coverage will be inaccurate with optimizations enabled")
-endif
-endif
-
 WERROR_FLAGS := -W -Wall -Werror -Wstrict-prototypes -Wmissing-prototypes
 WERROR_FLAGS += -Wmissing-declarations -Wold-style-definition -Wpointer-arith
-WERROR_FLAGS += -Wcast-align -Wnested-externs -Wcast-qual
+WERROR_FLAGS += -Wnested-externs -Wcast-qual
 WERROR_FLAGS += -Wformat-nonliteral -Wformat-security
-
-ifeq ($(CONFIG_RTE_EXEC_ENV),"linuxapp")
-# These trigger warnings in newlib, so can't be used for baremetal
 WERROR_FLAGS += -Wundef -Wwrite-strings
-endif
 
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
