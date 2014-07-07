@@ -44,6 +44,14 @@ ifeq ($(CC), icc)
 # CFLAGS for icc
 #
 CFLAGS_BASE_DRIVER = -wd174 -wd593 -wd869 -wd981 -wd2259
+
+else ifeq ($(CC), clang)
+#
+# CFLAGS for clang
+#
+CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
+CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
+
 else
 #
 # CFLAGS for gcc
