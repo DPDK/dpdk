@@ -31,6 +31,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <nmmintrin.h>
 #include <rte_acl.h>
 #include "tb_mem.h"
 #include "acl.h"
