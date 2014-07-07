@@ -45,6 +45,15 @@ CFLAGS += $(WERROR_FLAGS)
 #
 ifeq ($(CC), icc)
 CFLAGS_BASE_DRIVER = -wd593
+else ifeq ($(CC), clang)
+CFLAGS_BASE_DRIVER += -Wno-sign-compare
+CFLAGS_BASE_DRIVER += -Wno-unused-value
+CFLAGS_BASE_DRIVER += -Wno-unused-parameter
+CFLAGS_BASE_DRIVER += -Wno-strict-aliasing
+CFLAGS_BASE_DRIVER += -Wno-format
+CFLAGS_BASE_DRIVER += -Wno-missing-field-initializers
+CFLAGS_BASE_DRIVER += -Wno-pointer-to-int-cast
+CFLAGS_BASE_DRIVER += -Wno-format-nonliteral
 else
 CFLAGS_BASE_DRIVER  = -Wno-unused-but-set-variable
 CFLAGS_BASE_DRIVER += -Wno-sign-compare
