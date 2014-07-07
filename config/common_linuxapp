@@ -63,7 +63,7 @@ CONFIG_RTE_EXEC_ENV_LINUXAPP=y
 #
 ##
 ## The compiler we use.
-## Can be gcc or icc.
+## Can be gcc, icc or clang.
 ##
 #CONFIG_RTE_TOOLCHAIN="gcc"
 #CONFIG_RTE_TOOLCHAIN_GCC=y
