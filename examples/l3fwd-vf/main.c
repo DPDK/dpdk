@@ -54,6 +54,7 @@
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
 #include <rte_atomic.h>
+#include <rte_spinlock.h>
 #include <rte_cycles.h>
 #include <rte_prefetch.h>
 #include <rte_lcore.h>
@@ -302,7 +303,7 @@ struct lcore_conf {
 } __rte_cache_aligned;
 
 static struct lcore_conf lcore_conf[RTE_MAX_LCORE];
-
+static rte_spinlock_t spinlock_conf[RTE_MAX_ETHPORTS] = {RTE_SPINLOCK_INITIALIZER};
 /* Send burst of packets on an output interface */
 static inline int
 send_burst(struct lcore_conf *qconf, uint16_t n, uint8_t port)
@@ -314,7 +315,10 @@ send_burst(struct lcore_conf *qconf, uint16_t n, uint8_t port)
 	queueid = qconf->tx_queue_id;
 	m_table = (struct rte_mbuf **)qconf->tx_mbufs[port].m_table;
 
+	rte_spinlock_lock(&spinlock_conf[port]);
 	ret = rte_eth_tx_burst(port, queueid, m_table, n);
+	rte_spinlock_unlock(&spinlock_conf[port]);
+
 	if (unlikely(ret < n)) {
 		do {
 			rte_pktmbuf_free(m_table[ret]);
