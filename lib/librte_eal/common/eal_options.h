@@ -45,6 +45,8 @@ enum {
 	OPT_LONG_MIN_NUM = 256,
 #define OPT_HUGE_DIR    "huge-dir"
 	OPT_HUGE_DIR_NUM = OPT_LONG_MIN_NUM,
+#define OPT_MASTER_LCORE "master-lcore"
+	OPT_MASTER_LCORE_NUM,
 #define OPT_PROC_TYPE   "proc-type"
 	OPT_PROC_TYPE_NUM,
 #define OPT_NO_SHCONF   "no-shconf"

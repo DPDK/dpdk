@@ -557,6 +557,51 @@ test_missing_c_flag(void)
 }
 
 /*
+ * Test --master-lcore option with matching coremask
+ */
+static int
+test_master_lcore_flag(void)
+{
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target doesn't support prefixes at this point */
+	const char *prefix = "";
+#else
+	char prefix[PATH_MAX], tmp[PATH_MAX];
+	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
+		printf("Error - unable to get current prefix!\n");
+		return -1;
+	}
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+#endif
+
+	/* --master-lcore flag but no value */
+	const char *argv1[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore"};
+	/* --master-lcore flag with invalid value */
+	const char *argv2[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore", "-1"};
+	const char *argv3[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore", "X"};
+	/* master lcore not in coremask */
+	const char *argv4[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore", "2"};
+	/* valid value */
+	const char *argv5[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore", "1"};
+	/* valid value set before coremask */
+	const char *argv6[] = { prgname, prefix, mp_flag, "-n", "1", "--master-lcore", "1", "-c", "3"};
+
+	if (launch_proc(argv1) == 0
+			|| launch_proc(argv2) == 0
+			|| launch_proc(argv3) == 0
+			|| launch_proc(argv4) == 0) {
+		printf("Error - process ran without error with wrong --master-lcore\n");
+		return -1;
+	}
+	if (launch_proc(argv5) != 0
+			|| launch_proc(argv6) != 0) {
+		printf("Error - process did not run ok with valid --master-lcore\n");
+		return -1;
+	}
+	return 0;
+}
+
+/*
  * Test that the app doesn't run without the -n flag. In all cases
  * should give an error and fail to run.
  * Since -n is not compulsory for MP, we instead use --no-huge and --no-shconf
@@ -1242,6 +1287,12 @@ test_eal_flags(void)
 	ret = test_missing_c_flag();
 	if (ret < 0) {
 		printf("Error in test_missing_c_flag()\n");
+		return ret;
+	}
+
+	ret = test_master_lcore_flag();
+	if (ret < 0) {
+		printf("Error in test_master_lcore_flag()\n");
 		return ret;
 	}
 
