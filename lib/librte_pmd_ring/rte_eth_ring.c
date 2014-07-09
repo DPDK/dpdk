@@ -493,7 +493,6 @@ rte_pmd_ring_devinit(const char *name, const char *params)
 			eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
 			return 0;
 		} else {
-			eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
 			ret = rte_kvargs_count(kvlist, ETH_RING_NUMA_NODE_ACTION_ARG);
 			info = rte_zmalloc("struct node_action_list", sizeof(struct node_action_list) +
 					   (sizeof(struct node_action_pair) * ret), 0);
@@ -510,7 +509,7 @@ rte_pmd_ring_devinit(const char *name, const char *params)
 				goto out_free;
 
 			for (info->count = 0; info->count < info->total; info->count++) {
-				eth_dev_ring_pair_create(name, info->list[info->count].node,
+				eth_dev_ring_create(name, info->list[info->count].node,
 						    info->list[info->count].action);
 			}
 		}
