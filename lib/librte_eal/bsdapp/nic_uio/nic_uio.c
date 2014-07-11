@@ -109,6 +109,8 @@ struct pci_bdf {
 #define RTE_PCI_DEV_ID_DECL_IGBVF(vend, dev)   {vend, dev},
 #define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev)   {vend, dev},
 #define RTE_PCI_DEV_ID_DECL_IXGBEVF(vend, dev) {vend, dev},
+#define RTE_PCI_DEV_ID_DECL_I40E(vend, dev)    {vend, dev},
+#define RTE_PCI_DEV_ID_DECL_I40EVF(vend, dev)  {vend, dev},
 #define RTE_PCI_DEV_ID_DECL_VIRTIO(vend, dev)  {vend, dev},
 
 const struct device devices[] = {
