@@ -165,7 +165,7 @@ typedef int (*rte_port_out_op_tx_bulk)(
 	uint64_t pkts_mask);
 
 /**
- * Output port free
+ * Output port flush
  *
  * @param port
  *   Handle to output port instance
