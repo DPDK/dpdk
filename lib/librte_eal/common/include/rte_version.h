@@ -64,19 +64,19 @@ extern "C" {
 /**
  * Patch level number i.e. the z in x.y.z
  */
-#define RTE_VER_PATCH_LEVEL 0
+#define RTE_VER_PATCH_LEVEL 1
 
 /**
  * Extra string to be appended to version number
  */
-#define RTE_VER_SUFFIX ""
+#define RTE_VER_SUFFIX "-rc"
 
 /**
  * Patch release number
  *   0-15 = release candidates
  *   16   = release
  */
-#define RTE_VER_PATCH_RELEASE 16
+#define RTE_VER_PATCH_RELEASE 0
 
 /**
  * Macro to compute a version number usable for comparisons
