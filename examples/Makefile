@@ -43,6 +43,7 @@ DIRS-y += dpdk_qat
 endif
 DIRS-y += exception_path
 DIRS-y += helloworld
+DIRS-y += ip_pipeline
 DIRS-y += ip_reassembly
 DIRS-$(CONFIG_RTE_MBUF_SCATTER_GATHER) += ip_fragmentation
 DIRS-$(CONFIG_RTE_MBUF_SCATTER_GATHER) += ipv4_multicast
