@@ -166,10 +166,13 @@ store_extended_tag(struct device *dev,
 	else
 		return -EINVAL;
 
+	pci_cfg_access_lock(pci_dev);
 	pci_bus_read_config_dword(pci_dev->bus, pci_dev->devfn,
 					PCI_DEV_CAP_REG, &val);
-	if (!(val & PCI_DEV_CAP_EXT_TAG_MASK)) /* Not supported */
+	if (!(val & PCI_DEV_CAP_EXT_TAG_MASK)) { /* Not supported */
+		pci_cfg_access_unlock(pci_dev);
 		return -EPERM;
+	}
 
 	val = 0;
 	pci_bus_read_config_dword(pci_dev->bus, pci_dev->devfn,
@@ -180,6 +183,7 @@ store_extended_tag(struct device *dev,
 		val &= ~PCI_DEV_CTRL_EXT_TAG_MASK;
 	pci_bus_write_config_dword(pci_dev->bus, pci_dev->devfn,
 					PCI_DEV_CTRL_REG, val);
+	pci_cfg_access_unlock(pci_dev);
 
 	return count;
 }
