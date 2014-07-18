@@ -32,32 +32,10 @@
 
 #include "common_linuxapp"
 
-#
-# machine can define specific variables or action for a specific board
-# RTE_MACHINE can be:
-# default  nothing specific
-# native   current machine
-# atm      Intel® Atom™ microarchitecture
-# nhm      Intel® microarchitecture code name Nehalem
-# wsm      Intel® microarchitecture code name Westmere
-# snb      Intel® microarchitecture code name Sandy Bridge
-# ivb      Intel® microarchitecture code name Ivy Bridge
-#
-# Note: if your compiler does not support the relevant -march options,
-# it will be compiled with whatever latest processor the compiler supports!
-#
 CONFIG_RTE_MACHINE="native"
 
-#
-# define the architecture we compile for.
-# CONFIG_RTE_ARCH can be i686, x86_64, x86_64_32
-#
 CONFIG_RTE_ARCH="x86_64"
 CONFIG_RTE_ARCH_X86_64=y
 
-#
-# The compiler we use.
-# Can be gcc or icc.
-#
 CONFIG_RTE_TOOLCHAIN="icc"
 CONFIG_RTE_TOOLCHAIN_ICC=y
