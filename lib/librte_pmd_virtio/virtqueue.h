@@ -152,7 +152,7 @@ struct virtqueue {
 	 */
 	uint16_t vq_used_cons_idx;
 	uint16_t vq_avail_idx;
-	void     *virtio_net_hdr_mem; /**< hdr for each xmit packet */
+	phys_addr_t virtio_net_hdr_mem; /**< hdr for each xmit packet */
 
 	struct vq_desc_extra {
 		void              *cookie;
@@ -354,7 +354,8 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	dxp->ndescs = needed;
 
 	start_dp = txvq->vq_ring.desc;
-	start_dp[idx].addr  = (uint64_t)(uintptr_t)txvq->virtio_net_hdr_mem + idx * sizeof(struct virtio_net_hdr);
+	start_dp[idx].addr  =
+		txvq->virtio_net_hdr_mem + idx * sizeof(struct virtio_net_hdr);
 	start_dp[idx].len   = sizeof(struct virtio_net_hdr);
 	start_dp[idx].flags = VRING_DESC_F_NEXT;
 	idx = start_dp[idx].next;

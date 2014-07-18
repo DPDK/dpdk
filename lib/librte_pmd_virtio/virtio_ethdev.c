@@ -331,7 +331,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	PMD_INIT_LOG(DEBUG, "vq->vq_ring_mem:      0x%"PRIx64"\n", (uint64_t)mz->phys_addr);
 	PMD_INIT_LOG(DEBUG, "vq->vq_ring_virt_mem: 0x%"PRIx64"\n", (uint64_t)mz->addr);
 	vq->virtio_net_hdr_mz  = NULL;
-	vq->virtio_net_hdr_mem = (void *)NULL;
+	vq->virtio_net_hdr_mem = 0;
 
 	if (queue_type == VTNET_TQ) {
 		/*
@@ -347,7 +347,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			return -ENOMEM;
 		}
 		vq->virtio_net_hdr_mem =
-			(void *)(uintptr_t)vq->virtio_net_hdr_mz->phys_addr;
+			vq->virtio_net_hdr_mz->phys_addr;
 		memset(vq->virtio_net_hdr_mz->addr, 0,
 			vq_size * sizeof(struct virtio_net_hdr));
 	} else if (queue_type == VTNET_CQ) {
@@ -361,7 +361,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			return -ENOMEM;
 		}
 		vq->virtio_net_hdr_mem =
-			(void *)(uintptr_t)vq->virtio_net_hdr_mz->phys_addr;
+			vq->virtio_net_hdr_mz->phys_addr;
 		memset(vq->virtio_net_hdr_mz->addr, 0, PAGE_SIZE);
 	}
 
