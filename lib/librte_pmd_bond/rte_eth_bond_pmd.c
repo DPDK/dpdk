@@ -678,8 +678,8 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 	for (i = 0; i < internals->slave_count; i++) {
 		if (slave_configure(eth_dev, &(rte_eth_devices[internals->slaves[i]]))
 				!= 0) {
-			RTE_LOG(ERR, PMD,
-					"bonded port (%d) failed to reconfigure slave device %d)",
+			RTE_LOG(ERR, PMD, "bonded port "
+					"(%d) failed to reconfigure slave device (%d)\n)",
 					eth_dev->data->port_id, internals->slaves[i]);
 			return -1;
 		}
@@ -920,17 +920,12 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 	struct bond_dev_private *internals;
 	struct rte_eth_link link;
 
-	int i, bonded_port_id, valid_slave = 0, active_pos = -1;
+	int i, valid_slave = 0, active_pos = -1;
 
-	if (type != RTE_ETH_EVENT_INTR_LSC)
+	if (type != RTE_ETH_EVENT_INTR_LSC || param == NULL)
 		return;
 
-	if (param == NULL)
-		return;
-
-	bonded_port_id = *(uint8_t *)param;
-
-	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
+	bonded_eth_dev = &rte_eth_devices[*(uint8_t *)param];
 	slave_eth_dev = &rte_eth_devices[port_id];
 
 	if (valid_bonded_ethdev(bonded_eth_dev))
@@ -963,48 +958,51 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 
 	rte_eth_link_get_nowait(port_id, &link);
 	if (link.link_status) {
-		if (active_pos == -1) {
-			/* if no active slave ports then set this port to be primary port */
-			if (internals->active_slave_count == 0) {
-				/* If first active slave, then change link status */
-				bonded_eth_dev->data->dev_link.link_status = 1;
-				internals->current_primary_port = port_id;
+		if (active_pos >= 0)
+			return;
 
-				/* Inherit eth dev link properties from first active slave */
-				link_properties_set(bonded_eth_dev,
-						&(slave_eth_dev->data->dev_link));
+		/* if no active slave ports then set this port to be primary port */
+		if (internals->active_slave_count < 1) {
+			/* If first active slave, then change link status */
+			bonded_eth_dev->data->dev_link.link_status = 1;
+			internals->current_primary_port = port_id;
 
-			}
-			internals->active_slaves[internals->active_slave_count++] = port_id;
-
-			/* If user has defined the primary port then default to using it */
-			if (internals->user_defined_primary_port &&
-					internals->primary_port == port_id)
-				bond_ethdev_primary_set(internals, port_id);
-
+			/* Inherit eth dev link properties from first active slave */
+			link_properties_set(bonded_eth_dev,
+					&(slave_eth_dev->data->dev_link));
 		}
+		internals->active_slaves[internals->active_slave_count++] = port_id;
+
+		/* If user has defined the primary port then default to using it */
+		if (internals->user_defined_primary_port &&
+				internals->primary_port == port_id)
+			bond_ethdev_primary_set(internals, port_id);
 	} else {
-		if (active_pos != -1) {
-			/* Remove from active slave list */
-			for (i = active_pos; i < (internals->active_slave_count - 1); i++)
-				internals->active_slaves[i] = internals->active_slaves[i+1];
+		if (active_pos < 0)
+			return;
 
-			internals->active_slave_count--;
+		/* Remove from active slave list */
+		for (i = active_pos; i < (internals->active_slave_count - 1); i++)
+			internals->active_slaves[i] = internals->active_slaves[i+1];
 
-			/* No active slaves, change link status to down and reset other
-			 * link properties */
-			if (internals->active_slave_count == 0)
-				link_properties_reset(bonded_eth_dev);
+		internals->active_slave_count--;
 
-			/* Update primary id, take first active slave from list or if none
-			 * available set to -1 */
-			if (port_id == internals->current_primary_port) {
-				if (internals->active_slave_count > 0)
-					bond_ethdev_primary_set(internals,
-							internals->active_slaves[0]);
-				else
-					internals->current_primary_port = internals->primary_port;
-			}
+		/* No active slaves, change link status to down and reset other
+		 * link properties */
+		if (internals->active_slave_count < 1) {
+			bonded_eth_dev->data->dev_link.link_status = 0;
+
+			link_properties_reset(bonded_eth_dev);
+		}
+
+		/* Update primary id, take first active slave from list or if none
+		 * available set to -1 */
+		if (port_id == internals->current_primary_port) {
+			if (internals->active_slave_count > 0)
+				bond_ethdev_primary_set(internals,
+						internals->active_slaves[0]);
+			else
+				internals->current_primary_port = internals->primary_port;
 		}
 	}
 }

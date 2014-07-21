@@ -122,7 +122,7 @@ static struct udp_hdr pkt_udp_hdr;
 
 static struct link_bonding_unittest_params default_params  = {
 	.bonded_port_id = -1,
-	.slave_port_ids = { 0 },
+	.slave_port_ids = { -1 },
 	.bonded_slave_count = 0,
 	.bonding_mode = BONDING_MODE_ROUND_ROBIN,
 
@@ -258,10 +258,11 @@ configure_ethdev(uint8_t port_id, uint8_t start)
 	return 0;
 
 error:
-	printf("Failed to configure ethdev %d", port_id);
+	printf("Failed to configure ethdev %d\n", port_id);
 	return -1;
 }
 
+static int slaves_initialized;
 
 static int
 test_setup(void)
@@ -270,46 +271,56 @@ test_setup(void)
 	struct ether_addr *mac_addr = (struct ether_addr *)slave_mac;
 
 	/* Allocate ethernet packet header with space for VLAN header */
-	test_params->pkt_eth_hdr = malloc(sizeof(struct ether_hdr) +
-			sizeof(struct vlan_hdr));
 	if (test_params->pkt_eth_hdr == NULL) {
-		printf("ethernet header struct allocation failed!\n");
-		return -1;
-	}
+		test_params->pkt_eth_hdr = malloc(sizeof(struct ether_hdr) +
+				sizeof(struct vlan_hdr));
 
+		if (test_params->pkt_eth_hdr == NULL) {
+			printf("ethernet header struct allocation failed!\n");
+			return -1;
+		}
+	}
 
 	nb_mbuf_per_pool = RTE_TEST_RX_DESC_MAX + DEF_PKT_BURST +
 			RTE_TEST_TX_DESC_MAX + MAX_PKT_BURST;
-
-	test_params->mbuf_pool = rte_mempool_create("MBUF_POOL", nb_mbuf_per_pool,
-			MBUF_SIZE, MBUF_CACHE_SIZE, sizeof(struct rte_pktmbuf_pool_private),
-			rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
-			rte_socket_id(), 0);
 	if (test_params->mbuf_pool == NULL) {
-		printf("rte_mempool_create failed\n");
-		return -1;
+		test_params->mbuf_pool = rte_mempool_create("MBUF_POOL", nb_mbuf_per_pool,
+				MBUF_SIZE, MBUF_CACHE_SIZE, sizeof(struct rte_pktmbuf_pool_private),
+				rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
+				rte_socket_id(), 0);
+		if (test_params->mbuf_pool == NULL) {
+			printf("rte_mempool_create failed\n");
+			return -1;
+		}
 	}
 
 	/* Create / Initialize virtual eth devs */
-	for (i = 0; i < TEST_MAX_NUMBER_OF_PORTS; i++) {
-		char pmd_name[RTE_ETH_NAME_MAX_LEN];
+	if (!slaves_initialized) {
+		for (i = 0; i < TEST_MAX_NUMBER_OF_PORTS; i++) {
+			char pmd_name[RTE_ETH_NAME_MAX_LEN];
 
-		mac_addr->addr_bytes[ETHER_ADDR_LEN-1] = i;
+			mac_addr->addr_bytes[ETHER_ADDR_LEN-1] = i;
 
-		snprintf(pmd_name, RTE_ETH_NAME_MAX_LEN, "test_slave_pmd_%d", i);
+			snprintf(pmd_name, RTE_ETH_NAME_MAX_LEN, "eth_virt_%d", i);
 
-		test_params->slave_port_ids[i] = virtual_ethdev_create(pmd_name,
-				mac_addr, rte_socket_id());
-		if (test_params->slave_port_ids[i] < 0) {
-			printf("Failed to create virtual pmd eth device.\n");
-			return -1;
+			test_params->slave_port_ids[i] = virtual_ethdev_create(pmd_name,
+					mac_addr, rte_socket_id());
+			if (test_params->slave_port_ids[i] < 0) {
+				printf("Failed to create virtual virtual ethdev %s\n", pmd_name);
+				return -1;
+			}
+
+			printf("Created virtual ethdev %s\n", pmd_name);
+
+			retval = configure_ethdev(test_params->slave_port_ids[i], 1);
+			if (retval != 0) {
+				printf("Failed to configure virtual ethdev %s\n", pmd_name);
+				return -1;
+			}
+
+			printf("Configured virtual ethdev %s\n", pmd_name);
 		}
-
-		retval = configure_ethdev(test_params->slave_port_ids[i], 1);
-		if (retval != 0) {
-			printf("Failed to configure virtual pmd eth device.\n");
-			return -1;
-		}
+		slaves_initialized = 1;
 	}
 
 	return 0;
@@ -318,44 +329,39 @@ test_setup(void)
 static int
 test_create_bonded_device(void)
 {
-	int retval, current_slave_count;
+	int current_slave_count;
 
 	uint8_t slaves[RTE_MAX_ETHPORTS];
 
-	test_params->bonded_port_id = rte_eth_bond_create(BONDED_DEV_NAME,
-			test_params->bonding_mode, rte_socket_id());
-	if (test_params->bonded_port_id < 0) {
-		printf("\t Failed to create bonded device.\n");
-		return -1;
+	/* Don't try to recreate bonded device if re-running test suite*/
+	if (test_params->bonded_port_id == -1) {
+		test_params->bonded_port_id = rte_eth_bond_create(BONDED_DEV_NAME,
+				test_params->bonding_mode, rte_socket_id());
+
+		TEST_ASSERT(test_params->bonded_port_id >= 0,
+				"Failed to create bonded ethdev %s", BONDED_DEV_NAME);
+
+		TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0),
+				"Failed to configure bonded ethdev %s", BONDED_DEV_NAME);
 	}
 
-	retval = configure_ethdev(test_params->bonded_port_id, 0);
-	if (retval != 0) {
-		printf("Failed to configure bonded pmd eth device.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonded_port_id,
+			test_params->bonding_mode), "Failed to set ethdev %d to mode %d",
+			test_params->bonded_port_id, test_params->bonding_mode);
 
 	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
 			slaves, RTE_MAX_ETHPORTS);
-	if (current_slave_count > 0) {
-		printf("Number of slaves is great than expected.\n");
-		return -1;
-	}
+
+	TEST_ASSERT(current_slave_count == 0,
+			"Number of slaves %d is great than expected %d.",
+			current_slave_count, 0);
 
 	current_slave_count = rte_eth_bond_active_slaves_get(
 			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS);
-	if (current_slave_count > 0) {
-		printf("Number of active slaves is great than expected.\n");
-		return -1;
-	}
 
-
-	if (rte_eth_bond_mode_get(test_params->bonded_port_id) !=
-			test_params->bonding_mode) {
-		printf("Bonded device mode not as expected.\n");
-		return -1;
-
-	}
+	TEST_ASSERT(current_slave_count == 0,
+			"Number of active slaves %d is great than expected %d.",
+			current_slave_count, 0);
 
 	return 0;
 }
@@ -534,6 +540,8 @@ test_remove_slave_from_invalid_bonded_device(void)
 	return 0;
 }
 
+static int bonded_id = 2;
+
 static int
 test_add_already_bonded_slave_to_bonded_device(void)
 {
@@ -551,7 +559,7 @@ test_add_already_bonded_slave_to_bonded_device(void)
 		return -1;
 	}
 
-	snprintf(pmd_name, RTE_ETH_NAME_MAX_LEN, "%s_2", BONDED_DEV_NAME);
+	snprintf(pmd_name, RTE_ETH_NAME_MAX_LEN, "%s_%d", BONDED_DEV_NAME, ++bonded_id);
 
 	port_id = rte_eth_bond_create(pmd_name, test_params->bonding_mode,
 			rte_socket_id());
@@ -659,18 +667,16 @@ test_start_bonded_device(void)
 {
 	struct rte_eth_link link_status;
 
-	int retval, current_slave_count, current_bonding_mode, primary_port;
+	int current_slave_count, current_bonding_mode, primary_port;
 	uint8_t slaves[RTE_MAX_ETHPORTS];
 
 	/* Add slave to bonded device*/
 	if (test_add_slave_to_bonded_device() != 0)
 		return -1;
 
-	retval = rte_eth_dev_start(test_params->bonded_port_id);
-	if (retval != 0) {
-		printf("Failed to start bonded pmd eth device.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
+		"Failed to start bonded pmd eth device %d.",
+		test_params->bonded_port_id);
 
 	/* Change link status of virtual pmd so it will be added to the active
 	 * slave list of the bonded device*/
@@ -1075,40 +1081,29 @@ static int
 initialize_bonded_device_with_slaves(uint8_t bonding_mode,
 		uint8_t number_of_slaves, uint8_t enable_slave)
 {
-	int retval;
-
 	/* configure bonded device */
-	retval = configure_ethdev(test_params->bonded_port_id, 0);
-	if (retval != 0) {
-		printf("Failed to configure bonding port (%d) in mode %d with (%d) slaves.\n",
-				test_params->bonded_port_id, bonding_mode, number_of_slaves);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0),
+			"Failed to configure bonding port (%d) in mode %d "
+			"with (%d) slaves.", test_params->bonded_port_id, bonding_mode,
+			number_of_slaves);
 
 	while (number_of_slaves > test_params->bonded_slave_count) {
 		/* Add slaves to bonded device */
-		retval = test_add_slave_to_bonded_device();
-		if (retval != 0) {
-			printf("Failed to add slave (%d to  bonding port (%d).\n",
-					test_params->bonded_slave_count - 1,
-					test_params->bonded_port_id);
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
+				"Failed to add slave (%d to  bonding port (%d).",
+				test_params->bonded_slave_count - 1,
+				test_params->bonded_port_id);
 	}
 
 	/* Set link bonding mode  */
-	retval = rte_eth_bond_mode_set(test_params->bonded_port_id, bonding_mode);
-	if (retval != 0) {
-		printf("Failed to set link bonding mode on port (%d) to (%d).\n",
-				test_params->bonded_port_id, bonding_mode);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonded_port_id,
+			bonding_mode),
+			"Failed to set link bonding mode on port (%d) to (%d).",
+			test_params->bonded_port_id, bonding_mode);
 
-	retval = rte_eth_dev_start(test_params->bonded_port_id);
-	if (retval != 0) {
-		printf("Failed to start bonded pmd eth device.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
+		"Failed to start bonded pmd eth device %d.",
+		test_params->bonded_port_id);
 
 	if (enable_slave)
 		enable_bonded_slaves();
@@ -1137,6 +1132,9 @@ test_adding_slave_after_bonded_device_started(void)
 		printf("\t Failed to add slave to bonded port.\n");
 		return -1;
 	}
+
+	rte_eth_stats_reset(
+			test_params->slave_port_ids[test_params->bonded_slave_count]);
 
 	test_params->bonded_slave_count++;
 
@@ -1653,20 +1651,22 @@ test_roundrobin_verify_slave_link_status_change_behaviour(void)
 		return -1;
 	}
 
-	burst_size = 21;
+	burst_size = 20;
 
 	/* Verify that pkts are not sent on slaves with link status down:
 	 *
 	 * 1. Generate test burst of traffic
 	 * 2. Transmit burst on bonded eth_dev
 	 * 3. Verify stats for bonded eth_dev (opackets = burst_size)
-	 * 4. Verify stats for slave eth_devs (s0 = 11, s1 = 0, s2 = 10, s3 = 0)
+	 * 4. Verify stats for slave eth_devs (s0 = 10, s1 = 0, s2 = 10, s3 = 0)
 	 */
 	if (generate_test_burst(tx_pkt_burst, burst_size, 0, 1, 0, 0, 0) !=
 			burst_size) {
 		printf("generate_test_burst failed\n");
 		return -1;
 	}
+
+	rte_eth_stats_reset(test_params->bonded_port_id);
 
 	if (rte_eth_tx_burst(test_params->bonded_port_id, 0, tx_pkt_burst,
 			burst_size) != burst_size) {
@@ -1675,39 +1675,30 @@ test_roundrobin_verify_slave_link_status_change_behaviour(void)
 	}
 
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.opackets != (uint64_t)burst_size) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
+			"Port (%d) opackets stats (%d) not expected (%d) value",
+			test_params->bonded_port_id, (int)port_stats.opackets,
+			burst_size);
 
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	if (port_stats.opackets != 11) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[0]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)10,
+			"Port (%d) opackets stats (%d) not expected (%d) value",
+			test_params->slave_port_ids[0], (int)port_stats.opackets, 10);
 
 	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
-	if (port_stats.opackets != 0) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)0,
+			"Port (%d) opackets stats (%d) not expected (%d) value",
+			test_params->slave_port_ids[1], (int)port_stats.opackets, 0);
 
 	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
-	if (port_stats.opackets != 10) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[2]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)10,
+			"Port (%d) opackets stats (%d) not expected (%d) value",
+			test_params->slave_port_ids[2], (int)port_stats.opackets, 10);
 
 	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
-	if (port_stats.opackets != 0) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[3]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)0,
+			"Port (%d) opackets stats (%d) not expected (%d) value",
+			test_params->slave_port_ids[3], (int)port_stats.opackets, 0);
 
 	/* Verify that pkts are not sent on slaves with link status down:
 	 *
@@ -1716,7 +1707,7 @@ test_roundrobin_verify_slave_link_status_change_behaviour(void)
 	 * 3. Rx burst on bonded eth_dev, expected (burst_ size *
 	 *    TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_SLAVE_COUNT) received
 	 * 4. Verify stats for bonded eth_dev
-	 * 6. Verify stats for slave eth_devs (s0 = 11, s1 = 0, s2 = 10, s3 = 0)
+	 * 6. Verify stats for slave eth_devs (s0 = 10, s1 = 0, s2 = 10, s3 = 0)
 	 */
 	for (i = 0; i < TEST_RR_LINK_STATUS_SLAVE_COUNT; i++) {
 		if (generate_test_burst(&gen_pkt_burst[i][0], burst_size, 0, 1, 0, 0, 0)
@@ -3512,7 +3503,8 @@ test_broadcast_verify_mac_assignment(void)
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
 		if (memcmp(&expected_mac_addr_0, &read_mac_addr,
 				sizeof(read_mac_addr))) {
-			printf("slave port (%d) mac address has changed to that of primary port without stop/start toggle of bonded device\n",
+			printf("slave port (%d) mac address has changed to that of primary"
+					"port without stop/start toggle of bonded device\n",
 					test_params->slave_port_ids[i]);
 			return -1;
 		}
@@ -3528,8 +3520,8 @@ test_broadcast_verify_mac_assignment(void)
 
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
 	if (memcmp(&expected_mac_addr_1, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of new primary port\n",
-				test_params->slave_port_ids[i]);
+		printf("bonded port (%d) mac address not set to that of new primary"
+				" port\n", test_params->slave_port_ids[i]);
 		return -1;
 	}
 
@@ -3537,8 +3529,8 @@ test_broadcast_verify_mac_assignment(void)
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
 		if (memcmp(&expected_mac_addr_1, &read_mac_addr,
 				sizeof(read_mac_addr))) {
-			printf("slave port (%d) mac address not set to that of new primary port\n",
-					test_params->slave_port_ids[i]);
+			printf("slave port (%d) mac address not set to that of new primary"
+					"port\n", test_params->slave_port_ids[i]);
 			return -1;
 		}
 	}
@@ -3747,179 +3739,73 @@ test_close_bonded_device(void)
 static int
 testsuite_teardown(void)
 {
-	if (test_params->pkt_eth_hdr != NULL)
+	if (test_params->pkt_eth_hdr != NULL) {
 		free(test_params->pkt_eth_hdr);
+		test_params->pkt_eth_hdr = NULL;
+	}
 
-	return 0;
+	/* Clean up and remove slaves from bonded device */
+	return remove_slaves_and_stop_bonded_device();
 }
 
-struct unittest {
-	int (*test_function)(void);
-	const char *success_msg;
-	const char *fail_msg;
-};
 
-struct unittest_suite {
-	int (*setup_function)(void);
-	int (*teardown_function)(void);
-	struct unittest unittests[];
-};
+static struct unit_test_suite link_bonding_test_suite  = {
+	.suite_name = "Link Bonding Unit Test Suite",
+	.setup = test_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		TEST_CASE(test_create_bonded_device),
+		TEST_CASE(test_create_bonded_device_with_invalid_params),
+		TEST_CASE(test_add_slave_to_bonded_device),
+		TEST_CASE(test_add_slave_to_invalid_bonded_device),
+		TEST_CASE(test_remove_slave_from_bonded_device),
+		TEST_CASE(test_remove_slave_from_invalid_bonded_device),
+		TEST_CASE(test_get_slaves_from_bonded_device),
+		TEST_CASE(test_add_already_bonded_slave_to_bonded_device),
+		TEST_CASE(test_add_remove_multiple_slaves_to_from_bonded_device),
+		TEST_CASE(test_start_bonded_device),
+		TEST_CASE(test_stop_bonded_device),
+		TEST_CASE(test_set_bonding_mode),
+		TEST_CASE(test_set_primary_slave),
+		TEST_CASE(test_set_explicit_bonded_mac),
+		TEST_CASE(test_adding_slave_after_bonded_device_started),
+		TEST_CASE(test_roundrobin_tx_burst),
+		TEST_CASE(test_roundrobin_rx_burst_on_single_slave),
+		TEST_CASE(test_roundrobin_rx_burst_on_multiple_slaves),
+		TEST_CASE(test_roundrobin_verify_promiscuous_enable_disable),
+		TEST_CASE(test_roundrobin_verify_mac_assignment),
+		TEST_CASE(test_roundrobin_verify_slave_link_status_change_behaviour),
+		TEST_CASE(test_activebackup_tx_burst),
+		TEST_CASE(test_activebackup_rx_burst),
+		TEST_CASE(test_activebackup_verify_promiscuous_enable_disable),
+		TEST_CASE(test_activebackup_verify_mac_assignment),
+		TEST_CASE(test_activebackup_verify_slave_link_status_change_failover),
+		TEST_CASE(test_balance_xmit_policy_configuration),
+		TEST_CASE(test_balance_l2_tx_burst),
+		TEST_CASE(test_balance_l23_tx_burst_ipv4_toggle_ip_addr),
+		TEST_CASE(test_balance_l23_tx_burst_vlan_ipv4_toggle_ip_addr),
+		TEST_CASE(test_balance_l23_tx_burst_ipv6_toggle_ip_addr),
+		TEST_CASE(test_balance_l23_tx_burst_vlan_ipv6_toggle_ip_addr),
+		TEST_CASE(test_balance_l23_tx_burst_toggle_mac_addr),
+		TEST_CASE(test_balance_l34_tx_burst_ipv4_toggle_ip_addr),
+		TEST_CASE(test_balance_l34_tx_burst_ipv4_toggle_udp_port),
+		TEST_CASE(test_balance_l34_tx_burst_vlan_ipv4_toggle_ip_addr),
+		TEST_CASE(test_balance_l34_tx_burst_ipv6_toggle_ip_addr),
+		TEST_CASE(test_balance_l34_tx_burst_vlan_ipv6_toggle_ip_addr),
+		TEST_CASE(test_balance_l34_tx_burst_ipv6_toggle_udp_port),
+		TEST_CASE(test_balance_rx_burst),
+		TEST_CASE(test_balance_verify_promiscuous_enable_disable),
+		TEST_CASE(test_balance_verify_mac_assignment),
+		TEST_CASE(test_balance_verify_slave_link_status_change_behaviour),
+		TEST_CASE(test_broadcast_tx_burst),
+		TEST_CASE(test_broadcast_rx_burst),
+		TEST_CASE(test_broadcast_verify_promiscuous_enable_disable),
+		TEST_CASE(test_broadcast_verify_mac_assignment),
+		TEST_CASE(test_broadcast_verify_slave_link_status_change_behaviour),
+		TEST_CASE(test_reconfigure_bonded_device),
+		TEST_CASE(test_close_bonded_device),
 
-static struct unittest_suite link_bonding_test_suite  = {
-	.setup_function = test_setup,
-	.teardown_function = testsuite_teardown,
-	.unittests = {
-		{ test_create_bonded_device, "test_create_bonded_device succeeded",
-			"test_create_bonded_device failed" },
-		{ test_create_bonded_device_with_invalid_params,
-			"test_create_bonded_device_with_invalid_params succeeded",
-			"test_create_bonded_device_with_invalid_params failed" },
-		{ test_add_slave_to_bonded_device,
-			"test_add_slave_to_bonded_device succeeded",
-			"test_add_slave_to_bonded_device failed" },
-		{ test_add_slave_to_invalid_bonded_device,
-			"test_add_slave_to_invalid_bonded_device succeeded",
-			"test_add_slave_to_invalid_bonded_device failed" },
-		{ test_remove_slave_from_bonded_device,
-			"test_remove_slave_from_bonded_device succeeded ",
-			"test_remove_slave_from_bonded_device failed" },
-		{ test_remove_slave_from_invalid_bonded_device,
-			"test_remove_slave_from_invalid_bonded_device succeeded",
-			"test_remove_slave_from_invalid_bonded_device failed" },
-		{ test_get_slaves_from_bonded_device,
-			"test_get_slaves_from_bonded_device succeeded",
-			"test_get_slaves_from_bonded_device failed" },
-		{ test_add_already_bonded_slave_to_bonded_device,
-			"test_add_already_bonded_slave_to_bonded_device succeeded",
-			"test_add_already_bonded_slave_to_bonded_device failed" },
-		{ test_add_remove_multiple_slaves_to_from_bonded_device,
-			"test_add_remove_multiple_slaves_to_from_bonded_device succeeded",
-			"test_add_remove_multiple_slaves_to_from_bonded_device failed" },
-		{ test_start_bonded_device,
-			"test_start_bonded_device succeeded",
-			"test_start_bonded_device failed" },
-		{ test_stop_bonded_device,
-			"test_stop_bonded_device succeeded",
-			"test_stop_bonded_device failed" },
-		{ test_set_bonding_mode,
-			"test_set_bonding_mode succeeded",
-			"test_set_bonding_mode failed" },
-		{ test_set_primary_slave,
-			"test_set_primary_slave succeeded",
-			"test_set_primary_slave failed" },
-		{ test_set_explicit_bonded_mac,
-			"test_set_explicit_bonded_mac succeeded",
-			"test_set_explicit_bonded_mac failed" },
-		{ test_adding_slave_after_bonded_device_started,
-			"test_adding_slave_after_bonded_device_started succeeded",
-			"test_adding_slave_after_bonded_device_started failed" },
-		{ test_roundrobin_tx_burst,
-			"test_roundrobin_tx_burst succeeded",
-			"test_roundrobin_tx_burst failed" },
-		{ test_roundrobin_rx_burst_on_single_slave,
-			"test_roundrobin_rx_burst_on_single_slave succeeded",
-			"test_roundrobin_rx_burst_on_single_slave failed" },
-		{ test_roundrobin_rx_burst_on_multiple_slaves,
-			"test_roundrobin_rx_burst_on_multiple_slaves succeeded",
-			"test_roundrobin_rx_burst_on_multiple_slaves failed" },
-		{ test_roundrobin_verify_promiscuous_enable_disable,
-			"test_roundrobin_verify_promiscuous_enable_disable succeeded",
-			"test_roundrobin_verify_promiscuous_enable_disable failed" },
-		{ test_roundrobin_verify_mac_assignment,
-			"test_roundrobin_verify_mac_assignment succeeded",
-			"test_roundrobin_verify_mac_assignment failed" },
-		{ test_roundrobin_verify_slave_link_status_change_behaviour,
-			"test_roundrobin_verify_slave_link_status_change_behaviour succeeded",
-			"test_roundrobin_verify_slave_link_status_change_behaviour failed" },
-		{ test_activebackup_tx_burst,
-			"test_activebackup_tx_burst succeeded",
-			"test_activebackup_tx_burst failed" },
-		{ test_activebackup_rx_burst,
-			"test_activebackup_rx_burst succeeded",
-			"test_activebackup_rx_burst failed" },
-		{ test_activebackup_verify_promiscuous_enable_disable,
-			"test_activebackup_verify_promiscuous_enable_disable succeeded",
-			"test_activebackup_verify_promiscuous_enable_disable failed" },
-		{ test_activebackup_verify_mac_assignment,
-			"test_activebackup_verify_mac_assignment succeeded",
-			"test_activebackup_verify_mac_assignment failed" },
-		{ test_activebackup_verify_slave_link_status_change_failover,
-			"test_activebackup_verify_slave_link_status_change_failover succeeded",
-			"test_activebackup_verify_slave_link_status_change_failover failed" },
-		{ test_balance_xmit_policy_configuration,
-			"test_balance_xmit_policy_configuration succeeded",
-			"test_balance_xmit_policy_configuration failed" },
-		{ test_balance_l2_tx_burst,
-			"test_balance_l2_tx_burst succeeded",
-			"test_balance_l2_tx_burst failed" },
-		{ test_balance_l23_tx_burst_ipv4_toggle_ip_addr,
-			"test_balance_l23_tx_burst_ipv4_toggle_ip_addr succeeded",
-			"test_balance_l23_tx_burst_ipv4_toggle_ip_addr failed" },
-		{ test_balance_l23_tx_burst_vlan_ipv4_toggle_ip_addr,
-			"test_balance_l23_tx_burst_vlan_ipv4_toggle_ip_addr succeeded",
-			"test_balance_l23_tx_burst_vlan_ipv4_toggle_ip_addr failed" },
-		{ test_balance_l23_tx_burst_ipv6_toggle_ip_addr,
-			"test_balance_l23_tx_burst_ipv6_toggle_ip_addr succeeded",
-			"test_balance_l23_tx_burst_ipv6_toggle_ip_addr failed" },
-		{ test_balance_l23_tx_burst_vlan_ipv6_toggle_ip_addr,
-			"test_balance_l23_tx_burst_vlan_ipv6_toggle_ip_addr succeeded",
-			"test_balance_l23_tx_burst_vlan_ipv6_toggle_ip_addr failed" },
-		{ test_balance_l23_tx_burst_toggle_mac_addr,
-			"test_balance_l23_tx_burst_toggle_mac_addr succeeded",
-			"test_balance_l23_tx_burst_toggle_mac_addr failed" },
-		{ test_balance_l34_tx_burst_ipv4_toggle_ip_addr,
-			"test_balance_l34_tx_burst_ipv4_toggle_ip_addr succeeded",
-			"test_balance_l34_tx_burst_ipv4_toggle_ip_addr failed" },
-		{ test_balance_l34_tx_burst_ipv4_toggle_udp_port,
-			"test_balance_l34_tx_burst_ipv4_toggle_udp_port succeeded",
-			"test_balance_l34_tx_burst_ipv4_toggle_udp_port failed" },
-		{ test_balance_l34_tx_burst_vlan_ipv4_toggle_ip_addr,
-			"test_balance_l34_tx_burst_vlan_ipv4_toggle_ip_addr succeeded",
-			"test_balance_l34_tx_burst_vlan_ipv4_toggle_ip_addr failed" },
-		{ test_balance_l34_tx_burst_ipv6_toggle_ip_addr,
-			"test_balance_l34_tx_burst_ipv6_toggle_ip_addr succeeded",
-			"test_balance_l34_tx_burst_ipv6_toggle_ip_addr failed" },
-		{ test_balance_l34_tx_burst_vlan_ipv6_toggle_ip_addr,
-			"test_balance_l34_tx_burst_vlan_ipv6_toggle_ip_addr succeeded",
-			"test_balance_l34_tx_burst_vlan_ipv6_toggle_ip_addr failed" },
-		{ test_balance_l34_tx_burst_ipv6_toggle_udp_port,
-			"test_balance_l34_tx_burst_ipv6_toggle_udp_port succeeded",
-			"test_balance_l34_tx_burst_ipv6_toggle_udp_port failed" },
-		{ test_balance_rx_burst,
-			"test_balance_rx_burst succeeded",
-			"test_balance_rx_burst failed" },
-		{ test_balance_verify_promiscuous_enable_disable,
-			"test_balance_verify_promiscuous_enable_disable succeeded",
-			"test_balance_verify_promiscuous_enable_disable failed" },
-		{ test_balance_verify_mac_assignment,
-			"test_balance_verify_mac_assignment succeeded",
-			"test_balance_verify_mac_assignment failed" },
-		{ test_balance_verify_slave_link_status_change_behaviour,
-			"test_balance_verify_slave_link_status_change_behaviour succeeded",
-			"test_balance_verify_slave_link_status_change_behaviour failed" },
-		{ test_broadcast_tx_burst,
-			"test_broadcast_tx_burst succeeded",
-			"test_broadcast_tx_burst failed" },
-		{ test_broadcast_rx_burst,
-			"test_broadcast_rx_burst succeeded",
-			"test_broadcast_rx_burst failed" },
-		{ test_broadcast_verify_promiscuous_enable_disable,
-			"test_broadcast_verify_promiscuous_enable_disable succeeded",
-			"test_broadcast_verify_promiscuous_enable_disable failed" },
-		{ test_broadcast_verify_mac_assignment,
-			"test_broadcast_verify_mac_assignment succeeded",
-			"test_broadcast_verify_mac_assignment failed" },
-		{ test_broadcast_verify_slave_link_status_change_behaviour,
-			"test_broadcast_verify_slave_link_status_change_behaviour succeeded",
-			"test_broadcast_verify_slave_link_status_change_behaviour failed" },
-		{ test_reconfigure_bonded_device,
-			"test_reconfigure_bonded_device succeeded",
-			"test_reconfigure_bonded_device failed" },
-		{ test_close_bonded_device,
-			"test_close_bonded_device succeeded",
-			"test_close_bonded_device failed" },
-
-		{ NULL , NULL, NULL } /**< NULL terminate unit test array */
+		{ NULL, NULL, NULL, NULL, NULL } /**< NULL terminate unit test array */
 	}
 };
 
@@ -3927,32 +3813,5 @@ static struct unittest_suite link_bonding_test_suite  = {
 int
 test_link_bonding(void)
 {
-	int i = 0;
-
-	if (link_bonding_test_suite.setup_function) {
-		if (link_bonding_test_suite.setup_function() != 0)
-			return -1;
-	}
-
-	while (link_bonding_test_suite.unittests[i].test_function) {
-		if (link_bonding_test_suite.unittests[i].test_function() == 0) {
-			printf("%s", link_bonding_test_suite.unittests[i].success_msg ?
-					link_bonding_test_suite.unittests[i].success_msg :
-					"unit test succeeded");
-		} else {
-			printf("%s", link_bonding_test_suite.unittests[i].fail_msg ?
-					link_bonding_test_suite.unittests[i].fail_msg :
-					"unit test failed");
-			return -1;
-		}
-		printf("\n");
-		i++;
-	}
-
-	if (link_bonding_test_suite.teardown_function) {
-		if (link_bonding_test_suite.teardown_function() != 0)
-			return -1;
-	}
-
-	return 0;
+	return unit_test_suite_runner(&link_bonding_test_suite);
 }

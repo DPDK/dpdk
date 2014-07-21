@@ -511,6 +511,7 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	pci_dev->numa_node = socket_id;
 	pci_drv->name = virtual_ethdev_driver_name;
 	pci_drv->id_table = id_table;
+	pci_drv->drv_flags = RTE_PCI_DRV_INTR_LSC;
 
 	eth_drv->pci_drv = (struct rte_pci_driver)(*pci_drv);
 	eth_dev->driver = eth_drv;
