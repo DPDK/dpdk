@@ -153,3 +153,56 @@ main(int argc, char **argv)
 
 	return 0;
 }
+
+
+int
+unit_test_suite_runner(struct unit_test_suite *suite)
+{
+	int retval, i = 0;
+
+	if (suite->suite_name)
+		printf("Test Suite : %s\n", suite->suite_name);
+
+	if (suite->setup)
+		if (suite->setup() != 0)
+			return -1;
+
+	while (suite->unit_test_cases[i].testcase) {
+		/* Run test case setup */
+		if (suite->unit_test_cases[i].setup) {
+			retval = suite->unit_test_cases[i].setup();
+			if (retval != 0)
+				return retval;
+		}
+
+		/* Run test case */
+		if (suite->unit_test_cases[i].testcase() == 0) {
+			printf("TestCase %2d: %s\n", i,
+					suite->unit_test_cases[i].success_msg ?
+					suite->unit_test_cases[i].success_msg :
+					"passed");
+		}
+		else {
+			printf("TestCase %2d: %s\n", i, suite->unit_test_cases[i].fail_msg ?
+					suite->unit_test_cases[i].fail_msg :
+					"failed");
+			return -1;
+		}
+
+		/* Run test case teardown */
+		if (suite->unit_test_cases[i].teardown) {
+			retval = suite->unit_test_cases[i].teardown();
+			if (retval != 0)
+				return retval;
+		}
+
+		i++;
+	}
+
+	/* Run test suite teardown */
+	if (suite->teardown)
+		if (suite->teardown() != 0)
+			return -1;
+
+	return 0;
+}
