@@ -280,8 +280,8 @@ get_config_ll_entry(struct vhost_device_ctx ctx)
 
 	/* Loop through linked list until the device_fh is found. */
 	while (ll_dev != NULL) {
-		if ((ll_dev->dev.device_fh == ctx.fh))
-            return ll_dev;
+		if (ll_dev->dev.device_fh == ctx.fh)
+			return ll_dev;
 		ll_dev = ll_dev->next;
 	}
 
