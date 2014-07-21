@@ -227,25 +227,27 @@ static const struct attribute_group dev_attr_grp = {
 /* Check if INTX works to control irq's.
  * Set's INTX_DISABLE flag and reads it back
  */
-static bool pci_intx_mask_supported(struct pci_dev *dev)
+static bool pci_intx_mask_supported(struct pci_dev *pdev)
 {
 	bool mask_supported = false;
-	uint16_t orig, new
+	uint16_t orig, new;
 
-	pci_block_user_cfg_access(dev);
+	pci_block_user_cfg_access(pdev);
 	pci_read_config_word(pdev, PCI_COMMAND, &orig);
-	pci_write_config_word(dev, PCI_COMMAND,
+	pci_write_config_word(pdev, PCI_COMMAND,
 			      orig ^ PCI_COMMAND_INTX_DISABLE);
-	pci_read_config_word(dev, PCI_COMMAND, &new);
+	pci_read_config_word(pdev, PCI_COMMAND, &new);
 
 	if ((new ^ orig) & ~PCI_COMMAND_INTX_DISABLE) {
-		dev_err(&dev->dev, "Command register changed from "
+		dev_err(&pdev->dev, "Command register changed from "
 			"0x%x to 0x%x: driver or hardware bug?\n", orig, new);
 	} else if ((new ^ orig) & PCI_COMMAND_INTX_DISABLE) {
 		mask_supported = true;
-		pci_write_config_word(dev, PCI_COMMAND, orig);
+		pci_write_config_word(pdev, PCI_COMMAND, orig);
 	}
-	pci_unblock_user_cfg_access(dev);
+	pci_unblock_user_cfg_access(pdev);
+
+	return mask_supported;
 }
 
 static bool pci_check_and_mask_intx(struct pci_dev *pdev)
@@ -253,7 +255,7 @@ static bool pci_check_and_mask_intx(struct pci_dev *pdev)
 	bool pending;
 	uint32_t status;
 
-	pci_block_user_cfg_access(dev);
+	pci_block_user_cfg_access(pdev);
 	pci_read_config_dword(pdev, PCI_COMMAND, &status);
 
 	/* interrupt is not ours, goes to out */
@@ -262,7 +264,7 @@ static bool pci_check_and_mask_intx(struct pci_dev *pdev)
 		uint16_t old, new;
 
 		old = status;
-		if (state != 0)
+		if (status != 0)
 			new = old & (~PCI_COMMAND_INTX_DISABLE);
 		else
 			new = old | PCI_COMMAND_INTX_DISABLE;
@@ -270,7 +272,7 @@ static bool pci_check_and_mask_intx(struct pci_dev *pdev)
 		if (old != new)
 			pci_write_config_word(pdev, PCI_COMMAND, new);
 	}
-	pci_unblock_user_cfg_access(dev);
+	pci_unblock_user_cfg_access(pdev);
 
 	return pending;
 }
