@@ -908,6 +908,21 @@ struct rte_eth_dev_info {
 	uint32_t tx_offload_capa; /**< Device TX offload capabilities. */
 };
 
+/** Maximum name length for extended statistics counters */
+#define RTE_ETH_XSTATS_NAME_SIZE 64
+
+/**
+ * An Ethernet device extended statistic structure
+ *
+ * This structure is used by ethdev->eth_xstats_get() to provide
+ * statistics that are not provided in the generic rte_eth_stats
+ * structure.
+ */
+struct rte_eth_xstats {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	uint64_t value;
+};
+
 struct rte_eth_dev;
 
 struct rte_eth_dev_callback;
@@ -1027,6 +1042,13 @@ typedef void (*eth_stats_get_t)(struct rte_eth_dev *dev,
 
 typedef void (*eth_stats_reset_t)(struct rte_eth_dev *dev);
 /**< @internal Reset global I/O statistics of an Ethernet device to 0. */
+
+typedef int (*eth_xstats_get_t)(struct rte_eth_dev *dev,
+	struct rte_eth_xstats *stats, unsigned n);
+/**< @internal Get extended stats of an Ethernet device. */
+
+typedef void (*eth_xstats_reset_t)(struct rte_eth_dev *dev);
+/**< @internal Reset extended stats of an Ethernet device. */
 
 typedef int (*eth_queue_stats_mapping_set_t)(struct rte_eth_dev *dev,
 					     uint16_t queue_id,
@@ -1376,8 +1398,10 @@ struct eth_dev_ops {
 	eth_allmulticast_enable_t  allmulticast_enable;/**< RX multicast ON. */
 	eth_allmulticast_disable_t allmulticast_disable;/**< RX multicast OF. */
 	eth_link_update_t          link_update;   /**< Get device link state. */
-	eth_stats_get_t            stats_get;     /**< Get device statistics. */
-	eth_stats_reset_t          stats_reset;   /**< Reset device statistics. */
+	eth_stats_get_t            stats_get;     /**< Get generic device statistics. */
+	eth_stats_reset_t          stats_reset;   /**< Reset generic device statistics. */
+	eth_xstats_get_t           xstats_get;    /**< Get extended device statistics. */
+	eth_xstats_reset_t         xstats_reset;  /**< Reset extended device statistics. */
 	eth_queue_stats_mapping_set_t queue_stats_mapping_set;
 	/**< Configure per queue stat counter mapping. */
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
@@ -2003,6 +2027,38 @@ extern void rte_eth_stats_get(uint8_t port_id, struct rte_eth_stats *stats);
  *   The port identifier of the Ethernet device.
  */
 extern void rte_eth_stats_reset(uint8_t port_id);
+
+/**
+ * Retrieve extended statistics of an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param xstats
+ *   A pointer to a table of structure of type *rte_eth_xstats*
+ *   to be filled with device statistics names and values.
+ *   This parameter can be set to NULL if n is 0.
+ * @param n
+ *   The size of the stats table, which should be large enough to store
+ *   all the statistics of the device.
+ * @return
+ *   - positive value lower or equal to n: success. The return value
+ *     is the number of entries filled in the stats table.
+ *   - positive value higher than n: error, the given statistics table
+ *     is too small. The return value corresponds to the size that should
+ *     be given to succeed. The entries in the table are not valid and
+ *     shall not be used by the caller.
+ *   - negative value on error (invalid port id)
+ */
+extern int rte_eth_xstats_get(uint8_t port_id,
+	struct rte_eth_xstats *xstats, unsigned n);
+
+/**
+ * Reset extended statistics of an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ */
+extern void rte_eth_xstats_reset(uint8_t port_id);
 
 /**
  *  Set a mapping for the specified transmit queue to the specified per-queue
