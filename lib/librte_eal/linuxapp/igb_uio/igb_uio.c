@@ -72,6 +72,7 @@ igbuio_get_uio_pci_dev(struct uio_info *info)
 /* sriov sysfs */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 34)
 static int pci_num_vf(struct pci_dev *dev)
+{
 	struct iov {
 		int pos;
 		int nres;
