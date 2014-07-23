@@ -450,6 +450,9 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 
 	ctx->in_use = 1;
 
+	/* Allocate mbufs and then put them into alloc_q */
+	kni_allocate_mbufs(ctx);
+
 	return ctx;
 
 kni_fail:
@@ -570,8 +573,9 @@ rte_kni_rx_burst(struct rte_kni *kni, struct rte_mbuf **mbufs, unsigned num)
 {
 	unsigned ret = kni_fifo_get(kni->tx_q, (void **)mbufs, num);
 
-	/* Allocate mbufs and then put them into alloc_q */
-	kni_allocate_mbufs(kni);
+	/* If buffers removed, allocate mbufs and then put them into alloc_q */
+	if (ret)
+		kni_allocate_mbufs(kni);
 
 	return ret;
 }
