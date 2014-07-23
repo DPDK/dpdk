@@ -183,14 +183,14 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"Display:\n"
 			"--------\n\n"
 
-			"show port (info|stats|fdir|stat_qmap) (port_id|all)\n"
+			"show port (info|stats|xstats|fdir|stat_qmap) (port_id|all)\n"
 			"    Display information for port_id, or all.\n\n"
 
 			"show port rss-hash [key]\n"
 			"    Display the RSS hash functions and RSS hash key"
 			" of port X\n\n"
 
-			"clear port (info|stats|fdir|stat_qmap) (port_id|all)\n"
+			"clear port (info|stats|xstats|fdir|stat_qmap) (port_id|all)\n"
 			"    Clear information for port_id, or all.\n\n"
 
 			"show config (rxtx|cores|fwd)\n"
@@ -5114,12 +5114,18 @@ static void cmd_showportall_parsed(void *parsed_result,
 		if (!strcmp(res->what, "stats"))
 			for (i = 0; i < nb_ports; i++)
 				nic_stats_clear(i);
+		else if (!strcmp(res->what, "xstats"))
+			for (i = 0; i < nb_ports; i++)
+				nic_xstats_clear(i);
 	} else if (!strcmp(res->what, "info"))
 		for (i = 0; i < nb_ports; i++)
 			port_infos_display(i);
 	else if (!strcmp(res->what, "stats"))
 		for (i = 0; i < nb_ports; i++)
 			nic_stats_display(i);
+	else if (!strcmp(res->what, "xstats"))
+		for (i = 0; i < nb_ports; i++)
+			nic_xstats_display(i);
 	else if (!strcmp(res->what, "fdir"))
 		for (i = 0; i < nb_ports; i++)
 			fdir_get_infos(i);
@@ -5135,13 +5141,13 @@ cmdline_parse_token_string_t cmd_showportall_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_showportall_result, port, "port");
 cmdline_parse_token_string_t cmd_showportall_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showportall_result, what,
-				 "info#stats#fdir#stat_qmap");
+				 "info#stats#xstats#fdir#stat_qmap");
 cmdline_parse_token_string_t cmd_showportall_all =
 	TOKEN_STRING_INITIALIZER(struct cmd_showportall_result, all, "all");
 cmdline_parse_inst_t cmd_showportall = {
 	.f = cmd_showportall_parsed,
 	.data = NULL,
-	.help_str = "show|clear port info|stats|fdir|stat_qmap all",
+	.help_str = "show|clear port info|stats|xstats|fdir|stat_qmap all",
 	.tokens = {
 		(void *)&cmd_showportall_show,
 		(void *)&cmd_showportall_port,
@@ -5167,10 +5173,14 @@ static void cmd_showport_parsed(void *parsed_result,
 	if (!strcmp(res->show, "clear")) {
 		if (!strcmp(res->what, "stats"))
 			nic_stats_clear(res->portnum);
+		else if (!strcmp(res->what, "xstats"))
+			nic_xstats_clear(res->portnum);
 	} else if (!strcmp(res->what, "info"))
 		port_infos_display(res->portnum);
 	else if (!strcmp(res->what, "stats"))
 		nic_stats_display(res->portnum);
+	else if (!strcmp(res->what, "xstats"))
+		nic_xstats_display(res->portnum);
 	else if (!strcmp(res->what, "fdir"))
 		 fdir_get_infos(res->portnum);
 	else if (!strcmp(res->what, "stat_qmap"))
@@ -5184,14 +5194,14 @@ cmdline_parse_token_string_t cmd_showport_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_result, port, "port");
 cmdline_parse_token_string_t cmd_showport_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_result, what,
-				 "info#stats#fdir#stat_qmap");
+				 "info#stats#xstats#fdir#stat_qmap");
 cmdline_parse_token_num_t cmd_showport_portnum =
 	TOKEN_NUM_INITIALIZER(struct cmd_showport_result, portnum, INT32);
 
 cmdline_parse_inst_t cmd_showport = {
 	.f = cmd_showport_parsed,
 	.data = NULL,
-	.help_str = "show|clear port info|stats|fdir|stat_qmap X (X = port number)",
+	.help_str = "show|clear port info|stats|xstats|fdir|stat_qmap X (X = port number)",
 	.tokens = {
 		(void *)&cmd_showport_show,
 		(void *)&cmd_showport_port,

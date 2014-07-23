@@ -199,6 +199,40 @@ nic_stats_clear(portid_t port_id)
 	printf("\n  NIC statistics for port %d cleared\n", port_id);
 }
 
+void
+nic_xstats_display(portid_t port_id)
+{
+	struct rte_eth_xstats *xstats;
+	int len, ret, i;
+
+	printf("###### NIC extended statistics for port %-2d\n", port_id);
+
+	len = rte_eth_xstats_get(port_id, NULL, 0);
+	if (len < 0) {
+		printf("Cannot get xstats count\n");
+		return;
+	}
+	xstats = malloc(sizeof(xstats[0]) * len);
+	if (xstats == NULL) {
+		printf("Cannot allocate memory for xstats\n");
+		return;
+	}
+	ret = rte_eth_xstats_get(port_id, xstats, len);
+	if (ret < 0 || ret > len) {
+		printf("Cannot get xstats\n");
+		free(xstats);
+		return;
+	}
+	for (i = 0; i < len; i++)
+		printf("%s: %"PRIu64"\n", xstats[i].name, xstats[i].value);
+	free(xstats);
+}
+
+void
+nic_xstats_clear(portid_t port_id)
+{
+	rte_eth_xstats_reset(port_id);
+}
 
 void
 nic_stats_mapping_display(portid_t port_id)

@@ -448,6 +448,8 @@ void launch_args_parse(int argc, char** argv);
 void prompt(void);
 void nic_stats_display(portid_t port_id);
 void nic_stats_clear(portid_t port_id);
+void nic_xstats_display(portid_t port_id);
+void nic_xstats_clear(portid_t port_id);
 void nic_stats_mapping_display(portid_t port_id);
 void port_infos_display(portid_t port_id);
 void fwd_lcores_config_display(void);
