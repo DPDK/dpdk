@@ -713,6 +713,20 @@ struct _kc_ethtool_pauseparam {
 #define SLE_VERSION_CODE 0
 #endif /* SLE_VERSION_CODE */
 
+/* Ubuntu release and kernel codes must be specified from Makefile */
+#ifndef UBUNTU_RELEASE_VERSION
+#define UBUNTU_RELEASE_VERSION(a,b) (((a) * 100) + (b))
+#endif
+#ifndef UBUNTU_KERNEL_VERSION
+#define UBUNTU_KERNEL_VERSION(a,b,c,abi,upload) (((a) << 40) + ((b) << 32) + ((c) << 24) + ((abi) << 8) + (upload))
+#endif
+#ifndef UBUNTU_RELEASE_CODE
+#define UBUNTU_RELEASE_CODE 0
+#endif
+#ifndef UBUNTU_KERNEL_CODE
+#define UBUNTU_KERNEL_CODE 0
+#endif
+
 #ifdef __KLOCWORK__
 #ifdef ARRAY_SIZE
 #undef ARRAY_SIZE
@@ -3847,6 +3861,7 @@ static inline struct sk_buff *__kc__vlan_hwaccel_put_tag(struct sk_buff *skb,
 
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0) )
 #if (!(RHEL_RELEASE_CODE && RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,0)))
+#if (!(UBUNTU_RELEASE_CODE == UBUNTU_RELEASE_VERSION(14,4) && UBUNTU_KERNEL_CODE >= UBUNTU_KERNEL_VERSION(3,13,0,30,54)))
 #ifdef NETIF_F_RXHASH
 #define PKT_HASH_TYPE_L3 0
 static inline void
@@ -3855,6 +3870,7 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 	skb->rxhash = hash;
 }
 #endif /* NETIF_F_RXHASH */
+#endif /* < 3.13.0-30.54 (Ubuntu 14.04) */
 #endif /* < RHEL7 */
 #endif /* < 3.14.0 */
 
