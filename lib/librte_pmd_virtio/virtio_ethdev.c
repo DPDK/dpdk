@@ -580,7 +580,7 @@ virtio_negotiate_features(struct virtio_hw *hw)
 	/* Prepare guest_features: feature that driver wants to support */
 	hw->guest_features = VTNET_FEATURES & ~mask;
 	PMD_INIT_LOG(DEBUG, "guest_features before negotiate = %x",
-		guest_features);
+		hw->guest_features);
 
 	/* Read device(host) feature bits */
 	host_features = VIRTIO_READ_REG_4(hw, VIRTIO_PCI_HOST_FEATURES);

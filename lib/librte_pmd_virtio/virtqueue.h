@@ -269,10 +269,10 @@ virtqueue_notify(struct virtqueue *vq)
 	used_idx = (vq)->vq_ring.used->idx; \
 	nused = (uint16_t)(used_idx - (vq)->vq_used_cons_idx); \
 	PMD_INIT_LOG(DEBUG, \
-	  "VQ: %s - size=%d; free=%d; used=%d; desc_head_idx=%d;" \
+	  "VQ: - size=%d; free=%d; used=%d; desc_head_idx=%d;" \
 	  " avail.idx=%d; used_cons_idx=%d; used.idx=%d;" \
 	  " avail.flags=0x%x; used.flags=0x%x", \
-	  (vq)->vq_name, (vq)->vq_nentries, (vq)->vq_free_cnt, nused, \
+	  (vq)->vq_nentries, (vq)->vq_free_cnt, nused, \
 	  (vq)->vq_desc_head_idx, (vq)->vq_ring.avail->idx, \
 	  (vq)->vq_used_cons_idx, (vq)->vq_ring.used->idx, \
 	  (vq)->vq_ring.avail->flags, (vq)->vq_ring.used->flags); \
