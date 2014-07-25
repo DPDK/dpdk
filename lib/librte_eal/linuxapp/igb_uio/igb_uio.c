@@ -506,7 +506,6 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	udev->info.version = "0.1";
 	udev->info.handler = igbuio_pci_irqhandler;
 	udev->info.irqcontrol = igbuio_pci_irqcontrol;
-	udev->info.irq = dev->irq;
 #ifdef CONFIG_XEN_DOM0
 	/* check if the driver run on Xen Dom0 */
 	if (xen_initial_domain())
@@ -516,9 +515,6 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	udev->pdev = dev;
 
 	switch (igbuio_intr_mode_preferred) {
-	case RTE_INTR_MODE_NONE:
-		udev->info.irq = 0;
-		break;
 	case RTE_INTR_MODE_MSIX:
 		/* Only 1 msi-x vector needed */
 		msix_entry.entry = 0;
@@ -532,6 +528,7 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	case RTE_INTR_MODE_MSI:
 		if (pci_enable_msi(dev) == 0) {
 			dev_dbg(&dev->dev, "using MSI");
+			udev->info.irq = dev->irq;
 			udev->mode = RTE_INTR_MODE_MSI;
 			break;
 		}
@@ -540,13 +537,17 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		if (pci_intx_mask_supported(dev)) {
 			dev_dbg(&dev->dev, "using INTX");
 			udev->info.irq_flags = IRQF_SHARED;
+			udev->info.irq = dev->irq;
 			udev->mode = RTE_INTR_MODE_LEGACY;
-		} else {
-			dev_err(&dev->dev, "PCI INTX mask not supported\n");
-			err = -EIO;
-			goto fail_release_iomem;
+			break;
 		}
+		dev_notice(&dev->dev, "PCI INTX mask not supported\n");
+		/* fall back to no IRQ */
+	case RTE_INTR_MODE_NONE:
+		udev->mode = RTE_INTR_MODE_NONE;
+		udev->info.irq = 0;
 		break;
+
 	default:
 		dev_err(&dev->dev, "invalid IRQ mode %u",
 			igbuio_intr_mode_preferred);
