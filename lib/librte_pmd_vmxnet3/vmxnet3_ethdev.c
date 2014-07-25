@@ -522,7 +522,7 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* Setting proper Rx Mode and issue Rx Mode Update command */
-	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_UCAST | VMXNET3_RXM_ALL_MULTI, 1);
+	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_UCAST | VMXNET3_RXM_BCAST, 1);
 
 	/*
 	 * Don't need to handle events for now
