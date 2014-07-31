@@ -128,6 +128,8 @@ static void i40e_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void i40e_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void i40e_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void i40e_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int i40e_dev_set_link_up(struct rte_eth_dev *dev);
+static int i40e_dev_set_link_down(struct rte_eth_dev *dev);
 static void i40e_dev_stats_get(struct rte_eth_dev *dev,
 			       struct rte_eth_stats *stats);
 static void i40e_dev_stats_reset(struct rte_eth_dev *dev);
@@ -222,6 +224,8 @@ static struct eth_dev_ops i40e_eth_dev_ops = {
 	.promiscuous_disable          = i40e_dev_promiscuous_disable,
 	.allmulticast_enable          = i40e_dev_allmulticast_enable,
 	.allmulticast_disable         = i40e_dev_allmulticast_disable,
+	.dev_set_link_up              = i40e_dev_set_link_up,
+	.dev_set_link_down            = i40e_dev_set_link_down,
 	.link_update                  = i40e_dev_link_update,
 	.stats_get                    = i40e_dev_stats_get,
 	.stats_reset                  = i40e_dev_stats_reset,
@@ -649,6 +653,102 @@ i40e_vsi_disable_queues_intr(struct i40e_vsi *vsi)
 	I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTLN(vsi->msix_intr - 1), 0);
 }
 
+static inline uint8_t
+i40e_parse_link_speed(uint16_t eth_link_speed)
+{
+	uint8_t link_speed = I40E_LINK_SPEED_UNKNOWN;
+
+	switch (eth_link_speed) {
+	case ETH_LINK_SPEED_40G:
+		link_speed = I40E_LINK_SPEED_40GB;
+		break;
+	case ETH_LINK_SPEED_20G:
+		link_speed = I40E_LINK_SPEED_20GB;
+		break;
+	case ETH_LINK_SPEED_10G:
+		link_speed = I40E_LINK_SPEED_10GB;
+		break;
+	case ETH_LINK_SPEED_1000:
+		link_speed = I40E_LINK_SPEED_1GB;
+		break;
+	case ETH_LINK_SPEED_100:
+		link_speed = I40E_LINK_SPEED_100MB;
+		break;
+	}
+
+	return link_speed;
+}
+
+static int
+i40e_phy_conf_link(struct i40e_hw *hw, uint8_t abilities, uint8_t force_speed)
+{
+	enum i40e_status_code status;
+	struct i40e_aq_get_phy_abilities_resp phy_ab;
+	struct i40e_aq_set_phy_config phy_conf;
+	const uint8_t mask = I40E_AQ_PHY_FLAG_PAUSE_TX |
+			I40E_AQ_PHY_FLAG_PAUSE_RX |
+			I40E_AQ_PHY_FLAG_LOW_POWER;
+	const uint8_t advt = I40E_LINK_SPEED_40GB |
+			I40E_LINK_SPEED_10GB |
+			I40E_LINK_SPEED_1GB |
+			I40E_LINK_SPEED_100MB;
+	int ret = -ENOTSUP;
+
+	status = i40e_aq_get_phy_capabilities(hw, false, false, &phy_ab,
+					      NULL);
+	if (status)
+		return ret;
+
+	memset(&phy_conf, 0, sizeof(phy_conf));
+
+	/* bits 0-2 use the values from get_phy_abilities_resp */
+	abilities &= ~mask;
+	abilities |= phy_ab.abilities & mask;
+
+	/* update ablities and speed */
+	if (abilities & I40E_AQ_PHY_AN_ENABLED)
+		phy_conf.link_speed = advt;
+	else
+		phy_conf.link_speed = force_speed;
+
+	phy_conf.abilities = abilities;
+
+	/* use get_phy_abilities_resp value for the rest */
+	phy_conf.phy_type = phy_ab.phy_type;
+	phy_conf.eee_capability = phy_ab.eee_capability;
+	phy_conf.eeer = phy_ab.eeer_val;
+	phy_conf.low_power_ctrl = phy_ab.d3_lpan;
+
+	PMD_DRV_LOG(DEBUG, "\n\tCurrent: abilities %x, link_speed %x\n"
+		    "\tConfig:  abilities %x, link_speed %x",
+		    phy_ab.abilities, phy_ab.link_speed,
+		    phy_conf.abilities, phy_conf.link_speed);
+
+	status = i40e_aq_set_phy_config(hw, &phy_conf, NULL);
+	if (status)
+		return ret;
+
+	return I40E_SUCCESS;
+}
+
+static int
+i40e_apply_link_speed(struct rte_eth_dev *dev)
+{
+	uint8_t speed;
+	uint8_t abilities = 0;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_conf *conf = &dev->data->dev_conf;
+
+	speed = i40e_parse_link_speed(conf->link_speed);
+	abilities |= I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
+	if (conf->link_speed == ETH_LINK_SPEED_AUTONEG)
+		abilities |= I40E_AQ_PHY_AN_ENABLED;
+	else
+		abilities |= I40E_AQ_PHY_LINK_ENABLED;
+
+	return i40e_phy_conf_link(hw, abilities, speed);
+}
+
 static int
 i40e_dev_start(struct rte_eth_dev *dev)
 {
@@ -656,6 +756,14 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vsi *vsi = pf->main_vsi;
 	int ret;
+
+	if ((dev->data->dev_conf.link_duplex != ETH_LINK_AUTONEG_DUPLEX) &&
+		(dev->data->dev_conf.link_duplex != ETH_LINK_FULL_DUPLEX)) {
+		PMD_INIT_LOG(ERR, "Invalid link_duplex (%hu) for port %hhu\n",
+				dev->data->dev_conf.link_duplex,
+				dev->data->port_id);
+		return -EINVAL;
+	}
 
 	/* Initialize VSI */
 	ret = i40e_vsi_init(vsi);
@@ -682,6 +790,13 @@ i40e_dev_start(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(INFO, "fail to set vsi broadcast\n");
 	}
 
+	/* Apply link configure */
+	ret = i40e_apply_link_speed(dev);
+	if (I40E_SUCCESS != ret) {
+		PMD_DRV_LOG(ERR, "Fail to apply link setting\n");
+		goto err_up;
+	}
+
 	return I40E_SUCCESS;
 
 err_up:
@@ -702,6 +817,9 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 
 	/* Clear all queues and release memory */
 	i40e_dev_clear_queues(dev);
+
+	/* Set link down */
+	i40e_dev_set_link_down(dev);
 
 	/* un-map queues with interrupt registers */
 	i40e_vsi_disable_queues_intr(vsi);
@@ -796,6 +914,29 @@ i40e_dev_allmulticast_disable(struct rte_eth_dev *dev)
 				vsi->seid, FALSE, NULL);
 	if (ret != I40E_SUCCESS)
 		PMD_DRV_LOG(ERR, "Failed to disable multicast promiscuous\n");
+}
+
+/*
+ * Set device link up.
+ */
+static int
+i40e_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	/* re-apply link speed setting */
+	return i40e_apply_link_speed(dev);
+}
+
+/*
+ * Set device link down.
+ */
+static int
+i40e_dev_set_link_down(__rte_unused struct rte_eth_dev *dev)
+{
+	uint8_t speed = I40E_LINK_SPEED_UNKNOWN;
+	uint8_t abilities = I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	return i40e_phy_conf_link(hw, abilities, speed);
 }
 
 int
