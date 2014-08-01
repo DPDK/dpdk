@@ -205,7 +205,7 @@ static inline int is_universal_ether_addr(const struct ether_addr *ea)
  */
 static inline int is_local_admin_ether_addr(const struct ether_addr *ea)
 {
-	return ((ea->addr_bytes[0] & ETHER_LOCAL_ADMIN_ADDR) == 1);
+	return ((ea->addr_bytes[0] & ETHER_LOCAL_ADMIN_ADDR) != 0);
 }
 
 /**
