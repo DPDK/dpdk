@@ -38,7 +38,7 @@
 #include "ixgbe_ethdev.h"
 #include "ixgbe_rxtx.h"
 
-#include <nmmintrin.h>
+#include <tmmintrin.h>
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wcast-qual"
@@ -338,7 +338,7 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 				pkt_mb1);
 
 		/* C.4 calc avaialbe number of desc */
-		var = _mm_popcnt_u64(_mm_cvtsi128_si64(staterr));
+		var = __builtin_popcountll(_mm_cvtsi128_si64(staterr));
 		nb_pkts_recd += var;
 		if (likely(var != RTE_IXGBE_DESCS_PER_LOOP))
 			break;
