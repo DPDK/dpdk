@@ -154,7 +154,7 @@ eth_pcap_rx(void *queue,
 			rte_memcpy(mbuf->pkt.data, packet, header.len);
 			mbuf->pkt.data_len = (uint16_t)header.len;
 			mbuf->pkt.pkt_len = mbuf->pkt.data_len;
-			bufs[i] = mbuf;
+			bufs[num_rx] = mbuf;
 			num_rx++;
 		} else {
 			/* pcap packet will not fit in the mbuf, so drop packet */
