@@ -88,9 +88,6 @@ i40e_ring_dma_zone_reserve(struct rte_eth_dev *dev,
 			   uint16_t queue_id,
 			   uint32_t ring_size,
 			   int socket_id);
-static void i40e_reset_rx_queue(struct i40e_rx_queue *rxq);
-static void i40e_reset_tx_queue(struct i40e_tx_queue *txq);
-static void i40e_tx_queue_release_mbufs(struct i40e_tx_queue *txq);
 static uint16_t i40e_xmit_pkts_simple(void *tx_queue,
 				      struct rte_mbuf **tx_pkts,
 				      uint16_t nb_pkts);
@@ -1429,6 +1426,118 @@ i40e_xmit_pkts_simple(void *tx_queue,
 }
 
 int
+i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct i40e_vsi *vsi = I40E_DEV_PRIVATE_TO_VSI(dev->data->dev_private);
+	struct i40e_rx_queue *rxq;
+	int err = -1;
+	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	uint16_t q_base = vsi->base_queue;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rx_queue_id < dev->data->nb_rx_queues) {
+		rxq = dev->data->rx_queues[rx_queue_id];
+
+		err = i40e_alloc_rx_queue_mbufs(rxq);
+		if (err) {
+			PMD_DRV_LOG(ERR, "Failed to allocate RX queue mbuf\n");
+			return err;
+		}
+
+		rte_wmb();
+
+		/* Init the RX tail regieter. */
+		I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
+
+		err = i40e_switch_rx_queue(hw, rx_queue_id + q_base, TRUE);
+
+		if (err) {
+			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on\n",
+				rx_queue_id);
+
+			i40e_rx_queue_release_mbufs(rxq);
+			i40e_reset_rx_queue(rxq);
+		}
+	}
+
+	return err;
+}
+
+int
+i40e_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct i40e_vsi *vsi = I40E_DEV_PRIVATE_TO_VSI(dev->data->dev_private);
+	struct i40e_rx_queue *rxq;
+	int err;
+	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	uint16_t q_base = vsi->base_queue;
+
+	if (rx_queue_id < dev->data->nb_rx_queues) {
+		rxq = dev->data->rx_queues[rx_queue_id];
+
+		err = i40e_switch_rx_queue(hw, rx_queue_id + q_base, FALSE);
+
+		if (err) {
+			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off\n",
+				rx_queue_id);
+			return err;
+		}
+		i40e_rx_queue_release_mbufs(rxq);
+		i40e_reset_rx_queue(rxq);
+	}
+
+	return 0;
+}
+
+int
+i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct i40e_vsi *vsi = I40E_DEV_PRIVATE_TO_VSI(dev->data->dev_private);
+	int err = -1;
+	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	uint16_t q_base = vsi->base_queue;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (tx_queue_id < dev->data->nb_tx_queues) {
+		err = i40e_switch_tx_queue(hw, tx_queue_id + q_base, TRUE);
+		if (err)
+			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on\n",
+				tx_queue_id);
+	}
+
+	return err;
+}
+
+int
+i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct i40e_vsi *vsi = I40E_DEV_PRIVATE_TO_VSI(dev->data->dev_private);
+	struct i40e_tx_queue *txq;
+	int err;
+	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	uint16_t q_base = vsi->base_queue;
+
+	if (tx_queue_id < dev->data->nb_tx_queues) {
+		txq = dev->data->tx_queues[tx_queue_id];
+
+		err = i40e_switch_tx_queue(hw, tx_queue_id + q_base, FALSE);
+
+		if (err) {
+			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u of\n",
+				tx_queue_id);
+			return err;
+		}
+
+		i40e_tx_queue_release_mbufs(txq);
+		i40e_reset_tx_queue(txq);
+	}
+
+	return 0;
+}
+
+int
 i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
 			uint16_t nb_desc,
@@ -1482,6 +1591,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 							0 : ETHER_CRC_LEN);
 	rxq->drop_en = rx_conf->rx_drop_en;
 	rxq->vsi = vsi;
+	rxq->start_rx_per_q = rx_conf->start_rx_per_q;
 
 	/* Allocate the maximun number of RX ring hardware descriptor. */
 	ring_size = sizeof(union i40e_rx_desc) * I40E_MAX_RING_DESC;
@@ -1767,6 +1877,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->port_id = dev->data->port_id;
 	txq->txq_flags = tx_conf->txq_flags;
 	txq->vsi = vsi;
+	txq->start_tx_per_q = tx_conf->start_tx_per_q;
 
 #ifdef RTE_LIBRTE_XEN_DOM0
 	txq->tx_ring_phys_addr = rte_mem_phy2mch(tz->memseg_id, tz->phys_addr);
@@ -1874,7 +1985,7 @@ i40e_rx_queue_release_mbufs(struct i40e_rx_queue *rxq)
 #endif /* RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC */
 }
 
-static void
+void
 i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
 {
 	unsigned i;
@@ -1905,7 +2016,7 @@ i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
 	rxq->pkt_last_seg = NULL;
 }
 
-static void
+void
 i40e_tx_queue_release_mbufs(struct i40e_tx_queue *txq)
 {
 	uint16_t i;
@@ -1923,7 +2034,7 @@ i40e_tx_queue_release_mbufs(struct i40e_tx_queue *txq)
 	}
 }
 
-static void
+void
 i40e_reset_tx_queue(struct i40e_tx_queue *txq)
 {
 	struct i40e_tx_entry *txe;
@@ -2161,7 +2272,7 @@ i40e_rx_queue_init(struct i40e_rx_queue *rxq)
 	}
 
 	rxq->qrx_tail = hw->hw_addr + I40E_QRX_TAIL(pf_q);
-	err = i40e_alloc_rx_queue_mbufs(rxq);
+
 	mbp_priv = rte_mempool_get_priv(rxq->mp);
 	buf_size = (uint16_t)(mbp_priv->mbuf_data_room_size -
 					RTE_PKTMBUF_HEADROOM);
@@ -2172,16 +2283,10 @@ i40e_rx_queue_init(struct i40e_rx_queue *rxq)
 		dev->rx_pkt_burst = i40e_recv_scattered_pkts;
 	}
 
-	rte_wmb();
-
 	/* Init the RX tail regieter. */
-	I40E_PCI_REG_WRITE(rxq->qrx_tail, 0);
 	I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
 
-	if (err)
-		PMD_DRV_LOG(ERR, "Failed to allocate RX queue mbuf\n");
-
-	return err;
+	return 0;
 }
 
 void

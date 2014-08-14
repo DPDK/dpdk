@@ -112,6 +112,7 @@ struct i40e_rx_queue {
 	uint16_t max_pkt_len; /* Maximum packet length */
 	uint8_t hs_mode; /* Header Split mode */
 	bool q_set; /**< indicate if rx queue has been configured */
+	bool start_rx_per_q; /**< don't start this queue in dev start */
 };
 
 struct i40e_tx_entry {
@@ -150,8 +151,13 @@ struct i40e_tx_queue {
 	uint16_t tx_next_dd;
 	uint16_t tx_next_rs;
 	bool q_set; /**< indicate if tx queue has been configured */
+	bool start_tx_per_q; /**< don't start this queue in dev start */
 };
 
+int i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+int i40e_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+int i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+int i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			    uint16_t queue_idx,
 			    uint16_t nb_desc,
@@ -179,6 +185,9 @@ int i40e_rx_queue_init(struct i40e_rx_queue *rxq);
 void i40e_free_tx_resources(struct i40e_tx_queue *txq);
 void i40e_free_rx_resources(struct i40e_rx_queue *rxq);
 void i40e_dev_clear_queues(struct rte_eth_dev *dev);
+void i40e_reset_rx_queue(struct i40e_rx_queue *rxq);
+void i40e_reset_tx_queue(struct i40e_tx_queue *txq);
+void i40e_tx_queue_release_mbufs(struct i40e_tx_queue *txq);
 int i40e_alloc_rx_queue_mbufs(struct i40e_rx_queue *rxq);
 void i40e_rx_queue_release_mbufs(struct i40e_rx_queue *rxq);
 

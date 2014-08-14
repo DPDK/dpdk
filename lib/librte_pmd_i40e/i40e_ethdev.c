@@ -236,6 +236,10 @@ static struct eth_dev_ops i40e_eth_dev_ops = {
 	.vlan_offload_set             = i40e_vlan_offload_set,
 	.vlan_strip_queue_set         = i40e_vlan_strip_queue_set,
 	.vlan_pvid_set                = i40e_vlan_pvid_set,
+	.rx_queue_start               = i40e_dev_rx_queue_start,
+	.rx_queue_stop                = i40e_dev_rx_queue_stop,
+	.tx_queue_start               = i40e_dev_tx_queue_start,
+	.tx_queue_stop                = i40e_dev_tx_queue_stop,
 	.rx_queue_setup               = i40e_dev_rx_queue_setup,
 	.rx_queue_release             = i40e_dev_rx_queue_release,
 	.rx_queue_count               = i40e_dev_rx_queue_count,
@@ -801,7 +805,6 @@ i40e_dev_start(struct rte_eth_dev *dev)
 
 err_up:
 	i40e_vsi_switch_queues(vsi, FALSE);
-	i40e_dev_clear_queues(dev);
 
 	return ret;
 }
@@ -814,9 +817,6 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 
 	/* Disable all queues */
 	i40e_vsi_switch_queues(vsi, FALSE);
-
-	/* Clear all queues and release memory */
-	i40e_dev_clear_queues(dev);
 
 	/* Set link down */
 	i40e_dev_set_link_down(dev);
@@ -3005,17 +3005,21 @@ static int
 i40e_vsi_switch_tx_queues(struct i40e_vsi *vsi, bool on)
 {
 	struct rte_eth_dev_data *dev_data = I40E_VSI_TO_DEV_DATA(vsi);
-	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	struct i40e_tx_queue *txq;
-	uint16_t i, pf_q;
+	struct rte_eth_dev *dev = I40E_VSI_TO_ETH_DEV(vsi);
+	uint16_t i;
 	int ret;
 
-	pf_q = vsi->base_queue;
-	for (i = 0; i < dev_data->nb_tx_queues; i++, pf_q++) {
+	for (i = 0; i < dev_data->nb_tx_queues; i++) {
 		txq = dev_data->tx_queues[i];
-		if (!txq->q_set)
-			continue; /* Queue not configured */
-		ret = i40e_switch_tx_queue(hw, pf_q, on);
+		/* Don't operate the queue if not configured or
+		 * if starting only per queue */
+		if (!txq->q_set || (on && txq->start_tx_per_q))
+			continue;
+		if (on)
+			ret = i40e_dev_tx_queue_start(dev, i);
+		else
+			ret = i40e_dev_tx_queue_stop(dev, i);
 		if ( ret != I40E_SUCCESS)
 			return ret;
 	}
@@ -3079,18 +3083,22 @@ static int
 i40e_vsi_switch_rx_queues(struct i40e_vsi *vsi, bool on)
 {
 	struct rte_eth_dev_data *dev_data = I40E_VSI_TO_DEV_DATA(vsi);
-	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	struct i40e_rx_queue *rxq;
-	uint16_t i, pf_q;
+	struct rte_eth_dev *dev = I40E_VSI_TO_ETH_DEV(vsi);
+	uint16_t i;
 	int ret;
 
-	pf_q = vsi->base_queue;
-	for (i = 0; i < dev_data->nb_rx_queues; i++, pf_q++) {
+	for (i = 0; i < dev_data->nb_rx_queues; i++) {
 		rxq = dev_data->rx_queues[i];
-		if (!rxq->q_set)
-			continue; /* Queue not configured */
-		ret = i40e_switch_rx_queue(hw, pf_q, on);
-		if ( ret != I40E_SUCCESS)
+		/* Don't operate the queue if not configured or
+		 * if starting only per queue */
+		if (!rxq->q_set || (on && rxq->start_rx_per_q))
+			continue;
+		if (on)
+			ret = i40e_dev_rx_queue_start(dev, i);
+		else
+			ret = i40e_dev_rx_queue_stop(dev, i);
+		if (ret != I40E_SUCCESS)
 			return ret;
 	}
 
