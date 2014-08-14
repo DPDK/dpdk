@@ -125,6 +125,10 @@ static void i40evf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int i40evf_get_link_status(struct rte_eth_dev *dev,
 				  struct rte_eth_link *link);
 static int i40evf_init_vlan(struct rte_eth_dev *dev);
+static int i40evf_dev_rx_queue_start(struct rte_eth_dev *, uint16_t);
+static int i40evf_dev_rx_queue_stop(struct rte_eth_dev *, uint16_t);
+static int i40evf_dev_tx_queue_start(struct rte_eth_dev *, uint16_t);
+static int i40evf_dev_tx_queue_stop(struct rte_eth_dev *, uint16_t);
 static struct eth_dev_ops i40evf_eth_dev_ops = {
 	.dev_configure        = i40evf_dev_configure,
 	.dev_start            = i40evf_dev_start,
@@ -140,6 +144,10 @@ static struct eth_dev_ops i40evf_eth_dev_ops = {
 	.vlan_filter_set      = i40evf_vlan_filter_set,
 	.vlan_offload_set     = i40evf_vlan_offload_set,
 	.vlan_pvid_set        = i40evf_vlan_pvid_set,
+	.rx_queue_start       = i40evf_dev_rx_queue_start,
+	.rx_queue_stop        = i40evf_dev_rx_queue_stop,
+	.tx_queue_start       = i40evf_dev_tx_queue_start,
+	.tx_queue_stop        = i40evf_dev_tx_queue_stop,
 	.rx_queue_setup       = i40e_dev_rx_queue_setup,
 	.rx_queue_release     = i40e_dev_rx_queue_release,
 	.tx_queue_setup       = i40e_dev_tx_queue_setup,
@@ -628,65 +636,94 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 }
 
 static int
-i40evf_enable_queues(struct rte_eth_dev *dev)
+i40evf_switch_queue(struct rte_eth_dev *dev, bool isrx, uint16_t qid,
+				bool on)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_virtchnl_queue_select queue_select;
-	int err, i;
+	int err;
 	struct vf_cmd_info args;
-
+	memset(&queue_select, 0, sizeof(queue_select));
 	queue_select.vsi_id = vf->vsi_res->vsi_id;
 
-	queue_select.rx_queues = 0;
-	/* Enable configured RX queues */
-	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		queue_select.rx_queues |= 1 << i;
+	if (isrx)
+		queue_select.rx_queues |= 1 << qid;
+	else
+		queue_select.tx_queues |= 1 << qid;
 
-	/* Enable configured TX queues */
-	queue_select.tx_queues = 0;
-	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		queue_select.tx_queues |= 1 << i;
-
-	args.ops = I40E_VIRTCHNL_OP_ENABLE_QUEUES;
+	if (on)
+		args.ops = I40E_VIRTCHNL_OP_ENABLE_QUEUES;
+	else
+		args.ops = I40E_VIRTCHNL_OP_DISABLE_QUEUES;
 	args.in_args = (u8 *)&queue_select;
 	args.in_args_size = sizeof(queue_select);
 	args.out_buffer = cmd_result_buffer;
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
-		PMD_DRV_LOG(ERR, "fail to execute command OP_ENABLE_QUEUES\n");
+		PMD_DRV_LOG(ERR, "fail to switch %s %u %s\n", isrx ? "RX" : "TX",
+			qid, on ? "on" : "off");
 
 	return err;
 }
 
 static int
-i40evf_disable_queues(struct rte_eth_dev *dev)
+i40evf_start_queues(struct rte_eth_dev *dev)
 {
-	struct i40e_virtchnl_queue_select queue_select;
-	int err, i;
-	struct vf_cmd_info args;
+	struct rte_eth_dev_data *dev_data = dev->data;
+	int i;
+	struct i40e_rx_queue *rxq;
+	struct i40e_tx_queue *txq;
 
-	/* Enable configured RX queues */
-	queue_select.rx_queues = 0;
-	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		queue_select.rx_queues |= 1 << i;
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev_data->rx_queues[i];
+		if (rxq->start_rx_per_q)
+			continue;
+		if (i40evf_dev_rx_queue_start(dev, i) != 0) {
+			PMD_DRV_LOG(ERR, "Fail to start queue %u\n",
+				i);
+			return -1;
+		}
+	}
 
-	/* Enable configured TX queues */
-	queue_select.tx_queues = 0;
-	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		queue_select.tx_queues |= 1 << i;
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev_data->tx_queues[i];
+		if (txq->start_tx_per_q)
+			continue;
+		if (i40evf_dev_tx_queue_start(dev, i) != 0) {
+			PMD_DRV_LOG(ERR, "Fail to start queue %u\n",
+				i);
+			return -1;
+		}
+	}
 
-	args.ops = I40E_VIRTCHNL_OP_DISABLE_QUEUES;
-	args.in_args = (u8 *)&queue_select;
-	args.in_args_size = sizeof(queue_select);
-	args.out_buffer = cmd_result_buffer;
-	args.out_size = I40E_AQ_BUF_SZ;
-	err = i40evf_execute_vf_cmd(dev, &args);
-	if (err)
-		PMD_DRV_LOG(ERR, "fail to execute command "
-					"OP_DISABLE_QUEUES\n");
+	return 0;
+}
 
-	return err;
+static int
+i40evf_stop_queues(struct rte_eth_dev *dev)
+{
+	int i;
+
+	/* Stop TX queues first */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		if (i40evf_dev_tx_queue_stop(dev, i) != 0) {
+			PMD_DRV_LOG(ERR, "Fail to start queue %u\n",
+				i);
+			return -1;
+		}
+	}
+
+	/* Then stop RX queues */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		if (i40evf_dev_rx_queue_stop(dev, i) != 0) {
+			PMD_DRV_LOG(ERR, "Fail to start queue %u\n",
+				i);
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 static int
@@ -1179,6 +1216,109 @@ i40evf_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 }
 
 static int
+i40evf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct i40e_rx_queue *rxq;
+	int err = 0;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rx_queue_id < dev->data->nb_rx_queues) {
+		rxq = dev->data->rx_queues[rx_queue_id];
+
+		err = i40e_alloc_rx_queue_mbufs(rxq);
+		if (err) {
+			PMD_DRV_LOG(ERR, "Failed to allocate RX queue mbuf\n");
+			return err;
+		}
+
+		rte_wmb();
+
+		/* Init the RX tail register. */
+		I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
+		I40EVF_WRITE_FLUSH(hw);
+
+		/* Ready to switch the queue on */
+		err = i40evf_switch_queue(dev, TRUE, rx_queue_id, TRUE);
+
+		if (err)
+			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on\n",
+				rx_queue_id);
+	}
+
+	return err;
+}
+
+static int
+i40evf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct i40e_rx_queue *rxq;
+	int err;
+
+	if (rx_queue_id < dev->data->nb_rx_queues) {
+		rxq = dev->data->rx_queues[rx_queue_id];
+
+		err = i40evf_switch_queue(dev, TRUE, rx_queue_id, FALSE);
+
+		if (err) {
+			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off\n",
+				rx_queue_id);
+			return err;
+		}
+
+		i40e_rx_queue_release_mbufs(rxq);
+		i40e_reset_rx_queue(rxq);
+	}
+
+	return 0;
+}
+
+static int
+i40evf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	int err = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (tx_queue_id < dev->data->nb_tx_queues) {
+
+		/* Ready to switch the queue on */
+		err = i40evf_switch_queue(dev, FALSE, tx_queue_id, TRUE);
+
+		if (err)
+			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on\n",
+				tx_queue_id);
+	}
+
+	return err;
+}
+
+static int
+i40evf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct i40e_tx_queue *txq;
+	int err;
+
+	if (tx_queue_id < dev->data->nb_tx_queues) {
+		txq = dev->data->tx_queues[tx_queue_id];
+
+		err = i40evf_switch_queue(dev, FALSE, tx_queue_id, FALSE);
+
+		if (err) {
+			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u of\n",
+				tx_queue_id);
+			return err;
+		}
+
+		i40e_tx_queue_release_mbufs(txq);
+		i40e_reset_tx_queue(txq);
+	}
+
+	return 0;
+}
+
+static int
 i40evf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
 	int ret;
@@ -1194,16 +1334,12 @@ i40evf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 static int
 i40evf_rx_init(struct rte_eth_dev *dev)
 {
-	uint16_t i, j;
+	uint16_t i;
 	struct i40e_rx_queue **rxq =
 		(struct i40e_rx_queue **)dev->data->rx_queues;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		if (i40e_alloc_rx_queue_mbufs(rxq[i]) != 0) {
-			PMD_DRV_LOG(ERR, "alloc rx queues mbufs failed\n");
-			goto err;
-		}
 		rxq[i]->qrx_tail = hw->hw_addr + I40E_QRX_TAIL1(i);
 		I40E_PCI_REG_WRITE(rxq[i]->qrx_tail, rxq[i]->nb_rx_desc - 1);
 	}
@@ -1212,13 +1348,6 @@ i40evf_rx_init(struct rte_eth_dev *dev)
 	I40EVF_WRITE_FLUSH(hw);
 
 	return 0;
-
-err:
-	/* Release all mbufs */
-	for (j = 0; j < i; j++)
-		i40e_rx_queue_release_mbufs(rxq[j]);
-
-	return -1;
 }
 
 static void
@@ -1307,17 +1436,17 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 		goto err_queue;
 	}
 
-	if (i40evf_enable_queues(dev) != 0) {
+	if (i40evf_start_queues(dev) != 0) {
 		PMD_DRV_LOG(ERR, "enable queues failed\n");
 		goto err_mac;
 	}
+
 	i40evf_enable_queues_intr(hw);
 	return 0;
 
 err_mac:
 	i40evf_del_mac_addr(dev, &mac_addr);
 err_queue:
-	i40e_dev_clear_queues(dev);
 	return -1;
 }
 
@@ -1329,8 +1458,7 @@ i40evf_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	i40evf_disable_queues_intr(hw);
-	i40evf_disable_queues(dev);
-	i40e_dev_clear_queues(dev);
+	i40evf_stop_queues(dev);
 }
 
 static int
