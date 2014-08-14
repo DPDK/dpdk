@@ -337,7 +337,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		snprintf(vq_name, sizeof(vq_name), "port%d_tvq%d_hdrzone",
 			dev->data->port_id, queue_idx);
 		vq->virtio_net_hdr_mz = rte_memzone_reserve_aligned(vq_name,
-			vq_size * sizeof(struct virtio_net_hdr),
+			vq_size * hw->vtnet_hdr_size,
 			socket_id, 0, CACHE_LINE_SIZE);
 		if (vq->virtio_net_hdr_mz == NULL) {
 			rte_free(vq);
@@ -346,7 +346,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		vq->virtio_net_hdr_mem =
 			vq->virtio_net_hdr_mz->phys_addr;
 		memset(vq->virtio_net_hdr_mz->addr, 0,
-			vq_size * sizeof(struct virtio_net_hdr));
+			vq_size * hw->vtnet_hdr_size);
 	} else if (queue_type == VTNET_CQ) {
 		/* Allocate a page for control vq command, data and status */
 		snprintf(vq_name, sizeof(vq_name), "port%d_cvq_hdrzone",
@@ -571,9 +571,6 @@ virtio_negotiate_features(struct virtio_hw *hw)
 	mask |= VIRTIO_NET_F_GUEST_TSO4 | VIRTIO_NET_F_GUEST_TSO6 | VIRTIO_NET_F_GUEST_ECN;
 	mask |= VTNET_LRO_FEATURES;
 
-	/* rx_mbuf should not be in multiple merged segments */
-	mask |= VIRTIO_NET_F_MRG_RXBUF;
-
 	/* not negotiating INDIRECT descriptor table support */
 	mask |= VIRTIO_RING_F_INDIRECT_DESC;
 
@@ -746,7 +743,6 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 	}
 
 	eth_dev->dev_ops = &virtio_eth_dev_ops;
-	eth_dev->rx_pkt_burst = &virtio_recv_pkts;
 	eth_dev->tx_pkt_burst = &virtio_xmit_pkts;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
@@ -801,10 +797,13 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 	virtio_negotiate_features(hw);
 
 	/* Setting up rx_header size for the device */
-	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF))
+	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
+		eth_dev->rx_pkt_burst = &virtio_recv_mergeable_pkts;
 		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr_mrg_rxbuf);
-	else
+	} else {
+		eth_dev->rx_pkt_burst = &virtio_recv_pkts;
 		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr);
+	}
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("virtio", ETHER_ADDR_LEN, 0);
@@ -1009,7 +1008,7 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 
 		while ((buf = (struct rte_mbuf *)virtqueue_detatch_unused(
 					dev->data->rx_queues[i])) != NULL) {
-			rte_pktmbuf_free_seg(buf);
+			rte_pktmbuf_free(buf);
 			mbuf_num++;
 		}
 
@@ -1028,7 +1027,8 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 		mbuf_num = 0;
 		while ((buf = (struct rte_mbuf *)virtqueue_detatch_unused(
 					dev->data->tx_queues[i])) != NULL) {
-			rte_pktmbuf_free_seg(buf);
+			rte_pktmbuf_free(buf);
+
 			mbuf_num++;
 		}
 
