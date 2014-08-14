@@ -566,6 +566,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" tx rs bit threshold.\n\n"
 			"port config mtu X value\n"
 			"    Set the MTU of port X to a given value\n\n"
+
+			"port (port_id) (rxq|txq) (queue_id) (start|stop)\n"
+			"    Start/stop a rx/tx queue of port X. Only take effect"
+			" when port X is started\n"
 		);
 	}
 
@@ -1426,6 +1430,96 @@ cmdline_parse_inst_t cmd_config_rss_hash_key = {
 		(void *)&cmd_config_rss_hash_key_port_id,
 		(void *)&cmd_config_rss_hash_key_rss_hash_key,
 		(void *)&cmd_config_rss_hash_key_value,
+		NULL,
+	},
+};
+
+/* *** configure port rxq/txq start/stop *** */
+struct cmd_config_rxtx_queue {
+	cmdline_fixed_string_t port;
+	uint8_t portid;
+	cmdline_fixed_string_t rxtxq;
+	uint16_t qid;
+	cmdline_fixed_string_t opname;
+};
+
+static void
+cmd_config_rxtx_queue_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_config_rxtx_queue *res = parsed_result;
+	uint8_t isrx;
+	uint8_t isstart;
+
+	if (test_done == 0) {
+		printf("Please stop forwarding first\n");
+		return;
+	}
+
+	if (port_id_is_invalid(res->portid))
+		return;
+
+	if (port_is_started(res->portid) != 1) {
+		printf("Please start port %u first\n", res->portid);
+		return;
+	}
+
+	if (!strcmp(res->rxtxq, "rxq"))
+		isrx = 1;
+	else if (!strcmp(res->rxtxq, "txq"))
+		isrx = 0;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	if (isrx && rx_queue_id_is_invalid(res->qid))
+		return;
+	else if (!isrx && tx_queue_id_is_invalid(res->qid))
+		return;
+
+	if (!strcmp(res->opname, "start"))
+		isstart = 1;
+	else if (!strcmp(res->opname, "stop"))
+		isstart = 0;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	if (isstart && isrx)
+		rte_eth_dev_rx_queue_start(res->portid, res->qid);
+	else if (!isstart && isrx)
+		rte_eth_dev_rx_queue_stop(res->portid, res->qid);
+	else if (isstart && !isrx)
+		rte_eth_dev_tx_queue_start(res->portid, res->qid);
+	else
+		rte_eth_dev_tx_queue_stop(res->portid, res->qid);
+}
+
+cmdline_parse_token_string_t cmd_config_rxtx_queue_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rxtx_queue, port, "port");
+cmdline_parse_token_num_t cmd_config_rxtx_queue_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rxtx_queue, portid, UINT8);
+cmdline_parse_token_string_t cmd_config_rxtx_queue_rxtxq =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rxtx_queue, rxtxq, "rxq#txq");
+cmdline_parse_token_num_t cmd_config_rxtx_queue_qid =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rxtx_queue, qid, UINT16);
+cmdline_parse_token_string_t cmd_config_rxtx_queue_opname =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rxtx_queue, opname,
+						"start#stop");
+
+cmdline_parse_inst_t cmd_config_rxtx_queue = {
+	.f = cmd_config_rxtx_queue_parsed,
+	.data = NULL,
+	.help_str = "port X rxq|txq ID start|stop",
+	.tokens = {
+		(void *)&cmd_config_speed_all_port,
+		(void *)&cmd_config_rxtx_queue_portid,
+		(void *)&cmd_config_rxtx_queue_rxtxq,
+		(void *)&cmd_config_rxtx_queue_qid,
+		(void *)&cmd_config_rxtx_queue_opname,
 		NULL,
 	},
 };
@@ -7398,6 +7492,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_max_pkt_len,
 	(cmdline_parse_inst_t *)&cmd_config_rx_mode_flag,
 	(cmdline_parse_inst_t *)&cmd_config_rss,
+	(cmdline_parse_inst_t *)&cmd_config_rxtx_queue,
 	(cmdline_parse_inst_t *)&cmd_config_rss_reta,
 	(cmdline_parse_inst_t *)&cmd_showport_reta,
 	(cmdline_parse_inst_t *)&cmd_config_burst,

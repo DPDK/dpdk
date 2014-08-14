@@ -511,6 +511,7 @@ int start_port(portid_t pid);
 void stop_port(portid_t pid);
 void close_port(portid_t pid);
 int all_ports_stopped(void);
+int port_is_started(portid_t port_id);
 void pmd_test_exit(void);
 
 void fdir_add_signature_filter(portid_t port_id, uint8_t queue_id,
@@ -547,6 +548,9 @@ void get_ethertype_filter(uint8_t port_id, uint16_t index);
 void get_2tuple_filter(uint8_t port_id, uint16_t index);
 void get_5tuple_filter(uint8_t port_id, uint16_t index);
 void get_flex_filter(uint8_t port_id, uint16_t index);
+int port_id_is_invalid(portid_t port_id);
+int rx_queue_id_is_invalid(queueid_t rxq_id);
+int tx_queue_id_is_invalid(queueid_t txq_id);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the

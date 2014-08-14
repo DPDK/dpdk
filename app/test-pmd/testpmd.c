@@ -1513,6 +1513,18 @@ all_ports_stopped(void)
 	return 1;
 }
 
+int
+port_is_started(portid_t port_id)
+{
+	if (port_id_is_invalid(port_id))
+		return -1;
+
+	if (ports[port_id].port_status != RTE_PORT_STARTED)
+		return 0;
+
+	return 1;
+}
+
 void
 pmd_test_exit(void)
 {

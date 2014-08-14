@@ -311,7 +311,7 @@ port_infos_display(portid_t port_id)
 	}
 }
 
-static int
+int
 port_id_is_invalid(portid_t port_id)
 {
 	if (port_id < nb_ports)
@@ -521,7 +521,7 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 /*
  * RX/TX ring descriptors display functions.
  */
-static int
+int
 rx_queue_id_is_invalid(queueid_t rxq_id)
 {
 	if (rxq_id < nb_rxq)
@@ -530,7 +530,7 @@ rx_queue_id_is_invalid(queueid_t rxq_id)
 	return 1;
 }
 
-static int
+int
 tx_queue_id_is_invalid(queueid_t txq_id)
 {
 	if (txq_id < nb_txq)
