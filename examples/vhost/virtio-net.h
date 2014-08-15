@@ -45,6 +45,18 @@
 /* Enum for virtqueue management. */
 enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
 
+#define BUF_VECTOR_MAX 256
+
+/*
+ * Structure contains buffer address, length and descriptor index
+ * from vring to do scatter RX.
+*/
+struct buf_vector {
+uint64_t buf_addr;
+uint32_t buf_len;
+uint32_t desc_idx;
+};
+
 /*
  * Structure contains variables relevant to TX/RX virtqueues.
  */
@@ -60,6 +72,8 @@ struct vhost_virtqueue
 	volatile uint16_t	last_used_idx_res;	/* Used for multiple devices reserving buffers. */
 	eventfd_t			callfd;				/* Currently unused as polling mode is enabled. */
 	eventfd_t			kickfd;				/* Used to notify the guest (trigger interrupt). */
+	/* Used for scatter RX. */
+	struct buf_vector	buf_vec[BUF_VECTOR_MAX];
 } __rte_cache_aligned;
 
 /*
