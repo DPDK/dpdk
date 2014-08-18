@@ -282,7 +282,7 @@ sanity_test_with_mbuf_alloc(struct rte_distributor *d, struct rte_mempool *p)
 			rte_distributor_process(d, NULL, 0);
 		for (j = 0; j < BURST; j++) {
 			bufs[j]->pkt.hash.rss = (i+j) << 1;
-			bufs[j]->refcnt = 1;
+			rte_mbuf_refcnt_set(bufs[j], 1);
 		}
 
 		rte_distributor_process(d, bufs, BURST);
