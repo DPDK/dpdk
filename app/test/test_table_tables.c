@@ -31,8 +31,6 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef RTE_LIBRTE_TABLE
-
 #include <string.h>
 #include <rte_byteorder.h>
 #include <rte_table_lpm_ipv6.h>
@@ -903,5 +901,3 @@ test_table_hash_ext(void)
 
 	return 0;
 }
-
-#endif

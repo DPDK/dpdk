@@ -53,39 +53,57 @@ SRCS-y += test_cycles.c
 SRCS-y += test_spinlock.c
 SRCS-y += test_memory.c
 SRCS-y += test_memzone.c
+
 SRCS-y += test_ring.c
+SRCS-y += test_ring_perf.c
+
+ifeq ($(CONFIG_RTE_LIBRTE_TABLE),y)
 SRCS-y += test_table.c
-SRCS-y += test_table_pipeline.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += test_table_pipeline.c
 SRCS-y += test_table_tables.c
 SRCS-y += test_table_ports.c
 SRCS-y += test_table_combined.c
-SRCS-y += test_table_acl.c
-SRCS-y += test_ring_perf.c
+SRCS-$(CONFIG_RTE_LIBRTE_ACL) += test_table_acl.c
+endif
+
 SRCS-y += test_rwlock.c
-SRCS-y += test_timer.c
+
+SRCS-$(CONFIG_RTE_LIBRTE_TIMER) += test_timer.c
+SRCS-$(CONFIG_RTE_LIBRTE_TIMER) += test_timer_perf.c
+
 SRCS-y += test_mempool.c
 SRCS-y += test_mempool_perf.c
+
 SRCS-y += test_mbuf.c
 SRCS-y += test_logs.c
+
 SRCS-y += test_memcpy.c
 SRCS-y += test_memcpy_perf.c
-SRCS-y += test_hash.c
-SRCS-y += test_hash_perf.c
-SRCS-y += test_lpm.c
-SRCS-y += test_lpm6.c
+
+SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash.c
+SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash_perf.c
+
+SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm.c
+SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm6.c
+
 SRCS-y += test_debug.c
 SRCS-y += test_errno.c
 SRCS-y += test_tailq.c
 SRCS-y += test_string_fns.c
-SRCS-y += test_mp_secondary.c
 SRCS-y += test_cpuflags.c
+
+ifeq ($(CONFIG_RTE_EXEC_ENV_BAREMETAL),)
+SRCS-y += test_mp_secondary.c
 SRCS-y += test_eal_flags.c
+SRCS-y += test_eal_fs.c
+endif
+
 SRCS-y += test_alarm.c
 SRCS-y += test_interrupts.c
 SRCS-y += test_version.c
-SRCS-y += test_eal_fs.c
 SRCS-y += test_func_reentrancy.c
-SRCS-y += test_cmdline.c
+
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_num.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_etheraddr.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_portlist.c
@@ -93,16 +111,21 @@ SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_ipaddr.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_cirbuf.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_string.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_lib.c
+
+ifeq ($(CONFIG_RTE_LIBRTE_SCHED),y)
 SRCS-y += test_red.c
-SRCS-y += test_sched.c
-SRCS-y += test_meter.c
-SRCS-y += test_kni.c
-SRCS-y += test_power.c
+SRCS-$(CONFIG_RTE_ARCH_X86_64) += test_sched.c
+endif
+
+SRCS-$(CONFIG_RTE_LIBRTE_METER) += test_meter.c
+SRCS-$(CONFIG_RTE_LIBRTE_KNI) += test_kni.c
+SRCS-$(CONFIG_RTE_LIBRTE_POWER) += test_power.c
 SRCS-y += test_common.c
-SRCS-y += test_timer_perf.c
-SRCS-y += test_ivshmem.c
-SRCS-y += test_distributor.c
-SRCS-y += test_distributor_perf.c
+SRCS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += test_ivshmem.c
+
+SRCS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += test_distributor.c
+SRCS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += test_distributor_perf.c
+
 SRCS-y += test_devargs.c
 SRCS-y += virtual_pmd.c
 SRCS-y += packet_burst_generator.c

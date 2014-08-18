@@ -36,7 +36,6 @@
 #include "test.h"
 #include "test_cmdline.h"
 
-#ifdef RTE_LIBRTE_CMDLINE
 static int
 test_cmdline(void)
 {
@@ -95,4 +94,3 @@ static struct test_command cmdline_cmd = {
 	.callback = test_cmdline,
 };
 REGISTER_TEST_COMMAND(cmdline_cmd);
-#endif

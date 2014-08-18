@@ -52,8 +52,6 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_HASH
-
 #include <rte_hash.h>
 #include <rte_fbk_hash.h>
 #include <rte_jhash.h>
@@ -1373,4 +1371,3 @@ static struct test_command hash_cmd = {
 	.callback = test_hash,
 };
 REGISTER_TEST_COMMAND(hash_cmd);
-#endif /* RTE_LIBRTE_HASH */

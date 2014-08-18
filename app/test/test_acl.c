@@ -36,8 +36,6 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_ACL
-
 #include <rte_string_fns.h>
 #include <rte_mbuf.h>
 #include <rte_byteorder.h>
@@ -934,4 +932,3 @@ static struct test_command acl_cmd = {
 	.callback = test_acl,
 };
 REGISTER_TEST_COMMAND(acl_cmd);
-#endif /* RTE_LIBRTE_ACL */

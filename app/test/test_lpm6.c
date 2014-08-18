@@ -41,8 +41,6 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_LPM
-
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_memory.h>
@@ -1925,4 +1923,3 @@ static struct test_command lpm6_cmd = {
 	.callback = test_lpm6,
 };
 REGISTER_TEST_COMMAND(lpm6_cmd);
-#endif /* RTE_LIBRTE_LPM */

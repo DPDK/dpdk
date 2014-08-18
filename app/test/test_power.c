@@ -39,8 +39,6 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_POWER
-
 #include <rte_power.h>
 
 #define TEST_POWER_LCORE_ID      2U
@@ -482,5 +480,3 @@ static struct test_command power_cmd = {
 	.callback = test_power,
 };
 REGISTER_TEST_COMMAND(power_cmd);
-#endif /* RTE_LIBRTE_POWER */
-

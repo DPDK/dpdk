@@ -47,8 +47,6 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_LPM
-
 #include "rte_lpm.h"
 #include "test_lpm_routes.h"
 
@@ -1354,4 +1352,3 @@ static struct test_command lpm_cmd = {
 	.callback = test_lpm,
 };
 REGISTER_TEST_COMMAND(lpm_cmd);
-#endif /* RTE_LIBRTE_LPM */

@@ -32,8 +32,6 @@
  */
 #include "test.h"
 
-#ifdef RTE_LIBRTE_PMD_RING
-
 #include <stdio.h>
 
 #include <rte_eth_ring.h>
@@ -450,5 +448,3 @@ static struct test_command ring_pmd_cmd = {
 	.callback = test_pmd_ring,
 };
 REGISTER_TEST_COMMAND(ring_pmd_cmd);
-#endif
-

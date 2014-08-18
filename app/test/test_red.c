@@ -43,8 +43,6 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_SCHED
-
 #include <rte_red.h>
 
 #ifdef __INTEL_COMPILER
@@ -1889,4 +1887,3 @@ static struct test_command red_cmd = {
 	.callback = test_red,
 };
 REGISTER_TEST_COMMAND(red_cmd);
-#endif

@@ -31,7 +31,6 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef RTE_LIBRTE_TABLE
 #include <string.h>
 #include "test_table_combined.h"
 #include "test_table.h"
@@ -780,5 +779,3 @@ test_table_hash32ext(void)
 
 	return 0;
 }
-
-#endif

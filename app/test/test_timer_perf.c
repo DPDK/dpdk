@@ -33,7 +33,6 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_TIMER
 #include <stdio.h>
 #include <unistd.h>
 #include <inttypes.h>
@@ -164,4 +163,3 @@ static struct test_command timer_perf_cmd = {
 	.callback = test_timer_perf,
 };
 REGISTER_TEST_COMMAND(timer_perf_cmd);
-#endif

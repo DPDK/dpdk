@@ -31,12 +31,6 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTE_LIBRTE_PIPELINE
-
-#include "test.h"
-
-#else
-
 #include <string.h>
 #include <rte_pipeline.h>
 #include <rte_log.h>
@@ -599,5 +593,3 @@ test_table_pipeline(void)
 
 	return 0;
 }
-
-#endif

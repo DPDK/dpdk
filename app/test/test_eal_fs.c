@@ -32,7 +32,6 @@
  */
 
 #include "test.h"
-#ifndef RTE_EXEC_ENV_BAREMETAL
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -209,4 +208,3 @@ static struct test_command eal_fs_cmd = {
 	.callback = test_eal_fs,
 };
 REGISTER_TEST_COMMAND(eal_fs_cmd);
-#endif

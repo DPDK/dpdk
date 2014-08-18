@@ -43,8 +43,6 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_IVSHMEM
-
 #include <rte_common.h>
 #include <rte_ivshmem.h>
 #include <rte_string_fns.h>
@@ -437,4 +435,3 @@ static struct test_command ivshmem_cmd = {
 	.callback = test_ivshmem,
 };
 REGISTER_TEST_COMMAND(ivshmem_cmd);
-#endif /* RTE_LIBRTE_IVSHMEM */

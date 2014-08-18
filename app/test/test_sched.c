@@ -39,8 +39,6 @@
 
 #include "test.h"
 
-#if defined(RTE_LIBRTE_SCHED) && defined(RTE_ARCH_X86_64)
-
 #include <rte_cycles.h>
 #include <rte_ether.h>
 #include <rte_ip.h>
@@ -234,4 +232,3 @@ static struct test_command sched_cmd = {
 	.callback = test_sched,
 };
 REGISTER_TEST_COMMAND(sched_cmd);
-#endif /* RTE_LIBRTE_SCHED */

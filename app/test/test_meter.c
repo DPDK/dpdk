@@ -39,8 +39,6 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_METER
-
 #include <rte_cycles.h>
 #include <rte_meter.h>
 
@@ -501,4 +499,3 @@ static struct test_command meter_cmd = {
 	.callback = test_meter,
 };
 REGISTER_TEST_COMMAND(meter_cmd);
-#endif /* RTE_LIBRTE_METER */

@@ -33,7 +33,6 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_DISTRIBUTOR
 #include <unistd.h>
 #include <string.h>
 #include <rte_cycles.h>
@@ -266,4 +265,3 @@ static struct test_command distributor_perf_cmd = {
 	.callback = test_distributor_perf,
 };
 REGISTER_TEST_COMMAND(distributor_perf_cmd);
-#endif

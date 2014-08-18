@@ -31,8 +31,6 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef RTE_LIBRTE_TABLE
-
 #include "test_table_ports.h"
 #include "test_table.h"
 
@@ -220,5 +218,3 @@ test_port_ring_writer(void)
 
 	return 0;
 }
-
-#endif

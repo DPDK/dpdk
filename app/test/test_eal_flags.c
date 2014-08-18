@@ -35,7 +35,6 @@
 
 #include "test.h"
 
-#ifndef RTE_EXEC_ENV_BAREMETAL
 #include <string.h>
 #include <stdarg.h>
 #include <libgen.h>
@@ -1288,4 +1287,3 @@ static struct test_command eal_flags_cmd = {
 	.callback = test_eal_flags,
 };
 REGISTER_TEST_COMMAND(eal_flags_cmd);
-#endif

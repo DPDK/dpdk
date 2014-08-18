@@ -35,7 +35,6 @@
 
 #include "test.h"
 
-#ifndef RTE_EXEC_ENV_BAREMETAL
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -270,4 +269,3 @@ static struct test_command multiprocess_cmd = {
 	.callback = test_mp_secondary,
 };
 REGISTER_TEST_COMMAND(multiprocess_cmd);
-#endif

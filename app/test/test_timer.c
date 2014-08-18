@@ -33,7 +33,6 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_TIMER
 /*
  * Timer
  * =====
@@ -525,4 +524,3 @@ static struct test_command timer_cmd = {
 	.callback = test_timer,
 };
 REGISTER_TEST_COMMAND(timer_cmd);
-#endif

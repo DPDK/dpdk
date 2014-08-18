@@ -31,8 +31,6 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef RTE_LIBRTE_ACL
-
 #include <rte_hexdump.h>
 #include "test_table.h"
 #include "test_table_acl.h"
@@ -587,5 +585,3 @@ test_table_ACL(void)
 
 	return 0;
 }
-
-#endif

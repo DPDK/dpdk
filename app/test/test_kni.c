@@ -39,7 +39,6 @@
 
 #include "test.h"
 
-#ifdef RTE_LIBRTE_KNI
 #include <rte_string_fns.h>
 #include <rte_mempool.h>
 #include <rte_ethdev.h>
@@ -685,4 +684,3 @@ static struct test_command kni_cmd = {
 	.callback = test_kni,
 };
 REGISTER_TEST_COMMAND(kni_cmd);
-#endif /* RTE_LIBRTE_KNI */

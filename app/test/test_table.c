@@ -31,9 +31,6 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#ifdef RTE_LIBRTE_TABLE
-
 #include <rte_byteorder.h>
 #include <rte_hexdump.h>
 #include <rte_string_fns.h>
@@ -212,4 +209,3 @@ static struct test_command table_cmd = {
 	.callback = test_table,
 };
 REGISTER_TEST_COMMAND(table_cmd);
-#endif
