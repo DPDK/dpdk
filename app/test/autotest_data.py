@@ -340,12 +340,6 @@ parallel_test_group_list = [
 		 "Func" :	default_autotest,
 		 "Report" :	None,
 		},
-		{
-		 "Name" :	"Pattern match autotest",
-		 "Command" : 	"pm_autotest",
-		 "Func" :	default_autotest,
-		 "Report" :	None,
-		},
 		 {
 		 "Name" :"Sched autotest",
 		 "Command" : "sched_autotest",

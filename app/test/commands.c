@@ -238,7 +238,7 @@ cmdline_parse_token_string_t cmd_autotest_autotest =
 			"memcpy_perf_autotest#ring_perf_autotest#"
 			"red_autotest#meter_autotest#sched_autotest#"
 			"memcpy_perf_autotest#kni_autotest#"
-			"pm_autotest#ivshmem_autotest#"
+			"ivshmem_autotest#"
 			"devargs_autotest#table_autotest#"
 #ifdef RTE_LIBRTE_ACL
 			"acl_autotest#"
