@@ -324,9 +324,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 int commands_init(void)
 {
 	struct test_command *t;
-	char builtin_commands[] = "";
 	char *commands, *ptr;
-	int commands_len = strlen(builtin_commands) + 1;
+	int commands_len = 0;
 
 	TAILQ_FOREACH(t, &commands_list, next) {
 		commands_len += strlen(t->command) + 1;
@@ -340,7 +339,8 @@ int commands_init(void)
 	TAILQ_FOREACH(t, &commands_list, next) {
 		ptr += sprintf(ptr, "%s#", t->command);
 	}
-	ptr += sprintf(ptr, "%s", builtin_commands);
+	ptr--;
+	ptr[0] = '\0';
 
 	cmd_autotest_autotest.string_data.str = commands;
 	return 0;
