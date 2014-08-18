@@ -31,15 +31,18 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
+
 APP = testacl
 
 CFLAGS += $(WERROR_FLAGS)
 
 # all source are stored in SRCS-y
-SRCS-$(CONFIG_RTE_LIBRTE_ACL) := main.c
+SRCS-y := main.c
 
 # this application needs libraries first
-DEPDIRS-$(CONFIG_RTE_LIBRTE_ACL) += lib
-
+DEPDIRS-y += lib
 
 include $(RTE_SDK)/mk/rte.app.mk
+
+endif
