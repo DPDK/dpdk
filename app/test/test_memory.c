@@ -51,7 +51,7 @@
  * - Try to read all memory; it should not segfault.
  */
 
-int
+static int
 test_memory(void)
 {
 	uint64_t s;
@@ -84,3 +84,9 @@ test_memory(void)
 
 	return 0;
 }
+
+static struct test_command memory_cmd = {
+	.command = "memory_autotest",
+	.callback = test_memory,
+};
+REGISTER_TEST_COMMAND(memory_cmd);

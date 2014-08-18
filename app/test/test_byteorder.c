@@ -52,7 +52,7 @@ static volatile uint64_t u64 = 0xdeadcafebabefaceULL;
  *   size (16, 32, 64 bits)
  */
 
-int
+static int
 test_byteorder(void)
 {
 	uint16_t res_u16;
@@ -91,3 +91,9 @@ test_byteorder(void)
 
 	return 0;
 }
+
+static struct test_command byteorder_cmd = {
+	.command = "byteorder_autotest",
+	.callback = test_byteorder,
+};
+REGISTER_TEST_COMMAND(byteorder_cmd);

@@ -36,10 +36,10 @@
 #include "test.h"
 #include "test_cmdline.h"
 
-int
+#ifdef RTE_LIBRTE_CMDLINE
+static int
 test_cmdline(void)
 {
-#ifdef RTE_LIBRTE_CMDLINE
 	printf("Testind parsing ethernet addresses...\n");
 	if (test_parse_etheraddr_valid() < 0)
 		return -1;
@@ -87,9 +87,12 @@ test_cmdline(void)
 	printf("Testing library functions...\n");
 	if (test_cmdline_lib() < 0)
 		return -1;
-#else
-	printf("The cmdline library is not included in this build\n");
-#endif
 	return 0;
 }
 
+static struct test_command cmdline_cmd = {
+	.command = "cmdline_autotest",
+	.callback = test_cmdline,
+};
+REGISTER_TEST_COMMAND(cmdline_cmd);
+#endif

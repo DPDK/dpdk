@@ -829,7 +829,7 @@ test_failing_mbuf_sanity_check(void)
 #endif
 
 
-int
+static int
 test_mbuf(void)
 {
 	RTE_BUILD_BUG_ON(sizeof(struct rte_mbuf) != 64);
@@ -927,3 +927,9 @@ test_mbuf(void)
 	}
 	return 0;
 }
+
+static struct test_command mbuf_cmd = {
+	.command = "mbuf_autotest",
+	.callback = test_mbuf,
+};
+REGISTER_TEST_COMMAND(mbuf_cmd);

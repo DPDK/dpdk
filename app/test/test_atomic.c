@@ -248,7 +248,7 @@ test_atomic_dec_and_test(__attribute__((unused)) void *arg)
 	return 0;
 }
 
-int
+static int
 test_atomic(void)
 {
 	rte_atomic16_init(&a16);
@@ -375,3 +375,8 @@ test_atomic(void)
 	return 0;
 }
 
+static struct test_command atomic_cmd = {
+	.command = "atomic_autotest",
+	.callback = test_atomic,
+};
+REGISTER_TEST_COMMAND(atomic_cmd);

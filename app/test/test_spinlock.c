@@ -225,7 +225,7 @@ test_spinlock_try(__attribute__((unused)) void *arg)
  * Test rte_eal_get_lcore_state() in addition to spinlocks
  * as we have "waiting" then "running" lcores.
  */
-int
+static int
 test_spinlock(void)
 {
 	int ret = 0;
@@ -333,3 +333,9 @@ test_spinlock(void)
 
 	return ret;
 }
+
+static struct test_command spinlock_cmd = {
+	.command = "spinlock_autotest",
+	.callback = test_spinlock,
+};
+REGISTER_TEST_COMMAND(spinlock_cmd);

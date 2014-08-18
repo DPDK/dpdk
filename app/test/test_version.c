@@ -41,7 +41,7 @@
 #include "test.h"
 
 
-int
+static int
 test_version(void)
 {
 	const char *version = rte_version();
@@ -53,3 +53,9 @@ test_version(void)
 		return -1;
 	return 0;
 }
+
+static struct test_command version_cmd = {
+	.command = "version_autotest",
+	.callback = test_version,
+};
+REGISTER_TEST_COMMAND(version_cmd);

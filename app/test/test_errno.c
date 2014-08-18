@@ -42,7 +42,7 @@
 
 #include "test.h"
 
-int
+static int
 test_errno(void)
 {
 	const char *rte_retval;
@@ -112,3 +112,9 @@ test_errno(void)
 
 	return 0;
 }
+
+static struct test_command errno_cmd = {
+	.command = "errno_autotest",
+	.callback = test_errno,
+};
+REGISTER_TEST_COMMAND(errno_cmd);

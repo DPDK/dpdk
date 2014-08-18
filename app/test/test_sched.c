@@ -155,7 +155,7 @@ prepare_pkt(struct rte_mbuf *mbuf)
 /**
  * test main entrance for library sched
  */
-int
+static int
 test_sched(void)
 {
 	struct rte_mempool *mp = NULL;
@@ -229,12 +229,9 @@ test_sched(void)
 	return 0;
 }
 
-#else /* RTE_LIBRTE_SCHED */
-
-int
-test_sched(void)
-{
-	printf("The Scheduler library is not included in this build\n");
-	return 0;
-}
+static struct test_command sched_cmd = {
+	.command = "sched_autotest",
+	.callback = test_sched,
+};
+REGISTER_TEST_COMMAND(sched_cmd);
 #endif /* RTE_LIBRTE_SCHED */

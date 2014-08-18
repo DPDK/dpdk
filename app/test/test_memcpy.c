@@ -210,7 +210,7 @@ func_test(void)
 	return 0;
 }
 
-int
+static int
 test_memcpy(void)
 {
 	int ret;
@@ -223,3 +223,9 @@ test_memcpy(void)
 		return -1;
 	return 0;
 }
+
+static struct test_command memcpy_cmd = {
+	.command = "memcpy_autotest",
+	.callback = test_memcpy,
+};
+REGISTER_TEST_COMMAND(memcpy_cmd);

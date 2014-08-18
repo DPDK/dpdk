@@ -99,7 +99,7 @@ test_per_lcore_delay(__attribute__((unused)) void *arg)
 	return 0;
 }
 
-int
+static int
 test_per_lcore(void)
 {
 	unsigned lcore_id;
@@ -136,3 +136,9 @@ test_per_lcore(void)
 
 	return 0;
 }
+
+static struct test_command per_lcore_cmd = {
+	.command = "per_lcore_autotest",
+	.callback = test_per_lcore,
+};
+REGISTER_TEST_COMMAND(per_lcore_cmd);

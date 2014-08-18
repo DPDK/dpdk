@@ -431,12 +431,10 @@ test_ivshmem(void)
 
 	return -1;
 }
-#else /* RTE_LIBRTE_IVSHMEM */
 
-int
-test_ivshmem(void)
-{
-	printf("This binary was not compiled with IVSHMEM support!\n");
-	return 0;
-}
+static struct test_command ivshmem_cmd = {
+	.command = "ivshmem_autotest",
+	.callback = test_ivshmem,
+};
+REGISTER_TEST_COMMAND(ivshmem_cmd);
 #endif /* RTE_LIBRTE_IVSHMEM */

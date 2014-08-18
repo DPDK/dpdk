@@ -212,7 +212,7 @@ quit_workers(struct rte_distributor *d, struct rte_mempool *p)
 
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 
-int
+static int
 test_distributor_perf(void)
 {
 	static struct rte_distributor *d;
@@ -261,15 +261,9 @@ test_distributor_perf(void)
 	return 0;
 }
 
-#else
-
-#include <stdio.h>
-
-int
-test_distributor_perf(void)
-{
-	printf("Distributor is not enabled in configuration\n");
-	return 0;
-}
-
+static struct test_command distributor_perf_cmd = {
+	.command = "distributor_perf_autotest",
+	.callback = test_distributor_perf,
+};
+REGISTER_TEST_COMMAND(distributor_perf_cmd);
 #endif

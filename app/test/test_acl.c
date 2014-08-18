@@ -910,7 +910,7 @@ test_misc(void)
 	return 0;
 }
 
-int
+static int
 test_acl(void)
 {
 	if (test_invalid_parameters() < 0)
@@ -928,13 +928,10 @@ test_acl(void)
 
 	return 0;
 }
-#else
 
-int
-test_acl(void)
-{
-	printf("This binary was not compiled with ACL support!\n");
-	return 0;
-}
-
+static struct test_command acl_cmd = {
+	.command = "acl_autotest",
+	.callback = test_acl,
+};
+REGISTER_TEST_COMMAND(acl_cmd);
 #endif /* RTE_LIBRTE_ACL */

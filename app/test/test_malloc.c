@@ -924,7 +924,7 @@ test_alloc_socket(void)
 	return 0;
 }
 
-int
+static int
 test_malloc(void)
 {
 	unsigned lcore_id;
@@ -1045,3 +1045,9 @@ test_malloc(void)
 
 	return 0;
 }
+
+static struct test_command malloc_cmd = {
+	.command = "malloc_autotest",
+	.callback = test_malloc,
+};
+REGISTER_TEST_COMMAND(malloc_cmd);

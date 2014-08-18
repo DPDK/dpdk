@@ -223,7 +223,8 @@ static int test_invalid_kvargs(void)
 	return -1;
 }
 
-int test_kvargs(void)
+static int
+test_kvargs(void)
 {
 	printf("== test valid case ==\n");
 	if (test_valid_kvargs() < 0)
@@ -233,3 +234,9 @@ int test_kvargs(void)
 		return -1;
 	return 0;
 }
+
+static struct test_command kvargs_cmd = {
+	.command = "kvargs_autotest",
+	.callback = test_kvargs,
+};
+REGISTER_TEST_COMMAND(kvargs_cmd);

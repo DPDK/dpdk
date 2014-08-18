@@ -273,7 +273,7 @@ do_one_mempool_test(unsigned cores)
 	return 0;
 }
 
-int
+static int
 test_mempool_perf(void)
 {
 	rte_atomic32_init(&synchro);
@@ -329,3 +329,9 @@ test_mempool_perf(void)
 
 	return 0;
 }
+
+static struct test_command mempool_perf_cmd = {
+	.command = "mempool_perf_autotest",
+	.callback = test_mempool_perf,
+};
+REGISTER_TEST_COMMAND(mempool_perf_cmd);

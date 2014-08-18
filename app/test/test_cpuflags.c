@@ -74,7 +74,7 @@ cpu_flag_result(int result)
  * - Check if register and CPUID functions fail properly
  */
 
-int
+static int
 test_cpuflags(void)
 {
 	int result;
@@ -129,3 +129,9 @@ test_cpuflags(void)
 
 	return 0;
 }
+
+static struct test_command cpuflags_cmd = {
+	.command = "cpuflags_autotest",
+	.callback = test_cpuflags,
+};
+REGISTER_TEST_COMMAND(cpuflags_cmd);

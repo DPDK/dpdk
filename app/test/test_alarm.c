@@ -199,7 +199,7 @@ test_multi_alarms(void)
 	return 0;
 }
 
-int
+static int
 test_alarm(void)
 {
 	int count = 0;
@@ -253,3 +253,8 @@ test_alarm(void)
 	return 0;
 }
 
+static struct test_command alarm_cmd = {
+	.command = "alarm_autotest",
+	.callback = test_alarm,
+};
+REGISTER_TEST_COMMAND(alarm_cmd);

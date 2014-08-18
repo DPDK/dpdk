@@ -126,7 +126,6 @@
 } while (0)
 
 /* Function definitions */
-int test_table(void);
 uint64_t pipeline_test_hash(
 	void *key,
 	__attribute__((unused)) uint32_t key_size,

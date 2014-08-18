@@ -46,7 +46,7 @@
  *   The test always return success.
  */
 
-int
+static int
 test_prefetch(void)
 {
 	int a;
@@ -57,3 +57,9 @@ test_prefetch(void)
 
 	return 0;
 }
+
+static struct test_command prefetch_cmd = {
+	.command = "prefetch_autotest",
+	.callback = test_prefetch,
+};
+REGISTER_TEST_COMMAND(prefetch_cmd);

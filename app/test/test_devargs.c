@@ -52,7 +52,7 @@ static void free_devargs_list(void)
 	}
 }
 
-int
+static int
 test_devargs(void)
 {
 	struct rte_devargs_list save_devargs_list;
@@ -129,3 +129,9 @@ test_devargs(void)
 	devargs_list = save_devargs_list;
 	return -1;
 }
+
+static struct test_command devargs_cmd = {
+	.command = "devargs_autotest",
+	.callback = test_devargs,
+};
+REGISTER_TEST_COMMAND(devargs_cmd);

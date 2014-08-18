@@ -1204,7 +1204,7 @@ test_memory_flags(void)
 	return 0;
 }
 
-int
+static int
 test_eal_flags(void)
 {
 	int ret = 0;
@@ -1283,15 +1283,9 @@ test_eal_flags(void)
 	return ret;
 }
 
-#else
-/* Baremetal version
- * Multiprocess not applicable, so just return 0 always
- */
-int
-test_eal_flags(void)
-{
-	printf("Multi-process not possible for baremetal, cannot test EAL flags\n");
-	return 0;
-}
-
+static struct test_command eal_flags_cmd = {
+	.command = "eal_flags_autotest",
+	.callback = test_eal_flags,
+};
+REGISTER_TEST_COMMAND(eal_flags_cmd);
 #endif

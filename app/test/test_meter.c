@@ -471,7 +471,7 @@ tm_test_trtcm_color_aware_check(void)
 /**
  * test main entrance for library meter
  */
-int
+static int
 test_meter(void)
 {
 	if(tm_test_srtcm_config() != 0 )
@@ -496,12 +496,9 @@ test_meter(void)
 
 }
 
-#else /* RTE_LIBRTE_METER */
-
-int
-test_meter(void)
-{
-	printf("The meter library is not included in this build\n");
-	return 0;
-}
+static struct test_command meter_cmd = {
+	.command = "meter_autotest",
+	.callback = test_meter,
+};
+REGISTER_TEST_COMMAND(meter_cmd);
 #endif /* RTE_LIBRTE_METER */

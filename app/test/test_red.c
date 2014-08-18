@@ -1861,7 +1861,8 @@ test_invalid_parameters(void)
 	return 0;
 }
 
-int test_red(void)
+static int
+test_red(void)
 {
 	uint32_t num_tests = 0;
 	uint32_t num_pass = 0;
@@ -1883,13 +1884,9 @@ int test_red(void)
 	return (ret);
 }
 
-#else
-
-int
-test_red(void)
-{
-	printf("The SCHED library is not included in this build\n");
-	return 0;
-}
-
+static struct test_command red_cmd = {
+	.command = "red_autotest",
+	.callback = test_red,
+};
+REGISTER_TEST_COMMAND(red_cmd);
 #endif

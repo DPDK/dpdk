@@ -922,7 +922,7 @@ test_memzone_reserve_remainder(void)
 	return 0;
 }
 
-int
+static int
 test_memzone(void)
 {
 	const struct rte_memzone *memzone1;
@@ -1044,3 +1044,9 @@ test_memzone(void)
 
 	return 0;
 }
+
+static struct test_command memzone_cmd = {
+	.command = "memzone_autotest",
+	.callback = test_memzone,
+};
+REGISTER_TEST_COMMAND(memzone_cmd);

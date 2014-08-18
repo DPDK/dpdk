@@ -291,7 +291,7 @@ test_rte_strsplit(void)
 	return 0;
 }
 
-int
+static int
 test_string_fns(void)
 {
 	if (test_rte_snprintf() < 0 ||
@@ -299,3 +299,9 @@ test_string_fns(void)
 		return -1;
 	return 0;
 }
+
+static struct test_command string_cmd = {
+	.command = "string_autotest",
+	.callback = test_string_fns,
+};
+REGISTER_TEST_COMMAND(string_cmd);

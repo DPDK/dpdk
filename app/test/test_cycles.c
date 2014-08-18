@@ -52,7 +52,7 @@
  *   of cycles is correct with regard to the frequency of the timer.
  */
 
-int
+static int
 test_cycles(void)
 {
 	unsigned i;
@@ -88,3 +88,9 @@ test_cycles(void)
 
 	return 0;
 }
+
+static struct test_command cycles_cmd = {
+	.command = "cycles_autotest",
+	.callback = test_cycles,
+};
+REGISTER_TEST_COMMAND(cycles_cmd);

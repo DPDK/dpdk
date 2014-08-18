@@ -3810,8 +3810,14 @@ static struct unit_test_suite link_bonding_test_suite  = {
 };
 
 
-int
+static int
 test_link_bonding(void)
 {
 	return unit_test_suite_runner(&link_bonding_test_suite);
 }
+
+static struct test_command link_bonding_cmd = {
+	.command = "link_bonding_autotest",
+	.callback = test_link_bonding,
+};
+REGISTER_TEST_COMMAND(link_bonding_cmd);

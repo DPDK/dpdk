@@ -278,7 +278,7 @@ perf_test(void)
 }
 
 
-int
+static int
 test_memcpy_perf(void)
 {
 	int ret;
@@ -288,3 +288,9 @@ test_memcpy_perf(void)
 		return -1;
 	return 0;
 }
+
+static struct test_command memcpy_perf_cmd = {
+	.command = "memcpy_perf_autotest",
+	.callback = test_memcpy_perf,
+};
+REGISTER_TEST_COMMAND(memcpy_perf_cmd);

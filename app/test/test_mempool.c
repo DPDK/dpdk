@@ -455,7 +455,7 @@ test_mempool_xmem_misc(void)
 	return (0);
 }
 
-int
+static int
 test_mempool(void)
 {
 	rte_atomic32_init(&synchro);
@@ -521,3 +521,9 @@ test_mempool(void)
 
 	return 0;
 }
+
+static struct test_command mempool_cmd = {
+	.command = "mempool_autotest",
+	.callback = test_mempool,
+};
+REGISTER_TEST_COMMAND(mempool_cmd);

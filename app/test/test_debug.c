@@ -156,7 +156,7 @@ test_usage(void)
 	return 0;
 }
 
-int
+static int
 test_debug(void)
 {
 	rte_dump_stack();
@@ -169,3 +169,9 @@ test_debug(void)
 		return -1;
 	return 0;
 }
+
+static struct test_command debug_cmd = {
+	.command = "debug_autotest",
+	.callback = test_debug,
+};
+REGISTER_TEST_COMMAND(debug_cmd);

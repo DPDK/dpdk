@@ -381,7 +381,7 @@ test_bulk_enqueue_dequeue(void)
 	}
 }
 
-int
+static int
 test_ring_perf(void)
 {
 	struct lcore_pair cores;
@@ -413,3 +413,9 @@ test_ring_perf(void)
 	}
 	return 0;
 }
+
+static struct test_command ring_perf_cmd = {
+	.command = "ring_perf_autotest",
+	.callback = test_ring_perf,
+};
+REGISTER_TEST_COMMAND(ring_perf_cmd);

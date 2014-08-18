@@ -395,7 +395,7 @@ test_interrupt_full_path_check(enum test_interrupt_handle_type intr_type)
 /**
  * Main function of testing interrupt.
  */
-int
+static int
 test_interrupt(void)
 {
 	int ret = -1;
@@ -548,3 +548,8 @@ out:
 	return ret;
 }
 
+static struct test_command interrupt_cmd = {
+	.command = "interrupt_autotest",
+	.callback = test_interrupt,
+};
+REGISTER_TEST_COMMAND(interrupt_cmd);
