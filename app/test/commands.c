@@ -78,6 +78,15 @@
 
 /****************/
 
+static struct test_commands_list commands_list =
+	TAILQ_HEAD_INITIALIZER(commands_list);
+
+void
+add_test_command(struct test_command *t)
+{
+	TAILQ_INSERT_TAIL(&commands_list, t, next);
+}
+
 struct cmd_autotest_result {
 	cmdline_fixed_string_t autotest;
 };
@@ -86,8 +95,14 @@ static void cmd_autotest_parsed(void *parsed_result,
 				__attribute__((unused)) struct cmdline *cl,
 				__attribute__((unused)) void *data)
 {
+	struct test_command *t;
 	struct cmd_autotest_result *res = parsed_result;
 	int ret = 0;
+
+	TAILQ_FOREACH(t, &commands_list, next) {
+		if (!strcmp(res->autotest, t->command))
+			ret = t->callback();
+	}
 
 	if (!strcmp(res->autotest, "version_autotest"))
 		ret = test_version();
@@ -214,45 +229,7 @@ static void cmd_autotest_parsed(void *parsed_result,
 
 cmdline_parse_token_string_t cmd_autotest_autotest =
 	TOKEN_STRING_INITIALIZER(struct cmd_autotest_result, autotest,
-			"pci_autotest#memory_autotest#"
-			"per_lcore_autotest#spinlock_autotest#"
-			"rwlock_autotest#atomic_autotest#"
-			"byteorder_autotest#prefetch_autotest#"
-			"cycles_autotest#logs_autotest#"
-			"memzone_autotest#ring_autotest#"
-			"mempool_autotest#mbuf_autotest#"
-			"timer_autotest#malloc_autotest#"
-			"memcpy_autotest#hash_autotest#"
-			"lpm_autotest#debug_autotest#"
-			"lpm6_autotest#"
-			"errno_autotest#tailq_autotest#"
-			"string_autotest#multiprocess_autotest#"
-			"cpuflags_autotest#eal_flags_autotest#"
-			"alarm_autotest#interrupt_autotest#"
-			"version_autotest#eal_fs_autotest#"
-			"cmdline_autotest#func_reentrancy_autotest#"
-#ifdef RTE_LIBRTE_PMD_BOND
-			"link_bonding_autotest#"
-#endif
-			"mempool_perf_autotest#hash_perf_autotest#"
-			"memcpy_perf_autotest#ring_perf_autotest#"
-			"red_autotest#meter_autotest#sched_autotest#"
-			"memcpy_perf_autotest#kni_autotest#"
-			"ivshmem_autotest#"
-			"devargs_autotest#table_autotest#"
-#ifdef RTE_LIBRTE_ACL
-			"acl_autotest#"
-#endif
-			"power_autotest#"
-			"timer_perf_autotest#"
-#ifdef RTE_LIBRTE_PMD_RING
-			"ring_pmd_autotest#"
-#endif
-#ifdef RTE_LIBRTE_KVARGS
-			"kvargs_autotest#"
-#endif
-			"common_autotest#"
-			"distributor_autotest#distributor_perf_autotest");
+				 "");
 
 cmdline_parse_inst_t cmd_autotest = {
 	.f = cmd_autotest_parsed,  /* function to call */
@@ -460,3 +437,66 @@ cmdline_parse_ctx_t main_ctx[] = {
 	NULL,
 };
 
+int commands_init(void)
+{
+	struct test_command *t;
+	char builtin_commands[] =
+			"pci_autotest#memory_autotest#"
+			"per_lcore_autotest#spinlock_autotest#"
+			"rwlock_autotest#atomic_autotest#"
+			"byteorder_autotest#prefetch_autotest#"
+			"cycles_autotest#logs_autotest#"
+			"memzone_autotest#ring_autotest#"
+			"mempool_autotest#mbuf_autotest#"
+			"timer_autotest#malloc_autotest#"
+			"memcpy_autotest#hash_autotest#"
+			"lpm_autotest#debug_autotest#"
+			"lpm6_autotest#"
+			"errno_autotest#tailq_autotest#"
+			"string_autotest#multiprocess_autotest#"
+			"cpuflags_autotest#eal_flags_autotest#"
+			"alarm_autotest#interrupt_autotest#"
+			"version_autotest#eal_fs_autotest#"
+			"cmdline_autotest#func_reentrancy_autotest#"
+#ifdef RTE_LIBRTE_PMD_BOND
+			"link_bonding_autotest#"
+#endif
+			"mempool_perf_autotest#hash_perf_autotest#"
+			"memcpy_perf_autotest#ring_perf_autotest#"
+			"red_autotest#meter_autotest#sched_autotest#"
+			"memcpy_perf_autotest#kni_autotest#"
+			"ivshmem_autotest#"
+			"devargs_autotest#table_autotest#"
+#ifdef RTE_LIBRTE_ACL
+			"acl_autotest#"
+#endif
+			"power_autotest#"
+			"timer_perf_autotest#"
+#ifdef RTE_LIBRTE_PMD_RING
+			"ring_pmd_autotest#"
+#endif
+#ifdef RTE_LIBRTE_KVARGS
+			"kvargs_autotest#"
+#endif
+			"common_autotest#"
+			"distributor_autotest#distributor_perf_autotest";
+	char *commands, *ptr;
+	int commands_len = strlen(builtin_commands) + 1;
+
+	TAILQ_FOREACH(t, &commands_list, next) {
+		commands_len += strlen(t->command) + 1;
+	}
+
+	commands = malloc(commands_len);
+	if (!commands)
+		return -1;
+
+	ptr = commands;
+	TAILQ_FOREACH(t, &commands_list, next) {
+		ptr += sprintf(ptr, "%s#", t->command);
+	}
+	ptr += sprintf(ptr, "%s", builtin_commands);
+
+	cmd_autotest_autotest.string_data.str = commands;
+	return 0;
+}

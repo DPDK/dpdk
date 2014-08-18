@@ -34,6 +34,8 @@
 #ifndef _TEST_H_
 #define _TEST_H_
 
+#include <sys/queue.h>
+
 #define TEST_ASSERT(cond, msg, ...) do {						\
 		if (!(cond)) {											\
 			printf("TestCase %s() line %d failed: "			\
@@ -125,6 +127,8 @@ int unit_test_suite_runner(struct unit_test_suite *suite);
 
 extern const char *prgname;
 
+int commands_init(void);
+
 int main(int argc, char **argv);
 
 int test_pci(void);
@@ -182,5 +186,22 @@ int test_devargs(void);
 int test_link_bonding(void);
 
 int test_pci_run;
+
+typedef int (test_callback)(void);
+TAILQ_HEAD(test_commands_list, test_command);
+struct test_command {
+	TAILQ_ENTRY(test_command) next;
+	const char *command;
+	test_callback *callback;
+};
+
+void add_test_command(struct test_command *t);
+
+#define REGISTER_TEST_COMMAND(t) \
+static void testfn_##t(void);\
+void __attribute__((constructor, used)) testfn_##t(void)\
+{\
+	add_test_command(&t);\
+}
 
 #endif
