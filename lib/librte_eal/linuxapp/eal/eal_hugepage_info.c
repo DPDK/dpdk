@@ -311,11 +311,14 @@ eal_hugepage_info_init(void)
 				/* if blocking lock failed */
 				if (flock(hpi->lock_descriptor, LOCK_EX) == -1) {
 					RTE_LOG(CRIT, EAL, "Failed to lock hugepage directory!\n");
+					closedir(dir);
 					return -1;
 				}
 				/* clear out the hugepages dir from unused pages */
-				if (clear_hugedir(hpi->hugedir) == -1)
+				if (clear_hugedir(hpi->hugedir) == -1) {
+					closedir(dir);
 					return -1;
+				}
 
 				/* for now, put all pages into socket 0,
 				 * later they will be sorted */
