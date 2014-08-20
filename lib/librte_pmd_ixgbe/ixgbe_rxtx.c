@@ -900,6 +900,7 @@ ixgbe_rx_scan_hw_ring(struct igb_rx_queue *rxq)
 	struct igb_rx_entry *rxep;
 	struct rte_mbuf *mb;
 	uint16_t pkt_len;
+	uint16_t pkt_flags;
 	int s[LOOK_AHEAD], nb_dd;
 	int i, j, nb_rx = 0;
 
@@ -933,21 +934,28 @@ ixgbe_rx_scan_hw_ring(struct igb_rx_queue *rxq)
 		/* Translate descriptor info to mbuf format */
 		for (j = 0; j < nb_dd; ++j) {
 			mb = rxep[j].mbuf;
-			pkt_len = (uint16_t)(rxdp[j].wb.upper.length -
-							rxq->crc_len);
+			pkt_len = (uint16_t)(rxdp[j].wb.upper.length - rxq->crc_len);
 			mb->data_len = pkt_len;
 			mb->pkt_len = pkt_len;
 			mb->vlan_tci = rxdp[j].wb.upper.vlan;
-			mb->hash.rss = rxdp[j].wb.lower.hi_dword.rss;
+			mb->vlan_tci = rte_le_to_cpu_16(rxdp[j].wb.upper.vlan);
 
 			/* convert descriptor fields to rte mbuf flags */
-			mb->ol_flags  = rx_desc_hlen_type_rss_to_pkt_flags(
+			pkt_flags  = rx_desc_hlen_type_rss_to_pkt_flags(
 					rxdp[j].wb.lower.lo_dword.data);
 			/* reuse status field from scan list */
-			mb->ol_flags = mb->ol_flags |
-					rx_desc_status_to_pkt_flags(s[j]);
-			mb->ol_flags = mb->ol_flags |
-					rx_desc_error_to_pkt_flags(s[j]);
+			pkt_flags |= rx_desc_status_to_pkt_flags(s[j]);
+			pkt_flags |= rx_desc_error_to_pkt_flags(s[j]);
+			mb->ol_flags = pkt_flags;
+
+			if (likely(pkt_flags & PKT_RX_RSS_HASH))
+				mb->hash.rss = rxdp[j].wb.lower.hi_dword.rss;
+			else if (pkt_flags & PKT_RX_FDIR) {
+				mb->hash.fdir.hash =
+					(uint16_t)((rxdp[j].wb.lower.hi_dword.csum_ip.csum)
+						& IXGBE_ATR_HASH_MASK);
+				mb->hash.fdir.id = rxdp[j].wb.lower.hi_dword.csum_ip.ip_id;
+			}
 		}
 
 		/* Move mbuf pointers from the S/W ring to the stage */
