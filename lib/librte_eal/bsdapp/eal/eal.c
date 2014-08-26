@@ -95,27 +95,9 @@
 #define OPT_VDEV        "vdev"
 #define OPT_SYSLOG      "syslog"
 
-#define RTE_EAL_BLACKLIST_SIZE	0x100
-
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
-#define SOCKET_MEM_STRLEN (RTE_MAX_NUMA_NODES * 10)
-
-#define HIGHEST_RPL 3
-
 #define BITS_PER_HEX 4
-
-#define GET_BLACKLIST_FIELD(in, fd, lim, dlm)                   \
-{                                                               \
-	unsigned long val;                                      \
-	char *end;                                              \
-	errno = 0;                                              \
-	val = strtoul((in), &end, 16);                          \
-	if (errno != 0 || end[0] != (dlm) || val > (lim))       \
-		return (-EINVAL);                               \
-	(fd) = (typeof (fd))val;                                \
-	(in) = end + 1;                                         \
-}
 
 /* Allow the application to print its usage message too if set */
 static rte_usage_hook_t	rte_application_usage_hook = NULL;

@@ -62,7 +62,6 @@
 #define PCI_DEVICE_ID_IVSHMEM 0x1110
 
 #define IVSHMEM_MAGIC 0x0BADC0DE
-#define IVSHMEM_METADATA_SIZE 0x1000
 
 #define IVSHMEM_RESOURCE_PATH "/sys/bus/pci/devices/%04x:%02x:%02x.%x/resource2"
 #define IVSHMEM_CONFIG_PATH "/var/run/.%s_ivshmem_config"

@@ -102,8 +102,6 @@
 #define OPT_CREATE_UIO_DEV "create-uio-dev"
 #define OPT_VFIO_INTR    "vfio-intr"
 
-#define RTE_EAL_BLACKLIST_SIZE	0x100
-
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
 #define SOCKET_MEM_STRLEN (RTE_MAX_NUMA_NODES * 10)

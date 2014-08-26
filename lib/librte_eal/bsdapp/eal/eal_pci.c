@@ -156,10 +156,6 @@ fail:
 	return NULL;
 }
 
-#ifndef OFF_MAX
-#define OFF_MAX              ((uint64_t)(off_t)-1)
-#endif
-
 static int
 pci_uio_map_secondary(struct rte_pci_device *dev)
 {
@@ -273,9 +269,6 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	return (0);
 }
-
-/* parse the "resource" sysfs file */
-#define IORESOURCE_MEM  0x00000200
 
 /* Compare two PCI device addresses. */
 static int

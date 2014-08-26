@@ -70,8 +70,6 @@ static uint64_t eal_tsc_resolution_hz = 0;
 /* General capabilities register */
 #define CLK_PERIOD_SHIFT     32 /* Clock period shift. */
 #define CLK_PERIOD_MASK      0xffffffff00000000ULL /* Clock period mask. */
-#define COUNT_SIZE_CAP_SHIFT 13 /* Count size capa. shift. */
-#define COUNT_SIZE_CAP_MASK 0x0000000000002000ULL /* Count size capa. mask. */
 
 /**
  * HPET timer registers. From the Intel IA-PC HPET (High Precision Event
