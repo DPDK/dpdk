@@ -707,11 +707,8 @@ bond_ethdev_close(struct rte_eth_dev *dev __rte_unused)
 {
 }
 
-static int
-bond_ethdev_configure(struct rte_eth_dev *dev __rte_unused)
-{
-	return 0;
-}
+/* forward declaration */
+static int bond_ethdev_configure(struct rte_eth_dev *dev);
 
 static void
 bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
@@ -1027,6 +1024,7 @@ struct eth_dev_ops default_dev_ops = {
 static int
 bond_init(const char *name, const char *params)
 {
+	struct bond_dev_private *internals;
 	struct rte_kvargs *kvlist;
 	uint8_t bonding_mode, socket_id;
 	int  arg_count, port_id;
@@ -1078,10 +1076,31 @@ bond_init(const char *name, const char *params)
 				name, bonding_mode, socket_id);
 		return -1;
 	}
+	internals = rte_eth_devices[port_id].data->dev_private;
+	internals->kvlist = kvlist;
 
 	RTE_LOG(INFO, EAL,
 			"Create bonded device %s on port %d in mode %u on socket %u.\n",
 			name, port_id, bonding_mode, socket_id);
+	return 0;
+}
+
+/* this part will resolve the slave portids after all the other pdev and vdev
+ * have been allocated */
+static int
+bond_ethdev_configure(struct rte_eth_dev *dev)
+{
+	char *name = dev->data->name;
+	struct bond_dev_private *internals = dev->data->dev_private;
+	struct rte_kvargs *kvlist = internals->kvlist;
+	int arg_count, port_id = dev - rte_eth_devices;
+
+	/*
+	 * if no kvlist, it means that this bonded device has been created
+	 * through the bonding api.
+	 */
+	if (!kvlist)
+		return 0;
 
 	/* Parse MAC address for bonded device */
 	arg_count = rte_kvargs_count(kvlist, PMD_BOND_MAC_ADDR_KVARG);
@@ -1199,8 +1218,8 @@ bond_init(const char *name, const char *params)
 }
 
 static struct rte_driver bond_drv = {
-	.name = PMD_BOND_NAME,
-	.type = PMD_BDEV,
+	.name = "eth_bond",
+	.type = PMD_VDEV,
 	.init = bond_init,
 };
 

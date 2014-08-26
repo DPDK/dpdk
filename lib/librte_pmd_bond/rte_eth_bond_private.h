@@ -123,6 +123,8 @@ struct bond_dev_private {
 
 	/** Persisted configuration of slaves */
 	struct slave_conf presisted_slaves_conf[RTE_MAX_ETHPORTS];
+
+	struct rte_kvargs *kvlist;
 };
 
 extern struct eth_dev_ops default_dev_ops;
