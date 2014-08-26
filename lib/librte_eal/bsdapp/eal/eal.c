@@ -497,6 +497,7 @@ rte_eal_iopl_init(void)
 	fd = open("/dev/io", O_RDWR);
 	if (fd < 0)
 		return -1;
+	close(fd);
 	return 0;
 }
 
