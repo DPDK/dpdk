@@ -173,6 +173,7 @@ vmxnet3_cmd_ring_release(vmxnet3_cmd_ring_t *ring)
 		vmxnet3_cmd_ring_adv_next2comp(ring);
 	}
 	rte_free(ring->buf_info);
+	ring->buf_info = NULL;
 }
 
 void
