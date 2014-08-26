@@ -78,9 +78,6 @@ struct rte_config {
 	/** Primary or secondary configuration */
 	enum rte_proc_type_t process_type;
 
-	/** A set of general status flags */
-	unsigned flags;
-
 	/**
 	 * Pointer to memory configuration, which may be shared across multiple
 	 * Intel DPDK instances
