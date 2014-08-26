@@ -150,9 +150,6 @@ rte_eal_pci_probe(void)
 		probe_all = 1;
 
 	TAILQ_FOREACH(dev, &pci_device_list, next) {
-		/* check if device has already been initialized */
-		if (dev->driver != NULL)
-			continue;
 
 		/* set devargs in PCI structure */
 		devargs = pci_devargs_lookup(dev);

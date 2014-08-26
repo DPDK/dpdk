@@ -196,4 +196,11 @@ int rte_eal_intr_init(void);
  */
 int rte_eal_alarm_init(void);
 
+/**
+ * This function initialises any virtual devices
+ *
+ * This function is private to the EAL.
+ */
+int rte_eal_dev_init(void);
+
 #endif /* _EAL_PRIVATE_H_ */
