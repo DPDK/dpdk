@@ -490,7 +490,7 @@ int rte_eal_has_hugepages(void)
 }
 
 /* Abstraction for port I/0 privilege */
-static int
+int
 rte_eal_iopl_init(void)
 {
 	int fd = -1;
@@ -550,9 +550,6 @@ rte_eal_init(int argc, char **argv)
 	rte_srand(rte_rdtsc());
 
 	rte_config_init();
-
-	if (rte_eal_iopl_init() == 0)
-		rte_config.flags |= EAL_FLG_HIGH_IOPL;
 
 	if (rte_eal_cpu_init() < 0)
 		rte_panic("Cannot detect lcores\n");

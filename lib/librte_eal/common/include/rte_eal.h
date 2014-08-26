@@ -88,9 +88,6 @@ struct rte_config {
 	struct rte_mem_config *mem_config;
 } __attribute__((__packed__));
 
-/* Flag definitions for rte_config flags */
-#define EAL_FLG_HIGH_IOPL 1 /**< indicates high IO privilege in a linux env */
-
 /**
  * Get the global configuration structure.
  *
@@ -117,6 +114,17 @@ enum rte_lcore_role_t rte_eal_lcore_role(unsigned lcore_id);
  *   The process type
  */
 enum rte_proc_type_t rte_eal_process_type(void);
+
+/**
+ * Request iopl privilege for all RPL.
+ *
+ * This function should be called by pmds which need access to ioports.
+
+ * @return
+ *   - On success, returns 0.
+ *   - On failure, returns -1.
+ */
+int rte_eal_iopl_init(void);
 
 /**
  * Initialize the Environment Abstraction Layer (EAL).

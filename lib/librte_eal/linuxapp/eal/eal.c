@@ -87,8 +87,6 @@
 
 #define SOCKET_MEM_STRLEN (RTE_MAX_NUMA_NODES * 10)
 
-#define HIGHEST_RPL 3
-
 /* Allow the application to print its usage message too if set */
 static rte_usage_hook_t	rte_application_usage_hook = NULL;
 
@@ -755,10 +753,12 @@ rte_eal_mcfg_complete(void)
 /*
  * Request iopl privilege for all RPL, returns 0 on success
  */
-static int
+int
 rte_eal_iopl_init(void)
 {
-	return iopl(HIGHEST_RPL);
+	if (iopl(3) != 0)
+		return -1;
+	return 0;
 }
 
 /* Launch threads, called at application init(). */
@@ -819,9 +819,6 @@ rte_eal_init(int argc, char **argv)
 	rte_srand(rte_rdtsc());
 
 	rte_config_init();
-
-	if (rte_eal_iopl_init() == 0)
-		rte_config.flags |= EAL_FLG_HIGH_IOPL;
 
 	if (rte_eal_pci_init() < 0)
 		rte_panic("Cannot init PCI\n");

@@ -736,12 +736,6 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 		return -1;
 	}
 
-	if (!(rte_eal_get_configuration()->flags & EAL_FLG_HIGH_IOPL)) {
-		PMD_INIT_LOG(ERR,
-			"IOPL call failed in EAL init - cannot use virtio PMD driver\n");
-		return -1;
-	}
-
 	eth_dev->dev_ops = &virtio_eth_dev_ops;
 	eth_dev->tx_pkt_burst = &virtio_xmit_pkts;
 
@@ -896,8 +890,14 @@ static struct eth_driver rte_virtio_pmd = {
  * Returns 0 on success.
  */
 static int
-rte_virtio_pmd_init(const char *name __rte_unused, const char *param __rte_unused)
+rte_virtio_pmd_init(const char *name __rte_unused,
+		    const char *param __rte_unused)
 {
+	if (rte_eal_iopl_init() != 0) {
+		PMD_INIT_LOG(ERR, "IOPL call failed - cannot use virtio PMD");
+		return -1;
+	}
+
 	rte_eth_driver_register(&rte_virtio_pmd);
 	return 0;
 }
