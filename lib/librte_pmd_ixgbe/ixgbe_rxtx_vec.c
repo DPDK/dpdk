@@ -277,7 +277,7 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		descs[3] = _mm_loadu_si128((__m128i *)(rxdp + 3));
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
-		_mm_store_si128((__m128i *)&rx_pkts[pos], mbp1);
+		_mm_storeu_si128((__m128i *)&rx_pkts[pos], mbp1);
 
 		/* B.1 load 1 mbuf point */
 		mbp2 = _mm_loadu_si128((__m128i *)&sw_ring[pos+2]);
@@ -288,7 +288,7 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		descs[0] = _mm_loadu_si128((__m128i *)(rxdp));
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
-		_mm_store_si128((__m128i *)&rx_pkts[pos+2], mbp2);
+		_mm_storeu_si128((__m128i *)&rx_pkts[pos+2], mbp2);
 
 		/* avoid compiler reorder optimization */
 		rte_compiler_barrier();
