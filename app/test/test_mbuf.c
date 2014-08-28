@@ -80,7 +80,6 @@
 #define MAKE_STRING(x)          # x
 
 static struct rte_mempool *pktmbuf_pool = NULL;
-static struct rte_mempool *ctrlmbuf_pool = NULL;
 
 #if defined RTE_MBUF_REFCNT  && defined RTE_MBUF_REFCNT_ATOMIC
 
@@ -272,8 +271,8 @@ test_one_pktmbuf(void)
 		GOTO_FAIL("Buffer should be continuous");
 	memset(hdr, 0x55, MBUF_TEST_HDR2_LEN);
 
-	rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
-	rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 0);
+	rte_mbuf_sanity_check(m, 1);
+	rte_mbuf_sanity_check(m, 0);
 	rte_pktmbuf_dump(stdout, m, 0);
 
 	/* this prepend should fail */
@@ -317,48 +316,6 @@ test_one_pktmbuf(void)
 fail:
 	if (m)
 		rte_pktmbuf_free(m);
-	return -1;
-}
-
-/*
- * test control mbuf
- */
-static int
-test_one_ctrlmbuf(void)
-{
-	struct rte_mbuf *m = NULL;
-	char message[] = "This is a message carried by a ctrlmbuf";
-
-	printf("Test ctrlmbuf API\n");
-
-	/* alloc a mbuf */
-
-	m = rte_ctrlmbuf_alloc(ctrlmbuf_pool);
-	if (m == NULL)
-		GOTO_FAIL("Cannot allocate mbuf");
-	if (rte_ctrlmbuf_len(m) != 0)
-		GOTO_FAIL("Bad length");
-
-	/* set data */
-	rte_ctrlmbuf_data(m) = &message;
-	rte_ctrlmbuf_len(m) = sizeof(message);
-
-	/* read data */
-	if (rte_ctrlmbuf_data(m) != message)
-		GOTO_FAIL("Invalid data pointer");
-	if (rte_ctrlmbuf_len(m) != sizeof(message))
-		GOTO_FAIL("Invalid len");
-
-	rte_mbuf_sanity_check(m, RTE_MBUF_CTRL, 0);
-
-	/* free mbuf */
-	rte_ctrlmbuf_free(m);
-	m = NULL;
-	return 0;
-
-fail:
-	if (m)
-		rte_ctrlmbuf_free(m);
 	return -1;
 }
 
@@ -744,7 +701,7 @@ verify_mbuf_check_panics(struct rte_mbuf *buf)
 	pid = fork();
 
 	if (pid == 0) {
-		rte_mbuf_sanity_check(buf, RTE_MBUF_PKT, 1); /* should panic */
+		rte_mbuf_sanity_check(buf, 1); /* should panic */
 		exit(0);  /* return normally if it doesn't panic */
 	} else if (pid < 0){
 		printf("Fork Failed\n");
@@ -777,13 +734,6 @@ test_failing_mbuf_sanity_check(void)
 
 	if (verify_mbuf_check_panics(NULL)) {
 		printf("Error with NULL mbuf test\n");
-		return -1;
-	}
-
-	badbuf = *buf;
-	badbuf.type = (uint8_t)-1;
-	if (verify_mbuf_check_panics(&badbuf)) {
-		printf("Error with bad-type mbuf test\n");
 		return -1;
 	}
 
@@ -886,22 +836,6 @@ test_mbuf(void)
 
 	if (test_pktmbuf_with_non_ascii_data() < 0) {
 		printf("test_pktmbuf_with_non_ascii_data() failed\n");
-		return -1;
-	}
-
-	/* create ctrlmbuf pool if it does not exist */
-	if (ctrlmbuf_pool == NULL) {
-		ctrlmbuf_pool =
-			rte_mempool_create("test_ctrlmbuf_pool", NB_MBUF,
-					   sizeof(struct rte_mbuf), 32, 0,
-					   NULL, NULL,
-					   rte_ctrlmbuf_init, NULL,
-					   SOCKET_ID_ANY, 0);
-	}
-
-	/* test control mbuf */
-	if (test_one_ctrlmbuf() < 0) {
-		printf("test_one_ctrlmbuf() failed\n");
 		return -1;
 	}
 

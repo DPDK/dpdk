@@ -348,7 +348,7 @@ app_message_handle(struct app_core_rx_message_handle_params *params)
 	port_in_id = params->port_in_id;
 
 	/* Handle request */
-	req = (struct app_msg_req *) ((struct rte_mbuf *)msg)->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	switch (req->type) {
 	case APP_MSG_REQ_PING:
 	{
@@ -375,7 +375,7 @@ app_message_handle(struct app_core_rx_message_handle_params *params)
 	}
 
 	/* Fill in response message */
-	resp = (struct app_msg_resp *) ((struct rte_mbuf *)msg)->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	resp->result = result;
 
 	/* Send response */

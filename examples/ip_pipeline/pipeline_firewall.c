@@ -264,7 +264,7 @@ app_message_handle(struct app_core_firewall_message_handle_params *params)
 	table_id = params->table_id;
 
 	/* Handle request */
-	req = (struct app_msg_req *) msg->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data(msg);
 	switch (req->type) {
 	case APP_MSG_REQ_PING:
 	{
@@ -303,7 +303,7 @@ app_message_handle(struct app_core_firewall_message_handle_params *params)
 	}
 
 	/* Fill in response message */
-	resp = (struct app_msg_resp *) msg->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data(msg);
 	resp->result = result;
 
 	/* Send response */

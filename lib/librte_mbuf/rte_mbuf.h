@@ -43,18 +43,13 @@
  * buffers. The message buffers are stored in a mempool, using the
  * RTE mempool library.
  *
- * This library provide an API to allocate/free mbufs, manipulate
- * control message buffer (ctrlmbuf), which are generic message
- * buffers, and packet buffers (pktmbuf), which are used to carry
- * network packets.
+ * This library provide an API to allocate/free packet mbufs, which are
+ * used to carry network packets.
  *
  * To understand the concepts of packet buffers or mbufs, you
  * should read "TCP/IP Illustrated, Volume 2: The Implementation,
  * Addison-Wesley, 1995, ISBN 0-201-63354-X from Richard Stevens"
  * http://www.kohala.com/start/tcpipiv2.html
- *
- * The main modification of this implementation is the use of mbuf for
- * transports other than packets. mbufs can have other types.
  */
 
 #include <stdint.h>
@@ -69,15 +64,6 @@ extern "C" {
 
 /* deprecated feature, renamed in RTE_MBUF_REFCNT */
 #pragma GCC poison RTE_MBUF_SCATTER_GATHER
-
-/**
- * A control message buffer.
- */
-struct rte_ctrlmbuf {
-	void *data;        /**< Pointer to data. */
-	uint32_t data_len; /**< Length of data. */
-};
-
 
 /*
  * Packet Offload Features Flags. It also carry packet type information.
@@ -173,15 +159,7 @@ struct rte_pktmbuf {
 };
 
 /**
- * This enum indicates the mbuf type.
- */
-enum rte_mbuf_type {
-	RTE_MBUF_CTRL,  /**< Control mbuf. */
-	RTE_MBUF_PKT,   /**< Packet mbuf. */
-};
-
-/**
- * The generic rte_mbuf, containing a packet mbuf or a control mbuf.
+ * The generic rte_mbuf, containing a packet mbuf.
  */
 struct rte_mbuf {
 	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
@@ -204,14 +182,10 @@ struct rte_mbuf {
 #else
 	uint16_t refcnt_reserved;     /**< Do not use this field */
 #endif
-	uint8_t type;                 /**< Type of mbuf. */
-	uint8_t reserved;             /**< Unused field. Required for padding. */
+	uint16_t reserved;            /**< Unused field. Required for padding */
 	uint16_t ol_flags;            /**< Offload features. */
 
-	union {
-		struct rte_ctrlmbuf ctrl;
-		struct rte_pktmbuf pkt;
-	};
+	struct rte_pktmbuf pkt;
 
 	union {
 		uint8_t metadata[0];
@@ -274,12 +248,12 @@ struct rte_pktmbuf_pool_private {
 #ifdef RTE_LIBRTE_MBUF_DEBUG
 
 /**  check mbuf type in debug mode */
-#define __rte_mbuf_sanity_check(m, t, is_h) rte_mbuf_sanity_check(m, t, is_h)
+#define __rte_mbuf_sanity_check(m, is_h) rte_mbuf_sanity_check(m, is_h)
 
 /**  check mbuf type in debug mode if mbuf pointer is not null */
-#define __rte_mbuf_sanity_check_raw(m, t, is_h)	do {       \
+#define __rte_mbuf_sanity_check_raw(m, is_h)	do {       \
 	if ((m) != NULL)                                   \
-		rte_mbuf_sanity_check(m, t, is_h);          \
+		rte_mbuf_sanity_check(m, is_h);          \
 } while (0)
 
 /**  MBUF asserts in debug mode */
@@ -291,13 +265,13 @@ if (!(exp)) {                                                        \
 #else /*  RTE_LIBRTE_MBUF_DEBUG */
 
 /**  check mbuf type in debug mode */
-#define __rte_mbuf_sanity_check(m, t, is_h) do { } while(0)
+#define __rte_mbuf_sanity_check(m, is_h) do { } while (0)
 
 /**  check mbuf type in debug mode if mbuf pointer is not null */
-#define __rte_mbuf_sanity_check_raw(m, t, is_h) do { } while(0)
+#define __rte_mbuf_sanity_check_raw(m, is_h) do { } while (0)
 
 /**  MBUF asserts in debug mode */
-#define RTE_MBUF_ASSERT(exp)                do { } while(0)
+#define RTE_MBUF_ASSERT(exp)                do { } while (0)
 
 #endif /*  RTE_LIBRTE_MBUF_DEBUG */
 
@@ -401,20 +375,17 @@ rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
  *
  * @param m
  *   The mbuf to be checked.
- * @param t
- *   The expected type of the mbuf.
  * @param is_header
  *   True if the mbuf is a packet header, false if it is a sub-segment
  *   of a packet (in this case, some fields like nb_segs are not checked)
  */
 void
-rte_mbuf_sanity_check(const struct rte_mbuf *m, enum rte_mbuf_type t,
-		      int is_header);
+rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header);
 
 /**
  * @internal Allocate a new mbuf from mempool *mp*.
  * The use of that function is reserved for RTE internal needs.
- * Please use either rte_ctrlmbuf_alloc() or rte_pktmbuf_alloc().
+ * Please use rte_pktmbuf_alloc().
  *
  * @param mp
  *   The mempool from which mbuf is allocated.
@@ -439,7 +410,7 @@ static inline struct rte_mbuf *__rte_mbuf_raw_alloc(struct rte_mempool *mp)
 /**
  * @internal Put mbuf back into its original mempool.
  * The use of that function is reserved for RTE internal needs.
- * Please use either rte_ctrlmbuf_free() or rte_pktmbuf_free().
+ * Please use rte_pktmbuf_free().
  *
  * @param m
  *   The mbuf to be freed.
@@ -475,7 +446,7 @@ __rte_mbuf_raw_free(struct rte_mbuf *m)
  *   The index of the mbuf in the pool table.
  */
 void rte_ctrlmbuf_init(struct rte_mempool *mp, void *opaque_arg,
-		       void *m, unsigned i);
+		void *m, unsigned i);
 
 /**
  * Allocate a new mbuf (type is ctrl) from mempool *mp*.
@@ -489,16 +460,7 @@ void rte_ctrlmbuf_init(struct rte_mempool *mp, void *opaque_arg,
  *   - The pointer to the new mbuf on success.
  *   - NULL if allocation failed.
  */
-static inline struct rte_mbuf *rte_ctrlmbuf_alloc(struct rte_mempool *mp)
-{
-	struct rte_mbuf *m;
-	if ((m = __rte_mbuf_raw_alloc(mp)) != NULL) {
-		m->ctrl.data = m->buf_addr;
-		m->ctrl.data_len = 0;
-		__rte_mbuf_sanity_check(m, RTE_MBUF_CTRL, 0);
-	}
-	return (m);
-}
+#define rte_ctrlmbuf_alloc(mp) rte_pktmbuf_alloc(mp)
 
 /**
  * Free a control mbuf back into its original mempool.
@@ -506,14 +468,7 @@ static inline struct rte_mbuf *rte_ctrlmbuf_alloc(struct rte_mempool *mp)
  * @param m
  *   The control mbuf to be freed.
  */
-static inline void rte_ctrlmbuf_free(struct rte_mbuf *m)
-{
-	__rte_mbuf_sanity_check(m, RTE_MBUF_CTRL, 0);
-#ifdef RTE_MBUF_REFCNT
-	if (rte_mbuf_refcnt_update(m, -1) == 0)
-#endif /* RTE_MBUF_REFCNT */
-		__rte_mbuf_raw_free(m);
-}
+#define rte_ctrlmbuf_free(m) rte_pktmbuf_free(m)
 
 /**
  * A macro that returns the pointer to the carried data.
@@ -523,7 +478,7 @@ static inline void rte_ctrlmbuf_free(struct rte_mbuf *m)
  * @param m
  *   The control mbuf.
  */
-#define rte_ctrlmbuf_data(m) ((m)->ctrl.data)
+#define rte_ctrlmbuf_data(m) ((m)->pkt.data)
 
 /**
  * A macro that returns the length of the carried data.
@@ -533,15 +488,15 @@ static inline void rte_ctrlmbuf_free(struct rte_mbuf *m)
  * @param m
  *   The control mbuf.
  */
-#define rte_ctrlmbuf_len(m) ((m)->ctrl.data_len)
+#define rte_ctrlmbuf_len(m) rte_pktmbuf_data_len(m)
 
 /* Operations on pkt mbuf */
 
 /**
  * The packet mbuf constructor.
  *
- * This function initializes some fields in the mbuf structure that are not
- * modified by the user once created (mbuf type, origin pool, buffer start
+ * This function initializes some fields in the mbuf structure that are
+ * not modified by the user once created (origin pool, buffer start
  * address, and so on). This function is given as a callback function to
  * rte_mempool_create() at pool creation time.
  *
@@ -602,11 +557,11 @@ static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 	m->pkt.data = (char*) m->buf_addr + buf_ofs;
 
 	m->pkt.data_len = 0;
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 }
 
 /**
- * Allocate a new mbuf (type is pkt) from a mempool.
+ * Allocate a new mbuf from a mempool.
  *
  * This new mbuf contains one segment, which has a length of 0. The pointer
  * to data is initialized to have some bytes of headroom in the buffer
@@ -662,8 +617,8 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
 	mi->pkt.nb_segs = 1;
 	mi->ol_flags = md->ol_flags;
 
-	__rte_mbuf_sanity_check(mi, RTE_MBUF_PKT, 1);
-	__rte_mbuf_sanity_check(md, RTE_MBUF_PKT, 0);
+	__rte_mbuf_sanity_check(mi, 1);
+	__rte_mbuf_sanity_check(md, 0);
 }
 
 /**
@@ -700,7 +655,7 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 static inline struct rte_mbuf* __attribute__((always_inline))
 __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 0);
+	__rte_mbuf_sanity_check(m, 0);
 
 #ifdef RTE_MBUF_REFCNT
 	if (likely (rte_mbuf_refcnt_read(m) == 1) ||
@@ -755,7 +710,7 @@ static inline void rte_pktmbuf_free(struct rte_mbuf *m)
 {
 	struct rte_mbuf *m_next;
 
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
 	while (m != NULL) {
 		m_next = m->pkt.next;
@@ -816,7 +771,7 @@ static inline struct rte_mbuf *rte_pktmbuf_clone(struct rte_mbuf *md,
 		return (NULL);
 	}
 
-	__rte_mbuf_sanity_check(mc, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(mc, 1);
 	return (mc);
 }
 
@@ -833,7 +788,7 @@ static inline struct rte_mbuf *rte_pktmbuf_clone(struct rte_mbuf *md,
  */
 static inline void rte_pktmbuf_refcnt_update(struct rte_mbuf *m, int16_t v)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
 	do {
 		rte_mbuf_refcnt_update(m, v);
@@ -852,7 +807,7 @@ static inline void rte_pktmbuf_refcnt_update(struct rte_mbuf *m, int16_t v)
  */
 static inline uint16_t rte_pktmbuf_headroom(const struct rte_mbuf *m)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 	return (uint16_t) ((char*) m->pkt.data - (char*) m->buf_addr);
 }
 
@@ -866,7 +821,7 @@ static inline uint16_t rte_pktmbuf_headroom(const struct rte_mbuf *m)
  */
 static inline uint16_t rte_pktmbuf_tailroom(const struct rte_mbuf *m)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 	return (uint16_t)(m->buf_len - rte_pktmbuf_headroom(m) -
 			  m->pkt.data_len);
 }
@@ -883,7 +838,7 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
 {
 	struct rte_mbuf *m2 = (struct rte_mbuf *)m;
 
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 	while (m2->pkt.next != NULL)
 		m2 = m2->pkt.next;
 	return m2;
@@ -941,7 +896,7 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
 static inline char *rte_pktmbuf_prepend(struct rte_mbuf *m,
 					uint16_t len)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
 	if (unlikely(len > rte_pktmbuf_headroom(m)))
 		return NULL;
@@ -973,7 +928,7 @@ static inline char *rte_pktmbuf_append(struct rte_mbuf *m, uint16_t len)
 	void *tail;
 	struct rte_mbuf *m_last;
 
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
 	m_last = rte_pktmbuf_lastseg(m);
 	if (unlikely(len > rte_pktmbuf_tailroom(m_last)))
@@ -1001,7 +956,7 @@ static inline char *rte_pktmbuf_append(struct rte_mbuf *m, uint16_t len)
  */
 static inline char *rte_pktmbuf_adj(struct rte_mbuf *m, uint16_t len)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
 	if (unlikely(len > m->pkt.data_len))
 		return NULL;
@@ -1030,7 +985,7 @@ static inline int rte_pktmbuf_trim(struct rte_mbuf *m, uint16_t len)
 {
 	struct rte_mbuf *m_last;
 
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
 	m_last = rte_pktmbuf_lastseg(m);
 	if (unlikely(len > m_last->pkt.data_len))
@@ -1052,7 +1007,7 @@ static inline int rte_pktmbuf_trim(struct rte_mbuf *m, uint16_t len)
  */
 static inline int rte_pktmbuf_is_contiguous(const struct rte_mbuf *m)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 	return !!(m->pkt.nb_segs == 1);
 }
 

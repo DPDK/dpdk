@@ -65,24 +65,11 @@
  */
 void
 rte_ctrlmbuf_init(struct rte_mempool *mp,
-		  __attribute__((unused)) void *opaque_arg,
-		  void *_m,
-		  __attribute__((unused)) unsigned i)
+		__attribute__((unused)) void *opaque_arg,
+		void *_m,
+		__attribute__((unused)) unsigned i)
 {
-	struct rte_mbuf *m = _m;
-
-	memset(m, 0, mp->elt_size);
-
-	/* start of buffer is just after mbuf structure */
-	m->buf_addr = (char *)m + sizeof(struct rte_mbuf);
-	m->buf_physaddr = rte_mempool_virt2phy(mp, m) +
-			sizeof(struct rte_mbuf);
-	m->buf_len = (uint16_t) (mp->elt_size - sizeof(struct rte_mbuf));
-
-	/* init some constant fields */
-	m->type = RTE_MBUF_CTRL;
-	m->ctrl.data = (char *)m->buf_addr;
-	m->pool = (struct rte_mempool *)mp;
+	rte_pktmbuf_init(mp, opaque_arg, _m, i);
 }
 
 /*
@@ -133,7 +120,6 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	m->pkt.data = (char*) m->buf_addr + RTE_MIN(RTE_PKTMBUF_HEADROOM, m->buf_len);
 
 	/* init some constant fields */
-	m->type = RTE_MBUF_PKT;
 	m->pool = mp;
 	m->pkt.nb_segs = 1;
 	m->pkt.in_port = 0xff;
@@ -141,16 +127,13 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 
 /* do some sanity checks on a mbuf: panic if it fails */
 void
-rte_mbuf_sanity_check(const struct rte_mbuf *m, enum rte_mbuf_type t,
-		      int is_header)
+rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)
 {
 	const struct rte_mbuf *m_seg;
 	unsigned nb_segs;
 
 	if (m == NULL)
 		rte_panic("mbuf is NULL\n");
-	if (m->type != (uint8_t)t)
-		rte_panic("bad mbuf type\n");
 
 	/* generic checks */
 	if (m->pool == NULL)
@@ -166,29 +149,18 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, enum rte_mbuf_type t,
 		rte_panic("bad ref cnt\n");
 #endif
 
-	/* nothing to check for ctrl messages */
-	if (m->type == RTE_MBUF_CTRL)
+	/* nothing to check for sub-segments */
+	if (is_header == 0)
 		return;
 
-	/* check pkt consistency */
-	else if (m->type == RTE_MBUF_PKT) {
-
-		/* nothing to check for sub-segments */
-		if (is_header == 0)
-			return;
-
-		nb_segs = m->pkt.nb_segs;
-		m_seg = m;
-		while (m_seg && nb_segs != 0) {
-			m_seg = m_seg->pkt.next;
-			nb_segs --;
-		}
-		if (nb_segs != 0)
-			rte_panic("bad nb_segs\n");
-		return;
+	nb_segs = m->pkt.nb_segs;
+	m_seg = m;
+	while (m_seg && nb_segs != 0) {
+		m_seg = m_seg->pkt.next;
+		nb_segs--;
 	}
-
-	rte_panic("unknown mbuf type\n");
+	if (nb_segs != 0)
+		rte_panic("bad nb_segs\n");
 }
 
 /* dump a mbuf on console */
@@ -198,7 +170,7 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 	unsigned int len;
 	unsigned nb_segs;
 
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
 	fprintf(f, "dump mbuf at 0x%p, phys=%"PRIx64", buf_len=%u\n",
 	       m, (uint64_t)m->buf_physaddr, (unsigned)m->buf_len);
@@ -208,7 +180,7 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 	nb_segs = m->pkt.nb_segs;
 
 	while (m && nb_segs != 0) {
-		__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 0);
+		__rte_mbuf_sanity_check(m, 0);
 
 		fprintf(f, "  segment at 0x%p, data=0x%p, data_len=%u\n",
 		       m, m->pkt.data, (unsigned)m->pkt.data_len);

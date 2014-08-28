@@ -96,7 +96,7 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 	struct rte_mbuf *m;
 
 	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check_raw(m, RTE_MBUF_PKT, 0);
+	__rte_mbuf_sanity_check_raw(m, 0);
 	return (m);
 }
 
@@ -995,7 +995,6 @@ ixgbe_rx_alloc_bufs(struct igb_rx_queue *rxq)
 		/* populate the static rte mbuf fields */
 		mb = rxep[i].mbuf;
 		rte_mbuf_refcnt_set(mb, 1);
-		mb->type = RTE_MBUF_PKT;
 		mb->pkt.next = NULL;
 		mb->pkt.data = (char *)mb->buf_addr + RTE_PKTMBUF_HEADROOM;
 		mb->pkt.nb_segs = 1;
@@ -3213,7 +3212,6 @@ ixgbe_alloc_rx_queue_mbufs(struct igb_rx_queue *rxq)
 		}
 
 		rte_mbuf_refcnt_set(mbuf, 1);
-		mbuf->type = RTE_MBUF_PKT;
 		mbuf->pkt.next = NULL;
 		mbuf->pkt.data = (char *)mbuf->buf_addr + RTE_PKTMBUF_HEADROOM;
 		mbuf->pkt.nb_segs = 1;

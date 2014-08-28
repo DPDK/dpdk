@@ -343,7 +343,7 @@ mcast_out_pkt(struct rte_mbuf *pkt, int use_clone)
 
 	hdr->ol_flags = pkt->ol_flags;
 
-	__rte_mbuf_sanity_check(hdr, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(hdr, 1);
 	return (hdr);
 }
 

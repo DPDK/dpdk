@@ -561,7 +561,7 @@ app_ping(void)
 			rte_panic("Unable to allocate new message\n");
 
 		req = (struct app_msg_req *)
-			((struct rte_mbuf *)msg)->ctrl.data;
+				rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 		req->type = APP_MSG_REQ_PING;
 
 		/* Send request */
