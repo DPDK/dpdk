@@ -44,33 +44,14 @@
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
 
-static struct rte_mbuf mb_def = {
-
-	.ol_flags = 0,
-	{
-		.pkt = {
-			.data_len = 0,
-			.pkt_len = 0,
-
-			.vlan_macip = {
-				.data = 0,
-			},
-			.hash = {
-				.rss = 0,
-			},
-
-			.nb_segs = 1,
-			.in_port = 0,
-
-			.next = NULL,
-			.data = NULL,
-		},
-	},
-};
-
 static inline void
 ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
 {
+	static const struct rte_mbuf mb_def = {
+		.pkt = {
+			.nb_segs = 1,
+		},
+	};
 	int i;
 	uint16_t rx_id;
 	volatile union ixgbe_adv_rx_desc *rxdp;
