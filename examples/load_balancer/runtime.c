@@ -540,7 +540,7 @@ app_lcore_worker(
 			ipv4_dst = rte_be_to_cpu_32(ipv4_hdr->dst_addr);
 
 			if (unlikely(rte_lpm_lookup(lp->lpm_table, ipv4_dst, &port) != 0)) {
-				port = pkt->in_port;
+				port = pkt->port;
 			}
 
 			pos = lp->mbuf_out[port].n_mbufs;

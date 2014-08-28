@@ -998,7 +998,7 @@ ixgbe_rx_alloc_bufs(struct igb_rx_queue *rxq)
 		mb->next = NULL;
 		mb->data = (char *)mb->buf_addr + RTE_PKTMBUF_HEADROOM;
 		mb->nb_segs = 1;
-		mb->in_port = rxq->port_id;
+		mb->port = rxq->port_id;
 
 		/* populate the descriptors */
 		dma_addr = (uint64_t)mb->buf_physaddr + RTE_PKTMBUF_HEADROOM;
@@ -1253,7 +1253,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->next = NULL;
 		rxm->pkt_len = pkt_len;
 		rxm->data_len = pkt_len;
-		rxm->in_port = rxq->port_id;
+		rxm->port = rxq->port_id;
 
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
@@ -1496,7 +1496,7 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 *      - VLAN TCI, if any,
 		 *      - error flags.
 		 */
-		first_seg->in_port = rxq->port_id;
+		first_seg->port = rxq->port_id;
 
 		/*
 		 * The vlan_tci field is only valid when PKT_RX_VLAN_PKT is
@@ -3215,7 +3215,7 @@ ixgbe_alloc_rx_queue_mbufs(struct igb_rx_queue *rxq)
 		mbuf->next = NULL;
 		mbuf->data = (char *)mbuf->buf_addr + RTE_PKTMBUF_HEADROOM;
 		mbuf->nb_segs = 1;
-		mbuf->in_port = rxq->port_id;
+		mbuf->port = rxq->port_id;
 
 		dma_addr =
 			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mbuf));

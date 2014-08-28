@@ -122,7 +122,7 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	/* init some constant fields */
 	m->pool = mp;
 	m->nb_segs = 1;
-	m->in_port = 0xff;
+	m->port = 0xff;
 }
 
 /* do some sanity checks on a mbuf: panic if it fails */
@@ -176,7 +176,7 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 	       m, (uint64_t)m->buf_physaddr, (unsigned)m->buf_len);
 	fprintf(f, "  pkt_len=%"PRIu32", ol_flags=%"PRIx16", nb_segs=%u, "
 	       "in_port=%u\n", m->pkt_len, m->ol_flags,
-	       (unsigned)m->nb_segs, (unsigned)m->in_port);
+	       (unsigned)m->nb_segs, (unsigned)m->port);
 	nb_segs = m->nb_segs;
 
 	while (m && nb_segs != 0) {

@@ -558,12 +558,12 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				rxm->ol_flags = 0;
 
 			/* Initialize newly received packet buffer */
-			rxm->in_port = rxq->port_id;
+			rxm->port = rxq->port_id;
 			rxm->nb_segs = 1;
 			rxm->next = NULL;
 			rxm->pkt_len = (uint16_t)rcd->len;
 			rxm->data_len = (uint16_t)rcd->len;
-			rxm->in_port = rxq->port_id;
+			rxm->port = rxq->port_id;
 			rxm->vlan_macip.f.vlan_tci = 0;
 			rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
 

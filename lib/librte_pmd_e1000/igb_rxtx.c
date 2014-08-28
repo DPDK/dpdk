@@ -759,7 +759,7 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->next = NULL;
 		rxm->pkt_len = pkt_len;
 		rxm->data_len = pkt_len;
-		rxm->in_port = rxq->port_id;
+		rxm->port = rxq->port_id;
 
 		rxm->hash.rss = rxd.wb.lower.hi_dword.rss;
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
@@ -994,7 +994,7 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 *      - VLAN TCI, if any,
 		 *      - error flags.
 		 */
-		first_seg->in_port = rxq->port_id;
+		first_seg->port = rxq->port_id;
 		first_seg->hash.rss = rxd.wb.lower.hi_dword.rss;
 
 		/*

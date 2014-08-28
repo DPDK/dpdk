@@ -479,7 +479,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			continue;
 		}
 
-		rxm->in_port = rxvq->port_id;
+		rxm->port = rxvq->port_id;
 		rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
 
 		rxm->nb_segs = 1;
@@ -590,7 +590,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 		rxm->pkt_len = (uint32_t)(len[0] - hdr_size);
 		rxm->data_len = (uint16_t)(len[0] - hdr_size);
 
-		rxm->in_port = rxvq->port_id;
+		rxm->port = rxvq->port_id;
 		rx_pkts[nb_rx] = rxm;
 		prev = rxm;
 

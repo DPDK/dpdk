@@ -777,7 +777,7 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->next = NULL;
 		rxm->pkt_len = pkt_len;
 		rxm->data_len = pkt_len;
-		rxm->in_port = rxq->port_id;
+		rxm->port = rxq->port_id;
 
 		rxm->ol_flags = rx_desc_status_to_pkt_flags(status);
 		rxm->ol_flags = (uint16_t)(rxm->ol_flags |
@@ -1003,7 +1003,7 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 *      - IP checksum flag,
 		 *      - error flags.
 		 */
-		first_seg->in_port = rxq->port_id;
+		first_seg->port = rxq->port_id;
 
 		first_seg->ol_flags = rx_desc_status_to_pkt_flags(status);
 		first_seg->ol_flags = (uint16_t)(first_seg->ol_flags |

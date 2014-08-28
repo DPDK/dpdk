@@ -687,7 +687,7 @@ i40e_rx_alloc_bufs(struct i40e_rx_queue *rxq)
 		mb->next = NULL;
 		mb->data = (char *)mb->buf_addr + RTE_PKTMBUF_HEADROOM;
 		mb->nb_segs = 1;
-		mb->in_port = rxq->port_id;
+		mb->port = rxq->port_id;
 		dma_addr = rte_cpu_to_le_64(\
 			RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb));
 		rxdp[i].read.hdr_addr = dma_addr;
@@ -848,7 +848,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->next = NULL;
 		rxm->pkt_len = rx_packet_len;
 		rxm->data_len = rx_packet_len;
-		rxm->in_port = rxq->port_id;
+		rxm->port = rxq->port_id;
 
 		rxm->vlan_macip.f.vlan_tci = rx_status &
 			(1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT) ?
@@ -1002,7 +1002,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 								ETHER_CRC_LEN);
 		}
 
-		first_seg->in_port = rxq->port_id;
+		first_seg->port = rxq->port_id;
 		first_seg->vlan_macip.f.vlan_tci = (rx_status &
 			(1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT)) ?
 			rte_le_to_cpu_16(rxd.wb.qword0.lo_dword.l2tag1) : 0;
@@ -2133,7 +2133,7 @@ i40e_alloc_rx_queue_mbufs(struct i40e_rx_queue *rxq)
 		mbuf->next = NULL;
 		mbuf->data = (char *)mbuf->buf_addr + RTE_PKTMBUF_HEADROOM;
 		mbuf->nb_segs = 1;
-		mbuf->in_port = rxq->port_id;
+		mbuf->port = rxq->port_id;
 
 		dma_addr =
 			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mbuf));

@@ -166,7 +166,7 @@ struct rte_mbuf {
 
 	/* these fields are valid for first segment only */
 	uint8_t nb_segs;        /**< Number of segments. */
-	uint8_t in_port;        /**< Input port. */
+	uint8_t port;           /**< Input port. */
 	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
 
 	/* offload features, valid for first segment only */
@@ -542,7 +542,7 @@ static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 	m->pkt_len = 0;
 	m->vlan_macip.data = 0;
 	m->nb_segs = 1;
-	m->in_port = 0xff;
+	m->port = 0xff;
 
 	m->ol_flags = 0;
 	buf_ofs = (RTE_PKTMBUF_HEADROOM <= m->buf_len) ?
@@ -606,7 +606,7 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
 	mi->next = md->next;
 	mi->data = md->data;
 	mi->data_len = md->data_len;
-	mi->in_port = md->in_port;
+	mi->port = md->port;
 	mi->vlan_macip = md->vlan_macip;
 	mi->hash = md->hash;
 

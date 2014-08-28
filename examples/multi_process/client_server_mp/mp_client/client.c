@@ -211,7 +211,7 @@ enqueue_packet(struct rte_mbuf *buf, uint8_t port)
 static void
 handle_packet(struct rte_mbuf *buf)
 {
-	const uint8_t in_port = buf->in_port;
+	const uint8_t in_port = buf->port;
 	const uint8_t out_port = output_ports[in_port];
 
 	enqueue_packet(buf, out_port);
