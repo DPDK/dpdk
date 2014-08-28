@@ -160,7 +160,7 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, enum rte_mbuf_type t,
 	if (m->buf_addr == NULL)
 		rte_panic("bad virt addr\n");
 
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 	uint16_t cnt = rte_mbuf_refcnt_read(m);
 	if ((cnt == 0) || (cnt == UINT16_MAX))
 		rte_panic("bad ref cnt\n");

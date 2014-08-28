@@ -733,10 +733,10 @@ us_vhost_parse_args(int argc, char **argv)
 					zero_copy = ret;
 
 				if (zero_copy) {
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 					RTE_LOG(ERR, VHOST_CONFIG, "Before running "
 					"zero copy vhost APP, please "
-					"disable RTE_MBUF_SCATTER_GATHER\n"
+					"disable RTE_MBUF_REFCNT\n"
 					"in config file and then rebuild DPDK "
 					"core lib!\n"
 					"Otherwise please disable zero copy "

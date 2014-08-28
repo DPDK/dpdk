@@ -67,6 +67,9 @@
 extern "C" {
 #endif
 
+/* deprecated feature, renamed in RTE_MBUF_REFCNT */
+#pragma GCC poison RTE_MBUF_SCATTER_GATHER
+
 /**
  * A control message buffer.
  */
@@ -185,7 +188,7 @@ struct rte_mbuf {
 	void *buf_addr;           /**< Virtual address of segment buffer. */
 	phys_addr_t buf_physaddr; /**< Physical address of segment buffer. */
 	uint16_t buf_len;         /**< Length of segment buffer. */
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 	/**
 	 * 16-bit Reference counter.
 	 * It should only be accessed using the following functions:
@@ -298,7 +301,7 @@ if (!(exp)) {                                                        \
 
 #endif /*  RTE_LIBRTE_MBUF_DEBUG */
 
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 #ifdef RTE_MBUF_REFCNT_ATOMIC
 
 /**
@@ -380,14 +383,14 @@ rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 		rte_prefetch0(m);               \
 } while (0)
 
-#else /* ! RTE_MBUF_SCATTER_GATHER */
+#else /* ! RTE_MBUF_REFCNT */
 
 /** Mbuf prefetch */
 #define RTE_MBUF_PREFETCH_TO_FREE(m) do { } while(0)
 
 #define rte_mbuf_refcnt_set(m,v) do { } while(0)
 
-#endif /* RTE_MBUF_SCATTER_GATHER */
+#endif /* RTE_MBUF_REFCNT */
 
 
 /**
@@ -426,10 +429,10 @@ static inline struct rte_mbuf *__rte_mbuf_raw_alloc(struct rte_mempool *mp)
 	if (rte_mempool_get(mp, &mb) < 0)
 		return NULL;
 	m = (struct rte_mbuf *)mb;
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 	RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(m) == 0);
 	rte_mbuf_refcnt_set(m, 1);
-#endif /* RTE_MBUF_SCATTER_GATHER */
+#endif /* RTE_MBUF_REFCNT */
 	return (m);
 }
 
@@ -444,9 +447,9 @@ static inline struct rte_mbuf *__rte_mbuf_raw_alloc(struct rte_mempool *mp)
 static inline void __attribute__((always_inline))
 __rte_mbuf_raw_free(struct rte_mbuf *m)
 {
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 	RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(m) == 0);
-#endif /* RTE_MBUF_SCATTER_GATHER */
+#endif /* RTE_MBUF_REFCNT */
 	rte_mempool_put(m->pool, m);
 }
 
@@ -506,9 +509,9 @@ static inline struct rte_mbuf *rte_ctrlmbuf_alloc(struct rte_mempool *mp)
 static inline void rte_ctrlmbuf_free(struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, RTE_MBUF_CTRL, 0);
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 	if (rte_mbuf_refcnt_update(m, -1) == 0)
-#endif /* RTE_MBUF_SCATTER_GATHER */
+#endif /* RTE_MBUF_REFCNT */
 		__rte_mbuf_raw_free(m);
 }
 
@@ -623,7 +626,7 @@ static inline struct rte_mbuf *rte_pktmbuf_alloc(struct rte_mempool *mp)
 	return (m);
 }
 
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 
 /**
  * Attach packet mbuf to another packet mbuf.
@@ -691,7 +694,7 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 	m->pkt.data_len = 0;
 }
 
-#endif /* RTE_MBUF_SCATTER_GATHER */
+#endif /* RTE_MBUF_REFCNT */
 
 
 static inline struct rte_mbuf* __attribute__((always_inline))
@@ -699,7 +702,7 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 0);
 
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 	if (likely (rte_mbuf_refcnt_read(m) == 1) ||
 			likely (rte_mbuf_refcnt_update(m, -1) == 0)) {
 		struct rte_mbuf *md = RTE_MBUF_FROM_BADDR(m->buf_addr);
@@ -717,7 +720,7 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 		}
 #endif
 		return(m);
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 	}
 	return (NULL);
 #endif
@@ -761,7 +764,7 @@ static inline void rte_pktmbuf_free(struct rte_mbuf *m)
 	}
 }
 
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 
 /**
  * Creates a "clone" of the given packet mbuf.
@@ -837,7 +840,7 @@ static inline void rte_pktmbuf_refcnt_update(struct rte_mbuf *m, int16_t v)
 	} while ((m = m->pkt.next) != NULL);
 }
 
-#endif /* RTE_MBUF_SCATTER_GATHER */
+#endif /* RTE_MBUF_REFCNT */
 
 /**
  * Get the headroom in a packet mbuf.

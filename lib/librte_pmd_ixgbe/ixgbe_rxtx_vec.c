@@ -385,7 +385,7 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 	struct igb_tx_entry_seq *txsp;
 	uint32_t status;
 	uint32_t n, k;
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 	uint32_t i;
 	int nb_free = 0;
 	struct rte_mbuf *m, *free[RTE_IXGBE_TX_MAX_FREE_BUF_SZ];
@@ -408,7 +408,7 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 
 	while (n > 0) {
 		k = RTE_MIN(n, txsp[n-1].same_pool);
-#ifdef RTE_MBUF_SCATTER_GATHER
+#ifdef RTE_MBUF_REFCNT
 		for (i = 0; i < k; i++) {
 			m = __rte_pktmbuf_prefree_seg((txep+n-k+i)->mbuf);
 			if (m != NULL)
