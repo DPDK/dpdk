@@ -159,7 +159,7 @@ rte_port_ring_reader_ipv4_frag_rx(void *port,
 		p->n_pkts--;
 
 		/* If not jumbo, pass current packet to output */
-		if (pkt->pkt.pkt_len <= IPV4_MTU_DEFAULT) {
+		if (pkt->pkt_len <= IPV4_MTU_DEFAULT) {
 			pkts[n_pkts_out++] = pkt;
 
 			n_pkts_to_provide = n_pkts - n_pkts_out;

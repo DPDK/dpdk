@@ -384,7 +384,7 @@ main_loop(__attribute__((unused)) void *dummy)
 			}
 		}
 
-		port = dst_ports[pkt->pkt.in_port];
+		port = dst_ports[pkt->in_port];
 
 		/* Transmit the packet */
 		nic_tx_send_packet(pkt, (uint8_t)port);

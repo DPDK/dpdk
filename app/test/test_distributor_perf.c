@@ -159,7 +159,7 @@ perf_test(struct rte_distributor *d, struct rte_mempool *p)
 	}
 	/* ensure we have different hash value for each pkt */
 	for (i = 0; i < BURST; i++)
-		bufs[i]->pkt.hash.rss = i;
+		bufs[i]->hash.rss = i;
 
 	start = rte_rdtsc();
 	for (i = 0; i < (1<<ITER_POWER); i++)
@@ -198,7 +198,7 @@ quit_workers(struct rte_distributor *d, struct rte_mempool *p)
 
 	quit = 1;
 	for (i = 0; i < num_workers; i++)
-		bufs[i]->pkt.hash.rss = i << 1;
+		bufs[i]->hash.rss = i << 1;
 	rte_distributor_process(d, bufs, num_workers);
 
 	rte_mempool_put_bulk(p, (void *)bufs, num_workers);

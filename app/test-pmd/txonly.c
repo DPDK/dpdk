@@ -106,18 +106,18 @@ copy_buf_to_pkt_segs(void* buf, unsigned len, struct rte_mbuf *pkt,
 	unsigned copy_len;
 
 	seg = pkt;
-	while (offset >= seg->pkt.data_len) {
-		offset -= seg->pkt.data_len;
-		seg = seg->pkt.next;
+	while (offset >= seg->data_len) {
+		offset -= seg->data_len;
+		seg = seg->next;
 	}
-	copy_len = seg->pkt.data_len - offset;
-	seg_buf = ((char *) seg->pkt.data + offset);
+	copy_len = seg->data_len - offset;
+	seg_buf = ((char *) seg->data + offset);
 	while (len > copy_len) {
 		rte_memcpy(seg_buf, buf, (size_t) copy_len);
 		len -= copy_len;
 		buf = ((char*) buf + copy_len);
-		seg = seg->pkt.next;
-		seg_buf = seg->pkt.data;
+		seg = seg->next;
+		seg_buf = seg->data;
 	}
 	rte_memcpy(seg_buf, buf, (size_t) len);
 }
@@ -125,8 +125,8 @@ copy_buf_to_pkt_segs(void* buf, unsigned len, struct rte_mbuf *pkt,
 static inline void
 copy_buf_to_pkt(void* buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
 {
-	if (offset + len <= pkt->pkt.data_len) {
-		rte_memcpy(((char *) pkt->pkt.data + offset), buf, (size_t) len);
+	if (offset + len <= pkt->data_len) {
+		rte_memcpy(((char *) pkt->data + offset), buf, (size_t) len);
 		return;
 	}
 	copy_buf_to_pkt_segs(buf, len, pkt, offset);
@@ -225,19 +225,19 @@ pkt_burst_transmit(struct fwd_stream *fs)
 				return;
 			break;
 		}
-		pkt->pkt.data_len = tx_pkt_seg_lengths[0];
+		pkt->data_len = tx_pkt_seg_lengths[0];
 		pkt_seg = pkt;
 		for (i = 1; i < tx_pkt_nb_segs; i++) {
-			pkt_seg->pkt.next = tx_mbuf_alloc(mbp);
-			if (pkt_seg->pkt.next == NULL) {
-				pkt->pkt.nb_segs = i;
+			pkt_seg->next = tx_mbuf_alloc(mbp);
+			if (pkt_seg->next == NULL) {
+				pkt->nb_segs = i;
 				rte_pktmbuf_free(pkt);
 				goto nomore_mbuf;
 			}
-			pkt_seg = pkt_seg->pkt.next;
-			pkt_seg->pkt.data_len = tx_pkt_seg_lengths[i];
+			pkt_seg = pkt_seg->next;
+			pkt_seg->data_len = tx_pkt_seg_lengths[i];
 		}
-		pkt_seg->pkt.next = NULL; /* Last segment of packet. */
+		pkt_seg->next = NULL; /* Last segment of packet. */
 
 		/*
 		 * Initialize Ethernet header.
@@ -260,12 +260,12 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		 * Complete first mbuf of packet and append it to the
 		 * burst of packets to be transmitted.
 		 */
-		pkt->pkt.nb_segs = tx_pkt_nb_segs;
-		pkt->pkt.pkt_len = tx_pkt_length;
+		pkt->nb_segs = tx_pkt_nb_segs;
+		pkt->pkt_len = tx_pkt_length;
 		pkt->ol_flags = ol_flags;
-		pkt->pkt.vlan_macip.f.vlan_tci  = vlan_tci;
-		pkt->pkt.vlan_macip.f.l2_len = sizeof(struct ether_hdr);
-		pkt->pkt.vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
+		pkt->vlan_macip.f.vlan_tci  = vlan_tci;
+		pkt->vlan_macip.f.l2_len = sizeof(struct ether_hdr);
+		pkt->vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
 		pkts_burst[nb_pkt] = pkt;
 	}
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_pkt);

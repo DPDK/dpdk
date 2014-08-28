@@ -302,16 +302,16 @@ main_loop(__attribute__((unused)) void *arg)
 			if (m == NULL)
 				continue;
 
-			ret = read(tap_fd, m->pkt.data, MAX_PACKET_SZ);
+			ret = read(tap_fd, m->data, MAX_PACKET_SZ);
 			lcore_stats[lcore_id].rx++;
 			if (unlikely(ret < 0)) {
 				FATAL_ERROR("Reading from %s interface failed",
 				            tap_name);
 			}
-			m->pkt.nb_segs = 1;
-			m->pkt.next = NULL;
-			m->pkt.pkt_len = (uint16_t)ret;
-			m->pkt.data_len = (uint16_t)ret;
+			m->nb_segs = 1;
+			m->next = NULL;
+			m->pkt_len = (uint16_t)ret;
+			m->data_len = (uint16_t)ret;
 			ret = rte_eth_tx_burst(port_ids[lcore_id], 0, &m, 1);
 			if (unlikely(ret < 1)) {
 				rte_pktmbuf_free(m);

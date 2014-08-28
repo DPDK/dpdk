@@ -104,8 +104,8 @@ static void send_pause_frame(uint8_t port_id, uint16_t duration)
     pause_frame->opcode = rte_cpu_to_be_16(0x0001);
     pause_frame->param  = rte_cpu_to_be_16(duration);
 
-    mbuf->pkt.pkt_len  = 60;
-    mbuf->pkt.data_len = 60;
+    mbuf->pkt_len  = 60;
+    mbuf->data_len = 60;
 
     rte_eth_tx_burst(port_id, 0, &mbuf, 1);
 }

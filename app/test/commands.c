@@ -136,7 +136,6 @@ dump_struct_sizes(void)
 {
 #define DUMP_SIZE(t) printf("sizeof(" #t ") = %u\n", (unsigned)sizeof(t));
 	DUMP_SIZE(struct rte_mbuf);
-	DUMP_SIZE(struct rte_pktmbuf);
 	DUMP_SIZE(struct rte_mempool);
 	DUMP_SIZE(struct rte_ring);
 #undef DUMP_SIZE

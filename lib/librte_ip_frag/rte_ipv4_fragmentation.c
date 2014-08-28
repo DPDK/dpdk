@@ -109,7 +109,7 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 	/* Fragment size should be a multiply of 8. */
 	IP_FRAG_ASSERT((frag_size & IPV4_HDR_FO_MASK) == 0);
 
-	in_hdr = (struct ipv4_hdr *) pkt_in->pkt.data;
+	in_hdr = (struct ipv4_hdr *) pkt_in->data;
 	flag_offset = rte_cpu_to_be_16(in_hdr->fragment_offset);
 
 	/* If Don't Fragment flag is set */
@@ -118,7 +118,7 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 
 	/* Check that pkts_out is big enough to hold all fragments */
 	if (unlikely(frag_size * nb_pkts_out <
-	    (uint16_t)(pkt_in->pkt.pkt_len - sizeof (struct ipv4_hdr))))
+	    (uint16_t)(pkt_in->pkt_len - sizeof (struct ipv4_hdr))))
 		return -EINVAL;
 
 	in_seg = pkt_in;
@@ -140,8 +140,8 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 		}
 
 		/* Reserve space for the IP header that will be built later */
-		out_pkt->pkt.data_len = sizeof(struct ipv4_hdr);
-		out_pkt->pkt.pkt_len = sizeof(struct ipv4_hdr);
+		out_pkt->data_len = sizeof(struct ipv4_hdr);
+		out_pkt->pkt_len = sizeof(struct ipv4_hdr);
 
 		out_seg_prev = out_pkt;
 		more_out_segs = 1;
@@ -156,29 +156,29 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 				__free_fragments(pkts_out, out_pkt_pos);
 				return -ENOMEM;
 			}
-			out_seg_prev->pkt.next = out_seg;
+			out_seg_prev->next = out_seg;
 			out_seg_prev = out_seg;
 
 			/* Prepare indirect buffer */
 			rte_pktmbuf_attach(out_seg, in_seg);
-			len = mtu_size - out_pkt->pkt.pkt_len;
-			if (len > (in_seg->pkt.data_len - in_seg_data_pos)) {
-				len = in_seg->pkt.data_len - in_seg_data_pos;
+			len = mtu_size - out_pkt->pkt_len;
+			if (len > (in_seg->data_len - in_seg_data_pos)) {
+				len = in_seg->data_len - in_seg_data_pos;
 			}
-			out_seg->pkt.data = (char*) in_seg->pkt.data + (uint16_t)in_seg_data_pos;
-			out_seg->pkt.data_len = (uint16_t)len;
-			out_pkt->pkt.pkt_len = (uint16_t)(len +
-			    out_pkt->pkt.pkt_len);
-			out_pkt->pkt.nb_segs += 1;
+			out_seg->data = (char*) in_seg->data + (uint16_t)in_seg_data_pos;
+			out_seg->data_len = (uint16_t)len;
+			out_pkt->pkt_len = (uint16_t)(len +
+			    out_pkt->pkt_len);
+			out_pkt->nb_segs += 1;
 			in_seg_data_pos += len;
 
 			/* Current output packet (i.e. fragment) done ? */
-			if (unlikely(out_pkt->pkt.pkt_len >= mtu_size))
+			if (unlikely(out_pkt->pkt_len >= mtu_size))
 				more_out_segs = 0;
 
 			/* Current input segment done ? */
-			if (unlikely(in_seg_data_pos == in_seg->pkt.data_len)) {
-				in_seg = in_seg->pkt.next;
+			if (unlikely(in_seg_data_pos == in_seg->data_len)) {
+				in_seg = in_seg->next;
 				in_seg_data_pos = 0;
 
 				if (unlikely(in_seg == NULL))
@@ -188,17 +188,17 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 
 		/* Build the IP header */
 
-		out_hdr = (struct ipv4_hdr*) out_pkt->pkt.data;
+		out_hdr = (struct ipv4_hdr*) out_pkt->data;
 
 		__fill_ipv4hdr_frag(out_hdr, in_hdr,
-		    (uint16_t)out_pkt->pkt.pkt_len,
+		    (uint16_t)out_pkt->pkt_len,
 		    flag_offset, fragment_offset, more_in_segs);
 
 		fragment_offset = (uint16_t)(fragment_offset +
-		    out_pkt->pkt.pkt_len - sizeof(struct ipv4_hdr));
+		    out_pkt->pkt_len - sizeof(struct ipv4_hdr));
 
 		out_pkt->ol_flags |= PKT_TX_IP_CKSUM;
-		out_pkt->pkt.vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
+		out_pkt->vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
 
 		/* Write the fragment to the output list */
 		pkts_out[out_pkt_pos] = out_pkt;

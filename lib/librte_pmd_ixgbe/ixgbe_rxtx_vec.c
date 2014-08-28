@@ -48,9 +48,7 @@ static inline void
 ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
 {
 	static const struct rte_mbuf mb_def = {
-		.pkt = {
-			.nb_segs = 1,
-		},
+		.nb_segs = 1,
 	};
 	int i;
 	uint16_t rx_id;
@@ -68,7 +66,7 @@ ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
 
 	rxdp = rxq->rx_ring + rxq->rxrearm_start;
 
-	def_low = _mm_load_si128((__m128i *)&(mb_def.pkt));
+	def_low = _mm_load_si128((__m128i *)&(mb_def.next));
 
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
 	for (i = 0; i < RTE_IXGBE_RXQ_REARM_THRESH; i += 2, rxep += 2) {
@@ -99,8 +97,8 @@ ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
 		_mm_store_si128((__m128i *)&rxdp++->read, dma_addr1);
 
 		/* flush mbuf with pkt template */
-		_mm_store_si128((__m128i *)&mb0->pkt, vaddr0);
-		_mm_store_si128((__m128i *)&mb1->pkt, vaddr1);
+		_mm_store_si128((__m128i *)&mb0->next, vaddr0);
+		_mm_store_si128((__m128i *)&mb1->next, vaddr1);
 
 		/* update refcnt per pkt */
 		rte_mbuf_refcnt_set(mb0, 1);
@@ -299,9 +297,9 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		staterr = _mm_unpacklo_epi32(sterr_tmp1, sterr_tmp2);
 
 		/* D.3 copy final 3,4 data to rx_pkts */
-		_mm_storeu_si128((__m128i *)&(rx_pkts[pos+3]->pkt.data_len),
+		_mm_storeu_si128((__m128i *)&(rx_pkts[pos+3]->data_len),
 				pkt_mb4);
-		_mm_storeu_si128((__m128i *)&(rx_pkts[pos+2]->pkt.data_len),
+		_mm_storeu_si128((__m128i *)&(rx_pkts[pos+2]->data_len),
 				pkt_mb3);
 
 		/* D.2 pkt 1,2 set in_port/nb_seg and remove crc */
@@ -313,9 +311,9 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		staterr = _mm_packs_epi32(staterr, zero);
 
 		/* D.3 copy final 1,2 data to rx_pkts */
-		_mm_storeu_si128((__m128i *)&(rx_pkts[pos+1]->pkt.data_len),
+		_mm_storeu_si128((__m128i *)&(rx_pkts[pos+1]->data_len),
 				pkt_mb2);
-		_mm_storeu_si128((__m128i *)&(rx_pkts[pos]->pkt.data_len),
+		_mm_storeu_si128((__m128i *)&(rx_pkts[pos]->data_len),
 				pkt_mb1);
 
 		/* C.4 calc avaialbe number of desc */
@@ -342,7 +340,7 @@ vtx1(volatile union ixgbe_adv_tx_desc *txdp,
 	/* load buf_addr/buf_physaddr in t0 */
 	t0 = _mm_loadu_si128((__m128i *)&(pkt->buf_addr));
 	/* load data, ... pkt_len in t1 */
-	t1 = _mm_loadu_si128((__m128i *)&(pkt->pkt.data));
+	t1 = _mm_loadu_si128((__m128i *)&(pkt->data));
 
 	/* calc offset = (data - buf_adr) */
 	offset = _mm_sub_epi64(t1, t0);

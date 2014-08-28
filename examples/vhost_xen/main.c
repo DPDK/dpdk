@@ -677,7 +677,7 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 		vq->used->ring[res_cur_idx & (vq->size - 1)].len = packet_len;
 
 		/* Copy mbuf data to buffer */
-		rte_memcpy((void *)(uintptr_t)buff_addr, (const void*)buff->pkt.data, rte_pktmbuf_data_len(buff));
+		rte_memcpy((void *)(uintptr_t)buff_addr, (const void*)buff->data, rte_pktmbuf_data_len(buff));
 
 		res_cur_idx++;
 		packet_success++;
@@ -808,7 +808,7 @@ virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
 	struct ether_hdr *pkt_hdr;
 	uint64_t ret = 0;
 
-	pkt_hdr = (struct ether_hdr *)m->pkt.data;
+	pkt_hdr = (struct ether_hdr *)m->data;
 
 	/*get the used devices list*/
 	dev_ll = ll_root_used;
@@ -879,22 +879,22 @@ virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *
 	if(!mbuf)
 		return;
 
-	mbuf->pkt.data_len = m->pkt.data_len + VLAN_HLEN;
-	mbuf->pkt.pkt_len = mbuf->pkt.data_len;
+	mbuf->data_len = m->data_len + VLAN_HLEN;
+	mbuf->pkt_len = mbuf->data_len;
 
 	/* Copy ethernet header to mbuf. */
-	rte_memcpy((void*)mbuf->pkt.data, (const void*)m->pkt.data, ETH_HLEN);
+	rte_memcpy((void*)mbuf->data, (const void*)m->data, ETH_HLEN);
 
 
 	/* Setup vlan header. Bytes need to be re-ordered for network with htons()*/
-	vlan_hdr = (struct vlan_ethhdr *) mbuf->pkt.data;
+	vlan_hdr = (struct vlan_ethhdr *) mbuf->data;
 	vlan_hdr->h_vlan_encapsulated_proto = vlan_hdr->h_vlan_proto;
 	vlan_hdr->h_vlan_proto = htons(ETH_P_8021Q);
 	vlan_hdr->h_vlan_TCI = htons(vlan_tag);
 
 	/* Copy the remaining packet contents to the mbuf. */
-	rte_memcpy((void*) ((uint8_t*)mbuf->pkt.data + VLAN_ETH_HLEN),
-		(const void*) ((uint8_t*)m->pkt.data + ETH_HLEN), (m->pkt.data_len - ETH_HLEN));
+	rte_memcpy((void*) ((uint8_t*)mbuf->data + VLAN_ETH_HLEN),
+		(const void*) ((uint8_t*)m->data + ETH_HLEN), (m->data_len - ETH_HLEN));
 	tx_q->m_table[len] = mbuf;
 	len++;
 	if (enable_stats) {
@@ -980,9 +980,9 @@ virtio_dev_tx(struct virtio_net* dev, struct rte_mempool *mbuf_pool)
 		rte_prefetch0((void*)(uintptr_t)buff_addr);
 
 		/* Setup dummy mbuf. This is copied to a real mbuf if transmitted out the physical port. */
-		m.pkt.data_len = desc->len;
-		m.pkt.data = (void*)(uintptr_t)buff_addr;
-		m.pkt.nb_segs = 1;
+		m.data_len = desc->len;
+		m.data = (void*)(uintptr_t)buff_addr;
+		m.nb_segs = 1;
 
 		virtio_tx_route(dev, &m, mbuf_pool, 0);
 

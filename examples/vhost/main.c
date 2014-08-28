@@ -1033,7 +1033,7 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 
 		/* Copy mbuf data to buffer */
 		rte_memcpy((void *)(uintptr_t)buff_addr,
-			(const void *)buff->pkt.data,
+			(const void *)buff->data,
 			rte_pktmbuf_data_len(buff));
 		PRINT_PACKET(dev, (uintptr_t)buff_addr,
 			rte_pktmbuf_data_len(buff), 0);
@@ -1198,7 +1198,7 @@ copy_from_mbuf_to_vring(struct virtio_net *dev,
 			 * This current segment complete, need continue to
 			 * check if the whole packet complete or not.
 			 */
-			pkt = pkt->pkt.next;
+			pkt = pkt->next;
 			if (pkt != NULL) {
 				/*
 				 * There are more segments.
@@ -1302,7 +1302,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, struct rte_mbuf **pkts,
 		uint32_t secure_len = 0;
 		uint16_t need_cnt;
 		uint32_t vec_idx = 0;
-		uint32_t pkt_len = pkts[pkt_idx]->pkt.pkt_len + vq->vhost_hlen;
+		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + vq->vhost_hlen;
 		uint16_t i, id;
 
 		do {
@@ -1438,7 +1438,7 @@ link_vmdq(struct virtio_net *dev, struct rte_mbuf *m)
 	int i, ret;
 
 	/* Learn MAC address of guest device from packet */
-	pkt_hdr = (struct ether_hdr *)m->pkt.data;
+	pkt_hdr = (struct ether_hdr *)m->data;
 
 	dev_ll = ll_root_used;
 
@@ -1525,7 +1525,7 @@ virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
 	struct ether_hdr *pkt_hdr;
 	uint64_t ret = 0;
 
-	pkt_hdr = (struct ether_hdr *)m->pkt.data;
+	pkt_hdr = (struct ether_hdr *)m->data;
 
 	/*get the used devices list*/
 	dev_ll = ll_root_used;
@@ -1593,7 +1593,7 @@ virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *
 	unsigned len, ret, offset = 0;
 	const uint16_t lcore_id = rte_lcore_id();
 	struct virtio_net_data_ll *dev_ll = ll_root_used;
-	struct ether_hdr *pkt_hdr = (struct ether_hdr *)m->pkt.data;
+	struct ether_hdr *pkt_hdr = (struct ether_hdr *)m->data;
 
 	/*check if destination is local VM*/
 	if ((vm2vm_mode == VM2VM_SOFTWARE) && (virtio_tx_local(dev, m) == 0))
@@ -1647,27 +1647,27 @@ virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *
 		return;
 	}
 
-	mbuf->pkt.data_len = m->pkt.data_len + VLAN_HLEN + offset;
-	mbuf->pkt.pkt_len = m->pkt.pkt_len + VLAN_HLEN + offset;
-	mbuf->pkt.nb_segs = m->pkt.nb_segs;
+	mbuf->data_len = m->data_len + VLAN_HLEN + offset;
+	mbuf->pkt_len = m->pkt_len + VLAN_HLEN + offset;
+	mbuf->nb_segs = m->nb_segs;
 
 	/* Copy ethernet header to mbuf. */
-	rte_memcpy((void*)mbuf->pkt.data, (const void*)m->pkt.data, ETH_HLEN);
+	rte_memcpy((void*)mbuf->data, (const void*)m->data, ETH_HLEN);
 
 
 	/* Setup vlan header. Bytes need to be re-ordered for network with htons()*/
-	vlan_hdr = (struct vlan_ethhdr *) mbuf->pkt.data;
+	vlan_hdr = (struct vlan_ethhdr *) mbuf->data;
 	vlan_hdr->h_vlan_encapsulated_proto = vlan_hdr->h_vlan_proto;
 	vlan_hdr->h_vlan_proto = htons(ETH_P_8021Q);
 	vlan_hdr->h_vlan_TCI = htons(vlan_tag);
 
 	/* Copy the remaining packet contents to the mbuf. */
-	rte_memcpy((void*) ((uint8_t*)mbuf->pkt.data + VLAN_ETH_HLEN),
-		(const void*) ((uint8_t*)m->pkt.data + ETH_HLEN), (m->pkt.data_len - ETH_HLEN));
+	rte_memcpy((void*) ((uint8_t*)mbuf->data + VLAN_ETH_HLEN),
+		(const void*) ((uint8_t*)m->data + ETH_HLEN), (m->data_len - ETH_HLEN));
 
 	/* Copy the remaining segments for the whole packet. */
 	prev = mbuf;
-	while (m->pkt.next) {
+	while (m->next) {
 		/* Allocate an mbuf and populate the structure. */
 		struct rte_mbuf *next_mbuf = rte_pktmbuf_alloc(mbuf_pool);
 		if (unlikely(next_mbuf == NULL)) {
@@ -1677,14 +1677,14 @@ virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *
 			return;
 		}
 
-		m = m->pkt.next;
-		prev->pkt.next = next_mbuf;
+		m = m->next;
+		prev->next = next_mbuf;
 		prev = next_mbuf;
-		next_mbuf->pkt.data_len = m->pkt.data_len;
+		next_mbuf->data_len = m->data_len;
 
 		/* Copy data to next mbuf. */
 		rte_memcpy(rte_pktmbuf_mtod(next_mbuf, void *),
-			rte_pktmbuf_mtod(m, const void *), m->pkt.data_len);
+			rte_pktmbuf_mtod(m, const void *), m->data_len);
 	}
 
 	tx_q->m_table[len] = mbuf;
@@ -1776,9 +1776,9 @@ virtio_dev_tx(struct virtio_net* dev, struct rte_mempool *mbuf_pool)
 		vq->used->ring[used_idx].len = 0;
 
 		/* Setup dummy mbuf. This is copied to a real mbuf if transmitted out the physical port. */
-		m.pkt.data_len = desc->len;
-		m.pkt.pkt_len = desc->len;
-		m.pkt.data = (void*)(uintptr_t)buff_addr;
+		m.data_len = desc->len;
+		m.pkt_len = desc->len;
+		m.data = (void*)(uintptr_t)buff_addr;
 
 		PRINT_PACKET(dev, (uintptr_t)buff_addr, desc->len, 0);
 
@@ -1914,8 +1914,8 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
 				 * while the virtio buffer in TX vring has
 				 * more data to be copied.
 				 */
-				cur->pkt.data_len = seg_offset;
-				m->pkt.pkt_len += seg_offset;
+				cur->data_len = seg_offset;
+				m->pkt_len += seg_offset;
 				/* Allocate mbuf and populate the structure. */
 				cur = rte_pktmbuf_alloc(mbuf_pool);
 				if (unlikely(cur == NULL)) {
@@ -1927,7 +1927,7 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
 				}
 
 				seg_num++;
-				prev->pkt.next = cur;
+				prev->next = cur;
 				prev = cur;
 				seg_offset = 0;
 				seg_avail = buf_size;
@@ -1943,8 +1943,8 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
 						 * room to accomodate more
 						 * data.
 						 */
-						cur->pkt.data_len = seg_offset;
-						m->pkt.pkt_len += seg_offset;
+						cur->data_len = seg_offset;
+						m->pkt_len += seg_offset;
 						/*
 						 * Allocate an mbuf and
 						 * populate the structure.
@@ -1961,7 +1961,7 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
 							break;
 						}
 						seg_num++;
-						prev->pkt.next = cur;
+						prev->next = cur;
 						prev = cur;
 						seg_offset = 0;
 						seg_avail = buf_size;
@@ -1980,8 +1980,8 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
 						desc->len, 0);
 				} else {
 					/* The whole packet completes. */
-					cur->pkt.data_len = seg_offset;
-					m->pkt.pkt_len += seg_offset;
+					cur->data_len = seg_offset;
+					m->pkt_len += seg_offset;
 					vb_avail = 0;
 				}
 			}
@@ -1992,7 +1992,7 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
 		if (unlikely(alloc_err == 1))
 			break;
 
-		m->pkt.nb_segs = seg_num;
+		m->nb_segs = seg_num;
 
 		/*
 		 * If this is the first received packet we need to learn
@@ -2333,9 +2333,9 @@ attach_rxmbuf_zcp(struct virtio_net *dev)
 	}
 
 	mbuf->buf_addr = (void *)(uintptr_t)(buff_addr - RTE_PKTMBUF_HEADROOM);
-	mbuf->pkt.data = (void *)(uintptr_t)(buff_addr);
+	mbuf->data = (void *)(uintptr_t)(buff_addr);
 	mbuf->buf_physaddr = phys_addr - RTE_PKTMBUF_HEADROOM;
-	mbuf->pkt.data_len = desc->len;
+	mbuf->data_len = desc->len;
 	MBUF_HEADROOM_UINT32(mbuf) = (uint32_t)desc_idx;
 
 	LOG_DEBUG(VHOST_DATA,
@@ -2370,9 +2370,9 @@ static inline void pktmbuf_detach_zcp(struct rte_mbuf *m)
 
 	buf_ofs = (RTE_PKTMBUF_HEADROOM <= m->buf_len) ?
 			RTE_PKTMBUF_HEADROOM : m->buf_len;
-	m->pkt.data = (char *) m->buf_addr + buf_ofs;
+	m->data = (char *) m->buf_addr + buf_ofs;
 
-	m->pkt.data_len = 0;
+	m->data_len = 0;
 }
 
 /*
@@ -2604,7 +2604,7 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 	unsigned len, ret, offset = 0;
 	struct vpool *vpool;
 	struct virtio_net_data_ll *dev_ll = ll_root_used;
-	struct ether_hdr *pkt_hdr = (struct ether_hdr *)m->pkt.data;
+	struct ether_hdr *pkt_hdr = (struct ether_hdr *)m->data;
 	uint16_t vlan_tag = (uint16_t)vlan_tags[(uint16_t)dev->device_fh];
 
 	/*Add packet to the port tx queue*/
@@ -2675,24 +2675,24 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 		}
 	}
 
-	mbuf->pkt.nb_segs = m->pkt.nb_segs;
-	mbuf->pkt.next = m->pkt.next;
-	mbuf->pkt.data_len = m->pkt.data_len + offset;
-	mbuf->pkt.pkt_len = mbuf->pkt.data_len;
+	mbuf->nb_segs = m->nb_segs;
+	mbuf->next = m->next;
+	mbuf->data_len = m->data_len + offset;
+	mbuf->pkt_len = mbuf->data_len;
 	if (unlikely(need_copy)) {
 		/* Copy the packet contents to the mbuf. */
-		rte_memcpy((void *)((uint8_t *)mbuf->pkt.data),
-			(const void *) ((uint8_t *)m->pkt.data),
-			m->pkt.data_len);
+		rte_memcpy((void *)((uint8_t *)mbuf->data),
+			(const void *) ((uint8_t *)m->data),
+			m->data_len);
 	} else {
-		mbuf->pkt.data = m->pkt.data;
+		mbuf->data = m->data;
 		mbuf->buf_physaddr = m->buf_physaddr;
 		mbuf->buf_addr = m->buf_addr;
 	}
 	mbuf->ol_flags = PKT_TX_VLAN_PKT;
-	mbuf->pkt.vlan_macip.f.vlan_tci = vlan_tag;
-	mbuf->pkt.vlan_macip.f.l2_len = sizeof(struct ether_hdr);
-	mbuf->pkt.vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
+	mbuf->vlan_macip.f.vlan_tci = vlan_tag;
+	mbuf->vlan_macip.f.l2_len = sizeof(struct ether_hdr);
+	mbuf->vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
 	MBUF_HEADROOM_UINT32(mbuf) = (uint32_t)desc_idx;
 
 	tx_q->m_table[len] = mbuf;
@@ -2701,8 +2701,8 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 	LOG_DEBUG(VHOST_DATA,
 		"(%"PRIu64") in tx_route_zcp: pkt: nb_seg: %d, next:%s\n",
 		dev->device_fh,
-		mbuf->pkt.nb_segs,
-		(mbuf->pkt.next == NULL) ? "null" : "non-null");
+		mbuf->nb_segs,
+		(mbuf->next == NULL) ? "null" : "non-null");
 
 	if (enable_stats) {
 		dev_statistics[dev->device_fh].tx_total++;
@@ -2816,11 +2816,11 @@ virtio_dev_tx_zcp(struct virtio_net *dev)
 		 * Setup dummy mbuf. This is copied to a real mbuf if
 		 * transmitted out the physical port.
 		 */
-		m.pkt.data_len = desc->len;
-		m.pkt.nb_segs = 1;
-		m.pkt.next = NULL;
-		m.pkt.data = (void *)(uintptr_t)buff_addr;
-		m.buf_addr = m.pkt.data;
+		m.data_len = desc->len;
+		m.nb_segs = 1;
+		m.next = NULL;
+		m.data = (void *)(uintptr_t)buff_addr;
+		m.buf_addr = m.data;
 		m.buf_physaddr = phys_addr;
 
 		/*

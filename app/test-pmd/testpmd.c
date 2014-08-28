@@ -404,10 +404,10 @@ testpmd_mbuf_ctor(struct rte_mempool *mp,
 			mb_ctor_arg->seg_buf_offset);
 	mb->buf_len      = mb_ctor_arg->seg_buf_size;
 	mb->ol_flags     = 0;
-	mb->pkt.data     = (char *) mb->buf_addr + RTE_PKTMBUF_HEADROOM;
-	mb->pkt.nb_segs  = 1;
-	mb->pkt.vlan_macip.data = 0;
-	mb->pkt.hash.rss = 0;
+	mb->data         = (char *) mb->buf_addr + RTE_PKTMBUF_HEADROOM;
+	mb->nb_segs      = 1;
+	mb->vlan_macip.data = 0;
+	mb->hash.rss     = 0;
 }
 
 static void

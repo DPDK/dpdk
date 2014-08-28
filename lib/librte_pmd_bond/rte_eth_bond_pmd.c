@@ -198,14 +198,14 @@ xmit_slave_hash(const struct rte_mbuf *buf, uint8_t slave_count, uint8_t policy)
 
 	switch (policy) {
 	case BALANCE_XMIT_POLICY_LAYER2:
-		eth_hdr = (struct ether_hdr *)buf->pkt.data;
+		eth_hdr = (struct ether_hdr *)buf->data;
 
 		hash = ether_hash(eth_hdr);
 		hash ^= hash >> 8;
 		return hash % slave_count;
 
 	case BALANCE_XMIT_POLICY_LAYER23:
-		eth_hdr = (struct ether_hdr *)buf->pkt.data;
+		eth_hdr = (struct ether_hdr *)buf->data;
 
 		if (buf->ol_flags & PKT_RX_VLAN_PKT)
 			eth_offset = sizeof(struct ether_hdr) + sizeof(struct vlan_hdr);

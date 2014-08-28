@@ -109,12 +109,12 @@ eth_xenvirt_rx(void *q, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	for (i = 0; i < num ; i ++) {
 		rxm = rx_pkts[i];
 		PMD_RX_LOG(DEBUG, "packet len:%d\n", len[i]);
-		rxm->pkt.next = NULL;
-		rxm->pkt.data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
-		rxm->pkt.data_len = (uint16_t)(len[i] - sizeof(struct virtio_net_hdr));
-		rxm->pkt.nb_segs = 1;
-		rxm->pkt.in_port = pi->port_id;
-		rxm->pkt.pkt_len  = (uint32_t)(len[i] - sizeof(struct virtio_net_hdr));
+		rxm->next = NULL;
+		rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rxm->data_len = (uint16_t)(len[i] - sizeof(struct virtio_net_hdr));
+		rxm->nb_segs = 1;
+		rxm->in_port = pi->port_id;
+		rxm->pkt_len  = (uint32_t)(len[i] - sizeof(struct virtio_net_hdr));
 	}
 	/* allocate new mbuf for the used descriptor */
 	while (likely(!virtqueue_full(rxvq))) {

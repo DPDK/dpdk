@@ -118,7 +118,7 @@ virtqueue_dequeue_burst_rx(struct virtqueue *vq, struct rte_mbuf **rx_pkts,
 		}
 
 		rte_prefetch0(cookie);
-		rte_packet_prefetch(cookie->pkt.data);
+		rte_packet_prefetch(cookie->data);
 		rx_pkts[i]  = cookie;
 		vq->vq_used_cons_idx++;
 		vq_ring_free_chain(vq, desc_idx);
@@ -187,7 +187,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 {
 	struct vq_desc_extra *dxp;
 	struct vring_desc *start_dp;
-	uint16_t seg_num = cookie->pkt.nb_segs;
+	uint16_t seg_num = cookie->nb_segs;
 	uint16_t needed = 1 + seg_num;
 	uint16_t head_idx, idx;
 	uint16_t head_size = txvq->hw->vtnet_hdr_size;
@@ -216,9 +216,9 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	for (; ((seg_num > 0) && (cookie != NULL)); seg_num--) {
 		idx = start_dp[idx].next;
 		start_dp[idx].addr  = RTE_MBUF_DATA_DMA_ADDR(cookie);
-		start_dp[idx].len   = cookie->pkt.data_len;
+		start_dp[idx].len   = cookie->data_len;
 		start_dp[idx].flags = VRING_DESC_F_NEXT;
-		cookie = cookie->pkt.next;
+		cookie = cookie->next;
 	}
 
 	start_dp[idx].flags &= ~VRING_DESC_F_NEXT;
@@ -479,18 +479,18 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			continue;
 		}
 
-		rxm->pkt.in_port = rxvq->port_id;
-		rxm->pkt.data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rxm->in_port = rxvq->port_id;
+		rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
 
-		rxm->pkt.nb_segs = 1;
-		rxm->pkt.next = NULL;
-		rxm->pkt.pkt_len = (uint32_t)(len[i] - hdr_size);
-		rxm->pkt.data_len = (uint16_t)(len[i] - hdr_size);
+		rxm->nb_segs = 1;
+		rxm->next = NULL;
+		rxm->pkt_len = (uint32_t)(len[i] - hdr_size);
+		rxm->data_len = (uint16_t)(len[i] - hdr_size);
 
-		VIRTIO_DUMP_PACKET(rxm, rxm->pkt.data_len);
+		VIRTIO_DUMP_PACKET(rxm, rxm->data_len);
 
 		rx_pkts[nb_rx++] = rxm;
-		rxvq->bytes += rx_pkts[nb_rx - 1]->pkt.pkt_len;
+		rxvq->bytes += rx_pkts[nb_rx - 1]->pkt_len;
 	}
 
 	rxvq->packets += nb_rx;
@@ -584,13 +584,13 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 		if (seg_num == 0)
 			seg_num = 1;
 
-		rxm->pkt.data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
-		rxm->pkt.nb_segs = seg_num;
-		rxm->pkt.next = NULL;
-		rxm->pkt.pkt_len = (uint32_t)(len[0] - hdr_size);
-		rxm->pkt.data_len = (uint16_t)(len[0] - hdr_size);
+		rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rxm->nb_segs = seg_num;
+		rxm->next = NULL;
+		rxm->pkt_len = (uint32_t)(len[0] - hdr_size);
+		rxm->data_len = (uint16_t)(len[0] - hdr_size);
 
-		rxm->pkt.in_port = rxvq->port_id;
+		rxm->in_port = rxvq->port_id;
 		rx_pkts[nb_rx] = rxm;
 		prev = rxm;
 
@@ -622,27 +622,27 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 			while (extra_idx < rcv_cnt) {
 				rxm = rcv_pkts[extra_idx];
 
-				rxm->pkt.data =
+				rxm->data =
 					(char *)rxm->buf_addr +
 					RTE_PKTMBUF_HEADROOM - hdr_size;
-				rxm->pkt.next = NULL;
-				rxm->pkt.pkt_len = (uint32_t)(len[extra_idx]);
-				rxm->pkt.data_len = (uint16_t)(len[extra_idx]);
+				rxm->next = NULL;
+				rxm->pkt_len = (uint32_t)(len[extra_idx]);
+				rxm->data_len = (uint16_t)(len[extra_idx]);
 
 				if (prev)
-					prev->pkt.next = rxm;
+					prev->next = rxm;
 
 				prev = rxm;
-				rx_pkts[nb_rx]->pkt.pkt_len += rxm->pkt.pkt_len;
+				rx_pkts[nb_rx]->pkt_len += rxm->pkt_len;
 				extra_idx++;
 			};
 			seg_res -= rcv_cnt;
 		}
 
 		VIRTIO_DUMP_PACKET(rx_pkts[nb_rx],
-			rx_pkts[nb_rx]->pkt.data_len);
+			rx_pkts[nb_rx]->data_len);
 
-		rxvq->bytes += rx_pkts[nb_rx]->pkt.pkt_len;
+		rxvq->bytes += rx_pkts[nb_rx]->pkt_len;
 		nb_rx++;
 	}
 
@@ -699,7 +699,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	num = (uint16_t)(likely(nb_used < VIRTIO_MBUF_BURST_SZ) ? nb_used : VIRTIO_MBUF_BURST_SZ);
 
 	while (nb_tx < nb_pkts) {
-		int need = tx_pkts[nb_tx]->pkt.nb_segs - txvq->vq_free_cnt;
+		int need = tx_pkts[nb_tx]->nb_segs - txvq->vq_free_cnt;
 		int deq_cnt = RTE_MIN(need, (int)num);
 
 		num -= (deq_cnt > 0) ? deq_cnt : 0;
@@ -708,7 +708,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			deq_cnt--;
 		}
 
-		if (tx_pkts[nb_tx]->pkt.nb_segs <= txvq->vq_free_cnt) {
+		if (tx_pkts[nb_tx]->nb_segs <= txvq->vq_free_cnt) {
 			txm = tx_pkts[nb_tx];
 			/* Enqueue Packet buffers */
 			error = virtqueue_enqueue_xmit(txvq, txm);
@@ -722,7 +722,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				break;
 			}
 			nb_tx++;
-			txvq->bytes += txm->pkt.pkt_len;
+			txvq->bytes += txm->pkt_len;
 		} else {
 			PMD_TX_LOG(ERR, "No free tx descriptors to transmit");
 			break;

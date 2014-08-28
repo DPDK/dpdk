@@ -96,7 +96,7 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
 	(uint64_t) ((mb)->buf_physaddr +		   \
-			(uint64_t) ((char *)((mb)->pkt.data) -     \
+			(uint64_t) ((char *)((mb)->data) -     \
 				(char *)(mb)->buf_addr))
 
 #define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
@@ -365,7 +365,7 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		tx_pkt = *tx_pkts++;
-		pkt_len = tx_pkt->pkt.pkt_len;
+		pkt_len = tx_pkt->pkt_len;
 
 		RTE_MBUF_PREFETCH_TO_FREE(txe->mbuf);
 
@@ -377,10 +377,10 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * for the packet, starting from the current position (tx_id)
 		 * in the ring.
 		 */
-		tx_last = (uint16_t) (tx_id + tx_pkt->pkt.nb_segs - 1);
+		tx_last = (uint16_t) (tx_id + tx_pkt->nb_segs - 1);
 
 		ol_flags = tx_pkt->ol_flags;
-		vlan_macip_lens = tx_pkt->pkt.vlan_macip.data;
+		vlan_macip_lens = tx_pkt->vlan_macip.data;
 		tx_ol_req = (uint16_t)(ol_flags & PKT_TX_OFFLOAD_MASK);
 
 		/* If a Context Descriptor need be built . */
@@ -527,7 +527,7 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			/*
 			 * Set up transmit descriptor.
 			 */
-			slen = (uint16_t) m_seg->pkt.data_len;
+			slen = (uint16_t) m_seg->data_len;
 			buf_dma_addr = RTE_MBUF_DATA_DMA_ADDR(m_seg);
 			txd->read.buffer_addr =
 				rte_cpu_to_le_64(buf_dma_addr);
@@ -538,7 +538,7 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			txe->last_id = tx_last;
 			tx_id = txe->next_id;
 			txe = txn;
-			m_seg = m_seg->pkt.next;
+			m_seg = m_seg->next;
 		} while (m_seg != NULL);
 
 		/*
@@ -753,18 +753,18 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		pkt_len = (uint16_t) (rte_le_to_cpu_16(rxd.wb.upper.length) -
 				      rxq->crc_len);
-		rxm->pkt.data = (char*) rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
-		rte_packet_prefetch(rxm->pkt.data);
-		rxm->pkt.nb_segs = 1;
-		rxm->pkt.next = NULL;
-		rxm->pkt.pkt_len = pkt_len;
-		rxm->pkt.data_len = pkt_len;
-		rxm->pkt.in_port = rxq->port_id;
+		rxm->data = (char*) rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rte_packet_prefetch(rxm->data);
+		rxm->nb_segs = 1;
+		rxm->next = NULL;
+		rxm->pkt_len = pkt_len;
+		rxm->data_len = pkt_len;
+		rxm->in_port = rxq->port_id;
 
-		rxm->pkt.hash.rss = rxd.wb.lower.hi_dword.rss;
+		rxm->hash.rss = rxd.wb.lower.hi_dword.rss;
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
-		rxm->pkt.vlan_macip.f.vlan_tci =
+		rxm->vlan_macip.f.vlan_tci =
 			rte_le_to_cpu_16(rxd.wb.upper.vlan);
 
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
@@ -929,8 +929,8 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * Set data length & data buffer address of mbuf.
 		 */
 		data_len = rte_le_to_cpu_16(rxd.wb.upper.length);
-		rxm->pkt.data_len = data_len;
-		rxm->pkt.data = (char*) rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rxm->data_len = data_len;
+		rxm->data = (char*) rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
 
 		/*
 		 * If this is the first buffer of the received packet,
@@ -942,12 +942,12 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		if (first_seg == NULL) {
 			first_seg = rxm;
-			first_seg->pkt.pkt_len = data_len;
-			first_seg->pkt.nb_segs = 1;
+			first_seg->pkt_len = data_len;
+			first_seg->nb_segs = 1;
 		} else {
-			first_seg->pkt.pkt_len += data_len;
-			first_seg->pkt.nb_segs++;
-			last_seg->pkt.next = rxm;
+			first_seg->pkt_len += data_len;
+			first_seg->nb_segs++;
+			last_seg->next = rxm;
 		}
 
 		/*
@@ -970,18 +970,18 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 *     mbuf, subtract the length of that CRC part from the
 		 *     data length of the previous mbuf.
 		 */
-		rxm->pkt.next = NULL;
+		rxm->next = NULL;
 		if (unlikely(rxq->crc_len > 0)) {
-			first_seg->pkt.pkt_len -= ETHER_CRC_LEN;
+			first_seg->pkt_len -= ETHER_CRC_LEN;
 			if (data_len <= ETHER_CRC_LEN) {
 				rte_pktmbuf_free_seg(rxm);
-				first_seg->pkt.nb_segs--;
-				last_seg->pkt.data_len = (uint16_t)
-					(last_seg->pkt.data_len -
+				first_seg->nb_segs--;
+				last_seg->data_len = (uint16_t)
+					(last_seg->data_len -
 					 (ETHER_CRC_LEN - data_len));
-				last_seg->pkt.next = NULL;
+				last_seg->next = NULL;
 			} else
-				rxm->pkt.data_len =
+				rxm->data_len =
 					(uint16_t) (data_len - ETHER_CRC_LEN);
 		}
 
@@ -994,14 +994,14 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 *      - VLAN TCI, if any,
 		 *      - error flags.
 		 */
-		first_seg->pkt.in_port = rxq->port_id;
-		first_seg->pkt.hash.rss = rxd.wb.lower.hi_dword.rss;
+		first_seg->in_port = rxq->port_id;
+		first_seg->hash.rss = rxd.wb.lower.hi_dword.rss;
 
 		/*
 		 * The vlan_tci field is only valid when PKT_RX_VLAN_PKT is
 		 * set in the pkt_flags field.
 		 */
-		first_seg->pkt.vlan_macip.f.vlan_tci =
+		first_seg->vlan_macip.f.vlan_tci =
 			rte_le_to_cpu_16(rxd.wb.upper.vlan);
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
@@ -1012,7 +1012,7 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->ol_flags = pkt_flags;
 
 		/* Prefetch data of first segment, if configured to do so. */
-		rte_packet_prefetch(first_seg->pkt.data);
+		rte_packet_prefetch(first_seg->data);
 
 		/*
 		 * Store the mbuf address into the next entry of the array

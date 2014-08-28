@@ -700,7 +700,7 @@ prepare_one_packet(struct rte_mbuf **pkts_in, struct acl_search_t *acl,
 			unsigned char *) + sizeof(struct ether_hdr));
 
 		/* Check to make sure the packet is valid (RFC1812) */
-		if (is_valid_ipv4_pkt(ipv4_hdr, pkt->pkt.pkt_len) >= 0) {
+		if (is_valid_ipv4_pkt(ipv4_hdr, pkt->pkt_len) >= 0) {
 
 			/* Update time to live and header checksum */
 			--(ipv4_hdr->time_to_live);

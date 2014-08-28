@@ -342,7 +342,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		}
 
 		/* if we don't need to do any fragmentation */
-		if (likely (IPV4_MTU_DEFAULT >= m->pkt.pkt_len)) {
+		if (likely (IPV4_MTU_DEFAULT >= m->pkt_len)) {
 			qconf->tx_mbufs[port_out].m_table[len] = m;
 			len2 = 1;
 		} else {
@@ -379,7 +379,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		}
 
 		/* if we don't need to do any fragmentation */
-		if (likely (IPV6_MTU_DEFAULT >= m->pkt.pkt_len)) {
+		if (likely (IPV6_MTU_DEFAULT >= m->pkt_len)) {
 			qconf->tx_mbufs[port_out].m_table[len] = m;
 			len2 = 1;
 		} else {
@@ -413,7 +413,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 			rte_panic("No headroom in mbuf.\n");
 		}
 
-		m->pkt.vlan_macip.f.l2_len = sizeof(struct ether_hdr);
+		m->vlan_macip.f.l2_len = sizeof(struct ether_hdr);
 
 		/* 02:00:00:00:00:xx */
 		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];

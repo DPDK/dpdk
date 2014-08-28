@@ -255,8 +255,8 @@ app_pkt_metadata_fill(struct rte_mbuf *m)
 	/* Pop Ethernet header */
 	if (app.ether_hdr_pop_push) {
 		rte_pktmbuf_adj(m, (uint16_t)sizeof(struct ether_hdr));
-		m->pkt.vlan_macip.f.l2_len = 0;
-		m->pkt.vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
+		m->vlan_macip.f.l2_len = 0;
+		m->vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
 	}
 }
 

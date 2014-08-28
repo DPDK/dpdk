@@ -60,7 +60,7 @@ int main(int argc, char **argv);
  * The maximum number of segments per packet is used when creating
  * scattered transmit packets composed of a list of mbufs.
  */
-#define RTE_MAX_SEGS_PER_PKT 255 /**< pkt.nb_segs is a 8-bit unsigned char. */
+#define RTE_MAX_SEGS_PER_PKT 255 /**< nb_segs is a 8-bit unsigned char. */
 
 #define MAX_PKT_BURST 512
 #define DEF_PKT_BURST 32

@@ -282,7 +282,7 @@ rte_distributor_process(struct rte_distributor *d,
 			next_mb = mbufs[next_idx++];
 			next_value = (((int64_t)(uintptr_t)next_mb)
 					<< RTE_DISTRIB_FLAG_BITS);
-			new_tag = (next_mb->pkt.hash.rss | 1);
+			new_tag = (next_mb->hash.rss | 1);
 
 			uint32_t match = 0;
 			unsigned i;

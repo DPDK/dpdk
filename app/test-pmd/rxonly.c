@@ -149,24 +149,24 @@ pkt_burst_receive(struct fwd_stream *fs)
 			rte_pktmbuf_free(mb);
 			continue;
 		}
-		eth_hdr = (struct ether_hdr *) mb->pkt.data;
+		eth_hdr = (struct ether_hdr *) mb->data;
 		eth_type = RTE_BE_TO_CPU_16(eth_hdr->ether_type);
 		ol_flags = mb->ol_flags;
 		print_ether_addr("  src=", &eth_hdr->s_addr);
 		print_ether_addr(" - dst=", &eth_hdr->d_addr);
 		printf(" - type=0x%04x - length=%u - nb_segs=%d",
-		       eth_type, (unsigned) mb->pkt.pkt_len,
-		       (int)mb->pkt.nb_segs);
+		       eth_type, (unsigned) mb->pkt_len,
+		       (int)mb->nb_segs);
 		if (ol_flags & PKT_RX_RSS_HASH) {
-			printf(" - RSS hash=0x%x", (unsigned) mb->pkt.hash.rss);
+			printf(" - RSS hash=0x%x", (unsigned) mb->hash.rss);
 			printf(" - RSS queue=0x%x",(unsigned) fs->rx_queue);
 		}
 		else if (ol_flags & PKT_RX_FDIR)
 			printf(" - FDIR hash=0x%x - FDIR id=0x%x ",
-			       mb->pkt.hash.fdir.hash, mb->pkt.hash.fdir.id);
+			       mb->hash.fdir.hash, mb->hash.fdir.id);
 		if (ol_flags & PKT_RX_VLAN_PKT)
 			printf(" - VLAN tci=0x%x",
-				mb->pkt.vlan_macip.f.vlan_tci);
+				mb->vlan_macip.f.vlan_tci);
 		printf("\n");
 		if (ol_flags != 0) {
 			int rxf;

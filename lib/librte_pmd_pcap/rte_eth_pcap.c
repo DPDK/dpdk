@@ -151,9 +151,9 @@ eth_pcap_rx(void *queue,
 
 		if (header.len <= buf_size) {
 			/* pcap packet will fit in the mbuf, go ahead and copy */
-			rte_memcpy(mbuf->pkt.data, packet, header.len);
-			mbuf->pkt.data_len = (uint16_t)header.len;
-			mbuf->pkt.pkt_len = mbuf->pkt.data_len;
+			rte_memcpy(mbuf->data, packet, header.len);
+			mbuf->data_len = (uint16_t)header.len;
+			mbuf->pkt_len = mbuf->data_len;
 			bufs[num_rx] = mbuf;
 			num_rx++;
 		} else {
@@ -200,9 +200,9 @@ eth_pcap_tx_dumper(void *queue,
 	for (i = 0; i < nb_pkts; i++) {
 		mbuf = bufs[i];
 		calculate_timestamp(&header.ts);
-		header.len = mbuf->pkt.data_len;
+		header.len = mbuf->data_len;
 		header.caplen = header.len;
-		pcap_dump((u_char*) dumper_q->dumper, &header, mbuf->pkt.data);
+		pcap_dump((u_char*) dumper_q->dumper, &header, mbuf->data);
 		rte_pktmbuf_free(mbuf);
 		num_tx++;
 	}
@@ -237,8 +237,8 @@ eth_pcap_tx(void *queue,
 
 	for (i = 0; i < nb_pkts; i++) {
 		mbuf = bufs[i];
-		ret = pcap_sendpacket(tx_queue->pcap, (u_char*) mbuf->pkt.data,
-				mbuf->pkt.data_len);
+		ret = pcap_sendpacket(tx_queue->pcap, (u_char*) mbuf->data,
+				mbuf->data_len);
 		if (unlikely(ret != 0))
 			break;
 		num_tx++;

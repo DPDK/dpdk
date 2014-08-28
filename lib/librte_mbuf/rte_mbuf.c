@@ -117,12 +117,12 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	m->buf_len = (uint16_t)buf_len;
 
 	/* keep some headroom between start of buffer and data */
-	m->pkt.data = (char*) m->buf_addr + RTE_MIN(RTE_PKTMBUF_HEADROOM, m->buf_len);
+	m->data = (char*) m->buf_addr + RTE_MIN(RTE_PKTMBUF_HEADROOM, m->buf_len);
 
 	/* init some constant fields */
 	m->pool = mp;
-	m->pkt.nb_segs = 1;
-	m->pkt.in_port = 0xff;
+	m->nb_segs = 1;
+	m->in_port = 0xff;
 }
 
 /* do some sanity checks on a mbuf: panic if it fails */
@@ -153,10 +153,10 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)
 	if (is_header == 0)
 		return;
 
-	nb_segs = m->pkt.nb_segs;
+	nb_segs = m->nb_segs;
 	m_seg = m;
 	while (m_seg && nb_segs != 0) {
-		m_seg = m_seg->pkt.next;
+		m_seg = m_seg->next;
 		nb_segs--;
 	}
 	if (nb_segs != 0)
@@ -175,22 +175,22 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 	fprintf(f, "dump mbuf at 0x%p, phys=%"PRIx64", buf_len=%u\n",
 	       m, (uint64_t)m->buf_physaddr, (unsigned)m->buf_len);
 	fprintf(f, "  pkt_len=%"PRIu32", ol_flags=%"PRIx16", nb_segs=%u, "
-	       "in_port=%u\n", m->pkt.pkt_len, m->ol_flags,
-	       (unsigned)m->pkt.nb_segs, (unsigned)m->pkt.in_port);
-	nb_segs = m->pkt.nb_segs;
+	       "in_port=%u\n", m->pkt_len, m->ol_flags,
+	       (unsigned)m->nb_segs, (unsigned)m->in_port);
+	nb_segs = m->nb_segs;
 
 	while (m && nb_segs != 0) {
 		__rte_mbuf_sanity_check(m, 0);
 
 		fprintf(f, "  segment at 0x%p, data=0x%p, data_len=%u\n",
-		       m, m->pkt.data, (unsigned)m->pkt.data_len);
+		       m, m->data, (unsigned)m->data_len);
 		len = dump_len;
-		if (len > m->pkt.data_len)
-			len = m->pkt.data_len;
+		if (len > m->data_len)
+			len = m->data_len;
 		if (len != 0)
-			rte_hexdump(f, NULL, m->pkt.data, len);
+			rte_hexdump(f, NULL, m->data, len);
 		dump_len -= len;
-		m = m->pkt.next;
+		m = m->next;
 		nb_segs --;
 	}
 }

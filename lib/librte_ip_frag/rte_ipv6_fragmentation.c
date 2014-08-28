@@ -122,10 +122,10 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 
 	/* Check that pkts_out is big enough to hold all fragments */
 	if (unlikely (frag_size * nb_pkts_out <
-	    (uint16_t)(pkt_in->pkt.pkt_len - sizeof (struct ipv6_hdr))))
+	    (uint16_t)(pkt_in->pkt_len - sizeof (struct ipv6_hdr))))
 		return (-EINVAL);
 
-	in_hdr = (struct ipv6_hdr *) pkt_in->pkt.data;
+	in_hdr = (struct ipv6_hdr *) pkt_in->data;
 
 	in_seg = pkt_in;
 	in_seg_data_pos = sizeof(struct ipv6_hdr);
@@ -146,8 +146,8 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 		}
 
 		/* Reserve space for the IP header that will be built later */
-		out_pkt->pkt.data_len = sizeof(struct ipv6_hdr) + sizeof(struct ipv6_extension_fragment);
-		out_pkt->pkt.pkt_len  = sizeof(struct ipv6_hdr) + sizeof(struct ipv6_extension_fragment);
+		out_pkt->data_len = sizeof(struct ipv6_hdr) + sizeof(struct ipv6_extension_fragment);
+		out_pkt->pkt_len  = sizeof(struct ipv6_hdr) + sizeof(struct ipv6_extension_fragment);
 
 		out_seg_prev = out_pkt;
 		more_out_segs = 1;
@@ -162,30 +162,30 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 				__free_fragments(pkts_out, out_pkt_pos);
 				return (-ENOMEM);
 			}
-			out_seg_prev->pkt.next = out_seg;
+			out_seg_prev->next = out_seg;
 			out_seg_prev = out_seg;
 
 			/* Prepare indirect buffer */
 			rte_pktmbuf_attach(out_seg, in_seg);
-			len = mtu_size - out_pkt->pkt.pkt_len;
-			if (len > (in_seg->pkt.data_len - in_seg_data_pos)) {
-				len = in_seg->pkt.data_len - in_seg_data_pos;
+			len = mtu_size - out_pkt->pkt_len;
+			if (len > (in_seg->data_len - in_seg_data_pos)) {
+				len = in_seg->data_len - in_seg_data_pos;
 			}
-			out_seg->pkt.data = (char *) in_seg->pkt.data + (uint16_t) in_seg_data_pos;
-			out_seg->pkt.data_len = (uint16_t)len;
-			out_pkt->pkt.pkt_len = (uint16_t)(len +
-			    out_pkt->pkt.pkt_len);
-			out_pkt->pkt.nb_segs += 1;
+			out_seg->data = (char *) in_seg->data + (uint16_t) in_seg_data_pos;
+			out_seg->data_len = (uint16_t)len;
+			out_pkt->pkt_len = (uint16_t)(len +
+			    out_pkt->pkt_len);
+			out_pkt->nb_segs += 1;
 			in_seg_data_pos += len;
 
 			/* Current output packet (i.e. fragment) done ? */
-			if (unlikely(out_pkt->pkt.pkt_len >= mtu_size)) {
+			if (unlikely(out_pkt->pkt_len >= mtu_size)) {
 				more_out_segs = 0;
 			}
 
 			/* Current input segment done ? */
-			if (unlikely(in_seg_data_pos == in_seg->pkt.data_len)) {
-				in_seg = in_seg->pkt.next;
+			if (unlikely(in_seg_data_pos == in_seg->data_len)) {
+				in_seg = in_seg->next;
 				in_seg_data_pos = 0;
 
 				if (unlikely(in_seg == NULL)) {
@@ -196,14 +196,14 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 
 		/* Build the IP header */
 
-		out_hdr = (struct ipv6_hdr *) out_pkt->pkt.data;
+		out_hdr = (struct ipv6_hdr *) out_pkt->data;
 
 		__fill_ipv6hdr_frag(out_hdr, in_hdr,
-		    (uint16_t) out_pkt->pkt.pkt_len - sizeof(struct ipv6_hdr),
+		    (uint16_t) out_pkt->pkt_len - sizeof(struct ipv6_hdr),
 		    fragment_offset, more_in_segs);
 
 		fragment_offset = (uint16_t)(fragment_offset +
-		    out_pkt->pkt.pkt_len - sizeof(struct ipv6_hdr)
+		    out_pkt->pkt_len - sizeof(struct ipv6_hdr)
 			- sizeof(struct ipv6_extension_fragment));
 
 		/* Write the fragment to the output list */

@@ -133,32 +133,6 @@ union rte_vlan_macip {
 #define TX_MACIP_LEN_CMP_MASK   (TX_MAC_LEN_CMP_MASK | TX_IP_LEN_CMP_MASK)
 
 /**
- * A packet message buffer.
- */
-struct rte_pktmbuf {
-	/* valid for any segment */
-	struct rte_mbuf *next;  /**< Next segment of scattered packet. */
-	void* data;             /**< Start address of data in segment buffer. */
-	uint16_t data_len;      /**< Amount of data in segment buffer. */
-
-	/* these fields are valid for first segment only */
-	uint8_t nb_segs;        /**< Number of segments. */
-	uint8_t in_port;        /**< Input port. */
-	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
-
-	/* offload features */
-	union rte_vlan_macip vlan_macip;
-	union {
-		uint32_t rss;       /**< RSS hash result if RSS enabled */
-		struct {
-			uint16_t hash;
-			uint16_t id;
-		} fdir;             /**< Filter identifier if FDIR enabled */
-		uint32_t sched;     /**< Hierarchical scheduler */
-	} hash;                 /**< hash information */
-};
-
-/**
  * The generic rte_mbuf, containing a packet mbuf.
  */
 struct rte_mbuf {
@@ -185,7 +159,26 @@ struct rte_mbuf {
 	uint16_t reserved;            /**< Unused field. Required for padding */
 	uint16_t ol_flags;            /**< Offload features. */
 
-	struct rte_pktmbuf pkt;
+	/* valid for any segment */
+	struct rte_mbuf *next;  /**< Next segment of scattered packet. */
+	void* data;             /**< Start address of data in segment buffer. */
+	uint16_t data_len;      /**< Amount of data in segment buffer. */
+
+	/* these fields are valid for first segment only */
+	uint8_t nb_segs;        /**< Number of segments. */
+	uint8_t in_port;        /**< Input port. */
+	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
+
+	/* offload features, valid for first segment only */
+	union rte_vlan_macip vlan_macip;
+	union {
+		uint32_t rss;       /**< RSS hash result if RSS enabled */
+		struct {
+			uint16_t hash;
+			uint16_t id;
+		} fdir;             /**< Filter identifier if FDIR enabled */
+		uint32_t sched;     /**< Hierarchical scheduler */
+	} hash;                 /**< hash information */
 
 	union {
 		uint8_t metadata[0];
@@ -478,7 +471,7 @@ void rte_ctrlmbuf_init(struct rte_mempool *mp, void *opaque_arg,
  * @param m
  *   The control mbuf.
  */
-#define rte_ctrlmbuf_data(m) ((m)->pkt.data)
+#define rte_ctrlmbuf_data(m) ((m)->data)
 
 /**
  * A macro that returns the length of the carried data.
@@ -545,18 +538,18 @@ static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 {
 	uint32_t buf_ofs;
 
-	m->pkt.next = NULL;
-	m->pkt.pkt_len = 0;
-	m->pkt.vlan_macip.data = 0;
-	m->pkt.nb_segs = 1;
-	m->pkt.in_port = 0xff;
+	m->next = NULL;
+	m->pkt_len = 0;
+	m->vlan_macip.data = 0;
+	m->nb_segs = 1;
+	m->in_port = 0xff;
 
 	m->ol_flags = 0;
 	buf_ofs = (RTE_PKTMBUF_HEADROOM <= m->buf_len) ?
 			RTE_PKTMBUF_HEADROOM : m->buf_len;
-	m->pkt.data = (char*) m->buf_addr + buf_ofs;
+	m->data = (char*) m->buf_addr + buf_ofs;
 
-	m->pkt.data_len = 0;
+	m->data_len = 0;
 	__rte_mbuf_sanity_check(m, 1);
 }
 
@@ -610,11 +603,16 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
 	mi->buf_addr = md->buf_addr;
 	mi->buf_len = md->buf_len;
 
-	mi->pkt = md->pkt;
+	mi->next = md->next;
+	mi->data = md->data;
+	mi->data_len = md->data_len;
+	mi->in_port = md->in_port;
+	mi->vlan_macip = md->vlan_macip;
+	mi->hash = md->hash;
 
-	mi->pkt.next = NULL;
-	mi->pkt.pkt_len = mi->pkt.data_len;
-	mi->pkt.nb_segs = 1;
+	mi->next = NULL;
+	mi->pkt_len = mi->data_len;
+	mi->nb_segs = 1;
 	mi->ol_flags = md->ol_flags;
 
 	__rte_mbuf_sanity_check(mi, 1);
@@ -644,9 +642,9 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 
 	buf_ofs = (RTE_PKTMBUF_HEADROOM <= m->buf_len) ?
 			RTE_PKTMBUF_HEADROOM : m->buf_len;
-	m->pkt.data = (char*) m->buf_addr + buf_ofs;
+	m->data = (char*) m->buf_addr + buf_ofs;
 
-	m->pkt.data_len = 0;
+	m->data_len = 0;
 }
 
 #endif /* RTE_MBUF_REFCNT */
@@ -713,7 +711,7 @@ static inline void rte_pktmbuf_free(struct rte_mbuf *m)
 	__rte_mbuf_sanity_check(m, 1);
 
 	while (m != NULL) {
-		m_next = m->pkt.next;
+		m_next = m->next;
 		rte_pktmbuf_free_seg(m);
 		m = m_next;
 	}
@@ -749,21 +747,21 @@ static inline struct rte_mbuf *rte_pktmbuf_clone(struct rte_mbuf *md,
 		return (NULL);
 
 	mi = mc;
-	prev = &mi->pkt.next;
-	pktlen = md->pkt.pkt_len;
+	prev = &mi->next;
+	pktlen = md->pkt_len;
 	nseg = 0;
 
 	do {
 		nseg++;
 		rte_pktmbuf_attach(mi, md);
 		*prev = mi;
-		prev = &mi->pkt.next;
-	} while ((md = md->pkt.next) != NULL &&
+		prev = &mi->next;
+	} while ((md = md->next) != NULL &&
 	    (mi = rte_pktmbuf_alloc(mp)) != NULL);
 
 	*prev = NULL;
-	mc->pkt.nb_segs = nseg;
-	mc->pkt.pkt_len = pktlen;
+	mc->nb_segs = nseg;
+	mc->pkt_len = pktlen;
 
 	/* Allocation of new indirect segment failed */
 	if (unlikely (mi == NULL)) {
@@ -792,7 +790,7 @@ static inline void rte_pktmbuf_refcnt_update(struct rte_mbuf *m, int16_t v)
 
 	do {
 		rte_mbuf_refcnt_update(m, v);
-	} while ((m = m->pkt.next) != NULL);
+	} while ((m = m->next) != NULL);
 }
 
 #endif /* RTE_MBUF_REFCNT */
@@ -808,7 +806,7 @@ static inline void rte_pktmbuf_refcnt_update(struct rte_mbuf *m, int16_t v)
 static inline uint16_t rte_pktmbuf_headroom(const struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, 1);
-	return (uint16_t) ((char*) m->pkt.data - (char*) m->buf_addr);
+	return (uint16_t) ((char*) m->data - (char*) m->buf_addr);
 }
 
 /**
@@ -823,7 +821,7 @@ static inline uint16_t rte_pktmbuf_tailroom(const struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, 1);
 	return (uint16_t)(m->buf_len - rte_pktmbuf_headroom(m) -
-			  m->pkt.data_len);
+			  m->data_len);
 }
 
 /**
@@ -839,8 +837,8 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
 	struct rte_mbuf *m2 = (struct rte_mbuf *)m;
 
 	__rte_mbuf_sanity_check(m, 1);
-	while (m2->pkt.next != NULL)
-		m2 = m2->pkt.next;
+	while (m2->next != NULL)
+		m2 = m2->next;
 	return m2;
 }
 
@@ -856,7 +854,7 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
  * @param t
  *   The type to cast the result into.
  */
-#define rte_pktmbuf_mtod(m, t) ((t)((m)->pkt.data))
+#define rte_pktmbuf_mtod(m, t) ((t)((m)->data))
 
 /**
  * A macro that returns the length of the packet.
@@ -866,7 +864,7 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
  * @param m
  *   The packet mbuf.
  */
-#define rte_pktmbuf_pkt_len(m) ((m)->pkt.pkt_len)
+#define rte_pktmbuf_pkt_len(m) ((m)->pkt_len)
 
 /**
  * A macro that returns the length of the segment.
@@ -876,7 +874,7 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
  * @param m
  *   The packet mbuf.
  */
-#define rte_pktmbuf_data_len(m) ((m)->pkt.data_len)
+#define rte_pktmbuf_data_len(m) ((m)->data_len)
 
 /**
  * Prepend len bytes to an mbuf data area.
@@ -901,11 +899,11 @@ static inline char *rte_pktmbuf_prepend(struct rte_mbuf *m,
 	if (unlikely(len > rte_pktmbuf_headroom(m)))
 		return NULL;
 
-	m->pkt.data = (char*) m->pkt.data - len;
-	m->pkt.data_len = (uint16_t)(m->pkt.data_len + len);
-	m->pkt.pkt_len  = (m->pkt.pkt_len + len);
+	m->data = (char*) m->data - len;
+	m->data_len = (uint16_t)(m->data_len + len);
+	m->pkt_len  = (m->pkt_len + len);
 
-	return (char*) m->pkt.data;
+	return (char*) m->data;
 }
 
 /**
@@ -934,9 +932,9 @@ static inline char *rte_pktmbuf_append(struct rte_mbuf *m, uint16_t len)
 	if (unlikely(len > rte_pktmbuf_tailroom(m_last)))
 		return NULL;
 
-	tail = (char*) m_last->pkt.data + m_last->pkt.data_len;
-	m_last->pkt.data_len = (uint16_t)(m_last->pkt.data_len + len);
-	m->pkt.pkt_len  = (m->pkt.pkt_len + len);
+	tail = (char*) m_last->data + m_last->data_len;
+	m_last->data_len = (uint16_t)(m_last->data_len + len);
+	m->pkt_len  = (m->pkt_len + len);
 	return (char*) tail;
 }
 
@@ -958,13 +956,13 @@ static inline char *rte_pktmbuf_adj(struct rte_mbuf *m, uint16_t len)
 {
 	__rte_mbuf_sanity_check(m, 1);
 
-	if (unlikely(len > m->pkt.data_len))
+	if (unlikely(len > m->data_len))
 		return NULL;
 
-	m->pkt.data_len = (uint16_t)(m->pkt.data_len - len);
-	m->pkt.data = ((char*) m->pkt.data + len);
-	m->pkt.pkt_len  = (m->pkt.pkt_len - len);
-	return (char*) m->pkt.data;
+	m->data_len = (uint16_t)(m->data_len - len);
+	m->data = ((char*) m->data + len);
+	m->pkt_len  = (m->pkt_len - len);
+	return (char*) m->data;
 }
 
 /**
@@ -988,11 +986,11 @@ static inline int rte_pktmbuf_trim(struct rte_mbuf *m, uint16_t len)
 	__rte_mbuf_sanity_check(m, 1);
 
 	m_last = rte_pktmbuf_lastseg(m);
-	if (unlikely(len > m_last->pkt.data_len))
+	if (unlikely(len > m_last->data_len))
 		return -1;
 
-	m_last->pkt.data_len = (uint16_t)(m_last->pkt.data_len - len);
-	m->pkt.pkt_len  = (m->pkt.pkt_len - len);
+	m_last->data_len = (uint16_t)(m_last->data_len - len);
+	m->pkt_len  = (m->pkt_len - len);
 	return 0;
 }
 
@@ -1008,7 +1006,7 @@ static inline int rte_pktmbuf_trim(struct rte_mbuf *m, uint16_t len)
 static inline int rte_pktmbuf_is_contiguous(const struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, 1);
-	return !!(m->pkt.nb_segs == 1);
+	return !!(m->nb_segs == 1);
 }
 
 /**

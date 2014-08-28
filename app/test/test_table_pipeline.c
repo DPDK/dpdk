@@ -498,8 +498,8 @@ test_pipeline_single_filter(int test_type, int expected_count)
 			printf("Got %d object(s) from ring %d!\n", ret, i);
 			for (j = 0; j < ret; j++) {
 				mbuf = (struct rte_mbuf *)objs[j];
-				rte_hexdump(stdout, "Object:", mbuf->pkt.data,
-					mbuf->pkt.data_len);
+				rte_hexdump(stdout, "Object:", mbuf->data,
+					mbuf->data_len);
 				rte_pktmbuf_free(mbuf);
 			}
 			tx_count += ret;

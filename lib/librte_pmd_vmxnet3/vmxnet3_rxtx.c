@@ -79,7 +79,7 @@
 
 
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	(uint64_t) ((mb)->buf_physaddr + (uint64_t)((char *)((mb)->pkt.data) - \
+	(uint64_t) ((mb)->buf_physaddr + (uint64_t)((char *)((mb)->data) - \
 	(char *)(mb)->buf_addr))
 
 #define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
@@ -289,7 +289,7 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 			txm = tx_pkts[nb_tx];
 			/* Don't support scatter packets yet, free them if met */
-			if (txm->pkt.nb_segs != 1) {
+			if (txm->nb_segs != 1) {
 				PMD_TX_LOG(DEBUG, "Don't support scatter packets yet, drop!");
 				rte_pktmbuf_free(tx_pkts[nb_tx]);
 				txq->stats.drop_total++;
@@ -299,7 +299,7 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			}
 
 			/* Needs to minus ether header len */
-			if (txm->pkt.data_len > (hw->cur_mtu + ETHER_HDR_LEN)) {
+			if (txm->data_len > (hw->cur_mtu + ETHER_HDR_LEN)) {
 				PMD_TX_LOG(DEBUG, "Packet data_len higher than MTU");
 				rte_pktmbuf_free(tx_pkts[nb_tx]);
 				txq->stats.drop_total++;
@@ -314,7 +314,7 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tbi = txq->cmd_ring.buf_info + txq->cmd_ring.next2fill;
 			tbi->bufPA = RTE_MBUF_DATA_DMA_ADDR(txm);
 			txd->addr = tbi->bufPA;
-			txd->len = txm->pkt.data_len;
+			txd->len = txm->data_len;
 
 			/* Mark the last descriptor as End of Packet. */
 			txd->cq = 1;
@@ -551,21 +551,21 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 					       rte_pktmbuf_mtod(rxm, void *));
 #endif
 				/* Copy vlan tag in packet buffer */
-				rxm->pkt.vlan_macip.f.vlan_tci =
+				rxm->vlan_macip.f.vlan_tci =
 					rte_le_to_cpu_16((uint16_t)rcd->tci);
 
 			} else
 				rxm->ol_flags = 0;
 
 			/* Initialize newly received packet buffer */
-			rxm->pkt.in_port = rxq->port_id;
-			rxm->pkt.nb_segs = 1;
-			rxm->pkt.next = NULL;
-			rxm->pkt.pkt_len = (uint16_t)rcd->len;
-			rxm->pkt.data_len = (uint16_t)rcd->len;
-			rxm->pkt.in_port = rxq->port_id;
-			rxm->pkt.vlan_macip.f.vlan_tci = 0;
-			rxm->pkt.data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+			rxm->in_port = rxq->port_id;
+			rxm->nb_segs = 1;
+			rxm->next = NULL;
+			rxm->pkt_len = (uint16_t)rcd->len;
+			rxm->data_len = (uint16_t)rcd->len;
+			rxm->in_port = rxq->port_id;
+			rxm->vlan_macip.f.vlan_tci = 0;
+			rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
 
 			rx_pkts[nb_rx++] = rxm;
 

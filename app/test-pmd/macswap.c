@@ -110,7 +110,7 @@ pkt_burst_mac_swap(struct fwd_stream *fs)
 	txp = &ports[fs->tx_port];
 	for (i = 0; i < nb_rx; i++) {
 		mb = pkts_burst[i];
-		eth_hdr = (struct ether_hdr *) mb->pkt.data;
+		eth_hdr = (struct ether_hdr *) mb->data;
 
 		/* Swap dest and src mac addresses. */
 		ether_addr_copy(&eth_hdr->d_addr, &addr);
@@ -118,9 +118,9 @@ pkt_burst_mac_swap(struct fwd_stream *fs)
 		ether_addr_copy(&addr, &eth_hdr->s_addr);
 
 		mb->ol_flags = txp->tx_ol_flags;
-		mb->pkt.vlan_macip.f.l2_len = sizeof(struct ether_hdr);
-		mb->pkt.vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
-		mb->pkt.vlan_macip.f.vlan_tci = txp->tx_vlan_id;
+		mb->vlan_macip.f.l2_len = sizeof(struct ether_hdr);
+		mb->vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
+		mb->vlan_macip.f.vlan_tci = txp->tx_vlan_id;
 	}
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_rx);
 	fs->tx_packets += nb_tx;

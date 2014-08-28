@@ -809,19 +809,19 @@ simple_ipv4_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 #ifdef DO_RFC_1812_CHECKS
 	/* Check to make sure the packet is valid (RFC1812) */
 	uint8_t valid_mask = MASK_ALL_PKTS;
-	if (is_valid_ipv4_pkt(ipv4_hdr[0], m[0]->pkt.pkt_len) < 0) {
+	if (is_valid_ipv4_pkt(ipv4_hdr[0], m[0]->pkt_len) < 0) {
 		rte_pktmbuf_free(m[0]);
 		valid_mask &= EXECLUDE_1ST_PKT;
 	}
-	if (is_valid_ipv4_pkt(ipv4_hdr[1], m[1]->pkt.pkt_len) < 0) {
+	if (is_valid_ipv4_pkt(ipv4_hdr[1], m[1]->pkt_len) < 0) {
 		rte_pktmbuf_free(m[1]);
 		valid_mask &= EXECLUDE_2ND_PKT;
 	}
-	if (is_valid_ipv4_pkt(ipv4_hdr[2], m[2]->pkt.pkt_len) < 0) {
+	if (is_valid_ipv4_pkt(ipv4_hdr[2], m[2]->pkt_len) < 0) {
 		rte_pktmbuf_free(m[2]);
 		valid_mask &= EXECLUDE_3RD_PKT;
 	}
-	if (is_valid_ipv4_pkt(ipv4_hdr[3], m[3]->pkt.pkt_len) < 0) {
+	if (is_valid_ipv4_pkt(ipv4_hdr[3], m[3]->pkt_len) < 0) {
 		rte_pktmbuf_free(m[3]);
 		valid_mask &= EXECLUDE_4TH_PKT;
 	}
@@ -1009,7 +1009,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 
 #ifdef DO_RFC_1812_CHECKS
 		/* Check to make sure the packet is valid (RFC1812) */
-		if (is_valid_ipv4_pkt(ipv4_hdr, m->pkt.pkt_len) < 0) {
+		if (is_valid_ipv4_pkt(ipv4_hdr, m->pkt_len) < 0) {
 			rte_pktmbuf_free(m);
 			return;
 		}

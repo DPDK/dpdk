@@ -54,7 +54,7 @@
  * rather than gpa<->hva in virito spec.
  */
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	((uint64_t)((mb)->pkt.data))
+	((uint64_t)((mb)->data))
 
 enum { VTNET_RQ = 0, VTNET_TQ = 1, VTNET_CQ = 2 };
 
@@ -238,7 +238,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	start_dp[idx].addr  = (uintptr_t)NULL;
 	idx = start_dp[idx].next;
 	start_dp[idx].addr  = RTE_MBUF_DATA_DMA_ADDR(cookie);
-	start_dp[idx].len   = cookie->pkt.data_len;
+	start_dp[idx].len   = cookie->data_len;
 	start_dp[idx].flags = 0;
 	idx = start_dp[idx].next;
 	txvq->vq_desc_head_idx = idx;

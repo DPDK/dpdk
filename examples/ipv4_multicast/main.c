@@ -329,17 +329,17 @@ mcast_out_pkt(struct rte_mbuf *pkt, int use_clone)
 	}
 
 	/* prepend new header */
-	hdr->pkt.next = pkt;
+	hdr->next = pkt;
 
 
 	/* update header's fields */
-	hdr->pkt.pkt_len = (uint16_t)(hdr->pkt.data_len + pkt->pkt.pkt_len);
-	hdr->pkt.nb_segs = (uint8_t)(pkt->pkt.nb_segs + 1);
+	hdr->pkt_len = (uint16_t)(hdr->data_len + pkt->pkt_len);
+	hdr->nb_segs = (uint8_t)(pkt->nb_segs + 1);
 
 	/* copy metadata from source packet*/
-	hdr->pkt.in_port = pkt->pkt.in_port;
-	hdr->pkt.vlan_macip = pkt->pkt.vlan_macip;
-	hdr->pkt.hash = pkt->pkt.hash;
+	hdr->in_port = pkt->in_port;
+	hdr->vlan_macip = pkt->vlan_macip;
+	hdr->hash = pkt->hash;
 
 	hdr->ol_flags = pkt->ol_flags;
 
@@ -412,7 +412,7 @@ mcast_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf)
 
 	/* Should we use rte_pktmbuf_clone() or not. */
 	use_clone = (port_num <= MCAST_CLONE_PORTS &&
-	    m->pkt.nb_segs <= MCAST_CLONE_SEGS);
+	    m->nb_segs <= MCAST_CLONE_SEGS);
 
 	/* Mark all packet's segments as referenced port_num times */
 	if (use_clone == 0)

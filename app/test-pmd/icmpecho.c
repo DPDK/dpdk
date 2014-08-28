@@ -330,12 +330,12 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	nb_replies = 0;
 	for (i = 0; i < nb_rx; i++) {
 		pkt = pkts_burst[i];
-		eth_h = (struct ether_hdr *) pkt->pkt.data;
+		eth_h = (struct ether_hdr *) pkt->data;
 		eth_type = RTE_BE_TO_CPU_16(eth_h->ether_type);
 		l2_len = sizeof(struct ether_hdr);
 		if (verbose_level > 0) {
 			printf("\nPort %d pkt-len=%u nb-segs=%u\n",
-			       fs->rx_port, pkt->pkt.pkt_len, pkt->pkt.nb_segs);
+			       fs->rx_port, pkt->pkt_len, pkt->nb_segs);
 			ether_addr_dump("  ETH:  src=", &eth_h->s_addr);
 			ether_addr_dump(" dst=", &eth_h->d_addr);
 		}

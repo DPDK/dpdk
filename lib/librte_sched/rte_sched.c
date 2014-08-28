@@ -1015,7 +1015,7 @@ rte_sched_port_update_subport_stats(struct rte_sched_port *port, uint32_t qindex
 {
 	struct rte_sched_subport *s = port->subport + (qindex / rte_sched_port_queues_per_subport(port));
 	uint32_t tc_index = (qindex >> 2) & 0x3;
-	uint32_t pkt_len = pkt->pkt.pkt_len;
+	uint32_t pkt_len = pkt->pkt_len;
 
 	s->stats.n_pkts_tc[tc_index] += 1;
 	s->stats.n_bytes_tc[tc_index] += pkt_len;
@@ -1026,7 +1026,7 @@ rte_sched_port_update_subport_stats_on_drop(struct rte_sched_port *port, uint32_
 {
 	struct rte_sched_subport *s = port->subport + (qindex / rte_sched_port_queues_per_subport(port));
 	uint32_t tc_index = (qindex >> 2) & 0x3;
-	uint32_t pkt_len = pkt->pkt.pkt_len;
+	uint32_t pkt_len = pkt->pkt_len;
 
 	s->stats.n_pkts_tc_dropped[tc_index] += 1;
 	s->stats.n_bytes_tc_dropped[tc_index] += pkt_len;
@@ -1036,7 +1036,7 @@ static inline void
 rte_sched_port_update_queue_stats(struct rte_sched_port *port, uint32_t qindex, struct rte_mbuf *pkt)
 {
 	struct rte_sched_queue_extra *qe = port->queue_extra + qindex;
-	uint32_t pkt_len = pkt->pkt.pkt_len;
+	uint32_t pkt_len = pkt->pkt_len;
 
 	qe->stats.n_pkts += 1;
 	qe->stats.n_bytes += pkt_len;
@@ -1046,7 +1046,7 @@ static inline void
 rte_sched_port_update_queue_stats_on_drop(struct rte_sched_port *port, uint32_t qindex, struct rte_mbuf *pkt)
 {
 	struct rte_sched_queue_extra *qe = port->queue_extra + qindex;
-	uint32_t pkt_len = pkt->pkt.pkt_len;
+	uint32_t pkt_len = pkt->pkt_len;
 
 	qe->stats.n_pkts_dropped += 1;
 	qe->stats.n_bytes_dropped += pkt_len;
@@ -1563,7 +1563,7 @@ grinder_credits_check(struct rte_sched_port *port, uint32_t pos)
 	struct rte_sched_pipe *pipe = grinder->pipe;
 	struct rte_mbuf *pkt = grinder->pkt;
 	uint32_t tc_index = grinder->tc_index;
-	uint32_t pkt_len = pkt->pkt.pkt_len + port->frame_overhead;
+	uint32_t pkt_len = pkt->pkt_len + port->frame_overhead;
 	uint32_t subport_tb_credits = subport->tb_credits;
 	uint32_t subport_tc_credits = subport->tc_credits[tc_index];
 	uint32_t pipe_tb_credits = pipe->tb_credits;
@@ -1599,7 +1599,7 @@ grinder_credits_check(struct rte_sched_port *port, uint32_t pos)
 	struct rte_sched_pipe *pipe = grinder->pipe;
 	struct rte_mbuf *pkt = grinder->pkt;
 	uint32_t tc_index = grinder->tc_index;
-	uint32_t pkt_len = pkt->pkt.pkt_len + port->frame_overhead;
+	uint32_t pkt_len = pkt->pkt_len + port->frame_overhead;
 	uint32_t subport_tb_credits = subport->tb_credits;
 	uint32_t subport_tc_credits = subport->tc_credits[tc_index];
 	uint32_t pipe_tb_credits = pipe->tb_credits;
@@ -1640,7 +1640,7 @@ grinder_schedule(struct rte_sched_port *port, uint32_t pos)
 	struct rte_sched_grinder *grinder = port->grinder + pos;
 	struct rte_sched_queue *queue = grinder->queue[grinder->qpos];
 	struct rte_mbuf *pkt = grinder->pkt;
-	uint32_t pkt_len = pkt->pkt.pkt_len + port->frame_overhead;
+	uint32_t pkt_len = pkt->pkt_len + port->frame_overhead;
 
 #if RTE_SCHED_TS_CREDITS_CHECK
 	if (!grinder_credits_check(port, pos)) {

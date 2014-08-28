@@ -87,10 +87,10 @@ ipv4_frag_reassemble(const struct ip_frag_pkt *fp)
 
 	/* update ipv4 header for the reassmebled packet */
 	ip_hdr = (struct ipv4_hdr*)(rte_pktmbuf_mtod(m, uint8_t *) +
-		m->pkt.vlan_macip.f.l2_len);
+		m->vlan_macip.f.l2_len);
 
 	ip_hdr->total_length = rte_cpu_to_be_16((uint16_t)(fp->total_size +
-		m->pkt.vlan_macip.f.l3_len));
+		m->vlan_macip.f.l3_len));
 	ip_hdr->fragment_offset = (uint16_t)(ip_hdr->fragment_offset &
 		rte_cpu_to_be_16(IPV4_HDR_DF_FLAG));
 	ip_hdr->hdr_checksum = 0;
@@ -137,7 +137,7 @@ rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 
 	ip_ofs *= IPV4_HDR_OFFSET_UNITS;
 	ip_len = (uint16_t)(rte_be_to_cpu_16(ip_hdr->total_length) -
-		mb->pkt.vlan_macip.f.l3_len);
+		mb->vlan_macip.f.l3_len);
 
 	IP_FRAG_LOG(DEBUG, "%s:%d:\n"
 		"mbuf: %p, tms: %" PRIu64

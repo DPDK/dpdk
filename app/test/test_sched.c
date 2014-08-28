@@ -145,8 +145,8 @@ prepare_pkt(struct rte_mbuf *mbuf)
 	rte_sched_port_pkt_write(mbuf, SUBPORT, PIPE, TC, QUEUE, e_RTE_METER_YELLOW);
 
 	/* 64 byte packet */
-	mbuf->pkt.pkt_len  = 60;
-	mbuf->pkt.data_len = 60;
+	mbuf->pkt_len  = 60;
+	mbuf->data_len = 60;
 }
 
 

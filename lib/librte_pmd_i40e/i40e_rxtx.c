@@ -79,7 +79,7 @@
 
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
 	((uint64_t)((mb)->buf_physaddr + \
-	(uint64_t)((char *)((mb)->pkt.data) - \
+	(uint64_t)((char *)((mb)->data) - \
 	(char *)(mb)->buf_addr)))
 
 static const struct rte_memzone *
@@ -611,9 +611,9 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 						I40E_RXD_QW1_STATUS_SHIFT;
 			pkt_len = ((qword1 & I40E_RXD_QW1_LENGTH_PBUF_MASK) >>
 				I40E_RXD_QW1_LENGTH_PBUF_SHIFT) - rxq->crc_len;
-			mb->pkt.data_len = pkt_len;
-			mb->pkt.pkt_len = pkt_len;
-			mb->pkt.vlan_macip.f.vlan_tci = rx_status &
+			mb->data_len = pkt_len;
+			mb->pkt_len = pkt_len;
+			mb->vlan_macip.f.vlan_tci = rx_status &
 				(1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT) ?
 			rte_le_to_cpu_16(\
 				rxdp[j].wb.qword0.lo_dword.l2tag1) : 0;
@@ -622,7 +622,7 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 			pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
 			mb->ol_flags = pkt_flags;
 			if (pkt_flags & PKT_RX_RSS_HASH)
-				mb->pkt.hash.rss = rte_le_to_cpu_32(\
+				mb->hash.rss = rte_le_to_cpu_32(\
 					rxdp->wb.qword0.hi_dword.rss);
 		}
 
@@ -684,10 +684,10 @@ i40e_rx_alloc_bufs(struct i40e_rx_queue *rxq)
 	for (i = 0; i < rxq->rx_free_thresh; i++) {
 		mb = rxep[i].mbuf;
 		rte_mbuf_refcnt_set(mb, 1);
-		mb->pkt.next = NULL;
-		mb->pkt.data = (char *)mb->buf_addr + RTE_PKTMBUF_HEADROOM;
-		mb->pkt.nb_segs = 1;
-		mb->pkt.in_port = rxq->port_id;
+		mb->next = NULL;
+		mb->data = (char *)mb->buf_addr + RTE_PKTMBUF_HEADROOM;
+		mb->nb_segs = 1;
+		mb->in_port = rxq->port_id;
 		dma_addr = rte_cpu_to_le_64(\
 			RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb));
 		rxdp[i].read.hdr_addr = dma_addr;
@@ -842,15 +842,15 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rx_packet_len = ((qword1 & I40E_RXD_QW1_LENGTH_PBUF_MASK) >>
 				I40E_RXD_QW1_LENGTH_PBUF_SHIFT) - rxq->crc_len;
 
-		rxm->pkt.data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
-		rte_prefetch0(rxm->pkt.data);
-		rxm->pkt.nb_segs = 1;
-		rxm->pkt.next = NULL;
-		rxm->pkt.pkt_len = rx_packet_len;
-		rxm->pkt.data_len = rx_packet_len;
-		rxm->pkt.in_port = rxq->port_id;
+		rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rte_prefetch0(rxm->data);
+		rxm->nb_segs = 1;
+		rxm->next = NULL;
+		rxm->pkt_len = rx_packet_len;
+		rxm->data_len = rx_packet_len;
+		rxm->in_port = rxq->port_id;
 
-		rxm->pkt.vlan_macip.f.vlan_tci = rx_status &
+		rxm->vlan_macip.f.vlan_tci = rx_status &
 			(1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT) ?
 			rte_le_to_cpu_16(rxd.wb.qword0.lo_dword.l2tag1) : 0;
 		pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
@@ -858,7 +858,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
 		rxm->ol_flags = pkt_flags;
 		if (pkt_flags & PKT_RX_RSS_HASH)
-			rxm->pkt.hash.rss =
+			rxm->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
 
 		rx_pkts[nb_rx++] = rxm;
@@ -945,8 +945,8 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		rxdp->read.pkt_addr = dma_addr;
 		rx_packet_len = (qword1 & I40E_RXD_QW1_LENGTH_PBUF_MASK) >>
 					I40E_RXD_QW1_LENGTH_PBUF_SHIFT;
-		rxm->pkt.data_len = rx_packet_len;
-		rxm->pkt.data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rxm->data_len = rx_packet_len;
+		rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
 
 		/**
 		 * If this is the first buffer of the received packet, set the
@@ -957,14 +957,14 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		 */
 		if (!first_seg) {
 			first_seg = rxm;
-			first_seg->pkt.nb_segs = 1;
-			first_seg->pkt.pkt_len = rx_packet_len;
+			first_seg->nb_segs = 1;
+			first_seg->pkt_len = rx_packet_len;
 		} else {
-			first_seg->pkt.pkt_len =
-				(uint16_t)(first_seg->pkt.pkt_len +
+			first_seg->pkt_len =
+				(uint16_t)(first_seg->pkt_len +
 						rx_packet_len);
-			first_seg->pkt.nb_segs++;
-			last_seg->pkt.next = rxm;
+			first_seg->nb_segs++;
+			last_seg->next = rxm;
 		}
 
 		/**
@@ -987,23 +987,23 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		 *  the length of that CRC part from the data length of the
 		 *  previous mbuf.
 		 */
-		rxm->pkt.next = NULL;
+		rxm->next = NULL;
 		if (unlikely(rxq->crc_len > 0)) {
-			first_seg->pkt.pkt_len -= ETHER_CRC_LEN;
+			first_seg->pkt_len -= ETHER_CRC_LEN;
 			if (rx_packet_len <= ETHER_CRC_LEN) {
 				rte_pktmbuf_free_seg(rxm);
-				first_seg->pkt.nb_segs--;
-				last_seg->pkt.data_len =
-					(uint16_t)(last_seg->pkt.data_len -
+				first_seg->nb_segs--;
+				last_seg->data_len =
+					(uint16_t)(last_seg->data_len -
 					(ETHER_CRC_LEN - rx_packet_len));
-				last_seg->pkt.next = NULL;
+				last_seg->next = NULL;
 			} else
-				rxm->pkt.data_len = (uint16_t)(rx_packet_len -
+				rxm->data_len = (uint16_t)(rx_packet_len -
 								ETHER_CRC_LEN);
 		}
 
-		first_seg->pkt.in_port = rxq->port_id;
-		first_seg->pkt.vlan_macip.f.vlan_tci = (rx_status &
+		first_seg->in_port = rxq->port_id;
+		first_seg->vlan_macip.f.vlan_tci = (rx_status &
 			(1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT)) ?
 			rte_le_to_cpu_16(rxd.wb.qword0.lo_dword.l2tag1) : 0;
 		pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
@@ -1011,11 +1011,11 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
 		first_seg->ol_flags = pkt_flags;
 		if (pkt_flags & PKT_RX_RSS_HASH)
-			rxm->pkt.hash.rss =
+			rxm->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
 
 		/* Prefetch data of first segment, if configured to do so. */
-		rte_prefetch0(first_seg->pkt.data);
+		rte_prefetch0(first_seg->data);
 		rx_pkts[nb_rx++] = first_seg;
 		first_seg = NULL;
 	}
@@ -1105,8 +1105,8 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		RTE_MBUF_PREFETCH_TO_FREE(txe->mbuf);
 
 		ol_flags = tx_pkt->ol_flags;
-		l2_len = tx_pkt->pkt.vlan_macip.f.l2_len;
-		l3_len = tx_pkt->pkt.vlan_macip.f.l3_len;
+		l2_len = tx_pkt->vlan_macip.f.l2_len;
+		l3_len = tx_pkt->vlan_macip.f.l3_len;
 
 		/* Calculate the number of context descriptors needed. */
 		nb_ctx = i40e_calc_context_desc(ol_flags);
@@ -1116,7 +1116,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * a packet equals to the number of the segments of that
 		 * packet plus 1 context descriptor if needed.
 		 */
-		nb_used = (uint16_t)(tx_pkt->pkt.nb_segs + nb_ctx);
+		nb_used = (uint16_t)(tx_pkt->nb_segs + nb_ctx);
 		tx_last = (uint16_t)(tx_id + nb_used - 1);
 
 		/* Circular ring */
@@ -1142,7 +1142,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Descriptor based VLAN insertion */
 		if (ol_flags & PKT_TX_VLAN_PKT) {
-			tx_flags |= tx_pkt->pkt.vlan_macip.f.vlan_tci <<
+			tx_flags |= tx_pkt->vlan_macip.f.vlan_tci <<
 						I40E_TX_FLAG_L2TAG1_SHIFT;
 			tx_flags |= I40E_TX_FLAG_INSERT_VLAN;
 			td_cmd |= I40E_TX_DESC_CMD_IL2TAG1;
@@ -1199,7 +1199,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			txe->mbuf = m_seg;
 
 			/* Setup TX Descriptor */
-			slen = m_seg->pkt.data_len;
+			slen = m_seg->data_len;
 			buf_dma_addr = RTE_MBUF_DATA_DMA_ADDR(m_seg);
 			txd->buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
 			txd->cmd_type_offset_bsz = i40e_build_ctob(td_cmd,
@@ -1207,7 +1207,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			txe->last_id = tx_last;
 			tx_id = txe->next_id;
 			txe = txn;
-			m_seg = m_seg->pkt.next;
+			m_seg = m_seg->next;
 		} while (m_seg != NULL);
 
 		/* The last packet data descriptor needs End Of Packet (EOP) */
@@ -1295,7 +1295,7 @@ tx4(volatile struct i40e_tx_desc *txdp, struct rte_mbuf **pkts)
 		txdp->buffer_addr = rte_cpu_to_le_64(dma_addr);
 		txdp->cmd_type_offset_bsz =
 			i40e_build_ctob((uint32_t)I40E_TD_CMD, 0,
-					(*pkts)->pkt.data_len, 0);
+					(*pkts)->data_len, 0);
 	}
 }
 
@@ -1309,7 +1309,7 @@ tx1(volatile struct i40e_tx_desc *txdp, struct rte_mbuf **pkts)
 	txdp->buffer_addr = rte_cpu_to_le_64(dma_addr);
 	txdp->cmd_type_offset_bsz =
 		i40e_build_ctob((uint32_t)I40E_TD_CMD, 0,
-				(*pkts)->pkt.data_len, 0);
+				(*pkts)->data_len, 0);
 }
 
 /* Fill hardware descriptor ring with mbuf data */
@@ -2130,10 +2130,10 @@ i40e_alloc_rx_queue_mbufs(struct i40e_rx_queue *rxq)
 		}
 
 		rte_mbuf_refcnt_set(mbuf, 1);
-		mbuf->pkt.next = NULL;
-		mbuf->pkt.data = (char *)mbuf->buf_addr + RTE_PKTMBUF_HEADROOM;
-		mbuf->pkt.nb_segs = 1;
-		mbuf->pkt.in_port = rxq->port_id;
+		mbuf->next = NULL;
+		mbuf->data = (char *)mbuf->buf_addr + RTE_PKTMBUF_HEADROOM;
+		mbuf->nb_segs = 1;
+		mbuf->in_port = rxq->port_id;
 
 		dma_addr =
 			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mbuf));

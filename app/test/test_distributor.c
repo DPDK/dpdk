@@ -120,7 +120,7 @@ sanity_test(struct rte_distributor *d, struct rte_mempool *p)
 	/* now set all hash values in all buffers to zero, so all pkts go to the
 	 * one worker thread */
 	for (i = 0; i < BURST; i++)
-		bufs[i]->pkt.hash.rss = 0;
+		bufs[i]->hash.rss = 0;
 
 	rte_distributor_process(d, bufs, BURST);
 	rte_distributor_flush(d);
@@ -142,7 +142,7 @@ sanity_test(struct rte_distributor *d, struct rte_mempool *p)
 	if (rte_lcore_count() >= 3) {
 		clear_packet_count();
 		for (i = 0; i < BURST; i++)
-			bufs[i]->pkt.hash.rss = (i & 1) << 8;
+			bufs[i]->hash.rss = (i & 1) << 8;
 
 		rte_distributor_process(d, bufs, BURST);
 		rte_distributor_flush(d);
@@ -167,7 +167,7 @@ sanity_test(struct rte_distributor *d, struct rte_mempool *p)
 	 * so load gets distributed */
 	clear_packet_count();
 	for (i = 0; i < BURST; i++)
-		bufs[i]->pkt.hash.rss = i;
+		bufs[i]->hash.rss = i;
 
 	rte_distributor_process(d, bufs, BURST);
 	rte_distributor_flush(d);
@@ -199,7 +199,7 @@ sanity_test(struct rte_distributor *d, struct rte_mempool *p)
 		return -1;
 	}
 	for (i = 0; i < BIG_BATCH; i++)
-		many_bufs[i]->pkt.hash.rss = i << 2;
+		many_bufs[i]->hash.rss = i << 2;
 
 	for (i = 0; i < BIG_BATCH/BURST; i++) {
 		rte_distributor_process(d, &many_bufs[i*BURST], BURST);
@@ -280,7 +280,7 @@ sanity_test_with_mbuf_alloc(struct rte_distributor *d, struct rte_mempool *p)
 		while (rte_mempool_get_bulk(p, (void *)bufs, BURST) < 0)
 			rte_distributor_process(d, NULL, 0);
 		for (j = 0; j < BURST; j++) {
-			bufs[j]->pkt.hash.rss = (i+j) << 1;
+			bufs[j]->hash.rss = (i+j) << 1;
 			rte_mbuf_refcnt_set(bufs[j], 1);
 		}
 
@@ -359,7 +359,7 @@ sanity_test_with_worker_shutdown(struct rte_distributor *d,
 	/* now set all hash values in all buffers to zero, so all pkts go to the
 	 * one worker thread */
 	for (i = 0; i < BURST; i++)
-		bufs[i]->pkt.hash.rss = 0;
+		bufs[i]->hash.rss = 0;
 
 	rte_distributor_process(d, bufs, BURST);
 	/* at this point, we will have processed some packets and have a full
@@ -372,7 +372,7 @@ sanity_test_with_worker_shutdown(struct rte_distributor *d,
 		return -1;
 	}
 	for (i = 0; i < BURST; i++)
-		bufs[i]->pkt.hash.rss = 0;
+		bufs[i]->hash.rss = 0;
 
 	/* get worker zero to quit */
 	zero_quit = 1;
@@ -416,7 +416,7 @@ test_flush_with_worker_shutdown(struct rte_distributor *d,
 	/* now set all hash values in all buffers to zero, so all pkts go to the
 	 * one worker thread */
 	for (i = 0; i < BURST; i++)
-		bufs[i]->pkt.hash.rss = 0;
+		bufs[i]->hash.rss = 0;
 
 	rte_distributor_process(d, bufs, BURST);
 	/* at this point, we will have processed some packets and have a full
@@ -488,7 +488,7 @@ quit_workers(struct rte_distributor *d, struct rte_mempool *p)
 	zero_quit = 0;
 	quit = 1;
 	for (i = 0; i < num_workers; i++)
-		bufs[i]->pkt.hash.rss = i << 1;
+		bufs[i]->hash.rss = i << 1;
 	rte_distributor_process(d, bufs, num_workers);
 
 	rte_mempool_put_bulk(p, (void *)bufs, num_workers);

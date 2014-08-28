@@ -47,7 +47,7 @@
 #endif
 
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	(uint64_t) ((mb)->buf_physaddr + (uint64_t)((char *)((mb)->pkt.data) - \
+	(uint64_t) ((mb)->buf_physaddr + (uint64_t)((char *)((mb)->data) - \
 	(char *)(mb)->buf_addr))
 
 #define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \

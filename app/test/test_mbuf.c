@@ -344,8 +344,8 @@ testclone_testupdate_testdetach(void)
 		GOTO_FAIL("cannot clone data\n");
 	rte_pktmbuf_free(clone);
 
-	mc->pkt.next = rte_pktmbuf_alloc(pktmbuf_pool);
-	if(mc->pkt.next == NULL)
+	mc->next = rte_pktmbuf_alloc(pktmbuf_pool);
+	if(mc->next == NULL)
 		GOTO_FAIL("Next Pkt Null\n");
 
 	clone = rte_pktmbuf_clone(mc, pktmbuf_pool);
@@ -432,7 +432,7 @@ test_pktmbuf_pool_ptr(void)
 			printf("rte_pktmbuf_alloc() failed (%u)\n", i);
 			ret = -1;
 		}
-		m[i]->pkt.data = RTE_PTR_ADD(m[i]->pkt.data, 64);
+		m[i]->data = RTE_PTR_ADD(m[i]->data, 64);
 	}
 
 	/* free them */
@@ -451,8 +451,8 @@ test_pktmbuf_pool_ptr(void)
 			printf("rte_pktmbuf_alloc() failed (%u)\n", i);
 			ret = -1;
 		}
-		if (m[i]->pkt.data != RTE_PTR_ADD(m[i]->buf_addr, RTE_PKTMBUF_HEADROOM)) {
-			printf ("pkt.data pointer not set properly\n");
+		if (m[i]->data != RTE_PTR_ADD(m[i]->buf_addr, RTE_PKTMBUF_HEADROOM)) {
+			printf ("data pointer not set properly\n");
 			ret = -1;
 		}
 	}
@@ -493,7 +493,7 @@ test_pktmbuf_free_segment(void)
 			mb = m[i];
 			while(mb != NULL) {
 				mt = mb;
-				mb = mb->pkt.next;
+				mb = mb->next;
 				rte_pktmbuf_free_seg(mt);
 			}
 		}

@@ -546,7 +546,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	 * Check that the received packet is a PTP packet that was detected
 	 * by the hardware.
 	 */
-	eth_hdr = (struct ether_hdr *)mb->pkt.data;
+	eth_hdr = (struct ether_hdr *)mb->data;
 	eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
 	if (! (mb->ol_flags & PKT_RX_IEEE1588_PTP)) {
 		if (eth_type == ETHER_TYPE_1588) {
@@ -557,7 +557,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 			printf("Port %u Received non PTP packet type=0x%4x "
 			       "len=%u\n",
 			       (unsigned) fs->rx_port, eth_type,
-			       (unsigned) mb->pkt.pkt_len);
+			       (unsigned) mb->pkt_len);
 		}
 		rte_pktmbuf_free(mb);
 		return;
@@ -574,7 +574,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	 * Check that the received PTP packet is a PTP V2 packet of type
 	 * PTP_SYNC_MESSAGE.
 	 */
-	ptp_hdr = (struct ptpv2_msg *) ((char *) mb->pkt.data +
+	ptp_hdr = (struct ptpv2_msg *) ((char *) mb->data +
 					sizeof(struct ether_hdr));
 	if (ptp_hdr->version != 0x02) {
 		printf("Port %u Received PTP V2 Ethernet frame with wrong PTP"

@@ -106,7 +106,7 @@ extern "C" {
    2. Start of Frame Delimiter (SFD):       1 byte;
    3. Frame Check Sequence (FCS):           4 bytes;
    4. Inter Frame Gap (IFG):               12 bytes.
-The FCS is considered overhead only if not included in the packet length (field pkt.pkt_len
+The FCS is considered overhead only if not included in the packet length (field pkt_len
 of struct rte_mbuf). */
 #ifndef RTE_SCHED_FRAME_OVERHEAD_DEFAULT
 #define RTE_SCHED_FRAME_OVERHEAD_DEFAULT      24
@@ -196,7 +196,7 @@ struct rte_sched_port_params {
 };
 
 /** Path through the scheduler hierarchy used by the scheduler enqueue operation to
-identify the destination queue for the current packet. Stored in the field pkt.hash.sched
+identify the destination queue for the current packet. Stored in the field hash.sched
 of struct rte_mbuf of each packet, typically written by the classification stage and read by
 scheduler enqueue.*/
 struct rte_sched_port_hierarchy {
@@ -352,7 +352,7 @@ static inline void
 rte_sched_port_pkt_write(struct rte_mbuf *pkt,
 	uint32_t subport, uint32_t pipe, uint32_t traffic_class, uint32_t queue, enum rte_meter_color color)
 {
-	struct rte_sched_port_hierarchy *sched = (struct rte_sched_port_hierarchy *) &pkt->pkt.hash.sched;
+	struct rte_sched_port_hierarchy *sched = (struct rte_sched_port_hierarchy *) &pkt->hash.sched;
 
 	sched->color = (uint32_t) color;
 	sched->subport = subport;
@@ -381,7 +381,7 @@ rte_sched_port_pkt_write(struct rte_mbuf *pkt,
 static inline void
 rte_sched_port_pkt_read_tree_path(struct rte_mbuf *pkt, uint32_t *subport, uint32_t *pipe, uint32_t *traffic_class, uint32_t *queue)
 {
-	struct rte_sched_port_hierarchy *sched = (struct rte_sched_port_hierarchy *) &pkt->pkt.hash.sched;
+	struct rte_sched_port_hierarchy *sched = (struct rte_sched_port_hierarchy *) &pkt->hash.sched;
 
 	*subport = sched->subport;
 	*pipe = sched->pipe;
@@ -392,7 +392,7 @@ rte_sched_port_pkt_read_tree_path(struct rte_mbuf *pkt, uint32_t *subport, uint3
 static inline enum rte_meter_color
 rte_sched_port_pkt_read_color(struct rte_mbuf *pkt)
 {
-	struct rte_sched_port_hierarchy *sched = (struct rte_sched_port_hierarchy *) &pkt->pkt.hash.sched;
+	struct rte_sched_port_hierarchy *sched = (struct rte_sched_port_hierarchy *) &pkt->hash.sched;
 
 	return (enum rte_meter_color) sched->color;
 }

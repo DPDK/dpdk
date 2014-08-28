@@ -54,18 +54,18 @@ copy_buf_to_pkt_segs(void *buf, unsigned len, struct rte_mbuf *pkt,
 	unsigned copy_len;
 
 	seg = pkt;
-	while (offset >= seg->pkt.data_len) {
-		offset -= seg->pkt.data_len;
-		seg = seg->pkt.next;
+	while (offset >= seg->data_len) {
+		offset -= seg->data_len;
+		seg = seg->next;
 	}
-	copy_len = seg->pkt.data_len - offset;
-	seg_buf = ((char *) seg->pkt.data + offset);
+	copy_len = seg->data_len - offset;
+	seg_buf = ((char *) seg->data + offset);
 	while (len > copy_len) {
 		rte_memcpy(seg_buf, buf, (size_t) copy_len);
 		len -= copy_len;
 		buf = ((char *) buf + copy_len);
-		seg = seg->pkt.next;
-		seg_buf = seg->pkt.data;
+		seg = seg->next;
+		seg_buf = seg->data;
 	}
 	rte_memcpy(seg_buf, buf, (size_t) len);
 }
@@ -73,8 +73,8 @@ copy_buf_to_pkt_segs(void *buf, unsigned len, struct rte_mbuf *pkt,
 static inline void
 copy_buf_to_pkt(void *buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
 {
-	if (offset + len <= pkt->pkt.data_len) {
-		rte_memcpy(((char *) pkt->pkt.data + offset), buf, (size_t) len);
+	if (offset + len <= pkt->data_len) {
+		rte_memcpy(((char *) pkt->data + offset), buf, (size_t) len);
 		return;
 	}
 	copy_buf_to_pkt_segs(buf, len, pkt, offset);
@@ -220,19 +220,19 @@ nomore_mbuf:
 			break;
 		}
 
-		pkt->pkt.data_len = tx_pkt_seg_lengths[0];
+		pkt->data_len = tx_pkt_seg_lengths[0];
 		pkt_seg = pkt;
 		for (i = 1; i < tx_pkt_nb_segs; i++) {
-			pkt_seg->pkt.next = rte_pktmbuf_alloc(mp);
-			if (pkt_seg->pkt.next == NULL) {
-				pkt->pkt.nb_segs = i;
+			pkt_seg->next = rte_pktmbuf_alloc(mp);
+			if (pkt_seg->next == NULL) {
+				pkt->nb_segs = i;
 				rte_pktmbuf_free(pkt);
 				goto nomore_mbuf;
 			}
-			pkt_seg = pkt_seg->pkt.next;
-			pkt_seg->pkt.data_len = tx_pkt_seg_lengths[i];
+			pkt_seg = pkt_seg->next;
+			pkt_seg->data_len = tx_pkt_seg_lengths[i];
 		}
-		pkt_seg->pkt.next = NULL; /* Last segment of packet. */
+		pkt_seg->next = NULL; /* Last segment of packet. */
 
 		/*
 		 * Copy headers in first packet segment(s).
@@ -258,21 +258,21 @@ nomore_mbuf:
 		 * Complete first mbuf of packet and append it to the
 		 * burst of packets to be transmitted.
 		 */
-		pkt->pkt.nb_segs = tx_pkt_nb_segs;
-		pkt->pkt.pkt_len = tx_pkt_length;
-		pkt->pkt.vlan_macip.f.l2_len = eth_hdr_size;
+		pkt->nb_segs = tx_pkt_nb_segs;
+		pkt->pkt_len = tx_pkt_length;
+		pkt->vlan_macip.f.l2_len = eth_hdr_size;
 
 		if (ipv4) {
-			pkt->pkt.vlan_macip.f.vlan_tci  = ETHER_TYPE_IPv4;
-			pkt->pkt.vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
+			pkt->vlan_macip.f.vlan_tci  = ETHER_TYPE_IPv4;
+			pkt->vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
 
 			if (vlan_enabled)
 				pkt->ol_flags = PKT_RX_IPV4_HDR | PKT_RX_VLAN_PKT;
 			else
 				pkt->ol_flags = PKT_RX_IPV4_HDR;
 		} else {
-			pkt->pkt.vlan_macip.f.vlan_tci  = ETHER_TYPE_IPv6;
-			pkt->pkt.vlan_macip.f.l3_len = sizeof(struct ipv6_hdr);
+			pkt->vlan_macip.f.vlan_tci  = ETHER_TYPE_IPv6;
+			pkt->vlan_macip.f.l3_len = sizeof(struct ipv6_hdr);
 
 			if (vlan_enabled)
 				pkt->ol_flags = PKT_RX_IPV6_HDR | PKT_RX_VLAN_PKT;
