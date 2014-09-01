@@ -772,6 +772,15 @@ acx_init(void)
 	if (config.acx == NULL)
 		rte_exit(rte_errno, "failed to create ACL context\n");
 
+	/* set default classify method to scalar for this context. */
+	if (config.scalar) {
+		ret = rte_acl_set_ctx_classify(config.acx,
+			RTE_ACL_CLASSIFY_SCALAR);
+		if (ret != 0)
+			rte_exit(ret, "failed to setup classify method "
+				"for ACL context\n");
+	}
+
 	/* add ACL rules. */
 	f = fopen(config.rule_file, "r");
 	if (f == NULL)
@@ -780,7 +789,7 @@ acx_init(void)
 
 	ret = add_cb_rules(f, config.acx);
 	if (ret != 0)
-		rte_exit(rte_errno, "failed to add rules into ACL context\n");
+		rte_exit(ret, "failed to add rules into ACL context\n");
 
 	fclose(f);
 
@@ -815,13 +824,8 @@ search_ip5tuples_once(uint32_t categories, uint32_t step, int scalar)
 			v += config.trace_sz;
 		}
 
-		if (scalar != 0)
-			ret = rte_acl_classify_scalar(config.acx, data,
-				results, n, categories);
-
-		else
-			ret = rte_acl_classify(config.acx, data,
-				results, n, categories);
+		ret = rte_acl_classify(config.acx, data, results,
+			n, categories);
 
 		if (ret != 0)
 			rte_exit(ret, "classify for ipv%c_5tuples returns %d\n",

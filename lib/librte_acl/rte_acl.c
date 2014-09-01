@@ -38,6 +38,58 @@
 
 TAILQ_HEAD(rte_acl_list, rte_tailq_entry);
 
+static const rte_acl_classify_t classify_fns[] = {
+	[RTE_ACL_CLASSIFY_DEFAULT] = rte_acl_classify_scalar,
+	[RTE_ACL_CLASSIFY_SCALAR] = rte_acl_classify_scalar,
+	[RTE_ACL_CLASSIFY_SSE] = rte_acl_classify_sse,
+};
+
+/* by default, use always avaialbe scalar code path. */
+static enum rte_acl_classify_alg rte_acl_default_classify =
+	RTE_ACL_CLASSIFY_SCALAR;
+
+static void
+rte_acl_set_default_classify(enum rte_acl_classify_alg alg)
+{
+	rte_acl_default_classify = alg;
+}
+
+extern int
+rte_acl_set_ctx_classify(struct rte_acl_ctx *ctx, enum rte_acl_classify_alg alg)
+{
+	if (ctx == NULL || (uint32_t)alg >= RTE_DIM(classify_fns))
+		return -EINVAL;
+
+	ctx->alg = alg;
+	return 0;
+}
+
+static void __attribute__((constructor))
+rte_acl_init(void)
+{
+	enum rte_acl_classify_alg alg = RTE_ACL_CLASSIFY_DEFAULT;
+
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1))
+		alg = RTE_ACL_CLASSIFY_SSE;
+
+	rte_acl_set_default_classify(alg);
+}
+
+int
+rte_acl_classify(const struct rte_acl_ctx *ctx, const uint8_t **data,
+	uint32_t *results, uint32_t num, uint32_t categories)
+{
+	return classify_fns[ctx->alg](ctx, data, results, num, categories);
+}
+
+int
+rte_acl_classify_alg(const struct rte_acl_ctx *ctx, const uint8_t **data,
+	uint32_t *results, uint32_t num, uint32_t categories,
+	enum rte_acl_classify_alg alg)
+{
+	return classify_fns[alg](ctx, data, results, num, categories);
+}
+
 struct rte_acl_ctx *
 rte_acl_find_existing(const char *name)
 {
@@ -165,6 +217,7 @@ rte_acl_create(const struct rte_acl_param *param)
 		ctx->max_rules = param->max_rule_num;
 		ctx->rule_sz = param->rule_size;
 		ctx->socket_id = param->socket_id;
+		ctx->alg = rte_acl_default_classify;
 		snprintf(ctx->name, sizeof(ctx->name), "%s", param->name);
 
 		te->data = (void *) ctx;
@@ -261,6 +314,8 @@ rte_acl_dump(const struct rte_acl_ctx *ctx)
 	if (!ctx)
 		return;
 	printf("acl context <%s>@%p\n", ctx->name, ctx);
+	printf("  socket_id=%"PRId32"\n", ctx->socket_id);
+	printf("  alg=%"PRId32"\n", ctx->alg);
 	printf("  max_rules=%"PRIu32"\n", ctx->max_rules);
 	printf("  rule_size=%"PRIu32"\n", ctx->rule_sz);
 	printf("  num_rules=%"PRIu32"\n", ctx->num_rules);

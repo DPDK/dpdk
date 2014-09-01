@@ -278,15 +278,6 @@ send_single_packet(struct rte_mbuf *m, uint8_t port);
 	(in) = end + 1;                                         \
 } while (0)
 
-#define CLASSIFY(context, data, res, num, cat) do {		\
-	if (scalar)						\
-		rte_acl_classify_scalar((context), (data),	\
-		(res), (num), (cat));				\
-	else							\
-		rte_acl_classify((context), (data),		\
-		(res), (num), (cat));				\
-} while (0)
-
 /*
   * ACL rules should have higher priorities than route ones to ensure ACL rule
   * always be found when input packets have multi-matches in the database.
@@ -1216,6 +1207,11 @@ setup_acl(struct rte_acl_rule *route_base,
 	if ((context = rte_acl_create(&acl_param)) == NULL)
 		rte_exit(EXIT_FAILURE, "Failed to create ACL context\n");
 
+	if (parm_config.scalar && rte_acl_set_ctx_classify(context,
+			RTE_ACL_CLASSIFY_SCALAR) != 0)
+		rte_exit(EXIT_FAILURE,
+			"Failed to setup classify method for  ACL context\n");
+
 	if (rte_acl_add_rules(context, route_base, route_num) < 0)
 			rte_exit(EXIT_FAILURE, "add rules failed\n");
 
@@ -1436,10 +1432,8 @@ main_loop(__attribute__((unused)) void *dummy)
 	int socketid;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1)
 			/ US_PER_S * BURST_TX_DRAIN_US;
-	int scalar = parm_config.scalar;
 
 	prev_tsc = 0;
-
 	lcore_id = rte_lcore_id();
 	qconf = &lcore_conf[lcore_id];
 	socketid = rte_lcore_to_socket_id(lcore_id);
@@ -1503,7 +1497,8 @@ main_loop(__attribute__((unused)) void *dummy)
 					nb_rx);
 
 				if (acl_search.num_ipv4) {
-					CLASSIFY(acl_config.acx_ipv4[socketid],
+					rte_acl_classify(
+						acl_config.acx_ipv4[socketid],
 						acl_search.data_ipv4,
 						acl_search.res_ipv4,
 						acl_search.num_ipv4,
@@ -1515,7 +1510,8 @@ main_loop(__attribute__((unused)) void *dummy)
 				}
 
 				if (acl_search.num_ipv6) {
-					CLASSIFY(acl_config.acx_ipv6[socketid],
+					rte_acl_classify(
+						acl_config.acx_ipv6[socketid],
 						acl_search.data_ipv6,
 						acl_search.res_ipv6,
 						acl_search.num_ipv6,

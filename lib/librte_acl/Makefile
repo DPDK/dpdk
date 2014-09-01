@@ -43,7 +43,10 @@ SRCS-$(CONFIG_RTE_LIBRTE_ACL) += tb_mem.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += rte_acl.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_bld.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_gen.c
-SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run.c
+SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_scalar.c
+SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_sse.c
+
+CFLAGS_acl_run_sse.o += -msse4.1
 
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_ACL)-include := rte_acl_osdep.h

@@ -259,43 +259,16 @@ void
 rte_acl_reset(struct rte_acl_ctx *ctx);
 
 /**
- * Search for a matching ACL rule for each input data buffer.
- * Each input data buffer can have up to *categories* matches.
- * That implies that results array should be big enough to hold
- * (categories * num) elements.
- * Also categories parameter should be either one or multiple of
- * RTE_ACL_RESULTS_MULTIPLIER and can't be bigger than RTE_ACL_MAX_CATEGORIES.
- * If more than one rule is applicable for given input buffer and
- * given category, then rule with highest priority will be returned as a match.
- * Note, that it is a caller responsibility to ensure that input parameters
- * are valid and point to correct memory locations.
- *
- * @param ctx
- *   ACL context to search with.
- * @param data
- *   Array of pointers to input data buffers to perform search.
- *   Note that all fields in input data buffers supposed to be in network
- *   byte order (MSB).
- * @param results
- *   Array of search results, *categories* results per each input data buffer.
- * @param num
- *   Number of elements in the input data buffers array.
- * @param categories
- *   Number of maximum possible matches for each input buffer, one possible
- *   match per category.
- * @return
- *   zero on successful completion.
- *   -EINVAL for incorrect arguments.
+ *  Avaialble implementations of ACL classify.
  */
-int
-rte_acl_classify(const struct rte_acl_ctx *ctx, const uint8_t **data,
-	uint32_t *results, uint32_t num, uint32_t categories);
+enum rte_acl_classify_alg {
+	RTE_ACL_CLASSIFY_DEFAULT = 0,
+	RTE_ACL_CLASSIFY_SCALAR = 1,  /**< generic implementation. */
+	RTE_ACL_CLASSIFY_SSE = 2,     /**< requries SSE4.1 support. */
+};
 
 /**
- * Perform scalar search for a matching ACL rule for each input data buffer.
- * Note, that while the search itself will avoid explicit use of SSE/AVX
- * intrinsics, code for comparing matching results/priorities sill might use
- * vector intrinsics (for  categories > 1).
+ * Perform search for a matching ACL rule for each input data buffer.
  * Each input data buffer can have up to *categories* matches.
  * That implies that results array should be big enough to hold
  * (categories * num) elements.
@@ -323,9 +296,68 @@ rte_acl_classify(const struct rte_acl_ctx *ctx, const uint8_t **data,
  *   zero on successful completion.
  *   -EINVAL for incorrect arguments.
  */
-int
-rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
-	uint32_t *results, uint32_t num, uint32_t categories);
+extern int
+rte_acl_classify(const struct rte_acl_ctx *ctx,
+		 const uint8_t **data,
+		 uint32_t *results, uint32_t num,
+		 uint32_t categories);
+
+/**
+ * Perform search using specified algorithm for a matching ACL rule for
+ * each input data buffer.
+ * Each input data buffer can have up to *categories* matches.
+ * That implies that results array should be big enough to hold
+ * (categories * num) elements.
+ * Also categories parameter should be either one or multiple of
+ * RTE_ACL_RESULTS_MULTIPLIER and can't be bigger than RTE_ACL_MAX_CATEGORIES.
+ * If more than one rule is applicable for given input buffer and
+ * given category, then rule with highest priority will be returned as a match.
+ * Note, that it is a caller's responsibility to ensure that input parameters
+ * are valid and point to correct memory locations.
+ *
+ * @param ctx
+ *   ACL context to search with.
+ * @param data
+ *   Array of pointers to input data buffers to perform search.
+ *   Note that all fields in input data buffers supposed to be in network
+ *   byte order (MSB).
+ * @param results
+ *   Array of search results, *categories* results per each input data buffer.
+ * @param num
+ *   Number of elements in the input data buffers array.
+ * @param categories
+ *   Number of maximum possible matches for each input buffer, one possible
+ *   match per category.
+ * @param alg
+ *   Algorithm to be used for the search.
+ *   It is the caller responibility to ensure that the value refers to the
+ *   existing algorithm, and that it could be run on the given CPU.
+ * @return
+ *   zero on successful completion.
+ *   -EINVAL for incorrect arguments.
+ */
+extern int
+rte_acl_classify_alg(const struct rte_acl_ctx *ctx,
+		 const uint8_t **data,
+		 uint32_t *results, uint32_t num,
+		 uint32_t categories,
+		 enum rte_acl_classify_alg alg);
+
+/*
+ * Override the default classifier function for a given ACL context.
+ * @param ctx
+ *   ACL context to change classify function for.
+ * @param alg
+ *   New default classify algorithm for given ACL context.
+ *   It is the caller responibility to ensure that the value refers to the
+ *   existing algorithm, and that it could be run on the given CPU.
+ * @return
+ *   - -EINVAL if the parameters are invalid.
+ *   - Zero if operation completed successfully.
+ */
+extern int
+rte_acl_set_ctx_classify(struct rte_acl_ctx *ctx,
+	enum rte_acl_classify_alg alg);
 
 /**
  * Dump an ACL context structure to the console.

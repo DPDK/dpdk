@@ -146,8 +146,9 @@ test_classify_run(struct rte_acl_ctx *acx)
 	}
 
 	/* make a quick check for scalar */
-	ret = rte_acl_classify_scalar(acx, data, results,
-			RTE_DIM(acl_test_data), RTE_ACL_MAX_CATEGORIES);
+	ret = rte_acl_classify_alg(acx, data, results,
+			RTE_DIM(acl_test_data), RTE_ACL_MAX_CATEGORIES,
+			RTE_ACL_CLASSIFY_SCALAR);
 	if (ret != 0) {
 		printf("Line %i: SSE classify failed!\n", __LINE__);
 		goto err;
@@ -341,8 +342,8 @@ test_invalid_layout(void)
 	}
 
 	/* classify tuples */
-	ret = rte_acl_classify(acx, data, results,
-			RTE_DIM(results), 1);
+	ret = rte_acl_classify_alg(acx, data, results,
+			RTE_DIM(results), 1, RTE_ACL_CLASSIFY_SCALAR);
 	if (ret != 0) {
 		printf("Line %i: SSE classify failed!\n", __LINE__);
 		rte_acl_free(acx);
@@ -360,8 +361,9 @@ test_invalid_layout(void)
 	}
 
 	/* classify tuples (scalar) */
-	ret = rte_acl_classify_scalar(acx, data, results,
-			RTE_DIM(results), 1);
+	ret = rte_acl_classify_alg(acx, data, results, RTE_DIM(results), 1,
+		RTE_ACL_CLASSIFY_SCALAR);
+
 	if (ret != 0) {
 		printf("Line %i: Scalar classify failed!\n", __LINE__);
 		rte_acl_free(acx);
@@ -848,7 +850,8 @@ test_invalid_parameters(void)
 	/* scalar classify test */
 
 	/* cover zero categories in classify (should not fail) */
-	result = rte_acl_classify_scalar(acx, NULL, NULL, 0, 0);
+	result = rte_acl_classify_alg(acx, NULL, NULL, 0, 0,
+		RTE_ACL_CLASSIFY_SCALAR);
 	if (result != 0) {
 		printf("Line %i: Scalar classify with zero categories "
 				"failed!\n", __LINE__);
@@ -857,7 +860,7 @@ test_invalid_parameters(void)
 	}
 
 	/* cover invalid but positive categories in classify */
-	result = rte_acl_classify_scalar(acx, NULL, NULL, 0, 3);
+	result = rte_acl_classify(acx, NULL, NULL, 0, 3);
 	if (result == 0) {
 		printf("Line %i: Scalar classify with 3 categories "
 				"should have failed!\n", __LINE__);
