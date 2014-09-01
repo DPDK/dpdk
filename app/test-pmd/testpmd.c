@@ -614,7 +614,9 @@ init_config(void)
 	 * Records which Mbuf pool to use by each logical core, if needed.
 	 */
 	for (lc_id = 0; lc_id < nb_lcores; lc_id++) {
-		mbp = mbuf_pool_find(rte_lcore_to_socket_id(lc_id));
+		mbp = mbuf_pool_find(
+			rte_lcore_to_socket_id(fwd_lcores_cpuids[lc_id]));
+
 		if (mbp == NULL)
 			mbp = mbuf_pool_find(0);
 		fwd_lcores[lc_id]->mbp = mbp;
