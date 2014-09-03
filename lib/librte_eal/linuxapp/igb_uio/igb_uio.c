@@ -227,24 +227,6 @@ igbuio_msix_mask_irq(struct msi_desc *desc, int32_t state)
 	}
 }
 
-static void
-igbuio_msi_mask_irq(struct irq_data *data, u32 enable)
-{
-	struct msi_desc *desc = irq_data_get_msi(data);
-	u32 mask_bits = desc->masked;
-	unsigned offset = data->irq - desc->dev->irq;
-	u32 mask = 1 << offset;
-	u32 flag = enable << offset;
-
-	mask_bits &= ~mask;
-	mask_bits |= flag;
-
-	if (desc->msi_attrib.maskbit && mask_bits != desc->masked) {
-		pci_write_config_dword(desc->dev, desc->mask_pos, mask_bits);
-		desc->masked = mask_bits;
-	}
-}
-
 /**
  * This is the irqcontrol callback to be registered to uio_info.
  * It can be used to disable/enable interrupt from user space processes.
@@ -267,11 +249,8 @@ igbuio_pci_irqcontrol(struct uio_info *info, s32 irq_state)
 	pci_cfg_access_lock(pdev);
 	if (udev->mode == RTE_INTR_MODE_LEGACY)
 		pci_intx(pdev, !!irq_state);
-	else if (udev->mode == RTE_INTR_MODE_MSI) {
-		struct irq_data *data = irq_get_irq_data(pdev->irq);
 
-		igbuio_msi_mask_irq(data, !!irq_state);
-	} else if (udev->mode == RTE_INTR_MODE_MSIX) {
+	else if (udev->mode == RTE_INTR_MODE_MSIX) {
 		struct msi_desc *desc;
 
 		list_for_each_entry(desc, &pdev->msi_list, list)
@@ -524,14 +503,6 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 			udev->mode = RTE_INTR_MODE_MSIX;
 			break;
 		}
-		/* fall back to MSI */
-	case RTE_INTR_MODE_MSI:
-		if (pci_enable_msi(dev) == 0) {
-			dev_dbg(&dev->dev, "using MSI");
-			udev->info.irq = dev->irq;
-			udev->mode = RTE_INTR_MODE_MSI;
-			break;
-		}
 		/* fall back to INTX */
 	case RTE_INTR_MODE_LEGACY:
 		if (pci_intx_mask_supported(dev)) {
@@ -577,8 +548,6 @@ fail_release_iomem:
 	igbuio_pci_release_iomem(&udev->info);
 	if (udev->mode == RTE_INTR_MODE_MSIX)
 		pci_disable_msix(udev->pdev);
-	else if (udev->mode == RTE_INTR_MODE_MSI)
-		pci_disable_msi(udev->pdev);
 	pci_release_regions(dev);
 fail_disable:
 	pci_disable_device(dev);
@@ -604,8 +573,6 @@ igbuio_pci_remove(struct pci_dev *dev)
 	igbuio_pci_release_iomem(info);
 	if (udev->mode == RTE_INTR_MODE_MSIX)
 		pci_disable_msix(dev);
-	else if (udev->mode == RTE_INTR_MODE_MSI)
-		pci_disable_msi(dev);
 	pci_release_regions(dev);
 	pci_disable_device(dev);
 	pci_set_drvdata(dev, NULL);
@@ -623,9 +590,6 @@ igbuio_config_intr_mode(char *intr_str)
 	if (!strcmp(intr_str, RTE_INTR_MODE_MSIX_NAME)) {
 		igbuio_intr_mode_preferred = RTE_INTR_MODE_MSIX;
 		pr_info("Use MSIX interrupt\n");
-	} else if (!strcmp(intr_str, RTE_INTR_MODE_MSI_NAME)) {
-		igbuio_intr_mode_preferred = RTE_INTR_MODE_MSI;
-		pr_info("Use MSI interrupt\n");
 	} else if (!strcmp(intr_str, RTE_INTR_MODE_LEGACY_NAME)) {
 		igbuio_intr_mode_preferred = RTE_INTR_MODE_LEGACY;
 		pr_info("Use legacy interrupt\n");
@@ -669,7 +633,6 @@ module_param(intr_mode, charp, S_IRUGO);
 MODULE_PARM_DESC(intr_mode,
 "igb_uio interrupt mode (default=msix):\n"
 "    " RTE_INTR_MODE_MSIX_NAME "       Use MSIX interrupt\n"
-"    " RTE_INTR_MODE_MSI_NAME "        Use MSI interrupt\n"
 "    " RTE_INTR_MODE_LEGACY_NAME "     Use Legacy interrupt\n"
 "\n");
 

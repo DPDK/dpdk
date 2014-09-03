@@ -93,11 +93,3 @@ static bool pci_check_and_mask_intx(struct pci_dev *pdev)
 	return pending;
 }
 #endif
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 37)
-/* Compatability wrapper for new kernel API for IRQ */
-#define irq_data	irq_desc
-#define irq_get_irq_data(irq)	irq_to_desc(irq)
-#define irq_data_get_msi(data)	get_irq_desc_msi(data)
-#endif
-
