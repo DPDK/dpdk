@@ -30,7 +30,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Name: dpdk
-Version: 1.7.0
+Version: 1.7.1
 Release: 1
 Packager: packaging@6wind.com
 URL: http://dpdk.org
@@ -42,7 +42,7 @@ License: BSD and LGPLv2 and GPLv2
 
 ExclusiveArch: i686, x86_64
 %global target %{_arch}-native-linuxapp-gcc
-%global machine nhm
+%global machine default
 
 BuildRequires: kernel-devel, kernel-headers, libpcap-devel, xen-devel, doxygen
 
