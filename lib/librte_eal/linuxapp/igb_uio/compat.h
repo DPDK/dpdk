@@ -2,6 +2,9 @@
  * Minimal wrappers to allow compiling igb_uio on older kernels.
  */
 
+#ifndef RHEL_RELEASE_VERSION
+#define RHEL_RELEASE_VERSION(a, b) (((a) << 8) + (b))
+#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
 #define pci_cfg_access_lock   pci_block_user_cfg_access
@@ -17,7 +20,9 @@
 #define   PCI_MSIX_ENTRY_CTRL_MASKBIT   1
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 34)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 34) && \
+	!defined(CONFIG_PCI_IOV)
+
 static int pci_num_vf(struct pci_dev *dev)
 {
 	struct iov {
@@ -35,10 +40,12 @@ static int pci_num_vf(struct pci_dev *dev)
 
 	return iov->nr_virtfn;
 }
-#endif
 
+#endif /* < 2.6.34 */
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0) && \
+	(!(defined(RHEL_RELEASE_CODE) && \
+	   RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6, 3)))
 
 /* Check if INTX works to control irq's.
  * Set's INTX_DISABLE flag and reads it back
@@ -92,4 +99,5 @@ static bool pci_check_and_mask_intx(struct pci_dev *pdev)
 
 	return pending;
 }
-#endif
+
+#endif /* < 3.3.0 */
