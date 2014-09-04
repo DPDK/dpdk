@@ -816,7 +816,8 @@ eth_igb_start(struct rte_eth_dev *dev)
 	 * value of Write-Back Threshold registers.
 	 */
 	if ((hw->mac.type == e1000_82576) || (hw->mac.type == e1000_82580) ||
-		(hw->mac.type == e1000_i350) || (hw->mac.type == e1000_i210)) {
+		(hw->mac.type == e1000_i350) || (hw->mac.type == e1000_i210) ||
+		(hw->mac.type == e1000_i211)) {
 		uint32_t ivar;
 
 		/* Enable all RX & TX queues in the IVAR registers */
@@ -964,7 +965,7 @@ igb_get_rx_buffer_size(struct e1000_hw *hw)
 		rx_buf_size = (E1000_READ_REG(hw, E1000_RXPBS) & 0xf);
 		rx_buf_size = (uint32_t) e1000_rxpbs_adjust_82580(rx_buf_size);
 		rx_buf_size = (rx_buf_size << 10);
-	} else if (hw->mac.type == e1000_i210) {
+	} else if (hw->mac.type == e1000_i210 || hw->mac.type == e1000_i211) {
 		rx_buf_size = (E1000_READ_REG(hw, E1000_RXPBS) & 0x3f) << 10;
 	} else {
 		rx_buf_size = (E1000_READ_REG(hw, E1000_PBA) & 0xffff) << 10;
@@ -1308,6 +1309,12 @@ eth_igb_infos_get(struct rte_eth_dev *dev,
 	case e1000_i210:
 		dev_info->max_rx_queues = 4;
 		dev_info->max_tx_queues = 4;
+		dev_info->max_vmdq_pools = 0;
+		break;
+
+	case e1000_i211:
+		dev_info->max_rx_queues = 2;
+		dev_info->max_tx_queues = 2;
 		dev_info->max_vmdq_pools = 0;
 		break;
 
