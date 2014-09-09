@@ -879,7 +879,6 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 	 */
 	if (!details->async && !details->postpone) {
 		u32 total_delay = 0;
-		u32 delay_len = 1;
 
 		do {
 			/* AQ designers suggest use of head for better
@@ -888,8 +887,8 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 			if (i40e_asq_done(hw))
 				break;
 			/* ugh! delay while spin_lock */
-			i40e_msec_delay(delay_len);
-			total_delay += delay_len;
+			i40e_msec_delay(1);
+			total_delay++;
 		} while (total_delay < hw->aq.asq_cmd_timeout);
 	}
 

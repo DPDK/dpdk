@@ -570,7 +570,6 @@ enum i40e_status_code i40e_init_shared_code(struct i40e_hw *hw)
 		break;
 	default:
 		return I40E_ERR_DEVICE_NOT_SUPPORTED;
-		break;
 	}
 
 	hw->phy.get_link_info = true;
@@ -868,6 +867,7 @@ enum i40e_status_code i40e_pf_reset(struct i40e_hw *hw)
 	}
 
 	i40e_clear_pxe_mode(hw);
+
 
 	return I40E_SUCCESS;
 }
@@ -1943,6 +1943,14 @@ enum i40e_status_code i40e_aq_get_firmware_version(struct i40e_hw *hw,
 			*api_major_version = LE16_TO_CPU(resp->api_major);
 		if (api_minor_version != NULL)
 			*api_minor_version = LE16_TO_CPU(resp->api_minor);
+
+		/* A workaround to fix the API version in SW */
+		if (api_major_version && api_minor_version &&
+		    fw_major_version && fw_minor_version &&
+		    ((*api_major_version == 1) && (*api_minor_version == 1)) &&
+		    (((*fw_major_version == 4) && (*fw_minor_version >= 2)) ||
+		     (*fw_major_version > 4)))
+			*api_minor_version = 2;
 	}
 
 	return status;
@@ -4681,6 +4689,7 @@ enum i40e_status_code i40e_aq_send_msg_to_pf(struct i40e_hw *hw,
 				struct i40e_asq_cmd_details *cmd_details)
 {
 	struct i40e_aq_desc desc;
+	struct i40e_asq_cmd_details details;
 	enum i40e_status_code status;
 
 	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_send_msg_to_pf);
@@ -4695,7 +4704,6 @@ enum i40e_status_code i40e_aq_send_msg_to_pf(struct i40e_hw *hw,
 		desc.datalen = CPU_TO_LE16(msglen);
 	}
 	if (!cmd_details) {
-		struct i40e_asq_cmd_details details;
 		i40e_memset(&details, 0, sizeof(details), I40E_NONDMA_MEM);
 		details.async = true;
 		cmd_details = &details;
