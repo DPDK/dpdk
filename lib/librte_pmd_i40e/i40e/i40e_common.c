@@ -542,61 +542,6 @@ struct i40e_rx_ptype_decoded i40e_ptype_lookup[] = {
 	I40E_PTT_UNUSED_ENTRY(255)
 };
 
-#ifdef I40E_TPH_SUPPORT
-
-/**
- * i40e_tph_present
- * @hw: pointer to the hw struct
- *
- * Check to see if TPH capability is present.
- **/
-bool i40e_tph_present(struct i40e_hw *hw)
-{
-	u32 capsup = rd32(hw, I40E_GLPCI_CAPSUP);
-
-	return capsup & I40E_GLPCI_CAPSUP_TPH_EN_MASK;
-}
-
-/**
- * i40e_enable_tph
- * @hw: pointer to the hw struct
- * @tph_control: contents of TPH Requester Control Register
- *
- * Check to see if TPH can be enabled; if so, enable it.
- **/
-bool i40e_enable_tph(struct i40e_hw *hw, u32 tph_control)
-{
-	u32 gltph, st_mode, permit;
-
-	/* check that TPH is permitted */
-	permit = (tph_control & I40E_TPH_REQ_ENA_MASK)
-		 >> I40E_TPH_REQ_ENA_SHIFT;
-	if (!(permit & I40E_TPH_REQ_PERMIT))
-		return false;
-
-	/* check for valid ST mode */
-	st_mode = tph_control & I40E_TPH_ST_MODE_MASK;
-	if ((st_mode != I40E_TPH_MODE_NOTABLE) &&
-	    (st_mode != I40E_TPH_MODE_DEVSPEC))
-		return false;
-
-	/* TPH may be enabled */
-	gltph = rd32(hw, I40E_GLTPH_CTRL);
-
-	/* turn off device-specific */
-	if (st_mode != I40E_TPH_MODE_DEVSPEC)
-		gltph &= ~I40E_GLTPH_CTRL_TPH_DEVSPEC_MASK;
-
-	/* This enables TPH for all queues for the given types of operation.
-	 * Additional enabling is done per-queue in setup of the queue contexts.
-	 */
-	gltph |= I40E_GLTPH_CTRL_DESC_PH_MASK; /* descriptor reads/writes */
-	gltph |= I40E_GLTPH_CTRL_DATA_PH_MASK; /* data reads/writes */
-	wr32(hw, I40E_GLTPH_CTRL, gltph);
-
-	return true;
-}
-#endif	/* I40E_TPH_SUPPORT */
 #ifndef VF_DRIVER
 
 /**
