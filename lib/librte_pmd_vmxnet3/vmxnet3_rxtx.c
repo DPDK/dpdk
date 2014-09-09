@@ -551,8 +551,8 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 					       rte_pktmbuf_mtod(rxm, void *));
 #endif
 				/* Copy vlan tag in packet buffer */
-				rxm->vlan_macip.f.vlan_tci =
-					rte_le_to_cpu_16((uint16_t)rcd->tci);
+				rxm->vlan_tci = rte_le_to_cpu_16(
+						(uint16_t)rcd->tci);
 
 			} else
 				rxm->ol_flags = 0;
@@ -564,7 +564,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rxm->pkt_len = (uint16_t)rcd->len;
 			rxm->data_len = (uint16_t)rcd->len;
 			rxm->port = rxq->port_id;
-			rxm->vlan_macip.f.vlan_tci = 0;
+			rxm->vlan_tci = 0;
 			rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
 
 			rx_pkts[nb_rx++] = rxm;

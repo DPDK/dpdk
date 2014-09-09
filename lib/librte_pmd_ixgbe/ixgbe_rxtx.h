@@ -153,6 +153,26 @@ enum ixgbe_advctx_num {
 	IXGBE_CTX_NUM  = 2, /**< CTX NUMBER  */
 };
 
+/** Offload features */
+union ixgbe_vlan_macip {
+	uint32_t data;
+	struct {
+		uint16_t l2_l3_len; /**< combined 9-bit l3, 7-bit l2 lengths */
+		uint16_t vlan_tci;
+		/**< VLAN Tag Control Identifier (CPU order). */
+	} f;
+};
+
+/*
+ * Compare mask for vlan_macip_len.data,
+ * should be in sync with ixgbe_vlan_macip.f layout.
+ * */
+#define TX_VLAN_CMP_MASK        0xFFFF0000  /**< VLAN length - 16-bits. */
+#define TX_MAC_LEN_CMP_MASK     0x0000FE00  /**< MAC length - 7-bits. */
+#define TX_IP_LEN_CMP_MASK      0x000001FF  /**< IP  length - 9-bits. */
+/** MAC+IP  length. */
+#define TX_MACIP_LEN_CMP_MASK   (TX_MAC_LEN_CMP_MASK | TX_IP_LEN_CMP_MASK)
+
 /**
  * Structure to check if new context need be built
  */
@@ -160,7 +180,7 @@ enum ixgbe_advctx_num {
 struct ixgbe_advctx_info {
 	uint16_t flags;           /**< ol_flags for context build. */
 	uint32_t cmp_mask;        /**< compare mask for vlan_macip_lens */
-	union rte_vlan_macip vlan_macip_lens; /**< vlan, mac ip length. */
+	union ixgbe_vlan_macip vlan_macip_lens; /**< vlan, mac ip length. */
 };
 
 /**

@@ -412,8 +412,8 @@ reassemble(struct rte_mbuf *m, uint8_t portid, uint32_t queue,
 			dr = &qconf->death_row;
 
 			/* prepare mbuf: setup l2_len/l3_len. */
-			m->vlan_macip.f.l2_len = sizeof(*eth_hdr);
-			m->vlan_macip.f.l3_len = sizeof(*ip_hdr);
+			m->l2_len = sizeof(*eth_hdr);
+			m->l3_len = sizeof(*ip_hdr);
 
 			/* process this fragment. */
 			mo = rte_ipv4_frag_reassemble_packet(tbl, dr, m, tms, ip_hdr);
@@ -455,8 +455,8 @@ reassemble(struct rte_mbuf *m, uint8_t portid, uint32_t queue,
 			dr  = &qconf->death_row;
 
 			/* prepare mbuf: setup l2_len/l3_len. */
-			m->vlan_macip.f.l2_len = sizeof(*eth_hdr);
-			m->vlan_macip.f.l3_len = sizeof(*ip_hdr) + sizeof(*frag_hdr);
+			m->l2_len = sizeof(*eth_hdr);
+			m->l3_len = sizeof(*ip_hdr) + sizeof(*frag_hdr);
 
 			mo = rte_ipv6_frag_reassemble_packet(tbl, dr, m, tms, ip_hdr, frag_hdr);
 			if (mo == NULL)

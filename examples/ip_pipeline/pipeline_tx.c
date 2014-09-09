@@ -66,7 +66,7 @@ app_pkt_metadata_flush(struct rte_mbuf *pkt)
 	ether_addr_copy(&pkt_meta->nh_arp, &ether_hdr->d_addr);
 	ether_addr_copy(&local_ether_addr, &ether_hdr->s_addr);
 	ether_hdr->ether_type = rte_bswap16(ETHER_TYPE_IPv4);
-	pkt->vlan_macip.f.l2_len = sizeof(struct ether_hdr);
+	pkt->l2_len = sizeof(struct ether_hdr);
 }
 
 static int

@@ -144,13 +144,34 @@ enum {
 	EM_CTX_NUM  = 1, /**< CTX NUM */
 };
 
+/** Offload features */
+union em_vlan_macip {
+	uint32_t data;
+	struct {
+		uint16_t l3_len:9; /**< L3 (IP) Header Length. */
+		uint16_t l2_len:7; /**< L2 (MAC) Header Length. */
+		uint16_t vlan_tci;
+		/**< VLAN Tag Control Identifier (CPU order). */
+	} f;
+};
+
+/*
+ * Compare mask for vlan_macip_len.data,
+ * should be in sync with em_vlan_macip.f layout.
+ * */
+#define TX_VLAN_CMP_MASK        0xFFFF0000  /**< VLAN length - 16-bits. */
+#define TX_MAC_LEN_CMP_MASK     0x0000FE00  /**< MAC length - 7-bits. */
+#define TX_IP_LEN_CMP_MASK      0x000001FF  /**< IP  length - 9-bits. */
+/** MAC+IP  length. */
+#define TX_MACIP_LEN_CMP_MASK   (TX_MAC_LEN_CMP_MASK | TX_IP_LEN_CMP_MASK)
+
 /**
  * Structure to check if new context need be built
  */
 struct em_ctx_info {
-	uint16_t flags;               /**< ol_flags related to context build. */
-	uint32_t cmp_mask;            /**< compare mask */
-	union rte_vlan_macip hdrlen;  /**< L2 and L3 header lenghts */
+	uint16_t flags;              /**< ol_flags related to context build. */
+	uint32_t cmp_mask;           /**< compare mask */
+	union em_vlan_macip hdrlen;  /**< L2 and L3 header lenghts */
 };
 
 /**
@@ -219,7 +240,7 @@ static inline void
 em_set_xmit_ctx(struct em_tx_queue* txq,
 		volatile struct e1000_context_desc *ctx_txd,
 		uint16_t flags,
-		union rte_vlan_macip hdrlen)
+		union em_vlan_macip hdrlen)
 {
 	uint32_t cmp_mask, cmd_len;
 	uint16_t ipcse, l2len;
@@ -285,7 +306,7 @@ em_set_xmit_ctx(struct em_tx_queue* txq,
  */
 static inline uint32_t
 what_ctx_update(struct em_tx_queue *txq, uint16_t flags,
-		union rte_vlan_macip hdrlen)
+		union em_vlan_macip hdrlen)
 {
 	/* If match with the current context */
 	if (likely (txq->ctx_cache.flags == flags &&
@@ -391,7 +412,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t tx_ol_req;
 	uint32_t ctx;
 	uint32_t new_ctx;
-	union rte_vlan_macip hdrlen;
+	union em_vlan_macip hdrlen;
 
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
@@ -421,7 +442,9 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_ol_req = (uint16_t)(ol_flags & (PKT_TX_IP_CKSUM |
 							PKT_TX_L4_MASK));
 		if (tx_ol_req) {
-			hdrlen = tx_pkt->vlan_macip;
+			hdrlen.f.vlan_tci = tx_pkt->vlan_tci;
+			hdrlen.f.l2_len = tx_pkt->l2_len;
+			hdrlen.f.l3_len = tx_pkt->l3_len;
 			/* If new context to be built or reuse the exist ctx. */
 			ctx = what_ctx_update(txq, tx_ol_req, hdrlen);
 
@@ -516,8 +539,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* Set VLAN Tag offload fields. */
 		if (ol_flags & PKT_TX_VLAN_PKT) {
 			cmd_type_len |= E1000_TXD_CMD_VLE;
-			popts_spec = tx_pkt->vlan_macip.f.vlan_tci <<
-				E1000_TXD_VLAN_SHIFT;
+			popts_spec = tx_pkt->vlan_tci << E1000_TXD_VLAN_SHIFT;
 		}
 
 		if (tx_ol_req) {
@@ -784,7 +806,7 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				rx_desc_error_to_pkt_flags(rxd.errors));
 
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
-		rxm->vlan_macip.f.vlan_tci = rte_le_to_cpu_16(rxd.special);
+		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
 
 		/*
 		 * Store the mbuf address into the next entry of the array
@@ -1010,7 +1032,7 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 					rx_desc_error_to_pkt_flags(rxd.errors));
 
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
-		rxm->vlan_macip.f.vlan_tci = rte_le_to_cpu_16(rxd.special);
+		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
 
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_packet_prefetch(first_seg->data);

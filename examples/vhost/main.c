@@ -2690,9 +2690,9 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 		mbuf->buf_addr = m->buf_addr;
 	}
 	mbuf->ol_flags = PKT_TX_VLAN_PKT;
-	mbuf->vlan_macip.f.vlan_tci = vlan_tag;
-	mbuf->vlan_macip.f.l2_len = sizeof(struct ether_hdr);
-	mbuf->vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
+	mbuf->vlan_tci = vlan_tag;
+	mbuf->l2_len = sizeof(struct ether_hdr);
+	mbuf->l3_len = sizeof(struct ipv4_hdr);
 	MBUF_HEADROOM_UINT32(mbuf) = (uint32_t)desc_idx;
 
 	tx_q->m_table[len] = mbuf;

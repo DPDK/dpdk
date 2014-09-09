@@ -173,8 +173,7 @@ ip_frag_chain(struct rte_mbuf *mn, struct rte_mbuf *mp)
 	struct rte_mbuf *ms;
 
 	/* adjust start of the last fragment data. */
-	rte_pktmbuf_adj(mp, (uint16_t)(mp->vlan_macip.f.l2_len +
-		mp->vlan_macip.f.l3_len));
+	rte_pktmbuf_adj(mp, (uint16_t)(mp->l2_len + mp->l3_len));
 
 	/* chain two fragments. */
 	ms = rte_pktmbuf_lastseg(mn);

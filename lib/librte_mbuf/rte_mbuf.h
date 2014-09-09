@@ -111,27 +111,6 @@ extern "C" {
  */
 #define PKT_TX_OFFLOAD_MASK (PKT_TX_VLAN_PKT | PKT_TX_IP_CKSUM | PKT_TX_L4_MASK)
 
-/** Offload features */
-union rte_vlan_macip {
-	uint32_t data;
-	struct {
-		uint16_t l3_len:9; /**< L3 (IP) Header Length. */
-		uint16_t l2_len:7; /**< L2 (MAC) Header Length. */
-		uint16_t vlan_tci;
-		/**< VLAN Tag Control Identifier (CPU order). */
-	} f;
-};
-
-/*
- * Compare mask for vlan_macip_len.data,
- * should be in sync with rte_vlan_macip.f layout.
- * */
-#define TX_VLAN_CMP_MASK        0xFFFF0000  /**< VLAN length - 16-bits. */
-#define TX_MAC_LEN_CMP_MASK     0x0000FE00  /**< MAC length - 7-bits. */
-#define TX_IP_LEN_CMP_MASK      0x000001FF  /**< IP  length - 9-bits. */
-/**< MAC+IP  length. */
-#define TX_MACIP_LEN_CMP_MASK   (TX_MAC_LEN_CMP_MASK | TX_IP_LEN_CMP_MASK)
-
 /**
  * The generic rte_mbuf, containing a packet mbuf.
  */
@@ -170,7 +149,14 @@ struct rte_mbuf {
 	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
 
 	/* offload features, valid for first segment only */
-	union rte_vlan_macip vlan_macip;
+	union {
+		uint16_t l2_l3_len; /**< combined l2/l3 lengths as single var */
+		struct {
+			uint16_t l3_len:9;      /**< L3 (IP) Header Length. */
+			uint16_t l2_len:7;      /**< L2 (MAC) Header Length. */
+		};
+	};
+	uint16_t vlan_tci;      /**< VLAN Tag Control Identifier (CPU order). */
 	union {
 		uint32_t rss;       /**< RSS hash result if RSS enabled */
 		struct {
@@ -540,7 +526,8 @@ static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 
 	m->next = NULL;
 	m->pkt_len = 0;
-	m->vlan_macip.data = 0;
+	m->l2_l3_len = 0;
+	m->vlan_tci = 0;
 	m->nb_segs = 1;
 	m->port = 0xff;
 
@@ -607,7 +594,8 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
 	mi->data = md->data;
 	mi->data_len = md->data_len;
 	mi->port = md->port;
-	mi->vlan_macip = md->vlan_macip;
+	mi->vlan_tci = md->vlan_tci;
+	mi->l2_l3_len = md->l2_l3_len;
 	mi->hash = md->hash;
 
 	mi->next = NULL;

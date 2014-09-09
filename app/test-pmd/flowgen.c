@@ -205,13 +205,13 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 		udp_hdr->dgram_len	= RTE_CPU_TO_BE_16(pkt_size -
 							   sizeof(*eth_hdr) -
 							   sizeof(*ip_hdr));
-		pkt->nb_segs			= 1;
-		pkt->pkt_len			= pkt_size;
-		pkt->ol_flags			= ol_flags;
-		pkt->vlan_macip.f.vlan_tci	= vlan_tci;
-		pkt->vlan_macip.f.l2_len	= sizeof(struct ether_hdr);
-		pkt->vlan_macip.f.l3_len	= sizeof(struct ipv4_hdr);
-		pkts_burst[nb_pkt]		= pkt;
+		pkt->nb_segs		= 1;
+		pkt->pkt_len		= pkt_size;
+		pkt->ol_flags		= ol_flags;
+		pkt->vlan_tci		= vlan_tci;
+		pkt->l2_len		= sizeof(struct ether_hdr);
+		pkt->l3_len		= sizeof(struct ipv4_hdr);
+		pkts_burst[nb_pkt]	= pkt;
 
 		next_flow = (next_flow + 1) % cfg_n_flows;
 	}

@@ -540,6 +540,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	volatile union ixgbe_adv_tx_desc *txd;
 	struct rte_mbuf     *tx_pkt;
 	struct rte_mbuf     *m_seg;
+	union ixgbe_vlan_macip vlan_macip_lens;
 	uint64_t buf_dma_addr;
 	uint32_t olinfo_status;
 	uint32_t cmd_type_len;
@@ -551,7 +552,6 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_tx;
 	uint16_t nb_used;
 	uint16_t tx_ol_req;
-	uint32_t vlan_macip_lens;
 	uint32_t ctx = 0;
 	uint32_t new_ctx;
 
@@ -579,14 +579,15 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * are needed for offload functionality.
 		 */
 		ol_flags = tx_pkt->ol_flags;
-		vlan_macip_lens = tx_pkt->vlan_macip.data;
+		vlan_macip_lens.f.vlan_tci = tx_pkt->vlan_tci;
+		vlan_macip_lens.f.l2_l3_len = tx_pkt->l2_l3_len;
 
 		/* If hardware offload required */
 		tx_ol_req = (uint16_t)(ol_flags & PKT_TX_OFFLOAD_MASK);
 		if (tx_ol_req) {
 			/* If new context need be built or reuse the exist ctx. */
 			ctx = what_advctx_update(txq, tx_ol_req,
-				vlan_macip_lens);
+				vlan_macip_lens.data);
 			/* Only allocate context descriptor if required*/
 			new_ctx = (ctx == IXGBE_CTX_NUM);
 			ctx = txq->ctx_curr;
@@ -728,7 +729,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				}
 
 				ixgbe_set_xmit_ctx(txq, ctx_txd, tx_ol_req,
-				    vlan_macip_lens);
+				    vlan_macip_lens.data);
 
 				txe->last_id = tx_last;
 				tx_id = txe->next_id;
@@ -939,7 +940,7 @@ ixgbe_rx_scan_hw_ring(struct igb_rx_queue *rxq)
 							rxq->crc_len);
 			mb->data_len = pkt_len;
 			mb->pkt_len = pkt_len;
-			mb->vlan_macip.f.vlan_tci = rxdp[j].wb.upper.vlan;
+			mb->vlan_tci = rxdp[j].wb.upper.vlan;
 			mb->hash.rss = rxdp[j].wb.lower.hi_dword.rss;
 
 			/* convert descriptor fields to rte mbuf flags */
@@ -1257,8 +1258,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
-		rxm->vlan_macip.f.vlan_tci =
-			rte_le_to_cpu_16(rxd.wb.upper.vlan);
+		rxm->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
 
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
 		pkt_flags = (uint16_t)(pkt_flags |
@@ -1502,8 +1502,7 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * The vlan_tci field is only valid when PKT_RX_VLAN_PKT is
 		 * set in the pkt_flags field.
 		 */
-		first_seg->vlan_macip.f.vlan_tci =
-				rte_le_to_cpu_16(rxd.wb.upper.vlan);
+		first_seg->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
 		pkt_flags = (uint16_t)(pkt_flags |

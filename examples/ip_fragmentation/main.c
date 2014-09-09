@@ -413,7 +413,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 			rte_panic("No headroom in mbuf.\n");
 		}
 
-		m->vlan_macip.f.l2_len = sizeof(struct ether_hdr);
+		m->l2_len = sizeof(struct ether_hdr);
 
 		/* 02:00:00:00:00:xx */
 		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];

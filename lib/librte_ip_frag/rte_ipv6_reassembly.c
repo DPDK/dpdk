@@ -109,7 +109,7 @@ ipv6_frag_reassemble(const struct ip_frag_pkt *fp)
 
 	/* update ipv6 header for the reassembled datagram */
 	ip_hdr = (struct ipv6_hdr *) (rte_pktmbuf_mtod(m, uint8_t *) +
-								  m->vlan_macip.f.l2_len);
+								  m->l2_len);
 
 	ip_hdr->payload_len = rte_cpu_to_be_16(payload_len);
 
@@ -120,8 +120,7 @@ ipv6_frag_reassemble(const struct ip_frag_pkt *fp)
 	 * other headers, so we assume there are no other headers and thus update
 	 * the main IPv6 header instead.
 	 */
-	move_len = m->vlan_macip.f.l2_len + m->vlan_macip.f.l3_len -
-			sizeof(*frag_hdr);
+	move_len = m->l2_len + m->l3_len - sizeof(*frag_hdr);
 	frag_hdr = (struct ipv6_extension_fragment *) (ip_hdr + 1);
 	ip_hdr->proto = frag_hdr->next_header;
 

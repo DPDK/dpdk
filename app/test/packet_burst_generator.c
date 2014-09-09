@@ -260,19 +260,19 @@ nomore_mbuf:
 		 */
 		pkt->nb_segs = tx_pkt_nb_segs;
 		pkt->pkt_len = tx_pkt_length;
-		pkt->vlan_macip.f.l2_len = eth_hdr_size;
+		pkt->l2_len = eth_hdr_size;
 
 		if (ipv4) {
-			pkt->vlan_macip.f.vlan_tci  = ETHER_TYPE_IPv4;
-			pkt->vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
+			pkt->vlan_tci  = ETHER_TYPE_IPv4;
+			pkt->l3_len = sizeof(struct ipv4_hdr);
 
 			if (vlan_enabled)
 				pkt->ol_flags = PKT_RX_IPV4_HDR | PKT_RX_VLAN_PKT;
 			else
 				pkt->ol_flags = PKT_RX_IPV4_HDR;
 		} else {
-			pkt->vlan_macip.f.vlan_tci  = ETHER_TYPE_IPv6;
-			pkt->vlan_macip.f.l3_len = sizeof(struct ipv6_hdr);
+			pkt->vlan_tci  = ETHER_TYPE_IPv6;
+			pkt->l3_len = sizeof(struct ipv6_hdr);
 
 			if (vlan_enabled)
 				pkt->ol_flags = PKT_RX_IPV6_HDR | PKT_RX_VLAN_PKT;
