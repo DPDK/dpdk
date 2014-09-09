@@ -90,6 +90,9 @@ enum i40e_status_code i40e_aq_get_firmware_version(struct i40e_hw *hw,
 				u16 *fw_major_version, u16 *fw_minor_version,
 				u16 *api_major_version, u16 *api_minor_version,
 				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_debug_write_register(struct i40e_hw *hw,
+				u32 reg_addr, u64 reg_val,
+				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_set_phy_debug(struct i40e_hw *hw, u8 cmd_flags,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_set_default_vsi(struct i40e_hw *hw, u16 vsi_id,
@@ -103,10 +106,10 @@ enum i40e_status_code i40e_aq_set_phy_config(struct i40e_hw *hw,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_set_fc(struct i40e_hw *hw, u8 *aq_failures,
 				  bool atomic_reset);
+enum i40e_status_code i40e_aq_set_phy_int_mask(struct i40e_hw *hw, u16 mask,
+				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_set_mac_config(struct i40e_hw *hw,
 				u16 max_frame_size, bool crc_en, u16 pacing,
-				struct i40e_asq_cmd_details *cmd_details);
-enum i40e_status_code i40e_aq_set_phy_int_mask(struct i40e_hw *hw, u16 mask,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_get_local_advt_reg(struct i40e_hw *hw,
 				u64 *advt_reg,
