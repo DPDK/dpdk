@@ -690,9 +690,6 @@ u16 i40e_clean_asq(struct i40e_hw *hw)
 
 	desc = I40E_ADMINQ_DESC(*asq, ntc);
 	details = I40E_ADMINQ_DETAILS(*asq, ntc);
-#ifdef DMA_SYNC_SUPPORT
-	I40E_DMA_SYNC(&hw->aq.asq.desc_buf, I40E_SYNC_FORKERNEL);
-#endif /* DMA_SYNC_SUPPORT */
 	while (rd32(hw, hw->aq.asq.head) != ntc) {
 		i40e_debug(hw, I40E_DEBUG_AQ_MESSAGE,
 			   "%s: ntc %d head %d.\n", __FUNCTION__, ntc,
@@ -866,14 +863,8 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 				CPU_TO_LE32(I40E_HI_DWORD(dma_buff->pa));
 		desc_on_ring->params.external.addr_low =
 				CPU_TO_LE32(I40E_LO_DWORD(dma_buff->pa));
-#ifdef DMA_SYNC_SUPPORT
-		I40E_DMA_SYNC(dma_buff, I40E_SYNC_FORDEVICE);
-#endif /* DMA_SYNC_SUPPORT */
 	}
 
-#ifdef DMA_SYNC_SUPPORT
-	I40E_DMA_SYNC(&hw->aq.asq.desc_buf, I40E_SYNC_FORDEVICE);
-#endif /* DMA_SYNC_SUPPORT */
 	/* bump the tail */
 	i40e_debug(hw, I40E_DEBUG_AQ_MESSAGE, "AQTX: desc and buffer:\n");
 	i40e_debug_aq(hw, I40E_DEBUG_AQ_COMMAND, (void *)desc_on_ring, buff);
@@ -904,9 +895,6 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 
 	/* if ready, copy the desc back to temp */
 	if (i40e_asq_done(hw)) {
-#ifdef DMA_SYNC_SUPPORT
-		I40E_DMA_SYNC(&hw->aq.asq.desc_buf, I40E_SYNC_FORKERNEL);
-#endif /* DMA_SYNC_SUPPORT */
 		i40e_memcpy(desc, desc_on_ring, sizeof(struct i40e_aq_desc),
 			    I40E_DMA_TO_NONDMA);
 		if (buff != NULL)
@@ -995,9 +983,6 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 	u16 datalen;
 	u16 flags;
 	u16 ntu;
-#ifdef DMA_SYNC_SUPPORT
-	I40E_DMA_SYNC(&hw->aq.arq.desc_buf, I40E_SYNC_FORKERNEL);
-#endif /* DMA_SYNC_SUPPORT */
 
 	/* take the lock before we start messing with the ring */
 	i40e_acquire_spinlock(&hw->aq.arq_spinlock);
@@ -1016,10 +1001,6 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 	/* now clean the next descriptor */
 	desc = I40E_ADMINQ_DESC(hw->aq.arq, ntc);
 	desc_idx = ntc;
-#ifdef DMA_SYNC_SUPPORT
-	I40E_DMA_SYNC(&hw->aq.arq.r.arq_bi[desc_idx], I40E_SYNC_FORKERNEL);
-#endif /* DMA_SYNC_SUPPORT */
-
 	flags = LE16_TO_CPU(desc->flags);
 	if (flags & I40E_AQ_FLAG_ERR) {
 		ret_code = I40E_ERR_ADMIN_QUEUE_ERROR;
