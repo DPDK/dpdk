@@ -78,6 +78,7 @@
 struct i40evf_arq_msg_info {
 	enum i40e_virtchnl_ops ops;
 	enum i40e_status_code result;
+	uint16_t buf_len;
 	uint16_t msg_len;
 	uint8_t *msg;
 };
@@ -225,8 +226,8 @@ i40evf_parse_pfmsg(struct i40e_vf *vf,
 	} else {
 		/* async reply msg on command issued by vf previously */
 		ret = I40EVF_MSG_CMD;
-		/* Actual buffer length read from PF */
-		data->msg_len = event->msg_size;
+		/* Actual data length read from PF */
+		data->msg_len = event->msg_len;
 	}
 	/* fill the ops and result to notify VF */
 	data->result = retval;
@@ -247,7 +248,7 @@ i40evf_read_pfmsg(struct rte_eth_dev *dev, struct i40evf_arq_msg_info *data)
 	int ret;
 	enum i40evf_aq_result result = I40EVF_MSG_NON;
 
-	event.msg_size = data->msg_len;
+	event.buf_len = data->buf_len;
 	event.msg_buf = data->msg;
 	ret = i40e_clean_arq_element(hw, &event, NULL);
 	/* Can't read any msg from adminQ */
@@ -281,7 +282,6 @@ i40evf_wait_cmd_done(struct rte_eth_dev *dev,
 		/* Delay some time first */
 		rte_delay_ms(ASQ_DELAY_MS);
 		ret = i40evf_read_pfmsg(dev, data);
-
 		if (ret == I40EVF_MSG_CMD)
 			return 0;
 		else if (ret == I40EVF_MSG_ERR)
@@ -331,7 +331,7 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 		return -1;
 
 	info.msg = args->out_buffer;
-	info.msg_len = args->out_size;
+	info.buf_len = args->out_size;
 	info.ops = I40E_VIRTCHNL_OP_UNKNOWN;
 	info.result = I40E_SUCCESS;
 

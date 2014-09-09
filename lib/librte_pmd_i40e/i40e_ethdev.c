@@ -3337,8 +3337,8 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 	uint16_t pending, opcode;
 	int ret;
 
-	info.msg_size = I40E_AQ_BUF_SZ;
-	info.msg_buf = rte_zmalloc("msg_buffer", I40E_AQ_BUF_SZ, 0);
+	info.buf_len = I40E_AQ_BUF_SZ;
+	info.msg_buf = rte_zmalloc("msg_buffer", info.buf_len, 0);
 	if (!info.msg_buf) {
 		PMD_DRV_LOG(ERR, "Failed to allocate mem");
 		return;
@@ -3363,15 +3363,13 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 					rte_le_to_cpu_32(info.desc.cookie_high),
 					rte_le_to_cpu_32(info.desc.cookie_low),
 					info.msg_buf,
-					info.msg_size);
+					info.msg_len);
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Request %u is not supported yet",
 				    opcode);
 			break;
 		}
-		/* Reset the buffer after processing one */
-		info.msg_size = I40E_AQ_BUF_SZ;
 	}
 	rte_free(info.msg_buf);
 }
