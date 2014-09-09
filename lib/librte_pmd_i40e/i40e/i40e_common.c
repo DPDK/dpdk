@@ -922,10 +922,7 @@ enum i40e_status_code i40e_pf_reset(struct i40e_hw *hw)
 		}
 	}
 
-#if !defined(QV_RELEASE) && !defined(PREBOOT_SUPPORT)
 	i40e_clear_pxe_mode(hw);
-
-#endif
 
 	return I40E_SUCCESS;
 }
