@@ -4575,33 +4575,6 @@ enum i40e_status_code i40e_aq_set_oem_mode(struct i40e_hw *hw,
 
 	return status;
 }
-#ifdef I40E_DCB_SW
-
-/**
- * i40e_aq_suspend_port_tx
- * @hw: pointer to the hardware structure
- * @seid: port seid
- * @cmd_details: pointer to command details structure or NULL
- *
- * Suspend port's Tx traffic
- **/
-enum i40e_status_code i40e_aq_suspend_port_tx(struct i40e_hw *hw, u16 seid,
-				struct i40e_asq_cmd_details *cmd_details)
-{
-	struct i40e_aq_desc desc;
-	enum i40e_status_code status;
-	struct i40e_aqc_tx_sched_ind *cmd =
-		(struct i40e_aqc_tx_sched_ind *)&desc.params.raw;
-
-	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_suspend_port_tx);
-
-	cmd->vsi_seid = CPU_TO_LE16(seid);
-
-	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
-
-	return status;
-}
-#endif /* I40E_DCB_SW */
 
 /**
  * i40e_aq_resume_port_tx

@@ -323,12 +323,6 @@ enum i40e_status_code i40e_aq_query_switch_comp_bw_config(struct i40e_hw *hw,
 		struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_resume_port_tx(struct i40e_hw *hw,
 				struct i40e_asq_cmd_details *cmd_details);
-#ifdef I40E_DCB_SW
-enum i40e_status_code i40e_aq_suspend_port_tx(struct i40e_hw *hw, u16 seid,
-				struct i40e_asq_cmd_details *cmd_details);
-enum i40e_status_code i40e_read_lldp_cfg(struct i40e_hw *hw,
-					struct i40e_lldp_variables *lldp_cfg);
-#endif /* I40E_DCB_SW */
 enum i40e_status_code i40e_aq_add_cloud_filters(struct i40e_hw *hw,
 		u16 vsi,
 		struct i40e_aqc_add_remove_cloud_filters_element_data *filters,

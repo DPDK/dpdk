@@ -1403,46 +1403,6 @@ enum i40e_reset_type {
 	I40E_RESET_GLOBR	= 2,
 	I40E_RESET_EMPR		= 3,
 };
-#ifdef I40E_DCB_SW
-
-/* EMP Settings Module Header Section */
-struct i40e_emp_settings_module {
-	u16 length;
-	u16 fw_params;
-	u16 reserved;
-	u16 features;
-	u16 oem_cfg;
-	u16 pfalloc_ptr;
-	u16 eee_variables;
-	u16 phy_cap_lan0_ptr;
-	u16 phy_cap_lan1_ptr;
-	u16 phy_cap_lan2_ptr;
-	u16 phy_cap_lan3_ptr;
-	u16 phy_map_lan0_ptr;
-	u16 phy_map_lan1_ptr;
-	u16 phy_map_lan2_ptr;
-	u16 phy_map_lan3_ptr;
-	u16 lldp_cfg_ptr;
-	u16 ltr_max_snoop;
-	u16 ltr_max_no_snoop;
-	u16 ltr_delta;
-	u16 ltr_grade_value;
-	u16 lldp_tlv_ptr;
-	u16 crc8;
-};
-
-/* IEEE 802.1AB LLDP Agent Variables from NVM */
-#define I40E_NVM_LLDP_CFG_PTR		0xF
-struct i40e_lldp_variables {
-	u16 length;
-	u16 adminstatus;
-	u16 msgfasttx;
-	u16 msgtxinterval;
-	u16 txparams;
-	u16 timers;
-	u16 crc8;
-};
-#endif /* I40E_DCB_SW */
 
 /* Offsets into Alternate Ram */
 #define I40E_ALT_STRUCT_FIRST_PF_OFFSET		0   /* in dwords */
