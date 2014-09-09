@@ -1200,7 +1200,7 @@ enum i40e_status_code i40e_set_fc(struct i40e_hw *hw, u8 *aq_failures,
 	status = i40e_aq_get_phy_capabilities(hw, false, false, &abilities,
 					      NULL);
 	if (status) {
-		*aq_failures |= I40E_SET_FC_AQ_FAIL_GET1;
+		*aq_failures |= I40E_SET_FC_AQ_FAIL_GET;
 		return status;
 	}
 
@@ -1225,31 +1225,19 @@ enum i40e_status_code i40e_set_fc(struct i40e_hw *hw, u8 *aq_failures,
 
 		if (status)
 			*aq_failures |= I40E_SET_FC_AQ_FAIL_SET;
-
-		/* Get the abilities to set hw->fc.current_mode correctly */
-		status = i40e_aq_get_phy_capabilities(hw, false, false,
-						      &abilities, NULL);
-		if (status) {
-			/* Wait a little bit and try once more */
-			i40e_msec_delay(1000);
-			status = i40e_aq_get_phy_capabilities(hw, false, false,
-							      &abilities, NULL);
-		}
-		if (status) {
-			*aq_failures |= I40E_SET_FC_AQ_FAIL_GET2;
-			return status;
-		}
 	}
-	/* Copy the what was returned from get capabilities into fc */
-	if ((abilities.abilities & I40E_AQ_PHY_FLAG_PAUSE_TX) &&
-	    (abilities.abilities & I40E_AQ_PHY_FLAG_PAUSE_RX))
-		hw->fc.current_mode = I40E_FC_FULL;
-	else if (abilities.abilities & I40E_AQ_PHY_FLAG_PAUSE_TX)
-		hw->fc.current_mode = I40E_FC_TX_PAUSE;
-	else if (abilities.abilities & I40E_AQ_PHY_FLAG_PAUSE_RX)
-		hw->fc.current_mode = I40E_FC_RX_PAUSE;
-	else
-		hw->fc.current_mode = I40E_FC_NONE;
+	/* Update the link info */
+	status = i40e_update_link_info(hw, true);
+	if (status) {
+		/* Wait a little bit (on 40G cards it sometimes takes a really
+		 * long time for link to come back from the atomic reset)
+		 * and try once more
+		 */
+		i40e_msec_delay(1000);
+		status = i40e_update_link_info(hw, true);
+	}
+	if (status)
+		*aq_failures |= I40E_SET_FC_AQ_FAIL_UPDATE;
 
 	return status;
 }
