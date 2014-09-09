@@ -36,7 +36,6 @@ POSSIBILITY OF SUCH DAMAGE.
 
 /* forward-declare the HW struct for the compiler */
 struct i40e_hw;
-enum i40e_status_code;
 
 /* HMC element context information */
 

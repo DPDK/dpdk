@@ -424,7 +424,6 @@ enum i40e_status_code i40e_create_lan_hmc_object(struct i40e_hw *hw,
 			default:
 				ret_code = I40E_ERR_INVALID_SD_TYPE;
 				goto exit;
-				break;
 			}
 		}
 	}
@@ -509,7 +508,6 @@ try_type_paged:
 		DEBUGOUT1("i40e_configure_lan_hmc: Unknown SD type: %d\n",
 			  ret_code);
 		goto configure_lan_hmc_out;
-		break;
 	}
 
 	/* Configure and program the FPM registers so objects can be created */
@@ -803,9 +801,10 @@ static void i40e_write_word(u8 *hmc_bits,
 			    struct i40e_context_ele *ce_info,
 			    u8 *src)
 {
-	u16 src_word, dest_word, mask;
+	u16 src_word, mask;
 	u8 *from, *dest;
 	u16 shift_width;
+	__le16 dest_word;
 
 	/* copy from the next struct field */
 	from = src + ce_info->offset;
@@ -846,9 +845,10 @@ static void i40e_write_dword(u8 *hmc_bits,
 			     struct i40e_context_ele *ce_info,
 			     u8 *src)
 {
-	u32 src_dword, dest_dword, mask;
+	u32 src_dword, mask;
 	u8 *from, *dest;
 	u16 shift_width;
+	__le32 dest_dword;
 
 	/* copy from the next struct field */
 	from = src + ce_info->offset;
@@ -897,9 +897,10 @@ static void i40e_write_qword(u8 *hmc_bits,
 			     struct i40e_context_ele *ce_info,
 			     u8 *src)
 {
-	u64 src_qword, dest_qword, mask;
+	u64 src_qword, mask;
 	u8 *from, *dest;
 	u16 shift_width;
+	__le64 dest_qword;
 
 	/* copy from the next struct field */
 	from = src + ce_info->offset;
@@ -914,7 +915,7 @@ static void i40e_write_qword(u8 *hmc_bits,
 	if (ce_info->width < 64)
 		mask = ((u64)1 << ce_info->width) - 1;
 	else
-		mask = 0xFFFFFFFFFFFFFFFF;
+		mask = 0xFFFFFFFFFFFFFFFFUL;
 
 	/* don't swizzle the bits until after the mask because the mask bits
 	 * will be in a different bit position on big endian machines
@@ -985,9 +986,10 @@ static void i40e_read_word(u8 *hmc_bits,
 			   struct i40e_context_ele *ce_info,
 			   u8 *dest)
 {
-	u16 src_word, dest_word, mask;
+	u16 dest_word, mask;
 	u8 *src, *target;
 	u16 shift_width;
+	__le16 src_word;
 
 	/* prepare the bits and mask */
 	shift_width = ce_info->lsb % 8;
@@ -1028,9 +1030,10 @@ static void i40e_read_dword(u8 *hmc_bits,
 			    struct i40e_context_ele *ce_info,
 			    u8 *dest)
 {
-	u32 src_dword, dest_dword, mask;
+	u32 dest_dword, mask;
 	u8 *src, *target;
 	u16 shift_width;
+	__le32 src_dword;
 
 	/* prepare the bits and mask */
 	shift_width = ce_info->lsb % 8;
@@ -1080,9 +1083,10 @@ static void i40e_read_qword(u8 *hmc_bits,
 			    struct i40e_context_ele *ce_info,
 			    u8 *dest)
 {
-	u64 src_qword, dest_qword, mask;
+	u64 dest_qword, mask;
 	u8 *src, *target;
 	u16 shift_width;
+	__le64 src_qword;
 
 	/* prepare the bits and mask */
 	shift_width = ce_info->lsb % 8;
@@ -1094,7 +1098,7 @@ static void i40e_read_qword(u8 *hmc_bits,
 	if (ce_info->width < 64)
 		mask = ((u64)1 << ce_info->width) - 1;
 	else
-		mask = 0xFFFFFFFFFFFFFFFF;
+		mask = 0xFFFFFFFFFFFFFFFFUL;
 
 	/* shift to correct alignment */
 	mask <<= shift_width;
