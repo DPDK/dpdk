@@ -91,6 +91,7 @@ extern "C" {
 #define PKT_TX_IPV4_CSUM     0x1000 /**< Alias of PKT_TX_IP_CKSUM. */
 #define PKT_TX_IPV4          PKT_RX_IPV4_HDR /**< IPv4 with no IP checksum offload. */
 #define PKT_TX_IPV6          PKT_RX_IPV6_HDR /**< IPv6 packet */
+
 /*
  * Bit 14~13 used for L4 packet type with checksum enabled.
  *     00: Reserved
@@ -105,6 +106,9 @@ extern "C" {
 #define PKT_TX_UDP_CKSUM     0x6000 /**< UDP cksum of TX pkt. computed by NIC. */
 /* Bit 15 */
 #define PKT_TX_IEEE1588_TMST 0x8000 /**< TX IEEE1588 packet to timestamp. */
+
+/* Use final bit of flags to indicate a control mbuf */
+#define CTRL_MBUF_FLAG       (1ULL << 63)
 
 /**
  * Bit Mask to indicate what bits required for building TX context
@@ -470,6 +474,21 @@ void rte_ctrlmbuf_init(struct rte_mempool *mp, void *opaque_arg,
  *   The control mbuf.
  */
 #define rte_ctrlmbuf_len(m) rte_pktmbuf_data_len(m)
+
+/**
+ * Tests if an mbuf is a control mbuf
+ *
+ * @param m
+ *   The mbuf to be tested
+ * @return
+ *   - True (1) if the mbuf is a control mbuf
+ *   - False(0) otherwise
+ */
+static inline int
+rte_is_ctrlmbuf(struct rte_mbuf *m)
+{
+	return (!!(m->ol_flags & CTRL_MBUF_FLAG));
+}
 
 /* Operations on pkt mbuf */
 

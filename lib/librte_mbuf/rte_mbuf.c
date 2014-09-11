@@ -69,7 +69,9 @@ rte_ctrlmbuf_init(struct rte_mempool *mp,
 		void *_m,
 		__attribute__((unused)) unsigned i)
 {
+	struct rte_mbuf *m = _m;
 	rte_pktmbuf_init(mp, opaque_arg, _m, i);
+	m->ol_flags |= CTRL_MBUF_FLAG;
 }
 
 /*
