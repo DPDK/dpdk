@@ -125,7 +125,7 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 	    (uint16_t)(pkt_in->pkt_len - sizeof (struct ipv6_hdr))))
 		return (-EINVAL);
 
-	in_hdr = (struct ipv6_hdr *) pkt_in->data;
+	in_hdr = rte_pktmbuf_mtod(pkt_in, struct ipv6_hdr *);
 
 	in_seg = pkt_in;
 	in_seg_data_pos = sizeof(struct ipv6_hdr);
@@ -171,7 +171,7 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 			if (len > (in_seg->data_len - in_seg_data_pos)) {
 				len = in_seg->data_len - in_seg_data_pos;
 			}
-			out_seg->data = (char *) in_seg->data + (uint16_t) in_seg_data_pos;
+			out_seg->data_off = in_seg->data_off + in_seg_data_pos;
 			out_seg->data_len = (uint16_t)len;
 			out_pkt->pkt_len = (uint16_t)(len +
 			    out_pkt->pkt_len);
@@ -196,7 +196,7 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 
 		/* Build the IP header */
 
-		out_hdr = (struct ipv6_hdr *) out_pkt->data;
+		out_hdr = rte_pktmbuf_mtod(out_pkt, struct ipv6_hdr *);
 
 		__fill_ipv6hdr_frag(out_hdr, in_hdr,
 		    (uint16_t) out_pkt->pkt_len - sizeof(struct ipv6_hdr),

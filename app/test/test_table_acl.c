@@ -513,7 +513,7 @@ test_pipeline_single_filter(int expected_count)
 			struct rte_mbuf *mbuf;
 
 			mbuf = rte_pktmbuf_alloc(pool);
-			memset(mbuf->data, 0x00,
+			memset(rte_pktmbuf_mtod(mbuf, char *), 0x00,
 				sizeof(struct ipv4_5tuple));
 
 			five_tuple.proto = j;
@@ -522,7 +522,7 @@ test_pipeline_single_filter(int expected_count)
 			five_tuple.port_src = rte_bswap16(100 + j);
 			five_tuple.port_dst = rte_bswap16(200 + j);
 
-			memcpy(mbuf->data, &five_tuple,
+			memcpy(rte_pktmbuf_mtod(mbuf, char *), &five_tuple,
 				sizeof(struct ipv4_5tuple));
 			RTE_LOG(INFO, PIPELINE, "%s: Enqueue onto ring %d\n",
 				__func__, i);
@@ -549,7 +549,8 @@ test_pipeline_single_filter(int expected_count)
 			printf("Got %d object(s) from ring %d!\n", ret, i);
 			for (j = 0; j < ret; j++) {
 				mbuf = (struct rte_mbuf *)objs[j];
-				rte_hexdump(stdout, "mbuf", mbuf->data, 64);
+				rte_hexdump(stdout, "mbuf",
+					rte_pktmbuf_mtod(mbuf, char *), 64);
 				rte_pktmbuf_free(mbuf);
 			}
 			tx_count += ret;

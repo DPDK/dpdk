@@ -263,7 +263,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		pkt_ol_flags = mb->ol_flags;
 		ol_flags = (uint16_t) (pkt_ol_flags & (~PKT_TX_L4_MASK));
 
-		eth_hdr = (struct ether_hdr *) mb->data;
+		eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
 		eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
 		if (eth_type == ETHER_TYPE_VLAN) {
 			/* Only allow single VLAN label here */

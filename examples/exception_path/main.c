@@ -302,7 +302,8 @@ main_loop(__attribute__((unused)) void *arg)
 			if (m == NULL)
 				continue;
 
-			ret = read(tap_fd, m->data, MAX_PACKET_SZ);
+			ret = read(tap_fd, rte_pktmbuf_mtod(m, void *),
+				MAX_PACKET_SZ);
 			lcore_stats[lcore_id].rx++;
 			if (unlikely(ret < 0)) {
 				FATAL_ERROR("Reading from %s interface failed",

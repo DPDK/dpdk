@@ -39,11 +39,6 @@
 #include "test_table.h"
 #include "test_table_pipeline.h"
 
-#define RTE_CBUF_UINT8_PTR(cbuf, offset)			\
-	(&cbuf->data[offset])
-#define RTE_CBUF_UINT32_PTR(cbuf, offset)			\
-	(&cbuf->data32[offset/sizeof(uint32_t)])
-
 #if 0
 
 static rte_pipeline_port_out_action_handler port_action_0x00
@@ -498,7 +493,8 @@ test_pipeline_single_filter(int test_type, int expected_count)
 			printf("Got %d object(s) from ring %d!\n", ret, i);
 			for (j = 0; j < ret; j++) {
 				mbuf = (struct rte_mbuf *)objs[j];
-				rte_hexdump(stdout, "Object:", mbuf->data,
+				rte_hexdump(stdout, "Object:",
+					rte_pktmbuf_mtod(mbuf, char *),
 					mbuf->data_len);
 				rte_pktmbuf_free(mbuf);
 			}

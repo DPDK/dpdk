@@ -110,7 +110,7 @@ pkt_burst_mac_swap(struct fwd_stream *fs)
 	txp = &ports[fs->tx_port];
 	for (i = 0; i < nb_rx; i++) {
 		mb = pkts_burst[i];
-		eth_hdr = (struct ether_hdr *) mb->data;
+		eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
 
 		/* Swap dest and src mac addresses. */
 		ether_addr_copy(&eth_hdr->d_addr, &addr);

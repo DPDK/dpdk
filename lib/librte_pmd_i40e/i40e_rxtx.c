@@ -78,9 +78,7 @@
 	(uint64_t) ((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
 
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	((uint64_t)((mb)->buf_physaddr + \
-	(uint64_t)((char *)((mb)->data) - \
-	(char *)(mb)->buf_addr)))
+	((uint64_t)((mb)->buf_physaddr + (mb)->data_off))
 
 static const struct rte_memzone *
 i40e_ring_dma_zone_reserve(struct rte_eth_dev *dev,
@@ -685,7 +683,7 @@ i40e_rx_alloc_bufs(struct i40e_rx_queue *rxq)
 		mb = rxep[i].mbuf;
 		rte_mbuf_refcnt_set(mb, 1);
 		mb->next = NULL;
-		mb->data = (char *)mb->buf_addr + RTE_PKTMBUF_HEADROOM;
+		mb->data_off = RTE_PKTMBUF_HEADROOM;
 		mb->nb_segs = 1;
 		mb->port = rxq->port_id;
 		dma_addr = rte_cpu_to_le_64(\
@@ -842,8 +840,8 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rx_packet_len = ((qword1 & I40E_RXD_QW1_LENGTH_PBUF_MASK) >>
 				I40E_RXD_QW1_LENGTH_PBUF_SHIFT) - rxq->crc_len;
 
-		rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
-		rte_prefetch0(rxm->data);
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_prefetch0(RTE_PTR_ADD(rxm->buf_addr, RTE_PKTMBUF_HEADROOM));
 		rxm->nb_segs = 1;
 		rxm->next = NULL;
 		rxm->pkt_len = rx_packet_len;
@@ -946,7 +944,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		rx_packet_len = (qword1 & I40E_RXD_QW1_LENGTH_PBUF_MASK) >>
 					I40E_RXD_QW1_LENGTH_PBUF_SHIFT;
 		rxm->data_len = rx_packet_len;
-		rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 
 		/**
 		 * If this is the first buffer of the received packet, set the
@@ -1015,7 +1013,8 @@ i40e_recv_scattered_pkts(void *rx_queue,
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
 
 		/* Prefetch data of first segment, if configured to do so. */
-		rte_prefetch0(first_seg->data);
+		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr,
+			first_seg->data_off));
 		rx_pkts[nb_rx++] = first_seg;
 		first_seg = NULL;
 	}
@@ -2131,7 +2130,7 @@ i40e_alloc_rx_queue_mbufs(struct i40e_rx_queue *rxq)
 
 		rte_mbuf_refcnt_set(mbuf, 1);
 		mbuf->next = NULL;
-		mbuf->data = (char *)mbuf->buf_addr + RTE_PKTMBUF_HEADROOM;
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 		mbuf->nb_segs = 1;
 		mbuf->port = rxq->port_id;
 

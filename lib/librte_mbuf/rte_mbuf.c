@@ -117,7 +117,7 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	m->buf_len = (uint16_t)buf_len;
 
 	/* keep some headroom between start of buffer and data */
-	m->data = (char*) m->buf_addr + RTE_MIN(RTE_PKTMBUF_HEADROOM, m->buf_len);
+	m->data_off = RTE_MIN(RTE_PKTMBUF_HEADROOM, (uint16_t)m->buf_len);
 
 	/* init some constant fields */
 	m->pool = mp;
@@ -183,12 +183,12 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 		__rte_mbuf_sanity_check(m, 0);
 
 		fprintf(f, "  segment at 0x%p, data=0x%p, data_len=%u\n",
-		       m, m->data, (unsigned)m->data_len);
+			m, rte_pktmbuf_mtod(m, void *), (unsigned)m->data_len);
 		len = dump_len;
 		if (len > m->data_len)
 			len = m->data_len;
 		if (len != 0)
-			rte_hexdump(f, NULL, m->data, len);
+			rte_hexdump(f, NULL, rte_pktmbuf_mtod(m, void *), len);
 		dump_len -= len;
 		m = m->next;
 		nb_segs --;

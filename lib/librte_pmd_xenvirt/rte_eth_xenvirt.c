@@ -110,7 +110,7 @@ eth_xenvirt_rx(void *q, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm = rx_pkts[i];
 		PMD_RX_LOG(DEBUG, "packet len:%d\n", len[i]);
 		rxm->next = NULL;
-		rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 		rxm->data_len = (uint16_t)(len[i] - sizeof(struct virtio_net_hdr));
 		rxm->nb_segs = 1;
 		rxm->port = pi->port_id;

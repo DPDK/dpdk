@@ -119,7 +119,7 @@ pkt_burst_mac_retry_forward(struct fwd_stream *fs)
 	fs->rx_packets += nb_rx;
 	for (i = 0; i < nb_rx; i++) {
 		mb = pkts_burst[i];
-		eth_hdr = (struct ether_hdr *) mb->data;
+		eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
 		ether_addr_copy(&peer_eth_addrs[fs->peer_addr],
 				&eth_hdr->d_addr);
 		ether_addr_copy(&ports[fs->tx_port].eth_addr,

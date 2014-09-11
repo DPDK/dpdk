@@ -149,7 +149,7 @@ pkt_burst_receive(struct fwd_stream *fs)
 			rte_pktmbuf_free(mb);
 			continue;
 		}
-		eth_hdr = (struct ether_hdr *) mb->data;
+		eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
 		eth_type = RTE_BE_TO_CPU_16(eth_hdr->ether_type);
 		ol_flags = mb->ol_flags;
 		print_ether_addr("  src=", &eth_hdr->s_addr);

@@ -162,7 +162,8 @@ kni_net_rx_normal(struct kni_dev *kni)
 	for (i = 0; i < num; i++) {
 		kva = (void *)va[i] - kni->mbuf_va + kni->mbuf_kva;
 		len = kva->data_len;
-		data_kva = kva->data - kni->mbuf_va + kni->mbuf_kva;
+		data_kva = kva->buf_addr + kva->data_off - kni->mbuf_va
+				+ kni->mbuf_kva;
 
 		skb = dev_alloc_skb(len + 2);
 		if (!skb) {
@@ -246,13 +247,14 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 		for (i = 0; i < num; i++) {
 			kva = (void *)va[i] - kni->mbuf_va + kni->mbuf_kva;
 			len = kva->pkt_len;
-			data_kva = kva->data - kni->mbuf_va +
-						kni->mbuf_kva;
+			data_kva = kva->buf_addr + kva->data_off -
+					kni->mbuf_va + kni->mbuf_kva;
 
 			alloc_kva = (void *)alloc_va[i] - kni->mbuf_va +
 							kni->mbuf_kva;
-			alloc_data_kva = alloc_kva->data - kni->mbuf_va +
-								kni->mbuf_kva;
+			alloc_data_kva = alloc_kva->buf_addr +
+					alloc_kva->data_off - kni->mbuf_va +
+							kni->mbuf_kva;
 			memcpy(alloc_data_kva, data_kva, len);
 			alloc_kva->pkt_len = len;
 			alloc_kva->data_len = len;
@@ -321,7 +323,8 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 	for (i = 0; i < num; i++) {
 		kva = (void *)va[i] - kni->mbuf_va + kni->mbuf_kva;
 		len = kva->data_len;
-		data_kva = kva->data - kni->mbuf_va + kni->mbuf_kva;
+		data_kva = kva->buf_addr + kva->data_off - kni->mbuf_va +
+				kni->mbuf_kva;
 
 		skb = dev_alloc_skb(len + 2);
 		if (skb == NULL)
@@ -423,7 +426,8 @@ kni_net_tx(struct sk_buff *skb, struct net_device *dev)
 		void *data_kva;
 
 		pkt_kva = (void *)pkt_va - kni->mbuf_va + kni->mbuf_kva;
-		data_kva = pkt_kva->data - kni->mbuf_va + kni->mbuf_kva;
+		data_kva = pkt_kva->buf_addr + pkt_kva->data_off - kni->mbuf_va
+				+ kni->mbuf_kva;
 
 		len = skb->len;
 		memcpy(data_kva, skb->data, len);

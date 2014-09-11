@@ -79,8 +79,7 @@
 
 
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	(uint64_t) ((mb)->buf_physaddr + (uint64_t)((char *)((mb)->data) - \
-	(char *)(mb)->buf_addr))
+	(uint64_t) ((mb)->buf_physaddr + (mb)->data_off)
 
 #define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
 	(uint64_t) ((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
@@ -565,7 +564,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rxm->data_len = (uint16_t)rcd->len;
 			rxm->port = rxq->port_id;
 			rxm->vlan_tci = 0;
-			rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+			rxm->data_off = RTE_PKTMBUF_HEADROOM;
 
 			rx_pkts[nb_rx++] = rxm;
 

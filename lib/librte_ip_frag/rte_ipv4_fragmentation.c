@@ -109,7 +109,7 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 	/* Fragment size should be a multiply of 8. */
 	IP_FRAG_ASSERT((frag_size & IPV4_HDR_FO_MASK) == 0);
 
-	in_hdr = (struct ipv4_hdr *) pkt_in->data;
+	in_hdr = rte_pktmbuf_mtod(pkt_in, struct ipv4_hdr *);
 	flag_offset = rte_cpu_to_be_16(in_hdr->fragment_offset);
 
 	/* If Don't Fragment flag is set */
@@ -165,7 +165,7 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 			if (len > (in_seg->data_len - in_seg_data_pos)) {
 				len = in_seg->data_len - in_seg_data_pos;
 			}
-			out_seg->data = (char*) in_seg->data + (uint16_t)in_seg_data_pos;
+			out_seg->data_off = in_seg->data_off + in_seg_data_pos;
 			out_seg->data_len = (uint16_t)len;
 			out_pkt->pkt_len = (uint16_t)(len +
 			    out_pkt->pkt_len);
@@ -188,7 +188,7 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 
 		/* Build the IP header */
 
-		out_hdr = (struct ipv4_hdr*) out_pkt->data;
+		out_hdr = rte_pktmbuf_mtod(out_pkt, struct ipv4_hdr *);
 
 		__fill_ipv4hdr_frag(out_hdr, in_hdr,
 		    (uint16_t)out_pkt->pkt_len,

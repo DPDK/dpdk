@@ -432,7 +432,7 @@ test_pktmbuf_pool_ptr(void)
 			printf("rte_pktmbuf_alloc() failed (%u)\n", i);
 			ret = -1;
 		}
-		m[i]->data = RTE_PTR_ADD(m[i]->data, 64);
+		m[i]->data_off += 64;
 	}
 
 	/* free them */
@@ -451,8 +451,8 @@ test_pktmbuf_pool_ptr(void)
 			printf("rte_pktmbuf_alloc() failed (%u)\n", i);
 			ret = -1;
 		}
-		if (m[i]->data != RTE_PTR_ADD(m[i]->buf_addr, RTE_PKTMBUF_HEADROOM)) {
-			printf ("data pointer not set properly\n");
+		if (m[i]->data_off != RTE_PKTMBUF_HEADROOM) {
+			printf("invalid data_off\n");
 			ret = -1;
 		}
 	}

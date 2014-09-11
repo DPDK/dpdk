@@ -118,7 +118,7 @@ virtqueue_dequeue_burst_rx(struct virtqueue *vq, struct rte_mbuf **rx_pkts,
 		}
 
 		rte_prefetch0(cookie);
-		rte_packet_prefetch(cookie->data);
+		rte_packet_prefetch(rte_pktmbuf_mtod(cookie, void *));
 		rx_pkts[i]  = cookie;
 		vq->vq_used_cons_idx++;
 		vq_ring_free_chain(vq, desc_idx);
@@ -480,7 +480,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		}
 
 		rxm->port = rxvq->port_id;
-		rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 
 		rxm->nb_segs = 1;
 		rxm->next = NULL;
@@ -584,7 +584,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 		if (seg_num == 0)
 			seg_num = 1;
 
-		rxm->data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 		rxm->nb_segs = seg_num;
 		rxm->next = NULL;
 		rxm->pkt_len = (uint32_t)(len[0] - hdr_size);
@@ -622,9 +622,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 			while (extra_idx < rcv_cnt) {
 				rxm = rcv_pkts[extra_idx];
 
-				rxm->data =
-					(char *)rxm->buf_addr +
-					RTE_PKTMBUF_HEADROOM - hdr_size;
+				rxm->data_off = RTE_PKTMBUF_HEADROOM - hdr_size;
 				rxm->next = NULL;
 				rxm->pkt_len = (uint32_t)(len[extra_idx]);
 				rxm->data_len = (uint16_t)(len[extra_idx]);

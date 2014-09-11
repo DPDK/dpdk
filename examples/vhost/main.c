@@ -1033,7 +1033,7 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 
 		/* Copy mbuf data to buffer */
 		rte_memcpy((void *)(uintptr_t)buff_addr,
-			(const void *)buff->data,
+			rte_pktmbuf_mtod(buff, const void *),
 			rte_pktmbuf_data_len(buff));
 		PRINT_PACKET(dev, (uintptr_t)buff_addr,
 			rte_pktmbuf_data_len(buff), 0);
@@ -1438,7 +1438,7 @@ link_vmdq(struct virtio_net *dev, struct rte_mbuf *m)
 	int i, ret;
 
 	/* Learn MAC address of guest device from packet */
-	pkt_hdr = (struct ether_hdr *)m->data;
+	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
 	dev_ll = ll_root_used;
 
@@ -1525,7 +1525,7 @@ virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
 	struct ether_hdr *pkt_hdr;
 	uint64_t ret = 0;
 
-	pkt_hdr = (struct ether_hdr *)m->data;
+	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
 	/*get the used devices list*/
 	dev_ll = ll_root_used;
@@ -1593,7 +1593,7 @@ virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *
 	unsigned len, ret, offset = 0;
 	const uint16_t lcore_id = rte_lcore_id();
 	struct virtio_net_data_ll *dev_ll = ll_root_used;
-	struct ether_hdr *pkt_hdr = (struct ether_hdr *)m->data;
+	struct ether_hdr *pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
 	/*check if destination is local VM*/
 	if ((vm2vm_mode == VM2VM_SOFTWARE) && (virtio_tx_local(dev, m) == 0))
@@ -1652,18 +1652,21 @@ virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *
 	mbuf->nb_segs = m->nb_segs;
 
 	/* Copy ethernet header to mbuf. */
-	rte_memcpy((void*)mbuf->data, (const void*)m->data, ETH_HLEN);
+	rte_memcpy(rte_pktmbuf_mtod(mbuf, void *),
+		rte_pktmbuf_mtod(m, const void *),
+		ETH_HLEN);
 
 
 	/* Setup vlan header. Bytes need to be re-ordered for network with htons()*/
-	vlan_hdr = (struct vlan_ethhdr *) mbuf->data;
+	vlan_hdr = rte_pktmbuf_mtod(mbuf, struct vlan_ethhdr *);
 	vlan_hdr->h_vlan_encapsulated_proto = vlan_hdr->h_vlan_proto;
 	vlan_hdr->h_vlan_proto = htons(ETH_P_8021Q);
 	vlan_hdr->h_vlan_TCI = htons(vlan_tag);
 
 	/* Copy the remaining packet contents to the mbuf. */
-	rte_memcpy((void*) ((uint8_t*)mbuf->data + VLAN_ETH_HLEN),
-		(const void*) ((uint8_t*)m->data + ETH_HLEN), (m->data_len - ETH_HLEN));
+	rte_memcpy((void *)(rte_pktmbuf_mtod(mbuf, uint8_t *) + VLAN_ETH_HLEN),
+		(const void *)(rte_pktmbuf_mtod(m, uint8_t *) + ETH_HLEN),
+		(m->data_len - ETH_HLEN));
 
 	/* Copy the remaining segments for the whole packet. */
 	prev = mbuf;
@@ -1778,7 +1781,7 @@ virtio_dev_tx(struct virtio_net* dev, struct rte_mempool *mbuf_pool)
 		/* Setup dummy mbuf. This is copied to a real mbuf if transmitted out the physical port. */
 		m.data_len = desc->len;
 		m.pkt_len = desc->len;
-		m.data = (void*)(uintptr_t)buff_addr;
+		m.data_off = 0;
 
 		PRINT_PACKET(dev, (uintptr_t)buff_addr, desc->len, 0);
 
@@ -2333,7 +2336,7 @@ attach_rxmbuf_zcp(struct virtio_net *dev)
 	}
 
 	mbuf->buf_addr = (void *)(uintptr_t)(buff_addr - RTE_PKTMBUF_HEADROOM);
-	mbuf->data = (void *)(uintptr_t)(buff_addr);
+	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 	mbuf->buf_physaddr = phys_addr - RTE_PKTMBUF_HEADROOM;
 	mbuf->data_len = desc->len;
 	MBUF_HEADROOM_UINT32(mbuf) = (uint32_t)desc_idx;
@@ -2370,7 +2373,7 @@ static inline void pktmbuf_detach_zcp(struct rte_mbuf *m)
 
 	buf_ofs = (RTE_PKTMBUF_HEADROOM <= m->buf_len) ?
 			RTE_PKTMBUF_HEADROOM : m->buf_len;
-	m->data = (char *) m->buf_addr + buf_ofs;
+	m->data_off = buf_ofs;
 
 	m->data_len = 0;
 }
@@ -2604,7 +2607,7 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 	unsigned len, ret, offset = 0;
 	struct vpool *vpool;
 	struct virtio_net_data_ll *dev_ll = ll_root_used;
-	struct ether_hdr *pkt_hdr = (struct ether_hdr *)m->data;
+	struct ether_hdr *pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 	uint16_t vlan_tag = (uint16_t)vlan_tags[(uint16_t)dev->device_fh];
 
 	/*Add packet to the port tx queue*/
@@ -2681,11 +2684,11 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 	mbuf->pkt_len = mbuf->data_len;
 	if (unlikely(need_copy)) {
 		/* Copy the packet contents to the mbuf. */
-		rte_memcpy((void *)((uint8_t *)mbuf->data),
-			(const void *) ((uint8_t *)m->data),
+		rte_memcpy(rte_pktmbuf_mtod(mbuf, void *),
+			rte_pktmbuf_mtod(m, void *),
 			m->data_len);
 	} else {
-		mbuf->data = m->data;
+		mbuf->data_off = m->data_off;
 		mbuf->buf_physaddr = m->buf_physaddr;
 		mbuf->buf_addr = m->buf_addr;
 	}
@@ -2819,8 +2822,8 @@ virtio_dev_tx_zcp(struct virtio_net *dev)
 		m.data_len = desc->len;
 		m.nb_segs = 1;
 		m.next = NULL;
-		m.data = (void *)(uintptr_t)buff_addr;
-		m.buf_addr = m.data;
+		m.data_off = 0;
+		m.buf_addr = (void *)(uintptr_t)buff_addr;
 		m.buf_physaddr = phys_addr;
 
 		/*

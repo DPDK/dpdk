@@ -330,7 +330,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	nb_replies = 0;
 	for (i = 0; i < nb_rx; i++) {
 		pkt = pkts_burst[i];
-		eth_h = (struct ether_hdr *) pkt->data;
+		eth_h = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
 		eth_type = RTE_BE_TO_CPU_16(eth_h->ether_type);
 		l2_len = sizeof(struct ether_hdr);
 		if (verbose_level > 0) {

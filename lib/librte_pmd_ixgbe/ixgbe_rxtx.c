@@ -997,7 +997,7 @@ ixgbe_rx_alloc_bufs(struct igb_rx_queue *rxq)
 		mb = rxep[i].mbuf;
 		rte_mbuf_refcnt_set(mb, 1);
 		mb->next = NULL;
-		mb->data = (char *)mb->buf_addr + RTE_PKTMBUF_HEADROOM;
+		mb->data_off = RTE_PKTMBUF_HEADROOM;
 		mb->nb_segs = 1;
 		mb->port = rxq->port_id;
 
@@ -1248,8 +1248,8 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		pkt_len = (uint16_t) (rte_le_to_cpu_16(rxd.wb.upper.length) -
 				      rxq->crc_len);
-		rxm->data = (char*) rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
-		rte_packet_prefetch(rxm->data);
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_packet_prefetch((char *)rxm->buf_addr + rxm->data_off);
 		rxm->nb_segs = 1;
 		rxm->next = NULL;
 		rxm->pkt_len = pkt_len;
@@ -1431,7 +1431,7 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		data_len = rte_le_to_cpu_16(rxd.wb.upper.length);
 		rxm->data_len = data_len;
-		rxm->data = (char*) rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 
 		/*
 		 * If this is the first buffer of the received packet,
@@ -1522,7 +1522,8 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 
 		/* Prefetch data of first segment, if configured to do so. */
-		rte_packet_prefetch(first_seg->data);
+		rte_packet_prefetch((char *)first_seg->buf_addr +
+			first_seg->data_off);
 
 		/*
 		 * Store the mbuf address into the next entry of the array
@@ -3212,7 +3213,7 @@ ixgbe_alloc_rx_queue_mbufs(struct igb_rx_queue *rxq)
 
 		rte_mbuf_refcnt_set(mbuf, 1);
 		mbuf->next = NULL;
-		mbuf->data = (char *)mbuf->buf_addr + RTE_PKTMBUF_HEADROOM;
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 		mbuf->nb_segs = 1;
 		mbuf->port = rxq->port_id;
 
