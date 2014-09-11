@@ -164,12 +164,11 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
  *   numbers of DD bit
  * - don't support ol_flags for rss and csum err
  */
-uint16_t
-ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
-		uint16_t nb_pkts)
+static inline uint16_t
+_recv_raw_pkts_vec(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts, uint8_t *split_packet)
 {
 	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct igb_rx_queue *rxq = rx_queue;
 	struct igb_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
 	int pos;
@@ -182,7 +181,7 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 				-rxq->crc_len, /* sub crc on data_len */
 				0            /* ignore pkt_type field */
 			);
-	__m128i dd_check;
+	__m128i dd_check, eop_check;
 
 	if (unlikely(nb_pkts < RTE_IXGBE_VPMD_RX_BURST))
 		return 0;
@@ -207,6 +206,9 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	/* 4 packets DD mask */
 	dd_check = _mm_set_epi64x(0x0000000100000001LL, 0x0000000100000001LL);
 
+	/* 4 packets EOP mask */
+	eop_check = _mm_set_epi64x(0x0000000200000002LL, 0x0000000200000002LL);
+
 	/* mask to shuffle from desc. to mbuf */
 	shuf_msk = _mm_set_epi8(
 		7, 6, 5, 4,  /* octet 4~7, 32bits rss */
@@ -218,7 +220,6 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		0xFF, 0xFF   /* skip pkt_type field */
 		);
 
-
 	/* Cache is empty -> need to scan the buffer rings, but first move
 	 * the next 'n' mbufs into the cache */
 	sw_ring = &rxq->sw_ring[rxq->rx_tail];
@@ -227,6 +228,7 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	 * A. load 4 packet in one loop
 	 * B. copy 4 mbuf point from swring to rx_pkts
 	 * C. calc the number of DD bits among the 4 packets
+	 * [C*. extract the end-of-packet bit, if requested]
 	 * D. fill info. from desc to mbuf
 	 */
 	for (pos = 0, nb_pkts_recd = 0; pos < RTE_IXGBE_VPMD_RX_BURST;
@@ -236,6 +238,13 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		__m128i pkt_mb1, pkt_mb2, pkt_mb3, pkt_mb4;
 		__m128i zero, staterr, sterr_tmp1, sterr_tmp2;
 		__m128i mbp1, mbp2; /* two mbuf pointer in one XMM reg. */
+
+		if (split_packet) {
+			rte_prefetch0(&rx_pkts[pos]->cacheline1);
+			rte_prefetch0(&rx_pkts[pos + 1]->cacheline1);
+			rte_prefetch0(&rx_pkts[pos + 2]->cacheline1);
+			rte_prefetch0(&rx_pkts[pos + 3]->cacheline1);
+		}
 
 		/* B.1 load 1 mbuf point */
 		mbp1 = _mm_loadu_si128((__m128i *)&sw_ring[pos]);
@@ -295,7 +304,34 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		pkt_mb2 = _mm_add_epi16(pkt_mb2, crc_adjust);
 		pkt_mb1 = _mm_add_epi16(pkt_mb1, crc_adjust);
 
-		/* C.3 calc avaialbe number of desc */
+		/* C* extract and record EOP bit */
+		if (split_packet) {
+			__m128i eop_shuf_mask = _mm_set_epi8(
+					0xFF, 0xFF, 0xFF, 0xFF,
+					0xFF, 0xFF, 0xFF, 0xFF,
+					0xFF, 0xFF, 0xFF, 0xFF,
+					0x04, 0x0C, 0x00, 0x08
+					);
+
+			/* and with mask to extract bits, flipping 1-0 */
+			__m128i eop_bits = _mm_andnot_si128(staterr, eop_check);
+			/* the staterr values are not in order, as the count
+			 * count of dd bits doesn't care. However, for end of
+			 * packet tracking, we do care, so shuffle. This also
+			 * compresses the 32-bit values to 8-bit */
+			eop_bits = _mm_shuffle_epi8(eop_bits, eop_shuf_mask);
+			/* store the resulting 32-bit value */
+			*(int *)split_packet = _mm_cvtsi128_si32(eop_bits);
+			split_packet += RTE_IXGBE_DESCS_PER_LOOP;
+
+			/* zero-out next pointers */
+			rx_pkts[pos]->next = NULL;
+			rx_pkts[pos + 1]->next = NULL;
+			rx_pkts[pos + 2]->next = NULL;
+			rx_pkts[pos + 3]->next = NULL;
+		}
+
+		/* C.3 calc available number of desc */
 		staterr = _mm_and_si128(staterr, dd_check);
 		staterr = _mm_packs_epi32(staterr, zero);
 
@@ -319,6 +355,127 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	return nb_pkts_recd;
 }
+
+/*
+ * vPMD receive routine, now only accept (nb_pkts == RTE_IXGBE_VPMD_RX_BURST)
+ * in one loop
+ *
+ * Notice:
+ * - nb_pkts < RTE_IXGBE_VPMD_RX_BURST, just return no packet
+ * - nb_pkts > RTE_IXGBE_VPMD_RX_BURST, only scan RTE_IXGBE_VPMD_RX_BURST
+ *   numbers of DD bit
+ * - don't support ol_flags for rss and csum err
+ */
+uint16_t
+ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	return _recv_raw_pkts_vec(rx_queue, rx_pkts, nb_pkts, NULL);
+}
+
+static inline uint16_t
+reassemble_packets(struct igb_rx_queue *rxq, struct rte_mbuf **rx_bufs,
+		uint16_t nb_bufs, uint8_t *split_flags)
+{
+	struct rte_mbuf *pkts[RTE_IXGBE_VPMD_RX_BURST]; /*finished pkts*/
+	struct rte_mbuf *start = rxq->pkt_first_seg;
+	struct rte_mbuf *end =  rxq->pkt_last_seg;
+	unsigned pkt_idx = 0, buf_idx = 0;
+
+
+	while (buf_idx < nb_bufs) {
+		if (end != NULL) {
+			/* processing a split packet */
+			end->next = rx_bufs[buf_idx];
+			rx_bufs[buf_idx]->data_len += rxq->crc_len;
+
+			start->nb_segs++;
+			start->pkt_len += rx_bufs[buf_idx]->data_len;
+			end = end->next;
+
+			if (!split_flags[buf_idx]) {
+				/* it's the last packet of the set */
+				start->hash = end->hash;
+				start->ol_flags = end->ol_flags;
+				/* we need to strip crc for the whole packet */
+				start->pkt_len -= rxq->crc_len;
+				if (end->data_len > rxq->crc_len)
+					end->data_len -= rxq->crc_len;
+				else {
+					/* free up last mbuf */
+					struct rte_mbuf *secondlast = start;
+					while (secondlast->next != end)
+						secondlast = secondlast->next;
+					secondlast->data_len -= (rxq->crc_len -
+							end->data_len);
+					secondlast->next = NULL;
+					rte_pktmbuf_free_seg(end);
+					end = secondlast;
+				}
+				pkts[pkt_idx++] = start;
+				start = end = NULL;
+			}
+		} else {
+			/* not processing a split packet */
+			if (!split_flags[buf_idx]) {
+				/* not a split packet, save and skip */
+				pkts[pkt_idx++] = rx_bufs[buf_idx];
+				continue;
+			}
+			end = start = rx_bufs[buf_idx];
+			rx_bufs[buf_idx]->data_len += rxq->crc_len;
+			rx_bufs[buf_idx]->pkt_len += rxq->crc_len;
+		}
+		buf_idx++;
+	}
+
+	/* save the partial packet for next time */
+	rxq->pkt_first_seg = start;
+	rxq->pkt_last_seg = end;
+	memcpy(rx_bufs, pkts, pkt_idx * (sizeof(*pkts)));
+	return pkt_idx;
+}
+
+/*
+ * vPMD receive routine that reassembles scattered packets
+ *
+ * Notice:
+ * - don't support ol_flags for rss and csum err
+ * - now only accept (nb_pkts == RTE_IXGBE_VPMD_RX_BURST)
+ */
+uint16_t
+ixgbe_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	struct igb_rx_queue *rxq = rx_queue;
+	uint8_t split_flags[RTE_IXGBE_VPMD_RX_BURST] = {0};
+
+	/* get some new buffers */
+	uint16_t nb_bufs = _recv_raw_pkts_vec(rxq, rx_pkts, nb_pkts,
+			split_flags);
+	if (nb_bufs == 0)
+		return 0;
+
+	/* happy day case, full burst + no packets to be joined */
+	const uint32_t *split_fl32 = (uint32_t *)split_flags;
+	if (rxq->pkt_first_seg == NULL &&
+			split_fl32[0] == 0 && split_fl32[1] == 0 &&
+			split_fl32[2] == 0 && split_fl32[3] == 0)
+		return nb_bufs;
+
+	/* reassemble any packets that need reassembly*/
+	unsigned i = 0;
+	if (rxq->pkt_first_seg == NULL) {
+		/* find the first split flag, and only reassemble then*/
+		while (!split_flags[i] && i < nb_bufs)
+			i++;
+		if (i == nb_bufs)
+			return nb_bufs;
+	}
+	return i + reassemble_packets(rxq, &rx_pkts[i], nb_bufs - i,
+		&split_flags[i]);
+}
+
 static inline void
 vtx1(volatile union ixgbe_adv_tx_desc *txdp,
 		struct rte_mbuf *pkt, uint64_t flags)

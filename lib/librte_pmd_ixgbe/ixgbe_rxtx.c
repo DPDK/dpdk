@@ -3476,12 +3476,20 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
 				2 * IXGBE_VLAN_TAG_SIZE) > buf_size){
 			dev->data->scattered_rx = 1;
+#ifdef RTE_IXGBE_INC_VECTOR
+			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts_vec;
+#else
 			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
+#endif
 		}
 	}
 
 	if (dev->data->dev_conf.rxmode.enable_scatter) {
+#ifdef RTE_IXGBE_INC_VECTOR
+		dev->rx_pkt_burst = ixgbe_recv_scattered_pkts_vec;
+#else
 		dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
+#endif
 		dev->data->scattered_rx = 1;
 	}
 
@@ -3969,12 +3977,20 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 		if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
 				2 * IXGBE_VLAN_TAG_SIZE) > buf_size) {
 			dev->data->scattered_rx = 1;
+#ifdef RTE_IXGBE_INC_VECTOR
+			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts_vec;
+#else
 			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
+#endif
 		}
 	}
 
 	if (dev->data->dev_conf.rxmode.enable_scatter) {
+#ifdef RTE_IXGBE_INC_VECTOR
+		dev->rx_pkt_burst = ixgbe_recv_scattered_pkts_vec;
+#else
 		dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
+#endif
 		dev->data->scattered_rx = 1;
 	}
 

@@ -244,8 +244,12 @@ struct ixgbe_txq_ops {
 			 IXGBE_ADVTXD_DCMD_EOP)
 
 #ifdef RTE_IXGBE_INC_VECTOR
-uint16_t ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
-uint16_t ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+uint16_t ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+uint16_t ixgbe_recv_scattered_pkts_vec(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
 int ixgbe_txq_vec_setup(struct igb_tx_queue *txq);
 int ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq);
 int ixgbe_rx_vec_condition_check(struct rte_eth_dev *dev);
