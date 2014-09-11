@@ -50,6 +50,28 @@ extern "C" {
 #include <stdint.h>
 #include <rte_mbuf.h>
 
+/**
+ * Macros to allow accessing metadata stored in the mbuf headroom
+ * just beyond the end of the mbuf data structure returned by a port
+ */
+#define RTE_MBUF_METADATA_UINT8(mbuf, offset)              \
+	(((uint8_t *)&(mbuf)[1])[offset])
+#define RTE_MBUF_METADATA_UINT16(mbuf, offset)             \
+	(((uint16_t *)&(mbuf)[1])[offset/sizeof(uint16_t)])
+#define RTE_MBUF_METADATA_UINT32(mbuf, offset)             \
+	(((uint32_t *)&(mbuf)[1])[offset/sizeof(uint32_t)])
+#define RTE_MBUF_METADATA_UINT64(mbuf, offset)             \
+	(((uint64_t *)&(mbuf)[1])[offset/sizeof(uint64_t)])
+
+#define RTE_MBUF_METADATA_UINT8_PTR(mbuf, offset)          \
+	(&RTE_MBUF_METADATA_UINT8(mbuf, offset))
+#define RTE_MBUF_METADATA_UINT16_PTR(mbuf, offset)         \
+	(&RTE_MBUF_METADATA_UINT16(mbuf, offset))
+#define RTE_MBUF_METADATA_UINT32_PTR(mbuf, offset)         \
+	(&RTE_MBUF_METADATA_UINT32(mbuf, offset))
+#define RTE_MBUF_METADATA_UINT64_PTR(mbuf, offset)         \
+	(&RTE_MBUF_METADATA_UINT64(mbuf, offset))
+
 /*
  * Port IN
  *

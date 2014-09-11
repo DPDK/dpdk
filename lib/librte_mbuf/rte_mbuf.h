@@ -173,24 +173,6 @@ struct rte_mbuf {
 
 } __rte_cache_aligned;
 
-#define RTE_MBUF_METADATA_UINT8(mbuf, offset)              \
-	(((uint8_t *)&(mbuf)[1])[offset])
-#define RTE_MBUF_METADATA_UINT16(mbuf, offset)             \
-	(((uint16_t *)&(mbuf)[1])[offset/sizeof(uint16_t)])
-#define RTE_MBUF_METADATA_UINT32(mbuf, offset)             \
-	(((uint32_t *)&(mbuf)[1])[offset/sizeof(uint32_t)])
-#define RTE_MBUF_METADATA_UINT64(mbuf, offset)             \
-	(((uint64_t *)&(mbuf)[1])[offset/sizeof(uint64_t)])
-
-#define RTE_MBUF_METADATA_UINT8_PTR(mbuf, offset)          \
-	(&RTE_MBUF_METADATA_UINT8(mbuf, offset))
-#define RTE_MBUF_METADATA_UINT16_PTR(mbuf, offset)         \
-	(&RTE_MBUF_METADATA_UINT16(mbuf, offset))
-#define RTE_MBUF_METADATA_UINT32_PTR(mbuf, offset)         \
-	(&RTE_MBUF_METADATA_UINT32(mbuf, offset))
-#define RTE_MBUF_METADATA_UINT64_PTR(mbuf, offset)         \
-	(&RTE_MBUF_METADATA_UINT64(mbuf, offset))
-
 /**
  * Given the buf_addr returns the pointer to corresponding mbuf.
  */
