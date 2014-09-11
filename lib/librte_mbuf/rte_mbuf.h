@@ -115,14 +115,22 @@ extern "C" {
  */
 #define PKT_TX_OFFLOAD_MASK (PKT_TX_VLAN_PKT | PKT_TX_IP_CKSUM | PKT_TX_L4_MASK)
 
+/* define a set of marker types that can be used to refer to set points in the
+ * mbuf */
+typedef void    *MARKER[0];   /**< generic marker for a point in a structure */
+typedef uint64_t MARKER64[0]; /**< marker that allows us to overwrite 8 bytes
+                               * with a single assignment */
 /**
  * The generic rte_mbuf, containing a packet mbuf.
  */
 struct rte_mbuf {
+	MARKER cacheline0;
+
 	void *buf_addr;           /**< Virtual address of segment buffer. */
 	phys_addr_t buf_physaddr; /**< Physical address of segment buffer. */
 
 	/* next 8 bytes are initialised on RX descriptor rearm */
+	MARKER64 rearm_data;
 	uint16_t buf_len;         /**< Length of segment buffer. */
 	uint16_t data_off;
 
@@ -147,6 +155,7 @@ struct rte_mbuf {
 	uint64_t ol_flags;        /**< Offload features. */
 
 	/* remaining bytes are set on RX when pulling packet from descriptor */
+	MARKER rx_descriptor_fields1;
 	uint16_t reserved2;       /**< Unused field. Required for padding */
 	uint16_t data_len;        /**< Amount of data in segment buffer. */
 	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
