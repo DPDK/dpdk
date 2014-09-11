@@ -328,8 +328,10 @@ virtio_dev_cq_start(struct rte_eth_dev *dev)
 	struct virtio_hw *hw
 		= VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	virtio_dev_vring_start(hw->cvq, VTNET_CQ);
-	VIRTQUEUE_DUMP((struct virtqueue *)hw->cvq);
+	if (hw->cvq) {
+		virtio_dev_vring_start(hw->cvq, VTNET_CQ);
+		VIRTQUEUE_DUMP((struct virtqueue *)hw->cvq);
+	}
 }
 
 void
