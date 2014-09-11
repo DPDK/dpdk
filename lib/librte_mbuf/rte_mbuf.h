@@ -126,7 +126,6 @@ struct rte_mbuf {
 	uint16_t buf_len;         /**< Length of segment buffer. */
 	uint16_t data_off;
 
-#ifdef RTE_MBUF_REFCNT
 	/**
 	 * 16-bit Reference counter.
 	 * It should only be accessed using the following functions:
@@ -136,21 +135,21 @@ struct rte_mbuf {
 	 * config option.
 	 */
 	union {
-		rte_atomic16_t refcnt_atomic;   /**< Atomically accessed refcnt */
-		uint16_t refcnt;                /**< Non-atomically accessed refcnt */
-	};
-#else
-	uint16_t refcnt_reserved;     /**< Do not use this field */
+#ifdef RTE_MBUF_REFCNT
+		rte_atomic16_t refcnt_atomic; /**< Atomically accessed refcnt */
+		uint16_t refcnt;              /**< Non-atomically accessed refcnt */
 #endif
-	uint8_t nb_segs;        /**< Number of segments. */
-	uint8_t port;           /**< Input port. */
+		uint16_t refcnt_reserved;     /**< Do not use this field */
+	};
+	uint8_t nb_segs;          /**< Number of segments. */
+	uint8_t port;             /**< Input port. */
 
-	uint64_t ol_flags;      /**< Offload features. */
+	uint64_t ol_flags;        /**< Offload features. */
 
 	/* remaining bytes are set on RX when pulling packet from descriptor */
-	uint16_t reserved2;     /**< Unused field. Required for padding */
-	uint16_t data_len;      /**< Amount of data in segment buffer. */
-	uint32_t pkt_len;       /**< Total pkt len: sum of all segments. */
+	uint16_t reserved2;       /**< Unused field. Required for padding */
+	uint16_t data_len;        /**< Amount of data in segment buffer. */
+	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
 	union {
 		uint16_t l2_l3_len; /**< combined l2/l3 lengths as single var */
 		struct {
@@ -158,15 +157,15 @@ struct rte_mbuf {
 			uint16_t l2_len:7;      /**< L2 (MAC) Header Length. */
 		};
 	};
-	uint16_t vlan_tci;      /**< VLAN Tag Control Identifier (CPU order). */
+	uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
 	union {
-		uint32_t rss;       /**< RSS hash result if RSS enabled */
+		uint32_t rss;     /**< RSS hash result if RSS enabled */
 		struct {
 			uint16_t hash;
 			uint16_t id;
-		} fdir;             /**< Filter identifier if FDIR enabled */
-		uint32_t sched;     /**< Hierarchical scheduler */
-	} hash;                 /**< hash information */
+		} fdir;           /**< Filter identifier if FDIR enabled */
+		uint32_t sched;   /**< Hierarchical scheduler */
+	} hash;                   /**< hash information */
 
 	/* fields only used in slow path or on TX */
 	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
