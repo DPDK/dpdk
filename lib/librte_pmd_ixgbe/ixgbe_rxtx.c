@@ -2166,7 +2166,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		if (!ixgbe_rx_vec_condition_check(dev)) {
 			PMD_INIT_LOG(INFO, "Vector rx enabled, please make "
 				     "sure RX burst size no less than 32.\n");
-			ixgbe_rxq_vec_setup(rxq, socket_id);
+			ixgbe_rxq_vec_setup(rxq);
 			dev->rx_pkt_burst = ixgbe_recv_pkts_vec;
 		}
 #endif

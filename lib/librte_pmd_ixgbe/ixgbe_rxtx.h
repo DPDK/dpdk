@@ -115,6 +115,7 @@ struct igb_rx_queue {
 	struct igb_rx_entry *sw_ring; /**< address of RX software ring. */
 	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet. */
 	struct rte_mbuf *pkt_last_seg; /**< Last segment of current packet. */
+	uint64_t            mbuf_initializer; /**< value to init mbufs */
 	uint16_t            nb_rx_desc; /**< number of RX descriptors. */
 	uint16_t            rx_tail;  /**< current value of RDT register. */
 	uint16_t            nb_rx_hold; /**< number of held free RX desc. */
@@ -126,7 +127,6 @@ struct igb_rx_queue {
 #ifdef RTE_IXGBE_INC_VECTOR
 	uint16_t            rxrearm_nb; /**< the idx we start the re-arming from */
 	uint16_t            rxrearm_start;  /**< number of remaining to be re-armed */
-	__m128i             misc_info;  /**< cache XMM combine port_id/crc/nb_segs */
 #endif
 	uint16_t            rx_free_thresh; /**< max free RX desc to hold. */
 	uint16_t            queue_id; /**< RX queue index. */
@@ -259,7 +259,7 @@ struct ixgbe_txq_ops {
 uint16_t ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 uint16_t ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 int ixgbe_txq_vec_setup(struct igb_tx_queue *txq, unsigned int socket_id);
-int ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq, unsigned int socket_id);
+int ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq);
 int ixgbe_rx_vec_condition_check(struct rte_eth_dev *dev);
 #endif
 

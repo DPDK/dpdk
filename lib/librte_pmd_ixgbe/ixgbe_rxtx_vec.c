@@ -47,15 +47,11 @@
 static inline void
 ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
 {
-	static const struct rte_mbuf mb_def = {
-		.nb_segs = 1,
-	};
 	int i;
 	uint16_t rx_id;
 	volatile union ixgbe_adv_rx_desc *rxdp;
 	struct igb_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
 	struct rte_mbuf *mb0, *mb1;
-	__m128i def_low;
 	__m128i hdr_room = _mm_set_epi64x(RTE_PKTMBUF_HEADROOM,
 			RTE_PKTMBUF_HEADROOM);
 
@@ -66,8 +62,6 @@ ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
 
 	rxdp = rxq->rx_ring + rxq->rxrearm_start;
 
-	def_low = _mm_load_si128((__m128i *)&(mb_def.next));
-
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
 	for (i = 0; i < RTE_IXGBE_RXQ_REARM_THRESH; i += 2, rxep += 2) {
 		__m128i dma_addr0, dma_addr1;
@@ -76,33 +70,25 @@ ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
 		mb0 = rxep[0].mbuf;
 		mb1 = rxep[1].mbuf;
 
+		/* flush mbuf with pkt template */
+		mb0->rearm_data[0] = rxq->mbuf_initializer;
+		mb1->rearm_data[0] = rxq->mbuf_initializer;
+
 		/* load buf_addr(lo 64bit) and buf_physaddr(hi 64bit) */
 		vaddr0 = _mm_loadu_si128((__m128i *)&(mb0->buf_addr));
 		vaddr1 = _mm_loadu_si128((__m128i *)&(mb1->buf_addr));
-
-		/* calc va/pa of pkt data point */
-		vaddr0 = _mm_add_epi64(vaddr0, hdr_room);
-		vaddr1 = _mm_add_epi64(vaddr1, hdr_room);
 
 		/* convert pa to dma_addr hdr/data */
 		dma_addr0 = _mm_unpackhi_epi64(vaddr0, vaddr0);
 		dma_addr1 = _mm_unpackhi_epi64(vaddr1, vaddr1);
 
-		/* fill va into t0 def pkt template */
-		vaddr0 = _mm_unpacklo_epi64(def_low, vaddr0);
-		vaddr1 = _mm_unpacklo_epi64(def_low, vaddr1);
+		/* add headroom to pa values */
+		dma_addr0 = _mm_add_epi64(dma_addr0, hdr_room);
+		dma_addr1 = _mm_add_epi64(dma_addr1, hdr_room);
 
 		/* flush desc with pa dma_addr */
 		_mm_store_si128((__m128i *)&rxdp++->read, dma_addr0);
 		_mm_store_si128((__m128i *)&rxdp++->read, dma_addr1);
-
-		/* flush mbuf with pkt template */
-		_mm_store_si128((__m128i *)&mb0->next, vaddr0);
-		_mm_store_si128((__m128i *)&mb1->next, vaddr1);
-
-		/* update refcnt per pkt */
-		rte_mbuf_refcnt_set(mb0, 1);
-		rte_mbuf_refcnt_set(mb1, 1);
 	}
 
 	rxq->rxrearm_start += RTE_IXGBE_RXQ_REARM_THRESH;
@@ -189,7 +175,13 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	int pos;
 	uint64_t var;
 	__m128i shuf_msk;
-	__m128i in_port;
+	__m128i crc_adjust = _mm_set_epi16(
+				0, 0, 0, 0, /* ignore non-length fields */
+				0,          /* ignore high-16bits of pkt_len */
+				-rxq->crc_len, /* sub crc on pkt_len */
+				-rxq->crc_len, /* sub crc on data_len */
+				0            /* ignore pkt_type field */
+			);
 	__m128i dd_check;
 
 	if (unlikely(nb_pkts < RTE_IXGBE_VPMD_RX_BURST))
@@ -222,17 +214,14 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		15, 14,      /* octet 14~15, low 16 bits vlan_macip */
 		0xFF, 0xFF,  /* skip high 16 bits pkt_len, zero out */
 		13, 12,      /* octet 12~13, low 16 bits pkt_len */
-		0xFF, 0xFF,  /* skip nb_segs and in_port, zero out */
-		13, 12       /* octet 12~13, 16 bits data_len */
+		13, 12,      /* octet 12~13, 16 bits data_len */
+		0xFF, 0xFF   /* skip pkt_type field */
 		);
 
 
 	/* Cache is empty -> need to scan the buffer rings, but first move
 	 * the next 'n' mbufs into the cache */
 	sw_ring = &rxq->sw_ring[rxq->rx_tail];
-
-	/* in_port, nb_seg = 1, crc_len */
-	in_port = rxq->misc_info;
 
 	/*
 	 * A. load 4 packet in one loop
@@ -285,8 +274,8 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		desc_to_olflags_v(descs, &rx_pkts[pos]);
 
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
-		pkt_mb4 = _mm_add_epi16(pkt_mb4, in_port);
-		pkt_mb3 = _mm_add_epi16(pkt_mb3, in_port);
+		pkt_mb4 = _mm_add_epi16(pkt_mb4, crc_adjust);
+		pkt_mb3 = _mm_add_epi16(pkt_mb3, crc_adjust);
 
 		/* D.1 pkt 1,2 convert format from desc to pktmbuf */
 		pkt_mb2 = _mm_shuffle_epi8(descs[1], shuf_msk);
@@ -297,23 +286,23 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		staterr = _mm_unpacklo_epi32(sterr_tmp1, sterr_tmp2);
 
 		/* D.3 copy final 3,4 data to rx_pkts */
-		_mm_storeu_si128((__m128i *)&(rx_pkts[pos+3]->data_len),
+		_mm_storeu_si128((void *)&rx_pkts[pos+3]->rx_descriptor_fields1,
 				pkt_mb4);
-		_mm_storeu_si128((__m128i *)&(rx_pkts[pos+2]->data_len),
+		_mm_storeu_si128((void *)&rx_pkts[pos+2]->rx_descriptor_fields1,
 				pkt_mb3);
 
 		/* D.2 pkt 1,2 set in_port/nb_seg and remove crc */
-		pkt_mb2 = _mm_add_epi16(pkt_mb2, in_port);
-		pkt_mb1 = _mm_add_epi16(pkt_mb1, in_port);
+		pkt_mb2 = _mm_add_epi16(pkt_mb2, crc_adjust);
+		pkt_mb1 = _mm_add_epi16(pkt_mb1, crc_adjust);
 
 		/* C.3 calc avaialbe number of desc */
 		staterr = _mm_and_si128(staterr, dd_check);
 		staterr = _mm_packs_epi32(staterr, zero);
 
 		/* D.3 copy final 1,2 data to rx_pkts */
-		_mm_storeu_si128((__m128i *)&(rx_pkts[pos+1]->data_len),
+		_mm_storeu_si128((void *)&rx_pkts[pos+1]->rx_descriptor_fields1,
 				pkt_mb2);
-		_mm_storeu_si128((__m128i *)&(rx_pkts[pos]->data_len),
+		_mm_storeu_si128((void *)&rx_pkts[pos]->rx_descriptor_fields1,
 				pkt_mb1);
 
 		/* C.4 calc avaialbe number of desc */
@@ -330,46 +319,19 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	return nb_pkts_recd;
 }
-
 static inline void
 vtx1(volatile union ixgbe_adv_tx_desc *txdp,
-		struct rte_mbuf *pkt, __m128i flags)
+		struct rte_mbuf *pkt, uint64_t flags)
 {
-	__m128i t0, t1, offset, ols, ba, ctl;
-
-	/* load buf_addr/buf_physaddr in t0 */
-	t0 = _mm_loadu_si128((__m128i *)&(pkt->buf_addr));
-	/* load data, ... pkt_len in t1 */
-	t1 = _mm_loadu_si128((__m128i *)&(pkt->data));
-
-	/* calc offset = (data - buf_adr) */
-	offset = _mm_sub_epi64(t1, t0);
-
-	/* cmd_type_len: pkt_len |= DCMD_DTYP_FLAGS */
-	ctl = _mm_or_si128(t1, flags);
-
-	/* reorder as buf_physaddr/buf_addr */
-	offset = _mm_shuffle_epi32(offset, 0x4E);
-
-	/* olinfo_stats: pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT */
-	ols = _mm_slli_epi32(t1, IXGBE_ADVTXD_PAYLEN_SHIFT);
-
-	/* buffer_addr = buf_physaddr + offset */
-	ba = _mm_add_epi64(t0, offset);
-
-	/* format cmd_type_len/olinfo_status */
-	ctl = _mm_unpackhi_epi32(ctl, ols);
-
-	/* format buf_physaddr/cmd_type_len */
-	ba = _mm_unpackhi_epi64(ba, ctl);
-
-	/* write desc */
-	_mm_store_si128((__m128i *)&txdp->read, ba);
+	__m128i descriptor = _mm_set_epi64x((uint64_t)pkt->pkt_len << 46 |
+			flags | pkt->data_len,
+			pkt->buf_physaddr + pkt->data_off);
+	_mm_store_si128((__m128i *)&txdp->read, descriptor);
 }
 
 static inline void
 vtx(volatile union ixgbe_adv_tx_desc *txdp,
-		struct rte_mbuf **pkt, uint16_t nb_pkts,  __m128i flags)
+		struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
 {
 	int i;
 	for (i = 0; i < nb_pkts; ++i, ++txdp, ++pkt)
@@ -456,9 +418,8 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct igb_tx_entry_v *txep;
 	struct igb_tx_entry_seq *txsp;
 	uint16_t n, nb_commit, tx_id;
-	__m128i flags = _mm_set_epi32(DCMD_DTYP_FLAGS, 0, 0, 0);
-	__m128i rs = _mm_set_epi32(IXGBE_ADVTXD_DCMD_RS|DCMD_DTYP_FLAGS,
-			0, 0, 0);
+	uint64_t flags = DCMD_DTYP_FLAGS;
+	uint64_t rs = IXGBE_ADVTXD_DCMD_RS|DCMD_DTYP_FLAGS;
 	int i;
 
 	if (unlikely(nb_pkts > RTE_IXGBE_VPMD_TX_BURST))
@@ -610,6 +571,23 @@ static struct ixgbe_txq_ops vec_txq_ops = {
 	.reset = ixgbe_reset_tx_queue,
 };
 
+int
+ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq)
+{
+	static struct rte_mbuf mb_def = {
+		.nb_segs = 1,
+		.data_off = RTE_PKTMBUF_HEADROOM,
+#ifdef RTE_MBUF_REFCNT
+		.refcnt = 1,
+#endif
+	};
+
+	mb_def.buf_len = rxq->mb_pool->elt_size - sizeof(struct rte_mbuf);
+	mb_def.port = rxq->port_id;
+	rxq->mbuf_initializer = *((uint64_t *)&mb_def.rearm_data);
+	return 0;
+}
+
 int ixgbe_txq_vec_setup(struct igb_tx_queue *txq,
 			unsigned int socket_id)
 {
@@ -633,21 +611,6 @@ int ixgbe_txq_vec_setup(struct igb_tx_queue *txq,
 		((struct igb_tx_entry_v *)txq->sw_ring + 1);
 	txq->sw_ring_seq += 1;
 	txq->ops = &vec_txq_ops;
-
-	return 0;
-}
-
-int ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq,
-			__rte_unused unsigned int socket_id)
-{
-	rxq->misc_info =
-		_mm_set_epi16(
-			0, 0, 0, 0, 0,
-			(uint16_t)-rxq->crc_len, /* sub crc on pkt_len */
-			(uint16_t)(rxq->port_id << 8 | 1),
-			/* 8b port_id and 8b nb_seg*/
-			(uint16_t)-rxq->crc_len  /* sub crc on data_len */
-			);
 
 	return 0;
 }
