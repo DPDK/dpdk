@@ -176,7 +176,8 @@ struct rte_mbuf {
 		uint32_t sched;   /**< Hierarchical scheduler */
 	} hash;                   /**< hash information */
 
-	/* fields only used in slow path or on TX */
+	/* second cache line - fields only used in slow path or on TX */
+	MARKER cacheline1 __rte_cache_aligned;
 	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
 	struct rte_mbuf *next;    /**< Next segment of scattered packet. */
 

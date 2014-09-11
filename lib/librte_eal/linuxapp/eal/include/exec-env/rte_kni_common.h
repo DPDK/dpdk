@@ -108,7 +108,7 @@ struct rte_kni_fifo {
  * Padding is necessary to assure the offsets of these fields
  */
 struct rte_kni_mbuf {
-	void *buf_addr;
+	void *buf_addr __attribute__((__aligned__(64)));
 	char pad0[10];
 	uint16_t data_off;      /**< Start address of data in segment buffer. */
 	char pad1[4];
@@ -117,9 +117,9 @@ struct rte_kni_mbuf {
 	uint16_t data_len;      /**< Amount of data in segment buffer. */
 	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
 	char pad3[8];
-	void *pool;
+	void *pool __attribute__((__aligned__(64)));
 	void *next;
-} __attribute__((__aligned__(64)));
+};
 
 /*
  * Struct used to create a KNI device. Passed to the kernel in IOCTL call
