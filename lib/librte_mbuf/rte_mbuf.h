@@ -159,13 +159,7 @@ struct rte_mbuf {
 	uint16_t reserved2;       /**< Unused field. Required for padding */
 	uint16_t data_len;        /**< Amount of data in segment buffer. */
 	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
-	union {
-		uint16_t l2_l3_len; /**< combined l2/l3 lengths as single var */
-		struct {
-			uint16_t l3_len:9;      /**< L3 (IP) Header Length. */
-			uint16_t l2_len:7;      /**< L2 (MAC) Header Length. */
-		};
-	};
+	uint16_t reserved;
 	uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
 	union {
 		uint32_t rss;     /**< RSS hash result if RSS enabled */
@@ -181,6 +175,14 @@ struct rte_mbuf {
 	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
 	struct rte_mbuf *next;    /**< Next segment of scattered packet. */
 
+	/* fields to support TX offloads */
+	union {
+		uint16_t l2_l3_len; /**< combined l2/l3 lengths as single var */
+		struct {
+			uint16_t l3_len:9;      /**< L3 (IP) Header Length. */
+			uint16_t l2_len:7;      /**< L2 (MAC) Header Length. */
+		};
+	};
 } __rte_cache_aligned;
 
 /**
