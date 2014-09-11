@@ -115,16 +115,12 @@ extern "C" {
  * The generic rte_mbuf, containing a packet mbuf.
  */
 struct rte_mbuf {
-	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
 	void *buf_addr;           /**< Virtual address of segment buffer. */
 	phys_addr_t buf_physaddr; /**< Physical address of segment buffer. */
-	uint16_t buf_len;         /**< Length of segment buffer. */
 
-	/* valid for any segment */
-	struct rte_mbuf *next;    /**< Next segment of scattered packet. */
+	/* next 8 bytes are initialised on RX descriptor rearm */
+	uint16_t buf_len;         /**< Length of segment buffer. */
 	uint16_t data_off;
-	uint16_t data_len;        /**< Amount of data in segment buffer. */
-	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
 
 #ifdef RTE_MBUF_REFCNT
 	/**
@@ -142,14 +138,17 @@ struct rte_mbuf {
 #else
 	uint16_t refcnt_reserved;     /**< Do not use this field */
 #endif
-	uint16_t reserved;            /**< Unused field. Required for padding */
-	uint16_t ol_flags;            /**< Offload features. */
-
-	/* these fields are valid for first segment only */
 	uint8_t nb_segs;        /**< Number of segments. */
 	uint8_t port;           /**< Input port. */
 
-	/* offload features, valid for first segment only */
+	uint16_t ol_flags;      /**< Offload features. */
+	uint16_t reserved0;     /**< Unused field. Required for padding */
+	uint32_t reserved1;     /**< Unused field. Required for padding */
+
+	/* remaining bytes are set on RX when pulling packet from descriptor */
+	uint16_t reserved2;     /**< Unused field. Required for padding */
+	uint16_t data_len;      /**< Amount of data in segment buffer. */
+	uint32_t pkt_len;       /**< Total pkt len: sum of all segments. */
 	union {
 		uint16_t l2_l3_len; /**< combined l2/l3 lengths as single var */
 		struct {
@@ -166,6 +165,10 @@ struct rte_mbuf {
 		} fdir;             /**< Filter identifier if FDIR enabled */
 		uint32_t sched;     /**< Hierarchical scheduler */
 	} hash;                 /**< hash information */
+
+	/* fields only used in slow path or on TX */
+	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
+	struct rte_mbuf *next;    /**< Next segment of scattered packet. */
 
 	union {
 		uint8_t metadata[0];

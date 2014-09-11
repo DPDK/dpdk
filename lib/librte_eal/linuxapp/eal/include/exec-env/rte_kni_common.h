@@ -108,15 +108,17 @@ struct rte_kni_fifo {
  * Padding is necessary to assure the offsets of these fields
  */
 struct rte_kni_mbuf {
-	void *pool;
 	void *buf_addr;
-	char pad0[16];
-	void *next;
+	char pad0[10];
 	uint16_t data_off;      /**< Start address of data in segment buffer. */
+	char pad1[4];
+	uint16_t ol_flags;      /**< Offload features. */
+	char pad2[8];
 	uint16_t data_len;      /**< Amount of data in segment buffer. */
 	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
-	char pad2[4];
-	uint16_t ol_flags;      /**< Offload features. */
+	char pad3[8];
+	void *pool;
+	void *next;
 } __attribute__((__aligned__(64)));
 
 /*
