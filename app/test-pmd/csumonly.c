@@ -217,9 +217,9 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint16_t nb_rx;
 	uint16_t nb_tx;
 	uint16_t i;
-	uint16_t ol_flags;
-	uint16_t pkt_ol_flags;
-	uint16_t tx_ol_flags;
+	uint64_t ol_flags;
+	uint64_t pkt_ol_flags;
+	uint64_t tx_ol_flags;
 	uint16_t l4_proto;
 	uint16_t eth_type;
 	uint8_t  l2_len;
@@ -261,7 +261,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		mb = pkts_burst[i];
 		l2_len  = sizeof(struct ether_hdr);
 		pkt_ol_flags = mb->ol_flags;
-		ol_flags = (uint16_t) (pkt_ol_flags & (~PKT_TX_L4_MASK));
+		ol_flags = (pkt_ol_flags & (~PKT_TX_L4_MASK));
 
 		eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
 		eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);

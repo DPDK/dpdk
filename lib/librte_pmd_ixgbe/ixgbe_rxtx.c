@@ -358,7 +358,7 @@ ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 static inline void
 ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		volatile struct ixgbe_adv_tx_context_desc *ctx_txd,
-		uint16_t ol_flags, uint32_t vlan_macip_lens)
+		uint64_t ol_flags, uint32_t vlan_macip_lens)
 {
 	uint32_t type_tucmd_mlhl;
 	uint32_t mss_l4len_idx;
@@ -421,7 +421,7 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
  * or create a new context descriptor.
  */
 static inline uint32_t
-what_advctx_update(struct igb_tx_queue *txq, uint16_t flags,
+what_advctx_update(struct igb_tx_queue *txq, uint64_t flags,
 		uint32_t vlan_macip_lens)
 {
 	/* If match with the current used context */
@@ -444,7 +444,7 @@ what_advctx_update(struct igb_tx_queue *txq, uint16_t flags,
 }
 
 static inline uint32_t
-tx_desc_cksum_flags_to_olinfo(uint16_t ol_flags)
+tx_desc_cksum_flags_to_olinfo(uint64_t ol_flags)
 {
 	static const uint32_t l4_olinfo[2] = {0, IXGBE_ADVTXD_POPTS_TXSM};
 	static const uint32_t l3_olinfo[2] = {0, IXGBE_ADVTXD_POPTS_IXSM};
@@ -456,7 +456,7 @@ tx_desc_cksum_flags_to_olinfo(uint16_t ol_flags)
 }
 
 static inline uint32_t
-tx_desc_vlan_flags_to_cmdtype(uint16_t ol_flags)
+tx_desc_vlan_flags_to_cmdtype(uint64_t ol_flags)
 {
 	static const uint32_t vlan_cmd[2] = {0, IXGBE_ADVTXD_DCMD_VLE};
 	return vlan_cmd[(ol_flags & PKT_TX_VLAN_PKT) != 0];
@@ -546,12 +546,12 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint32_t cmd_type_len;
 	uint32_t pkt_len;
 	uint16_t slen;
-	uint16_t ol_flags;
+	uint64_t ol_flags;
 	uint16_t tx_id;
 	uint16_t tx_last;
 	uint16_t nb_tx;
 	uint16_t nb_used;
-	uint16_t tx_ol_req;
+	uint64_t tx_ol_req;
 	uint32_t ctx = 0;
 	uint32_t new_ctx;
 
@@ -583,7 +583,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		vlan_macip_lens.f.l2_l3_len = tx_pkt->l2_l3_len;
 
 		/* If hardware offload required */
-		tx_ol_req = (uint16_t)(ol_flags & PKT_TX_OFFLOAD_MASK);
+		tx_ol_req = ol_flags & PKT_TX_OFFLOAD_MASK;
 		if (tx_ol_req) {
 			/* If new context need be built or reuse the exist ctx. */
 			ctx = what_advctx_update(txq, tx_ol_req,
@@ -813,19 +813,19 @@ end_of_tx:
  *  RX functions
  *
  **********************************************************************/
-static inline uint16_t
+static inline uint64_t
 rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
 {
 	uint16_t pkt_flags;
 
-	static uint16_t ip_pkt_types_map[16] = {
+	static uint64_t ip_pkt_types_map[16] = {
 		0, PKT_RX_IPV4_HDR, PKT_RX_IPV4_HDR_EXT, PKT_RX_IPV4_HDR_EXT,
 		PKT_RX_IPV6_HDR, 0, 0, 0,
 		PKT_RX_IPV6_HDR_EXT, 0, 0, 0,
 		PKT_RX_IPV6_HDR_EXT, 0, 0, 0,
 	};
 
-	static uint16_t ip_rss_types_map[16] = {
+	static uint64_t ip_rss_types_map[16] = {
 		0, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
 		0, PKT_RX_RSS_HASH, 0, PKT_RX_RSS_HASH,
 		PKT_RX_RSS_HASH, 0, 0, 0,
@@ -838,45 +838,44 @@ rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
 		0, 0, 0, 0,
 	};
 
-	pkt_flags = (uint16_t) ((hl_tp_rs & IXGBE_RXDADV_PKTTYPE_ETQF) ?
-				ip_pkt_etqf_map[(hl_tp_rs >> 4) & 0x07] :
-				ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F]);
+	pkt_flags = (hl_tp_rs & IXGBE_RXDADV_PKTTYPE_ETQF) ?
+			ip_pkt_etqf_map[(hl_tp_rs >> 4) & 0x07] :
+			ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F];
 #else
-	pkt_flags = (uint16_t) ((hl_tp_rs & IXGBE_RXDADV_PKTTYPE_ETQF) ? 0 :
-				ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F]);
+	pkt_flags = (hl_tp_rs & IXGBE_RXDADV_PKTTYPE_ETQF) ? 0 :
+			ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F];
 
 #endif
-	return (uint16_t)(pkt_flags | ip_rss_types_map[hl_tp_rs & 0xF]);
+	return pkt_flags | ip_rss_types_map[hl_tp_rs & 0xF];
 }
 
-static inline uint16_t
+static inline uint64_t
 rx_desc_status_to_pkt_flags(uint32_t rx_status)
 {
-	uint16_t pkt_flags;
+	uint64_t pkt_flags;
 
 	/*
 	 * Check if VLAN present only.
 	 * Do not check whether L3/L4 rx checksum done by NIC or not,
 	 * That can be found from rte_eth_rxmode.hw_ip_checksum flag
 	 */
-	pkt_flags = (uint16_t)((rx_status & IXGBE_RXD_STAT_VP) ?
-						PKT_RX_VLAN_PKT : 0);
+	pkt_flags = (rx_status & IXGBE_RXD_STAT_VP) ?  PKT_RX_VLAN_PKT : 0;
 
 #ifdef RTE_LIBRTE_IEEE1588
 	if (rx_status & IXGBE_RXD_STAT_TMST)
-		pkt_flags = (uint16_t)(pkt_flags | PKT_RX_IEEE1588_TMST);
+		pkt_flags = pkt_flags | PKT_RX_IEEE1588_TMST;
 #endif
 	return pkt_flags;
 }
 
-static inline uint16_t
+static inline uint64_t
 rx_desc_error_to_pkt_flags(uint32_t rx_status)
 {
 	/*
 	 * Bit 31: IPE, IPv4 checksum error
 	 * Bit 30: L4I, L4I integrity error
 	 */
-	static uint16_t error_to_pkt_flags_map[4] = {
+	static uint64_t error_to_pkt_flags_map[4] = {
 		0,  PKT_RX_L4_CKSUM_BAD, PKT_RX_IP_CKSUM_BAD,
 		PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD
 	};
@@ -947,10 +946,10 @@ ixgbe_rx_scan_hw_ring(struct igb_rx_queue *rxq)
 			mb->ol_flags  = rx_desc_hlen_type_rss_to_pkt_flags(
 					rxdp[j].wb.lower.lo_dword.data);
 			/* reuse status field from scan list */
-			mb->ol_flags = (uint16_t)(mb->ol_flags |
-					rx_desc_status_to_pkt_flags(s[j]));
-			mb->ol_flags = (uint16_t)(mb->ol_flags |
-					rx_desc_error_to_pkt_flags(s[j]));
+			mb->ol_flags = mb->ol_flags |
+					rx_desc_status_to_pkt_flags(s[j]);
+			mb->ol_flags = mb->ol_flags |
+					rx_desc_error_to_pkt_flags(s[j]);
 		}
 
 		/* Move mbuf pointers from the S/W ring to the stage */
@@ -1143,7 +1142,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t rx_id;
 	uint16_t nb_rx;
 	uint16_t nb_hold;
-	uint16_t pkt_flags;
+	uint64_t pkt_flags;
 
 	nb_rx = 0;
 	nb_hold = 0;
@@ -1261,10 +1260,8 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
 
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
-		pkt_flags = (uint16_t)(pkt_flags |
-				rx_desc_status_to_pkt_flags(staterr));
-		pkt_flags = (uint16_t)(pkt_flags |
-				rx_desc_error_to_pkt_flags(staterr));
+		pkt_flags = pkt_flags | rx_desc_status_to_pkt_flags(staterr);
+		pkt_flags = pkt_flags | rx_desc_error_to_pkt_flags(staterr);
 		rxm->ol_flags = pkt_flags;
 
 		if (likely(pkt_flags & PKT_RX_RSS_HASH))

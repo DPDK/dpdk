@@ -91,27 +91,27 @@ static uint16_t i40e_xmit_pkts_simple(void *tx_queue,
 				      uint16_t nb_pkts);
 
 /* Translate the rx descriptor status to pkt flags */
-static inline uint16_t
+static inline uint64_t
 i40e_rxd_status_to_pkt_flags(uint64_t qword)
 {
-	uint16_t flags;
+	uint64_t flags;
 
 	/* Check if VLAN packet */
-	flags = (uint16_t)(qword & (1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT) ?
-							PKT_RX_VLAN_PKT : 0);
+	flags = qword & (1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT) ?
+							PKT_RX_VLAN_PKT : 0;
 
 	/* Check if RSS_HASH */
-	flags |= (uint16_t)((((qword >> I40E_RX_DESC_STATUS_FLTSTAT_SHIFT) &
+	flags |= (((qword >> I40E_RX_DESC_STATUS_FLTSTAT_SHIFT) &
 					I40E_RX_DESC_FLTSTAT_RSS_HASH) ==
-			I40E_RX_DESC_FLTSTAT_RSS_HASH) ? PKT_RX_RSS_HASH : 0);
+			I40E_RX_DESC_FLTSTAT_RSS_HASH) ? PKT_RX_RSS_HASH : 0;
 
 	return flags;
 }
 
-static inline uint16_t
+static inline uint64_t
 i40e_rxd_error_to_pkt_flags(uint64_t qword)
 {
-	uint16_t flags = 0;
+	uint64_t flags = 0;
 	uint64_t error_bits = (qword >> I40E_RXD_QW1_ERROR_SHIFT);
 
 #define I40E_RX_ERR_BITS 0x3f
@@ -143,12 +143,12 @@ i40e_rxd_error_to_pkt_flags(uint64_t qword)
 }
 
 /* Translate pkt types to pkt flags */
-static inline uint16_t
+static inline uint64_t
 i40e_rxd_ptype_to_pkt_flags(uint64_t qword)
 {
 	uint8_t ptype = (uint8_t)((qword & I40E_RXD_QW1_PTYPE_MASK) >>
 					I40E_RXD_QW1_PTYPE_SHIFT);
-	static const uint16_t ip_ptype_map[I40E_MAX_PKT_TYPE] = {
+	static const uint64_t ip_ptype_map[I40E_MAX_PKT_TYPE] = {
 		0, /* PTYPE 0 */
 		0, /* PTYPE 1 */
 		0, /* PTYPE 2 */
@@ -567,7 +567,7 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 	uint32_t rx_status;
 	int32_t s[I40E_LOOK_AHEAD], nb_dd;
 	int32_t i, j, nb_rx = 0;
-	uint16_t pkt_flags;
+	uint64_t pkt_flags;
 
 	rxdp = &rxq->rx_ring[rxq->rx_tail];
 	rxep = &rxq->sw_ring[rxq->rx_tail];
@@ -789,7 +789,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint16_t rx_packet_len;
 	uint16_t rx_id, nb_hold;
 	uint64_t dma_addr;
-	uint16_t pkt_flags;
+	uint64_t pkt_flags;
 
 	nb_rx = 0;
 	nb_hold = 0;
@@ -896,10 +896,11 @@ i40e_recv_scattered_pkts(void *rx_queue,
 	struct rte_mbuf *last_seg = rxq->pkt_last_seg;
 	struct rte_mbuf *nmb, *rxm;
 	uint16_t rx_id = rxq->rx_tail;
-	uint16_t nb_rx = 0, nb_hold = 0, rx_packet_len, pkt_flags;
+	uint16_t nb_rx = 0, nb_hold = 0, rx_packet_len;
 	uint32_t rx_status;
 	uint64_t qword1;
 	uint64_t dma_addr;
+	uint64_t pkt_flags;
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -1046,7 +1047,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 
 /* Check if the context descriptor is needed for TX offloading */
 static inline uint16_t
-i40e_calc_context_desc(uint16_t flags)
+i40e_calc_context_desc(uint64_t flags)
 {
 	uint16_t mask = 0;
 
@@ -1075,7 +1076,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint32_t td_offset;
 	uint32_t tx_flags;
 	uint32_t td_tag;
-	uint16_t ol_flags;
+	uint64_t ol_flags;
 	uint8_t l2_len;
 	uint8_t l3_len;
 	uint16_t nb_used;

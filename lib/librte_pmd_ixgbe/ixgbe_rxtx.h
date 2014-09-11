@@ -177,7 +177,7 @@ union ixgbe_vlan_macip {
  */
 
 struct ixgbe_advctx_info {
-	uint16_t flags;           /**< ol_flags for context build. */
+	uint64_t flags;           /**< ol_flags for context build. */
 	uint32_t cmp_mask;        /**< compare mask for vlan_macip_lens */
 	union ixgbe_vlan_macip vlan_macip_lens; /**< vlan, mac ip length. */
 };

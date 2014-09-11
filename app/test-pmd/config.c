@@ -1714,14 +1714,14 @@ set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
 }
 
 void
-tx_cksum_set(portid_t port_id, uint8_t cksum_mask)
+tx_cksum_set(portid_t port_id, uint64_t ol_flags)
 {
-	uint16_t tx_ol_flags;
+	uint64_t tx_ol_flags;
 	if (port_id_is_invalid(port_id))
 		return;
 	/* Clear last 4 bits and then set L3/4 checksum mask again */
-	tx_ol_flags = (uint16_t) (ports[port_id].tx_ol_flags & 0xFFF0);
-	ports[port_id].tx_ol_flags = (uint16_t) ((cksum_mask & 0xf) | tx_ol_flags);
+	tx_ol_flags = ports[port_id].tx_ol_flags & (~0x0Full);
+	ports[port_id].tx_ol_flags = ((ol_flags & 0xf) | tx_ol_flags);
 }
 
 void

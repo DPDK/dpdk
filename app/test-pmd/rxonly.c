@@ -109,7 +109,7 @@ pkt_burst_receive(struct fwd_stream *fs)
 	struct rte_mbuf  *mb;
 	struct ether_hdr *eth_hdr;
 	uint16_t eth_type;
-	uint16_t ol_flags;
+	uint64_t ol_flags;
 	uint16_t nb_rx;
 	uint16_t i;
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES

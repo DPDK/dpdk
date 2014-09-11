@@ -203,7 +203,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	uint16_t nb_tx;
 	uint16_t nb_pkt;
 	uint16_t vlan_tci;
-	uint16_t ol_flags;
+	uint64_t ol_flags;
 	uint8_t  i;
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;

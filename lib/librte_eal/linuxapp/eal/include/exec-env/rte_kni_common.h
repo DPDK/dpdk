@@ -112,8 +112,8 @@ struct rte_kni_mbuf {
 	char pad0[10];
 	uint16_t data_off;      /**< Start address of data in segment buffer. */
 	char pad1[4];
-	uint16_t ol_flags;      /**< Offload features. */
-	char pad2[8];
+	uint64_t ol_flags;      /**< Offload features. */
+	char pad2[2];
 	uint16_t data_len;      /**< Amount of data in segment buffer. */
 	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
 	char pad3[8];

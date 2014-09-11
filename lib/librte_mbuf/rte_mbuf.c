@@ -174,7 +174,7 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 
 	fprintf(f, "dump mbuf at 0x%p, phys=%"PRIx64", buf_len=%u\n",
 	       m, (uint64_t)m->buf_physaddr, (unsigned)m->buf_len);
-	fprintf(f, "  pkt_len=%"PRIu32", ol_flags=%"PRIx16", nb_segs=%u, "
+	fprintf(f, "  pkt_len=%"PRIu32", ol_flags=%"PRIx64", nb_segs=%u, "
 	       "in_port=%u\n", m->pkt_len, m->ol_flags,
 	       (unsigned)m->nb_segs, (unsigned)m->port);
 	nb_segs = m->nb_segs;

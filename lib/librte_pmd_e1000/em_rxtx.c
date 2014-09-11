@@ -168,7 +168,7 @@ union em_vlan_macip {
  * Structure to check if new context need be built
  */
 struct em_ctx_info {
-	uint16_t flags;              /**< ol_flags related to context build. */
+	uint64_t flags;              /**< ol_flags related to context build. */
 	uint32_t cmp_mask;           /**< compare mask */
 	union em_vlan_macip hdrlen;  /**< L2 and L3 header lenghts */
 };
@@ -238,7 +238,7 @@ struct em_tx_queue {
 static inline void
 em_set_xmit_ctx(struct em_tx_queue* txq,
 		volatile struct e1000_context_desc *ctx_txd,
-		uint16_t flags,
+		uint64_t flags,
 		union em_vlan_macip hdrlen)
 {
 	uint32_t cmp_mask, cmd_len;
@@ -304,7 +304,7 @@ em_set_xmit_ctx(struct em_tx_queue* txq,
  * or create a new context descriptor.
  */
 static inline uint32_t
-what_ctx_update(struct em_tx_queue *txq, uint16_t flags,
+what_ctx_update(struct em_tx_queue *txq, uint64_t flags,
 		union em_vlan_macip hdrlen)
 {
 	/* If match with the current context */
@@ -377,7 +377,7 @@ em_xmit_cleanup(struct em_tx_queue *txq)
 }
 
 static inline uint32_t
-tx_desc_cksum_flags_to_upper(uint16_t ol_flags)
+tx_desc_cksum_flags_to_upper(uint64_t ol_flags)
 {
 	static const uint32_t l4_olinfo[2] = {0, E1000_TXD_POPTS_TXSM << 8};
 	static const uint32_t l3_olinfo[2] = {0, E1000_TXD_POPTS_IXSM << 8};
@@ -403,12 +403,12 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint32_t popts_spec;
 	uint32_t cmd_type_len;
 	uint16_t slen;
-	uint16_t ol_flags;
+	uint64_t ol_flags;
 	uint16_t tx_id;
 	uint16_t tx_last;
 	uint16_t nb_tx;
 	uint16_t nb_used;
-	uint16_t tx_ol_req;
+	uint64_t tx_ol_req;
 	uint32_t ctx;
 	uint32_t new_ctx;
 	union em_vlan_macip hdrlen;
@@ -438,8 +438,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		ol_flags = tx_pkt->ol_flags;
 
 		/* If hardware offload required */
-		tx_ol_req = (uint16_t)(ol_flags & (PKT_TX_IP_CKSUM |
-							PKT_TX_L4_MASK));
+		tx_ol_req = (ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK));
 		if (tx_ol_req) {
 			hdrlen.f.vlan_tci = tx_pkt->vlan_tci;
 			hdrlen.f.l2_len = tx_pkt->l2_len;
@@ -642,22 +641,21 @@ end_of_tx:
  *
  **********************************************************************/
 
-static inline uint16_t
+static inline uint64_t
 rx_desc_status_to_pkt_flags(uint32_t rx_status)
 {
-	uint16_t pkt_flags;
+	uint64_t pkt_flags;
 
 	/* Check if VLAN present */
-	pkt_flags = (uint16_t)((rx_status & E1000_RXD_STAT_VP) ?
-						PKT_RX_VLAN_PKT : 0);
+	pkt_flags = ((rx_status & E1000_RXD_STAT_VP) ?  PKT_RX_VLAN_PKT : 0);
 
 	return pkt_flags;
 }
 
-static inline uint16_t
+static inline uint64_t
 rx_desc_error_to_pkt_flags(uint32_t rx_error)
 {
-	uint16_t pkt_flags = 0;
+	uint64_t pkt_flags = 0;
 
 	if (rx_error & E1000_RXD_ERR_IPE)
 		pkt_flags |= PKT_RX_IP_CKSUM_BAD;
@@ -801,8 +799,8 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->port = rxq->port_id;
 
 		rxm->ol_flags = rx_desc_status_to_pkt_flags(status);
-		rxm->ol_flags = (uint16_t)(rxm->ol_flags |
-				rx_desc_error_to_pkt_flags(rxd.errors));
+		rxm->ol_flags = rxm->ol_flags |
+				rx_desc_error_to_pkt_flags(rxd.errors);
 
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
@@ -1027,8 +1025,8 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->port = rxq->port_id;
 
 		first_seg->ol_flags = rx_desc_status_to_pkt_flags(status);
-		first_seg->ol_flags = (uint16_t)(first_seg->ol_flags |
-					rx_desc_error_to_pkt_flags(rxd.errors));
+		first_seg->ol_flags = first_seg->ol_flags |
+					rx_desc_error_to_pkt_flags(rxd.errors);
 
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);

@@ -141,9 +141,7 @@ struct rte_mbuf {
 	uint8_t nb_segs;        /**< Number of segments. */
 	uint8_t port;           /**< Input port. */
 
-	uint16_t ol_flags;      /**< Offload features. */
-	uint16_t reserved0;     /**< Unused field. Required for padding */
-	uint32_t reserved1;     /**< Unused field. Required for padding */
+	uint64_t ol_flags;      /**< Offload features. */
 
 	/* remaining bytes are set on RX when pulling packet from descriptor */
 	uint16_t reserved2;     /**< Unused field. Required for padding */

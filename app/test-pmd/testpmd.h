@@ -141,7 +141,7 @@ struct rte_port {
 	struct fwd_stream       *rx_stream; /**< Port RX stream, if unique */
 	struct fwd_stream       *tx_stream; /**< Port TX stream, if unique */
 	unsigned int            socket_id;  /**< For NUMA support */
-	uint16_t                tx_ol_flags;/**< Offload Flags of TX packets. */
+	uint64_t                tx_ol_flags;/**< Offload Flags of TX packets. */
 	uint16_t                tx_vlan_id; /**< Tag Id. in TX VLAN packets. */
 	void                    *fwd_ctx;   /**< Forwarding mode context */
 	uint64_t                rx_bad_ip_csum; /**< rx pkts with bad ip checksum  */
@@ -494,7 +494,7 @@ void tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on);
 
 void set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value);
 
-void tx_cksum_set(portid_t port_id, uint8_t cksum_mask);
+void tx_cksum_set(portid_t port_id, uint64_t ol_flags);
 
 void set_verbose_level(uint16_t vb_level);
 void set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs);
