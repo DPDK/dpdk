@@ -342,14 +342,11 @@ static inline int __attribute__((always_inline))
 ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 {
 	struct igb_tx_entry_v *txep;
-	struct igb_tx_entry_seq *txsp;
 	uint32_t status;
-	uint32_t n, k;
-#ifdef RTE_MBUF_REFCNT
+	uint32_t n;
 	uint32_t i;
 	int nb_free = 0;
 	struct rte_mbuf *m, *free[RTE_IXGBE_TX_MAX_FREE_BUF_SZ];
-#endif
 
 	/* check DD bit on threshold descriptor */
 	status = txq->tx_ring[txq->tx_next_dd].wb.status;
@@ -364,23 +361,38 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 	 */
 	txep = &((struct igb_tx_entry_v *)txq->sw_ring)[txq->tx_next_dd -
 			(n - 1)];
-	txsp = &txq->sw_ring_seq[txq->tx_next_dd - (n - 1)];
-
-	while (n > 0) {
-		k = RTE_MIN(n, txsp[n-1].same_pool);
 #ifdef RTE_MBUF_REFCNT
-		for (i = 0; i < k; i++) {
-			m = __rte_pktmbuf_prefree_seg((txep+n-k+i)->mbuf);
-			if (m != NULL)
-				free[nb_free++] = m;
-		}
-		rte_mempool_put_bulk((void *)txsp[n-1].pool,
-				(void **)free, nb_free);
+	m = __rte_pktmbuf_prefree_seg(txep[0].mbuf);
 #else
-		rte_mempool_put_bulk((void *)txsp[n-1].pool,
-				(void **)(txep+n-k), k);
+	m = txep[0].mbuf;
 #endif
-		n -= k;
+	if (likely(m != NULL)) {
+		free[0] = m;
+		nb_free = 1;
+		for (i = 1; i < n; i++) {
+#ifdef RTE_MBUF_REFCNT
+			m = __rte_pktmbuf_prefree_seg(txep[i].mbuf);
+#else
+			m = txep[i]->mbuf;
+#endif
+			if (likely(m != NULL)) {
+				if (likely(m->pool == free[0]->pool))
+					free[nb_free++] = m;
+				else {
+					rte_mempool_put_bulk(free[0]->pool,
+							(void *)free, nb_free);
+					free[0] = m;
+					nb_free = 1;
+				}
+			}
+		}
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+	} else {
+		for (i = 1; i < n; i++) {
+			m = __rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (m != NULL)
+				rte_mempool_put(m->pool, m);
+		}
 	}
 
 	/* buffers were freed, update counters */
@@ -394,19 +406,11 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 
 static inline void __attribute__((always_inline))
 tx_backlog_entry(struct igb_tx_entry_v *txep,
-		 struct igb_tx_entry_seq *txsp,
 		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i;
-	for (i = 0; i < (int)nb_pkts; ++i) {
+	for (i = 0; i < (int)nb_pkts; ++i)
 		txep[i].mbuf = tx_pkts[i];
-		/* check and update sequence number */
-		txsp[i].pool = tx_pkts[i]->pool;
-		if (txsp[i-1].pool == tx_pkts[i]->pool)
-			txsp[i].same_pool = txsp[i-1].same_pool + 1;
-		else
-			txsp[i].same_pool = 1;
-	}
 }
 
 uint16_t
@@ -416,7 +420,6 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct igb_tx_queue *txq = (struct igb_tx_queue *)tx_queue;
 	volatile union ixgbe_adv_tx_desc *txdp;
 	struct igb_tx_entry_v *txep;
-	struct igb_tx_entry_seq *txsp;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = DCMD_DTYP_FLAGS;
 	uint64_t rs = IXGBE_ADVTXD_DCMD_RS|DCMD_DTYP_FLAGS;
@@ -435,14 +438,13 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	tx_id = txq->tx_tail;
 	txdp = &txq->tx_ring[tx_id];
 	txep = &((struct igb_tx_entry_v *)txq->sw_ring)[tx_id];
-	txsp = &txq->sw_ring_seq[tx_id];
 
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
 
 	n = (uint16_t)(txq->nb_tx_desc - tx_id);
 	if (nb_commit >= n) {
 
-		tx_backlog_entry(txep, txsp, tx_pkts, n);
+		tx_backlog_entry(txep, tx_pkts, n);
 
 		for (i = 0; i < n - 1; ++i, ++tx_pkts, ++txdp)
 			vtx1(txdp, *tx_pkts, flags);
@@ -457,10 +459,9 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* avoid reach the end of ring */
 		txdp = &(txq->tx_ring[tx_id]);
 		txep = &(((struct igb_tx_entry_v *)txq->sw_ring)[tx_id]);
-		txsp = &(txq->sw_ring_seq[tx_id]);
 	}
 
-	tx_backlog_entry(txep, txsp, tx_pkts, nb_commit);
+	tx_backlog_entry(txep, tx_pkts, nb_commit);
 
 	vtx(txdp, tx_pkts, nb_commit, flags);
 
@@ -484,7 +485,6 @@ ixgbe_tx_queue_release_mbufs(struct igb_tx_queue *txq)
 {
 	unsigned i;
 	struct igb_tx_entry_v *txe;
-	struct igb_tx_entry_seq *txs;
 	uint16_t nb_free, max_desc;
 
 	if (txq->sw_ring != NULL) {
@@ -502,10 +502,6 @@ ixgbe_tx_queue_release_mbufs(struct igb_tx_queue *txq)
 		for (i = 0; i < txq->nb_tx_desc; i++) {
 			txe = (struct igb_tx_entry_v *)&txq->sw_ring[i];
 			txe->mbuf = NULL;
-
-			txs = &txq->sw_ring_seq[i];
-			txs->pool = NULL;
-			txs->same_pool = 0;
 		}
 	}
 }
@@ -520,11 +516,6 @@ ixgbe_tx_free_swring(struct igb_tx_queue *txq)
 		rte_free((struct igb_rx_entry *)txq->sw_ring - 1);
 		txq->sw_ring = NULL;
 	}
-
-	if (txq->sw_ring_seq != NULL) {
-		rte_free(txq->sw_ring_seq - 1);
-		txq->sw_ring_seq = NULL;
-	}
 }
 
 static void
@@ -533,7 +524,6 @@ ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
 	static const union ixgbe_adv_tx_desc zeroed_desc = { .read = {
 			.buffer_addr = 0} };
 	struct igb_tx_entry_v *txe = (struct igb_tx_entry_v *)txq->sw_ring;
-	struct igb_tx_entry_seq *txs = txq->sw_ring_seq;
 	uint16_t i;
 
 	/* Zero out HW ring memory */
@@ -545,8 +535,6 @@ ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
 		volatile union ixgbe_adv_tx_desc *txd = &txq->tx_ring[i];
 		txd->wb.status = IXGBE_TXD_STAT_DD;
 		txe[i].mbuf = NULL;
-		txs[i].pool = NULL;
-		txs[i].same_pool = 0;
 	}
 
 	txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
@@ -588,28 +576,14 @@ ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq)
 	return 0;
 }
 
-int ixgbe_txq_vec_setup(struct igb_tx_queue *txq,
-			unsigned int socket_id)
+int ixgbe_txq_vec_setup(struct igb_tx_queue *txq)
 {
-	uint16_t nb_desc;
-
 	if (txq->sw_ring == NULL)
 		return -1;
-
-	/* request addtional one entry for continous sequence check */
-	nb_desc = (uint16_t)(txq->nb_tx_desc + 1);
-
-	txq->sw_ring_seq = rte_zmalloc_socket("txq->sw_ring_seq",
-				sizeof(struct igb_tx_entry_seq) * nb_desc,
-				CACHE_LINE_SIZE, socket_id);
-	if (txq->sw_ring_seq == NULL)
-		return -1;
-
 
 	/* leave the first one for overflow */
 	txq->sw_ring = (struct igb_tx_entry *)
 		((struct igb_tx_entry_v *)txq->sw_ring + 1);
-	txq->sw_ring_seq += 1;
 	txq->ops = &vec_txq_ops;
 
 	return 0;

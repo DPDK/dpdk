@@ -96,14 +96,6 @@ struct igb_tx_entry_v {
 };
 
 /**
- * continuous entry sequence, gather by the same mempool
- */
-struct igb_tx_entry_seq {
-	const struct rte_mempool* pool;
-	uint32_t same_pool;
-};
-
-/**
  * Structure associated with each RX queue.
  */
 struct igb_rx_queue {
@@ -190,10 +182,6 @@ struct igb_tx_queue {
 	volatile union ixgbe_adv_tx_desc *tx_ring;
 	uint64_t            tx_ring_phys_addr; /**< TX ring DMA address. */
 	struct igb_tx_entry *sw_ring;      /**< virtual address of SW ring. */
-#ifdef RTE_IXGBE_INC_VECTOR
-	/** continuous tx entry sequence within the same mempool */
-	struct igb_tx_entry_seq *sw_ring_seq;
-#endif
 	volatile uint32_t   *tdt_reg_addr; /**< Address of TDT register. */
 	uint16_t            nb_tx_desc;    /**< number of TX descriptors. */
 	uint16_t            tx_tail;       /**< current value of TDT reg. */
@@ -258,7 +246,7 @@ struct ixgbe_txq_ops {
 #ifdef RTE_IXGBE_INC_VECTOR
 uint16_t ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 uint16_t ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
-int ixgbe_txq_vec_setup(struct igb_tx_queue *txq, unsigned int socket_id);
+int ixgbe_txq_vec_setup(struct igb_tx_queue *txq);
 int ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq);
 int ixgbe_rx_vec_condition_check(struct rte_eth_dev *dev);
 #endif

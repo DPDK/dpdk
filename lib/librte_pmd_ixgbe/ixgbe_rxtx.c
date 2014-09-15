@@ -142,10 +142,6 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 	 */
 	txep = &(txq->sw_ring[txq->tx_next_dd - (txq->tx_rs_thresh - 1)]);
 
-	/* prefetch the mbufs that are about to be freed */
-	for (i = 0; i < txq->tx_rs_thresh; ++i)
-		rte_prefetch0((txep + i)->mbuf);
-
 	/* free buffers one at a time */
 	if ((txq->txq_flags & (uint32_t)ETH_TXQ_FLAGS_NOREFCOUNT) != 0) {
 		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
@@ -186,6 +182,7 @@ tx4(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
 				((uint32_t)DCMD_DTYP_FLAGS | pkt_len);
 		txdp->read.olinfo_status =
 				(pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
+		rte_prefetch0(&(*pkts)->pool);
 	}
 }
 
@@ -205,6 +202,7 @@ tx1(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
 			((uint32_t)DCMD_DTYP_FLAGS | pkt_len);
 	txdp->read.olinfo_status =
 			(pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
+	rte_prefetch0(&(*pkts)->pool);
 }
 
 /*
@@ -1875,7 +1873,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		PMD_INIT_LOG(INFO, "Using simple tx code path\n");
 #ifdef RTE_IXGBE_INC_VECTOR
 		if (txq->tx_rs_thresh <= RTE_IXGBE_TX_MAX_FREE_BUF_SZ &&
-		    ixgbe_txq_vec_setup(txq, socket_id) == 0) {
+		    ixgbe_txq_vec_setup(txq) == 0) {
 			PMD_INIT_LOG(INFO, "Vector tx enabled.\n");
 			dev->tx_pkt_burst = ixgbe_xmit_pkts_vec;
 		}
