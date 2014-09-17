@@ -726,8 +726,8 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			uint16_t i, j;
 
 			PMD_RX_LOG(DEBUG, "Rx mbuf alloc failed for "
-					"port_id=%u, queue_id=%u\n",
-					rxq->port_id, rxq->queue_id);
+				   "port_id=%u, queue_id=%u\n",
+				   rxq->port_id, rxq->queue_id);
 			rxq->rx_nb_avail = 0;
 			rxq->rx_tail = (uint16_t)(rxq->rx_tail - nb_rx);
 			for (i = 0, j = rxq->rx_tail; i < nb_rx; i++, j++)
@@ -1453,7 +1453,7 @@ i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on\n",
-				rx_queue_id);
+				    rx_queue_id);
 
 			i40e_rx_queue_release_mbufs(rxq);
 			i40e_reset_rx_queue(rxq);
@@ -1479,7 +1479,7 @@ i40e_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off\n",
-				rx_queue_id);
+				    rx_queue_id);
 			return err;
 		}
 		i40e_rx_queue_release_mbufs(rxq);
@@ -1503,7 +1503,7 @@ i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		err = i40e_switch_tx_queue(hw, tx_queue_id + q_base, TRUE);
 		if (err)
 			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on\n",
-				tx_queue_id);
+				    tx_queue_id);
 	}
 
 	return err;
@@ -1525,7 +1525,7 @@ i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u of\n",
-				tx_queue_id);
+				    tx_queue_id);
 			return err;
 		}
 
@@ -1553,14 +1553,14 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	if (!vsi || queue_idx >= vsi->nb_qps) {
 		PMD_DRV_LOG(ERR, "VSI not available or queue "
-				"index exceeds the maximum\n");
+			    "index exceeds the maximum\n");
 		return I40E_ERR_PARAM;
 	}
 	if (((nb_desc * sizeof(union i40e_rx_desc)) % I40E_ALIGN) != 0 ||
 					(nb_desc > I40E_MAX_RING_DESC) ||
 					(nb_desc < I40E_MIN_RING_DESC)) {
 		PMD_DRV_LOG(ERR, "Number (%u) of receive descriptors is "
-						"invalid\n", nb_desc);
+			    "invalid\n", nb_desc);
 		return I40E_ERR_PARAM;
 	}
 
@@ -1577,7 +1577,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 				 socket_id);
 	if (!rxq) {
 		PMD_DRV_LOG(ERR, "Failed to allocate memory for "
-					"rx queue data structure\n");
+			    "rx queue data structure\n");
 		return (-ENOMEM);
 	}
 	rxq->mp = mp;
@@ -1644,17 +1644,17 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	if (!use_def_burst_func && !dev->data->scattered_rx) {
 #ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
-			"satisfied. Rx Burst Bulk Alloc function will be "
-					"used on port=%d, queue=%d.\n",
-					rxq->port_id, rxq->queue_id);
+			     "satisfied. Rx Burst Bulk Alloc function will be "
+			     "used on port=%d, queue=%d.\n",
+			     rxq->port_id, rxq->queue_id);
 		dev->rx_pkt_burst = i40e_recv_pkts_bulk_alloc;
 #endif /* RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC */
 	} else {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
-				"not satisfied, Scattered Rx is requested, "
-				"or RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC is "
-					"not enabled on port=%d, queue=%d.\n",
-						rxq->port_id, rxq->queue_id);
+			     "not satisfied, Scattered Rx is requested, "
+			     "or RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC is "
+			     "not enabled on port=%d, queue=%d.\n",
+			     rxq->port_id, rxq->queue_id);
 	}
 
 	return 0;
@@ -1750,7 +1750,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	if (!vsi || queue_idx >= vsi->nb_qps) {
 		PMD_DRV_LOG(ERR, "VSI is NULL, or queue index (%u) "
-				"exceeds the maximum\n", queue_idx);
+			    "exceeds the maximum\n", queue_idx);
 		return I40E_ERR_PARAM;
 	}
 
@@ -1758,7 +1758,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 					(nb_desc > I40E_MAX_RING_DESC) ||
 					(nb_desc < I40E_MIN_RING_DESC)) {
 		PMD_DRV_LOG(ERR, "Number (%u) of transmit descriptors is "
-                                                "invalid\n", nb_desc);
+			    "invalid\n", nb_desc);
 		return I40E_ERR_PARAM;
 	}
 
@@ -1847,7 +1847,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 				  socket_id);
 	if (!txq) {
 		PMD_DRV_LOG(ERR, "Failed to allocate memory for "
-					"tx queue structure\n");
+			    "tx queue structure\n");
 		return (-ENOMEM);
 	}
 
@@ -2192,20 +2192,20 @@ i40e_rx_queue_config(struct i40e_rx_queue *rxq)
 		if (rxq->max_pkt_len <= ETHER_MAX_LEN ||
 			rxq->max_pkt_len > I40E_FRAME_SIZE_MAX) {
 			PMD_DRV_LOG(ERR, "maximum packet length must "
-				"be larger than %u and smaller than %u,"
-					"as jumbo frame is enabled\n",
-						(uint32_t)ETHER_MAX_LEN,
-					(uint32_t)I40E_FRAME_SIZE_MAX);
+				    "be larger than %u and smaller than %u,"
+				    "as jumbo frame is enabled\n",
+				    (uint32_t)ETHER_MAX_LEN,
+				    (uint32_t)I40E_FRAME_SIZE_MAX);
 			return I40E_ERR_CONFIG;
 		}
 	} else {
 		if (rxq->max_pkt_len < ETHER_MIN_LEN ||
 			rxq->max_pkt_len > ETHER_MAX_LEN) {
 			PMD_DRV_LOG(ERR, "maximum packet length must be "
-					"larger than %u and smaller than %u, "
-					"as jumbo frame is disabled\n",
-						(uint32_t)ETHER_MIN_LEN,
-						(uint32_t)ETHER_MAX_LEN);
+				    "larger than %u and smaller than %u, "
+				    "as jumbo frame is disabled\n",
+				    (uint32_t)ETHER_MIN_LEN,
+				    (uint32_t)ETHER_MAX_LEN);
 			return I40E_ERR_CONFIG;
 		}
 	}

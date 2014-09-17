@@ -930,8 +930,7 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	case I40E_VIRTCHNL_OP_FCOE:
 		PMD_DRV_LOG(ERR, "OP_FCOE received, not supported\n");
 	default:
-		PMD_DRV_LOG(ERR, "%u received, not supported\n",
-							opcode);
+		PMD_DRV_LOG(ERR, "%u received, not supported\n", opcode);
 		i40e_pf_host_send_msg_to_vf(vf, opcode,
 				I40E_ERR_PARAM, NULL, 0);
 		break;

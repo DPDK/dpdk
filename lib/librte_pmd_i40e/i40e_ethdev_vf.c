@@ -206,7 +206,7 @@ i40evf_parse_pfmsg(struct i40e_vf *vf,
 				vpe->event_data.link_event.link_status;
 			vf->pend_msg |= PFMSG_LINK_CHANGE;
 			PMD_DRV_LOG(INFO, "Link status update:%s\n",
-					vf->link_up ? "up" : "down");
+				    vf->link_up ? "up" : "down");
 			break;
 		case I40E_VIRTCHNL_EVENT_RESET_IMPENDING:
 			vf->vf_reset = true;
@@ -219,9 +219,8 @@ i40evf_parse_pfmsg(struct i40e_vf *vf,
 			PMD_DRV_LOG(INFO, "PF driver closed\n");
 			break;
 		default:
-			PMD_DRV_LOG(ERR,
-				"%s: Unknown event %d from pf\n",
-				__func__, vpe->event);
+			PMD_DRV_LOG(ERR, "%s: Unknown event %d from pf\n",
+				    __func__, vpe->event);
 		}
 	} else {
 		/* async reply msg on command issued by vf previously */
@@ -351,7 +350,7 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 		PMD_DRV_LOG(ERR, "Failed to read message from AdminQ\n");
 	else if (args->ops != info.ops)
 		PMD_DRV_LOG(ERR, "command mismatch, expect %u, get %u\n",
-				args->ops, info.ops);
+			    args->ops, info.ops);
 
 	return (err | info.result);
 }
@@ -392,8 +391,8 @@ i40evf_check_api_version(struct rte_eth_dev *dev)
 	else if ((pver->major != version.major) ||
 	    (pver->minor != version.minor)) {
 		PMD_INIT_LOG(ERR, "pf/vf API version mismatch. "
-			"(%u.%u)-(%u.%u)\n", pver->major, pver->minor,
-					version.major, version.minor);
+			     "(%u.%u)-(%u.%u)\n", pver->major, pver->minor,
+			     version.major, version.minor);
 		return -1;
 	}
 
@@ -418,8 +417,7 @@ i40evf_get_vf_resource(struct rte_eth_dev *dev)
 	err = i40evf_execute_vf_cmd(dev, &args);
 
 	if (err) {
-		PMD_DRV_LOG(ERR, "fail to execute command "
-					"OP_GET_VF_RESOURCE\n");
+		PMD_DRV_LOG(ERR, "fail to execute command OP_GET_VF_RESOURCE\n");
 		return err;
 	}
 
@@ -462,7 +460,7 @@ i40evf_config_promisc(struct rte_eth_dev *dev,
 
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command "
-				"CONFIG_PROMISCUOUS_MODE\n");
+			    "CONFIG_PROMISCUOUS_MODE\n");
 	return err;
 }
 
@@ -595,7 +593,7 @@ i40evf_configure_queues(struct rte_eth_dev *dev)
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command "
-				"OP_CONFIG_VSI_QUEUES\n");
+			    "OP_CONFIG_VSI_QUEUES\n");
 	rte_free(queue_info);
 
 	return err;
@@ -661,8 +659,8 @@ i40evf_switch_queue(struct rte_eth_dev *dev, bool isrx, uint16_t qid,
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
-		PMD_DRV_LOG(ERR, "fail to switch %s %u %s\n", isrx ? "RX" : "TX",
-			qid, on ? "on" : "off");
+		PMD_DRV_LOG(ERR, "fail to switch %s %u %s\n",
+			    isrx ? "RX" : "TX", qid, on ? "on" : "off");
 
 	return err;
 }
@@ -680,8 +678,7 @@ i40evf_start_queues(struct rte_eth_dev *dev)
 		if (rxq->start_rx_per_q)
 			continue;
 		if (i40evf_dev_rx_queue_start(dev, i) != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start queue %u\n",
-				i);
+			PMD_DRV_LOG(ERR, "Fail to start queue %u\n", i);
 			return -1;
 		}
 	}
@@ -691,8 +688,7 @@ i40evf_start_queues(struct rte_eth_dev *dev)
 		if (txq->start_tx_per_q)
 			continue;
 		if (i40evf_dev_tx_queue_start(dev, i) != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start queue %u\n",
-				i);
+			PMD_DRV_LOG(ERR, "Fail to start queue %u\n", i);
 			return -1;
 		}
 	}
@@ -708,8 +704,7 @@ i40evf_stop_queues(struct rte_eth_dev *dev)
 	/* Stop TX queues first */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		if (i40evf_dev_tx_queue_stop(dev, i) != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start queue %u\n",
-				i);
+			PMD_DRV_LOG(ERR, "Fail to start queue %u\n", i);
 			return -1;
 		}
 	}
@@ -717,8 +712,7 @@ i40evf_stop_queues(struct rte_eth_dev *dev)
 	/* Then stop RX queues */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		if (i40evf_dev_rx_queue_stop(dev, i) != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start queue %u\n",
-				i);
+			PMD_DRV_LOG(ERR, "Fail to start queue %u\n", i);
 			return -1;
 		}
 	}
@@ -738,9 +732,9 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 
 	if (i40e_validate_mac_addr(addr->addr_bytes) != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Invalid mac:%x:%x:%x:%x:%x:%x\n",
-			addr->addr_bytes[0], addr->addr_bytes[1],
-			addr->addr_bytes[2], addr->addr_bytes[3],
-			addr->addr_bytes[4], addr->addr_bytes[5]);
+			    addr->addr_bytes[0], addr->addr_bytes[1],
+			    addr->addr_bytes[2], addr->addr_bytes[3],
+			    addr->addr_bytes[4], addr->addr_bytes[5]);
 		return -1;
 	}
 
@@ -758,7 +752,7 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command "
-				"OP_ADD_ETHER_ADDRESS\n");
+			    "OP_ADD_ETHER_ADDRESS\n");
 
 	return err;
 }
@@ -775,9 +769,9 @@ i40evf_del_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 
 	if (i40e_validate_mac_addr(addr->addr_bytes) != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Invalid mac:%x-%x-%x-%x-%x-%x\n",
-			addr->addr_bytes[0], addr->addr_bytes[1],
-			addr->addr_bytes[2], addr->addr_bytes[3],
-			addr->addr_bytes[4], addr->addr_bytes[5]);
+			    addr->addr_bytes[0], addr->addr_bytes[1],
+			    addr->addr_bytes[2], addr->addr_bytes[3],
+			    addr->addr_bytes[4], addr->addr_bytes[5]);
 		return -1;
 	}
 
@@ -795,7 +789,7 @@ i40evf_del_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command "
-				"OP_DEL_ETHER_ADDRESS\n");
+			    "OP_DEL_ETHER_ADDRESS\n");
 
 	return err;
 }
@@ -1244,7 +1238,7 @@ i40evf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 		if (err)
 			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on\n",
-				rx_queue_id);
+				    rx_queue_id);
 	}
 
 	return err;
@@ -1263,7 +1257,7 @@ i40evf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off\n",
-				rx_queue_id);
+				    rx_queue_id);
 			return err;
 		}
 
@@ -1288,7 +1282,7 @@ i40evf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 		if (err)
 			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on\n",
-				tx_queue_id);
+				    tx_queue_id);
 	}
 
 	return err;
@@ -1307,7 +1301,7 @@ i40evf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u of\n",
-				tx_queue_id);
+				    tx_queue_id);
 			return err;
 		}
 
@@ -1391,20 +1385,20 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 		if (vf->max_pkt_len <= ETHER_MAX_LEN ||
 			vf->max_pkt_len > I40E_FRAME_SIZE_MAX) {
 			PMD_DRV_LOG(ERR, "maximum packet length must "
-				"be larger than %u and smaller than %u,"
-					"as jumbo frame is enabled\n",
-						(uint32_t)ETHER_MAX_LEN,
-					(uint32_t)I40E_FRAME_SIZE_MAX);
+				    "be larger than %u and smaller than %u,"
+				    "as jumbo frame is enabled\n",
+				    (uint32_t)ETHER_MAX_LEN,
+				    (uint32_t)I40E_FRAME_SIZE_MAX);
 			return I40E_ERR_CONFIG;
 		}
 	} else {
 		if (vf->max_pkt_len < ETHER_MIN_LEN ||
 			vf->max_pkt_len > ETHER_MAX_LEN) {
 			PMD_DRV_LOG(ERR, "maximum packet length must be "
-					"larger than %u and smaller than %u, "
-					"as jumbo frame is disabled\n",
-						(uint32_t)ETHER_MIN_LEN,
-						(uint32_t)ETHER_MAX_LEN);
+				    "larger than %u and smaller than %u, "
+				    "as jumbo frame is disabled\n",
+				    (uint32_t)ETHER_MIN_LEN,
+				    (uint32_t)ETHER_MAX_LEN);
 			return I40E_ERR_CONFIG;
 		}
 	}
