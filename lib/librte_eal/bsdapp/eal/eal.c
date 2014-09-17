@@ -94,6 +94,7 @@
 #define OPT_PCI_BLACKLIST "pci-blacklist"
 #define OPT_VDEV        "vdev"
 #define OPT_SYSLOG      "syslog"
+#define OPT_LOG_LEVEL   "log-level"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
@@ -293,6 +294,7 @@ eal_usage(const char *prgname)
 	       "  -v           : Display version information on startup\n"
 	       "  -m MB        : memory to allocate\n"
 	       "  -r NUM       : force number of memory ranks (don't detect)\n"
+	       "  --"OPT_LOG_LEVEL"  : set default log level\n"
 	       "  --"OPT_PROC_TYPE"  : type of this process\n"
 	       "  --"OPT_PCI_BLACKLIST", -b: add a PCI device in black list.\n"
 	       "               Prevent EAL from using this PCI device. The argument\n"
@@ -440,6 +442,28 @@ eal_parse_syslog(const char *facility)
 	return -1;
 }
 
+static int
+eal_parse_log_level(const char *level, uint32_t *log_level)
+{
+	char *end;
+	unsigned long tmp;
+
+	errno = 0;
+	tmp = strtoul(level, &end, 0);
+
+	/* check for errors */
+	if ((errno != 0) || (level[0] == '\0') ||
+	    end == NULL || (*end != '\0'))
+		return -1;
+
+	/* log_level is a uint32_t */
+	if (tmp >= UINT32_MAX)
+		return -1;
+
+	*log_level = tmp;
+	return 0;
+}
+
 static inline size_t
 eal_get_hugepage_mem_size(void)
 {
@@ -494,6 +518,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_PCI_BLACKLIST, 1, 0, 0},
 		{OPT_VDEV, 1, 0, 0},
 		{OPT_SYSLOG, 1, NULL, 0},
+		{OPT_LOG_LEVEL, 1, NULL, 0},
 		{0, 0, 0, 0}
 	};
 
@@ -506,6 +531,8 @@ eal_parse_args(int argc, char **argv)
 	internal_config.hugepage_dir = NULL;
 	internal_config.force_sockets = 0;
 	internal_config.syslog_facility = LOG_DAEMON;
+	/* default value from build option */
+	internal_config.log_level = RTE_LOG_LEVEL;
 #ifdef RTE_LIBEAL_USE_HPET
 	internal_config.no_hpet = 0;
 #else
@@ -652,6 +679,18 @@ eal_parse_args(int argc, char **argv)
 					eal_usage(prgname);
 					return -1;
 				}
+			} else if (!strcmp(lgopts[option_index].name,
+					 OPT_LOG_LEVEL)) {
+				uint32_t log;
+
+				if (eal_parse_log_level(optarg, &log) < 0) {
+					RTE_LOG(ERR, EAL,
+						"invalid parameters for --"
+						OPT_LOG_LEVEL "\n");
+					eal_usage(prgname);
+					return -1;
+				}
+				internal_config.log_level = log;
 			}
 			break;
 
@@ -792,6 +831,9 @@ rte_eal_init(int argc, char **argv)
 	fctret = eal_parse_args(argc, argv);
 	if (fctret < 0)
 		exit(1);
+
+	/* set log level as early as possible */
+	rte_set_log_level(internal_config.log_level);
 
 	if (internal_config.no_hugetlbfs == 0 &&
 			internal_config.process_type != RTE_PROC_SECONDARY &&

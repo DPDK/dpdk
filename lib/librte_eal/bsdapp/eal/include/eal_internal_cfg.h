@@ -75,6 +75,7 @@ struct internal_config {
 	volatile uint64_t socket_mem[RTE_MAX_NUMA_NODES]; /**< amount of memory per socket */
 	uintptr_t base_virtaddr;          /**< base address to try and reserve memory from */
 	volatile int syslog_facility;	  /**< facility passed to openlog() */
+	volatile uint32_t log_level;	  /**< default log level */
 	const char *hugefile_prefix;      /**< the base filename of hugetlbfs files */
 	const char *hugepage_dir;         /**< specific hugetlbfs directory to use */
 

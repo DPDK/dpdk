@@ -97,6 +97,7 @@
 #define OPT_PCI_BLACKLIST "pci-blacklist"
 #define OPT_VDEV        "vdev"
 #define OPT_SYSLOG      "syslog"
+#define OPT_LOG_LEVEL   "log-level"
 #define OPT_BASE_VIRTADDR   "base-virtaddr"
 #define OPT_XEN_DOM0    "xen-dom0"
 #define OPT_CREATE_UIO_DEV "create-uio-dev"
@@ -384,7 +385,8 @@ eal_usage(const char *prgname)
 	       "  --"OPT_XEN_DOM0" : support application running on Xen Domain0 "
 			   "without hugetlbfs\n"
 	       "  --"OPT_SYSLOG"     : set syslog facility\n"
-	       "  --"OPT_SOCKET_MEM" : memory to allocate on specific \n"
+	       "  --"OPT_LOG_LEVEL"  : set default log level\n"
+	       "  --"OPT_SOCKET_MEM" : memory to allocate on specific\n"
 		   "                 sockets (use comma separated values)\n"
 	       "  --"OPT_HUGE_DIR"   : directory where hugetlbfs is mounted\n"
 	       "  --"OPT_PROC_TYPE"  : type of this process\n"
@@ -548,6 +550,28 @@ eal_parse_syslog(const char *facility)
 }
 
 static int
+eal_parse_log_level(const char *level, uint32_t *log_level)
+{
+	char *end;
+	unsigned long tmp;
+
+	errno = 0;
+	tmp = strtoul(level, &end, 0);
+
+	/* check for errors */
+	if ((errno != 0) || (level[0] == '\0') ||
+	    end == NULL || (*end != '\0'))
+		return -1;
+
+	/* log_level is a uint32_t */
+	if (tmp >= UINT32_MAX)
+		return -1;
+
+	*log_level = tmp;
+	return 0;
+}
+
+static int
 eal_parse_socket_mem(char *socket_mem)
 {
 	char * arg[RTE_MAX_NUMA_NODES];
@@ -699,6 +723,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_PCI_BLACKLIST, 1, 0, 0},
 		{OPT_VDEV, 1, 0, 0},
 		{OPT_SYSLOG, 1, NULL, 0},
+		{OPT_LOG_LEVEL, 1, NULL, 0},
 		{OPT_VFIO_INTR, 1, NULL, 0},
 		{OPT_BASE_VIRTADDR, 1, 0, 0},
 		{OPT_XEN_DOM0, 0, 0, 0},
@@ -716,6 +741,8 @@ eal_parse_args(int argc, char **argv)
 	internal_config.hugepage_dir = NULL;
 	internal_config.force_sockets = 0;
 	internal_config.syslog_facility = LOG_DAEMON;
+	/* default value from build option */
+	internal_config.log_level = RTE_LOG_LEVEL;
 	internal_config.xen_dom0_support = 0;
 	/* if set to NONE, interrupt mode is determined automatically */
 	internal_config.vfio_intr_mode = RTE_INTR_MODE_NONE;
@@ -887,6 +914,18 @@ eal_parse_args(int argc, char **argv)
 					eal_usage(prgname);
 					return -1;
 				}
+			} else if (!strcmp(lgopts[option_index].name,
+					 OPT_LOG_LEVEL)) {
+				uint32_t log;
+
+				if (eal_parse_log_level(optarg, &log) < 0) {
+					RTE_LOG(ERR, EAL,
+						"invalid parameters for --"
+						OPT_LOG_LEVEL "\n");
+					eal_usage(prgname);
+					return -1;
+				}
+				internal_config.log_level = log;
 			}
 			else if (!strcmp(lgopts[option_index].name, OPT_BASE_VIRTADDR)) {
 				if (eal_parse_base_virtaddr(optarg) < 0) {
@@ -1053,6 +1092,9 @@ rte_eal_init(int argc, char **argv)
 	fctret = eal_parse_args(argc, argv);
 	if (fctret < 0)
 		exit(1);
+
+	/* set log level as early as possible */
+	rte_set_log_level(internal_config.log_level);
 
 	if (internal_config.no_hugetlbfs == 0 &&
 			internal_config.process_type != RTE_PROC_SECONDARY &&
