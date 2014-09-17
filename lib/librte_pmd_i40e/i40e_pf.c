@@ -158,7 +158,7 @@ i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset)
 	}
 
 	if (i >= VFRESET_MAX_WAIT_CNT) {
-		PMD_DRV_LOG(ERR, "VF reset timeout\n");
+		PMD_DRV_LOG(ERR, "VF reset timeout");
 		return -ETIMEDOUT;
 	}
 
@@ -171,7 +171,7 @@ i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset)
 		qsel.tx_queues = qsel.rx_queues;
 		ret = i40e_pf_host_switch_queues(vf, &qsel, false);
 		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Disable VF queues failed\n");
+			PMD_DRV_LOG(ERR, "Disable VF queues failed");
 			return -EFAULT;
 		}
 
@@ -190,7 +190,7 @@ i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset)
 		/* remove VSI */
 		ret = i40e_vsi_release(vf->vsi);
 		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Release VSI failed\n");
+			PMD_DRV_LOG(ERR, "Release VSI failed");
 			return -EFAULT;
 		}
 	}
@@ -209,7 +209,7 @@ i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset)
 	}
 
 	if (i >= VFRESET_MAX_WAIT_CNT) {
-		PMD_DRV_LOG(ERR, "Wait VF PCI transaction end timeout\n");
+		PMD_DRV_LOG(ERR, "Wait VF PCI transaction end timeout");
 		return -ETIMEDOUT;
 	}
 
@@ -225,13 +225,13 @@ i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset)
 	vf->vsi = i40e_vsi_setup(vf->pf, I40E_VSI_SRIOV,
 			vf->pf->main_vsi, vf->vf_idx);
 	if (vf->vsi == NULL) {
-		PMD_DRV_LOG(ERR, "Add vsi failed\n");
+		PMD_DRV_LOG(ERR, "Add vsi failed");
 		return -EFAULT;
 	}
 
 	ret = i40e_pf_vf_queues_mapping(vf);
 	if (ret != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "queue mapping error\n");
+		PMD_DRV_LOG(ERR, "queue mapping error");
 		i40e_vsi_release(vf->vsi);
 		return -EFAULT;
 	}
@@ -295,7 +295,7 @@ i40e_pf_host_process_cmd_get_vf_resource(struct i40e_pf_vf *vf)
 
 	vf_res = rte_zmalloc("i40e_vf_res", len, 0);
 	if (vf_res == NULL) {
-		PMD_DRV_LOG(ERR, "failed to allocate mem\n");
+		PMD_DRV_LOG(ERR, "failed to allocate mem");
 		ret = I40E_ERR_NO_MEMORY;
 		vf_res = NULL;
 		len = 0;
@@ -421,7 +421,7 @@ i40e_pf_host_process_cmd_config_vsi_queues(struct i40e_pf_vf *vf,
 
 	if (msg == NULL || msglen <= sizeof(*qconfig) ||
 		qconfig->num_queue_pairs > vsi->nb_qps) {
-		PMD_DRV_LOG(ERR, "vsi_queue_config_info argument wrong\n");
+		PMD_DRV_LOG(ERR, "vsi_queue_config_info argument wrong");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}
@@ -466,20 +466,20 @@ i40e_pf_host_process_cmd_config_irq_map(struct i40e_pf_vf *vf,
 	    (struct i40e_virtchnl_irq_map_info *)msg;
 
 	if (msg == NULL || msglen < sizeof(struct i40e_virtchnl_irq_map_info)) {
-		PMD_DRV_LOG(ERR, "buffer too short\n");
+		PMD_DRV_LOG(ERR, "buffer too short");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}
 
 	/* Assume VF only have 1 vector to bind all queues */
 	if (irqmap->num_vectors != 1) {
-		PMD_DRV_LOG(ERR, "DKDK host only support 1 vector\n");
+		PMD_DRV_LOG(ERR, "DKDK host only support 1 vector");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}
 
 	if (irqmap->vecmap[0].vector_id == 0) {
-		PMD_DRV_LOG(ERR, "DPDK host don't support use IRQ0\n");
+		PMD_DRV_LOG(ERR, "DPDK host don't support use IRQ0");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}
@@ -601,7 +601,7 @@ i40e_pf_host_process_cmd_add_ether_address(struct i40e_pf_vf *vf,
 	struct ether_addr *mac;
 
 	if (msg == NULL || msglen <= sizeof(*addr_list)) {
-		PMD_DRV_LOG(ERR, "add_ether_address argument too short\n");
+		PMD_DRV_LOG(ERR, "add_ether_address argument too short");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}
@@ -634,7 +634,7 @@ i40e_pf_host_process_cmd_del_ether_address(struct i40e_pf_vf *vf,
 	struct ether_addr *mac;
 
 	if (msg == NULL || msglen <= sizeof(*addr_list)) {
-		PMD_DRV_LOG(ERR, "delete_ether_address argument too short\n");
+		PMD_DRV_LOG(ERR, "delete_ether_address argument too short");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}
@@ -667,7 +667,7 @@ i40e_pf_host_process_cmd_add_vlan(struct i40e_pf_vf *vf,
 	uint16_t *vid;
 
 	if (msg == NULL || msglen <= sizeof(*vlan_filter_list)) {
-		PMD_DRV_LOG(ERR, "add_vlan argument too short\n");
+		PMD_DRV_LOG(ERR, "add_vlan argument too short");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}
@@ -699,7 +699,7 @@ i40e_pf_host_process_cmd_del_vlan(struct i40e_pf_vf *vf,
 	uint16_t *vid;
 
 	if (msg == NULL || msglen <= sizeof(*vlan_filter_list)) {
-		PMD_DRV_LOG(ERR, "delete_vlan argument too short\n");
+		PMD_DRV_LOG(ERR, "delete_vlan argument too short");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}
@@ -796,7 +796,7 @@ i40e_pf_host_process_cmd_cfg_vlan_offload(
 	ret = i40e_vsi_config_vlan_stripping(vf->vsi,
 						!!offload->enable_vlan_strip);
 	if (ret != 0)
-		PMD_DRV_LOG(ERR, "Failed to configure vlan stripping\n");
+		PMD_DRV_LOG(ERR, "Failed to configure vlan stripping");
 
 send_msg:
 	i40e_pf_host_send_msg_to_vf(vf, I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD,
@@ -842,13 +842,13 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	uint16_t vf_id = abs_vf_id - hw->func_caps.vf_base_id;
 
 	if (!dev || vf_id > pf->vf_num - 1 || !pf->vfs) {
-		PMD_DRV_LOG(ERR, "invalid argument\n");
+		PMD_DRV_LOG(ERR, "invalid argument");
 		return;
 	}
 
 	vf = &pf->vfs[vf_id];
 	if (!vf->vsi) {
-		PMD_DRV_LOG(ERR, "NO VSI associated with VF found\n");
+		PMD_DRV_LOG(ERR, "NO VSI associated with VF found");
 		i40e_pf_host_send_msg_to_vf(vf, opcode,
 			I40E_ERR_NO_AVAILABLE_VSI, NULL, 0);
 		return;
@@ -856,81 +856,81 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 
 	switch (opcode) {
 	case I40E_VIRTCHNL_OP_VERSION :
-		PMD_DRV_LOG(INFO, "OP_VERSION received\n");
+		PMD_DRV_LOG(INFO, "OP_VERSION received");
 		i40e_pf_host_process_cmd_version(vf);
 		break;
 	case I40E_VIRTCHNL_OP_RESET_VF :
-		PMD_DRV_LOG(INFO, "OP_RESET_VF received\n");
+		PMD_DRV_LOG(INFO, "OP_RESET_VF received");
 		i40e_pf_host_process_cmd_reset_vf(vf);
 		break;
 	case I40E_VIRTCHNL_OP_GET_VF_RESOURCES:
-		PMD_DRV_LOG(INFO, "OP_GET_VF_RESOURCES received\n");
+		PMD_DRV_LOG(INFO, "OP_GET_VF_RESOURCES received");
 		i40e_pf_host_process_cmd_get_vf_resource(vf);
 		break;
 	case I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES:
-		PMD_DRV_LOG(INFO, "OP_CONFIG_VSI_QUEUES received\n");
+		PMD_DRV_LOG(INFO, "OP_CONFIG_VSI_QUEUES received");
 		i40e_pf_host_process_cmd_config_vsi_queues(vf,
 						msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_CONFIG_IRQ_MAP:
-		PMD_DRV_LOG(INFO, "OP_CONFIG_IRQ_MAP received\n");
+		PMD_DRV_LOG(INFO, "OP_CONFIG_IRQ_MAP received");
 		i40e_pf_host_process_cmd_config_irq_map(vf, msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_ENABLE_QUEUES:
-		PMD_DRV_LOG(INFO, "OP_ENABLE_QUEUES received\n");
+		PMD_DRV_LOG(INFO, "OP_ENABLE_QUEUES received");
 		i40e_pf_host_process_cmd_enable_queues(vf,
 						msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_DISABLE_QUEUES:
-		PMD_DRV_LOG(INFO, "OP_DISABLE_QUEUE received\n");
+		PMD_DRV_LOG(INFO, "OP_DISABLE_QUEUE received");
 		i40e_pf_host_process_cmd_disable_queues(vf,
 						msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_ADD_ETHER_ADDRESS:
-		PMD_DRV_LOG(INFO, "OP_ADD_ETHER_ADDRESS received\n");
+		PMD_DRV_LOG(INFO, "OP_ADD_ETHER_ADDRESS received");
 		i40e_pf_host_process_cmd_add_ether_address(vf,
 						msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_DEL_ETHER_ADDRESS:
-		PMD_DRV_LOG(INFO, "OP_DEL_ETHER_ADDRESS received\n");
+		PMD_DRV_LOG(INFO, "OP_DEL_ETHER_ADDRESS received");
 		i40e_pf_host_process_cmd_del_ether_address(vf,
 						msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_ADD_VLAN:
-		PMD_DRV_LOG(INFO, "OP_ADD_VLAN received\n");
+		PMD_DRV_LOG(INFO, "OP_ADD_VLAN received");
 		i40e_pf_host_process_cmd_add_vlan(vf, msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_DEL_VLAN:
-		PMD_DRV_LOG(INFO, "OP_DEL_VLAN received\n");
+		PMD_DRV_LOG(INFO, "OP_DEL_VLAN received");
 		i40e_pf_host_process_cmd_del_vlan(vf, msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE:
-		PMD_DRV_LOG(INFO, "OP_CONFIG_PROMISCUOUS_MODE received\n");
+		PMD_DRV_LOG(INFO, "OP_CONFIG_PROMISCUOUS_MODE received");
 		i40e_pf_host_process_cmd_config_promisc_mode(vf, msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_GET_STATS:
-		PMD_DRV_LOG(INFO, "OP_GET_STATS received\n");
+		PMD_DRV_LOG(INFO, "OP_GET_STATS received");
 		i40e_pf_host_process_cmd_get_stats(vf);
 		break;
 	case I40E_VIRTCHNL_OP_GET_LINK_STAT:
-		PMD_DRV_LOG(INFO, "OP_GET_LINK_STAT received\n");
+		PMD_DRV_LOG(INFO, "OP_GET_LINK_STAT received");
 		i40e_pf_host_process_cmd_get_link_status(vf);
 		break;
 	case I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD:
-		PMD_DRV_LOG(INFO, "OP_CFG_VLAN_OFFLOAD received\n");
+		PMD_DRV_LOG(INFO, "OP_CFG_VLAN_OFFLOAD received");
 		i40e_pf_host_process_cmd_cfg_vlan_offload(vf, msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_CFG_VLAN_PVID:
-		PMD_DRV_LOG(INFO, "OP_CFG_VLAN_PVID received\n");
+		PMD_DRV_LOG(INFO, "OP_CFG_VLAN_PVID received");
 		i40e_pf_host_process_cmd_cfg_pvid(vf, msg, msglen);
 		break;
 	 /* Don't add command supported below, which will
 	 *  return an error code.
 	 */
 	case I40E_VIRTCHNL_OP_FCOE:
-		PMD_DRV_LOG(ERR, "OP_FCOE received, not supported\n");
+		PMD_DRV_LOG(ERR, "OP_FCOE received, not supported");
 	default:
-		PMD_DRV_LOG(ERR, "%u received, not supported\n", opcode);
+		PMD_DRV_LOG(ERR, "%u received, not supported", opcode);
 		i40e_pf_host_send_msg_to_vf(vf, opcode,
 				I40E_ERR_PARAM, NULL, 0);
 		break;

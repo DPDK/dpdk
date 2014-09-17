@@ -205,21 +205,21 @@ i40evf_parse_pfmsg(struct i40e_vf *vf,
 			vf->link_up =
 				vpe->event_data.link_event.link_status;
 			vf->pend_msg |= PFMSG_LINK_CHANGE;
-			PMD_DRV_LOG(INFO, "Link status update:%s\n",
+			PMD_DRV_LOG(INFO, "Link status update:%s",
 				    vf->link_up ? "up" : "down");
 			break;
 		case I40E_VIRTCHNL_EVENT_RESET_IMPENDING:
 			vf->vf_reset = true;
 			vf->pend_msg |= PFMSG_RESET_IMPENDING;
-			PMD_DRV_LOG(INFO, "vf is reseting\n");
+			PMD_DRV_LOG(INFO, "vf is reseting");
 			break;
 		case I40E_VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
 			vf->dev_closed = true;
 			vf->pend_msg |= PFMSG_DRIVER_CLOSE;
-			PMD_DRV_LOG(INFO, "PF driver closed\n");
+			PMD_DRV_LOG(INFO, "PF driver closed");
 			break;
 		default:
-			PMD_DRV_LOG(ERR, "%s: Unknown event %d from pf\n",
+			PMD_DRV_LOG(ERR, "%s: Unknown event %d from pf",
 				    __func__, vpe->event);
 		}
 	} else {
@@ -314,7 +314,7 @@ _atomic_set_cmd(struct i40e_vf *vf, enum i40e_virtchnl_ops ops)
 			I40E_VIRTCHNL_OP_UNKNOWN, ops);
 
 	if (!ret)
-		PMD_DRV_LOG(ERR, "There is incomplete cmd %d\n", vf->pend_cmd);
+		PMD_DRV_LOG(ERR, "There is incomplete cmd %d", vf->pend_cmd);
 
 	return !ret;
 }
@@ -338,7 +338,7 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 	err = i40e_aq_send_msg_to_pf(hw, args->ops, I40E_SUCCESS,
 		     args->in_args, args->in_args_size, NULL);
 	if (err) {
-		PMD_DRV_LOG(ERR, "fail to send cmd %d\n", args->ops);
+		PMD_DRV_LOG(ERR, "fail to send cmd %d", args->ops);
 		return err;
 	}
 
@@ -347,9 +347,9 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 	if (!err && args->ops == info.ops)
 		_clear_cmd(vf);
 	else if (err)
-		PMD_DRV_LOG(ERR, "Failed to read message from AdminQ\n");
+		PMD_DRV_LOG(ERR, "Failed to read message from AdminQ");
 	else if (args->ops != info.ops)
-		PMD_DRV_LOG(ERR, "command mismatch, expect %u, get %u\n",
+		PMD_DRV_LOG(ERR, "command mismatch, expect %u, get %u",
 			    args->ops, info.ops);
 
 	return (err | info.result);
@@ -377,7 +377,7 @@ i40evf_check_api_version(struct rte_eth_dev *dev)
 
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err) {
-		PMD_INIT_LOG(ERR, "fail to execute command OP_VERSION\n");
+		PMD_INIT_LOG(ERR, "fail to execute command OP_VERSION");
 		return err;
 	}
 
@@ -385,13 +385,13 @@ i40evf_check_api_version(struct rte_eth_dev *dev)
 	/* We are talking with DPDK host */
 	if (pver->major == I40E_DPDK_VERSION_MAJOR) {
 		vf->host_is_dpdk = TRUE;
-		PMD_DRV_LOG(INFO, "Detect PF host is DPDK app\n");
+		PMD_DRV_LOG(INFO, "Detect PF host is DPDK app");
 	}
 	/* It's linux host driver */
 	else if ((pver->major != version.major) ||
 	    (pver->minor != version.minor)) {
 		PMD_INIT_LOG(ERR, "pf/vf API version mismatch. "
-			     "(%u.%u)-(%u.%u)\n", pver->major, pver->minor,
+			     "(%u.%u)-(%u.%u)", pver->major, pver->minor,
 			     version.major, version.minor);
 		return -1;
 	}
@@ -417,7 +417,7 @@ i40evf_get_vf_resource(struct rte_eth_dev *dev)
 	err = i40evf_execute_vf_cmd(dev, &args);
 
 	if (err) {
-		PMD_DRV_LOG(ERR, "fail to execute command OP_GET_VF_RESOURCE\n");
+		PMD_DRV_LOG(ERR, "fail to execute command OP_GET_VF_RESOURCE");
 		return err;
 	}
 
@@ -460,7 +460,7 @@ i40evf_config_promisc(struct rte_eth_dev *dev,
 
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command "
-			    "CONFIG_PROMISCUOUS_MODE\n");
+			    "CONFIG_PROMISCUOUS_MODE");
 	return err;
 }
 
@@ -485,7 +485,7 @@ i40evf_config_vlan_offload(struct rte_eth_dev *dev,
 
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
-		PMD_DRV_LOG(ERR, "fail to execute command CFG_VLAN_OFFLOAD\n");
+		PMD_DRV_LOG(ERR, "fail to execute command CFG_VLAN_OFFLOAD");
 
 	return err;
 }
@@ -500,7 +500,7 @@ i40evf_config_vlan_pvid(struct rte_eth_dev *dev,
 	struct i40e_virtchnl_pvid_info tpid_info;
 
 	if (dev == NULL || info == NULL) {
-		PMD_DRV_LOG(ERR, "invalid parameters\n");
+		PMD_DRV_LOG(ERR, "invalid parameters");
 		return I40E_ERR_PARAM;
 	}
 
@@ -516,7 +516,7 @@ i40evf_config_vlan_pvid(struct rte_eth_dev *dev,
 
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
-		PMD_DRV_LOG(ERR, "fail to execute command CFG_VLAN_PVID\n");
+		PMD_DRV_LOG(ERR, "fail to execute command CFG_VLAN_PVID");
 
 	return err;
 }
@@ -540,7 +540,7 @@ i40evf_configure_queues(struct rte_eth_dev *dev)
 	len = sizeof(*queue_info) + sizeof(*queue_cfg) * nb_qpairs;
 	queue_info = rte_zmalloc("queue_info", len, 0);
 	if (queue_info == NULL) {
-		PMD_INIT_LOG(ERR, "failed alloc memory for queue_info\n");
+		PMD_INIT_LOG(ERR, "failed alloc memory for queue_info");
 		return -1;
 	}
 	queue_info->vsi_id = vf->vsi_res->vsi_id;
@@ -593,7 +593,7 @@ i40evf_configure_queues(struct rte_eth_dev *dev)
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command "
-			    "OP_CONFIG_VSI_QUEUES\n");
+			    "OP_CONFIG_VSI_QUEUES");
 	rte_free(queue_info);
 
 	return err;
@@ -628,7 +628,7 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
-		PMD_DRV_LOG(ERR, "fail to execute command OP_ENABLE_QUEUES\n");
+		PMD_DRV_LOG(ERR, "fail to execute command OP_ENABLE_QUEUES");
 
 	return err;
 }
@@ -659,7 +659,7 @@ i40evf_switch_queue(struct rte_eth_dev *dev, bool isrx, uint16_t qid,
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
-		PMD_DRV_LOG(ERR, "fail to switch %s %u %s\n",
+		PMD_DRV_LOG(ERR, "fail to switch %s %u %s",
 			    isrx ? "RX" : "TX", qid, on ? "on" : "off");
 
 	return err;
@@ -678,7 +678,7 @@ i40evf_start_queues(struct rte_eth_dev *dev)
 		if (rxq->start_rx_per_q)
 			continue;
 		if (i40evf_dev_rx_queue_start(dev, i) != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start queue %u\n", i);
+			PMD_DRV_LOG(ERR, "Fail to start queue %u", i);
 			return -1;
 		}
 	}
@@ -688,7 +688,7 @@ i40evf_start_queues(struct rte_eth_dev *dev)
 		if (txq->start_tx_per_q)
 			continue;
 		if (i40evf_dev_tx_queue_start(dev, i) != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start queue %u\n", i);
+			PMD_DRV_LOG(ERR, "Fail to start queue %u", i);
 			return -1;
 		}
 	}
@@ -704,7 +704,7 @@ i40evf_stop_queues(struct rte_eth_dev *dev)
 	/* Stop TX queues first */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		if (i40evf_dev_tx_queue_stop(dev, i) != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start queue %u\n", i);
+			PMD_DRV_LOG(ERR, "Fail to start queue %u", i);
 			return -1;
 		}
 	}
@@ -712,7 +712,7 @@ i40evf_stop_queues(struct rte_eth_dev *dev)
 	/* Then stop RX queues */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		if (i40evf_dev_rx_queue_stop(dev, i) != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start queue %u\n", i);
+			PMD_DRV_LOG(ERR, "Fail to start queue %u", i);
 			return -1;
 		}
 	}
@@ -731,7 +731,7 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 	struct vf_cmd_info args;
 
 	if (i40e_validate_mac_addr(addr->addr_bytes) != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Invalid mac:%x:%x:%x:%x:%x:%x\n",
+		PMD_DRV_LOG(ERR, "Invalid mac:%x:%x:%x:%x:%x:%x",
 			    addr->addr_bytes[0], addr->addr_bytes[1],
 			    addr->addr_bytes[2], addr->addr_bytes[3],
 			    addr->addr_bytes[4], addr->addr_bytes[5]);
@@ -752,7 +752,7 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command "
-			    "OP_ADD_ETHER_ADDRESS\n");
+			    "OP_ADD_ETHER_ADDRESS");
 
 	return err;
 }
@@ -768,7 +768,7 @@ i40evf_del_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 	struct vf_cmd_info args;
 
 	if (i40e_validate_mac_addr(addr->addr_bytes) != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Invalid mac:%x-%x-%x-%x-%x-%x\n",
+		PMD_DRV_LOG(ERR, "Invalid mac:%x-%x-%x-%x-%x-%x",
 			    addr->addr_bytes[0], addr->addr_bytes[1],
 			    addr->addr_bytes[2], addr->addr_bytes[3],
 			    addr->addr_bytes[4], addr->addr_bytes[5]);
@@ -789,7 +789,7 @@ i40evf_del_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command "
-			    "OP_DEL_ETHER_ADDRESS\n");
+			    "OP_DEL_ETHER_ADDRESS");
 
 	return err;
 }
@@ -813,7 +813,7 @@ i40evf_get_statics(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err) {
-		PMD_DRV_LOG(ERR, "fail to execute command OP_GET_STATS\n");
+		PMD_DRV_LOG(ERR, "fail to execute command OP_GET_STATS");
 		return err;
 	}
 	pstats = (struct i40e_eth_stats *)args.out_buffer;
@@ -851,7 +851,7 @@ i40evf_add_vlan(struct rte_eth_dev *dev, uint16_t vlanid)
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
-		PMD_DRV_LOG(ERR, "fail to execute command OP_ADD_VLAN\n");
+		PMD_DRV_LOG(ERR, "fail to execute command OP_ADD_VLAN");
 
 	return err;
 }
@@ -878,7 +878,7 @@ i40evf_del_vlan(struct rte_eth_dev *dev, uint16_t vlanid)
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
-		PMD_DRV_LOG(ERR, "fail to execute command OP_DEL_VLAN\n");
+		PMD_DRV_LOG(ERR, "fail to execute command OP_DEL_VLAN");
 
 	return err;
 }
@@ -897,7 +897,7 @@ i40evf_get_link_status(struct rte_eth_dev *dev, struct rte_eth_link *link)
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err) {
-		PMD_DRV_LOG(ERR, "fail to execute command OP_GET_LINK_STAT\n");
+		PMD_DRV_LOG(ERR, "fail to execute command OP_GET_LINK_STAT");
 		return err;
 	}
 
@@ -933,7 +933,7 @@ i40evf_reset_vf(struct i40e_hw *hw)
 	int i, reset;
 
 	if (i40e_vf_reset(hw) != I40E_SUCCESS) {
-		PMD_INIT_LOG(ERR, "Reset VF NIC failed\n");
+		PMD_INIT_LOG(ERR, "Reset VF NIC failed");
 		return -1;
 	}
 	/**
@@ -958,7 +958,7 @@ i40evf_reset_vf(struct i40e_hw *hw)
 	}
 
 	if (i >= MAX_RESET_WAIT_CNT) {
-		PMD_INIT_LOG(ERR, "Reset VF NIC failed\n");
+		PMD_INIT_LOG(ERR, "Reset VF NIC failed");
 		return -1;
 	}
 
@@ -974,49 +974,49 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 
 	err = i40evf_set_mac_type(hw);
 	if (err) {
-		PMD_INIT_LOG(ERR, "set_mac_type failed: %d\n", err);
+		PMD_INIT_LOG(ERR, "set_mac_type failed: %d", err);
 		goto err;
 	}
 
 	i40e_init_adminq_parameter(hw);
 	err = i40e_init_adminq(hw);
 	if (err) {
-		PMD_INIT_LOG(ERR, "init_adminq failed: %d\n", err);
+		PMD_INIT_LOG(ERR, "init_adminq failed: %d", err);
 		goto err;
 	}
 
 
 	/* Reset VF and wait until it's complete */
 	if (i40evf_reset_vf(hw)) {
-		PMD_INIT_LOG(ERR, "reset NIC failed\n");
+		PMD_INIT_LOG(ERR, "reset NIC failed");
 		goto err_aq;
 	}
 
 	/* VF reset, shutdown admin queue and initialize again */
 	if (i40e_shutdown_adminq(hw) != I40E_SUCCESS) {
-		PMD_INIT_LOG(ERR, "i40e_shutdown_adminq failed\n");
+		PMD_INIT_LOG(ERR, "i40e_shutdown_adminq failed");
 		return -1;
 	}
 
 	i40e_init_adminq_parameter(hw);
 	if (i40e_init_adminq(hw) != I40E_SUCCESS) {
-		PMD_INIT_LOG(ERR, "init_adminq failed\n");
+		PMD_INIT_LOG(ERR, "init_adminq failed");
 		return -1;
 	}
 	if (i40evf_check_api_version(dev) != 0) {
-		PMD_INIT_LOG(ERR, "check_api version failed\n");
+		PMD_INIT_LOG(ERR, "check_api version failed");
 		goto err_aq;
 	}
 	bufsz = sizeof(struct i40e_virtchnl_vf_resource) +
 		(I40E_MAX_VF_VSI * sizeof(struct i40e_virtchnl_vsi_resource));
 	vf->vf_res = rte_zmalloc("vf_res", bufsz, 0);
 	if (!vf->vf_res) {
-		PMD_INIT_LOG(ERR, "unable to allocate vf_res memory\n");
+		PMD_INIT_LOG(ERR, "unable to allocate vf_res memory");
 			goto err_aq;
 	}
 
 	if (i40evf_get_vf_resource(dev) != 0) {
-		PMD_INIT_LOG(ERR, "i40evf_get_vf_config failed\n");
+		PMD_INIT_LOG(ERR, "i40evf_get_vf_config failed");
 		goto err_alloc;
 	}
 
@@ -1027,7 +1027,7 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	}
 
 	if (!vf->vsi_res) {
-		PMD_INIT_LOG(ERR, "no LAN VSI found\n");
+		PMD_INIT_LOG(ERR, "no LAN VSI found");
 		goto err_alloc;
 	}
 
@@ -1086,7 +1086,7 @@ i40evf_dev_init(__rte_unused struct eth_driver *eth_drv,
 	hw->hw_addr = (void *)eth_dev->pci_dev->mem_resource[0].addr;
 
 	if(i40evf_init_vf(eth_dev) != 0) {
-		PMD_INIT_LOG(ERR, "Init vf failed\n");
+		PMD_INIT_LOG(ERR, "Init vf failed");
 		return -1;
 	}
 
@@ -1223,7 +1223,7 @@ i40evf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 		err = i40e_alloc_rx_queue_mbufs(rxq);
 		if (err) {
-			PMD_DRV_LOG(ERR, "Failed to allocate RX queue mbuf\n");
+			PMD_DRV_LOG(ERR, "Failed to allocate RX queue mbuf");
 			return err;
 		}
 
@@ -1237,7 +1237,7 @@ i40evf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		err = i40evf_switch_queue(dev, TRUE, rx_queue_id, TRUE);
 
 		if (err)
-			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on\n",
+			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on",
 				    rx_queue_id);
 	}
 
@@ -1256,7 +1256,7 @@ i40evf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		err = i40evf_switch_queue(dev, TRUE, rx_queue_id, FALSE);
 
 		if (err) {
-			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off\n",
+			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off",
 				    rx_queue_id);
 			return err;
 		}
@@ -1281,7 +1281,7 @@ i40evf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		err = i40evf_switch_queue(dev, FALSE, tx_queue_id, TRUE);
 
 		if (err)
-			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on\n",
+			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on",
 				    tx_queue_id);
 	}
 
@@ -1300,7 +1300,7 @@ i40evf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		err = i40evf_switch_queue(dev, FALSE, tx_queue_id, FALSE);
 
 		if (err) {
-			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u of\n",
+			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u of",
 				    tx_queue_id);
 			return err;
 		}
@@ -1386,7 +1386,7 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 			vf->max_pkt_len > I40E_FRAME_SIZE_MAX) {
 			PMD_DRV_LOG(ERR, "maximum packet length must "
 				    "be larger than %u and smaller than %u,"
-				    "as jumbo frame is enabled\n",
+				    "as jumbo frame is enabled",
 				    (uint32_t)ETHER_MAX_LEN,
 				    (uint32_t)I40E_FRAME_SIZE_MAX);
 			return I40E_ERR_CONFIG;
@@ -1396,7 +1396,7 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 			vf->max_pkt_len > ETHER_MAX_LEN) {
 			PMD_DRV_LOG(ERR, "maximum packet length must be "
 				    "larger than %u and smaller than %u, "
-				    "as jumbo frame is disabled\n",
+				    "as jumbo frame is disabled",
 				    (uint32_t)ETHER_MIN_LEN,
 				    (uint32_t)ETHER_MAX_LEN);
 			return I40E_ERR_CONFIG;
@@ -1407,18 +1407,18 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 					dev->data->nb_tx_queues);
 
 	if (i40evf_rx_init(dev) != 0){
-		PMD_DRV_LOG(ERR, "failed to do RX init\n");
+		PMD_DRV_LOG(ERR, "failed to do RX init");
 		return -1;
 	}
 
 	i40evf_tx_init(dev);
 
 	if (i40evf_configure_queues(dev) != 0) {
-		PMD_DRV_LOG(ERR, "configure queues failed\n");
+		PMD_DRV_LOG(ERR, "configure queues failed");
 		goto err_queue;
 	}
 	if (i40evf_config_irq_map(dev)) {
-		PMD_DRV_LOG(ERR, "config_irq_map failed\n");
+		PMD_DRV_LOG(ERR, "config_irq_map failed");
 		goto err_queue;
 	}
 
@@ -1426,12 +1426,12 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 	(void)rte_memcpy(mac_addr.addr_bytes, hw->mac.addr,
 				sizeof(mac_addr.addr_bytes));
 	if (i40evf_add_mac_addr(dev, &mac_addr)) {
-		PMD_DRV_LOG(ERR, "Failed to add mac addr\n");
+		PMD_DRV_LOG(ERR, "Failed to add mac addr");
 		goto err_queue;
 	}
 
 	if (i40evf_start_queues(dev) != 0) {
-		PMD_DRV_LOG(ERR, "enable queues failed\n");
+		PMD_DRV_LOG(ERR, "enable queues failed");
 		goto err_mac;
 	}
 
@@ -1555,7 +1555,7 @@ i40evf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	memset(stats, 0, sizeof(*stats));
 	if (i40evf_get_statics(dev, stats))
-		PMD_DRV_LOG(ERR, "Get statics failed\n");
+		PMD_DRV_LOG(ERR, "Get statics failed");
 }
 
 static void
