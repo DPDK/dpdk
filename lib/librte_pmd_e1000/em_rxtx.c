@@ -472,12 +472,12 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tx_last = (uint16_t) (tx_last - txq->nb_tx_desc);
 
 		PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u pktlen=%u"
-			" tx_first=%u tx_last=%u\n",
-			(unsigned) txq->port_id,
-			(unsigned) txq->queue_id,
-			(unsigned) tx_pkt->pkt_len,
-			(unsigned) tx_id,
-			(unsigned) tx_last);
+			   " tx_first=%u tx_last=%u\n",
+			   (unsigned) txq->port_id,
+			   (unsigned) txq->queue_id,
+			   (unsigned) tx_pkt->pkt_len,
+			   (unsigned) tx_id,
+			   (unsigned) tx_last);
 
 		/*
 		 * Make sure there are enough TX descriptors available to
@@ -732,17 +732,17 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * frames to its peer(s).
 		 */
 		PMD_RX_LOG(DEBUG, "\nport_id=%u queue_id=%u rx_id=%u "
-			"status=0x%x pkt_len=%u\n",
-			(unsigned) rxq->port_id, (unsigned) rxq->queue_id,
-			(unsigned) rx_id, (unsigned) status,
-			(unsigned) rte_le_to_cpu_16(rxd.length));
+			   "status=0x%x pkt_len=%u\n",
+			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
+			   (unsigned) rx_id, (unsigned) status,
+			   (unsigned) rte_le_to_cpu_16(rxd.length));
 
 		nmb = rte_rxmbuf_alloc(rxq->mb_pool);
 		if (nmb == NULL) {
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-				"queue_id=%u\n",
-				(unsigned) rxq->port_id,
-				(unsigned) rxq->queue_id);
+				   "queue_id=%u\n",
+				   (unsigned) rxq->port_id,
+				   (unsigned) rxq->queue_id);
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
 			break;
 		}
@@ -825,10 +825,10 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
 	if (nb_hold > rxq->rx_free_thresh) {
 		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
-			"nb_hold=%u nb_rx=%u\n",
-			(unsigned) rxq->port_id, (unsigned) rxq->queue_id,
-			(unsigned) rx_id, (unsigned) nb_hold,
-			(unsigned) nb_rx);
+			   "nb_hold=%u nb_rx=%u\n",
+			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
+			   (unsigned) rx_id, (unsigned) nb_hold,
+			   (unsigned) nb_rx);
 		rx_id = (uint16_t) ((rx_id == 0) ?
 			(rxq->nb_rx_desc - 1) : (rx_id - 1));
 		E1000_PCI_REG_WRITE(rxq->rdt_reg_addr, rx_id);
@@ -912,16 +912,16 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * frames to its peer(s).
 		 */
 		PMD_RX_LOG(DEBUG, "\nport_id=%u queue_id=%u rx_id=%u "
-			"status=0x%x data_len=%u\n",
-			(unsigned) rxq->port_id, (unsigned) rxq->queue_id,
-			(unsigned) rx_id, (unsigned) status,
-			(unsigned) rte_le_to_cpu_16(rxd.length));
+			   "status=0x%x data_len=%u\n",
+			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
+			   (unsigned) rx_id, (unsigned) status,
+			   (unsigned) rte_le_to_cpu_16(rxd.length));
 
 		nmb = rte_rxmbuf_alloc(rxq->mb_pool);
 		if (nmb == NULL) {
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-				"queue_id=%u\n", (unsigned) rxq->port_id,
-				(unsigned) rxq->queue_id);
+				   "queue_id=%u\n", (unsigned) rxq->port_id,
+				   (unsigned) rxq->queue_id);
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
 			break;
 		}
@@ -1070,10 +1070,10 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
 	if (nb_hold > rxq->rx_free_thresh) {
 		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
-			"nb_hold=%u nb_rx=%u\n",
-			(unsigned) rxq->port_id, (unsigned) rxq->queue_id,
-			(unsigned) rx_id, (unsigned) nb_hold,
-			(unsigned) nb_rx);
+			   "nb_hold=%u nb_rx=%u\n",
+			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
+			   (unsigned) rx_id, (unsigned) nb_hold,
+			   (unsigned) nb_rx);
 		rx_id = (uint16_t) ((rx_id == 0) ?
 			(rxq->nb_rx_desc - 1) : (rx_id - 1));
 		E1000_PCI_REG_WRITE(rxq->rdt_reg_addr, rx_id);
@@ -1310,7 +1310,7 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->tx_ring = (struct e1000_data_desc *) tz->addr;
 
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
-		txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
+		     txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
 
 	em_reset_tx_queue(txq);
 
@@ -1440,7 +1440,7 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->rx_ring = (struct e1000_rx_desc *) rz->addr;
 
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
-		rxq->sw_ring, rxq->rx_ring, rxq->rx_ring_phys_addr);
+		     rxq->sw_ring, rxq->rx_ring, rxq->rx_ring_phys_addr);
 
 	dev->data->rx_queues[queue_idx] = rxq;
 	em_reset_rx_queue(rxq);
@@ -1603,7 +1603,7 @@ em_alloc_rx_queue_mbufs(struct em_rx_queue *rxq)
 
 		if (mbuf == NULL) {
 			PMD_INIT_LOG(ERR, "RX mbuf alloc failed "
-				"queue_id=%hu\n", rxq->queue_id);
+				     "queue_id=%hu\n", rxq->queue_id);
 			return (-ENOMEM);
 		}
 

@@ -273,8 +273,8 @@ eth_em_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
 
 	PMD_INIT_LOG(INFO, "port_id %d vendorID=0x%x deviceID=0x%x\n",
-			eth_dev->data->port_id, pci_dev->id.vendor_id,
-			pci_dev->id.device_id);
+		     eth_dev->data->port_id, pci_dev->id.vendor_id,
+		     pci_dev->id.device_id);
 
 	rte_intr_callback_register(&(pci_dev->intr_handle),
 		eth_em_interrupt_handler, (void *)eth_dev);
@@ -574,8 +574,8 @@ eth_em_start(struct rte_eth_dev *dev)
 
 error_invalid_config:
 	PMD_INIT_LOG(ERR, "Invalid link_speed/link_duplex (%u/%u) for port "
-				"%u\n", dev->data->dev_conf.link_speed,
-			dev->data->dev_conf.link_duplex, dev->data->port_id);
+		     "%u\n", dev->data->dev_conf.link_speed,
+		     dev->data->dev_conf.link_duplex, dev->data->port_id);
 	em_dev_clear_queues(dev);
 	return (-EINVAL);
 }
@@ -1296,20 +1296,16 @@ eth_em_interrupt_action(struct rte_eth_dev *dev)
 	memset(&link, 0, sizeof(link));
 	rte_em_dev_atomic_read_link_status(dev, &link);
 	if (link.link_status) {
-		PMD_INIT_LOG(INFO,
-			" Port %d: Link Up - speed %u Mbps - %s\n",
-			dev->data->port_id, (unsigned)link.link_speed,
-			link.link_duplex == ETH_LINK_FULL_DUPLEX ?
-				"full-duplex" : "half-duplex");
+		PMD_INIT_LOG(INFO, " Port %d: Link Up - speed %u Mbps - %s\n",
+			     dev->data->port_id, (unsigned)link.link_speed,
+			     link.link_duplex == ETH_LINK_FULL_DUPLEX ?
+			     "full-duplex" : "half-duplex");
 	} else {
-		PMD_INIT_LOG(INFO, " Port %d: Link Down\n",
-					dev->data->port_id);
+		PMD_INIT_LOG(INFO, " Port %d: Link Down\n", dev->data->port_id);
 	}
 	PMD_INIT_LOG(INFO, "PCI Address: %04d:%02d:%02d:%d",
-				dev->pci_dev->addr.domain,
-				dev->pci_dev->addr.bus,
-				dev->pci_dev->addr.devid,
-				dev->pci_dev->addr.function);
+		     dev->pci_dev->addr.domain, dev->pci_dev->addr.bus,
+		     dev->pci_dev->addr.devid, dev->pci_dev->addr.function);
 	tctl = E1000_READ_REG(hw, E1000_TCTL);
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	if (link.link_status) {
@@ -1434,7 +1430,7 @@ eth_em_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	/* At least reserve one Ethernet frame for watermark */
 	max_high_water = rx_buf_size - ETHER_MAX_LEN;
 	if ((fc_conf->high_water > max_high_water) ||
-		(fc_conf->high_water < fc_conf->low_water)) {
+	    (fc_conf->high_water < fc_conf->low_water)) {
 		PMD_INIT_LOG(ERR, "e1000 incorrect high/low water value \n");
 		PMD_INIT_LOG(ERR, "high water must <= 0x%x \n", max_high_water);
 		return (-EINVAL);

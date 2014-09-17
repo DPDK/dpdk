@@ -651,10 +651,9 @@ eth_igbvf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 			&eth_dev->data->mac_addrs[0]);
 
 	PMD_INIT_LOG(DEBUG, "\nport %d vendorID=0x%x deviceID=0x%x "
-			"mac.type=%s\n",
-			eth_dev->data->port_id, pci_dev->id.vendor_id,
-			pci_dev->id.device_id,
-			"igb_mac_82576_vf");
+		     "mac.type=%s\n",
+		     eth_dev->data->port_id, pci_dev->id.vendor_id,
+		     pci_dev->id.device_id, "igb_mac_82576_vf");
 
 	return 0;
 }
@@ -889,8 +888,8 @@ eth_igb_start(struct rte_eth_dev *dev)
 
 error_invalid_config:
 	PMD_INIT_LOG(ERR, "Invalid link_speed/link_duplex (%u/%u) for port %u\n",
-			dev->data->dev_conf.link_speed,
-			dev->data->dev_conf.link_duplex, dev->data->port_id);
+		     dev->data->dev_conf.link_speed,
+		     dev->data->dev_conf.link_duplex, dev->data->port_id);
 	igb_dev_clear_queues(dev);
 	return (-EINVAL);
 }
@@ -1790,19 +1789,20 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev)
 		rte_igb_dev_atomic_read_link_status(dev, &link);
 		if (link.link_status) {
 			PMD_INIT_LOG(INFO,
-				" Port %d: Link Up - speed %u Mbps - %s\n",
-				dev->data->port_id, (unsigned)link.link_speed,
-				link.link_duplex == ETH_LINK_FULL_DUPLEX ?
-					"full-duplex" : "half-duplex");
+				     " Port %d: Link Up - speed %u Mbps - %s\n",
+				     dev->data->port_id,
+				     (unsigned)link.link_speed,
+				     link.link_duplex == ETH_LINK_FULL_DUPLEX ?
+				     "full-duplex" : "half-duplex");
 		} else {
 			PMD_INIT_LOG(INFO, " Port %d: Link Down\n",
-						dev->data->port_id);
+				     dev->data->port_id);
 		}
 		PMD_INIT_LOG(INFO, "PCI Address: %04d:%02d:%02d:%d",
-					dev->pci_dev->addr.domain,
-					dev->pci_dev->addr.bus,
-					dev->pci_dev->addr.devid,
-					dev->pci_dev->addr.function);
+			     dev->pci_dev->addr.domain,
+			     dev->pci_dev->addr.bus,
+			     dev->pci_dev->addr.devid,
+			     dev->pci_dev->addr.function);
 		tctl = E1000_READ_REG(hw, E1000_TCTL);
 		rctl = E1000_READ_REG(hw, E1000_RCTL);
 		if (link.link_status) {
@@ -1928,7 +1928,7 @@ eth_igb_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	/* At least reserve one Ethernet frame for watermark */
 	max_high_water = rx_buf_size - ETHER_MAX_LEN;
 	if ((fc_conf->high_water > max_high_water) ||
-		(fc_conf->high_water < fc_conf->low_water)) {
+	    (fc_conf->high_water < fc_conf->low_water)) {
 		PMD_INIT_LOG(ERR, "e1000 incorrect high/low water value \n");
 		PMD_INIT_LOG(ERR, "high water must <=  0x%x \n", max_high_water);
 		return (-EINVAL);
@@ -2078,7 +2078,7 @@ igbvf_dev_configure(struct rte_eth_dev *dev)
 	struct rte_eth_conf* conf = &dev->data->dev_conf;
 
 	PMD_INIT_LOG(DEBUG, "\nConfigured Virtual Function port id: %d\n",
-		dev->data->port_id);
+		     dev->data->port_id);
 
 	/*
 	 * VF has no ability to enable/disable HW CRC
