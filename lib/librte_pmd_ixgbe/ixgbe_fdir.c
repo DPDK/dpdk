@@ -112,7 +112,7 @@ static void fdir_enable_82599(struct ixgbe_hw *hw, u32 fdirctrl)
 	}
 
 	if (i >= IXGBE_FDIR_INIT_DONE_POLL)
-		PMD_INIT_LOG(WARNING, "Flow Director poll time exceeded!\n");
+		PMD_INIT_LOG(WARNING, "Flow Director poll time exceeded!");
 }
 
 /*
@@ -381,7 +381,7 @@ fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 	fdirhashcmd |= fdirhash;
 	IXGBE_WRITE_REG64(hw, IXGBE_FDIRHASH, fdirhashcmd);
 
-	PMD_INIT_LOG(DEBUG, "Tx Queue=%x hash=%x\n", queue, (u32)fdirhashcmd);
+	PMD_INIT_LOG(DEBUG, "Tx Queue=%x hash=%x", queue, (u32)fdirhashcmd);
 }
 
 /*
@@ -614,7 +614,7 @@ fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 		/* use the L4 protocol mask for raw IPv4/IPv6 traffic */
 		fdirm |= IXGBE_FDIRM_L4P;
 		if (input_mask->dst_port_mask || input_mask->src_port_mask) {
-			PMD_INIT_LOG(ERR, " Error on src/dst port mask\n");
+			PMD_INIT_LOG(ERR, " Error on src/dst port mask");
 			return -EINVAL;
 		}
 	}

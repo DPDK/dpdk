@@ -613,7 +613,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tx_last = (uint16_t) (tx_last - txq->nb_tx_desc);
 
 		PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u pktlen=%u"
-			   " tx_first=%u tx_last=%u\n",
+			   " tx_first=%u tx_last=%u",
 			   (unsigned) txq->port_id,
 			   (unsigned) txq->queue_id,
 			   (unsigned) pkt_len,
@@ -1063,7 +1063,7 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		if (ixgbe_rx_alloc_bufs(rxq) != 0) {
 			int i, j;
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-				   "queue_id=%u\n", (unsigned) rxq->port_id,
+				   "queue_id=%u", (unsigned) rxq->port_id,
 				   (unsigned) rxq->queue_id);
 
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
@@ -1190,7 +1190,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * frames to its peer(s).
 		 */
 		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_id=%u "
-			   "ext_err_stat=0x%08x pkt_len=%u\n",
+			   "ext_err_stat=0x%08x pkt_len=%u",
 			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
 			   (unsigned) rx_id, (unsigned) staterr,
 			   (unsigned) rte_le_to_cpu_16(rxd.wb.upper.length));
@@ -1198,7 +1198,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		nmb = rte_rxmbuf_alloc(rxq->mb_pool);
 		if (nmb == NULL) {
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-				   "queue_id=%u\n", (unsigned) rxq->port_id,
+				   "queue_id=%u", (unsigned) rxq->port_id,
 				   (unsigned) rxq->queue_id);
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
 			break;
@@ -1290,7 +1290,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
 	if (nb_hold > rxq->rx_free_thresh) {
 		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
-			   "nb_hold=%u nb_rx=%u\n",
+			   "nb_hold=%u nb_rx=%u",
 			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
 			   (unsigned) rx_id, (unsigned) nb_hold,
 			   (unsigned) nb_rx);
@@ -1377,8 +1377,8 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * to happen by sending specific "back-pressure" flow control
 		 * frames to its peer(s).
 		 */
-		PMD_RX_LOG(DEBUG, "\nport_id=%u queue_id=%u rx_id=%u "
-			   "staterr=0x%x data_len=%u\n",
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_id=%u "
+			   "staterr=0x%x data_len=%u",
 			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
 			   (unsigned) rx_id, (unsigned) staterr,
 			   (unsigned) rte_le_to_cpu_16(rxd.wb.upper.length));
@@ -1386,7 +1386,7 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		nmb = rte_rxmbuf_alloc(rxq->mb_pool);
 		if (nmb == NULL) {
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-				   "queue_id=%u\n", (unsigned) rxq->port_id,
+				   "queue_id=%u", (unsigned) rxq->port_id,
 				   (unsigned) rxq->queue_id);
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
 			break;
@@ -1555,7 +1555,7 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
 	if (nb_hold > rxq->rx_free_thresh) {
 		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
-			   "nb_hold=%u nb_rx=%u\n",
+			   "nb_hold=%u nb_rx=%u",
 			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
 			   (unsigned) rx_id, (unsigned) nb_hold,
 			   (unsigned) nb_rx);
@@ -1867,30 +1867,30 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		ixgbe_tx_queue_release(txq);
 		return (-ENOMEM);
 	}
-	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
+	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
 		     txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
 
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
 	if (((txq->txq_flags & IXGBE_SIMPLE_FLAGS) == IXGBE_SIMPLE_FLAGS) &&
 	    (txq->tx_rs_thresh >= RTE_PMD_IXGBE_TX_MAX_BURST)) {
-		PMD_INIT_LOG(INFO, "Using simple tx code path\n");
+		PMD_INIT_LOG(INFO, "Using simple tx code path");
 #ifdef RTE_IXGBE_INC_VECTOR
 		if (txq->tx_rs_thresh <= RTE_IXGBE_TX_MAX_FREE_BUF_SZ &&
 		    ixgbe_txq_vec_setup(txq) == 0) {
-			PMD_INIT_LOG(INFO, "Vector tx enabled.\n");
+			PMD_INIT_LOG(INFO, "Vector tx enabled.");
 			dev->tx_pkt_burst = ixgbe_xmit_pkts_vec;
 		}
 		else
 #endif
 			dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
 	} else {
-		PMD_INIT_LOG(INFO, "Using full-featured tx code path\n");
+		PMD_INIT_LOG(INFO, "Using full-featured tx code path");
 		PMD_INIT_LOG(INFO, " - txq_flags = %lx "
-			     "[IXGBE_SIMPLE_FLAGS=%lx]\n",
+			     "[IXGBE_SIMPLE_FLAGS=%lx]",
 			     (long unsigned)txq->txq_flags,
 			     (long unsigned)IXGBE_SIMPLE_FLAGS);
 		PMD_INIT_LOG(INFO, " - tx_rs_thresh = %lu "
-			     "[RTE_PMD_IXGBE_TX_MAX_BURST=%lu]\n",
+			     "[RTE_PMD_IXGBE_TX_MAX_BURST=%lu]",
 			     (long unsigned)txq->tx_rs_thresh,
 			     (long unsigned)RTE_PMD_IXGBE_TX_MAX_BURST);
 		dev->tx_pkt_burst = ixgbe_xmit_pkts;
@@ -2152,7 +2152,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		ixgbe_rx_queue_release(rxq);
 		return (-ENOMEM);
 	}
-	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
+	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
 		     rxq->sw_ring, rxq->rx_ring, rxq->rx_ring_phys_addr);
 
 	/*
@@ -2166,13 +2166,13 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
 			     "satisfied. Rx Burst Bulk Alloc function will be "
-			     "used on port=%d, queue=%d.\n",
+			     "used on port=%d, queue=%d.",
 			     rxq->port_id, rxq->queue_id);
 		dev->rx_pkt_burst = ixgbe_recv_pkts_bulk_alloc;
 #ifdef RTE_IXGBE_INC_VECTOR
 		if (!ixgbe_rx_vec_condition_check(dev)) {
 			PMD_INIT_LOG(INFO, "Vector rx enabled, please make "
-				     "sure RX burst size no less than 32.\n");
+				     "sure RX burst size no less than 32.");
 			ixgbe_rxq_vec_setup(rxq);
 			dev->rx_pkt_burst = ixgbe_recv_pkts_vec;
 		}
@@ -2182,7 +2182,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions "
 			     "are not satisfied, Scattered Rx is requested, "
 			     "or RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC is not "
-			     "enabled (port=%d, queue=%d).\n",
+			     "enabled (port=%d, queue=%d).",
 			     rxq->port_id, rxq->queue_id);
 	}
 	dev->data->rx_queues[queue_idx] = rxq;
@@ -2201,7 +2201,7 @@ ixgbe_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	uint32_t desc = 0;
 
 	if (rx_queue_id >= dev->data->nb_rx_queues) {
-		PMD_RX_LOG(ERR, "Invalid RX queue id=%d\n", rx_queue_id);
+		PMD_RX_LOG(ERR, "Invalid RX queue id=%d", rx_queue_id);
 		return 0;
 	}
 
@@ -2917,7 +2917,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		ixgbe_dcb_rx_hw_config(hw, dcb_config);
 		break;
 	default:
-		PMD_INIT_LOG(ERR, "Incorrect DCB RX mode configuration\n");
+		PMD_INIT_LOG(ERR, "Incorrect DCB RX mode configuration");
 		break;
 	}
 	switch (dev->data->dev_conf.txmode.mq_mode) {
@@ -2939,7 +2939,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		ixgbe_dcb_tx_hw_config(hw, dcb_config);
 		break;
 	default:
-		PMD_INIT_LOG(ERR, "Incorrect DCB TX mode configuration\n");
+		PMD_INIT_LOG(ERR, "Incorrect DCB TX mode configuration");
 		break;
 	}
 
@@ -3210,7 +3210,7 @@ ixgbe_alloc_rx_queue_mbufs(struct igb_rx_queue *rxq)
 		volatile union ixgbe_adv_rx_desc *rxd;
 		struct rte_mbuf *mbuf = rte_rxmbuf_alloc(rxq->mb_pool);
 		if (mbuf == NULL) {
-			PMD_INIT_LOG(ERR, "RX mbuf alloc failed queue_id=%u\n",
+			PMD_INIT_LOG(ERR, "RX mbuf alloc failed queue_id=%u",
 				     (unsigned) rxq->queue_id);
 			return (-ENOMEM);
 		}
@@ -3610,7 +3610,7 @@ ixgbe_setup_loopback_link_82599(struct ixgbe_hw *hw)
 	if (ixgbe_verify_lesm_fw_enabled_82599(hw)) {
 		if (hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_MAC_CSR_SM) !=
 				IXGBE_SUCCESS) {
-			PMD_INIT_LOG(ERR, "Could not enable loopback mode\n");
+			PMD_INIT_LOG(ERR, "Could not enable loopback mode");
 			/* ignore error */
 			return;
 		}
@@ -3705,7 +3705,7 @@ ixgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 		/* Allocate buffers for descriptor rings */
 		if (ixgbe_alloc_rx_queue_mbufs(rxq) != 0) {
-			PMD_INIT_LOG(ERR, "Could not alloc mbuf for queue:%d\n",
+			PMD_INIT_LOG(ERR, "Could not alloc mbuf for queue:%d",
 				     rx_queue_id);
 			return -1;
 		}
@@ -3720,7 +3720,7 @@ ixgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 			rxdctl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(rxq->reg_idx));
 		} while (--poll_ms && !(rxdctl & IXGBE_RXDCTL_ENABLE));
 		if (!poll_ms)
-			PMD_INIT_LOG(ERR, "Could not enable Rx Queue %d\n",
+			PMD_INIT_LOG(ERR, "Could not enable Rx Queue %d",
 				     rx_queue_id);
 		rte_wmb();
 		IXGBE_WRITE_REG(hw, IXGBE_RDH(rxq->reg_idx), 0);
@@ -3759,7 +3759,7 @@ ixgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 			rxdctl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(rxq->reg_idx));
 		} while (--poll_ms && (rxdctl | IXGBE_RXDCTL_ENABLE));
 		if (!poll_ms)
-			PMD_INIT_LOG(ERR, "Could not disable Rx Queue %d\n",
+			PMD_INIT_LOG(ERR, "Could not disable Rx Queue %d",
 				     rx_queue_id);
 
 		rte_delay_us(RTE_IXGBE_WAIT_100_US);
@@ -3803,7 +3803,7 @@ ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 			} while (--poll_ms && !(txdctl & IXGBE_TXDCTL_ENABLE));
 			if (!poll_ms)
 				PMD_INIT_LOG(ERR, "Could not enable "
-					     "Tx Queue %d\n", tx_queue_id);
+					     "Tx Queue %d", tx_queue_id);
 		}
 		rte_wmb();
 		IXGBE_WRITE_REG(hw, IXGBE_TDH(txq->reg_idx), 0);
@@ -3844,7 +3844,7 @@ ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 			} while (--poll_ms && (txtdh != txtdt));
 			if (!poll_ms)
 				PMD_INIT_LOG(ERR, "Tx Queue %d is not empty "
-					     "when stopping.\n", tx_queue_id);
+					     "when stopping.", tx_queue_id);
 		}
 
 		txdctl = IXGBE_READ_REG(hw, IXGBE_TXDCTL(txq->reg_idx));
@@ -3861,7 +3861,7 @@ ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 			} while (--poll_ms && (txdctl | IXGBE_TXDCTL_ENABLE));
 			if (!poll_ms)
 				PMD_INIT_LOG(ERR, "Could not disable "
-					     "Tx Queue %d\n", tx_queue_id);
+					     "Tx Queue %d", tx_queue_id);
 		}
 
 		if (txq->ops != NULL) {
@@ -4085,7 +4085,7 @@ ixgbevf_dev_rxtx_start(struct rte_eth_dev *dev)
 			txdctl = IXGBE_READ_REG(hw, IXGBE_VFTXDCTL(i));
 		} while (--poll_ms && !(txdctl & IXGBE_TXDCTL_ENABLE));
 		if (!poll_ms)
-			PMD_INIT_LOG(ERR, "Could not enable Tx Queue %d\n", i);
+			PMD_INIT_LOG(ERR, "Could not enable Tx Queue %d", i);
 	}
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 
@@ -4102,7 +4102,7 @@ ixgbevf_dev_rxtx_start(struct rte_eth_dev *dev)
 			rxdctl = IXGBE_READ_REG(hw, IXGBE_VFRXDCTL(i));
 		} while (--poll_ms && !(rxdctl & IXGBE_RXDCTL_ENABLE));
 		if (!poll_ms)
-			PMD_INIT_LOG(ERR, "Could not enable Rx Queue %d\n", i);
+			PMD_INIT_LOG(ERR, "Could not enable Rx Queue %d", i);
 		rte_wmb();
 		IXGBE_WRITE_REG(hw, IXGBE_VFRDT(i), rxq->nb_rx_desc - 1);
 
