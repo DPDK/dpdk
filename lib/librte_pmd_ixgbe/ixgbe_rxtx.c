@@ -3484,6 +3484,8 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		/* It adds dual VLAN length for supporting dual VLAN */
 		if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
 				2 * IXGBE_VLAN_TAG_SIZE) > buf_size){
+			if (!dev->data->scattered_rx)
+				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 			dev->data->scattered_rx = 1;
 #ifdef RTE_IXGBE_INC_VECTOR
 			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts_vec;
@@ -3494,6 +3496,8 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	}
 
 	if (dev->data->dev_conf.rxmode.enable_scatter) {
+		if (!dev->data->scattered_rx)
+			PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 #ifdef RTE_IXGBE_INC_VECTOR
 		dev->rx_pkt_burst = ixgbe_recv_scattered_pkts_vec;
 #else
@@ -3983,6 +3987,8 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 		/* It adds dual VLAN length for supporting dual VLAN */
 		if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
 				2 * IXGBE_VLAN_TAG_SIZE) > buf_size) {
+			if (!dev->data->scattered_rx)
+				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 			dev->data->scattered_rx = 1;
 #ifdef RTE_IXGBE_INC_VECTOR
 			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts_vec;
@@ -3993,6 +3999,8 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 	}
 
 	if (dev->data->dev_conf.rxmode.enable_scatter) {
+		if (!dev->data->scattered_rx)
+			PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 #ifdef RTE_IXGBE_INC_VECTOR
 		dev->rx_pkt_burst = ixgbe_recv_scattered_pkts_vec;
 #else
