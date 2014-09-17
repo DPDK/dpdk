@@ -3546,53 +3546,53 @@ i40e_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t cause, enable;
+	uint32_t icr0, icr0_ena;
 
 	i40e_pf_disable_irq0(hw);
 
-	cause = I40E_READ_REG(hw, I40E_PFINT_ICR0);
-	enable = I40E_READ_REG(hw, I40E_PFINT_ICR0_ENA);
+	icr0 = I40E_READ_REG(hw, I40E_PFINT_ICR0);
+	icr0_ena = I40E_READ_REG(hw, I40E_PFINT_ICR0_ENA);
 
 	/* Shared IRQ case, return */
-	if (!(cause & I40E_PFINT_ICR0_INTEVENT_MASK)) {
+	if (!(icr0 & I40E_PFINT_ICR0_INTEVENT_MASK)) {
 		PMD_DRV_LOG(INFO, "Port%d INT0:share IRQ case, "
 			    "no INT event to process", hw->pf_id);
 		goto done;
 	}
 
-	if (cause & I40E_PFINT_ICR0_LINK_STAT_CHANGE_MASK) {
+	if (icr0 & I40E_PFINT_ICR0_LINK_STAT_CHANGE_MASK) {
 		PMD_DRV_LOG(INFO, "INT:Link status changed");
 		i40e_dev_link_update(dev, 0);
 	}
 
-	if (cause & I40E_PFINT_ICR0_ECC_ERR_MASK)
+	if (icr0 & I40E_PFINT_ICR0_ECC_ERR_MASK)
 		PMD_DRV_LOG(INFO, "INT:Unrecoverable ECC Error");
 
-	if (cause & I40E_PFINT_ICR0_MAL_DETECT_MASK)
+	if (icr0 & I40E_PFINT_ICR0_MAL_DETECT_MASK)
 		PMD_DRV_LOG(INFO, "INT:Malicious programming detected");
 
-	if (cause & I40E_PFINT_ICR0_GRST_MASK)
+	if (icr0 & I40E_PFINT_ICR0_GRST_MASK)
 		PMD_DRV_LOG(INFO, "INT:Global Resets Requested");
 
-	if (cause & I40E_PFINT_ICR0_PCI_EXCEPTION_MASK)
+	if (icr0 & I40E_PFINT_ICR0_PCI_EXCEPTION_MASK)
 		PMD_DRV_LOG(INFO, "INT:PCI EXCEPTION occured");
 
-	if (cause & I40E_PFINT_ICR0_HMC_ERR_MASK)
+	if (icr0 & I40E_PFINT_ICR0_HMC_ERR_MASK)
 		PMD_DRV_LOG(INFO, "INT:HMC error occured");
 
 	/* Add processing func to deal with VF reset vent */
-	if (cause & I40E_PFINT_ICR0_VFLR_MASK) {
+	if (icr0 & I40E_PFINT_ICR0_VFLR_MASK) {
 		PMD_DRV_LOG(INFO, "INT:VF reset detected");
 		i40e_dev_handle_vfr_event(dev);
 	}
 	/* Find admin queue event */
-	if (cause & I40E_PFINT_ICR0_ADMINQ_MASK) {
+	if (icr0 & I40E_PFINT_ICR0_ADMINQ_MASK) {
 		PMD_DRV_LOG(INFO, "INT:ADMINQ event");
 		i40e_dev_handle_aq_msg(dev);
 	}
 
 done:
-	I40E_WRITE_REG(hw, I40E_PFINT_ICR0_ENA, enable);
+	I40E_WRITE_REG(hw, I40E_PFINT_ICR0_ENA, icr0_ena);
 	/* Re-enable interrupt from device side */
 	i40e_pf_enable_irq0(hw);
 	/* Re-enable interrupt from host side */
