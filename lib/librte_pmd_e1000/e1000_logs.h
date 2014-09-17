@@ -37,8 +37,10 @@
 #ifdef RTE_LIBRTE_E1000_DEBUG_INIT
 #define PMD_INIT_LOG(level, fmt, args...) \
 	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+#define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 #else
-#define PMD_INIT_LOG(level, fmt, args...) do { } while(0)
+#define PMD_INIT_LOG(level, fmt, args...) do { } while (0)
+#define PMD_INIT_FUNC_TRACE() do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_E1000_DEBUG_RX

@@ -415,7 +415,7 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tx_last = (uint16_t) (tx_last - txq->nb_tx_desc);
 
 		PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u pktlen=%u"
-			   " tx_first=%u tx_last=%u\n",
+			   " tx_first=%u tx_last=%u",
 			   (unsigned) txq->port_id,
 			   (unsigned) txq->queue_id,
 			   (unsigned) pkt_len,
@@ -714,8 +714,8 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * to happen by sending specific "back-pressure" flow control
 		 * frames to its peer(s).
 		 */
-		PMD_RX_LOG(DEBUG, "\nport_id=%u queue_id=%u rx_id=%u "
-			   "staterr=0x%x pkt_len=%u\n",
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_id=%u "
+			   "staterr=0x%x pkt_len=%u",
 			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
 			   (unsigned) rx_id, (unsigned) staterr,
 			   (unsigned) rte_le_to_cpu_16(rxd.wb.upper.length));
@@ -723,7 +723,7 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		nmb = rte_rxmbuf_alloc(rxq->mb_pool);
 		if (nmb == NULL) {
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-				   "queue_id=%u\n", (unsigned) rxq->port_id,
+				   "queue_id=%u", (unsigned) rxq->port_id,
 				   (unsigned) rxq->queue_id);
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
 			break;
@@ -808,7 +808,7 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
 	if (nb_hold > rxq->rx_free_thresh) {
 		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
-			   "nb_hold=%u nb_rx=%u\n",
+			   "nb_hold=%u nb_rx=%u",
 			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
 			   (unsigned) rx_id, (unsigned) nb_hold,
 			   (unsigned) nb_rx);
@@ -895,8 +895,8 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * to happen by sending specific "back-pressure" flow control
 		 * frames to its peer(s).
 		 */
-		PMD_RX_LOG(DEBUG, "\nport_id=%u queue_id=%u rx_id=%u "
-			   "staterr=0x%x data_len=%u\n",
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_id=%u "
+			   "staterr=0x%x data_len=%u",
 			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
 			   (unsigned) rx_id, (unsigned) staterr,
 			   (unsigned) rte_le_to_cpu_16(rxd.wb.upper.length));
@@ -904,7 +904,7 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		nmb = rte_rxmbuf_alloc(rxq->mb_pool);
 		if (nmb == NULL) {
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-				   "queue_id=%u\n", (unsigned) rxq->port_id,
+				   "queue_id=%u", (unsigned) rxq->port_id,
 				   (unsigned) rxq->queue_id);
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
 			break;
@@ -1061,7 +1061,7 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
 	if (nb_hold > rxq->rx_free_thresh) {
 		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
-			   "nb_hold=%u nb_rx=%u\n",
+			   "nb_hold=%u nb_rx=%u",
 			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
 			   (unsigned) rx_id, (unsigned) nb_hold,
 			   (unsigned) nb_rx);
@@ -1283,7 +1283,7 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 		igb_tx_queue_release(txq);
 		return (-ENOMEM);
 	}
-	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
+	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
 		     txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
 
 	igb_reset_tx_queue(txq, dev);
@@ -1421,7 +1421,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 		igb_rx_queue_release(rxq);
 		return (-ENOMEM);
 	}
-	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
+	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
 		     rxq->sw_ring, rxq->rx_ring, rxq->rx_ring_phys_addr);
 
 	dev->data->rx_queues[queue_idx] = rxq;
@@ -1439,7 +1439,7 @@ eth_igb_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	uint32_t desc = 0;
 
 	if (rx_queue_id >= dev->data->nb_rx_queues) {
-		PMD_RX_LOG(ERR, "Invalid RX queue id=%d\n", rx_queue_id);
+		PMD_RX_LOG(ERR, "Invalid RX queue id=%d", rx_queue_id);
 		return 0;
 	}
 
@@ -1738,7 +1738,7 @@ igb_is_vmdq_supported(const struct rte_eth_dev *dev)
 	case e1000_i210:
 	case e1000_i211:
 	default:
-		PMD_INIT_LOG(ERR, "Cannot support VMDq feature\n");
+		PMD_INIT_LOG(ERR, "Cannot support VMDq feature");
 		return 0;
 	}
 }
@@ -1751,7 +1751,8 @@ igb_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 	uint32_t mrqc, vt_ctl, vmolr, rctl;
 	int i;
 
-	PMD_INIT_LOG(DEBUG, ">>");
+	PMD_INIT_FUNC_TRACE();
+
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	cfg = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
 
@@ -1840,7 +1841,7 @@ igb_alloc_rx_queue_mbufs(struct igb_rx_queue *rxq)
 
 		if (mbuf == NULL) {
 			PMD_INIT_LOG(ERR, "RX mbuf alloc failed "
-				     "queue_id=%hu\n", rxq->queue_id);
+				     "queue_id=%hu", rxq->queue_id);
 			return (-ENOMEM);
 		}
 		dma_addr =
@@ -2285,7 +2286,7 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 			 * to avoid Write-Back not triggered sometimes
 			 */
 			rxdctl |= 0x10000;
-			PMD_INIT_LOG(DEBUG, "Force set RX WTHRESH to 1 !\n");
+			PMD_INIT_LOG(DEBUG, "Force set RX WTHRESH to 1 !");
 		}
 		else
 			rxdctl |= ((rxq->wthresh & 0x1F) << 16);
@@ -2353,7 +2354,7 @@ eth_igbvf_tx_init(struct rte_eth_dev *dev)
 			 * to avoid Write-Back not triggered sometimes
 			 */
 			txdctl |= 0x10000;
-			PMD_INIT_LOG(DEBUG, "Force set TX WTHRESH to 1 !\n");
+			PMD_INIT_LOG(DEBUG, "Force set TX WTHRESH to 1 !");
 		}
 		else
 			txdctl |= ((txq->wthresh & 0x1F) << 16);

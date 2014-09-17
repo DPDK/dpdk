@@ -565,7 +565,7 @@ eth_igb_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext);
 	E1000_WRITE_FLUSH(hw);
 
-	PMD_INIT_LOG(INFO, "port_id %d vendorID=0x%x deviceID=0x%x\n",
+	PMD_INIT_LOG(INFO, "port_id %d vendorID=0x%x deviceID=0x%x",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id);
 
@@ -598,7 +598,7 @@ eth_igbvf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		E1000_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	int diag;
 
-	PMD_INIT_LOG(DEBUG, "eth_igbvf_dev_init");
+	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &igbvf_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &eth_igb_recv_pkts;
@@ -650,8 +650,8 @@ eth_igbvf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	ether_addr_copy((struct ether_addr *) hw->mac.perm_addr,
 			&eth_dev->data->mac_addrs[0]);
 
-	PMD_INIT_LOG(DEBUG, "\nport %d vendorID=0x%x deviceID=0x%x "
-		     "mac.type=%s\n",
+	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x "
+		     "mac.type=%s",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id, "igb_mac_82576_vf");
 
@@ -719,11 +719,9 @@ eth_igb_configure(struct rte_eth_dev *dev)
 	struct e1000_interrupt *intr =
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 
-	PMD_INIT_LOG(DEBUG, ">>");
-
+	PMD_INIT_FUNC_TRACE();
 	intr->flags |= E1000_FLAG_NEED_LINK_UPDATE;
-
-	PMD_INIT_LOG(DEBUG, "<<");
+	PMD_INIT_FUNC_TRACE();
 
 	return (0);
 }
@@ -736,7 +734,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 	int ret, i, mask;
 	uint32_t ctrl_ext;
 
-	PMD_INIT_LOG(DEBUG, ">>");
+	PMD_INIT_FUNC_TRACE();
 
 	/* Power up the phy. Needed to make the link go Up */
 	e1000_power_up_phy(hw);
@@ -887,7 +885,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 	return (0);
 
 error_invalid_config:
-	PMD_INIT_LOG(ERR, "Invalid link_speed/link_duplex (%u/%u) for port %u\n",
+	PMD_INIT_LOG(ERR, "Invalid link_speed/link_duplex (%u/%u) for port %u",
 		     dev->data->dev_conf.link_speed,
 		     dev->data->dev_conf.link_duplex, dev->data->port_id);
 	igb_dev_clear_queues(dev);
@@ -1789,13 +1787,13 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev)
 		rte_igb_dev_atomic_read_link_status(dev, &link);
 		if (link.link_status) {
 			PMD_INIT_LOG(INFO,
-				     " Port %d: Link Up - speed %u Mbps - %s\n",
+				     " Port %d: Link Up - speed %u Mbps - %s",
 				     dev->data->port_id,
 				     (unsigned)link.link_speed,
 				     link.link_duplex == ETH_LINK_FULL_DUPLEX ?
 				     "full-duplex" : "half-duplex");
 		} else {
-			PMD_INIT_LOG(INFO, " Port %d: Link Down\n",
+			PMD_INIT_LOG(INFO, " Port %d: Link Down",
 				     dev->data->port_id);
 		}
 		PMD_INIT_LOG(INFO, "PCI Address: %04d:%02d:%02d:%d",
@@ -1923,14 +1921,14 @@ eth_igb_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	if (fc_conf->autoneg != hw->mac.autoneg)
 		return -ENOTSUP;
 	rx_buf_size = igb_get_rx_buffer_size(hw);
-	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x \n", rx_buf_size);
+	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x", rx_buf_size);
 
 	/* At least reserve one Ethernet frame for watermark */
 	max_high_water = rx_buf_size - ETHER_MAX_LEN;
 	if ((fc_conf->high_water > max_high_water) ||
 	    (fc_conf->high_water < fc_conf->low_water)) {
-		PMD_INIT_LOG(ERR, "e1000 incorrect high/low water value \n");
-		PMD_INIT_LOG(ERR, "high water must <=  0x%x \n", max_high_water);
+		PMD_INIT_LOG(ERR, "e1000 incorrect high/low water value");
+		PMD_INIT_LOG(ERR, "high water must <=  0x%x", max_high_water);
 		return (-EINVAL);
 	}
 
@@ -1960,7 +1958,7 @@ eth_igb_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		return 0;
 	}
 
-	PMD_INIT_LOG(ERR, "e1000_setup_link_generic = 0x%x \n", err);
+	PMD_INIT_LOG(ERR, "e1000_setup_link_generic = 0x%x", err);
 	return (-EIO);
 }
 
@@ -1995,7 +1993,7 @@ eth_igb_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 static void
 igbvf_intr_disable(struct e1000_hw *hw)
 {
-	PMD_INIT_LOG(DEBUG, "igbvf_intr_disable");
+	PMD_INIT_FUNC_TRACE();
 
 	/* Clear interrupt mask to stop from interrupts being generated */
 	E1000_WRITE_REG(hw, E1000_EIMC, 0xFFFF);
@@ -2077,7 +2075,7 @@ igbvf_dev_configure(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf* conf = &dev->data->dev_conf;
 
-	PMD_INIT_LOG(DEBUG, "\nConfigured Virtual Function port id: %d\n",
+	PMD_INIT_LOG(DEBUG, "Configured Virtual Function port id: %d",
 		     dev->data->port_id);
 
 	/*
@@ -2086,12 +2084,12 @@ igbvf_dev_configure(struct rte_eth_dev *dev)
 	 */
 #ifndef RTE_LIBRTE_E1000_PF_DISABLE_STRIP_CRC
 	if (!conf->rxmode.hw_strip_crc) {
-		PMD_INIT_LOG(INFO, "VF can't disable HW CRC Strip\n");
+		PMD_INIT_LOG(INFO, "VF can't disable HW CRC Strip");
 		conf->rxmode.hw_strip_crc = 1;
 	}
 #else
 	if (conf->rxmode.hw_strip_crc) {
-		PMD_INIT_LOG(INFO, "VF can't enable HW CRC Strip\n");
+		PMD_INIT_LOG(INFO, "VF can't enable HW CRC Strip");
 		conf->rxmode.hw_strip_crc = 0;
 	}
 #endif
@@ -2106,7 +2104,7 @@ igbvf_dev_start(struct rte_eth_dev *dev)
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret;
 
-	PMD_INIT_LOG(DEBUG, "igbvf_dev_start");
+	PMD_INIT_FUNC_TRACE();
 
 	hw->mac.ops.reset_hw(hw);
 
@@ -2129,7 +2127,7 @@ igbvf_dev_start(struct rte_eth_dev *dev)
 static void
 igbvf_dev_stop(struct rte_eth_dev *dev)
 {
-	PMD_INIT_LOG(DEBUG, "igbvf_dev_stop");
+	PMD_INIT_FUNC_TRACE();
 
 	igbvf_stop_adapter(dev);
 
@@ -2147,7 +2145,7 @@ igbvf_dev_close(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	PMD_INIT_LOG(DEBUG, "igbvf_dev_close");
+	PMD_INIT_FUNC_TRACE();
 
 	e1000_reset_hw(hw);
 
@@ -2203,7 +2201,7 @@ igbvf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	uint32_t vid_bit = 0;
 	int ret = 0;
 
-	PMD_INIT_LOG(DEBUG, "igbvf_vlan_filter_set");
+	PMD_INIT_FUNC_TRACE();
 
 	/*vind is not used in VF driver, set to 0, check ixgbe_set_vfta_vf*/
 	ret = igbvf_set_vfta(hw, vlan_id, !!on);

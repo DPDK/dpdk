@@ -339,8 +339,7 @@ em_xmit_cleanup(struct em_tx_queue *txq)
 	{
 		PMD_TX_FREE_LOG(DEBUG,
 				"TX descriptor %4u is not done"
-				"(port=%d queue=%d)",
-				desc_to_clean_to,
+				"(port=%d queue=%d)", desc_to_clean_to,
 				txq->port_id, txq->queue_id);
 		/* Failed to clean any descriptors, better luck next time */
 		return -(1);
@@ -356,9 +355,9 @@ em_xmit_cleanup(struct em_tx_queue *txq)
 
 	PMD_TX_FREE_LOG(DEBUG,
 			"Cleaning %4u TX descriptors: %4u to %4u "
-			"(port=%d queue=%d)",
-			nb_tx_to_clean, last_desc_cleaned, desc_to_clean_to,
-			txq->port_id, txq->queue_id);
+			"(port=%d queue=%d)", nb_tx_to_clean,
+			last_desc_cleaned, desc_to_clean_to, txq->port_id,
+			txq->queue_id);
 
 	/*
 	 * The last descriptor to clean is done, so that means all the
@@ -472,7 +471,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tx_last = (uint16_t) (tx_last - txq->nb_tx_desc);
 
 		PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u pktlen=%u"
-			   " tx_first=%u tx_last=%u\n",
+			   " tx_first=%u tx_last=%u",
 			   (unsigned) txq->port_id,
 			   (unsigned) txq->queue_id,
 			   (unsigned) tx_pkt->pkt_len,
@@ -485,8 +484,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * nb_used better be less than or equal to txq->tx_rs_thresh
 		 */
 		while (unlikely (nb_used > txq->nb_tx_free)) {
-			PMD_TX_FREE_LOG(DEBUG,
-					"Not enough free TX descriptors "
+			PMD_TX_FREE_LOG(DEBUG, "Not enough free TX descriptors "
 					"nb_used=%4u nb_free=%4u "
 					"(port=%d queue=%d)",
 					nb_used, txq->nb_tx_free,
@@ -609,8 +607,8 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* Set RS bit only on threshold packets' last descriptor */
 		if (txq->nb_tx_used >= txq->tx_rs_thresh) {
 			PMD_TX_FREE_LOG(DEBUG,
-					"Setting RS bit on TXD id="
-					"%4u (port=%d queue=%d)",
+					"Setting RS bit on TXD id=%4u "
+					"(port=%d queue=%d)",
 					tx_last, txq->port_id, txq->queue_id);
 
 			cmd_type_len |= E1000_TXD_CMD_RS;
@@ -731,8 +729,8 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * to happen by sending specific "back-pressure" flow control
 		 * frames to its peer(s).
 		 */
-		PMD_RX_LOG(DEBUG, "\nport_id=%u queue_id=%u rx_id=%u "
-			   "status=0x%x pkt_len=%u\n",
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_id=%u "
+			   "status=0x%x pkt_len=%u",
 			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
 			   (unsigned) rx_id, (unsigned) status,
 			   (unsigned) rte_le_to_cpu_16(rxd.length));
@@ -740,7 +738,7 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		nmb = rte_rxmbuf_alloc(rxq->mb_pool);
 		if (nmb == NULL) {
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-				   "queue_id=%u\n",
+				   "queue_id=%u",
 				   (unsigned) rxq->port_id,
 				   (unsigned) rxq->queue_id);
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
@@ -825,7 +823,7 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
 	if (nb_hold > rxq->rx_free_thresh) {
 		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
-			   "nb_hold=%u nb_rx=%u\n",
+			   "nb_hold=%u nb_rx=%u",
 			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
 			   (unsigned) rx_id, (unsigned) nb_hold,
 			   (unsigned) nb_rx);
@@ -911,8 +909,8 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * to happen by sending specific "back-pressure" flow control
 		 * frames to its peer(s).
 		 */
-		PMD_RX_LOG(DEBUG, "\nport_id=%u queue_id=%u rx_id=%u "
-			   "status=0x%x data_len=%u\n",
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_id=%u "
+			   "status=0x%x data_len=%u",
 			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
 			   (unsigned) rx_id, (unsigned) status,
 			   (unsigned) rte_le_to_cpu_16(rxd.length));
@@ -920,7 +918,7 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		nmb = rte_rxmbuf_alloc(rxq->mb_pool);
 		if (nmb == NULL) {
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-				   "queue_id=%u\n", (unsigned) rxq->port_id,
+				   "queue_id=%u", (unsigned) rxq->port_id,
 				   (unsigned) rxq->queue_id);
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
 			break;
@@ -1070,7 +1068,7 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
 	if (nb_hold > rxq->rx_free_thresh) {
 		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
-			   "nb_hold=%u nb_rx=%u\n",
+			   "nb_hold=%u nb_rx=%u",
 			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
 			   (unsigned) rx_id, (unsigned) nb_hold,
 			   (unsigned) nb_rx);
@@ -1309,7 +1307,7 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 #endif
 	txq->tx_ring = (struct e1000_data_desc *) tz->addr;
 
-	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
+	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
 		     txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
 
 	em_reset_tx_queue(txq);
@@ -1439,7 +1437,7 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 #endif
 	rxq->rx_ring = (struct e1000_rx_desc *) rz->addr;
 
-	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
+	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
 		     rxq->sw_ring, rxq->rx_ring, rxq->rx_ring_phys_addr);
 
 	dev->data->rx_queues[queue_idx] = rxq;
@@ -1457,7 +1455,7 @@ eth_em_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	uint32_t desc = 0;
 
 	if (rx_queue_id >= dev->data->nb_rx_queues) {
-		PMD_RX_LOG(DEBUG,"Invalid RX queue_id=%d\n", rx_queue_id);
+		PMD_RX_LOG(DEBUG, "Invalid RX queue_id=%d", rx_queue_id);
 		return 0;
 	}
 
@@ -1603,7 +1601,7 @@ em_alloc_rx_queue_mbufs(struct em_rx_queue *rxq)
 
 		if (mbuf == NULL) {
 			PMD_INIT_LOG(ERR, "RX mbuf alloc failed "
-				     "queue_id=%hu\n", rxq->queue_id);
+				     "queue_id=%hu", rxq->queue_id);
 			return (-ENOMEM);
 		}
 
