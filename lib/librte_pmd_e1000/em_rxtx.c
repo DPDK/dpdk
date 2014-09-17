@@ -1730,6 +1730,8 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 		 */
 		if (dev->data->dev_conf.rxmode.jumbo_frame ||
 				rctl_bsize < ETHER_MAX_LEN) {
+			if (!dev->data->scattered_rx)
+				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 			dev->rx_pkt_burst =
 				(eth_rx_burst_t)eth_em_recv_scattered_pkts;
 			dev->data->scattered_rx = 1;
@@ -1737,6 +1739,8 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 	}
 
 	if (dev->data->dev_conf.rxmode.enable_scatter) {
+		if (!dev->data->scattered_rx)
+			PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 		dev->rx_pkt_burst = eth_em_recv_scattered_pkts;
 		dev->data->scattered_rx = 1;
 	}

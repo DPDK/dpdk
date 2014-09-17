@@ -1990,6 +1990,9 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 			/* It adds dual VLAN length for supporting dual VLAN */
 			if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
 						2 * VLAN_TAG_SIZE) > buf_size){
+				if (!dev->data->scattered_rx)
+					PMD_INIT_LOG(DEBUG,
+						     "forcing scatter mode");
 				dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
 				dev->data->scattered_rx = 1;
 			}
@@ -1999,6 +2002,8 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 			 */
 			if ((rctl_bsize == 0) || (rctl_bsize > buf_size))
 				rctl_bsize = buf_size;
+			if (!dev->data->scattered_rx)
+				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 			dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
 			dev->data->scattered_rx = 1;
 		}
@@ -2020,6 +2025,8 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	}
 
 	if (dev->data->dev_conf.rxmode.enable_scatter) {
+		if (!dev->data->scattered_rx)
+			PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 		dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
 		dev->data->scattered_rx = 1;
 	}
@@ -2254,6 +2261,9 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 			/* It adds dual VLAN length for supporting dual VLAN */
 			if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
 						2 * VLAN_TAG_SIZE) > buf_size){
+				if (!dev->data->scattered_rx)
+					PMD_INIT_LOG(DEBUG,
+						     "forcing scatter mode");
 				dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
 				dev->data->scattered_rx = 1;
 			}
@@ -2263,6 +2273,8 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 			 */
 			if ((rctl_bsize == 0) || (rctl_bsize > buf_size))
 				rctl_bsize = buf_size;
+			if (!dev->data->scattered_rx)
+				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 			dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
 			dev->data->scattered_rx = 1;
 		}
@@ -2294,6 +2306,8 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 	}
 
 	if (dev->data->dev_conf.rxmode.enable_scatter) {
+		if (!dev->data->scattered_rx)
+			PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 		dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
 		dev->data->scattered_rx = 1;
 	}
