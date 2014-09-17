@@ -1132,7 +1132,7 @@ static int
 rte_i40evf_pmd_init(const char *name __rte_unused,
 		    const char *params __rte_unused)
 {
-	DEBUGFUNC("rte_i40evf_pmd_init");
+	PMD_INIT_FUNC_TRACE();
 
 	rte_eth_driver_register(&rte_i40evf_pmd);
 
@@ -1384,7 +1384,7 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ether_addr mac_addr;
 
-	PMD_DRV_LOG(DEBUG, "i40evf_dev_start");
+	PMD_INIT_FUNC_TRACE();
 
 	vf->max_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	if (dev->data->dev_conf.rxmode.jumbo_frame == 1) {

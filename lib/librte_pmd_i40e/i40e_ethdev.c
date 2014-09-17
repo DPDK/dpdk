@@ -1059,24 +1059,23 @@ i40e_update_vsi_stats(struct i40e_vsi *vsi)
 			    &oes->tx_errors, &nes->tx_errors);
 	vsi->offset_loaded = true;
 
-#ifdef RTE_LIBRTE_I40E_DEBUG_DRIVER
-	printf("***************** VSI[%u] stats start *******************\n",
-								vsi->vsi_id);
-	printf("rx_bytes:            %lu\n", nes->rx_bytes);
-	printf("rx_unicast:          %lu\n", nes->rx_unicast);
-	printf("rx_multicast:        %lu\n", nes->rx_multicast);
-	printf("rx_broadcast:        %lu\n", nes->rx_broadcast);
-	printf("rx_discards:         %lu\n", nes->rx_discards);
-	printf("rx_unknown_protocol: %lu\n", nes->rx_unknown_protocol);
-	printf("tx_bytes:            %lu\n", nes->tx_bytes);
-	printf("tx_unicast:          %lu\n", nes->tx_unicast);
-	printf("tx_multicast:        %lu\n", nes->tx_multicast);
-	printf("tx_broadcast:        %lu\n", nes->tx_broadcast);
-	printf("tx_discards:         %lu\n", nes->tx_discards);
-	printf("tx_errors:           %lu\n", nes->tx_errors);
-	printf("***************** VSI[%u] stats end *******************\n",
-								vsi->vsi_id);
-#endif /* RTE_LIBRTE_I40E_DEBUG_DRIVER */
+	PMD_DRV_LOG(DEBUG, "***************** VSI[%u] stats start *******************",
+		    vsi->vsi_id);
+	PMD_DRV_LOG(DEBUG, "rx_bytes:            %lu", nes->rx_bytes);
+	PMD_DRV_LOG(DEBUG, "rx_unicast:          %lu", nes->rx_unicast);
+	PMD_DRV_LOG(DEBUG, "rx_multicast:        %lu", nes->rx_multicast);
+	PMD_DRV_LOG(DEBUG, "rx_broadcast:        %lu", nes->rx_broadcast);
+	PMD_DRV_LOG(DEBUG, "rx_discards:         %lu", nes->rx_discards);
+	PMD_DRV_LOG(DEBUG, "rx_unknown_protocol: %lu",
+		    nes->rx_unknown_protocol);
+	PMD_DRV_LOG(DEBUG, "tx_bytes:            %lu", nes->tx_bytes);
+	PMD_DRV_LOG(DEBUG, "tx_unicast:          %lu", nes->tx_unicast);
+	PMD_DRV_LOG(DEBUG, "tx_multicast:        %lu", nes->tx_multicast);
+	PMD_DRV_LOG(DEBUG, "tx_broadcast:        %lu", nes->tx_broadcast);
+	PMD_DRV_LOG(DEBUG, "tx_discards:         %lu", nes->tx_discards);
+	PMD_DRV_LOG(DEBUG, "tx_errors:           %lu", nes->tx_errors);
+	PMD_DRV_LOG(DEBUG, "***************** VSI[%u] stats end *******************",
+		    vsi->vsi_id);
 }
 
 /* Get all statistics of a port */
@@ -1277,69 +1276,74 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	if (pf->main_vsi)
 		i40e_update_vsi_stats(pf->main_vsi);
 
-#ifdef RTE_LIBRTE_I40E_DEBUG_DRIVER
-	printf("***************** PF stats start *******************\n");
-	printf("rx_bytes:            %lu\n", ns->eth.rx_bytes);
-	printf("rx_unicast:          %lu\n", ns->eth.rx_unicast);
-	printf("rx_multicast:        %lu\n", ns->eth.rx_multicast);
-	printf("rx_broadcast:        %lu\n", ns->eth.rx_broadcast);
-	printf("rx_discards:         %lu\n", ns->eth.rx_discards);
-	printf("rx_unknown_protocol: %lu\n", ns->eth.rx_unknown_protocol);
-	printf("tx_bytes:            %lu\n", ns->eth.tx_bytes);
-	printf("tx_unicast:          %lu\n", ns->eth.tx_unicast);
-	printf("tx_multicast:        %lu\n", ns->eth.tx_multicast);
-	printf("tx_broadcast:        %lu\n", ns->eth.tx_broadcast);
-	printf("tx_discards:         %lu\n", ns->eth.tx_discards);
-	printf("tx_errors:           %lu\n", ns->eth.tx_errors);
+	PMD_DRV_LOG(DEBUG, "***************** PF stats start *******************");
+	PMD_DRV_LOG(DEBUG, "rx_bytes:            %lu", ns->eth.rx_bytes);
+	PMD_DRV_LOG(DEBUG, "rx_unicast:          %lu", ns->eth.rx_unicast);
+	PMD_DRV_LOG(DEBUG, "rx_multicast:        %lu", ns->eth.rx_multicast);
+	PMD_DRV_LOG(DEBUG, "rx_broadcast:        %lu", ns->eth.rx_broadcast);
+	PMD_DRV_LOG(DEBUG, "rx_discards:         %lu", ns->eth.rx_discards);
+	PMD_DRV_LOG(DEBUG, "rx_unknown_protocol: %lu",
+		    ns->eth.rx_unknown_protocol);
+	PMD_DRV_LOG(DEBUG, "tx_bytes:            %lu", ns->eth.tx_bytes);
+	PMD_DRV_LOG(DEBUG, "tx_unicast:          %lu", ns->eth.tx_unicast);
+	PMD_DRV_LOG(DEBUG, "tx_multicast:        %lu", ns->eth.tx_multicast);
+	PMD_DRV_LOG(DEBUG, "tx_broadcast:        %lu", ns->eth.tx_broadcast);
+	PMD_DRV_LOG(DEBUG, "tx_discards:         %lu", ns->eth.tx_discards);
+	PMD_DRV_LOG(DEBUG, "tx_errors:           %lu", ns->eth.tx_errors);
 
-	printf("tx_dropped_link_down:     %lu\n", ns->tx_dropped_link_down);
-	printf("crc_errors:               %lu\n", ns->crc_errors);
-	printf("illegal_bytes:            %lu\n", ns->illegal_bytes);
-	printf("error_bytes:              %lu\n", ns->error_bytes);
-	printf("mac_local_faults:         %lu\n", ns->mac_local_faults);
-	printf("mac_remote_faults:        %lu\n", ns->mac_remote_faults);
-	printf("rx_length_errors:         %lu\n", ns->rx_length_errors);
-	printf("link_xon_rx:              %lu\n", ns->link_xon_rx);
-	printf("link_xoff_rx:             %lu\n", ns->link_xoff_rx);
+	PMD_DRV_LOG(DEBUG, "tx_dropped_link_down:     %lu",
+		    ns->tx_dropped_link_down);
+	PMD_DRV_LOG(DEBUG, "crc_errors:               %lu", ns->crc_errors);
+	PMD_DRV_LOG(DEBUG, "illegal_bytes:            %lu",
+		    ns->illegal_bytes);
+	PMD_DRV_LOG(DEBUG, "error_bytes:              %lu", ns->error_bytes);
+	PMD_DRV_LOG(DEBUG, "mac_local_faults:         %lu",
+		    ns->mac_local_faults);
+	PMD_DRV_LOG(DEBUG, "mac_remote_faults:        %lu",
+		    ns->mac_remote_faults);
+	PMD_DRV_LOG(DEBUG, "rx_length_errors:         %lu",
+		    ns->rx_length_errors);
+	PMD_DRV_LOG(DEBUG, "link_xon_rx:              %lu", ns->link_xon_rx);
+	PMD_DRV_LOG(DEBUG, "link_xoff_rx:             %lu", ns->link_xoff_rx);
 	for (i = 0; i < 8; i++) {
-		printf("priority_xon_rx[%d]:      %lu\n",
+		PMD_DRV_LOG(DEBUG, "priority_xon_rx[%d]:      %lu",
 				i, ns->priority_xon_rx[i]);
-		printf("priority_xoff_rx[%d]:     %lu\n",
+		PMD_DRV_LOG(DEBUG, "priority_xoff_rx[%d]:     %lu",
 				i, ns->priority_xoff_rx[i]);
 	}
-	printf("link_xon_tx:              %lu\n", ns->link_xon_tx);
-	printf("link_xoff_tx:             %lu\n", ns->link_xoff_tx);
+	PMD_DRV_LOG(DEBUG, "link_xon_tx:              %lu", ns->link_xon_tx);
+	PMD_DRV_LOG(DEBUG, "link_xoff_tx:             %lu", ns->link_xoff_tx);
 	for (i = 0; i < 8; i++) {
-		printf("priority_xon_tx[%d]:      %lu\n",
+		PMD_DRV_LOG(DEBUG, "priority_xon_tx[%d]:      %lu",
 				i, ns->priority_xon_tx[i]);
-		printf("priority_xoff_tx[%d]:     %lu\n",
+		PMD_DRV_LOG(DEBUG, "priority_xoff_tx[%d]:     %lu",
 				i, ns->priority_xoff_tx[i]);
-		printf("priority_xon_2_xoff[%d]:  %lu\n",
+		PMD_DRV_LOG(DEBUG, "priority_xon_2_xoff[%d]:  %lu",
 				i, ns->priority_xon_2_xoff[i]);
 	}
-	printf("rx_size_64:               %lu\n", ns->rx_size_64);
-	printf("rx_size_127:              %lu\n", ns->rx_size_127);
-	printf("rx_size_255:              %lu\n", ns->rx_size_255);
-	printf("rx_size_511:              %lu\n", ns->rx_size_511);
-	printf("rx_size_1023:             %lu\n", ns->rx_size_1023);
-	printf("rx_size_1522:             %lu\n", ns->rx_size_1522);
-	printf("rx_size_big:              %lu\n", ns->rx_size_big);
-	printf("rx_undersize:             %lu\n", ns->rx_undersize);
-	printf("rx_fragments:             %lu\n", ns->rx_fragments);
-	printf("rx_oversize:              %lu\n", ns->rx_oversize);
-	printf("rx_jabber:                %lu\n", ns->rx_jabber);
-	printf("tx_size_64:               %lu\n", ns->tx_size_64);
-	printf("tx_size_127:              %lu\n", ns->tx_size_127);
-	printf("tx_size_255:              %lu\n", ns->tx_size_255);
-	printf("tx_size_511:              %lu\n", ns->tx_size_511);
-	printf("tx_size_1023:             %lu\n", ns->tx_size_1023);
-	printf("tx_size_1522:             %lu\n", ns->tx_size_1522);
-	printf("tx_size_big:              %lu\n", ns->tx_size_big);
-	printf("mac_short_packet_dropped: %lu\n",
+	PMD_DRV_LOG(DEBUG, "rx_size_64:               %lu", ns->rx_size_64);
+	PMD_DRV_LOG(DEBUG, "rx_size_127:              %lu", ns->rx_size_127);
+	PMD_DRV_LOG(DEBUG, "rx_size_255:              %lu", ns->rx_size_255);
+	PMD_DRV_LOG(DEBUG, "rx_size_511:              %lu", ns->rx_size_511);
+	PMD_DRV_LOG(DEBUG, "rx_size_1023:             %lu", ns->rx_size_1023);
+	PMD_DRV_LOG(DEBUG, "rx_size_1522:             %lu", ns->rx_size_1522);
+	PMD_DRV_LOG(DEBUG, "rx_size_big:              %lu", ns->rx_size_big);
+	PMD_DRV_LOG(DEBUG, "rx_undersize:             %lu", ns->rx_undersize);
+	PMD_DRV_LOG(DEBUG, "rx_fragments:             %lu", ns->rx_fragments);
+	PMD_DRV_LOG(DEBUG, "rx_oversize:              %lu", ns->rx_oversize);
+	PMD_DRV_LOG(DEBUG, "rx_jabber:                %lu", ns->rx_jabber);
+	PMD_DRV_LOG(DEBUG, "tx_size_64:               %lu", ns->tx_size_64);
+	PMD_DRV_LOG(DEBUG, "tx_size_127:              %lu", ns->tx_size_127);
+	PMD_DRV_LOG(DEBUG, "tx_size_255:              %lu", ns->tx_size_255);
+	PMD_DRV_LOG(DEBUG, "tx_size_511:              %lu", ns->tx_size_511);
+	PMD_DRV_LOG(DEBUG, "tx_size_1023:             %lu", ns->tx_size_1023);
+	PMD_DRV_LOG(DEBUG, "tx_size_1522:             %lu", ns->tx_size_1522);
+	PMD_DRV_LOG(DEBUG, "tx_size_big:              %lu", ns->tx_size_big);
+	PMD_DRV_LOG(DEBUG, "mac_short_packet_dropped: %lu",
 			ns->mac_short_packet_dropped);
-	printf("checksum_error:           %lu\n", ns->checksum_error);
-	printf("***************** PF stats end ********************\n");
-#endif /* RTE_LIBRTE_I40E_DEBUG_DRIVER */
+	PMD_DRV_LOG(DEBUG, "checksum_error:           %lu",
+		    ns->checksum_error);
+	PMD_DRV_LOG(DEBUG, "***************** PF stats end ********************");
 }
 
 /* Reset the statistics */

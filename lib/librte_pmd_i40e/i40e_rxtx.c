@@ -1787,50 +1787,50 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	tx_free_thresh = (uint16_t)((tx_conf->tx_free_thresh) ?
 		tx_conf->tx_free_thresh : DEFAULT_TX_FREE_THRESH);
 	if (tx_rs_thresh >= (nb_desc - 2)) {
-		RTE_LOG(ERR, PMD, "tx_rs_thresh must be less than the "
-				"number of TX descriptors minus 2. "
-				"(tx_rs_thresh=%u port=%d queue=%d)\n",
-					(unsigned int)tx_rs_thresh,
-					(int)dev->data->port_id,
-						(int)queue_idx);
+		PMD_INIT_LOG(ERR, "tx_rs_thresh must be less than the "
+			     "number of TX descriptors minus 2. "
+			     "(tx_rs_thresh=%u port=%d queue=%d)",
+			     (unsigned int)tx_rs_thresh,
+			     (int)dev->data->port_id,
+			     (int)queue_idx);
 		return I40E_ERR_PARAM;
 	}
 	if (tx_free_thresh >= (nb_desc - 3)) {
-		RTE_LOG(ERR, PMD, "tx_rs_thresh must be less than the "
-				"tx_free_thresh must be less than the "
-				"number of TX descriptors minus 3. "
-				"(tx_free_thresh=%u port=%d queue=%d)\n",
-					(unsigned int)tx_free_thresh,
-						(int)dev->data->port_id,
-							(int)queue_idx);
+		PMD_INIT_LOG(ERR, "tx_rs_thresh must be less than the "
+			     "tx_free_thresh must be less than the "
+			     "number of TX descriptors minus 3. "
+			     "(tx_free_thresh=%u port=%d queue=%d)",
+			     (unsigned int)tx_free_thresh,
+			     (int)dev->data->port_id,
+			     (int)queue_idx);
 		return I40E_ERR_PARAM;
 	}
 	if (tx_rs_thresh > tx_free_thresh) {
-		RTE_LOG(ERR, PMD, "tx_rs_thresh must be less than or "
-				"equal to tx_free_thresh. (tx_free_thresh=%u"
-				" tx_rs_thresh=%u port=%d queue=%d)\n",
-						(unsigned int)tx_free_thresh,
-						(unsigned int)tx_rs_thresh,
-						(int)dev->data->port_id,
-							(int)queue_idx);
+		PMD_INIT_LOG(ERR, "tx_rs_thresh must be less than or "
+			     "equal to tx_free_thresh. (tx_free_thresh=%u"
+			     " tx_rs_thresh=%u port=%d queue=%d)",
+			     (unsigned int)tx_free_thresh,
+			     (unsigned int)tx_rs_thresh,
+			     (int)dev->data->port_id,
+			     (int)queue_idx);
 		return I40E_ERR_PARAM;
 	}
 	if ((nb_desc % tx_rs_thresh) != 0) {
-		RTE_LOG(ERR, PMD, "tx_rs_thresh must be a divisor of the "
-				"number of TX descriptors. (tx_rs_thresh=%u"
-						" port=%d queue=%d)\n",
-						(unsigned int)tx_rs_thresh,
-						(int)dev->data->port_id,
-							(int)queue_idx);
+		PMD_INIT_LOG(ERR, "tx_rs_thresh must be a divisor of the "
+			     "number of TX descriptors. (tx_rs_thresh=%u"
+			     " port=%d queue=%d)",
+			     (unsigned int)tx_rs_thresh,
+			     (int)dev->data->port_id,
+			     (int)queue_idx);
 		return I40E_ERR_PARAM;
 	}
 	if ((tx_rs_thresh > 1) && (tx_conf->tx_thresh.wthresh != 0)) {
-		RTE_LOG(ERR, PMD, "TX WTHRESH must be set to 0 if "
-				"tx_rs_thresh is greater than 1. "
-				"(tx_rs_thresh=%u port=%d queue=%d)\n",
-					(unsigned int)tx_rs_thresh,
-					(int)dev->data->port_id,
-						(int)queue_idx);
+		PMD_INIT_LOG(ERR, "TX WTHRESH must be set to 0 if "
+			     "tx_rs_thresh is greater than 1. "
+			     "(tx_rs_thresh=%u port=%d queue=%d)",
+			     (unsigned int)tx_rs_thresh,
+			     (int)dev->data->port_id,
+			     (int)queue_idx);
 		return I40E_ERR_PARAM;
 	}
 
