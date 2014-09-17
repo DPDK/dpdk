@@ -54,8 +54,8 @@
 #define usec_delay(x) DELAY(x)
 #define msec_delay(x) DELAY(1000*(x))
 
-#define DEBUGFUNC(F)            DEBUGOUT(F);
-#define DEBUGOUT(S, args...)    PMD_DRV_LOG(DEBUG, S, ##args)
+#define DEBUGFUNC(F)            DEBUGOUT(F "\n");
+#define DEBUGOUT(S, args...)    PMD_DRV_LOG_RAW(DEBUG, S, ##args)
 #define DEBUGOUT1(S, args...)   DEBUGOUT(S, ##args)
 #define DEBUGOUT2(S, args...)   DEBUGOUT(S, ##args)
 #define DEBUGOUT3(S, args...)   DEBUGOUT(S, ##args)
