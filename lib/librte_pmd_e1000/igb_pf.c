@@ -404,7 +404,7 @@ igb_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 
 	retval = e1000_read_mbx(hw, msgbuf, mbx_size, vf);
 	if (retval) {
-		RTE_LOG(ERR, PMD, "Error mbx recv msg from VF %d\n", vf);
+		PMD_INIT_LOG(ERR, "Error mbx recv msg from VF %d", vf);
 		return retval;
 	}
 
@@ -432,7 +432,8 @@ igb_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 		retval = igb_vf_set_vlan(dev, vf, msgbuf);
 		break;
 	default:
-		RTE_LOG(DEBUG, PMD, "Unhandled Msg %8.8x\n", (unsigned) msgbuf[0]);
+		PMD_INIT_LOG(DEBUG, "Unhandled Msg %8.8x",
+			     (unsigned) msgbuf[0]);
 		retval = E1000_ERR_MBX;
 		break;
 	}

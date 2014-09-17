@@ -1231,18 +1231,21 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 					DEFAULT_TX_RS_THRESH);
 
 	if (tx_free_thresh >= (nb_desc - 3)) {
-		RTE_LOG(ERR, PMD, "tx_free_thresh must be less than the "
-			"number of TX descriptors minus 3. (tx_free_thresh=%u "
-			"port=%d queue=%d)\n", (unsigned int)tx_free_thresh,
-				(int)dev->data->port_id, (int)queue_idx);
+		PMD_INIT_LOG(ERR, "tx_free_thresh must be less than the "
+			     "number of TX descriptors minus 3. "
+			     "(tx_free_thresh=%u port=%d queue=%d)",
+			     (unsigned int)tx_free_thresh,
+			     (int)dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
 	if (tx_rs_thresh > tx_free_thresh) {
-		RTE_LOG(ERR, PMD, "tx_rs_thresh must be less than or equal to "
-			"tx_free_thresh. (tx_free_thresh=%u tx_rs_thresh=%u "
-			"port=%d queue=%d)\n", (unsigned int)tx_free_thresh,
-			(unsigned int)tx_rs_thresh, (int)dev->data->port_id,
-							(int)queue_idx);
+		PMD_INIT_LOG(ERR, "tx_rs_thresh must be less than or equal to "
+			     "tx_free_thresh. (tx_free_thresh=%u "
+			     "tx_rs_thresh=%u port=%d queue=%d)",
+			     (unsigned int)tx_free_thresh,
+			     (unsigned int)tx_rs_thresh,
+			     (int)dev->data->port_id,
+			     (int)queue_idx);
 		return -(EINVAL);
 	}
 
@@ -1253,10 +1256,10 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	 * accumulates WTHRESH descriptors.
 	 */
 	if (tx_conf->tx_thresh.wthresh != 0 && tx_rs_thresh != 1) {
-		RTE_LOG(ERR, PMD, "TX WTHRESH must be set to 0 if "
-			"tx_rs_thresh is greater than 1. (tx_rs_thresh=%u "
-			"port=%d queue=%d)\n", (unsigned int)tx_rs_thresh,
-				(int)dev->data->port_id, (int)queue_idx);
+		PMD_INIT_LOG(ERR, "TX WTHRESH must be set to 0 if "
+			     "tx_rs_thresh is greater than 1. (tx_rs_thresh=%u "
+			     "port=%d queue=%d)", (unsigned int)tx_rs_thresh,
+			     (int)dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
 
@@ -1386,7 +1389,8 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 	 * EM devices don't support drop_en functionality
 	 */
 	if (rx_conf->rx_drop_en) {
-		RTE_LOG(ERR, PMD, "drop_en functionality not supported by device\n");
+		PMD_INIT_LOG(ERR, "drop_en functionality not supported by "
+			     "device");
 		return (-EINVAL);
 	}
 

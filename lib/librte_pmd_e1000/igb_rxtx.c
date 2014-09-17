@@ -1222,17 +1222,15 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	 * driver.
 	 */
 	if (tx_conf->tx_free_thresh != 0)
-		RTE_LOG(WARNING, PMD,
-			"The tx_free_thresh parameter is not "
-			"used for the 1G driver.\n");
+		PMD_INIT_LOG(WARNING, "The tx_free_thresh parameter is not "
+			     "used for the 1G driver.");
 	if (tx_conf->tx_rs_thresh != 0)
-		RTE_LOG(WARNING, PMD,
-			"The tx_rs_thresh parameter is not "
-			"used for the 1G driver.\n");
+		PMD_INIT_LOG(WARNING, "The tx_rs_thresh parameter is not "
+			     "used for the 1G driver.");
 	if (tx_conf->tx_thresh.wthresh == 0)
-		RTE_LOG(WARNING, PMD,
-			"To improve 1G driver performance, consider setting "
-			"the TX WTHRESH value to 4, 8, or 16.\n");
+		PMD_INIT_LOG(WARNING, "To improve 1G driver performance, "
+			     "consider setting the TX WTHRESH value to 4, 8, "
+			     "or 16.");
 
 	/* Free memory prior to re-allocation if needed */
 	if (dev->data->tx_queues[queue_idx] != NULL) {

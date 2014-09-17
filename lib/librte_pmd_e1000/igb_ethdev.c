@@ -400,7 +400,7 @@ igb_reset_swfw_lock(struct e1000_hw *hw)
 	 * So force the release of the faulty lock.
 	 */
 	if (e1000_get_hw_semaphore_generic(hw) < 0) {
-		DEBUGOUT("SMBI lock released");
+		PMD_DRV_LOG(DEBUG, "SMBI lock released");
 	}
 	e1000_put_hw_semaphore_generic(hw);
 
@@ -416,7 +416,8 @@ igb_reset_swfw_lock(struct e1000_hw *hw)
 		if (hw->bus.func > E1000_FUNC_1)
 			mask <<= 2;
 		if (hw->mac.ops.acquire_swfw_sync(hw, mask) < 0) {
-			DEBUGOUT1("SWFW phy%d lock released", hw->bus.func);
+			PMD_DRV_LOG(DEBUG, "SWFW phy%d lock released",
+				    hw->bus.func);
 		}
 		hw->mac.ops.release_swfw_sync(hw, mask);
 
@@ -428,7 +429,7 @@ igb_reset_swfw_lock(struct e1000_hw *hw)
 		 */
 		mask = E1000_SWFW_EEP_SM;
 		if (hw->mac.ops.acquire_swfw_sync(hw, mask) < 0) {
-			DEBUGOUT("SWFW common locks released");
+			PMD_DRV_LOG(DEBUG, "SWFW common locks released");
 		}
 		hw->mac.ops.release_swfw_sync(hw, mask);
 	}
@@ -707,7 +708,7 @@ igb_vmdq_vlan_hw_filter_enable(struct rte_eth_dev *dev)
 static int
 rte_igbvf_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
 {
-	DEBUGFUNC("rte_igbvf_pmd_init");
+	PMD_INIT_FUNC_TRACE();
 
 	rte_eth_driver_register(&rte_igbvf_pmd);
 	return (0);
