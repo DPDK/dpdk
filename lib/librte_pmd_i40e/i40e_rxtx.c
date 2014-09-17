@@ -535,15 +535,34 @@ check_rx_burst_bulk_alloc_preconditions(__rte_unused struct i40e_rx_queue *rxq)
 	int ret = 0;
 
 #ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
-	if (!(rxq->rx_free_thresh >= RTE_PMD_I40E_RX_MAX_BURST))
+	if (!(rxq->rx_free_thresh >= RTE_PMD_I40E_RX_MAX_BURST)) {
+		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
+			     "rxq->rx_free_thresh=%d, "
+			     "RTE_PMD_I40E_RX_MAX_BURST=%d",
+			     rxq->rx_free_thresh, RTE_PMD_I40E_RX_MAX_BURST);
 		ret = -EINVAL;
-	else if (!(rxq->rx_free_thresh < rxq->nb_rx_desc))
+	} else if (!(rxq->rx_free_thresh < rxq->nb_rx_desc)) {
+		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
+			     "rxq->rx_free_thresh=%d, "
+			     "rxq->nb_rx_desc=%d",
+			     rxq->rx_free_thresh, rxq->nb_rx_desc);
 		ret = -EINVAL;
-	else if (!(rxq->nb_rx_desc % rxq->rx_free_thresh) == 0)
+	} else if (!(rxq->nb_rx_desc % rxq->rx_free_thresh) == 0) {
+		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
+			     "rxq->nb_rx_desc=%d, "
+			     "rxq->rx_free_thresh=%d",
+			     rxq->nb_rx_desc, rxq->rx_free_thresh);
 		ret = -EINVAL;
-	else if (!(rxq->nb_rx_desc < (I40E_MAX_RING_DESC -
-				RTE_PMD_I40E_RX_MAX_BURST)))
+	} else if (!(rxq->nb_rx_desc < (I40E_MAX_RING_DESC -
+				RTE_PMD_I40E_RX_MAX_BURST))) {
+		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
+			     "rxq->nb_rx_desc=%d, "
+			     "I40E_MAX_RING_DESC=%d, "
+			     "RTE_PMD_I40E_RX_MAX_BURST=%d",
+			     rxq->nb_rx_desc, I40E_MAX_RING_DESC,
+			     RTE_PMD_I40E_RX_MAX_BURST);
 		ret = -EINVAL;
+	}
 #else
 	ret = -EINVAL;
 #endif
