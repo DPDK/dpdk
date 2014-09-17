@@ -98,6 +98,19 @@
 
 #define I40E_PRE_TX_Q_CFG_WAIT_US       10 /* 10 us */
 
+/* Mask of PF interrupt causes */
+#define I40E_PFINT_ICR0_ENA_MASK ( \
+		I40E_PFINT_ICR0_ENA_ECC_ERR_MASK | \
+		I40E_PFINT_ICR0_ENA_MAL_DETECT_MASK | \
+		I40E_PFINT_ICR0_ENA_GRST_MASK | \
+		I40E_PFINT_ICR0_ENA_PCI_EXCEPTION_MASK | \
+		I40E_PFINT_ICR0_ENA_STORM_DETECT_MASK | \
+		I40E_PFINT_ICR0_ENA_LINK_STAT_CHANGE_MASK | \
+		I40E_PFINT_ICR0_ENA_HMC_ERR_MASK | \
+		I40E_PFINT_ICR0_ENA_PE_CRITERR_MASK | \
+		I40E_PFINT_ICR0_ENA_VFLR_MASK | \
+		I40E_PFINT_ICR0_ENA_ADMINQ_MASK)
+
 static int eth_i40e_dev_init(\
 			__attribute__((unused)) struct eth_driver *eth_drv,
 			struct rte_eth_dev *eth_dev);
@@ -3418,24 +3431,9 @@ i40e_pf_enable_irq0(struct i40e_hw *hw)
 static void
 i40e_pf_config_irq0(struct i40e_hw *hw)
 {
-	uint32_t enable;
-
 	/* read pending request and disable first */
 	i40e_pf_disable_irq0(hw);
-	/**
-	 * Enable all interrupt error options to detect possible errors,
-	 * other informative int are ignored
-	 */
-	enable = I40E_PFINT_ICR0_ENA_ECC_ERR_MASK |
-	         I40E_PFINT_ICR0_ENA_MAL_DETECT_MASK |
-	         I40E_PFINT_ICR0_ENA_GRST_MASK |
-	         I40E_PFINT_ICR0_ENA_PCI_EXCEPTION_MASK |
-	         I40E_PFINT_ICR0_ENA_LINK_STAT_CHANGE_MASK |
-	         I40E_PFINT_ICR0_ENA_HMC_ERR_MASK |
-	         I40E_PFINT_ICR0_ENA_VFLR_MASK |
-	         I40E_PFINT_ICR0_ENA_ADMINQ_MASK;
-
-	I40E_WRITE_REG(hw, I40E_PFINT_ICR0_ENA, enable);
+	I40E_WRITE_REG(hw, I40E_PFINT_ICR0_ENA, I40E_PFINT_ICR0_ENA_MASK);
 	I40E_WRITE_REG(hw, I40E_PFINT_STAT_CTL0,
 		I40E_PFINT_STAT_CTL0_OTHER_ITR_INDX_MASK);
 
@@ -3553,42 +3551,41 @@ i40e_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 	icr0 = I40E_READ_REG(hw, I40E_PFINT_ICR0);
 	icr0_ena = I40E_READ_REG(hw, I40E_PFINT_ICR0_ENA);
 
-	/* Shared IRQ case, return */
+	/* No interrupt event indicated */
 	if (!(icr0 & I40E_PFINT_ICR0_INTEVENT_MASK)) {
-		PMD_DRV_LOG(INFO, "Port%d INT0:share IRQ case, "
-			    "no INT event to process", hw->pf_id);
+		PMD_DRV_LOG(INFO, "No interrupt event");
 		goto done;
+	}
+
++#ifdef RTE_LIBRTE_I40E_DEBUG_DRIVER
+	if (icr0 & I40E_PFINT_ICR0_ECC_ERR_MASK)
+		PMD_DRV_LOG(ERR, "ICR0: unrecoverable ECC error");
+	if (icr0 & I40E_PFINT_ICR0_MAL_DETECT_MASK)
+		PMD_DRV_LOG(ERR, "ICR0: malicious programming detected");
+	if (icr0 & I40E_PFINT_ICR0_GRST_MASK)
+		PMD_DRV_LOG(INFO, "ICR0: global reset requested");
+	if (icr0 & I40E_PFINT_ICR0_PCI_EXCEPTION_MASK)
+		PMD_DRV_LOG(INFO, "ICR0: PCI exception activated");
+	if (icr0 & I40E_PFINT_ICR0_STORM_DETECT_MASK)
+		PMD_DRV_LOG(INFO, "ICR0: a change in the storm control state");
+	if (icr0 & I40E_PFINT_ICR0_HMC_ERR_MASK)
+		PMD_DRV_LOG(ERR, "ICR0: HMC error");
+	if (icr0 & I40E_PFINT_ICR0_PE_CRITERR_MASK)
+		PMD_DRV_LOG(ERR, "ICR0: protocol engine critical error");
+#endif /* RTE_LIBRTE_I40E_DEBUG_DRIVER */
+
+	if (icr0 & I40E_PFINT_ICR0_VFLR_MASK) {
+		PMD_DRV_LOG(INFO, "ICR0: VF reset detected");
+		i40e_dev_handle_vfr_event(dev);
+	}
+	if (icr0 & I40E_PFINT_ICR0_ADMINQ_MASK) {
+		PMD_DRV_LOG(INFO, "ICR0: adminq event");
+		i40e_dev_handle_aq_msg(dev);
 	}
 
 	if (icr0 & I40E_PFINT_ICR0_LINK_STAT_CHANGE_MASK) {
 		PMD_DRV_LOG(INFO, "INT:Link status changed");
 		i40e_dev_link_update(dev, 0);
-	}
-
-	if (icr0 & I40E_PFINT_ICR0_ECC_ERR_MASK)
-		PMD_DRV_LOG(INFO, "INT:Unrecoverable ECC Error");
-
-	if (icr0 & I40E_PFINT_ICR0_MAL_DETECT_MASK)
-		PMD_DRV_LOG(INFO, "INT:Malicious programming detected");
-
-	if (icr0 & I40E_PFINT_ICR0_GRST_MASK)
-		PMD_DRV_LOG(INFO, "INT:Global Resets Requested");
-
-	if (icr0 & I40E_PFINT_ICR0_PCI_EXCEPTION_MASK)
-		PMD_DRV_LOG(INFO, "INT:PCI EXCEPTION occured");
-
-	if (icr0 & I40E_PFINT_ICR0_HMC_ERR_MASK)
-		PMD_DRV_LOG(INFO, "INT:HMC error occured");
-
-	/* Add processing func to deal with VF reset vent */
-	if (icr0 & I40E_PFINT_ICR0_VFLR_MASK) {
-		PMD_DRV_LOG(INFO, "INT:VF reset detected");
-		i40e_dev_handle_vfr_event(dev);
-	}
-	/* Find admin queue event */
-	if (icr0 & I40E_PFINT_ICR0_ADMINQ_MASK) {
-		PMD_DRV_LOG(INFO, "INT:ADMINQ event");
-		i40e_dev_handle_aq_msg(dev);
 	}
 
 done:
