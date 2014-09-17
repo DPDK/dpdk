@@ -47,6 +47,7 @@
 #include <rte_memzone.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
+#include <rte_alarm.h>
 #include <rte_dev.h>
 #include <rte_eth_ctrl.h>
 
@@ -267,7 +268,7 @@ static struct eth_driver rte_i40e_pmd = {
 	{
 		.name = "rte_i40e_pmd",
 		.id_table = pci_id_i40e_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	},
 	.eth_dev_init = eth_i40e_dev_init,
 	.dev_private_size = sizeof(struct i40e_adapter),
@@ -3526,6 +3527,58 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 	rte_free(info.msg_buf);
 }
 
+/*
+ * Interrupt handler is registered as the alarm callback for handling LSC
+ * interrupt in a definite of time, in order to wait the NIC into a stable
+ * state. Currently it waits 1 sec in i40e for the link up interrupt, and
+ * no need for link down interrupt.
+ */
+static void
+i40e_dev_interrupt_delayed_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t icr0;
+
+	/* read interrupt causes again */
+	icr0 = I40E_READ_REG(hw, I40E_PFINT_ICR0);
+
+#ifdef RTE_LIBRTE_I40E_DEBUG_DRIVER
+	if (icr0 & I40E_PFINT_ICR0_ECC_ERR_MASK)
+		PMD_DRV_LOG(ERR, "ICR0: unrecoverable ECC error\n");
+	if (icr0 & I40E_PFINT_ICR0_MAL_DETECT_MASK)
+		PMD_DRV_LOG(ERR, "ICR0: malicious programming detected\n");
+	if (icr0 & I40E_PFINT_ICR0_GRST_MASK)
+		PMD_DRV_LOG(INFO, "ICR0: global reset requested\n");
+	if (icr0 & I40E_PFINT_ICR0_PCI_EXCEPTION_MASK)
+		PMD_DRV_LOG(INFO, "ICR0: PCI exception\n activated\n");
+	if (icr0 & I40E_PFINT_ICR0_STORM_DETECT_MASK)
+		PMD_DRV_LOG(INFO, "ICR0: a change in the storm control "
+								"state\n");
+	if (icr0 & I40E_PFINT_ICR0_HMC_ERR_MASK)
+		PMD_DRV_LOG(ERR, "ICR0: HMC error\n");
+	if (icr0 & I40E_PFINT_ICR0_PE_CRITERR_MASK)
+		PMD_DRV_LOG(ERR, "ICR0: protocol engine critical error\n");
+#endif /* RTE_LIBRTE_I40E_DEBUG_DRIVER */
+
+	if (icr0 & I40E_PFINT_ICR0_VFLR_MASK) {
+		PMD_DRV_LOG(INFO, "INT:VF reset detected\n");
+		i40e_dev_handle_vfr_event(dev);
+	}
+	if (icr0 & I40E_PFINT_ICR0_ADMINQ_MASK) {
+		PMD_DRV_LOG(INFO, "INT:ADMINQ event\n");
+		i40e_dev_handle_aq_msg(dev);
+	}
+
+	/* handle the link up interrupt in an alarm callback */
+	i40e_dev_link_update(dev, 0);
+	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
+
+	I40E_WRITE_REG(hw, I40E_PFINT_ICR0_ENA, I40E_PFINT_ICR0_ENA_MASK);
+	i40e_pf_enable_irq0(hw);
+	rte_intr_enable(&(dev->pci_dev->intr_handle));
+}
+
 /**
  * Interrupt handler triggered by NIC  for handling
  * specific interrupt.
@@ -3544,20 +3597,21 @@ i40e_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t icr0, icr0_ena;
+	uint32_t icr0;
 
+	/* Disable interrupt */
 	i40e_pf_disable_irq0(hw);
+	I40E_WRITE_REG(hw, I40E_PFINT_ICR0_ENA, 0);
 
+	/* read out interrupt causes */
 	icr0 = I40E_READ_REG(hw, I40E_PFINT_ICR0);
-	icr0_ena = I40E_READ_REG(hw, I40E_PFINT_ICR0_ENA);
 
 	/* No interrupt event indicated */
 	if (!(icr0 & I40E_PFINT_ICR0_INTEVENT_MASK)) {
 		PMD_DRV_LOG(INFO, "No interrupt event");
 		goto done;
 	}
-
-+#ifdef RTE_LIBRTE_I40E_DEBUG_DRIVER
+#ifdef RTE_LIBRTE_I40E_DEBUG_DRIVER
 	if (icr0 & I40E_PFINT_ICR0_ECC_ERR_MASK)
 		PMD_DRV_LOG(ERR, "ICR0: unrecoverable ECC error");
 	if (icr0 & I40E_PFINT_ICR0_MAL_DETECT_MASK)
@@ -3583,16 +3637,34 @@ i40e_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 		i40e_dev_handle_aq_msg(dev);
 	}
 
+	/* Link Status Change interrupt */
 	if (icr0 & I40E_PFINT_ICR0_LINK_STAT_CHANGE_MASK) {
-		PMD_DRV_LOG(INFO, "INT:Link status changed");
+#define I40E_US_PER_SECOND 1000000
+		struct rte_eth_link link;
+
+		PMD_DRV_LOG(INFO, "ICR0: link status changed\n");
+		memset(&link, 0, sizeof(link));
+		rte_i40e_dev_atomic_read_link_status(dev, &link);
 		i40e_dev_link_update(dev, 0);
+
+		/*
+		 * For link up interrupt, it needs to wait 1 second to let the
+		 * hardware be a stable state. Otherwise several consecutive
+		 * interrupts can be observed.
+		 * For link down interrupt, no need to wait.
+		 */
+		if (!link.link_status && rte_eal_alarm_set(I40E_US_PER_SECOND,
+			i40e_dev_interrupt_delayed_handler, (void *)dev) >= 0)
+			return;
+		else
+			_rte_eth_dev_callback_process(dev,
+				RTE_ETH_EVENT_INTR_LSC);
 	}
 
 done:
-	I40E_WRITE_REG(hw, I40E_PFINT_ICR0_ENA, icr0_ena);
-	/* Re-enable interrupt from device side */
+	/* Enable interrupt */
+	I40E_WRITE_REG(hw, I40E_PFINT_ICR0_ENA, I40E_PFINT_ICR0_ENA_MASK);
 	i40e_pf_enable_irq0(hw);
-	/* Re-enable interrupt from host side */
 	rte_intr_enable(&(dev->pci_dev->intr_handle));
 }
 
