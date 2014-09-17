@@ -548,7 +548,8 @@ ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 		return -ENOSYS;
 
 	PMD_INIT_LOG(INFO, "Setting port %d, %s queue_id %d to stat index %d\n",
-		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX", queue_id, stat_idx);
+		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX",
+		     queue_id, stat_idx);
 
 	n = (uint8_t)(queue_id / NB_QMAP_FIELDS_PER_QSM_REG);
 	if (n >= IXGBE_NB_STAT_MAPPING_REGS) {
@@ -574,8 +575,9 @@ ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 
 	PMD_INIT_LOG(INFO, "Set port %d, %s queue_id %d to stat index %d\n"
 		     "%s[%d] = 0x%08x\n",
-		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX", queue_id, stat_idx,
-		     is_rx ? "RQSMR" : "TQSM",n, is_rx ? stat_mappings->rqsmr[n] : stat_mappings->tqsm[n]);
+		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX",
+		     queue_id, stat_idx, is_rx ? "RQSMR" : "TQSM", n,
+		     is_rx ? stat_mappings->rqsmr[n] : stat_mappings->tqsm[n]);
 
 	/* Now write the mapping in the appropriate register */
 	if (is_rx) {
@@ -849,8 +851,7 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	IXGBE_WRITE_FLUSH(hw);
 
 	if (ixgbe_is_sfp(hw) && hw->phy.sfp_type != ixgbe_sfp_type_not_present)
-		PMD_INIT_LOG(DEBUG,
-			     "MAC: %d, PHY: %d, SFP+: %d<n",
+		PMD_INIT_LOG(DEBUG, "MAC: %d, PHY: %d, SFP+: %d<n",
 			     (int) hw->mac.type, (int) hw->phy.type,
 			     (int) hw->phy.sfp_type);
 	else
@@ -1038,8 +1039,8 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	}
 
 	PMD_INIT_LOG(DEBUG, "\nport %d vendorID=0x%x deviceID=0x%x mac.type=%s\n",
-			 eth_dev->data->port_id, pci_dev->id.vendor_id, pci_dev->id.device_id,
-			 "ixgbe_mac_82599_vf");
+		     eth_dev->data->port_id, pci_dev->id.vendor_id,
+		     pci_dev->id.device_id, "ixgbe_mac_82599_vf");
 
 	return 0;
 }
@@ -1418,8 +1419,8 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	if ((dev->data->dev_conf.link_duplex != ETH_LINK_AUTONEG_DUPLEX) &&
 			(dev->data->dev_conf.link_duplex != ETH_LINK_FULL_DUPLEX)) {
 		PMD_INIT_LOG(ERR, "Invalid link_duplex (%hu) for port %hhu\n",
-				dev->data->dev_conf.link_duplex,
-				dev->data->port_id);
+			     dev->data->dev_conf.link_duplex,
+			     dev->data->port_id);
 		return -EINVAL;
 	}
 
@@ -1491,8 +1492,8 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		break;
 	default:
 		PMD_INIT_LOG(ERR, "Invalid link_speed (%hu) for port %hhu\n",
-				dev->data->dev_conf.link_speed,
-				dev->data->port_id);
+			     dev->data->dev_conf.link_speed,
+			     dev->data->port_id);
 		goto error;
 	}
 
@@ -1598,10 +1599,8 @@ ixgbe_dev_set_link_up(struct rte_eth_dev *dev)
 #ifdef RTE_NIC_BYPASS
 		if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
 			/* Not suported in bypass mode */
-			PMD_INIT_LOG(ERR,
-				"\nSet link up is not supported "
-				"by device id 0x%x\n",
-				hw->device_id);
+			PMD_INIT_LOG(ERR, "\nSet link up is not supported "
+				     "by device id 0x%x\n", hw->device_id);
 			return -ENOTSUP;
 		}
 #endif
@@ -1611,7 +1610,7 @@ ixgbe_dev_set_link_up(struct rte_eth_dev *dev)
 	}
 
 	PMD_INIT_LOG(ERR, "\nSet link up is not supported by device id 0x%x\n",
-		hw->device_id);
+		     hw->device_id);
 	return -ENOTSUP;
 }
 
@@ -1627,10 +1626,8 @@ ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
 #ifdef RTE_NIC_BYPASS
 		if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
 			/* Not suported in bypass mode */
-			PMD_INIT_LOG(ERR,
-				"\nSet link down is not supported "
-				"by device id 0x%x\n",
-				 hw->device_id);
+			PMD_INIT_LOG(ERR, "\nSet link down is not supported "
+				     "by device id 0x%x\n", hw->device_id);
 			return -ENOTSUP;
 		}
 #endif
@@ -1639,9 +1636,8 @@ ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
 		return 0;
 	}
 
-	PMD_INIT_LOG(ERR,
-		"\nSet link down is not supported by device id 0x%x\n",
-		 hw->device_id);
+	PMD_INIT_LOG(ERR, "\nSet link down is not supported by device id 0x%x\n",
+		     hw->device_id);
 	return -ENOTSUP;
 }
 
@@ -2442,13 +2438,13 @@ ixgbe_dcb_pfc_enable_generic(struct ixgbe_hw *hw,uint8_t tc_num)
 	if (hw->fc.current_mode & ixgbe_fc_tx_pause) {
 		 /* High/Low water can not be 0 */
 		if( (!hw->fc.high_water[tc_num])|| (!hw->fc.low_water[tc_num])) {
-			PMD_INIT_LOG(ERR,"Invalid water mark configuration\n");
+			PMD_INIT_LOG(ERR, "Invalid water mark configuration\n");
 			ret_val = IXGBE_ERR_INVALID_LINK_SETTINGS;
 			goto out;
 		}
 
 		if(hw->fc.low_water[tc_num] >= hw->fc.high_water[tc_num]) {
-			PMD_INIT_LOG(ERR,"Invalid water mark configuration\n");
+			PMD_INIT_LOG(ERR, "Invalid water mark configuration\n");
 			ret_val = IXGBE_ERR_INVALID_LINK_SETTINGS;
 			goto out;
 		}
@@ -2599,7 +2595,7 @@ ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *p
 	 */
 	max_high_water = (rx_buf_size - ETHER_MAX_LEN) >> IXGBE_RXPBSIZE_SHIFT;
 	if ((pfc_conf->fc.high_water > max_high_water) ||
-		(pfc_conf->fc.high_water <= pfc_conf->fc.low_water)) {
+	    (pfc_conf->fc.high_water <= pfc_conf->fc.low_water)) {
 		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB\n");
 		PMD_INIT_LOG(ERR, "High_water must <=  0x%x\n", max_high_water);
 		return (-EINVAL);
@@ -2778,7 +2774,7 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 	struct rte_eth_conf* conf = &dev->data->dev_conf;
 
 	PMD_INIT_LOG(DEBUG, "\nConfigured Virtual Function port id: %d\n",
-		dev->data->port_id);
+		     dev->data->port_id);
 
 	/*
 	 * VF has no ability to enable/disable HW CRC
@@ -2818,7 +2814,8 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 	/* This can fail when allocating mbufs for descriptor rings */
 	err = ixgbevf_dev_rx_init(dev);
 	if (err) {
-		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware (%d)\n", err);
+		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware (%d)\n",
+			     err);
 		ixgbe_dev_clear_queues(dev);
 		return err;
 	}
@@ -3098,7 +3095,7 @@ ixgbe_set_pool_rx_mode(struct rte_eth_dev *dev, uint16_t pool,
 
 	if (hw->mac.type == ixgbe_mac_82598EB) {
 		PMD_INIT_LOG(ERR, "setting VF receive mode set should be done"
-			" on 82599 hardware and newer\n");
+			     " on 82599 hardware and newer\n");
 		return (-ENOTSUP);
 	}
 	if (ixgbe_vmdq_mode_check(hw) < 0)
