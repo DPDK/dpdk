@@ -100,10 +100,10 @@ typedef enum i40e_status_code i40e_status;
 #define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))
 #define ASSERT(x) if(!(x)) rte_panic("IXGBE: x")
 
-#define DEBUGOUT(S)        PMD_DRV_LOG(DEBUG, S)
-#define DEBUGOUT1(S, A...) PMD_DRV_LOG(DEBUG, S, ##A)
+#define DEBUGOUT(S)        PMD_DRV_LOG_RAW(DEBUG, S)
+#define DEBUGOUT1(S, A...) PMD_DRV_LOG_RAW(DEBUG, S, ##A)
 
-#define DEBUGFUNC(F) DEBUGOUT(F)
+#define DEBUGFUNC(F) DEBUGOUT(F "\n")
 #define DEBUGOUT2 DEBUGOUT1
 #define DEBUGOUT3 DEBUGOUT2
 #define DEBUGOUT6 DEBUGOUT3
@@ -112,7 +112,7 @@ typedef enum i40e_status_code i40e_status;
 #define i40e_debug(h, m, s, ...)                                \
 do {                                                            \
 	if (((m) & (h)->debug_mask))                            \
-		PMD_DRV_LOG(DEBUG, "i40e %02x.%x " s,           \
+		PMD_DRV_LOG_RAW(DEBUG, "i40e %02x.%x " s,       \
 			(h)->bus.device, (h)->bus.func,         \
 					##__VA_ARGS__);         \
 } while (0)
