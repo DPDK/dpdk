@@ -478,7 +478,7 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 
 	retval = ixgbe_read_mbx(hw, msgbuf, mbx_size, vf);
 	if (retval) {
-		RTE_LOG(ERR, PMD, "Error mbx recv msg from VF %d\n", vf);
+		PMD_DRV_LOG(ERR, "Error mbx recv msg from VF %d", vf);
 		return retval;
 	}
 
@@ -511,7 +511,7 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 		retval = ixgbe_vf_set_vlan(dev, vf, msgbuf);
 		break;
 	default:
-		RTE_LOG(DEBUG, PMD, "Unhandled Msg %8.8x\n", (unsigned)  msgbuf[0]);
+		PMD_DRV_LOG(DEBUG, "Unhandled Msg %8.8x", (unsigned)msgbuf[0]);
 		retval = IXGBE_ERR_MBX;
 		break;
 	}

@@ -667,7 +667,7 @@ ixgbe_swfw_lock_reset(struct ixgbe_hw *hw)
 	 */
 	mask = IXGBE_GSSR_PHY0_SM << hw->bus.func;
 	if (ixgbe_acquire_swfw_semaphore(hw, mask) < 0) {
-		   DEBUGOUT1("SWFW phy%d lock released", hw->bus.func);
+		PMD_DRV_LOG(DEBUG, "SWFW phy%d lock released", hw->bus.func);
 	}
 	ixgbe_release_swfw_semaphore(hw, mask);
 
@@ -679,7 +679,7 @@ ixgbe_swfw_lock_reset(struct ixgbe_hw *hw)
 	 */
 	mask = IXGBE_GSSR_EEP_SM | IXGBE_GSSR_MAC_CSR_SM | IXGBE_GSSR_SW_MNG_SM;
 	if (ixgbe_acquire_swfw_semaphore(hw, mask) < 0) {
-		   DEBUGOUT("SWFW common locks released");
+		PMD_DRV_LOG(DEBUG, "SWFW common locks released");
 	}
 	ixgbe_release_swfw_semaphore(hw, mask);
 }
@@ -933,7 +933,7 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(eth_dev->data->dev_private);
 	struct ether_addr *perm_addr = (struct ether_addr *) hw->mac.perm_addr;
 
-	PMD_INIT_LOG(DEBUG, "eth_ixgbevf_dev_init");
+	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &ixgbevf_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &ixgbe_recv_pkts;
@@ -1012,16 +1012,15 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 			eth_dev->data->mac_addrs = NULL;
 			return diag;
 		}
-		RTE_LOG(INFO, PMD,
-			"\tVF MAC address not assigned by Host PF\n"
-			"\tAssign randomly generated MAC address "
-			"%02x:%02x:%02x:%02x:%02x:%02x\n",
-			perm_addr->addr_bytes[0],
-			perm_addr->addr_bytes[1],
-			perm_addr->addr_bytes[2],
-			perm_addr->addr_bytes[3],
-			perm_addr->addr_bytes[4],
-			perm_addr->addr_bytes[5]);
+		PMD_INIT_LOG(INFO, "\tVF MAC address not assigned by Host PF");
+		PMD_INIT_LOG(INFO, "\tAssign randomly generated MAC address "
+			     "%02x:%02x:%02x:%02x:%02x:%02x",
+			     perm_addr->addr_bytes[0],
+			     perm_addr->addr_bytes[1],
+			     perm_addr->addr_bytes[2],
+			     perm_addr->addr_bytes[3],
+			     perm_addr->addr_bytes[4],
+			     perm_addr->addr_bytes[5]);
 	}
 
 	/* Copy the permanent MAC address */
@@ -1090,7 +1089,7 @@ rte_ixgbe_pmd_init(const char *name __rte_unused, const char *params __rte_unuse
 static int
 rte_ixgbevf_pmd_init(const char *name __rte_unused, const char *param __rte_unused)
 {
-	DEBUGFUNC("rte_ixgbevf_pmd_init");
+	PMD_INIT_FUNC_TRACE();
 
 	rte_eth_driver_register(&rte_ixgbevf_pmd);
 	return (0);
@@ -2515,7 +2514,7 @@ ixgbe_dcb_pfc_enable_generic(struct ixgbe_hw *hw,uint8_t tc_num)
 		fccfg_reg |= IXGBE_FCCFG_TFCE_PRIORITY;
 		break;
 	default:
-		DEBUGOUT("Flow control param set incorrectly\n");
+		PMD_DRV_LOG(DEBUG, "Flow control param set incorrectly");
 		ret_val = IXGBE_ERR_CONFIG;
 		goto out;
 		break;
@@ -2765,7 +2764,7 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 static void
 ixgbevf_intr_disable(struct ixgbe_hw *hw)
 {
-	PMD_INIT_LOG(DEBUG, "ixgbevf_intr_disable");
+	PMD_INIT_FUNC_TRACE();
 
 	/* Clear interrupt mask to stop from interrupts being generated */
 	IXGBE_WRITE_REG(hw, IXGBE_VTEIMC, IXGBE_VF_IRQ_CLEAR_MASK);
@@ -2807,7 +2806,7 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int err, mask = 0;
 
-	PMD_INIT_LOG(DEBUG, "ixgbevf_dev_start");
+	PMD_INIT_FUNC_TRACE();
 
 	hw->mac.ops.reset_hw(hw);
 
@@ -2842,7 +2841,7 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	PMD_INIT_LOG(DEBUG, "ixgbevf_dev_stop");
+	PMD_INIT_FUNC_TRACE();
 
 	hw->adapter_stopped = TRUE;
 	ixgbe_stop_adapter(hw);
@@ -2861,7 +2860,7 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	PMD_INIT_LOG(DEBUG, "ixgbevf_dev_close");
+	PMD_INIT_FUNC_TRACE();
 
 	ixgbe_reset_hw(hw);
 

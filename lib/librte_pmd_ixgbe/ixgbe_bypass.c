@@ -40,20 +40,20 @@
 #define	BYPASS_STATUS_OFF_MASK	3
 
 /* Macros to check for invlaid function pointers. */
-#define	FUNC_PTR_OR_ERR_RET(func, retval) do {             \
-	if ((func) == NULL) {                              \
-		DEBUGOUT("%s:%d function not supported\n", \
-			__func__, __LINE__);               \
-		return (retval);                           \
-	}                                                  \
+#define	FUNC_PTR_OR_ERR_RET(func, retval) do {              \
+	if ((func) == NULL) {                               \
+		PMD_DRV_LOG("%s:%d function not supported", \
+			    __func__, __LINE__);            \
+		return retval;                            \
+	}                                                   \
 } while(0)
 
-#define	FUNC_PTR_OR_RET(func) do {                         \
-	if ((func) == NULL) {                              \
-		DEBUGOUT("%s:%d function not supported\n", \
-			__func__, __LINE__);               \
-		return;                                    \
-	}                                                  \
+#define	FUNC_PTR_OR_RET(func) do {                          \
+	if ((func) == NULL) {                               \
+		PMD_DRV_LOG("%s:%d function not supported", \
+			    __func__, __LINE__);            \
+		return;                                     \
+	}                                                   \
 } while(0)
 
 
@@ -114,7 +114,7 @@ ixgbe_bypass_init(struct rte_eth_dev *dev)
 	/* Only allow BYPASS ops on the first port */
 	if (hw->device_id != IXGBE_DEV_ID_82599_BYPASS ||
 			hw->bus.func != 0) {
-		DEBUGOUT("bypass function is not supported on that device\n");
+		PMD_DRV_LOG("bypass function is not supported on that device");
 		return;
 	}
 
