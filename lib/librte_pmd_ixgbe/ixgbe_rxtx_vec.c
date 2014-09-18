@@ -723,7 +723,7 @@ ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq)
 		.nb_segs = 1,
 		.data_off = RTE_PKTMBUF_HEADROOM,
 #ifdef RTE_MBUF_REFCNT
-		.refcnt = 1,
+		{ .refcnt = 1, }
 #endif
 	};
 
