@@ -613,30 +613,23 @@ eal_parse_args(int argc, char **argv)
 		case 0:
 			if (!strcmp(lgopts[option_index].name, OPT_NO_HUGE)) {
 				internal_config.no_hugetlbfs = 1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_NO_PCI)) {
+			} else if (!strcmp(lgopts[option_index].name, OPT_NO_PCI)) {
 				internal_config.no_pci = 1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_NO_HPET)) {
+			} else if (!strcmp(lgopts[option_index].name, OPT_NO_HPET)) {
 				internal_config.no_hpet = 1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_VMWARE_TSC_MAP)) {
+			} else if (!strcmp(lgopts[option_index].name, OPT_VMWARE_TSC_MAP)) {
 				internal_config.vmware_tsc_map = 1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_NO_SHCONF)) {
+			} else if (!strcmp(lgopts[option_index].name, OPT_NO_SHCONF)) {
 				internal_config.no_shconf = 1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_PROC_TYPE)) {
+			} else if (!strcmp(lgopts[option_index].name, OPT_PROC_TYPE)) {
 				internal_config.process_type = eal_parse_proc_type(optarg);
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_VDEV)) {
+			} else if (!strcmp(lgopts[option_index].name, OPT_VDEV)) {
 				if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL,
 						optarg) < 0) {
 					eal_usage(prgname);
 					return -1;
 				}
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_SYSLOG)) {
+			} else if (!strcmp(lgopts[option_index].name, OPT_SYSLOG)) {
 				if (eal_parse_syslog(optarg) < 0) {
 					RTE_LOG(ERR, EAL, "invalid parameters for --"
 							OPT_SYSLOG "\n");
