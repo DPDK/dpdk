@@ -513,8 +513,8 @@ eal_parse_args(int argc, char **argv)
 		{OPT_PROC_TYPE, 1, 0, 0},
 		{OPT_FILE_PREFIX, 1, 0, 0},
 		{OPT_SOCKET_MEM, 1, 0, 0},
-		{OPT_PCI_WHITELIST, 1, 0, 0},
-		{OPT_PCI_BLACKLIST, 1, 0, 0},
+		{OPT_PCI_WHITELIST, 1, 0, 'w'},
+		{OPT_PCI_BLACKLIST, 1, 0, 'b'},
 		{OPT_VDEV, 1, 0, 0},
 		{OPT_SYSLOG, 1, NULL, 0},
 		{OPT_LOG_LEVEL, 1, NULL, 0},
@@ -628,20 +628,6 @@ eal_parse_args(int argc, char **argv)
 			}
 			else if (!strcmp(lgopts[option_index].name, OPT_PROC_TYPE)) {
 				internal_config.process_type = eal_parse_proc_type(optarg);
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_PCI_BLACKLIST)) {
-				if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI,
-						optarg) < 0) {
-					eal_usage(prgname);
-					return -1;
-				}
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_PCI_WHITELIST)) {
-				if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI,
-						optarg) < 0) {
-					eal_usage(prgname);
-					return -1;
-				}
 			}
 			else if (!strcmp(lgopts[option_index].name, OPT_VDEV)) {
 				if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL,
