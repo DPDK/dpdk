@@ -63,24 +63,24 @@ eal_short_options[] =
 
 const struct option
 eal_long_options[] = {
-	{OPT_HUGE_DIR, 1, 0, 0},
-	{OPT_PROC_TYPE, 1, 0, 0},
-	{OPT_NO_SHCONF, 0, 0, 0},
-	{OPT_NO_HPET, 0, 0, 0},
-	{OPT_VMWARE_TSC_MAP, 0, 0, 0},
-	{OPT_NO_PCI, 0, 0, 0},
-	{OPT_NO_HUGE, 0, 0, 0},
-	{OPT_FILE_PREFIX, 1, 0, 0},
-	{OPT_SOCKET_MEM, 1, 0, 0},
-	{OPT_PCI_WHITELIST, 1, 0, 'w'},
-	{OPT_PCI_BLACKLIST, 1, 0, 'b'},
-	{OPT_VDEV, 1, 0, 0},
-	{OPT_SYSLOG, 1, NULL, 0},
-	{OPT_LOG_LEVEL, 1, NULL, 0},
-	{OPT_BASE_VIRTADDR, 1, 0, 0},
-	{OPT_XEN_DOM0, 0, 0, 0},
-	{OPT_CREATE_UIO_DEV, 1, NULL, 0},
-	{OPT_VFIO_INTR, 1, NULL, 0},
+	{OPT_HUGE_DIR, 1, 0, OPT_HUGE_DIR_NUM},
+	{OPT_PROC_TYPE, 1, 0, OPT_PROC_TYPE_NUM},
+	{OPT_NO_SHCONF, 0, 0, OPT_NO_SHCONF_NUM},
+	{OPT_NO_HPET, 0, 0, OPT_NO_HPET_NUM},
+	{OPT_VMWARE_TSC_MAP, 0, 0, OPT_VMWARE_TSC_MAP_NUM},
+	{OPT_NO_PCI, 0, 0, OPT_NO_PCI_NUM},
+	{OPT_NO_HUGE, 0, 0, OPT_NO_HUGE_NUM},
+	{OPT_FILE_PREFIX, 1, 0, OPT_FILE_PREFIX_NUM},
+	{OPT_SOCKET_MEM, 1, 0, OPT_SOCKET_MEM_NUM},
+	{OPT_PCI_WHITELIST, 1, 0, OPT_PCI_WHITELIST_NUM},
+	{OPT_PCI_BLACKLIST, 1, 0, OPT_PCI_BLACKLIST_NUM},
+	{OPT_VDEV, 1, 0, OPT_VDEV_NUM},
+	{OPT_SYSLOG, 1, NULL, OPT_SYSLOG_NUM},
+	{OPT_LOG_LEVEL, 1, NULL, OPT_LOG_LEVEL_NUM},
+	{OPT_BASE_VIRTADDR, 1, 0, OPT_BASE_VIRTADDR_NUM},
+	{OPT_XEN_DOM0, 0, 0, OPT_XEN_DOM0_NUM},
+	{OPT_CREATE_UIO_DEV, 1, NULL, OPT_CREATE_UIO_DEV_NUM},
+	{OPT_VFIO_INTR, 1, NULL, OPT_VFIO_INTR_NUM},
 	{0, 0, 0, 0}
 };
 
@@ -238,7 +238,7 @@ eal_parse_proc_type(const char *arg)
 }
 
 int
-eal_parse_common_option(int opt, const char *optarg, int longindex,
+eal_parse_common_option(int opt, const char *optarg,
 			struct internal_config *conf)
 {
 	switch (opt) {
@@ -296,32 +296,46 @@ eal_parse_common_option(int opt, const char *optarg, int longindex,
 		break;
 
 	/* long options */
-	case 0:
-		if (!strcmp(eal_long_options[longindex].name, OPT_NO_HUGE)) {
+	case OPT_NO_HUGE_NUM:
 			conf->no_hugetlbfs = 1;
-		} else if (!strcmp(eal_long_options[longindex].name, OPT_NO_PCI)) {
+		break;
+
+	case OPT_NO_PCI_NUM:
 			conf->no_pci = 1;
-		} else if (!strcmp(eal_long_options[longindex].name, OPT_NO_HPET)) {
+		break;
+
+	case OPT_NO_HPET_NUM:
 			conf->no_hpet = 1;
-		} else if (!strcmp(eal_long_options[longindex].name, OPT_VMWARE_TSC_MAP)) {
+		break;
+
+	case OPT_VMWARE_TSC_MAP_NUM:
 			conf->vmware_tsc_map = 1;
-		} else if (!strcmp(eal_long_options[longindex].name, OPT_NO_SHCONF)) {
+		break;
+
+	case OPT_NO_SHCONF_NUM:
 			conf->no_shconf = 1;
-		} else if (!strcmp(eal_long_options[longindex].name, OPT_PROC_TYPE)) {
+		break;
+
+	case OPT_PROC_TYPE_NUM:
 			conf->process_type = eal_parse_proc_type(optarg);
-		} else if (!strcmp(eal_long_options[longindex].name, OPT_VDEV)) {
+		break;
+
+	case OPT_VDEV_NUM:
 			if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL,
 					optarg) < 0) {
 				return -1;
 			}
-		} else if (!strcmp(eal_long_options[longindex].name, OPT_SYSLOG)) {
+		break;
+
+	case OPT_SYSLOG_NUM:
 			if (eal_parse_syslog(optarg, conf) < 0) {
 				RTE_LOG(ERR, EAL, "invalid parameters for --"
 						OPT_SYSLOG "\n");
 				return -1;
 			}
-		} else if (!strcmp(eal_long_options[longindex].name,
-				 OPT_LOG_LEVEL)) {
+		break;
+
+	case OPT_LOG_LEVEL_NUM: {
 			uint32_t log;
 
 			if (eal_parse_log_level(optarg, &log) < 0) {
@@ -331,9 +345,8 @@ eal_parse_common_option(int opt, const char *optarg, int longindex,
 				return -1;
 			}
 			conf->log_level = log;
-		}
-
 		break;
+		}
 
 	/* don't know what to do, leave this to caller */
 	default:

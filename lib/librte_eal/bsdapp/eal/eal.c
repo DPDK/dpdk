@@ -354,8 +354,7 @@ eal_parse_args(int argc, char **argv)
 		if (opt == '?')
 			return -1;
 
-		ret = eal_parse_common_option(opt, optarg, option_index,
-					      &internal_config);
+		ret = eal_parse_common_option(opt, optarg, &internal_config);
 		/* common parser is not happy */
 		if (ret < 0) {
 			eal_usage(prgname);
@@ -371,21 +370,15 @@ eal_parse_args(int argc, char **argv)
 		}
 
 		switch (opt) {
-		/* long options */
-		case 0:
-			{
+		default:
+			if (opt < OPT_LONG_MIN_NUM && isprint(opt)) {
+				RTE_LOG(ERR, EAL, "Option %c is not supported "
+					"on FreeBSD\n", opt);
+			} else if (opt >= OPT_LONG_MIN_NUM &&
+				   opt < OPT_LONG_MAX_NUM) {
 				RTE_LOG(ERR, EAL, "Option %s is not supported "
 					"on FreeBSD\n",
 					eal_long_options[option_index].name);
-				eal_usage(prgname);
-				return -1;
-			}
-			break;
-
-		default:
-			if (isprint(opt)) {
-				RTE_LOG(ERR, EAL, "Option %c is not supported "
-					"on FreeBSD\n", opt);
 			} else {
 				RTE_LOG(ERR, EAL, "Option %d is not supported "
 					"on FreeBSD\n", opt);

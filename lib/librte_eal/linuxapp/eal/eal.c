@@ -553,8 +553,7 @@ eal_parse_args(int argc, char **argv)
 		if (opt == '?')
 			return -1;
 
-		ret = eal_parse_common_option(opt, optarg, option_index,
-					      &internal_config);
+		ret = eal_parse_common_option(opt, optarg, &internal_config);
 		/* common parser is not happy */
 		if (ret < 0) {
 			eal_usage(prgname);
@@ -584,8 +583,7 @@ eal_parse_args(int argc, char **argv)
 			break;
 
 		/* long options */
-		case 0:
-			if (!strcmp(eal_long_options[option_index].name, OPT_XEN_DOM0)) {
+		case OPT_XEN_DOM0_NUM:
 		#ifdef RTE_LIBRTE_XEN_DOM0
 				internal_config.xen_dom0_support = 1;
 		#else
@@ -594,46 +592,56 @@ eal_parse_args(int argc, char **argv)
 					" RTE_LIBRTE_XEN_DOM0=y\n");
 				return -1;
 		#endif
-			} else if (!strcmp(eal_long_options[option_index].name, OPT_HUGE_DIR)) {
+			break;
+
+		case OPT_HUGE_DIR_NUM:
 				internal_config.hugepage_dir = optarg;
-			} else if (!strcmp(eal_long_options[option_index].name, OPT_FILE_PREFIX)) {
+			break;
+
+		case OPT_FILE_PREFIX_NUM:
 				internal_config.hugefile_prefix = optarg;
-			} else if (!strcmp(eal_long_options[option_index].name, OPT_SOCKET_MEM)) {
+			break;
+
+		case OPT_SOCKET_MEM_NUM:
 				if (eal_parse_socket_mem(optarg) < 0) {
 					RTE_LOG(ERR, EAL, "invalid parameters for --"
 							OPT_SOCKET_MEM "\n");
 					eal_usage(prgname);
 					return -1;
 				}
-			} else if (!strcmp(eal_long_options[option_index].name, OPT_BASE_VIRTADDR)) {
+			break;
+
+		case OPT_BASE_VIRTADDR_NUM:
 				if (eal_parse_base_virtaddr(optarg) < 0) {
 					RTE_LOG(ERR, EAL, "invalid parameter for --"
 							OPT_BASE_VIRTADDR "\n");
 					eal_usage(prgname);
 					return -1;
 				}
-			} else if (!strcmp(eal_long_options[option_index].name, OPT_VFIO_INTR)) {
+			break;
+
+		case OPT_VFIO_INTR_NUM:
 				if (eal_parse_vfio_intr(optarg) < 0) {
 					RTE_LOG(ERR, EAL, "invalid parameters for --"
 							OPT_VFIO_INTR "\n");
 					eal_usage(prgname);
 					return -1;
 				}
-			} else if (!strcmp(eal_long_options[option_index].name, OPT_CREATE_UIO_DEV)) {
+			break;
+
+		case OPT_CREATE_UIO_DEV_NUM:
 				internal_config.create_uio_dev = 1;
-			} else {
-				RTE_LOG(ERR, EAL, "Option %s is not supported "
-					"on Linux\n",
-					eal_long_options[option_index].name);
-				eal_usage(prgname);
-				return -1;
-			}
 			break;
 
 		default:
-			if (isprint(opt)) {
+			if (opt < OPT_LONG_MIN_NUM && isprint(opt)) {
 				RTE_LOG(ERR, EAL, "Option %c is not supported "
 					"on Linux\n", opt);
+			} else if (opt >= OPT_LONG_MIN_NUM &&
+				   opt < OPT_LONG_MAX_NUM) {
+				RTE_LOG(ERR, EAL, "Option %s is not supported "
+					"on Linux\n",
+					eal_long_options[option_index].name);
 			} else {
 				RTE_LOG(ERR, EAL, "Option %d is not supported "
 					"on Linux\n", opt);
