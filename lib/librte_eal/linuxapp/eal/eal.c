@@ -92,7 +92,6 @@
 #define OPT_NO_HUGE     "no-huge"
 #define OPT_FILE_PREFIX "file-prefix"
 #define OPT_SOCKET_MEM  "socket-mem"
-#define OPT_USE_DEVICE  "use-device"
 #define OPT_PCI_WHITELIST "pci-whitelist"
 #define OPT_PCI_BLACKLIST "pci-blacklist"
 #define OPT_VDEV        "vdev"
@@ -879,12 +878,6 @@ eal_parse_args(int argc, char **argv)
 					eal_usage(prgname);
 					return -1;
 				}
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_USE_DEVICE)) {
-				printf("The --use-device option is deprecated, please use\n"
-					"--whitelist or --vdev instead.\n");
-				eal_usage(prgname);
-				return -1;
 			}
 			else if (!strcmp(lgopts[option_index].name, OPT_PCI_BLACKLIST)) {
 				if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI,
