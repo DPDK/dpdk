@@ -626,23 +626,8 @@ eal_parse_args(int argc, char **argv)
 			else if (!strcmp(lgopts[option_index].name, OPT_NO_SHCONF)) {
 				internal_config.no_shconf = 1;
 			}
-			else if (!strcmp(lgopts[option_index].name, OPT_HUGE_DIR)) {
-				RTE_LOG(ERR, EAL, "Option "OPT_HUGE_DIR" is not supported on"
-						"FreeBSD\n");
-				return -1;
-			}
 			else if (!strcmp(lgopts[option_index].name, OPT_PROC_TYPE)) {
 				internal_config.process_type = eal_parse_proc_type(optarg);
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_FILE_PREFIX)) {
-				RTE_LOG(ERR, EAL, "Option "OPT_FILE_PREFIX" is not supported on"
-						"FreeBSD\n");
-				return -1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_SOCKET_MEM)) {
-				RTE_LOG(ERR, EAL, "Option "OPT_SOCKET_MEM" is not supported on"
-						"FreeBSD\n");
-				return -1;
 			}
 			else if (!strcmp(lgopts[option_index].name, OPT_PCI_BLACKLIST)) {
 				if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI,
@@ -684,6 +669,12 @@ eal_parse_args(int argc, char **argv)
 					return -1;
 				}
 				internal_config.log_level = log;
+			} else {
+				RTE_LOG(ERR, EAL, "Option %s is not supported "
+					"on FreeBSD\n",
+					lgopts[option_index].name);
+				eal_usage(prgname);
+				return -1;
 			}
 			break;
 

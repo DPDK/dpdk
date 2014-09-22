@@ -938,6 +938,12 @@ eal_parse_args(int argc, char **argv)
 			}
 			else if (!strcmp(lgopts[option_index].name, OPT_CREATE_UIO_DEV)) {
 				internal_config.create_uio_dev = 1;
+			} else {
+				RTE_LOG(ERR, EAL, "Option %s is not supported "
+					"on Linux\n",
+					lgopts[option_index].name);
+				eal_usage(prgname);
+				return -1;
 			}
 			break;
 
