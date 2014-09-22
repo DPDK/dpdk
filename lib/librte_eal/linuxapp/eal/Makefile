@@ -82,6 +82,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_string_fns.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_hexdump.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_devargs.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_dev.c
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_options.c
 
 CFLAGS_eal.o := -D_GNU_SOURCE
 CFLAGS_eal_thread.o := -D_GNU_SOURCE
