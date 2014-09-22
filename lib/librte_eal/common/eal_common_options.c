@@ -297,56 +297,56 @@ eal_parse_common_option(int opt, const char *optarg,
 
 	/* long options */
 	case OPT_NO_HUGE_NUM:
-			conf->no_hugetlbfs = 1;
+		conf->no_hugetlbfs = 1;
 		break;
 
 	case OPT_NO_PCI_NUM:
-			conf->no_pci = 1;
+		conf->no_pci = 1;
 		break;
 
 	case OPT_NO_HPET_NUM:
-			conf->no_hpet = 1;
+		conf->no_hpet = 1;
 		break;
 
 	case OPT_VMWARE_TSC_MAP_NUM:
-			conf->vmware_tsc_map = 1;
+		conf->vmware_tsc_map = 1;
 		break;
 
 	case OPT_NO_SHCONF_NUM:
-			conf->no_shconf = 1;
+		conf->no_shconf = 1;
 		break;
 
 	case OPT_PROC_TYPE_NUM:
-			conf->process_type = eal_parse_proc_type(optarg);
+		conf->process_type = eal_parse_proc_type(optarg);
 		break;
 
 	case OPT_VDEV_NUM:
-			if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL,
-					optarg) < 0) {
-				return -1;
-			}
+		if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL,
+				optarg) < 0) {
+			return -1;
+		}
 		break;
 
 	case OPT_SYSLOG_NUM:
-			if (eal_parse_syslog(optarg, conf) < 0) {
-				RTE_LOG(ERR, EAL, "invalid parameters for --"
-						OPT_SYSLOG "\n");
-				return -1;
-			}
+		if (eal_parse_syslog(optarg, conf) < 0) {
+			RTE_LOG(ERR, EAL, "invalid parameters for --"
+					OPT_SYSLOG "\n");
+			return -1;
+		}
 		break;
 
 	case OPT_LOG_LEVEL_NUM: {
-			uint32_t log;
+		uint32_t log;
 
-			if (eal_parse_log_level(optarg, &log) < 0) {
-				RTE_LOG(ERR, EAL,
-					"invalid parameters for --"
-					OPT_LOG_LEVEL "\n");
-				return -1;
-			}
-			conf->log_level = log;
-		break;
+		if (eal_parse_log_level(optarg, &log) < 0) {
+			RTE_LOG(ERR, EAL,
+				"invalid parameters for --"
+				OPT_LOG_LEVEL "\n");
+			return -1;
 		}
+		conf->log_level = log;
+		break;
+	}
 
 	/* don't know what to do, leave this to caller */
 	default:

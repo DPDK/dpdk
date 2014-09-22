@@ -584,53 +584,53 @@ eal_parse_args(int argc, char **argv)
 
 		/* long options */
 		case OPT_XEN_DOM0_NUM:
-		#ifdef RTE_LIBRTE_XEN_DOM0
-				internal_config.xen_dom0_support = 1;
-		#else
-				RTE_LOG(ERR, EAL, "Can't support DPDK app "
-					"running on Dom0, please configure"
-					" RTE_LIBRTE_XEN_DOM0=y\n");
-				return -1;
-		#endif
+#ifdef RTE_LIBRTE_XEN_DOM0
+			internal_config.xen_dom0_support = 1;
+#else
+			RTE_LOG(ERR, EAL, "Can't support DPDK app "
+				"running on Dom0, please configure"
+				" RTE_LIBRTE_XEN_DOM0=y\n");
+			return -1;
+#endif
 			break;
 
 		case OPT_HUGE_DIR_NUM:
-				internal_config.hugepage_dir = optarg;
+			internal_config.hugepage_dir = optarg;
 			break;
 
 		case OPT_FILE_PREFIX_NUM:
-				internal_config.hugefile_prefix = optarg;
+			internal_config.hugefile_prefix = optarg;
 			break;
 
 		case OPT_SOCKET_MEM_NUM:
-				if (eal_parse_socket_mem(optarg) < 0) {
-					RTE_LOG(ERR, EAL, "invalid parameters for --"
-							OPT_SOCKET_MEM "\n");
-					eal_usage(prgname);
-					return -1;
-				}
+			if (eal_parse_socket_mem(optarg) < 0) {
+				RTE_LOG(ERR, EAL, "invalid parameters for --"
+						OPT_SOCKET_MEM "\n");
+				eal_usage(prgname);
+				return -1;
+			}
 			break;
 
 		case OPT_BASE_VIRTADDR_NUM:
-				if (eal_parse_base_virtaddr(optarg) < 0) {
-					RTE_LOG(ERR, EAL, "invalid parameter for --"
-							OPT_BASE_VIRTADDR "\n");
-					eal_usage(prgname);
-					return -1;
-				}
+			if (eal_parse_base_virtaddr(optarg) < 0) {
+				RTE_LOG(ERR, EAL, "invalid parameter for --"
+						OPT_BASE_VIRTADDR "\n");
+				eal_usage(prgname);
+				return -1;
+			}
 			break;
 
 		case OPT_VFIO_INTR_NUM:
-				if (eal_parse_vfio_intr(optarg) < 0) {
-					RTE_LOG(ERR, EAL, "invalid parameters for --"
-							OPT_VFIO_INTR "\n");
-					eal_usage(prgname);
-					return -1;
-				}
+			if (eal_parse_vfio_intr(optarg) < 0) {
+				RTE_LOG(ERR, EAL, "invalid parameters for --"
+						OPT_VFIO_INTR "\n");
+				eal_usage(prgname);
+				return -1;
+			}
 			break;
 
 		case OPT_CREATE_UIO_DEV_NUM:
-				internal_config.create_uio_dev = 1;
+			internal_config.create_uio_dev = 1;
 			break;
 
 		default:
