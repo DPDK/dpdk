@@ -565,25 +565,26 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		ixgbe_xmit_cleanup(txq);
 	}
 
+	rte_prefetch0(&txe->mbuf->pool);
+
 	/* TX loop */
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		new_ctx = 0;
 		tx_pkt = *tx_pkts++;
 		pkt_len = tx_pkt->pkt_len;
 
-		RTE_MBUF_PREFETCH_TO_FREE(txe->mbuf);
-
 		/*
 		 * Determine how many (if any) context descriptors
 		 * are needed for offload functionality.
 		 */
 		ol_flags = tx_pkt->ol_flags;
-		vlan_macip_lens.f.vlan_tci = tx_pkt->vlan_tci;
-		vlan_macip_lens.f.l2_l3_len = tx_pkt->l2_l3_len;
 
 		/* If hardware offload required */
 		tx_ol_req = ol_flags & PKT_TX_OFFLOAD_MASK;
 		if (tx_ol_req) {
+			vlan_macip_lens.f.vlan_tci = tx_pkt->vlan_tci;
+			vlan_macip_lens.f.l2_l3_len = tx_pkt->l2_l3_len;
+
 			/* If new context need be built or reuse the exist ctx. */
 			ctx = what_advctx_update(txq, tx_ol_req,
 				vlan_macip_lens.data);
@@ -720,7 +721,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				    &txr[tx_id];
 
 				txn = &sw_ring[txe->next_id];
-				RTE_MBUF_PREFETCH_TO_FREE(txn->mbuf);
+				rte_prefetch0(&txn->mbuf->pool);
 
 				if (txe->mbuf != NULL) {
 					rte_pktmbuf_free_seg(txe->mbuf);
@@ -749,6 +750,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		do {
 			txd = &txr[tx_id];
 			txn = &sw_ring[txe->next_id];
+			rte_prefetch0(&txn->mbuf->pool);
 
 			if (txe->mbuf != NULL)
 				rte_pktmbuf_free_seg(txe->mbuf);
