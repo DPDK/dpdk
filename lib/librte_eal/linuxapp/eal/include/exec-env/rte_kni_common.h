@@ -116,8 +116,10 @@ struct rte_kni_mbuf {
 	char pad2[2];
 	uint16_t data_len;      /**< Amount of data in segment buffer. */
 	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
-	char pad3[8];
-	void *pool __attribute__((__aligned__(64)));
+
+	/* fields on second cache line */
+	char pad3[8] __attribute__((__aligned__(64)));
+	void *pool;
 	void *next;
 };
 

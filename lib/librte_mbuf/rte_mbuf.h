@@ -172,6 +172,12 @@ struct rte_mbuf {
 
 	/* second cache line - fields only used in slow path or on TX */
 	MARKER cacheline1 __rte_cache_aligned;
+
+	union {
+		void *userdata;   /**< Can be used for external metadata */
+		uint64_t udata64; /**< Allow 8-byte userdata on 32-bit */
+	};
+
 	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
 	struct rte_mbuf *next;    /**< Next segment of scattered packet. */
 
