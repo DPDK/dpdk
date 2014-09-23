@@ -682,8 +682,10 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 static inline void __attribute__((always_inline))
 rte_pktmbuf_free_seg(struct rte_mbuf *m)
 {
-	if (likely(NULL != (m = __rte_pktmbuf_prefree_seg(m))))
+	if (likely(NULL != (m = __rte_pktmbuf_prefree_seg(m)))) {
+		m->next = NULL;
 		__rte_mbuf_raw_free(m);
+	}
 }
 
 /**

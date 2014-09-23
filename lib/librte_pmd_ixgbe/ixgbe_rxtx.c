@@ -145,6 +145,7 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 	/* free buffers one at a time */
 	if ((txq->txq_flags & (uint32_t)ETH_TXQ_FLAGS_NOREFCOUNT) != 0) {
 		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
+			txep->mbuf->next = NULL;
 			rte_mempool_put(txep->mbuf->pool, txep->mbuf);
 			txep->mbuf = NULL;
 		}
