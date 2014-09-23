@@ -225,7 +225,9 @@ struct rte_eth_thresh tx_thresh = {
 /*
  * Configurable value of RX free threshold.
  */
-uint16_t rx_free_thresh = 0; /* Immediately free RX descriptors by default. */
+uint16_t rx_free_thresh = 32; /* Refill RX descriptors once every 32 packets,
+		This setting is needed for ixgbe to enable bulk alloc or vector
+		receive functionality. */
 
 /*
  * Configurable value of RX drop enable.
