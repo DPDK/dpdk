@@ -159,8 +159,8 @@ struct rte_mbuf {
 	uint16_t reserved2;       /**< Unused field. Required for padding */
 	uint16_t data_len;        /**< Amount of data in segment buffer. */
 	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
-	uint16_t reserved;
 	uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
+	uint16_t reserved;
 	union {
 		uint32_t rss;     /**< RSS hash result if RSS enabled */
 		struct {
