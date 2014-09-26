@@ -172,7 +172,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" statistics.\n\n"
 
 			"quit\n"
-			"    Quit to prompt in Linux and reboot on Baremetal.\n\n"
+			"    Quit to prompt.\n\n"
 		);
 	}
 

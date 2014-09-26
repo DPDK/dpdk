@@ -137,12 +137,4 @@ void app_main_loop_tx(void);
 #define APP_FLUSH 0x3FF
 #endif
 
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define MAIN _main
-#else
-#define MAIN main
-#endif
-
-int MAIN(int argc, char **argv);
-
 #endif /* _MAIN_H_ */

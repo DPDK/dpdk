@@ -208,23 +208,19 @@ class AutotestRunner:
 	def __get_cmdline(self, test):
 		cmdline = self.cmdline
 
-		# perform additional linuxapp adjustments
-		if not "baremetal" in self.target:
+		# append memory limitations for each test
+		# otherwise tests won't run in parallel
+		if not "i686" in self.target:
+			cmdline += " --socket-mem=%s"% test["Memory"]
+		else:
+			# affinitize startup so that tests don't fail on i686
+			cmdline = "taskset 1 " + cmdline
+			cmdline += " -m " + str(sum(map(int,test["Memory"].split(","))))
 
-			# append memory limitations for each test
-			# otherwise tests won't run in parallel
-			if not "i686" in self.target:
-				cmdline += " --socket-mem=%s"% test["Memory"]
-			else:
-				# affinitize startup so that tests don't fail on i686
-				cmdline = "taskset 1 " + cmdline
-				cmdline += " -m " + str(sum(map(int,test["Memory"].split(","))))
+		# set group prefix for autotest group
+		# otherwise they won't run in parallel
+		cmdline += " --file-prefix=%s"% test["Prefix"]
 
-			# set group prefix for autotest group
-			# otherwise they won't run in parallel
-			cmdline += " --file-prefix=%s"% test["Prefix"]
-
-			return cmdline
 		return cmdline
 
 
@@ -338,12 +334,7 @@ class AutotestRunner:
 			self.__filter_groups(self.non_parallel_test_groups)
 		
 		# create a pool of worker threads
-		if not "baremetal" in self.target:
-			pool = multiprocessing.Pool(processes=1)
-		else:
-			# we can't be sure running baremetal tests in parallel
-			# will work, so let's stay on the safe side
-			pool = multiprocessing.Pool(processes=1)
+		pool = multiprocessing.Pool(processes=1)
 			
 		results = []
 	

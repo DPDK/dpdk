@@ -45,31 +45,9 @@
 /*
  * Debug test
  * ==========
- *
- * - Call rte_dump_stack() and rte_dump_registers(). The result is not checked
- *   currently, as the functions are not implemented on baremetal.
- * - Check that rte_panic() terminates the program using a non-zero error code.
- *   (Only implemented on linux, since it requires the fork() system call)
  */
 
-#ifdef RTE_EXEC_ENV_BAREMETAL
-
-/* baremetal - don't test rte_panic or rte_exit */
-static int
-test_panic(void)
-{
-	return 0;
-}
-
-static int
-test_exit(void)
-{
-	return 0;
-}
-
-#else
-
-/* linuxapp - use fork() to test rte_panic() */
+/* use fork() to test rte_panic() */
 static int
 test_panic(void)
 {
@@ -94,7 +72,7 @@ test_panic(void)
 	return 0;
 }
 
-/* linuxapp - use fork() to test rte_exit() */
+/* use fork() to test rte_exit() */
 static int
 test_exit_val(int exit_val)
 {
@@ -133,8 +111,6 @@ test_exit(void)
 	printf("%s Passed\n", __func__);
 	return 0;
 }
-
-#endif
 
 static void
 dummy_app_usage(const char *progname)

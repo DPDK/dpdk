@@ -92,13 +92,9 @@ SRCS-y += test_errno.c
 SRCS-y += test_tailq.c
 SRCS-y += test_string_fns.c
 SRCS-y += test_cpuflags.c
-
-ifeq ($(CONFIG_RTE_EXEC_ENV_BAREMETAL),)
 SRCS-y += test_mp_secondary.c
 SRCS-y += test_eal_flags.c
 SRCS-y += test_eal_fs.c
-endif
-
 SRCS-y += test_alarm.c
 SRCS-y += test_interrupts.c
 SRCS-y += test_version.c

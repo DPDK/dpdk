@@ -62,7 +62,9 @@
 
 #endif /*RTE_LIBRTE_ACL_STANDALONE */
 
-#include "main.h"
+#define	RTE_LOGTYPE_TESTACL	RTE_LOGTYPE_USER1
+
+#define	APP_NAME	"TESTACL"
 
 #define GET_CB_FIELD(in, fd, base, lim, dlm)	do {            \
 	unsigned long val;                                      \
@@ -1012,7 +1014,7 @@ get_input_opts(int argc, char **argv)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	int ret;
 	uint32_t lcore;

@@ -60,13 +60,7 @@ if len(sys.argv) > 3:
 	else:
 		test_whitelist = testlist
 
-# adjust test command line
-if "baremetal" in target:
-	cmdline  = "qemu-system-x86_64 -cdrom %s.iso -boot d " % (sys.argv[1])
-	cmdline	+= "-m 2000 -smp 4 -nographic -net nic,model=e1000"
-	platform = "QEMU x86_64"
-else:
-	cmdline  = "%s -c f -n 4"%(sys.argv[1])
+cmdline  = "%s -c f -n 4"%(sys.argv[1])
 
 print cmdline
 

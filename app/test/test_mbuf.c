@@ -677,21 +677,10 @@ test_refcnt_mbuf(void)
 	return (0);
 }
 
-#ifdef RTE_EXEC_ENV_BAREMETAL
-
-/* baremetal - don't test failing sanity checks */
-static int
-test_failing_mbuf_sanity_check(void)
-{
-	return 0;
-}
-
-#else
-
 #include <unistd.h>
 #include <sys/wait.h>
 
-/* linuxapp - use fork() to test mbuf errors panic */
+/* use fork() to test mbuf errors panic */
 static int
 verify_mbuf_check_panics(struct rte_mbuf *buf)
 {
@@ -776,7 +765,6 @@ test_failing_mbuf_sanity_check(void)
 
 	return 0;
 }
-#endif
 
 
 static int

@@ -119,11 +119,6 @@ struct unit_test_suite {
 
 int unit_test_suite_runner(struct unit_test_suite *suite);
 
-/* icc on baremetal gives us troubles with function named 'main' */
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define main _main
-#endif
-
 #define RECURSIVE_ENV_VAR "RTE_TEST_RECURSIVE"
 
 #include <cmdline_parse.h>
@@ -132,8 +127,6 @@ int unit_test_suite_runner(struct unit_test_suite *suite);
 extern const char *prgname;
 
 int commands_init(void);
-
-int main(int argc, char **argv);
 
 int test_pci(void);
 int test_pci_run;

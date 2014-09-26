@@ -157,7 +157,7 @@ test_interrupt_handle_compare(struct rte_intr_handle *intr_handle_l,
 }
 
 #else
-/* to be implemented for baremetal later */
+/* to be implemented for bsd later */
 static inline int
 test_interrupt_handle_sanity_check(struct rte_intr_handle *intr_handle)
 {

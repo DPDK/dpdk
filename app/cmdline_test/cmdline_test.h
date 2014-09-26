@@ -34,13 +34,6 @@
 #ifndef _CMDLINE_TEST_H_
 #define _CMDLINE_TEST_H_
 
-/* icc on baremetal gives us troubles with function named 'main' */
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define main _main
-#endif
-
 extern cmdline_parse_ctx_t main_ctx[];
-
-int main(int argc, char **argv);
 
 #endif

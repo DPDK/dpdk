@@ -34,8 +34,6 @@
 #ifndef _PROCESS_H_
 #define _PROCESS_H_
 
-#ifndef RTE_EXEC_ENV_BAREMETAL
-
 #ifdef RTE_EXEC_ENV_BSDAPP
 #define self "curproc"
 #define exe "file"
@@ -101,7 +99,5 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 			;
 	return status;
 }
-
-#endif /* not baremetal */
 
 #endif /* _PROCESS_H_ */

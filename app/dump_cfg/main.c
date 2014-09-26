@@ -53,10 +53,8 @@
 #include <rte_branch_prediction.h>
 #include <rte_string_fns.h>
 
-#include "main.h"
-
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	int ret;
 	int i;
