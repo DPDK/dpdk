@@ -54,10 +54,6 @@
 #include <dirent.h>
 #endif
 
-/* rte_snprintf uses snprintf, so include its definition before we poison the
- * functions, otherwise we'll get an error in it. */
-#include <rte_string_fns.h>
-
 /* the following function are deemed not fully secure for use e.g. they
  * do not always null-terminate arguments */
 #pragma GCC poison sprintf strtok snprintf vsnprintf

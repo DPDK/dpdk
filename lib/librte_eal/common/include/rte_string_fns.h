@@ -45,30 +45,6 @@ extern "C" {
 #endif
 
 /**
- * This functio is deprecated and just for backward compatibility.
- * It is just an alternate version of snprintf.
- *
- * @param buffer
- *   The buffer into which the output is to be written
- *
- * @param buflen
- *   The size of the output buffer
- *
- * @param format
- *   The format string to be printed to the buffer
- *
- * @return
- *   The number of characters written to the buffer, or if the string has been
- *   truncated, the number of characters which would have been written had the
- *   buffer been sufficiently big.
- *
- */
-int
-rte_snprintf(char *buffer, int buflen, const char *format, ...)
-	__attribute__((format(printf,3,4)))
-	__attribute__((deprecated));
-
-/**
  * Takes string "string" parameter and splits it at character "delim"
  * up to maxtokens-1 times - to give "maxtokens" resulting tokens. Like
  * strtok or strsep functions, this modifies its input string, by replacing

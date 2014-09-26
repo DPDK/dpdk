@@ -137,13 +137,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_KVARGS) += test_kvargs.c
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
-# Allow use of deprecated rte_snprintf in test_string_fns.c
-ifeq ($(CC), icc)
-CFLAGS_test_string_fns.o += -Wd1478
-else
-CFLAGS_test_string_fns.o += -Wno-deprecated-declarations
-endif
-
 # Disable warnings of deprecated-declarations in test_kni.c
 ifeq ($(CC), icc)
 CFLAGS_test_kni.o += -wd1478

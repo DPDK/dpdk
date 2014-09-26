@@ -49,139 +49,6 @@
 #define DATA_BYTE 'a'
 
 static int
-test_rte_snprintf(void)
-{
-	/* =================================================
-	 * First test with a string that will fit in buffer
-	 * =================================================*/
-	do {
-		int retval;
-		const char source[] = "This is a string that will fit in buffer";
-		char buf[sizeof(source)+2]; /* make buffer big enough to fit string */
-
-		/* initialise buffer with characters so it can contain no nulls */
-		memset(buf, DATA_BYTE, sizeof(buf));
-
-		/* run rte_snprintf and check results */
-		retval = rte_snprintf(buf, sizeof(buf), "%s", source);
-		if (retval != sizeof(source) - 1) {
-			LOG("Error, retval = %d, expected = %u\n",
-					retval, (unsigned)sizeof(source));
-			return -1;
-		}
-		if (buf[retval] != '\0') {
-			LOG("Error, resultant is not null-terminated\n");
-			return -1;
-		}
-		if (memcmp(source, buf, sizeof(source)-1) != 0){
-			LOG("Error, corrupt data in buffer\n");
-			return -1;
-		}
-	} while (0);
-
-	do {
-		/* =================================================
-		 * Test with a string that will get truncated
-		 * =================================================*/
-		int retval;
-		const char source[] = "This is a long string that won't fit in buffer";
-		char buf[sizeof(source)/2]; /* make buffer half the size */
-
-		/* initialise buffer with characters so it can contain no nulls */
-		memset(buf, DATA_BYTE, sizeof(buf));
-
-		/* run rte_snprintf and check results */
-		retval = rte_snprintf(buf, sizeof(buf), "%s", source);
-		if (retval != sizeof(source) - 1) {
-			LOG("Error, retval = %d, expected = %u\n",
-					retval, (unsigned)sizeof(source));
-			return -1;
-		}
-		if (buf[sizeof(buf)-1] != '\0') {
-			LOG("Error, buffer is not null-terminated\n");
-			return -1;
-		}
-		if (memcmp(source, buf, sizeof(buf)-1) != 0){
-			LOG("Error, corrupt data in buffer\n");
-			return -1;
-		}
-	} while (0);
-
-	do {
-		/* ===========================================================
-		 * Test using zero-size buf to check how long a buffer we need
-		 * ===========================================================*/
-		int retval;
-		const char source[] = "This is a string";
-		char buf[10];
-
-		/* call with a zero-sized non-NULL buffer, should tell how big a buffer
-		 * we need */
-		retval = rte_snprintf(buf, 0, "%s", source);
-		if (retval != sizeof(source) - 1) {
-			LOG("Call with 0-length buffer does not return correct size."
-					"Expected: %zu, got: %d\n", sizeof(source), retval);
-			return -1;
-		}
-
-		/* call with a zero-sized NULL buffer, should tell how big a buffer
-		 * we need */
-		retval = rte_snprintf(NULL, 0, "%s", source);
-		if (retval != sizeof(source) - 1) {
-			LOG("Call with 0-length buffer does not return correct size."
-					"Expected: %zu, got: %d\n", sizeof(source), retval);
-			return -1;
-		}
-
-	} while (0);
-
-	do {
-		/* =================================================
-		 * Test with invalid parameter values
-		 * =================================================*/
-		const char source[] = "This is a string";
-		char buf[10];
-
-		/* call with buffer value set to NULL is EINVAL */
-		if (rte_snprintf(NULL, sizeof(buf), "%s\n", source) != -1 ||
-				errno != EINVAL) {
-			LOG("Failed to get suitable error when passing NULL buffer\n");
-			return -1;
-		}
-
-		memset(buf, DATA_BYTE, sizeof(buf));
-		/* call with a NULL format and zero-size should return error
-		 * without affecting the buffer */
-		if (rte_snprintf(buf, 0, NULL) != -1 ||
-				errno != EINVAL) {
-			LOG("Failed to get suitable error when passing NULL buffer\n");
-			return -1;
-		}
-		if (buf[0] != DATA_BYTE) {
-			LOG("Error, zero-length buffer modified after call with NULL"
-					" format string\n");
-			return -1;
-		}
-
-		/* call with a NULL format should return error but also null-terminate
-		 *  the buffer */
-		if (rte_snprintf(buf, sizeof(buf), NULL) != -1 ||
-				errno != EINVAL) {
-			LOG("Failed to get suitable error when passing NULL buffer\n");
-			return -1;
-		}
-		if (buf[0] != '\0') {
-			LOG("Error, buffer not null-terminated after call with NULL"
-					" format string\n");
-			return -1;
-		}
-	} while (0);
-
-	LOG("%s - PASSED\n", __func__);
-	return 0;
-}
-
-static int
 test_rte_strsplit(void)
 {
 	int i;
@@ -294,8 +161,7 @@ test_rte_strsplit(void)
 static int
 test_string_fns(void)
 {
-	if (test_rte_snprintf() < 0 ||
-			test_rte_strsplit() < 0)
+	if (test_rte_strsplit() < 0)
 		return -1;
 	return 0;
 }

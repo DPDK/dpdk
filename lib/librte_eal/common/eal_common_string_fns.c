@@ -38,34 +38,6 @@
 
 #include <rte_string_fns.h>
 
-/* safe version os snprintf */
-int
-rte_snprintf(char *buffer, int buflen, const char *format, ...)
-{
-	int len;
-	va_list ap;
-
-	if (buffer == NULL && buflen != 0)
-		goto einval_error;
-	if (format == NULL) {
-		if (buflen > 0)
-			buffer[0] = '\0';
-		goto einval_error;
-	}
-
-	va_start(ap, format);
-	len = vsnprintf(buffer, buflen, format, ap);
-	va_end(ap);
-	if (len >= buflen && buflen > 0)
-		buffer[buflen - 1] = '\0';
-
-	return len;
-
-einval_error:
-	errno = EINVAL;
-	return -1;
-}
-
 /* split string into tokens */
 int
 rte_strsplit(char *string, int stringlen,
