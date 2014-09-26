@@ -54,17 +54,28 @@ ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
 	struct rte_mbuf *mb0, *mb1;
 	__m128i hdr_room = _mm_set_epi64x(RTE_PKTMBUF_HEADROOM,
 			RTE_PKTMBUF_HEADROOM);
-
-	/* Pull 'n' more MBUFs into the software ring */
-	if (rte_mempool_get_bulk(rxq->mb_pool,
-				 (void *)rxep, RTE_IXGBE_RXQ_REARM_THRESH) < 0)
-		return;
+	__m128i dma_addr0, dma_addr1;
 
 	rxdp = rxq->rx_ring + rxq->rxrearm_start;
 
+	/* Pull 'n' more MBUFs into the software ring */
+	if (rte_mempool_get_bulk(rxq->mb_pool,
+				 (void *)rxep,
+				 RTE_IXGBE_RXQ_REARM_THRESH) < 0) {
+		if (rxq->rxrearm_nb + RTE_IXGBE_RXQ_REARM_THRESH >=
+		    rxq->nb_rx_desc) {
+			dma_addr0 = _mm_xor_si128(dma_addr0, dma_addr0);
+			for (i = 0; i < RTE_IXGBE_DESCS_PER_LOOP; i++) {
+				rxep[i].mbuf = &rxq->fake_mbuf;
+				_mm_store_si128((__m128i *)&rxdp[i].read,
+						dma_addr0);
+			}
+		}
+		return;
+	}
+
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
 	for (i = 0; i < RTE_IXGBE_RXQ_REARM_THRESH; i += 2, rxep += 2) {
-		__m128i dma_addr0, dma_addr1;
 		__m128i vaddr0, vaddr1;
 
 		mb0 = rxep[0].mbuf;
