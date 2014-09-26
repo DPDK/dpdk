@@ -33,7 +33,7 @@
 #
 # define executive environment
 #
-# CONFIG_RTE_EXEC_ENV can be linuxapp, baremetal, bsdapp
+# CONFIG_RTE_EXEC_ENV can be linuxapp, bsdapp
 #
 CONFIG_RTE_EXEC_ENV="bsdapp"
 CONFIG_RTE_EXEC_ENV_BSDAPP=y
@@ -114,11 +114,6 @@ CONFIG_RTE_LIBRTE_EAL_BSDAPP=y
 # Compile Environment Abstraction Layer for linux
 #
 CONFIG_RTE_LIBRTE_EAL_LINUXAPP=n
-
-#
-# Compile Environment Abstraction Layer for Bare metal
-#
-CONFIG_RTE_LIBRTE_EAL_BAREMETAL=n
 
 #
 # Compile Environment Abstraction Layer to support Vmware TSC map

@@ -33,7 +33,7 @@
 #
 # define executive environment
 #
-# CONFIG_RTE_EXEC_ENV can be linuxapp, baremetal, bsdapp
+# CONFIG_RTE_EXEC_ENV can be linuxapp, bsdapp
 #
 CONFIG_RTE_EXEC_ENV="linuxapp"
 CONFIG_RTE_EXEC_ENV_LINUXAPP=y
@@ -85,31 +85,6 @@ CONFIG_RTE_BUILD_COMBINE_LIBS=n
 CONFIG_RTE_LIBNAME="intel_dpdk"
 
 #
-# Compile libc directory
-#
-CONFIG_RTE_LIBC=n
-
-#
-# Compile newlib as libc from source
-#
-CONFIG_RTE_LIBC_NEWLIB_SRC=n
-
-#
-# Use binary newlib
-#
-CONFIG_RTE_LIBC_NEWLIB_BIN=n
-
-#
-# Use binary newlib
-#
-CONFIG_RTE_LIBC_NETINCS=n
-
-#
-# Compile libgloss (newlib-stubs)
-#
-CONFIG_RTE_LIBGLOSS=n
-
-#
 # Compile Environment Abstraction Layer
 #
 CONFIG_RTE_LIBRTE_EAL=y
@@ -137,11 +112,6 @@ CONFIG_RTE_PCI_MAX_READ_REQUEST_SIZE=0
 # Compile Environment Abstraction Layer for linux
 #
 CONFIG_RTE_LIBRTE_EAL_LINUXAPP=y
-
-#
-# Compile Environment Abstraction Layer for Bare metal
-#
-CONFIG_RTE_LIBRTE_EAL_BAREMETAL=n
 
 #
 # Compile Environment Abstraction Layer to support Vmware TSC map
