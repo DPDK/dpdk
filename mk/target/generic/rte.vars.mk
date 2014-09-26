@@ -94,7 +94,7 @@ include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.vars.mk
 #   - define EXECENV_ASFLAGS variable (overriden by cmdline)
 #   - may override any previously defined variable
 #
-# examples for RTE_EXEC_ENV: linuxapp, baremetal
+# examples for RTE_EXEC_ENV: linuxapp, bsdapp
 #
 include $(RTE_SDK)/mk/exec-env/$(RTE_EXEC_ENV)/rte.vars.mk
 

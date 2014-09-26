@@ -37,7 +37,7 @@
 #   - define EXECENV_ASFLAGS variable (overriden by cmdline)
 #   - may override any previously defined variable
 #
-# examples for RTE_EXEC_ENV: linuxapp, baremetal
+# examples for RTE_EXEC_ENV: linuxapp, bsdapp
 #
 ifeq ($(RTE_BUILD_SHARED_LIB),y)
 EXECENV_CFLAGS  = -pthread -fPIC

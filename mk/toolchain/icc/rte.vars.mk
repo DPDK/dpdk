@@ -67,22 +67,7 @@ TOOLCHAIN_ASFLAGS =
 #   Remark #271   : trailing comma is nonstandard
 #   Warning #1478 : function "<func_name>" (declared at line N of "<filename>")
 #                   was declared "deprecated"
-ifeq ($(CONFIG_RTE_EXEC_ENV),"linuxapp")
 WERROR_FLAGS := -Wall -Werror-all -w2 -diag-disable 271 -diag-warning 1478
-else
-
-# Turn off some ICC warnings -
-#   Remark #193   : zero used for undefined preprocessing identifier
-#                  (needed for newlib)
-#   Remark #271   : trailing comma is nonstandard
-#   Remark #1292  : attribute "warning" ignored ((warning ("the use of
-#                   `mktemp' is dangerous; use `mkstemp' instead"))));
-#                   (needed for newlib)
-#   Warning #1478 : function "<func_name>" (declared at line N of "<filename>")
-#                   was declared "deprecated"
-WERROR_FLAGS := -Wall -Werror-all -w2 -diag-disable 193,271,1292 \
-		-diag-warning 1478
-endif
 
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk

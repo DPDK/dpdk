@@ -75,11 +75,7 @@ WERROR_FLAGS := -W -Wall -Werror -Wstrict-prototypes -Wmissing-prototypes
 WERROR_FLAGS += -Wmissing-declarations -Wold-style-definition -Wpointer-arith
 WERROR_FLAGS += -Wcast-align -Wnested-externs -Wcast-qual
 WERROR_FLAGS += -Wformat-nonliteral -Wformat-security
-
-ifeq ($(CONFIG_RTE_EXEC_ENV),"linuxapp")
-# These trigger warnings in newlib, so can't be used for baremetal
 WERROR_FLAGS += -Wundef -Wwrite-strings
-endif
 
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
