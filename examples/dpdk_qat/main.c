@@ -696,9 +696,6 @@ MAIN(int argc, char **argv)
 	if (ret < 0)
 		return -1;
 
-	if (rte_eal_pci_probe() < 0)
-		rte_panic("Cannot probe PCI\n");
-
 	if (check_lcore_params() < 0)
 		rte_panic("check_lcore_params failed\n");
 

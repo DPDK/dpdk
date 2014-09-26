@@ -508,11 +508,6 @@ test_kni(void)
 		printf("fail to create mempool for kni\n");
 		return -1;
 	}
-	ret = rte_eal_pci_probe();
-	if (ret < 0) {
-		printf("fail to probe PCI devices\n");
-		return -1;
-	}
 
 	nb_ports = rte_eth_dev_count();
 	if (nb_ports == 0) {

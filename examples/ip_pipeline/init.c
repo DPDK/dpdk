@@ -474,11 +474,6 @@ app_init_ports(void)
 {
 	uint32_t i;
 
-	/* Init driver */
-	RTE_LOG(INFO, USER1, "Initializing the PMD driver ...\n");
-	if (rte_eal_pci_probe() < 0)
-		rte_panic("Cannot probe PCI\n");
-
 	/* Init NIC ports, then start the ports */
 	for (i = 0; i < app.n_ports; i++) {
 		uint32_t port;

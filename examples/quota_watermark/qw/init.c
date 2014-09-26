@@ -136,13 +136,6 @@ void configure_eth_port(uint8_t port_id)
 void
 init_dpdk(void)
 {
-    int ret;
-
-    /* Bind the drivers to usable devices */
-    ret = rte_eal_pci_probe();
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "rte_eal_pci_probe(): error %d\n", ret);
-
     if (rte_eth_dev_count() < 2)
         rte_exit(EXIT_FAILURE, "Not enough ethernet port available\n");
 }

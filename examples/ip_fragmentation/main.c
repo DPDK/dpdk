@@ -871,9 +871,6 @@ MAIN(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid arguments");
 
-	if (rte_eal_pci_probe() < 0)
-		rte_panic("Cannot probe PCI\n");
-
 	nb_ports = rte_eth_dev_count();
 	if (nb_ports > RTE_MAX_ETHPORTS)
 		nb_ports = RTE_MAX_ETHPORTS;

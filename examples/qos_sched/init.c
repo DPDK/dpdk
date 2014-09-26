@@ -304,9 +304,6 @@ int app_init(void)
 	char ring_name[MAX_NAME_LEN];
 	char pool_name[MAX_NAME_LEN];
 
-	if (rte_eal_pci_probe() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
-
 	if (rte_eth_dev_count() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet port - bye\n");
 

@@ -66,7 +66,6 @@
 #include <rte_cycles.h>
 
 #include "common.h"
-#include "init_drivers.h"
 #include "args.h"
 #include "init.h"
 #include "main.h"
@@ -307,11 +306,6 @@ init(int argc, char *argv[])
 		return -1;
 	argc -= retval;
 	argv += retval;
-
-	/* initialise the nic drivers */
-	retval = init_drivers();
-	if (retval != 0)
-		rte_exit(EXIT_FAILURE, "Cannot initialise drivers\n");
 
 	/* get total number of ports */
 	total_ports = rte_eth_dev_count();

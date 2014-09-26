@@ -461,16 +461,14 @@ main(int argc, char **argv)
 	argc -= ret;
 	argv += ret;
 
-	/* probe to determine the NIC devices available */
-	proc_type = rte_eal_process_type();
-	if (rte_eal_pci_probe() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
+	/* determine the NIC devices available */
 	if (rte_eth_dev_count() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
 	/* parse application arguments (those after the EAL ones) */
 	smp_parse_args(argc, argv);
 
+	proc_type = rte_eal_process_type();
 	mp = (proc_type == RTE_PROC_SECONDARY) ?
 			rte_mempool_lookup(_SMP_MBUF_POOL) :
 			rte_mempool_create(_SMP_MBUF_POOL, NB_MBUFS, MBUF_SIZE,

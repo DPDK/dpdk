@@ -65,7 +65,6 @@
 #include <rte_string_fns.h>
 
 #include "common.h"
-#include "init_drivers.h"
 
 /* Number of packets to attempt to read from queue */
 #define PKT_READ_SIZE  ((uint16_t)32)
@@ -240,8 +239,6 @@ main(int argc, char *argv[])
 	if (parse_app_args(argc, argv) < 0)
 		rte_exit(EXIT_FAILURE, "Invalid command-line arguments\n");
 
-	if (init_drivers() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot get NIC ports\n");
 	if (rte_eth_dev_count() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 

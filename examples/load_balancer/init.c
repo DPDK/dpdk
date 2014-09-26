@@ -450,10 +450,6 @@ app_init_nics(void)
 	int ret;
 	uint32_t n_rx_queues, n_tx_queues;
 
-	if (rte_eal_pci_probe() < 0) {
-		rte_panic("Cannot probe PCI\n");
-	}
-
 	/* Init NIC ports and queues, then start the ports */
 	for (port = 0; port < APP_MAX_NIC_PORTS; port ++) {
 		struct rte_mempool *pool;

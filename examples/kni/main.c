@@ -889,11 +889,6 @@ main(int argc, char** argv)
 		return -1;
 	}
 
-	/* Scan PCI bus for recognised devices */
-	ret = rte_eal_pci_probe();
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Could not probe PCI (%d)\n", ret);
-
 	/* Get number of ports found in scan */
 	nb_sys_ports = rte_eth_dev_count();
 	if (nb_sys_ports == 0)

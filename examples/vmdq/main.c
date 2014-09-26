@@ -597,9 +597,6 @@ MAIN(int argc, char *argv[])
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid VMDQ argument\n");
 
-	if (rte_eal_pci_probe() != 0)
-		rte_exit(EXIT_FAILURE, "Error with NIC driver initialization\n");
-
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id ++)
 		if (rte_lcore_is_enabled(lcore_id))
 			lcore_ids[core_id ++] = lcore_id;

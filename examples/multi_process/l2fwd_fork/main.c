@@ -1050,9 +1050,6 @@ MAIN(int argc, char **argv)
 	for (i = 0; i < RTE_MAX_LCORE; i++)
 		lcore_resource[i].lcore_id = i;
 
-	if (rte_eal_pci_probe() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
-
 	nb_ports = rte_eth_dev_count();
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
