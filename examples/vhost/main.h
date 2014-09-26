@@ -34,12 +34,6 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define MAIN _main
-#else
-#define MAIN main
-#endif
-
 //#define DEBUG
 
 #ifdef DEBUG
@@ -118,5 +112,4 @@ struct lcore_info
 	struct lcore_ll_info	*lcore_ll;	/* Pointer to data core specific lcore_ll_info struct */
 };
 
-int MAIN(int argc, char **argv);
 #endif /* _MAIN_H_ */

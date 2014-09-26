@@ -295,12 +295,4 @@ struct app_msg_resp {
 
 #define APP_FLUSH 0xFF
 
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define MAIN _main
-#else
-#define MAIN main
-#endif
-
-int MAIN(int argc, char **argv);
-
 #endif /* _MAIN_H_ */

@@ -1425,7 +1425,7 @@ int init_virtio_net(struct virtio_net_device_ops const * const ops);
  * device is also registered here to handle the IOCTLs.
  */
 int
-MAIN(int argc, char *argv[])
+main(int argc, char *argv[])
 {
 	struct rte_mempool *mbuf_pool;
 	unsigned lcore_id, core_id = 0;

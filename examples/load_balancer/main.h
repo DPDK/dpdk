@@ -368,12 +368,4 @@ uint32_t app_get_lcores_io_rx(void);
 uint32_t app_get_lcores_worker(void);
 void app_print_params(void);
 
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define MAIN _main
-#else
-#define MAIN main
-#endif
-
-int MAIN(int argc, char **argv);
-
 #endif /* _MAIN_H_ */

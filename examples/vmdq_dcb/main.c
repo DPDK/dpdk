@@ -70,8 +70,6 @@
 #include <rte_mbuf.h>
 #include <rte_memcpy.h>
 
-#include "main.h"
-
 /* basic constants used in application */
 #define NUM_QUEUES 128
 
@@ -313,7 +311,6 @@ vmdq_parse_args(int argc, char **argv)
 }
 
 
-#ifndef RTE_EXEC_ENV_BAREMETAL
 /* When we receive a HUP signal, print out our stats */
 static void
 sighup_handler(int signum)
@@ -326,7 +323,6 @@ sighup_handler(int signum)
 	}
 	printf("\nFinished handling signal %d\n", signum);
 }
-#endif
 
 /*
  * Main thread that does the work, reading from INPUT_PORT
@@ -401,7 +397,7 @@ static unsigned check_ports_num(unsigned nb_ports)
 
 /* Main function, does initialisation and calls the per-lcore functions */
 int
-MAIN(int argc, char *argv[])
+main(int argc, char *argv[])
 {
 	unsigned cores;
 	struct rte_mempool *mbuf_pool;
@@ -411,9 +407,7 @@ MAIN(int argc, char *argv[])
 	unsigned nb_ports, valid_num_ports;
 	uint8_t portid;
 
-#ifndef RTE_EXEC_ENV_BAREMETAL
 	signal(SIGHUP, sighup_handler);
-#endif
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);

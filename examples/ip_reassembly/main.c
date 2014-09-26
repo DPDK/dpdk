@@ -79,8 +79,6 @@
 
 #include <rte_ip_frag.h>
 
-#include "main.h"
-
 #define MAX_PKT_BURST 32
 
 
@@ -1012,7 +1010,7 @@ signal_handler(int signum)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	struct lcore_queue_conf *qconf;
 	struct rte_eth_dev_info dev_info;

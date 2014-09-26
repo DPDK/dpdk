@@ -36,12 +36,6 @@
 
 #include "../include/conf.h"
 
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define MAIN _main
-#else
-#define MAIN main
-#endif
-
 enum ring_state {
     RING_READY,
     RING_OVERLOADED,
@@ -61,8 +55,5 @@ is_bit_set(int i, unsigned int mask)
 {
     return ((1 << i) & mask);
 }
-
-
-int MAIN(int argc, char **argv);
 
 #endif /* _MAIN_H_ */

@@ -75,8 +75,6 @@
 
 #include <rte_ip_frag.h>
 
-#include "main.h"
-
 #define RTE_LOGTYPE_IP_FRAG RTE_LOGTYPE_USER1
 
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
@@ -807,7 +805,7 @@ init_mem(void)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	struct lcore_queue_conf *qconf;
 	struct rte_eth_dev_info dev_info;

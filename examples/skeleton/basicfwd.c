@@ -38,7 +38,6 @@
 #include <rte_cycles.h>
 #include <rte_lcore.h>
 #include <rte_mbuf.h>
-#include "basicfwd.h"
 
 #define RX_RING_SIZE 128
 #define TX_RING_SIZE 512
@@ -142,7 +141,7 @@ lcore_main(void)
 
 /* Main function, does initialisation and calls the per-lcore functions */
 int
-MAIN(int argc, char *argv[])
+main(int argc, char *argv[])
 {
 	struct rte_mempool *mbuf_pool;
 	unsigned nb_ports;

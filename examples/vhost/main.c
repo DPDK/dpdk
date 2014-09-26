@@ -2849,7 +2849,7 @@ setup_mempool_tbl(int socket, uint32_t index, char *pool_name,
  * device is also registered here to handle the IOCTLs.
  */
 int
-MAIN(int argc, char *argv[])
+main(int argc, char *argv[])
 {
 	struct rte_mempool *mbuf_pool = NULL;
 	unsigned lcore_id, core_id = 0;
@@ -3020,10 +3020,10 @@ MAIN(int argc, char *argv[])
 			}
 
 			LOG_DEBUG(VHOST_CONFIG,
-				"in MAIN: mbuf count in mempool at initial "
+				"in main: mbuf count in mempool at initial "
 				"is: %d\n", count_in_mempool);
 			LOG_DEBUG(VHOST_CONFIG,
-				"in MAIN: mbuf count in  ring at initial  is :"
+				"in main: mbuf count in  ring at initial  is :"
 				" %d\n",
 				rte_ring_count(vpool_array[index].ring));
 		}

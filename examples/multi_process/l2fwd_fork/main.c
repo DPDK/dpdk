@@ -74,7 +74,6 @@
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 
-#include "main.h"
 #include "flib.h"
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
@@ -961,7 +960,7 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	struct lcore_queue_conf *qconf;
 	struct rte_eth_dev_info dev_info;

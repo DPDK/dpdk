@@ -48,15 +48,6 @@ enum policer_action policer_table[e_RTE_METER_COLORS][e_RTE_METER_COLORS] =
 	{ DROP, DROP, RED}
 };
 
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define MAIN _main
-#else
-#define MAIN main
-#endif
-
-int MAIN(int argc, char **argv);
-
-
 #if APP_MODE == APP_MODE_FWD
 
 #define FUNC_METER(a,b,c,d) color, flow_id=flow_id, pkt_len=pkt_len, time=time

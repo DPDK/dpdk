@@ -58,7 +58,6 @@
 #include "channel_monitor.h"
 #include "power_manager.h"
 #include "vm_power_cli.h"
-#include "main.h"
 
 static int
 run_monitor(__attribute__((unused)) void *arg)
@@ -82,7 +81,7 @@ sig_handler(int signo)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	int ret;
 	unsigned lcore_id;

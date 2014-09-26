@@ -72,7 +72,6 @@
 #include "common.h"
 #include "args.h"
 #include "init.h"
-#include "main.h"
 
 /*
  * When doing reads from the NIC or the client queues,
@@ -301,7 +300,7 @@ do_packet_forwarding(void)
 }
 
 int
-MAIN(int argc, char *argv[])
+main(int argc, char *argv[])
 {
 	/* initialise the system */
 	if (init(argc, argv) < 0 )

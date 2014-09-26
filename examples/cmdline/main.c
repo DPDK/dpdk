@@ -77,9 +77,8 @@
 #include <rte_debug.h>
 
 #include "commands.h"
-#include "main.h"
 
-int MAIN(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	int ret;
 	struct cmdline *cl;

@@ -69,7 +69,6 @@
 #include <rte_ip.h>
 #include <rte_string_fns.h>
 
-#include "main.h"
 #include "crypto.h"
 
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
@@ -631,7 +630,7 @@ init_mem(void)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	struct lcore_conf *qconf;
 	struct rte_eth_link link;

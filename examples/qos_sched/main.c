@@ -223,7 +223,7 @@ app_stat(void)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	int ret;
 

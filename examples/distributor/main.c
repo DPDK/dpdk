@@ -44,8 +44,6 @@
 #include <rte_debug.h>
 #include <rte_distributor.h>
 
-#include "main.h"
-
 #define RX_RING_SIZE 256
 #define TX_RING_SIZE 512
 #define NUM_MBUFS ((64*1024)-1)
@@ -492,7 +490,7 @@ parse_args(int argc, char **argv)
 
 /* Main function, does initialization and calls the per-lcore functions */
 int
-MAIN(int argc, char *argv[])
+main(int argc, char *argv[])
 {
 	struct rte_mempool *mbuf_pool;
 	struct rte_distributor *d;

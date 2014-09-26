@@ -70,8 +70,6 @@
 #include <rte_mbuf.h>
 #include <rte_memcpy.h>
 
-#include "main.h"
-
 #define MAX_QUEUES 128
 /*
  * For 10 GbE, 128 queues require roughly
@@ -443,7 +441,6 @@ update_mac_address(struct rte_mbuf *m, unsigned dst_port)
 	ether_addr_copy(&vmdq_ports_eth_addr[dst_port], &eth->s_addr);
 }
 
-#ifndef RTE_EXEC_ENV_BAREMETAL
 /* When we receive a HUP signal, print out our stats */
 static void
 sighup_handler(int signum)
@@ -456,7 +453,6 @@ sighup_handler(int signum)
 	}
 	printf("\nFinished handling signal %d\n", signum);
 }
-#endif
 
 /*
  * Main thread that does the work, reading from INPUT_PORT
@@ -574,7 +570,7 @@ static unsigned check_ports_num(unsigned nb_ports)
 
 /* Main function, does initialisation and calls the per-lcore functions */
 int
-MAIN(int argc, char *argv[])
+main(int argc, char *argv[])
 {
 	struct rte_mempool *mbuf_pool;
 	unsigned lcore_id, core_id = 0;
@@ -582,9 +578,7 @@ MAIN(int argc, char *argv[])
 	unsigned nb_ports, valid_num_ports;
 	uint8_t portid;
 
-#ifndef RTE_EXEC_ENV_BAREMETAL
 	signal(SIGHUP, sighup_handler);
-#endif
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);

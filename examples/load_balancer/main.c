@@ -75,7 +75,7 @@
 #include "main.h"
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	uint32_t lcore;
 	int ret;

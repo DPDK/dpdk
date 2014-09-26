@@ -338,7 +338,7 @@ parse_args(int argc, char **argv)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	uint32_t lcore_id;
 	int ret;

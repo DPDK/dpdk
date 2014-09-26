@@ -71,7 +71,7 @@ setup_shared_variables(void)
     low_watermark = (unsigned int *) qw_memzone->addr + sizeof(int);
 }
 
-int MAIN(int argc, char **argv)
+int main(int argc, char **argv)
 {
     int ret;
     struct cmdline *cl;

@@ -73,8 +73,6 @@
 #include <rte_udp.h>
 #include <rte_string_fns.h>
 
-#include "main.h"
-
 #define APP_LOOKUP_EXACT_MATCH          0
 #define APP_LOOKUP_LPM                  1
 #define DO_RFC_1812_CHECKS
@@ -2396,7 +2394,7 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	struct lcore_conf *qconf;
 	struct rte_eth_dev_info dev_info;

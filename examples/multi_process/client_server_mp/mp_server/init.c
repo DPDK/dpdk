@@ -68,7 +68,6 @@
 #include "common.h"
 #include "args.h"
 #include "init.h"
-#include "main.h"
 
 #define MBUFS_PER_CLIENT 1536
 #define MBUFS_PER_PORT 1536

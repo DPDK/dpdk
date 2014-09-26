@@ -40,12 +40,6 @@ extern "C" {
 
 #include <rte_sched.h>
 
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#error "Baremetal is not supported"
-#else
-#define MAIN main
-#endif
-
 #define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 
 /*
@@ -177,7 +171,6 @@ extern struct ring_thresh tx_thresh;
 
 extern struct rte_sched_port_params port_params;
 
-int MAIN(int argc, char **argv);
 int app_parse_args(int argc, char **argv);
 int app_init(void);
 

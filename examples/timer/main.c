@@ -49,8 +49,6 @@
 #include <rte_timer.h>
 #include <rte_debug.h>
 
-#include "main.h"
-
 #define TIMER_RESOLUTION_CYCLES 20000000ULL /* around 10ms at 2 Ghz */
 
 static struct rte_timer timer0;
@@ -115,7 +113,7 @@ lcore_mainloop(__attribute__((unused)) void *arg)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	int ret;
 	uint64_t hz;

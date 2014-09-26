@@ -51,7 +51,6 @@
 #include <rte_config.h>
 
 #include "vm_power_cli_guest.h"
-#include "main.h"
 
 static void
 sig_handler(int signo)
@@ -66,7 +65,7 @@ sig_handler(int signo)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	int ret;
 	unsigned lcore_id;

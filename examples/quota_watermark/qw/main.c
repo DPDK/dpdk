@@ -304,7 +304,7 @@ send_stage(__attribute__((unused)) void *args)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
     int ret;
     unsigned int lcore_id, master_lcore_id, last_lcore_id;
