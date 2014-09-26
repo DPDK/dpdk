@@ -988,8 +988,7 @@ rte_table_hash_lookup_key32_ext(
 				keys, f);
 		}
 
-		*lookup_hit_mask = pkts_mask_out;
-		return 0;
+		goto grind_next_buckets;
 	}
 
 	/*
@@ -1080,6 +1079,7 @@ rte_table_hash_lookup_key32_ext(
 		bucket20, bucket21, pkts_mask_out, entries,
 		buckets_mask, buckets, keys, f);
 
+grind_next_buckets:
 	/* Grind next buckets */
 	for ( ; buckets_mask; ) {
 		uint64_t buckets_mask_next = 0;
