@@ -103,10 +103,6 @@ static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
  * If vendor/device ID match, call the devinit() function of all
  * registered driver for the given device. Return -1 if initialization
  * failed, return 1 if no driver is found for this device.
- * For drivers with the RTE_PCI_DRV_MULTIPLE flag enabled, register
- * the same device multiple times until failure to do so.
- * It is required for non-Intel NIC drivers provided by third-parties such
- * as 6WIND.
  */
 static int
 pci_probe_all_drivers(struct rte_pci_device *dev)
@@ -122,12 +118,6 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 		if (rc > 0)
 			/* positive value means driver not found */
 			continue;
-		/* initialize subsequent driver instances for this device */
-		if ((dr->drv_flags & RTE_PCI_DRV_MULTIPLE) &&
-			(dev->devargs == NULL ||
-				dev->devargs->type != RTE_DEVTYPE_BLACKLISTED_PCI))
-			while (rte_eal_pci_probe_one_driver(dr, dev) == 0)
-				;
 		return 0;
 	}
 	return 1;
