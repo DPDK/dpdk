@@ -3017,7 +3017,7 @@ i40e_vsi_switch_tx_queues(struct i40e_vsi *vsi, bool on)
 		txq = dev_data->tx_queues[i];
 		/* Don't operate the queue if not configured or
 		 * if starting only per queue */
-		if (!txq->q_set || (on && txq->start_tx_per_q))
+		if (!txq->q_set || (on && txq->tx_deferred_start))
 			continue;
 		if (on)
 			ret = i40e_dev_tx_queue_start(dev, i);
@@ -3095,7 +3095,7 @@ i40e_vsi_switch_rx_queues(struct i40e_vsi *vsi, bool on)
 		rxq = dev_data->rx_queues[i];
 		/* Don't operate the queue if not configured or
 		 * if starting only per queue */
-		if (!rxq->q_set || (on && rxq->start_rx_per_q))
+		if (!rxq->q_set || (on && rxq->rx_deferred_start))
 			continue;
 		if (on)
 			ret = i40e_dev_rx_queue_start(dev, i);

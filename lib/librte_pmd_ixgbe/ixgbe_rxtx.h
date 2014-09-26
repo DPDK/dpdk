@@ -126,7 +126,7 @@ struct igb_rx_queue {
 	uint8_t             port_id;  /**< Device port identifier. */
 	uint8_t             crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
 	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
-	uint8_t             start_rx_per_q;
+	uint8_t             rx_deferred_start; /**< not in global dev start. */
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
 	struct rte_mbuf fake_mbuf;
@@ -207,7 +207,7 @@ struct igb_tx_queue {
 	/** Hardware context0 history. */
 	struct ixgbe_advctx_info ctx_cache[IXGBE_CTX_NUM];
 	struct ixgbe_txq_ops *ops;          /**< txq ops */
-	uint8_t             start_tx_per_q;
+	uint8_t             tx_deferred_start; /**< not in global dev start. */
 };
 
 struct ixgbe_txq_ops {

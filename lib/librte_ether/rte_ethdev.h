@@ -604,7 +604,7 @@ struct rte_eth_rxconf {
 	struct rte_eth_thresh rx_thresh; /**< RX ring threshold registers. */
 	uint16_t rx_free_thresh; /**< Drives the freeing of RX descriptors. */
 	uint8_t rx_drop_en; /**< Drop packets if no descriptors are available. */
-	uint8_t start_rx_per_q; /**< start rx per queue. */
+	uint8_t rx_deferred_start; /**< Do not start queue with rte_eth_dev_start(). */
 };
 
 #define ETH_TXQ_FLAGS_NOMULTSEGS 0x0001 /**< nb_segs=1 for all mbufs */
@@ -625,7 +625,7 @@ struct rte_eth_txconf {
 	uint16_t tx_rs_thresh; /**< Drives the setting of RS bit on TXDs. */
 	uint16_t tx_free_thresh; /**< Drives the freeing of TX buffers. */
 	uint32_t txq_flags; /**< Set flags for the Tx queue */
-	uint8_t start_tx_per_q; /**< start tx per queue. */
+	uint8_t tx_deferred_start; /**< Do not start queue with rte_eth_dev_start(). */
 };
 
 /**
@@ -1795,7 +1795,9 @@ extern int rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 extern int rte_eth_dev_socket_id(uint8_t port_id);
 
 /*
- * Start specified RX queue of a port
+ * Allocate mbuf from mempool, setup the DMA physical address
+ * and then start RX for specified queue of a port. It is used
+ * when rx_deferred_start flag of the specified queue is true.
  *
  * @param port_id
  *   The port identifier of the Ethernet device
@@ -1827,7 +1829,8 @@ extern int rte_eth_dev_rx_queue_start(uint8_t port_id, uint16_t rx_queue_id);
 extern int rte_eth_dev_rx_queue_stop(uint8_t port_id, uint16_t rx_queue_id);
 
 /*
- * Start specified TX queue of a port
+ * Start TX for specified queue of a port. It is used when tx_deferred_start
+ * flag of the specified queue is true.
  *
  * @param port_id
  *   The port identifier of the Ethernet device

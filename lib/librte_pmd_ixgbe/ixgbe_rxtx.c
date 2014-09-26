@@ -1851,7 +1851,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->port_id = dev->data->port_id;
 	txq->txq_flags = tx_conf->txq_flags;
 	txq->ops = &def_txq_ops;
-	txq->start_tx_per_q = tx_conf->start_tx_per_q;
+	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
 	/*
 	 * Modification to set VFTDT for virtual function if vf is detected
@@ -2121,7 +2121,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->crc_len = (uint8_t) ((dev->data->dev_conf.rxmode.hw_strip_crc) ?
 							0 : ETHER_CRC_LEN);
 	rxq->drop_en = rx_conf->rx_drop_en;
-	rxq->start_rx_per_q = rx_conf->start_rx_per_q;
+	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 
 	/*
 	 * Allocate RX ring hardware descriptors. A memzone large enough to
@@ -3693,13 +3693,13 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
-		if (!txq->start_tx_per_q)
+		if (!txq->tx_deferred_start)
 			ixgbe_dev_tx_queue_start(dev, i);
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
-		if (!rxq->start_rx_per_q)
+		if (!rxq->rx_deferred_start)
 			ixgbe_dev_rx_queue_start(dev, i);
 	}
 

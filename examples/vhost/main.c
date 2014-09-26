@@ -3604,9 +3604,14 @@ MAIN(int argc, char *argv[])
 		char pool_name[RTE_MEMPOOL_NAMESIZE];
 		char ring_name[RTE_MEMPOOL_NAMESIZE];
 
-		rx_conf_default.start_rx_per_q = (uint8_t)zero_copy;
+		/*
+		 * Zero copy defers queue RX/TX start to the time when guest
+		 * finishes its startup and packet buffers from that guest are
+		 * available.
+		 */
+		rx_conf_default.rx_deferred_start = (uint8_t)zero_copy;
 		rx_conf_default.rx_drop_en = 0;
-		tx_conf_default.start_tx_per_q = (uint8_t)zero_copy;
+		tx_conf_default.tx_deferred_start = (uint8_t)zero_copy;
 		nb_mbuf = num_rx_descriptor
 			+ num_switching_cores * MBUF_CACHE_SIZE_ZCP
 			+ num_switching_cores * MAX_PKT_BURST;

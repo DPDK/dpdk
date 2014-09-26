@@ -675,7 +675,7 @@ i40evf_start_queues(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev_data->rx_queues[i];
-		if (rxq->start_rx_per_q)
+		if (rxq->rx_deferred_start)
 			continue;
 		if (i40evf_dev_rx_queue_start(dev, i) != 0) {
 			PMD_DRV_LOG(ERR, "Fail to start queue %u", i);
@@ -685,7 +685,7 @@ i40evf_start_queues(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev_data->tx_queues[i];
-		if (txq->start_tx_per_q)
+		if (txq->tx_deferred_start)
 			continue;
 		if (i40evf_dev_tx_queue_start(dev, i) != 0) {
 			PMD_DRV_LOG(ERR, "Fail to start queue %u", i);
