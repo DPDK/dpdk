@@ -129,9 +129,8 @@ int rte_eal_iopl_init(void);
  * This function is to be executed on the MASTER lcore only, as soon
  * as possible in the application's main() function.
  *
- * The function finishes the initialization process that was started
- * during boot (in case of baremetal) or before main() is called (in
- * case of linuxapp). It puts the SLAVE lcores in the WAIT state.
+ * The function finishes the initialization process before main() is called.
+ * It puts the SLAVE lcores in the WAIT state.
  *
  * When the multi-partition feature is supported, depending on the
  * configuration (if CONFIG_RTE_EAL_MAIN_PARTITION is disabled), this

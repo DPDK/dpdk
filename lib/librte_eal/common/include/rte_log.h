@@ -106,8 +106,7 @@ extern FILE *eal_default_log_stream;
  *
  * This can be done at any time. The f argument represents the stream
  * to be used to send the logs. If f is NULL, the default output is
- * used, which is the serial line in case of bare metal, or directly
- * sent to syslog in case of linux application.
+ * used (stderr).
  *
  * @param f
  *   Pointer to the stream.

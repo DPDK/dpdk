@@ -31,7 +31,6 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBC) += libc
 DIRS-$(CONFIG_RTE_LIBRTE_EAL) += librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_MALLOC) += librte_malloc
 DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring

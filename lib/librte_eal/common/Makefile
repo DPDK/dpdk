@@ -58,7 +58,4 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include += \
 SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include/generic := \
 	$(addprefix include/generic/,$(GENERIC_INC))
 
-# add libc if configured
-DEPDIRS-$(CONFIG_RTE_LIBC) += lib/libc
-
 include $(RTE_SDK)/mk/rte.install.mk
