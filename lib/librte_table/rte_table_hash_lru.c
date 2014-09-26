@@ -147,7 +147,7 @@ rte_table_hash_lru_create(void *params, int socket_id, uint32_t entry_size)
 	struct rte_table_hash_lru_params *p =
 		(struct rte_table_hash_lru_params *) params;
 	struct rte_table_hash *t;
-	uint32_t total_size, table_meta_sz, table_meta_offset;
+	uint32_t total_size, table_meta_sz;
 	uint32_t bucket_sz, key_sz, key_stack_sz, data_sz;
 	uint32_t bucket_offset, key_offset, key_stack_offset, data_offset;
 	uint32_t i;
@@ -195,8 +195,7 @@ rte_table_hash_lru_create(void *params, int socket_id, uint32_t entry_size)
 	t->data_size_shl = __builtin_ctzl(entry_size);
 
 	/* Tables */
-	table_meta_offset = 0;
-	bucket_offset = table_meta_offset + table_meta_sz;
+	bucket_offset = 0;
 	key_offset = bucket_offset + bucket_sz;
 	key_stack_offset = key_offset + key_sz;
 	data_offset = key_stack_offset + key_stack_sz;
