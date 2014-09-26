@@ -408,11 +408,11 @@ void *entry)
 				if ((bkt_prev != NULL) &&
 				    (bkt->sig[0] == 0) && (bkt->sig[1] == 0) &&
 				    (bkt->sig[2] == 0) && (bkt->sig[3] == 0)) {
-					/* Clear bucket */
-					memset(bkt, 0, sizeof(struct bucket));
-
 					/* Unchain bucket */
 					BUCKET_NEXT_COPY(bkt_prev, bkt);
+
+					/* Clear bucket */
+					memset(bkt, 0, sizeof(struct bucket));
 
 					/* Free bucket back to buckets ext */
 					bkt_index = bkt - t->buckets_ext;
