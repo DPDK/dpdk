@@ -765,6 +765,9 @@ rte_mempool_dump(FILE *f, const struct rte_mempool *mp)
 	unsigned common_count;
 	unsigned cache_count;
 
+	RTE_VERIFY(f != NULL);
+	RTE_VERIFY(mp != NULL);
+
 	fprintf(f, "mempool <%s>@%p\n", mp->name, mp);
 	fprintf(f, "  flags=%x\n", mp->flags);
 	fprintf(f, "  ring=<%s>@%p\n", mp->ring->name, mp->ring);
