@@ -1294,11 +1294,30 @@ reset_hw_out:
 }
 
 /**
+ * ixgbe_fdir_check_cmd_complete - poll to check whether FDIRCMD is complete
+ * @hw: pointer to hardware structure
+ */
+STATIC s32 ixgbe_fdir_check_cmd_complete(struct ixgbe_hw *hw)
+{
+	int i;
+
+	for (i = 0; i < IXGBE_FDIRCMD_CMD_POLL; i++) {
+		if (!(IXGBE_READ_REG(hw, IXGBE_FDIRCMD) &
+		      IXGBE_FDIRCMD_CMD_MASK))
+			return IXGBE_SUCCESS;
+		usec_delay(10);
+	}
+
+	return IXGBE_ERR_FDIR_CMD_INCOMPLETE;
+}
+
+/**
  *  ixgbe_reinit_fdir_tables_82599 - Reinitialize Flow Director tables.
  *  @hw: pointer to hardware structure
  **/
 s32 ixgbe_reinit_fdir_tables_82599(struct ixgbe_hw *hw)
 {
+	s32 err;
 	int i;
 	u32 fdirctrl = IXGBE_READ_REG(hw, IXGBE_FDIRCTRL);
 	fdirctrl &= ~IXGBE_FDIRCTRL_INIT_DONE;
@@ -1309,16 +1328,10 @@ s32 ixgbe_reinit_fdir_tables_82599(struct ixgbe_hw *hw)
 	 * Before starting reinitialization process,
 	 * FDIRCMD.CMD must be zero.
 	 */
-	for (i = 0; i < IXGBE_FDIRCMD_CMD_POLL; i++) {
-		if (!(IXGBE_READ_REG(hw, IXGBE_FDIRCMD) &
-		      IXGBE_FDIRCMD_CMD_MASK))
-			break;
-		usec_delay(10);
-	}
-	if (i >= IXGBE_FDIRCMD_CMD_POLL) {
-		DEBUGOUT("Flow Director previous command isn't complete, "
-			 "aborting table re-initialization.\n");
-		return IXGBE_ERR_FDIR_REINIT_FAILED;
+	err = ixgbe_fdir_check_cmd_complete(hw);
+	if (err) {
+		DEBUGOUT("Flow Director previous command did not complete, aborting table re-initialization.\n");
+		return err;
 	}
 
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRFREE, 0);
@@ -1574,8 +1587,9 @@ s32 ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 					  union ixgbe_atr_hash_dword common,
 					  u8 queue)
 {
-	u64  fdirhashcmd;
-	u32  fdircmd;
+	u64 fdirhashcmd;
+	u32 fdircmd;
+	s32 err;
 
 	DEBUGFUNC("ixgbe_fdir_add_signature_filter_82599");
 
@@ -1610,6 +1624,12 @@ s32 ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 	fdirhashcmd = (u64)fdircmd << 32;
 	fdirhashcmd |= ixgbe_atr_compute_sig_hash_82599(input, common);
 	IXGBE_WRITE_REG64(hw, IXGBE_FDIRHASH, fdirhashcmd);
+
+	err = ixgbe_fdir_check_cmd_complete(hw);
+	if (err) {
+		DEBUGOUT("Flow Director command did not complete!\n");
+		return err;
+	}
 
 	DEBUGOUT2("Tx Queue=%x hash=%x\n", queue, (u32)fdirhashcmd);
 
@@ -1887,8 +1907,7 @@ s32 ixgbe_fdir_erase_perfect_filter_82599(struct ixgbe_hw *hw,
 {
 	u32 fdirhash;
 	u32 fdircmd = 0;
-	u32 retry_count;
-	s32 err = IXGBE_SUCCESS;
+	s32 err;
 
 	/* configure FDIRHASH register */
 	fdirhash = input->formatted.bkt_hash;
@@ -1901,17 +1920,11 @@ s32 ixgbe_fdir_erase_perfect_filter_82599(struct ixgbe_hw *hw,
 	/* Query if filter is present */
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRCMD, IXGBE_FDIRCMD_CMD_QUERY_REM_FILT);
 
-	for (retry_count = 10; retry_count; retry_count--) {
-		/* allow 10us for query to process */
-		usec_delay(10);
-		/* verify query completed successfully */
-		fdircmd = IXGBE_READ_REG(hw, IXGBE_FDIRCMD);
-		if (!(fdircmd & IXGBE_FDIRCMD_CMD_MASK))
-			break;
+	err = ixgbe_fdir_check_cmd_complete(hw);
+	if (err) {
+		DEBUGOUT("Flow Director command did not complete!\n");
+		return err;
 	}
-
-	if (!retry_count)
-		err = IXGBE_ERR_FDIR_REINIT_FAILED;
 
 	/* if filter exists in hardware then remove it */
 	if (fdircmd & IXGBE_FDIRCMD_FILTER_VALID) {
@@ -1921,7 +1934,7 @@ s32 ixgbe_fdir_erase_perfect_filter_82599(struct ixgbe_hw *hw,
 				IXGBE_FDIRCMD_CMD_REMOVE_FLOW);
 	}
 
-	return err;
+	return IXGBE_SUCCESS;
 }
 
 /**
