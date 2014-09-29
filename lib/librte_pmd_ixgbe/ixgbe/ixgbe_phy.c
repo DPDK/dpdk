@@ -99,6 +99,15 @@ s32 ixgbe_identify_phy_generic(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_identify_phy_generic");
 
+	if (!hw->phy.phy_semaphore_mask) {
+		hw->phy.lan_id = IXGBE_READ_REG(hw, IXGBE_STATUS) &
+						IXGBE_STATUS_LAN_ID_1;
+		if (hw->phy.lan_id)
+			hw->phy.phy_semaphore_mask = IXGBE_GSSR_PHY1_SM;
+		else
+			hw->phy.phy_semaphore_mask = IXGBE_GSSR_PHY0_SM;
+	}
+
 	if (hw->phy.type == ixgbe_phy_unknown) {
 		for (phy_addr = 0; phy_addr < IXGBE_MAX_PHY_ADDR; phy_addr++) {
 			if (ixgbe_validate_phy_addr(hw, phy_addr)) {
@@ -403,14 +412,9 @@ s32 ixgbe_read_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
 			       u32 device_type, u16 *phy_data)
 {
 	s32 status;
-	u16 gssr;
+	u32 gssr = hw->phy.phy_semaphore_mask;
 
 	DEBUGFUNC("ixgbe_read_phy_reg_generic");
-
-	if (IXGBE_READ_REG(hw, IXGBE_STATUS) & IXGBE_STATUS_LAN_ID_1)
-		gssr = IXGBE_GSSR_PHY1_SM;
-	else
-		gssr = IXGBE_GSSR_PHY0_SM;
 
 	if (hw->mac.ops.acquire_swfw_sync(hw, gssr) == IXGBE_SUCCESS) {
 		status = ixgbe_read_phy_reg_mdi(hw, reg_addr, device_type,
@@ -509,14 +513,9 @@ s32 ixgbe_write_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
 				u32 device_type, u16 phy_data)
 {
 	s32 status;
-	u16 gssr;
+	u32 gssr = hw->phy.phy_semaphore_mask;
 
 	DEBUGFUNC("ixgbe_write_phy_reg_generic");
-
-	if (IXGBE_READ_REG(hw, IXGBE_STATUS) & IXGBE_STATUS_LAN_ID_1)
-		gssr = IXGBE_GSSR_PHY1_SM;
-	else
-		gssr = IXGBE_GSSR_PHY0_SM;
 
 	if (hw->mac.ops.acquire_swfw_sync(hw, gssr) == IXGBE_SUCCESS) {
 		status = ixgbe_write_phy_reg_mdi(hw, reg_addr, device_type,
@@ -1469,26 +1468,18 @@ s32 ixgbe_write_i2c_eeprom_generic(struct ixgbe_hw *hw, u8 byte_offset,
 s32 ixgbe_read_i2c_byte_generic(struct ixgbe_hw *hw, u8 byte_offset,
 				u8 dev_addr, u8 *data)
 {
-	s32 status = IXGBE_SUCCESS;
+	s32 status;
 	u32 max_retry = 10;
 	u32 retry = 0;
-	u16 swfw_mask = 0;
+	u32 swfw_mask = hw->phy.phy_semaphore_mask;
 	bool nack = 1;
 	*data = 0;
 
 	DEBUGFUNC("ixgbe_read_i2c_byte_generic");
 
-	if (IXGBE_READ_REG(hw, IXGBE_STATUS) & IXGBE_STATUS_LAN_ID_1)
-		swfw_mask = IXGBE_GSSR_PHY1_SM;
-	else
-		swfw_mask = IXGBE_GSSR_PHY0_SM;
-
 	do {
-		if (hw->mac.ops.acquire_swfw_sync(hw, swfw_mask)
-		    != IXGBE_SUCCESS) {
-			status = IXGBE_ERR_SWFW_SYNC;
-			goto read_byte_out;
-		}
+		if (hw->mac.ops.acquire_swfw_sync(hw, swfw_mask))
+			return IXGBE_ERR_SWFW_SYNC;
 
 		ixgbe_i2c_start(hw);
 
@@ -1529,7 +1520,8 @@ s32 ixgbe_read_i2c_byte_generic(struct ixgbe_hw *hw, u8 byte_offset,
 			goto fail;
 
 		ixgbe_i2c_stop(hw);
-		break;
+		hw->mac.ops.release_swfw_sync(hw, swfw_mask);
+		return IXGBE_SUCCESS;
 
 fail:
 		ixgbe_i2c_bus_clear(hw);
@@ -1543,9 +1535,6 @@ fail:
 
 	} while (retry < max_retry);
 
-	hw->mac.ops.release_swfw_sync(hw, swfw_mask);
-
-read_byte_out:
 	return status;
 }
 
@@ -1564,14 +1553,9 @@ s32 ixgbe_write_i2c_byte_generic(struct ixgbe_hw *hw, u8 byte_offset,
 	s32 status = IXGBE_SUCCESS;
 	u32 max_retry = 1;
 	u32 retry = 0;
-	u16 swfw_mask = 0;
+	u32 swfw_mask = hw->phy.phy_semaphore_mask;
 
 	DEBUGFUNC("ixgbe_write_i2c_byte_generic");
-
-	if (IXGBE_READ_REG(hw, IXGBE_STATUS) & IXGBE_STATUS_LAN_ID_1)
-		swfw_mask = IXGBE_GSSR_PHY1_SM;
-	else
-		swfw_mask = IXGBE_GSSR_PHY0_SM;
 
 	if (hw->mac.ops.acquire_swfw_sync(hw, swfw_mask) != IXGBE_SUCCESS) {
 		status = IXGBE_ERR_SWFW_SYNC;
@@ -1606,7 +1590,8 @@ s32 ixgbe_write_i2c_byte_generic(struct ixgbe_hw *hw, u8 byte_offset,
 			goto fail;
 
 		ixgbe_i2c_stop(hw);
-		break;
+		hw->mac.ops.release_swfw_sync(hw, swfw_mask);
+		return IXGBE_SUCCESS;
 
 fail:
 		ixgbe_i2c_bus_clear(hw);

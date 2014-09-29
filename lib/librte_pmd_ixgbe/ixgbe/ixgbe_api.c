@@ -1178,7 +1178,7 @@ s32 ixgbe_enable_sec_rx_path(struct ixgbe_hw *hw)
  *  Acquires the SWFW semaphore through SW_FW_SYNC register for the specified
  *  function (CSR, PHY0, PHY1, EEPROM, Flash)
  **/
-s32 ixgbe_acquire_swfw_semaphore(struct ixgbe_hw *hw, u16 mask)
+s32 ixgbe_acquire_swfw_semaphore(struct ixgbe_hw *hw, u32 mask)
 {
 	return ixgbe_call_func(hw, hw->mac.ops.acquire_swfw_sync,
 			       (hw, mask), IXGBE_NOT_IMPLEMENTED);
@@ -1192,7 +1192,7 @@ s32 ixgbe_acquire_swfw_semaphore(struct ixgbe_hw *hw, u16 mask)
  *  Releases the SWFW semaphore through SW_FW_SYNC register for the specified
  *  function (CSR, PHY0, PHY1, EEPROM, Flash)
  **/
-void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u16 mask)
+void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u32 mask)
 {
 	if (hw->mac.ops.release_swfw_sync)
 		hw->mac.ops.release_swfw_sync(hw, mask);

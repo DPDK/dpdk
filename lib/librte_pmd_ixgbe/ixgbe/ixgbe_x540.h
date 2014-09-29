@@ -58,8 +58,8 @@ s32 ixgbe_validate_eeprom_checksum_X540(struct ixgbe_hw *hw, u16 *checksum_val);
 s32 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw);
 s32 ixgbe_update_flash_X540(struct ixgbe_hw *hw);
 
-s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask);
-void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask);
+s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask);
+void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask);
 
 s32 ixgbe_blink_led_start_X540(struct ixgbe_hw *hw, u32 index);
 s32 ixgbe_blink_led_stop_X540(struct ixgbe_hw *hw, u32 index);

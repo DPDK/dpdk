@@ -114,8 +114,8 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw);
 void ixgbe_fc_autoneg(struct ixgbe_hw *hw);
 
 s32 ixgbe_validate_mac_addr(u8 *mac_addr);
-s32 ixgbe_acquire_swfw_sync(struct ixgbe_hw *hw, u16 mask);
-void ixgbe_release_swfw_sync(struct ixgbe_hw *hw, u16 mask);
+s32 ixgbe_acquire_swfw_sync(struct ixgbe_hw *hw, u32 mask);
+void ixgbe_release_swfw_sync(struct ixgbe_hw *hw, u32 mask);
 s32 ixgbe_disable_pcie_master(struct ixgbe_hw *hw);
 
 s32 prot_autoc_read_generic(struct ixgbe_hw *hw, bool *, u32 *reg_val);

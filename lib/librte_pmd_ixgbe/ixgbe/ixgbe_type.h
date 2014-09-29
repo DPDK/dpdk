@@ -1815,6 +1815,9 @@ enum {
 #define IXGBE_GSSR_MAC_CSR_SM	0x0008
 #define IXGBE_GSSR_FLASH_SM	0x0010
 #define IXGBE_GSSR_SW_MNG_SM	0x0400
+#define IXGBE_GSSR_SHARED_I2C_SM 0x1806 /* Wait for both phys and both I2Cs */
+#define IXGBE_GSSR_I2C_MASK	0x1800
+#define IXGBE_GSSR_NVM_PHY_MASK	0xF
 
 /* FW Status register bitmask */
 #define IXGBE_FWSTS_FWRI	0x00000200 /* Firmware Reset Indication */
@@ -3091,8 +3094,8 @@ struct ixgbe_mac_operations {
 	s32 (*enable_rx_dma)(struct ixgbe_hw *, u32);
 	s32 (*disable_sec_rx_path)(struct ixgbe_hw *);
 	s32 (*enable_sec_rx_path)(struct ixgbe_hw *);
-	s32 (*acquire_swfw_sync)(struct ixgbe_hw *, u16);
-	void (*release_swfw_sync)(struct ixgbe_hw *, u16);
+	s32 (*acquire_swfw_sync)(struct ixgbe_hw *, u32);
+	void (*release_swfw_sync)(struct ixgbe_hw *, u32);
 	s32 (*prot_autoc_read)(struct ixgbe_hw *, bool *, u32 *);
 	s32 (*prot_autoc_write)(struct ixgbe_hw *, u32, bool);
 
@@ -3225,6 +3228,8 @@ struct ixgbe_phy_info {
 	bool sfp_setup_needed;
 	u32 revision;
 	enum ixgbe_media_type media_type;
+	u32 phy_semaphore_mask;
+	u8 lan_id;
 	bool reset_disable;
 	ixgbe_autoneg_advertised autoneg_advertised;
 	enum ixgbe_smart_speed smart_speed;
