@@ -82,6 +82,16 @@
 #define UNREFERENCED_3PARAMETER(_p, _q, _r) 
 #define UNREFERENCED_4PARAMETER(_p, _q, _r, _s) 
 
+/* Shared code error reporting */
+enum {
+	IXGBE_ERROR_SOFTWARE,
+	IXGBE_ERROR_POLLING,
+	IXGBE_ERROR_INVALID_STATE,
+	IXGBE_ERROR_UNSUPPORTED,
+	IXGBE_ERROR_ARGUMENT,
+	IXGBE_ERROR_CAUTION,
+};
+
 #define STATIC static
 #define IXGBE_NTOHL(_i)	rte_be_to_cpu_32(_i)
 #define IXGBE_NTOHS(_i)	rte_be_to_cpu_16(_i)
