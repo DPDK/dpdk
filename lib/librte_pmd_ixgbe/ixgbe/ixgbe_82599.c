@@ -146,7 +146,7 @@ s32 ixgbe_init_phy_ops_82599(struct ixgbe_hw *hw)
 				  &ixgbe_get_copper_link_capabilities_generic;
 	}
 
-	/* Set necessary function pointers based on phy type */
+	/* Set necessary function pointers based on PHY type */
 	switch (hw->phy.type) {
 	case ixgbe_phy_tn:
 		phy->ops.setup_link = &ixgbe_setup_phy_link_tnx;
@@ -264,7 +264,7 @@ s32 prot_autoc_read_82599(struct ixgbe_hw *hw, bool *locked, u32 *reg_val)
  * @locked: bool to indicate whether the SW/FW lock was already taken by
  *           previous proc_autoc_read_82599.
  *
- * This part (82599) may need to hold a the SW/FW lock around all writes to
+ * This part (82599) may need to hold the SW/FW lock around all writes to
  * AUTOC. Likewise after a write we need to do a pipeline reset.
  */
 s32 prot_autoc_write_82599(struct ixgbe_hw *hw, u32 autoc, bool locked)
@@ -664,7 +664,7 @@ void ixgbe_disable_tx_laser_multispeed_fiber(struct ixgbe_hw *hw)
 	if (ixgbe_check_reset_blocked(hw))
 		return;
 
-	/* Disable tx laser; allow 100us to go dark per spec */
+	/* Disable Tx laser; allow 100us to go dark per spec */
 	esdp_reg |= IXGBE_ESDP_SDP3;
 	IXGBE_WRITE_REG(hw, IXGBE_ESDP, esdp_reg);
 	IXGBE_WRITE_FLUSH(hw);
@@ -683,7 +683,7 @@ void ixgbe_enable_tx_laser_multispeed_fiber(struct ixgbe_hw *hw)
 {
 	u32 esdp_reg = IXGBE_READ_REG(hw, IXGBE_ESDP);
 
-	/* Enable tx laser; allow 100ms to light up */
+	/* Enable Tx laser; allow 100ms to light up */
 	esdp_reg &= ~IXGBE_ESDP_SDP3;
 	IXGBE_WRITE_REG(hw, IXGBE_ESDP, esdp_reg);
 	IXGBE_WRITE_FLUSH(hw);
@@ -697,7 +697,7 @@ void ixgbe_enable_tx_laser_multispeed_fiber(struct ixgbe_hw *hw)
  *  When the driver changes the link speeds that it can support,
  *  it sets autotry_restart to true to indicate that we need to
  *  initiate a new autotry session with the link partner.  To do
- *  so, we set the speed then disable and re-enable the tx laser, to
+ *  so, we set the speed then disable and re-enable the Tx laser, to
  *  alert the link partner that it also needs to restart autotry on its
  *  end.  This is consistent with true clause 37 autoneg, which also
  *  involves a loss of signal.
@@ -842,7 +842,7 @@ s32 ixgbe_setup_mac_link_multispeed_fiber(struct ixgbe_hw *hw,
 		if (status != IXGBE_SUCCESS)
 			return status;
 
-		/* Flap the tx laser if it has not already been done */
+		/* Flap the Tx laser if it has not already been done */
 		ixgbe_flap_tx_laser(hw);
 
 		/* Wait for the link partner to also set speed */
@@ -1461,7 +1461,7 @@ s32 ixgbe_init_fdir_signature_82599(struct ixgbe_hw *hw, u32 fdirctrl)
  *  @hw: pointer to hardware structure
  *  @fdirctrl: value to write to flow director control register, initially
  *	     contains just the value of the Rx packet buffer allocation
- *  @cloud_mode: true - cloude mode, false - other mode
+ *  @cloud_mode: true - cloud mode, false - other mode
  **/
 s32 ixgbe_init_fdir_perfect_82599(struct ixgbe_hw *hw, u32 fdirctrl,
 			bool cloud_mode)
@@ -1513,14 +1513,14 @@ do { \
 		bucket_hash ^= hi_hash_dword >> n; \
 	else if (IXGBE_ATR_SIGNATURE_HASH_KEY & (0x01 << (n + 16))) \
 		sig_hash ^= hi_hash_dword << (16 - n); \
-} while (0);
+} while (0)
 
 /**
  *  ixgbe_atr_compute_sig_hash_82599 - Compute the signature hash
  *  @stream: input bitstream to compute the hash on
  *
  *  This function is almost identical to the function above but contains
- *  several optomizations such as unwinding all of the loops, letting the
+ *  several optimizations such as unwinding all of the loops, letting the
  *  compiler work out all of the conditional ifs since the keys are static
  *  defines, and computing two keys at once since the hashed dword stream
  *  will be the same for both keys.
@@ -1549,7 +1549,7 @@ u32 ixgbe_atr_compute_sig_hash_82599(union ixgbe_atr_hash_dword input,
 	/*
 	 * apply flow ID/VM pool/VLAN ID bits to lo hash dword, we had to
 	 * delay this because bit 0 of the stream should not be processed
-	 * so we do not add the vlan until after bit 0 was processed
+	 * so we do not add the VLAN until after bit 0 was processed
 	 */
 	lo_hash_dword ^= flow_vm_vlan ^ (flow_vm_vlan << 16);
 
@@ -1642,14 +1642,14 @@ do { \
 		bucket_hash ^= lo_hash_dword >> n; \
 	if (IXGBE_ATR_BUCKET_HASH_KEY & (0x01 << (n + 16))) \
 		bucket_hash ^= hi_hash_dword >> n; \
-} while (0);
+} while (0)
 
 /**
  *  ixgbe_atr_compute_perfect_hash_82599 - Compute the perfect filter hash
  *  @atr_input: input bitstream to compute the hash on
  *  @input_mask: mask for the input bitstream
  *
- *  This function serves two main purposes.  First it applys the input_mask
+ *  This function serves two main purposes.  First it applies the input_mask
  *  to the atr_input resulting in a cleaned up atr_input data stream.
  *  Secondly it computes the hash and stores it in the bkt_hash field at
  *  the end of the input byte stream.  This way it will be available for
@@ -1688,7 +1688,7 @@ void ixgbe_atr_compute_perfect_hash_82599(union ixgbe_atr_input *input,
 	/*
 	 * apply flow ID/VM pool/VLAN ID bits to lo hash dword, we had to
 	 * delay this because bit 0 of the stream should not be processed
-	 * so we do not add the vlan until after bit 0 was processed
+	 * so we do not add the VLAN until after bit 0 was processed
 	 */
 	lo_hash_dword ^= flow_vm_vlan ^ (flow_vm_vlan << 16);
 
@@ -1704,7 +1704,7 @@ void ixgbe_atr_compute_perfect_hash_82599(union ixgbe_atr_input *input,
 }
 
 /**
- *  ixgbe_get_fdirtcpm_82599 - generate a tcp port from atr_input_masks
+ *  ixgbe_get_fdirtcpm_82599 - generate a TCP port from atr_input_masks
  *  @input_mask: mask to be bit swapped
  *
  *  The source and destination port masks for flow director are bit swapped
@@ -1829,7 +1829,7 @@ s32 ixgbe_fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRTCPM, ~fdirtcpm);
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRUDPM, ~fdirtcpm);
 
-	/* store source and destination IP masks (big-enian) */
+	/* store source and destination IP masks (big-endian) */
 	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIP4M,
 			     ~input_mask->formatted.src_ip[0]);
 	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRDIP4M,
@@ -1866,7 +1866,7 @@ s32 ixgbe_fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 	fdirport |= IXGBE_NTOHS(input->formatted.src_port);
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRPORT, fdirport);
 
-	/* record vlan (little-endian) and flex_bytes(big-endian) */
+	/* record VLAN (little-endian) and flex_bytes(big-endian) */
 	fdirvlan = IXGBE_STORE_AS_BE16(input->formatted.flex_bytes);
 	fdirvlan <<= IXGBE_FDIRVLAN_FLEX_SHIFT;
 	fdirvlan |= IXGBE_NTOHS(input->formatted.vlan_id);
@@ -2276,7 +2276,7 @@ s32 ixgbe_enable_rx_dma_82599(struct ixgbe_hw *hw, u32 regval)
 }
 
 /**
- *  ixgbe_verify_fw_version_82599 - verify fw version for 82599
+ *  ixgbe_verify_fw_version_82599 - verify FW version for 82599
  *  @hw: pointer to hardware structure
  *
  *  Verifies that installed the firmware version is 0.6 or higher
@@ -2370,7 +2370,7 @@ bool ixgbe_verify_lesm_fw_enabled_82599(struct ixgbe_hw *hw)
 	    (fw_lesm_param_offset == 0) || (fw_lesm_param_offset == 0xFFFF))
 		goto out;
 
-	/* get the lesm state word */
+	/* get the LESM state word */
 	status = hw->eeprom.ops.read(hw, (fw_lesm_param_offset +
 				     IXGBE_FW_LESM_STATE_1),
 				     &fw_lesm_state);

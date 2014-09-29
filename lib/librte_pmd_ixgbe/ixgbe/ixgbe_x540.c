@@ -486,8 +486,7 @@ u16 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 	u16 checksum_last_word = IXGBE_EEPROM_CHECKSUM;
 	u16 ptr_start = IXGBE_PCIE_ANALOG_PTR;
 
-	/*
-	 * Do not use hw->eeprom.ops.read because we do not want to take
+	/* Do not use hw->eeprom.ops.read because we do not want to take
 	 * the synchronization semaphores here. Instead use
 	 * ixgbe_read_eerd_generic
 	 */
@@ -504,8 +503,7 @@ u16 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 			checksum += word;
 	}
 
-	/*
-	 * Include all data from pointers 0x3, 0x6-0xE.  This excludes the
+	/* Include all data from pointers 0x3, 0x6-0xE.  This excludes the
 	 * FW, PHY module, and PCIe Expansion/Option ROM pointers.
 	 */
 	for (i = ptr_start; i < IXGBE_FW_PTR; i++) {
@@ -565,8 +563,7 @@ s32 ixgbe_validate_eeprom_checksum_X540(struct ixgbe_hw *hw,
 
 	DEBUGFUNC("ixgbe_validate_eeprom_checksum_X540");
 
-	/*
-	 * Read the first word from the EEPROM. If this times out or fails, do
+	/* Read the first word from the EEPROM. If this times out or fails, do
 	 * not continue or we could be in for a very long wait while every
 	 * EEPROM read fails
 	 */
@@ -625,8 +622,7 @@ s32 ixgbe_update_eeprom_checksum_X540(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_update_eeprom_checksum_X540");
 
-	/*
-	 * Read the first word from the EEPROM. If this times out or fails, do
+	/* Read the first word from the EEPROM. If this times out or fails, do
 	 * not continue or we could be in for a very long wait while every
 	 * EEPROM read fails
 	 */
@@ -858,7 +854,7 @@ void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
 }
 
 /**
- *  ixgbe_get_nvm_semaphore - Get hardware semaphore
+ *  ixgbe_get_swfw_sync_semaphore - Get hardware semaphore
  *  @hw: pointer to hardware structure
  *
  *  Sets the hardware semaphores so SW/FW can gain control of shared resources
@@ -916,7 +912,7 @@ STATIC s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw)
 }
 
 /**
- *  ixgbe_release_nvm_semaphore - Release hardware semaphore
+ *  ixgbe_release_swfw_sync_semaphore - Release hardware semaphore
  *  @hw: pointer to hardware structure
  *
  *  This function clears hardware semaphore bits.
