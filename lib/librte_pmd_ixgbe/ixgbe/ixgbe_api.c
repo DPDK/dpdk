@@ -81,8 +81,16 @@ s32 ixgbe_init_shared_code(struct ixgbe_hw *hw)
 	case ixgbe_mac_X540:
 		status = ixgbe_init_ops_X540(hw);
 		break;
+	case ixgbe_mac_X550:
+		status = ixgbe_init_ops_X550(hw);
+		break;
+	case ixgbe_mac_X550EM_x:
+		status = ixgbe_init_ops_X550EM(hw);
+		break;
 	case ixgbe_mac_82599_vf:
 	case ixgbe_mac_X540_vf:
+	case ixgbe_mac_X550_vf:
+	case ixgbe_mac_X550EM_x_vf:
 		status = ixgbe_init_ops_vf(hw);
 		break;
 	default:
@@ -156,6 +164,23 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_X540T:
 	case IXGBE_DEV_ID_X540T1:
 		hw->mac.type = ixgbe_mac_X540;
+		break;
+	case IXGBE_DEV_ID_X550T:
+		hw->mac.type = ixgbe_mac_X550;
+		break;
+	case IXGBE_DEV_ID_X550EM_X:
+	case IXGBE_DEV_ID_X550EM_X_KX4:
+	case IXGBE_DEV_ID_X550EM_X_KR:
+	case IXGBE_DEV_ID_X550EM_X_SFP:
+		hw->mac.type = ixgbe_mac_X550EM_x;
+		break;
+	case IXGBE_DEV_ID_X550_VF:
+	case IXGBE_DEV_ID_X550_VF_HV:
+		hw->mac.type = ixgbe_mac_X550_vf;
+		break;
+	case IXGBE_DEV_ID_X550EM_X_VF:
+	case IXGBE_DEV_ID_X550EM_X_VF_HV:
+		hw->mac.type = ixgbe_mac_X550EM_x_vf;
 		break;
 	default:
 		ret_val = IXGBE_ERR_DEVICE_NOT_SUPPORTED;

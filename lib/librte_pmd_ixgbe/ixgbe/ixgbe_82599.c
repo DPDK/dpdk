@@ -1918,6 +1918,15 @@ s32 ixgbe_fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 	/* write both the same so that UDP and TCP use the same mask */
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRTCPM, ~fdirtcpm);
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRUDPM, ~fdirtcpm);
+	/* also use it for SCTP */
+	switch (hw->mac.type) {
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_x:
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRSCTPM, ~fdirtcpm);
+		break;
+	default:
+		break;
+	}
 
 	/* store source and destination IP masks (big-endian) */
 	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIP4M,
