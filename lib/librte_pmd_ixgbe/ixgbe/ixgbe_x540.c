@@ -726,7 +726,7 @@ STATIC s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw)
 			status = IXGBE_SUCCESS;
 			break;
 		}
-		usec_delay(5);
+		msec_delay(5);
 	}
 
 	if (i == IXGBE_FLUDONE_ATTEMPTS)
