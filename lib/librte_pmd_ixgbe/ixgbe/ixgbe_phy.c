@@ -1804,7 +1804,7 @@ STATIC s32 ixgbe_get_i2c_ack(struct ixgbe_hw *hw)
 		ack = ixgbe_get_i2c_data(&i2cctl);
 
 		usec_delay(1);
-		if (ack == 0)
+		if (!ack)
 			break;
 	}
 
@@ -1886,6 +1886,7 @@ STATIC s32 ixgbe_clock_out_i2c_bit(struct ixgbe_hw *hw, bool data)
 
 	return status;
 }
+
 /**
  *  ixgbe_raise_i2c_clk - Raises the I2C SCL clock
  *  @hw: pointer to hardware structure

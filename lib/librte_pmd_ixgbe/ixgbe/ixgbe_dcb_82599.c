@@ -580,6 +580,7 @@ s32 ixgbe_dcb_hw_config_82599(struct ixgbe_hw *hw, int link_speed,
 			      u16 *refill, u16 *max, u8 *bwg_id, u8 *tsa,
 			      u8 *map)
 {
+	UNREFERENCED_1PARAMETER(link_speed);
 
 	ixgbe_dcb_config_rx_arbiter_82599(hw, refill, max, bwg_id, tsa,
 					  map);
