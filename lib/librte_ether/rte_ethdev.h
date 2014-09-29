@@ -2178,7 +2178,7 @@ extern int rte_eth_dev_vlan_filter(uint8_t port_id, uint16_t vlan_id , int on);
 
 /**
  * Enable/Disable hardware VLAN Strip by a rx queue of an Ethernet device.
- * 82599/X540 can support VLAN stripping at the rx queue level
+ * 82599/X540/X550 can support VLAN stripping at the rx queue level
  *
  * @param port_id
  *   The port identifier of the Ethernet device.

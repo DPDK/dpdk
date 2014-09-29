@@ -2866,6 +2866,8 @@ ixgbe_dcb_hw_arbite_rx_config(struct ixgbe_hw *hw, uint16_t *refill,
 		break;
 	case ixgbe_mac_82599EB:
 	case ixgbe_mac_X540:
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_x:
 		ixgbe_dcb_config_rx_arbiter_82599(hw, refill, max, bwg_id,
 						  tsa, map);
 		break;
@@ -2885,6 +2887,8 @@ ixgbe_dcb_hw_arbite_tx_config(struct ixgbe_hw *hw, uint16_t *refill, uint16_t *m
 		break;
 	case ixgbe_mac_82599EB:
 	case ixgbe_mac_X540:
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_x:
 		ixgbe_dcb_config_tx_desc_arbiter_82599(hw, refill, max, bwg_id,tsa);
 		ixgbe_dcb_config_tx_data_arbiter_82599(hw, refill, max, bwg_id,tsa, map);
 		break;
@@ -3616,6 +3620,8 @@ ixgbe_dev_tx_init(struct rte_eth_dev *dev)
 
 			case ixgbe_mac_82599EB:
 			case ixgbe_mac_X540:
+			case ixgbe_mac_X550:
+			case ixgbe_mac_X550EM_x:
 			default:
 				txctrl = IXGBE_READ_REG(hw,
 						IXGBE_DCA_TXCTRL_82599(txq->reg_idx));

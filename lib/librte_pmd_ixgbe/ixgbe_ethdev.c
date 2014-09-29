@@ -544,7 +544,10 @@ ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 	uint32_t q_map;
 	uint8_t n, offset;
 
-	if ((hw->mac.type != ixgbe_mac_82599EB) && (hw->mac.type != ixgbe_mac_X540))
+	if ((hw->mac.type != ixgbe_mac_82599EB) &&
+		(hw->mac.type != ixgbe_mac_X540) &&
+		(hw->mac.type != ixgbe_mac_X550) &&
+		(hw->mac.type != ixgbe_mac_X550EM_x))
 		return -ENOSYS;
 
 	PMD_INIT_LOG(INFO, "Setting port %d, %s queue_id %d to stat index %d",
@@ -646,8 +649,10 @@ ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config)
 	/* support all DCB capabilities in 82599 */
 	dcb_config->support.capabilities = 0xFF;
 
-	/*we only support 4 Tcs for X540*/
-	if (hw->mac.type == ixgbe_mac_X540) {
+	/*we only support 4 Tcs for X540, X550 */
+	if (hw->mac.type == ixgbe_mac_X540 ||
+		hw->mac.type == ixgbe_mac_X550 ||
+		hw->mac.type == ixgbe_mac_X550EM_x) {
 		dcb_config->num_tcs.pg_tcs = 4;
 		dcb_config->num_tcs.pfc_tcs = 4;
 	}
