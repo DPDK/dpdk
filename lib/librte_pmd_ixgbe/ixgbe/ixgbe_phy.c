@@ -530,16 +530,14 @@ s32 ixgbe_write_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
 }
 
 /**
- *  ixgbe_setup_phy_link_generic - Set and restart autoneg
+ *  ixgbe_setup_phy_link_generic - Set and restart auto-neg
  *  @hw: pointer to hardware structure
  *
- *  Restart autonegotiation and PHY and waits for completion.
+ *  Restart auto-negotiation and PHY and waits for completion.
  **/
 s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_SUCCESS;
-	u32 time_out;
-	u32 max_time_out = 10;
 	u16 autoneg_reg = IXGBE_MII_AUTONEG_REG;
 	bool autoneg = false;
 	ixgbe_link_speed speed;
@@ -600,7 +598,7 @@ s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
 	if (ixgbe_check_reset_blocked(hw))
 		return status;
 
-	/* Restart PHY autonegotiation and wait for completion */
+	/* Restart PHY auto-negotiation. */
 	hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_CONTROL,
 			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &autoneg_reg);
 
@@ -608,25 +606,6 @@ s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
 
 	hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_CONTROL,
 			      IXGBE_MDIO_AUTO_NEG_DEV_TYPE, autoneg_reg);
-
-	/* Wait for autonegotiation to finish */
-	for (time_out = 0; time_out < max_time_out; time_out++) {
-		usec_delay(10);
-		/* Restart PHY autonegotiation and wait for completion */
-		status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
-					      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-					      &autoneg_reg);
-
-		autoneg_reg &= IXGBE_MII_AUTONEG_COMPLETE;
-		if (autoneg_reg == IXGBE_MII_AUTONEG_COMPLETE)
-			break;
-	}
-
-	if (time_out == max_time_out) {
-		status = IXGBE_ERR_LINK_SETUP;
-		ERROR_REPORT1(IXGBE_ERROR_POLLING,
-			     "PHY autonegotiation time out");
-	}
 
 	return status;
 }
@@ -751,16 +730,14 @@ s32 ixgbe_check_phy_link_tnx(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 }
 
 /**
- *	ixgbe_setup_phy_link_tnx - Set and restart autoneg
+ *	ixgbe_setup_phy_link_tnx - Set and restart auto-neg
  *	@hw: pointer to hardware structure
  *
- *	Restart autonegotiation and PHY and waits for completion.
+ *	Restart auto-negotiation and PHY and waits for completion.
  **/
 s32 ixgbe_setup_phy_link_tnx(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_SUCCESS;
-	u32 time_out;
-	u32 max_time_out = 10;
 	u16 autoneg_reg = IXGBE_MII_AUTONEG_REG;
 	bool autoneg = false;
 	ixgbe_link_speed speed;
@@ -818,7 +795,7 @@ s32 ixgbe_setup_phy_link_tnx(struct ixgbe_hw *hw)
 	if (ixgbe_check_reset_blocked(hw))
 		return status;
 
-	/* Restart PHY autonegotiation and wait for completion */
+	/* Restart PHY auto-negotiation. */
 	hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_CONTROL,
 			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &autoneg_reg);
 
@@ -826,24 +803,6 @@ s32 ixgbe_setup_phy_link_tnx(struct ixgbe_hw *hw)
 
 	hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_CONTROL,
 			      IXGBE_MDIO_AUTO_NEG_DEV_TYPE, autoneg_reg);
-
-	/* Wait for autonegotiation to finish */
-	for (time_out = 0; time_out < max_time_out; time_out++) {
-		usec_delay(10);
-		/* Restart PHY autonegotiation and wait for completion */
-		status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
-					      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-					      &autoneg_reg);
-
-		autoneg_reg &= IXGBE_MII_AUTONEG_COMPLETE;
-		if (autoneg_reg == IXGBE_MII_AUTONEG_COMPLETE)
-			break;
-	}
-
-	if (time_out == max_time_out) {
-		status = IXGBE_ERR_LINK_SETUP;
-		DEBUGOUT("ixgbe_setup_phy_link_tnx: time out");
-	}
 
 	return status;
 }
