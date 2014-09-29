@@ -1516,6 +1516,9 @@ s32 ixgbe_init_fdir_perfect_82599(struct ixgbe_hw *hw, u32 fdirctrl,
 		    (0xA << IXGBE_FDIRCTRL_MAX_LENGTH_SHIFT) |
 		    (4 << IXGBE_FDIRCTRL_FULL_THRESH_SHIFT);
 
+	if (cloud_mode)
+		fdirctrl |=(IXGBE_FDIRCTRL_FILTERMODE_CLOUD <<
+					IXGBE_FDIRCTRL_FILTERMODE_SHIFT);
 
 	/* write hashes and fdirctrl register, poll for completion */
 	ixgbe_fdir_enable_82599(hw, fdirctrl);
@@ -1785,6 +1788,7 @@ s32 ixgbe_fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 	/* mask IPv6 since it is currently not supported */
 	u32 fdirm = IXGBE_FDIRM_DIPv6;
 	u32 fdirtcpm;
+	u32 fdirip6m;
 	DEBUGFUNC("ixgbe_fdir_set_atr_input_mask_82599");
 
 	/*
@@ -1857,6 +1861,49 @@ s32 ixgbe_fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 		return IXGBE_ERR_CONFIG;
 	}
 
+	if (cloud_mode) {
+		fdirm |= IXGBE_FDIRM_L3P;
+		fdirip6m = ((u32) 0xFFFFU << IXGBE_FDIRIP6M_DIPM_SHIFT);
+		fdirip6m |= IXGBE_FDIRIP6M_ALWAYS_MASK;
+
+		switch (input_mask->formatted.inner_mac[0] & 0xFF) {
+		case 0x00:
+			/* Mask inner MAC, fall through */
+			fdirip6m |= IXGBE_FDIRIP6M_INNER_MAC;
+		case 0xFF:
+			break;
+		default:
+			DEBUGOUT(" Error on inner_mac byte mask\n");
+			return IXGBE_ERR_CONFIG;
+		}
+
+		switch (input_mask->formatted.tni_vni & 0xFFFFFFFF) {
+		case 0x0:
+			/* Mask vxlan id */
+			fdirip6m |= IXGBE_FDIRIP6M_TNI_VNI;
+			break;
+		case 0x00FFFFFF:
+			fdirip6m |= IXGBE_FDIRIP6M_TNI_VNI_24;
+			break;
+		case 0xFFFFFFFF:
+			break;
+		default:
+			DEBUGOUT(" Error on TNI/VNI byte mask\n");
+			return IXGBE_ERR_CONFIG;
+		}
+
+		switch (input_mask->formatted.tunnel_type & 0xFFFF) {
+		case 0x0:
+			/* Mask turnnel type, fall through */
+			fdirip6m |= IXGBE_FDIRIP6M_TUNNEL_TYPE;
+		case 0xFFFF:
+			break;
+		default:
+			DEBUGOUT(" Error on tunnel type byte mask\n");
+			return IXGBE_ERR_CONFIG;
+		}
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRIP6M, fdirip6m);
+	}
 
 	/* Now mask VM pool and destination IPv6 - bits 5 and 2 */
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRM, fdirm);
@@ -1882,6 +1929,9 @@ s32 ixgbe_fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 					  u16 soft_id, u8 queue, bool cloud_mode)
 {
 	u32 fdirport, fdirvlan, fdirhash, fdircmd;
+	u32 addr_low, addr_high;
+	u32 cloud_type = 0;
+	s32 err;
 
 	DEBUGFUNC("ixgbe_fdir_write_perfect_filter_82599");
 
@@ -1911,6 +1961,21 @@ s32 ixgbe_fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 	fdirvlan |= IXGBE_NTOHS(input->formatted.vlan_id);
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRVLAN, fdirvlan);
 
+	if (cloud_mode) {
+		if (input->formatted.tunnel_type != 0)
+			cloud_type = 0x80000000;
+
+		addr_low = ((u32)input->formatted.inner_mac[0] |
+				((u32)input->formatted.inner_mac[1] << 8) |
+				((u32)input->formatted.inner_mac[2] << 16) |
+				((u32)input->formatted.inner_mac[3] << 24));
+		addr_high = ((u32)input->formatted.inner_mac[4] |
+				((u32)input->formatted.inner_mac[5] << 8));
+		cloud_type |= addr_high;
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIPv6(0), addr_low);
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIPv6(1), cloud_type);
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIPv6(2), input->formatted.tni_vni);
+	}
 
 	/* configure FDIRHASH register */
 	fdirhash = input->formatted.bkt_hash;
@@ -1935,6 +2000,11 @@ s32 ixgbe_fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 	fdircmd |= (u32)input->formatted.vm_pool << IXGBE_FDIRCMD_VT_POOL_SHIFT;
 
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRCMD, fdircmd);
+	err = ixgbe_fdir_check_cmd_complete(hw);
+	if (err) {
+		DEBUGOUT("Flow Director command did not complete!\n");
+		return err;
+	}
 
 	return IXGBE_SUCCESS;
 }
