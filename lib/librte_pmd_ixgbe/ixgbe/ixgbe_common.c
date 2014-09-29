@@ -4341,41 +4341,50 @@ u8 ixgbe_calculate_checksum(u8 *buffer, u32 length)
  *  @buffer: contains the command to write and where the return status will
  *   be placed
  *  @length: length of buffer, must be multiple of 4 bytes
+ *  @return_data: read and return data from the buffer (true) or not (false)
+ *   Needed because FW structures are big endian and decoding of
+ *   these fields can be 8 bit or 16 bit based on command. Decoding
+ *   is not easily understood without making a table of commands.
+ *   So we will leave this up to the caller to read back the data
+ *   in these cases.
  *
  *  Communicates with the manageability block.  On success return IXGBE_SUCCESS
  *  else return IXGBE_ERR_HOST_INTERFACE_COMMAND.
  **/
 s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
-				 u32 length)
+				 u32 length, bool return_data)
 {
-	u32 hicr, i, bi;
+	u32 hicr, i, bi, fwsts;
 	u32 hdr_size = sizeof(struct ixgbe_hic_hdr);
-	u8 buf_len, dword_len;
-
-	s32 ret_val = IXGBE_SUCCESS;
+	u16 buf_len;
+	u8 dword_len;
 
 	DEBUGFUNC("ixgbe_host_interface_command");
 
-	if (length == 0 || length & 0x3 ||
-	    length > IXGBE_HI_MAX_BLOCK_BYTE_LENGTH) {
-		DEBUGOUT("Buffer length failure.\n");
-		ret_val = IXGBE_ERR_HOST_INTERFACE_COMMAND;
-		goto out;
+	if (length == 0 || length > IXGBE_HI_MAX_BLOCK_BYTE_LENGTH) {
+		DEBUGOUT1("Buffer length failure buffersize=%d.\n", length);
+		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
+	/* Set bit 9 of FWSTS clearing FW reset indication */
+	fwsts = IXGBE_READ_REG(hw, IXGBE_FWSTS);
+	IXGBE_WRITE_REG(hw, IXGBE_FWSTS, fwsts | IXGBE_FWSTS_FWRI);
 
 	/* Check that the host interface is enabled. */
 	hicr = IXGBE_READ_REG(hw, IXGBE_HICR);
 	if ((hicr & IXGBE_HICR_EN) == 0) {
 		DEBUGOUT("IXGBE_HOST_EN bit disabled.\n");
-		ret_val = IXGBE_ERR_HOST_INTERFACE_COMMAND;
-		goto out;
+		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
 
-	/* Calculate length in DWORDs */
+	/* Calculate length in DWORDs. We must be DWORD aligned */
+	if ((length % (sizeof(u32))) != 0) {
+		DEBUGOUT("Buffer length failure, not aligned to dword");
+		return IXGBE_ERR_INVALID_ARGUMENT;
+	}
+
 	dword_len = length >> 2;
 
-	/*
-	 * The device driver writes the relevant command block
+	/* The device driver writes the relevant command block
 	 * into the ram area.
 	 */
 	for (i = 0; i < dword_len; i++)
@@ -4392,13 +4401,16 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 		msec_delay(1);
 	}
 
-	/* Check command successful completion. */
+	/* Check command completion */
 	if (i == IXGBE_HI_COMMAND_TIMEOUT ||
-	    (!(IXGBE_READ_REG(hw, IXGBE_HICR) & IXGBE_HICR_SV))) {
-		DEBUGOUT("Command has failed with no status valid.\n");
-		ret_val = IXGBE_ERR_HOST_INTERFACE_COMMAND;
-		goto out;
+	    !(IXGBE_READ_REG(hw, IXGBE_HICR) & IXGBE_HICR_SV)) {
+		ERROR_REPORT1(IXGBE_ERROR_CAUTION,
+			     "Command has failed with no status valid.\n");
+		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
+
+	if (!return_data)
+		return 0;
 
 	/* Calculate length in DWORDs */
 	dword_len = hdr_size >> 2;
@@ -4412,25 +4424,23 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 	/* If there is any thing in data position pull it in */
 	buf_len = ((struct ixgbe_hic_hdr *)buffer)->buf_len;
 	if (buf_len == 0)
-		goto out;
+		return 0;
 
-	if (length < (buf_len + hdr_size)) {
+	if (length < buf_len + hdr_size) {
 		DEBUGOUT("Buffer not large enough for reply message.\n");
-		ret_val = IXGBE_ERR_HOST_INTERFACE_COMMAND;
-		goto out;
+		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
 
 	/* Calculate length in DWORDs, add 3 for odd lengths */
 	dword_len = (buf_len + 3) >> 2;
 
-	/* Pull in the rest of the buffer (bi is where we left off)*/
+	/* Pull in the rest of the buffer (bi is where we left off) */
 	for (; bi <= dword_len; bi++) {
 		buffer[bi] = IXGBE_READ_REG_ARRAY(hw, IXGBE_FLEX_MNG, bi);
 		IXGBE_LE32_TO_CPUS(&buffer[bi]);
 	}
 
-out:
-	return ret_val;
+	return 0;
 }
 
 /**
@@ -4477,7 +4487,7 @@ s32 ixgbe_set_fw_drv_ver_generic(struct ixgbe_hw *hw, u8 maj, u8 min,
 
 	for (i = 0; i <= FW_CEM_MAX_RETRIES; i++) {
 		ret_val = ixgbe_host_interface_command(hw, (u32 *)&fw_cmd,
-						       sizeof(fw_cmd));
+						       sizeof(fw_cmd), true);
 		if (ret_val != IXGBE_SUCCESS)
 			continue;
 
