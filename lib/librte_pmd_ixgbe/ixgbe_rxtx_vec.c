@@ -64,7 +64,7 @@ ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
 				 RTE_IXGBE_RXQ_REARM_THRESH) < 0) {
 		if (rxq->rxrearm_nb + RTE_IXGBE_RXQ_REARM_THRESH >=
 		    rxq->nb_rx_desc) {
-			dma_addr0 = _mm_xor_si128(dma_addr0, dma_addr0);
+			dma_addr0 = _mm_setzero_si128();
 			for (i = 0; i < RTE_IXGBE_DESCS_PER_LOOP; i++) {
 				rxep[i].mbuf = &rxq->fake_mbuf;
 				_mm_store_si128((__m128i *)&rxdp[i].read,
