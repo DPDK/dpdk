@@ -57,6 +57,18 @@
 #include "e1000/e1000_api.h"
 #include "e1000_ethdev.h"
 
+/*
+ * Default values for port configuration
+ */
+#define IGB_DEFAULT_RX_FREE_THRESH  32
+#define IGB_DEFAULT_RX_PTHRESH      8
+#define IGB_DEFAULT_RX_HTHRESH      8
+#define IGB_DEFAULT_RX_WTHRESH      0
+
+#define IGB_DEFAULT_TX_PTHRESH      32
+#define IGB_DEFAULT_TX_HTHRESH      0
+#define IGB_DEFAULT_TX_WTHRESH      0
+
 static int  eth_igb_configure(struct rte_eth_dev *dev);
 static int  eth_igb_start(struct rte_eth_dev *dev);
 static void eth_igb_stop(struct rte_eth_dev *dev);
@@ -1336,6 +1348,25 @@ eth_igb_infos_get(struct rte_eth_dev *dev,
 		dev_info->max_tx_queues = 0;
 		dev_info->max_vmdq_pools = 0;
 	}
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = IGB_DEFAULT_RX_PTHRESH,
+			.hthresh = IGB_DEFAULT_RX_HTHRESH,
+			.wthresh = IGB_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = IGB_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = IGB_DEFAULT_TX_PTHRESH,
+			.hthresh = IGB_DEFAULT_TX_HTHRESH,
+			.wthresh = IGB_DEFAULT_TX_WTHRESH,
+		},
+		.txq_flags = 0,
+	};
 }
 
 /* return 0 means link status changed, -1 means not changed */
