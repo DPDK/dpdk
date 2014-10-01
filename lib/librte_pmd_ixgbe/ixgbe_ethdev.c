@@ -92,6 +92,20 @@
 #define IXGBE_MMW_SIZE_DEFAULT        0x4
 #define IXGBE_MMW_SIZE_JUMBO_FRAME    0x14
 
+/*
+ *  Default values for RX/TX configuration
+ */
+#define IXGBE_DEFAULT_RX_FREE_THRESH  32
+#define IXGBE_DEFAULT_RX_PTHRESH      8
+#define IXGBE_DEFAULT_RX_HTHRESH      8
+#define IXGBE_DEFAULT_RX_WTHRESH      0
+
+#define IXGBE_DEFAULT_TX_FREE_THRESH  32
+#define IXGBE_DEFAULT_TX_PTHRESH      32
+#define IXGBE_DEFAULT_TX_HTHRESH      0
+#define IXGBE_DEFAULT_TX_WTHRESH      0
+#define IXGBE_DEFAULT_TX_RSBIT_THRESH 32
+
 #define IXGBEVF_PMD_NAME "rte_ixgbevf_pmd" /* PMD name */
 
 #define IXGBE_QUEUE_STAT_COUNTERS (sizeof(hw_stats->qprc) / sizeof(hw_stats->qprc[0]))
@@ -1947,6 +1961,28 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_TX_OFFLOAD_UDP_CKSUM   |
 		DEV_TX_OFFLOAD_TCP_CKSUM   |
 		DEV_TX_OFFLOAD_SCTP_CKSUM;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+			.rx_thresh = {
+				.pthresh = IXGBE_DEFAULT_RX_PTHRESH,
+				.hthresh = IXGBE_DEFAULT_RX_HTHRESH,
+				.wthresh = IXGBE_DEFAULT_RX_WTHRESH,
+			},
+			.rx_free_thresh = IXGBE_DEFAULT_RX_FREE_THRESH,
+			.rx_drop_en = 0,
+	};
+
+
+	 dev_info->default_txconf = (struct rte_eth_txconf) {
+			.tx_thresh = {
+				.pthresh = IXGBE_DEFAULT_TX_PTHRESH,
+				.hthresh = IXGBE_DEFAULT_TX_HTHRESH,
+				.wthresh = IXGBE_DEFAULT_TX_WTHRESH,
+			},
+			.tx_free_thresh = IXGBE_DEFAULT_TX_FREE_THRESH,
+			.tx_rs_thresh = IXGBE_DEFAULT_TX_RSBIT_THRESH,
+			.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | ETH_TXQ_FLAGS_NOOFFLOADS,
+	};
 }
 
 /* return 0 means link status changed, -1 means not changed */
