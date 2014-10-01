@@ -69,7 +69,8 @@ struct alarm_entry {
 	struct timeval time;
 	rte_eal_alarm_callback cb_fn;
 	void *cb_arg;
-	volatile int executing;
+	volatile uint8_t executing;
+	volatile pthread_t executing_id;
 };
 
 static LIST_HEAD(alarm_list, alarm_entry) alarm_list = LIST_HEAD_INITIALIZER();
@@ -108,11 +109,13 @@ eal_alarm_callback(struct rte_intr_handle *hdl __rte_unused,
 			(ap->time.tv_sec < now.tv_sec || (ap->time.tv_sec == now.tv_sec &&
 						ap->time.tv_usec <= now.tv_usec))){
 		ap->executing = 1;
+		ap->executing_id = pthread_self();
 		rte_spinlock_unlock(&alarm_list_lk);
 
 		ap->cb_fn(ap->cb_arg);
 
 		rte_spinlock_lock(&alarm_list_lk);
+
 		LIST_REMOVE(ap, next);
 		rte_free(ap);
 	}
@@ -145,7 +148,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 	if (us < 1 || us > (UINT64_MAX - US_PER_S) || cb_fn == NULL)
 		return -EINVAL;
 
-	new_alarm = rte_malloc(NULL, sizeof(*new_alarm), 0);
+	new_alarm = rte_zmalloc(NULL, sizeof(*new_alarm), 0);
 	if (new_alarm == NULL)
 		return -ENOMEM;
 
@@ -156,7 +159,6 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 	new_alarm->cb_arg = cb_arg;
 	new_alarm->time.tv_usec = (now.tv_usec + us) % US_PER_S;
 	new_alarm->time.tv_sec = now.tv_sec + ((now.tv_usec + us) / US_PER_S);
-	new_alarm->executing = 0;
 
 	rte_spinlock_lock(&alarm_list_lk);
 	if (!handler_registered) {
@@ -202,34 +204,65 @@ rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 {
 	struct alarm_entry *ap, *ap_prev;
 	int count = 0;
+	int err = 0;
+	int executing;
 
-	if (!cb_fn)
+	if (!cb_fn) {
+		rte_errno = EINVAL;
 		return -1;
-
-	rte_spinlock_lock(&alarm_list_lk);
-	/* remove any matches at the start of the list */
-	while ((ap = LIST_FIRST(&alarm_list)) != NULL &&
-			cb_fn == ap->cb_fn && ap->executing == 0 &&
-			(cb_arg == (void *)-1 || cb_arg == ap->cb_arg)) {
-		LIST_REMOVE(ap, next);
-		rte_free(ap);
-		count++;
 	}
-	ap_prev = ap;
 
-	/* now go through list, removing entries not at start */
-	LIST_FOREACH(ap, &alarm_list, next) {
-		/* this won't be true first time through */
-		if (cb_fn == ap->cb_fn &&  ap->executing == 0 &&
+	do {
+		executing = 0;
+		rte_spinlock_lock(&alarm_list_lk);
+		/* remove any matches at the start of the list */
+		while ((ap = LIST_FIRST(&alarm_list)) != NULL &&
+				cb_fn == ap->cb_fn &&
 				(cb_arg == (void *)-1 || cb_arg == ap->cb_arg)) {
-			LIST_REMOVE(ap,next);
-			rte_free(ap);
-			count++;
-			ap = ap_prev;
+
+			if (ap->executing == 0) {
+				LIST_REMOVE(ap, next);
+				rte_free(ap);
+				count++;
+			} else {
+				/* If calling from other context, mark that alarm is executing
+				 * so loop can spin till it finish. Otherwise we are trying to
+				 * cancel our self - mark it by EINPROGRESS */
+				if (pthread_equal(ap->executing_id, pthread_self()) == 0)
+					executing++;
+				else
+					err = EINPROGRESS;
+
+				break;
+			}
 		}
 		ap_prev = ap;
-	}
-	rte_spinlock_unlock(&alarm_list_lk);
+
+		/* now go through list, removing entries not at start */
+		LIST_FOREACH(ap, &alarm_list, next) {
+			/* this won't be true first time through */
+			if (cb_fn == ap->cb_fn &&
+					(cb_arg == (void *)-1 || cb_arg == ap->cb_arg)) {
+
+				if (ap->executing == 0) {
+					LIST_REMOVE(ap, next);
+					rte_free(ap);
+					count++;
+					ap = ap_prev;
+				} else if (pthread_equal(ap->executing_id, pthread_self()) == 0)
+					executing++;
+				else
+					err = EINPROGRESS;
+			}
+			ap_prev = ap;
+		}
+		rte_spinlock_unlock(&alarm_list_lk);
+	} while (executing != 0);
+
+	if (count == 0 && err == 0)
+		rte_errno = ENOENT;
+	else if (err)
+		rte_errno = err;
+
 	return count;
 }
-

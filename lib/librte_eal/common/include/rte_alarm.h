@@ -76,7 +76,8 @@ typedef void (*rte_eal_alarm_callback)(void *arg);
 int rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb, void *cb_arg);
 
 /**
- * Function to cancel an alarm callback which has been registered before.
+ * Function to cancel an alarm callback which has been registered before. If
+ * used outside alarm callback it wait for all callbacks to finish execution.
  *
  * @param cb_fn
  *  alarm callback
@@ -86,7 +87,14 @@ int rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb, void *cb_arg);
  *  can be used here.
  *
  * @return
- *  - The number of callbacks removed
+ *    - value greater than 0 and rte_errno not changed - returned value is
+ *      the number of canceled alarm callback functions
+ *    - value greater or equal 0 and rte_errno set to EINPROGRESS, at least one
+ *      alarm could not be canceled because cancellation was requested from alarm
+ *      callback context. Returned value is the number of succesfuly canceled
+ *      alarm callbacks
+ *    -  0 and rte_errno set to ENOENT - no alarm found
+ *    - -1 and rte_errno set to EINVAL - invalid parameter (NULL callback)
  */
 int rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg);
 
