@@ -81,25 +81,6 @@
 #define MBUF_CACHE_SIZE 64
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 
-/*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-#define RX_PTHRESH 8 /**< Default values of RX prefetch threshold reg. */
-#define RX_HTHRESH 8 /**< Default values of RX host threshold reg. */
-#define RX_WTHRESH 4 /**< Default values of RX write-back threshold reg. */
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-#define TX_PTHRESH 36 /**< Default values of TX prefetch threshold reg. */
-#define TX_HTHRESH 0  /**< Default values of TX host threshold reg. */
-#define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
-
 #define MAX_PKT_BURST 32
 
 /*
@@ -116,37 +97,6 @@ static uint32_t enabled_port_mask = 0;
 /* number of pools (if user does not specify any, 8 by default */
 static uint32_t num_queues = 8;
 static uint32_t num_pools = 8;
-
-/*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-/* Default configuration for rx and tx thresholds etc. */
-static const struct rte_eth_rxconf rx_conf_default = {
-	.rx_thresh = {
-		.pthresh = RX_PTHRESH,
-		.hthresh = RX_HTHRESH,
-		.wthresh = RX_WTHRESH,
-	},
-	.rx_drop_en = 1,
-};
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe/igb PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-static const struct rte_eth_txconf tx_conf_default = {
-	.tx_thresh = {
-		.pthresh = TX_PTHRESH,
-		.hthresh = TX_HTHRESH,
-		.wthresh = TX_WTHRESH,
-	},
-	.tx_free_thresh = 0, /* Use PMD default values */
-	.tx_rs_thresh = 0, /* Use PMD default values */
-};
 
 /* empty vmdq configuration structure. Filled in programatically */
 static const struct rte_eth_conf vmdq_conf_default = {
@@ -283,6 +233,7 @@ static inline int
 port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 {
 	struct rte_eth_dev_info dev_info;
+	struct rte_eth_rxconf *rxconf;
 	struct rte_eth_conf port_conf;
 	uint16_t rxRings, txRings = (uint16_t)rte_lcore_count();
 	const uint16_t rxRingSize = RTE_TEST_RX_DESC_DEFAULT, txRingSize = RTE_TEST_TX_DESC_DEFAULT;
@@ -308,17 +259,22 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	if (retval != 0)
 		return retval;
 
+	rte_eth_dev_info_get(port, &dev_info);
+	rxconf = &dev_info.default_rxconf;
+	rxconf->rx_drop_en = 1;
 	for (q = 0; q < rxRings; q ++) {
 		retval = rte_eth_rx_queue_setup(port, q, rxRingSize,
-						rte_eth_dev_socket_id(port), &rx_conf_default,
-						mbuf_pool);
+					rte_eth_dev_socket_id(port),
+					rxconf,
+					mbuf_pool);
 		if (retval < 0)
 			return retval;
 	}
 
 	for (q = 0; q < txRings; q ++) {
 		retval = rte_eth_tx_queue_setup(port, q, txRingSize,
-						rte_eth_dev_socket_id(port), &tx_conf_default);
+					rte_eth_dev_socket_id(port),
+					NULL);
 		if (retval < 0)
 			return retval;
 	}

@@ -215,30 +215,6 @@ static struct rte_eth_conf port_conf = {
 	},
 };
 
-static const struct rte_eth_rxconf rx_conf = {
-	.rx_thresh = {
-		.pthresh = RX_PTHRESH,
-		.hthresh = RX_HTHRESH,
-		.wthresh = RX_WTHRESH,
-	},
-	.rx_free_thresh = 32,
-};
-
-static const struct rte_eth_txconf tx_conf = {
-	.tx_thresh = {
-		.pthresh = TX_PTHRESH,
-		.hthresh = TX_HTHRESH,
-		.wthresh = TX_WTHRESH,
-	},
-	.tx_free_thresh = 0, /* Use PMD default values */
-	.tx_rs_thresh = 0, /* Use PMD default values */
-	.txq_flags = (ETH_TXQ_FLAGS_NOMULTSEGS |
-		      ETH_TXQ_FLAGS_NOVLANOFFL |
-		      ETH_TXQ_FLAGS_NOXSUMSCTP |
-		      ETH_TXQ_FLAGS_NOXSUMUDP |
-		      ETH_TXQ_FLAGS_NOXSUMTCP)
-};
-
 static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
 
 
@@ -979,6 +955,8 @@ int
 MAIN(int argc, char **argv)
 {
 	struct lcore_conf *qconf;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_txconf *txconf;
 	int ret;
 	unsigned nb_ports;
 	uint16_t queueid;
@@ -1052,8 +1030,13 @@ MAIN(int argc, char **argv)
 
 		printf("txq=%d,%d,%d ", portid, 0, socketid);
 		fflush(stdout);
+
+		rte_eth_dev_info_get(portid, &dev_info);
+		txconf = &dev_info.default_txconf;
+		if (port_conf.rxmode.jumbo_frame)
+			txconf->txq_flags = 0;
 		ret = rte_eth_tx_queue_setup(portid, 0, nb_txd,
-						 socketid, &tx_conf);
+						 socketid, txconf);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d, "
 				"port=%d\n", ret, portid);
@@ -1083,7 +1066,8 @@ MAIN(int argc, char **argv)
 			fflush(stdout);
 
 			ret = rte_eth_rx_queue_setup(portid, queueid, nb_rxd,
-						socketid, &rx_conf, pktmbuf_pool[socketid]);
+						socketid, NULL,
+						pktmbuf_pool[socketid]);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup: err=%d,"
 						"port=%d\n", ret, portid);

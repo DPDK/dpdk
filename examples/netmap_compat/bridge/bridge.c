@@ -67,29 +67,6 @@ struct rte_eth_conf eth_conf = {
 	},
 };
 
-struct rte_eth_txconf tx_conf = {
-	.tx_thresh = {
-	    .pthresh = 36,
-	    .hthresh = 0,
-	    .wthresh = 0,
-	},
-	.tx_free_thresh = 0,
-	.tx_rs_thresh = 0,
-	.txq_flags = (ETH_TXQ_FLAGS_NOMULTSEGS |
-			ETH_TXQ_FLAGS_NOVLANOFFL |
-			ETH_TXQ_FLAGS_NOXSUMSCTP |
-			ETH_TXQ_FLAGS_NOXSUMUDP |
-			ETH_TXQ_FLAGS_NOXSUMTCP)
-};
-
-struct rte_eth_rxconf rx_conf = {
-	.rx_thresh = {
-	    .pthresh = 8,
-	    .hthresh = 8,
-	    .wthresh = 4,
-	},
-};
-
 #define	MAX_QUEUE_NUM	1
 #define	RX_QUEUE_NUM	1
 #define	TX_QUEUE_NUM	1
@@ -103,8 +80,6 @@ struct rte_eth_rxconf rx_conf = {
 
 struct rte_netmap_port_conf port_conf = {
 	.eth_conf = &eth_conf,
-	.tx_conf  = &tx_conf,
-	.rx_conf  = &rx_conf,
 	.socket_id = SOCKET_ID_ANY,
 	.nr_tx_rings = TX_QUEUE_NUM,
 	.nr_rx_rings = RX_QUEUE_NUM,

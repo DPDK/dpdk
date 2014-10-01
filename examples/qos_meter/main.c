@@ -102,26 +102,6 @@ static struct rte_eth_conf port_conf = {
 	},
 };
 
-static const struct rte_eth_rxconf rx_conf = {
-	.rx_thresh = {
-		.pthresh = 8, /* RX prefetch threshold reg */
-		.hthresh = 8, /* RX host threshold reg */
-		.wthresh = 4, /* RX write-back threshold reg */
-	},
-	.rx_free_thresh = 32,
-};
-
-static const struct rte_eth_txconf tx_conf = {
-	.tx_thresh = {
-		.pthresh = 36, /* TX prefetch threshold reg */
-		.hthresh = 0,  /* TX host threshold reg */
-		.wthresh = 0,  /* TX write-back threshold reg */
-	},
-	.tx_free_thresh = 0,
-	.tx_rs_thresh = 0,
-	.txq_flags = 0x0,
-};
-
 #define NIC_RX_QUEUE_DESC               128
 #define NIC_TX_QUEUE_DESC               512
 
@@ -391,11 +371,15 @@ MAIN(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d configuration error (%d)\n", port_rx, ret);
 
-	ret = rte_eth_rx_queue_setup(port_rx, NIC_RX_QUEUE, NIC_RX_QUEUE_DESC, rte_eth_dev_socket_id(port_rx), &rx_conf, pool);
+	ret = rte_eth_rx_queue_setup(port_rx, NIC_RX_QUEUE, NIC_RX_QUEUE_DESC,
+				rte_eth_dev_socket_id(port_rx),
+				NULL, pool);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d RX queue setup error (%d)\n", port_rx, ret);
 
-	ret = rte_eth_tx_queue_setup(port_rx, NIC_TX_QUEUE, NIC_TX_QUEUE_DESC, rte_eth_dev_socket_id(port_rx), &tx_conf);
+	ret = rte_eth_tx_queue_setup(port_rx, NIC_TX_QUEUE, NIC_TX_QUEUE_DESC,
+				rte_eth_dev_socket_id(port_rx),
+				NULL);
 	if (ret < 0)
 	rte_exit(EXIT_FAILURE, "Port %d TX queue setup error (%d)\n", port_rx, ret);
 
@@ -403,11 +387,15 @@ MAIN(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d configuration error (%d)\n", port_tx, ret);
 
-	ret = rte_eth_rx_queue_setup(port_tx, NIC_RX_QUEUE, NIC_RX_QUEUE_DESC, rte_eth_dev_socket_id(port_tx), &rx_conf, pool);
+	ret = rte_eth_rx_queue_setup(port_tx, NIC_RX_QUEUE, NIC_RX_QUEUE_DESC,
+				rte_eth_dev_socket_id(port_tx),
+				NULL, pool);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d RX queue setup error (%d)\n", port_tx, ret);
 
-	ret = rte_eth_tx_queue_setup(port_tx, NIC_TX_QUEUE, NIC_TX_QUEUE_DESC, rte_eth_dev_socket_id(port_tx), &tx_conf);
+	ret = rte_eth_tx_queue_setup(port_tx, NIC_TX_QUEUE, NIC_TX_QUEUE_DESC,
+				rte_eth_dev_socket_id(port_tx),
+				NULL);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d TX queue setup error (%d)\n", port_tx, ret);
 

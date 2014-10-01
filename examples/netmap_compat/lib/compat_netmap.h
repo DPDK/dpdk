@@ -56,8 +56,6 @@ struct rte_netmap_conf {
 
 struct rte_netmap_port_conf {
 	struct rte_eth_conf   *eth_conf;
-	struct rte_eth_txconf *tx_conf;
-	struct rte_eth_rxconf *rx_conf;
 	struct rte_mempool    *pool;
 	int32_t socket_id;
 	uint16_t nr_tx_rings;

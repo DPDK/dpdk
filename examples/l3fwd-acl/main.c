@@ -100,25 +100,6 @@
 	nb_lcores * MEMPOOL_CACHE_SIZE),			\
 	(unsigned)8192)
 
-/*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-#define RX_PTHRESH 8 /**< Default values of RX prefetch threshold reg. */
-#define RX_HTHRESH 8 /**< Default values of RX host threshold reg. */
-#define RX_WTHRESH 4 /**< Default values of RX write-back threshold reg. */
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-#define TX_PTHRESH 36 /**< Default values of TX prefetch threshold reg. */
-#define TX_HTHRESH 0  /**< Default values of TX host threshold reg. */
-#define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
-
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
@@ -205,26 +186,6 @@ static struct rte_eth_conf port_conf = {
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
 	},
-};
-
-static const struct rte_eth_rxconf rx_conf = {
-	.rx_thresh = {
-		.pthresh = RX_PTHRESH,
-		.hthresh = RX_HTHRESH,
-		.wthresh = RX_WTHRESH,
-	},
-	.rx_free_thresh = 32,
-};
-
-static const struct rte_eth_txconf tx_conf = {
-	.tx_thresh = {
-		.pthresh = TX_PTHRESH,
-		.hthresh = TX_HTHRESH,
-		.wthresh = TX_WTHRESH,
-	},
-	.tx_free_thresh = 0, /* Use PMD default values */
-	.tx_rs_thresh = 0, /* Use PMD default values */
-	.txq_flags = 0x0,
 };
 
 static struct rte_mempool *pktmbuf_pool[NB_SOCKETS];
@@ -1969,6 +1930,8 @@ int
 MAIN(int argc, char **argv)
 {
 	struct lcore_conf *qconf;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_txconf *txconf;
 	int ret;
 	unsigned nb_ports;
 	uint16_t queueid;
@@ -2056,8 +2019,13 @@ MAIN(int argc, char **argv)
 
 			printf("txq=%u,%d,%d ", lcore_id, queueid, socketid);
 			fflush(stdout);
+
+			rte_eth_dev_info_get(portid, &dev_info);
+			txconf = &dev_info.default_txconf;
+			if (port_conf.rxmode.jumbo_frame)
+				txconf->txq_flags = 0;
 			ret = rte_eth_tx_queue_setup(portid, queueid, nb_txd,
-						     socketid, &tx_conf);
+						     socketid, txconf);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE,
 					"rte_eth_tx_queue_setup: err=%d, "
@@ -2091,7 +2059,7 @@ MAIN(int argc, char **argv)
 			fflush(stdout);
 
 			ret = rte_eth_rx_queue_setup(portid, queueid, nb_rxd,
-					socketid, &rx_conf,
+					socketid, NULL,
 					pktmbuf_pool[socketid]);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE,

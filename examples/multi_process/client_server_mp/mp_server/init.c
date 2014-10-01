@@ -83,41 +83,6 @@
 
 #define NO_FLAGS 0
 
-/*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-/* Default configuration for rx and tx thresholds etc. */
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-#define MP_DEFAULT_PTHRESH 36
-#define MP_DEFAULT_RX_HTHRESH 8
-#define MP_DEFAULT_TX_HTHRESH 0
-#define MP_DEFAULT_WTHRESH 0
-
-static const struct rte_eth_rxconf rx_conf_default = {
-		.rx_thresh = {
-				.pthresh = MP_DEFAULT_PTHRESH,
-				.hthresh = MP_DEFAULT_RX_HTHRESH,
-				.wthresh = MP_DEFAULT_WTHRESH,
-		},
-};
-
-static const struct rte_eth_txconf tx_conf_default = {
-		.tx_thresh = {
-				.pthresh = MP_DEFAULT_PTHRESH,
-				.hthresh = MP_DEFAULT_TX_HTHRESH,
-				.wthresh = MP_DEFAULT_WTHRESH,
-		},
-		.tx_free_thresh = 0, /* Use PMD default values */
-		.tx_rs_thresh = 0, /* Use PMD default values */
-};
-
 /* The mbuf pool for packet rx */
 struct rte_mempool *pktmbuf_pool;
 
@@ -183,13 +148,15 @@ init_port(uint8_t port_num)
 
 	for (q = 0; q < rx_rings; q++) {
 		retval = rte_eth_rx_queue_setup(port_num, q, rx_ring_size,
-				rte_eth_dev_socket_id(port_num), &rx_conf_default, pktmbuf_pool);
+				rte_eth_dev_socket_id(port_num),
+				NULL, pktmbuf_pool);
 		if (retval < 0) return retval;
 	}
 
 	for ( q = 0; q < tx_rings; q ++ ) {
 		retval = rte_eth_tx_queue_setup(port_num, q, tx_ring_size,
-				rte_eth_dev_socket_id(port_num), &tx_conf_default);
+				rte_eth_dev_socket_id(port_num),
+				NULL);
 		if (retval < 0) return retval;
 	}
 

@@ -89,36 +89,6 @@
 #define PARAM_PROC_ID "proc-id"
 #define PARAM_NUM_PROCS "num-procs"
 
-/*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-/* Default configuration for rx and tx thresholds etc. */
-static const struct rte_eth_rxconf rx_conf_default = {
-	.rx_thresh = {
-		.pthresh = 8,
-		.hthresh = 8,
-		.wthresh = 4,
-	},
-};
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-static const struct rte_eth_txconf tx_conf_default = {
-	.tx_thresh = {
-		.pthresh = 36,
-		.hthresh = 0,
-		.wthresh = 0,
-	},
-	.tx_free_thresh = 0, /* Use PMD default values */
-	.tx_rs_thresh = 0, /* Use PMD default values */
-};
-
 /* for each lcore, record the elements of the ports array to use */
 struct lcore_ports{
 	unsigned start_port;
@@ -277,7 +247,8 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 
 	for (q = 0; q < rx_rings; q ++) {
 		retval = rte_eth_rx_queue_setup(port, q, RX_RING_SIZE,
-				rte_eth_dev_socket_id(port), &rx_conf_default,
+				rte_eth_dev_socket_id(port),
+				NULL,
 				mbuf_pool);
 		if (retval < 0)
 			return retval;
@@ -285,7 +256,8 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 
 	for (q = 0; q < tx_rings; q ++) {
 		retval = rte_eth_tx_queue_setup(port, q, TX_RING_SIZE,
-				rte_eth_dev_socket_id(port), &tx_conf_default);
+				rte_eth_dev_socket_id(port),
+				NULL);
 		if (retval < 0)
 			return retval;
 	}

@@ -87,36 +87,6 @@ static uint32_t enabled_port_mask = 0;
 /* number of pools (if user does not specify any, 16 by default */
 static enum rte_eth_nb_pools num_pools = ETH_16_POOLS;
 
-/*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-/* Default configuration for rx and tx thresholds etc. */
-static const struct rte_eth_rxconf rx_conf_default = {
-	.rx_thresh = {
-		.pthresh = 8,
-		.hthresh = 8,
-		.wthresh = 4,
-	},
-};
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-static const struct rte_eth_txconf tx_conf_default = {
-	.tx_thresh = {
-		.pthresh = 36,
-		.hthresh = 0,
-		.wthresh = 0,
-	},
-	.tx_free_thresh = 0, /* Use PMD default values */
-	.tx_rs_thresh = 0, /* Use PMD default values */
-};
-
 /* empty vmdq+dcb configuration structure. Filled in programatically */
 static const struct rte_eth_conf vmdq_dcb_conf_default = {
 	.rxmode = {
@@ -212,7 +182,8 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 
 	for (q = 0; q < rxRings; q ++) {
 		retval = rte_eth_rx_queue_setup(port, q, rxRingSize,
-						rte_eth_dev_socket_id(port), &rx_conf_default,
+						rte_eth_dev_socket_id(port),
+						NULL,
 						mbuf_pool);
 		if (retval < 0)
 			return retval;
@@ -220,7 +191,8 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 
 	for (q = 0; q < txRings; q ++) {
 		retval = rte_eth_tx_queue_setup(port, q, txRingSize,
-						rte_eth_dev_socket_id(port), &tx_conf_default);
+						rte_eth_dev_socket_id(port),
+						NULL);
 		if (retval < 0)
 			return retval;
 	}

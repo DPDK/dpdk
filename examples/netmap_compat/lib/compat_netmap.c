@@ -713,7 +713,7 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 
 	for (i = 0; i < conf->nr_tx_rings; i++) {
 		ret = rte_eth_tx_queue_setup(portid, i, tx_slots,
-			conf->socket_id, conf->tx_conf);
+			conf->socket_id, NULL);
 
 		if (ret < 0) {
 			RTE_LOG(ERR, USER1,
@@ -724,7 +724,7 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 		}
 
 		ret = rte_eth_rx_queue_setup(portid, i, rx_slots,
-			conf->socket_id, conf->rx_conf, conf->pool);
+			conf->socket_id, NULL, conf->pool);
 
 		if (ret < 0) {
 			RTE_LOG(ERR, USER1,
@@ -737,8 +737,6 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 
 	/* copy config to the private storage. */
 	ports[portid].eth_conf = conf->eth_conf[0];
-	ports[portid].rx_conf = conf->rx_conf[0];
-	ports[portid].tx_conf = conf->tx_conf[0];
 	ports[portid].pool = conf->pool;
 	ports[portid].socket_id = conf->socket_id;
 	ports[portid].nr_tx_rings = conf->nr_tx_rings;

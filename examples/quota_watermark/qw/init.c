@@ -64,24 +64,6 @@ static const struct rte_eth_conf port_conf = {
 	},
 };
 
-static const struct rte_eth_rxconf rx_conf = {
-    .rx_thresh = {
-        .pthresh = 8,
-        .hthresh = 8,
-        .wthresh = 4,
-    },
-};
-
-static const struct rte_eth_txconf tx_conf = {
-    .tx_thresh = {
-        .pthresh = 36,
-        .hthresh = 0,
-        .wthresh = 0,
-    },
-    .tx_free_thresh = 0,
-    .tx_rs_thresh = 0,
-};
-
 static struct rte_eth_fc_conf fc_conf = {
     .mode       = RTE_FC_TX_PAUSE,
     .high_water = 80 * 510 / 100,
@@ -104,15 +86,17 @@ void configure_eth_port(uint8_t port_id)
 
     /* Initialize the port's RX queue */
     ret = rte_eth_rx_queue_setup(port_id, 0, RX_DESC_PER_QUEUE,
-                                 rte_eth_dev_socket_id(port_id), &rx_conf,
-                                 mbuf_pool);
+				rte_eth_dev_socket_id(port_id),
+				NULL,
+				mbuf_pool);
     if (ret < 0)
         rte_exit(EXIT_FAILURE, "Failed to setup RX queue on "
                                "port %u (error %d)\n", (unsigned) port_id, ret);
 
     /* Initialize the port's TX queue */
     ret = rte_eth_tx_queue_setup(port_id, 0, TX_DESC_PER_QUEUE,
-                                 rte_eth_dev_socket_id(port_id), &tx_conf);
+				rte_eth_dev_socket_id(port_id),
+				NULL);
     if (ret < 0)
         rte_exit(EXIT_FAILURE, "Failed to setup TX queue on "
                                "port %u (error %d)\n", (unsigned) port_id, ret);
