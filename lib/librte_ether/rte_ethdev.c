@@ -1022,6 +1022,9 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 		return (-EINVAL);
 	}
 
+	if (rx_conf == NULL)
+		rx_conf = &dev_info.default_rxconf;
+
 	ret = (*dev->dev_ops->rx_queue_setup)(dev, rx_queue_id, nb_rx_desc,
 					      socket_id, rx_conf, mp);
 	if (!ret) {
@@ -1039,6 +1042,7 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 		       const struct rte_eth_txconf *tx_conf)
 {
 	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
 
 	/* This function is only safe when called from the primary process
 	 * in a multi-process setup*/
@@ -1060,7 +1064,14 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 		return -EBUSY;
 	}
 
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_setup, -ENOTSUP);
+
+	(*dev->dev_ops->dev_infos_get)(dev, &dev_info);
+
+	if (tx_conf == NULL)
+		tx_conf = &dev_info.default_txconf;
+
 	return (*dev->dev_ops->tx_queue_setup)(dev, tx_queue_id, nb_tx_desc,
 					       socket_id, tx_conf);
 }

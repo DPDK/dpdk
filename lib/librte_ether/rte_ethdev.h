@@ -906,6 +906,8 @@ struct rte_eth_dev_info {
 	uint16_t max_vmdq_pools; /**< Maximum number of VMDq pools. */
 	uint32_t rx_offload_capa; /**< Device RX offload capabilities. */
 	uint32_t tx_offload_capa; /**< Device TX offload capabilities. */
+	struct rte_eth_rxconf default_rxconf; /**< Default RX configuration */
+	struct rte_eth_txconf default_txconf; /**< Default TX configuration */
 };
 
 /** Maximum name length for extended statistics counters */
@@ -1717,6 +1719,8 @@ extern int rte_eth_dev_configure(uint8_t port_id,
  *   the DMA memory allocated for the receive descriptors of the ring.
  * @param rx_conf
  *   The pointer to the configuration data to be used for the receive queue.
+ *   NULL value is allowed, in which case default RX configuration
+ *   will be used.
  *   The *rx_conf* structure contains an *rx_thresh* structure with the values
  *   of the Prefetch, Host, and Write-Back threshold registers of the receive
  *   ring.
@@ -1754,6 +1758,8 @@ extern int rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
  *   the DMA memory allocated for the transmit descriptors of the ring.
  * @param tx_conf
  *   The pointer to the configuration data to be used for the transmit queue.
+ *   NULL value is allowed, in which case default RX configuration
+ *   will be used.
  *   The *tx_conf* structure contains the following data:
  *   - The *tx_thresh* structure with the values of the Prefetch, Host, and
  *     Write-Back threshold registers of the transmit ring.
