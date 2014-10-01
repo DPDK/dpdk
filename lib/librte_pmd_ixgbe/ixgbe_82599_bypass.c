@@ -63,7 +63,7 @@ ixgbe_set_fiber_fixed_speed(struct ixgbe_hw *hw, ixgbe_link_speed speed)
 		rs = IXGBE_SFF_SOFT_RS_SELECT_1G;
 		break;
 	default:
-		PMD_DRV_LOG("Invalid fixed module speed");
+		PMD_DRV_LOG(ERR, "Invalid fixed module speed");
 		return;
 	}
 
@@ -72,7 +72,7 @@ ixgbe_set_fiber_fixed_speed(struct ixgbe_hw *hw, ixgbe_link_speed speed)
 					   IXGBE_I2C_EEPROM_DEV_ADDR2,
 					   &eeprom_data);
 	if (status) {
-		PMD_DRV_LOG("Failed to read Rx Rate Select RS0");
+		PMD_DRV_LOG(ERR, "Failed to read Rx Rate Select RS0");
 		goto out;
 	}
 
@@ -82,7 +82,7 @@ ixgbe_set_fiber_fixed_speed(struct ixgbe_hw *hw, ixgbe_link_speed speed)
 					    IXGBE_I2C_EEPROM_DEV_ADDR2,
 					    eeprom_data);
 	if (status) {
-		PMD_DRV_LOG("Failed to write Rx Rate Select RS0");
+		PMD_DRV_LOG(ERR, "Failed to write Rx Rate Select RS0");
 		goto out;
 	}
 
@@ -91,7 +91,7 @@ ixgbe_set_fiber_fixed_speed(struct ixgbe_hw *hw, ixgbe_link_speed speed)
 					   IXGBE_I2C_EEPROM_DEV_ADDR2,
 					   &eeprom_data);
 	if (status) {
-		PMD_DRV_LOG("Failed to read Rx Rate Select RS1");
+		PMD_DRV_LOG(ERR, "Failed to read Rx Rate Select RS1");
 		goto out;
 	}
 
@@ -101,7 +101,7 @@ ixgbe_set_fiber_fixed_speed(struct ixgbe_hw *hw, ixgbe_link_speed speed)
 					    IXGBE_I2C_EEPROM_DEV_ADDR2,
 					    eeprom_data);
 	if (status) {
-		PMD_DRV_LOG("Failed to write Rx Rate Select RS1");
+		PMD_DRV_LOG(ERR, "Failed to write Rx Rate Select RS1");
 		goto out;
 	}
 out:

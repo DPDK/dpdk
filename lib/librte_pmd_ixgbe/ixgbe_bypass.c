@@ -114,7 +114,7 @@ ixgbe_bypass_init(struct rte_eth_dev *dev)
 	/* Only allow BYPASS ops on the first port */
 	if (hw->device_id != IXGBE_DEV_ID_82599_BYPASS ||
 			hw->bus.func != 0) {
-		PMD_DRV_LOG("bypass function is not supported on that device");
+		PMD_DRV_LOG(ERR, "bypass function is not supported on that device");
 		return;
 	}
 
