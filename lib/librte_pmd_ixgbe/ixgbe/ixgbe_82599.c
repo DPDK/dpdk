@@ -54,25 +54,6 @@ STATIC s32 ixgbe_read_eeprom_82599(struct ixgbe_hw *hw,
 STATIC s32 ixgbe_read_eeprom_buffer_82599(struct ixgbe_hw *hw, u16 offset,
 					  u16 words, u16 *data);
 
-bool ixgbe_mng_enabled(struct ixgbe_hw *hw)
-{
-	u32 fwsm, manc, factps;
-
-	fwsm = IXGBE_READ_REG(hw, IXGBE_FWSM);
-	if ((fwsm & IXGBE_FWSM_MODE_MASK) != IXGBE_FWSM_FW_MODE_PT)
-		return false;
-
-	manc = IXGBE_READ_REG(hw, IXGBE_MANC);
-	if (!(manc & IXGBE_MANC_RCV_TCO_EN))
-		return false;
-
-	factps = IXGBE_READ_REG(hw, IXGBE_FACTPS);
-	if (factps & IXGBE_FACTPS_MNGCG)
-		return false;
-
-	return true;
-}
-
 void ixgbe_init_mac_link_ops_82599(struct ixgbe_hw *hw)
 {
 	struct ixgbe_mac_info *mac = &hw->mac;

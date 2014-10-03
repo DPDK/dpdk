@@ -4631,3 +4631,30 @@ void ixgbe_enable_rx_generic(struct ixgbe_hw *hw)
 		}
 	}
 }
+
+/**
+ * ixgbe_mng_enabled - Is the manageability engine enabled?
+ * @hw: pointer to hardware structure
+ *
+ * Returns true if the manageability engine is enabled.
+ **/
+bool ixgbe_mng_enabled(struct ixgbe_hw *hw)
+{
+	u32 fwsm, manc, factps;
+
+	fwsm = IXGBE_READ_REG(hw, IXGBE_FWSM);
+	if ((fwsm & IXGBE_FWSM_MODE_MASK) != IXGBE_FWSM_FW_MODE_PT)
+		return false;
+
+	manc = IXGBE_READ_REG(hw, IXGBE_MANC);
+	if (!(manc & IXGBE_MANC_RCV_TCO_EN))
+		return false;
+
+	if (hw->mac.type <= ixgbe_mac_X540) {
+		factps = IXGBE_READ_REG(hw, IXGBE_FACTPS);
+		if (factps & IXGBE_FACTPS_MNGCG)
+			return false;
+	}
+
+	return true;
+}
