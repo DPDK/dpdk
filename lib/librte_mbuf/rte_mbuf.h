@@ -115,7 +115,7 @@ extern "C" {
 #define PKT_TX_IEEE1588_TMST (1ULL << 51) /**< TX IEEE1588 packet to timestamp. */
 
 /* Use final bit of flags to indicate a control mbuf */
-#define CTRL_MBUF_FLAG       (1ULL << 63)
+#define CTRL_MBUF_FLAG       (1ULL << 63) /**< Mbuf contains control data */
 
 /**
  * Bit Mask to indicate what bits required for building TX context
