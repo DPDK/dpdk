@@ -2130,8 +2130,6 @@ u32 ixgbe_get_supported_physical_layer_82599(struct ixgbe_hw *hw)
 	u32 pma_pmd_10g_parallel = autoc & IXGBE_AUTOC_10G_PMA_PMD_MASK;
 	u32 pma_pmd_1g = autoc & IXGBE_AUTOC_1G_PMA_PMD_MASK;
 	u16 ext_ability = 0;
-	u8 comp_codes_10g = 0;
-	u8 comp_codes_1g = 0;
 
 	DEBUGFUNC("ixgbe_get_support_physical_layer_82599");
 
@@ -2199,40 +2197,7 @@ sfp_check:
 	/* SFP check must be done last since DA modules are sometimes used to
 	 * test KR mode -  we need to id KR mode correctly before SFP module.
 	 * Call identify_sfp because the pluggable module may have changed */
-	hw->phy.ops.identify_sfp(hw);
-	if (hw->phy.sfp_type == ixgbe_sfp_type_not_present)
-		goto out;
-
-	switch (hw->phy.type) {
-	case ixgbe_phy_sfp_passive_tyco:
-	case ixgbe_phy_sfp_passive_unknown:
-		physical_layer = IXGBE_PHYSICAL_LAYER_SFP_PLUS_CU;
-		break;
-	case ixgbe_phy_sfp_ftl_active:
-	case ixgbe_phy_sfp_active_unknown:
-		physical_layer = IXGBE_PHYSICAL_LAYER_SFP_ACTIVE_DA;
-		break;
-	case ixgbe_phy_sfp_avago:
-	case ixgbe_phy_sfp_ftl:
-	case ixgbe_phy_sfp_intel:
-	case ixgbe_phy_sfp_unknown:
-		hw->phy.ops.read_i2c_eeprom(hw,
-		      IXGBE_SFF_1GBE_COMP_CODES, &comp_codes_1g);
-		hw->phy.ops.read_i2c_eeprom(hw,
-		      IXGBE_SFF_10GBE_COMP_CODES, &comp_codes_10g);
-		if (comp_codes_10g & IXGBE_SFF_10GBASESR_CAPABLE)
-			physical_layer = IXGBE_PHYSICAL_LAYER_10GBASE_SR;
-		else if (comp_codes_10g & IXGBE_SFF_10GBASELR_CAPABLE)
-			physical_layer = IXGBE_PHYSICAL_LAYER_10GBASE_LR;
-		else if (comp_codes_1g & IXGBE_SFF_1GBASET_CAPABLE)
-			physical_layer = IXGBE_PHYSICAL_LAYER_1000BASE_T;
-		else if (comp_codes_1g & IXGBE_SFF_1GBASESX_CAPABLE)
-			physical_layer = IXGBE_PHYSICAL_LAYER_1000BASE_SX;
-		break;
-	default:
-		break;
-	}
-
+	physical_layer = ixgbe_get_supported_phy_sfp_layer_generic(hw);
 out:
 	return physical_layer;
 }
