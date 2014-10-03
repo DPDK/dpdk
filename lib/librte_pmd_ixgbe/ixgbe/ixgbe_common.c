@@ -165,6 +165,7 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
 	DEBUGFUNC("ixgbe_device_supports_autoneg_fc");
 
 	switch (hw->phy.media_type) {
+	case ixgbe_media_type_fiber_qsfp:
 	case ixgbe_media_type_fiber:
 		hw->mac.ops.check_link(hw, &speed, &link_up, false);
 		/* if link is down, assume supported */
@@ -241,6 +242,7 @@ STATIC s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
 			goto out;
 
 		/* only backplane uses autoc so fall though */
+	case ixgbe_media_type_fiber_qsfp:
 	case ixgbe_media_type_fiber:
 		reg = IXGBE_READ_REG(hw, IXGBE_PCS1GANA);
 
@@ -3020,6 +3022,7 @@ void ixgbe_fc_autoneg(struct ixgbe_hw *hw)
 
 	switch (hw->phy.media_type) {
 	/* Autoneg flow control on fiber adapters */
+	case ixgbe_media_type_fiber_qsfp:
 	case ixgbe_media_type_fiber:
 		if (speed == IXGBE_LINK_SPEED_1GB_FULL)
 			ret_val = ixgbe_fc_autoneg_fiber(hw);

@@ -977,6 +977,9 @@ s32 ixgbe_identify_module_generic(struct ixgbe_hw *hw)
 		status = ixgbe_identify_sfp_module_generic(hw);
 		break;
 
+	case ixgbe_media_type_fiber_qsfp:
+		status = ixgbe_identify_qsfp_module_generic(hw);
+		break;
 
 	default:
 		hw->phy.sfp_type = ixgbe_sfp_type_not_present;
@@ -1073,7 +1076,7 @@ s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw)
 				hw->phy.sfp_type = ixgbe_sfp_type_lr;
 			else
 				hw->phy.sfp_type = ixgbe_sfp_type_unknown;
-		} else if (hw->mac.type == ixgbe_mac_82599EB) {
+		} else {
 			if (cable_tech & IXGBE_SFF_DA_PASSIVE_CABLE) {
 				if (hw->bus.lan_id == 0)
 					hw->phy.sfp_type =
@@ -1318,10 +1321,12 @@ s32 ixgbe_get_supported_phy_sfp_layer_generic(struct ixgbe_hw *hw)
 	switch (hw->phy.type) {
 	case ixgbe_phy_sfp_passive_tyco:
 	case ixgbe_phy_sfp_passive_unknown:
+	case ixgbe_phy_qsfp_passive_unknown:
 		physical_layer = IXGBE_PHYSICAL_LAYER_SFP_PLUS_CU;
 		break;
 	case ixgbe_phy_sfp_ftl_active:
 	case ixgbe_phy_sfp_active_unknown:
+	case ixgbe_phy_qsfp_active_unknown:
 		physical_layer = IXGBE_PHYSICAL_LAYER_SFP_ACTIVE_DA;
 		break;
 	case ixgbe_phy_sfp_avago:
@@ -1341,11 +1346,219 @@ s32 ixgbe_get_supported_phy_sfp_layer_generic(struct ixgbe_hw *hw)
 		else if (comp_codes_1g & IXGBE_SFF_1GBASESX_CAPABLE)
 			physical_layer = IXGBE_PHYSICAL_LAYER_1000BASE_SX;
 		break;
+	case ixgbe_phy_qsfp_intel:
+	case ixgbe_phy_qsfp_unknown:
+		hw->phy.ops.read_i2c_eeprom(hw,
+		      IXGBE_SFF_QSFP_10GBE_COMP, &comp_codes_10g);
+		if (comp_codes_10g & IXGBE_SFF_10GBASESR_CAPABLE)
+			physical_layer = IXGBE_PHYSICAL_LAYER_10GBASE_SR;
+		else if (comp_codes_10g & IXGBE_SFF_10GBASELR_CAPABLE)
+			physical_layer = IXGBE_PHYSICAL_LAYER_10GBASE_LR;
+		break;
 	default:
 		break;
 	}
 
 	return physical_layer;
+}
+
+/**
+ *  ixgbe_identify_qsfp_module_generic - Identifies QSFP modules
+ *  @hw: pointer to hardware structure
+ *
+ *  Searches for and identifies the QSFP module and assigns appropriate PHY type
+ **/
+s32 ixgbe_identify_qsfp_module_generic(struct ixgbe_hw *hw)
+{
+	s32 status = IXGBE_ERR_PHY_ADDR_INVALID;
+	u32 vendor_oui = 0;
+	enum ixgbe_sfp_type stored_sfp_type = hw->phy.sfp_type;
+	u8 identifier = 0;
+	u8 comp_codes_1g = 0;
+	u8 comp_codes_10g = 0;
+	u8 oui_bytes[3] = {0, 0, 0};
+	u16 enforce_sfp = 0;
+	u8 connector = 0;
+	u8 cable_length = 0;
+	u8 device_tech = 0;
+	bool active_cable = false;
+
+	DEBUGFUNC("ixgbe_identify_qsfp_module_generic");
+
+	if (hw->mac.ops.get_media_type(hw) != ixgbe_media_type_fiber_qsfp) {
+		hw->phy.sfp_type = ixgbe_sfp_type_not_present;
+		status = IXGBE_ERR_SFP_NOT_PRESENT;
+		goto out;
+	}
+
+	status = hw->phy.ops.read_i2c_eeprom(hw, IXGBE_SFF_IDENTIFIER,
+					     &identifier);
+
+	if (status != IXGBE_SUCCESS)
+		goto err_read_i2c_eeprom;
+
+	if (identifier != IXGBE_SFF_IDENTIFIER_QSFP_PLUS) {
+		hw->phy.type = ixgbe_phy_sfp_unsupported;
+		status = IXGBE_ERR_SFP_NOT_SUPPORTED;
+		goto out;
+	}
+
+	hw->phy.id = identifier;
+
+	/* LAN ID is needed for sfp_type determination */
+	hw->mac.ops.set_lan_id(hw);
+
+	status = hw->phy.ops.read_i2c_eeprom(hw, IXGBE_SFF_QSFP_10GBE_COMP,
+					     &comp_codes_10g);
+
+	if (status != IXGBE_SUCCESS)
+		goto err_read_i2c_eeprom;
+
+	status = hw->phy.ops.read_i2c_eeprom(hw, IXGBE_SFF_QSFP_1GBE_COMP,
+					     &comp_codes_1g);
+
+	if (status != IXGBE_SUCCESS)
+		goto err_read_i2c_eeprom;
+
+	if (comp_codes_10g & IXGBE_SFF_QSFP_DA_PASSIVE_CABLE) {
+		hw->phy.type = ixgbe_phy_qsfp_passive_unknown;
+		if (hw->bus.lan_id == 0)
+			hw->phy.sfp_type = ixgbe_sfp_type_da_cu_core0;
+		else
+			hw->phy.sfp_type = ixgbe_sfp_type_da_cu_core1;
+	} else if (comp_codes_10g & (IXGBE_SFF_10GBASESR_CAPABLE |
+				     IXGBE_SFF_10GBASELR_CAPABLE)) {
+		if (hw->bus.lan_id == 0)
+			hw->phy.sfp_type = ixgbe_sfp_type_srlr_core0;
+		else
+			hw->phy.sfp_type = ixgbe_sfp_type_srlr_core1;
+	} else {
+		if (comp_codes_10g & IXGBE_SFF_QSFP_DA_ACTIVE_CABLE)
+			active_cable = true;
+
+		if (!active_cable) {
+			/* check for active DA cables that pre-date
+			 * SFF-8436 v3.6 */
+			hw->phy.ops.read_i2c_eeprom(hw,
+					IXGBE_SFF_QSFP_CONNECTOR,
+					&connector);
+
+			hw->phy.ops.read_i2c_eeprom(hw,
+					IXGBE_SFF_QSFP_CABLE_LENGTH,
+					&cable_length);
+
+			hw->phy.ops.read_i2c_eeprom(hw,
+					IXGBE_SFF_QSFP_DEVICE_TECH,
+					&device_tech);
+
+			if ((connector ==
+				     IXGBE_SFF_QSFP_CONNECTOR_NOT_SEPARABLE) &&
+			    (cable_length > 0) &&
+			    ((device_tech >> 4) ==
+				     IXGBE_SFF_QSFP_TRANSMITER_850NM_VCSEL))
+				active_cable = true;
+		}
+
+		if (active_cable) {
+			hw->phy.type = ixgbe_phy_qsfp_active_unknown;
+			if (hw->bus.lan_id == 0)
+				hw->phy.sfp_type =
+						ixgbe_sfp_type_da_act_lmt_core0;
+			else
+				hw->phy.sfp_type =
+						ixgbe_sfp_type_da_act_lmt_core1;
+		} else {
+			/* unsupported module type */
+			hw->phy.type = ixgbe_phy_sfp_unsupported;
+			status = IXGBE_ERR_SFP_NOT_SUPPORTED;
+			goto out;
+		}
+	}
+
+	if (hw->phy.sfp_type != stored_sfp_type)
+		hw->phy.sfp_setup_needed = true;
+
+	/* Determine if the QSFP+ PHY is dual speed or not. */
+	hw->phy.multispeed_fiber = false;
+	if (((comp_codes_1g & IXGBE_SFF_1GBASESX_CAPABLE) &&
+	   (comp_codes_10g & IXGBE_SFF_10GBASESR_CAPABLE)) ||
+	   ((comp_codes_1g & IXGBE_SFF_1GBASELX_CAPABLE) &&
+	   (comp_codes_10g & IXGBE_SFF_10GBASELR_CAPABLE)))
+		hw->phy.multispeed_fiber = true;
+
+	/* Determine PHY vendor for optical modules */
+	if (comp_codes_10g & (IXGBE_SFF_10GBASESR_CAPABLE |
+			      IXGBE_SFF_10GBASELR_CAPABLE))  {
+		status = hw->phy.ops.read_i2c_eeprom(hw,
+					    IXGBE_SFF_QSFP_VENDOR_OUI_BYTE0,
+					    &oui_bytes[0]);
+
+		if (status != IXGBE_SUCCESS)
+			goto err_read_i2c_eeprom;
+
+		status = hw->phy.ops.read_i2c_eeprom(hw,
+					    IXGBE_SFF_QSFP_VENDOR_OUI_BYTE1,
+					    &oui_bytes[1]);
+
+		if (status != IXGBE_SUCCESS)
+			goto err_read_i2c_eeprom;
+
+		status = hw->phy.ops.read_i2c_eeprom(hw,
+					    IXGBE_SFF_QSFP_VENDOR_OUI_BYTE2,
+					    &oui_bytes[2]);
+
+		if (status != IXGBE_SUCCESS)
+			goto err_read_i2c_eeprom;
+
+		vendor_oui =
+		  ((oui_bytes[0] << IXGBE_SFF_VENDOR_OUI_BYTE0_SHIFT) |
+		   (oui_bytes[1] << IXGBE_SFF_VENDOR_OUI_BYTE1_SHIFT) |
+		   (oui_bytes[2] << IXGBE_SFF_VENDOR_OUI_BYTE2_SHIFT));
+
+		if (vendor_oui == IXGBE_SFF_VENDOR_OUI_INTEL)
+			hw->phy.type = ixgbe_phy_qsfp_intel;
+		else
+			hw->phy.type = ixgbe_phy_qsfp_unknown;
+
+		ixgbe_get_device_caps(hw, &enforce_sfp);
+		if (!(enforce_sfp & IXGBE_DEVICE_CAPS_ALLOW_ANY_SFP)) {
+			/* Make sure we're a supported PHY type */
+			if (hw->phy.type == ixgbe_phy_qsfp_intel) {
+				status = IXGBE_SUCCESS;
+			} else {
+				if (hw->allow_unsupported_sfp == true) {
+					EWARN(hw, "WARNING: Intel (R) Network "
+					      "Connections are quality tested "
+					      "using Intel (R) Ethernet Optics."
+					      " Using untested modules is not "
+					      "supported and may cause unstable"
+					      " operation or damage to the "
+					      "module or the adapter. Intel "
+					      "Corporation is not responsible "
+					      "for any harm caused by using "
+					      "untested modules.\n", status);
+					status = IXGBE_SUCCESS;
+				} else {
+					DEBUGOUT("QSFP module not supported\n");
+					hw->phy.type =
+						ixgbe_phy_sfp_unsupported;
+					status = IXGBE_ERR_SFP_NOT_SUPPORTED;
+				}
+			}
+		} else {
+			status = IXGBE_SUCCESS;
+		}
+	}
+
+out:
+	return status;
+
+err_read_i2c_eeprom:
+	hw->phy.sfp_type = ixgbe_sfp_type_not_present;
+	hw->phy.id = 0;
+	hw->phy.type = ixgbe_phy_unknown;
+
+	return IXGBE_ERR_SFP_NOT_PRESENT;
 }
 
 
