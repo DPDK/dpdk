@@ -68,6 +68,12 @@ extern "C" {
 /*
  * Packet Offload Features Flags. It also carry packet type information.
  * Critical resources. Both rx/tx shared these bits. Be cautious on any change
+ *
+ * - RX flags start at bit position zero, and get added to the left of previous
+ *   flags.
+ * - The most-significant 8 bits are reserved for generic mbuf flags
+ * - TX flags therefore start at bit position 55 (i.e. 63-8), and new flags get
+ *   added to the right of the previously defined flags
  */
 #define PKT_RX_VLAN_PKT      0x0001 /**< RX packet is a 802.1q VLAN packet. */
 #define PKT_RX_RSS_HASH      0x0002 /**< RX packet with RSS hash result. */
@@ -86,26 +92,27 @@ extern "C" {
 #define PKT_RX_IEEE1588_PTP  0x0200 /**< RX IEEE1588 L2 Ethernet PT Packet. */
 #define PKT_RX_IEEE1588_TMST 0x0400 /**< RX IEEE1588 L2/L4 timestamped packet.*/
 
-#define PKT_TX_VLAN_PKT      0x0800 /**< TX packet is a 802.1q VLAN packet. */
-#define PKT_TX_IP_CKSUM      0x1000 /**< IP cksum of TX pkt. computed by NIC. */
-#define PKT_TX_IPV4_CSUM     0x1000 /**< Alias of PKT_TX_IP_CKSUM. */
+#define PKT_TX_VLAN_PKT      (1ULL << 55) /**< TX packet is a 802.1q VLAN packet. */
+#define PKT_TX_IP_CKSUM      (1ULL << 54) /**< IP cksum of TX pkt. computed by NIC. */
+#define PKT_TX_IPV4_CSUM     PKT_TX_IP_CKSUM /**< Alias of PKT_TX_IP_CKSUM. */
 #define PKT_TX_IPV4          PKT_RX_IPV4_HDR /**< IPv4 with no IP checksum offload. */
 #define PKT_TX_IPV6          PKT_RX_IPV6_HDR /**< IPv6 packet */
 
 /*
- * Bit 14~13 used for L4 packet type with checksum enabled.
+ * Bits 52+53 used for L4 packet type with checksum enabled.
  *     00: Reserved
  *     01: TCP checksum
  *     10: SCTP checksum
  *     11: UDP checksum
  */
-#define PKT_TX_L4_MASK       0x6000 /**< Mask bits for L4 checksum offload request. */
-#define PKT_TX_L4_NO_CKSUM   0x0000 /**< Disable L4 cksum of TX pkt. */
-#define PKT_TX_TCP_CKSUM     0x2000 /**< TCP cksum of TX pkt. computed by NIC. */
-#define PKT_TX_SCTP_CKSUM    0x4000 /**< SCTP cksum of TX pkt. computed by NIC. */
-#define PKT_TX_UDP_CKSUM     0x6000 /**< UDP cksum of TX pkt. computed by NIC. */
-/* Bit 15 */
-#define PKT_TX_IEEE1588_TMST 0x8000 /**< TX IEEE1588 packet to timestamp. */
+#define PKT_TX_L4_NO_CKSUM   (0ULL << 52) /**< Disable L4 cksum of TX pkt. */
+#define PKT_TX_TCP_CKSUM     (1ULL << 52) /**< TCP cksum of TX pkt. computed by NIC. */
+#define PKT_TX_SCTP_CKSUM    (2ULL << 52) /**< SCTP cksum of TX pkt. computed by NIC. */
+#define PKT_TX_UDP_CKSUM     (3ULL << 52) /**< UDP cksum of TX pkt. computed by NIC. */
+#define PKT_TX_L4_MASK       (3ULL << 52) /**< Mask for L4 cksum offload request. */
+
+/* Bit 51 - IEEE1588*/
+#define PKT_TX_IEEE1588_TMST (1ULL << 51) /**< TX IEEE1588 packet to timestamp. */
 
 /* Use final bit of flags to indicate a control mbuf */
 #define CTRL_MBUF_FLAG       (1ULL << 63)
