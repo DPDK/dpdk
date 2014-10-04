@@ -1451,6 +1451,7 @@ cmd_config_rxtx_queue_parsed(void *parsed_result,
 	struct cmd_config_rxtx_queue *res = parsed_result;
 	uint8_t isrx;
 	uint8_t isstart;
+	int ret = 0;
 
 	if (test_done == 0) {
 		printf("Please stop forwarding first\n");
@@ -1489,13 +1490,16 @@ cmd_config_rxtx_queue_parsed(void *parsed_result,
 	}
 
 	if (isstart && isrx)
-		rte_eth_dev_rx_queue_start(res->portid, res->qid);
+		ret = rte_eth_dev_rx_queue_start(res->portid, res->qid);
 	else if (!isstart && isrx)
-		rte_eth_dev_rx_queue_stop(res->portid, res->qid);
+		ret = rte_eth_dev_rx_queue_stop(res->portid, res->qid);
 	else if (isstart && !isrx)
-		rte_eth_dev_tx_queue_start(res->portid, res->qid);
+		ret = rte_eth_dev_tx_queue_start(res->portid, res->qid);
 	else
-		rte_eth_dev_tx_queue_stop(res->portid, res->qid);
+		ret = rte_eth_dev_tx_queue_stop(res->portid, res->qid);
+
+	if (ret == -ENOTSUP)
+		printf("Function not supported in PMD driver\n");
 }
 
 cmdline_parse_token_string_t cmd_config_rxtx_queue_port =
