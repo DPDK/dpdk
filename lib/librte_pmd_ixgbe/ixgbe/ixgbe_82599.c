@@ -388,6 +388,10 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw)
 	/* Manageability interface */
 	mac->ops.set_fw_drv_ver = &ixgbe_set_fw_drv_ver_generic;
 
+	mac->ops.get_thermal_sensor_data =
+					 &ixgbe_get_thermal_sensor_data_generic;
+	mac->ops.init_thermal_sensor_thresh =
+				      &ixgbe_init_thermal_sensor_thresh_generic;
 
 	mac->ops.get_rtrup2tc = &ixgbe_dcb_get_rtrup2tc_generic;
 

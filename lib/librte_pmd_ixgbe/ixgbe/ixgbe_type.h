@@ -174,6 +174,26 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_I2C_DATA_OUT	0x00000008
 #define IXGBE_I2C_CLOCK_STRETCHING_TIMEOUT	500
 
+#define IXGBE_I2C_THERMAL_SENSOR_ADDR	0xF8
+#define IXGBE_EMC_INTERNAL_DATA		0x00
+#define IXGBE_EMC_INTERNAL_THERM_LIMIT	0x20
+#define IXGBE_EMC_DIODE1_DATA		0x01
+#define IXGBE_EMC_DIODE1_THERM_LIMIT	0x19
+#define IXGBE_EMC_DIODE2_DATA		0x23
+#define IXGBE_EMC_DIODE2_THERM_LIMIT	0x1A
+
+#define IXGBE_MAX_SENSORS		3
+
+struct ixgbe_thermal_diode_data {
+	u8 location;
+	u8 temp;
+	u8 caution_thresh;
+	u8 max_op_thresh;
+};
+
+struct ixgbe_thermal_sensor_data {
+	struct ixgbe_thermal_diode_data sensor[IXGBE_MAX_SENSORS];
+};
 
 /* Interrupt Registers */
 #define IXGBE_EICR		0x00800
@@ -1876,6 +1896,20 @@ enum {
 #define IXGBE_ALT_MAC_ADDR_PTR		0x37
 #define IXGBE_FREE_SPACE_PTR		0X3E
 
+/* External Thermal Sensor Config */
+#define IXGBE_ETS_CFG			0x26
+#define IXGBE_ETS_LTHRES_DELTA_MASK	0x07C0
+#define IXGBE_ETS_LTHRES_DELTA_SHIFT	6
+#define IXGBE_ETS_TYPE_MASK		0x0038
+#define IXGBE_ETS_TYPE_SHIFT		3
+#define IXGBE_ETS_TYPE_EMC		0x000
+#define IXGBE_ETS_NUM_SENSORS_MASK	0x0007
+#define IXGBE_ETS_DATA_LOC_MASK		0x3C00
+#define IXGBE_ETS_DATA_LOC_SHIFT	10
+#define IXGBE_ETS_DATA_INDEX_MASK	0x0300
+#define IXGBE_ETS_DATA_INDEX_SHIFT	8
+#define IXGBE_ETS_DATA_HTHRESH_MASK	0x00FF
+
 #define IXGBE_SAN_MAC_ADDR_PTR		0x28
 #define IXGBE_DEVICE_CAPS		0x2C
 #define IXGBE_SERIAL_NUMBER_MAC_ADDR	0x11
@@ -3160,6 +3194,8 @@ struct ixgbe_mac_operations {
 
 	/* Manageability interface */
 	s32 (*set_fw_drv_ver)(struct ixgbe_hw *, u8, u8, u8, u8);
+	s32 (*get_thermal_sensor_data)(struct ixgbe_hw *);
+	s32 (*init_thermal_sensor_thresh)(struct ixgbe_hw *hw);
 	s32 (*dmac_config)(struct ixgbe_hw *hw);
 	s32 (*dmac_update_tcs)(struct ixgbe_hw *hw);
 	s32 (*dmac_config_tcs)(struct ixgbe_hw *hw);
@@ -3232,6 +3268,8 @@ struct ixgbe_mac_info {
 	bool orig_link_settings_stored;
 	bool autotry_restart;
 	u8 flags;
+	struct ixgbe_thermal_sensor_data  thermal_sensor_data;
+	bool thermal_sensor_enabled;
 	bool set_lben;
 };
 

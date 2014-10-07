@@ -1018,6 +1018,30 @@ s32 ixgbe_set_fw_drv_ver(struct ixgbe_hw *hw, u8 maj, u8 min, u8 build,
 }
 
 
+/**
+ *  ixgbe_get_thermal_sensor_data - Gathers thermal sensor data
+ *  @hw: pointer to hardware structure
+ *
+ *  Updates the temperatures in mac.thermal_sensor_data
+ **/
+s32 ixgbe_get_thermal_sensor_data(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.get_thermal_sensor_data, (hw),
+				IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ *  ixgbe_init_thermal_sensor_thresh - Inits thermal sensor thresholds
+ *  @hw: pointer to hardware structure
+ *
+ *  Inits the thermal sensor thresholds according to the NVM map
+ **/
+s32 ixgbe_init_thermal_sensor_thresh(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.init_thermal_sensor_thresh, (hw),
+				IXGBE_NOT_IMPLEMENTED);
+}
+
 
 
 /**

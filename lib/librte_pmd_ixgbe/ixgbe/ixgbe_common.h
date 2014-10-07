@@ -165,6 +165,18 @@ extern s32 ixgbe_reset_pipeline_82599(struct ixgbe_hw *hw);
 extern void ixgbe_stop_mac_link_on_d3_82599(struct ixgbe_hw *hw);
 bool ixgbe_mng_enabled(struct ixgbe_hw *hw);
 
+#define IXGBE_I2C_THERMAL_SENSOR_ADDR	0xF8
+#define IXGBE_EMC_INTERNAL_DATA		0x00
+#define IXGBE_EMC_INTERNAL_THERM_LIMIT	0x20
+#define IXGBE_EMC_DIODE1_DATA		0x01
+#define IXGBE_EMC_DIODE1_THERM_LIMIT	0x19
+#define IXGBE_EMC_DIODE2_DATA		0x23
+#define IXGBE_EMC_DIODE2_THERM_LIMIT	0x1A
+#define IXGBE_EMC_DIODE3_DATA		0x2A
+#define IXGBE_EMC_DIODE3_THERM_LIMIT	0x30
+
+s32 ixgbe_get_thermal_sensor_data_generic(struct ixgbe_hw *hw);
+s32 ixgbe_init_thermal_sensor_thresh_generic(struct ixgbe_hw *hw);
 void ixgbe_disable_rx_generic(struct ixgbe_hw *hw);
 void ixgbe_enable_rx_generic(struct ixgbe_hw *hw);
 #endif /* IXGBE_COMMON */
