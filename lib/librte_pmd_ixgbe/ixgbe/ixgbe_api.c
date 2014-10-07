@@ -1155,6 +1155,53 @@ s32 ixgbe_write_iosf_sb_reg(struct ixgbe_hw *hw, u32 reg_addr,
 }
 
 /**
+ *  ixgbe_disable_mdd - Disable malicious driver detection
+ *  @hw: pointer to hardware structure
+ *
+ **/
+void ixgbe_disable_mdd(struct ixgbe_hw *hw)
+{
+	if (hw->mac.ops.disable_mdd)
+		hw->mac.ops.disable_mdd(hw);
+}
+
+/**
+ *  ixgbe_enable_mdd - Enable malicious driver detection
+ *  @hw: pointer to hardware structure
+ *
+ **/
+void ixgbe_enable_mdd(struct ixgbe_hw *hw)
+{
+	if (hw->mac.ops.enable_mdd)
+		hw->mac.ops.enable_mdd(hw);
+}
+
+/**
+ *  ixgbe_mdd_event - Handle malicious driver detection event
+ *  @hw: pointer to hardware structure
+ *  @vf_bitmap: vf bitmap of malicious vfs
+ *
+ **/
+void ixgbe_mdd_event(struct ixgbe_hw *hw, u32 *vf_bitmap)
+{
+	if (hw->mac.ops.mdd_event)
+		hw->mac.ops.mdd_event(hw, vf_bitmap);
+}
+
+/**
+ *  ixgbe_restore_mdd_vf - Restore VF that was disabled during malicious driver
+ *  detection event
+ *  @hw: pointer to hardware structure
+ *  @vf: vf index
+ *
+ **/
+void ixgbe_restore_mdd_vf(struct ixgbe_hw *hw, u32 vf)
+{
+	if (hw->mac.ops.restore_mdd_vf)
+		hw->mac.ops.restore_mdd_vf(hw, vf);
+}
+
+/**
  *  ixgbe_read_analog_reg8 - Reads 8 bit analog register
  *  @hw: pointer to hardware structure
  *  @reg: analog register to read

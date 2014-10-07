@@ -191,6 +191,10 @@ s32 ixgbe_read_iosf_sb_reg(struct ixgbe_hw *hw, u32 reg_addr,
 			u32 device_type, u32 *phy_data);
 s32 ixgbe_write_iosf_sb_reg(struct ixgbe_hw *hw, u32 reg_addr,
 			u32 device_type, u32 phy_data);
+void ixgbe_disable_mdd(struct ixgbe_hw *hw);
+void ixgbe_enable_mdd(struct ixgbe_hw *hw);
+void ixgbe_mdd_event(struct ixgbe_hw *hw, u32 *vf_bitmap);
+void ixgbe_restore_mdd_vf(struct ixgbe_hw *hw, u32 vf);
 void ixgbe_disable_rx(struct ixgbe_hw *hw);
 void ixgbe_enable_rx(struct ixgbe_hw *hw);
 

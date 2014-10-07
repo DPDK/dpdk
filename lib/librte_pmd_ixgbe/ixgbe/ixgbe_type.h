@@ -3261,6 +3261,10 @@ struct ixgbe_mac_operations {
 	void (*enable_rx)(struct ixgbe_hw *hw);
 	s32 (*read_iosf_sb_reg)(struct ixgbe_hw *, u32, u32, u32 *);
 	s32 (*write_iosf_sb_reg)(struct ixgbe_hw *, u32, u32, u32);
+	void (*disable_mdd)(struct ixgbe_hw *hw);
+	void (*enable_mdd)(struct ixgbe_hw *hw);
+	void (*mdd_event)(struct ixgbe_hw *hw, u32 *vf_bitmap);
+	void (*restore_mdd_vf)(struct ixgbe_hw *hw, u32 vf);
 };
 
 struct ixgbe_phy_operations {
