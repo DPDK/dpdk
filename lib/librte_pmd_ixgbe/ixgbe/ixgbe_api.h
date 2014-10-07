@@ -183,6 +183,8 @@ s32 ixgbe_dmac_config(struct ixgbe_hw *hw);
 s32 ixgbe_dmac_update_tcs(struct ixgbe_hw *hw);
 s32 ixgbe_dmac_config_tcs(struct ixgbe_hw *hw);
 s32 ixgbe_setup_eee(struct ixgbe_hw *hw, bool enable_eee);
+void ixgbe_set_source_address_pruning(struct ixgbe_hw *hw, bool enable,
+				      unsigned int vf);
 void ixgbe_disable_rx(struct ixgbe_hw *hw);
 void ixgbe_enable_rx(struct ixgbe_hw *hw);
 

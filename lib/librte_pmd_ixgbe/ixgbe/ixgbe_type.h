@@ -3252,6 +3252,8 @@ struct ixgbe_mac_operations {
 	void (*get_rtrup2tc)(struct ixgbe_hw *hw, u8 *map);
 	s32 (*setup_eee)(struct ixgbe_hw *hw, bool enable_eee);
 	void (*set_ethertype_anti_spoofing)(struct ixgbe_hw *, bool, int);
+	void (*set_source_address_pruning)(struct ixgbe_hw *, bool,
+					   unsigned int);
 	void (*disable_rx)(struct ixgbe_hw *hw);
 	void (*enable_rx)(struct ixgbe_hw *hw);
 };

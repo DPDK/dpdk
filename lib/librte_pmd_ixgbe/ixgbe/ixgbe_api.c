@@ -1097,6 +1097,19 @@ s32 ixgbe_setup_eee(struct ixgbe_hw *hw, bool enable_eee)
 }
 
 /**
+ * ixgbe_set_source_address_pruning - Enable/Disable source address pruning
+ * @hw: pointer to hardware structure
+ * @enbale: enable or disable source address pruning
+ * @pool: Rx pool - Rx pool to toggle source address pruning
+ **/
+void ixgbe_set_source_address_pruning(struct ixgbe_hw *hw, bool enable,
+				      unsigned int pool)
+{
+	if (hw->mac.ops.set_source_address_pruning)
+		hw->mac.ops.set_source_address_pruning(hw, enable, pool);
+}
+
+/**
  *  ixgbe_read_analog_reg8 - Reads 8 bit analog register
  *  @hw: pointer to hardware structure
  *  @reg: analog register to read
