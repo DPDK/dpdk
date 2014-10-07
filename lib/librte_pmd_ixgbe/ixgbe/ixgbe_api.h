@@ -182,6 +182,7 @@ s32 ixgbe_get_fcoe_boot_status(struct ixgbe_hw *hw, u16 *bs);
 s32 ixgbe_dmac_config(struct ixgbe_hw *hw);
 s32 ixgbe_dmac_update_tcs(struct ixgbe_hw *hw);
 s32 ixgbe_dmac_config_tcs(struct ixgbe_hw *hw);
+s32 ixgbe_setup_eee(struct ixgbe_hw *hw, bool enable_eee);
 void ixgbe_disable_rx(struct ixgbe_hw *hw);
 void ixgbe_enable_rx(struct ixgbe_hw *hw);
 

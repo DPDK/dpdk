@@ -1080,6 +1080,21 @@ s32 ixgbe_dmac_config_tcs(struct ixgbe_hw *hw)
 				IXGBE_NOT_IMPLEMENTED);
 }
 
+/**
+ *  ixgbe_setup_eee - Enable/disable EEE support
+ *  @hw: pointer to the HW structure
+ *  @enable_eee: boolean flag to enable EEE
+ *
+ *  Enable/disable EEE based on enable_ee flag.
+ *  Auto-negotiation must be started after BASE-T EEE bits in PHY register 7.3C
+ *  are modified.
+ *
+ **/
+s32 ixgbe_setup_eee(struct ixgbe_hw *hw, bool enable_eee)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.setup_eee, (hw, enable_eee),
+			IXGBE_NOT_IMPLEMENTED);
+}
 
 /**
  *  ixgbe_read_analog_reg8 - Reads 8 bit analog register

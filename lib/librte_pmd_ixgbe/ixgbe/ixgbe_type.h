@@ -551,6 +551,21 @@ struct ixgbe_dmac_config {
 #define IXGBE_DMCTH_DMACRXT_MASK	0x000001FF /* Receive Threshold mask */
 #define IXGBE_DMCTLX_TTLX_MASK		0x00000FFF /* Time to Lx request mask */
 
+/* EEE registers */
+#define IXGBE_EEER			0x043A0 /* EEE register */
+#define IXGBE_EEE_STAT			0x04398 /* EEE Status */
+#define IXGBE_EEE_SU			0x04380 /* EEE Set up */
+#define IXGBE_TLPIC			0x041F4 /* EEE Tx LPI count */
+#define IXGBE_RLPIC			0x041F8 /* EEE Rx LPI count */
+
+/* EEE register fields */
+#define IXGBE_EEER_TX_LPI_EN		0x00010000 /* Enable EEE LPI TX path */
+#define IXGBE_EEER_RX_LPI_EN		0x00020000 /* Enable EEE LPI RX path */
+#define IXGBE_EEE_STAT_NEG		0x20000000 /* EEE support neg on link */
+#define IXGBE_EEE_RX_LPI_STATUS		0x40000000 /* RX Link in LPI status */
+#define IXGBE_EEE_TX_LPI_STATUS		0x80000000 /* TX Link in LPI status */
+
+
 
 /* Security Control Registers */
 #define IXGBE_SECTXCTRL		0x08800
@@ -3235,8 +3250,7 @@ struct ixgbe_mac_operations {
 	s32 (*dmac_update_tcs)(struct ixgbe_hw *hw);
 	s32 (*dmac_config_tcs)(struct ixgbe_hw *hw);
 	void (*get_rtrup2tc)(struct ixgbe_hw *hw, u8 *map);
-	s32 (*set_eee)(struct ixgbe_hw *hw, bool enable_eee);
-	s32 (*eee_linkup)(struct ixgbe_hw *hw, bool eee_enabled);
+	s32 (*setup_eee)(struct ixgbe_hw *hw, bool enable_eee);
 	void (*set_ethertype_anti_spoofing)(struct ixgbe_hw *, bool, int);
 	void (*disable_rx)(struct ixgbe_hw *hw);
 	void (*enable_rx)(struct ixgbe_hw *hw);
