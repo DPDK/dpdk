@@ -2874,14 +2874,8 @@ enum ixgbe_sfp_type {
 	ixgbe_sfp_type_1g_cu_core1 = 10,
 	ixgbe_sfp_type_1g_sx_core0 = 11,
 	ixgbe_sfp_type_1g_sx_core1 = 12,
-#ifdef SUPPORT_1000BASE_LX
 	ixgbe_sfp_type_1g_lx_core0 = 13,
 	ixgbe_sfp_type_1g_lx_core1 = 14,
-#endif /* SUPPORT_1000BASE_LX */
-#ifdef SUPPORT_10GBASE_ER
-	ixgbe_sfp_type_er_core0 = 15,
-	ixgbe_sfp_type_er_core1 = 16,
-#endif /* SUPPORT_10GBASE_ER */
 	ixgbe_sfp_type_not_present = 0xFFFE,
 	ixgbe_sfp_type_unknown = 0xFFFF
 };
