@@ -1123,6 +1123,38 @@ void ixgbe_set_ethertype_anti_spoofing(struct ixgbe_hw *hw, bool enable, int vf)
 }
 
 /**
+ *  ixgbe_read_iosf_sb_reg - Read 32 bit PHY register
+ *  @hw: pointer to hardware structure
+ *  @reg_addr: 32 bit address of PHY register to read
+ *  @device_type: type of device you want to communicate with
+ *  @phy_data: Pointer to read data from PHY register
+ *
+ *  Reads a value from a specified PHY register
+ **/
+s32 ixgbe_read_iosf_sb_reg(struct ixgbe_hw *hw, u32 reg_addr,
+			   u32 device_type, u32 *phy_data)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.read_iosf_sb_reg, (hw, reg_addr,
+			       device_type, phy_data), IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ *  ixgbe_write_iosf_sb_reg - Write 32 bit register through IOSF Sideband
+ *  @hw: pointer to hardware structure
+ *  @reg_addr: 32 bit PHY register to write
+ *  @device_type: type of device you want to communicate with
+ *  @phy_data: Data to write to the PHY register
+ *
+ *  Writes a value to specified PHY register
+ **/
+s32 ixgbe_write_iosf_sb_reg(struct ixgbe_hw *hw, u32 reg_addr,
+			    u32 device_type, u32 phy_data)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.write_iosf_sb_reg, (hw, reg_addr,
+			       device_type, phy_data), IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
  *  ixgbe_read_analog_reg8 - Reads 8 bit analog register
  *  @hw: pointer to hardware structure
  *  @reg: analog register to read

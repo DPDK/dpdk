@@ -3259,6 +3259,8 @@ struct ixgbe_mac_operations {
 					   unsigned int);
 	void (*disable_rx)(struct ixgbe_hw *hw);
 	void (*enable_rx)(struct ixgbe_hw *hw);
+	s32 (*read_iosf_sb_reg)(struct ixgbe_hw *, u32, u32, u32 *);
+	s32 (*write_iosf_sb_reg)(struct ixgbe_hw *, u32, u32, u32);
 };
 
 struct ixgbe_phy_operations {
@@ -3447,8 +3449,23 @@ struct ixgbe_hw {
 #define IXGBE_NOT_IMPLEMENTED			0x7FFFFFFF
 
 
-#ifdef IXGBE_OSDEP2
-#include "ixgbe_osdep2.h"
+#define IXGBE_SB_IOSF_INDIRECT_CTRL	0x00011144
+#define IXGBE_SB_IOSF_INDIRECT_DATA	0x00011148
 
-#endif /* IXGBE_OSDEP2 */
+#define IXGBE_SB_IOSF_CTRL_ADDR_SHIFT		0
+#define IXGBE_SB_IOSF_CTRL_ADDR_MASK		0xFF
+#define IXGBE_SB_IOSF_CTRL_RESP_STAT_SHIFT	18
+#define IXGBE_SB_IOSF_CTRL_RESP_STAT_MASK	\
+				(0x3 << IXGBE_SB_IOSF_CTRL_RESP_STAT_SHIFT)
+#define IXGBE_SB_IOSF_CTRL_CMPL_ERR_SHIFT	20
+#define IXGBE_SB_IOSF_CTRL_CMPL_ERR_MASK	\
+				(0xFF << IXGBE_SB_IOSF_CTRL_CMPL_ERR_SHIFT)
+#define IXGBE_SB_IOSF_CTRL_TARGET_SELECT_SHIFT	28
+#define IXGBE_SB_IOSF_CTRL_TARGET_SELECT_MASK	0x7
+#define IXGBE_SB_IOSF_CTRL_BUSY_SHIFT		31
+#define IXGBE_SB_IOSF_CTRL_BUSY		(1 << IXGBE_SB_IOSF_CTRL_BUSY_SHIFT)
+#define IXGBE_SB_IOSF_TARGET_KR_PHY	0
+#define IXGBE_SB_IOSF_TARGET_KX4_PHY	1
+#define IXGBE_SB_IOSF_TARGET_KX4_PCS	2
+
 #endif /* _IXGBE_TYPE_H_ */

@@ -187,6 +187,10 @@ void ixgbe_set_source_address_pruning(struct ixgbe_hw *hw, bool enable,
 				      unsigned int vf);
 void ixgbe_set_ethertype_anti_spoofing(struct ixgbe_hw *hw, bool enable,
 				       int vf);
+s32 ixgbe_read_iosf_sb_reg(struct ixgbe_hw *hw, u32 reg_addr,
+			u32 device_type, u32 *phy_data);
+s32 ixgbe_write_iosf_sb_reg(struct ixgbe_hw *hw, u32 reg_addr,
+			u32 device_type, u32 phy_data);
 void ixgbe_disable_rx(struct ixgbe_hw *hw);
 void ixgbe_enable_rx(struct ixgbe_hw *hw);
 
