@@ -179,6 +179,9 @@ void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u32 mask);
 s32 ixgbe_get_wwn_prefix(struct ixgbe_hw *hw, u16 *wwnn_prefix,
 			 u16 *wwpn_prefix);
 s32 ixgbe_get_fcoe_boot_status(struct ixgbe_hw *hw, u16 *bs);
+s32 ixgbe_dmac_config(struct ixgbe_hw *hw);
+s32 ixgbe_dmac_update_tcs(struct ixgbe_hw *hw);
+s32 ixgbe_dmac_config_tcs(struct ixgbe_hw *hw);
 void ixgbe_disable_rx(struct ixgbe_hw *hw);
 void ixgbe_enable_rx(struct ixgbe_hw *hw);
 

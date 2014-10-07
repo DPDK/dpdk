@@ -1042,6 +1042,43 @@ s32 ixgbe_init_thermal_sensor_thresh(struct ixgbe_hw *hw)
 				IXGBE_NOT_IMPLEMENTED);
 }
 
+/**
+ *  ixgbe_dmac_config - Configure DMA Coalescing registers.
+ *  @hw: pointer to hardware structure
+ *
+ *  Configure DMA coalescing. If enabling dmac, dmac is activated.
+ *  When disabling dmac, dmac enable dmac bit is cleared.
+ **/
+s32 ixgbe_dmac_config(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.dmac_config, (hw),
+				IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ *  ixgbe_dmac_update_tcs - Configure DMA Coalescing registers.
+ *  @hw: pointer to hardware structure
+ *
+ *  Disables dmac, updates per TC settings, and then enable dmac.
+ **/
+s32 ixgbe_dmac_update_tcs(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.dmac_update_tcs, (hw),
+				IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ *  ixgbe_dmac_config_tcs - Configure DMA Coalescing registers.
+ *  @hw: pointer to hardware structure
+ *
+ *  Configure DMA coalescing threshold per TC and set high priority bit for
+ *  FCOE TC. The dmac enable bit must be cleared before configuring.
+ **/
+s32 ixgbe_dmac_config_tcs(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.dmac_config_tcs, (hw),
+				IXGBE_NOT_IMPLEMENTED);
+}
 
 
 /**
