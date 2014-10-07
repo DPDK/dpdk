@@ -1110,6 +1110,19 @@ void ixgbe_set_source_address_pruning(struct ixgbe_hw *hw, bool enable,
 }
 
 /**
+ *  ixgbe_set_ethertype_anti_spoofing - Enable/Disable Ethertype anti-spoofing
+ *  @hw: pointer to hardware structure
+ *  @enable: enable or disable switch for Ethertype anti-spoofing
+ *  @vf: Virtual Function pool - VF Pool to set for Ethertype anti-spoofing
+ *
+ **/
+void ixgbe_set_ethertype_anti_spoofing(struct ixgbe_hw *hw, bool enable, int vf)
+{
+	if (hw->mac.ops.set_ethertype_anti_spoofing)
+		hw->mac.ops.set_ethertype_anti_spoofing(hw, enable, vf);
+}
+
+/**
  *  ixgbe_read_analog_reg8 - Reads 8 bit analog register
  *  @hw: pointer to hardware structure
  *  @reg: analog register to read

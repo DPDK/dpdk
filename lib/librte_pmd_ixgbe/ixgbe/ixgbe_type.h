@@ -413,6 +413,8 @@ struct ixgbe_thermal_sensor_data {
 #define IXGBE_SPOOF_MACAS_MASK		0xFF
 #define IXGBE_SPOOF_VLANAS_MASK		0xFF00
 #define IXGBE_SPOOF_VLANAS_SHIFT	8
+#define IXGBE_SPOOF_ETHERTYPEAS		0xFF000000
+#define IXGBE_SPOOF_ETHERTYPEAS_SHIFT	16
 #define IXGBE_PFVFSPOOF_REG_COUNT	8
 /* 16 of these (0-15) */
 #define IXGBE_DCA_TXCTRL(_i)		(0x07200 + ((_i) * 4))
@@ -1668,6 +1670,7 @@ enum {
 #define IXGBE_MAX_ETQF_FILTERS		8
 #define IXGBE_ETQF_FCOE			0x08000000 /* bit 27 */
 #define IXGBE_ETQF_BCN			0x10000000 /* bit 28 */
+#define IXGBE_ETQF_TX_ANTISPOOF		0x20000000 /* bit 29 */
 #define IXGBE_ETQF_1588			0x40000000 /* bit 30 */
 #define IXGBE_ETQF_FILTER_EN		0x80000000 /* bit 31 */
 #define IXGBE_ETQF_POOL_ENABLE		(1 << 26) /* bit 26 */
