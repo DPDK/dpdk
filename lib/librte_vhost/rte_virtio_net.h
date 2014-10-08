@@ -122,8 +122,6 @@ struct virtio_net_device_ops {
 int init_virtio_net(struct virtio_net_device_ops const * const);
 int deinit_virtio_net(void);
 
-struct vhost_net_device_ops const * get_virtio_net_callbacks(void);
-
 /**
  * Function to convert guest physical addresses to vhost virtual addresses.
  * This is used to convert guest virtio buffer addresses.

@@ -302,7 +302,7 @@ static const struct cuse_lowlevel_ops vhost_net_ops = {
  * also passed when the device is registered in main.c.
  */
 int
-register_cuse_device(const char *base_name, struct vhost_net_device_ops const * const pops)
+register_cuse_device(const char *base_name)
 {
 	struct cuse_info cuse_info;
 	char device_name[PATH_MAX] = "";
@@ -339,7 +339,7 @@ register_cuse_device(const char *base_name, struct vhost_net_device_ops const * 
 	cuse_info.dev_info_argv = device_argv;
 	cuse_info.flags = CUSE_UNRESTRICTED_IOCTL;
 
-	ops = pops;
+	ops = get_virtio_net_callbacks();
 
 	session = cuse_lowlevel_setup(3, fuse_argv,
 				&cuse_info, &vhost_net_ops, 0, NULL);
