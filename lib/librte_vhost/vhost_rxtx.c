@@ -99,7 +99,6 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 	uint64_t buff_hdr_addr = 0;
 	uint32_t head[MAX_PKT_BURST], packet_len = 0;
 	uint32_t head_idx, packet_success = 0;
-	uint32_t retry = 0;
 	uint16_t avail_idx, res_cur_idx;
 	uint16_t res_base_idx, res_end_idx;
 	uint16_t free_entries;
@@ -115,18 +114,6 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 		avail_idx = *((volatile uint16_t *)&vq->avail->idx);
 
 		free_entries = (avail_idx - res_base_idx);
-		/* If retry is enabled and the queue is full then we wait and retry to avoid packet loss. */
-		if (enable_retry && unlikely(count > free_entries)) {
-			for (retry = 0; retry < burst_rx_retry_num; retry++) {
-				rte_delay_us(burst_rx_delay_time);
-				avail_idx =
-					*((volatile uint16_t *)&vq->avail->idx);
-				free_entries = (avail_idx - res_base_idx);
-				if (count <= free_entries)
-					break;
-			}
-		}
-
 		/*check that we have enough buffers*/
 		if (unlikely(count > free_entries))
 			count = free_entries;
@@ -440,7 +427,6 @@ virtio_dev_merge_rx(struct virtio_net *dev, struct rte_mbuf **pkts,
 {
 	struct vhost_virtqueue *vq;
 	uint32_t pkt_idx = 0, entry_success = 0;
-	uint32_t retry = 0;
 	uint16_t avail_idx, res_cur_idx;
 	uint16_t res_base_idx, res_end_idx;
 	uint8_t success = 0;
@@ -471,26 +457,6 @@ virtio_dev_merge_rx(struct virtio_net *dev, struct rte_mbuf **pkts,
 			do {
 				avail_idx = *((volatile uint16_t *)&vq->avail->idx);
 				if (unlikely(res_cur_idx == avail_idx)) {
-					/*
-					 * If retry is enabled and the queue is
-					 * full then we wait and retry to avoid
-					 * packet loss.
-					 */
-					if (enable_retry) {
-						uint8_t cont = 0;
-						for (retry = 0; retry < burst_rx_retry_num; retry++) {
-							rte_delay_us(burst_rx_delay_time);
-							avail_idx =
-								*((volatile uint16_t *)&vq->avail->idx);
-							if (likely(res_cur_idx != avail_idx)) {
-								cont = 1;
-								break;
-							}
-						}
-						if (cont == 1)
-							continue;
-					}
-
 					LOG_DEBUG(VHOST_DATA,
 						"(%"PRIu64") Failed "
 						"to get enough desc from "
