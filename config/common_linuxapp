@@ -388,6 +388,14 @@ CONFIG_RTE_KNI_VHOST_DEBUG_RX=n
 CONFIG_RTE_KNI_VHOST_DEBUG_TX=n
 
 #
+# Compile vhost library
+# fuse-devel is needed to run vhost.
+# fuse-devel enables user space char driver development
+#
+CONFIG_RTE_LIBRTE_VHOST=n
+CONFIG_RTE_LIBRTE_VHOST_DEBUG=n
+
+#
 #Compile Xen domain0 support
 #
 CONFIG_RTE_LIBRTE_XEN_DOM0=n
