@@ -119,6 +119,12 @@ struct virtio_net_device_ops {
 	void (* destroy_device)	(volatile struct virtio_net *);	/* Remove device. */
 };
 
+static inline uint16_t __attribute__((always_inline))
+rte_vring_available_entries(struct virtio_net *dev, uint16_t queue_id)
+{
+	struct vhost_virtqueue *vq = dev->virtqueue[queue_id];
+	return *(volatile uint16_t *)&vq->avail->idx - vq->last_used_idx_res;
+}
 
 /**
  * Function to convert guest physical addresses to vhost virtual addresses.
