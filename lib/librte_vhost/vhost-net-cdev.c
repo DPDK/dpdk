@@ -214,6 +214,7 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 		break;
 
 	case VHOST_SET_MEM_TABLE:
+		/*TODO fix race condition.*/
 		LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") IOCTL: VHOST_SET_MEM_TABLE\n", ctx.fh);
 		static struct vhost_memory mem_temp;
 

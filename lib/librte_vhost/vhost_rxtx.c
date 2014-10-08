@@ -93,6 +93,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 
 		res_end_idx = res_base_idx + count;
 		/* vq->last_used_idx_res is atomically updated. */
+		/* TODO: Allow to disable cmpset if no concurrency in application. */
 		success = rte_atomic16_cmpset(&vq->last_used_idx_res,
 				res_base_idx, res_end_idx);
 	} while (unlikely(success == 0));
@@ -146,6 +147,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 		vq->used->ring[res_cur_idx & (vq->size - 1)].len = packet_len;
 
 		/* Copy mbuf data to buffer */
+		/* FIXME for sg mbuf and the case that desc couldn't hold the mbuf data */
 		rte_memcpy((void *)(uintptr_t)buff_addr,
 			rte_pktmbuf_mtod(buff, const void *),
 			rte_pktmbuf_data_len(buff));
