@@ -71,16 +71,18 @@ rte_eal_cpu_init(void)
 	unsigned count = 0;
 
 	const unsigned ncpus = get_ncpus();
-
-	/* disable lcores that were not detected */
-	RTE_LCORE_FOREACH(lcore_id) {
-
+	/*
+	 * Parse the maximum set of logical cores, detect the subset of running
+	 * ones and enable them by default.
+	 */
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		lcore_config[lcore_id].detected = (lcore_id < ncpus);
 		if (lcore_config[lcore_id].detected == 0) {
 			config->lcore_role[lcore_id] = ROLE_OFF;
 			continue;
 		}
-		count++;
+		/* By default, each detected core is enabled */
+		config->lcore_role[lcore_id] = ROLE_RTE;
 		lcore_config[lcore_id].core_id = cpu_core_id(lcore_id);
 		lcore_config[lcore_id].socket_id = cpu_socket_id(lcore_id);
 		if (lcore_config[lcore_id].socket_id >= RTE_MAX_NUMA_NODES)
@@ -93,8 +95,9 @@ rte_eal_cpu_init(void)
 #endif
 		RTE_LOG(DEBUG, EAL, "Detected lcore %u\n",
 				lcore_id);
+		count++;
 	}
-
+	/* Set the count of enabled logical cores of the EAL configuration */
 	config->lcore_count = count;
 	RTE_LOG(DEBUG, EAL, "Support maximum %u logical core(s) by configuration.\n",
 		RTE_MAX_LCORE);

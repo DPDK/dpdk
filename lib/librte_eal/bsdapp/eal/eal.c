@@ -517,6 +517,9 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_log_early_init() < 0)
 		rte_panic("Cannot init early logs\n");
 
+	if (rte_eal_cpu_init() < 0)
+		rte_panic("Cannot detect lcores\n");
+
 	fctret = eal_parse_args(argc, argv);
 	if (fctret < 0)
 		exit(1);
@@ -550,9 +553,6 @@ rte_eal_init(int argc, char **argv)
 	rte_srand(rte_rdtsc());
 
 	rte_config_init();
-
-	if (rte_eal_cpu_init() < 0)
-		rte_panic("Cannot detect lcores\n");
 
 	if (rte_eal_memory_init() < 0)
 		rte_panic("Cannot init memory\n");
