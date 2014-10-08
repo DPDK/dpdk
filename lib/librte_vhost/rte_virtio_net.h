@@ -146,4 +146,37 @@ gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
 	return vhost_va;
 }
 
+/* Register vhost driver. dev_name could be different for multiple instance support. */
+int rte_vhost_driver_register(const char *dev_name);
+
+/* Start vhost driver session blocking loop. */
+int rte_vhost_driver_session_start(void);
+
+/**
+ * This function adds buffers to the virtio devices RX virtqueue. Buffers can
+ * be received from the physical port or from another virtual device. A packet
+ * count is returned to indicate the number of packets that were succesfully
+ * added to the RX queue.
+ * @param queue_id
+ *  virtio queue index in mq case
+ * @return
+ *  num of packets enqueued
+ */
+uint16_t rte_vhost_enqueue_burst(struct virtio_net *dev, uint16_t queue_id,
+	struct rte_mbuf **pkts, uint16_t count);
+
+/**
+ * This function gets guest buffers from the virtio device TX virtqueue,
+ * construct host mbufs, copies guest buffer content to host mbufs and
+ * store them in pkts to be processed.
+ * @param mbuf_pool
+ *  mbuf_pool where host mbuf is allocated.
+ * @param queue_id
+ *  virtio queue index in mq case.
+ * @return
+ *  num of packets dequeued
+ */
+uint16_t rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
+	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count);
+
 #endif /* _VIRTIO_NET_H_ */

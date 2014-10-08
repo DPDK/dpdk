@@ -522,9 +522,17 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id, struct rte_mbuf *
 	return count;
 }
 
-/* This function works for TX packets with mergeable feature enabled. */
-static inline uint16_t __attribute__((always_inline))
-virtio_dev_merge_tx(struct virtio_net *dev, uint16_t queue_id, struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
+uint16_t
+rte_vhost_enqueue_burst(struct virtio_net *dev, uint16_t queue_id, struct rte_mbuf **pkts, uint16_t count)
+{
+	if (unlikely(dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF)))
+		return virtio_dev_merge_rx(dev, queue_id, pkts, count);
+	else
+		return virtio_dev_rx(dev, queue_id, pkts, count);
+}
+
+uint16_t
+rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id, struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
 {
 	struct rte_mbuf *m, *prev;
 	struct vhost_virtqueue *vq;
@@ -548,7 +556,7 @@ virtio_dev_merge_tx(struct virtio_net *dev, uint16_t queue_id, struct rte_mempoo
 	if (vq->last_used_idx == avail_idx)
 		return 0;
 
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") virtio_dev_merge_tx()\n",
+	LOG_DEBUG(VHOST_DATA, "%s (%"PRIu64")\n", __func__,
 		dev->device_fh);
 
 	/* Prefetch available ring to retrieve head indexes. */
