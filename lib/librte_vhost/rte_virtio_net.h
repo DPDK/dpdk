@@ -124,4 +124,26 @@ int deinit_virtio_net(void);
 
 struct vhost_net_device_ops const * get_virtio_net_callbacks(void);
 
+/**
+ * Function to convert guest physical addresses to vhost virtual addresses.
+ * This is used to convert guest virtio buffer addresses.
+ */
+static inline uint64_t __attribute__((always_inline))
+gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
+{
+	struct virtio_memory_regions *region;
+	uint32_t regionidx;
+	uint64_t vhost_va = 0;
+
+	for (regionidx = 0; regionidx < dev->mem->nregions; regionidx++) {
+		region = &dev->mem->regions[regionidx];
+		if ((guest_pa >= region->guest_phys_address) &&
+			(guest_pa <= region->guest_phys_address_end)) {
+			vhost_va = region->address_offset + guest_pa;
+			break;
+		}
+	}
+	return vhost_va;
+}
+
 #endif /* _VIRTIO_NET_H_ */

@@ -57,31 +57,6 @@
 #define MAX_PKT_BURST 32 		/* Max burst size for RX/TX */
 
 /*
- * Function to convert guest physical addresses to vhost virtual addresses. This
- * is used to convert virtio buffer addresses.
- */
-static inline uint64_t __attribute__((always_inline))
-gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
-{
-	struct virtio_memory_regions *region;
-	uint32_t regionidx;
-	uint64_t vhost_va = 0;
-
-	for (regionidx = 0; regionidx < dev->mem->nregions; regionidx++) {
-		region = &dev->mem->regions[regionidx];
-		if ((guest_pa >= region->guest_phys_address) &&
-			(guest_pa <= region->guest_phys_address_end)) {
-			vhost_va = region->address_offset + guest_pa;
-			break;
-		}
-	}
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") GPA %p| VVA %p\n",
-		dev->device_fh, (void*)(uintptr_t)guest_pa, (void*)(uintptr_t)vhost_va);
-
-	return vhost_va;
-}
-
-/*
  * This function adds buffers to the virtio devices RX virtqueue. Buffers can
  * be received from the physical port or from another virtio device. A packet
  * count is returned to indicate the number of packets that were succesfully
