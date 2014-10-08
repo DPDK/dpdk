@@ -53,6 +53,14 @@
 #include "vhost-net-cdev.h"
 #include "eventfd_link/eventfd_link.h"
 
+/**
+ * Device linked list structure for configuration.
+ */
+struct virtio_net_config_ll {
+	struct virtio_net             dev;    /* Virtio device. */
+	struct virtio_net_config_ll   *next;  /* Next entry on linked list. */
+};
+
 const char eventfd_cdev[] = "/dev/eventfd-link";
 
 /* device ops to add/remove device to data core. */

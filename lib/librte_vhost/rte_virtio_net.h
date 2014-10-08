@@ -88,15 +88,6 @@ struct virtio_net
 } __rte_cache_aligned;
 
 /*
- * Device linked list structure for configuration.
- */
-struct virtio_net_config_ll
-{
-	struct virtio_net		dev;	/* Virtio device. */
-	struct virtio_net_config_ll	*next; /* Next entry on linked list. */
-};
-
-/*
  * Information relating to memory regions including offsets to addresses in QEMUs memory file.
  */
 struct virtio_memory_regions {
