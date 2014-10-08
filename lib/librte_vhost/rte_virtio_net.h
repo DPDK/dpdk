@@ -83,15 +83,9 @@ struct virtio_net
 {
 	struct vhost_virtqueue	*virtqueue[VIRTIO_QNUM];	/* Contains all virtqueue information. */
 	struct virtio_memory 	*mem;						/* QEMU memory and memory region information. */
-	struct ether_addr 		mac_address;				/* Device MAC address (Obtained on first TX packet). */
 	uint64_t 				features;					/* Negotiated feature set. */
 	uint64_t 				device_fh;					/* device identifier. */
-	uint32_t 				vmdq_rx_q;					/* RX VMDQ queue number. */
 	uint32_t 				flags;						/* Device flags. Only used to check if device is running on data core. */
-	uint32_t 				vlan_tag;					/* Vlan tag for device. Currently set to device_id (0-63). */
-	uint16_t 				coreid;						/* Data core that the device is added to. */
-	volatile uint8_t 		ready;						/* A device is set as ready if the MAC address has been set. */
-	volatile uint8_t		remove;						/* Device is marked for removal from the data core. */
 } __rte_cache_aligned;
 
 /*

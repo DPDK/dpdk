@@ -762,24 +762,6 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
 
 		m->nb_segs = seg_num;
 
-		/*
-		 * If this is the first received packet we need to learn
-		 * the MAC and setup VMDQ
-		 */
-		if (dev->ready == DEVICE_MAC_LEARNING) {
-			if (dev->remove || (link_vmdq(dev, m) == -1)) {
-				/*
-				 * Discard frame if device is scheduled for
-				 * removal or a duplicate MAC address is found.
-				 */
-				entry_success = free_entries;
-				vq->last_used_idx += entry_success;
-				rte_pktmbuf_free(m);
-				break;
-			}
-		}
-
-		virtio_tx_route(dev, m, mbuf_pool, (uint16_t)dev->device_fh);
 		vq->last_used_idx++;
 		entry_success++;
 		rte_pktmbuf_free(m);

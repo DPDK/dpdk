@@ -55,9 +55,6 @@
 
 const char eventfd_cdev[] = "/dev/eventfd-link";
 
-extern uint32_t num_devices;
-static uint32_t num_cur_devices = 0;
-
 /* device ops to add/remove device to data core. */
 static struct virtio_net_device_ops const * notify_ops;
 /* Root address of the linked list in the configuration core. */
@@ -434,12 +431,6 @@ new_device(struct vhost_device_ctx ctx)
 	struct virtio_net_config_ll *new_ll_dev;
 	struct vhost_virtqueue *virtqueue_rx, *virtqueue_tx;
 
-	/*check the number of devices in the system*/
-	if (num_cur_devices == num_devices) {
-		RTE_LOG(ERR, VHOST_CONFIG, "() Max num devices (%u) exceeded\n", num_devices);
-		return -1;
-	}
-
 	/* Setup device and virtqueues. */
 	new_ll_dev = malloc(sizeof(struct virtio_net_config_ll));
 	if (new_ll_dev == NULL) {
@@ -473,9 +464,6 @@ new_device(struct vhost_device_ctx ctx)
 	/* Add entry to device configuration linked list. */
 	add_config_ll_entry(new_ll_dev);
 
-	/*increment the number of devices in the system*/
-	num_cur_devices++;
-
 	return new_ll_dev->dev.device_fh;
 }
 
@@ -506,9 +494,6 @@ destroy_device(struct vhost_device_ctx ctx)
 			ll_dev_cur = ll_dev_cur->next;
 		}
 	}
-
-	/*decrement the number of devices in the system*/
-	num_cur_devices--;
 }
 
 /*
