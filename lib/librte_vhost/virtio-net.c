@@ -68,8 +68,9 @@ static struct virtio_net_device_ops const * notify_ops;
 /* Root address of the linked list in the configuration core. */
 static struct virtio_net_config_ll			*ll_root = NULL;
 
-/* Features supported by this application. RX merge buffers are disabled by default. */
-uint64_t VHOST_FEATURES = (0ULL << VIRTIO_NET_F_MRG_RXBUF);
+/* Features supported by this application. RX merge buffers are enabled by default. */
+#define VHOST_SUPPORTED_FEATURES (1ULL << VIRTIO_NET_F_MRG_RXBUF)
+static uint64_t VHOST_FEATURES = VHOST_SUPPORTED_FEATURES;
 
 /* Line size for reading maps file. */
 const uint32_t BUFSIZE = PATH_MAX;
