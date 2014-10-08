@@ -40,6 +40,37 @@ struct vhost_memory;
 struct vhost_vring_state;
 struct vhost_vring_addr;
 struct vhost_vring_file;
+/* Macros for printing using RTE_LOG */
+#define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1
+#define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER1
+
+#ifdef RTE_LIBRTE_VHOST_DEBUG
+#define VHOST_MAX_PRINT_BUFF 6072
+#define LOG_LEVEL RTE_LOG_DEBUG
+#define LOG_DEBUG(log_type, fmt, args...) RTE_LOG(DEBUG, log_type, fmt, ##args)
+#define PRINT_PACKET(device, addr, size, header) do { \
+	char *pkt_addr = (char *)(addr); \
+	unsigned int index; \
+	char packet[VHOST_MAX_PRINT_BUFF]; \
+	\
+	if ((header)) \
+		snprintf(packet, VHOST_MAX_PRINT_BUFF, "(%"PRIu64") Header size %d: ", (device->device_fh), (size)); \
+	else \
+		snprintf(packet, VHOST_MAX_PRINT_BUFF, "(%"PRIu64") Packet size %d: ", (device->device_fh), (size)); \
+	for (index = 0; index < (size); index++) { \
+		snprintf(packet + strnlen(packet, VHOST_MAX_PRINT_BUFF), VHOST_MAX_PRINT_BUFF - strnlen(packet, VHOST_MAX_PRINT_BUFF), \
+			"%02hhx ", pkt_addr[index]); \
+	} \
+	snprintf(packet + strnlen(packet, VHOST_MAX_PRINT_BUFF), VHOST_MAX_PRINT_BUFF - strnlen(packet, VHOST_MAX_PRINT_BUFF), "\n"); \
+	\
+	LOG_DEBUG(VHOST_DATA, "%s", packet); \
+} while (0)
+#else
+#define LOG_LEVEL RTE_LOG_INFO
+#define LOG_DEBUG(log_type, fmt, args...) do {} while (0)
+#define PRINT_PACKET(device, addr, size, header) do {} while (0)
+#endif
+
 
 /*
  * Structure used to identify device context.
