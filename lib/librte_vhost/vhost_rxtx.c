@@ -63,7 +63,7 @@
  * added to the RX queue. This function works when mergeable is disabled.
  */
 static inline uint32_t __attribute__((always_inline))
-virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
+virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id, struct rte_mbuf **pkts, uint32_t count)
 {
 	struct vhost_virtqueue *vq;
 	struct vring_desc *desc;
@@ -80,6 +80,11 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 	uint8_t success = 0;
 
 	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") virtio_dev_rx()\n", dev->device_fh);
+	if (unlikely(queue_id != VIRTIO_RXQ)) {
+		LOG_DEBUG(VHOST_DATA, "mq isn't supported in this version.\n");
+		return 0;
+	}
+
 	vq = dev->virtqueue[VIRTIO_RXQ];
 	count = (count > MAX_PKT_BURST) ? MAX_PKT_BURST : count;
 
@@ -397,7 +402,7 @@ copy_from_mbuf_to_vring(struct virtio_net *dev,
  * added to the RX queue. This function works for mergeable RX.
  */
 static inline uint32_t __attribute__((always_inline))
-virtio_dev_merge_rx(struct virtio_net *dev, struct rte_mbuf **pkts,
+virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id, struct rte_mbuf **pkts,
 	uint32_t count)
 {
 	struct vhost_virtqueue *vq;
@@ -408,6 +413,10 @@ virtio_dev_merge_rx(struct virtio_net *dev, struct rte_mbuf **pkts,
 
 	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") virtio_dev_merge_rx()\n",
 		dev->device_fh);
+	if (unlikely(queue_id != VIRTIO_RXQ)) {
+		LOG_DEBUG(VHOST_DATA, "mq isn't supported in this version.\n");
+	}
+
 	vq = dev->virtqueue[VIRTIO_RXQ];
 	count = RTE_MIN((uint32_t)MAX_PKT_BURST, count);
 
@@ -515,7 +524,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, struct rte_mbuf **pkts,
 
 /* This function works for TX packets with mergeable feature enabled. */
 static inline uint16_t __attribute__((always_inline))
-virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
+virtio_dev_merge_tx(struct virtio_net *dev, uint16_t queue_id, struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
 {
 	struct rte_mbuf *m, *prev;
 	struct vhost_virtqueue *vq;
@@ -526,6 +535,11 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool, struc
 	uint32_t i;
 	uint16_t free_entries, entry_success = 0;
 	uint16_t avail_idx;
+
+	if (unlikely(queue_id != VIRTIO_TXQ)) {
+		LOG_DEBUG(VHOST_DATA, "mq isn't supported in this version.\n");
+		return 0;
+	}
 
 	vq = dev->virtqueue[VIRTIO_TXQ];
 	avail_idx =  *((volatile uint16_t *)&vq->avail->idx);
