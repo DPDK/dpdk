@@ -50,10 +50,10 @@
 #define FUSE_OPT_FORE 		"-f\0\0"
 #define FUSE_OPT_NOMULTI 	"-s\0\0"
 
-const uint32_t	default_major = 231;
-const uint32_t	default_minor = 1;
-const char		cuse_device_name[]	= "/dev/cuse";
-const char		default_cdev[] = "vhost-net";
+static const uint32_t	default_major = 231;
+static const uint32_t	default_minor = 1;
+static const char		cuse_device_name[]	= "/dev/cuse";
+static const char		default_cdev[] = "vhost-net";
 
 static struct fuse_session			*session;
 static struct vhost_net_device_ops	const *ops;
