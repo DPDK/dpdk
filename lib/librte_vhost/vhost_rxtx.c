@@ -514,8 +514,8 @@ virtio_dev_merge_rx(struct virtio_net *dev, struct rte_mbuf **pkts,
 }
 
 /* This function works for TX packets with mergeable feature enabled. */
-static inline void __attribute__((always_inline))
-virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
+static inline uint16_t __attribute__((always_inline))
+virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
 {
 	struct rte_mbuf *m, *prev;
 	struct vhost_virtqueue *vq;
@@ -534,7 +534,7 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
 
 	/* If there are no available buffers then return. */
 	if (vq->last_used_idx == avail_idx)
-		return;
+		return 0;
 
 	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") virtio_dev_merge_tx()\n",
 		dev->device_fh);
@@ -545,6 +545,7 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
 	/*get the number of free entries in the ring*/
 	free_entries = (avail_idx - vq->last_used_idx);
 
+	free_entries = RTE_MIN(free_entries, count);
 	/* Limit to MAX_PKT_BURST. */
 	free_entries = RTE_MIN(free_entries, MAX_PKT_BURST);
 
@@ -601,7 +602,7 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
 		if (unlikely(m == NULL)) {
 			RTE_LOG(ERR, VHOST_DATA,
 				"Failed to allocate memory for mbuf.\n");
-			return;
+			return entry_success;
 		}
 
 		seg_num++;
@@ -703,9 +704,9 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
 
 		m->nb_segs = seg_num;
 
+		pkts[entry_success] = m;
 		vq->last_used_idx++;
 		entry_success++;
-		rte_pktmbuf_free(m);
 	}
 
 	rte_compiler_barrier();
@@ -713,5 +714,6 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool)
 	/* Kick guest if required. */
 	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
 		eventfd_write((int)vq->kickfd, 1);
+	return entry_success;
 
 }
