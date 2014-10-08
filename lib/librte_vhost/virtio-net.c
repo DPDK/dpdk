@@ -56,16 +56,16 @@
  * Device linked list structure for configuration.
  */
 struct virtio_net_config_ll {
-	struct virtio_net             dev;    /* Virtio device. */
-	struct virtio_net_config_ll   *next;  /* Next entry on linked list. */
+	struct virtio_net		dev;	/* Virtio device.*/
+	struct virtio_net_config_ll	*next;	/* Next entry on linked list.*/
 };
 
 const char eventfd_cdev[] = "/dev/eventfd-link";
 
 /* device ops to add/remove device to data core. */
-static struct virtio_net_device_ops const * notify_ops;
+static struct virtio_net_device_ops const *notify_ops;
 /* Root address of the linked list in the configuration core. */
-static struct virtio_net_config_ll			*ll_root = NULL;
+static struct virtio_net_config_ll	*ll_root;
 
 /* Features supported by this application. RX merge buffers are enabled by default. */
 #define VHOST_SUPPORTED_FEATURES (1ULL << VIRTIO_NET_F_MRG_RXBUF)
@@ -81,16 +81,15 @@ const uint32_t BUFSIZE = PATH_MAX;
 #define PROCMAP_SZ 8
 
 /* Structure containing information gathered from maps file. */
-struct procmap
-{
-	uint64_t	va_start;			/* Start virtual address in file. */
-	uint64_t	len;				/* Size of file. */
-	uint64_t	pgoff;				/* Not used. */
-	uint32_t	maj;				/* Not used. */
-	uint32_t	min;				/* Not used. */
-	uint32_t	ino;				/* Not used. */
-	char		prot[PROT_SZ];		/* Not used. */
-	char		fname[PATH_MAX];	/* File name. */
+struct procmap {
+	uint64_t	va_start;	/* Start virtual address in file. */
+	uint64_t	len;		/* Size of file. */
+	uint64_t	pgoff;		/* Not used. */
+	uint32_t	maj;		/* Not used. */
+	uint32_t	min;		/* Not used. */
+	uint32_t	ino;		/* Not used. */
+	char		prot[PROT_SZ];	/* Not used. */
+	char		fname[PATH_MAX];/* File name. */
 };
 
 /*
@@ -109,8 +108,9 @@ qva_to_vva(struct virtio_net *dev, uint64_t qemu_va)
 		region = &dev->mem->regions[regionidx];
 		if ((qemu_va >= region->userspace_address) &&
 				(qemu_va <= region->userspace_address +
-			 	region->memory_size)) {
-			vhost_va = dev->mem->mapped_address + qemu_va - dev->mem->base_address;
+				region->memory_size)) {
+			vhost_va = dev->mem->mapped_address + qemu_va -
+					dev->mem->base_address;
 			break;
 		}
 	}
@@ -121,7 +121,8 @@ qva_to_vva(struct virtio_net *dev, uint64_t qemu_va)
  * Locate the file containing QEMU's memory space and map it to our address space.
  */
 static int
-host_memory_map (struct virtio_net *dev, struct virtio_memory *mem, pid_t pid, uint64_t addr)
+host_memory_map(struct virtio_net *dev, struct virtio_memory *mem,
+	pid_t pid, uint64_t addr)
 {
 	struct dirent *dptr = NULL;
 	struct procmap procmap;
@@ -134,20 +135,22 @@ host_memory_map (struct virtio_net *dev, struct virtio_memory *mem, pid_t pid, u
 	char resolved_path[PATH_MAX];
 	FILE		*fmap;
 	void		*map;
-	uint8_t 	found = 0;
-	char 		line[BUFSIZE];
+	uint8_t		found = 0;
+	char		line[BUFSIZE];
 	char dlm[] = "-   :   ";
 	char *str, *sp, *in[PROCMAP_SZ];
 	char *end = NULL;
 
 	/* Path where mem files are located. */
-	snprintf (procdir, PATH_MAX, "/proc/%u/fd/", pid);
+	snprintf(procdir, PATH_MAX, "/proc/%u/fd/", pid);
 	/* Maps file used to locate mem file. */
-	snprintf (mapfile, PATH_MAX, "/proc/%u/maps", pid);
+	snprintf(mapfile, PATH_MAX, "/proc/%u/maps", pid);
 
 	fmap = fopen(mapfile, "r");
 	if (fmap == NULL) {
-		RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Failed to open maps file for pid %d\n", dev->device_fh, pid);
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"(%"PRIu64") Failed to open maps file for pid %d\n",
+			dev->device_fh, pid);
 		return -1;
 	}
 
@@ -157,7 +160,8 @@ host_memory_map (struct virtio_net *dev, struct virtio_memory *mem, pid_t pid, u
 		errno = 0;
 		/* Split line in to fields. */
 		for (i = 0; i < PROCMAP_SZ; i++) {
-			if (((in[i] = strtok_r(str, &dlm[i], &sp)) == NULL) || (errno != 0)) {
+			in[i] = strtok_r(str, &dlm[i], &sp);
+			if ((in[i] == NULL) || (errno != 0)) {
 				fclose(fmap);
 				return -1;
 			}
@@ -220,7 +224,7 @@ host_memory_map (struct virtio_net *dev, struct virtio_memory *mem, pid_t pid, u
 	/* Find the guest memory file among the process fds. */
 	dp = opendir(procdir);
 	if (dp == NULL) {
-		RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Cannot open pid %d process directory \n", dev->device_fh, pid);
+		RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Cannot open pid %d process directory\n", dev->device_fh, pid);
 		return -1;
 
 	}
@@ -229,7 +233,8 @@ host_memory_map (struct virtio_net *dev, struct virtio_memory *mem, pid_t pid, u
 
 	/* Read the fd directory contents. */
 	while (NULL != (dptr = readdir(dp))) {
-		snprintf (memfile, PATH_MAX, "/proc/%u/fd/%s", pid, dptr->d_name);
+		snprintf(memfile, PATH_MAX, "/proc/%u/fd/%s",
+				pid, dptr->d_name);
 	    realpath(memfile, resolved_path);
 		if (resolved_path == NULL) {
 			RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Failed to resolve fd directory\n", dev->device_fh);
@@ -257,8 +262,9 @@ host_memory_map (struct virtio_net *dev, struct virtio_memory *mem, pid_t pid, u
 		return -1;
 	}
 
-	map = mmap(0, (size_t)procmap.len, PROT_READ|PROT_WRITE , MAP_POPULATE|MAP_SHARED, fd, 0);
-	close (fd);
+	map = mmap(0, (size_t)procmap.len, PROT_READ|PROT_WRITE ,
+			MAP_POPULATE|MAP_SHARED, fd, 0);
+	close(fd);
 
 	if (map == MAP_FAILED) {
 		RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Error mapping the file %s for pid %d\n",  dev->device_fh, memfile, pid);
@@ -304,9 +310,8 @@ get_device(struct vhost_device_ctx ctx)
 	ll_dev = get_config_ll_entry(ctx);
 
 	/* If a matching entry is found in the linked list, return the device in that entry. */
-	if (ll_dev) {
+	if (ll_dev)
 		return &ll_dev->dev;
-	}
 
 	RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Device not found in linked list.\n", ctx.fh);
 	return NULL;
@@ -351,7 +356,8 @@ cleanup_device(struct virtio_net *dev)
 {
 	/* Unmap QEMU memory file if mapped. */
 	if (dev->mem) {
-		munmap((void*)(uintptr_t)dev->mem->mapped_address, (size_t)dev->mem->mapped_size);
+		munmap((void *)(uintptr_t)dev->mem->mapped_address,
+			(size_t)dev->mem->mapped_size);
 		free(dev->mem);
 	}
 
@@ -381,7 +387,8 @@ free_device(struct virtio_net_config_ll *ll_dev)
  * Remove an entry from the device configuration linked list.
  */
 static struct virtio_net_config_ll *
-rm_config_ll_entry(struct virtio_net_config_ll *ll_dev, struct virtio_net_config_ll *ll_dev_last)
+rm_config_ll_entry(struct virtio_net_config_ll *ll_dev,
+	struct virtio_net_config_ll *ll_dev_last)
 {
 	/* First remove the device and then clean it up. */
 	if (ll_dev == ll_root) {
@@ -398,7 +405,8 @@ rm_config_ll_entry(struct virtio_net_config_ll *ll_dev, struct virtio_net_config
 		} else {
 			cleanup_device(&ll_dev->dev);
 			free_device(ll_dev);
-			RTE_LOG(ERR, VHOST_CONFIG, "Remove entry from config_ll failed\n");
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"Remove entry from config_ll failed\n");
 			return NULL;
 		}
 	}
@@ -416,7 +424,7 @@ init_device(struct virtio_net *dev)
 	vq_offset = offsetof(struct virtio_net, mem);
 
 	/* Set everything to 0. */
-	memset((void*)(uintptr_t)((uint64_t)(uintptr_t)dev + vq_offset), 0,
+	memset((void *)(uintptr_t)((uint64_t)(uintptr_t)dev + vq_offset), 0,
 		(sizeof(struct virtio_net) - (size_t)vq_offset));
 	memset(dev->virtqueue[VIRTIO_RXQ], 0, sizeof(struct vhost_virtqueue));
 	memset(dev->virtqueue[VIRTIO_TXQ], 0, sizeof(struct vhost_virtqueue));
@@ -440,14 +448,18 @@ new_device(struct vhost_device_ctx ctx)
 	/* Setup device and virtqueues. */
 	new_ll_dev = malloc(sizeof(struct virtio_net_config_ll));
 	if (new_ll_dev == NULL) {
-		RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Failed to allocate memory for dev.\n", ctx.fh);
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"(%"PRIu64") Failed to allocate memory for dev.\n",
+			ctx.fh);
 		return -1;
 	}
 
 	virtqueue_rx = malloc(sizeof(struct vhost_virtqueue));
 	if (virtqueue_rx == NULL) {
 		free(new_ll_dev);
-		RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Failed to allocate memory for virtqueue_rx.\n", ctx.fh);
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"(%"PRIu64") Failed to allocate memory for rxq.\n",
+			ctx.fh);
 		return -1;
 	}
 
@@ -455,7 +467,9 @@ new_device(struct vhost_device_ctx ctx)
 	if (virtqueue_tx == NULL) {
 		free(virtqueue_rx);
 		free(new_ll_dev);
-		RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Failed to allocate memory for virtqueue_tx.\n", ctx.fh);
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"(%"PRIu64") Failed to allocate memory for txq.\n",
+			ctx.fh);
 		return -1;
 	}
 
@@ -573,12 +587,16 @@ set_features(struct vhost_device_ctx ctx, uint64_t *pu)
 	/* Set the vhost_hlen depending on if VIRTIO_NET_F_MRG_RXBUF is set. */
 	if (dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF)) {
 		LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") Mergeable RX buffers enabled\n", dev->device_fh);
-		dev->virtqueue[VIRTIO_RXQ]->vhost_hlen = sizeof(struct virtio_net_hdr_mrg_rxbuf);
-		dev->virtqueue[VIRTIO_TXQ]->vhost_hlen = sizeof(struct virtio_net_hdr_mrg_rxbuf);
+		dev->virtqueue[VIRTIO_RXQ]->vhost_hlen =
+			sizeof(struct virtio_net_hdr_mrg_rxbuf);
+		dev->virtqueue[VIRTIO_TXQ]->vhost_hlen =
+			sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	} else {
 		LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") Mergeable RX buffers disabled\n", dev->device_fh);
-		dev->virtqueue[VIRTIO_RXQ]->vhost_hlen = sizeof(struct virtio_net_hdr);
-		dev->virtqueue[VIRTIO_TXQ]->vhost_hlen = sizeof(struct virtio_net_hdr);
+		dev->virtqueue[VIRTIO_RXQ]->vhost_hlen =
+			sizeof(struct virtio_net_hdr);
+		dev->virtqueue[VIRTIO_TXQ]->vhost_hlen =
+			sizeof(struct virtio_net_hdr);
 	}
 	return 0;
 }
@@ -590,7 +608,8 @@ set_features(struct vhost_device_ctx ctx, uint64_t *pu)
  * storing offsets used to translate buffer addresses.
  */
 static int
-set_mem_table(struct vhost_device_ctx ctx, const void *mem_regions_addr, uint32_t nregions)
+set_mem_table(struct vhost_device_ctx ctx, const void *mem_regions_addr,
+	uint32_t nregions)
 {
 	struct virtio_net *dev;
 	struct vhost_memory_region *mem_regions;
@@ -603,12 +622,14 @@ set_mem_table(struct vhost_device_ctx ctx, const void *mem_regions_addr, uint32_
 		return -1;
 
 	if (dev->mem) {
-		munmap((void*)(uintptr_t)dev->mem->mapped_address, (size_t)dev->mem->mapped_size);
+		munmap((void *)(uintptr_t)dev->mem->mapped_address,
+			(size_t)dev->mem->mapped_size);
 		free(dev->mem);
 	}
 
 	/* Malloc the memory structure depending on the number of regions. */
-	mem = calloc(1, sizeof(struct virtio_memory) + (sizeof(struct virtio_memory_regions) * nregions));
+	mem = calloc(1, sizeof(struct virtio_memory) +
+		(sizeof(struct virtio_memory_regions) * nregions));
 	if (mem == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Failed to allocate memory for dev->mem.\n", dev->device_fh);
 		return -1;
@@ -616,19 +637,24 @@ set_mem_table(struct vhost_device_ctx ctx, const void *mem_regions_addr, uint32_
 
 	mem->nregions = nregions;
 
-	mem_regions = (void*)(uintptr_t)((uint64_t)(uintptr_t)mem_regions_addr + size);
+	mem_regions = (void *)(uintptr_t)
+			((uint64_t)(uintptr_t)mem_regions_addr + size);
 
 	for (regionidx = 0; regionidx < mem->nregions; regionidx++) {
 		/* Populate the region structure for each region. */
-		mem->regions[regionidx].guest_phys_address = mem_regions[regionidx].guest_phys_addr;
-		mem->regions[regionidx].guest_phys_address_end = mem->regions[regionidx].guest_phys_address +
+		mem->regions[regionidx].guest_phys_address =
+			mem_regions[regionidx].guest_phys_addr;
+		mem->regions[regionidx].guest_phys_address_end =
+			mem->regions[regionidx].guest_phys_address +
 			mem_regions[regionidx].memory_size;
-		mem->regions[regionidx].memory_size = mem_regions[regionidx].memory_size;
-		mem->regions[regionidx].userspace_address = mem_regions[regionidx].userspace_addr;
+		mem->regions[regionidx].memory_size =
+			mem_regions[regionidx].memory_size;
+		mem->regions[regionidx].userspace_address =
+			mem_regions[regionidx].userspace_addr;
 
 		LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") REGION: %u - GPA: %p - QEMU VA: %p - SIZE (%"PRIu64")\n", dev->device_fh,
-				regionidx, (void*)(uintptr_t)mem->regions[regionidx].guest_phys_address,
-				(void*)(uintptr_t)mem->regions[regionidx].userspace_address,
+				regionidx, (void *)(uintptr_t)mem->regions[regionidx].guest_phys_address,
+				(void *)(uintptr_t)mem->regions[regionidx].userspace_address,
 				mem->regions[regionidx].memory_size);
 
 		/*set the base address mapping*/
@@ -728,19 +754,19 @@ set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
 	vq = dev->virtqueue[addr->index];
 
 	/* The addresses are converted from QEMU virtual to Vhost virtual. */
-	vq->desc = (struct vring_desc*)(uintptr_t)qva_to_vva(dev, addr->desc_user_addr);
+	vq->desc = (struct vring_desc *)(uintptr_t)qva_to_vva(dev, addr->desc_user_addr);
 	if (vq->desc == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Failed to find descriptor ring address.\n", dev->device_fh);
 		return -1;
 	}
 
-	vq->avail = (struct vring_avail*)(uintptr_t)qva_to_vva(dev, addr->avail_user_addr);
+	vq->avail = (struct vring_avail *)(uintptr_t)qva_to_vva(dev, addr->avail_user_addr);
 	if (vq->avail == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Failed to find available ring address.\n", dev->device_fh);
 		return -1;
 	}
 
-	vq->used = (struct vring_used*)(uintptr_t)qva_to_vva(dev, addr->used_user_addr);
+	vq->used = (struct vring_used *)(uintptr_t)qva_to_vva(dev, addr->used_user_addr);
 	if (vq->used == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Failed to find used ring address.\n", dev->device_fh);
 		return -1;
@@ -778,7 +804,8 @@ set_vring_base(struct vhost_device_ctx ctx, struct vhost_vring_state *state)
  * We send the virtio device our available ring last used index.
  */
 static int
-get_vring_base(struct vhost_device_ctx ctx, uint32_t index, struct vhost_vring_state *state)
+get_vring_base(struct vhost_device_ctx ctx, uint32_t index,
+	struct vhost_vring_state *state)
 {
 	struct virtio_net *dev;
 
@@ -885,7 +912,7 @@ set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	eventfd_call.target_pid = ctx.pid;
 
 	if (eventfd_copy(dev, &eventfd_call))
-        return -1;
+		return -1;
 
 	return 0;
 }
@@ -903,9 +930,8 @@ set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	struct virtio_net *dev;
 
 	dev = get_device(ctx);
-	if (dev == NULL) {
+	if (dev == NULL)
 		return -1;
-	}
 
 	/* file->index refers to the queue index. The TX queue is 1, RX queue is 0. */
 	dev->virtqueue[file->index]->backend = file->fd;
@@ -917,9 +943,8 @@ set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 			return notify_ops->new_device(dev);
 	/* Otherwise we remove it. */
 	} else
-		if (file->fd == VIRTIO_DEV_STOPPED) {
+		if (file->fd == VIRTIO_DEV_STOPPED)
 			notify_ops->destroy_device(dev);
-		}
 	return 0;
 }
 
@@ -927,8 +952,7 @@ set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
  * Function pointers are set for the device operations to allow CUSE to call functions
  * when an IOCTL, device_add or device_release is received.
  */
-static const struct vhost_net_device_ops vhost_device_ops =
-{
+static const struct vhost_net_device_ops vhost_device_ops = {
 	.new_device = new_device,
 	.destroy_device = destroy_device,
 
@@ -960,7 +984,8 @@ get_virtio_net_callbacks(void)
 	return &vhost_device_ops;
 }
 
-int rte_vhost_enable_guest_notification(struct virtio_net *dev, uint16_t queue_id, int enable)
+int rte_vhost_enable_guest_notification(struct virtio_net *dev,
+	uint16_t queue_id, int enable)
 {
 	if (enable) {
 		RTE_LOG(ERR, VHOST_CONFIG, "guest notification isn't supported.\n");

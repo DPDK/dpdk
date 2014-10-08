@@ -55,78 +55,75 @@ enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
 
 #define BUF_VECTOR_MAX 256
 
-/*
+/**
  * Structure contains buffer address, length and descriptor index
  * from vring to do scatter RX.
-*/
+ */
 struct buf_vector {
-uint64_t buf_addr;
-uint32_t buf_len;
-uint32_t desc_idx;
+	uint64_t buf_addr;
+	uint32_t buf_len;
+	uint32_t desc_idx;
 };
 
-/*
- * Structure contains variables relevant to TX/RX virtqueues.
+/**
+ * Structure contains variables relevant to RX/TX virtqueues.
  */
-struct vhost_virtqueue
-{
-	struct vring_desc	*desc;				/* Virtqueue descriptor ring. */
-	struct vring_avail	*avail;				/* Virtqueue available ring. */
-	struct vring_used	*used;				/* Virtqueue used ring. */
-	uint32_t			size;				/* Size of descriptor ring. */
-	uint32_t			backend;			/* Backend value to determine if device should started/stopped. */
-	uint16_t			vhost_hlen;			/* Vhost header length (varies depending on RX merge buffers. */
-	volatile uint16_t	last_used_idx;		/* Last index used on the available ring */
-	volatile uint16_t	last_used_idx_res;	/* Used for multiple devices reserving buffers. */
-	eventfd_t			callfd;				/* Currently unused as polling mode is enabled. */
-	eventfd_t			kickfd;				/* Used to notify the guest (trigger interrupt). */
-	/* Used for scatter RX. */
-	struct buf_vector	buf_vec[BUF_VECTOR_MAX];
+struct vhost_virtqueue {
+	struct vring_desc	*desc;			/**< Virtqueue descriptor ring. */
+	struct vring_avail	*avail;			/**< Virtqueue available ring. */
+	struct vring_used	*used;			/**< Virtqueue used ring. */
+	uint32_t		size;			/**< Size of descriptor ring. */
+	uint32_t		backend;		/**< Backend value to determine if device should started/stopped. */
+	uint16_t		vhost_hlen;		/**< Vhost header length (varies depending on RX merge buffers. */
+	volatile uint16_t	last_used_idx;		/**< Last index used on the available ring */
+	volatile uint16_t	last_used_idx_res;	/**< Used for multiple devices reserving buffers. */
+	eventfd_t		callfd;			/**< Currently unused as polling mode is enabled. */
+	eventfd_t		kickfd;			/**< Used to notify the guest (trigger interrupt). */
+	struct buf_vector	buf_vec[BUF_VECTOR_MAX];	/**< for scatter RX. */
 } __rte_cache_aligned;
 
-/*
+/**
  * Device structure contains all configuration information relating to the device.
  */
 struct virtio_net
 {
-	struct vhost_virtqueue	*virtqueue[VIRTIO_QNUM];	/* Contains all virtqueue information. */
-	struct virtio_memory 	*mem;						/* QEMU memory and memory region information. */
-	uint64_t 				features;					/* Negotiated feature set. */
-	uint64_t 				device_fh;					/* device identifier. */
-	uint32_t 				flags;						/* Device flags. Only used to check if device is running on data core. */
-	void			*priv;				/**< private context */
+	struct vhost_virtqueue	*virtqueue[VIRTIO_QNUM];	/**< Contains all virtqueue information. */
+	struct virtio_memory	*mem;		/**< QEMU memory and memory region information. */
+	uint64_t		features;	/**< Negotiated feature set. */
+	uint64_t		device_fh;	/**< device identifier. */
+	uint32_t		flags;		/**< Device flags. Only used to check if device is running on data core. */
+	void			*priv;		/**< private context */
 } __rte_cache_aligned;
 
-/*
+/**
  * Information relating to memory regions including offsets to addresses in QEMUs memory file.
  */
 struct virtio_memory_regions {
-	uint64_t	guest_phys_address;		/* Base guest physical address of region. */
-	uint64_t	guest_phys_address_end;	/* End guest physical address of region. */
-	uint64_t	memory_size;			/* Size of region. */
-	uint64_t	userspace_address;		/* Base userspace address of region. */
-	uint64_t	address_offset;			/* Offset of region for address translation. */
+	uint64_t	guest_phys_address;	/**< Base guest physical address of region. */
+	uint64_t	guest_phys_address_end;	/**< End guest physical address of region. */
+	uint64_t	memory_size;		/**< Size of region. */
+	uint64_t	userspace_address;	/**< Base userspace address of region. */
+	uint64_t	address_offset;		/**< Offset of region for address translation. */
 };
 
 
-/*
+/**
  * Memory structure includes region and mapping information.
  */
 struct virtio_memory {
-	uint64_t			base_address;			/* Base QEMU userspace address of the memory file. */
-	uint64_t			mapped_address;			/* Mapped address of memory file base in our applications memory space. */
-	uint64_t			mapped_size;			/* Total size of memory file. */
-	uint32_t			nregions;				/* Number of memory regions. */
-	/* Memory region information. */
-	struct virtio_memory_regions      regions[0];
+	uint64_t	base_address;	/**< Base QEMU userspace address of the memory file. */
+	uint64_t	mapped_address;	/**< Mapped address of memory file base in our applications memory space. */
+	uint64_t	mapped_size;	/**< Total size of memory file. */
+	uint32_t	nregions;	/**< Number of memory regions. */
+	struct virtio_memory_regions      regions[0]; /**< Memory region information. */
 };
 
-/*
+/**
  * Device operations to add/remove device.
  */
 struct virtio_net_device_ops {
-	int (* new_device) 		(struct virtio_net *);	/* Add device. */
-	void (* destroy_device)	(volatile struct virtio_net *);	/* Remove device. */
+	int (*new_device)(struct virtio_net *);	/**< Add device. */
+	void (*destroy_device)(volatile struct virtio_net *);	/**< Remove device. */
 };
 
 static inline uint16_t __attribute__((always_inline))

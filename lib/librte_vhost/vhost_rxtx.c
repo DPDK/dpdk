@@ -40,22 +40,23 @@
 
 #include "vhost-net-cdev.h"
 
-#define MAX_PKT_BURST 32 		/* Max burst size for RX/TX */
+#define MAX_PKT_BURST 32
 
-/*
+/**
  * This function adds buffers to the virtio devices RX virtqueue. Buffers can
  * be received from the physical port or from another virtio device. A packet
  * count is returned to indicate the number of packets that were succesfully
  * added to the RX queue. This function works when mergeable is disabled.
  */
 static inline uint32_t __attribute__((always_inline))
-virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id, struct rte_mbuf **pkts, uint32_t count)
+virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
+	struct rte_mbuf **pkts, uint32_t count)
 {
 	struct vhost_virtqueue *vq;
 	struct vring_desc *desc;
 	struct rte_mbuf *buff;
 	/* The virtio_hdr is initialised to 0. */
-	struct virtio_net_hdr_mrg_rxbuf virtio_hdr = {{0,0,0,0,0,0},0};
+	struct virtio_net_hdr_mrg_rxbuf virtio_hdr = {{0, 0, 0, 0, 0, 0}, 0};
 	uint64_t buff_addr = 0;
 	uint64_t buff_hdr_addr = 0;
 	uint32_t head[MAX_PKT_BURST], packet_len = 0;
@@ -74,7 +75,10 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id, struct rte_mbuf **pkts,
 	vq = dev->virtqueue[VIRTIO_RXQ];
 	count = (count > MAX_PKT_BURST) ? MAX_PKT_BURST : count;
 
-	/* As many data cores may want access to available buffers, they need to be reserved. */
+	/*
+	 * As many data cores may want access to available buffers, 
+	 * they need to be reserved.
+	 */
 	do {
 		res_base_idx = vq->last_used_idx_res;
 		avail_idx = *((volatile uint16_t *)&vq->avail->idx);
@@ -89,18 +93,20 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id, struct rte_mbuf **pkts,
 
 		res_end_idx = res_base_idx + count;
 		/* vq->last_used_idx_res is atomically updated. */
-		success = rte_atomic16_cmpset(&vq->last_used_idx_res, res_base_idx,
-									res_end_idx);
+		success = rte_atomic16_cmpset(&vq->last_used_idx_res,
+				res_base_idx, res_end_idx);
 	} while (unlikely(success == 0));
 	res_cur_idx = res_base_idx;
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") Current Index %d| End Index %d\n", dev->device_fh, res_cur_idx, res_end_idx);
+	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") Current Index %d| End Index %d\n",
+			dev->device_fh, res_cur_idx, res_end_idx);
 
 	/* Prefetch available ring to retrieve indexes. */
 	rte_prefetch0(&vq->avail->ring[res_cur_idx & (vq->size - 1)]);
 
 	/* Retrieve all of the head indexes first to avoid caching issues. */
 	for (head_idx = 0; head_idx < count; head_idx++)
-		head[head_idx] = vq->avail->ring[(res_cur_idx + head_idx) & (vq->size - 1)];
+		head[head_idx] = vq->avail->ring[(res_cur_idx + head_idx) &
+					(vq->size - 1)];
 
 	/*Prefetch descriptor index. */
 	rte_prefetch0(&vq->desc[head[packet_success]]);
@@ -114,7 +120,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id, struct rte_mbuf **pkts,
 		/* Convert from gpa to vva (guest physical addr -> vhost virtual addr) */
 		buff_addr = gpa_to_vva(dev, desc->addr);
 		/* Prefetch buffer address. */
-		rte_prefetch0((void*)(uintptr_t)buff_addr);
+		rte_prefetch0((void *)(uintptr_t)buff_addr);
 
 		/* Copy virtio_hdr to packet and increment buffer address */
 		buff_hdr_addr = buff_addr;
@@ -176,9 +182,8 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id, struct rte_mbuf **pkts,
 }
 
 static inline uint32_t __attribute__((always_inline))
-copy_from_mbuf_to_vring(struct virtio_net *dev,
-	uint16_t res_base_idx, uint16_t res_end_idx,
-	struct rte_mbuf *pkt)
+copy_from_mbuf_to_vring(struct virtio_net *dev, uint16_t res_base_idx,
+	uint16_t res_end_idx, struct rte_mbuf *pkt)
 {
 	uint32_t vec_idx = 0;
 	uint32_t entry_success = 0;
@@ -388,8 +393,8 @@ copy_from_mbuf_to_vring(struct virtio_net *dev,
  * added to the RX queue. This function works for mergeable RX.
  */
 static inline uint32_t __attribute__((always_inline))
-virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id, struct rte_mbuf **pkts,
-	uint32_t count)
+virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
+	struct rte_mbuf **pkts, uint32_t count)
 {
 	struct vhost_virtqueue *vq;
 	uint32_t pkt_idx = 0, entry_success = 0;
@@ -509,7 +514,8 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id, struct rte_mbuf *
 }
 
 uint16_t
-rte_vhost_enqueue_burst(struct virtio_net *dev, uint16_t queue_id, struct rte_mbuf **pkts, uint16_t count)
+rte_vhost_enqueue_burst(struct virtio_net *dev, uint16_t queue_id,
+	struct rte_mbuf **pkts, uint16_t count)
 {
 	if (unlikely(dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF)))
 		return virtio_dev_merge_rx(dev, queue_id, pkts, count);
@@ -518,7 +524,8 @@ rte_vhost_enqueue_burst(struct virtio_net *dev, uint16_t queue_id, struct rte_mb
 }
 
 uint16_t
-rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id, struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
+rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
+	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
 {
 	struct rte_mbuf *m, *prev;
 	struct vhost_virtqueue *vq;
@@ -556,7 +563,7 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id, struct rte_me
 	free_entries = RTE_MIN(free_entries, MAX_PKT_BURST);
 
 	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") Buffers available %d\n",
-		dev->device_fh, free_entries);
+			dev->device_fh, free_entries);
 	/* Retrieve all of the head indexes first to avoid caching issues. */
 	for (i = 0; i < free_entries; i++)
 		head[i] = vq->avail->ring[(vq->last_used_idx + i) & (vq->size - 1)];
