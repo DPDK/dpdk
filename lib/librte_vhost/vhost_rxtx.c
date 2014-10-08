@@ -526,8 +526,6 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool, struc
 	uint32_t i;
 	uint16_t free_entries, entry_success = 0;
 	uint16_t avail_idx;
-	uint32_t buf_size = MBUF_SIZE - (sizeof(struct rte_mbuf)
-			+ RTE_PKTMBUF_HEADROOM);
 
 	vq = dev->virtqueue[VIRTIO_TXQ];
 	avail_idx =  *((volatile uint16_t *)&vq->avail->idx);
@@ -591,12 +589,6 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool, struc
 
 		vb_offset = 0;
 		vb_avail = desc->len;
-		seg_offset = 0;
-		seg_avail = buf_size;
-		cpy_len = RTE_MIN(vb_avail, seg_avail);
-
-		PRINT_PACKET(dev, (uintptr_t)vb_addr, desc->len, 0);
-
 		/* Allocate an mbuf and populate the structure. */
 		m = rte_pktmbuf_alloc(mbuf_pool);
 		if (unlikely(m == NULL)) {
@@ -604,6 +596,11 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool, struc
 				"Failed to allocate memory for mbuf.\n");
 			return entry_success;
 		}
+		seg_offset = 0;
+		seg_avail = m->buf_len - RTE_PKTMBUF_HEADROOM;
+		cpy_len = RTE_MIN(vb_avail, seg_avail);
+
+		PRINT_PACKET(dev, (uintptr_t)vb_addr, desc->len, 0);
 
 		seg_num++;
 		cur = m;
@@ -640,7 +637,7 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool, struc
 				prev->next = cur;
 				prev = cur;
 				seg_offset = 0;
-				seg_avail = buf_size;
+				seg_avail = cur->buf_len - RTE_PKTMBUF_HEADROOM;
 			} else {
 				if (desc->flags & VRING_DESC_F_NEXT) {
 					/*
@@ -674,7 +671,7 @@ virtio_dev_merge_tx(struct virtio_net *dev, struct rte_mempool *mbuf_pool, struc
 						prev->next = cur;
 						prev = cur;
 						seg_offset = 0;
-						seg_avail = buf_size;
+						seg_avail = cur->buf_len - RTE_PKTMBUF_HEADROOM;
 					}
 
 					desc = &vq->desc[desc->next];
