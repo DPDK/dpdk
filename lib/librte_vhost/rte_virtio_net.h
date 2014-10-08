@@ -40,7 +40,6 @@
 /* Backend value set by guest. */
 #define VIRTIO_DEV_STOPPED -1
 
-#define PAGE_SIZE   4096
 
 /* Enum for virtqueue management. */
 enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
@@ -108,20 +107,6 @@ struct virtio_memory_regions {
 	uint64_t	address_offset;			/* Offset of region for address translation. */
 };
 
-/*
- * Information relating to memory regions including offsets to
- * addresses in host physical space.
- */
-struct virtio_memory_regions_hpa {
-	/* Base guest physical address of region. */
-	uint64_t	guest_phys_address;
-	/* End guest physical address of region. */
-	uint64_t	guest_phys_address_end;
-	/* Size of region. */
-	uint64_t	memory_size;
-	/* Offset of region for gpa to hpa translation. */
-	uint64_t	host_phys_addr_offset;
-};
 
 /*
  * Memory structure includes region and mapping information.
@@ -131,10 +116,6 @@ struct virtio_memory {
 	uint64_t			mapped_address;			/* Mapped address of memory file base in our applications memory space. */
 	uint64_t			mapped_size;			/* Total size of memory file. */
 	uint32_t			nregions;				/* Number of memory regions. */
-	 /* Number of memory regions for gpa to hpa translation. */
-	uint32_t			nregions_hpa;
-	/* Memory region information for gpa to hpa translation. */
-	struct virtio_memory_regions_hpa  *regions_hpa;
 	/* Memory region information. */
 	struct virtio_memory_regions      regions[0];
 };
