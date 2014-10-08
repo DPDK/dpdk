@@ -33,13 +33,14 @@
 
 #ifndef _VHOST_NET_CDEV_H_
 #define _VHOST_NET_CDEV_H_
-
+#include <stdint.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <linux/vhost.h>
 
-struct vhost_memory;
-struct vhost_vring_state;
-struct vhost_vring_addr;
-struct vhost_vring_file;
+#include <rte_log.h>
+
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER1

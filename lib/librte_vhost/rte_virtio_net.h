@@ -34,6 +34,15 @@
 #ifndef _VIRTIO_NET_H_
 #define _VIRTIO_NET_H_
 
+#include <stdint.h>
+#include <linux/virtio_ring.h>
+#include <linux/virtio_net.h>
+#include <sys/eventfd.h>
+
+#include <rte_memory.h>
+#include <rte_mempool.h>
+#include <rte_mbuf.h>
+
 /* Used to indicate that the device is running on a data core */
 #define VIRTIO_DEV_RUNNING 1
 

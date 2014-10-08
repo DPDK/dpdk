@@ -42,8 +42,8 @@
 #include <rte_ethdev.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
+#include <rte_virtio_net.h>
 
-#include "main.h"
 #include "vhost-net-cdev.h"
 
 #define FUSE_OPT_DUMMY 		"\0\0"

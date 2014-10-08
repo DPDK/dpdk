@@ -47,9 +47,8 @@
 #include <rte_log.h>
 #include <rte_string_fns.h>
 #include <rte_memory.h>
+#include <rte_virtio_net.h>
 
-#include "main.h"
-#include "virtio-net.h"
 #include "vhost-net-cdev.h"
 #include "eventfd_link/eventfd_link.h"
 

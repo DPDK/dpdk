@@ -31,27 +31,13 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <arpa/inet.h>
-#include <getopt.h>
-#include <linux/if_ether.h>
-#include <linux/if_vlan.h>
-#include <linux/virtio_net.h>
-#include <linux/virtio_ring.h>
-#include <signal.h>
 #include <stdint.h>
-#include <sys/eventfd.h>
-#include <sys/param.h>
-#include <unistd.h>
+#include <linux/virtio_net.h>
 
-#include <rte_atomic.h>
-#include <rte_cycles.h>
-#include <rte_ethdev.h>
-#include <rte_log.h>
-#include <rte_string_fns.h>
-#include <rte_malloc.h>
+#include <rte_mbuf.h>
+#include <rte_memcpy.h>
+#include <rte_virtio_net.h>
 
-#include "main.h"
-#include "virtio-net.h"
 #include "vhost-net-cdev.h"
 
 #define MAX_PKT_BURST 32 		/* Max burst size for RX/TX */
