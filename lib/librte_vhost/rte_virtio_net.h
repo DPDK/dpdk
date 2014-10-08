@@ -85,6 +85,7 @@ struct virtio_net
 	uint64_t 				features;					/* Negotiated feature set. */
 	uint64_t 				device_fh;					/* device identifier. */
 	uint32_t 				flags;						/* Device flags. Only used to check if device is running on data core. */
+	void			*priv;				/**< private context */
 } __rte_cache_aligned;
 
 /*
