@@ -119,8 +119,6 @@ struct virtio_net_device_ops {
 	void (* destroy_device)	(volatile struct virtio_net *);	/* Remove device. */
 };
 
-int init_virtio_net(struct virtio_net_device_ops const * const);
-int deinit_virtio_net(void);
 
 /**
  * Function to convert guest physical addresses to vhost virtual addresses.
@@ -147,6 +145,8 @@ gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
 /* Register vhost driver. dev_name could be different for multiple instance support. */
 int rte_vhost_driver_register(const char *dev_name);
 
+/* Register callbacks. */
+int rte_vhost_driver_callback_register(struct virtio_net_device_ops const * const);
 /* Start vhost driver session blocking loop. */
 int rte_vhost_driver_session_start(void);
 

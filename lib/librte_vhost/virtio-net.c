@@ -964,18 +964,9 @@ get_virtio_net_callbacks(void)
  * Register ops so that we can add/remove device to data core.
  */
 int
-init_virtio_net(struct virtio_net_device_ops const * const ops)
+rte_vhost_driver_callback_register(struct virtio_net_device_ops const * const ops)
 {
 	notify_ops = ops;
 
-	return 0;
-}
-
-/*
- * Currently not used as we Ctrl+c to exit application.
- */
-int
-deinit_virtio_net(void)
-{
 	return 0;
 }
