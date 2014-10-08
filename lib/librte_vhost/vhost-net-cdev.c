@@ -302,7 +302,7 @@ static const struct cuse_lowlevel_ops vhost_net_ops = {
  * also passed when the device is registered in main.c.
  */
 int
-register_cuse_device(const char *base_name)
+rte_vhost_driver_register(const char *dev_name)
 {
 	struct cuse_info cuse_info;
 	char device_name[PATH_MAX] = "";
@@ -353,7 +353,7 @@ register_cuse_device(const char *base_name)
  * The CUSE session is launched allowing the application to receive open, release and ioctl calls.
  */
 int
-start_cuse_session_loop(void)
+rte_vhost_driver_session_start(void)
 {
 	fuse_session_loop(session);
 

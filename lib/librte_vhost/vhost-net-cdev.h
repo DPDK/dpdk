@@ -77,8 +77,6 @@ struct vhost_net_device_ops {
 	int (* reset_owner) 	(struct vhost_device_ctx);
 };
 
-int register_cuse_device(const char *base_name, int index, struct vhost_net_device_ops const * const);
-int start_cuse_session_loop(void);
 
 struct vhost_net_device_ops const *get_virtio_net_callbacks(void);
 #endif /* _VHOST_NET_CDEV_H_ */
