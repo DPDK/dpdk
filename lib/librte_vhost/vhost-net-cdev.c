@@ -302,7 +302,7 @@ static const struct cuse_lowlevel_ops vhost_net_ops = {
  * also passed when the device is registered in main.c.
  */
 int
-register_cuse_device(const char *base_name, int index, struct vhost_net_device_ops const * const pops)
+register_cuse_device(const char *base_name, struct vhost_net_device_ops const * const pops)
 {
 	struct cuse_info cuse_info;
 	char device_name[PATH_MAX] = "";
@@ -321,16 +321,10 @@ register_cuse_device(const char *base_name, int index, struct vhost_net_device_o
 
 	/*
 	 * The device name is created. This is passed to QEMU so that it can register
-	 * the device with our application. The index allows us to have multiple instances
-	 * of userspace vhost which we can then add devices to separately.
+	 * the device with our application.
 	 */
-	if (strncmp(base_name, default_cdev, PATH_MAX)!=0) {
-		snprintf(device_name, PATH_MAX, "DEVNAME=%s-%d", base_name, index);
-		snprintf(char_device_name, PATH_MAX, "/dev/%s-%d", base_name, index);
-	} else {
-		snprintf(device_name, PATH_MAX, "DEVNAME=%s", base_name);
-		snprintf(char_device_name, PATH_MAX, "/dev/%s", base_name);
-	}
+	snprintf(device_name, PATH_MAX, "DEVNAME=%s", dev_name);
+	snprintf(char_device_name, PATH_MAX, "/dev/%s", dev_name);
 
 	/* Check if device already exists. */
 	if (access(char_device_name, F_OK) != -1) {
@@ -340,7 +334,7 @@ register_cuse_device(const char *base_name, int index, struct vhost_net_device_o
 
 	memset(&cuse_info, 0, sizeof(cuse_info));
 	cuse_info.dev_major = default_major;
-	cuse_info.dev_minor = default_minor + index;
+	cuse_info.dev_minor = default_minor;
 	cuse_info.dev_info_argc = 1;
 	cuse_info.dev_info_argv = device_argv;
 	cuse_info.flags = CUSE_UNRESTRICTED_IOCTL;
