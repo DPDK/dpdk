@@ -148,6 +148,21 @@ gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
 	return vhost_va;
 }
 
+/**
+ *  Disable features in feature_mask. Returns 0 on success.
+ */
+int rte_vhost_feature_disable(uint64_t feature_mask);
+
+/**
+ *  Enable features in feature_mask. Returns 0 on success.
+ */
+int rte_vhost_feature_enable(uint64_t feature_mask);
+
+/* Returns currently supported vhost features */
+uint64_t rte_vhost_feature_get(void);
+
+int rte_vhost_enable_guest_notification(struct virtio_net *dev, uint16_t queue_id, int enable);
+
 /* Register vhost driver. dev_name could be different for multiple instance support. */
 int rte_vhost_driver_register(const char *dev_name);
 

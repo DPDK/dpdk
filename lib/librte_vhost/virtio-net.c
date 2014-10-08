@@ -960,6 +960,37 @@ get_virtio_net_callbacks(void)
 	return &vhost_device_ops;
 }
 
+int rte_vhost_enable_guest_notification(struct virtio_net *dev, uint16_t queue_id, int enable)
+{
+	if (enable) {
+		RTE_LOG(ERR, VHOST_CONFIG, "guest notification isn't supported.\n");
+		return -1;
+	}
+
+	dev->virtqueue[queue_id]->used->flags = enable ? 0 : VRING_USED_F_NO_NOTIFY;
+	return 0;
+}
+
+uint64_t rte_vhost_feature_get(void)
+{
+	return VHOST_FEATURES;
+}
+
+int rte_vhost_feature_disable(uint64_t feature_mask)
+{
+	VHOST_FEATURES = VHOST_FEATURES & ~feature_mask;
+	return 0;
+}
+
+int rte_vhost_feature_enable(uint64_t feature_mask)
+{
+	if ((feature_mask & VHOST_SUPPORTED_FEATURES) == feature_mask) {
+		VHOST_FEATURES = VHOST_FEATURES | feature_mask;
+		return 0;
+	}
+	return -1;
+}
+
 /*
  * Register ops so that we can add/remove device to data core.
  */
