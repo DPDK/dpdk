@@ -38,11 +38,8 @@
 #   - define TOOLCHAIN_ASFLAGS variable (overriden by cmdline value)
 #
 
-ifeq ($(KERNELRELEASE),)
 CC        = $(CROSS)clang
-else
-CC        = $(CROSS)gcc
-endif
+KERNELCC  = $(CROSS)gcc
 CPP       = $(CROSS)cpp
 # for now, we don't use as but nasm.
 # AS      = $(CROSS)as

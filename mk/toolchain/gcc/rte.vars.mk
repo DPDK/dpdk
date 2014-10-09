@@ -39,6 +39,7 @@
 #
 
 CC        = $(CROSS)gcc
+KERNELCC  = $(CROSS)gcc
 CPP       = $(CROSS)cpp
 # for now, we don't use as but nasm.
 # AS      = $(CROSS)as

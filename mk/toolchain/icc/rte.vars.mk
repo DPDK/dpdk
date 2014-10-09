@@ -41,11 +41,8 @@
 # Warning: we do not use CROSS environment variable as icc is mainly a
 # x86->x86 compiler
 
-ifeq ($(KERNELRELEASE),)
 CC        = icc
-else
-CC        = gcc
-endif
+KERNELCC  = gcc
 CPP       = cpp
 AS        = nasm
 AR        = ar
