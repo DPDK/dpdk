@@ -944,9 +944,6 @@ __mempool_get_bulk(struct rte_mempool *mp, void **obj_table,
 		   unsigned n, int is_mc)
 {
 	int ret;
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-	unsigned n_orig = n;
-#endif
 #if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
 	struct rte_mempool_cache *cache;
 	uint32_t index, len;
@@ -987,7 +984,7 @@ __mempool_get_bulk(struct rte_mempool *mp, void **obj_table,
 
 	cache->len -= n;
 
-	__MEMPOOL_STAT_ADD(mp, get_success, n_orig);
+	__MEMPOOL_STAT_ADD(mp, get_success, n);
 
 	return 0;
 
@@ -1001,9 +998,9 @@ ring_dequeue:
 		ret = rte_ring_sc_dequeue_bulk(mp->ring, obj_table, n);
 
 	if (ret < 0)
-		__MEMPOOL_STAT_ADD(mp, get_fail, n_orig);
+		__MEMPOOL_STAT_ADD(mp, get_fail, n);
 	else
-		__MEMPOOL_STAT_ADD(mp, get_success, n_orig);
+		__MEMPOOL_STAT_ADD(mp, get_success, n);
 
 	return ret;
 }
