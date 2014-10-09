@@ -66,6 +66,11 @@ ifeq ($(shell test $(GCC_MAJOR_VERSION) -ge 4 -a $(GCC_MINOR_VERSION) -ge 6 && e
 CFLAGS_ixgbe_common.o += -Wno-unused-but-set-variable
 CFLAGS_ixgbe_x550.o += -Wno-unused-but-set-variable -Wno-maybe-uninitialized
 endif
+
+ifeq ($(shell test $(GCC_MAJOR_VERSION) -le 4 -a $(GCC_MINOR_VERSION) -le 6 && echo 1), 1)
+CFLAGS_ixgbe_x550.o += -Wno-uninitialized
+CFLAGS_ixgbe_phy.o += -Wno-uninitialized
+endif
 endif
 
 #
