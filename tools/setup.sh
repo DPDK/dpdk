@@ -169,7 +169,8 @@ load_igb_uio_module()
 
 	/sbin/lsmod | grep -s uio > /dev/null
 	if [ $? -ne 0 ] ; then
-		if [ -f /lib/modules/$(uname -r)/kernel/drivers/uio/uio.ko ] ; then
+		modinfo uio > /dev/null
+		if [ $? -eq 0 ]; then
 			echo "Loading uio module"
 			sudo /sbin/modprobe uio
 		fi
