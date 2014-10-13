@@ -53,7 +53,7 @@
 #define VIRTIO_MAX_TX_QUEUES 128
 #define VIRTIO_MAX_MAC_ADDRS 1
 #define VIRTIO_MIN_RX_BUFSIZE 64
-#define VIRTIO_MAX_RX_PKTLEN  1518
+#define VIRTIO_MAX_RX_PKTLEN  9728
 
 /* Features desired/implemented by this driver. */
 #define VTNET_FEATURES \
