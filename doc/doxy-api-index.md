@@ -39,6 +39,7 @@ There are many libraries, so their headers may be grouped by topics:
   [ethdev]             (@ref rte_ethdev.h),
   [devargs]            (@ref rte_devargs.h),
   [bond]               (@ref rte_eth_bond.h),
+  [vhost]              (@ref rte_virtio_net.h),
   [KNI]                (@ref rte_kni.h),
   [PCI]                (@ref rte_pci.h),
   [PCI IDs]            (@ref rte_pci_dev_ids.h)

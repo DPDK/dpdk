@@ -34,6 +34,11 @@
 #ifndef _VIRTIO_NET_H_
 #define _VIRTIO_NET_H_
 
+/**
+ * @file
+ * Interface to vhost net
+ */
+
 #include <stdint.h>
 #include <linux/virtio_ring.h>
 #include <linux/virtio_net.h>
