@@ -55,8 +55,7 @@ CFLAGS_BASE_DRIVER += -Wno-missing-field-initializers
 CFLAGS_BASE_DRIVER += -Wno-pointer-to-int-cast
 CFLAGS_BASE_DRIVER += -Wno-format-nonliteral
 else
-CFLAGS_BASE_DRIVER  = -Wno-unused-but-set-variable
-CFLAGS_BASE_DRIVER += -Wno-sign-compare
+CFLAGS_BASE_DRIVER  = -Wno-sign-compare
 CFLAGS_BASE_DRIVER += -Wno-unused-value
 CFLAGS_BASE_DRIVER += -Wno-unused-parameter
 CFLAGS_BASE_DRIVER += -Wno-strict-aliasing
@@ -65,6 +64,11 @@ CFLAGS_BASE_DRIVER += -Wno-missing-field-initializers
 CFLAGS_BASE_DRIVER += -Wno-pointer-to-int-cast
 CFLAGS_BASE_DRIVER += -Wno-format-nonliteral
 CFLAGS_BASE_DRIVER += -Wno-format-security
+
+ifeq ($(shell test $(GCC_MAJOR_VERSION) -ge 4 -a $(GCC_MINOR_VERSION) -ge 4 && echo 1), 1)
+CFLAGS_BASE_DRIVER += -Wno-unused-but-set-variable
+endif
+
 CFLAGS_i40e_lan_hmc.o += -Wno-error
 endif
 OBJS_BASE_DRIVER=$(patsubst %.c,%.o,$(notdir $(wildcard $(RTE_SDK)/lib/librte_pmd_i40e/i40e/*.c)))
