@@ -178,7 +178,7 @@ contigmem_unload()
 	if (contigmem_eh_tag != NULL)
 		EVENTHANDLER_DEREGISTER(process_exit, contigmem_eh_tag);
 
-	for (i = 0; i < contigmem_num_buffers; i++)
+	for (i = 0; i < RTE_CONTIGMEM_MAX_NUM_BUFS; i++)
 		if (contigmem_buffers[i] != NULL)
 			contigfree(contigmem_buffers[i], contigmem_buffer_size,
 					M_CONTIGMEM);
