@@ -699,7 +699,8 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	num = (uint16_t)(likely(nb_used < VIRTIO_MBUF_BURST_SZ) ? nb_used : VIRTIO_MBUF_BURST_SZ);
 
 	while (nb_tx < nb_pkts) {
-		int need = tx_pkts[nb_tx]->nb_segs - txvq->vq_free_cnt;
+		/* Need one more descriptor for virtio header. */
+		int need = tx_pkts[nb_tx]->nb_segs - txvq->vq_free_cnt + 1;
 		int deq_cnt = RTE_MIN(need, (int)num);
 
 		num -= (deq_cnt > 0) ? deq_cnt : 0;
@@ -708,7 +709,12 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			deq_cnt--;
 		}
 
-		if (tx_pkts[nb_tx]->nb_segs <= txvq->vq_free_cnt) {
+		need = (int)tx_pkts[nb_tx]->nb_segs - txvq->vq_free_cnt + 1;
+		/*
+		 * Zero or negative value indicates it has enough free
+		 * descriptors to use for transmitting.
+		 */
+		if (likely(need <= 0)) {
 			txm = tx_pkts[nb_tx];
 			/* Enqueue Packet buffers */
 			error = virtqueue_enqueue_xmit(txvq, txm);
