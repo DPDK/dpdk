@@ -51,7 +51,7 @@ clean: api-html-clean
 api-html: api-html-clean
 	@echo 'doxygen for API...'
 	$(Q)mkdir -p $(RTE_OUTPUT)/doc/html
-	$(Q)(cat $(RTE_SDK)/doc/doxy-api.conf         && \
+	$(Q)(cat $(RTE_SDK)/doc/api/doxy-api.conf     && \
 	    printf 'PROJECT_NUMBER = '                && \
 	                      $(MAKE) -rR showversion && \
 	    echo OUTPUT_DIRECTORY = $(RTE_OUTPUT)/doc && \
@@ -60,7 +60,7 @@ api-html: api-html-clean
 	    echo GENERATE_LATEX   = NO                && \
 	    echo GENERATE_MAN     = NO                )| \
 	    doxygen -
-	$(Q)$(RTE_SDK)/doc/doxy-html-custom.sh $(RTE_OUTPUT)/doc/html/api/doxygen.css
+	$(Q)$(RTE_SDK)/doc/api/doxy-html-custom.sh $(RTE_OUTPUT)/doc/html/api/doxygen.css
 
 .PHONY: api-html-clean
 api-html-clean:
