@@ -1274,6 +1274,9 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	pf->offset_loaded = true;
 
+	if (pf->main_vsi)
+		i40e_update_vsi_stats(pf->main_vsi);
+
 	stats->ipackets = ns->eth.rx_unicast + ns->eth.rx_multicast +
 						ns->eth.rx_broadcast;
 	stats->opackets = ns->eth.tx_unicast + ns->eth.tx_multicast +
@@ -1283,8 +1286,12 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->oerrors  = ns->eth.tx_errors;
 	stats->imcasts  = ns->eth.rx_multicast;
 
-	if (pf->main_vsi)
-		i40e_update_vsi_stats(pf->main_vsi);
+	/* Rx Errors */
+	stats->ibadcrc  = ns->crc_errors;
+	stats->ibadlen  = ns->rx_length_errors + ns->rx_undersize +
+			ns->rx_oversize + ns->rx_fragments + ns->rx_jabber;
+	stats->imissed  = ns->eth.rx_discards;
+	stats->ierrors  = stats->ibadcrc + stats->ibadlen + stats->imissed;
 
 	PMD_DRV_LOG(DEBUG, "***************** PF stats start *******************");
 	PMD_DRV_LOG(DEBUG, "rx_bytes:            %lu", ns->eth.rx_bytes);
