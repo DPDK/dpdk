@@ -42,13 +42,13 @@ help:
 	@$(MAKE) -rR showconfigs | sed 's,^,\t\t\t\t,'
 
 .PHONY: all
-all: htmlapi
+all: api-html
 
 .PHONY: clean
-clean: htmlapi-clean
+clean: api-html-clean
 
-.PHONY: htmlapi
-htmlapi: htmlapi-clean
+.PHONY: api-html
+api-html: api-html-clean
 	@echo 'doxygen for API...'
 	$(Q)mkdir -p $(RTE_OUTPUT)/doc/html
 	$(Q)(cat $(RTE_SDK)/doc/doxy-api.conf         && \
@@ -62,7 +62,7 @@ htmlapi: htmlapi-clean
 	    doxygen -
 	$(Q)$(RTE_SDK)/doc/doxy-html-custom.sh $(RTE_OUTPUT)/doc/html/api/doxygen.css
 
-.PHONY: htmlapi-clean
-htmlapi-clean:
+.PHONY: api-html-clean
+api-html-clean:
 	$(Q)rm -f $(RTE_OUTPUT)/doc/html/api/*
 	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/html/api 2>&- || true
