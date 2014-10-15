@@ -64,5 +64,5 @@ htmlapi: htmlapi-clean
 
 .PHONY: htmlapi-clean
 htmlapi-clean:
-	$(Q)rm -f $O/doc/html/api/*
+	$(Q)rm -f $(RTE_OUTPUT)/doc/html/api/*
 	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/html/api 2>&- || true
