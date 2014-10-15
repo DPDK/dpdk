@@ -36,16 +36,24 @@ $(error "Cannot use T= with doc target")
 endif
 endif
 
+RTE_SPHINX_BUILD = sphinx-build
+ifndef V
+RTE_SPHINX_VERBOSE := -q
+endif
+ifeq '$V' '0'
+RTE_SPHINX_VERBOSE := -q
+endif
+
 .PHONY: help
 help:
 	@cat $(RTE_SDK)/doc/build-sdk-quick.txt
 	@$(MAKE) -rR showconfigs | sed 's,^,\t\t\t\t,'
 
 .PHONY: all
-all: api-html
+all: api-html guides-html
 
 .PHONY: clean
-clean: api-html-clean
+clean: api-html-clean guides-html-clean
 
 .PHONY: api-html
 api-html: api-html-clean
@@ -62,7 +70,16 @@ api-html: api-html-clean
 	    doxygen -
 	$(Q)$(RTE_SDK)/doc/api/doxy-html-custom.sh $(RTE_OUTPUT)/doc/html/api/doxygen.css
 
+guides-%:
+	@echo 'sphinx for guides...'
+	$(Q)$(RTE_SPHINX_BUILD) -b $* $(RTE_SPHINX_VERBOSE) \
+		-c $(RTE_SDK)/doc/guides $(RTE_SDK)/doc/guides $(RTE_OUTPUT)/doc/$*/guides
+
 .PHONY: api-html-clean
 api-html-clean:
 	$(Q)rm -f $(RTE_OUTPUT)/doc/html/api/*
 	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/html/api 2>&- || true
+
+guides-%-clean:
+	$(Q)rm -rf $(RTE_OUTPUT)/doc/$*/guides
+	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/$* 2>&- || true
