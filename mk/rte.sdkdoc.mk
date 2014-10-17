@@ -70,11 +70,6 @@ api-html: api-html-clean
 	    doxygen -
 	$(Q)$(RTE_SDK)/doc/api/doxy-html-custom.sh $(RTE_OUTPUT)/doc/html/api/doxygen.css
 
-guides-%:
-	@echo 'sphinx for guides...'
-	$(Q)$(RTE_SPHINX_BUILD) -b $* $(RTE_SPHINX_VERBOSE) \
-		-c $(RTE_SDK)/doc/guides $(RTE_SDK)/doc/guides $(RTE_OUTPUT)/doc/$*/guides
-
 .PHONY: api-html-clean
 api-html-clean:
 	$(Q)rm -f $(RTE_OUTPUT)/doc/html/api/*
@@ -83,3 +78,8 @@ api-html-clean:
 guides-%-clean:
 	$(Q)rm -rf $(RTE_OUTPUT)/doc/$*/guides
 	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/$* 2>&- || true
+
+guides-%:
+	@echo 'sphinx for guides...'
+	$(Q)$(RTE_SPHINX_BUILD) -b $* $(RTE_SPHINX_VERBOSE) \
+		-c $(RTE_SDK)/doc/guides $(RTE_SDK)/doc/guides $(RTE_OUTPUT)/doc/$*/guides
