@@ -397,6 +397,7 @@ struct tbl_perf_test_params tbl_perf_params[] =
 	if (cond) {							\
 		printf("ERROR line %d: " str "\n", __LINE__, ##__VA_ARGS__); \
 		if (handle) rte_fbk_hash_free(handle);			\
+		if (keys) rte_free(keys);				\
 		return -1;						\
 	}								\
 } while(0)
@@ -697,8 +698,8 @@ fbk_hash_perf_test(void)
 		.entries_per_bucket = 4,
 		.socket_id = rte_socket_id(),
 	};
-	struct rte_fbk_hash_table *handle;
-	uint32_t keys[ENTRIES] = {0};
+	struct rte_fbk_hash_table *handle = NULL;
+	uint32_t *keys = NULL;
 	unsigned indexes[TEST_SIZE];
 	uint64_t lookup_time = 0;
 	unsigned added = 0;
@@ -707,6 +708,10 @@ fbk_hash_perf_test(void)
 
 	handle = rte_fbk_hash_create(&params);
 	RETURN_IF_ERROR_FBK(handle == NULL, "fbk hash creation failed");
+
+	keys = rte_zmalloc(NULL, ENTRIES * sizeof(*keys), 0);
+	RETURN_IF_ERROR_FBK(keys == NULL,
+		"fbk hash: memory allocation for key store failed");
 
 	/* Generate random keys and values. */
 	for (i = 0; i < ENTRIES; i++) {
