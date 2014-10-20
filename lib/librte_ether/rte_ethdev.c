@@ -3148,3 +3148,35 @@ rte_eth_dev_get_flex_filter(uint8_t port_id, uint16_t index,
 	return (*dev->dev_ops->get_flex_filter)(dev, index, filter,
 						rx_queue);
 }
+
+int
+rte_eth_dev_filter_supported(uint8_t port_id, enum rte_filter_type filter_type)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->filter_ctrl, -ENOTSUP);
+	return (*dev->dev_ops->filter_ctrl)(dev, filter_type,
+				RTE_ETH_FILTER_NOP, NULL);
+}
+
+int
+rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type,
+		       enum rte_filter_op filter_op, void *arg)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->filter_ctrl, -ENOTSUP);
+	return (*dev->dev_ops->filter_ctrl)(dev, filter_type, filter_op, arg);
+}

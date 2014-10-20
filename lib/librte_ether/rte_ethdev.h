@@ -177,6 +177,7 @@ extern "C" {
 #include <rte_pci.h>
 #include <rte_mbuf.h>
 #include "rte_ether.h"
+#include "rte_eth_ctrl.h"
 
 /**
  * A structure used to retrieve statistics for an Ethernet port.
@@ -1386,6 +1387,12 @@ typedef int (*eth_get_flex_filter_t)(struct rte_eth_dev *dev,
 			uint16_t *rx_queue);
 /**< @internal Get a flex filter rule on an Ethernet device */
 
+typedef int (*eth_filter_ctrl_t)(struct rte_eth_dev *dev,
+				 enum rte_filter_type filter_type,
+				 enum rte_filter_op filter_op,
+				 void *arg);
+/**< @internal Take operations to assigned filter type on an Ethernet device */
+
 /**
  * @internal A structure containing the functions exported by an Ethernet driver.
  */
@@ -1494,6 +1501,7 @@ struct eth_dev_ops {
 	eth_add_flex_filter_t          add_flex_filter;      /**< add flex filter. */
 	eth_remove_flex_filter_t       remove_flex_filter;   /**< remove flex filter. */
 	eth_get_flex_filter_t          get_flex_filter;      /**< get flex filter. */
+	eth_filter_ctrl_t              filter_ctrl;          /**< common filter control*/
 };
 
 /**
@@ -3622,6 +3630,42 @@ int rte_eth_dev_remove_flex_filter(uint8_t port_id, uint16_t index);
  */
 int rte_eth_dev_get_flex_filter(uint8_t port_id, uint16_t index,
 			struct rte_flex_filter *filter, uint16_t *rx_queue);
+
+/**
+ * Check whether the filter type is supported on an Ethernet device.
+ * All the supported filter types are defined in 'rte_eth_ctrl.h'.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param filter_type
+ *   Filter type.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support this filter type.
+ *   - (-ENODEV) if *port_id* invalid.
+ */
+int rte_eth_dev_filter_supported(uint8_t port_id, enum rte_filter_type filter_type);
+
+/**
+ * Take operations to assigned filter type on an Ethernet device.
+ * All the supported operations and filter types are defined in 'rte_eth_ctrl.h'.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param filter_type
+ *   Filter type.
+ * @param filter_op
+ *   Type of operation.
+ * @param arg
+ *   A pointer to arguments defined specifically for the operation.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - others depends on the specific operations implementation.
+ */
+int rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type,
+			enum rte_filter_op filter_op, void *arg);
 
 #ifdef __cplusplus
 }
