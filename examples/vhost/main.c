@@ -1020,17 +1020,8 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 				/*drop the packet if the device is marked for removal*/
 				LOG_DEBUG(VHOST_DATA, "(%"PRIu64") Device is marked for removal\n", tdev->device_fh);
 			} else {
-				uint32_t mergeable =
-					dev_ll->dev->features &
-					(1 << VIRTIO_NET_F_MRG_RXBUF);
-
 				/*send the packet to the local virtio device*/
-				if (likely(mergeable == 0))
-					ret = virtio_dev_rx(dev_ll->dev, &m, 1);
-				else
-					ret = virtio_dev_merge_rx(dev_ll->dev,
-						&m, 1);
-
+				ret = rte_vhost_enqueue_burst(tdev, VIRTIO_RXQ, &m, 1);
 				if (enable_stats) {
 					rte_atomic64_add(
 					&dev_statistics[tdev->device_fh].rx_total_atomic,
@@ -1207,7 +1198,8 @@ switch_worker(__attribute__((unused)) void *arg)
 	const uint16_t lcore_id = rte_lcore_id();
 	const uint16_t num_cores = (uint16_t)rte_lcore_count();
 	uint16_t rx_count = 0;
-	uint32_t mergeable = 0;
+	uint16_t tx_count;
+	uint32_t retry = 0;
 
 	RTE_LOG(INFO, VHOST_DATA, "Procesing on Core %u started\n", lcore_id);
 	lcore_ll = lcore_info[lcore_id].lcore_ll;
@@ -1266,8 +1258,6 @@ switch_worker(__attribute__((unused)) void *arg)
 			/*get virtio device ID*/
 			vdev = dev_ll->vdev;
 			dev = vdev->dev;
-			mergeable =
-				dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF);
 
 			if (vdev->remove) {
 				dev_ll = dev_ll->next;
@@ -1281,15 +1271,18 @@ switch_worker(__attribute__((unused)) void *arg)
 					vdev->vmdq_rx_q, pkts_burst, MAX_PKT_BURST);
 
 				if (rx_count) {
-					if (likely(mergeable == 0))
-						ret_count =
-							virtio_dev_rx(dev,
-							pkts_burst, rx_count);
-					else
-						ret_count =
-							virtio_dev_merge_rx(dev,
-							pkts_burst, rx_count);
-
+					/*
+					* Retry is enabled and the queue is full then we wait and retry to avoid packet loss
+					* Here MAX_PKT_BURST must be less than virtio queue size
+					*/
+					if (enable_retry && unlikely(rx_count > rte_vring_available_entries(dev, VIRTIO_RXQ))) {
+						for (retry = 0; retry < burst_rx_retry_num; retry++) {
+							rte_delay_us(burst_rx_delay_time);
+							if (rx_count <= rte_vring_available_entries(dev, VIRTIO_RXQ))
+								break;
+						}
+					}
+					ret_count = rte_vhost_enqueue_burst(dev, VIRTIO_RXQ, pkts_burst, rx_count);
 					if (enable_stats) {
 						rte_atomic64_add(
 						&dev_statistics[dev_ll->vdev->dev->device_fh].rx_total_atomic,
@@ -1306,11 +1299,17 @@ switch_worker(__attribute__((unused)) void *arg)
 			}
 
 			if (!vdev->remove) {
-				/*Handle guest TX*/
-				if (likely(mergeable == 0))
-					virtio_dev_tx(dev, mbuf_pool);
-				else
-					virtio_dev_merge_tx(dev, mbuf_pool);
+				/* Handle guest TX*/
+				tx_count = rte_vhost_dequeue_burst(dev, VIRTIO_TXQ, mbuf_pool, pkts_burst, MAX_PKT_BURST);
+				/* If this is the first received packet we need to learn the MAC and setup VMDQ */
+				if (unlikely(vdev->ready == DEVICE_MAC_LEARNING) && tx_count) {
+					if (vdev->remove || (link_vmdq(vdev, pkts_burst[0]) == -1)) {
+						while (tx_count--)
+							rte_pktmbuf_free(pkts_burst[tx_count]);
+					}
+				}
+				while (tx_count)
+					virtio_tx_route(vdev, pkts_burst[--tx_count], mbuf_pool, (uint16_t)dev->device_fh);
 			}
 
 			/*move to the next device in the list*/
