@@ -1047,12 +1047,10 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
  * or the physical port.
  */
 static inline void __attribute__((always_inline))
-virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, struct rte_mempool *mbuf_pool, uint16_t vlan_tag)
+virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 {
 	struct mbuf_table *tx_q;
-	struct vlan_ethhdr *vlan_hdr;
 	struct rte_mbuf **m_table;
-	struct rte_mbuf *mbuf, *prev;
 	unsigned len, ret, offset = 0;
 	const uint16_t lcore_id = rte_lcore_id();
 	struct virtio_net_data_ll *dev_ll = ll_root_used;
@@ -1060,8 +1058,10 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, struct rte_mempool *
 	struct virtio_net *dev = vdev->dev;
 
 	/*check if destination is local VM*/
-	if ((vm2vm_mode == VM2VM_SOFTWARE) && (virtio_tx_local(vdev, m) == 0))
+	if ((vm2vm_mode == VM2VM_SOFTWARE) && (virtio_tx_local(vdev, m) == 0)) {
+		rte_pktmbuf_free(m);
 		return;
+	}
 
 	if (vm2vm_mode == VM2VM_HARDWARE) {
 		while (dev_ll != NULL) {
@@ -1077,7 +1077,8 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, struct rte_mempool *
 					"(%"PRIu64") TX: Source and destination"
 					" MAC addresses are the same. Dropping "
 					"packet.\n",
-					dev_ll->vdev->device_fh);
+					dev_ll->vdev->dev->device_fh);
+					rte_pktmbuf_free(m);
 					return;
 				}
 				offset = 4;
@@ -1103,58 +1104,12 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, struct rte_mempool *
 	tx_q = &lcore_tx_queue[lcore_id];
 	len = tx_q->len;
 
-	/* Allocate an mbuf and populate the structure. */
-	mbuf = rte_pktmbuf_alloc(mbuf_pool);
-	if (unlikely(mbuf == NULL)) {
-		RTE_LOG(ERR, VHOST_DATA,
-			"Failed to allocate memory for mbuf.\n");
-		return;
-	}
+	m->ol_flags = PKT_TX_VLAN_PKT;
+	/*FIXME: offset*/
+	m->data_len += offset;
+	m->vlan_tci = vlan_tag;
 
-	mbuf->data_len = m->data_len + VLAN_HLEN + offset;
-	mbuf->pkt_len = m->pkt_len + VLAN_HLEN + offset;
-	mbuf->nb_segs = m->nb_segs;
-
-	/* Copy ethernet header to mbuf. */
-	rte_memcpy(rte_pktmbuf_mtod(mbuf, void *),
-		rte_pktmbuf_mtod(m, const void *),
-		ETH_HLEN);
-
-
-	/* Setup vlan header. Bytes need to be re-ordered for network with htons()*/
-	vlan_hdr = rte_pktmbuf_mtod(mbuf, struct vlan_ethhdr *);
-	vlan_hdr->h_vlan_encapsulated_proto = vlan_hdr->h_vlan_proto;
-	vlan_hdr->h_vlan_proto = htons(ETH_P_8021Q);
-	vlan_hdr->h_vlan_TCI = htons(vlan_tag);
-
-	/* Copy the remaining packet contents to the mbuf. */
-	rte_memcpy((void *)(rte_pktmbuf_mtod(mbuf, uint8_t *) + VLAN_ETH_HLEN),
-		(const void *)(rte_pktmbuf_mtod(m, uint8_t *) + ETH_HLEN),
-		(m->data_len - ETH_HLEN));
-
-	/* Copy the remaining segments for the whole packet. */
-	prev = mbuf;
-	while (m->next) {
-		/* Allocate an mbuf and populate the structure. */
-		struct rte_mbuf *next_mbuf = rte_pktmbuf_alloc(mbuf_pool);
-		if (unlikely(next_mbuf == NULL)) {
-			rte_pktmbuf_free(mbuf);
-			RTE_LOG(ERR, VHOST_DATA,
-				"Failed to allocate memory for mbuf.\n");
-			return;
-		}
-
-		m = m->next;
-		prev->next = next_mbuf;
-		prev = next_mbuf;
-		next_mbuf->data_len = m->data_len;
-
-		/* Copy data to next mbuf. */
-		rte_memcpy(rte_pktmbuf_mtod(next_mbuf, void *),
-			rte_pktmbuf_mtod(m, const void *), m->data_len);
-	}
-
-	tx_q->m_table[len] = mbuf;
+	tx_q->m_table[len] = m;
 	len++;
 	if (enable_stats) {
 		dev_statistics[dev->device_fh].tx_total++;
@@ -1309,7 +1264,7 @@ switch_worker(__attribute__((unused)) void *arg)
 					}
 				}
 				while (tx_count)
-					virtio_tx_route(vdev, pkts_burst[--tx_count], mbuf_pool, (uint16_t)dev->device_fh);
+					virtio_tx_route(vdev, pkts_burst[--tx_count], (uint16_t)dev->device_fh);
 			}
 
 			/*move to the next device in the list*/
