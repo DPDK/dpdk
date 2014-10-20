@@ -186,6 +186,10 @@ static int i40e_dev_rss_hash_update(struct rte_eth_dev *dev,
 				    struct rte_eth_rss_conf *rss_conf);
 static int i40e_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 				      struct rte_eth_rss_conf *rss_conf);
+static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
+				enum rte_filter_type filter_type,
+				enum rte_filter_op filter_op,
+				void *arg);
 
 /* Default hash key buffer for RSS */
 static uint32_t rss_key_default[I40E_PFQF_HKEY_MAX_INDEX + 1];
@@ -237,6 +241,7 @@ static struct eth_dev_ops i40e_eth_dev_ops = {
 	.reta_query                   = i40e_dev_rss_reta_query,
 	.rss_hash_update              = i40e_dev_rss_hash_update,
 	.rss_hash_conf_get            = i40e_dev_rss_hash_conf_get,
+	.filter_ctrl                  = i40e_dev_filter_ctrl,
 };
 
 static struct eth_driver rte_i40e_pmd = {
@@ -4138,4 +4143,28 @@ i40e_pf_config_mq_rx(struct i40e_pf *pf)
 	}
 
 	return 0;
+}
+
+static int
+i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg)
+{
+	int ret = 0;
+	(void)filter_op;
+	(void)arg;
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	switch (filter_type) {
+	default:
+		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
+							filter_type);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
 }
