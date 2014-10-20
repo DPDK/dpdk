@@ -68,6 +68,36 @@
 		       I40E_FLAG_HEADER_SPLIT_ENABLED | \
 		       I40E_FLAG_FDIR)
 
+#define I40E_RSS_OFFLOAD_ALL ( \
+	ETH_RSS_NONF_IPV4_UDP | \
+	ETH_RSS_NONF_IPV4_TCP | \
+	ETH_RSS_NONF_IPV4_SCTP | \
+	ETH_RSS_NONF_IPV4_OTHER | \
+	ETH_RSS_FRAG_IPV4 | \
+	ETH_RSS_NONF_IPV6_UDP | \
+	ETH_RSS_NONF_IPV6_TCP | \
+	ETH_RSS_NONF_IPV6_SCTP | \
+	ETH_RSS_NONF_IPV6_OTHER | \
+	ETH_RSS_FRAG_IPV6 | \
+	ETH_RSS_L2_PAYLOAD)
+
+/* All bits of RSS hash enable */
+#define I40E_RSS_HENA_ALL ( \
+	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_UDP) | \
+	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP) | \
+	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_SCTP) | \
+	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_OTHER) | \
+	(1ULL << I40E_FILTER_PCTYPE_FRAG_IPV4) | \
+	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_UDP) | \
+	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP) | \
+	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_SCTP) | \
+	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_OTHER) | \
+	(1ULL << I40E_FILTER_PCTYPE_FRAG_IPV6) | \
+	(1ULL << I40E_FILTER_PCTYPE_FCOE_OX) | \
+	(1ULL << I40E_FILTER_PCTYPE_FCOE_RX) | \
+	(1ULL << I40E_FILTER_PCTYPE_FCOE_OTHER) | \
+	(1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD))
+
 struct i40e_adapter;
 
 TAILQ_HEAD(i40e_mac_filter_list, i40e_mac_filter);
@@ -310,8 +340,10 @@ int i40e_dev_link_update(struct rte_eth_dev *dev,
 void i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi);
 void i40e_vsi_queues_unbind_intr(struct i40e_vsi *vsi);
 int i40e_vsi_vlan_pvid_set(struct i40e_vsi *vsi,
-				struct i40e_vsi_vlan_pvid_info *info);
+			   struct i40e_vsi_vlan_pvid_info *info);
 int i40e_vsi_config_vlan_stripping(struct i40e_vsi *vsi, bool on);
+uint64_t i40e_config_hena(uint64_t flags);
+uint64_t i40e_parse_hena(uint64_t flags);
 
 /* I40E_DEV_PRIVATE_TO */
 #define I40E_DEV_PRIVATE_TO_PF(adapter) \

@@ -98,36 +98,6 @@
 
 #define I40E_PRE_TX_Q_CFG_WAIT_US       10 /* 10 us */
 
-#define I40E_RSS_OFFLOAD_ALL ( \
-	ETH_RSS_NONF_IPV4_UDP | \
-	ETH_RSS_NONF_IPV4_TCP | \
-	ETH_RSS_NONF_IPV4_SCTP | \
-	ETH_RSS_NONF_IPV4_OTHER | \
-	ETH_RSS_FRAG_IPV4 | \
-	ETH_RSS_NONF_IPV6_UDP | \
-	ETH_RSS_NONF_IPV6_TCP | \
-	ETH_RSS_NONF_IPV6_SCTP | \
-	ETH_RSS_NONF_IPV6_OTHER | \
-	ETH_RSS_FRAG_IPV6 | \
-	ETH_RSS_L2_PAYLOAD)
-
-/* All bits of RSS hash enable */
-#define I40E_RSS_HENA_ALL ( \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_UDP) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_SCTP) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_OTHER) | \
-	(1ULL << I40E_FILTER_PCTYPE_FRAG_IPV4) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_UDP) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_SCTP) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_OTHER) | \
-	(1ULL << I40E_FILTER_PCTYPE_FRAG_IPV6) | \
-	(1ULL << I40E_FILTER_PCTYPE_FCOE_OX) | \
-	(1ULL << I40E_FILTER_PCTYPE_FCOE_RX) | \
-	(1ULL << I40E_FILTER_PCTYPE_FCOE_OTHER) | \
-	(1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD))
-
 static int eth_i40e_dev_init(\
 			__attribute__((unused)) struct eth_driver *eth_drv,
 			struct rte_eth_dev *eth_dev);
@@ -3960,7 +3930,7 @@ DONE:
 }
 
 /* Configure hash enable flags for RSS */
-static uint64_t
+uint64_t
 i40e_config_hena(uint64_t flags)
 {
 	uint64_t hena = 0;
@@ -3995,7 +3965,7 @@ i40e_config_hena(uint64_t flags)
 }
 
 /* Parse the hash enable flags */
-static uint64_t
+uint64_t
 i40e_parse_hena(uint64_t flags)
 {
 	uint64_t rss_hf = 0;
