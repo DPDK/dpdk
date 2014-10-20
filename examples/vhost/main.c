@@ -871,7 +871,7 @@ static unsigned check_ports_num(unsigned nb_ports)
  * This is used to convert virtio buffer addresses.
  */
 static inline uint64_t __attribute__((always_inline))
-gpa_to_hpa(struct virtio_net *dev, uint64_t guest_pa,
+gpa_to_hpa(struct vhost_dev  *vdev, uint64_t guest_pa,
 	uint32_t buf_len, hpa_type *addr_type)
 {
 	struct virtio_memory_regions_hpa *region;
@@ -880,8 +880,8 @@ gpa_to_hpa(struct virtio_net *dev, uint64_t guest_pa,
 
 	*addr_type = PHYS_ADDR_INVALID;
 
-	for (regionidx = 0; regionidx < dev->mem->nregions_hpa; regionidx++) {
-		region = &dev->mem->regions_hpa[regionidx];
+	for (regionidx = 0; regionidx < vdev->nregions_hpa; regionidx++) {
+		region = &vdev->regions_hpa[regionidx];
 		if ((guest_pa >= region->guest_phys_address) &&
 			(guest_pa <= region->guest_phys_address_end)) {
 			vhost_pa = region->host_phys_addr_offset + guest_pa;
@@ -895,7 +895,7 @@ gpa_to_hpa(struct virtio_net *dev, uint64_t guest_pa,
 	}
 
 	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") GPA %p| HPA %p\n",
-		dev->device_fh, (void *)(uintptr_t)guest_pa,
+		vdev->dev->device_fh, (void *)(uintptr_t)guest_pa,
 		(void *)(uintptr_t)vhost_pa);
 
 	return vhost_pa;
@@ -915,10 +915,11 @@ ether_addr_cmp(struct ether_addr *ea, struct ether_addr *eb)
  * vlan tag to a VMDQ.
  */
 static int
-link_vmdq(struct virtio_net *dev, struct rte_mbuf *m)
+link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
 	struct ether_hdr *pkt_hdr;
 	struct virtio_net_data_ll *dev_ll;
+	struct virtio_net *dev = vdev->dev;
 	int i, ret;
 
 	/* Learn MAC address of guest device from packet */
@@ -927,7 +928,7 @@ link_vmdq(struct virtio_net *dev, struct rte_mbuf *m)
 	dev_ll = ll_root_used;
 
 	while (dev_ll != NULL) {
-		if (ether_addr_cmp(&(pkt_hdr->s_addr), &dev_ll->dev->mac_address)) {
+		if (ether_addr_cmp(&(pkt_hdr->s_addr), &dev_ll->vdev->mac_address)) {
 			RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") WARNING: This device is using an existing MAC address and has not been registered.\n", dev->device_fh);
 			return -1;
 		}
@@ -935,30 +936,30 @@ link_vmdq(struct virtio_net *dev, struct rte_mbuf *m)
 	}
 
 	for (i = 0; i < ETHER_ADDR_LEN; i++)
-		dev->mac_address.addr_bytes[i] = pkt_hdr->s_addr.addr_bytes[i];
+		vdev->mac_address.addr_bytes[i] = pkt_hdr->s_addr.addr_bytes[i];
 
 	/* vlan_tag currently uses the device_id. */
-	dev->vlan_tag = vlan_tags[dev->device_fh];
+	vdev->vlan_tag = vlan_tags[dev->device_fh];
 
 	/* Print out VMDQ registration info. */
 	RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") MAC_ADDRESS %02x:%02x:%02x:%02x:%02x:%02x and VLAN_TAG %d registered\n",
 		dev->device_fh,
-		dev->mac_address.addr_bytes[0], dev->mac_address.addr_bytes[1],
-		dev->mac_address.addr_bytes[2], dev->mac_address.addr_bytes[3],
-		dev->mac_address.addr_bytes[4], dev->mac_address.addr_bytes[5],
-		dev->vlan_tag);
+		vdev->mac_address.addr_bytes[0], vdev->mac_address.addr_bytes[1],
+		vdev->mac_address.addr_bytes[2], vdev->mac_address.addr_bytes[3],
+		vdev->mac_address.addr_bytes[4], vdev->mac_address.addr_bytes[5],
+		vdev->vlan_tag);
 
 	/* Register the MAC address. */
-	ret = rte_eth_dev_mac_addr_add(ports[0], &dev->mac_address, (uint32_t)dev->device_fh);
+	ret = rte_eth_dev_mac_addr_add(ports[0], &vdev->mac_address, (uint32_t)dev->device_fh);
 	if (ret)
 		RTE_LOG(ERR, VHOST_DATA, "(%"PRIu64") Failed to add device MAC address to VMDQ\n",
 					dev->device_fh);
 
 	/* Enable stripping of the vlan tag as we handle routing. */
-	rte_eth_dev_set_vlan_strip_on_queue(ports[0], (uint16_t)dev->vmdq_rx_q, 1);
+	rte_eth_dev_set_vlan_strip_on_queue(ports[0], (uint16_t)vdev->vmdq_rx_q, 1);
 
 	/* Set device as ready for RX. */
-	dev->ready = DEVICE_RX;
+	vdev->ready = DEVICE_RX;
 
 	return 0;
 }
@@ -968,33 +969,33 @@ link_vmdq(struct virtio_net *dev, struct rte_mbuf *m)
  * queue before disabling RX on the device.
  */
 static inline void
-unlink_vmdq(struct virtio_net *dev)
+unlink_vmdq(struct vhost_dev *vdev)
 {
 	unsigned i = 0;
 	unsigned rx_count;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 
-	if (dev->ready == DEVICE_RX) {
+	if (vdev->ready == DEVICE_RX) {
 		/*clear MAC and VLAN settings*/
-		rte_eth_dev_mac_addr_remove(ports[0], &dev->mac_address);
+		rte_eth_dev_mac_addr_remove(ports[0], &vdev->mac_address);
 		for (i = 0; i < 6; i++)
-			dev->mac_address.addr_bytes[i] = 0;
+			vdev->mac_address.addr_bytes[i] = 0;
 
-		dev->vlan_tag = 0;
+		vdev->vlan_tag = 0;
 
 		/*Clear out the receive buffers*/
 		rx_count = rte_eth_rx_burst(ports[0],
-					(uint16_t)dev->vmdq_rx_q, pkts_burst, MAX_PKT_BURST);
+					(uint16_t)vdev->vmdq_rx_q, pkts_burst, MAX_PKT_BURST);
 
 		while (rx_count) {
 			for (i = 0; i < rx_count; i++)
 				rte_pktmbuf_free(pkts_burst[i]);
 
 			rx_count = rte_eth_rx_burst(ports[0],
-					(uint16_t)dev->vmdq_rx_q, pkts_burst, MAX_PKT_BURST);
+					(uint16_t)vdev->vmdq_rx_q, pkts_burst, MAX_PKT_BURST);
 		}
 
-		dev->ready = DEVICE_MAC_LEARNING;
+		vdev->ready = DEVICE_MAC_LEARNING;
 	}
 }
 
@@ -1003,11 +1004,13 @@ unlink_vmdq(struct virtio_net *dev)
  * the packet on that devices RX queue. If not then return.
  */
 static inline unsigned __attribute__((always_inline))
-virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
+virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
 	struct virtio_net_data_ll *dev_ll;
 	struct ether_hdr *pkt_hdr;
 	uint64_t ret = 0;
+	struct virtio_net *dev = vdev->dev;
+	struct virtio_net *tdev; /* destination virito device */
 
 	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
@@ -1015,22 +1018,23 @@ virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
 	dev_ll = ll_root_used;
 
 	while (dev_ll != NULL) {
-		if ((dev_ll->dev->ready == DEVICE_RX) && ether_addr_cmp(&(pkt_hdr->d_addr),
-				          &dev_ll->dev->mac_address)) {
+		if ((dev_ll->vdev->ready == DEVICE_RX) && ether_addr_cmp(&(pkt_hdr->d_addr),
+				          &dev_ll->vdev->mac_address)) {
 
 			/* Drop the packet if the TX packet is destined for the TX device. */
-			if (dev_ll->dev->device_fh == dev->device_fh) {
+			if (dev_ll->vdev->dev->device_fh == dev->device_fh) {
 				LOG_DEBUG(VHOST_DATA, "(%"PRIu64") TX: Source and destination MAC addresses are the same. Dropping packet.\n",
-							dev_ll->dev->device_fh);
+							dev->device_fh);
 				return 0;
 			}
+			tdev = dev_ll->vdev->dev;
 
 
-			LOG_DEBUG(VHOST_DATA, "(%"PRIu64") TX: MAC address is local\n", dev_ll->dev->device_fh);
+			LOG_DEBUG(VHOST_DATA, "(%"PRIu64") TX: MAC address is local\n", tdev->device_fh);
 
-			if (dev_ll->dev->remove) {
+			if (dev_ll->vdev->remove) {
 				/*drop the packet if the device is marked for removal*/
-				LOG_DEBUG(VHOST_DATA, "(%"PRIu64") Device is marked for removal\n", dev_ll->dev->device_fh);
+				LOG_DEBUG(VHOST_DATA, "(%"PRIu64") Device is marked for removal\n", tdev->device_fh);
 			} else {
 				uint32_t mergeable =
 					dev_ll->dev->features &
@@ -1045,13 +1049,13 @@ virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
 
 				if (enable_stats) {
 					rte_atomic64_add(
-					&dev_statistics[dev_ll->dev->device_fh].rx_total_atomic,
+					&dev_statistics[tdev->device_fh].rx_total_atomic,
 					1);
 					rte_atomic64_add(
-					&dev_statistics[dev_ll->dev->device_fh].rx_atomic,
+					&dev_statistics[tdev->device_fh].rx_atomic,
 					ret);
-					dev_statistics[dev->device_fh].tx_total++;
-					dev_statistics[dev->device_fh].tx += ret;
+					dev_statistics[tdev->device_fh].tx_total++;
+					dev_statistics[tdev->device_fh].tx += ret;
 				}
 			}
 
@@ -1068,7 +1072,7 @@ virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
  * or the physical port.
  */
 static inline void __attribute__((always_inline))
-virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *mbuf_pool, uint16_t vlan_tag)
+virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, struct rte_mempool *mbuf_pool, uint16_t vlan_tag)
 {
 	struct mbuf_table *tx_q;
 	struct vlan_ethhdr *vlan_hdr;
@@ -1078,37 +1082,38 @@ virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *
 	const uint16_t lcore_id = rte_lcore_id();
 	struct virtio_net_data_ll *dev_ll = ll_root_used;
 	struct ether_hdr *pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	struct virtio_net *dev = vdev->dev;
 
 	/*check if destination is local VM*/
-	if ((vm2vm_mode == VM2VM_SOFTWARE) && (virtio_tx_local(dev, m) == 0))
+	if ((vm2vm_mode == VM2VM_SOFTWARE) && (virtio_tx_local(vdev, m) == 0))
 		return;
 
 	if (vm2vm_mode == VM2VM_HARDWARE) {
 		while (dev_ll != NULL) {
-			if ((dev_ll->dev->ready == DEVICE_RX)
+			if ((dev_ll->vdev->ready == DEVICE_RX)
 				&& ether_addr_cmp(&(pkt_hdr->d_addr),
-				&dev_ll->dev->mac_address)) {
+				&dev_ll->vdev->mac_address)) {
 				/*
 				 * Drop the packet if the TX packet is
 				 * destined for the TX device.
 				 */
-				if (dev_ll->dev->device_fh == dev->device_fh) {
+				if (dev_ll->vdev->dev->device_fh == dev->device_fh) {
 					LOG_DEBUG(VHOST_DATA,
 					"(%"PRIu64") TX: Source and destination"
 					" MAC addresses are the same. Dropping "
 					"packet.\n",
-					dev_ll->dev->device_fh);
+					dev_ll->vdev->device_fh);
 					return;
 				}
 				offset = 4;
 				vlan_tag =
 				(uint16_t)
-				vlan_tags[(uint16_t)dev_ll->dev->device_fh];
+				vlan_tags[(uint16_t)dev_ll->vdev->dev->device_fh];
 
 				LOG_DEBUG(VHOST_DATA,
 				"(%"PRIu64") TX: pkt to local VM device id:"
 				"(%"PRIu64") vlan tag: %d.\n",
-				dev->device_fh, dev_ll->dev->device_fh,
+				dev->device_fh, dev_ll->vdev->dev->device_fh,
 				vlan_tag);
 
 				break;
@@ -1207,6 +1212,7 @@ switch_worker(__attribute__((unused)) void *arg)
 {
 	struct rte_mempool *mbuf_pool = arg;
 	struct virtio_net *dev = NULL;
+	struct vhost_dev *vdev = NULL;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct virtio_net_data_ll *dev_ll;
 	struct mbuf_table *tx_q;
@@ -1274,20 +1280,21 @@ switch_worker(__attribute__((unused)) void *arg)
 
 		while (dev_ll != NULL) {
 			/*get virtio device ID*/
-			dev = dev_ll->dev;
+			vdev = dev_ll->vdev;
+			dev = vdev->dev;
 			mergeable =
 				dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF);
 
-			if (dev->remove) {
+			if (vdev->remove) {
 				dev_ll = dev_ll->next;
-				unlink_vmdq(dev);
-				dev->ready = DEVICE_SAFE_REMOVE;
+				unlink_vmdq(vdev);
+				vdev->ready = DEVICE_SAFE_REMOVE;
 				continue;
 			}
-			if (likely(dev->ready == DEVICE_RX)) {
+			if (likely(vdev->ready == DEVICE_RX)) {
 				/*Handle guest RX*/
 				rx_count = rte_eth_rx_burst(ports[0],
-					(uint16_t)dev->vmdq_rx_q, pkts_burst, MAX_PKT_BURST);
+					vdev->vmdq_rx_q, pkts_burst, MAX_PKT_BURST);
 
 				if (rx_count) {
 					if (likely(mergeable == 0))
@@ -1301,10 +1308,10 @@ switch_worker(__attribute__((unused)) void *arg)
 
 					if (enable_stats) {
 						rte_atomic64_add(
-						&dev_statistics[dev_ll->dev->device_fh].rx_total_atomic,
+						&dev_statistics[dev_ll->vdev->dev->device_fh].rx_total_atomic,
 						rx_count);
 						rte_atomic64_add(
-						&dev_statistics[dev_ll->dev->device_fh].rx_atomic, ret_count);
+						&dev_statistics[dev_ll->vdev->dev->device_fh].rx_atomic, ret_count);
 					}
 					while (likely(rx_count)) {
 						rx_count--;
@@ -1314,7 +1321,7 @@ switch_worker(__attribute__((unused)) void *arg)
 				}
 			}
 
-			if (!dev->remove) {
+			if (!vdev->remove) {
 				/*Handle guest TX*/
 				if (likely(mergeable == 0))
 					virtio_dev_tx(dev, mbuf_pool);
@@ -1436,12 +1443,13 @@ attach_rxmbuf_zcp(struct virtio_net *dev)
 	struct rte_mbuf *mbuf = NULL;
 	struct vpool *vpool;
 	hpa_type addr_type;
+	struct vhost_dev *vdev = (struct vhost_dev *)dev->priv;
 
-	vpool = &vpool_array[dev->vmdq_rx_q];
+	vpool = &vpool_array[vdev->vmdq_rx_q];
 	vq = dev->virtqueue[VIRTIO_RXQ];
 
 	do {
-		if (unlikely(get_available_ring_index_zcp(dev, &res_base_idx,
+		if (unlikely(get_available_ring_index_zcp(vdev->dev, &res_base_idx,
 				1) != 1))
 			return;
 		desc_idx = vq->avail->ring[(res_base_idx) & (vq->size - 1)];
@@ -1450,12 +1458,12 @@ attach_rxmbuf_zcp(struct virtio_net *dev)
 		if (desc->flags & VRING_DESC_F_NEXT) {
 			desc = &vq->desc[desc->next];
 			buff_addr = gpa_to_vva(dev, desc->addr);
-			phys_addr = gpa_to_hpa(dev, desc->addr, desc->len,
+			phys_addr = gpa_to_hpa(vdev, desc->addr, desc->len,
 					&addr_type);
 		} else {
 			buff_addr = gpa_to_vva(dev,
 					desc->addr + vq->vhost_hlen);
-			phys_addr = gpa_to_hpa(dev,
+			phys_addr = gpa_to_hpa(vdev,
 					desc->addr + vq->vhost_hlen,
 					desc->len, &addr_type);
 		}
@@ -1778,13 +1786,14 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 	struct virtio_net_data_ll *dev_ll = ll_root_used;
 	struct ether_hdr *pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 	uint16_t vlan_tag = (uint16_t)vlan_tags[(uint16_t)dev->device_fh];
+	uint16_t vmdq_rx_q = ((struct vhost_dev *)dev->priv)->vmdq_rx_q;
 
 	/*Add packet to the port tx queue*/
-	tx_q = &tx_queue_zcp[(uint16_t)dev->vmdq_rx_q];
+	tx_q = &tx_queue_zcp[vmdq_rx_q];
 	len = tx_q->len;
 
 	/* Allocate an mbuf and populate the structure. */
-	vpool = &vpool_array[MAX_QUEUES + (uint16_t)dev->vmdq_rx_q];
+	vpool = &vpool_array[MAX_QUEUES + vmdq_rx_q];
 	rte_ring_sc_dequeue(vpool->ring, (void **)&mbuf);
 	if (unlikely(mbuf == NULL)) {
 		struct vhost_virtqueue *vq = dev->virtqueue[VIRTIO_TXQ];
@@ -1805,21 +1814,21 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 		 */
 		vlan_tag = external_pkt_default_vlan_tag;
 		while (dev_ll != NULL) {
-			if (likely(dev_ll->dev->ready == DEVICE_RX) &&
+			if (likely(dev_ll->vdev->ready == DEVICE_RX) &&
 				ether_addr_cmp(&(pkt_hdr->d_addr),
-				&dev_ll->dev->mac_address)) {
+				&dev_ll->vdev->mac_address)) {
 
 				/*
 				 * Drop the packet if the TX packet is destined
 				 * for the TX device.
 				 */
-				if (unlikely(dev_ll->dev->device_fh
+				if (unlikely(dev_ll->vdev->dev->device_fh
 					== dev->device_fh)) {
 					LOG_DEBUG(VHOST_DATA,
 					"(%"PRIu64") TX: Source and destination"
 					"MAC addresses are the same. Dropping "
 					"packet.\n",
-					dev_ll->dev->device_fh);
+					dev_ll->vdev->dev->device_fh);
 					MBUF_HEADROOM_UINT32(mbuf)
 						= (uint32_t)desc_idx;
 					__rte_mbuf_raw_free(mbuf);
@@ -1833,12 +1842,12 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 				offset = 4;
 				vlan_tag =
 				(uint16_t)
-				vlan_tags[(uint16_t)dev_ll->dev->device_fh];
+				vlan_tags[(uint16_t)dev_ll->vdev->dev->device_fh];
 
 				LOG_DEBUG(VHOST_DATA,
 				"(%"PRIu64") TX: pkt to local VM device id:"
 				"(%"PRIu64") vlan tag: %d.\n",
-				dev->device_fh, dev_ll->dev->device_fh,
+				dev->device_fh, dev_ll->vdev->dev->device_fh,
 				vlan_tag);
 
 				break;
@@ -1923,6 +1932,7 @@ virtio_dev_tx_zcp(struct virtio_net *dev)
 	uint16_t avail_idx;
 	uint8_t need_copy = 0;
 	hpa_type addr_type;
+	struct vhost_dev *vdev = (struct vhost_dev *)dev->priv;
 
 	vq = dev->virtqueue[VIRTIO_TXQ];
 	avail_idx =  *((volatile uint16_t *)&vq->avail->idx);
@@ -1966,7 +1976,7 @@ virtio_dev_tx_zcp(struct virtio_net *dev)
 
 		/* Buffer address translation. */
 		buff_addr = gpa_to_vva(dev, desc->addr);
-		phys_addr = gpa_to_hpa(dev, desc->addr, desc->len, &addr_type);
+		phys_addr = gpa_to_hpa(vdev, desc->addr, desc->len, &addr_type);
 
 		if (likely(packet_success < (free_entries - 1)))
 			/* Prefetch descriptor index. */
@@ -2015,8 +2025,8 @@ virtio_dev_tx_zcp(struct virtio_net *dev)
 		 * If this is the first received packet we need to learn
 		 * the MAC and setup VMDQ
 		 */
-		if (unlikely(dev->ready == DEVICE_MAC_LEARNING)) {
-			if (dev->remove || (link_vmdq(dev, &m) == -1)) {
+		if (unlikely(vdev->ready == DEVICE_MAC_LEARNING)) {
+			if (vdev->remove || (link_vmdq(vdev, &m) == -1)) {
 				/*
 				 * Discard frame if device is scheduled for
 				 * removal or a duplicate MAC address is found.
@@ -2041,6 +2051,7 @@ static int
 switch_worker_zcp(__attribute__((unused)) void *arg)
 {
 	struct virtio_net *dev = NULL;
+	struct vhost_dev  *vdev = NULL;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct virtio_net_data_ll *dev_ll;
 	struct mbuf_table *tx_q;
@@ -2069,12 +2080,13 @@ switch_worker_zcp(__attribute__((unused)) void *arg)
 			 * put back into vpool.ring.
 			 */
 			dev_ll = lcore_ll->ll_root_used;
-			while ((dev_ll != NULL) && (dev_ll->dev != NULL)) {
+			while ((dev_ll != NULL) && (dev_ll->vdev != NULL)) {
 				/* Get virtio device ID */
-				dev = dev_ll->dev;
+				vdev = dev_ll->vdev;
+				dev = vdev->dev;
 
-				if (likely(!dev->remove)) {
-					tx_q = &tx_queue_zcp[(uint16_t)dev->vmdq_rx_q];
+				if (likely(!vdev->remove)) {
+					tx_q = &tx_queue_zcp[(uint16_t)vdev->vmdq_rx_q];
 					if (tx_q->len) {
 						LOG_DEBUG(VHOST_DATA,
 						"TX queue drained after timeout"
@@ -2099,7 +2111,7 @@ switch_worker_zcp(__attribute__((unused)) void *arg)
 						tx_q->len = 0;
 
 						txmbuf_clean_zcp(dev,
-							&vpool_array[MAX_QUEUES+dev->vmdq_rx_q]);
+							&vpool_array[MAX_QUEUES+vdev->vmdq_rx_q]);
 					}
 				}
 				dev_ll = dev_ll->next;
@@ -2119,17 +2131,18 @@ switch_worker_zcp(__attribute__((unused)) void *arg)
 		/* Process devices */
 		dev_ll = lcore_ll->ll_root_used;
 
-		while ((dev_ll != NULL) && (dev_ll->dev != NULL)) {
-			dev = dev_ll->dev;
-			if (unlikely(dev->remove)) {
+		while ((dev_ll != NULL) && (dev_ll->vdev != NULL)) {
+			vdev = dev_ll->vdev;
+			dev  = vdev->dev;
+			if (unlikely(vdev->remove)) {
 				dev_ll = dev_ll->next;
-				unlink_vmdq(dev);
-				dev->ready = DEVICE_SAFE_REMOVE;
+				unlink_vmdq(vdev);
+				vdev->ready = DEVICE_SAFE_REMOVE;
 				continue;
 			}
 
-			if (likely(dev->ready == DEVICE_RX)) {
-				uint32_t index = dev->vmdq_rx_q;
+			if (likely(vdev->ready == DEVICE_RX)) {
+				uint32_t index = vdev->vmdq_rx_q;
 				uint16_t i;
 				count_in_ring
 				= rte_ring_count(vpool_array[index].ring);
@@ -2148,7 +2161,7 @@ switch_worker_zcp(__attribute__((unused)) void *arg)
 
 				/* Handle guest RX */
 				rx_count = rte_eth_rx_burst(ports[0],
-					(uint16_t)dev->vmdq_rx_q, pkts_burst,
+					vdev->vmdq_rx_q, pkts_burst,
 					MAX_PKT_BURST);
 
 				if (rx_count) {
@@ -2171,7 +2184,7 @@ switch_worker_zcp(__attribute__((unused)) void *arg)
 				}
 			}
 
-			if (likely(!dev->remove))
+			if (likely(!vdev->remove))
 				/* Handle guest TX */
 				virtio_dev_tx_zcp(dev);
 
@@ -2284,7 +2297,7 @@ alloc_data_ll(uint32_t size)
 	}
 
 	for (i = 0; i < size - 1; i++) {
-		ll_new[i].dev = NULL;
+		ll_new[i].vdev = NULL;
 		ll_new[i].next = &ll_new[i+1];
 	}
 	ll_new[i].next = NULL;
@@ -2345,21 +2358,22 @@ destroy_device (volatile struct virtio_net *dev)
 	struct virtio_net_data_ll *ll_main_dev_cur;
 	struct virtio_net_data_ll *ll_lcore_dev_last = NULL;
 	struct virtio_net_data_ll *ll_main_dev_last = NULL;
+	struct vhost_dev *vdev;
 	int lcore;
 
 	dev->flags &= ~VIRTIO_DEV_RUNNING;
 
+	vdev = (struct vhost_dev *)dev->priv;
 	/*set the remove flag. */
-	dev->remove = 1;
-
-	while(dev->ready != DEVICE_SAFE_REMOVE) {
+	vdev->remove = 1;
+	while(vdev->ready != DEVICE_SAFE_REMOVE) {
 		rte_pause();
 	}
 
 	/* Search for entry to be removed from lcore ll */
-	ll_lcore_dev_cur = lcore_info[dev->coreid].lcore_ll->ll_root_used;
+	ll_lcore_dev_cur = lcore_info[vdev->coreid].lcore_ll->ll_root_used;
 	while (ll_lcore_dev_cur != NULL) {
-		if (ll_lcore_dev_cur->dev == dev) {
+		if (ll_lcore_dev_cur->vdev == vdev) {
 			break;
 		} else {
 			ll_lcore_dev_last = ll_lcore_dev_cur;
@@ -2378,7 +2392,7 @@ destroy_device (volatile struct virtio_net *dev)
 	ll_main_dev_cur = ll_root_used;
 	ll_main_dev_last = NULL;
 	while (ll_main_dev_cur != NULL) {
-		if (ll_main_dev_cur->dev == dev) {
+		if (ll_main_dev_cur->vdev == vdev) {
 			break;
 		} else {
 			ll_main_dev_last = ll_main_dev_cur;
@@ -2387,7 +2401,7 @@ destroy_device (volatile struct virtio_net *dev)
 	}
 
 	/* Remove entries from the lcore and main ll. */
-	rm_data_ll_entry(&lcore_info[ll_lcore_dev_cur->dev->coreid].lcore_ll->ll_root_used, ll_lcore_dev_cur, ll_lcore_dev_last);
+	rm_data_ll_entry(&lcore_info[vdev->coreid].lcore_ll->ll_root_used, ll_lcore_dev_cur, ll_lcore_dev_last);
 	rm_data_ll_entry(&ll_root_used, ll_main_dev_cur, ll_main_dev_last);
 
 	/* Set the dev_removal_flag on each lcore. */
@@ -2407,51 +2421,52 @@ destroy_device (volatile struct virtio_net *dev)
 	}
 
 	/* Add the entries back to the lcore and main free ll.*/
-	put_data_ll_free_entry(&lcore_info[ll_lcore_dev_cur->dev->coreid].lcore_ll->ll_root_free, ll_lcore_dev_cur);
+	put_data_ll_free_entry(&lcore_info[vdev->coreid].lcore_ll->ll_root_free, ll_lcore_dev_cur);
 	put_data_ll_free_entry(&ll_root_free, ll_main_dev_cur);
 
 	/* Decrement number of device on the lcore. */
-	lcore_info[ll_lcore_dev_cur->dev->coreid].lcore_ll->device_num--;
+	lcore_info[vdev->coreid].lcore_ll->device_num--;
 
 	RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Device has been removed from data core\n", dev->device_fh);
 
 	if (zero_copy) {
-		struct vpool *vpool = &vpool_array[dev->vmdq_rx_q];
+		struct vpool *vpool = &vpool_array[vdev->vmdq_rx_q];
 
 		/* Stop the RX queue. */
-		if (rte_eth_dev_rx_queue_stop(ports[0], dev->vmdq_rx_q) != 0) {
+		if (rte_eth_dev_rx_queue_stop(ports[0], vdev->vmdq_rx_q) != 0) {
 			LOG_DEBUG(VHOST_CONFIG,
 				"(%"PRIu64") In destroy_device: Failed to stop "
 				"rx queue:%d\n",
 				dev->device_fh,
-				dev->vmdq_rx_q);
+				vdev->vmdq_rx_q);
 		}
 
 		LOG_DEBUG(VHOST_CONFIG,
 			"(%"PRIu64") in destroy_device: Start put mbuf in "
 			"mempool back to ring for RX queue: %d\n",
-			dev->device_fh, dev->vmdq_rx_q);
+			dev->device_fh, vdev->vmdq_rx_q);
 
 		mbuf_destroy_zcp(vpool);
 
 		/* Stop the TX queue. */
-		if (rte_eth_dev_tx_queue_stop(ports[0], dev->vmdq_rx_q) != 0) {
+		if (rte_eth_dev_tx_queue_stop(ports[0], vdev->vmdq_rx_q) != 0) {
 			LOG_DEBUG(VHOST_CONFIG,
 				"(%"PRIu64") In destroy_device: Failed to "
 				"stop tx queue:%d\n",
-				dev->device_fh, dev->vmdq_rx_q);
+				dev->device_fh, vdev->vmdq_rx_q);
 		}
 
-		vpool = &vpool_array[dev->vmdq_rx_q + MAX_QUEUES];
+		vpool = &vpool_array[vdev->vmdq_rx_q + MAX_QUEUES];
 
 		LOG_DEBUG(VHOST_CONFIG,
 			"(%"PRIu64") destroy_device: Start put mbuf in mempool "
 			"back to ring for TX queue: %d, dev:(%"PRIu64")\n",
-			dev->device_fh, (dev->vmdq_rx_q + MAX_QUEUES),
+			dev->device_fh, (vdev->vmdq_rx_q + MAX_QUEUES),
 			dev->device_fh);
 
 		mbuf_destroy_zcp(vpool);
 	}
+	rte_free(vdev);
 
 }
 
@@ -2465,6 +2480,16 @@ new_device (struct virtio_net *dev)
 	struct virtio_net_data_ll *ll_dev;
 	int lcore, core_add = 0;
 	uint32_t device_num_min = num_devices;
+	struct vhost_dev *vdev;
+
+	vdev = rte_zmalloc("vhost device", sizeof(*vdev), CACHE_LINE_SIZE);
+	if (vdev == NULL) {
+		RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Couldn't allocate memory for vhost dev\n",
+			dev->device_fh);
+		return -1;
+	}
+	vdev->dev = dev;
+	dev->priv = vdev;
 
 	/* Add device to main ll */
 	ll_dev = get_data_ll_free_entry(&ll_root_free);
@@ -2472,15 +2497,16 @@ new_device (struct virtio_net *dev)
 		RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") No free entry found in linked list. Device limit "
 			"of %d devices per core has been reached\n",
 			dev->device_fh, num_devices);
+		rte_free(vdev);
 		return -1;
 	}
-	ll_dev->dev = dev;
+	ll_dev->vdev = vdev;
 	add_data_ll_entry(&ll_root_used, ll_dev);
-	ll_dev->dev->vmdq_rx_q
-		= ll_dev->dev->device_fh * (num_queues / num_devices);
+	vdev->vmdq_rx_q
+		= dev->device_fh * (num_queues / num_devices);
 
 	if (zero_copy) {
-		uint32_t index = ll_dev->dev->vmdq_rx_q;
+		uint32_t index = vdev->vmdq_rx_q;
 		uint32_t count_in_ring, i;
 		struct mbuf_table *tx_q;
 
@@ -2511,47 +2537,49 @@ new_device (struct virtio_net *dev)
 			dev->device_fh,
 			rte_ring_count(vpool_array[index].ring));
 
-		tx_q = &tx_queue_zcp[(uint16_t)dev->vmdq_rx_q];
-		tx_q->txq_id = dev->vmdq_rx_q;
+		tx_q = &tx_queue_zcp[(uint16_t)vdev->vmdq_rx_q];
+		tx_q->txq_id = vdev->vmdq_rx_q;
 
-		if (rte_eth_dev_tx_queue_start(ports[0], dev->vmdq_rx_q) != 0) {
-			struct vpool *vpool = &vpool_array[dev->vmdq_rx_q];
+		if (rte_eth_dev_tx_queue_start(ports[0], vdev->vmdq_rx_q) != 0) {
+			struct vpool *vpool = &vpool_array[vdev->vmdq_rx_q];
 
 			LOG_DEBUG(VHOST_CONFIG,
 				"(%"PRIu64") In new_device: Failed to start "
 				"tx queue:%d\n",
-				dev->device_fh, dev->vmdq_rx_q);
+				dev->device_fh, vdev->vmdq_rx_q);
 
 			mbuf_destroy_zcp(vpool);
+			rte_free(vdev);
 			return -1;
 		}
 
-		if (rte_eth_dev_rx_queue_start(ports[0], dev->vmdq_rx_q) != 0) {
-			struct vpool *vpool = &vpool_array[dev->vmdq_rx_q];
+		if (rte_eth_dev_rx_queue_start(ports[0], vdev->vmdq_rx_q) != 0) {
+			struct vpool *vpool = &vpool_array[vdev->vmdq_rx_q];
 
 			LOG_DEBUG(VHOST_CONFIG,
 				"(%"PRIu64") In new_device: Failed to start "
 				"rx queue:%d\n",
-				dev->device_fh, dev->vmdq_rx_q);
+				dev->device_fh, vdev->vmdq_rx_q);
 
 			/* Stop the TX queue. */
 			if (rte_eth_dev_tx_queue_stop(ports[0],
-				dev->vmdq_rx_q) != 0) {
+				vdev->vmdq_rx_q) != 0) {
 				LOG_DEBUG(VHOST_CONFIG,
 					"(%"PRIu64") In new_device: Failed to "
 					"stop tx queue:%d\n",
-					dev->device_fh, dev->vmdq_rx_q);
+					dev->device_fh, vdev->vmdq_rx_q);
 			}
 
 			mbuf_destroy_zcp(vpool);
+			rte_free(vdev);
 			return -1;
 		}
 
 	}
 
 	/*reset ready flag*/
-	dev->ready = DEVICE_MAC_LEARNING;
-	dev->remove = 0;
+	vdev->ready = DEVICE_MAC_LEARNING;
+	vdev->remove = 0;
 
 	/* Find a suitable lcore to add the device. */
 	RTE_LCORE_FOREACH_SLAVE(lcore) {
@@ -2565,11 +2593,14 @@ new_device (struct virtio_net *dev)
 	ll_dev = get_data_ll_free_entry(&lcore_info[ll_dev->dev->coreid].lcore_ll->ll_root_free);
 	if (ll_dev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Failed to add device to data core\n", dev->device_fh);
-		dev->ready = DEVICE_SAFE_REMOVE;
+		vdev->ready = DEVICE_SAFE_REMOVE;
 		destroy_device(dev);
+		rte_free(vdev);
 		return -1;
 	}
-	ll_dev->dev = dev;
+	ll_dev->vdev = vdev;
+	vdev->coreid = core_add;
+
 	add_data_ll_entry(&lcore_info[ll_dev->dev->coreid].lcore_ll->ll_root_used, ll_dev);
 
 	/* Initialize device stats */
@@ -2577,10 +2608,10 @@ new_device (struct virtio_net *dev)
 
 	/* Disable notifications. */
 	set_irq_status(dev);
-	lcore_info[ll_dev->dev->coreid].lcore_ll->device_num++;
+	lcore_info[vdev->coreid].lcore_ll->device_num++;
 	dev->flags |= VIRTIO_DEV_RUNNING;
 
-	RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Device has been added to data core %d\n", dev->device_fh, dev->coreid);
+	RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Device has been added to data core %d\n", dev->device_fh, vdev->coreid);
 
 	return 0;
 }
@@ -2619,7 +2650,7 @@ print_stats(void)
 
 		dev_ll = ll_root_used;
 		while (dev_ll != NULL) {
-			device_fh = (uint32_t)dev_ll->dev->device_fh;
+			device_fh = (uint32_t)dev_ll->vdev->dev->device_fh;
 			tx_total = dev_statistics[device_fh].tx_total;
 			tx = dev_statistics[device_fh].tx;
 			tx_dropped = tx_total - tx;
