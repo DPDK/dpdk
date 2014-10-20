@@ -283,6 +283,8 @@ struct i40e_vf_tx_queues {
  * Structure to store private data specific for VF instance.
  */
 struct i40e_vf {
+	struct i40e_adapter *adapter; /* The adapter this VF associate to */
+	struct rte_eth_dev_data *dev_data; /* Pointer to the device data */
 	uint16_t num_queue_pairs;
 	uint16_t max_pkt_len; /* Maximum packet length */
 	bool promisc_unicast_enabled;
@@ -392,6 +394,10 @@ i40e_get_vsi_from_adapter(struct i40e_adapter *adapter)
 	(&(((struct i40e_pf *)pf)->adapter->hw))
 #define I40E_PF_TO_ADAPTER(pf) \
 	((struct i40e_adapter *)pf->adapter)
+
+/* I40E_VF_TO */
+#define I40E_VF_TO_HW(vf) \
+	(&(((struct i40e_vf *)vf)->adapter->hw))
 
 static inline void
 i40e_init_adminq_parameter(struct i40e_hw *hw)

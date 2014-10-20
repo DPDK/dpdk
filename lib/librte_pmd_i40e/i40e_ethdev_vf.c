@@ -126,10 +126,19 @@ static void i40evf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int i40evf_get_link_status(struct rte_eth_dev *dev,
 				  struct rte_eth_link *link);
 static int i40evf_init_vlan(struct rte_eth_dev *dev);
+static int i40evf_config_rss(struct i40e_vf *vf);
+static int i40evf_dev_rss_hash_update(struct rte_eth_dev *dev,
+				      struct rte_eth_rss_conf *rss_conf);
+static int i40evf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+					struct rte_eth_rss_conf *rss_conf);
 static int i40evf_dev_rx_queue_start(struct rte_eth_dev *, uint16_t);
 static int i40evf_dev_rx_queue_stop(struct rte_eth_dev *, uint16_t);
 static int i40evf_dev_tx_queue_start(struct rte_eth_dev *, uint16_t);
 static int i40evf_dev_tx_queue_stop(struct rte_eth_dev *, uint16_t);
+
+/* Default hash key buffer for RSS */
+static uint32_t rss_key_default[I40E_VFQF_HKEY_MAX_INDEX + 1];
+
 static struct eth_dev_ops i40evf_eth_dev_ops = {
 	.dev_configure        = i40evf_dev_configure,
 	.dev_start            = i40evf_dev_start,
@@ -153,6 +162,8 @@ static struct eth_dev_ops i40evf_eth_dev_ops = {
 	.rx_queue_release     = i40e_dev_rx_queue_release,
 	.tx_queue_setup       = i40e_dev_tx_queue_setup,
 	.tx_queue_release     = i40e_dev_tx_queue_release,
+	.rss_hash_update      = i40evf_dev_rss_hash_update,
+	.rss_hash_conf_get    = i40evf_dev_rss_hash_conf_get,
 };
 
 static int
@@ -972,6 +983,8 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
+	vf->adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	vf->dev_data = dev->data;
 	err = i40evf_set_mac_type(hw);
 	if (err) {
 		PMD_INIT_LOG(ERR, "set_mac_type failed: %d", err);
@@ -1328,11 +1341,13 @@ i40evf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 static int
 i40evf_rx_init(struct rte_eth_dev *dev)
 {
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	uint16_t i;
 	struct i40e_rx_queue **rxq =
 		(struct i40e_rx_queue **)dev->data->rx_queues;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
+	i40evf_config_rss(vf);
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq[i]->qrx_tail = hw->hw_addr + I40E_QRX_TAIL1(i);
 		I40E_PCI_REG_WRITE(rxq[i]->qrx_tail, rxq[i]->nb_rx_desc - 1);
@@ -1566,4 +1581,131 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 	i40evf_dev_stop(dev);
 	i40evf_reset_vf(hw);
 	i40e_shutdown_adminq(hw);
+}
+
+static int
+i40evf_hw_rss_hash_set(struct i40e_hw *hw, struct rte_eth_rss_conf *rss_conf)
+{
+	uint32_t *hash_key;
+	uint8_t hash_key_len;
+	uint64_t rss_hf, hena;
+
+	hash_key = (uint32_t *)(rss_conf->rss_key);
+	hash_key_len = rss_conf->rss_key_len;
+	if (hash_key != NULL && hash_key_len >=
+		(I40E_VFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t)) {
+		uint16_t i;
+
+		for (i = 0; i <= I40E_VFQF_HKEY_MAX_INDEX; i++)
+			I40E_WRITE_REG(hw, I40E_VFQF_HKEY(i), hash_key[i]);
+	}
+
+	rss_hf = rss_conf->rss_hf;
+	hena = (uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(0));
+	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(1))) << 32;
+	hena &= ~I40E_RSS_HENA_ALL;
+	hena |= i40e_config_hena(rss_hf);
+	I40E_WRITE_REG(hw, I40E_VFQF_HENA(0), (uint32_t)hena);
+	I40E_WRITE_REG(hw, I40E_VFQF_HENA(1), (uint32_t)(hena >> 32));
+	I40EVF_WRITE_FLUSH(hw);
+
+	return 0;
+}
+
+static void
+i40evf_disable_rss(struct i40e_vf *vf)
+{
+	struct i40e_hw *hw = I40E_VF_TO_HW(vf);
+	uint64_t hena;
+
+	hena = (uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(0));
+	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(1))) << 32;
+	hena &= ~I40E_RSS_HENA_ALL;
+	I40E_WRITE_REG(hw, I40E_VFQF_HENA(0), (uint32_t)hena);
+	I40E_WRITE_REG(hw, I40E_VFQF_HENA(1), (uint32_t)(hena >> 32));
+	I40EVF_WRITE_FLUSH(hw);
+}
+
+static int
+i40evf_config_rss(struct i40e_vf *vf)
+{
+	struct i40e_hw *hw = I40E_VF_TO_HW(vf);
+	struct rte_eth_rss_conf rss_conf;
+	uint32_t i, j, lut = 0, nb_q = (I40E_VFQF_HLUT_MAX_INDEX + 1) * 4;
+
+	if (vf->dev_data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS) {
+		i40evf_disable_rss(vf);
+		PMD_DRV_LOG(DEBUG, "RSS not configured\n");
+		return 0;
+	}
+
+	/* Fill out the look up table */
+	for (i = 0, j = 0; i < nb_q; i++, j++) {
+		if (j >= vf->num_queue_pairs)
+			j = 0;
+		lut = (lut << 8) | j;
+		if ((i & 3) == 3)
+			I40E_WRITE_REG(hw, I40E_VFQF_HLUT(i >> 2), lut);
+	}
+
+	rss_conf = vf->dev_data->dev_conf.rx_adv_conf.rss_conf;
+	if ((rss_conf.rss_hf & I40E_RSS_OFFLOAD_ALL) == 0) {
+		i40evf_disable_rss(vf);
+		PMD_DRV_LOG(DEBUG, "No hash flag is set\n");
+		return 0;
+	}
+
+	if (rss_conf.rss_key == NULL || rss_conf.rss_key_len < nb_q) {
+		/* Calculate the default hash key */
+		for (i = 0; i <= I40E_VFQF_HKEY_MAX_INDEX; i++)
+			rss_key_default[i] = (uint32_t)rte_rand();
+		rss_conf.rss_key = (uint8_t *)rss_key_default;
+		rss_conf.rss_key_len = nb_q;
+	}
+
+	return i40evf_hw_rss_hash_set(hw, &rss_conf);
+}
+
+static int
+i40evf_dev_rss_hash_update(struct rte_eth_dev *dev,
+			   struct rte_eth_rss_conf *rss_conf)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint64_t rss_hf = rss_conf->rss_hf & I40E_RSS_OFFLOAD_ALL;
+	uint64_t hena;
+
+	hena = (uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(0));
+	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(1))) << 32;
+	if (!(hena & I40E_RSS_HENA_ALL)) { /* RSS disabled */
+		if (rss_hf != 0) /* Enable RSS */
+			return -EINVAL;
+		return 0;
+	}
+
+	/* RSS enabled */
+	if (rss_hf == 0) /* Disable RSS */
+		return -EINVAL;
+
+	return i40evf_hw_rss_hash_set(hw, rss_conf);
+}
+
+static int
+i40evf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+			     struct rte_eth_rss_conf *rss_conf)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t *hash_key = (uint32_t *)(rss_conf->rss_key);
+	uint64_t hena;
+	uint16_t i;
+
+	if (hash_key) {
+		for (i = 0; i <= I40E_VFQF_HKEY_MAX_INDEX; i++)
+			hash_key[i] = I40E_READ_REG(hw, I40E_VFQF_HKEY(i));
+		rss_conf->rss_key_len = i * sizeof(uint32_t);
+	}
+	hena = (uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(0));
+	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(1))) << 32;
+	rss_conf->rss_hf = i40e_parse_hena(hena);
+
+	return 0;
 }
