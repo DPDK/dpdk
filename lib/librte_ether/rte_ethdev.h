@@ -362,30 +362,31 @@ struct rte_eth_rss_conf {
 #define ETH_RSS_L2_PAYLOAD_SHIFT              63
 
 /* for 1G & 10G */
-#define ETH_RSS_IPV4                    ((uint16_t)1 << ETH_RSS_IPV4_SHIFT)
-#define ETH_RSS_IPV4_TCP                ((uint16_t)1 << ETH_RSS_IPV4_TCP_SHIFT)
-#define ETH_RSS_IPV6                    ((uint16_t)1 << ETH_RSS_IPV6_SHIFT)
-#define ETH_RSS_IPV6_EX                 ((uint16_t)1 << ETH_RSS_IPV6_EX_SHIFT)
-#define ETH_RSS_IPV6_TCP                ((uint16_t)1 << ETH_RSS_IPV6_TCP_SHIFT)
-#define ETH_RSS_IPV6_TCP_EX             ((uint16_t)1 << ETH_RSS_IPV6_TCP_EX_SHIFT)
-#define ETH_RSS_IPV4_UDP                ((uint16_t)1 << ETH_RSS_IPV4_UDP_SHIFT)
-#define ETH_RSS_IPV6_UDP                ((uint16_t)1 << ETH_RSS_IPV6_UDP_SHIFT)
-#define ETH_RSS_IPV6_UDP_EX             ((uint16_t)1 << ETH_RSS_IPV6_UDP_EX_SHIFT)
+#define ETH_RSS_IPV4                    (1 << ETH_RSS_IPV4_SHIFT)
+#define ETH_RSS_IPV4_TCP                (1 << ETH_RSS_IPV4_TCP_SHIFT)
+#define ETH_RSS_IPV6                    (1 << ETH_RSS_IPV6_SHIFT)
+#define ETH_RSS_IPV6_EX                 (1 << ETH_RSS_IPV6_EX_SHIFT)
+#define ETH_RSS_IPV6_TCP                (1 << ETH_RSS_IPV6_TCP_SHIFT)
+#define ETH_RSS_IPV6_TCP_EX             (1 << ETH_RSS_IPV6_TCP_EX_SHIFT)
+#define ETH_RSS_IPV4_UDP                (1 << ETH_RSS_IPV4_UDP_SHIFT)
+#define ETH_RSS_IPV6_UDP                (1 << ETH_RSS_IPV6_UDP_SHIFT)
+#define ETH_RSS_IPV6_UDP_EX             (1 << ETH_RSS_IPV6_UDP_EX_SHIFT)
 /* for 40G only */
-#define ETH_RSS_NONF_IPV4_UDP           ((uint64_t)1 << ETH_RSS_NONF_IPV4_UDP_SHIFT)
-#define ETH_RSS_NONF_IPV4_TCP           ((uint64_t)1 << ETH_RSS_NONF_IPV4_TCP_SHIFT)
-#define ETH_RSS_NONF_IPV4_SCTP          ((uint64_t)1 << ETH_RSS_NONF_IPV4_SCTP_SHIFT)
-#define ETH_RSS_NONF_IPV4_OTHER         ((uint64_t)1 << ETH_RSS_NONF_IPV4_OTHER_SHIFT)
-#define ETH_RSS_FRAG_IPV4               ((uint64_t)1 << ETH_RSS_FRAG_IPV4_SHIFT)
-#define ETH_RSS_NONF_IPV6_UDP           ((uint64_t)1 << ETH_RSS_NONF_IPV6_UDP_SHIFT)
-#define ETH_RSS_NONF_IPV6_TCP           ((uint64_t)1 << ETH_RSS_NONF_IPV6_TCP_SHIFT)
-#define ETH_RSS_NONF_IPV6_SCTP          ((uint64_t)1 << ETH_RSS_NONF_IPV6_SCTP_SHIFT)
-#define ETH_RSS_NONF_IPV6_OTHER         ((uint64_t)1 << ETH_RSS_NONF_IPV6_OTHER_SHIFT)
-#define ETH_RSS_FRAG_IPV6               ((uint64_t)1 << ETH_RSS_FRAG_IPV6_SHIFT)
-#define ETH_RSS_FCOE_OX                 ((uint64_t)1 << ETH_RSS_FCOE_OX_SHIFT) /* not used */
-#define ETH_RSS_FCOE_RX                 ((uint64_t)1 << ETH_RSS_FCOE_RX_SHIFT) /* not used */
-#define ETH_RSS_FCOE_OTHER              ((uint64_t)1 << ETH_RSS_FCOE_OTHER_SHIFT) /* not used */
-#define ETH_RSS_L2_PAYLOAD              ((uint64_t)1 << ETH_RSS_L2_PAYLOAD_SHIFT)
+#define ETH_RSS_NONF_IPV4_UDP           (1ULL << ETH_RSS_NONF_IPV4_UDP_SHIFT)
+#define ETH_RSS_NONF_IPV4_TCP           (1ULL << ETH_RSS_NONF_IPV4_TCP_SHIFT)
+#define ETH_RSS_NONF_IPV4_SCTP          (1ULL << ETH_RSS_NONF_IPV4_SCTP_SHIFT)
+#define ETH_RSS_NONF_IPV4_OTHER         (1ULL << ETH_RSS_NONF_IPV4_OTHER_SHIFT)
+#define ETH_RSS_FRAG_IPV4               (1ULL << ETH_RSS_FRAG_IPV4_SHIFT)
+#define ETH_RSS_NONF_IPV6_UDP           (1ULL << ETH_RSS_NONF_IPV6_UDP_SHIFT)
+#define ETH_RSS_NONF_IPV6_TCP           (1ULL << ETH_RSS_NONF_IPV6_TCP_SHIFT)
+#define ETH_RSS_NONF_IPV6_SCTP          (1ULL << ETH_RSS_NONF_IPV6_SCTP_SHIFT)
+#define ETH_RSS_NONF_IPV6_OTHER         (1ULL << ETH_RSS_NONF_IPV6_OTHER_SHIFT)
+#define ETH_RSS_FRAG_IPV6               (1ULL << ETH_RSS_FRAG_IPV6_SHIFT)
+/* FCOE relevant should not be used */
+#define ETH_RSS_FCOE_OX                 (1ULL << ETH_RSS_FCOE_OX_SHIFT)
+#define ETH_RSS_FCOE_RX                 (1ULL << ETH_RSS_FCOE_RX_SHIFT)
+#define ETH_RSS_FCOE_OTHER              (1ULL << ETH_RSS_FCOE_OTHER_SHIFT)
+#define ETH_RSS_L2_PAYLOAD              (1ULL << ETH_RSS_L2_PAYLOAD_SHIFT)
 
 #define ETH_RSS_IP ( \
 		ETH_RSS_IPV4 | \
