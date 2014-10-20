@@ -80,6 +80,9 @@ extern "C" {
 #define CMDLINE_PARSE_COMPLETE_AGAIN    1
 #define CMDLINE_PARSE_COMPLETED_BUFFER  2
 
+/* maximum buffer size for parsed result */
+#define CMDLINE_PARSE_RESULT_BUFSIZE 8192
+
 /**
  * Stores a pointer to the ops struct, and the offset: the place to
  * write the parsed result in the destination structure.
