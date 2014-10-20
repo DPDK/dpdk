@@ -166,7 +166,7 @@ static uint32_t num_switching_cores = 0;
 
 /* number of devices/queues to support*/
 static uint32_t num_queues = 0;
-uint32_t num_devices = 0;
+static uint32_t num_devices;
 
 /*
  * Enable zero copy, pkts buffer will directly dma to hw descriptor,
@@ -984,7 +984,7 @@ unlink_vmdq(struct vhost_dev *vdev)
  * Check if the packet destination MAC address is for a local device. If so then put
  * the packet on that devices RX queue. If not then return.
  */
-static inline unsigned __attribute__((always_inline))
+static inline int __attribute__((always_inline))
 virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
 	struct virtio_net_data_ll *dev_ll;
@@ -2702,8 +2702,7 @@ new_device (struct virtio_net *dev)
 		}
 	}
 	/* Add device to lcore ll */
-	ll_dev->dev->coreid = core_add;
-	ll_dev = get_data_ll_free_entry(&lcore_info[ll_dev->dev->coreid].lcore_ll->ll_root_free);
+	ll_dev = get_data_ll_free_entry(&lcore_info[core_add].lcore_ll->ll_root_free);
 	if (ll_dev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Failed to add device to data core\n", dev->device_fh);
 		vdev->ready = DEVICE_SAFE_REMOVE;
@@ -2716,7 +2715,7 @@ new_device (struct virtio_net *dev)
 	ll_dev->vdev = vdev;
 	vdev->coreid = core_add;
 
-	add_data_ll_entry(&lcore_info[ll_dev->dev->coreid].lcore_ll->ll_root_used, ll_dev);
+	add_data_ll_entry(&lcore_info[vdev->coreid].lcore_ll->ll_root_used, ll_dev);
 
 	/* Initialize device stats */
 	memset(&dev_statistics[dev->device_fh], 0, sizeof(struct device_statistics));
