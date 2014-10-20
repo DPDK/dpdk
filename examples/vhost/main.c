@@ -1013,7 +1013,7 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 
 			LOG_DEBUG(VHOST_DATA, "(%"PRIu64") TX: MAC address is local\n", tdev->device_fh);
 
-			if (dev_ll->vdev->remove) {
+			if (unlikely(dev_ll->vdev->remove)) {
 				/*drop the packet if the device is marked for removal*/
 				LOG_DEBUG(VHOST_DATA, "(%"PRIu64") Device is marked for removal\n", tdev->device_fh);
 			} else {
@@ -1211,7 +1211,7 @@ switch_worker(__attribute__((unused)) void *arg)
 			vdev = dev_ll->vdev;
 			dev = vdev->dev;
 
-			if (vdev->remove) {
+			if (unlikely(vdev->remove)) {
 				dev_ll = dev_ll->next;
 				unlink_vmdq(vdev);
 				vdev->ready = DEVICE_SAFE_REMOVE;
@@ -1250,7 +1250,7 @@ switch_worker(__attribute__((unused)) void *arg)
 				}
 			}
 
-			if (!vdev->remove) {
+			if (likely(!vdev->remove)) {
 				/* Handle guest TX*/
 				tx_count = rte_vhost_dequeue_burst(dev, VIRTIO_TXQ, mbuf_pool, pkts_burst, MAX_PKT_BURST);
 				/* If this is the first received packet we need to learn the MAC and setup VMDQ */
