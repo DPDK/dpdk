@@ -999,7 +999,7 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 	 * This value must be provided in the private data of the memory pool.
 	 * First check that the memory pool has a valid private data.
 	 */
-	(*dev->dev_ops->dev_infos_get)(dev, &dev_info);
+	rte_eth_dev_info_get(port_id, &dev_info);
 	if (mp->private_data_size < sizeof(struct rte_pktmbuf_pool_private)) {
 		PMD_DEBUG_TRACE("%s private_data_size %d < %d\n",
 				mp->name, (int) mp->private_data_size,
@@ -1067,7 +1067,7 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_setup, -ENOTSUP);
 
-	(*dev->dev_ops->dev_infos_get)(dev, &dev_info);
+	rte_eth_dev_info_get(port_id, &dev_info);
 
 	if (tx_conf == NULL)
 		tx_conf = &dev_info.default_txconf;
