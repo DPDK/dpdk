@@ -2465,9 +2465,157 @@ destroy_device (volatile struct virtio_net *dev)
 			dev->device_fh);
 
 		mbuf_destroy_zcp(vpool);
+		rte_free(vdev->regions_hpa);
 	}
 	rte_free(vdev);
 
+}
+
+/*
+ * Calculate the region count of physical continous regions for one particular
+ * region of whose vhost virtual address is continous. The particular region
+ * start from vva_start, with size of 'size' in argument.
+ */
+static uint32_t
+check_hpa_regions(uint64_t vva_start, uint64_t size)
+{
+	uint32_t i, nregions = 0, page_size = getpagesize();
+	uint64_t cur_phys_addr = 0, next_phys_addr = 0;
+	if (vva_start % page_size) {
+		LOG_DEBUG(VHOST_CONFIG,
+			"in check_countinous: vva start(%p) mod page_size(%d) "
+			"has remainder\n",
+			(void *)(uintptr_t)vva_start, page_size);
+		return 0;
+	}
+	if (size % page_size) {
+		LOG_DEBUG(VHOST_CONFIG,
+			"in check_countinous: "
+			"size((%"PRIu64")) mod page_size(%d) has remainder\n",
+			size, page_size);
+		return 0;
+	}
+	for (i = 0; i < size - page_size; i = i + page_size) {
+		cur_phys_addr
+			= rte_mem_virt2phy((void *)(uintptr_t)(vva_start + i));
+		next_phys_addr = rte_mem_virt2phy(
+			(void *)(uintptr_t)(vva_start + i + page_size));
+		if ((cur_phys_addr + page_size) != next_phys_addr) {
+			++nregions;
+			LOG_DEBUG(VHOST_CONFIG,
+				"in check_continuous: hva addr:(%p) is not "
+				"continuous with hva addr:(%p), diff:%d\n",
+				(void *)(uintptr_t)(vva_start + (uint64_t)i),
+				(void *)(uintptr_t)(vva_start + (uint64_t)i
+				+ page_size), page_size);
+			LOG_DEBUG(VHOST_CONFIG,
+				"in check_continuous: hpa addr:(%p) is not "
+				"continuous with hpa addr:(%p), "
+				"diff:(%"PRIu64")\n",
+				(void *)(uintptr_t)cur_phys_addr,
+				(void *)(uintptr_t)next_phys_addr,
+				(next_phys_addr-cur_phys_addr));
+		}
+	}
+	return nregions;
+}
+
+/*
+ * Divide each region whose vhost virtual address is continous into a few
+ * sub-regions, make sure the physical address within each sub-region are
+ * continous. And fill offset(to GPA) and size etc. information of each
+ * sub-region into regions_hpa.
+ */
+static uint32_t
+fill_hpa_memory_regions(struct virtio_memory_regions_hpa *mem_region_hpa, struct virtio_memory *virtio_memory)
+{
+	uint32_t regionidx, regionidx_hpa = 0, i, k, page_size = getpagesize();
+	uint64_t cur_phys_addr = 0, next_phys_addr = 0, vva_start;
+
+	if (mem_region_hpa == NULL)
+		return 0;
+
+	for (regionidx = 0; regionidx < virtio_memory->nregions; regionidx++) {
+		vva_start = virtio_memory->regions[regionidx].guest_phys_address +
+			virtio_memory->regions[regionidx].address_offset;
+		mem_region_hpa[regionidx_hpa].guest_phys_address
+			= virtio_memory->regions[regionidx].guest_phys_address;
+		mem_region_hpa[regionidx_hpa].host_phys_addr_offset =
+			rte_mem_virt2phy((void *)(uintptr_t)(vva_start)) -
+			mem_region_hpa[regionidx_hpa].guest_phys_address;
+		LOG_DEBUG(VHOST_CONFIG,
+			"in fill_hpa_regions: guest phys addr start[%d]:(%p)\n",
+			regionidx_hpa,
+			(void *)(uintptr_t)
+			(mem_region_hpa[regionidx_hpa].guest_phys_address));
+		LOG_DEBUG(VHOST_CONFIG,
+			"in fill_hpa_regions: host  phys addr start[%d]:(%p)\n",
+			regionidx_hpa,
+			(void *)(uintptr_t)
+			(mem_region_hpa[regionidx_hpa].host_phys_addr_offset));
+		for (i = 0, k = 0;
+			i < virtio_memory->regions[regionidx].memory_size -
+				page_size;
+			i += page_size) {
+			cur_phys_addr = rte_mem_virt2phy(
+					(void *)(uintptr_t)(vva_start + i));
+			next_phys_addr = rte_mem_virt2phy(
+					(void *)(uintptr_t)(vva_start +
+					i + page_size));
+			if ((cur_phys_addr + page_size) != next_phys_addr) {
+				mem_region_hpa[regionidx_hpa].guest_phys_address_end =
+					mem_region_hpa[regionidx_hpa].guest_phys_address +
+					k + page_size;
+				mem_region_hpa[regionidx_hpa].memory_size
+					= k + page_size;
+				LOG_DEBUG(VHOST_CONFIG, "in fill_hpa_regions: guest "
+					"phys addr end  [%d]:(%p)\n",
+					regionidx_hpa,
+					(void *)(uintptr_t)
+					(mem_region_hpa[regionidx_hpa].guest_phys_address_end));
+				LOG_DEBUG(VHOST_CONFIG,
+					"in fill_hpa_regions: guest phys addr "
+					"size [%d]:(%p)\n",
+					regionidx_hpa,
+					(void *)(uintptr_t)
+					(mem_region_hpa[regionidx_hpa].memory_size));
+				mem_region_hpa[regionidx_hpa + 1].guest_phys_address
+					= mem_region_hpa[regionidx_hpa].guest_phys_address_end;
+				++regionidx_hpa;
+				mem_region_hpa[regionidx_hpa].host_phys_addr_offset =
+					next_phys_addr -
+					mem_region_hpa[regionidx_hpa].guest_phys_address;
+				LOG_DEBUG(VHOST_CONFIG, "in fill_hpa_regions: guest"
+					" phys addr start[%d]:(%p)\n",
+					regionidx_hpa,
+					(void *)(uintptr_t)
+					(mem_region_hpa[regionidx_hpa].guest_phys_address));
+				LOG_DEBUG(VHOST_CONFIG,
+					"in fill_hpa_regions: host  phys addr "
+					"start[%d]:(%p)\n",
+					regionidx_hpa,
+					(void *)(uintptr_t)
+					(mem_region_hpa[regionidx_hpa].host_phys_addr_offset));
+				k = 0;
+			} else {
+				k += page_size;
+			}
+		}
+		mem_region_hpa[regionidx_hpa].guest_phys_address_end
+			= mem_region_hpa[regionidx_hpa].guest_phys_address
+			+ k + page_size;
+		mem_region_hpa[regionidx_hpa].memory_size = k + page_size;
+		LOG_DEBUG(VHOST_CONFIG, "in fill_hpa_regions: guest phys addr end  "
+			"[%d]:(%p)\n", regionidx_hpa,
+			(void *)(uintptr_t)
+			(mem_region_hpa[regionidx_hpa].guest_phys_address_end));
+		LOG_DEBUG(VHOST_CONFIG, "in fill_hpa_regions: guest phys addr size "
+			"[%d]:(%p)\n", regionidx_hpa,
+			(void *)(uintptr_t)
+			(mem_region_hpa[regionidx_hpa].memory_size));
+		++regionidx_hpa;
+	}
+	return regionidx_hpa;
 }
 
 /*
@@ -2481,6 +2629,7 @@ new_device (struct virtio_net *dev)
 	int lcore, core_add = 0;
 	uint32_t device_num_min = num_devices;
 	struct vhost_dev *vdev;
+	uint32_t regionidx;
 
 	vdev = rte_zmalloc("vhost device", sizeof(*vdev), CACHE_LINE_SIZE);
 	if (vdev == NULL) {
@@ -2491,12 +2640,49 @@ new_device (struct virtio_net *dev)
 	vdev->dev = dev;
 	dev->priv = vdev;
 
+	if (zero_copy) {
+		vdev->nregions_hpa = dev->mem->nregions;
+		for (regionidx = 0; regionidx < dev->mem->nregions; regionidx++) {
+			vdev->nregions_hpa
+				+= check_hpa_regions(
+					dev->mem->regions[regionidx].guest_phys_address
+					+ dev->mem->regions[regionidx].address_offset,
+					dev->mem->regions[regionidx].memory_size);
+
+		}
+
+		vdev->regions_hpa = (struct virtio_memory_regions_hpa *) rte_zmalloc("vhost hpa region",
+			sizeof(struct virtio_memory_regions_hpa) * vdev->nregions_hpa,
+			CACHE_LINE_SIZE);
+		if (vdev->regions_hpa == NULL) {
+			RTE_LOG(ERR, VHOST_CONFIG, "Cannot allocate memory for hpa region\n");
+			rte_free(vdev);
+			return -1;
+		}
+
+
+		if (fill_hpa_memory_regions(
+			vdev->regions_hpa, dev->mem
+			) != vdev->nregions_hpa) {
+
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"hpa memory regions number mismatch: "
+				"[%d]\n", vdev->nregions_hpa);
+			rte_free(vdev->regions_hpa);
+			rte_free(vdev);
+			return -1;
+		}
+	}
+
+
 	/* Add device to main ll */
 	ll_dev = get_data_ll_free_entry(&ll_root_free);
 	if (ll_dev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") No free entry found in linked list. Device limit "
 			"of %d devices per core has been reached\n",
 			dev->device_fh, num_devices);
+		if (vdev->regions_hpa)
+			rte_free(vdev->regions_hpa);
 		rte_free(vdev);
 		return -1;
 	}
@@ -2549,6 +2735,7 @@ new_device (struct virtio_net *dev)
 				dev->device_fh, vdev->vmdq_rx_q);
 
 			mbuf_destroy_zcp(vpool);
+			rte_free(vdev->regions_hpa);
 			rte_free(vdev);
 			return -1;
 		}
@@ -2571,6 +2758,7 @@ new_device (struct virtio_net *dev)
 			}
 
 			mbuf_destroy_zcp(vpool);
+			rte_free(vdev->regions_hpa);
 			rte_free(vdev);
 			return -1;
 		}
@@ -2595,6 +2783,8 @@ new_device (struct virtio_net *dev)
 		RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Failed to add device to data core\n", dev->device_fh);
 		vdev->ready = DEVICE_SAFE_REMOVE;
 		destroy_device(dev);
+		if (vdev->regions_hpa)
+			rte_free(vdev->regions_hpa);
 		rte_free(vdev);
 		return -1;
 	}
