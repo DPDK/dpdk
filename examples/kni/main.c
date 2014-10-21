@@ -586,6 +586,25 @@ parse_args(int argc, char **argv)
 	return ret;
 }
 
+/* Initialize KNI subsystem */
+static void
+init_kni(void)
+{
+	unsigned int num_of_kni_ports = 0, i;
+	struct kni_port_params **params = kni_port_params_array;
+
+	/* Calculate the maximum number of KNI interfaces that will be used */
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+		if (kni_port_params_array[i]) {
+			num_of_kni_ports += (params[i]->nb_lcore_k ?
+				params[i]->nb_lcore_k : 1);
+		}
+	}
+
+	/* Invoke rte KNI init to preallocate the ports */
+	rte_kni_init(num_of_kni_ports);
+}
+
 /* Initialise a single port on an Ethernet device */
 static void
 init_port(uint8_t port)
@@ -871,6 +890,9 @@ main(int argc, char** argv)
 		if (kni_port_params_array[i] && i >= nb_sys_ports)
 			rte_exit(EXIT_FAILURE, "Configured invalid "
 						"port ID %u\n", i);
+
+	/* Initialize KNI subsystem */
+	init_kni();
 
 	/* Initialise each port */
 	for (port = 0; port < nb_sys_ports; port++) {

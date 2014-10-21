@@ -58,7 +58,7 @@
 
 #define IFCONFIG      "/sbin/ifconfig "
 #define TEST_KNI_PORT "test_kni_port"
-
+#define KNI_TEST_MAX_PORTS 4
 /* The threshold number of mbufs to be transmitted or received. */
 #define KNI_NUM_MBUF_THRESHOLD 100
 static int kni_pkt_mtu = 0;
@@ -497,6 +497,9 @@ test_kni(void)
 	struct rte_kni_conf conf;
 	struct rte_eth_dev_info info;
 	struct rte_kni_ops ops;
+
+	/* Initialize KNI subsytem */
+	rte_kni_init(KNI_TEST_MAX_PORTS);
 
 	if (test_kni_allocate_lcores() < 0) {
 		printf("No enough lcores for kni processing\n");

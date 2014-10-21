@@ -90,10 +90,26 @@ struct rte_kni_conf {
 };
 
 /**
+ * Initialize and preallocate KNI subsystem
+ *
+ * This function is to be executed on the MASTER lcore only, after EAL
+ * initialization and before any KNI interface is attempted to be
+ * allocated
+ *
+ * @param max_kni_ifaces
+ *  The maximum number of KNI interfaces that can coexist concurrently
+ */
+extern void rte_kni_init(unsigned int max_kni_ifaces);
+
+
+/**
  * Allocate KNI interface according to the port id, mbuf size, mbuf pool,
  * configurations and callbacks for kernel requests.The KNI interface created
  * in the kernel space is the net interface the traditional Linux application
  * talking to.
+ *
+ * The rte_kni_alloc shall not be called before rte_kni_init() has been
+ * called. rte_kni_alloc is thread safe.
  *
  * @param pktmbuf_pool
  *  The mempool for allocting mbufs for packets.
@@ -138,6 +154,8 @@ extern struct rte_kni *rte_kni_create(uint8_t port_id,
  * Release KNI interface according to the context. It will also release the
  * paired KNI interface in kernel space. All processing on the specific KNI
  * context need to be stopped before calling this interface.
+ *
+ * rte_kni_release is thread safe.
  *
  * @param kni
  *  The pointer to the context of an existent KNI interface.
