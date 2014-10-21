@@ -541,7 +541,7 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 #ifdef RTE_MBUF_REFCNT
 			m = __rte_pktmbuf_prefree_seg(txep[i].mbuf);
 #else
-			m = txep[i]->mbuf;
+			m = txep[i].mbuf;
 #endif
 			if (likely(m != NULL)) {
 				if (likely(m->pool == free[0]->pool))
