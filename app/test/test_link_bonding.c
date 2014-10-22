@@ -788,7 +788,10 @@ test_set_bonding_mode(void)
 	int bonding_modes[] = { BONDING_MODE_ROUND_ROBIN,
 							BONDING_MODE_ACTIVE_BACKUP,
 							BONDING_MODE_BALANCE,
-							BONDING_MODE_BROADCAST };
+#ifdef RTE_MBUF_REFCNT
+							BONDING_MODE_BROADCAST
+#endif
+							};
 
 	/* Test supported link bonding modes */
 	for (i = 0; i < (int)RTE_DIM(bonding_modes);	i++) {
@@ -3227,6 +3230,7 @@ test_balance_verify_slave_link_status_change_behaviour(void)
 	return remove_slaves_and_stop_bonded_device();
 }
 
+#ifdef RTE_MBUF_REFCNT
 /** Broadcast Mode Tests */
 
 static int
@@ -3704,6 +3708,7 @@ test_broadcast_verify_slave_link_status_change_behaviour(void)
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
 }
+#endif
 
 static int
 test_reconfigure_bonded_device(void)
@@ -3797,11 +3802,13 @@ static struct unit_test_suite link_bonding_test_suite  = {
 		TEST_CASE(test_balance_verify_promiscuous_enable_disable),
 		TEST_CASE(test_balance_verify_mac_assignment),
 		TEST_CASE(test_balance_verify_slave_link_status_change_behaviour),
+#ifdef RTE_MBUF_REFCNT
 		TEST_CASE(test_broadcast_tx_burst),
 		TEST_CASE(test_broadcast_rx_burst),
 		TEST_CASE(test_broadcast_verify_promiscuous_enable_disable),
 		TEST_CASE(test_broadcast_verify_mac_assignment),
 		TEST_CASE(test_broadcast_verify_slave_link_status_change_behaviour),
+#endif
 		TEST_CASE(test_reconfigure_bonded_device),
 		TEST_CASE(test_close_bonded_device),
 

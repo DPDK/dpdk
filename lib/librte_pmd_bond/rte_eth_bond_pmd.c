@@ -61,7 +61,9 @@ bond_ethdev_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	switch (internals->mode) {
 	case BONDING_MODE_ROUND_ROBIN:
+#ifdef RTE_MBUF_REFCNT
 	case BONDING_MODE_BROADCAST:
+#endif
 	case BONDING_MODE_BALANCE:
 		for (i = 0; i < internals->active_slave_count && nb_pkts; i++) {
 			/* Offset of pointer to *bufs increases as packets are received
@@ -318,6 +320,7 @@ bond_ethdev_tx_balance(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	return num_tx_total;
 }
 
+#ifdef RTE_MBUF_REFCNT
 static uint16_t
 bond_ethdev_tx_burst_broadcast(void *queue, struct rte_mbuf **bufs,
 		uint16_t nb_pkts)
@@ -355,6 +358,7 @@ bond_ethdev_tx_burst_broadcast(void *queue, struct rte_mbuf **bufs,
 
 	return num_tx_total;
 }
+#endif
 
 void
 link_properties_set(struct rte_eth_dev *bonded_eth_dev,
@@ -431,7 +435,9 @@ mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev)
 	switch (internals->mode) {
 	case BONDING_MODE_ROUND_ROBIN:
 	case BONDING_MODE_BALANCE:
+#ifdef RTE_MBUF_REFCNT
 	case BONDING_MODE_BROADCAST:
+#endif
 		for (i = 0; i < internals->slave_count; i++) {
 			if (mac_address_set(&rte_eth_devices[internals->slaves[i]],
 					bonded_eth_dev->data->mac_addrs)) {
@@ -488,9 +494,11 @@ bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, int mode)
 	case BONDING_MODE_BALANCE:
 		eth_dev->tx_pkt_burst = bond_ethdev_tx_balance;
 		break;
+#ifdef RTE_MBUF_REFCNT
 	case BONDING_MODE_BROADCAST:
 		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_broadcast;
 		break;
+#endif
 	default:
 		return -1;
 	}
@@ -874,7 +882,9 @@ bond_ethdev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 	/* Promiscuous mode is propagated to all slaves */
 	case BONDING_MODE_ROUND_ROBIN:
 	case BONDING_MODE_BALANCE:
+#ifdef RTE_MBUF_REFCNT
 	case BONDING_MODE_BROADCAST:
+#endif
 		for (i = 0; i < internals->slave_count; i++)
 			rte_eth_promiscuous_enable(internals->slaves[i]);
 		break;
@@ -898,7 +908,9 @@ bond_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
 	/* Promiscuous mode is propagated to all slaves */
 	case BONDING_MODE_ROUND_ROBIN:
 	case BONDING_MODE_BALANCE:
+#ifdef RTE_MBUF_REFCNT
 	case BONDING_MODE_BROADCAST:
+#endif
 		for (i = 0; i < internals->slave_count; i++)
 			rte_eth_promiscuous_disable(internals->slaves[i]);
 		break;

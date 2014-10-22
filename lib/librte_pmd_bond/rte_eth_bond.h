@@ -71,11 +71,12 @@ extern "C" {
  * slaves using one of three available transmit policies - l2, l2+3 or l3+4.
  * See BALANCE_XMIT_POLICY macros definitions for further details on transmit
  * policies. */
+#ifdef RTE_MBUF_REFCNT
 #define BONDING_MODE_BROADCAST			(3)
 /**< Broadcast (Mode 3).
  * In this mode all transmitted packets will be transmitted on all available
  * active slaves of the bonded. */
-
+#endif
 /* Balance Mode Transmit Policies */
 #define BALANCE_XMIT_POLICY_LAYER2		(0)
 /**< Layer 2 (Ethernet MAC) */

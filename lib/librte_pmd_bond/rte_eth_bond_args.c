@@ -169,7 +169,9 @@ bond_ethdev_parse_slave_mode_kvarg(const char *key __rte_unused,
 	case BONDING_MODE_ROUND_ROBIN:
 	case BONDING_MODE_ACTIVE_BACKUP:
 	case BONDING_MODE_BALANCE:
+#ifdef RTE_MBUF_REFCNT
 	case BONDING_MODE_BROADCAST:
+#endif
 		return 0;
 	default:
 		return -1;

@@ -46,6 +46,10 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_api.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_pmd.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_args.c
 
+ifeq ($(CONFIG_RTE_MBUF_REFCNT),n)
+$(info WARNING: Link Bonding Broadcast mode is disabled because it needs MBUF_REFCNT.)
+endif
+
 #
 # Export include files
 #
