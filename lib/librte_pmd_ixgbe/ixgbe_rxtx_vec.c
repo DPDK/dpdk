@@ -730,7 +730,7 @@ static struct ixgbe_txq_ops vec_txq_ops = {
 int
 ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq)
 {
-	static struct rte_mbuf mb_def = {
+	struct rte_mbuf mb_def = {
 		.nb_segs = 1,
 		.data_off = RTE_PKTMBUF_HEADROOM,
 #ifdef RTE_MBUF_REFCNT
