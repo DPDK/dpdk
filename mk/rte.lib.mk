@@ -61,7 +61,7 @@ exe2cmd = $(strip $(call dotfile,$(patsubst %,%.cmd,$(1))))
 
 ifeq ($(LINK_USING_CC),1)
 # Override the definition of LD here, since we're linking with CC
-LD := $(CC)
+LD := $(CC) $(CPU_CFLAGS)
 LD_MULDEFS := $(call linkerprefix,-z$(comma)muldefs)
 CPU_LDFLAGS := $(call linkerprefix,$(CPU_LDFLAGS))
 endif
