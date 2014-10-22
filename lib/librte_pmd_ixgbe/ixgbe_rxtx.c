@@ -2191,6 +2191,9 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 */
 	use_def_burst_func = check_rx_burst_bulk_alloc_preconditions(rxq);
 
+#ifdef RTE_IXGBE_INC_VECTOR
+	ixgbe_rxq_vec_setup(rxq);
+#endif
 	/* Check if pre-conditions are satisfied, and no Scattered Rx */
 	if (!use_def_burst_func && !dev->data->scattered_rx) {
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
@@ -2203,7 +2206,6 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		if (!ixgbe_rx_vec_condition_check(dev)) {
 			PMD_INIT_LOG(INFO, "Vector rx enabled, please make "
 				     "sure RX burst size no less than 32.");
-			ixgbe_rxq_vec_setup(rxq);
 			dev->rx_pkt_burst = ixgbe_recv_pkts_vec;
 		}
 #endif
