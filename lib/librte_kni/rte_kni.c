@@ -131,7 +131,9 @@ static void kni_free_mbufs(struct rte_kni *kni);
 static void kni_allocate_mbufs(struct rte_kni *kni);
 
 static volatile int kni_fd = -1;
-static struct rte_kni_memzone_pool kni_memzone_pool = {0};
+static struct rte_kni_memzone_pool kni_memzone_pool = {
+	.initialized = 0,
+};
 
 static const struct rte_memzone *
 kni_memzone_reserve(const char *name, size_t len, int socket_id,
@@ -224,6 +226,7 @@ rte_kni_init(unsigned int max_kni_ifaces)
 	kni_memzone_pool.initialized = 1;
 	kni_memzone_pool.max_ifaces = max_kni_ifaces;
 	kni_memzone_pool.free = &kni_memzone_pool.slots[0];
+	rte_spinlock_init(&kni_memzone_pool.mutex);
 
 	/* Pre-allocate all memzones of all the slots; panic on error */
 	for (i = 0; i < max_kni_ifaces; i++) {
