@@ -38,3 +38,4 @@ Contents:
    :titlesonly:
 
    linux_gsg/index
+   freebsd_gsg/index
