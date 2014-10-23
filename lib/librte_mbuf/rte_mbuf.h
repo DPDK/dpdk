@@ -163,7 +163,14 @@ struct rte_mbuf {
 
 	/* remaining bytes are set on RX when pulling packet from descriptor */
 	MARKER rx_descriptor_fields1;
-	uint16_t reserved2;       /**< Unused field. Required for padding */
+
+	/**
+	 * The packet type, which is used to indicate ordinary packet and also
+	 * tunneled packet format, i.e. each number is represented a type of
+	 * packet.
+	 */
+	uint16_t packet_type;
+
 	uint16_t data_len;        /**< Amount of data in segment buffer. */
 	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
 	uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
@@ -194,6 +201,18 @@ struct rte_mbuf {
 		struct {
 			uint16_t l3_len:9;      /**< L3 (IP) Header Length. */
 			uint16_t l2_len:7;      /**< L2 (MAC) Header Length. */
+		};
+	};
+
+	/* fields for TX offloading of tunnels */
+	union {
+		uint16_t inner_l2_l3_len;
+		/**< combined inner l2/l3 lengths as single var */
+		struct {
+			uint16_t inner_l3_len:9;
+			/**< inner L3 (IP) Header Length. */
+			uint16_t inner_l2_len:7;
+			/**< inner L2 (MAC) Header Length. */
 		};
 	};
 } __rte_cache_aligned;
@@ -546,11 +565,13 @@ static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 	m->next = NULL;
 	m->pkt_len = 0;
 	m->l2_l3_len = 0;
+	m->inner_l2_l3_len = 0;
 	m->vlan_tci = 0;
 	m->nb_segs = 1;
 	m->port = 0xff;
 
 	m->ol_flags = 0;
+	m->packet_type = 0;
 	m->data_off = (RTE_PKTMBUF_HEADROOM <= m->buf_len) ?
 			RTE_PKTMBUF_HEADROOM : m->buf_len;
 
@@ -614,12 +635,14 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
 	mi->port = md->port;
 	mi->vlan_tci = md->vlan_tci;
 	mi->l2_l3_len = md->l2_l3_len;
+	mi->inner_l2_l3_len = md->inner_l2_l3_len;
 	mi->hash = md->hash;
 
 	mi->next = NULL;
 	mi->pkt_len = mi->data_len;
 	mi->nb_segs = 1;
 	mi->ol_flags = md->ol_flags;
+	mi->packet_type = md->packet_type;
 
 	__rte_mbuf_sanity_check(mi, 1);
 	__rte_mbuf_sanity_check(md, 0);
