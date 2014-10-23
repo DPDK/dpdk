@@ -48,6 +48,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_dev.h>
+#include <rte_eth_ctrl.h>
 
 #include "i40e_logs.h"
 #include "i40e/i40e_register_x710_int.h"
@@ -4099,6 +4100,108 @@ i40e_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 }
 
 static int
+i40e_dev_get_filter_type(uint16_t filter_type, uint16_t *flag)
+{
+	switch (filter_type) {
+	case RTE_TUNNEL_FILTER_IMAC_IVLAN:
+		*flag = I40E_AQC_ADD_CLOUD_FILTER_IMAC_IVLAN;
+		break;
+	case RTE_TUNNEL_FILTER_IMAC_IVLAN_TENID:
+		*flag = I40E_AQC_ADD_CLOUD_FILTER_IMAC_IVLAN_TEN_ID;
+		break;
+	case RTE_TUNNEL_FILTER_IMAC_TENID:
+		*flag = I40E_AQC_ADD_CLOUD_FILTER_IMAC_TEN_ID;
+		break;
+	case RTE_TUNNEL_FILTER_OMAC_TENID_IMAC:
+		*flag = I40E_AQC_ADD_CLOUD_FILTER_OMAC_TEN_ID_IMAC;
+		break;
+	case ETH_TUNNEL_FILTER_IMAC:
+		*flag = I40E_AQC_ADD_CLOUD_FILTER_IMAC;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid tunnel filter type");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
+			struct rte_eth_tunnel_filter_conf *tunnel_filter,
+			uint8_t add)
+{
+	uint16_t ip_type;
+	uint8_t tun_type = 0;
+	int val, ret = 0;
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_vsi *vsi = pf->main_vsi;
+	struct i40e_aqc_add_remove_cloud_filters_element_data  *cld_filter;
+	struct i40e_aqc_add_remove_cloud_filters_element_data  *pfilter;
+
+	cld_filter = rte_zmalloc("tunnel_filter",
+		sizeof(struct i40e_aqc_add_remove_cloud_filters_element_data),
+		0);
+
+	if (NULL == cld_filter) {
+		PMD_DRV_LOG(ERR, "Failed to alloc memory.");
+		return -EINVAL;
+	}
+	pfilter = cld_filter;
+
+	(void)rte_memcpy(&pfilter->outer_mac, tunnel_filter->outer_mac,
+			sizeof(struct ether_addr));
+	(void)rte_memcpy(&pfilter->inner_mac, tunnel_filter->inner_mac,
+			sizeof(struct ether_addr));
+
+	pfilter->inner_vlan = tunnel_filter->inner_vlan;
+	if (tunnel_filter->ip_type == RTE_TUNNEL_IPTYPE_IPV4) {
+		ip_type = I40E_AQC_ADD_CLOUD_FLAGS_IPV4;
+		(void)rte_memcpy(&pfilter->ipaddr.v4.data,
+				&tunnel_filter->ip_addr,
+				sizeof(pfilter->ipaddr.v4.data));
+	} else {
+		ip_type = I40E_AQC_ADD_CLOUD_FLAGS_IPV6;
+		(void)rte_memcpy(&pfilter->ipaddr.v6.data,
+				&tunnel_filter->ip_addr,
+				sizeof(pfilter->ipaddr.v6.data));
+	}
+
+	/* check tunneled type */
+	switch (tunnel_filter->tunnel_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_XVLAN;
+		break;
+	default:
+		/* Other tunnel types is not supported. */
+		PMD_DRV_LOG(ERR, "tunnel type is not supported.");
+		rte_free(cld_filter);
+		return -EINVAL;
+	}
+
+	val = i40e_dev_get_filter_type(tunnel_filter->filter_type,
+						&pfilter->flags);
+	if (val < 0) {
+		rte_free(cld_filter);
+		return -EINVAL;
+	}
+
+	pfilter->flags |= I40E_AQC_ADD_CLOUD_FLAGS_TO_QUEUE | ip_type |
+		(tun_type << I40E_AQC_ADD_CLOUD_TNL_TYPE_SHIFT);
+	pfilter->tenant_id = tunnel_filter->tenant_id;
+	pfilter->queue_number = tunnel_filter->queue_id;
+
+	if (add)
+		ret = i40e_aq_add_cloud_filters(hw, vsi->seid, cld_filter, 1);
+	else
+		ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
+						cld_filter, 1);
+
+	rte_free(cld_filter);
+	return ret;
+}
+
+static int
 i40e_get_vxlan_port_idx(struct i40e_pf *pf, uint16_t port)
 {
 	uint8_t i;
@@ -4286,6 +4389,72 @@ i40e_pf_config_rss(struct i40e_pf *pf)
 }
 
 static int
+i40e_tunnel_filter_param_check(struct i40e_pf *pf,
+			struct rte_eth_tunnel_filter_conf *filter)
+{
+	if (pf == NULL || filter == NULL) {
+		PMD_DRV_LOG(ERR, "Invalid parameter");
+		return -EINVAL;
+	}
+
+	if (filter->queue_id >= pf->dev_data->nb_rx_queues) {
+		PMD_DRV_LOG(ERR, "Invalid queue ID");
+		return -EINVAL;
+	}
+
+	if (filter->inner_vlan > ETHER_MAX_VLAN_ID) {
+		PMD_DRV_LOG(ERR, "Invalid inner VLAN ID");
+		return -EINVAL;
+	}
+
+	if ((filter->filter_type & ETH_TUNNEL_FILTER_OMAC) &&
+		(is_zero_ether_addr(filter->outer_mac))) {
+		PMD_DRV_LOG(ERR, "Cannot add NULL outer MAC address");
+		return -EINVAL;
+	}
+
+	if ((filter->filter_type & ETH_TUNNEL_FILTER_IMAC) &&
+		(is_zero_ether_addr(filter->inner_mac))) {
+		PMD_DRV_LOG(ERR, "Cannot add NULL inner MAC address");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+i40e_tunnel_filter_handle(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
+			void *arg)
+{
+	struct rte_eth_tunnel_filter_conf *filter;
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	int ret = I40E_SUCCESS;
+
+	filter = (struct rte_eth_tunnel_filter_conf *)(arg);
+
+	if (i40e_tunnel_filter_param_check(pf, filter) < 0)
+		return I40E_ERR_PARAM;
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_NOP:
+		if (!(pf->flags & I40E_FLAG_VXLAN))
+			ret = I40E_NOT_SUPPORTED;
+	case RTE_ETH_FILTER_ADD:
+		ret = i40e_dev_tunnel_filter_set(pf, filter, 1);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		ret = i40e_dev_tunnel_filter_set(pf, filter, 0);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unknown operation %u", filter_op);
+		ret = I40E_ERR_PARAM;
+		break;
+	}
+
+	return ret;
+}
+
+static int
 i40e_pf_config_mq_rx(struct i40e_pf *pf)
 {
 	if (!pf->dev_data->sriov.active) {
@@ -4309,13 +4478,14 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     void *arg)
 {
 	int ret = 0;
-	(void)filter_op;
-	(void)arg;
 
 	if (dev == NULL)
 		return -EINVAL;
 
 	switch (filter_type) {
+	case RTE_ETH_FILTER_TUNNEL:
+		ret = i40e_tunnel_filter_handle(dev, filter_op, arg);
+		break;
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
 							filter_type);
