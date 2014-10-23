@@ -285,6 +285,14 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set the outer VLAN TPID for Packet Filtering on"
 			" a port\n\n"
 
+			"tunnel_filter add (port_id) (outer_mac) (inner_mac) (ip_addr) "
+			"(inner_vlan) (tunnel_type) (filter_type) (tenant_id) (queue_id)\n"
+			"   add a tunnel filter of a port.\n\n"
+
+			"tunnel_filter rm (port_id) (outer_mac) (inner_mac) (ip_addr) "
+			"(inner_vlan) (tunnel_type) (filter_type) (tenant_id) (queue_id)\n"
+			"   remove a tunnel filter of a port.\n\n"
+
 			"rx_vxlan_port add (udp_port) (port_id)\n"
 			"    Add an UDP port for VxLAN packet filter on a port\n\n"
 
@@ -6231,6 +6239,147 @@ cmdline_parse_inst_t cmd_vf_rate_limit = {
 	},
 };
 
+/* *** ADD TUNNEL FILTER OF A PORT *** */
+struct cmd_tunnel_filter_result {
+	cmdline_fixed_string_t cmd;
+	cmdline_fixed_string_t what;
+	uint8_t port_id;
+	struct ether_addr outer_mac;
+	struct ether_addr inner_mac;
+	cmdline_ipaddr_t ip_value;
+	uint16_t inner_vlan;
+	cmdline_fixed_string_t tunnel_type;
+	cmdline_fixed_string_t filter_type;
+	uint32_t tenant_id;
+	uint16_t queue_num;
+};
+
+static void
+cmd_tunnel_filter_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	struct cmd_tunnel_filter_result *res = parsed_result;
+	struct rte_eth_tunnel_filter_conf tunnel_filter_conf;
+	int ret = 0;
+
+	tunnel_filter_conf.outer_mac = &res->outer_mac;
+	tunnel_filter_conf.inner_mac = &res->inner_mac;
+	tunnel_filter_conf.inner_vlan = res->inner_vlan;
+
+	if (res->ip_value.family == AF_INET) {
+		tunnel_filter_conf.ip_addr.ipv4_addr =
+			res->ip_value.addr.ipv4.s_addr;
+		tunnel_filter_conf.ip_type = RTE_TUNNEL_IPTYPE_IPV4;
+	} else {
+		memcpy(&(tunnel_filter_conf.ip_addr.ipv6_addr),
+			&(res->ip_value.addr.ipv6),
+			sizeof(struct in6_addr));
+		tunnel_filter_conf.ip_type = RTE_TUNNEL_IPTYPE_IPV6;
+	}
+
+	if (!strcmp(res->filter_type, "imac-ivlan"))
+		tunnel_filter_conf.filter_type = RTE_TUNNEL_FILTER_IMAC_IVLAN;
+	else if (!strcmp(res->filter_type, "imac-ivlan-tenid"))
+		tunnel_filter_conf.filter_type =
+			RTE_TUNNEL_FILTER_IMAC_IVLAN_TENID;
+	else if (!strcmp(res->filter_type, "imac-tenid"))
+		tunnel_filter_conf.filter_type = RTE_TUNNEL_FILTER_IMAC_TENID;
+	else if (!strcmp(res->filter_type, "imac"))
+		tunnel_filter_conf.filter_type = ETH_TUNNEL_FILTER_IMAC;
+	else if (!strcmp(res->filter_type, "omac-imac-tenid"))
+		tunnel_filter_conf.filter_type =
+			RTE_TUNNEL_FILTER_OMAC_TENID_IMAC;
+	else {
+		printf("The filter type is not supported");
+		return;
+	}
+
+	if (!strcmp(res->tunnel_type, "vxlan"))
+		tunnel_filter_conf.tunnel_type = RTE_TUNNEL_TYPE_VXLAN;
+	else {
+		printf("Only VxLAN is supported now.\n");
+		return;
+	}
+
+	tunnel_filter_conf.tenant_id = res->tenant_id;
+	tunnel_filter_conf.queue_id = res->queue_num;
+	if (!strcmp(res->what, "add"))
+		ret = rte_eth_dev_filter_ctrl(res->port_id,
+					RTE_ETH_FILTER_TUNNEL,
+					RTE_ETH_FILTER_ADD,
+					&tunnel_filter_conf);
+	else
+		ret = rte_eth_dev_filter_ctrl(res->port_id,
+					RTE_ETH_FILTER_TUNNEL,
+					RTE_ETH_FILTER_DELETE,
+					&tunnel_filter_conf);
+	if (ret < 0)
+		printf("cmd_tunnel_filter_parsed error: (%s)\n",
+				strerror(-ret));
+
+}
+cmdline_parse_token_string_t cmd_tunnel_filter_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_filter_result,
+	cmd, "tunnel_filter");
+cmdline_parse_token_string_t cmd_tunnel_filter_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_filter_result,
+	what, "add#rm");
+cmdline_parse_token_num_t cmd_tunnel_filter_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_tunnel_filter_result,
+	port_id, UINT8);
+cmdline_parse_token_etheraddr_t cmd_tunnel_filter_outer_mac =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_tunnel_filter_result,
+	outer_mac);
+cmdline_parse_token_etheraddr_t cmd_tunnel_filter_inner_mac =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_tunnel_filter_result,
+	inner_mac);
+cmdline_parse_token_num_t cmd_tunnel_filter_innner_vlan =
+	TOKEN_NUM_INITIALIZER(struct cmd_tunnel_filter_result,
+	inner_vlan, UINT16);
+cmdline_parse_token_ipaddr_t cmd_tunnel_filter_ip_value =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_tunnel_filter_result,
+	ip_value);
+cmdline_parse_token_string_t cmd_tunnel_filter_tunnel_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_filter_result,
+	tunnel_type, "vxlan");
+
+cmdline_parse_token_string_t cmd_tunnel_filter_filter_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_filter_result,
+	filter_type, "imac-ivlan#imac-ivlan-tenid#imac-tenid#"
+		"imac#omac-imac-tenid");
+cmdline_parse_token_num_t cmd_tunnel_filter_tenant_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_tunnel_filter_result,
+	tenant_id, UINT32);
+cmdline_parse_token_num_t cmd_tunnel_filter_queue_num =
+	TOKEN_NUM_INITIALIZER(struct cmd_tunnel_filter_result,
+	queue_num, UINT16);
+
+cmdline_parse_inst_t cmd_tunnel_filter = {
+	.f = cmd_tunnel_filter_parsed,
+	.data = (void *)0,
+	.help_str = "add/rm tunnel filter of a port: "
+			"tunnel_filter add port_id outer_mac inner_mac ip "
+			"inner_vlan tunnel_type(vxlan) filter_type "
+			"(imac-ivlan|imac-ivlan-tenid|imac-tenid|"
+			"imac|omac-imac-tenid) "
+			"tenant_id queue_num",
+	.tokens = {
+		(void *)&cmd_tunnel_filter_cmd,
+		(void *)&cmd_tunnel_filter_what,
+		(void *)&cmd_tunnel_filter_port_id,
+		(void *)&cmd_tunnel_filter_outer_mac,
+		(void *)&cmd_tunnel_filter_inner_mac,
+		(void *)&cmd_tunnel_filter_ip_value,
+		(void *)&cmd_tunnel_filter_innner_vlan,
+		(void *)&cmd_tunnel_filter_tunnel_type,
+		(void *)&cmd_tunnel_filter_filter_type,
+		(void *)&cmd_tunnel_filter_tenant_id,
+		(void *)&cmd_tunnel_filter_queue_num,
+		NULL,
+	},
+};
+
 /* *** CONFIGURE TUNNEL UDP PORT *** */
 struct cmd_tunnel_udp_config {
 	cmdline_fixed_string_t cmd;
@@ -7582,6 +7731,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
 	(cmdline_parse_inst_t *)&cmd_queue_rate_limit,
 	(cmdline_parse_inst_t *)&cmd_vf_rate_limit,
+	(cmdline_parse_inst_t *)&cmd_tunnel_filter,
 	(cmdline_parse_inst_t *)&cmd_tunnel_udp_config,
 	(cmdline_parse_inst_t *)&cmd_set_mirror_mask,
 	(cmdline_parse_inst_t *)&cmd_set_mirror_link,
