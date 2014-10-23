@@ -60,13 +60,15 @@
 #define I40E_FLAG_HEADER_SPLIT_DISABLED (1ULL << 4)
 #define I40E_FLAG_HEADER_SPLIT_ENABLED  (1ULL << 5)
 #define I40E_FLAG_FDIR                  (1ULL << 6)
+#define I40E_FLAG_VXLAN                 (1ULL << 7)
 #define I40E_FLAG_ALL (I40E_FLAG_RSS | \
 		       I40E_FLAG_DCB | \
 		       I40E_FLAG_VMDQ | \
 		       I40E_FLAG_SRIOV | \
 		       I40E_FLAG_HEADER_SPLIT_DISABLED | \
 		       I40E_FLAG_HEADER_SPLIT_ENABLED | \
-		       I40E_FLAG_FDIR)
+		       I40E_FLAG_FDIR | \
+		       I40E_FLAG_VXLAN)
 
 #define I40E_RSS_OFFLOAD_ALL ( \
 	ETH_RSS_NONF_IPV4_UDP | \
@@ -246,6 +248,10 @@ struct i40e_pf {
 	uint16_t vmdq_nb_qps; /* The number of queue pairs of VMDq */
 	uint16_t vf_nb_qps; /* The number of queue pairs of VF */
 	uint16_t fdir_nb_qps; /* The number of queue pairs of Flow Director */
+
+	/* store VxLAN UDP ports */
+	uint16_t vxlan_ports[I40E_MAX_PF_UDP_OFFLOAD_PORTS];
+	uint16_t vxlan_bitmap; /* Vxlan bit mask */
 };
 
 enum pending_msg {

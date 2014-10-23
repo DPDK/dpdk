@@ -91,6 +91,8 @@ extern "C" {
 #define PKT_RX_IPV6_HDR_EXT  (1ULL << 8)  /**< RX packet with extended IPv6 header. */
 #define PKT_RX_IEEE1588_PTP  (1ULL << 9)  /**< RX IEEE1588 L2 Ethernet PT Packet. */
 #define PKT_RX_IEEE1588_TMST (1ULL << 10) /**< RX IEEE1588 L2/L4 timestamped packet.*/
+#define PKT_RX_TUNNEL_IPV4_HDR (1ULL << 11) /**< RX tunnel packet with IPv4 header.*/
+#define PKT_RX_TUNNEL_IPV6_HDR (1ULL << 12) /**< RX tunnel packet with IPv6 header. */
 
 #define PKT_TX_VLAN_PKT      (1ULL << 55) /**< TX packet is a 802.1q VLAN packet. */
 #define PKT_TX_IP_CKSUM      (1ULL << 54) /**< IP cksum of TX pkt. computed by NIC. */

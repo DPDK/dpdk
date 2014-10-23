@@ -186,6 +186,10 @@ static int i40e_dev_rss_hash_update(struct rte_eth_dev *dev,
 				    struct rte_eth_rss_conf *rss_conf);
 static int i40e_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 				      struct rte_eth_rss_conf *rss_conf);
+static int i40e_dev_udp_tunnel_add(struct rte_eth_dev *dev,
+				struct rte_eth_udp_tunnel *udp_tunnel);
+static int i40e_dev_udp_tunnel_del(struct rte_eth_dev *dev,
+				struct rte_eth_udp_tunnel *udp_tunnel);
 static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 				enum rte_filter_type filter_type,
 				enum rte_filter_op filter_op,
@@ -241,6 +245,8 @@ static struct eth_dev_ops i40e_eth_dev_ops = {
 	.reta_query                   = i40e_dev_rss_reta_query,
 	.rss_hash_update              = i40e_dev_rss_hash_update,
 	.rss_hash_conf_get            = i40e_dev_rss_hash_conf_get,
+	.udp_tunnel_add               = i40e_dev_udp_tunnel_add,
+	.udp_tunnel_del               = i40e_dev_udp_tunnel_del,
 	.filter_ctrl                  = i40e_dev_filter_ctrl,
 };
 
@@ -4090,6 +4096,157 @@ i40e_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	rss_conf->rss_hf = i40e_parse_hena(hena);
 
 	return 0;
+}
+
+static int
+i40e_get_vxlan_port_idx(struct i40e_pf *pf, uint16_t port)
+{
+	uint8_t i;
+
+	for (i = 0; i < I40E_MAX_PF_UDP_OFFLOAD_PORTS; i++) {
+		if (pf->vxlan_ports[i] == port)
+			return i;
+	}
+
+	return -1;
+}
+
+static int
+i40e_add_vxlan_port(struct i40e_pf *pf, uint16_t port)
+{
+	int  idx, ret;
+	uint8_t filter_idx;
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+
+	idx = i40e_get_vxlan_port_idx(pf, port);
+
+	/* Check if port already exists */
+	if (idx >= 0) {
+		PMD_DRV_LOG(ERR, "Port %d already offloaded", port);
+		return -EINVAL;
+	}
+
+	/* Now check if there is space to add the new port */
+	idx = i40e_get_vxlan_port_idx(pf, 0);
+	if (idx < 0) {
+		PMD_DRV_LOG(ERR, "Maximum number of UDP ports reached,"
+			"not adding port %d", port);
+		return -ENOSPC;
+	}
+
+	ret =  i40e_aq_add_udp_tunnel(hw, port, I40E_AQC_TUNNEL_TYPE_VXLAN,
+					&filter_idx, NULL);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to add VxLAN UDP port %d", port);
+		return -1;
+	}
+
+	PMD_DRV_LOG(INFO, "Added %s port %d with AQ command with index %d",
+			 port,  filter_index);
+
+	/* New port: add it and mark its index in the bitmap */
+	pf->vxlan_ports[idx] = port;
+	pf->vxlan_bitmap |= (1 << idx);
+
+	if (!(pf->flags & I40E_FLAG_VXLAN))
+		pf->flags |= I40E_FLAG_VXLAN;
+
+	return 0;
+}
+
+static int
+i40e_del_vxlan_port(struct i40e_pf *pf, uint16_t port)
+{
+	int idx;
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+
+	if (!(pf->flags & I40E_FLAG_VXLAN)) {
+		PMD_DRV_LOG(ERR, "VxLAN UDP port was not configured.");
+		return -EINVAL;
+	}
+
+	idx = i40e_get_vxlan_port_idx(pf, port);
+
+	if (idx < 0) {
+		PMD_DRV_LOG(ERR, "Port %d doesn't exist", port);
+		return -EINVAL;
+	}
+
+	if (i40e_aq_del_udp_tunnel(hw, idx, NULL) < 0) {
+		PMD_DRV_LOG(ERR, "Failed to delete VxLAN UDP port %d", port);
+		return -1;
+	}
+
+	PMD_DRV_LOG(INFO, "Deleted port %d with AQ command with index %d",
+			port, idx);
+
+	pf->vxlan_ports[idx] = 0;
+	pf->vxlan_bitmap &= ~(1 << idx);
+
+	if (!pf->vxlan_bitmap)
+		pf->flags &= ~I40E_FLAG_VXLAN;
+
+	return 0;
+}
+
+/* Add UDP tunneling port */
+static int
+i40e_dev_udp_tunnel_add(struct rte_eth_dev *dev,
+			struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	int ret = 0;
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (udp_tunnel == NULL)
+		return -EINVAL;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		ret = i40e_add_vxlan_port(pf, udp_tunnel->udp_port);
+		break;
+
+	case RTE_TUNNEL_TYPE_GENEVE:
+	case RTE_TUNNEL_TYPE_TEREDO:
+		PMD_DRV_LOG(ERR, "Tunnel type is not supported now.");
+		ret = -1;
+		break;
+
+	default:
+		PMD_DRV_LOG(ERR, "Invalid tunnel type");
+		ret = -1;
+		break;
+	}
+
+	return ret;
+}
+
+/* Remove UDP tunneling port */
+static int
+i40e_dev_udp_tunnel_del(struct rte_eth_dev *dev,
+			struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	int ret = 0;
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (udp_tunnel == NULL)
+		return -EINVAL;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		ret = i40e_del_vxlan_port(pf, udp_tunnel->udp_port);
+		break;
+	case RTE_TUNNEL_TYPE_GENEVE:
+	case RTE_TUNNEL_TYPE_TEREDO:
+		PMD_DRV_LOG(ERR, "Tunnel type is not supported now.");
+		ret = -1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid tunnel type");
+		ret = -1;
+		break;
+	}
+
+	return ret;
 }
 
 /* Configure RSS */

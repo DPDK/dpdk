@@ -208,34 +208,34 @@ i40e_rxd_ptype_to_pkt_flags(uint64_t qword)
 		PKT_RX_IPV4_HDR_EXT, /* PTYPE 56 */
 		PKT_RX_IPV4_HDR_EXT, /* PTYPE 57 */
 		PKT_RX_IPV4_HDR_EXT, /* PTYPE 58 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 59 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 60 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 61 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 59 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 60 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 61 */
 		0, /* PTYPE 62 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 63 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 64 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 65 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 66 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 67 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 68 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 63 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 64 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 65 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 66 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 67 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 68 */
 		0, /* PTYPE 69 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 70 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 71 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 72 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 73 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 74 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 75 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 76 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 70 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 71 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 72 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 73 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 74 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 75 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 76 */
 		0, /* PTYPE 77 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 78 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 79 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 80 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 81 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 82 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 83 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 78 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 79 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 80 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 81 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 82 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 83 */
 		0, /* PTYPE 84 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 85 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 86 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 85 */
+		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 86 */
 		PKT_RX_IPV4_HDR_EXT, /* PTYPE 87 */
 		PKT_RX_IPV6_HDR, /* PTYPE 88 */
 		PKT_RX_IPV6_HDR, /* PTYPE 89 */
@@ -274,34 +274,34 @@ i40e_rxd_ptype_to_pkt_flags(uint64_t qword)
 		PKT_RX_IPV6_HDR_EXT, /* PTYPE 122 */
 		PKT_RX_IPV6_HDR_EXT, /* PTYPE 123 */
 		PKT_RX_IPV6_HDR_EXT, /* PTYPE 124 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 125 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 126 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 127 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 125 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 126 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 127 */
 		0, /* PTYPE 128 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 129 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 130 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 131 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 132 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 133 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 134 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 129 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 130 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 131 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 132 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 133 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 134 */
 		0, /* PTYPE 135 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 136 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 137 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 138 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 139 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 140 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 141 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 142 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 136 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 137 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 138 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 139 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 140 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 141 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 142 */
 		0, /* PTYPE 143 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 144 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 145 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 146 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 147 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 148 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 149 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 144 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 145 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 146 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 147 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 148 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 149 */
 		0, /* PTYPE 150 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 151 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 152 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 151 */
+		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 152 */
 		PKT_RX_IPV6_HDR_EXT, /* PTYPE 153 */
 		0, /* PTYPE 154 */
 		0, /* PTYPE 155 */
@@ -638,6 +638,10 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 			pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
 			pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
 			mb->ol_flags = pkt_flags;
+
+			mb->packet_type = (uint16_t)((qword1 &
+					I40E_RXD_QW1_PTYPE_MASK) >>
+					I40E_RXD_QW1_PTYPE_SHIFT);
 			if (pkt_flags & PKT_RX_RSS_HASH)
 				mb->hash.rss = rte_le_to_cpu_32(\
 					rxdp->wb.qword0.hi_dword.rss);
@@ -873,6 +877,8 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
 		pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
 		pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
+		rxm->packet_type = (uint16_t)((qword1 & I40E_RXD_QW1_PTYPE_MASK) >>
+				I40E_RXD_QW1_PTYPE_SHIFT);
 		rxm->ol_flags = pkt_flags;
 		if (pkt_flags & PKT_RX_RSS_HASH)
 			rxm->hash.rss =
@@ -1027,6 +1033,9 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
 		pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
 		pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
+		first_seg->packet_type = (uint16_t)((qword1 &
+					I40E_RXD_QW1_PTYPE_MASK) >>
+					I40E_RXD_QW1_PTYPE_SHIFT);
 		first_seg->ol_flags = pkt_flags;
 		if (pkt_flags & PKT_RX_RSS_HASH)
 			rxm->hash.rss =
