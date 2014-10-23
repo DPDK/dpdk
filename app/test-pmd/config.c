@@ -1753,9 +1753,9 @@ tx_cksum_set(portid_t port_id, uint64_t ol_flags)
 	uint64_t tx_ol_flags;
 	if (port_id_is_invalid(port_id))
 		return;
-	/* Clear last 4 bits and then set L3/4 checksum mask again */
-	tx_ol_flags = ports[port_id].tx_ol_flags & (~0x0Full);
-	ports[port_id].tx_ol_flags = ((ol_flags & 0xf) | tx_ol_flags);
+	/* Clear last 8 bits and then set L3/4 checksum mask again */
+	tx_ol_flags = ports[port_id].tx_ol_flags & (~0x0FFull);
+	ports[port_id].tx_ol_flags = ((ol_flags & 0xff) | tx_ol_flags);
 }
 
 void

@@ -310,13 +310,17 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Disable hardware insertion of a VLAN header in"
 			" packets sent on a port.\n\n"
 
-			"tx_checksum set mask (port_id)\n"
+			"tx_checksum set (mask) (port_id)\n"
 			"    Enable hardware insertion of checksum offload with"
-			" the 4-bit mask, 0~0xf, in packets sent on a port.\n"
+			" the 8-bit mask, 0~0xff, in packets sent on a port.\n"
 			"        bit 0 - insert ip   checksum offload if set\n"
 			"        bit 1 - insert udp  checksum offload if set\n"
 			"        bit 2 - insert tcp  checksum offload if set\n"
 			"        bit 3 - insert sctp checksum offload if set\n"
+			"        bit 4 - insert inner ip  checksum offload if set\n"
+			"        bit 5 - insert inner udp checksum offload if set\n"
+			"        bit 6 - insert inner tcp checksum offload if set\n"
+			"        bit 7 - insert inner sctp checksum offload if set\n"
 			"    Please check the NIC datasheet for HW limits.\n\n"
 
 			"set fwd (%s)\n"
@@ -2763,8 +2767,9 @@ cmdline_parse_inst_t cmd_tx_cksum_set = {
 	.f = cmd_tx_cksum_set_parsed,
 	.data = NULL,
 	.help_str = "enable hardware insertion of L3/L4checksum with a given "
-	"mask in packets sent on a port, the bit mapping is given as, Bit 0 for ip"
-	"Bit 1 for UDP, Bit 2 for TCP, Bit 3 for SCTP",
+	"mask in packets sent on a port, the bit mapping is given as, Bit 0 for ip, "
+	"Bit 1 for UDP, Bit 2 for TCP, Bit 3 for SCTP, Bit 4 for inner ip, "
+	"Bit 5 for inner UDP, Bit 6 for inner TCP, Bit 7 for inner SCTP",
 	.tokens = {
 		(void *)&cmd_tx_cksum_set_tx_cksum,
 		(void *)&cmd_tx_cksum_set_set,
