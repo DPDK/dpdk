@@ -286,6 +286,16 @@ struct vlan_hdr {
 	uint16_t eth_proto;/**< Ethernet type of encapsulated frame. */
 } __attribute__((__packed__));
 
+/**
+ * VXLAN protocol header.
+ * Contains the 8-bit flag, 24-bit VXLAN Network Identifier and
+ * Reserved fields (24 bits and 8 bits)
+ */
+struct vxlan_hdr {
+	uint32_t vx_flags; /**< flag (8) + Reserved (24). */
+	uint32_t vx_vni;   /**< VNI (24) + Reserved (8). */
+} __attribute__((__packed__));
+
 /* Ethernet frame types */
 #define ETHER_TYPE_IPv4 0x0800 /**< IPv4 Protocol. */
 #define ETHER_TYPE_IPv6 0x86DD /**< IPv6 Protocol. */
@@ -293,6 +303,9 @@ struct vlan_hdr {
 #define ETHER_TYPE_RARP 0x8035 /**< Reverse Arp Protocol. */
 #define ETHER_TYPE_VLAN 0x8100 /**< IEEE 802.1Q VLAN tagging. */
 #define ETHER_TYPE_1588 0x88F7 /**< IEEE 802.1AS 1588 Precise Time Protocol. */
+
+#define ETHER_VXLAN_HLEN (sizeof(struct udp_hdr) + sizeof(struct vxlan_hdr))
+/**< VxLAN tunnel header length. */
 
 #ifdef __cplusplus
 }
