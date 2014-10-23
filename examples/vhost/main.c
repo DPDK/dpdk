@@ -2272,16 +2272,6 @@ init_data_ll (void)
 }
 
 /*
- * Set virtqueue flags so that we do not receive interrupts.
- */
-static void
-set_irq_status (struct virtio_net *dev)
-{
-	dev->virtqueue[VIRTIO_RXQ]->used->flags = VRING_USED_F_NO_NOTIFY;
-	dev->virtqueue[VIRTIO_TXQ]->used->flags = VRING_USED_F_NO_NOTIFY;
-}
-
-/*
  * Remove a device from the specific data core linked list and from the main linked list. Synchonization
  * occurs through the use of the lcore dev_removal_flag. Device is made volatile here to avoid re-ordering
  * of dev->remove=1 which can cause an infinite loop in the rte_pause loop.
@@ -2732,7 +2722,8 @@ new_device (struct virtio_net *dev)
 	memset(&dev_statistics[dev->device_fh], 0, sizeof(struct device_statistics));
 
 	/* Disable notifications. */
-	set_irq_status(dev);
+	rte_vhost_enable_guest_notification(dev, VIRTIO_RXQ, 0);
+	rte_vhost_enable_guest_notification(dev, VIRTIO_TXQ, 0);
 	lcore_info[vdev->coreid].lcore_ll->device_num++;
 	dev->flags |= VIRTIO_DEV_RUNNING;
 
