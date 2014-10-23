@@ -285,6 +285,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set the outer VLAN TPID for Packet Filtering on"
 			" a port\n\n"
 
+			"rx_vxlan_port add (udp_port) (port_id)\n"
+			"    Add an UDP port for VxLAN packet filter on a port\n\n"
+
+			"rx_vxlan_port rm (udp_port) (port_id)\n"
+			"    Remove an UDP port for VxLAN packet filter on a port\n\n"
+
 			"tx_vlan set vlan_id (port_id)\n"
 			"    Set hardware insertion of VLAN ID in packets sent"
 			" on a port.\n\n"
@@ -6225,6 +6231,64 @@ cmdline_parse_inst_t cmd_vf_rate_limit = {
 	},
 };
 
+/* *** CONFIGURE TUNNEL UDP PORT *** */
+struct cmd_tunnel_udp_config {
+	cmdline_fixed_string_t cmd;
+	cmdline_fixed_string_t what;
+	uint16_t udp_port;
+	uint8_t port_id;
+};
+
+static void
+cmd_tunnel_udp_config_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	struct cmd_tunnel_udp_config *res = parsed_result;
+	struct rte_eth_udp_tunnel tunnel_udp;
+	int ret;
+
+	tunnel_udp.udp_port = res->udp_port;
+
+	if (!strcmp(res->cmd, "rx_vxlan_port"))
+		tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN;
+
+	if (!strcmp(res->what, "add"))
+		ret = rte_eth_dev_udp_tunnel_add(res->port_id, &tunnel_udp);
+	else
+		ret = rte_eth_dev_udp_tunnel_delete(res->port_id, &tunnel_udp);
+
+	if (ret < 0)
+		printf("udp tunneling add error: (%s)\n", strerror(-ret));
+}
+
+cmdline_parse_token_string_t cmd_tunnel_udp_config_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_udp_config,
+				cmd, "rx_vxlan_port");
+cmdline_parse_token_string_t cmd_tunnel_udp_config_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_udp_config,
+				what, "add#rm");
+cmdline_parse_token_num_t cmd_tunnel_udp_config_udp_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_tunnel_udp_config,
+				udp_port, UINT16);
+cmdline_parse_token_num_t cmd_tunnel_udp_config_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_tunnel_udp_config,
+				port_id, UINT8);
+
+cmdline_parse_inst_t cmd_tunnel_udp_config = {
+	.f = cmd_tunnel_udp_config_parsed,
+	.data = (void *)0,
+	.help_str = "add/rm an tunneling UDP port filter: "
+			"rx_vxlan_port add udp_port port_id",
+	.tokens = {
+		(void *)&cmd_tunnel_udp_config_cmd,
+		(void *)&cmd_tunnel_udp_config_what,
+		(void *)&cmd_tunnel_udp_config_udp_port,
+		(void *)&cmd_tunnel_udp_config_port_id,
+		NULL,
+	},
+};
+
 /* *** CONFIGURE VM MIRROR VLAN/POOL RULE *** */
 struct cmd_set_mirror_mask_result {
 	cmdline_fixed_string_t set;
@@ -7518,6 +7582,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
 	(cmdline_parse_inst_t *)&cmd_queue_rate_limit,
 	(cmdline_parse_inst_t *)&cmd_vf_rate_limit,
+	(cmdline_parse_inst_t *)&cmd_tunnel_udp_config,
 	(cmdline_parse_inst_t *)&cmd_set_mirror_mask,
 	(cmdline_parse_inst_t *)&cmd_set_mirror_link,
 	(cmdline_parse_inst_t *)&cmd_reset_mirror_rule,

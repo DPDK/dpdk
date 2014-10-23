@@ -66,10 +66,12 @@
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
+#include <rte_ip.h>
+#include <rte_udp.h>
 
 #include "testpmd.h"
 
-#define MAX_PKT_RX_FLAGS 11
+#define MAX_PKT_RX_FLAGS 13
 static const char *pkt_rx_flag_names[MAX_PKT_RX_FLAGS] = {
 	"VLAN_PKT",
 	"RSS_HASH",
@@ -84,6 +86,9 @@ static const char *pkt_rx_flag_names[MAX_PKT_RX_FLAGS] = {
 
 	"IEEE1588_PTP",
 	"IEEE1588_TMST",
+
+	"TUNNEL_IPV4_HDR",
+	"TUNNEL_IPV6_HDR",
 };
 
 static inline void
@@ -111,7 +116,9 @@ pkt_burst_receive(struct fwd_stream *fs)
 	uint16_t eth_type;
 	uint64_t ol_flags;
 	uint16_t nb_rx;
-	uint16_t i;
+	uint16_t i, packet_type;
+	uint64_t is_encapsulation;
+
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
 	uint64_t end_tsc;
@@ -152,6 +159,11 @@ pkt_burst_receive(struct fwd_stream *fs)
 		eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
 		eth_type = RTE_BE_TO_CPU_16(eth_hdr->ether_type);
 		ol_flags = mb->ol_flags;
+		packet_type = mb->packet_type;
+
+		is_encapsulation = ol_flags & (PKT_RX_TUNNEL_IPV4_HDR |
+				PKT_RX_TUNNEL_IPV6_HDR);
+
 		print_ether_addr("  src=", &eth_hdr->s_addr);
 		print_ether_addr(" - dst=", &eth_hdr->d_addr);
 		printf(" - type=0x%04x - length=%u - nb_segs=%d",
@@ -166,6 +178,45 @@ pkt_burst_receive(struct fwd_stream *fs)
 			       mb->hash.fdir.hash, mb->hash.fdir.id);
 		if (ol_flags & PKT_RX_VLAN_PKT)
 			printf(" - VLAN tci=0x%x", mb->vlan_tci);
+		if (is_encapsulation) {
+			struct ipv4_hdr *ipv4_hdr;
+			struct ipv6_hdr *ipv6_hdr;
+			struct udp_hdr *udp_hdr;
+			uint8_t l2_len;
+			uint8_t l3_len;
+			uint8_t l4_len;
+			uint8_t l4_proto;
+			struct  vxlan_hdr *vxlan_hdr;
+
+			l2_len  = sizeof(struct ether_hdr);
+
+			 /* Do not support ipv4 option field */
+			if (ol_flags & PKT_RX_TUNNEL_IPV4_HDR) {
+				l3_len = sizeof(struct ipv4_hdr);
+				ipv4_hdr = (struct ipv4_hdr *) (rte_pktmbuf_mtod(mb,
+						unsigned char *) + l2_len);
+				l4_proto = ipv4_hdr->next_proto_id;
+			} else {
+				l3_len = sizeof(struct ipv6_hdr);
+				ipv6_hdr = (struct ipv6_hdr *) (rte_pktmbuf_mtod(mb,
+						unsigned char *) + l2_len);
+				l4_proto = ipv6_hdr->proto;
+			}
+			if (l4_proto == IPPROTO_UDP) {
+				udp_hdr = (struct udp_hdr *) (rte_pktmbuf_mtod(mb,
+						unsigned char *) + l2_len + l3_len);
+				l4_len = sizeof(struct udp_hdr);
+				vxlan_hdr = (struct vxlan_hdr *) (rte_pktmbuf_mtod(mb,
+						unsigned char *) + l2_len + l3_len
+						 + l4_len);
+
+				printf(" - VxLAN packet: packet type =%d, "
+					"Destination UDP port =%d, VNI = %d",
+					packet_type, RTE_BE_TO_CPU_16(udp_hdr->dst_port),
+					rte_be_to_cpu_32(vxlan_hdr->vx_vni) >> 8);
+			}
+		}
+		printf(" - Receive queue=0x%x", (unsigned) fs->rx_queue);
 		printf("\n");
 		if (ol_flags != 0) {
 			int rxf;
