@@ -99,7 +99,6 @@
 #define TX_WTHRESH 0  /* Default values of TX write-back threshold reg. */
 
 #define MAX_PKT_BURST 32 		/* Max burst size for RX/TX */
-#define MAX_MRG_PKT_BURST 16 	/* Max burst for merge buffers. Set to 1 due to performance issue. */
 #define BURST_TX_DRAIN_US 100 	/* TX drain every ~100us */
 
 #define BURST_RX_WAIT_US 15 	/* Defines how long we wait between retries on RX */
@@ -174,6 +173,7 @@ uint32_t num_devices = 0;
  * disabled on default.
  */
 static uint32_t zero_copy;
+static int mergeable;
 
 /* number of descriptors to apply*/
 static uint32_t num_rx_descriptor = RTE_TEST_RX_DESC_DEFAULT_ZCP;
@@ -217,9 +217,6 @@ static uint32_t burst_rx_retry_num = BURST_RX_RETRIES;
 /* Character device basename. Can be set by user. */
 static char dev_basename[MAX_BASENAME_SZ] = "vhost-net";
 
-
-/* This can be set by the user so it is made available here. */
-extern uint64_t VHOST_FEATURES;
 
 /* Default configuration for rx and tx thresholds etc. */
 static struct rte_eth_rxconf rx_conf_default = {
@@ -673,11 +670,11 @@ us_vhost_parse_args(int argc, char **argv)
 					us_vhost_usage(prgname);
 					return -1;
 				} else {
+					mergeable = !!ret;
 					if (ret) {
 						vmdq_conf_default.rxmode.jumbo_frame = 1;
 						vmdq_conf_default.rxmode.max_rx_pkt_len
 							= JUMBO_FRAME_MAX_SIZE;
-						VHOST_FEATURES = (1ULL << VIRTIO_NET_F_MRG_RXBUF);
 					}
 				}
 			}
@@ -2876,6 +2873,13 @@ MAIN(int argc, char *argv[])
 	ret = us_vhost_parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid argument\n");
+#ifdef RTE_IXGBE_INC_VECTOR
+	if (mergeable == 1) {
+		rte_exit(EXIT_FAILURE,
+			"sorry, mergeable feature doesn't work with vec sg recv, " \
+			"please disable it in cfg as a workaround\n");
+	}
+#endif
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id ++)
 		if (rte_lcore_is_enabled(lcore_id))
@@ -3039,6 +3043,9 @@ MAIN(int argc, char *argv[])
 			rte_eal_remote_launch(switch_worker_zcp, NULL,
 				lcore_id);
 	}
+
+	if (mergeable == 0)
+		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_MRG_RXBUF);
 
 	/* Register CUSE device to handle IOCTLs. */
 	ret = rte_vhost_driver_register((char *)&dev_basename);
