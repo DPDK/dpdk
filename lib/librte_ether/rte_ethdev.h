@@ -710,6 +710,14 @@ struct rte_fdir_conf {
 };
 
 /**
+ * UDP tunneling configuration.
+ */
+struct rte_eth_udp_tunnel {
+	uint16_t udp_port;
+	uint8_t prot_type;
+};
+
+/**
  *  Possible l4type of FDIR filters.
  */
 enum rte_l4type {
@@ -1266,6 +1274,15 @@ typedef int (*eth_mirror_rule_reset_t)(struct rte_eth_dev *dev,
 				  uint8_t rule_id);
 /**< @internal Remove a traffic mirroring rule on an Ethernet device */
 
+typedef int (*eth_udp_tunnel_add_t)(struct rte_eth_dev *dev,
+				    struct rte_eth_udp_tunnel *tunnel_udp);
+/**< @internal Add tunneling UDP info */
+
+typedef int (*eth_udp_tunnel_del_t)(struct rte_eth_dev *dev,
+				    struct rte_eth_udp_tunnel *tunnel_udp);
+/**< @internal Delete tunneling UDP info */
+
+
 #ifdef RTE_NIC_BYPASS
 
 enum {
@@ -1446,6 +1463,8 @@ struct eth_dev_ops {
 	eth_set_vf_rx_t            set_vf_rx;  /**< enable/disable a VF receive */
 	eth_set_vf_tx_t            set_vf_tx;  /**< enable/disable a VF transmit */
 	eth_set_vf_vlan_filter_t   set_vf_vlan_filter;  /**< Set VF VLAN filter */
+	eth_udp_tunnel_add_t       udp_tunnel_add;
+	eth_udp_tunnel_del_t       udp_tunnel_del;
 	eth_set_queue_rate_limit_t set_queue_rate_limit;   /**< Set queue rate limit */
 	eth_set_vf_rate_limit_t    set_vf_rate_limit;   /**< Set VF rate limit */
 
@@ -3341,6 +3360,41 @@ int rte_eth_dev_rss_hash_update(uint8_t port_id,
 int
 rte_eth_dev_rss_hash_conf_get(uint8_t port_id,
 			      struct rte_eth_rss_conf *rss_conf);
+
+ /**
+ * Add UDP tunneling port of an Ethernet device for filtering a specific
+ * tunneling packet by UDP port number.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param tunnel_udp
+ *   UDP tunneling configuration.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if port identifier is invalid.
+ *   - (-ENOTSUP) if hardware doesn't support tunnel type.
+ */
+int
+rte_eth_dev_udp_tunnel_add(uint8_t port_id,
+			   struct rte_eth_udp_tunnel *tunnel_udp);
+
+ /**
+ * Detete UDP tunneling port configuration of Ethernet device
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param tunnel_udp
+ *   UDP tunneling configuration.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if port identifier is invalid.
+ *   - (-ENOTSUP) if hardware doesn't support tunnel type.
+ */
+int
+rte_eth_dev_udp_tunnel_delete(uint8_t port_id,
+			      struct rte_eth_udp_tunnel *tunnel_udp);
 
 /**
  * add syn filter

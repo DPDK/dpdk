@@ -71,6 +71,18 @@ enum rte_filter_op {
 	RTE_ETH_FILTER_OP_MAX
 };
 
+/**
+ * Tunneled type.
+ */
+enum rte_eth_tunnel_type {
+	RTE_TUNNEL_TYPE_NONE = 0,
+	RTE_TUNNEL_TYPE_VXLAN,
+	RTE_TUNNEL_TYPE_GENEVE,
+	RTE_TUNNEL_TYPE_TEREDO,
+	RTE_TUNNEL_TYPE_NVGRE,
+	RTE_TUNNEL_TYPE_MAX,
+};
+
 #ifdef __cplusplus
 }
 #endif

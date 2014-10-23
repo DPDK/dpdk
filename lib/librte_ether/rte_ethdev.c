@@ -2038,6 +2038,58 @@ rte_eth_dev_rss_hash_conf_get(uint8_t port_id,
 }
 
 int
+rte_eth_dev_udp_tunnel_add(uint8_t port_id,
+			   struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	if (udp_tunnel == NULL) {
+		PMD_DEBUG_TRACE("Invalid udp_tunnel parameter\n");
+		return -EINVAL;
+	}
+
+	if (udp_tunnel->prot_type >= RTE_TUNNEL_TYPE_MAX) {
+		PMD_DEBUG_TRACE("Invalid tunnel type\n");
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->udp_tunnel_add, -ENOTSUP);
+	return (*dev->dev_ops->udp_tunnel_add)(dev, udp_tunnel);
+}
+
+int
+rte_eth_dev_udp_tunnel_delete(uint8_t port_id,
+			      struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+	dev = &rte_eth_devices[port_id];
+
+	if (udp_tunnel == NULL) {
+		PMD_DEBUG_TRACE("Invalid udp_tunnel parametr\n");
+		return -EINVAL;
+	}
+
+	if (udp_tunnel->prot_type >= RTE_TUNNEL_TYPE_MAX) {
+		PMD_DEBUG_TRACE("Invalid tunnel type\n");
+		return -EINVAL;
+	}
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->udp_tunnel_del, -ENOTSUP);
+	return (*dev->dev_ops->udp_tunnel_del)(dev, udp_tunnel);
+}
+
+int
 rte_eth_led_on(uint8_t port_id)
 {
 	struct rte_eth_dev *dev;
