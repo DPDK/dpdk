@@ -411,11 +411,14 @@ i40e_rxd_ptype_to_pkt_flags(uint64_t qword)
 }
 
 static inline void
-i40e_txd_enable_checksum(uint32_t ol_flags,
+i40e_txd_enable_checksum(uint64_t ol_flags,
 			uint32_t *td_cmd,
 			uint32_t *td_offset,
 			uint8_t l2_len,
-			uint8_t l3_len)
+			uint16_t l3_len,
+			uint8_t inner_l2_len,
+			uint16_t inner_l3_len,
+			uint32_t *cd_tunneling)
 {
 	if (!l2_len) {
 		PMD_DRV_LOG(DEBUG, "L2 length set to 0");
@@ -426,6 +429,27 @@ i40e_txd_enable_checksum(uint32_t ol_flags,
 	if (!l3_len) {
 		PMD_DRV_LOG(DEBUG, "L3 length set to 0");
 		return;
+	}
+
+	/* VxLAN packet TX checksum offload */
+	if (unlikely(ol_flags & PKT_TX_VXLAN_CKSUM)) {
+		uint8_t l4tun_len;
+
+		l4tun_len = ETHER_VXLAN_HLEN + inner_l2_len;
+
+		if (ol_flags & PKT_TX_IPV4_CSUM)
+			*cd_tunneling |= I40E_TX_CTX_EXT_IP_IPV4;
+		else if (ol_flags & PKT_TX_IPV6)
+			*cd_tunneling |= I40E_TX_CTX_EXT_IP_IPV6;
+
+		/* Now set the ctx descriptor fields */
+		*cd_tunneling |= (l3_len >> 2) <<
+				I40E_TXD_CTX_QW0_EXT_IPLEN_SHIFT |
+				I40E_TXD_CTX_UDP_TUNNELING |
+				(l4tun_len >> 1) <<
+				I40E_TXD_CTX_QW0_NATLEN_SHIFT;
+
+		l3_len = inner_l3_len;
 	}
 
 	/* Enable L3 checksum offloads */
@@ -1077,7 +1101,10 @@ i40e_recv_scattered_pkts(void *rx_queue,
 static inline uint16_t
 i40e_calc_context_desc(uint64_t flags)
 {
-	uint16_t mask = 0;
+	uint64_t mask = 0ULL;
+
+	if (flags | PKT_TX_VXLAN_CKSUM)
+		mask |= PKT_TX_VXLAN_CKSUM;
 
 #ifdef RTE_LIBRTE_IEEE1588
 	mask |= PKT_TX_IEEE1588_TMST;
@@ -1098,6 +1125,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	volatile struct i40e_tx_desc *txr;
 	struct rte_mbuf *tx_pkt;
 	struct rte_mbuf *m_seg;
+	uint32_t cd_tunneling_params;
 	uint16_t tx_id;
 	uint16_t nb_tx;
 	uint32_t td_cmd;
@@ -1106,7 +1134,9 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint32_t td_tag;
 	uint64_t ol_flags;
 	uint8_t l2_len;
-	uint8_t l3_len;
+	uint16_t l3_len;
+	uint8_t inner_l2_len;
+	uint16_t inner_l3_len;
 	uint16_t nb_used;
 	uint16_t nb_ctx;
 	uint16_t tx_last;
@@ -1134,7 +1164,9 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		ol_flags = tx_pkt->ol_flags;
 		l2_len = tx_pkt->l2_len;
+		inner_l2_len = tx_pkt->inner_l2_len;
 		l3_len = tx_pkt->l3_len;
+		inner_l3_len = tx_pkt->inner_l3_len;
 
 		/* Calculate the number of context descriptors needed. */
 		nb_ctx = i40e_calc_context_desc(ol_flags);
@@ -1182,15 +1214,17 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		td_cmd |= I40E_TX_DESC_CMD_ICRC;
 
 		/* Enable checksum offloading */
+		cd_tunneling_params = 0;
 		i40e_txd_enable_checksum(ol_flags, &td_cmd, &td_offset,
-							l2_len, l3_len);
+						l2_len, l3_len, inner_l2_len,
+						inner_l3_len,
+						&cd_tunneling_params);
 
 		if (unlikely(nb_ctx)) {
 			/* Setup TX context descriptor if required */
 			volatile struct i40e_tx_context_desc *ctx_txd =
 				(volatile struct i40e_tx_context_desc *)\
 							&txr[tx_id];
-			uint32_t cd_tunneling_params = 0;
 			uint16_t cd_l2tag2 = 0;
 			uint64_t cd_type_cmd_tso_mss =
 				I40E_TX_DESC_DTYPE_CONTEXT;

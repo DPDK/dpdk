@@ -96,6 +96,7 @@ extern "C" {
 
 #define PKT_TX_VLAN_PKT      (1ULL << 55) /**< TX packet is a 802.1q VLAN packet. */
 #define PKT_TX_IP_CKSUM      (1ULL << 54) /**< IP cksum of TX pkt. computed by NIC. */
+#define PKT_TX_VXLAN_CKSUM   (1ULL << 50) /**< TX checksum of VxLAN computed by NIC */
 #define PKT_TX_IPV4_CSUM     PKT_TX_IP_CKSUM /**< Alias of PKT_TX_IP_CKSUM. */
 #define PKT_TX_IPV4          PKT_RX_IPV4_HDR /**< IPv4 with no IP checksum offload. */
 #define PKT_TX_IPV6          PKT_RX_IPV6_HDR /**< IPv6 packet */
