@@ -49,10 +49,9 @@
 #include <rte_log.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
+#include <rte_virtio_net.h>
 
 #include "main.h"
-#include "virtio-net.h"
-#include "vhost-net-cdev.h"
 
 #define MAX_QUEUES 128
 
@@ -218,8 +217,6 @@ static uint32_t burst_rx_retry_num = BURST_RX_RETRIES;
 /* Character device basename. Can be set by user. */
 static char dev_basename[MAX_BASENAME_SZ] = "vhost-net";
 
-/* Charater device index. Can be set by user. */
-static uint32_t dev_index = 0;
 
 /* This can be set by the user so it is made available here. */
 extern uint64_t VHOST_FEATURES;
@@ -560,7 +557,7 @@ us_vhost_usage(const char *prgname)
 	RTE_LOG(INFO, VHOST_CONFIG, "%s [EAL options] -- -p PORTMASK\n"
 	"		--vm2vm [0|1|2]\n"
 	"		--rx_retry [0|1] --mergeable [0|1] --stats [0-N]\n"
-	"		--dev-basename <name> --dev-index [0-N]\n"
+	"		--dev-basename <name>\n"
 	"		--nb-devices ND\n"
 	"		-p PORTMASK: Set mask for ports to be used by application\n"
 	"		--vm2vm [0|1|2]: disable/software(default)/hardware vm2vm comms\n"
@@ -570,7 +567,6 @@ us_vhost_usage(const char *prgname)
 	"		--mergeable [0|1]: disable(default)/enable RX mergeable buffers\n"
 	"		--stats [0-N]: 0: Disable stats, N: Time in seconds to print stats\n"
 	"		--dev-basename: The basename to be used for the character device.\n"
-	"		--dev-index [0-N]: Defaults to zero if not used. Index is appended to basename.\n"
 	"		--zero-copy [0|1]: disable(default)/enable rx/tx "
 			"zero copy\n"
 	"		--rx-desc-num [0-N]: the number of descriptors on rx, "
@@ -598,7 +594,6 @@ us_vhost_parse_args(int argc, char **argv)
 		{"mergeable", required_argument, NULL, 0},
 		{"stats", required_argument, NULL, 0},
 		{"dev-basename", required_argument, NULL, 0},
-		{"dev-index", required_argument, NULL, 0},
 		{"zero-copy", required_argument, NULL, 0},
 		{"rx-desc-num", required_argument, NULL, 0},
 		{"tx-desc-num", required_argument, NULL, 0},
@@ -706,17 +701,6 @@ us_vhost_parse_args(int argc, char **argv)
 					us_vhost_usage(prgname);
 					return -1;
 				}
-			}
-
-			/* Set character device index. */
-			if (!strncmp(long_option[option_index].name, "dev-index", MAX_LONG_OPT_SZ)) {
-				ret = parse_num_opt(optarg, INT32_MAX);
-				if (ret == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for character device index [0..N]\n");
-					us_vhost_usage(prgname);
-					return -1;
-				} else
-					dev_index = ret;
 			}
 
 			/* Enable/disable rx/tx zero copy. */
@@ -3103,14 +3087,14 @@ MAIN(int argc, char *argv[])
 	}
 
 	/* Register CUSE device to handle IOCTLs. */
-	ret = register_cuse_device((char*)&dev_basename, dev_index, get_virtio_net_callbacks());
+	ret = rte_vhost_driver_register((char *)&dev_basename);
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE,"CUSE device setup failure.\n");
 
-	init_virtio_net(&virtio_net_device_ops);
+	rte_vhost_driver_callback_register(&virtio_net_device_ops);
 
 	/* Start CUSE session. */
-	start_cuse_session_loop();
+	rte_vhost_driver_session_start();
 	return 0;
 
 }
