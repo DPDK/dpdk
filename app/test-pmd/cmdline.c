@@ -369,8 +369,13 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    e.g., 'set stat_qmap rx 0 2 5' sets rx queue 2"
 			" on port 0 to mapping 5.\n\n"
 
-			"set port (port_id) vf (vf_id) rx|tx on|off \n"
+			"set port (port_id) vf (vf_id) rx|tx on|off\n"
 			"    Enable/Disable a VF receive/tranmit from a port\n\n"
+
+			"set port (port_id) vf (vf_id) (mac_addr)"
+			" (exact-mac#exact-mac-vlan#hashmac|hashmac-vlan) on|off\n"
+			"   Add/Remove unicast or multicast MAC addr filter"
+			" for a VF.\n\n"
 
 			"set port (port_id) vf (vf_id) rxmode (AUPE|ROPE|BAM"
 			"|MPE) (on|off)\n"
@@ -5828,6 +5833,112 @@ cmdline_parse_inst_t cmd_set_uc_all_hash_filter = {
 	},
 };
 
+/* *** CONFIGURE MACVLAN FILTER FOR VF(s) *** */
+struct cmd_set_vf_macvlan_filter {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+	cmdline_fixed_string_t vf;
+	uint8_t vf_id;
+	struct ether_addr address;
+	cmdline_fixed_string_t filter_type;
+	cmdline_fixed_string_t mode;
+};
+
+static void
+cmd_set_vf_macvlan_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	int is_on, ret = 0;
+	struct cmd_set_vf_macvlan_filter *res = parsed_result;
+	struct rte_eth_mac_filter filter;
+
+	memset(&filter, 0, sizeof(struct rte_eth_mac_filter));
+
+	(void)rte_memcpy(&filter.mac_addr, &res->address, ETHER_ADDR_LEN);
+
+	/* set VF MAC filter */
+	filter.is_vf = 1;
+
+	/* set VF ID */
+	filter.dst_id = res->vf_id;
+
+	if (!strcmp(res->filter_type, "exact-mac"))
+		filter.filter_type = RTE_MAC_PERFECT_MATCH;
+	else if (!strcmp(res->filter_type, "exact-mac-vlan"))
+		filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
+	else if (!strcmp(res->filter_type, "hashmac"))
+		filter.filter_type = RTE_MAC_HASH_MATCH;
+	else if (!strcmp(res->filter_type, "hashmac-vlan"))
+		filter.filter_type = RTE_MACVLAN_HASH_MATCH;
+
+	is_on = (strcmp(res->mode, "on") == 0) ? 1 : 0;
+
+	if (is_on)
+		ret = rte_eth_dev_filter_ctrl(res->port_id,
+					RTE_ETH_FILTER_MACVLAN,
+					RTE_ETH_FILTER_ADD,
+					 &filter);
+	else
+		ret = rte_eth_dev_filter_ctrl(res->port_id,
+					RTE_ETH_FILTER_MACVLAN,
+					RTE_ETH_FILTER_DELETE,
+					&filter);
+
+	if (ret < 0)
+		printf("bad set MAC hash parameter, return code = %d\n", ret);
+
+}
+
+cmdline_parse_token_string_t cmd_set_vf_macvlan_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_macvlan_filter,
+				 set, "set");
+cmdline_parse_token_string_t cmd_set_vf_macvlan_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_macvlan_filter,
+				 port, "port");
+cmdline_parse_token_num_t cmd_set_vf_macvlan_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_vf_macvlan_filter,
+			      port_id, UINT8);
+cmdline_parse_token_string_t cmd_set_vf_macvlan_vf =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_macvlan_filter,
+				 vf, "vf");
+cmdline_parse_token_num_t cmd_set_vf_macvlan_vf_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_vf_macvlan_filter,
+				vf_id, UINT8);
+cmdline_parse_token_etheraddr_t cmd_set_vf_macvlan_mac =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_vf_macvlan_filter,
+				address);
+cmdline_parse_token_string_t cmd_set_vf_macvlan_filter_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_macvlan_filter,
+				filter_type, "exact-mac#exact-mac-vlan"
+				"#hashmac#hashmac-vlan");
+cmdline_parse_token_string_t cmd_set_vf_macvlan_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vf_macvlan_filter,
+				 mode, "on#off");
+
+cmdline_parse_inst_t cmd_set_vf_macvlan_filter = {
+	.f = cmd_set_vf_macvlan_parsed,
+	.data = NULL,
+	.help_str = "set port (portid) vf (vfid) (mac-addr) "
+			"(exact-mac|exact-mac-vlan|hashmac|hashmac-vlan) "
+			"on|off\n"
+			"exact match rule:exact match of MAC or MAC and VLAN; "
+			"hash match rule: hash match of MAC and exact match "
+			"of VLAN",
+	.tokens = {
+		(void *)&cmd_set_vf_macvlan_set,
+		(void *)&cmd_set_vf_macvlan_port,
+		(void *)&cmd_set_vf_macvlan_portid,
+		(void *)&cmd_set_vf_macvlan_vf,
+		(void *)&cmd_set_vf_macvlan_vf_id,
+		(void *)&cmd_set_vf_macvlan_mac,
+		(void *)&cmd_set_vf_macvlan_filter_type,
+		(void *)&cmd_set_vf_macvlan_mode,
+		NULL,
+	},
+};
+
 /* *** CONFIGURE VF TRAFFIC CONTROL *** */
 struct cmd_set_vf_traffic {
 	cmdline_fixed_string_t set;
@@ -5876,7 +5987,8 @@ cmdline_parse_token_string_t cmd_setvf_traffic_mode =
 cmdline_parse_inst_t cmd_set_vf_traffic = {
 	.f = cmd_set_vf_traffic_parsed,
 	.data = NULL,
-	.help_str = "set port X vf Y rx|tx on|off (X = port number,Y = vf id)",
+	.help_str = "set port X vf Y rx|tx on|off"
+			"(X = port number,Y = vf id)",
 	.tokens = {
 		(void *)&cmd_setvf_traffic_set,
 		(void *)&cmd_setvf_traffic_port,
@@ -7731,7 +7843,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_vf_rxmode,
 	(cmdline_parse_inst_t *)&cmd_set_uc_hash_filter,
 	(cmdline_parse_inst_t *)&cmd_set_uc_all_hash_filter,
-	(cmdline_parse_inst_t *)&cmd_vf_mac_addr_filter ,
+	(cmdline_parse_inst_t *)&cmd_vf_mac_addr_filter,
+	(cmdline_parse_inst_t *)&cmd_set_vf_macvlan_filter,
 	(cmdline_parse_inst_t *)&cmd_set_vf_traffic,
 	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
 	(cmdline_parse_inst_t *)&cmd_queue_rate_limit,
