@@ -34,6 +34,8 @@
 #ifndef _I40E_ETHDEV_H_
 #define _I40E_ETHDEV_H_
 
+#include <rte_eth_ctrl.h>
+
 #define I40E_AQ_LEN               32
 #define I40E_AQ_BUF_SZ            4096
 /* Number of queues per TC should be one of 1, 2, 4, 8, 16, 32, 64 */
@@ -102,12 +104,20 @@
 
 struct i40e_adapter;
 
+/**
+ * MAC filter structure
+ */
+struct i40e_mac_filter_info {
+	enum rte_mac_filter_type filter_type;
+	struct ether_addr mac_addr;
+};
+
 TAILQ_HEAD(i40e_mac_filter_list, i40e_mac_filter);
 
 /* MAC filter list structure */
 struct i40e_mac_filter {
 	TAILQ_ENTRY(i40e_mac_filter) next;
-	struct ether_addr macaddr;
+	struct i40e_mac_filter_info mac_info;
 };
 
 TAILQ_HEAD(i40e_vsi_list_head, i40e_vsi_list);
@@ -133,11 +143,13 @@ struct i40e_veb {
 	struct i40e_eth_stats stats;
 };
 
-/* MACVLAN filter structure */
+/* i40e MACVLAN filter structure */
 struct i40e_macvlan_filter {
 	struct ether_addr macaddr;
+	enum rte_mac_filter_type filter_type;
 	uint16_t vlan_id;
 };
+
 /*
  * Structure that defines a VSI, associated with a adapter.
  */
@@ -338,7 +350,7 @@ int i40e_switch_rx_queue(struct i40e_hw *hw, uint16_t q_idx, bool on);
 int i40e_switch_tx_queue(struct i40e_hw *hw, uint16_t q_idx, bool on);
 int i40e_vsi_add_vlan(struct i40e_vsi *vsi, uint16_t vlan);
 int i40e_vsi_delete_vlan(struct i40e_vsi *vsi, uint16_t vlan);
-int i40e_vsi_add_mac(struct i40e_vsi *vsi, struct ether_addr *addr);
+int i40e_vsi_add_mac(struct i40e_vsi *vsi, struct i40e_mac_filter_info *filter);
 int i40e_vsi_delete_mac(struct i40e_vsi *vsi, struct ether_addr *addr);
 void i40e_update_vsi_stats(struct i40e_vsi *vsi);
 void i40e_pf_disable_irq0(struct i40e_hw *hw);

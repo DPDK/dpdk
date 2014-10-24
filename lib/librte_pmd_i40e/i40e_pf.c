@@ -597,8 +597,11 @@ i40e_pf_host_process_cmd_add_ether_address(struct i40e_pf_vf *vf,
 	int ret = I40E_SUCCESS;
 	struct i40e_virtchnl_ether_addr_list *addr_list =
 			(struct i40e_virtchnl_ether_addr_list *)msg;
+	struct i40e_mac_filter_info filter;
 	int i;
 	struct ether_addr *mac;
+
+	memset(&filter, 0 , sizeof(struct i40e_mac_filter_info));
 
 	if (msg == NULL || msglen <= sizeof(*addr_list)) {
 		PMD_DRV_LOG(ERR, "add_ether_address argument too short");
@@ -608,8 +611,10 @@ i40e_pf_host_process_cmd_add_ether_address(struct i40e_pf_vf *vf,
 
 	for (i = 0; i < addr_list->num_elements; i++) {
 		mac = (struct ether_addr *)(addr_list->list[i].addr);
+		(void)rte_memcpy(&filter.mac_addr, mac, ETHER_ADDR_LEN);
+		filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
 		if(!is_valid_assigned_ether_addr(mac) ||
-			i40e_vsi_add_mac(vf->vsi, mac)) {
+			i40e_vsi_add_mac(vf->vsi, &filter)) {
 			ret = I40E_ERR_INVALID_MAC_ADDR;
 			goto send_msg;
 		}

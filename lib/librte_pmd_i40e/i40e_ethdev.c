@@ -1542,6 +1542,7 @@ i40e_macaddr_add(struct rte_eth_dev *dev,
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_mac_filter_info mac_filter;
 	struct i40e_vsi *vsi = pf->main_vsi;
 	struct ether_addr old_mac;
 	int ret;
@@ -1567,8 +1568,10 @@ i40e_macaddr_add(struct rte_eth_dev *dev,
 	(void)rte_memcpy(&old_mac, hw->mac.addr, ETHER_ADDR_LEN);
 	(void)rte_memcpy(hw->mac.addr, mac_addr->addr_bytes,
 			ETHER_ADDR_LEN);
+	(void)rte_memcpy(&mac_filter.mac_addr, mac_addr, ETHER_ADDR_LEN);
+	mac_filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
 
-	ret = i40e_vsi_add_mac(vsi, mac_addr);
+	ret = i40e_vsi_add_mac(vsi, &mac_filter);
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to add MACVLAN filter");
 		return;
@@ -2485,6 +2488,7 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 {
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	struct i40e_aqc_remove_macvlan_element_data def_filter;
+	struct i40e_mac_filter_info filter;
 	int ret;
 
 	if (vsi->type != I40E_VSI_MAIN)
@@ -2498,6 +2502,7 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 	ret = i40e_aq_remove_macvlan(hw, vsi->seid, &def_filter, 1, NULL);
 	if (ret != I40E_SUCCESS) {
 		struct i40e_mac_filter *f;
+		struct ether_addr *mac;
 
 		PMD_DRV_LOG(WARNING, "Cannot remove the default "
 			    "macvlan filter");
@@ -2507,15 +2512,18 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 			PMD_DRV_LOG(ERR, "failed to allocate memory");
 			return I40E_ERR_NO_MEMORY;
 		}
-		(void)rte_memcpy(&f->macaddr.addr_bytes, hw->mac.perm_addr,
+		mac = &f->mac_info.mac_addr;
+		(void)rte_memcpy(&mac->addr_bytes, hw->mac.perm_addr,
 				ETH_ADDR_LEN);
 		TAILQ_INSERT_TAIL(&vsi->mac_list, f, next);
 		vsi->mac_num++;
 
 		return ret;
 	}
-
-	return i40e_vsi_add_mac(vsi, (struct ether_addr *)(hw->mac.perm_addr));
+	(void)rte_memcpy(&filter.mac_addr,
+		(struct ether_addr *)(hw->mac.perm_addr), ETH_ADDR_LEN);
+	filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
+	return i40e_vsi_add_mac(vsi, &filter);
 }
 
 static int
@@ -2569,6 +2577,7 @@ i40e_vsi_setup(struct i40e_pf *pf,
 {
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct i40e_vsi *vsi;
+	struct i40e_mac_filter_info filter;
 	int ret;
 	struct i40e_vsi_context ctxt;
 	struct ether_addr broadcast =
@@ -2779,7 +2788,10 @@ i40e_vsi_setup(struct i40e_pf *pf,
 	}
 
 	/* MAC/VLAN configuration */
-	ret = i40e_vsi_add_mac(vsi, &broadcast);
+	(void)rte_memcpy(&filter.mac_addr, &broadcast, ETHER_ADDR_LEN);
+	filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
+
+	ret = i40e_vsi_add_mac(vsi, &filter);
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to add MACVLAN filter");
 		goto fail_msix_alloc;
@@ -3480,6 +3492,7 @@ i40e_add_macvlan_filters(struct i40e_vsi *vsi,
 {
 	int ele_num, ele_buff_size;
 	int num, actual_num, i;
+	uint16_t flags;
 	int ret = I40E_SUCCESS;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	struct i40e_aqc_add_macvlan_element_data *req_list;
@@ -3505,9 +3518,31 @@ i40e_add_macvlan_filters(struct i40e_vsi *vsi,
 				&filter[num + i].macaddr, ETH_ADDR_LEN);
 			req_list[i].vlan_tag =
 				rte_cpu_to_le_16(filter[num + i].vlan_id);
-			req_list[i].flags = rte_cpu_to_le_16(\
-				I40E_AQC_MACVLAN_ADD_PERFECT_MATCH);
+
+			switch (filter[num + i].filter_type) {
+			case RTE_MAC_PERFECT_MATCH:
+				flags = I40E_AQC_MACVLAN_ADD_PERFECT_MATCH |
+					I40E_AQC_MACVLAN_ADD_IGNORE_VLAN;
+				break;
+			case RTE_MACVLAN_PERFECT_MATCH:
+				flags = I40E_AQC_MACVLAN_ADD_PERFECT_MATCH;
+				break;
+			case RTE_MAC_HASH_MATCH:
+				flags = I40E_AQC_MACVLAN_ADD_HASH_MATCH |
+					I40E_AQC_MACVLAN_ADD_IGNORE_VLAN;
+				break;
+			case RTE_MACVLAN_HASH_MATCH:
+				flags = I40E_AQC_MACVLAN_ADD_HASH_MATCH;
+				break;
+			default:
+				PMD_DRV_LOG(ERR, "Invalid MAC match type\n");
+				ret = I40E_ERR_PARAM;
+				goto DONE;
+			}
+
 			req_list[i].queue_number = 0;
+
+			req_list[i].flags = rte_cpu_to_le_16(flags);
 		}
 
 		ret = i40e_aq_add_macvlan(hw, vsi->seid, req_list,
@@ -3531,6 +3566,7 @@ i40e_remove_macvlan_filters(struct i40e_vsi *vsi,
 {
 	int ele_num, ele_buff_size;
 	int num, actual_num, i;
+	uint16_t flags;
 	int ret = I40E_SUCCESS;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	struct i40e_aqc_remove_macvlan_element_data *req_list;
@@ -3557,7 +3593,28 @@ i40e_remove_macvlan_filters(struct i40e_vsi *vsi,
 				&filter[num + i].macaddr, ETH_ADDR_LEN);
 			req_list[i].vlan_tag =
 				rte_cpu_to_le_16(filter[num + i].vlan_id);
-			req_list[i].flags = I40E_AQC_MACVLAN_DEL_PERFECT_MATCH;
+
+			switch (filter[num + i].filter_type) {
+			case RTE_MAC_PERFECT_MATCH:
+				flags = I40E_AQC_MACVLAN_DEL_PERFECT_MATCH |
+					I40E_AQC_MACVLAN_DEL_IGNORE_VLAN;
+				break;
+			case RTE_MACVLAN_PERFECT_MATCH:
+				flags = I40E_AQC_MACVLAN_DEL_PERFECT_MATCH;
+				break;
+			case RTE_MAC_HASH_MATCH:
+				flags = I40E_AQC_MACVLAN_DEL_HASH_MATCH |
+					I40E_AQC_MACVLAN_DEL_IGNORE_VLAN;
+				break;
+			case RTE_MACVLAN_HASH_MATCH:
+				flags = I40E_AQC_MACVLAN_DEL_HASH_MATCH;
+				break;
+			default:
+				PMD_DRV_LOG(ERR, "Invalid MAC filter type\n");
+				ret = I40E_ERR_PARAM;
+				goto DONE;
+			}
+			req_list[i].flags = rte_cpu_to_le_16(flags);
 		}
 
 		ret = i40e_aq_remove_macvlan(hw, vsi->seid, req_list,
@@ -3582,7 +3639,7 @@ i40e_find_mac_filter(struct i40e_vsi *vsi,
 	struct i40e_mac_filter *f;
 
 	TAILQ_FOREACH(f, &vsi->mac_list, next) {
-		if (is_same_ether_addr(macaddr, &(f->macaddr)))
+		if (is_same_ether_addr(macaddr, &f->mac_info.mac_addr))
 			return f;
 	}
 
@@ -3683,8 +3740,10 @@ i40e_find_all_mac_for_vlan(struct i40e_vsi *vsi,
 			PMD_DRV_LOG(ERR, "buffer number not match");
 			return I40E_ERR_PARAM;
 		}
-		(void)rte_memcpy(&mv_f[i].macaddr, &f->macaddr, ETH_ADDR_LEN);
+		(void)rte_memcpy(&mv_f[i].macaddr, &f->mac_info.mac_addr,
+				ETH_ADDR_LEN);
 		mv_f[i].vlan_id = vlan;
+		mv_f[i].filter_type = f->mac_info.filter_type;
 		i++;
 	}
 
@@ -3718,14 +3777,14 @@ i40e_vsi_remove_all_macvlan_filter(struct i40e_vsi *vsi)
 	if (vsi->vlan_num == 0) {
 		TAILQ_FOREACH(f, &vsi->mac_list, next) {
 			(void)rte_memcpy(&mv_f[i].macaddr,
-				&f->macaddr, ETH_ADDR_LEN);
+				&f->mac_info.mac_addr, ETH_ADDR_LEN);
 			mv_f[i].vlan_id = 0;
 			i++;
 		}
 	} else {
 		TAILQ_FOREACH(f, &vsi->mac_list, next) {
 			ret = i40e_find_all_vlan_for_mac(vsi,&mv_f[i],
-					vsi->vlan_num, &f->macaddr);
+					vsi->vlan_num, &f->mac_info.mac_addr);
 			if (ret != I40E_SUCCESS)
 				goto DONE;
 			i += vsi->vlan_num;
@@ -3849,28 +3908,32 @@ DONE:
 }
 
 int
-i40e_vsi_add_mac(struct i40e_vsi *vsi, struct ether_addr *addr)
+i40e_vsi_add_mac(struct i40e_vsi *vsi, struct i40e_mac_filter_info *mac_filter)
 {
 	struct i40e_mac_filter *f;
 	struct i40e_macvlan_filter *mv_f;
-	int vlan_num;
+	int i, vlan_num = 0;
 	int ret = I40E_SUCCESS;
 
 	/* If it's add and we've config it, return */
-	f = i40e_find_mac_filter(vsi, addr);
+	f = i40e_find_mac_filter(vsi, &mac_filter->mac_addr);
 	if (f != NULL)
 		return I40E_SUCCESS;
+	if ((mac_filter->filter_type == RTE_MACVLAN_PERFECT_MATCH) ||
+		(mac_filter->filter_type == RTE_MACVLAN_HASH_MATCH)) {
 
-	/**
-	 * If vlan_num is 0, that's the first time to add mac,
-	 * set mask for vlan_id 0.
-	 */
-	if (vsi->vlan_num == 0) {
-		i40e_set_vlan_filter(vsi, 0, 1);
-		vsi->vlan_num = 1;
-	}
-
-	vlan_num = vsi->vlan_num;
+		/**
+		 * If vlan_num is 0, that's the first time to add mac,
+		 * set mask for vlan_id 0.
+		 */
+		if (vsi->vlan_num == 0) {
+			i40e_set_vlan_filter(vsi, 0, 1);
+			vsi->vlan_num = 1;
+		}
+		vlan_num = vsi->vlan_num;
+	} else if ((mac_filter->filter_type == RTE_MAC_PERFECT_MATCH) ||
+			(mac_filter->filter_type == RTE_MAC_HASH_MATCH))
+		vlan_num = 1;
 
 	mv_f = rte_zmalloc("macvlan_data", vlan_num * sizeof(*mv_f), 0);
 	if (mv_f == NULL) {
@@ -3878,9 +3941,19 @@ i40e_vsi_add_mac(struct i40e_vsi *vsi, struct ether_addr *addr)
 		return I40E_ERR_NO_MEMORY;
 	}
 
-	ret = i40e_find_all_vlan_for_mac(vsi, mv_f, vlan_num, addr);
-	if (ret != I40E_SUCCESS)
-		goto DONE;
+	for (i = 0; i < vlan_num; i++) {
+		mv_f[i].filter_type = mac_filter->filter_type;
+		(void)rte_memcpy(&mv_f[i].macaddr, &mac_filter->mac_addr,
+				ETH_ADDR_LEN);
+	}
+
+	if (mac_filter->filter_type == RTE_MACVLAN_PERFECT_MATCH ||
+		mac_filter->filter_type == RTE_MACVLAN_HASH_MATCH) {
+		ret = i40e_find_all_vlan_for_mac(vsi, mv_f, vlan_num,
+					&mac_filter->mac_addr);
+		if (ret != I40E_SUCCESS)
+			goto DONE;
+	}
 
 	ret = i40e_add_macvlan_filters(vsi, mv_f, vlan_num);
 	if (ret != I40E_SUCCESS)
@@ -3893,7 +3966,9 @@ i40e_vsi_add_mac(struct i40e_vsi *vsi, struct ether_addr *addr)
 		ret = I40E_ERR_NO_MEMORY;
 		goto DONE;
 	}
-	(void)rte_memcpy(&f->macaddr, addr, ETH_ADDR_LEN);
+	(void)rte_memcpy(&f->mac_info.mac_addr, &mac_filter->mac_addr,
+			ETH_ADDR_LEN);
+	f->mac_info.filter_type = mac_filter->filter_type;
 	TAILQ_INSERT_TAIL(&vsi->mac_list, f, next);
 	vsi->mac_num++;
 
@@ -3909,7 +3984,8 @@ i40e_vsi_delete_mac(struct i40e_vsi *vsi, struct ether_addr *addr)
 {
 	struct i40e_mac_filter *f;
 	struct i40e_macvlan_filter *mv_f;
-	int vlan_num;
+	int i, vlan_num;
+	enum rte_mac_filter_type filter_type;
 	int ret = I40E_SUCCESS;
 
 	/* Can't find it, return an error */
@@ -3918,19 +3994,34 @@ i40e_vsi_delete_mac(struct i40e_vsi *vsi, struct ether_addr *addr)
 		return I40E_ERR_PARAM;
 
 	vlan_num = vsi->vlan_num;
-	if (vlan_num == 0) {
-		PMD_DRV_LOG(ERR, "VLAN number shouldn't be 0");
-		return I40E_ERR_PARAM;
-	}
+	filter_type = f->mac_info.filter_type;
+	if (filter_type == RTE_MACVLAN_PERFECT_MATCH ||
+		filter_type == RTE_MACVLAN_HASH_MATCH) {
+		if (vlan_num == 0) {
+			PMD_DRV_LOG(ERR, "VLAN number shouldn't be 0\n");
+			return I40E_ERR_PARAM;
+		}
+	} else if (filter_type == RTE_MAC_PERFECT_MATCH ||
+			filter_type == RTE_MAC_HASH_MATCH)
+		vlan_num = 1;
+
 	mv_f = rte_zmalloc("macvlan_data", vlan_num * sizeof(*mv_f), 0);
 	if (mv_f == NULL) {
 		PMD_DRV_LOG(ERR, "failed to allocate memory");
 		return I40E_ERR_NO_MEMORY;
 	}
 
-	ret = i40e_find_all_vlan_for_mac(vsi, mv_f, vlan_num, addr);
-	if (ret != I40E_SUCCESS)
-		goto DONE;
+	for (i = 0; i < vlan_num; i++) {
+		mv_f[i].filter_type = filter_type;
+		(void)rte_memcpy(&mv_f[i].macaddr, &f->mac_info.mac_addr,
+				ETH_ADDR_LEN);
+	}
+	if (filter_type == RTE_MACVLAN_PERFECT_MATCH ||
+			filter_type == RTE_MACVLAN_HASH_MATCH) {
+		ret = i40e_find_all_vlan_for_mac(vsi, mv_f, vlan_num, addr);
+		if (ret != I40E_SUCCESS)
+			goto DONE;
+	}
 
 	ret = i40e_remove_macvlan_filters(vsi, mv_f, vlan_num);
 	if (ret != I40E_SUCCESS)
