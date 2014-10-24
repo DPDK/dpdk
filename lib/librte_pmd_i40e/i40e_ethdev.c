@@ -1618,6 +1618,119 @@ i40e_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 		memset(&pf->dev_addr, 0, sizeof(struct ether_addr));
 }
 
+/* Set perfect match or hash match of MAC and VLAN for a VF */
+static int
+i40e_vf_mac_filter_set(struct i40e_pf *pf,
+		 struct rte_eth_mac_filter *filter,
+		 bool add)
+{
+	struct i40e_hw *hw;
+	struct i40e_mac_filter_info mac_filter;
+	struct ether_addr old_mac;
+	struct ether_addr *new_mac;
+	struct i40e_pf_vf *vf = NULL;
+	uint16_t vf_id;
+	int ret;
+
+	if (pf == NULL) {
+		PMD_DRV_LOG(ERR, "Invalid PF argument\n");
+		return -EINVAL;
+	}
+	hw = I40E_PF_TO_HW(pf);
+
+	if (filter == NULL) {
+		PMD_DRV_LOG(ERR, "Invalid mac filter argument\n");
+		return -EINVAL;
+	}
+
+	new_mac = &filter->mac_addr;
+
+	if (is_zero_ether_addr(new_mac)) {
+		PMD_DRV_LOG(ERR, "Invalid ethernet address\n");
+		return -EINVAL;
+	}
+
+	vf_id = filter->dst_id;
+
+	if (vf_id > pf->vf_num - 1 || !pf->vfs) {
+		PMD_DRV_LOG(ERR, "Invalid argument\n");
+		return -EINVAL;
+	}
+	vf = &pf->vfs[vf_id];
+
+	if (add && is_same_ether_addr(new_mac, &(pf->dev_addr))) {
+		PMD_DRV_LOG(INFO, "Ignore adding permanent MAC address\n");
+		return -EINVAL;
+	}
+
+	if (add) {
+		(void)rte_memcpy(&old_mac, hw->mac.addr, ETHER_ADDR_LEN);
+		(void)rte_memcpy(hw->mac.addr, new_mac->addr_bytes,
+				ETHER_ADDR_LEN);
+		(void)rte_memcpy(&mac_filter.mac_addr, &filter->mac_addr,
+				 ETHER_ADDR_LEN);
+
+		mac_filter.filter_type = filter->filter_type;
+		ret = i40e_vsi_add_mac(vf->vsi, &mac_filter);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(ERR, "Failed to add MAC filter\n");
+			return -1;
+		}
+		ether_addr_copy(new_mac, &pf->dev_addr);
+	} else {
+		(void)rte_memcpy(hw->mac.addr, hw->mac.perm_addr,
+				ETHER_ADDR_LEN);
+		ret = i40e_vsi_delete_mac(vf->vsi, &filter->mac_addr);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(ERR, "Failed to delete MAC filter\n");
+			return -1;
+		}
+
+		/* Clear device address as it has been removed */
+		if (is_same_ether_addr(&(pf->dev_addr), new_mac))
+			memset(&pf->dev_addr, 0, sizeof(struct ether_addr));
+	}
+
+	return 0;
+}
+
+/* MAC filter handle */
+static int
+i40e_mac_filter_handle(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
+		void *arg)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct rte_eth_mac_filter *filter;
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	int ret = I40E_NOT_SUPPORTED;
+
+	filter = (struct rte_eth_mac_filter *)(arg);
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_NONE:
+		ret = I40E_SUCCESS;
+		break;
+	case RTE_ETH_FILTER_ADD:
+		i40e_pf_disable_irq0(hw);
+		if (filter->is_vf)
+			ret = i40e_vf_mac_filter_set(pf, filter, 1);
+		i40e_pf_enable_irq0(hw);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		i40e_pf_disable_irq0(hw);
+		if (filter->is_vf)
+			ret = i40e_vf_mac_filter_set(pf, filter, 0);
+		i40e_pf_enable_irq0(hw);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unknown operation %u\n", filter_op);
+		ret = I40E_ERR_PARAM;
+		break;
+	}
+
+	return ret;
+}
+
 static int
 i40e_dev_rss_reta_update(struct rte_eth_dev *dev,
 			 struct rte_eth_rss_reta *reta_conf)
@@ -4580,6 +4693,9 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	switch (filter_type) {
+	case RTE_ETH_FILTER_MACVLAN:
+		ret = i40e_mac_filter_handle(dev, filter_op, arg);
+		break;
 	case RTE_ETH_FILTER_TUNNEL:
 		ret = i40e_tunnel_filter_handle(dev, filter_op, arg);
 		break;
