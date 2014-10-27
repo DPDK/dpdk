@@ -431,7 +431,7 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 		return;
 	}
 
-	/* VxLAN packet TX checksum offload */
+	/* VXLAN packet TX checksum offload */
 	if (unlikely(ol_flags & PKT_TX_VXLAN_CKSUM)) {
 		uint8_t l4tun_len;
 

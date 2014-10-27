@@ -305,7 +305,7 @@ struct vxlan_hdr {
 #define ETHER_TYPE_1588 0x88F7 /**< IEEE 802.1AS 1588 Precise Time Protocol. */
 
 #define ETHER_VXLAN_HLEN (sizeof(struct udp_hdr) + sizeof(struct vxlan_hdr))
-/**< VxLAN tunnel header length. */
+/**< VXLAN tunnel header length. */
 
 #ifdef __cplusplus
 }

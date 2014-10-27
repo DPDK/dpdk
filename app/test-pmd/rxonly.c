@@ -210,7 +210,7 @@ pkt_burst_receive(struct fwd_stream *fs)
 						unsigned char *) + l2_len + l3_len
 						 + l4_len);
 
-				printf(" - VxLAN packet: packet type =%d, "
+				printf(" - VXLAN packet: packet type =%d, "
 					"Destination UDP port =%d, VNI = %d",
 					packet_type, RTE_BE_TO_CPU_16(udp_hdr->dst_port),
 					rte_be_to_cpu_32(vxlan_hdr->vx_vni) >> 8);

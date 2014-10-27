@@ -249,7 +249,7 @@ struct i40e_pf {
 	uint16_t vf_nb_qps; /* The number of queue pairs of VF */
 	uint16_t fdir_nb_qps; /* The number of queue pairs of Flow Director */
 
-	/* store VxLAN UDP ports */
+	/* store VXLAN UDP ports */
 	uint16_t vxlan_ports[I40E_MAX_PF_UDP_OFFLOAD_PORTS];
 	uint16_t vxlan_bitmap; /* Vxlan bit mask */
 };

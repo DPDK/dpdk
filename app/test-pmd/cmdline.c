@@ -294,10 +294,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"   remove a tunnel filter of a port.\n\n"
 
 			"rx_vxlan_port add (udp_port) (port_id)\n"
-			"    Add an UDP port for VxLAN packet filter on a port\n\n"
+			"    Add an UDP port for VXLAN packet filter on a port\n\n"
 
 			"rx_vxlan_port rm (udp_port) (port_id)\n"
-			"    Remove an UDP port for VxLAN packet filter on a port\n\n"
+			"    Remove an UDP port for VXLAN packet filter on a port\n\n"
 
 			"tx_vlan set vlan_id (port_id)\n"
 			"    Set hardware insertion of VLAN ID in packets sent"
@@ -6303,7 +6303,7 @@ cmd_tunnel_filter_parsed(void *parsed_result,
 	if (!strcmp(res->tunnel_type, "vxlan"))
 		tunnel_filter_conf.tunnel_type = RTE_TUNNEL_TYPE_VXLAN;
 	else {
-		printf("Only VxLAN is supported now.\n");
+		printf("Only VXLAN is supported now.\n");
 		return;
 	}
 

@@ -4240,7 +4240,7 @@ i40e_add_vxlan_port(struct i40e_pf *pf, uint16_t port)
 	ret =  i40e_aq_add_udp_tunnel(hw, port, I40E_AQC_TUNNEL_TYPE_VXLAN,
 					&filter_idx, NULL);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "Failed to add VxLAN UDP port %d", port);
+		PMD_DRV_LOG(ERR, "Failed to add VXLAN UDP port %d", port);
 		return -1;
 	}
 
@@ -4264,7 +4264,7 @@ i40e_del_vxlan_port(struct i40e_pf *pf, uint16_t port)
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 
 	if (!(pf->flags & I40E_FLAG_VXLAN)) {
-		PMD_DRV_LOG(ERR, "VxLAN UDP port was not configured.");
+		PMD_DRV_LOG(ERR, "VXLAN UDP port was not configured.");
 		return -EINVAL;
 	}
 
@@ -4276,7 +4276,7 @@ i40e_del_vxlan_port(struct i40e_pf *pf, uint16_t port)
 	}
 
 	if (i40e_aq_del_udp_tunnel(hw, idx, NULL) < 0) {
-		PMD_DRV_LOG(ERR, "Failed to delete VxLAN UDP port %d", port);
+		PMD_DRV_LOG(ERR, "Failed to delete VXLAN UDP port %d", port);
 		return -1;
 	}
 
