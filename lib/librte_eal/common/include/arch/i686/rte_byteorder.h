@@ -31,70 +31,14 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_BYTEORDER_H_
-#define _RTE_BYTEORDER_H_
-
-/**
- * @file
- *
- * Byte Swap Operations
- *
- * This file defines a generic API for byte swap operations. Part of
- * the implementation is architecture-specific.
- */
+#ifndef _RTE_BYTEORDER_I686_H_
+#define _RTE_BYTEORDER_I686_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <stdint.h>
-
-/*
- * An internal function to swap bytes in a 16-bit value.
- *
- * It is used by rte_bswap16() when the value is constant. Do not use
- * this function directly; rte_bswap16() is preferred.
- */
-static inline uint16_t
-rte_constant_bswap16(uint16_t x)
-{
-	return (uint16_t)(((x & 0x00ffU) << 8) |
-		((x & 0xff00U) >> 8));
-}
-
-/*
- * An internal function to swap bytes in a 32-bit value.
- *
- * It is used by rte_bswap32() when the value is constant. Do not use
- * this function directly; rte_bswap32() is preferred.
- */
-static inline uint32_t
-rte_constant_bswap32(uint32_t x)
-{
-	return  ((x & 0x000000ffUL) << 24) |
-		((x & 0x0000ff00UL) << 8) |
-		((x & 0x00ff0000UL) >> 8) |
-		((x & 0xff000000UL) >> 24);
-}
-
-/*
- * An internal function to swap bytes of a 64-bit value.
- *
- * It is used by rte_bswap64() when the value is constant. Do not use
- * this function directly; rte_bswap64() is preferred.
- */
-static inline uint64_t
-rte_constant_bswap64(uint64_t x)
-{
-	return  ((x & 0x00000000000000ffULL) << 56) |
-		((x & 0x000000000000ff00ULL) << 40) |
-		((x & 0x0000000000ff0000ULL) << 24) |
-		((x & 0x00000000ff000000ULL) <<  8) |
-		((x & 0x000000ff00000000ULL) >>  8) |
-		((x & 0x0000ff0000000000ULL) >> 24) |
-		((x & 0x00ff000000000000ULL) >> 40) |
-		((x & 0xff00000000000000ULL) >> 56);
-}
+#include "generic/rte_byteorder.h"
 
 /*
  * An architecture-optimized byte swap for a 16-bit value.
@@ -130,17 +74,6 @@ static inline uint32_t rte_arch_bswap32(uint32_t _x)
  *
   * Do not use this function directly. The preferred function is rte_bswap64().
  */
-#ifdef RTE_ARCH_X86_64
-/* 64-bit mode */
-static inline uint64_t rte_arch_bswap64(uint64_t _x)
-{
-	register uint64_t x = _x;
-	asm volatile ("bswap %[x]"
-		      : [x] "+r" (x)
-		      );
-	return x;
-}
-#else /* ! RTE_ARCH_X86_64 */
 /* Compat./Leg. mode */
 static inline uint64_t rte_arch_bswap64(uint64_t x)
 {
@@ -149,122 +82,48 @@ static inline uint64_t rte_arch_bswap64(uint64_t x)
 	ret |= ((uint64_t)rte_arch_bswap32((x >> 32) & 0xffffffffUL));
 	return ret;
 }
-#endif /* RTE_ARCH_X86_64 */
-
 
 #ifndef RTE_FORCE_INTRINSICS
-/**
- * Swap bytes in a 16-bit value.
- */
 #define rte_bswap16(x) ((uint16_t)(__builtin_constant_p(x) ?		\
 				   rte_constant_bswap16(x) :		\
 				   rte_arch_bswap16(x)))
 
-/**
- * Swap bytes in a 32-bit value.
- */
 #define rte_bswap32(x) ((uint32_t)(__builtin_constant_p(x) ?		\
 				   rte_constant_bswap32(x) :		\
 				   rte_arch_bswap32(x)))
 
-/**
- * Swap bytes in a 64-bit value.
- */
 #define rte_bswap64(x) ((uint64_t)(__builtin_constant_p(x) ?		\
 				   rte_constant_bswap64(x) :		\
 				   rte_arch_bswap64(x)))
-
 #else
-
-/**
- * Swap bytes in a 16-bit value.
+/*
  * __builtin_bswap16 is only available gcc 4.8 and upwards
  */
-#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8)
-#define rte_bswap16(x) __builtin_bswap16(x)
-#else
+#if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 8)
 #define rte_bswap16(x) ((uint16_t)(__builtin_constant_p(x) ?		\
 				   rte_constant_bswap16(x) :		\
 				   rte_arch_bswap16(x)))
 #endif
-
-/**
- * Swap bytes in a 32-bit value.
- */
-#define rte_bswap32(x) __builtin_bswap32(x)
-
-/**
- * Swap bytes in a 64-bit value.
- */
-#define rte_bswap64(x) __builtin_bswap64(x)
-
 #endif
 
-/**
- * Convert a 16-bit value from CPU order to little endian.
- */
 #define rte_cpu_to_le_16(x) (x)
-
-/**
- * Convert a 32-bit value from CPU order to little endian.
- */
 #define rte_cpu_to_le_32(x) (x)
-
-/**
- * Convert a 64-bit value from CPU order to little endian.
- */
 #define rte_cpu_to_le_64(x) (x)
 
-
-/**
- * Convert a 16-bit value from CPU order to big endian.
- */
 #define rte_cpu_to_be_16(x) rte_bswap16(x)
-
-/**
- * Convert a 32-bit value from CPU order to big endian.
- */
 #define rte_cpu_to_be_32(x) rte_bswap32(x)
-
-/**
- * Convert a 64-bit value from CPU order to big endian.
- */
 #define rte_cpu_to_be_64(x) rte_bswap64(x)
 
-
-/**
- * Convert a 16-bit value from little endian to CPU order.
- */
 #define rte_le_to_cpu_16(x) (x)
-
-/**
- * Convert a 32-bit value from little endian to CPU order.
- */
 #define rte_le_to_cpu_32(x) (x)
-
-/**
- * Convert a 64-bit value from little endian to CPU order.
- */
 #define rte_le_to_cpu_64(x) (x)
 
-
-/**
- * Convert a 16-bit value from big endian to CPU order.
- */
 #define rte_be_to_cpu_16(x) rte_bswap16(x)
-
-/**
- * Convert a 32-bit value from big endian to CPU order.
- */
 #define rte_be_to_cpu_32(x) rte_bswap32(x)
-
-/**
- * Convert a 64-bit value from big endian to CPU order.
- */
 #define rte_be_to_cpu_64(x) rte_bswap64(x)
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _RTE_BYTEORDER_H_ */
+#endif /* _RTE_BYTEORDER_I686_H_ */
