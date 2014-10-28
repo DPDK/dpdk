@@ -31,14 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_MEMCPY_H_
-#define _RTE_MEMCPY_H_
-
-/**
- * @file
- *
- * Functions for SSE implementation of memcpy().
- */
+#ifndef _RTE_MEMCPY_X86_64_H_
+#define _RTE_MEMCPY_X86_64_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -48,19 +42,12 @@
 extern "C" {
 #endif
 
+#include "generic/rte_memcpy.h"
+
 #ifdef __INTEL_COMPILER
 #pragma warning(disable:593) /* Stop unused variable warning (reg_a etc). */
 #endif
 
-/**
- * Copy 16 bytes from one location to another using optimised SSE
- * instructions. The locations should not overlap.
- *
- * @param dst
- *   Pointer to the destination of the data.
- * @param src
- *   Pointer to the source data.
- */
 static inline void
 rte_mov16(uint8_t *dst, const uint8_t *src)
 {
@@ -75,15 +62,6 @@ rte_mov16(uint8_t *dst, const uint8_t *src)
 	);
 }
 
-/**
- * Copy 32 bytes from one location to another using optimised SSE
- * instructions. The locations should not overlap.
- *
- * @param dst
- *   Pointer to the destination of the data.
- * @param src
- *   Pointer to the source data.
- */
 static inline void
 rte_mov32(uint8_t *dst, const uint8_t *src)
 {
@@ -101,15 +79,6 @@ rte_mov32(uint8_t *dst, const uint8_t *src)
 	);
 }
 
-/**
- * Copy 48 bytes from one location to another using optimised SSE
- * instructions. The locations should not overlap.
- *
- * @param dst
- *   Pointer to the destination of the data.
- * @param src
- *   Pointer to the source data.
- */
 static inline void
 rte_mov48(uint8_t *dst, const uint8_t *src)
 {
@@ -130,15 +99,6 @@ rte_mov48(uint8_t *dst, const uint8_t *src)
 	);
 }
 
-/**
- * Copy 64 bytes from one location to another using optimised SSE
- * instructions. The locations should not overlap.
- *
- * @param dst
- *   Pointer to the destination of the data.
- * @param src
- *   Pointer to the source data.
- */
 static inline void
 rte_mov64(uint8_t *dst, const uint8_t *src)
 {
@@ -162,15 +122,6 @@ rte_mov64(uint8_t *dst, const uint8_t *src)
 	);
 }
 
-/**
- * Copy 128 bytes from one location to another using optimised SSE
- * instructions. The locations should not overlap.
- *
- * @param dst
- *   Pointer to the destination of the data.
- * @param src
- *   Pointer to the source data.
- */
 static inline void
 rte_mov128(uint8_t *dst, const uint8_t *src)
 {
@@ -210,15 +161,6 @@ rte_mov128(uint8_t *dst, const uint8_t *src)
 #pragma warning(enable:593)
 #endif
 
-/**
- * Copy 256 bytes from one location to another using optimised SSE
- * instructions. The locations should not overlap.
- *
- * @param dst
- *   Pointer to the destination of the data.
- * @param src
- *   Pointer to the source data.
- */
 static inline void
 rte_mov256(uint8_t *dst, const uint8_t *src)
 {
@@ -226,31 +168,10 @@ rte_mov256(uint8_t *dst, const uint8_t *src)
 	rte_mov128(dst + 128, src + 128);
 }
 
-/**
- * Copy bytes from one location to another. The locations must not overlap.
- *
- * @note This is implemented as a macro, so it's address should not be taken
- * and care is needed as parameter expressions may be evaluated multiple times.
- *
- * @param dst
- *   Pointer to the destination of the data.
- * @param src
- *   Pointer to the source data.
- * @param n
- *   Number of bytes to copy.
- * @return
- *   Pointer to the destination data.
- */
 #define rte_memcpy(dst, src, n)              \
 	((__builtin_constant_p(n)) ?          \
 	memcpy((dst), (src), (n)) :          \
 	rte_memcpy_func((dst), (src), (n)))
-
-/*
- * memcpy() function used by rte_memcpy macro
- */
-static inline void *
-rte_memcpy_func(void *dst, const void *src, size_t n) __attribute__((always_inline));
 
 static inline void *
 rte_memcpy_func(void *dst, const void *src, size_t n)
@@ -373,4 +294,4 @@ rte_memcpy_func(void *dst, const void *src, size_t n)
 }
 #endif
 
-#endif /* _RTE_MEMCPY_H_ */
+#endif /* _RTE_MEMCPY_X86_64_H_ */
