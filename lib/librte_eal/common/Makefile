@@ -48,11 +48,13 @@ endif
 
 GENERIC_INC := rte_atomic.h rte_byteorder.h rte_cycles.h rte_prefetch.h
 GENERIC_INC += rte_spinlock.h rte_memcpy.h rte_cpuflags.h
-ARCH_INC := $(GENERIC_INC)
+# defined in mk/arch/$(RTE_ARCH)/rte.vars.mk
+ARCH_DIR ?= $(RTE_ARCH)
+ARCH_INC := $(notdir $(wildcard $(RTE_SDK)/lib/librte_eal/common/include/arch/$(ARCH_DIR)/*.h))
 
 SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include := $(addprefix include/,$(INC))
 SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include += \
-	$(addprefix include/arch/$(RTE_ARCH)/,$(ARCH_INC))
+	$(addprefix include/arch/$(ARCH_DIR)/,$(ARCH_INC))
 SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include/generic := \
 	$(addprefix include/generic/,$(GENERIC_INC))
 
