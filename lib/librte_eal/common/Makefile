@@ -31,7 +31,7 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-INC := rte_atomic.h rte_branch_prediction.h rte_byteorder.h rte_common.h
+INC := rte_branch_prediction.h rte_byteorder.h rte_common.h
 INC += rte_cycles.h rte_debug.h rte_eal.h rte_errno.h rte_launch.h rte_lcore.h
 INC += rte_log.h rte_memcpy.h rte_memory.h rte_memzone.h rte_pci.h
 INC += rte_pci_dev_ids.h rte_per_lcore.h rte_prefetch.h rte_random.h
@@ -46,11 +46,14 @@ ifeq ($(CONFIG_RTE_INSECURE_FUNCTION_WARNING),y)
 INC += rte_warnings.h
 endif
 
-ARCH_INC := rte_atomic.h
+GENERIC_INC := rte_atomic.h
+ARCH_INC := $(GENERIC_INC)
 
 SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include := $(addprefix include/,$(INC))
-SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include/arch := \
-	$(addprefix include/$(RTE_ARCH)/arch/,$(ARCH_INC))
+SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include += \
+	$(addprefix include/arch/$(RTE_ARCH)/,$(ARCH_INC))
+SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include/generic := \
+	$(addprefix include/generic/,$(GENERIC_INC))
 
 # add libc if configured
 DEPDIRS-$(CONFIG_RTE_LIBC) += lib/libc
