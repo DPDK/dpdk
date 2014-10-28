@@ -31,32 +31,21 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_PREFETCH_I686_H_
-#define _RTE_PREFETCH_I686_H_
+#ifndef _RTE_BYTEORDER_I686_H_
+#define _RTE_BYTEORDER_I686_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "generic/rte_prefetch.h"
-
-static inline void rte_prefetch0(volatile void *p)
+/*
+ * An architecture-optimized byte swap for a 64-bit value.
+ *
+  * Do not use this function directly. The preferred function is rte_bswap64().
+ */
+/* Compat./Leg. mode */
+static inline uint64_t rte_arch_bswap64(uint64_t x)
 {
-	asm volatile ("prefetcht0 %[p]" : [p] "+m" (*(volatile char *)p));
+	uint64_t ret = 0;
+	ret |= ((uint64_t)rte_arch_bswap32(x & 0xffffffffUL) << 32);
+	ret |= ((uint64_t)rte_arch_bswap32((x >> 32) & 0xffffffffUL));
+	return ret;
 }
 
-static inline void rte_prefetch1(volatile void *p)
-{
-	asm volatile ("prefetcht1 %[p]" : [p] "+m" (*(volatile char *)p));
-}
-
-static inline void rte_prefetch2(volatile void *p)
-{
-	asm volatile ("prefetcht2 %[p]" : [p] "+m" (*(volatile char *)p));
-}
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* _RTE_PREFETCH_I686_H_ */
+#endif /* _RTE_BYTEORDER_I686_H_ */

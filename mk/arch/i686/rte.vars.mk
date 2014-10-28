@@ -48,6 +48,8 @@
 #
 
 ARCH  ?= i386
+# common arch dir in eal headers
+ARCH_DIR := x86
 CROSS ?=
 
 CPU_CFLAGS  ?= -m32

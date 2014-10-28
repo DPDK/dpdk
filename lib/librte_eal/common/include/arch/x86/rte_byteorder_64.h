@@ -31,64 +31,22 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_SPINLOCK_I686_H_
-#define _RTE_SPINLOCK_I686_H_
+#ifndef _RTE_BYTEORDER_X86_64_H_
+#define _RTE_BYTEORDER_X86_64_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "generic/rte_spinlock.h"
-
-#ifndef RTE_FORCE_INTRINSICS
-static inline void
-rte_spinlock_lock(rte_spinlock_t *sl)
+/*
+ * An architecture-optimized byte swap for a 64-bit value.
+ *
+  * Do not use this function directly. The preferred function is rte_bswap64().
+ */
+/* 64-bit mode */
+static inline uint64_t rte_arch_bswap64(uint64_t _x)
 {
-	int lock_val = 1;
-	asm volatile (
-			"1:\n"
-			"xchg %[locked], %[lv]\n"
-			"test %[lv], %[lv]\n"
-			"jz 3f\n"
-			"2:\n"
-			"pause\n"
-			"cmpl $0, %[locked]\n"
-			"jnz 2b\n"
-			"jmp 1b\n"
-			"3:\n"
-			: [locked] "=m" (sl->locked), [lv] "=q" (lock_val)
-			: "[lv]" (lock_val)
-			: "memory");
+	register uint64_t x = _x;
+	asm volatile ("bswap %[x]"
+		      : [x] "+r" (x)
+		      );
+	return x;
 }
 
-static inline void
-rte_spinlock_unlock (rte_spinlock_t *sl)
-{
-	int unlock_val = 0;
-	asm volatile (
-			"xchg %[locked], %[ulv]\n"
-			: [locked] "=m" (sl->locked), [ulv] "=q" (unlock_val)
-			: "[ulv]" (unlock_val)
-			: "memory");
-}
-
-static inline int
-rte_spinlock_trylock (rte_spinlock_t *sl)
-{
-	int lockval = 1;
-
-	asm volatile (
-			"xchg %[locked], %[lockval]"
-			: [locked] "=m" (sl->locked), [lockval] "=q" (lockval)
-			: "[lockval]" (lockval)
-			: "memory");
-
-	return (lockval == 0);
-}
-#endif
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* _RTE_SPINLOCK_I686_H_ */
+#endif /* _RTE_BYTEORDER_X86_64_H_ */

@@ -31,8 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_BYTEORDER_I686_H_
-#define _RTE_BYTEORDER_I686_H_
+#ifndef _RTE_BYTEORDER_X86_H_
+#define _RTE_BYTEORDER_X86_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,20 +67,6 @@ static inline uint32_t rte_arch_bswap32(uint32_t _x)
 		      : [x] "+r" (x)
 		      );
 	return x;
-}
-
-/*
- * An architecture-optimized byte swap for a 64-bit value.
- *
-  * Do not use this function directly. The preferred function is rte_bswap64().
- */
-/* Compat./Leg. mode */
-static inline uint64_t rte_arch_bswap64(uint64_t x)
-{
-	uint64_t ret = 0;
-	ret |= ((uint64_t)rte_arch_bswap32(x & 0xffffffffUL) << 32);
-	ret |= ((uint64_t)rte_arch_bswap32((x >> 32) & 0xffffffffUL));
-	return ret;
 }
 
 #ifndef RTE_FORCE_INTRINSICS
@@ -122,8 +108,14 @@ static inline uint64_t rte_arch_bswap64(uint64_t x)
 #define rte_be_to_cpu_32(x) rte_bswap32(x)
 #define rte_be_to_cpu_64(x) rte_bswap64(x)
 
+#ifdef RTE_ARCH_I686
+#include "rte_byteorder_32.h"
+#else
+#include "rte_byteorder_64.h"
+#endif
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _RTE_BYTEORDER_I686_H_ */
+#endif /* _RTE_BYTEORDER_X86_H_ */
