@@ -35,7 +35,7 @@ INC := rte_branch_prediction.h rte_common.h
 INC += rte_debug.h rte_eal.h rte_errno.h rte_launch.h rte_lcore.h
 INC += rte_log.h rte_memcpy.h rte_memory.h rte_memzone.h rte_pci.h
 INC += rte_pci_dev_ids.h rte_per_lcore.h rte_random.h
-INC += rte_rwlock.h rte_spinlock.h rte_tailq.h rte_interrupts.h rte_alarm.h
+INC += rte_rwlock.h rte_tailq.h rte_interrupts.h rte_alarm.h
 INC += rte_string_fns.h rte_cpuflags.h rte_version.h rte_tailq_elem.h
 INC += rte_eal_memconfig.h rte_malloc_heap.h
 INC += rte_hexdump.h rte_devargs.h rte_dev.h
@@ -47,6 +47,7 @@ INC += rte_warnings.h
 endif
 
 GENERIC_INC := rte_atomic.h rte_byteorder.h rte_cycles.h rte_prefetch.h
+GENERIC_INC += rte_spinlock.h
 ARCH_INC := $(GENERIC_INC)
 
 SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include := $(addprefix include/,$(INC))

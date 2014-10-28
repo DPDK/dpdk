@@ -47,10 +47,6 @@
  *
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_lcore.h>
 #ifdef RTE_FORCE_INTRINSICS
 #include <rte_common.h>
@@ -87,30 +83,17 @@ rte_spinlock_init(rte_spinlock_t *sl)
  *   A pointer to the spinlock.
  */
 static inline void
+rte_spinlock_lock(rte_spinlock_t *sl);
+
+#ifdef RTE_FORCE_INTRINSICS
+static inline void
 rte_spinlock_lock(rte_spinlock_t *sl)
 {
-#ifndef RTE_FORCE_INTRINSICS
-	int lock_val = 1;
-	asm volatile (
-			"1:\n"
-			"xchg %[locked], %[lv]\n"
-			"test %[lv], %[lv]\n"
-			"jz 3f\n"
-			"2:\n"
-			"pause\n"
-			"cmpl $0, %[locked]\n"
-			"jnz 2b\n"
-			"jmp 1b\n"
-			"3:\n"
-			: [locked] "=m" (sl->locked), [lv] "=q" (lock_val)
-			: "[lv]" (lock_val)
-			: "memory");
-#else
 	while (__sync_lock_test_and_set(&sl->locked, 1))
 		while(sl->locked)
 			rte_pause();
-#endif
 }
+#endif
 
 /**
  * Release the spinlock.
@@ -119,19 +102,15 @@ rte_spinlock_lock(rte_spinlock_t *sl)
  *   A pointer to the spinlock.
  */
 static inline void
+rte_spinlock_unlock (rte_spinlock_t *sl);
+
+#ifdef RTE_FORCE_INTRINSICS
+static inline void
 rte_spinlock_unlock (rte_spinlock_t *sl)
 {
-#ifndef RTE_FORCE_INTRINSICS
-	int unlock_val = 0;
-	asm volatile (
-			"xchg %[locked], %[ulv]\n"
-			: [locked] "=m" (sl->locked), [ulv] "=q" (unlock_val)
-			: "[ulv]" (unlock_val)
-			: "memory");
-#else
 	__sync_lock_release(&sl->locked);
-#endif
 }
+#endif
 
 /**
  * Try to take the lock.
@@ -142,22 +121,15 @@ rte_spinlock_unlock (rte_spinlock_t *sl)
  *   1 if the lock is successfully taken; 0 otherwise.
  */
 static inline int
+rte_spinlock_trylock (rte_spinlock_t *sl);
+
+#ifdef RTE_FORCE_INTRINSICS
+static inline int
 rte_spinlock_trylock (rte_spinlock_t *sl)
 {
-#ifndef RTE_FORCE_INTRINSICS
-	int lockval = 1;
-
-	asm volatile (
-			"xchg %[locked], %[lockval]"
-			: [locked] "=m" (sl->locked), [lockval] "=q" (lockval)
-			: "[lockval]" (lockval)
-			: "memory");
-
-	return (lockval == 0);
-#else
 	return (__sync_lock_test_and_set(&sl->locked,1) == 0);
-#endif
 }
+#endif
 
 /**
  * Test if the lock is taken.
@@ -250,9 +222,5 @@ static inline int rte_spinlock_recursive_trylock(rte_spinlock_recursive_t *slr)
 	slr->count++;
 	return 1;
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_SPINLOCK_H_ */
