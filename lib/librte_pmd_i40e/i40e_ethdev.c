@@ -580,8 +580,6 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi)
 	uint32_t val;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	uint16_t msix_vect = vsi->msix_intr;
-	uint16_t interval =
-		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL);
 	int i;
 
 	for (i = 0; i < vsi->nb_qps; i++)
@@ -590,7 +588,7 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi)
 	/* Bind all RX queues to allocated MSIX interrupt */
 	for (i = 0; i < vsi->nb_qps; i++) {
 		val = (msix_vect << I40E_QINT_RQCTL_MSIX_INDX_SHIFT) |
-			(interval << I40E_QINT_RQCTL_ITR_INDX_SHIFT) |
+			I40E_QINT_RQCTL_ITR_INDX_MASK |
 			((vsi->base_queue + i + 1) <<
 			I40E_QINT_RQCTL_NEXTQ_INDX_SHIFT) |
 			(0 << I40E_QINT_RQCTL_NEXTQ_TYPE_SHIFT) |
@@ -603,6 +601,9 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi)
 
 	/* Write first RX queue to Link list register as the head element */
 	if (vsi->type != I40E_VSI_SRIOV) {
+		uint16_t interval =
+			i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL);
+
 		I40E_WRITE_REG(hw, I40E_PFINT_LNKLSTN(msix_vect - 1),
 						(vsi->base_queue <<
 				I40E_PFINT_LNKLSTN_FIRSTQ_INDX_SHIFT) |
