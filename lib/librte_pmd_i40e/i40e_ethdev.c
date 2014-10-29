@@ -580,7 +580,8 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi)
 	uint32_t val;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	uint16_t msix_vect = vsi->msix_intr;
-	uint16_t interval = i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL);
+	uint16_t interval =
+		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL);
 	int i;
 
 	for (i = 0; i < vsi->nb_qps; i++)
@@ -603,25 +604,26 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi)
 	/* Write first RX queue to Link list register as the head element */
 	if (vsi->type != I40E_VSI_SRIOV) {
 		I40E_WRITE_REG(hw, I40E_PFINT_LNKLSTN(msix_vect - 1),
-			(vsi->base_queue << I40E_PFINT_LNKLSTN_FIRSTQ_INDX_SHIFT) |
+						(vsi->base_queue <<
+				I40E_PFINT_LNKLSTN_FIRSTQ_INDX_SHIFT) |
 			(0x0 << I40E_PFINT_LNKLSTN_FIRSTQ_TYPE_SHIFT));
 
 		I40E_WRITE_REG(hw, I40E_PFINT_ITRN(I40E_ITR_INDEX_DEFAULT,
-				msix_vect - 1), interval);
+						msix_vect - 1), interval);
 
 		/* Disable auto-mask on enabling of all none-zero  interrupt */
 		I40E_WRITE_REG(hw, I40E_GLINT_CTL,
-				I40E_GLINT_CTL_DIS_AUTOMASK_N_MASK);
-	}
-	else {
+			I40E_GLINT_CTL_DIS_AUTOMASK_N_MASK);
+	} else {
 		uint32_t reg;
+
 		/* num_msix_vectors_vf needs to minus irq0 */
 		reg = (hw->func_caps.num_msix_vectors_vf - 1) *
 			vsi->user_param + (msix_vect - 1);
 
-		I40E_WRITE_REG(hw, I40E_VPINT_LNKLSTN(reg),
-			(vsi->base_queue << I40E_VPINT_LNKLSTN_FIRSTQ_INDX_SHIFT) |
-			(0x0 << I40E_VPINT_LNKLSTN_FIRSTQ_TYPE_SHIFT));
+		I40E_WRITE_REG(hw, I40E_VPINT_LNKLSTN(reg), (vsi->base_queue <<
+					I40E_VPINT_LNKLSTN_FIRSTQ_INDX_SHIFT) |
+				(0x0 << I40E_VPINT_LNKLSTN_FIRSTQ_TYPE_SHIFT));
 	}
 
 	I40E_WRITE_FLUSH(hw);
