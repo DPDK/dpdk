@@ -51,7 +51,6 @@
 #include <rte_eth_ctrl.h>
 
 #include "i40e_logs.h"
-#include "i40e/i40e_register_x710_int.h"
 #include "i40e/i40e_prototype.h"
 #include "i40e/i40e_adminq_cmd.h"
 #include "i40e/i40e_type.h"
@@ -612,6 +611,10 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi)
 		I40E_WRITE_REG(hw, I40E_PFINT_ITRN(I40E_ITR_INDEX_DEFAULT,
 						msix_vect - 1), interval);
 
+#ifndef I40E_GLINT_CTL
+#define I40E_GLINT_CTL                     0x0003F800
+#define I40E_GLINT_CTL_DIS_AUTOMASK_N_MASK 0x4
+#endif
 		/* Disable auto-mask on enabling of all none-zero  interrupt */
 		I40E_WRITE_REG(hw, I40E_GLINT_CTL,
 			I40E_GLINT_CTL_DIS_AUTOMASK_N_MASK);
