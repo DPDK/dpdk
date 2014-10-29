@@ -133,6 +133,7 @@ host_memory_map(struct virtio_net *dev, struct virtio_memory *mem,
 	char mapfile[PATH_MAX];
 	char procdir[PATH_MAX];
 	char resolved_path[PATH_MAX];
+	char *path = NULL;
 	FILE		*fmap;
 	void		*map;
 	uint8_t		found = 0;
@@ -235,9 +236,11 @@ host_memory_map(struct virtio_net *dev, struct virtio_memory *mem,
 	while (NULL != (dptr = readdir(dp))) {
 		snprintf(memfile, PATH_MAX, "/proc/%u/fd/%s",
 				pid, dptr->d_name);
-	    realpath(memfile, resolved_path);
-		if (resolved_path == NULL) {
-			RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Failed to resolve fd directory\n", dev->device_fh);
+		path = realpath(memfile, resolved_path);
+		if (path == NULL) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"(%"PRIu64") Failed to resolve fd directory\n",
+				dev->device_fh);
 			closedir(dp);
 			return -1;
 		}
