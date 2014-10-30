@@ -266,7 +266,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	snprintf(filename, sizeof(filename), "%s/numa_node",
 		 dirname);
 	if (access(filename, R_OK) != 0) {
-		/* if no NUMA support just set node to 0 */
+		/* if no NUMA support just set node to -1 */
 		dev->numa_node = -1;
 	} else {
 		if (eal_parse_sysfs_value(filename, &tmp) < 0) {
