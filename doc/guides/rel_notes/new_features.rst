@@ -28,15 +28,25 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DPDK documentation
-==================
+New Features
+============
 
-Contents:
+*   Packet Distributor library for dynamic, single-packet at a time, load balancing
 
-.. toctree::
-   :maxdepth: 1
-   :titlesonly:
+*   IP fragmentation and reassembly library
 
-   linux_gsg/index
-   freebsd_gsg/index
-   rel_notes/index
+*   Support for IPv6 in IP fragmentation and reassembly sample applications
+
+*   Support for VFIO for mapping BARs and setting up interrupts
+
+*   Link Bonding PMD Library supporting round-robin, active backup, balance(layer 2, layer 2+3, and layer 3+4) and broadcast bonding modes
+
+*   Support zero copy mode RX/TX in user space vhost sample
+
+*   Support multiple queues in virtio-net PMD
+
+*   Support for Intel® 40GbE Controllers
+
+*   Support NIC filters in addition to flow director for Intel® 1GbE and 10GbE Controllers
+
+For further features supported in this release, see Chapter 3 Supported Features.

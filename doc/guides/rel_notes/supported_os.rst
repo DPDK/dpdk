@@ -28,15 +28,22 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DPDK documentation
-==================
+Supported Operating Systems
+===========================
 
-Contents:
+The following Linux* distributions were successfully used to generate or run the Intel® DPDK.
 
-.. toctree::
-   :maxdepth: 1
-   :titlesonly:
+*   FreeBSD* 9.2
 
-   linux_gsg/index
-   freebsd_gsg/index
-   rel_notes/index
+*   Fedora release 18
+
+*   Ubuntu* 12.04 LTS
+
+*   Wind River* Linux* 5
+
+*   Red Hat* Enterprise Linux 6.3
+
+*   SUSE Enterprise Linux* 11 SP2
+
+These distributions may need additional packages that are not installed by default, or a specific kernel.
+Refer to the *Intel® DPDK Getting Started Guide* for details.
