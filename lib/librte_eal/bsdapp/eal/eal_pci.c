@@ -183,7 +183,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 	}
 
 	RTE_LOG(ERR, EAL, "Cannot find resource for device\n");
-	return -1;
+	return 1;
 }
 
 /* map the PCI resource of a PCI device in virtual memory */
