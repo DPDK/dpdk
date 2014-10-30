@@ -2863,13 +2863,6 @@ MAIN(int argc, char *argv[])
 	ret = us_vhost_parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid argument\n");
-#ifdef RTE_IXGBE_INC_VECTOR
-	if (mergeable == 1) {
-		rte_exit(EXIT_FAILURE,
-			"sorry, mergeable feature doesn't work with vec sg recv, " \
-			"please disable it in cfg as a workaround\n");
-	}
-#endif
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id ++)
 		if (rte_lcore_is_enabled(lcore_id))
