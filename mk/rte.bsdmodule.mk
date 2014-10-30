@@ -47,6 +47,7 @@ include $(RTE_SDK)/mk/internal/rte.depdirs-pre.mk
 
 # DPDK uses a more up-to-date gcc, so clear the override here.
 unexport CC
+override CFLAGS = $(MODULE_CFLAGS)
 
 # VPATH contains at least SRCDIR
 VPATH += $(SRCDIR)
