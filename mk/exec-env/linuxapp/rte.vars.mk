@@ -45,7 +45,9 @@ else
 EXECENV_CFLAGS  = -pthread
 endif
 
-EXECENV_LDFLAGS =
+# Workaround lack of DT_NEEDED entry
+EXECENV_LDFLAGS = --no-as-needed
+
 EXECENV_LDLIBS  = -lrt -lm
 EXECENV_ASFLAGS =
 
