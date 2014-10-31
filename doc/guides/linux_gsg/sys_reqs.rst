@@ -267,7 +267,7 @@ Use the following command (assuming that 2048 MB is required):
 
 .. code-block:: console
 
-    echo 2048 /sys/kernel/mm/dom0-mm/memsize-mB/memsize
+    echo 2048 > /sys/kernel/mm/dom0-mm/memsize-mB/memsize
 
 The user can also check how much memory has already been used:
 
