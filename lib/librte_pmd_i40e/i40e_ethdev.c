@@ -1633,33 +1633,33 @@ i40e_vf_mac_filter_set(struct i40e_pf *pf,
 	int ret;
 
 	if (pf == NULL) {
-		PMD_DRV_LOG(ERR, "Invalid PF argument\n");
+		PMD_DRV_LOG(ERR, "Invalid PF argument.");
 		return -EINVAL;
 	}
 	hw = I40E_PF_TO_HW(pf);
 
 	if (filter == NULL) {
-		PMD_DRV_LOG(ERR, "Invalid mac filter argument\n");
+		PMD_DRV_LOG(ERR, "Invalid mac filter argument.");
 		return -EINVAL;
 	}
 
 	new_mac = &filter->mac_addr;
 
 	if (is_zero_ether_addr(new_mac)) {
-		PMD_DRV_LOG(ERR, "Invalid ethernet address\n");
+		PMD_DRV_LOG(ERR, "Invalid ethernet address.");
 		return -EINVAL;
 	}
 
 	vf_id = filter->dst_id;
 
 	if (vf_id > pf->vf_num - 1 || !pf->vfs) {
-		PMD_DRV_LOG(ERR, "Invalid argument\n");
+		PMD_DRV_LOG(ERR, "Invalid argument.");
 		return -EINVAL;
 	}
 	vf = &pf->vfs[vf_id];
 
 	if (add && is_same_ether_addr(new_mac, &(pf->dev_addr))) {
-		PMD_DRV_LOG(INFO, "Ignore adding permanent MAC address\n");
+		PMD_DRV_LOG(INFO, "Ignore adding permanent MAC address.");
 		return -EINVAL;
 	}
 
@@ -1673,7 +1673,7 @@ i40e_vf_mac_filter_set(struct i40e_pf *pf,
 		mac_filter.filter_type = filter->filter_type;
 		ret = i40e_vsi_add_mac(vf->vsi, &mac_filter);
 		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Failed to add MAC filter\n");
+			PMD_DRV_LOG(ERR, "Failed to add MAC filter.");
 			return -1;
 		}
 		ether_addr_copy(new_mac, &pf->dev_addr);
@@ -1682,7 +1682,7 @@ i40e_vf_mac_filter_set(struct i40e_pf *pf,
 				ETHER_ADDR_LEN);
 		ret = i40e_vsi_delete_mac(vf->vsi, &filter->mac_addr);
 		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Failed to delete MAC filter\n");
+			PMD_DRV_LOG(ERR, "Failed to delete MAC filter.");
 			return -1;
 		}
 
@@ -1723,7 +1723,7 @@ i40e_mac_filter_handle(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
 		i40e_pf_enable_irq0(hw);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "unknown operation %u\n", filter_op);
+		PMD_DRV_LOG(ERR, "unknown operation %u", filter_op);
 		ret = I40E_ERR_PARAM;
 		break;
 	}
@@ -2628,6 +2628,7 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 		mac = &f->mac_info.mac_addr;
 		(void)rte_memcpy(&mac->addr_bytes, hw->mac.perm_addr,
 				ETH_ADDR_LEN);
+		f->mac_info.filter_type = RTE_MACVLAN_PERFECT_MATCH;
 		TAILQ_INSERT_TAIL(&vsi->mac_list, f, next);
 		vsi->mac_num++;
 
