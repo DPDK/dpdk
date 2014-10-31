@@ -90,8 +90,8 @@ enum rte_mac_filter_type {
  */
 struct rte_eth_mac_filter {
 	uint8_t is_vf; /**< 1 for VF, 0 for port dev */
-	uint16_t dst_id; /**<VF ID, available when is_vf is 1*/
-	uint16_t filter_type; /**< MAC filter type */
+	uint16_t dst_id; /**< VF ID, available when is_vf is 1*/
+	enum rte_mac_filter_type filter_type; /**< MAC filter type */
 	struct ether_addr mac_addr;
 };
 
