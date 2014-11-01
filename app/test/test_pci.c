@@ -39,10 +39,13 @@
 
 #include <rte_interrupts.h>
 #include <rte_pci.h>
+#include <rte_ethdev.h>
 #include <rte_devargs.h>
 
 #include "test.h"
 
+/* Generic maximum number of drivers to have room to allocate all drivers */
+#define NUM_MAX_DRIVERS 256
 
 /*
  * PCI test
@@ -57,7 +60,6 @@
 
 int test_pci_run = 0; /* value checked by the multiprocess test */
 static unsigned pci_dev_count;
-static unsigned driver_registered = 0;
 
 static int my_driver_init(struct rte_pci_driver *dr,
 			  struct rte_pci_device *dev);
@@ -150,14 +152,21 @@ int
 test_pci(void)
 {
 	struct rte_devargs_list save_devargs_list;
+	struct rte_pci_driver *dr = NULL;
+	struct rte_pci_driver *save_pci_driver_list[NUM_MAX_DRIVERS];
+	unsigned i, num_drivers = 0;
 
 	printf("Dump all devices\n");
 	rte_eal_pci_dump(stdout);
-	if (driver_registered == 0) {
-		rte_eal_pci_register(&my_driver);
-		rte_eal_pci_register(&my_driver2);
-		driver_registered = 1;
+
+	/* Unregister all previous drivers */
+	TAILQ_FOREACH(dr, &pci_driver_list, next) {
+		rte_eal_pci_unregister(dr);
+		save_pci_driver_list[num_drivers++] = dr;
 	}
+
+	rte_eal_pci_register(&my_driver);
+	rte_eal_pci_register(&my_driver2);
 
 	pci_dev_count = 0;
 	printf("Scan bus\n");
@@ -187,11 +196,13 @@ test_pci(void)
 	}
 
 	test_pci_run = 1;
-	if (driver_registered == 1) {
-		rte_eal_pci_unregister(&my_driver);
-		rte_eal_pci_unregister(&my_driver2);
-		driver_registered = 0;
-	}
+
+	rte_eal_pci_unregister(&my_driver);
+	rte_eal_pci_unregister(&my_driver2);
+
+	/* Restore original driver list */
+	for (i = 0; i < num_drivers; i++)
+		rte_eal_pci_register(save_pci_driver_list[i]);
 
 	return 0;
 }
