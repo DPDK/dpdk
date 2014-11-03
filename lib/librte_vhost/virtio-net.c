@@ -247,7 +247,7 @@ host_memory_map(struct virtio_net *dev, struct virtio_memory *mem,
 		snprintf(memfile, PATH_MAX, "/proc/%u/fd/%s",
 				pid, dptr->d_name);
 		path = realpath(memfile, resolved_path);
-		if (path == NULL) {
+		if ((path == NULL) && (strlen(resolved_path) == 0)) {
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"(%"PRIu64") Failed to resolve fd directory\n",
 				dev->device_fh);
