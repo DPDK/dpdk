@@ -730,16 +730,13 @@ static struct ixgbe_txq_ops vec_txq_ops = {
 int
 ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq)
 {
-	struct rte_mbuf mb_def = {
-		.nb_segs = 1,
-		.data_off = RTE_PKTMBUF_HEADROOM,
-#ifdef RTE_MBUF_REFCNT
-		{ .refcnt = 1, }
-#endif
-	};
+	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */
 
+	mb_def.nb_segs = 1;
+	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
 	mb_def.buf_len = rxq->mb_pool->elt_size - sizeof(struct rte_mbuf);
 	mb_def.port = rxq->port_id;
+	rte_mbuf_refcnt_set(&mb_def, 1);
 	rxq->mbuf_initializer = *((uint64_t *)&mb_def.rearm_data);
 	return 0;
 }
