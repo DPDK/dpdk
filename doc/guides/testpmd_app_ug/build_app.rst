@@ -28,16 +28,34 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DPDK documentation
-==================
+Compiling the Application
+=========================
 
-Contents:
+The testpmd application is compiled as part of the main compilation of the Intel® DPDK libraries and tools.
+Refer to the Intel® DPDK Getting Started Guide for details.
+The basic compilation steps are:
 
-.. toctree::
-   :maxdepth: 1
-   :titlesonly:
+#.  Set the required environmental variables and go to the source directory:
 
-   linux_gsg/index
-   freebsd_gsg/index
-   testpmd_app_ug/index
-   rel_notes/index
+    .. code-block:: console
+
+        export RTE_SDK=/path/to/rte_sdk
+        cd $RTE_SDK
+
+#.  Set the compilation target. For example:
+
+    .. code-block:: console
+
+        export RTE_TARGET=x86_64-native-linuxapp-gcc
+
+#.  Build the application:
+
+    .. code-block:: console
+
+        make install T=$RTE_TARGET
+
+    The compiled application will be located at:
+
+    .. code-block:: console
+
+        $RTE_SDK/$RTE_TARGET/build/app/testpmd

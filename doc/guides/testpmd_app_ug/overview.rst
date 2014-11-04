@@ -28,16 +28,8 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DPDK documentation
-==================
+Overview
+========
 
-Contents:
-
-.. toctree::
-   :maxdepth: 1
-   :titlesonly:
-
-   linux_gsg/index
-   freebsd_gsg/index
-   testpmd_app_ug/index
-   rel_notes/index
+The following sections show how to build and run the testpmd application and
+how to configure the application from the command line and the run-time environment.
