@@ -1950,6 +1950,7 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->max_vmdq_pools = ETH_16_POOLS;
 	else
 		dev_info->max_vmdq_pools = ETH_64_POOLS;
+	dev_info->vmdq_queue_num = dev_info->max_rx_queues;
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
