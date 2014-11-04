@@ -162,7 +162,7 @@ static int i40e_dev_rss_reta_query(struct rte_eth_dev *dev,
 static int i40e_get_cap(struct i40e_hw *hw);
 static int i40e_pf_parameter_init(struct rte_eth_dev *dev);
 static int i40e_pf_setup(struct i40e_pf *pf);
-static int i40e_vsi_init(struct i40e_vsi *vsi);
+static int i40e_dev_rxtx_init(struct i40e_pf *pf);
 static int i40e_vmdq_setup(struct rte_eth_dev *dev);
 static void i40e_stat_update_32(struct i40e_hw *hw, uint32_t reg,
 		bool offset_loaded, uint64_t *offset, uint64_t *stat);
@@ -783,8 +783,8 @@ i40e_dev_start(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct i40e_vsi *vsi = pf->main_vsi;
-	int ret;
+	struct i40e_vsi *main_vsi = pf->main_vsi;
+	int ret, i;
 
 	if ((dev->data->dev_conf.link_duplex != ETH_LINK_AUTONEG_DUPLEX) &&
 		(dev->data->dev_conf.link_duplex != ETH_LINK_FULL_DUPLEX)) {
@@ -795,26 +795,37 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* Initialize VSI */
-	ret = i40e_vsi_init(vsi);
+	ret = i40e_dev_rxtx_init(pf);
 	if (ret != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to init VSI");
+		PMD_DRV_LOG(ERR, "Failed to init rx/tx queues");
 		goto err_up;
 	}
 
 	/* Map queues with MSIX interrupt */
-	i40e_vsi_queues_bind_intr(vsi);
-	i40e_vsi_enable_queues_intr(vsi);
+	i40e_vsi_queues_bind_intr(main_vsi);
+	i40e_vsi_enable_queues_intr(main_vsi);
+
+	/* Map VMDQ VSI queues with MSIX interrupt */
+	for (i = 0; i < pf->nb_cfg_vmdq_vsi; i++) {
+		i40e_vsi_queues_bind_intr(pf->vmdq[i].vsi);
+		i40e_vsi_enable_queues_intr(pf->vmdq[i].vsi);
+	}
 
 	/* Enable all queues which have been configured */
-	ret = i40e_vsi_switch_queues(vsi, TRUE);
+	ret = i40e_dev_switch_queues(pf, TRUE);
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to enable VSI");
 		goto err_up;
 	}
 
 	/* Enable receiving broadcast packets */
-	if ((vsi->type == I40E_VSI_MAIN) || (vsi->type == I40E_VSI_VMDQ2)) {
-		ret = i40e_aq_set_vsi_broadcast(hw, vsi->seid, true, NULL);
+	ret = i40e_aq_set_vsi_broadcast(hw, main_vsi->seid, true, NULL);
+	if (ret != I40E_SUCCESS)
+		PMD_DRV_LOG(INFO, "fail to set vsi broadcast");
+
+	for (i = 0; i < pf->nb_cfg_vmdq_vsi; i++) {
+		ret = i40e_aq_set_vsi_broadcast(hw, pf->vmdq[i].vsi->seid,
+						true, NULL);
 		if (ret != I40E_SUCCESS)
 			PMD_DRV_LOG(INFO, "fail to set vsi broadcast");
 	}
@@ -829,7 +840,8 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	return I40E_SUCCESS;
 
 err_up:
-	i40e_vsi_switch_queues(vsi, FALSE);
+	i40e_dev_switch_queues(pf, FALSE);
+	i40e_dev_clear_queues(dev);
 
 	return ret;
 }
@@ -838,17 +850,26 @@ static void
 i40e_dev_stop(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_vsi *vsi = pf->main_vsi;
+	struct i40e_vsi *main_vsi = pf->main_vsi;
+	int i;
 
 	/* Disable all queues */
-	i40e_vsi_switch_queues(vsi, FALSE);
+	i40e_dev_switch_queues(pf, FALSE);
+
+	/* un-map queues with interrupt registers */
+	i40e_vsi_disable_queues_intr(main_vsi);
+	i40e_vsi_queues_unbind_intr(main_vsi);
+
+	for (i = 0; i < pf->nb_cfg_vmdq_vsi; i++) {
+		i40e_vsi_disable_queues_intr(pf->vmdq[i].vsi);
+		i40e_vsi_queues_unbind_intr(pf->vmdq[i].vsi);
+	}
+
+	/* Clear all queues and release memory */
+	i40e_dev_clear_queues(dev);
 
 	/* Set link down */
 	i40e_dev_set_link_down(dev);
-
-	/* un-map queues with interrupt registers */
-	i40e_vsi_disable_queues_intr(vsi);
-	i40e_vsi_queues_unbind_intr(vsi);
 }
 
 static void
@@ -3251,11 +3272,11 @@ i40e_switch_tx_queue(struct i40e_hw *hw, uint16_t q_idx, bool on)
 
 /* Swith on or off the tx queues */
 static int
-i40e_vsi_switch_tx_queues(struct i40e_vsi *vsi, bool on)
+i40e_dev_switch_tx_queues(struct i40e_pf *pf, bool on)
 {
-	struct rte_eth_dev_data *dev_data = I40E_VSI_TO_DEV_DATA(vsi);
+	struct rte_eth_dev_data *dev_data = pf->dev_data;
 	struct i40e_tx_queue *txq;
-	struct rte_eth_dev *dev = I40E_VSI_TO_ETH_DEV(vsi);
+	struct rte_eth_dev *dev = pf->adapter->eth_dev;
 	uint16_t i;
 	int ret;
 
@@ -3263,7 +3284,7 @@ i40e_vsi_switch_tx_queues(struct i40e_vsi *vsi, bool on)
 		txq = dev_data->tx_queues[i];
 		/* Don't operate the queue if not configured or
 		 * if starting only per queue */
-		if (!txq->q_set || (on && txq->tx_deferred_start))
+		if (!txq || !txq->q_set || (on && txq->tx_deferred_start))
 			continue;
 		if (on)
 			ret = i40e_dev_tx_queue_start(dev, i);
@@ -3329,11 +3350,11 @@ i40e_switch_rx_queue(struct i40e_hw *hw, uint16_t q_idx, bool on)
 }
 /* Switch on or off the rx queues */
 static int
-i40e_vsi_switch_rx_queues(struct i40e_vsi *vsi, bool on)
+i40e_dev_switch_rx_queues(struct i40e_pf *pf, bool on)
 {
-	struct rte_eth_dev_data *dev_data = I40E_VSI_TO_DEV_DATA(vsi);
+	struct rte_eth_dev_data *dev_data = pf->dev_data;
 	struct i40e_rx_queue *rxq;
-	struct rte_eth_dev *dev = I40E_VSI_TO_ETH_DEV(vsi);
+	struct rte_eth_dev *dev = pf->adapter->eth_dev;
 	uint16_t i;
 	int ret;
 
@@ -3341,7 +3362,7 @@ i40e_vsi_switch_rx_queues(struct i40e_vsi *vsi, bool on)
 		rxq = dev_data->rx_queues[i];
 		/* Don't operate the queue if not configured or
 		 * if starting only per queue */
-		if (!rxq->q_set || (on && rxq->rx_deferred_start))
+		if (!rxq || !rxq->q_set || (on && rxq->rx_deferred_start))
 			continue;
 		if (on)
 			ret = i40e_dev_rx_queue_start(dev, i);
@@ -3356,26 +3377,26 @@ i40e_vsi_switch_rx_queues(struct i40e_vsi *vsi, bool on)
 
 /* Switch on or off all the rx/tx queues */
 int
-i40e_vsi_switch_queues(struct i40e_vsi *vsi, bool on)
+i40e_dev_switch_queues(struct i40e_pf *pf, bool on)
 {
 	int ret;
 
 	if (on) {
 		/* enable rx queues before enabling tx queues */
-		ret = i40e_vsi_switch_rx_queues(vsi, on);
+		ret = i40e_dev_switch_rx_queues(pf, on);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to switch rx queues");
 			return ret;
 		}
-		ret = i40e_vsi_switch_tx_queues(vsi, on);
+		ret = i40e_dev_switch_tx_queues(pf, on);
 	} else {
 		/* Stop tx queues before stopping rx queues */
-		ret = i40e_vsi_switch_tx_queues(vsi, on);
+		ret = i40e_dev_switch_tx_queues(pf, on);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to switch tx queues");
 			return ret;
 		}
-		ret = i40e_vsi_switch_rx_queues(vsi, on);
+		ret = i40e_dev_switch_rx_queues(pf, on);
 	}
 
 	return ret;
@@ -3383,15 +3404,18 @@ i40e_vsi_switch_queues(struct i40e_vsi *vsi, bool on)
 
 /* Initialize VSI for TX */
 static int
-i40e_vsi_tx_init(struct i40e_vsi *vsi)
+i40e_dev_tx_init(struct i40e_pf *pf)
 {
-	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
 	struct rte_eth_dev_data *data = pf->dev_data;
 	uint16_t i;
 	uint32_t ret = I40E_SUCCESS;
+	struct i40e_tx_queue *txq;
 
 	for (i = 0; i < data->nb_tx_queues; i++) {
-		ret = i40e_tx_queue_init(data->tx_queues[i]);
+		txq = data->tx_queues[i];
+		if (!txq || !txq->q_set)
+			continue;
+		ret = i40e_tx_queue_init(txq);
 		if (ret != I40E_SUCCESS)
 			break;
 	}
@@ -3401,16 +3425,20 @@ i40e_vsi_tx_init(struct i40e_vsi *vsi)
 
 /* Initialize VSI for RX */
 static int
-i40e_vsi_rx_init(struct i40e_vsi *vsi)
+i40e_dev_rx_init(struct i40e_pf *pf)
 {
-	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
 	struct rte_eth_dev_data *data = pf->dev_data;
 	int ret = I40E_SUCCESS;
 	uint16_t i;
+	struct i40e_rx_queue *rxq;
 
 	i40e_pf_config_mq_rx(pf);
 	for (i = 0; i < data->nb_rx_queues; i++) {
-		ret = i40e_rx_queue_init(data->rx_queues[i]);
+		rxq = data->rx_queues[i];
+		if (!rxq || !rxq->q_set)
+			continue;
+
+		ret = i40e_rx_queue_init(rxq);
 		if (ret != I40E_SUCCESS) {
 			PMD_DRV_LOG(ERR, "Failed to do RX queue "
 				    "initialization");
@@ -3421,20 +3449,19 @@ i40e_vsi_rx_init(struct i40e_vsi *vsi)
 	return ret;
 }
 
-/* Initialize VSI */
 static int
-i40e_vsi_init(struct i40e_vsi *vsi)
+i40e_dev_rxtx_init(struct i40e_pf *pf)
 {
 	int err;
 
-	err = i40e_vsi_tx_init(vsi);
+	err = i40e_dev_tx_init(pf);
 	if (err) {
-		PMD_DRV_LOG(ERR, "Failed to do vsi TX initialization");
+		PMD_DRV_LOG(ERR, "Failed to do TX initialization");
 		return err;
 	}
-	err = i40e_vsi_rx_init(vsi);
+	err = i40e_dev_rx_init(pf);
 	if (err) {
-		PMD_DRV_LOG(ERR, "Failed to do vsi RX initialization");
+		PMD_DRV_LOG(ERR, "Failed to do RX initialization");
 		return err;
 	}
 
@@ -4803,6 +4830,26 @@ i40e_dev_udp_tunnel_del(struct rte_eth_dev *dev,
 	return ret;
 }
 
+/* Calculate the maximum number of contiguous PF queues that are configured */
+static int
+i40e_pf_calc_configured_queues_num(struct i40e_pf *pf)
+{
+	struct rte_eth_dev_data *data = pf->dev_data;
+	int i, num;
+	struct i40e_rx_queue *rxq;
+
+	num = 0;
+	for (i = 0; i < pf->lan_nb_qps; i++) {
+		rxq = data->rx_queues[i];
+		if (rxq && rxq->q_set)
+			num++;
+		else
+			break;
+	}
+
+	return num;
+}
+
 /* Configure RSS */
 static int
 i40e_pf_config_rss(struct i40e_pf *pf)
@@ -4810,7 +4857,25 @@ i40e_pf_config_rss(struct i40e_pf *pf)
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct rte_eth_rss_conf rss_conf;
 	uint32_t i, lut = 0;
-	uint16_t j, num = i40e_align_floor(pf->dev_data->nb_rx_queues);
+	uint16_t j, num;
+
+	/*
+	 * If both VMDQ and RSS enabled, not all of PF queues are configured.
+	 * It's necessary to calulate the actual PF queues that are configured.
+	 */
+	if (pf->dev_data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG) {
+		num = i40e_pf_calc_configured_queues_num(pf);
+		num = i40e_align_floor(num);
+	} else
+		num = i40e_align_floor(pf->dev_data->nb_rx_queues);
+
+	PMD_INIT_LOG(INFO, "Max of contiguous %u PF queues are configured",
+			num);
+
+	if (num == 0) {
+		PMD_INIT_LOG(ERR, "No PF queues are configured to enable RSS");
+		return -ENOTSUP;
+	}
 
 	for (i = 0, j = 0; i < hw->func_caps.rss_table_size; i++, j++) {
 		if (j == num)
@@ -4908,18 +4973,21 @@ i40e_tunnel_filter_handle(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
 static int
 i40e_pf_config_mq_rx(struct i40e_pf *pf)
 {
-	if (!pf->dev_data->sriov.active) {
-		switch (pf->dev_data->dev_conf.rxmode.mq_mode) {
-		case ETH_MQ_RX_RSS:
-			i40e_pf_config_rss(pf);
-			break;
-		default:
-			i40e_pf_disable_rss(pf);
-			break;
-		}
+	int ret = 0;
+	enum rte_eth_rx_mq_mode mq_mode = pf->dev_data->dev_conf.rxmode.mq_mode;
+
+	if (mq_mode & ETH_MQ_RX_DCB_FLAG) {
+		PMD_INIT_LOG(ERR, "i40e doesn't support DCB yet");
+		return -ENOTSUP;
 	}
 
-	return 0;
+	/* RSS setup */
+	if (mq_mode & ETH_MQ_RX_RSS_FLAG)
+		ret = i40e_pf_config_rss(pf);
+	else
+		i40e_pf_disable_rss(pf);
+
+	return ret;
 }
 
 static int

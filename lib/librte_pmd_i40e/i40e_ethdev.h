@@ -355,7 +355,7 @@ struct i40e_adapter {
 	};
 };
 
-int i40e_vsi_switch_queues(struct i40e_vsi *vsi, bool on);
+int i40e_dev_switch_queues(struct i40e_pf *pf, bool on);
 int i40e_vsi_release(struct i40e_vsi *vsi);
 struct i40e_vsi *i40e_vsi_setup(struct i40e_pf *pf,
 				enum i40e_vsi_type type,
@@ -409,7 +409,7 @@ i40e_get_vsi_from_adapter(struct i40e_adapter *adapter)
 		return pf->main_vsi;
 	}
 }
-#define I40E_DEV_PRIVATE_TO_VSI(adapter) \
+#define I40E_DEV_PRIVATE_TO_MAIN_VSI(adapter) \
 	i40e_get_vsi_from_adapter((struct i40e_adapter *)adapter)
 
 /* I40E_VSI_TO */

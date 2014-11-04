@@ -1486,14 +1486,58 @@ i40e_xmit_pkts_simple(void *tx_queue,
 	return nb_tx;
 }
 
+/*
+ * Find the VSI the queue belongs to. 'queue_idx' is the queue index
+ * application used, which assume having sequential ones. But from driver's
+ * perspective, it's different. For example, q0 belongs to FDIR VSI, q1-q64
+ * to MAIN VSI, , q65-96 to SRIOV VSIs, q97-128 to VMDQ VSIs. For application
+ * running on host, q1-64 and q97-128 can be used, total 96 queues. They can
+ * use queue_idx from 0 to 95 to access queues, while real queue would be
+ * different. This function will do a queue mapping to find VSI the queue
+ * belongs to.
+ */
+static struct i40e_vsi*
+i40e_pf_get_vsi_by_qindex(struct i40e_pf *pf, uint16_t queue_idx)
+{
+	/* the queue in MAIN VSI range */
+	if (queue_idx < pf->main_vsi->nb_qps)
+		return pf->main_vsi;
+
+	queue_idx -= pf->main_vsi->nb_qps;
+
+	/* queue_idx is greater than VMDQ VSIs range */
+	if (queue_idx > pf->nb_cfg_vmdq_vsi * pf->vmdq_nb_qps - 1) {
+		PMD_INIT_LOG(ERR, "queue_idx out of range. VMDQ configured?");
+		return NULL;
+	}
+
+	return pf->vmdq[queue_idx / pf->vmdq_nb_qps].vsi;
+}
+
+static uint16_t
+i40e_get_queue_offset_by_qindex(struct i40e_pf *pf, uint16_t queue_idx)
+{
+	/* the queue in MAIN VSI range */
+	if (queue_idx < pf->main_vsi->nb_qps)
+		return queue_idx;
+
+	/* It's VMDQ queues */
+	queue_idx -= pf->main_vsi->nb_qps;
+
+	if (pf->nb_cfg_vmdq_vsi)
+		return queue_idx % pf->vmdq_nb_qps;
+	else {
+		PMD_INIT_LOG(ERR, "Fail to get queue offset");
+		return (uint16_t)(-1);
+	}
+}
+
 int
 i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct i40e_vsi *vsi = I40E_DEV_PRIVATE_TO_VSI(dev->data->dev_private);
 	struct i40e_rx_queue *rxq;
 	int err = -1;
-	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
-	uint16_t q_base = vsi->base_queue;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1511,7 +1555,7 @@ i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		/* Init the RX tail regieter. */
 		I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
 
-		err = i40e_switch_rx_queue(hw, rx_queue_id + q_base, TRUE);
+		err = i40e_switch_rx_queue(hw, rxq->reg_idx, TRUE);
 
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on",
@@ -1528,16 +1572,18 @@ i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 int
 i40e_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct i40e_vsi *vsi = I40E_DEV_PRIVATE_TO_VSI(dev->data->dev_private);
 	struct i40e_rx_queue *rxq;
 	int err;
-	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
-	uint16_t q_base = vsi->base_queue;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (rx_queue_id < dev->data->nb_rx_queues) {
 		rxq = dev->data->rx_queues[rx_queue_id];
 
-		err = i40e_switch_rx_queue(hw, rx_queue_id + q_base, FALSE);
+		/*
+		* rx_queue_id is queue id aplication refers to, while
+		* rxq->reg_idx is the real queue index.
+		*/
+		err = i40e_switch_rx_queue(hw, rxq->reg_idx, FALSE);
 
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off",
@@ -1554,15 +1600,20 @@ i40e_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 int
 i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
-	struct i40e_vsi *vsi = I40E_DEV_PRIVATE_TO_VSI(dev->data->dev_private);
 	int err = -1;
-	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
-	uint16_t q_base = vsi->base_queue;
+	struct i40e_tx_queue *txq;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (tx_queue_id < dev->data->nb_tx_queues) {
-		err = i40e_switch_tx_queue(hw, tx_queue_id + q_base, TRUE);
+		txq = dev->data->tx_queues[tx_queue_id];
+
+		/*
+		* tx_queue_id is queue id aplication refers to, while
+		* rxq->reg_idx is the real queue index.
+		*/
+		err = i40e_switch_tx_queue(hw, txq->reg_idx, TRUE);
 		if (err)
 			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on",
 				    tx_queue_id);
@@ -1574,16 +1625,18 @@ i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 int
 i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
-	struct i40e_vsi *vsi = I40E_DEV_PRIVATE_TO_VSI(dev->data->dev_private);
 	struct i40e_tx_queue *txq;
 	int err;
-	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
-	uint16_t q_base = vsi->base_queue;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (tx_queue_id < dev->data->nb_tx_queues) {
 		txq = dev->data->tx_queues[tx_queue_id];
 
-		err = i40e_switch_tx_queue(hw, tx_queue_id + q_base, FALSE);
+		/*
+		* tx_queue_id is queue id aplication refers to, while
+		* txq->reg_idx is the real queue index.
+		*/
+		err = i40e_switch_tx_queue(hw, txq->reg_idx, FALSE);
 
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u of",
@@ -1606,14 +1659,23 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp)
 {
-	struct i40e_vsi *vsi = I40E_DEV_PRIVATE_TO_VSI(dev->data->dev_private);
+	struct i40e_vsi *vsi;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_rx_queue *rxq;
 	const struct rte_memzone *rz;
 	uint32_t ring_size;
 	uint16_t len;
 	int use_def_burst_func = 1;
 
-	if (!vsi || queue_idx >= vsi->nb_qps) {
+	if (hw->mac.type == I40E_MAC_VF) {
+		struct i40e_vf *vf =
+			I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+		vsi = &vf->vsi;
+	} else
+		vsi = i40e_pf_get_vsi_by_qindex(pf, queue_idx);
+
+	if (vsi == NULL) {
 		PMD_DRV_LOG(ERR, "VSI not available or queue "
 			    "index exceeds the maximum");
 		return I40E_ERR_PARAM;
@@ -1646,7 +1708,12 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->nb_rx_desc = nb_desc;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 	rxq->queue_id = queue_idx;
-	rxq->reg_idx = vsi->base_queue + queue_idx;
+	if (hw->mac.type == I40E_MAC_VF)
+		rxq->reg_idx = queue_idx;
+	else /* PF device */
+		rxq->reg_idx = vsi->base_queue +
+			i40e_get_queue_offset_by_qindex(pf, queue_idx);
+
 	rxq->port_id = dev->data->port_id;
 	rxq->crc_len = (uint8_t) ((dev->data->dev_conf.rxmode.hw_strip_crc) ?
 							0 : ETHER_CRC_LEN);
@@ -1804,13 +1871,22 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			unsigned int socket_id,
 			const struct rte_eth_txconf *tx_conf)
 {
-	struct i40e_vsi *vsi = I40E_DEV_PRIVATE_TO_VSI(dev->data->dev_private);
+	struct i40e_vsi *vsi;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_tx_queue *txq;
 	const struct rte_memzone *tz;
 	uint32_t ring_size;
 	uint16_t tx_rs_thresh, tx_free_thresh;
 
-	if (!vsi || queue_idx >= vsi->nb_qps) {
+	if (hw->mac.type == I40E_MAC_VF) {
+		struct i40e_vf *vf =
+			I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+		vsi = &vf->vsi;
+	} else
+		vsi = i40e_pf_get_vsi_by_qindex(pf, queue_idx);
+
+	if (vsi == NULL) {
 		PMD_DRV_LOG(ERR, "VSI is NULL, or queue index (%u) "
 			    "exceeds the maximum", queue_idx);
 		return I40E_ERR_PARAM;
@@ -1934,7 +2010,12 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->hthresh = tx_conf->tx_thresh.hthresh;
 	txq->wthresh = tx_conf->tx_thresh.wthresh;
 	txq->queue_id = queue_idx;
-	txq->reg_idx = vsi->base_queue + queue_idx;
+	if (hw->mac.type == I40E_MAC_VF)
+		txq->reg_idx = queue_idx;
+	else /* PF device */
+		txq->reg_idx = vsi->base_queue +
+			i40e_get_queue_offset_by_qindex(pf, queue_idx);
+
 	txq->port_id = dev->data->port_id;
 	txq->txq_flags = tx_conf->txq_flags;
 	txq->vsi = vsi;
