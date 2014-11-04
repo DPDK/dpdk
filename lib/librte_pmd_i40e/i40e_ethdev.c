@@ -163,6 +163,7 @@ static int i40e_get_cap(struct i40e_hw *hw);
 static int i40e_pf_parameter_init(struct rte_eth_dev *dev);
 static int i40e_pf_setup(struct i40e_pf *pf);
 static int i40e_vsi_init(struct i40e_vsi *vsi);
+static int i40e_vmdq_setup(struct rte_eth_dev *dev);
 static void i40e_stat_update_32(struct i40e_hw *hw, uint32_t reg,
 		bool offset_loaded, uint64_t *offset, uint64_t *stat);
 static void i40e_stat_update_48(struct i40e_hw *hw,
@@ -275,21 +276,11 @@ static struct eth_driver rte_i40e_pmd = {
 };
 
 static inline int
-i40e_prev_power_of_2(int n)
+i40e_align_floor(int n)
 {
-       int p = n;
-
-       --p;
-       p |= p >> 1;
-       p |= p >> 2;
-       p |= p >> 4;
-       p |= p >> 8;
-       p |= p >> 16;
-       if (p == (n - 1))
-               return n;
-       p >>= 1;
-
-       return ++p;
+	if (n == 0)
+		return 0;
+	return (1 << (sizeof(n) * CHAR_BIT - 1 - __builtin_clz(n)));
 }
 
 static inline int
@@ -506,7 +497,7 @@ eth_i40e_dev_init(__rte_unused struct eth_driver *eth_drv,
 	if (!dev->data->mac_addrs) {
 		PMD_INIT_LOG(ERR, "Failed to allocated memory "
 					"for storing mac address");
-		goto err_get_mac_addr;
+		goto err_mac_alloc;
 	}
 	ether_addr_copy((struct ether_addr *)hw->mac.perm_addr,
 					&dev->data->mac_addrs[0]);
@@ -527,8 +518,9 @@ eth_i40e_dev_init(__rte_unused struct eth_driver *eth_drv,
 
 	return 0;
 
+err_mac_alloc:
+	i40e_vsi_release(pf->main_vsi);
 err_setup_pf_switch:
-	rte_free(pf->main_vsi);
 err_get_mac_addr:
 err_configure_lan_hmc:
 	(void)i40e_shutdown_lan_hmc(hw);
@@ -547,6 +539,27 @@ err_get_capabilities:
 static int
 i40e_dev_configure(struct rte_eth_dev *dev)
 {
+	int ret;
+	enum rte_eth_rx_mq_mode mq_mode = dev->data->dev_conf.rxmode.mq_mode;
+
+	/* VMDQ setup.
+	 *  Needs to move VMDQ setting out of i40e_pf_config_mq_rx() as VMDQ and
+	 *  RSS setting have different requirements.
+	 *  General PMD driver call sequence are NIC init, configure,
+	 *  rx/tx_queue_setup and dev_start. In rx/tx_queue_setup() function, it
+	 *  will try to lookup the VSI that specific queue belongs to if VMDQ
+	 *  applicable. So, VMDQ setting has to be done before
+	 *  rx/tx_queue_setup(). This function is good  to place vmdq_setup.
+	 *  For RSS setting, it will try to calculate actual configured RX queue
+	 *  number, which will be available after rx_queue_setup(). dev_start()
+	 *  function is good to place RSS setup.
+	 */
+	if (mq_mode & ETH_MQ_RX_VMDQ_FLAG) {
+		ret = i40e_vmdq_setup(dev);
+		if (ret)
+			return ret;
+	}
+
 	return i40e_dev_init_vlan(dev);
 }
 
@@ -1431,6 +1444,15 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
 
+	if (pf->flags | I40E_FLAG_VMDQ) {
+		dev_info->max_vmdq_pools = pf->max_nb_vmdq_vsi;
+		dev_info->vmdq_queue_base = dev_info->max_rx_queues;
+		dev_info->vmdq_queue_num = pf->vmdq_nb_qps *
+						pf->max_nb_vmdq_vsi;
+		dev_info->vmdq_pool_base = I40E_VMDQ_POOL_BASE;
+		dev_info->max_rx_queues += dev_info->vmdq_queue_num;
+		dev_info->max_tx_queues += dev_info->vmdq_queue_num;
+	}
 }
 
 static int
@@ -1972,7 +1994,7 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	uint16_t sum_queues = 0, sum_vsis;
+	uint16_t sum_queues = 0, sum_vsis, left_queues;
 
 	/* First check if FW support SRIOV */
 	if (dev->pci_dev->max_vfs && !hw->func_caps.sr_iov_1_1) {
@@ -1988,7 +2010,7 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 		pf->flags |= I40E_FLAG_RSS;
 		pf->lan_nb_qps = RTE_MIN(hw->func_caps.num_tx_qp,
 			(uint32_t)(1 << hw->func_caps.rss_table_entry_width));
-		pf->lan_nb_qps = i40e_prev_power_of_2(pf->lan_nb_qps);
+		pf->lan_nb_qps = i40e_align_floor(pf->lan_nb_qps);
 	} else
 		pf->lan_nb_qps = 1;
 	sum_queues = pf->lan_nb_qps;
@@ -2022,11 +2044,19 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 
 	if (hw->func_caps.vmdq) {
 		pf->flags |= I40E_FLAG_VMDQ;
-		pf->vmdq_nb_qps = I40E_DEFAULT_QP_NUM_VMDQ;
-		sum_queues += pf->vmdq_nb_qps;
-		sum_vsis += 1;
-		PMD_INIT_LOG(INFO, "VMDQ queue pairs:%u", pf->vmdq_nb_qps);
+		pf->vmdq_nb_qps = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM;
+		pf->max_nb_vmdq_vsi = 1;
+		/*
+		 * If VMDQ available, assume a single VSI can be created.  Will adjust
+		 * later.
+		 */
+		sum_queues += pf->vmdq_nb_qps * pf->max_nb_vmdq_vsi;
+		sum_vsis += pf->max_nb_vmdq_vsi;
+	} else {
+		pf->vmdq_nb_qps = 0;
+		pf->max_nb_vmdq_vsi = 0;
 	}
+	pf->nb_cfg_vmdq_vsi = 0;
 
 	if (hw->func_caps.fd) {
 		pf->flags |= I40E_FLAG_FDIR;
@@ -2045,6 +2075,22 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "Total queue pairs:%u, asked:%u",
 			     hw->func_caps.num_rx_qp, sum_queues);
 		return -EINVAL;
+	}
+
+	/* Adjust VMDQ setting to support as many VMs as possible */
+	if (pf->flags & I40E_FLAG_VMDQ) {
+		left_queues = hw->func_caps.num_rx_qp - sum_queues;
+
+		pf->max_nb_vmdq_vsi += RTE_MIN(left_queues / pf->vmdq_nb_qps,
+					pf->max_num_vsi - sum_vsis);
+
+		/* Limit the max VMDQ number that rte_ether that can support  */
+		pf->max_nb_vmdq_vsi = RTE_MIN(pf->max_nb_vmdq_vsi,
+					ETH_64_POOLS - 1);
+
+		PMD_INIT_LOG(INFO, "Max VMDQ VSI num:%u",
+				pf->max_nb_vmdq_vsi);
+		PMD_INIT_LOG(INFO, "VMDQ queue pairs:%u", pf->vmdq_nb_qps);
 	}
 
 	/* Each VSI occupy 1 MSIX interrupt at least, plus IRQ0 for misc intr
@@ -2439,7 +2485,7 @@ i40e_vsi_config_tc_queue_mapping(struct i40e_vsi *vsi,
 	vsi->enabled_tc = enabled_tcmap;
 
 	/* Number of queues per enabled TC */
-	qpnum_per_tc = i40e_prev_power_of_2(vsi->nb_qps / total_tc);
+	qpnum_per_tc = i40e_align_floor(vsi->nb_qps / total_tc);
 	qpnum_per_tc = RTE_MIN(qpnum_per_tc, I40E_MAX_Q_PER_TC);
 	bsf = rte_bsf32(qpnum_per_tc);
 
@@ -2752,6 +2798,9 @@ i40e_vsi_setup(struct i40e_pf *pf,
 	case I40E_VSI_SRIOV :
 		vsi->nb_qps = pf->vf_nb_qps;
 		break;
+	case I40E_VSI_VMDQ2:
+		vsi->nb_qps = pf->vmdq_nb_qps;
+		break;
 	default:
 		goto fail_mem;
 	}
@@ -2893,8 +2942,44 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		 * Since VSI is not created yet, only configure parameter,
 		 * will add vsi below.
 		 */
-	}
-	else {
+	} else if (type == I40E_VSI_VMDQ2) {
+		memset(&ctxt, 0, sizeof(ctxt));
+		/*
+		 * For other VSI, the uplink_seid equals to uplink VSI's
+		 * uplink_seid since they share same VEB
+		 */
+		vsi->uplink_seid = uplink_vsi->uplink_seid;
+		ctxt.pf_num = hw->pf_id;
+		ctxt.vf_num = 0;
+		ctxt.uplink_seid = vsi->uplink_seid;
+		ctxt.connection_type = 0x1;
+		ctxt.flags = I40E_AQ_VSI_TYPE_VMDQ2;
+
+		ctxt.info.valid_sections |=
+				rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SWITCH_VALID);
+		/* user_param carries flag to enable loop back */
+		if (user_param) {
+			ctxt.info.switch_id =
+			rte_cpu_to_le_16(I40E_AQ_VSI_SW_ID_FLAG_LOCAL_LB);
+			ctxt.info.switch_id |=
+			rte_cpu_to_le_16(I40E_AQ_VSI_SW_ID_FLAG_ALLOW_LB);
+		}
+
+		/* Configure port/vlan */
+		ctxt.info.valid_sections |=
+			rte_cpu_to_le_16(I40E_AQ_VSI_PROP_VLAN_VALID);
+		ctxt.info.port_vlan_flags |= I40E_AQ_VSI_PVLAN_MODE_ALL;
+		ret = i40e_vsi_config_tc_queue_mapping(vsi, &ctxt.info,
+						I40E_DEFAULT_TCMAP);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(ERR, "Failed to configure "
+					"TC queue mapping");
+			goto fail_msix_alloc;
+		}
+		ctxt.info.up_enable_bits = I40E_DEFAULT_TCMAP;
+		ctxt.info.valid_sections |=
+			rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SCHED_VALID);
+	} else {
 		PMD_DRV_LOG(ERR, "VSI: Not support other type VSI yet");
 		goto fail_msix_alloc;
 	}
@@ -3069,7 +3154,6 @@ i40e_pf_setup(struct i40e_pf *pf)
 {
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct i40e_filter_control_settings settings;
-	struct rte_eth_dev_data *dev_data = pf->dev_data;
 	struct i40e_vsi *vsi;
 	int ret;
 
@@ -3091,8 +3175,6 @@ i40e_pf_setup(struct i40e_pf *pf)
 		return I40E_ERR_NOT_READY;
 	}
 	pf->main_vsi = vsi;
-	dev_data->nb_rx_queues = vsi->nb_qps;
-	dev_data->nb_tx_queues = vsi->nb_qps;
 
 	/* Configure filter control */
 	memset(&settings, 0, sizeof(settings));
@@ -3360,6 +3442,102 @@ i40e_vsi_init(struct i40e_vsi *vsi)
 		return err;
 	}
 
+	return err;
+}
+
+static int
+i40e_vmdq_setup(struct rte_eth_dev *dev)
+{
+	struct rte_eth_conf *conf = &dev->data->dev_conf;
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	int i, err, conf_vsis, j, loop;
+	struct i40e_vsi *vsi;
+	struct i40e_vmdq_info *vmdq_info;
+	struct rte_eth_vmdq_rx_conf *vmdq_conf;
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+
+	/*
+	 * Disable interrupt to avoid message from VF. Furthermore, it will
+	 * avoid race condition in VSI creation/destroy.
+	 */
+	i40e_pf_disable_irq0(hw);
+
+	if ((pf->flags & I40E_FLAG_VMDQ) == 0) {
+		PMD_INIT_LOG(ERR, "FW doesn't support VMDQ");
+		return -ENOTSUP;
+	}
+
+	conf_vsis = conf->rx_adv_conf.vmdq_rx_conf.nb_queue_pools;
+	if (conf_vsis > pf->max_nb_vmdq_vsi) {
+		PMD_INIT_LOG(ERR, "VMDQ config: %u, max support:%u",
+			conf->rx_adv_conf.vmdq_rx_conf.nb_queue_pools,
+			pf->max_nb_vmdq_vsi);
+		return -ENOTSUP;
+	}
+
+	if (pf->vmdq != NULL) {
+		PMD_INIT_LOG(INFO, "VMDQ already configured");
+		return 0;
+	}
+
+	pf->vmdq = rte_zmalloc("vmdq_info_struct",
+				sizeof(*vmdq_info) * conf_vsis, 0);
+
+	if (pf->vmdq == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate memory");
+		return -ENOMEM;
+	}
+
+	vmdq_conf = &conf->rx_adv_conf.vmdq_rx_conf;
+
+	/* Create VMDQ VSI */
+	for (i = 0; i < conf_vsis; i++) {
+		vsi = i40e_vsi_setup(pf, I40E_VSI_VMDQ2, pf->main_vsi,
+				vmdq_conf->enable_loop_back);
+		if (vsi == NULL) {
+			PMD_INIT_LOG(ERR, "Failed to create VMDQ VSI");
+			err = -1;
+			goto err_vsi_setup;
+		}
+		vmdq_info = &pf->vmdq[i];
+		vmdq_info->pf = pf;
+		vmdq_info->vsi = vsi;
+	}
+	pf->nb_cfg_vmdq_vsi = conf_vsis;
+
+	/* Configure Vlan */
+	loop = sizeof(vmdq_conf->pool_map[0].pools) * CHAR_BIT;
+	for (i = 0; i < vmdq_conf->nb_pool_maps; i++) {
+		for (j = 0; j < loop && j < pf->nb_cfg_vmdq_vsi; j++) {
+			if (vmdq_conf->pool_map[i].pools & (1UL << j)) {
+				PMD_INIT_LOG(INFO, "Add vlan %u to vmdq pool %u",
+					vmdq_conf->pool_map[i].vlan_id, j);
+
+				err = i40e_vsi_add_vlan(pf->vmdq[j].vsi,
+						vmdq_conf->pool_map[i].vlan_id);
+				if (err) {
+					PMD_INIT_LOG(ERR, "Failed to add vlan");
+					err = -1;
+					goto err_vsi_setup;
+				}
+			}
+		}
+	}
+
+	i40e_pf_enable_irq0(hw);
+
+	return 0;
+
+err_vsi_setup:
+	for (i = 0; i < conf_vsis; i++)
+		if (pf->vmdq[i].vsi == NULL)
+			break;
+		else
+			i40e_vsi_release(pf->vmdq[i].vsi);
+
+	rte_free(pf->vmdq);
+	pf->vmdq = NULL;
+	i40e_pf_enable_irq0(hw);
 	return err;
 }
 
@@ -4636,7 +4814,7 @@ i40e_pf_config_rss(struct i40e_pf *pf)
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct rte_eth_rss_conf rss_conf;
 	uint32_t i, lut = 0;
-	uint16_t j, num = i40e_prev_power_of_2(pf->dev_data->nb_rx_queues);
+	uint16_t j, num = i40e_align_floor(pf->dev_data->nb_rx_queues);
 
 	for (i = 0, j = 0; i < hw->func_caps.rss_table_size; i++, j++) {
 		if (j == num)

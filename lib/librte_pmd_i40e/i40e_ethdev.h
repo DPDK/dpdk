@@ -47,12 +47,14 @@
 #define I40E_QUEUE_BASE_ADDR_UNIT 128
 /* number of VSIs and queue default setting */
 #define I40E_MAX_QP_NUM_PER_VF    16
-#define I40E_DEFAULT_QP_NUM_VMDQ  64
 #define I40E_DEFAULT_QP_NUM_FDIR  64
 #define I40E_UINT32_BIT_SIZE      (CHAR_BIT * sizeof(uint32_t))
 #define I40E_VFTA_SIZE            (4096 / I40E_UINT32_BIT_SIZE)
 /* Default TC traffic in case DCB is not enabled */
 #define I40E_DEFAULT_TCMAP        0x1
+
+/* Always assign pool 0 to main VSI, VMDQ will start from 1 */
+#define I40E_VMDQ_POOL_BASE       1
 
 /* i40e flags */
 #define I40E_FLAG_RSS                   (1ULL << 0)
@@ -233,6 +235,14 @@ struct i40e_pf_vf {
 };
 
 /*
+ * Structure to store private data for VMDQ instance
+ */
+struct i40e_vmdq_info {
+	struct i40e_pf *pf;
+	struct i40e_vsi *vsi;
+};
+
+/*
  * Structure to store private data specific for PF instance.
  */
 struct i40e_pf {
@@ -264,6 +274,11 @@ struct i40e_pf {
 	/* store VXLAN UDP ports */
 	uint16_t vxlan_ports[I40E_MAX_PF_UDP_OFFLOAD_PORTS];
 	uint16_t vxlan_bitmap; /* Vxlan bit mask */
+
+	/* VMDQ related info */
+	uint16_t max_nb_vmdq_vsi; /* Max number of VMDQ VSIs supported */
+	uint16_t nb_cfg_vmdq_vsi; /* number of VMDQ VSIs configured */
+	struct i40e_vmdq_info *vmdq;
 };
 
 enum pending_msg {
