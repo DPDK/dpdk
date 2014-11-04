@@ -253,20 +253,36 @@ struct rte_eth_thresh {
 };
 
 /**
+ *  Simple flags are used for rte_eth_conf.rxmode.mq_mode.
+ */
+#define ETH_MQ_RX_RSS_FLAG  0x1
+#define ETH_MQ_RX_DCB_FLAG  0x2
+#define ETH_MQ_RX_VMDQ_FLAG 0x4
+
+/**
  *  A set of values to identify what method is to be used to route
  *  packets to multiple queues.
  */
 enum rte_eth_rx_mq_mode {
-	ETH_MQ_RX_NONE = 0,  /**< None of DCB,RSS or VMDQ mode */
+	/** None of DCB,RSS or VMDQ mode */
+	ETH_MQ_RX_NONE = 0,
 
-	ETH_MQ_RX_RSS,       /**< For RX side, only RSS is on */
-	ETH_MQ_RX_DCB,       /**< For RX side,only DCB is on. */
-	ETH_MQ_RX_DCB_RSS,   /**< Both DCB and RSS enable */
+	/** For RX side, only RSS is on */
+	ETH_MQ_RX_RSS = ETH_MQ_RX_RSS_FLAG,
+	/** For RX side,only DCB is on. */
+	ETH_MQ_RX_DCB = ETH_MQ_RX_DCB_FLAG,
+	/** Both DCB and RSS enable */
+	ETH_MQ_RX_DCB_RSS = ETH_MQ_RX_RSS_FLAG | ETH_MQ_RX_DCB_FLAG,
 
-	ETH_MQ_RX_VMDQ_ONLY, /**< Only VMDQ, no RSS nor DCB */
-	ETH_MQ_RX_VMDQ_RSS,  /**< RSS mode with VMDQ */
-	ETH_MQ_RX_VMDQ_DCB,  /**< Use VMDQ+DCB to route traffic to queues */
-	ETH_MQ_RX_VMDQ_DCB_RSS, /**< Enable both VMDQ and DCB in VMDq */
+	/** Only VMDQ, no RSS nor DCB */
+	ETH_MQ_RX_VMDQ_ONLY = ETH_MQ_RX_VMDQ_FLAG,
+	/** RSS mode with VMDQ */
+	ETH_MQ_RX_VMDQ_RSS = ETH_MQ_RX_RSS_FLAG | ETH_MQ_RX_VMDQ_FLAG,
+	/** Use VMDQ+DCB to route traffic to queues */
+	ETH_MQ_RX_VMDQ_DCB = ETH_MQ_RX_VMDQ_FLAG | ETH_MQ_RX_DCB_FLAG,
+	/** Enable both VMDQ and DCB in VMDq */
+	ETH_MQ_RX_VMDQ_DCB_RSS = ETH_MQ_RX_RSS_FLAG | ETH_MQ_RX_DCB_FLAG |
+				 ETH_MQ_RX_VMDQ_FLAG,
 };
 
 /**
@@ -850,7 +866,7 @@ struct rte_eth_conf {
 				 Read the datasheet of given ethernet controller
 				 for details. The possible values of this field
 				 are defined in implementation of each driver. */
-	union {
+	struct {
 		struct rte_eth_rss_conf rss_conf; /**< Port RSS configuration */
 		struct rte_eth_vmdq_dcb_conf vmdq_dcb_conf;
 		/**< Port vmdq+dcb configuration. */
@@ -918,6 +934,9 @@ struct rte_eth_dev_info {
 	uint32_t tx_offload_capa; /**< Device TX offload capabilities. */
 	struct rte_eth_rxconf default_rxconf; /**< Default RX configuration */
 	struct rte_eth_txconf default_txconf; /**< Default TX configuration */
+	uint16_t vmdq_queue_base; /**< First queue ID for VMDQ pools. */
+	uint16_t vmdq_queue_num;  /**< Queue number for VMDQ pools. */
+	uint16_t vmdq_pool_base;  /**< First ID of VMDQ pools. */
 };
 
 /** Maximum name length for extended statistics counters */

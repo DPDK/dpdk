@@ -813,7 +813,8 @@ rte_eth_dev_config_restore(uint8_t port_id)
 			continue;
 
 		/* add address to the hardware */
-		if  (*dev->dev_ops->mac_addr_add)
+		if  (*dev->dev_ops->mac_addr_add &&
+			dev->data->mac_pool_sel[i] & (1ULL << pool))
 			(*dev->dev_ops->mac_addr_add)(dev, &addr, i, pool);
 		else {
 			PMD_DEBUG_TRACE("port %d: MAC address array not supported\n",
@@ -2219,6 +2220,9 @@ rte_eth_dev_mac_addr_remove(uint8_t port_id, struct ether_addr *addr)
 
 	/* Update address in NIC data structure */
 	ether_addr_copy(&null_mac_addr, &dev->data->mac_addrs[index]);
+
+	/* reset pool bitmap */
+	dev->data->mac_pool_sel[index] = 0;
 
 	return 0;
 }
