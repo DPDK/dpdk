@@ -1573,48 +1573,41 @@ i40e_priority_flow_ctrl_set(__rte_unused struct rte_eth_dev *dev,
 static void
 i40e_macaddr_add(struct rte_eth_dev *dev,
 		 struct ether_addr *mac_addr,
-		 __attribute__((unused)) uint32_t index,
-		 __attribute__((unused)) uint32_t pool)
+		 __rte_unused uint32_t index,
+		 uint32_t pool)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_mac_filter_info mac_filter;
-	struct i40e_vsi *vsi = pf->main_vsi;
-	struct ether_addr old_mac;
+	struct i40e_vsi *vsi;
 	int ret;
 
-	if (!is_valid_assigned_ether_addr(mac_addr)) {
-		PMD_DRV_LOG(ERR, "Invalid ethernet address");
+	/* If VMDQ not enabled or configured, return */
+	if (pool != 0 && (!(pf->flags | I40E_FLAG_VMDQ) || !pf->nb_cfg_vmdq_vsi)) {
+		PMD_DRV_LOG(ERR, "VMDQ not %s, can't set mac to pool %u",
+			pf->flags | I40E_FLAG_VMDQ ? "configured" : "enabled",
+			pool);
 		return;
 	}
 
-	if (is_same_ether_addr(mac_addr, &(pf->dev_addr))) {
-		PMD_DRV_LOG(INFO, "Ignore adding permanent mac address");
+	if (pool > pf->nb_cfg_vmdq_vsi) {
+		PMD_DRV_LOG(ERR, "Pool number %u invalid. Max pool is %u",
+				pool, pf->nb_cfg_vmdq_vsi);
 		return;
 	}
 
-	/* Write mac address */
-	ret = i40e_aq_mac_address_write(hw, I40E_AQC_WRITE_TYPE_LAA_ONLY,
-					mac_addr->addr_bytes, NULL);
-	if (ret != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to write mac address");
-		return;
-	}
-
-	(void)rte_memcpy(&old_mac, hw->mac.addr, ETHER_ADDR_LEN);
-	(void)rte_memcpy(hw->mac.addr, mac_addr->addr_bytes,
-			ETHER_ADDR_LEN);
 	(void)rte_memcpy(&mac_filter.mac_addr, mac_addr, ETHER_ADDR_LEN);
 	mac_filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
+
+	if (pool == 0)
+		vsi = pf->main_vsi;
+	else
+		vsi = pf->vmdq[pool - 1].vsi;
 
 	ret = i40e_vsi_add_mac(vsi, &mac_filter);
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to add MACVLAN filter");
 		return;
 	}
-
-	ether_addr_copy(mac_addr, &pf->dev_addr);
-	i40e_vsi_delete_mac(vsi, &old_mac);
 }
 
 /* Remove a MAC address, and update filters */
@@ -1622,36 +1615,39 @@ static void
 i40e_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_vsi *vsi = pf->main_vsi;
-	struct rte_eth_dev_data *data = I40E_VSI_TO_DEV_DATA(vsi);
+	struct i40e_vsi *vsi;
+	struct rte_eth_dev_data *data = dev->data;
 	struct ether_addr *macaddr;
 	int ret;
-	struct i40e_hw *hw =
-		I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	if (index >= vsi->max_macaddrs)
-		return;
+	uint32_t i;
+	uint64_t pool_sel;
 
 	macaddr = &(data->mac_addrs[index]);
-	if (!is_valid_assigned_ether_addr(macaddr))
-		return;
 
-	ret = i40e_aq_mac_address_write(hw, I40E_AQC_WRITE_TYPE_LAA_ONLY,
-					hw->mac.perm_addr, NULL);
-	if (ret != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to write mac address");
-		return;
+	pool_sel = dev->data->mac_pool_sel[index];
+
+	for (i = 0; i < sizeof(pool_sel) * CHAR_BIT; i++) {
+		if (pool_sel & (1ULL << i)) {
+			if (i == 0)
+				vsi = pf->main_vsi;
+			else {
+				/* No VMDQ pool enabled or configured */
+				if (!(pf->flags | I40E_FLAG_VMDQ) ||
+					(i > pf->nb_cfg_vmdq_vsi)) {
+					PMD_DRV_LOG(ERR, "No VMDQ pool enabled"
+							"/configured");
+					return;
+				}
+				vsi = pf->vmdq[i - 1].vsi;
+			}
+			ret = i40e_vsi_delete_mac(vsi, macaddr);
+
+			if (ret) {
+				PMD_DRV_LOG(ERR, "Failed to remove MACVLAN filter");
+				return;
+			}
+		}
 	}
-
-	(void)rte_memcpy(hw->mac.addr, hw->mac.perm_addr, ETHER_ADDR_LEN);
-
-	ret = i40e_vsi_delete_mac(vsi, macaddr);
-	if (ret != I40E_SUCCESS)
-		return;
-
-	/* Clear device address as it has been removed */
-	if (is_same_ether_addr(&(pf->dev_addr), macaddr))
-		memset(&pf->dev_addr, 0, sizeof(struct ether_addr));
 }
 
 /* Set perfect match or hash match of MAC and VLAN for a VF */
