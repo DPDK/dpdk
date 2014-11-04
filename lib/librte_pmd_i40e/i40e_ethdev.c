@@ -3574,7 +3574,6 @@ i40e_dev_interrupt_delayed_handler(void *param)
 	i40e_dev_link_update(dev, 0);
 	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
 
-	I40E_WRITE_REG(hw, I40E_PFINT_ICR0_ENA, I40E_PFINT_ICR0_ENA_MASK);
 	i40e_pf_enable_irq0(hw);
 	rte_intr_enable(&(dev->pci_dev->intr_handle));
 }
@@ -3601,7 +3600,6 @@ i40e_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 
 	/* Disable interrupt */
 	i40e_pf_disable_irq0(hw);
-	I40E_WRITE_REG(hw, I40E_PFINT_ICR0_ENA, 0);
 
 	/* read out interrupt causes */
 	icr0 = I40E_READ_REG(hw, I40E_PFINT_ICR0);
@@ -3663,7 +3661,6 @@ i40e_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 
 done:
 	/* Enable interrupt */
-	I40E_WRITE_REG(hw, I40E_PFINT_ICR0_ENA, I40E_PFINT_ICR0_ENA_MASK);
 	i40e_pf_enable_irq0(hw);
 	rte_intr_enable(&(dev->pci_dev->intr_handle));
 }
