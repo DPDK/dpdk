@@ -1078,7 +1078,13 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 					rte_pktmbuf_free(m);
 					return;
 				}
-				offset = 4;
+
+				/*
+				 * HW vlan strip will reduce the packet length
+				 * by minus length of vlan tag, so need restore
+				 * the packet length by plus it.
+				 */
+				offset = VLAN_HLEN;
 				vlan_tag =
 				(uint16_t)
 				vlan_tags[(uint16_t)dev_ll->vdev->dev->device_fh];
@@ -1102,8 +1108,10 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 	len = tx_q->len;
 
 	m->ol_flags = PKT_TX_VLAN_PKT;
-	/*FIXME: offset*/
+
 	m->data_len += offset;
+	m->pkt_len += offset;
+
 	m->vlan_tci = vlan_tag;
 
 	tx_q->m_table[len] = m;
