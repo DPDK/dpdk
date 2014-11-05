@@ -51,9 +51,9 @@
 
 typedef struct vmxnet3_buf_info {
 	uint16_t               len;
-	struct rte_mbuf       *m;
-	uint64_t             bufPA;
-}vmxnet3_buf_info_t;
+	struct rte_mbuf        *m;
+	uint64_t               bufPA;
+} vmxnet3_buf_info_t;
 
 typedef struct vmxnet3_cmd_ring {
 	vmxnet3_buf_info_t     *buf_info;
@@ -104,6 +104,12 @@ typedef struct vmxnet3_comp_ring {
 	uint64_t	       basePA;
 } vmxnet3_comp_ring_t;
 
+struct vmxnet3_data_ring {
+	struct Vmxnet3_TxDataDesc *base;
+	uint32_t                  size;
+	uint64_t                  basePA;
+};
+
 static inline void
 vmxnet3_comp_ring_adv_next2proc(struct vmxnet3_comp_ring *ring)
 {
@@ -143,6 +149,7 @@ typedef struct vmxnet3_tx_queue {
 	struct vmxnet3_hw            *hw;
 	struct vmxnet3_cmd_ring      cmd_ring;
 	struct vmxnet3_comp_ring     comp_ring;
+	struct vmxnet3_data_ring     data_ring;
 	uint32_t                     qid;
 	struct Vmxnet3_TxQueueDesc   *shared;
 	struct vmxnet3_txq_stats     stats;

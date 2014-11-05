@@ -401,15 +401,17 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 
 	for (i = 0; i < hw->num_tx_queues; i++) {
 		Vmxnet3_TxQueueDesc *tqd = &hw->tqd_start[i];
-		vmxnet3_tx_queue_t *txq   = dev->data->tx_queues[i];
+		vmxnet3_tx_queue_t *txq  = dev->data->tx_queues[i];
 
 		tqd->ctrl.txNumDeferred  = 0;
 		tqd->ctrl.txThreshold    = 1;
 		tqd->conf.txRingBasePA   = txq->cmd_ring.basePA;
 		tqd->conf.compRingBasePA = txq->comp_ring.basePA;
+		tqd->conf.dataRingBasePA = txq->data_ring.basePA;
 
 		tqd->conf.txRingSize   = txq->cmd_ring.size;
 		tqd->conf.compRingSize = txq->comp_ring.size;
+		tqd->conf.dataRingSize = txq->data_ring.size;
 		tqd->conf.intrIdx      = txq->comp_ring.intr_idx;
 		tqd->status.stopped    = TRUE;
 		tqd->status.error      = 0;
@@ -418,7 +420,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 
 	for (i = 0; i < hw->num_rx_queues; i++) {
 		Vmxnet3_RxQueueDesc *rqd  = &hw->rqd_start[i];
-		vmxnet3_rx_queue_t *rxq    = dev->data->rx_queues[i];
+		vmxnet3_rx_queue_t *rxq   = dev->data->rx_queues[i];
 
 		rqd->conf.rxRingBasePA[0] = rxq->cmd_ring[0].basePA;
 		rqd->conf.rxRingBasePA[1] = rxq->cmd_ring[1].basePA;
@@ -583,7 +585,6 @@ vmxnet3_dev_close(struct rte_eth_dev *dev)
 
 	vmxnet3_dev_stop(dev);
 	hw->adapter_stopped = TRUE;
-
 }
 
 static void
