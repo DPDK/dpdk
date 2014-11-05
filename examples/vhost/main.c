@@ -1110,7 +1110,8 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 	}
 
 	if (vm2vm_mode == VM2VM_HARDWARE) {
-		if (find_local_dest(dev, m, &offset, &vlan_tag) != 0) {
+		if (find_local_dest(dev, m, &offset, &vlan_tag) != 0 ||
+			offset > rte_pktmbuf_tailroom(m)) {
 			rte_pktmbuf_free(m);
 			return;
 		}
@@ -1896,7 +1897,9 @@ virtio_dev_tx_zcp(struct virtio_net *dev)
 
 		/* Buffer address translation. */
 		buff_addr = gpa_to_vva(dev, desc->addr);
-		phys_addr = gpa_to_hpa(vdev, desc->addr, desc->len, &addr_type);
+		/* Need check extra VLAN_HLEN size for inserting VLAN tag */
+		phys_addr = gpa_to_hpa(vdev, desc->addr, desc->len + VLAN_HLEN,
+			&addr_type);
 
 		if (likely(packet_success < (free_entries - 1)))
 			/* Prefetch descriptor index. */
