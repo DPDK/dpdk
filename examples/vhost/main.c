@@ -1040,6 +1040,57 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 }
 
 /*
+ * Check if the destination MAC of a packet is one local VM,
+ * and get its vlan tag, and offset if it is.
+ */
+static inline int __attribute__((always_inline))
+find_local_dest(struct virtio_net *dev, struct rte_mbuf *m,
+	uint32_t *offset, uint16_t *vlan_tag)
+{
+	struct virtio_net_data_ll *dev_ll = ll_root_used;
+	struct ether_hdr *pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+
+	while (dev_ll != NULL) {
+		if ((dev_ll->vdev->ready == DEVICE_RX)
+			&& ether_addr_cmp(&(pkt_hdr->d_addr),
+		&dev_ll->vdev->mac_address)) {
+			/*
+			 * Drop the packet if the TX packet is
+			 * destined for the TX device.
+			 */
+			if (dev_ll->vdev->dev->device_fh == dev->device_fh) {
+				LOG_DEBUG(VHOST_DATA,
+				"(%"PRIu64") TX: Source and destination"
+				" MAC addresses are the same. Dropping "
+				"packet.\n",
+				dev_ll->vdev->dev->device_fh);
+				return -1;
+			}
+
+			/*
+			 * HW vlan strip will reduce the packet length
+			 * by minus length of vlan tag, so need restore
+			 * the packet length by plus it.
+			 */
+			*offset = VLAN_HLEN;
+			*vlan_tag =
+			(uint16_t)
+			vlan_tags[(uint16_t)dev_ll->vdev->dev->device_fh];
+
+			LOG_DEBUG(VHOST_DATA,
+			"(%"PRIu64") TX: pkt to local VM device id:"
+			"(%"PRIu64") vlan tag: %d.\n",
+			dev->device_fh, dev_ll->vdev->dev->device_fh,
+			vlan_tag);
+
+			break;
+		}
+		dev_ll = dev_ll->next;
+	}
+	return 0;
+}
+
+/*
  * This function routes the TX packet to the correct interface. This may be a local device
  * or the physical port.
  */
@@ -1050,8 +1101,6 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 	struct rte_mbuf **m_table;
 	unsigned len, ret, offset = 0;
 	const uint16_t lcore_id = rte_lcore_id();
-	struct virtio_net_data_ll *dev_ll = ll_root_used;
-	struct ether_hdr *pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 	struct virtio_net *dev = vdev->dev;
 
 	/*check if destination is local VM*/
@@ -1061,43 +1110,9 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 	}
 
 	if (vm2vm_mode == VM2VM_HARDWARE) {
-		while (dev_ll != NULL) {
-			if ((dev_ll->vdev->ready == DEVICE_RX)
-				&& ether_addr_cmp(&(pkt_hdr->d_addr),
-				&dev_ll->vdev->mac_address)) {
-				/*
-				 * Drop the packet if the TX packet is
-				 * destined for the TX device.
-				 */
-				if (dev_ll->vdev->dev->device_fh == dev->device_fh) {
-					LOG_DEBUG(VHOST_DATA,
-					"(%"PRIu64") TX: Source and destination"
-					" MAC addresses are the same. Dropping "
-					"packet.\n",
-					dev_ll->vdev->dev->device_fh);
-					rte_pktmbuf_free(m);
-					return;
-				}
-
-				/*
-				 * HW vlan strip will reduce the packet length
-				 * by minus length of vlan tag, so need restore
-				 * the packet length by plus it.
-				 */
-				offset = VLAN_HLEN;
-				vlan_tag =
-				(uint16_t)
-				vlan_tags[(uint16_t)dev_ll->vdev->dev->device_fh];
-
-				LOG_DEBUG(VHOST_DATA,
-				"(%"PRIu64") TX: pkt to local VM device id:"
-				"(%"PRIu64") vlan tag: %d.\n",
-				dev->device_fh, dev_ll->vdev->dev->device_fh,
-				vlan_tag);
-
-				break;
-			}
-			dev_ll = dev_ll->next;
+		if (find_local_dest(dev, m, &offset, &vlan_tag) != 0) {
+			rte_pktmbuf_free(m);
+			return;
 		}
 	}
 
@@ -1726,8 +1741,6 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 	struct rte_mbuf *mbuf = NULL;
 	unsigned len, ret, offset = 0;
 	struct vpool *vpool;
-	struct virtio_net_data_ll *dev_ll = ll_root_used;
-	struct ether_hdr *pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 	uint16_t vlan_tag = (uint16_t)vlan_tags[(uint16_t)dev->device_fh];
 	uint16_t vmdq_rx_q = ((struct vhost_dev *)dev->priv)->vmdq_rx_q;
 
@@ -1756,46 +1769,10 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 		 * such a ambiguous situation, so pkt will lost.
 		 */
 		vlan_tag = external_pkt_default_vlan_tag;
-		while (dev_ll != NULL) {
-			if (likely(dev_ll->vdev->ready == DEVICE_RX) &&
-				ether_addr_cmp(&(pkt_hdr->d_addr),
-				&dev_ll->vdev->mac_address)) {
-
-				/*
-				 * Drop the packet if the TX packet is destined
-				 * for the TX device.
-				 */
-				if (unlikely(dev_ll->vdev->dev->device_fh
-					== dev->device_fh)) {
-					LOG_DEBUG(VHOST_DATA,
-					"(%"PRIu64") TX: Source and destination"
-					"MAC addresses are the same. Dropping "
-					"packet.\n",
-					dev_ll->vdev->dev->device_fh);
-					MBUF_HEADROOM_UINT32(mbuf)
-						= (uint32_t)desc_idx;
-					__rte_mbuf_raw_free(mbuf);
-					return;
-				}
-
-				/*
-				 * Packet length offset 4 bytes for HW vlan
-				 * strip when L2 switch back.
-				 */
-				offset = 4;
-				vlan_tag =
-				(uint16_t)
-				vlan_tags[(uint16_t)dev_ll->vdev->dev->device_fh];
-
-				LOG_DEBUG(VHOST_DATA,
-				"(%"PRIu64") TX: pkt to local VM device id:"
-				"(%"PRIu64") vlan tag: %d.\n",
-				dev->device_fh, dev_ll->vdev->dev->device_fh,
-				vlan_tag);
-
-				break;
-			}
-			dev_ll = dev_ll->next;
+		if (find_local_dest(dev, m, &offset, &vlan_tag) != 0) {
+			MBUF_HEADROOM_UINT32(mbuf) = (uint32_t)desc_idx;
+			__rte_mbuf_raw_free(mbuf);
+			return;
 		}
 	}
 
