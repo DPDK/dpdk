@@ -65,6 +65,7 @@
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_prefetch.h>
+#include <rte_ip.h>
 #include <rte_udp.h>
 #include <rte_tcp.h>
 #include <rte_sctp.h>
@@ -614,7 +615,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 			/* Check for hardware stripped VLAN tag */
 			if (rcd->ts) {
-				PMD_RX_LOG(ERR, "Received packet with vlan ID: %d.",
+				PMD_RX_LOG(DEBUG, "Received packet with vlan ID: %d.",
 					   rcd->tci);
 				rxm->ol_flags = PKT_RX_VLAN_PKT;
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
@@ -636,6 +637,25 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rxm->data_len = (uint16_t)rcd->len;
 			rxm->port = rxq->port_id;
 			rxm->data_off = RTE_PKTMBUF_HEADROOM;
+
+			/* Check packet types, rx checksum errors, etc. Only support IPv4 so far. */
+			if (rcd->v4) {
+				struct ether_hdr *eth = rte_pktmbuf_mtod(rxm, struct ether_hdr *);
+				struct ipv4_hdr *ip = (struct ipv4_hdr *)(eth + 1);
+
+				if (((ip->version_ihl & 0xf) << 2) > (int)sizeof(struct ipv4_hdr))
+					rxm->ol_flags |= PKT_RX_IPV4_HDR_EXT;
+				else
+					rxm->ol_flags |= PKT_RX_IPV4_HDR;
+
+				if (!rcd->cnc) {
+					if (!rcd->ipc)
+						rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+
+					if ((rcd->tcp || rcd->udp) && !rcd->tuc)
+						rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+				}
+			}
 
 			rx_pkts[nb_rx++] = rxm;
 rcd_done:
