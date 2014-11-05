@@ -52,6 +52,11 @@
 
 #include "process.h"
 
+#ifdef RTE_LIBRTE_XEN_DOM0
+#define DEFAULT_MEM_SIZE "30"
+#else
+#define DEFAULT_MEM_SIZE "8"
+#endif
 #define mp_flag "--proc-type=secondary"
 #define no_hpet "--no-hpet"
 #define no_huge "--no-huge"
@@ -616,14 +621,15 @@ test_no_huge_flag(void)
 	/* With --no-huge */
 	const char *argv1[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2"};
 	/* With --no-huge and -m */
-	const char *argv2[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2", "-m", "2"};
+	const char *argv2[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2",
+			"-m", DEFAULT_MEM_SIZE};
 
 	/* With --no-huge and --socket-mem */
 	const char *argv3[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2",
-			"--socket-mem=2"};
+			"--socket-mem=" DEFAULT_MEM_SIZE};
 	/* With --no-huge, -m and --socket-mem */
 	const char *argv4[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2",
-			"-m", "2", "--socket-mem=2"};
+			"-m", DEFAULT_MEM_SIZE, "--socket-mem=" DEFAULT_MEM_SIZE};
 	if (launch_proc(argv1) != 0) {
 		printf("Error - process did not run ok with --no-huge flag\n");
 		return -1;
@@ -789,20 +795,20 @@ test_misc_flags(void)
 	/* With invalid --syslog */
 	const char *argv5[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog", "error"};
 	/* With no-sh-conf */
-	const char *argv6[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv6[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 			no_shconf, nosh_prefix };
 
 #ifdef RTE_EXEC_ENV_BSDAPP
 	return 0;
 #endif
 	/* With --huge-dir */
-	const char *argv7[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv7[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir", hugepath};
 	/* With empty --huge-dir (should fail) */
-	const char *argv8[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv8[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir"};
 	/* With invalid --huge-dir */
-	const char *argv9[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv9[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir", "invalid"};
 	/* Secondary process with invalid --huge-dir (should run as flag has no
 	 * effect on secondary processes) */
@@ -923,15 +929,15 @@ test_file_prefix(void)
 #endif
 
 	/* this should fail unless the test itself is run with "memtest" prefix */
-	const char *argv0[] = {prgname, mp_flag, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv0[] = {prgname, mp_flag, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=" memtest };
 
 	/* primary process with memtest1 */
-	const char *argv1[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv1[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 				"--file-prefix=" memtest1 };
 
 	/* primary process with memtest2 */
-	const char *argv2[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv2[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 				"--file-prefix=" memtest2 };
 
 	char prefix[32];
@@ -1025,7 +1031,6 @@ test_file_prefix(void)
 static int
 test_memory_flags(void)
 {
-	const char* mem_size = NULL;
 #ifdef RTE_EXEC_ENV_BSDAPP
 	/* BSD target doesn't support prefixes at this point */
 	const char * prefix = "";
@@ -1037,20 +1042,14 @@ test_memory_flags(void)
 	}
 	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
-#ifdef RTE_LIBRTE_XEN_DOM0
-	mem_size = "30";
-#else
-	mem_size = "2";
-#endif
-
 
 	/* valid -m flag and mp flag */
 	const char *argv0[] = {prgname, prefix, mp_flag, "-c", "10",
-			"-n", "2", "-m", mem_size};
+			"-n", "2", "-m", DEFAULT_MEM_SIZE};
 
 	/* valid -m flag */
 	const char *argv1[] = {prgname, "-c", "10", "-n", "2",
-			"--file-prefix=" memtest, "-m", mem_size};
+			"--file-prefix=" memtest, "-m", DEFAULT_MEM_SIZE};
 
 	/* invalid (zero) --socket-mem flag */
 	const char *argv2[] = {prgname, "-c", "10", "-n", "2",
@@ -1078,7 +1077,7 @@ test_memory_flags(void)
 
 	/* valid --socket-mem specified together with -m flag */
 	const char *argv8[] = {prgname, "-c", "10", "-n", "2",
-			"--file-prefix=" memtest, "-m", "2", "--socket-mem=2,2"};
+			"--file-prefix=" memtest, "-m", DEFAULT_MEM_SIZE, "--socket-mem=2,2"};
 
 	/* construct an invalid socket mask with 2 megs on each socket plus
 	 * extra 2 megs on socket that doesn't exist on current system */
@@ -1100,7 +1099,7 @@ test_memory_flags(void)
 
 	/* add one extra socket */
 	for (i = 0; i < num_sockets + 1; i++) {
-		snprintf(buf, sizeof(buf), "%s2", invalid_socket_mem);
+		snprintf(buf, sizeof(buf), "%s%s", invalid_socket_mem, DEFAULT_MEM_SIZE);
 		snprintf(invalid_socket_mem, sizeof(invalid_socket_mem), "%s", buf);
 
 		if (num_sockets + 1 - i > 1) {
@@ -1116,7 +1115,7 @@ test_memory_flags(void)
 
 	/* add one extra socket */
 	for (i = 0; i < num_sockets; i++) {
-		snprintf(buf, sizeof(buf), "%s2", valid_socket_mem);
+		snprintf(buf, sizeof(buf), "%s%s", valid_socket_mem, DEFAULT_MEM_SIZE);
 		snprintf(valid_socket_mem, sizeof(valid_socket_mem), "%s", buf);
 
 		if (num_sockets - i > 1) {
