@@ -4722,8 +4722,8 @@ i40e_add_vxlan_port(struct i40e_pf *pf, uint16_t port)
 		return -1;
 	}
 
-	PMD_DRV_LOG(INFO, "Added %s port %d with AQ command with index %d",
-			 port,  filter_index);
+	PMD_DRV_LOG(INFO, "Added port %d with AQ command with index %d",
+			 port,  filter_idx);
 
 	/* New port: add it and mark its index in the bitmap */
 	pf->vxlan_ports[idx] = port;
