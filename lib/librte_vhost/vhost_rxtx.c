@@ -45,7 +45,7 @@
 /**
  * This function adds buffers to the virtio devices RX virtqueue. Buffers can
  * be received from the physical port or from another virtio device. A packet
- * count is returned to indicate the number of packets that were succesfully
+ * count is returned to indicate the number of packets that are succesfully
  * added to the RX queue. This function works when mergeable is disabled.
  */
 static inline uint32_t __attribute__((always_inline))
@@ -76,7 +76,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	count = (count > MAX_PKT_BURST) ? MAX_PKT_BURST : count;
 
 	/*
-	 * As many data cores may want access to available buffers, 
+	 * As many data cores may want access to available buffers,
 	 * they need to be reserved.
 	 */
 	do {
@@ -143,7 +143,8 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 		}
 
 		/* Update used ring with desc information */
-		vq->used->ring[res_cur_idx & (vq->size - 1)].id = head[packet_success];
+		vq->used->ring[res_cur_idx & (vq->size - 1)].id =
+							head[packet_success];
 		vq->used->ring[res_cur_idx & (vq->size - 1)].len = packet_len;
 
 		/* Copy mbuf data to buffer */
@@ -389,10 +390,7 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint16_t res_base_idx,
 }
 
 /*
- * This function adds buffers to the virtio devices RX virtqueue. Buffers can
- * be received from the physical port or from another virtio device. A packet
- * count is returned to indicate the number of packets that were succesfully
- * added to the RX queue. This function works for mergeable RX.
+ * This function works for mergeable RX.
  */
 static inline uint32_t __attribute__((always_inline))
 virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
@@ -729,5 +727,4 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
 		eventfd_write((int)vq->kickfd, 1);
 	return entry_success;
-
 }

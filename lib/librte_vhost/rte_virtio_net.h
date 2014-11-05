@@ -90,8 +90,7 @@ struct vhost_virtqueue {
 /**
  * Device structure contains all configuration information relating to the device.
  */
-struct virtio_net
-{
+struct virtio_net {
 	struct vhost_virtqueue	*virtqueue[VIRTIO_QNUM];	/**< Contains all virtqueue information. */
 	struct virtio_memory	*mem;		/**< QEMU memory and memory region information. */
 	uint64_t		features;	/**< Negotiated feature set. */
