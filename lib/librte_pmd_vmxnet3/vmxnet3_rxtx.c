@@ -540,21 +540,19 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 			/* Check for hardware stripped VLAN tag */
 			if (rcd->ts) {
-
 				PMD_RX_LOG(ERR, "Received packet with vlan ID: %d.",
 					   rcd->tci);
 				rxm->ol_flags = PKT_RX_VLAN_PKT;
-
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
 				VMXNET3_ASSERT(rxm &&
 					       rte_pktmbuf_mtod(rxm, void *));
 #endif
 				/* Copy vlan tag in packet buffer */
-				rxm->vlan_tci = rte_le_to_cpu_16(
-						(uint16_t)rcd->tci);
-
-			} else
+				rxm->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
+			} else {
 				rxm->ol_flags = 0;
+				rxm->vlan_tci = 0;
+			}
 
 			/* Initialize newly received packet buffer */
 			rxm->port = rxq->port_id;
@@ -563,11 +561,9 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rxm->pkt_len = (uint16_t)rcd->len;
 			rxm->data_len = (uint16_t)rcd->len;
 			rxm->port = rxq->port_id;
-			rxm->vlan_tci = 0;
 			rxm->data_off = RTE_PKTMBUF_HEADROOM;
 
 			rx_pkts[nb_rx++] = rxm;
-
 rcd_done:
 			rxq->cmd_ring[ring_idx].next2comp = idx;
 			VMXNET3_INC_RING_IDX_ONLY(rxq->cmd_ring[ring_idx].next2comp, rxq->cmd_ring[ring_idx].size);
