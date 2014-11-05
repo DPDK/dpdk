@@ -451,6 +451,19 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 	uint32_t i = 0, val = 0;
 	struct vmxnet3_cmd_ring *ring = &rxq->cmd_ring[ring_id];
 
+	if (ring_id == 0) {
+		/* Usually: One HEAD type buf per packet
+		 * val = (ring->next2fill % rxq->hw->bufs_per_pkt) ?
+		 * VMXNET3_RXD_BTYPE_BODY : VMXNET3_RXD_BTYPE_HEAD;
+		 */
+
+		/* We use single packet buffer so all heads here */
+		val = VMXNET3_RXD_BTYPE_HEAD;
+	} else {
+		/* All BODY type buffers for 2nd ring */
+		val = VMXNET3_RXD_BTYPE_BODY;
+	}
+
 	while (vmxnet3_cmd_ring_desc_avail(ring) > 0) {
 		struct Vmxnet3_RxDesc *rxd;
 		struct rte_mbuf *mbuf;
@@ -458,22 +471,9 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 
 		rxd = (struct Vmxnet3_RxDesc *)(ring->base + ring->next2fill);
 
-		if (ring->rid == 0) {
-			/* Usually: One HEAD type buf per packet
-			 * val = (ring->next2fill % rxq->hw->bufs_per_pkt) ?
-			 * VMXNET3_RXD_BTYPE_BODY : VMXNET3_RXD_BTYPE_HEAD;
-			 */
-
-			/* We use single packet buffer so all heads here */
-			val = VMXNET3_RXD_BTYPE_HEAD;
-		} else {
-			/* All BODY type buffers for 2nd ring; which won't be used at all by ESXi */
-			val = VMXNET3_RXD_BTYPE_BODY;
-		}
-
 		/* Allocate blank mbuf for the current Rx Descriptor */
 		mbuf = rte_rxmbuf_alloc(rxq->mp);
-		if (mbuf == NULL) {
+		if (unlikely(mbuf == NULL)) {
 			PMD_RX_LOG(ERR, "Error allocating mbuf in %s", __func__);
 			rxq->stats.rx_buf_alloc_failure++;
 			err = ENOMEM;
@@ -536,150 +536,140 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	rcd = &rxq->comp_ring.base[rxq->comp_ring.next2proc].rcd;
 
-	if (rxq->stopped) {
+	if (unlikely(rxq->stopped)) {
 		PMD_RX_LOG(DEBUG, "Rx queue is stopped.");
 		return 0;
 	}
 
 	while (rcd->gen == rxq->comp_ring.gen) {
-
 		if (nb_rx >= nb_pkts)
 			break;
+
 		idx = rcd->rxdIdx;
 		ring_idx = (uint8_t)((rcd->rqID == rxq->qid1) ? 0 : 1);
 		rxd = (Vmxnet3_RxDesc *)rxq->cmd_ring[ring_idx].base + idx;
 		rbi = rxq->cmd_ring[ring_idx].buf_info + idx;
 
-		if (rcd->sop != 1 || rcd->eop != 1) {
+		if (unlikely(rcd->sop != 1 || rcd->eop != 1)) {
 			rte_pktmbuf_free_seg(rbi->m);
-
 			PMD_RX_LOG(DEBUG, "Packet spread across multiple buffers\n)");
 			goto rcd_done;
+		}
 
+		PMD_RX_LOG(DEBUG, "rxd idx: %d ring idx: %d.", idx, ring_idx);
+
+#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
+		VMXNET3_ASSERT(rcd->len <= rxd->len);
+		VMXNET3_ASSERT(rbi->m);
+#endif
+		if (unlikely(rcd->len == 0)) {
+			PMD_RX_LOG(DEBUG, "Rx buf was skipped. rxring[%d][%d]\n)",
+				   ring_idx, idx);
+#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
+			VMXNET3_ASSERT(rcd->sop && rcd->eop);
+#endif
+			rte_pktmbuf_free_seg(rbi->m);
+			goto rcd_done;
+		}
+
+		/* Assuming a packet is coming in a single packet buffer */
+		if (unlikely(rxd->btype != VMXNET3_RXD_BTYPE_HEAD)) {
+			PMD_RX_LOG(DEBUG,
+				   "Alert : Misbehaving device, incorrect "
+				   " buffer type used. iPacket dropped.");
+			rte_pktmbuf_free_seg(rbi->m);
+			goto rcd_done;
+		}
+#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
+		VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_HEAD);
+#endif
+		/* Get the packet buffer pointer from buf_info */
+		rxm = rbi->m;
+
+		/* Clear descriptor associated buf_info to be reused */
+		rbi->m = NULL;
+		rbi->bufPA = 0;
+
+		/* Update the index that we received a packet */
+		rxq->cmd_ring[ring_idx].next2comp = idx;
+
+		/* For RCD with EOP set, check if there is frame error */
+		if (unlikely(rcd->err)) {
+			rxq->stats.drop_total++;
+			rxq->stats.drop_err++;
+
+			if (!rcd->fcs) {
+				rxq->stats.drop_fcs++;
+				PMD_RX_LOG(ERR, "Recv packet dropped due to frame err.");
+			}
+			PMD_RX_LOG(ERR, "Error in received packet rcd#:%d rxd:%d",
+				   (int)(rcd - (struct Vmxnet3_RxCompDesc *)
+					 rxq->comp_ring.base), rcd->rxdIdx);
+			rte_pktmbuf_free_seg(rxm);
+			goto rcd_done;
+		}
+
+		/* Check for hardware stripped VLAN tag */
+		if (rcd->ts) {
+			PMD_RX_LOG(DEBUG, "Received packet with vlan ID: %d.",
+				   rcd->tci);
+			rxm->ol_flags = PKT_RX_VLAN_PKT;
+			/* Copy vlan tag in packet buffer */
+			rxm->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
 		} else {
+			rxm->ol_flags = 0;
+			rxm->vlan_tci = 0;
+		}
 
-			PMD_RX_LOG(DEBUG, "rxd idx: %d ring idx: %d.", idx, ring_idx);
+		/* Initialize newly received packet buffer */
+		rxm->port = rxq->port_id;
+		rxm->nb_segs = 1;
+		rxm->next = NULL;
+		rxm->pkt_len = (uint16_t)rcd->len;
+		rxm->data_len = (uint16_t)rcd->len;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
-			VMXNET3_ASSERT(rcd->len <= rxd->len);
-			VMXNET3_ASSERT(rbi->m);
-#endif
-			if (rcd->len == 0) {
-				PMD_RX_LOG(DEBUG, "Rx buf was skipped. rxring[%d][%d]\n)",
-					   ring_idx, idx);
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
-				VMXNET3_ASSERT(rcd->sop && rcd->eop);
-#endif
-				rte_pktmbuf_free_seg(rbi->m);
+		/* Check packet type, checksum errors, etc. Only support IPv4 for now. */
+		if (rcd->v4) {
+			struct ether_hdr *eth = rte_pktmbuf_mtod(rxm, struct ether_hdr *);
+			struct ipv4_hdr *ip = (struct ipv4_hdr *)(eth + 1);
 
-				goto rcd_done;
+			if (((ip->version_ihl & 0xf) << 2) > (int)sizeof(struct ipv4_hdr))
+				rxm->ol_flags |= PKT_RX_IPV4_HDR_EXT;
+			else
+				rxm->ol_flags |= PKT_RX_IPV4_HDR;
+
+			if (!rcd->cnc) {
+				if (!rcd->ipc)
+					rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+
+				if ((rcd->tcp || rcd->udp) && !rcd->tuc)
+					rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
 			}
+		}
 
-			/* Assuming a packet is coming in a single packet buffer */
-			if (rxd->btype != VMXNET3_RXD_BTYPE_HEAD) {
-				PMD_RX_LOG(DEBUG,
-					   "Alert : Misbehaving device, incorrect "
-					   " buffer type used. iPacket dropped.");
-				rte_pktmbuf_free_seg(rbi->m);
-				goto rcd_done;
-			}
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
-			VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_HEAD);
-#endif
-			/* Get the packet buffer pointer from buf_info */
-			rxm = rbi->m;
-
-			/* Clear descriptor associated buf_info to be reused */
-			rbi->m = NULL;
-			rbi->bufPA = 0;
-
-			/* Update the index that we received a packet */
-			rxq->cmd_ring[ring_idx].next2comp = idx;
-
-			/* For RCD with EOP set, check if there is frame error */
-			if (rcd->err) {
-				rxq->stats.drop_total++;
-				rxq->stats.drop_err++;
-
-				if (!rcd->fcs) {
-					rxq->stats.drop_fcs++;
-					PMD_RX_LOG(ERR, "Recv packet dropped due to frame err.");
-				}
-				PMD_RX_LOG(ERR, "Error in received packet rcd#:%d rxd:%d",
-					   (int)(rcd - (struct Vmxnet3_RxCompDesc *)
-						 rxq->comp_ring.base), rcd->rxdIdx);
-				rte_pktmbuf_free_seg(rxm);
-
-				goto rcd_done;
-			}
-
-			/* Check for hardware stripped VLAN tag */
-			if (rcd->ts) {
-				PMD_RX_LOG(DEBUG, "Received packet with vlan ID: %d.",
-					   rcd->tci);
-				rxm->ol_flags = PKT_RX_VLAN_PKT;
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
-				VMXNET3_ASSERT(rxm &&
-					       rte_pktmbuf_mtod(rxm, void *));
-#endif
-				/* Copy vlan tag in packet buffer */
-				rxm->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
-			} else {
-				rxm->ol_flags = 0;
-				rxm->vlan_tci = 0;
-			}
-
-			/* Initialize newly received packet buffer */
-			rxm->port = rxq->port_id;
-			rxm->nb_segs = 1;
-			rxm->next = NULL;
-			rxm->pkt_len = (uint16_t)rcd->len;
-			rxm->data_len = (uint16_t)rcd->len;
-			rxm->port = rxq->port_id;
-			rxm->data_off = RTE_PKTMBUF_HEADROOM;
-
-			/* Check packet types, rx checksum errors, etc. Only support IPv4 so far. */
-			if (rcd->v4) {
-				struct ether_hdr *eth = rte_pktmbuf_mtod(rxm, struct ether_hdr *);
-				struct ipv4_hdr *ip = (struct ipv4_hdr *)(eth + 1);
-
-				if (((ip->version_ihl & 0xf) << 2) > (int)sizeof(struct ipv4_hdr))
-					rxm->ol_flags |= PKT_RX_IPV4_HDR_EXT;
-				else
-					rxm->ol_flags |= PKT_RX_IPV4_HDR;
-
-				if (!rcd->cnc) {
-					if (!rcd->ipc)
-						rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-
-					if ((rcd->tcp || rcd->udp) && !rcd->tuc)
-						rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-				}
-			}
-
-			rx_pkts[nb_rx++] = rxm;
+		rx_pkts[nb_rx++] = rxm;
 rcd_done:
-			rxq->cmd_ring[ring_idx].next2comp = idx;
-			VMXNET3_INC_RING_IDX_ONLY(rxq->cmd_ring[ring_idx].next2comp, rxq->cmd_ring[ring_idx].size);
+		rxq->cmd_ring[ring_idx].next2comp = idx;
+		VMXNET3_INC_RING_IDX_ONLY(rxq->cmd_ring[ring_idx].next2comp, rxq->cmd_ring[ring_idx].size);
 
-			/* It's time to allocate some new buf and renew descriptors */
-			vmxnet3_post_rx_bufs(rxq, ring_idx);
-			if (unlikely(rxq->shared->ctrl.updateRxProd)) {
-				VMXNET3_WRITE_BAR0_REG(hw, rxprod_reg[ring_idx] + (rxq->queue_id * VMXNET3_REG_ALIGN),
-						       rxq->cmd_ring[ring_idx].next2fill);
-			}
+		/* It's time to allocate some new buf and renew descriptors */
+		vmxnet3_post_rx_bufs(rxq, ring_idx);
+		if (unlikely(rxq->shared->ctrl.updateRxProd)) {
+			VMXNET3_WRITE_BAR0_REG(hw, rxprod_reg[ring_idx] + (rxq->queue_id * VMXNET3_REG_ALIGN),
+					       rxq->cmd_ring[ring_idx].next2fill);
+		}
 
-			/* Advance to the next descriptor in comp_ring */
-			vmxnet3_comp_ring_adv_next2proc(&rxq->comp_ring);
+		/* Advance to the next descriptor in comp_ring */
+		vmxnet3_comp_ring_adv_next2proc(&rxq->comp_ring);
 
-			rcd = &rxq->comp_ring.base[rxq->comp_ring.next2proc].rcd;
-			nb_rxd++;
-			if (nb_rxd > rxq->cmd_ring[0].size) {
-				PMD_RX_LOG(ERR,
-					   "Used up quota of receiving packets,"
-					   " relinquish control.");
-				break;
-			}
+		rcd = &rxq->comp_ring.base[rxq->comp_ring.next2proc].rcd;
+		nb_rxd++;
+		if (nb_rxd > rxq->cmd_ring[0].size) {
+			PMD_RX_LOG(ERR,
+				   "Used up quota of receiving packets,"
+				   " relinquish control.");
+			break;
 		}
 	}
 
