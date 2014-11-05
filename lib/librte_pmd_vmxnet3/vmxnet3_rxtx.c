@@ -319,6 +319,12 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			txd->cq = 1;
 			txd->eop = 1;
 
+			/* Add VLAN tag if requested */
+			if (txm->ol_flags & PKT_TX_VLAN_PKT) {
+				txd->ti = 1;
+				txd->tci = rte_cpu_to_le_16(txm->vlan_tci);
+			}
+
 			/* Record current mbuf for freeing it later in tx complete */
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
 			VMXNET3_ASSERT(txm);
