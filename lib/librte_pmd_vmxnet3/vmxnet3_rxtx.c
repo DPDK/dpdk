@@ -157,7 +157,7 @@ vmxnet3_txq_dump(struct vmxnet3_tx_queue *txq)
 #endif
 
 static inline void
-vmxnet3_cmd_ring_release(vmxnet3_cmd_ring_t *ring)
+vmxnet3_cmd_ring_release_mbufs(vmxnet3_cmd_ring_t *ring)
 {
 	while (ring->next2comp != ring->next2fill) {
 		/* No need to worry about tx desc ownership, device is quiesced by now. */
@@ -171,16 +171,23 @@ vmxnet3_cmd_ring_release(vmxnet3_cmd_ring_t *ring)
 		}
 		vmxnet3_cmd_ring_adv_next2comp(ring);
 	}
+}
+
+static void
+vmxnet3_cmd_ring_release(vmxnet3_cmd_ring_t *ring)
+{
+	vmxnet3_cmd_ring_release_mbufs(ring);
 	rte_free(ring->buf_info);
 	ring->buf_info = NULL;
 }
+
 
 void
 vmxnet3_dev_tx_queue_release(void *txq)
 {
 	vmxnet3_tx_queue_t *tq = txq;
 
-	if (txq != NULL) {
+	if (tq != NULL) {
 		/* Release the cmd_ring */
 		vmxnet3_cmd_ring_release(&tq->cmd_ring);
 	}
@@ -192,11 +199,72 @@ vmxnet3_dev_rx_queue_release(void *rxq)
 	int i;
 	vmxnet3_rx_queue_t *rq = rxq;
 
-	if (rxq != NULL) {
+	if (rq != NULL) {
 		/* Release both the cmd_rings */
 		for (i = 0; i < VMXNET3_RX_CMDRING_SIZE; i++)
 			vmxnet3_cmd_ring_release(&rq->cmd_ring[i]);
 	}
+}
+
+static void
+vmxnet3_dev_tx_queue_reset(void *txq)
+{
+	vmxnet3_tx_queue_t *tq = txq;
+	struct vmxnet3_cmd_ring *ring = &tq->cmd_ring;
+	struct vmxnet3_comp_ring *comp_ring = &tq->comp_ring;
+	int size;
+
+	if (tq != NULL) {
+		/* Release the cmd_ring mbufs */
+		vmxnet3_cmd_ring_release_mbufs(&tq->cmd_ring);
+	}
+
+	/* Tx vmxnet rings structure initialization*/
+	ring->next2fill = 0;
+	ring->next2comp = 0;
+	ring->gen = VMXNET3_INIT_GEN;
+	comp_ring->next2proc = 0;
+	comp_ring->gen = VMXNET3_INIT_GEN;
+
+	size = sizeof(struct Vmxnet3_TxDesc) * ring->size;
+	size += sizeof(struct Vmxnet3_TxCompDesc) * comp_ring->size;
+
+	memset(ring->base, 0, size);
+}
+
+static void
+vmxnet3_dev_rx_queue_reset(void *rxq)
+{
+	int i;
+	vmxnet3_rx_queue_t *rq = rxq;
+	struct vmxnet3_cmd_ring *ring0, *ring1;
+	struct vmxnet3_comp_ring *comp_ring;
+	int size;
+
+	if (rq != NULL) {
+		/* Release both the cmd_rings mbufs */
+		for (i = 0; i < VMXNET3_RX_CMDRING_SIZE; i++)
+			vmxnet3_cmd_ring_release_mbufs(&rq->cmd_ring[i]);
+	}
+
+	ring0 = &rq->cmd_ring[0];
+	ring1 = &rq->cmd_ring[1];
+	comp_ring = &rq->comp_ring;
+
+	/* Rx vmxnet rings structure initialization */
+	ring0->next2fill = 0;
+	ring1->next2fill = 0;
+	ring0->next2comp = 0;
+	ring1->next2comp = 0;
+	ring0->gen = VMXNET3_INIT_GEN;
+	ring1->gen = VMXNET3_INIT_GEN;
+	comp_ring->next2proc = 0;
+	comp_ring->gen = VMXNET3_INIT_GEN;
+
+	size = sizeof(struct Vmxnet3_RxDesc) * (ring0->size + ring1->size);
+	size += sizeof(struct Vmxnet3_RxCompDesc) * comp_ring->size;
+
+	memset(ring0->base, 0, size);
 }
 
 void
@@ -211,7 +279,7 @@ vmxnet3_dev_clear_queues(struct rte_eth_dev *dev)
 
 		if (txq != NULL) {
 			txq->stopped = TRUE;
-			vmxnet3_dev_tx_queue_release(txq);
+			vmxnet3_dev_tx_queue_reset(txq);
 		}
 	}
 
@@ -220,7 +288,7 @@ vmxnet3_dev_clear_queues(struct rte_eth_dev *dev)
 
 		if (rxq != NULL) {
 			rxq->stopped = TRUE;
-			vmxnet3_dev_rx_queue_release(rxq);
+			vmxnet3_dev_rx_queue_reset(rxq);
 		}
 	}
 }
