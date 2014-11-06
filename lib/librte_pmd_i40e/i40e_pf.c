@@ -413,29 +413,28 @@ i40e_pf_host_process_cmd_config_vsi_queues(struct i40e_pf_vf *vf,
 {
 	struct i40e_hw *hw = I40E_PF_TO_HW(vf->pf);
 	struct i40e_vsi *vsi = vf->vsi;
-	int ret = I40E_SUCCESS;
-	struct i40e_virtchnl_vsi_queue_config_info *qconfig =
-	    (struct i40e_virtchnl_vsi_queue_config_info *)msg;
-	int i;
-	struct i40e_virtchnl_queue_pair_info *qpair;
+	struct i40e_virtchnl_vsi_queue_config_info *vc_vqci =
+		(struct i40e_virtchnl_vsi_queue_config_info *)msg;
+	struct i40e_virtchnl_queue_pair_info *vc_qpi;
+	int i, ret = I40E_SUCCESS;
 
-	if (msg == NULL || msglen <= sizeof(*qconfig) ||
-		qconfig->num_queue_pairs > vsi->nb_qps) {
+	if (msg == NULL || msglen <= sizeof(*vc_vqci) ||
+		vc_vqci->num_queue_pairs > vsi->nb_qps) {
 		PMD_DRV_LOG(ERR, "vsi_queue_config_info argument wrong");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}
 
-	qpair = qconfig->qpair;
-	for (i = 0; i < qconfig->num_queue_pairs; i++) {
-		if (qpair[i].rxq.queue_id > vsi->nb_qps - 1 ||
-			qpair[i].txq.queue_id > vsi->nb_qps - 1) {
+	vc_qpi = vc_vqci->qpair;
+	for (i = 0; i < vc_vqci->num_queue_pairs; i++) {
+		if (vc_qpi[i].rxq.queue_id > vsi->nb_qps - 1 ||
+			vc_qpi[i].txq.queue_id > vsi->nb_qps - 1) {
 			ret = I40E_ERR_PARAM;
 			goto send_msg;
 		}
 
 		/* Apply VF RX queue setting to HMC */
-		if (i40e_pf_host_hmc_config_rxq(hw, vf, &qpair[i].rxq)
+		if (i40e_pf_host_hmc_config_rxq(hw, vf, &vc_qpi[i].rxq)
 			!= I40E_SUCCESS) {
 			PMD_DRV_LOG(ERR, "Configure RX queue HMC failed");
 			ret = I40E_ERR_PARAM;
@@ -443,7 +442,7 @@ i40e_pf_host_process_cmd_config_vsi_queues(struct i40e_pf_vf *vf,
 		}
 
 		/* Apply VF TX queue setting to HMC */
-		if (i40e_pf_host_hmc_config_txq(hw, vf, &qpair[i].txq)
+		if (i40e_pf_host_hmc_config_txq(hw, vf, &vc_qpi[i].txq)
 			!= I40E_SUCCESS) {
 			PMD_DRV_LOG(ERR, "Configure TX queue HMC failed");
 			ret = I40E_ERR_PARAM;
@@ -454,6 +453,7 @@ i40e_pf_host_process_cmd_config_vsi_queues(struct i40e_pf_vf *vf,
 send_msg:
 	i40e_pf_host_send_msg_to_vf(vf, I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES,
 							ret, NULL, 0);
+
 	return ret;
 }
 
@@ -659,7 +659,6 @@ send_msg:
 
 	return ret;
 }
-
 
 static int
 i40e_pf_host_process_cmd_add_vlan(struct i40e_pf_vf *vf,
@@ -874,8 +873,7 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 		break;
 	case I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES:
 		PMD_DRV_LOG(INFO, "OP_CONFIG_VSI_QUEUES received");
-		i40e_pf_host_process_cmd_config_vsi_queues(vf,
-						msg, msglen);
+		i40e_pf_host_process_cmd_config_vsi_queues(vf, msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_CONFIG_IRQ_MAP:
 		PMD_DRV_LOG(INFO, "OP_CONFIG_IRQ_MAP received");
@@ -883,23 +881,19 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 		break;
 	case I40E_VIRTCHNL_OP_ENABLE_QUEUES:
 		PMD_DRV_LOG(INFO, "OP_ENABLE_QUEUES received");
-		i40e_pf_host_process_cmd_enable_queues(vf,
-						msg, msglen);
+		i40e_pf_host_process_cmd_enable_queues(vf, msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_DISABLE_QUEUES:
 		PMD_DRV_LOG(INFO, "OP_DISABLE_QUEUE received");
-		i40e_pf_host_process_cmd_disable_queues(vf,
-						msg, msglen);
+		i40e_pf_host_process_cmd_disable_queues(vf, msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_ADD_ETHER_ADDRESS:
 		PMD_DRV_LOG(INFO, "OP_ADD_ETHER_ADDRESS received");
-		i40e_pf_host_process_cmd_add_ether_address(vf,
-						msg, msglen);
+		i40e_pf_host_process_cmd_add_ether_address(vf, msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_DEL_ETHER_ADDRESS:
 		PMD_DRV_LOG(INFO, "OP_DEL_ETHER_ADDRESS received");
-		i40e_pf_host_process_cmd_del_ether_address(vf,
-						msg, msglen);
+		i40e_pf_host_process_cmd_del_ether_address(vf, msg, msglen);
 		break;
 	case I40E_VIRTCHNL_OP_ADD_VLAN:
 		PMD_DRV_LOG(INFO, "OP_ADD_VLAN received");
@@ -936,8 +930,8 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(ERR, "OP_FCOE received, not supported");
 	default:
 		PMD_DRV_LOG(ERR, "%u received, not supported", opcode);
-		i40e_pf_host_send_msg_to_vf(vf, opcode,
-				I40E_ERR_PARAM, NULL, 0);
+		i40e_pf_host_send_msg_to_vf(vf, opcode, I40E_ERR_PARAM,
+								NULL, 0);
 		break;
 	}
 }

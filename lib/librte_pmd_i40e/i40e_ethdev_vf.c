@@ -537,78 +537,76 @@ static int
 i40evf_configure_queues(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct i40e_virtchnl_vsi_queue_config_info *queue_info;
-	struct i40e_virtchnl_queue_pair_info *queue_cfg;
 	struct i40e_rx_queue **rxq =
 		(struct i40e_rx_queue **)dev->data->rx_queues;
 	struct i40e_tx_queue **txq =
 		(struct i40e_tx_queue **)dev->data->tx_queues;
-	int i, len, nb_qpairs, num_rxq, num_txq;
-	int err;
+	struct i40e_virtchnl_vsi_queue_config_info *vc_vqci;
+	struct i40e_virtchnl_queue_pair_info *vc_qpi;
 	struct vf_cmd_info args;
-	struct rte_pktmbuf_pool_private *mbp_priv;
+	uint16_t i, nb_qp = vf->num_queue_pairs;
+	const uint32_t size =
+		I40E_VIRTCHNL_CONFIG_VSI_QUEUES_SIZE(vc_vqci, nb_qp);
+	uint8_t buff[size];
+	int ret;
 
-	nb_qpairs = vf->num_queue_pairs;
-	len = sizeof(*queue_info) + sizeof(*queue_cfg) * nb_qpairs;
-	queue_info = rte_zmalloc("queue_info", len, 0);
-	if (queue_info == NULL) {
-		PMD_INIT_LOG(ERR, "failed alloc memory for queue_info");
-		return -1;
-	}
-	queue_info->vsi_id = vf->vsi_res->vsi_id;
-	queue_info->num_queue_pairs = nb_qpairs;
-	queue_cfg = queue_info->qpair;
+	memset(buff, 0, sizeof(buff));
+	vc_vqci = (struct i40e_virtchnl_vsi_queue_config_info *)buff;
+	vc_vqci->vsi_id = vf->vsi_res->vsi_id;
+	vc_vqci->num_queue_pairs = nb_qp;
+	vc_qpi = vc_vqci->qpair;
 
-	num_rxq = dev->data->nb_rx_queues;
-	num_txq = dev->data->nb_tx_queues;
 	/*
 	 * PF host driver required to configure queues in pairs, which means
 	 * rxq_num should equals to txq_num. The actual usage won't always
 	 * work that way. The solution is fills 0 with HW ring option in case
 	 * they are not equal.
 	 */
-	for (i = 0; i < nb_qpairs; i++) {
+	for (i = 0; i < nb_qp; i++) {
 		/*Fill TX info */
-		queue_cfg->txq.vsi_id = queue_info->vsi_id;
-		queue_cfg->txq.queue_id = i;
-		if (i < num_txq) {
-			queue_cfg->txq.ring_len = txq[i]->nb_tx_desc;
-			queue_cfg->txq.dma_ring_addr = txq[i]->tx_ring_phys_addr;
+		vc_qpi->txq.vsi_id = vc_vqci->vsi_id;
+		vc_qpi->txq.queue_id = i;
+		if (i < dev->data->nb_tx_queues) {
+			vc_qpi->txq.ring_len = txq[i]->nb_tx_desc;
+			vc_qpi->txq.dma_ring_addr = txq[i]->tx_ring_phys_addr;
 		} else {
-			queue_cfg->txq.ring_len = 0;
-			queue_cfg->txq.dma_ring_addr = 0;
+			vc_qpi->txq.ring_len = 0;
+			vc_qpi->txq.dma_ring_addr = 0;
 		}
 
 		/* Fill RX info */
-		queue_cfg->rxq.vsi_id = queue_info->vsi_id;
-		queue_cfg->rxq.queue_id = i;
-		queue_cfg->rxq.max_pkt_size = vf->max_pkt_len;
-		if (i < num_rxq) {
-			mbp_priv = rte_mempool_get_priv(rxq[i]->mp);
-			queue_cfg->rxq.databuffer_size = mbp_priv->mbuf_data_room_size -
-						   RTE_PKTMBUF_HEADROOM;;
-			queue_cfg->rxq.ring_len = rxq[i]->nb_rx_desc;
-			queue_cfg->rxq.dma_ring_addr = rxq[i]->rx_ring_phys_addr;;
+		vc_qpi->rxq.vsi_id = vc_vqci->vsi_id;
+		vc_qpi->rxq.queue_id = i;
+		vc_qpi->rxq.max_pkt_size = vf->max_pkt_len;
+		if (i < dev->data->nb_rx_queues) {
+			struct rte_pktmbuf_pool_private *mbp_priv =
+				rte_mempool_get_priv(rxq[i]->mp);
+
+			vc_qpi->rxq.databuffer_size =
+				mbp_priv->mbuf_data_room_size -
+					RTE_PKTMBUF_HEADROOM;
+			vc_qpi->rxq.ring_len = rxq[i]->nb_rx_desc;
+			vc_qpi->rxq.dma_ring_addr = rxq[i]->rx_ring_phys_addr;
 		} else {
-			queue_cfg->rxq.ring_len = 0;
-			queue_cfg->rxq.dma_ring_addr = 0;
-			queue_cfg->rxq.databuffer_size = 0;
+			vc_qpi->rxq.ring_len = 0;
+			vc_qpi->rxq.dma_ring_addr = 0;
+			vc_qpi->rxq.databuffer_size = 0;
 		}
-		queue_cfg++;
+		vc_qpi++;
 	}
 
+	memset(&args, 0, sizeof(args));
 	args.ops = I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES;
-	args.in_args = (u8 *)queue_info;
-	args.in_args_size = len;
+	args.in_args = (uint8_t *)vc_vqci;
+	args.in_args_size = size;
 	args.out_buffer = cmd_result_buffer;
 	args.out_size = I40E_AQ_BUF_SZ;
-	err = i40evf_execute_vf_cmd(dev, &args);
-	if (err)
+	ret = i40evf_execute_vf_cmd(dev, &args);
+	if (ret)
 		PMD_DRV_LOG(ERR, "fail to execute command "
 			    "OP_CONFIG_VSI_QUEUES");
-	rte_free(queue_info);
 
-	return err;
+	return ret;
 }
 
 static int

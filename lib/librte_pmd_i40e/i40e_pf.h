@@ -46,28 +46,43 @@
 /* Default setting on number of VSIs that VF can contain */
 #define I40E_DEFAULT_VF_VSI_NUM 1
 
+#define I40E_DPDK_OFFSET  0x100
+
 enum i40e_pf_vfr_state {
 	I40E_PF_VFR_INPROGRESS = 0,
 	I40E_PF_VFR_COMPLETED = 1,
 };
 
 /* DPDK pf driver specific command to VF */
-enum i40e_virtchnl_ops_DPDK {
-	/* Keep some gap between Linu PF commands and DPDK PF specific commands */
-	I40E_VIRTCHNL_OP_GET_LINK_STAT = I40E_VIRTCHNL_OP_EVENT + 0x100,
+enum i40e_virtchnl_ops_dpdk {
+	/*
+	 * Keep some gap between Linux PF commands and
+	 * DPDK PF extended commands.
+	 */
+	I40E_VIRTCHNL_OP_GET_LINK_STAT = I40E_VIRTCHNL_OP_VERSION +
+						I40E_DPDK_OFFSET,
 	I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD,
 	I40E_VIRTCHNL_OP_CFG_VLAN_PVID,
 };
+
 struct i40e_virtchnl_vlan_offload_info {
 	uint16_t vsi_id;
 	uint8_t enable_vlan_strip;
 	uint8_t reserved;
 };
 
-/* I40E_VIRTCHNL_OP_CFG_VLAN_PVID
- * VF sends this message to enable/disable pvid. If it's enable op, needs to specify the
- * pvid.
- * PF returns status code in retval.
+/*
+ * Macro to calculate the memory size for configuring VSI queues
+ * via virtual channel.
+ */
+#define I40E_VIRTCHNL_CONFIG_VSI_QUEUES_SIZE(x, n) \
+	(sizeof(*(x)) + sizeof((x)->qpair[0]) * (n))
+
+/*
+ * I40E_VIRTCHNL_OP_CFG_VLAN_PVID
+ * VF sends this message to enable/disable pvid. If it's
+ * enable op, needs to specify the pvid. PF returns status
+ * code in retval.
  */
 struct i40e_virtchnl_pvid_info {
 	uint16_t vsi_id;
