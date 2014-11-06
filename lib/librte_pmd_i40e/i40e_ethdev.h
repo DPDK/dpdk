@@ -323,7 +323,8 @@ struct i40e_vf {
 	bool promisc_unicast_enabled;
 	bool promisc_multicast_enabled;
 
-	bool host_is_dpdk; /* The flag indicates if the host is DPDK */
+	uint32_t version_major; /* Major version number */
+	uint32_t version_minor; /* Minor version number */
 	uint16_t promisc_flags; /* Promiscuous setting */
 	uint32_t vlan[I40E_VFTA_SIZE]; /* VLAN bit map */
 

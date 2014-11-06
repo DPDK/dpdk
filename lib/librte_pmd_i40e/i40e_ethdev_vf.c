@@ -393,17 +393,18 @@ i40evf_check_api_version(struct rte_eth_dev *dev)
 	}
 
 	pver = (struct i40e_virtchnl_version_info *)args.out_buffer;
-	/* We are talking with DPDK host */
-	if (pver->major == I40E_DPDK_VERSION_MAJOR) {
-		vf->host_is_dpdk = TRUE;
-		PMD_DRV_LOG(INFO, "Detect PF host is DPDK app");
-	}
-	/* It's linux host driver */
-	else if ((pver->major != version.major) ||
-	    (pver->minor != version.minor)) {
-		PMD_INIT_LOG(ERR, "pf/vf API version mismatch. "
-			     "(%u.%u)-(%u.%u)", pver->major, pver->minor,
-			     version.major, version.minor);
+	vf->version_major = pver->major;
+	vf->version_minor = pver->minor;
+	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
+		PMD_DRV_LOG(INFO, "Peer is DPDK PF host");
+	else if ((vf->version_major == I40E_VIRTCHNL_VERSION_MAJOR) &&
+		(vf->version_minor == I40E_VIRTCHNL_VERSION_MINOR))
+		PMD_DRV_LOG(INFO, "Peer is Linux PF host");
+	else {
+		PMD_INIT_LOG(ERR, "PF/VF API version mismatch:(%u.%u)-(%u.%u)",
+					vf->version_major, vf->version_minor,
+						I40E_VIRTCHNL_VERSION_MAJOR,
+						I40E_VIRTCHNL_VERSION_MINOR);
 		return -1;
 	}
 
@@ -1182,7 +1183,7 @@ i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
 	/* Linux pf host doesn't support vlan offload yet */
-	if (vf->host_is_dpdk) {
+	if (vf->version_major == I40E_DPDK_VERSION_MAJOR) {
 		/* Vlan stripping setting */
 		if (mask & ETH_VLAN_STRIP_MASK) {
 			/* Enable or disable VLAN stripping */
@@ -1207,7 +1208,7 @@ i40evf_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 	info.on = on;
 
 	/* Linux pf host don't support vlan offload yet */
-	if (vf->host_is_dpdk) {
+	if (vf->version_major == I40E_DPDK_VERSION_MAJOR) {
 		if (info.on)
 			info.config.pvid = pvid;
 		else {
@@ -1480,7 +1481,7 @@ i40evf_dev_link_update(struct rte_eth_dev *dev,
 	 * DPDK pf host provide interfacet to acquire link status
 	 * while Linux driver does not
 	 */
-	if (vf->host_is_dpdk)
+	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
 		i40evf_get_link_status(dev, &new_link);
 	else {
 		/* Always assume it's up, for Linux driver PF host */
