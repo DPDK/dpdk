@@ -63,6 +63,34 @@ enum i40e_virtchnl_ops_dpdk {
 						I40E_DPDK_OFFSET,
 	I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD,
 	I40E_VIRTCHNL_OP_CFG_VLAN_PVID,
+	I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT,
+};
+
+/* A structure to support extended info of a receive queue. */
+struct i40e_virtchnl_rxq_ext_info {
+	uint8_t crcstrip;
+};
+
+/*
+ * A structure to support extended info of queue pairs, an additional field
+ * is added, comparing to original 'struct i40e_virtchnl_queue_pair_info'.
+ */
+struct i40e_virtchnl_queue_pair_ext_info {
+	/* vsi_id and queue_id should be identical for both rx and tx queues.*/
+	struct i40e_virtchnl_txq_info txq;
+	struct i40e_virtchnl_rxq_info rxq;
+	struct i40e_virtchnl_rxq_ext_info rxq_ext;
+};
+
+/*
+ * A structure to support extended info of VSI queue pairs,
+ * 'struct i40e_virtchnl_queue_pair_ext_info' is used, see its original
+ * of 'struct i40e_virtchnl_queue_pair_info'.
+ */
+struct i40e_virtchnl_vsi_queue_config_ext_info {
+	uint16_t vsi_id;
+	uint16_t num_queue_pairs;
+	struct i40e_virtchnl_queue_pair_ext_info qpair[0];
 };
 
 struct i40e_virtchnl_vlan_offload_info {

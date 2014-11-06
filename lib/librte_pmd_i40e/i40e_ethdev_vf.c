@@ -533,8 +533,46 @@ i40evf_config_vlan_pvid(struct rte_eth_dev *dev,
 	return err;
 }
 
+static void
+i40evf_fill_virtchnl_vsi_txq_info(struct i40e_virtchnl_txq_info *txq_info,
+				  uint16_t vsi_id,
+				  uint16_t queue_id,
+				  uint16_t nb_txq,
+				  struct i40e_tx_queue *txq)
+{
+	txq_info->vsi_id = vsi_id;
+	txq_info->queue_id = queue_id;
+	if (queue_id < nb_txq) {
+		txq_info->ring_len = txq->nb_tx_desc;
+		txq_info->dma_ring_addr = txq->tx_ring_phys_addr;
+	}
+}
+
+static void
+i40evf_fill_virtchnl_vsi_rxq_info(struct i40e_virtchnl_rxq_info *rxq_info,
+				  uint16_t vsi_id,
+				  uint16_t queue_id,
+				  uint16_t nb_rxq,
+				  uint32_t max_pkt_size,
+				  struct i40e_rx_queue *rxq)
+{
+	rxq_info->vsi_id = vsi_id;
+	rxq_info->queue_id = queue_id;
+	rxq_info->max_pkt_size = max_pkt_size;
+	if (queue_id < nb_rxq) {
+		struct rte_pktmbuf_pool_private *mbp_priv;
+
+		rxq_info->ring_len = rxq->nb_rx_desc;
+		rxq_info->dma_ring_addr = rxq->rx_ring_phys_addr;
+		mbp_priv = rte_mempool_get_priv(rxq->mp);
+		rxq_info->databuffer_size =
+			mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
+	}
+}
+
+/* It configures VSI queues to co-work with Linux PF host */
 static int
-i40evf_configure_queues(struct rte_eth_dev *dev)
+i40evf_configure_vsi_queues(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_rx_queue **rxq =
@@ -554,47 +592,14 @@ i40evf_configure_queues(struct rte_eth_dev *dev)
 	vc_vqci = (struct i40e_virtchnl_vsi_queue_config_info *)buff;
 	vc_vqci->vsi_id = vf->vsi_res->vsi_id;
 	vc_vqci->num_queue_pairs = nb_qp;
-	vc_qpi = vc_vqci->qpair;
 
-	/*
-	 * PF host driver required to configure queues in pairs, which means
-	 * rxq_num should equals to txq_num. The actual usage won't always
-	 * work that way. The solution is fills 0 with HW ring option in case
-	 * they are not equal.
-	 */
-	for (i = 0; i < nb_qp; i++) {
-		/*Fill TX info */
-		vc_qpi->txq.vsi_id = vc_vqci->vsi_id;
-		vc_qpi->txq.queue_id = i;
-		if (i < dev->data->nb_tx_queues) {
-			vc_qpi->txq.ring_len = txq[i]->nb_tx_desc;
-			vc_qpi->txq.dma_ring_addr = txq[i]->tx_ring_phys_addr;
-		} else {
-			vc_qpi->txq.ring_len = 0;
-			vc_qpi->txq.dma_ring_addr = 0;
-		}
-
-		/* Fill RX info */
-		vc_qpi->rxq.vsi_id = vc_vqci->vsi_id;
-		vc_qpi->rxq.queue_id = i;
-		vc_qpi->rxq.max_pkt_size = vf->max_pkt_len;
-		if (i < dev->data->nb_rx_queues) {
-			struct rte_pktmbuf_pool_private *mbp_priv =
-				rte_mempool_get_priv(rxq[i]->mp);
-
-			vc_qpi->rxq.databuffer_size =
-				mbp_priv->mbuf_data_room_size -
-					RTE_PKTMBUF_HEADROOM;
-			vc_qpi->rxq.ring_len = rxq[i]->nb_rx_desc;
-			vc_qpi->rxq.dma_ring_addr = rxq[i]->rx_ring_phys_addr;
-		} else {
-			vc_qpi->rxq.ring_len = 0;
-			vc_qpi->rxq.dma_ring_addr = 0;
-			vc_qpi->rxq.databuffer_size = 0;
-		}
-		vc_qpi++;
+	for (i = 0, vc_qpi = vc_vqci->qpair; i < nb_qp; i++, vc_qpi++) {
+		i40evf_fill_virtchnl_vsi_txq_info(&vc_qpi->txq,
+			vc_vqci->vsi_id, i, dev->data->nb_tx_queues, txq[i]);
+		i40evf_fill_virtchnl_vsi_rxq_info(&vc_qpi->rxq,
+			vc_vqci->vsi_id, i, dev->data->nb_rx_queues,
+					vf->max_pkt_len, rxq[i]);
 	}
-
 	memset(&args, 0, sizeof(args));
 	args.ops = I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES;
 	args.in_args = (uint8_t *)vc_vqci;
@@ -603,10 +608,76 @@ i40evf_configure_queues(struct rte_eth_dev *dev)
 	args.out_size = I40E_AQ_BUF_SZ;
 	ret = i40evf_execute_vf_cmd(dev, &args);
 	if (ret)
-		PMD_DRV_LOG(ERR, "fail to execute command "
-			    "OP_CONFIG_VSI_QUEUES");
+		PMD_DRV_LOG(ERR, "Failed to execute command of "
+			"I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES\n");
 
 	return ret;
+}
+
+/* It configures VSI queues to co-work with DPDK PF host */
+static int
+i40evf_configure_vsi_queues_ext(struct rte_eth_dev *dev)
+{
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct i40e_rx_queue **rxq =
+		(struct i40e_rx_queue **)dev->data->rx_queues;
+	struct i40e_tx_queue **txq =
+		(struct i40e_tx_queue **)dev->data->tx_queues;
+	struct i40e_virtchnl_vsi_queue_config_ext_info *vc_vqcei;
+	struct i40e_virtchnl_queue_pair_ext_info *vc_qpei;
+	struct vf_cmd_info args;
+	uint16_t i, nb_qp = vf->num_queue_pairs;
+	const uint32_t size =
+		I40E_VIRTCHNL_CONFIG_VSI_QUEUES_SIZE(vc_vqcei, nb_qp);
+	uint8_t buff[size];
+	int ret;
+
+	memset(buff, 0, sizeof(buff));
+	vc_vqcei = (struct i40e_virtchnl_vsi_queue_config_ext_info *)buff;
+	vc_vqcei->vsi_id = vf->vsi_res->vsi_id;
+	vc_vqcei->num_queue_pairs = nb_qp;
+	vc_qpei = vc_vqcei->qpair;
+	for (i = 0; i < nb_qp; i++, vc_qpei++) {
+		i40evf_fill_virtchnl_vsi_txq_info(&vc_qpei->txq,
+			vc_vqcei->vsi_id, i, dev->data->nb_tx_queues, txq[i]);
+		i40evf_fill_virtchnl_vsi_rxq_info(&vc_qpei->rxq,
+			vc_vqcei->vsi_id, i, dev->data->nb_rx_queues,
+					vf->max_pkt_len, rxq[i]);
+		if (i < dev->data->nb_rx_queues)
+			/*
+			 * It adds extra info for configuring VSI queues, which
+			 * is needed to enable the configurable crc stripping
+			 * in VF.
+			 */
+			vc_qpei->rxq_ext.crcstrip =
+				dev->data->dev_conf.rxmode.hw_strip_crc;
+	}
+	memset(&args, 0, sizeof(args));
+	args.ops =
+		(enum i40e_virtchnl_ops)I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT;
+	args.in_args = (uint8_t *)vc_vqcei;
+	args.in_args_size = size;
+	args.out_buffer = cmd_result_buffer;
+	args.out_size = I40E_AQ_BUF_SZ;
+	ret = i40evf_execute_vf_cmd(dev, &args);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Failed to execute command of "
+			"I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT\n");
+
+	return ret;
+}
+
+static int
+i40evf_configure_queues(struct rte_eth_dev *dev)
+{
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
+	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
+		/* To support DPDK PF host */
+		return i40evf_configure_vsi_queues_ext(dev);
+	else
+		/* To support Linux PF host */
+		return i40evf_configure_vsi_queues(dev);
 }
 
 static int
