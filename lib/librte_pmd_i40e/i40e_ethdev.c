@@ -1760,7 +1760,7 @@ i40e_mac_filter_handle(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
 	filter = (struct rte_eth_mac_filter *)(arg);
 
 	switch (filter_op) {
-	case RTE_ETH_FILTER_NONE:
+	case RTE_ETH_FILTER_NOP:
 		ret = I40E_SUCCESS;
 		break;
 	case RTE_ETH_FILTER_ADD:
