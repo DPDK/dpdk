@@ -56,6 +56,8 @@
 #include "i40e_rxtx.h"
 #include "i40e_pf.h"
 
+#define I40E_CFG_CRCSTRIP_DEFAULT 1
+
 static int
 i40e_pf_host_switch_queues(struct i40e_pf_vf *vf,
 			   struct i40e_virtchnl_queue_select *qsel,
@@ -325,7 +327,8 @@ send_msg:
 static int
 i40e_pf_host_hmc_config_rxq(struct i40e_hw *hw,
 			    struct i40e_pf_vf *vf,
-			    struct i40e_virtchnl_rxq_info *rxq)
+			    struct i40e_virtchnl_rxq_info *rxq,
+			    uint8_t crcstrip)
 {
 	int err = I40E_SUCCESS;
 	struct i40e_hmc_obj_rxq rx_ctx;
@@ -354,7 +357,7 @@ i40e_pf_host_hmc_config_rxq(struct i40e_hw *hw,
 	rx_ctx.tphdata_ena = 1;
 	rx_ctx.tphhead_ena = 1;
 	rx_ctx.lrxqthresh = 2;
-	rx_ctx.crcstrip = 1;
+	rx_ctx.crcstrip = crcstrip;
 	rx_ctx.l2tsel = 1;
 	rx_ctx.prefena = 1;
 
@@ -434,8 +437,8 @@ i40e_pf_host_process_cmd_config_vsi_queues(struct i40e_pf_vf *vf,
 		}
 
 		/* Apply VF RX queue setting to HMC */
-		if (i40e_pf_host_hmc_config_rxq(hw, vf, &vc_qpi[i].rxq)
-			!= I40E_SUCCESS) {
+		if (i40e_pf_host_hmc_config_rxq(hw, vf, &vc_qpi[i].rxq,
+			I40E_CFG_CRCSTRIP_DEFAULT) != I40E_SUCCESS) {
 			PMD_DRV_LOG(ERR, "Configure RX queue HMC failed");
 			ret = I40E_ERR_PARAM;
 			goto send_msg;
