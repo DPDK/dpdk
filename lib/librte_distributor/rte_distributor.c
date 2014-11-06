@@ -92,6 +92,7 @@ struct rte_distributor {
 	unsigned num_workers;                 /**< Number of workers polling */
 
 	uint32_t in_flight_tags[RTE_MAX_LCORE];
+		/**< Tracks the tag being processed per core, 0 == no pkt */
 	struct rte_distributor_backlog backlog[RTE_MAX_LCORE];
 
 	union rte_distributor_buffer bufs[RTE_MAX_LCORE];
@@ -282,10 +283,22 @@ rte_distributor_process(struct rte_distributor *d,
 			next_mb = mbufs[next_idx++];
 			next_value = (((int64_t)(uintptr_t)next_mb)
 					<< RTE_DISTRIB_FLAG_BITS);
+			/*
+			 * Set the low bit on the tag, so we can guarantee that
+			 * we never store a tag value of zero. That means we can
+			 * use the zero-value to indicate that no packet is
+			 * being processed by a worker.
+			 */
 			new_tag = (next_mb->hash.rss | 1);
 
 			uint32_t match = 0;
 			unsigned i;
+			/*
+			 * to scan for a match use "xor" and "not" to get a 0/1
+			 * value, then use shifting to merge to single "match"
+			 * variable, where a one-bit indicates a match for the
+			 * worker given by the bit-position
+			 */
 			for (i = 0; i < d->num_workers; i++)
 				match |= (!(d->in_flight_tags[i] ^ new_tag)
 					<< i);
