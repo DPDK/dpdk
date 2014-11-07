@@ -202,8 +202,4 @@ rte_delay_ms(unsigned ms)
 	rte_delay_us(ms * 1000);
 }
 
-#ifdef __cplusplus
-}
-#endif
-
 #endif /* _RTE_CYCLES_H_ */
