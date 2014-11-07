@@ -595,6 +595,21 @@ kni_allocate_mbufs(struct rte_kni *kni)
 	int i, ret;
 	struct rte_mbuf *pkts[MAX_MBUF_BURST_NUM];
 
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, pool) !=
+			 offsetof(struct rte_kni_mbuf, pool));
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, buf_addr) !=
+			 offsetof(struct rte_kni_mbuf, buf_addr));
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, next) !=
+			 offsetof(struct rte_kni_mbuf, next));
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_off) !=
+			 offsetof(struct rte_kni_mbuf, data_off));
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_len) !=
+			 offsetof(struct rte_kni_mbuf, data_len));
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, pkt_len) !=
+			 offsetof(struct rte_kni_mbuf, pkt_len));
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, ol_flags) !=
+			 offsetof(struct rte_kni_mbuf, ol_flags));
+
 	/* Check if pktmbuf pool has been configured */
 	if (kni->pktmbuf_pool == NULL) {
 		RTE_LOG(ERR, KNI, "No valid mempool for allocating mbufs\n");
