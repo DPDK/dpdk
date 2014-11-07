@@ -911,6 +911,10 @@ rte_eth_dev_start(uint8_t port_id)
 
 	rte_eth_dev_config_restore(port_id);
 
+	if (dev->data->dev_conf.intr_conf.lsc != 0) {
+		FUNC_PTR_OR_ERR_RET(*dev->dev_ops->link_update, -ENOTSUP);
+		(*dev->dev_ops->link_update)(dev, 0);
+	}
 	return 0;
 }
 
