@@ -2052,8 +2052,10 @@ extern void rte_eth_link_get_nowait(uint8_t port_id,
  *   - *obytes*   with the total of successfully transmitted bytes.
  *   - *ierrors*  with the total of erroneous received packets.
  *   - *oerrors*  with the total of failed transmitted packets.
+ * @return
+ *   Zero if successful. Non-zero otherwise.
  */
-extern void rte_eth_stats_get(uint8_t port_id, struct rte_eth_stats *stats);
+extern int rte_eth_stats_get(uint8_t port_id, struct rte_eth_stats *stats);
 
 /**
  * Reset the general I/O statistics of an Ethernet device.

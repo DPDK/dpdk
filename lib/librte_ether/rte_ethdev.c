@@ -1268,21 +1268,22 @@ rte_eth_link_get_nowait(uint8_t port_id, struct rte_eth_link *eth_link)
 	}
 }
 
-void
+int
 rte_eth_stats_get(uint8_t port_id, struct rte_eth_stats *stats)
 {
 	struct rte_eth_dev *dev;
 
 	if (port_id >= nb_ports) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return;
+		return (-ENODEV);
 	}
 	dev = &rte_eth_devices[port_id];
 	memset(stats, 0, sizeof(*stats));
 
-	FUNC_PTR_OR_RET(*dev->dev_ops->stats_get);
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->stats_get, -ENOTSUP);
 	(*dev->dev_ops->stats_get)(dev, stats);
 	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
+	return 0;
 }
 
 void
