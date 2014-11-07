@@ -104,7 +104,8 @@ kni_vhost_net_tx(struct kni_dev *kni, struct iovec *iov,
 		void *data_kva;
 
 		pkt_kva = (void *)pkt_va - kni->mbuf_va + kni->mbuf_kva;
-		data_kva = pkt_kva->data - kni->mbuf_va + kni->mbuf_kva;
+		data_kva = pkt_kva->buf_addr + pkt_kva->data_off
+		           - kni->mbuf_va + kni->mbuf_kva;
 
 		memcpy_fromiovecend(data_kva, iov, offset, len);
 		if (unlikely(len < ETH_ZLEN)) {
@@ -177,7 +178,7 @@ kni_vhost_net_rx(struct kni_dev *kni, struct iovec *iov,
 	KNI_DBG_RX("rx offset=%d, len=%d, pkt_len=%d, iovlen=%d\n",
 		   offset, len, pkt_len, (int)iov->iov_len);
 
-	data_kva = kva->data - kni->mbuf_va + kni->mbuf_kva;
+	data_kva = kva->buf_addr + kva->data_off - kni->mbuf_va + kni->mbuf_kva;
 	if (unlikely(memcpy_toiovecend(iov, data_kva, offset, pkt_len)))
 		goto drop;
 
