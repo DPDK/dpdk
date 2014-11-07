@@ -824,7 +824,7 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 {
 	struct rte_eth_rss_conf rss_conf;
 	uint8_t rss_key[10 * 4];
-	uint16_t rss_hf;
+	uint64_t rss_hf;
 	uint8_t i;
 	int diag;
 
