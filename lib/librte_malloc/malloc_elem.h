@@ -34,6 +34,8 @@
 #ifndef MALLOC_ELEM_H_
 #define MALLOC_ELEM_H_
 
+#include <rte_memory.h>
+
 /* dummy definition of struct so we can use pointers to it in malloc_elem struct */
 struct malloc_heap;
 
