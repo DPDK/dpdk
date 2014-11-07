@@ -546,9 +546,7 @@ main(int argc, char** argv)
 	/* Get number of ports found in scan */
 	nb_sys_ports = rte_eth_dev_count();
 	if (nb_sys_ports == 0)
-		FATAL_ERROR("No supported Ethernet devices found - check that "
-		            "CONFIG_RTE_LIBRTE_IGB_PMD=y and/or "
-		            "CONFIG_RTE_LIBRTE_IXGBE_PMD=y in the config file");
+		FATAL_ERROR("No supported Ethernet device found");
 	/* Find highest port set in portmask */
 	for (high_port = (sizeof(ports_mask) * 8) - 1;
 			(high_port != 0) && !(ports_mask & (1 << high_port));

@@ -881,9 +881,7 @@ main(int argc, char** argv)
 	/* Get number of ports found in scan */
 	nb_sys_ports = rte_eth_dev_count();
 	if (nb_sys_ports == 0)
-		rte_exit(EXIT_FAILURE, "No supported Ethernet devices found - "
-			"check that CONFIG_RTE_LIBRTE_IGB_PMD=y and/or "
-			"CONFIG_RTE_LIBRTE_IXGBE_PMD=y in the config file\n");
+		rte_exit(EXIT_FAILURE, "No supported Ethernet device found\n");
 
 	/* Check if the configured port ID is valid */
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++)

@@ -1870,12 +1870,7 @@ main(int argc, char** argv)
 
 	nb_ports = (portid_t) rte_eth_dev_count();
 	if (nb_ports == 0)
-		rte_exit(EXIT_FAILURE, "No probed ethernet devices - "
-							"check that "
-			  "CONFIG_RTE_LIBRTE_IGB_PMD=y and that "
-			  "CONFIG_RTE_LIBRTE_EM_PMD=y and that "
-			  "CONFIG_RTE_LIBRTE_IXGBE_PMD=y in your "
-			  "configuration file\n");
+		rte_exit(EXIT_FAILURE, "No probed ethernet device\n");
 
 	set_def_fwd_config();
 	if (nb_lcores == 0)
