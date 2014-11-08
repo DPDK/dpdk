@@ -1779,6 +1779,26 @@ igb_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 	vt_ctl |= E1000_VT_CTL_IGNORE_MAC;
 	E1000_WRITE_REG(hw, E1000_VT_CTL, vt_ctl);
 
+	for (i = 0; i < E1000_VMOLR_SIZE; i++) {
+		vmolr = E1000_READ_REG(hw, E1000_VMOLR(i));
+		vmolr &= ~(E1000_VMOLR_AUPE | E1000_VMOLR_ROMPE |
+			E1000_VMOLR_ROPE | E1000_VMOLR_BAM |
+			E1000_VMOLR_MPME);
+
+		if (cfg->rx_mode & ETH_VMDQ_ACCEPT_UNTAG)
+			vmolr |= E1000_VMOLR_AUPE;
+		if (cfg->rx_mode & ETH_VMDQ_ACCEPT_HASH_MC)
+			vmolr |= E1000_VMOLR_ROMPE;
+		if (cfg->rx_mode & ETH_VMDQ_ACCEPT_HASH_UC)
+			vmolr |= E1000_VMOLR_ROPE;
+		if (cfg->rx_mode & ETH_VMDQ_ACCEPT_BROADCAST)
+			vmolr |= E1000_VMOLR_BAM;
+		if (cfg->rx_mode & ETH_VMDQ_ACCEPT_MULTICAST)
+			vmolr |= E1000_VMOLR_MPME;
+
+		E1000_WRITE_REG(hw, E1000_VMOLR(i), vmolr);
+	}
+
 	/*
 	 * VMOLR: set STRVLAN as 1 if IGMAC in VTCTL is set as 1
 	 * Both 82576 and 82580 support it
