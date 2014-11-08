@@ -66,6 +66,10 @@ static int eth_virtio_dev_init(struct eth_driver *eth_drv,
 static int  virtio_dev_configure(struct rte_eth_dev *dev);
 static int  virtio_dev_start(struct rte_eth_dev *dev);
 static void virtio_dev_stop(struct rte_eth_dev *dev);
+static void virtio_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static void virtio_dev_promiscuous_disable(struct rte_eth_dev *dev);
+static void virtio_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static void virtio_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static void virtio_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int virtio_dev_link_update(struct rte_eth_dev *dev,
@@ -403,6 +407,86 @@ virtio_dev_close(struct rte_eth_dev *dev)
 	virtio_dev_stop(dev);
 }
 
+static void
+virtio_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw
+		= VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_pmd_ctrl ctrl;
+	int dlen[1];
+	int ret;
+
+	ctrl.hdr.class = VIRTIO_NET_CTRL_RX;
+	ctrl.hdr.cmd = VIRTIO_NET_CTRL_RX_PROMISC;
+	ctrl.data[0] = 1;
+	dlen[0] = 1;
+
+	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
+
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to enable promisc");
+}
+
+static void
+virtio_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw
+		= VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_pmd_ctrl ctrl;
+	int dlen[1];
+	int ret;
+
+	ctrl.hdr.class = VIRTIO_NET_CTRL_RX;
+	ctrl.hdr.cmd = VIRTIO_NET_CTRL_RX_PROMISC;
+	ctrl.data[0] = 0;
+	dlen[0] = 1;
+
+	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
+
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to disable promisc");
+}
+
+static void
+virtio_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw
+		= VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_pmd_ctrl ctrl;
+	int dlen[1];
+	int ret;
+
+	ctrl.hdr.class = VIRTIO_NET_CTRL_RX;
+	ctrl.hdr.cmd = VIRTIO_NET_CTRL_RX_ALLMULTI;
+	ctrl.data[0] = 1;
+	dlen[0] = 1;
+
+	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
+
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to enable allmulticast");
+}
+
+static void
+virtio_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw
+		= VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_pmd_ctrl ctrl;
+	int dlen[1];
+	int ret;
+
+	ctrl.hdr.class = VIRTIO_NET_CTRL_RX;
+	ctrl.hdr.cmd = VIRTIO_NET_CTRL_RX_ALLMULTI;
+	ctrl.data[0] = 0;
+	dlen[0] = 1;
+
+	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
+
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to disable allmulticast");
+}
+
 /*
  * dev_ops for virtio, bare necessities for basic operation
  */
@@ -411,6 +495,10 @@ static struct eth_dev_ops virtio_eth_dev_ops = {
 	.dev_start               = virtio_dev_start,
 	.dev_stop                = virtio_dev_stop,
 	.dev_close               = virtio_dev_close,
+	.promiscuous_enable      = virtio_dev_promiscuous_enable,
+	.promiscuous_disable     = virtio_dev_promiscuous_disable,
+	.allmulticast_enable     = virtio_dev_allmulticast_enable,
+	.allmulticast_disable    = virtio_dev_allmulticast_disable,
 
 	.dev_infos_get           = virtio_dev_info_get,
 	.stats_get               = virtio_dev_stats_get,
@@ -561,7 +649,7 @@ virtio_negotiate_features(struct virtio_hw *hw)
 {
 	uint32_t host_features, mask;
 
-	mask = VIRTIO_NET_F_CTRL_RX | VIRTIO_NET_F_CTRL_VLAN;
+	mask = VIRTIO_NET_F_CTRL_VLAN;
 	mask |= VIRTIO_NET_F_CSUM | VIRTIO_NET_F_GUEST_CSUM;
 
 	/* TSO and LRO are only available when their corresponding
