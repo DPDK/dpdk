@@ -161,6 +161,9 @@
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
 
+/* Promiscuous mode */
+static uint32_t promiscuous;
+
 /*Number of switching cores enabled*/
 static uint32_t num_switching_cores = 0;
 
@@ -364,13 +367,15 @@ static inline int
 get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_devices)
 {
 	struct rte_eth_vmdq_rx_conf conf;
+	struct rte_eth_vmdq_rx_conf *def_conf =
+		&vmdq_conf_default.rx_adv_conf.vmdq_rx_conf;
 	unsigned i;
 
 	memset(&conf, 0, sizeof(conf));
 	conf.nb_queue_pools = (enum rte_eth_nb_pools)num_devices;
 	conf.nb_pool_maps = num_devices;
-	conf.enable_loop_back =
-		vmdq_conf_default.rx_adv_conf.vmdq_rx_conf.enable_loop_back;
+	conf.enable_loop_back = def_conf->enable_loop_back;
+	conf.rx_mode = def_conf->rx_mode;
 
 	for (i = 0; i < conf.nb_pool_maps; i++) {
 		conf.pool_map[i].vlan_id = vlan_tags[ i ];
@@ -467,6 +472,9 @@ port_init(uint8_t port)
 		RTE_LOG(ERR, VHOST_DATA, "Failed to start the device.\n");
 		return retval;
 	}
+
+	if (promiscuous)
+		rte_eth_promiscuous_enable(port);
 
 	rte_eth_macaddr_get(port, &vmdq_ports_eth_addr[port]);
 	RTE_LOG(INFO, VHOST_PORT, "Max virtio devices supported: %u\n", num_devices);
@@ -598,7 +606,8 @@ us_vhost_parse_args(int argc, char **argv)
 	};
 
 	/* Parse command line */
-	while ((opt = getopt_long(argc, argv, "p:",long_option, &option_index)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "p:P",
+			long_option, &option_index)) != EOF) {
 		switch (opt) {
 		/* Portmask */
 		case 'p':
@@ -608,6 +617,15 @@ us_vhost_parse_args(int argc, char **argv)
 				us_vhost_usage(prgname);
 				return -1;
 			}
+			break;
+
+		case 'P':
+			promiscuous = 1;
+			vmdq_conf_default.rx_adv_conf.vmdq_rx_conf.rx_mode =
+				ETH_VMDQ_ACCEPT_BROADCAST |
+				ETH_VMDQ_ACCEPT_MULTICAST;
+			rte_vhost_feature_enable(1ULL << VIRTIO_NET_F_CTRL_RX);
+
 			break;
 
 		case 0:

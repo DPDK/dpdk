@@ -68,7 +68,8 @@ static struct virtio_net_device_ops const *notify_ops;
 static struct virtio_net_config_ll *ll_root;
 
 /* Features supported by this lib. */
-#define VHOST_SUPPORTED_FEATURES (1ULL << VIRTIO_NET_F_MRG_RXBUF)
+#define VHOST_SUPPORTED_FEATURES ((1ULL << VIRTIO_NET_F_MRG_RXBUF) | \
+				  (1ULL << VIRTIO_NET_F_CTRL_RX))
 static uint64_t VHOST_FEATURES = VHOST_SUPPORTED_FEATURES;
 
 /* Line size for reading maps file. */
