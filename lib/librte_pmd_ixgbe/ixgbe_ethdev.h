@@ -340,4 +340,5 @@ void ixgbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
 
 int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 
+uint32_t ixgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val);
 #endif /* _IXGBE_ETHDEV_H_ */

@@ -3123,6 +3123,26 @@ ixgbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on)
 	return 0;
 
 }
+
+uint32_t
+ixgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val)
+{
+	uint32_t new_val = orig_val;
+
+	if (rx_mask & ETH_VMDQ_ACCEPT_UNTAG)
+		new_val |= IXGBE_VMOLR_AUPE;
+	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_MC)
+		new_val |= IXGBE_VMOLR_ROMPE;
+	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_UC)
+		new_val |= IXGBE_VMOLR_ROPE;
+	if (rx_mask & ETH_VMDQ_ACCEPT_BROADCAST)
+		new_val |= IXGBE_VMOLR_BAM;
+	if (rx_mask & ETH_VMDQ_ACCEPT_MULTICAST)
+		new_val |= IXGBE_VMOLR_MPE;
+
+	return new_val;
+}
+
 static int
 ixgbe_set_pool_rx_mode(struct rte_eth_dev *dev, uint16_t pool,
 			       uint16_t rx_mask, uint8_t on)
@@ -3141,16 +3161,7 @@ ixgbe_set_pool_rx_mode(struct rte_eth_dev *dev, uint16_t pool,
 	if (ixgbe_vmdq_mode_check(hw) < 0)
 		return (-ENOTSUP);
 
-	if (rx_mask & ETH_VMDQ_ACCEPT_UNTAG )
-		val |= IXGBE_VMOLR_AUPE;
-	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_MC )
-		val |= IXGBE_VMOLR_ROMPE;
-	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_UC)
-		val |= IXGBE_VMOLR_ROPE;
-	if (rx_mask & ETH_VMDQ_ACCEPT_BROADCAST)
-		val |= IXGBE_VMOLR_BAM;
-	if (rx_mask & ETH_VMDQ_ACCEPT_MULTICAST)
-		val |= IXGBE_VMOLR_MPE;
+	val = ixgbe_convert_vm_rx_mask_to_val(rx_mask, val);
 
 	if (on)
 		vmolr |= val;

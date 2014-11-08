@@ -3123,6 +3123,7 @@ ixgbe_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 	struct ixgbe_hw *hw;
 	enum rte_eth_nb_pools num_pools;
 	uint32_t mrqc, vt_ctl, vlanctrl;
+	uint32_t vmolr = 0;
 	int i;
 
 	PMD_INIT_FUNC_TRACE();
@@ -3144,6 +3145,11 @@ ixgbe_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 		vt_ctl |= IXGBE_VT_CTL_DIS_DEFPL;
 
 	IXGBE_WRITE_REG(hw, IXGBE_VT_CTL, vt_ctl);
+
+	for (i = 0; i < (int)num_pools; i++) {
+		vmolr = ixgbe_convert_vm_rx_mask_to_val(cfg->rx_mode, vmolr);
+		IXGBE_WRITE_REG(hw, IXGBE_VMOLR(i), vmolr);
+	}
 
 	/* VLNCTRL: enable vlan filtering and allow all vlan tags through */
 	vlanctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
