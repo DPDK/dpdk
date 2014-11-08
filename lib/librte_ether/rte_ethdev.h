@@ -593,6 +593,7 @@ struct rte_eth_vmdq_rx_conf {
 	uint8_t default_pool; /**< The default pool, if applicable */
 	uint8_t enable_loop_back; /**< Enable VT loop back */
 	uint8_t nb_pool_maps; /**< We can have up to 64 filters/mappings */
+	uint32_t rx_mode; /**< Flags from ETH_VMDQ_ACCEPT_* */
 	struct {
 		uint16_t vlan_id; /**< The vlan id of the received frame */
 		uint64_t pools;   /**< Bitmask of pools for packet rx */
