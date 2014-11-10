@@ -88,6 +88,10 @@ rte_distributor_create(const char *name, unsigned socket_id,
  * packets. The distributor will ensure that no two packets that have the
  * same flow id, or tag, in the mbuf will be procesed at the same time.
  *
+ * The user is advocated to set tag for each mbuf before calling this function.
+ * If user doesn't set the tag, the tag value can be various values depending on
+ * driver implementation and configuration.
+ *
  * This is not multi-thread safe and should only be called on a single lcore.
  *
  * @param d
