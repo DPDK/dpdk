@@ -289,7 +289,7 @@ rte_distributor_process(struct rte_distributor *d,
 			 * use the zero-value to indicate that no packet is
 			 * being processed by a worker.
 			 */
-			new_tag = (next_mb->hash.rss | 1);
+			new_tag = (next_mb->hash.usr | 1);
 
 			uint32_t match = 0;
 			unsigned i;

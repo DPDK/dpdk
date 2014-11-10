@@ -185,6 +185,7 @@ struct rte_mbuf {
 			uint16_t id;
 		} fdir;           /**< Filter identifier if FDIR enabled */
 		uint32_t sched;   /**< Hierarchical scheduler */
+		uint32_t usr;	  /**< User defined tags. See @rte_distributor_process */
 	} hash;                   /**< hash information */
 
 	/* second cache line - fields only used in slow path or on TX */
