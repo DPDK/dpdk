@@ -92,7 +92,7 @@
 #define INVALID_PORT_ID 0xFF
 
 /* mask of enabled ports */
-static uint32_t enabled_port_mask = 0;
+static uint32_t enabled_port_mask;
 
 /* number of pools (if user does not specify any, 8 by default */
 static uint32_t num_queues = 8;
@@ -129,10 +129,10 @@ static const struct rte_eth_conf vmdq_conf_default = {
 
 static unsigned lcore_ids[RTE_MAX_LCORE];
 static uint8_t ports[RTE_MAX_ETHPORTS];
-static unsigned num_ports = 0; /**< The number of ports specified in command line */
+static unsigned num_ports; /**< The number of ports specified in command line */
 
 /* array used for printing out statistics */
-volatile unsigned long rxPackets[ MAX_QUEUES ] = {0};
+volatile unsigned long rxPackets[MAX_QUEUES] = {0};
 
 const uint16_t vlan_tags[] = {
 	0,  1,  2,  3,  4,  5,  6,  7,
@@ -161,8 +161,11 @@ static struct ether_addr vmdq_ports_eth_addr[RTE_MAX_ETHPORTS];
 #define MAX_POOL_MAP_NUM_1G 32
 #define MAX_POOL_NUM_10G 64
 #define MAX_POOL_NUM_1G 8
-/* Builds up the correct configuration for vmdq based on the vlan tags array
- * given above, and determine the queue number and pool map number according to valid pool number */
+/*
+ * Builds up the correct configuration for vmdq based on the vlan tags array
+ * given above, and determine the queue number and pool map number according to
+ * valid pool number
+ */
 static inline int
 get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_pools)
 {
@@ -174,8 +177,8 @@ get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_pools)
 	conf.enable_default_pool = 0;
 	conf.default_pool = 0; /* set explicit value, even if not used */
 
-	for (i = 0; i < conf.nb_pool_maps; i++){
-		conf.pool_map[i].vlan_id = vlan_tags[ i ];
+	for (i = 0; i < conf.nb_pool_maps; i++) {
+		conf.pool_map[i].vlan_id = vlan_tags[i];
 		conf.pool_map[i].pools = (1UL << (i % num_pools));
 	}
 
@@ -202,8 +205,11 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	uint16_t queues_per_pool;
 	uint32_t max_nb_pools;
 
-	/* The max pool number from dev_info will be used to validate the pool number specified in cmd line */
-	rte_eth_dev_info_get (port, &dev_info);
+	/*
+	 * The max pool number from dev_info will be used to validate the pool
+	 * number specified in cmd line
+	 */
+	rte_eth_dev_info_get(port, &dev_info);
 	max_nb_pools = (uint32_t)dev_info.max_vmdq_pools;
 	/*
 	 * We allow to process part of VMDQ pools specified by num_pools in
@@ -234,7 +240,8 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 		num_pf_queues, num_pools, queues_per_pool);
 	printf("vmdq queue base: %d pool base %d\n",
 		vmdq_queue_base, vmdq_pool_base);
-	if (port >= rte_eth_dev_count()) return -1;
+	if (port >= rte_eth_dev_count())
+		return -1;
 
 	/*
 	 * Though in this example, we only receive packets from the first queue
@@ -253,7 +260,7 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	rte_eth_dev_info_get(port, &dev_info);
 	rxconf = &dev_info.default_rxconf;
 	rxconf->rx_drop_en = 1;
-	for (q = 0; q < rxRings; q ++) {
+	for (q = 0; q < rxRings; q++) {
 		retval = rte_eth_rx_queue_setup(port, q, rxRingSize,
 					rte_eth_dev_socket_id(port),
 					rxconf,
@@ -264,7 +271,7 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 		}
 	}
 
-	for (q = 0; q < txRings; q ++) {
+	for (q = 0; q < txRings; q++) {
 		retval = rte_eth_tx_queue_setup(port, q, txRingSize,
 					rte_eth_dev_socket_id(port),
 					NULL);
@@ -380,7 +387,8 @@ vmdq_parse_args(int argc, char **argv)
 	};
 
 	/* Parse command line */
-	while ((opt = getopt_long(argc, argv, "p:",long_option,&option_index)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "p:", long_option,
+		&option_index)) != EOF) {
 		switch (opt) {
 		/* portmask */
 		case 'p':
@@ -392,7 +400,7 @@ vmdq_parse_args(int argc, char **argv)
 			}
 			break;
 		case 0:
-			if (vmdq_parse_num_pools(optarg) == -1){
+			if (vmdq_parse_num_pools(optarg) == -1) {
 				printf("invalid number of pools\n");
 				vmdq_usage(prgname);
 				return -1;
@@ -405,14 +413,14 @@ vmdq_parse_args(int argc, char **argv)
 		}
 	}
 
-	for(i = 0; i < RTE_MAX_ETHPORTS; i++) {
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		if (enabled_port_mask & (1 << i))
 			ports[num_ports++] = (uint8_t)i;
 	}
 
 	if (num_ports < 2 || num_ports % 2) {
 		printf("Current enabled port number is %u,"
-			"but it should be even and at least 2\n",num_ports);
+			"but it should be even and at least 2\n", num_ports);
 		return -1;
 	}
 
@@ -441,10 +449,10 @@ static void
 sighup_handler(int signum)
 {
 	unsigned q;
-	for (q = 0; q < num_queues; q ++) {
+	for (q = 0; q < num_queues; q++) {
 		if (q % (num_queues/num_pools) == 0)
 			printf("\nPool %u: ", q/(num_queues/num_pools));
-		printf("%lu ", rxPackets[ q ]);
+		printf("%lu ", rxPackets[q]);
 	}
 	printf("\nFinished handling signal %d\n", signum);
 }
@@ -455,7 +463,7 @@ sighup_handler(int signum)
  * and writing to OUTPUT_PORT
  */
 static int
-lcore_main(__attribute__((__unused__)) void* dummy)
+lcore_main(__attribute__((__unused__)) void *dummy)
 {
 	const uint16_t lcore_id = (uint16_t)rte_lcore_id();
 	const uint16_t num_cores = (uint16_t)rte_lcore_count();
@@ -464,7 +472,7 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 	uint16_t q, i, p;
 	const uint16_t remainder = (uint16_t)(num_vmdq_queues % num_cores);
 
-	for (i = 0; i < num_cores; i ++)
+	for (i = 0; i < num_cores; i++)
 		if (lcore_ids[i] == lcore_id) {
 			core_id = i;
 			break;
@@ -498,7 +506,7 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 
 	if (startQueue == endQueue) {
 		printf("lcore %u has nothing to do\n", lcore_id);
-		return (0);
+		return 0;
 	}
 
 	for (;;) {
@@ -507,8 +515,8 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 
 		for (p = 0; p < num_ports; p++) {
 			const uint8_t sport = ports[p];
-			const uint8_t dport = ports[p ^ 1]; /* 0 <-> 1, 2 <-> 3 etc */
-
+			/* 0 <-> 1, 2 <-> 3 etc */
+			const uint8_t dport = ports[p ^ 1];
 			if ((sport == INVALID_PORT_ID) || (dport == INVALID_PORT_ID))
 				continue;
 
@@ -553,12 +561,12 @@ static unsigned check_ports_num(unsigned nb_ports)
 		num_ports = nb_ports;
 	}
 
-	for (portid = 0; portid < num_ports; portid ++) {
+	for (portid = 0; portid < num_ports; portid++) {
 		if (ports[portid] >= nb_ports) {
 			printf("\nSpecified port ID(%u) exceeds max system port ID(%u)\n",
 				ports[portid], (nb_ports - 1));
 			ports[portid] = INVALID_PORT_ID;
-			valid_num_ports --;
+			valid_num_ports--;
 		}
 	}
 	return valid_num_ports;
@@ -590,12 +598,12 @@ MAIN(int argc, char *argv[])
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid VMDQ argument\n");
 
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id ++)
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++)
 		if (rte_lcore_is_enabled(lcore_id))
-			lcore_ids[core_id ++] = lcore_id;
+			lcore_ids[core_id++] = lcore_id;
 
 	if (rte_lcore_count() > RTE_MAX_LCORE)
-		rte_exit(EXIT_FAILURE,"Not enough cores\n");
+		rte_exit(EXIT_FAILURE, "Not enough cores\n");
 
 	nb_ports = rte_eth_dev_count();
 	if (nb_ports > RTE_MAX_ETHPORTS)
