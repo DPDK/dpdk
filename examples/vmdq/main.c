@@ -144,6 +144,13 @@ const uint16_t vlan_tags[] = {
 	48, 49, 50, 51, 52, 53, 54, 55,
 	56, 57, 58, 59, 60, 61, 62, 63,
 };
+const uint16_t num_vlans = RTE_DIM(vlan_tags);
+static uint16_t num_pf_queues,  num_vmdq_queues;
+static uint16_t vmdq_pool_base, vmdq_queue_base;
+/* pool mac addr template, pool mac addr is like: 52 54 00 12 port# pool# */
+static struct ether_addr pool_addr_template = {
+	.addr_bytes = {0x52, 0x54, 0x00, 0x12, 0x00, 0x00}
+};
 
 /* ethernet addresses of ports */
 static struct ether_addr vmdq_ports_eth_addr[RTE_MAX_ETHPORTS];
@@ -163,22 +170,9 @@ get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_pools)
 	unsigned i;
 
 	conf.nb_queue_pools = (enum rte_eth_nb_pools)num_pools;
+	conf.nb_pool_maps = num_pools;
 	conf.enable_default_pool = 0;
 	conf.default_pool = 0; /* set explicit value, even if not used */
-	switch (num_pools) {
-	/* For 10G NIC like 82599, 128 is valid for queue number */
-	case MAX_POOL_NUM_10G:
-		num_queues = MAX_QUEUE_NUM_10G;
-		conf.nb_pool_maps = MAX_POOL_MAP_NUM_10G;
-		break;
-	/* For 1G NIC like i350, 82580 and 82576, 8 is valid for queue number */
-	case MAX_POOL_NUM_1G:
-		num_queues = MAX_QUEUE_NUM_1G;
-		conf.nb_pool_maps = MAX_POOL_MAP_NUM_1G;
-		break;
-	default:
-		return -1;
-	}
 
 	for (i = 0; i < conf.nb_pool_maps; i++){
 		conf.pool_map[i].vlan_id = vlan_tags[ i ];
@@ -192,40 +186,6 @@ get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_pools)
 }
 
 /*
- * Validate the pool number accrording to the max pool number gotten form dev_info
- * If the pool number is invalid, give the error message and return -1
- */
-static inline int
-validate_num_pools(uint32_t max_nb_pools)
-{
-	if (num_pools > max_nb_pools) {
-		printf("invalid number of pools\n");
-		return -1;
-	}
-
-	switch (max_nb_pools) {
-	/* For 10G NIC like 82599, 64 is valid for pool number */
-	case MAX_POOL_NUM_10G:
-		if (num_pools != MAX_POOL_NUM_10G) {
-			printf("invalid number of pools\n");
-			return -1;
-		}
-		break;
-	/* For 1G NIC like i350, 82580 and 82576, 8 is valid for pool number */
-	case MAX_POOL_NUM_1G:
-		if (num_pools != MAX_POOL_NUM_1G) {
-			printf("invalid number of pools\n");
-			return -1;
-		}
-		break;
-	default:
-		return -1;
-	}
-
-	return 0;
-}
-
-/*
  * Initialises a given port using global settings and with the rx buffers
  * coming from the mbuf_pool passed as parameter
  */
@@ -235,26 +195,57 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_rxconf *rxconf;
 	struct rte_eth_conf port_conf;
-	uint16_t rxRings, txRings = (uint16_t)rte_lcore_count();
+	uint16_t rxRings, txRings;
 	const uint16_t rxRingSize = RTE_TEST_RX_DESC_DEFAULT, txRingSize = RTE_TEST_TX_DESC_DEFAULT;
 	int retval;
 	uint16_t q;
+	uint16_t queues_per_pool;
 	uint32_t max_nb_pools;
 
 	/* The max pool number from dev_info will be used to validate the pool number specified in cmd line */
 	rte_eth_dev_info_get (port, &dev_info);
 	max_nb_pools = (uint32_t)dev_info.max_vmdq_pools;
-	retval = validate_num_pools(max_nb_pools);
+	/*
+	 * We allow to process part of VMDQ pools specified by num_pools in
+	 * command line.
+	 */
+	if (num_pools > max_nb_pools) {
+		printf("num_pools %d >max_nb_pools %d\n",
+			num_pools, max_nb_pools);
+		return -1;
+	}
+	retval = get_eth_conf(&port_conf, max_nb_pools);
 	if (retval < 0)
 		return retval;
 
-	retval = get_eth_conf(&port_conf, num_pools);
-	if (retval < 0)
-		return retval;
+	/*
+	 * NIC queues are divided into pf queues and vmdq queues.
+	 */
+	/* There is assumption here all ports have the same configuration! */
+	num_pf_queues = dev_info.max_rx_queues - dev_info.vmdq_queue_num;
+	queues_per_pool = dev_info.vmdq_queue_num / dev_info.max_vmdq_pools;
+	num_vmdq_queues = num_pools * queues_per_pool;
+	num_queues = num_pf_queues + num_vmdq_queues;
+	vmdq_queue_base = dev_info.vmdq_queue_base;
+	vmdq_pool_base  = dev_info.vmdq_pool_base;
 
+	printf("pf queue num: %u, configured vmdq pool num: %u,"
+		" each vmdq pool has %u queues\n",
+		num_pf_queues, num_pools, queues_per_pool);
+	printf("vmdq queue base: %d pool base %d\n",
+		vmdq_queue_base, vmdq_pool_base);
 	if (port >= rte_eth_dev_count()) return -1;
 
-	rxRings = (uint16_t)num_queues,
+	/*
+	 * Though in this example, we only receive packets from the first queue
+	 * of each pool and send packets through first rte_lcore_count() tx
+	 * queues of vmdq queues, all queues including pf queues are setup.
+	 * This is because VMDQ queues doesn't always start from zero, and the
+	 * PMD layer doesn't support selectively initialising part of rx/tx
+	 * queues.
+	 */
+	rxRings = (uint16_t)dev_info.max_rx_queues;
+	txRings = (uint16_t)dev_info.max_tx_queues;
 	retval = rte_eth_dev_configure(port, rxRings, txRings, &port_conf);
 	if (retval != 0)
 		return retval;
@@ -267,21 +258,27 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 					rte_eth_dev_socket_id(port),
 					rxconf,
 					mbuf_pool);
-		if (retval < 0)
+		if (retval < 0) {
+			printf("initialise rx queue %d failed\n", q);
 			return retval;
+		}
 	}
 
 	for (q = 0; q < txRings; q ++) {
 		retval = rte_eth_tx_queue_setup(port, q, txRingSize,
 					rte_eth_dev_socket_id(port),
 					NULL);
-		if (retval < 0)
+		if (retval < 0) {
+			printf("initialise tx queue %d failed\n", q);
 			return retval;
+		}
 	}
 
 	retval  = rte_eth_dev_start(port);
-	if (retval < 0)
+	if (retval < 0) {
+		printf("port %d start failed\n", port);
 		return retval;
+	}
 
 	rte_eth_macaddr_get(port, &vmdq_ports_eth_addr[port]);
 	printf("Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
@@ -293,6 +290,29 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 			vmdq_ports_eth_addr[port].addr_bytes[3],
 			vmdq_ports_eth_addr[port].addr_bytes[4],
 			vmdq_ports_eth_addr[port].addr_bytes[5]);
+
+	/*
+	 * Set mac for each pool.
+	 * There is no default mac for the pools in i40.
+	 * Removes this after i40e fixes this issue.
+	 */
+	for (q = 0; q < num_pools; q++) {
+		struct ether_addr mac;
+		mac = pool_addr_template;
+		mac.addr_bytes[4] = port;
+		mac.addr_bytes[5] = q;
+		printf("Port %u vmdq pool %u set mac %02x:%02x:%02x:%02x:%02x:%02x\n",
+			port, q,
+			mac.addr_bytes[0], mac.addr_bytes[1],
+			mac.addr_bytes[2], mac.addr_bytes[3],
+			mac.addr_bytes[4], mac.addr_bytes[5]);
+		retval = rte_eth_dev_mac_addr_add(port, &mac,
+				q + vmdq_pool_base);
+		if (retval) {
+			printf("mac addr add failed at pool %d\n", q);
+			return retval;
+		}
+	}
 
 	return 0;
 }
@@ -308,6 +328,11 @@ vmdq_parse_num_pools(const char *q_arg)
 	n = strtol(q_arg, &end, 10);
 	if ((q_arg[0] == '\0') || (end == NULL) || (*end != '\0'))
 		return -1;
+
+	if (num_pools > num_vlans) {
+		printf("num_pools %d > num_vlans %d\n", num_pools, num_vlans);
+		return -1;
+	}
 
 	num_pools = n;
 
@@ -437,7 +462,7 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 	uint16_t core_id = 0;
 	uint16_t startQueue, endQueue;
 	uint16_t q, i, p;
-	const uint16_t remainder = (uint16_t)(num_queues % num_cores);
+	const uint16_t remainder = (uint16_t)(num_vmdq_queues % num_cores);
 
 	for (i = 0; i < num_cores; i ++)
 		if (lcore_ids[i] == lcore_id) {
@@ -447,17 +472,27 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 
 	if (remainder != 0) {
 		if (core_id < remainder) {
-			startQueue = (uint16_t)(core_id * (num_queues/num_cores + 1));
-			endQueue = (uint16_t)(startQueue + (num_queues/num_cores) + 1);
+			startQueue = (uint16_t)(core_id *
+					(num_vmdq_queues / num_cores + 1));
+			endQueue = (uint16_t)(startQueue +
+					(num_vmdq_queues / num_cores) + 1);
 		} else {
-			startQueue = (uint16_t)(core_id * (num_queues/num_cores) + remainder);
-			endQueue = (uint16_t)(startQueue + (num_queues/num_cores));
+			startQueue = (uint16_t)(core_id *
+					(num_vmdq_queues / num_cores) +
+					remainder);
+			endQueue = (uint16_t)(startQueue +
+					(num_vmdq_queues / num_cores));
 		}
 	} else {
-		startQueue = (uint16_t)(core_id * (num_queues/num_cores));
-		endQueue = (uint16_t)(startQueue + (num_queues/num_cores));
+		startQueue = (uint16_t)(core_id *
+				(num_vmdq_queues / num_cores));
+		endQueue = (uint16_t)(startQueue +
+				(num_vmdq_queues / num_cores));
 	}
 
+	/* vmdq queue idx doesn't always start from zero.*/
+	startQueue += vmdq_queue_base;
+	endQueue   += vmdq_queue_base;
 	printf("core %u(lcore %u) reading queues %i-%i\n", (unsigned)core_id,
 		(unsigned)lcore_id, startQueue, endQueue - 1);
 
@@ -490,7 +525,9 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 					update_mac_address(buf[i], dport);
 
 				const uint16_t txCount = rte_eth_tx_burst(dport,
-					core_id, buf, rxCount);
+					vmdq_queue_base + core_id,
+					buf,
+					rxCount);
 
 				if (txCount != rxCount) {
 					for (i = txCount; i < rxCount; i++)
