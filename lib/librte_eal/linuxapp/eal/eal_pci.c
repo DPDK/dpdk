@@ -97,6 +97,25 @@ error:
 	return -1;
 }
 
+void *
+pci_find_max_end_va(void)
+{
+	const struct rte_memseg *seg = rte_eal_get_physmem_layout();
+	const struct rte_memseg *last = seg;
+	unsigned i = 0;
+
+	for (i = 0; i < RTE_MAX_MEMSEG; i++, seg++) {
+		if (seg->addr == NULL)
+			break;
+
+		if (seg->addr > last->addr)
+			last = seg;
+
+	}
+	return RTE_PTR_ADD(last->addr, last->len);
+}
+
+
 /* map a particular resource from a file */
 void *
 pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size)
@@ -106,21 +125,16 @@ pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size)
 	/* Map the PCI memory resource of device */
 	mapaddr = mmap(requested_addr, size, PROT_READ | PROT_WRITE,
 			MAP_SHARED, fd, offset);
-	if (mapaddr == MAP_FAILED ||
-			(requested_addr != NULL && mapaddr != requested_addr)) {
+	if (mapaddr == MAP_FAILED) {
 		RTE_LOG(ERR, EAL, "%s(): cannot mmap(%d, %p, 0x%lx, 0x%lx): %s (%p)\n",
 			__func__, fd, requested_addr,
 			(unsigned long)size, (unsigned long)offset,
 			strerror(errno), mapaddr);
-		goto fail;
+	} else {
+		RTE_LOG(DEBUG, EAL, "  PCI memory mapped at %p\n", mapaddr);
 	}
 
-	RTE_LOG(DEBUG, EAL, "  PCI memory mapped at %p\n", mapaddr);
-
 	return mapaddr;
-
-fail:
-	return NULL;
 }
 
 /* parse the "resource" sysfs file */

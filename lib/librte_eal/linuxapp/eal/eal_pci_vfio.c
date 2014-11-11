@@ -37,6 +37,7 @@
 #include <sys/eventfd.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 
 #include <rte_log.h>
 #include <rte_pci.h>
@@ -720,10 +721,22 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 		if (i == msix_bar)
 			continue;
 
-		bar_addr = pci_map_resource(maps[i].addr, vfio_dev_fd, reg.offset,
-				reg.size);
+		if (internal_config.process_type == RTE_PROC_PRIMARY) {
+			/* try mapping somewhere close to the end of hugepages */
+			if (pci_map_addr == NULL)
+				pci_map_addr = pci_find_max_end_va();
 
-		if (bar_addr == NULL) {
+			bar_addr = pci_map_resource(pci_map_addr, vfio_dev_fd, reg.offset,
+					reg.size);
+			pci_map_addr = RTE_PTR_ADD(bar_addr, (size_t) reg.size);
+		} else {
+			bar_addr = pci_map_resource(maps[i].addr, vfio_dev_fd, reg.offset,
+					reg.size);
+		}
+
+		if (bar_addr == MAP_FAILED ||
+				(internal_config.process_type == RTE_PROC_SECONDARY &&
+						bar_addr != maps[i].addr)) {
 			RTE_LOG(ERR, EAL, "  %s mapping BAR%i failed: %s\n", pci_addr, i,
 					strerror(errno));
 			close(vfio_dev_fd);

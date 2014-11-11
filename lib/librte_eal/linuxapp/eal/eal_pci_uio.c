@@ -35,6 +35,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 
 #include <rte_log.h>
 #include <rte_pci.h>
@@ -47,6 +48,8 @@
 #include "eal_pci_init.h"
 
 static int pci_parse_sysfs_value(const char *filename, uint64_t *val);
+
+void *pci_map_addr = NULL;
 
 
 #define OFF_MAX              ((uint64_t)(off_t)-1)
@@ -371,10 +374,16 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 			if (maps[j].addr != NULL)
 				fail = 1;
 			else {
-				mapaddr = pci_map_resource(NULL, fd, (off_t)offset,
+				/* try mapping somewhere close to the end of hugepages */
+				if (pci_map_addr == NULL)
+					pci_map_addr = pci_find_max_end_va();
+
+				mapaddr = pci_map_resource(pci_map_addr, fd, (off_t)offset,
 						(size_t)maps[j].size);
-				if (mapaddr == NULL)
+				if (mapaddr == MAP_FAILED)
 					fail = 1;
+
+				pci_map_addr = RTE_PTR_ADD(mapaddr, (size_t) maps[j].size);
 			}
 
 			if (fail) {
