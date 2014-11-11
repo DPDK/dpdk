@@ -1,0 +1,351 @@
+..  BSD LICENSE
+    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+    * Neither the name of Intel Corporation nor the names of its
+    contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+    LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+QoS Scheduler Sample Application
+================================
+
+The QoS sample application demonstrates the use of the Intel® DPDK to provide QoS scheduling.
+
+Overview
+--------
+
+The architecture of the QoS scheduler application is shown in the following figure.
+
+.. _figure_10:
+
+**Figure 10. QoS Scheduler Application Architecture**
+
+.. image13_png has been renamed
+
+|qos_sched_app_arch|
+
+There are two flavors of the runtime execution for this application,
+with two or three threads per each packet flow configuration being used.
+The RX thread reads packets from the RX port,
+classifies the packets based on the double VLAN (outer and inner) and
+the lower two bytes of the IP destination address and puts them into the ring queue.
+The worker thread dequeues the packets from the ring and calls the QoS scheduler enqueue/dequeue functions.
+If a separate TX core is used, these are sent to the TX ring.
+Otherwise, they are sent directly to the TX port.
+The TX thread, if present, reads from the TX ring and write the packets to the TX port.
+
+Compiling the Application
+-------------------------
+
+To compile the application:
+
+#.  Go to the sample application directory:
+
+    .. code-block:: console
+
+        export RTE_SDK=/path/to/rte_sdk cd ${RTE_SDK}/examples/qos_sched
+
+#.  Set the target (a default target is used if not specified). For example:
+
+    .. note::
+
+        This application is intended as a linuxapp only.
+
+    .. code-block:: console
+
+        export RTE_TARGET=x86_64-native-linuxapp-gcc
+
+#.  Build the application:
+
+    .. code-block:: console
+
+        make
+
+.. note::
+
+    To get statistics on the sample app using the command line interface as described in the next section,
+    DPDK must be compiled defining *CONFIG_RTE_SCHED_COLLECT_STATS*,
+    which can be done by changing the configuration file for the specific target to be compiled.
+
+Running the Application
+-----------------------
+
+.. note::
+
+    In order to run the application, a total of at least 4
+    G of huge pages must be set up for each of the used sockets (depending on the cores in use).
+
+The application has a number of command line options:
+
+.. code-block:: console
+
+    ./qos_sched [EAL options] -- <APP PARAMS>
+
+Mandatory application parameters include:
+
+*   --pfc "RX PORT, TX PORT, RX LCORE, WT LCORE, TX CORE": Packet flow configuration.
+    Multiple pfc entities can be configured in the command line,
+    having 4 or 5 items (if TX core defined or not).
+
+Optional application parameters include:
+
+*   -i: It makes the application to start in the interactive mode.
+    In this mode, the application shows a command line that can be used for obtaining statistics while
+    scheduling is taking place (see interactive mode below for more information).
+
+*   --mst n: Master core index (the default value is 1).
+
+*   --rsz "A, B, C": Ring sizes:
+
+*   A = Size (in number of buffer descriptors) of each of the NIC RX rings read
+    by the I/O RX lcores (the default value is 128).
+
+*   B = Size (in number of elements) of each of the software rings used
+    by the I/O RX lcores to send packets to worker lcores (the default value is 8192).
+
+*   C = Size (in number of buffer descriptors) of each of the NIC TX rings written
+    by worker lcores (the default value is 256)
+
+*   --bsz "A, B, C, D": Burst sizes
+
+*   A = I/O RX lcore read burst size from the NIC RX (the default value is 64)
+
+*   B = I/O RX lcore write burst size to the output software rings,
+    worker lcore read burst size from input software rings,QoS enqueue size (the default value is 64)
+
+*   C = QoS dequeue size (the default value is 32)
+
+*   D = Worker lcore write burst size to the NIC TX (the default value is 64)
+
+*   --msz M: Mempool size (in number of mbufs) for each pfc (default 2097152)
+
+*   --rth "A, B, C": The RX queue threshold parameters
+
+*   A = RX prefetch threshold (the default value is 8)
+
+*   B = RX host threshold (the default value is 8)
+
+*   C = RX write-back threshold (the default value is 4)
+
+*   --tth "A, B, C": TX queue threshold parameters
+
+*   A = TX prefetch threshold (the default value is 36)
+
+*   B = TX host threshold (the default value is 0)
+
+*   C = TX write-back threshold (the default value is 0)
+
+*   --cfg FILE: Profile configuration to load
+
+Refer to *Intel®DPDK Getting Started Guide* for general information on running applications and
+the Environment Abstraction Layer (EAL) options.
+
+The profile configuration file defines all the port/subport/pipe/traffic class/queue parameters
+needed for the QoS scheduler configuration.
+
+The profile file has the following format:
+
+::
+
+    ; port configuration [port]
+
+    frame overhead = 24
+    number of subports per port = 1
+    number of pipes per subport = 4096
+    queue sizes = 64 64 64 64
+
+    ; Subport configuration
+
+    [subport 0]
+    tb rate = 1250000000; Bytes per second
+    tb size = 1000000; Bytes
+    tc 0 rate = 1250000000;     Bytes per second
+    tc 1 rate = 1250000000;     Bytes per second
+    tc 2 rate = 1250000000;     Bytes per second
+    tc 3 rate = 1250000000;     Bytes per second
+    tc period = 10;             Milliseconds
+    tc oversubscription period = 10;     Milliseconds
+
+    pipe 0-4095 = 0;        These pipes are configured with pipe profile 0
+
+    ; Pipe configuration
+
+    [pipe profile 0]
+    tb rate = 305175; Bytes per second
+    tb size = 1000000; Bytes
+
+    tc 0 rate = 305175; Bytes per second
+    tc 1 rate = 305175; Bytes per second
+    tc 2 rate = 305175; Bytes per second
+    tc 3 rate = 305175; Bytes per second
+    tc period = 40; Milliseconds
+
+    tc 0 oversubscription weight = 1
+    tc 1 oversubscription weight = 1
+    tc 2 oversubscription weight = 1
+    tc 3 oversubscription weight = 1
+
+    tc 0 wrr weights = 1 1 1 1
+    tc 1 wrr weights = 1 1 1 1
+    tc 2 wrr weights = 1 1 1 1
+    tc 3 wrr weights = 1 1 1 1
+
+    ; RED params per traffic class and color (Green / Yellow / Red)
+
+    [red]
+    tc 0 wred min = 48 40 32
+    tc 0 wred max = 64 64 64
+    tc 0 wred inv prob = 10 10 10
+    tc 0 wred weight = 9 9 9
+
+    tc 1 wred min = 48 40 32
+    tc 1 wred max = 64 64 64
+    tc 1 wred inv prob = 10 10 10
+    tc 1 wred weight = 9 9 9
+
+    tc 2 wred min = 48 40 32
+    tc 2 wred max = 64 64 64
+    tc 2 wred inv prob = 10 10 10
+    tc 2 wred weight = 9 9 9
+
+    tc 3 wred min = 48 40 32
+    tc 3 wred max = 64 64 64
+    tc 3 wred inv prob = 10 10 10
+    tc 3 wred weight = 9 9 9
+
+Interactive mode
+~~~~~~~~~~~~~~~~
+
+These are the commands that are currently working under the command line interface:
+
+*   Control Commands
+
+*   --quit: Quits the application.
+
+*   General Statistics
+
+    *   stats app: Shows a table with in-app calculated statistics.
+
+    *   stats port X subport Y: For a specific subport, it shows the number of packets that
+        went through the scheduler properly and the number of packets that were dropped.
+        The same information is shown in bytes.
+        The information is displayed in a table separating it in different traffic classes.
+
+    *   stats port X subport Y pipe Z: For a specific pipe, it shows the number of packets that
+        went through the scheduler properly and the number of packets that were dropped.
+        The same information is shown in bytes.
+        This information is displayed in a table separating it in individual queues.
+
+*   Average queue size
+
+All of these commands work the same way, averaging the number of packets throughout a specific subset of queues.
+
+Two parameters can be configured for this prior to calling any of these commands:
+
+    *   qavg n X: n is the number of times that the calculation will take place.
+        Bigger numbers provide higher accuracy. The default value is 10.
+
+    *   qavg period X: period is the number of microseconds that will be allowed between each calculation.
+        The default value is 100.
+
+The commands that can be used for measuring average queue size are:
+
+*   qavg port X subport Y: Show average queue size per subport.
+
+*   qavg port X subport Y tc Z: Show average queue size per subport for a specific traffic class.
+
+*   qavg port X subport Y pipe Z: Show average queue size per pipe.
+
+*   qavg port X subport Y pipe Z tc A: Show average queue size per pipe for a specific traffic class.
+
+*   qavg port X subport Y pipe Z tc A q B: Show average queue size of a specific queue.
+
+Example
+~~~~~~~
+
+The following is an example command with a single packet flow configuration:
+
+.. code-block:: console
+
+    ./qos_sched -c a2 -n 4 -- --pfc "3,2,5,7" --cfg ./profile.cfg
+
+This example uses a single packet flow configuration which creates one RX thread on lcore 5 reading
+from port 3 and a worker thread on lcore 7 writing to port 2.
+
+Another example with 2 packet flow configurations using different ports but sharing the same core for QoS scheduler is given below:
+
+.. code-block:: console
+
+   ./qos_sched -c c6 -n 4 -- --pfc "3,2,2,6,7" --pfc "1,0,2,6,7" --cfg ./profile.cfg
+
+Note that independent cores for the packet flow configurations for each of the RX, WT and TX thread are also supported,
+providing flexibility to balance the work.
+
+The EAL coremask is constrained to contain the default mastercore 1 and the RX, WT and TX cores only.
+
+Explanation
+-----------
+
+The Port/Subport/Pipe/Traffic Class/Queue are the hierarchical entities in a typical QoS application:
+
+*   A subport represents a predefined group of users.
+
+*   A pipe represents an individual user/subscriber.
+
+*   A traffic class is the representation of a different traffic type with a specific loss rate,
+    delay and jitter requirements; such as data voice, video or data transfers.
+
+*   A queue hosts packets from one or multiple connections of the same type belonging to the same user.
+
+The traffic flows that need to be configured are application dependent.
+This application classifies based on the QinQ double VLAN tags and the IP destination address as indicated in the following table.
+
+.. _table_2:
+
+**Table 2. Entity Types**
+
++----------------+-------------------------+--------------------------------------------------+----------------------------------+
+| **Level Name** | **Siblings per Parent** | **QoS Functional Description**                   | **Selected By**                  |
+|                |                         |                                                  |                                  |
++================+=========================+==================================================+==================================+
+| Port           | -                       | Ethernet port                                    | Physical port                    |
+|                |                         |                                                  |                                  |
++----------------+-------------------------+--------------------------------------------------+----------------------------------+
+| Subport        | Config (8)              | Traffic shaped (token bucket)                    | Outer VLAN tag                   |
+|                |                         |                                                  |                                  |
++----------------+-------------------------+--------------------------------------------------+----------------------------------+
+| Pipe           | Config (4k)             | Traffic shaped (token bucket)                    | Inner VLAN tag                   |
+|                |                         |                                                  |                                  |
++----------------+-------------------------+--------------------------------------------------+----------------------------------+
+| Traffic Class  | 4                       | TCs of the same pipe services in strict priority | Destination IP address (0.0.X.0) |
+|                |                         |                                                  |                                  |
++----------------+-------------------------+--------------------------------------------------+----------------------------------+
+| Queue          | 4                       | Queue of the same TC serviced in WRR             | Destination IP address (0.0.0.X) |
+|                |                         |                                                  |                                  |
++----------------+-------------------------+--------------------------------------------------+----------------------------------+
+
+Please refer to the "QoS Scheduler" chapter in the *Intel® DPDK Programmer's Guide* for more information about these parameters.
+
+.. |qos_sched_app_arch| image:: img/qos_sched_app_arch.png
