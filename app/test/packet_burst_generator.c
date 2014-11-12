@@ -191,20 +191,12 @@ initialize_ipv4_header(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
  */
 #define RTE_MAX_SEGS_PER_PKT 255 /**< pkt.nb_segs is a 8-bit unsigned char. */
 
-#define TXONLY_DEF_PACKET_LEN 64
-#define TXONLY_DEF_PACKET_LEN_128 128
-
-uint16_t tx_pkt_length = TXONLY_DEF_PACKET_LEN;
-uint16_t tx_pkt_seg_lengths[RTE_MAX_SEGS_PER_PKT] = {
-		TXONLY_DEF_PACKET_LEN_128,
-};
-
-uint8_t  tx_pkt_nb_segs = 1;
-
 int
 generate_packet_burst(struct rte_mempool *mp, struct rte_mbuf **pkts_burst,
-		struct ether_hdr *eth_hdr, uint8_t vlan_enabled, void *ip_hdr,
-		uint8_t ipv4, struct udp_hdr *udp_hdr, int nb_pkt_per_burst)
+		      struct ether_hdr *eth_hdr, uint8_t vlan_enabled,
+		      void *ip_hdr, uint8_t ipv4, struct udp_hdr *udp_hdr,
+		      int nb_pkt_per_burst, uint8_t pkt_len,
+		      uint8_t nb_pkt_segs)
 {
 	int i, nb_pkt = 0;
 	size_t eth_hdr_size;
@@ -221,9 +213,9 @@ nomore_mbuf:
 			break;
 		}
 
-		pkt->data_len = tx_pkt_seg_lengths[0];
+		pkt->data_len = pkt_len;
 		pkt_seg = pkt;
-		for (i = 1; i < tx_pkt_nb_segs; i++) {
+		for (i = 1; i < nb_pkt_segs; i++) {
 			pkt_seg->next = rte_pktmbuf_alloc(mp);
 			if (pkt_seg->next == NULL) {
 				pkt->nb_segs = i;
@@ -231,7 +223,7 @@ nomore_mbuf:
 				goto nomore_mbuf;
 			}
 			pkt_seg = pkt_seg->next;
-			pkt_seg->data_len = tx_pkt_seg_lengths[i];
+			pkt_seg->data_len = pkt_len;
 		}
 		pkt_seg->next = NULL; /* Last segment of packet. */
 
@@ -259,8 +251,8 @@ nomore_mbuf:
 		 * Complete first mbuf of packet and append it to the
 		 * burst of packets to be transmitted.
 		 */
-		pkt->nb_segs = tx_pkt_nb_segs;
-		pkt->pkt_len = tx_pkt_length;
+		pkt->nb_segs = nb_pkt_segs;
+		pkt->pkt_len = pkt_len;
 		pkt->l2_len = eth_hdr_size;
 
 		if (ipv4) {

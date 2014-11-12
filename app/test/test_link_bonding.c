@@ -1192,9 +1192,12 @@ generate_test_burst(struct rte_mbuf **pkts_burst, uint16_t burst_size,
 	}
 
 	/* Generate burst of packets to transmit */
-	generated_burst_size = generate_packet_burst(test_params->mbuf_pool,
-			pkts_burst,	test_params->pkt_eth_hdr, vlan, ip_hdr, ipv4,
-			test_params->pkt_udp_hdr, burst_size);
+	generated_burst_size =
+		generate_packet_burst(test_params->mbuf_pool,
+				      pkts_burst, test_params->pkt_eth_hdr,
+				      vlan, ip_hdr, ipv4,
+				      test_params->pkt_udp_hdr, burst_size,
+				      PACKET_BURST_GEN_PKT_LEN_128, 1);
 	if (generated_burst_size != burst_size) {
 		printf("Failed to generate packet burst");
 		return -1;
@@ -1781,9 +1784,12 @@ test_activebackup_tx_burst(void)
 	}
 
 	/* Generate a burst of packets to transmit */
-	generated_burst_size = generate_packet_burst(test_params->mbuf_pool,
-			pkts_burst,	test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr,
-			1, test_params->pkt_udp_hdr, burst_size);
+	generated_burst_size =
+		generate_packet_burst(test_params->mbuf_pool,
+				      pkts_burst, test_params->pkt_eth_hdr, 0,
+				      test_params->pkt_ipv4_hdr, 1,
+				      test_params->pkt_udp_hdr, burst_size,
+				      PACKET_BURST_GEN_PKT_LEN, 1);
 	if (generated_burst_size != burst_size)
 		return -1;
 
@@ -2435,8 +2441,10 @@ test_balance_l2_tx_burst(void)
 
 	/* Generate a burst 1 of packets to transmit */
 	if (generate_packet_burst(test_params->mbuf_pool, &pkts_burst[0][0],
-			test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr, 1,
-			test_params->pkt_udp_hdr, burst_size[0]) != burst_size[0])
+				  test_params->pkt_eth_hdr, 0,
+				  test_params->pkt_ipv4_hdr, 1,
+				  test_params->pkt_udp_hdr, burst_size[0],
+				  PACKET_BURST_GEN_PKT_LEN, 1) != burst_size[0])
 		return -1;
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
@@ -2444,8 +2452,10 @@ test_balance_l2_tx_burst(void)
 
 	/* Generate a burst 2 of packets to transmit */
 	if (generate_packet_burst(test_params->mbuf_pool, &pkts_burst[1][0],
-			test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr, 1,
-			test_params->pkt_udp_hdr, burst_size[1]) != burst_size[1])
+				  test_params->pkt_eth_hdr, 0,
+				  test_params->pkt_ipv4_hdr, 1,
+				  test_params->pkt_udp_hdr, burst_size[1],
+				  PACKET_BURST_GEN_PKT_LEN, 1) != burst_size[1])
 		return -1;
 
 	/* Send burst 1 on bonded port */
@@ -3263,9 +3273,12 @@ test_broadcast_tx_burst(void)
 	}
 
 	/* Generate a burst of packets to transmit */
-	generated_burst_size = generate_packet_burst(test_params->mbuf_pool,
-			pkts_burst,	test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr,
-			1, test_params->pkt_udp_hdr, burst_size);
+	generated_burst_size =
+		generate_packet_burst(test_params->mbuf_pool,
+				      pkts_burst, test_params->pkt_eth_hdr, 0,
+				      test_params->pkt_ipv4_hdr, 1,
+				      test_params->pkt_udp_hdr, burst_size,
+				      PACKET_BURST_GEN_PKT_LEN, 1);
 	if (generated_burst_size != burst_size)
 		return -1;
 
