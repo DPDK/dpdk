@@ -53,7 +53,7 @@
 
 #include "main.h"
 
-#define MAX_QUEUES 128
+#define MAX_QUEUES 256
 
 /* the maximum number of external ports supported */
 #define MAX_SUP_PORTS 1
@@ -285,6 +285,9 @@ static struct rte_eth_conf vmdq_conf_default = {
 static unsigned lcore_ids[RTE_MAX_LCORE];
 static uint8_t ports[RTE_MAX_ETHPORTS];
 static unsigned num_ports = 0; /**< The number of ports specified in command line */
+static uint16_t num_pf_queues, num_vmdq_queues;
+static uint16_t vmdq_pool_base, vmdq_queue_base;
+static uint16_t queues_per_pool;
 
 static const uint16_t external_pkt_default_vlan_tag = 2000;
 const uint16_t vlan_tags[] = {
@@ -422,7 +425,6 @@ port_init(uint8_t port)
 
 	/*configure the number of supported virtio devices based on VMDQ limits */
 	num_devices = dev_info.max_vmdq_pools;
-	num_queues = dev_info.max_rx_queues;
 
 	if (zero_copy) {
 		rx_ring_size = num_rx_descriptor;
@@ -442,10 +444,19 @@ port_init(uint8_t port)
 	retval = get_eth_conf(&port_conf, num_devices);
 	if (retval < 0)
 		return retval;
+	/* NIC queues are divided into pf queues and vmdq queues.  */
+	num_pf_queues = dev_info.max_rx_queues - dev_info.vmdq_queue_num;
+	queues_per_pool = dev_info.vmdq_queue_num / dev_info.max_vmdq_pools;
+	num_vmdq_queues = num_devices * queues_per_pool;
+	num_queues = num_pf_queues + num_vmdq_queues;
+	vmdq_queue_base = dev_info.vmdq_queue_base;
+	vmdq_pool_base  = dev_info.vmdq_pool_base;
+	printf("pf queue num: %u, configured vmdq pool num: %u, each vmdq pool has %u queues\n",
+		num_pf_queues, num_devices, queues_per_pool);
 
 	if (port >= rte_eth_dev_count()) return -1;
 
-	rx_rings = (uint16_t)num_queues,
+	rx_rings = (uint16_t)dev_info.max_rx_queues;
 	/* Configure ethernet device. */
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
 	if (retval != 0)
@@ -949,7 +960,8 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 		vdev->vlan_tag);
 
 	/* Register the MAC address. */
-	ret = rte_eth_dev_mac_addr_add(ports[0], &vdev->mac_address, (uint32_t)dev->device_fh);
+	ret = rte_eth_dev_mac_addr_add(ports[0], &vdev->mac_address,
+				(uint32_t)dev->device_fh + vmdq_pool_base);
 	if (ret)
 		RTE_LOG(ERR, VHOST_DATA, "(%"PRIu64") Failed to add device MAC address to VMDQ\n",
 					dev->device_fh);
@@ -2620,7 +2632,7 @@ new_device (struct virtio_net *dev)
 	ll_dev->vdev = vdev;
 	add_data_ll_entry(&ll_root_used, ll_dev);
 	vdev->vmdq_rx_q
-		= dev->device_fh * (num_queues / num_devices);
+		= dev->device_fh * queues_per_pool + vmdq_queue_base;
 
 	if (zero_copy) {
 		uint32_t index = vdev->vmdq_rx_q;
@@ -2855,7 +2867,8 @@ main(int argc, char *argv[])
 	unsigned lcore_id, core_id = 0;
 	unsigned nb_ports, valid_num_ports;
 	int ret;
-	uint8_t portid, queue_id = 0;
+	uint8_t portid;
+	uint16_t queue_id;
 	static pthread_t tid;
 
 	/* init EAL */
