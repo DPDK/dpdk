@@ -1600,6 +1600,9 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 
 	ixgbe_dev_clear_queues(dev);
 
+	/* Clear stored conf */
+	dev->data->scattered_rx = 0;
+
 	/* Clear recorded link status */
 	memset(&link, 0, sizeof(link));
 	rte_ixgbe_dev_atomic_write_link_status(dev, &link);
@@ -2888,6 +2891,9 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 	  * restore after device starts
 	  */
 	ixgbevf_set_vfta_all(dev,0);
+
+	/* Clear stored conf */
+	dev->data->scattered_rx = 0;
 
 	ixgbe_dev_clear_queues(dev);
 }
