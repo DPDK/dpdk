@@ -310,12 +310,123 @@ cmdline_parse_inst_t cmd_quit = {
 
 /****************/
 
+struct cmd_set_rxtx_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t mode;
+};
+
+static void cmd_set_rxtx_parsed(void *parsed_result, struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_set_rxtx_result *res = parsed_result;
+	if (test_set_rxtx_conf(res->mode) < 0)
+		cmdline_printf(cl, "Cannot find such mode\n");
+}
+
+cmdline_parse_token_string_t cmd_set_rxtx_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxtx_result, set,
+				 "set_rxtx_mode");
+
+cmdline_parse_token_string_t cmd_set_rxtx_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxtx_result, mode, NULL);
+
+cmdline_parse_inst_t cmd_set_rxtx = {
+	.f = cmd_set_rxtx_parsed,  /* function to call */
+	.data = NULL,      /* 2nd arg of func */
+	.help_str = "set rxtx routine: "
+			"set_rxtx <mode>",
+	.tokens = {        /* token list, NULL terminated */
+		(void *)&cmd_set_rxtx_set,
+		(void *)&cmd_set_rxtx_mode,
+		NULL,
+	},
+};
+
+/****************/
+
+struct cmd_set_rxtx_anchor {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t type;
+};
+
+static void
+cmd_set_rxtx_anchor_parsed(void *parsed_result,
+			   struct cmdline *cl,
+			   __attribute__((unused)) void *data)
+{
+	struct cmd_set_rxtx_anchor *res = parsed_result;
+	if (test_set_rxtx_anchor(res->type) < 0)
+		cmdline_printf(cl, "Cannot find such anchor\n");
+}
+
+cmdline_parse_token_string_t cmd_set_rxtx_anchor_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxtx_anchor, set,
+				 "set_rxtx_anchor");
+
+cmdline_parse_token_string_t cmd_set_rxtx_anchor_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxtx_anchor, type, NULL);
+
+cmdline_parse_inst_t cmd_set_rxtx_anchor = {
+	.f = cmd_set_rxtx_anchor_parsed,  /* function to call */
+	.data = NULL,      /* 2nd arg of func */
+	.help_str = "set rxtx anchor: "
+			"set_rxtx_anchor <type>",
+	.tokens = {        /* token list, NULL terminated */
+		(void *)&cmd_set_rxtx_anchor_set,
+		(void *)&cmd_set_rxtx_anchor_type,
+		NULL,
+	},
+};
+
+/****************/
+
+/* for stream control */
+struct cmd_set_rxtx_sc {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t type;
+};
+
+static void
+cmd_set_rxtx_sc_parsed(void *parsed_result,
+			   struct cmdline *cl,
+			   __attribute__((unused)) void *data)
+{
+	struct cmd_set_rxtx_sc *res = parsed_result;
+	if (test_set_rxtx_sc(res->type) < 0)
+		cmdline_printf(cl, "Cannot find such stream control\n");
+}
+
+cmdline_parse_token_string_t cmd_set_rxtx_sc_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxtx_sc, set,
+				 "set_rxtx_sc");
+
+cmdline_parse_token_string_t cmd_set_rxtx_sc_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxtx_sc, type, NULL);
+
+cmdline_parse_inst_t cmd_set_rxtx_sc = {
+	.f = cmd_set_rxtx_sc_parsed,  /* function to call */
+	.data = NULL,      /* 2nd arg of func */
+	.help_str = "set rxtx stream control: "
+			"set_rxtx_sc <type>",
+	.tokens = {        /* token list, NULL terminated */
+		(void *)&cmd_set_rxtx_sc_set,
+		(void *)&cmd_set_rxtx_sc_type,
+		NULL,
+	},
+};
+
+/****************/
+
+
 cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_autotest,
 	(cmdline_parse_inst_t *)&cmd_dump,
 	(cmdline_parse_inst_t *)&cmd_dump_one,
 	(cmdline_parse_inst_t *)&cmd_set_ring,
 	(cmdline_parse_inst_t *)&cmd_quit,
+	(cmdline_parse_inst_t *)&cmd_set_rxtx,
+	(cmdline_parse_inst_t *)&cmd_set_rxtx_anchor,
+	(cmdline_parse_inst_t *)&cmd_set_rxtx_sc,
 	NULL,
 };
 
