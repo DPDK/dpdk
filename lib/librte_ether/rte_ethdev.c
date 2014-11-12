@@ -2586,7 +2586,7 @@ rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
 		return 0;
 	}
 	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_ERR_RET(*dev->rx_pkt_burst, -ENOTSUP);
+	FUNC_PTR_OR_ERR_RET(*dev->rx_pkt_burst, 0);
 	if (queue_id >= dev->data->nb_rx_queues) {
 		PMD_DEBUG_TRACE("Invalid RX queue_id=%d\n", queue_id);
 		return 0;
@@ -2607,7 +2607,7 @@ rte_eth_tx_burst(uint8_t port_id, uint16_t queue_id,
 	}
 	dev = &rte_eth_devices[port_id];
 
-	FUNC_PTR_OR_ERR_RET(*dev->tx_pkt_burst, -ENOTSUP);
+	FUNC_PTR_OR_ERR_RET(*dev->tx_pkt_burst, 0);
 	if (queue_id >= dev->data->nb_tx_queues) {
 		PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", queue_id);
 		return 0;
@@ -2626,7 +2626,7 @@ rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id)
 		return 0;
 	}
 	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_count, -ENOTSUP);
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_count, 0);
 	return (*dev->dev_ops->rx_queue_count)(dev, queue_id);
 }
 
