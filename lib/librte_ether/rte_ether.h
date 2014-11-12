@@ -45,6 +45,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stdio.h>
 
 #include <rte_memcpy.h>
 #include <rte_random.h>
@@ -264,6 +265,30 @@ static inline void ether_addr_copy(const struct ether_addr *ea_from,
 	 */
 	*ea_to = *ea_from;
 #endif
+}
+
+#define ETHER_ADDR_FMT_SIZE         18
+/**
+ * Format 48bits Ethernet address in pattern xx:xx:xx:xx:xx:xx.
+ *
+ * @param buf
+ *   A pointer to buffer contains the formatted MAC address.
+ * @param size
+ *   The format buffer size.
+ * @param ea_to
+ *   A pointer to a ether_addr structure.
+ */
+static inline void
+ether_format_addr(char *buf, uint16_t size,
+		  const struct ether_addr *eth_addr)
+{
+	snprintf(buf, size, "%02X:%02X:%02X:%02X:%02X:%02X",
+		 eth_addr->addr_bytes[0],
+		 eth_addr->addr_bytes[1],
+		 eth_addr->addr_bytes[2],
+		 eth_addr->addr_bytes[3],
+		 eth_addr->addr_bytes[4],
+		 eth_addr->addr_bytes[5]);
 }
 
 /**

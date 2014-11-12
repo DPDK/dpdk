@@ -236,18 +236,6 @@ ip_proto_name(uint8_t ip_proto)
 }
 
 static void
-ether_addr_to_hexa(const struct ether_addr *ea, char *buf)
-{
-	sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x",
-		ea->addr_bytes[0],
-		ea->addr_bytes[1],
-		ea->addr_bytes[2],
-		ea->addr_bytes[3],
-		ea->addr_bytes[4],
-		ea->addr_bytes[5]);
-}
-
-static void
 ipv4_addr_to_dot(uint32_t be_ipv4_addr, char *buf)
 {
 	uint32_t ipv4_addr;
@@ -261,9 +249,9 @@ ipv4_addr_to_dot(uint32_t be_ipv4_addr, char *buf)
 static void
 ether_addr_dump(const char *what, const struct ether_addr *ea)
 {
-	char buf[18];
+	char buf[ETHER_ADDR_FMT_SIZE];
 
-	ether_addr_to_hexa(ea, buf);
+	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, ea);
 	if (what)
 		printf("%s", what);
 	printf("%s", buf);

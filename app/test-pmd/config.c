@@ -99,13 +99,9 @@
 static void
 print_ethaddr(const char *name, struct ether_addr *eth_addr)
 {
-	printf("%s%02X:%02X:%02X:%02X:%02X:%02X", name,
-	       (unsigned int)eth_addr->addr_bytes[0],
-	       (unsigned int)eth_addr->addr_bytes[1],
-	       (unsigned int)eth_addr->addr_bytes[2],
-	       (unsigned int)eth_addr->addr_bytes[3],
-	       (unsigned int)eth_addr->addr_bytes[4],
-	       (unsigned int)eth_addr->addr_bytes[5]);
+	char buf[ETHER_ADDR_FMT_SIZE];
+	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	printf("%s%s", name, buf);
 }
 
 void
