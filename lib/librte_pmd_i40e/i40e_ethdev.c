@@ -188,6 +188,12 @@ static int i40e_dev_udp_tunnel_add(struct rte_eth_dev *dev,
 				struct rte_eth_udp_tunnel *udp_tunnel);
 static int i40e_dev_udp_tunnel_del(struct rte_eth_dev *dev,
 				struct rte_eth_udp_tunnel *udp_tunnel);
+static int i40e_ethertype_filter_set(struct i40e_pf *pf,
+			struct rte_eth_ethertype_filter *filter,
+			bool add);
+static int i40e_ethertype_filter_handle(struct rte_eth_dev *dev,
+				enum rte_filter_op filter_op,
+				void *arg);
 static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 				enum rte_filter_type filter_type,
 				enum rte_filter_op filter_op,
@@ -5114,6 +5120,96 @@ i40e_pf_config_mq_rx(struct i40e_pf *pf)
 	return ret;
 }
 
+/*
+ * Configure ethertype filter, which can director packet by filtering
+ * with mac address and ether_type or only ether_type
+ */
+static int
+i40e_ethertype_filter_set(struct i40e_pf *pf,
+			struct rte_eth_ethertype_filter *filter,
+			bool add)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_control_filter_stats stats;
+	uint16_t flags = 0;
+	int ret;
+
+	if (filter->queue >= pf->dev_data->nb_rx_queues) {
+		PMD_DRV_LOG(ERR, "Invalid queue ID");
+		return -EINVAL;
+	}
+	if (filter->ether_type == ETHER_TYPE_IPv4 ||
+		filter->ether_type == ETHER_TYPE_IPv6) {
+		PMD_DRV_LOG(ERR, "unsupported ether_type(0x%04x) in"
+			" control packet filter.", filter->ether_type);
+		return -EINVAL;
+	}
+	if (filter->ether_type == ETHER_TYPE_VLAN)
+		PMD_DRV_LOG(WARNING, "filter vlan ether_type in first tag is"
+			" not supported.");
+
+	if (!(filter->flags & RTE_ETHTYPE_FLAGS_MAC))
+		flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_IGNORE_MAC;
+	if (filter->flags & RTE_ETHTYPE_FLAGS_DROP)
+		flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_DROP;
+	flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_TO_QUEUE;
+
+	memset(&stats, 0, sizeof(stats));
+	ret = i40e_aq_add_rem_control_packet_filter(hw,
+			filter->mac_addr.addr_bytes,
+			filter->ether_type, flags,
+			pf->main_vsi->seid,
+			filter->queue, add, &stats, NULL);
+
+	PMD_DRV_LOG(INFO, "add/rem control packet filter, return %d,"
+			 " mac_etype_used = %u, etype_used = %u,"
+			 " mac_etype_free = %u, etype_free = %u\n",
+			 ret, stats.mac_etype_used, stats.etype_used,
+			 stats.mac_etype_free, stats.etype_free);
+	if (ret < 0)
+		return -ENOSYS;
+	return 0;
+}
+
+/*
+ * Handle operations for ethertype filter.
+ */
+static int
+i40e_ethertype_filter_handle(struct rte_eth_dev *dev,
+				enum rte_filter_op filter_op,
+				void *arg)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	int ret = 0;
+
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return ret;
+
+	if (arg == NULL) {
+		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u",
+			    filter_op);
+		return -EINVAL;
+	}
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+		ret = i40e_ethertype_filter_set(pf,
+			(struct rte_eth_ethertype_filter *)arg,
+			TRUE);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		ret = i40e_ethertype_filter_set(pf,
+			(struct rte_eth_ethertype_filter *)arg,
+			FALSE);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unsupported operation %u\n", filter_op);
+		ret = -ENOSYS;
+		break;
+	}
+	return ret;
+}
+
 static int
 i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_type filter_type,
@@ -5128,6 +5224,9 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 	switch (filter_type) {
 	case RTE_ETH_FILTER_MACVLAN:
 		ret = i40e_mac_filter_handle(dev, filter_op, arg);
+		break;
+	case RTE_ETH_FILTER_ETHERTYPE:
+		ret = i40e_ethertype_filter_handle(dev, filter_op, arg);
 		break;
 	case RTE_ETH_FILTER_TUNNEL:
 		ret = i40e_tunnel_filter_handle(dev, filter_op, arg);
