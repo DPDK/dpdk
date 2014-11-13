@@ -52,6 +52,7 @@ extern "C" {
 enum rte_filter_type {
 	RTE_ETH_FILTER_NONE = 0,
 	RTE_ETH_FILTER_MACVLAN,
+	RTE_ETH_FILTER_ETHERTYPE,
 	RTE_ETH_FILTER_TUNNEL,
 	RTE_ETH_FILTER_FDIR,
 	RTE_ETH_FILTER_MAX
@@ -94,6 +95,25 @@ struct rte_eth_mac_filter {
 	uint16_t dst_id; /**< VF ID, available when is_vf is 1*/
 	enum rte_mac_filter_type filter_type; /**< MAC filter type */
 	struct ether_addr mac_addr;
+};
+
+/**
+ * Define all structures for Ethertype Filter type.
+ */
+
+#define RTE_ETHTYPE_FLAGS_MAC    0x0001 /**< If set, compare mac */
+#define RTE_ETHTYPE_FLAGS_DROP   0x0002 /**< If set, drop packet when match */
+
+/**
+ * A structure used to define the ethertype filter entry
+ * to support RTE_ETH_FILTER_ETHERTYPE with RTE_ETH_FILTER_ADD,
+ * RTE_ETH_FILTER_DELETE and RTE_ETH_FILTER_GET operations.
+ */
+struct rte_eth_ethertype_filter {
+	struct ether_addr mac_addr;   /**< Mac address to match. */
+	uint16_t ether_type;          /**< Ether type to match */
+	uint16_t flags;               /**< Flags from RTE_ETHTYPE_FLAGS_* */
+	uint16_t queue;               /**< Queue assigned to when match*/
 };
 
 /**
