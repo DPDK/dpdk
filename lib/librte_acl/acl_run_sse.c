@@ -164,25 +164,25 @@ resolve_priority_sse(uint64_t transition, int n, const struct rte_acl_ctx *ctx,
  * Extract transitions from an XMM register and check for any matches
  */
 static void
-acl_process_matches(xmm_t *indicies, int slot, const struct rte_acl_ctx *ctx,
+acl_process_matches(xmm_t *indices, int slot, const struct rte_acl_ctx *ctx,
 	struct parms *parms, struct acl_flow_data *flows)
 {
 	uint64_t transition1, transition2;
 
 	/* extract transition from low 64 bits. */
-	transition1 = MM_CVT64(*indicies);
+	transition1 = MM_CVT64(*indices);
 
 	/* extract transition from high 64 bits. */
-	*indicies = MM_SHUFFLE32(*indicies, SHUFFLE32_SWAP64);
-	transition2 = MM_CVT64(*indicies);
+	*indices = MM_SHUFFLE32(*indices, SHUFFLE32_SWAP64);
+	transition2 = MM_CVT64(*indices);
 
 	transition1 = acl_match_check(transition1, slot, ctx,
 		parms, flows, resolve_priority_sse);
 	transition2 = acl_match_check(transition2, slot + 1, ctx,
 		parms, flows, resolve_priority_sse);
 
-	/* update indicies with new transitions. */
-	*indicies = MM_SET64(transition2, transition1);
+	/* update indices with new transitions. */
+	*indices = MM_SET64(transition2, transition1);
 }
 
 /*
@@ -190,14 +190,14 @@ acl_process_matches(xmm_t *indicies, int slot, const struct rte_acl_ctx *ctx,
  */
 static inline void
 acl_match_check_x2(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
-	struct acl_flow_data *flows, xmm_t *indicies, xmm_t match_mask)
+	struct acl_flow_data *flows, xmm_t *indices, xmm_t match_mask)
 {
 	xmm_t temp;
 
-	temp = MM_AND(match_mask, *indicies);
+	temp = MM_AND(match_mask, *indices);
 	while (!MM_TESTZ(temp, temp)) {
-		acl_process_matches(indicies, slot, ctx, parms, flows);
-		temp = MM_AND(match_mask, *indicies);
+		acl_process_matches(indices, slot, ctx, parms, flows);
+		temp = MM_AND(match_mask, *indices);
 	}
 }
 
@@ -206,23 +206,23 @@ acl_match_check_x2(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
  */
 static inline void
 acl_match_check_x4(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
-	struct acl_flow_data *flows, xmm_t *indicies1, xmm_t *indicies2,
+	struct acl_flow_data *flows, xmm_t *indices1, xmm_t *indices2,
 	xmm_t match_mask)
 {
 	xmm_t temp;
 
 	/* put low 32 bits of each transition into one register */
-	temp = (xmm_t)MM_SHUFFLEPS((__m128)*indicies1, (__m128)*indicies2,
+	temp = (xmm_t)MM_SHUFFLEPS((__m128)*indices1, (__m128)*indices2,
 		0x88);
 	/* test for match node */
 	temp = MM_AND(match_mask, temp);
 
 	while (!MM_TESTZ(temp, temp)) {
-		acl_process_matches(indicies1, slot, ctx, parms, flows);
-		acl_process_matches(indicies2, slot + 2, ctx, parms, flows);
+		acl_process_matches(indices1, slot, ctx, parms, flows);
+		acl_process_matches(indices2, slot + 2, ctx, parms, flows);
 
-		temp = (xmm_t)MM_SHUFFLEPS((__m128)*indicies1,
-					(__m128)*indicies2,
+		temp = (xmm_t)MM_SHUFFLEPS((__m128)*indices1,
+					(__m128)*indices2,
 					0x88);
 		temp = MM_AND(match_mask, temp);
 	}
@@ -237,7 +237,7 @@ acl_match_check_x4(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
 static inline xmm_t
 acl_calc_addr(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 	xmm_t ones_16, xmm_t bytes, xmm_t type_quad_range,
-	xmm_t *indicies1, xmm_t *indicies2)
+	xmm_t *indices1, xmm_t *indices2)
 {
 	xmm_t addr, node_types, temp;
 
@@ -247,11 +247,11 @@ acl_calc_addr(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 	 * it reaches a match.
 	 */
 
-	/* Shuffle low 32 into temp and high 32 into indicies2 */
-	temp = (xmm_t)MM_SHUFFLEPS((__m128)*indicies1, (__m128)*indicies2,
+	/* Shuffle low 32 into temp and high 32 into indices2 */
+	temp = (xmm_t)MM_SHUFFLEPS((__m128)*indices1, (__m128)*indices2,
 		0x88);
-	*indicies2 = (xmm_t)MM_SHUFFLEPS((__m128)*indicies1,
-		(__m128)*indicies2, 0xdd);
+	*indices2 = (xmm_t)MM_SHUFFLEPS((__m128)*indices1,
+		(__m128)*indices2, 0xdd);
 
 	/* Calc node type and node addr */
 	node_types = MM_ANDNOT(index_mask, temp);
@@ -277,7 +277,7 @@ acl_calc_addr(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 	/*
 	 * Calculate number of range boundaries that are less than the
 	 * input value. Range boundaries for each node are in signed 8 bit,
-	 * ordered from -128 to 127 in the indicies2 register.
+	 * ordered from -128 to 127 in the indices2 register.
 	 * This is effectively a popcnt of bytes that are greater than the
 	 * input byte.
 	 */
@@ -286,7 +286,7 @@ acl_calc_addr(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 	temp = MM_SHUFFLE8(next_input, shuffle_input);
 
 	/* check ranges */
-	temp = MM_CMPGT8(temp, *indicies2);
+	temp = MM_CMPGT8(temp, *indices2);
 
 	/* convert -1 to 1 (bytes greater than input byte */
 	temp = MM_SIGN8(temp, temp);
@@ -310,7 +310,7 @@ acl_calc_addr(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 static inline xmm_t
 transition4(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 	xmm_t ones_16, xmm_t bytes, xmm_t type_quad_range,
-	const uint64_t *trans, xmm_t *indicies1, xmm_t *indicies2)
+	const uint64_t *trans, xmm_t *indices1, xmm_t *indices2)
 {
 	xmm_t addr;
 	uint64_t trans0, trans2;
@@ -318,7 +318,7 @@ transition4(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 	 /* Calculate the address (array index) for all 4 transitions. */
 
 	addr = acl_calc_addr(index_mask, next_input, shuffle_input, ones_16,
-		bytes, type_quad_range, indicies1, indicies2);
+		bytes, type_quad_range, indices1, indices2);
 
 	 /* Gather 64 bit transitions and pack back into 2 registers. */
 
@@ -334,13 +334,13 @@ transition4(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 
 	/* {x2, x1, x2, x3} -> {x1, x1, x2, x3} */
 	addr = MM_SHUFFLE32(addr, SHUFFLE32_SLOT1);
-	*indicies1 = MM_SET64(trans[MM_CVT32(addr)], trans0);
+	*indices1 = MM_SET64(trans[MM_CVT32(addr)], trans0);
 
 	/* get slot 3 */
 
 	/* {x1, x1, x2, x3} -> {x3, x1, x2, x3} */
 	addr = MM_SHUFFLE32(addr, SHUFFLE32_SLOT3);
-	*indicies2 = MM_SET64(trans[MM_CVT32(addr)], trans2);
+	*indices2 = MM_SET64(trans[MM_CVT32(addr)], trans2);
 
 	return MM_SRL32(next_input, 8);
 }
@@ -358,7 +358,7 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	struct completion cmplt[MAX_SEARCHES_SSE8];
 	struct parms parms[MAX_SEARCHES_SSE8];
 	xmm_t input0, input1;
-	xmm_t indicies1, indicies2, indicies3, indicies4;
+	xmm_t indices1, indices2, indices3, indices4;
 
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
 		total_packets, categories, ctx->trans_table);
@@ -369,23 +369,23 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	}
 
 	/*
-	 * indicies1 contains index_array[0,1]
-	 * indicies2 contains index_array[2,3]
-	 * indicies3 contains index_array[4,5]
-	 * indicies4 contains index_array[6,7]
+	 * indices1 contains index_array[0,1]
+	 * indices2 contains index_array[2,3]
+	 * indices3 contains index_array[4,5]
+	 * indices4 contains index_array[6,7]
 	 */
 
-	indicies1 = MM_LOADU((xmm_t *) &index_array[0]);
-	indicies2 = MM_LOADU((xmm_t *) &index_array[2]);
+	indices1 = MM_LOADU((xmm_t *) &index_array[0]);
+	indices2 = MM_LOADU((xmm_t *) &index_array[2]);
 
-	indicies3 = MM_LOADU((xmm_t *) &index_array[4]);
-	indicies4 = MM_LOADU((xmm_t *) &index_array[6]);
+	indices3 = MM_LOADU((xmm_t *) &index_array[4]);
+	indices4 = MM_LOADU((xmm_t *) &index_array[6]);
 
 	 /* Check for any matches. */
 	acl_match_check_x4(0, ctx, parms, &flows,
-		&indicies1, &indicies2, mm_match_mask.m);
+		&indices1, &indices2, mm_match_mask.m);
 	acl_match_check_x4(4, ctx, parms, &flows,
-		&indicies3, &indicies4, mm_match_mask.m);
+		&indices3, &indices4, mm_match_mask.m);
 
 	while (flows.started > 0) {
 
@@ -409,48 +409,48 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 		input0 = transition4(mm_index_mask.m, input0,
 			mm_shuffle_input.m, mm_ones_16.m,
 			mm_bytes.m, mm_type_quad_range.m,
-			flows.trans, &indicies1, &indicies2);
+			flows.trans, &indices1, &indices2);
 
 		input1 = transition4(mm_index_mask.m, input1,
 			mm_shuffle_input.m, mm_ones_16.m,
 			mm_bytes.m, mm_type_quad_range.m,
-			flows.trans, &indicies3, &indicies4);
+			flows.trans, &indices3, &indices4);
 
 		input0 = transition4(mm_index_mask.m, input0,
 			mm_shuffle_input.m, mm_ones_16.m,
 			mm_bytes.m, mm_type_quad_range.m,
-			flows.trans, &indicies1, &indicies2);
+			flows.trans, &indices1, &indices2);
 
 		input1 = transition4(mm_index_mask.m, input1,
 			mm_shuffle_input.m, mm_ones_16.m,
 			mm_bytes.m, mm_type_quad_range.m,
-			flows.trans, &indicies3, &indicies4);
+			flows.trans, &indices3, &indices4);
 
 		input0 = transition4(mm_index_mask.m, input0,
 			mm_shuffle_input.m, mm_ones_16.m,
 			mm_bytes.m, mm_type_quad_range.m,
-			flows.trans, &indicies1, &indicies2);
+			flows.trans, &indices1, &indices2);
 
 		input1 = transition4(mm_index_mask.m, input1,
 			mm_shuffle_input.m, mm_ones_16.m,
 			mm_bytes.m, mm_type_quad_range.m,
-			flows.trans, &indicies3, &indicies4);
+			flows.trans, &indices3, &indices4);
 
 		input0 = transition4(mm_index_mask.m, input0,
 			mm_shuffle_input.m, mm_ones_16.m,
 			mm_bytes.m, mm_type_quad_range.m,
-			flows.trans, &indicies1, &indicies2);
+			flows.trans, &indices1, &indices2);
 
 		input1 = transition4(mm_index_mask.m, input1,
 			mm_shuffle_input.m, mm_ones_16.m,
 			mm_bytes.m, mm_type_quad_range.m,
-			flows.trans, &indicies3, &indicies4);
+			flows.trans, &indices3, &indices4);
 
 		 /* Check for any matches. */
 		acl_match_check_x4(0, ctx, parms, &flows,
-			&indicies1, &indicies2, mm_match_mask.m);
+			&indices1, &indices2, mm_match_mask.m);
 		acl_match_check_x4(4, ctx, parms, &flows,
-			&indicies3, &indicies4, mm_match_mask.m);
+			&indices3, &indices4, mm_match_mask.m);
 	}
 
 	return 0;
@@ -468,7 +468,7 @@ search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint64_t index_array[MAX_SEARCHES_SSE4];
 	struct completion cmplt[MAX_SEARCHES_SSE4];
 	struct parms parms[MAX_SEARCHES_SSE4];
-	xmm_t input, indicies1, indicies2;
+	xmm_t input, indices1, indices2;
 
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
 		total_packets, categories, ctx->trans_table);
@@ -478,12 +478,12 @@ search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
 	}
 
-	indicies1 = MM_LOADU((xmm_t *) &index_array[0]);
-	indicies2 = MM_LOADU((xmm_t *) &index_array[2]);
+	indices1 = MM_LOADU((xmm_t *) &index_array[0]);
+	indices2 = MM_LOADU((xmm_t *) &index_array[2]);
 
 	/* Check for any matches. */
 	acl_match_check_x4(0, ctx, parms, &flows,
-		&indicies1, &indicies2, mm_match_mask.m);
+		&indices1, &indices2, mm_match_mask.m);
 
 	while (flows.started > 0) {
 
@@ -497,26 +497,26 @@ search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 		input = transition4(mm_index_mask.m, input,
 			mm_shuffle_input.m, mm_ones_16.m,
 			mm_bytes.m, mm_type_quad_range.m,
-			flows.trans, &indicies1, &indicies2);
+			flows.trans, &indices1, &indices2);
 
 		 input = transition4(mm_index_mask.m, input,
 			mm_shuffle_input.m, mm_ones_16.m,
 			mm_bytes.m, mm_type_quad_range.m,
-			flows.trans, &indicies1, &indicies2);
+			flows.trans, &indices1, &indices2);
 
 		 input = transition4(mm_index_mask.m, input,
 			mm_shuffle_input.m, mm_ones_16.m,
 			mm_bytes.m, mm_type_quad_range.m,
-			flows.trans, &indicies1, &indicies2);
+			flows.trans, &indices1, &indices2);
 
 		 input = transition4(mm_index_mask.m, input,
 			mm_shuffle_input.m, mm_ones_16.m,
 			mm_bytes.m, mm_type_quad_range.m,
-			flows.trans, &indicies1, &indicies2);
+			flows.trans, &indices1, &indices2);
 
 		/* Check for any matches. */
 		acl_match_check_x4(0, ctx, parms, &flows,
-			&indicies1, &indicies2, mm_match_mask.m);
+			&indices1, &indices2, mm_match_mask.m);
 	}
 
 	return 0;
@@ -525,15 +525,15 @@ search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 static inline xmm_t
 transition2(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 	xmm_t ones_16, xmm_t bytes, xmm_t type_quad_range,
-	const uint64_t *trans, xmm_t *indicies1)
+	const uint64_t *trans, xmm_t *indices1)
 {
 	uint64_t t;
-	xmm_t addr, indicies2;
+	xmm_t addr, indices2;
 
-	indicies2 = MM_XOR(ones_16, ones_16);
+	indices2 = MM_XOR(ones_16, ones_16);
 
 	addr = acl_calc_addr(index_mask, next_input, shuffle_input, ones_16,
-		bytes, type_quad_range, indicies1, &indicies2);
+		bytes, type_quad_range, indices1, &indices2);
 
 	/* Gather 64 bit transitions and pack 2 per register. */
 
@@ -541,7 +541,7 @@ transition2(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 
 	/* get slot 1 */
 	addr = MM_SHUFFLE32(addr, SHUFFLE32_SLOT1);
-	*indicies1 = MM_SET64(trans[MM_CVT32(addr)], t);
+	*indices1 = MM_SET64(trans[MM_CVT32(addr)], t);
 
 	return MM_SRL32(next_input, 8);
 }
@@ -558,7 +558,7 @@ search_sse_2(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint64_t index_array[MAX_SEARCHES_SSE2];
 	struct completion cmplt[MAX_SEARCHES_SSE2];
 	struct parms parms[MAX_SEARCHES_SSE2];
-	xmm_t input, indicies;
+	xmm_t input, indices;
 
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
 		total_packets, categories, ctx->trans_table);
@@ -568,10 +568,10 @@ search_sse_2(const struct rte_acl_ctx *ctx, const uint8_t **data,
 		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
 	}
 
-	indicies = MM_LOADU((xmm_t *) &index_array[0]);
+	indices = MM_LOADU((xmm_t *) &index_array[0]);
 
 	/* Check for any matches. */
-	acl_match_check_x2(0, ctx, parms, &flows, &indicies, mm_match_mask64.m);
+	acl_match_check_x2(0, ctx, parms, &flows, &indices, mm_match_mask64.m);
 
 	while (flows.started > 0) {
 
@@ -584,25 +584,25 @@ search_sse_2(const struct rte_acl_ctx *ctx, const uint8_t **data,
 		input = transition2(mm_index_mask64.m, input,
 			mm_shuffle_input64.m, mm_ones_16.m,
 			mm_bytes64.m, mm_type_quad_range64.m,
-			flows.trans, &indicies);
+			flows.trans, &indices);
 
 		input = transition2(mm_index_mask64.m, input,
 			mm_shuffle_input64.m, mm_ones_16.m,
 			mm_bytes64.m, mm_type_quad_range64.m,
-			flows.trans, &indicies);
+			flows.trans, &indices);
 
 		input = transition2(mm_index_mask64.m, input,
 			mm_shuffle_input64.m, mm_ones_16.m,
 			mm_bytes64.m, mm_type_quad_range64.m,
-			flows.trans, &indicies);
+			flows.trans, &indices);
 
 		input = transition2(mm_index_mask64.m, input,
 			mm_shuffle_input64.m, mm_ones_16.m,
 			mm_bytes64.m, mm_type_quad_range64.m,
-			flows.trans, &indicies);
+			flows.trans, &indices);
 
 		/* Check for any matches. */
-		acl_match_check_x2(0, ctx, parms, &flows, &indicies,
+		acl_match_check_x2(0, ctx, parms, &flows, &indices,
 			mm_match_mask64.m);
 	}
 

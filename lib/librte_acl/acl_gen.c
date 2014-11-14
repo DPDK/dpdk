@@ -365,7 +365,7 @@ acl_gen_node(struct rte_acl_node *node, uint64_t *node_array,
 }
 
 static int
-acl_calc_counts_indicies(struct acl_node_counters *counts,
+acl_calc_counts_indices(struct acl_node_counters *counts,
 	struct rte_acl_indices *indices, struct rte_acl_trie *trie,
 	struct rte_acl_bld_trie *node_bld_trie, uint32_t num_tries,
 	int match_num)
@@ -410,8 +410,8 @@ rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	struct acl_node_counters counts;
 	struct rte_acl_indices indices;
 
-	/* Fill counts and indicies arrays from the nodes. */
-	match_num = acl_calc_counts_indicies(&counts, &indices, trie,
+	/* Fill counts and indices arrays from the nodes. */
+	match_num = acl_calc_counts_indices(&counts, &indices, trie,
 		node_bld_trie, num_tries, match_num);
 
 	/* Allocate runtime memory (align to cache boundary) */
