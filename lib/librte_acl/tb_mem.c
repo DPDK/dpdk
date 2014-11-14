@@ -34,7 +34,7 @@
 #include "tb_mem.h"
 
 /*
- *  Memory managment routines for temporary memory.
+ *  Memory management routines for temporary memory.
  *  That memory is used only during build phase and is released after
  *  build is finished.
  */

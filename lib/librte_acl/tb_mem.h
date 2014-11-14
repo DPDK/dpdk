@@ -37,7 +37,7 @@
 /**
  * @file
  *
- * RTE ACL temporary (build phase) memory managment.
+ * RTE ACL temporary (build phase) memory management.
  * Contains structures and functions to manage temporary (used by build only)
  * memory. Memory allocated in large blocks to speed 'free' when trie is
  * destructed (finish of build phase).

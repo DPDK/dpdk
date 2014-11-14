@@ -1791,7 +1791,7 @@ acl_build_tries(struct acl_build_context *context,
 		new_config = acl_build_alloc(context, 1, sizeof(*new_config));
 		if (new_config == NULL) {
 			RTE_LOG(ERR, ACL,
-				"Failed to geti space for new config\n");
+				"Failed to get space for new config\n");
 			return -ENOMEM;
 		}
 
@@ -1904,7 +1904,7 @@ acl_build_rules(struct acl_build_context *bcx)
 
 	br = tb_alloc(&bcx->pool, sz);
 	if (br == NULL) {
-		RTE_LOG(ERR, ACL, "ACL conext %s: failed to create a copy "
+		RTE_LOG(ERR, ACL, "ACL context %s: failed to create a copy "
 			"of %u build rules (%zu bytes)\n",
 			bcx->acx->name, n, sz);
 		return -ENOMEM;
@@ -1973,7 +1973,7 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 	bcx.category_mask = LEN2MASK(bcx.cfg.num_categories);
 
 
-	/* Create a buid rules copy. */
+	/* Create a build rules copy. */
 	rc = acl_build_rules(&bcx);
 	if (rc != 0)
 		return rc;

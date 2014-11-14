@@ -44,7 +44,7 @@ static const rte_acl_classify_t classify_fns[] = {
 	[RTE_ACL_CLASSIFY_SSE] = rte_acl_classify_sse,
 };
 
-/* by default, use always avaialbe scalar code path. */
+/* by default, use always available scalar code path. */
 static enum rte_acl_classify_alg rte_acl_default_classify =
 	RTE_ACL_CLASSIFY_SCALAR;
 

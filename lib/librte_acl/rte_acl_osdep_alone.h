@@ -104,7 +104,7 @@ extern "C" {
  * Searches the input parameter for the least significant set bit
  * (starting from zero).
  * If a least significant 1 bit is found, its bit index is returned.
- * If the content of the input paramer is zero, then the content of the return
+ * If the content of the input parameter is zero, then the content of the return
  * value is undefined.
  * @param v
  *     input parameter, should not be zero.

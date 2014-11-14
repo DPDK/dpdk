@@ -67,7 +67,7 @@ enum {
 };
 
 /**
- * ACL Field defintion.
+ * ACL Field definition.
  * Each field in the ACL rule has an associate definition.
  * It defines the type of field, its size, its offset in the input buffer,
  * the field index, and the input index.
@@ -259,12 +259,12 @@ void
 rte_acl_reset(struct rte_acl_ctx *ctx);
 
 /**
- *  Avaialble implementations of ACL classify.
+ *  Available implementations of ACL classify.
  */
 enum rte_acl_classify_alg {
 	RTE_ACL_CLASSIFY_DEFAULT = 0,
 	RTE_ACL_CLASSIFY_SCALAR = 1,  /**< generic implementation. */
-	RTE_ACL_CLASSIFY_SSE = 2,     /**< requries SSE4.1 support. */
+	RTE_ACL_CLASSIFY_SSE = 2,     /**< requires SSE4.1 support. */
 };
 
 /**
@@ -330,7 +330,7 @@ rte_acl_classify(const struct rte_acl_ctx *ctx,
  *   match per category.
  * @param alg
  *   Algorithm to be used for the search.
- *   It is the caller responibility to ensure that the value refers to the
+ *   It is the caller responsibility to ensure that the value refers to the
  *   existing algorithm, and that it could be run on the given CPU.
  * @return
  *   zero on successful completion.
@@ -349,7 +349,7 @@ rte_acl_classify_alg(const struct rte_acl_ctx *ctx,
  *   ACL context to change classify function for.
  * @param alg
  *   New default classify algorithm for given ACL context.
- *   It is the caller responibility to ensure that the value refers to the
+ *   It is the caller responsibility to ensure that the value refers to the
  *   existing algorithm, and that it could be run on the given CPU.
  * @return
  *   - -EINVAL if the parameters are invalid.
