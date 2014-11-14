@@ -28,18 +28,19 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DPDK documentation
-==================
+.. _Performance_Optimization:
 
-Contents:
+**Part 3: Performance Optimization**
 
-.. toctree::
-   :maxdepth: 1
-   :titlesonly:
+Performance Optimization Guidelines
+===================================
 
-   linux_gsg/index
-   freebsd_gsg/index
-   prog_guide/index
-   sample_app_ug/index
-   testpmd_app_ug/index
-   rel_notes/index
+Introduction
+------------
+
+The following sections describe optimizations used in the Intel® DPDK and optimizations that should be considered for a new applications.
+
+They also highlight the performance-impacting coding techniques that should,
+and should not be, used when developing an application using the Intel® DPDK.
+
+And finally, they give an introduction to application profiling using a Performance Analyzer from Intel to optimize the software.

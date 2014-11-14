@@ -1,0 +1,441 @@
+..  BSD LICENSE
+    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+    * Neither the name of Intel Corporation nor the names of its
+    contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+    LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+.. _Poll_Mode_Driver:
+
+Poll Mode Driver
+================
+
+The Intel® DPDK includes 1 Gigabit, 10 Gigabit and 40 Gigabit and para virtualized virtio Poll Mode Drivers.
+
+A Poll Mode Driver (PMD) consists of APIs, provided through the BSD driver running in user space,
+to configure the devices and their respective queues.
+In addition, a PMD accesses the RX and TX descriptors directly without any interrupts
+(with the exception of Link Status Change interrupts) to quickly receive,
+process and deliver packets in the user's application.
+This section describes the requirements of the PMDs,
+their global design principles and proposes a high-level architecture and a generic external API for the Ethernet PMDs.
+
+Requirements and Assumptions
+----------------------------
+
+The Intel® DPDK environment for packet processing applications allows for two models, run-to-completion and pipe-line:
+
+*   In the *run-to-completion*  model, a specific port's RX descriptor ring is polled for packets through an API.
+    Packets are then processed on the same core and placed on a port's TX descriptor ring through an API for transmission.
+
+*   In the *pipe-line*  model, one core polls one or more port's RX descriptor ring through an API.
+    Packets are received and passed to another core via a ring.
+    The other core continues to process the packet which then may be placed on a port's TX descriptor ring through an API for transmission.
+
+In a synchronous run-to-completion model,
+each logical core assigned to the Intel® DPDK executes a packet processing loop that includes the following steps:
+
+*   Retrieve input packets through the PMD receive API
+
+*   Process each received packet one at a time, up to its forwarding
+
+*   Send pending output packets through the PMD transmit API
+
+Conversely, in an asynchronous pipe-line model, some logical cores may be dedicated to the retrieval of received packets and
+other logical cores to the processing of previously received packets.
+Received packets are exchanged between logical cores through rings.
+The loop for packet retrieval includes the following steps:
+
+*   Retrieve input packets through the PMD receive API
+
+*   Provide received packets to processing lcores through packet queues
+
+The loop for packet processing includes the following steps:
+
+*   Retrieve the received packet from the packet queue
+
+*   Process the received packet, up to its retransmission if forwarded
+
+To avoid any unnecessary interrupt processing overhead, the execution environment must not use any asynchronous notification mechanisms.
+Whenever needed and appropriate, asynchronous communication should be introduced as much as possible through the use of rings.
+
+Avoiding lock contention is a key issue in a multi-core environment.
+To address this issue, PMDs are designed to work with per-core private resources as much as possible.
+For example, a PMD maintains a separate transmit queue per-core, per-port.
+In the same way, every receive queue of a port is assigned to and polled by a single logical core (lcore).
+
+To comply with Non-Uniform Memory Access (NUMA), memory management is designed to assign to each logical core
+a private buffer pool in local memory to minimize remote memory access.
+The configuration of packet buffer pools should take into account the underlying physical memory architecture in terms of DIMMS,
+channels and ranks.
+The application must ensure that appropriate parameters are given at memory pool creation time.
+See :ref:`Mempool Library <Mempool_Library>`.
+
+Design Principles
+-----------------
+
+The API and architecture of the Ethernet* PMDs are designed with the following guidelines in mind.
+
+PMDs must help global policy-oriented decisions to be enforced at the upper application level.
+Conversely, NIC PMD functions should not impede the benefits expected by upper-level global policies,
+or worse prevent such policies from being applied.
+
+For instance, both the receive and transmit functions of a PMD have a maximum number of packets/descriptors to poll.
+This allows a run-to-completion processing stack to statically fix or
+to dynamically adapt its overall behavior through different global loop policies, such as:
+
+*   Receive, process immediately and transmit packets one at a time in a piecemeal fashion.
+
+*   Receive as many packets as possible, then process all received packets, transmitting them immediately.
+
+*   Receive a given maximum number of packets, process the received packets, accumulate them and finally send all accumulated packets to transmit.
+
+To achieve optimal performance, overall software design choices and pure software optimization techniques must be considered and
+balanced against available low-level hardware-based optimization features (CPU cache properties, bus speed, NIC PCI bandwidth, and so on).
+The case of packet transmission is an example of this software/ hardware tradeoff issue when optimizing burst-oriented network packet processing engines.
+In the initial case, the PMD could export only an rte_eth_tx_one function to transmit one packet at a time on a given queue.
+On top of that, one can easily build an rte_eth_tx_burst function that loops invoking the rte_eth_tx_one function to transmit several packets at a time.
+However, an rte_eth_tx_burst function is effectively implemented by the PMD to minimize the driver-level transmit cost per packet through the following optimizations:
+
+*   Share among multiple packets the un-amortized cost of invoking the rte_eth_tx_one function.
+
+*   Enable the rte_eth_tx_burst function to take advantage of burst-oriented hardware features (prefetch data in cache, use of NIC head/tail registers)
+    to minimize the number of CPU cycles per packet, for example by avoiding unnecessary read memory accesses to ring transmit descriptors,
+    or by systematically using arrays of pointers that exactly fit cache line boundaries and sizes.
+
+*   Apply burst-oriented software optimization techniques to remove operations that would otherwise be unavoidable, such as ring index wrap back management.
+
+Burst-oriented functions are also introduced via the API for services that are intensively used by the PMD.
+This applies in particular to buffer allocators used to populate NIC rings, which provide functions to allocate/free several buffers at a time.
+For example, an mbuf_multiple_alloc function returning an array of pointers to rte_mbuf buffers which speeds up the receive poll function of the PMD when
+replenishing multiple descriptors of the receive ring.
+
+Logical Cores, Memory and NIC Queues Relationships
+--------------------------------------------------
+
+The Intel® DPDK supports NUMA allowing for better performance when a processor's logical cores and interfaces utilize its local memory.
+Therefore, mbuf allocation associated with local PCIe* interfaces should be allocated from memory pools created in the local memory.
+The buffers should, if possible, remain on the local processor to obtain the best performance results and RX and TX buffer descriptors
+should be populated with mbufs allocated from a mempool allocated from local memory.
+
+The run-to-completion model also performs better if packet or data manipulation is in local memory instead of a remote processors memory.
+This is also true for the pipe-line model provided all logical cores used are located on the same processor.
+
+Multiple logical cores should never share receive or transmit queues for interfaces since this would require global locks and hinder performance.
+
+Device Identification and Configuration
+---------------------------------------
+
+Device Identification
+~~~~~~~~~~~~~~~~~~~~~
+
+Each NIC port is uniquely designated by its (bus/bridge, device, function) PCI
+identifiers assigned by the PCI probing/enumeration function executed at Intel® DPDK initialization.
+Based on their PCI identifier, NIC ports are assigned two other identifiers:
+
+*   A port index used to designate the NIC port in all functions exported by the PMD API.
+
+*   A port name used to designate the port in console messages, for administration or debugging purposes.
+    For ease of use, the port name includes the port index.
+
+Device Configuration
+~~~~~~~~~~~~~~~~~~~~
+
+The configuration of each NIC port includes the following operations:
+
+*   Allocate PCI resources
+
+*   Reset the hardware (issue a Global Reset) to a well-known default state
+
+*   Set up the PHY and the link
+
+*   Initialize statistics counters
+
+The PMD API must also export functions to start/stop the all-multicast feature of a port and functions to set/unset the port in promiscuous mode.
+
+Some hardware offload features must be individually configured at port initialization through specific configuration parameters.
+This is the case for the Receive Side Scaling (RSS) and Data Center Bridging (DCB) features for example.
+
+On-the-Fly Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+All device features that can be started or stopped "on the fly" (that is, without stopping the device) do not require the PMD API to export dedicated functions for this purpose.
+
+All that is required is the mapping address of the device PCI registers to implement the configuration of these features in specific functions outside of the drivers.
+
+For this purpose,
+the PMD API exports a function that provides all the information associated with a device that can be used to set up a given device feature outside of the driver.
+This includes the PCI vendor identifier, the PCI device identifier, the mapping address of the PCI device registers, and the name of the driver.
+
+The main advantage of this approach is that it gives complete freedom on the choice of the API used to configure, to start, and to stop such features.
+
+As an example, refer to the configuration of the IEEE1588 feature for the Intel® 82576 Gigabit Ethernet Controller and
+the Intel® 82599 10 Gigabit Ethernet Controller controllers in the testpmd application.
+
+Other features such as the L3/L4 5-Tuple packet filtering feature of a port can be configured in the same way.
+Ethernet* flow control (pause frame) can be configured on the individual port.
+Refer to the testpmd source code for details.
+Also, L4 (UDP/TCP/ SCTP) checksum offload by the NIC can be enabled for an individual packet as long as the packet mbuf is set up correctly.
+Refer to the testpmd source code (specifically the csumonly.c file) for details.
+
+That being said, the support of some offload features implies the addition of dedicated status bit(s) and value field(s) into the rte_mbuf
+data structure, along with their appropriate handling by the receive/transmit functions exported by each PMD.
+
+For instance, this is the case for the IEEE1588 packet timestamp mechanism, the VLAN tagging and the IP checksum computation, as described in
+the Section 7.6 "Meta Information".
+
+Configuration of Transmit and Receive Queues
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each transmit queue is independently configured with the following information:
+
+*   The number of descriptors of the transmit ring
+
+*   The socket identifier used to identify the appropriate DMA memory zone from which to allocate the transmit ring in NUMA architectures
+
+*   The values of the Prefetch, Host and Write-Back threshold registers of the transmit queue
+
+*   The *minimum* transmit packets to free threshold (tx_free_thresh).
+    When the number of descriptors used to transmit packets exceeds this threshold, the network adaptor should be checked to see if it has written back descriptors.
+    A value of 0 can be passed during the TX queue configuration to indicate the default value should be used.
+    The default value for tx_free_thresh is 32.
+    This ensures that the PMD does not search for completed descriptors until at least 32 have been processed by the NIC for this queue.
+
+*   The *minimum*  RS bit threshold. The minimum number of transmit descriptors to use before setting the Report Status (RS) bit in the transmit descriptor.
+    Note that this parameter may only be valid for Intel 10 GbE network adapters.
+    The RS bit is set on the last descriptor used to transmit a packet if the number of descriptors used since the last RS bit setting,
+    up to the first descriptor used to transmit the packet, exceeds the transmit RS bit threshold (tx_rs_thresh).
+    In short, this parameter controls which transmit descriptors are written back to host memory by the network adapter.
+    A value of 0 can be passed during the TX queue configuration to indicate that the default value should be used.
+    The default value for tx_rs_thresh is 32.
+    This ensures that at least 32 descriptors are used before the network adapter writes back the most recently used descriptor.
+    This saves upstream PCIe* bandwidth resulting from TX descriptor write-backs.
+    It is important to note that the TX Write-back threshold (TX wthresh) should be set to 0 when tx_rs_thresh is greater than 1.
+    Refer to the Intel® 82599 10 Gigabit Ethernet Controller Datasheet for more details.
+
+The following constraints must be satisfied for tx_free_thresh and tx_rs_thresh:
+
+*   tx_rs_thresh must be greater than 0.
+
+*   tx_rs_thresh must be less than the size of the ring minus 2.
+
+*   tx_rs_thresh must be less than or equal to tx_free_thresh.
+
+*   tx_free_thresh must be greater than 0.
+
+*   tx_free_thresh must be less than the size of the ring minus 3.
+
+*   For optimal performance, TX wthresh should be set to 0 when tx_rs_thresh is greater than 1.
+
+One descriptor in the TX ring is used as a sentinel to avoid a hardware race condition, hence the maximum threshold constraints.
+
+.. note::
+
+    When configuring for DCB operation, at port initialization, both the number of transmit queues and the number of receive queues must be set to 128.
+
+Poll Mode Driver API
+--------------------
+
+Generalities
+~~~~~~~~~~~~
+
+By default, all functions exported by a PMD are lock-free functions that are assumed
+not to be invoked in parallel on different logical cores to work on the same target object.
+For instance, a PMD receive function cannot be invoked in parallel on two logical cores to poll the same RX queue of the same port.
+Of course, this function can be invoked in parallel by different logical cores on different RX queues.
+It is the responsibility of the upper-level application to enforce this rule.
+
+If needed, parallel accesses by multiple logical cores to shared queues can be explicitly protected by dedicated inline lock-aware functions
+built on top of their corresponding lock-free functions of the PMD API.
+
+Generic Packet Representation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A packet is represented by an rte_mbuf structure, which is a generic metadata structure containing all necessary housekeeping information.
+This includes fields and status bits corresponding to offload hardware features, such as checksum computation of IP headers or VLAN tags.
+
+The rte_mbuf data structure includes specific fields to represent, in a generic way, the offload features provided by network controllers.
+For an input packet, most fields of the rte_mbuf structure are filled in by the PMD receive function with the information contained in the receive descriptor.
+Conversely, for output packets, most fields of rte_mbuf structures are used by the PMD transmit function to initialize transmit descriptors.
+
+The mbuf structure is fully described in the :ref:`Mbuf Library <Mbuf_Library>` chapter.
+
+Ethernet Device API
+~~~~~~~~~~~~~~~~~~~
+
+The Ethernet device API exported by the Ethernet PMDs is described in the *Intel® DPDK API Reference*.
+
+Vector PMD for IXGBE
+--------------------
+
+Vector PMD uses Intel® SIMD instructions to optimize packet I/O.
+It improves load/store bandwidth efficiency of L1 data cache by using a wider SSE/AVX register 1 (1).
+The wider register gives space to hold multiple packet buffers so as to save instruction number when processing bulk of packets.
+
+There is no change to PMD API. The RX/TX handler are the only two entries for vPMD packet I/O.
+They are transparently registered at runtime RX/TX execution if all condition checks pass.
+
+1.  To date, only an SSE version of IX GBE vPMD is available.
+    To ensure that vPMD is in the binary code, ensure that the option CONFIG_RTE_IXGBE_INC_VECTOR=y is in the configure file.
+
+Some constraints apply as pre-conditions for specific optimizations on bulk packet transfers.
+The following sections explain RX and TX constraints in the vPMD.
+
+RX Constraints
+~~~~~~~~~~~~~~
+
+Prerequisites and Pre-conditions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following prerequisites apply:
+
+*   To enable vPMD to work for RX, bulk allocation for Rx must be allowed.
+
+*   The RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=y configuration MACRO must be set before compiling the code.
+
+Ensure that the following pre-conditions are satisfied:
+
+*   rxq->rx_free_thresh >= RTE_PMD_IXGBE_RX_MAX_BURST
+
+*   rxq->rx_free_thresh < rxq->nb_rx_desc
+
+*   (rxq->nb_rx_desc % rxq->rx_free_thresh) == 0
+
+*   rxq->nb_rx_desc  < (IXGBE_MAX_RING_DESC - RTE_PMD_IXGBE_RX_MAX_BURST)
+
+These conditions are checked in the code.
+
+Scattered packets are not supported in this mode.
+If an incoming packet is greater than the maximum acceptable length of one "mbuf" data size (by default, the size is 2 KB),
+vPMD for RX would be disabled.
+
+By default, IXGBE_MAX_RING_DESC is set to 4096 and RTE_PMD_IXGBE_RX_MAX_BURST is set to 32.
+
+Feature not Supported by RX Vector PMD
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some features are not supported when trying to increase the throughput in vPMD.
+They are:
+
+*   IEEE1588
+
+*   FDIR
+
+*   Header split
+
+*   RX checksum off load
+
+Other features are supported using optional MACRO configuration. They include:
+
+*   HW VLAN strip
+
+*   HW extend dual VLAN
+
+*   Enabled by RX_OLFLAGS (RTE_IXGBE_RX_OLFLAGS_DISABLE=n)
+
+
+To guarantee the constraint, configuration flags in dev_conf.rxmode will be checked:
+
+*   hw_vlan_strip
+
+*   hw_vlan_extend
+
+*   hw_ip_checksum
+
+*   header_split
+
+*   dev_conf
+
+fdir_conf->mode will also be checked.
+
+RX Burst Size
+^^^^^^^^^^^^^
+
+As vPMD is focused on high throughput, it assumes that the RX burst size is equal to or greater than 32 per burst.
+It returns zero if using nb_pkt < 32 as the expected packet number in the receive handler.
+
+TX Constraint
+~~~~~~~~~~~~~
+
+Prerequisite
+^^^^^^^^^^^^
+
+The only prerequisite is related to tx_rs_thresh.
+The tx_rs_thresh value must be greater than or equal to RTE_PMD_IXGBE_TX_MAX_BURST,
+but less or equal to RTE_IXGBE_TX_MAX_FREE_BUF_SZ.
+Consequently, by default the tx_rs_thresh value is in the range 32 to 64.
+
+Feature not Supported by RX Vector PMD
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+TX vPMD only works when txq_flags is set to IXGBE_SIMPLE_FLAGS.
+
+This means that it does not support TX multi-segment, VLAN offload and TX csum offload.
+The following MACROs are used for these three features:
+
+*   ETH_TXQ_FLAGS_NOMULTSEGS
+
+*   ETH_TXQ_FLAGS_NOVLANOFFL
+
+*   ETH_TXQ_FLAGS_NOXSUMSCTP
+
+*   ETH_TXQ_FLAGS_NOXSUMUDP
+
+*   ETH_TXQ_FLAGS_NOXSUMTCP
+
+
+Sample Application Notes
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+testpmd
+^^^^^^^
+
+By default, using CONFIG_RTE_IXGBE_RX_OLFLAGS_DISABLE=n:
+
+.. code-block:: console
+
+    ./x86_64-native-linuxapp-gcc/app/testpmd -c 300 -n 4 -- -i --burst=32 --rxfreet=32 --mbcache=250 --txpt=32 --rxht=8 --rxwt=0 --txfreet=32 --txrst=32 --txqflags=0xf01
+
+When CONFIG_RTE_IXGBE_RX_OLFLAGS_DISABLE=y, better performance can be achieved:
+
+.. code-block:: console
+
+    ./x86_64-native-linuxapp-gcc/app/testpmd -c 300 -n 4 -- -i --burst=32 --rxfreet=32 --mbcache=250 --txpt=32 --rxht=8 --rxwt=0 --txfreet=32 --txrst=32 --txqflags=0xf01 --disable-hw-vlan
+
+If scatter gather lists are not required, set CONFIG_RTE_MBUF_SCATTER_GATHER=n for better throughput.
+
+l3fwd
+^^^^^
+
+When running l3fwd with vPMD, there is one thing to note.
+In the configuration, ensure that port_conf.rxmode.hw_ip_checksum=0.
+Otherwise, by default, RX vPMD is disabled.
+
+load_balancer
+^^^^^^^^^^^^^
+
+As in the case of l3fwd, set configure port_conf.rxmode.hw_ip_checksum=0 to enable vPMD.
+In addition, for improved performance, use -bsz "(32,32),(64,64),(32,32)" in load_balancer to avoid using the default burst size of 144.

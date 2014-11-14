@@ -28,18 +28,25 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DPDK documentation
-==================
+Profile Your Application
+========================
 
-Contents:
+Intel processors provide performance counters to monitor events.
+Some tools provided by Intel can be used to profile and benchmark an application.
+See the *VTune™ Performance Analyzer Essentials* publication from Intel Press for more information.
 
-.. toctree::
-   :maxdepth: 1
-   :titlesonly:
+For an Intel® DPDK application, this can be done in a Linux* application environment only.
 
-   linux_gsg/index
-   freebsd_gsg/index
-   prog_guide/index
-   sample_app_ug/index
-   testpmd_app_ug/index
-   rel_notes/index
+The main situations that should be monitored through event counters are:
+
+*   Cache misses
+
+*   Branch mis-predicts
+
+*   DTLB misses
+
+*   Long latency instructions and exceptions
+
+Refer to the
+`Intel Performance Analysis Guide <http://software.intel.com/sites/products/collateral/hpc/vtune/performance_analysis_guide.pdf>`_
+for details about application profiling.

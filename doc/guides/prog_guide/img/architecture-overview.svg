@@ -1,0 +1,1011 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<!--
+# Copyright (c) <2010>, Intel Corporation
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# - Redistributions of source code must retain the above copyright
+#   notice, this list of conditions and the following disclaimer.
+#
+# - Redistributions in binary form must reproduce the above copyright
+#   notice, this list of conditions and the following disclaimer in
+#   the documentation and/or other materials provided with the
+#   distribution.
+#
+# - Neither the name of Intel Corporation nor the names of its
+#   contributors may be used to endorse or promote products derived
+#   from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="635.30798"
+   height="570.86243"
+   id="svg14043"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="architecture-overview.svg"
+   inkscape:export-filename="/home/matz/rapports/doc/intel/architecture_docs/architecture.png"
+   inkscape:export-xdpi="176.10001"
+   inkscape:export-ydpi="176.10001">
+  <defs
+     id="defs14045">
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Lend"
+       style="overflow:visible">
+      <path
+         id="path4058"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt;marker-start:none"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Mstart"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Mstart"
+       style="overflow:visible">
+      <path
+         id="path4437"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt;marker-start:none"
+         transform="matrix(0.4,0,0,0.4,4,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Mend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Mend"
+       style="overflow:visible">
+      <path
+         id="path14797"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt;marker-start:none"
+         transform="matrix(-0.4,0,0,-0.4,-4,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 526.18109 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="744.09448 : 526.18109 : 1"
+       inkscape:persp3d-origin="372.04724 : 350.78739 : 1"
+       id="perspective14051" />
+    <inkscape:perspective
+       id="perspective14061"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective14096"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective14096-8"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective14096-4"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective14096-2"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective14096-26"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective14176"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective14204"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15450"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15488"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15547"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15591"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15666"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15741"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15811"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15833"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15833-6"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15833-0"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15833-8"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15833-09"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective15833-80"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3331"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3353"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3147"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <marker
+       inkscape:stockid="Arrow1Mend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Mend-4"
+       style="overflow:visible">
+      <path
+         id="path14797-7"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt;marker-start:none"
+         transform="matrix(-0.4,0,0,-0.4,-4,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <inkscape:perspective
+       id="perspective3147-4"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <marker
+       inkscape:stockid="Arrow1Mend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Mend-5"
+       style="overflow:visible">
+      <path
+         id="path14797-0"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt;marker-start:none"
+         transform="matrix(-0.4,0,0,-0.4,-4,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <inkscape:perspective
+       id="perspective3147-2"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <marker
+       inkscape:stockid="Arrow1Mend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Mend-0"
+       style="overflow:visible">
+      <path
+         id="path14797-6"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt;marker-start:none"
+         transform="matrix(-0.4,0,0,-0.4,-4,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <inkscape:perspective
+       id="perspective4712"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <marker
+       inkscape:stockid="Arrow1Mstart"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Mstart-5"
+       style="overflow:visible">
+      <path
+         id="path4437-5"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt;marker-start:none"
+         transform="matrix(0.4,0,0,0.4,4,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <inkscape:perspective
+       id="perspective4768"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <marker
+       inkscape:stockid="Arrow1Mstart"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Mstart-9"
+       style="overflow:visible">
+      <path
+         id="path4437-3"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt;marker-start:none"
+         transform="matrix(0.4,0,0,0.4,4,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <inkscape:perspective
+       id="perspective3098"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3123"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3148"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.4"
+     inkscape:cx="350.05313"
+     inkscape:cy="253.33451"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1116"
+     inkscape:window-height="1059"
+     inkscape:window-x="502"
+     inkscape:window-y="5"
+     inkscape:window-maximized="0"
+     fit-margin-top="0.1"
+     fit-margin-left="0.1"
+     fit-margin-right="0.1"
+     fit-margin-bottom="0.1" />
+  <metadata
+     id="metadata14048">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-13.525282,-9.9128498)">
+    <rect
+       style="fill:#000000;fill-opacity:0.10041839;stroke:none"
+       id="rect15785-3"
+       width="206.63405"
+       height="186.88545"
+       x="13.625282"
+       y="355.8284"
+       rx="25.958084"
+       ry="32.630138"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504" />
+    <rect
+       style="fill:#000000;fill-opacity:0.10041839;stroke:none"
+       id="rect15785"
+       width="190.11443"
+       height="227.2632"
+       x="242.76669"
+       y="353.41208"
+       rx="25.958084"
+       ry="32.630138"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504" />
+    <rect
+       style="fill:#000000;fill-opacity:0.10041839;stroke:none"
+       id="rect15785-1"
+       width="188.80969"
+       height="271.01321"
+       x="243.41907"
+       y="76.721405"
+       rx="25.958084"
+       ry="32.630138"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504" />
+    <rect
+       style="fill:#000000;fill-opacity:0.10041839;stroke:none"
+       id="rect15785-1-3"
+       width="186.89807"
+       height="171.30821"
+       x="23.493267"
+       y="152.36273"
+       rx="25.958084"
+       ry="32.630138"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504" />
+    <rect
+       style="fill:#000000;fill-opacity:0.10041839;stroke:none"
+       id="rect15785-1-4"
+       width="194.58926"
+       height="169.67664"
+       x="454.14401"
+       y="10.01285"
+       rx="25.958084"
+       ry="32.630138"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504" />
+    <rect
+       style="fill:#000000;fill-opacity:0.10041839;stroke:none"
+       id="rect15785-1-5"
+       width="193.38757"
+       height="203.93829"
+       x="454.74484"
+       y="199.21135"
+       rx="25.958084"
+       ry="32.630138"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504" />
+    <rect
+       style="fill:#000000;fill-opacity:0.10041839;stroke:none"
+       id="rect15785-1-2-0"
+       width="185.60017"
+       height="137.04657"
+       x="458.63852"
+       y="432.4848"
+       rx="25.958084"
+       ry="32.630138"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504" />
+    <g
+       id="g14229"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       transform="matrix(1.2848591,0,0,1.6151089,-288.29741,-857.02037)">
+      <rect
+         ry="7.0710678"
+         rx="8.586297"
+         y="756.77777"
+         x="252.9953"
+         height="44.501003"
+         width="124.80181"
+         id="rect2837-4-06-5"
+         style="fill:#c3c4ff;fill-opacity:1;stroke:#000000;stroke-opacity:1" />
+      <text
+         id="text14084"
+         y="781.64789"
+         x="285.35715"
+         style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="781.64789"
+           x="285.35715"
+           id="tspan14086"
+           sodipodi:role="line">rte_malloc</tspan></text>
+    </g>
+    <g
+       id="g14234"
+       transform="matrix(1.2848591,0,0,1.6151089,-66.98918,-730.50352)"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504">
+      <rect
+         ry="7.0710678"
+         rx="8.586297"
+         y="678.20636"
+         x="252.66327"
+         height="44.501003"
+         width="124.80181"
+         id="rect2837-4-06-5-3"
+         style="fill:#c3c4ff;fill-opacity:1;stroke:#000000;stroke-opacity:1" />
+      <text
+         id="text14084-0"
+         y="703.07648"
+         x="283.86636"
+         style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="703.07648"
+           x="283.86636"
+           id="tspan14086-7"
+           sodipodi:role="line">rte_eal + libc</tspan></text>
+    </g>
+    <g
+       id="g14239"
+       transform="matrix(1.2848591,0,0,1.6151089,165.66317,-754.1564)"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504">
+      <rect
+         ry="7.0710678"
+         rx="8.586297"
+         y="600.34924"
+         x="237.84637"
+         height="44.501003"
+         width="124.80181"
+         id="rect2837-4-06-5-6"
+         style="fill:#c3c4ff;fill-opacity:1;stroke:#000000;stroke-opacity:1" />
+      <text
+         id="text14084-8"
+         y="625.21936"
+         x="275.35715"
+         style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="625.21936"
+           x="275.35715"
+           id="tspan14086-8"
+           sodipodi:role="line">rte_ring</tspan></text>
+    </g>
+    <g
+       id="g14254"
+       transform="matrix(1.2848591,0,0,1.6151089,-388.59024,-722.81247)"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504">
+      <rect
+         ry="7.0710678"
+         rx="8.586297"
+         y="588.20636"
+         x="502.9639"
+         height="44.501003"
+         width="124.80181"
+         id="rect2837-4-06-5-31"
+         style="fill:#c3c4ff;fill-opacity:1;stroke:#000000;stroke-opacity:1" />
+      <text
+         id="text14084-4"
+         y="613.07648"
+         x="526.78571"
+         style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="613.07648"
+           x="526.78571"
+           id="tspan14086-9"
+           sodipodi:role="line">rte_mempool</tspan></text>
+    </g>
+    <g
+       id="g14244"
+       transform="matrix(1.2848591,0,0,1.6151089,160.86376,-719.73612)"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504">
+      <rect
+         ry="7.0710678"
+         rx="8.586297"
+         y="501.06354"
+         x="241.58173"
+         height="44.501003"
+         width="124.80181"
+         id="rect2837-4-06-5-0"
+         style="fill:#c3c4ff;fill-opacity:1;stroke:#000000;stroke-opacity:1" />
+      <text
+         id="text14084-6"
+         y="525.93365"
+         x="275.35715"
+         style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="525.93365"
+           x="275.35715"
+           id="tspan14086-89"
+           sodipodi:role="line">rte_mbuf</tspan></text>
+    </g>
+    <g
+       id="g15423"
+       transform="matrix(1.2848591,0,0,1.6151089,-52.842661,-589.8906)"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504">
+      <rect
+         ry="7.0710678"
+         rx="8.586297"
+         y="510.82596"
+         x="69.741951"
+         height="44.501003"
+         width="124.80181"
+         id="rect2837-4-06-5-0-0-7"
+         style="fill:#c3c4ff;fill-opacity:1;stroke:#000000;stroke-opacity:1" />
+      <text
+         id="text14084-6-4-1"
+         y="535.69611"
+         x="103.23904"
+         style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="535.69611"
+           x="103.23904"
+           id="tspan14086-89-8-7"
+           sodipodi:role="line">rte_timer</tspan></text>
+    </g>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.44055104px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#Arrow1Mstart);marker-end:none"
+       d="m 257.64752,400.95017 -60.52887,0.10538"
+       id="path14259"
+       inkscape:connector-type="polyline"
+       inkscape:connection-start="#g14234"
+       inkscape:connection-end="#g14229"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end-point="d4"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.44055104px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Mend)"
+       d="M 500.0555,287.34697 389.20701,364.87361"
+       id="path14261"
+       inkscape:connector-type="polyline"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       inkscape:connection-end="#g14234"
+       inkscape:connection-start="#g14239"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end-point="d4"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.44024909;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-start:url(#Arrow1Mstart-9);marker-end:none"
+       d="M 469.93838,257.33479 418.9627,257.1672"
+       id="path14263"
+       inkscape:connector-type="polyline"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       sodipodi:nodetypes="cc"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.44024909;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-start:url(#Arrow1Mstart-9);marker-end:url(#Arrow1Mend)"
+       d="m 337.82388,299.07882 1e-5,65.79479"
+       id="path14265"
+       inkscape:connector-type="polyline"
+       inkscape:connection-start="#g14254"
+       inkscape:connection-end="#g14234"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end-point="d4"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.44055104px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Mend)"
+       d="m 51.331468,66.475997 58.736412,0"
+       id="path15233"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       inkscape:connector-curvature="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:14.40550995px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="62.267147"
+       y="84.593857"
+       id="text15419"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       transform="scale(0.89192198,1.1211743)"><tspan
+         sodipodi:role="line"
+         id="tspan15421"
+         x="62.267147"
+         y="84.593857">X uses Y</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:14.40550995px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="56.602165"
+       y="417.21744"
+       id="text15436"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       transform="scale(0.89192198,1.1211743)"><tspan
+         sodipodi:role="line"
+         id="tspan15438"
+         x="56.602165"
+         y="417.21744">Allocation of named</tspan><tspan
+         sodipodi:role="line"
+         x="56.602165"
+         y="435.22433"
+         id="tspan15440">memory zones using</tspan><tspan
+         sodipodi:role="line"
+         x="56.602165"
+         y="453.2312"
+         id="tspan3464">libc's malloc()</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:14.40550995px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="278.89865"
+       y="419.93082"
+       id="text15436-2"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       transform="scale(0.89192198,1.1211743)"><tspan
+         sodipodi:role="line"
+         x="278.89865"
+         y="419.93082"
+         id="tspan3092">Environment abstraction</tspan><tspan
+         sodipodi:role="line"
+         x="278.89865"
+         y="437.93771"
+         id="tspan3129">layer: RTE loading, memory</tspan><tspan
+         sodipodi:role="line"
+         x="278.89865"
+         y="455.94458"
+         id="tspan3096">allocation, time reference,</tspan><tspan
+         sodipodi:role="line"
+         x="278.89865"
+         y="473.95148"
+         id="tspan3102">PCI access, logging</tspan><tspan
+         sodipodi:role="line"
+         x="278.89865"
+         y="491.95837"
+         id="tspan3104" /></text>
+    <text
+       xml:space="preserve"
+       style="font-size:14.40550995px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="49.941029"
+       y="158.51849"
+       id="text15436-2-2"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       transform="scale(0.89192198,1.1211743)"><tspan
+         sodipodi:role="line"
+         x="49.941029"
+         y="158.51849"
+         id="tspan15537">Timer facilities. Based</tspan><tspan
+         sodipodi:role="line"
+         x="49.941029"
+         y="176.52538"
+         id="tspan3238">on HPET interface that</tspan><tspan
+         sodipodi:role="line"
+         x="49.941029"
+         y="194.53227"
+         id="tspan3240">is provided by EAL.</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:14.40550995px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="288.36832"
+       y="101.2496"
+       id="text15436-2-2-5"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       transform="scale(0.89192198,1.1211743)"><tspan
+         sodipodi:role="line"
+         x="288.36832"
+         y="101.2496"
+         id="tspan15537-9">Handle a pool of objects</tspan><tspan
+         sodipodi:role="line"
+         x="288.36832"
+         y="119.25649"
+         id="tspan15575">using a ring to store</tspan><tspan
+         sodipodi:role="line"
+         x="288.36832"
+         y="137.26338"
+         id="tspan15581">them. Allow bulk</tspan><tspan
+         sodipodi:role="line"
+         x="288.36832"
+         y="155.27026"
+         id="tspan15775">enqueue/dequeue and</tspan><tspan
+         sodipodi:role="line"
+         x="288.36832"
+         y="173.27716"
+         id="tspan15781">per-CPU cache.</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:14.40550995px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="534.00629"
+       y="297.33395"
+       id="text15436-2-2-5-0"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       transform="scale(0.89192198,1.1211743)"><tspan
+         sodipodi:role="line"
+         x="534.00629"
+         y="297.33395"
+         id="tspan15581-1">Fixed-size lockless </tspan><tspan
+         sodipodi:role="line"
+         x="534.00629"
+         y="315.34085"
+         id="tspan15634">FIFO for storing objects</tspan><tspan
+         sodipodi:role="line"
+         x="534.00629"
+         y="333.34772"
+         id="tspan15656">in a table.</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:14.40550995px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="529.16345"
+       y="33.516106"
+       id="text15436-2-2-5-0-1"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       transform="scale(0.89192198,1.1211743)"><tspan
+         sodipodi:role="line"
+         x="529.16345"
+         y="33.516106"
+         id="tspan15719">Manipulation of packet</tspan><tspan
+         sodipodi:role="line"
+         x="529.16345"
+         y="51.522995"
+         id="tspan15727">buffers carrying network</tspan><tspan
+         sodipodi:role="line"
+         x="529.16345"
+         y="69.529877"
+         id="tspan3246">data.</tspan></text>
+    <rect
+       style="fill:#c3c4ff;fill-opacity:1;stroke:#000000;stroke-width:1.44055104;stroke-opacity:1"
+       id="rect2837-4-06-5-0-0-9"
+       width="160.35275"
+       height="71.873962"
+       x="471.26224"
+       y="445.24567"
+       rx="11.032183"
+       ry="11.420545"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504" />
+    <text
+       xml:space="preserve"
+       style="font-size:14.40550995px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="581.71051"
+       y="432.95102"
+       id="text14084-6-4-4"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       transform="scale(0.89192198,1.1211743)"><tspan
+         sodipodi:role="line"
+         id="tspan14086-89-8-78"
+         x="581.71051"
+         y="432.95102">rte_debug</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:14.40550995px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="533.41541"
+       y="480.62653"
+       id="text15432-4"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       transform="scale(0.89192198,1.1211743)"><tspan
+         sodipodi:role="line"
+         id="tspan15434-5"
+         x="533.41541"
+         y="480.62653">Provides debug helpers</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.44055104px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Mend);display:inline"
+       d="M 472.46111,451.46754 416.80139,430.5257"
+       id="path14261-1"
+       inkscape:connector-type="polyline"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       inkscape:connection-start="#rect2837-4-06-5-0-0-9"
+       inkscape:connection-end="#g14234"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end-point="d4"
+       inkscape:connector-curvature="0" />
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3225"
+       style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       transform="matrix(1.066935,0,0,1.3411713,-43.506194,-197.99784)"><flowRegion
+         id="flowRegion3227"><rect
+           id="rect3229"
+           width="7.1428571"
+           height="12.857142"
+           x="157.14285"
+           y="171.6479" /></flowRegion><flowPara
+         id="flowPara3231" /></flowRoot>    <path
+       style="fill:none;stroke:#000000;stroke-width:1.44055104px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#Arrow1Mstart);marker-end:none;display:inline"
+       d="M 276.63415,364.87361 178.13203,307.02292"
+       id="path14259-4"
+       inkscape:connector-type="polyline"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       inkscape:connection-end="#g15423"
+       inkscape:connection-start="#g14234"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end-point="d4"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.44055104px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#Arrow1Mstart);marker-end:none;display:inline"
+       d="m 393.58574,227.20486 102.091,-65.79483"
+       id="path14259-4-7"
+       inkscape:connector-type="polyline"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       inkscape:connection-end="#g14244"
+       inkscape:connection-start="#g14254"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end-point="d4"
+       inkscape:connector-curvature="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:14.40550995px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="41.768562"
+       y="63.652237"
+       id="text15419-1"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       transform="scale(0.89192198,1.1211743)"><tspan
+         sodipodi:role="line"
+         id="tspan15421-7"
+         x="41.768562"
+         y="63.652237">X</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:14.40550995px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="134.9883"
+       y="62.797791"
+       id="text15419-9"
+       inkscape:export-filename="/home/matz/rapports/doc/intel/architecture.png"
+       inkscape:export-xdpi="300.7504"
+       inkscape:export-ydpi="300.7504"
+       transform="scale(0.89192198,1.1211743)"><tspan
+         sodipodi:role="line"
+         id="tspan15421-4"
+         x="134.9883"
+         y="62.797791">Y</tspan></text>
+  </g>
+</svg>
