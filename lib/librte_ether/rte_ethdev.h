@@ -940,6 +940,8 @@ struct rte_eth_dev_info {
 	uint16_t max_vmdq_pools; /**< Maximum number of VMDq pools. */
 	uint32_t rx_offload_capa; /**< Device RX offload capabilities. */
 	uint32_t tx_offload_capa; /**< Device TX offload capabilities. */
+	uint16_t reta_size;
+	/**< Device redirection table size, the total number of entries. */
 	struct rte_eth_rxconf default_rxconf; /**< Default RX configuration */
 	struct rte_eth_txconf default_txconf; /**< Default TX configuration */
 	uint16_t vmdq_queue_base; /**< First queue ID for VMDQ pools. */

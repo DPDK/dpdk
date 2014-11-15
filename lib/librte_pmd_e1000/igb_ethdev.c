@@ -83,6 +83,8 @@ static void eth_igb_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *rte_stats);
 static void eth_igb_stats_reset(struct rte_eth_dev *dev);
 static void eth_igb_infos_get(struct rte_eth_dev *dev,
+			      struct rte_eth_dev_info *dev_info);
+static void eth_igbvf_infos_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int  eth_igb_flow_ctrl_get(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
@@ -282,7 +284,7 @@ static struct eth_dev_ops igbvf_eth_dev_ops = {
 	.stats_get            = eth_igbvf_stats_get,
 	.stats_reset          = eth_igbvf_stats_reset,
 	.vlan_filter_set      = igbvf_vlan_filter_set,
-	.dev_infos_get        = eth_igb_infos_get,
+	.dev_infos_get        = eth_igbvf_infos_get,
 	.rx_queue_setup       = eth_igb_rx_queue_setup,
 	.rx_queue_release     = eth_igb_rx_queue_release,
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
@@ -1268,8 +1270,7 @@ eth_igbvf_stats_reset(struct rte_eth_dev *dev)
 }
 
 static void
-eth_igb_infos_get(struct rte_eth_dev *dev,
-		    struct rte_eth_dev_info *dev_info)
+eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1333,23 +1334,61 @@ eth_igb_infos_get(struct rte_eth_dev *dev,
 		dev_info->max_vmdq_pools = 0;
 		break;
 
+	default:
+		/* Should not happen */
+		break;
+	}
+	dev_info->reta_size = ETH_RSS_RETA_SIZE_128;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = IGB_DEFAULT_RX_PTHRESH,
+			.hthresh = IGB_DEFAULT_RX_HTHRESH,
+			.wthresh = IGB_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = IGB_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = IGB_DEFAULT_TX_PTHRESH,
+			.hthresh = IGB_DEFAULT_TX_HTHRESH,
+			.wthresh = IGB_DEFAULT_TX_WTHRESH,
+		},
+		.txq_flags = 0,
+	};
+}
+
+static void
+eth_igbvf_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	dev_info->min_rx_bufsize = 256; /* See BSIZE field of RCTL register. */
+	dev_info->max_rx_pktlen  = 0x3FFF; /* See RLPML register. */
+	dev_info->max_mac_addrs = hw->mac.rar_entry_count;
+	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP |
+				DEV_RX_OFFLOAD_IPV4_CKSUM |
+				DEV_RX_OFFLOAD_UDP_CKSUM  |
+				DEV_RX_OFFLOAD_TCP_CKSUM;
+	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
+				DEV_TX_OFFLOAD_IPV4_CKSUM  |
+				DEV_TX_OFFLOAD_UDP_CKSUM   |
+				DEV_TX_OFFLOAD_TCP_CKSUM   |
+				DEV_TX_OFFLOAD_SCTP_CKSUM;
+	switch (hw->mac.type) {
 	case e1000_vfadapt:
 		dev_info->max_rx_queues = 2;
 		dev_info->max_tx_queues = 2;
-		dev_info->max_vmdq_pools = 0;
 		break;
-
 	case e1000_vfadapt_i350:
 		dev_info->max_rx_queues = 1;
 		dev_info->max_tx_queues = 1;
-		dev_info->max_vmdq_pools = 0;
 		break;
-
 	default:
 		/* Should not happen */
-		dev_info->max_rx_queues = 0;
-		dev_info->max_tx_queues = 0;
-		dev_info->max_vmdq_pools = 0;
+		break;
 	}
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
@@ -2051,7 +2090,7 @@ igbvf_stop_adapter(struct rte_eth_dev *dev)
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	memset(&dev_info, 0, sizeof(dev_info));
-	eth_igb_infos_get(dev, &dev_info);
+	eth_igbvf_infos_get(dev, &dev_info);
 
 	/* Clear interrupt mask to stop from interrupts being generated */
 	igbvf_intr_disable(hw);
