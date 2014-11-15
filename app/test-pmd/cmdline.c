@@ -463,6 +463,11 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set bonding xmit_balance_policy (port_id) (l2|l23|l34)\n"
 			"	Set the transmit balance policy for bonded device running in balance mode.\n\n"
 #endif
+			"set link-up port (port_id)\n"
+			"	Set link up for a port.\n\n"
+
+			"set link-down port (port_id)\n"
+			"	Set link down for a port.\n\n"
 
 			, list_pkt_forwarding_modes()
 		);
