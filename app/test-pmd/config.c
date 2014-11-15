@@ -760,7 +760,7 @@ rxtx_config_display(void)
 void
 port_rss_reta_info(portid_t port_id,struct rte_eth_rss_reta *reta_conf)
 {
-	uint8_t i,j;
+	uint8_t i, j;
 	int ret;
 
 	if (port_id_is_invalid(port_id))

@@ -1610,7 +1610,7 @@ parse_reta_config(const char *str, struct rte_eth_rss_reta *reta_conf)
 		nb_queue = (uint8_t)int_fld[FLD_QUEUE];
 
 		if (hash_index >= ETH_RSS_RETA_NUM_ENTRIES) {
-			printf("Invalid RETA hash index=%d",hash_index);
+			printf("Invalid RETA hash index=%d", hash_index);
 			return -1;
 		}
 
@@ -1627,22 +1627,24 @@ parse_reta_config(const char *str, struct rte_eth_rss_reta *reta_conf)
 
 static void
 cmd_set_rss_reta_parsed(void *parsed_result,
-				__attribute__((unused)) struct cmdline *cl,
-				__attribute__((unused)) void *data)
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
 {
 	int ret;
 	struct rte_eth_rss_reta reta_conf;
 	struct cmd_config_rss_reta *res = parsed_result;
 
-	memset(&reta_conf,0,sizeof(struct rte_eth_rss_reta));
+	memset(&reta_conf, 0, sizeof(struct rte_eth_rss_reta));
 	if (!strcmp(res->list_name, "reta")) {
 		if (parse_reta_config(res->list_of_items, &reta_conf)) {
-			printf("Invalid RSS Redirection Table config entered\n");
+			printf("Invalid RSS Redirection Table config "
+							"entered\n");
 			return;
 		}
 		ret = rte_eth_dev_rss_reta_update(res->port_id, &reta_conf);
 		if (ret != 0)
-			printf("Bad redirection table parameter, return code = %d \n",ret);
+			printf("Bad redirection table parameter, "
+					"return code = %d \n", ret);
 	}
 }
 
@@ -1704,19 +1706,19 @@ static void cmd_showport_reta_parsed(void *parsed_result,
 }
 
 cmdline_parse_token_string_t cmd_showport_reta_show =
-        TOKEN_STRING_INITIALIZER(struct  cmd_showport_reta, show, "show");
+	TOKEN_STRING_INITIALIZER(struct  cmd_showport_reta, show, "show");
 cmdline_parse_token_string_t cmd_showport_reta_port =
-        TOKEN_STRING_INITIALIZER(struct  cmd_showport_reta, port, "port");
+	TOKEN_STRING_INITIALIZER(struct  cmd_showport_reta, port, "port");
 cmdline_parse_token_num_t cmd_showport_reta_port_id =
-        TOKEN_NUM_INITIALIZER(struct cmd_showport_reta, port_id, UINT8);
+	TOKEN_NUM_INITIALIZER(struct cmd_showport_reta, port_id, UINT8);
 cmdline_parse_token_string_t cmd_showport_reta_rss =
-        TOKEN_STRING_INITIALIZER(struct cmd_showport_reta, rss, "rss");
+	TOKEN_STRING_INITIALIZER(struct cmd_showport_reta, rss, "rss");
 cmdline_parse_token_string_t cmd_showport_reta_reta =
-        TOKEN_STRING_INITIALIZER(struct cmd_showport_reta, reta, "reta");
+	TOKEN_STRING_INITIALIZER(struct cmd_showport_reta, reta, "reta");
 cmdline_parse_token_num_t cmd_showport_reta_mask_lo =
-        TOKEN_NUM_INITIALIZER(struct cmd_showport_reta,mask_lo,UINT64);
+	TOKEN_NUM_INITIALIZER(struct cmd_showport_reta, mask_lo, UINT64);
 cmdline_parse_token_num_t cmd_showport_reta_mask_hi =
-	TOKEN_NUM_INITIALIZER(struct cmd_showport_reta,mask_hi,UINT64);
+	TOKEN_NUM_INITIALIZER(struct cmd_showport_reta, mask_hi, UINT64);
 
 cmdline_parse_inst_t cmd_showport_reta = {
 	.f = cmd_showport_reta_parsed,
