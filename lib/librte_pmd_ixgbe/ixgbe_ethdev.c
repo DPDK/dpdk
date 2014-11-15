@@ -132,8 +132,9 @@ static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 					     uint8_t stat_idx,
 					     uint8_t is_rx);
 static void ixgbe_dev_info_get(struct rte_eth_dev *dev,
-				struct rte_eth_dev_info *dev_info);
-
+			       struct rte_eth_dev_info *dev_info);
+static void ixgbevf_dev_info_get(struct rte_eth_dev *dev,
+				 struct rte_eth_dev_info *dev_info);
 static int ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 static int ixgbe_vlan_filter_set(struct rte_eth_dev *dev,
@@ -391,7 +392,7 @@ static struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.stats_get            = ixgbevf_dev_stats_get,
 	.stats_reset          = ixgbevf_dev_stats_reset,
 	.dev_close            = ixgbevf_dev_close,
-	.dev_infos_get        = ixgbe_dev_info_get,
+	.dev_infos_get        = ixgbevf_dev_info_get,
 	.mtu_set              = ixgbevf_dev_set_mtu,
 	.vlan_filter_set      = ixgbevf_vlan_filter_set,
 	.vlan_strip_queue_set = ixgbevf_vlan_strip_queue_set,
@@ -1967,25 +1968,76 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_TX_OFFLOAD_SCTP_CKSUM;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
-			.rx_thresh = {
-				.pthresh = IXGBE_DEFAULT_RX_PTHRESH,
-				.hthresh = IXGBE_DEFAULT_RX_HTHRESH,
-				.wthresh = IXGBE_DEFAULT_RX_WTHRESH,
-			},
-			.rx_free_thresh = IXGBE_DEFAULT_RX_FREE_THRESH,
-			.rx_drop_en = 0,
+		.rx_thresh = {
+			.pthresh = IXGBE_DEFAULT_RX_PTHRESH,
+			.hthresh = IXGBE_DEFAULT_RX_HTHRESH,
+			.wthresh = IXGBE_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = IXGBE_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
 	};
 
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = IXGBE_DEFAULT_TX_PTHRESH,
+			.hthresh = IXGBE_DEFAULT_TX_HTHRESH,
+			.wthresh = IXGBE_DEFAULT_TX_WTHRESH,
+		},
+		.tx_free_thresh = IXGBE_DEFAULT_TX_FREE_THRESH,
+		.tx_rs_thresh = IXGBE_DEFAULT_TX_RSBIT_THRESH,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
+				ETH_TXQ_FLAGS_NOOFFLOADS,
+	};
+	dev_info->reta_size = ETH_RSS_RETA_SIZE_128;
+}
 
-	 dev_info->default_txconf = (struct rte_eth_txconf) {
-			.tx_thresh = {
-				.pthresh = IXGBE_DEFAULT_TX_PTHRESH,
-				.hthresh = IXGBE_DEFAULT_TX_HTHRESH,
-				.wthresh = IXGBE_DEFAULT_TX_WTHRESH,
-			},
-			.tx_free_thresh = IXGBE_DEFAULT_TX_FREE_THRESH,
-			.tx_rs_thresh = IXGBE_DEFAULT_TX_RSBIT_THRESH,
-			.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | ETH_TXQ_FLAGS_NOOFFLOADS,
+static void
+ixgbevf_dev_info_get(struct rte_eth_dev *dev,
+		     struct rte_eth_dev_info *dev_info)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
+	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
+	dev_info->min_rx_bufsize = 1024; /* cf BSIZEPACKET in SRRCTL reg */
+	dev_info->max_rx_pktlen = 15872; /* includes CRC, cf MAXFRS reg */
+	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
+	dev_info->max_hash_mac_addrs = IXGBE_VMDQ_NUM_UC_MAC;
+	dev_info->max_vfs = dev->pci_dev->max_vfs;
+	if (hw->mac.type == ixgbe_mac_82598EB)
+		dev_info->max_vmdq_pools = ETH_16_POOLS;
+	else
+		dev_info->max_vmdq_pools = ETH_64_POOLS;
+	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP |
+				DEV_RX_OFFLOAD_IPV4_CKSUM |
+				DEV_RX_OFFLOAD_UDP_CKSUM  |
+				DEV_RX_OFFLOAD_TCP_CKSUM;
+	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
+				DEV_TX_OFFLOAD_IPV4_CKSUM  |
+				DEV_TX_OFFLOAD_UDP_CKSUM   |
+				DEV_TX_OFFLOAD_TCP_CKSUM   |
+				DEV_TX_OFFLOAD_SCTP_CKSUM;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = IXGBE_DEFAULT_RX_PTHRESH,
+			.hthresh = IXGBE_DEFAULT_RX_HTHRESH,
+			.wthresh = IXGBE_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = IXGBE_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = IXGBE_DEFAULT_TX_PTHRESH,
+			.hthresh = IXGBE_DEFAULT_TX_HTHRESH,
+			.wthresh = IXGBE_DEFAULT_TX_WTHRESH,
+		},
+		.tx_free_thresh = IXGBE_DEFAULT_TX_FREE_THRESH,
+		.tx_rs_thresh = IXGBE_DEFAULT_TX_RSBIT_THRESH,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
+				ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
 }
 
