@@ -400,18 +400,26 @@ test_invalid_b_flag(void)
 static int
 test_invalid_vdev_flag(void)
 {
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target doesn't support prefixes at this point, and we also need to
+	 * run another primary process here */
+	const char * prefix = no_shconf;
+#else
+	const char * prefix = "--file-prefix=vdev";
+#endif
+
 	/* Test with invalid vdev option */
-	const char *vdevinval[] = {prgname, "--file-prefix=vdev","-n", "1",
+	const char *vdevinval[] = {prgname, prefix, "-n", "1",
 				"-c", "1", vdev, "eth_dummy"};
 
 	/* Test with valid vdev option */
-	const char *vdevval1[] = {prgname, "--file-prefix=vdev", "-n", "1",
+	const char *vdevval1[] = {prgname, prefix, "-n", "1",
 	"-c", "1", vdev, "eth_ring0"};
 
-	const char *vdevval2[] = {prgname, "--file-prefix=vdev", "-n", "1",
+	const char *vdevval2[] = {prgname, prefix, "-n", "1",
 	"-c", "1", vdev, "eth_ring0,args=test"};
 
-	const char *vdevval3[] = {prgname, "--file-prefix=vdev", "-n", "1",
+	const char *vdevval3[] = {prgname, prefix, "-n", "1",
 	"-c", "1", vdev, "eth_ring0,nodeaction=r1:0:CREATE"};
 
 	if (launch_proc(vdevinval) == 0) {

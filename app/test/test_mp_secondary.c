@@ -84,6 +84,7 @@
 #define launch_proc(ARGV) process_dup(ARGV, \
 		sizeof(ARGV)/(sizeof(ARGV[0])), __func__)
 
+#ifdef RTE_EXEC_ENV_LINUXAPP
 static char*
 get_current_prefix(char * prefix, int size)
 {
@@ -107,6 +108,7 @@ get_current_prefix(char * prefix, int size)
 
 	return prefix;
 }
+#endif
 
 /*
  * This function is called in the primary i.e. main test, to spawn off secondary
@@ -118,12 +120,16 @@ run_secondary_instances(void)
 	int ret = 0;
 	char coremask[10];
 
+#ifdef RTE_EXEC_ENV_LINUXAPP
 	char tmp[PATH_MAX] = {0};
 	char prefix[PATH_MAX] = {0};
 
 	get_current_prefix(tmp, sizeof(tmp));
 
 	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+#else
+	const char *prefix = "";
+#endif
 
 	/* good case, using secondary */
 	const char *argv1[] = {
@@ -140,11 +146,13 @@ run_secondary_instances(void)
 			prgname, "-c", coremask, "--proc-type=ERROR",
 			prefix
 	};
+#ifdef RTE_EXEC_ENV_LINUXAPP
 	/* bad case, using invalid file prefix */
 	const char *argv4[]  = {
 			prgname, "-c", coremask, "--proc-type=secondary",
 					"--file-prefix=ERROR"
 	};
+#endif
 
 	snprintf(coremask, sizeof(coremask), "%x", \
 			(1 << rte_get_master_lcore()));
@@ -153,7 +161,9 @@ run_secondary_instances(void)
 	ret |= launch_proc(argv2);
 
 	ret |= !(launch_proc(argv3));
+#ifdef RTE_EXEC_ENV_LINUXAPP
 	ret |= !(launch_proc(argv4));
+#endif
 
 	return ret;
 }
