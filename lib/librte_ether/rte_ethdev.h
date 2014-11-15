@@ -443,9 +443,16 @@ struct rte_eth_rss_conf {
 		ETH_RSS_FRAG_IPV6 | \
 		ETH_RSS_L2_PAYLOAD)
 
-/* Definitions used for redirection table entry size */
+/*
+ * Definitions used for redirection table entry size.
+ * Some RSS RETA sizes may not be supported by some drivers, check the
+ * documentation or the description of relevant functions for more details.
+ */
 #define ETH_RSS_RETA_NUM_ENTRIES 128
 #define ETH_RSS_RETA_MAX_QUEUE   16
+#define ETH_RSS_RETA_SIZE_64  64
+#define ETH_RSS_RETA_SIZE_128 128
+#define ETH_RSS_RETA_SIZE_512 512
 
 /* Definitions used for VMDQ and DCB functionality */
 #define ETH_VMDQ_MAX_VLAN_FILTERS   64 /**< Maximum nb. of VMDQ vlan filters. */

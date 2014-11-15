@@ -3195,7 +3195,19 @@ i40e_pf_setup(struct i40e_pf *pf)
 
 	/* Configure filter control */
 	memset(&settings, 0, sizeof(settings));
-	settings.hash_lut_size = I40E_HASH_LUT_SIZE_128;
+	if (hw->func_caps.rss_table_size == ETH_RSS_RETA_SIZE_128)
+		settings.hash_lut_size = I40E_HASH_LUT_SIZE_128;
+	else if (hw->func_caps.rss_table_size == ETH_RSS_RETA_SIZE_512)
+		settings.hash_lut_size = I40E_HASH_LUT_SIZE_512;
+	else {
+		PMD_DRV_LOG(ERR, "Hash lookup table size (%u) not supported\n",
+						hw->func_caps.rss_table_size);
+		return I40E_ERR_PARAM;
+	}
+	PMD_DRV_LOG(INFO, "Hardware capability of hash lookup table "
+			"size: %u\n", hw->func_caps.rss_table_size);
+	pf->hash_lut_size = hw->func_caps.rss_table_size;
+
 	/* Enable ethtype and macvlan filters */
 	settings.enable_ethtype = TRUE;
 	settings.enable_macvlan = TRUE;
