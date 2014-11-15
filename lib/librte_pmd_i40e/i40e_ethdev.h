@@ -56,6 +56,17 @@
 /* Always assign pool 0 to main VSI, VMDQ will start from 1 */
 #define I40E_VMDQ_POOL_BASE       1
 
+#define I40E_DEFAULT_RX_FREE_THRESH  32
+#define I40E_DEFAULT_RX_PTHRESH      8
+#define I40E_DEFAULT_RX_HTHRESH      8
+#define I40E_DEFAULT_RX_WTHRESH      0
+
+#define I40E_DEFAULT_TX_FREE_THRESH  32
+#define I40E_DEFAULT_TX_PTHRESH      32
+#define I40E_DEFAULT_TX_HTHRESH      0
+#define I40E_DEFAULT_TX_WTHRESH      0
+#define I40E_DEFAULT_TX_RSBIT_THRESH 32
+
 /* i40e flags */
 #define I40E_FLAG_RSS                   (1ULL << 0)
 #define I40E_FLAG_DCB                   (1ULL << 1)

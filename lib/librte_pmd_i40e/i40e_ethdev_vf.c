@@ -1637,6 +1637,29 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_tx_queues = vf->vsi_res->num_queue_pairs;
 	dev_info->min_rx_bufsize = I40E_BUF_SIZE_MIN;
 	dev_info->max_rx_pktlen = I40E_FRAME_SIZE_MAX;
+	dev_info->reta_size = ETH_RSS_RETA_SIZE_64;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = I40E_DEFAULT_RX_PTHRESH,
+			.hthresh = I40E_DEFAULT_RX_HTHRESH,
+			.wthresh = I40E_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = I40E_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = I40E_DEFAULT_TX_PTHRESH,
+			.hthresh = I40E_DEFAULT_TX_HTHRESH,
+			.wthresh = I40E_DEFAULT_TX_WTHRESH,
+		},
+		.tx_free_thresh = I40E_DEFAULT_TX_FREE_THRESH,
+		.tx_rs_thresh = I40E_DEFAULT_TX_RSBIT_THRESH,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
+				ETH_TXQ_FLAGS_NOOFFLOADS,
+	};
 }
 
 static void

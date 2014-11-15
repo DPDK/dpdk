@@ -59,17 +59,6 @@
 #include "i40e_rxtx.h"
 #include "i40e_pf.h"
 
-#define I40E_DEFAULT_RX_FREE_THRESH  32
-#define I40E_DEFAULT_RX_PTHRESH      8
-#define I40E_DEFAULT_RX_HTHRESH      8
-#define I40E_DEFAULT_RX_WTHRESH      0
-
-#define I40E_DEFAULT_TX_FREE_THRESH  32
-#define I40E_DEFAULT_TX_PTHRESH      32
-#define I40E_DEFAULT_TX_HTHRESH      0
-#define I40E_DEFAULT_TX_WTHRESH      0
-#define I40E_DEFAULT_TX_RSBIT_THRESH 32
-
 /* Maximun number of MAC addresses */
 #define I40E_NUM_MACADDR_MAX       64
 #define I40E_CLEAR_PXE_WAIT_MS     200
@@ -1443,6 +1432,7 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_TX_OFFLOAD_UDP_CKSUM |
 		DEV_TX_OFFLOAD_TCP_CKSUM |
 		DEV_TX_OFFLOAD_SCTP_CKSUM;
+	dev_info->reta_size = pf->hash_lut_size;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -1462,7 +1452,8 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		},
 		.tx_free_thresh = I40E_DEFAULT_TX_FREE_THRESH,
 		.tx_rs_thresh = I40E_DEFAULT_TX_RSBIT_THRESH,
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | ETH_TXQ_FLAGS_NOOFFLOADS,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
+				ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
 
 	if (pf->flags | I40E_FLAG_VMDQ) {
