@@ -131,10 +131,14 @@ static int i40evf_dev_rss_hash_update(struct rte_eth_dev *dev,
 				      struct rte_eth_rss_conf *rss_conf);
 static int i40evf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 					struct rte_eth_rss_conf *rss_conf);
-static int i40evf_dev_rx_queue_start(struct rte_eth_dev *, uint16_t);
-static int i40evf_dev_rx_queue_stop(struct rte_eth_dev *, uint16_t);
-static int i40evf_dev_tx_queue_start(struct rte_eth_dev *, uint16_t);
-static int i40evf_dev_tx_queue_stop(struct rte_eth_dev *, uint16_t);
+static int i40evf_dev_rx_queue_start(struct rte_eth_dev *dev,
+				     uint16_t rx_queue_id);
+static int i40evf_dev_rx_queue_stop(struct rte_eth_dev *dev,
+				    uint16_t rx_queue_id);
+static int i40evf_dev_tx_queue_start(struct rte_eth_dev *dev,
+				     uint16_t tx_queue_id);
+static int i40evf_dev_tx_queue_stop(struct rte_eth_dev *dev,
+				    uint16_t tx_queue_id);
 
 /* Default hash key buffer for RSS */
 static uint32_t rss_key_default[I40E_VFQF_HKEY_MAX_INDEX + 1];
