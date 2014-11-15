@@ -448,11 +448,10 @@ struct rte_eth_rss_conf {
  * Some RSS RETA sizes may not be supported by some drivers, check the
  * documentation or the description of relevant functions for more details.
  */
-#define ETH_RSS_RETA_NUM_ENTRIES 128
-#define ETH_RSS_RETA_MAX_QUEUE   16
 #define ETH_RSS_RETA_SIZE_64  64
 #define ETH_RSS_RETA_SIZE_128 128
 #define ETH_RSS_RETA_SIZE_512 512
+#define RTE_RETA_GROUP_SIZE   64
 
 /* Definitions used for VMDQ and DCB functionality */
 #define ETH_VMDQ_MAX_VLAN_FILTERS   64 /**< Maximum nb. of VMDQ vlan filters. */
@@ -516,15 +515,16 @@ struct rte_eth_vmdq_mirror_conf {
 };
 
 /**
- * A structure used to configure Redirection Table of  the Receive Side
- * Scaling (RSS) feature of an Ethernet port.
+ * A structure used to configure 64 entries of Redirection Table of the
+ * Receive Side Scaling (RSS) feature of an Ethernet port. To configure
+ * more than 64 entries supported by hardware, an array of this structure
+ * is needed.
  */
-struct rte_eth_rss_reta {
-	/** First 64 mask bits indicate which entry(s) need to updated/queried. */
-	uint64_t mask_lo;
-	/** Second 64 mask bits indicate which entry(s) need to updated/queried. */
-	uint64_t mask_hi;
-	uint8_t reta[ETH_RSS_RETA_NUM_ENTRIES];  /**< 128 RETA entries*/
+struct rte_eth_rss_reta_entry64 {
+	uint64_t mask;
+	/**< Mask bits indicate which entries need to be updated/queried. */
+	uint8_t reta[RTE_RETA_GROUP_SIZE];
+	/**< Group of 64 redirection table entries. */
 };
 
 /**
@@ -1221,11 +1221,13 @@ typedef int (*priority_flow_ctrl_set_t)(struct rte_eth_dev *dev,
 /**< @internal Setup priority flow control parameter on an Ethernet device */
 
 typedef int (*reta_update_t)(struct rte_eth_dev *dev,
-				struct rte_eth_rss_reta *reta_conf);
+			     struct rte_eth_rss_reta_entry64 *reta_conf,
+			     uint16_t reta_size);
 /**< @internal Update RSS redirection table on an Ethernet device */
 
 typedef int (*reta_query_t)(struct rte_eth_dev *dev,
-				struct rte_eth_rss_reta *reta_conf);
+			    struct rte_eth_rss_reta_entry64 *reta_conf,
+			    uint16_t reta_size);
 /**< @internal Query RSS redirection table on an Ethernet device */
 
 typedef int (*rss_hash_update_t)(struct rte_eth_dev *dev,
@@ -2961,14 +2963,18 @@ int rte_eth_dev_mac_addr_remove(uint8_t port, struct ether_addr *mac_addr);
  * @param port
  *   The port identifier of the Ethernet device.
  * @param reta_conf
- *    RETA to update.
+ *   RETA to update.
+ * @param reta_size
+ *   Redirection table size. The table size can be queried by
+ *   rte_eth_dev_info_get().
  * @return
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_rss_reta_update(uint8_t port,
-			struct rte_eth_rss_reta *reta_conf);
+				struct rte_eth_rss_reta_entry64 *reta_conf,
+				uint16_t reta_size);
 
  /**
  * Query Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
@@ -2977,13 +2983,17 @@ int rte_eth_dev_rss_reta_update(uint8_t port,
  *   The port identifier of the Ethernet device.
  * @param reta_conf
  *   RETA to query.
+ * @param reta_size
+ *   Redirection table size. The table size can be queried by
+ *   rte_eth_dev_info_get().
  * @return
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_rss_reta_query(uint8_t port,
-			struct rte_eth_rss_reta *reta_conf);
+			       struct rte_eth_rss_reta_entry64 *reta_conf,
+			       uint16_t reta_size);
 
  /**
  * Updates unicast hash table for receiving packet with the given destination

@@ -284,6 +284,7 @@ port_infos_display(portid_t port_id)
 	struct rte_port *port;
 	struct ether_addr mac_addr;
 	struct rte_eth_link link;
+	struct rte_eth_dev_info dev_info;
 	int vlan_offload;
 	struct rte_mempool * mp;
 	static const char *info_border = "*********************";
@@ -339,6 +340,11 @@ port_infos_display(portid_t port_id)
 		else
 			printf("  qinq(extend) off \n");
 	}
+
+	memset(&dev_info, 0, sizeof(dev_info));
+	rte_eth_dev_info_get(port_id, &dev_info);
+	if (dev_info.reta_size > 0)
+		printf("Redirection table size: %u\n", dev_info.reta_size);
 }
 
 int
@@ -758,36 +764,29 @@ rxtx_config_display(void)
 }
 
 void
-port_rss_reta_info(portid_t port_id,struct rte_eth_rss_reta *reta_conf)
+port_rss_reta_info(portid_t port_id,
+		   struct rte_eth_rss_reta_entry64 *reta_conf,
+		   uint16_t nb_entries)
 {
-	uint8_t i, j;
+	uint16_t i, idx, shift;
 	int ret;
 
 	if (port_id_is_invalid(port_id))
 		return;
 
-	ret = rte_eth_dev_rss_reta_query(port_id, reta_conf);
+	ret = rte_eth_dev_rss_reta_query(port_id, reta_conf, nb_entries);
 	if (ret != 0) {
 		printf("Failed to get RSS RETA info, return code = %d\n", ret);
 		return;
 	}
 
-	if (reta_conf->mask_lo != 0) {
-		for (i = 0; i< ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
-			if (reta_conf->mask_lo & (uint64_t)(1ULL << i))
-				printf("RSS RETA configuration: hash index=%d,"
-					"queue=%d\n",i,reta_conf->reta[i]);
-		}
-	}
-
-	if (reta_conf->mask_hi != 0) {
-		for (i = 0; i< ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
-			if(reta_conf->mask_hi & (uint64_t)(1ULL << i)) {
-				j = (uint8_t)(i + ETH_RSS_RETA_NUM_ENTRIES/2);
-				printf("RSS RETA configuration: hash index=%d,"
-					"queue=%d\n",j,reta_conf->reta[j]);
-			}
-		}
+	for (i = 0; i < nb_entries; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (!(reta_conf[idx].mask & (1ULL << shift)))
+			continue;
+		printf("RSS RETA configuration: hash index=%u, queue=%u\n",
+					i, reta_conf[idx].reta[shift]);
 	}
 }
 

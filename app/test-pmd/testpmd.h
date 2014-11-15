@@ -533,7 +533,9 @@ void fdir_remove_perfect_filter(portid_t port_id, uint16_t soft_id,
 				struct rte_fdir_filter *fdir_filter);
 void fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks);
 
-void port_rss_reta_info(portid_t port_id, struct rte_eth_rss_reta *reta_conf);
+void port_rss_reta_info(portid_t port_id,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t nb_entries);
 
 void set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on);
 void set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id,

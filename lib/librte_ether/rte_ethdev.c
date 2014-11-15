@@ -1927,78 +1927,111 @@ rte_eth_dev_priority_flow_ctrl_set(uint8_t port_id, struct rte_eth_pfc_conf *pfc
 	return (-ENOTSUP);
 }
 
-int
-rte_eth_dev_rss_reta_update(uint8_t port_id, struct rte_eth_rss_reta *reta_conf)
+static inline int
+rte_eth_check_reta_mask(struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
 {
-	struct rte_eth_dev *dev;
-	uint16_t max_rxq;
-	uint8_t i,j;
+	uint16_t i, num;
 
-	if (port_id >= nb_ports) {
-		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return (-ENODEV);
+	if (!reta_conf)
+		return -EINVAL;
+
+	if (reta_size != RTE_ALIGN(reta_size, RTE_RETA_GROUP_SIZE)) {
+		PMD_DEBUG_TRACE("Invalid reta size, should be %u aligned\n",
+							RTE_RETA_GROUP_SIZE);
+		return -EINVAL;
 	}
 
-	/* Invalid mask bit(s) setting */
-	if ((reta_conf->mask_lo == 0) && (reta_conf->mask_hi == 0)) {
-		PMD_DEBUG_TRACE("Invalid update mask bits for port=%d\n",port_id);
-		return (-EINVAL);
+	num = reta_size / RTE_RETA_GROUP_SIZE;
+	for (i = 0; i < num; i++) {
+		if (reta_conf[i].mask)
+			return 0;
 	}
 
-	dev = &rte_eth_devices[port_id];
-	max_rxq = (dev->data->nb_rx_queues <= ETH_RSS_RETA_MAX_QUEUE) ?
-		dev->data->nb_rx_queues : ETH_RSS_RETA_MAX_QUEUE;
-	if (reta_conf->mask_lo != 0) {
-		for (i = 0; i < ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
-			if ((reta_conf->mask_lo & (1ULL << i)) &&
-				(reta_conf->reta[i] >= max_rxq)) {
-				PMD_DEBUG_TRACE("RETA hash index output"
-					"configration for port=%d,invalid"
-					"queue=%d\n",port_id,reta_conf->reta[i]);
+	return -EINVAL;
+}
 
-				return (-EINVAL);
-			}
+static inline int
+rte_eth_check_reta_entry(struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size,
+			 uint8_t max_rxq)
+{
+	uint16_t i, idx, shift;
+
+	if (!reta_conf)
+		return -EINVAL;
+
+	if (max_rxq == 0) {
+		PMD_DEBUG_TRACE("No receive queue is available\n");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if ((reta_conf[idx].mask & (1ULL << shift)) &&
+			(reta_conf[idx].reta[shift] >= max_rxq)) {
+			PMD_DEBUG_TRACE("reta_conf[%u]->reta[%u]: %u exceeds "
+				"the maximum rxq index: %u\n", idx, shift,
+				reta_conf[idx].reta[shift], max_rxq);
+			return -EINVAL;
 		}
 	}
 
-	if (reta_conf->mask_hi != 0) {
-		for (i = 0; i< ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
-			j = (uint8_t)(i + ETH_RSS_RETA_NUM_ENTRIES/2);
-
-			/* Check if the max entry >= 128 */
-			if ((reta_conf->mask_hi & (1ULL << i)) &&
-				(reta_conf->reta[j] >= max_rxq)) {
-				PMD_DEBUG_TRACE("RETA hash index output"
-					"configration for port=%d,invalid"
-					"queue=%d\n",port_id,reta_conf->reta[j]);
-
-				return (-EINVAL);
-			}
-		}
-	}
-
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->reta_update, -ENOTSUP);
-	return (*dev->dev_ops->reta_update)(dev, reta_conf);
+	return 0;
 }
 
 int
-rte_eth_dev_rss_reta_query(uint8_t port_id, struct rte_eth_rss_reta *reta_conf)
+rte_eth_dev_rss_reta_update(uint8_t port_id,
+			    struct rte_eth_rss_reta_entry64 *reta_conf,
+			    uint16_t reta_size)
 {
 	struct rte_eth_dev *dev;
+	int ret;
 
 	if (port_id >= nb_ports) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return (-ENODEV);
+		return -ENODEV;
 	}
 
-	if((reta_conf->mask_lo == 0) && (reta_conf->mask_hi == 0)) {
-		PMD_DEBUG_TRACE("Invalid update mask bits for the port=%d\n",port_id);
-		return (-EINVAL);
+	/* Check mask bits */
+	ret = rte_eth_check_reta_mask(reta_conf, reta_size);
+	if (ret < 0)
+		return ret;
+
+	dev = &rte_eth_devices[port_id];
+
+	/* Check entry value */
+	ret = rte_eth_check_reta_entry(reta_conf, reta_size,
+				dev->data->nb_rx_queues);
+	if (ret < 0)
+		return ret;
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->reta_update, -ENOTSUP);
+	return (*dev->dev_ops->reta_update)(dev, reta_conf, reta_size);
+}
+
+int
+rte_eth_dev_rss_reta_query(uint8_t port_id,
+			   struct rte_eth_rss_reta_entry64 *reta_conf,
+			   uint16_t reta_size)
+{
+	struct rte_eth_dev *dev;
+	int ret;
+
+	if (port_id >= nb_ports) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
 	}
+
+	/* Check mask bits */
+	ret = rte_eth_check_reta_mask(reta_conf, reta_size);
+	if (ret < 0)
+		return ret;
 
 	dev = &rte_eth_devices[port_id];
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->reta_query, -ENOTSUP);
-	return (*dev->dev_ops->reta_query)(dev, reta_conf);
+	return (*dev->dev_ops->reta_query)(dev, reta_conf, reta_size);
 }
 
 int

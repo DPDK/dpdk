@@ -73,14 +73,6 @@
 /* Maximun number of VSI */
 #define I40E_MAX_NUM_VSIS          (384UL)
 
-/* Bit shift and mask */
-#define I40E_16_BIT_SHIFT 16
-#define I40E_16_BIT_MASK  0xFFFF
-#define I40E_32_BIT_SHIFT 32
-#define I40E_32_BIT_MASK  0xFFFFFFFF
-#define I40E_48_BIT_SHIFT 48
-#define I40E_48_BIT_MASK  0xFFFFFFFFFFFFULL
-
 /* Default queue interrupt throttling time in microseconds*/
 #define I40E_ITR_INDEX_DEFAULT          0
 #define I40E_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
@@ -144,9 +136,11 @@ static void i40e_macaddr_add(struct rte_eth_dev *dev,
 			  uint32_t pool);
 static void i40e_macaddr_remove(struct rte_eth_dev *dev, uint32_t index);
 static int i40e_dev_rss_reta_update(struct rte_eth_dev *dev,
-				    struct rte_eth_rss_reta *reta_conf);
+				    struct rte_eth_rss_reta_entry64 *reta_conf,
+				    uint16_t reta_size);
 static int i40e_dev_rss_reta_query(struct rte_eth_dev *dev,
-				   struct rte_eth_rss_reta *reta_conf);
+				   struct rte_eth_rss_reta_entry64 *reta_conf,
+				   uint16_t reta_size);
 
 static int i40e_get_cap(struct i40e_hw *hw);
 static int i40e_pf_parameter_init(struct rte_eth_dev *dev);
@@ -1777,32 +1771,41 @@ i40e_mac_filter_handle(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
 
 static int
 i40e_dev_rss_reta_update(struct rte_eth_dev *dev,
-			 struct rte_eth_rss_reta *reta_conf)
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size)
 {
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t lut, l;
-	uint8_t i, j, mask, max = ETH_RSS_RETA_NUM_ENTRIES / 2;
+	uint16_t i, j, lut_size = pf->hash_lut_size;
+	uint16_t idx, shift;
+	uint8_t mask;
 
-	for (i = 0; i < ETH_RSS_RETA_NUM_ENTRIES; i += 4) {
-		if (i < max)
-			mask = (uint8_t)((reta_conf->mask_lo >> i) & 0xF);
-		else
-			mask = (uint8_t)((reta_conf->mask_hi >>
-						(i - max)) & 0xF);
+	if (reta_size != lut_size ||
+		reta_size > ETH_RSS_RETA_SIZE_512) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+					"(%d)\n", reta_size, lut_size);
+		return -EINVAL;
+	}
 
+	for (i = 0; i < reta_size; i += I40E_4_BIT_WIDTH) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
+						I40E_4_BIT_MASK);
 		if (!mask)
 			continue;
-
-		if (mask == 0xF)
+		if (mask == I40E_4_BIT_MASK)
 			l = 0;
 		else
 			l = I40E_READ_REG(hw, I40E_PFQF_HLUT(i >> 2));
-
-		for (j = 0, lut = 0; j < 4; j++) {
+		for (j = 0, lut = 0; j < I40E_4_BIT_WIDTH; j++) {
 			if (mask & (0x1 << j))
-				lut |= reta_conf->reta[i + j] << (8 * j);
+				lut |= reta_conf[idx].reta[shift + j] <<
+							(CHAR_BIT * j);
 			else
-				lut |= l & (0xFF << (8 * j));
+				lut |= l & (I40E_8_BIT_MASK << (CHAR_BIT * j));
 		}
 		I40E_WRITE_REG(hw, I40E_PFQF_HLUT(i >> 2), lut);
 	}
@@ -1812,27 +1815,37 @@ i40e_dev_rss_reta_update(struct rte_eth_dev *dev,
 
 static int
 i40e_dev_rss_reta_query(struct rte_eth_dev *dev,
-			struct rte_eth_rss_reta *reta_conf)
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
 {
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t lut;
-	uint8_t i, j, mask, max = ETH_RSS_RETA_NUM_ENTRIES / 2;
+	uint16_t i, j, lut_size = pf->hash_lut_size;
+	uint16_t idx, shift;
+	uint8_t mask;
 
-	for (i = 0; i < ETH_RSS_RETA_NUM_ENTRIES; i += 4) {
-		if (i < max)
-			mask = (uint8_t)((reta_conf->mask_lo >> i) & 0xF);
-		else
-			mask = (uint8_t)((reta_conf->mask_hi >>
-						(i - max)) & 0xF);
+	if (reta_size != lut_size ||
+		reta_size > ETH_RSS_RETA_SIZE_512) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+					"(%d)\n", reta_size, lut_size);
+		return -EINVAL;
+	}
 
+	for (i = 0; i < reta_size; i += I40E_4_BIT_WIDTH) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
+						I40E_4_BIT_MASK);
 		if (!mask)
 			continue;
 
 		lut = I40E_READ_REG(hw, I40E_PFQF_HLUT(i >> 2));
-		for (j = 0; j < 4; j++) {
+		for (j = 0; j < I40E_4_BIT_WIDTH; j++) {
 			if (mask & (0x1 << j))
-				reta_conf->reta[i + j] =
-					(uint8_t)((lut >> (8 * j)) & 0xFF);
+				reta_conf[idx].reta[shift] = ((lut >>
+					(CHAR_BIT * j)) & I40E_8_BIT_MASK);
 		}
 	}
 
@@ -3584,7 +3597,7 @@ i40e_stat_update_32(struct i40e_hw *hw,
 		*stat = (uint64_t)(new_data - *offset);
 	else
 		*stat = (uint64_t)((new_data +
-			((uint64_t)1 << I40E_32_BIT_SHIFT)) - *offset);
+			((uint64_t)1 << I40E_32_BIT_WIDTH)) - *offset);
 }
 
 static void
@@ -3599,7 +3612,7 @@ i40e_stat_update_48(struct i40e_hw *hw,
 
 	new_data = (uint64_t)I40E_READ_REG(hw, loreg);
 	new_data |= ((uint64_t)(I40E_READ_REG(hw, hireg) &
-			I40E_16_BIT_MASK)) << I40E_32_BIT_SHIFT;
+			I40E_16_BIT_MASK)) << I40E_32_BIT_WIDTH;
 
 	if (!offset_loaded)
 		*offset = new_data;
@@ -3608,7 +3621,7 @@ i40e_stat_update_48(struct i40e_hw *hw,
 		*stat = new_data - *offset;
 	else
 		*stat = (uint64_t)((new_data +
-			((uint64_t)1 << I40E_48_BIT_SHIFT)) - *offset);
+			((uint64_t)1 << I40E_48_BIT_WIDTH)) - *offset);
 
 	*stat &= I40E_48_BIT_MASK;
 }

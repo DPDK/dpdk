@@ -59,6 +59,7 @@
 #include <rte_cycles.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
+#include <rte_malloc.h>
 #include <rte_launch.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
@@ -185,6 +186,11 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"show port (info|stats|xstats|fdir|stat_qmap) (port_id|all)\n"
 			"    Display information for port_id, or all.\n\n"
+
+			"show port X rss reta (size) (mask0,mask1,...)\n"
+			"    Display the rss redirection table entry indicated"
+			" by masks on port X. size is used to indicate the"
+			" hardware supported reta size\n\n"
 
 			"show port rss-hash [key]\n"
 			"    Display the RSS hash functions and RSS hash key"
@@ -1570,11 +1576,13 @@ struct cmd_config_rss_reta {
 };
 
 static int
-parse_reta_config(const char *str, struct rte_eth_rss_reta *reta_conf)
+parse_reta_config(const char *str,
+		  struct rte_eth_rss_reta_entry64 *reta_conf,
+		  uint16_t nb_entries)
 {
 	int i;
 	unsigned size;
-	uint8_t hash_index;
+	uint16_t hash_index, idx, shift;
 	uint8_t nb_queue;
 	char s[256];
 	const char *p, *p0 = str;
@@ -1602,24 +1610,23 @@ parse_reta_config(const char *str, struct rte_eth_rss_reta *reta_conf)
 		for (i = 0; i < _NUM_FLD; i++) {
 			errno = 0;
 			int_fld[i] = strtoul(str_fld[i], &end, 0);
-			if (errno != 0 || end == str_fld[i] || int_fld[i] > 255)
+			if (errno != 0 || end == str_fld[i] ||
+					int_fld[i] > 65535)
 				return -1;
 		}
 
-		hash_index = (uint8_t)int_fld[FLD_HASH_INDEX];
+		hash_index = (uint16_t)int_fld[FLD_HASH_INDEX];
 		nb_queue = (uint8_t)int_fld[FLD_QUEUE];
 
-		if (hash_index >= ETH_RSS_RETA_NUM_ENTRIES) {
-			printf("Invalid RETA hash index=%d", hash_index);
+		if (hash_index >= nb_entries) {
+			printf("Invalid RETA hash index=%d\n", hash_index);
 			return -1;
 		}
 
-		if (hash_index < ETH_RSS_RETA_NUM_ENTRIES/2)
-			reta_conf->mask_lo |= (1ULL << hash_index);
-		else
-			reta_conf->mask_hi |= (1ULL << (hash_index - ETH_RSS_RETA_NUM_ENTRIES/2));
-
-		reta_conf->reta[hash_index] = nb_queue;
+		idx = hash_index / RTE_RETA_GROUP_SIZE;
+		shift = hash_index % RTE_RETA_GROUP_SIZE;
+		reta_conf[idx].mask |= (1ULL << shift);
+		reta_conf[idx].reta[shift] = nb_queue;
 	}
 
 	return 0;
@@ -1631,17 +1638,35 @@ cmd_set_rss_reta_parsed(void *parsed_result,
 			__attribute__((unused)) void *data)
 {
 	int ret;
-	struct rte_eth_rss_reta reta_conf;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_rss_reta_entry64 reta_conf[8];
 	struct cmd_config_rss_reta *res = parsed_result;
 
-	memset(&reta_conf, 0, sizeof(struct rte_eth_rss_reta));
+	memset(&dev_info, 0, sizeof(dev_info));
+	rte_eth_dev_info_get(res->port_id, &dev_info);
+	if (dev_info.reta_size == 0) {
+		printf("Redirection table size is 0 which is "
+					"invalid for RSS\n");
+		return;
+	} else
+		printf("The reta size of port %d is %u\n",
+			res->port_id, dev_info.reta_size);
+	if (dev_info.reta_size > ETH_RSS_RETA_SIZE_512) {
+		printf("Currently do not support more than %u entries of "
+			"redirection table\n", ETH_RSS_RETA_SIZE_512);
+		return;
+	}
+
+	memset(reta_conf, 0, sizeof(reta_conf));
 	if (!strcmp(res->list_name, "reta")) {
-		if (parse_reta_config(res->list_of_items, &reta_conf)) {
-			printf("Invalid RSS Redirection Table config "
-							"entered\n");
+		if (parse_reta_config(res->list_of_items, reta_conf,
+						dev_info.reta_size)) {
+			printf("Invalid RSS Redirection Table "
+					"config entered\n");
 			return;
 		}
-		ret = rte_eth_dev_rss_reta_update(res->port_id, &reta_conf);
+		ret = rte_eth_dev_rss_reta_update(res->port_id,
+				reta_conf, dev_info.reta_size);
 		if (ret != 0)
 			printf("Bad redirection table parameter, "
 					"return code = %d \n", ret);
@@ -1683,26 +1708,73 @@ struct cmd_showport_reta {
 	uint8_t port_id;
 	cmdline_fixed_string_t rss;
 	cmdline_fixed_string_t reta;
-	uint64_t mask_lo;
-	uint64_t mask_hi;
+	uint16_t size;
+	cmdline_fixed_string_t list_of_items;
 };
 
-static void cmd_showport_reta_parsed(void *parsed_result,
-				__attribute__((unused)) struct cmdline *cl,
-				__attribute__((unused)) void *data)
+static int
+showport_parse_reta_config(struct rte_eth_rss_reta_entry64 *conf,
+			   uint16_t nb_entries,
+			   char *str)
+{
+	uint32_t size;
+	const char *p, *p0 = str;
+	char s[256];
+	char *end;
+	char *str_fld[8];
+	uint16_t i, num = nb_entries / RTE_RETA_GROUP_SIZE;
+	int ret;
+
+	p = strchr(p0, '(');
+	if (p == NULL)
+		return -1;
+	p++;
+	p0 = strchr(p, ')');
+	if (p0 == NULL)
+		return -1;
+	size = p0 - p;
+	if (size >= sizeof(s)) {
+		printf("The string size exceeds the internal buffer size\n");
+		return -1;
+	}
+	snprintf(s, sizeof(s), "%.*s", size, p);
+	ret = rte_strsplit(s, sizeof(s), str_fld, num, ',');
+	if (ret <= 0 || ret != num) {
+		printf("The bits of masks do not match the number of "
+					"reta entries: %u\n", num);
+		return -1;
+	}
+	for (i = 0; i < ret; i++)
+		conf[i].mask = (uint64_t)strtoul(str_fld[i], &end, 0);
+
+	return 0;
+}
+
+static void
+cmd_showport_reta_parsed(void *parsed_result,
+			 __attribute__((unused)) struct cmdline *cl,
+			 __attribute__((unused)) void *data)
 {
 	struct cmd_showport_reta *res = parsed_result;
-	struct rte_eth_rss_reta reta_conf;
+	struct rte_eth_rss_reta_entry64 reta_conf[8];
+	struct rte_eth_dev_info dev_info;
 
-	if ((res->mask_lo == 0) && (res->mask_hi == 0)) {
-		printf("Invalid RSS Redirection Table config entered\n");
+	memset(&dev_info, 0, sizeof(dev_info));
+	rte_eth_dev_info_get(res->port_id, &dev_info);
+	if (dev_info.reta_size == 0 || res->size != dev_info.reta_size ||
+				res->size > ETH_RSS_RETA_SIZE_512) {
+		printf("Invalid redirection table size: %u\n", res->size);
 		return;
 	}
 
-	reta_conf.mask_lo = res->mask_lo;
-	reta_conf.mask_hi = res->mask_hi;
-
-	port_rss_reta_info(res->port_id,&reta_conf);
+	memset(reta_conf, 0, sizeof(reta_conf));
+	if (showport_parse_reta_config(reta_conf, res->size,
+				res->list_of_items) < 0) {
+		printf("Invalid string: %s for reta masks\n",
+					res->list_of_items);
+		return;
+	}
+	port_rss_reta_info(res->port_id, reta_conf, res->size);
 }
 
 cmdline_parse_token_string_t cmd_showport_reta_show =
@@ -1715,24 +1787,24 @@ cmdline_parse_token_string_t cmd_showport_reta_rss =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_reta, rss, "rss");
 cmdline_parse_token_string_t cmd_showport_reta_reta =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_reta, reta, "reta");
-cmdline_parse_token_num_t cmd_showport_reta_mask_lo =
-	TOKEN_NUM_INITIALIZER(struct cmd_showport_reta, mask_lo, UINT64);
-cmdline_parse_token_num_t cmd_showport_reta_mask_hi =
-	TOKEN_NUM_INITIALIZER(struct cmd_showport_reta, mask_hi, UINT64);
+cmdline_parse_token_num_t cmd_showport_reta_size =
+	TOKEN_NUM_INITIALIZER(struct cmd_showport_reta, size, UINT16);
+cmdline_parse_token_string_t cmd_showport_reta_list_of_items =
+	TOKEN_STRING_INITIALIZER(struct cmd_showport_reta,
+					list_of_items, NULL);
 
 cmdline_parse_inst_t cmd_showport_reta = {
 	.f = cmd_showport_reta_parsed,
 	.data = NULL,
-	.help_str = "show port X rss reta mask_lo mask_hi (X = port number)\n\
-			(mask_lo and mask_hi is UINT64)",
+	.help_str = "show port X rss reta (size) (mask0,mask1,...)",
 	.tokens = {
 		(void *)&cmd_showport_reta_show,
 		(void *)&cmd_showport_reta_port,
 		(void *)&cmd_showport_reta_port_id,
 		(void *)&cmd_showport_reta_rss,
 		(void *)&cmd_showport_reta_reta,
-		(void *)&cmd_showport_reta_mask_lo,
-		(void *)&cmd_showport_reta_mask_hi,
+		(void *)&cmd_showport_reta_size,
+		(void *)&cmd_showport_reta_list_of_items,
 		NULL,
 	},
 };

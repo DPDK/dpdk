@@ -67,6 +67,18 @@
 #define I40E_DEFAULT_TX_WTHRESH      0
 #define I40E_DEFAULT_TX_RSBIT_THRESH 32
 
+/* Bit shift and mask */
+#define I40E_4_BIT_WIDTH  (CHAR_BIT / 2)
+#define I40E_4_BIT_MASK   RTE_LEN2MASK(I40E_4_BIT_WIDTH, uint8_t)
+#define I40E_8_BIT_WIDTH  CHAR_BIT
+#define I40E_8_BIT_MASK   UINT8_MAX
+#define I40E_16_BIT_WIDTH (CHAR_BIT * 2)
+#define I40E_16_BIT_MASK  UINT16_MAX
+#define I40E_32_BIT_WIDTH (CHAR_BIT * 4)
+#define I40E_32_BIT_MASK  UINT32_MAX
+#define I40E_48_BIT_WIDTH (CHAR_BIT * 6)
+#define I40E_48_BIT_MASK  RTE_LEN2MASK(I40E_48_BIT_WIDTH, uint64_t)
+
 /* i40e flags */
 #define I40E_FLAG_RSS                   (1ULL << 0)
 #define I40E_FLAG_DCB                   (1ULL << 1)
@@ -282,7 +294,6 @@ struct i40e_pf {
 	uint16_t vf_nb_qps; /* The number of queue pairs of VF */
 	uint16_t fdir_nb_qps; /* The number of queue pairs of Flow Director */
 	uint16_t hash_lut_size; /* The size of hash lookup table */
-
 	/* store VXLAN UDP ports */
 	uint16_t vxlan_ports[I40E_MAX_PF_UDP_OFFLOAD_PORTS];
 	uint16_t vxlan_bitmap; /* Vxlan bit mask */
