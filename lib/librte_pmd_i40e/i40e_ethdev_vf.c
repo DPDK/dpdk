@@ -126,11 +126,6 @@ static void i40evf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int i40evf_get_link_status(struct rte_eth_dev *dev,
 				  struct rte_eth_link *link);
 static int i40evf_init_vlan(struct rte_eth_dev *dev);
-static int i40evf_config_rss(struct i40e_vf *vf);
-static int i40evf_dev_rss_hash_update(struct rte_eth_dev *dev,
-				      struct rte_eth_rss_conf *rss_conf);
-static int i40evf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
-					struct rte_eth_rss_conf *rss_conf);
 static int i40evf_dev_rx_queue_start(struct rte_eth_dev *dev,
 				     uint16_t rx_queue_id);
 static int i40evf_dev_rx_queue_stop(struct rte_eth_dev *dev,
@@ -139,6 +134,17 @@ static int i40evf_dev_tx_queue_start(struct rte_eth_dev *dev,
 				     uint16_t tx_queue_id);
 static int i40evf_dev_tx_queue_stop(struct rte_eth_dev *dev,
 				    uint16_t tx_queue_id);
+static int i40evf_dev_rss_reta_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size);
+static int i40evf_dev_rss_reta_query(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size);
+static int i40evf_config_rss(struct i40e_vf *vf);
+static int i40evf_dev_rss_hash_update(struct rte_eth_dev *dev,
+				      struct rte_eth_rss_conf *rss_conf);
+static int i40evf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+					struct rte_eth_rss_conf *rss_conf);
 
 /* Default hash key buffer for RSS */
 static uint32_t rss_key_default[I40E_VFQF_HKEY_MAX_INDEX + 1];
@@ -166,6 +172,8 @@ static struct eth_dev_ops i40evf_eth_dev_ops = {
 	.rx_queue_release     = i40e_dev_rx_queue_release,
 	.tx_queue_setup       = i40e_dev_tx_queue_setup,
 	.tx_queue_release     = i40e_dev_tx_queue_release,
+	.reta_update          = i40evf_dev_rss_reta_update,
+	.reta_query           = i40evf_dev_rss_reta_query,
 	.rss_hash_update      = i40evf_dev_rss_hash_update,
 	.rss_hash_conf_get    = i40evf_dev_rss_hash_conf_get,
 };
@@ -1678,6 +1686,87 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 	i40evf_dev_stop(dev);
 	i40evf_reset_vf(hw);
 	i40e_shutdown_adminq(hw);
+}
+
+static int
+i40evf_dev_rss_reta_update(struct rte_eth_dev *dev,
+			   struct rte_eth_rss_reta_entry64 *reta_conf,
+			   uint16_t reta_size)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t lut, l;
+	uint16_t i, j;
+	uint16_t idx, shift;
+	uint8_t mask;
+
+	if (reta_size != ETH_RSS_RETA_SIZE_64) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number of hardware can "
+			"support (%d)\n", reta_size, ETH_RSS_RETA_SIZE_64);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i += I40E_4_BIT_WIDTH) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
+						I40E_4_BIT_MASK);
+		if (!mask)
+			continue;
+		if (mask == I40E_4_BIT_MASK)
+			l = 0;
+		else
+			l = I40E_READ_REG(hw, I40E_VFQF_HLUT(i >> 2));
+
+		for (j = 0, lut = 0; j < I40E_4_BIT_WIDTH; j++) {
+			if (mask & (0x1 << j))
+				lut |= reta_conf[idx].reta[shift + j] <<
+							(CHAR_BIT * j);
+			else
+				lut |= l & (I40E_8_BIT_MASK << (CHAR_BIT * j));
+		}
+		I40E_WRITE_REG(hw, I40E_VFQF_HLUT(i >> 2), lut);
+	}
+
+	return 0;
+}
+
+static int
+i40evf_dev_rss_reta_query(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_reta_entry64 *reta_conf,
+			  uint16_t reta_size)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t lut;
+	uint16_t i, j;
+	uint16_t idx, shift;
+	uint8_t mask;
+
+	if (reta_size != ETH_RSS_RETA_SIZE_64) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number of hardware can "
+			"support (%d)\n", reta_size, ETH_RSS_RETA_SIZE_64);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i += I40E_4_BIT_WIDTH) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
+						I40E_4_BIT_MASK);
+		if (!mask)
+			continue;
+
+		lut = I40E_READ_REG(hw, I40E_VFQF_HLUT(i >> 2));
+		for (j = 0; j < I40E_4_BIT_WIDTH; j++) {
+			if (mask & (0x1 << j))
+				reta_conf[idx].reta[shift] =
+					((lut >> (CHAR_BIT * j)) &
+						I40E_8_BIT_MASK);
+		}
+	}
+
+	return 0;
 }
 
 static int
