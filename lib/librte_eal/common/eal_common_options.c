@@ -85,6 +85,9 @@ eal_long_options[] = {
 	{0, 0, 0, 0}
 };
 
+static int lcores_parsed;
+static int mem_parsed;
+
 void
 eal_reset_internal_config(struct internal_config *internal_cfg)
 {
@@ -197,6 +200,7 @@ eal_parse_coremask(const char *coremask)
 		return -1;
 	/* Update the count of enabled logical cores of the EAL configuration */
 	cfg->lcore_count = count;
+	lcores_parsed = 1;
 	return 0;
 }
 
@@ -305,6 +309,7 @@ eal_parse_common_option(int opt, const char *optarg,
 		conf->memory = atoi(optarg);
 		conf->memory *= 1024ULL;
 		conf->memory *= 1024ULL;
+		mem_parsed = 1;
 		break;
 	/* force number of channels */
 	case 'n':
@@ -389,6 +394,54 @@ eal_parse_common_option(int opt, const char *optarg,
 	default:
 		return 1;
 
+	}
+
+	return 0;
+}
+
+int
+eal_check_common_options(struct internal_config *internal_cfg)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+
+	if (!lcores_parsed) {
+		RTE_LOG(ERR, EAL, "CPU cores must be enabled with option "
+			"-c\n");
+		return -1;
+	}
+
+	if (internal_cfg->process_type == RTE_PROC_INVALID) {
+		RTE_LOG(ERR, EAL, "Invalid process type specified\n");
+		return -1;
+	}
+	if (internal_cfg->process_type == RTE_PROC_PRIMARY &&
+			internal_cfg->force_nchannel == 0) {
+		RTE_LOG(ERR, EAL, "Number of memory channels (-n) not "
+			"specified\n");
+		return -1;
+	}
+	if (index(internal_cfg->hugefile_prefix, '%') != NULL) {
+		RTE_LOG(ERR, EAL, "Invalid char, '%%', in --"OPT_FILE_PREFIX" "
+			"option\n");
+		return -1;
+	}
+	if (mem_parsed && internal_cfg->force_sockets == 1) {
+		RTE_LOG(ERR, EAL, "Options -m and --"OPT_SOCKET_MEM" cannot "
+			"be specified at the same time\n");
+		return -1;
+	}
+	if (internal_cfg->no_hugetlbfs &&
+			(mem_parsed || internal_cfg->force_sockets == 1)) {
+		RTE_LOG(ERR, EAL, "Options -m or --"OPT_SOCKET_MEM" cannot "
+			"be specified together with --"OPT_NO_HUGE"\n");
+		return -1;
+	}
+
+	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) != 0 &&
+		rte_eal_devargs_type_count(RTE_DEVTYPE_BLACKLISTED_PCI) != 0) {
+		RTE_LOG(ERR, EAL, "Options blacklist (-b) and whitelist (-w) "
+			"cannot be used at the same time\n");
+		return -1;
 	}
 
 	return 0;

@@ -83,6 +83,7 @@ extern const struct option eal_long_options[];
 
 int eal_parse_common_option(int opt, const char *argv,
 			    struct internal_config *conf);
+int eal_check_common_options(struct internal_config *internal_cfg);
 void eal_common_usage(void);
 
 #endif /* EAL_OPTIONS_H */

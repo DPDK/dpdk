@@ -316,7 +316,6 @@ eal_parse_args(int argc, char **argv)
 	int opt, ret, i;
 	char **argvopt;
 	int option_index;
-	int coremask_ok = 0;
 	char *prgname = argv[0];
 
 	argvopt = argv;
@@ -339,13 +338,8 @@ eal_parse_args(int argc, char **argv)
 			return -1;
 		}
 		/* common parser handled this option */
-		if (ret == 0) {
-			/* special case, note that the common parser accepted
-			 * the coremask option */
-			if (opt == 'c')
-				coremask_ok = 1;
+		if (ret == 0)
 			continue;
-		}
 
 		switch (opt) {
 		default:
@@ -366,51 +360,11 @@ eal_parse_args(int argc, char **argv)
 		}
 	}
 
-	/* sanity checks */
-	if (!coremask_ok) {
-		RTE_LOG(ERR, EAL, "coremask not specified\n");
-		eal_usage(prgname);
-		return -1;
-	}
-	if (internal_config.process_type == RTE_PROC_AUTO){
+	if (internal_config.process_type == RTE_PROC_AUTO)
 		internal_config.process_type = eal_proc_type_detect();
-	}
-	if (internal_config.process_type == RTE_PROC_INVALID){
-		RTE_LOG(ERR, EAL, "Invalid process type specified\n");
-		eal_usage(prgname);
-		return -1;
-	}
-	if (internal_config.process_type == RTE_PROC_PRIMARY &&
-			internal_config.force_nchannel == 0) {
-		RTE_LOG(ERR, EAL, "Number of memory channels (-n) not specified\n");
-		eal_usage(prgname);
-		return -1;
-	}
-	if (index(internal_config.hugefile_prefix,'%') != NULL){
-		RTE_LOG(ERR, EAL, "Invalid char, '%%', in '"OPT_FILE_PREFIX"' option\n");
-		eal_usage(prgname);
-		return -1;
-	}
-	if (internal_config.memory > 0 && internal_config.force_sockets == 1) {
-		RTE_LOG(ERR, EAL, "Options -m and --socket-mem cannot be specified "
-				"at the same time\n");
-		eal_usage(prgname);
-		return -1;
-	}
-	/* --no-huge doesn't make sense with either -m or --socket-mem */
-	if (internal_config.no_hugetlbfs &&
-			(internal_config.memory > 0 ||
-					internal_config.force_sockets == 1)) {
-		RTE_LOG(ERR, EAL, "Options -m or --socket-mem cannot be specified "
-				"together with --no-huge!\n");
-		eal_usage(prgname);
-		return -1;
-	}
 
-	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) != 0 &&
-		rte_eal_devargs_type_count(RTE_DEVTYPE_BLACKLISTED_PCI) != 0) {
-		RTE_LOG(ERR, EAL, "Error: blacklist [-b] and whitelist "
-			"[-w] options cannot be used at the same time\n");
+	/* sanity checks */
+	if (eal_check_common_options(&internal_config) != 0) {
 		eal_usage(prgname);
 		return -1;
 	}
