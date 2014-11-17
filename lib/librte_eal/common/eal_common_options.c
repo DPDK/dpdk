@@ -47,6 +47,7 @@
 
 #include "eal_internal_cfg.h"
 #include "eal_options.h"
+#include "eal_filesystem.h"
 
 #define BITS_PER_HEX 4
 
@@ -83,6 +84,42 @@ eal_long_options[] = {
 	{OPT_VFIO_INTR, 1, NULL, OPT_VFIO_INTR_NUM},
 	{0, 0, 0, 0}
 };
+
+void
+eal_reset_internal_config(struct internal_config *internal_cfg)
+{
+	int i;
+
+	internal_cfg->memory = 0;
+	internal_cfg->force_nrank = 0;
+	internal_cfg->force_nchannel = 0;
+	internal_cfg->hugefile_prefix = HUGEFILE_PREFIX_DEFAULT;
+	internal_cfg->hugepage_dir = NULL;
+	internal_cfg->force_sockets = 0;
+	/* zero out the NUMA config */
+	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
+		internal_cfg->socket_mem[i] = 0;
+	/* zero out hugedir descriptors */
+	for (i = 0; i < MAX_HUGEPAGE_SIZES; i++)
+		internal_cfg->hugepage_info[i].lock_descriptor = -1;
+	internal_cfg->base_virtaddr = 0;
+
+	internal_cfg->syslog_facility = LOG_DAEMON;
+	/* default value from build option */
+	internal_cfg->log_level = RTE_LOG_LEVEL;
+
+	internal_cfg->xen_dom0_support = 0;
+
+	/* if set to NONE, interrupt mode is determined automatically */
+	internal_cfg->vfio_intr_mode = RTE_INTR_MODE_NONE;
+
+#ifdef RTE_LIBEAL_USE_HPET
+	internal_cfg->no_hpet = 0;
+#else
+	internal_cfg->no_hpet = 1;
+#endif
+	internal_cfg->vmware_tsc_map = 0;
+}
 
 /*
  * Parse the coremask given as argument (hexadecimal string) and fill

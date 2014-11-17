@@ -513,33 +513,7 @@ eal_parse_args(int argc, char **argv)
 
 	argvopt = argv;
 
-	internal_config.memory = 0;
-	internal_config.force_nrank = 0;
-	internal_config.force_nchannel = 0;
-	internal_config.hugefile_prefix = HUGEFILE_PREFIX_DEFAULT;
-	internal_config.hugepage_dir = NULL;
-	internal_config.force_sockets = 0;
-	internal_config.syslog_facility = LOG_DAEMON;
-	/* default value from build option */
-	internal_config.log_level = RTE_LOG_LEVEL;
-	internal_config.xen_dom0_support = 0;
-	/* if set to NONE, interrupt mode is determined automatically */
-	internal_config.vfio_intr_mode = RTE_INTR_MODE_NONE;
-#ifdef RTE_LIBEAL_USE_HPET
-	internal_config.no_hpet = 0;
-#else
-	internal_config.no_hpet = 1;
-#endif
-	/* zero out the NUMA config */
-	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
-		internal_config.socket_mem[i] = 0;
-
-	/* zero out hugedir descriptors */
-	for (i = 0; i < MAX_HUGEPAGE_SIZES; i++)
-		internal_config.hugepage_info[i].lock_descriptor = -1;
-
-	internal_config.vmware_tsc_map = 0;
-	internal_config.base_virtaddr = 0;
+	eal_reset_internal_config(&internal_config);
 
 	while ((opt = getopt_long(argc, argvopt, eal_short_options,
 				  eal_long_options, &option_index)) != EOF) {

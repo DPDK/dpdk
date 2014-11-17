@@ -88,4 +88,6 @@ struct internal_config {
 };
 extern struct internal_config internal_config; /**< Global EAL configuration. */
 
+void eal_reset_internal_config(struct internal_config *internal_cfg);
+
 #endif /* EAL_INTERNAL_CFG_H */
