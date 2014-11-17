@@ -47,6 +47,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += librte_pmd_i40e
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += librte_pmd_bond
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_RING) += librte_pmd_ring
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += librte_pmd_pcap
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET) += librte_pmd_af_packet
 DIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += librte_pmd_virtio
 DIRS-$(CONFIG_RTE_LIBRTE_VMXNET3_PMD) += librte_pmd_vmxnet3
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += librte_pmd_xenvirt
