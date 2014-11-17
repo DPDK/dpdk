@@ -101,7 +101,7 @@ ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_eal_thread.o += -Wno-return-type
 endif
 
-INC := rte_per_lcore.h rte_lcore.h rte_interrupts.h rte_kni_common.h rte_dom0_common.h
+INC := rte_interrupts.h rte_kni_common.h rte_dom0_common.h
 
 SYMLINK-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP)-include/exec-env := \
 	$(addprefix include/exec-env/,$(INC))

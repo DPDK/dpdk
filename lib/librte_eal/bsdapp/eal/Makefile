@@ -86,7 +86,7 @@ CFLAGS_eal_thread.o += -Wno-return-type
 CFLAGS_eal_hpet.o += -Wno-return-type
 endif
 
-INC := rte_per_lcore.h rte_lcore.h rte_interrupts.h
+INC := rte_interrupts.h
 
 SYMLINK-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP)-include/exec-env := \
 	$(addprefix include/exec-env/,$(INC))
