@@ -117,7 +117,7 @@ Added rte_dom0_mm.h file for Dual BSD/LGPLv2 License information:
 
 rte_dom0_mm.h 1st Released 1.6.0
 
-Location: DPDK/lib.librte_eal/eal/include/exec-env/
+Location: DPDK/lib/librte_eal/eal/include/exec-env/
 
 Description: The Dom0 header file is utilized by both the Intel® DPDK userspace application and the Dom0 kernel loadable module
 
@@ -125,7 +125,7 @@ Added dom0_mm_misc.h and dom0_mm_misc.c file for Dual BSD/GPLv2 License Informat
 
 dom0_mm_dev.h 1st Released 1.6.0
 
-dom0_mm_dev.c Location: DPDK/lib.librte_eal/linuxapp/xen_dom0
+dom0_mm_dev.c Location: DPDK/lib/librte_eal/linuxapp/xen_dom0
 
 Description: The Dom0 memory management kernel loadable module is a misc device driver which is used to facilitate allocating and mapping via an **IOCTL** (allocation) and **MMAP** (mapping).
 
