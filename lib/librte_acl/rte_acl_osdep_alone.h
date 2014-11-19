@@ -180,13 +180,13 @@ rte_rdtsc(void)
  * rte_memory related.
  */
 #define	SOCKET_ID_ANY	-1                  /**< Any NUMA socket. */
-#define	CACHE_LINE_SIZE	64                  /**< Cache line size. */
-#define	CACHE_LINE_MASK	(CACHE_LINE_SIZE-1) /**< Cache line mask. */
+#define	RTE_CACHE_LINE_SIZE	64                  /**< Cache line size. */
+#define	RTE_CACHE_LINE_MASK	(RTE_CACHE_LINE_SIZE-1) /**< Cache line mask. */
 
 /**
  * Force alignment to cache line.
  */
-#define	__rte_cache_aligned	__attribute__((__aligned__(CACHE_LINE_SIZE)))
+#define	__rte_cache_aligned	__attribute__((__aligned__(RTE_CACHE_LINE_SIZE)))
 
 
 /*

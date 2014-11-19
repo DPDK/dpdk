@@ -77,7 +77,7 @@
  */
 union rte_distributor_buffer {
 	volatile int64_t bufptr64;
-	char pad[CACHE_LINE_SIZE*3];
+	char pad[RTE_CACHE_LINE_SIZE*3];
 } __rte_cache_aligned;
 
 struct rte_distributor_backlog {
@@ -450,7 +450,7 @@ rte_distributor_create(const char *name,
 	const struct rte_memzone *mz;
 
 	/* compilation-time checks */
-	RTE_BUILD_BUG_ON((sizeof(*d) & CACHE_LINE_MASK) != 0);
+	RTE_BUILD_BUG_ON((sizeof(*d) & RTE_CACHE_LINE_MASK) != 0);
 	RTE_BUILD_BUG_ON((RTE_DISTRIB_MAX_WORKERS & 7) != 0);
 	RTE_BUILD_BUG_ON(RTE_DISTRIB_MAX_WORKERS >
 				sizeof(d->in_flight_bitmask) * CHAR_BIT);

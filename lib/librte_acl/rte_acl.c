@@ -203,7 +203,7 @@ rte_acl_create(const struct rte_acl_param *param)
 			goto exit;
 		}
 
-		ctx = rte_zmalloc_socket(name, sz, CACHE_LINE_SIZE, param->socket_id);
+		ctx = rte_zmalloc_socket(name, sz, RTE_CACHE_LINE_SIZE, param->socket_id);
 
 		if (ctx == NULL) {
 			RTE_LOG(ERR, ACL,

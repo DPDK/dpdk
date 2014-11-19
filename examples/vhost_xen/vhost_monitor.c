@@ -255,8 +255,8 @@ virtio_net_config_ll *new_device(unsigned int virtio_idx, struct xen_guest *gues
 
 	/* Setup device and virtqueues. */
 	new_ll_dev   = calloc(1, sizeof(struct virtio_net_config_ll));
-	virtqueue_rx = rte_zmalloc(NULL, sizeof(struct vhost_virtqueue), CACHE_LINE_SIZE);
-	virtqueue_tx = rte_zmalloc(NULL, sizeof(struct vhost_virtqueue), CACHE_LINE_SIZE);
+	virtqueue_rx = rte_zmalloc(NULL, sizeof(struct vhost_virtqueue), RTE_CACHE_LINE_SIZE);
+	virtqueue_tx = rte_zmalloc(NULL, sizeof(struct vhost_virtqueue), RTE_CACHE_LINE_SIZE);
 	if (new_ll_dev == NULL || virtqueue_rx == NULL || virtqueue_tx == NULL)
 		goto err;
 

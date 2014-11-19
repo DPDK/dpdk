@@ -175,7 +175,7 @@ channel_monitor_init(void)
 		return -1;
 	}
 	global_events_list = rte_malloc("epoll_events", sizeof(*global_events_list)
-			* MAX_EVENTS, CACHE_LINE_SIZE);
+			* MAX_EVENTS, RTE_CACHE_LINE_SIZE);
 	if (global_events_list == NULL) {
 		RTE_LOG(ERR, CHANNEL_MONITOR, "Unable to rte_malloc for "
 				"epoll events\n");

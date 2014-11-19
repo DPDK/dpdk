@@ -216,7 +216,7 @@ struct rte_mempool {
  */
 #define	MEMPOOL_HEADER_SIZE(mp, pgn)	(sizeof(*(mp)) + \
 	RTE_ALIGN_CEIL(((pgn) - RTE_DIM((mp)->elt_pa)) * \
-	sizeof ((mp)->elt_pa[0]), CACHE_LINE_SIZE))
+	sizeof ((mp)->elt_pa[0]), RTE_CACHE_LINE_SIZE))
 
 /**
  * Returns TRUE if whole mempool is allocated in one contiguous block of memory.

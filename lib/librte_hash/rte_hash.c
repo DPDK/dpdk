@@ -39,7 +39,7 @@
 #include <sys/queue.h>
 
 #include <rte_common.h>
-#include <rte_memory.h>         /* for definition of CACHE_LINE_SIZE */
+#include <rte_memory.h>         /* for definition of RTE_CACHE_LINE_SIZE */
 #include <rte_log.h>
 #include <rte_memcpy.h>
 #include <rte_prefetch.h>
@@ -206,11 +206,11 @@ rte_hash_create(const struct rte_hash_parameters *params)
 				     sizeof(hash_sig_t), SIG_BUCKET_ALIGNMENT);
 	key_size =  align_size(params->key_len, KEY_ALIGNMENT);
 
-	hash_tbl_size = align_size(sizeof(struct rte_hash), CACHE_LINE_SIZE);
+	hash_tbl_size = align_size(sizeof(struct rte_hash), RTE_CACHE_LINE_SIZE);
 	sig_tbl_size = align_size(num_buckets * sig_bucket_size,
-				  CACHE_LINE_SIZE);
+				  RTE_CACHE_LINE_SIZE);
 	key_tbl_size = align_size(num_buckets * key_size *
-				  params->bucket_entries, CACHE_LINE_SIZE);
+				  params->bucket_entries, RTE_CACHE_LINE_SIZE);
 
 	/* Total memory required for hash context */
 	mem_size = hash_tbl_size + sig_tbl_size + key_tbl_size;
@@ -233,7 +233,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	}
 
 	h = (struct rte_hash *)rte_zmalloc_socket(hash_name, mem_size,
-					   CACHE_LINE_SIZE, params->socket_id);
+					   RTE_CACHE_LINE_SIZE, params->socket_id);
 	if (h == NULL) {
 		RTE_LOG(ERR, HASH, "memory allocation failed\n");
 		rte_free(te);

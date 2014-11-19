@@ -110,7 +110,7 @@ rte_ring_get_memsize(unsigned count)
 	}
 
 	sz = sizeof(struct rte_ring) + count * sizeof(void *);
-	sz = RTE_ALIGN(sz, CACHE_LINE_SIZE);
+	sz = RTE_ALIGN(sz, RTE_CACHE_LINE_SIZE);
 	return sz;
 }
 
@@ -120,18 +120,18 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 {
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_ring) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 #ifdef RTE_RING_SPLIT_PROD_CONS
 	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, cons) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 #endif
 	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, prod) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 #ifdef RTE_LIBRTE_RING_DEBUG
 	RTE_BUILD_BUG_ON((sizeof(struct rte_ring_debug_stats) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, stats) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 #endif
 
 	/* init the ring structure */

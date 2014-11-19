@@ -118,8 +118,8 @@ rte_table_hash_create_key8_lru(void *params, int socket_id, uint32_t entry_size)
 
 	/* Check input parameters */
 	if ((check_params_create_lru(p) != 0) ||
-		((sizeof(struct rte_table_hash) % CACHE_LINE_SIZE) != 0) ||
-		((sizeof(struct rte_bucket_4_8) % CACHE_LINE_SIZE) != 0)) {
+		((sizeof(struct rte_table_hash) % RTE_CACHE_LINE_SIZE) != 0) ||
+		((sizeof(struct rte_bucket_4_8) % RTE_CACHE_LINE_SIZE) != 0)) {
 		return NULL;
 	}
 	n_entries_per_bucket = 4;
@@ -129,11 +129,11 @@ rte_table_hash_create_key8_lru(void *params, int socket_id, uint32_t entry_size)
 	n_buckets = rte_align32pow2((p->n_entries + n_entries_per_bucket - 1) /
 		n_entries_per_bucket);
 	bucket_size_cl = (sizeof(struct rte_bucket_4_8) + n_entries_per_bucket *
-		entry_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
+		entry_size + RTE_CACHE_LINE_SIZE - 1) / RTE_CACHE_LINE_SIZE;
 	total_size = sizeof(struct rte_table_hash) + n_buckets *
-		bucket_size_cl * CACHE_LINE_SIZE;
+		bucket_size_cl * RTE_CACHE_LINE_SIZE;
 
-	f = rte_zmalloc_socket("TABLE", total_size, CACHE_LINE_SIZE, socket_id);
+	f = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE, socket_id);
 	if (f == NULL) {
 		RTE_LOG(ERR, TABLE,
 			"%s: Cannot allocate %u bytes for hash table\n",
@@ -149,7 +149,7 @@ rte_table_hash_create_key8_lru(void *params, int socket_id, uint32_t entry_size)
 	f->n_entries_per_bucket = n_entries_per_bucket;
 	f->key_size = key_size;
 	f->entry_size = entry_size;
-	f->bucket_size = bucket_size_cl * CACHE_LINE_SIZE;
+	f->bucket_size = bucket_size_cl * RTE_CACHE_LINE_SIZE;
 	f->signature_offset = p->signature_offset;
 	f->key_offset = p->key_offset;
 	f->f_hash = p->f_hash;
@@ -332,8 +332,8 @@ rte_table_hash_create_key8_ext(void *params, int socket_id, uint32_t entry_size)
 
 	/* Check input parameters */
 	if ((check_params_create_ext(p) != 0) ||
-		((sizeof(struct rte_table_hash) % CACHE_LINE_SIZE) != 0) ||
-		((sizeof(struct rte_bucket_4_8) % CACHE_LINE_SIZE) != 0))
+		((sizeof(struct rte_table_hash) % RTE_CACHE_LINE_SIZE) != 0) ||
+		((sizeof(struct rte_bucket_4_8) % RTE_CACHE_LINE_SIZE) != 0))
 		return NULL;
 
 	n_entries_per_bucket = 4;
@@ -345,14 +345,14 @@ rte_table_hash_create_key8_ext(void *params, int socket_id, uint32_t entry_size)
 	n_buckets_ext = (p->n_entries_ext + n_entries_per_bucket - 1) /
 		n_entries_per_bucket;
 	bucket_size_cl = (sizeof(struct rte_bucket_4_8) + n_entries_per_bucket *
-		entry_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
-	stack_size_cl = (n_buckets_ext * sizeof(uint32_t) + CACHE_LINE_SIZE - 1)
-		/ CACHE_LINE_SIZE;
+		entry_size + RTE_CACHE_LINE_SIZE - 1) / RTE_CACHE_LINE_SIZE;
+	stack_size_cl = (n_buckets_ext * sizeof(uint32_t) + RTE_CACHE_LINE_SIZE - 1)
+		/ RTE_CACHE_LINE_SIZE;
 	total_size = sizeof(struct rte_table_hash) + ((n_buckets +
 		n_buckets_ext) * bucket_size_cl + stack_size_cl) *
-		CACHE_LINE_SIZE;
+		RTE_CACHE_LINE_SIZE;
 
-	f = rte_zmalloc_socket("TABLE", total_size, CACHE_LINE_SIZE, socket_id);
+	f = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE, socket_id);
 	if (f == NULL) {
 		RTE_LOG(ERR, TABLE,
 			"%s: Cannot allocate %u bytes for hash table\n",
@@ -368,7 +368,7 @@ rte_table_hash_create_key8_ext(void *params, int socket_id, uint32_t entry_size)
 	f->n_entries_per_bucket = n_entries_per_bucket;
 	f->key_size = key_size;
 	f->entry_size = entry_size;
-	f->bucket_size = bucket_size_cl * CACHE_LINE_SIZE;
+	f->bucket_size = bucket_size_cl * RTE_CACHE_LINE_SIZE;
 	f->signature_offset = p->signature_offset;
 	f->key_offset = p->key_offset;
 	f->f_hash = p->f_hash;

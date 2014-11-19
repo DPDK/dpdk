@@ -180,24 +180,24 @@ rte_table_hash_ext_create(void *params, int socket_id, uint32_t entry_size)
 	/* Check input parameters */
 	if ((check_params_create(p) != 0) ||
 		(!rte_is_power_of_2(entry_size)) ||
-		((sizeof(struct rte_table_hash) % CACHE_LINE_SIZE) != 0) ||
-		(sizeof(struct bucket) != (CACHE_LINE_SIZE / 2)))
+		((sizeof(struct rte_table_hash) % RTE_CACHE_LINE_SIZE) != 0) ||
+		(sizeof(struct bucket) != (RTE_CACHE_LINE_SIZE / 2)))
 		return NULL;
 
 	/* Memory allocation */
-	table_meta_sz = CACHE_LINE_ROUNDUP(sizeof(struct rte_table_hash));
-	bucket_sz = CACHE_LINE_ROUNDUP(p->n_buckets * sizeof(struct bucket));
+	table_meta_sz = RTE_CACHE_LINE_ROUNDUP(sizeof(struct rte_table_hash));
+	bucket_sz = RTE_CACHE_LINE_ROUNDUP(p->n_buckets * sizeof(struct bucket));
 	bucket_ext_sz =
-		CACHE_LINE_ROUNDUP(p->n_buckets_ext * sizeof(struct bucket));
-	key_sz = CACHE_LINE_ROUNDUP(p->n_keys * p->key_size);
-	key_stack_sz = CACHE_LINE_ROUNDUP(p->n_keys * sizeof(uint32_t));
+		RTE_CACHE_LINE_ROUNDUP(p->n_buckets_ext * sizeof(struct bucket));
+	key_sz = RTE_CACHE_LINE_ROUNDUP(p->n_keys * p->key_size);
+	key_stack_sz = RTE_CACHE_LINE_ROUNDUP(p->n_keys * sizeof(uint32_t));
 	bkt_ext_stack_sz =
-		CACHE_LINE_ROUNDUP(p->n_buckets_ext * sizeof(uint32_t));
-	data_sz = CACHE_LINE_ROUNDUP(p->n_keys * entry_size);
+		RTE_CACHE_LINE_ROUNDUP(p->n_buckets_ext * sizeof(uint32_t));
+	data_sz = RTE_CACHE_LINE_ROUNDUP(p->n_keys * entry_size);
 	total_size = table_meta_sz + bucket_sz + bucket_ext_sz + key_sz +
 		key_stack_sz + bkt_ext_stack_sz + data_sz;
 
-	t = rte_zmalloc_socket("TABLE", total_size, CACHE_LINE_SIZE, socket_id);
+	t = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE, socket_id);
 	if (t == NULL) {
 		RTE_LOG(ERR, TABLE,
 			"%s: Cannot allocate %u bytes for hash table\n",

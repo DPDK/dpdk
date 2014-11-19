@@ -744,7 +744,7 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	txq = rte_zmalloc("ethdev_tx_queue", sizeof(struct vmxnet3_tx_queue), CACHE_LINE_SIZE);
+	txq = rte_zmalloc("ethdev_tx_queue", sizeof(struct vmxnet3_tx_queue), RTE_CACHE_LINE_SIZE);
 	if (txq == NULL) {
 		PMD_INIT_LOG(ERR, "Can not allocate tx queue structure");
 		return -ENOMEM;
@@ -810,7 +810,7 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* cmd_ring0 buf_info allocation */
 	ring->buf_info = rte_zmalloc("tx_ring_buf_info",
-				     ring->size * sizeof(vmxnet3_buf_info_t), CACHE_LINE_SIZE);
+				     ring->size * sizeof(vmxnet3_buf_info_t), RTE_CACHE_LINE_SIZE);
 	if (ring->buf_info == NULL) {
 		PMD_INIT_LOG(ERR, "ERROR: Creating tx_buf_info structure");
 		return -ENOMEM;
@@ -855,7 +855,7 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	rxq = rte_zmalloc("ethdev_rx_queue", sizeof(struct vmxnet3_rx_queue), CACHE_LINE_SIZE);
+	rxq = rte_zmalloc("ethdev_rx_queue", sizeof(struct vmxnet3_rx_queue), RTE_CACHE_LINE_SIZE);
 	if (rxq == NULL) {
 		PMD_INIT_LOG(ERR, "Can not allocate rx queue structure");
 		return -ENOMEM;
@@ -929,7 +929,7 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		ring->rid = i;
 		snprintf(mem_name, sizeof(mem_name), "rx_ring_%d_buf_info", i);
 
-		ring->buf_info = rte_zmalloc(mem_name, ring->size * sizeof(vmxnet3_buf_info_t), CACHE_LINE_SIZE);
+		ring->buf_info = rte_zmalloc(mem_name, ring->size * sizeof(vmxnet3_buf_info_t), RTE_CACHE_LINE_SIZE);
 		if (ring->buf_info == NULL) {
 			PMD_INIT_LOG(ERR, "ERROR: Creating rx_buf_info structure");
 			return -ENOMEM;

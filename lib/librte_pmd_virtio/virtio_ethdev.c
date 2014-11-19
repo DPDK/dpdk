@@ -274,18 +274,18 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		snprintf(vq_name, sizeof(vq_name), "port%d_rvq%d",
 			dev->data->port_id, queue_idx);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
-			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
+			vq_size * sizeof(struct vq_desc_extra), RTE_CACHE_LINE_SIZE);
 	} else if (queue_type == VTNET_TQ) {
 		snprintf(vq_name, sizeof(vq_name), "port%d_tvq%d",
 			dev->data->port_id, queue_idx);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
-			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
+			vq_size * sizeof(struct vq_desc_extra), RTE_CACHE_LINE_SIZE);
 	} else if (queue_type == VTNET_CQ) {
 		snprintf(vq_name, sizeof(vq_name), "port%d_cvq",
 			dev->data->port_id);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra),
-			CACHE_LINE_SIZE);
+			RTE_CACHE_LINE_SIZE);
 	}
 	if (vq == NULL) {
 		PMD_INIT_LOG(ERR, "%s: Can not allocate virtqueue", __func__);
@@ -342,7 +342,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			dev->data->port_id, queue_idx);
 		vq->virtio_net_hdr_mz = rte_memzone_reserve_aligned(vq_name,
 			vq_size * hw->vtnet_hdr_size,
-			socket_id, 0, CACHE_LINE_SIZE);
+			socket_id, 0, RTE_CACHE_LINE_SIZE);
 		if (vq->virtio_net_hdr_mz == NULL) {
 			rte_free(vq);
 			return -ENOMEM;
@@ -356,7 +356,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		snprintf(vq_name, sizeof(vq_name), "port%d_cvq_hdrzone",
 			dev->data->port_id);
 		vq->virtio_net_hdr_mz = rte_memzone_reserve_aligned(vq_name,
-			PAGE_SIZE, socket_id, 0, CACHE_LINE_SIZE);
+			PAGE_SIZE, socket_id, 0, RTE_CACHE_LINE_SIZE);
 		if (vq->virtio_net_hdr_mz == NULL) {
 			rte_free(vq);
 			return -ENOMEM;

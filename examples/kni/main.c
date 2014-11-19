@@ -463,7 +463,7 @@ parse_config(const char *arg)
 		}
 		kni_port_params_array[port_id] =
 			(struct kni_port_params*)rte_zmalloc("KNI_port_params",
-			sizeof(struct kni_port_params), CACHE_LINE_SIZE);
+			sizeof(struct kni_port_params), RTE_CACHE_LINE_SIZE);
 		kni_port_params_array[port_id]->port_id = port_id;
 		kni_port_params_array[port_id]->lcore_rx =
 					(uint8_t)int_fld[i++];

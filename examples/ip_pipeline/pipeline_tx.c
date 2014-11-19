@@ -234,7 +234,7 @@ app_main_loop_tx(void) {
 
 	for (i = 0; i < APP_MAX_PORTS; i++) {
 		m[i] = rte_malloc_socket(NULL, sizeof(struct app_mbuf_array),
-			CACHE_LINE_SIZE, rte_socket_id());
+			RTE_CACHE_LINE_SIZE, rte_socket_id());
 		if (m[i] == NULL)
 			rte_panic("%s: Cannot allocate buffer space\n",
 				__func__);

@@ -123,8 +123,8 @@ rte_table_hash_create_key32_lru(void *params,
 
 	/* Check input parameters */
 	if ((check_params_create_lru(p) != 0) ||
-		((sizeof(struct rte_table_hash) % CACHE_LINE_SIZE) != 0) ||
-		((sizeof(struct rte_bucket_4_32) % CACHE_LINE_SIZE) != 0)) {
+		((sizeof(struct rte_table_hash) % RTE_CACHE_LINE_SIZE) != 0) ||
+		((sizeof(struct rte_bucket_4_32) % RTE_CACHE_LINE_SIZE) != 0)) {
 		return NULL;
 	}
 	n_entries_per_bucket = 4;
@@ -134,11 +134,11 @@ rte_table_hash_create_key32_lru(void *params,
 	n_buckets = rte_align32pow2((p->n_entries + n_entries_per_bucket - 1) /
 		n_entries_per_bucket);
 	bucket_size_cl = (sizeof(struct rte_bucket_4_32) + n_entries_per_bucket
-		* entry_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
+		* entry_size + RTE_CACHE_LINE_SIZE - 1) / RTE_CACHE_LINE_SIZE;
 	total_size = sizeof(struct rte_table_hash) + n_buckets *
-		bucket_size_cl * CACHE_LINE_SIZE;
+		bucket_size_cl * RTE_CACHE_LINE_SIZE;
 
-	f = rte_zmalloc_socket("TABLE", total_size, CACHE_LINE_SIZE, socket_id);
+	f = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE, socket_id);
 	if (f == NULL) {
 		RTE_LOG(ERR, TABLE,
 			"%s: Cannot allocate %u bytes for hash table\n",
@@ -154,7 +154,7 @@ rte_table_hash_create_key32_lru(void *params,
 	f->n_entries_per_bucket = n_entries_per_bucket;
 	f->key_size = key_size;
 	f->entry_size = entry_size;
-	f->bucket_size = bucket_size_cl * CACHE_LINE_SIZE;
+	f->bucket_size = bucket_size_cl * RTE_CACHE_LINE_SIZE;
 	f->signature_offset = p->signature_offset;
 	f->key_offset = p->key_offset;
 	f->f_hash = p->f_hash;
@@ -343,8 +343,8 @@ rte_table_hash_create_key32_ext(void *params,
 
 	/* Check input parameters */
 	if ((check_params_create_ext(p) != 0) ||
-		((sizeof(struct rte_table_hash) % CACHE_LINE_SIZE) != 0) ||
-		((sizeof(struct rte_bucket_4_32) % CACHE_LINE_SIZE) != 0))
+		((sizeof(struct rte_table_hash) % RTE_CACHE_LINE_SIZE) != 0) ||
+		((sizeof(struct rte_bucket_4_32) % RTE_CACHE_LINE_SIZE) != 0))
 		return NULL;
 
 	n_entries_per_bucket = 4;
@@ -356,14 +356,14 @@ rte_table_hash_create_key32_ext(void *params,
 	n_buckets_ext = (p->n_entries_ext + n_entries_per_bucket - 1) /
 		n_entries_per_bucket;
 	bucket_size_cl = (sizeof(struct rte_bucket_4_32) + n_entries_per_bucket
-		* entry_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
-	stack_size_cl = (n_buckets_ext * sizeof(uint32_t) + CACHE_LINE_SIZE - 1)
-		/ CACHE_LINE_SIZE;
+		* entry_size + RTE_CACHE_LINE_SIZE - 1) / RTE_CACHE_LINE_SIZE;
+	stack_size_cl = (n_buckets_ext * sizeof(uint32_t) + RTE_CACHE_LINE_SIZE - 1)
+		/ RTE_CACHE_LINE_SIZE;
 	total_size = sizeof(struct rte_table_hash) +
 		((n_buckets + n_buckets_ext) * bucket_size_cl + stack_size_cl) *
-		CACHE_LINE_SIZE;
+		RTE_CACHE_LINE_SIZE;
 
-	f = rte_zmalloc_socket("TABLE", total_size, CACHE_LINE_SIZE, socket_id);
+	f = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE, socket_id);
 	if (f == NULL) {
 		RTE_LOG(ERR, TABLE,
 			"%s: Cannot allocate %u bytes for hash table\n",
@@ -379,7 +379,7 @@ rte_table_hash_create_key32_ext(void *params,
 	f->n_entries_per_bucket = n_entries_per_bucket;
 	f->key_size = key_size;
 	f->entry_size = entry_size;
-	f->bucket_size = bucket_size_cl * CACHE_LINE_SIZE;
+	f->bucket_size = bucket_size_cl * RTE_CACHE_LINE_SIZE;
 	f->signature_offset = p->signature_offset;
 	f->key_offset = p->key_offset;
 	f->f_hash = p->f_hash;
@@ -621,8 +621,8 @@ rte_table_hash_entry_delete_key32_ext(
 	bucket1 = (struct rte_bucket_4_32 *)			\
 		&f->memory[bucket_index * f->bucket_size];	\
 	rte_prefetch0(bucket1);					\
-	rte_prefetch0((void *)(((uintptr_t) bucket1) + CACHE_LINE_SIZE));\
-	rte_prefetch0((void *)(((uintptr_t) bucket1) + 2 * CACHE_LINE_SIZE));\
+	rte_prefetch0((void *)(((uintptr_t) bucket1) + RTE_CACHE_LINE_SIZE));\
+	rte_prefetch0((void *)(((uintptr_t) bucket1) + 2 * RTE_CACHE_LINE_SIZE));\
 }
 
 #define lookup1_stage2_lru(pkt2_index, mbuf2, bucket2,		\
@@ -698,9 +698,9 @@ rte_table_hash_entry_delete_key32_ext(
 	buckets_mask |= bucket_mask;				\
 	bucket_next = bucket->next;				\
 	rte_prefetch0(bucket_next);				\
-	rte_prefetch0((void *)(((uintptr_t) bucket_next) + CACHE_LINE_SIZE));\
+	rte_prefetch0((void *)(((uintptr_t) bucket_next) + RTE_CACHE_LINE_SIZE));\
 	rte_prefetch0((void *)(((uintptr_t) bucket_next) +	\
-		2 * CACHE_LINE_SIZE));				\
+		2 * RTE_CACHE_LINE_SIZE));				\
 	buckets[pkt_index] = bucket_next;			\
 	keys[pkt_index] = key;					\
 }
@@ -758,16 +758,16 @@ rte_table_hash_entry_delete_key32_ext(
 	bucket10 = (struct rte_bucket_4_32 *)			\
 		&f->memory[bucket10_index * f->bucket_size];	\
 	rte_prefetch0(bucket10);				\
-	rte_prefetch0((void *)(((uintptr_t) bucket10) + CACHE_LINE_SIZE));\
-	rte_prefetch0((void *)(((uintptr_t) bucket10) + 2 * CACHE_LINE_SIZE));\
+	rte_prefetch0((void *)(((uintptr_t) bucket10) + RTE_CACHE_LINE_SIZE));\
+	rte_prefetch0((void *)(((uintptr_t) bucket10) + 2 * RTE_CACHE_LINE_SIZE));\
 								\
 	signature11 = RTE_MBUF_METADATA_UINT32(mbuf11, f->signature_offset);\
 	bucket11_index = signature11 & (f->n_buckets - 1);	\
 	bucket11 = (struct rte_bucket_4_32 *)			\
 		&f->memory[bucket11_index * f->bucket_size];	\
 	rte_prefetch0(bucket11);				\
-	rte_prefetch0((void *)(((uintptr_t) bucket11) + CACHE_LINE_SIZE));\
-	rte_prefetch0((void *)(((uintptr_t) bucket11) + 2 * CACHE_LINE_SIZE));\
+	rte_prefetch0((void *)(((uintptr_t) bucket11) + RTE_CACHE_LINE_SIZE));\
+	rte_prefetch0((void *)(((uintptr_t) bucket11) + 2 * RTE_CACHE_LINE_SIZE));\
 }
 
 #define lookup2_stage2_lru(pkt20_index, pkt21_index, mbuf20, mbuf21,\

@@ -188,7 +188,7 @@ app_main_loop_passthrough(void) {
 		core_id);
 
 	m = rte_malloc_socket(NULL, sizeof(struct app_mbuf_array),
-		CACHE_LINE_SIZE, rte_socket_id());
+		RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (m == NULL)
 		rte_panic("%s: cannot allocate buffer space\n", __func__);
 

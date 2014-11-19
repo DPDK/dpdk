@@ -444,7 +444,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 	mbp_ctor_arg.seg_buf_size = (uint16_t) (RTE_PKTMBUF_HEADROOM +
 						mbuf_seg_size);
 	mb_ctor_arg.seg_buf_offset =
-		(uint16_t) CACHE_LINE_ROUNDUP(sizeof(struct rte_mbuf));
+		(uint16_t) RTE_CACHE_LINE_ROUNDUP(sizeof(struct rte_mbuf));
 	mb_ctor_arg.seg_buf_size = mbp_ctor_arg.seg_buf_size;
 	mb_size = mb_ctor_arg.seg_buf_offset + mb_ctor_arg.seg_buf_size;
 	mbuf_poolname_build(socket_id, pool_name, sizeof(pool_name));
@@ -520,7 +520,7 @@ init_config(void)
 	/* Configuration of logical cores. */
 	fwd_lcores = rte_zmalloc("testpmd: fwd_lcores",
 				sizeof(struct fwd_lcore *) * nb_lcores,
-				CACHE_LINE_SIZE);
+				RTE_CACHE_LINE_SIZE);
 	if (fwd_lcores == NULL) {
 		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d (struct fwd_lcore *)) "
 							"failed\n", nb_lcores);
@@ -528,7 +528,7 @@ init_config(void)
 	for (lc_id = 0; lc_id < nb_lcores; lc_id++) {
 		fwd_lcores[lc_id] = rte_zmalloc("testpmd: struct fwd_lcore",
 					       sizeof(struct fwd_lcore),
-					       CACHE_LINE_SIZE);
+					       RTE_CACHE_LINE_SIZE);
 		if (fwd_lcores[lc_id] == NULL) {
 			rte_exit(EXIT_FAILURE, "rte_zmalloc(struct fwd_lcore) "
 								"failed\n");
@@ -566,7 +566,7 @@ init_config(void)
 	/* Configuration of Ethernet ports. */
 	ports = rte_zmalloc("testpmd: ports",
 			    sizeof(struct rte_port) * nb_ports,
-			    CACHE_LINE_SIZE);
+			    RTE_CACHE_LINE_SIZE);
 	if (ports == NULL) {
 		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d struct rte_port) "
 							"failed\n", nb_ports);
@@ -637,7 +637,7 @@ reconfig(portid_t new_port_id, unsigned socket_id)
 	/* Reconfiguration of Ethernet ports. */
 	ports = rte_realloc(ports,
 			    sizeof(struct rte_port) * nb_ports,
-			    CACHE_LINE_SIZE);
+			    RTE_CACHE_LINE_SIZE);
 	if (ports == NULL) {
 		rte_exit(EXIT_FAILURE, "rte_realloc(%d struct rte_port) failed\n",
 				nb_ports);
@@ -714,14 +714,14 @@ init_fwd_streams(void)
 	/* init new */
 	nb_fwd_streams = nb_fwd_streams_new;
 	fwd_streams = rte_zmalloc("testpmd: fwd_streams",
-		sizeof(struct fwd_stream *) * nb_fwd_streams, CACHE_LINE_SIZE);
+		sizeof(struct fwd_stream *) * nb_fwd_streams, RTE_CACHE_LINE_SIZE);
 	if (fwd_streams == NULL)
 		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d (struct fwd_stream *)) "
 						"failed\n", nb_fwd_streams);
 
 	for (sm_id = 0; sm_id < nb_fwd_streams; sm_id++) {
 		fwd_streams[sm_id] = rte_zmalloc("testpmd: struct fwd_stream",
-				sizeof(struct fwd_stream), CACHE_LINE_SIZE);
+				sizeof(struct fwd_stream), RTE_CACHE_LINE_SIZE);
 		if (fwd_streams[sm_id] == NULL)
 			rte_exit(EXIT_FAILURE, "rte_zmalloc(struct fwd_stream)"
 								" failed\n");

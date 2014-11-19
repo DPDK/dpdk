@@ -72,11 +72,11 @@ rte_table_array_create(void *params, int socket_id, uint32_t entry_size)
 
 	/* Memory allocation */
 	total_cl_size = (sizeof(struct rte_table_array) +
-			CACHE_LINE_SIZE) / CACHE_LINE_SIZE;
+			RTE_CACHE_LINE_SIZE) / RTE_CACHE_LINE_SIZE;
 	total_cl_size += (p->n_entries * entry_size +
-			CACHE_LINE_SIZE) / CACHE_LINE_SIZE;
-	total_size = total_cl_size * CACHE_LINE_SIZE;
-	t = rte_zmalloc_socket("TABLE", total_size, CACHE_LINE_SIZE, socket_id);
+			RTE_CACHE_LINE_SIZE) / RTE_CACHE_LINE_SIZE;
+	total_size = total_cl_size * RTE_CACHE_LINE_SIZE;
+	t = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE, socket_id);
 	if (t == NULL) {
 		RTE_LOG(ERR, TABLE,
 			"%s: Cannot allocate %u bytes for array table\n",

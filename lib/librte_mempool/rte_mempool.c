@@ -114,10 +114,10 @@ static unsigned optimize_object_size(unsigned obj_size)
 		nrank = 1;
 
 	/* process new object size */
-	new_obj_size = (obj_size + CACHE_LINE_MASK) / CACHE_LINE_SIZE;
+	new_obj_size = (obj_size + RTE_CACHE_LINE_MASK) / RTE_CACHE_LINE_SIZE;
 	while (get_gcd(new_obj_size, nrank * nchan) != 1)
 		new_obj_size++;
-	return new_obj_size * CACHE_LINE_SIZE;
+	return new_obj_size * RTE_CACHE_LINE_SIZE;
 }
 
 static void
@@ -255,7 +255,7 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 #endif
 	if ((flags & MEMPOOL_F_NO_CACHE_ALIGN) == 0)
 		sz->header_size = RTE_ALIGN_CEIL(sz->header_size,
-			CACHE_LINE_SIZE);
+			RTE_CACHE_LINE_SIZE);
 
 	/* trailer contains the cookie in debug mode */
 	sz->trailer_size = 0;
@@ -269,9 +269,9 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 	if ((flags & MEMPOOL_F_NO_CACHE_ALIGN) == 0) {
 		sz->total_size = sz->header_size + sz->elt_size +
 			sz->trailer_size;
-		sz->trailer_size += ((CACHE_LINE_SIZE -
-				  (sz->total_size & CACHE_LINE_MASK)) &
-				 CACHE_LINE_MASK);
+		sz->trailer_size += ((RTE_CACHE_LINE_SIZE -
+				  (sz->total_size & RTE_CACHE_LINE_MASK)) &
+				 RTE_CACHE_LINE_MASK);
 	}
 
 	/*
@@ -418,18 +418,18 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_mempool) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 #if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
 	RTE_BUILD_BUG_ON((sizeof(struct rte_mempool_cache) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 	RTE_BUILD_BUG_ON((offsetof(struct rte_mempool, local_cache) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 #endif
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	RTE_BUILD_BUG_ON((sizeof(struct rte_mempool_debug_stats) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 	RTE_BUILD_BUG_ON((offsetof(struct rte_mempool, stats) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 #endif
 
 	/* check that we have an initialised tail queue */
@@ -489,7 +489,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	 * cache-aligned
 	 */
 	private_data_size = (private_data_size +
-			     CACHE_LINE_MASK) & (~CACHE_LINE_MASK);
+			     RTE_CACHE_LINE_MASK) & (~RTE_CACHE_LINE_MASK);
 
 	if (! rte_eal_has_hugepages()) {
 		/*

@@ -87,7 +87,7 @@ rte_ip_frag_table_create(uint32_t bucket_num, uint32_t bucket_entries,
 	}
 
 	sz = sizeof (*tbl) + nb_entries * sizeof (tbl->pkt[0]);
-	if ((tbl = rte_zmalloc_socket(__func__, sz, CACHE_LINE_SIZE,
+	if ((tbl = rte_zmalloc_socket(__func__, sz, RTE_CACHE_LINE_SIZE,
 			socket_id)) == NULL) {
 		RTE_LOG(ERR, USER1,
 			"%s: allocation of %zu bytes at socket %d failed do\n",

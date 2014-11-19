@@ -42,7 +42,7 @@
 #include <rte_log.h>
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
-#include <rte_memory.h>        /* for definition of CACHE_LINE_SIZE */
+#include <rte_memory.h>        /* for definition of RTE_CACHE_LINE_SIZE */
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_tailq.h>
@@ -199,7 +199,7 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 
 	/* Allocate memory to store the LPM data structures. */
 	lpm = (struct rte_lpm *)rte_zmalloc_socket(mem_name, mem_size,
-			CACHE_LINE_SIZE, socket_id);
+			RTE_CACHE_LINE_SIZE, socket_id);
 	if (lpm == NULL) {
 		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
 		rte_free(te);

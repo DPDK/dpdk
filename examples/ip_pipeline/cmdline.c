@@ -568,7 +568,7 @@ cmd_arp_add_parsed(
 			struct app_rule *new_rule = (struct app_rule *)
 				rte_zmalloc_socket("CLI",
 				sizeof(struct app_rule),
-				CACHE_LINE_SIZE,
+				RTE_CACHE_LINE_SIZE,
 				rte_socket_id());
 
 			if (new_rule == NULL)
@@ -860,7 +860,7 @@ cmd_route_add_parsed(
 			struct app_rule *new_rule = (struct app_rule *)
 				rte_zmalloc_socket("CLI",
 				sizeof(struct app_rule),
-				CACHE_LINE_SIZE,
+				RTE_CACHE_LINE_SIZE,
 				rte_socket_id());
 
 			if (new_rule == NULL)
@@ -1193,7 +1193,7 @@ cmd_firewall_add_parsed(
 			struct app_rule *new_rule = (struct app_rule *)
 				rte_zmalloc_socket("CLI",
 				sizeof(struct app_rule),
-				CACHE_LINE_SIZE,
+				RTE_CACHE_LINE_SIZE,
 				rte_socket_id());
 
 			memcpy(new_rule, &rule, sizeof(rule));
@@ -1673,7 +1673,7 @@ cmd_flow_add_parsed(
 			struct app_rule *new_rule = (struct app_rule *)
 				rte_zmalloc_socket("CLI",
 				sizeof(struct app_rule),
-				CACHE_LINE_SIZE,
+				RTE_CACHE_LINE_SIZE,
 				rte_socket_id());
 
 			if (new_rule == NULL)

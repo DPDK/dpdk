@@ -179,7 +179,7 @@ struct rte_table {
 	rte_pipeline_table_action_handler_hit f_action;
 	uint32_t table_next_id;
 	uint32_t table_next_id_valid;
-	uint8_t actions_lookup_miss[CACHE_LINE_SIZE];
+	uint8_t actions_lookup_miss[RTE_CACHE_LINE_SIZE];
 	uint32_t action_data_size;
 	void *h_table;
 };

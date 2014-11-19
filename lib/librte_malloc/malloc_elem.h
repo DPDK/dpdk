@@ -74,7 +74,7 @@ set_trailer(struct malloc_elem *elem __rte_unused){ }
 
 
 #else
-static const unsigned MALLOC_ELEM_TRAILER_LEN = CACHE_LINE_SIZE;
+static const unsigned MALLOC_ELEM_TRAILER_LEN = RTE_CACHE_LINE_SIZE;
 
 #define MALLOC_HEADER_COOKIE   0xbadbadbadadd2e55ULL /**< Header cookie. */
 #define MALLOC_TRAILER_COOKIE  0xadd2e55badbadbadULL /**< Trailer cookie.*/

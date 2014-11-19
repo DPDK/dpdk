@@ -452,7 +452,7 @@ virtio_queue_setup(struct rte_eth_dev *dev, int queue_type)
 		snprintf(vq_name, sizeof(vq_name), "port%d_rvq",
 				dev->data->port_id);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
-			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
+			vq_size * sizeof(struct vq_desc_extra), RTE_CACHE_LINE_SIZE);
 		if (vq == NULL) {
 			RTE_LOG(ERR, PMD, "%s: unabled to allocate virtqueue\n", __func__);
 			return NULL;
@@ -462,7 +462,7 @@ virtio_queue_setup(struct rte_eth_dev *dev, int queue_type)
 		snprintf(vq_name, sizeof(vq_name), "port%d_tvq",
 			dev->data->port_id);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
-			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
+			vq_size * sizeof(struct vq_desc_extra), RTE_CACHE_LINE_SIZE);
 		if (vq == NULL) {
 			RTE_LOG(ERR, PMD, "%s: unabled to allocate virtqueue\n", __func__);
 			return NULL;
@@ -556,7 +556,7 @@ rte_eth_xenvirt_parse_args(struct xenvirt_dict *dict,
 	if (params == NULL)
 		return 0;
 
-	args = rte_zmalloc(NULL, strlen(params) + 1, CACHE_LINE_SIZE);
+	args = rte_zmalloc(NULL, strlen(params) + 1, RTE_CACHE_LINE_SIZE);
 	if (args == NULL) {
 		RTE_LOG(ERR, PMD, "Couldn't parse %s device \n", name);
 		return -1;

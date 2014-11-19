@@ -339,7 +339,7 @@ get_crypto_instance_on_core(CpaInstanceHandle *pInstanceHandle,
 	}
 
 	pLocalInstanceHandles = rte_malloc("pLocalInstanceHandles",
-			sizeof(CpaInstanceHandle) * numInstances, CACHE_LINE_SIZE);
+			sizeof(CpaInstanceHandle) * numInstances, RTE_CACHE_LINE_SIZE);
 
 	if (NULL == pLocalInstanceHandles) {
 		return CPA_STATUS_FAIL;

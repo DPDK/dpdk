@@ -592,7 +592,7 @@ poll_burst(void *args)
 	pkts_burst = (struct rte_mbuf **)
 		rte_calloc_socket("poll_burst",
 				  total, sizeof(void *),
-				  CACHE_LINE_SIZE, conf->socketid);
+				  RTE_CACHE_LINE_SIZE, conf->socketid);
 	if (!pkts_burst)
 		return -1;
 
@@ -797,7 +797,7 @@ test_pmd_perf(void)
 			rte_calloc_socket("tx_buff",
 					  MAX_TRAFFIC_BURST * nb_ports,
 					  sizeof(void *),
-					  CACHE_LINE_SIZE, socketid);
+					  RTE_CACHE_LINE_SIZE, socketid);
 		if (!tx_burst)
 			return -1;
 	}

@@ -60,7 +60,7 @@ rte_port_sched_reader_create(void *params, int socket_id)
 
 	/* Memory allocation */
 	port = rte_zmalloc_socket("PORT", sizeof(*port),
-			CACHE_LINE_SIZE, socket_id);
+			RTE_CACHE_LINE_SIZE, socket_id);
 	if (port == NULL) {
 		RTE_LOG(ERR, PORT, "%s: Failed to allocate port\n", __func__);
 		return NULL;
@@ -123,7 +123,7 @@ rte_port_sched_writer_create(void *params, int socket_id)
 
 	/* Memory allocation */
 	port = rte_zmalloc_socket("PORT", sizeof(*port),
-			CACHE_LINE_SIZE, socket_id);
+			RTE_CACHE_LINE_SIZE, socket_id);
 	if (port == NULL) {
 		RTE_LOG(ERR, PORT, "%s: Failed to allocate port\n", __func__);
 		return NULL;

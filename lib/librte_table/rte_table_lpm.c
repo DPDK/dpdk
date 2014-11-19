@@ -96,7 +96,7 @@ rte_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 	/* Memory allocation */
 	nht_size = RTE_TABLE_LPM_MAX_NEXT_HOPS * entry_size;
 	total_size = sizeof(struct rte_table_lpm) + nht_size;
-	lpm = rte_zmalloc_socket("TABLE", total_size, CACHE_LINE_SIZE,
+	lpm = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE,
 		socket_id);
 	if (lpm == NULL) {
 		RTE_LOG(ERR, TABLE,

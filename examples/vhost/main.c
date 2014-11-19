@@ -156,7 +156,7 @@
 #define MAC_ADDR_CMP 0xFFFFFFFFFFFFULL
 
 /* Number of descriptors per cacheline. */
-#define DESC_PER_CACHELINE (CACHE_LINE_SIZE / sizeof(struct vring_desc))
+#define DESC_PER_CACHELINE (RTE_CACHE_LINE_SIZE / sizeof(struct vring_desc))
 
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
@@ -2562,7 +2562,7 @@ new_device (struct virtio_net *dev)
 	struct vhost_dev *vdev;
 	uint32_t regionidx;
 
-	vdev = rte_zmalloc("vhost device", sizeof(*vdev), CACHE_LINE_SIZE);
+	vdev = rte_zmalloc("vhost device", sizeof(*vdev), RTE_CACHE_LINE_SIZE);
 	if (vdev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Couldn't allocate memory for vhost dev\n",
 			dev->device_fh);
@@ -2584,7 +2584,7 @@ new_device (struct virtio_net *dev)
 
 		vdev->regions_hpa = (struct virtio_memory_regions_hpa *) rte_zmalloc("vhost hpa region",
 			sizeof(struct virtio_memory_regions_hpa) * vdev->nregions_hpa,
-			CACHE_LINE_SIZE);
+			RTE_CACHE_LINE_SIZE);
 		if (vdev->regions_hpa == NULL) {
 			RTE_LOG(ERR, VHOST_CONFIG, "Cannot allocate memory for hpa region\n");
 			rte_free(vdev);

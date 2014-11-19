@@ -441,7 +441,7 @@ virtio_discard_rxbuf(struct virtqueue *vq, struct rte_mbuf *m)
 }
 
 #define VIRTIO_MBUF_BURST_SZ 64
-#define DESC_PER_CACHELINE (CACHE_LINE_SIZE / sizeof(struct vring_desc))
+#define DESC_PER_CACHELINE (RTE_CACHE_LINE_SIZE / sizeof(struct vring_desc))
 uint16_t
 virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {

@@ -1877,7 +1877,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* First allocate the tx queue data structure */
 	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct igb_tx_queue),
-				 CACHE_LINE_SIZE, socket_id);
+				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq == NULL)
 		return (-ENOMEM);
 
@@ -1925,7 +1925,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Allocate software ring */
 	txq->sw_ring = rte_zmalloc_socket("txq->sw_ring",
 				sizeof(struct igb_tx_entry) * nb_desc,
-				CACHE_LINE_SIZE, socket_id);
+				RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq->sw_ring == NULL) {
 		ixgbe_tx_queue_release(txq);
 		return (-ENOMEM);
@@ -2163,7 +2163,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* First allocate the rx queue data structure */
 	rxq = rte_zmalloc_socket("ethdev RX queue", sizeof(struct igb_rx_queue),
-				 CACHE_LINE_SIZE, socket_id);
+				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq == NULL)
 		return (-ENOMEM);
 	rxq->mb_pool = mp;
@@ -2229,7 +2229,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 #endif
 	rxq->sw_ring = rte_zmalloc_socket("rxq->sw_ring",
 					  sizeof(struct igb_rx_entry) * len,
-					  CACHE_LINE_SIZE, socket_id);
+					  RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq->sw_ring == NULL) {
 		ixgbe_rx_queue_release(rxq);
 		return (-ENOMEM);

@@ -180,7 +180,7 @@ lcore_id_init(void)
 	/* Setup lcore ID allocation map */
 	lcore_cfg = rte_zmalloc("LCORE_ID_MAP",
 						sizeof(uint16_t) * RTE_MAX_LCORE,
-						CACHE_LINE_SIZE);
+						RTE_CACHE_LINE_SIZE);
 
 	if(lcore_cfg == NULL)
 		rte_panic("Failed to malloc\n");
@@ -300,7 +300,7 @@ flib_init(void)
 {
 	if ((core_cfg = rte_zmalloc("core_cfg",
 		sizeof(struct lcore_stat) * RTE_MAX_LCORE,
-		CACHE_LINE_SIZE)) == NULL ) {
+		RTE_CACHE_LINE_SIZE)) == NULL ) {
 		printf("rte_zmalloc failed\n");
 		return -1;
 	}

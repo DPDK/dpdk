@@ -203,7 +203,7 @@ rte_pipeline_create(struct rte_pipeline_params *params)
 
 	/* Allocate memory for the pipeline on requested socket */
 	p = rte_zmalloc_socket("PIPELINE", sizeof(struct rte_pipeline),
-			CACHE_LINE_SIZE, params->socket_id);
+			RTE_CACHE_LINE_SIZE, params->socket_id);
 
 	if (p == NULL) {
 		RTE_LOG(ERR, PIPELINE,
@@ -343,7 +343,7 @@ rte_pipeline_table_create(struct rte_pipeline *p,
 	entry_size = sizeof(struct rte_pipeline_table_entry) +
 		params->action_data_size;
 	default_entry = (struct rte_pipeline_table_entry *) rte_zmalloc_socket(
-		"PIPELINE", entry_size, CACHE_LINE_SIZE, p->socket_id);
+		"PIPELINE", entry_size, RTE_CACHE_LINE_SIZE, p->socket_id);
 	if (default_entry == NULL) {
 		RTE_LOG(ERR, PIPELINE,
 			"%s: Failed to allocate default entry\n", __func__);

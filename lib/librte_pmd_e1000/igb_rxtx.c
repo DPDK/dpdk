@@ -1255,7 +1255,7 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* First allocate the tx queue data structure */
 	txq = rte_zmalloc("ethdev TX queue", sizeof(struct igb_tx_queue),
-							CACHE_LINE_SIZE);
+							RTE_CACHE_LINE_SIZE);
 	if (txq == NULL)
 		return (-ENOMEM);
 
@@ -1293,7 +1293,7 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Allocate software ring */
 	txq->sw_ring = rte_zmalloc("txq->sw_ring",
 				   sizeof(struct igb_tx_entry) * nb_desc,
-				   CACHE_LINE_SIZE);
+				   RTE_CACHE_LINE_SIZE);
 	if (txq->sw_ring == NULL) {
 		igb_tx_queue_release(txq);
 		return (-ENOMEM);
@@ -1389,7 +1389,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* First allocate the RX queue data structure. */
 	rxq = rte_zmalloc("ethdev RX queue", sizeof(struct igb_rx_queue),
-			  CACHE_LINE_SIZE);
+			  RTE_CACHE_LINE_SIZE);
 	if (rxq == NULL)
 		return (-ENOMEM);
 	rxq->mb_pool = mp;
@@ -1431,7 +1431,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	/* Allocate software ring. */
 	rxq->sw_ring = rte_zmalloc("rxq->sw_ring",
 				   sizeof(struct igb_rx_entry) * nb_desc,
-				   CACHE_LINE_SIZE);
+				   RTE_CACHE_LINE_SIZE);
 	if (rxq->sw_ring == NULL) {
 		igb_rx_queue_release(rxq);
 		return (-ENOMEM);

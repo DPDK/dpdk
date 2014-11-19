@@ -417,25 +417,25 @@ rte_sched_port_get_array_base(struct rte_sched_port_params *params, enum rte_sch
 	base = 0;
 
 	if (array == e_RTE_SCHED_PORT_ARRAY_SUBPORT) return base;
-	base += CACHE_LINE_ROUNDUP(size_subport);
+	base += RTE_CACHE_LINE_ROUNDUP(size_subport);
 
 	if (array == e_RTE_SCHED_PORT_ARRAY_PIPE) return base;
-	base += CACHE_LINE_ROUNDUP(size_pipe);
+	base += RTE_CACHE_LINE_ROUNDUP(size_pipe);
 
 	if (array == e_RTE_SCHED_PORT_ARRAY_QUEUE) return base;
-	base += CACHE_LINE_ROUNDUP(size_queue);
+	base += RTE_CACHE_LINE_ROUNDUP(size_queue);
 
 	if (array == e_RTE_SCHED_PORT_ARRAY_QUEUE_EXTRA) return base;
-	base += CACHE_LINE_ROUNDUP(size_queue_extra);
+	base += RTE_CACHE_LINE_ROUNDUP(size_queue_extra);
 
 	if (array == e_RTE_SCHED_PORT_ARRAY_PIPE_PROFILES) return base;
-	base += CACHE_LINE_ROUNDUP(size_pipe_profiles);
+	base += RTE_CACHE_LINE_ROUNDUP(size_pipe_profiles);
 
 	if (array == e_RTE_SCHED_PORT_ARRAY_BMP_ARRAY) return base;
-	base += CACHE_LINE_ROUNDUP(size_bmp_array);
+	base += RTE_CACHE_LINE_ROUNDUP(size_bmp_array);
 
 	if (array == e_RTE_SCHED_PORT_ARRAY_QUEUE_ARRAY) return base;
-	base += CACHE_LINE_ROUNDUP(size_queue_array);
+	base += RTE_CACHE_LINE_ROUNDUP(size_queue_array);
 
 	return base;
 }
@@ -617,7 +617,7 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	}
 
 	/* Allocate memory to store the data structures */
-	port = rte_zmalloc("qos_params", mem_size, CACHE_LINE_SIZE);
+	port = rte_zmalloc("qos_params", mem_size, RTE_CACHE_LINE_SIZE);
 	if (port == NULL) {
 		return NULL;
 	}

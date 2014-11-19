@@ -1120,7 +1120,7 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 
 #ifdef RTE_LIBRTE_XEN_DOM0
 	return rte_memzone_reserve_bounded(z_name, ring_size,
-			socket_id, 0, CACHE_LINE_SIZE, RTE_PGSIZE_2M);
+			socket_id, 0, RTE_CACHE_LINE_SIZE, RTE_PGSIZE_2M);
 #else
 	return rte_memzone_reserve(z_name, ring_size, socket_id, 0);
 #endif
@@ -1279,13 +1279,13 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocate the tx queue data structure. */
 	if ((txq = rte_zmalloc("ethdev TX queue", sizeof(*txq),
-			CACHE_LINE_SIZE)) == NULL)
+			RTE_CACHE_LINE_SIZE)) == NULL)
 		return (-ENOMEM);
 
 	/* Allocate software ring */
 	if ((txq->sw_ring = rte_zmalloc("txq->sw_ring",
 			sizeof(txq->sw_ring[0]) * nb_desc,
-			CACHE_LINE_SIZE)) == NULL) {
+			RTE_CACHE_LINE_SIZE)) == NULL) {
 		em_tx_queue_release(txq);
 		return (-ENOMEM);
 	}
@@ -1406,13 +1406,13 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocate the RX queue data structure. */
 	if ((rxq = rte_zmalloc("ethdev RX queue", sizeof(*rxq),
-			CACHE_LINE_SIZE)) == NULL)
+			RTE_CACHE_LINE_SIZE)) == NULL)
 		return (-ENOMEM);
 
 	/* Allocate software ring. */
 	if ((rxq->sw_ring = rte_zmalloc("rxq->sw_ring",
 			sizeof (rxq->sw_ring[0]) * nb_desc,
-			CACHE_LINE_SIZE)) == NULL) {
+			RTE_CACHE_LINE_SIZE)) == NULL) {
 		em_rx_queue_release(rxq);
 		return (-ENOMEM);
 	}

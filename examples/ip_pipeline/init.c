@@ -419,7 +419,7 @@ app_init_rings(void)
 	RTE_LOG(INFO, USER1, "Initializing %u SW rings ...\n", n_swq);
 
 	app.rings = rte_malloc_socket(NULL, n_swq * sizeof(struct rte_ring *),
-		CACHE_LINE_SIZE, rte_socket_id());
+		RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (app.rings == NULL)
 		rte_panic("Cannot allocate memory to store ring pointers\n");
 
@@ -595,7 +595,7 @@ app_init_etc(void)
 void
 app_init(void)
 {
-	if ((sizeof(struct app_pkt_metadata) % CACHE_LINE_SIZE) != 0)
+	if ((sizeof(struct app_pkt_metadata) % RTE_CACHE_LINE_SIZE) != 0)
 		rte_panic("Application pkt meta-data size mismatch\n");
 
 	app_check_core_params();

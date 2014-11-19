@@ -256,7 +256,7 @@ rte_eth_dev_init(struct rte_pci_driver *pci_drv,
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY){
 		eth_dev->data->dev_private = rte_zmalloc("ethdev private structure",
 				  eth_drv->dev_private_size,
-				  CACHE_LINE_SIZE);
+				  RTE_CACHE_LINE_SIZE);
 		if (eth_dev->data->dev_private == NULL)
 			rte_panic("Cannot allocate memzone for private port data\n");
 	}
@@ -332,7 +332,7 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 	if (dev->data->rx_queues == NULL) { /* first time configuration */
 		dev->data->rx_queues = rte_zmalloc("ethdev->rx_queues",
 				sizeof(dev->data->rx_queues[0]) * nb_queues,
-				CACHE_LINE_SIZE);
+				RTE_CACHE_LINE_SIZE);
 		if (dev->data->rx_queues == NULL) {
 			dev->data->nb_rx_queues = 0;
 			return -(ENOMEM);
@@ -345,7 +345,7 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 		for (i = nb_queues; i < old_nb_queues; i++)
 			(*dev->dev_ops->rx_queue_release)(rxq[i]);
 		rxq = rte_realloc(rxq, sizeof(rxq[0]) * nb_queues,
-				CACHE_LINE_SIZE);
+				RTE_CACHE_LINE_SIZE);
 		if (rxq == NULL)
 			return -(ENOMEM);
 
@@ -474,7 +474,7 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 	if (dev->data->tx_queues == NULL) { /* first time configuration */
 		dev->data->tx_queues = rte_zmalloc("ethdev->tx_queues",
 				sizeof(dev->data->tx_queues[0]) * nb_queues,
-				CACHE_LINE_SIZE);
+				RTE_CACHE_LINE_SIZE);
 		if (dev->data->tx_queues == NULL) {
 			dev->data->nb_tx_queues = 0;
 			return -(ENOMEM);
@@ -487,7 +487,7 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 		for (i = nb_queues; i < old_nb_queues; i++)
 			(*dev->dev_ops->tx_queue_release)(txq[i]);
 		txq = rte_realloc(txq, sizeof(txq[0]) * nb_queues,
-				CACHE_LINE_SIZE);
+				RTE_CACHE_LINE_SIZE);
 		if (txq == NULL)
 			return -(ENOMEM);
 

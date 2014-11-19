@@ -73,7 +73,7 @@ static void
 time_cache_line_switch(void)
 {
 	/* allocate a full cache line for data, we use only first byte of it */
-	uint64_t data[CACHE_LINE_SIZE*3 / sizeof(uint64_t)];
+	uint64_t data[RTE_CACHE_LINE_SIZE*3 / sizeof(uint64_t)];
 
 	unsigned i, slaveid = rte_get_next_lcore(rte_lcore_id(), 0, 0);
 	volatile uint64_t *pdata = &data[0];

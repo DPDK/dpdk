@@ -169,7 +169,7 @@ rte_realloc(void *ptr, size_t size, unsigned align)
 	if (elem == NULL)
 		rte_panic("Fatal error: memory corruption detected\n");
 
-	size = CACHE_LINE_ROUNDUP(size), align = CACHE_LINE_ROUNDUP(align);
+	size = RTE_CACHE_LINE_ROUNDUP(size), align = RTE_CACHE_LINE_ROUNDUP(align);
 	/* check alignment matches first, and if ok, see if we can resize block */
 	if (RTE_PTR_ALIGN(ptr,align) == ptr &&
 			malloc_elem_resize(elem, size) == 0)

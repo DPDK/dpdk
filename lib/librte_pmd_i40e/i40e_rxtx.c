@@ -1752,7 +1752,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	/* Allocate the rx queue data structure */
 	rxq = rte_zmalloc_socket("i40e rx queue",
 				 sizeof(struct i40e_rx_queue),
-				 CACHE_LINE_SIZE,
+				 RTE_CACHE_LINE_SIZE,
 				 socket_id);
 	if (!rxq) {
 		PMD_DRV_LOG(ERR, "Failed to allocate memory for "
@@ -1811,7 +1811,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->sw_ring =
 		rte_zmalloc_socket("i40e rx sw ring",
 				   sizeof(struct i40e_rx_entry) * len,
-				   CACHE_LINE_SIZE,
+				   RTE_CACHE_LINE_SIZE,
 				   socket_id);
 	if (!rxq->sw_ring) {
 		i40e_dev_rx_queue_release(rxq);
@@ -2036,7 +2036,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("i40e tx queue",
 				  sizeof(struct i40e_tx_queue),
-				  CACHE_LINE_SIZE,
+				  RTE_CACHE_LINE_SIZE,
 				  socket_id);
 	if (!txq) {
 		PMD_DRV_LOG(ERR, "Failed to allocate memory for "
@@ -2087,7 +2087,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->sw_ring =
 		rte_zmalloc_socket("i40e tx sw ring",
 				   sizeof(struct i40e_tx_entry) * nb_desc,
-				   CACHE_LINE_SIZE,
+				   RTE_CACHE_LINE_SIZE,
 				   socket_id);
 	if (!txq->sw_ring) {
 		i40e_dev_tx_queue_release(txq);
@@ -2542,7 +2542,7 @@ i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("i40e fdir tx queue",
 				  sizeof(struct i40e_tx_queue),
-				  CACHE_LINE_SIZE,
+				  RTE_CACHE_LINE_SIZE,
 				  SOCKET_ID_ANY);
 	if (!txq) {
 		PMD_DRV_LOG(ERR, "Failed to allocate memory for "
@@ -2602,7 +2602,7 @@ i40e_fdir_setup_rx_resources(struct i40e_pf *pf)
 	/* Allocate the RX queue data structure. */
 	rxq = rte_zmalloc_socket("i40e fdir rx queue",
 				  sizeof(struct i40e_rx_queue),
-				  CACHE_LINE_SIZE,
+				  RTE_CACHE_LINE_SIZE,
 				  SOCKET_ID_ANY);
 	if (!rxq) {
 		PMD_DRV_LOG(ERR, "Failed to allocate memory for "

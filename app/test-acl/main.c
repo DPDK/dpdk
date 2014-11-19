@@ -472,7 +472,7 @@ tracef_init(void)
 	struct ipv6_5tuple *w;
 
 	sz = config.nb_traces * (config.ipv6 ? sizeof(*w) : sizeof(*v));
-	config.traces = rte_zmalloc_socket(name, sz, CACHE_LINE_SIZE,
+	config.traces = rte_zmalloc_socket(name, sz, RTE_CACHE_LINE_SIZE,
 			SOCKET_ID_ANY);
 	if (config.traces == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot allocate %zu bytes for "

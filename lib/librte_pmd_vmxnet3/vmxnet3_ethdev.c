@@ -347,7 +347,7 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 
 		/* Allocate memory structure for UPT1_RSSConf and configure */
 		mz = gpa_zone_reserve(dev, sizeof(struct VMXNET3_RSSConf), "rss_conf",
-				      rte_socket_id(), CACHE_LINE_SIZE);
+				      rte_socket_id(), RTE_CACHE_LINE_SIZE);
 		if (mz == NULL) {
 			PMD_INIT_LOG(ERR,
 				     "ERROR: Creating rss_conf structure zone");

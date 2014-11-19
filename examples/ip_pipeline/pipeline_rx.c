@@ -295,7 +295,7 @@ app_main_loop_rx(void) {
 	RTE_LOG(INFO, USER1, "Core %u is doing RX (no pipeline)\n", core_id);
 
 	ma = rte_malloc_socket(NULL, sizeof(struct app_mbuf_array),
-		CACHE_LINE_SIZE, rte_socket_id());
+		RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (ma == NULL)
 		rte_panic("%s: cannot allocate buffer space\n", __func__);
 

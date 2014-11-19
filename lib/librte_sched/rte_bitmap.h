@@ -83,7 +83,7 @@ extern "C" {
 #define RTE_BITMAP_SLAB_BIT_MASK                 (RTE_BITMAP_SLAB_BIT_SIZE - 1)
 
 /* Cache line (CL) */
-#define RTE_BITMAP_CL_BIT_SIZE                   (CACHE_LINE_SIZE * 8)
+#define RTE_BITMAP_CL_BIT_SIZE                   (RTE_CACHE_LINE_SIZE * 8)
 #define RTE_BITMAP_CL_BIT_SIZE_LOG2              9
 #define RTE_BITMAP_CL_BIT_MASK                   (RTE_BITMAP_CL_BIT_SIZE - 1)
 
@@ -178,7 +178,7 @@ __rte_bitmap_get_memory_footprint(uint32_t n_bits,
 	n_slabs_array1 = rte_align32pow2(n_slabs_array1);
 	n_slabs_context = (sizeof(struct rte_bitmap) + (RTE_BITMAP_SLAB_BIT_SIZE / 8) - 1) / (RTE_BITMAP_SLAB_BIT_SIZE / 8);
 	n_cache_lines_context_and_array1 = (n_slabs_context + n_slabs_array1 + RTE_BITMAP_CL_SLAB_SIZE - 1) / RTE_BITMAP_CL_SLAB_SIZE;
-	n_bytes_total = (n_cache_lines_context_and_array1 + n_cache_lines_array2) * CACHE_LINE_SIZE;
+	n_bytes_total = (n_cache_lines_context_and_array1 + n_cache_lines_array2) * RTE_CACHE_LINE_SIZE;
 
 	if (array1_byte_offset) {
 		*array1_byte_offset = n_slabs_context * (RTE_BITMAP_SLAB_BIT_SIZE / 8);
@@ -187,7 +187,7 @@ __rte_bitmap_get_memory_footprint(uint32_t n_bits,
 		*array1_slabs = n_slabs_array1;
 	}
 	if (array2_byte_offset) {
-		*array2_byte_offset = n_cache_lines_context_and_array1 * CACHE_LINE_SIZE;
+		*array2_byte_offset = n_cache_lines_context_and_array1 * RTE_CACHE_LINE_SIZE;
 	}
 	if (array2_slabs) {
 		*array2_slabs = n_cache_lines_array2 * RTE_BITMAP_CL_SLAB_SIZE;
@@ -249,7 +249,7 @@ rte_bitmap_init(uint32_t n_bits, uint8_t *mem, uint32_t mem_size)
 		return NULL;
 	}
 
-	if ((mem == NULL) || (((uintptr_t) mem) & CACHE_LINE_MASK)) {
+	if ((mem == NULL) || (((uintptr_t) mem) & RTE_CACHE_LINE_MASK)) {
 		return NULL;
 	}
 

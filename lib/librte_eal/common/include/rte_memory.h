@@ -62,19 +62,19 @@ enum rte_page_sizes {
 };
 
 #define SOCKET_ID_ANY -1                    /**< Any NUMA socket. */
-#ifndef CACHE_LINE_SIZE
-#define CACHE_LINE_SIZE 64                  /**< Cache line size. */
+#ifndef RTE_CACHE_LINE_SIZE
+#define RTE_CACHE_LINE_SIZE 64                  /**< Cache line size. */
 #endif
-#define CACHE_LINE_MASK (CACHE_LINE_SIZE-1) /**< Cache line mask. */
+#define RTE_CACHE_LINE_MASK (RTE_CACHE_LINE_SIZE-1) /**< Cache line mask. */
 
-#define CACHE_LINE_ROUNDUP(size) \
-	(CACHE_LINE_SIZE * ((size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE))
+#define RTE_CACHE_LINE_ROUNDUP(size) \
+	(RTE_CACHE_LINE_SIZE * ((size + RTE_CACHE_LINE_SIZE - 1) / RTE_CACHE_LINE_SIZE))
 /**< Return the first cache-aligned value greater or equal to size. */
 
 /**
  * Force alignment to cache line.
  */
-#define __rte_cache_aligned __attribute__((__aligned__(CACHE_LINE_SIZE)))
+#define __rte_cache_aligned __attribute__((__aligned__(RTE_CACHE_LINE_SIZE)))
 
 typedef uint64_t phys_addr_t; /**< Physical address definition. */
 #define RTE_BAD_PHYS_ADDR ((phys_addr_t)-1)

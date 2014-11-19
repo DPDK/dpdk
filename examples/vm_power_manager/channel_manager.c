@@ -408,7 +408,7 @@ add_all_channels(const char *vm_name)
 			continue;
 
 		chan_info = rte_malloc(NULL, sizeof(*chan_info),
-				CACHE_LINE_SIZE);
+				RTE_CACHE_LINE_SIZE);
 		if (chan_info == NULL) {
 			RTE_LOG(ERR, CHANNEL_MANAGER, "Error allocating memory for "
 				"channel '%s%s'\n", CHANNEL_MGR_SOCKET_PATH, dir->d_name);
@@ -476,7 +476,7 @@ add_channels(const char *vm_name, unsigned *channel_list,
 			continue;
 		}
 		chan_info = rte_malloc(NULL, sizeof(*chan_info),
-				CACHE_LINE_SIZE);
+				RTE_CACHE_LINE_SIZE);
 		if (chan_info == NULL) {
 			RTE_LOG(ERR, CHANNEL_MANAGER, "Error allocating memory for "
 					"channel '%s'\n", socket_path);
@@ -639,7 +639,7 @@ add_vm(const char *vm_name)
 	}
 
 	new_domain = rte_malloc("virtual_machine_info", sizeof(*new_domain),
-			CACHE_LINE_SIZE);
+			RTE_CACHE_LINE_SIZE);
 	if (new_domain == NULL) {
 		RTE_LOG(ERR, CHANNEL_MANAGER, "Unable to allocate memory for VM "
 				"info\n");
@@ -745,13 +745,13 @@ channel_manager_init(const char *path)
 	global_maplen = VIR_CPU_MAPLEN(CHANNEL_CMDS_MAX_CPUS);
 
 	global_vircpuinfo = rte_zmalloc(NULL, sizeof(*global_vircpuinfo) *
-			CHANNEL_CMDS_MAX_CPUS, CACHE_LINE_SIZE);
+			CHANNEL_CMDS_MAX_CPUS, RTE_CACHE_LINE_SIZE);
 	if (global_vircpuinfo == NULL) {
 		RTE_LOG(ERR, CHANNEL_MANAGER, "Error allocating memory for CPU Info\n");
 		goto error;
 	}
 	global_cpumaps = rte_zmalloc(NULL, CHANNEL_CMDS_MAX_CPUS * global_maplen,
-			CACHE_LINE_SIZE);
+			RTE_CACHE_LINE_SIZE);
 	if (global_cpumaps == NULL) {
 		goto error;
 	}

@@ -135,7 +135,7 @@ app_main_loop(__attribute__((unused))void *dummy)
 	else if (mode == (APP_TX_MODE | APP_WT_MODE)) {
 		for (i = 0; i < wt_idx; i++) {
 			wt_confs[i]->m_table = rte_malloc("table_wt", sizeof(struct rte_mbuf *)
-					* burst_conf.tx_burst, CACHE_LINE_SIZE);
+					* burst_conf.tx_burst, RTE_CACHE_LINE_SIZE);
 
 			if (wt_confs[i]->m_table == NULL)
 				rte_panic("flow %u unable to allocate memory buffer\n", i);
@@ -150,7 +150,7 @@ app_main_loop(__attribute__((unused))void *dummy)
 	else if (mode == APP_TX_MODE) {
 		for (i = 0; i < tx_idx; i++) {
 			tx_confs[i]->m_table = rte_malloc("table_tx", sizeof(struct rte_mbuf *)
-					* burst_conf.tx_burst, CACHE_LINE_SIZE);
+					* burst_conf.tx_burst, RTE_CACHE_LINE_SIZE);
 
 			if (tx_confs[i]->m_table == NULL)
 				rte_panic("flow %u unable to allocate memory buffer\n", i);

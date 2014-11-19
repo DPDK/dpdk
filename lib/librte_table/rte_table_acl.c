@@ -75,7 +75,7 @@ rte_table_acl_create(
 	uint32_t action_table_size, acl_rule_list_size, acl_rule_memory_size;
 	uint32_t total_size;
 
-	RTE_BUILD_BUG_ON(((sizeof(struct rte_table_acl) % CACHE_LINE_SIZE)
+	RTE_BUILD_BUG_ON(((sizeof(struct rte_table_acl) % RTE_CACHE_LINE_SIZE)
 		!= 0));
 
 	/* Check input parameters */
@@ -102,15 +102,15 @@ rte_table_acl_create(
 	entry_size = RTE_ALIGN(entry_size, sizeof(uint64_t));
 
 	/* Memory allocation */
-	action_table_size = CACHE_LINE_ROUNDUP(p->n_rules * entry_size);
+	action_table_size = RTE_CACHE_LINE_ROUNDUP(p->n_rules * entry_size);
 	acl_rule_list_size =
-		CACHE_LINE_ROUNDUP(p->n_rules * sizeof(struct rte_acl_rule *));
-	acl_rule_memory_size = CACHE_LINE_ROUNDUP(p->n_rules *
+		RTE_CACHE_LINE_ROUNDUP(p->n_rules * sizeof(struct rte_acl_rule *));
+	acl_rule_memory_size = RTE_CACHE_LINE_ROUNDUP(p->n_rules *
 		RTE_ACL_RULE_SZ(p->n_rule_fields));
 	total_size = sizeof(struct rte_table_acl) + action_table_size +
 		acl_rule_list_size + acl_rule_memory_size;
 
-	acl = rte_zmalloc_socket("TABLE", total_size, CACHE_LINE_SIZE,
+	acl = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE,
 		socket_id);
 	if (acl == NULL) {
 		RTE_LOG(ERR, TABLE,

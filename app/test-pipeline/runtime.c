@@ -112,7 +112,7 @@ app_main_loop_worker(void) {
 		rte_lcore_id());
 
 	worker_mbuf = rte_malloc_socket(NULL, sizeof(struct app_mbuf_array),
-			CACHE_LINE_SIZE, rte_socket_id());
+			RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (worker_mbuf == NULL)
 		rte_panic("Worker thread: cannot allocate buffer space\n");
 

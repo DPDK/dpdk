@@ -402,9 +402,9 @@ test_memzone_reserve_max(void)
 			continue;
 
 		/* align everything */
-		last_addr = RTE_PTR_ALIGN_CEIL(ms[memseg_idx].addr, CACHE_LINE_SIZE);
+		last_addr = RTE_PTR_ALIGN_CEIL(ms[memseg_idx].addr, RTE_CACHE_LINE_SIZE);
 		len = ms[memseg_idx].len - RTE_PTR_DIFF(last_addr, ms[memseg_idx].addr);
-		len &= ~((size_t) CACHE_LINE_MASK);
+		len &= ~((size_t) RTE_CACHE_LINE_MASK);
 
 		/* cycle through all memzones */
 		for (memzone_idx = 0; memzone_idx < RTE_MAX_MEMZONE; memzone_idx++) {
@@ -495,9 +495,9 @@ test_memzone_reserve_max_aligned(void)
 			continue;
 
 		/* align everything */
-		last_addr = RTE_PTR_ALIGN_CEIL(ms[memseg_idx].addr, CACHE_LINE_SIZE);
+		last_addr = RTE_PTR_ALIGN_CEIL(ms[memseg_idx].addr, RTE_CACHE_LINE_SIZE);
 		len = ms[memseg_idx].len - RTE_PTR_DIFF(last_addr, ms[memseg_idx].addr);
-		len &= ~((size_t) CACHE_LINE_MASK);
+		len &= ~((size_t) RTE_CACHE_LINE_MASK);
 
 		/* cycle through all memzones */
 		for (memzone_idx = 0; memzone_idx < RTE_MAX_MEMZONE; memzone_idx++) {
@@ -595,11 +595,11 @@ test_memzone_aligned(void)
 		printf("Unable to reserve 64-byte aligned memzone!\n");
 		return -1;
 	}
-	if ((memzone_aligned_32->phys_addr & CACHE_LINE_MASK) != 0)
+	if ((memzone_aligned_32->phys_addr & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
-	if (((uintptr_t) memzone_aligned_32->addr & CACHE_LINE_MASK) != 0)
+	if (((uintptr_t) memzone_aligned_32->addr & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
-	if ((memzone_aligned_32->len & CACHE_LINE_MASK) != 0)
+	if ((memzone_aligned_32->len & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
 
 	if (memzone_aligned_128 == NULL) {
@@ -610,7 +610,7 @@ test_memzone_aligned(void)
 		return -1;
 	if (((uintptr_t) memzone_aligned_128->addr & 127) != 0)
 		return -1;
-	if ((memzone_aligned_128->len & CACHE_LINE_MASK) != 0)
+	if ((memzone_aligned_128->len & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
 
 	if (memzone_aligned_256 == NULL) {
@@ -621,7 +621,7 @@ test_memzone_aligned(void)
 		return -1;
 	if (((uintptr_t) memzone_aligned_256->addr & 255) != 0)
 		return -1;
-	if ((memzone_aligned_256->len & CACHE_LINE_MASK) != 0)
+	if ((memzone_aligned_256->len & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
 
 	if (memzone_aligned_512 == NULL) {
@@ -632,7 +632,7 @@ test_memzone_aligned(void)
 		return -1;
 	if (((uintptr_t) memzone_aligned_512->addr & 511) != 0)
 		return -1;
-	if ((memzone_aligned_512->len & CACHE_LINE_MASK) != 0)
+	if ((memzone_aligned_512->len & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
 
 	if (memzone_aligned_1024 == NULL) {
@@ -643,7 +643,7 @@ test_memzone_aligned(void)
 		return -1;
 	if (((uintptr_t) memzone_aligned_1024->addr & 1023) != 0)
 		return -1;
-	if ((memzone_aligned_1024->len & CACHE_LINE_MASK) != 0)
+	if ((memzone_aligned_1024->len & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
 
 	/* check that zones don't overlap */
@@ -709,8 +709,8 @@ check_memzone_bounded(const char *name, uint32_t len,  uint32_t align,
 		return (-1);
 	}
 
-	if ((mz->len & CACHE_LINE_MASK) != 0 || mz->len < len ||
-			mz->len < CACHE_LINE_SIZE) {
+	if ((mz->len & RTE_CACHE_LINE_MASK) != 0 || mz->len < len ||
+			mz->len < RTE_CACHE_LINE_SIZE) {
 		printf("%s(%s): invalid length\n",
 			__func__, mz->name);
 		return (-1);
@@ -811,14 +811,14 @@ test_memzone_reserve_memory_in_smallest_segment(void)
 	prev_min_len = prev_min_ms->len;
 
 	/* try reserving a memzone in the smallest memseg */
-	mz = rte_memzone_reserve("smallest_mz", CACHE_LINE_SIZE,
+	mz = rte_memzone_reserve("smallest_mz", RTE_CACHE_LINE_SIZE,
 			SOCKET_ID_ANY, 0);
 	if (mz == NULL) {
 		printf("Failed to reserve memory from smallest memseg!\n");
 		return -1;
 	}
 	if (prev_min_ms->len != prev_min_len &&
-			min_ms->len != min_len - CACHE_LINE_SIZE) {
+			min_ms->len != min_len - RTE_CACHE_LINE_SIZE) {
 		printf("Reserved memory from wrong memseg!\n");
 		return -1;
 	}
@@ -857,7 +857,7 @@ test_memzone_reserve_memory_with_smallest_offset(void)
 
 	min_ms = NULL;  /*< smallest segment */
 	prev_min_ms = NULL; /*< second smallest segment */
-	align = CACHE_LINE_SIZE * 4;
+	align = RTE_CACHE_LINE_SIZE * 4;
 
 	/* find two smallest segments */
 	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
@@ -897,7 +897,7 @@ test_memzone_reserve_memory_with_smallest_offset(void)
 
 		/* make sure final length is *not* aligned */
 		while (((min_ms->addr_64 + len) & (align-1)) == 0)
-			len += CACHE_LINE_SIZE;
+			len += RTE_CACHE_LINE_SIZE;
 
 		if (rte_memzone_reserve("dummy_mz1", len, SOCKET_ID_ANY, 0) == NULL) {
 			printf("Cannot reserve memory!\n");
@@ -912,12 +912,12 @@ test_memzone_reserve_memory_with_smallest_offset(void)
 	}
     /* if we don't need to touch smallest segment but it's aligned */
     else if ((min_ms->addr_64 & (align-1)) == 0) {
-            if (rte_memzone_reserve("align_mz1", CACHE_LINE_SIZE,
+            if (rte_memzone_reserve("align_mz1", RTE_CACHE_LINE_SIZE,
                     SOCKET_ID_ANY, 0) == NULL) {
                             printf("Cannot reserve memory!\n");
                             return -1;
             }
-            if (min_ms->len != min_len - CACHE_LINE_SIZE) {
+            if (min_ms->len != min_len - RTE_CACHE_LINE_SIZE) {
                     printf("Reserved memory from wrong segment!\n");
                     return -1;
             }
@@ -929,7 +929,7 @@ test_memzone_reserve_memory_with_smallest_offset(void)
 
 		/* make sure final length is aligned */
 		while (((prev_min_ms->addr_64 + len) & (align-1)) != 0)
-			len += CACHE_LINE_SIZE;
+			len += RTE_CACHE_LINE_SIZE;
 
 		if (rte_memzone_reserve("dummy_mz2", len, SOCKET_ID_ANY, 0) == NULL) {
 			printf("Cannot reserve memory!\n");
@@ -942,7 +942,7 @@ test_memzone_reserve_memory_with_smallest_offset(void)
 			return -1;
 		}
 	}
-	len = CACHE_LINE_SIZE;
+	len = RTE_CACHE_LINE_SIZE;
 
 
 
@@ -980,7 +980,7 @@ test_memzone_reserve_remainder(void)
 	int i, align;
 
 	min_len = 0;
-	align = CACHE_LINE_SIZE;
+	align = RTE_CACHE_LINE_SIZE;
 
 	config = rte_eal_get_configuration();
 
@@ -998,7 +998,7 @@ test_memzone_reserve_remainder(void)
 			min_ms = ms;
 
 			/* find maximum alignment this segment is able to hold */
-			align = CACHE_LINE_SIZE;
+			align = RTE_CACHE_LINE_SIZE;
 			while ((ms->addr_64 & (align-1)) == 0) {
 				align <<= 1;
 			}
@@ -1072,17 +1072,17 @@ test_memzone(void)
 	/* check cache-line alignments */
 	printf("check alignments and lengths\n");
 
-	if ((memzone1->phys_addr & CACHE_LINE_MASK) != 0)
+	if ((memzone1->phys_addr & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
-	if ((memzone2->phys_addr & CACHE_LINE_MASK) != 0)
+	if ((memzone2->phys_addr & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
-	if (memzone3 != NULL && (memzone3->phys_addr & CACHE_LINE_MASK) != 0)
+	if (memzone3 != NULL && (memzone3->phys_addr & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
-	if ((memzone1->len & CACHE_LINE_MASK) != 0 || memzone1->len == 0)
+	if ((memzone1->len & RTE_CACHE_LINE_MASK) != 0 || memzone1->len == 0)
 		return -1;
-	if ((memzone2->len & CACHE_LINE_MASK) != 0 || memzone2->len == 0)
+	if ((memzone2->len & RTE_CACHE_LINE_MASK) != 0 || memzone2->len == 0)
 		return -1;
-	if (memzone3 != NULL && ((memzone3->len & CACHE_LINE_MASK) != 0 ||
+	if (memzone3 != NULL && ((memzone3->len & RTE_CACHE_LINE_MASK) != 0 ||
 			memzone3->len == 0))
 		return -1;
 	if (memzone4->len != 1024)
