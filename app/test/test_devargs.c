@@ -90,9 +90,9 @@ test_devargs(void)
 		goto fail;
 	devargs = TAILQ_FIRST(&devargs_list);
 	if (strncmp(devargs->virtual.drv_name, "eth_ring1",
-			sizeof(devargs->virtual.drv_name) != 0))
+			sizeof(devargs->virtual.drv_name)) != 0)
 		goto fail;
-	if (strncmp(devargs->args, "k1=val,k2=val2", sizeof(devargs->args) != 0))
+	if (strncmp(devargs->args, "k1=val,k2=val2", sizeof(devargs->args)) != 0)
 		goto fail;
 	free_devargs_list();
 
