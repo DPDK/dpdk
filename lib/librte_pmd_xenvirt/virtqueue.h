@@ -54,7 +54,7 @@
  * rather than gpa<->hva in virito spec.
  */
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	((uint64_t)((mb)->data))
+	rte_pktmbuf_mtod(mb, uint64_t)
 
 enum { VTNET_RQ = 0, VTNET_TQ = 1, VTNET_CQ = 2 };
 
