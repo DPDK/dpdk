@@ -41,6 +41,8 @@
 #include <sys/mman.h>
 #include <sys/queue.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <sys/sysctl.h>
 #include <errno.h>
 
 #include <rte_common.h>
@@ -241,29 +243,34 @@ rte_eal_hpet_init(int make_default)
 #endif
 
 static int
-set_tsc_freq_from_clock(void)
+set_tsc_freq_from_sysctl(void)
 {
-#ifdef CLOCK_MONOTONIC_RAW
-#define NS_PER_SEC 1E9
+	size_t sz;
+	int tmp;
 
-	struct timespec sleeptime = {.tv_nsec = 5E8 }; /* 1/2 second */
+	sz = sizeof(tmp);
+	tmp = 0;
 
-	struct timespec t_start, t_end;
+	if (sysctlbyname("kern.timecounter.smp_tsc", &tmp, &sz, NULL, 0))
+		RTE_LOG(WARNING, EAL, "%s\n", strerror(errno));
+	else if (tmp != 1)
+		RTE_LOG(WARNING, EAL, "TSC is not safe to use in SMP mode\n");
 
-	if (clock_gettime(CLOCK_MONOTONIC_RAW, &t_start) == 0) {
-		uint64_t ns, end, start = rte_rdtsc();
-		nanosleep(&sleeptime,NULL);
-		clock_gettime(CLOCK_MONOTONIC_RAW, &t_end);
-		end = rte_rdtsc();
-		ns = ((t_end.tv_sec - t_start.tv_sec) * NS_PER_SEC);
-		ns += (t_end.tv_nsec - t_start.tv_nsec);
+	tmp = 0;
 
-		double secs = (double)ns/NS_PER_SEC;
-		eal_tsc_resolution_hz = (uint64_t)((end - start)/secs);
-		return 0;
+	if (sysctlbyname("kern.timecounter.invariant_tsc", &tmp, &sz, NULL, 0))
+		RTE_LOG(WARNING, EAL, "%s\n", strerror(errno));
+	else if (tmp != 1)
+		RTE_LOG(WARNING, EAL, "TSC is not invariant\n");
+
+	sz = sizeof(eal_tsc_resolution_hz);
+
+	if (sysctlbyname("machdep.tsc_freq", &eal_tsc_resolution_hz, &sz, NULL, 0)) {
+		RTE_LOG(WARNING, EAL, "%s\n", strerror(errno));
+		return -1;
 	}
-#endif
-	return -1;
+
+	return 0;
 }
 
 static void
@@ -277,10 +284,11 @@ set_tsc_freq_fallback(void)
 	sleep(1);
 	eal_tsc_resolution_hz = rte_rdtsc() - start;
 }
+
 /*
  * This function measures the TSC frequency. It uses a variety of approaches.
  *
- * 1. If kernel provides CLOCK_MONOTONIC_RAW we use that to tune the TSC value
+ * 1. Read the TSC frequency value provided by the kernel
  * 2. If kernel does not provide that, and we have HPET support, tune using HPET
  * 3. Lastly, if neither of the above can be used, just sleep for 1 second and
  * tune off that, printing a warning about inaccuracy of timing
@@ -288,7 +296,7 @@ set_tsc_freq_fallback(void)
 static void
 set_tsc_freq(void)
 {
-	if (set_tsc_freq_from_clock() < 0)
+	if (set_tsc_freq_from_sysctl() < 0)
 		set_tsc_freq_fallback();
 
 	RTE_LOG(INFO, EAL, "TSC frequency is ~%"PRIu64" KHz\n",
