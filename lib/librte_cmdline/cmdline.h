@@ -71,9 +71,7 @@ struct cmdline {
 	cmdline_parse_ctx_t *ctx;
 	struct rdline rdl;
 	char prompt[RDLINE_PROMPT_SIZE];
-#ifdef RTE_EXEC_ENV_LINUXAPP
 	struct termios oldterm;
-#endif
 };
 
 struct cmdline *cmdline_new(cmdline_parse_ctx_t *ctx, const char *prompt, int s_in, int s_out);

@@ -93,7 +93,6 @@ struct cmdline *
 cmdline_stdin_new(cmdline_parse_ctx_t *ctx, const char *prompt)
 {
 	struct cmdline *cl;
-#ifdef RTE_EXEC_ENV_LINUXAPP
 	struct termios oldterm, term;
 
 	tcgetattr(0, &oldterm);
@@ -101,14 +100,12 @@ cmdline_stdin_new(cmdline_parse_ctx_t *ctx, const char *prompt)
 	term.c_lflag &= ~(ICANON | ECHO | ISIG);
 	tcsetattr(0, TCSANOW, &term);
 	setbuf(stdin, NULL);
-#endif
 
 	cl = cmdline_new(ctx, prompt, 0, 1);
 
-#ifdef RTE_EXEC_ENV_LINUXAPP
 	if (cl)
 		memcpy(&cl->oldterm, &oldterm, sizeof(term));
-#endif
+
 	return cl;
 }
 
@@ -118,10 +115,5 @@ cmdline_stdin_exit(struct cmdline *cl)
 	if (!cl)
 		return;
 
-#ifdef RTE_EXEC_ENV_LINUXAPP
 	tcsetattr(fileno(stdin), TCSANOW, &cl->oldterm);
-#else
-	/* silent the compiler */
-	(void)cl;
-#endif
 }
