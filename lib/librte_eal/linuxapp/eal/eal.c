@@ -284,7 +284,7 @@ rte_eal_config_reattach(void)
 }
 
 /* Detect if we are a primary or a secondary process */
-static enum rte_proc_type_t
+enum rte_proc_type_t
 eal_proc_type_detect(void)
 {
 	enum rte_proc_type_t ptype = RTE_PROC_PRIMARY;
@@ -307,9 +307,7 @@ eal_proc_type_detect(void)
 static void
 rte_config_init(void)
 {
-	rte_config.process_type = (internal_config.process_type == RTE_PROC_AUTO) ?
-			eal_proc_type_detect() : /* for auto, detect the type */
-			internal_config.process_type; /* otherwise use what's already set */
+	rte_config.process_type = internal_config.process_type;
 
 	switch (rte_config.process_type){
 	case RTE_PROC_PRIMARY:
@@ -504,7 +502,7 @@ eal_get_hugepage_mem_size(void)
 static int
 eal_parse_args(int argc, char **argv)
 {
-	int opt, ret, i;
+	int opt, ret;
 	char **argvopt;
 	int option_index;
 	char *prgname = argv[0];
@@ -616,8 +614,8 @@ eal_parse_args(int argc, char **argv)
 		}
 	}
 
-	if (internal_config.process_type == RTE_PROC_AUTO)
-		internal_config.process_type = eal_proc_type_detect();
+	if (eal_adjust_config(&internal_config) != 0)
+		return -1;
 
 	/* sanity checks */
 	if (eal_check_common_options(&internal_config) != 0) {
@@ -635,12 +633,6 @@ eal_parse_args(int argc, char **argv)
 
 	if (optind >= 0)
 		argv[optind-1] = prgname;
-
-	/* if no memory amounts were requested, this will result in 0 and
-	 * will be overriden later, right after eal_hugepage_info_init() */
-	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
-		internal_config.memory += internal_config.socket_mem[i];
-
 	ret = optind-1;
 	optind = 0; /* reset getopt lib */
 	return ret;

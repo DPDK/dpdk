@@ -400,6 +400,22 @@ eal_parse_common_option(int opt, const char *optarg,
 }
 
 int
+eal_adjust_config(struct internal_config *internal_cfg)
+{
+	int i;
+
+	if (internal_config.process_type == RTE_PROC_AUTO)
+		internal_config.process_type = eal_proc_type_detect();
+
+	/* if no memory amounts were requested, this will result in 0 and
+	 * will be overridden later, right after eal_hugepage_info_init() */
+	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
+		internal_cfg->memory += internal_cfg->socket_mem[i];
+
+	return 0;
+}
+
+int
 eal_check_common_options(struct internal_config *internal_cfg)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
