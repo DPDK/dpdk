@@ -2020,6 +2020,36 @@ fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks)
 }
 
 void
+fdir_set_flex_mask(portid_t port_id, struct rte_eth_fdir_flex_mask *cfg)
+{
+	struct rte_port *port;
+	struct rte_eth_fdir_flex_conf *flex_conf;
+	int i, idx = 0;
+
+	port = &ports[port_id];
+	flex_conf = &port->dev_conf.fdir_conf.flex_conf;
+	for (i = 0; i < RTE_ETH_FLOW_TYPE_MAX; i++) {
+		if (cfg->flow_type == flex_conf->flex_mask[i].flow_type) {
+			idx = i;
+			break;
+		}
+	}
+	if (i >= RTE_ETH_FLOW_TYPE_MAX) {
+		if (flex_conf->nb_flexmasks < RTE_DIM(flex_conf->flex_mask)) {
+			idx = flex_conf->nb_flexmasks;
+			flex_conf->nb_flexmasks++;
+		} else {
+			printf("The flex mask table is full. Can not set flex"
+				" mask for flow_type(%u).", cfg->flow_type);
+			return;
+		}
+	}
+	(void)rte_memcpy(&flex_conf->flex_mask[idx],
+			 cfg,
+			 sizeof(struct rte_eth_fdir_flex_mask));
+}
+
+void
 set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 {
 	int diag;

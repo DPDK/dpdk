@@ -723,6 +723,11 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"flush_flow_director (port_id)\n"
 			"    Flush all flow director entries of a device.\n\n"
+
+			"flow_director_flex_mask (port_id)"
+			" flow (ip4|ip4-frag|tcp4|udp4|sctp4|ip6|ip6-frag|tcp6|udp6|sctp6|all)"
+			" (mask)\n"
+			"    Configure mask of flex payload.\n\n"
 		);
 	}
 }
@@ -8312,6 +8317,94 @@ cmdline_parse_inst_t cmd_flush_flow_director = {
 	},
 };
 
+/* *** deal with flow director mask on flexible payload *** */
+struct cmd_flow_director_flex_mask_result {
+	cmdline_fixed_string_t flow_director_flexmask;
+	uint8_t port_id;
+	cmdline_fixed_string_t flow;
+	cmdline_fixed_string_t flow_type;
+	cmdline_fixed_string_t mask;
+};
+
+static void
+cmd_flow_director_flex_mask_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	struct cmd_flow_director_flex_mask_result *res = parsed_result;
+	struct rte_eth_fdir_flex_mask flex_mask;
+	struct rte_port *port;
+	enum rte_eth_flow_type i;
+	int ret;
+
+	if (res->port_id > nb_ports) {
+		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+		return;
+	}
+
+	port = &ports[res->port_id];
+	/** Check if the port is not started **/
+	if (port->port_status != RTE_PORT_STOPPED) {
+		printf("Please stop port %d first\n", res->port_id);
+		return;
+	}
+
+	memset(&flex_mask, 0, sizeof(struct rte_eth_fdir_flex_mask));
+	ret = parse_flexbytes(res->mask,
+			flex_mask.mask,
+			RTE_ETH_FDIR_MAX_FLEXLEN);
+	if (ret < 0) {
+		printf("error: Cannot parse mask input.\n");
+		return;
+	}
+	if (!strcmp(res->flow_type, "all")) {
+		for (i = RTE_ETH_FLOW_TYPE_UDPV4;
+		     i <= RTE_ETH_FLOW_TYPE_FRAG_IPV6;
+		     i++) {
+			flex_mask.flow_type = i;
+			fdir_set_flex_mask(res->port_id, &flex_mask);
+		}
+		cmd_reconfig_device_queue(res->port_id, 1, 0);
+		return;
+	}
+	flex_mask.flow_type = str2flowtype(res->flow_type);
+	fdir_set_flex_mask(res->port_id, &flex_mask);
+	cmd_reconfig_device_queue(res->port_id, 1, 0);
+}
+
+cmdline_parse_token_string_t cmd_flow_director_flexmask =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
+				 flow_director_flexmask,
+				 "flow_director_flex_mask");
+cmdline_parse_token_num_t cmd_flow_director_flexmask_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_flex_mask_result,
+			      port_id, UINT8);
+cmdline_parse_token_string_t cmd_flow_director_flexmask_flow =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
+				 flow, "flow");
+cmdline_parse_token_string_t cmd_flow_director_flexmask_flow_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
+				 flow_type,
+				"ip4#ip4-frag#tcp4#udp4#sctp4#"
+				"ip6#ip6-frag#tcp6#udp6#sctp6#all");
+cmdline_parse_token_string_t cmd_flow_director_flexmask_mask =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
+				 mask, NULL);
+
+cmdline_parse_inst_t cmd_set_flow_director_flex_mask = {
+	.f = cmd_flow_director_flex_mask_parsed,
+	.data = NULL,
+	.help_str = "set flow director's flex mask on NIC",
+	.tokens = {
+		(void *)&cmd_flow_director_flexmask,
+		(void *)&cmd_flow_director_flexmask_port_id,
+		(void *)&cmd_flow_director_flexmask_flow,
+		(void *)&cmd_flow_director_flexmask_flow_type,
+		(void *)&cmd_flow_director_flexmask_mask,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -8446,6 +8539,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_add_del_udp_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_sctp_flow_director,
 	(cmdline_parse_inst_t *)&cmd_flush_flow_director,
+	(cmdline_parse_inst_t *)&cmd_set_flow_director_flex_mask,
 	NULL,
 };
 
