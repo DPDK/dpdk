@@ -534,6 +534,8 @@ void fdir_remove_perfect_filter(portid_t port_id, uint16_t soft_id,
 void fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks);
 void fdir_set_flex_mask(portid_t port_id,
 			   struct rte_eth_fdir_flex_mask *cfg);
+void fdir_set_flex_payload(portid_t port_id,
+			   struct rte_eth_flex_payload_cfg *cfg);
 void port_rss_reta_info(portid_t port_id,
 			struct rte_eth_rss_reta_entry64 *reta_conf,
 			uint16_t nb_entries);

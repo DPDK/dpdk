@@ -2050,6 +2050,37 @@ fdir_set_flex_mask(portid_t port_id, struct rte_eth_fdir_flex_mask *cfg)
 }
 
 void
+fdir_set_flex_payload(portid_t port_id, struct rte_eth_flex_payload_cfg *cfg)
+{
+	struct rte_port *port;
+	struct rte_eth_fdir_flex_conf *flex_conf;
+	int i, idx = 0;
+
+	port = &ports[port_id];
+	flex_conf = &port->dev_conf.fdir_conf.flex_conf;
+	for (i = 0; i < RTE_ETH_PAYLOAD_MAX; i++) {
+		if (cfg->type == flex_conf->flex_set[i].type) {
+			idx = i;
+			break;
+		}
+	}
+	if (i >= RTE_ETH_PAYLOAD_MAX) {
+		if (flex_conf->nb_payloads < RTE_DIM(flex_conf->flex_set)) {
+			idx = flex_conf->nb_payloads;
+			flex_conf->nb_payloads++;
+		} else {
+			printf("The flex payload table is full. Can not set"
+				" flex payload for type(%u).", cfg->type);
+			return;
+		}
+	}
+	(void)rte_memcpy(&flex_conf->flex_set[idx],
+			 cfg,
+			 sizeof(struct rte_eth_flex_payload_cfg));
+
+}
+
+void
 set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 {
 	int diag;

@@ -728,6 +728,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" flow (ip4|ip4-frag|tcp4|udp4|sctp4|ip6|ip6-frag|tcp6|udp6|sctp6|all)"
 			" (mask)\n"
 			"    Configure mask of flex payload.\n\n"
+
+			"flow_director_flex_payload (port_id)"
+			" (l2|l3|l4) (config)\n"
+			"    Configure flex payload selection.\n\n"
 		);
 	}
 }
@@ -8405,6 +8409,121 @@ cmdline_parse_inst_t cmd_set_flow_director_flex_mask = {
 	},
 };
 
+/* *** deal with flow director flexible payload configuration *** */
+struct cmd_flow_director_flexpayload_result {
+	cmdline_fixed_string_t flow_director_flexpayload;
+	uint8_t port_id;
+	cmdline_fixed_string_t payload_layer;
+	cmdline_fixed_string_t payload_cfg;
+};
+
+static inline int
+parse_offsets(const char *q_arg, uint16_t *offsets, uint16_t max_num)
+{
+	char s[256];
+	const char *p, *p0 = q_arg;
+	char *end;
+	unsigned long int_fld;
+	char *str_fld[max_num];
+	int i;
+	unsigned size;
+	int ret = -1;
+
+	p = strchr(p0, '(');
+	if (p == NULL)
+		return -1;
+	++p;
+	p0 = strchr(p, ')');
+	if (p0 == NULL)
+		return -1;
+
+	size = p0 - p;
+	if (size >= sizeof(s))
+		return -1;
+
+	snprintf(s, sizeof(s), "%.*s", size, p);
+	ret = rte_strsplit(s, sizeof(s), str_fld, max_num, ',');
+	if (ret < 0 || ret > max_num)
+		return -1;
+	for (i = 0; i < ret; i++) {
+		errno = 0;
+		int_fld = strtoul(str_fld[i], &end, 0);
+		if (errno != 0 || *end != '\0' || int_fld > UINT16_MAX)
+			return -1;
+		offsets[i] = (uint16_t)int_fld;
+	}
+	return ret;
+}
+
+static void
+cmd_flow_director_flxpld_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	struct cmd_flow_director_flexpayload_result *res = parsed_result;
+	struct rte_eth_flex_payload_cfg flex_cfg;
+	struct rte_port *port;
+	int ret = 0;
+
+	if (res->port_id > nb_ports) {
+		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+		return;
+	}
+
+	port = &ports[res->port_id];
+	/** Check if the port is not started **/
+	if (port->port_status != RTE_PORT_STOPPED) {
+		printf("Please stop port %d first\n", res->port_id);
+		return;
+	}
+
+	memset(&flex_cfg, 0, sizeof(struct rte_eth_flex_payload_cfg));
+
+	if (!strcmp(res->payload_layer, "l2"))
+		flex_cfg.type = RTE_ETH_L2_PAYLOAD;
+	else if (!strcmp(res->payload_layer, "l3"))
+		flex_cfg.type = RTE_ETH_L3_PAYLOAD;
+	else if (!strcmp(res->payload_layer, "l4"))
+		flex_cfg.type = RTE_ETH_L4_PAYLOAD;
+
+	ret = parse_offsets(res->payload_cfg, flex_cfg.src_offset,
+			    RTE_ETH_FDIR_MAX_FLEXLEN);
+	if (ret < 0) {
+		printf("error: Cannot parse flex payload input.\n");
+		return;
+	}
+
+	fdir_set_flex_payload(res->port_id, &flex_cfg);
+	cmd_reconfig_device_queue(res->port_id, 1, 0);
+}
+
+cmdline_parse_token_string_t cmd_flow_director_flexpayload =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flexpayload_result,
+				 flow_director_flexpayload,
+				 "flow_director_flex_payload");
+cmdline_parse_token_num_t cmd_flow_director_flexpayload_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_flexpayload_result,
+			      port_id, UINT8);
+cmdline_parse_token_string_t cmd_flow_director_flexpayload_payload_layer =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flexpayload_result,
+				 payload_layer, "l2#l3#l4");
+cmdline_parse_token_string_t cmd_flow_director_flexpayload_payload_cfg =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flexpayload_result,
+				 payload_cfg, NULL);
+
+cmdline_parse_inst_t cmd_set_flow_director_flex_payload = {
+	.f = cmd_flow_director_flxpld_parsed,
+	.data = NULL,
+	.help_str = "set flow director's flex payload on NIC",
+	.tokens = {
+		(void *)&cmd_flow_director_flexpayload,
+		(void *)&cmd_flow_director_flexpayload_port_id,
+		(void *)&cmd_flow_director_flexpayload_payload_layer,
+		(void *)&cmd_flow_director_flexpayload_payload_cfg,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -8540,6 +8659,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_add_del_sctp_flow_director,
 	(cmdline_parse_inst_t *)&cmd_flush_flow_director,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_flex_mask,
+	(cmdline_parse_inst_t *)&cmd_set_flow_director_flex_payload,
 	NULL,
 };
 
