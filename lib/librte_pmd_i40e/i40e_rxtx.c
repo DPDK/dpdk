@@ -105,6 +105,10 @@ i40e_rxd_status_to_pkt_flags(uint64_t qword)
 					I40E_RX_DESC_FLTSTAT_RSS_HASH) ==
 			I40E_RX_DESC_FLTSTAT_RSS_HASH) ? PKT_RX_RSS_HASH : 0;
 
+	/* Check if FDIR Match */
+	flags |= (qword & (1 << I40E_RX_DESC_STATUS_FLM_SHIFT) ?
+							PKT_RX_FDIR : 0);
+
 	return flags;
 }
 
@@ -410,6 +414,48 @@ i40e_rxd_ptype_to_pkt_flags(uint64_t qword)
 	return ip_ptype_map[ptype];
 }
 
+#define I40E_RX_DESC_EXT_STATUS_FLEXBH_MASK   0x03
+#define I40E_RX_DESC_EXT_STATUS_FLEXBH_FD_ID  0x01
+#define I40E_RX_DESC_EXT_STATUS_FLEXBH_FLEX   0x02
+#define I40E_RX_DESC_EXT_STATUS_FLEXBL_MASK   0x03
+#define I40E_RX_DESC_EXT_STATUS_FLEXBL_FLEX   0x01
+
+static inline uint64_t
+i40e_rxd_build_fdir(volatile union i40e_rx_desc *rxdp, struct rte_mbuf *mb)
+{
+	uint64_t flags = 0;
+	uint16_t flexbh, flexbl;
+
+#ifdef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+	mb->hash.fdir.hi =
+		rte_le_to_cpu_32(rxdp->wb.qword0.hi_dword.fd);
+	flags |= PKT_RX_FDIR_ID;
+#else
+	flexbh = (rte_le_to_cpu_32(rxdp->wb.qword2.ext_status) >>
+		I40E_RX_DESC_EXT_STATUS_FLEXBH_SHIFT) &
+		I40E_RX_DESC_EXT_STATUS_FLEXBH_MASK;
+	flexbl = (rte_le_to_cpu_32(rxdp->wb.qword2.ext_status) >>
+		I40E_RX_DESC_EXT_STATUS_FLEXBL_SHIFT) &
+		I40E_RX_DESC_EXT_STATUS_FLEXBL_MASK;
+
+
+	if (flexbh == I40E_RX_DESC_EXT_STATUS_FLEXBH_FD_ID) {
+		mb->hash.fdir.hi =
+			rte_le_to_cpu_32(rxdp->wb.qword3.hi_dword.fd_id);
+		flags |= PKT_RX_FDIR_ID;
+	} else if (flexbh == I40E_RX_DESC_EXT_STATUS_FLEXBH_FLEX) {
+		mb->hash.fdir.hi =
+			rte_le_to_cpu_32(rxdp->wb.qword3.hi_dword.flex_bytes_hi);
+		flags |= PKT_RX_FDIR_FLX;
+	}
+	if (flexbl == I40E_RX_DESC_EXT_STATUS_FLEXBL_FLEX) {
+		mb->hash.fdir.lo =
+			rte_le_to_cpu_32(rxdp->wb.qword3.lo_dword.flex_bytes_lo);
+		flags |= PKT_RX_FDIR_FLX;
+	}
+#endif
+	return flags;
+}
 static inline void
 i40e_txd_enable_checksum(uint64_t ol_flags,
 			uint32_t *td_cmd,
@@ -661,14 +707,17 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 			pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
 			pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
 			pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
-			mb->ol_flags = pkt_flags;
 
 			mb->packet_type = (uint16_t)((qword1 &
 					I40E_RXD_QW1_PTYPE_MASK) >>
 					I40E_RXD_QW1_PTYPE_SHIFT);
 			if (pkt_flags & PKT_RX_RSS_HASH)
 				mb->hash.rss = rte_le_to_cpu_32(\
-					rxdp->wb.qword0.hi_dword.rss);
+					rxdp[j].wb.qword0.hi_dword.rss);
+			if (pkt_flags & PKT_RX_FDIR)
+				pkt_flags |= i40e_rxd_build_fdir(&rxdp[j], mb);
+
+			mb->ol_flags = pkt_flags;
 		}
 
 		for (j = 0; j < I40E_LOOK_AHEAD; j++)
@@ -903,10 +952,13 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
 		rxm->packet_type = (uint16_t)((qword1 & I40E_RXD_QW1_PTYPE_MASK) >>
 				I40E_RXD_QW1_PTYPE_SHIFT);
-		rxm->ol_flags = pkt_flags;
 		if (pkt_flags & PKT_RX_RSS_HASH)
 			rxm->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
+		if (pkt_flags & PKT_RX_FDIR)
+			pkt_flags |= i40e_rxd_build_fdir(&rxd, rxm);
+
+		rxm->ol_flags = pkt_flags;
 
 		rx_pkts[nb_rx++] = rxm;
 	}
@@ -1060,10 +1112,13 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		first_seg->packet_type = (uint16_t)((qword1 &
 					I40E_RXD_QW1_PTYPE_MASK) >>
 					I40E_RXD_QW1_PTYPE_SHIFT);
-		first_seg->ol_flags = pkt_flags;
 		if (pkt_flags & PKT_RX_RSS_HASH)
 			rxm->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
+		if (pkt_flags & PKT_RX_FDIR)
+			pkt_flags |= i40e_rxd_build_fdir(&rxd, rxm);
+
+		first_seg->ol_flags = pkt_flags;
 
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr,
