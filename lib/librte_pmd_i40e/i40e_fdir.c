@@ -265,6 +265,47 @@ i40e_fdir_empty(struct i40e_hw *hw)
 }
 
 /*
+ * Initialize the configuration about bytes stream extracted as flexible payload
+ * and mask setting
+ */
+static inline void
+i40e_init_flx_pld(struct i40e_pf *pf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint8_t pctype;
+	int i, index;
+
+	/*
+	 * Define the bytes stream extracted as flexible payload in
+	 * field vector. By default, select 8 words from the beginning
+	 * of payload as flexible payload.
+	 */
+	for (i = I40E_FLXPLD_L2_IDX; i < I40E_MAX_FLXPLD_LAYER; i++) {
+		index = i * I40E_MAX_FLXPLD_FIED;
+		pf->fdir.flex_set[index].src_offset = 0;
+		pf->fdir.flex_set[index].size = I40E_FDIR_MAX_FLEXWORD_NUM;
+		pf->fdir.flex_set[index].dst_offset = 0;
+		I40E_WRITE_REG(hw, I40E_PRTQF_FLX_PIT(index), 0x0000C900);
+		I40E_WRITE_REG(hw,
+			I40E_PRTQF_FLX_PIT(index + 1), 0x0000FC29);/*non-used*/
+		I40E_WRITE_REG(hw,
+			I40E_PRTQF_FLX_PIT(index + 2), 0x0000FC2A);/*non-used*/
+	}
+
+	/* initialize the masks */
+	for (pctype = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
+	     pctype <= I40E_FILTER_PCTYPE_FRAG_IPV6; pctype++) {
+		pf->fdir.flex_mask[pctype].word_mask = 0;
+		I40E_WRITE_REG(hw, I40E_PRTQF_FD_FLXINSET(pctype), 0);
+		for (i = 0; i < I40E_FDIR_BITMASK_NUM_WORD; i++) {
+			pf->fdir.flex_mask[pctype].bitmask[i].offset = 0;
+			pf->fdir.flex_mask[pctype].bitmask[i].mask = 0;
+			I40E_WRITE_REG(hw, I40E_PRTQF_FD_MSK(pctype, i), 0);
+		}
+	}
+}
+
+/*
  * Configure flow director related setting
  */
 int
@@ -294,6 +335,8 @@ i40e_fdir_configure(struct rte_eth_dev *dev)
 		/* enable FDIR filter */
 		val |= I40E_PFQF_CTL_0_FD_ENA_MASK;
 		I40E_WRITE_REG(hw, I40E_PFQF_CTL_0, val);
+
+		i40e_init_flx_pld(pf); /* set flex config to default value */
 	} else {
 		/* disable FDIR filter */
 		val &= ~I40E_PFQF_CTL_0_FD_ENA_MASK;

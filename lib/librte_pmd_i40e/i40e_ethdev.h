@@ -80,6 +80,17 @@
 #define I40E_48_BIT_WIDTH (CHAR_BIT * 6)
 #define I40E_48_BIT_MASK  RTE_LEN2MASK(I40E_48_BIT_WIDTH, uint64_t)
 
+/* index flex payload per layer */
+enum i40e_flxpld_layer_idx {
+	I40E_FLXPLD_L2_IDX    = 0,
+	I40E_FLXPLD_L3_IDX    = 1,
+	I40E_FLXPLD_L4_IDX    = 2,
+	I40E_MAX_FLXPLD_LAYER = 3,
+};
+#define I40E_MAX_FLXPLD_FIED        3  /* max number of flex payload fields */
+#define I40E_FDIR_BITMASK_NUM_WORD  2  /* max number of bitmask words */
+#define I40E_FDIR_MAX_FLEXWORD_NUM  8  /* max number of flexpayload words */
+
 /* i40e flags */
 #define I40E_FLAG_RSS                   (1ULL << 0)
 #define I40E_FLAG_DCB                   (1ULL << 1)
@@ -267,6 +278,24 @@ struct i40e_vmdq_info {
 };
 
 /*
+ * Structure to store flex pit for flow diretor.
+ */
+struct i40e_fdir_flex_pit {
+	uint8_t src_offset;    /* offset in words from the beginning of payload */
+	uint8_t size;          /* size in words */
+	uint8_t dst_offset;    /* offset in words of flexible payload */
+};
+
+struct i40e_fdir_flex_mask {
+	uint8_t word_mask;  /**< Bit i enables word i of flexible payload */
+	struct {
+		uint8_t offset;
+		uint16_t mask;
+	} bitmask[I40E_FDIR_BITMASK_NUM_WORD];
+};
+
+#define I40E_FILTER_PCTYPE_MAX 64
+/*
  *  A structure used to define fields of a FDIR related info.
  */
 struct i40e_fdir_info {
@@ -276,6 +305,12 @@ struct i40e_fdir_info {
 	struct i40e_rx_queue *rxq;
 	void *prg_pkt;                 /* memory for fdir program packet */
 	uint64_t dma_addr;             /* physic address of packet memory*/
+	/*
+	 * the rule how bytes stream is extracted as flexible payload
+	 * for each payload layer, the setting can up to three elements
+	 */
+	struct i40e_fdir_flex_pit flex_set[I40E_MAX_FLXPLD_LAYER * I40E_MAX_FLXPLD_FIED];
+	struct i40e_fdir_flex_mask flex_mask[I40E_FILTER_PCTYPE_MAX];
 };
 
 /*

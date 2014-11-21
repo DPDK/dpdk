@@ -316,6 +316,35 @@ static struct rte_driver rte_i40e_driver = {
 
 PMD_REGISTER_DRIVER(rte_i40e_driver);
 
+/*
+ * Initialize registers for flexible payload, which should be set by NVM.
+ * This should be removed from code once it is fixed in NVM.
+ */
+#ifndef I40E_GLQF_ORT
+#define I40E_GLQF_ORT(_i)    (0x00268900 + ((_i) * 4))
+#endif
+#ifndef I40E_GLQF_PIT
+#define I40E_GLQF_PIT(_i)    (0x00268C80 + ((_i) * 4))
+#endif
+
+static inline void i40e_flex_payload_reg_init(struct i40e_hw *hw)
+{
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(18), 0x00000030);
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(19), 0x00000030);
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(26), 0x0000002B);
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(30), 0x0000002B);
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(33), 0x000000E0);
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(34), 0x000000E3);
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(35), 0x000000E6);
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(20), 0x00000031);
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(23), 0x00000031);
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(63), 0x0000002D);
+
+	/* GLQF_PIT Registers */
+	I40E_WRITE_REG(hw, I40E_GLQF_PIT(16), 0x00007480);
+	I40E_WRITE_REG(hw, I40E_GLQF_PIT(17), 0x00007440);
+}
+
 static int
 eth_i40e_dev_init(__rte_unused struct eth_driver *eth_drv,
                   struct rte_eth_dev *dev)
@@ -378,6 +407,13 @@ eth_i40e_dev_init(__rte_unused struct eth_driver *eth_drv,
 		PMD_INIT_LOG(ERR, "Failed to init shared code (base driver): %d", ret);
 		return ret;
 	}
+
+	/*
+	 * To work around the NVM issue,initialize registers
+	 * for flexible payload by software.
+	 * It should be removed once issues are fixed in NVM.
+	 */
+	i40e_flex_payload_reg_init(hw);
 
 	/* Initialize the parameters for adminq */
 	i40e_init_adminq_parameter(hw);
