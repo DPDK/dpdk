@@ -1343,6 +1343,9 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			    I40E_GLPRT_PTC9522L(hw->port),
 			    pf->offset_loaded, &os->tx_size_big,
 			    &ns->tx_size_big);
+	i40e_stat_update_32(hw, I40E_GLQF_PCNT(pf->fdir.match_counter_index),
+			   pf->offset_loaded,
+			   &os->fd_sb_match, &ns->fd_sb_match);
 	/* GLPRT_MSPDC not supported */
 	/* GLPRT_XEC not supported */
 
@@ -1359,6 +1362,7 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->obytes   = ns->eth.tx_bytes;
 	stats->oerrors  = ns->eth.tx_errors;
 	stats->imcasts  = ns->eth.rx_multicast;
+	stats->fdirmatch = ns->fd_sb_match;
 
 	/* Rx Errors */
 	stats->ibadcrc  = ns->crc_errors;
@@ -1434,6 +1438,7 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			ns->mac_short_packet_dropped);
 	PMD_DRV_LOG(DEBUG, "checksum_error:           %lu",
 		    ns->checksum_error);
+	PMD_DRV_LOG(DEBUG, "fdir_match:               %lu", ns->fd_sb_match);
 	PMD_DRV_LOG(DEBUG, "***************** PF stats end ********************");
 }
 
