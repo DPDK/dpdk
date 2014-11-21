@@ -122,6 +122,8 @@ static int i40e_fdir_filter_programming(struct i40e_pf *pf,
 static int i40e_fdir_flush(struct rte_eth_dev *dev);
 static void i40e_fdir_info_get(struct rte_eth_dev *dev,
 			   struct rte_eth_fdir_info *fdir);
+static void i40e_fdir_stats_get(struct rte_eth_dev *dev,
+			   struct rte_eth_fdir_stats *stat);
 
 static int
 i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
@@ -1004,6 +1006,28 @@ i40e_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir)
 }
 
 /*
+ * i40e_fdir_stat_get - get statistics of Flow Director
+ * @pf: ethernet device to get info from
+ * @stat: a pointer to a structure of type *rte_eth_fdir_stats* to be filled with
+ *    the flow director statistics.
+ */
+static void
+i40e_fdir_stats_get(struct rte_eth_dev *dev, struct rte_eth_fdir_stats *stat)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint32_t fdstat;
+
+	fdstat = I40E_READ_REG(hw, I40E_PFQF_FDSTAT);
+	stat->guarant_cnt =
+		(uint32_t)((fdstat & I40E_PFQF_FDSTAT_GUARANT_CNT_MASK) >>
+			    I40E_PFQF_FDSTAT_GUARANT_CNT_SHIFT);
+	stat->best_cnt =
+		(uint32_t)((fdstat & I40E_PFQF_FDSTAT_BEST_CNT_MASK) >>
+			    I40E_PFQF_FDSTAT_BEST_CNT_SHIFT);
+}
+
+/*
  * i40e_fdir_ctrl_func - deal with all operations on flow director.
  * @pf: board private structure
  * @filter_op:operation will be taken.
@@ -1042,6 +1066,9 @@ i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 		break;
 	case RTE_ETH_FILTER_INFO:
 		i40e_fdir_info_get(dev, (struct rte_eth_fdir_info *)arg);
+		break;
+	case RTE_ETH_FILTER_STATS:
+		i40e_fdir_stats_get(dev, (struct rte_eth_fdir_stats *)arg);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "unknown operation %u.", filter_op);
