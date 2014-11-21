@@ -53,6 +53,7 @@ enum rte_filter_type {
 	RTE_ETH_FILTER_NONE = 0,
 	RTE_ETH_FILTER_MACVLAN,
 	RTE_ETH_FILTER_TUNNEL,
+	RTE_ETH_FILTER_FDIR,
 	RTE_ETH_FILTER_MAX
 };
 
@@ -153,6 +154,172 @@ struct rte_eth_tunnel_filter_conf {
 	enum rte_eth_tunnel_type tunnel_type; /**< Tunnel Type. */
 	uint32_t tenant_id;     /** < Tenant number. */
 	uint16_t queue_id;      /** < queue number. */
+};
+
+#define RTE_ETH_FDIR_MAX_FLEXLEN         16 /** < Max length of flexbytes. */
+
+/**
+ * Flow type
+ */
+enum rte_eth_flow_type {
+	RTE_ETH_FLOW_TYPE_NONE = 0,
+	RTE_ETH_FLOW_TYPE_UDPV4,
+	RTE_ETH_FLOW_TYPE_TCPV4,
+	RTE_ETH_FLOW_TYPE_SCTPV4,
+	RTE_ETH_FLOW_TYPE_IPV4_OTHER,
+	RTE_ETH_FLOW_TYPE_FRAG_IPV4,
+	RTE_ETH_FLOW_TYPE_UDPV6,
+	RTE_ETH_FLOW_TYPE_TCPV6,
+	RTE_ETH_FLOW_TYPE_SCTPV6,
+	RTE_ETH_FLOW_TYPE_IPV6_OTHER,
+	RTE_ETH_FLOW_TYPE_FRAG_IPV6,
+	RTE_ETH_FLOW_TYPE_MAX = 64,
+};
+
+/**
+ * A structure used to define the input for IPV4 flow
+ */
+struct rte_eth_ipv4_flow {
+	uint32_t src_ip;      /**< IPv4 source address to match. */
+	uint32_t dst_ip;      /**< IPv4 destination address to match. */
+};
+
+/**
+ * A structure used to define the input for IPV4 UDP flow
+ */
+struct rte_eth_udpv4_flow {
+	struct rte_eth_ipv4_flow ip; /**< IPv4 fields to match. */
+	uint16_t src_port;           /**< UDP source port to match. */
+	uint16_t dst_port;           /**< UDP destination port to match. */
+};
+
+/**
+ * A structure used to define the input for IPV4 TCP flow
+ */
+struct rte_eth_tcpv4_flow {
+	struct rte_eth_ipv4_flow ip; /**< IPv4 fields to match. */
+	uint16_t src_port;           /**< TCP source port to match. */
+	uint16_t dst_port;           /**< TCP destination port to match. */
+};
+
+/**
+ * A structure used to define the input for IPV4 SCTP flow
+ */
+struct rte_eth_sctpv4_flow {
+	struct rte_eth_ipv4_flow ip; /**< IPv4 fields to match. */
+	uint32_t verify_tag;         /**< Verify tag to match */
+};
+
+/**
+ * A structure used to define the input for IPV6 flow
+ */
+struct rte_eth_ipv6_flow {
+	uint32_t src_ip[4];      /**< IPv6 source address to match. */
+	uint32_t dst_ip[4];      /**< IPv6 destination address to match. */
+};
+
+/**
+ * A structure used to define the input for IPV6 UDP flow
+ */
+struct rte_eth_udpv6_flow {
+	struct rte_eth_ipv6_flow ip; /**< IPv6 fields to match. */
+	uint16_t src_port;           /**< UDP source port to match. */
+	uint16_t dst_port;           /**< UDP destination port to match. */
+};
+
+/**
+ * A structure used to define the input for IPV6 TCP flow
+ */
+struct rte_eth_tcpv6_flow {
+	struct rte_eth_ipv6_flow ip; /**< IPv6 fields to match. */
+	uint16_t src_port;           /**< TCP source port to match. */
+	uint16_t dst_port;           /**< TCP destination port to match. */
+};
+
+/**
+ * A structure used to define the input for IPV6 SCTP flow
+ */
+struct rte_eth_sctpv6_flow {
+	struct rte_eth_ipv6_flow ip; /**< IPv6 fields to match. */
+	uint32_t verify_tag;         /**< Verify tag to match */
+};
+
+/**
+ * An union contains the inputs for all types of flow
+ */
+union rte_eth_fdir_flow {
+	struct rte_eth_udpv4_flow  udp4_flow;
+	struct rte_eth_tcpv4_flow  tcp4_flow;
+	struct rte_eth_sctpv4_flow sctp4_flow;
+	struct rte_eth_ipv4_flow   ip4_flow;
+	struct rte_eth_udpv6_flow  udp6_flow;
+	struct rte_eth_tcpv6_flow  tcp6_flow;
+	struct rte_eth_sctpv6_flow sctp6_flow;
+	struct rte_eth_ipv6_flow   ip6_flow;
+};
+
+/**
+ * A structure used to contain extend input of flow
+ */
+struct rte_eth_fdir_flow_ext {
+	uint16_t vlan_tci;
+	uint8_t flexbytes[RTE_ETH_FDIR_MAX_FLEXLEN];
+	/**< It is filled by the flexible payload to match. */
+};
+
+/**
+ * A structure used to define the input for a flow director filter entry
+ */
+struct rte_eth_fdir_input {
+	enum rte_eth_flow_type flow_type;      /**< Type of flow */
+	union rte_eth_fdir_flow flow;
+	/**< Flow fields to match, dependent on flow_type */
+	struct rte_eth_fdir_flow_ext flow_ext;
+	/**< Additional fields to match */
+};
+
+/**
+ * Behavior will be taken if FDIR match
+ */
+enum rte_eth_fdir_behavior {
+	RTE_ETH_FDIR_ACCEPT = 0,
+	RTE_ETH_FDIR_REJECT,
+};
+
+/**
+ * Flow director report status
+ * It defines what will be reported if FDIR entry is matched.
+ */
+enum rte_eth_fdir_status {
+	RTE_ETH_FDIR_NO_REPORT_STATUS = 0, /**< Report nothing. */
+	RTE_ETH_FDIR_REPORT_ID,            /**< Only report FD ID. */
+	RTE_ETH_FDIR_REPORT_ID_FLEX_4,     /**< Report FD ID and 4 flex bytes. */
+	RTE_ETH_FDIR_REPORT_FLEX_8,        /**< Report 8 flex bytes. */
+};
+
+/**
+ * A structure used to define an action when match FDIR packet filter.
+ */
+struct rte_eth_fdir_action {
+	uint16_t rx_queue;        /**< Queue assigned to if FDIR match. */
+	enum rte_eth_fdir_behavior behavior;     /**< Behavior will be taken */
+	enum rte_eth_fdir_status report_status;  /**< Status report option */
+	uint8_t flex_off;
+	/**< If report_status is RTE_ETH_FDIR_REPORT_ID_FLEX_4 or
+	     RTE_ETH_FDIR_REPORT_FLEX_8, flex_off specifies where the reported
+	     flex bytes start from in flexible payload. */
+};
+
+/**
+ * A structure used to define the flow director filter entry by filter_ctrl API
+ * It supports RTE_ETH_FILTER_FDIR with RTE_ETH_FILTER_ADD and
+ * RTE_ETH_FILTER_DELETE operations.
+ */
+struct rte_eth_fdir_filter {
+	uint32_t soft_id;
+	/**< ID, an unique value is required when deal with FDIR entry */
+	struct rte_eth_fdir_input input;    /**< Input set */
+	struct rte_eth_fdir_action action;  /**< Action taken when match */
 };
 
 #ifdef __cplusplus
