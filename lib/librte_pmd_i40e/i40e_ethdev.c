@@ -794,6 +794,18 @@ i40e_dev_start(struct rte_eth_dev *dev)
 		i40e_vsi_enable_queues_intr(pf->vmdq[i].vsi);
 	}
 
+	ret = i40e_fdir_configure(dev);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "failed to configure fdir.");
+		goto err_up;
+	}
+
+	/* enable FDIR MSIX interrupt */
+	if (pf->flags & I40E_FLAG_FDIR) {
+		i40e_vsi_queues_bind_intr(pf->fdir.fdir_vsi);
+		i40e_vsi_enable_queues_intr(pf->fdir.fdir_vsi);
+	}
+
 	/* Enable all queues which have been configured */
 	ret = i40e_dev_switch_queues(pf, TRUE);
 	if (ret != I40E_SUCCESS) {
@@ -2822,16 +2834,30 @@ i40e_vsi_setup(struct i40e_pf *pf,
 	case I40E_VSI_VMDQ2:
 		vsi->nb_qps = pf->vmdq_nb_qps;
 		break;
+	case I40E_VSI_FDIR:
+		vsi->nb_qps = pf->fdir_nb_qps;
+		break;
 	default:
 		goto fail_mem;
 	}
-	ret = i40e_res_pool_alloc(&pf->qp_pool, vsi->nb_qps);
-	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "VSI %d allocate queue failed %d",
-				vsi->seid, ret);
-		goto fail_mem;
-	}
-	vsi->base_queue = ret;
+	/*
+	 * The filter status descriptor is reported in rx queue 0,
+	 * while the tx queue for fdir filter programming has no
+	 * such constraints, can be non-zero queues.
+	 * To simplify it, choose FDIR vsi use queue 0 pair.
+	 * To make sure it will use queue 0 pair, queue allocation
+	 * need be done before this function is called
+	 */
+	if (type != I40E_VSI_FDIR) {
+		ret = i40e_res_pool_alloc(&pf->qp_pool, vsi->nb_qps);
+			if (ret < 0) {
+				PMD_DRV_LOG(ERR, "VSI %d allocate queue failed %d",
+						vsi->seid, ret);
+				goto fail_mem;
+			}
+			vsi->base_queue = ret;
+	} else
+		vsi->base_queue = I40E_FDIR_QUEUE_ID;
 
 	/* VF has MSIX interrupt in VF range, don't allocate here */
 	if (type != I40E_VSI_SRIOV) {
@@ -2995,6 +3021,23 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		if (ret != I40E_SUCCESS) {
 			PMD_DRV_LOG(ERR, "Failed to configure "
 					"TC queue mapping");
+			goto fail_msix_alloc;
+		}
+		ctxt.info.up_enable_bits = I40E_DEFAULT_TCMAP;
+		ctxt.info.valid_sections |=
+			rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SCHED_VALID);
+	} else if (type == I40E_VSI_FDIR) {
+		vsi->uplink_seid = uplink_vsi->uplink_seid;
+		ctxt.pf_num = hw->pf_id;
+		ctxt.vf_num = 0;
+		ctxt.uplink_seid = vsi->uplink_seid;
+		ctxt.connection_type = 0x1;     /* regular data port */
+		ctxt.flags = I40E_AQ_VSI_TYPE_PF;
+		ret = i40e_vsi_config_tc_queue_mapping(vsi, &ctxt.info,
+						I40E_DEFAULT_TCMAP);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(ERR, "Failed to configure "
+					"TC queue mapping.");
 			goto fail_msix_alloc;
 		}
 		ctxt.info.up_enable_bits = I40E_DEFAULT_TCMAP;
@@ -3188,14 +3231,31 @@ i40e_pf_setup(struct i40e_pf *pf)
 		PMD_DRV_LOG(ERR, "Could not get switch config, err %d", ret);
 		return ret;
 	}
-
-	/* VSI setup */
+	if (pf->flags & I40E_FLAG_FDIR) {
+		/* make queue allocated first, let FDIR use queue pair 0*/
+		ret = i40e_res_pool_alloc(&pf->qp_pool, I40E_DEFAULT_QP_NUM_FDIR);
+		if (ret != I40E_FDIR_QUEUE_ID) {
+			PMD_DRV_LOG(ERR, "queue allocation fails for FDIR :"
+				    " ret =%d", ret);
+			pf->flags &= ~I40E_FLAG_FDIR;
+		}
+	}
+	/*  main VSI setup */
 	vsi = i40e_vsi_setup(pf, I40E_VSI_MAIN, NULL, 0);
 	if (!vsi) {
 		PMD_DRV_LOG(ERR, "Setup of main vsi failed");
 		return I40E_ERR_NOT_READY;
 	}
 	pf->main_vsi = vsi;
+
+	/* setup FDIR after main vsi created.*/
+	if (pf->flags & I40E_FLAG_FDIR) {
+		ret = i40e_fdir_setup(pf);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(ERR, "Failed to setup flow director.");
+			pf->flags &= ~I40E_FLAG_FDIR;
+		}
+	}
 
 	/* Configure filter control */
 	memset(&settings, 0, sizeof(settings));

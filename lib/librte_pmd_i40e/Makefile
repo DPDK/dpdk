@@ -91,6 +91,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_ethdev_vf.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_pf.c
+SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_fdir.c
+
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_eal lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_mempool lib/librte_mbuf

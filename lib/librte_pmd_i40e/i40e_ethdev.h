@@ -47,11 +47,12 @@
 #define I40E_QUEUE_BASE_ADDR_UNIT 128
 /* number of VSIs and queue default setting */
 #define I40E_MAX_QP_NUM_PER_VF    16
-#define I40E_DEFAULT_QP_NUM_FDIR  64
+#define I40E_DEFAULT_QP_NUM_FDIR  1
 #define I40E_UINT32_BIT_SIZE      (CHAR_BIT * sizeof(uint32_t))
 #define I40E_VFTA_SIZE            (4096 / I40E_UINT32_BIT_SIZE)
 /* Default TC traffic in case DCB is not enabled */
 #define I40E_DEFAULT_TCMAP        0x1
+#define I40E_FDIR_QUEUE_ID        0
 
 /* Always assign pool 0 to main VSI, VMDQ will start from 1 */
 #define I40E_VMDQ_POOL_BASE       1
@@ -266,6 +267,18 @@ struct i40e_vmdq_info {
 };
 
 /*
+ *  A structure used to define fields of a FDIR related info.
+ */
+struct i40e_fdir_info {
+	struct i40e_vsi *fdir_vsi;     /* pointer to fdir VSI structure */
+	uint16_t match_counter_index;  /* Statistic counter index used for fdir*/
+	struct i40e_tx_queue *txq;
+	struct i40e_rx_queue *rxq;
+	void *prg_pkt;                 /* memory for fdir program packet */
+	uint64_t dma_addr;             /* physic address of packet memory*/
+};
+
+/*
  * Structure to store private data specific for PF instance.
  */
 struct i40e_pf {
@@ -302,6 +315,8 @@ struct i40e_pf {
 	uint16_t max_nb_vmdq_vsi; /* Max number of VMDQ VSIs supported */
 	uint16_t nb_cfg_vmdq_vsi; /* number of VMDQ VSIs configured */
 	struct i40e_vmdq_info *vmdq;
+
+	struct i40e_fdir_info fdir; /* flow director info */
 };
 
 enum pending_msg {
@@ -403,6 +418,13 @@ int i40e_vsi_vlan_pvid_set(struct i40e_vsi *vsi,
 int i40e_vsi_config_vlan_stripping(struct i40e_vsi *vsi, bool on);
 uint64_t i40e_config_hena(uint64_t flags);
 uint64_t i40e_parse_hena(uint64_t flags);
+enum i40e_status_code i40e_fdir_setup_tx_resources(struct i40e_pf *pf);
+enum i40e_status_code i40e_fdir_setup_rx_resources(struct i40e_pf *pf);
+int i40e_fdir_setup(struct i40e_pf *pf);
+const struct rte_memzone *i40e_memzone_reserve(const char *name,
+					uint32_t len,
+					int socket_id);
+int i40e_fdir_configure(struct rte_eth_dev *dev);
 
 /* I40E_DEV_PRIVATE_TO */
 #define I40E_DEV_PRIVATE_TO_PF(adapter) \

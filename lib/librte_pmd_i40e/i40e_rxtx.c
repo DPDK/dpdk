@@ -2098,6 +2098,24 @@ i40e_ring_dma_zone_reserve(struct rte_eth_dev *dev,
 #endif
 }
 
+const struct rte_memzone *
+i40e_memzone_reserve(const char *name, uint32_t len, int socket_id)
+{
+	const struct rte_memzone *mz = NULL;
+
+	mz = rte_memzone_lookup(name);
+	if (mz)
+		return mz;
+#ifdef RTE_LIBRTE_XEN_DOM0
+	mz = rte_memzone_reserve_bounded(name, len,
+		socket_id, 0, I40E_ALIGN, RTE_PGSIZE_2M);
+#else
+	mz = rte_memzone_reserve_aligned(name, len,
+				socket_id, 0, I40E_ALIGN);
+#endif
+	return mz;
+}
+
 void
 i40e_rx_queue_release_mbufs(struct i40e_rx_queue *rxq)
 {
@@ -2231,6 +2249,8 @@ i40e_tx_queue_init(struct i40e_tx_queue *txq)
 	tx_ctx.base = txq->tx_ring_phys_addr / I40E_QUEUE_BASE_ADDR_UNIT;
 	tx_ctx.qlen = txq->nb_tx_desc;
 	tx_ctx.rdylist = rte_le_to_cpu_16(vsi->info.qs_handle[0]);
+	if (vsi->type == I40E_VSI_FDIR)
+		tx_ctx.fd_ena = TRUE;
 
 	err = i40e_clear_lan_tx_queue_context(hw, pf_q);
 	if (err != I40E_SUCCESS) {
@@ -2446,4 +2466,128 @@ i40e_dev_clear_queues(struct rte_eth_dev *dev)
 		i40e_rx_queue_release_mbufs(dev->data->rx_queues[i]);
 		i40e_reset_rx_queue(dev->data->rx_queues[i]);
 	}
+}
+
+#define I40E_FDIR_NUM_TX_DESC  I40E_MIN_RING_DESC
+#define I40E_FDIR_NUM_RX_DESC  I40E_MIN_RING_DESC
+
+enum i40e_status_code
+i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
+{
+	struct i40e_tx_queue *txq;
+	const struct rte_memzone *tz = NULL;
+	uint32_t ring_size;
+	struct rte_eth_dev *dev = pf->adapter->eth_dev;
+
+	if (!pf) {
+		PMD_DRV_LOG(ERR, "PF is not available");
+		return I40E_ERR_BAD_PTR;
+	}
+
+	/* Allocate the TX queue data structure. */
+	txq = rte_zmalloc_socket("i40e fdir tx queue",
+				  sizeof(struct i40e_tx_queue),
+				  CACHE_LINE_SIZE,
+				  SOCKET_ID_ANY);
+	if (!txq) {
+		PMD_DRV_LOG(ERR, "Failed to allocate memory for "
+					"tx queue structure.");
+		return I40E_ERR_NO_MEMORY;
+	}
+
+	/* Allocate TX hardware ring descriptors. */
+	ring_size = sizeof(struct i40e_tx_desc) * I40E_FDIR_NUM_TX_DESC;
+	ring_size = RTE_ALIGN(ring_size, I40E_DMA_MEM_ALIGN);
+
+	tz = i40e_ring_dma_zone_reserve(dev,
+					"fdir_tx_ring",
+					I40E_FDIR_QUEUE_ID,
+					ring_size,
+					SOCKET_ID_ANY);
+	if (!tz) {
+		i40e_dev_tx_queue_release(txq);
+		PMD_DRV_LOG(ERR, "Failed to reserve DMA memory for TX.");
+		return I40E_ERR_NO_MEMORY;
+	}
+
+	txq->nb_tx_desc = I40E_FDIR_NUM_TX_DESC;
+	txq->queue_id = I40E_FDIR_QUEUE_ID;
+	txq->reg_idx = pf->fdir.fdir_vsi->base_queue;
+	txq->vsi = pf->fdir.fdir_vsi;
+
+#ifdef RTE_LIBRTE_XEN_DOM0
+	txq->tx_ring_phys_addr = rte_mem_phy2mch(tz->memseg_id, tz->phys_addr);
+#else
+	txq->tx_ring_phys_addr = (uint64_t)tz->phys_addr;
+#endif
+	txq->tx_ring = (struct i40e_tx_desc *)tz->addr;
+	/*
+	 * don't need to allocate software ring and reset for the fdir
+	 * program queue just set the queue has been configured.
+	 */
+	txq->q_set = TRUE;
+	pf->fdir.txq = txq;
+
+	return I40E_SUCCESS;
+}
+
+enum i40e_status_code
+i40e_fdir_setup_rx_resources(struct i40e_pf *pf)
+{
+	struct i40e_rx_queue *rxq;
+	const struct rte_memzone *rz = NULL;
+	uint32_t ring_size;
+	struct rte_eth_dev *dev = pf->adapter->eth_dev;
+
+	if (!pf) {
+		PMD_DRV_LOG(ERR, "PF is not available");
+		return I40E_ERR_BAD_PTR;
+	}
+
+	/* Allocate the RX queue data structure. */
+	rxq = rte_zmalloc_socket("i40e fdir rx queue",
+				  sizeof(struct i40e_rx_queue),
+				  CACHE_LINE_SIZE,
+				  SOCKET_ID_ANY);
+	if (!rxq) {
+		PMD_DRV_LOG(ERR, "Failed to allocate memory for "
+					"rx queue structure.");
+		return I40E_ERR_NO_MEMORY;
+	}
+
+	/* Allocate RX hardware ring descriptors. */
+	ring_size = sizeof(union i40e_rx_desc) * I40E_FDIR_NUM_RX_DESC;
+	ring_size = RTE_ALIGN(ring_size, I40E_DMA_MEM_ALIGN);
+
+	rz = i40e_ring_dma_zone_reserve(dev,
+					"fdir_rx_ring",
+					I40E_FDIR_QUEUE_ID,
+					ring_size,
+					SOCKET_ID_ANY);
+	if (!rz) {
+		i40e_dev_rx_queue_release(rxq);
+		PMD_DRV_LOG(ERR, "Failed to reserve DMA memory for RX.");
+		return I40E_ERR_NO_MEMORY;
+	}
+
+	rxq->nb_rx_desc = I40E_FDIR_NUM_RX_DESC;
+	rxq->queue_id = I40E_FDIR_QUEUE_ID;
+	rxq->reg_idx = pf->fdir.fdir_vsi->base_queue;
+	rxq->vsi = pf->fdir.fdir_vsi;
+
+#ifdef RTE_LIBRTE_XEN_DOM0
+	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr);
+#else
+	rxq->rx_ring_phys_addr = (uint64_t)rz->phys_addr;
+#endif
+	rxq->rx_ring = (union i40e_rx_desc *)rz->addr;
+
+	/*
+	 * Don't need to allocate software ring and reset for the fdir
+	 * rx queue, just set the queue has been configured.
+	 */
+	rxq->q_set = TRUE;
+	pf->fdir.rxq = rxq;
+
+	return I40E_SUCCESS;
 }
