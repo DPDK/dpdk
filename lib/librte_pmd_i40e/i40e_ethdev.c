@@ -504,6 +504,7 @@ eth_i40e_dev_init(__rte_unused struct eth_driver *eth_drv,
 err_mac_alloc:
 	i40e_vsi_release(pf->main_vsi);
 err_setup_pf_switch:
+	i40e_fdir_teardown(pf);
 err_get_mac_addr:
 err_configure_lan_hmc:
 	(void)i40e_shutdown_lan_hmc(hw);
@@ -860,11 +861,16 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 		i40e_vsi_queues_unbind_intr(pf->vmdq[i].vsi);
 	}
 
+	if (pf->flags & I40E_FLAG_FDIR) {
+		i40e_vsi_queues_bind_intr(pf->fdir.fdir_vsi);
+		i40e_vsi_enable_queues_intr(pf->fdir.fdir_vsi);
+	}
 	/* Clear all queues and release memory */
 	i40e_dev_clear_queues(dev);
 
 	/* Set link down */
 	i40e_dev_set_link_down(dev);
+
 }
 
 static void
@@ -886,6 +892,7 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	i40e_shutdown_lan_hmc(hw);
 
 	/* release all the existing VSIs and VEBs */
+	i40e_fdir_teardown(pf);
 	i40e_vsi_release(pf->main_vsi);
 
 	/* shutdown the adminq */

@@ -225,6 +225,27 @@ fail_setup_tx:
 	return err;
 }
 
+/*
+ * i40e_fdir_teardown - release the Flow Director resources
+ * @pf: board private structure
+ */
+void
+i40e_fdir_teardown(struct i40e_pf *pf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_vsi *vsi;
+
+	vsi = pf->fdir.fdir_vsi;
+	i40e_switch_tx_queue(hw, vsi->base_queue, FALSE);
+	i40e_switch_rx_queue(hw, vsi->base_queue, FALSE);
+	i40e_dev_rx_queue_release(pf->fdir.rxq);
+	pf->fdir.rxq = NULL;
+	i40e_dev_tx_queue_release(pf->fdir.txq);
+	pf->fdir.txq = NULL;
+	i40e_vsi_release(vsi);
+	pf->fdir.fdir_vsi = NULL;
+}
+
 /* check whether the flow director table in empty */
 static inline int
 i40e_fdir_empty(struct i40e_hw *hw)
