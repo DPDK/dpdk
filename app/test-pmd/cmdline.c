@@ -720,6 +720,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" flexbytes (flexbytes_value) (drop|fwd)"
 			" queue (queue_id) fd_id (fd_id_value)\n"
 			"    Add/Del a SCTP type flow director filter.\n\n"
+
+			"flush_flow_director (port_id)\n"
+			"    Flush all flow director entries of a device.\n\n"
 		);
 	}
 }
@@ -8264,6 +8267,51 @@ cmdline_parse_inst_t cmd_add_del_sctp_flow_director = {
 	},
 };
 
+struct cmd_flush_flow_director_result {
+	cmdline_fixed_string_t flush_flow_director;
+	uint8_t port_id;
+};
+
+cmdline_parse_token_string_t cmd_flush_flow_director_flush =
+	TOKEN_STRING_INITIALIZER(struct cmd_flush_flow_director_result,
+				 flush_flow_director, "flush_flow_director");
+cmdline_parse_token_num_t cmd_flush_flow_director_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_flush_flow_director_result,
+			      port_id, UINT8);
+
+static void
+cmd_flush_flow_director_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	struct cmd_flow_director_result *res = parsed_result;
+	int ret = 0;
+
+	ret = rte_eth_dev_filter_supported(res->port_id, RTE_ETH_FILTER_FDIR);
+	if (ret < 0) {
+		printf("flow director is not supported on port %u.\n",
+			res->port_id);
+		return;
+	}
+
+	ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_FDIR,
+			RTE_ETH_FILTER_FLUSH, NULL);
+	if (ret < 0)
+		printf("flow director table flushing error: (%s)\n",
+			strerror(-ret));
+}
+
+cmdline_parse_inst_t cmd_flush_flow_director = {
+	.f = cmd_flush_flow_director_parsed,
+	.data = NULL,
+	.help_str = "flush all flow director entries of a device on NIC",
+	.tokens = {
+		(void *)&cmd_flush_flow_director_flush,
+		(void *)&cmd_flush_flow_director_port_id,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -8397,6 +8445,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_add_del_ip_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_udp_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_sctp_flow_director,
+	(cmdline_parse_inst_t *)&cmd_flush_flow_director,
 	NULL,
 };
 
