@@ -722,6 +722,8 @@ struct rte_fdir_conf {
 	uint8_t flexbytes_offset;
 	/** RX queue of packets matching a "drop" filter in perfect mode. */
 	uint8_t drop_queue;
+	struct rte_eth_fdir_flex_conf flex_conf;
+	/**< Flex payload configuration. */
 };
 
 /**
