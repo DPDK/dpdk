@@ -90,6 +90,7 @@ enum i40e_flxpld_layer_idx {
 #define I40E_MAX_FLXPLD_FIED        3  /* max number of flex payload fields */
 #define I40E_FDIR_BITMASK_NUM_WORD  2  /* max number of bitmask words */
 #define I40E_FDIR_MAX_FLEXWORD_NUM  8  /* max number of flexpayload words */
+#define I40E_FDIR_MAX_FLEX_LEN      16 /* len in bytes of flex payload */
 
 /* i40e flags */
 #define I40E_FLAG_RSS                   (1ULL << 0)

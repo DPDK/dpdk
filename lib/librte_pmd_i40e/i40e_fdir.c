@@ -80,7 +80,33 @@
 #define I40E_COUNTER_PF           2
 /* Statistic counter index for one pf */
 #define I40E_COUNTER_INDEX_FDIR(pf_id)   (0 + (pf_id) * I40E_COUNTER_PF)
+#define I40E_MAX_FLX_SOURCE_OFF           480
 #define I40E_FLX_OFFSET_IN_FIELD_VECTOR   50
+
+#define NONUSE_FLX_PIT_DEST_OFF 63
+#define NONUSE_FLX_PIT_FSIZE    1
+#define MK_FLX_PIT(src_offset, fsize, dst_offset) ( \
+	(((src_offset) << I40E_PRTQF_FLX_PIT_SOURCE_OFF_SHIFT) & \
+		I40E_PRTQF_FLX_PIT_SOURCE_OFF_MASK) | \
+	(((fsize) << I40E_PRTQF_FLX_PIT_FSIZE_SHIFT) & \
+			I40E_PRTQF_FLX_PIT_FSIZE_MASK) | \
+	((((dst_offset) + I40E_FLX_OFFSET_IN_FIELD_VECTOR) << \
+			I40E_PRTQF_FLX_PIT_DEST_OFF_SHIFT) & \
+			I40E_PRTQF_FLX_PIT_DEST_OFF_MASK))
+
+#define I40E_FDIR_FLOW_TYPES ( \
+	(1 << RTE_ETH_FLOW_TYPE_UDPV4) | \
+	(1 << RTE_ETH_FLOW_TYPE_TCPV4) | \
+	(1 << RTE_ETH_FLOW_TYPE_SCTPV4) | \
+	(1 << RTE_ETH_FLOW_TYPE_IPV4_OTHER) | \
+	(1 << RTE_ETH_FLOW_TYPE_FRAG_IPV4) | \
+	(1 << RTE_ETH_FLOW_TYPE_UDPV6) | \
+	(1 << RTE_ETH_FLOW_TYPE_TCPV6) | \
+	(1 << RTE_ETH_FLOW_TYPE_SCTPV6) | \
+	(1 << RTE_ETH_FLOW_TYPE_IPV6_OTHER) | \
+	(1 << RTE_ETH_FLOW_TYPE_FRAG_IPV6))
+
+#define I40E_FLEX_WORD_MASK(off) (0x80 >> (off))
 
 static int i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq);
 static int i40e_fdir_construct_pkt(struct i40e_pf *pf,
@@ -94,6 +120,8 @@ static int i40e_fdir_filter_programming(struct i40e_pf *pf,
 			const struct rte_eth_fdir_filter *filter,
 			bool add);
 static int i40e_fdir_flush(struct rte_eth_dev *dev);
+static void i40e_fdir_info_get(struct rte_eth_dev *dev,
+			   struct rte_eth_fdir_info *fdir);
 
 static int
 i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
@@ -861,6 +889,120 @@ i40e_fdir_flush(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static inline void
+i40e_fdir_info_get_flex_set(struct i40e_pf *pf,
+			struct rte_eth_flex_payload_cfg *flex_set,
+			uint16_t *num)
+{
+	struct i40e_fdir_flex_pit *flex_pit;
+	struct rte_eth_flex_payload_cfg *ptr = flex_set;
+	uint16_t src, dst, size, j, k;
+	uint8_t i, layer_idx;
+
+	for (layer_idx = I40E_FLXPLD_L2_IDX;
+	     layer_idx <= I40E_FLXPLD_L4_IDX;
+	     layer_idx++) {
+		if (layer_idx == I40E_FLXPLD_L2_IDX)
+			ptr->type = RTE_ETH_L2_PAYLOAD;
+		else if (layer_idx == I40E_FLXPLD_L3_IDX)
+			ptr->type = RTE_ETH_L3_PAYLOAD;
+		else if (layer_idx == I40E_FLXPLD_L4_IDX)
+			ptr->type = RTE_ETH_L4_PAYLOAD;
+
+		for (i = 0; i < I40E_MAX_FLXPLD_FIED; i++) {
+			flex_pit = &pf->fdir.flex_set[layer_idx *
+				I40E_MAX_FLXPLD_FIED + i];
+			if (flex_pit->size == 0)
+				continue;
+			src = flex_pit->src_offset * sizeof(uint16_t);
+			dst = flex_pit->dst_offset * sizeof(uint16_t);
+			size = flex_pit->size * sizeof(uint16_t);
+			for (j = src, k = dst; j < src + size; j++, k++)
+				ptr->src_offset[k] = j;
+		}
+		(*num)++;
+		ptr++;
+	}
+}
+
+static inline void
+i40e_fdir_info_get_flex_mask(struct i40e_pf *pf,
+			struct rte_eth_fdir_flex_mask *flex_mask,
+			uint16_t *num)
+{
+	struct i40e_fdir_flex_mask *mask;
+	struct rte_eth_fdir_flex_mask *ptr = flex_mask;
+	enum rte_eth_flow_type flow_type;
+	uint8_t i, j;
+	uint16_t off_bytes, mask_tmp;
+
+	for (i = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
+	     i <= I40E_FILTER_PCTYPE_FRAG_IPV6;
+	     i++) {
+		mask =  &pf->fdir.flex_mask[i];
+		if (!I40E_VALID_PCTYPE((enum i40e_filter_pctype)i))
+			continue;
+		flow_type = i40e_pctype_to_flowtype((enum i40e_filter_pctype)i);
+		for (j = 0; j < I40E_FDIR_MAX_FLEXWORD_NUM; j++) {
+			if (mask->word_mask & I40E_FLEX_WORD_MASK(j)) {
+				ptr->mask[j * sizeof(uint16_t)] = UINT8_MAX;
+				ptr->mask[j * sizeof(uint16_t) + 1] = UINT8_MAX;
+			} else {
+				ptr->mask[j * sizeof(uint16_t)] = 0x0;
+				ptr->mask[j * sizeof(uint16_t) + 1] = 0x0;
+			}
+		}
+		for (j = 0; j < I40E_FDIR_BITMASK_NUM_WORD; j++) {
+			off_bytes = mask->bitmask[j].offset * sizeof(uint16_t);
+			mask_tmp = ~mask->bitmask[j].mask;
+			ptr->mask[off_bytes] &= I40E_HI_BYTE(mask_tmp);
+			ptr->mask[off_bytes + 1] &= I40E_LO_BYTE(mask_tmp);
+		}
+		ptr->flow_type = flow_type;
+		ptr++;
+		(*num)++;
+	}
+}
+
+/*
+ * i40e_fdir_info_get - get information of Flow Director
+ * @pf: ethernet device to get info from
+ * @fdir: a pointer to a structure of type *rte_eth_fdir_info* to be filled with
+ *    the flow director information.
+ */
+static void
+i40e_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint16_t num_flex_set = 0;
+	uint16_t num_flex_mask = 0;
+
+	fdir->mode = (pf->flags & I40E_FLAG_FDIR) ?
+			RTE_FDIR_MODE_PERFECT : RTE_FDIR_MODE_NONE;
+	fdir->guarant_spc =
+		(uint32_t)hw->func_caps.fd_filters_guaranteed;
+	fdir->best_spc =
+		(uint32_t)hw->func_caps.fd_filters_best_effort;
+	fdir->max_flexpayload = I40E_FDIR_MAX_FLEX_LEN;
+	fdir->flow_types_mask[0] = I40E_FDIR_FLOW_TYPES;
+	fdir->flex_payload_unit = sizeof(uint16_t);
+	fdir->flex_bitmask_unit = sizeof(uint16_t);
+	fdir->max_flex_payload_segment_num = I40E_MAX_FLXPLD_FIED;
+	fdir->flex_payload_limit = I40E_MAX_FLX_SOURCE_OFF;
+	fdir->max_flex_bitmask_num = I40E_FDIR_BITMASK_NUM_WORD;
+
+	i40e_fdir_info_get_flex_set(pf,
+				fdir->flex_conf.flex_set,
+				&num_flex_set);
+	i40e_fdir_info_get_flex_mask(pf,
+				fdir->flex_conf.flex_mask,
+				&num_flex_mask);
+
+	fdir->flex_conf.nb_payloads = num_flex_set;
+	fdir->flex_conf.nb_flexmasks = num_flex_mask;
+}
+
 /*
  * i40e_fdir_ctrl_func - deal with all operations on flow director.
  * @pf: board private structure
@@ -897,6 +1039,9 @@ i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 		break;
 	case RTE_ETH_FILTER_FLUSH:
 		ret = i40e_fdir_flush(dev);
+		break;
+	case RTE_ETH_FILTER_INFO:
+		i40e_fdir_info_get(dev, (struct rte_eth_fdir_info *)arg);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "unknown operation %u.", filter_op);
