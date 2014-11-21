@@ -70,6 +70,7 @@ enum rte_filter_op {
 	RTE_ETH_FILTER_GET,      /**< get filter entry */
 	RTE_ETH_FILTER_SET,      /**< configurations */
 	RTE_ETH_FILTER_INFO,     /**< retrieve information */
+	RTE_ETH_FILTER_STATS,    /**< retrieve statistics */
 	RTE_ETH_FILTER_OP_MAX
 };
 
@@ -408,6 +409,25 @@ struct rte_eth_fdir_info {
 	     be a multiply of this value. */
 	uint32_t max_flex_bitmask_num;
 	/**< Max supported size of flex bitmasks in flex_bitmask_unit */
+};
+
+/**
+ * A structure used to define the statistics of flow director.
+ * It supports RTE_ETH_FILTER_FDIR with RTE_ETH_FILTER_STATS operation.
+ */
+struct rte_eth_fdir_stats {
+	uint32_t collision;    /**< Number of filters with collision. */
+	uint32_t free;         /**< Number of free filters. */
+	uint32_t maxhash;
+	/**< The lookup hash value of the added filter that updated the value
+	   of the MAXLEN field */
+	uint32_t maxlen;       /**< Longest linked list of filters. */
+	uint64_t add;          /**< Number of added filters. */
+	uint64_t remove;       /**< Number of removed filters. */
+	uint64_t f_add;        /**< Number of failed added filters. */
+	uint64_t f_remove;     /**< Number of failed removed filters. */
+	uint32_t guarant_cnt;  /**< Number of filters in guaranteed spaces. */
+	uint32_t best_cnt;     /**< Number of filters in best effort spaces. */
 };
 
 #ifdef __cplusplus
