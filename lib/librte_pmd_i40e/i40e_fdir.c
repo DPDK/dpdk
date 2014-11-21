@@ -832,7 +832,7 @@ i40e_fdir_flush(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	uint32_t reg;
 	uint16_t guarant_cnt, best_cnt;
-	int i;
+	uint16_t i;
 
 	I40E_WRITE_REG(hw, I40E_PFQF_CTL_1, I40E_PFQF_CTL_1_CLEARFDTABLE_MASK);
 	I40E_WRITE_FLUSH(hw);
@@ -881,7 +881,7 @@ i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 		return ret;
 	}
 
-	if (arg == NULL)
+	if (arg == NULL && filter_op != RTE_ETH_FILTER_FLUSH)
 		return -EINVAL;
 
 	switch (filter_op) {
@@ -894,6 +894,9 @@ i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 		ret = i40e_add_del_fdir_filter(dev,
 			(struct rte_eth_fdir_filter *)arg,
 			FALSE);
+		break;
+	case RTE_ETH_FILTER_FLUSH:
+		ret = i40e_fdir_flush(dev);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "unknown operation %u.", filter_op);
