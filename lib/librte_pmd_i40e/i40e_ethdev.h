@@ -465,6 +465,9 @@ enum i40e_filter_pctype i40e_flowtype_to_pctype(
 				enum rte_eth_flow_type flow_type);
 enum rte_eth_flow_type i40e_pctype_to_flowtype(
 				enum i40e_filter_pctype pctype);
+int i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
+			  enum rte_filter_op filter_op,
+			  void *arg);
 
 /* I40E_DEV_PRIVATE_TO */
 #define I40E_DEV_PRIVATE_TO_PF(adapter) \

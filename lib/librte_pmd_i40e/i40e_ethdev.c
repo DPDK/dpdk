@@ -5127,6 +5127,9 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_TUNNEL:
 		ret = i40e_tunnel_filter_handle(dev, filter_op, arg);
 		break;
+	case RTE_ETH_FILTER_FDIR:
+		ret = i40e_fdir_ctrl_func(dev, filter_op, arg);
+		break;
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
 							filter_type);
