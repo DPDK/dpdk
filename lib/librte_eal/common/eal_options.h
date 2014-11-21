@@ -30,6 +30,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef EAL_OPTIONS_H
+#define EAL_OPTIONS_H
 
 enum {
 	/* long options mapped to a short option */
@@ -82,3 +84,5 @@ extern const struct option eal_long_options[];
 int eal_parse_common_option(int opt, const char *argv,
 			    struct internal_config *conf);
 void eal_common_usage(void);
+
+#endif /* EAL_OPTIONS_H */

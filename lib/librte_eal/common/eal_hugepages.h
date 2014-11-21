@@ -31,8 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTE_LINUXAPP_HUGEPAGES_H_
-#define RTE_LINUXAPP_HUGEPAGES_H_
+#ifndef EAL_HUGEPAGES_H
+#define EAL_HUGEPAGES_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -64,4 +64,4 @@ struct hugepage_file {
  */
 int eal_hugepage_info_init(void);
 
-#endif /* EAL_HUGEPAGES_H_ */
+#endif /* EAL_HUGEPAGES_H */

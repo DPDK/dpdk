@@ -37,8 +37,8 @@
  * on the filesystem for Linux, that are used by the Linux EAL.
  */
 
-#ifndef _EAL_LINUXAPP_FILESYSTEM_H
-#define _EAL_LINUXAPP_FILESYSTEM_H
+#ifndef EAL_FILESYSTEM_H
+#define EAL_FILESYSTEM_H
 
 /** Path of rte config file. */
 #define RUNTIME_CONFIG_FMT "%s/.%s_config"
@@ -115,4 +115,4 @@ eal_get_hugefile_temp_path(char *buffer, size_t buflen, const char *hugedir, int
  * Used to read information from files on /sys */
 int eal_parse_sysfs_value(const char *filename, unsigned long *val);
 
-#endif /* _EAL_LINUXAPP_FILESYSTEM_H */
+#endif /* EAL_FILESYSTEM_H */

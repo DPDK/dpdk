@@ -36,8 +36,8 @@
  * Holds the structures for the eal internal configuration
  */
 
-#ifndef _EAL_LINUXAPP_INTERNAL_CFG
-#define _EAL_LINUXAPP_INTERNAL_CFG
+#ifndef EAL_INTERNAL_CFG_H
+#define EAL_INTERNAL_CFG_H
 
 #include <rte_eal.h>
 #include <rte_pci_dev_feature_defs.h>
@@ -88,4 +88,4 @@ struct internal_config {
 };
 extern struct internal_config internal_config; /**< Global EAL configuration. */
 
-#endif
+#endif /* EAL_INTERNAL_CFG_H */

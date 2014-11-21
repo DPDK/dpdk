@@ -31,8 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _EAL_LINUXAPP_THREAD_H_
-#define _EAL_LINUXAPP_THREAD_H_
+#ifndef EAL_THREAD_H
+#define EAL_THREAD_H
 
 /**
  * basic loop of thread, called for each thread by eal_init().
@@ -50,4 +50,4 @@ __attribute__((noreturn)) void *eal_thread_loop(void *arg);
  */
 void eal_thread_init_master(unsigned lcore_id);
 
-#endif /* _EAL_LINUXAPP_PRIVATE_H_ */
+#endif /* EAL_THREAD_H */
