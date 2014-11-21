@@ -697,6 +697,29 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"get_flex_filter (port_id) index (idx)\n"
 			"    get info of a flex filter.\n\n"
+
+			"flow_director_filter (port_id) (add|del)"
+			" flow (ip4|ip4-frag|ip6|ip6-frag)"
+			" src (src_ip_address) dst (dst_ip_address)"
+			" flexbytes (flexbytes_value)"
+			" (drop|fwd) queue (queue_id) fd_id (fd_id_value)\n"
+			"    Add/Del an IP type flow director filter.\n\n"
+
+			"flow_director_filter (port_id) (add|del)"
+			" flow (udp4|tcp4|udp6|tcp6)"
+			" src (src_ip_address) (src_port)"
+			" dst (dst_ip_address) (dst_port)"
+			" flexbytes (flexbytes_value)"
+			" (drop|fwd) queue (queue_id) fd_id (fd_id_value)\n"
+			"    Add/Del an UDP/TCP type flow director filter.\n\n"
+
+			"flow_director_filter (port_id) (add|del)"
+			" flow (sctp4|sctp6)"
+			" src (src_ip_address) dst (dst_ip_address)"
+			" tag (verification_tag)"
+			" flexbytes (flexbytes_value) (drop|fwd)"
+			" queue (queue_id) fd_id (fd_id_value)\n"
+			"    Add/Del a SCTP type flow director filter.\n\n"
 		);
 	}
 }
@@ -7886,6 +7909,361 @@ cmdline_parse_inst_t cmd_get_flex_filter = {
 	},
 };
 
+/* *** Filters Control *** */
+
+/* *** deal with flow director filter *** */
+struct cmd_flow_director_result {
+	cmdline_fixed_string_t flow_director_filter;
+	uint8_t port_id;
+	cmdline_fixed_string_t ops;
+	cmdline_fixed_string_t flow;
+	cmdline_fixed_string_t flow_type;
+	cmdline_fixed_string_t src;
+	cmdline_ipaddr_t ip_src;
+	uint16_t port_src;
+	cmdline_fixed_string_t dst;
+	cmdline_ipaddr_t ip_dst;
+	uint16_t port_dst;
+	cmdline_fixed_string_t verify_tag;
+	uint32_t verify_tag_value;
+	cmdline_fixed_string_t flexbytes;
+	cmdline_fixed_string_t flexbytes_value;
+	cmdline_fixed_string_t drop;
+	cmdline_fixed_string_t queue;
+	uint16_t  queue_id;
+	cmdline_fixed_string_t fd_id;
+	uint32_t  fd_id_value;
+};
+
+static inline int
+parse_flexbytes(const char *q_arg, uint8_t *flexbytes, uint16_t max_num)
+{
+	char s[256];
+	const char *p, *p0 = q_arg;
+	char *end;
+	unsigned long int_fld;
+	char *str_fld[max_num];
+	int i;
+	unsigned size;
+	int ret = -1;
+
+	p = strchr(p0, '(');
+	if (p == NULL)
+		return -1;
+	++p;
+	p0 = strchr(p, ')');
+	if (p0 == NULL)
+		return -1;
+
+	size = p0 - p;
+	if (size >= sizeof(s))
+		return -1;
+
+	snprintf(s, sizeof(s), "%.*s", size, p);
+	ret = rte_strsplit(s, sizeof(s), str_fld, max_num, ',');
+	if (ret < 0 || ret > max_num)
+		return -1;
+	for (i = 0; i < ret; i++) {
+		errno = 0;
+		int_fld = strtoul(str_fld[i], &end, 0);
+		if (errno != 0 || *end != '\0' || int_fld > UINT8_MAX)
+			return -1;
+		flexbytes[i] = (uint8_t)int_fld;
+	}
+	return ret;
+}
+
+static enum rte_eth_flow_type
+str2flowtype(char *string)
+{
+	uint8_t i = 0;
+	static const struct {
+		char str[32];
+		enum rte_eth_flow_type type;
+	} flowtype_str[] = {
+		{"ip4", RTE_ETH_FLOW_TYPE_IPV4_OTHER},
+		{"ip4-frag", RTE_ETH_FLOW_TYPE_FRAG_IPV4},
+		{"udp4", RTE_ETH_FLOW_TYPE_UDPV4},
+		{"tcp4", RTE_ETH_FLOW_TYPE_TCPV4},
+		{"sctp4", RTE_ETH_FLOW_TYPE_SCTPV4},
+		{"ip6", RTE_ETH_FLOW_TYPE_IPV6_OTHER},
+		{"ip6-frag", RTE_ETH_FLOW_TYPE_FRAG_IPV6},
+		{"udp6", RTE_ETH_FLOW_TYPE_UDPV6},
+		{"tcp6", RTE_ETH_FLOW_TYPE_TCPV6},
+		{"sctp6", RTE_ETH_FLOW_TYPE_TCPV6},
+	};
+
+	for (i = 0; i < RTE_DIM(flowtype_str); i++) {
+		if (!strcmp(flowtype_str[i].str, string))
+			return flowtype_str[i].type;
+	}
+	return RTE_ETH_FLOW_TYPE_NONE;
+}
+
+#define IPV4_ADDR_TO_UINT(ip_addr, ip) \
+do { \
+	if ((ip_addr).family == AF_INET) \
+		(ip) = (ip_addr).addr.ipv4.s_addr; \
+	else { \
+		printf("invalid parameter.\n"); \
+		return; \
+	} \
+} while (0)
+
+#define IPV6_ADDR_TO_ARRAY(ip_addr, ip) \
+do { \
+	if ((ip_addr).family == AF_INET6) \
+		(void)rte_memcpy(&(ip), \
+				 &((ip_addr).addr.ipv6), \
+				 sizeof(struct in6_addr)); \
+	else { \
+		printf("invalid parameter.\n"); \
+		return; \
+	} \
+} while (0)
+
+static void
+cmd_flow_director_filter_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	struct cmd_flow_director_result *res = parsed_result;
+	struct rte_eth_fdir_filter entry;
+	uint8_t flexbytes[RTE_ETH_FDIR_MAX_FLEXLEN];
+	int ret = 0;
+
+	ret = rte_eth_dev_filter_supported(res->port_id, RTE_ETH_FILTER_FDIR);
+	if (ret < 0) {
+		printf("flow director is not supported on port %u.\n",
+			res->port_id);
+		return;
+	}
+	memset(flexbytes, 0, sizeof(flexbytes));
+	memset(&entry, 0, sizeof(struct rte_eth_fdir_filter));
+	ret = parse_flexbytes(res->flexbytes_value,
+					flexbytes,
+					RTE_ETH_FDIR_MAX_FLEXLEN);
+	if (ret < 0) {
+		printf("error: Cannot parse flexbytes input.\n");
+		return;
+	}
+
+	entry.input.flow_type = str2flowtype(res->flow_type);
+	switch (entry.input.flow_type) {
+	case RTE_ETH_FLOW_TYPE_IPV4_OTHER:
+	case RTE_ETH_FLOW_TYPE_UDPV4:
+	case RTE_ETH_FLOW_TYPE_TCPV4:
+		IPV4_ADDR_TO_UINT(res->ip_dst,
+			entry.input.flow.ip4_flow.dst_ip);
+		IPV4_ADDR_TO_UINT(res->ip_src,
+			entry.input.flow.ip4_flow.src_ip);
+		/* need convert to big endian. */
+		entry.input.flow.udp4_flow.dst_port =
+				rte_cpu_to_be_16(res->port_dst);
+		entry.input.flow.udp4_flow.src_port =
+				rte_cpu_to_be_16(res->port_src);
+		break;
+	case RTE_ETH_FLOW_TYPE_SCTPV4:
+		IPV4_ADDR_TO_UINT(res->ip_dst,
+			entry.input.flow.sctp4_flow.ip.dst_ip);
+		IPV4_ADDR_TO_UINT(res->ip_src,
+			entry.input.flow.sctp4_flow.ip.src_ip);
+		/* need convert to big endian. */
+		entry.input.flow.sctp4_flow.verify_tag =
+				rte_cpu_to_be_32(res->verify_tag_value);
+		break;
+	case RTE_ETH_FLOW_TYPE_IPV6_OTHER:
+	case RTE_ETH_FLOW_TYPE_UDPV6:
+	case RTE_ETH_FLOW_TYPE_TCPV6:
+		IPV6_ADDR_TO_ARRAY(res->ip_dst,
+			entry.input.flow.ip6_flow.dst_ip);
+		IPV6_ADDR_TO_ARRAY(res->ip_src,
+			entry.input.flow.ip6_flow.src_ip);
+		/* need convert to big endian. */
+		entry.input.flow.udp6_flow.dst_port =
+				rte_cpu_to_be_16(res->port_dst);
+		entry.input.flow.udp6_flow.src_port =
+				rte_cpu_to_be_16(res->port_src);
+		break;
+	case RTE_ETH_FLOW_TYPE_SCTPV6:
+		IPV6_ADDR_TO_ARRAY(res->ip_dst,
+			entry.input.flow.sctp6_flow.ip.dst_ip);
+		IPV6_ADDR_TO_ARRAY(res->ip_src,
+			entry.input.flow.sctp6_flow.ip.src_ip);
+		/* need convert to big endian. */
+		entry.input.flow.sctp6_flow.verify_tag =
+				rte_cpu_to_be_32(res->verify_tag_value);
+		break;
+	default:
+		printf("invalid parameter.\n");
+		return;
+	}
+	(void)rte_memcpy(entry.input.flow_ext.flexbytes,
+		   flexbytes,
+		   RTE_ETH_FDIR_MAX_FLEXLEN);
+
+	entry.action.flex_off = 0;  /*use 0 by default */
+	if (!strcmp(res->drop, "drop"))
+		entry.action.behavior = RTE_ETH_FDIR_REJECT;
+	else
+		entry.action.behavior = RTE_ETH_FDIR_ACCEPT;
+	/* set to report FD ID by default */
+	entry.action.report_status = RTE_ETH_FDIR_REPORT_ID;
+	entry.action.rx_queue = res->queue_id;
+	entry.soft_id = res->fd_id_value;
+	if (!strcmp(res->ops, "add"))
+		ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_FDIR,
+					     RTE_ETH_FILTER_ADD, &entry);
+	else
+		ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_FDIR,
+					     RTE_ETH_FILTER_DELETE, &entry);
+	if (ret < 0)
+		printf("flow director programming error: (%s)\n",
+			strerror(-ret));
+}
+
+cmdline_parse_token_string_t cmd_flow_director_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 flow_director_filter, "flow_director_filter");
+cmdline_parse_token_num_t cmd_flow_director_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
+			      port_id, UINT8);
+cmdline_parse_token_string_t cmd_flow_director_ops =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 ops, "add#del");
+cmdline_parse_token_string_t cmd_flow_director_flow =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 flow, "flow");
+cmdline_parse_token_string_t cmd_flow_director_flow_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 flow_type,
+				 "ip4#ip4-frag#tcp4#udp4#sctp4#"
+				 "ip6#ip6-frag#tcp6#udp6#sctp6");
+cmdline_parse_token_string_t cmd_flow_director_src =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 src, "src");
+cmdline_parse_token_ipaddr_t cmd_flow_director_ip_src =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_flow_director_result,
+				 ip_src);
+cmdline_parse_token_num_t cmd_flow_director_port_src =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
+			      port_src, UINT16);
+cmdline_parse_token_string_t cmd_flow_director_dst =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 dst, "dst");
+cmdline_parse_token_ipaddr_t cmd_flow_director_ip_dst =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_flow_director_result,
+				 ip_dst);
+cmdline_parse_token_num_t cmd_flow_director_port_dst =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
+			      port_dst, UINT16);
+cmdline_parse_token_string_t cmd_flow_director_verify_tag =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				  verify_tag, "verify_tag");
+cmdline_parse_token_num_t cmd_flow_director_verify_tag_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
+			      verify_tag_value, UINT32);
+cmdline_parse_token_string_t cmd_flow_director_flexbytes =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 flexbytes, "flexbytes");
+cmdline_parse_token_string_t cmd_flow_director_flexbytes_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+			      flexbytes_value, NULL);
+cmdline_parse_token_string_t cmd_flow_director_drop =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 drop, "drop#fwd");
+cmdline_parse_token_string_t cmd_flow_director_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 queue, "queue");
+cmdline_parse_token_num_t cmd_flow_director_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
+			      queue_id, UINT16);
+cmdline_parse_token_string_t cmd_flow_director_fd_id =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 fd_id, "fd_id");
+cmdline_parse_token_num_t cmd_flow_director_fd_id_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
+			      fd_id_value, UINT32);
+
+cmdline_parse_inst_t cmd_add_del_ip_flow_director = {
+	.f = cmd_flow_director_filter_parsed,
+	.data = NULL,
+	.help_str = "add or delete an ip flow director entry on NIC",
+	.tokens = {
+		(void *)&cmd_flow_director_filter,
+		(void *)&cmd_flow_director_port_id,
+		(void *)&cmd_flow_director_ops,
+		(void *)&cmd_flow_director_flow,
+		(void *)&cmd_flow_director_flow_type,
+		(void *)&cmd_flow_director_src,
+		(void *)&cmd_flow_director_ip_src,
+		(void *)&cmd_flow_director_dst,
+		(void *)&cmd_flow_director_ip_dst,
+		(void *)&cmd_flow_director_flexbytes,
+		(void *)&cmd_flow_director_flexbytes_value,
+		(void *)&cmd_flow_director_drop,
+		(void *)&cmd_flow_director_queue,
+		(void *)&cmd_flow_director_queue_id,
+		(void *)&cmd_flow_director_fd_id,
+		(void *)&cmd_flow_director_fd_id_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_add_del_udp_flow_director = {
+	.f = cmd_flow_director_filter_parsed,
+	.data = NULL,
+	.help_str = "add or delete an udp/tcp flow director entry on NIC",
+	.tokens = {
+		(void *)&cmd_flow_director_filter,
+		(void *)&cmd_flow_director_port_id,
+		(void *)&cmd_flow_director_ops,
+		(void *)&cmd_flow_director_flow,
+		(void *)&cmd_flow_director_flow_type,
+		(void *)&cmd_flow_director_src,
+		(void *)&cmd_flow_director_ip_src,
+		(void *)&cmd_flow_director_port_src,
+		(void *)&cmd_flow_director_dst,
+		(void *)&cmd_flow_director_ip_dst,
+		(void *)&cmd_flow_director_port_dst,
+		(void *)&cmd_flow_director_flexbytes,
+		(void *)&cmd_flow_director_flexbytes_value,
+		(void *)&cmd_flow_director_drop,
+		(void *)&cmd_flow_director_queue,
+		(void *)&cmd_flow_director_queue_id,
+		(void *)&cmd_flow_director_fd_id,
+		(void *)&cmd_flow_director_fd_id_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_add_del_sctp_flow_director = {
+	.f = cmd_flow_director_filter_parsed,
+	.data = NULL,
+	.help_str = "add or delete a sctp flow director entry on NIC",
+	.tokens = {
+		(void *)&cmd_flow_director_filter,
+		(void *)&cmd_flow_director_port_id,
+		(void *)&cmd_flow_director_ops,
+		(void *)&cmd_flow_director_flow,
+		(void *)&cmd_flow_director_flow_type,
+		(void *)&cmd_flow_director_src,
+		(void *)&cmd_flow_director_ip_src,
+		(void *)&cmd_flow_director_dst,
+		(void *)&cmd_flow_director_ip_dst,
+		(void *)&cmd_flow_director_verify_tag,
+		(void *)&cmd_flow_director_verify_tag_value,
+		(void *)&cmd_flow_director_flexbytes,
+		(void *)&cmd_flow_director_flexbytes_value,
+		(void *)&cmd_flow_director_drop,
+		(void *)&cmd_flow_director_queue,
+		(void *)&cmd_flow_director_queue_id,
+		(void *)&cmd_flow_director_fd_id,
+		(void *)&cmd_flow_director_fd_id_value,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -8016,6 +8394,9 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_add_flex_filter,
 	(cmdline_parse_inst_t *)&cmd_remove_flex_filter,
 	(cmdline_parse_inst_t *)&cmd_get_flex_filter,
+	(cmdline_parse_inst_t *)&cmd_add_del_ip_flow_director,
+	(cmdline_parse_inst_t *)&cmd_add_del_udp_flow_director,
+	(cmdline_parse_inst_t *)&cmd_add_del_sctp_flow_director,
 	NULL,
 };
 
