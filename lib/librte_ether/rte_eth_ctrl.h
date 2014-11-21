@@ -69,8 +69,7 @@ enum rte_filter_op {
 	RTE_ETH_FILTER_FLUSH,    /**< flush all entries */
 	RTE_ETH_FILTER_GET,      /**< get filter entry */
 	RTE_ETH_FILTER_SET,      /**< configurations */
-	RTE_ETH_FILTER_INFO,
-	/**< get information of filter, such as status or statistics */
+	RTE_ETH_FILTER_INFO,     /**< retrieve information */
 	RTE_ETH_FILTER_OP_MAX
 };
 
@@ -320,6 +319,95 @@ struct rte_eth_fdir_filter {
 	/**< ID, an unique value is required when deal with FDIR entry */
 	struct rte_eth_fdir_input input;    /**< Input set */
 	struct rte_eth_fdir_action action;  /**< Action taken when match */
+};
+
+/**
+ * Payload type
+ */
+enum rte_eth_payload_type {
+	RTE_ETH_PAYLOAD_UNKNOWN = 0,
+	RTE_ETH_L2_PAYLOAD,
+	RTE_ETH_L3_PAYLOAD,
+	RTE_ETH_L4_PAYLOAD,
+	RTE_ETH_PAYLOAD_MAX = 8,
+};
+
+/**
+ * A structure used to select bytes extracted from the protocol layers to
+ * flexible payload for filter
+ */
+struct rte_eth_flex_payload_cfg {
+	enum rte_eth_payload_type type;  /**< Payload type */
+	uint16_t src_offset[RTE_ETH_FDIR_MAX_FLEXLEN];
+	/**< Offset in bytes from the beginning of packet's payload
+	     src_offset[i] indicates the flexbyte i's offset in original
+	     packet payload. This value should be less than
+	     flex_payload_limit in struct rte_eth_fdir_info.*/
+};
+
+/**
+ * A structure used to define FDIR masks for flexible payload
+ * for each flow type
+ */
+struct rte_eth_fdir_flex_mask {
+	enum rte_eth_flow_type flow_type;  /**< Flow type */
+	uint8_t mask[RTE_ETH_FDIR_MAX_FLEXLEN];
+	/**< Mask for the whole flexible payload */
+};
+
+/**
+ * A structure used to define all flexible payload related setting
+ * include flexpay load and flex mask
+ */
+struct rte_eth_fdir_flex_conf {
+	uint16_t nb_payloads;  /**< The number of following payload cfg */
+	uint16_t nb_flexmasks; /**< The number of following mask */
+	struct rte_eth_flex_payload_cfg flex_set[RTE_ETH_PAYLOAD_MAX];
+	/**< Flex payload configuration for each payload type */
+	struct rte_eth_fdir_flex_mask flex_mask[RTE_ETH_FLOW_TYPE_MAX];
+	/**< Flex mask configuration for each flow type */
+};
+
+/**
+ *  Flow Director setting modes: none, signature or perfect.
+ */
+enum rte_fdir_mode {
+	RTE_FDIR_MODE_NONE      = 0, /**< Disable FDIR support. */
+	RTE_FDIR_MODE_SIGNATURE,     /**< Enable FDIR signature filter mode. */
+	RTE_FDIR_MODE_PERFECT,       /**< Enable FDIR perfect filter mode. */
+};
+
+/**
+ * A structure used to get the information of flow director filter.
+ * It supports RTE_ETH_FILTER_FDIR with RTE_ETH_FILTER_INFO operation.
+ * It includes the mode, flexible payload configuration information,
+ * capabilities and supported flow types, flexible payload characters.
+ * It can be gotten to help taking specific configurations per device.
+ */
+struct rte_eth_fdir_info {
+	enum rte_fdir_mode mode;     /**< Flow director mode */
+	struct rte_eth_fdir_flex_conf flex_conf;
+	/**< Flex payload configuration information */
+	uint32_t guarant_spc;          /**< Guaranteed spaces.*/
+	uint32_t best_spc;             /**< Best effort spaces.*/
+	uint32_t flow_types_mask[RTE_ETH_FLOW_TYPE_MAX / sizeof(uint32_t)];
+	/**< Bit mask for every supported flow type. */
+	uint32_t max_flexpayload;      /**< Total flex payload in bytes. */
+	uint32_t flex_payload_unit;
+	/**< Flexible payload unit in bytes. Size and alignments of all flex
+	     payload segments should be multiplies of this value. */
+	uint32_t max_flex_payload_segment_num;
+	/**< Max number of flexible payload continuous segments.
+	     Each segment should be a multiple of flex_payload_unit.*/
+	uint16_t flex_payload_limit;
+	/**< Maximum src_offset in bytes allowed. It indicates that
+	     src_offset[i] in struct rte_eth_flex_payload_cfg should be
+	     less than this value. */
+	uint32_t flex_bitmask_unit;
+	/**< Flex bitmask unit in bytes. Size of flex bitmasks should
+	     be a multiply of this value. */
+	uint32_t max_flex_bitmask_num;
+	/**< Max supported size of flex bitmasks in flex_bitmask_unit */
 };
 
 #ifdef __cplusplus

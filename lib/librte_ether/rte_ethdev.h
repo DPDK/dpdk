@@ -690,15 +690,6 @@ struct rte_eth_pfc_conf {
 };
 
 /**
- *  Flow Director setting modes: none (default), signature or perfect.
- */
-enum rte_fdir_mode {
-	RTE_FDIR_MODE_NONE      = 0, /**< Disable FDIR support. */
-	RTE_FDIR_MODE_SIGNATURE,     /**< Enable FDIR signature filter mode. */
-	RTE_FDIR_MODE_PERFECT,       /**< Enable FDIR perfect filter mode. */
-};
-
-/**
  *  Memory space that can be configured to store Flow Director filters
  *  in the board memory.
  */
