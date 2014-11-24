@@ -47,13 +47,13 @@ extern "C" {
 #define IPV4_ADDR(a, b, c, d)(((a & 0xff) << 24) | ((b & 0xff) << 16) | \
 		((c & 0xff) << 8) | (d & 0xff))
 
-#define PACKET_BURST_GEN_PKT_LEN         60
-#define PACKET_BURST_GEN_PKT_LEN_128     128
+#define PACKET_BURST_GEN_PKT_LEN 60
+#define PACKET_BURST_GEN_PKT_LEN_128 128
+
 
 void
 initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
-		      struct ether_addr *dst_mac, uint8_t vlan_enabled,
-		      uint16_t van_id);
+		struct ether_addr *dst_mac, uint8_t vlan_enabled, uint16_t van_id);
 
 uint16_t
 initialize_udp_header(struct udp_hdr *udp_hdr, uint16_t src_port,
@@ -70,10 +70,9 @@ initialize_ipv4_header(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
 
 int
 generate_packet_burst(struct rte_mempool *mp, struct rte_mbuf **pkts_burst,
-		      struct ether_hdr *eth_hdr, uint8_t vlan_enabled,
-		      void *ip_hdr, uint8_t ipv4, struct udp_hdr *udp_hdr,
-		      int nb_pkt_per_burst, uint8_t pkt_len,
-		      uint8_t nb_pkt_segs);
+		struct ether_hdr *eth_hdr, uint8_t vlan_enabled, void *ip_hdr,
+		uint8_t ipv4, struct udp_hdr *udp_hdr, int nb_pkt_per_burst,
+		uint8_t pkt_len, uint8_t nb_pkt_segs);
 
 #ifdef __cplusplus
 }

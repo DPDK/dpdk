@@ -74,8 +74,7 @@ static inline void
 copy_buf_to_pkt(void *buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
 {
 	if (offset + len <= pkt->data_len) {
-		rte_memcpy(rte_pktmbuf_mtod(pkt, char *) + offset,
-				buf, (size_t) len);
+		rte_memcpy(rte_pktmbuf_mtod(pkt, char *) + offset, buf, (size_t) len);
 		return;
 	}
 	copy_buf_to_pkt_segs(buf, len, pkt, offset);
@@ -191,12 +190,12 @@ initialize_ipv4_header(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
  */
 #define RTE_MAX_SEGS_PER_PKT 255 /**< pkt.nb_segs is a 8-bit unsigned char. */
 
+
 int
 generate_packet_burst(struct rte_mempool *mp, struct rte_mbuf **pkts_burst,
-		      struct ether_hdr *eth_hdr, uint8_t vlan_enabled,
-		      void *ip_hdr, uint8_t ipv4, struct udp_hdr *udp_hdr,
-		      int nb_pkt_per_burst, uint8_t pkt_len,
-		      uint8_t nb_pkt_segs)
+		struct ether_hdr *eth_hdr, uint8_t vlan_enabled, void *ip_hdr,
+		uint8_t ipv4, struct udp_hdr *udp_hdr, int nb_pkt_per_burst,
+		uint8_t pkt_len, uint8_t nb_pkt_segs)
 {
 	int i, nb_pkt = 0;
 	size_t eth_hdr_size;

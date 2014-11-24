@@ -663,6 +663,9 @@ enable_bonded_slaves(void)
 	int i;
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
+		virtual_ethdev_tx_burst_fn_set_success(test_params->slave_port_ids[i],
+				1);
+
 		virtual_ethdev_simulate_link_status_interrupt(
 				test_params->slave_port_ids[i], 1);
 	}
@@ -1336,12 +1339,10 @@ generate_test_burst(struct rte_mbuf **pkts_burst, uint16_t burst_size,
 	}
 
 	/* Generate burst of packets to transmit */
-	generated_burst_size =
-		generate_packet_burst(test_params->mbuf_pool,
-				      pkts_burst, test_params->pkt_eth_hdr,
-				      vlan, ip_hdr, ipv4,
-				      test_params->pkt_udp_hdr, burst_size,
-				      PACKET_BURST_GEN_PKT_LEN_128, 1);
+	generated_burst_size = generate_packet_burst(test_params->mbuf_pool,
+			pkts_burst,	test_params->pkt_eth_hdr, vlan, ip_hdr, ipv4,
+			test_params->pkt_udp_hdr, burst_size, PACKET_BURST_GEN_PKT_LEN_128,
+			1);
 	if (generated_burst_size != burst_size) {
 		printf("Failed to generate packet burst");
 		return -1;
@@ -1413,6 +1414,135 @@ test_roundrobin_tx_burst(void)
 			burst_size);
 	if (nb_tx != 0)
 		return -1;
+
+	/* Clean up and remove slaves from bonded device */
+	return remove_slaves_and_stop_bonded_device();
+}
+
+static int
+verify_mbufs_ref_count(struct rte_mbuf **mbufs, int nb_mbufs, int val)
+{
+	int i, refcnt;
+
+	for (i = 0; i < nb_mbufs; i++) {
+		refcnt = rte_mbuf_refcnt_read(mbufs[i]);
+		TEST_ASSERT_EQUAL(refcnt, val,
+			"mbuf ref count (%d)is not the expected value (%d)",
+			refcnt, val);
+	}
+	return 0;
+}
+
+
+static void
+free_mbufs(struct rte_mbuf **mbufs, int nb_mbufs)
+{
+	int i;
+
+	for (i = 0; i < nb_mbufs; i++)
+		rte_pktmbuf_free(mbufs[i]);
+}
+
+#define TEST_RR_SLAVE_TX_FAIL_SLAVE_COUNT		(2)
+#define TEST_RR_SLAVE_TX_FAIL_BURST_SIZE		(64)
+#define TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT		(22)
+#define TEST_RR_SLAVE_TX_FAIL_FAILING_SLAVE_IDX	(1)
+
+static int
+test_roundrobin_tx_burst_slave_tx_fail(void)
+{
+	struct rte_mbuf *pkt_burst[MAX_PKT_BURST];
+	struct rte_mbuf *expected_tx_fail_pkts[MAX_PKT_BURST];
+
+	struct rte_eth_stats port_stats;
+
+	int i, first_fail_idx, tx_count;
+
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ROUND_ROBIN, 0,
+			TEST_RR_SLAVE_TX_FAIL_SLAVE_COUNT, 1),
+			"Failed to intialise bonded device");
+
+	/* Generate test bursts of packets to transmit */
+	TEST_ASSERT_EQUAL(generate_test_burst(pkt_burst,
+			TEST_RR_SLAVE_TX_FAIL_BURST_SIZE, 0, 1, 0, 0, 0),
+			TEST_RR_SLAVE_TX_FAIL_BURST_SIZE,
+			"Failed to generate test packet burst");
+
+	/* Copy references to packets which we expect not to be transmitted */
+	first_fail_idx = (TEST_RR_SLAVE_TX_FAIL_BURST_SIZE -
+			(TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT *
+			TEST_RR_SLAVE_TX_FAIL_SLAVE_COUNT)) +
+			TEST_RR_SLAVE_TX_FAIL_FAILING_SLAVE_IDX;
+
+	for (i = 0; i < TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT; i++) {
+		expected_tx_fail_pkts[i] = pkt_burst[first_fail_idx +
+				(i * TEST_RR_SLAVE_TX_FAIL_SLAVE_COUNT)];
+	}
+
+	/* Set virtual slave to only fail transmission of
+	 * TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT packets in burst */
+	virtual_ethdev_tx_burst_fn_set_success(
+			test_params->slave_port_ids[TEST_RR_SLAVE_TX_FAIL_FAILING_SLAVE_IDX],
+			0);
+
+	virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(
+			test_params->slave_port_ids[TEST_RR_SLAVE_TX_FAIL_FAILING_SLAVE_IDX],
+			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT);
+
+	tx_count = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkt_burst,
+			TEST_RR_SLAVE_TX_FAIL_BURST_SIZE);
+
+	TEST_ASSERT_EQUAL(tx_count, TEST_RR_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT,
+			"Transmitted (%d) an unexpected (%d) number of packets", tx_count,
+			TEST_RR_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT);
+
+	/* Verify that failed packet are expected failed packets */
+	for (i = 0; i < TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT; i++) {
+		TEST_ASSERT_EQUAL(expected_tx_fail_pkts[i], pkt_burst[i + tx_count],
+				"expected mbuf (%d) pointer %p not expected pointer %p",
+				i, expected_tx_fail_pkts[i], pkt_burst[i + tx_count]);
+	}
+
+	/* Verify bonded port tx stats */
+	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+
+	TEST_ASSERT_EQUAL(port_stats.opackets,
+			(uint64_t)TEST_RR_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT,
+			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			TEST_RR_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT);
+
+	/* Verify slave ports tx stats */
+	for (i = 0; i < test_params->bonded_slave_count; i++) {
+		int slave_expected_tx_count;
+
+		rte_eth_stats_get(test_params->slave_port_ids[i], &port_stats);
+
+		slave_expected_tx_count = TEST_RR_SLAVE_TX_FAIL_BURST_SIZE /
+				test_params->bonded_slave_count;
+
+		if (i == TEST_RR_SLAVE_TX_FAIL_FAILING_SLAVE_IDX)
+			slave_expected_tx_count = slave_expected_tx_count -
+					TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT;
+
+		TEST_ASSERT_EQUAL(port_stats.opackets,
+				(uint64_t)slave_expected_tx_count,
+				"Slave Port (%d) opackets value (%u) not as expected (%d)",
+				test_params->slave_port_ids[i],
+				(unsigned int)port_stats.opackets, slave_expected_tx_count);
+	}
+
+	/* Verify that all mbufs have a ref value of zero */
+	TEST_ASSERT_SUCCESS(verify_mbufs_ref_count(&pkt_burst[tx_count],
+			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT, 1),
+			"mbufs refcnts not as expected");
+
+	free_mbufs(&pkt_burst[tx_count], TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT);
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -1928,12 +2058,9 @@ test_activebackup_tx_burst(void)
 	}
 
 	/* Generate a burst of packets to transmit */
-	generated_burst_size =
-		generate_packet_burst(test_params->mbuf_pool,
-				      pkts_burst, test_params->pkt_eth_hdr, 0,
-				      test_params->pkt_ipv4_hdr, 1,
-				      test_params->pkt_udp_hdr, burst_size,
-				      PACKET_BURST_GEN_PKT_LEN, 1);
+	generated_burst_size = generate_packet_burst(test_params->mbuf_pool,
+			pkts_burst,	test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr,
+			1, test_params->pkt_udp_hdr, burst_size, PACKET_BURST_GEN_PKT_LEN, 1);
 	if (generated_burst_size != burst_size)
 		return -1;
 
@@ -2585,10 +2712,9 @@ test_balance_l2_tx_burst(void)
 
 	/* Generate a burst 1 of packets to transmit */
 	if (generate_packet_burst(test_params->mbuf_pool, &pkts_burst[0][0],
-				  test_params->pkt_eth_hdr, 0,
-				  test_params->pkt_ipv4_hdr, 1,
-				  test_params->pkt_udp_hdr, burst_size[0],
-				  PACKET_BURST_GEN_PKT_LEN, 1) != burst_size[0])
+			test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr, 1,
+			test_params->pkt_udp_hdr, burst_size[0],
+			PACKET_BURST_GEN_PKT_LEN, 1) != burst_size[0])
 		return -1;
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
@@ -2596,10 +2722,9 @@ test_balance_l2_tx_burst(void)
 
 	/* Generate a burst 2 of packets to transmit */
 	if (generate_packet_burst(test_params->mbuf_pool, &pkts_burst[1][0],
-				  test_params->pkt_eth_hdr, 0,
-				  test_params->pkt_ipv4_hdr, 1,
-				  test_params->pkt_udp_hdr, burst_size[1],
-				  PACKET_BURST_GEN_PKT_LEN, 1) != burst_size[1])
+			test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr, 1,
+			test_params->pkt_udp_hdr, burst_size[1],
+			PACKET_BURST_GEN_PKT_LEN, 1) != burst_size[1])
 		return -1;
 
 	/* Send burst 1 on bonded port */
@@ -2911,6 +3036,140 @@ static int
 test_balance_l34_tx_burst_ipv6_toggle_udp_port(void)
 {
 	return balance_l34_tx_burst(0, 0, 0, 0, 1);
+}
+
+#define TEST_BAL_SLAVE_TX_FAIL_SLAVE_COUNT			(2)
+#define TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1			(40)
+#define TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2			(20)
+#define TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT		(25)
+#define TEST_BAL_SLAVE_TX_FAIL_FAILING_SLAVE_IDX	(0)
+
+static int
+test_balance_tx_burst_slave_tx_fail(void)
+{
+	struct rte_mbuf *pkts_burst_1[TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1];
+	struct rte_mbuf *pkts_burst_2[TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2];
+
+	struct rte_mbuf *expected_fail_pkts[TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT];
+
+	struct rte_eth_stats port_stats;
+
+	int i, first_tx_fail_idx, tx_count_1, tx_count_2;
+
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BALANCE, 0,
+			TEST_BAL_SLAVE_TX_FAIL_SLAVE_COUNT, 1),
+			"Failed to intialise bonded device");
+
+	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
+			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER2),
+			"Failed to set balance xmit policy.");
+
+
+	/* Generate test bursts for transmission */
+	TEST_ASSERT_EQUAL(generate_test_burst(pkts_burst_1,
+			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1, 0, 0, 0, 0, 0),
+			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1,
+			"Failed to generate test packet burst 1");
+
+	first_tx_fail_idx = TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
+			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT;
+
+	/* copy mbuf referneces for expected transmission failures */
+	for (i = 0; i < TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT; i++)
+		expected_fail_pkts[i] = pkts_burst_1[i + first_tx_fail_idx];
+
+	TEST_ASSERT_EQUAL(generate_test_burst(pkts_burst_2,
+			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2, 0, 0, 1, 0, 0),
+			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2,
+			"Failed to generate test packet burst 2");
+
+
+	/* Set virtual slave TEST_BAL_SLAVE_TX_FAIL_FAILING_SLAVE_IDX to only fail
+	 * transmission of TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT packets of burst */
+	virtual_ethdev_tx_burst_fn_set_success(
+			test_params->slave_port_ids[TEST_BAL_SLAVE_TX_FAIL_FAILING_SLAVE_IDX],
+			0);
+
+	virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(
+			test_params->slave_port_ids[TEST_BAL_SLAVE_TX_FAIL_FAILING_SLAVE_IDX],
+			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT);
+
+
+	/* Transmit burst 1 */
+	tx_count_1 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_1,
+			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1);
+
+	TEST_ASSERT_EQUAL(tx_count_1, TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
+			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT,
+			"Transmitted (%d) packets, expected to transmit (%d) packets",
+			tx_count_1, TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
+			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT);
+
+	/* Verify that failed packet are expected failed packets */
+	for (i = 0; i < TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT; i++) {
+		TEST_ASSERT_EQUAL(expected_fail_pkts[i], pkts_burst_1[i + tx_count_1],
+				"expected mbuf (%d) pointer %p not expected pointer %p",
+				i, expected_fail_pkts[i], pkts_burst_1[i + tx_count_1]);
+	}
+
+	/* Transmit burst 2 */
+	tx_count_2 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_2,
+			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2);
+
+	TEST_ASSERT_EQUAL(tx_count_2, TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2,
+			"Transmitted (%d) packets, expected to transmit (%d) packets",
+			tx_count_2, TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2);
+
+
+	/* Verify bonded port tx stats */
+	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+
+	TEST_ASSERT_EQUAL(port_stats.opackets,
+			(uint64_t)((TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
+			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT) +
+			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2),
+			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			(TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
+			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT) +
+			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2);
+
+	/* Verify slave ports tx stats */
+
+	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)
+				TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
+				TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT,
+				"Slave Port (%d) opackets value (%u) not as expected (%d)",
+				test_params->slave_port_ids[0],
+				(unsigned int)port_stats.opackets,
+				TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
+				TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT);
+
+
+
+
+	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+
+	TEST_ASSERT_EQUAL(port_stats.opackets,
+				(uint64_t)TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2,
+				"Slave Port (%d) opackets value (%u) not as expected (%d)",
+				test_params->slave_port_ids[1],
+				(unsigned int)port_stats.opackets,
+				TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2);
+
+	/* Verify that all mbufs have a ref value of zero */
+	TEST_ASSERT_SUCCESS(verify_mbufs_ref_count(&pkts_burst_1[tx_count_1],
+			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT, 1),
+			"mbufs refcnts not as expected");
+
+	free_mbufs(&pkts_burst_1[tx_count_1],
+			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT);
+
+	/* Clean up and remove slaves from bonded device */
+	return remove_slaves_and_stop_bonded_device();
 }
 
 #define TEST_BALANCE_RX_BURST_SLAVE_COUNT (3)
@@ -3417,19 +3676,17 @@ test_broadcast_tx_burst(void)
 	}
 
 	/* Generate a burst of packets to transmit */
-	generated_burst_size =
-		generate_packet_burst(test_params->mbuf_pool,
-				      pkts_burst, test_params->pkt_eth_hdr, 0,
-				      test_params->pkt_ipv4_hdr, 1,
-				      test_params->pkt_udp_hdr, burst_size,
-				      PACKET_BURST_GEN_PKT_LEN, 1);
+	generated_burst_size = generate_packet_burst(test_params->mbuf_pool,
+			pkts_burst,	test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr,
+			1, test_params->pkt_udp_hdr, burst_size, PACKET_BURST_GEN_PKT_LEN,
+			1);
 	if (generated_burst_size != burst_size)
 		return -1;
 
 	/* Send burst on bonded port */
 	nb_tx = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst,
 			burst_size);
-	if (nb_tx != burst_size * test_params->bonded_slave_count) {
+	if (nb_tx != burst_size) {
 		printf("Bonded Port (%d) rx burst failed, packets transmitted value (%u) not as expected (%d)\n",
 				test_params->bonded_port_id,
 				nb_tx, burst_size);
@@ -3467,6 +3724,125 @@ test_broadcast_tx_burst(void)
 			burst_size);
 	if (nb_tx != 0)
 		return -1;
+
+	/* Clean up and remove slaves from bonded device */
+	return remove_slaves_and_stop_bonded_device();
+}
+
+
+#define TEST_BCAST_SLAVE_TX_FAIL_SLAVE_COUNT		(3)
+#define TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE			(40)
+#define TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT	(15)
+#define TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT	(10)
+
+static int
+test_broadcast_tx_burst_slave_tx_fail(void)
+{
+	struct rte_mbuf *pkts_burst[TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE];
+	struct rte_mbuf *expected_fail_pkts[TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT];
+
+	struct rte_eth_stats port_stats;
+
+	int i, tx_count;
+
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BROADCAST, 0,
+			TEST_BCAST_SLAVE_TX_FAIL_SLAVE_COUNT, 1),
+			"Failed to intialise bonded device");
+
+	/* Generate test bursts for transmission */
+	TEST_ASSERT_EQUAL(generate_test_burst(pkts_burst,
+			TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE, 0, 0, 0, 0, 0),
+			TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE,
+			"Failed to generate test packet burst");
+
+	for (i = 0; i < TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT; i++) {
+		expected_fail_pkts[i] = pkts_burst[TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT + i];
+	}
+
+	/* Set virtual slave TEST_BAL_SLAVE_TX_FAIL_FAILING_SLAVE_IDX to only fail
+	 * transmission of TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT packets of burst */
+	virtual_ethdev_tx_burst_fn_set_success(
+			test_params->slave_port_ids[0],
+			0);
+	virtual_ethdev_tx_burst_fn_set_success(
+			test_params->slave_port_ids[1],
+			0);
+	virtual_ethdev_tx_burst_fn_set_success(
+			test_params->slave_port_ids[2],
+			0);
+
+	virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(
+			test_params->slave_port_ids[0],
+			TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT);
+
+	virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(
+			test_params->slave_port_ids[1],
+			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT);
+
+	virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(
+			test_params->slave_port_ids[2],
+			TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT);
+
+	/* Transmit burst */
+	tx_count = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst,
+			TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE);
+
+	TEST_ASSERT_EQUAL(tx_count, TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT,
+			"Transmitted (%d) packets, expected to transmit (%d) packets",
+			tx_count, TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT);
+
+	/* Verify that failed packet are expected failed packets */
+	for (i = 0; i < TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT; i++) {
+		TEST_ASSERT_EQUAL(expected_fail_pkts[i], pkts_burst[i + tx_count],
+				"expected mbuf (%d) pointer %p not expected pointer %p",
+				i, expected_fail_pkts[i], pkts_burst[i + tx_count]);
+	}
+
+	/* Verify slave ports tx stats */
+
+	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+
+	TEST_ASSERT_EQUAL(port_stats.opackets,
+			(uint64_t)TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT,
+			"Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT);
+
+
+	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+
+	TEST_ASSERT_EQUAL(port_stats.opackets,
+			(uint64_t)TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT,
+			"Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT);
+
+	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
+
+	TEST_ASSERT_EQUAL(port_stats.opackets,
+			(uint64_t)TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT,
+			"Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT);
+
+
+	/* Verify that all mbufs who transmission failed have a ref value of one */
+	TEST_ASSERT_SUCCESS(verify_mbufs_ref_count(&pkts_burst[tx_count],
+			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT, 1),
+			"mbufs refcnts not as expected");
+
+	free_mbufs(&pkts_burst[tx_count],
+		TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT);
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -3784,7 +4160,7 @@ test_broadcast_verify_slave_link_status_change_behaviour(void)
 	}
 
 	if (rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt_burst[0][0],
-			burst_size) != (burst_size * slave_count)) {
+			burst_size) != burst_size) {
 		printf("rte_eth_tx_burst failed\n");
 		return -1;
 	}
@@ -3933,6 +4309,7 @@ static struct unit_test_suite link_bonding_test_suite  = {
 		TEST_CASE(test_status_interrupt),
 		TEST_CASE(test_adding_slave_after_bonded_device_started),
 		TEST_CASE(test_roundrobin_tx_burst),
+		TEST_CASE(test_roundrobin_tx_burst_slave_tx_fail),
 		TEST_CASE(test_roundrobin_rx_burst_on_single_slave),
 		TEST_CASE(test_roundrobin_rx_burst_on_multiple_slaves),
 		TEST_CASE(test_roundrobin_verify_promiscuous_enable_disable),
@@ -3956,12 +4333,14 @@ static struct unit_test_suite link_bonding_test_suite  = {
 		TEST_CASE(test_balance_l34_tx_burst_ipv6_toggle_ip_addr),
 		TEST_CASE(test_balance_l34_tx_burst_vlan_ipv6_toggle_ip_addr),
 		TEST_CASE(test_balance_l34_tx_burst_ipv6_toggle_udp_port),
+		TEST_CASE(test_balance_tx_burst_slave_tx_fail),
 		TEST_CASE(test_balance_rx_burst),
 		TEST_CASE(test_balance_verify_promiscuous_enable_disable),
 		TEST_CASE(test_balance_verify_mac_assignment),
 		TEST_CASE(test_balance_verify_slave_link_status_change_behaviour),
 #ifdef RTE_MBUF_REFCNT
 		TEST_CASE(test_broadcast_tx_burst),
+		TEST_CASE(test_broadcast_tx_burst_slave_tx_fail),
 		TEST_CASE(test_broadcast_rx_burst),
 		TEST_CASE(test_broadcast_verify_promiscuous_enable_disable),
 		TEST_CASE(test_broadcast_verify_mac_assignment),

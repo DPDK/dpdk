@@ -67,6 +67,13 @@ void virtual_ethdev_rx_burst_fn_set_success(uint8_t port_id, uint8_t success);
 
 void virtual_ethdev_tx_burst_fn_set_success(uint8_t port_id, uint8_t success);
 
+/* if a value greater than zero is set for packet_fail_count then virtual
+ * device tx burst function will fail that many packet from burst or all
+ * packets if packet_fail_count is greater than the number of packets in the
+ * burst */
+void virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(uint8_t port_id,
+		uint8_t packet_fail_count);
+
 #ifdef __cplusplus
 }
 #endif

@@ -102,10 +102,10 @@ bond_ethdev_tx_burst_round_robin(void *queue, struct rte_mbuf **bufs,
 	uint8_t num_of_slaves;
 	uint8_t slaves[RTE_MAX_ETHPORTS];
 
-	uint16_t num_tx_total = 0;
+	uint16_t num_tx_total = 0, num_tx_slave;
 
 	static int slave_idx = 0;
-	int i, cs_idx = 0;
+	int i, cslave_idx = 0, tx_fail_total = 0;
 
 	bd_tx_q = (struct bond_tx_queue *)queue;
 	internals = bd_tx_q->dev_private;
@@ -121,19 +121,32 @@ bond_ethdev_tx_burst_round_robin(void *queue, struct rte_mbuf **bufs,
 
 	/* Populate slaves mbuf with which packets are to be sent on it  */
 	for (i = 0; i < nb_pkts; i++) {
-		cs_idx = (slave_idx + i) % num_of_slaves;
-		slave_bufs[cs_idx][(slave_nb_pkts[cs_idx])++] = bufs[i];
+		cslave_idx = (slave_idx + i) % num_of_slaves;
+		slave_bufs[cslave_idx][(slave_nb_pkts[cslave_idx])++] = bufs[i];
 	}
 
 	/* increment current slave index so the next call to tx burst starts on the
 	 * next slave */
-	slave_idx = ++cs_idx;
+	slave_idx = ++cslave_idx;
 
 	/* Send packet burst on each slave device */
-	for (i = 0; i < num_of_slaves; i++)
-		if (slave_nb_pkts[i] > 0)
-			num_tx_total += rte_eth_tx_burst(slaves[i],
-					bd_tx_q->queue_id, slave_bufs[i], slave_nb_pkts[i]);
+	for (i = 0; i < num_of_slaves; i++) {
+		if (slave_nb_pkts[i] > 0) {
+			num_tx_slave = rte_eth_tx_burst(slaves[i], bd_tx_q->queue_id,
+					slave_bufs[i], slave_nb_pkts[i]);
+
+			/* if tx burst fails move packets to end of bufs */
+			if (unlikely(num_tx_slave < slave_nb_pkts[i])) {
+				int tx_fail_slave = slave_nb_pkts[i] - num_tx_slave;
+
+				tx_fail_total += tx_fail_slave;
+
+				memcpy(&bufs[nb_pkts - tx_fail_total],
+						&slave_bufs[i][num_tx_slave], tx_fail_slave * sizeof(bufs[0]));
+			}
+			num_tx_total += num_tx_slave;
+		}
+	}
 
 	return num_tx_total;
 }
@@ -284,7 +297,7 @@ bond_ethdev_tx_burst_balance(void *queue, struct rte_mbuf **bufs,
 	uint8_t num_of_slaves;
 	uint8_t slaves[RTE_MAX_ETHPORTS];
 
-	uint16_t num_tx_total = 0;
+	uint16_t num_tx_total = 0, num_tx_slave = 0, tx_fail_total = 0;
 
 	int i, op_slave_id;
 
@@ -316,10 +329,22 @@ bond_ethdev_tx_burst_balance(void *queue, struct rte_mbuf **bufs,
 	/* Send packet burst on each slave device */
 	for (i = 0; i < num_of_slaves; i++) {
 		if (slave_nb_pkts[i] > 0) {
-			num_tx_total += rte_eth_tx_burst(slaves[i], bd_tx_q->queue_id,
+			num_tx_slave = rte_eth_tx_burst(slaves[i], bd_tx_q->queue_id,
 					slave_bufs[i], slave_nb_pkts[i]);
+
+			/* if tx burst fails move packets to end of bufs */
+			if (unlikely(num_tx_slave < slave_nb_pkts[i])) {
+				int slave_tx_fail_count = slave_nb_pkts[i] - num_tx_slave;
+
+				tx_fail_total += slave_tx_fail_count;
+				memcpy(bufs[nb_pkts - tx_fail_total],
+						slave_bufs[i][num_tx_slave], slave_tx_fail_count);
+			}
+
+			num_tx_total += num_tx_slave;
 		}
 	}
+
 
 	return num_tx_total;
 }
@@ -332,12 +357,13 @@ bond_ethdev_tx_burst_broadcast(void *queue, struct rte_mbuf **bufs,
 	struct bond_dev_private *internals;
 	struct bond_tx_queue *bd_tx_q;
 
-	uint8_t num_of_slaves;
+	uint8_t tx_failed_flag = 0, num_of_slaves;
 	uint8_t slaves[RTE_MAX_ETHPORTS];
 
-	uint16_t num_tx_total = 0;
+	uint16_t max_nb_of_tx_pkts = 0;
 
-	int i;
+	int slave_tx_total[RTE_MAX_ETHPORTS];
+	int i, most_successful_tx_slave = -1;
 
 	bd_tx_q = (struct bond_tx_queue *)queue;
 	internals = bd_tx_q->dev_private;
@@ -356,11 +382,32 @@ bond_ethdev_tx_burst_broadcast(void *queue, struct rte_mbuf **bufs,
 		rte_mbuf_refcnt_update(bufs[i], num_of_slaves - 1);
 
 	/* Transmit burst on each active slave */
-	for (i = 0; i < num_of_slaves; i++)
-		num_tx_total += rte_eth_tx_burst(slaves[i], bd_tx_q->queue_id,
-				bufs, nb_pkts);
+	for (i = 0; i < num_of_slaves; i++) {
+		slave_tx_total[i] = rte_eth_tx_burst(slaves[i], bd_tx_q->queue_id,
+					bufs, nb_pkts);
 
-	return num_tx_total;
+		if (unlikely(slave_tx_total[i] < nb_pkts))
+			tx_failed_flag = 1;
+
+		/* record the value and slave index for the slave which transmits the
+		 * maximum number of packets */
+		if (slave_tx_total[i] > max_nb_of_tx_pkts) {
+			max_nb_of_tx_pkts = slave_tx_total[i];
+			most_successful_tx_slave = i;
+		}
+	}
+
+	/* if slaves fail to transmit packets from burst, the calling application
+	 * is not expected to know about multiple references to packets so we must
+	 * handle failures of all packets except those of the most successful slave
+	 */
+	if (unlikely(tx_failed_flag))
+		for (i = 0; i < num_of_slaves; i++)
+			if (i != most_successful_tx_slave)
+				while (slave_tx_total[i] < nb_pkts)
+					rte_pktmbuf_free(bufs[slave_tx_total[i]++]);
+
+	return max_nb_of_tx_pkts;
 }
 #endif
 
