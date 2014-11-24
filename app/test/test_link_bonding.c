@@ -39,6 +39,7 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <sys/queue.h>
+#include <sys/time.h>
 
 #include <rte_byteorder.h>
 #include <rte_common.h>
@@ -224,9 +225,14 @@ static struct rte_eth_txconf tx_conf_default = {
 };
 
 static int
-configure_ethdev(uint8_t port_id, uint8_t start)
+configure_ethdev(uint8_t port_id, uint8_t start, uint8_t en_isr)
 {
 	int q_id;
+
+	if (en_isr)
+		default_pmd_conf.intr_conf.lsc = 1;
+	else
+		default_pmd_conf.intr_conf.lsc = 0;
 
 	if (rte_eth_dev_configure(port_id, test_params->nb_rx_q,
 			test_params->nb_tx_q, &default_pmd_conf) != 0) {
@@ -312,7 +318,7 @@ test_setup(void)
 
 			printf("Created virtual ethdev %s\n", pmd_name);
 
-			retval = configure_ethdev(test_params->slave_port_ids[i], 1);
+			retval = configure_ethdev(test_params->slave_port_ids[i], 1, 0);
 			if (retval != 0) {
 				printf("Failed to configure virtual ethdev %s\n", pmd_name);
 				return -1;
@@ -341,7 +347,7 @@ test_create_bonded_device(void)
 		TEST_ASSERT(test_params->bonded_port_id >= 0,
 				"Failed to create bonded ethdev %s", BONDED_DEV_NAME);
 
-		TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0),
+		TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0, 0),
 				"Failed to configure bonded ethdev %s", BONDED_DEV_NAME);
 	}
 
@@ -1081,12 +1087,12 @@ test_set_explicit_bonded_mac(void)
 
 
 static int
-initialize_bonded_device_with_slaves(uint8_t bonding_mode,
+initialize_bonded_device_with_slaves(uint8_t bonding_mode, uint8_t bond_en_isr,
 		uint8_t number_of_slaves, uint8_t enable_slave)
 {
 	/* configure bonded device */
-	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0),
-			"Failed to configure bonding port (%d) in mode %d "
+	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0,
+			bond_en_isr), "Failed to configure bonding port (%d) in mode %d "
 			"with (%d) slaves.", test_params->bonded_port_id, bonding_mode,
 			number_of_slaves);
 
@@ -1119,8 +1125,8 @@ test_adding_slave_after_bonded_device_started(void)
 {
 	int i;
 
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 4, 0) !=
-			0)
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0, 4, 0)
+			!= 0)
 		return -1;
 
 	/* Enabled slave devices */
@@ -1141,6 +1147,144 @@ test_adding_slave_after_bonded_device_started(void)
 
 	test_params->bonded_slave_count++;
 
+	return remove_slaves_and_stop_bonded_device();
+}
+
+#define TEST_STATUS_INTERRUPT_SLAVE_COUNT	4
+#define TEST_LSC_WAIT_TIMEOUT_MS	500
+
+int test_lsc_interrupt_count;
+
+static pthread_mutex_t mutex;
+static pthread_cond_t cvar;
+
+static void
+test_bonding_lsc_event_callback(uint8_t port_id __rte_unused,
+		enum rte_eth_event_type type  __rte_unused, void *param __rte_unused)
+{
+	pthread_mutex_lock(&mutex);
+	test_lsc_interrupt_count++;
+
+	pthread_cond_signal(&cvar);
+	pthread_mutex_unlock(&mutex);
+}
+
+static inline int
+lsc_timeout(int wait_us)
+{
+	int retval = 0;
+
+	struct timespec ts;
+	struct timeval tp;
+
+	gettimeofday(&tp, NULL);
+
+	/* Convert from timeval to timespec */
+	ts.tv_sec  = tp.tv_sec;
+	ts.tv_nsec = tp.tv_usec * 1000;
+	ts.tv_nsec += wait_us * 1000;
+
+	pthread_mutex_lock(&mutex);
+	if (test_lsc_interrupt_count < 1)
+		retval = pthread_cond_timedwait(&cvar, &mutex, &ts);
+
+	pthread_mutex_unlock(&mutex);
+
+	return retval;
+}
+
+static int
+test_status_interrupt(void)
+{
+	int slave_count;
+	uint8_t slaves[RTE_MAX_ETHPORTS];
+
+	pthread_mutex_init(&mutex, NULL);
+	pthread_cond_init(&cvar, NULL);
+
+	/* initialized bonding device with T slaves */
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 1,
+			TEST_STATUS_INTERRUPT_SLAVE_COUNT, 1) != 0)
+		return -1;
+
+	test_lsc_interrupt_count = 0;
+
+	/* register link status change interrupt callback */
+	rte_eth_dev_callback_register(test_params->bonded_port_id,
+			RTE_ETH_EVENT_INTR_LSC, test_bonding_lsc_event_callback,
+			&test_params->bonded_port_id);
+
+	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
+			slaves, RTE_MAX_ETHPORTS);
+
+	TEST_ASSERT_EQUAL(slave_count, TEST_STATUS_INTERRUPT_SLAVE_COUNT,
+			"Number of active slaves (%d) is not as expected (%d)",
+			slave_count, TEST_STATUS_INTERRUPT_SLAVE_COUNT);
+
+	/* Bring all 4 slaves link status to down and test that we have received a
+	 * lsc interrupts */
+	virtual_ethdev_simulate_link_status_interrupt(
+			test_params->slave_port_ids[0], 0);
+	virtual_ethdev_simulate_link_status_interrupt(
+			test_params->slave_port_ids[1], 0);
+	virtual_ethdev_simulate_link_status_interrupt(
+			test_params->slave_port_ids[2], 0);
+
+	TEST_ASSERT_EQUAL(test_lsc_interrupt_count, 0,
+			"Received a link status change interrupt unexpectedly");
+
+	virtual_ethdev_simulate_link_status_interrupt(
+			test_params->slave_port_ids[3], 0);
+
+	TEST_ASSERT(lsc_timeout(TEST_LSC_WAIT_TIMEOUT_MS) == 0,
+			"timed out waiting for interrupt");
+
+	TEST_ASSERT(test_lsc_interrupt_count > 0,
+			"Did not receive link status change interrupt");
+
+	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
+			slaves, RTE_MAX_ETHPORTS);
+
+	TEST_ASSERT_EQUAL(slave_count, 0,
+			"Number of active slaves (%d) is not as expected (%d)",
+			slave_count, 0);
+
+	/* bring one slave port up so link status will change */
+	test_lsc_interrupt_count = 0;
+
+	virtual_ethdev_simulate_link_status_interrupt(
+			test_params->slave_port_ids[0], 1);
+
+	TEST_ASSERT(lsc_timeout(TEST_LSC_WAIT_TIMEOUT_MS) == 0,
+			"timed out waiting for interrupt");
+
+	/* test that we have received another lsc interrupt */
+	TEST_ASSERT(test_lsc_interrupt_count > 0,
+			"Did not receive link status change interrupt");
+
+	/* Verify that calling the same slave lsc interrupt doesn't cause another
+	 * lsc interrupt from bonded device */
+	test_lsc_interrupt_count = 0;
+
+	virtual_ethdev_simulate_link_status_interrupt(
+			test_params->slave_port_ids[0], 1);
+
+	TEST_ASSERT(lsc_timeout(TEST_LSC_WAIT_TIMEOUT_MS) != 0,
+			"received unexpected interrupt");
+
+	TEST_ASSERT_EQUAL(test_lsc_interrupt_count, 0,
+			"Did not receive link status change interrupt");
+
+
+	/* unregister lsc callback before exiting */
+	rte_eth_dev_callback_unregister(test_params->bonded_port_id,
+				RTE_ETH_EVENT_INTR_LSC, test_bonding_lsc_event_callback,
+				&test_params->bonded_port_id);
+
+	pthread_mutex_destroy(&mutex);
+	pthread_cond_destroy(&cvar);
+
+	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
 }
 
@@ -1215,7 +1359,7 @@ test_roundrobin_tx_burst(void)
 	struct rte_mbuf *pkt_burst[MAX_PKT_BURST];
 	struct rte_eth_stats port_stats;
 
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 2, 1)
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0, 2, 1)
 			!= 0)
 		return -1;
 
@@ -1285,7 +1429,7 @@ test_roundrobin_rx_burst_on_single_slave(void)
 	int i, j, nb_rx, burst_size = 25;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 4, 1) !=
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0, 4, 1) !=
 			0)
 		return -1;
 
@@ -1375,7 +1519,7 @@ test_roundrobin_rx_burst_on_multiple_slaves(void)
 
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 4, 1) !=
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0, 4, 1) !=
 			0)
 		return -1;
 
@@ -1467,7 +1611,7 @@ test_roundrobin_verify_mac_assignment(void)
 	rte_eth_macaddr_get(test_params->slave_port_ids[2], &expected_mac_addr_2);
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 4, 1)
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0, 4, 1)
 			!= 0)
 		return -1;
 
@@ -1558,7 +1702,7 @@ test_roundrobin_verify_promiscuous_enable_disable(void)
 	int i, promiscuous_en;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 4, 1) !=
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0, 4, 1) !=
 			0)
 		return -1;
 
@@ -1622,7 +1766,7 @@ test_roundrobin_verify_slave_link_status_change_behaviour(void)
 
 	/* Initialize bonded device with TEST_RR_LINK_STATUS_SLAVE_COUNT slaves
 	 * in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN,
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0,
 			TEST_RR_LINK_STATUS_SLAVE_COUNT, 1) != 0)
 		return -1;
 
@@ -1763,7 +1907,7 @@ test_activebackup_tx_burst(void)
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct rte_eth_stats port_stats;
 
-	retval = initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 2, 1);
+	retval = initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 0, 2, 1);
 	if (retval != 0) {
 		printf("Failed to initialize_bonded_device_with_slaves.\n");
 		return -1;
@@ -1863,7 +2007,7 @@ test_activebackup_rx_burst(void)
 	int i, j, nb_rx, burst_size = 17;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP,
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 0,
 			TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT, 1)
 			!= 0)
 		return -1;
@@ -1957,7 +2101,7 @@ test_activebackup_verify_promiscuous_enable_disable(void)
 	int i, primary_port, promiscuous_en;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 4, 1)
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 0, 4, 1)
 			!= 0)
 		return -1;
 
@@ -2027,7 +2171,7 @@ test_activebackup_verify_mac_assignment(void)
 	rte_eth_macaddr_get(test_params->slave_port_ids[1], &expected_mac_addr_1);
 
 	/* Initialize bonded device with 2 slaves in active backup mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 2, 1)
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 0, 2, 1)
 			!= 0)
 		return -1;
 
@@ -2166,7 +2310,7 @@ test_activebackup_verify_slave_link_status_change_failover(void)
 	}
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP,
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 0,
 			TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT, 1)
 			!= 0)
 		return -1;
@@ -2337,7 +2481,7 @@ test_balance_xmit_policy_configuration(void)
 {
 	int retval;
 
-	retval = initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP,
+	retval = initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 0,
 			2, 1);
 	if (retval != 0) {
 		printf("Failed to initialize_bonded_device_with_slaves.\n");
@@ -2417,7 +2561,7 @@ test_balance_l2_tx_burst(void)
 	int retval, i;
 	struct rte_eth_stats port_stats;
 
-	retval = initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE,
+	retval = initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0,
 			TEST_BALANCE_L2_TX_BURST_SLAVE_COUNT, 1);
 	if (retval != 0) {
 		printf("Failed to initialize_bonded_device_with_slaves.\n");
@@ -2519,7 +2663,7 @@ balance_l23_tx_burst(uint8_t vlan_enabled, uint8_t ipv4,
 
 	struct rte_eth_stats port_stats;
 
-	retval = initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 2, 1);
+	retval = initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0, 2, 1);
 	if (retval != 0) {
 		printf("Failed to initialize_bonded_device_with_slaves.\n");
 		return -1;
@@ -2647,7 +2791,7 @@ balance_l34_tx_burst(uint8_t vlan_enabled, uint8_t ipv4,
 
 	struct rte_eth_stats port_stats;
 
-	retval = initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 2, 1);
+	retval = initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0, 2, 1);
 	if (retval != 0) {
 		printf("Failed to initialize_bonded_device_with_slaves.\n");
 		return -1;
@@ -2785,7 +2929,7 @@ test_balance_rx_burst(void)
 	memset(gen_pkt_burst, 0, sizeof(gen_pkt_burst));
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 3, 1)
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0, 3, 1)
 			!= 0)
 		return -1;
 
@@ -2874,7 +3018,7 @@ test_balance_verify_promiscuous_enable_disable(void)
 	int i, promiscuous_en;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 4, 1) != 0)
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0, 4, 1) != 0)
 		return -1;
 
 	rte_eth_promiscuous_enable(test_params->bonded_port_id);
@@ -2928,7 +3072,7 @@ test_balance_verify_mac_assignment(void)
 	rte_eth_macaddr_get(test_params->slave_port_ids[1], &expected_mac_addr_1);
 
 	/* Initialize bonded device with 2 slaves in active backup mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 2, 1) != 0)
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0, 2, 1) != 0)
 		return -1;
 
 	/* Verify that bonded MACs is that of first slave and that the other slave
@@ -3058,7 +3202,7 @@ test_balance_verify_slave_link_status_change_behaviour(void)
 	memset(pkt_burst, 0, sizeof(pkt_burst));
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE,
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0,
 			TEST_BALANCE_LINK_STATUS_SLAVE_COUNT, 1) != 0)
 		return -1;
 
@@ -3251,7 +3395,7 @@ test_broadcast_tx_burst(void)
 
 	struct rte_eth_stats port_stats;
 
-	retval = initialize_bonded_device_with_slaves(BONDING_MODE_BROADCAST, 2, 1);
+	retval = initialize_bonded_device_with_slaves(BONDING_MODE_BROADCAST, 0, 2, 1);
 	if (retval != 0) {
 		printf("Failed to initialize_bonded_device_with_slaves.\n");
 		return -1;
@@ -3344,7 +3488,7 @@ test_broadcast_rx_burst(void)
 	memset(gen_pkt_burst, 0, sizeof(gen_pkt_burst));
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BROADCAST, 3, 1) != 0)
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_BROADCAST, 0, 3, 1) != 0)
 		return -1;
 
 
@@ -3436,7 +3580,7 @@ test_broadcast_verify_promiscuous_enable_disable(void)
 	int i, promiscuous_en;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 4, 1) != 0)
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0, 4, 1) != 0)
 		return -1;
 
 	rte_eth_promiscuous_enable(test_params->bonded_port_id);
@@ -3492,7 +3636,7 @@ test_broadcast_verify_mac_assignment(void)
 	rte_eth_macaddr_get(test_params->slave_port_ids[2], &expected_mac_addr_1);
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BROADCAST, 4, 1) != 0)
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_BROADCAST, 0, 4, 1) != 0)
 		return -1;
 
 	/* Verify that all MACs are the same as first slave added to bonded
@@ -3592,7 +3736,7 @@ test_broadcast_verify_slave_link_status_change_behaviour(void)
 	memset(pkt_burst, 0, sizeof(pkt_burst));
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BROADCAST,
+	if (initialize_bonded_device_with_slaves(BONDING_MODE_BROADCAST, 0,
 			BROADCAST_LINK_STATUS_NUM_OF_SLAVES, 1) != 0)
 		return -1;
 
@@ -3729,7 +3873,7 @@ test_reconfigure_bonded_device(void)
 	test_params->nb_rx_q = 4;
 	test_params->nb_tx_q = 4;
 
-	if (configure_ethdev(test_params->bonded_port_id, 0)  != 0) {
+	if (configure_ethdev(test_params->bonded_port_id, 0, 0)  != 0) {
 		printf("failed to reconfigure bonded device");
 		return -1;
 	}
@@ -3738,7 +3882,7 @@ test_reconfigure_bonded_device(void)
 	test_params->nb_rx_q = 2;
 	test_params->nb_tx_q = 2;
 
-	if (configure_ethdev(test_params->bonded_port_id, 0)  != 0) {
+	if (configure_ethdev(test_params->bonded_port_id, 0, 0)  != 0) {
 		printf("failed to reconfigure bonded device with less rx/tx queues");
 		return -1;
 	}
@@ -3786,6 +3930,7 @@ static struct unit_test_suite link_bonding_test_suite  = {
 		TEST_CASE(test_set_bonding_mode),
 		TEST_CASE(test_set_primary_slave),
 		TEST_CASE(test_set_explicit_bonded_mac),
+		TEST_CASE(test_status_interrupt),
 		TEST_CASE(test_adding_slave_after_bonded_device_started),
 		TEST_CASE(test_roundrobin_tx_burst),
 		TEST_CASE(test_roundrobin_rx_burst_on_single_slave),

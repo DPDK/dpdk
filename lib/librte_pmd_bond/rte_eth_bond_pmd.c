@@ -930,6 +930,7 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 	struct rte_eth_link link;
 
 	int i, valid_slave = 0, active_pos = -1;
+	uint8_t lsc_flag = 0;
 
 	if (type != RTE_ETH_EVENT_INTR_LSC || param == NULL)
 		return;
@@ -975,6 +976,7 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 			/* If first active slave, then change link status */
 			bonded_eth_dev->data->dev_link.link_status = 1;
 			internals->current_primary_port = port_id;
+			lsc_flag = 1;
 
 			/* Inherit eth dev link properties from first active slave */
 			link_properties_set(bonded_eth_dev,
@@ -999,6 +1001,7 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 		/* No active slaves, change link status to down and reset other
 		 * link properties */
 		if (internals->active_slave_count < 1) {
+			lsc_flag = 1;
 			bonded_eth_dev->data->dev_link.link_status = 0;
 
 			link_properties_reset(bonded_eth_dev);
@@ -1014,6 +1017,9 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 				internals->current_primary_port = internals->primary_port;
 		}
 	}
+
+	if (lsc_flag)
+		_rte_eth_dev_callback_process(bonded_eth_dev, RTE_ETH_EVENT_INTR_LSC);
 }
 
 struct eth_dev_ops default_dev_ops = {

@@ -177,6 +177,8 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	pci_drv->id_table->vendor_id = PCI_ANY_ID;
 	pci_drv->id_table->subsystem_vendor_id = PCI_ANY_ID;
 
+	pci_drv->drv_flags = RTE_PCI_DRV_INTR_LSC;
+
 	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, socket_id);
 	if (internals == NULL) {
 		RTE_LOG(ERR, PMD, "Unable to malloc internals on socket\n");
@@ -199,6 +201,8 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	eth_dev->data->dev_private = internals;
 	eth_dev->data->nb_rx_queues = (uint16_t)1;
 	eth_dev->data->nb_tx_queues = (uint16_t)1;
+
+	TAILQ_INIT(&(eth_dev->callbacks));
 
 	eth_dev->data->dev_link.link_status = 0;
 
