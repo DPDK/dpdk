@@ -93,7 +93,7 @@ static uint16_t
 bond_ethdev_tx_burst_round_robin(void *queue, struct rte_mbuf **bufs,
 		uint16_t nb_pkts)
 {
-	struct bond_dev_private *dev_private;
+	struct bond_dev_private *internals;
 	struct bond_tx_queue *bd_tx_q;
 
 	struct rte_mbuf *slave_bufs[RTE_MAX_ETHPORTS][nb_pkts];
@@ -108,13 +108,13 @@ bond_ethdev_tx_burst_round_robin(void *queue, struct rte_mbuf **bufs,
 	int i, cs_idx = 0;
 
 	bd_tx_q = (struct bond_tx_queue *)queue;
-	dev_private = bd_tx_q->dev_private;
+	internals = bd_tx_q->dev_private;
 
 	/* Copy slave list to protect against slave up/down changes during tx
 	 * bursting */
-	num_of_slaves = dev_private->active_slave_count;
-	memcpy(slaves, dev_private->active_slaves,
-			sizeof(dev_private->active_slaves[0]) * num_of_slaves);
+	num_of_slaves = internals->active_slave_count;
+	memcpy(slaves, internals->active_slaves,
+			sizeof(internals->active_slaves[0]) * num_of_slaves);
 
 	if (num_of_slaves < 1)
 		return num_tx_total;
