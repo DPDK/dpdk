@@ -59,35 +59,38 @@ bond_ethdev_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	internals = bd_rx_q->dev_private;
 
-	switch (internals->mode) {
-	case BONDING_MODE_ROUND_ROBIN:
-#ifdef RTE_MBUF_REFCNT
-	case BONDING_MODE_BROADCAST:
-#endif
-	case BONDING_MODE_BALANCE:
-		for (i = 0; i < internals->active_slave_count && nb_pkts; i++) {
-			/* Offset of pointer to *bufs increases as packets are received
-			 * from other slaves */
-			num_rx_slave = rte_eth_rx_burst(internals->active_slaves[i],
-					bd_rx_q->queue_id, bufs + num_rx_total, nb_pkts);
-			if (num_rx_slave) {
-				num_rx_total += num_rx_slave;
-				nb_pkts -= num_rx_slave;
-			}
+
+	for (i = 0; i < internals->active_slave_count && nb_pkts; i++) {
+		/* Offset of pointer to *bufs increases as packets are received
+		 * from other slaves */
+		num_rx_slave = rte_eth_rx_burst(internals->active_slaves[i],
+				bd_rx_q->queue_id, bufs + num_rx_total, nb_pkts);
+		if (num_rx_slave) {
+			num_rx_total += num_rx_slave;
+			nb_pkts -= num_rx_slave;
 		}
-		break;
-	case BONDING_MODE_ACTIVE_BACKUP:
-		num_rx_slave = rte_eth_rx_burst(internals->current_primary_port,
-				bd_rx_q->queue_id, bufs, nb_pkts);
-		if (num_rx_slave)
-			num_rx_total = num_rx_slave;
-		break;
 	}
+
 	return num_rx_total;
 }
 
 static uint16_t
-bond_ethdev_tx_round_robin(void *queue, struct rte_mbuf **bufs,
+bond_ethdev_rx_burst_active_backup(void *queue, struct rte_mbuf **bufs,
+		uint16_t nb_pkts)
+{
+	struct bond_dev_private *internals;
+
+	/* Cast to structure, containing bonded device's port id and queue id */
+	struct bond_rx_queue *bd_rx_q = (struct bond_rx_queue *)queue;
+
+	internals = bd_rx_q->dev_private;
+
+	return rte_eth_rx_burst(internals->current_primary_port,
+			bd_rx_q->queue_id, bufs, nb_pkts);
+}
+
+static uint16_t
+bond_ethdev_tx_burst_round_robin(void *queue, struct rte_mbuf **bufs,
 		uint16_t nb_pkts)
 {
 	struct bond_dev_private *dev_private;
@@ -136,7 +139,7 @@ bond_ethdev_tx_round_robin(void *queue, struct rte_mbuf **bufs,
 }
 
 static uint16_t
-bond_ethdev_tx_active_backup(void *queue,
+bond_ethdev_tx_burst_active_backup(void *queue,
 		struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	struct bond_dev_private *internals;
@@ -272,7 +275,8 @@ xmit_slave_hash(const struct rte_mbuf *buf, uint8_t slave_count, uint8_t policy)
 }
 
 static uint16_t
-bond_ethdev_tx_balance(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+bond_ethdev_tx_burst_balance(void *queue, struct rte_mbuf **bufs,
+		uint16_t nb_pkts)
 {
 	struct bond_dev_private *internals;
 	struct bond_tx_queue *bd_tx_q;
@@ -486,24 +490,27 @@ bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, int mode)
 
 	switch (mode) {
 	case BONDING_MODE_ROUND_ROBIN:
-		eth_dev->tx_pkt_burst = bond_ethdev_tx_round_robin;
+		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_round_robin;
+		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst;
 		break;
 	case BONDING_MODE_ACTIVE_BACKUP:
-		eth_dev->tx_pkt_burst = bond_ethdev_tx_active_backup;
+		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_active_backup;
+		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst_active_backup;
 		break;
 	case BONDING_MODE_BALANCE:
-		eth_dev->tx_pkt_burst = bond_ethdev_tx_balance;
+		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_balance;
+		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst;
 		break;
 #ifdef RTE_MBUF_REFCNT
 	case BONDING_MODE_BROADCAST:
 		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_broadcast;
+		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst;
 		break;
 #endif
 	default:
 		return -1;
 	}
 
-	eth_dev->rx_pkt_burst = bond_ethdev_rx_burst;
 	internals->mode = mode;
 
 	return 0;
