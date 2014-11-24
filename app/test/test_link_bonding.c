@@ -31,6 +31,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "unistd.h"
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -265,7 +266,7 @@ static pthread_cond_t cvar = PTHREAD_COND_INITIALIZER;
 static int
 test_setup(void)
 {
-	int i, retval, nb_mbuf_per_pool;
+	int i, nb_mbuf_per_pool;
 	struct ether_addr *mac_addr = (struct ether_addr *)slave_mac;
 
 	/* Allocate ethernet packet header with space for VLAN header */
@@ -273,10 +274,8 @@ test_setup(void)
 		test_params->pkt_eth_hdr = malloc(sizeof(struct ether_hdr) +
 				sizeof(struct vlan_hdr));
 
-		if (test_params->pkt_eth_hdr == NULL) {
-			printf("ethernet header struct allocation failed!\n");
-			return -1;
-		}
+		TEST_ASSERT_NOT_NULL(test_params->pkt_eth_hdr,
+				"Ethernet header struct allocation failed!");
 	}
 
 	nb_mbuf_per_pool = RTE_TEST_RX_DESC_MAX + DEF_PKT_BURST +
@@ -286,10 +285,8 @@ test_setup(void)
 				MBUF_SIZE, MBUF_CACHE_SIZE, sizeof(struct rte_pktmbuf_pool_private),
 				rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
 				rte_socket_id(), 0);
-		if (test_params->mbuf_pool == NULL) {
-			printf("rte_mempool_create failed\n");
-			return -1;
-		}
+		TEST_ASSERT_NOT_NULL(test_params->mbuf_pool,
+				"rte_mempool_create failed");
 	}
 
 	/* Create / Initialize virtual eth devs */
@@ -303,20 +300,12 @@ test_setup(void)
 
 			test_params->slave_port_ids[i] = virtual_ethdev_create(pmd_name,
 					mac_addr, rte_socket_id(), 1);
-			if (test_params->slave_port_ids[i] < 0) {
-				printf("Failed to create virtual virtual ethdev %s\n", pmd_name);
-				return -1;
-			}
+			TEST_ASSERT(test_params->slave_port_ids[i] >= 0,
+					"Failed to create virtual virtual ethdev %s", pmd_name);
 
-			printf("Created virtual ethdev %s\n", pmd_name);
-
-			retval = configure_ethdev(test_params->slave_port_ids[i], 1, 0);
-			if (retval != 0) {
-				printf("Failed to configure virtual ethdev %s\n", pmd_name);
-				return -1;
-			}
-
-			printf("Configured virtual ethdev %s\n", pmd_name);
+			TEST_ASSERT_SUCCESS(configure_ethdev(
+					test_params->slave_port_ids[i], 1, 0),
+					"Failed to configure virtual ethdev %s", pmd_name);
 		}
 		slaves_initialized = 1;
 	}
@@ -350,14 +339,14 @@ test_create_bonded_device(void)
 	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
 			slaves, RTE_MAX_ETHPORTS);
 
-	TEST_ASSERT(current_slave_count == 0,
+	TEST_ASSERT_EQUAL(current_slave_count, 0,
 			"Number of slaves %d is great than expected %d.",
 			current_slave_count, 0);
 
 	current_slave_count = rte_eth_bond_active_slaves_get(
 			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS);
 
-	TEST_ASSERT(current_slave_count == 0,
+	TEST_ASSERT_EQUAL(current_slave_count, 0,
 			"Number of active slaves %d is great than expected %d.",
 			current_slave_count, 0);
 
@@ -375,30 +364,21 @@ test_create_bonded_device_with_invalid_params(void)
 	/* Invalid name */
 	port_id = rte_eth_bond_create(NULL, test_params->bonding_mode,
 			rte_socket_id());
-	if (port_id >= 0) {
-		printf("Created bonded device unexpectedly.\n");
-		return -1;
-	}
+	TEST_ASSERT(port_id < 0, "Created bonded device unexpectedly");
 
 	test_params->bonding_mode = INVALID_BONDING_MODE;
 
 	/* Invalid bonding mode */
 	port_id = rte_eth_bond_create(BONDED_DEV_NAME, test_params->bonding_mode,
 			rte_socket_id());
-	if (port_id >= 0) {
-		printf("Created bonded device unexpectedly.\n");
-		return -1;
-	}
+	TEST_ASSERT(port_id < 0, "Created bonded device unexpectedly.");
 
 	test_params->bonding_mode = BONDING_MODE_ROUND_ROBIN;
 
 	/* Invalid socket id */
 	port_id = rte_eth_bond_create(BONDED_DEV_NAME, test_params->bonding_mode,
 			INVALID_SOCKET_ID);
-	if (port_id >= 0) {
-		printf("Created bonded device unexpectedly.\n");
-		return -1;
-	}
+	TEST_ASSERT(port_id < 0, "Created bonded device unexpectedly.");
 
 	return 0;
 }
@@ -436,23 +416,15 @@ test_add_slave_to_bonded_device(void)
 static int
 test_add_slave_to_invalid_bonded_device(void)
 {
-	int retval;
-
 	/* Invalid port ID */
-	retval = rte_eth_bond_slave_add(test_params->bonded_port_id + 5,
-			test_params->slave_port_ids[test_params->bonded_slave_count]);
-	if (retval == 0) {
-		printf("Expected call to failed as invalid port specified.\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_slave_add(test_params->bonded_port_id + 5,
+			test_params->slave_port_ids[test_params->bonded_slave_count]),
+			"Expected call to failed as invalid port specified.");
 
 	/* Non bonded device */
-	retval = rte_eth_bond_slave_add(test_params->slave_port_ids[0],
-			test_params->slave_port_ids[test_params->bonded_slave_count]);
-	if (retval == 0) {
-		printf("Expected call to failed as invalid port specified.\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_slave_add(test_params->slave_port_ids[0],
+			test_params->slave_port_ids[test_params->bonded_slave_count]),
+			"Expected call to failed as invalid port specified.");
 
 	return 0;
 }
@@ -504,23 +476,17 @@ test_remove_slave_from_bonded_device(void)
 static int
 test_remove_slave_from_invalid_bonded_device(void)
 {
-	int retval;
-
 	/* Invalid port ID */
-	retval = rte_eth_bond_slave_remove(test_params->bonded_port_id + 5,
-			test_params->slave_port_ids[test_params->bonded_slave_count - 1]);
-	if (retval == 0) {
-		printf("Expected call to failed as invalid port specified.\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_slave_remove(
+			test_params->bonded_port_id + 5,
+			test_params->slave_port_ids[test_params->bonded_slave_count - 1]),
+			"Expected call to failed as invalid port specified.");
 
 	/* Non bonded device */
-	retval = rte_eth_bond_slave_remove(test_params->slave_port_ids[0],
-			test_params->slave_port_ids[test_params->bonded_slave_count - 1]);
-	if (retval == 0) {
-		printf("Expected call to failed as invalid port specified.\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_slave_remove(
+			test_params->slave_port_ids[0],
+			test_params->slave_port_ids[test_params->bonded_slave_count - 1]),
+			"Expected call to failed as invalid port specified.");
 
 	return 0;
 }
@@ -530,7 +496,7 @@ static int bonded_id = 2;
 static int
 test_add_already_bonded_slave_to_bonded_device(void)
 {
-	int retval, port_id, current_slave_count;
+	int port_id, current_slave_count;
 	uint8_t slaves[RTE_MAX_ETHPORTS];
 	char pmd_name[RTE_ETH_NAME_MAX_LEN];
 
@@ -538,29 +504,22 @@ test_add_already_bonded_slave_to_bonded_device(void)
 
 	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
 			slaves, RTE_MAX_ETHPORTS);
-	if (current_slave_count != 1) {
-		printf("Number of slaves (%d) is not that expected (%d).\n",
-				current_slave_count, 1);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(current_slave_count, 1,
+			"Number of slaves (%d) is not that expected (%d).",
+			current_slave_count, 1);
 
 	snprintf(pmd_name, RTE_ETH_NAME_MAX_LEN, "%s_%d", BONDED_DEV_NAME, ++bonded_id);
 
 	port_id = rte_eth_bond_create(pmd_name, test_params->bonding_mode,
 			rte_socket_id());
-	if (port_id < 0) {
-		printf("Failed to create bonded device.\n");
-		return -1;
-	}
+	TEST_ASSERT(port_id >= 0, "Failed to create bonded device.");
 
-	retval = rte_eth_bond_slave_add(port_id,
-			test_params->slave_port_ids[test_params->bonded_slave_count - 1]);
-	if (retval == 0) {
-		printf("Added slave (%d) to bonded port (%d) unexpectedly.\n",
-				test_params->slave_port_ids[test_params->bonded_slave_count-1],
-				port_id);
-		return -1;
-	}
+	TEST_ASSERT(rte_eth_bond_slave_add(port_id,
+			test_params->slave_port_ids[test_params->bonded_slave_count - 1])
+			< 0,
+			"Added slave (%d) to bonded port (%d) unexpectedly.",
+			test_params->slave_port_ids[test_params->bonded_slave_count-1],
+			port_id);
 
 	return test_remove_slave_from_bonded_device();
 }
@@ -569,50 +528,47 @@ test_add_already_bonded_slave_to_bonded_device(void)
 static int
 test_get_slaves_from_bonded_device(void)
 {
-	int retval, current_slave_count;
-
+	int current_slave_count;
 	uint8_t slaves[RTE_MAX_ETHPORTS];
 
-	retval = test_add_slave_to_bonded_device();
-	if (retval != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
+			"Failed to add slave to bonded device");
 
 	/* Invalid port id */
 	current_slave_count = rte_eth_bond_slaves_get(INVALID_PORT_ID, slaves,
 			RTE_MAX_ETHPORTS);
-	if (current_slave_count >= 0)
-		return -1;
+	TEST_ASSERT(current_slave_count < 0,
+			"Invalid port id unexpectedly succeeded");
 
 	current_slave_count = rte_eth_bond_active_slaves_get(INVALID_PORT_ID,
 			slaves, RTE_MAX_ETHPORTS);
-	if (current_slave_count >= 0)
-		return -1;
+	TEST_ASSERT(current_slave_count < 0,
+			"Invalid port id unexpectedly succeeded");
 
 	/* Invalid slaves pointer */
 	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
 			NULL, RTE_MAX_ETHPORTS);
-	if (current_slave_count >= 0)
-		return -1;
+	TEST_ASSERT(current_slave_count < 0,
+			"Invalid slave array unexpectedly succeeded");
 
 	current_slave_count = rte_eth_bond_active_slaves_get(
 			test_params->bonded_port_id, NULL, RTE_MAX_ETHPORTS);
-	if (current_slave_count >= 0)
-		return -1;
+	TEST_ASSERT(current_slave_count < 0,
+			"Invalid slave array unexpectedly succeeded");
 
 	/* non bonded device*/
 	current_slave_count = rte_eth_bond_slaves_get(
 			test_params->slave_port_ids[0], NULL, RTE_MAX_ETHPORTS);
-	if (current_slave_count >= 0)
-		return -1;
+	TEST_ASSERT(current_slave_count < 0,
+			"Invalid port id unexpectedly succeeded");
 
 	current_slave_count = rte_eth_bond_active_slaves_get(
 			test_params->slave_port_ids[0],	NULL, RTE_MAX_ETHPORTS);
-	if (current_slave_count >= 0)
-		return -1;
+	TEST_ASSERT(current_slave_count < 0,
+			"Invalid port id unexpectedly succeeded");
 
-	retval = test_remove_slave_from_bonded_device();
-	if (retval != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(test_remove_slave_from_bonded_device(),
+			"Failed to remove slaves from bonded device");
 
 	return 0;
 }
@@ -623,15 +579,13 @@ test_add_remove_multiple_slaves_to_from_bonded_device(void)
 {
 	int i;
 
-	for (i = 0; i < TEST_MAX_NUMBER_OF_PORTS; i++) {
-		if (test_add_slave_to_bonded_device() != 0)
-			return -1;
-	}
+	for (i = 0; i < TEST_MAX_NUMBER_OF_PORTS; i++)
+		TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
+				"Failed to add slave to bonded device");
 
-	for (i = 0; i < TEST_MAX_NUMBER_OF_PORTS; i++) {
-		if (test_remove_slave_from_bonded_device() != 0)
-			return -1;
-	}
+	for (i = 0; i < TEST_MAX_NUMBER_OF_PORTS; i++)
+		TEST_ASSERT_SUCCESS(test_remove_slave_from_bonded_device(),
+				"Failed to remove slaves from bonded device");
 
 	return 0;
 }
@@ -659,8 +613,8 @@ test_start_bonded_device(void)
 	uint8_t slaves[RTE_MAX_ETHPORTS];
 
 	/* Add slave to bonded device*/
-	if (test_add_slave_to_bonded_device() != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
+			"Failed to add slave to bonded device");
 
 	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
 		"Failed to start bonded pmd eth device %d.",
@@ -673,43 +627,30 @@ test_start_bonded_device(void)
 
 	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
 			slaves, RTE_MAX_ETHPORTS);
-	if (current_slave_count != test_params->bonded_slave_count) {
-		printf("Number of slaves (%d) is not expected value (%d).\n",
-				current_slave_count, test_params->bonded_slave_count);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(current_slave_count, test_params->bonded_slave_count,
+			"Number of slaves (%d) is not expected value (%d).",
+			current_slave_count, test_params->bonded_slave_count);
 
 	current_slave_count = rte_eth_bond_active_slaves_get(
 			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS);
-	if (current_slave_count != test_params->bonded_slave_count) {
-		printf("Number of active slaves (%d) is not expected value (%d).\n",
-				current_slave_count, test_params->bonded_slave_count);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(current_slave_count, test_params->bonded_slave_count,
+			"Number of active slaves (%d) is not expected value (%d).",
+			current_slave_count, test_params->bonded_slave_count);
 
 	current_bonding_mode = rte_eth_bond_mode_get(test_params->bonded_port_id);
-	if (current_bonding_mode != test_params->bonding_mode) {
-		printf("Bonded device mode (%d) is not expected value (%d).\n",
-				current_bonding_mode, test_params->bonding_mode);
-		return -1;
-
-	}
+	TEST_ASSERT_EQUAL(current_bonding_mode, test_params->bonding_mode,
+			"Bonded device mode (%d) is not expected value (%d).\n",
+			current_bonding_mode, test_params->bonding_mode);
 
 	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
-	if (primary_port != test_params->slave_port_ids[0]) {
-		printf("Primary port (%d) is not expected value (%d).\n",
-				primary_port, test_params->slave_port_ids[0]);
-		return -1;
-
-	}
+	TEST_ASSERT_EQUAL(primary_port, test_params->slave_port_ids[0],
+			"Primary port (%d) is not expected value (%d).",
+			primary_port, test_params->slave_port_ids[0]);
 
 	rte_eth_link_get(test_params->bonded_port_id, &link_status);
-	if (!link_status.link_status) {
-		printf("Bonded port (%d) status (%d) is not expected value (%d).\n",
-				test_params->bonded_port_id, link_status.link_status, 1);
-		return -1;
-
-	}
+	TEST_ASSERT_EQUAL(link_status.link_status, 1,
+			"Bonded port (%d) status (%d) is not expected value (%d).\n",
+			test_params->bonded_port_id, link_status.link_status, 1);
 
 	return 0;
 }
@@ -725,40 +666,32 @@ test_stop_bonded_device(void)
 	rte_eth_dev_stop(test_params->bonded_port_id);
 
 	rte_eth_link_get(test_params->bonded_port_id, &link_status);
-	if (link_status.link_status) {
-		printf("Bonded port (%d) status (%d) is not expected value (%d).\n",
-				test_params->bonded_port_id, link_status.link_status, 0);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(link_status.link_status, 0,
+			"Bonded port (%d) status (%d) is not expected value (%d).",
+			test_params->bonded_port_id, link_status.link_status, 0);
 
 	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
 			slaves, RTE_MAX_ETHPORTS);
-	if (current_slave_count != test_params->bonded_slave_count) {
-		printf("Number of slaves (%d) is not expected value (%d).\n",
-				current_slave_count, test_params->bonded_slave_count);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(current_slave_count, test_params->bonded_slave_count,
+			"Number of slaves (%d) is not expected value (%d).",
+			current_slave_count, test_params->bonded_slave_count);
 
 	current_slave_count = rte_eth_bond_active_slaves_get(
 			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS);
-	if (current_slave_count != 0) {
-		printf("Number of active slaves (%d) is not expected value (%d).\n",
-				current_slave_count, 0);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(current_slave_count, 0,
+			"Number of active slaves (%d) is not expected value (%d).",
+			current_slave_count, 0);
 
 	return 0;
 }
 
-static int remove_slaves_and_stop_bonded_device(void)
+static int
+remove_slaves_and_stop_bonded_device(void)
 {
 	/* Clean up and remove slaves from bonded device */
-	while (test_params->bonded_slave_count > 0) {
-		if (test_remove_slave_from_bonded_device() != 0) {
-			printf("test_remove_slave_from_bonded_device failed\n");
-			return -1;
-		}
-	}
+	while (test_params->bonded_slave_count > 0)
+		TEST_ASSERT_SUCCESS(test_remove_slave_from_bonded_device(),
+				"test_remove_slave_from_bonded_device failed");
 
 	rte_eth_dev_stop(test_params->bonded_port_id);
 	rte_eth_stats_reset(test_params->bonded_port_id);
@@ -770,8 +703,7 @@ static int remove_slaves_and_stop_bonded_device(void)
 static int
 test_set_bonding_mode(void)
 {
-	int i;
-	int retval, bonding_mode;
+	int i, bonding_mode;
 
 	int bonding_modes[] = { BONDING_MODE_ROUND_ROBIN,
 							BONDING_MODE_ACTIVE_BACKUP,
@@ -784,56 +716,39 @@ test_set_bonding_mode(void)
 	/* Test supported link bonding modes */
 	for (i = 0; i < (int)RTE_DIM(bonding_modes);	i++) {
 		/* Invalid port ID */
-		retval = rte_eth_bond_mode_set(INVALID_PORT_ID, bonding_modes[i]);
-		if (retval == 0) {
-			printf("Expected call to failed as invalid port (%d) specified.\n",
-					INVALID_PORT_ID);
-			return -1;
-		}
+		TEST_ASSERT_FAIL(rte_eth_bond_mode_set(INVALID_PORT_ID,
+				bonding_modes[i]),
+				"Expected call to failed as invalid port (%d) specified.",
+				INVALID_PORT_ID);
 
 		/* Non bonded device */
-		retval = rte_eth_bond_mode_set(test_params->slave_port_ids[0],
-				bonding_modes[i]);
-		if (retval == 0) {
-			printf("Expected call to failed as invalid port (%d) specified.\n",
-					test_params->slave_port_ids[0]);
-			return -1;
-		}
+		TEST_ASSERT_FAIL(rte_eth_bond_mode_set(test_params->slave_port_ids[0],
+				bonding_modes[i]),
+				"Expected call to failed as invalid port (%d) specified.",
+				test_params->slave_port_ids[0]);
 
-		retval = rte_eth_bond_mode_set(test_params->bonded_port_id,
-				bonding_modes[i]);
-		if (retval != 0) {
-			printf("Failed to set link bonding mode on port (%d) to (%d).\n",
-					test_params->bonded_port_id, bonding_modes[i]);
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonded_port_id,
+				bonding_modes[i]),
+				"Failed to set link bonding mode on port (%d) to (%d).",
+				test_params->bonded_port_id, bonding_modes[i]);
 
 		bonding_mode = rte_eth_bond_mode_get(test_params->bonded_port_id);
-		if (bonding_mode != bonding_modes[i]) {
-			printf("Link bonding mode (%d) of port (%d) is not expected value (%d).\n",
-					bonding_mode, test_params->bonded_port_id,
-					bonding_modes[i]);
-			return -1;
-		}
-
+		TEST_ASSERT_EQUAL(bonding_mode, bonding_modes[i],
+				"Link bonding mode (%d) of port (%d) is not expected value (%d).",
+				bonding_mode, test_params->bonded_port_id,
+				bonding_modes[i]);
 
 		/* Invalid port ID */
 		bonding_mode = rte_eth_bond_mode_get(INVALID_PORT_ID);
-		if (bonding_mode >= 0) {
-			printf("Expected call to failed as invalid port (%d) specified.\n",
-					INVALID_PORT_ID);
-			return -1;
-		}
-
+		TEST_ASSERT(bonding_mode < 0,
+				"Expected call to failed as invalid port (%d) specified.",
+				INVALID_PORT_ID);
 
 		/* Non bonded device */
 		bonding_mode = rte_eth_bond_mode_get(test_params->slave_port_ids[0]);
-		if (bonding_mode >= 0) {
-			printf("Expected call to failed as invalid port (%d) specified.\n",
-					test_params->slave_port_ids[0]);
-			return -1;
-		}
-
+		TEST_ASSERT(bonding_mode < 0,
+				"Expected call to failed as invalid port (%d) specified.",
+				test_params->slave_port_ids[0]);
 	}
 
 	return remove_slaves_and_stop_bonded_device();
@@ -847,36 +762,24 @@ test_set_primary_slave(void)
 	struct ether_addr *expected_mac_addr;
 
 	/* Add 4 slaves to bonded device */
-	for (i = test_params->bonded_slave_count; i < 4; i++) {
-		retval = test_add_slave_to_bonded_device();
-		if (retval != 0) {
-			printf("Failed to add slave to bonded device.\n");
-			return -1;
-		}
-	}
-	retval = rte_eth_bond_mode_set(test_params->bonded_port_id,
-			BONDING_MODE_ROUND_ROBIN);
-	if (retval != 0) {
-		printf("Failed to set link bonding mode on port (%d) to (%d).\n",
-				test_params->bonded_port_id, BONDING_MODE_ROUND_ROBIN);
-		return -1;
-	}
+	for (i = test_params->bonded_slave_count; i < 4; i++)
+		TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
+				"Failed to add slave to bonded device.");
+
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonded_port_id,
+			BONDING_MODE_ROUND_ROBIN),
+			"Failed to set link bonding mode on port (%d) to (%d).",
+			test_params->bonded_port_id, BONDING_MODE_ROUND_ROBIN);
 
 	/* Invalid port ID */
-	retval = rte_eth_bond_primary_set(INVALID_PORT_ID,
-			test_params->slave_port_ids[i]);
-	if (retval == 0) {
-		printf("Expected call to failed as invalid port specified.\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_primary_set(INVALID_PORT_ID,
+			test_params->slave_port_ids[i]),
+			"Expected call to failed as invalid port specified.");
 
 	/* Non bonded device */
-	retval = rte_eth_bond_primary_set(test_params->slave_port_ids[i],
-			test_params->slave_port_ids[i]);
-	if (retval == 0) {
-		printf("Expected call to failed as invalid port specified.\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_primary_set(test_params->slave_port_ids[i],
+			test_params->slave_port_ids[i]),
+			"Expected call to failed as invalid port specified.");
 
 	/* Set slave as primary
 	 * Verify slave it is now primary slave
@@ -884,32 +787,27 @@ test_set_primary_slave(void)
 	 * Verify that MAC address of all bonded slaves are that of primary slave
 	 */
 	for (i = 0; i < 4; i++) {
-		retval = rte_eth_bond_primary_set(test_params->bonded_port_id,
-				test_params->slave_port_ids[i]);
-		if (retval != 0) {
-			printf("Failed to set bonded port (%d) primary port to (%d)\n",
-					test_params->bonded_port_id,
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(test_params->bonded_port_id,
+				test_params->slave_port_ids[i]),
+				"Failed to set bonded port (%d) primary port to (%d)",
+				test_params->bonded_port_id, test_params->slave_port_ids[i]);
 
 		retval = rte_eth_bond_primary_get(test_params->bonded_port_id);
-		if (retval < 0) {
-			printf("Failed to read primary port from bonded port (%d)\n",
+		TEST_ASSERT(retval >= 0,
+				"Failed to read primary port from bonded port (%d)\n",
 					test_params->bonded_port_id);
-			return -1;
-		} else if (retval != test_params->slave_port_ids[i]) {
-			printf("Bonded port (%d) primary port (%d) not expected value (%d)\n",
-					test_params->bonded_port_id, retval,
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
+
+		TEST_ASSERT_EQUAL(retval, test_params->slave_port_ids[i],
+				"Bonded port (%d) primary port (%d) not expected value (%d)\n",
+				test_params->bonded_port_id, retval,
+				test_params->slave_port_ids[i]);
 
 		/* stop/start bonded eth dev to apply new MAC */
 		rte_eth_dev_stop(test_params->bonded_port_id);
 
-		if (rte_eth_dev_start(test_params->bonded_port_id) != 0)
-			return -1;
+		TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
+				"Failed to start bonded port %d",
+				test_params->bonded_port_id);
 
 		expected_mac_addr = (struct ether_addr *)&slave_mac;
 		expected_mac_addr->addr_bytes[ETHER_ADDR_LEN-1] =
@@ -917,56 +815,44 @@ test_set_primary_slave(void)
 
 		/* Check primary slave MAC */
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
-		if (memcmp(expected_mac_addr, &read_mac_addr, sizeof(read_mac_addr))) {
-			printf("bonded port mac address not set to that of primary port\n");
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(memcmp(expected_mac_addr, &read_mac_addr,
+				sizeof(read_mac_addr)),
+				"bonded port mac address not set to that of primary port\n");
 
 		/* Check bonded MAC */
 		rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-		if (memcmp(&read_mac_addr, &read_mac_addr, sizeof(read_mac_addr))) {
-			printf("bonded port mac address not set to that of primary port\n");
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(memcmp(&read_mac_addr, &read_mac_addr,
+				sizeof(read_mac_addr)),
+				"bonded port mac address not set to that of primary port\n");
 
 		/* Check other slaves MACs */
 		for (j = 0; j < 4; j++) {
 			if (j != i) {
 				rte_eth_macaddr_get(test_params->slave_port_ids[j],
 						&read_mac_addr);
-				if (memcmp(expected_mac_addr, &read_mac_addr,
-						sizeof(read_mac_addr))) {
-					printf("slave port mac address not set to that of primary port\n");
-					return -1;
-				}
+				TEST_ASSERT_SUCCESS(memcmp(expected_mac_addr, &read_mac_addr,
+						sizeof(read_mac_addr)),
+						"slave port mac address not set to that of primary "
+						"port");
 			}
 		}
 	}
 
 
 	/* Test with none existent port */
-	retval = rte_eth_bond_primary_get(test_params->bonded_port_id + 10);
-	if (retval >= 0) {
-		printf("read primary port from expectedly\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_primary_get(test_params->bonded_port_id + 10),
+			"read primary port from expectedly");
 
 	/* Test with slave port */
-	retval = rte_eth_bond_primary_get(test_params->slave_port_ids[0]);
-	if (retval >= 0) {
-		printf("read primary port from expectedly\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_primary_get(test_params->slave_port_ids[0]),
+			"read primary port from expectedly\n");
 
-	if (remove_slaves_and_stop_bonded_device() != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(remove_slaves_and_stop_bonded_device(),
+			"Failed to stop and remove slaves from bonded device");
 
 	/* No slaves  */
-	retval = rte_eth_bond_primary_get(test_params->bonded_port_id);
-	if (retval >= 0) {
-		printf("read primary port from expectedly\n");
-		return -1;
-	}
+	TEST_ASSERT(rte_eth_bond_primary_get(test_params->bonded_port_id)  < 0,
+			"read primary port from expectedly\n");
 
 	return 0;
 }
@@ -974,7 +860,7 @@ test_set_primary_slave(void)
 static int
 test_set_explicit_bonded_mac(void)
 {
-	int i, retval;
+	int i;
 	struct ether_addr read_mac_addr;
 	struct ether_addr *mac_addr;
 
@@ -983,86 +869,61 @@ test_set_explicit_bonded_mac(void)
 	mac_addr = (struct ether_addr *)explicit_bonded_mac;
 
 	/* Invalid port ID */
-	retval = rte_eth_bond_mac_address_set(INVALID_PORT_ID, mac_addr);
-	if (retval == 0) {
-		printf("Expected call to failed as invalid port specified.\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_mac_address_set(INVALID_PORT_ID, mac_addr),
+			"Expected call to failed as invalid port specified.");
 
 	/* Non bonded device */
-	retval = rte_eth_bond_mac_address_set(test_params->slave_port_ids[0],
-			mac_addr);
-	if (retval == 0) {
-		printf("Expected call to failed as invalid port specified.\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_mac_address_set(
+			test_params->slave_port_ids[0],	mac_addr),
+			"Expected call to failed as invalid port specified.");
 
 	/* NULL MAC address */
-	retval = rte_eth_bond_mac_address_set(test_params->bonded_port_id, NULL);
-	if (retval == 0) {
-		printf("Expected call to failed as NULL MAC specified\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_mac_address_set(
+			test_params->bonded_port_id, NULL),
+			"Expected call to failed as NULL MAC specified");
 
-	retval = rte_eth_bond_mac_address_set(test_params->bonded_port_id,
-			mac_addr);
-	if (retval != 0) {
-		printf("Failed to set MAC address on bonded port (%d)\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
+			test_params->bonded_port_id, mac_addr),
+			"Failed to set MAC address on bonded port (%d)",
+			test_params->bonded_port_id);
 
 	/* Add 4 slaves to bonded device */
 	for (i = test_params->bonded_slave_count; i < 4; i++) {
-		retval = test_add_slave_to_bonded_device();
-		if (retval != 0) {
-			printf("Failed to add slave to bonded device.\n");
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
+				"Failed to add slave to bonded device.\n");
 	}
 
 	/* Check bonded MAC */
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(mac_addr, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port mac address not set to that of primary port\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(mac_addr, &read_mac_addr, sizeof(read_mac_addr)),
+			"bonded port mac address not set to that of primary port");
 
 	/* Check other slaves MACs */
 	for (i = 0; i < 4; i++) {
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
-		if (memcmp(mac_addr, &read_mac_addr, sizeof(read_mac_addr))) {
-			printf("slave port mac address not set to that of primary port\n");
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(memcmp(mac_addr, &read_mac_addr,
+				sizeof(read_mac_addr)),
+				"slave port mac address not set to that of primary port");
 	}
 
 	/* test resetting mac address on bonded device */
-	if (rte_eth_bond_mac_address_reset(test_params->bonded_port_id) != 0) {
-		printf("Failed to reset MAC address on bonded port (%d)\n",
-				test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(
+			rte_eth_bond_mac_address_reset(test_params->bonded_port_id),
+			"Failed to reset MAC address on bonded port (%d)",
+			test_params->bonded_port_id);
 
-		return -1;
-	}
-
-	if (rte_eth_bond_mac_address_reset(test_params->slave_port_ids[0]) == 0) {
-		printf("Reset MAC address on bonded port (%d) unexpectedly\n",
-				test_params->slave_port_ids[1]);
-
-		return -1;
-	}
+	TEST_ASSERT_FAIL(
+			rte_eth_bond_mac_address_reset(test_params->slave_port_ids[0]),
+			"Reset MAC address on bonded port (%d) unexpectedly",
+			test_params->slave_port_ids[1]);
 
 	/* test resetting mac address on bonded device with no slaves */
+	TEST_ASSERT_SUCCESS(remove_slaves_and_stop_bonded_device(),
+			"Failed to remove slaves and stop bonded device");
 
-	if (remove_slaves_and_stop_bonded_device() != 0)
-		return -1;
-
-	if (rte_eth_bond_mac_address_reset(test_params->bonded_port_id) != 0) {
-		printf("Failed to reset MAC address on bonded port (%d)\n",
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_reset(test_params->bonded_port_id),
+			"Failed to reset MAC address on bonded port (%d)",
 				test_params->bonded_port_id);
-
-		return -1;
-	}
 
 	return 0;
 }
@@ -1179,9 +1040,10 @@ test_status_interrupt(void)
 	uint8_t slaves[RTE_MAX_ETHPORTS];
 
 	/* initialized bonding device with T slaves */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 1,
-			TEST_STATUS_INTERRUPT_SLAVE_COUNT, 1) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ROUND_ROBIN, 1,
+			TEST_STATUS_INTERRUPT_SLAVE_COUNT, 1),
+			"Failed to initialise bonded device");
 
 	test_lsc_interrupt_count = 0;
 
@@ -1313,10 +1175,8 @@ generate_test_burst(struct rte_mbuf **pkts_burst, uint16_t burst_size,
 			pkts_burst,	test_params->pkt_eth_hdr, vlan, ip_hdr, ipv4,
 			test_params->pkt_udp_hdr, burst_size, PACKET_BURST_GEN_PKT_LEN_128,
 			1);
-	if (generated_burst_size != burst_size) {
-		printf("Failed to generate packet burst");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(generated_burst_size, burst_size,
+			"Failed to generate packet burst");
 
 	return generated_burst_size;
 }
@@ -1326,51 +1186,43 @@ generate_test_burst(struct rte_mbuf **pkts_burst, uint16_t burst_size,
 static int
 test_roundrobin_tx_burst(void)
 {
-	int i, burst_size, nb_tx;
+	int i, burst_size;
 	struct rte_mbuf *pkt_burst[MAX_PKT_BURST];
 	struct rte_eth_stats port_stats;
 
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0, 2, 1)
-			!= 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ROUND_ROBIN, 0, 2, 1),
+			"Failed to intialise bonded device");
 
 	burst_size = 20 * test_params->bonded_slave_count;
 
-	if (burst_size > MAX_PKT_BURST) {
-		printf("Burst size specified is greater than supported.\n");
-		return -1;
-	}
+	TEST_ASSERT(burst_size <= MAX_PKT_BURST,
+			"Burst size specified is greater than supported.");
 
 	/* Generate test bursts of packets to transmit */
-	if (generate_test_burst(pkt_burst, burst_size, 0, 1, 0, 0, 0) != burst_size)
-		return -1;
+	TEST_ASSERT_EQUAL(generate_test_burst(pkt_burst, burst_size, 0, 1, 0, 0, 0),
+			burst_size, "failed to generate test burst");
 
 	/* Send burst on bonded port */
-	nb_tx = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkt_burst,
-			burst_size);
-	if (nb_tx != burst_size)
-		return -1;
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
+			test_params->bonded_port_id, 0, pkt_burst, burst_size), burst_size,
+			"tx burst failed");
 
 	/* Verify bonded port tx stats */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.opackets != (uint64_t)burst_size) {
-		printf("Bonded Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->bonded_port_id, (unsigned int)port_stats.opackets,
-				burst_size);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
+			"Bonded Port (%d) opackets value (%u) not as expected (%d)\n",
+			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			burst_size);
 
 	/* Verify slave ports tx stats */
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		rte_eth_stats_get(test_params->slave_port_ids[i], &port_stats);
-		if (port_stats.opackets !=
-				(uint64_t)burst_size / test_params->bonded_slave_count) {
-			printf("Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-					test_params->bonded_port_id,
-					(unsigned int)port_stats.opackets,
-					burst_size / test_params->bonded_slave_count);
-			return -1;
-		}
+		TEST_ASSERT_EQUAL(port_stats.opackets,
+				(uint64_t)burst_size / test_params->bonded_slave_count,
+				"Slave Port (%d) opackets value (%u) not as expected (%d)\n",
+				test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+				burst_size / test_params->bonded_slave_count);
 	}
 
 	/* Put all slaves down and try and transmit */
@@ -1380,10 +1232,9 @@ test_roundrobin_tx_burst(void)
 	}
 
 	/* Send burst on bonded port */
-	nb_tx = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkt_burst,
-			burst_size);
-	if (nb_tx != 0)
-		return -1;
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonded_port_id, 0,
+			pkt_burst, burst_size), 0,
+			"tx burst return unexpected value");
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -1529,17 +1380,17 @@ test_roundrobin_rx_burst_on_single_slave(void)
 
 	struct rte_eth_stats port_stats;
 
-	int i, j, nb_rx, burst_size = 25;
+	int i, j, burst_size = 25;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0, 4, 1) !=
-			0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ROUND_ROBIN, 0, 4, 1),
+			"Failed to initialize bonded device with slaves");
 
 	/* Generate test bursts of packets to transmit */
-	if (generate_test_burst(gen_pkt_burst, burst_size, 0, 1, 0, 0, 0) !=
-			burst_size)
-		return -1;
+	TEST_ASSERT_EQUAL(generate_test_burst(
+			gen_pkt_burst, burst_size, 0, 1, 0, 0, 0), burst_size,
+			"burst generation failed");
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		/* Add rx data to slave */
@@ -1548,21 +1399,18 @@ test_roundrobin_rx_burst_on_single_slave(void)
 
 		/* Call rx burst on bonded device */
 		/* Send burst on bonded port */
-		nb_rx = rte_eth_rx_burst(test_params->bonded_port_id, 0, rx_pkt_burst,
-				MAX_PKT_BURST);
-		if (nb_rx != burst_size) {
-			printf("round-robin rx burst failed");
-			return -1;
-		}
+		TEST_ASSERT_EQUAL(rte_eth_rx_burst(
+				test_params->bonded_port_id, 0, rx_pkt_burst,
+				MAX_PKT_BURST), burst_size,
+				"round-robin rx burst failed");
 
 		/* Verify bonded device rx count */
 		rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-		if (port_stats.ipackets != (uint64_t)burst_size) {
-			printf("Bonded Port (%d) ipackets value (%u) not as expected (%d)\n",
-					test_params->bonded_port_id,
-					(unsigned int)port_stats.ipackets, burst_size);
-			return -1;
-		}
+		TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
+				"Bonded Port (%d) ipackets value (%u) not as expected (%d)",
+				test_params->bonded_port_id,
+				(unsigned int)port_stats.ipackets, burst_size);
+
 
 
 		/* Verify bonded slave devices rx count */
@@ -1571,19 +1419,15 @@ test_roundrobin_rx_burst_on_single_slave(void)
 			rte_eth_stats_get(test_params->slave_port_ids[j], &port_stats);
 
 			if (i == j) {
-				if (port_stats.ipackets != (uint64_t)burst_size) {
-					printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-							test_params->slave_port_ids[i],
-							(unsigned int)port_stats.ipackets, burst_size);
-					return -1;
-				}
+				TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
+						"Slave Port (%d) ipackets value (%u) not as expected"
+						" (%d)", test_params->slave_port_ids[i],
+						(unsigned int)port_stats.ipackets, burst_size);
 			} else {
-				if (port_stats.ipackets != 0) {
-					printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-							test_params->slave_port_ids[i],
-							(unsigned int)port_stats.ipackets, 0);
-					return -1;
-				}
+				TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
+						"Slave Port (%d) ipackets value (%u) not as expected"
+						" (%d)", test_params->slave_port_ids[i],
+						(unsigned int)port_stats.ipackets, 0);
 			}
 
 			/* Reset bonded slaves stats */
@@ -1620,17 +1464,16 @@ test_roundrobin_rx_burst_on_multiple_slaves(void)
 	int burst_size[TEST_ROUNDROBIN_TX_BURST_SLAVE_COUNT] = { 15, 13, 36 };
 	int i, nb_rx;
 
-
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0, 4, 1) !=
-			0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ROUND_ROBIN, 0, 4, 1),
+			"Failed to initialize bonded device with slaves");
 
 	/* Generate test bursts of packets to transmit */
 	for (i = 0; i < TEST_ROUNDROBIN_TX_BURST_SLAVE_COUNT; i++) {
-		if (generate_test_burst(&gen_pkt_burst[i][0], burst_size[i], 0, 1, 0, 0,
-				0) != burst_size[i])
-			return -1;
+		TEST_ASSERT_EQUAL(generate_test_burst(
+				&gen_pkt_burst[i][0], burst_size[i], 0, 1, 0, 0, 0),
+				burst_size[i], "burst generation failed");
 	}
 
 	/* Add rx data to slaves */
@@ -1643,55 +1486,42 @@ test_roundrobin_rx_burst_on_multiple_slaves(void)
 	/* Send burst on bonded port */
 	nb_rx = rte_eth_rx_burst(test_params->bonded_port_id, 0, rx_pkt_burst,
 			MAX_PKT_BURST);
-	if (nb_rx != burst_size[0] + burst_size[1] + burst_size[2]) {
-		printf("round-robin rx burst failed (%d != %d)\n", nb_rx,
-				burst_size[0] + burst_size[1] + burst_size[2]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(nb_rx , burst_size[0] + burst_size[1] + burst_size[2],
+			"round-robin rx burst failed (%d != %d)\n", nb_rx,
+			burst_size[0] + burst_size[1] + burst_size[2]);
 
 	/* Verify bonded device rx count */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.ipackets != (uint64_t)(burst_size[0] + burst_size[1] +
-			burst_size[2])) {
-		printf("Bonded Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->bonded_port_id, (unsigned int)port_stats.ipackets,
-				burst_size[0] + burst_size[1] + burst_size[2]);
-		return -1;
-	}
-
+	TEST_ASSERT_EQUAL(port_stats.ipackets,
+			(uint64_t)(burst_size[0] + burst_size[1] + burst_size[2]),
+			"Bonded Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.ipackets,
+			burst_size[0] + burst_size[1] + burst_size[2]);
 
 	/* Verify bonded slave devices rx counts */
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	if (port_stats.ipackets != (uint64_t)burst_size[0]) {
-		printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[0],
-				(unsigned int)port_stats.ipackets, burst_size[0]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[0],
+			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[0],
+			(unsigned int)port_stats.ipackets, burst_size[0]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
-	if (port_stats.ipackets != (uint64_t)burst_size[1]) {
-		printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[1],
-				(unsigned int)port_stats.ipackets, burst_size[1]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[1],
+			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[1], (unsigned int)port_stats.ipackets,
+			burst_size[1]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
-	if (port_stats.ipackets != (uint64_t)burst_size[2]) {
-		printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
+	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[2],
+			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
 				test_params->slave_port_ids[2],
 				(unsigned int)port_stats.ipackets, burst_size[2]);
-		return -1;
-	}
 
 	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
-	if (port_stats.ipackets != 0) {
-		printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[3],
-				(unsigned int)port_stats.ipackets, 0);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
+			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[3],
+			(unsigned int)port_stats.ipackets, 0);
 
 	/* free mbufs */
 	for (i = 0; i < MAX_PKT_BURST; i++) {
@@ -1708,91 +1538,77 @@ test_roundrobin_verify_mac_assignment(void)
 {
 	struct ether_addr read_mac_addr, expected_mac_addr_0, expected_mac_addr_2;
 
-	int i, retval;
+	int i;
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[0], &expected_mac_addr_0);
 	rte_eth_macaddr_get(test_params->slave_port_ids[2], &expected_mac_addr_2);
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0, 4, 1)
-			!= 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+				BONDING_MODE_ROUND_ROBIN, 0, 4, 1),
+				"Failed to initialize bonded device with slaves");
 
 	/* Verify that all MACs are the same as first slave added to bonded dev */
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
-		if (memcmp(&expected_mac_addr_0, &read_mac_addr,
-				sizeof(read_mac_addr))) {
-			printf("slave port (%d) mac address not set to that of primary port\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+				sizeof(read_mac_addr)),
+				"slave port (%d) mac address not set to that of primary port",
+				test_params->slave_port_ids[i]);
 	}
 
 	/* change primary and verify that MAC addresses haven't changed */
-	retval = rte_eth_bond_primary_set(test_params->bonded_port_id,
-			test_params->slave_port_ids[2]);
-	if (retval != 0) {
-		printf("Failed to set bonded port (%d) primary port to (%d)\n",
-				test_params->bonded_port_id, test_params->slave_port_ids[i]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(test_params->bonded_port_id,
+			test_params->slave_port_ids[2]),
+			"Failed to set bonded port (%d) primary port to (%d)",
+			test_params->bonded_port_id, test_params->slave_port_ids[i]);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
-		if (memcmp(&expected_mac_addr_0, &read_mac_addr,
-				sizeof(read_mac_addr))) {
-			printf("slave port (%d) mac address has changed to that of primary port without stop/start toggle of bonded device\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+				sizeof(read_mac_addr)),
+				"slave port (%d) mac address has changed to that of primary"
+				" port without stop/start toggle of bonded device",
+				test_params->slave_port_ids[i]);
 	}
 
 	/* stop / start bonded device and verify that primary MAC address is
 	 * propagate to bonded device and slaves */
-
 	rte_eth_dev_stop(test_params->bonded_port_id);
 
-	if (rte_eth_dev_start(test_params->bonded_port_id) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
+			"Failed to start bonded device");
 
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(&expected_mac_addr_2, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of new primary port\n",
-				test_params->slave_port_ids[i]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(
+			memcmp(&expected_mac_addr_2, &read_mac_addr, sizeof(read_mac_addr)),
+			"bonded port (%d) mac address not set to that of new primary port",
+			test_params->slave_port_ids[i]);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
-		if (memcmp(&expected_mac_addr_2, &read_mac_addr,
-				sizeof(read_mac_addr))) {
-			printf("slave port (%d) mac address not set to that of new primary port\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_2, &read_mac_addr,
+				sizeof(read_mac_addr)),
+				"slave port (%d) mac address not set to that of new primary"
+				" port", test_params->slave_port_ids[i]);
 	}
 
 	/* Set explicit MAC address */
-	if (rte_eth_bond_mac_address_set(test_params->bonded_port_id,
-			(struct ether_addr *)bonded_mac) != 0) {
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
+			test_params->bonded_port_id, (struct ether_addr *)bonded_mac),
+			"Failed to set MAC");
 
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(bonded_mac, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of new primary port\n",
+	TEST_ASSERT_SUCCESS(memcmp(bonded_mac, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"bonded port (%d) mac address not set to that of new primary port",
 				test_params->slave_port_ids[i]);
-		return -1;
-	}
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
-		if (memcmp(bonded_mac, &read_mac_addr, sizeof(read_mac_addr))) {
-			printf("slave port (%d) mac address not set to that of new primary port\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(memcmp(bonded_mac, &read_mac_addr,
+				sizeof(read_mac_addr)), "slave port (%d) mac address not set to"
+				" that of new primary port\n", test_params->slave_port_ids[i]);
 	}
 
 	/* Clean up and remove slaves from bonded device */
@@ -1805,44 +1621,38 @@ test_roundrobin_verify_promiscuous_enable_disable(void)
 	int i, promiscuous_en;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0, 4, 1) !=
-			0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ROUND_ROBIN, 0, 4, 1),
+			"Failed to initialize bonded device with slaves");
 
 	rte_eth_promiscuous_enable(test_params->bonded_port_id);
 
 	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
-	if (promiscuous_en != 1) {
-		printf("Port (%d) promiscuous mode not enabled\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(promiscuous_en, 1,
+			"Port (%d) promiscuous mode not enabled",
+			test_params->bonded_port_id);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		promiscuous_en = rte_eth_promiscuous_get(test_params->slave_port_ids[i]);
-		if (promiscuous_en != 1) {
-			printf("slave port (%d) promiscuous mode not enabled\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
+		promiscuous_en = rte_eth_promiscuous_get(
+				test_params->slave_port_ids[i]);
+		TEST_ASSERT_EQUAL(promiscuous_en, 1,
+				"slave port (%d) promiscuous mode not enabled",
+				test_params->slave_port_ids[i]);
 	}
 
 	rte_eth_promiscuous_disable(test_params->bonded_port_id);
 
 	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
-	if (promiscuous_en != 0) {
-		printf("Port (%d) promiscuous mode not disabled\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(promiscuous_en, 0,
+			"Port (%d) promiscuous mode not disabled\n",
+			test_params->bonded_port_id);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		promiscuous_en = rte_eth_promiscuous_get(test_params->slave_port_ids[i]);
-		if (promiscuous_en != 0) {
-			printf("slave port (%d) promiscuous mode not disabled\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
+		promiscuous_en = rte_eth_promiscuous_get(
+				test_params->slave_port_ids[i]);
+		TEST_ASSERT_EQUAL(promiscuous_en, 0,
+				"Port (%d) promiscuous mode not disabled\n",
+				test_params->slave_port_ids[i]);
 	}
 
 	/* Clean up and remove slaves from bonded device */
@@ -1869,26 +1679,22 @@ test_roundrobin_verify_slave_link_status_change_behaviour(void)
 
 	/* Initialize bonded device with TEST_RR_LINK_STATUS_SLAVE_COUNT slaves
 	 * in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0,
-			TEST_RR_LINK_STATUS_SLAVE_COUNT, 1) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ROUND_ROBIN, 0, TEST_RR_LINK_STATUS_SLAVE_COUNT, 1),
+			"Failed to initialize bonded device with slaves");
 
 	/* Verify Current Slaves Count /Active Slave Count is */
 	slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id, slaves,
 			RTE_MAX_ETHPORTS);
-	if (slave_count != TEST_RR_LINK_STATUS_SLAVE_COUNT) {
-		printf("Number of slaves (%d) is not as expected (%d).\n", slave_count,
-				TEST_RR_LINK_STATUS_SLAVE_COUNT);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(slave_count, TEST_RR_LINK_STATUS_SLAVE_COUNT,
+			"Number of slaves (%d) is not as expected (%d).",
+			slave_count, TEST_RR_LINK_STATUS_SLAVE_COUNT);
 
 	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
 			slaves, RTE_MAX_ETHPORTS);
-	if (slave_count != TEST_RR_LINK_STATUS_SLAVE_COUNT) {
-		printf("Number of active slaves (%d) is not as expected (%d).\n",
-				slave_count, TEST_RR_LINK_STATUS_SLAVE_COUNT);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(slave_count, TEST_RR_LINK_STATUS_SLAVE_COUNT,
+			"Number of active slaves (%d) is not as expected (%d).",
+			slave_count, TEST_RR_LINK_STATUS_SLAVE_COUNT);
 
 	/* Set 2 slaves eth_devs link status to down */
 	virtual_ethdev_simulate_link_status_interrupt(
@@ -1896,13 +1702,12 @@ test_roundrobin_verify_slave_link_status_change_behaviour(void)
 	virtual_ethdev_simulate_link_status_interrupt(
 			test_params->slave_port_ids[3], 0);
 
-	if (rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS) !=
-					TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_SLAVE_COUNT) {
-		printf("Number of active slaves (%d) is not as expected (%d).\n",
-				slave_count, TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_SLAVE_COUNT);
-		return -1;
-	}
+	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
+			slaves, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(slave_count,
+			TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_SLAVE_COUNT,
+			"Number of active slaves (%d) is not as expected (%d).\n",
+			slave_count, TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_SLAVE_COUNT);
 
 	burst_size = 20;
 
@@ -1913,19 +1718,16 @@ test_roundrobin_verify_slave_link_status_change_behaviour(void)
 	 * 3. Verify stats for bonded eth_dev (opackets = burst_size)
 	 * 4. Verify stats for slave eth_devs (s0 = 10, s1 = 0, s2 = 10, s3 = 0)
 	 */
-	if (generate_test_burst(tx_pkt_burst, burst_size, 0, 1, 0, 0, 0) !=
-			burst_size) {
-		printf("generate_test_burst failed\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(
+			generate_test_burst(tx_pkt_burst, burst_size, 0, 1, 0, 0, 0),
+			burst_size, "generate_test_burst failed");
 
 	rte_eth_stats_reset(test_params->bonded_port_id);
 
-	if (rte_eth_tx_burst(test_params->bonded_port_id, 0, tx_pkt_burst,
-			burst_size) != burst_size) {
-		printf("rte_eth_tx_burst failed\n");
-		return -1;
-	}
+
+	TEST_ASSERT_EQUAL(
+			rte_eth_tx_burst(test_params->bonded_port_id, 0, tx_pkt_burst,
+			burst_size), burst_size, "rte_eth_tx_burst failed");
 
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
@@ -1963,27 +1765,24 @@ test_roundrobin_verify_slave_link_status_change_behaviour(void)
 	 * 6. Verify stats for slave eth_devs (s0 = 10, s1 = 0, s2 = 10, s3 = 0)
 	 */
 	for (i = 0; i < TEST_RR_LINK_STATUS_SLAVE_COUNT; i++) {
-		if (generate_test_burst(&gen_pkt_burst[i][0], burst_size, 0, 1, 0, 0, 0)
-				!= burst_size) {
-			return -1;
-		}
+		TEST_ASSERT_EQUAL(generate_test_burst(
+				&gen_pkt_burst[i][0], burst_size, 0, 1, 0, 0, 0),
+				burst_size, "failed to generate packet burst");
+
 		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
 				&gen_pkt_burst[i][0], burst_size);
 	}
 
-	if (rte_eth_rx_burst(test_params->bonded_port_id, 0, rx_pkt_burst,
-			MAX_PKT_BURST) != burst_size + burst_size) {
-		printf("rte_eth_rx_burst\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_rx_burst(
+			test_params->bonded_port_id, 0, rx_pkt_burst, MAX_PKT_BURST),
+			burst_size + burst_size,
+			"rte_eth_rx_burst failed");
 
 	/* Verify bonded device rx count */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.ipackets != (uint64_t)(burst_size + burst_size)) {
-		printf("(%d) port_stats.ipackets not as expected\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets , (uint64_t)(burst_size + burst_size),
+			"(%d) port_stats.ipackets not as expected\n",
+			test_params->bonded_port_id);
 
 	/* free mbufs */
 	for (i = 0; i < MAX_PKT_BURST; i++) {
@@ -2005,7 +1804,6 @@ test_roundrobin_verify_slave_link_status_change_behaviour(void)
 
 uint8_t polling_slave_mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x00 };
 
-#include "unistd.h"
 
 int polling_test_slaves[TEST_RR_POLLING_LINK_STATUS_SLAVE_COUNT] = { -1, -1 };
 
@@ -2039,7 +1837,8 @@ test_roundrobin_verfiy_polling_slave_link_status_change(void)
 		TEST_ASSERT_SUCCESS(rte_eth_bond_slave_add(test_params->bonded_port_id,
 				polling_test_slaves[i]),
 				"Failed to add slave %s(%d) to bonded device %d",
-				slave_name, polling_test_slaves[i], test_params->bonded_port_id);
+				slave_name, polling_test_slaves[i],
+				test_params->bonded_port_id);
 	}
 
 	/* Initialize bonded device */
@@ -2101,15 +1900,13 @@ test_roundrobin_verfiy_polling_slave_link_status_change(void)
 static int
 test_activebackup_tx_burst(void)
 {
-	int i, retval, pktlen, primary_port, burst_size, generated_burst_size, nb_tx;
+	int i, pktlen, primary_port, burst_size;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct rte_eth_stats port_stats;
 
-	retval = initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 0, 2, 1);
-	if (retval != 0) {
-		printf("Failed to initialize_bonded_device_with_slaves.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ACTIVE_BACKUP, 0, 1, 1),
+			"Failed to initialize bonded device with slaves");
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_0, 0, 0);
@@ -2120,32 +1917,25 @@ test_activebackup_tx_burst(void)
 
 	burst_size = 20 * test_params->bonded_slave_count;
 
-	if (burst_size > MAX_PKT_BURST) {
-		printf("Burst size specified is greater than supported.\n");
-		return -1;
-	}
+	TEST_ASSERT(burst_size < MAX_PKT_BURST,
+			"Burst size specified is greater than supported.");
 
 	/* Generate a burst of packets to transmit */
-	generated_burst_size = generate_packet_burst(test_params->mbuf_pool,
-			pkts_burst,	test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr,
-			1, test_params->pkt_udp_hdr, burst_size, PACKET_BURST_GEN_PKT_LEN, 1);
-	if (generated_burst_size != burst_size)
-		return -1;
+	TEST_ASSERT_EQUAL(generate_packet_burst(test_params->mbuf_pool, pkts_burst,
+			test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr, 1,
+			test_params->pkt_udp_hdr, burst_size, PACKET_BURST_GEN_PKT_LEN, 1),
+			burst_size,	"failed to generate burst correctly");
 
 	/* Send burst on bonded port */
-	nb_tx = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst,
-			burst_size);
-	if (nb_tx != burst_size)
-		return -1;
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst,
+			burst_size),  burst_size, "tx burst failed");
 
 	/* Verify bonded port tx stats */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.opackets != (uint64_t)burst_size) {
-		printf("Bonded Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->bonded_port_id, (unsigned int)port_stats.opackets,
-				burst_size);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
+			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			burst_size);
 
 	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
 
@@ -2153,35 +1943,28 @@ test_activebackup_tx_burst(void)
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		rte_eth_stats_get(test_params->slave_port_ids[i], &port_stats);
 		if (test_params->slave_port_ids[i] == primary_port) {
-			if (port_stats.opackets != (uint64_t)burst_size) {
-				printf("Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-						test_params->bonded_port_id,
-						(unsigned int)port_stats.opackets,
-						burst_size / test_params->bonded_slave_count);
-				return -1;
-			}
+			TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
+					"Slave Port (%d) opackets value (%u) not as expected (%d)",
+					test_params->bonded_port_id,
+					(unsigned int)port_stats.opackets,
+					burst_size / test_params->bonded_slave_count);
 		} else {
-			if (port_stats.opackets != 0) {
-				printf("Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-						test_params->bonded_port_id,
-						(unsigned int)port_stats.opackets, 0);
-				return -1;
-			}
+			TEST_ASSERT_EQUAL(port_stats.opackets, 0,
+					"Slave Port (%d) opackets value (%u) not as expected (%d)",
+					test_params->bonded_port_id,
+					(unsigned int)port_stats.opackets, 0);
 		}
 	}
 
 	/* Put all slaves down and try and transmit */
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
-
 		virtual_ethdev_simulate_link_status_interrupt(
 				test_params->slave_port_ids[i], 0);
 	}
 
 	/* Send burst on bonded port */
-	nb_tx = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst,
-			burst_size);
-	if (nb_tx != 0)
-		return -1;
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonded_port_id, 0,
+			pkts_burst, burst_size), 0, "Sending empty burst failed");
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -2199,78 +1982,63 @@ test_activebackup_rx_burst(void)
 
 	int primary_port;
 
-	int i, j, nb_rx, burst_size = 17;
+	int i, j, burst_size = 17;
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 0,
-			TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT, 1)
-			!= 0)
-		return -1;
-
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ACTIVE_BACKUP, 0,
+			TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT, 1),
+			"Failed to initialize bonded device with slaves");
 
 	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
-	if (primary_port < 0) {
-		printf("failed to get primary slave for bonded port (%d)",
-				test_params->bonded_port_id);
-	}
+	TEST_ASSERT(primary_port >= 0,
+			"failed to get primary slave for bonded port (%d)",
+			test_params->bonded_port_id);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		/* Generate test bursts of packets to transmit */
-		if (generate_test_burst(&gen_pkt_burst[0], burst_size, 0, 1, 0, 0, 0)
-				!= burst_size) {
-			return -1;
-		}
+		TEST_ASSERT_EQUAL(generate_test_burst(
+				&gen_pkt_burst[0], burst_size, 0, 1, 0, 0, 0),
+				burst_size, "burst generation failed");
 
 		/* Add rx data to slave */
 		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
 				&gen_pkt_burst[0], burst_size);
 
 		/* Call rx burst on bonded device */
-		nb_rx = rte_eth_rx_burst(test_params->bonded_port_id, 0,
-				&rx_pkt_burst[0], MAX_PKT_BURST);
-		if (nb_rx < 0) {
-			printf("rte_eth_rx_burst failed\n");
-			return -1;
-		}
+		TEST_ASSERT_EQUAL(rte_eth_rx_burst(test_params->bonded_port_id, 0,
+				&rx_pkt_burst[0], MAX_PKT_BURST), burst_size,
+				"rte_eth_rx_burst failed");
 
 		if (test_params->slave_port_ids[i] == primary_port) {
 			/* Verify bonded device rx count */
 			rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-			if (port_stats.ipackets != (uint64_t)burst_size) {
-				printf("Bonded Port (%d) ipackets value (%u) not as expected (%d)\n",
-						test_params->bonded_port_id,
-						(unsigned int)port_stats.ipackets, burst_size);
-				return -1;
-			}
+			TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
+					"Bonded Port (%d) ipackets value (%u) not as expected (%d)",
+					test_params->bonded_port_id,
+					(unsigned int)port_stats.ipackets, burst_size);
 
 			/* Verify bonded slave devices rx count */
 			for (j = 0; j < test_params->bonded_slave_count; j++) {
 				rte_eth_stats_get(test_params->slave_port_ids[j], &port_stats);
 				if (i == j) {
-					if (port_stats.ipackets != (uint64_t)burst_size) {
-						printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-								test_params->slave_port_ids[i],
-								(unsigned int)port_stats.ipackets, burst_size);
-						return -1;
-					}
+					TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
+							"Slave Port (%d) ipackets value (%u) not as "
+							"expected (%d)", test_params->slave_port_ids[i],
+							(unsigned int)port_stats.ipackets, burst_size);
 				} else {
-					if (port_stats.ipackets != 0) {
-						printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-								test_params->slave_port_ids[i],
-								(unsigned int)port_stats.ipackets, 0);
-						return -1;
-					}
+					TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
+							"Slave Port (%d) ipackets value (%u) not as "
+							"expected (%d)\n", test_params->slave_port_ids[i],
+							(unsigned int)port_stats.ipackets, 0);
 				}
 			}
 		} else {
 			for (j = 0; j < test_params->bonded_slave_count; j++) {
 				rte_eth_stats_get(test_params->slave_port_ids[j], &port_stats);
-				if (port_stats.ipackets != 0) {
-					printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-							test_params->slave_port_ids[i],
-							(unsigned int)port_stats.ipackets, 0);
-					return -1;
-				}
+				TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
+						"Slave Port (%d) ipackets value (%u) not as expected "
+						"(%d)", test_params->slave_port_ids[i],
+						(unsigned int)port_stats.ipackets, 0);
 			}
 		}
 
@@ -2296,61 +2064,48 @@ test_activebackup_verify_promiscuous_enable_disable(void)
 	int i, primary_port, promiscuous_en;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 0, 4, 1)
-			!= 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ACTIVE_BACKUP, 0, 4, 1),
+			"Failed to initialize bonded device with slaves");
 
 	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
-	if (primary_port < 0) {
-		printf("failed to get primary slave for bonded port (%d)",
-				test_params->bonded_port_id);
-	}
+	TEST_ASSERT(primary_port >= 0,
+			"failed to get primary slave for bonded port (%d)",
+			test_params->bonded_port_id);
 
 	rte_eth_promiscuous_enable(test_params->bonded_port_id);
 
-	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
-	if (promiscuous_en != 1) {
-		printf("Port (%d) promiscuous mode not enabled\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 1,
+			"Port (%d) promiscuous mode not enabled",
+			test_params->bonded_port_id);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		promiscuous_en = rte_eth_promiscuous_get(
 				test_params->slave_port_ids[i]);
 		if (primary_port == test_params->slave_port_ids[i]) {
-			if (promiscuous_en != 1) {
-				printf("slave port (%d) promiscuous mode not enabled\n",
-						test_params->slave_port_ids[i]);
-				return -1;
-			}
+			TEST_ASSERT_EQUAL(promiscuous_en, 1,
+					"slave port (%d) promiscuous mode not enabled",
+					test_params->slave_port_ids[i]);
 		} else {
-			if (promiscuous_en != 0) {
-				printf("slave port (%d) promiscuous mode enabled\n",
-						test_params->slave_port_ids[i]);
-				return -1;
-			}
+			TEST_ASSERT_EQUAL(promiscuous_en, 0,
+					"slave port (%d) promiscuous mode enabled",
+					test_params->slave_port_ids[i]);
 		}
 
 	}
 
 	rte_eth_promiscuous_disable(test_params->bonded_port_id);
 
-	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
-	if (promiscuous_en != 0) {
-		printf("Port (%d) promiscuous mode not disabled\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 0,
+			"Port (%d) promiscuous mode not disabled\n",
+			test_params->bonded_port_id);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		promiscuous_en = rte_eth_promiscuous_get(
 				test_params->slave_port_ids[i]);
-		if (promiscuous_en != 0) {
-			printf("slave port (%d) promiscuous mode not disabled\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
+		TEST_ASSERT_EQUAL(promiscuous_en, 0,
+				"slave port (%d) promiscuous mode not disabled\n",
+				test_params->slave_port_ids[i]);
 	}
 
 	/* Clean up and remove slaves from bonded device */
@@ -2366,117 +2121,102 @@ test_activebackup_verify_mac_assignment(void)
 	rte_eth_macaddr_get(test_params->slave_port_ids[1], &expected_mac_addr_1);
 
 	/* Initialize bonded device with 2 slaves in active backup mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 0, 2, 1)
-			!= 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ACTIVE_BACKUP, 0, 2, 1),
+			"Failed to initialize bonded device with slaves");
 
 	/* Verify that bonded MACs is that of first slave and that the other slave
 	 * MAC hasn't been changed */
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(&expected_mac_addr_0, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of primary port\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"bonded port (%d) mac address not set to that of primary port",
+			test_params->bonded_port_id);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_0, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not set to that of primary port\n",
-				test_params->slave_port_ids[0]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not set to that of primary port",
+			test_params->slave_port_ids[0]);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_1, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not as expected\n",
-				test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not as expected",
+			test_params->slave_port_ids[1]);
 
 	/* change primary and verify that MAC addresses haven't changed */
-	if (rte_eth_bond_primary_set(test_params->bonded_port_id,
-			test_params->slave_port_ids[1]) != 0) {
-		printf("Failed to set bonded port (%d) primary port to (%d)\n",
-				test_params->bonded_port_id, test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_bond_primary_set(test_params->bonded_port_id,
+			test_params->slave_port_ids[1]), 0,
+			"Failed to set bonded port (%d) primary port to (%d)",
+			test_params->bonded_port_id, test_params->slave_port_ids[1]);
 
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(&expected_mac_addr_0, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of primary port\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"bonded port (%d) mac address not set to that of primary port",
+			test_params->bonded_port_id);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_0, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not set to that of primary port\n",
-				test_params->slave_port_ids[0]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not set to that of primary port",
+			test_params->slave_port_ids[0]);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_1, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not as expected\n",
-				test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not as expected",
+			test_params->slave_port_ids[1]);
 
 	/* stop / start bonded device and verify that primary MAC address is
 	 * propagated to bonded device and slaves */
 
 	rte_eth_dev_stop(test_params->bonded_port_id);
 
-	if (rte_eth_dev_start(test_params->bonded_port_id) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
+			"Failed to start device");
 
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(&expected_mac_addr_1, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of primary port\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"bonded port (%d) mac address not set to that of primary port",
+			test_params->bonded_port_id);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_0, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not as expected\n",
-				test_params->slave_port_ids[0]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not as expected",
+			test_params->slave_port_ids[0]);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_1, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not set to that of primary port\n",
-				test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not set to that of primary port",
+			test_params->slave_port_ids[1]);
 
 	/* Set explicit MAC address */
-	if (rte_eth_bond_mac_address_set(test_params->bonded_port_id,
-			(struct ether_addr *)bonded_mac) != 0) {
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
+			test_params->bonded_port_id, (struct ether_addr *)bonded_mac),
+			"failed to set MAC address");
 
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(&bonded_mac, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of bonded port\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"bonded port (%d) mac address not set to that of bonded port",
+			test_params->bonded_port_id);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_0, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not as expected\n",
-				test_params->slave_port_ids[0]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not as expected",
+			test_params->slave_port_ids[0]);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr);
-	if (memcmp(&bonded_mac, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not set to that of bonded port\n",
-				test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not set to that of bonded port",
+			test_params->slave_port_ids[1]);
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -2498,38 +2238,32 @@ test_activebackup_verify_slave_link_status_change_failover(void)
 	memset(pkt_burst, 0, sizeof(pkt_burst));
 
 	/* Generate packet burst for testing */
-	if (generate_test_burst(&pkt_burst[0][0], burst_size, 0, 1, 0, 0, 0) !=
-			burst_size) {
-		printf("generate_test_burst failed\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(generate_test_burst(
+			&pkt_burst[0][0], burst_size, 0, 1, 0, 0, 0), burst_size,
+			"generate_test_burst failed");
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 0,
-			TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT, 1)
-			!= 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ACTIVE_BACKUP, 0,
+			TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT, 1),
+			"Failed to initialize bonded device with slaves");
 
 	/* Verify Current Slaves Count /Active Slave Count is */
 	slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id, slaves,
 			RTE_MAX_ETHPORTS);
-	if (slave_count != 4) {
-		printf("Number of slaves (%d) is not as expected (%d).\n",
-				slave_count, 4);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(slave_count, 4,
+			"Number of slaves (%d) is not as expected (%d).",
+			slave_count, 4);
 
 	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
 			slaves, RTE_MAX_ETHPORTS);
-	if (slave_count != 4) {
-		printf("Number of active slaves (%d) is not as expected (%d).\n",
-				slave_count, 4);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(slave_count, 4,
+			"Number of active slaves (%d) is not as expected (%d).",
+			slave_count, 4);
 
 	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
-	if (primary_port != test_params->slave_port_ids[0])
-		printf("Primary port not as expected");
+	TEST_ASSERT_EQUAL(primary_port, test_params->slave_port_ids[0],
+			"Primary port not as expected");
 
 	/* Bring 2 slaves down and verify active slave count */
 	virtual_ethdev_simulate_link_status_interrupt(
@@ -2537,12 +2271,10 @@ test_activebackup_verify_slave_link_status_change_failover(void)
 	virtual_ethdev_simulate_link_status_interrupt(
 			test_params->slave_port_ids[3], 0);
 
-	if (rte_eth_bond_active_slaves_get(test_params->bonded_port_id, slaves,
-			RTE_MAX_ETHPORTS) != 2) {
-		printf("Number of active slaves (%d) is not as expected (%d).\n",
-				slave_count, 2);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_bond_active_slaves_get(
+			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS), 2,
+			"Number of active slaves (%d) is not as expected (%d).",
+			slave_count, 2);
 
 	virtual_ethdev_simulate_link_status_interrupt(
 			test_params->slave_port_ids[1], 1);
@@ -2555,106 +2287,84 @@ test_activebackup_verify_slave_link_status_change_failover(void)
 	virtual_ethdev_simulate_link_status_interrupt(
 			test_params->slave_port_ids[0], 0);
 
-	if (rte_eth_bond_active_slaves_get(test_params->bonded_port_id, slaves,
-			RTE_MAX_ETHPORTS) != 3) {
-		printf("Number of active slaves (%d) is not as expected (%d).\n",
-				slave_count, 3);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_bond_active_slaves_get(
+			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS),
+			3,
+			"Number of active slaves (%d) is not as expected (%d).",
+			slave_count, 3);
 
 	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
-	if (primary_port != test_params->slave_port_ids[2])
-		printf("Primary port not as expected");
+	TEST_ASSERT_EQUAL(primary_port, test_params->slave_port_ids[2],
+			"Primary port not as expected");
 
 	/* Verify that pkts are sent on new primary slave */
 
-	if (rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt_burst[0][0], burst_size)
-			!= burst_size) {
-		printf("rte_eth_tx_burst failed\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
+			test_params->bonded_port_id, 0, &pkt_burst[0][0],
+			burst_size), burst_size, "rte_eth_tx_burst failed");
 
 	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
-	if (port_stats.opackets != (uint64_t)burst_size) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[2]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
+			"(%d) port_stats.opackets not as expected",
+			test_params->slave_port_ids[2]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	if (port_stats.opackets != 0) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[0]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
+			"(%d) port_stats.opackets not as expected\n",
+			test_params->slave_port_ids[0]);
+
 	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
-	if (port_stats.opackets != 0) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
+			"(%d) port_stats.opackets not as expected\n",
+			test_params->slave_port_ids[1]);
+
 	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
-	if (port_stats.opackets != 0) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[3]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
+			"(%d) port_stats.opackets not as expected\n",
+			test_params->slave_port_ids[3]);
 
 	/* Generate packet burst for testing */
 
 	for (i = 0; i < TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT; i++) {
-		if (generate_test_burst(&pkt_burst[i][0], burst_size, 0, 1, 0, 0, 0) !=
-				burst_size)
-			return -1;
+		TEST_ASSERT_EQUAL(generate_test_burst(
+				&pkt_burst[i][0], burst_size, 0, 1, 0, 0, 0), burst_size,
+				"generate_test_burst failed");
 
 		virtual_ethdev_add_mbufs_to_rx_queue(
 			test_params->slave_port_ids[i], &pkt_burst[i][0], burst_size);
 	}
 
-	if (rte_eth_rx_burst(test_params->bonded_port_id, 0, rx_pkt_burst,
-			MAX_PKT_BURST) != burst_size) {
-		printf("rte_eth_rx_burst\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_rx_burst(
+			test_params->bonded_port_id, 0, rx_pkt_burst, MAX_PKT_BURST),
+			burst_size, "rte_eth_rx_burst\n");
 
 	/* Verify bonded device rx count */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.ipackets != (uint64_t)burst_size) {
-		printf("(%d) port_stats.ipackets not as expected\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
+			"(%d) port_stats.ipackets not as expected",
+			test_params->bonded_port_id);
 
 	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
-	if (port_stats.opackets != (uint64_t)burst_size) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[2]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
+			"(%d) port_stats.opackets not as expected",
+			test_params->slave_port_ids[2]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	if (port_stats.opackets != 0) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[0]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
+			"(%d) port_stats.opackets not as expected",
+			test_params->slave_port_ids[0]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
-	if (port_stats.opackets != 0) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
+			"(%d) port_stats.opackets not as expected",
+			test_params->slave_port_ids[1]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
-	if (port_stats.opackets != 0) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[3]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
+			"(%d) port_stats.opackets not as expected",
+			test_params->slave_port_ids[3]);
 
 	/* free mbufs */
-
 	for (i = 0; i < TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT; i++) {
 		for (j = 0; j < MAX_PKT_BURST; j++) {
 			if (pkt_burst[i][j] != NULL) {
@@ -2663,7 +2373,6 @@ test_activebackup_verify_slave_link_status_change_failover(void)
 			}
 		}
 	}
-
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -2674,70 +2383,49 @@ test_activebackup_verify_slave_link_status_change_failover(void)
 static int
 test_balance_xmit_policy_configuration(void)
 {
-	int retval;
-
-	retval = initialize_bonded_device_with_slaves(BONDING_MODE_ACTIVE_BACKUP, 0,
-			2, 1);
-	if (retval != 0) {
-		printf("Failed to initialize_bonded_device_with_slaves.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ACTIVE_BACKUP, 0, 2, 1),
+			"Failed to initialize_bonded_device_with_slaves.");
 
 	/* Invalid port id */
-	retval = rte_eth_bond_xmit_policy_set(INVALID_PORT_ID,
-			BALANCE_XMIT_POLICY_LAYER2);
-	if (retval == 0) {
-		printf("Expected call to failed as invalid port specified.\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_xmit_policy_set(
+			INVALID_PORT_ID, BALANCE_XMIT_POLICY_LAYER2),
+			"Expected call to failed as invalid port specified.");
 
 	/* Set xmit policy on non bonded device */
-	retval = rte_eth_bond_xmit_policy_set(test_params->slave_port_ids[0],
-			BALANCE_XMIT_POLICY_LAYER2);
-	if (retval == 0) {
-		printf("Expected call to failed as invalid port specified.\n");
-		return -1;
-	}
+	TEST_ASSERT_FAIL(rte_eth_bond_xmit_policy_set(
+			test_params->slave_port_ids[0],	BALANCE_XMIT_POLICY_LAYER2),
+			"Expected call to failed as invalid port specified.");
 
-	retval = rte_eth_bond_xmit_policy_set(test_params->bonded_port_id,
-			BALANCE_XMIT_POLICY_LAYER2);
-	if (retval != 0) {
-		printf("Failed to set balance xmit policy.\n");
-		return -1;
-	}
-	if (rte_eth_bond_xmit_policy_get(test_params->bonded_port_id) !=
-			BALANCE_XMIT_POLICY_LAYER2) {
-		printf("balance xmit policy not as expected.\n");
-		return -1;
-	}
 
-	retval = rte_eth_bond_xmit_policy_set(test_params->bonded_port_id,
-			BALANCE_XMIT_POLICY_LAYER23);
-	if (retval != 0) {
-		printf("Failed to set balance xmit policy.\n");
-		return -1;
-	}
-	if (rte_eth_bond_xmit_policy_get(test_params->bonded_port_id) !=
-			BALANCE_XMIT_POLICY_LAYER23) {
-		printf("balance xmit policy not as expected.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
+			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER2),
+			"Failed to set balance xmit policy.");
 
-	retval = rte_eth_bond_xmit_policy_set(test_params->bonded_port_id,
-			BALANCE_XMIT_POLICY_LAYER34);
-	if (retval != 0) {
-		printf("Failed to set balance xmit policy.\n");
-		return -1;
-	}
-	if (rte_eth_bond_xmit_policy_get(test_params->bonded_port_id) !=
-			BALANCE_XMIT_POLICY_LAYER34) {
-		printf("balance xmit policy not as expected.\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_bond_xmit_policy_get(test_params->bonded_port_id),
+			BALANCE_XMIT_POLICY_LAYER2, "balance xmit policy not as expected.");
+
+
+	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
+			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER23),
+			"Failed to set balance xmit policy.");
+
+	TEST_ASSERT_EQUAL(rte_eth_bond_xmit_policy_get(test_params->bonded_port_id),
+			BALANCE_XMIT_POLICY_LAYER23,
+			"balance xmit policy not as expected.");
+
+
+	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
+			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER34),
+			"Failed to set balance xmit policy.");
+
+	TEST_ASSERT_EQUAL(rte_eth_bond_xmit_policy_get(test_params->bonded_port_id),
+			BALANCE_XMIT_POLICY_LAYER34,
+			"balance xmit policy not as expected.");
 
 	/* Invalid port id */
-	if (rte_eth_bond_xmit_policy_get(INVALID_PORT_ID) >= 0)
-		return -1;
+	TEST_ASSERT_FAIL(rte_eth_bond_xmit_policy_get(INVALID_PORT_ID),
+			"Expected call to failed as invalid port specified.");
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -2752,24 +2440,16 @@ test_balance_l2_tx_burst(void)
 	int burst_size[TEST_BALANCE_L2_TX_BURST_SLAVE_COUNT] = { 10, 15 };
 
 	uint16_t pktlen;
-
-	int retval, i;
+	int i;
 	struct rte_eth_stats port_stats;
 
-	retval = initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0,
-			TEST_BALANCE_L2_TX_BURST_SLAVE_COUNT, 1);
-	if (retval != 0) {
-		printf("Failed to initialize_bonded_device_with_slaves.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BALANCE, 0, TEST_BALANCE_L2_TX_BURST_SLAVE_COUNT, 1),
+			"Failed to initialize_bonded_device_with_slaves.");
 
-	retval = rte_eth_bond_xmit_policy_set(test_params->bonded_port_id,
-			BALANCE_XMIT_POLICY_LAYER2);
-	if (retval != 0) {
-		printf("Failed to set balance xmit policy.\n");
-		return -1;
-	}
-
+	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
+			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER2),
+			"Failed to set balance xmit policy.");
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_0, 0, 0);
@@ -2779,54 +2459,50 @@ test_balance_l2_tx_burst(void)
 			dst_addr_0, pktlen);
 
 	/* Generate a burst 1 of packets to transmit */
-	if (generate_packet_burst(test_params->mbuf_pool, &pkts_burst[0][0],
+	TEST_ASSERT_EQUAL(generate_packet_burst(test_params->mbuf_pool, &pkts_burst[0][0],
 			test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr, 1,
 			test_params->pkt_udp_hdr, burst_size[0],
-			PACKET_BURST_GEN_PKT_LEN, 1) != burst_size[0])
-		return -1;
+			PACKET_BURST_GEN_PKT_LEN, 1), burst_size[0],
+			"failed to generate packet burst");
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_1, 0, 0);
 
 	/* Generate a burst 2 of packets to transmit */
-	if (generate_packet_burst(test_params->mbuf_pool, &pkts_burst[1][0],
+	TEST_ASSERT_EQUAL(generate_packet_burst(test_params->mbuf_pool, &pkts_burst[1][0],
 			test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr, 1,
 			test_params->pkt_udp_hdr, burst_size[1],
-			PACKET_BURST_GEN_PKT_LEN, 1) != burst_size[1])
-		return -1;
+			PACKET_BURST_GEN_PKT_LEN, 1), burst_size[1],
+			"failed to generate packet burst");
 
 	/* Send burst 1 on bonded port */
 	for (i = 0; i < TEST_BALANCE_L2_TX_BURST_SLAVE_COUNT; i++) {
-		if (rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkts_burst[i][0],
-			burst_size[i]) != burst_size[i])
-			return -1;
+		TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonded_port_id, 0,
+				&pkts_burst[i][0], burst_size[i]),
+				burst_size[i], "Failed to transmit packet burst");
 	}
+
 	/* Verify bonded port tx stats */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.opackets != (uint64_t)(burst_size[0] + burst_size[1])) {
-		printf("Bonded Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->bonded_port_id,
-				(unsigned int)port_stats.opackets, burst_size[0] + burst_size[1]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets,
+			(uint64_t)(burst_size[0] + burst_size[1]),
+			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			burst_size[0] + burst_size[1]);
 
 
 	/* Verify slave ports tx stats */
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	if (port_stats.opackets != (uint64_t)burst_size[0]) {
-		printf("Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[0],
-				(unsigned int)port_stats.opackets, burst_size[0]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size[0],
+			"Slave Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[0], (unsigned int)port_stats.opackets,
+			burst_size[0]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
-	if (port_stats.opackets != (uint64_t)burst_size[1]) {
-		printf("Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[1], (
-						unsigned int)port_stats.opackets, burst_size[1]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size[1],
+			"Slave Port (%d) opackets value (%u) not as expected (%d)\n",
+			test_params->slave_port_ids[1], (unsigned int)port_stats.opackets,
+			burst_size[1]);
 
 	/* Put all slaves down and try and transmit */
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
@@ -2836,9 +2512,9 @@ test_balance_l2_tx_burst(void)
 	}
 
 	/* Send burst on bonded port */
-	if (rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkts_burst[0][0],
-			burst_size[0]) != 0)
-		return -1;
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
+			test_params->bonded_port_id, 0, &pkts_burst[0][0], burst_size[0]),
+			0, "Expected zero packet");
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -2848,81 +2524,65 @@ static int
 balance_l23_tx_burst(uint8_t vlan_enabled, uint8_t ipv4,
 		uint8_t toggle_mac_addr, uint8_t toggle_ip_addr)
 {
-	int retval, i;
-	int burst_size_1, burst_size_2, nb_tx_1, nb_tx_2;
+	int i, burst_size_1, burst_size_2, nb_tx_1, nb_tx_2;
 
 	struct rte_mbuf *pkts_burst_1[MAX_PKT_BURST];
 	struct rte_mbuf *pkts_burst_2[MAX_PKT_BURST];
 
 	struct rte_eth_stats port_stats;
 
-	retval = initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0, 2, 1);
-	if (retval != 0) {
-		printf("Failed to initialize_bonded_device_with_slaves.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BALANCE, 0, 2, 1),
+			"Failed to initialize_bonded_device_with_slaves.");
 
-	retval = rte_eth_bond_xmit_policy_set(test_params->bonded_port_id,
-			BALANCE_XMIT_POLICY_LAYER23);
-	if (retval != 0) {
-		printf("Failed to set balance xmit policy.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
+			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER23),
+			"Failed to set balance xmit policy.");
 
 	burst_size_1 = 20;
 	burst_size_2 = 10;
 
-	if (burst_size_1 > MAX_PKT_BURST || burst_size_2 > MAX_PKT_BURST) {
-		printf("Burst size specified is greater than supported.\n");
-		return -1;
-	}
+	TEST_ASSERT(burst_size_1 < MAX_PKT_BURST || burst_size_2 < MAX_PKT_BURST,
+			"Burst size specified is greater than supported.");
 
 	/* Generate test bursts of packets to transmit */
-	if (generate_test_burst(pkts_burst_1, burst_size_1, vlan_enabled, ipv4,
-			0, 0, 0) != burst_size_1)
-		return -1;
+	TEST_ASSERT_EQUAL(generate_test_burst(
+			pkts_burst_1, burst_size_1, vlan_enabled, ipv4, 0, 0, 0),
+			burst_size_1, "failed to generate packet burst");
 
-	if (generate_test_burst(pkts_burst_2, burst_size_2, vlan_enabled, ipv4,
-			toggle_mac_addr, toggle_ip_addr, 0) != burst_size_2)
-		return -1;
+	TEST_ASSERT_EQUAL(generate_test_burst(pkts_burst_2, burst_size_2, vlan_enabled, ipv4,
+			toggle_mac_addr, toggle_ip_addr, 0), burst_size_2,
+			"failed to generate packet burst");
 
 	/* Send burst 1 on bonded port */
 	nb_tx_1 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_1,
 			burst_size_1);
-	if (nb_tx_1 != burst_size_1)
-		return -1;
+	TEST_ASSERT_EQUAL(nb_tx_1, burst_size_1, "tx burst failed");
 
 	/* Send burst 2 on bonded port */
 	nb_tx_2 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_2,
 			burst_size_2);
-	if (nb_tx_2 != burst_size_2)
-		return -1;
+	TEST_ASSERT_EQUAL(nb_tx_2, burst_size_2, "tx burst failed");
 
 	/* Verify bonded port tx stats */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.opackets != (uint64_t)(nb_tx_1 + nb_tx_2)) {
-		printf("Bonded Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->bonded_port_id,
-				(unsigned int)port_stats.opackets, nb_tx_1 + nb_tx_2);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)(nb_tx_1 + nb_tx_2),
+			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			nb_tx_1 + nb_tx_2);
 
 	/* Verify slave ports tx stats */
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	if (port_stats.opackets != (uint64_t)nb_tx_1) {
-		printf("Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[0],
-				(unsigned int)port_stats.opackets, nb_tx_1);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)nb_tx_1,
+			"Slave Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[0], (unsigned int)port_stats.opackets,
+			nb_tx_1);
 
 	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
-	if (port_stats.opackets != (uint64_t)nb_tx_2) {
-		printf("Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[1],
-				(unsigned int)port_stats.opackets, nb_tx_2);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)nb_tx_2,
+			"Slave Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[1], (unsigned int)port_stats.opackets,
+			nb_tx_2);
 
 	/* Put all slaves down and try and transmit */
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
@@ -2932,10 +2592,10 @@ balance_l23_tx_burst(uint8_t vlan_enabled, uint8_t ipv4,
 	}
 
 	/* Send burst on bonded port */
-	nb_tx_1 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_1,
-			burst_size_1);
-	if (nb_tx_1 != 0)
-		return -1;
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
+			test_params->bonded_port_id, 0, pkts_burst_1,
+			burst_size_1), 0, "Expected zero packet");
+
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -2976,82 +2636,66 @@ balance_l34_tx_burst(uint8_t vlan_enabled, uint8_t ipv4,
 		uint8_t toggle_mac_addr, uint8_t toggle_ip_addr,
 		uint8_t toggle_udp_port)
 {
-	int retval, i;
-	int burst_size_1, burst_size_2, nb_tx_1, nb_tx_2;
+	int i, burst_size_1, burst_size_2, nb_tx_1, nb_tx_2;
 
 	struct rte_mbuf *pkts_burst_1[MAX_PKT_BURST];
 	struct rte_mbuf *pkts_burst_2[MAX_PKT_BURST];
 
 	struct rte_eth_stats port_stats;
 
-	retval = initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0, 2, 1);
-	if (retval != 0) {
-		printf("Failed to initialize_bonded_device_with_slaves.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BALANCE, 0, 2, 1),
+			"Failed to initialize_bonded_device_with_slaves.");
 
-	retval = rte_eth_bond_xmit_policy_set(test_params->bonded_port_id,
-			BALANCE_XMIT_POLICY_LAYER34);
-	if (retval != 0) {
-		printf("Failed to set balance xmit policy.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
+			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER34),
+			"Failed to set balance xmit policy.");
 
 	burst_size_1 = 20;
 	burst_size_2 = 10;
 
-	if (burst_size_1 > MAX_PKT_BURST || burst_size_2 > MAX_PKT_BURST) {
-		printf("Burst size specified is greater than supported.\n");
-		return -1;
-	}
+	TEST_ASSERT(burst_size_1 < MAX_PKT_BURST || burst_size_2 < MAX_PKT_BURST,
+			"Burst size specified is greater than supported.");
 
 	/* Generate test bursts of packets to transmit */
-	if (generate_test_burst(pkts_burst_1, burst_size_1, vlan_enabled, ipv4, 0,
-			0, 0) != burst_size_1)
-		return -1;
+	TEST_ASSERT_EQUAL(generate_test_burst(
+			pkts_burst_1, burst_size_1, vlan_enabled, ipv4, 0, 0, 0),
+			burst_size_1, "failed to generate burst");
 
-	if (generate_test_burst(pkts_burst_2, burst_size_2, vlan_enabled, ipv4,
-			toggle_mac_addr, toggle_ip_addr, toggle_udp_port) != burst_size_2)
-		return -1;
+	TEST_ASSERT_EQUAL(generate_test_burst(pkts_burst_2, burst_size_2,
+			vlan_enabled, ipv4, toggle_mac_addr, toggle_ip_addr,
+			toggle_udp_port), burst_size_2, "failed to generate burst");
 
 	/* Send burst 1 on bonded port */
 	nb_tx_1 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_1,
 			burst_size_1);
-	if (nb_tx_1 != burst_size_1)
-		return -1;
+	TEST_ASSERT_EQUAL(nb_tx_1, burst_size_1, "tx burst failed");
 
 	/* Send burst 2 on bonded port */
 	nb_tx_2 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_2,
 			burst_size_2);
-	if (nb_tx_2 != burst_size_2)
-		return -1;
+	TEST_ASSERT_EQUAL(nb_tx_2, burst_size_2, "tx burst failed");
 
 
 	/* Verify bonded port tx stats */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.opackets != (uint64_t)(nb_tx_1 + nb_tx_2)) {
-		printf("Bonded Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->bonded_port_id,
-				(unsigned int)port_stats.opackets, nb_tx_1 + nb_tx_2);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)(nb_tx_1 + nb_tx_2),
+			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			nb_tx_1 + nb_tx_2);
 
 	/* Verify slave ports tx stats */
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	if (port_stats.opackets != (uint64_t)nb_tx_1) {
-		printf("Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[0],
-				(unsigned int)port_stats.opackets, nb_tx_1);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)nb_tx_1,
+			"Slave Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[0], (unsigned int)port_stats.opackets,
+			nb_tx_1);
 
 	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
-	if (port_stats.opackets != (uint64_t)nb_tx_2) {
-		printf("Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[1],
-				(unsigned int)port_stats.opackets, nb_tx_2);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)nb_tx_2,
+			"Slave Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[1], (unsigned int)port_stats.opackets,
+			nb_tx_2);
 
 	/* Put all slaves down and try and transmit */
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
@@ -3061,10 +2705,9 @@ balance_l34_tx_burst(uint8_t vlan_enabled, uint8_t ipv4,
 	}
 
 	/* Send burst on bonded port */
-	nb_tx_1 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_1,
-			burst_size_1);
-	if (nb_tx_1 != 0)
-		return -1;
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
+			test_params->bonded_port_id, 0, pkts_burst_1,
+			burst_size_1), 0, "Expected zero packet");
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -3253,21 +2896,23 @@ test_balance_rx_burst(void)
 	struct rte_eth_stats port_stats;
 
 	int burst_size[TEST_BALANCE_RX_BURST_SLAVE_COUNT] = { 10, 5, 30 };
-	int i, j, nb_rx;
+	int i, j;
 
 	memset(gen_pkt_burst, 0, sizeof(gen_pkt_burst));
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0, 3, 1)
-			!= 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BALANCE, 0, 3, 1),
+			"Failed to intialise bonded device");
 
 	/* Generate test bursts of packets to transmit */
 	for (i = 0; i < TEST_BALANCE_RX_BURST_SLAVE_COUNT; i++) {
-		if (generate_test_burst(&gen_pkt_burst[i][0], burst_size[i], 0, 0, 1,
-				0, 0) != burst_size[i])
-			return -1;
+		TEST_ASSERT_EQUAL(generate_test_burst(
+				&gen_pkt_burst[i][0], burst_size[i], 0, 0, 1,
+				0, 0), burst_size[i],
+				"failed to generate packet burst");
 	}
+
 	/* Add rx data to slaves */
 	for (i = 0; i < TEST_BALANCE_RX_BURST_SLAVE_COUNT; i++) {
 		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
@@ -3276,56 +2921,44 @@ test_balance_rx_burst(void)
 
 	/* Call rx burst on bonded device */
 	/* Send burst on bonded port */
-	nb_rx = rte_eth_rx_burst(test_params->bonded_port_id, 0, rx_pkt_burst,
-			MAX_PKT_BURST);
-	if (nb_rx != burst_size[0] + burst_size[1] + burst_size[2]) {
-		printf("balance rx burst failed\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_rx_burst(test_params->bonded_port_id, 0,
+			rx_pkt_burst, MAX_PKT_BURST),
+			burst_size[0] + burst_size[1] + burst_size[2],
+			"balance rx burst failed\n");
 
 	/* Verify bonded device rx count */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.ipackets != (uint64_t)(burst_size[0] + burst_size[1] +
-			burst_size[2])) {
-		printf("Bonded Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->bonded_port_id, (unsigned int)port_stats.ipackets,
-				burst_size[0] + burst_size[1] + burst_size[2]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets,
+			(uint64_t)(burst_size[0] + burst_size[1] + burst_size[2]),
+			"Bonded Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.ipackets,
+			burst_size[0] + burst_size[1] + burst_size[2]);
 
 
 	/* Verify bonded slave devices rx counts */
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	if (port_stats.ipackets != (uint64_t)burst_size[0]) {
-		printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
+	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[0],
+			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
 				test_params->slave_port_ids[0],
 				(unsigned int)port_stats.ipackets, burst_size[0]);
-		return -1;
-	}
 
 	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
-	if (port_stats.ipackets != (uint64_t)burst_size[1]) {
-		printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[1],
-				(unsigned int)port_stats.ipackets, burst_size[1]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[1],
+			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[1], (unsigned int)port_stats.ipackets,
+			burst_size[1]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
-	if (port_stats.ipackets != (uint64_t)burst_size[2]) {
-		printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[2],
-				(unsigned int)port_stats.ipackets, burst_size[2]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[2],
+			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[2], (unsigned int)port_stats.ipackets,
+			burst_size[2]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
-	if (port_stats.ipackets != 0) {
-		printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[3],
-				(unsigned int)port_stats.ipackets, 0);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
+			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[3],	(unsigned int)port_stats.ipackets,
+			0);
 
 	/* free mbufs */
 	for (i = 0; i < TEST_BALANCE_RX_BURST_SLAVE_COUNT; i++) {
@@ -3344,48 +2977,37 @@ test_balance_rx_burst(void)
 static int
 test_balance_verify_promiscuous_enable_disable(void)
 {
-	int i, promiscuous_en;
+	int i;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0, 4, 1) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BALANCE, 0, 4, 1),
+			"Failed to intialise bonded device");
 
 	rte_eth_promiscuous_enable(test_params->bonded_port_id);
 
-	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
-	if (promiscuous_en != 1) {
-		printf("Port (%d) promiscuous mode not enabled\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 1,
+			"Port (%d) promiscuous mode not enabled",
+			test_params->bonded_port_id);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		promiscuous_en = rte_eth_promiscuous_get(
+		TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(
+				test_params->slave_port_ids[i]), 1,
+				"Port (%d) promiscuous mode not enabled",
 				test_params->slave_port_ids[i]);
-		if (promiscuous_en != 1) {
-			printf("slave port (%d) promiscuous mode not enabled\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
 	}
 
 	rte_eth_promiscuous_disable(test_params->bonded_port_id);
 
-	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
-	if (promiscuous_en != 0) {
-		printf("Port (%d) promiscuous mode not disabled\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 0,
+			"Port (%d) promiscuous mode not disabled",
+			test_params->bonded_port_id);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		promiscuous_en = rte_eth_promiscuous_get(
+		TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(
+				test_params->slave_port_ids[i]), 0,
+				"Port (%d) promiscuous mode not disabled",
 				test_params->slave_port_ids[i]);
-		if (promiscuous_en != 0) {
-			printf("slave port (%d) promiscuous mode not disabled\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
 	}
 
 	/* Clean up and remove slaves from bonded device */
@@ -3401,115 +3023,102 @@ test_balance_verify_mac_assignment(void)
 	rte_eth_macaddr_get(test_params->slave_port_ids[1], &expected_mac_addr_1);
 
 	/* Initialize bonded device with 2 slaves in active backup mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0, 2, 1) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BALANCE, 0, 2, 1),
+			"Failed to intialise bonded device");
 
 	/* Verify that bonded MACs is that of first slave and that the other slave
 	 * MAC hasn't been changed */
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(&expected_mac_addr_0, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of primary port\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"bonded port (%d) mac address not set to that of primary port",
+			test_params->bonded_port_id);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_0, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not set to that of primary port\n",
-				test_params->slave_port_ids[0]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not set to that of primary port",
+			test_params->slave_port_ids[0]);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_0, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not set to that of primary port\n",
-				test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not set to that of primary port",
+			test_params->slave_port_ids[1]);
 
 	/* change primary and verify that MAC addresses haven't changed */
-	if (rte_eth_bond_primary_set(test_params->bonded_port_id,
-			test_params->slave_port_ids[1]) != 0) {
-		printf("Failed to set bonded port (%d) primary port to (%d)\n",
-				test_params->bonded_port_id, test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(test_params->bonded_port_id,
+			test_params->slave_port_ids[1]),
+			"Failed to set bonded port (%d) primary port to (%d)\n",
+			test_params->bonded_port_id, test_params->slave_port_ids[1]);
 
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(&expected_mac_addr_0, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of primary port\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"bonded port (%d) mac address not set to that of primary port",
+			test_params->bonded_port_id);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_0, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not set to that of primary port\n",
-				test_params->slave_port_ids[0]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not set to that of primary port",
+			test_params->slave_port_ids[0]);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_0, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not set to that of primary port\n",
-				test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not set to that of primary port",
+			test_params->slave_port_ids[1]);
 
 	/* stop / start bonded device and verify that primary MAC address is
 	 * propagated to bonded device and slaves */
 
 	rte_eth_dev_stop(test_params->bonded_port_id);
 
-	if (rte_eth_dev_start(test_params->bonded_port_id) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
+			"Failed to start bonded device");
 
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(&expected_mac_addr_1, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of primary port\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"bonded port (%d) mac address not set to that of primary port",
+			test_params->bonded_port_id);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_1, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not set to that of primary port\n",
-				test_params->slave_port_ids[0]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not set to that of primary port",
+			test_params->slave_port_ids[0]);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr);
-	if (memcmp(&expected_mac_addr_1, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not set to that of primary port\n",
-				test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not set to that of primary port",
+			test_params->slave_port_ids[1]);
 
 	/* Set explicit MAC address */
-	if (rte_eth_bond_mac_address_set(test_params->bonded_port_id,
-			(struct ether_addr *)bonded_mac) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
+			test_params->bonded_port_id, (struct ether_addr *)bonded_mac),
+			"failed to set MAC");
 
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(&bonded_mac, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of bonded port\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"bonded port (%d) mac address not set to that of bonded port",
+			test_params->bonded_port_id);
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr);
-	if (memcmp(&bonded_mac, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not as expected\n",
+	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not as expected\n",
 				test_params->slave_port_ids[0]);
-		return -1;
-	}
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr);
-	if (memcmp(&bonded_mac, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("slave port (%d) mac address not set to that of bonded port\n",
-				test_params->slave_port_ids[1]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"slave port (%d) mac address not set to that of bonded port",
+			test_params->slave_port_ids[1]);
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -3531,32 +3140,27 @@ test_balance_verify_slave_link_status_change_behaviour(void)
 	memset(pkt_burst, 0, sizeof(pkt_burst));
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0,
-			TEST_BALANCE_LINK_STATUS_SLAVE_COUNT, 1) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BALANCE, 0, TEST_BALANCE_LINK_STATUS_SLAVE_COUNT, 1),
+			"Failed to intialise bonded device");
 
-	if (rte_eth_bond_xmit_policy_set(test_params->bonded_port_id,
-			BALANCE_XMIT_POLICY_LAYER2)) {
-		printf("Failed to set balance xmit policy.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
+			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER2),
+			"Failed to set balance xmit policy.");
+
 
 	/* Verify Current Slaves Count /Active Slave Count is */
 	slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id, slaves,
 			RTE_MAX_ETHPORTS);
-	if (slave_count != TEST_BALANCE_LINK_STATUS_SLAVE_COUNT) {
-		printf("Number of slaves (%d) is not as expected (%d).\n", slave_count,
-				TEST_BALANCE_LINK_STATUS_SLAVE_COUNT);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(slave_count, TEST_BALANCE_LINK_STATUS_SLAVE_COUNT,
+			"Number of slaves (%d) is not as expected (%d).",
+			slave_count, TEST_BALANCE_LINK_STATUS_SLAVE_COUNT);
 
 	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
 			slaves, RTE_MAX_ETHPORTS);
-	if (slave_count != TEST_BALANCE_LINK_STATUS_SLAVE_COUNT) {
-		printf("Number of active slaves (%d) is not as expected (%d).\n",
-				slave_count, TEST_BALANCE_LINK_STATUS_SLAVE_COUNT);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(slave_count, TEST_BALANCE_LINK_STATUS_SLAVE_COUNT,
+			"Number of active slaves (%d) is not as expected (%d).",
+			slave_count, TEST_BALANCE_LINK_STATUS_SLAVE_COUNT);
 
 	/* Set 2 slaves link status to down */
 	virtual_ethdev_simulate_link_status_interrupt(
@@ -3564,106 +3168,80 @@ test_balance_verify_slave_link_status_change_behaviour(void)
 	virtual_ethdev_simulate_link_status_interrupt(
 			test_params->slave_port_ids[3], 0);
 
-	if (rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS) != 2) {
-		printf("Number of active slaves (%d) is not as expected (%d).\n",
-				slave_count, 2);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_bond_active_slaves_get(
+			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS), 2,
+			"Number of active slaves (%d) is not as expected (%d).",
+			slave_count, 2);
 
 	/* Send to sets of packet burst and verify that they are balanced across
 	 *  slaves */
 	burst_size = 21;
 
-	if (generate_test_burst(&pkt_burst[0][0], burst_size, 0, 1, 0, 0, 0) !=
-			burst_size) {
-		printf("generate_test_burst failed\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(generate_test_burst(
+			&pkt_burst[0][0], burst_size, 0, 1, 0, 0, 0), burst_size,
+			"generate_test_burst failed");
 
-	if (generate_test_burst(&pkt_burst[1][0], burst_size, 0, 1, 1, 0, 0) !=
-			burst_size) {
-		printf("generate_test_burst failed\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(generate_test_burst(
+			&pkt_burst[1][0], burst_size, 0, 1, 1, 0, 0), burst_size,
+			"generate_test_burst failed");
 
-	if (rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt_burst[0][0],
-			burst_size) != burst_size) {
-		printf("rte_eth_tx_burst failed\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
+			test_params->bonded_port_id, 0, &pkt_burst[0][0], burst_size),
+			burst_size, "rte_eth_tx_burst failed");
 
-	if (rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt_burst[1][0],
-			burst_size) != burst_size) {
-		printf("rte_eth_tx_burst failed\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
+			test_params->bonded_port_id, 0, &pkt_burst[1][0], burst_size),
+			burst_size, "rte_eth_tx_burst failed");
+
 
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.opackets != (uint64_t)(burst_size + burst_size)) {
-		printf("(%d) port_stats.opackets (%d) not as expected (%d).\n",
-				test_params->bonded_port_id, (int)port_stats.opackets,
-				burst_size + burst_size);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)(burst_size + burst_size),
+			"(%d) port_stats.opackets (%d) not as expected (%d).",
+			test_params->bonded_port_id, (int)port_stats.opackets,
+			burst_size + burst_size);
 
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	if (port_stats.opackets != (uint64_t)burst_size) {
-		printf("(%d) port_stats.opackets (%d) not as expected (%d).\n",
-				test_params->slave_port_ids[0], (int)port_stats.opackets,
-				burst_size);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
+			"(%d) port_stats.opackets (%d) not as expected (%d).",
+			test_params->slave_port_ids[0], (int)port_stats.opackets,
+			burst_size);
 
 	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
-	if (port_stats.opackets != (uint64_t)burst_size) {
-		printf("(%d) port_stats.opackets (%d) not as expected (%d).\n",
-				test_params->slave_port_ids[2], (int)port_stats.opackets,
-				burst_size);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
+			"(%d) port_stats.opackets (%d) not as expected (%d).",
+			test_params->slave_port_ids[2], (int)port_stats.opackets,
+			burst_size);
 
 	/* verify that all packets get send on primary slave when no other slaves
 	 * are available */
 	virtual_ethdev_simulate_link_status_interrupt(
 			test_params->slave_port_ids[2], 0);
 
-	if (rte_eth_bond_active_slaves_get(test_params->bonded_port_id, slaves,
-			RTE_MAX_ETHPORTS) != 1) {
-		printf("Number of active slaves (%d) is not as expected (%d).\n",
-				slave_count, 1);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_bond_active_slaves_get(
+			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS), 1,
+			"Number of active slaves (%d) is not as expected (%d).",
+			slave_count, 1);
 
-	if (generate_test_burst(&pkt_burst[1][0], burst_size, 0, 1, 1, 0, 0) !=
-			burst_size) {
-		printf("generate_test_burst failed\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(generate_test_burst(
+			&pkt_burst[1][0], burst_size, 0, 1, 1, 0, 0), burst_size,
+			"generate_test_burst failed");
 
-	if (rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt_burst[1][0],
-			burst_size) != burst_size) {
-		printf("rte_eth_tx_burst failed\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
+			test_params->bonded_port_id, 0, &pkt_burst[1][0], burst_size),
+			burst_size, "rte_eth_tx_burst failed");
 
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.opackets != (uint64_t)(burst_size + burst_size +
-			burst_size)) {
-		printf("(%d) port_stats.opackets (%d) not as expected (%d).\n",
-				test_params->bonded_port_id, (int)port_stats.opackets,
-				burst_size + burst_size + burst_size);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets,
+			(uint64_t)(burst_size + burst_size + burst_size),
+			"(%d) port_stats.opackets (%d) not as expected (%d).\n",
+			test_params->bonded_port_id, (int)port_stats.opackets,
+			burst_size + burst_size + burst_size);
 
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	if (port_stats.opackets != (uint64_t)(burst_size + burst_size)) {
-		printf("(%d) port_stats.opackets (%d) not as expected (%d).\n",
-				test_params->slave_port_ids[0], (int)port_stats.opackets,
-				burst_size + burst_size);
-		return -1;
-	}
-
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)(burst_size + burst_size),
+			"(%d) port_stats.opackets (%d) not as expected (%d).",
+			test_params->slave_port_ids[0], (int)port_stats.opackets,
+			burst_size + burst_size);
 
 	virtual_ethdev_simulate_link_status_interrupt(
 			test_params->slave_port_ids[0], 0);
@@ -3675,15 +3253,13 @@ test_balance_verify_slave_link_status_change_behaviour(void)
 			test_params->slave_port_ids[3], 1);
 
 	for (i = 0; i < TEST_BALANCE_LINK_STATUS_SLAVE_COUNT; i++) {
-		if (generate_test_burst(&pkt_burst[i][0], burst_size, 0, 1, 0, 0, 0) !=
-				burst_size)
-			return -1;
+		TEST_ASSERT_EQUAL(generate_test_burst(
+				&pkt_burst[i][0], burst_size, 0, 1, 0, 0, 0), burst_size,
+				"Failed to generate packet burst");
 
 		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
 				&pkt_burst[i][0], burst_size);
 	}
-
-
 
 	/* Verify that pkts are not received on slaves with link status down */
 
@@ -3692,12 +3268,10 @@ test_balance_verify_slave_link_status_change_behaviour(void)
 
 	/* Verify bonded device rx count */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.ipackets != (uint64_t)(burst_size * 3)) {
-		printf("(%d) port_stats.ipackets (%d) not as expected (%d)\n",
-				test_params->bonded_port_id, (int)port_stats.ipackets,
-				burst_size * 3);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)(burst_size * 3),
+			"(%d) port_stats.ipackets (%d) not as expected (%d)\n",
+			test_params->bonded_port_id, (int)port_stats.ipackets,
+			burst_size * 3);
 
 	/* free mbufs allocate for rx testing */
 	for (i = 0; i < TEST_BALANCE_RX_BURST_SLAVE_COUNT; i++) {
@@ -3719,16 +3293,14 @@ test_balance_verify_slave_link_status_change_behaviour(void)
 static int
 test_broadcast_tx_burst(void)
 {
-	int i, pktlen, retval, burst_size, generated_burst_size, nb_tx;
+	int i, pktlen, burst_size;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 
 	struct rte_eth_stats port_stats;
 
-	retval = initialize_bonded_device_with_slaves(BONDING_MODE_BROADCAST, 0, 2, 1);
-	if (retval != 0) {
-		printf("Failed to initialize_bonded_device_with_slaves.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BROADCAST, 0, 2, 1),
+			"Failed to intialise bonded device");
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_0, 0, 0);
@@ -3740,46 +3312,37 @@ test_broadcast_tx_burst(void)
 
 	burst_size = 20 * test_params->bonded_slave_count;
 
-	if (burst_size > MAX_PKT_BURST) {
-		printf("Burst size specified is greater than supported.\n");
-		return -1;
-	}
+	TEST_ASSERT(burst_size < MAX_PKT_BURST,
+			"Burst size specified is greater than supported.");
 
 	/* Generate a burst of packets to transmit */
-	generated_burst_size = generate_packet_burst(test_params->mbuf_pool,
+	TEST_ASSERT_EQUAL(generate_packet_burst(test_params->mbuf_pool,
 			pkts_burst,	test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr,
 			1, test_params->pkt_udp_hdr, burst_size, PACKET_BURST_GEN_PKT_LEN,
-			1);
-	if (generated_burst_size != burst_size)
-		return -1;
+			1), burst_size, "Failed to generate packet burst");
 
 	/* Send burst on bonded port */
-	nb_tx = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst,
-			burst_size);
-	if (nb_tx != burst_size) {
-		printf("Bonded Port (%d) rx burst failed, packets transmitted value (%u) not as expected (%d)\n",
-				test_params->bonded_port_id,
-				nb_tx, burst_size);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonded_port_id, 0,
+			pkts_burst, burst_size), burst_size,
+			"Bonded Port (%d) rx burst failed, packets transmitted value "
+			"not as expected (%d)",
+			test_params->bonded_port_id, burst_size);
 
 	/* Verify bonded port tx stats */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.opackets != (uint64_t)burst_size *
-			test_params->bonded_slave_count) {
-		printf("Bonded Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->bonded_port_id, (unsigned int)port_stats.opackets,
-				burst_size);
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets,
+			(uint64_t)burst_size * test_params->bonded_slave_count,
+			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			burst_size);
 
 	/* Verify slave ports tx stats */
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		rte_eth_stats_get(test_params->slave_port_ids[i], &port_stats);
-		if (port_stats.opackets != (uint64_t)burst_size) {
-			printf("Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-					test_params->bonded_port_id,
-					(unsigned int)port_stats.opackets, burst_size);
-		}
+		TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
+				"Slave Port (%d) opackets value (%u) not as expected (%d)\n",
+				test_params->bonded_port_id,
+				(unsigned int)port_stats.opackets, burst_size);
 	}
 
 	/* Put all slaves down and try and transmit */
@@ -3790,10 +3353,9 @@ test_broadcast_tx_burst(void)
 	}
 
 	/* Send burst on bonded port */
-	nb_tx = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst,
-			burst_size);
-	if (nb_tx != 0)
-		return -1;
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
+			test_params->bonded_port_id, 0, pkts_burst, burst_size),  0,
+			"transmitted an unexpected number of packets");
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -3929,20 +3491,20 @@ test_broadcast_rx_burst(void)
 	struct rte_eth_stats port_stats;
 
 	int burst_size[BROADCAST_RX_BURST_NUM_OF_SLAVES] = { 10, 5, 30 };
-	int i, j, nb_rx;
+	int i, j;
 
 	memset(gen_pkt_burst, 0, sizeof(gen_pkt_burst));
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BROADCAST, 0, 3, 1) != 0)
-		return -1;
-
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BROADCAST, 0, 3, 1),
+			"Failed to intialise bonded device");
 
 	/* Generate test bursts of packets to transmit */
 	for (i = 0; i < BROADCAST_RX_BURST_NUM_OF_SLAVES; i++) {
-		if (generate_test_burst(&gen_pkt_burst[i][0], burst_size[i], 0, 0, 1, 0,
-				0) != burst_size[i])
-			return -1;
+		TEST_ASSERT_EQUAL(generate_test_burst(
+				&gen_pkt_burst[i][0], burst_size[i], 0, 0, 1, 0, 0),
+				burst_size[i], "failed to generate packet burst");
 	}
 
 	/* Add rx data to slave 0 */
@@ -3954,57 +3516,44 @@ test_broadcast_rx_burst(void)
 
 	/* Call rx burst on bonded device */
 	/* Send burst on bonded port */
-	nb_rx = rte_eth_rx_burst(test_params->bonded_port_id, 0, rx_pkt_burst,
-			MAX_PKT_BURST);
-	if (nb_rx != burst_size[0] + burst_size[1] + burst_size[2]) {
-		printf("round-robin rx burst failed");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_rx_burst(
+			test_params->bonded_port_id, 0, rx_pkt_burst, MAX_PKT_BURST),
+			burst_size[0] + burst_size[1] + burst_size[2],
+			"rx burst failed");
 
 	/* Verify bonded device rx count */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.ipackets != (uint64_t)(burst_size[0] + burst_size[1] +
-			burst_size[2])) {
-		printf("Bonded Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->bonded_port_id, (unsigned int)port_stats.ipackets,
-				burst_size[0] + burst_size[1] + burst_size[2]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets,
+			(uint64_t)(burst_size[0] + burst_size[1] + burst_size[2]),
+			"Bonded Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->bonded_port_id, (unsigned int)port_stats.ipackets,
+			burst_size[0] + burst_size[1] + burst_size[2]);
 
 
 	/* Verify bonded slave devices rx counts */
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	if (port_stats.ipackets != (uint64_t)burst_size[0]) {
-		printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[0],
-				(unsigned int)port_stats.ipackets, burst_size[0]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[0],
+			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[0], (unsigned int)port_stats.ipackets,
+			burst_size[0]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
-	if (port_stats.ipackets != (uint64_t)burst_size[1]) {
-		printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[1],
-				(unsigned int)port_stats.ipackets, burst_size[1]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[1],
+			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[0], (unsigned int)port_stats.ipackets,
+			burst_size[1]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
-	if (port_stats.ipackets != (uint64_t)burst_size[2]) {
-		printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[2],
-				(unsigned int)port_stats.ipackets,
-				burst_size[2]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[2],
+			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[2], (unsigned int)port_stats.ipackets,
+			burst_size[2]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
-	if (port_stats.ipackets != 0) {
-		printf("Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-				test_params->slave_port_ids[3],
-				(unsigned int)port_stats.ipackets, 0);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
+			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->slave_port_ids[3], (unsigned int)port_stats.ipackets,
+			0);
 
 	/* free mbufs allocate for rx testing */
 	for (i = 0; i < BROADCAST_RX_BURST_NUM_OF_SLAVES; i++) {
@@ -4023,48 +3572,38 @@ test_broadcast_rx_burst(void)
 static int
 test_broadcast_verify_promiscuous_enable_disable(void)
 {
-	int i, promiscuous_en;
+	int i;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BALANCE, 0, 4, 1) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BROADCAST, 0, 4, 1),
+			"Failed to intialise bonded device");
 
 	rte_eth_promiscuous_enable(test_params->bonded_port_id);
 
-	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
-	if (promiscuous_en != 1) {
-		printf("Port (%d) promiscuous mode not enabled\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+
+	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 1,
+			"Port (%d) promiscuous mode not enabled",
+			test_params->bonded_port_id);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		promiscuous_en = rte_eth_promiscuous_get(
+		TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(
+				test_params->slave_port_ids[i]), 1,
+				"Port (%d) promiscuous mode not enabled",
 				test_params->slave_port_ids[i]);
-		if (promiscuous_en != 1) {
-			printf("slave port (%d) promiscuous mode not enabled\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
 	}
 
 	rte_eth_promiscuous_disable(test_params->bonded_port_id);
 
-	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
-	if (promiscuous_en != 0) {
-		printf("Port (%d) promiscuous mode not disabled\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 0,
+			"Port (%d) promiscuous mode not disabled",
+			test_params->bonded_port_id);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		promiscuous_en = rte_eth_promiscuous_get(
+		TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(
+				test_params->slave_port_ids[i]), 0,
+				"Port (%d) promiscuous mode not disabled",
 				test_params->slave_port_ids[i]);
-		if (promiscuous_en != 0) {
-			printf("slave port (%d) promiscuous mode not disabled\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
 	}
 
 	/* Clean up and remove slaves from bonded device */
@@ -4076,45 +3615,39 @@ test_broadcast_verify_mac_assignment(void)
 {
 	struct ether_addr read_mac_addr, expected_mac_addr_0, expected_mac_addr_1;
 
-	int i, retval;
+	int i;
 
 	rte_eth_macaddr_get(test_params->slave_port_ids[0], &expected_mac_addr_0);
 	rte_eth_macaddr_get(test_params->slave_port_ids[2], &expected_mac_addr_1);
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BROADCAST, 0, 4, 1) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_BROADCAST, 0, 4, 1),
+			"Failed to intialise bonded device");
 
 	/* Verify that all MACs are the same as first slave added to bonded
 	 * device */
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
-		if (memcmp(&expected_mac_addr_0, &read_mac_addr,
-				sizeof(read_mac_addr))) {
-			printf("slave port (%d) mac address not set to that of primary port\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+				sizeof(read_mac_addr)),
+				"slave port (%d) mac address not set to that of primary port",
+				test_params->slave_port_ids[i]);
 	}
 
 	/* change primary and verify that MAC addresses haven't changed */
-	retval = rte_eth_bond_primary_set(test_params->bonded_port_id,
-			test_params->slave_port_ids[2]);
-	if (retval != 0) {
-		printf("Failed to set bonded port (%d) primary port to (%d)\n",
-				test_params->bonded_port_id, test_params->slave_port_ids[i]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(test_params->bonded_port_id,
+			test_params->slave_port_ids[2]),
+			"Failed to set bonded port (%d) primary port to (%d)",
+			test_params->bonded_port_id, test_params->slave_port_ids[i]);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
-		if (memcmp(&expected_mac_addr_0, &read_mac_addr,
-				sizeof(read_mac_addr))) {
-			printf("slave port (%d) mac address has changed to that of primary"
-					"port without stop/start toggle of bonded device\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
+				sizeof(read_mac_addr)),
+				"slave port (%d) mac address has changed to that of primary "
+				"port without stop/start toggle of bonded device",
+				test_params->slave_port_ids[i]);
 	}
 
 	/* stop / start bonded device and verify that primary MAC address is
@@ -4122,45 +3655,41 @@ test_broadcast_verify_mac_assignment(void)
 
 	rte_eth_dev_stop(test_params->bonded_port_id);
 
-	if (rte_eth_dev_start(test_params->bonded_port_id) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
+			"Failed to start bonded device");
 
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(&expected_mac_addr_1, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of new primary"
-				" port\n", test_params->slave_port_ids[i]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"bonded port (%d) mac address not set to that of new primary  port",
+			test_params->slave_port_ids[i]);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
-		if (memcmp(&expected_mac_addr_1, &read_mac_addr,
-				sizeof(read_mac_addr))) {
-			printf("slave port (%d) mac address not set to that of new primary"
-					"port\n", test_params->slave_port_ids[i]);
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
+				sizeof(read_mac_addr)),
+				"slave port (%d) mac address not set to that of new primary "
+				"port", test_params->slave_port_ids[i]);
 	}
 
 	/* Set explicit MAC address */
-	if (rte_eth_bond_mac_address_set(test_params->bonded_port_id,
-			(struct ether_addr *)bonded_mac) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
+			test_params->bonded_port_id, (struct ether_addr *)bonded_mac),
+			"Failed to set MAC address");
 
 	rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr);
-	if (memcmp(bonded_mac, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port (%d) mac address not set to that of new primary port\n",
-				test_params->slave_port_ids[i]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(bonded_mac, &read_mac_addr,
+			sizeof(read_mac_addr)),
+			"bonded port (%d) mac address not set to that of new primary port",
+			test_params->slave_port_ids[i]);
+
 
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
-		if (memcmp(bonded_mac, &read_mac_addr, sizeof(read_mac_addr))) {
-			printf("slave port (%d) mac address not set to that of new primary port\n",
-					test_params->slave_port_ids[i]);
-			return -1;
-		}
+		TEST_ASSERT_SUCCESS(memcmp(bonded_mac, &read_mac_addr,
+				sizeof(read_mac_addr)),
+				"slave port (%d) mac address not set to that of new primary "
+				"port", test_params->slave_port_ids[i]);
 	}
 
 	/* Clean up and remove slaves from bonded device */
@@ -4182,26 +3711,22 @@ test_broadcast_verify_slave_link_status_change_behaviour(void)
 	memset(pkt_burst, 0, sizeof(pkt_burst));
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_BROADCAST, 0,
-			BROADCAST_LINK_STATUS_NUM_OF_SLAVES, 1) != 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+				BONDING_MODE_BROADCAST, 0, BROADCAST_LINK_STATUS_NUM_OF_SLAVES,
+				1), "Failed to intialise bonded device");
 
 	/* Verify Current Slaves Count /Active Slave Count is */
 	slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id, slaves,
 			RTE_MAX_ETHPORTS);
-	if (slave_count != 4) {
-		printf("Number of slaves (%d) is not as expected (%d).\n",
-				slave_count, 4);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(slave_count, 4,
+			"Number of slaves (%d) is not as expected (%d).",
+			slave_count, 4);
 
-	slave_count = rte_eth_bond_active_slaves_get(
-			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS);
-	if (slave_count != 4) {
-		printf("Number of active slaves (%d) is not as expected (%d).\n",
-				slave_count, 4);
-		return -1;
-	}
+	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
+			slaves, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(slave_count, 4,
+			"Number of active slaves (%d) is not as expected (%d).",
+			slave_count, 4);
 
 	/* Set 2 slaves link status to down */
 	virtual_ethdev_simulate_link_status_interrupt(
@@ -4211,11 +3736,9 @@ test_broadcast_verify_slave_link_status_change_behaviour(void)
 
 	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
 			slaves, RTE_MAX_ETHPORTS);
-	if (slave_count != 2) {
-		printf("Number of active slaves (%d) is not as expected (%d).\n",
-				slave_count, 2);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(slave_count, 2,
+			"Number of active slaves (%d) is not as expected (%d).",
+			slave_count, 2);
 
 	for (i = 0; i < test_params->bonded_slave_count; i++)
 		rte_eth_stats_reset(test_params->slave_port_ids[i]);
@@ -4223,80 +3746,62 @@ test_broadcast_verify_slave_link_status_change_behaviour(void)
 	/* Verify that pkts are not sent on slaves with link status down */
 	burst_size = 21;
 
-	if (generate_test_burst(&pkt_burst[0][0], burst_size, 0, 0, 1, 0, 0) !=
-			burst_size) {
-		printf("generate_test_burst failed\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(generate_test_burst(
+			&pkt_burst[0][0], burst_size, 0, 0, 1, 0, 0), burst_size,
+			"generate_test_burst failed");
 
-	if (rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt_burst[0][0],
-			burst_size) != burst_size) {
-		printf("rte_eth_tx_burst failed\n");
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonded_port_id, 0,
+			&pkt_burst[0][0], burst_size), burst_size,
+			"rte_eth_tx_burst failed\n");
 
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.opackets != (uint64_t)(burst_size * slave_count)) {
-		printf("(%d) port_stats.opackets (%d) not as expected (%d)\n",
-				test_params->bonded_port_id, (int)port_stats.opackets,
-				burst_size * slave_count);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)(burst_size * slave_count),
+			"(%d) port_stats.opackets (%d) not as expected (%d)\n",
+			test_params->bonded_port_id, (int)port_stats.opackets,
+			burst_size * slave_count);
 
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	if (port_stats.opackets != (uint64_t)burst_size) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[0]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
+			"(%d) port_stats.opackets not as expected",
+			test_params->slave_port_ids[0]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
-	if (port_stats.opackets != 0) {
-		printf("(%d) port_stats.opackets not as expected\n",
+	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
+			"(%d) port_stats.opackets not as expected",
 				test_params->slave_port_ids[1]);
-		return -1;
-	}
 
 	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
-	if (port_stats.opackets != (uint64_t)burst_size) {
-		printf("(%d) port_stats.opackets not as expected\n",
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
+			"(%d) port_stats.opackets not as expected",
 				test_params->slave_port_ids[2]);
-		return -1;
-	}
+
 
 	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
-	if (port_stats.opackets != 0) {
-		printf("(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[3]);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
+			"(%d) port_stats.opackets not as expected",
+			test_params->slave_port_ids[3]);
+
 
 	for (i = 0; i < BROADCAST_LINK_STATUS_NUM_OF_SLAVES; i++) {
-		if (generate_test_burst(&pkt_burst[i][0], burst_size, 0, 0, 1, 0, 0) !=
-				burst_size) {
-			return -1;
-		}
+		TEST_ASSERT_EQUAL(generate_test_burst(
+				&pkt_burst[i][0], burst_size, 0, 0, 1, 0, 0),
+				burst_size, "failed to generate packet burst");
 
 		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
 				&pkt_burst[i][0], burst_size);
 	}
 
 	/* Verify that pkts are not received on slaves with link status down */
+	TEST_ASSERT_EQUAL(rte_eth_rx_burst(
+			test_params->bonded_port_id, 0, rx_pkt_burst, MAX_PKT_BURST),
+			burst_size + burst_size, "rte_eth_rx_burst failed");
 
-	if (rte_eth_rx_burst(test_params->bonded_port_id, 0, rx_pkt_burst,
-			MAX_PKT_BURST) !=
-			burst_size + burst_size) {
-		printf("rte_eth_rx_burst\n");
-		return -1;
-	}
 
 	/* Verify bonded device rx count */
 	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	if (port_stats.ipackets != (uint64_t)(burst_size + burst_size)) {
-		printf("(%d) port_stats.ipackets not as expected\n",
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)(burst_size + burst_size),
+			"(%d) port_stats.ipackets not as expected\n",
+			test_params->bonded_port_id);
 
 	/* free mbufs allocate for rx testing */
 	for (i = 0; i < BROADCAST_LINK_STATUS_NUM_OF_SLAVES; i++) {
@@ -4319,19 +3824,14 @@ test_reconfigure_bonded_device(void)
 	test_params->nb_rx_q = 4;
 	test_params->nb_tx_q = 4;
 
-	if (configure_ethdev(test_params->bonded_port_id, 0, 0)  != 0) {
-		printf("failed to reconfigure bonded device");
-		return -1;
-	}
-
+	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0, 0),
+			"failed to reconfigure bonded device");
 
 	test_params->nb_rx_q = 2;
 	test_params->nb_tx_q = 2;
 
-	if (configure_ethdev(test_params->bonded_port_id, 0, 0)  != 0) {
-		printf("failed to reconfigure bonded device with less rx/tx queues");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0, 0),
+			"failed to reconfigure bonded device with less rx/tx queues");
 
 	return 0;
 }
