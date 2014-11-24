@@ -448,7 +448,7 @@ eal_parse_base_virtaddr(const char *arg)
 		return -1;
 
 	/* make sure we don't exceed 32-bit boundary on 32-bit target */
-#ifndef RTE_ARCH_X86_64
+#ifndef RTE_ARCH_64
 	if (addr >= UINTPTR_MAX)
 		return -1;
 #endif

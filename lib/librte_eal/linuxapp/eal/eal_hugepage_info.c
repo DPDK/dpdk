@@ -324,7 +324,7 @@ eal_hugepage_info_init(void)
 				 * later they will be sorted */
 				hpi->num_pages[0] = get_num_hugepages(dirent->d_name);
 
-#ifndef RTE_ARCH_X86_64
+#ifndef RTE_ARCH_64
 				/* for 32-bit systems, limit number of hugepages to 1GB per page size */
 				hpi->num_pages[0] = RTE_MIN(hpi->num_pages[0],
 						RTE_PGSIZE_1G / hpi->hugepage_sz);
