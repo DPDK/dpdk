@@ -70,7 +70,8 @@ Where:
 
 *   TOOLCHAIN is: gcc
 
-The configuration files for the Intel® DPDK targets can be found in the DPDK/config directory in the form of:
+The configuration files for the Intel® DPDK targets can be found in the DPDK/config
+directory in the form of:
 
 ::
 
@@ -79,10 +80,10 @@ The configuration files for the Intel® DPDK targets can be found in the DPDK/co
 .. note::
 
     Configuration files are provided with the RTE_MACHINE optimization level set.
-    Within the configuration files, the RTE_MACHINE configuration value is set to native,
-    which means that the compiled software is tuned for the platform on which it is built.
-    For more information on this setting, and its possible values,
-    see the *Intel® DPDK Programmers Guide*.
+    Within the configuration files, the RTE_MACHINE configuration value is set
+    to native, which means that the compiled software is tuned for the platform
+    on which it is built.  For more information on this setting, and its
+    possible values, see the *Intel® DPDK Programmers Guide*.
 
 To install and make the target, use gmake install T=<target> CC=gcc48.
 
@@ -92,9 +93,8 @@ For example to compile for FreeBSD* use:
 
     gmake install T=x86_64-native-bsdapp-gcc CC=gcc48
 
-To prepare a target without building it, for example,
-if the configuration changes need to be made before compilation,
-use the gmake config T=<target> command:
+To prepare a target without building it, for example, if the configuration
+changes need to be made before compilation, use the gmake config T=<target> command:
 
 .. code-block:: console
 
@@ -106,13 +106,14 @@ To build after configuration, change directory to ./x86_64-native-bsdapp-gcc and
 
     gmake CC=gcc48
 
-Browsing the Installed Intel®DPDK Environment Target
-----------------------------------------------------
+Browsing the Installed Intel® DPDK Environment Target
+-----------------------------------------------------
 
-Once a target is created, it contains all the libraries
-and header files for the Intel® DPDK environment that are required to build customer applications.
-In addition, the test and testpmd applications are built under the build/app directory, which may be used for testing.
-A kmod directory is also present that contains the kernel modules to install:
+Once a target is created, it contains all the libraries and header files for the
+Intel® DPDK environment that are required to build customer applications.
+In addition, the test and testpmd applications are built under the build/app
+directory, which may be used for testing.  A kmod directory is also present that
+contains the kernel modules to install:
 
 .. code-block:: console
 
@@ -122,17 +123,19 @@ A kmod directory is also present that contains the kernel modules to install:
 Loading the Intel® DPDK contigmem Module
 ----------------------------------------
 
-To run any Intel® DPDK application, the contigmem module must be loaded into the running kernel.
-The module is found in the kmod sub-directory of the Intel® DPDK target directory.
-The module can be loaded using kldload (assuming that the current directory is the Intel® DPDK target directory):
+To run any Intel® DPDK application, the contigmem module must be loaded into the
+running kernel. The module is found in the kmod sub-directory of the Intel® DPDK
+target directory. The module can be loaded using kldload (assuming that the
+current directory is the Intel® DPDK target directory):
 
 .. code-block:: console
 
     kldload ./kmod/contigmem.ko
 
-It is advisable to include the loading of the contigmem module during the boot process to avoid issues
-with potential memory fragmentation during later system up time.
-This can be achieved by copying the module to the /boot/kernel/ directory and placing the following into /boot/loader.conf:
+It is advisable to include the loading of the contigmem module during the boot
+process to avoid issues with potential memory fragmentation during later system
+up time.  This can be achieved by copying the module to the /boot/kernel/
+directory and placing the following into /boot/loader.conf:
 
 ::
 
@@ -140,11 +143,13 @@ This can be achieved by copying the module to the /boot/kernel/ directory and pl
 
 .. note::
 
-    The contigmem_load directive should be placed after any definitions of hw.contigmem.num_buffers
-    and hw.contigmem.buffer_size if the default values are not to be used.
+    The contigmem_load directive should be placed after any definitions of
+    hw.contigmem.num_buffers and hw.contigmem.buffer_size if the default values
+    are not to be used.
 
-An error such as kldload: can't load ./x86_64-native-bsdapp-gcc/kmod/contigmem.ko: Exec format error,
-is generally attributed to not having enough contiguous memory available and can be verified via dmesg or /var/log/messages:
+An error such as kldload: can't load ./x86_64-native-bsdapp-gcc/kmod/contigmem.ko:
+Exec format error, is generally attributed to not having enough contiguous memory
+available and can be verified via dmesg or /var/log/messages:
 
 .. code-block:: console
 
@@ -155,8 +160,10 @@ To avoid this error, reduce the number of buffers or the buffer size.
 Loading the Intel® DPDK nic_uio Module
 --------------------------------------
 
-After loading the contigmem module, the nic_uio must also be loaded into the running kernel prior to running any Intel® DPDK application.
-This module must be loaded using the kldload command as shown below (assuming that the current directory is the Intel® DPDK target directory).
+After loading the contigmem module, the nic_uio must also be loaded into the
+running kernel prior to running any Intel® DPDK application.  This module must
+be loaded using the kldload command as shown below (assuming that the current
+directory is the Intel® DPDK target directory).
 
 .. code-block:: console
 
@@ -164,12 +171,13 @@ This module must be loaded using the kldload command as shown below (assuming th
 
 .. note::
 
-    Currently loaded modules can be seen by using the kldstat command.
-    A module can be removed from the running kernel by using kldunload <module_name>.
-    While the nic_uio module can be loaded during boot,
-    the module load order cannot be guaranteed and in the case where only some ports are bound to nic_uio
-    and others remain in use by the original driver, it is necessary to load nic_uio after booting into the kernel,
-    specifically after the original driver has been loaded.
+    Currently loaded modules can be seen by using the kldstat command.  A module
+    can be removed from the running kernel by using kldunload <module_name>.
+    While the nic_uio module can be loaded during boot, the module load order
+    cannot be guaranteed and in the case where only some ports are bound to
+    nic_uio and others remain in use by the original driver, it is necessary to
+    load nic_uio after booting into the kernel, specifically after the original
+    driver has been loaded.
 
 To load the module during boot, copy the nic_uio module to /boot/kernel and place the following into /boot/loader.conf:
 
@@ -184,8 +192,8 @@ To load the module during boot, copy the nic_uio module to /boot/kernel and plac
 Binding Network Ports to the nic_uio Module
 -------------------------------------------
 
-By default, the nic_uio module will take ownership of network ports if they are recognized Intel® DPDK devices
-and are not owned by another module.
+By default, the nic_uio module will take ownership of network ports if they are
+recognized Intel® DPDK devices and are not owned by another module.
 
 Device ownership can be viewed using the pciconf -l command.
 
@@ -209,45 +217,53 @@ The first column constitutes three components:
 
 Where no driver is associated with a device, the device name will be none.
 
-By default, the FreeBSD* kernel will include built-in drivers for the most common devices;
-a kernel rebuild would normally be required to either remove the drivers or configure them as loadable modules.
+By default, the FreeBSD* kernel will include built-in drivers for the most common
+devices; a kernel rebuild would normally be required to either remove the drivers
+or configure them as loadable modules.
 
-To avoid building a custom kernel, the nic_uio module can detach a network port from its current device driver.
-This is achieved by setting the hw.nic_uio.bdfs kernel environment variable prior to loading nic_uio, as follows:
+To avoid building a custom kernel, the nic_uio module can detach a network port
+from its current device driver.  This is achieved by setting the hw.nic_uio.bdfs
+kernel environment variable prior to loading nic_uio, as follows:
 
 ::
 
     hw.nic_uio.bdfs="b:d:f,b:d:f,..."
 
-Where a comma separated list of selectors is set, the list must not contain any whitespace.
+Where a comma separated list of selectors is set, the list must not contain any
+whitespace.
 
-For example to re-bind ix2@pci0:2:0:0 and ix3@pci0:2:0: to the nic_uio module upon loading, use the following command:
+For example to re-bind ix2@pci0:2:0:0 and ix3@pci0:2:0: to the nic_uio module
+upon loading, use the following command:
 
 .. code-block:: console
 
     kenv hw.nic_uio.bdfs="2:0:0,2:0:1"
 
-The variable can also be specified during boot by placing the following into /boot/ loader.conf:
+The variable can also be specified during boot by placing the following into
+/boot/loader.conf:
 
 ::
 
     hw.nic_uio.bdfs="2:0:0,2:0:1"
 
-To restore the original device binding,
-it is necessary to reboot FreeBSD* if the original driver has been compiled into the kernel.
+To restore the original device binding, it is necessary to reboot FreeBSD* if the
+original driver has been compiled into the kernel.
 
 For example to rebind some or all ports to the original driver:
 
-Update or remove the hw.nic_uio.bdfs entry in /boot/loader.conf if specified there for persistency, then;
+Update or remove the hw.nic_uio.bdfs entry in /boot/loader.conf if specified there
+for persistency, then;
 
 .. code-block:: console
 
     reboot
 
-If rebinding to a driver that is a loadable module, the network port binding can be reset without rebooting.
-This requires the unloading of the nic_uio module and the original driver.
+If rebinding to a driver that is a loadable module, the network port binding can
+be reset without rebooting.  This requires the unloading of the nic_uio module
+and the original driver.
 
-Update or remove the hw.nic_uio.bdfs entry from /boot/loader.conf if specified there for persistency.
+Update or remove the hw.nic_uio.bdfs entry from /boot/loader.conf if specified
+there for persistency.
 
 .. code-block:: console
 

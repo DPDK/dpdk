@@ -39,27 +39,28 @@ Compilationofthe Intel® DPDK
 .. note::
 
     The Intel® DPDK and its applications requires the GNU make system (gmake)
-    and the GNU Compiler Collection (gcc) to build on FreeBSD*.
-    The installation of these tools is covered in this section.
+    and the GNU Compiler Collection (gcc) to build on FreeBSD*.  The
+    installation of these tools is covered in this section.
 
 **Required Tools:**
 
 .. note::
 
-    Testing has been performed using FreeBSD* 9.2-RELEASE (x86_64),
-    FreeBSD* 10.0-RELEASE (x86_64) and requires the installation of the kernel sources,
-    which should be included during the installation of FreeBSD*.
-    The Intel® DPDK also requires the use of FreeBSD* ports to compile and function.
+    Testing has been performed using FreeBSD* 9.2-RELEASE (x86_64), FreeBSD*
+    10.0-RELEASE (x86_64) and requires the installation of the kernel sources,
+    which should be included during the installation of FreeBSD*.  The Intel®
+    DPDK also requires the use of FreeBSD* ports to compile and function.
 
-To use the FreeBSD* ports system,
-it is required to update and extract the FreeBSD* ports tree by issuing the following commands:
+To use the FreeBSD* ports system, it is required to update and extract the FreeBSD*
+ports tree by issuing the following commands:
 
 .. code-block:: console
 
     root@host:~ # portsnap fetch
     root@host:~ # portsnap extract
 
-If the environment requires proxies for external communication, these can be set using:
+If the environment requires proxies for external communication, these can be set
+using:
 
 .. code-block:: console
 
@@ -107,8 +108,8 @@ The ports required and their locations are as follows:
 
 *   /usr/src/contrib/libexecinfo
 
-When running the make config-recursive command, a dialog may be presented to the user.
-For the installation of the Intel® DPDK, the default options were used.
+When running the make config-recursive command, a dialog may be presented to the
+user. For the installation of the Intel® DPDK, the default options were used.
 
 .. note::
 
@@ -120,24 +121,24 @@ Running Intel® DPDK Applications
 --------------------------------
 
 To run an Intel® DPDK application, physically contiguous memory is required.
-In the absence of non-transparent superpages,
-the included sources for the contigmem kernel module provides the ability to
-present contiguous blocks of memory for the Intel® DPDK to use.
-Section 3.4, “Loading the Intel® DPDK contigmem Module” on page 8
-for details on the loading of this module.
+In the absence of non-transparent superpages, the included sources for the
+contigmem kernel module provides the ability to present contiguous blocks of
+memory for the Intel® DPDK to use.  Section 3.4, “Loading the Intel® DPDK
+Contigmem Module” on page 8 for details on the loading of this module.
 
-Using Intel® DPDK contigmem Module
+Using Intel® DPDK Contigmem Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The amount of physically contiguous memory along with the number of physically contiguous blocks
-can be set at runtime and prior to module loading using:
+The amount of physically contiguous memory along with the number of physically
+contiguous blocks can be set at runtime and prior to module loading using:
 
 .. code-block:: console
 
     root@host:~ # kenv hw.contigmem.num_buffers=n
     root@host:~ # kenv hw.contigmem.buffer_size=m
 
-The kernel environment variables can also be specified during boot by placing the following in /boot/loader.conf:
+The kernel environment variables can also be specified during boot by placing the
+following in /boot/loader.conf:
 
 ::
 
@@ -149,9 +150,9 @@ The variables can be inspected using the following command:
 
     root@host:~ # sysctl -a hw.contigmem
 
-Where n is the number of blocks and m is the size in bytes of each area of contiguous memory.
-A default of two buffers of size 1073741824 bytes (1 Gigabyte) each is set during module load
-if they are not specified in the environment.
+Where n is the number of blocks and m is the size in bytes of each area of
+contiguous memory.  A default of two buffers of size 1073741824 bytes (1 Gigabyte)
+each is set during module load if they are not specified in the environment.
 
 .. note::
 
