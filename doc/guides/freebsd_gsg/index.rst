@@ -78,6 +78,6 @@ Copyright © 2014, Intel Corporation. All rights reserved.
     :numbered:
 
     intro
-    sys_reqs
+    install_from_ports
     build_dpdk
     build_sample_apps

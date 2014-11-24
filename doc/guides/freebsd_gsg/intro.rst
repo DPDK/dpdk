@@ -33,7 +33,7 @@ Introduction
 
 This document contains instructions for installing and configuring the Intel®
 Data Plane Development Kit(Intel® DPDK) software.  It is designed to get customers
-up and running quickly.  The document describes how to compile and run an Intel®
+up and running quickly and describes how to compile and run an Intel®
 DPDK application in a FreeBSD* application (bsdapp) environment, without going
 deeply into detail.
 
@@ -42,8 +42,15 @@ handbook is available from the FreeBSD* Documentation Project:
 
 `http://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/index.html <http://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/index.html>`_
 
-DocumentationRoadmap
---------------------
+.. note::
+
+	The Intel® DPDK is now available as part of the FreeBSD ports collection.
+	Installing via the ports collection infrastructure is now the recommended
+	way to install the Intel® DPDK on FreeBSD, and is documented in the
+	next chapter, :ref:`install_from_ports`.
+
+Documentation Roadmap
+---------------------
 
 The following is a list of Intel® DPDK documents in the suggested reading order:
 
