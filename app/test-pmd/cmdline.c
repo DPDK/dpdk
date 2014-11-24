@@ -3759,7 +3759,7 @@ static void cmd_create_bonded_device_parsed(void *parsed_result,
 
 		/* Update number of ports */
 		nb_ports = rte_eth_dev_count();
-		reconfig(port_id);
+		reconfig(port_id, res->socket);
 		rte_eth_promiscuous_enable(port_id);
 	}
 

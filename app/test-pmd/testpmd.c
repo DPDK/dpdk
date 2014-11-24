@@ -630,7 +630,7 @@ init_config(void)
 
 
 void
-reconfig(portid_t new_port_id)
+reconfig(portid_t new_port_id, unsigned socket_id)
 {
 	struct rte_port *port;
 
@@ -649,6 +649,7 @@ reconfig(portid_t new_port_id)
 	/* set flag to initialize port/queue */
 	port->need_reconfig = 1;
 	port->need_reconfig_queues = 1;
+	port->socket_id = socket_id;
 
 	init_port_config();
 }

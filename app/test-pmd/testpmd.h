@@ -457,7 +457,7 @@ void fwd_config_display(void);
 void rxtx_config_display(void);
 void fwd_config_setup(void);
 void set_def_fwd_config(void);
-void reconfig(portid_t new_port_id);
+void reconfig(portid_t new_port_id, unsigned socket_id);
 int init_fwd_streams(void);
 
 void port_mtu_set(portid_t port_id, uint16_t mtu);
