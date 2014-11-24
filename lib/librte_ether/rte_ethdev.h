@@ -3363,7 +3363,7 @@ int rte_eth_dev_bypass_wd_reset(uint8_t port);
  /**
  * Configuration of Receive Side Scaling hash computation of Ethernet device.
  *
- * @param port
+ * @param port_id
  *   The port identifier of the Ethernet device.
  * @param rss_conf
  *   The new configuration to use for RSS hash computation on the port.
@@ -3380,7 +3380,7 @@ int rte_eth_dev_rss_hash_update(uint8_t port_id,
  * Retrieve current configuration of Receive Side Scaling hash computation
  * of Ethernet device.
  *
- * @param port
+ * @param port_id
  *   The port identifier of the Ethernet device.
  * @param rss_conf
  *   Where to store the current RSS hash configuration of the Ethernet device.
