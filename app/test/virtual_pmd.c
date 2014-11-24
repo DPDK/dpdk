@@ -456,6 +456,14 @@ virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(uint8_t port_id,
 }
 
 void
+virtual_ethdev_set_link_status(uint8_t port_id, uint8_t link_status)
+{
+	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
+
+	vrtl_eth_dev->data->dev_link.link_status = link_status;
+}
+
+void
 virtual_ethdev_simulate_link_status_interrupt(uint8_t port_id,
 		uint8_t link_status)
 {
@@ -503,7 +511,7 @@ get_number_of_sockets(void)
 
 int
 virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
-		uint8_t socket_id)
+		uint8_t socket_id, uint8_t isr_support)
 {
 	struct rte_pci_device *pci_dev = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
@@ -553,7 +561,12 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	pci_dev->numa_node = socket_id;
 	pci_drv->name = virtual_ethdev_driver_name;
 	pci_drv->id_table = id_table;
-	pci_drv->drv_flags = RTE_PCI_DRV_INTR_LSC;
+
+	if (isr_support)
+		pci_drv->drv_flags |= RTE_PCI_DRV_INTR_LSC;
+	else
+		pci_drv->drv_flags &= ~RTE_PCI_DRV_INTR_LSC;
+
 
 	eth_drv->pci_drv = (struct rte_pci_driver)(*pci_drv);
 	eth_dev->driver = eth_drv;

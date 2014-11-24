@@ -40,38 +40,58 @@ extern "C" {
 
 #include <rte_ether.h>
 
-int virtual_ethdev_init(void);
+int
+virtual_ethdev_init(void);
 
-int virtual_ethdev_create(const char *name, struct ether_addr *mac_addr, uint8_t socket_id);
+int
+virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
+		uint8_t socket_id, uint8_t isr_support);
 
-void virtual_ethdev_simulate_link_status_interrupt(uint8_t port_id, uint8_t link_status);
+void
+virtual_ethdev_set_link_status(uint8_t port_id, uint8_t link_status);
 
-void virtual_ethdev_add_mbufs_to_rx_queue(uint8_t port_id, struct rte_mbuf **pkts_burst, int burst_length);
+void
+virtual_ethdev_simulate_link_status_interrupt(uint8_t port_id,
+		uint8_t link_status);
+
+void
+virtual_ethdev_add_mbufs_to_rx_queue(uint8_t port_id,
+		struct rte_mbuf **pkts_burst, int burst_length);
 
 
-/** Control methods for the dev_ops functions pointer to control the behavior of the Virtual PMD */
+/** Control methods for the dev_ops functions pointer to control the behavior
+ *  of the Virtual PMD */
 
-void virtual_ethdev_start_fn_set_success(uint8_t port_id, uint8_t success);
+void
+virtual_ethdev_start_fn_set_success(uint8_t port_id, uint8_t success);
 
-void virtual_ethdev_stop_fn_set_success(uint8_t port_id, uint8_t success);
+void
+virtual_ethdev_stop_fn_set_success(uint8_t port_id, uint8_t success);
 
-void virtual_ethdev_configure_fn_set_success(uint8_t port_id, uint8_t success);
+void
+virtual_ethdev_configure_fn_set_success(uint8_t port_id, uint8_t success);
 
-void virtual_ethdev_rx_queue_setup_fn_set_success(uint8_t port_id, uint8_t success);
+void
+virtual_ethdev_rx_queue_setup_fn_set_success(uint8_t port_id, uint8_t success);
 
-void virtual_ethdev_tx_queue_setup_fn_set_success(uint8_t port_id, uint8_t success);
+void
+virtual_ethdev_tx_queue_setup_fn_set_success(uint8_t port_id, uint8_t success);
 
-void virtual_ethdev_link_update_fn_set_success(uint8_t port_id, uint8_t success);
+void
+virtual_ethdev_link_update_fn_set_success(uint8_t port_id, uint8_t success);
 
-void virtual_ethdev_rx_burst_fn_set_success(uint8_t port_id, uint8_t success);
+void
+virtual_ethdev_rx_burst_fn_set_success(uint8_t port_id, uint8_t success);
 
-void virtual_ethdev_tx_burst_fn_set_success(uint8_t port_id, uint8_t success);
+void
+virtual_ethdev_tx_burst_fn_set_success(uint8_t port_id, uint8_t success);
 
 /* if a value greater than zero is set for packet_fail_count then virtual
  * device tx burst function will fail that many packet from burst or all
  * packets if packet_fail_count is greater than the number of packets in the
  * burst */
-void virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(uint8_t port_id,
+void
+virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(uint8_t port_id,
 		uint8_t packet_fail_count);
 
 #ifdef __cplusplus

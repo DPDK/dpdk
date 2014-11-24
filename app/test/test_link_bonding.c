@@ -234,41 +234,33 @@ configure_ethdev(uint8_t port_id, uint8_t start, uint8_t en_isr)
 	else
 		default_pmd_conf.intr_conf.lsc = 0;
 
-	if (rte_eth_dev_configure(port_id, test_params->nb_rx_q,
-			test_params->nb_tx_q, &default_pmd_conf) != 0) {
-		goto error;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_dev_configure(port_id, test_params->nb_rx_q,
+			test_params->nb_tx_q, &default_pmd_conf),
+			"rte_eth_dev_configure for port %d failed", port_id);
 
-	for (q_id = 0; q_id < test_params->nb_rx_q; q_id++) {
-		if (rte_eth_rx_queue_setup(port_id, q_id, RX_RING_SIZE,
+	for (q_id = 0; q_id < test_params->nb_rx_q; q_id++)
+		TEST_ASSERT_SUCCESS(rte_eth_rx_queue_setup(port_id, q_id, RX_RING_SIZE,
 				rte_eth_dev_socket_id(port_id), &rx_conf_default,
-				test_params->mbuf_pool) < 0) {
-			goto error;
-		}
-	}
+				test_params->mbuf_pool) ,
+				"rte_eth_rx_queue_setup for port %d failed", port_id);
 
-	for (q_id = 0; q_id < test_params->nb_tx_q; q_id++) {
-		if (rte_eth_tx_queue_setup(port_id, q_id, TX_RING_SIZE,
-				rte_eth_dev_socket_id(port_id), &tx_conf_default) < 0) {
-			printf("Failed to setup tx queue (%d).\n", q_id);
-			goto error;
-		}
-	}
+	for (q_id = 0; q_id < test_params->nb_tx_q; q_id++)
+		TEST_ASSERT_SUCCESS(rte_eth_tx_queue_setup(port_id, q_id, TX_RING_SIZE,
+				rte_eth_dev_socket_id(port_id), &tx_conf_default),
+				"rte_eth_tx_queue_setup for port %d failed", port_id);
 
-	if (start) {
-		if (rte_eth_dev_start(port_id) < 0) {
-			printf("Failed to start device (%d).\n", port_id);
-			goto error;
-		}
-	}
+	if (start)
+		TEST_ASSERT_SUCCESS(rte_eth_dev_start(port_id),
+				"rte_eth_dev_start for port %d failed", port_id);
+
 	return 0;
-
-error:
-	printf("Failed to configure ethdev %d\n", port_id);
-	return -1;
 }
 
 static int slaves_initialized;
+
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cvar = PTHREAD_COND_INITIALIZER;
+
 
 static int
 test_setup(void)
@@ -310,7 +302,7 @@ test_setup(void)
 			snprintf(pmd_name, RTE_ETH_NAME_MAX_LEN, "eth_virt_%d", i);
 
 			test_params->slave_port_ids[i] = virtual_ethdev_create(pmd_name,
-					mac_addr, rte_socket_id());
+					mac_addr, rte_socket_id(), 1);
 			if (test_params->slave_port_ids[i] < 0) {
 				printf("Failed to create virtual virtual ethdev %s\n", pmd_name);
 				return -1;
@@ -414,34 +406,27 @@ test_create_bonded_device_with_invalid_params(void)
 static int
 test_add_slave_to_bonded_device(void)
 {
-	int retval, current_slave_count;
+	int current_slave_count;
 
 	uint8_t slaves[RTE_MAX_ETHPORTS];
 
-	retval = rte_eth_bond_slave_add(test_params->bonded_port_id,
-			test_params->slave_port_ids[test_params->bonded_slave_count]);
-	if (retval != 0) {
-		printf("Failed to add slave (%d) to bonded port (%d).\n",
-				test_params->bonded_port_id,
-				test_params->slave_port_ids[test_params->bonded_slave_count]);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_slave_add(test_params->bonded_port_id,
+			test_params->slave_port_ids[test_params->bonded_slave_count]),
+			"Failed to add slave (%d) to bonded port (%d).",
+			test_params->slave_port_ids[test_params->bonded_slave_count],
+			test_params->bonded_port_id);
 
 	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
 			slaves, RTE_MAX_ETHPORTS);
-	if (current_slave_count != test_params->bonded_slave_count + 1) {
-		printf("Number of slaves (%d) is greater than expected (%d).\n",
-				current_slave_count, test_params->bonded_slave_count + 1);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(current_slave_count, test_params->bonded_slave_count + 1,
+			"Number of slaves (%d) is greater than expected (%d).",
+			current_slave_count, test_params->bonded_slave_count + 1);
 
 	current_slave_count = rte_eth_bond_active_slaves_get(
 			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS);
-	if (current_slave_count != 0) {
-		printf("Number of active slaves (%d) is not as expected (%d).\n",
-				current_slave_count, 0);
-		return -1;
-	}
+	TEST_ASSERT_EQUAL(current_slave_count, 0,
+					"Number of active slaves (%d) is not as expected (%d).\n",
+					current_slave_count, 0);
 
 	test_params->bonded_slave_count++;
 
@@ -476,27 +461,23 @@ test_add_slave_to_invalid_bonded_device(void)
 static int
 test_remove_slave_from_bonded_device(void)
 {
-	int retval, current_slave_count;
+	int current_slave_count;
 	struct ether_addr read_mac_addr, *mac_addr;
 	uint8_t slaves[RTE_MAX_ETHPORTS];
 
-	retval = rte_eth_bond_slave_remove(test_params->bonded_port_id,
-			test_params->slave_port_ids[test_params->bonded_slave_count-1]);
-	if (retval != 0) {
-		printf("\t Failed to remove slave %d from bonded port (%d).\n",
-				test_params->slave_port_ids[test_params->bonded_slave_count-1],
-				test_params->bonded_port_id);
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_slave_remove(test_params->bonded_port_id,
+			test_params->slave_port_ids[test_params->bonded_slave_count-1]),
+			"Failed to remove slave %d from bonded port (%d).",
+			test_params->slave_port_ids[test_params->bonded_slave_count-1],
+			test_params->bonded_port_id);
 
 
 	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
 			slaves, RTE_MAX_ETHPORTS);
-	if (current_slave_count != test_params->bonded_slave_count - 1) {
-		printf("Number of slaves (%d) is great than expected (%d).\n",
-				current_slave_count, 0);
-		return -1;
-	}
+
+	TEST_ASSERT_EQUAL(current_slave_count, test_params->bonded_slave_count - 1,
+			"Number of slaves (%d) is great than expected (%d).\n",
+			current_slave_count, test_params->bonded_slave_count - 1);
 
 
 	mac_addr = (struct ether_addr *)slave_mac;
@@ -506,10 +487,8 @@ test_remove_slave_from_bonded_device(void)
 	rte_eth_macaddr_get(
 			test_params->slave_port_ids[test_params->bonded_slave_count-1],
 			&read_mac_addr);
-	if (memcmp(mac_addr, &read_mac_addr, sizeof(read_mac_addr))) {
-		printf("bonded port mac address not set to that of primary port\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(memcmp(mac_addr, &read_mac_addr, sizeof(read_mac_addr)),
+			"bonded port mac address not set to that of primary port\n");
 
 	rte_eth_stats_reset(
 			test_params->slave_port_ids[test_params->bonded_slave_count-1]);
@@ -891,21 +870,20 @@ test_set_primary_slave(void)
 		return -1;
 	}
 
+	/* Non bonded device */
+	retval = rte_eth_bond_primary_set(test_params->slave_port_ids[i],
+			test_params->slave_port_ids[i]);
+	if (retval == 0) {
+		printf("Expected call to failed as invalid port specified.\n");
+		return -1;
+	}
+
 	/* Set slave as primary
 	 * Verify slave it is now primary slave
 	 * Verify that MAC address of bonded device is that of primary slave
 	 * Verify that MAC address of all bonded slaves are that of primary slave
 	 */
 	for (i = 0; i < 4; i++) {
-
-		/* Non bonded device */
-		retval = rte_eth_bond_primary_set(test_params->slave_port_ids[i],
-				test_params->slave_port_ids[i]);
-		if (retval == 0) {
-			printf("Expected call to failed as invalid port specified.\n");
-			return -1;
-		}
-
 		retval = rte_eth_bond_primary_set(test_params->bonded_port_id,
 				test_params->slave_port_ids[i]);
 		if (retval != 0) {
@@ -929,6 +907,7 @@ test_set_primary_slave(void)
 
 		/* stop/start bonded eth dev to apply new MAC */
 		rte_eth_dev_stop(test_params->bonded_port_id);
+
 		if (rte_eth_dev_start(test_params->bonded_port_id) != 0)
 			return -1;
 
@@ -1093,19 +1072,18 @@ static int
 initialize_bonded_device_with_slaves(uint8_t bonding_mode, uint8_t bond_en_isr,
 		uint8_t number_of_slaves, uint8_t enable_slave)
 {
-	/* configure bonded device */
+	/* Configure bonded device */
 	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0,
 			bond_en_isr), "Failed to configure bonding port (%d) in mode %d "
 			"with (%d) slaves.", test_params->bonded_port_id, bonding_mode,
 			number_of_slaves);
 
-	while (number_of_slaves > test_params->bonded_slave_count) {
-		/* Add slaves to bonded device */
+	/* Add slaves to bonded device */
+	while (number_of_slaves > test_params->bonded_slave_count)
 		TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
 				"Failed to add slave (%d to  bonding port (%d).",
 				test_params->bonded_slave_count - 1,
 				test_params->bonded_port_id);
-	}
 
 	/* Set link bonding mode  */
 	TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonded_port_id,
@@ -1128,9 +1106,9 @@ test_adding_slave_after_bonded_device_started(void)
 {
 	int i;
 
-	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 0, 4, 0)
-			!= 0)
-		return -1;
+	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+			BONDING_MODE_ROUND_ROBIN, 0, 4, 0),
+			"Failed to add slaves to bonded device");
 
 	/* Enabled slave devices */
 	for (i = 0; i < test_params->bonded_slave_count + 1; i++) {
@@ -1138,12 +1116,9 @@ test_adding_slave_after_bonded_device_started(void)
 				test_params->slave_port_ids[i], 1);
 	}
 
-	if (rte_eth_bond_slave_add(test_params->bonded_port_id,
-			test_params->slave_port_ids[test_params->bonded_slave_count]) !=
-					0) {
-		printf("\t Failed to add slave to bonded port.\n");
-		return -1;
-	}
+	TEST_ASSERT_SUCCESS(rte_eth_bond_slave_add(test_params->bonded_port_id,
+			test_params->slave_port_ids[test_params->bonded_slave_count]),
+			"Failed to add slave to bonded port.\n");
 
 	rte_eth_stats_reset(
 			test_params->slave_port_ids[test_params->bonded_slave_count]);
@@ -1158,8 +1133,6 @@ test_adding_slave_after_bonded_device_started(void)
 
 int test_lsc_interrupt_count;
 
-static pthread_mutex_t mutex;
-static pthread_cond_t cvar;
 
 static void
 test_bonding_lsc_event_callback(uint8_t port_id __rte_unused,
@@ -1183,7 +1156,7 @@ lsc_timeout(int wait_us)
 	gettimeofday(&tp, NULL);
 
 	/* Convert from timeval to timespec */
-	ts.tv_sec  = tp.tv_sec;
+	ts.tv_sec = tp.tv_sec;
 	ts.tv_nsec = tp.tv_usec * 1000;
 	ts.tv_nsec += wait_us * 1000;
 
@@ -1193,6 +1166,9 @@ lsc_timeout(int wait_us)
 
 	pthread_mutex_unlock(&mutex);
 
+	if (retval == 0 && test_lsc_interrupt_count < 1)
+		return -1;
+
 	return retval;
 }
 
@@ -1201,9 +1177,6 @@ test_status_interrupt(void)
 {
 	int slave_count;
 	uint8_t slaves[RTE_MAX_ETHPORTS];
-
-	pthread_mutex_init(&mutex, NULL);
-	pthread_cond_init(&cvar, NULL);
 
 	/* initialized bonding device with T slaves */
 	if (initialize_bonded_device_with_slaves(BONDING_MODE_ROUND_ROBIN, 1,
@@ -1283,9 +1256,6 @@ test_status_interrupt(void)
 	rte_eth_dev_callback_unregister(test_params->bonded_port_id,
 				RTE_ETH_EVENT_INTR_LSC, test_bonding_lsc_event_callback,
 				&test_params->bonded_port_id);
-
-	pthread_mutex_destroy(&mutex);
-	pthread_cond_destroy(&cvar);
 
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
@@ -1419,6 +1389,7 @@ test_roundrobin_tx_burst(void)
 	return remove_slaves_and_stop_bonded_device();
 }
 
+#ifdef RTE_MBUF_REFCNT
 static int
 verify_mbufs_ref_count(struct rte_mbuf **mbufs, int nb_mbufs, int val)
 {
@@ -1432,6 +1403,7 @@ verify_mbufs_ref_count(struct rte_mbuf **mbufs, int nb_mbufs, int val)
 	}
 	return 0;
 }
+#endif
 
 
 static void
@@ -1537,11 +1509,12 @@ test_roundrobin_tx_burst_slave_tx_fail(void)
 				(unsigned int)port_stats.opackets, slave_expected_tx_count);
 	}
 
+#ifdef RTE_MBUF_REFCNT
 	/* Verify that all mbufs have a ref value of zero */
 	TEST_ASSERT_SUCCESS(verify_mbufs_ref_count(&pkt_burst[tx_count],
 			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT, 1),
 			"mbufs refcnts not as expected");
-
+#endif
 	free_mbufs(&pkt_burst[tx_count], TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT);
 
 	/* Clean up and remove slaves from bonded device */
@@ -2027,6 +2000,101 @@ test_roundrobin_verify_slave_link_status_change_behaviour(void)
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
 }
+
+#define TEST_RR_POLLING_LINK_STATUS_SLAVE_COUNT (2)
+
+uint8_t polling_slave_mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x00 };
+
+#include "unistd.h"
+
+int polling_test_slaves[TEST_RR_POLLING_LINK_STATUS_SLAVE_COUNT] = { -1, -1 };
+
+static int
+test_roundrobin_verfiy_polling_slave_link_status_change(void)
+{
+	struct ether_addr *mac_addr = (struct ether_addr *)polling_slave_mac;
+	char slave_name[RTE_ETH_NAME_MAX_LEN];
+
+	int i;
+
+	for (i = 0; i < TEST_RR_POLLING_LINK_STATUS_SLAVE_COUNT; i++) {
+		/* Generate slave name / MAC address */
+		snprintf(slave_name, RTE_ETH_NAME_MAX_LEN, "eth_virt_poll_%d", i);
+		mac_addr->addr_bytes[ETHER_ADDR_LEN-1] = i;
+
+		/* Create slave devices with no ISR Support */
+		if (polling_test_slaves[i] == -1) {
+			polling_test_slaves[i] = virtual_ethdev_create(slave_name, mac_addr,
+					rte_socket_id(), 0);
+			TEST_ASSERT(polling_test_slaves[i] >= 0,
+					"Failed to create virtual virtual ethdev %s\n", slave_name);
+
+			/* Configure slave */
+			TEST_ASSERT_SUCCESS(configure_ethdev(polling_test_slaves[i], 0, 0),
+					"Failed to configure virtual ethdev %s(%d)", slave_name,
+					polling_test_slaves[i]);
+		}
+
+		/* Add slave to bonded device */
+		TEST_ASSERT_SUCCESS(rte_eth_bond_slave_add(test_params->bonded_port_id,
+				polling_test_slaves[i]),
+				"Failed to add slave %s(%d) to bonded device %d",
+				slave_name, polling_test_slaves[i], test_params->bonded_port_id);
+	}
+
+	/* Initialize bonded device */
+	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 1, 1),
+			"Failed to configure bonded device %d",
+			test_params->bonded_port_id);
+
+
+	/* Register link status change interrupt callback */
+	rte_eth_dev_callback_register(test_params->bonded_port_id,
+			RTE_ETH_EVENT_INTR_LSC, test_bonding_lsc_event_callback,
+			&test_params->bonded_port_id);
+
+	/* link status change callback for first slave link up */
+	test_lsc_interrupt_count = 0;
+
+	virtual_ethdev_set_link_status(polling_test_slaves[0], 1);
+
+	TEST_ASSERT_SUCCESS(lsc_timeout(15000), "timed out waiting for interrupt");
+
+
+	/* no link status change callback for second slave link up */
+	test_lsc_interrupt_count = 0;
+
+	virtual_ethdev_set_link_status(polling_test_slaves[1], 1);
+
+	TEST_ASSERT_FAIL(lsc_timeout(15000), "unexpectedly succeeded");
+
+	/* link status change callback for both slave links down */
+	test_lsc_interrupt_count = 0;
+
+	virtual_ethdev_set_link_status(polling_test_slaves[0], 0);
+	virtual_ethdev_set_link_status(polling_test_slaves[1], 0);
+
+	TEST_ASSERT_SUCCESS(lsc_timeout(20000), "timed out waiting for interrupt");
+
+	/* Un-Register link status change interrupt callback */
+	rte_eth_dev_callback_unregister(test_params->bonded_port_id,
+			RTE_ETH_EVENT_INTR_LSC, test_bonding_lsc_event_callback,
+			&test_params->bonded_port_id);
+
+
+	/* Clean up and remove slaves from bonded device */
+	for (i = 0; i < TEST_RR_POLLING_LINK_STATUS_SLAVE_COUNT; i++) {
+
+		TEST_ASSERT_SUCCESS(
+				rte_eth_bond_slave_remove(test_params->bonded_port_id,
+						polling_test_slaves[i]),
+				"Failed to remove slave %d from bonded port (%d)",
+				polling_test_slaves[i], test_params->bonded_port_id);
+	}
+
+	return remove_slaves_and_stop_bonded_device();
+}
+
 
 /** Active Backup Mode Tests */
 
@@ -3160,10 +3228,12 @@ test_balance_tx_burst_slave_tx_fail(void)
 				(unsigned int)port_stats.opackets,
 				TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2);
 
+#ifdef RTE_MBUF_REFCNT
 	/* Verify that all mbufs have a ref value of zero */
 	TEST_ASSERT_SUCCESS(verify_mbufs_ref_count(&pkts_burst_1[tx_count_1],
 			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT, 1),
 			"mbufs refcnts not as expected");
+#endif
 
 	free_mbufs(&pkts_burst_1[tx_count_1],
 			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT);
@@ -4315,6 +4385,7 @@ static struct unit_test_suite link_bonding_test_suite  = {
 		TEST_CASE(test_roundrobin_verify_promiscuous_enable_disable),
 		TEST_CASE(test_roundrobin_verify_mac_assignment),
 		TEST_CASE(test_roundrobin_verify_slave_link_status_change_behaviour),
+		TEST_CASE(test_roundrobin_verfiy_polling_slave_link_status_change),
 		TEST_CASE(test_activebackup_tx_burst),
 		TEST_CASE(test_activebackup_rx_burst),
 		TEST_CASE(test_activebackup_verify_promiscuous_enable_disable),

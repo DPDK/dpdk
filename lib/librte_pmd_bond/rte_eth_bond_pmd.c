@@ -40,6 +40,7 @@
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
 #include <rte_dev.h>
+#include <rte_alarm.h>
 
 #include "rte_eth_bond.h"
 #include "rte_eth_bond_private.h"
@@ -457,16 +458,16 @@ mac_address_set(struct rte_eth_dev *eth_dev, struct ether_addr *new_mac_addr)
 	mac_addr = eth_dev->data->mac_addrs;
 
 	if (eth_dev == NULL) {
-		RTE_LOG(ERR, PMD, "%s: NULL pointer eth_dev specified\n", __func__);
+		RTE_BOND_LOG(ERR,  "NULL pointer eth_dev specified");
 		return -1;
 	}
 
 	if (new_mac_addr == NULL) {
-		RTE_LOG(ERR, PMD, "%s: NULL pointer MAC specified\n", __func__);
+		RTE_BOND_LOG(ERR, "NULL pointer MAC specified");
 		return -1;
 	}
 
-	/* if new MAC is different to current MAC then update */
+	/* If new MAC is different to current MAC then update */
 	if (memcmp(mac_addr, new_mac_addr, sizeof(*mac_addr)) != 0)
 		memcpy(mac_addr, new_mac_addr, sizeof(*mac_addr));
 
@@ -490,11 +491,10 @@ mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev)
 	case BONDING_MODE_BROADCAST:
 #endif
 		for (i = 0; i < internals->slave_count; i++) {
-			if (mac_address_set(&rte_eth_devices[internals->slaves[i]],
+			if (mac_address_set(&rte_eth_devices[internals->slaves[i].port_id],
 					bonded_eth_dev->data->mac_addrs)) {
-				RTE_LOG(ERR, PMD,
-						"%s: Failed to update port Id %d MAC address\n",
-						__func__, internals->slaves[i]);
+				RTE_BOND_LOG(ERR, "Failed to update port Id %d MAC address",
+						internals->slaves[i].port_id);
 				return -1;
 			}
 		}
@@ -502,23 +502,20 @@ mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev)
 	case BONDING_MODE_ACTIVE_BACKUP:
 	default:
 		for (i = 0; i < internals->slave_count; i++) {
-			if (internals->slaves[i] == internals->current_primary_port) {
+			if (internals->slaves[i].port_id ==
+					internals->current_primary_port) {
 				if (mac_address_set(&rte_eth_devices[internals->primary_port],
 						bonded_eth_dev->data->mac_addrs)) {
-					RTE_LOG(ERR, PMD,
-							"%s: Failed to update port Id %d MAC address\n",
-							__func__, internals->current_primary_port);
+					RTE_BOND_LOG(ERR, "Failed to update port Id %d MAC address",
+							internals->current_primary_port);
+					return -1;
 				}
 			} else {
-				struct slave_conf *conf =
-						slave_config_get(internals, internals->slaves[i]);
-
-				if (mac_address_set(&rte_eth_devices[internals->slaves[i]],
-						&conf->mac_addr)) {
-					RTE_LOG(ERR, PMD,
-							"%s: Failed to update port Id %d MAC address\n",
-							__func__, internals->slaves[i]);
-
+				if (mac_address_set(
+						&rte_eth_devices[internals->slaves[i].port_id],
+						&internals->slaves[i].persisted_mac_addr)) {
+					RTE_BOND_LOG(ERR, "Failed to update port Id %d MAC address",
+							internals->slaves[i].port_id);
 					return -1;
 				}
 			}
@@ -570,34 +567,39 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	struct bond_rx_queue *bd_rx_q;
 	struct bond_tx_queue *bd_tx_q;
 
-	int q_id;
+	int errval, q_id;
 
 	/* Stop slave */
 	rte_eth_dev_stop(slave_eth_dev->data->port_id);
 
-	/* Enable interrupts on slave device */
-	slave_eth_dev->data->dev_conf.intr_conf.lsc = 1;
+	/* Enable interrupts on slave device if supported */
+	if (slave_eth_dev->driver->pci_drv.drv_flags & RTE_PCI_DRV_INTR_LSC)
+		slave_eth_dev->data->dev_conf.intr_conf.lsc = 1;
 
-	if (rte_eth_dev_configure(slave_eth_dev->data->port_id,
+	/* Configure device */
+	errval = rte_eth_dev_configure(slave_eth_dev->data->port_id,
 			bonded_eth_dev->data->nb_rx_queues,
 			bonded_eth_dev->data->nb_tx_queues,
-			&(slave_eth_dev->data->dev_conf)) != 0) {
-		RTE_LOG(ERR, PMD, "Cannot configure slave device: port=%u\n",
-				slave_eth_dev->data->port_id);
-		return -1;
+			&(slave_eth_dev->data->dev_conf));
+	if (errval != 0) {
+		RTE_BOND_LOG(ERR, "Cannot configure slave device: port %u , err (%d)",
+				slave_eth_dev->data->port_id, errval);
+		return errval;
 	}
 
 	/* Setup Rx Queues */
 	for (q_id = 0; q_id < bonded_eth_dev->data->nb_rx_queues; q_id++) {
 		bd_rx_q = (struct bond_rx_queue *)bonded_eth_dev->data->rx_queues[q_id];
 
-		if (rte_eth_rx_queue_setup(slave_eth_dev->data->port_id, q_id,
+		errval = rte_eth_rx_queue_setup(slave_eth_dev->data->port_id, q_id,
 				bd_rx_q->nb_rx_desc,
 				rte_eth_dev_socket_id(slave_eth_dev->data->port_id),
-				&(bd_rx_q->rx_conf), bd_rx_q->mb_pool) != 0) {
-			RTE_LOG(ERR, PMD, "rte_eth_rx_queue_setup: port=%d queue_id %d\n",
-					slave_eth_dev->data->port_id, q_id);
-			return -1;
+				&(bd_rx_q->rx_conf), bd_rx_q->mb_pool);
+		if (errval != 0) {
+			RTE_BOND_LOG(ERR,
+					"rte_eth_rx_queue_setup: port=%d queue_id %d, err (%d)",
+					slave_eth_dev->data->port_id, q_id, errval);
+			return errval;
 		}
 	}
 
@@ -605,69 +607,77 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	for (q_id = 0; q_id < bonded_eth_dev->data->nb_tx_queues; q_id++) {
 		bd_tx_q = (struct bond_tx_queue *)bonded_eth_dev->data->tx_queues[q_id];
 
-		if (rte_eth_tx_queue_setup(slave_eth_dev->data->port_id, q_id,
+		errval = rte_eth_tx_queue_setup(slave_eth_dev->data->port_id, q_id,
 				bd_tx_q->nb_tx_desc,
 				rte_eth_dev_socket_id(slave_eth_dev->data->port_id),
-				&bd_tx_q->tx_conf) != 0) {
-			RTE_LOG(ERR, PMD, "rte_eth_tx_queue_setup: port=%d queue_id %d\n",
-					slave_eth_dev->data->port_id, q_id);
-			return -1;
+				&bd_tx_q->tx_conf);
+		if (errval != 0) {
+			RTE_BOND_LOG(ERR,
+					"rte_eth_tx_queue_setup: port=%d queue_id %d, err (%d)",
+					slave_eth_dev->data->port_id, q_id, errval);
+			return errval;
 		}
 	}
 
 	/* Start device */
-	if (rte_eth_dev_start(slave_eth_dev->data->port_id) != 0) {
-		RTE_LOG(ERR, PMD, "rte_eth_dev_start: port=%u\n",
-				slave_eth_dev->data->port_id);
+	errval = rte_eth_dev_start(slave_eth_dev->data->port_id);
+	if (errval != 0) {
+		RTE_BOND_LOG(ERR, "rte_eth_dev_start: port=%u, err (%d)",
+				slave_eth_dev->data->port_id, errval);
 		return -1;
 	}
 
 	return 0;
 }
 
-struct slave_conf *
-slave_config_get(struct bond_dev_private *internals, uint8_t slave_port_id)
-{
-	int i;
-
-	for (i = 0; i < internals->slave_count; i++) {
-		if (internals->presisted_slaves_conf[i].port_id == slave_port_id)
-			return &internals->presisted_slaves_conf[i];
-	}
-	return NULL;
-}
-
 void
-slave_config_clear(struct bond_dev_private *internals,
+slave_remove(struct bond_dev_private *internals,
 		struct rte_eth_dev *slave_eth_dev)
 {
 	int i, found = 0;
 
 	for (i = 0; i < internals->slave_count; i++) {
-		if (internals->presisted_slaves_conf[i].port_id ==
-				slave_eth_dev->data->port_id) {
+		if (internals->slaves[i].port_id ==	slave_eth_dev->data->port_id)
 			found = 1;
-			memset(&internals->presisted_slaves_conf[i], 0,
-					sizeof(internals->presisted_slaves_conf[i]));
-		}
-		if (found && i < (internals->slave_count - 1)) {
-			memcpy(&internals->presisted_slaves_conf[i],
-					&internals->presisted_slaves_conf[i+1],
-					sizeof(internals->presisted_slaves_conf[i]));
-		}
+
+		if (found && i < (internals->slave_count - 1))
+			memcpy(&internals->slaves[i], &internals->slaves[i+1],
+					sizeof(internals->slaves[i]));
 	}
+
+	internals->slave_count--;
 }
 
+static void
+bond_ethdev_slave_link_status_change_monitor(void *cb_arg);
+
 void
-slave_config_store(struct bond_dev_private *internals,
+slave_add(struct bond_dev_private *internals,
 		struct rte_eth_dev *slave_eth_dev)
 {
-	struct slave_conf *presisted_slave_conf =
-			&internals->presisted_slaves_conf[internals->slave_count];
+	struct bond_slave_details *slave_details =
+			&internals->slaves[internals->slave_count];
 
-	presisted_slave_conf->port_id = slave_eth_dev->data->port_id;
+	slave_details->port_id = slave_eth_dev->data->port_id;
+	slave_details->last_link_status = 0;
 
-	memcpy(&(presisted_slave_conf->mac_addr), slave_eth_dev->data->mac_addrs,
+	/* If slave device doesn't support interrupts then we need to enabled
+	 * polling to monitor link status */
+	if (!(slave_eth_dev->pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)) {
+		slave_details->link_status_poll_enabled = 1;
+
+		if (!internals->link_status_polling_enabled) {
+			internals->link_status_polling_enabled = 1;
+
+			rte_eal_alarm_set(internals->link_status_polling_interval_ms * 1000,
+					bond_ethdev_slave_link_status_change_monitor,
+					(void *)&rte_eth_devices[internals->port_id]);
+		}
+	}
+
+	slave_details->link_status_wait_to_complete = 0;
+
+	memcpy(&(slave_details->persisted_mac_addr), slave_eth_dev->data->mac_addrs,
 			sizeof(struct ether_addr));
 }
 
@@ -698,31 +708,33 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 
 	/* slave eth dev will be started by bonded device */
 	if (valid_bonded_ethdev(eth_dev)) {
-		RTE_LOG(ERR, PMD,
-				"%s: user tried to explicitly start a slave eth_dev (%d) of the bonded eth_dev\n",
-				__func__, eth_dev->data->port_id);
+		RTE_BOND_LOG(ERR, "User tried to explicitly start a slave eth_dev (%d)",
+				eth_dev->data->port_id);
 		return -1;
 	}
 
-	eth_dev->data->dev_link.link_status = 1;
+	eth_dev->data->dev_link.link_status = 0;
 	eth_dev->data->dev_started = 1;
 
 	internals = eth_dev->data->dev_private;
 
 	if (internals->slave_count == 0) {
-		RTE_LOG(ERR, PMD,
-				"%s: Cannot start port since there are no slave devices\n",
-				__func__);
+		RTE_BOND_LOG(ERR, "Cannot start port since there are no slave devices");
 		return -1;
 	}
 
 	if (internals->user_defined_mac == 0) {
-		struct slave_conf *conf = slave_config_get(internals,
-				internals->primary_port);
+		struct ether_addr *new_mac_addr = NULL;
 
-		if (mac_address_set(eth_dev, &(conf->mac_addr)) != 0) {
-			RTE_LOG(ERR, PMD,
-					"bonded port (%d) failed to update mac address",
+		for (i = 0; i < internals->slave_count; i++)
+			if (internals->slaves[i].port_id == internals->primary_port)
+				new_mac_addr = &internals->slaves[i].persisted_mac_addr;
+
+		if (new_mac_addr == NULL)
+			return -1;
+
+		if (mac_address_set(eth_dev, new_mac_addr) != 0) {
+			RTE_BOND_LOG(ERR, "bonded port (%d) failed to update MAC address",
 					eth_dev->data->port_id);
 			return -1;
 		}
@@ -738,11 +750,11 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 
 	/* Reconfigure each slave device if starting bonded device */
 	for (i = 0; i < internals->slave_count; i++) {
-		if (slave_configure(eth_dev, &(rte_eth_devices[internals->slaves[i]]))
-				!= 0) {
-			RTE_LOG(ERR, PMD, "bonded port "
-					"(%d) failed to reconfigure slave device (%d)\n)",
-					eth_dev->data->port_id, internals->slaves[i]);
+		if (slave_configure(eth_dev,
+				&(rte_eth_devices[internals->slaves[i].port_id])) != 0) {
+			RTE_BOND_LOG(ERR,
+					"bonded port (%d) failed to reconfigure slave device (%d)",
+					eth_dev->data->port_id, internals->slaves[i].port_id);
 			return -1;
 		}
 	}
@@ -759,6 +771,7 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 	struct bond_dev_private *internals = eth_dev->data->dev_private;
 
 	internals->active_slave_count = 0;
+	internals->link_status_polling_enabled = 0;
 
 	eth_dev->data->dev_link.link_status = 0;
 	eth_dev->data->dev_started = 0;
@@ -852,6 +865,65 @@ bond_ethdev_tx_queue_release(void *queue)
 	rte_free(queue);
 }
 
+
+static void
+bond_ethdev_slave_link_status_change_monitor(void *cb_arg)
+{
+	struct rte_eth_dev *bonded_ethdev, *slave_ethdev;
+	struct bond_dev_private *internals;
+
+	/* Default value for polling slave found is true as we don't want to
+	 * disable the polling thread if we cannot get the lock */
+	int i, polling_slave_found = 1;
+
+	if (cb_arg == NULL)
+		return;
+
+	bonded_ethdev = (struct rte_eth_dev *)cb_arg;
+	internals = (struct bond_dev_private *)bonded_ethdev->data->dev_private;
+
+	if (!bonded_ethdev->data->dev_started ||
+		!internals->link_status_polling_enabled)
+		return;
+
+	/* If device is currently being configured then don't check slaves link
+	 * status, wait until next period */
+	if (rte_spinlock_trylock(&internals->lock)) {
+		if (internals->slave_count > 0)
+			polling_slave_found = 0;
+
+		for (i = 0; i < internals->slave_count; i++) {
+			if (!internals->slaves[i].link_status_poll_enabled)
+				continue;
+
+			slave_ethdev = &rte_eth_devices[internals->slaves[i].port_id];
+			polling_slave_found = 1;
+
+			/* Update slave link status */
+			(*slave_ethdev->dev_ops->link_update)(slave_ethdev,
+					internals->slaves[i].link_status_wait_to_complete);
+
+			/* if link status has changed since last checked then call lsc
+			 * event callback */
+			if (slave_ethdev->data->dev_link.link_status !=
+					internals->slaves[i].last_link_status) {
+				internals->slaves[i].last_link_status =
+						slave_ethdev->data->dev_link.link_status;
+
+				bond_ethdev_lsc_event_callback(internals->slaves[i].port_id,
+						RTE_ETH_EVENT_INTR_LSC,
+						&bonded_ethdev->data->port_id);
+			}
+		}
+		rte_spinlock_unlock(&internals->lock);
+	}
+
+	if (polling_slave_found)
+		/* Set alarm to continue monitoring link status of slave ethdev's */
+		rte_eal_alarm_set(internals->link_status_polling_interval_ms * 1000,
+				bond_ethdev_slave_link_status_change_monitor, cb_arg);
+}
+
 static int
 bond_ethdev_link_update(struct rte_eth_dev *bonded_eth_dev,
 		int wait_to_complete)
@@ -895,7 +967,7 @@ bond_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	memset(stats, 0, sizeof(*stats));
 
 	for (i = 0; i < internals->slave_count; i++) {
-		rte_eth_stats_get(internals->slaves[i], &slave_stats);
+		rte_eth_stats_get(internals->slaves[i].port_id, &slave_stats);
 
 		stats->ipackets += slave_stats.ipackets;
 		stats->opackets += slave_stats.opackets;
@@ -921,7 +993,7 @@ bond_ethdev_stats_reset(struct rte_eth_dev *dev)
 	int i;
 
 	for (i = 0; i < internals->slave_count; i++)
-		rte_eth_stats_reset(internals->slaves[i]);
+		rte_eth_stats_reset(internals->slaves[i].port_id);
 }
 
 static void
@@ -940,7 +1012,7 @@ bond_ethdev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 	case BONDING_MODE_BROADCAST:
 #endif
 		for (i = 0; i < internals->slave_count; i++)
-			rte_eth_promiscuous_enable(internals->slaves[i]);
+			rte_eth_promiscuous_enable(internals->slaves[i].port_id);
 		break;
 	/* Promiscuous mode is propagated only to primary slave */
 	case BONDING_MODE_ACTIVE_BACKUP:
@@ -966,13 +1038,23 @@ bond_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
 	case BONDING_MODE_BROADCAST:
 #endif
 		for (i = 0; i < internals->slave_count; i++)
-			rte_eth_promiscuous_disable(internals->slaves[i]);
+			rte_eth_promiscuous_disable(internals->slaves[i].port_id);
 		break;
 	/* Promiscuous mode is propagated only to primary slave */
 	case BONDING_MODE_ACTIVE_BACKUP:
 	default:
 		rte_eth_promiscuous_disable(internals->current_primary_port);
 	}
+}
+
+static void
+bond_ethdev_delayed_lsc_propagation(void *arg)
+{
+	if (arg == NULL)
+		return;
+
+	_rte_eth_dev_callback_process((struct rte_eth_dev *)arg,
+			RTE_ETH_EVENT_INTR_LSC);
 }
 
 void
@@ -1003,7 +1085,7 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 
 	/* verify that port_id is a valid slave of bonded port */
 	for (i = 0; i < internals->slave_count; i++) {
-		if (internals->slaves[i] == port_id) {
+		if (internals->slaves[i].port_id == port_id) {
 			valid_slave = 1;
 			break;
 		}
@@ -1072,8 +1154,32 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 		}
 	}
 
-	if (lsc_flag)
-		_rte_eth_dev_callback_process(bonded_eth_dev, RTE_ETH_EVENT_INTR_LSC);
+	if (lsc_flag) {
+		/* Cancel any possible outstanding interrupts if delays are enabled */
+		if (internals->link_up_delay_ms > 0 ||
+			internals->link_down_delay_ms > 0)
+			rte_eal_alarm_cancel(bond_ethdev_delayed_lsc_propagation,
+					bonded_eth_dev);
+
+		if (bonded_eth_dev->data->dev_link.link_status) {
+			if (internals->link_up_delay_ms > 0)
+				rte_eal_alarm_set(internals->link_up_delay_ms * 1000,
+						bond_ethdev_delayed_lsc_propagation,
+						(void *)bonded_eth_dev);
+			else
+				_rte_eth_dev_callback_process(bonded_eth_dev,
+						RTE_ETH_EVENT_INTR_LSC);
+
+		} else {
+			if (internals->link_down_delay_ms > 0)
+				rte_eal_alarm_set(internals->link_down_delay_ms * 1000,
+						bond_ethdev_delayed_lsc_propagation,
+						(void *)bonded_eth_dev);
+			else
+				_rte_eth_dev_callback_process(bonded_eth_dev,
+						RTE_ETH_EVENT_INTR_LSC);
+		}
+	}
 }
 
 struct eth_dev_ops default_dev_ops = {
@@ -1223,8 +1329,8 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		}
 	} else if (arg_count > 1) {
 		RTE_LOG(ERR, EAL,
-				"Transmit policy can be specified only once for bonded device %s\n",
-				name);
+				"Transmit policy can be specified only once for bonded device"
+				" %s\n", name);
 		return -1;
 	}
 
@@ -1266,8 +1372,8 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 				&bond_ethdev_parse_primary_slave_port_id_kvarg,
 				&primary_slave_port_id) < 0) {
 			RTE_LOG(INFO, EAL,
-					"Invalid primary slave port id specified for bonded device %s\n",
-					name);
+					"Invalid primary slave port id specified for bonded device"
+					" %s\n", name);
 			return -1;
 		}
 
@@ -1281,8 +1387,97 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		}
 	} else if (arg_count > 1) {
 		RTE_LOG(INFO, EAL,
-				"Primary slave can be specified only once for bonded device %s\n",
-				name);
+				"Primary slave can be specified only once for bonded device"
+				" %s\n", name);
+		return -1;
+	}
+
+	/* Parse link status monitor polling interval */
+	arg_count = rte_kvargs_count(kvlist, PMD_BOND_LSC_POLL_PERIOD_KVARG);
+	if (arg_count == 1) {
+		uint32_t lsc_poll_interval_ms;
+
+		if (rte_kvargs_process(kvlist,
+				PMD_BOND_LSC_POLL_PERIOD_KVARG,
+				&bond_ethdev_parse_time_ms_kvarg,
+				&lsc_poll_interval_ms) < 0) {
+			RTE_LOG(INFO, EAL,
+					"Invalid lsc polling interval value specified for bonded"
+					" device %s\n", name);
+			return -1;
+		}
+
+		if (rte_eth_bond_link_monitoring_set(port_id, lsc_poll_interval_ms)
+				!= 0) {
+			RTE_LOG(ERR, EAL,
+					"Failed to set lsc monitor polling interval (%u ms) on"
+					" bonded device %s\n", lsc_poll_interval_ms, name);
+			return -1;
+		}
+	} else if (arg_count > 1) {
+		RTE_LOG(INFO, EAL,
+				"LSC polling interval can be specified only once for bonded"
+				" device %s\n", name);
+		return -1;
+	}
+
+	/* Parse link up interrupt propagation delay */
+	arg_count = rte_kvargs_count(kvlist, PMD_BOND_LINK_UP_PROP_DELAY_KVARG);
+	if (arg_count == 1) {
+		uint32_t link_up_delay_ms;
+
+		if (rte_kvargs_process(kvlist,
+				PMD_BOND_LINK_UP_PROP_DELAY_KVARG,
+				&bond_ethdev_parse_time_ms_kvarg,
+				&link_up_delay_ms) < 0) {
+			RTE_LOG(INFO, EAL,
+					"Invalid link up propagation delay value specified for"
+					" bonded device %s\n", name);
+			return -1;
+		}
+
+		/* Set balance mode transmit policy*/
+		if (rte_eth_bond_link_up_prop_delay_set(port_id, link_up_delay_ms)
+				!= 0) {
+			RTE_LOG(ERR, EAL,
+					"Failed to set link up propagation delay (%u ms) on bonded"
+					" device %s\n", link_up_delay_ms, name);
+			return -1;
+		}
+	} else if (arg_count > 1) {
+		RTE_LOG(INFO, EAL,
+				"Link up propagation delay can be specified only once for"
+				" bonded device %s\n", name);
+		return -1;
+	}
+
+	/* Parse link down interrupt propagation delay */
+	arg_count = rte_kvargs_count(kvlist, PMD_BOND_LINK_DOWN_PROP_DELAY_KVARG);
+	if (arg_count == 1) {
+		uint32_t link_down_delay_ms;
+
+		if (rte_kvargs_process(kvlist,
+				PMD_BOND_LINK_DOWN_PROP_DELAY_KVARG,
+				&bond_ethdev_parse_time_ms_kvarg,
+				&link_down_delay_ms) < 0) {
+			RTE_LOG(INFO, EAL,
+					"Invalid link down propagation delay value specified for"
+					" bonded device %s\n", name);
+			return -1;
+		}
+
+		/* Set balance mode transmit policy*/
+		if (rte_eth_bond_link_down_prop_delay_set(port_id, link_down_delay_ms)
+				!= 0) {
+			RTE_LOG(ERR, EAL,
+					"Failed to set link down propagation delay (%u ms) on"
+					" bonded device %s\n", link_down_delay_ms, name);
+			return -1;
+		}
+	} else if (arg_count > 1) {
+		RTE_LOG(INFO, EAL,
+				"Link down propagation delay can be specified only once for"
+				" bonded device %s\n", name);
 		return -1;
 	}
 

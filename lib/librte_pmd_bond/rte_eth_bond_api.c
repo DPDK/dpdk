@@ -39,6 +39,8 @@
 #include "rte_eth_bond.h"
 #include "rte_eth_bond_private.h"
 
+#define DEFAULT_POLLING_INTERVAL_10_MS (10)
+
 int
 valid_bonded_ethdev(struct rte_eth_dev *eth_dev)
 {
@@ -63,9 +65,8 @@ valid_port_id(uint8_t port_id)
 	/* Verify that port id is valid */
 	int ethdev_count = rte_eth_dev_count();
 	if (port_id >= ethdev_count) {
-		RTE_LOG(ERR, PMD,
-				"%s: port Id %d is greater than rte_eth_dev_count %d\n",
-				__func__, port_id, ethdev_count);
+		RTE_BOND_LOG(ERR, "Port Id %d is greater than rte_eth_dev_count %d",
+				port_id, ethdev_count);
 		return -1;
 	}
 
@@ -81,9 +82,8 @@ valid_bonded_port_id(uint8_t port_id)
 
 	/* Verify that bonded_port_id refers to a bonded port */
 	if (valid_bonded_ethdev(&rte_eth_devices[port_id])) {
-		RTE_LOG(ERR, PMD,
-				"%s: Specified port Id %d is not a bonded eth_dev device\n",
-				__func__, port_id);
+		RTE_BOND_LOG(ERR, "Specified port Id %d is not a bonded eth_dev device",
+				port_id);
 		return -1;
 	}
 
@@ -136,37 +136,36 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	 */
 
 	if (name == NULL) {
-		RTE_LOG(ERR, PMD, "Invalid name specified\n");
+		RTE_BOND_LOG(ERR, "Invalid name specified");
 		goto err;
 	}
 
 	if (socket_id >= number_of_sockets()) {
-		RTE_LOG(ERR, PMD,
-				"%s: invalid socket id specified to create bonded device on.\n",
-				__func__);
+		RTE_BOND_LOG(ERR,
+				"Invalid socket id specified to create bonded device on.");
 		goto err;
 	}
 
 	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, socket_id);
 	if (pci_dev == NULL) {
-		RTE_LOG(ERR, PMD, "Unable to malloc pci dev on socket\n");
+		RTE_BOND_LOG(ERR, "Unable to malloc pci dev on socket");
 		goto err;
 	}
 
 	eth_drv = rte_zmalloc_socket(name, sizeof(*eth_drv), 0, socket_id);
 	if (eth_drv == NULL) {
-		RTE_LOG(ERR, PMD, "Unable to malloc eth_drv on socket\n");
+		RTE_BOND_LOG(ERR, "Unable to malloc eth_drv on socket");
 		goto err;
 	}
 
 	pci_drv = rte_zmalloc_socket(name, sizeof(*pci_drv), 0, socket_id);
 	if (pci_drv == NULL) {
-		RTE_LOG(ERR, PMD, "Unable to malloc pci_drv on socket\n");
+		RTE_BOND_LOG(ERR, "Unable to malloc pci_drv on socket");
 		goto err;
 	}
 	pci_id_table = rte_zmalloc_socket(name, sizeof(*pci_id_table), 0, socket_id);
 	if (pci_drv == NULL) {
-		RTE_LOG(ERR, PMD, "Unable to malloc pci_id_table on socket\n");
+		RTE_BOND_LOG(ERR, "Unable to malloc pci_id_table on socket");
 		goto err;
 	}
 
@@ -181,14 +180,14 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 
 	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, socket_id);
 	if (internals == NULL) {
-		RTE_LOG(ERR, PMD, "Unable to malloc internals on socket\n");
+		RTE_BOND_LOG(ERR, "Unable to malloc internals on socket");
 		goto err;
 	}
 
 	/* reserve an ethdev entry */
 	eth_dev = rte_eth_dev_allocate(name);
 	if (eth_dev == NULL) {
-		RTE_LOG(ERR, PMD, "Unable to allocate rte_eth_dev\n");
+		RTE_BOND_LOG(ERR, "Unable to allocate rte_eth_dev");
 		goto err;
 	}
 
@@ -218,24 +217,30 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	eth_dev->pci_dev = pci_dev;
 
 	if (bond_ethdev_mode_set(eth_dev, mode)) {
-		RTE_LOG(ERR, PMD,
-				"%s: failed to set bonded device %d mode too %d\n",
-				__func__, eth_dev->data->port_id, mode);
+		RTE_BOND_LOG(ERR, "Failed to set bonded device %d mode too %d",
+				 eth_dev->data->port_id, mode);
 		goto err;
 	}
 
+	rte_spinlock_init(&internals->lock);
+
+	internals->port_id = eth_dev->data->port_id;
 	internals->current_primary_port = 0;
 	internals->balance_xmit_policy = BALANCE_XMIT_POLICY_LAYER2;
 	internals->user_defined_mac = 0;
 	internals->link_props_set = 0;
+
+	internals->link_status_polling_enabled = 0;
+
+	internals->link_status_polling_interval_ms = DEFAULT_POLLING_INTERVAL_10_MS;
+	internals->link_down_delay_ms = 0;
+	internals->link_up_delay_ms = 0;
+
 	internals->slave_count = 0;
 	internals->active_slave_count = 0;
 
 	memset(internals->active_slaves, 0, sizeof(internals->active_slaves));
 	memset(internals->slaves, 0, sizeof(internals->slaves));
-
-	memset(internals->presisted_slaves_conf, 0,
-			sizeof(internals->presisted_slaves_conf));
 
 	return eth_dev->data->port_id;
 
@@ -253,8 +258,8 @@ err:
 	return -1;
 }
 
-int
-rte_eth_bond_slave_add(uint8_t bonded_port_id, uint8_t slave_port_id)
+static int
+__eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 {
 	struct rte_eth_dev *bonded_eth_dev, *slave_eth_dev;
 	struct bond_dev_private *internals;
@@ -263,56 +268,43 @@ rte_eth_bond_slave_add(uint8_t bonded_port_id, uint8_t slave_port_id)
 
 	int i, j;
 
-	/* Verify that port id's are valid bonded and slave ports */
-	if (valid_bonded_port_id(bonded_port_id) != 0)
-		goto err_add;
-
 	if (valid_slave_port_id(slave_port_id) != 0)
-		goto err_add;
-
-	/*
-	 * Verify that new slave device is not already a slave of another bonded
-	 * device */
-	for (i = rte_eth_dev_count()-1; i >= 0; i--) {
-		if (valid_bonded_ethdev(&rte_eth_devices[i]) == 0) {
-			temp_internals = rte_eth_devices[i].data->dev_private;
-			for (j = 0; j < temp_internals->slave_count; j++) {
-				/* Device already a slave of a bonded device */
-				if (temp_internals->slaves[j] == slave_port_id)
-					goto err_add;
-			}
-		}
-	}
+		return -1;
 
 	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
 	internals = bonded_eth_dev->data->dev_private;
 
-	slave_eth_dev = &rte_eth_devices[slave_port_id];
+	/* Verify that new slave device is not already a slave of another
+	 * bonded device */
+	for (i = rte_eth_dev_count()-1; i >= 0; i--) {
+		if (valid_bonded_ethdev(&rte_eth_devices[i]) == 0) {
+			temp_internals = rte_eth_devices[i].data->dev_private;
 
-	if (internals->slave_count > 0) {
-		/* Check that new slave device is the same type as the other slaves
-		 * and not repetitive */
-		for (i = 0; i < internals->slave_count; i++) {
-			if (slave_eth_dev->pci_dev->driver->id_table->device_id !=
-					rte_eth_devices[internals->slaves[i]].pci_dev->driver->id_table->device_id ||
-				internals->slaves[i] == slave_port_id)
-				goto err_add;
+			for (j = 0; j < temp_internals->slave_count; j++) {
+				/* Device already a slave of a bonded device */
+				if (temp_internals->slaves[j].port_id == slave_port_id) {
+					RTE_BOND_LOG(ERR, "Slave port %d is already a slave",
+							slave_port_id);
+					return -1;
+				}
+			}
 		}
 	}
 
-	/* Add slave details to bonded device */
-	internals->slaves[internals->slave_count] = slave_port_id;
+	slave_eth_dev = &rte_eth_devices[slave_port_id];
 
-	slave_config_store(internals, slave_eth_dev);
+	/* Add slave details to bonded device */
+	slave_add(internals, slave_eth_dev);
 
 	if (internals->slave_count < 1) {
-		/* if MAC is not user defined then use MAC of first slave add to bonded
-		 * device */
+		/* if MAC is not user defined then use MAC of first slave add to
+		 * bonded device */
 		if (!internals->user_defined_mac)
 			mac_address_set(bonded_eth_dev, slave_eth_dev->data->mac_addrs);
 
 		/* Inherit eth dev link properties from first slave */
-		link_properties_set(bonded_eth_dev, &(slave_eth_dev->data->dev_link));
+		link_properties_set(bonded_eth_dev,
+				&(slave_eth_dev->data->dev_link));
 
 		/* Make primary slave */
 		internals->primary_port = slave_port_id;
@@ -322,10 +314,10 @@ rte_eth_bond_slave_add(uint8_t bonded_port_id, uint8_t slave_port_id)
 		if (internals->link_props_set) {
 			if (link_properties_valid(&(bonded_eth_dev->data->dev_link),
 									  &(slave_eth_dev->data->dev_link))) {
-				RTE_LOG(ERR, PMD,
-						"%s: Slave port %d link speed/duplex not supported\n",
-						__func__, slave_port_id);
-				goto err_add;
+				RTE_BOND_LOG(ERR,
+						"Slave port %d link speed/duplex not supported",
+						slave_port_id);
+				return -1;
 			}
 		} else {
 			link_properties_set(bonded_eth_dev,
@@ -340,9 +332,9 @@ rte_eth_bond_slave_add(uint8_t bonded_port_id, uint8_t slave_port_id)
 
 	if (bonded_eth_dev->data->dev_started) {
 		if (slave_configure(bonded_eth_dev, slave_eth_dev) != 0) {
-			RTE_LOG(ERR, PMD, "rte_bond_slaves_configure: port=%d\n",
+			RTE_BOND_LOG(ERR, "rte_bond_slaves_configure: port=%d",
 					slave_port_id);
-			goto err_add;
+			return -1;
 		}
 	}
 
@@ -356,64 +348,78 @@ rte_eth_bond_slave_add(uint8_t bonded_port_id, uint8_t slave_port_id)
 	if (bonded_eth_dev->data->dev_started) {
 		rte_eth_link_get_nowait(slave_port_id, &link_props);
 
-		 if (link_props.link_status == 1) {
+		 if (link_props.link_status == 1)
 			internals->active_slaves[internals->active_slave_count++] =
 					slave_port_id;
-		}
 	}
-
 	return 0;
-
-err_add:
-	RTE_LOG(ERR, PMD, "Failed to add port %d as slave\n", slave_port_id);
-	return -1;
 
 }
 
-int
-rte_eth_bond_slave_remove(uint8_t bonded_port_id, uint8_t slave_port_id)
-{
-	struct bond_dev_private *internals;
-	struct slave_conf *slave_conf;
 
-	int i;
-	int pos = -1;
+int
+rte_eth_bond_slave_add(uint8_t bonded_port_id, uint8_t slave_port_id)
+{
+	struct rte_eth_dev *bonded_eth_dev;
+	struct bond_dev_private *internals;
+
+	int retval;
 
 	/* Verify that port id's are valid bonded and slave ports */
 	if (valid_bonded_port_id(bonded_port_id) != 0)
-		goto err_del;
+		return -1;
+
+	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
+	internals = bonded_eth_dev->data->dev_private;
+
+	rte_spinlock_lock(&internals->lock);
+
+	retval = __eth_bond_slave_add_lock_free(bonded_port_id, slave_port_id);
+
+	rte_spinlock_unlock(&internals->lock);
+
+	return retval;
+}
+
+
+static int
+__eth_bond_slave_remove_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
+{
+	struct bond_dev_private *internals;
+
+	int i, slave_idx = -1;
 
 	if (valid_slave_port_id(slave_port_id) != 0)
-		goto err_del;
+		return -1;
 
 	internals = rte_eth_devices[bonded_port_id].data->dev_private;
 
 	/* first remove from active slave list */
 	for (i = 0; i < internals->active_slave_count; i++) {
 		if (internals->active_slaves[i] == slave_port_id)
-			pos = i;
+			slave_idx = i;
 
 		/* shift active slaves up active array list */
-		if (pos >= 0 && i < (internals->active_slave_count - 1))
+		if (slave_idx >= 0 && i < (internals->active_slave_count - 1))
 			internals->active_slaves[i] = internals->active_slaves[i+1];
 	}
 
-	if (pos >= 0)
+	if (slave_idx >= 0)
 		internals->active_slave_count--;
 
-	pos = -1;
-	/* now remove from slave list */
-	for (i = 0; i < internals->slave_count; i++) {
-		if (internals->slaves[i] == slave_port_id)
-			pos = i;
+	slave_idx = -1;
+	/* now find in slave list */
+	for (i = 0; i < internals->slave_count; i++)
+		if (internals->slaves[i].port_id == slave_port_id) {
+			slave_idx = i;
+			break;
+		}
 
-		/* shift slaves up list */
-		if (pos >= 0 && i < internals->slave_count)
-			internals->slaves[i] = internals->slaves[i+1];
+	if (slave_idx < 0) {
+		RTE_BOND_LOG(ERR, "Couldn't find slave in port list, slave count %d",
+				internals->slave_count);
+		return -1;
 	}
-
-	if (pos < 0)
-		goto err_del;
 
 	/* Un-register link status change callback with bonded device pointer as
 	 * argument*/
@@ -422,13 +428,10 @@ rte_eth_bond_slave_remove(uint8_t bonded_port_id, uint8_t slave_port_id)
 			&rte_eth_devices[bonded_port_id].data->port_id);
 
 	/* Restore original MAC address of slave device */
-	slave_conf = slave_config_get(internals, slave_port_id);
+	mac_address_set(&rte_eth_devices[slave_port_id],
+			&(internals->slaves[slave_idx].persisted_mac_addr));
 
-	mac_address_set(&rte_eth_devices[slave_port_id], &(slave_conf->mac_addr));
-
-	slave_config_clear(internals, &rte_eth_devices[slave_port_id]);
-
-	internals->slave_count--;
+	slave_remove(internals, &rte_eth_devices[slave_port_id]);
 
 	/*  first slave in the active list will be the primary by default,
 	 *  otherwise use first device in list */
@@ -436,7 +439,7 @@ rte_eth_bond_slave_remove(uint8_t bonded_port_id, uint8_t slave_port_id)
 		if (internals->active_slave_count > 0)
 			internals->current_primary_port = internals->active_slaves[0];
 		else if (internals->slave_count > 0)
-			internals->current_primary_port = internals->slaves[0];
+			internals->current_primary_port = internals->slaves[0].port_id;
 		else
 			internals->primary_port = 0;
 	}
@@ -454,12 +457,28 @@ rte_eth_bond_slave_remove(uint8_t bonded_port_id, uint8_t slave_port_id)
 	}
 
 	return 0;
+}
 
-err_del:
-	RTE_LOG(ERR, PMD,
-			"Cannot remove slave device (not present in bonded device)\n");
-	return -1;
+int
+rte_eth_bond_slave_remove(uint8_t bonded_port_id, uint8_t slave_port_id)
+{
+	struct rte_eth_dev *bonded_eth_dev;
+	struct bond_dev_private *internals;
+	int retval;
 
+	if (valid_bonded_port_id(bonded_port_id) != 0)
+		return -1;
+
+	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
+	internals = bonded_eth_dev->data->dev_private;
+
+	rte_spinlock_lock(&internals->lock);
+
+	retval = __eth_bond_slave_remove_lock_free(bonded_port_id, slave_port_id);
+
+	rte_spinlock_unlock(&internals->lock);
+
+	return retval;
 }
 
 int
@@ -524,6 +543,7 @@ int
 rte_eth_bond_slaves_get(uint8_t bonded_port_id, uint8_t slaves[], uint8_t len)
 {
 	struct bond_dev_private *internals;
+	int i;
 
 	if (valid_bonded_port_id(bonded_port_id) != 0)
 		return -1;
@@ -536,10 +556,10 @@ rte_eth_bond_slaves_get(uint8_t bonded_port_id, uint8_t slaves[], uint8_t len)
 	if (internals->slave_count > len)
 		return -1;
 
-	memcpy(slaves, internals->slaves, internals->slave_count);
+	for (i = 0; i < internals->slave_count; i++)
+		slaves[i] = internals->slaves[i].port_id;
 
 	return internals->slave_count;
-
 }
 
 int
@@ -605,13 +625,13 @@ rte_eth_bond_mac_address_reset(uint8_t bonded_port_id)
 	internals->user_defined_mac = 0;
 
 	if (internals->slave_count > 0) {
-		struct slave_conf *conf;
-		conf = slave_config_get(internals, internals->primary_port);
-
 		/* Set MAC Address of Bonded Device */
-		if (mac_address_set(bonded_eth_dev, &conf->mac_addr) != 0)
+		if (mac_address_set(bonded_eth_dev,
+				&internals->slaves[internals->primary_port].persisted_mac_addr)
+				!= 0) {
+			RTE_BOND_LOG(ERR, "Failed to set MAC address on bonded device");
 			return -1;
-
+		}
 		/* Update all slave devices MAC addresses */
 		return mac_address_slaves_update(bonded_eth_dev);
 	}
@@ -653,4 +673,89 @@ rte_eth_bond_xmit_policy_get(uint8_t bonded_port_id)
 	internals = rte_eth_devices[bonded_port_id].data->dev_private;
 
 	return internals->balance_xmit_policy;
+}
+
+
+int
+rte_eth_bond_link_monitoring_set(uint8_t bonded_port_id, uint32_t internal_ms)
+{
+	struct bond_dev_private *internals;
+
+	if (valid_bonded_port_id(bonded_port_id) != 0)
+		return -1;
+
+	internals = rte_eth_devices[bonded_port_id].data->dev_private;
+	internals->link_status_polling_interval_ms = internal_ms;
+
+	return 0;
+}
+
+int
+rte_eth_bond_link_monitoring_get(uint8_t bonded_port_id)
+{
+	struct bond_dev_private *internals;
+
+	if (valid_bonded_port_id(bonded_port_id) != 0)
+		return -1;
+
+	internals = rte_eth_devices[bonded_port_id].data->dev_private;
+
+	return internals->link_status_polling_interval_ms;
+}
+
+int
+rte_eth_bond_link_down_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms)
+
+{
+	struct bond_dev_private *internals;
+
+	if (valid_bonded_port_id(bonded_port_id) != 0)
+		return -1;
+
+	internals = rte_eth_devices[bonded_port_id].data->dev_private;
+	internals->link_down_delay_ms = delay_ms;
+
+	return 0;
+}
+
+int
+rte_eth_bond_link_down_prop_delay_get(uint8_t bonded_port_id)
+{
+	struct bond_dev_private *internals;
+
+	if (valid_bonded_port_id(bonded_port_id) != 0)
+		return -1;
+
+	internals = rte_eth_devices[bonded_port_id].data->dev_private;
+
+	return internals->link_down_delay_ms;
+}
+
+
+int
+rte_eth_bond_link_up_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms)
+
+{
+	struct bond_dev_private *internals;
+
+	if (valid_bonded_port_id(bonded_port_id) != 0)
+		return -1;
+
+	internals = rte_eth_devices[bonded_port_id].data->dev_private;
+	internals->link_up_delay_ms = delay_ms;
+
+	return 0;
+}
+
+int
+rte_eth_bond_link_up_prop_delay_get(uint8_t bonded_port_id)
+{
+	struct bond_dev_private *internals;
+
+	if (valid_bonded_port_id(bonded_port_id) != 0)
+		return -1;
+
+	internals = rte_eth_devices[bonded_port_id].data->dev_private;
+
+	return internals->link_up_delay_ms;
 }

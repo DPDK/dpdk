@@ -249,6 +249,86 @@ rte_eth_bond_xmit_policy_set(uint8_t bonded_port_id, uint8_t policy);
 int
 rte_eth_bond_xmit_policy_get(uint8_t bonded_port_id);
 
+/**
+ * Set the link monitoring frequency (in ms) for monitoring the link status of
+ * slave devices
+ *
+ * @param bonded_port_id	Port ID of bonded device.
+ * @param internal_ms		Monitoring interval in milliseconds
+ *
+ * @return
+ *	0 on success, negative value otherwise.
+ */
+
+int
+rte_eth_bond_link_monitoring_set(uint8_t bonded_port_id, uint32_t internal_ms);
+
+/**
+ * Get the current link monitoring frequency (in ms) for monitoring of the link
+ * status of slave devices
+ *
+ * @param bonded_port_id	Port ID of bonded device.
+ *
+ * @return
+ *	Monitoring interval on success, negative value otherwise.
+ */
+int
+rte_eth_bond_link_monitoring_get(uint8_t bonded_port_id);
+
+
+/**
+ * Set the period in milliseconds for delaying the disabling of a bonded link
+ * when the link down status has been detected
+ *
+ * @param bonded_port_id	Port ID of bonded device.
+ * @param delay_ms			Delay period in milliseconds.
+ *
+ * @return
+ *  0 on success, negative value otherwise.
+ */
+int
+rte_eth_bond_link_down_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms);
+
+/**
+ * Get the period in milliseconds set for delaying the disabling of a bonded
+ * link when the link down status has been detected
+ *
+ * @param bonded_port_id	Port ID of bonded device.
+ * @param delay_ms			Delay period in milliseconds.
+ *
+ * @return
+ *  Delay period on success, negative value otherwise.
+ */
+int
+rte_eth_bond_link_down_prop_delay_get(uint8_t bonded_port_id);
+
+/**
+ * Set the period in milliseconds for delaying the enabling of a bonded link
+ * when the link up status has been detected
+ *
+ * @param bonded_port_id	Port ID of bonded device.
+ * @param delay_ms			Delay period in milliseconds.
+ *
+ * @return
+ *  0 on success, negative value otherwise.
+ */
+int
+rte_eth_bond_link_up_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms);
+
+/**
+ * Get the period in milliseconds set for delaying the enabling of a bonded
+ * link when the link up status has been detected
+ *
+ * @param bonded_port_id	Port ID of bonded device.
+ * @param delay_ms			Delay period in milliseconds.
+ *
+ * @return
+ *  Delay period on success, negative value otherwise.
+ */
+int
+rte_eth_bond_link_up_prop_delay_get(uint8_t bonded_port_id);
+
+
 #ifdef __cplusplus
 }
 #endif

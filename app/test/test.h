@@ -62,14 +62,15 @@
 
 #define TEST_ASSERT_SUCCESS(val, msg, ...) do {					\
 		if (!(val == 0)) {										\
-			printf("TestCase %s() line %d failed: "			\
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);	\
+			printf("TestCase %s() line %d failed (err %d): "	\
+				msg "\n", __func__, __LINE__, val,				\
+				##__VA_ARGS__);									\
 			return -1;											\
 		}														\
 } while (0)
 
 #define TEST_ASSERT_FAIL(val, msg, ...) do {					\
-		if (!(val != -1)) {										\
+		if (!(val != 0)) {										\
 			printf("TestCase %s() line %d failed: "			\
 				msg "\n", __func__, __LINE__, ##__VA_ARGS__);	\
 			return -1;											\

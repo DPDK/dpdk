@@ -39,19 +39,26 @@ extern "C" {
 #endif
 
 #include <rte_ethdev.h>
+#include <rte_spinlock.h>
 
 #include "rte_eth_bond.h"
 
-#define PMD_BOND_SLAVE_PORT_KVARG		("slave")
-#define PMD_BOND_PRIMARY_SLAVE_KVARG	("primary")
-#define PMD_BOND_MODE_KVARG				("mode")
-#define PMD_BOND_XMIT_POLICY_KVARG		("xmit_policy")
-#define PMD_BOND_SOCKET_ID_KVARG		("socket_id")
-#define PMD_BOND_MAC_ADDR_KVARG			("mac")
+#define PMD_BOND_SLAVE_PORT_KVARG			("slave")
+#define PMD_BOND_PRIMARY_SLAVE_KVARG		("primary")
+#define PMD_BOND_MODE_KVARG					("mode")
+#define PMD_BOND_XMIT_POLICY_KVARG			("xmit_policy")
+#define PMD_BOND_SOCKET_ID_KVARG			("socket_id")
+#define PMD_BOND_MAC_ADDR_KVARG				("mac")
+#define PMD_BOND_LSC_POLL_PERIOD_KVARG		("lsc_poll_period_ms")
+#define PMD_BOND_LINK_UP_PROP_DELAY_KVARG	("up_delay")
+#define PMD_BOND_LINK_DOWN_PROP_DELAY_KVARG	("down_delay")
 
 #define PMD_BOND_XMIT_POLICY_LAYER2_KVARG	("l2")
 #define PMD_BOND_XMIT_POLICY_LAYER23_KVARG	("l23")
 #define PMD_BOND_XMIT_POLICY_LAYER34_KVARG	("l34")
+
+#define RTE_BOND_LOG(lvl, msg, ...)		\
+	RTE_LOG(lvl, PMD, "%s(%d) - " msg "\n", __func__, __LINE__, ##__VA_ARGS__)
 
 extern const char *pmd_bond_init_valid_arguments[];
 
@@ -82,27 +89,36 @@ struct bond_tx_queue {
 	/**< Copy of TX configuration structure for queue */
 };
 
-/** Persisted Slave Configuration Structure */
-struct slave_conf {
-	uint8_t port_id;
-	/**< Port Id of slave eth_dev */
-	struct ether_addr mac_addr;
-	/**< Slave eth_dev original MAC address */
-};
+
 /** Bonded slave devices structure */
 struct bond_ethdev_slave_ports {
 	uint8_t slaves[RTE_MAX_ETHPORTS];	/**< Slave port id array */
 	uint8_t slave_count;				/**< Number of slaves */
 };
 
+struct bond_slave_details {
+	uint8_t port_id;
+
+	uint8_t link_status_poll_enabled;
+	uint8_t link_status_wait_to_complete;
+	uint8_t last_link_status;
+
+	/**< Port Id of slave eth_dev */
+	struct ether_addr persisted_mac_addr;
+};
+
 /** Link Bonding PMD device private configuration Structure */
 struct bond_dev_private {
+	uint8_t port_id;					/**< Port Id of Bonded Port */
 	uint8_t mode;						/**< Link Bonding Mode */
+
+	rte_spinlock_t lock;
 
 	uint8_t primary_port;				/**< Primary Slave Port */
 	uint8_t current_primary_port;		/**< Primary Slave Port */
 	uint8_t user_defined_primary_port;
 	/**< Flag for whether primary port is user defined or not */
+
 	uint8_t balance_xmit_policy;
 	/**< Transmit policy - l2 / l23 / l34 for operation in balance mode */
 	uint8_t user_defined_mac;
@@ -110,19 +126,23 @@ struct bond_dev_private {
 	uint8_t promiscuous_en;
 	/**< Enabled/disable promiscuous mode on slave devices */
 	uint8_t link_props_set;
-	/**< Bonded eth_dev link properties set */
+	/**< flag to denote if the link properties are set */
+
+	uint8_t link_status_polling_enabled;
+	uint32_t link_status_polling_interval_ms;
+
+	uint32_t link_down_delay_ms;
+	uint32_t link_up_delay_ms;
 
 	uint16_t nb_rx_queues;			/**< Total number of rx queues */
 	uint16_t nb_tx_queues;			/**< Total number of tx queues*/
 
-	uint8_t slave_count;			/**< Number of active slaves */
-	uint8_t active_slave_count;		/**< Number of slaves */
-
+	uint8_t active_slave_count;		/**< Number of active slaves */
 	uint8_t active_slaves[RTE_MAX_ETHPORTS];	/**< Active slave list */
-	uint8_t slaves[RTE_MAX_ETHPORTS];			/**< Slave list */
 
-	/** Persisted configuration of slaves */
-	struct slave_conf presisted_slaves_conf[RTE_MAX_ETHPORTS];
+	uint8_t slave_count;			/**< Number of bonded slaves */
+	struct bond_slave_details slaves[RTE_MAX_ETHPORTS];
+	/**< Arary of bonded slaves details */
 
 	struct rte_kvargs *kvlist;
 };
@@ -168,15 +188,12 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 		struct rte_eth_dev *slave_eth_dev);
 
 void
-slave_config_clear(struct bond_dev_private *internals,
+slave_remove(struct bond_dev_private *internals,
 		struct rte_eth_dev *slave_eth_dev);
 
 void
-slave_config_store(struct bond_dev_private *internals,
+slave_add(struct bond_dev_private *internals,
 		struct rte_eth_dev *slave_eth_dev);
-
-struct slave_conf *
-slave_config_get(struct bond_dev_private *internals, uint8_t slave_port_id);
 
 void
 bond_ethdev_primary_set(struct bond_dev_private *internals,
@@ -208,6 +225,10 @@ bond_ethdev_parse_balance_xmit_policy_kvarg(const char *key __rte_unused,
 
 int
 bond_ethdev_parse_bond_mac_addr_kvarg(const char *key __rte_unused,
+		const char *value, void *extra_args);
+
+int
+bond_ethdev_parse_time_ms_kvarg(const char *key __rte_unused,
 		const char *value, void *extra_args);
 
 #ifdef __cplusplus

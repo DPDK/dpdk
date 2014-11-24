@@ -1479,6 +1479,25 @@ For example, set a Link Bonding device (port 10) to use a balance policy of laye
 
     testpmd> set bonding xmit_balance_policy 10 l34
 
+
+set bonding mon_period
+~~~~~~~~~~~~~~~~~~~~~~
+
+Set the link status monitoring polling period in milliseconds for a bonding devicie.
+
+This adds support for PMD slave devices which do not support link status interrupts.
+When the mon_period is set to a value greater than 0 then all PMD's which do not support
+link status ISR will be queried every polling interval to check if their link status has changed.
+
+set bonding mon_period (port_id) (value)
+
+For example, to set the link status monitoring polling period of bonded device (port 5) to 150ms
+
+.. code-block:: console
+
+    testpmd> set bonding mon_period 5 150
+
+
 show bonding config
 ~~~~~~~~~~~~~~~~~~~
 

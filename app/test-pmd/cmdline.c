@@ -462,6 +462,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"set bonding xmit_balance_policy (port_id) (l2|l23|l34)\n"
 			"	Set the transmit balance policy for bonded device running in balance mode.\n\n"
+
+			"set bonding mon_period (port_id) (value)\n"
+			"	Set the bonding link status monitoring polling period in ms.\n\n"
 #endif
 			"set link-up port (port_id)\n"
 			"	Set link up for a port.\n\n"
@@ -3734,6 +3737,65 @@ cmdline_parse_inst_t cmd_set_bond_mac_addr = {
 				(void *)&cmd_set_bond_mac_addr_mac,
 				(void *)&cmd_set_bond_mac_addr_portnum,
 				(void *)&cmd_set_bond_mac_addr_addr,
+				NULL
+		}
+};
+
+
+/* *** SET LINK STATUS MONITORING POLLING PERIOD ON BONDED DEVICE *** */
+struct cmd_set_bond_mon_period_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t mon_period;
+	uint8_t port_num;
+	uint32_t period_ms;
+};
+
+static void cmd_set_bond_mon_period_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bond_mon_period_result *res = parsed_result;
+	int ret;
+
+	if (res->port_num >= nb_ports) {
+		printf("Port id %d must be less than %d\n", res->port_num, nb_ports);
+		return;
+	}
+
+	ret = rte_eth_bond_link_monitoring_set(res->port_num, res->period_ms);
+
+	/* check the return value and print it if is < 0 */
+	if (ret < 0)
+		printf("set_bond_mac_addr error: (%s)\n", strerror(-ret));
+}
+
+cmdline_parse_token_string_t cmd_set_bond_mon_period_set =
+		TOKEN_STRING_INITIALIZER(struct cmd_set_bond_mon_period_result,
+				set, "set");
+cmdline_parse_token_string_t cmd_set_bond_mon_period_bonding =
+		TOKEN_STRING_INITIALIZER(struct cmd_set_bond_mon_period_result,
+				bonding, "bonding");
+cmdline_parse_token_string_t cmd_set_bond_mon_period_mon_period =
+		TOKEN_STRING_INITIALIZER(struct cmd_set_bond_mon_period_result,
+				mon_period,	"mon_period");
+cmdline_parse_token_num_t cmd_set_bond_mon_period_portnum =
+		TOKEN_NUM_INITIALIZER(struct cmd_set_bond_mon_period_result,
+				port_num, UINT8);
+cmdline_parse_token_num_t cmd_set_bond_mon_period_period_ms =
+		TOKEN_NUM_INITIALIZER(struct cmd_set_bond_mon_period_result,
+				period_ms, UINT32);
+
+cmdline_parse_inst_t cmd_set_bond_mon_period = {
+		.f = cmd_set_bond_mon_period_parsed,
+		.data = (void *) 0,
+		.help_str = "set bonding mon_period (port_id) (period_ms): ",
+		.tokens = {
+				(void *)&cmd_set_bond_mon_period_set,
+				(void *)&cmd_set_bond_mon_period_bonding,
+				(void *)&cmd_set_bond_mon_period_mon_period,
+				(void *)&cmd_set_bond_mon_period_portnum,
+				(void *)&cmd_set_bond_mon_period_period_ms,
 				NULL
 		}
 };
@@ -7792,6 +7854,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *) &cmd_create_bonded_device,
 	(cmdline_parse_inst_t *) &cmd_set_bond_mac_addr,
 	(cmdline_parse_inst_t *) &cmd_set_balance_xmit_policy,
+	(cmdline_parse_inst_t *) &cmd_set_bond_mon_period,
 #endif
 	(cmdline_parse_inst_t *)&cmd_vlan_offload,
 	(cmdline_parse_inst_t *)&cmd_vlan_tpid,
