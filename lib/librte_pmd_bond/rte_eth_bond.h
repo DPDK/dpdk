@@ -294,7 +294,6 @@ rte_eth_bond_link_down_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms)
  * link when the link down status has been detected
  *
  * @param bonded_port_id	Port ID of bonded device.
- * @param delay_ms			Delay period in milliseconds.
  *
  * @return
  *  Delay period on success, negative value otherwise.
@@ -320,7 +319,6 @@ rte_eth_bond_link_up_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms);
  * link when the link up status has been detected
  *
  * @param bonded_port_id	Port ID of bonded device.
- * @param delay_ms			Delay period in milliseconds.
  *
  * @return
  *  Delay period on success, negative value otherwise.
