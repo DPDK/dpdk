@@ -133,6 +133,8 @@ test_memzone_reserve_flags(void)
 	const struct rte_memseg *ms;
 	int hugepage_2MB_avail = 0;
 	int hugepage_1GB_avail = 0;
+	int hugepage_16MB_avail = 0;
+	int hugepage_16GB_avail = 0;
 	const size_t size = 100;
 	int i = 0;
 	ms = rte_eal_get_physmem_layout();
@@ -141,12 +143,20 @@ test_memzone_reserve_flags(void)
 			hugepage_2MB_avail = 1;
 		if (ms[i].hugepage_sz == RTE_PGSIZE_1G)
 			hugepage_1GB_avail = 1;
+		if (ms[i].hugepage_sz == RTE_PGSIZE_16M)
+			hugepage_16MB_avail = 1;
+		if (ms[i].hugepage_sz == RTE_PGSIZE_16G)
+			hugepage_16GB_avail = 1;
 	}
-	/* Display the availability of 2MB and 1GB pages */
+	/* Display the availability of 2MB ,1GB, 16MB, 16GB pages */
 	if (hugepage_2MB_avail)
 		printf("2MB Huge pages available\n");
 	if (hugepage_1GB_avail)
 		printf("1GB Huge pages available\n");
+	if (hugepage_16MB_avail)
+		printf("16MB Huge pages available\n");
+	if (hugepage_16GB_avail)
+		printf("16GB Huge pages available\n");
 	/*
 	 * If 2MB pages available, check that a small memzone is correctly
 	 * reserved from 2MB huge pages when requested by the RTE_MEMZONE_2MB flag.
@@ -249,6 +259,117 @@ test_memzone_reserve_flags(void)
 		if (hugepage_2MB_avail && hugepage_1GB_avail) {
 			mz = rte_memzone_reserve("flag_zone_2M_HINT", size, SOCKET_ID_ANY,
 								RTE_MEMZONE_2MB|RTE_MEMZONE_1GB);
+			if (mz != NULL) {
+				printf("BOTH SIZES SET\n");
+				return -1;
+			}
+		}
+	}
+	/*
+	 * This option is for IBM Power. If 16MB pages available, check
+	 * that a small memzone is correctly reserved from 16MB huge pages
+	 * when requested by the RTE_MEMZONE_16MB flag. Also check that
+	 * RTE_MEMZONE_SIZE_HINT_ONLY flag only defaults to an available
+	 * page size (i.e 16GB ) when 16MB pages are unavailable.
+	 */
+	if (hugepage_16MB_avail) {
+		mz = rte_memzone_reserve("flag_zone_16M", size, SOCKET_ID_ANY,
+				RTE_MEMZONE_16MB);
+		if (mz == NULL) {
+			printf("MEMZONE FLAG 16MB\n");
+			return -1;
+		}
+		if (mz->hugepage_sz != RTE_PGSIZE_16M) {
+			printf("hugepage_sz not equal 16M\n");
+			return -1;
+		}
+
+		mz = rte_memzone_reserve("flag_zone_16M_HINT", size,
+		SOCKET_ID_ANY, RTE_MEMZONE_16MB|RTE_MEMZONE_SIZE_HINT_ONLY);
+		if (mz == NULL) {
+			printf("MEMZONE FLAG 2MB\n");
+			return -1;
+		}
+		if (mz->hugepage_sz != RTE_PGSIZE_16M) {
+			printf("hugepage_sz not equal 16M\n");
+			return -1;
+		}
+
+		/* Check if 1GB huge pages are unavailable, that function fails
+		 * unless HINT flag is indicated
+		 */
+		if (!hugepage_16GB_avail) {
+			mz = rte_memzone_reserve("flag_zone_16G_HINT", size,
+				SOCKET_ID_ANY,
+				RTE_MEMZONE_16GB|RTE_MEMZONE_SIZE_HINT_ONLY);
+			if (mz == NULL) {
+				printf("MEMZONE FLAG 16GB & HINT\n");
+				return -1;
+			}
+			if (mz->hugepage_sz != RTE_PGSIZE_16M) {
+				printf("hugepage_sz not equal 16M\n");
+				return -1;
+			}
+
+			mz = rte_memzone_reserve("flag_zone_16G", size,
+				SOCKET_ID_ANY, RTE_MEMZONE_16GB);
+			if (mz != NULL) {
+				printf("MEMZONE FLAG 16GB\n");
+				return -1;
+			}
+		}
+	}
+	/*As with 16MB tests above for 16GB huge page requests*/
+	if (hugepage_16GB_avail) {
+		mz = rte_memzone_reserve("flag_zone_16G", size, SOCKET_ID_ANY,
+				RTE_MEMZONE_16GB);
+		if (mz == NULL) {
+			printf("MEMZONE FLAG 16GB\n");
+			return -1;
+		}
+		if (mz->hugepage_sz != RTE_PGSIZE_16G) {
+			printf("hugepage_sz not equal 16G\n");
+			return -1;
+		}
+
+		mz = rte_memzone_reserve("flag_zone_16G_HINT", size,
+		SOCKET_ID_ANY, RTE_MEMZONE_16GB|RTE_MEMZONE_SIZE_HINT_ONLY);
+		if (mz == NULL) {
+			printf("MEMZONE FLAG 16GB\n");
+			return -1;
+		}
+		if (mz->hugepage_sz != RTE_PGSIZE_16G) {
+			printf("hugepage_sz not equal 16G\n");
+			return -1;
+		}
+
+		/* Check if 1GB huge pages are unavailable, that function fails
+		 * unless HINT flag is indicated
+		 */
+		if (!hugepage_16MB_avail) {
+			mz = rte_memzone_reserve("flag_zone_16M_HINT", size,
+				SOCKET_ID_ANY,
+				RTE_MEMZONE_16MB|RTE_MEMZONE_SIZE_HINT_ONLY);
+			if (mz == NULL) {
+				printf("MEMZONE FLAG 16MB & HINT\n");
+				return -1;
+			}
+			if (mz->hugepage_sz != RTE_PGSIZE_16G) {
+				printf("hugepage_sz not equal 16G\n");
+				return -1;
+			}
+			mz = rte_memzone_reserve("flag_zone_16M", size,
+				SOCKET_ID_ANY, RTE_MEMZONE_16MB);
+			if (mz != NULL) {
+				printf("MEMZONE FLAG 16MB\n");
+				return -1;
+			}
+		}
+
+		if (hugepage_16MB_avail && hugepage_16GB_avail) {
+			mz = rte_memzone_reserve("flag_zone_16M_HINT", size,
+				SOCKET_ID_ANY,
+				RTE_MEMZONE_16MB|RTE_MEMZONE_16GB);
 			if (mz != NULL) {
 				printf("BOTH SIZES SET\n");
 				return -1;

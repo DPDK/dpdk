@@ -453,9 +453,12 @@ eal_parse_base_virtaddr(const char *arg)
 		return -1;
 #endif
 
-	/* align the addr on 2M boundary */
-	internal_config.base_virtaddr = RTE_PTR_ALIGN_CEIL((uintptr_t)addr,
-	                                                   RTE_PGSIZE_2M);
+	/* align the addr on 16M boundary, 16MB is the minimum huge page
+	 * size on IBM Power architecture. If the addr is aligned to 16MB,
+	 * it can align to 2MB for x86. So this alignment can also be used
+	 * on x86 */
+	internal_config.base_virtaddr =
+		RTE_PTR_ALIGN_CEIL((uintptr_t)addr, RTE_PGSIZE_16M);
 
 	return 0;
 }
