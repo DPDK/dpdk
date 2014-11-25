@@ -89,6 +89,23 @@ ifneq ($(filter $(AUTO_CPUFLAGS),__AVX2__),)
 CPUFLAGS += AVX2
 endif
 
+# IBM Power CPU flags
+ifneq ($(filter $(AUTO_CPUFLAGS),__PPC64__),)
+CPUFLAGS += PPC64
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__PPC32__),)
+CPUFLAGS += PPC32
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__vector),)
+CPUFLAGS += ALTIVEC
+endif
+
+ifneq ($(filter $(AUTO_CPUFLAGS),__builtin_vsx_xvnmaddadp),)
+CPUFLAGS += VSX
+endif
+
 MACHINE_CFLAGS += $(addprefix -DRTE_MACHINE_CPUFLAG_,$(CPUFLAGS))
 
 # To strip whitespace
