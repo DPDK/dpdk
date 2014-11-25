@@ -316,11 +316,12 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 #endif
 			hugepg_tbl[i].filepath[sizeof(hugepg_tbl[i].filepath) - 1] = '\0';
 		}
-#ifndef RTE_ARCH_X86_64
-		/* for 32-bit systems, don't remap 1G pages, just reuse original
-		 * map address as final map address.
+#ifndef RTE_ARCH_64
+		/* for 32-bit systems, don't remap 1G and 16G pages, just reuse
+		 * original map address as final map address.
 		 */
-		else if (hugepage_sz == RTE_PGSIZE_1G){
+		else if ((hugepage_sz == RTE_PGSIZE_1G)
+			|| (hugepage_sz == RTE_PGSIZE_16G)) {
 			hugepg_tbl[i].final_va = hugepg_tbl[i].orig_va;
 			hugepg_tbl[i].orig_va = NULL;
 			continue;
@@ -335,9 +336,17 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 			 * physical block: count the number of
 			 * contiguous physical pages. */
 			for (j = i+1; j < hpi->num_pages[0] ; j++) {
+#ifdef RTE_ARCH_PPC_64
+				/* The physical addresses are sorted in
+				 * descending order on PPC64 */
+				if (hugepg_tbl[j].physaddr !=
+				    hugepg_tbl[j-1].physaddr - hugepage_sz)
+					break;
+#else
 				if (hugepg_tbl[j].physaddr !=
 				    hugepg_tbl[j-1].physaddr + hugepage_sz)
 					break;
+#endif
 			}
 			num_pages = j - i;
 			vma_len = num_pages * hugepage_sz;
@@ -412,11 +421,12 @@ remap_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 
 	while (i < hpi->num_pages[0]) {
 
-#ifndef RTE_ARCH_X86_64
-		/* for 32-bit systems, don't remap 1G pages, just reuse original
-		 * map address as final map address.
+#ifndef RTE_ARCH_64
+		/* for 32-bit systems, don't remap 1G pages and 16G pages,
+		 * just reuse original map address as final map address.
 		 */
-		if (hugepage_sz == RTE_PGSIZE_1G){
+		if ((hugepage_sz == RTE_PGSIZE_1G)
+			|| (hugepage_sz == RTE_PGSIZE_16G)) {
 			hugepg_tbl[i].final_va = hugepg_tbl[i].orig_va;
 			hugepg_tbl[i].orig_va = NULL;
 			i++;
@@ -428,8 +438,17 @@ remap_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 		 * physical block: count the number of
 		 * contiguous physical pages. */
 		for (j = i+1; j < hpi->num_pages[0] ; j++) {
-			if (hugepg_tbl[j].physaddr != hugepg_tbl[j-1].physaddr + hugepage_sz)
+#ifdef RTE_ARCH_PPC_64
+			/* The physical addresses are sorted in descending
+			 * order on PPC64 */
+			if (hugepg_tbl[j].physaddr !=
+				hugepg_tbl[j-1].physaddr - hugepage_sz)
 				break;
+#else
+			if (hugepg_tbl[j].physaddr !=
+				hugepg_tbl[j-1].physaddr + hugepage_sz)
+				break;
+#endif
 		}
 		num_pages = j - i;
 		vma_len = num_pages * hugepage_sz;
@@ -652,21 +671,21 @@ error:
 }
 
 /*
- * Sort the hugepg_tbl by physical address (lower addresses first). We
- * use a slow algorithm, but we won't have millions of pages, and this
- * is only done at init time.
+ * Sort the hugepg_tbl by physical address (lower addresses first on x86,
+ * higher address first on powerpc). We use a slow algorithm, but we won't
+ * have millions of pages, and this is only done at init time.
  */
 static int
 sort_by_physaddr(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 {
 	unsigned i, j;
-	int smallest_idx;
-	uint64_t smallest_addr;
+	int compare_idx;
+	uint64_t compare_addr;
 	struct hugepage_file tmp;
 
 	for (i = 0; i < hpi->num_pages[0]; i++) {
-		smallest_addr = 0;
-		smallest_idx = -1;
+		compare_addr = 0;
+		compare_idx = -1;
 
 		/*
 		 * browse all entries starting at 'i', and find the
@@ -674,23 +693,28 @@ sort_by_physaddr(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 		 */
 		for (j=i; j< hpi->num_pages[0]; j++) {
 
-			if (smallest_addr == 0 ||
-			    hugepg_tbl[j].physaddr < smallest_addr) {
-				smallest_addr = hugepg_tbl[j].physaddr;
-				smallest_idx = j;
+			if (compare_addr == 0 ||
+#ifdef RTE_ARCH_PPC_64
+				hugepg_tbl[j].physaddr > compare_addr) {
+#else
+				hugepg_tbl[j].physaddr < compare_addr) {
+#endif
+				compare_addr = hugepg_tbl[j].physaddr;
+				compare_idx = j;
 			}
 		}
 
 		/* should not happen */
-		if (smallest_idx == -1) {
+		if (compare_idx == -1) {
 			RTE_LOG(ERR, EAL, "%s(): error in physaddr sorting\n", __func__);
 			return -1;
 		}
 
 		/* swap the 2 entries in the table */
-		memcpy(&tmp, &hugepg_tbl[smallest_idx], sizeof(struct hugepage_file));
-		memcpy(&hugepg_tbl[smallest_idx], &hugepg_tbl[i],
-				sizeof(struct hugepage_file));
+		memcpy(&tmp, &hugepg_tbl[compare_idx],
+			sizeof(struct hugepage_file));
+		memcpy(&hugepg_tbl[compare_idx], &hugepg_tbl[i],
+			sizeof(struct hugepage_file));
 		memcpy(&hugepg_tbl[i], &tmp, sizeof(struct hugepage_file));
 	}
 	return 0;
@@ -1260,12 +1284,25 @@ rte_eal_hugepage_init(void)
 			new_memseg = 1;
 		else if (hugepage[i].size != hugepage[i-1].size)
 			new_memseg = 1;
+
+#ifdef RTE_ARCH_PPC_64
+		/* On PPC64 architecture, the mmap always start from higher
+		 * virtual address to lower address. Here, both the physical
+		 * address and virtual address are in descending order */
+		else if ((hugepage[i-1].physaddr - hugepage[i].physaddr) !=
+		    hugepage[i].size)
+			new_memseg = 1;
+		else if (((unsigned long)hugepage[i-1].final_va -
+		    (unsigned long)hugepage[i].final_va) != hugepage[i].size)
+			new_memseg = 1;
+#else
 		else if ((hugepage[i].physaddr - hugepage[i-1].physaddr) !=
 		    hugepage[i].size)
 			new_memseg = 1;
 		else if (((unsigned long)hugepage[i].final_va -
 		    (unsigned long)hugepage[i-1].final_va) != hugepage[i].size)
 			new_memseg = 1;
+#endif
 
 		if (new_memseg) {
 			j += 1;
@@ -1284,6 +1321,12 @@ rte_eal_hugepage_init(void)
 		}
 		/* continuation of previous memseg */
 		else {
+#ifdef RTE_ARCH_PPC_64
+		/* Use the phy and virt address of the last page as segment
+		 * address for IBM Power architecture */
+			mcfg->memseg[j].phys_addr = hugepage[i].physaddr;
+			mcfg->memseg[j].addr = hugepage[i].final_va;
+#endif
 			mcfg->memseg[j].len += mcfg->memseg[j].hugepage_sz;
 		}
 		hugepage[i].memseg_id = j;
