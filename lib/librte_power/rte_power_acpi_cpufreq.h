@@ -31,12 +31,12 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_POWER_H
-#define _RTE_POWER_H
+#ifndef _RTE_POWER_ACPI_CPUFREQ_H
+#define _RTE_POWER_ACPI_CPUFREQ_H
 
 /**
  * @file
- * RTE Power Management
+ * RTE Power Management via userspace ACPI cpufreq
  */
 
 #include <rte_common.h>
@@ -48,48 +48,10 @@
 extern "C" {
 #endif
 
-/* Power Management Environment State */
-enum power_management_env {PM_ENV_NOT_SET, PM_ENV_ACPI_CPUFREQ, PM_ENV_KVM_VM};
-
 /**
- * Set the default power management implementation. If this is not called prior
- * to rte_power_init(), then auto-detect of the environment will take place.
- * It is not thread safe.
- *
- * @param env
- *  env. The environment in which to initialise Power Management for.
- *
- * @return
- *  - 0 on success.
- *  - Negative on error.
- */
-int rte_power_set_env(enum power_management_env env);
-
-/**
- * Unset the global environment configuration.
- * This can only be called after all threads have completed.
- *
- * @param None.
- *
- * @return
- *  None.
- */
-void rte_power_unset_env(void);
-
-/**
- * Get the default power management implementation.
- *
- * @param None.
- *
- * @return
- *  power_management_env The configured environment.
- */
-enum power_management_env rte_power_get_env(void);
-
-/**
- * Initialize power management for a specific lcore. If rte_power_set_env() has
- * not been called then an auto-detect of the environment will start and
- * initialise the corresponding resources.
+ * Initialize power management for a specific lcore. It will check and set the
+ * governor to userspace for the lcore, get the available frequencies, and
+ * prepare to set new lcore frequency.
  *
  * @param lcore_id
  *  lcore id.
@@ -98,12 +60,11 @@ enum power_management_env rte_power_get_env(void);
  *  - 0 on success.
  *  - Negative on error.
  */
-int rte_power_init(unsigned lcore_id);
+int rte_power_acpi_cpufreq_init(unsigned lcore_id);
 
 /**
- * Exit power management on a specific lcore. This will call the environment
- * dependent exit function.
- *
+ * Exit power management on a specific lcore. It will set the governor to which
+ * is before initialized.
  *
  * @param lcore_id
  *  lcore id.
@@ -112,12 +73,14 @@ int rte_power_init(unsigned lcore_id);
  *  - 0 on success.
  *  - Negative on error.
  */
-int rte_power_exit(unsigned lcore_id);
+int rte_power_acpi_cpufreq_exit(unsigned lcore_id);
 
 /**
- * Get the available frequencies of a specific lcore.
- * Function pointer definition. Review each environments
- * specific documentation for usage.
+ * Get the available frequencies of a specific lcore. The return value will be
+ * the minimal one of the total number of available frequencies and the number
+ * of buffer. The index of available frequencies used in other interfaces
+ * should be in the range of 0 to this return value.
+ * It should be protected outside of this function for threadsafe.
  *
  * @param lcore_id
  *  lcore id.
@@ -129,15 +92,13 @@ int rte_power_exit(unsigned lcore_id);
  * @return
  *  The number of available frequencies.
  */
-typedef uint32_t (*rte_power_freqs_t)(unsigned lcore_id, uint32_t *freqs,
+uint32_t rte_power_acpi_cpufreq_freqs(unsigned lcore_id, uint32_t *freqs,
 		uint32_t num);
 
-extern rte_power_freqs_t rte_power_freqs;
-
 /**
- * Return the current index of available frequencies of a specific lcore.
- * Function pointer definition. Review each environments
- * specific documentation for usage.
+ * Return the current index of available frequencies of a specific lcore. It
+ * will return 'RTE_POWER_INVALID_FREQ_INDEX = (~0)' if error.
+ * It should be protected outside of this function for threadsafe.
  *
  * @param lcore_id
  *  lcore id.
@@ -145,15 +106,12 @@ extern rte_power_freqs_t rte_power_freqs;
  * @return
  *  The current index of available frequencies.
  */
-typedef uint32_t (*rte_power_get_freq_t)(unsigned lcore_id);
-
-extern rte_power_get_freq_t rte_power_get_freq;
+uint32_t rte_power_acpi_cpufreq_get_freq(unsigned lcore_id);
 
 /**
  * Set the new frequency for a specific lcore by indicating the index of
  * available frequencies.
- * Function pointer definition. Review each environments
- * specific documentation for usage.
+ * It should be protected outside of this function for threadsafe.
  *
  * @param lcore_id
  *  lcore id.
@@ -165,28 +123,12 @@ extern rte_power_get_freq_t rte_power_get_freq;
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-typedef int (*rte_power_set_freq_t)(unsigned lcore_id, uint32_t index);
-
-extern rte_power_set_freq_t rte_power_set_freq;
-
-/**
- * Function pointer definition for generic frequency change functions. Review
- * each environments specific documentation for usage.
- *
- * @param lcore_id
- *  lcore id.
- *
- * @return
- *  - 1 on success with frequency changed.
- *  - 0 on success without frequency changed.
- *  - Negative on error.
- */
-typedef int (*rte_power_freq_change_t)(unsigned lcore_id);
+int rte_power_acpi_cpufreq_set_freq(unsigned lcore_id, uint32_t index);
 
 /**
  * Scale up the frequency of a specific lcore according to the available
  * frequencies.
- * Review each environments specific documentation for usage.
+ * It should be protected outside of this function for threadsafe.
  *
  * @param lcore_id
  *  lcore id.
@@ -196,12 +138,12 @@ typedef int (*rte_power_freq_change_t)(unsigned lcore_id);
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-extern rte_power_freq_change_t rte_power_freq_up;
+int rte_power_acpi_cpufreq_freq_up(unsigned lcore_id);
 
 /**
  * Scale down the frequency of a specific lcore according to the available
  * frequencies.
- * Review each environments specific documentation for usage.
+ * It should be protected outside of this function for threadsafe.
  *
  * @param lcore_id
  *  lcore id.
@@ -211,13 +153,12 @@ extern rte_power_freq_change_t rte_power_freq_up;
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-
-extern rte_power_freq_change_t rte_power_freq_down;
+int rte_power_acpi_cpufreq_freq_down(unsigned lcore_id);
 
 /**
  * Scale up the frequency of a specific lcore to the highest according to the
  * available frequencies.
- * Review each environments specific documentation for usage.
+ * It should be protected outside of this function for threadsafe.
  *
  * @param lcore_id
  *  lcore id.
@@ -227,22 +168,22 @@ extern rte_power_freq_change_t rte_power_freq_down;
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-extern rte_power_freq_change_t rte_power_freq_max;
+int rte_power_acpi_cpufreq_freq_max(unsigned lcore_id);
 
 /**
  * Scale down the frequency of a specific lcore to the lowest according to the
  * available frequencies.
- * Review each environments specific documentation for usage..
+ * It should be protected outside of this function for threadsafe.
  *
  * @param lcore_id
  *  lcore id.
  *
  * @return
  *  - 1 on success with frequency changed.
- *  - 0 on success without frequency changed.
+ *  - 0 on success without frequency chnaged.
  *  - Negative on error.
  */
-rte_power_freq_change_t rte_power_freq_min;
+int rte_power_acpi_cpufreq_freq_min(unsigned lcore_id);
 
 #ifdef __cplusplus
 }
