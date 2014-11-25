@@ -300,9 +300,9 @@ test_big_alloc(void)
 	size_t size =rte_str_to_size(MALLOC_MEMZONE_SIZE)*2;
 	int align = 0;
 #ifndef RTE_LIBRTE_MALLOC_DEBUG
-	int overhead = 64 + 64;
+	int overhead = CACHE_LINE_SIZE + CACHE_LINE_SIZE;
 #else
-	int overhead = 64 + 64 + 64;
+	int overhead = CACHE_LINE_SIZE + CACHE_LINE_SIZE + CACHE_LINE_SIZE;
 #endif
 
 	rte_malloc_get_socket_stats(socket, &pre_stats);
@@ -356,9 +356,9 @@ test_multi_alloc_statistics(void)
 #ifndef RTE_LIBRTE_MALLOC_DEBUG
 	int trailer_size = 0;
 #else
-	int trailer_size = 64;
+	int trailer_size = CACHE_LINE_SIZE;
 #endif
-	int overhead = 64 + trailer_size;
+	int overhead = CACHE_LINE_SIZE + trailer_size;
 
 	rte_malloc_get_socket_stats(socket, &pre_stats);
 
