@@ -797,10 +797,9 @@ test_memzone_reserve_memory_in_smallest_segment(void)
 
 			/* set new smallest */
 			min_ms = ms;
-		}
-		else if (prev_min_ms == NULL) {
+		} else if ((prev_min_ms == NULL)
+			|| (prev_min_ms->len > ms->len))
 			prev_min_ms = ms;
-		}
 	}
 
 	if (min_ms == NULL || prev_min_ms == NULL) {
@@ -877,8 +876,8 @@ test_memzone_reserve_memory_with_smallest_offset(void)
 
 			/* set new smallest */
 			min_ms = ms;
-		}
-		else if (prev_min_ms == NULL) {
+		} else if ((prev_min_ms == NULL)
+			|| (prev_min_ms->len > ms->len)) {
 			prev_min_ms = ms;
 		}
 	}
