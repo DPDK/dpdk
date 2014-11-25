@@ -50,7 +50,9 @@
 #include <errno.h>
 #include <sys/mman.h>
 #include <sys/queue.h>
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
 #include <sys/io.h>
+#endif
 
 #include <rte_common.h>
 #include <rte_debug.h>
@@ -673,13 +675,19 @@ rte_eal_mcfg_complete(void)
 
 /*
  * Request iopl privilege for all RPL, returns 0 on success
+ * iopl() call is mostly for the i386 architecture. For other architectures,
+ * return -1 to indicate IO privilege can't be changed in this way.
  */
 int
 rte_eal_iopl_init(void)
 {
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
 	if (iopl(3) != 0)
 		return -1;
 	return 0;
+#else
+	return -1;
+#endif
 }
 
 /* Launch threads, called at application init(). */
