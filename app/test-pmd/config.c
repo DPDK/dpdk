@@ -628,8 +628,13 @@ ring_dma_zone_lookup(const char *ring_name, uint8_t port_id, uint16_t q_id)
 union igb_ring_dword {
 	uint64_t dword;
 	struct {
+#ifdef RTE_ARCH_BIG_ENDIAN
+		uint32_t lo;
+		uint32_t hi;
+#else
 		uint32_t hi;
 		uint32_t lo;
+#endif
 	} words;
 };
 
@@ -672,23 +677,29 @@ ring_rx_descriptor_display(const struct rte_memzone *ring_mz,
 		/* 32 bytes RX descriptor, i40e only */
 		struct igb_ring_desc_32_bytes *ring =
 			(struct igb_ring_desc_32_bytes *)ring_mz->addr;
+		ring[desc_id].lo_dword.dword =
+			rte_le_to_cpu_64(ring[desc_id].lo_dword.dword);
+		ring_rxd_display_dword(ring[desc_id].lo_dword);
+		ring[desc_id].hi_dword.dword =
+			rte_le_to_cpu_64(ring[desc_id].hi_dword.dword);
+		ring_rxd_display_dword(ring[desc_id].hi_dword);
+		ring[desc_id].resv1.dword =
+			rte_le_to_cpu_64(ring[desc_id].resv1.dword);
+		ring_rxd_display_dword(ring[desc_id].resv1);
+		ring[desc_id].resv2.dword =
+			rte_le_to_cpu_64(ring[desc_id].resv2.dword);
+		ring_rxd_display_dword(ring[desc_id].resv2);
 
-		ring_rxd_display_dword(rte_le_to_cpu_64(
-				ring[desc_id].lo_dword));
-		ring_rxd_display_dword(rte_le_to_cpu_64(
-				ring[desc_id].hi_dword));
-		ring_rxd_display_dword(rte_le_to_cpu_64(
-				ring[desc_id].resv1));
-		ring_rxd_display_dword(rte_le_to_cpu_64(
-				ring[desc_id].resv2));
 		return;
 	}
 #endif
 	/* 16 bytes RX descriptor */
-	ring_rxd_display_dword(rte_le_to_cpu_64(
-			ring[desc_id].lo_dword));
-	ring_rxd_display_dword(rte_le_to_cpu_64(
-			ring[desc_id].hi_dword));
+	ring[desc_id].lo_dword.dword =
+		rte_le_to_cpu_64(ring[desc_id].lo_dword.dword);
+	ring_rxd_display_dword(ring[desc_id].lo_dword);
+	ring[desc_id].hi_dword.dword =
+		rte_le_to_cpu_64(ring[desc_id].hi_dword.dword);
+	ring_rxd_display_dword(ring[desc_id].hi_dword);
 }
 
 static void
@@ -698,8 +709,8 @@ ring_tx_descriptor_display(const struct rte_memzone *ring_mz, uint16_t desc_id)
 	struct igb_ring_desc_16_bytes txd;
 
 	ring = (struct igb_ring_desc_16_bytes *)ring_mz->addr;
-	txd.lo_dword = rte_le_to_cpu_64(ring[desc_id].lo_dword);
-	txd.hi_dword = rte_le_to_cpu_64(ring[desc_id].hi_dword);
+	txd.lo_dword.dword = rte_le_to_cpu_64(ring[desc_id].lo_dword.dword);
+	txd.hi_dword.dword = rte_le_to_cpu_64(ring[desc_id].hi_dword.dword);
 	printf("    0x%08X - 0x%08X / 0x%08X - 0x%08X\n",
 			(unsigned)txd.lo_dword.words.lo,
 			(unsigned)txd.lo_dword.words.hi,
