@@ -425,6 +425,32 @@ non_parallel_test_group_list = [
 	]
 },
 {
+	"Prefix" :      "power_acpi_cpufreq",
+	"Memory" :      all_sockets(512),
+	"Tests" :
+	[
+		{
+		 "Name" :       "Power ACPI cpufreq autotest",
+		 "Command" :    "power_acpi_cpufreq_autotest",
+		 "Func" :       default_autotest,
+		 "Report" :     None,
+		},
+	]
+},
+{
+	"Prefix" :      "power_kvm_vm",
+	"Memory" :      "512",
+	"Tests" :
+	[
+		{
+		 "Name" :       "Power KVM VM  autotest",
+		 "Command" :    "power_kvm_vm_autotest",
+		 "Func" :       default_autotest,
+		 "Report" :     None,
+		},
+	]
+},
+{
 	"Prefix" :	"lpm6",
 	"Memory" :	"512",
 	"Tests" :
