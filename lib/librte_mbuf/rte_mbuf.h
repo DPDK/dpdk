@@ -112,7 +112,8 @@ extern "C" {
  *  - set the flags PKT_TX_TCP_CKSUM, PKT_TX_SCTP_CKSUM or PKT_TX_UDP_CKSUM
  *  - set the flag PKT_TX_IPV4 or PKT_TX_IPV6
  *  - calculate the pseudo header checksum and set it in the L4 header (only
- *    for TCP or UDP). For SCTP, set the crc field to 0.
+ *    for TCP or UDP). See rte_ipv4_phdr_cksum() and rte_ipv6_phdr_cksum().
+ *    For SCTP, set the crc field to 0.
  */
 #define PKT_TX_L4_NO_CKSUM   (0ULL << 52) /**< Disable L4 cksum of TX pkt. */
 #define PKT_TX_TCP_CKSUM     (1ULL << 52) /**< TCP cksum of TX pkt. computed by NIC. */

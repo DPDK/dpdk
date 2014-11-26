@@ -87,137 +87,22 @@
 #define _htons(x) (x)
 #endif
 
-static inline uint16_t
-get_16b_sum(uint16_t *ptr16, uint32_t nr)
-{
-	uint32_t sum = 0;
-	while (nr > 1)
-	{
-		sum +=*ptr16;
-		nr -= sizeof(uint16_t);
-		ptr16++;
-		if (sum > UINT16_MAX)
-			sum -= UINT16_MAX;
-	}
-
-	/* If length is in odd bytes */
-	if (nr)
-		sum += *((uint8_t*)ptr16);
-
-	sum = ((sum & 0xffff0000) >> 16) + (sum & 0xffff);
-	sum &= 0x0ffff;
-	return (uint16_t)sum;
-}
-
-static inline uint16_t
-get_ipv4_cksum(struct ipv4_hdr *ipv4_hdr)
-{
-	uint16_t cksum;
-	cksum = get_16b_sum((uint16_t*)ipv4_hdr, sizeof(struct ipv4_hdr));
-	return (uint16_t)((cksum == 0xffff)?cksum:~cksum);
-}
-
-
-static inline uint16_t
-get_ipv4_psd_sum(struct ipv4_hdr *ip_hdr)
-{
-	/* Pseudo Header for IPv4/UDP/TCP checksum */
-	union ipv4_psd_header {
-		struct {
-			uint32_t src_addr; /* IP address of source host. */
-			uint32_t dst_addr; /* IP address of destination host(s). */
-			uint8_t  zero;     /* zero. */
-			uint8_t  proto;    /* L4 protocol type. */
-			uint16_t len;      /* L4 length. */
-		} __attribute__((__packed__));
-		uint16_t u16_arr[0];
-	} psd_hdr;
-
-	psd_hdr.src_addr = ip_hdr->src_addr;
-	psd_hdr.dst_addr = ip_hdr->dst_addr;
-	psd_hdr.zero     = 0;
-	psd_hdr.proto    = ip_hdr->next_proto_id;
-	psd_hdr.len      = rte_cpu_to_be_16((uint16_t)(rte_be_to_cpu_16(ip_hdr->total_length)
-				- sizeof(struct ipv4_hdr)));
-	return get_16b_sum(psd_hdr.u16_arr, sizeof(psd_hdr));
-}
-
-static inline uint16_t
-get_ipv6_psd_sum(struct ipv6_hdr *ip_hdr)
-{
-	/* Pseudo Header for IPv6/UDP/TCP checksum */
-	union ipv6_psd_header {
-		struct {
-			uint8_t src_addr[16]; /* IP address of source host. */
-			uint8_t dst_addr[16]; /* IP address of destination host(s). */
-			uint32_t len;         /* L4 length. */
-			uint32_t proto;       /* L4 protocol - top 3 bytes must be zero */
-		} __attribute__((__packed__));
-
-		uint16_t u16_arr[0]; /* allow use as 16-bit values with safe aliasing */
-	} psd_hdr;
-
-	rte_memcpy(&psd_hdr.src_addr, ip_hdr->src_addr,
-			sizeof(ip_hdr->src_addr) + sizeof(ip_hdr->dst_addr));
-	psd_hdr.len       = ip_hdr->payload_len;
-	psd_hdr.proto     = (ip_hdr->proto << 24);
-
-	return get_16b_sum(psd_hdr.u16_arr, sizeof(psd_hdr));
-}
-
 static uint16_t
 get_psd_sum(void *l3_hdr, uint16_t ethertype)
 {
 	if (ethertype == _htons(ETHER_TYPE_IPv4))
-		return get_ipv4_psd_sum(l3_hdr);
+		return rte_ipv4_phdr_cksum(l3_hdr);
 	else /* assume ethertype == ETHER_TYPE_IPv6 */
-		return get_ipv6_psd_sum(l3_hdr);
-}
-
-static inline uint16_t
-get_ipv4_udptcp_checksum(struct ipv4_hdr *ipv4_hdr, uint16_t *l4_hdr)
-{
-	uint32_t cksum;
-	uint32_t l4_len;
-
-	l4_len = rte_be_to_cpu_16(ipv4_hdr->total_length) - sizeof(struct ipv4_hdr);
-
-	cksum = get_16b_sum(l4_hdr, l4_len);
-	cksum += get_ipv4_psd_sum(ipv4_hdr);
-
-	cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
-	cksum = (~cksum) & 0xffff;
-	if (cksum == 0)
-		cksum = 0xffff;
-	return (uint16_t)cksum;
-}
-
-static inline uint16_t
-get_ipv6_udptcp_checksum(struct ipv6_hdr *ipv6_hdr, uint16_t *l4_hdr)
-{
-	uint32_t cksum;
-	uint32_t l4_len;
-
-	l4_len = rte_be_to_cpu_16(ipv6_hdr->payload_len);
-
-	cksum = get_16b_sum(l4_hdr, l4_len);
-	cksum += get_ipv6_psd_sum(ipv6_hdr);
-
-	cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
-	cksum = (~cksum) & 0xffff;
-	if (cksum == 0)
-		cksum = 0xffff;
-
-	return (uint16_t)cksum;
+		return rte_ipv6_phdr_cksum(l3_hdr);
 }
 
 static uint16_t
 get_udptcp_checksum(void *l3_hdr, void *l4_hdr, uint16_t ethertype)
 {
 	if (ethertype == _htons(ETHER_TYPE_IPv4))
-		return get_ipv4_udptcp_checksum(l3_hdr, l4_hdr);
+		return rte_ipv4_udptcp_cksum(l3_hdr, l4_hdr);
 	else /* assume ethertype == ETHER_TYPE_IPv6 */
-		return get_ipv6_udptcp_checksum(l3_hdr, l4_hdr);
+		return rte_ipv6_udptcp_cksum(l3_hdr, l4_hdr);
 }
 
 /*
@@ -294,7 +179,7 @@ process_inner_cksums(void *l3_hdr, uint16_t ethertype, uint16_t l3_len,
 		if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM)
 			ol_flags |= PKT_TX_IP_CKSUM;
 		else
-			ipv4_hdr->hdr_checksum = get_ipv4_cksum(ipv4_hdr);
+			ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
 
 		ol_flags |= PKT_TX_IPV4;
 	} else if (ethertype == _htons(ETHER_TYPE_IPv6))
@@ -363,7 +248,7 @@ process_outer_cksums(void *outer_l3_hdr, uint16_t outer_ethertype,
 		ipv4_hdr->hdr_checksum = 0;
 
 		if ((testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) == 0)
-			ipv4_hdr->hdr_checksum = get_ipv4_cksum(ipv4_hdr);
+			ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
 	}
 
 	udp_hdr = (struct udp_hdr *)((char *)outer_l3_hdr + outer_l3_len);
@@ -373,12 +258,10 @@ process_outer_cksums(void *outer_l3_hdr, uint16_t outer_ethertype,
 		if ((testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) == 0) {
 			if (outer_ethertype == _htons(ETHER_TYPE_IPv4))
 				udp_hdr->dgram_cksum =
-					get_ipv4_udptcp_checksum(ipv4_hdr,
-						(uint16_t *)udp_hdr);
+					rte_ipv4_udptcp_cksum(ipv4_hdr, udp_hdr);
 			else
 				udp_hdr->dgram_cksum =
-					get_ipv6_udptcp_checksum(ipv6_hdr,
-						(uint16_t *)udp_hdr);
+					rte_ipv6_udptcp_cksum(ipv6_hdr, udp_hdr);
 		}
 	}
 
