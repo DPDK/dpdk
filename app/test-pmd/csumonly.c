@@ -460,6 +460,57 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		m->tso_segsz = tso_segsz;
 		m->ol_flags = ol_flags;
 
+		/* if verbose mode is enabled, dump debug info */
+		if (verbose_level > 0) {
+			struct {
+				uint64_t flag;
+				uint64_t mask;
+			} tx_flags[] = {
+				{ PKT_TX_IP_CKSUM, PKT_TX_IP_CKSUM },
+				{ PKT_TX_UDP_CKSUM, PKT_TX_L4_MASK },
+				{ PKT_TX_TCP_CKSUM, PKT_TX_L4_MASK },
+				{ PKT_TX_SCTP_CKSUM, PKT_TX_L4_MASK },
+				{ PKT_TX_VXLAN_CKSUM, PKT_TX_VXLAN_CKSUM },
+				{ PKT_TX_TCP_SEG, PKT_TX_TCP_SEG },
+			};
+			unsigned j;
+			const char *name;
+
+			printf("-----------------\n");
+			/* dump rx parsed packet info */
+			printf("rx: l2_len=%d ethertype=%x l3_len=%d "
+				"l4_proto=%d l4_len=%d\n",
+				l2_len, rte_be_to_cpu_16(ethertype),
+				l3_len, l4_proto, l4_len);
+			if (tunnel == 1)
+				printf("rx: outer_l2_len=%d outer_ethertype=%x "
+					"outer_l3_len=%d\n", outer_l2_len,
+					rte_be_to_cpu_16(outer_ethertype),
+					outer_l3_len);
+			/* dump tx packet info */
+			if ((testpmd_ol_flags & (TESTPMD_TX_OFFLOAD_IP_CKSUM |
+						TESTPMD_TX_OFFLOAD_UDP_CKSUM |
+						TESTPMD_TX_OFFLOAD_TCP_CKSUM |
+						TESTPMD_TX_OFFLOAD_SCTP_CKSUM)) ||
+				tso_segsz != 0)
+				printf("tx: m->l2_len=%d m->l3_len=%d "
+					"m->l4_len=%d\n",
+					m->l2_len, m->l3_len, m->l4_len);
+			if ((tunnel == 1) &&
+				(testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM))
+				printf("tx: m->inner_l2_len=%d m->inner_l3_len=%d\n",
+					m->inner_l2_len, m->inner_l3_len);
+			if (tso_segsz != 0)
+				printf("tx: m->tso_segsz=%d\n", m->tso_segsz);
+			printf("tx: flags=");
+			for (j = 0; j < sizeof(tx_flags)/sizeof(*tx_flags); j++) {
+				name = rte_get_tx_ol_flag_name(tx_flags[j].flag);
+				if ((m->ol_flags & tx_flags[j].mask) ==
+					tx_flags[j].flag)
+					printf("%s ", name);
+			}
+			printf("\n");
+		}
 	}
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_rx);
 	fs->tx_packets += nb_tx;
