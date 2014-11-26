@@ -322,7 +322,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			/* Do not delete, this is required by HW*/
 			ipv4_hdr->hdr_checksum = 0;
 
-			if (tx_ol_flags & 0x1) {
+			if (tx_ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM) {
 				/* HW checksum */
 				ol_flags |= PKT_TX_IP_CKSUM;
 			}
@@ -336,7 +336,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			if (l4_proto == IPPROTO_UDP) {
 				udp_hdr = (struct udp_hdr*) (rte_pktmbuf_mtod(mb,
 						unsigned char *) + l2_len + l3_len);
-				if (tx_ol_flags & 0x2) {
+				if (tx_ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) {
 					/* HW Offload */
 					ol_flags |= PKT_TX_UDP_CKSUM;
 					if (ipv4_tunnel)
@@ -358,7 +358,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 					uint16_t len;
 
 					/* Check if inner L3/L4 checkum flag is set */
-					if (tx_ol_flags & 0xF0)
+					if (tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_CKSUM_MASK)
 						ol_flags |= PKT_TX_VXLAN_CKSUM;
 
 					inner_l2_len  = sizeof(struct ether_hdr);
@@ -381,7 +381,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 								unsigned char *) + len);
 						inner_l4_proto = inner_ipv4_hdr->next_proto_id;
 
-						if (tx_ol_flags & 0x10) {
+						if (tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_IP_CKSUM) {
 
 							/* Do not delete, this is required by HW*/
 							inner_ipv4_hdr->hdr_checksum = 0;
@@ -394,7 +394,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 								unsigned char *) + len);
 						inner_l4_proto = inner_ipv6_hdr->proto;
 					}
-					if ((inner_l4_proto == IPPROTO_UDP) && (tx_ol_flags & 0x20)) {
+					if ((inner_l4_proto == IPPROTO_UDP) &&
+						(tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_UDP_CKSUM)) {
 
 						/* HW Offload */
 						ol_flags |= PKT_TX_UDP_CKSUM;
@@ -405,7 +406,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 						else if (eth_type == ETHER_TYPE_IPv6)
 							inner_udp_hdr->dgram_cksum = get_ipv6_psd_sum(inner_ipv6_hdr);
 
-					} else if ((inner_l4_proto == IPPROTO_TCP) && (tx_ol_flags & 0x40)) {
+					} else if ((inner_l4_proto == IPPROTO_TCP) &&
+						(tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_TCP_CKSUM)) {
 						/* HW Offload */
 						ol_flags |= PKT_TX_TCP_CKSUM;
 						inner_tcp_hdr = (struct tcp_hdr *) (rte_pktmbuf_mtod(mb,
@@ -414,7 +416,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 							inner_tcp_hdr->cksum = get_ipv4_psd_sum(inner_ipv4_hdr);
 						else if (eth_type == ETHER_TYPE_IPv6)
 							inner_tcp_hdr->cksum = get_ipv6_psd_sum(inner_ipv6_hdr);
-					} else if ((inner_l4_proto == IPPROTO_SCTP) && (tx_ol_flags & 0x80)) {
+					} else if ((inner_l4_proto == IPPROTO_SCTP) &&
+						(tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_SCTP_CKSUM)) {
 						/* HW Offload */
 						ol_flags |= PKT_TX_SCTP_CKSUM;
 						inner_sctp_hdr = (struct sctp_hdr *) (rte_pktmbuf_mtod(mb,
@@ -427,7 +430,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			} else if (l4_proto == IPPROTO_TCP) {
 				tcp_hdr = (struct tcp_hdr*) (rte_pktmbuf_mtod(mb,
 						unsigned char *) + l2_len + l3_len);
-				if (tx_ol_flags & 0x4) {
+				if (tx_ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) {
 					ol_flags |= PKT_TX_TCP_CKSUM;
 					tcp_hdr->cksum = get_ipv4_psd_sum(ipv4_hdr);
 				}
@@ -440,7 +443,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				sctp_hdr = (struct sctp_hdr*) (rte_pktmbuf_mtod(mb,
 						unsigned char *) + l2_len + l3_len);
 
-				if (tx_ol_flags & 0x8) {
+				if (tx_ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) {
 					ol_flags |= PKT_TX_SCTP_CKSUM;
 					sctp_hdr->cksum = 0;
 
@@ -465,7 +468,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			if (l4_proto == IPPROTO_UDP) {
 				udp_hdr = (struct udp_hdr*) (rte_pktmbuf_mtod(mb,
 						unsigned char *) + l2_len + l3_len);
-				if (tx_ol_flags & 0x2) {
+				if (tx_ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) {
 					/* HW Offload */
 					ol_flags |= PKT_TX_UDP_CKSUM;
 					if (ipv6_tunnel)
@@ -487,7 +490,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 					uint16_t len;
 
 					/* Check if inner L3/L4 checksum flag is set */
-					if (tx_ol_flags & 0xF0)
+					if (tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_CKSUM_MASK)
 						ol_flags |= PKT_TX_VXLAN_CKSUM;
 
 					inner_l2_len  = sizeof(struct ether_hdr);
@@ -511,7 +514,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 						inner_l4_proto = inner_ipv4_hdr->next_proto_id;
 
 						/* HW offload */
-						if (tx_ol_flags & 0x10) {
+						if (tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_IP_CKSUM) {
 
 							/* Do not delete, this is required by HW*/
 							inner_ipv4_hdr->hdr_checksum = 0;
@@ -524,7 +527,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 						inner_l4_proto = inner_ipv6_hdr->proto;
 					}
 
-					if ((inner_l4_proto == IPPROTO_UDP) && (tx_ol_flags & 0x20)) {
+					if ((inner_l4_proto == IPPROTO_UDP) &&
+						(tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_UDP_CKSUM)) {
 						inner_udp_hdr = (struct udp_hdr *) (rte_pktmbuf_mtod(mb,
 							unsigned char *) + len + inner_l3_len);
 						/* HW offload */
@@ -534,7 +538,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 							inner_udp_hdr->dgram_cksum = get_ipv4_psd_sum(inner_ipv4_hdr);
 						else if (eth_type == ETHER_TYPE_IPv6)
 							inner_udp_hdr->dgram_cksum = get_ipv6_psd_sum(inner_ipv6_hdr);
-					} else if ((inner_l4_proto == IPPROTO_TCP) && (tx_ol_flags & 0x40)) {
+					} else if ((inner_l4_proto == IPPROTO_TCP) &&
+						(tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_TCP_CKSUM)) {
 						/* HW offload */
 						ol_flags |= PKT_TX_TCP_CKSUM;
 						inner_tcp_hdr = (struct tcp_hdr *) (rte_pktmbuf_mtod(mb,
@@ -545,7 +550,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 						else if (eth_type == ETHER_TYPE_IPv6)
 							inner_tcp_hdr->cksum = get_ipv6_psd_sum(inner_ipv6_hdr);
 
-					} else if ((inner_l4_proto == IPPROTO_SCTP) && (tx_ol_flags & 0x80)) {
+					} else if ((inner_l4_proto == IPPROTO_SCTP) &&
+						(tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_SCTP_CKSUM)) {
 						/* HW offload */
 						ol_flags |= PKT_TX_SCTP_CKSUM;
 						inner_sctp_hdr = (struct sctp_hdr *) (rte_pktmbuf_mtod(mb,
@@ -559,7 +565,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			else if (l4_proto == IPPROTO_TCP) {
 				tcp_hdr = (struct tcp_hdr*) (rte_pktmbuf_mtod(mb,
 						unsigned char *) + l2_len + l3_len);
-				if (tx_ol_flags & 0x4) {
+				if (tx_ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) {
 					ol_flags |= PKT_TX_TCP_CKSUM;
 					tcp_hdr->cksum = get_ipv6_psd_sum(ipv6_hdr);
 				}
@@ -573,7 +579,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				sctp_hdr = (struct sctp_hdr*) (rte_pktmbuf_mtod(mb,
 						unsigned char *) + l2_len + l3_len);
 
-				if (tx_ol_flags & 0x8) {
+				if (tx_ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) {
 					ol_flags |= PKT_TX_SCTP_CKSUM;
 					sctp_hdr->cksum = 0;
 					/* Sanity check, only number of 4 bytes supported by HW */

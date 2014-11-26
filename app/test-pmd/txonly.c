@@ -196,6 +196,7 @@ static void
 pkt_burst_transmit(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+	struct rte_port *txp;
 	struct rte_mbuf *pkt;
 	struct rte_mbuf *pkt_seg;
 	struct rte_mempool *mbp;
@@ -203,7 +204,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	uint16_t nb_tx;
 	uint16_t nb_pkt;
 	uint16_t vlan_tci;
-	uint64_t ol_flags;
+	uint64_t ol_flags = 0;
 	uint8_t  i;
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
@@ -216,8 +217,10 @@ pkt_burst_transmit(struct fwd_stream *fs)
 #endif
 
 	mbp = current_fwd_lcore()->mbp;
-	vlan_tci = ports[fs->tx_port].tx_vlan_id;
-	ol_flags = ports[fs->tx_port].tx_ol_flags;
+	txp = &ports[fs->tx_port];
+	vlan_tci = txp->tx_vlan_id;
+	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_INSERT_VLAN)
+		ol_flags = PKT_TX_VLAN_PKT;
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
 		pkt = tx_mbuf_alloc(mbp);
 		if (pkt == NULL) {

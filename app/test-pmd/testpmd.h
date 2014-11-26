@@ -123,14 +123,28 @@ struct fwd_stream {
 #endif
 };
 
+/** Offload IP checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_IP_CKSUM          0x0001
+/** Offload UDP checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_UDP_CKSUM         0x0002
+/** Offload TCP checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_TCP_CKSUM         0x0004
+/** Offload SCTP checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_SCTP_CKSUM        0x0008
+/** Offload inner IP checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_INNER_IP_CKSUM    0x0010
+/** Offload inner UDP checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_INNER_UDP_CKSUM   0x0020
+/** Offload inner TCP checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_INNER_TCP_CKSUM   0x0040
+/** Offload inner SCTP checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_INNER_SCTP_CKSUM  0x0080
+/** Offload inner IP checksum mask */
+#define TESTPMD_TX_OFFLOAD_INNER_CKSUM_MASK  0x00F0
+/** Insert VLAN header in forward engine */
+#define TESTPMD_TX_OFFLOAD_INSERT_VLAN       0x0100
 /**
  * The data structure associated with each port.
- * tx_ol_flags is slightly different from ol_flags of rte_mbuf.
- *   Bit  0: Insert IP checksum
- *   Bit  1: Insert UDP checksum
- *   Bit  2: Insert TCP checksum
- *   Bit  3: Insert SCTP checksum
- *   Bit 11: Insert VLAN Label
  */
 struct rte_port {
 	struct rte_eth_dev_info dev_info;   /**< PCI info + driver name */
@@ -141,7 +155,7 @@ struct rte_port {
 	struct fwd_stream       *rx_stream; /**< Port RX stream, if unique */
 	struct fwd_stream       *tx_stream; /**< Port TX stream, if unique */
 	unsigned int            socket_id;  /**< For NUMA support */
-	uint64_t                tx_ol_flags;/**< Offload Flags of TX packets. */
+	uint16_t                tx_ol_flags;/**< TX Offload Flags (TESTPMD_TX_OFFLOAD...). */
 	uint16_t                tx_vlan_id; /**< Tag Id. in TX VLAN packets. */
 	void                    *fwd_ctx;   /**< Forwarding mode context */
 	uint64_t                rx_bad_ip_csum; /**< rx pkts with bad ip checksum  */

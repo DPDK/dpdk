@@ -1683,7 +1683,7 @@ tx_vlan_set(portid_t port_id, uint16_t vlan_id)
 		return;
 	if (vlan_id_is_invalid(vlan_id))
 		return;
-	ports[port_id].tx_ol_flags |= PKT_TX_VLAN_PKT;
+	ports[port_id].tx_ol_flags |= TESTPMD_TX_OFFLOAD_INSERT_VLAN;
 	ports[port_id].tx_vlan_id = vlan_id;
 }
 
@@ -1692,7 +1692,7 @@ tx_vlan_reset(portid_t port_id)
 {
 	if (port_id_is_invalid(port_id))
 		return;
-	ports[port_id].tx_ol_flags &= ~PKT_TX_VLAN_PKT;
+	ports[port_id].tx_ol_flags &= ~TESTPMD_TX_OFFLOAD_INSERT_VLAN;
 }
 
 void
