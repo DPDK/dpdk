@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright 2014 6WIND S.A.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -194,5 +195,52 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 		dump_len -= len;
 		m = m->next;
 		nb_segs --;
+	}
+}
+
+/*
+ * Get the name of a RX offload flag. Must be kept synchronized with flag
+ * definitions in rte_mbuf.h.
+ */
+const char *rte_get_rx_ol_flag_name(uint64_t mask)
+{
+	switch (mask) {
+	case PKT_RX_VLAN_PKT: return "PKT_RX_VLAN_PKT";
+	case PKT_RX_RSS_HASH: return "PKT_RX_RSS_HASH";
+	case PKT_RX_FDIR: return "PKT_RX_FDIR";
+	case PKT_RX_L4_CKSUM_BAD: return "PKT_RX_L4_CKSUM_BAD";
+	case PKT_RX_IP_CKSUM_BAD: return "PKT_RX_IP_CKSUM_BAD";
+	/* case PKT_RX_EIP_CKSUM_BAD: return "PKT_RX_EIP_CKSUM_BAD"; */
+	/* case PKT_RX_OVERSIZE: return "PKT_RX_OVERSIZE"; */
+	/* case PKT_RX_HBUF_OVERFLOW: return "PKT_RX_HBUF_OVERFLOW"; */
+	/* case PKT_RX_RECIP_ERR: return "PKT_RX_RECIP_ERR"; */
+	/* case PKT_RX_MAC_ERR: return "PKT_RX_MAC_ERR"; */
+	case PKT_RX_IPV4_HDR: return "PKT_RX_IPV4_HDR";
+	case PKT_RX_IPV4_HDR_EXT: return "PKT_RX_IPV4_HDR_EXT";
+	case PKT_RX_IPV6_HDR: return "PKT_RX_IPV6_HDR";
+	case PKT_RX_IPV6_HDR_EXT: return "PKT_RX_IPV6_HDR_EXT";
+	case PKT_RX_IEEE1588_PTP: return "PKT_RX_IEEE1588_PTP";
+	case PKT_RX_IEEE1588_TMST: return "PKT_RX_IEEE1588_TMST";
+	case PKT_RX_TUNNEL_IPV4_HDR: return "PKT_RX_TUNNEL_IPV4_HDR";
+	case PKT_RX_TUNNEL_IPV6_HDR: return "PKT_RX_TUNNEL_IPV6_HDR";
+	default: return NULL;
+	}
+}
+
+/*
+ * Get the name of a TX offload flag. Must be kept synchronized with flag
+ * definitions in rte_mbuf.h.
+ */
+const char *rte_get_tx_ol_flag_name(uint64_t mask)
+{
+	switch (mask) {
+	case PKT_TX_VLAN_PKT: return "PKT_TX_VLAN_PKT";
+	case PKT_TX_IP_CKSUM: return "PKT_TX_IP_CKSUM";
+	case PKT_TX_TCP_CKSUM: return "PKT_TX_TCP_CKSUM";
+	case PKT_TX_SCTP_CKSUM: return "PKT_TX_SCTP_CKSUM";
+	case PKT_TX_UDP_CKSUM: return "PKT_TX_UDP_CKSUM";
+	case PKT_TX_IEEE1588_TMST: return "PKT_TX_IEEE1588_TMST";
+	case PKT_TX_VXLAN_CKSUM: return "PKT_TX_VXLAN_CKSUM";
+	default: return NULL;
 	}
 }

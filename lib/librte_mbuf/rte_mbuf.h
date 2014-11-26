@@ -74,6 +74,9 @@ extern "C" {
  * - The most-significant 8 bits are reserved for generic mbuf flags
  * - TX flags therefore start at bit position 55 (i.e. 63-8), and new flags get
  *   added to the right of the previously defined flags
+ *
+ * Keep these flags synchronized with rte_get_rx_ol_flag_name() and
+ * rte_get_tx_ol_flag_name().
  */
 #define PKT_RX_VLAN_PKT      (1ULL << 0)  /**< RX packet is a 802.1q VLAN packet. */
 #define PKT_RX_RSS_HASH      (1ULL << 1)  /**< RX packet with RSS hash result. */
@@ -130,6 +133,28 @@ extern "C" {
 
 /* Use final bit of flags to indicate a control mbuf */
 #define CTRL_MBUF_FLAG       (1ULL << 63) /**< Mbuf contains control data */
+
+/**
+ * Get the name of a RX offload flag
+ *
+ * @param mask
+ *   The mask describing the flag.
+ * @return
+ *   The name of this flag, or NULL if it's not a valid RX flag.
+ */
+const char *rte_get_rx_ol_flag_name(uint64_t mask);
+
+/**
+ * Get the name of a TX offload flag
+ *
+ * @param mask
+ *   The mask describing the flag. Usually only one bit must be set.
+ *   Several bits can be given if they belong to the same mask.
+ *   Ex: PKT_TX_L4_MASK.
+ * @return
+ *   The name of this flag, or NULL if it's not a valid TX flag.
+ */
+const char *rte_get_tx_ol_flag_name(uint64_t mask);
 
 /* define a set of marker types that can be used to refer to set points in the
  * mbuf */

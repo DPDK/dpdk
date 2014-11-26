@@ -71,26 +71,6 @@
 
 #include "testpmd.h"
 
-#define MAX_PKT_RX_FLAGS 13
-static const char *pkt_rx_flag_names[MAX_PKT_RX_FLAGS] = {
-	"VLAN_PKT",
-	"RSS_HASH",
-	"PKT_RX_FDIR",
-	"IP_CKSUM",
-	"IP_CKSUM_BAD",
-
-	"IPV4_HDR",
-	"IPV4_HDR_EXT",
-	"IPV6_HDR",
-	"IPV6_HDR_EXT",
-
-	"IEEE1588_PTP",
-	"IEEE1588_TMST",
-
-	"TUNNEL_IPV4_HDR",
-	"TUNNEL_IPV6_HDR",
-};
-
 static inline void
 print_ether_addr(const char *what, struct ether_addr *eth_addr)
 {
@@ -222,12 +202,16 @@ pkt_burst_receive(struct fwd_stream *fs)
 		printf(" - Receive queue=0x%x", (unsigned) fs->rx_queue);
 		printf("\n");
 		if (ol_flags != 0) {
-			int rxf;
+			unsigned rxf;
+			const char *name;
 
-			for (rxf = 0; rxf < MAX_PKT_RX_FLAGS; rxf++) {
-				if (ol_flags & (1 << rxf))
-					printf("  PKT_RX_%s\n",
-					       pkt_rx_flag_names[rxf]);
+			for (rxf = 0; rxf < sizeof(mb->ol_flags) * 8; rxf++) {
+				if ((ol_flags & (1ULL << rxf)) == 0)
+					continue;
+				name = rte_get_rx_ol_flag_name(1ULL << rxf);
+				if (name == NULL)
+					continue;
+				printf("  %s\n", name);
 			}
 		}
 		rte_pktmbuf_free(mb);
