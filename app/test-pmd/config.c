@@ -32,7 +32,7 @@
  */
 /*   BSD LICENSE
  *
- *   Copyright(c) 2013 6WIND.
+ *   Copyright 2013-2014 6WIND S.A.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -1754,17 +1754,6 @@ set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
 			nb_rx_queue_stats_mappings++;
 		}
 	}
-}
-
-void
-tx_cksum_set(portid_t port_id, uint64_t ol_flags)
-{
-	uint64_t tx_ol_flags;
-	if (port_id_is_invalid(port_id))
-		return;
-	/* Clear last 8 bits and then set L3/4 checksum mask again */
-	tx_ol_flags = ports[port_id].tx_ol_flags & (~0x0FFull);
-	ports[port_id].tx_ol_flags = ((ol_flags & 0xff) | tx_ol_flags);
 }
 
 void

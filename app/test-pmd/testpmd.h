@@ -131,18 +131,11 @@ struct fwd_stream {
 #define TESTPMD_TX_OFFLOAD_TCP_CKSUM         0x0004
 /** Offload SCTP checksum in csum forward engine */
 #define TESTPMD_TX_OFFLOAD_SCTP_CKSUM        0x0008
-/** Offload inner IP checksum in csum forward engine */
-#define TESTPMD_TX_OFFLOAD_INNER_IP_CKSUM    0x0010
-/** Offload inner UDP checksum in csum forward engine */
-#define TESTPMD_TX_OFFLOAD_INNER_UDP_CKSUM   0x0020
-/** Offload inner TCP checksum in csum forward engine */
-#define TESTPMD_TX_OFFLOAD_INNER_TCP_CKSUM   0x0040
-/** Offload inner SCTP checksum in csum forward engine */
-#define TESTPMD_TX_OFFLOAD_INNER_SCTP_CKSUM  0x0080
-/** Offload inner IP checksum mask */
-#define TESTPMD_TX_OFFLOAD_INNER_CKSUM_MASK  0x00F0
+/** Offload VxLAN checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_VXLAN_CKSUM       0x0010
 /** Insert VLAN header in forward engine */
-#define TESTPMD_TX_OFFLOAD_INSERT_VLAN       0x0100
+#define TESTPMD_TX_OFFLOAD_INSERT_VLAN       0x0020
+
 /**
  * The data structure associated with each port.
  */
@@ -509,8 +502,6 @@ void tx_vlan_reset(portid_t port_id);
 void tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on);
 
 void set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value);
-
-void tx_cksum_set(portid_t port_id, uint64_t ol_flags);
 
 void set_verbose_level(uint16_t vb_level);
 void set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs);

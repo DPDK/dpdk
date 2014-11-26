@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright 2014 6WIND S.A.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -73,12 +74,18 @@
 #include <rte_string_fns.h>
 #include "testpmd.h"
 
-
-
 #define IP_DEFTTL  64   /* from RFC 1340. */
 #define IP_VERSION 0x40
 #define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
 #define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
+
+/* we cannot use htons() from arpa/inet.h due to name conflicts, and we
+ * cannot use rte_cpu_to_be_16() on a constant in a switch/case */
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define _htons(x) ((uint16_t)((((x) & 0x00ffU) << 8) | (((x) & 0xff00U) >> 8)))
+#else
+#define _htons(x) (x)
+#endif
 
 static inline uint16_t
 get_16b_sum(uint16_t *ptr16, uint32_t nr)
@@ -112,7 +119,7 @@ get_ipv4_cksum(struct ipv4_hdr *ipv4_hdr)
 
 
 static inline uint16_t
-get_ipv4_psd_sum (struct ipv4_hdr * ip_hdr)
+get_ipv4_psd_sum(struct ipv4_hdr *ip_hdr)
 {
 	/* Pseudo Header for IPv4/UDP/TCP checksum */
 	union ipv4_psd_header {
@@ -136,7 +143,7 @@ get_ipv4_psd_sum (struct ipv4_hdr * ip_hdr)
 }
 
 static inline uint16_t
-get_ipv6_psd_sum (struct ipv6_hdr * ip_hdr)
+get_ipv6_psd_sum(struct ipv6_hdr *ip_hdr)
 {
 	/* Pseudo Header for IPv6/UDP/TCP checksum */
 	union ipv6_psd_header {
@@ -158,6 +165,15 @@ get_ipv6_psd_sum (struct ipv6_hdr * ip_hdr)
 	return get_16b_sum(psd_hdr.u16_arr, sizeof(psd_hdr));
 }
 
+static uint16_t
+get_psd_sum(void *l3_hdr, uint16_t ethertype)
+{
+	if (ethertype == _htons(ETHER_TYPE_IPv4))
+		return get_ipv4_psd_sum(l3_hdr);
+	else /* assume ethertype == ETHER_TYPE_IPv6 */
+		return get_ipv6_psd_sum(l3_hdr);
+}
+
 static inline uint16_t
 get_ipv4_udptcp_checksum(struct ipv4_hdr *ipv4_hdr, uint16_t *l4_hdr)
 {
@@ -174,7 +190,6 @@ get_ipv4_udptcp_checksum(struct ipv4_hdr *ipv4_hdr, uint16_t *l4_hdr)
 	if (cksum == 0)
 		cksum = 0xffff;
 	return (uint16_t)cksum;
-
 }
 
 static inline uint16_t
@@ -196,48 +211,221 @@ get_ipv6_udptcp_checksum(struct ipv6_hdr *ipv6_hdr, uint16_t *l4_hdr)
 	return (uint16_t)cksum;
 }
 
+static uint16_t
+get_udptcp_checksum(void *l3_hdr, void *l4_hdr, uint16_t ethertype)
+{
+	if (ethertype == _htons(ETHER_TYPE_IPv4))
+		return get_ipv4_udptcp_checksum(l3_hdr, l4_hdr);
+	else /* assume ethertype == ETHER_TYPE_IPv6 */
+		return get_ipv6_udptcp_checksum(l3_hdr, l4_hdr);
+}
 
 /*
- * Forwarding of packets. Change the checksum field with HW or SW methods
- * The HW/SW method selection depends on the ol_flags on every packet
+ * Parse an ethernet header to fill the ethertype, l2_len, l3_len and
+ * ipproto. This function is able to recognize IPv4/IPv6 with one optional vlan
+ * header.
+ */
+static void
+parse_ethernet(struct ether_hdr *eth_hdr, uint16_t *ethertype, uint16_t *l2_len,
+	uint16_t *l3_len, uint8_t *l4_proto)
+{
+	struct ipv4_hdr *ipv4_hdr;
+	struct ipv6_hdr *ipv6_hdr;
+
+	*l2_len = sizeof(struct ether_hdr);
+	*ethertype = eth_hdr->ether_type;
+
+	if (*ethertype == _htons(ETHER_TYPE_VLAN)) {
+		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
+
+		*l2_len  += sizeof(struct vlan_hdr);
+		*ethertype = vlan_hdr->eth_proto;
+	}
+
+	switch (*ethertype) {
+	case _htons(ETHER_TYPE_IPv4):
+		ipv4_hdr = (struct ipv4_hdr *) ((char *)eth_hdr + *l2_len);
+		*l3_len = (ipv4_hdr->version_ihl & 0x0f) * 4;
+		*l4_proto = ipv4_hdr->next_proto_id;
+		break;
+	case _htons(ETHER_TYPE_IPv6):
+		ipv6_hdr = (struct ipv6_hdr *) ((char *)eth_hdr + *l2_len);
+		*l3_len = sizeof(struct ipv6_hdr);
+		*l4_proto = ipv6_hdr->proto;
+		break;
+	default:
+		*l3_len = 0;
+		*l4_proto = 0;
+		break;
+	}
+}
+
+/* modify the IPv4 or IPv4 source address of a packet */
+static void
+change_ip_addresses(void *l3_hdr, uint16_t ethertype)
+{
+	struct ipv4_hdr *ipv4_hdr = l3_hdr;
+	struct ipv6_hdr *ipv6_hdr = l3_hdr;
+
+	if (ethertype == _htons(ETHER_TYPE_IPv4)) {
+		ipv4_hdr->src_addr =
+			rte_cpu_to_be_32(rte_be_to_cpu_32(ipv4_hdr->src_addr) + 1);
+	} else if (ethertype == _htons(ETHER_TYPE_IPv6)) {
+		ipv6_hdr->src_addr[15] = ipv6_hdr->src_addr[15] + 1;
+	}
+}
+
+/* if possible, calculate the checksum of a packet in hw or sw,
+ * depending on the testpmd command line configuration */
+static uint64_t
+process_inner_cksums(void *l3_hdr, uint16_t ethertype, uint16_t l3_len,
+	uint8_t l4_proto, uint16_t testpmd_ol_flags)
+{
+	struct ipv4_hdr *ipv4_hdr = l3_hdr;
+	struct udp_hdr *udp_hdr;
+	struct tcp_hdr *tcp_hdr;
+	struct sctp_hdr *sctp_hdr;
+	uint64_t ol_flags = 0;
+
+	if (ethertype == _htons(ETHER_TYPE_IPv4)) {
+		ipv4_hdr = l3_hdr;
+		ipv4_hdr->hdr_checksum = 0;
+
+		if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM)
+			ol_flags |= PKT_TX_IP_CKSUM;
+		else
+			ipv4_hdr->hdr_checksum = get_ipv4_cksum(ipv4_hdr);
+
+		ol_flags |= PKT_TX_IPV4;
+	} else if (ethertype == _htons(ETHER_TYPE_IPv6))
+		ol_flags |= PKT_TX_IPV6;
+	else
+		return 0; /* packet type not supported, nothing to do */
+
+	if (l4_proto == IPPROTO_UDP) {
+		udp_hdr = (struct udp_hdr *)((char *)l3_hdr + l3_len);
+		/* do not recalculate udp cksum if it was 0 */
+		if (udp_hdr->dgram_cksum != 0) {
+			udp_hdr->dgram_cksum = 0;
+			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) {
+				ol_flags |= PKT_TX_UDP_CKSUM;
+				udp_hdr->dgram_cksum = get_psd_sum(l3_hdr,
+					ethertype);
+			} else {
+				udp_hdr->dgram_cksum =
+					get_udptcp_checksum(l3_hdr, udp_hdr,
+						ethertype);
+			}
+		}
+	} else if (l4_proto == IPPROTO_TCP) {
+		tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + l3_len);
+		tcp_hdr->cksum = 0;
+		if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) {
+			ol_flags |= PKT_TX_TCP_CKSUM;
+			tcp_hdr->cksum = get_psd_sum(l3_hdr, ethertype);
+		} else {
+			tcp_hdr->cksum =
+				get_udptcp_checksum(l3_hdr, tcp_hdr, ethertype);
+		}
+	} else if (l4_proto == IPPROTO_SCTP) {
+		sctp_hdr = (struct sctp_hdr *)((char *)l3_hdr + l3_len);
+		sctp_hdr->cksum = 0;
+		/* sctp payload must be a multiple of 4 to be
+		 * offloaded */
+		if ((testpmd_ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) &&
+			((ipv4_hdr->total_length & 0x3) == 0)) {
+			ol_flags |= PKT_TX_SCTP_CKSUM;
+		} else {
+			/* XXX implement CRC32c, example available in
+			 * RFC3309 */
+		}
+	}
+
+	return ol_flags;
+}
+
+/* Calculate the checksum of outer header (only vxlan is supported,
+ * meaning IP + UDP). The caller already checked that it's a vxlan
+ * packet */
+static uint64_t
+process_outer_cksums(void *outer_l3_hdr, uint16_t outer_ethertype,
+	uint16_t outer_l3_len, uint16_t testpmd_ol_flags)
+{
+	struct ipv4_hdr *ipv4_hdr = outer_l3_hdr;
+	struct ipv6_hdr *ipv6_hdr = outer_l3_hdr;
+	struct udp_hdr *udp_hdr;
+	uint64_t ol_flags = 0;
+
+	if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM)
+		ol_flags |= PKT_TX_VXLAN_CKSUM;
+
+	if (outer_ethertype == _htons(ETHER_TYPE_IPv4)) {
+		ipv4_hdr->hdr_checksum = 0;
+
+		if ((testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) == 0)
+			ipv4_hdr->hdr_checksum = get_ipv4_cksum(ipv4_hdr);
+	}
+
+	udp_hdr = (struct udp_hdr *)((char *)outer_l3_hdr + outer_l3_len);
+	/* do not recalculate udp cksum if it was 0 */
+	if (udp_hdr->dgram_cksum != 0) {
+		udp_hdr->dgram_cksum = 0;
+		if ((testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) == 0) {
+			if (outer_ethertype == _htons(ETHER_TYPE_IPv4))
+				udp_hdr->dgram_cksum =
+					get_ipv4_udptcp_checksum(ipv4_hdr,
+						(uint16_t *)udp_hdr);
+			else
+				udp_hdr->dgram_cksum =
+					get_ipv6_udptcp_checksum(ipv6_hdr,
+						(uint16_t *)udp_hdr);
+		}
+	}
+
+	return ol_flags;
+}
+
+/*
+ * Receive a burst of packets, and for each packet:
+ *  - parse packet, and try to recognize a supported packet type (1)
+ *  - if it's not a supported packet type, don't touch the packet, else:
+ *  - modify the IPs in inner headers and in outer headers if any
+ *  - reprocess the checksum of all supported layers. This is done in SW
+ *    or HW, depending on testpmd command line configuration
+ * Then transmit packets on the output port.
+ *
+ * (1) Supported packets are:
+ *   Ether / (vlan) / IP|IP6 / UDP|TCP|SCTP .
+ *   Ether / (vlan) / outer IP|IP6 / outer UDP / VxLAN / Ether / IP|IP6 /
+ *           UDP|TCP|SCTP
+ *
+ * The testpmd command line for this forward engine sets the flags
+ * TESTPMD_TX_OFFLOAD_* in ports[tx_port].tx_ol_flags. They control
+ * wether a checksum must be calculated in software or in hardware. The
+ * IP, UDP, TCP and SCTP flags always concern the inner layer.  The
+ * VxLAN flag concerns the outer IP and UDP layer (if packet is
+ * recognized as a vxlan packet).
  */
 static void
 pkt_burst_checksum_forward(struct fwd_stream *fs)
 {
-	struct rte_mbuf  *pkts_burst[MAX_PKT_BURST];
-	struct rte_port  *txp;
-	struct rte_mbuf  *mb;
+	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+	struct rte_port *txp;
+	struct rte_mbuf *m;
 	struct ether_hdr *eth_hdr;
-	struct ipv4_hdr  *ipv4_hdr;
-	struct ether_hdr *inner_eth_hdr;
-	struct ipv4_hdr  *inner_ipv4_hdr = NULL;
-	struct ipv6_hdr  *ipv6_hdr;
-	struct ipv6_hdr  *inner_ipv6_hdr = NULL;
-	struct udp_hdr   *udp_hdr;
-	struct udp_hdr   *inner_udp_hdr;
-	struct tcp_hdr   *tcp_hdr;
-	struct tcp_hdr   *inner_tcp_hdr;
-	struct sctp_hdr  *sctp_hdr;
-	struct sctp_hdr  *inner_sctp_hdr;
-
+	void *l3_hdr = NULL, *outer_l3_hdr = NULL; /* can be IPv4 or IPv6 */
+	struct udp_hdr *udp_hdr;
 	uint16_t nb_rx;
 	uint16_t nb_tx;
 	uint16_t i;
 	uint64_t ol_flags;
-	uint64_t pkt_ol_flags;
-	uint64_t tx_ol_flags;
-	uint16_t l4_proto;
-	uint16_t inner_l4_proto = 0;
-	uint16_t eth_type;
-	uint8_t  l2_len;
-	uint8_t  l3_len;
-	uint8_t  inner_l2_len = 0;
-	uint8_t  inner_l3_len = 0;
-
+	uint16_t testpmd_ol_flags;
+	uint8_t l4_proto;
+	uint16_t ethertype = 0, outer_ethertype = 0;
+	uint16_t  l2_len = 0, l3_len = 0, outer_l2_len = 0, outer_l3_len = 0;
+	int tunnel = 0;
 	uint32_t rx_bad_ip_csum;
 	uint32_t rx_bad_l4_csum;
-	uint8_t  ipv4_tunnel;
-	uint8_t  ipv6_tunnel;
 
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
@@ -249,9 +437,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	start_tsc = rte_rdtsc();
 #endif
 
-	/*
-	 * Receive a burst of packets and forward them.
-	 */
+	/* receive a burst of packet */
 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
 				 nb_pkt_per_burst);
 	if (unlikely(nb_rx == 0))
@@ -265,348 +451,107 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	rx_bad_l4_csum = 0;
 
 	txp = &ports[fs->tx_port];
-	tx_ol_flags = txp->tx_ol_flags;
+	testpmd_ol_flags = txp->tx_ol_flags;
 
 	for (i = 0; i < nb_rx; i++) {
 
-		mb = pkts_burst[i];
-		l2_len  = sizeof(struct ether_hdr);
-		pkt_ol_flags = mb->ol_flags;
-		ol_flags = (pkt_ol_flags & (~PKT_TX_L4_MASK));
-		ipv4_tunnel = (pkt_ol_flags & PKT_RX_TUNNEL_IPV4_HDR) ?
-				1 : 0;
-		ipv6_tunnel = (pkt_ol_flags & PKT_RX_TUNNEL_IPV6_HDR) ?
-				1 : 0;
-		eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
-		eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
-		if (eth_type == ETHER_TYPE_VLAN) {
-			/* Only allow single VLAN label here */
-			l2_len  += sizeof(struct vlan_hdr);
-			 eth_type = rte_be_to_cpu_16(*(uint16_t *)
-				((uintptr_t)&eth_hdr->ether_type +
-				sizeof(struct vlan_hdr)));
+		ol_flags = 0;
+		tunnel = 0;
+		m = pkts_burst[i];
+
+		/* Update the L3/L4 checksum error packet statistics */
+		rx_bad_ip_csum += ((m->ol_flags & PKT_RX_IP_CKSUM_BAD) != 0);
+		rx_bad_l4_csum += ((m->ol_flags & PKT_RX_L4_CKSUM_BAD) != 0);
+
+		/* step 1: dissect packet, parsing optional vlan, ip4/ip6, vxlan
+		 * and inner headers */
+
+		eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+		parse_ethernet(eth_hdr, &ethertype, &l2_len, &l3_len, &l4_proto);
+		l3_hdr = (char *)eth_hdr + l2_len;
+
+		/* check if it's a supported tunnel (only vxlan for now) */
+		if (l4_proto == IPPROTO_UDP) {
+			udp_hdr = (struct udp_hdr *)((char *)l3_hdr + l3_len);
+
+			/* currently, this flag is set by i40e only if the
+			 * packet is vxlan */
+			if (((m->ol_flags & PKT_RX_TUNNEL_IPV4_HDR) ||
+					(m->ol_flags & PKT_RX_TUNNEL_IPV6_HDR)))
+				tunnel = 1;
+			/* else check udp destination port, 4789 is the default
+			 * vxlan port (rfc7348) */
+			else if (udp_hdr->dst_port == _htons(4789))
+				tunnel = 1;
+
+			if (tunnel == 1) {
+				outer_ethertype = ethertype;
+				outer_l2_len = l2_len;
+				outer_l3_len = l3_len;
+				outer_l3_hdr = l3_hdr;
+
+				eth_hdr = (struct ether_hdr *)((char *)udp_hdr +
+					sizeof(struct udp_hdr) +
+					sizeof(struct vxlan_hdr));
+
+				parse_ethernet(eth_hdr, &ethertype, &l2_len,
+					&l3_len, &l4_proto);
+				l3_hdr = (char *)eth_hdr + l2_len;
+			}
 		}
 
-		/* Update the L3/L4 checksum error packet count  */
-		rx_bad_ip_csum += (uint16_t) ((pkt_ol_flags & PKT_RX_IP_CKSUM_BAD) != 0);
-		rx_bad_l4_csum += (uint16_t) ((pkt_ol_flags & PKT_RX_L4_CKSUM_BAD) != 0);
+		/* step 2: change all source IPs (v4 or v6) so we need
+		 * to recompute the chksums even if they were correct */
 
-		/*
-		 * Try to figure out L3 packet type by SW.
-		 */
-		if ((pkt_ol_flags & (PKT_RX_IPV4_HDR | PKT_RX_IPV4_HDR_EXT |
-				PKT_RX_IPV6_HDR | PKT_RX_IPV6_HDR_EXT)) == 0) {
-			if (eth_type == ETHER_TYPE_IPv4)
-				pkt_ol_flags |= PKT_RX_IPV4_HDR;
-			else if (eth_type == ETHER_TYPE_IPv6)
-				pkt_ol_flags |= PKT_RX_IPV6_HDR;
+		change_ip_addresses(l3_hdr, ethertype);
+		if (tunnel == 1)
+			change_ip_addresses(outer_l3_hdr, outer_ethertype);
+
+		/* step 3: depending on user command line configuration,
+		 * recompute checksum either in software or flag the
+		 * mbuf to offload the calculation to the NIC */
+
+		/* process checksums of inner headers first */
+		ol_flags |= process_inner_cksums(l3_hdr, ethertype,
+			l3_len, l4_proto, testpmd_ol_flags);
+
+		/* Then process outer headers if any. Note that the software
+		 * checksum will be wrong if one of the inner checksums is
+		 * processed in hardware. */
+		if (tunnel == 1) {
+			ol_flags |= process_outer_cksums(outer_l3_hdr,
+				outer_ethertype, outer_l3_len, testpmd_ol_flags);
 		}
 
-		/*
-		 * Simplify the protocol parsing
-		 * Assuming the incoming packets format as
-		 *      Ethernet2 + optional single VLAN
-		 *      + ipv4 or ipv6
-		 *      + udp or tcp or sctp or others
-		 */
-		if (pkt_ol_flags & (PKT_RX_IPV4_HDR | PKT_RX_TUNNEL_IPV4_HDR)) {
+		/* step 4: fill the mbuf meta data (flags and header lengths) */
 
-			/* Do not support ipv4 option field */
-			l3_len = sizeof(struct ipv4_hdr) ;
-
-			ipv4_hdr = (struct ipv4_hdr *) (rte_pktmbuf_mtod(mb,
-					unsigned char *) + l2_len);
-
-			l4_proto = ipv4_hdr->next_proto_id;
-
-			/* Do not delete, this is required by HW*/
-			ipv4_hdr->hdr_checksum = 0;
-
-			if (tx_ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM) {
-				/* HW checksum */
-				ol_flags |= PKT_TX_IP_CKSUM;
+		if (tunnel == 1) {
+			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) {
+				m->l2_len = outer_l2_len;
+				m->l3_len = outer_l3_len;
+				m->inner_l2_len = l2_len;
+				m->inner_l3_len = l3_len;
 			}
 			else {
-				ol_flags |= PKT_TX_IPV4;
-				/* SW checksum calculation */
-				ipv4_hdr->src_addr++;
-				ipv4_hdr->hdr_checksum = get_ipv4_cksum(ipv4_hdr);
+				/* if we don't do vxlan cksum in hw,
+				   outer checksum will be wrong because
+				   we changed the ip, but it shows that
+				   we can process the inner header cksum
+				   in the nic */
+				m->l2_len = outer_l2_len + outer_l3_len +
+					sizeof(struct udp_hdr) +
+					sizeof(struct vxlan_hdr) + l2_len;
+				m->l3_len = l3_len;
 			}
-
-			if (l4_proto == IPPROTO_UDP) {
-				udp_hdr = (struct udp_hdr*) (rte_pktmbuf_mtod(mb,
-						unsigned char *) + l2_len + l3_len);
-				if (tx_ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) {
-					/* HW Offload */
-					ol_flags |= PKT_TX_UDP_CKSUM;
-					if (ipv4_tunnel)
-						udp_hdr->dgram_cksum = 0;
-					else
-						/* Pseudo header sum need be set properly */
-						udp_hdr->dgram_cksum =
-							get_ipv4_psd_sum(ipv4_hdr);
-				}
-				else {
-					/* SW Implementation, clear checksum field first */
-					udp_hdr->dgram_cksum = 0;
-					udp_hdr->dgram_cksum = get_ipv4_udptcp_checksum(ipv4_hdr,
-									(uint16_t *)udp_hdr);
-				}
-
-				if (ipv4_tunnel) {
-
-					uint16_t len;
-
-					/* Check if inner L3/L4 checkum flag is set */
-					if (tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_CKSUM_MASK)
-						ol_flags |= PKT_TX_VXLAN_CKSUM;
-
-					inner_l2_len  = sizeof(struct ether_hdr);
-					inner_eth_hdr = (struct ether_hdr *) (rte_pktmbuf_mtod(mb,
-								unsigned char *) + l2_len + l3_len
-								 + ETHER_VXLAN_HLEN);
-
-					eth_type = rte_be_to_cpu_16(inner_eth_hdr->ether_type);
-					if (eth_type == ETHER_TYPE_VLAN) {
-						inner_l2_len += sizeof(struct vlan_hdr);
-						eth_type = rte_be_to_cpu_16(*(uint16_t *)
-							((uintptr_t)&eth_hdr->ether_type +
-								sizeof(struct vlan_hdr)));
-					}
-
-					len = l2_len + l3_len + ETHER_VXLAN_HLEN + inner_l2_len;
-					if (eth_type == ETHER_TYPE_IPv4) {
-						inner_l3_len = sizeof(struct ipv4_hdr);
-						inner_ipv4_hdr = (struct ipv4_hdr *) (rte_pktmbuf_mtod(mb,
-								unsigned char *) + len);
-						inner_l4_proto = inner_ipv4_hdr->next_proto_id;
-
-						if (tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_IP_CKSUM) {
-
-							/* Do not delete, this is required by HW*/
-							inner_ipv4_hdr->hdr_checksum = 0;
-							ol_flags |= PKT_TX_IPV4_CSUM;
-						}
-
-					} else if (eth_type == ETHER_TYPE_IPv6) {
-						inner_l3_len = sizeof(struct ipv6_hdr);
-						inner_ipv6_hdr = (struct ipv6_hdr *) (rte_pktmbuf_mtod(mb,
-								unsigned char *) + len);
-						inner_l4_proto = inner_ipv6_hdr->proto;
-					}
-					if ((inner_l4_proto == IPPROTO_UDP) &&
-						(tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_UDP_CKSUM)) {
-
-						/* HW Offload */
-						ol_flags |= PKT_TX_UDP_CKSUM;
-						inner_udp_hdr = (struct udp_hdr *) (rte_pktmbuf_mtod(mb,
-								unsigned char *) + len + inner_l3_len);
-						if (eth_type == ETHER_TYPE_IPv4)
-							inner_udp_hdr->dgram_cksum = get_ipv4_psd_sum(inner_ipv4_hdr);
-						else if (eth_type == ETHER_TYPE_IPv6)
-							inner_udp_hdr->dgram_cksum = get_ipv6_psd_sum(inner_ipv6_hdr);
-
-					} else if ((inner_l4_proto == IPPROTO_TCP) &&
-						(tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_TCP_CKSUM)) {
-						/* HW Offload */
-						ol_flags |= PKT_TX_TCP_CKSUM;
-						inner_tcp_hdr = (struct tcp_hdr *) (rte_pktmbuf_mtod(mb,
-								unsigned char *) + len + inner_l3_len);
-						if (eth_type == ETHER_TYPE_IPv4)
-							inner_tcp_hdr->cksum = get_ipv4_psd_sum(inner_ipv4_hdr);
-						else if (eth_type == ETHER_TYPE_IPv6)
-							inner_tcp_hdr->cksum = get_ipv6_psd_sum(inner_ipv6_hdr);
-					} else if ((inner_l4_proto == IPPROTO_SCTP) &&
-						(tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_SCTP_CKSUM)) {
-						/* HW Offload */
-						ol_flags |= PKT_TX_SCTP_CKSUM;
-						inner_sctp_hdr = (struct sctp_hdr *) (rte_pktmbuf_mtod(mb,
-								unsigned char *) + len + inner_l3_len);
-						inner_sctp_hdr->cksum = 0;
-					}
-
-				}
-
-			} else if (l4_proto == IPPROTO_TCP) {
-				tcp_hdr = (struct tcp_hdr*) (rte_pktmbuf_mtod(mb,
-						unsigned char *) + l2_len + l3_len);
-				if (tx_ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) {
-					ol_flags |= PKT_TX_TCP_CKSUM;
-					tcp_hdr->cksum = get_ipv4_psd_sum(ipv4_hdr);
-				}
-				else {
-					tcp_hdr->cksum = 0;
-					tcp_hdr->cksum = get_ipv4_udptcp_checksum(ipv4_hdr,
-							(uint16_t*)tcp_hdr);
-				}
-			} else if (l4_proto == IPPROTO_SCTP) {
-				sctp_hdr = (struct sctp_hdr*) (rte_pktmbuf_mtod(mb,
-						unsigned char *) + l2_len + l3_len);
-
-				if (tx_ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) {
-					ol_flags |= PKT_TX_SCTP_CKSUM;
-					sctp_hdr->cksum = 0;
-
-					/* Sanity check, only number of 4 bytes supported */
-					if ((rte_be_to_cpu_16(ipv4_hdr->total_length) % 4) != 0)
-						printf("sctp payload must be a multiple "
-							"of 4 bytes for checksum offload");
-				}
-				else {
-					sctp_hdr->cksum = 0;
-					/* CRC32c sample code available in RFC3309 */
-				}
-			}
-			/* End of L4 Handling*/
-		} else if (pkt_ol_flags & (PKT_RX_IPV6_HDR | PKT_RX_TUNNEL_IPV6_HDR)) {
-			ipv6_hdr = (struct ipv6_hdr *) (rte_pktmbuf_mtod(mb,
-					unsigned char *) + l2_len);
-			l3_len = sizeof(struct ipv6_hdr) ;
-			l4_proto = ipv6_hdr->proto;
-			ol_flags |= PKT_TX_IPV6;
-
-			if (l4_proto == IPPROTO_UDP) {
-				udp_hdr = (struct udp_hdr*) (rte_pktmbuf_mtod(mb,
-						unsigned char *) + l2_len + l3_len);
-				if (tx_ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) {
-					/* HW Offload */
-					ol_flags |= PKT_TX_UDP_CKSUM;
-					if (ipv6_tunnel)
-						udp_hdr->dgram_cksum = 0;
-					else
-						udp_hdr->dgram_cksum =
-							get_ipv6_psd_sum(ipv6_hdr);
-				}
-				else {
-					/* SW Implementation */
-					/* checksum field need be clear first */
-					udp_hdr->dgram_cksum = 0;
-					udp_hdr->dgram_cksum = get_ipv6_udptcp_checksum(ipv6_hdr,
-								(uint16_t *)udp_hdr);
-				}
-
-				if (ipv6_tunnel) {
-
-					uint16_t len;
-
-					/* Check if inner L3/L4 checksum flag is set */
-					if (tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_CKSUM_MASK)
-						ol_flags |= PKT_TX_VXLAN_CKSUM;
-
-					inner_l2_len  = sizeof(struct ether_hdr);
-					inner_eth_hdr = (struct ether_hdr *) (rte_pktmbuf_mtod(mb,
-						unsigned char *) + l2_len + l3_len + ETHER_VXLAN_HLEN);
-					eth_type = rte_be_to_cpu_16(inner_eth_hdr->ether_type);
-
-					if (eth_type == ETHER_TYPE_VLAN) {
-						inner_l2_len += sizeof(struct vlan_hdr);
-						eth_type = rte_be_to_cpu_16(*(uint16_t *)
-							((uintptr_t)&eth_hdr->ether_type +
-							sizeof(struct vlan_hdr)));
-					}
-
-					len = l2_len + l3_len + ETHER_VXLAN_HLEN + inner_l2_len;
-
-					if (eth_type == ETHER_TYPE_IPv4) {
-						inner_l3_len = sizeof(struct ipv4_hdr);
-						inner_ipv4_hdr = (struct ipv4_hdr *) (rte_pktmbuf_mtod(mb,
-								unsigned char *) + len);
-						inner_l4_proto = inner_ipv4_hdr->next_proto_id;
-
-						/* HW offload */
-						if (tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_IP_CKSUM) {
-
-							/* Do not delete, this is required by HW*/
-							inner_ipv4_hdr->hdr_checksum = 0;
-							ol_flags |= PKT_TX_IPV4_CSUM;
-						}
-					} else if (eth_type == ETHER_TYPE_IPv6) {
-						inner_l3_len = sizeof(struct ipv6_hdr);
-						inner_ipv6_hdr = (struct ipv6_hdr *) (rte_pktmbuf_mtod(mb,
-							unsigned char *) + len);
-						inner_l4_proto = inner_ipv6_hdr->proto;
-					}
-
-					if ((inner_l4_proto == IPPROTO_UDP) &&
-						(tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_UDP_CKSUM)) {
-						inner_udp_hdr = (struct udp_hdr *) (rte_pktmbuf_mtod(mb,
-							unsigned char *) + len + inner_l3_len);
-						/* HW offload */
-						ol_flags |= PKT_TX_UDP_CKSUM;
-						inner_udp_hdr->dgram_cksum = 0;
-						if (eth_type == ETHER_TYPE_IPv4)
-							inner_udp_hdr->dgram_cksum = get_ipv4_psd_sum(inner_ipv4_hdr);
-						else if (eth_type == ETHER_TYPE_IPv6)
-							inner_udp_hdr->dgram_cksum = get_ipv6_psd_sum(inner_ipv6_hdr);
-					} else if ((inner_l4_proto == IPPROTO_TCP) &&
-						(tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_TCP_CKSUM)) {
-						/* HW offload */
-						ol_flags |= PKT_TX_TCP_CKSUM;
-						inner_tcp_hdr = (struct tcp_hdr *) (rte_pktmbuf_mtod(mb,
-								unsigned char *) + len + inner_l3_len);
-
-						if (eth_type == ETHER_TYPE_IPv4)
-							inner_tcp_hdr->cksum = get_ipv4_psd_sum(inner_ipv4_hdr);
-						else if (eth_type == ETHER_TYPE_IPv6)
-							inner_tcp_hdr->cksum = get_ipv6_psd_sum(inner_ipv6_hdr);
-
-					} else if ((inner_l4_proto == IPPROTO_SCTP) &&
-						(tx_ol_flags & TESTPMD_TX_OFFLOAD_INNER_SCTP_CKSUM)) {
-						/* HW offload */
-						ol_flags |= PKT_TX_SCTP_CKSUM;
-						inner_sctp_hdr = (struct sctp_hdr *) (rte_pktmbuf_mtod(mb,
-								unsigned char *) + len + inner_l3_len);
-						inner_sctp_hdr->cksum = 0;
-					}
-
-				}
-
-			}
-			else if (l4_proto == IPPROTO_TCP) {
-				tcp_hdr = (struct tcp_hdr*) (rte_pktmbuf_mtod(mb,
-						unsigned char *) + l2_len + l3_len);
-				if (tx_ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) {
-					ol_flags |= PKT_TX_TCP_CKSUM;
-					tcp_hdr->cksum = get_ipv6_psd_sum(ipv6_hdr);
-				}
-				else {
-					tcp_hdr->cksum = 0;
-					tcp_hdr->cksum = get_ipv6_udptcp_checksum(ipv6_hdr,
-							(uint16_t*)tcp_hdr);
-				}
-			}
-			else if (l4_proto == IPPROTO_SCTP) {
-				sctp_hdr = (struct sctp_hdr*) (rte_pktmbuf_mtod(mb,
-						unsigned char *) + l2_len + l3_len);
-
-				if (tx_ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) {
-					ol_flags |= PKT_TX_SCTP_CKSUM;
-					sctp_hdr->cksum = 0;
-					/* Sanity check, only number of 4 bytes supported by HW */
-					if ((rte_be_to_cpu_16(ipv6_hdr->payload_len) % 4) != 0)
-						printf("sctp payload must be a multiple "
-							"of 4 bytes for checksum offload");
-				}
-				else {
-					/* CRC32c sample code available in RFC3309 */
-					sctp_hdr->cksum = 0;
-				}
-			} else {
-				printf("Test flow control for 1G PMD \n");
-			}
-			/* End of L6 Handling*/
+		} else {
+			/* this is only useful if an offload flag is
+			 * set, but it does not hurt to fill it in any
+			 * case */
+			m->l2_len = l2_len;
+			m->l3_len = l3_len;
 		}
-		else {
-			l3_len = 0;
-			printf("Unhandled packet type: %#hx\n", eth_type);
-		}
+		m->ol_flags = ol_flags;
 
-		/* Combine the packet header write. VLAN is not consider here */
-		mb->l2_len = l2_len;
-		mb->l3_len = l3_len;
-		mb->inner_l2_len = inner_l2_len;
-		mb->inner_l3_len = inner_l3_len;
-		mb->ol_flags = ol_flags;
 	}
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_rx);
 	fs->tx_packets += nb_tx;
@@ -628,7 +573,6 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	fs->core_cycles = (uint64_t) (fs->core_cycles + core_cycles);
 #endif
 }
-
 
 struct fwd_engine csum_fwd_engine = {
 	.fwd_mode_name  = "csum",

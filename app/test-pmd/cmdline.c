@@ -316,18 +316,18 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Disable hardware insertion of a VLAN header in"
 			" packets sent on a port.\n\n"
 
-			"tx_checksum set (mask) (port_id)\n"
-			"    Enable hardware insertion of checksum offload with"
-			" the 8-bit mask, 0~0xff, in packets sent on a port.\n"
-			"        bit 0 - insert ip   checksum offload if set\n"
-			"        bit 1 - insert udp  checksum offload if set\n"
-			"        bit 2 - insert tcp  checksum offload if set\n"
-			"        bit 3 - insert sctp checksum offload if set\n"
-			"        bit 4 - insert inner ip  checksum offload if set\n"
-			"        bit 5 - insert inner udp checksum offload if set\n"
-			"        bit 6 - insert inner tcp checksum offload if set\n"
-			"        bit 7 - insert inner sctp checksum offload if set\n"
+			"tx_cksum set (ip|udp|tcp|sctp|vxlan) (hw|sw) (port_id)\n"
+			"    Select hardware or software calculation of the"
+			" checksum with when transmitting a packet using the"
+			" csum forward engine.\n"
+			"    ip|udp|tcp|sctp always concern the inner layer.\n"
+			"    vxlan concerns the outer IP and UDP layer (in"
+			" case the packet is recognized as a vxlan packet by"
+			" the forward engine)\n"
 			"    Please check the NIC datasheet for HW limits.\n\n"
+
+			"tx_checksum show (port_id)\n"
+			"    Display tx checksum offload configuration\n\n"
 
 			"set fwd (%s)\n"
 			"    Set packet forwarding mode.\n\n"
@@ -2855,48 +2855,131 @@ cmdline_parse_inst_t cmd_tx_vlan_reset = {
 
 
 /* *** ENABLE HARDWARE INSERTION OF CHECKSUM IN TX PACKETS *** */
-struct cmd_tx_cksum_set_result {
+struct cmd_tx_cksum_result {
 	cmdline_fixed_string_t tx_cksum;
-	cmdline_fixed_string_t set;
-	uint8_t cksum_mask;
+	cmdline_fixed_string_t mode;
+	cmdline_fixed_string_t proto;
+	cmdline_fixed_string_t hwsw;
 	uint8_t port_id;
 };
 
 static void
-cmd_tx_cksum_set_parsed(void *parsed_result,
+cmd_tx_cksum_parsed(void *parsed_result,
 		       __attribute__((unused)) struct cmdline *cl,
 		       __attribute__((unused)) void *data)
 {
-	struct cmd_tx_cksum_set_result *res = parsed_result;
+	struct cmd_tx_cksum_result *res = parsed_result;
+	int hw = 0;
+	uint16_t ol_flags, mask = 0;
+	struct rte_eth_dev_info dev_info;
 
-	tx_cksum_set(res->port_id, res->cksum_mask);
+	if (port_id_is_invalid(res->port_id)) {
+		printf("invalid port %d\n", res->port_id);
+		return;
+	}
+
+	if (!strcmp(res->mode, "set")) {
+
+		if (!strcmp(res->hwsw, "hw"))
+			hw = 1;
+
+		if (!strcmp(res->proto, "ip")) {
+			mask = TESTPMD_TX_OFFLOAD_IP_CKSUM;
+		} else if (!strcmp(res->proto, "udp")) {
+			mask = TESTPMD_TX_OFFLOAD_UDP_CKSUM;
+		} else if (!strcmp(res->proto, "tcp")) {
+			mask = TESTPMD_TX_OFFLOAD_TCP_CKSUM;
+		} else if (!strcmp(res->proto, "sctp")) {
+			mask = TESTPMD_TX_OFFLOAD_SCTP_CKSUM;
+		} else if (!strcmp(res->proto, "vxlan")) {
+			mask = TESTPMD_TX_OFFLOAD_VXLAN_CKSUM;
+		}
+
+		if (hw)
+			ports[res->port_id].tx_ol_flags |= mask;
+		else
+			ports[res->port_id].tx_ol_flags &= (~mask);
+	}
+
+	ol_flags = ports[res->port_id].tx_ol_flags;
+	printf("IP checksum offload is %s\n",
+		(ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM) ? "hw" : "sw");
+	printf("UDP checksum offload is %s\n",
+		(ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) ? "hw" : "sw");
+	printf("TCP checksum offload is %s\n",
+		(ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) ? "hw" : "sw");
+	printf("SCTP checksum offload is %s\n",
+		(ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) ? "hw" : "sw");
+	printf("VxLAN checksum offload is %s\n",
+		(ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) ? "hw" : "sw");
+
+	/* display warnings if configuration is not supported by the NIC */
+	rte_eth_dev_info_get(res->port_id, &dev_info);
+	if ((ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM) &&
+		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM) == 0) {
+		printf("Warning: hardware IP checksum enabled but not "
+			"supported by port %d\n", res->port_id);
+	}
+	if ((ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) &&
+		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_UDP_CKSUM) == 0) {
+		printf("Warning: hardware UDP checksum enabled but not "
+			"supported by port %d\n", res->port_id);
+	}
+	if ((ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) &&
+		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_CKSUM) == 0) {
+		printf("Warning: hardware TCP checksum enabled but not "
+			"supported by port %d\n", res->port_id);
+	}
+	if ((ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) &&
+		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_SCTP_CKSUM) == 0) {
+		printf("Warning: hardware SCTP checksum enabled but not "
+			"supported by port %d\n", res->port_id);
+	}
 }
 
-cmdline_parse_token_string_t cmd_tx_cksum_set_tx_cksum =
-	TOKEN_STRING_INITIALIZER(struct cmd_tx_cksum_set_result,
+cmdline_parse_token_string_t cmd_tx_cksum_tx_cksum =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_cksum_result,
 				tx_cksum, "tx_checksum");
-cmdline_parse_token_string_t cmd_tx_cksum_set_set =
-	TOKEN_STRING_INITIALIZER(struct cmd_tx_cksum_set_result,
-				set, "set");
-cmdline_parse_token_num_t cmd_tx_cksum_set_cksum_mask =
-	TOKEN_NUM_INITIALIZER(struct cmd_tx_cksum_set_result,
-				cksum_mask, UINT8);
-cmdline_parse_token_num_t cmd_tx_cksum_set_portid =
-	TOKEN_NUM_INITIALIZER(struct cmd_tx_cksum_set_result,
+cmdline_parse_token_string_t cmd_tx_cksum_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_cksum_result,
+				mode, "set");
+cmdline_parse_token_string_t cmd_tx_cksum_proto =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_cksum_result,
+				proto, "ip#tcp#udp#sctp#vxlan");
+cmdline_parse_token_string_t cmd_tx_cksum_hwsw =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_cksum_result,
+				hwsw, "hw#sw");
+cmdline_parse_token_num_t cmd_tx_cksum_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_tx_cksum_result,
 				port_id, UINT8);
 
 cmdline_parse_inst_t cmd_tx_cksum_set = {
-	.f = cmd_tx_cksum_set_parsed,
+	.f = cmd_tx_cksum_parsed,
 	.data = NULL,
-	.help_str = "enable hardware insertion of L3/L4checksum with a given "
-	"mask in packets sent on a port, the bit mapping is given as, Bit 0 for ip, "
-	"Bit 1 for UDP, Bit 2 for TCP, Bit 3 for SCTP, Bit 4 for inner ip, "
-	"Bit 5 for inner UDP, Bit 6 for inner TCP, Bit 7 for inner SCTP",
+	.help_str = "enable/disable hardware calculation of L3/L4 checksum when "
+		"using csum forward engine: tx_cksum set ip|tcp|udp|sctp|vxlan hw|sw <port>",
 	.tokens = {
-		(void *)&cmd_tx_cksum_set_tx_cksum,
-		(void *)&cmd_tx_cksum_set_set,
-		(void *)&cmd_tx_cksum_set_cksum_mask,
-		(void *)&cmd_tx_cksum_set_portid,
+		(void *)&cmd_tx_cksum_tx_cksum,
+		(void *)&cmd_tx_cksum_mode,
+		(void *)&cmd_tx_cksum_proto,
+		(void *)&cmd_tx_cksum_hwsw,
+		(void *)&cmd_tx_cksum_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_tx_cksum_mode_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_cksum_result,
+				mode, "show");
+
+cmdline_parse_inst_t cmd_tx_cksum_show = {
+	.f = cmd_tx_cksum_parsed,
+	.data = NULL,
+	.help_str = "show checksum offload configuration: tx_cksum show <port>",
+	.tokens = {
+		(void *)&cmd_tx_cksum_tx_cksum,
+		(void *)&cmd_tx_cksum_mode_show,
+		(void *)&cmd_tx_cksum_portid,
 		NULL,
 	},
 };
@@ -8576,6 +8659,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_reset,
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_set_pvid,
 	(cmdline_parse_inst_t *)&cmd_tx_cksum_set,
+	(cmdline_parse_inst_t *)&cmd_tx_cksum_show,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_rx,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_tx,
