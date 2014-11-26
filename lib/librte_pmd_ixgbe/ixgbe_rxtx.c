@@ -817,7 +817,7 @@ end_of_tx:
 static inline uint64_t
 rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
 {
-	uint16_t pkt_flags;
+	uint64_t pkt_flags;
 
 	static uint64_t ip_pkt_types_map[16] = {
 		0, PKT_RX_IPV4_HDR, PKT_RX_IPV4_HDR_EXT, PKT_RX_IPV4_HDR_EXT,
@@ -834,7 +834,7 @@ rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
 	};
 
 #ifdef RTE_LIBRTE_IEEE1588
-	static uint32_t ip_pkt_etqf_map[8] = {
+	static uint64_t ip_pkt_etqf_map[8] = {
 		0, 0, 0, PKT_RX_IEEE1588_PTP,
 		0, 0, 0, 0,
 	};
@@ -903,7 +903,7 @@ ixgbe_rx_scan_hw_ring(struct igb_rx_queue *rxq)
 	struct igb_rx_entry *rxep;
 	struct rte_mbuf *mb;
 	uint16_t pkt_len;
-	uint16_t pkt_flags;
+	uint64_t pkt_flags;
 	int s[LOOK_AHEAD], nb_dd;
 	int i, j, nb_rx = 0;
 
@@ -1335,7 +1335,7 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t nb_rx;
 	uint16_t nb_hold;
 	uint16_t data_len;
-	uint16_t pkt_flags;
+	uint64_t pkt_flags;
 
 	nb_rx = 0;
 	nb_hold = 0;
@@ -1511,9 +1511,9 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
-		pkt_flags = (uint16_t)(pkt_flags |
+		pkt_flags = (pkt_flags |
 				rx_desc_status_to_pkt_flags(staterr));
-		pkt_flags = (uint16_t)(pkt_flags |
+		pkt_flags = (pkt_flags |
 				rx_desc_error_to_pkt_flags(staterr));
 		first_seg->ol_flags = pkt_flags;
 
