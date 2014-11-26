@@ -262,7 +262,7 @@ igbe_set_xmit_ctx(struct igb_tx_queue* txq,
 
 	if (ol_flags & PKT_TX_IP_CKSUM) {
 		type_tucmd_mlhl = E1000_ADVTXD_TUCMD_IPV4;
-		cmp_mask |= TX_MAC_LEN_CMP_MASK;
+		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
 	}
 
 	/* Specify which HW CTX to upload. */
