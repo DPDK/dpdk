@@ -90,6 +90,12 @@
 		ETH_RSS_IPV6_UDP | \
 		ETH_RSS_IPV6_UDP_EX)
 
+/* Bit Mask to indicate what bits required for building TX context */
+#define IXGBE_TX_OFFLOAD_MASK (			 \
+		PKT_TX_VLAN_PKT |		 \
+		PKT_TX_IP_CKSUM |		 \
+		PKT_TX_L4_MASK)
+
 static inline struct rte_mbuf *
 rte_rxmbuf_alloc(struct rte_mempool *mp)
 {
@@ -580,7 +586,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		ol_flags = tx_pkt->ol_flags;
 
 		/* If hardware offload required */
-		tx_ol_req = ol_flags & PKT_TX_OFFLOAD_MASK;
+		tx_ol_req = ol_flags & IXGBE_TX_OFFLOAD_MASK;
 		if (tx_ol_req) {
 			vlan_macip_lens.f.vlan_tci = tx_pkt->vlan_tci;
 			vlan_macip_lens.f.l2_l3_len = tx_pkt->l2_l3_len;

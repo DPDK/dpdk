@@ -131,11 +131,6 @@ extern "C" {
 /* Use final bit of flags to indicate a control mbuf */
 #define CTRL_MBUF_FLAG       (1ULL << 63) /**< Mbuf contains control data */
 
-/**
- * Bit Mask to indicate what bits required for building TX context
- */
-#define PKT_TX_OFFLOAD_MASK (PKT_TX_VLAN_PKT | PKT_TX_IP_CKSUM | PKT_TX_L4_MASK)
-
 /* define a set of marker types that can be used to refer to set points in the
  * mbuf */
 typedef void    *MARKER[0];   /**< generic marker for a point in a structure */
