@@ -125,10 +125,10 @@ extern "C" {
 #define PKT_TX_IP_CKSUM      (1ULL << 54) /**< IP cksum of TX pkt. computed by NIC. */
 #define PKT_TX_IPV4_CSUM     PKT_TX_IP_CKSUM /**< Alias of PKT_TX_IP_CKSUM. */
 
-/** Tell the NIC it's an IPv4 packet. Required for L4 checksum offload. */
+/** Tell the NIC it's an IPv4 packet. Required for L4 checksum offload or TSO. */
 #define PKT_TX_IPV4          PKT_RX_IPV4_HDR
 
-/** Tell the NIC it's an IPv6 packet. Required for L4 checksum offload. */
+/** Tell the NIC it's an IPv6 packet. Required for L4 checksum offload or TSO. */
 #define PKT_TX_IPV6          PKT_RX_IPV6_HDR
 
 #define PKT_TX_VLAN_PKT      (1ULL << 55) /**< TX packet is a 802.1q VLAN packet. */
@@ -138,6 +138,7 @@ extern "C" {
  * packet to be transmitted on hardware supporting TSO:
  *  - set the PKT_TX_TCP_SEG flag in mbuf->ol_flags (this flag implies
  *    PKT_TX_TCP_CKSUM)
+ *  - set the flag PKT_TX_IPV4 or PKT_TX_IPV6
  *  - if it's IPv4, set the PKT_TX_IP_CKSUM flag and write the IP checksum
  *    to 0 in the packet
  *  - fill the mbuf offload information: l2_len, l3_len, l4_len, tso_segsz

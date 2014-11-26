@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright 2014 6WIND S.A.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -94,7 +95,8 @@
 #define IXGBE_TX_OFFLOAD_MASK (			 \
 		PKT_TX_VLAN_PKT |		 \
 		PKT_TX_IP_CKSUM |		 \
-		PKT_TX_L4_MASK)
+		PKT_TX_L4_MASK |		 \
+		PKT_TX_TCP_SEG)
 
 static inline struct rte_mbuf *
 rte_rxmbuf_alloc(struct rte_mempool *mp)
@@ -363,59 +365,84 @@ ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 static inline void
 ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		volatile struct ixgbe_adv_tx_context_desc *ctx_txd,
-		uint64_t ol_flags, uint32_t vlan_macip_lens)
+		uint64_t ol_flags, union ixgbe_tx_offload tx_offload)
 {
 	uint32_t type_tucmd_mlhl;
-	uint32_t mss_l4len_idx;
+	uint32_t mss_l4len_idx = 0;
 	uint32_t ctx_idx;
-	uint32_t cmp_mask;
+	uint32_t vlan_macip_lens;
+	union ixgbe_tx_offload tx_offload_mask;
 
 	ctx_idx = txq->ctx_curr;
-	cmp_mask = 0;
+	tx_offload_mask.data = 0;
 	type_tucmd_mlhl = 0;
 
-	if (ol_flags & PKT_TX_VLAN_PKT) {
-		cmp_mask |= TX_VLAN_CMP_MASK;
-	}
-
-	if (ol_flags & PKT_TX_IP_CKSUM) {
-		type_tucmd_mlhl = IXGBE_ADVTXD_TUCMD_IPV4;
-		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
-	}
-
 	/* Specify which HW CTX to upload. */
-	mss_l4len_idx = (ctx_idx << IXGBE_ADVTXD_IDX_SHIFT);
-	switch (ol_flags & PKT_TX_L4_MASK) {
-	case PKT_TX_UDP_CKSUM:
-		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_UDP |
+	mss_l4len_idx |= (ctx_idx << IXGBE_ADVTXD_IDX_SHIFT);
+
+	if (ol_flags & PKT_TX_VLAN_PKT) {
+		tx_offload_mask.vlan_tci = ~0;
+	}
+
+	/* check if TCP segmentation required for this packet */
+	if (ol_flags & PKT_TX_TCP_SEG) {
+		/* implies IP cksum and TCP cksum */
+		type_tucmd_mlhl = IXGBE_ADVTXD_TUCMD_IPV4 |
+			IXGBE_ADVTXD_TUCMD_L4T_TCP |
+			IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
+
+		tx_offload_mask.l2_len = ~0;
+		tx_offload_mask.l3_len = ~0;
+		tx_offload_mask.l4_len = ~0;
+		tx_offload_mask.tso_segsz = ~0;
+		mss_l4len_idx |= tx_offload.tso_segsz << IXGBE_ADVTXD_MSS_SHIFT;
+		mss_l4len_idx |= tx_offload.l4_len << IXGBE_ADVTXD_L4LEN_SHIFT;
+	} else { /* no TSO, check if hardware checksum is needed */
+		if (ol_flags & PKT_TX_IP_CKSUM) {
+			type_tucmd_mlhl = IXGBE_ADVTXD_TUCMD_IPV4;
+			tx_offload_mask.l2_len = ~0;
+			tx_offload_mask.l3_len = ~0;
+		}
+
+		switch (ol_flags & PKT_TX_L4_MASK) {
+		case PKT_TX_UDP_CKSUM:
+			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_UDP |
 				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
-		mss_l4len_idx |= sizeof(struct udp_hdr) << IXGBE_ADVTXD_L4LEN_SHIFT;
-		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
-		break;
-	case PKT_TX_TCP_CKSUM:
-		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_TCP |
+			mss_l4len_idx |= sizeof(struct udp_hdr) << IXGBE_ADVTXD_L4LEN_SHIFT;
+			tx_offload_mask.l2_len = ~0;
+			tx_offload_mask.l3_len = ~0;
+			break;
+		case PKT_TX_TCP_CKSUM:
+			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_TCP |
 				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
-		mss_l4len_idx |= sizeof(struct tcp_hdr) << IXGBE_ADVTXD_L4LEN_SHIFT;
-		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
-		break;
-	case PKT_TX_SCTP_CKSUM:
-		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_SCTP |
+			mss_l4len_idx |= sizeof(struct tcp_hdr) << IXGBE_ADVTXD_L4LEN_SHIFT;
+			tx_offload_mask.l2_len = ~0;
+			tx_offload_mask.l3_len = ~0;
+			tx_offload_mask.l4_len = ~0;
+			break;
+		case PKT_TX_SCTP_CKSUM:
+			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_SCTP |
 				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
-		mss_l4len_idx |= sizeof(struct sctp_hdr) << IXGBE_ADVTXD_L4LEN_SHIFT;
-		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
-		break;
-	default:
-		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_RSV |
+			mss_l4len_idx |= sizeof(struct sctp_hdr) << IXGBE_ADVTXD_L4LEN_SHIFT;
+			tx_offload_mask.l2_len = ~0;
+			tx_offload_mask.l3_len = ~0;
+			break;
+		default:
+			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_RSV |
 				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
-		break;
+			break;
+		}
 	}
 
 	txq->ctx_cache[ctx_idx].flags = ol_flags;
-	txq->ctx_cache[ctx_idx].cmp_mask = cmp_mask;
-	txq->ctx_cache[ctx_idx].vlan_macip_lens.data =
-		vlan_macip_lens & cmp_mask;
+	txq->ctx_cache[ctx_idx].tx_offload.data  =
+		tx_offload_mask.data & tx_offload.data;
+	txq->ctx_cache[ctx_idx].tx_offload_mask    = tx_offload_mask;
 
 	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
+	vlan_macip_lens = tx_offload.l3_len;
+	vlan_macip_lens |= (tx_offload.l2_len << IXGBE_ADVTXD_MACLEN_SHIFT);
+	vlan_macip_lens |= ((uint32_t)tx_offload.vlan_tci << IXGBE_ADVTXD_VLAN_SHIFT);
 	ctx_txd->vlan_macip_lens = rte_cpu_to_le_32(vlan_macip_lens);
 	ctx_txd->mss_l4len_idx   = rte_cpu_to_le_32(mss_l4len_idx);
 	ctx_txd->seqnum_seed     = 0;
@@ -427,20 +454,20 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
  */
 static inline uint32_t
 what_advctx_update(struct igb_tx_queue *txq, uint64_t flags,
-		uint32_t vlan_macip_lens)
+		union ixgbe_tx_offload tx_offload)
 {
 	/* If match with the current used context */
 	if (likely((txq->ctx_cache[txq->ctx_curr].flags == flags) &&
-		(txq->ctx_cache[txq->ctx_curr].vlan_macip_lens.data ==
-		(txq->ctx_cache[txq->ctx_curr].cmp_mask & vlan_macip_lens)))) {
+		(txq->ctx_cache[txq->ctx_curr].tx_offload.data ==
+		(txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data & tx_offload.data)))) {
 			return txq->ctx_curr;
 	}
 
 	/* What if match with the next context  */
 	txq->ctx_curr ^= 1;
 	if (likely((txq->ctx_cache[txq->ctx_curr].flags == flags) &&
-		(txq->ctx_cache[txq->ctx_curr].vlan_macip_lens.data ==
-		(txq->ctx_cache[txq->ctx_curr].cmp_mask & vlan_macip_lens)))) {
+		(txq->ctx_cache[txq->ctx_curr].tx_offload.data ==
+		(txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data & tx_offload.data)))) {
 			return txq->ctx_curr;
 	}
 
@@ -451,20 +478,25 @@ what_advctx_update(struct igb_tx_queue *txq, uint64_t flags,
 static inline uint32_t
 tx_desc_cksum_flags_to_olinfo(uint64_t ol_flags)
 {
-	static const uint32_t l4_olinfo[2] = {0, IXGBE_ADVTXD_POPTS_TXSM};
-	static const uint32_t l3_olinfo[2] = {0, IXGBE_ADVTXD_POPTS_IXSM};
-	uint32_t tmp;
-
-	tmp  = l4_olinfo[(ol_flags & PKT_TX_L4_MASK)  != PKT_TX_L4_NO_CKSUM];
-	tmp |= l3_olinfo[(ol_flags & PKT_TX_IP_CKSUM) != 0];
+	uint32_t tmp = 0;
+	if ((ol_flags & PKT_TX_L4_MASK) != PKT_TX_L4_NO_CKSUM)
+		tmp |= IXGBE_ADVTXD_POPTS_TXSM;
+	if (ol_flags & PKT_TX_IP_CKSUM)
+		tmp |= IXGBE_ADVTXD_POPTS_IXSM;
+	if (ol_flags & PKT_TX_TCP_SEG)
+		tmp |= IXGBE_ADVTXD_POPTS_TXSM;
 	return tmp;
 }
 
 static inline uint32_t
-tx_desc_vlan_flags_to_cmdtype(uint64_t ol_flags)
+tx_desc_ol_flags_to_cmdtype(uint64_t ol_flags)
 {
-	static const uint32_t vlan_cmd[2] = {0, IXGBE_ADVTXD_DCMD_VLE};
-	return vlan_cmd[(ol_flags & PKT_TX_VLAN_PKT) != 0];
+	uint32_t cmdtype = 0;
+	if (ol_flags & PKT_TX_VLAN_PKT)
+		cmdtype |= IXGBE_ADVTXD_DCMD_VLE;
+	if (ol_flags & PKT_TX_TCP_SEG)
+		cmdtype |= IXGBE_ADVTXD_DCMD_TSE;
+	return cmdtype;
 }
 
 /* Default RS bit threshold values */
@@ -545,14 +577,6 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	volatile union ixgbe_adv_tx_desc *txd;
 	struct rte_mbuf     *tx_pkt;
 	struct rte_mbuf     *m_seg;
-	union ixgbe_vlan_macip vlan_macip_lens;
-	union {
-		uint16_t u16;
-		struct {
-			uint16_t l3_len:9;
-			uint16_t l2_len:7;
-		};
-	} l2_l3_len;
 	uint64_t buf_dma_addr;
 	uint32_t olinfo_status;
 	uint32_t cmd_type_len;
@@ -566,6 +590,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t tx_ol_req;
 	uint32_t ctx = 0;
 	uint32_t new_ctx;
+	union ixgbe_tx_offload tx_offload = { .data = 0 };
 
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
@@ -595,14 +620,15 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* If hardware offload required */
 		tx_ol_req = ol_flags & IXGBE_TX_OFFLOAD_MASK;
 		if (tx_ol_req) {
-			l2_l3_len.l2_len = tx_pkt->l2_len;
-			l2_l3_len.l3_len = tx_pkt->l3_len;
-			vlan_macip_lens.f.vlan_tci = tx_pkt->vlan_tci;
-			vlan_macip_lens.f.l2_l3_len = l2_l3_len.u16;
+			tx_offload.l2_len = tx_pkt->l2_len;
+			tx_offload.l3_len = tx_pkt->l3_len;
+			tx_offload.l4_len = tx_pkt->l4_len;
+			tx_offload.vlan_tci = tx_pkt->vlan_tci;
+			tx_offload.tso_segsz = tx_pkt->tso_segsz;
 
 			/* If new context need be built or reuse the exist ctx. */
 			ctx = what_advctx_update(txq, tx_ol_req,
-				vlan_macip_lens.data);
+				tx_offload);
 			/* Only allocate context descriptor if required*/
 			new_ctx = (ctx == IXGBE_CTX_NUM);
 			ctx = txq->ctx_curr;
@@ -717,13 +743,22 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 */
 		cmd_type_len = IXGBE_ADVTXD_DTYP_DATA |
 			IXGBE_ADVTXD_DCMD_IFCS | IXGBE_ADVTXD_DCMD_DEXT;
-		olinfo_status = (pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
+
 #ifdef RTE_LIBRTE_IEEE1588
 		if (ol_flags & PKT_TX_IEEE1588_TMST)
 			cmd_type_len |= IXGBE_ADVTXD_MAC_1588;
 #endif
 
+		olinfo_status = 0;
 		if (tx_ol_req) {
+
+			if (ol_flags & PKT_TX_TCP_SEG) {
+				/* when TSO is on, paylen in descriptor is the
+				 * not the packet len but the tcp payload len */
+				pkt_len -= (tx_offload.l2_len +
+					tx_offload.l3_len + tx_offload.l4_len);
+			}
+
 			/*
 			 * Setup the TX Advanced Context Descriptor if required
 			 */
@@ -744,7 +779,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				}
 
 				ixgbe_set_xmit_ctx(txq, ctx_txd, tx_ol_req,
-				    vlan_macip_lens.data);
+					tx_offload);
 
 				txe->last_id = tx_last;
 				tx_id = txe->next_id;
@@ -756,10 +791,12 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 * This path will go through
 			 * whatever new/reuse the context descriptor
 			 */
-			cmd_type_len  |= tx_desc_vlan_flags_to_cmdtype(ol_flags);
+			cmd_type_len  |= tx_desc_ol_flags_to_cmdtype(ol_flags);
 			olinfo_status |= tx_desc_cksum_flags_to_olinfo(ol_flags);
 			olinfo_status |= ctx << IXGBE_ADVTXD_IDX_SHIFT;
 		}
+
+		olinfo_status |= (pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
 
 		m_seg = tx_pkt;
 		do {
@@ -3611,9 +3648,10 @@ ixgbe_dev_tx_init(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	/* Enable TX CRC (checksum offload requirement) */
+	/* Enable TX CRC (checksum offload requirement) and hw padding
+	 * (TSO requirement) */
 	hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
-	hlreg0 |= IXGBE_HLREG0_TXCRCEN;
+	hlreg0 |= (IXGBE_HLREG0_TXCRCEN | IXGBE_HLREG0_TXPADEN);
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 
 	/* Setup the Base and Length of the Tx Descriptor Rings */
