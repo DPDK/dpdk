@@ -329,6 +329,14 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"tx_checksum show (port_id)\n"
 			"    Display tx checksum offload configuration\n\n"
 
+			"tso set (segsize) (portid)\n"
+			"    Enable TCP Segmentation Offload in csum forward"
+			" engine.\n"
+			"    Please check the NIC datasheet for HW limits.\n\n"
+
+			"tso show (portid)"
+			"    Display the status of TCP Segmentation Offload.\n\n"
+
 			"set fwd (%s)\n"
 			"    Set packet forwarding mode.\n\n"
 
@@ -2980,6 +2988,88 @@ cmdline_parse_inst_t cmd_tx_cksum_show = {
 		(void *)&cmd_tx_cksum_tx_cksum,
 		(void *)&cmd_tx_cksum_mode_show,
 		(void *)&cmd_tx_cksum_portid,
+		NULL,
+	},
+};
+
+/* *** ENABLE HARDWARE SEGMENTATION IN TX PACKETS *** */
+struct cmd_tso_set_result {
+	cmdline_fixed_string_t tso;
+	cmdline_fixed_string_t mode;
+	uint16_t tso_segsz;
+	uint8_t port_id;
+};
+
+static void
+cmd_tso_set_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	struct cmd_tso_set_result *res = parsed_result;
+	struct rte_eth_dev_info dev_info;
+
+	if (port_id_is_invalid(res->port_id))
+		return;
+
+	if (!strcmp(res->mode, "set"))
+		ports[res->port_id].tso_segsz = res->tso_segsz;
+
+	if (ports[res->port_id].tso_segsz == 0)
+		printf("TSO is disabled\n");
+	else
+		printf("TSO segment size is %d\n",
+			ports[res->port_id].tso_segsz);
+
+	/* display warnings if configuration is not supported by the NIC */
+	rte_eth_dev_info_get(res->port_id, &dev_info);
+	if ((ports[res->port_id].tso_segsz != 0) &&
+		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_TSO) == 0) {
+		printf("Warning: TSO enabled but not "
+			"supported by port %d\n", res->port_id);
+	}
+}
+
+cmdline_parse_token_string_t cmd_tso_set_tso =
+	TOKEN_STRING_INITIALIZER(struct cmd_tso_set_result,
+				tso, "tso");
+cmdline_parse_token_string_t cmd_tso_set_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_tso_set_result,
+				mode, "set");
+cmdline_parse_token_num_t cmd_tso_set_tso_segsz =
+	TOKEN_NUM_INITIALIZER(struct cmd_tso_set_result,
+				tso_segsz, UINT16);
+cmdline_parse_token_num_t cmd_tso_set_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_tso_set_result,
+				port_id, UINT8);
+
+cmdline_parse_inst_t cmd_tso_set = {
+	.f = cmd_tso_set_parsed,
+	.data = NULL,
+	.help_str = "Set TSO segment size for csum engine (0 to disable): "
+	"tso set <tso_segsz> <port>",
+	.tokens = {
+		(void *)&cmd_tso_set_tso,
+		(void *)&cmd_tso_set_mode,
+		(void *)&cmd_tso_set_tso_segsz,
+		(void *)&cmd_tso_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_tso_show_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_tso_set_result,
+				mode, "show");
+
+
+cmdline_parse_inst_t cmd_tso_show = {
+	.f = cmd_tso_set_parsed,
+	.data = NULL,
+	.help_str = "Show TSO segment size for csum engine: "
+	"tso show <port>",
+	.tokens = {
+		(void *)&cmd_tso_set_tso,
+		(void *)&cmd_tso_show_mode,
+		(void *)&cmd_tso_set_portid,
 		NULL,
 	},
 };
@@ -8660,6 +8750,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_set_pvid,
 	(cmdline_parse_inst_t *)&cmd_tx_cksum_set,
 	(cmdline_parse_inst_t *)&cmd_tx_cksum_show,
+	(cmdline_parse_inst_t *)&cmd_tso_set,
+	(cmdline_parse_inst_t *)&cmd_tso_show,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_rx,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_tx,

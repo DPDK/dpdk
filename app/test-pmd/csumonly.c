@@ -88,12 +88,12 @@
 #endif
 
 static uint16_t
-get_psd_sum(void *l3_hdr, uint16_t ethertype)
+get_psd_sum(void *l3_hdr, uint16_t ethertype, uint64_t ol_flags)
 {
 	if (ethertype == _htons(ETHER_TYPE_IPv4))
-		return rte_ipv4_phdr_cksum(l3_hdr);
+		return rte_ipv4_phdr_cksum(l3_hdr, ol_flags);
 	else /* assume ethertype == ETHER_TYPE_IPv6 */
-		return rte_ipv6_phdr_cksum(l3_hdr);
+		return rte_ipv6_phdr_cksum(l3_hdr, ol_flags);
 }
 
 static uint16_t
@@ -108,14 +108,15 @@ get_udptcp_checksum(void *l3_hdr, void *l4_hdr, uint16_t ethertype)
 /*
  * Parse an ethernet header to fill the ethertype, l2_len, l3_len and
  * ipproto. This function is able to recognize IPv4/IPv6 with one optional vlan
- * header.
+ * header. The l4_len argument is only set in case of TCP (useful for TSO).
  */
 static void
 parse_ethernet(struct ether_hdr *eth_hdr, uint16_t *ethertype, uint16_t *l2_len,
-	uint16_t *l3_len, uint8_t *l4_proto)
+	uint16_t *l3_len, uint8_t *l4_proto, uint16_t *l4_len)
 {
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
+	struct tcp_hdr *tcp_hdr;
 
 	*l2_len = sizeof(struct ether_hdr);
 	*ethertype = eth_hdr->ether_type;
@@ -143,6 +144,13 @@ parse_ethernet(struct ether_hdr *eth_hdr, uint16_t *ethertype, uint16_t *l2_len,
 		*l4_proto = 0;
 		break;
 	}
+
+	if (*l4_proto == IPPROTO_TCP) {
+		tcp_hdr = (struct tcp_hdr *)((char *)eth_hdr +
+			*l2_len + *l3_len);
+		*l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
+	} else
+		*l4_len = 0;
 }
 
 /* modify the IPv4 or IPv4 source address of a packet */
@@ -164,7 +172,7 @@ change_ip_addresses(void *l3_hdr, uint16_t ethertype)
  * depending on the testpmd command line configuration */
 static uint64_t
 process_inner_cksums(void *l3_hdr, uint16_t ethertype, uint16_t l3_len,
-	uint8_t l4_proto, uint16_t testpmd_ol_flags)
+	uint8_t l4_proto, uint16_t tso_segsz, uint16_t testpmd_ol_flags)
 {
 	struct ipv4_hdr *ipv4_hdr = l3_hdr;
 	struct udp_hdr *udp_hdr;
@@ -176,11 +184,15 @@ process_inner_cksums(void *l3_hdr, uint16_t ethertype, uint16_t l3_len,
 		ipv4_hdr = l3_hdr;
 		ipv4_hdr->hdr_checksum = 0;
 
-		if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM)
+		if (tso_segsz != 0 && l4_proto == IPPROTO_TCP) {
 			ol_flags |= PKT_TX_IP_CKSUM;
-		else
-			ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
-
+		} else {
+			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM)
+				ol_flags |= PKT_TX_IP_CKSUM;
+			else
+				ipv4_hdr->hdr_checksum =
+					rte_ipv4_cksum(ipv4_hdr);
+		}
 		ol_flags |= PKT_TX_IPV4;
 	} else if (ethertype == _htons(ETHER_TYPE_IPv6))
 		ol_flags |= PKT_TX_IPV6;
@@ -195,7 +207,7 @@ process_inner_cksums(void *l3_hdr, uint16_t ethertype, uint16_t l3_len,
 			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) {
 				ol_flags |= PKT_TX_UDP_CKSUM;
 				udp_hdr->dgram_cksum = get_psd_sum(l3_hdr,
-					ethertype);
+					ethertype, ol_flags);
 			} else {
 				udp_hdr->dgram_cksum =
 					get_udptcp_checksum(l3_hdr, udp_hdr,
@@ -205,9 +217,12 @@ process_inner_cksums(void *l3_hdr, uint16_t ethertype, uint16_t l3_len,
 	} else if (l4_proto == IPPROTO_TCP) {
 		tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + l3_len);
 		tcp_hdr->cksum = 0;
-		if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) {
+		if (tso_segsz != 0) {
+			ol_flags |= PKT_TX_TCP_SEG;
+			tcp_hdr->cksum = get_psd_sum(l3_hdr, ethertype, ol_flags);
+		} else if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) {
 			ol_flags |= PKT_TX_TCP_CKSUM;
-			tcp_hdr->cksum = get_psd_sum(l3_hdr, ethertype);
+			tcp_hdr->cksum = get_psd_sum(l3_hdr, ethertype, ol_flags);
 		} else {
 			tcp_hdr->cksum =
 				get_udptcp_checksum(l3_hdr, tcp_hdr, ethertype);
@@ -275,6 +290,8 @@ process_outer_cksums(void *outer_l3_hdr, uint16_t outer_ethertype,
  *  - modify the IPs in inner headers and in outer headers if any
  *  - reprocess the checksum of all supported layers. This is done in SW
  *    or HW, depending on testpmd command line configuration
+ *  - if TSO is enabled in testpmd command line, also flag the mbuf for TCP
+ *    segmentation offload (this implies HW TCP checksum)
  * Then transmit packets on the output port.
  *
  * (1) Supported packets are:
@@ -305,7 +322,9 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint16_t testpmd_ol_flags;
 	uint8_t l4_proto;
 	uint16_t ethertype = 0, outer_ethertype = 0;
-	uint16_t  l2_len = 0, l3_len = 0, outer_l2_len = 0, outer_l3_len = 0;
+	uint16_t l2_len = 0, l3_len = 0, l4_len = 0;
+	uint16_t outer_l2_len = 0, outer_l3_len = 0;
+	uint16_t tso_segsz;
 	int tunnel = 0;
 	uint32_t rx_bad_ip_csum;
 	uint32_t rx_bad_l4_csum;
@@ -335,6 +354,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 	txp = &ports[fs->tx_port];
 	testpmd_ol_flags = txp->tx_ol_flags;
+	tso_segsz = txp->tso_segsz;
 
 	for (i = 0; i < nb_rx; i++) {
 
@@ -350,7 +370,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		 * and inner headers */
 
 		eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
-		parse_ethernet(eth_hdr, &ethertype, &l2_len, &l3_len, &l4_proto);
+		parse_ethernet(eth_hdr, &ethertype, &l2_len, &l3_len,
+			&l4_proto, &l4_len);
 		l3_hdr = (char *)eth_hdr + l2_len;
 
 		/* check if it's a supported tunnel (only vxlan for now) */
@@ -378,7 +399,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 					sizeof(struct vxlan_hdr));
 
 				parse_ethernet(eth_hdr, &ethertype, &l2_len,
-					&l3_len, &l4_proto);
+					&l3_len, &l4_proto, &l4_len);
 				l3_hdr = (char *)eth_hdr + l2_len;
 			}
 		}
@@ -392,11 +413,12 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 		/* step 3: depending on user command line configuration,
 		 * recompute checksum either in software or flag the
-		 * mbuf to offload the calculation to the NIC */
+		 * mbuf to offload the calculation to the NIC. If TSO
+		 * is configured, prepare the mbuf for TCP segmentation. */
 
 		/* process checksums of inner headers first */
 		ol_flags |= process_inner_cksums(l3_hdr, ethertype,
-			l3_len, l4_proto, testpmd_ol_flags);
+			l3_len, l4_proto, tso_segsz, testpmd_ol_flags);
 
 		/* Then process outer headers if any. Note that the software
 		 * checksum will be wrong if one of the inner checksums is
@@ -425,6 +447,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 					sizeof(struct udp_hdr) +
 					sizeof(struct vxlan_hdr) + l2_len;
 				m->l3_len = l3_len;
+				m->l4_len = l4_len;
 			}
 		} else {
 			/* this is only useful if an offload flag is
@@ -432,7 +455,9 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			 * case */
 			m->l2_len = l2_len;
 			m->l3_len = l3_len;
+			m->l4_len = l4_len;
 		}
+		m->tso_segsz = tso_segsz;
 		m->ol_flags = ol_flags;
 
 	}

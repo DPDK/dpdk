@@ -149,6 +149,7 @@ struct rte_port {
 	struct fwd_stream       *tx_stream; /**< Port TX stream, if unique */
 	unsigned int            socket_id;  /**< For NUMA support */
 	uint16_t                tx_ol_flags;/**< TX Offload Flags (TESTPMD_TX_OFFLOAD...). */
+	uint16_t                tso_segsz;  /**< MSS for segmentation offload. */
 	uint16_t                tx_vlan_id; /**< Tag Id. in TX VLAN packets. */
 	void                    *fwd_ctx;   /**< Forwarding mode context */
 	uint64_t                rx_bad_ip_csum; /**< rx pkts with bad ip checksum  */
