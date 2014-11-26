@@ -81,6 +81,7 @@
 
 #include <rte_memcpy.h>
 #include <rte_byteorder.h>
+#include <rte_mbuf.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -312,13 +313,21 @@ rte_ipv4_cksum(const struct ipv4_hdr *ipv4_hdr)
  *
  * The checksum field must be set to 0 by the caller.
  *
+ * Depending on the ol_flags, the pseudo-header checksum expected by the
+ * drivers is not the same. For instance, when TSO is enabled, the IP
+ * payload length must not be included in the packet.
+ *
+ * When ol_flags is 0, it computes the standard pseudo-header checksum.
+ *
  * @param ipv4_hdr
  *   The pointer to the contiguous IPv4 header.
+ * @param ol_flags
+ *   The ol_flags of the associated mbuf.
  * @return
  *   The non-complemented checksum to set in the L4 header.
  */
 static inline uint16_t
-rte_ipv4_phdr_cksum(const struct ipv4_hdr *ipv4_hdr)
+rte_ipv4_phdr_cksum(const struct ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
 {
 	struct ipv4_psd_header {
 		uint32_t src_addr; /* IP address of source host. */
@@ -332,9 +341,13 @@ rte_ipv4_phdr_cksum(const struct ipv4_hdr *ipv4_hdr)
 	psd_hdr.dst_addr = ipv4_hdr->dst_addr;
 	psd_hdr.zero = 0;
 	psd_hdr.proto = ipv4_hdr->next_proto_id;
-	psd_hdr.len = rte_cpu_to_be_16(
-		(uint16_t)(rte_be_to_cpu_16(ipv4_hdr->total_length)
-			- sizeof(struct ipv4_hdr)));
+	if (ol_flags & PKT_TX_TCP_SEG) {
+		psd_hdr.len = 0;
+	} else {
+		psd_hdr.len = rte_cpu_to_be_16(
+			(uint16_t)(rte_be_to_cpu_16(ipv4_hdr->total_length)
+				- sizeof(struct ipv4_hdr)));
+	}
 	return rte_raw_cksum((const char *)&psd_hdr, sizeof(psd_hdr));
 }
 
@@ -361,7 +374,7 @@ rte_ipv4_udptcp_cksum(const struct ipv4_hdr *ipv4_hdr, const void *l4_hdr)
 		sizeof(struct ipv4_hdr);
 
 	cksum = rte_raw_cksum(l4_hdr, l4_len);
-	cksum += rte_ipv4_phdr_cksum(ipv4_hdr);
+	cksum += rte_ipv4_phdr_cksum(ipv4_hdr, 0);
 
 	cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
 	cksum = (~cksum) & 0xffff;
@@ -386,13 +399,21 @@ struct ipv6_hdr {
 /**
  * Process the pseudo-header checksum of an IPv6 header.
  *
+ * Depending on the ol_flags, the pseudo-header checksum expected by the
+ * drivers is not the same. For instance, when TSO is enabled, the IPv6
+ * payload length must not be included in the packet.
+ *
+ * When ol_flags is 0, it computes the standard pseudo-header checksum.
+ *
  * @param ipv6_hdr
  *   The pointer to the contiguous IPv6 header.
+ * @param ol_flags
+ *   The ol_flags of the associated mbuf.
  * @return
  *   The non-complemented checksum to set in the L4 header.
  */
 static inline uint16_t
-rte_ipv6_phdr_cksum(const struct ipv6_hdr *ipv6_hdr)
+rte_ipv6_phdr_cksum(const struct ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
 {
 	struct ipv6_psd_header {
 		uint8_t src_addr[16]; /* IP address of source host. */
@@ -404,7 +425,11 @@ rte_ipv6_phdr_cksum(const struct ipv6_hdr *ipv6_hdr)
 	rte_memcpy(&psd_hdr.src_addr, ipv6_hdr->src_addr,
 		sizeof(ipv6_hdr->src_addr) + sizeof(ipv6_hdr->dst_addr));
 	psd_hdr.proto = (ipv6_hdr->proto << 24);
-	psd_hdr.len = ipv6_hdr->payload_len;
+	if (ol_flags & PKT_TX_TCP_SEG) {
+		psd_hdr.len = 0;
+	} else {
+		psd_hdr.len = ipv6_hdr->payload_len;
+	}
 
 	return rte_raw_cksum((const char *)&psd_hdr, sizeof(psd_hdr));
 }

@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright 2014 6WIND S.A.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -132,6 +133,20 @@ extern "C" {
 
 #define PKT_TX_VLAN_PKT      (1ULL << 55) /**< TX packet is a 802.1q VLAN packet. */
 
+/**
+ * TCP segmentation offload. To enable this offload feature for a
+ * packet to be transmitted on hardware supporting TSO:
+ *  - set the PKT_TX_TCP_SEG flag in mbuf->ol_flags (this flag implies
+ *    PKT_TX_TCP_CKSUM)
+ *  - if it's IPv4, set the PKT_TX_IP_CKSUM flag and write the IP checksum
+ *    to 0 in the packet
+ *  - fill the mbuf offload information: l2_len, l3_len, l4_len, tso_segsz
+ *  - calculate the pseudo header checksum without taking ip_len in accound,
+ *    and set it in the TCP header. Refer to rte_ipv4_phdr_cksum() and
+ *    rte_ipv6_phdr_cksum() that can be used as helpers.
+ */
+#define PKT_TX_TCP_SEG       (1ULL << 49)
+
 /* Use final bit of flags to indicate a control mbuf */
 #define CTRL_MBUF_FLAG       (1ULL << 63) /**< Mbuf contains control data */
 
@@ -242,22 +257,18 @@ struct rte_mbuf {
 
 	/* fields to support TX offloads */
 	union {
-		uint16_t l2_l3_len; /**< combined l2/l3 lengths as single var */
+		uint64_t tx_offload;       /**< combined for easy fetch */
 		struct {
-			uint16_t l3_len:9;      /**< L3 (IP) Header Length. */
-			uint16_t l2_len:7;      /**< L2 (MAC) Header Length. */
-		};
-	};
+			uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
+			uint64_t l3_len:9; /**< L3 (IP) Header Length. */
+			uint64_t l4_len:8; /**< L4 (TCP/UDP) Header Length. */
+			uint64_t tso_segsz:16; /**< TCP TSO segment size */
 
-	/* fields for TX offloading of tunnels */
-	union {
-		uint16_t inner_l2_l3_len;
-		/**< combined inner l2/l3 lengths as single var */
-		struct {
-			uint16_t inner_l3_len:9;
-			/**< inner L3 (IP) Header Length. */
-			uint16_t inner_l2_len:7;
-			/**< inner L2 (MAC) Header Length. */
+			/* fields for TX offloading of tunnels */
+			uint64_t inner_l3_len:9; /**< inner L3 (IP) Hdr Length. */
+			uint64_t inner_l2_len:7; /**< inner L2 (MAC) Hdr Length. */
+
+			/* uint64_t unused:8; */
 		};
 	};
 } __rte_cache_aligned;
@@ -609,8 +620,7 @@ static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 {
 	m->next = NULL;
 	m->pkt_len = 0;
-	m->l2_l3_len = 0;
-	m->inner_l2_l3_len = 0;
+	m->tx_offload = 0;
 	m->vlan_tci = 0;
 	m->nb_segs = 1;
 	m->port = 0xff;
@@ -679,8 +689,7 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
 	mi->data_len = md->data_len;
 	mi->port = md->port;
 	mi->vlan_tci = md->vlan_tci;
-	mi->l2_l3_len = md->l2_l3_len;
-	mi->inner_l2_l3_len = md->inner_l2_l3_len;
+	mi->tx_offload = md->tx_offload;
 	mi->hash = md->hash;
 
 	mi->next = NULL;

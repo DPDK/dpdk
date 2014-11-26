@@ -367,6 +367,13 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct rte_mbuf     *tx_pkt;
 	struct rte_mbuf     *m_seg;
 	union igb_vlan_macip vlan_macip_lens;
+	union {
+		uint16_t u16;
+		struct {
+			uint16_t l3_len:9;
+			uint16_t l2_len:7;
+		};
+	} l2_l3_len;
 	uint64_t buf_dma_addr;
 	uint32_t olinfo_status;
 	uint32_t cmd_type_len;
@@ -404,8 +411,10 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_last = (uint16_t) (tx_id + tx_pkt->nb_segs - 1);
 
 		ol_flags = tx_pkt->ol_flags;
+		l2_l3_len.l2_len = tx_pkt->l2_len;
+		l2_l3_len.l3_len = tx_pkt->l3_len;
 		vlan_macip_lens.f.vlan_tci = tx_pkt->vlan_tci;
-		vlan_macip_lens.f.l2_l3_len = tx_pkt->l2_l3_len;
+		vlan_macip_lens.f.l2_l3_len = l2_l3_len.u16;
 		tx_ol_req = ol_flags & IGB_TX_OFFLOAD_MASK;
 
 		/* If a Context Descriptor need be built . */

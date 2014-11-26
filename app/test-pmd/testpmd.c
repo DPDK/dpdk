@@ -408,7 +408,7 @@ testpmd_mbuf_ctor(struct rte_mempool *mp,
 	mb->ol_flags     = 0;
 	mb->data_off     = RTE_PKTMBUF_HEADROOM;
 	mb->nb_segs      = 1;
-	mb->l2_l3_len       = 0;
+	mb->tx_offload   = 0;
 	mb->vlan_tci     = 0;
 	mb->hash.rss     = 0;
 }

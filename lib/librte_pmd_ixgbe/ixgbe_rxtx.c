@@ -546,6 +546,13 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct rte_mbuf     *tx_pkt;
 	struct rte_mbuf     *m_seg;
 	union ixgbe_vlan_macip vlan_macip_lens;
+	union {
+		uint16_t u16;
+		struct {
+			uint16_t l3_len:9;
+			uint16_t l2_len:7;
+		};
+	} l2_l3_len;
 	uint64_t buf_dma_addr;
 	uint32_t olinfo_status;
 	uint32_t cmd_type_len;
@@ -588,8 +595,10 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* If hardware offload required */
 		tx_ol_req = ol_flags & IXGBE_TX_OFFLOAD_MASK;
 		if (tx_ol_req) {
+			l2_l3_len.l2_len = tx_pkt->l2_len;
+			l2_l3_len.l3_len = tx_pkt->l3_len;
 			vlan_macip_lens.f.vlan_tci = tx_pkt->vlan_tci;
-			vlan_macip_lens.f.l2_l3_len = tx_pkt->l2_l3_len;
+			vlan_macip_lens.f.l2_l3_len = l2_l3_len.u16;
 
 			/* If new context need be built or reuse the exist ctx. */
 			ctx = what_advctx_update(txq, tx_ol_req,

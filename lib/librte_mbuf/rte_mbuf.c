@@ -241,6 +241,7 @@ const char *rte_get_tx_ol_flag_name(uint64_t mask)
 	case PKT_TX_UDP_CKSUM: return "PKT_TX_UDP_CKSUM";
 	case PKT_TX_IEEE1588_TMST: return "PKT_TX_IEEE1588_TMST";
 	case PKT_TX_VXLAN_CKSUM: return "PKT_TX_VXLAN_CKSUM";
+	case PKT_TX_TCP_SEG: return "PKT_TX_TCP_SEG";
 	default: return NULL;
 	}
 }
