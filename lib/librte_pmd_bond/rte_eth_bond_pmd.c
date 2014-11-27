@@ -30,7 +30,7 @@
  *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+#include <stdlib.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
@@ -41,10 +41,15 @@
 #include <rte_kvargs.h>
 #include <rte_dev.h>
 #include <rte_alarm.h>
+#include <rte_cycles.h>
 
 #include "rte_eth_bond.h"
 #include "rte_eth_bond_private.h"
 #include "rte_eth_bond_8023ad_private.h"
+
+#define REORDER_PERIOD_MS 10
+/* Table for statistics in mode 5 TLB */
+static uint64_t tlb_last_obytets[RTE_MAX_ETHPORTS];
 
 static uint16_t
 bond_ethdev_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
@@ -359,6 +364,144 @@ xmit_slave_hash(const struct rte_mbuf *buf, uint8_t slave_count, uint8_t policy)
 	hash ^= hash >> 8;
 
 	return hash % slave_count;
+}
+
+struct bwg_slave {
+	uint64_t bwg_left_int;
+	uint64_t bwg_left_remainder;
+	uint8_t slave;
+};
+
+static int
+bandwidth_cmp(const void *a, const void *b)
+{
+	const struct bwg_slave *bwg_a = a;
+	const struct bwg_slave *bwg_b = b;
+	int64_t diff = (int64_t)bwg_b->bwg_left_int - (int64_t)bwg_a->bwg_left_int;
+	int64_t diff2 = (int64_t)bwg_b->bwg_left_remainder -
+			(int64_t)bwg_a->bwg_left_remainder;
+	if (diff > 0)
+		return 1;
+	else if (diff < 0)
+		return -1;
+	else if (diff2 > 0)
+		return 1;
+	else if (diff2 < 0)
+		return -1;
+	else
+		return 0;
+}
+
+static void
+bandwidth_left(int port_id, uint64_t load, uint8_t update_idx,
+		struct bwg_slave *bwg_slave)
+{
+	struct rte_eth_link link_status;
+
+	rte_eth_link_get(port_id, &link_status);
+	uint64_t link_bwg = link_status.link_speed * 1000000ULL / 8;
+	if (link_bwg == 0)
+		return;
+	link_bwg = (link_bwg * (update_idx+1) * REORDER_PERIOD_MS);
+	bwg_slave->bwg_left_int = (link_bwg - 1000*load) / link_bwg;
+	bwg_slave->bwg_left_remainder = (link_bwg - 1000*load) % link_bwg;
+}
+
+static void
+bond_ethdev_update_tlb_slave_cb(void *arg)
+{
+	struct bond_dev_private *internals = arg;
+	struct rte_eth_stats slave_stats;
+	struct bwg_slave bwg_array[RTE_MAX_ETHPORTS];
+	uint8_t slave_count;
+	uint64_t tx_bytes;
+
+	uint8_t update_stats = 0;
+	uint8_t i, slave_id;
+
+	internals->slave_update_idx++;
+
+
+	if (internals->slave_update_idx >= REORDER_PERIOD_MS)
+		update_stats = 1;
+
+	for (i = 0; i < internals->active_slave_count; i++) {
+		slave_id = internals->active_slaves[i];
+		rte_eth_stats_get(slave_id, &slave_stats);
+		tx_bytes = slave_stats.obytes - tlb_last_obytets[slave_id];
+		bandwidth_left(slave_id, tx_bytes,
+				internals->slave_update_idx, &bwg_array[i]);
+		bwg_array[i].slave = slave_id;
+
+		if (update_stats)
+			tlb_last_obytets[slave_id] = slave_stats.obytes;
+	}
+
+	if (update_stats == 1)
+		internals->slave_update_idx = 0;
+
+	slave_count = i;
+	qsort(bwg_array, slave_count, sizeof(bwg_array[0]), bandwidth_cmp);
+	for (i = 0; i < slave_count; i++)
+		internals->active_slaves[i] = bwg_array[i].slave;
+
+	rte_eal_alarm_set(REORDER_PERIOD_MS * 1000, bond_ethdev_update_tlb_slave_cb,
+			(struct bond_dev_private *)internals);
+}
+
+static uint16_t
+bond_ethdev_tx_burst_tlb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	struct bond_tx_queue *bd_tx_q = (struct bond_tx_queue *)queue;
+	struct bond_dev_private *internals = bd_tx_q->dev_private;
+
+	struct rte_eth_dev *primary_port =
+			&rte_eth_devices[internals->primary_port];
+	uint16_t num_tx_total = 0;
+	uint8_t i, j;
+
+	uint8_t num_of_slaves = internals->active_slave_count;
+	uint8_t slaves[RTE_MAX_ETHPORTS];
+
+	struct ether_hdr *ether_hdr;
+	struct ether_addr primary_slave_addr;
+	struct ether_addr active_slave_addr;
+
+	if (num_of_slaves < 1)
+		return num_tx_total;
+
+	memcpy(slaves, internals->active_slaves,
+				sizeof(internals->active_slaves[0]) * num_of_slaves);
+
+
+	ether_addr_copy(primary_port->data->mac_addrs, &primary_slave_addr);
+
+	if (nb_pkts > 3) {
+		for (i = 0; i < 3; i++)
+			rte_prefetch0(rte_pktmbuf_mtod(bufs[i], void*));
+	}
+
+	for (i = 0; i < num_of_slaves; i++) {
+		ether_addr_copy(&internals->slaves[slaves[i]].persisted_mac_addr,
+				&active_slave_addr);
+
+		for (j = num_tx_total; j < nb_pkts; j++) {
+			if (j + 3 < nb_pkts)
+				rte_prefetch0(rte_pktmbuf_mtod(bufs[j+3], void*));
+
+			ether_hdr = rte_pktmbuf_mtod(bufs[j], struct ether_hdr *);
+			if (is_same_ether_addr(&ether_hdr->s_addr, &primary_slave_addr))
+				ether_addr_copy(&active_slave_addr, &ether_hdr->s_addr);
+		}
+
+		num_tx_total += rte_eth_tx_burst(slaves[i], bd_tx_q->queue_id,
+				bufs + num_tx_total, nb_pkts - num_tx_total);
+
+		if (num_tx_total == nb_pkts)
+			break;
+	}
+
+	return num_tx_total;
 }
 
 static uint16_t
@@ -690,6 +833,7 @@ mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev)
 		bond_mode_8023ad_mac_address_update(bonded_eth_dev);
 		break;
 	case BONDING_MODE_ACTIVE_BACKUP:
+	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
 	default:
 		for (i = 0; i < internals->slave_count; i++) {
 			if (internals->slaves[i].port_id ==
@@ -750,6 +894,10 @@ bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, int mode)
 		RTE_BOND_LOG(WARNING,
 				"Using mode 4, it is necessary to do TX burst and RX burst "
 				"at least every 100ms.");
+		break;
+	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
+		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_tlb;
+		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst_active_backup;
 		break;
 	default:
 		return -1;
@@ -876,7 +1024,7 @@ slave_add(struct bond_dev_private *internals,
 	}
 
 	slave_details->link_status_wait_to_complete = 0;
-
+	/* clean tlb_last_obytes when adding port for bonding device */
 	memcpy(&(slave_details->persisted_mac_addr), slave_eth_dev->data->mac_addrs,
 			sizeof(struct ether_addr));
 }
@@ -965,6 +1113,9 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 	if (internals->mode == BONDING_MODE_8023AD)
 		bond_mode_8023ad_start(eth_dev);
 
+	if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING)
+		bond_ethdev_update_tlb_slave_cb(internals);
+
 	return 0;
 }
 
@@ -992,6 +1143,10 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 			while (rte_ring_dequeue(port->tx_ring, &pkt) != -ENOENT)
 				rte_pktmbuf_free(pkt);
 		}
+	}
+
+	if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING) {
+		rte_eal_alarm_cancel(bond_ethdev_update_tlb_slave_cb, internals);
 	}
 
 	internals->active_slave_count = 0;
@@ -1242,6 +1397,7 @@ bond_ethdev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 		break;
 	/* Promiscuous mode is propagated only to primary slave */
 	case BONDING_MODE_ACTIVE_BACKUP:
+	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
 	default:
 		rte_eth_promiscuous_enable(internals->current_primary_port);
 	}
@@ -1270,6 +1426,7 @@ bond_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
 		break;
 	/* Promiscuous mode is propagated only to primary slave */
 	case BONDING_MODE_ACTIVE_BACKUP:
+	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
 	default:
 		rte_eth_promiscuous_disable(internals->current_primary_port);
 	}

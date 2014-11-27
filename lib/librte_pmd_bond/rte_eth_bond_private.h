@@ -104,7 +104,6 @@ struct bond_slave_details {
 	uint8_t link_status_poll_enabled;
 	uint8_t link_status_wait_to_complete;
 	uint8_t last_link_status;
-
 	/**< Port Id of slave eth_dev */
 	struct ether_addr persisted_mac_addr;
 };
@@ -149,6 +148,7 @@ struct bond_dev_private {
 	struct mode8023ad_private mode4;
 
 	struct rte_kvargs *kvlist;
+	uint8_t slave_update_idx;
 };
 
 extern struct eth_dev_ops default_dev_ops;

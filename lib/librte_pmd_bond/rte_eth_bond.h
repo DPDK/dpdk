@@ -96,6 +96,12 @@ extern "C" {
  * to rx_burst should be at least 2 times the slave count size.
  *
  */
+#define BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING	(5)
+/**< Adaptive TLB (Mode 5)
+ * This mode provides an adaptive transmit load balancing. It dynamically
+ * changes the transmitting slave, according to the computed load. Statistics
+ * are collected in 100ms intervals and scheduled every 10ms */
+
 /* Balance Mode Transmit Policies */
 #define BALANCE_XMIT_POLICY_LAYER2		(0)
 /**< Layer 2 (Ethernet MAC) */
