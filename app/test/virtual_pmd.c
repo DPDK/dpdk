@@ -359,16 +359,18 @@ virtual_ethdev_tx_burst_success(void *queue, struct rte_mbuf **bufs,
 
 	struct rte_eth_dev *vrtl_eth_dev;
 	struct virtual_ethdev_private *dev_private;
-
+	uint64_t obytes = 0;
 	int i;
 
+	for (i = 0; i < nb_pkts; i++)
+		obytes += rte_pktmbuf_pkt_len(bufs[i]);
 	vrtl_eth_dev = &rte_eth_devices[tx_q->port_id];
 	dev_private = vrtl_eth_dev->data->dev_private;
 
 	if (vrtl_eth_dev->data->dev_link.link_status) {
 		/* increment opacket count */
 		dev_private->eth_stats.opackets += nb_pkts;
-
+		dev_private->eth_stats.obytes += obytes;
 		/* free packets in burst */
 		for (i = 0; i < nb_pkts; i++)
 			rte_pktmbuf_free(bufs[i]);
