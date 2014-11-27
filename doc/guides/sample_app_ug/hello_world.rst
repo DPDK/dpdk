@@ -85,7 +85,7 @@ This is done in the main() function using the following code:
 
     int
 
-    MAIN(int argc, char **argv)
+    main(int argc, char **argv)
 
     {
         ret = rte_eal_init(argc, argv);

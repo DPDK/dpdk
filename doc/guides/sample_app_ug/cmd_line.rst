@@ -114,7 +114,7 @@ This is achieved as follows:
 
 .. code-block:: c
 
-    int MAIN(int argc, char **argv)
+    int main(int argc, char **argv)
     {
         ret = rte_eal_init(argc, argv);
         if (ret < 0)

@@ -103,7 +103,7 @@ stop
 quit
 ~~~~
 
-Quit to prompt in Linux or reboot on Baremetal:
+Quit to prompt:
 
 quit
 

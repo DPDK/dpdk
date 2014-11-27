@@ -165,7 +165,7 @@ The following sections describe aspects that are specific to the L3 Forwarding w
 Power Library Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Power library is initialized in the MAIN routine.
+The Power library is initialized in the main routine.
 It changes the P-state governor to userspace for specific cores that are under control.
 The Timer library is also initialized and several timers are created later on,
 responsible for checking if it needs to scale down frequency at run time by checking CPU utilization statistics.
@@ -176,7 +176,7 @@ responsible for checking if it needs to scale down frequency at run time by chec
 
 .. code-block:: c
 
-    int MAIN(int argc, char **argv)
+    int main(int argc, char **argv)
     {
         struct lcore_conf *qconf;
         int ret;

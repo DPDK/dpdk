@@ -182,7 +182,7 @@ Core Application - qw
 EAL and Drivers Setup
 ^^^^^^^^^^^^^^^^^^^^^
 
-The EAL arguments are parsed at the beginning of the MAIN() function:
+The EAL arguments are parsed at the beginning of the main() function:
 
 .. code-block:: c
 
@@ -236,7 +236,7 @@ The quota and low_watermark shared variables are put into an rte_memzone using a
         low_watermark = (unsigned int *) qw_memzone->addr + sizeof(int);
    }
 
-These two variables are initialized to a default value in MAIN() and
+These two variables are initialized to a default value in main() and
 can be changed while qw is running using the qwctl control program.
 
 Application Arguments
