@@ -39,9 +39,6 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <libgen.h>
-#ifdef RTE_EAL_VFIO
-#include <linux/vfio.h>
-#endif
 
 #include <rte_pci.h>
 #include <rte_memzone.h>
@@ -631,7 +628,7 @@ int enic_enable(struct enic *enic)
 
 	vnic_dev_enable_wait(enic->vdev);
 
-#ifndef RTE_EAL_VFIO
+#ifndef VFIO_PRESENT
 	/* Register and enable error interrupt */
 	rte_intr_callback_register(&(enic->pdev->intr_handle),
 		enic_intr_handler, (void *)enic->rte_dev);
@@ -995,7 +992,7 @@ int enic_setup_finish(struct enic *enic)
 	return 0;
 }
 
-#ifdef RTE_EAL_VFIO
+#ifdef VFIO_PRESENT
 static void enic_eventfd_init(struct enic *enic)
 {
 	enic->eventfd = enic->pdev->intr_handle.fd;
@@ -1033,7 +1030,7 @@ int enic_get_link_status(struct enic *enic)
 }
 
 
-#ifdef RTE_EAL_VFIO
+#ifdef VFIO_PRESENT
 static int enic_create_err_intr_thread(struct enic *enic)
 {
 	pthread_attr_t intr_attr;
@@ -1111,7 +1108,7 @@ static void enic_dev_deinit(struct enic *enic)
 	if (eth_dev->data->mac_addrs)
 		rte_free(eth_dev->data->mac_addrs);
 
-#ifdef RTE_EAL_VFIO
+#ifdef VFIO_PRESENT
 	enic_clear_intr_mode(enic);
 #endif
 }
@@ -1167,7 +1164,7 @@ static int enic_dev_init(struct enic *enic)
 	*/
 	enic_get_res_counts(enic);
 
-#ifdef RTE_EAL_VFIO
+#ifdef VFIO_PRESENT
 	/* Set interrupt mode based on resource counts and system
 	 * capabilities
 	 */
