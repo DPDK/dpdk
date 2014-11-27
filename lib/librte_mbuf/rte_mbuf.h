@@ -102,6 +102,22 @@ extern "C" {
 /* add new RX flags here */
 
 /* add new TX flags here */
+
+/**
+ * TCP segmentation offload. To enable this offload feature for a
+ * packet to be transmitted on hardware supporting TSO:
+ *  - set the PKT_TX_TCP_SEG flag in mbuf->ol_flags (this flag implies
+ *    PKT_TX_TCP_CKSUM)
+ *  - set the flag PKT_TX_IPV4 or PKT_TX_IPV6
+ *  - if it's IPv4, set the PKT_TX_IP_CKSUM flag and write the IP checksum
+ *    to 0 in the packet
+ *  - fill the mbuf offload information: l2_len, l3_len, l4_len, tso_segsz
+ *  - calculate the pseudo header checksum without taking ip_len in account,
+ *    and set it in the TCP header. Refer to rte_ipv4_phdr_cksum() and
+ *    rte_ipv6_phdr_cksum() that can be used as helpers.
+ */
+#define PKT_TX_TCP_SEG       (1ULL << 49)
+
 #define PKT_TX_VXLAN_CKSUM   (1ULL << 50) /**< TX checksum of VXLAN computed by NIC */
 #define PKT_TX_IEEE1588_TMST (1ULL << 51) /**< TX IEEE1588 packet to timestamp. */
 
@@ -132,21 +148,6 @@ extern "C" {
 #define PKT_TX_IPV6          PKT_RX_IPV6_HDR
 
 #define PKT_TX_VLAN_PKT      (1ULL << 55) /**< TX packet is a 802.1q VLAN packet. */
-
-/**
- * TCP segmentation offload. To enable this offload feature for a
- * packet to be transmitted on hardware supporting TSO:
- *  - set the PKT_TX_TCP_SEG flag in mbuf->ol_flags (this flag implies
- *    PKT_TX_TCP_CKSUM)
- *  - set the flag PKT_TX_IPV4 or PKT_TX_IPV6
- *  - if it's IPv4, set the PKT_TX_IP_CKSUM flag and write the IP checksum
- *    to 0 in the packet
- *  - fill the mbuf offload information: l2_len, l3_len, l4_len, tso_segsz
- *  - calculate the pseudo header checksum without taking ip_len in accound,
- *    and set it in the TCP header. Refer to rte_ipv4_phdr_cksum() and
- *    rte_ipv6_phdr_cksum() that can be used as helpers.
- */
-#define PKT_TX_TCP_SEG       (1ULL << 49)
 
 /* Use final bit of flags to indicate a control mbuf */
 #define CTRL_MBUF_FLAG       (1ULL << 63) /**< Mbuf contains control data */
