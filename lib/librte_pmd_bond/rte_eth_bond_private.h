@@ -42,6 +42,7 @@ extern "C" {
 #include <rte_spinlock.h>
 
 #include "rte_eth_bond.h"
+#include "rte_eth_bond_8023ad_private.h"
 
 #define PMD_BOND_SLAVE_PORT_KVARG			("slave")
 #define PMD_BOND_PRIMARY_SLAVE_KVARG		("primary")
@@ -59,6 +60,8 @@ extern "C" {
 
 #define RTE_BOND_LOG(lvl, msg, ...)		\
 	RTE_LOG(lvl, PMD, "%s(%d) - " msg "\n", __func__, __LINE__, ##__VA_ARGS__)
+
+#define BONDING_MODE_INVALID 0xFF
 
 extern const char *pmd_bond_init_valid_arguments[];
 
@@ -88,7 +91,6 @@ struct bond_tx_queue {
 	struct rte_eth_txconf tx_conf;
 	/**< Copy of TX configuration structure for queue */
 };
-
 
 /** Bonded slave devices structure */
 struct bond_ethdev_slave_ports {
@@ -124,7 +126,7 @@ struct bond_dev_private {
 	uint8_t user_defined_mac;
 	/**< Flag for whether MAC address is user defined or not */
 	uint8_t promiscuous_en;
-	/**< Enabled/disable promiscuous mode on slave devices */
+	/**< Enabled/disable promiscuous mode on bonding device */
 	uint8_t link_props_set;
 	/**< flag to denote if the link properties are set */
 
@@ -144,6 +146,8 @@ struct bond_dev_private {
 	struct bond_slave_details slaves[RTE_MAX_ETHPORTS];
 	/**< Arary of bonded slaves details */
 
+	struct mode8023ad_private mode4;
+
 	struct rte_kvargs *kvlist;
 };
 
@@ -151,6 +155,20 @@ extern struct eth_dev_ops default_dev_ops;
 
 int
 valid_bonded_ethdev(struct rte_eth_dev *eth_dev);
+
+/* Search given slave array to find possition of given id.
+ * Return slave pos or slaves_count if not found. */
+static inline uint8_t
+find_slave_by_id(uint8_t *slaves, uint8_t slaves_count, uint8_t slave_id) {
+
+	uint8_t pos;
+	for (pos = 0; pos < slaves_count; pos++) {
+		if (slave_id == slaves[pos])
+			break;
+	}
+
+	return pos;
+}
 
 int
 valid_port_id(uint8_t port_id);
@@ -160,6 +178,12 @@ valid_bonded_port_id(uint8_t port_id);
 
 int
 valid_slave_port_id(uint8_t port_id);
+
+void
+deactivate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id);
+
+void
+activate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id);
 
 void
 link_properties_set(struct rte_eth_dev *bonded_eth_dev,
@@ -173,6 +197,9 @@ link_properties_valid(struct rte_eth_link *bonded_dev_link,
 
 int
 mac_address_set(struct rte_eth_dev *eth_dev, struct ether_addr *new_mac_addr);
+
+int
+mac_address_get(struct rte_eth_dev *eth_dev, struct ether_addr *dst_mac_addr);
 
 int
 mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev);

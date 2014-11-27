@@ -77,6 +77,25 @@ extern "C" {
  * In this mode all transmitted packets will be transmitted on all available
  * active slaves of the bonded. */
 #endif
+#define BONDING_MODE_8023AD				(4)
+/**< 802.3AD (Mode 4).
+ *
+ * This mode provides auto negotiation/configuration
+ * of peers and well as link status changes monitoring using out of band
+ * LACP (link aggregation control protocol) messages. For further details of
+ * LACP specification see the IEEE 802.3ad/802.1AX standards. It is also
+ * described here
+ * https://www.kernel.org/doc/Documentation/networking/bonding.txt.
+ *
+ * Important Usage Notes:
+ * - for LACP mode to work the rx/tx burst functions must be invoked
+ * at least once every 100ms, otherwise the out-of-band LACP messages will not
+ * be handled with the expected latency and this may cause the link status to be
+ * incorrectly marked as down or failure to correctly negotiate with peers.
+ * - For optimal performance during initial handshaking the array of mbufs provided
+ * to rx_burst should be at least 2 times the slave count size.
+ *
+ */
 /* Balance Mode Transmit Policies */
 #define BALANCE_XMIT_POLICY_LAYER2		(0)
 /**< Layer 2 (Ethernet MAC) */

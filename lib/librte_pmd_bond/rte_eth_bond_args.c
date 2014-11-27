@@ -173,6 +173,7 @@ bond_ethdev_parse_slave_mode_kvarg(const char *key __rte_unused,
 #ifdef RTE_MBUF_REFCNT
 	case BONDING_MODE_BROADCAST:
 #endif
+	case BONDING_MODE_8023AD:
 		return 0;
 	default:
 		RTE_BOND_LOG(ERR, "Invalid slave mode value (%s) specified", value);

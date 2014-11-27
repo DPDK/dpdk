@@ -328,6 +328,7 @@ struct vxlan_hdr {
 #define ETHER_TYPE_RARP 0x8035 /**< Reverse Arp Protocol. */
 #define ETHER_TYPE_VLAN 0x8100 /**< IEEE 802.1Q VLAN tagging. */
 #define ETHER_TYPE_1588 0x88F7 /**< IEEE 802.1AS 1588 Precise Time Protocol. */
+#define ETHER_TYPE_SLOW 0x8809 /**< Slow protocols (LACP and Marker). */
 
 #define ETHER_VXLAN_HLEN (sizeof(struct udp_hdr) + sizeof(struct vxlan_hdr))
 /**< VXLAN tunnel header length. */

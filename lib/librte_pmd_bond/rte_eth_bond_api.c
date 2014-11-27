@@ -31,6 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <string.h>
+
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
@@ -38,6 +40,7 @@
 
 #include "rte_eth_bond.h"
 #include "rte_eth_bond_private.h"
+#include "rte_eth_bond_8023ad_private.h"
 
 #define DEFAULT_POLLING_INTERVAL_10_MS (10)
 
@@ -102,6 +105,49 @@ valid_slave_port_id(uint8_t port_id)
 		return -1;
 
 	return 0;
+}
+
+void
+activate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
+{
+	struct bond_dev_private *internals = eth_dev->data->dev_private;
+
+	if (internals->mode == BONDING_MODE_8023AD)
+		bond_mode_8023ad_activate_slave(eth_dev, port_id);
+
+	internals->active_slaves[internals->active_slave_count] = port_id;
+	internals->active_slave_count++;
+}
+
+void
+deactivate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
+{
+	uint8_t slave_pos;
+	struct bond_dev_private *internals = eth_dev->data->dev_private;
+	uint8_t active_count = internals->active_slave_count;
+
+	if (internals->mode == BONDING_MODE_8023AD) {
+		bond_mode_8023ad_stop(eth_dev);
+		bond_mode_8023ad_deactivate_slave(eth_dev, port_id);
+	}
+
+	slave_pos = find_slave_by_id(internals->active_slaves, active_count,
+			port_id);
+
+	/* If slave was not at the end of the list
+	 * shift active slaves up active array list */
+	if (slave_pos < active_count) {
+		active_count--;
+		memmove(internals->active_slaves + slave_pos,
+				internals->active_slaves + slave_pos + 1,
+				(active_count - slave_pos) *
+					sizeof(internals->active_slaves[0]));
+	}
+
+	internals->active_slave_count = active_count;
+
+	if (eth_dev->data->dev_started && internals->mode == BONDING_MODE_8023AD)
+		bond_mode_8023ad_start(eth_dev);
 }
 
 uint8_t
@@ -216,15 +262,10 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	eth_dev->dev_ops = &default_dev_ops;
 	eth_dev->pci_dev = pci_dev;
 
-	if (bond_ethdev_mode_set(eth_dev, mode)) {
-		RTE_BOND_LOG(ERR, "Failed to set bonded device %d mode too %d",
-				 eth_dev->data->port_id, mode);
-		goto err;
-	}
-
 	rte_spinlock_init(&internals->lock);
 
 	internals->port_id = eth_dev->data->port_id;
+	internals->mode = BONDING_MODE_INVALID;
 	internals->current_primary_port = 0;
 	internals->balance_xmit_policy = BALANCE_XMIT_POLICY_LAYER2;
 	internals->user_defined_mac = 0;
@@ -241,6 +282,14 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 
 	memset(internals->active_slaves, 0, sizeof(internals->active_slaves));
 	memset(internals->slaves, 0, sizeof(internals->slaves));
+
+	/* Set mode 4 default configuration */
+	bond_mode_8023ad_setup(eth_dev, NULL);
+	if (bond_ethdev_mode_set(eth_dev, mode)) {
+		RTE_BOND_LOG(ERR, "Failed to set bonded device %d mode too %d",
+				 eth_dev->data->port_id, mode);
+		goto err;
+	}
 
 	return eth_dev->data->port_id;
 
@@ -349,13 +398,11 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 		rte_eth_link_get_nowait(slave_port_id, &link_props);
 
 		 if (link_props.link_status == 1)
-			internals->active_slaves[internals->active_slave_count++] =
-					slave_port_id;
+			activate_slave(bonded_eth_dev, slave_port_id);
 	}
 	return 0;
 
 }
-
 
 int
 rte_eth_bond_slave_add(uint8_t bonded_port_id, uint8_t slave_port_id)
@@ -381,31 +428,26 @@ rte_eth_bond_slave_add(uint8_t bonded_port_id, uint8_t slave_port_id)
 	return retval;
 }
 
-
 static int
 __eth_bond_slave_remove_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 {
+	struct rte_eth_dev *bonded_eth_dev;
 	struct bond_dev_private *internals;
 
-	int i, slave_idx = -1;
+	int i, slave_idx;
 
 	if (valid_slave_port_id(slave_port_id) != 0)
 		return -1;
 
-	internals = rte_eth_devices[bonded_port_id].data->dev_private;
+	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
+	internals = bonded_eth_dev->data->dev_private;
 
 	/* first remove from active slave list */
-	for (i = 0; i < internals->active_slave_count; i++) {
-		if (internals->active_slaves[i] == slave_port_id)
-			slave_idx = i;
+	slave_idx = find_slave_by_id(internals->active_slaves,
+		internals->active_slave_count, slave_port_id);
 
-		/* shift active slaves up active array list */
-		if (slave_idx >= 0 && i < (internals->active_slave_count - 1))
-			internals->active_slaves[i] = internals->active_slaves[i+1];
-	}
-
-	if (slave_idx >= 0)
-		internals->active_slave_count--;
+	if (slave_idx < internals->active_slave_count)
+		deactivate_slave(bonded_eth_dev, slave_port_id);
 
 	slave_idx = -1;
 	/* now find in slave list */
@@ -539,11 +581,12 @@ rte_eth_bond_primary_get(uint8_t bonded_port_id)
 
 	return internals->current_primary_port;
 }
+
 int
 rte_eth_bond_slaves_get(uint8_t bonded_port_id, uint8_t slaves[], uint8_t len)
 {
 	struct bond_dev_private *internals;
-	int i;
+	uint8_t i;
 
 	if (valid_bonded_port_id(bonded_port_id) != 0)
 		return -1;
@@ -675,7 +718,6 @@ rte_eth_bond_xmit_policy_get(uint8_t bonded_port_id)
 	return internals->balance_xmit_policy;
 }
 
-
 int
 rte_eth_bond_link_monitoring_set(uint8_t bonded_port_id, uint32_t internal_ms)
 {
@@ -730,7 +772,6 @@ rte_eth_bond_link_down_prop_delay_get(uint8_t bonded_port_id)
 
 	return internals->link_down_delay_ms;
 }
-
 
 int
 rte_eth_bond_link_up_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms)
