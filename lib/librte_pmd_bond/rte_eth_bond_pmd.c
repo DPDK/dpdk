@@ -1167,6 +1167,8 @@ static int bond_ethdev_configure(struct rte_eth_dev *dev);
 static void
 bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
+	struct bond_dev_private *internals = dev->data->dev_private;
+
 	dev_info->driver_name = driver_name;
 	dev_info->max_mac_addrs = 1;
 
@@ -1177,6 +1179,9 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->min_rx_bufsize = 0;
 	dev_info->pci_dev = dev->pci_dev;
+
+	dev_info->rx_offload_capa = internals->rx_offload_capa;
+	dev_info->tx_offload_capa = internals->tx_offload_capa;
 }
 
 static int

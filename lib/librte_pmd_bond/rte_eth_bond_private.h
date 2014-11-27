@@ -147,6 +147,9 @@ struct bond_dev_private {
 
 	struct mode8023ad_private mode4;
 
+	uint32_t rx_offload_capa;            /** Rx offload capability */
+	uint32_t tx_offload_capa;            /** Tx offload capability */
+
 	struct rte_kvargs *kvlist;
 	uint8_t slave_update_idx;
 };

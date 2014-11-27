@@ -279,6 +279,8 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 
 	internals->slave_count = 0;
 	internals->active_slave_count = 0;
+	internals->rx_offload_capa = 0;
+	internals->tx_offload_capa = 0;
 
 	memset(internals->active_slaves, 0, sizeof(internals->active_slaves));
 	memset(internals->slaves, 0, sizeof(internals->slaves));
@@ -314,6 +316,7 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 	struct bond_dev_private *internals;
 	struct bond_dev_private *temp_internals;
 	struct rte_eth_link link_props;
+	struct rte_eth_dev_info dev_info;
 
 	int i, j;
 
@@ -345,6 +348,9 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 	/* Add slave details to bonded device */
 	slave_add(internals, slave_eth_dev);
 
+	memset(&dev_info, 0, sizeof(dev_info));
+	rte_eth_dev_info_get(slave_port_id, &dev_info);
+
 	if (internals->slave_count < 1) {
 		/* if MAC is not user defined then use MAC of first slave add to
 		 * bonded device */
@@ -357,6 +363,11 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 
 		/* Make primary slave */
 		internals->primary_port = slave_port_id;
+
+		/* Take the first dev's offload capabilities */
+		internals->rx_offload_capa = dev_info.rx_offload_capa;
+		internals->tx_offload_capa = dev_info.tx_offload_capa;
+
 	} else {
 		/* Check slave link properties are supported if props are set,
 		 * all slaves must be the same */
@@ -372,6 +383,8 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 			link_properties_set(bonded_eth_dev,
 					&(slave_eth_dev->data->dev_link));
 		}
+		internals->rx_offload_capa &= dev_info.rx_offload_capa;
+		internals->tx_offload_capa &= dev_info.tx_offload_capa;
 	}
 
 	internals->slave_count++;
@@ -497,7 +510,10 @@ __eth_bond_slave_remove_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 			memset(rte_eth_devices[bonded_port_id].data->mac_addrs, 0,
 					sizeof(*(rte_eth_devices[bonded_port_id].data->mac_addrs)));
 	}
-
+	if (internals->slave_count == 0) {
+		internals->rx_offload_capa = 0;
+		internals->tx_offload_capa = 0;
+	}
 	return 0;
 }
 
