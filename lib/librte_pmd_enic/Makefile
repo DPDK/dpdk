@@ -37,7 +37,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_pmd_enic.a
 
-CFLAGS += -I$(RTE_SDK)/lib/librte_hash/ -I$(RTE_SDK)/lib/librte_pmd_enic/vnic/
+CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_enic/vnic/
 CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_enic/
 CFLAGS += -O3 -Wno-deprecated
 
@@ -57,10 +57,10 @@ SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += vnic/vnic_intr.c
 SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += vnic/vnic_rq.c
 SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += vnic/vnic_rss.c
 
-
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += lib/librte_eal lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += lib/librte_mempool lib/librte_mbuf
 DEPDIRS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += lib/librte_net lib/librte_malloc
+DEPDIRS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += lib/librte_hash
 
 include $(RTE_SDK)/mk/rte.lib.mk
