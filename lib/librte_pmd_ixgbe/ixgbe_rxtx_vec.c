@@ -71,6 +71,8 @@ ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
 						dma_addr0);
 			}
 		}
+		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
+			RTE_IXGBE_RXQ_REARM_THRESH;
 		return;
 	}
 
