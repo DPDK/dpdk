@@ -585,7 +585,7 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 
 	/* Allocate additional packets in case 8023AD mode. */
 	struct rte_mbuf *slave_bufs[RTE_MAX_ETHPORTS][buffs_size];
-	void *slow_pkts[BOND_MODE_8023AX_SLAVE_TX_PKTS];
+	void *slow_pkts[BOND_MODE_8023AX_SLAVE_TX_PKTS] = { NULL };
 
 	/* Total amount of packets in slave_bufs */
 	uint16_t slave_nb_pkts[RTE_MAX_ETHPORTS] = { 0 };
