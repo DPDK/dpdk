@@ -172,17 +172,17 @@ unsigned int enic_cleanup_wq(struct enic *enic, struct vnic_wq *wq)
 
 int enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
 	struct rte_mbuf *tx_pkt, unsigned short len,
-	u_int8_t sop, u_int8_t eop,
-	u_int16_t ol_flags, u_int16_t vlan_tag)
+	uint8_t sop, uint8_t eop,
+	uint16_t ol_flags, uint16_t vlan_tag)
 {
 	struct wq_enet_desc *desc = vnic_wq_next_desc(wq);
-	u_int16_t mss = 0;
-	u_int16_t header_length = 0;
-	u_int8_t cq_entry = eop;
-	u_int8_t vlan_tag_insert = 0;
+	uint16_t mss = 0;
+	uint16_t header_length = 0;
+	uint8_t cq_entry = eop;
+	uint8_t vlan_tag_insert = 0;
 	unsigned char *buf = (unsigned char *)(tx_pkt->buf_addr) +
 	    RTE_PKTMBUF_HEADROOM;
-	u_int64_t bus_addr = (dma_addr_t)
+	uint64_t bus_addr = (dma_addr_t)
 	    (tx_pkt->buf_physaddr + RTE_PKTMBUF_HEADROOM);
 
 	if (sop) {
@@ -342,8 +342,8 @@ static int enic_rq_alloc_buf(struct vnic_rq *rq)
 	void *buf;
 	dma_addr_t dma_addr;
 	struct rq_enet_desc *desc = vnic_rq_next_desc(rq);
-	u_int8_t type = RQ_ENET_TYPE_ONLY_SOP;
-	u_int16_t len = ENIC_MAX_MTU + VLAN_ETH_HLEN;
+	uint8_t type = RQ_ENET_TYPE_ONLY_SOP;
+	uint16_t len = ENIC_MAX_MTU + VLAN_ETH_HLEN;
 	u16 split_hdr_size = vnic_get_hdr_split_size(enic->vdev);
 	struct rte_mbuf *mbuf = enic_rxmbuf_alloc(rq->mp);
 	struct rte_mbuf *hdr_mbuf = NULL;

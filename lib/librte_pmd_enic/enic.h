@@ -106,7 +106,7 @@ struct enic {
 	int iommu_group_fd;
 	int iommu_groupid;
 	int eventfd;
-	u_int8_t mac_addr[ETH_ALEN];
+	uint8_t mac_addr[ETH_ALEN];
 	pthread_t err_intr_thread;
 	int promisc;
 	int allmulti;

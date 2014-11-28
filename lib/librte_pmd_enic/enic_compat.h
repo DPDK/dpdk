@@ -89,34 +89,34 @@ typedef		unsigned int        u32;
 typedef         unsigned long long  u64;
 typedef         unsigned long long  dma_addr_t;
 
-static inline u_int32_t ioread32(volatile void *addr)
+static inline uint32_t ioread32(volatile void *addr)
 {
-	return *(volatile u_int32_t *)addr;
+	return *(volatile uint32_t *)addr;
 }
 
-static inline u16 ioread16(volatile void *addr)
+static inline uint16_t ioread16(volatile void *addr)
 {
-	return *(volatile u16 *)addr;
+	return *(volatile uint16_t *)addr;
 }
 
-static inline u_int8_t ioread8(volatile void *addr)
+static inline uint8_t ioread8(volatile void *addr)
 {
-	return *(volatile u_int8_t *)addr;
+	return *(volatile uint8_t *)addr;
 }
 
-static inline void iowrite32(u_int32_t val, volatile void *addr)
+static inline void iowrite32(uint32_t val, volatile void *addr)
 {
-	*(volatile u_int32_t *)addr = val;
+	*(volatile uint32_t *)addr = val;
 }
 
-static inline void iowrite16(u16 val, volatile void *addr)
+static inline void iowrite16(uint16_t val, volatile void *addr)
 {
-	*(volatile u16 *)addr = val;
+	*(volatile uint16_t *)addr = val;
 }
 
-static inline void iowrite8(u_int8_t val, volatile void *addr)
+static inline void iowrite8(uint8_t val, volatile void *addr)
 {
-	*(volatile u_int8_t *)addr = val;
+	*(volatile uint8_t *)addr = val;
 }
 
 static inline unsigned int readl(volatile void __iomem *addr)
