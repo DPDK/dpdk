@@ -154,4 +154,44 @@ static inline struct enic *pmd_priv(struct rte_eth_dev *eth_dev)
 	return (struct enic *)eth_dev->data->dev_private;
 }
 
+extern int enic_fdir_add_fltr(struct enic *enic,
+	struct rte_fdir_filter *params, u16 queue, u8 drop);
+extern int enic_fdir_del_fltr(struct enic *enic,
+	struct rte_fdir_filter *params);
+extern void enic_free_wq(void *txq);
+extern int enic_alloc_intr_resources(struct enic *enic);
+extern int enic_setup_finish(struct enic *enic);
+extern int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
+	unsigned int socket_id, uint16_t nb_desc);
+extern void enic_start_wq(struct enic *enic, uint16_t queue_idx);
+extern int enic_stop_wq(struct enic *enic, uint16_t queue_idx);
+extern void enic_start_rq(struct enic *enic, uint16_t queue_idx);
+extern int enic_stop_rq(struct enic *enic, uint16_t queue_idx);
+extern void enic_free_rq(void *rxq);
+extern int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
+	unsigned int socket_id, struct rte_mempool *mp,
+	uint16_t nb_desc);
+extern int enic_set_rss_nic_cfg(struct enic *enic);
+extern int enic_set_vnic_res(struct enic *enic);
+extern void enic_set_hdr_split_size(struct enic *enic, u16 split_hdr_size);
+extern int enic_enable(struct enic *enic);
+extern int enic_disable(struct enic *enic);
+extern void enic_remove(struct enic *enic);
+extern int enic_get_link_status(struct enic *enic);
+extern void enic_dev_stats_get(struct enic *enic,
+	struct rte_eth_stats *r_stats);
+extern void enic_dev_stats_clear(struct enic *enic);
+extern void enic_add_packet_filter(struct enic *enic);
+extern void enic_set_mac_address(struct enic *enic, uint8_t *mac_addr);
+extern void enic_del_mac_address(struct enic *enic);
+extern unsigned int enic_cleanup_wq(struct enic *enic, struct vnic_wq *wq);
+extern int enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
+	struct rte_mbuf *tx_pkt, unsigned short len,
+	uint8_t sop, uint8_t eop,
+	uint16_t ol_flags, uint16_t vlan_tag);
+extern int enic_poll(struct vnic_rq *rq, struct rte_mbuf **rx_pkts,
+	unsigned int budget, unsigned int *work_done);
+extern int enic_probe(struct enic *enic);
+extern int enic_clsf_init(struct enic *enic);
+extern void enic_clsf_destroy(struct enic *enic);
 #endif /* _ENIC_H_ */

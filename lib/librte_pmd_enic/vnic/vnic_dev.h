@@ -100,6 +100,12 @@ struct vnic_stats;
 void *vnic_dev_priv(struct vnic_dev *vdev);
 unsigned int vnic_dev_get_res_count(struct vnic_dev *vdev,
 	enum vnic_res_type type);
+void vnic_register_cbacks(struct vnic_dev *vdev,
+	void *(*alloc_consistent)(void *priv, size_t size,
+		dma_addr_t *dma_handle, u8 *name),
+	void (*free_consistent)(struct rte_pci_device *hwdev,
+		size_t size, void *vaddr,
+		dma_addr_t dma_handle));
 void __iomem *vnic_dev_get_res(struct vnic_dev *vdev, enum vnic_res_type type,
 	unsigned int index);
 dma_addr_t vnic_dev_get_res_bus_addr(struct vnic_dev *vdev,
@@ -113,6 +119,8 @@ unsigned long vnic_dev_get_res_type_len(struct vnic_dev *vdev,
 unsigned int vnic_dev_desc_ring_size(struct vnic_dev_ring *ring,
 	unsigned int desc_count, unsigned int desc_size);
 void vnic_dev_clear_desc_ring(struct vnic_dev_ring *ring);
+void vnic_set_hdr_split_size(struct vnic_dev *vdev, u16 size);
+u16 vnic_get_hdr_split_size(struct vnic_dev *vdev);
 int vnic_dev_alloc_desc_ring(struct vnic_dev *vdev, struct vnic_dev_ring *ring,
 	unsigned int desc_count, unsigned int desc_size, unsigned int socket_id,
 	char *z_name);
@@ -142,6 +150,7 @@ int vnic_dev_del_addr(struct vnic_dev *vdev, u8 *addr);
 int vnic_dev_get_mac_addr(struct vnic_dev *vdev, u8 *mac_addr);
 int vnic_dev_raise_intr(struct vnic_dev *vdev, u16 intr);
 int vnic_dev_notify_set(struct vnic_dev *vdev, u16 intr);
+void vnic_dev_set_reset_flag(struct vnic_dev *vdev, int state);
 int vnic_dev_notify_unset(struct vnic_dev *vdev);
 int vnic_dev_notify_setcmd(struct vnic_dev *vdev,
 	void *notify_addr, dma_addr_t notify_pa, u16 intr);

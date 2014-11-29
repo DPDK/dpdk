@@ -517,13 +517,14 @@ int vnic_dev_stats_dump(struct vnic_dev *vdev, struct vnic_stats **stats)
 {
 	u64 a0, a1;
 	int wait = 1000;
-	static instance;
+	static u32 instance;
 	char name[NAME_MAX];
 
 	if (!vdev->stats) {
-		snprintf(name, sizeof(name), "vnic_stats-%d", instance++);
+		snprintf((char *)name, sizeof(name),
+			"vnic_stats-%d", instance++);
 		vdev->stats = vdev->alloc_consistent(vdev->priv,
-			sizeof(struct vnic_stats), &vdev->stats_pa, name);
+			sizeof(struct vnic_stats), &vdev->stats_pa, (u8 *)name);
 		if (!vdev->stats)
 			return -ENOMEM;
 	}
@@ -763,7 +764,7 @@ int vnic_dev_notify_set(struct vnic_dev *vdev, u16 intr)
 	void *notify_addr;
 	dma_addr_t notify_pa;
 	char name[NAME_MAX];
-	static int instance;
+	static u32 instance;
 
 	if (vdev->notify || vdev->notify_pa) {
 		pr_warn("notify block %p still allocated.\n" \
@@ -772,10 +773,11 @@ int vnic_dev_notify_set(struct vnic_dev *vdev, u16 intr)
 	}
 
 	if (!vnic_dev_in_reset(vdev)) {
-		snprintf(name, sizeof(name), "vnic_notify-%d", instance++);
+		snprintf((char *)name, sizeof(name),
+			"vnic_notify-%d", instance++);
 		notify_addr = vdev->alloc_consistent(vdev->priv,
 			sizeof(struct vnic_devcmd_notify),
-			&notify_pa, name);
+			&notify_pa, (u8 *)name);
 		if (!notify_addr)
 			return -ENOMEM;
 	}
@@ -1028,9 +1030,10 @@ int vnic_dev_classifier(struct vnic_dev *vdev, u8 cmd, u16 *entry,
 		tlv_size = sizeof(struct filter) +
 		    sizeof(struct filter_action) +
 		    2*sizeof(struct filter_tlv);
-		snprintf(z_name, sizeof(z_name), "vnic_clsf_%d", unique_id++);
+		snprintf((char *)z_name, sizeof(z_name),
+			"vnic_clsf_%d", unique_id++);
 		tlv_va = vdev->alloc_consistent(vdev->priv,
-			tlv_size, &tlv_pa, z_name);
+			tlv_size, &tlv_pa, (u8 *)z_name);
 		if (!tlv_va)
 			return -ENOMEM;
 		tlv = tlv_va;

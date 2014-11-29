@@ -37,6 +37,7 @@
 #define _ENIC_COMPAT_H_
 
 #include <stdio.h>
+#include <unistd.h>
 
 #include <rte_atomic.h>
 #include <rte_malloc.h>

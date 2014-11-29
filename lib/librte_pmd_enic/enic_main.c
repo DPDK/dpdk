@@ -65,17 +65,17 @@ static inline int enic_is_sriov_vf(struct enic *enic)
 	return enic->pdev->id.device_id == PCI_DEVICE_ID_CISCO_VIC_ENET_VF;
 }
 
-static int is_zero_addr(char *addr)
+static int is_zero_addr(uint8_t *addr)
 {
 	return !(addr[0] |  addr[1] | addr[2] | addr[3] | addr[4] | addr[5]);
 }
 
-static int is_mcast_addr(char *addr)
+static int is_mcast_addr(uint8_t *addr)
 {
 	return addr[0] & 1;
 }
 
-static int is_eth_addr_valid(char *addr)
+static int is_eth_addr_valid(uint8_t *addr)
 {
 	return !is_mcast_addr(addr) && !is_zero_addr(addr);
 }
@@ -105,7 +105,8 @@ static const struct rte_memzone *ring_dma_zone_reserve(
 	if (mz)
 		return mz;
 
-	return rte_memzone_reserve_aligned(z_name, (uint64_t) ring_size,
+	return rte_memzone_reserve_aligned((const char *)z_name,
+		(uint64_t) ring_size,
 		socket_id, RTE_MEMZONE_1GB, ENIC_ALIGN);
 }
 
@@ -430,13 +431,14 @@ static int enic_rq_indicate_buf(struct vnic_rq *rq,
 		&ipv4_csum_ok, &ipv6, &ipv4, &ipv4_fragment,
 		&fcs_ok);
 
-	if (packet_error) {
-		dev_err(enic, "packet error\n");
-		return;
-	}
-
 	rx_pkt = (struct rte_mbuf *)buf->os_buf;
 	buf->os_buf = NULL;
+
+	if (unlikely(packet_error)) {
+		dev_err(enic, "packet error\n");
+		rx_pkt->data_len = 0;
+		return 0;
+	}
 
 	if (unlikely(skipped)) {
 		rx_pkt->data_len = 0;
@@ -563,7 +565,8 @@ void *enic_alloc_consistent(void *priv, size_t size,
 	const struct rte_memzone *rz;
 	*dma_handle = 0;
 
-	rz = rte_memzone_reserve_aligned(name, size, 0, 0, ENIC_ALIGN);
+	rz = rte_memzone_reserve_aligned((const char *)name,
+		size, 0, 0, ENIC_ALIGN);
 	if (!rz) {
 		pr_err("%s : Failed to allocate memory requested for %s",
 			__func__, name);
@@ -873,9 +876,9 @@ static int enic_set_rsskey(struct enic *enic)
 		.key[3].b = {69, 78, 73, 67, 105, 115, 99, 111, 111, 108},
 	};
 	int err;
-	char name[NAME_MAX];
+	u8 name[NAME_MAX];
 
-	snprintf(name, NAME_MAX, "rss_key-%s", enic->bdf_name);
+	snprintf((char *)name, NAME_MAX, "rss_key-%s", enic->bdf_name);
 	rss_key_buf_va = enic_alloc_consistent(enic, sizeof(union vnic_rss_key),
 		&rss_key_buf_pa, name);
 	if (!rss_key_buf_va)
@@ -899,9 +902,9 @@ static int enic_set_rsscpu(struct enic *enic, u8 rss_hash_bits)
 	union vnic_rss_cpu *rss_cpu_buf_va = NULL;
 	unsigned int i;
 	int err;
-	char name[NAME_MAX];
+	u8 name[NAME_MAX];
 
-	snprintf(name, NAME_MAX, "rss_cpu-%s", enic->bdf_name);
+	snprintf((char *)name, NAME_MAX, "rss_cpu-%s", enic->bdf_name);
 	rss_cpu_buf_va = enic_alloc_consistent(enic, sizeof(union vnic_rss_cpu),
 		&rss_cpu_buf_pa, name);
 	if (!rss_cpu_buf_va)
