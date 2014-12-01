@@ -42,7 +42,7 @@
 /* Macros to check for invlaid function pointers. */
 #define	FUNC_PTR_OR_ERR_RET(func, retval) do {              \
 	if ((func) == NULL) {                               \
-		PMD_DRV_LOG("%s:%d function not supported", \
+		PMD_DRV_LOG(ERR, "%s:%d function not supported", \
 			    __func__, __LINE__);            \
 		return retval;                            \
 	}                                                   \
@@ -50,7 +50,7 @@
 
 #define	FUNC_PTR_OR_RET(func) do {                          \
 	if ((func) == NULL) {                               \
-		PMD_DRV_LOG("%s:%d function not supported", \
+		PMD_DRV_LOG(ERR, "%s:%d function not supported", \
 			    __func__, __LINE__);            \
 		return;                                     \
 	}                                                   \
