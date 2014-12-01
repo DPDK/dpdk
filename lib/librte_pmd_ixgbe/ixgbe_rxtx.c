@@ -381,7 +381,7 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	mss_l4len_idx |= (ctx_idx << IXGBE_ADVTXD_IDX_SHIFT);
 
 	if (ol_flags & PKT_TX_VLAN_PKT) {
-		tx_offload_mask.vlan_tci = ~0;
+		tx_offload_mask.vlan_tci |= ~0;
 	}
 
 	/* check if TCP segmentation required for this packet */
@@ -391,17 +391,17 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 			IXGBE_ADVTXD_TUCMD_L4T_TCP |
 			IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
 
-		tx_offload_mask.l2_len = ~0;
-		tx_offload_mask.l3_len = ~0;
-		tx_offload_mask.l4_len = ~0;
-		tx_offload_mask.tso_segsz = ~0;
+		tx_offload_mask.l2_len |= ~0;
+		tx_offload_mask.l3_len |= ~0;
+		tx_offload_mask.l4_len |= ~0;
+		tx_offload_mask.tso_segsz |= ~0;
 		mss_l4len_idx |= tx_offload.tso_segsz << IXGBE_ADVTXD_MSS_SHIFT;
 		mss_l4len_idx |= tx_offload.l4_len << IXGBE_ADVTXD_L4LEN_SHIFT;
 	} else { /* no TSO, check if hardware checksum is needed */
 		if (ol_flags & PKT_TX_IP_CKSUM) {
 			type_tucmd_mlhl = IXGBE_ADVTXD_TUCMD_IPV4;
-			tx_offload_mask.l2_len = ~0;
-			tx_offload_mask.l3_len = ~0;
+			tx_offload_mask.l2_len |= ~0;
+			tx_offload_mask.l3_len |= ~0;
 		}
 
 		switch (ol_flags & PKT_TX_L4_MASK) {
@@ -409,23 +409,23 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_UDP |
 				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
 			mss_l4len_idx |= sizeof(struct udp_hdr) << IXGBE_ADVTXD_L4LEN_SHIFT;
-			tx_offload_mask.l2_len = ~0;
-			tx_offload_mask.l3_len = ~0;
+			tx_offload_mask.l2_len |= ~0;
+			tx_offload_mask.l3_len |= ~0;
 			break;
 		case PKT_TX_TCP_CKSUM:
 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_TCP |
 				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
 			mss_l4len_idx |= sizeof(struct tcp_hdr) << IXGBE_ADVTXD_L4LEN_SHIFT;
-			tx_offload_mask.l2_len = ~0;
-			tx_offload_mask.l3_len = ~0;
-			tx_offload_mask.l4_len = ~0;
+			tx_offload_mask.l2_len |= ~0;
+			tx_offload_mask.l3_len |= ~0;
+			tx_offload_mask.l4_len |= ~0;
 			break;
 		case PKT_TX_SCTP_CKSUM:
 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_SCTP |
 				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
 			mss_l4len_idx |= sizeof(struct sctp_hdr) << IXGBE_ADVTXD_L4LEN_SHIFT;
-			tx_offload_mask.l2_len = ~0;
-			tx_offload_mask.l3_len = ~0;
+			tx_offload_mask.l2_len |= ~0;
+			tx_offload_mask.l3_len |= ~0;
 			break;
 		default:
 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_RSV |
