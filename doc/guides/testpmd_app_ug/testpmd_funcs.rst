@@ -162,10 +162,12 @@ size is used to indicate the hardware supported reta size
 show port rss-hash
 ~~~~~~~~~~~~~~~~~~
 
-Display the RSS hash functions and RSS hash key of port (port_id).
+Display the RSS hash functions and RSS hash key of a port:
 
-show port (port_id) rss-hash [key] clear port
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+show port (port_id) rss-hash [key]
+
+clear port
+~~~~~~~~~~
 
 Clear the port statistics for a given port or for all ports:
 
