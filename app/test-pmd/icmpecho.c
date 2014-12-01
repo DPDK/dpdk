@@ -88,7 +88,7 @@ arp_op_name(uint16_t arp_op)
 }
 
 static const char *
-ip_proto_name(uint8_t ip_proto)
+ip_proto_name(uint16_t ip_proto)
 {
 	static const char * ip_proto_names[] = {
 		"IP6HOPOPTS", /**< IP6 hop-by-hop options */
