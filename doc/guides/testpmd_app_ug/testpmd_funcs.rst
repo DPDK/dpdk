@@ -150,6 +150,15 @@ For example:
         filter on
         qinq(extend) off
 
+show port rss reta
+~~~~~~~~~~~~~~~~~~
+
+Display the rss redirection table entry indicated by masks on port X:
+
+show port (port_id) rss reta (size) (mask0, mask1...)
+
+size is used to indicate the hardware supported reta size
+
 show port rss-hash
 ~~~~~~~~~~~~~~~~~~
 
@@ -456,6 +465,36 @@ Set the outer VLAN TPID for packet filtering on a port:
 
 rx_vlan set tpid (value) (port_id)
 
+tunnel_filter add
+~~~~~~~~~~~~~~~~~
+
+Add a tunnel filter on a port:
+
+tunnel_filter add (port_id) (outer_mac) (inner_mac) (ip_addr) (inner_vlan)
+ (tunnel_type) (filter_type) (tenant_id) (queue_id)
+
+tunnel_filter remove
+~~~~~~~~~~~~~~~~~~~~
+
+Remove a tunnel filter on a port:
+
+tunnel_filter rm (port_id) (outer_mac) (inner_mac) (ip_addr) (inner_vlan)
+ (tunnel_type) (filter_type) (tenant_id) (queue_id)
+
+rx_vxlan_port add
+~~~~~~~~~~~~~~~~~
+
+Add an UDP port for VXLAN packet filter on a port:
+
+rx_vxlan_port add (udp_port) (port_id)
+
+rx_vxlan_port remove
+~~~~~~~~~~~~~~~~~~~~
+
+Remove an UDP port for VXLAN packet filter on a port:
+
+rx_vxlan_port rm (udp_port) (port_id)
+
 tx_vlan set
 ~~~~~~~~~~~
 
@@ -498,6 +537,29 @@ bit 3 - if set insert sctp checksum offload
 
     Check the NIC Datasheet for hardware limits.
 
+tx_checksum show
+~~~~~~~~~~~~~~~~
+
+Display tx checksum offload configuration:
+
+tx_checksum show (port_id)
+
+tso set
+~~~~~~~
+
+Enable TCP Segmentation Offload in csum forward engine:
+
+tso set (segsize) (port_id)
+
+.. note::
+   Please check the NIC datasheet for HW limits
+
+tso show
+~~~~~~~~
+
+Display the status of TCP Segmentation Offload:
+
+tso show (port_id)
 
 set fwd
 ~~~~~~~
@@ -634,6 +696,14 @@ set port - rx/tx(for VF)
 Set VF receive/transmit from a port:
 
 set port (port_id) vf (vf_id) (rx|tx) (on|off)
+
+set port - mac address filter (for VF)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add/Remove unicast or multicast MAC addr filter for a VF:
+
+set port (port_id) vf (vf_id) (mac_addr)
+ (exact-mac|exact-mac-vlan|hashmac|hashmac-vlan) (on|off)
 
 set port - rx mode(for VF)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1060,6 +1130,15 @@ port close
 Close all ports or a specific port:
 
 port close (port_id|all)
+
+port start/stop queue
+~~~~~~~~~~~~~~~~~~~~~
+
+Start/stop a rx/tx queue on a specific port:
+
+port (port_id) (rxq|txq) (queue_id) (start|stop)
+
+Only take effect when port is started.
 
 port config - speed
 ~~~~~~~~~~~~~~~~~~~
