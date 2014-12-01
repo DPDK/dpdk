@@ -516,22 +516,17 @@ Disable hardware insertion of a VLAN header in packets sent on a port:
 
 tx_vlan reset (port_id)
 
-tx_checksum set mask
-~~~~~~~~~~~~~~~~~~~~
+tx_checksum set
+~~~~~~~~~~~~~~~
 
-Enable hardware insertion of checksum offload with a 4-bit mask, 0x0 - 0xF, in packets sent on a port:
+Select hardware or software calculation of the checksum when
+transmitting a packet using the csum forward engine:
 
-tx_checksum set (mask) (port_id)
+tx_cksum set (ip|udp|tcp|sctp|vxlan)
 
-The bits in the mask are:
-
-bit 0 - if set insert ip checksum offload
-
-bit 1 - if set insert udp checksum offload
-
-bit 2 - if set insert tcp checksum offload
-
-bit 3 - if set insert sctp checksum offload
+ip|udp|tcp|sctp always concern the inner layer.
+vxlan concerns the outer IP and UDP layer (in case the packet
+is recognized as a vxlan packet by the forward engine)
 
 .. note::
 
