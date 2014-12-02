@@ -267,7 +267,8 @@ void vnic_dev_clear_desc_ring(struct vnic_dev_ring *ring)
 	memset(ring->descs, 0, ring->size);
 }
 
-int vnic_dev_alloc_desc_ring(struct vnic_dev *vdev, struct vnic_dev_ring *ring,
+int vnic_dev_alloc_desc_ring(__attribute__((unused)) struct vnic_dev *vdev,
+	struct vnic_dev_ring *ring,
 	unsigned int desc_count, unsigned int desc_size, unsigned int socket_id,
 	char *z_name)
 {
@@ -305,7 +306,8 @@ int vnic_dev_alloc_desc_ring(struct vnic_dev *vdev, struct vnic_dev_ring *ring,
 	return 0;
 }
 
-void vnic_dev_free_desc_ring(struct vnic_dev *vdev, struct vnic_dev_ring *ring)
+void vnic_dev_free_desc_ring(__attribute__((unused))  struct vnic_dev *vdev,
+	struct vnic_dev_ring *ring)
 {
 	if (ring->descs)
 		ring->descs = NULL;
@@ -761,7 +763,7 @@ int vnic_dev_notify_setcmd(struct vnic_dev *vdev,
 
 int vnic_dev_notify_set(struct vnic_dev *vdev, u16 intr)
 {
-	void *notify_addr;
+	void *notify_addr = NULL;
 	dma_addr_t notify_pa;
 	char name[NAME_MAX];
 	static u32 instance;
@@ -971,20 +973,6 @@ err_out:
 struct rte_pci_device *vnic_dev_get_pdev(struct vnic_dev *vdev)
 {
 	return vdev->pdev;
-}
-
-static int vnic_dev_cmd_status(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd,
-	int *status)
-{
-	u64 a0 = cmd, a1 = 0;
-	int wait = 1000;
-	int ret;
-
-	ret = vnic_dev_cmd(vdev, CMD_STATUS, &a0, &a1, wait);
-	if (!ret)
-		*status = (int)a0;
-
-	return ret;
 }
 
 int vnic_dev_set_mac_addr(struct vnic_dev *vdev, u8 *mac_addr)

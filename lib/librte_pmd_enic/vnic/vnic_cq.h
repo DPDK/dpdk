@@ -103,7 +103,6 @@ static inline unsigned int vnic_cq_service(struct vnic_cq *cq,
 	u8 type, color;
 	struct rte_mbuf **rx_pkts = opaque;
 	unsigned int ret;
-	unsigned int split_hdr_size = vnic_get_hdr_split_size(cq->vdev);
 
 	cq_desc = (struct cq_desc *)((u8 *)cq->ring.descs +
 		cq->ring.desc_size * cq->to_clean);

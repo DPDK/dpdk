@@ -134,7 +134,7 @@ struct enic {
 	unsigned int intr_count;
 };
 
-static inline unsigned int enic_cq_rq(struct enic *enic, unsigned int rq)
+static inline unsigned int enic_cq_rq(__rte_unused struct enic *enic, unsigned int rq)
 {
 	return rq;
 }
@@ -144,7 +144,7 @@ static inline unsigned int enic_cq_wq(struct enic *enic, unsigned int wq)
 	return enic->rq_count + wq;
 }
 
-static inline unsigned int enic_msix_err_intr(struct enic *enic)
+static inline unsigned int enic_msix_err_intr(__rte_unused struct enic *enic)
 {
 	return 0;
 }

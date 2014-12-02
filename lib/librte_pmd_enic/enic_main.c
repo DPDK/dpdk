@@ -90,32 +90,12 @@ enic_rxmbuf_alloc(struct rte_mempool *mp)
 	return m;
 }
 
-static const struct rte_memzone *ring_dma_zone_reserve(
-	struct rte_eth_dev *dev, const char *ring_name,
-	uint16_t queue_id, uint32_t ring_size, int socket_id)
-{
-	char z_name[RTE_MEMZONE_NAMESIZE];
-	const struct rte_memzone *mz;
-
-	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		dev->driver->pci_drv.name, ring_name,
-		dev->data->port_id, queue_id);
-
-	mz = rte_memzone_lookup(z_name);
-	if (mz)
-		return mz;
-
-	return rte_memzone_reserve_aligned((const char *)z_name,
-		(uint64_t) ring_size,
-		socket_id, RTE_MEMZONE_1GB, ENIC_ALIGN);
-}
-
 void enic_set_hdr_split_size(struct enic *enic, u16 split_hdr_size)
 {
 	vnic_set_hdr_split_size(enic->vdev, split_hdr_size);
 }
 
-static void enic_free_wq_buf(struct vnic_wq *wq, struct vnic_wq_buf *buf)
+static void enic_free_wq_buf(__rte_unused struct vnic_wq *wq, struct vnic_wq_buf *buf)
 {
 	struct rte_mbuf *mbuf = (struct rte_mbuf *)buf->os_buf;
 
@@ -124,13 +104,15 @@ static void enic_free_wq_buf(struct vnic_wq *wq, struct vnic_wq_buf *buf)
 }
 
 static void enic_wq_free_buf(struct vnic_wq *wq,
-	struct cq_desc *cq_desc, struct vnic_wq_buf *buf, void *opaque)
+	__rte_unused struct cq_desc *cq_desc,
+	struct vnic_wq_buf *buf,
+	__rte_unused void *opaque)
 {
 	enic_free_wq_buf(wq, buf);
 }
 
 static int enic_wq_service(struct vnic_dev *vdev, struct cq_desc *cq_desc,
-	u8 type, u16 q_number, u16 completed_index, void *opaque)
+	__rte_unused u8 type, u16 q_number, u16 completed_index, void *opaque)
 {
 	struct enic *enic = vnic_dev_priv(vdev);
 
@@ -178,11 +160,8 @@ int enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
 {
 	struct wq_enet_desc *desc = vnic_wq_next_desc(wq);
 	uint16_t mss = 0;
-	uint16_t header_length = 0;
 	uint8_t cq_entry = eop;
 	uint8_t vlan_tag_insert = 0;
-	unsigned char *buf = (unsigned char *)(tx_pkt->buf_addr) +
-	    RTE_PKTMBUF_HEADROOM;
 	uint64_t bus_addr = (dma_addr_t)
 	    (tx_pkt->buf_physaddr + RTE_PKTMBUF_HEADROOM);
 
@@ -282,10 +261,9 @@ void enic_set_mac_address(struct enic *enic, uint8_t *mac_addr)
 	}
 }
 
-static void enic_free_rq_buf(struct vnic_rq *rq, struct vnic_rq_buf *buf)
+static void
+enic_free_rq_buf(__rte_unused struct vnic_rq *rq, struct vnic_rq_buf *buf)
 {
-	struct enic *enic = vnic_dev_priv(rq->vdev);
-
 	if (!buf->os_buf)
 		return;
 
@@ -297,8 +275,7 @@ void enic_init_vnic_resources(struct enic *enic)
 {
 	unsigned int error_interrupt_enable = 1;
 	unsigned int error_interrupt_offset = 0;
-	int index = 0;
-	unsigned int cq_index = 0;
+	unsigned int index = 0;
 
 	for (index = 0; index < enic->rq_count; index++) {
 		vnic_rq_init(&enic->rq[index],
@@ -340,11 +317,9 @@ void enic_init_vnic_resources(struct enic *enic)
 static int enic_rq_alloc_buf(struct vnic_rq *rq)
 {
 	struct enic *enic = vnic_dev_priv(rq->vdev);
-	void *buf;
 	dma_addr_t dma_addr;
 	struct rq_enet_desc *desc = vnic_rq_next_desc(rq);
 	uint8_t type = RQ_ENET_TYPE_ONLY_SOP;
-	uint16_t len = ENIC_MAX_MTU + VLAN_ETH_HLEN;
 	u16 split_hdr_size = vnic_get_hdr_split_size(enic->vdev);
 	struct rte_mbuf *mbuf = enic_rxmbuf_alloc(rq->mp);
 	struct rte_mbuf *hdr_mbuf = NULL;
@@ -368,7 +343,6 @@ static int enic_rq_alloc_buf(struct vnic_rq *rq)
 		}
 
 		hdr_mbuf->data_off = RTE_PKTMBUF_HEADROOM;
-		buf = rte_pktmbuf_mtod(hdr_mbuf, void *);
 
 		hdr_mbuf->nb_segs = 2;
 		hdr_mbuf->port = rq->index;
@@ -390,7 +364,6 @@ static int enic_rq_alloc_buf(struct vnic_rq *rq)
 	}
 
 	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
-	buf = rte_pktmbuf_mtod(mbuf, void *);
 	mbuf->next = NULL;
 
 	dma_addr = (dma_addr_t)
@@ -525,7 +498,7 @@ static int enic_rq_indicate_buf(struct vnic_rq *rq,
 }
 
 static int enic_rq_service(struct vnic_dev *vdev, struct cq_desc *cq_desc,
-	u8 type, u16 q_number, u16 completed_index, void *opaque)
+	__rte_unused u8 type, u16 q_number, u16 completed_index, void *opaque)
 {
 	struct enic *enic = vnic_dev_priv(vdev);
 
@@ -557,10 +530,10 @@ int enic_poll(struct vnic_rq *rq, struct rte_mbuf **rx_pkts,
 	return err;
 }
 
-void *enic_alloc_consistent(void *priv, size_t size,
+static void *
+enic_alloc_consistent(__rte_unused void *priv, size_t size,
 	dma_addr_t *dma_handle, u8 *name)
 {
-	struct enic *enic = (struct enic *)priv;
 	void *vaddr;
 	const struct rte_memzone *rz;
 	*dma_handle = 0;
@@ -579,13 +552,17 @@ void *enic_alloc_consistent(void *priv, size_t size,
 	return vaddr;
 }
 
-void enic_free_consistent(struct rte_pci_device *hwdev, size_t size,
-	void *vaddr, dma_addr_t dma_handle)
+static void
+enic_free_consistent(__rte_unused struct rte_pci_device *hwdev,
+	__rte_unused size_t size,
+	__rte_unused void *vaddr,
+	__rte_unused dma_addr_t dma_handle)
 {
 	/* Nothing to be done */
 }
 
-void enic_intr_handler(__rte_unused struct rte_intr_handle *handle,
+static void
+enic_intr_handler(__rte_unused struct rte_intr_handle *handle,
 	void *arg)
 {
 	struct enic *enic = pmd_priv((struct rte_eth_dev *)arg);
@@ -598,10 +575,7 @@ void enic_intr_handler(__rte_unused struct rte_intr_handle *handle,
 
 int enic_enable(struct enic *enic)
 {
-	int index;
-	void *res;
-	char mz_name[RTE_MEMZONE_NAMESIZE];
-	const struct rte_memzone *rmz;
+	unsigned int index;
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 
 	eth_dev->data->dev_link.link_speed = vnic_dev_port_speed(enic->vdev);
@@ -869,11 +843,11 @@ static int enic_set_rsskey(struct enic *enic)
 {
 	dma_addr_t rss_key_buf_pa;
 	union vnic_rss_key *rss_key_buf_va = NULL;
-	union vnic_rss_key rss_key = {
-		.key[0].b = {85, 67, 83, 97, 119, 101, 115, 111, 109, 101},
-		.key[1].b = {80, 65, 76, 79, 117, 110, 105, 113, 117, 101},
-		.key[2].b = {76, 73, 78, 85, 88, 114, 111, 99, 107, 115},
-		.key[3].b = {69, 78, 73, 67, 105, 115, 99, 111, 111, 108},
+	static union vnic_rss_key rss_key = {
+		.key[0] = {.b = {85, 67, 83, 97, 119, 101, 115, 111, 109, 101}},
+		.key[1] = {.b = {80, 65, 76, 79, 117, 110, 105, 113, 117, 101}},
+		.key[2] = {.b = {76, 73, 78, 85, 88, 114, 111, 99, 107, 115}},
+		.key[3] = {.b = {69, 78, 73, 67, 105, 115, 99, 111, 111, 108}},
 	};
 	int err;
 	u8 name[NAME_MAX];
@@ -900,7 +874,7 @@ static int enic_set_rsscpu(struct enic *enic, u8 rss_hash_bits)
 {
 	dma_addr_t rss_cpu_buf_pa;
 	union vnic_rss_cpu *rss_cpu_buf_va = NULL;
-	unsigned int i;
+	int i;
 	int err;
 	u8 name[NAME_MAX];
 
@@ -1105,7 +1079,6 @@ static void enic_clear_intr_mode(struct enic *enic)
 
 static void enic_dev_deinit(struct enic *enic)
 {
-	unsigned int i;
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 
 	if (eth_dev->data->mac_addrs)
@@ -1140,7 +1113,6 @@ int enic_set_vnic_res(struct enic *enic)
 
 static int enic_dev_init(struct enic *enic)
 {
-	unsigned int i;
 	int err;
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 
@@ -1189,10 +1161,7 @@ static int enic_dev_init(struct enic *enic)
 
 int enic_probe(struct enic *enic)
 {
-	const char *bdf = enic->bdf_name;
 	struct rte_pci_device *pdev = enic->pdev;
-	struct rte_eth_dev *eth_dev = enic->rte_dev;
-	unsigned int i;
 	int err = -1;
 
 	dev_info(enic, " Initializing ENIC PMD version %s\n", DRV_VERSION);

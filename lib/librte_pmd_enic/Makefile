@@ -39,7 +39,8 @@ LIB = librte_pmd_enic.a
 
 CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_enic/vnic/
 CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_enic/
-CFLAGS += -O3 -Wno-deprecated
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS) -Wno-strict-aliasing
 
 VPATH += $(RTE_SDK)/lib/librte_pmd_enic/src
 

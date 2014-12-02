@@ -67,7 +67,7 @@ RTE_PCI_DEV_ID_DECL_ENIC(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_CISCO_VIC_ENET_VF)
 
 static int enicpmd_fdir_remove_perfect_filter(struct rte_eth_dev *eth_dev,
 		struct rte_fdir_filter *fdir_filter,
-		uint16_t soft_id)
+		__rte_unused uint16_t soft_id)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 
@@ -76,7 +76,7 @@ static int enicpmd_fdir_remove_perfect_filter(struct rte_eth_dev *eth_dev,
 }
 
 static int enicpmd_fdir_add_perfect_filter(struct rte_eth_dev *eth_dev,
-	struct rte_fdir_filter *fdir_filter, uint16_t soft_id,
+	struct rte_fdir_filter *fdir_filter, __rte_unused uint16_t soft_id,
 	uint8_t queue, uint8_t drop)
 {
 	struct enic *enic = pmd_priv(eth_dev);
@@ -103,7 +103,7 @@ static void enicpmd_dev_tx_queue_release(void *txq)
 static int enicpmd_dev_setup_intr(struct enic *enic)
 {
 	int ret;
-	int index;
+	unsigned int index;
 
 	ENICPMD_FUNC_TRACE();
 
@@ -134,7 +134,7 @@ static int enicpmd_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 	uint16_t queue_idx,
 	uint16_t nb_desc,
 	unsigned int socket_id,
-	const struct rte_eth_txconf *tx_conf)
+	__rte_unused const struct rte_eth_txconf *tx_conf)
 {
 	int ret;
 	struct enic *enic = pmd_priv(eth_dev);
@@ -215,7 +215,7 @@ static int enicpmd_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	uint16_t queue_idx,
 	uint16_t nb_desc,
 	unsigned int socket_id,
-	const struct rte_eth_rxconf *rx_conf,
+	__rte_unused const struct rte_eth_rxconf *rx_conf,
 	struct rte_mempool *mp)
 {
 	int ret;
@@ -334,7 +334,7 @@ static void enicpmd_dev_close(struct rte_eth_dev *eth_dev)
 }
 
 static int enicpmd_dev_link_update(struct rte_eth_dev *eth_dev,
-	int wait_to_complete)
+	__rte_unused int wait_to_complete)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 	int ret;
@@ -428,7 +428,7 @@ static void enicpmd_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 
 static void enicpmd_add_mac_addr(struct rte_eth_dev *eth_dev,
 	struct ether_addr *mac_addr,
-	uint32_t index, uint32_t pool)
+	__rte_unused uint32_t index, __rte_unused uint32_t pool)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 
@@ -436,7 +436,7 @@ static void enicpmd_add_mac_addr(struct rte_eth_dev *eth_dev,
 	enic_set_mac_address(enic, mac_addr->addr_bytes);
 }
 
-static void enicpmd_remove_mac_addr(struct rte_eth_dev *eth_dev, uint32_t index)
+static void enicpmd_remove_mac_addr(struct rte_eth_dev *eth_dev, __rte_unused uint32_t index)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 
@@ -457,7 +457,6 @@ static uint16_t enicpmd_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct rte_mbuf *tx_pkt;
 	struct vnic_wq *wq = (struct vnic_wq *)tx_queue;
 	struct enic *enic = vnic_dev_priv(wq->vdev);
-	unsigned char *buf;
 	unsigned short vlan_id;
 	unsigned short ol_flags;
 
@@ -595,7 +594,8 @@ static struct eth_driver rte_enic_pmd = {
  * Invoked once at EAL init time.
  * Register as the [Poll Mode] Driver of Cisco ENIC device.
  */
-int rte_enic_pmd_init(const char *name __rte_unused,
+static int
+rte_enic_pmd_init(const char *name __rte_unused,
 	const char *params __rte_unused)
 {
 	ENICPMD_FUNC_TRACE();
