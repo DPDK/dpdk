@@ -478,7 +478,7 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 	}
 
 	/* VXLAN packet TX checksum offload */
-	if (unlikely(ol_flags & PKT_TX_VXLAN_CKSUM)) {
+	if (unlikely(ol_flags & PKT_TX_UDP_TUNNEL_PKT)) {
 		uint8_t l4tun_len;
 
 		l4tun_len = ETHER_VXLAN_HLEN + inner_l2_len;
@@ -1158,8 +1158,8 @@ i40e_calc_context_desc(uint64_t flags)
 {
 	uint64_t mask = 0ULL;
 
-	if (flags | PKT_TX_VXLAN_CKSUM)
-		mask |= PKT_TX_VXLAN_CKSUM;
+	if (flags | PKT_TX_UDP_TUNNEL_PKT)
+		mask |= PKT_TX_UDP_TUNNEL_PKT;
 
 #ifdef RTE_LIBRTE_IEEE1588
 	mask |= PKT_TX_IEEE1588_TMST;

@@ -118,7 +118,9 @@ extern "C" {
  */
 #define PKT_TX_TCP_SEG       (1ULL << 49)
 
-#define PKT_TX_VXLAN_CKSUM   (1ULL << 50) /**< TX checksum of VXLAN computed by NIC */
+/** TX packet is an UDP tunneled packet. It must be specified when using
+ *  outer checksum offload (PKT_TX_OUTER_IP_CKSUM) */
+#define PKT_TX_UDP_TUNNEL_PKT (1ULL << 50) /**< TX packet is an UDP tunneled packet */
 #define PKT_TX_IEEE1588_TMST (1ULL << 51) /**< TX IEEE1588 packet to timestamp. */
 
 /**
@@ -148,6 +150,16 @@ extern "C" {
 #define PKT_TX_IPV6          (1ULL << 56)
 
 #define PKT_TX_VLAN_PKT      (1ULL << 57) /**< TX packet is a 802.1q VLAN packet. */
+
+/** Outer IP checksum of TX packet, computed by NIC for tunneling packet.
+ *  The tunnel type must also be specified, ex: PKT_TX_UDP_TUNNEL_PKT. */
+#define PKT_TX_OUTER_IP_CKSUM   (1ULL << 58)
+
+/** Packet is outer IPv4 without requiring IP checksum offload for tunneling packet. */
+#define PKT_TX_OUTER_IPV4   (1ULL << 59)
+
+/** Tell the NIC it's an outer IPv6 packet for tunneling packet */
+#define PKT_TX_OUTER_IPV6    (1ULL << 60)
 
 /* Use final bit of flags to indicate a control mbuf */
 #define CTRL_MBUF_FLAG       (1ULL << 63) /**< Mbuf contains control data */
