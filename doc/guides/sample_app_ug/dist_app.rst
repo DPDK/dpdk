@@ -1,0 +1,177 @@
+..  BSD LICENSE
+    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+    * Neither the name of Intel Corporation nor the names of its
+    contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+    LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Distributor Sample Application
+==============================
+
+The distributor sample application is a simple example of packet distribution
+to cores using the Data Plane Development Kit (DPDK).
+
+Overview
+--------
+
+The distributor application performs the distribution of packets that are received
+on an RX_PORT to different cores. When processed by the cores, the destination
+port of a packet is the port from the enabled port mask adjacent to the one on
+which the packet was received, that is, if the first four ports are enabled
+(port mask 0xf), ports 0 and 1 RX/TX into each other, and ports 2 and 3 RX/TX
+into each other.
+
+This application can be used to benchmark performance using the traffic
+generator as shown in the figure below.
+
+.. _figure_22:
+
+**Figure 22. Performance Benchmarking Setup (Basic Environment)**
+
+|dist_perf|
+
+Compiling the Application
+-------------------------
+
+#.  Go to the sample application directory:
+
+    ..  code-block:: console
+
+        export RTE_SDK=/path/to/rte_sdk
+        cd ${RTE_SDK}/examples/l3fwd-acl
+
+#.  Set the target (a default target is used if not specified). For example:
+
+    ..  code-block:: console
+
+        export RTE_TARGET=x86_64-native-linuxapp-gcc
+
+    See the DPDK Getting Started Guide for possible RTE_TARGET values.
+
+#.  Build the application:
+
+    ..  code-block:: console
+
+        make
+
+Running the Application
+-----------------------
+
+#. The application has a number of command line options:
+
+   ..  code-block:: console
+
+       ./build/distributor_app [EAL options] -- -p PORTMASK
+
+   where,
+
+   *   -p PORTMASK: Hexadecimal bitmask of ports to configure
+
+#. To run the application in linuxapp environment with 11 lcores, 4 ports,
+   issue the command:
+
+   ..  code-block:: console
+
+       $ ./build/distributor_app -c 0x4003fe -n 4 -- -p f
+
+#. Refer to the DPDK Getting Started Guide for general information on running
+   applications and the Environment Abstraction Layer (EAL) options.
+
+Explanation
+-----------
+
+The distributor application consists of three types of threads: a receive
+thread (lcore_rx()), a set of worker threads(locre_worker())
+and a transmit thread(lcore_tx()). How these threads work together is shown
+in Fig2 below. The main() function launches  threads of these three types.
+Each thread has a while loop which will be doing processing and which is
+terminated only upon SIGINT or ctrl+C. The receive and transmit threads
+communicate using a software ring (rte_ring structure).
+
+The receive thread receives the packets using rte_eth_rx_burst() and gives
+them to  the distributor (using rte_distributor_process() API) which will
+be called in context of the receive thread itself. The distributor distributes
+the packets to workers threads based on the tagging of the packet -
+indicated by the hash field in the mbuf. For IP traffic, this field is
+automatically filled by the NIC with the "usr" hash value for the packet,
+which works as a per-flow tag.
+
+More than one worker thread can exist as part of the application, and these
+worker threads do simple packet processing by requesting packets from
+the distributor, doing a simple XOR operation on the input port mbuf field
+(to indicate the output port which will be used later for packet transmission)
+and then finally returning the packets back to the distributor in the RX thread.
+
+Meanwhile, the receive thread will call the distributor api
+rte_distributor_returned_pkts() to get the packets processed, and will enqueue
+them to a ring for transfer to the TX thread for transmission on the output port.
+The transmit thread will dequeue the packets from the ring and transmit them on
+the output port specified in packet mbuf.
+
+Users who wish to terminate the running of the application have to press ctrl+C
+(or send SIGINT to the app). Upon this signal, a signal handler provided
+in the application will terminate all running threads gracefully and print
+final statistics to the user.
+
+.. _figure_23:
+
+**Figure 23. Distributor Sample Application Layout**
+
+|dist_app|
+
+Debug Logging Support
+---------------------
+
+Debug logging is provided as part of the application; the user needs to uncomment
+the line "#define DEBUG" defined in start of the application in main.c to enable debug logs.
+
+Statistics
+----------
+
+Upon SIGINT (or) ctrl+C, the print_stats() function displays the count of packets
+processed at the different stages in the application.
+
+Application Initialization
+--------------------------
+
+Command line parsing is done in the same way as it is done in the L2 Forwarding Sample
+Application. See Section 9.4.1, "Command Line Arguments".
+
+Mbuf pool initialization is done in the same way as it is done in the L2 Forwarding
+Sample Application. See Section 9.4.2, "Mbuf Pool Initialization".
+
+Driver Initialization is done in same way as it is done in the L2 Forwarding Sample
+Application. See Section 9.4.3, "Driver Initialization".
+
+RX queue initialization is done in the same way as it is done in the L2 Forwarding
+Sample Application. See Section 9.4.4, "RX Queue Initialization".
+
+TX queue initialization is done in the same way as it is done in the L2 Forwarding
+Sample Application. See Section 9.4.5, "TX Queue Initialization".
+
+.. |dist_perf| image:: img/dist_perf.svg
+
+.. |dist_app| image:: img/dist_app.svg

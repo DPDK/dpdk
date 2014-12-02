@@ -100,6 +100,7 @@ Copyright © 2012 - 2014, Intel Corporation. All rights reserved.
     netmap_compatibility
     internet_proto_ip_pipeline
     test_pipeline
+    dist_app
 
 **Figures**
 
@@ -146,6 +147,10 @@ Copyright © 2012 - 2014, Intel Corporation. All rights reserved.
 :ref:`Figure 20.Packet Flow on TX in DPDK-testpmd <figure_20>`
 
 :ref:`Figure 21.Test Pipeline Application <figure_21>`
+
+:ref:`Figure 22.Performance Benchmarking Setup (Basic Environment) <figure_22>`
+
+:ref:`Figure 23.Distributor Sample Application Layout <figure_23>`
 
 **Tables**
 
