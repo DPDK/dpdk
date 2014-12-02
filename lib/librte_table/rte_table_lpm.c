@@ -185,7 +185,7 @@ rte_table_lpm_entry_add(
 	struct rte_table_lpm_key *ip_prefix = (struct rte_table_lpm_key *) key;
 	uint32_t nht_pos, nht_pos0_valid;
 	int status;
-	uint8_t nht_pos0;
+	uint8_t nht_pos0 = 0;
 
 	/* Check input parameters */
 	if (lpm == NULL) {
