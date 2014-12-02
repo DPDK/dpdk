@@ -4168,8 +4168,11 @@ i40e_find_vlan_filter(struct i40e_vsi *vsi,
 {
 	uint32_t vid_idx, vid_bit;
 
-	vid_idx = (uint32_t) ((vlan_id >> 5) & 0x7F);
-	vid_bit = (uint32_t) (1 << (vlan_id & 0x1F));
+	if (vlan_id > ETH_VLAN_ID_MAX)
+		return 0;
+
+	vid_idx = I40E_VFTA_IDX(vlan_id);
+	vid_bit = I40E_VFTA_BIT(vlan_id);
 
 	if (vsi->vfta[vid_idx] & vid_bit)
 		return 1;
@@ -4183,11 +4186,11 @@ i40e_set_vlan_filter(struct i40e_vsi *vsi,
 {
 	uint32_t vid_idx, vid_bit;
 
-	/* VFTA is 32-bits size array, each element contains 32 vlan bits, Find the
-	 *  element first, then find the bits it belongs to
-	 */
-	vid_idx = (uint32_t) ((vlan_id >> 5) & 0x7F);
-	vid_bit = (uint32_t) (1 << (vlan_id & 0x1F));
+	if (vlan_id > ETH_VLAN_ID_MAX)
+		return;
+
+	vid_idx = I40E_VFTA_IDX(vlan_id);
+	vid_bit = I40E_VFTA_BIT(vlan_id);
 
 	if (on)
 		vsi->vfta[vid_idx] |= vid_bit;

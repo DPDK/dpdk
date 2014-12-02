@@ -50,6 +50,15 @@
 #define I40E_DEFAULT_QP_NUM_FDIR  1
 #define I40E_UINT32_BIT_SIZE      (CHAR_BIT * sizeof(uint32_t))
 #define I40E_VFTA_SIZE            (4096 / I40E_UINT32_BIT_SIZE)
+/*
+ * vlan_id is a 12 bit number.
+ * The VFTA array is actually a 4096 bit array, 128 of 32bit elements.
+ * 2^5 = 32. The val of lower 5 bits specifies the bit in the 32bit element.
+ * The higher 7 bit val specifies VFTA array index.
+ */
+#define I40E_VFTA_BIT(vlan_id)    (1 << ((vlan_id) & 0x1F))
+#define I40E_VFTA_IDX(vlan_id)    ((vlan_id) >> 5)
+
 /* Default TC traffic in case DCB is not enabled */
 #define I40E_DEFAULT_TCMAP        0x1
 #define I40E_FDIR_QUEUE_ID        0
