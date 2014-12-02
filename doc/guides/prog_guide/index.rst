@@ -106,6 +106,7 @@ Copyright © 2012-2014, Intel Corporation. All rights reserved.
     power_man
     packet_classif_access_ctrl
     packet_framework
+    vhost_lib
     source_org
     dev_kit_build_system
     dev_kit_root_make_help
