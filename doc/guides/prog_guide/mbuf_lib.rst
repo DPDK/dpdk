@@ -37,10 +37,12 @@ The mbuf library provides the ability to allocate and free buffers (mbufs)
 that may be used by the DPDK application to store message buffers.
 The message buffers are stored in a mempool, using the :ref:`Mempool Library <Mempool_Library>`.
 
-A rte_mbuf struct can carry network packet buffers (type is RTE_MBUF_PKT)
-or generic control buffers (type is RTE_MBUF_CTRL).
+A rte_mbuf struct can carry network packet buffers
+or generic control buffers (indicated by the CTRL_MBUF_FLAG).
 This can be extended to other types.
-The rte_mbuf is kept as small as possible (one cache line if possible).
+The rte_mbuf header structure is kept as small as possible and currently uses
+just two cache lines, with the most frequently used fields being on the first
+of the two cache lines.
 
 Design of Packet Buffers
 ------------------------
@@ -57,17 +59,17 @@ the complete separation of the allocation of metadata structures from the alloca
 
 The first method was chosen for the DPDK.
 The metadata contains control information such as message type, length,
-pointer to the start of the data and a pointer for additional mbuf structures allowing buffer chaining.
+offset to the start of the data and a pointer for additional mbuf structures allowing buffer chaining.
 
 Message buffers that are used to carry network packets can handle buffer chaining
 where multiple buffers are required to hold the complete packet.
-This is the case for jumbo frames that are composed of many mbufs linked together through their pkt.next field.
+This is the case for jumbo frames that are composed of many mbufs linked together through their next field.
 
 For a newly allocated mbuf, the area at which the data begins in the message buffer is
 RTE_PKTMBUF_HEADROOM bytes after the beginning of the buffer, which is cache aligned.
 Message buffers may be used to carry control information, packets, events,
 and so on between different entities in the system.
-Message buffers may also use their data pointers to point to other message buffer data sections or other structures.
+Message buffers may also use their buffer pointers to point to other message buffer data sections or other structures.
 
 Figure 8 and Figure 9 show some of these scenarios.
 
@@ -109,9 +111,8 @@ Allocating and Freeing mbufs
 ----------------------------
 
 Allocating a new mbuf requires the user to specify the mempool from which the mbuf should be taken.
-For a packet mbuf, it contains one segment, with a length of 0.
-The pointer to data is initialized to have some bytes of headroom in the buffer (RTE_PKTMBUF_HEADROOM).
-For a control mbuf, it is initialized with data pointing to the beginning of the buffer and a length of zero.
+For any newly-allocated mbuf, it contains one segment, with a length of 0.
+The offset to data is initialized to have some bytes of headroom in the buffer (RTE_PKTMBUF_HEADROOM).
 
 Freeing a mbuf means returning it into its original mempool.
 The content of an mbuf is not modified when it is stored in a pool (as a free mbuf).
@@ -151,7 +152,8 @@ Direct and Indirect Buffers
 ---------------------------
 
 A direct buffer is a buffer that is completely separate and self-contained.
-An indirect buffer behaves like a direct buffer but for the fact that the data pointer it contains points to data in another direct buffer.
+An indirect buffer behaves like a direct buffer but for the fact that the buffer pointer and
+data offset in it refer to data in another direct buffer.
 This is useful in situations where packets need to be duplicated or fragmented,
 since indirect buffers provide the means to reuse the same packet data across multiple buffers.
 

@@ -2,7 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <!--
-# Copyright (c) <2010>, Intel Corporation
+# BSD LICENSE
+#
+# Copyright (c) <2010 - 2014>, Intel Corporation
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -48,7 +50,7 @@
    height="288.34286"
    id="svg3868"
    version="1.1"
-   inkscape:version="0.48.4 r9939"
+   inkscape:version="0.48.5 r10040"
    sodipodi:docname="mbuf2.svg"
    inkscape:export-filename="/home/matz/rapports/doc/intel/architecture_docs/mbuf2.png"
    inkscape:export-xdpi="200"
@@ -879,17 +881,17 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.4"
-     inkscape:cx="349.23531"
-     inkscape:cy="97.526166"
+     inkscape:zoom="1.979899"
+     inkscape:cx="335.62533"
+     inkscape:cy="102.43492"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
-     inkscape:window-width="1650"
-     inkscape:window-height="1059"
-     inkscape:window-x="100"
-     inkscape:window-y="17"
-     inkscape:window-maximized="0"
+     inkscape:window-width="1920"
+     inkscape:window-height="1017"
+     inkscape:window-x="1592"
+     inkscape:window-y="285"
+     inkscape:window-maximized="1"
      fit-margin-top="0.1"
      fit-margin-left="0.1"
      fit-margin-right="0.1"
@@ -1058,17 +1060,17 @@
     <text
        xml:space="preserve"
        style="font-size:15.22520161px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="331.85513"
-       y="704.97418"
+       x="424.78918"
+       y="702.44879"
        id="text2912"
        inkscape:export-filename="/home/matz/barracuda/rapports/mbuf-api-v2-images/octeon_multi.png"
        inkscape:export-xdpi="112"
        inkscape:export-ydpi="112"><tspan
          sodipodi:role="line"
-         x="331.85513"
-         y="704.97418"
+         x="424.78918"
+         y="702.44879"
          id="tspan2916"
-         style="font-weight:bold">multi-segmented rte_mbuf (type is pkt)</tspan></text>
+         style="font-weight:bold">multi-segmented rte_mbuf</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:1.26900005;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)"
        d="m 119.23004,564.01527 c 101.10943,109.21871 189.23315,8.60651 189.23315,8.60651"
@@ -1168,31 +1170,28 @@
     <text
        xml:space="preserve"
        style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="78.288223"
-       y="493.72507"
+       x="78.793297"
+       y="498.27075"
        id="text5219-6"><tspan
          sodipodi:role="line"
-         id="tspan5221-8"
-         x="78.288223"
-         y="493.72507">rte_pktmbuf_mtod(m)</tspan><tspan
-         sodipodi:role="line"
-         x="78.288223"
-         y="506.22507"
-         id="tspan5223-9">or m-&gt;pkt.data</tspan></text>
+         x="78.793297"
+         y="498.27075"
+         id="tspan5223-9">rte_pktmbuf_mtod(m)</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="311.4537"
-       y="447.16037"
-       id="text5258-2"><tspan
+       style="font-size:10.48159599px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="233.53358"
+       y="470.28363"
+       id="text5258-2"
+       transform="scale(1.0481596,0.95405318)"><tspan
          sodipodi:role="line"
-         x="311.4537"
-         y="447.16037"
+         x="233.53358"
+         y="470.28363"
          id="tspan5262-64">rte_pktmbuf_pktlen(m) = rte_pktmbuf_datalen(m) +</tspan><tspan
          sodipodi:role="line"
-         x="311.4537"
-         y="459.66037"
-         id="tspan6985">rte_pktmbuf_datalen(mseg2) + rte_pktmbuf_datalen(mseg3)</tspan></text>
+         x="233.53358"
+         y="483.38562"
+         id="tspan6985">            rte_pktmbuf_datalen(mseg2) + rte_pktmbuf_datalen(mseg3)</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:1.26900005;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-start:url(#Arrow1Mstart);marker-end:url(#Arrow1Mend)"
        d="m 173.97266,470.21933 c 141.42583,0 391.36979,0 450.62611,0"

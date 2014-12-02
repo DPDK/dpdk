@@ -2,7 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <!--
-# Copyright (c) <2010>, Intel Corporation
+# BSD LICENSE
+#
+# Copyright (c) <2010 - 2014>, Intel Corporation
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -327,16 +329,16 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="2.8"
-     inkscape:cx="424.95386"
-     inkscape:cy="143.63151"
+     inkscape:zoom="2.8231676"
+     inkscape:cx="315.95715"
+     inkscape:cy="144.17143"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
-     inkscape:window-width="1650"
-     inkscape:window-height="1059"
-     inkscape:window-x="177"
-     inkscape:window-y="111"
+     inkscape:window-width="1910"
+     inkscape:window-height="1170"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
      inkscape:window-maximized="0"
      fit-margin-top="0.1"
      fit-margin-left="0.1"
@@ -416,17 +418,17 @@
     <text
        xml:space="preserve"
        style="font-size:15.22520161px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="452.7626"
-       y="374.68066"
+       x="468.47687"
+       y="376.4664"
        id="text2912"
        inkscape:export-filename="/home/matz/barracuda/rapports/mbuf-api-v2-images/octeon_multi.png"
        inkscape:export-xdpi="112"
        inkscape:export-ydpi="112"><tspan
          sodipodi:role="line"
-         x="452.7626"
-         y="374.68066"
+         x="468.47687"
+         y="376.4664"
          id="tspan2916"
-         style="font-weight:bold">rte_mbuf (type is pkt)</tspan></text>
+         style="font-weight:bold">struct rte_mbuf </tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:1.26900005;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)"
        d="M 270.40246,239.43649 C 273.9494,287.74619 176.1143,278.684 176.1143,278.684"
@@ -492,13 +494,9 @@
        y="119.50503"
        id="text5219"><tspan
          sodipodi:role="line"
-         id="tspan5221"
          x="249.28572"
-         y="119.50503">rte_pktmbuf_mtod(m)</tspan><tspan
-         sodipodi:role="line"
-         x="249.28572"
-         y="132.00504"
-         id="tspan5223">or m-&gt;pkt.data</tspan></text>
+         y="119.50503"
+         id="tspan5223">rte_pktmbuf_mtod(m)</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -516,13 +514,13 @@
     <text
        xml:space="preserve"
        style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="82.14286"
-       y="293.07645"
+       x="59.842155"
+       y="282.37683"
        id="text5254"><tspan
          sodipodi:role="line"
          id="tspan5256"
-         x="82.14286"
-         y="293.07645">m-&gt;pkt.next = NULL</tspan></text>
+         x="59.842155"
+         y="282.37683">m-&gt;pkt.next = NULL</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -568,11 +566,11 @@
     <text
        xml:space="preserve"
        style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="520.37152"
+       x="525.0144"
        y="231.04784"
        id="text5258-1-5"><tspan
          sodipodi:role="line"
-         x="520.37152"
+         x="525.0144"
          y="231.04784"
          id="tspan5262-6-4">tailroom</tspan></text>
     <path
