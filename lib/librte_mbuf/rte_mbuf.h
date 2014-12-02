@@ -279,8 +279,8 @@ struct rte_mbuf {
 			uint64_t tso_segsz:16; /**< TCP TSO segment size */
 
 			/* fields for TX offloading of tunnels */
-			uint64_t inner_l3_len:9; /**< inner L3 (IP) Hdr Length. */
-			uint64_t inner_l2_len:7; /**< inner L2 (MAC) Hdr Length. */
+			uint64_t outer_l3_len:9; /**< Outer L3 (IP) Hdr Length. */
+			uint64_t outer_l2_len:7; /**< Outer L2 (MAC) Hdr Length. */
 
 			/* uint64_t unused:8; */
 		};

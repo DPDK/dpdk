@@ -188,11 +188,12 @@ process_inner_cksums(void *l3_hdr, uint16_t ethertype, uint16_t l3_len,
 		} else {
 			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM)
 				ol_flags |= PKT_TX_IP_CKSUM;
-			else
+			else {
 				ipv4_hdr->hdr_checksum =
 					rte_ipv4_cksum(ipv4_hdr);
+				ol_flags |= PKT_TX_IPV4;
+			}
 		}
-		ol_flags |= PKT_TX_IPV4;
 	} else if (ethertype == _htons(ETHER_TYPE_IPv6))
 		ol_flags |= PKT_TX_IPV6;
 	else
@@ -261,22 +262,23 @@ process_outer_cksums(void *outer_l3_hdr, uint16_t outer_ethertype,
 	if (outer_ethertype == _htons(ETHER_TYPE_IPv4)) {
 		ipv4_hdr->hdr_checksum = 0;
 
-		if ((testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) == 0)
+		if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM)
+			ol_flags |= PKT_TX_OUTER_IP_CKSUM;
+		else
 			ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
-	}
+	} else if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM)
+		ol_flags |= PKT_TX_OUTER_IPV6;
 
 	udp_hdr = (struct udp_hdr *)((char *)outer_l3_hdr + outer_l3_len);
 	/* do not recalculate udp cksum if it was 0 */
 	if (udp_hdr->dgram_cksum != 0) {
 		udp_hdr->dgram_cksum = 0;
-		if ((testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) == 0) {
-			if (outer_ethertype == _htons(ETHER_TYPE_IPv4))
-				udp_hdr->dgram_cksum =
-					rte_ipv4_udptcp_cksum(ipv4_hdr, udp_hdr);
-			else
-				udp_hdr->dgram_cksum =
-					rte_ipv6_udptcp_cksum(ipv6_hdr, udp_hdr);
-		}
+		if (outer_ethertype == _htons(ETHER_TYPE_IPv4))
+			udp_hdr->dgram_cksum =
+				rte_ipv4_udptcp_cksum(ipv4_hdr, udp_hdr);
+		else
+			udp_hdr->dgram_cksum =
+				rte_ipv6_udptcp_cksum(ipv6_hdr, udp_hdr);
 	}
 
 	return ol_flags;
@@ -302,8 +304,7 @@ process_outer_cksums(void *outer_l3_hdr, uint16_t outer_ethertype,
  * TESTPMD_TX_OFFLOAD_* in ports[tx_port].tx_ol_flags. They control
  * wether a checksum must be calculated in software or in hardware. The
  * IP, UDP, TCP and SCTP flags always concern the inner layer.  The
- * VxLAN flag concerns the outer IP and UDP layer (if packet is
- * recognized as a vxlan packet).
+ * VxLAN flag concerns the outer IP (if packet is recognized as a vxlan packet).
  */
 static void
 pkt_burst_checksum_forward(struct fwd_stream *fs)
@@ -319,7 +320,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint16_t i;
 	uint64_t ol_flags;
 	uint16_t testpmd_ol_flags;
-	uint8_t l4_proto;
+	uint8_t l4_proto, l4_tun_len = 0;
 	uint16_t ethertype = 0, outer_ethertype = 0;
 	uint16_t l2_len = 0, l3_len = 0, l4_len = 0;
 	uint16_t outer_l2_len = 0, outer_l3_len = 0;
@@ -359,6 +360,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 		ol_flags = 0;
 		tunnel = 0;
+		l4_tun_len = 0;
 		m = pkts_burst[i];
 
 		/* Update the L3/L4 checksum error packet statistics */
@@ -377,14 +379,16 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		if (l4_proto == IPPROTO_UDP) {
 			udp_hdr = (struct udp_hdr *)((char *)l3_hdr + l3_len);
 
+			/* check udp destination port, 4789 is the default
+			 * vxlan port (rfc7348) */
+			if (udp_hdr->dst_port == _htons(4789)) {
+				l4_tun_len = ETHER_VXLAN_HLEN;
+				tunnel = 1;
+
 			/* currently, this flag is set by i40e only if the
 			 * packet is vxlan */
-			if (((m->ol_flags & PKT_RX_TUNNEL_IPV4_HDR) ||
-					(m->ol_flags & PKT_RX_TUNNEL_IPV6_HDR)))
-				tunnel = 1;
-			/* else check udp destination port, 4789 is the default
-			 * vxlan port (rfc7348) */
-			else if (udp_hdr->dst_port == _htons(4789))
+			} else if (m->ol_flags & (PKT_RX_TUNNEL_IPV4_HDR |
+					PKT_RX_TUNNEL_IPV6_HDR))
 				tunnel = 1;
 
 			if (tunnel == 1) {
@@ -431,10 +435,10 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 		if (tunnel == 1) {
 			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) {
-				m->l2_len = outer_l2_len;
-				m->l3_len = outer_l3_len;
-				m->inner_l2_len = l2_len;
-				m->inner_l3_len = l3_len;
+				m->outer_l2_len = outer_l2_len;
+				m->outer_l3_len = outer_l3_len;
+				m->l2_len = l4_tun_len + l2_len;
+				m->l3_len = l3_len;
 			}
 			else {
 				/* if we don't do vxlan cksum in hw,
@@ -502,8 +506,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 					m->l2_len, m->l3_len, m->l4_len);
 			if ((tunnel == 1) &&
 				(testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM))
-				printf("tx: m->inner_l2_len=%d m->inner_l3_len=%d\n",
-					m->inner_l2_len, m->inner_l3_len);
+				printf("tx: m->outer_l2_len=%d m->outer_l3_len=%d\n",
+					m->outer_l2_len, m->outer_l3_len);
 			if (tso_segsz != 0)
 				printf("tx: m->tso_segsz=%d\n", m->tso_segsz);
 			printf("tx: flags=");
