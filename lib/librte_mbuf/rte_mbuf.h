@@ -141,13 +141,13 @@ extern "C" {
 #define PKT_TX_IP_CKSUM      (1ULL << 54) /**< IP cksum of TX pkt. computed by NIC. */
 #define PKT_TX_IPV4_CSUM     PKT_TX_IP_CKSUM /**< Alias of PKT_TX_IP_CKSUM. */
 
-/** Tell the NIC it's an IPv4 packet. Required for L4 checksum offload or TSO. */
-#define PKT_TX_IPV4          PKT_RX_IPV4_HDR
+/** Packet is IPv4 without requiring IP checksum offload. */
+#define PKT_TX_IPV4          (1ULL << 55)
 
-/** Tell the NIC it's an IPv6 packet. Required for L4 checksum offload or TSO. */
-#define PKT_TX_IPV6          PKT_RX_IPV6_HDR
+/** Tell the NIC it's an IPv6 packet.*/
+#define PKT_TX_IPV6          (1ULL << 56)
 
-#define PKT_TX_VLAN_PKT      (1ULL << 55) /**< TX packet is a 802.1q VLAN packet. */
+#define PKT_TX_VLAN_PKT      (1ULL << 57) /**< TX packet is a 802.1q VLAN packet. */
 
 /* Use final bit of flags to indicate a control mbuf */
 #define CTRL_MBUF_FLAG       (1ULL << 63) /**< Mbuf contains control data */
