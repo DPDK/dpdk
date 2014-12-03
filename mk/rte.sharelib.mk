@@ -45,7 +45,7 @@ sharelib: $(LIB_ONE) FORCE
 
 OBJS = $(wildcard $(RTE_OUTPUT)/build/lib/*.o)
 
-O_TO_S = $(LD) $(CPU_LDFLAGS) -shared $(OBJS) -o $(RTE_OUTPUT)/lib/$(LIB_ONE)
+O_TO_S = $(LD) $(LDFLAGS) -shared $(OBJS) -o $(RTE_OUTPUT)/lib/$(LIB_ONE)
 O_TO_S_STR = $(subst ','\'',$(O_TO_S)) #'# fix syntax highlight
 O_TO_S_DISP = $(if $(V),"$(O_TO_S_STR)","  LD $(@)")
 O_TO_S_CMD = "cmd_$@ = $(O_TO_S_STR)"
