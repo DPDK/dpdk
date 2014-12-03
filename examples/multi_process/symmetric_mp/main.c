@@ -229,6 +229,7 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 			}
 	};
 	const uint16_t rx_rings = num_queues, tx_rings = num_queues;
+	struct rte_eth_dev_info info;
 	int retval;
 	uint16_t q;
 
@@ -241,6 +242,9 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 	printf("# Initialising port %u... ", (unsigned)port);
 	fflush(stdout);
 
+	rte_eth_dev_info_get(port, &info);
+	info.default_rxconf.rx_drop_en = 1;
+
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
 	if (retval < 0)
 		return retval;
@@ -248,7 +252,7 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 	for (q = 0; q < rx_rings; q ++) {
 		retval = rte_eth_rx_queue_setup(port, q, RX_RING_SIZE,
 				rte_eth_dev_socket_id(port),
-				NULL,
+				&info.default_rxconf,
 				mbuf_pool);
 		if (retval < 0)
 			return retval;
