@@ -567,7 +567,7 @@ int tx_queue_id_is_invalid(queueid_t txq_id);
 #define RTE_BE_TO_CPU_16(be_16_v)  rte_be_to_cpu_16((be_16_v))
 #define RTE_CPU_TO_BE_16(cpu_16_v) rte_cpu_to_be_16((cpu_16_v))
 #else
-#ifdef __big_endian__
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 #define RTE_BE_TO_CPU_16(be_16_v)  (be_16_v)
 #define RTE_CPU_TO_BE_16(cpu_16_v) (cpu_16_v)
 #else

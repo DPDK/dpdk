@@ -628,7 +628,7 @@ ring_dma_zone_lookup(const char *ring_name, uint8_t port_id, uint16_t q_id)
 union igb_ring_dword {
 	uint64_t dword;
 	struct {
-#ifdef RTE_ARCH_BIG_ENDIAN
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 		uint32_t lo;
 		uint32_t hi;
 #else

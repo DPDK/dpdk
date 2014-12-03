@@ -79,9 +79,8 @@
 #define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
 #define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
-/* we cannot use htons() from arpa/inet.h due to name conflicts, and we
- * cannot use rte_cpu_to_be_16() on a constant in a switch/case */
-#if  __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+/* We cannot use rte_cpu_to_be_16() on a constant in a switch/case */
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 #define _htons(x) ((uint16_t)((((x) & 0x00ffU) << 8) | (((x) & 0xff00U) >> 8)))
 #else
 #define _htons(x) (x)
