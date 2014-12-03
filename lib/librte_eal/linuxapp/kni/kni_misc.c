@@ -311,6 +311,7 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 	struct net_device *net_dev = NULL;
 	struct net_device *lad_dev = NULL;
 	struct kni_dev *kni, *dev, *n;
+	struct net *net;
 
 	printk(KERN_INFO "KNI: Creating kni...\n");
 	/* Check the buffer size, to avoid warning */
@@ -353,6 +354,14 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 		KNI_ERR("error allocating device \"%s\"\n", dev_info.name);
 		return -EBUSY;
 	}
+
+	net = get_net_ns_by_pid(current->pid);
+	if (IS_ERR(net)) {
+		free_netdev(net_dev);
+		return PTR_ERR(net);
+	}
+	dev_net_set(net_dev, net);
+	put_net(net);
 
 	kni = netdev_priv(net_dev);
 
