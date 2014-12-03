@@ -40,6 +40,10 @@ extern "C" {
 
 #include "generic/rte_byteorder.h"
 
+#ifndef RTE_BYTE_ORDER
+#define RTE_BYTE_ORDER RTE_LITTLE_ENDIAN
+#endif
+
 /*
  * An architecture-optimized byte swap for a 16-bit value.
  *

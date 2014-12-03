@@ -105,7 +105,7 @@ static inline uint64_t rte_arch_bswap64(uint64_t _x)
 /* Power 8 have both little endian and big endian mode
  * Power 7 only support big endian
  */
-#ifndef RTE_ARCH_BIG_ENDIAN
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 
 #define rte_cpu_to_le_16(x) (x)
 #define rte_cpu_to_le_32(x) (x)
@@ -123,7 +123,7 @@ static inline uint64_t rte_arch_bswap64(uint64_t _x)
 #define rte_be_to_cpu_32(x) rte_bswap32(x)
 #define rte_be_to_cpu_64(x) rte_bswap64(x)
 
-#else
+#else /* RTE_BIG_ENDIAN */
 
 #define rte_cpu_to_le_16(x) rte_bswap16(x)
 #define rte_cpu_to_le_32(x) rte_bswap32(x)

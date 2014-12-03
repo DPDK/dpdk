@@ -44,6 +44,34 @@
  */
 
 #include <stdint.h>
+#ifdef RTE_EXEC_ENV_BSDAPP
+#include <sys/endian.h>
+#else
+#include <endian.h>
+#endif
+
+/*
+ * Compile-time endianness detection
+ */
+#define RTE_BIG_ENDIAN    1
+#define RTE_LITTLE_ENDIAN 2
+#if defined __BYTE_ORDER__
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define RTE_BYTE_ORDER RTE_BIG_ENDIAN
+#elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define RTE_BYTE_ORDER RTE_LITTLE_ENDIAN
+#endif /* __BYTE_ORDER__ */
+#elif defined __BYTE_ORDER
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define RTE_BYTE_ORDER RTE_BIG_ENDIAN
+#elif __BYTE_ORDER == __LITTLE_ENDIAN
+#define RTE_BYTE_ORDER RTE_LITTLE_ENDIAN
+#endif /* __BYTE_ORDER */
+#elif defined __BIG_ENDIAN__
+#define RTE_BYTE_ORDER RTE_BIG_ENDIAN
+#elif defined __LITTLE_ENDIAN__
+#define RTE_BYTE_ORDER RTE_LITTLE_ENDIAN
+#endif
 
 /*
  * An internal function to swap bytes in a 16-bit value.
