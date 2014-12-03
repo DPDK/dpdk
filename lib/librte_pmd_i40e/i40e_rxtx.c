@@ -424,13 +424,9 @@ static inline uint64_t
 i40e_rxd_build_fdir(volatile union i40e_rx_desc *rxdp, struct rte_mbuf *mb)
 {
 	uint64_t flags = 0;
+#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
 	uint16_t flexbh, flexbl;
 
-#ifdef RTE_LIBRTE_I40E_16BYTE_RX_DESC
-	mb->hash.fdir.hi =
-		rte_le_to_cpu_32(rxdp->wb.qword0.hi_dword.fd);
-	flags |= PKT_RX_FDIR_ID;
-#else
 	flexbh = (rte_le_to_cpu_32(rxdp->wb.qword2.ext_status) >>
 		I40E_RX_DESC_EXT_STATUS_FLEXBH_SHIFT) &
 		I40E_RX_DESC_EXT_STATUS_FLEXBH_MASK;
@@ -453,6 +449,10 @@ i40e_rxd_build_fdir(volatile union i40e_rx_desc *rxdp, struct rte_mbuf *mb)
 			rte_le_to_cpu_32(rxdp->wb.qword3.lo_dword.flex_bytes_lo);
 		flags |= PKT_RX_FDIR_FLX;
 	}
+#else
+	mb->hash.fdir.hi =
+		rte_le_to_cpu_32(rxdp->wb.qword0.hi_dword.fd_id);
+	flags |= PKT_RX_FDIR_ID;
 #endif
 	return flags;
 }
