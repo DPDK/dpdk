@@ -444,9 +444,9 @@ rte_pmd_init_internals(const char *name,
 	struct tpacket_req *req;
 	struct pkt_rx_queue *rx_queue;
 	struct pkt_tx_queue *tx_queue;
-	int rc, tpver, discard, bypass;
+	int rc, qsockfd, tpver, discard;
 	unsigned int i, q, rdsize;
-	int qsockfd, fanout_arg;
+	int fanout_arg __rte_unused, bypass __rte_unused;
 
 	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
 		pair = &kvlist->pairs[k_idx];
@@ -519,9 +519,13 @@ rte_pmd_init_internals(const char *name,
 	sockaddr.sll_protocol = htons(ETH_P_ALL);
 	sockaddr.sll_ifindex = (*internals)->if_index;
 
+#if defined(PACKET_FANOUT)
 	fanout_arg = (getpid() ^ (*internals)->if_index) & 0xffff;
-	fanout_arg |= (PACKET_FANOUT_HASH | PACKET_FANOUT_FLAG_DEFRAG |
-	               PACKET_FANOUT_FLAG_ROLLOVER) << 16;
+	fanout_arg |= (PACKET_FANOUT_HASH | PACKET_FANOUT_FLAG_DEFRAG) << 16;
+#if defined(PACKET_FANOUT_FLAG_ROLLOVER)
+	fanout_arg |= PACKET_FANOUT_FLAG_ROLLOVER << 16;
+#endif
+#endif
 
 	for (q = 0; q < nb_queues; q++) {
 		/* Open an AF_PACKET socket for this queue... */
@@ -553,6 +557,7 @@ rte_pmd_init_internals(const char *name,
 			goto error;
 		}
 
+#if defined(PACKET_QDISC_BYPASS)
 		bypass = 1;
 		rc = setsockopt(qsockfd, SOL_PACKET, PACKET_QDISC_BYPASS,
 				&bypass, sizeof(bypass));
@@ -563,6 +568,7 @@ rte_pmd_init_internals(const char *name,
 			        pair->value);
 			goto error;
 		}
+#endif
 
 		rc = setsockopt(qsockfd, SOL_PACKET, PACKET_RX_RING, req, sizeof(*req));
 		if (rc == -1) {
@@ -623,6 +629,7 @@ rte_pmd_init_internals(const char *name,
 			goto error;
 		}
 
+#if defined(PACKET_FANOUT)
 		rc = setsockopt(qsockfd, SOL_PACKET, PACKET_FANOUT,
 				&fanout_arg, sizeof(fanout_arg));
 		if (rc == -1) {
@@ -631,6 +638,7 @@ rte_pmd_init_internals(const char *name,
 				"for %s\n", name, pair->value);
 			goto error;
 		}
+#endif
 	}
 
 	/* reserve an ethdev entry */

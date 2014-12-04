@@ -224,7 +224,7 @@ CONFIG_RTE_LIBRTE_PMD_BOND=y
 #
 # Compile software PMD backed by AF_PACKET sockets (Linux only)
 #
-CONFIG_RTE_LIBRTE_PMD_AF_PACKET=n
+CONFIG_RTE_LIBRTE_PMD_AF_PACKET=y
 
 #
 # Compile Xen PMD
