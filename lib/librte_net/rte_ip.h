@@ -154,7 +154,9 @@ struct ipv4_hdr {
 static inline uint16_t
 rte_raw_cksum(const char *buf, size_t len)
 {
-	const uint16_t *u16 = (const uint16_t *)buf;
+	/* workaround gcc strict-aliasing warning */
+	uintptr_t ptr = (uintptr_t)buf;
+	const uint16_t *u16 = (const uint16_t *)ptr;
 	uint32_t sum = 0;
 
 	while (len >= (sizeof(*u16) * 4)) {
