@@ -164,6 +164,8 @@ rte_table_array_lookup(
 {
 	struct rte_table_array *t = (struct rte_table_array *) table;
 
+	*lookup_hit_mask = pkts_mask;
+
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
 		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
 		uint32_t i;
@@ -189,8 +191,6 @@ rte_table_array_lookup(
 			pkts_mask &= ~pkt_mask;
 		}
 	}
-
-	*lookup_hit_mask = pkts_mask;
 
 	return 0;
 }
