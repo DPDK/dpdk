@@ -219,7 +219,7 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 	unsigned int inst_num=0;
 	cmdline_parse_inst_t *inst;
 	const char *curbuf;
-	char result_buf[CMDLINE_PARSE_RESULT_BUFSIZE];
+	char result_buf[BUFSIZ];
 	void (*f)(void *, struct cmdline *, void *) = NULL;
 	void *data = NULL;
 	int comment = 0;
