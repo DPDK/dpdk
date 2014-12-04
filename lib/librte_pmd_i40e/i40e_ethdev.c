@@ -546,7 +546,6 @@ eth_i40e_dev_init(__rte_unused struct eth_driver *eth_drv,
 err_mac_alloc:
 	i40e_vsi_release(pf->main_vsi);
 err_setup_pf_switch:
-	i40e_fdir_teardown(pf);
 err_get_mac_addr:
 err_configure_lan_hmc:
 	(void)i40e_shutdown_lan_hmc(hw);
@@ -565,8 +564,27 @@ err_get_capabilities:
 static int
 i40e_dev_configure(struct rte_eth_dev *dev)
 {
-	int ret;
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	enum rte_eth_rx_mq_mode mq_mode = dev->data->dev_conf.rxmode.mq_mode;
+	int ret;
+
+	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_PERFECT) {
+		ret = i40e_fdir_setup(pf);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(ERR, "Failed to setup flow director.");
+			return -ENOTSUP;
+		}
+		ret = i40e_fdir_configure(dev);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "failed to configure fdir.");
+			goto err;
+		}
+	} else
+		i40e_fdir_teardown(pf);
+
+	ret = i40e_dev_init_vlan(dev);
+	if (ret < 0)
+		goto err;
 
 	/* VMDQ setup.
 	 *  Needs to move VMDQ setting out of i40e_pf_config_mq_rx() as VMDQ and
@@ -583,10 +601,12 @@ i40e_dev_configure(struct rte_eth_dev *dev)
 	if (mq_mode & ETH_MQ_RX_VMDQ_FLAG) {
 		ret = i40e_vmdq_setup(dev);
 		if (ret)
-			return ret;
+			goto err;
 	}
-
-	return i40e_dev_init_vlan(dev);
+	return 0;
+err:
+	i40e_fdir_teardown(pf);
+	return ret;
 }
 
 void
@@ -837,14 +857,8 @@ i40e_dev_start(struct rte_eth_dev *dev)
 		i40e_vsi_enable_queues_intr(pf->vmdq[i].vsi);
 	}
 
-	ret = i40e_fdir_configure(dev);
-	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "failed to configure fdir.");
-		goto err_up;
-	}
-
 	/* enable FDIR MSIX interrupt */
-	if (pf->flags & I40E_FLAG_FDIR) {
+	if (pf->fdir.fdir_vsi) {
 		i40e_vsi_queues_bind_intr(pf->fdir.fdir_vsi);
 		i40e_vsi_enable_queues_intr(pf->fdir.fdir_vsi);
 	}
@@ -903,7 +917,7 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 		i40e_vsi_queues_unbind_intr(pf->vmdq[i].vsi);
 	}
 
-	if (pf->flags & I40E_FLAG_FDIR) {
+	if (pf->fdir.fdir_vsi) {
 		i40e_vsi_queues_bind_intr(pf->fdir.fdir_vsi);
 		i40e_vsi_enable_queues_intr(pf->fdir.fdir_vsi);
 	}
@@ -3301,15 +3315,6 @@ i40e_pf_setup(struct i40e_pf *pf)
 		return I40E_ERR_NOT_READY;
 	}
 	pf->main_vsi = vsi;
-
-	/* setup FDIR after main vsi created.*/
-	if (pf->flags & I40E_FLAG_FDIR) {
-		ret = i40e_fdir_setup(pf);
-		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Failed to setup flow director.");
-			pf->flags &= ~I40E_FLAG_FDIR;
-		}
-	}
 
 	/* Configure filter control */
 	memset(&settings, 0, sizeof(settings));

@@ -196,6 +196,11 @@ i40e_fdir_setup(struct i40e_pf *pf)
 	const struct rte_memzone *mz = NULL;
 	struct rte_eth_dev *eth_dev = pf->adapter->eth_dev;
 
+	if ((pf->flags & I40E_FLAG_FDIR) == 0) {
+		PMD_INIT_LOG(ERR, "HW doesn't support FDIR");
+		return I40E_NOT_SUPPORTED;
+	}
+
 	PMD_DRV_LOG(INFO, "FDIR HW Capabilities: num_filters_guaranteed = %u,"
 			" num_filters_best_effort = %u.",
 			hw->func_caps.fd_filters_guaranteed,
@@ -203,9 +208,8 @@ i40e_fdir_setup(struct i40e_pf *pf)
 
 	vsi = pf->fdir.fdir_vsi;
 	if (vsi) {
-		PMD_DRV_LOG(ERR, "FDIR vsi pointer needs "
-				 "to be null before creation.");
-		return I40E_ERR_BAD_PTR;
+		PMD_DRV_LOG(INFO, "FDIR initialization has been done.");
+		return I40E_SUCCESS;
 	}
 	/* make new FDIR VSI */
 	vsi = i40e_vsi_setup(pf, I40E_VSI_FDIR, pf->main_vsi, 0);
@@ -302,6 +306,8 @@ i40e_fdir_teardown(struct i40e_pf *pf)
 	struct i40e_vsi *vsi;
 
 	vsi = pf->fdir.fdir_vsi;
+	if (!vsi)
+		return;
 	i40e_switch_tx_queue(hw, vsi->base_queue, FALSE);
 	i40e_switch_rx_queue(hw, vsi->base_queue, FALSE);
 	i40e_dev_rx_queue_release(pf->fdir.rxq);
@@ -653,37 +659,29 @@ i40e_fdir_configure(struct rte_eth_dev *dev)
 		}
 	}
 
+	/* enable FDIR filter */
 	val = I40E_READ_REG(hw, I40E_PFQF_CTL_0);
-	if ((pf->flags & I40E_FLAG_FDIR) &&
-		dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_PERFECT) {
-		/* enable FDIR filter */
-		val |= I40E_PFQF_CTL_0_FD_ENA_MASK;
-		I40E_WRITE_REG(hw, I40E_PFQF_CTL_0, val);
+	val |= I40E_PFQF_CTL_0_FD_ENA_MASK;
+	I40E_WRITE_REG(hw, I40E_PFQF_CTL_0, val);
 
-		i40e_init_flx_pld(pf); /* set flex config to default value */
+	i40e_init_flx_pld(pf); /* set flex config to default value */
 
-		conf = &dev->data->dev_conf.fdir_conf.flex_conf;
-		ret = i40e_check_fdir_flex_conf(conf);
-		if (ret < 0) {
-			PMD_DRV_LOG(ERR, " invalid configuration arguments.");
-			return -EINVAL;
-		}
-		/* configure flex payload */
-		for (i = 0; i < conf->nb_payloads; i++)
-			i40e_set_flx_pld_cfg(pf, &conf->flex_set[i]);
-		/* configure flex mask*/
-		for (i = 0; i < conf->nb_flexmasks; i++) {
-			pctype = i40e_flowtype_to_pctype(
-				conf->flex_mask[i].flow_type);
-			i40e_set_flex_mask_on_pctype(pf,
-					pctype,
-					&conf->flex_mask[i]);
-		}
-	} else {
-		/* disable FDIR filter */
-		val &= ~I40E_PFQF_CTL_0_FD_ENA_MASK;
-		I40E_WRITE_REG(hw, I40E_PFQF_CTL_0, val);
-		pf->flags &= ~I40E_FLAG_FDIR;
+	conf = &dev->data->dev_conf.fdir_conf.flex_conf;
+	ret = i40e_check_fdir_flex_conf(conf);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, " invalid configuration arguments.");
+		return -EINVAL;
+	}
+	/* configure flex payload */
+	for (i = 0; i < conf->nb_payloads; i++)
+		i40e_set_flx_pld_cfg(pf, &conf->flex_set[i]);
+	/* configure flex mask*/
+	for (i = 0; i < conf->nb_flexmasks; i++) {
+		pctype = i40e_flowtype_to_pctype(
+			conf->flex_mask[i].flow_type);
+		i40e_set_flex_mask_on_pctype(pf,
+				pctype,
+				&conf->flex_mask[i]);
 	}
 
 	return ret;
@@ -982,10 +980,12 @@ i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 	enum i40e_filter_pctype pctype;
 	int ret = 0;
 
-	if (!(pf->flags & I40E_FLAG_FDIR)) {
-		PMD_DRV_LOG(ERR, "FDIR is not enabled.");
+	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_PERFECT) {
+		PMD_DRV_LOG(ERR, "FDIR is not enabled, please"
+			" check the mode in fdir_conf.");
 		return -ENOTSUP;
 	}
+
 	if (!I40E_VALID_FLOW_TYPE(filter->input.flow_type)) {
 		PMD_DRV_LOG(ERR, "invalid flow_type input.");
 		return -EINVAL;
@@ -1263,8 +1263,11 @@ i40e_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir)
 	uint16_t num_flex_set = 0;
 	uint16_t num_flex_mask = 0;
 
-	fdir->mode = (pf->flags & I40E_FLAG_FDIR) ?
-			RTE_FDIR_MODE_PERFECT : RTE_FDIR_MODE_NONE;
+	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_PERFECT)
+		fdir->mode = RTE_FDIR_MODE_PERFECT;
+	else
+		fdir->mode = RTE_FDIR_MODE_NONE;
+
 	fdir->guarant_spc =
 		(uint32_t)hw->func_caps.fd_filters_guaranteed;
 	fdir->best_spc =
@@ -1324,11 +1327,11 @@ i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	int ret = 0;
 
-	if (filter_op == RTE_ETH_FILTER_NOP) {
-		if (!(pf->flags & I40E_FLAG_FDIR))
-			ret = -ENOTSUP;
-		return ret;
-	}
+	if ((pf->flags & I40E_FLAG_FDIR) == 0)
+		return -ENOTSUP;
+
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return 0;
 
 	if (arg == NULL && filter_op != RTE_ETH_FILTER_FLUSH)
 		return -EINVAL;

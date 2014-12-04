@@ -8546,7 +8546,7 @@ cmd_flow_director_flex_mask_parsed(void *parsed_result,
 	}
 	flex_mask.flow_type = str2flowtype(res->flow_type);
 	fdir_set_flex_mask(res->port_id, &flex_mask);
-	cmd_reconfig_device_queue(res->port_id, 1, 0);
+	cmd_reconfig_device_queue(res->port_id, 1, 1);
 }
 
 cmdline_parse_token_string_t cmd_flow_director_flexmask =
@@ -8667,7 +8667,7 @@ cmd_flow_director_flxpld_parsed(void *parsed_result,
 	}
 
 	fdir_set_flex_payload(res->port_id, &flex_cfg);
-	cmd_reconfig_device_queue(res->port_id, 1, 0);
+	cmd_reconfig_device_queue(res->port_id, 1, 1);
 }
 
 cmdline_parse_token_string_t cmd_flow_director_flexpayload =
