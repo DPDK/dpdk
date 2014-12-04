@@ -739,6 +739,9 @@ ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq)
 	mb_def.buf_len = rxq->mb_pool->elt_size - sizeof(struct rte_mbuf);
 	mb_def.port = rxq->port_id;
 	rte_mbuf_refcnt_set(&mb_def, 1);
+
+	/* prevent compiler reordering: rearm_data covers previous fields */
+	rte_compiler_barrier();
 	rxq->mbuf_initializer = *((uint64_t *)&mb_def.rearm_data);
 	return 0;
 }
