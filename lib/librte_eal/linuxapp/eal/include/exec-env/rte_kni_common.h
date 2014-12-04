@@ -68,6 +68,10 @@
  */
 #define RTE_KNI_NAMESIZE 32
 
+#ifndef RTE_CACHE_LINE_SIZE
+#define RTE_CACHE_LINE_SIZE 64       /**< Cache line size. */
+#endif
+
 /*
  * Request id.
  */
@@ -108,7 +112,7 @@ struct rte_kni_fifo {
  * Padding is necessary to assure the offsets of these fields
  */
 struct rte_kni_mbuf {
-	void *buf_addr __attribute__((__aligned__(64)));
+	void *buf_addr __attribute__((__aligned__(RTE_CACHE_LINE_SIZE)));
 	char pad0[10];
 	uint16_t data_off;      /**< Start address of data in segment buffer. */
 	char pad1[4];
@@ -118,7 +122,7 @@ struct rte_kni_mbuf {
 	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
 
 	/* fields on second cache line */
-	char pad3[8] __attribute__((__aligned__(64)));
+	char pad3[8] __attribute__((__aligned__(RTE_CACHE_LINE_SIZE)));
 	void *pool;
 	void *next;
 };
