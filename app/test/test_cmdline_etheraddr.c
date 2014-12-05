@@ -130,14 +130,15 @@ test_parse_etheraddr_invalid_param(void)
 	int ret = 0;
 
 	/* try all null */
-	ret = cmdline_parse_etheraddr(NULL, NULL, NULL);
+	ret = cmdline_parse_etheraddr(NULL, NULL, NULL, 0);
 	if (ret != -1) {
 		printf("Error: parser accepted null parameters!\n");
 		return -1;
 	}
 
 	/* try null buf */
-	ret = cmdline_parse_etheraddr(NULL, NULL, (void*)&result);
+	ret = cmdline_parse_etheraddr(NULL, NULL, (void*)&result,
+		sizeof(result));
 	if (ret != -1) {
 		printf("Error: parser accepted null string!\n");
 		return -1;
@@ -149,7 +150,7 @@ test_parse_etheraddr_invalid_param(void)
 	snprintf(buf, sizeof(buf), "%s",
 			ether_addr_valid_strs[0].str);
 
-	ret = cmdline_parse_etheraddr(NULL, buf, NULL);
+	ret = cmdline_parse_etheraddr(NULL, buf, NULL, 0);
 	if (ret == -1) {
 		printf("Error: parser rejected null result!\n");
 		return -1;
@@ -185,7 +186,7 @@ test_parse_etheraddr_invalid_data(void)
 		memset(&result, 0, sizeof(struct ether_addr));
 
 		ret = cmdline_parse_etheraddr(NULL, ether_addr_invalid_strs[i],
-				(void*)&result);
+			(void*)&result, sizeof(result));
 		if (ret != -1) {
 			printf("Error: parsing %s succeeded!\n",
 					ether_addr_invalid_strs[i]);
@@ -210,7 +211,7 @@ test_parse_etheraddr_valid(void)
 		memset(&result, 0, sizeof(struct ether_addr));
 
 		ret = cmdline_parse_etheraddr(NULL, ether_addr_valid_strs[i].str,
-				(void*)&result);
+			(void*)&result, sizeof(result));
 		if (ret < 0) {
 			printf("Error: parsing %s failed!\n",
 					ether_addr_valid_strs[i].str);
@@ -229,7 +230,7 @@ test_parse_etheraddr_valid(void)
 		memset(&result, 0, sizeof(struct ether_addr));
 
 		ret = cmdline_parse_etheraddr(NULL, ether_addr_garbage_strs[i],
-				(void*)&result);
+			(void*)&result, sizeof(result));
 		if (ret < 0) {
 			printf("Error: parsing %s failed!\n",
 					ether_addr_garbage_strs[i]);

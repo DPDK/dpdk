@@ -223,7 +223,8 @@ init_peer_eth_addrs(char *config_filename)
 		if (fgets(buf, sizeof(buf), config_file) == NULL)
 			break;
 
-		if (cmdline_parse_etheraddr(NULL, buf, &peer_eth_addrs[i]) < 0 ){
+		if (cmdline_parse_etheraddr(NULL, buf, &peer_eth_addrs[i],
+				sizeof(peer_eth_addrs[i])) < 0) {
 			printf("Bad MAC address format on line %d\n", i+1);
 			fclose(config_file);
 			return -1;
@@ -658,7 +659,8 @@ launch_args_parse(int argc, char** argv)
 						 "eth-peer: port %d >= RTE_MAX_ETHPORTS(%d)\n",
 						 n, RTE_MAX_ETHPORTS);
 
-				if (cmdline_parse_etheraddr(NULL, port_end, &peer_addr) < 0 )
+				if (cmdline_parse_etheraddr(NULL, port_end,
+						&peer_addr, sizeof(peer_addr)) < 0)
 					rte_exit(EXIT_FAILURE,
 						 "Invalid ethernet address: %s\n",
 						 port_end);

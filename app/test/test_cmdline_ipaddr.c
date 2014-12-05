@@ -425,7 +425,8 @@ test_parse_ipaddr_valid(void)
 							buf, sizeof(buf));
 
 			ret = cmdline_parse_ipaddr((cmdline_parse_token_hdr_t*)&token,
-					ipaddr_valid_strs[i].str, (void*)&result);
+				ipaddr_valid_strs[i].str, (void*)&result,
+				sizeof(result));
 
 			/* if should have passed, or should have failed */
 			if ((ret < 0) ==
@@ -474,7 +475,8 @@ test_parse_ipaddr_valid(void)
 							buf, sizeof(buf));
 
 			ret = cmdline_parse_ipaddr((cmdline_parse_token_hdr_t*)&token,
-					ipaddr_garbage_addr4_strs[i], (void*)&result);
+				ipaddr_garbage_addr4_strs[i], (void*)&result,
+				sizeof(result));
 
 			/* if should have passed, or should have failed */
 			if ((ret < 0) ==
@@ -515,7 +517,8 @@ test_parse_ipaddr_valid(void)
 							buf, sizeof(buf));
 
 			ret = cmdline_parse_ipaddr((cmdline_parse_token_hdr_t*)&token,
-					ipaddr_garbage_addr6_strs[i], (void*)&result);
+				ipaddr_garbage_addr6_strs[i], (void*)&result,
+				sizeof(result));
 
 			/* if should have passed, or should have failed */
 			if ((ret < 0) ==
@@ -557,7 +560,8 @@ test_parse_ipaddr_valid(void)
 							buf, sizeof(buf));
 
 			ret = cmdline_parse_ipaddr((cmdline_parse_token_hdr_t*)&token,
-					ipaddr_garbage_network4_strs[i], (void*)&result);
+				ipaddr_garbage_network4_strs[i], (void*)&result,
+				sizeof(result));
 
 			/* if should have passed, or should have failed */
 			if ((ret < 0) ==
@@ -598,7 +602,8 @@ test_parse_ipaddr_valid(void)
 							buf, sizeof(buf));
 
 			ret = cmdline_parse_ipaddr((cmdline_parse_token_hdr_t*)&token,
-					ipaddr_garbage_network6_strs[i], (void*)&result);
+				ipaddr_garbage_network6_strs[i], (void*)&result,
+				sizeof(result));
 
 			/* if should have passed, or should have failed */
 			if ((ret < 0) ==
@@ -651,7 +656,8 @@ test_parse_ipaddr_invalid_data(void)
 					buf, sizeof(buf));
 
 			ret = cmdline_parse_ipaddr((cmdline_parse_token_hdr_t*)&token,
-					ipaddr_invalid_strs[i], (void*)&result);
+				ipaddr_invalid_strs[i], (void*)&result,
+				sizeof(result));
 
 			if (ret != -1) {
 				printf("Error: parsing %s as %s succeeded!\n",
@@ -677,25 +683,26 @@ test_parse_ipaddr_invalid_param(void)
 	token.ipaddr_data.flags = CMDLINE_IPADDR_V4;
 
 	/* null token */
-	if (cmdline_parse_ipaddr(NULL, buf, (void*)&result) != -1) {
+	if (cmdline_parse_ipaddr(NULL, buf, (void*)&result,
+			sizeof(result)) != -1) {
 		printf("Error: parser accepted invalid parameters!\n");
 		return -1;
 	}
 	/* null buffer */
 	if (cmdline_parse_ipaddr((cmdline_parse_token_hdr_t*)&token,
-			NULL, (void*)&result) != -1) {
+			NULL, (void*)&result, sizeof(result)) != -1) {
 		printf("Error: parser accepted invalid parameters!\n");
 		return -1;
 	}
 	/* empty buffer */
 	if (cmdline_parse_ipaddr((cmdline_parse_token_hdr_t*)&token,
-			"", (void*)&result) != -1) {
+			"", (void*)&result, sizeof(result)) != -1) {
 		printf("Error: parser accepted invalid parameters!\n");
 		return -1;
 	}
 	/* null result */
 	if (cmdline_parse_ipaddr((cmdline_parse_token_hdr_t*)&token,
-			buf, NULL) == -1) {
+			buf, NULL, 0) == -1) {
 		printf("Error: parser rejected null result!\n");
 		return -1;
 	}

@@ -119,10 +119,40 @@ add_to_res(unsigned int c, uint64_t *res, unsigned int base)
 	return 0;
 }
 
+static int
+check_res_size(struct cmdline_token_num_data *nd, unsigned ressize)
+{
+	switch (nd->type) {
+	case INT8:
+	case UINT8:
+		if (ressize < sizeof(int8_t))
+			return -1;
+		break;
+	case INT16:
+	case UINT16:
+		if (ressize < sizeof(int16_t))
+			return -1;
+		break;
+	case INT32:
+	case UINT32:
+		if (ressize < sizeof(int32_t))
+			return -1;
+		break;
+	case INT64:
+	case UINT64:
+		if (ressize < sizeof(int64_t))
+			return -1;
+		break;
+	default:
+		return -1;
+	}
+	return 0;
+}
 
 /* parse an int */
 int
-cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res)
+cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res,
+	unsigned ressize)
 {
 	struct cmdline_token_num_data nd;
 	enum num_parse_state_t st = START;
@@ -140,6 +170,12 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res)
 	c = *buf;
 
 	memcpy(&nd, &((struct cmdline_token_num *)tk)->num_data, sizeof(nd));
+
+	/* check that we have enough room in res */
+	if (res) {
+		if (check_res_size(&nd, ressize) < 0)
+			return -1;
+	}
 
 	while ( st != ERROR && c && ! cmdline_isendoftoken(c) ) {
 		debug_printf("%c %x -> ", c, c);

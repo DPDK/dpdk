@@ -138,7 +138,7 @@ nb_common_chars(const char * s1, const char * s2)
  */
 static int
 match_inst(cmdline_parse_inst_t *inst, const char *buf,
-	   unsigned int nb_match_token, void * result_buf)
+	   unsigned int nb_match_token, void *resbuf, unsigned resbuf_size)
 {
 	unsigned int token_num=0;
 	cmdline_parse_token_hdr_t * token_p;
@@ -162,12 +162,23 @@ match_inst(cmdline_parse_inst_t *inst, const char *buf,
 		if ( isendofline(*buf) || iscomment(*buf) )
 			break;
 
-		if (result_buf)
-			n = token_hdr.ops->parse(token_p, buf,
-						 (char *)result_buf +
-						 token_hdr.offset);
-		else
-			n = token_hdr.ops->parse(token_p, buf, NULL);
+		if (resbuf == NULL) {
+			n = token_hdr.ops->parse(token_p, buf, NULL, 0);
+		} else {
+			unsigned rb_sz;
+
+			if (token_hdr.offset > resbuf_size) {
+				printf("Parse error(%s:%d): Token offset(%u) "
+					"exceeds maximum size(%u)\n",
+					__FILE__, __LINE__,
+					token_hdr.offset, resbuf_size);
+				return -ENOBUFS;
+			}
+			rb_sz = resbuf_size - token_hdr.offset;
+
+			n = token_hdr.ops->parse(token_p, buf, (char *)resbuf +
+				token_hdr.offset, rb_sz);
+		}
 
 		if (n < 0)
 			break;
@@ -219,7 +230,7 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 	unsigned int inst_num=0;
 	cmdline_parse_inst_t *inst;
 	const char *curbuf;
-	char result_buf[BUFSIZ];
+	char result_buf[CMDLINE_PARSE_RESULT_BUFSIZE];
 	void (*f)(void *, struct cmdline *, void *) = NULL;
 	void *data = NULL;
 	int comment = 0;
@@ -280,7 +291,7 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 		debug_printf("INST %d\n", inst_num);
 
 		/* fully parsed */
-		tok = match_inst(inst, buf, 0, result_buf);
+		tok = match_inst(inst, buf, 0, result_buf, sizeof(result_buf));
 
 		if (tok > 0) /* we matched at least one token */
 			err = CMDLINE_PARSE_BAD_ARGS;
@@ -377,10 +388,10 @@ cmdline_complete(struct cmdline *cl, const char *buf, int *state,
 		inst = ctx[inst_num];
 		while (inst) {
 			/* parse the first tokens of the inst */
-			if (nb_token && match_inst(inst, buf, nb_token, NULL))
+			if (nb_token && match_inst(inst, buf, nb_token, NULL, 0))
 				goto next;
 
-			debug_printf("instruction match \n");
+			debug_printf("instruction match\n");
 			token_p = inst->tokens[nb_token];
 			if (token_p)
 				memcpy(&token_hdr, token_p, sizeof(token_hdr));
@@ -471,7 +482,7 @@ cmdline_complete(struct cmdline *cl, const char *buf, int *state,
 		/* we need to redo it */
 		inst = ctx[inst_num];
 
-		if (nb_token && match_inst(inst, buf, nb_token, NULL))
+		if (nb_token && match_inst(inst, buf, nb_token, NULL, 0))
 			goto next2;
 
 		token_p = inst->tokens[nb_token];

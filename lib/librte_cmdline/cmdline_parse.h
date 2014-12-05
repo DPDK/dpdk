@@ -80,6 +80,9 @@ extern "C" {
 #define CMDLINE_PARSE_COMPLETE_AGAIN    1
 #define CMDLINE_PARSE_COMPLETED_BUFFER  2
 
+/* maximum buffer size for parsed result */
+#define CMDLINE_PARSE_RESULT_BUFSIZE 8192
+
 /**
  * Stores a pointer to the ops struct, and the offset: the place to
  * write the parsed result in the destination structure.
@@ -110,12 +113,14 @@ typedef struct cmdline_token_hdr cmdline_parse_token_hdr_t;
  * -1 on error and 0 on success.
  */
 struct cmdline_token_ops {
-	/** parse(token ptr, buf, res pts) */
-	int (*parse)(cmdline_parse_token_hdr_t *, const char *, void *);
+	/** parse(token ptr, buf, res pts, buf len) */
+	int (*parse)(cmdline_parse_token_hdr_t *, const char *, void *,
+		unsigned int);
 	/** return the num of possible choices for this token */
 	int (*complete_get_nb)(cmdline_parse_token_hdr_t *);
 	/** return the elt x for this token (token, idx, dstbuf, size) */
-	int (*complete_get_elt)(cmdline_parse_token_hdr_t *, int, char *, unsigned int);
+	int (*complete_get_elt)(cmdline_parse_token_hdr_t *, int, char *,
+		unsigned int);
 	/** get help for this token (token, dstbuf, size) */
 	int (*get_help)(cmdline_parse_token_hdr_t *, char *, unsigned int);
 };

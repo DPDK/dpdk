@@ -178,7 +178,7 @@ test_parse_string_invalid_param(void)
 		printf("Error: function accepted null token!\n");
 		return -1;
 	}
-	if (cmdline_parse_string(NULL, buf, NULL) != -1) {
+	if (cmdline_parse_string(NULL, buf, NULL, 0) != -1) {
 		printf("Error: function accepted null token!\n");
 		return -1;
 	}
@@ -189,7 +189,8 @@ test_parse_string_invalid_param(void)
 		return -1;
 	}
 	if (cmdline_parse_string(
-			(cmdline_parse_token_hdr_t*)&token, NULL, (void*)&result) != -1) {
+			(cmdline_parse_token_hdr_t*)&token, NULL,
+			(void*)&result, sizeof(result)) != -1) {
 		printf("Error: function accepted null buffer!\n");
 		return -1;
 	}
@@ -200,7 +201,7 @@ test_parse_string_invalid_param(void)
 	}
 	/* test null result */
 	if (cmdline_parse_string(
-			(cmdline_parse_token_hdr_t*)&token, buf, NULL) == -1) {
+			(cmdline_parse_token_hdr_t*)&token, buf, NULL, 0) == -1) {
 		printf("Error: function rejected null result!\n");
 		return -1;
 	}
@@ -233,7 +234,8 @@ test_parse_string_invalid_data(void)
 		token.string_data.str = string_invalid_strs[i].fixed_str;
 
 		if (cmdline_parse_string((cmdline_parse_token_hdr_t*)&token,
-				string_invalid_strs[i].str, (void*)buf) != -1) {
+				string_invalid_strs[i].str, (void*)buf,
+				sizeof(buf)) != -1) {
 			memset(help_str, 0, sizeof(help_str));
 			memset(&help_token, 0, sizeof(help_token));
 
@@ -330,7 +332,8 @@ test_parse_string_valid(void)
 		token.string_data.str = string_parse_strs[i].fixed_str;
 
 		if (cmdline_parse_string((cmdline_parse_token_hdr_t*)&token,
-				string_parse_strs[i].str, (void*)buf) < 0) {
+				string_parse_strs[i].str, (void*)buf,
+				sizeof(buf)) < 0) {
 
 			/* clean help data */
 			memset(&help_token, 0, sizeof(help_token));

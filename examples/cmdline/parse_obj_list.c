@@ -84,7 +84,8 @@ struct cmdline_token_ops token_obj_list_ops = {
 };
 
 int
-parse_obj_list(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
+parse_obj_list(cmdline_parse_token_hdr_t *tk, const char *buf, void *res,
+	unsigned ressize)
 {
 	struct token_obj_list *tk2 = (struct token_obj_list *)tk;
 	struct token_obj_list_data *tkd = &tk2->obj_list_data;
@@ -92,6 +93,9 @@ parse_obj_list(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
 	unsigned int token_len = 0;
 
 	if (*buf == 0)
+		return -1;
+
+	if (res && ressize < sizeof(struct object *))
 		return -1;
 
 	while(!cmdline_isendoftoken(buf[token_len]))

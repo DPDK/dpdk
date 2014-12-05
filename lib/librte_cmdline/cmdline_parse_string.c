@@ -105,12 +105,16 @@ get_next_token(const char *s)
 }
 
 int
-cmdline_parse_string(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
+cmdline_parse_string(cmdline_parse_token_hdr_t *tk, const char *buf, void *res,
+	unsigned ressize)
 {
 	struct cmdline_token_string *tk2;
 	struct cmdline_token_string_data *sd;
 	unsigned int token_len;
 	const char *str;
+
+	if (res && ressize < STR_TOKEN_SIZE)
+		return -1;
 
 	if (!tk || !buf || ! *buf)
 		return -1;

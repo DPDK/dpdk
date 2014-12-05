@@ -89,9 +89,9 @@ typedef struct cmdline_token_num cmdline_parse_token_num_t;
 extern struct cmdline_token_ops cmdline_token_num_ops;
 
 int cmdline_parse_num(cmdline_parse_token_hdr_t *tk,
-		      const char *srcbuf, void *res);
+	const char *srcbuf, void *res, unsigned ressize);
 int cmdline_get_help_num(cmdline_parse_token_hdr_t *tk,
-			 char *dstbuf, unsigned int size);
+	char *dstbuf, unsigned int size);
 
 #define TOKEN_NUM_INITIALIZER(structure, field, numtype)    \
 {                                                           \

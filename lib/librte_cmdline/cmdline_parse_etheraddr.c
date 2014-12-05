@@ -137,11 +137,14 @@ my_ether_aton(const char *a)
 
 int
 cmdline_parse_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
-			const char *buf, void *res)
+	const char *buf, void *res, unsigned ressize)
 {
 	unsigned int token_len = 0;
 	char ether_str[ETHER_ADDRSTRLENLONG+1];
 	struct ether_addr *tmp;
+
+	if (res && ressize < sizeof(struct ether_addr))
+		return -1;
 
 	if (!buf || ! *buf)
 		return -1;

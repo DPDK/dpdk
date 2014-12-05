@@ -83,7 +83,7 @@ typedef struct cmdline_token_string cmdline_parse_token_string_t;
 extern struct cmdline_token_ops cmdline_token_string_ops;
 
 int cmdline_parse_string(cmdline_parse_token_hdr_t *tk, const char *srcbuf,
-			 void *res);
+	void *res, unsigned ressize);
 int cmdline_complete_get_nb_string(cmdline_parse_token_hdr_t *tk);
 int cmdline_complete_get_elt_string(cmdline_parse_token_hdr_t *tk, int idx,
 				    char *dstbuf, unsigned int size);

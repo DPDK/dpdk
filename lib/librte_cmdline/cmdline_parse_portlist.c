@@ -127,7 +127,7 @@ parse_ports(cmdline_portlist_t * pl, const char * str)
 
 int
 cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
-		const char *buf, void *res)
+	const char *buf, void *res, unsigned ressize)
 {
 	unsigned int token_len = 0;
 	char portlist_str[PORTLIST_TOKEN_SIZE+1];
@@ -135,6 +135,9 @@ cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 
 	if (!buf || ! *buf)
 		return (-1);
+
+	if (res && ressize < PORTLIST_TOKEN_SIZE)
+		return -1;
 
 	pl = res;
 

@@ -350,14 +350,14 @@ test_parse_num_invalid_param(void)
 			num_valid_positive_strs[0].str);
 
 	/* try all null */
-	ret = cmdline_parse_num(NULL, NULL, NULL);
+	ret = cmdline_parse_num(NULL, NULL, NULL, 0);
 	if (ret != -1) {
 		printf("Error: parser accepted null parameters!\n");
 		return -1;
 	}
 
 	/* try null token */
-	ret = cmdline_parse_num(NULL, buf, (void*)&result);
+	ret = cmdline_parse_num(NULL, buf, (void*)&result, sizeof(result));
 	if (ret != -1) {
 		printf("Error: parser accepted null token!\n");
 		return -1;
@@ -365,14 +365,15 @@ test_parse_num_invalid_param(void)
 
 	/* try null buf */
 	ret = cmdline_parse_num((cmdline_parse_token_hdr_t*)&token, NULL,
-			(void*)&result);
+		(void*)&result, sizeof(result));
 	if (ret != -1) {
 		printf("Error: parser accepted null string!\n");
 		return -1;
 	}
 
 	/* try null result */
-	ret = cmdline_parse_num((cmdline_parse_token_hdr_t*)&token, buf, NULL);
+	ret = cmdline_parse_num((cmdline_parse_token_hdr_t*)&token, buf,
+		NULL, 0);
 	if (ret == -1) {
 		printf("Error: parser rejected null result!\n");
 		return -1;
@@ -426,7 +427,7 @@ test_parse_num_invalid_data(void)
 			memset(&buf, 0, sizeof(buf));
 
 			ret = cmdline_parse_num((cmdline_parse_token_hdr_t*)&token,
-					num_invalid_strs[i], (void*)&result);
+				num_invalid_strs[i], (void*)&result, sizeof(result));
 			if (ret != -1) {
 				/* get some info about what we are trying to parse */
 				cmdline_get_help_num((cmdline_parse_token_hdr_t*)&token,
@@ -466,8 +467,9 @@ test_parse_num_valid(void)
 			cmdline_get_help_num((cmdline_parse_token_hdr_t*)&token,
 					buf, sizeof(buf));
 
-			ret = cmdline_parse_num((cmdline_parse_token_hdr_t*) &token, num_valid_positive_strs[i].str,
-					(void*)&result);
+			ret = cmdline_parse_num((cmdline_parse_token_hdr_t*) &token,
+				num_valid_positive_strs[i].str,
+				(void*)&result, sizeof(result));
 
 			/* if it should have passed but didn't, or if it should have failed but didn't */
 			if ((ret < 0) == (can_parse_unsigned(num_valid_positive_strs[i].result, type) > 0)) {
@@ -493,8 +495,9 @@ test_parse_num_valid(void)
 			cmdline_get_help_num((cmdline_parse_token_hdr_t*)&token,
 					buf, sizeof(buf));
 
-			ret = cmdline_parse_num((cmdline_parse_token_hdr_t*) &token, num_valid_negative_strs[i].str,
-					(void*)&result);
+			ret = cmdline_parse_num((cmdline_parse_token_hdr_t*) &token,
+				num_valid_negative_strs[i].str,
+				(void*)&result, sizeof(result));
 
 			/* if it should have passed but didn't, or if it should have failed but didn't */
 			if ((ret < 0) == (can_parse_signed(num_valid_negative_strs[i].result, type) > 0)) {
@@ -542,8 +545,9 @@ test_parse_num_valid(void)
 			cmdline_get_help_num((cmdline_parse_token_hdr_t*)&token,
 					buf, sizeof(buf));
 
-			ret = cmdline_parse_num((cmdline_parse_token_hdr_t*) &token, num_garbage_positive_strs[i].str,
-					(void*)&result);
+			ret = cmdline_parse_num((cmdline_parse_token_hdr_t*) &token,
+				num_garbage_positive_strs[i].str,
+				(void*)&result, sizeof(result));
 
 			/* if it should have passed but didn't, or if it should have failed but didn't */
 			if ((ret < 0) == (can_parse_unsigned(num_garbage_positive_strs[i].result, type) > 0)) {
@@ -569,8 +573,9 @@ test_parse_num_valid(void)
 			cmdline_get_help_num((cmdline_parse_token_hdr_t*)&token,
 					buf, sizeof(buf));
 
-			ret = cmdline_parse_num((cmdline_parse_token_hdr_t*) &token, num_garbage_negative_strs[i].str,
-					(void*)&result);
+			ret = cmdline_parse_num((cmdline_parse_token_hdr_t*) &token,
+				num_garbage_negative_strs[i].str,
+				(void*)&result, sizeof(result));
 
 			/* if it should have passed but didn't, or if it should have failed but didn't */
 			if ((ret < 0) == (can_parse_signed(num_garbage_negative_strs[i].result, type) > 0)) {

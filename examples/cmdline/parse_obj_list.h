@@ -91,7 +91,8 @@ typedef struct token_obj_list parse_token_obj_list_t;
 
 extern struct cmdline_token_ops token_obj_list_ops;
 
-int parse_obj_list(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res);
+int parse_obj_list(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res,
+	unsigned ressize);
 int complete_get_nb_obj_list(cmdline_parse_token_hdr_t *tk);
 int complete_get_elt_obj_list(cmdline_parse_token_hdr_t *tk, int idx,
 			      char *dstbuf, unsigned int size);

@@ -254,7 +254,8 @@ bond_ethdev_parse_bond_mac_addr_kvarg(const char *key __rte_unused,
 		return -1;
 
 	/* Parse MAC */
-	return cmdline_parse_etheraddr(NULL, value, extra_args);
+	return cmdline_parse_etheraddr(NULL, value, extra_args,
+		sizeof(struct ether_addr));
 }
 
 int

@@ -92,9 +92,9 @@ typedef struct cmdline_token_ipaddr cmdline_parse_token_ipaddr_t;
 extern struct cmdline_token_ops cmdline_token_ipaddr_ops;
 
 int cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *srcbuf,
-			 void *res);
+	void *res, unsigned ressize);
 int cmdline_get_help_ipaddr(cmdline_parse_token_hdr_t *tk, char *dstbuf,
-			    unsigned int size);
+	unsigned int size);
 
 #define TOKEN_IPADDR_INITIALIZER(structure, field)      \
 {                                                       \

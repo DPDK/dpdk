@@ -306,7 +306,8 @@ inet_pton6(const char *src, unsigned char *dst)
 }
 
 int
-cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
+cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *buf, void *res,
+	unsigned ressize)
 {
 	struct cmdline_token_ipaddr *tk2;
 	unsigned int token_len = 0;
@@ -314,6 +315,9 @@ cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
 	cmdline_ipaddr_t ipaddr;
 	char *prefix, *prefix_end;
 	long prefixlen = 0;
+
+	if (res && ressize < sizeof(cmdline_ipaddr_t))
+		return -1;
 
 	if (!buf || !tk || ! *buf)
 		return -1;

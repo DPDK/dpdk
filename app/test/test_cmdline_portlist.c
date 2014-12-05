@@ -139,21 +139,22 @@ test_parse_portlist_invalid_param(void)
 	memset(&result, 0, sizeof(cmdline_portlist_t));
 
 	/* try all null */
-	ret = cmdline_parse_portlist(NULL, NULL, NULL);
+	ret = cmdline_parse_portlist(NULL, NULL, NULL, 0);
 	if (ret != -1) {
 		printf("Error: parser accepted null parameters!\n");
 		return -1;
 	}
 
 	/* try null buf */
-	ret = cmdline_parse_portlist(NULL, NULL, (void*)&result);
+	ret = cmdline_parse_portlist(NULL, NULL, (void*)&result,
+		sizeof(result));
 	if (ret != -1) {
 		printf("Error: parser accepted null string!\n");
 		return -1;
 	}
 
 	/* try null result */
-	ret = cmdline_parse_portlist(NULL, portlist_valid_strs[0].str, NULL);
+	ret = cmdline_parse_portlist(NULL, portlist_valid_strs[0].str, NULL, 0);
 	if (ret == -1) {
 		printf("Error: parser rejected null result!\n");
 		return -1;
@@ -188,7 +189,7 @@ test_parse_portlist_invalid_data(void)
 		memset(&result, 0, sizeof(cmdline_portlist_t));
 
 		ret = cmdline_parse_portlist(NULL, portlist_invalid_strs[i],
-				(void*)&result);
+			(void*)&result, sizeof(result));
 		if (ret != -1) {
 			printf("Error: parsing %s succeeded!\n",
 					portlist_invalid_strs[i]);
@@ -213,7 +214,7 @@ test_parse_portlist_valid(void)
 		memset(&result, 0, sizeof(cmdline_portlist_t));
 
 		ret = cmdline_parse_portlist(NULL, portlist_valid_strs[i].str,
-				(void*)&result);
+			(void*)&result, sizeof(result));
 		if (ret < 0) {
 			printf("Error: parsing %s failed!\n",
 					portlist_valid_strs[i].str);
@@ -232,7 +233,7 @@ test_parse_portlist_valid(void)
 		memset(&result, 0, sizeof(cmdline_portlist_t));
 
 		ret = cmdline_parse_portlist(NULL, portlist_garbage_strs[i],
-				(void*)&result);
+			(void*)&result, sizeof(result));
 		if (ret < 0) {
 			printf("Error: parsing %s failed!\n",
 					portlist_garbage_strs[i]);
