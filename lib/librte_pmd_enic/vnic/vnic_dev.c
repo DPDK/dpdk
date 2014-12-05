@@ -764,7 +764,7 @@ int vnic_dev_notify_setcmd(struct vnic_dev *vdev,
 int vnic_dev_notify_set(struct vnic_dev *vdev, u16 intr)
 {
 	void *notify_addr = NULL;
-	dma_addr_t notify_pa;
+	dma_addr_t notify_pa = 0;
 	char name[NAME_MAX];
 	static u32 instance;
 
