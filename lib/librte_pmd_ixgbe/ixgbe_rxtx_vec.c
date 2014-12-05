@@ -79,13 +79,22 @@ ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
 	for (i = 0; i < RTE_IXGBE_RXQ_REARM_THRESH; i += 2, rxep += 2) {
 		__m128i vaddr0, vaddr1;
+		uintptr_t p0, p1;
 
 		mb0 = rxep[0].mbuf;
 		mb1 = rxep[1].mbuf;
 
-		/* flush mbuf with pkt template */
-		mb0->rearm_data[0] = rxq->mbuf_initializer;
-		mb1->rearm_data[0] = rxq->mbuf_initializer;
+		/*
+		 * Flush mbuf with pkt template.
+		 * Data to be rearmed is 6 bytes long.
+		 * Though, RX will overwrite ol_flags that are coming next
+		 * anyway. So overwrite whole 8 bytes with one load:
+		 * 6 bytes of rearm_data plus first 2 bytes of ol_flags.
+		 */
+		p0 = (uintptr_t)&mb0->rearm_data;
+		*(uint64_t *)p0 = rxq->mbuf_initializer;
+		p1 = (uintptr_t)&mb1->rearm_data;
+		*(uint64_t *)p1 = rxq->mbuf_initializer;
 
 		/* load buf_addr(lo 64bit) and buf_physaddr(hi 64bit) */
 		vaddr0 = _mm_loadu_si128((__m128i *)&(mb0->buf_addr));
@@ -732,17 +741,18 @@ static struct ixgbe_txq_ops vec_txq_ops = {
 int
 ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq)
 {
+	uintptr_t p;
 	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */
 
 	mb_def.nb_segs = 1;
 	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
-	mb_def.buf_len = rxq->mb_pool->elt_size - sizeof(struct rte_mbuf);
 	mb_def.port = rxq->port_id;
 	rte_mbuf_refcnt_set(&mb_def, 1);
 
 	/* prevent compiler reordering: rearm_data covers previous fields */
 	rte_compiler_barrier();
-	rxq->mbuf_initializer = *((uint64_t *)&mb_def.rearm_data);
+	p = (uintptr_t)&mb_def.rearm_data;
+	rxq->mbuf_initializer = *(uint64_t *)p;
 	return 0;
 }
 

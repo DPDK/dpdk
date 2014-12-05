@@ -189,8 +189,10 @@ const char *rte_get_tx_ol_flag_name(uint64_t mask);
 /* define a set of marker types that can be used to refer to set points in the
  * mbuf */
 typedef void    *MARKER[0];   /**< generic marker for a point in a structure */
+typedef uint8_t  MARKER8[0];  /**< generic marker with 1B alignment */
 typedef uint64_t MARKER64[0]; /**< marker that allows us to overwrite 8 bytes
                                * with a single assignment */
+
 /**
  * The generic rte_mbuf, containing a packet mbuf.
  */
@@ -200,9 +202,10 @@ struct rte_mbuf {
 	void *buf_addr;           /**< Virtual address of segment buffer. */
 	phys_addr_t buf_physaddr; /**< Physical address of segment buffer. */
 
-	/* next 8 bytes are initialised on RX descriptor rearm */
-	MARKER64 rearm_data;
 	uint16_t buf_len;         /**< Length of segment buffer. */
+
+	/* next 6 bytes are initialised on RX descriptor rearm */
+	MARKER8 rearm_data;
 	uint16_t data_off;
 
 	/**
