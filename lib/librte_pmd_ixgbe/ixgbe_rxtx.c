@@ -1771,6 +1771,40 @@ static struct ixgbe_txq_ops def_txq_ops = {
 	.reset = ixgbe_reset_tx_queue,
 };
 
+/* Takes an ethdev and a queue and sets up the tx function to be used based on
+ * the queue parameters. Used in tx_queue_setup by primary process and then
+ * in dev_init by secondary process when attaching to an existing ethdev.
+ */
+void
+set_tx_function(struct rte_eth_dev *dev, struct igb_tx_queue *txq)
+{
+	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
+	if (((txq->txq_flags & IXGBE_SIMPLE_FLAGS) == IXGBE_SIMPLE_FLAGS)
+			&& (txq->tx_rs_thresh >= RTE_PMD_IXGBE_TX_MAX_BURST)) {
+		PMD_INIT_LOG(INFO, "Using simple tx code path");
+#ifdef RTE_IXGBE_INC_VECTOR
+		if (txq->tx_rs_thresh <= RTE_IXGBE_TX_MAX_FREE_BUF_SZ &&
+				(rte_eal_process_type() != RTE_PROC_PRIMARY ||
+					ixgbe_txq_vec_setup(txq) == 0)) {
+			PMD_INIT_LOG(INFO, "Vector tx enabled.");
+			dev->tx_pkt_burst = ixgbe_xmit_pkts_vec;
+		} else
+#endif
+		dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
+	} else {
+		PMD_INIT_LOG(INFO, "Using full-featured tx code path");
+		PMD_INIT_LOG(INFO,
+				" - txq_flags = %lx " "[IXGBE_SIMPLE_FLAGS=%lx]",
+				(unsigned long)txq->txq_flags,
+				(unsigned long)IXGBE_SIMPLE_FLAGS);
+		PMD_INIT_LOG(INFO,
+				" - tx_rs_thresh = %lu " "[RTE_PMD_IXGBE_TX_MAX_BURST=%lu]",
+				(unsigned long)txq->tx_rs_thresh,
+				(unsigned long)RTE_PMD_IXGBE_TX_MAX_BURST);
+		dev->tx_pkt_burst = ixgbe_xmit_pkts;
+	}
+}
+
 int
 ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t queue_idx,
@@ -1933,31 +1967,8 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
 		     txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
 
-	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
-	if (((txq->txq_flags & IXGBE_SIMPLE_FLAGS) == IXGBE_SIMPLE_FLAGS) &&
-	    (txq->tx_rs_thresh >= RTE_PMD_IXGBE_TX_MAX_BURST)) {
-		PMD_INIT_LOG(INFO, "Using simple tx code path");
-#ifdef RTE_IXGBE_INC_VECTOR
-		if (txq->tx_rs_thresh <= RTE_IXGBE_TX_MAX_FREE_BUF_SZ &&
-		    ixgbe_txq_vec_setup(txq) == 0) {
-			PMD_INIT_LOG(INFO, "Vector tx enabled.");
-			dev->tx_pkt_burst = ixgbe_xmit_pkts_vec;
-		}
-		else
-#endif
-			dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
-	} else {
-		PMD_INIT_LOG(INFO, "Using full-featured tx code path");
-		PMD_INIT_LOG(INFO, " - txq_flags = %lx "
-			     "[IXGBE_SIMPLE_FLAGS=%lx]",
-			     (long unsigned)txq->txq_flags,
-			     (long unsigned)IXGBE_SIMPLE_FLAGS);
-		PMD_INIT_LOG(INFO, " - tx_rs_thresh = %lu "
-			     "[RTE_PMD_IXGBE_TX_MAX_BURST=%lu]",
-			     (long unsigned)txq->tx_rs_thresh,
-			     (long unsigned)RTE_PMD_IXGBE_TX_MAX_BURST);
-		dev->tx_pkt_burst = ixgbe_xmit_pkts;
-	}
+	/* set up vector or scalar TX function as appropriate */
+	set_tx_function(dev, txq);
 
 	txq->ops->reset(txq);
 

@@ -68,6 +68,7 @@
 #include "ixgbe/ixgbe_common.h"
 #include "ixgbe_ethdev.h"
 #include "ixgbe_bypass.h"
+#include "ixgbe_rxtx.h"
 
 /*
  * High threshold controlling when to start sending XOFF frames. Must be at
@@ -741,10 +742,17 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	eth_dev->rx_pkt_burst = &ixgbe_recv_pkts;
 	eth_dev->tx_pkt_burst = &ixgbe_xmit_pkts;
 
-	/* for secondary processes, we don't initialise any further as primary
+	/*
+	 * For secondary processes, we don't initialise any further as primary
 	 * has already done this work. Only check we don't need a different
-	 * RX function */
+	 * RX and TX function.
+	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY){
+		struct igb_tx_queue *txq;
+		/* TX queue function in primary, set by last queue initialized */
+		txq = eth_dev->data->tx_queues[eth_dev->data->nb_tx_queues-1];
+		set_tx_function(eth_dev, txq);
+
 		if (eth_dev->data->scattered_rx)
 			eth_dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
 		return 0;
