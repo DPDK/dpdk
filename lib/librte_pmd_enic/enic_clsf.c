@@ -96,7 +96,7 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_fdir_filter *params,
 	u16 queue, u8 drop)
 {
 	struct enic_fdir_node *key;
-	struct filter fltr = {0};
+	struct filter fltr = {.type = 0};
 	int32_t pos;
 	u8 do_free = 0;
 	u16 old_fltr_id = 0;
