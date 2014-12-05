@@ -61,7 +61,7 @@ Compiling the Application
     ..  code-block:: console
 
         export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/l3fwd-acl
+        cd ${RTE_SDK}/examples/distributor
 
 #.  Set the target (a default target is used if not specified). For example:
 
@@ -90,7 +90,7 @@ Running the Application
 
    *   -p PORTMASK: Hexadecimal bitmask of ports to configure
 
-#. To run the application in linuxapp environment with 11 lcores, 4 ports,
+#. To run the application in linuxapp environment with 10 lcores, 4 ports,
    issue the command:
 
    ..  code-block:: console
