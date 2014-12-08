@@ -588,7 +588,6 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 
 	memcpy(eth_dev->data->mac_addrs, mac_addr,
 			sizeof(*eth_dev->data->mac_addrs));
-	eth_dev->data->mac_addrs->addr_bytes[5] = eth_dev->data->port_id;
 
 	eth_dev->data->dev_started = 0;
 	eth_dev->data->promiscuous = 0;

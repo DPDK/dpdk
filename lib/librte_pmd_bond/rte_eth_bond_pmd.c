@@ -982,16 +982,17 @@ void
 slave_remove(struct bond_dev_private *internals,
 		struct rte_eth_dev *slave_eth_dev)
 {
-	int i, found = 0;
+	uint8_t i;
 
-	for (i = 0; i < internals->slave_count; i++) {
-		if (internals->slaves[i].port_id ==	slave_eth_dev->data->port_id)
-			found = 1;
+	for (i = 0; i < internals->slave_count; i++)
+		if (internals->slaves[i].port_id ==
+				slave_eth_dev->data->port_id)
+			break;
 
-		if (found && i < (internals->slave_count - 1))
-			memcpy(&internals->slaves[i], &internals->slaves[i+1],
-					sizeof(internals->slaves[i]));
-	}
+	if (i < (internals->slave_count - 1))
+		memmove(&internals->slaves[i], &internals->slaves[i + 1],
+				sizeof(internals->slaves[0]) *
+				(internals->slave_count - i - 1));
 
 	internals->slave_count--;
 }
@@ -1500,6 +1501,8 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 			bonded_eth_dev->data->dev_link.link_status = 1;
 			internals->current_primary_port = port_id;
 			lsc_flag = 1;
+
+			mac_address_slaves_update(bonded_eth_dev);
 
 			/* Inherit eth dev link properties from first active slave */
 			link_properties_set(bonded_eth_dev,
