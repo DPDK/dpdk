@@ -83,33 +83,8 @@ console_log_write(__attribute__((unused)) void *c, const char *buf, size_t size)
 	return ret;
 }
 
-static ssize_t
-console_log_read(__attribute__((unused)) void *c,
-		 __attribute__((unused)) char *buf,
-		 __attribute__((unused)) size_t size)
-{
-	return 0;
-}
-
-static int
-console_log_seek(__attribute__((unused)) void *c,
-		 __attribute__((unused)) off64_t *offset,
-		 __attribute__((unused)) int whence)
-{
-	return -1;
-}
-
-static int
-console_log_close(__attribute__((unused)) void *c)
-{
-	return 0;
-}
-
 static cookie_io_functions_t console_log_func = {
-	.read  = console_log_read,
 	.write = console_log_write,
-	.seek  = console_log_seek,
-	.close = console_log_close
 };
 
 /*
@@ -150,33 +125,8 @@ early_log_write(__attribute__((unused)) void *c, const char *buf, size_t size)
 	return ret;
 }
 
-static ssize_t
-early_log_read(__attribute__((unused)) void *c,
-	       __attribute__((unused)) char *buf,
-	       __attribute__((unused)) size_t size)
-{
-	return 0;
-}
-
-static int
-early_log_seek(__attribute__((unused)) void *c,
-	       __attribute__((unused)) off64_t *offset,
-	       __attribute__((unused)) int whence)
-{
-	return -1;
-}
-
-static int
-early_log_close(__attribute__((unused)) void *c)
-{
-	return 0;
-}
-
 static cookie_io_functions_t early_log_func = {
-	.read  = early_log_read,
 	.write = early_log_write,
-	.seek  = early_log_seek,
-	.close = early_log_close
 };
 static FILE *early_log_stream;
 
