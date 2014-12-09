@@ -149,6 +149,8 @@ The following is a list of Intel® DPDK documents in the suggested reading order
 
     *   Kernel NIC Interface (KNI)
 
+    *   VM Power Management
+
     In addition, there are some other applications that are built when the libraries are created.
     The source for these applications is in the DPDK/app directory and are called:
 

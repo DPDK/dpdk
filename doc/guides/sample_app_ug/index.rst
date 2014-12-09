@@ -101,6 +101,7 @@ Copyright © 2012 - 2014, Intel Corporation. All rights reserved.
     internet_proto_ip_pipeline
     test_pipeline
     dist_app
+    vm_power_management
 
 **Figures**
 
@@ -151,6 +152,10 @@ Copyright © 2012 - 2014, Intel Corporation. All rights reserved.
 :ref:`Figure 22.Performance Benchmarking Setup (Basic Environment) <figure_22>`
 
 :ref:`Figure 23.Distributor Sample Application Layout <figure_23>`
+
+:ref:`Figure 24.High level Solution <figure_24>`
+
+:ref:`Figure 25.VM request to scale frequency <figure_25>`
 
 **Tables**
 
