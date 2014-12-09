@@ -55,7 +55,7 @@
 #ifdef RTE_LIBRTE_XEN_DOM0
 #define DEFAULT_MEM_SIZE "30"
 #else
-#define DEFAULT_MEM_SIZE "8"
+#define DEFAULT_MEM_SIZE "18"
 #endif
 #define mp_flag "--proc-type=secondary"
 #define no_hpet "--no-hpet"
