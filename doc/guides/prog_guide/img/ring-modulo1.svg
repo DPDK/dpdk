@@ -2,7 +2,8 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <!--
-# Copyright (c) <2010>, Intel Corporation
+# BSD LICENSE
+# Copyright (c) <2010-2014>, Intel Corporation
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -785,7 +786,7 @@
          sodipodi:role="line"
          x="78.791893"
          y="528.97369"
-         id="tspan5287">free_entries = (mask + ct - ph) % 65536 = 8383</tspan></text>
+         id="tspan5287">free_entries = (mask + ct - ph) % 65536 = 5383</tspan></text>
     <path
        style="fill:#5a750a;fill-opacity:1;stroke:#fd0004;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#Arrow1Mstart);marker-end:url(#Arrow1Mend)"
        d="m 324.78109,452.09355 20.16896,0"

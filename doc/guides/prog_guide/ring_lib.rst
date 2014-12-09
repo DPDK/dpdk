@@ -236,7 +236,7 @@ On both cores, *ring->prod_head* and ring->cons_tail are copied in local variabl
 The prod_next local variable points to the next element of the table,
 or several elements after in the case of bulk enqueue.
 
-If there are not enough objects in the ring (this is detected by checking cons_tail), it returns an error.
+If there is not enough room in the ring (this is detected by checking cons_tail), it returns an error.
 
 .. image12_png has been replaced
 
