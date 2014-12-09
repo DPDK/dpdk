@@ -1,0 +1,927 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<!--
+# BSD License
+# Copyright (c) <2014>, Intel Corporation
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# - Redistributions of source code must retain the above copyright
+#   notice, this list of conditions and the following disclaimer.
+#
+# - Redistributions in binary form must reproduce the above copyright
+#   notice, this list of conditions and the following disclaimer in
+#   the documentation and/or other materials provided with the
+#   distribution.
+#
+# - Neither the name of Intel Corporation nor the names of its
+#   contributors may be used to endorse or promote products derived
+#   from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   version="1.1"
+   width="912.44751"
+   height="664.9787"
+   id="svg5187"
+   inkscape:version="0.48.5 r10040"
+   sodipodi:docname="vm_power_mgr_vm_request_seq.svg">
+  <metadata
+     id="metadata5497">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs5495" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1005"
+     id="namedview5493"
+     showgrid="false"
+     fit-margin-top="0.1"
+     fit-margin-right="0.1"
+     fit-margin-bottom="0.1"
+     fit-margin-left="0.1"
+     inkscape:zoom="1.5857392"
+     inkscape:cx="533.1241"
+     inkscape:cy="478.97029"
+     inkscape:window-x="1920"
+     inkscape:window-y="36"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="Layer1000" />
+  <g
+     id="Layer1000"
+     transform="matrix(1.3033705,0,0,1.3931773,-22.056332,168.16686)">
+    <g
+       id="Layer1001"
+       transform="matrix(1.237886,0,0,1.2010974,-4.0390827,-71.427441)">
+      <defs
+         id="defs5191">
+        <filter
+           filterUnits="userSpaceOnUse"
+           id="shadow1"
+           color-interpolation-filters="sRGB">
+          <feOffset
+             in="SourceGraphic"
+             result="offset"
+             dx="1.4400"
+             dy="1.4400"
+             id="feOffset5194" />
+          <feColorMatrix
+             in="offset"
+             result="offset-color"
+             type="matrix"
+             values="0 0 0 0 0.2745 0 0 0 0 0.2745 0 0 0 0 0.2745 0 0 0 0.4980 0"
+             id="feColorMatrix5196" />
+          <feMerge
+             id="feMerge5198">
+            <feMergeNode
+               in="offset-color"
+               id="feMergeNode5200" />
+            <feMergeNode
+               in="SourceGraphic"
+               id="feMergeNode5202" />
+          </feMerge>
+        </filter>
+      </defs>
+      <defs
+         id="defs5204">
+        <linearGradient
+           id="grad1">
+          <stop
+             offset="0%"
+             stop-color="#ffffff"
+             stop-opacity="1.0000"
+             id="stop5207" />
+          <stop
+             offset="100%"
+             stop-color="#ffffff"
+             stop-opacity="1.0000"
+             id="stop5209" />
+        </linearGradient>
+        <linearGradient
+           xlink:href="#grad1"
+           id="grad2"
+           x1="164.37778"
+           y1="54.035988"
+           x2="164.37778"
+           y2="290.9747"
+           gradientTransform="scale(0.85432014,1.1705214)"
+           gradientUnits="userSpaceOnUse" />
+      </defs>
+      <path
+         d="m 157.2997,317.4803 168.6846,0 0,-231.1182 -168.6846,0 0,231.1182 z"
+         style="fill:url(#grad2);fill-rule:evenodd;stroke-width:0.25;stroke-linecap:round;stroke-linejoin:round;filter:url(#shadow1)"
+         id="path5212"
+         inkscape:connector-curvature="0" />
+      <defs
+         id="defs5214">
+        <filter
+           filterUnits="userSpaceOnUse"
+           id="shadow2"
+           color-interpolation-filters="sRGB">
+          <feOffset
+             in="SourceGraphic"
+             result="offset"
+             dx="1.4400"
+             dy="1.4400"
+             id="feOffset5217" />
+          <feColorMatrix
+             in="offset"
+             result="offset-color"
+             type="matrix"
+             values="0 0 0 0 0.2745 0 0 0 0 0.2745 0 0 0 0 0.2745 0 0 0 0.4980 0"
+             id="feColorMatrix5219" />
+          <feMerge
+             id="feMerge5221">
+            <feMergeNode
+               in="offset-color"
+               id="feMergeNode5223" />
+            <feMergeNode
+               in="SourceGraphic"
+               id="feMergeNode5225" />
+          </feMerge>
+        </filter>
+      </defs>
+      <path
+         d="m 157.2997,317.4803 168.6846,0 0,-231.1182 -168.6846,0 0,231.1182 z"
+         style="fill:none;stroke:#1f497d;stroke-width:0.25;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;filter:url(#shadow2)"
+         id="path5227"
+         inkscape:connector-curvature="0" />
+    </g>
+    <text
+       x="192.70265"
+       y="32.792809"
+       id="text5229"
+       transform="scale(1.0151991,0.98502847)"
+       style="font-size:14.63223553px">
+      <tspan
+         font-size="8.0000"
+         id="tspan5231"
+         style="font-size:9.75482368px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">Loop: for each epoll event</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1002"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <path
+       d="m 52.7934,331.6535 0,-272.4094"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2.88, 1.44, 2.88, 1.44"
+       id="path5234"
+       inkscape:connector-curvature="0" />
+    <text
+       x="-79.411301"
+       y="195.44881"
+       transform="matrix(0,-1,1,0,-142.6554,248.2422)"
+       id="text5236">
+      <tspan
+         font-size="12.0000"
+         id="tspan5238"
+         style="font-size:12px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial" />
+    </text>
+  </g>
+  <g
+     id="Layer1003"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <g
+       id="Layer1004">
+      <path
+         d="m 17.2272,59.2441 71.1324,0 0,-25.2284 -71.1324,0 0,25.2284 z"
+         style="fill:#9ab3d1;fill-rule:evenodd;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round"
+         id="path5242"
+         inkscape:connector-curvature="0" />
+      <path
+         d="m 17.2272,59.2441 71.1324,0 0,-25.2284 -71.1324,0 0,25.2284 z"
+         style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+         id="path5244"
+         inkscape:connector-curvature="0" />
+    </g>
+    <text
+       x="21.2272"
+       y="46.629902"
+       id="text5246">
+      <tspan
+         font-size="8.0000"
+         id="tspan5248"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">librte_power(VM)</tspan>
+    </text>
+  </g>
+  <text
+     x="334.86655"
+     y="44.000031"
+     id="text5250"
+     transform="scale(0.98193323,1.0183992)"
+     style="font-size:19.71731567px">
+    <tspan
+       font-weight="bold"
+       font-size="36.0000"
+       id="tspan5252"
+       style="font-size:59.15194702px;font-weight:bold;fill:#cdcdcd;fill-opacity:1;stroke-opacity:1;font-family:Calibri">Sequence</tspan>
+  </text>
+  <g
+     id="Layer1005"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <path
+       d="m 129.4472,331.6535 0,-272.4094"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2.88, 1.44, 2.88, 1.44"
+       id="path5255"
+       inkscape:connector-curvature="0" />
+    <text
+       x="-2.7574999"
+       y="195.44881"
+       transform="matrix(0,-1,1,0,-66.0016,324.896)"
+       id="text5257">
+      <tspan
+         font-size="12.0000"
+         id="tspan5259"
+         style="font-size:12px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial" />
+    </text>
+  </g>
+  <g
+     id="Layer1006"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <g
+       id="Layer1007">
+      <path
+         d="m 89.6487,59.2441 79.5971,0 0,-25.2284 -79.5971,0 0,25.2284 z"
+         style="fill:#9ab3d1;fill-rule:evenodd;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round"
+         id="path5263"
+         inkscape:connector-curvature="0" />
+      <path
+         d="m 89.6487,59.2441 79.5971,0 0,-25.2284 -79.5971,0 0,25.2284 z"
+         style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+         id="path5265"
+         inkscape:connector-curvature="0" />
+    </g>
+    <text
+       x="93.648697"
+       y="46.629902"
+       id="text5267">
+      <tspan
+         font-size="8.0000"
+         id="tspan5269"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">guest_channel(VM)</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1008"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <path
+       d="m 240.9449,354.9562 0,-293.7369"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2.88, 1.44, 2.88, 1.44"
+       id="path5272"
+       inkscape:connector-curvature="0" />
+    <text
+       x="98.076401"
+       y="208.0878"
+       transform="matrix(0,-1,1,0,32.8571,449.0327)"
+       id="text5274">
+      <tspan
+         font-size="12.0000"
+         id="tspan5276"
+         style="font-size:12px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial" />
+    </text>
+  </g>
+  <g
+     id="Layer1009"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <g
+       id="Layer1010">
+      <path
+         d="m 195.3689,61.2193 91.152,0 0,-27.2036 -91.152,0 0,27.2036 z"
+         style="fill:#9ab3d1;fill-rule:evenodd;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round"
+         id="path5280"
+         inkscape:connector-curvature="0" />
+      <path
+         d="m 195.3689,61.2193 91.152,0 0,-27.2036 -91.152,0 0,27.2036 z"
+         style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+         id="path5282"
+         inkscape:connector-curvature="0" />
+    </g>
+    <text
+       x="199.3689"
+       y="47.6175"
+       id="text5284">
+      <tspan
+         font-size="8.0000"
+         id="tspan5286"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">channel_monitor(Host)</tspan>
+      <tspan
+         font-size="8.0000"
+         id="tspan5288"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial" />
+    </text>
+  </g>
+  <g
+     id="Layer1011"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <path
+       d="m 361.5266,352.9811 0,-293.737"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2.88, 1.44, 2.88, 1.44"
+       id="path5291"
+       inkscape:connector-curvature="0" />
+    <text
+       x="218.6581"
+       y="206.11259"
+       transform="matrix(0,-1,1,0,155.414,567.6392)"
+       id="text5293">
+      <tspan
+         font-size="12.0000"
+         id="tspan5295"
+         style="font-size:12px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial" />
+    </text>
+  </g>
+  <g
+     id="Layer1012"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <g
+       id="Layer1013">
+      <path
+         d="m 313.5013,59.2441 96.0505,0 0,-27.2035 -96.0505,0 0,27.2035 z"
+         style="fill:#9ab3d1;fill-rule:evenodd;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round"
+         id="path5299"
+         inkscape:connector-curvature="0" />
+      <path
+         d="m 313.5013,59.2441 96.0505,0 0,-27.2035 -96.0505,0 0,27.2035 z"
+         style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+         id="path5301"
+         inkscape:connector-curvature="0" />
+    </g>
+    <text
+       x="317.50131"
+       y="45.6423"
+       id="text5303">
+      <tspan
+         font-size="8.0000"
+         id="tspan5305"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">channel_manager(Host)</tspan>
+      <tspan
+         font-size="8.0000"
+         id="tspan5307"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial" />
+    </text>
+  </g>
+  <g
+     id="Layer1014"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <path
+       d="m 458.3741,331.6535 0,-272.4094"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2.88, 1.44, 2.88, 1.44"
+       id="path5310"
+       inkscape:connector-curvature="0" />
+    <text
+       x="326.1694"
+       y="195.44881"
+       transform="matrix(0,-1,1,0,262.9253,653.8229)"
+       id="text5312">
+      <tspan
+         font-size="12.0000"
+         id="tspan5314"
+         style="font-size:12px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial" />
+    </text>
+  </g>
+  <g
+     id="Layer1015"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <g
+       id="Layer1016">
+      <path
+         d="m 413.466,59.2441 89.8163,0 0,-25.2284 -89.8163,0 0,25.2284 z"
+         style="fill:#9ab3d1;fill-rule:evenodd;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round"
+         id="path5318"
+         inkscape:connector-curvature="0" />
+      <path
+         d="m 413.466,59.2441 89.8163,0 0,-25.2284 -89.8163,0 0,25.2284 z"
+         style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+         id="path5320"
+         inkscape:connector-curvature="0" />
+    </g>
+    <text
+       x="417.466"
+       y="46.629902"
+       id="text5322">
+      <tspan
+         font-size="8.0000"
+         id="tspan5324"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">power_manager(Host)</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1017"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <path
+       d="m 249.6969,310.3937 0,-209.7638 -9,0 0,209.7638 9,0 z"
+       style="fill:#9ab3d1;fill-rule:evenodd;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round"
+       id="path5327"
+       inkscape:connector-curvature="0" />
+    <path
+       d="m 249.6969,310.3937 0,-209.7638 -9,0 0,209.7638 9,0 z"
+       style="fill:none;stroke:#000000;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+       id="path5329"
+       inkscape:connector-curvature="0" />
+  </g>
+  <g
+     id="Layer1018"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <defs
+       id="defs5332">
+      <marker
+         id="endMarker1"
+         markerUnits="strokeWidth"
+         orient="auto"
+         markerWidth="8"
+         markerHeight="6"
+         viewBox="0 0 10 10"
+         refX="1"
+         refY="5">
+        <polyline
+           points="0,0 10,5 0,10 1,5"
+           fill="solid"
+           id="polyline5335" />
+      </marker>
+    </defs>
+    <path
+       d="m 249.6969,154.6299 a 23.4,468 90 0 1 0,18"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;marker-end:url(#endMarker1)"
+       id="path5337"
+       inkscape:connector-curvature="0" />
+    <text
+       x="289.6969"
+       y="163.6299"
+       id="text5339">
+      <tspan
+         font-size="8.0000"
+         id="tspan5341"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">process_request</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1019"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <defs
+       id="defs5344">
+      <marker
+         id="endMarker2"
+         markerUnits="strokeWidth"
+         orient="auto"
+         markerWidth="8"
+         markerHeight="6"
+         viewBox="0 0 10 10"
+         refX="1"
+         refY="5">
+        <polyline
+           points="0,0 10,5 0,10 1,5"
+           fill="solid"
+           id="polyline5347" />
+      </marker>
+    </defs>
+    <path
+       d="m 249.6969,190.6299 108.6323,-0.7086"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;marker-end:url(#endMarker2)"
+       id="path5349"
+       inkscape:connector-curvature="0" />
+    <text
+       x="271.9838"
+       y="179.6738"
+       id="text5351">
+      <tspan
+         font-size="8.0000"
+         id="tspan5353"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">get_pcpu_mask()</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1020"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <path
+       d="m 367.3292,225.9213 0,-36 -9,0 0,36 9,0 z"
+       style="fill:#9ab3d1;fill-rule:evenodd;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round"
+       id="path5356"
+       inkscape:connector-curvature="0" />
+    <path
+       d="m 367.3292,225.9213 0,-36 -9,0 0,36 9,0 z"
+       style="fill:none;stroke:#000000;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+       id="path5358"
+       inkscape:connector-curvature="0" />
+  </g>
+  <g
+     id="Layer1021"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <defs
+       id="defs5361">
+      <marker
+         id="startMarker1"
+         markerUnits="strokeWidth"
+         orient="auto"
+         markerWidth="8"
+         markerHeight="6"
+         viewBox="0 0 10 10"
+         refX="9"
+         refY="5">
+        <polyline
+           points="10,0 0,5 10,10 9,5"
+           fill="solid"
+           id="polyline5364" />
+      </marker>
+    </defs>
+    <path
+       d="m 249.6969,226.6299 108.6323,-0.7086"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2.88, 1.44, 2.88, 1.44;marker-start:url(#startMarker1)"
+       id="path5366"
+       inkscape:connector-curvature="0" />
+    <text
+       x="282.43311"
+       y="215.6738"
+       id="text5368">
+      <tspan
+         font-size="8.0000"
+         id="tspan5370"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">pcpu_mask</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1022"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <path
+       d="m 544.3667,331.6535 0,-272.4094"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2.88, 1.44, 2.88, 1.44"
+       id="path5373"
+       inkscape:connector-curvature="0" />
+    <text
+       x="412.1619"
+       y="195.44881"
+       transform="matrix(0,-1,1,0,348.9179,739.8155)"
+       id="text5375">
+      <tspan
+         font-size="12.0000"
+         id="tspan5377"
+         style="font-size:12px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial" />
+    </text>
+  </g>
+  <g
+     id="Layer1023"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <g
+       id="Layer1024">
+      <path
+         d="m 506.5757,59.2441 75.5819,0 0,-25.2284 -75.5819,0 0,25.2284 z"
+         style="fill:#9ab3d1;fill-rule:evenodd;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round"
+         id="path5381"
+         inkscape:connector-curvature="0" />
+      <path
+         d="m 506.5757,59.2441 75.5819,0 0,-25.2284 -75.5819,0 0,25.2284 z"
+         style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+         id="path5383"
+         inkscape:connector-curvature="0" />
+    </g>
+    <text
+       x="510.57571"
+       y="46.629902"
+       id="text5385">
+      <tspan
+         font-size="8.0000"
+         id="tspan5387"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">librte_power(Host)</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1025"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <defs
+       id="defs5390">
+      <marker
+         id="endMarker3"
+         markerUnits="strokeWidth"
+         orient="auto"
+         markerWidth="8"
+         markerHeight="6"
+         viewBox="0 0 10 10"
+         refX="1"
+         refY="5">
+        <polyline
+           points="0,0 10,5 0,10 1,5"
+           fill="solid"
+           id="polyline5393" />
+      </marker>
+    </defs>
+    <path
+       d="m 249.6969,262.6299 205.4799,-0.7086"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;marker-end:url(#endMarker3)"
+       id="path5395"
+       inkscape:connector-curvature="0" />
+    <text
+       x="303.06931"
+       y="251.6738"
+       id="text5397">
+      <tspan
+         font-size="8.0000"
+         id="tspan5399"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">scale_freq_up(pcpu_mask)</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1026"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <path
+       d="m 464.1768,297.9213 0,-36 -9,0 0,36 9,0 z"
+       style="fill:#9ab3d1;fill-rule:evenodd;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round"
+       id="path5402"
+       inkscape:connector-curvature="0" />
+    <path
+       d="m 464.1768,297.9213 0,-36 -9,0 0,36 9,0 z"
+       style="fill:none;stroke:#000000;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+       id="path5404"
+       inkscape:connector-curvature="0" />
+  </g>
+  <g
+     id="Layer1027"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <defs
+       id="defs5407">
+      <marker
+         id="endMarker4"
+         markerUnits="strokeWidth"
+         orient="auto"
+         markerWidth="8"
+         markerHeight="6"
+         viewBox="0 0 10 10"
+         refX="1"
+         refY="5">
+        <polyline
+           points="0,0 10,5 0,10 1,5"
+           fill="solid"
+           id="polyline5410" />
+      </marker>
+    </defs>
+    <path
+       d="m 464.1768,279.9213 76.9925,0"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;marker-end:url(#endMarker4)"
+       id="path5412"
+       inkscape:connector-curvature="0" />
+    <text
+       x="465.31769"
+       y="269.31949"
+       id="text5414">
+      <tspan
+         font-size="8.0000"
+         id="tspan5416"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">rte_power_freq_up()</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1028"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <path
+       d="m 550.1693,297.9213 0,-18 -9,0 0,18 9,0 z"
+       style="fill:#9ab3d1;fill-rule:evenodd;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round"
+       id="path5419"
+       inkscape:connector-curvature="0" />
+    <path
+       d="m 550.1693,297.9213 0,-18 -9,0 0,18 9,0 z"
+       style="fill:none;stroke:#000000;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+       id="path5421"
+       inkscape:connector-curvature="0" />
+  </g>
+  <g
+     id="Layer1029"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <path
+       d="m 132.0591,154.4882 0,-18 -9,0 0,18 9,0 z"
+       style="fill:#9ab3d1;fill-rule:evenodd;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round"
+       id="path5424"
+       inkscape:connector-curvature="0" />
+    <path
+       d="m 132.0591,154.4882 0,-18 -9,0 0,18 9,0 z"
+       style="fill:none;stroke:#000000;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+       id="path5426"
+       inkscape:connector-curvature="0" />
+  </g>
+  <g
+     id="Layer1030"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <defs
+       id="defs5429">
+      <marker
+         id="endMarker5"
+         markerUnits="strokeWidth"
+         orient="auto"
+         markerWidth="8"
+         markerHeight="6"
+         viewBox="0 0 10 10"
+         refX="1"
+         refY="5">
+        <polyline
+           points="0,0 10,5 0,10 1,5"
+           fill="solid"
+           id="polyline5432" />
+      </marker>
+    </defs>
+    <path
+       d="m 132.0591,154.4882 108.6378,0.1417"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;marker-end:url(#endMarker5)"
+       id="path5434"
+       inkscape:connector-curvature="0" />
+    <text
+       x="135.90199"
+       y="143.95731"
+       id="text5436">
+      <tspan
+         font-size="8.0000"
+         id="tspan5438"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">guest_channel_send_msg()</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1031"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <defs
+       id="defs5441">
+      <marker
+         id="startMarker2"
+         markerUnits="strokeWidth"
+         orient="auto"
+         markerWidth="8"
+         markerHeight="6"
+         viewBox="0 0 10 10"
+         refX="9"
+         refY="5">
+        <polyline
+           points="10,0 0,5 10,10 9,5"
+           fill="solid"
+           id="polyline5444" />
+      </marker>
+    </defs>
+    <path
+       d="m 464.1768,297.9213 76.9925,0"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2.88, 1.44, 2.88, 1.44;marker-start:url(#startMarker2)"
+       id="path5446"
+       inkscape:connector-curvature="0" />
+    <text
+       x="486.673"
+       y="287.31949"
+       id="text5448">
+      <tspan
+         font-size="8.0000"
+         id="tspan5450"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">status</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1032"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <defs
+       id="defs5453">
+      <marker
+         id="startMarker3"
+         markerUnits="strokeWidth"
+         orient="auto"
+         markerWidth="8"
+         markerHeight="6"
+         viewBox="0 0 10 10"
+         refX="9"
+         refY="5">
+        <polyline
+           points="10,0 0,5 10,10 9,5"
+           fill="solid"
+           id="polyline5456" />
+      </marker>
+    </defs>
+    <path
+       d="m 249.6969,298.6299 205.4799,-0.7086"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2.88, 1.44, 2.88, 1.44;marker-start:url(#startMarker3)"
+       id="path5458"
+       inkscape:connector-curvature="0" />
+    <text
+       x="336.4306"
+       y="287.6738"
+       id="text5460">
+      <tspan
+         font-size="8.0000"
+         id="tspan5462"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">status</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1033"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <path
+       d="m 55.4053,154.4882 0,-18 -9,0 0,18 9,0 z"
+       style="fill:#9ab3d1;fill-rule:evenodd;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round"
+       id="path5465"
+       inkscape:connector-curvature="0" />
+    <path
+       d="m 55.4053,154.4882 0,-18 -9,0 0,18 9,0 z"
+       style="fill:none;stroke:#000000;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+       id="path5467"
+       inkscape:connector-curvature="0" />
+  </g>
+  <g
+     id="Layer1034"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <defs
+       id="defs5470">
+      <marker
+         id="endMarker6"
+         markerUnits="strokeWidth"
+         orient="auto"
+         markerWidth="8"
+         markerHeight="6"
+         viewBox="0 0 10 10"
+         refX="1"
+         refY="5">
+        <polyline
+           points="0,0 10,5 0,10 1,5"
+           fill="solid"
+           id="polyline5473" />
+      </marker>
+    </defs>
+    <path
+       d="m 55.4053,136.4882 67.6538,0"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;marker-end:url(#endMarker6)"
+       id="path5475"
+       inkscape:connector-curvature="0" />
+    <text
+       x="51.876801"
+       y="125.8864"
+       id="text5477">
+      <tspan
+         font-size="8.0000"
+         id="tspan5479"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">rte_power_freq_up()</tspan>
+    </text>
+  </g>
+  <g
+     id="Layer1035"
+     transform="matrix(1.6134241,0,0,1.6733416,-27.320753,68.655772)">
+    <defs
+       id="defs5482">
+      <marker
+         id="startMarker4"
+         markerUnits="strokeWidth"
+         orient="auto"
+         markerWidth="8"
+         markerHeight="6"
+         viewBox="0 0 10 10"
+         refX="9"
+         refY="5">
+        <polyline
+           points="10,0 0,5 10,10 9,5"
+           fill="solid"
+           id="polyline5485" />
+      </marker>
+    </defs>
+    <path
+       d="m 55.4053,154.4882 72.1538,0"
+       style="fill:none;stroke:#1f497d;stroke-width:0.47999999;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2.88, 1.44, 2.88, 1.44;marker-start:url(#startMarker4)"
+       id="path5487"
+       inkscape:connector-curvature="0" />
+    <text
+       x="75.482201"
+       y="143.8864"
+       id="text5489">
+      <tspan
+         font-size="8.0000"
+         id="tspan5491"
+         style="font-size:8px;fill:#000000;fill-opacity:1;stroke-opacity:1;font-family:Arial">status</tspan>
+    </text>
+  </g>
+</svg>
