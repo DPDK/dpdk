@@ -1945,7 +1945,8 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/*
 	 * Modification to set VFTDT for virtual function if vf is detected
 	 */
-	if (hw->mac.type == ixgbe_mac_82599_vf)
+	if (hw->mac.type == ixgbe_mac_82599_vf ||
+	    hw->mac.type == ixgbe_mac_X540_vf)
 		txq->tdt_reg_addr = IXGBE_PCI_REG_ADDR(hw, IXGBE_VFTDT(queue_idx));
 	else
 		txq->tdt_reg_addr = IXGBE_PCI_REG_ADDR(hw, IXGBE_TDT(txq->reg_idx));
@@ -2209,7 +2210,8 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	/*
 	 * Modified to setup VFRDT for Virtual Function
 	 */
-	if (hw->mac.type == ixgbe_mac_82599_vf) {
+	if (hw->mac.type == ixgbe_mac_82599_vf ||
+	    hw->mac.type == ixgbe_mac_X540_vf) {
 		rxq->rdt_reg_addr =
 			IXGBE_PCI_REG_ADDR(hw, IXGBE_VFRDT(queue_idx));
 		rxq->rdh_reg_addr =
