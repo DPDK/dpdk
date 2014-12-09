@@ -53,7 +53,7 @@
 
 #include "main.h"
 
-#define MAX_QUEUES 256
+#define MAX_QUEUES 512
 
 /* the maximum number of external ports supported */
 #define MAX_SUP_PORTS 1
@@ -379,6 +379,12 @@ port_init(uint8_t port)
 
 	/* The max pool number from dev_info will be used to validate the pool number specified in cmd line */
 	rte_eth_dev_info_get (port, &dev_info);
+
+	if (dev_info.max_rx_queues > MAX_QUEUES) {
+		rte_exit(EXIT_FAILURE,
+			"please define MAX_QUEUES no less than %u in %s\n",
+			dev_info.max_rx_queues, __FILE__);
+	}
 
 	rxconf = &dev_info.default_rxconf;
 	txconf = &dev_info.default_txconf;
