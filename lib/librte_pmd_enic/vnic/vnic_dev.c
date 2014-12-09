@@ -626,7 +626,7 @@ int vnic_dev_soft_reset_done(struct vnic_dev *vdev, int *done)
 
 int vnic_dev_get_mac_addr(struct vnic_dev *vdev, u8 *mac_addr)
 {
-	u64 a0, a1;
+	u64 a0, a1 = 0;
 	int wait = 1000;
 	int err, i;
 
@@ -977,7 +977,7 @@ struct rte_pci_device *vnic_dev_get_pdev(struct vnic_dev *vdev)
 
 int vnic_dev_set_mac_addr(struct vnic_dev *vdev, u8 *mac_addr)
 {
-	u64 a0, a1;
+	u64 a0, a1 = 0;
 	int wait = 1000;
 	int i;
 
