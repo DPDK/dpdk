@@ -8261,9 +8261,9 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 	case RTE_ETH_FLOW_TYPE_UDPV6:
 	case RTE_ETH_FLOW_TYPE_TCPV6:
 		IPV6_ADDR_TO_ARRAY(res->ip_dst,
-			entry.input.flow.ip6_flow.dst_ip);
+			entry.input.flow.ipv6_flow.dst_ip);
 		IPV6_ADDR_TO_ARRAY(res->ip_src,
-			entry.input.flow.ip6_flow.src_ip);
+			entry.input.flow.ipv6_flow.src_ip);
 		/* need convert to big endian. */
 		entry.input.flow.udp6_flow.dst_port =
 				rte_cpu_to_be_16(res->port_dst);

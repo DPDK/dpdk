@@ -275,7 +275,7 @@ union rte_eth_fdir_flow {
 	struct rte_eth_udpv6_flow  udp6_flow;
 	struct rte_eth_tcpv6_flow  tcp6_flow;
 	struct rte_eth_sctpv6_flow sctp6_flow;
-	struct rte_eth_ipv6_flow   ip6_flow;
+	struct rte_eth_ipv6_flow   ipv6_flow;
 };
 
 /**

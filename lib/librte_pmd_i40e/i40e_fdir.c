@@ -749,10 +749,10 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 		 * to the expected received packets.
 		 */
 		rte_memcpy(&(ip6->src_addr),
-			   &(fdir_input->flow.ip6_flow.dst_ip),
+			   &(fdir_input->flow.ipv6_flow.dst_ip),
 			   IPV6_ADDR_LEN);
 		rte_memcpy(&(ip6->dst_addr),
-			   &(fdir_input->flow.ip6_flow.src_ip),
+			   &(fdir_input->flow.ipv6_flow.src_ip),
 			   IPV6_ADDR_LEN);
 		ip6->proto = next_proto[fdir_input->flow_type];
 		break;
