@@ -44,6 +44,14 @@ static int pci_num_vf(struct pci_dev *dev)
 
 #endif /* < 2.6.34 */
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39) && \
+	(!(defined(RHEL_RELEASE_CODE) && \
+	   RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6, 4)))
+
+#define kstrtoul strict_strtoul
+
+#endif /* < 2.6.39 */
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0) && \
 	(!(defined(RHEL_RELEASE_CODE) && \
 	   RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6, 3)))

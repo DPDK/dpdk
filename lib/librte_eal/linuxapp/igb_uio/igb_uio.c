@@ -83,7 +83,7 @@ store_max_vfs(struct device *dev, struct device_attribute *attr,
 	unsigned long max_vfs;
 	struct pci_dev *pdev = container_of(dev, struct pci_dev, dev);
 
-	if (0 != strict_strtoul(buf, 0, &max_vfs))
+	if (0 != kstrtoul(buf, 0, &max_vfs))
 		return -EINVAL;
 
 	if (0 == max_vfs)
@@ -174,7 +174,7 @@ store_max_read_request_size(struct device *dev,
 	unsigned long size = 0;
 	int ret;
 
-	if (strict_strtoul(buf, 0, &size) != 0)
+	if (0 != kstrtoul(buf, 0, &size))
 		return -EINVAL;
 
 	ret = pcie_set_readrq(pci_dev, (int)size);
