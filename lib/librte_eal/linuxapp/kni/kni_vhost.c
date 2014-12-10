@@ -740,7 +740,7 @@ set_sock_en(struct device *dev, struct device_attribute *attr,
 	unsigned long en;
 	int err = 0;
 
-	if (0 != strict_strtoul(buf, 0, &en))
+	if (0 != kstrtoul(buf, 0, &en))
 		return -EINVAL;
 
 	if (en)
