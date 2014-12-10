@@ -1924,7 +1924,7 @@ i40e_dev_rss_reta_query(struct rte_eth_dev *dev,
 		lut = I40E_READ_REG(hw, I40E_PFQF_HLUT(i >> 2));
 		for (j = 0; j < I40E_4_BIT_WIDTH; j++) {
 			if (mask & (0x1 << j))
-				reta_conf[idx].reta[shift] = ((lut >>
+				reta_conf[idx].reta[shift + j] = ((lut >>
 					(CHAR_BIT * j)) & I40E_8_BIT_MASK);
 		}
 	}
