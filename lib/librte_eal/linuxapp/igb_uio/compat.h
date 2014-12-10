@@ -21,7 +21,8 @@
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 34) && \
-	!defined(CONFIG_PCI_IOV)
+	(!(defined(RHEL_RELEASE_CODE) && \
+	 RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(5, 9)))
 
 static int pci_num_vf(struct pci_dev *dev)
 {
