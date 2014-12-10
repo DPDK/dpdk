@@ -92,7 +92,7 @@ struct rte_memseg {
 	phys_addr_t ioremap_addr; /**< Real physical address inside the VM */
 #endif
 	size_t len;               /**< Length of the segment. */
-	size_t hugepage_sz;       /**< The pagesize of underlying memory */
+	uint64_t hugepage_sz;       /**< The pagesize of underlying memory */
 	int32_t socket_id;          /**< NUMA socket ID. */
 	uint32_t nchannel;          /**< Number of channels. */
 	uint32_t nrank;             /**< Number of ranks. */

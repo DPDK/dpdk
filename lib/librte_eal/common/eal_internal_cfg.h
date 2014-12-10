@@ -49,7 +49,7 @@
  * mount points of hugepages
  */
 struct hugepage_info {
-	size_t hugepage_sz;   /**< size of a huge page */
+	uint64_t hugepage_sz;   /**< size of a huge page */
 	const char *hugedir;    /**< dir where hugetlbfs is mounted */
 	uint32_t num_pages[RTE_MAX_NUMA_NODES];
 				/**< number of hugepages of that size on each socket */

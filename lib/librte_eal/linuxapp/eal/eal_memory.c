@@ -300,7 +300,7 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 #endif
 
 	for (i = 0; i < hpi->num_pages[0]; i++) {
-		size_t hugepage_sz = hpi->hugepage_sz;
+		uint64_t hugepage_sz = hpi->hugepage_sz;
 
 		if (orig) {
 			hugepg_tbl[i].file_id = i;

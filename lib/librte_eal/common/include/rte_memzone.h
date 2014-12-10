@@ -83,7 +83,7 @@ struct rte_memzone {
 #endif
 	size_t len;                       /**< Length of the memzone. */
 
-	size_t hugepage_sz;               /**< The page size of underlying memory */
+	uint64_t hugepage_sz;             /**< The page size of underlying memory */
 
 	int32_t socket_id;                /**< NUMA socket ID. */
 
