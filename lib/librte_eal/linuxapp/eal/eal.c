@@ -458,7 +458,7 @@ eal_parse_base_virtaddr(const char *arg)
 	 * it can align to 2MB for x86. So this alignment can also be used
 	 * on x86 */
 	internal_config.base_virtaddr =
-		RTE_PTR_ALIGN_CEIL((uintptr_t)addr, RTE_PGSIZE_16M);
+		RTE_PTR_ALIGN_CEIL((uintptr_t)addr, (size_t)RTE_PGSIZE_16M);
 
 	return 0;
 }
