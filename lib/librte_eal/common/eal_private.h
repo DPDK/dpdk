@@ -203,4 +203,18 @@ int rte_eal_alarm_init(void);
  */
 int rte_eal_dev_init(void);
 
+/**
+ * Function is to check if the kernel module(like, vfio, vfio_iommu_type1,
+ * etc.) loaded.
+ *
+ * @param module_name
+ *	The module's name which need to be checked
+ *
+ * @return
+ *	-1 means some error happens(NULL pointer or open failure)
+ *	0  means the module not loaded
+ *	1  means the module loaded
+ */
+int rte_eal_check_module(const char *module_name);
+
 #endif /* _EAL_PRIVATE_H_ */

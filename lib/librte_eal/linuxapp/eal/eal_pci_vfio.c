@@ -44,6 +44,7 @@
 #include <rte_tailq.h>
 #include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
+#include <eal_private.h>
 
 #include "eal_filesystem.h"
 #include "eal_pci_init.h"
@@ -340,9 +341,11 @@ pci_vfio_get_container_fd(void)
 		if (ret != 1) {
 			if (ret < 0)
 				RTE_LOG(ERR, EAL, "  could not get IOMMU type, "
-						"error %i (%s)\n", errno, strerror(errno));
+					"error %i (%s)\n", errno,
+					strerror(errno));
 			else
-				RTE_LOG(ERR, EAL, "  unsupported IOMMU type!\n");
+				RTE_LOG(ERR, EAL, "  unsupported IOMMU type "
+					"detected in VFIO\n");
 			close(vfio_container_fd);
 			return -1;
 		}
@@ -783,11 +786,28 @@ pci_vfio_enable(void)
 {
 	/* initialize group list */
 	int i;
+	int module_vfio_type1;
 
 	for (i = 0; i < VFIO_MAX_GROUPS; i++) {
 		vfio_cfg.vfio_groups[i].fd = -1;
 		vfio_cfg.vfio_groups[i].group_no = -1;
 	}
+
+	module_vfio_type1 = rte_eal_check_module("vfio_iommu_type1");
+
+	/* return error directly */
+	if (module_vfio_type1 == -1) {
+		RTE_LOG(INFO, EAL, "Could not get loaded module details!\n");
+		return -1;
+	}
+
+	/* return 0 if VFIO modules not loaded */
+	if (module_vfio_type1 == 0) {
+		RTE_LOG(INFO, EAL, "VFIO modules not all loaded, "
+			"skip VFIO support...\n");
+		return 0;
+	}
+
 	vfio_cfg.vfio_container_fd = pci_vfio_get_container_fd();
 
 	/* check if we have VFIO driver enabled */

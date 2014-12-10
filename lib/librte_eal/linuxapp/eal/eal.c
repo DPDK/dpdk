@@ -859,3 +859,30 @@ int rte_eal_has_hugepages(void)
 {
 	return ! internal_config.no_hugetlbfs;
 }
+
+int
+rte_eal_check_module(const char *module_name)
+{
+	char mod_name[30]; /* Any module names can be longer than 30 bytes? */
+	int ret = 0;
+
+	if (NULL == module_name)
+		return -1;
+
+	FILE *fd = fopen("/proc/modules", "r");
+	if (NULL == fd) {
+		RTE_LOG(ERR, EAL, "Open /proc/modules failed!"
+			" error %i (%s)\n", errno, strerror(errno));
+		return -1;
+	}
+	while (!feof(fd)) {
+		fscanf(fd, "%29s %*[^\n]", mod_name);
+		if (!strcmp(mod_name, module_name)) {
+			ret = 1;
+			break;
+		}
+	}
+	fclose(fd);
+
+	return ret;
+}
