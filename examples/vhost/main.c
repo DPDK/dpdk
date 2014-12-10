@@ -1119,9 +1119,8 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 		return;
 	}
 
-	if (vm2vm_mode == VM2VM_HARDWARE) {
-		if (find_local_dest(dev, m, &offset, &vlan_tag) != 0 ||
-			offset > rte_pktmbuf_tailroom(m)) {
+	if (unlikely(vm2vm_mode == VM2VM_HARDWARE)) {
+		if (unlikely(find_local_dest(dev, m, &offset, &vlan_tag) != 0)) {
 			rte_pktmbuf_free(m);
 			return;
 		}
@@ -1135,8 +1134,24 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 
 	m->ol_flags = PKT_TX_VLAN_PKT;
 
-	m->data_len += offset;
-	m->pkt_len += offset;
+	/*
+	 * Find the right seg to adjust the data len when offset is
+	 * bigger than tail room size.
+	 */
+	if (unlikely(vm2vm_mode == VM2VM_HARDWARE)) {
+		if (likely(offset <= rte_pktmbuf_tailroom(m)))
+			m->data_len += offset;
+		else {
+			struct rte_mbuf *seg = m;
+
+			while ((seg->next != NULL) &&
+				(offset > rte_pktmbuf_tailroom(seg)))
+				seg = seg->next;
+
+			seg->data_len += offset;
+		}
+		m->pkt_len += offset;
+	}
 
 	m->vlan_tci = vlan_tag;
 
