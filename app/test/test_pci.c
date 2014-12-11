@@ -64,11 +64,6 @@ static unsigned pci_dev_count;
 static int my_driver_init(struct rte_pci_driver *dr,
 			  struct rte_pci_device *dev);
 
-/*
- * To test cases where RTE_PCI_DRV_NEED_MAPPING is set, and isn't set, two
- * drivers are created (one with IGB devices, the other with IXGBE devices).
- */
-
 /* IXGBE NICS */
 struct rte_pci_id my_driver_id[] = {
 
@@ -92,7 +87,7 @@ struct rte_pci_driver my_driver = {
 	.name = "test_driver",
 	.devinit = my_driver_init,
 	.id_table = my_driver_id,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.drv_flags = 0,
 };
 
 struct rte_pci_driver my_driver2 = {
