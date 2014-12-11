@@ -61,6 +61,8 @@ ifeq ($(NO_AUTOLIBS),)
 
 LDLIBS += --whole-archive
 
+ifeq ($(RTE_BUILD_COMBINE_LIBS),n)
+
 ifeq ($(CONFIG_RTE_LIBRTE_DISTRIBUTOR),y)
 LDLIBS += -lrte_distributor
 endif
@@ -119,11 +121,15 @@ LDLIBS += -lm
 LDLIBS += -lrt
 endif
 
+endif # ! RTE_BUILD_COMBINE_LIBS
+
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
 LDLIBS += -lpcap
 endif
 
 LDLIBS += --start-group
+
+ifeq ($(RTE_BUILD_COMBINE_LIBS),n)
 
 ifeq ($(CONFIG_RTE_LIBRTE_KVARGS),y)
 LDLIBS += -lrte_kvargs
@@ -219,6 +225,8 @@ LDLIBS += -lrte_pmd_af_packet
 endif
 
 endif # plugins
+
+endif # ! RTE_BUILD_COMBINE_LIBS
 
 LDLIBS += $(EXECENV_LDLIBS)
 
