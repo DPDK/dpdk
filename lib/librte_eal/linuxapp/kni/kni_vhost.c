@@ -33,6 +33,7 @@
 #include <linux/if_tun.h>
 #include <linux/version.h>
 
+#include "compat.h"
 #include "kni_dev.h"
 #include "kni_fifo.h"
 
@@ -215,10 +216,19 @@ kni_sock_poll(struct file *file, struct socket *sock, poll_table * wait)
 		return POLLERR;
 
 	kni = q->kni;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
 	KNI_DBG("start kni_poll on group %d, wq 0x%16llx\n",
 		  kni->group_id, (uint64_t)sock->wq);
+#else
+	KNI_DBG("start kni_poll on group %d, wait at 0x%16llx\n",
+		  kni->group_id, (uint64_t)&sock->wait);
+#endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
 	poll_wait(file, &sock->wq->wait, wait);
+#else
+	poll_wait(file, &sock->wait, wait);
+#endif
 
 	if (kni_fifo_count(kni->rx_q) > 0)
 		mask |= POLLIN | POLLRDNORM;
@@ -681,10 +691,17 @@ kni_vhost_backend_init(struct kni_dev *kni)
 
 	kni->vq_status = BE_START;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
 	KNI_DBG("backend init sockfd=%d, sock->wq=0x%16llx,"
 		  "sk->sk_wq=0x%16llx",
 		  q->sockfd, (uint64_t)q->sock->wq,
 		  (uint64_t)q->sk.sk_wq);
+#else
+	KNI_DBG("backend init sockfd=%d, sock->wait at 0x%16llx,"
+		  "sk->sk_sleep=0x%16llx",
+		  q->sockfd, (uint64_t)&q->sock->wait,
+		  (uint64_t)q->sk.sk_sleep);
+#endif
 
 	return 0;
 

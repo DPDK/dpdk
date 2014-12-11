@@ -13,3 +13,9 @@
 #define kstrtoul strict_strtoul
 
 #endif /* < 2.6.39 */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+
+#define sk_sleep(s) (s)->sk_sleep
+
+#endif /* < 2.6.35 */
