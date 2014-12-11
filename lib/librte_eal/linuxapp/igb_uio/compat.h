@@ -11,6 +11,10 @@
 #define pci_cfg_access_unlock pci_unblock_user_cfg_access
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)
+#define HAVE_PTE_MASK_PAGE_IOMAP
+#endif
+
 #ifndef PCI_MSIX_ENTRY_SIZE
 #define PCI_MSIX_ENTRY_SIZE             16
 #define  PCI_MSIX_ENTRY_LOWER_ADDR      0

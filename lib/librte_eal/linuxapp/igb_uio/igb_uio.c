@@ -287,7 +287,9 @@ igbuio_dom0_mmap_phys(struct uio_info *info, struct vm_area_struct *vma)
 
 	idx = (int)vma->vm_pgoff;
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+#ifdef HAVE_PTE_MASK_PAGE_IOMAP
 	vma->vm_page_prot.pgprot |= _PAGE_IOMAP;
+#endif
 
 	return remap_pfn_range(vma,
 			vma->vm_start,
