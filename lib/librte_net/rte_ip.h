@@ -142,22 +142,24 @@ struct ipv4_hdr {
 	((x) >= IPV4_MIN_MCAST && (x) <= IPV4_MAX_MCAST) /**< check if IPv4 address is multicast */
 
 /**
- * Process the non-complemented checksum of a buffer.
+ * @internal Calculate a sum of all words in the buffer.
+ * Helper routine for the rte_raw_cksum().
  *
  * @param buf
  *   Pointer to the buffer.
  * @param len
  *   Length of the buffer.
+ * @param sum
+ *   Initial value of the sum.
  * @return
- *   The non-complemented checksum.
+ *   sum += Sum of all words in the buffer.
  */
-static inline uint16_t
-rte_raw_cksum(const char *buf, size_t len)
+static inline uint32_t
+__rte_raw_cksum(const void *buf, size_t len, uint32_t sum)
 {
 	/* workaround gcc strict-aliasing warning */
 	uintptr_t ptr = (uintptr_t)buf;
 	const uint16_t *u16 = (const uint16_t *)ptr;
-	uint32_t sum = 0;
 
 	while (len >= (sizeof(*u16) * 4)) {
 		sum += u16[0];
@@ -177,9 +179,43 @@ rte_raw_cksum(const char *buf, size_t len)
 	if (len == 1)
 		sum += *((const uint8_t *)u16);
 
+	return sum;
+}
+
+/**
+ * @internal Reduce a sum to the non-complemented checksum.
+ * Helper routine for the rte_raw_cksum().
+ *
+ * @param sum
+ *   Value of the sum.
+ * @return
+ *   The non-complemented checksum.
+ */
+static inline uint16_t
+__rte_raw_cksum_reduce(uint32_t sum)
+{
 	sum = ((sum & 0xffff0000) >> 16) + (sum & 0xffff);
 	sum = ((sum & 0xffff0000) >> 16) + (sum & 0xffff);
 	return (uint16_t)sum;
+}
+
+/**
+ * Process the non-complemented checksum of a buffer.
+ *
+ * @param buf
+ *   Pointer to the buffer.
+ * @param len
+ *   Length of the buffer.
+ * @return
+ *   The non-complemented checksum.
+ */
+static inline uint16_t
+rte_raw_cksum(const void *buf, size_t len)
+{
+	uint32_t sum;
+
+	sum = __rte_raw_cksum(buf, len, 0);
+	return __rte_raw_cksum_reduce(sum);
 }
 
 /**
@@ -196,7 +232,7 @@ static inline uint16_t
 rte_ipv4_cksum(const struct ipv4_hdr *ipv4_hdr)
 {
 	uint16_t cksum;
-	cksum = rte_raw_cksum((const char *)ipv4_hdr, sizeof(struct ipv4_hdr));
+	cksum = rte_raw_cksum(ipv4_hdr, sizeof(struct ipv4_hdr));
 	return ((cksum == 0xffff) ? cksum : ~cksum);
 }
 
@@ -240,7 +276,7 @@ rte_ipv4_phdr_cksum(const struct ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
 			(uint16_t)(rte_be_to_cpu_16(ipv4_hdr->total_length)
 				- sizeof(struct ipv4_hdr)));
 	}
-	return rte_raw_cksum((const char *)&psd_hdr, sizeof(psd_hdr));
+	return rte_raw_cksum(&psd_hdr, sizeof(psd_hdr));
 }
 
 /**
@@ -307,15 +343,12 @@ struct ipv6_hdr {
 static inline uint16_t
 rte_ipv6_phdr_cksum(const struct ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
 {
-	struct ipv6_psd_header {
-		uint8_t src_addr[16]; /* IP address of source host. */
-		uint8_t dst_addr[16]; /* IP address of destination host. */
-		uint32_t len;         /* L4 length. */
-		uint32_t proto;       /* L4 protocol - top 3 bytes must be zero */
+	uint32_t sum;
+	struct {
+		uint32_t len;   /* L4 length. */
+		uint32_t proto; /* L4 protocol - top 3 bytes must be zero */
 	} psd_hdr;
 
-	rte_memcpy(&psd_hdr.src_addr, ipv6_hdr->src_addr,
-		sizeof(ipv6_hdr->src_addr) + sizeof(ipv6_hdr->dst_addr));
 	psd_hdr.proto = (ipv6_hdr->proto << 24);
 	if (ol_flags & PKT_TX_TCP_SEG) {
 		psd_hdr.len = 0;
@@ -323,7 +356,11 @@ rte_ipv6_phdr_cksum(const struct ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
 		psd_hdr.len = ipv6_hdr->payload_len;
 	}
 
-	return rte_raw_cksum((const char *)&psd_hdr, sizeof(psd_hdr));
+	sum = __rte_raw_cksum(ipv6_hdr->src_addr,
+		sizeof(ipv6_hdr->src_addr) + sizeof(ipv6_hdr->dst_addr),
+		0);
+	sum = __rte_raw_cksum(&psd_hdr, sizeof(psd_hdr), sum);
+	return __rte_raw_cksum_reduce(sum);
 }
 
 /**
