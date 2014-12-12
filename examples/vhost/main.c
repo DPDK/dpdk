@@ -390,6 +390,9 @@ port_init(uint8_t port)
 	txconf = &dev_info.default_txconf;
 	rxconf->rx_drop_en = 1;
 
+	/* Enable vlan offload */
+	txconf->txq_flags &= ~ETH_TXQ_FLAGS_NOVLANOFFL;
+
 	/*
 	 * Zero copy defers queue RX/TX start to the time when guest
 	 * finishes its startup and packet buffers from that guest are
