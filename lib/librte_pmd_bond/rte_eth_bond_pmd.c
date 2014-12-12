@@ -913,9 +913,9 @@ bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, int mode)
 
 		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst_8023ad;
 		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_8023ad;
-		RTE_BOND_LOG(WARNING,
+		RTE_LOG(WARNING, PMD,
 				"Using mode 4, it is necessary to do TX burst and RX burst "
-				"at least every 100ms.");
+				"at least every 100ms.\n");
 		break;
 	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
 		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_tlb;
