@@ -1093,7 +1093,7 @@ cmd_firewall_add_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_firewall_add_result *params = parsed_result;
-	struct app_rule rule, *old_rule;
+	struct app_rule rule, *old_rule, *new_rule = NULL;
 	struct rte_mbuf *msg;
 	struct app_msg_req *req;
 	struct app_msg_resp *resp;
@@ -1148,6 +1148,18 @@ cmd_firewall_add_parsed(
 	if (msg == NULL)
 		rte_panic("Unable to allocate new message\n");
 
+	/* if we need a new rule structure, allocate it before we go further */
+	if (old_rule == NULL) {
+		new_rule = rte_zmalloc_socket("CLI", sizeof(struct app_rule),
+				RTE_CACHE_LINE_SIZE, rte_socket_id());
+		if (new_rule == NULL) {
+			printf("Cannot allocate memory for new rule\n");
+			rte_ctrlmbuf_free(msg);
+			return;
+		}
+	}
+
+
 	/* Fill request message */
 	req = (struct app_msg_req *)rte_ctrlmbuf_data(msg);
 	req->type = APP_MSG_REQ_FW_ADD;
@@ -1190,12 +1202,6 @@ cmd_firewall_add_parsed(
 		printf("Request FIREWALL_ADD failed (%u)\n", resp->result);
 	else {
 		if (old_rule == NULL) {
-			struct app_rule *new_rule = (struct app_rule *)
-				rte_zmalloc_socket("CLI",
-				sizeof(struct app_rule),
-				RTE_CACHE_LINE_SIZE,
-				rte_socket_id());
-
 			memcpy(new_rule, &rule, sizeof(rule));
 			TAILQ_INSERT_TAIL(&firewall_table, new_rule, entries);
 			n_firewall_rules++;
