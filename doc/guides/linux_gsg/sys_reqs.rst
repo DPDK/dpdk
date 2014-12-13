@@ -38,8 +38,8 @@ This chapter describes the packages required to compile the DPDK.
     If the DPDK is being used on an Intel® Communications Chipset 89xx Series platform,
     please consult the *Intel® Communications Chipset 89xx Series Software for Linux* Getting Started Guide*.
 
-BIOS Setting Prerequisite
--------------------------
+BIOS Setting Prerequisite on x86
+--------------------------------
 
 For the majority of platforms, no special BIOS settings are needed to use basic DPDK functionality.
 However, for additional HPET timer and power management functionality,
@@ -61,18 +61,22 @@ Compilation of the DPDK
 
 *   coreutils:  cmp, sed, grep, arch
 
-*   gcc: versions 4.5.x or later is recommended.
-    On some distributions, some specific compiler flags and linker flags are enabled by default and
-    affect performance (- fstack-protector, for example).
-    Please refer to the documentation of your distribution and to gcc -dumpspecs.
+*   gcc: versions 4.5.x or later is recommended for i686/x86_64. versions 4.8.x or later is recommanded
+    for ppc_64. On some distributions, some specific compiler flags and linker flags are enabled by
+    default and affect performance (- fstack-protector, for example). Please refer to the documentation
+    of your distribution and to gcc -dumpspecs.
 
-*   libc headers (glibc-devel.i686 / libc6-dev-i386; glibc-devel.x86_64  for 64-bit compilation)
+*   libc headers (glibc-devel.i686 / libc6-dev-i386; glibc-devel.x86_64 for 64-bit compilation on Intel
+    architecture; glibc-devel.ppc64 for 64 bit IBM Power architecture;)
 
-*   Linux kernel headers or sources required to build kernel modules. (kernel- devel.x86_64)
+*   Linux kernel headers or sources required to build kernel modules. (kernel - devel.x86_64;
+    kernel - devel.ppc64)
 
 *   Additional packages required for 32-bit compilation on 64-bit systems are:
 
-    glibc.i686, libgcc.i686, libstdc++.i686 and glibc-devel.i686
+    glibc.i686, libgcc.i686, libstdc++.i686 and glibc-devel.i686 for Intel i686/x86_64;
+
+    glibc.ppc64, libgcc.ppc64, libstdc++.ppc64 and glibc-devel.ppc64 for IBM ppc_64;
 
 *   Python, version 2.6 or 2.7, to use various helper scripts included in the DPDK package
 
@@ -82,6 +86,10 @@ Compilation of the DPDK
 *   Intel®  C++ Compiler (icc). For installation, additional libraries may be required.
     See the icc Installation Guide found in the Documentation directory under the compiler installation.
     This release has been tested using version 12.1.
+
+*   IBM® Advance ToolChain for Powerlinux. This is a set of open source development tools and runtime libraries
+    which allows users to take leading edge advantage of IBM's latest POWER hardware features on Linux. To install
+    it, see the IBM official installation document.
 
 *   libpcap headers and libraries (libpcap-devel) to compile and use the libpcap-based poll-mode driver.
     This driver is disabled by default and can be enabled by setting CONFIG_RTE_LIBRTE_PMD_PCAP=y in the build time config file.
@@ -171,8 +179,9 @@ For example, to reserve 4G of hugepage memory in the form of four 1G pages, the 
 
 .. note::
 
-    The hugepage sizes that a CPU supports can be determined from the CPU flags.
+    The hugepage sizes that a CPU supports can be determined from the CPU flags on Intel architecture.
     If pse exists, 2M hugepages are supported; if pdpe1gb exists, 1G hugepages are supported.
+    On IBM Power architecture, the supported hugepage sizes are 16MB and 16GB.
 
 .. note::
 

@@ -132,29 +132,31 @@ Some options in the script prompt the user for further data before proceeding.
 
     [7] x86_64-native-linuxapp-icc
 
+    [8] ppc_64-power8-linuxapp-gcc
+
     ------------------------------------------------------------------------
 
     Step 2: Setup linuxapp environment
 
     ------------------------------------------------------------------------
 
-    [8] Insert IGB UIO module
+    [9] Insert IGB UIO module
 
-    [9] Insert VFIO module
+    [10] Insert VFIO module
 
-    [10] Insert KNI module
+    [11] Insert KNI module
 
-    [11] Setup hugepage mappings for non-NUMA systems
+    [12] Setup hugepage mappings for non-NUMA systems
 
-    [12] Setup hugepage mappings for NUMA systems
+    [13] Setup hugepage mappings for NUMA systems
 
-    [13] Display current Ethernet device settings
+    [14] Display current Ethernet device settings
 
-    [14] Bind Ethernet device to IGB UIO module
+    [15] Bind Ethernet device to IGB UIO module
 
-    [15] Bind Ethernet device to VFIO module
+    [16] Bind Ethernet device to VFIO module
 
-    [16] Setup VFIO permissions
+    [17] Setup VFIO permissions
 
     ------------------------------------------------------------------------
 
@@ -162,9 +164,9 @@ Some options in the script prompt the user for further data before proceeding.
 
     ------------------------------------------------------------------------
 
-    [17] Run test application ($RTE_TARGET/app/test)
+    [18] Run test application ($RTE_TARGET/app/test)
 
-    [18] Run testpmd application in interactive mode ($RTE_TARGET/app/testpmd)
+    [19] Run testpmd application in interactive mode ($RTE_TARGET/app/testpmd)
 
     ------------------------------------------------------------------------
 
@@ -172,7 +174,7 @@ Some options in the script prompt the user for further data before proceeding.
 
     ------------------------------------------------------------------------
 
-    [19] List hugepage info from /proc/meminfo
+    [20] List hugepage info from /proc/meminfo
 
     ------------------------------------------------------------------------
 
@@ -180,19 +182,19 @@ Some options in the script prompt the user for further data before proceeding.
 
     ------------------------------------------------------------------------
 
-    [20] Uninstall all targets
+    [21] Uninstall all targets
 
-    [21] Unbind NICs from IGB UIO driver
+    [22] Unbind NICs from IGB UIO driver
 
-    [22] Remove IGB UIO module
+    [23] Remove IGB UIO module
 
-    [23] Remove VFIO module
+    [24] Remove VFIO module
 
-    [24] Remove KNI module
+    [25] Remove KNI module
 
-    [25] Remove hugepage mappings
+    [26] Remove hugepage mappings
 
-    [26] Exit Script
+    [27] Exit Script
 
 Option:
 
