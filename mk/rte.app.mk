@@ -119,6 +119,10 @@ LDLIBS += -lm
 LDLIBS += -lrt
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
+LDLIBS += -lpcap
+endif
+
 LDLIBS += --start-group
 
 ifeq ($(CONFIG_RTE_LIBRTE_KVARGS),y)
@@ -207,7 +211,7 @@ LDLIBS += -lrte_pmd_ring
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
-LDLIBS += -lrte_pmd_pcap -lpcap
+LDLIBS += -lrte_pmd_pcap
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_AF_PACKET),y)

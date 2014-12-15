@@ -41,10 +41,6 @@ APP = testpipeline
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
-ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
-LDFLAGS += -lpcap
-endif
-
 #
 # all source are stored in SRCS-y
 #
