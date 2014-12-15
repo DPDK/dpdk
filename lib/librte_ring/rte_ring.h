@@ -1087,7 +1087,7 @@ struct rte_ring *rte_ring_lookup(const char *name);
  * @return
  *   - n: Actual number of objects enqueued.
  */
-static inline int __attribute__((always_inline))
+static inline unsigned __attribute__((always_inline))
 rte_ring_mp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned n)
 {
@@ -1106,7 +1106,7 @@ rte_ring_mp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects enqueued.
  */
-static inline int __attribute__((always_inline))
+static inline unsigned __attribute__((always_inline))
 rte_ring_sp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned n)
 {
@@ -1129,7 +1129,7 @@ rte_ring_sp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects enqueued.
  */
-static inline int __attribute__((always_inline))
+static inline unsigned __attribute__((always_inline))
 rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 		      unsigned n)
 {
@@ -1156,7 +1156,7 @@ rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects dequeued, 0 if ring is empty
  */
-static inline int __attribute__((always_inline))
+static inline unsigned __attribute__((always_inline))
 rte_ring_mc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	return __rte_ring_mc_do_dequeue(r, obj_table, n, RTE_RING_QUEUE_VARIABLE);
@@ -1176,7 +1176,7 @@ rte_ring_mc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
  * @return
  *   - n: Actual number of objects dequeued, 0 if ring is empty
  */
-static inline int __attribute__((always_inline))
+static inline unsigned __attribute__((always_inline))
 rte_ring_sc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	return __rte_ring_sc_do_dequeue(r, obj_table, n, RTE_RING_QUEUE_VARIABLE);
@@ -1196,9 +1196,9 @@ rte_ring_sc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
  * @param n
  *   The number of objects to dequeue from the ring to the obj_table.
  * @return
- *   - Number of objects dequeued, or a negative error code on error
+ *   - Number of objects dequeued
  */
-static inline int __attribute__((always_inline))
+static inline unsigned __attribute__((always_inline))
 rte_ring_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	if (r->cons.sc_dequeue)
