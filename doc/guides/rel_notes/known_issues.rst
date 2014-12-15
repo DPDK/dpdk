@@ -777,3 +777,35 @@ Stopping the port does not down the link on Intel® 40G ethernet controller
 | Driver/Module                  | Poll Mode Driver (PMD)                                                               |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
+
+Devices bound to igb_uio with VT-d enabled do not work on Linux* kernel 3.15-3.17
+---------------------------------------------------------------------------------
+
++--------------------------------+--------------------------------------------------------------------------------------+
+| Title                          | Devices bound to igb_uio with VT-d enabled do not work on Linux* kernel 3.15-3.17    |
++================================+======================================================================================+
+| Description                    | | When VT-d is enabled (iommu=pt intel_iommu=on), devices are 1:1 mapped.            |
+|                                |   In the Linux* kernel unbinding devices from drivers removes that mapping which     |
+|                                |   result in IOMMU errors.                                                            |
+|                                | | Introduced in Linux `kernel 3.15 commit <https://git.kernel.org/cgit/linux/kernel/ |
+|                                |   git/torvalds/linux.git/commit/drivers/iommu/                                       |
+|                                |   intel-iommu.c?id=816997d03bca9fabcee65f3481eb0297103eceb7>`_,                      |
+|                                |   solved in Linux `kernel 3.18 commit <https://git.kernel.org/cgit/linux/kernel/git/ |
+|                                |   torvalds/linux.git/commit/drivers/iommu/                                           |
+|                                |   intel-iommu.c?id=1196c2fb0407683c2df92d3d09f9144d42830894>`_.                      |
++--------------------------------+--------------------------------------------------------------------------------------+
+| Implication                    | | Devices will not be allowed to access memory, resulting in following kernel errors:|
+|                                | | ``dmar: DRHD: handling fault status reg 2``                                        |
+|                                | | ``dmar: DMAR:[DMA Read] Request device [02:00.0] fault addr a0c58000``             |
+|                                | | ``DMAR:[fault reason 02] Present bit in context entry is clear``                   |
++--------------------------------+--------------------------------------------------------------------------------------+
+| Resolution/ Workaround         | | Use earlier or later kernel versions, or avoid driver binding on boot by           |
+|                                |   blacklisting the driver modules.                                                   |
+|                                | | ie. in the case of ixgbe, we can pass the kernel command line option:              |
+|                                | | ``modprobe.blacklist=ixgbe``                                                       |
+|                                | | This way we do not need to unbind the device to bind it to igb_uio.                |
++--------------------------------+--------------------------------------------------------------------------------------+
+| Affected Environment/ Platform | Linux* systems with kernel versions 3.15 to 3.17                                     |
++--------------------------------+--------------------------------------------------------------------------------------+
+| Driver/Module                  | igb_uio module                                                                       |
++--------------------------------+--------------------------------------------------------------------------------------+
