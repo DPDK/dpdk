@@ -198,6 +198,7 @@ static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 				enum rte_filter_type filter_type,
 				enum rte_filter_op filter_op,
 				void *arg);
+static void i40e_configure_registers(struct i40e_hw *hw);
 
 /* Default hash key buffer for RSS */
 static uint32_t rss_key_default[I40E_PFQF_HKEY_MAX_INDEX + 1];
@@ -442,6 +443,16 @@ eth_i40e_dev_init(__rte_unused struct eth_driver *eth_drv,
 
 	/* Clear PXE mode */
 	i40e_clear_pxe_mode(hw);
+
+	/*
+	 * On X710, performance number is far from the expectation on recent
+	 * firmware versions. The fix for this issue may not be integrated in
+	 * the following firmware version. So the workaround in software driver
+	 * is needed. It needs to modify the initial values of 3 internal only
+	 * registers. Note that the workaround can be removed when it is fixed
+	 * in firmware in the future.
+	 */
+	i40e_configure_registers(hw);
 
 	/* Get hw capabilities */
 	ret = i40e_get_cap(hw);
@@ -5293,4 +5304,82 @@ i40e_pctype_to_flowtype(enum i40e_filter_pctype pctype)
 	};
 
 	return flowtype_table[pctype];
+}
+
+static int
+i40e_debug_read_register(struct i40e_hw *hw, uint32_t addr, uint64_t *val)
+{
+	struct i40e_aq_desc desc;
+	struct i40e_aqc_debug_reg_read_write *cmd =
+		(struct i40e_aqc_debug_reg_read_write *)&desc.params.raw;
+	enum i40e_status_code status;
+
+	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_debug_read_reg);
+	cmd->address = rte_cpu_to_le_32(addr);
+	status = i40e_asq_send_command(hw, &desc, NULL, 0, NULL);
+	if (status < 0)
+		return status;
+
+	*val = ((uint64_t)(rte_le_to_cpu_32(cmd->value_high)) << (CHAR_BIT *
+			sizeof(uint32_t))) + rte_le_to_cpu_32(cmd->value_low);
+
+	return status;
+}
+
+/*
+ * On X710, performance number is far from the expectation on recent firmware
+ * versions. The fix for this issue may not be integrated in the following
+ * firmware version. So the workaround in software driver is needed. It needs
+ * to modify the initial values of 3 internal only registers. Note that the
+ * workaround can be removed when it is fixed in firmware in the future.
+ */
+static void
+i40e_configure_registers(struct i40e_hw *hw)
+{
+#define I40E_GL_SWR_PRI_JOIN_MAP_0       0x26CE00
+#define I40E_GL_SWR_PRI_JOIN_MAP_2       0x26CE08
+#define I40E_GL_SWR_PM_UP_THR            0x269FBC
+#define I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE 0x10000200
+#define I40E_GL_SWR_PRI_JOIN_MAP_2_VALUE 0x011f0200
+#define I40E_GL_SWR_PM_UP_THR_VALUE      0x03030303
+
+	static const struct {
+		uint32_t addr;
+		uint64_t val;
+	} reg_table[] = {
+		{I40E_GL_SWR_PRI_JOIN_MAP_0, I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE},
+		{I40E_GL_SWR_PRI_JOIN_MAP_2, I40E_GL_SWR_PRI_JOIN_MAP_2_VALUE},
+		{I40E_GL_SWR_PM_UP_THR, I40E_GL_SWR_PM_UP_THR_VALUE},
+	};
+	uint64_t reg;
+	uint32_t i;
+	int ret;
+
+	/* Below fix is for X710 only */
+	if (i40e_is_40G_device(hw->device_id))
+		return;
+
+	for (i = 0; i < RTE_DIM(reg_table); i++) {
+		ret = i40e_debug_read_register(hw, reg_table[i].addr, &reg);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Failed to read from 0x%"PRIx32,
+							reg_table[i].addr);
+			break;
+		}
+		PMD_DRV_LOG(DEBUG, "Read from 0x%"PRIx32": 0x%"PRIx64,
+						reg_table[i].addr, reg);
+		if (reg == reg_table[i].val)
+			continue;
+
+		ret = i40e_aq_debug_write_register(hw, reg_table[i].addr,
+						reg_table[i].val, NULL);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Failed to write 0x%"PRIx64" to the "
+				"address of 0x%"PRIx32, reg_table[i].val,
+							reg_table[i].addr);
+			break;
+		}
+		PMD_DRV_LOG(DEBUG, "Write 0x%"PRIx64" to the address of "
+			"0x%"PRIx32, reg_table[i].val, reg_table[i].addr);
+	}
 }
