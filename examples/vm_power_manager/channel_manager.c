@@ -389,7 +389,7 @@ add_all_channels(const char *vm_name)
 		errno = 0;
 		channel_num = (unsigned)strtol(remaining, &tail_ptr, 0);
 		if ((errno != 0) || (remaining[0] == '\0') ||
-				(*tail_ptr != '\0') || tail_ptr == NULL) {
+				tail_ptr == NULL || (*tail_ptr != '\0')) {
 			RTE_LOG(WARNING, CHANNEL_MANAGER, "Malformed channel name"
 					"'%s' found it should be in the form of "
 					"'<guest_name>.<channel_num>(decimal)'\n",

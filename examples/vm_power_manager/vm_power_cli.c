@@ -323,7 +323,7 @@ cmd_channels_op_parsed(void *parsed_result, struct cmdline *cl,
 			break;
 		errno = 0;
 		channel_num = (unsigned)strtol(token, &tail_ptr, 10);
-		if ((errno != 0) || (*tail_ptr != '\0') || tail_ptr == NULL)
+		if ((errno != 0) || tail_ptr == NULL || (*tail_ptr != '\0'))
 			break;
 
 		if (channel_num == CHANNEL_CMDS_MAX_VM_CHANNELS) {
@@ -408,7 +408,7 @@ cmd_channels_status_op_parsed(void *parsed_result, struct cmdline *cl,
 			break;
 		errno = 0;
 		channel_num = (unsigned)strtol(token, &tail_ptr, 10);
-		if ((errno != 0) || (*tail_ptr != '\0') || tail_ptr == NULL)
+		if ((errno != 0) || tail_ptr == NULL || (*tail_ptr != '\0'))
 			break;
 
 		if (channel_num == CHANNEL_CMDS_MAX_VM_CHANNELS) {
