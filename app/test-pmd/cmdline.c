@@ -2224,7 +2224,7 @@ cmdline_parse_inst_t cmd_stop = {
 
 /* *** SET CORELIST and PORTLIST CONFIGURATION *** */
 
-static unsigned int
+unsigned int
 parse_item_list(char* str, const char* item_name, unsigned int max_items,
 		unsigned int *parsed_items, int check_unique_values)
 {

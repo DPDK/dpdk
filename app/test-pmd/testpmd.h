@@ -446,6 +446,9 @@ port_pci_reg_write(struct rte_port *port, uint32_t reg_off, uint32_t reg_v)
 	port_pci_reg_write(&ports[(pt_id)], (reg_off), (reg_value))
 
 /* Prototypes */
+unsigned int parse_item_list(char* str, const char* item_name,
+			unsigned int max_items,
+			unsigned int *parsed_items, int check_unique_values);
 void launch_args_parse(int argc, char** argv);
 void prompt(void);
 void nic_stats_display(portid_t port_id);

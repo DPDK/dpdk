@@ -491,52 +491,6 @@ parse_ringnuma_config(const char *q_arg)
 	return 0;
 }
 
-static unsigned int
-parse_item_list(char* str, unsigned int max_items, unsigned int *parsed_items)
-{
-	unsigned int nb_item;
-	unsigned int value;
-	unsigned int i;
-	int value_ok;
-	char c;
-
-	/*
-	 * First parse all items in the list and store their value.
-	 */
-	value = 0;
-	nb_item = 0;
-	value_ok = 0;
-	for (i = 0; i < strlen(str); i++) {
-		c = str[i];
-		if ((c >= '0') && (c <= '9')) {
-			value = (unsigned int) (value * 10 + (c - '0'));
-			value_ok = 1;
-			continue;
-		}
-		if (c != ',') {
-			printf("character %c is not a decimal digit\n", c);
-			return (0);
-		}
-		if (! value_ok) {
-			printf("No valid value before comma\n");
-			return (0);
-		}
-		if (nb_item < max_items) {
-			parsed_items[nb_item] = value;
-			value_ok = 0;
-			value = 0;
-		}
-		nb_item++;
-	}
-
-	if (nb_item >= max_items)
-		rte_exit(EXIT_FAILURE, "too many txpkt segments!\n");
-
-	parsed_items[nb_item++] = value;
-
-	return (nb_item);
-}
-
 void
 launch_args_parse(int argc, char** argv)
 {
@@ -1050,7 +1004,8 @@ launch_args_parse(int argc, char** argv)
 				unsigned seg_lengths[RTE_MAX_SEGS_PER_PKT];
 				unsigned int nb_segs;
 
-				nb_segs = parse_item_list(optarg, RTE_MAX_SEGS_PER_PKT, seg_lengths);
+				nb_segs = parse_item_list(optarg, "txpkt segments",
+						RTE_MAX_SEGS_PER_PKT, seg_lengths, 0);
 				if (nb_segs > 0)
 					set_tx_pkt_segments(seg_lengths, nb_segs);
 				else
