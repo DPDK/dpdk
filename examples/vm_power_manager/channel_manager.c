@@ -597,7 +597,7 @@ get_info_vm(const char *vm_name, struct vm_info *info)
 	ITERATIVE_BITMASK_CHECK_64(mask, i) {
 		info->channels[channel_num].channel_num = i;
 		memcpy(info->channels[channel_num].channel_path,
-				vm_info->channels[i]->channel_path, PATH_MAX);
+				vm_info->channels[i]->channel_path, UNIX_PATH_MAX);
 		info->channels[channel_num].status = vm_info->channels[i]->status;
 		info->channels[channel_num].fd = vm_info->channels[i]->fd;
 		channel_num++;

@@ -39,6 +39,7 @@ extern "C" {
 #endif
 
 #include <linux/limits.h>
+#include <sys/un.h>
 #include <rte_atomic.h>
 #include "channel_commands.h"
 
@@ -54,6 +55,11 @@ extern "C" {
 /* File socket directory */
 #define CHANNEL_MGR_SOCKET_PATH     "/tmp/powermonitor/"
 
+#ifndef UNIX_PATH_MAX
+struct sockaddr_un _sockaddr_un;
+#define UNIX_PATH_MAX sizeof(_sockaddr_un.sun_path)
+#endif
+
 /* Communication Channel Status */
 enum channel_status { CHANNEL_MGR_CHANNEL_DISCONNECTED = 0,
 	CHANNEL_MGR_CHANNEL_CONNECTED,
@@ -68,7 +74,7 @@ enum vm_status { CHANNEL_MGR_VM_INACTIVE = 0, CHANNEL_MGR_VM_ACTIVE};
  *  the host.
  */
 struct channel_info {
-	char channel_path[PATH_MAX]; /**< Path to host socket */
+	char channel_path[UNIX_PATH_MAX]; /**< Path to host socket */
 	volatile uint32_t status;    /**< Connection status(enum channel_status) */
 	int fd;                      /**< AF_UNIX socket fd */
 	unsigned channel_num;        /**< CHANNEL_MGR_SOCKET_PATH/<vm_name>.channel_num */
