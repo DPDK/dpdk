@@ -489,7 +489,7 @@ ixgbe_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	unsigned i = 0;
 	if (rxq->pkt_first_seg == NULL) {
 		/* find the first split flag, and only reassemble then*/
-		while (!split_flags[i] && i < nb_bufs)
+		while (i < nb_bufs && !split_flags[i])
 			i++;
 		if (i == nb_bufs)
 			return nb_bufs;
