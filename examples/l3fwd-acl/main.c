@@ -1247,6 +1247,10 @@ app_acl_init(void)
 				acl_log("Socket %d of lcore %u is out "
 					"of range %d\n",
 					socketid, lcore_id, NB_SOCKETS);
+				free(route_base_ipv4);
+				free(route_base_ipv6);
+				free(acl_base_ipv4);
+				free(acl_base_ipv6);
 				return -1;
 			}
 
