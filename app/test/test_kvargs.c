@@ -78,7 +78,6 @@ static int test_valid_kvargs(void)
 	kvlist = rte_kvargs_parse(args, valid_keys);
 	if (kvlist == NULL) {
 		printf("rte_kvargs_parse() error");
-		rte_kvargs_free(kvlist);
 		goto fail;
 	}
 	rte_kvargs_free(kvlist);
@@ -89,7 +88,6 @@ static int test_valid_kvargs(void)
 	kvlist = rte_kvargs_parse(args, valid_keys);
 	if (kvlist == NULL) {
 		printf("rte_kvargs_parse() error");
-		rte_kvargs_free(kvlist);
 		goto fail;
 	}
 	/* call check_handler() for all entries with key="check" */
@@ -150,7 +148,6 @@ static int test_valid_kvargs(void)
 	kvlist = rte_kvargs_parse(args, valid_keys);
 	if (kvlist == NULL) {
 		printf("rte_kvargs_parse() error");
-		rte_kvargs_free(kvlist);
 		goto fail;
 	}
 	/* call check_handler() on all entries with key="check", it
