@@ -104,13 +104,13 @@ rte_version(void)
 	if (version[0] != 0)
 		return version;
 	if (strlen(RTE_VER_SUFFIX) == 0)
-		sprintf(version, "%s %d.%d.%d",
+		snprintf(version, sizeof(version), "%s %d.%d.%d",
 			RTE_VER_PREFIX,
 			RTE_VER_MAJOR,
 			RTE_VER_MINOR,
 			RTE_VER_PATCH_LEVEL);
 	else
-		sprintf(version, "%s %d.%d.%d%s%d",
+		snprintf(version, sizeof(version), "%s %d.%d.%d%s%d",
 			RTE_VER_PREFIX,
 			RTE_VER_MAJOR,
 			RTE_VER_MINOR,
