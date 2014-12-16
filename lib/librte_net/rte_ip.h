@@ -110,6 +110,14 @@ struct ipv4_hdr {
 					   (((c) & 0xff) << 8)  | \
 					   ((d) & 0xff))
 
+/** Internet header length mask for version_ihl field */
+#define IPV4_HDR_IHL_MASK	(0x0f)
+/**
+ * Internet header length field multiplier (IHL field specifies overall header
+ * length in number of 4-byte words)
+ */
+#define IPV4_IHL_MULTIPLIER	(4)
+
 /* Fragment Offset * Flags. */
 #define	IPV4_HDR_DF_SHIFT	14
 #define	IPV4_HDR_MF_SHIFT	13

@@ -108,6 +108,9 @@ struct bond_slave_details {
 	struct ether_addr persisted_mac_addr;
 };
 
+
+typedef uint16_t (*xmit_hash_t)(const struct rte_mbuf *buf, uint8_t slave_count);
+
 /** Link Bonding PMD device private configuration Structure */
 struct bond_dev_private {
 	uint8_t port_id;					/**< Port Id of Bonded Port */
@@ -122,6 +125,9 @@ struct bond_dev_private {
 
 	uint8_t balance_xmit_policy;
 	/**< Transmit policy - l2 / l23 / l34 for operation in balance mode */
+	xmit_hash_t xmit_hash;
+	/**< Transmit policy hash function */
+
 	uint8_t user_defined_mac;
 	/**< Flag for whether MAC address is user defined or not */
 	uint8_t promiscuous_en;
@@ -224,6 +230,15 @@ slave_remove(struct bond_dev_private *internals,
 void
 slave_add(struct bond_dev_private *internals,
 		struct rte_eth_dev *slave_eth_dev);
+
+uint16_t
+xmit_l2_hash(const struct rte_mbuf *buf, uint8_t slave_count);
+
+uint16_t
+xmit_l23_hash(const struct rte_mbuf *buf, uint8_t slave_count);
+
+uint16_t
+xmit_l34_hash(const struct rte_mbuf *buf, uint8_t slave_count);
 
 void
 bond_ethdev_primary_set(struct bond_dev_private *internals,

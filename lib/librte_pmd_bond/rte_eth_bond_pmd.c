@@ -31,6 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdlib.h>
+#include <netinet/in.h>
+
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
@@ -48,6 +50,9 @@
 #include "rte_eth_bond_8023ad_private.h"
 
 #define REORDER_PERIOD_MS 10
+
+#define HASH_L4_PORTS(h) ((h)->src_port ^ (h)->dst_port)
+
 /* Table for statistics in mode 5 TLB */
 static uint64_t tlb_last_obytets[RTE_MAX_ETHPORTS];
 
@@ -276,90 +281,105 @@ ipv6_hash(struct ipv6_hdr *ipv6_hdr)
 			(word_src_addr[3] ^ word_dst_addr[3]);
 }
 
-static uint32_t
-udp_hash(struct udp_hdr *hdr)
+static inline size_t
+get_vlan_offset(struct ether_hdr *eth_hdr)
 {
-	return hdr->src_port ^ hdr->dst_port;
+	size_t vlan_offset = 0;
+
+	/* Calculate VLAN offset */
+	if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == eth_hdr->ether_type) {
+		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
+		vlan_offset = sizeof(struct vlan_hdr);
+
+		while (rte_cpu_to_be_16(ETHER_TYPE_VLAN) ==
+				vlan_hdr->eth_proto) {
+			vlan_hdr = vlan_hdr + 1;
+			vlan_offset += sizeof(struct vlan_hdr);
+		}
+	}
+	return vlan_offset;
 }
 
-static inline uint16_t
-xmit_slave_hash(const struct rte_mbuf *buf, uint8_t slave_count, uint8_t policy)
+uint16_t
+xmit_l2_hash(const struct rte_mbuf *buf, uint8_t slave_count)
 {
-	struct ether_hdr *eth_hdr;
-	struct udp_hdr *udp_hdr;
-	size_t eth_offset = 0;
-	uint32_t hash = 0;
+	struct ether_hdr *eth_hdr = rte_pktmbuf_mtod(buf, struct ether_hdr *);
 
-	if (slave_count == 1)
-		return 0;
+	uint32_t hash = ether_hash(eth_hdr);
 
-	switch (policy) {
-	case BALANCE_XMIT_POLICY_LAYER2:
-		eth_hdr = rte_pktmbuf_mtod(buf, struct ether_hdr *);
+	return (hash ^= hash >> 8) % slave_count;
+}
 
-		hash = ether_hash(eth_hdr);
-		hash ^= hash >> 8;
-		return hash % slave_count;
+uint16_t
+xmit_l23_hash(const struct rte_mbuf *buf, uint8_t slave_count)
+{
+	struct ether_hdr *eth_hdr = rte_pktmbuf_mtod(buf, struct ether_hdr *);
+	size_t vlan_offset = get_vlan_offset(eth_hdr);
+	uint32_t hash, l3hash = 0;
 
-	case BALANCE_XMIT_POLICY_LAYER23:
-		eth_hdr = rte_pktmbuf_mtod(buf, struct ether_hdr *);
+	hash = ether_hash(eth_hdr);
 
-		if (buf->ol_flags & PKT_RX_VLAN_PKT)
-			eth_offset = sizeof(struct ether_hdr) + sizeof(struct vlan_hdr);
-		else
-			eth_offset = sizeof(struct ether_hdr);
+	if (buf->ol_flags & PKT_RX_IPV4_HDR) {
+		struct ipv4_hdr *ipv4_hdr = (struct ipv4_hdr *)
+				((char *)(eth_hdr + 1) + vlan_offset);
+		l3hash = ipv4_hash(ipv4_hdr);
 
-		if (buf->ol_flags & PKT_RX_IPV4_HDR) {
-			struct ipv4_hdr *ipv4_hdr;
-			ipv4_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(buf,
-					unsigned char *) + eth_offset);
-
-			hash = ether_hash(eth_hdr) ^ ipv4_hash(ipv4_hdr);
-
-		} else {
-			struct ipv6_hdr *ipv6_hdr;
-
-			ipv6_hdr = (struct ipv6_hdr *)(rte_pktmbuf_mtod(buf,
-					unsigned char *) + eth_offset);
-
-			hash = ether_hash(eth_hdr) ^ ipv6_hash(ipv6_hdr);
-		}
-		break;
-
-	case BALANCE_XMIT_POLICY_LAYER34:
-		if (buf->ol_flags & PKT_RX_VLAN_PKT)
-			eth_offset = sizeof(struct ether_hdr) + sizeof(struct vlan_hdr);
-		else
-			eth_offset = sizeof(struct ether_hdr);
-
-		if (buf->ol_flags & PKT_RX_IPV4_HDR) {
-			struct ipv4_hdr *ipv4_hdr = (struct ipv4_hdr *)
-					(rte_pktmbuf_mtod(buf, unsigned char *) + eth_offset);
-
-			if (ipv4_hdr->next_proto_id == IPPROTO_UDP) {
-				udp_hdr = (struct udp_hdr *)
-						(rte_pktmbuf_mtod(buf, unsigned char *) + eth_offset +
-								sizeof(struct ipv4_hdr));
-				hash = ipv4_hash(ipv4_hdr) ^ udp_hash(udp_hdr);
-			} else {
-				hash = ipv4_hash(ipv4_hdr);
-			}
-		} else {
-			struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)
-					(rte_pktmbuf_mtod(buf, unsigned char *) + eth_offset);
-
-			if (ipv6_hdr->proto == IPPROTO_UDP) {
-				udp_hdr = (struct udp_hdr *)
-						(rte_pktmbuf_mtod(buf, unsigned char *) + eth_offset +
-								sizeof(struct ipv6_hdr));
-				hash = ipv6_hash(ipv6_hdr) ^ udp_hash(udp_hdr);
-			} else {
-				hash = ipv6_hash(ipv6_hdr);
-			}
-		}
-		break;
+	} else if  (buf->ol_flags & PKT_RX_IPV6_HDR) {
+		struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)
+				((char *)(eth_hdr + 1) + vlan_offset);
+		l3hash = ipv6_hash(ipv6_hdr);
 	}
 
+	hash = hash ^ l3hash;
+	hash ^= hash >> 16;
+	hash ^= hash >> 8;
+
+	return hash % slave_count;
+}
+
+uint16_t
+xmit_l34_hash(const struct rte_mbuf *buf, uint8_t slave_count)
+{
+	struct ether_hdr *eth_hdr = rte_pktmbuf_mtod(buf, struct ether_hdr *);
+	size_t vlan_offset = get_vlan_offset(eth_hdr);
+	struct udp_hdr *udp_hdr = NULL;
+	struct tcp_hdr *tcp_hdr = NULL;
+	uint32_t hash, l3hash = 0, l4hash = 0;
+
+	if (buf->ol_flags & PKT_RX_IPV4_HDR) {
+		struct ipv4_hdr *ipv4_hdr = (struct ipv4_hdr *)
+				((char *)(eth_hdr + 1) + vlan_offset);
+		size_t ip_hdr_offset;
+
+		l3hash = ipv4_hash(ipv4_hdr);
+
+		ip_hdr_offset = (ipv4_hdr->version_ihl & IPV4_HDR_IHL_MASK) *
+				IPV4_IHL_MULTIPLIER;
+
+		if (ipv4_hdr->next_proto_id == IPPROTO_TCP) {
+			tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr +
+					ip_hdr_offset);
+			l4hash = HASH_L4_PORTS(tcp_hdr);
+		} else if (ipv4_hdr->next_proto_id == IPPROTO_UDP) {
+			udp_hdr = (struct udp_hdr *)((char *)ipv4_hdr +
+					ip_hdr_offset);
+			l4hash = HASH_L4_PORTS(udp_hdr);
+		}
+	} else if  (buf->ol_flags & PKT_RX_IPV6_HDR) {
+		struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)
+				((char *)(eth_hdr + 1) + vlan_offset);
+		l3hash = ipv6_hash(ipv6_hdr);
+
+		if (ipv6_hdr->proto == IPPROTO_TCP) {
+			tcp_hdr = (struct tcp_hdr *)(ipv6_hdr + 1);
+			l4hash = HASH_L4_PORTS(tcp_hdr);
+		} else if (ipv6_hdr->proto == IPPROTO_UDP) {
+			udp_hdr = (struct udp_hdr *)(ipv6_hdr + 1);
+			l4hash = HASH_L4_PORTS(udp_hdr);
+		}
+	}
+
+	hash = l3hash ^ l4hash;
 	hash ^= hash >> 16;
 	hash ^= hash >> 8;
 
@@ -536,8 +556,7 @@ bond_ethdev_tx_burst_balance(void *queue, struct rte_mbuf **bufs,
 	/* Populate slaves mbuf with the packets which are to be sent on it  */
 	for (i = 0; i < nb_pkts; i++) {
 		/* Select output slave using hash based on xmit policy */
-		op_slave_id = xmit_slave_hash(bufs[i], num_of_slaves,
-				internals->balance_xmit_policy);
+		op_slave_id = internals->xmit_hash(bufs[i], num_of_slaves);
 
 		/* Populate slave mbuf arrays with mbufs for that slave */
 		slave_bufs[op_slave_id][slave_nb_pkts[op_slave_id]++] = bufs[i];
@@ -575,7 +594,7 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 
 	uint8_t num_of_slaves;
 	uint8_t slaves[RTE_MAX_ETHPORTS];
-	 /* possitions in slaves, not ID */
+	 /* positions in slaves, not ID */
 	uint8_t distributing_offsets[RTE_MAX_ETHPORTS];
 	uint8_t distributing_count;
 
@@ -622,8 +641,7 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 		/* Populate slaves mbuf with the packets which are to be sent on it */
 		for (i = 0; i < nb_pkts; i++) {
 			/* Select output slave using hash based on xmit policy */
-			op_slave_idx = xmit_slave_hash(bufs[i], distributing_count,
-					internals->balance_xmit_policy);
+			op_slave_idx = internals->xmit_hash(bufs[i], distributing_count);
 
 			/* Populate slave mbuf arrays with mbufs for that slave. Use only
 			 * slaves that are currently distributing. */

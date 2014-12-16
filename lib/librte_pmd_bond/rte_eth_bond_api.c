@@ -272,6 +272,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	internals->mode = BONDING_MODE_INVALID;
 	internals->current_primary_port = 0;
 	internals->balance_xmit_policy = BALANCE_XMIT_POLICY_LAYER2;
+	internals->xmit_hash = xmit_l2_hash;
 	internals->user_defined_mac = 0;
 	internals->link_props_set = 0;
 
@@ -714,9 +715,16 @@ rte_eth_bond_xmit_policy_set(uint8_t bonded_port_id, uint8_t policy)
 
 	switch (policy) {
 	case BALANCE_XMIT_POLICY_LAYER2:
+		internals->balance_xmit_policy = policy;
+		internals->xmit_hash = xmit_l2_hash;
+		break;
 	case BALANCE_XMIT_POLICY_LAYER23:
+		internals->balance_xmit_policy = policy;
+		internals->xmit_hash = xmit_l23_hash;
+		break;
 	case BALANCE_XMIT_POLICY_LAYER34:
 		internals->balance_xmit_policy = policy;
+		internals->xmit_hash = xmit_l34_hash;
 		break;
 
 	default:

@@ -97,7 +97,7 @@ initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
 		vhdr->eth_proto =  rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 		vhdr->vlan_tci = van_id;
 	} else {
-		eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
+		eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 	}
 
 }
