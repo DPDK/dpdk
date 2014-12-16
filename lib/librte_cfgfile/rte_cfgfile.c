@@ -225,8 +225,10 @@ rte_cfgfile_load(const char *filename, int flags)
 	}
 	fclose(f);
 	cfg->flags = flags;
-	cfg->sections[curr_section]->num_entries = curr_entry + 1;
 	cfg->num_sections = curr_section + 1;
+	/* curr_section will still be -1 if we have an empty file */
+	if (curr_section >= 0)
+		cfg->sections[curr_section]->num_entries = curr_entry + 1;
 	return cfg;
 
 error1:
