@@ -676,14 +676,15 @@ error:
 		rte_free(data);
 	if (pci_dev)
 		rte_free(pci_dev);
-	for (q = 0; q < nb_queues; q++) {
-		if ((*internals)->rx_queue[q].rd)
-			rte_free((*internals)->rx_queue[q].rd);
-		if ((*internals)->tx_queue[q].rd)
-			rte_free((*internals)->tx_queue[q].rd);
-	}
-	if (*internals)
+	if (*internals) {
+		for (q = 0; q < nb_queues; q++) {
+			if ((*internals)->rx_queue[q].rd)
+				rte_free((*internals)->rx_queue[q].rd);
+			if ((*internals)->tx_queue[q].rd)
+				rte_free((*internals)->tx_queue[q].rd);
+		}
 		rte_free(*internals);
+	}
 	return -1;
 }
 
