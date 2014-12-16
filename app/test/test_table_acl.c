@@ -513,6 +513,11 @@ test_pipeline_single_filter(int expected_count)
 			struct rte_mbuf *mbuf;
 
 			mbuf = rte_pktmbuf_alloc(pool);
+			if (mbuf == NULL)
+				/* this will cause test failure after cleanup
+				 * of already enqueued mbufs, as the mbuf
+				 * counts won't match */
+				break;
 			memset(rte_pktmbuf_mtod(mbuf, char *), 0x00,
 				sizeof(struct ipv4_5tuple));
 
