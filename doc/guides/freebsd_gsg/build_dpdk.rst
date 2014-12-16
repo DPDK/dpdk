@@ -30,28 +30,28 @@
 
 .. _building_from_source:
 
-Compiling the Intel® DPDK Target from Source
-============================================
+Compiling the DPDK Target from Source
+=====================================
 
 .. note::
 
     Testing has been performed using FreeBSD* 10.0-RELEASE (x86_64) and requires the
     installation of the kernel sources, which should be included during the
-    installation of FreeBSD*.   The Intel® DPDK also requires the use of FreeBSD*
+    installation of FreeBSD*. The DPDK also requires the use of FreeBSD*
     ports to compile and function.
 
 System Requirements
 -------------------
 
-The Intel® DPDK and its applications require the GNU make system (gmake)
+The DPDK and its applications require the GNU make system (gmake)
 to build on FreeBSD*. Optionally, gcc may also be used in place of clang
-to build the Intel® DPDK, in which case it too must be installed prior to
-compiling the Intel® DPDK. The installation of these tools is covered in this
+to build the DPDK, in which case it too must be installed prior to
+compiling the DPDK. The installation of these tools is covered in this
 section.
 
-Compiling the Intel® DPDK requires the FreeBSD kernel sources, which should be
+Compiling the DPDK requires the FreeBSD kernel sources, which should be
 included during the installation of FreeBSD* on the development platform.
-The Intel® DPDK also requires the use of FreeBSD* ports to compile and function.
+The DPDK also requires the use of FreeBSD* ports to compile and function.
 
 To use the FreeBSD* ports system, it is required to update and extract the FreeBSD*
 ports tree by issuing the following commands:
@@ -69,7 +69,7 @@ using:
     root@host:~ # setenv http_proxy <my_proxy_host>:<port>
     root@host:~ # setenv ftp_proxy <my_proxy_host>:<port>
 
-The FreeBSD* ports below need to be installed prior to building the Intel® DPDK.
+The FreeBSD* ports below need to be installed prior to building the DPDK.
 In general these can be installed using the following set of commands:
 
 #.  cd /usr/ports/<port_location>
@@ -97,7 +97,7 @@ GNU make(gmake)
 coreutils
    /usr/ports/sysutils/coreutils
 
-For compiling and using the Intel® DPDK with gcc, it too must be installed
+For compiling and using the DPDK with gcc, it too must be installed
 from the ports collection:
 
 gcc: version 4.8 is recommended
@@ -105,7 +105,7 @@ gcc: version 4.8 is recommended
    (Ensure that CPU_OPTS is selected (default is OFF))
 
 When running the make config-recursive command, a dialog may be presented to the
-user. For the installation of the Intel® DPDK, the default options were used.
+user. For the installation of the DPDK, the default options were used.
 
 .. note::
 
@@ -114,10 +114,10 @@ user. For the installation of the Intel® DPDK, the default options were used.
     make config -recursive command until no more dialogs are seen.
 
 
-Install the Intel® DPDK and Browse Sources
-------------------------------------------
+Install the DPDK and Browse Sources
+-----------------------------------
 
-First, uncompress the archive and move to the Intel® DPDK source directory:
+First, uncompress the archive and move to the DPDK source directory:
 
 .. code-block:: console
 
@@ -126,20 +126,20 @@ First, uncompress the archive and move to the Intel® DPDK source directory:
     user@host:~/DPDK # ls
     app/ config/ examples/ lib/ LICENSE.GPL LICENSE.LGPL Makefile mk/ scripts/ tools/
 
-The Intel® DPDK is composed of several directories:
+The DPDK is composed of several directories:
 
-*   lib: Source code of Intel® DPDK libraries
+*   lib: Source code of DPDK libraries
 
-*   app: Source code of Intel® DPDK applications (automatic tests)
+*   app: Source code of DPDK applications (automatic tests)
 
-*   examples: Source code of Intel® DPDK applications
+*   examples: Source code of DPDK applications
 
 *   config, tools, scripts, mk: Framework-related makefiles, scripts and configuration
 
-Installation of the Intel® DPDK Target Environments
----------------------------------------------------
+Installation of the DPDK Target Environments
+--------------------------------------------
 
-The format of an Intel® DPDK target is:
+The format of a DPDK target is:
 
 ARCH-MACHINE-EXECENV-TOOLCHAIN
 
@@ -153,7 +153,7 @@ Where:
 
 *   TOOLCHAIN is: gcc | clang
 
-The configuration files for the Intel® DPDK targets can be found in the DPDK/config
+The configuration files for the DPDK targets can be found in the DPDK/config
 directory in the form of:
 
 ::
@@ -166,7 +166,7 @@ directory in the form of:
     Within the configuration files, the RTE_MACHINE configuration value is set
     to native, which means that the compiled software is tuned for the platform
     on which it is built.  For more information on this setting, and its
-    possible values, see the *Intel® DPDK Programmers Guide*.
+    possible values, see the *DPDK Programmers Guide*.
 
 To install and make the target, use "gmake install T=<target>".
 
@@ -183,11 +183,11 @@ For example to compile for FreeBSD* use:
 	specified. For example, if compiling for gcc, where the gcc binary is called
 	gcc4.8, the command would need to be "gmake install T=<target> CC=gcc4.8".
 
-Browsing the Installed Intel® DPDK Environment Target
------------------------------------------------------
+Browsing the Installed DPDK Environment Target
+----------------------------------------------
 
 Once a target is created, it contains all the libraries and header files for the
-Intel® DPDK environment that are required to build customer applications.
+DPDK environment that are required to build customer applications.
 In addition, the test and testpmd applications are built under the build/app
 directory, which may be used for testing.  A kmod directory is also present that
 contains the kernel modules to install:
@@ -200,15 +200,15 @@ contains the kernel modules to install:
 
 .. _loading_contigmem:
 
-Loading the Intel® DPDK contigmem Module
-----------------------------------------
+Loading the DPDK contigmem Module
+---------------------------------
 
-To run an Intel® DPDK application, physically contiguous memory is required.
+To run a DPDK application, physically contiguous memory is required.
 In the absence of non-transparent superpages, the included sources for the
 contigmem kernel module provides the ability to present contiguous blocks of
-memory for the Intel® DPDK to use. The contigmem module must be loaded into the
-running kernel before any Intel® DPDK is run.  The module is found in the kmod
-sub-directory of the Intel® DPDK target directory.
+memory for the DPDK to use. The contigmem module must be loaded into the
+running kernel before any DPDK is run.  The module is found in the kmod
+sub-directory of the DPDK target directory.
 
 The amount of physically contiguous memory along with the number of physically
 contiguous blocks to be reserved by the module can be set at runtime prior to
@@ -237,7 +237,7 @@ contiguous memory.  A default of two buffers of size 1073741824 bytes (1 Gigabyt
 each is set during module load if they are not specified in the environment.
 
 The module can then be loaded using kldload (assuming that the current directory
-is the Intel® DPDK target directory):
+is the DPDK target directory):
 
 .. code-block:: console
 
@@ -275,13 +275,13 @@ To avoid this error, reduce the number of buffers or the buffer size.
 
 .. _loading_nic_uio:
 
-Loading the Intel® DPDK nic_uio Module
---------------------------------------
+Loading the DPDK nic_uio Module
+-------------------------------
 
 After loading the contigmem module, the nic_uio must also be loaded into the
-running kernel prior to running any Intel® DPDK application.  This module must
+running kernel prior to running any DPDK application.  This module must
 be loaded using the kldload command as shown below (assuming that the current
-directory is the Intel® DPDK target directory).
+directory is the DPDK target directory).
 
 .. code-block:: console
 
@@ -308,12 +308,12 @@ and place the following into /boot/loader.conf:
     nic_uio_load="YES" must appear after the contigmem_load directive, if it exists.
 
 By default, the nic_uio module will take ownership of network ports if they are
-recognized Intel® DPDK devices and are not owned by another module. However, since
+recognized DPDK devices and are not owned by another module. However, since
 the FreeBSD kernel includes support, either built-in, or via a separate driver
 module, for most network card devices, it is likely that the ports to be used are
 already bound to a driver other than nic_uio. The following sub-section describe
 how to query and modify the device ownership of the ports to be used by
-Intel® DPDK applications.
+DPDK applications.
 
 .. _binding_network_ports:
 

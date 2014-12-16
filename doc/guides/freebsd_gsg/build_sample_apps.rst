@@ -33,34 +33,34 @@
 Compiling and Running Sample Applications
 =========================================
 
-The chapter describes how to compile and run applications in an Intel® DPDK
+The chapter describes how to compile and run applications in a DPDK
 environment. It also provides a pointer to where sample applications are stored.
 
 Compiling a Sample Application
 ------------------------------
 
-Once an Intel® DPDK target environment directory has been created (such as
+Once a DPDK target environment directory has been created (such as
 x86_64-native-bsdapp-clang), it contains all libraries and header files required
 to build an application.
 
-When compiling an application in the FreeBSD* environment on the Intel® DPDK,
+When compiling an application in the FreeBSD* environment on the DPDK,
 the following variables must be exported:
 
-*   RTE_SDK - Points to the Intel® DPDK installation directory.
+*   RTE_SDK - Points to the DPDK installation directory.
 
-*   RTE_TARGET - Points to the Intel® DPDK target environment directory.
+*   RTE_TARGET - Points to the DPDK target environment directory.
     For FreeBSD*, this is the x86_64-native-bsdapp-clang or
     x86_64-native-bsdapp-gcc directory.
 
 The following is an example of creating the helloworld application, which runs
-in the Intel® DPDK FreeBSD* environment. While the example demonstrates compiling
+in the DPDK FreeBSD* environment. While the example demonstrates compiling
 using gcc version 4.8, compiling with clang will be similar, except that the "CC="
 parameter can probably be omitted. The "helloworld" example may be found in the
 ${RTE_SDK}/examples directory.
 
 The directory contains the main.c file.  This file, when combined with the
-libraries in the Intel® DPDK target environment, calls the various functions to
-initialize the Intel® DPDK environment, then launches an entry point (dispatch
+libraries in the DPDK target environment, calls the various functions to
+initialize the DPDK environment, then launches an entry point (dispatch
 application) for each core to be utilized.  By default, the binary is generated
 in the build directory.
 
@@ -80,8 +80,8 @@ in the build directory.
 .. note::
 
     In the above example, helloworld was in the directory structure of the
-    Intel® DPDK.  However, it could have been located outside the directory
-    structure to keep the Intel® DPDK structure intact.  In the following case,
+    DPDK.  However, it could have been located outside the directory
+    structure to keep the DPDK structure intact.  In the following case,
     the helloworld application is copied to a new directory as a new starting
     point.
 
@@ -106,9 +106,9 @@ Running a Sample Application
 
 #.  Any ports to be used by the application must be already bound to the nic_uio module,
     as described in section :ref:`binding_network_ports`, prior to running the application.
-    The application is linked with the Intel® DPDK target environment's Environment
+    The application is linked with the DPDK target environment's Environment
     Abstraction Layer (EAL) library, which provides some options that are generic
-    to every Intel® DPDK application.
+    to every DPDK application.
 
 The following is the list of options that can be given to the EAL:
 
@@ -165,7 +165,7 @@ Other options, specific to Linux* and are not supported under FreeBSD* are as fo
 
 The -c and the -n options are mandatory; the others are optional.
 
-Copy the Intel® DPDK application binary to your target, then run the application
+Copy the DPDK application binary to your target, then run the application
 as follows (assuming the platform has four memory channels, and that cores 0-3
 are present and are to be used for running the application):
 
@@ -176,20 +176,20 @@ are present and are to be used for running the application):
 .. note::
 
     The --proc-type and --file-prefix EAL options are used for running multiple
-    Intel® DPDK processes.  See the “Multi-process Sample Application” chapter
-    in the *Intel® DPDK Sample Applications User Guide and the Intel® DPDK
+    DPDK processes.  See the “Multi-process Sample Application” chapter
+    in the *DPDK Sample Applications User Guide and the DPDK
     Programmers Guide* for more details.
 
 .. _running_non_root:
 
-Running Intel®DPDK Applications Without Root Privileges
--------------------------------------------------------
+Running DPDK Applications Without Root Privileges
+-------------------------------------------------
 
-Although applications using the Intel® DPDK use network ports and other hardware
+Although applications using the DPDK use network ports and other hardware
 resources directly, with a number of small permission adjustments, it is possible
 to run these applications as a user other than “root”.  To do so, the ownership,
 or permissions, on the following file system objects should be adjusted to ensure
-that the user account being used to run the Intel® DPDK application has access
+that the user account being used to run the DPDK application has access
 to them:
 
 *   The userspace-io device files in /dev, for example, /dev/uio0, /dev/uio1, and so on
@@ -198,4 +198,4 @@ to them:
 
 .. note::
 
-    Please refer to the Intel® DPDK Release Notes for supported applications.
+    Please refer to the DPDK Release Notes for supported applications.

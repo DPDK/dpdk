@@ -31,9 +31,9 @@
 Introduction
 ============
 
-This document contains instructions for installing and configuring the Intel®
-Data Plane Development Kit(Intel® DPDK) software.  It is designed to get customers
-up and running quickly and describes how to compile and run an Intel®
+This document contains instructions for installing and configuring the
+Data Plane Development Kit (DPDK) software. It is designed to get customers
+up and running quickly and describes how to compile and run a
 DPDK application in a FreeBSD* application (bsdapp) environment, without going
 deeply into detail.
 
@@ -44,22 +44,22 @@ handbook is available from the FreeBSD* Documentation Project:
 
 .. note::
 
-	The Intel® DPDK is now available as part of the FreeBSD ports collection.
+	The DPDK is now available as part of the FreeBSD ports collection.
 	Installing via the ports collection infrastructure is now the recommended
-	way to install the Intel® DPDK on FreeBSD, and is documented in the
+	way to install the DPDK on FreeBSD, and is documented in the
 	next chapter, :ref:`install_from_ports`.
 
 Documentation Roadmap
 ---------------------
 
-The following is a list of Intel® DPDK documents in the suggested reading order:
+The following is a list of DPDK documents in the suggested reading order:
 
 *   **Release Notes** : Provides release-specific information, including supported
     features, limitations, fixed issues, known issues and so on.  Also, provides the
     answers to frequently asked questions in FAQ format.
 
 *   **Getting Started Guide** (this document): Describes how to install and
-    configure the Intel® DPDK; designed to get users up and running quickly with the
+    configure the DPDK; designed to get users up and running quickly with the
     software.
 
 *   **Programmer's Guide**: Describes:
@@ -67,8 +67,8 @@ The following is a list of Intel® DPDK documents in the suggested reading order
     *   The software architecture and how to use it (through examples),
         specifically in a Linux* application (linuxapp) environment
 
-    *   The content of the Intel® DPDK, the build system (including the commands
-        that can be used in the root Intel® DPDK Makefile to build the development
+    *   The content of the DPDK, the build system (including the commands
+        that can be used in the root DPDK Makefile to build the development
         kit and an application) and guidelines for porting an application
 
     *   Optimizations used in the software and those that should be considered
@@ -76,7 +76,7 @@ The following is a list of Intel® DPDK documents in the suggested reading order
 
     A glossary of terms is also provided.
 
-*   **API Reference**: Provides detailed information about Intel® DPDK functions,
+*   **API Reference**: Provides detailed information about DPDK functions,
     data structures and other programming constructs.
 
 *   **Sample Applications User Guide**: Describes a set of sample applications.
@@ -86,4 +86,4 @@ The following is a list of Intel® DPDK documents in the suggested reading order
 .. note::
 
     These documents are available for download as a separate documentation
-    package at the same location as the Intel® DPDK code package.
+    package at the same location as the DPDK code package.

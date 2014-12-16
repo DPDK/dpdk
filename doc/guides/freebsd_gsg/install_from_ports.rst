@@ -30,10 +30,10 @@
 
 .. _install_from_ports:
 
-Installing Intel® DPDK from the Ports Collection
-================================================
+Installing DPDK from the Ports Collection
+=========================================
 
-The easiest way to get up and running with the Intel® DPDK on FreeBSD is to
+The easiest way to get up and running with the DPDK on FreeBSD is to
 install it from the ports collection. Details of getting and using the ports
 collection are documented in the FreeBSD Handbook at:
 
@@ -45,10 +45,10 @@ collection are documented in the FreeBSD Handbook at:
     installation of the kernel sources, which should be included during the
     installation of FreeBSD*.
 
-Installing the Intel® DPDK FreeBSD Port
----------------------------------------
+Installing the DPDK FreeBSD Port
+--------------------------------
 
-On a system with the ports collection installed in /usr/ports, the Intel® DPDK
+On a system with the ports collection installed in /usr/ports, the DPDK
 can be installed using the commands:
 
 .. code-block:: console
@@ -57,8 +57,8 @@ can be installed using the commands:
 
     root@host:~ # make install
 
-After the installation of the Intel® DPDK port, instructions will be printed on
-how to install the kernel modules required to use the Intel® DPDK. A more
+After the installation of the DPDK port, instructions will be printed on
+how to install the kernel modules required to use the DPDK. A more
 complete version of these instructions can be found in the sections
 :ref:`loading_contigmem` and :ref:`loading_nic_uio`. Normally, lines like
 those below would be added to the file "/boot/loader.conf".
@@ -69,14 +69,14 @@ those below would be added to the file "/boot/loader.conf".
     hw.contigmem.num_buffers=2
     hw.contigmem.buffer_size=1073741824
     contigmem_load="YES"
-    # identify NIC devices for Intel® DPDK apps to use and load nic_uio driver
+    # identify NIC devices for DPDK apps to use and load nic_uio driver
     hw.nic_uio.bdfs="2:0:0,2:0:1"
     nic_uio_load="YES"
 
 Compiling and Running the Example Applications
 ----------------------------------------------
 
-When the Intel® DPDK has been installed from the ports collection it installs
+When the DPDK has been installed from the ports collection it installs
 its example applications in "/usr/local/share/dpdk/examples" - also accessible via
 symlink as "/usr/local/share/examples/dpdk". These examples can be compiled and
 run as described in :ref:`compiling_sample_apps`. In this case, the required
@@ -88,8 +88,8 @@ environmental variables should be set as below:
 
 .. note::
 
-	To install a copy of the Intel® DPDK compiled using gcc, please download the
-	official Intel® DPDK package from http://dpdk.org/ and install manually using
+	To install a copy of the DPDK compiled using gcc, please download the
+	official DPDK package from http://dpdk.org/ and install manually using
 	the instructions given in the next chapter, :ref:`building_from_source`
 
 An example application can therefore be copied to a user's home directory and
@@ -153,10 +153,10 @@ compiled and run as below:
 
 .. note::
 
-	To run an Intel® DPDK process as a non-root user, adjust the permissions on
+	To run a DPDK process as a non-root user, adjust the permissions on
 	the /dev/contigmem and /dev/uio device nodes as described in section
 	:ref:`running_non_root`
 
 .. note::
 	For an explanation of the command-line parameters that can be passed to an
-	Intel® DPDK application, see section :ref:`running_sample_app`.
+	DPDK application, see section :ref:`running_sample_app`.
