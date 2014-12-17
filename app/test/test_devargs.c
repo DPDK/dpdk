@@ -105,7 +105,7 @@ test_devargs(void)
 		devargs->pci.addr.devid != 0 ||
 		devargs->pci.addr.function != 1)
 		goto fail;
-	if (strncmp(devargs->args, "", sizeof(devargs->args) != 0))
+	if (strncmp(devargs->args, "", sizeof(devargs->args)) != 0)
 		goto fail;
 	free_devargs_list();
 
