@@ -39,7 +39,7 @@ Supported Features
 
 *   Virtualization (Xen)
 
-    *   Support for Intel® DPDK application running on Xen Domain0 without hugepages.
+    *   Support for DPDK application running on Xen Domain0 without hugepages.
 
     *   Para-virtualization
 
@@ -48,7 +48,7 @@ Supported Features
         Support userspace packet switching back-end example in host domain
 
 *   FreeBSD* 9.2 support for librte_pmd_e1000, librte_pmd_ixgbe and Virtual Function variants.
-    Please refer to the *Intel® DPDK for FreeBSD\* Getting Started Guide*.
+    Please refer to the *DPDK for FreeBSD\* Getting Started Guide*.
     Application support has been added for the following:
 
     *   multiprocess/symmetric_mp
@@ -65,7 +65,7 @@ Supported Features
 
 *   New VMXNET3 driver for the paravirtual device presented to a VM by the VMware* ESXi Hypervisor.
 
-*   BETA: example support for basic Netmap applications on Intel® DPDK
+*   BETA: example support for basic Netmap applications on DPDK
 
 *   Support for the wireless KASUMI algorithm in the dpdk_qat sample application
 
@@ -135,7 +135,7 @@ Supported Features
 
 *   Improved scalability for scheduling large numbers of timers using the rte_timer library
 
-*   Support for building the Intel® DPDK as a shared library
+*   Support for building the DPDK as a shared library
 
 *   Support for Intel® Ethernet Server Bypass Adapter X520-SR2
 
@@ -340,7 +340,7 @@ Supported Features
 
 *   Header files for common protocols (IP, SCTP, TCP, UDP)
 
-*   Improved multi-process application support, allowing multiple co-operating Intel® DPDK
+*   Improved multi-process application support, allowing multiple co-operating DPDK
     processes to access the NIC port queues directly.
 
 *   CPU-specific compiler optimization

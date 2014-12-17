@@ -46,4 +46,4 @@ The following Linux* distributions were successfully used to generate or run the
 *   SUSE Enterprise Linux* 11 SP2
 
 These distributions may need additional packages that are not installed by default, or a specific kernel.
-Refer to the *Intel® DPDK Getting Started Guide* for details.
+Refer to the *DPDK Getting Started Guide* for details.

@@ -31,7 +31,7 @@
 Known Issues and Limitations
 ============================
 
-This section describes known issues with the Intel® DPDK software, Release 1.6.0.
+This section describes known issues with the DPDK software, Release 1.8.0.
 
 Pause Frame Forwarding does not work properly on igb
 ----------------------------------------------------
@@ -112,13 +112,13 @@ Vhost-xen cannot detect Domain U application exit on Xen version 4.0.1
 | Reference #                    | IXA00168947                                                                          |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | When using Intel® DPDK applications on Xen 4.0.1, e.g. TestPMD Sample Application,   |
+| Description                    | When using DPDK applications on Xen 4.0.1, e.g. TestPMD Sample Application,          |
 |                                | on killing the application (e.g. killall testmd) vhost-switch cannot detect          |
 |                                | the domain U exited and does not free the Virtio device.                             |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Implication                    | Virtio device not freed after application is killed when using vhost-switch on Xen   |
-|                                |                                                                           4.0.1      |
+|                                | 4.0.1                                                                                |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Resolution                     |                                                                                      |
@@ -154,7 +154,7 @@ Virtio incorrect header length used if MSI-X is disabled by kernel driver
 |                                | specification and resolves to the VIRTIO_NET_F_MAC feature instead.                  |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | The Intel® DPDK kernel driver will enable MSI-X by default,                          |
+| Implication                    | The DPDK kernel driver will enable MSI-X by default,                                 |
 |                                | however if loaded with “intr_mode=legacy” on a guest with a Virtio Network Device,   |
 |                                | a KVM-Qemu guest may crash with the following error: “virtio-net header not in first |
 |                                | element”.                                                                            |
@@ -419,13 +419,13 @@ Unstable system performance across application executions with 2MB pages
 | Reference #                    | IXA00372346                                                                          |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | The performance of an Intel® DPDK application may vary across executions of an       |
+| Description                    | The performance of a DPDK application may vary across executions of an               |
 |                                | application due to a varying number of TLB misses depending on the location of       |
 |                                | accessed structures in memory.                                                       |
 |                                | This situation occurs on rare occasions.                                             |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | Occasionally, relatively poor performance of Intel® DPDK applications is encountered.|
+| Implication                    | Occasionally, relatively poor performance of DPDK applications is encountered.       |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Resolution/ Workaround         | Using 1 GB pages results in lower usage of TLB entries, resolving this issue.        |
@@ -530,7 +530,7 @@ PMD does not work with --no-huge EAL command line parameter
 | Reference #                    | IXA00373461                                                                          |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | Currently, the Intel® DPDK does not store any information about memory allocated by  |
+| Description                    | Currently, the DPDK does not store any information about memory allocated by         |
 |                                | malloc() (for example, NUMA node, physical address), hence PMD drivers do not work   |
 |                                | when the --no-huge command line parameter is supplied to EAL.                        |
 |                                |                                                                                      |
@@ -541,7 +541,7 @@ PMD does not work with --no-huge EAL command line parameter
 | Resolution/ Workaround         | Use huge page memory or use VFIO to map devices.                                     |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Affected Environment/ Platform | Systems running the Intel®  DPDK on Linux                                            |
+| Affected Environment/ Platform | Systems running the DPDK on Linux                                                    |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Driver/Module                  | Poll Mode Driver (PMD)                                                               |
@@ -695,24 +695,24 @@ Discrepancies between statistics reported by different NICs
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 
-Error reported opening files on Intel® DPDK initialization
-----------------------------------------------------------
+Error reported opening files on DPDK initialization
+---------------------------------------------------
 
 
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Title                          | Error reported opening files on Intel®  DPDK initialization                          |
+| Title                          | Error reported opening files on DPDK initialization                                  |
 |                                |                                                                                      |
 +================================+======================================================================================+
 | Reference #                    | 91                                                                                   |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | On Intel® DPDK application startup, errors may be reported when opening files as     |
+| Description                    | On DPDK application startup, errors may be reported when opening files as            |
 |                                | part of the initialization process. This occurs if a large number, for example, 500  |
 |                                | or more, or if hugepages are used, due to the per-process limit on the number of     |
 |                                | open files.                                                                          |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | The Intel® DPDK application may fail to run.                                         |
+| Implication                    | The DPDK application may fail to run.                                                |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Resolution/ Workaround         | If using 2 MB hugepages, consider switching to a fewer number of 1 GB pages.         |
@@ -884,11 +884,11 @@ GCC might generate Intel® AVX instructions forprocessors without Intel® AVX su
 | Reference #                    | IXA00382439                                                                          |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | When compiling Intel®  DPDK (and any Intel® DPDK app), gcc may generate Intel® AVX   |
+| Description                    | When compiling Intel®  DPDK (and any DPDK app), gcc may generate Intel® AVX          |
 |                                | instructions, even when the processor does not support Intel® AVX.                   |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | Any Intel® DPDK app might crash while starting up.                                   |
+| Implication                    | Any DPDK app might crash while starting up.                                          |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Resolution/ Workaround         | Either compile using icc or set EXTRA_CFLAGS=’-O3’ prior to compilation.             |

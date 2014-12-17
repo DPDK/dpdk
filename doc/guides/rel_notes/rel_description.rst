@@ -32,22 +32,14 @@ Description of Release
 ======================
 
 These release notes cover the new features,
-fixed bugs and known issues for Intel® Data Plane Development Kit (Intel® DPDK) release version 1.7.0.
+fixed bugs and known issues for Data Plane Development Kit (DPDK) release version 1.7.0.
 
-For instructions on compiling and running the release, see the *Intel® DPDK Getting Started Guide*.
+For instructions on compiling and running the release, see the *DPDK Getting Started Guide*.
 
-Important Note
---------------
+Using DPDK Upgrade Patches
+--------------------------
 
-All Intel® DPDK questions and technical problems including those regarding the Ethernet* Controllers for the Poll Mode Driver should be reported through the Intel® Premier Support site
-`http://premier.intel.com/premier <http://premier.intel.com/premier>`_
-or access your IBL account and click the **Intel® Premier Support** link to enter issues under the Product Name “Data Plane Development Kit (DPDK)”,
-which are then routed to our support team.
-
-Using Intel® DPDK Upgrade Patches
----------------------------------
-
-For minor updates to the main Intel® DPDK releases, the software may be made available both as a new full package and as a patch file to be applied to the previously released package.
+For minor updates to the main DPDK releases, the software may be made available both as a new full package and as a patch file to be applied to the previously released package.
 In the latter case, the following commands should be used to apply the patch on top of the already-installed package for the previous release:
 
 .. code-block:: console
@@ -55,7 +47,7 @@ In the latter case, the following commands should be used to apply the patch on 
     # cd $RTE_SDK
     # patch –p1 < /path/to/patch/file
 
-Once the patch has been applied cleanly, the Intel® DPDK can be recompiled and used as before (described in the *Intel® DPDK Getting Started Guide*).
+Once the patch has been applied cleanly, the DPDK can be recompiled and used as before (described in the *DPDK Getting Started Guide*).
 
 .. note::
 
@@ -65,25 +57,25 @@ Once the patch has been applied cleanly, the Intel® DPDK can be recompiled and 
 Documentation Roadmap
 ---------------------
 
-The following is a list of Intel® DPDK documents in the suggested reading order:
+The following is a list of DPDK documents in the suggested reading order:
 
 *   **Release Notes**
     (this document): Provides release-specific information, including supported features, limitations, fixed issues, known issues and so on.
     Also, provides the answers to frequently asked questions in FAQ format.
 
 *   **Getting Started Guide**
-    : Describes how to install and configure the Intel® DPDK software; designed to get users up and running quickly with the software.
+    : Describes how to install and configure the DPDK software; designed to get users up and running quickly with the software.
 
 *   **FreeBSD* Getting Started Guide**
-    : A document describing the use of the Intel® DPDK with FreeBSD* has been added in Intel® DPDK Release 1.6.0.
-    Refer to this guide for installation and configuration instructions to get started using the Intel® DPDK with FreeBSD*.
+    : A document describing the use of the DPDK with FreeBSD* has been added in DPDK Release 1.6.0.
+    Refer to this guide for installation and configuration instructions to get started using the DPDK with FreeBSD*.
 
 *   **Programmer's Guide**
     : Describes:
 
     *   The software architecture and how to use it (through examples), specifically in a Linux* application (linuxapp) environment
 
-    *   The content of the Intel® DPDK, the build system (including the commands that can be used in the root Intel® DPDK Makefile to build the development kit and an application)
+    *   The content of the DPDK, the build system (including the commands that can be used in the root DPDK Makefile to build the development kit and an application)
         and guidelines for porting an application
 
     *   Optimizations used in the software and those that should be considered for new development
@@ -91,7 +83,7 @@ The following is a list of Intel® DPDK documents in the suggested reading order
     A glossary of terms is also provided.
 
 *   **API Reference**
-    : Provides detailed information about Intel® DPDK functions, data structures and other programming constructs.
+    : Provides detailed information about DPDK functions, data structures and other programming constructs.
 
 *   **Sample Applications User Guide**
     : Describes a set of sample applications. Each chapter describes a sample application that showcases specific functionality and provides instructions on how to compile,
@@ -160,11 +152,11 @@ The following is a list of Intel® DPDK documents in the suggested reading order
 
     Once the libraries are created, they can be found in the build/app directory.
 
-    *   The test application provides a variety of specific tests for the various functions in the Intel® DPDK.
+    *   The test application provides a variety of specific tests for the various functions in the DPDK.
 
     *   The testpmd application provides a number of different packet throughput tests and examples of features such as
         how to use the Flow Director found in the Intel® 82599 10 Gigabit Ethernet Controller.
 
-    The testpmd application is documented in the *Intel® DPDK Testpmd Application Note* (525362).
+    The testpmd application is documented in the *DPDK Testpmd Application Note* (525362).
     The test application is not currently documented.
     However, you should be able to run and use test application with the command line help that is provided in the application.

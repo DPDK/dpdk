@@ -1,11 +1,15 @@
 Updating Applications from Previous Versions
 ============================================
 
-Although backward compatibility is being maintained across Intel® DPDK releases, code written for previous versions of the Intel® DPDK
-may require some code updates to benefit from performance and user experience enhancements provided in later Intel® DPDK releases.
+Although backward compatibility is being maintained across DPDK releases, code written for previous versions of the DPDK
+may require some code updates to benefit from performance and user experience enhancements provided in later DPDK releases.
 
-Intel® DPDK 1.6 to Intel® DPDK 1.7
-----------------------------------
+DPDK 1.7 to DPDK 1.8
+--------------------
+
+
+Intel® DPDK 1.6 to DPDK 1.7
+---------------------------
 
 Note the following difference between 1.6 and 1.7:
 

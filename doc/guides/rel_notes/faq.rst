@@ -36,7 +36,7 @@ When running the test application, I get “EAL: map_all_hugepages(): open faile
 
 This is most likely due to the test application not being run with sudo to promote the user to a superuser.
 Alternatively, applications can also be run as regular user.
-For more information, please refer to *Intel® DPDK Getting Started Guide*.
+For more information, please refer to *DPDK Getting Started Guide*.
 
 If I want to change the number of TLB Hugepages allocated, how do I remove the original pages allocated?
 --------------------------------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ If you look in the directory, you will see n number of 2M pages files. If you sp
 These are then placed in memory segments to get contiguous memory.
 
 If you need to change the number of pages, it is easier to first remove the pages. The tools/setup.sh script provides an option to do this.
-See the “Quick Start Setup Script” section in the *Intel® DPDK Getting Started Guide* for more information.
+See the “Quick Start Setup Script” section in the *DPDK Getting Started Guide* for more information.
 
 If I execute “l2fwd -c f -m 64 –n 3 -- -p 3”, I get the following output, indicating that there are no socket 0 hugepages to allocate the mbuf and ring structures to?
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -59,14 +59,14 @@ I have set up a total of 1024 Hugepages (that is, allocated 512 2M pages to each
 The -m command line parameter does not guarantee that huge pages will be reserved on specific sockets. Therefore, allocated huge pages may not be on socket 0.
 To request memory to be reserved on a specific socket, please use the --socket-mem command-line parameter instead of -m.
 
-I am running a 32-bit Intel® DPDK application on a NUMA system, and sometimes the application initializes fine but cannot allocate memory. Why is that happening?
+I am running a 32-bit DPDK application on a NUMA system, and sometimes the application initializes fine but cannot allocate memory. Why is that happening?
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 32-bit applications have limitations in terms of how much virtual memory is available, hence the number of hugepages they are able to allocate is also limited (1 GB per page size).
 If your system has a lot (>1 GB per page size) of hugepage memory, not all of it will be allocated.
 Due to hugepages typically being allocated on a local NUMA node, the hugepages allocation the application gets during the initialization depends on which
 NUMA node it is running on (the EAL does not affinitize cores until much later in the initialization process).
-Sometimes, the Linux OS runs the Intel® DPDK application on a core that is located on a different NUMA node from Intel® DPDK master core and
+Sometimes, the Linux OS runs the DPDK application on a core that is located on a different NUMA node from DPDK master core and
 therefore all the hugepages are allocated on the wrong socket.
 
 To avoid this scenario, either lower the amount of hugepage memory available to 1 GB per page size (or less), or run the application with taskset
@@ -102,7 +102,7 @@ Traditionally, there is a trade-off between throughput and latency. An applicati
 but the end-to-end latency of an average packet typically increases as a result.
 Similarly, the application can be tuned to have, on average, a low end-to-end latency at the cost of lower throughput.
 
-To achieve higher throughput, the Intel® DPDK attempts to aggregate the cost of processing each packet individually by processing packets in bursts.
+To achieve higher throughput, the DPDK attempts to aggregate the cost of processing each packet individually by processing packets in bursts.
 Using the testpmd application as an example, the “burst” size can be set on the command line to a value of 16 (also the default value).
 This allows the application to request 16 packets at a time from the PMD.
 The testpmd application then immediately attempts to transmit all the packets that were received, in this case, all 16 packets.
@@ -144,11 +144,11 @@ For best performance with NUMA disabled, only one socket should be populated.
 I am getting errors about not being able to open files. Why?
 ------------------------------------------------------------
 
-As the Intel® DPDK operates, it opens a lot of files, which can result in reaching the open files limits, which is set using the ulimit command or in the limits.conf file.
+As the DPDK operates, it opens a lot of files, which can result in reaching the open files limits, which is set using the ulimit command or in the limits.conf file.
 This is especially true when using a large number (>512) of 2 MB huge pages. Please increase the open file limit if your application is not able to open files.
 This can be done either by issuing a ulimit command or editing the limits.conf file. Please consult Linux* manpages for usage information.
 
-Does my kernel require patching to run the Intel® DPDK?
+Does my kernel require patching to run the DPDK?
 -------------------------------------------------------
 
 Any kernel greater than version 2.6.33 can be used without any patches applied. The following kernels may require patches to provide hugepage support:
