@@ -764,8 +764,6 @@ mac_address_get(struct rte_eth_dev *eth_dev, struct ether_addr *dst_mac_addr)
 {
 	struct ether_addr *mac_addr;
 
-	mac_addr = eth_dev->data->mac_addrs;
-
 	if (eth_dev == NULL) {
 		RTE_LOG(ERR, PMD, "%s: NULL pointer eth_dev specified\n", __func__);
 		return -1;
@@ -776,6 +774,8 @@ mac_address_get(struct rte_eth_dev *eth_dev, struct ether_addr *dst_mac_addr)
 		return -1;
 	}
 
+	mac_addr = eth_dev->data->mac_addrs;
+
 	ether_addr_copy(mac_addr, dst_mac_addr);
 	return 0;
 }
@@ -784,8 +784,6 @@ int
 mac_address_set(struct rte_eth_dev *eth_dev, struct ether_addr *new_mac_addr)
 {
 	struct ether_addr *mac_addr;
-
-	mac_addr = eth_dev->data->mac_addrs;
 
 	if (eth_dev == NULL) {
 		RTE_BOND_LOG(ERR, "NULL pointer eth_dev specified");
@@ -796,6 +794,8 @@ mac_address_set(struct rte_eth_dev *eth_dev, struct ether_addr *new_mac_addr)
 		RTE_BOND_LOG(ERR, "NULL pointer MAC specified");
 		return -1;
 	}
+
+	mac_addr = eth_dev->data->mac_addrs;
 
 	/* If new MAC is different to current MAC then update */
 	if (memcmp(mac_addr, new_mac_addr, sizeof(*mac_addr)) != 0)
