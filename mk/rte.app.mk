@@ -61,7 +61,7 @@ ifeq ($(NO_AUTOLIBS),)
 
 LDLIBS += --whole-archive
 
-ifeq ($(RTE_BUILD_COMBINE_LIBS),n)
+ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),n)
 
 ifeq ($(CONFIG_RTE_LIBRTE_DISTRIBUTOR),y)
 LDLIBS += -lrte_distributor
@@ -121,7 +121,7 @@ LDLIBS += -lm
 LDLIBS += -lrt
 endif
 
-endif # ! RTE_BUILD_COMBINE_LIBS
+endif # ! CONFIG_RTE_BUILD_COMBINE_LIBS
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
 LDLIBS += -lpcap
@@ -129,7 +129,7 @@ endif
 
 LDLIBS += --start-group
 
-ifeq ($(RTE_BUILD_COMBINE_LIBS),n)
+ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),n)
 
 ifeq ($(CONFIG_RTE_LIBRTE_KVARGS),y)
 LDLIBS += -lrte_kvargs
@@ -226,7 +226,7 @@ endif
 
 endif # plugins
 
-endif # ! RTE_BUILD_COMBINE_LIBS
+endif # ! CONFIG_RTE_BUILD_COMBINE_LIBS
 
 LDLIBS += $(EXECENV_LDLIBS)
 
@@ -251,7 +251,7 @@ build: _postbuild
 
 exe2cmd = $(strip $(call dotfile,$(patsubst %,%.cmd,$(1))))
 
-ifeq ($(RTE_BUILD_COMBINE_LIBS),y)
+ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),y)
 LDLIBS += -l$(RTE_LIBNAME)
 endif
 
