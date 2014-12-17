@@ -122,17 +122,21 @@ Some options in the script prompt the user for further data before proceeding.
 
     [2] i686-native-linuxapp-icc
 
-    [3] x86_64-ivshmem-linuxapp-gcc
+    [3] ppc_64-power8-linuxapp-gcc
 
-    [4] x86_64-ivshmem-linuxapp-icc
+    [4] x86_64-ivshmem-linuxapp-gcc
 
-    [5] x86_64-native-bsdapp-gcc
+    [5] x86_64-ivshmem-linuxapp-icc
 
-    [6] x86_64-native-linuxapp-gcc
+    [6] x86_64-native-bsdapp-clang
 
-    [7] x86_64-native-linuxapp-icc
+    [7] x86_64-native-bsdapp-gcc
 
-    [8] ppc_64-power8-linuxapp-gcc
+    [8] x86_64-native-linuxapp-clang
+
+    [9] x86_64-native-linuxapp-gcc
+
+    [10] x86_64-native-linuxapp-icc
 
     ------------------------------------------------------------------------
 
@@ -140,23 +144,23 @@ Some options in the script prompt the user for further data before proceeding.
 
     ------------------------------------------------------------------------
 
-    [9] Insert IGB UIO module
+    [11] Insert IGB UIO module
 
-    [10] Insert VFIO module
+    [12] Insert VFIO module
 
-    [11] Insert KNI module
+    [13] Insert KNI module
 
-    [12] Setup hugepage mappings for non-NUMA systems
+    [14] Setup hugepage mappings for non-NUMA systems
 
-    [13] Setup hugepage mappings for NUMA systems
+    [15] Setup hugepage mappings for NUMA systems
 
-    [14] Display current Ethernet device settings
+    [16] Display current Ethernet device settings
 
-    [15] Bind Ethernet device to IGB UIO module
+    [17] Bind Ethernet device to IGB UIO module
 
-    [16] Bind Ethernet device to VFIO module
+    [18] Bind Ethernet device to VFIO module
 
-    [17] Setup VFIO permissions
+    [19] Setup VFIO permissions
 
     ------------------------------------------------------------------------
 
@@ -164,9 +168,9 @@ Some options in the script prompt the user for further data before proceeding.
 
     ------------------------------------------------------------------------
 
-    [18] Run test application ($RTE_TARGET/app/test)
+    [20] Run test application ($RTE_TARGET/app/test)
 
-    [19] Run testpmd application in interactive mode ($RTE_TARGET/app/testpmd)
+    [21] Run testpmd application in interactive mode ($RTE_TARGET/app/testpmd)
 
     ------------------------------------------------------------------------
 
@@ -174,7 +178,7 @@ Some options in the script prompt the user for further data before proceeding.
 
     ------------------------------------------------------------------------
 
-    [20] List hugepage info from /proc/meminfo
+    [22] List hugepage info from /proc/meminfo
 
     ------------------------------------------------------------------------
 
@@ -182,19 +186,19 @@ Some options in the script prompt the user for further data before proceeding.
 
     ------------------------------------------------------------------------
 
-    [21] Uninstall all targets
+    [23] Uninstall all targets
 
-    [22] Unbind NICs from IGB UIO driver
+    [24] Unbind NICs from IGB UIO driver
 
-    [23] Remove IGB UIO module
+    [25] Remove IGB UIO module
 
-    [24] Remove VFIO module
+    [26] Remove VFIO module
 
-    [25] Remove KNI module
+    [27] Remove KNI module
 
-    [26] Remove hugepage mappings
+    [28] Remove hugepage mappings
 
-    [27] Exit Script
+    [29] Exit Script
 
 Option:
 
@@ -202,7 +206,7 @@ The following selection demonstrates the creation of the x86_64-native-linuxapp-
 
 .. code-block:: console
 
-    Option: 4
+    Option: 9
 
     ================== Installing x86_64-native-linuxapp-gcc
 
@@ -218,7 +222,7 @@ The following selection demonstrates the starting of the DPDK UIO driver.
 
 .. code-block:: console
 
-    Option: 5
+    Option: 25
 
     Unloading any existing DPDK UIO module
     Loading DPDK UIO module
@@ -230,11 +234,11 @@ The result is that the application should use -m 4096 for starting the applicati
 
 .. note::
 
-    If prompts are displayed to remove temporary files, type ‘y’.
+    If prompts are displayed to remove temporary files, type 'y'.
 
 .. code-block:: console
 
-    Option: 11
+    Option: 15
 
     Removing currently reserved hugepages
     nmounting /mnt/huge and removing directory
@@ -250,7 +254,7 @@ The following selection demonstrates the launch of the test application to run o
 
 .. code-block:: console
 
-    Option: 14
+    Option: 20
 
     Enter hex bitmask of cores to execute test app on
     Example: to execute app on cores 0 to 7, enter 0xff
@@ -270,7 +274,7 @@ the user can then move on to building and running their application or one of th
 
 The examples in the /examples directory provide a good starting point to gain an understanding of the operation of the DPDK.
 The following command sequence shows how the helloworld sample application is built and run.
-As recommended in Section 4.2.1 , “Logical Core Use by Applications ” on page 14,
+As recommended in Section 4.2.1 , "Logical Core Use by Applications",
 the logical core layout of the platform should be determined when selecting a core mask to use for an application.
 
 .. code-block:: console
