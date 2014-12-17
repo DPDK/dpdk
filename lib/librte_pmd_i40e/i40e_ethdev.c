@@ -5310,18 +5310,17 @@ static int
 i40e_debug_read_register(struct i40e_hw *hw, uint32_t addr, uint64_t *val)
 {
 	struct i40e_aq_desc desc;
-	struct i40e_aqc_debug_reg_read_write *cmd =
-		(struct i40e_aqc_debug_reg_read_write *)&desc.params.raw;
 	enum i40e_status_code status;
 
 	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_debug_read_reg);
-	cmd->address = rte_cpu_to_le_32(addr);
+	desc.params.internal.param1 = rte_cpu_to_le_32(addr);
 	status = i40e_asq_send_command(hw, &desc, NULL, 0, NULL);
 	if (status < 0)
 		return status;
 
-	*val = ((uint64_t)(rte_le_to_cpu_32(cmd->value_high)) << (CHAR_BIT *
-			sizeof(uint32_t))) + rte_le_to_cpu_32(cmd->value_low);
+	*val = ((uint64_t)(rte_le_to_cpu_32(desc.params.internal.param2)) <<
+					(CHAR_BIT * sizeof(uint32_t))) +
+				rte_le_to_cpu_32(desc.params.internal.param3);
 
 	return status;
 }
