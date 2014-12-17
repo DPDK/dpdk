@@ -71,10 +71,11 @@ ifneq ($(BUILDING_RTE_SDK),)
   ifeq ($(RTE_BUILD_COMBINE_LIBS),)
     RTE_BUILD_COMBINE_LIBS := n
   endif
-  RTE_LIBNAME := $(CONFIG_RTE_LIBNAME:"%"=%)
-  ifeq ($(RTE_LIBNAME),)
-    RTE_LIBNAME := intel_dpdk
-  endif
+endif
+
+RTE_LIBNAME := $(CONFIG_RTE_LIBNAME:"%"=%)
+ifeq ($(RTE_LIBNAME),)
+RTE_LIBNAME := intel_dpdk
 endif
 
 # RTE_TARGET is deducted from config when we are building the SDK.
