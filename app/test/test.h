@@ -44,7 +44,7 @@
 		}														\
 } while (0)
 
-#define TEST_ASSERT_EQUAL(a, b, msg, ...)  {					\
+#define TEST_ASSERT_EQUAL(a, b, msg, ...) do {					\
 		if (!(a == b)) {										\
 			printf("TestCase %s() line %d failed: "				\
 				msg "\n", __func__, __LINE__, ##__VA_ARGS__);	\
