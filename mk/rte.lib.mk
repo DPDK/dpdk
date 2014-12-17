@@ -62,7 +62,6 @@ exe2cmd = $(strip $(call dotfile,$(patsubst %,%.cmd,$(1))))
 ifeq ($(LINK_USING_CC),1)
 # Override the definition of LD here, since we're linking with CC
 LD := $(CC) $(CPU_CFLAGS)
-LD_MULDEFS := $(call linkerprefix,-z$(comma)muldefs)
 CPU_LDFLAGS := $(call linkerprefix,$(CPU_LDFLAGS))
 endif
 
@@ -75,7 +74,7 @@ O_TO_A_DO = @set -e; \
 	$(O_TO_A) && \
 	echo $(O_TO_A_CMD) > $(call exe2cmd,$(@))
 
-O_TO_S = $(LD) $(CPU_LDFLAGS) $(LD_MULDEFS) -shared $(OBJS-y) -o $(LIB)
+O_TO_S = $(LD) $(CPU_LDFLAGS) -shared $(OBJS-y) -o $(LIB)
 O_TO_S_STR = $(subst ','\'',$(O_TO_S)) #'# fix syntax highlight
 O_TO_S_DISP = $(if $(V),"$(O_TO_S_STR)","  LD $(@)")
 O_TO_S_DO = @set -e; \
@@ -91,7 +90,7 @@ O_TO_C_DO = @set -e; \
 	$(lib_dir) \
 	$(copy_obj)
 else
-O_TO_C = $(LD) $(LD_MULDEFS) -shared $(OBJS-y) -o $(LIB_ONE)
+O_TO_C = $(LD) -shared $(OBJS-y) -o $(LIB_ONE)
 O_TO_C_STR = $(subst ','\'',$(O_TO_C)) #'# fix syntax highlight
 O_TO_C_DISP = $(if $(V),"$(O_TO_C_STR)","  LD_C $(@)")
 O_TO_C_DO = @set -e; \
