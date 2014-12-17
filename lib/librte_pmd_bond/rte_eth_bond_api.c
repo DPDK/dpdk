@@ -115,6 +115,9 @@ activate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
 	if (internals->mode == BONDING_MODE_8023AD)
 		bond_mode_8023ad_activate_slave(eth_dev, port_id);
 
+	RTE_VERIFY(internals->active_slave_count <
+			(RTE_DIM(internals->active_slaves) - 1));
+
 	internals->active_slaves[internals->active_slave_count] = port_id;
 	internals->active_slave_count++;
 }
@@ -144,6 +147,7 @@ deactivate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
 					sizeof(internals->active_slaves[0]));
 	}
 
+	RTE_VERIFY(active_count < RTE_DIM(internals->active_slaves));
 	internals->active_slave_count = active_count;
 
 	if (eth_dev->data->dev_started && internals->mode == BONDING_MODE_8023AD)
