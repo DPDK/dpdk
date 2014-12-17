@@ -1669,8 +1669,7 @@ struct eth_driver;
  *
  *   - *dev_private*: Holds a pointer to the device private data structure.
  *
- *   - *max_frame_size*: Contains the default Ethernet maximum frame length
- *     (1518).
+ *   - *mtu*: Contains the default Ethernet maximum frame length (1500).
  *
  *   - *port_id*: Contains the port index of the device (actually the index
  *     of the *eth_dev* structure in the *rte_eth_devices* array).
