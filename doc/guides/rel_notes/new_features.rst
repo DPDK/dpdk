@@ -31,22 +31,5 @@
 New Features
 ============
 
-*   Packet Distributor library for dynamic, single-packet at a time, load balancing
-
-*   IP fragmentation and reassembly library
-
-*   Support for IPv6 in IP fragmentation and reassembly sample applications
-
-*   Support for VFIO for mapping BARs and setting up interrupts
-
-*   Link Bonding PMD Library supporting round-robin, active backup, balance(layer 2, layer 2+3, and layer 3+4) and broadcast bonding modes
-
-*   Support zero copy mode RX/TX in user space vhost sample
-
-*   Support multiple queues in virtio-net PMD
-
-*   Support for Intel® 40GbE Controllers
-
-*   Support NIC filters in addition to flow director for Intel® 1GbE and 10GbE Controllers
 
 For further features supported in this release, see Chapter 3 Supported Features.
