@@ -62,147 +62,6 @@ Pause Frame Forwarding does not work properly on igb
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 
-Running TestPMD with SRIOV in Domain U may cause it to hang when XENVIRT switch is on
--------------------------------------------------------------------------------------
-
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Title                          | Running TestPMD with SRIOV in Domain U may cause it to hang when XENVIRT switch is on|
-|                                |                                                                                      |
-+================================+======================================================================================+
-| Reference #                    | IXA00168949                                                                          |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | When TestPMD is run with only SRIOV port “./testpmd -c f -n 4 -- -i” , the following |
-|                                | error occurs:                                                                        |
-|                                |                                                                                      |
-|                                | PMD: gntalloc: ioctl error                                                           |
-|                                |                                                                                      |
-|                                | EAL: Error - exiting with code: 1                                                    |
-|                                |                                                                                      |
-|                                | Cause: Creation of mbuf pool for socket 0 failed                                     |
-|                                |                                                                                      |
-|                                | Then, alternately run SRIOV port and virtIO with testpmd:                            |
-|                                |                                                                                      |
-|                                | testpmd -c f -n 4 -- -i                                                              |
-|                                |                                                                                      |
-|                                | testpmd -c f -n 4 --use-dev="eth_xenvirt0" -- -i                                     |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | DomU will not be accessible after you repeat this action some times                  |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Resolution/ Workaround         | Run testpmd with a "--total-num-mbufs=N(N<=3500)"                                    |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Affected Environment/ Platform | Fedora 16, 64 bits + Xen hypervisor 4.2.3 + Domain 0 kernel 3.10.0                   |
-|                                | +Domain U kernel 3.6.11                                                              |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Driver/Module                  | TestPMD Sample Application                                                           |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-
-Vhost-xen cannot detect Domain U application exit on Xen version 4.0.1
-----------------------------------------------------------------------
-
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Title                          | Vhost-xen cannot detect Domain U application exit on Xen 4.0.1.                      |
-|                                |                                                                                      |
-+================================+======================================================================================+
-| Reference #                    | IXA00168947                                                                          |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | When using DPDK applications on Xen 4.0.1, e.g. TestPMD Sample Application,          |
-|                                | on killing the application (e.g. killall testmd) vhost-switch cannot detect          |
-|                                | the domain U exited and does not free the Virtio device.                             |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | Virtio device not freed after application is killed when using vhost-switch on Xen   |
-|                                | 4.0.1                                                                                |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Resolution                     |                                                                                      |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Affected Environment/ Platform | Xen 4.0.1                                                                            |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Driver/Module                  | Vhost-switch                                                                         |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-
-Virtio incorrect header length used if MSI-X is disabled by kernel driver
--------------------------------------------------------------------------
-
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Title                          | Virtio incorrect header length used if MSI-X is disabled by kernel driver or         |
-|                                | if VIRTIO_NET_F_MAC is not negotiated.                                               |
-|                                |                                                                                      |
-+================================+======================================================================================+
-| Reference #                    | IXA00384256                                                                          |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | The Virtio header for host-guest communication is of variable length and             |
-|                                | is dependent on whether MSI-X has been enabled by the kernel driver for the network  |
-|                                | device.                                                                              |
-|                                |                                                                                      |
-|                                | The base header length of 20 bytes will be extended by 4 bytes to accommodate MSI-X  |
-|                                | vectors and the Virtio Network Device header will appear at byte offset 24.          |
-|                                |                                                                                      |
-|                                | The Userspace Virtio Poll Mode Driver tests the guest feature bits for the presence  |
-|                                | of VIRTIO_PCI_FLAG_MISIX, however this bit field is not part of the Virtio           |
-|                                | specification and resolves to the VIRTIO_NET_F_MAC feature instead.                  |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | The DPDK kernel driver will enable MSI-X by default,                                 |
-|                                | however if loaded with “intr_mode=legacy” on a guest with a Virtio Network Device,   |
-|                                | a KVM-Qemu guest may crash with the following error: “virtio-net header not in first |
-|                                | element”.                                                                            |
-|                                |                                                                                      |
-|                                | If VIRTIO_NET_F_MAC feature has not been negotiated, then the Userspace Poll Mode    |
-|                                | Driver will assume that MSI-X has been disabled and will prevent the proper          |
-|                                | functioning of the driver.                                                           |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Resolution                     | Ensure #define VIRTIO_PCI_CONFIG(hw) returns the correct offset (20 or 24 bytes) for |
-|                                | the devices where in rare cases MSI-X is disabled or VIRTIO_NET_F_MAC has not been   |
-|                                | negotiated.                                                                          |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Affected Environment/ Platform | Virtio devices where  MSI-X is disabled or VIRTIO_NET_F_MAC feature has not been     |
-|                                | negotiated.                                                                          |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Driver/Module                  | librte_pmd_virtio                                                                    |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-
-gmake clean may silently fail for some example applications
------------------------------------------------------------
-
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Title                          | When using Free BSD* 9.2 gmake clean may silently fail for some sample applications  |
-|                                |                                                                                      |
-+================================+======================================================================================+
-| Reference #                    | IXA00834605                                                                          |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | gmake clean may silently fail leaving the source object files intact.                |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | Application object files are not removed.                                            |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Resolution                     | Manually remove ./build folders or rebuild application source after editing.         |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Affected Environment/ Platform | FreeBSD* 9.2 and below                                                               |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Driver/Module                  | Example Applications                                                                 |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-
 In packets provided by the PMD, some flags are missing
 ------------------------------------------------------
 
@@ -338,6 +197,12 @@ Not all variants of supported NIC types have been used in testing
 |                                |                                                                                      |
 |                                | The NIC device identifiers used during testing:                                      |
 |                                |                                                                                      |
+|                                | *   Intel® Ethernet Controller XL710 for 40GbE QSFP+ [8086:1584]                     |
+|                                |                                                                                      |
+|                                | *   Intel® Ethernet Controller XL710 for 40GbE QSFP+ [8086:1583]                     |
+|                                |                                                                                      |
+|                                | *   Intel® Ethernet Controller X710 for 10GbE SFP+ [8086:1572]                       |
+|                                |                                                                                      |
 |                                | *   Intel® 82576 Gigabit Ethernet Controller [8086:10c9]                             |
 |                                |                                                                                      |
 |                                | *   Intel® 82576 Quad Copper Gigabit Ethernet Controller [8086:10e8]                 |
@@ -406,35 +271,6 @@ Multi-process sample app requires exact memory mapping
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Driver/Module                  | Multi-process example application                                                    |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-
-Unstable system performance across application executions with 2MB pages
-------------------------------------------------------------------------
-
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Title                          | Unstable system performance across application executions with 2MB pages             |
-|                                |                                                                                      |
-+================================+======================================================================================+
-| Reference #                    | IXA00372346                                                                          |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | The performance of a DPDK application may vary across executions of an               |
-|                                | application due to a varying number of TLB misses depending on the location of       |
-|                                | accessed structures in memory.                                                       |
-|                                | This situation occurs on rare occasions.                                             |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | Occasionally, relatively poor performance of DPDK applications is encountered.       |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Resolution/ Workaround         | Using 1 GB pages results in lower usage of TLB entries, resolving this issue.        |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Affected Environment/ Platform | Systems using 2 MB pages                                                             |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Driver/Module                  | All                                                                                  |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 
@@ -608,33 +444,6 @@ Kernel crash on IGB port unbinding
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Driver/Module                  | IGB Poll Mode Driver (PMD)                                                           |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-
-Link status change not working with MSI interrupts
---------------------------------------------------
-
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Title                          | Link status change not working with MSI interrupts                                   |
-|                                |                                                                                      |
-+================================+======================================================================================+
-| Reference #                    | IXA00378191                                                                          |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | MSI interrupts are not supported by the PMD.                                         |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | Link status change will only work with legacy or MSI-X interrupts.                   |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Resolution/ Workaround         | The igb_uio driver can now be loaded with either legacy or MSI-X interrupt support.  |
-|                                | However, this configuration is not tested.                                           |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Affected Environment/ Platform | All                                                                                  |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Driver/Module                  | Poll Mode Driver (PMD)                                                               |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 
@@ -815,34 +624,6 @@ Differences in how different Intel NICs handle maximum packet length for jumbo f
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 
-Link status interrupt not working in VF drivers
------------------------------------------------
-
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Title                          | Link status interrupts not working in the VF drivers                                 |
-|                                |                                                                                      |
-+================================+======================================================================================+
-| Reference                      | IXA00381312                                                                          |
-| #                              |                                                                                      |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | Due to the driver not setting up interrupts for VF drivers, the NIC does not report  |
-|                                | link status change to VF devices.                                                    |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | Link status interrupts will not work in VM guests.                                   |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Resolution/ Workaround         | There is no workaround available.                                                    |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Affected Environment/ Platform | All                                                                                  |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Driver/Module                  | VF (SR-IOV) Poll Mode Driver (PMD)                                                   |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-
 Binding PCI devices to igb_uio fails on Linux* kernel 3.9 when more than one device is used
 -------------------------------------------------------------------------------------------
 
@@ -928,36 +709,6 @@ Ethertype filter could receive other packets (non-assigned) in Niantic
 | Implication                    | The user priority comparing in Ethertype filter cannot work probably.                |
 |                                | It is the NIC's issue due to the response from PAE: “In fact, ETQF.UP is not         |
 |                                | functional, and the information will be added in errata of 82599 and X540.”          |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Resolution/ Workaround         | None                                                                                 |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Affected Environment/ Platform | All                                                                                  |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Driver/Module                  | Poll Mode Driver (PMD)                                                               |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-
-Double VLAN does not work on Intel® 40G ethernet controller
------------------------------------------------------------
-
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Title                          | Double VLAN does not work on Intel®  40G ethernet controller                         |
-|                                |                                                                                      |
-+================================+======================================================================================+
-| Reference #                    | IXA00386480                                                                          |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Description                    | On Intel® 40G Ethernet Controller:                                                   |
-|                                |                                                                                      |
-|                                | Double VLAN does not work. This was confirmed a firmware issue which will be fixed   |
-|                                | in later versions of firmware.                                                       |
-|                                |                                                                                      |
-+--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | After setting double vlan to be enabled on a port, no packets can be transmitted out |
-|                                | on that port.                                                                        |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Resolution/ Workaround         | None                                                                                 |
