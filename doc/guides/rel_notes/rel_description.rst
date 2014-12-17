@@ -113,9 +113,13 @@ The following is a list of DPDK documents in the suggested reading order:
 
     *   L3 Forwarding
 
+    *   L3 Forwarding with Access Control
+
     *   L3 Forwarding with Power Management
 
     *   L3 Forwarding in a Virtualized Environment
+
+    *   Link Status Interrupt
 
     *   Load Balancing
 
@@ -142,6 +146,8 @@ The following is a list of DPDK documents in the suggested reading order:
     *   Kernel NIC Interface (KNI)
 
     *   VM Power Management
+
+    *   Distributor
 
     In addition, there are some other applications that are built when the libraries are created.
     The source for these applications is in the DPDK/app directory and are called:
