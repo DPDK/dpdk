@@ -71,7 +71,7 @@ int rte_netmap_init_port(uint8_t portid,
 	const struct rte_netmap_port_conf *conf);
 
 int rte_netmap_close(int fd);
-int rte_netmap_ioctl(int fd, int op, void *param);
+int rte_netmap_ioctl(int fd, uint32_t op, void *param);
 int rte_netmap_open(const char *pathname, int flags);
 int rte_netmap_poll(struct pollfd *fds, nfds_t nfds, int timeout);
 void *rte_netmap_mmap(void *addr, size_t length, int prot, int flags, int fd,

@@ -765,7 +765,7 @@ rte_netmap_close(__rte_unused int fd)
 	return (rc);
 }
 
-int rte_netmap_ioctl(int fd, int op, void *param)
+int rte_netmap_ioctl(int fd, uint32_t op, void *param)
 {
 	int ret;
 
