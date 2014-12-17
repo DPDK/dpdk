@@ -45,8 +45,10 @@ APP = vm_power_mgr
 SRCS-y := main.c vm_power_cli.c power_manager.c channel_manager.c
 SRCS-y += channel_monitor.c
 
-CFLAGS += -O3 -lvirt -I$(RTE_SDK)/lib/librte_power/
+CFLAGS += -O3 -I$(RTE_SDK)/lib/librte_power/
 CFLAGS += $(WERROR_FLAGS)
+
+LDLIBS += -lvirt
 
 # workaround for a gcc bug with noreturn attribute
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
