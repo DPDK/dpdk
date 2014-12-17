@@ -35,8 +35,8 @@ EAL Command-line Options
 ------------------------
 
 The following are the EAL command-line options that can be used in conjunction with the testpmd,
-or any other Intel® DPDK application.
-See the Intel® DPDK Getting Started Guide for more information on these options.
+or any other DPDK application.
+See the DPDK Getting Started Guide for more information on these options.
 
 *   -c COREMASK
 
