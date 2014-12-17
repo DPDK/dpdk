@@ -58,11 +58,9 @@ build: _postbuild
 exe2cmd = $(strip $(call dotfile,$(patsubst %,%.cmd,$(1))))
 
 ifeq ($(LINK_USING_CC),1)
-LDLIBS := $(call linkerprefix,$(LDLIBS))
-LDFLAGS := $(call linkerprefix,$(LDFLAGS))
 override EXTRA_LDFLAGS := $(call linkerprefix,$(EXTRA_LDFLAGS))
-O_TO_SO = $(CC) $(LDFLAGS) $(LDFLAGS_$(@)) $(EXTRA_LDFLAGS) \
-	-shared -o $@ $(OBJS-y) $(LDLIBS)
+O_TO_SO = $(CC) $(call linkerprefix,$(LDFLAGS)) $(LDFLAGS_$(@)) $(EXTRA_LDFLAGS) \
+	-shared -o $@ $(OBJS-y) $(call linkerprefix,$(LDLIBS))
 else
 O_TO_SO = $(LD) $(LDFLAGS) $(LDFLAGS_$(@)) $(EXTRA_LDFLAGS) \
 	-shared -o $@ $(OBJS-y) $(LDLIBS)
