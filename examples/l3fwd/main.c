@@ -724,9 +724,11 @@ get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, lookup6_struct_t * ipv6_l3fwd
 }
 #endif
 
+static inline void l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid,
+	struct lcore_conf *qconf)  __attribute__((unused));
+
 #if ((APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH) && \
 	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
-static inline void l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qconf);
 
 #define MASK_ALL_PKTS    0xf
 #define EXECLUDE_1ST_PKT 0xe
