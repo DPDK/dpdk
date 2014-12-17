@@ -214,7 +214,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 		goto err;
 	}
 	pci_id_table = rte_zmalloc_socket(name, sizeof(*pci_id_table), 0, socket_id);
-	if (pci_drv == NULL) {
+	if (pci_id_table == NULL) {
 		RTE_BOND_LOG(ERR, "Unable to malloc pci_id_table on socket");
 		goto err;
 	}
