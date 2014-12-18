@@ -567,7 +567,6 @@ enic_intr_handler(__rte_unused struct rte_intr_handle *handle,
 {
 	struct enic *enic = pmd_priv((struct rte_eth_dev *)arg);
 
-	dev_err(enic, "Err intr.\n");
 	vnic_intr_return_all_credits(&enic->intr);
 
 	enic_log_q_error(enic);
@@ -605,13 +604,11 @@ int enic_enable(struct enic *enic)
 
 	vnic_dev_enable_wait(enic->vdev);
 
-#ifndef VFIO_PRESENT
 	/* Register and enable error interrupt */
 	rte_intr_callback_register(&(enic->pdev->intr_handle),
 		enic_intr_handler, (void *)enic->rte_dev);
 
 	rte_intr_enable(&(enic->pdev->intr_handle));
-#endif
 	vnic_intr_unmask(&enic->intr);
 
 	return 0;
@@ -969,31 +966,6 @@ int enic_setup_finish(struct enic *enic)
 	return 0;
 }
 
-#ifdef VFIO_PRESENT
-static void enic_eventfd_init(struct enic *enic)
-{
-	enic->eventfd = enic->pdev->intr_handle.fd;
-}
-
-void *enic_err_intr_handler(void *arg)
-{
-	struct enic *enic = (struct enic *)arg;
-	unsigned int intr = enic_msix_err_intr(enic);
-	ssize_t size;
-	uint64_t data;
-
-	while (1) {
-		size = read(enic->eventfd, &data, sizeof(data));
-		dev_err(enic, "Err intr.\n");
-		vnic_intr_return_all_credits(&enic->intr);
-
-		enic_log_q_error(enic);
-	}
-
-	return NULL;
-}
-#endif
-
 void enic_add_packet_filter(struct enic *enic)
 {
 	/* Args -> directed, multicast, broadcast, promisc, allmulti */
@@ -1006,87 +978,12 @@ int enic_get_link_status(struct enic *enic)
 	return vnic_dev_link_status(enic->vdev);
 }
 
-
-#ifdef VFIO_PRESENT
-static int enic_create_err_intr_thread(struct enic *enic)
-{
-	pthread_attr_t intr_attr;
-
-	/* create threads for error interrupt handling */
-	pthread_attr_init(&intr_attr);
-	pthread_attr_setstacksize(&intr_attr, 0x100000);
-
-	/* ERR */
-	if (pthread_create(&enic->err_intr_thread, &intr_attr,
-		    enic_err_intr_handler, (void *)enic)) {
-		dev_err(enic, "Failed to create err interrupt handler threads\n");
-		return -1;
-	}
-
-	pthread_attr_destroy(&intr_attr);
-
-	return 0;
-}
-
-
-static int enic_set_intr_mode(struct enic *enic)
-{
-	struct vfio_irq_set *irq_set;
-	int *fds;
-	int size;
-	int ret = -1;
-	int index;
-
-	if (enic->intr_count < 1) {
-		dev_err(enic, "Unsupported resource conf.\n");
-		return -1;
-	}
-	vnic_dev_set_intr_mode(enic->vdev, VNIC_DEV_INTR_MODE_MSIX);
-
-	enic->intr_count = 1;
-
-	enic_eventfd_init(enic);
-	size = sizeof(*irq_set) + (sizeof(int));
-
-	irq_set = rte_zmalloc("enic_vfio_irq", size, 0);
-	irq_set->argsz = size;
-	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
-	irq_set->start = 0;
-	irq_set->count = 1; /* For error interrupt only */
-	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD |
-	    VFIO_IRQ_SET_ACTION_TRIGGER;
-	fds = (int *)&irq_set->data;
-
-	fds[0] = enic->eventfd;
-
-	ret = ioctl(enic->pdev->intr_handle.vfio_dev_fd,
-		VFIO_DEVICE_SET_IRQS, irq_set);
-	rte_free(irq_set);
-	if (ret) {
-		dev_err(enic, "Failed to set eventfds for interrupts\n");
-		return -1;
-	}
-
-	enic_create_err_intr_thread(enic);
-	return 0;
-}
-
-static void enic_clear_intr_mode(struct enic *enic)
-{
-	vnic_dev_set_intr_mode(enic->vdev, VNIC_DEV_INTR_MODE_UNKNOWN);
-}
-#endif
-
 static void enic_dev_deinit(struct enic *enic)
 {
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 
 	if (eth_dev->data->mac_addrs)
 		rte_free(eth_dev->data->mac_addrs);
-
-#ifdef VFIO_PRESENT
-	enic_clear_intr_mode(enic);
-#endif
 }
 
 
@@ -1138,20 +1035,6 @@ static int enic_dev_init(struct enic *enic)
 	/* Get available resource counts
 	*/
 	enic_get_res_counts(enic);
-
-#ifdef VFIO_PRESENT
-	/* Set interrupt mode based on resource counts and system
-	 * capabilities
-	 */
-	err = enic_set_intr_mode(enic);
-	if (err) {
-		rte_free(eth_dev->data->mac_addrs);
-		enic_clear_intr_mode(enic);
-		dev_err(dev, "Failed to set intr mode based on resource "\
-			"counts and system capabilities, aborting\n");
-		return err;
-	}
-#endif
 
 	vnic_dev_set_reset_flag(enic->vdev, 0);
 
