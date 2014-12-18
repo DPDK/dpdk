@@ -31,8 +31,8 @@
 Internet Protocol (IP) Pipeline Sample Application
 ==================================================
 
-The Internet Protocol (IP) Pipeline application illustrates the use of the Intel® DPDK Packet Framework tool suite.
-The Intel® DPDK pipeline methodology is used to implement functional blocks such as
+The Internet Protocol (IP) Pipeline application illustrates the use of the DPDK Packet Framework tool suite.
+The DPDK pipeline methodology is used to implement functional blocks such as
 packet RX, packet TX, flow classification, firewall,
 routing, IP fragmentation, IP reassembly, etc
 which are then assigned to different CPU cores and connected together to create complex multi-core applications.

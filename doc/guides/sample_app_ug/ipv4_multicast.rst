@@ -32,7 +32,7 @@ IPv4 Multicast Sample Application
 =================================
 
 The IPv4 Multicast application is a simple example of packet processing
-using the Intel® Data Plane Development Kit (Intel® DPDK).
+using the Data Plane Development Kit (DPDK).
 The application performs L3 multicasting.
 
 Overview
@@ -76,7 +76,7 @@ To compile the application:
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-See the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -126,7 +126,7 @@ In this command:
 
 *   The -q option assigns 1 queue to each lcore
 
-Refer to the *Intel® DPDK Getting Started Guide* for general information on running applications
+Refer to the *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.
 
 Explanation

@@ -32,7 +32,7 @@ IP Fragmentation Sample Application
 ===================================
 
 The IPv4 Fragmentation application is a simple example of packet processing
-using the Intel® Data Plane Development Kit (Intel® DPDK).
+using the Data Plane Development Kit (DPDK).
 The application does L3 forwarding with IPv4 and IPv6 packet fragmentation.
 
 Overview
@@ -78,7 +78,7 @@ To build the application:
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-See the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -183,5 +183,5 @@ IP Fragmentation sample application provides basic NUMA support
 in that all the memory structures are allocated on all sockets that have active lcores on them.
 
 
-Refer to the *Intel® DPDK Getting Started Guide* for general information on running applications
+Refer to the *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.

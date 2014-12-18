@@ -32,9 +32,9 @@ Link Status Interrupt Sample Application
 ========================================
 
 The Link Status Interrupt sample application is a simple example of packet processing using
-the Intel® Data Plane Development Kit (Intel® DPDK) that
+the Data Plane Development Kit (DPDK) that
 demonstrates how network link status changes for a network port can be captured and
-used by an Intel® DPDK application.
+used by a DPDK application.
 
 Overview
 --------
@@ -68,7 +68,7 @@ Compiling the Application
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    See the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+    See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -106,7 +106,7 @@ issue the command:
 
     $ ./build/link_status_interrupt -c f -n 4-- -q 8 -p ffff
 
-Refer to the *Intel® DPDK Getting Started Guide* for general information on running applications
+Refer to the *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.
 
 Explanation
@@ -134,7 +134,7 @@ Driver Initialization
 
 The main part of the code in the main() function relates to the initialization of the driver.
 To fully understand this code, it is recommended to study the chapters that related to the Poll Mode Driver in the
-*Intel® DPDK Programmer's Guide and the Intel® DPDK API Reference*.
+*DPDK Programmer's Guide and the DPDK API Reference*.
 
 .. code-block:: c
 

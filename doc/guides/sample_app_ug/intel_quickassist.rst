@@ -32,8 +32,8 @@ Intel® QuickAssist Technology Sample Application
 ================================================
 
 This sample application demonstrates the use of the cryptographic operations provided
-by the Intel® QuickAssist Technology from within the Intel® DPDK environment.
-Therefore, building and running this application requires having both the Intel® DPDK and
+by the Intel® QuickAssist Technology from within the DPDK environment.
+Therefore, building and running this application requires having both the DPDK and
 the QuickAssist Technology Software Library installed, as well as at least one
 Intel® QuickAssist Technology hardware device present in the system.
 
@@ -102,14 +102,14 @@ For the cryptographic path, it is the payload of the IPv4 packet that is encrypt
 Setup
 ~~~~~
 
-Building and running this application requires having both the Intel® DPDK package and
+Building and running this application requires having both the DPDK package and
 the QuickAssist Technology Software Library installed,
 as well as at least one Intel® QuickAssist Technology hardware device present in the system.
 
-For more details on how to build and run Intel® DPDK and Intel® QuickAssist Technology applications,
+For more details on how to build and run DPDK and Intel® QuickAssist Technology applications,
 please refer to the following documents:
 
-*   *Intel® DPDK Getting Started Guide*
+*   *DPDK Getting Started Guide*
 
 *   Intel® Communications Chipset 8900 to 8920 Series Software for Linux* Getting Started Guide (440005)
 
@@ -127,7 +127,7 @@ Steps to build the application:
 
     .. code-block:: console
 
-        export RTE_SDK=<Absolute path to the Intel DPDK installation folder>
+        export RTE_SDK=<Absolute path to the DPDK installation folder>
         export ICP_ROOT=<Absolute path to the Intel QAT installation folder>
 
 #.  Set the target (a default target is used if not specified). For example:
@@ -136,7 +136,7 @@ Steps to build the application:
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    Refer to the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+    Refer to the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -152,7 +152,7 @@ Intel® QuickAssist Technology Configuration Files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The Intel® QuickAssist Technology configuration files used by the application are located in the config_files folder in the application folder.
-There following sets of configuration files are included in the Intel® DPDK package:
+There following sets of configuration files are included in the DPDK package:
 
 *   Stargo CRB (single CPU socket): located in the stargo folder
 
@@ -218,7 +218,7 @@ performing AES-CBC-128 encryption with AES-XCBC-MAC-96 hash, the following setti
 
         ./build/dpdk_qat -c 0xff -n 2 -- -p 0x3 --config '(0,0,1),(1,0,2)'
 
-Refer to the *Intel® DPDK Test Report* for more examples of traffic generator setup and the application startup command lines.
+Refer to the *DPDK Test Report* for more examples of traffic generator setup and the application startup command lines.
 If no errors are generated in response to the startup commands, the application is running correctly.
 
 .. |quickassist_block_diagram| image:: img/quickassist_block_diagram.png

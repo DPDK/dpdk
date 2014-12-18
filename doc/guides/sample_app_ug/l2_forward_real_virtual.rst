@@ -32,13 +32,13 @@ L2 Forwarding Sample Application (in Real and Virtualized Environments)
 =======================================================================
 
 The L2 Forwarding sample application is a simple example of packet processing using
-the Intel® Data Plane Development Kit (Intel® DPDK) which
+the Data Plane Development Kit (DPDK) which
 also takes advantage of Single Root I/O Virtualization (SR-IOV) features in a virtualized environment.
 
 .. note::
 
     Please note that previously a separate L2 Forwarding in Virtualized Environments sample application was used,
-    however, in later Intel® DPDK versions these sample applications have been merged.
+    however, in later DPDK versions these sample applications have been merged.
 
 Overview
 --------
@@ -58,7 +58,7 @@ This application can be used to benchmark performance using a traffic-generator,
 
 The application can also be used in a virtualized environment as shown in Figure 4.
 
-The L2 Forwarding application can also be used as a starting point for developing a new application based on the Intel® DPDK.
+The L2 Forwarding application can also be used as a starting point for developing a new application based on the DPDK.
 
 .. _figure_3:
 
@@ -111,7 +111,7 @@ Compiling the Application
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    *See the Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+    *See the DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -140,7 +140,7 @@ To run the application in linuxapp environment with 4 lcores, 16 ports and 8 RX 
 
     $ ./build/l2fwd -c f -n 4 -- -q 8 -p ffff
 
-Refer to the *Intel® *DPDK Getting Started Guide* for general information on running applications
+Refer to the *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.
 
 Explanation
@@ -222,7 +222,7 @@ Driver Initialization
 
 The main part of the code in the main() function relates to the initialization of the driver.
 To fully understand this code, it is recommended to study the chapters that related to the Poll Mode Driver
-in the *Intel® DPDK Programmer's Guide* - Rel 1.4 EAR and the *Intel® DPDK API Reference*.
+in the *DPDK Programmer's Guide* - Rel 1.4 EAR and the *DPDK API Reference*.
 
 .. code-block:: c
 

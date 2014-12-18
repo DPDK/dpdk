@@ -31,7 +31,7 @@
 Timer Sample Application
 ========================
 
-The Timer sample application is a simple application that demonstrates the use of a timer in an Intel® DPDK application.
+The Timer sample application is a simple application that demonstrates the use of a timer in a DPDK application.
 This application prints some messages from different lcores regularly, demonstrating the use of timers.
 
 Compiling the Application
@@ -49,7 +49,7 @@ Compiling the Application
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    See the *Intel® DPDK Getting Started Guide* for possible *RTE_TARGET* values.
+    See the *DPDK Getting Started Guide* for possible *RTE_TARGET* values.
 
 #.  Build the application:
 
@@ -66,7 +66,7 @@ To run the example in linuxapp environment:
 
     $ ./build/timer -c f -n 4
 
-Refer to the *Intel® DPDK Getting Started Guide* for general information on running applications and
+Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
 
 Explanation

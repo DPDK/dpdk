@@ -31,14 +31,14 @@
 L3 Forwarding in a Virtualization Environment Sample Application
 ================================================================
 
-The L3 Forwarding in a Virtualization Environment sample application is a simple example of packet processing using the Intel® DPDK.
+The L3 Forwarding in a Virtualization Environment sample application is a simple example of packet processing using the DPDK.
 The application performs L3 forwarding that takes advantage of Single Root I/O Virtualization (SR-IOV) features
 in a virtualized environment.
 
 Overview
 --------
 
-The application demonstrates the use of the hash and LPM libraries in the Intel® DPDK to implement packet forwarding.
+The application demonstrates the use of the hash and LPM libraries in the DPDK to implement packet forwarding.
 The initialization and run-time paths are very similar to those of the L3 forwarding application
 (see Chapter 10 "L3 Forwarding Sample Application" for more information).
 The forwarding decision is taken based on information read from the input packet.
@@ -80,7 +80,7 @@ To compile the application:
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    See the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+    See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -148,7 +148,7 @@ In this command:
     |          |           |           |                                    |
     +----------+-----------+-----------+------------------------------------+
 
-Refer to the *Intel® DPDK Getting Started Guide* for general information on running applications
+Refer to the *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.
 
 Explanation

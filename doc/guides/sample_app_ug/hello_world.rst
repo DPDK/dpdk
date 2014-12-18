@@ -31,7 +31,7 @@
 Hello World Sample Application
 ==============================
 
-The Hello World sample application is an example of the simplest Intel® DPDK application that can be written.
+The Hello World sample application is an example of the simplest DPDK application that can be written.
 The application simply prints an "helloworld" message on every enabled lcore.
 
 Compiling the Application
@@ -50,7 +50,7 @@ Compiling the Application
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    See the *Intel® DPDK Getting Started* Guide for possible RTE_TARGET values.
+    See the *DPDK Getting Started* Guide for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -67,7 +67,7 @@ To run the example in a linuxapp environment:
 
     $ ./build/helloworld -c f -n 4
 
-Refer to *Intel® DPDK Getting Started Guide* for general information on running applications
+Refer to *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.
 
 Explanation
@@ -135,4 +135,4 @@ The following code is equivalent and simpler:
 
     rte_eal_mp_remote_launch(lcore_hello, NULL, CALL_MASTER);
 
-Refer to the *Intel® DPDK API Reference* for detailed information on the rte_eal_mp_remote_launch() function.
+Refer to the *DPDK API Reference* for detailed information on the rte_eal_mp_remote_launch() function.

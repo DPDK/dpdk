@@ -31,8 +31,8 @@
 Test Pipeline Application
 =========================
 
-The Test Pipeline application illustrates the use of the Intel® DPDK Packet Framework tool suite.
-Its purpose is to demonstrate the performance of single-table Intel® DPDK pipelines.
+The Test Pipeline application illustrates the use of the DPDK Packet Framework tool suite.
+Its purpose is to demonstrate the performance of single-table DPDK pipelines.
 
 Overview
 --------
@@ -41,7 +41,7 @@ The application uses three CPU cores:
 
 *   Core A ("RX core") receives traffic from the NIC ports and feeds core B with traffic through SW queues.
 
-*   Core B ("Pipeline core") implements a single-table Intel® DPDK pipeline
+*   Core B ("Pipeline core") implements a single-table DPDK pipeline
     whose type is selectable through specific command line parameter.
     Core B receives traffic from core A through software queues,
     processes it according to the actions configured in the table entries that
@@ -122,14 +122,14 @@ For hash tables, the following parameters can be selected:
 | **#** | **TABLE_TYPE**         | **Description of Core B Table**                          | **Pre-added Table Entries**                           |
 |       |                        |                                                          |                                                       |
 +=======+========================+==========================================================+=======================================================+
-| 1     | none                   | Core B is not implementing an Intel® DPDK pipeline.      | N/A                                                   |
+| 1     | none                   | Core B is not implementing a DPDK pipeline.              | N/A                                                   |
 |       |                        | Core B is implementing a pass-through from its input set |                                                       |
 |       |                        | of software queues to its output set of software queues. |                                                       |
 |       |                        |                                                          |                                                       |
 +-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+
 | 2     | stub                   | Stub table. Core B is implementing the same pass-through | N/A                                                   |
 |       |                        | functionality as described for the "none" option by      |                                                       |
-|       |                        | using the Intel® DPDK Packet Framework by using one      |                                                       |
+|       |                        | using the DPDK Packet Framework by using one             |                                                       |
 |       |                        | stub table for each input NIC port.                      |                                                       |
 |       |                        |                                                          |                                                       |
 +-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+

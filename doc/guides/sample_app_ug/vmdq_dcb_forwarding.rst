@@ -31,14 +31,14 @@
 VMDQ and DCB Forwarding Sample Application
 ==========================================
 
-The VMDQ and DCB Forwarding sample application is a simple example of packet processing using the Intel® DPDK.
+The VMDQ and DCB Forwarding sample application is a simple example of packet processing using the DPDK.
 The application performs L2 forwarding using VMDQ and DCB to divide the incoming traffic into 128 queues.
 The traffic splitting is performed in hardware by the VMDQ and DCB features of the Intel® 82599 10 Gigabit Ethernet Controller.
 
 Overview
 --------
 
-This sample application can be used as a starting point for developing a new application that is based on the Intel® DPDK and
+This sample application can be used as a starting point for developing a new application that is based on the DPDK and
 uses VMDQ and DCB for traffic partitioning.
 
 The VMDQ and DCB filters work on VLAN traffic to divide the traffic into 128 input queues on the basis of the VLAN ID field and
@@ -47,7 +47,7 @@ VMDQ filters split the traffic into 16 or 32 groups based on the VLAN ID.
 Then, DCB places each packet into one of either 4 or 8 queues within that group, based upon the VLAN user priority field.
 
 In either case, 16 groups of 8 queues, or 32 groups of 4 queues, the traffic can be split into 128 hardware queues on the NIC,
-each of which can be polled individually by an Intel® DPDK application.
+each of which can be polled individually by a DPDK application.
 
 All traffic is read from a single incoming port (port 0) and output on port 1, without any processing being performed.
 The traffic is split into 128 queues on input, where each thread of the application reads from multiple queues.
@@ -102,7 +102,7 @@ Compiling the Application
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    See the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+    See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -119,7 +119,7 @@ To run the example in a linuxapp environment:
 
     user@target:~$ ./build/vmdq_dcb -c f -n 4 -- -p 0x3 --nb-pools 16
 
-Refer to the *Intel® DPDK Getting Started Guide* for general information on running applications and
+Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
 
 Explanation

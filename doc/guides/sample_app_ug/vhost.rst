@@ -32,7 +32,7 @@
 Vhost Sample Application
 ========================
 
-The vhost sample application demonstrates integration of the Intel® Data Plane Development Kit (Intel® DPDK)
+The vhost sample application demonstrates integration of the Data Plane Development Kit (DPDK)
 with the Linux* KVM hypervisor by implementing the vhost-net offload API.
 The sample application performs simple packet switching between virtual machines based on Media Access Control
 (MAC) address or Virtual Local Area Network (VLAN) tag.
@@ -86,14 +86,14 @@ The following figure shows the system architecture for virtio-net networking wit
 Sample Code Overview
 --------------------
 
-The Intel® DPDK vhost-net sample code demonstrates KVM (QEMU) offloading the servicing of a Virtual Machine's (VM's)
-virtio-net devices to an Intel® DPDK-based application in place of the kernel's vhost-net module.
+The DPDK vhost-net sample code demonstrates KVM (QEMU) offloading the servicing of a Virtual Machine's (VM's)
+virtio-net devices to a DPDK-based application in place of the kernel's vhost-net module.
 
-The Intel® DPDK vhost-net sample code is a simple packet switching application with the following features:
+The DPDK vhost-net sample code is a simple packet switching application with the following features:
 
 *   Management of virtio-net device creation/destruction events.
 
-*   Mapping of the VM's physical memory into the Intel® DPDK vhost-net sample code's address space.
+*   Mapping of the VM's physical memory into the DPDK vhost-net sample code's address space.
 
 *   Triggering/receiving notifications to/from VMs via eventfds.
 
@@ -196,9 +196,9 @@ VMs with gigabytes of memory can benefit from having QEMU allocate their memory 
 
 **Vhost Sample Code**
 
-In this section, we create a second hugetlbs mount point to allocate hugepages for the Intel® DPDK vhost sample code.
+In this section, we create a second hugetlbs mount point to allocate hugepages for the DPDK vhost sample code.
 
-#.  Allocate sufficient 2 MB pages for the Intel® DPDK vhost sample code:
+#.  Allocate sufficient 2 MB pages for the DPDK vhost sample code:
 
     .. code-block:: console
 
@@ -239,7 +239,7 @@ The above steps can be automated by doing the following:
 Setting up the Guest Execution Environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-It is recommended for testing purposes that the Intel® DPDK testpmd sample application is used in the guest to forward packets,
+It is recommended for testing purposes that the DPDK testpmd sample application is used in the guest to forward packets,
 the reasons for this are discussed in Section 22.7, "Running the Virtual Machine (QEMU)".
 
 The testpmd application forwards packets between pairs of Ethernet devices,
@@ -275,7 +275,7 @@ Compiling the Sample Code
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    See the Intel® DPDK Getting Started Guide for possible RTE_TARGET values.
+    See the DPDK Getting Started Guide for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -358,13 +358,13 @@ Running the Sample Code
 
 .. note::
 
-    Please note the huge-dir parameter instructs the Intel® DPDK to allocate its memory from the 2 MB page hugetlbfs.
+    Please note the huge-dir parameter instructs the DPDK to allocate its memory from the 2 MB page hugetlbfs.
 
 Parameters
 ~~~~~~~~~~
 
 **Basename and Index.**
-The Intel® DPDK vhost-net sample code uses a Linux* character device to communicate with QEMU.
+The DPDK vhost-net sample code uses a Linux* character device to communicate with QEMU.
 The basename and the index are used to generate the character devices name.
 
     /dev/<basename>-<index>
@@ -485,7 +485,7 @@ QEMU must be executed with specific parameters to:
 
         user@target:~$ qemu-system-x86_64 ... -device virtio-net-pci, netdev=hostnet1,id=net1,csum=off,gso=off,guest_tso4=off,guest_ tso6=off,guest_ecn=off
 
-*   Redirect QEMU to communicate with the Intel® DPDK vhost-net sample code in place of the vhost-net kernel module.
+*   Redirect QEMU to communicate with the DPDK vhost-net sample code in place of the vhost-net kernel module.
 
     .. code-block:: console
 
@@ -521,7 +521,7 @@ an open file descriptor must be passed to QEMU running as a child process.
 Mapping the Virtual Machine's Memory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the Intel® DPDK vhost-net sample code to be run correctly, QEMU must allocate the VM's memory on hugetlbfs.
+For the DPDK vhost-net sample code to be run correctly, QEMU must allocate the VM's memory on hugetlbfs.
 This is done by specifying mem-prealloc and mem-path when executing QEMU.
 The vhost-net sample code accesses the virtio-net device's virtual rings and packet buffers
 by finding and mapping the VM's physical memory on hugetlbfs.
@@ -593,7 +593,7 @@ To call the QEMU wrapper automatically from libvirt, the following configuration
             <driver name="vhost"/>
             <interface/>
 
-    *   Enable libvirt to access the Intel® DPDK Vhost sample code's character device file by adding it
+    *   Enable libvirt to access the DPDK Vhost sample code's character device file by adding it
         to controllers cgroup for libvirtd using the following steps:
 
         .. code-block:: xml
@@ -630,8 +630,8 @@ To call the QEMU wrapper automatically from libvirt, the following configuration
 
             emul_path = "/usr/local/bin/qemu-system-x86_64"
 
-    *   Configure the "us_vhost_path" variable to point to the Intel® DPDK vhost- net sample code's character devices name.
-        Intel® DPDK vhost-net sample code's character device will be in the format "/dev/<basename>-<index>".
+    *   Configure the "us_vhost_path" variable to point to the DPDK vhost- net sample code's character devices name.
+        DPDK vhost-net sample code's character device will be in the format "/dev/<basename>-<index>".
 
         .. code-block:: xml
 
@@ -654,19 +654,19 @@ The number of free hugepages can be checked as follows:
 
 The command above indicates how many hugepages are free to support QEMU's allocation request.
 
-Running Intel® DPDK in the Virtual Machine
-------------------------------------------
+Running DPDK in the Virtual Machine
+-----------------------------------
 
-For the Intel® DPDK vhost-net sample code to switch packets into the VM,
+For the DPDK vhost-net sample code to switch packets into the VM,
 the sample code must first learn the MAC address of the VM's virtio-net device.
 The sample code detects the address from packets being transmitted from the VM, similar to a learning switch.
 
 This behavior requires no special action or configuration with the Linux* virtio-net driver in the VM
 as the Linux* Kernel will automatically transmit packets during device initialization.
-However, Intel® DPDK-based applications must be modified to automatically transmit packets during initialization
-to facilitate the Intel® DPDK vhost- net sample code's MAC learning.
+However, DPDK-based applications must be modified to automatically transmit packets during initialization
+to facilitate the DPDK vhost- net sample code's MAC learning.
 
-The Intel® DPDK testpmd application can be configured to automatically transmit packets during initialization
+The DPDK testpmd application can be configured to automatically transmit packets during initialization
 and to act as an L2 forwarding switch.
 
 Testpmd MAC Forwarding
@@ -676,7 +676,7 @@ At high packet rates, a minor packet loss may be observed.
 To resolve this issue, a "wait and retry" mode is implemented in the testpmd and vhost sample code.
 In the "wait and retry" mode if the virtqueue is found to be full, then testpmd waits for a period of time before retrying to enqueue packets.
 
-The "wait and retry" algorithm is implemented in Intel® DPDK testpmd as a forwarding method call "mac_retry".
+The "wait and retry" algorithm is implemented in DPDK testpmd as a forwarding method call "mac_retry".
 The following sequence diagram describes the algorithm in detail.
 
 .. _figure_20:
@@ -690,7 +690,7 @@ The following sequence diagram describes the algorithm in detail.
 Running Testpmd
 ~~~~~~~~~~~~~~~
 
-The testpmd application is automatically built when Intel® DPDK is installed.
+The testpmd application is automatically built when DPDK is installed.
 Run the testpmd application as follows:
 
 .. code-block:: console
@@ -718,7 +718,7 @@ The testpmd application can then be configured to act as an L2 forwarding applic
     testpmd> set fwd mac_retry
 
 The testpmd can then be configured to start processing packets,
-transmitting packets first so the Intel® DPDK vhost sample code on the host can learn the MAC address:
+transmitting packets first so the DPDK vhost sample code on the host can learn the MAC address:
 
 .. code-block:: console
 
@@ -733,10 +733,10 @@ Passing Traffic to the Virtual Machine Device
 
 For a virtio-net device to receive traffic,
 the traffic's Layer 2 header must include both the virtio-net device's MAC address and VLAN tag.
-The Intel® DPDK sample code behaves in a similar manner to a learning switch in that
+The DPDK sample code behaves in a similar manner to a learning switch in that
 it learns the MAC address of the virtio-net devices from the first transmitted packet.
 On learning the MAC address,
-the Intel® DPDK vhost sample code prints a message with the MAC address and VLAN tag virtio-net device.
+the DPDK vhost sample code prints a message with the MAC address and VLAN tag virtio-net device.
 For example:
 
 .. code-block:: console
@@ -745,7 +745,7 @@ For example:
 
 The above message indicates that device 0 has been registered with MAC address cc:bb:bb:bb:bb:bb and VLAN tag 1000.
 Any packets received on the NIC with these values is placed on the devices receive queue.
-When a virtio-net device transmits packets, the VLAN tag is added to the packet by the Intel® DPDK vhost sample code.
+When a virtio-net device transmits packets, the VLAN tag is added to the packet by the DPDK vhost sample code.
 
 .. |vhost_net_arch| image:: img/vhost_net_arch.png
 

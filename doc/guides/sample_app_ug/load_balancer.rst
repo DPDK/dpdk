@@ -93,7 +93,7 @@ The sequence of steps used to build the application is:
 
     .. code-block:: console
 
-        export RTE_SDK=<Path to the Intel DPDK installation folder>
+        export RTE_SDK=<Path to the DPDK installation folder>
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
 #.  Build the application executable file:
@@ -102,8 +102,8 @@ The sequence of steps used to build the application is:
 
         cd ${RTE_SDK}/examples/load_balancer make
 
-    For more details on how to build the Intel® DPDK libraries and sample applications,
-    please refer to the *Intel® DPDK Getting Started Guide.*
+    For more details on how to build the DPDK libraries and sample applications,
+    please refer to the *DPDK Getting Started Guide.*
 
 Running the Application
 -----------------------
@@ -111,9 +111,9 @@ Running the Application
 To successfully run the application,
 the command line used to start the application has to be in sync with the traffic flows configured on the traffic generator side.
 
-For examples of application command lines and traffic generator flows, please refer to the Intel® DPDK Test Report.
-For more details on how to set up and run the sample applications provided with Intel® DPDK package,
-please refer to the *Intel® DPDK Getting Started Guide*.
+For examples of application command lines and traffic generator flows, please refer to the DPDK Test Report.
+For more details on how to set up and run the sample applications provided with DPDK package,
+please refer to the *DPDK Getting Started Guide*.
 
 Explanation
 -----------

@@ -31,7 +31,7 @@
 QoS Metering Sample Application
 ===============================
 
-The QoS meter sample application is an example that demonstrates the use of Intel® DPDK to provide QoS marking and metering,
+The QoS meter sample application is an example that demonstrates the use of DPDK to provide QoS marking and metering,
 as defined by RFC2697 for Single Rate Three Color Marker (srTCM) and RFC 2698 for Two Rate Three Color Marker (trTCM) algorithm.
 
 Overview
@@ -100,7 +100,7 @@ The application execution command line is as below:
 The application is constrained to use a single core in the EAL core mask and 2 ports only in the application port mask
 (first port from the port mask is used for RX and the other port in the core mask is used for TX).
 
-Refer to *Intel® DPDK Getting Started Guide* for general information on running applications and
+Refer to *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
 
 Explanation

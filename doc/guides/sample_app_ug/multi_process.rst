@@ -31,7 +31,7 @@
 Multi-process Sample Application
 ================================
 
-This chapter describes the example applications for multi-processing that are included in the Intel® DPDK.
+This chapter describes the example applications for multi-processing that are included in the DPDK.
 
 Example Applications
 --------------------
@@ -40,7 +40,7 @@ Building the Sample Applications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The multi-process example applications are built in the same way as other sample applications,
-and as documented in the *Intel® DPDK Getting Started Guide*.
+and as documented in the *DPDK Getting Started Guide*.
 To build all the example applications:
 
 #.  Set RTE_SDK and go to the example directory:
@@ -56,7 +56,7 @@ To build all the example applications:
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    See the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+    See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the applications:
 
@@ -73,8 +73,8 @@ To build all the example applications:
 Basic Multi-process Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The examples/simple_mp folder in the Intel® DPDK release contains a basic example application to demonstrate how
-two Intel® DPDK processes can work together using queues and memory pools to share information.
+The examples/simple_mp folder in the DPDK release contains a basic example application to demonstrate how
+two DPDK processes can work together using queues and memory pools to share information.
 
 Running the Application
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -86,8 +86,8 @@ passing at least two cores in the coremask, as follows:
 
     ./build/simple_mp -c 3 -n 4 --proc-type=primary
 
-For the first Intel® DPDK process run, the proc-type flag can be omitted or set to auto,
-since all Intel® DPDK processes will default to being a primary instance,
+For the first DPDK process run, the proc-type flag can be omitted or set to auto,
+since all DPDK processes will default to being a primary instance,
 meaning they have control over the hugepage shared memory regions.
 The process should start successfully and display a command prompt as follows:
 
@@ -182,7 +182,7 @@ then enqueued on the appropriate rte_ring.
 Symmetric Multi-process Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The second example of Intel® DPDK multi-process support demonstrates how a set of processes can run in parallel,
+The second example of DPDK multi-process support demonstrates how a set of processes can run in parallel,
 with each process performing the same set of packet- processing operations.
 (Since each process is identical in functionality to the others,
 we refer to this as symmetric multi-processing, to differentiate it from asymmetric multi- processing -
@@ -287,7 +287,7 @@ and writes to the corresponding transmit queue on the output port.
 Client-Server Multi-process Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The third example multi-process application included with the Intel® DPDK shows how one can
+The third example multi-process application included with the DPDK shows how one can
 use a client-server type multi-process design to do packet processing.
 In this example, a single server process performs the packet reception from the ports being used and
 distributes these packets using round-robin ordering among a set of client  processes,
@@ -370,7 +370,7 @@ until either the buffer is full or until we receive no further packets from the 
 Master-slave Multi-process Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The fourth example of Intel® DPDK multi-process support demonstrates a master-slave model that
+The fourth example of DPDK multi-process support demonstrates a master-slave model that
 provide the capability of application recovery if a slave process crashes or  meets unexpected conditions.
 In addition, it also demonstrates the floating process,
 which can run among different cores in contrast to the traditional way of binding a process/thread to a specific CPU core,
@@ -443,7 +443,7 @@ Slave Process Recovery Mechanism
 Before talking about the recovery mechanism, it is necessary to know what is needed before a new slave instance can run if a previous one exited.
 
 When a slave process exits, the system returns all the resources allocated for this process automatically.
-However, this does not include the resources that were allocated by the Intel® DPDK. All the hardware resources are shared among the processes,
+However, this does not include the resources that were allocated by the DPDK. All the hardware resources are shared among the processes,
 which include memzone, mempool, ring, a heap buffer allocated by the rte_malloc library, and so on.
 If the new instance runs and the allocated resource is not returned, either resource allocation failed or the hardware resource is lost forever.
 
@@ -486,18 +486,18 @@ The following diagram describes slave process recovery.
 Floating Process Support
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-When the Intel® DPDK application runs, there is always a -c option passed in to indicate the cores that are enabled.
-Then, the Intel® DPDK creates a thread for each enabled core.
+When the DPDK application runs, there is always a -c option passed in to indicate the cores that are enabled.
+Then, the DPDK creates a thread for each enabled core.
 By doing so, it creates a 1:1 mapping between the enabled core and each thread.
-The enabled core always has an ID, therefore, each thread has a unique core ID in the Intel® DPDK execution environment.
+The enabled core always has an ID, therefore, each thread has a unique core ID in the DPDK execution environment.
 With the ID, each thread can easily access the structures or resources exclusively belonging to it without using function parameter passing.
 It can easily use the rte_lcore_id() function to get the value in every function that is called.
 
 For threads/processes not created in that way, either pinned to a core or not, they will not own a unique ID and the
 rte_lcore_id() function will not work in the correct way.
 However, sometimes these threads/processes still need the unique ID mechanism to do easy access on structures or resources.
-For example, the Intel® DPDK mempool library provides a local cache mechanism
-(refer to *Intel® DPDK Programmer's Guide* , Section 6.4, "Local Cache")
+For example, the DPDK mempool library provides a local cache mechanism
+(refer to *DPDK Programmer's Guide* , Section 6.4, "Local Cache")
 for fast element allocation and freeing.
 If using a non-unique ID or a fake one,
 a race condition occurs if two or more threads/ processes with the same core ID try to use the local cache.
@@ -511,7 +511,7 @@ and make sure the process recovery mechanism can work with it.
 
 To avoid producing redundant code, the Master-Slave process model is still used to spawn floating processes,
 then cancel the affinity to specific cores.
-Besides that, clear the core ID assigned to the Intel® DPDK spawning a thread that has a 1:1 mapping with the core mask.
+Besides that, clear the core ID assigned to the DPDK spawning a thread that has a 1:1 mapping with the core mask.
 Thereafter, get a new core ID from the unused core ID allocation array.
 
 Run the Application

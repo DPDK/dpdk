@@ -31,13 +31,13 @@
 L3 Forwarding Sample Application
 ================================
 
-The L3 Forwarding application is a simple example of packet processing using the Intel® DPDK.
+The L3 Forwarding application is a simple example of packet processing using the DPDK.
 The application performs L3 forwarding.
 
 Overview
 --------
 
-The application demonstrates the use of the hash and LPM libraries in the Intel® DPDK to implement packet forwarding.
+The application demonstrates the use of the hash and LPM libraries in the DPDK to implement packet forwarding.
 The initialization and run-time paths are very similar to those of the L2 forwarding application
 (see Chapter 9 "L2 Forwarding Sample Application (in Real and Virtualized Environments)" for more information).
 The main difference from the L2 Forwarding sample application is that the forwarding decision
@@ -77,7 +77,7 @@ To compile the application:
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    See the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+    See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -153,7 +153,7 @@ In this command:
 |          |           |           |                                     |
 +----------+-----------+-----------+-------------------------------------+
 
-Refer to the *Intel® DPDK Getting Started Guide* for general information on running applications and
+Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
 
 Explanation

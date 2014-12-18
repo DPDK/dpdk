@@ -34,7 +34,7 @@ L3 Forwarding with Power Management Sample Application
 Introduction
 ------------
 
-The L3 Forwarding with Power Management application is an example of power-aware packet processing using the Intel® DPDK.
+The L3 Forwarding with Power Management application is an example of power-aware packet processing using the DPDK.
 The application is based on existing L3 Forwarding sample application,
 with the power management algorithms to control the P-states and
 C-states of the Intel processor via a power management library.
@@ -42,17 +42,17 @@ C-states of the Intel processor via a power management library.
 Overview
 --------
 
-The application demonstrates the use of the Power libraries in the Intel® DPDK to implement packet forwarding.
+The application demonstrates the use of the Power libraries in the DPDK to implement packet forwarding.
 The initialization and run-time paths are very similar to those of the L3 forwarding sample application
 (see Chapter 10 "L3 Forwarding Sample Application" for more information).
 The main difference from the L3 Forwarding sample application is that this application introduces power-aware optimization algorithms
 by leveraging the Power library to control P-state and C-state of processor based on packet load.
 
-The Intel® DPDK includes poll-mode drivers to configure Intel NIC devices and their receive (Rx) and transmit (Tx) queues.
+The DPDK includes poll-mode drivers to configure Intel NIC devices and their receive (Rx) and transmit (Tx) queues.
 The design principle of this PMD is to access the Rx and Tx descriptors directly without any interrupts to quickly receive,
 process and deliver packets in the user space.
 
-In general, the Intel® DPDK executes an endless packet processing loop on dedicated IA cores that include the following steps:
+In general, the DPDK executes an endless packet processing loop on dedicated IA cores that include the following steps:
 
 *   Retrieve input packets through the PMD to poll Rx queue
 
@@ -72,12 +72,12 @@ to switch between different supported operating frequencies and voltages.
 If configured correctly, according to system workload, this feature provides power savings.
 CPUFreq is the infrastructure provided by the Linux* kernel to control the processor performance state capability.
 CPUFreq supports a user space governor that enables setting frequency via manipulating the virtual file device from a user space application.
-The Power library in the Intel® DPDK provides a set of APIs for manipulating a virtual file device to allow user space application
+The Power library in the DPDK provides a set of APIs for manipulating a virtual file device to allow user space application
 to set the CPUFreq governor and set the frequency of specific cores.
 
 This application includes a P-state power management algorithm to generate a frequency hint to be sent to CPUFreq.
 The algorithm uses the number of received and available Rx packets on recent polls to make a heuristic decision to scale frequency up/down.
-Specifically, some thresholds are checked to see whether a specific core running an Intel® DPDK polling thread needs to increase frequency
+Specifically, some thresholds are checked to see whether a specific core running an DPDK polling thread needs to increase frequency
 a step up based on the near to full trend of polled Rx queues.
 Also, it decreases frequency a step if packet processed per loop is far less than the expected threshold
 or the thread's sleeping time exceeds a threshold.
@@ -119,7 +119,7 @@ To compile the application:
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    See the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+    See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -226,7 +226,7 @@ responsible for checking if it needs to scale down frequency at run time by chec
 Monitoring Loads of Rx Queues
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In general, the polling nature of the Intel® DPDK prevents the OS power management subsystem from knowing
+In general, the polling nature of the DPDK prevents the OS power management subsystem from knowing
 if the network load is actually heavy or light.
 In this sample, sampling network load work is done by monitoring received and
 available descriptors on NIC Rx queues in recent polls.

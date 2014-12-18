@@ -31,10 +31,10 @@
 Exception Path Sample Application
 =================================
 
-The Exception Path sample application is a simple example that demonstrates the use of the Intel® DPDK
+The Exception Path sample application is a simple example that demonstrates the use of the DPDK
 to set up an exception path for packets to go through the Linux* kernel.
 This is done by using virtual TAP network interfaces.
-These can be read from and written to by the Intel® DPDK application and
+These can be read from and written to by the DPDK application and
 appear to the kernel as a standard network interface.
 
 Overview
@@ -74,7 +74,7 @@ Compiling the Application
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
 This application is intended as a linuxapp only.
-See the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -99,7 +99,7 @@ where:
 
 *   -o OUT_CORES: A hex bitmask of cores which write to NIC
 
-Refer to the *Intel® DPDK Getting Started Guide* for general information on running applications
+Refer to the *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.
 
 The number of bits set in each bitmask must be the same.

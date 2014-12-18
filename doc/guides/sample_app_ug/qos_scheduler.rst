@@ -31,7 +31,7 @@
 QoS Scheduler Sample Application
 ================================
 
-The QoS sample application demonstrates the use of the Intel® DPDK to provide QoS scheduling.
+The QoS sample application demonstrates the use of the DPDK to provide QoS scheduling.
 
 Overview
 --------
@@ -159,7 +159,7 @@ Optional application parameters include:
 
 *   --cfg FILE: Profile configuration to load
 
-Refer to *Intel®DPDK Getting Started Guide* for general information on running applications and
+Refer to *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
 
 The profile configuration file defines all the port/subport/pipe/traffic class/queue parameters
@@ -346,6 +346,6 @@ This application classifies based on the QinQ double VLAN tags and the IP destin
 |                |                         |                                                  |                                  |
 +----------------+-------------------------+--------------------------------------------------+----------------------------------+
 
-Please refer to the "QoS Scheduler" chapter in the *Intel® DPDK Programmer's Guide* for more information about these parameters.
+Please refer to the "QoS Scheduler" chapter in the *DPDK Programmer's Guide* for more information about these parameters.
 
 .. |qos_sched_app_arch| image:: img/qos_sched_app_arch.png

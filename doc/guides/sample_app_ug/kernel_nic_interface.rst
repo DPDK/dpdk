@@ -31,32 +31,32 @@
 Kernel NIC Interface Sample Application
 =======================================
 
-The Kernel NIC Interface (KNI) is an Intel® DPDK control plane solution that
+The Kernel NIC Interface (KNI) is a DPDK control plane solution that
 allows userspace applications to exchange packets with the kernel networking stack.
-To accomplish this, Intel® DPDK userspace applications use an IOCTL call
+To accomplish this, DPDK userspace applications use an IOCTL call
 to request the creation of a KNI virtual device in the Linux* kernel.
-The IOCTL call provides interface information and the Intel® DPDK's physical address space,
+The IOCTL call provides interface information and the DPDK's physical address space,
 which is re-mapped into the kernel address space by the KNI kernel loadable module
 that saves the information to a virtual device context.
-The Intel® DPDK creates FIFO queues for packet ingress and egress
+The DPDK creates FIFO queues for packet ingress and egress
 to the kernel module for each device allocated.
 
 The KNI kernel loadable module is a standard net driver,
-which upon receiving the IOCTL call access the Intel® DPDK's FIFO queue to
-receive/transmit packets from/to the Intel® DPDK userspace application.
-The FIFO queues contain pointers to data packets in the Intel® DPDK. This:
+which upon receiving the IOCTL call access the DPDK's FIFO queue to
+receive/transmit packets from/to the DPDK userspace application.
+The FIFO queues contain pointers to data packets in the DPDK. This:
 
 *   Provides a faster mechanism to interface with the kernel net stack and eliminates system calls
 
-*   Facilitates the Intel® DPDK using standard Linux* userspace net tools (tcpdump, ftp, and so on)
+*   Facilitates the DPDK using standard Linux* userspace net tools (tcpdump, ftp, and so on)
 
 *   Eliminate the copy_to_user and copy_from_user operations on packets.
 
 The Kernel NIC Interface sample application is a simple example that demonstrates the use
-of the Intel® DPDK to create a path for packets to go through the Linux* kernel.
-This is done by creating one or more kernel net devices for each of the Intel® DPDK ports.
-The application allows the use of standard Linux tools (ethtool, ifconfig, tcpdump) with the Intel® DPDK ports and
-also the exchange of packets between the Intel® DPDK application and the Linux* kernel.
+of the DPDK to create a path for packets to go through the Linux* kernel.
+This is done by creating one or more kernel net devices for each of the DPDK ports.
+The application allows the use of standard Linux tools (ethtool, ifconfig, tcpdump) with the DPDK ports and
+also the exchange of packets between the DPDK application and the Linux* kernel.
 
 Overview
 --------
@@ -110,7 +110,7 @@ Compile the application as follows:
 Loading the Kernel Module
 -------------------------
 
-Loading the KNI kernel module without any parameter is the typical way an Intel® DPDK application
+Loading the KNI kernel module without any parameter is the typical way a DPDK application
 gets packets into and out of the kernel net stack.
 This way, only one kernel thread is created for all KNI devices for packet receiving in kernel side:
 
@@ -132,7 +132,7 @@ For optimum performance,
 the lcore in the mask must be selected to be on the same socket as the lcores used in the KNI application.
 
 To provide flexibility of performance, the kernel module of the KNI,
-located in the kmod sub-directory of the Intel® DPDK target directory,
+located in the kmod sub-directory of the DPDK target directory,
 can be loaded with parameter of kthread_mode as follows:
 
 *   #insmod rte_kni.ko kthread_mode=single
@@ -149,7 +149,7 @@ can be loaded with parameter of kthread_mode as follows:
     Multiple kernel thread mode can provide scalable higher performance.
 
 To measure the throughput in a loopback mode, the kernel module of the KNI,
-located in the kmod sub-directory of the Intel® DPDK target directory,
+located in the kmod sub-directory of the DPDK target directory,
 can be loaded with parameters as follows:
 
 *   #insmod rte_kni.ko lo_mode=lo_mode_fifo
@@ -179,7 +179,7 @@ Where:
 *   --config="(port,lcore_rx, lcore_tx[,lcore_kthread, ...]) [, port,lcore_rx, lcore_tx[,lcore_kthread, ...]]":
     Determines which lcores of RX, TX, kernel thread are mapped to which ports.
 
-Refer to *Intel® DPDK Getting Started Guide* for general information on running applications and the Environment Abstraction Layer (EAL) options.
+Refer to *DPDK Getting Started Guide* for general information on running applications and the Environment Abstraction Layer (EAL) options.
 
 The -c coremask parameter of the EAL options should include the lcores indicated by the lcore_rx and lcore_tx,
 but does not need to include lcores indicated by lcore_kthread as they are used to pin the kernel thread on.
@@ -228,7 +228,7 @@ Dumping the network traffic:
 
     #tcpdump -i vEth0_0
 
-When the Intel® DPDK userspace application is closed, all the KNI devices are deleted from Linux*.
+When the DPDK userspace application is closed, all the KNI devices are deleted from Linux*.
 
 Explanation
 -----------

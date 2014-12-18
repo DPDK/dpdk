@@ -32,15 +32,15 @@ Command Line Sample Application
 ===============================
 
 This chapter describes the Command Line sample application that
-is part of the Intel® Data Plane Development Kit (Intel® DPDK).
+is part of the Data Plane Development Kit (DPDK).
 
 Overview
 --------
 
 The Command Line sample application is a simple application that
-demonstrates the use of the command line interface in the Intel® DPDK.
+demonstrates the use of the command line interface in the DPDK.
 This application is a readline-like interface that can be used
-to debug an Intel® DPDK application, in a Linux* application environment.
+to debug a DPDK application, in a Linux* application environment.
 
 .. note::
 
@@ -81,7 +81,7 @@ Compiling the Application
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    Refer to the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+    Refer to the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -98,7 +98,7 @@ To run the application in linuxapp environment, issue the following command:
 
     $ ./build/cmdline -c f -n 4
 
-Refer to the *Intel® DPDK Getting Started Guide* for general information on running applications
+Refer to the *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.
 
 Explanation

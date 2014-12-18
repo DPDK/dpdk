@@ -36,12 +36,12 @@ Introduction
 ------------
 
 The Netmap compatibility library provides a minimal set of APIs to give the ability to programs written against the Netmap APIs
-to be run with minimal changes to their source code,  using the Intel® DPDK to perform the actual packet I/O.
+to be run with minimal changes to their source code,  using the DPDK to perform the actual packet I/O.
 
 Since Netmap applications use regular system calls, like open(), ioctl() and
 mmap() to communicate with the Netmap kernel module performing the packet I/O,
 the compat_netmap library provides a set of similar APIs to use in place of those system calls,
-effectively turning a Netmap application into a Intel® DPDK one.
+effectively turning a Netmap application into a DPDK one.
 
 The provided library is currently minimal and doesn't support all the features that Netmap supports,
 but is enough to run simple applications, such as the bridge example detailed below.
@@ -67,7 +67,7 @@ They use the same signature as their libc counterparts, and can be used as drop-
 Caveats
 -------
 
-Given the difference between the way Netmap and the Intel® DPDK approach packet I/O,
+Given the difference between the way Netmap and the DPDK approach packet I/O,
 there are caveats and limitations to be aware of when trying to use the compat_netmap library, the most important of which are listed below.
 Additional caveats are presented in the $RTE_SDK/examples/netmap_compat/README.md file.
 These can change as the library is updated:
@@ -76,15 +76,15 @@ These can change as the library is updated:
 
 Note that:
 
-*   rte_netmap_mmap() merely returns the address of a Intel® DPDK memzone.
+*   rte_netmap_mmap() merely returns the address of a DPDK memzone.
     The address, length, flags, offset, and so on arguments are therefore ignored completely.
 
 *   rte_netmap_poll() only supports infinite (negative) or zero time outs.
-    It effectively turns calls to the poll() system call made in a Netmap application into polling of the Intel® DPDK ports,
+    It effectively turns calls to the poll() system call made in a Netmap application into polling of the DPDK ports,
     changing the semantics of the usual POSIX defined poll.
 
 *   Not all of Netmap's features are supported: "host rings",
-    slot flags and so on are not supported or are simply not relevant in the Intel® DPDK model.
+    slot flags and so on are not supported or are simply not relevant in the DPDK model.
 
 *   The Netmap manual page states that "a device obtained through /dev/netmap also supports the ioctl supported by network devices".
     It is not the case with this compatibility layer.
@@ -99,15 +99,15 @@ Porting Netmap applications typically involves two major steps:
 
 *   Changing the system calls to use their compat_netmap library counterparts
 
-*   Adding further Intel® DPDK initialization code
+*   Adding further DPDK initialization code
 
 Since the compat_netmap functions have the same signature as the usual libc calls, the change is in most cases trivial.
 
-The usual Intel® DPDK initialization code involving rte_eal_init() and rte_eal_pci_probe()
-has to be added to the Netmap application in the same way it is used in all other Intel® DPDK sample applications.
-Please refer to the *Intel® DPDK Programmer's Guide* - Rel 1.4 EAR and example source code for details about initialization.
+The usual DPDK initialization code involving rte_eal_init() and rte_eal_pci_probe()
+has to be added to the Netmap application in the same way it is used in all other DPDK sample applications.
+Please refer to the *DPDK Programmer's Guide* - Rel 1.4 EAR and example source code for details about initialization.
 
-In addition of the regular Intel® DPDK initialization code,
+In addition of the regular DPDK initialization code,
 the ported application needs to call initialization functions for the compat_netmap library,
 namely rte_netmap_init() and rte_netmap_init_port().
 
@@ -117,7 +117,7 @@ Those structures' fields are Netmap related and are self-explanatory for develop
 They are definedin $RTE_SDK/examples/netmap_compat/ lib/compat_netmap.h.
 
 The bridge application is an example largely based on the bridge example shipped with the Netmap distribution.
-It shows how a minimal Netmap application with minimal and straightforward source code changes can be run on top of the Intel® DPDK.
+It shows how a minimal Netmap application with minimal and straightforward source code changes can be run on top of the DPDK.
 Please refer to $RTE_SDK/examples/netmap_compat/bridge/bridge.c for an example of ported application.
 
 Compiling the "bridge" Sample Application
@@ -136,7 +136,7 @@ Compiling the "bridge" Sample Application
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    See the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+    See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -155,7 +155,7 @@ The application requires a single command line option:
 
 where,
 
-*   -p INTERFACE is the number of a valid Intel® DPDK port to use.
+*   -p INTERFACE is the number of a valid DPDK port to use.
 
     If a single -p parameter is given, the interface will send back all the traffic it receives.
     If two -p parameters are given, the two interfaces form a bridge,
@@ -167,7 +167,7 @@ To run the application in a linuxapp environment using port 0 and 2, issue the f
 
     ./build/packet_ordering [EAL options] -- -p 0 -p 2
 
-Refer to the *Intel® DPDK Getting Started Guide* for general information on running applications and
+Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
 
 Note that unlike a traditional bridge or the l2fwd sample application, no MAC address changes are done on the frames.

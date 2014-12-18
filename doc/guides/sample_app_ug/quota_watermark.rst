@@ -31,7 +31,7 @@
 Quota and Watermark Sample Application
 ======================================
 
-The Quota and Watermark sample application is a simple example of packet processing using Intel® Data Plane Development Kit (Intel® DPDK) that
+The Quota and Watermark sample application is a simple example of packet processing using Data Plane Development Kit (DPDK) that
 showcases the use of a quota as the maximum number of packets enqueue/dequeue at a time and low and high watermarks
 to signal low and high ring usage respectively.
 
@@ -105,7 +105,7 @@ Compiling the Application
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    See the *Intel® DPDK Getting Started Guide* for possible RTE_TARGET values.
+    See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
@@ -140,7 +140,7 @@ issue the following command:
 
     ./qw/build/qw -c f -n 4 -- -p 5
 
-Refer to the *Intel® DPDK Getting Started Guide* for general information on running applications and
+Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
 
 Running the Control Application
@@ -161,7 +161,7 @@ To run the application in a linuxapp environment on logical core 0, issue the fo
 
     ./qwctl/build/qwctl -c 1 -n 4 --proc-type=secondary
 
-Refer to the *Intel® DPDK Getting Started* Guide for general information on running applications and
+Refer to the *DPDK Getting Started* Guide for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
 
 qwctl is an interactive command line that let the user change variables in a running instance of qw.
@@ -213,7 +213,7 @@ Then, a call to init_dpdk(), defined in init.c, is made to initialize the poll m
     }
 
 To fully understand this code, it is recommended to study the chapters that relate to the *Poll Mode Driver*
-in the *Intel® DPDK Getting Started Guide* and the *Intel® DPDK API Reference*.
+in the *DPDK Getting Started Guide* and the *DPDK API Reference*.
 
 Shared Variables Setup
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -300,7 +300,7 @@ This ring is the first in the pipeline and will hold the packets directly coming
     pair_ports();
 
 The configure_eth_port() and init_ring() functions are used to configure a port and a ring respectively and are defined in init.c.
-They make use of the Intel® DPDK APIs defined in rte_eth.h and rte_ring.h.
+They make use of the DPDK APIs defined in rte_eth.h and rte_ring.h.
 
 pair_ports() builds the port_pairs[] array so that its key-value pairs are a mapping between reception and transmission ports.
 It is defined in init.c.

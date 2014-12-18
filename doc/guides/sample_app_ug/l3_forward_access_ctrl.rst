@@ -31,7 +31,7 @@
 L3 Forwarding with Access Control Sample Application
 ====================================================
 
-The L3 Forwarding with Access Control application is a simple example of packet processing using the Intel® DPDK.
+The L3 Forwarding with Access Control application is a simple example of packet processing using the DPDK.
 The application performs a security check on received packets.
 Packets that are in the Access Control List (ACL), which is loaded during initialization, are dropped.
 Others are forwarded to the correct port.
@@ -39,7 +39,7 @@ Others are forwarded to the correct port.
 Overview
 --------
 
-The application demonstrates the use of the ACL library in the Intel® DPDK to implement access control
+The application demonstrates the use of the ACL library in the DPDK to implement access control
 and packet L3 forwarding.
 The application loads two types of rules at initialization:
 
@@ -267,7 +267,7 @@ To compile the application:
 
         export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-    See the *Intel® DPDK IPL Getting Started Guide* for possible RTE_TARGET values.
+    See the *DPDK IPL Getting Started Guide* for possible RTE_TARGET values.
 
 #.  Build the application:
 
