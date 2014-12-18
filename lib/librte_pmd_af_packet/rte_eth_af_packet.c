@@ -603,6 +603,8 @@ rte_pmd_init_internals(const char *name,
 		rdsize = req->tp_frame_nr * sizeof(*(rx_queue->rd));
 
 		rx_queue->rd = rte_zmalloc_socket(name, rdsize, 0, numa_node);
+		if (rx_queue->rd == NULL)
+			goto error;
 		for (i = 0; i < req->tp_frame_nr; ++i) {
 			rx_queue->rd[i].iov_base = rx_queue->map + (i * framesize);
 			rx_queue->rd[i].iov_len = req->tp_frame_size;
@@ -615,6 +617,8 @@ rte_pmd_init_internals(const char *name,
 		tx_queue->map = rx_queue->map + req->tp_block_size * req->tp_block_nr;
 
 		tx_queue->rd = rte_zmalloc_socket(name, rdsize, 0, numa_node);
+		if (tx_queue->rd == NULL)
+			goto error;
 		for (i = 0; i < req->tp_frame_nr; ++i) {
 			tx_queue->rd[i].iov_base = tx_queue->map + (i * framesize);
 			tx_queue->rd[i].iov_len = req->tp_frame_size;
