@@ -43,6 +43,8 @@
 #include <linux/virtio_ring.h>
 #include <linux/virtio_net.h>
 #include <sys/eventfd.h>
+#include <sys/socket.h>
+#include <linux/if.h>
 
 #include <rte_memory.h>
 #include <rte_mempool.h>
@@ -96,6 +98,7 @@ struct virtio_net {
 	uint64_t		features;	/**< Negotiated feature set. */
 	uint64_t		device_fh;	/**< device identifier. */
 	uint32_t		flags;		/**< Device flags. Only used to check if device is running on data core. */
+	char			ifname[IFNAMSIZ];	/**< Name of the tap device. */
 	void			*priv;		/**< private context */
 } __rte_cache_aligned;
 
