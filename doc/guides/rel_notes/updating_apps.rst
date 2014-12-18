@@ -7,6 +7,19 @@ may require some code updates to benefit from performance and user experience en
 DPDK 1.7 to DPDK 1.8
 --------------------
 
+Note that in DPDK 1.8, the structure of the rte_mbuf has changed considerably from all previous versions.
+It is recommended that users familiarize themselves with the new structure defined in the file rte_mbuf.h in the release package.
+The follow are some common changes that need to be made to code using mbufs, following an update to DPDK 1.8:
+
+*   Any references to fields in the pkt or ctrl sub-structures of the mbuf, need to be replaced with references to the field
+    directly from the rte_mbuf, i.e. buf->pkt.data_len should be replace by buf->data_len.
+
+*   Any direct references to the data field of the mbuf (original buf->pkt.data) should now be replace by the macro rte_pktmbuf_mtod
+    to get a computed data address inside the mbuf buffer area.
+
+*   Any references to the in_port mbuf field should be replace by references to the port field.
+
+NOTE: The above list is not exhaustive, but only includes the most commonly required changes to code using mbufs.
 
 Intel® DPDK 1.6 to DPDK 1.7
 ---------------------------
