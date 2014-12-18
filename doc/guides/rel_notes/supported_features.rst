@@ -47,9 +47,9 @@ Supported Features
 
 *   Support for Intel 40GbE Controllers:
 
-    *   Intel(R) XL710 40 Gigabit Ethernet Controller
+    *   Intel® XL710 40 Gigabit Ethernet Controller
 
-    *   Intel(R) X710 40 Gigabit Ethernet Controller
+    *   Intel® X710 40 Gigabit Ethernet Controller
 
 *   Support NIC filters in addition to flow director for Intel� 1GbE and 10GbE Controllers
 
@@ -382,3 +382,8 @@ Supported Features
     *   Exact match flow classification in the L3 Forwarding sample application
 
     *   Support in LPM for IPv6 addresses
+
+* Tunneling packet support:
+
+    *   Provide the APIs for VXLAN destination UDP port and VXLAN packet filter configuration
+        and support VXLAN TX checksum offload on Intel® 40GbE Controllers.
