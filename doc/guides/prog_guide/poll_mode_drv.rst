@@ -115,7 +115,7 @@ to dynamically adapt its overall behavior through different global loop policies
 
 To achieve optimal performance, overall software design choices and pure software optimization techniques must be considered and
 balanced against available low-level hardware-based optimization features (CPU cache properties, bus speed, NIC PCI bandwidth, and so on).
-The case of packet transmission is an example of this software/ hardware tradeoff issue when optimizing burst-oriented network packet processing engines.
+The case of packet transmission is an example of this software/hardware tradeoff issue when optimizing burst-oriented network packet processing engines.
 In the initial case, the PMD could export only an rte_eth_tx_one function to transmit one packet at a time on a given queue.
 On top of that, one can easily build an rte_eth_tx_burst function that loops invoking the rte_eth_tx_one function to transmit several packets at a time.
 However, an rte_eth_tx_burst function is effectively implemented by the PMD to minimize the driver-level transmit cost per packet through the following optimizations:

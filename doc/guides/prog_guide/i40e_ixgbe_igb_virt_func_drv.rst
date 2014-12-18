@@ -36,7 +36,7 @@ support the following modes of operation in a virtualized environment:
 
 *   **SR-IOV mode**: Involves direct assignment of part of the port resources to different guest operating systems
     using the PCI-SIG Single Root I/O Virtualization (SR IOV) standard,
-    also known as "native mode" or"pass-through" mode.
+    also known as "native mode" or "pass-through" mode.
     In this chapter, this mode is referred to as IOV mode.
 
 *   **VMDq mode**: Involves central management of the networking resources by an IO Virtual Machine (IOVM) or
@@ -329,7 +329,7 @@ The setup procedure is as follows:
     .. code-block:: console
 
         rmmod ixgbe
-        "modprobe ixgbe max_vfs=2,2"
+        modprobe ixgbe max_vfs=2,2
 
     When using DPDK PMD PF driver, insert DPDK kernel module igb_uio and set the number of VF by sysfs max_vfs:
 
@@ -364,18 +364,16 @@ The setup procedure is as follows:
     .. code-block:: console
 
         ls -alrt /sys/bus/pci/devices/0000\:02\:00.0/virt*
-        lrwxrwxrwx. 1 root root 0 Apr 13 05:40 /sys/bus/pci/devices/0000:02:00.0/ virtfn1 -> ../0000:02:10.2
-        lrwxrwxrwx. 1 root root 0 Apr 13 05:40 /sys/bus/pci/devices/0000:02:00.0/ virtfn0 -> ../0000:02:10.0
+        lrwxrwxrwx. 1 root root 0 Apr 13 05:40 /sys/bus/pci/devices/0000:02:00.0/virtfn1 -> ../0000:02:10.2
+        lrwxrwxrwx. 1 root root 0 Apr 13 05:40 /sys/bus/pci/devices/0000:02:00.0/virtfn0 -> ../0000:02:10.0
 
     It also creates two vfs for device 0000:02:00.1:
 
     .. code-block:: console
 
         ls -alrt /sys/bus/pci/devices/0000\:02\:00.1/virt*
-        lrwxrwxrwx. 1 root root 0 Apr 13 05:51 /sys/bus/pci/devices/0000:02:00.1/
-        virtfn1 -> ../0000:02:10.3
-        lrwxrwxrwx. 1 root root 0 Apr 13 05:51 /sys/bus/pci/devices/0000:02:00.1/
-        virtfn0 -> ../0000:02:10.1
+        lrwxrwxrwx. 1 root root 0 Apr 13 05:51 /sys/bus/pci/devices/0000:02:00.1/virtfn1 -> ../0000:02:10.3
+        lrwxrwxrwx. 1 root root 0 Apr 13 05:51 /sys/bus/pci/devices/0000:02:00.1/virtfn0 -> ../0000:02:10.1
 
 #.  List the PCI devices connected and notice that the Host OS shows two Physical Functions (traditional ports)
     and four Virtual Functions (two for each port).
@@ -505,7 +503,7 @@ the DPDK VF PMD driver performs the same throughput result as a non-VT native en
 With such host instance fast packet processing, lots of services such as filtering, QoS,
 DPI can be offloaded on the host fast path.
 
-shows the scenario where some VMs directly communicate externally via a VFs,
+Figure 12 shows the scenario where some VMs directly communicate externally via a VFs,
 while others connect to a virtual switch and share the same uplink bandwidth.
 
 .. _pg_figure_12:
