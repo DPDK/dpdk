@@ -1476,6 +1476,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	if (status != 0)
 		return -1;
 	hw->mac.ops.start_hw(hw);
+	hw->mac.get_link_status = true;
 
 	/* configure PF module if SRIOV enabled */
 	ixgbe_pf_host_configure(dev);
@@ -2071,7 +2072,7 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_link link, old;
-	ixgbe_link_speed link_speed;
+	ixgbe_link_speed link_speed = IXGBE_LINK_SPEED_UNKNOWN;
 	int link_up;
 	int diag;
 
@@ -2093,6 +2094,12 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		if (link.link_status == old.link_status)
 			return -1;
 		return 0;
+	}
+
+	if (link_speed == IXGBE_LINK_SPEED_UNKNOWN &&
+	    !hw->mac.get_link_status) {
+		memcpy(&link, &old, sizeof(link));
+		return -1;
 	}
 
 	if (link_up == 0) {
@@ -2933,6 +2940,7 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	hw->mac.ops.reset_hw(hw);
+	hw->mac.get_link_status = true;
 
 	/* negotiate mailbox API version to use with the PF. */
 	ixgbevf_negotiate_api(hw);
