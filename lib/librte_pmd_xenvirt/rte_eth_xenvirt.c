@@ -586,8 +586,9 @@ rte_eth_xenvirt_parse_args(struct xenvirt_dict *dict,
 		if (!strncmp(pair[0], RTE_ETH_XENVIRT_MAC_PARAM,
 				sizeof(RTE_ETH_XENVIRT_MAC_PARAM))) {
 			if (cmdline_parse_etheraddr(NULL,
-							pair[1],
-							&dict->addr) < 0) {
+						    pair[1],
+						    &dict->addr,
+						    sizeof(dict->addr)) < 0) {
 				RTE_LOG(ERR, PMD,
 					"Invalid %s device ether address\n",
 					name);
