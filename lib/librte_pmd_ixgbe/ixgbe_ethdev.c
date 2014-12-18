@@ -749,9 +749,16 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY){
 		struct igb_tx_queue *txq;
-		/* TX queue function in primary, set by last queue initialized */
-		txq = eth_dev->data->tx_queues[eth_dev->data->nb_tx_queues-1];
-		set_tx_function(eth_dev, txq);
+		/* TX queue function in primary, set by last queue initialized
+		 * Tx queue may not initialized by primary process */
+		if (eth_dev->data->tx_queues) {
+			txq = eth_dev->data->tx_queues[eth_dev->data->nb_tx_queues-1];
+			set_tx_function(eth_dev, txq);
+		} else {
+			/* Use default TX function if we get here */
+			PMD_INIT_LOG(INFO, "No TX queues configured yet. "
+			                   "Using default TX function.");
+		}
 
 		if (eth_dev->data->scattered_rx)
 			eth_dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
