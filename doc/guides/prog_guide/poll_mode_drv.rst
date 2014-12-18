@@ -199,6 +199,7 @@ Other features such as the L3/L4 5-Tuple packet filtering feature of a port can 
 Ethernet* flow control (pause frame) can be configured on the individual port.
 Refer to the testpmd source code for details.
 Also, L4 (UDP/TCP/ SCTP) checksum offload by the NIC can be enabled for an individual packet as long as the packet mbuf is set up correctly.
+In terms of UDP tunneling packet, the PKT_TX_UDP_TUNNEL_PKT flag must be set to enable tunneling packet TX checksum offload for both outer layer and inner layer.
 Refer to the testpmd source code (specifically the csumonly.c file) for details.
 
 That being said, the support of some offload features implies the addition of dedicated status bit(s) and value field(s) into the rte_mbuf
