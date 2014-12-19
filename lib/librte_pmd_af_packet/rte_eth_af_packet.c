@@ -481,6 +481,11 @@ rte_pmd_init_internals(const char *name,
 	if (*internals == NULL)
 		goto error;
 
+	for (q = 0; q < nb_queues; q++) {
+		(*internals)->rx_queue[q].map = MAP_FAILED;
+		(*internals)->tx_queue[q].map = MAP_FAILED;
+	}
+
 	req = &((*internals)->req);
 
 	req->tp_block_size = blocksize;
@@ -682,6 +687,8 @@ error:
 		rte_free(pci_dev);
 	if (*internals) {
 		for (q = 0; q < nb_queues; q++) {
+			munmap((*internals)->rx_queue[q].map,
+			       2 * req->tp_block_size * req->tp_block_nr);
 			if ((*internals)->rx_queue[q].rd)
 				rte_free((*internals)->rx_queue[q].rd);
 			if ((*internals)->tx_queue[q].rd)
