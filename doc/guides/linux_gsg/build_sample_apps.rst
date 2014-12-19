@@ -31,7 +31,7 @@
 Compiling and Running Sample Applications
 =========================================
 
-The chapter describes how to compile and run applications in an Intel® DPDK environment.
+The chapter describes how to compile and run applications in an DPDK environment.
 It also provides a pointer to where sample applications are stored.
 
 .. note::
@@ -41,20 +41,20 @@ It also provides a pointer to where sample applications are stored.
 Compiling a Sample Application
 ------------------------------
 
-Once an Intel® DPDK target environment directory has been created (such as x86_64-native-linuxapp-gcc),
+Once an DPDK target environment directory has been created (such as x86_64-native-linuxapp-gcc),
 it contains all libraries and header files required to build an application.
 
-When compiling an application in the Linux* environment on the Intel® DPDK, the following variables must be exported:
+When compiling an application in the Linux* environment on the DPDK, the following variables must be exported:
 
-* RTE_SDK - Points to the Intel® DPDK installation directory.
+* RTE_SDK - Points to the DPDK installation directory.
 
-* RTE_TARGET - Points to the Intel® DPDK target environment directory.
+* RTE_TARGET - Points to the DPDK target environment directory.
 
-The following is an example of creating the helloworld application, which runs in the Intel® DPDK Linux environment.
+The following is an example of creating the helloworld application, which runs in the DPDK Linux environment.
 This example may be found in the ${RTE_SDK}/examples directory.
 
-The directory contains the main.c file. This file, when combined with the libraries in the Intel® DPDK target environment,
-calls the various functions to initialize the Intel® DPDK environment,
+The directory contains the main.c file. This file, when combined with the libraries in the DPDK target environment,
+calls the various functions to initialize the DPDK environment,
 then launches an entry point (dispatch application) for each core to be utilized.
 By default, the binary is generated in the build directory.
 
@@ -74,8 +74,8 @@ By default, the binary is generated in the build directory.
 
 .. note::
 
-    In the above example, helloworld was in the directory structure of the Intel® DPDK.
-    However, it could have been located outside the directory structure to keep the Intel® DPDK structure intact.
+    In the above example, helloworld was in the directory structure of the DPDK.
+    However, it could have been located outside the directory structure to keep the DPDK structure intact.
     In the following case, the helloworld application is copied to a new directory as a new starting point.
 
     .. code-block:: console
@@ -101,8 +101,8 @@ Running a Sample Application
 
     Any ports to be used by the application must be already bound to the igb_uio module, as described in Section 3.5, prior to running the application.
 
-The application is linked with the Intel® DPDK target environment's Environmental Abstraction Layer (EAL) library,
-which provides some options that are generic to every Intel® DPDK application.
+The application is linked with the DPDK target environment's Environmental Abstraction Layer (EAL) library,
+which provides some options that are generic to every DPDK application.
 
 The following is the list of options that can be given to the EAL:
 
@@ -144,7 +144,7 @@ The EAL options are as follows:
 
 The -c and the -n options are mandatory; the others are optional.
 
-Copy the Intel® DPDK application binary to your target, then run the application as follows
+Copy the DPDK application binary to your target, then run the application as follows
 (assuming the platform has four memory channels per processor socket,
 and that cores 0-3 are present and are to be used for running the application):
 
@@ -154,19 +154,19 @@ and that cores 0-3 are present and are to be used for running the application):
 
 .. note::
 
-    The --proc-type and  --file-prefix EAL options are used for running multiple Intel® DPDK processes.
-    See the “Multi-process Sample Application” chapter in the *Intel® DPDK Sample Applications User Guide* and
-    the *Intel® DPDK Programmers Guide* for more details.
+    The --proc-type and  --file-prefix EAL options are used for running multiple DPDK processes.
+    See the “Multi-process Sample Application” chapter in the *DPDK Sample Applications User Guide* and
+    the *DPDK Programmers Guide* for more details.
 
 Logical Core Use by Applications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The coremask parameter is always mandatory for Intel® DPDK applications.
+The coremask parameter is always mandatory for DPDK applications.
 Each bit of the mask corresponds to the equivalent logical core number as reported by Linux.
 Since these logical core numbers, and their mapping to specific cores on specific NUMA sockets, can vary from platform to platform,
 it is recommended that the core layout for each platform be considered when choosing the coremask to use in each case.
 
-On initialization of the EAL layer by an Intel® DPDK application, the logical cores to be used and their socket location are displayed.
+On initialization of the EAL layer by an DPDK application, the logical cores to be used and their socket location are displayed.
 This information can also be determined for all cores on the system by examining the /proc/cpuinfo file, for example, by running cat /proc/cpuinfo.
 The physical id attribute listed for each processor indicates the CPU socket to which it belongs.
 This can be useful when using other processors to understand the mapping of the logical cores to the sockets.
@@ -189,7 +189,7 @@ Hugepage Memory Use by Applications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When running an application, it is recommended to use the same amount of memory as that allocated for hugepages.
-This is done automatically by the Intel® DPDK application at startup,
+This is done automatically by the DPDK application at startup,
 if no -m or --socket-mem parameter is passed to it when run.
 
 If more memory is requested by explicitly passing a -m or --socket-mem value, the application fails.
@@ -202,7 +202,7 @@ If the user requests 128 MB of memory, the 64 pages may not match the constraint
     In this case, if the application attempts to create an object, such as a ring or memory pool in socket 0, it fails.
     To avoid this issue, it is recommended that the -- socket-mem option be used instead of the -m option.
 
-*   These pages can be located anywhere in physical memory, and, although the Intel® DPDK EAL will attempt to allocate memory in contiguous blocks,
+*   These pages can be located anywhere in physical memory, and, although the DPDK EAL will attempt to allocate memory in contiguous blocks,
     it is possible that the pages will not be contiguous. In this case, the application is not able to allocate big memory pools.
 
 The socket-mem option can be used to request specific amounts of memory for specific sockets.
@@ -210,14 +210,14 @@ This is accomplished by supplying the --socket-mem flag followed by amounts of m
 for example, supply --socket-mem=0,512 to try and reserve 512 MB for socket 1 only.
 Similarly, on a four socket system, to allocate 1 GB memory on each of sockets 0 and 2 only, the parameter --socket-mem=1024,0,1024 can be used.
 No memory will be reserved on any CPU socket that is not explicitly referenced, for example, socket 3 in this case.
-If the Intel® DPDK cannot allocate enough memory on each socket, the EAL initialization fails.
+If the DPDK cannot allocate enough memory on each socket, the EAL initialization fails.
 
 Additional Sample Applications
 ------------------------------
 
 Additional sample applications are included in the ${RTE_SDK}/examples directory.
 These sample applications may be built and run in a manner similar to that described in earlier sections in this manual.
-In addition, see the *Intel® DPDK Sample Applications User Guide* for a description of the application,
+In addition, see the *DPDK Sample Applications User Guide* for a description of the application,
 specific instructions on compilation and execution and some explanation of the code.
 
 Additional Test Applications
@@ -227,7 +227,7 @@ In addition, there are two other applications that are built when the libraries 
 The source files for these are in the DPDK/app directory and are called test and testpmd.
 Once the libraries are created, they can be found in the build/app directory.
 
-*   The test application provides a variety of specific tests for the various functions in the Intel® DPDK.
+*   The test application provides a variety of specific tests for the various functions in the DPDK.
 
 *   The testpmd application provides a number of different packet throughput tests and
     examples of features such as how to use the Flow Director found in the Intel® 82599 10 Gigabit Ethernet Controller.

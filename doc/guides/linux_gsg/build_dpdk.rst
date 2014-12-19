@@ -28,17 +28,17 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Compiling the Intel® DPDK Target from Source
-============================================
+Compiling the DPDK Target from Source
+=====================================
 
 .. note::
 
     Parts of this process can also be done using the setup script described in Chapter 6 of this document.
 
-Install the Intel® DPDK and Browse Sources
-------------------------------------------
+Install the DPDK and Browse Sources
+-----------------------------------
 
-First, uncompress the archive and move to the uncompressed Intel® DPDK source directory:
+First, uncompress the archive and move to the uncompressed DPDK source directory:
 
 .. code-block:: console
 
@@ -47,20 +47,20 @@ First, uncompress the archive and move to the uncompressed Intel® DPDK source d
    user@host:~/DPDK-<version>$ ls
    app/   config/   examples/   lib/   LICENSE.GPL   LICENSE.LGPL   Makefile   mk/   scripts/   tools/
 
-The Intel® DPDK is composed of several directories:
+The DPDK is composed of several directories:
 
-*   lib: Source code of Intel® DPDK libraries
+*   lib: Source code of DPDK libraries
 
-*   app: Source code of Intel® DPDK applications (automatic tests)
+*   app: Source code of DPDK applications (automatic tests)
 
-*   examples: Source code of Intel® DPDK application examples
+*   examples: Source code of DPDK application examples
 
 *   config, tools, scripts, mk: Framework-related makefiles, scripts and configuration
 
-Installation of Intel® DPDK Target Environments
------------------------------------------------
+Installation of DPDK Target Environments
+----------------------------------------
 
-The format of a Intel® DPDK target is:
+The format of a DPDK target is:
 
     ARCH-MACHINE-EXECENV-TOOLCHAIN
 
@@ -83,7 +83,7 @@ The defconfig\_ prefix should not be used.
     Configuration files are provided with the RTE_MACHINE optimization level set.
     Within the configuration files, the RTE_MACHINE configuration value is set to native,
     which means that the compiled software is tuned for the platform on which it is built.
-    For more information on this setting, and its possible values, see the *Intel® DPDK Programmers Guide*.
+    For more information on this setting, and its possible values, see the *DPDK Programmers Guide*.
 
 When using the Intel® C++ Compiler (icc), one of the following commands should be invoked for 64-bit or 32-bit use respectively.
 Notice that the shell scripts update the $PATH variable and therefore should not be performed in the same session.
@@ -94,7 +94,7 @@ Also, verify the compiler's installation directory since the path may be differe
     source /opt/intel/bin/iccvars.sh intel64
     source /opt/intel/bin/iccvars.sh ia32
 
-To install and make targets, use the make install T=<target> command in the top-level Intel® DPDK directory.
+To install and make targets, use the make install T=<target> command in the top-level DPDK directory.
 
 For example, to compile a 64-bit target using icc, run:
 
@@ -134,11 +134,11 @@ use the make config T=<target> command:
 .. warning::
 
     The igb_uio module must be compiled with the same kernel as the one running on the target.
-    If the Intel® DPDK is not being built on the target machine,
+    If the DPDK is not being built on the target machine,
     the RTE_KERNELDIR environment variable should be used to point the compilation at a copy of the kernel version to be used on the target machine.
 
 Once the target environment is created, the user may move to the target environment directory and continue to make code changes and re-compile.
-The user may also make modifications to the compile-time Intel® DPDK configuration by editing the .config file in the build directory.
+The user may also make modifications to the compile-time DPDK configuration by editing the .config file in the build directory.
 (This is a build-local copy of the defconfig file from the top- level config directory).
 
 .. code-block:: console
@@ -149,10 +149,10 @@ The user may also make modifications to the compile-time Intel® DPDK configurat
 
 In addition, the make clean command can be used to remove any existing compiled files for a subsequent full, clean rebuild of the code.
 
-Browsing the Installed Intel® DPDK Environment Target
------------------------------------------------------
+Browsing the Installed DPDK Environment Target
+----------------------------------------------
 
-Once a target is created it contains all libraries and header files for the Intel® DPDK environment that are required to build customer applications.
+Once a target is created it contains all libraries and header files for the DPDK environment that are required to build customer applications.
 In addition, the test and testpmd applications are built under the build/app directory, which may be used for testing.
 In the case of Linux, a kmod  directory is also present that contains a module to install:
 
@@ -161,12 +161,12 @@ In the case of Linux, a kmod  directory is also present that contains a module t
     $ ls x86_64-native-linuxapp-gcc
     app build hostapp include kmod lib Makefile
 
-Loading the Intel® DPDK igb_uio Module
---------------------------------------
+Loading the DPDK igb_uio Module
+-------------------------------
 
-To run any Intel® DPDK application, the igb_uio module can be loaded into the running kernel.
-The module is found in the kmod sub-directory of the Intel® DPDK target directory.
-This module should be loaded using the insmod command as shown below (assuming that the current directory is the Intel® DPDK target directory).
+To run any DPDK application, the igb_uio module can be loaded into the running kernel.
+The module is found in the kmod sub-directory of the DPDK target directory.
+This module should be loaded using the insmod command as shown below (assuming that the current directory is the DPDK target directory).
 In many cases, the uio support in the Linux* kernel is compiled as a module rather than as part of the kernel,
 so it is often necessary to load the uio module first:
 
@@ -175,12 +175,12 @@ so it is often necessary to load the uio module first:
     sudo modprobe uio
     sudo insmod kmod/igb_uio.ko
 
-Since Intel® DPDK release 1.7 provides VFIO support, compilation and use of igb_uio module has become optional for platforms that support using VFIO.
+Since DPDK release 1.7 provides VFIO support, compilation and use of igb_uio module has become optional for platforms that support using VFIO.
 
 Loading VFIO Module
 -------------------
 
-To run an Intel® DPDK application and make use of VFIO, the vfio-pci module must be loaded:
+To run an DPDK application and make use of VFIO, the vfio-pci module must be loaded:
 
 .. code-block:: console
 
@@ -192,22 +192,22 @@ however please consult your distributions documentation to make sure that is the
 
 Also, to use VFIO, both kernel and BIOS must support and be configured to use IO virtualization (such as Intel® VT-d).
 
-For proper operation of VFIO when running Intel® DPDK applications as a non-privileged user, correct permissions should also be set up.
-This can be done by using the Intel® DPDK setup script (called setup.sh and located in the tools directory).
+For proper operation of VFIO when running DPDK applications as a non-privileged user, correct permissions should also be set up.
+This can be done by using the DPDK setup script (called setup.sh and located in the tools directory).
 
 Binding and Unbinding Network Ports to/from the igb_uioor VFIO Modules
 ----------------------------------------------------------------------
 
-As of release 1.4, Intel® DPDK applications no longer automatically unbind all supported network ports from the kernel driver in use.
-Instead, all ports that are to be used by an Intel® DPDK application must be bound to the igb_uio or vfio-pci module before the application is run.
-Any network ports under Linux* control will be ignored by the Intel® DPDK poll-mode drivers and cannot be used by the application.
+As of release 1.4, DPDK applications no longer automatically unbind all supported network ports from the kernel driver in use.
+Instead, all ports that are to be used by an DPDK application must be bound to the igb_uio or vfio-pci module before the application is run.
+Any network ports under Linux* control will be ignored by the DPDK poll-mode drivers and cannot be used by the application.
 
 .. warning::
 
-    The Intel® DPDK will, by default, no longer automatically unbind network ports from the kernel driver at startup.
-    Any ports to be used by an Intel® DPDK application must be unbound from Linux* control and bound to the igb_uio or vfio-pci module before the application is run.
+    The DPDK will, by default, no longer automatically unbind network ports from the kernel driver at startup.
+    Any ports to be used by an DPDK application must be unbound from Linux* control and bound to the igb_uio or vfio-pci module before the application is run.
 
-To bind ports to the igb_uio or vfio-pci module for Intel® DPDK use, and then subsequently return ports to Linux* control,
+To bind ports to the igb_uio or vfio-pci module for DPDK use, and then subsequently return ports to Linux* control,
 a utility script called dpdk_nic _bind.py is provided in the tools subdirectory.
 This utility can be used to provide a view of the current state of the network ports on the system,
 and to bind and unbind those ports from the different kernel modules, including igb_uio and vfio-pci.

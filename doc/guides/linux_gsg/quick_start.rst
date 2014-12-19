@@ -33,17 +33,17 @@ Quick Start Setup Script
 
 The setup.sh script, found in the tools subdirectory, allows the user to perform the following tasks:
 
-*   Build the Intel® DPDK libraries
+*   Build the DPDK libraries
 
-*   Insert and remove the Intel® DPDK IGB_UIO kernel module
+*   Insert and remove the DPDK IGB_UIO kernel module
 
 *   Insert and remove VFIO kernel modules
 
-*   Insert and remove the Intel® DPDK KNI kernel module
+*   Insert and remove the DPDK KNI kernel module
 
 *   Create and delete hugepages for NUMA and non-NUMA cases
 
-*   View network port status and reserve ports for Intel® DPDK application use
+*   View network port status and reserve ports for DPDK application use
 
 *   Set up permissions for using VFIO as a non-privileged user
 
@@ -53,10 +53,10 @@ The setup.sh script, found in the tools subdirectory, allows the user to perform
 
 *   List hugepages in /mnt/huge
 
-*   Remove built Intel® DPDK libraries
+*   Remove built DPDK libraries
 
 Once these steps have been completed for one of the EAL targets,
-the user may compile their own application that links in the EAL libraries to create the Intel® DPDK image.
+the user may compile their own application that links in the EAL libraries to create the DPDK image.
 
 Script Organization
 -------------------
@@ -67,22 +67,22 @@ The following is a brief synopsis of each step.
 
 **Step 1: Build DPDK Libraries**
 
-Initially, the user must select an Intel® DPDK target to choose the correct target type and compiler options to use when building the libraries.
+Initially, the user must select a DPDK target to choose the correct target type and compiler options to use when building the libraries.
 
 The user must have all libraries, modules, updates and compilers installed in the system prior to this,
 as described in the earlier chapters in this Getting Started Guide.
 
 **Step 2: Setup Environment**
 
-The user configures the Linux* environment to support the running of Intel® DPDK applications.
+The user configures the Linux* environment to support the running of DPDK applications.
 Hugepages can be set up for NUMA or non-NUMA systems. Any existing hugepages will be removed.
-The Intel® DPDK kernel module that is needed can also be inserted in this step,
-and network ports may be bound to this module for Intel® DPDK application use.
+The DPDK kernel module that is needed can also be inserted in this step,
+and network ports may be bound to this module for DPDK application use.
 
 **Step 3: Run an Application**
 
 The user may run the test application once the other steps have been performed.
-The test application allows the user to run a series of functional tests for the Intel® DPDK.
+The test application allows the user to run a series of functional tests for the DPDK.
 The testpmd application, which supports the receiving and sending of packets, can also be run.
 
 **Step 4: Examining the System**
@@ -196,7 +196,7 @@ Some options in the script prompt the user for further data before proceeding.
 
 Option:
 
-The following selection demonstrates the creation of the x86_64-native-linuxapp-gcc Intel® DPDK library.
+The following selection demonstrates the creation of the x86_64-native-linuxapp-gcc DPDK library.
 
 .. code-block:: console
 
@@ -212,7 +212,7 @@ The following selection demonstrates the creation of the x86_64-native-linuxapp-
     Build complete
     RTE_TARGET exported as x86_64-native -linuxapp-gcc
 
-The following selection demonstrates the starting of the Intel® DPDK UIO driver.
+The following selection demonstrates the starting of the DPDK UIO driver.
 
 .. code-block:: console
 
@@ -266,7 +266,7 @@ Applications
 Once the user has run the setup.sh script, built one of the EAL targets and set up hugepages (if using one of the Linux EAL targets),
 the user can then move on to building and running their application or one of the examples provided.
 
-The examples in the /examples directory provide a good starting point to gain an understanding of the operation of the Intel® DPDK.
+The examples in the /examples directory provide a good starting point to gain an understanding of the operation of the DPDK.
 The following command sequence shows how the helloworld sample application is built and run.
 As recommended in Section 4.2.1 , “Logical Core Use by Applications ” on page 14,
 the logical core layout of the platform should be determined when selecting a core mask to use for an application.

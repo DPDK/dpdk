@@ -58,7 +58,7 @@ If no entries are returned, HPET must be enabled in the BIOS (as per the instruc
 Linux Kernel Support
 ~~~~~~~~~~~~~~~~~~~~
 
-The Intel® DPDK makes use of the platform HPET timer by mapping the timer counter into the process address space, and as such,
+The DPDK makes use of the platform HPET timer by mapping the timer counter into the process address space, and as such,
 requires that the HPET_MMAP kernel configuration option be enabled.
 
 .. warning::
@@ -66,10 +66,10 @@ requires that the HPET_MMAP kernel configuration option be enabled.
     On Fedora*, and other common distributions such as Ubuntu*, the HPET_MMAP kernel option is not enabled by default.
     To recompile the Linux kernel with this option enabled, please consult the distributions documentation for the relevant instructions.
 
-Enabling HPET in the Intel® DPDK
+Enabling HPET in the DPDK
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default, HPET support is disabled in the Intel® DPDK build configuration files.
+By default, HPET support is disabled in the DPDK build configuration files.
 To use HPET, the CONFIG_RTE_LIBEAL_USE_HPET setting should be changed to “y”, which will enable the HPET settings at compile time.
 
 For an application to use the rte_get_hpet_cycles() and rte_get_hpet_hz() API calls,
@@ -86,13 +86,13 @@ The application can then determine what action to take, if any, if the HPET is n
     These generic APIs can work with either TSC or HPET time sources, depending on what is requested by an application call to rte_eal_hpet_init(),
     if any, and on what is available on the system at runtime.
 
-Running Intel® DPDK Applications Without Root Privileges
+Running DPDK Applications Without Root Privileges
 --------------------------------------------------------
 
-Although applications using the Intel® DPDK use network ports and other hardware resources directly,
+Although applications using the DPDK use network ports and other hardware resources directly,
 with a number of small permission adjustments it is possible to run these applications as a user other than “root”.
 To do so, the ownership, or permissions, on the following Linux file system objects should be adjusted to ensure that
-the Linux user account being used to run the Intel® DPDK application has access to them:
+the Linux user account being used to run the DPDK application has access to them:
 
 *   All directories which serve as hugepage mount points, for example,   /mnt/huge
 
@@ -107,7 +107,7 @@ the Linux user account being used to run the Intel® DPDK application has access
 Power Management and Power Saving Functionality
 -----------------------------------------------
 
-Enhanced Intel SpeedStep® Technology must be enabled in the platform BIOS if the power management feature of Intel® DPDK is to be used.
+Enhanced Intel SpeedStep® Technology must be enabled in the platform BIOS if the power management feature of DPDK is to be used.
 Otherwise, the sys file folder /sys/devices/system/cpu/cpu0/cpufreq will not exist, and the CPU frequency- based power management cannot be used.
 Consult the relevant BIOS documentation to determine how these settings can be accessed.
 
@@ -122,25 +122,25 @@ In addition, C3 and C6 should be enabled as well for power management. The path 
 Using Linux* Core Isolation to Reduce Context Switches
 ------------------------------------------------------
 
-While the threads used by an Intel® DPDK application are pinned to logical cores on the system,
+While the threads used by an DPDK application are pinned to logical cores on the system,
 it is possible for the Linux scheduler to run other tasks on those cores also.
 To help prevent additional workloads from running on those cores,
 it is possible to use the isolcpus Linux* kernel parameter to isolate them from the general Linux scheduler.
 
-For example, if Intel® DPDK applications are to run on logical cores 2, 4 and 6,
+For example, if DPDK applications are to run on logical cores 2, 4 and 6,
 the following should be added to the kernel parameter list:
 
 .. code-block:: console
 
     isolcpus=2,4,6
 
-Loading the Intel® DPDK KNI Kernel Module
+Loading the DPDK KNI Kernel Module
 -----------------------------------------
 
-To run the Intel® DPDK Kernel NIC Interface (KNI) sample application, an extra kernel module (the kni module) must be loaded into the running kernel.
-The module is found in the kmod sub-directory of the Intel® DPDK target directory.
+To run the DPDK Kernel NIC Interface (KNI) sample application, an extra kernel module (the kni module) must be loaded into the running kernel.
+The module is found in the kmod sub-directory of the DPDK target directory.
 Similar to the loading of the igb_uio module, this module should be loaded using the insmod command as shown below
-(assuming that the current directory is the Intel® DPDK target directory):
+(assuming that the current directory is the DPDK target directory):
 
 .. code-block:: console
 
@@ -148,10 +148,10 @@ Similar to the loading of the igb_uio module, this module should be loaded using
 
 .. note::
 
-    See the “Kernel NIC Interface Sample Application” chapter in the *Intel® DPDK Sample Applications User Guide* for more details.
+    See the “Kernel NIC Interface Sample Application” chapter in the *DPDK Sample Applications User Guide* for more details.
 
-Using Linux IOMMU Pass-Through to Run Intel® DPDK with Intel® VT-d
-------------------------------------------------------------------
+Using Linux IOMMU Pass-Through to Run DPDK with Intel® VT-d
+-----------------------------------------------------------
 
 To enable Intel® VT-d in a Linux kernel, a number of kernel configuration options must be set. These include:
 
@@ -161,7 +161,7 @@ To enable Intel® VT-d in a Linux kernel, a number of kernel configuration optio
 
 *   INTEL_IOMMU
 
-In addition, to run the Intel® DPDK with Intel® VT-d, the iommu=pt kernel parameter must be used when using igb_uio driver.
+In addition, to run the DPDK with Intel® VT-d, the iommu=pt kernel parameter must be used when using igb_uio driver.
 This results in pass-through of the DMAR (DMA Remapping) lookup in the host.
 Also, if INTEL_IOMMU_DEFAULT_ON is not set in the kernel, the intel_iommu=on kernel parameter must be used too.
 This ensures that the Intel IOMMU is being initialized as expected.
