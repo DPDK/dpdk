@@ -171,6 +171,10 @@ Please note that while using iommu=pt is compulsory for igb_uio driver, the vfio
 High Performance of Small Packets on 40G NIC
 --------------------------------------------
 
+As there might be firmware fixes for performance enhancement in latest version
+of firmware image, the firmware update might be needed for getting high performance.
+Check with the local Intel's Network Division application engineers for firmware updates.
+
 Enabling Extended Tag and Setting Max Read Request Size
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -198,3 +202,13 @@ Use 16 Bytes RX Descriptor Size
 
 As i40e PMD supports both 16 and 32 bytes RX descriptor sizes, and 16 bytes size can provide helps to high performance of small packets.
 Configuration of CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC in config files can be changed to use 16 bytes size RX descriptors.
+
+High Performance and per Packet Latency Tradeoff
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Due to the hardware design, the interrupt signal inside NIC is needed for per
+packet descriptor write-back. The minimum interval of interrupts could be set
+at compile time by CONFIG_RTE_LIBRTE_I40E_ITR_INTERVAL in configuration files.
+Though there is a default configuration, the interval could be tuned by the
+users with that configuration item depends on what the user cares about more,
+performance or per packet latency.
