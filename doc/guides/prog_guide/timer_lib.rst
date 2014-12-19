@@ -33,7 +33,7 @@
 Timer Library
 =============
 
-The Timer library provides a timer service to Intel® DPDK execution units to enable execution of callback functions asynchronously.
+The Timer library provides a timer service to DPDK execution units to enable execution of callback functions asynchronously.
 Features of the library are:
 
 *   Timers can be periodic (multi-shot) or single (one-shot).

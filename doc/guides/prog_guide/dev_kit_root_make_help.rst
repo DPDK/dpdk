@@ -33,7 +33,7 @@
 Development Kit Root Makefile Help
 ==================================
 
-The Intel® DPDK provides a root level Makefile with targets for configuration, building, cleaning, testing, installation and others.
+The DPDK provides a root level Makefile with targets for configuration, building, cleaning, testing, installation and others.
 These targets are explained in the following sections.
 
 Configuration Targets
@@ -64,7 +64,7 @@ The default output directory is build.
 
 *   all, build or just make
 
-    Build the Intel® DPDK in the output directory previously created by a make config.
+    Build the DPDK in the output directory previously created by a make config.
 
     Example:
 
@@ -107,7 +107,7 @@ Install Targets
 
 *   Install
 
-    Build the Intel® DPDK binary.
+    Build the DPDK binary.
     Actually, this builds each supported target in a separate directory.
     The name of each directory is the name of the target.
     The name of the targets to install can be optionally specified using T=mytarget.
@@ -240,14 +240,14 @@ is equivalent to:
 Compiling for Debug
 -------------------
 
-To compile the Intel® DPDK and sample applications with debugging information included and the optimization level set to 0,
+To compile the DPDK and sample applications with debugging information included and the optimization level set to 0,
 the EXTRA_CFLAGS environment variable should be set before compiling as follows:
 
 .. code-block:: console
 
     export EXTRA_CFLAGS='-O0 -g'
 
-The Intel® DPDK and any user or sample applications can then be compiled in the usual way.
+The DPDK and any user or sample applications can then be compiled in the usual way.
 For example:
 
 .. code-block:: console

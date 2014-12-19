@@ -33,21 +33,21 @@
 Development Kit Build System
 ============================
 
-The Intel® DPDK requires a build system for compilation activities and so on.
-This section describes the constraints and the mechanisms used in the Intel® DPDK framework.
+The DPDK requires a build system for compilation activities and so on.
+This section describes the constraints and the mechanisms used in the DPDK framework.
 
 There are two use-cases for the framework:
 
-*   Compilation of the Intel®  DPDK libraries and sample applications;
+*   Compilation of the DPDK libraries and sample applications;
     the framework generates specific binary libraries,
     include files and sample applications
 
-*   Compilation of an external application or library, using an installed binary Intel® DPDK
+*   Compilation of an external application or library, using an installed binary DPDK
 
 Building the Development Kit Binary
 -----------------------------------
 
-The following provides details on how to build the Intel® DPDK binary.
+The following provides details on how to build the DPDK binary.
 
 Build Directory Concept
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -179,12 +179,12 @@ The content of the my_sdk_build_dir is then:
 
 Refer to
 :ref:`Development Kit Root Makefile Help <Development_Kit_Root_Makefile_Help>`
-for details about make commands that can be used from the root of Intel® DPDK.
+for details about make commands that can be used from the root of DPDK.
 
 Building External Applications
 ------------------------------
 
-Since Intel® DPDK is in essence a development kit, the first objective of end users will be to create an application using this SDK.
+Since DPDK is in essence a development kit, the first objective of end users will be to create an application using this SDK.
 To compile an application, the user must set the RTE_SDK and RTE_TARGET environment variables.
 
 .. code-block:: console
@@ -212,10 +212,10 @@ Sample applications are provided in the examples directory.
 Makefile Description
 --------------------
 
-General Rules For Intel® DPDK Makefiles
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+General Rules For DPDK Makefiles
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the Intel® DPDK, Makefiles always follow the same scheme:
+In the DPDK, Makefiles always follow the same scheme:
 
 #. Include $(RTE_SDK)/mk/DPDK.vars.mk at the beginning.
 
@@ -309,7 +309,7 @@ Misc
 Useful Variables Provided by the Build System
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-*   RTE_SDK: The absolute path to the Intel® DPDK sources.
+*   RTE_SDK: The absolute path to the DPDK sources.
     When compiling the development kit, this variable is automatically set by the framework.
     It has to be defined by the user as an environment variable if compiling an external application.
 
@@ -368,7 +368,7 @@ Variables that Can be Set/Overridden in a Makefile Only
 
 *   SYMLINK-y-$(INSTPATH): A list of files to be installed in $(INSTPATH).
     The files must be available from VPATH and will be linked (symbolically) in  $(RTE_OUTPUT)/$(INSTPATH).
-    This variable can be used in almost any Intel®  DPDK Makefile.
+    This variable can be used in almost any DPDK Makefile.
 
 *   PREBUILD: A list of prerequisite actions to be taken before building. The user should use +=  to append data in this variable.
 

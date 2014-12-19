@@ -37,14 +37,14 @@ The librte_malloc library provides an API to allocate any-sized memory.
 
 The objective of this library is to provide malloc-like functions to allow allocation from hugepage memory
 and to facilitate application porting.
-The *Intel® DPDK API Reference* manual describes the available functions.
+The *DPDK API Reference* manual describes the available functions.
 
 Typically, these kinds of allocations should not be done in data plane processing
 because they are slower than pool-based allocation and make use of locks within the allocation
 and free paths.
 However, they can be used in configuration code.
 
-Refer to the rte_malloc() function description in the *Intel® DPDK API Reference* manual for more information.
+Refer to the rte_malloc() function description in the *DPDK API Reference* manual for more information.
 
 Cookies
 -------
@@ -203,7 +203,7 @@ Once the new memzone has been set up, the scan of the free-list for the heap is 
 and on this occasion should find the newly created,
 suitable element as the size of memory reserved in the memzone is set to be
 at least the size of the requested data block plus the alignment -
-subject to a minimum size specified in the Intel DPDK compile-time configuration.
+subject to a minimum size specified in the DPDK compile-time configuration.
 
 When a suitable, free element has been identified, the pointer to be returned to the user is calculated,
 with the space to be provided to the user being at the end of the free block.

@@ -31,7 +31,7 @@
 Power Management
 ================
 
-The Intel® DPDK Power Management feature allows users space applications to save power
+The DPDK Power Management feature allows users space applications to save power
 by dynamically adjusting CPU frequency or entering into different C-States.
 
 *   Adjusting the CPU frequency dynamically according to the utilization of RX queue.
@@ -78,7 +78,7 @@ For example, for cpuX, /sys/devices/system/cpu/cpuX/cpufreq/ has the following s
 
 *   scaling_setspeed
 
-In the Intel® DPDK, scaling_governor is configured in user space.
+In the DPDK, scaling_governor is configured in user space.
 Then, a user space application can prompt the kernel by writing scaling_setspeed to adjust the CPU frequency
 according to the strategies defined by the user space application.
 
@@ -86,7 +86,7 @@ Core-load Throttling through C-States
 -------------------------------------
 
 Core state can be altered by speculative sleeps whenever the specified lcore has nothing to do.
-In the Intel® DPDK, if no packet is received after polling,
+In the DPDK, if no packet is received after polling,
 speculative sleeps can be triggered according the strategies defined by the user space application.
 
 API Overview of the Power Library
@@ -116,6 +116,6 @@ The power management mechanism is used to save power when performing L3 forwardi
 References
 ----------
 
-*   l3fwd-power: The sample application in Intel®  DPDK that performs L3 forwarding with power management.
+*   l3fwd-power: The sample application in DPDK that performs L3 forwarding with power management.
 
-*   The "L3 Forwarding with Power Management Sample Application" chapter in the *Intel® DPDK Sample Application's User Guide*.
+*   The "L3 Forwarding with Power Management Sample Application" chapter in the *DPDK Sample Application's User Guide*.

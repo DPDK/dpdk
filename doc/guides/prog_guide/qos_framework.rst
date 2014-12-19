@@ -31,7 +31,7 @@
 Quality of Service (QoS) Framework
 ==================================
 
-This chapter describes the Intel® DPDK Quality of Service (QoS) framework.
+This chapter describes the DPDK Quality of Service (QoS) framework.
 
 Packet Pipeline with QoS Support
 --------------------------------
@@ -46,7 +46,7 @@ An example of a complex packet processing pipeline with QoS support is shown in 
 
 |pkt_proc_pipeline_qos|
 
-This pipeline can be built using reusable Intel® DPDK software libraries.
+This pipeline can be built using reusable DPDK software libraries.
 The main blocks implementing QoS in this pipeline are: the policer, the dropper and the scheduler.
 A functional description of each block is provided in the following table.
 
@@ -229,7 +229,7 @@ The rte_sched.h file contains configuration functions for port, subport and pipe
 Port Scheduler Enqueue API
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The port scheduler enqueue API is very similar to the API of the Intel® DPDK PMD TX function.
+The port scheduler enqueue API is very similar to the API of the DPDK PMD TX function.
 
 .. code-block:: c
 
@@ -238,7 +238,7 @@ The port scheduler enqueue API is very similar to the API of the Intel® DPDK PM
 Port Scheduler Dequeue API
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The port scheduler dequeue API is very similar to the API of the Intel® DPDK PMD RX function.
+The port scheduler dequeue API is very similar to the API of the DPDK PMD RX function.
 
 .. code-block:: c
 
@@ -1170,16 +1170,16 @@ the performance of a small set of message passing queues.
 Dropper
 -------
 
-The purpose of the Intel® DPDK dropper is to drop packets arriving at a packet scheduler to avoid congestion.
+The purpose of the DPDK dropper is to drop packets arriving at a packet scheduler to avoid congestion.
 The dropper supports the Random Early Detection (RED),
 Weighted Random Early Detection (WRED) and tail drop algorithms.
 Figure 1 illustrates how the dropper integrates with the scheduler.
-The Intel® DPDK currently does not support congestion management
+The DPDK currently does not support congestion management
 so the dropper provides the only method for congestion avoidance.
 
 .. _pg_figure_27:
 
-**Figure 27. High-level Block Diagram of the Intel® DPDK Dropper**
+**Figure 27. High-level Block Diagram of the DPDK Dropper**
 
 .. image53_png has been renamed
 
@@ -1549,17 +1549,17 @@ through the API that a queue has become empty.
 Source Files Location
 ~~~~~~~~~~~~~~~~~~~~~
 
-The source files for the Intel® DPDK dropper are located at:
+The source files for the DPDK dropper are located at:
 
 *   DPDK/lib/librte_sched/rte_red.h
 
 *   DPDK/lib/librte_sched/rte_red.c
 
-Integration with the Intel® DPDK QoS Scheduler
+Integration with the DPDK QoS Scheduler
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-RED functionality in the Intel® DPDK QoS scheduler is disabled by default.
-To enable it, use the Intel® DPDK configuration parameter:
+RED functionality in the DPDK QoS scheduler is disabled by default.
+To enable it, use the DPDK configuration parameter:
 
 ::
 
@@ -1573,10 +1573,10 @@ that is passed to the scheduler on initialization.
 RED parameters are specified separately for four traffic classes and three packet colors (green, yellow and red)
 allowing the scheduler to implement Weighted Random Early Detection (WRED).
 
-Integration with the Intel® DPDK QoS Scheduler Sample Application
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Integration with the DPDK QoS Scheduler Sample Application
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Intel® DPDK QoS Scheduler Application reads a configuration file on start-up.
+The DPDK QoS Scheduler Application reads a configuration file on start-up.
 The configuration file includes a section containing RED parameters.
 The format of these parameters is described in :ref:`Section2.23.3.1 <Configuration>`.
 A sample RED configuration is shown below. In this example, the queue size is 64 packets.

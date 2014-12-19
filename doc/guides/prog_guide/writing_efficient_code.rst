@@ -31,7 +31,7 @@
 Writing Efficient Code
 ======================
 
-This chapter provides some tips for developing efficient code using the Intel® DPDK.
+This chapter provides some tips for developing efficient code using the DPDK.
 For additional and more general information,
 please refer to the *Intel® 64 and IA-32 Architectures Optimization Reference Manual*
 which is a valuable reference to writing efficient code.
@@ -39,12 +39,12 @@ which is a valuable reference to writing efficient code.
 Memory
 ------
 
-This section describes some key memory considerations when developing applications in the Intel® DPDK environment.
+This section describes some key memory considerations when developing applications in the DPDK environment.
 
 Memory Copy: Do not Use libc in the Data Plane
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Many libc functions are available in the Intel® DPDK, via the Linux* application environment.
+Many libc functions are available in the DPDK, via the Linux* application environment.
 This can ease the porting of applications and the development of the configuration plane.
 However, many of these functions are not designed for performance.
 Functions such as memcpy() or strcpy() should not be used in the data plane.
@@ -54,7 +54,7 @@ Refer to the *VTune™ Performance Analyzer Essentials* publication from Intel P
 For specific functions that are called often,
 it is also a good idea to provide a self-made optimized function, which should be declared as static inline.
 
-The Intel® DPDK API provides an optimized rte_memcpy() function.
+The DPDK API provides an optimized rte_memcpy() function.
 
 Memory Allocation
 ~~~~~~~~~~~~~~~~~
@@ -88,7 +88,7 @@ NUMA
 ~~~~
 
 On a NUMA system, it is preferable to access local memory since remote memory access is slower.
-In the Intel® DPDK, the memzone, ring, rte_malloc and mempool APIs provide a way to create a pool on a specific socket.
+In the DPDK, the memzone, ring, rte_malloc and mempool APIs provide a way to create a pool on a specific socket.
 
 Sometimes, it can be a good idea to duplicate data to optimize speed.
 For read-mostly variables that are often accessed,
@@ -109,7 +109,7 @@ Communication Between lcores
 ----------------------------
 
 To provide a message-based communication between lcores,
-it is advised to use the Intel® DPDK ring API, which provides a lockless ring implementation.
+it is advised to use the DPDK ring API, which provides a lockless ring implementation.
 
 The ring supports bulk and burst access,
 meaning that it is possible to read several elements from the ring with only one costly atomic operation
@@ -134,7 +134,7 @@ The code algorithm that dequeues messages may be something similar to the follow
 PMD Driver
 ----------
 
-The Intel® DPDK Poll Mode Driver (PMD) is also able to work in bulk/burst mode,
+The DPDK Poll Mode Driver (PMD) is also able to work in bulk/burst mode,
 allowing the factorization of some code for each call in the send or receive function.
 
 Avoid partial writes.
@@ -152,7 +152,7 @@ Similarly, the application can be tuned to have, on average,
 a low end-to-end latency, at the cost of lower throughput.
 
 In order to achieve higher throughput,
-the Intel® DPDK attempts to aggregate the cost of processing each packet individually by processing packets in bursts.
+the DPDK attempts to aggregate the cost of processing each packet individually by processing packets in bursts.
 
 Using the testpmd application as an example,
 the burst size can be set on the command line to a value of 16 (also the default value).
@@ -213,8 +213,8 @@ For instance:
 Setting the Target CPU Type
 ---------------------------
 
-The Intel® DPDK supports CPU microarchitecture-specific optimizations by means of CONFIG_RTE_MACHINE option
-in the Intel® DPDK configuration file.
+The DPDK supports CPU microarchitecture-specific optimizations by means of CONFIG_RTE_MACHINE option
+in the DPDK configuration file.
 The degree of optimization depends on the compiler's ability to optimize for a specitic microarchitecture,
 therefore it is preferable to use the latest compiler versions whenever possible.
 

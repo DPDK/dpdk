@@ -31,7 +31,7 @@
 Packet Distributor Library
 ==========================
 
-The Intel® DPDK Packet Distributor library is a library designed to be used for dynamic load balancing of traffic
+The DPDK Packet Distributor library is a library designed to be used for dynamic load balancing of traffic
 while supporting single packet at a time operation.
 When using this library, the logical cores in use are to be considered in two roles: firstly a distributor lcore,
 which is responsible for load balancing or distributing packets,
@@ -97,7 +97,7 @@ while allowing packet order within a packet flow -- identified by a tag -- to be
 
 The flush and clear_returns API calls, mentioned previously,
 are likely of less use that the process and returned_pkts APIS, and are principally provided to aid in unit testing of the library.
-Descriptions of these functions and their use can be found in the Intel® DPDK API Reference document.
+Descriptions of these functions and their use can be found in the DPDK API Reference document.
 
 Worker Operation
 ----------------

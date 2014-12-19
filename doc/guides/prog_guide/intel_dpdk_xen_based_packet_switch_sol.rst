@@ -28,13 +28,13 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Intel® DPDK Xen Based Packet-Switching Solution
-===============================================
+DPDK Xen Based Packet-Switching Solution
+========================================
 
 Introduction
 ------------
 
-Intel® DPDK provides a para-virtualization packet switching solution, based on the Xen hypervisor's Grant Table, Note 1,
+DPDK provides a para-virtualization packet switching solution, based on the Xen hypervisor's Grant Table, Note 1,
 which provides simple and fast packet switching capability between guest domains and host domain based on MAC address or VLAN tag.
 
 This solution is comprised of two components;
@@ -44,13 +44,13 @@ including grant reference IDs for shared Virtio RX/TX rings,
 MAC address, device state, and so on. XenStore is an information storage space shared between domains,
 see further information on XenStore below.
 
-The front end PMD can be found in the Intel® DPDK directory lib/ librte_pmd_xenvirt and back end example in examples/vhost_xen.
+The front end PMD can be found in the DPDK directory lib/ librte_pmd_xenvirt and back end example in examples/vhost_xen.
 
 The PMD front end and switching back end use shared Virtio RX/TX rings as para- virtualized interface.
 The Virtio ring is created by the front end, and Grant table references for the ring are passed to host.
 The switching back end maps those grant table references and creates shared rings in a mapped address space.
 
-The following diagram describes the functionality of the Intel® DPDK Xen Packet- Switching Solution.
+The following diagram describes the functionality of the DPDK Xen Packet- Switching Solution.
 
 .. image35_png has been renamed
 
@@ -78,11 +78,11 @@ Poll Mode Driver Front End
 
 *   Mbuf pool allocation:
 
-    To use a Xen switching solution, the Intel® DPDK application should use rte_mempool_gntalloc_create()
+    To use a Xen switching solution, the DPDK application should use rte_mempool_gntalloc_create()
     to reserve mbuf pools during initialization.
     rte_mempool_gntalloc_create() creates a mempool with objects from memory allocated and managed via gntalloc/gntdev.
 
-    The Intel® DPDK now supports construction of mempools from allocated virtual memory through the rte_mempool_xmem_create() API.
+    The DPDK now supports construction of mempools from allocated virtual memory through the rte_mempool_xmem_create() API.
 
     This front end constructs mempools based on memory allocated through the xen_gntalloc driver.
     rte_mempool_gntalloc_create() allocates Grant pages, maps them to continuous virtual address space,
@@ -101,7 +101,7 @@ Poll Mode Driver Front End
 
 *   Interrupt and Kick:
 
-    There are no interrupts in Intel® DPDK Xen Switching as both front and back ends work in polling mode.
+    There are no interrupts in DPDK Xen Switching as both front and back ends work in polling mode.
     There is no requirement for notification.
 
 *   Feature Negotiation:
@@ -173,7 +173,7 @@ As each pool is bonded to a Virtio device in some guest domain, the switching ba
 
 #.  Copy the contents of the packet to the memory buffer pointed to by gva.
 
-The Intel® DPDK application in the guest domain, based on the PMD front end,
+The DPDK application in the guest domain, based on the PMD front end,
 is polling the shared Virtio RX ring for available packets and receives them on arrival.
 
 Packet Transmission
@@ -267,7 +267,7 @@ Note that the following commands might not be the same on different Linux* distr
 
         limit=nb_mbuf# * VM#.
 
-        In Intel® DPDK examples, nb_mbuf# is normally 8192.
+        In DPDK examples, nb_mbuf# is normally 8192.
 
 Building and Running the Switching Backend
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -291,7 +291,7 @@ Building and Running the Switching Backend
 
         make -C examples/vhost_xen/
 
-#.  Load the Xen Intel® DPDK memory management module and preallocate memory:
+#.  Load the Xen DPDK memory management module and preallocate memory:
 
     .. code-block:: console
 
@@ -301,10 +301,10 @@ Building and Running the Switching Backend
     .. note::
 
         On Xen Dom0, there is no hugepage support.
-        Under Xen Dom0, the Intel® DPDK uses a special memory management kernel module
+        Under Xen Dom0, the DPDK uses a special memory management kernel module
         to allocate chunks of physically continuous memory.
-        Refer to the *Intel® DPDK Getting Started Guide* for more information on memory management in the Intel® DPDK.
-        In the above command, 4 GB memory is reserved (2048 of 2 MB pages) for Intel® DPDK.
+        Refer to the *DPDK Getting Started Guide* for more information on memory management in the DPDK.
+        In the above command, 4 GB memory is reserved (2048 of 2 MB pages) for DPDK.
 
 #.  Load igb_uio and bind one Intel NIC controller to igb_uio:
 
@@ -323,7 +323,7 @@ Building and Running the Switching Backend
 
 .. note::
 
-    The -xen-dom0 option instructs the Intel® DPDK to use the Xen kernel module to allocate memory.
+    The -xen-dom0 option instructs the DPDK to use the Xen kernel module to allocate memory.
 
 Other Parameters:
 
@@ -390,10 +390,10 @@ Building and Running the Front End
 
         make install T=x86_64-native-linuxapp-gcc
 
-#.  Enable hugepages. Refer to the  *Intel® DPDK Getting Started Guide* for instructions on
-    how to use hugepages in the Intel® DPDK.
+#.  Enable hugepages. Refer to the  *DPDK Getting Started Guide* for instructions on
+    how to use hugepages in the DPDK.
 
-#.  Run TestPMD. Refer to *Intel® DPDK TestPMD Application User Guide* for detailed parameter usage.
+#.  Run TestPMD. Refer to *DPDK TestPMD Application User Guide* for detailed parameter usage.
 
     .. code-block:: console
 

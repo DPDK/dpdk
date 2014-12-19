@@ -47,7 +47,7 @@ Prerequisites
 
 The following variables must be defined:
 
-*   ${RTE_SDK}: Points to the root directory of the Intel®  DPDK.
+*   ${RTE_SDK}: Points to the root directory of the DPDK.
 
 *   ${RTE_TARGET}: Reference the target to be used for compilation (for example, x86_64-native-linuxapp-gcc).
 

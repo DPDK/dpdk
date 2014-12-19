@@ -40,8 +40,8 @@ It is the responsibility of the initialization routine to decide how to allocate
 
 Typical services expected from the EAL are:
 
-*   Intel® DPDK Loading and Launching:
-    The Intel®  DPDK and its application are linked as a single application and must be loaded by some means.
+*   DPDK Loading and Launching:
+    The DPDK and its application are linked as a single application and must be loaded by some means.
 
 *   Core Affinity/Assignment Procedures:
     The EAL provides mechanisms for assigning execution units to specific cores as well as creating execution instances.
@@ -65,14 +65,14 @@ Typical services expected from the EAL are:
 EAL in a Linux-userland Execution Environment
 ---------------------------------------------
 
-In a Linux user space environment, the Intel® DPDK application runs as a user-space application using the pthread library.
+In a Linux user space environment, the DPDK application runs as a user-space application using the pthread library.
 PCI information about devices and address space is discovered through the /sys kernel interface and through a module called igb_uio.
 Refer to the UIO: User-space drivers documentation in the Linux kernel. This memory is mmap'd in the application.
 
 The EAL performs physical memory allocation using mmap() in hugetlbfs (using huge page sizes to increase performance).
-This memory is exposed to Intel® DPDK service layers such as the :ref:`Mempool Library <Mempool_Library>`.
+This memory is exposed to DPDK service layers such as the :ref:`Mempool Library <Mempool_Library>`.
 
-At this point, the Intel® DPDK services layer will be initialized, then through pthread setaffinity calls,
+At this point, the DPDK services layer will be initialized, then through pthread setaffinity calls,
 each execution unit will be assigned to a specific logical core to run as a user-level thread.
 
 The time reference is provided by the CPU Time-Stamp Counter (TSC) or by the HPET kernel API through a mmap() call.
@@ -178,14 +178,14 @@ The EAL also allows timed callbacks to be used in the same way as for NIC interr
 
 .. note::
 
-    The only interrupts supported by the Intel® PDK Poll-Mode Drivers are those for link status change,
+    The only interrupts supported by the DPDK Poll-Mode Drivers are those for link status change,
     i.e. link up and link down notification.
 
 Blacklisting
 ~~~~~~~~~~~~
 
 The EAL PCI device blacklist functionality can be used to mark certain NIC ports as blacklisted,
-so they are ignored by the Intel® DPDK.
+so they are ignored by the DPDK.
 The ports to be blacklisted are identified using the PCIe* description (Domain:Bus:Device.Function).
 
 Misc Functions

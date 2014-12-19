@@ -33,13 +33,13 @@
 Overview
 ========
 
-This section gives a global overview of the architecture of Intel® Data Plane Development Kit (Intel® DPDK).
+This section gives a global overview of the architecture of Data Plane Development Kit (DPDK).
 
-The main goal of the Intel® DPDK is to provide a simple,
+The main goal of the DPDK is to provide a simple,
 complete framework for fast packet processing in data plane applications.
 Users may use the code to understand some of the techniques employed,
 to build upon for prototyping or to add their own protocol stacks.
-Alternative ecosystem options that use the Intel® DPDK are available.
+Alternative ecosystem options that use the DPDK are available.
 
 The framework creates a set of libraries for specific environments
 through the creation of an Environment Abstraction Layer (EAL),
@@ -49,9 +49,9 @@ These environments are created through the use of make files and configuration f
 Once the EAL library is created, the user may link with the library to create their own applications.
 Other libraries, outside of EAL, including the Hash,
 Longest Prefix Match (LPM) and rings libraries are also provided.
-Sample applications are provided to help show the user how to use various features of the Intel® DPDK.
+Sample applications are provided to help show the user how to use various features of the DPDK.
 
-The Intel® DPDK implements a run to completion model for packet processing,
+The DPDK implements a run to completion model for packet processing,
 where all resources must be allocated prior to calling Data Plane applications,
 running as execution units on logical processing cores.
 The model does not support a scheduler and all devices are accessed by polling.
@@ -64,15 +64,15 @@ This allows work to be performed in stages and may allow more efficient use of c
 Development Environment
 -----------------------
 
-The Intel® DPDK project installation requires Linux and the associated toolchain,
+The DPDK project installation requires Linux and the associated toolchain,
 such as one or more compilers, assembler, make utility,
-editor and various libraries to create the Intel® DPDK components and libraries.
+editor and various libraries to create the DPDK components and libraries.
 
 Once these libraries are created for the specific environment and architecture,
 they may then be used to create the user's data plane application.
 
 When creating applications for the Linux user space, the glibc library is used.
-For Intel® DPDK applications, two environmental variables (RTE_SDK and RTE_TARGET)
+For DPDK applications, two environmental variables (RTE_SDK and RTE_TARGET)
 must be configured before compiling the applications.
 The following are examples of how the variables can be set:
 
@@ -81,7 +81,7 @@ The following are examples of how the variables can be set:
     export RTE_SDK=/home/user/DPDK
     export RTE_TARGET=x86_64-native-linuxapp-gcc
 
-See the *Intel® DPDK Getting Started Guide* for information on setting up the development environment.
+See the *DPDK Getting Started Guide* for information on setting up the development environment.
 
 Environment Abstraction Layer
 -----------------------------
@@ -90,7 +90,7 @@ The Environment Abstraction Layer (EAL) provides a generic interface
 that hides the environment specifics from the applications and libraries.
 The services provided by the EAL are:
 
-*   Intel® DPDK loading and launching
+*   DPDK loading and launching
 
 *   Support for multi-process and multi-thread execution types
 
@@ -162,8 +162,8 @@ Network Packet Buffer Management (librte_mbuf)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The mbuf library provides the facility to create and destroy buffers
-that may be used by the Intel® DPDK application to store message buffers.
-The message buffers are created at startup time and stored in a mempool, using the Intel® DPDK mempool library.
+that may be used by the DPDK application to store message buffers.
+The message buffers are created at startup time and stored in a mempool, using the DPDK mempool library.
 
 This library provide an API to allocate/free mbufs, manipulate control message buffers (ctrlmbuf) which are generic message buffers,
 and packet buffers (pktmbuf) which are used to carry network packets.
@@ -173,7 +173,7 @@ Network Packet Buffer Management is described in :ref:`Mbuf Library <Mbuf_Librar
 Timer Manager (librte_timer)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This library provides a timer service to Intel® DPDK execution units,
+This library provides a timer service to DPDK execution units,
 providing the ability to execute a function asynchronously.
 It can be periodic function calls, or just a one-shot call.
 It uses the timer interface provided by the Environment Abstraction Layer (EAL)
@@ -184,7 +184,7 @@ The library documentation is available in :ref:`Timer Library <Timer_Library>`.
 Ethernet* Poll Mode Driver Architecture
 ---------------------------------------
 
-The Intel® DPDK includes Poll Mode Drivers (PMDs) for 1 GbE, 10 GbE and 40GbE, and para virtualized virtio
+The DPDK includes Poll Mode Drivers (PMDs) for 1 GbE, 10 GbE and 40GbE, and para virtualized virtio
 Ethernet controllers which are designed to work without asynchronous, interrupt-based signaling mechanisms.
 
 See  :ref:`Poll Mode Driver <Poll_Mode_Driver>`.
@@ -192,7 +192,7 @@ See  :ref:`Poll Mode Driver <Poll_Mode_Driver>`.
 Packet Forwarding Algorithm Support
 -----------------------------------
 
-The Intel® DPDK includes Hash (librte_hash) and Longest Prefix Match (LPM,librte_lpm)
+The DPDK includes Hash (librte_hash) and Longest Prefix Match (LPM,librte_lpm)
 libraries to support the corresponding packet forwarding algorithms.
 
 See :ref:`Hash Library <Hash_Library>` and  :ref:`LPM Library <LPM_Library>` for more information.

@@ -28,14 +28,14 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Thread Safety of Intel® DPDK Functions
-======================================
+Thread Safety of DPDK Functions
+===============================
 
-The Intel® DPDK is comprised of several libraries.
+The DPDK is comprised of several libraries.
 Some of the functions in these libraries can be safely called from multiple threads simultaneously, while others cannot.
 This section allows the developer to take these issues into account when building their own application.
 
-The run-time environment of the Intel® DPDK is typically a single thread per logical core.
+The run-time environment of the DPDK is typically a single thread per logical core.
 In some cases, it is not only multi-threaded, but multi-process.
 Typically, it is best to avoid sharing data structures between threads and/or processes where possible.
 Where this is not possible, then the execution blocks must access the data in a thread- safe manner.
@@ -57,7 +57,7 @@ Adding, removing or modifying values, however,
 cannot be done in multiple threads without using locking when a single hash or LPM table is accessed.
 Another alternative to locking would be to create multiple instances of these tables allowing each thread its own copy.
 
-The RX and TX of the PMD are the most critical aspects of an Intel® DPDK application
+The RX and TX of the PMD are the most critical aspects of a DPDK application
 and it is recommended that no locking be used as it will impact performance.
 Note, however, that these functions can safely be used from multiple threads
 when each thread is performing I/O on a different NIC queue.
@@ -66,13 +66,13 @@ then locking, or some other form of mutual exclusion, is necessary.
 
 The ring library is based on a lockless ring-buffer algorithm that maintains its original design for thread safety.
 Moreover, it provides high performance for either multi- or single-consumer/producer enqueue/dequeue operations.
-The mempool library is based on the Intel® DPDK lockless ring library and therefore is also multi-thread safe.
+The mempool library is based on the DPDK lockless ring library and therefore is also multi-thread safe.
 
 Performance Insensitive API
 ---------------------------
 
 Outside of the performance sensitive areas described in Section 25.1,
-the Intel® DPDK provides a thread-safe API for most other libraries.
+the DPDK provides a thread-safe API for most other libraries.
 For example, malloc(librte_malloc) and memzone functions are safe for use in multi-threaded and multi-process environments.
 
 The setup and configuration of the PMD is not performance sensitive, but is not thread safe either.
@@ -83,9 +83,9 @@ It is expected that, in most applications, the initial configuration of the netw
 Library Initialization
 ----------------------
 
-It is recommended that Intel® DPDK libraries are initialized in the main thread at application startup
+It is recommended that DPDK libraries are initialized in the main thread at application startup
 rather than subsequently in the forwarding threads.
-However, the Intel® DPDK performs checks to ensure that libraries are only initialized once.
+However, the DPDK performs checks to ensure that libraries are only initialized once.
 If initialization is attempted more than once, an error is returned.
 
 In the multi-process case, the configuration information of shared memory will only be initialized by the master process.
@@ -94,9 +94,9 @@ Thereafter, both master and secondary processes can allocate/release any objects
 Interrupt Thread
 ----------------
 
-The Intel® DPDK works almost entirely in Linux user space in polling mode.
+The DPDK works almost entirely in Linux user space in polling mode.
 For certain infrequent operations, such as receiving a PMD link status change notification,
-callbacks may be called in an additional thread outside the main Intel® DPDK processing threads.
-These function callbacks should avoid manipulating Intel® DPDK objects that are also managed by the normal Intel® DPDK threads,
+callbacks may be called in an additional thread outside the main DPDK processing threads.
+These function callbacks should avoid manipulating DPDK objects that are also managed by the normal DPDK threads,
 and if they need to do so,
 it is up to the application to provide the appropriate locking or mutual exclusion restrictions around those objects.

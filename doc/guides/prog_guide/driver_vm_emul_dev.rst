@@ -31,7 +31,7 @@
 Driver for VM Emulated Devices
 ==============================
 
-The Intel® DPDK EM poll mode driver supports the following emulated devices:
+The DPDK EM poll mode driver supports the following emulated devices:
 
 *   qemu-kvm emulated Intel® 82540EM Gigabit Ethernet Controller (qemu e1000 device)
 
@@ -57,7 +57,7 @@ The recommended guest operating system in a virtualized environment is:
 
 *   Fedora* 18 (64-bit)
 
-For supported kernel versions, refer to the *Intel® DPDK Release Notes*.
+For supported kernel versions, refer to the *DPDK Release Notes*.
 
 Setting Up a KVM Virtual Machine
 --------------------------------
@@ -70,7 +70,7 @@ The following describes a target environment:
 
 *   Guest Operating System: Fedora 14
 
-*   Linux Kernel Version: Refer to the Intel® DPDK Getting Started Guide
+*   Linux Kernel Version: Refer to the DPDK Getting Started Guide
 
 *   Target Applications: testpmd
 
@@ -162,7 +162,7 @@ The setup procedure is as follows:
         00:04.0 Ethernet controller: Intel Corporation 82540EM Gigabit Ethernet Controller (rev 03)
         00:05.0 Ethernet controller: Intel Corporation 82540EM Gigabit Ethernet Controller (rev 03)
 
-#.  Install the Intel® DPDK and run testpmd.
+#.  Install the DPDK and run testpmd.
 
 Known Limitations of Emulated Devices
 -------------------------------------

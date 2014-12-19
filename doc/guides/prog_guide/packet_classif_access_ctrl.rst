@@ -31,7 +31,7 @@
 Packet Classification and Access Control
 ========================================
 
-The Intel® DPDK provides an Access Control library that gives the ability
+The DPDK provides an Access Control library that gives the ability
 to classify an input packet based on a set of classification rules.
 
 The ACL library is used to perform an N-tuple search over a set of rules with multiple categories
@@ -267,7 +267,7 @@ Application Programming Interface (API) Usage
 
 .. note::
 
-    For more details about the Access Control API, please refer to the *Intel® DPDK API Reference*.
+    For more details about the Access Control API, please refer to the *DPDK API Reference*.
 
 The following example demonstrates IPv4, 5-tuple classification for rules defined above
 with multiple categories in more detail.

@@ -31,7 +31,7 @@
 I40E/IXGBE/IGB Virtual Function Driver
 ======================================
 
-Supported Intel® Ethernet Controllers (see the *Intel® DPDK Release Notes* for details)
+Supported Intel® Ethernet Controllers (see the *DPDK Release Notes* for details)
 support the following modes of operation in a virtualized environment:
 
 *   **SR-IOV mode**: Involves direct assignment of part of the port resources to different guest operating systems
@@ -43,22 +43,22 @@ support the following modes of operation in a virtualized environment:
     a Virtual Machine Monitor (VMM), also known as software switch acceleration mode.
     In this chapter, this mode is referred to as the Next Generation VMDq mode.
 
-SR-IOV Mode Utilization in an Intel® DPDK Environment
------------------------------------------------------
+SR-IOV Mode Utilization in a DPDK Environment
+---------------------------------------------
 
-The Intel® DPDK uses the SR-IOV feature for hardware-based I/O sharing in IOV mode.
+The DPDK uses the SR-IOV feature for hardware-based I/O sharing in IOV mode.
 Therefore, it is possible to partition SR-IOV capability on Ethernet controller NIC resources logically and
 expose them to a virtual machine as a separate PCI function called a "Virtual Function".
 Refer to Figure 10.
 
 Therefore, a NIC is logically distributed among multiple virtual machines (as shown in Figure 10),
 while still having global data in common to share with the Physical Function and other Virtual Functions.
-The Intel® DPDK i40evf, igbvf or ixgbevf as a Poll Mode Driver (PMD) serves for the Intel® 82576 Gigabit Ethernet Controller,
+The DPDK i40evf, igbvf or ixgbevf as a Poll Mode Driver (PMD) serves for the Intel® 82576 Gigabit Ethernet Controller,
 Intel® Ethernet Controller I350 family, Intel® 82599 10 Gigabit Ethernet Controller NIC,
 or Intel® Fortville 10/40 Gigabit Ethernet Controller NIC's virtual PCI function.
-Meanwhile the Intel® DPDK Poll Mode Driver (PMD) also supports "Physical Function" of such NIC's on the host.
+Meanwhile the DPDK Poll Mode Driver (PMD) also supports "Physical Function" of such NIC's on the host.
 
-The Intel® DPDK PF/VF Poll Mode Driver (PMD) supports the Layer 2 switch on Intel® 82576 Gigabit Ethernet Controller,
+The DPDK PF/VF Poll Mode Driver (PMD) supports the Layer 2 switch on Intel® 82576 Gigabit Ethernet Controller,
 Intel® Ethernet Controller I350 family, Intel® 82599 10 Gigabit Ethernet Controller,
 and Intel® Fortville 10/40 Gigabit Ethernet Controller NICs so that guest can choose it for inter virtual machine traffic in SR-IOV mode.
 
@@ -112,7 +112,7 @@ For example,
         rmmod i40e (To remove the i40e module)
         insmod i40e.ko max_vfs=2,2 (To enable two Virtual Functions per port)
 
-*   Using the Intel® DPDK PMD PF i40e driver:
+*   Using the DPDK PMD PF i40e driver:
 
     Kernel Params: iommu=pt, intel_iommu=on
 
@@ -123,7 +123,7 @@ For example,
         ./dpdk_nic_bind.py -b igb_uio bb:ss.f
         echo 2 > /sys/bus/pci/devices/0000\:bb\:ss.f/max_vfs (To enable two VFs on a specific PCI device)
 
-    Launch the Intel® DPDK testpmd/example or your own host daemon application using the Intel® DPDK PMD library.
+    Launch the DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
 
 Virtual Function enumeration is performed in the following sequence by the Linux* pci driver for a dual-port NIC.
 When you enable the four Virtual Functions with the above command, the four enabled functions have a Function#
@@ -145,7 +145,7 @@ The programmer can enable a maximum of *63 Virtual Functions* and there must be 
 10 Gigabit Ethernet Controller NIC port.
 The reason for this is that the device allows for a maximum of 128 queues per port and a virtual/physical function has to
 have at least one queue pair (RX/TX).
-The current implementation of the Intel® DPDK ixgbevf driver supports a single queue pair (RX/TX) per Virtual Function.
+The current implementation of the DPDK ixgbevf driver supports a single queue pair (RX/TX) per Virtual Function.
 The Physical Function in host could be either configured by the Linux* ixgbe driver
 (in the case of the Linux Kernel-based Virtual Machine [KVM]) or by DPDK PMD PF driver.
 When using both DPDK PMD PF/VF drivers, the whole NIC will be taken over by DPDK based application.
@@ -159,7 +159,7 @@ For example,
         rmmod ixgbe (To remove the ixgbe module)
         insmod ixgbe max_vfs=2,2 (To enable two Virtual Functions per port)
 
-*   Using the Intel® DPDK PMD PF ixgbe driver:
+*   Using the DPDK PMD PF ixgbe driver:
 
     Kernel Params: iommu=pt, intel_iommu=on
 
@@ -170,7 +170,7 @@ For example,
         ./dpdk_nic_bind.py -b igb_uio bb:ss.f
         echo 2 > /sys/bus/pci/devices/0000\:bb\:ss.f/max_vfs (To enable two VFs on a specific PCI device)
 
-    Launch the Intel® DPDK testpmd/example or your own host daemon application using the Intel® DPDK PMD library.
+    Launch the DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
 
 Virtual Function enumeration is performed in the following sequence by the Linux* pci driver for a dual-port NIC.
 When you enable the four Virtual Functions with the above command, the four enabled functions have a Function#
@@ -219,7 +219,7 @@ For example,
         ./dpdk_nic_bind.py -b igb_uio bb:ss.f
         echo 2 > /sys/bus/pci/devices/0000\:bb\:ss.f/max_vfs (To enable two VFs on a specific pci device)
 
-    Launch Intel® DPDK testpmd/example or your own host daemon application using the Intel® DPDK PMD library.
+    Launch DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
 
 Virtual Function enumeration is performed in the following sequence by the Linux* pci driver for a four-port NIC.
 When you enable the four Virtual Functions with the above command, the four enabled functions have a Function#
@@ -247,7 +247,7 @@ The validated hypervisor is:
 
 However, the hypervisor is bypassed to configure the Virtual Function devices using the Mailbox interface,
 the solution is hypervisor-agnostic.
-Xen* and VMware* (when SR- IOV is supported) will also be able to support the Intel® DPDK with Virtual Function driver support.
+Xen* and VMware* (when SR- IOV is supported) will also be able to support the DPDK with Virtual Function driver support.
 
 Expected Guest Operating System in Virtual Machine
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -258,7 +258,7 @@ The expected guest operating systems in a virtualized environment are:
 
 *   Ubuntu* 10.04 (64-bit)
 
-For supported kernel versions, refer to the *Intel® DPDK Release Notes*.
+For supported kernel versions, refer to the *DPDK Release Notes*.
 
 Setting Up a KVM Virtual Machine Monitor
 ----------------------------------------
@@ -271,7 +271,7 @@ The following describes a target environment:
 
 *   Guest Operating System: Fedora 14
 
-*   Linux Kernel Version: Refer to the  *Intel® DPDK Getting Started Guide*
+*   Linux Kernel Version: Refer to the  *DPDK Getting Started Guide*
 
 *   Target Applications:  l2fwd, l3fwd-vf
 
@@ -280,7 +280,7 @@ The setup procedure is as follows:
 #.  Before booting the Host OS, open **BIOS setup** and enable **Intel® VT features**.
 
 #.  While booting the Host OS kernel, pass the intel_iommu=on kernel command line argument using GRUB.
-    When using Intel® DPDK PF driver on host, pass the iommu=pt kernel command line argument in GRUB.
+    When using DPDK PF driver on host, pass the iommu=pt kernel command line argument in GRUB.
 
 #.  Download qemu-kvm-0.14.0 from
     `http://sourceforge.net/projects/kvm/files/qemu-kvm/ <http://sourceforge.net/projects/kvm/files/qemu-kvm/>`_
@@ -331,7 +331,7 @@ The setup procedure is as follows:
         rmmod ixgbe
         "modprobe ixgbe max_vfs=2,2"
 
-    When using DPDK PMD PF driver, insert Intel® DPDK kernel module igb_uio and set the number of VF by sysfs max_vfs:
+    When using DPDK PMD PF driver, insert DPDK kernel module igb_uio and set the number of VF by sysfs max_vfs:
 
     .. code-block:: console
 
@@ -451,7 +451,7 @@ The setup procedure is as follows:
 #.  Finally, access the Guest OS using vncviewer with the localhost:5900 port and check the lspci command output in the Guest OS.
     The virtual functions will be listed as available for use.
 
-#.  Configure and install the Intel® DPDK with an x86_64-native-linuxapp-gcc configuration on the Guest OS as normal,
+#.  Configure and install the DPDK with an x86_64-native-linuxapp-gcc configuration on the Guest OS as normal,
     that is, there is no change to the normal installation procedure.
 
     .. code-block:: console
@@ -462,13 +462,13 @@ The setup procedure is as follows:
 
 .. note::
 
-    If you are unable to compile the Intel® DPDK and you are getting "error: CPU you selected does not support x86-64 instruction set",
+    If you are unable to compile the DPDK and you are getting "error: CPU you selected does not support x86-64 instruction set",
     power off the Guest OS and start the virtual machine with the correct -cpu option in the qemu- system-x86_64 command as shown in step 9.
     You must select the best x86_64 cpu_model to emulate or you can select host option if available.
 
 .. note::
 
-    Run the Intel® DPDK l2fwd sample application in the Guest OS with Hugepages enabled.
+    Run the DPDK l2fwd sample application in the Guest OS with Hugepages enabled.
     For the expected benchmark performance, you must pin the cores from the Guest OS to the Host OS (taskset can be used to do this) and
     you must also look at the PCI Bus layout on the board to ensure you are not running the traffic over the QPI Inteface.
 
@@ -492,15 +492,15 @@ The setup procedure is as follows:
 
 |perf_benchmark|
 
-Intel® DPDK SR-IOV PMD PF/VF Driver Usage Model
------------------------------------------------
+DPDK SR-IOV PMD PF/VF Driver Usage Model
+----------------------------------------
 
 Fast Host-based Packet Processing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Software Defined Network (SDN) trends are demanding fast host-based packet handling.
 In a virtualization environment,
-the Intel® DPDK VF PMD driver performs the same throughput result as a non-VT native environment.
+the DPDK VF PMD driver performs the same throughput result as a non-VT native environment.
 
 With such host instance fast packet processing, lots of services such as filtering, QoS,
 DPI can be offloaded on the host fast path.
@@ -523,15 +523,15 @@ Inter-VM data communication is one of the traffic bottle necks in virtualization
 SR-IOV device assignment helps a VM to attach the real device, taking advantage of the bridge in the NIC.
 So VF-to-VF traffic within the same physical port (VM0<->VM1) have hardware acceleration.
 However, when VF crosses physical ports (VM0<->VM2), there is no such hardware bridge.
-In this case, the Intel® DPDK PMD PF driver provides host forwarding between such VMs.
+In this case, the DPDK PMD PF driver provides host forwarding between such VMs.
 
 Figure 13 shows an example.
-In this case an update of the MAC address lookup tables in both the NIC and host Intel® DPDK application is required.
+In this case an update of the MAC address lookup tables in both the NIC and host DPDK application is required.
 
 In the NIC, writing the destination of a MAC address belongs to another cross device VM to the PF specific pool.
-So when a packet comes in, its destination MAC address will match and forward to the host Intel® DPDK PMD application.
+So when a packet comes in, its destination MAC address will match and forward to the host DPDK PMD application.
 
-In the host Intel® DPDK application, the behavior is similar to L2 forwarding,
+In the host DPDK application, the behavior is similar to L2 forwarding,
 that is, the packet is forwarded to the correct PF pool.
 The SR-IOV NIC switch forwards the packet to a specific VM according to the MAC destination address
 which belongs to the destination VF on the VM.

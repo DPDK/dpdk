@@ -31,17 +31,17 @@
 IVSHMEM Library
 ===============
 
-The Intel® DPDK IVSHMEM library facilitates fast zero-copy data sharing among virtual machines
+The DPDK IVSHMEM library facilitates fast zero-copy data sharing among virtual machines
 (host-to-guest or guest-to-guest) by means of QEUMU's IVSHMEM mechanism.
 
 The library works by providing a command line for QEMU to map several hugepages into a single IVSHMEM device.
 For the guest to know what is inside any given IVSHMEM device
-(and to distinguish between Intel® DPDK and non-Intel® DPDK IVSHMEM devices),
+(and to distinguish between DPDK and non-DPDK IVSHMEM devices),
 a metadata file is also mapped into the IVSHMEM segment.
 No work needs to be done by the guest application to map IVSHMEM devices into memory;
-they are automatically recognized by the Intel® DPDK Environment Abstraction Layer (EAL).
+they are automatically recognized by the DPDK Environment Abstraction Layer (EAL).
 
-A typical Intel® DPDK IVSHMEM use case looks like the following.
+A typical DPDK IVSHMEM use case looks like the following.
 
 .. image28_png has been renamed
 
@@ -60,7 +60,7 @@ The following is a simple guide to using the IVSHMEM Library API:
 *   Call rte_ivshmem_metadata_create() to create a new metadata file.
     The metadata name is used to distinguish between multiple metadata files.
 
-*   Populate each metadata file with Intel® DPDK data structures.
+*   Populate each metadata file with DPDK data structures.
     This can be done using the following API calls:
 
     *   rte_ivhshmem_metadata_add_memzone() to add rte_memzone to metadata file
@@ -74,9 +74,9 @@ The following is a simple guide to using the IVSHMEM Library API:
 
 .. note::
 
-    Only data structures fully residing in Intel® DPDK hugepage memory work correctly.
+    Only data structures fully residing in DPDK hugepage memory work correctly.
     Supported data structures created by malloc(), mmap()
-    or otherwise using non-Intel® DPDK memory cause undefined behavior and even a segmentation fault.
+    or otherwise using non-DPDK memory cause undefined behavior and even a segmentation fault.
 
 IVSHMEM Environment Configuration
 ---------------------------------
@@ -87,11 +87,11 @@ The steps needed to successfully run IVSHMEM applications are the following:
 
     The source code can be found on the QEMU website (currently, version 1.4.x is supported, but version 1.5.x is known to work also),
     however, the source code will need to be patched to support using regular files as the IVSHMEM memory backend.
-    The patch is not included in the Intel® DPDK package,
+    The patch is not included in the DPDK package,
     but is available on the `Intel®DPDK-vswitch project webpage <https://01.org/packet-processing/intel%C2%AE-ovdk>`_
-    (either separately or in an Intel® DPDK vSwitch package).
+    (either separately or in a DPDK vSwitch package).
 
-*   Enable IVSHMEM library in the Intel® DPDK build configuration.
+*   Enable IVSHMEM library in the DPDK build configuration.
 
     In the default configuration, IVSHMEM library is not compiled. To compile the IVSHMEM library,
     one has to either use one of the provided IVSHMEM targets
@@ -100,8 +100,8 @@ The steps needed to successfully run IVSHMEM applications are the following:
 
 *   Set up hugepage memory on the virtual machine.
 
-    The guest applications run as regular Intel® DPDK (primary) processes and thus need their own hugepage memory set up inside the VM.
-    The process is identical to the one described in the *Intel® DPDK Getting Started Guide*.
+    The guest applications run as regular DPDK (primary) processes and thus need their own hugepage memory set up inside the VM.
+    The process is identical to the one described in the *DPDK Getting Started Guide*.
 
 Best Practices for Writing IVSHMEM Applications
 -----------------------------------------------
@@ -115,10 +115,10 @@ Consequently, any shared memory corruption will affect both host and all VMs sha
 
 IVSHMEM applications essentially behave like multi-process applications,
 so it is important to implement access serialization to data and thread safety.
-Intel® DPDK ring structures are already thread-safe, however,
+DPDK ring structures are already thread-safe, however,
 any custom data structures that the user might need would have to be thread-safe also.
 
-Similar to regular Intel® DPDK multi-process applications,
+Similar to regular DPDK multi-process applications,
 it is not recommended to use function pointers as functions might have different memory addresses in different processes.
 
 It is best to avoid freeing the rte_mbuf structure on a different machine from where it was allocated,
@@ -139,9 +139,9 @@ If NUMA support is enabled, it is also desirable to keep host process' hugepage 
 
 For the best performance across all NUMA nodes, each QUEMU core should be pinned to host CPU core on the appropriate NUMA node.
 QEMU's virtual NUMA nodes should also be set up to correspond to physical NUMA nodes.
-More on how to set up Intel® DPDK and QEMU NUMA support can be found in *Intel® DPDK Getting Started Guide* and
+More on how to set up DPDK and QEMU NUMA support can be found in *DPDK Getting Started Guide* and
 `QEMU documentation <http://qemu.weilnetz.de/qemu-doc.html>`_ respectively.
-A script called cpu_layout.py is provided with the Intel® DPDK package (in the tools directory)
+A script called cpu_layout.py is provided with the DPDK package (in the tools directory)
 that can be used to identify which CPU cores correspond to which NUMA node.
 
 The QEMU IVSHMEM command line creation should be considered the last step before starting the virtual machine.

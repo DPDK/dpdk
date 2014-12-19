@@ -28,16 +28,16 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Extending the Intel® DPDK
+Extending the DPDK
 =========================
 
-This chapter describes how a developer can extend the Intel® DPDK to provide a new library,
+This chapter describes how a developer can extend the DPDK to provide a new library,
 a new target, or support a new target.
 
 Example: Adding a New Library libfoo
 ------------------------------------
 
-To add a new library to the Intel® DPDK, proceed as follows:
+To add a new library to the DPDK, proceed as follows:
 
 #.  Add a new configuration option:
 
@@ -92,10 +92,10 @@ To add a new library to the Intel® DPDK, proceed as follows:
 
 
 #.  Update mk/DPDK.app.mk, and add -lfoo in LDLIBS variable when the option is enabled.
-    This will automatically add this flag when linking an Intel® DPDK application.
+    This will automatically add this flag when linking a DPDK application.
 
 
-#.  Build the Intel® DPDK with the new library (we only show a specific target here):
+#.  Build the DPDK with the new library (we only show a specific target here):
 
     .. code-block:: console
 
@@ -114,7 +114,7 @@ To add a new library to the Intel® DPDK, proceed as follows:
 Example: Using libfoo in the Test Application
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The test application is used to validate all functionality of the Intel® DPDK.
+The test application is used to validate all functionality of the DPDK.
 Once you have added a library, a new test case should be added in the test application.
 
 *   A new test_foo.c file should be added, that includes foo.h and calls the foo() function from test_foo().
@@ -126,7 +126,7 @@ Once you have added a library, a new test case should be added in the test appli
     ${RTE_SDK}/doc/rst/test_report/autotests directory. This script must be updated also.
     If libfoo is in a new test family, the links in ${RTE_SDK}/doc/rst/test_report/test_report.rst must be updated.
 
-*   Build the Intel® DPDK with the updated test application (we only show a specific target here):
+*   Build the DPDK with the updated test application (we only show a specific target here):
 
 
     .. code-block:: console

@@ -34,7 +34,7 @@ Mbuf Library
 ============
 
 The mbuf library provides the ability to allocate and free buffers (mbufs)
-that may be used by the Intel® DPDK application to store message buffers.
+that may be used by the DPDK application to store message buffers.
 The message buffers are stored in a mempool, using the :ref:`Mempool Library <Mempool_Library>`.
 
 A rte_mbuf struct can carry network packet buffers (type is RTE_MBUF_PKT)
@@ -55,7 +55,7 @@ The advantage of the first method is that it only needs one operation to allocat
 On the other hand, the second method is more flexible and allows
 the complete separation of the allocation of metadata structures from the allocation of packet data buffers.
 
-The first method was chosen for the Intel® DPDK.
+The first method was chosen for the DPDK.
 The metadata contains control information such as message type, length,
 pointer to the start of the data and a pointer for additional mbuf structures allowing buffer chaining.
 
@@ -134,7 +134,7 @@ This library provides some functions for manipulating the data in a packet mbuf.
 
     *   Remove data at the beginning of the buffer (rte_pktmbuf_adj())
 
-    *   Remove data at the end of the buffer (rte_pktmbuf_trim()) Refer to the *Intel® DPDK API Reference* for details.
+    *   Remove data at the end of the buffer (rte_pktmbuf_trim()) Refer to the *DPDK API Reference* for details.
 
 Meta Information
 ----------------

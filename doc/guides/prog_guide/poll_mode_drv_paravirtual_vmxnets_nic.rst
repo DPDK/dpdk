@@ -38,9 +38,9 @@ multi-queue support (also known as Receive Side Scaling, RSS),
 IPv6 offloads, and MSI/MSI-X interrupt delivery.
 Because operating system vendors do not provide built-in drivers for this card,
 VMware Tools must be installed to have a driver for the VMXNET3 network adapter available.
-One can use the same device in an Intel® DPDK application with VMXNET3 PMD introduced in Intel® DPDK API.
+One can use the same device in a DPDK application with VMXNET3 PMD introduced in DPDK API.
 
-Currently, the driver provides basic support for using the device in an Intel® DPDK application running on a guest OS.
+Currently, the driver provides basic support for using the device in a DPDK application running on a guest OS.
 Optimization is needed on the backend, that is, the VMware* ESXi vmkernel switch, to achieve optimal performance end-to-end.
 
 In this chapter, two setups with the use of the VMXNET3 PMD are demonstrated:
@@ -49,8 +49,8 @@ In this chapter, two setups with the use of the VMXNET3 PMD are demonstrated:
 
 #.  Vmxnet3 chaining VMs connected to a vSwitch
 
-VMXNET3 Implementation in the Intel® DPDK
------------------------------------------
+VMXNET3 Implementation in the DPDK
+----------------------------------
 
 For details on the VMXNET3 device, refer to the VMXNET3 driver's vmxnet3 directory and support manual from VMware*.
 
@@ -69,15 +69,15 @@ During RX/TX, the packet buffers are exchanged by their GPAs,
 and the hypervisor loads the buffers with packets in the RX case and sends packets to vSwitch in the TX case.
 
 The VMXNET3 PMD is compiled with vmxnet3 device headers.
-The interface is similar to that of the other PMDs available in the Intel® DPDK API.
+The interface is similar to that of the other PMDs available in the DPDK API.
 The driver pre-allocates the packet buffers and loads the command ring descriptors in advance.
 The hypervisor fills those packet buffers on packet arrival and write completion ring descriptors,
 which are eventually pulled by the PMD.
-After reception, the Intel® DPDK application frees the descriptors and loads new packet buffers for the coming packets.
+After reception, the DPDK application frees the descriptors and loads new packet buffers for the coming packets.
 The interrupts are disabled and there is no notification required.
 This keeps performance up on the RX side, even though the device provides a notification feature.
 
-In the transmit routine, the Intel® DPDK application fills packet buffer pointers in the descriptors of the command ring
+In the transmit routine, the DPDK application fills packet buffer pointers in the descriptors of the command ring
 and notifies the hypervisor.
 In response the hypervisor takes packets and passes them to the vSwitch. It writes into the completion descriptors ring.
 The rings are read by the PMD in the next transmit routine call and the buffers and descriptors are freed from memory.
@@ -132,12 +132,12 @@ The following prerequisites apply:
 
 .. note::
 
-    Follow the *Intel® DPDK Getting Started Guide* to setup the basic Intel® DPDK environment.
+    Follow the *DPDK Getting Started Guide* to setup the basic DPDK environment.
 
 .. note::
 
-    Follow the *Intel® DPDK Sample Application's User Guide*, L2 Forwarding/L3 Forwarding and
-    TestPMD for instructions on how to run an Intel® DPDK application using an assigned VMXNET3 device.
+    Follow the *DPDK Sample Application's User Guide*, L2 Forwarding/L3 Forwarding and
+    TestPMD for instructions on how to run a DPDK application using an assigned VMXNET3 device.
 
 VMXNET3 with a Native NIC Connected to a vSwitch
 ------------------------------------------------
@@ -150,8 +150,8 @@ This section describes an example setup for Phy-vSwitch-VM-Phy communication.
 
 .. note::
 
-    Other instructions on preparing to use Intel® DPDK such as, hugepage enabling, igb_uio port binding are not listed here.
-    Please refer to *Intel® DPDK Getting Started Guide and Intel® DPDK Sample Application's User Guide* for detailed instructions.
+    Other instructions on preparing to use DPDK such as, hugepage enabling, igb_uio port binding are not listed here.
+    Please refer to *DPDK Getting Started Guide and DPDK Sample Application's User Guide* for detailed instructions.
 
 The packet reception and transmission flow path is:
 

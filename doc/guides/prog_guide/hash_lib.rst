@@ -33,9 +33,9 @@
 Hash Library
 ============
 
-The Intel® DPDK provides a Hash Library for creating hash table for fast lookup.
+The DPDK provides a Hash Library for creating hash table for fast lookup.
 The hash table is a data structure optimized for searching through a set of entries that are each identified by a unique key.
-For increased performance the Intel® DPDK Hash requires that all the keys have the same number of bytes which is set at the hash creation time.
+For increased performance the DPDK Hash requires that all the keys have the same number of bytes which is set at the hash creation time.
 
 Hash API Overview
 -----------------
@@ -110,7 +110,7 @@ a number of fields read from the input packet that make up the flow key.
 One example is to use the DiffServ 5-tuple made up of the following fields of the IP and transport layer packet headers:
 Source IP Address, Destination IP Address, Protocol, Source Port, Destination Port.
 
-The Intel® DPDK hash provides a generic method to implement an application specific flow classification mechanism.
+The DPDK hash provides a generic method to implement an application specific flow classification mechanism.
 Given a flow table implemented as an array, the application should create a hash object with the same number of entries as the flow table and
 with the hash key size set to the number of bytes in the selected flow key.
 

@@ -50,7 +50,7 @@ Control Plane                     The control plane is concerned with the routin
 
 Core                              A core may include several lcores or threads if the processor supports hyperthreading.
 
-Core Components                   A set of libraries provided by the Intel® DPDK, including eal, ring, mempool, mbuf, timers, and so on.
+Core Components                   A set of libraries provided by the DPDK, including eal, ring, mempool, mbuf, timers, and so on.
 
 CPU                               Central Processing Unit
 
@@ -64,7 +64,7 @@ Data Plane                        In contrast to the control plane,
 
 DIMM                              Dual In-line Memory Module
 
-Doxygen                           A documentation generator used in the Intel® DPDK to generate the API reference.
+Doxygen                           A documentation generator used in the DPDK to generate the API reference.
 
 DPDK                              Data Plane Development Kit
 
@@ -169,7 +169,7 @@ SRTD                              Scheduler Round Trip Delay
 
 SW                                Software
 
-Target                            In the Intel® DPDK, the target is a combination of architecture,
+Target                            In the DPDK, the target is a combination of architecture,
                                   machine, executive environment and toolchain.
                                   For example: i686-native-linuxapp-gcc.
 

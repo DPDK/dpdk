@@ -33,7 +33,7 @@
 Poll Mode Driver
 ================
 
-The Intel® DPDK includes 1 Gigabit, 10 Gigabit and 40 Gigabit and para virtualized virtio Poll Mode Drivers.
+The DPDK includes 1 Gigabit, 10 Gigabit and 40 Gigabit and para virtualized virtio Poll Mode Drivers.
 
 A Poll Mode Driver (PMD) consists of APIs, provided through the BSD driver running in user space,
 to configure the devices and their respective queues.
@@ -46,7 +46,7 @@ their global design principles and proposes a high-level architecture and a gene
 Requirements and Assumptions
 ----------------------------
 
-The Intel® DPDK environment for packet processing applications allows for two models, run-to-completion and pipe-line:
+The DPDK environment for packet processing applications allows for two models, run-to-completion and pipe-line:
 
 *   In the *run-to-completion*  model, a specific port's RX descriptor ring is polled for packets through an API.
     Packets are then processed on the same core and placed on a port's TX descriptor ring through an API for transmission.
@@ -56,7 +56,7 @@ The Intel® DPDK environment for packet processing applications allows for two m
     The other core continues to process the packet which then may be placed on a port's TX descriptor ring through an API for transmission.
 
 In a synchronous run-to-completion model,
-each logical core assigned to the Intel® DPDK executes a packet processing loop that includes the following steps:
+each logical core assigned to the DPDK executes a packet processing loop that includes the following steps:
 
 *   Retrieve input packets through the PMD receive API
 
@@ -136,7 +136,7 @@ replenishing multiple descriptors of the receive ring.
 Logical Cores, Memory and NIC Queues Relationships
 --------------------------------------------------
 
-The Intel® DPDK supports NUMA allowing for better performance when a processor's logical cores and interfaces utilize its local memory.
+The DPDK supports NUMA allowing for better performance when a processor's logical cores and interfaces utilize its local memory.
 Therefore, mbuf allocation associated with local PCIe* interfaces should be allocated from memory pools created in the local memory.
 The buffers should, if possible, remain on the local processor to obtain the best performance results and RX and TX buffer descriptors
 should be populated with mbufs allocated from a mempool allocated from local memory.
@@ -153,7 +153,7 @@ Device Identification
 ~~~~~~~~~~~~~~~~~~~~~
 
 Each NIC port is uniquely designated by its (bus/bridge, device, function) PCI
-identifiers assigned by the PCI probing/enumeration function executed at Intel® DPDK initialization.
+identifiers assigned by the PCI probing/enumeration function executed at DPDK initialization.
 Based on their PCI identifier, NIC ports are assigned two other identifiers:
 
 *   A port index used to designate the NIC port in all functions exported by the PMD API.
@@ -286,7 +286,7 @@ The mbuf structure is fully described in the :ref:`Mbuf Library <Mbuf_Library>` 
 Ethernet Device API
 ~~~~~~~~~~~~~~~~~~~
 
-The Ethernet device API exported by the Ethernet PMDs is described in the *Intel® DPDK API Reference*.
+The Ethernet device API exported by the Ethernet PMDs is described in the *DPDK API Reference*.
 
 Vector PMD for IXGBE
 --------------------

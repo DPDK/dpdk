@@ -31,29 +31,29 @@
 Kernel NIC Interface
 ====================
 
-The Intel® DPDK Kernel NIC Interface (KNI) allows userspace applications access to the Linux* control plane.
+The DPDK Kernel NIC Interface (KNI) allows userspace applications access to the Linux* control plane.
 
-The benefits of using the Intel® DPDK KNI are:
+The benefits of using the DPDK KNI are:
 
 *   Faster than existing Linux TUN/TAP interfaces
     (by eliminating system calls and copy_to_user()/copy_from_user() operations.
 
-*   Allows management of Intel® DPDK ports using standard Linux net tools such as ethtool, ifconfig and tcpdump.
+*   Allows management of DPDK ports using standard Linux net tools such as ethtool, ifconfig and tcpdump.
 
 *   Allows an interface with the kernel network stack.
 
-The components of an application using the Intel® DPDK Kernel NIC Interface are shown in Figure 17.
+The components of an application using the DPDK Kernel NIC Interface are shown in Figure 17.
 
 .. _pg_figure_17:
 
-**Figure 17. Components of an Intel® DPDK KNI Application**
+**Figure 17. Components of a DPDK KNI Application**
 
 .. image43_png has been renamed
 
 |kernel_nic_intf|
 
-The Intel® DPDK KNI Kernel Module
----------------------------------
+The DPDK KNI Kernel Module
+--------------------------
 
 The KNI kernel loadable module provides support for two types of devices:
 
@@ -74,7 +74,7 @@ The KNI kernel loadable module provides support for two types of devices:
 
     *   Net functionality provided by implementing several operations such as netdev_ops,
         header_ops, ethtool_ops that are defined by struct net_device,
-        including support for Intel® DPDK mbufs and FIFOs.
+        including support for DPDK mbufs and FIFOs.
 
     *   The interface name is provided from userspace.
 
@@ -83,7 +83,7 @@ The KNI kernel loadable module provides support for two types of devices:
 KNI Creation and Deletion
 -------------------------
 
-The KNI interfaces are created by an Intel® DPDK application dynamically.
+The KNI interfaces are created by a DPDK application dynamically.
 The interface name and FIFO details are provided by the application through an ioctl call
 using the rte_kni_device_info struct which contains:
 
@@ -97,28 +97,28 @@ using the rte_kni_device_info struct which contains:
 
 *   Core affinity.
 
-Refer to rte_kni_common.h in the Intel® DPDK source code for more details.
+Refer to rte_kni_common.h in the DPDK source code for more details.
 
 The physical addresses will be re-mapped into the kernel address space and stored in separate KNI contexts.
 
 Once KNI interfaces are created, the KNI context information can be queried by calling the rte_kni_info_get() function.
 
-The KNI interfaces can be deleted by an Intel® DPDK application dynamically after being created.
+The KNI interfaces can be deleted by a DPDK application dynamically after being created.
 Furthermore, all those KNI interfaces not deleted will be deleted on the release operation
-of the miscellaneous device (when the Intel® DPDK application is closed).
+of the miscellaneous device (when the DPDK application is closed).
 
-Intel® DPDK mbuf Flow
----------------------
+DPDK mbuf Flow
+--------------
 
-To minimize the amount of Intel® DPDK code running in kernel space, the mbuf mempool is managed in userspace only.
+To minimize the amount of DPDK code running in kernel space, the mbuf mempool is managed in userspace only.
 The kernel module will be aware of mbufs,
-but all mbuf allocation and free operations will be handled by the Intel® DPDK application only.
+but all mbuf allocation and free operations will be handled by the DPDK application only.
 
 Figure 18 shows a typical scenario with packets sent in both directions.
 
 .. _pg_figure_18:
 
-**Figure 18. Packet Flow via mbufs in the Intel DPDK® KNI**
+**Figure 18. Packet Flow via mbufs in the DPDK KNI**
 
 .. image44_png has been renamed
 
@@ -127,7 +127,7 @@ Figure 18 shows a typical scenario with packets sent in both directions.
 Use Case: Ingress
 -----------------
 
-On the Intel® DPDK RX side, the mbuf is allocated by the PMD in the RX thread context.
+On the DPDK RX side, the mbuf is allocated by the PMD in the RX thread context.
 This thread will enqueue the mbuf in the rx_q FIFO.
 The KNI thread will poll all KNI active devices for the rx_q.
 If an mbuf is dequeued, it will be converted to a sk_buff and sent to the net stack via netif_rx().
@@ -138,13 +138,13 @@ The RX thread, in the same main loop, polls this FIFO and frees the mbuf after d
 Use Case: Egress
 ----------------
 
-For packet egress the Intel® DPDK application must first enqueue several mbufs to create an mbuf cache on the kernel side.
+For packet egress the DPDK application must first enqueue several mbufs to create an mbuf cache on the kernel side.
 
 The packet is received from the Linux net stack, by calling the kni_net_tx() callback.
 The mbuf is dequeued (without waiting due the cache) and filled with data from sk_buff.
 The sk_buff is then freed and the mbuf sent in the tx_q FIFO.
 
-The Intel® DPDK TX thread dequeues the mbuf and sends it to the PMD (via rte_eth_tx_burst()).
+The DPDK TX thread dequeues the mbuf and sends it to the PMD (via rte_eth_tx_burst()).
 It then puts the mbuf back in the cache.
 
 Ethtool
@@ -160,7 +160,7 @@ Link state and MTU change
 
 Link state and MTU change are network interface specific operations usually done via ifconfig.
 The request is initiated from the kernel side (in the context of the ifconfig process)
-and handled by the user space Intel® DPDK application.
+and handled by the user space DPDK application.
 The application polls the request, calls the application handler and returns the response back into the kernel space.
 
 The application handlers can be registered upon interface creation or explicitly registered/unregistered in runtime.
@@ -173,9 +173,9 @@ KNI Working as a Kernel vHost Backend
 
 vHost is a kernel module usually working as the backend of virtio (a para- virtualization driver framework)
 to accelerate the traffic from the guest to the host.
-The Intel® DPDK Kernel NIC interface provides the ability to hookup vHost traffic into userspace Intel® DPDK application.
-Together with the Intel® DPDK PMD virtio, it significantly improves the throughput between guest and host.
-In the scenario where Intel® DPDK is running as fast path in the host, kni-vhost is an efficient path for the traffic.
+The DPDK Kernel NIC interface provides the ability to hookup vHost traffic into userspace DPDK application.
+Together with the DPDK PMD virtio, it significantly improves the throughput between guest and host.
+In the scenario where DPDK is running as fast path in the host, kni-vhost is an efficient path for the traffic.
 
 Overview
 ~~~~~~~~
@@ -185,7 +185,7 @@ The main idea behind kni-vhost is making the KNI work as a RAW socket, attaching
 It is using the existing interface with vHost-net, so it does not require any kernel hacking,
 and is fully-compatible with the kernel vhost module.
 As vHost is still taking responsibility for communicating with the front-end virtio,
-it naturally supports both legacy virtio -net and the Intel® DPDK PMD virtio.
+it naturally supports both legacy virtio -net and the DPDK PMD virtio.
 There is a little penalty that comes from the non-polling mode of vhost.
 However, it scales throughput well when using KNI in multi-thread mode.
 
@@ -224,7 +224,7 @@ Otherwise, by default, KNI will not enable its backend support capability.
 
 Of course, as a prerequisite, the vhost/vhost-net kernel CONFIG should be chosen before compiling the kernel.
 
-#.  Compile the Intel®  DPDK and insert igb_uio as normal.
+#.  Compile the DPDK and insert igb_uio as normal.
 
 #.  Insert the KNI kernel module:
 
@@ -248,7 +248,7 @@ Of course, as a prerequisite, the vhost/vhost-net kernel CONFIG should be chosen
     Each port pins two forwarding cores (ingress/egress) in user space.
 
 #.  Assign a raw socket to vhost-net during qemu-kvm startup.
-    The Intel® DPDK does not provide a script to do this since it is easy for the user to customize.
+    The DPDK does not provide a script to do this since it is easy for the user to customize.
     The following shows the key steps to launch qemu-kvm with kni-vhost:
 
     .. code-block:: bash
@@ -272,7 +272,7 @@ Then, using the qemu-kvm command with the -netdev option to assign such raw sock
 Compatibility Configure Option
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-There is a CONFIG_RTE_KNI_VHOST_VNET_HDR_EN configuration option in Intel® DPDK configuration file.
+There is a CONFIG_RTE_KNI_VHOST_VNET_HDR_EN configuration option in DPDK configuration file.
 By default, it set to n, which means do not turn on the virtio net header,
 which is used to support additional features (such as, csum offload, vlan offload, generic-segmentation and so on),
 since the kni-vhost does not yet support those features.

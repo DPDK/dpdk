@@ -32,12 +32,12 @@ Poll Mode Driver for Emulated Virtio NIC
 ========================================
 
 Virtio is a para-virtualization framework initiated by IBM, and supported by KVM hypervisor.
-In the Intel® Data Plane Development Kit (Intel® DPDK),
+In the Data Plane Development Kit (DPDK),
 we provide a virtio Poll Mode Driver (PMD) as a software solution, comparing to SRIOV hardware solution,
 for fast guest VM to guest VM communication and guest VM to host communication.
 
 Vhost is a kernel acceleration module for virtio qemu backend.
-The Intel® DPDK extends kni to support vhost raw socket interface,
+The DPDK extends kni to support vhost raw socket interface,
 which enables vhost to directly read/ write packets from/to a physical port.
 With this enhancement, virtio could achieve quite promising performance.
 
@@ -50,8 +50,8 @@ please refer to Chapter "Driver for VM Emulated Devices".
 In this chapter, we will demonstrate usage of virtio PMD driver with two backends,
 standard qemu vhost back end and vhost kni back end.
 
-Virtio Implementation in Intel® DPDK
-------------------------------------
+Virtio Implementation in DPDK
+-----------------------------
 
 For details about the virtio spec, refer to Virtio PCI Card Specification written by Rusty Russell.
 
@@ -113,8 +113,8 @@ Host2VM communication example
 
         insmod rte_kni.ko
 
-    Other basic Intel® DPDK preparations like hugepage enabling, igb_uio port binding are not listed here.
-    Please refer to the *Intel® DPDK Getting Started Guide* for detailed instructions.
+    Other basic DPDK preparations like hugepage enabling, igb_uio port binding are not listed here.
+    Please refer to the *DPDK Getting Started Guide* for detailed instructions.
 
 #.  Launch the kni user application:
 

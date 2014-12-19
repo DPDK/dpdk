@@ -33,9 +33,9 @@ Profile Your Application
 
 Intel processors provide performance counters to monitor events.
 Some tools provided by Intel can be used to profile and benchmark an application.
-See the *VTune™ Performance Analyzer Essentials* publication from Intel Press for more information.
+See the *VTune Performance Analyzer Essentials* publication from Intel Press for more information.
 
-For an Intel® DPDK application, this can be done in a Linux* application environment only.
+For a DPDK application, this can be done in a Linux* application environment only.
 
 The main situations that should be monitored through event counters are:
 

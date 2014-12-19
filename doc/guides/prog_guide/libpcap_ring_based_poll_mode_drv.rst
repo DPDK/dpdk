@@ -32,7 +32,7 @@ Libpcap and Ring Based Poll Mode Drivers
 ========================================
 
 In addition to Poll Mode Drivers (PMDs) for physical and virtual hardware,
-the Intel® DPDK also includes two pure-software PMDs. These two drivers are:
+the DPDK also includes two pure-software PMDs. These two drivers are:
 
 *   A libpcap -based PMD (librte_pmd_pcap) that reads and writes packets using libpcap,
     - both from files on disk, as well as from physical NIC devices using standard Linux kernel drivers.
@@ -50,7 +50,7 @@ the Intel® DPDK also includes two pure-software PMDs. These two drivers are:
 Using the Drivers from the EAL Command Line
 -------------------------------------------
 
-For ease of use, the Intel® DPDK EAL also has been extended to allow pseudo-ethernet devices,
+For ease of use, the DPDK EAL also has been extended to allow pseudo-ethernet devices,
 using one or more of these drivers,
 to be created at application startup time during EAL initialization.
 
@@ -168,7 +168,7 @@ Otherwise, the first 512 packets from the input pcap file will be discarded by t
 Rings-based PMD
 ~~~~~~~~~~~~~~~
 
-To run an Intel® DPDK application on a machine without any Ethernet devices, a pair of ring-based rte_ethdevs can be used as below.
+To run a DPDK application on a machine without any Ethernet devices, a pair of ring-based rte_ethdevs can be used as below.
 The device names passed to the --vdev option must start with eth_ring and take no additional parameters.
 Multiple devices may be specified, separated by commas.
 
@@ -259,7 +259,7 @@ where one may want to have inter-core communication using pseudo Ethernet device
 for reasons of API consistency.
 
 Enqueuing and dequeuing items from an rte_ring using the rings-based PMD may be slower than using the native rings API.
-This is because Intel® DPDK Ethernet drivers make use of function pointers to call the appropriate enqueue or dequeue functions,
+This is because DPDK Ethernet drivers make use of function pointers to call the appropriate enqueue or dequeue functions,
 while the rte_ring specific functions are direct function calls in the code and are often inlined by the compiler.
 
    Once an ethdev has been created, for either a ring or a pcap-based PMD,

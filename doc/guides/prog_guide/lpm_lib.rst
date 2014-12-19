@@ -33,7 +33,7 @@
 LPM Library
 ===========
 
-The Intel® DPDK LPM library component implements the Longest Prefix Match (LPM) table search method for 32-bit keys
+The DPDK LPM library component implements the Longest Prefix Match (LPM) table search method for 32-bit keys
 that is typically used to find the best route match in IP forwarding applications.
 
 LPM API Overview

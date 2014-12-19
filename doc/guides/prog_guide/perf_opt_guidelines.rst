@@ -38,9 +38,9 @@ Performance Optimization Guidelines
 Introduction
 ------------
 
-The following sections describe optimizations used in the Intel® DPDK and optimizations that should be considered for a new applications.
+The following sections describe optimizations used in the DPDK and optimizations that should be considered for a new applications.
 
 They also highlight the performance-impacting coding techniques that should,
-and should not be, used when developing an application using the Intel® DPDK.
+and should not be, used when developing an application using the DPDK.
 
 And finally, they give an introduction to application profiling using a Performance Analyzer from Intel to optimize the software.

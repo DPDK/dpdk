@@ -123,7 +123,7 @@ Use Cases
 
 Use cases for the Ring library include:
 
-    *  Communication between applications in the Intel® DPDK
+    *  Communication between applications in the DPDK
 
     *  Used by memory pool allocator
 

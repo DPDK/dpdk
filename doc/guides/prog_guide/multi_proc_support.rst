@@ -33,13 +33,13 @@
 Multi-process Support
 =====================
 
-In the Intel® DPDK, multi-process support is designed to allow a group of Intel® DPDK processes
+In the DPDK, multi-process support is designed to allow a group of DPDK processes
 to work together in a simple transparent manner to perform packet processing,
 or other workloads, on Intel® architecture hardware.
 To support this functionality,
-a number of additions have been made to the core Intel® DPDK Environment Abstraction Layer (EAL).
+a number of additions have been made to the core DPDK Environment Abstraction Layer (EAL).
 
-The EAL has been modified to allow different types of Intel® DPDK processes to be spawned,
+The EAL has been modified to allow different types of DPDK processes to be spawned,
 each with different permissions on the hugepage memory used by the applications.
 For now, there are two types of process specified:
 
@@ -48,31 +48,31 @@ For now, there are two types of process specified:
 *   secondary processes, which cannot initialize shared memory,
     but can attach to pre- initialized shared memory and create objects in it.
 
-Standalone Intel® DPDK processes are primary processes,
+Standalone DPDK processes are primary processes,
 while secondary processes can only run alongside a primary process or
 after a primary process has already configured the hugepage shared memory for them.
 
 To support these two process types, and other multi-process setups described later,
 two additional command-line parameters are available to the EAL:
 
-*   --proc-type: for specifying a given process instance as the primary or secondary Intel® DPDK instance
+*   --proc-type: for specifying a given process instance as the primary or secondary DPDK instance
 
 *   --file-prefix: to allow processes that do not want to co-operate to have different memory regions
 
-A number of example applications are provided that demonstrate how multiple Intel® DPDK processes can be used together.
+A number of example applications are provided that demonstrate how multiple DPDK processes can be used together.
 These are more fully documented in the "Multi- process Sample Application" chapter
-in the *Intel® DPDK Sample Application's User Guide*.
+in the *DPDK Sample Application's User Guide*.
 
 Memory Sharing
 --------------
 
-The key element in getting a multi-process application working using the Intel® DPDK is to ensure that
+The key element in getting a multi-process application working using the DPDK is to ensure that
 memory resources are properly shared among the processes making up the multi-process application.
 Once there are blocks of shared memory available that can be accessed by multiple processes,
 then issues such as inter-process communication (IPC) becomes much simpler.
 
 On application start-up in a primary or standalone process,
-the Intel DPDK records to memory-mapped files the details of the memory configuration it is using - hugepages in use,
+the DPDK records to memory-mapped files the details of the memory configuration it is using - hugepages in use,
 the virtual addresses they are mapped at, the number of memory channels present, etc.
 When a secondary process is started, these files are read and the EAL recreates the same memory configuration
 in the secondary process so that all memory zones are shared between processes and all pointers to that memory are valid,
@@ -85,14 +85,14 @@ and point to the same objects, in both processes.
 
 .. _pg_figure_16:
 
-**Figure 16. Memory Sharing in the Intel® DPDK Multi-process Sample Application**
+**Figure 16. Memory Sharing in the DPDK Multi-process Sample Application**
 
 .. image42_png has been replaced
 
 |multi_process_memory|
 
 The EAL also supports an auto-detection mode (set by EAL --proc-type=auto flag ),
-whereby an Intel® DPDK process is started as a secondary instance if a primary instance is already running.
+whereby an DPDK process is started as a secondary instance if a primary instance is already running.
 
 Deployment Models
 -----------------
@@ -100,14 +100,14 @@ Deployment Models
 Symmetric/Peer Processes
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Intel® DPDK multi-process support can be used to create a set of peer processes where each process performs the same workload.
+DPDK multi-process support can be used to create a set of peer processes where each process performs the same workload.
 This model is equivalent to having multiple threads each running the same main-loop function,
-as is done in most of the supplied Intel® DPDK sample applications.
+as is done in most of the supplied DPDK sample applications.
 In this model, the first of the processes spawned should be spawned using the --proc-type=primary EAL flag,
 while all subsequent instances should be spawned using the --proc-type=secondary flag.
 
 The simple_mp and symmetric_mp sample applications demonstrate this usage model.
-They are described in the "Multi-process Sample Application" chapter in the *Intel® DPDK Sample Application's User Guide*.
+They are described in the "Multi-process Sample Application" chapter in the *DPDK Sample Application's User Guide*.
 
 Asymmetric/Non-Peer Processes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -118,13 +118,13 @@ server distributing received packets among worker or client threads, which are r
 In this case, extensive use of rte_ring objects is made, which are located in shared hugepage memory.
 
 The client_server_mp sample application shows this usage model.
-It is described in the "Multi-process Sample Application" chapter in the *Intel® DPDK Sample Application's User Guide*.
+It is described in the "Multi-process Sample Application" chapter in the *DPDK Sample Application's User Guide*.
 
-Running Multiple Independent Intel® DPDK Applications
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Running Multiple Independent DPDK Applications
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In addition to the above scenarios involving multiple Intel® DPDK processes working together,
-it is possible to run multiple Intel® DPDK processes side-by-side,
+In addition to the above scenarios involving multiple DPDK processes working together,
+it is possible to run multiple DPDK processes side-by-side,
 where those processes are all working independently.
 Support for this usage scenario is provided using the --file-prefix parameter to the EAL.
 
@@ -136,32 +136,32 @@ if filesystem and device permissions are set up to allow this).
 The rte part of the filenames of each of the above is configurable using the file-prefix parameter.
 
 In addition to specifying the file-prefix parameter,
-any Intel® DPDK applications that are to be run side-by-side must explicitly limit their memory use.
+any DPDK applications that are to be run side-by-side must explicitly limit their memory use.
 This is done by passing the -m flag to each process to specify how much hugepage memory, in megabytes,
 each process can use (or passing --socket-mem to specify how much hugepage memory on each socket each process can use).
 
 .. note::
 
-    Independent Intel® DPDK instances running side-by-side on a single machine cannot share any network ports.
+    Independent DPDK instances running side-by-side on a single machine cannot share any network ports.
     Any network ports being used by one process should be blacklisted in every other process.
 
-Running Multiple Independent Groups of Intel® DPDK Applications
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Running Multiple Independent Groups of DPDK Applications
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the same way that it is possible to run independent Intel® DPDK applications side- by-side on a single system,
-this can be trivially extended to multi-process groups of Intel® DPDK applications running side-by-side.
+In the same way that it is possible to run independent DPDK applications side- by-side on a single system,
+this can be trivially extended to multi-process groups of DPDK applications running side-by-side.
 In this case, the secondary processes must use the same --file-prefix parameter
 as the primary process whose shared memory they are connecting to.
 
 .. note::
 
-    All restrictions and issues with multiple independent Intel®  DPDK processes running side-by-side
+    All restrictions and issues with multiple independent DPDK processes running side-by-side
     apply in this usage scenario also.
 
 Multi-process Limitations
 -------------------------
 
-There are a number of limitations to what can be done when running Intel® DPDK multi-process applications.
+There are a number of limitations to what can be done when running DPDK multi-process applications.
 Some of these are documented below:
 
 *   The multi-process feature requires that the exact same hugepage memory mappings be present in all applications.
@@ -174,7 +174,7 @@ Some of these are documented below:
     so it is recommended that it be disabled only when absolutely necessary,
     and only when the implications of this change have been understood.
 
-*   All Intel® DPDK processes running as a single application and using shared memory must have distinct coremask arguments.
+*   All DPDK processes running as a single application and using shared memory must have distinct coremask arguments.
     It is not possible to have a primary and secondary instance, or two secondary instances,
     using any of the same logical cores.
     Attempting to do so can cause corruption of memory pool caches, among other issues.
@@ -193,11 +193,11 @@ To work around this issue, it is recommended that multi-process applications per
 the hashing function from the code and then using the rte_hash_add_with_hash()/rte_hash_lookup_with_hash() functions
 instead of the functions which do the hashing internally, such as rte_hash_add()/rte_hash_lookup().
 
-*   Depending upon the hardware in use, and the number of Intel® DPDK processes used,
-    it may not be possible to have HPET timers available in each Intel® DPDK instance.
+*   Depending upon the hardware in use, and the number of DPDK processes used,
+    it may not be possible to have HPET timers available in each DPDK instance.
     The minimum number of HPET comparators available to Linux* userspace can be just a single comparator,
-    which means that only the first, primary Intel® DPDK process instance can open and mmap  /dev/hpet.
-    If the number of required Intel® DPDK processes exceeds that of the number of available HPET comparators,
+    which means that only the first, primary DPDK process instance can open and mmap  /dev/hpet.
+    If the number of required DPDK processes exceeds that of the number of available HPET comparators,
     the TSC (which is the default timer in this release) must be used as a time source across all processes instead of the HPET.
 
 .. |multi_process_memory| image:: img/multi_process_memory.svg

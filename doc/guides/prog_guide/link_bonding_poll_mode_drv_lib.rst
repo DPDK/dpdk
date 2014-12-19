@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2014 ntel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@ Link Bonding Poll Mode Driver Library
 =====================================
 
 In addition to Poll Mode Drivers (PMDs) for physical and virtual hardware,
-Intel® DPDK also includes a pure-software library that
+DPDK also includes a pure-software library that
 allows physical PMD's to be bonded together to create a single logical PMD.
 
 |bond-overview|
@@ -53,7 +53,7 @@ bonded device and its slave devices.
 
     The Link Bonding PMD Library is enabled by default in the build
     configuration files, the library can be disabled by setting
-    ``CONFIG_RTE_LIBRTE_PMD_BOND=n`` and recompiling the Intel® DPDK.
+    ``CONFIG_RTE_LIBRTE_PMD_BOND=n`` and recompiling the DPDK.
 
 Link Bonding Modes Overview
 ---------------------------
@@ -139,7 +139,7 @@ Implementation Details
 ----------------------
 
 The librte_pmd_bond bonded device are compatible with the Ethernet device API
-exported by the Ethernet PMDs described in the *Intel® DPDK API Reference*.
+exported by the Ethernet PMDs described in the *DPDK API Reference*.
 
 The Link Bonding Library supports the creation of bonded devices at application
 startup time during EAL initialization using the ``--vdev`` option as well as

@@ -33,7 +33,7 @@
 Source Organization
 ===================
 
-This section describes the organization of sources in the Intel® DPDK framework.
+This section describes the organization of sources in the DPDK framework.
 
 Makefiles and Config
 --------------------
@@ -46,10 +46,10 @@ Makefiles and Config
     :ref:`Useful Variables Provided by the Build System <Useful_Variables_Provided_by_the_Build_System>`
     for descriptions of other variables.
 
-Makefiles that are provided by the Intel® DPDK libraries and applications are located in $(RTE_SDK)/mk.
+Makefiles that are provided by the DPDK libraries and applications are located in $(RTE_SDK)/mk.
 
 Config templates are located in $(RTE_SDK)/config. The templates describe the options that are enabled for each target.
-The config file also contains items that can be enabled and disabled for many of the Intel® DPDK libraries,
+The config file also contains items that can be enabled and disabled for many of the DPDK libraries,
 including debug options.
 The user should look at the config file and become familiar with the options.
 The config file is also used to create a header file, which will be located in the new build directory.
@@ -99,7 +99,7 @@ Applications
 Applications are sources that contain a main() function.
 They are located in the $(RTE_SDK)/app and $(RTE_SDK)/examples directories.
 
-The app directory contains sample applications that are used to test the Intel® DPDK (autotests).
+The app directory contains sample applications that are used to test the DPDK (autotests).
 The examples directory contains sample applications that show how libraries can be used.
 
 ::
@@ -135,4 +135,4 @@ The examples directory contains sample applications that show how libraries can 
 .. note::
 
     The actual examples directory may contain additional sample applications to those shown above.
-    Check the latest Intel® DPDK source files for details.
+    Check the latest DPDK source files for details.

@@ -34,7 +34,7 @@ Packet Framework
 Design Objectives
 -----------------
 
-The main design objectives for the Intel DPDK Packet Framework are:
+The main design objectives for the DPDK Packet Framework are:
 
 *   Provide standard methodology to build complex packet processing pipelines.
     Provide reusable and extensible templates for the commonly used pipeline functional blocks;
@@ -55,7 +55,7 @@ with the logic of each stage glued around a lookup table.
 For each incoming packet, the table defines the set of actions to be applied to the packet,
 as well as the next stage to send the packet to.
 
-The Intel DPDK Packet Framework minimizes the development effort required to build packet processing pipelines
+The DPDK Packet Framework minimizes the development effort required to build packet processing pipelines
 by defining a standard methodology for pipeline development,
 as well as providing libraries of reusable templates for the commonly used pipeline blocks.
 
@@ -93,12 +93,12 @@ Table 19 is a non-exhaustive list of ports that can be implemented with the Pack
 |   |                  |                                                                                       |
 +===+==================+=======================================================================================+
 | 1 | SW ring          | SW circular buffer used for message passing between the application threads. Uses     |
-|   |                  | the Intel DPDK rte_ring primitive. Expected to be the most commonly used type of      |
+|   |                  | the DPDK rte_ring primitive. Expected to be the most commonly used type of            |
 |   |                  | port.                                                                                 |
 |   |                  |                                                                                       |
 +---+------------------+---------------------------------------------------------------------------------------+
 | 2 | HW ring          | Queue of buffer descriptors used to interact with NIC, switch or accelerator ports.   |
-|   |                  | For NIC ports, it uses the Intel DPDK rte_eth_rx_queue or rte_eth_tx_queue            |
+|   |                  | For NIC ports, it uses the DPDK rte_eth_rx_queue or rte_eth_tx_queue                  |
 |   |                  | primitives.                                                                           |
 |   |                  |                                                                                       |
 +---+------------------+---------------------------------------------------------------------------------------+
