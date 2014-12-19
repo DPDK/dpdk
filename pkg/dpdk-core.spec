@@ -92,7 +92,7 @@ mkdir -p                               %{buildroot}%{moddir}
 mv    %{destdir}/%{target}/kmod/*.ko   %{buildroot}%{moddir}
 rmdir %{destdir}/%{target}/kmod
 mkdir -p                               %{buildroot}%{_sbindir}
-ln -s %{datadir}/tools/igb_uio_bind.py %{buildroot}%{_sbindir}/igb_uio_bind
+ln -s %{datadir}/tools/*nic_bind.py    %{buildroot}%{_sbindir}/dpdk_nic_bind
 mkdir -p                               %{buildroot}%{_bindir}
 mv    %{destdir}/%{target}/app/testpmd %{buildroot}%{_bindir}
 rmdir %{destdir}/%{target}/app
