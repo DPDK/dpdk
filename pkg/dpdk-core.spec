@@ -44,7 +44,7 @@ ExclusiveArch: i686, x86_64
 %global target %{_arch}-native-linuxapp-gcc
 %global machine default
 
-BuildRequires: kernel-devel, kernel-headers, libpcap-devel, xen-devel, doxygen
+BuildRequires: kernel-devel, kernel-headers, libpcap-devel, xen-devel, doxygen, python-sphinx
 
 %description
 Intel(r) DPDK core includes kernel modules, core libraries and tools.
@@ -64,7 +64,8 @@ for fast packet processing on x86 platforms.
 Summary: Intel(r) Data Plane Development Kit API documentation
 BuildArch: noarch
 %description doc
-Intel(r) DPDK doc explains the API details in doxygen HTML format.
+Intel(r) DPDK doc is divided in two parts: API details in doxygen HTML format
+and guides in sphinx HTML format.
 
 %global destdir %{buildroot}%{_prefix}
 %global moddir  /lib/modules/%(uname -r)/extra
