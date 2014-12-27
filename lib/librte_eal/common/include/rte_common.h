@@ -203,7 +203,7 @@ extern int RTE_BUILD_BUG_ON_detected_error;
 static inline int
 rte_is_power_of_2(uint32_t n)
 {
-	return ((n-1) & n) == 0;
+	return n && !(n & (n - 1));
 }
 
 /**
