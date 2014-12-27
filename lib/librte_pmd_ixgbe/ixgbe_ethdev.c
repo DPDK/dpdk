@@ -1514,6 +1514,8 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	err = ixgbe_check_link(hw, &speed, &link_up, 0);
 	if (err)
 		goto error;
+	dev->data->dev_link.link_status = link_up;
+
 	err = ixgbe_get_link_capabilities(hw, &speed, &negotiate);
 	if (err)
 		goto error;
