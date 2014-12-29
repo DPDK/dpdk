@@ -5631,38 +5631,54 @@ i40e_debug_read_register(struct i40e_hw *hw, uint32_t addr, uint64_t *val)
 
 /*
  * On X710, performance number is far from the expectation on recent firmware
- * versions. The fix for this issue may not be integrated in the following
+ * versions; on XL710, performance number is also far from the expectation on
+ * recent firmware versions, if promiscuous mode is disabled, or promiscuous
+ * mode is enabled and port MAC address is equal to the packet destination MAC
+ * address. The fix for this issue may not be integrated in the following
  * firmware version. So the workaround in software driver is needed. It needs
- * to modify the initial values of 3 internal only registers. Note that the
+ * to modify the initial values of 3 internal only registers for both X710 and
+ * XL710. Note that the values for X710 or XL710 could be different, and the
  * workaround can be removed when it is fixed in firmware in the future.
  */
+
+/* For both X710 and XL710 */
+#define I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE 0x10000200
+#define I40E_GL_SWR_PRI_JOIN_MAP_0       0x26CE00
+
+#define I40E_GL_SWR_PRI_JOIN_MAP_2_VALUE 0x011f0200
+#define I40E_GL_SWR_PRI_JOIN_MAP_2       0x26CE08
+
+/* For X710 */
+#define I40E_GL_SWR_PM_UP_THR_EF_VALUE   0x03030303
+/* For XL710 */
+#define I40E_GL_SWR_PM_UP_THR_SF_VALUE   0x06060606
+#define I40E_GL_SWR_PM_UP_THR            0x269FBC
+
 static void
 i40e_configure_registers(struct i40e_hw *hw)
 {
-#define I40E_GL_SWR_PRI_JOIN_MAP_0       0x26CE00
-#define I40E_GL_SWR_PRI_JOIN_MAP_2       0x26CE08
-#define I40E_GL_SWR_PM_UP_THR            0x269FBC
-#define I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE 0x10000200
-#define I40E_GL_SWR_PRI_JOIN_MAP_2_VALUE 0x011f0200
-#define I40E_GL_SWR_PM_UP_THR_VALUE      0x03030303
-
-	static const struct {
+	static struct {
 		uint32_t addr;
 		uint64_t val;
 	} reg_table[] = {
 		{I40E_GL_SWR_PRI_JOIN_MAP_0, I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE},
 		{I40E_GL_SWR_PRI_JOIN_MAP_2, I40E_GL_SWR_PRI_JOIN_MAP_2_VALUE},
-		{I40E_GL_SWR_PM_UP_THR, I40E_GL_SWR_PM_UP_THR_VALUE},
+		{I40E_GL_SWR_PM_UP_THR, 0}, /* Compute value dynamically */
 	};
 	uint64_t reg;
 	uint32_t i;
 	int ret;
 
-	/* Below fix is for X710 only */
-	if (i40e_is_40G_device(hw->device_id))
-		return;
-
 	for (i = 0; i < RTE_DIM(reg_table); i++) {
+		if (reg_table[i].addr == I40E_GL_SWR_PM_UP_THR) {
+			if (i40e_is_40G_device(hw->device_id)) /* For XL710 */
+				reg_table[i].val =
+					I40E_GL_SWR_PM_UP_THR_SF_VALUE;
+			else /* For X710 */
+				reg_table[i].val =
+					I40E_GL_SWR_PM_UP_THR_EF_VALUE;
+		}
+
 		ret = i40e_debug_read_register(hw, reg_table[i].addr, &reg);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to read from 0x%"PRIx32,
