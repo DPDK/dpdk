@@ -61,6 +61,10 @@ ifeq ($(NO_AUTOLIBS),)
 
 LDLIBS += --whole-archive
 
+ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),y)
+LDLIBS += -l$(RTE_LIBNAME)
+endif
+
 ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),n)
 
 ifeq ($(CONFIG_RTE_LIBRTE_DISTRIBUTOR),y)
@@ -250,10 +254,6 @@ _postinstall: build
 build: _postbuild
 
 exe2cmd = $(strip $(call dotfile,$(patsubst %,%.cmd,$(1))))
-
-ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),y)
-LDLIBS += -l$(RTE_LIBNAME)
-endif
 
 ifeq ($(LINK_USING_CC),1)
 override EXTRA_LDFLAGS := $(call linkerprefix,$(EXTRA_LDFLAGS))
