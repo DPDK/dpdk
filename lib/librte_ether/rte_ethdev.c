@@ -814,7 +814,7 @@ rte_eth_dev_config_restore(uint8_t port_id)
 
 		/* add address to the hardware */
 		if  (*dev->dev_ops->mac_addr_add &&
-			dev->data->mac_pool_sel[i] & (1ULL << pool))
+			(dev->data->mac_pool_sel[i] & (1ULL << pool)))
 			(*dev->dev_ops->mac_addr_add)(dev, &addr, i, pool);
 		else {
 			PMD_DEBUG_TRACE("port %d: MAC address array not supported\n",
