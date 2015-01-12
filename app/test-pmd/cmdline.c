@@ -654,15 +654,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"filters:\n"
 			"--------\n\n"
 
-			"add_ethertype_filter (port_id) ethertype (eth_value)"
-			" priority (enable|disable)(pri_value) queue (queue_id) index (idx)\n"
-			"    add an ethertype filter.\n\n"
-
-			"remove_ethertype_filter (port_id) index (idx)\n"
-			"    remove an ethertype filter.\n\n"
-
-			"get_ethertype_filter (port_id) index (idx)\n"
-			"    get info of a ethertype filter.\n\n"
+			"ethertype_filter (port_id) (add|del)"
+			" (mac_addr|mac_ignr) (mac_address) ethertype"
+			" (ether_type) (drop|fwd) queue (queue_id)\n"
+			"    Add/Del an ethertype filter.\n\n"
 
 			"add_2tuple_filter (port_id) protocol (pro_value) (pro_mask)"
 			" dst_port (port_value) (port_mask) flags (flg_value) priority (prio_value)"
@@ -7264,135 +7259,6 @@ cmdline_parse_inst_t cmd_dump_one = {
 	},
 };
 
-/* *** ADD/REMOVE an ethertype FILTER *** */
-struct cmd_ethertype_filter_result {
-	cmdline_fixed_string_t filter;
-	uint8_t port_id;
-	cmdline_fixed_string_t ethertype;
-	uint16_t ethertype_value;
-	cmdline_fixed_string_t priority;
-	cmdline_fixed_string_t priority_en;
-	uint8_t priority_value;
-	cmdline_fixed_string_t queue;
-	uint16_t queue_id;
-	cmdline_fixed_string_t index;
-	uint16_t index_value;
-};
-
-static void
-cmd_ethertype_filter_parsed(void *parsed_result,
-			__attribute__((unused)) struct cmdline *cl,
-			__attribute__((unused)) void *data)
-{
-	int ret = 0;
-	struct cmd_ethertype_filter_result *res = parsed_result;
-	struct rte_ethertype_filter filter;
-
-	memset(&filter, 0, sizeof(struct rte_ethertype_filter));
-	filter.ethertype = rte_cpu_to_le_16(res->ethertype_value);
-	filter.priority = res->priority_value;
-
-	if (!strcmp(res->priority_en, "enable"))
-		filter.priority_en = 1;
-	if (!strcmp(res->filter, "add_ethertype_filter"))
-		ret = rte_eth_dev_add_ethertype_filter(res->port_id,
-				res->index_value,
-				&filter, res->queue_id);
-	else if (!strcmp(res->filter, "remove_ethertype_filter"))
-		ret = rte_eth_dev_remove_ethertype_filter(res->port_id,
-				res->index_value);
-	else if (!strcmp(res->filter, "get_ethertype_filter"))
-		get_ethertype_filter(res->port_id, res->index_value);
-
-	if (ret < 0)
-		printf("ethertype filter setting error: (%s)\n",
-			strerror(-ret));
-}
-
-cmdline_parse_token_num_t cmd_ethertype_filter_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
-				port_id, UINT8);
-cmdline_parse_token_string_t cmd_ethertype_filter_ethertype =
-	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
-				ethertype, "ethertype");
-cmdline_parse_token_ipaddr_t cmd_ethertype_filter_ethertype_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
-				ethertype_value, UINT16);
-cmdline_parse_token_string_t cmd_ethertype_filter_priority =
-	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
-				priority, "priority");
-cmdline_parse_token_string_t cmd_ethertype_filter_priority_en =
-	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
-				priority_en, "enable#disable");
-cmdline_parse_token_num_t cmd_ethertype_filter_priority_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
-				priority_value, UINT8);
-cmdline_parse_token_string_t cmd_ethertype_filter_queue =
-	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
-				queue, "queue");
-cmdline_parse_token_num_t cmd_ethertype_filter_queue_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
-				queue_id, UINT16);
-cmdline_parse_token_string_t cmd_ethertype_filter_index =
-	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
-				index, "index");
-cmdline_parse_token_num_t cmd_ethertype_filter_index_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
-				index_value, UINT16);
-cmdline_parse_token_string_t cmd_ethertype_filter_add_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
-				filter, "add_ethertype_filter");
-cmdline_parse_inst_t cmd_add_ethertype_filter = {
-	.f = cmd_ethertype_filter_parsed,
-	.data = NULL,
-	.help_str = "add an ethertype filter",
-	.tokens = {
-		(void *)&cmd_ethertype_filter_add_filter,
-		(void *)&cmd_ethertype_filter_port_id,
-		(void *)&cmd_ethertype_filter_ethertype,
-		(void *)&cmd_ethertype_filter_ethertype_value,
-		(void *)&cmd_ethertype_filter_priority,
-		(void *)&cmd_ethertype_filter_priority_en,
-		(void *)&cmd_ethertype_filter_priority_value,
-		(void *)&cmd_ethertype_filter_queue,
-		(void *)&cmd_ethertype_filter_queue_id,
-		(void *)&cmd_ethertype_filter_index,
-		(void *)&cmd_ethertype_filter_index_value,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t cmd_ethertype_filter_remove_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
-				 filter, "remove_ethertype_filter");
-cmdline_parse_inst_t cmd_remove_ethertype_filter = {
-	.f = cmd_ethertype_filter_parsed,
-	.data = NULL,
-	.help_str = "remove an ethertype filter",
-	.tokens = {
-		(void *)&cmd_ethertype_filter_remove_filter,
-		(void *)&cmd_ethertype_filter_port_id,
-		(void *)&cmd_ethertype_filter_index,
-		(void *)&cmd_ethertype_filter_index_value,
-		NULL,
-	},
-};
-cmdline_parse_token_string_t cmd_ethertype_filter_get_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
-				 filter, "get_ethertype_filter");
-cmdline_parse_inst_t cmd_get_ethertype_filter = {
-	.f = cmd_ethertype_filter_parsed,
-	.data = NULL,
-	.help_str = "get an ethertype filter",
-	.tokens = {
-		(void *)&cmd_ethertype_filter_get_filter,
-		(void *)&cmd_ethertype_filter_port_id,
-		(void *)&cmd_ethertype_filter_index,
-		(void *)&cmd_ethertype_filter_index_value,
-		NULL,
-	},
-};
-
 /* *** set SYN filter *** */
 struct cmd_set_syn_filter_result {
 	cmdline_fixed_string_t filter;
@@ -8095,6 +7961,113 @@ cmdline_parse_inst_t cmd_get_flex_filter = {
 };
 
 /* *** Filters Control *** */
+
+/* *** deal with ethertype filter *** */
+struct cmd_ethertype_filter_result {
+	cmdline_fixed_string_t filter;
+	uint8_t port_id;
+	cmdline_fixed_string_t ops;
+	cmdline_fixed_string_t mac;
+	struct ether_addr mac_addr;
+	cmdline_fixed_string_t ethertype;
+	uint16_t ethertype_value;
+	cmdline_fixed_string_t drop;
+	cmdline_fixed_string_t queue;
+	uint16_t  queue_id;
+};
+
+cmdline_parse_token_string_t cmd_ethertype_filter_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				 filter, "ethertype_filter");
+cmdline_parse_token_num_t cmd_ethertype_filter_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+			      port_id, UINT8);
+cmdline_parse_token_string_t cmd_ethertype_filter_ops =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				 ops, "add#del");
+cmdline_parse_token_string_t cmd_ethertype_filter_mac =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				 mac, "mac_addr#mac_ignr");
+cmdline_parse_token_etheraddr_t cmd_ethertype_filter_mac_addr =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_ethertype_filter_result,
+				     mac_addr);
+cmdline_parse_token_string_t cmd_ethertype_filter_ethertype =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				 ethertype, "ethertype");
+cmdline_parse_token_num_t cmd_ethertype_filter_ethertype_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+			      ethertype_value, UINT16);
+cmdline_parse_token_string_t cmd_ethertype_filter_drop =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				 drop, "drop#fwd");
+cmdline_parse_token_string_t cmd_ethertype_filter_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				 queue, "queue");
+cmdline_parse_token_num_t cmd_ethertype_filter_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+			      queue_id, UINT16);
+
+static void
+cmd_ethertype_filter_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	struct cmd_ethertype_filter_result *res = parsed_result;
+	struct rte_eth_ethertype_filter filter;
+	int ret = 0;
+
+	ret = rte_eth_dev_filter_supported(res->port_id,
+			RTE_ETH_FILTER_ETHERTYPE);
+	if (ret < 0) {
+		printf("ethertype filter is not supported on port %u.\n",
+			res->port_id);
+		return;
+	}
+
+	memset(&filter, 0, sizeof(filter));
+	if (!strcmp(res->mac, "mac_addr")) {
+		filter.flags |= RTE_ETHTYPE_FLAGS_MAC;
+		(void)rte_memcpy(&filter.mac_addr, &res->mac_addr,
+			sizeof(struct ether_addr));
+	}
+	if (!strcmp(res->drop, "drop"))
+		filter.flags |= RTE_ETHTYPE_FLAGS_DROP;
+	filter.ether_type = res->ethertype_value;
+	filter.queue = res->queue_id;
+
+	if (!strcmp(res->ops, "add"))
+		ret = rte_eth_dev_filter_ctrl(res->port_id,
+				RTE_ETH_FILTER_ETHERTYPE,
+				RTE_ETH_FILTER_ADD,
+				&filter);
+	else
+		ret = rte_eth_dev_filter_ctrl(res->port_id,
+				RTE_ETH_FILTER_ETHERTYPE,
+				RTE_ETH_FILTER_DELETE,
+				&filter);
+	if (ret < 0)
+		printf("ethertype filter programming error: (%s)\n",
+			strerror(-ret));
+}
+
+cmdline_parse_inst_t cmd_ethertype_filter = {
+	.f = cmd_ethertype_filter_parsed,
+	.data = NULL,
+	.help_str = "add or delete an ethertype filter entry",
+	.tokens = {
+		(void *)&cmd_ethertype_filter_filter,
+		(void *)&cmd_ethertype_filter_port_id,
+		(void *)&cmd_ethertype_filter_ops,
+		(void *)&cmd_ethertype_filter_mac,
+		(void *)&cmd_ethertype_filter_mac_addr,
+		(void *)&cmd_ethertype_filter_ethertype,
+		(void *)&cmd_ethertype_filter_ethertype_value,
+		(void *)&cmd_ethertype_filter_drop,
+		(void *)&cmd_ethertype_filter_queue,
+		(void *)&cmd_ethertype_filter_queue_id,
+		NULL,
+	},
+};
 
 /* *** deal with flow director filter *** */
 struct cmd_flow_director_result {
@@ -8815,9 +8788,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_rss_hash_key,
 	(cmdline_parse_inst_t *)&cmd_dump,
 	(cmdline_parse_inst_t *)&cmd_dump_one,
-	(cmdline_parse_inst_t *)&cmd_add_ethertype_filter,
-	(cmdline_parse_inst_t *)&cmd_remove_ethertype_filter,
-	(cmdline_parse_inst_t *)&cmd_get_ethertype_filter,
+	(cmdline_parse_inst_t *)&cmd_ethertype_filter,
 	(cmdline_parse_inst_t *)&cmd_add_syn_filter,
 	(cmdline_parse_inst_t *)&cmd_remove_syn_filter,
 	(cmdline_parse_inst_t *)&cmd_get_syn_filter,

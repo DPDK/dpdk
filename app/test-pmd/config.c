@@ -2166,33 +2166,6 @@ set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 }
 
 void
-get_ethertype_filter(uint8_t port_id, uint16_t index)
-{
-	struct rte_ethertype_filter filter;
-	int ret = 0;
-	uint16_t rx_queue;
-
-	memset(&filter, 0, sizeof(filter));
-	ret = rte_eth_dev_get_ethertype_filter(port_id, index,
-				&filter, &rx_queue);
-	if (ret < 0) {
-		if (ret == (-ENOENT))
-			printf("filter[%d] is not enabled\n", index);
-		else
-			printf("get ethertype filter fails(%s)\n", strerror(-ret));
-		return;
-	} else {
-		printf("filter[%d]:\n", index);
-		printf("    ethertype:  0x%04x\n",
-			rte_le_to_cpu_32(filter.ethertype));
-		printf("    priority: %s, %d\n",
-			filter.priority_en ? "enable" : "disable",
-			filter.priority);
-		printf("    queue: %d\n", rx_queue);
-	}
-}
-
-void
 get_syn_filter(uint8_t port_id)
 {
 	struct rte_syn_filter filter;
