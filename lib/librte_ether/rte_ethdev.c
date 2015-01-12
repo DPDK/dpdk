@@ -503,6 +503,31 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 }
 
 static int
+rte_eth_dev_check_vf_rss_rxq_num(uint8_t port_id, uint16_t nb_rx_q)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	switch (nb_rx_q) {
+	case 1:
+	case 2:
+		RTE_ETH_DEV_SRIOV(dev).active =
+			ETH_64_POOLS;
+		break;
+	case 4:
+		RTE_ETH_DEV_SRIOV(dev).active =
+			ETH_32_POOLS;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool = nb_rx_q;
+	RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx =
+		dev->pci_dev->max_vfs * nb_rx_q;
+
+	return 0;
+}
+
+static int
 rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		      const struct rte_eth_conf *dev_conf)
 {
@@ -510,8 +535,7 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 
 	if (RTE_ETH_DEV_SRIOV(dev).active != 0) {
 		/* check multi-queue mode */
-		if ((dev_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) ||
-		    (dev_conf->rxmode.mq_mode == ETH_MQ_RX_DCB) ||
+		if ((dev_conf->rxmode.mq_mode == ETH_MQ_RX_DCB) ||
 		    (dev_conf->rxmode.mq_mode == ETH_MQ_RX_DCB_RSS) ||
 		    (dev_conf->txmode.mq_mode == ETH_MQ_TX_DCB)) {
 			/* SRIOV only works in VMDq enable mode */
@@ -525,7 +549,6 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		}
 
 		switch (dev_conf->rxmode.mq_mode) {
-		case ETH_MQ_RX_VMDQ_RSS:
 		case ETH_MQ_RX_VMDQ_DCB:
 		case ETH_MQ_RX_VMDQ_DCB_RSS:
 			/* DCB/RSS VMDQ in SRIOV mode, not implement yet */
@@ -534,6 +557,26 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 					"unsupported VMDQ mq_mode rx %u\n",
 					port_id, dev_conf->rxmode.mq_mode);
 			return (-EINVAL);
+		case ETH_MQ_RX_RSS:
+			PMD_DEBUG_TRACE("ethdev port_id=%" PRIu8
+					" SRIOV active, "
+					"Rx mq mode is changed from:"
+					"mq_mode %u into VMDQ mq_mode %u\n",
+					port_id,
+					dev_conf->rxmode.mq_mode,
+					dev->data->dev_conf.rxmode.mq_mode);
+		case ETH_MQ_RX_VMDQ_RSS:
+			dev->data->dev_conf.rxmode.mq_mode = ETH_MQ_RX_VMDQ_RSS;
+			if (nb_rx_q <= RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool)
+				if (rte_eth_dev_check_vf_rss_rxq_num(port_id, nb_rx_q) != 0) {
+					PMD_DEBUG_TRACE("ethdev port_id=%d"
+						" SRIOV active, invalid queue"
+						" number for VMDQ RSS, allowed"
+						" value are 1, 2 or 4\n",
+						port_id);
+					return -EINVAL;
+				}
+			break;
 		default: /* ETH_MQ_RX_VMDQ_ONLY or ETH_MQ_RX_NONE */
 			/* if nothing mq mode configure, use default scheme */
 			dev->data->dev_conf.rxmode.mq_mode = ETH_MQ_RX_VMDQ_ONLY;
@@ -553,8 +596,6 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		default: /* ETH_MQ_TX_VMDQ_ONLY or ETH_MQ_TX_NONE */
 			/* if nothing mq mode configure, use default scheme */
 			dev->data->dev_conf.txmode.mq_mode = ETH_MQ_TX_VMDQ_ONLY;
-			if (RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool > 1)
-				RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool = 1;
 			break;
 		}
 
