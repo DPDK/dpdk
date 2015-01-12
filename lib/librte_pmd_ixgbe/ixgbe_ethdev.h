@@ -163,6 +163,15 @@ struct ixgbe_vf_info {
 };
 
 /*
+ * Structure to store filters' info.
+ */
+struct ixgbe_filter_info {
+	uint8_t ethertype_mask;  /* Bit mask for every used ethertype filter */
+	/* store used ethertype filters*/
+	uint16_t ethertype_filters[IXGBE_MAX_ETQF_FILTERS];
+};
+
+/*
  * Structure to store private data for each driver instance (for each port).
  */
 struct ixgbe_adapter {
@@ -180,6 +189,7 @@ struct ixgbe_adapter {
 #ifdef RTE_NIC_BYPASS
 	struct ixgbe_bypass_info    bps;
 #endif /* RTE_NIC_BYPASS */
+	struct ixgbe_filter_info    filter;
 };
 
 /*
@@ -224,6 +234,9 @@ enum ixgbe_5tuple_protocol {
 
 #define IXGBE_DEV_PRIVATE_TO_UTA(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->uta_info)
+
+#define IXGBE_DEV_PRIVATE_TO_FILTER_INFO(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->filter)
 
 /*
  * RX/TX function prototypes
