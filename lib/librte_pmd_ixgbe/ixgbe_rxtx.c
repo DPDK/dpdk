@@ -3561,9 +3561,9 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 				IXGBE_WRITE_REG(hw, IXGBE_PSRTYPE(rxq->reg_idx), psrtype);
 			}
 			srrctl = ((dev->data->dev_conf.rxmode.split_hdr_size <<
-				   IXGBE_SRRCTL_BSIZEHDRSIZE_SHIFT) &
-				  IXGBE_SRRCTL_BSIZEHDR_MASK);
-			srrctl |= E1000_SRRCTL_DESCTYPE_HDR_SPLIT_ALWAYS;
+				IXGBE_SRRCTL_BSIZEHDRSIZE_SHIFT) &
+				IXGBE_SRRCTL_BSIZEHDR_MASK);
+			srrctl |= IXGBE_SRRCTL_DESCTYPE_HDR_SPLIT_ALWAYS;
 		} else
 #endif
 			srrctl = IXGBE_SRRCTL_DESCTYPE_ADV_ONEBUF;
@@ -3998,7 +3998,7 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 	struct igb_rx_queue *rxq;
 	struct rte_pktmbuf_pool_private *mbp_priv;
 	uint64_t bus_addr;
-	uint32_t srrctl;
+	uint32_t srrctl, psrtype = 0;
 	uint16_t buf_size;
 	uint16_t i;
 	int ret;
@@ -4052,20 +4052,10 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 		 * Configure Header Split
 		 */
 		if (dev->data->dev_conf.rxmode.header_split) {
-
-			/* Must setup the PSRTYPE register */
-			uint32_t psrtype;
-			psrtype = IXGBE_PSRTYPE_TCPHDR |
-				IXGBE_PSRTYPE_UDPHDR   |
-				IXGBE_PSRTYPE_IPV4HDR  |
-				IXGBE_PSRTYPE_IPV6HDR;
-
-			IXGBE_WRITE_REG(hw, IXGBE_VFPSRTYPE(i), psrtype);
-
 			srrctl = ((dev->data->dev_conf.rxmode.split_hdr_size <<
-				   IXGBE_SRRCTL_BSIZEHDRSIZE_SHIFT) &
-				  IXGBE_SRRCTL_BSIZEHDR_MASK);
-			srrctl |= E1000_SRRCTL_DESCTYPE_HDR_SPLIT_ALWAYS;
+				IXGBE_SRRCTL_BSIZEHDRSIZE_SHIFT) &
+				IXGBE_SRRCTL_BSIZEHDR_MASK);
+			srrctl |= IXGBE_SRRCTL_DESCTYPE_HDR_SPLIT_ALWAYS;
 		} else
 #endif
 			srrctl = IXGBE_SRRCTL_DESCTYPE_ADV_ONEBUF;
@@ -4107,6 +4097,17 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 #endif
 		}
 	}
+
+#ifdef RTE_HEADER_SPLIT_ENABLE
+	if (dev->data->dev_conf.rxmode.header_split)
+		/* Must setup the PSRTYPE register */
+		psrtype = IXGBE_PSRTYPE_TCPHDR |
+			IXGBE_PSRTYPE_UDPHDR   |
+			IXGBE_PSRTYPE_IPV4HDR  |
+			IXGBE_PSRTYPE_IPV6HDR;
+#endif
+
+	IXGBE_WRITE_REG(hw, IXGBE_VFPSRTYPE, psrtype);
 
 	if (dev->data->dev_conf.rxmode.enable_scatter) {
 		if (!dev->data->scattered_rx)
