@@ -53,6 +53,8 @@
 #include "ixgbe_ethdev.h"
 
 #define IXGBE_MAX_VFTA     (128)
+#define IXGBE_VF_MSG_SIZE_DEFAULT 1
+#define IXGBE_VF_GET_QUEUE_MSG_SIZE 5
 
 static inline uint16_t
 dev_num_vf(struct rte_eth_dev *eth_dev)
@@ -491,9 +493,41 @@ ixgbe_negotiate_vf_api(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 }
 
 static int
+ixgbe_get_vf_queues(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
+{
+	struct ixgbe_vf_info *vfinfo =
+		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
+	uint32_t default_q = vf * RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
+
+	/* Verify if the PF supports the mbox APIs version or not */
+	switch (vfinfo[vf].api_version) {
+	case ixgbe_mbox_api_20:
+	case ixgbe_mbox_api_11:
+		break;
+	default:
+		return -1;
+	}
+
+	/* Notify VF of Rx and Tx queue number */
+	msgbuf[IXGBE_VF_RX_QUEUES] = RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
+	msgbuf[IXGBE_VF_TX_QUEUES] = RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
+
+	/* Notify VF of default queue */
+	msgbuf[IXGBE_VF_DEF_QUEUE] = default_q;
+
+	/*
+	 * FIX ME if it needs fill msgbuf[IXGBE_VF_TRANS_VLAN]
+	 * for VLAN strip or VMDQ_DCB or VMDQ_DCB_RSS
+	 */
+
+	return 0;
+}
+
+static int
 ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 {
 	uint16_t mbx_size = IXGBE_VFMAILBOX_SIZE;
+	uint16_t msg_size = IXGBE_VF_MSG_SIZE_DEFAULT;
 	uint32_t msgbuf[IXGBE_VFMAILBOX_SIZE];
 	int32_t retval;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -537,6 +571,10 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 	case IXGBE_VF_API_NEGOTIATE:
 		retval = ixgbe_negotiate_vf_api(dev, vf, msgbuf);
 		break;
+	case IXGBE_VF_GET_QUEUES:
+		retval = ixgbe_get_vf_queues(dev, vf, msgbuf);
+		msg_size = IXGBE_VF_GET_QUEUE_MSG_SIZE;
+		break;
 	default:
 		PMD_DRV_LOG(DEBUG, "Unhandled Msg %8.8x", (unsigned)msgbuf[0]);
 		retval = IXGBE_ERR_MBX;
@@ -551,7 +589,7 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 
 	msgbuf[0] |= IXGBE_VT_MSGTYPE_CTS;
 
-	ixgbe_write_mbx(hw, msgbuf, 1, vf);
+	ixgbe_write_mbx(hw, msgbuf, msg_size, vf);
 
 	return retval;
 }
