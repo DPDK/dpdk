@@ -187,6 +187,21 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 	IXGBE_WRITE_REG(hw, IXGBE_MPSAR_LO(hw->mac.num_rar_entries), 0);
 	IXGBE_WRITE_REG(hw, IXGBE_MPSAR_HI(hw->mac.num_rar_entries), 0);
 
+	/*
+	 * VF RSS can support at most 4 queues for each VF, even if
+	 * 8 queues are available for each VF, it need refine to 4
+	 * queues here due to this limitation, otherwise no queue
+	 * will receive any packet even RSS is enabled.
+	 */
+	if (eth_dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_VMDQ_RSS) {
+		if (RTE_ETH_DEV_SRIOV(eth_dev).nb_q_per_pool == 8) {
+			RTE_ETH_DEV_SRIOV(eth_dev).active = ETH_32_POOLS;
+			RTE_ETH_DEV_SRIOV(eth_dev).nb_q_per_pool = 4;
+			RTE_ETH_DEV_SRIOV(eth_dev).def_pool_q_idx =
+				dev_num_vf(eth_dev) * 4;
+		}
+	}
+
 	/* set VMDq map to default PF pool */
 	hw->mac.ops.set_vmdq(hw, 0, RTE_ETH_DEV_SRIOV(eth_dev).def_vmdq_idx);
 
