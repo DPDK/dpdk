@@ -154,14 +154,6 @@ static int eth_igb_add_syn_filter(struct rte_eth_dev *dev,
 static int eth_igb_remove_syn_filter(struct rte_eth_dev *dev);
 static int eth_igb_get_syn_filter(struct rte_eth_dev *dev,
 			struct rte_syn_filter *filter, uint16_t *rx_queue);
-static int eth_igb_add_ethertype_filter(struct rte_eth_dev *dev,
-			uint16_t index,
-			struct rte_ethertype_filter *filter, uint16_t rx_queue);
-static int eth_igb_remove_ethertype_filter(struct rte_eth_dev *dev,
-			uint16_t index);
-static int eth_igb_get_ethertype_filter(struct rte_eth_dev *dev,
-			uint16_t index,
-			struct rte_ethertype_filter *filter, uint16_t *rx_queue);
 static int eth_igb_add_2tuple_filter(struct rte_eth_dev *dev,
 			uint16_t index,
 			struct rte_2tuple_filter *filter, uint16_t rx_queue);
@@ -186,6 +178,18 @@ static int eth_igb_remove_5tuple_filter(struct rte_eth_dev *dev,
 static int eth_igb_get_5tuple_filter(struct rte_eth_dev *dev,
 			uint16_t index,
 			struct rte_5tuple_filter *filter, uint16_t *rx_queue);
+static int igb_add_del_ethertype_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ethertype_filter *filter,
+			bool add);
+static int igb_ethertype_filter_handle(struct rte_eth_dev *dev,
+				enum rte_filter_op filter_op,
+				void *arg);
+static int igb_get_ethertype_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ethertype_filter *filter);
+static int eth_igb_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -264,9 +268,6 @@ static struct eth_dev_ops eth_igb_ops = {
 	.add_syn_filter          = eth_igb_add_syn_filter,
 	.remove_syn_filter       = eth_igb_remove_syn_filter,
 	.get_syn_filter          = eth_igb_get_syn_filter,
-	.add_ethertype_filter    = eth_igb_add_ethertype_filter,
-	.remove_ethertype_filter = eth_igb_remove_ethertype_filter,
-	.get_ethertype_filter    = eth_igb_get_ethertype_filter,
 	.add_2tuple_filter       = eth_igb_add_2tuple_filter,
 	.remove_2tuple_filter    = eth_igb_remove_2tuple_filter,
 	.get_2tuple_filter       = eth_igb_get_2tuple_filter,
@@ -276,6 +277,7 @@ static struct eth_dev_ops eth_igb_ops = {
 	.add_5tuple_filter       = eth_igb_add_5tuple_filter,
 	.remove_5tuple_filter    = eth_igb_remove_5tuple_filter,
 	.get_5tuple_filter       = eth_igb_get_5tuple_filter,
+	.filter_ctrl             = eth_igb_filter_ctrl,
 };
 
 /*
@@ -2388,7 +2390,7 @@ eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 #define MAC_TYPE_FILTER_SUP(type)    do {\
 	if ((type) != e1000_82580 && (type) != e1000_i350 &&\
 		(type) != e1000_82576)\
-		return -ENOSYS;\
+		return -ENOTSUP;\
 } while (0)
 
 /*
@@ -2480,111 +2482,6 @@ eth_igb_get_syn_filter(struct rte_eth_dev *dev,
 		filter->hig_pri = (rfctl & E1000_RFCTL_SYNQFP) ? 1 : 0;
 		*rx_queue = (uint8_t)((synqf & E1000_SYN_FILTER_QUEUE) >>
 				E1000_SYN_FILTER_QUEUE_SHIFT);
-		return 0;
-	}
-	return -ENOENT;
-}
-
-/*
- * add an ethertype filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * index: the index the filter allocates.
- * filter: ponter to the filter that will be added.
- * rx_queue: the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-eth_igb_add_ethertype_filter(struct rte_eth_dev *dev, uint16_t index,
-			struct rte_ethertype_filter *filter, uint16_t rx_queue)
-{
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t etqf;
-
-	MAC_TYPE_FILTER_SUP(hw->mac.type);
-
-	if (index >= E1000_MAX_ETQF_FILTERS || rx_queue >= IGB_MAX_RX_QUEUE_NUM)
-		return -EINVAL;
-
-	etqf = E1000_READ_REG(hw, E1000_ETQF(index));
-	if (etqf & E1000_ETQF_FILTER_ENABLE)
-		return -EINVAL;  /* filter index is in use. */
-	else
-		etqf = 0;
-
-	etqf |= E1000_ETQF_FILTER_ENABLE | E1000_ETQF_QUEUE_ENABLE;
-	etqf |= (uint32_t)(filter->ethertype & E1000_ETQF_ETHERTYPE);
-	etqf |= rx_queue << E1000_ETQF_QUEUE_SHIFT;
-
-	if (filter->priority_en) {
-		PMD_INIT_LOG(ERR, "vlan and priority (%d) is not supported"
-			" in E1000.", filter->priority);
-		return -EINVAL;
-	}
-
-	E1000_WRITE_REG(hw, E1000_ETQF(index), etqf);
-	return 0;
-}
-
-/*
- * remove an ethertype filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * index: the index the filter allocates.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-eth_igb_remove_ethertype_filter(struct rte_eth_dev *dev, uint16_t index)
-{
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	MAC_TYPE_FILTER_SUP(hw->mac.type);
-
-	if (index >= E1000_MAX_ETQF_FILTERS)
-		return -EINVAL;
-
-	E1000_WRITE_REG(hw, E1000_ETQF(index), 0);
-	return 0;
-}
-
-/*
- * get an ethertype filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * index: the index the filter allocates.
- * filter: ponter to the filter that will be gotten.
- * *rx_queue: the ponited of the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-eth_igb_get_ethertype_filter(struct rte_eth_dev *dev, uint16_t index,
-			struct rte_ethertype_filter *filter, uint16_t *rx_queue)
-{
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t etqf;
-
-	MAC_TYPE_FILTER_SUP(hw->mac.type);
-
-	if (index >= E1000_MAX_ETQF_FILTERS)
-		return -EINVAL;
-
-	etqf = E1000_READ_REG(hw, E1000_ETQF(index));
-	if (etqf & E1000_ETQF_FILTER_ENABLE) {
-		filter->ethertype = etqf & E1000_ETQF_ETHERTYPE;
-		filter->priority_en = 0;
-		*rx_queue = (etqf & E1000_ETQF_QUEUE) >> E1000_ETQF_QUEUE_SHIFT;
 		return 0;
 	}
 	return -ENOENT;
@@ -3147,6 +3044,207 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 			dev->data->dev_conf.rxmode.max_rx_pkt_len);
 
 	return 0;
+}
+
+static inline int
+igb_ethertype_filter_lookup(struct e1000_filter_info *filter_info,
+			uint16_t ethertype)
+{
+	int i;
+
+	for (i = 0; i < E1000_MAX_ETQF_FILTERS; i++) {
+		if (filter_info->ethertype_filters[i] == ethertype &&
+		    (filter_info->ethertype_mask & (1 << i)))
+			return i;
+	}
+	return -1;
+}
+
+static inline int
+igb_ethertype_filter_insert(struct e1000_filter_info *filter_info,
+			uint16_t ethertype)
+{
+	int i;
+
+	for (i = 0; i < E1000_MAX_ETQF_FILTERS; i++) {
+		if (!(filter_info->ethertype_mask & (1 << i))) {
+			filter_info->ethertype_mask |= 1 << i;
+			filter_info->ethertype_filters[i] = ethertype;
+			return i;
+		}
+	}
+	return -1;
+}
+
+static inline int
+igb_ethertype_filter_remove(struct e1000_filter_info *filter_info,
+			uint8_t idx)
+{
+	if (idx >= E1000_MAX_ETQF_FILTERS)
+		return -1;
+	filter_info->ethertype_mask &= ~(1 << idx);
+	filter_info->ethertype_filters[idx] = 0;
+	return idx;
+}
+
+
+static int
+igb_add_del_ethertype_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ethertype_filter *filter,
+			bool add)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	uint32_t etqf = 0;
+	int ret;
+
+	if (filter->ether_type == ETHER_TYPE_IPv4 ||
+		filter->ether_type == ETHER_TYPE_IPv6) {
+		PMD_DRV_LOG(ERR, "unsupported ether_type(0x%04x) in"
+			" ethertype filter.", filter->ether_type);
+		return -EINVAL;
+	}
+
+	if (filter->flags & RTE_ETHTYPE_FLAGS_MAC) {
+		PMD_DRV_LOG(ERR, "mac compare is unsupported.");
+		return -EINVAL;
+	}
+	if (filter->flags & RTE_ETHTYPE_FLAGS_DROP) {
+		PMD_DRV_LOG(ERR, "drop option is unsupported.");
+		return -EINVAL;
+	}
+
+	ret = igb_ethertype_filter_lookup(filter_info, filter->ether_type);
+	if (ret >= 0 && add) {
+		PMD_DRV_LOG(ERR, "ethertype (0x%04x) filter exists.",
+			    filter->ether_type);
+		return -EEXIST;
+	}
+	if (ret < 0 && !add) {
+		PMD_DRV_LOG(ERR, "ethertype (0x%04x) filter doesn't exist.",
+			    filter->ether_type);
+		return -ENOENT;
+	}
+
+	if (add) {
+		ret = igb_ethertype_filter_insert(filter_info,
+			filter->ether_type);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "ethertype filters are full.");
+			return -ENOSYS;
+		}
+
+		etqf |= E1000_ETQF_FILTER_ENABLE | E1000_ETQF_QUEUE_ENABLE;
+		etqf |= (uint32_t)(filter->ether_type & E1000_ETQF_ETHERTYPE);
+		etqf |= filter->queue << E1000_ETQF_QUEUE_SHIFT;
+	} else {
+		ret = igb_ethertype_filter_remove(filter_info, (uint8_t)ret);
+		if (ret < 0)
+			return -ENOSYS;
+	}
+	E1000_WRITE_REG(hw, E1000_ETQF(ret), etqf);
+	E1000_WRITE_FLUSH(hw);
+
+	return 0;
+}
+
+static int
+igb_get_ethertype_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ethertype_filter *filter)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	uint32_t etqf;
+	int ret;
+
+	ret = igb_ethertype_filter_lookup(filter_info, filter->ether_type);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "ethertype (0x%04x) filter doesn't exist.",
+			    filter->ether_type);
+		return -ENOENT;
+	}
+
+	etqf = E1000_READ_REG(hw, E1000_ETQF(ret));
+	if (etqf & E1000_ETQF_FILTER_ENABLE) {
+		filter->ether_type = etqf & E1000_ETQF_ETHERTYPE;
+		filter->flags = 0;
+		filter->queue = (etqf & E1000_ETQF_QUEUE) >>
+				E1000_ETQF_QUEUE_SHIFT;
+		return 0;
+	}
+
+	return -ENOENT;
+}
+
+/*
+ * igb_ethertype_filter_handle - Handle operations for ethertype filter.
+ * @dev: pointer to rte_eth_dev structure
+ * @filter_op:operation will be taken.
+ * @arg: a pointer to specific structure corresponding to the filter_op
+ */
+static int
+igb_ethertype_filter_handle(struct rte_eth_dev *dev,
+				enum rte_filter_op filter_op,
+				void *arg)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	MAC_TYPE_FILTER_SUP(hw->mac.type);
+
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return 0;
+
+	if (arg == NULL) {
+		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u.",
+			    filter_op);
+		return -EINVAL;
+	}
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+		ret = igb_add_del_ethertype_filter(dev,
+			(struct rte_eth_ethertype_filter *)arg,
+			TRUE);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		ret = igb_add_del_ethertype_filter(dev,
+			(struct rte_eth_ethertype_filter *)arg,
+			FALSE);
+		break;
+	case RTE_ETH_FILTER_GET:
+		ret = igb_get_ethertype_filter(dev,
+			(struct rte_eth_ethertype_filter *)arg);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unsupported operation %u.", filter_op);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
+static int
+eth_igb_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg)
+{
+	int ret = -EINVAL;
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_ETHERTYPE:
+		ret = igb_ethertype_filter_handle(dev, filter_op, arg);
+		break;
+	default:
+		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
+							filter_type);
+		break;
+	}
+
+	return ret;
 }
 
 static struct rte_driver pmd_igb_drv = {

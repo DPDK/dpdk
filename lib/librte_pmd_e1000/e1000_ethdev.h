@@ -132,6 +132,15 @@ struct e1000_vf_info {
 };
 
 /*
+ * Structure to store filters' info.
+ */
+struct e1000_filter_info {
+	uint8_t ethertype_mask; /* Bit mask for every used ethertype filter */
+	/* store used ethertype filters*/
+	uint16_t ethertype_filters[E1000_MAX_ETQF_FILTERS];
+};
+
+/*
  * Structure to store private data for each driver instance (for each port).
  */
 struct e1000_adapter {
@@ -140,6 +149,7 @@ struct e1000_adapter {
 	struct e1000_interrupt  intr;
 	struct e1000_vfta       shadow_vfta;
 	struct e1000_vf_info    *vfdata;
+	struct e1000_filter_info filter;
 };
 
 #define E1000_DEV_PRIVATE_TO_HW(adapter) \
@@ -156,6 +166,9 @@ struct e1000_adapter {
 
 #define E1000_DEV_PRIVATE_TO_P_VFDATA(adapter) \
         (&((struct e1000_adapter *)adapter)->vfdata)
+
+#define E1000_DEV_PRIVATE_TO_FILTER_INFO(adapter) \
+	(&((struct e1000_adapter *)adapter)->filter)
 
 /*
  * RX/TX IGB function prototypes
