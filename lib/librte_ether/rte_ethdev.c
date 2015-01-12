@@ -3056,63 +3056,6 @@ rte_eth_dev_get_syn_filter(uint8_t port_id,
 }
 
 int
-rte_eth_dev_add_ethertype_filter(uint8_t port_id, uint16_t index,
-			struct rte_ethertype_filter *filter, uint16_t rx_queue)
-{
-	struct rte_eth_dev *dev;
-
-	if (port_id >= nb_ports) {
-		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return -ENODEV;
-	}
-	if (filter->ethertype == ETHER_TYPE_IPv4 ||
-		filter->ethertype == ETHER_TYPE_IPv6){
-		PMD_DEBUG_TRACE("IP and IPv6 are not supported"
-			" in ethertype filter\n");
-		return -EINVAL;
-	}
-	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->add_ethertype_filter, -ENOTSUP);
-	return (*dev->dev_ops->add_ethertype_filter)(dev, index,
-					filter, rx_queue);
-}
-
-int
-rte_eth_dev_remove_ethertype_filter(uint8_t port_id,  uint16_t index)
-{
-	struct rte_eth_dev *dev;
-
-	if (port_id >= nb_ports) {
-		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return -ENODEV;
-	}
-
-	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->remove_ethertype_filter, -ENOTSUP);
-	return (*dev->dev_ops->remove_ethertype_filter)(dev, index);
-}
-
-int
-rte_eth_dev_get_ethertype_filter(uint8_t port_id, uint16_t index,
-			struct rte_ethertype_filter *filter, uint16_t *rx_queue)
-{
-	struct rte_eth_dev *dev;
-
-	if (filter == NULL || rx_queue == NULL)
-		return -EINVAL;
-
-	if (port_id >= nb_ports) {
-		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return -ENODEV;
-	}
-
-	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_ethertype_filter, -ENOTSUP);
-	return (*dev->dev_ops->get_ethertype_filter)(dev, index,
-						filter, rx_queue);
-}
-
-int
 rte_eth_dev_add_2tuple_filter(uint8_t port_id, uint16_t index,
 			struct rte_2tuple_filter *filter, uint16_t rx_queue)
 {

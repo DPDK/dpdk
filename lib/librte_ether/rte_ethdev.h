@@ -972,15 +972,6 @@ TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
 #define TCP_FLAG_ALL 0x3F
 
 /**
- *  A structure used to define an ethertype filter.
- */
-struct rte_ethertype_filter {
-	uint16_t ethertype;  /**< little endian. */
-	uint8_t priority_en; /**< compare priority enable. */
-	uint8_t priority;
-};
-
-/**
  *  A structure used to define an syn filter.
  */
 struct rte_syn_filter {
@@ -1372,20 +1363,6 @@ typedef int (*eth_get_syn_filter_t)(struct rte_eth_dev *dev,
 			struct rte_syn_filter *filter, uint16_t *rx_queue);
 /**< @internal Get syn filter rule on an Ethernet device */
 
-typedef int (*eth_add_ethertype_filter_t)(struct rte_eth_dev *dev,
-			uint16_t index, struct rte_ethertype_filter *filter,
-			uint16_t rx_queue);
-/**< @internal Setup a new ethertype filter rule on an Ethernet device */
-
-typedef int (*eth_remove_ethertype_filter_t)(struct rte_eth_dev *dev,
-			uint16_t index);
-/**< @internal Remove an ethertype filter rule on an Ethernet device */
-
-typedef int (*eth_get_ethertype_filter_t)(struct rte_eth_dev *dev,
-			uint16_t index, struct rte_ethertype_filter *filter,
-			uint16_t *rx_queue);
-/**< @internal Get an ethertype filter rule on an Ethernet device */
-
 typedef int (*eth_add_2tuple_filter_t)(struct rte_eth_dev *dev,
 			uint16_t index, struct rte_2tuple_filter *filter,
 			uint16_t rx_queue);
@@ -1532,9 +1509,6 @@ struct eth_dev_ops {
 	eth_add_syn_filter_t           add_syn_filter;       /**< add syn filter. */
 	eth_remove_syn_filter_t        remove_syn_filter;    /**< remove syn filter. */
 	eth_get_syn_filter_t           get_syn_filter;       /**< get syn filter. */
-	eth_add_ethertype_filter_t     add_ethertype_filter;    /**< add ethertype filter. */
-	eth_remove_ethertype_filter_t  remove_ethertype_filter; /**< remove ethertype filter. */
-	eth_get_ethertype_filter_t     get_ethertype_filter;    /**< get ethertype filter. */
 	eth_add_2tuple_filter_t        add_2tuple_filter;    /**< add 2tuple filter. */
 	eth_remove_2tuple_filter_t     remove_2tuple_filter; /**< remove 2tuple filter. */
 	eth_get_2tuple_filter_t        get_2tuple_filter;    /**< get 2tuple filter. */
@@ -3472,68 +3446,6 @@ int rte_eth_dev_remove_syn_filter(uint8_t port_id);
  */
 int rte_eth_dev_get_syn_filter(uint8_t port_id,
 			struct rte_syn_filter *filter, uint16_t *rx_queue);
-
-/**
- * Add a new ethertype filter rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param index
- *   The identifier of ethertype filter.
- * @param filter
- *   The pointer to the structure describing the ethertype filter rule.
- *   The *rte_ethertype_filter* structure includes the values of the different
- *   fields to match: ethertype and priority in vlan tag.
- *   priority in vlan tag is not supported for E1000 dev.
- * @param rx_queue
- *   The index of the RX queue where to store RX packets matching the added
- *   ethertype filter.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support ethertype filter.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if the filter information is not correct.
- */
-int rte_eth_dev_add_ethertype_filter(uint8_t port_id, uint16_t index,
-			struct rte_ethertype_filter *filter, uint16_t rx_queue);
-
-/**
- * remove an ethertype filter rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param index
- *   The identifier of ethertype filter.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support ethertype filter.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if the filter information is not correct.
- */
-int rte_eth_dev_remove_ethertype_filter(uint8_t port_id,
-			uint16_t index);
-
-/**
- * Get an ethertype filter rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param index
- *   The identifier of ethertype filter.
- * @param filter
- *   A pointer to a structure of type *rte_ethertype_filter* to be filled with
- *   the information of the Ethertype filter.
- * @param rx_queue
- *   A pointer to get the queue index.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support ethertype filter.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if the filter information is not correct.
- *   - (-ENOENT) if no enabled filter in this index.
- */
-int rte_eth_dev_get_ethertype_filter(uint8_t port_id, uint16_t index,
-			struct rte_ethertype_filter *filter, uint16_t *rx_queue);
 
 /**
  * Add a new 2tuple filter rule on an Ethernet device.
