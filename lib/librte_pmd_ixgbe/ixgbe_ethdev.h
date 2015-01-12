@@ -159,6 +159,7 @@ struct ixgbe_vf_info {
 	uint16_t tx_rate[IXGBE_MAX_QUEUE_NUM_PER_VF];
 	uint16_t vlan_count;
 	uint8_t spoofchk_enabled;
+	uint8_t api_version;
 };
 
 /*

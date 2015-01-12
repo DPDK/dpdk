@@ -469,6 +469,28 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t *ms
 }
 
 static int
+ixgbe_negotiate_vf_api(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
+{
+	uint32_t api_version = msgbuf[1];
+	struct ixgbe_vf_info *vfinfo =
+		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
+
+	switch (api_version) {
+	case ixgbe_mbox_api_10:
+	case ixgbe_mbox_api_11:
+		vfinfo[vf].api_version = (uint8_t)api_version;
+		return 0;
+	default:
+		break;
+	}
+
+	RTE_LOG(ERR, PMD, "Negotiate invalid api version %u from VF %d\n",
+		api_version, vf);
+
+	return -1;
+}
+
+static int
 ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 {
 	uint16_t mbx_size = IXGBE_VFMAILBOX_SIZE;
@@ -511,6 +533,9 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 		break;
 	case IXGBE_VF_SET_VLAN:
 		retval = ixgbe_vf_set_vlan(dev, vf, msgbuf);
+		break;
+	case IXGBE_VF_API_NEGOTIATE:
+		retval = ixgbe_negotiate_vf_api(dev, vf, msgbuf);
 		break;
 	default:
 		PMD_DRV_LOG(DEBUG, "Unhandled Msg %8.8x", (unsigned)msgbuf[0]);
