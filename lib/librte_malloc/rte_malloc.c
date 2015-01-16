@@ -75,7 +75,7 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket_arg)
 	void *ret;
 
 	/* return NULL if size is 0 or alignment is not power-of-2 */
-	if (size == 0 || !rte_is_power_of_2(align))
+	if (size == 0 || (align && !rte_is_power_of_2(align)))
 		return NULL;
 
 	if (socket_arg == SOCKET_ID_ANY)

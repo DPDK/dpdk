@@ -156,7 +156,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	}
 
 	/* if alignment is not a power of two */
-	if (!rte_is_power_of_2(align)) {
+	if (align && !rte_is_power_of_2(align)) {
 		RTE_LOG(ERR, EAL, "%s(): Invalid alignment: %u\n", __func__,
 				align);
 		rte_errno = EINVAL;
