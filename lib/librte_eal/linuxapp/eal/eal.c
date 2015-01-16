@@ -865,6 +865,7 @@ rte_eal_check_module(const char *module_name)
 {
 	char mod_name[30]; /* Any module names can be longer than 30 bytes? */
 	int ret = 0;
+	int n;
 
 	if (NULL == module_name)
 		return -1;
@@ -876,8 +877,8 @@ rte_eal_check_module(const char *module_name)
 		return -1;
 	}
 	while (!feof(fd)) {
-		fscanf(fd, "%29s %*[^\n]", mod_name);
-		if (!strcmp(mod_name, module_name)) {
+		n = fscanf(fd, "%29s %*[^\n]", mod_name);
+		if ((n == 1) && !strcmp(mod_name, module_name)) {
 			ret = 1;
 			break;
 		}
