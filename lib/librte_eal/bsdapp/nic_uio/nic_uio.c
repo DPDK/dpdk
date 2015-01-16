@@ -175,13 +175,13 @@ nic_uio_mmap_single(struct cdev *cdev, vm_ooffset_t *offset, vm_size_t size,
 
 
 int
-nic_uio_open(struct cdev *dev, int oflags, int devtype, d_thread_t *td)
+nic_uio_open(struct cdev *dev, int oflags, int devtype, struct thread *td)
 {
 	return 0;
 }
 
 int
-nic_uio_close(struct cdev *dev, int fflag, int devtype, d_thread_t *td)
+nic_uio_close(struct cdev *dev, int fflag, int devtype, struct thread *td)
 {
 	return 0;
 }
