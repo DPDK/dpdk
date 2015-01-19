@@ -212,6 +212,20 @@ eth_stats_reset(struct rte_eth_dev *dev)
 }
 
 static void
+eth_mac_addr_remove(struct rte_eth_dev *dev __rte_unused,
+	uint32_t index __rte_unused)
+{
+}
+
+static void
+eth_mac_addr_add(struct rte_eth_dev *dev __rte_unused,
+	struct ether_addr *mac_addr __rte_unused,
+	uint32_t index __rte_unused,
+	uint32_t vmdq __rte_unused)
+{
+}
+
+static void
 eth_queue_release(void *q __rte_unused) { ; }
 static int
 eth_link_update(struct rte_eth_dev *dev __rte_unused,
@@ -231,6 +245,8 @@ static struct eth_dev_ops ops = {
 		.link_update = eth_link_update,
 		.stats_get = eth_stats_get,
 		.stats_reset = eth_stats_reset,
+		.mac_addr_remove = eth_mac_addr_remove,
+		.mac_addr_add = eth_mac_addr_add,
 };
 
 int
