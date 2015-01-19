@@ -121,6 +121,20 @@ eth_dev_stop(struct rte_eth_dev *dev)
 }
 
 static int
+eth_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	dev->data->dev_link.link_status = 0;
+	return 0;
+}
+
+static int
+eth_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	dev->data->dev_link.link_status = 1;
+	return 0;
+}
+
+static int
 eth_rx_queue_setup(struct rte_eth_dev *dev,uint16_t rx_queue_id,
 				    uint16_t nb_rx_desc __rte_unused,
 				    unsigned int socket_id __rte_unused,
@@ -206,6 +220,8 @@ eth_link_update(struct rte_eth_dev *dev __rte_unused,
 static struct eth_dev_ops ops = {
 		.dev_start = eth_dev_start,
 		.dev_stop = eth_dev_stop,
+		.dev_set_link_up = eth_dev_set_link_up,
+		.dev_set_link_down = eth_dev_set_link_down,
 		.dev_configure = eth_dev_configure,
 		.dev_infos_get = eth_dev_info,
 		.rx_queue_setup = eth_rx_queue_setup,
