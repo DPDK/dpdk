@@ -44,6 +44,8 @@
 #define ETH_RING_ACTION_CREATE		"CREATE"
 #define ETH_RING_ACTION_ATTACH		"ATTACH"
 
+static const char *ring_ethdev_driver_name = "Ring PMD";
+
 static const char *valid_arguments[] = {
 	ETH_RING_NUMA_NODE_ACTION_ARG,
 	NULL
@@ -62,10 +64,11 @@ struct pmd_internals {
 
 	struct ring_queue rx_ring_queues[RTE_PMD_RING_MAX_RX_RINGS];
 	struct ring_queue tx_ring_queues[RTE_PMD_RING_MAX_TX_RINGS];
+
+	struct ether_addr address;
 };
 
 
-static struct ether_addr eth_addr = { .addr_bytes = {0} };
 static const char *drivername = "Rings PMD";
 static struct rte_eth_link pmd_link = {
 		.link_speed = 10000,
@@ -260,6 +263,9 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	struct rte_pci_device *pci_dev = NULL;
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
+	struct eth_driver *eth_drv = NULL;
+	struct rte_pci_id *id_table = NULL;
+
 	unsigned i;
 
 	/* do some parameter checking */
@@ -282,6 +288,10 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	if (pci_dev == NULL)
 		goto error;
 
+	id_table = rte_zmalloc_socket(name, sizeof(*id_table), 0, numa_node);
+	if (id_table == NULL)
+		goto error;
+
 	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, numa_node);
 	if (internals == NULL)
 		goto error;
@@ -289,6 +299,10 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	/* reserve an ethdev entry */
 	eth_dev = rte_eth_dev_allocate(name);
 	if (eth_dev == NULL)
+		goto error;
+
+	eth_drv = rte_zmalloc_socket(name, sizeof(*eth_drv), 0, numa_node);
+	if (eth_drv == NULL)
 		goto error;
 
 	/* now put it all together
@@ -309,18 +323,24 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		internals->tx_ring_queues[i].rng = tx_queues[i];
 	}
 
+	eth_drv->pci_drv.name = ring_ethdev_driver_name;
+	eth_drv->pci_drv.id_table = id_table;
+
 	pci_dev->numa_node = numa_node;
+	pci_dev->driver = &eth_drv->pci_drv;
 
 	data->dev_private = internals;
 	data->port_id = eth_dev->data->port_id;
 	data->nb_rx_queues = (uint16_t)nb_rx_queues;
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
 	data->dev_link = pmd_link;
-	data->mac_addrs = &eth_addr;
+	data->mac_addrs = &internals->address;
 
-	eth_dev ->data = data;
-	eth_dev ->dev_ops = &ops;
-	eth_dev ->pci_dev = pci_dev;
+	eth_dev->data = data;
+	eth_dev->driver = eth_drv;
+	eth_dev->dev_ops = &ops;
+	eth_dev->pci_dev = pci_dev;
+	TAILQ_INIT(&(eth_dev->callbacks));
 
 	/* finally assign rx and tx ops */
 	eth_dev->rx_pkt_burst = eth_ring_rx;
