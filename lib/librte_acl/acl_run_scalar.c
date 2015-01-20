@@ -147,10 +147,6 @@ rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	struct completion cmplt[MAX_SEARCHES_SCALAR];
 	struct parms parms[MAX_SEARCHES_SCALAR];
 
-	if (categories != 1 &&
-		((RTE_ACL_RESULTS_MULTIPLIER - 1) & categories) != 0)
-		return -EINVAL;
-
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results, num,
 		categories, ctx->trans_table);
 

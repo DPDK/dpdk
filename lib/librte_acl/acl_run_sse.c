@@ -572,10 +572,6 @@ int
 rte_acl_classify_sse(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories)
 {
-	if (categories != 1 &&
-		((RTE_ACL_RESULTS_MULTIPLIER - 1) & categories) != 0)
-		return -EINVAL;
-
 	if (likely(num >= MAX_SEARCHES_SSE8))
 		return search_sse_8(ctx, data, results, num, categories);
 	else if (num >= MAX_SEARCHES_SSE4)
