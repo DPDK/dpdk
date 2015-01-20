@@ -162,31 +162,34 @@ rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	transition0 = index_array[0];
 	transition1 = index_array[1];
 
+	while ((transition0 | transition1) & RTE_ACL_NODE_MATCH) {
+		transition0 = acl_match_check(transition0,
+			0, ctx, parms, &flows, resolve_priority_scalar);
+		transition1 = acl_match_check(transition1,
+			1, ctx, parms, &flows, resolve_priority_scalar);
+	}
+
 	while (flows.started > 0) {
 
 		input0 = GET_NEXT_4BYTES(parms, 0);
 		input1 = GET_NEXT_4BYTES(parms, 1);
 
 		for (n = 0; n < 4; n++) {
-			if (likely((transition0 & RTE_ACL_NODE_MATCH) == 0))
-				transition0 = scalar_transition(flows.trans,
-					transition0, (uint8_t)input0);
 
+			transition0 = scalar_transition(flows.trans,
+				transition0, (uint8_t)input0);
 			input0 >>= CHAR_BIT;
 
-			if (likely((transition1 & RTE_ACL_NODE_MATCH) == 0))
-				transition1 = scalar_transition(flows.trans,
-					transition1, (uint8_t)input1);
-
+			transition1 = scalar_transition(flows.trans,
+				transition1, (uint8_t)input1);
 			input1 >>= CHAR_BIT;
-
 		}
-		if ((transition0 | transition1) & RTE_ACL_NODE_MATCH) {
+
+		while ((transition0 | transition1) & RTE_ACL_NODE_MATCH) {
 			transition0 = acl_match_check(transition0,
 				0, ctx, parms, &flows, resolve_priority_scalar);
 			transition1 = acl_match_check(transition1,
 				1, ctx, parms, &flows, resolve_priority_scalar);
-
 		}
 	}
 	return 0;
