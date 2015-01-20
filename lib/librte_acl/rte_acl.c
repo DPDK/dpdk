@@ -38,10 +38,25 @@
 
 TAILQ_HEAD(rte_acl_list, rte_tailq_entry);
 
+/*
+ * If the compiler doesn't support AVX2 instructions,
+ * then the dummy one would be used instead for AVX2 classify method.
+ */
+int __attribute__ ((weak))
+rte_acl_classify_avx2(__rte_unused const struct rte_acl_ctx *ctx,
+	__rte_unused const uint8_t **data,
+	__rte_unused uint32_t *results,
+	__rte_unused uint32_t num,
+	__rte_unused uint32_t categories)
+{
+	return -ENOTSUP;
+}
+
 static const rte_acl_classify_t classify_fns[] = {
 	[RTE_ACL_CLASSIFY_DEFAULT] = rte_acl_classify_scalar,
 	[RTE_ACL_CLASSIFY_SCALAR] = rte_acl_classify_scalar,
 	[RTE_ACL_CLASSIFY_SSE] = rte_acl_classify_sse,
+	[RTE_ACL_CLASSIFY_AVX2] = rte_acl_classify_avx2,
 };
 
 /* by default, use always available scalar code path. */
@@ -64,12 +79,24 @@ rte_acl_set_ctx_classify(struct rte_acl_ctx *ctx, enum rte_acl_classify_alg alg)
 	return 0;
 }
 
+/*
+ * Select highest available classify method as default one.
+ * Note that CLASSIFY_AVX2 should be set as a default only
+ * if both conditions are met:
+ * at build time compiler supports AVX2 and target cpu supports AVX2.
+ */
 static void __attribute__((constructor))
 rte_acl_init(void)
 {
 	enum rte_acl_classify_alg alg = RTE_ACL_CLASSIFY_DEFAULT;
 
+#ifdef CC_AVX2_SUPPORT
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+		alg = RTE_ACL_CLASSIFY_AVX2;
+	else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1))
+#else
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1))
+#endif
 		alg = RTE_ACL_CLASSIFY_SSE;
 
 	rte_acl_set_default_classify(alg);

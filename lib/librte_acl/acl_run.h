@@ -35,9 +35,9 @@
 #define	_ACL_RUN_H_
 
 #include <rte_acl.h>
-#include "acl_vect.h"
 #include "acl.h"
 
+#define MAX_SEARCHES_AVX16	16
 #define MAX_SEARCHES_SSE8	8
 #define MAX_SEARCHES_SSE4	4
 #define MAX_SEARCHES_SSE2	2
