@@ -82,7 +82,7 @@
 #define	OPT_RULE_NUM		"rulenum"
 #define	OPT_TRACE_NUM		"tracenum"
 #define	OPT_TRACE_STEP		"tracestep"
-#define	OPT_SEARCH_SCALAR	"scalar"
+#define	OPT_SEARCH_ALG		"alg"
 #define	OPT_BLD_CATEGORIES	"bldcat"
 #define	OPT_RUN_CATEGORIES	"runcat"
 #define	OPT_ITER_NUM		"iter"
@@ -102,6 +102,26 @@ enum {
 	DUMP_MAX
 };
 
+struct acl_alg {
+	const char *name;
+	enum rte_acl_classify_alg alg;
+};
+
+static const struct acl_alg acl_alg[] = {
+	{
+		.name = "scalar",
+		.alg = RTE_ACL_CLASSIFY_SCALAR,
+	},
+	{
+		.name = "sse",
+		.alg = RTE_ACL_CLASSIFY_SSE,
+	},
+	{
+		.name = "avx2",
+		.alg = RTE_ACL_CLASSIFY_AVX2,
+	},
+};
+
 static struct {
 	const char         *prgname;
 	const char         *rule_file;
@@ -114,11 +134,11 @@ static struct {
 	uint32_t            trace_sz;
 	uint32_t            iter_num;
 	uint32_t            verbose;
-	uint32_t            scalar;
+	uint32_t            ipv6;
+	struct acl_alg      alg;
 	uint32_t            used_traces;
 	void               *traces;
 	struct rte_acl_ctx *acx;
-	uint32_t			ipv6;
 } config = {
 	.bld_categories = 3,
 	.run_categories = 1,
@@ -127,6 +147,10 @@ static struct {
 	.trace_step = TRACE_STEP_DEF,
 	.iter_num = 1,
 	.verbose = DUMP_MAX,
+	.alg = {
+		.name = "default",
+		.alg = RTE_ACL_CLASSIFY_DEFAULT,
+	},
 	.ipv6 = 0
 };
 
@@ -774,13 +798,12 @@ acx_init(void)
 	if (config.acx == NULL)
 		rte_exit(rte_errno, "failed to create ACL context\n");
 
-	/* set default classify method to scalar for this context. */
-	if (config.scalar) {
-		ret = rte_acl_set_ctx_classify(config.acx,
-			RTE_ACL_CLASSIFY_SCALAR);
+	/* set default classify method for this context. */
+	if (config.alg.alg != RTE_ACL_CLASSIFY_DEFAULT) {
+		ret = rte_acl_set_ctx_classify(config.acx, config.alg.alg);
 		if (ret != 0)
-			rte_exit(ret, "failed to setup classify method "
-				"for ACL context\n");
+			rte_exit(ret, "failed to setup %s method "
+				"for ACL context\n", config.alg.name);
 	}
 
 	/* add ACL rules. */
@@ -809,7 +832,7 @@ acx_init(void)
 }
 
 static uint32_t
-search_ip5tuples_once(uint32_t categories, uint32_t step, int scalar)
+search_ip5tuples_once(uint32_t categories, uint32_t step, const char *alg)
 {
 	int ret;
 	uint32_t i, j, k, n, r;
@@ -847,7 +870,7 @@ search_ip5tuples_once(uint32_t categories, uint32_t step, int scalar)
 
 	dump_verbose(DUMP_SEARCH, stdout,
 		"%s(%u, %u, %s) returns %u\n", __func__,
-		categories, step, scalar != 0 ? "scalar" : "sse", i);
+		categories, step, alg, i);
 	return i;
 }
 
@@ -863,7 +886,7 @@ search_ip5tuples(__attribute__((unused)) void *arg)
 
 	for (i = 0; i != config.iter_num; i++) {
 		pkt += search_ip5tuples_once(config.run_categories,
-			config.trace_step, config.scalar);
+			config.trace_step, config.alg.name);
 	}
 
 	tm = rte_rdtsc() - start;
@@ -891,8 +914,40 @@ get_uint32_opt(const char *opt, const char *name, uint32_t min, uint32_t max)
 }
 
 static void
+get_alg_opt(const char *opt, const char *name)
+{
+	uint32_t i;
+
+	for (i = 0; i != RTE_DIM(acl_alg); i++) {
+		if (strcmp(opt, acl_alg[i].name) == 0) {
+			config.alg = acl_alg[i];
+			return;
+		}
+	}
+
+	rte_exit(-EINVAL, "invalid value: \"%s\" for option: %s\n",
+		opt, name);
+}
+
+static void
 print_usage(const char *prgname)
 {
+	uint32_t i, n, rc;
+	char buf[PATH_MAX];
+
+	n = 0;
+	buf[0] = 0;
+
+	for (i = 0; i < RTE_DIM(acl_alg) - 1; i++) {
+		rc = snprintf(buf + n, sizeof(buf) - n, "%s|",
+			acl_alg[i].name);
+		if (rc > sizeof(buf) - n)
+			break;
+		n += rc;
+	}
+
+	snprintf(buf + n, sizeof(buf) - n, "%s", acl_alg[i].name);
+
 	fprintf(stdout,
 		PRINT_USAGE_START
 		"--" OPT_RULE_FILE "=<rules set file>\n"
@@ -911,10 +966,11 @@ print_usage(const char *prgname)
 			"but not greater then %u]\n"
 		"[--" OPT_ITER_NUM "=<number of iterations to perform>]\n"
 		"[--" OPT_VERBOSE "=<verbose level>]\n"
-		"[--" OPT_SEARCH_SCALAR "=<use scalar version>]\n"
+		"[--" OPT_SEARCH_ALG "=%s]\n"
 		"[--" OPT_IPV6 "=<IPv6 rules and trace files>]\n",
 		prgname, RTE_ACL_RESULTS_MULTIPLIER,
-		(uint32_t)RTE_ACL_MAX_CATEGORIES);
+		(uint32_t)RTE_ACL_MAX_CATEGORIES,
+		buf);
 }
 
 static void
@@ -930,7 +986,8 @@ dump_config(FILE *f)
 	fprintf(f, "%s:%u\n", OPT_RUN_CATEGORIES, config.run_categories);
 	fprintf(f, "%s:%u\n", OPT_ITER_NUM, config.iter_num);
 	fprintf(f, "%s:%u\n", OPT_VERBOSE, config.verbose);
-	fprintf(f, "%s:%u\n", OPT_SEARCH_SCALAR, config.scalar);
+	fprintf(f, "%s:%u(%s)\n", OPT_SEARCH_ALG, config.alg.alg,
+		config.alg.name);
 	fprintf(f, "%s:%u\n", OPT_IPV6, config.ipv6);
 }
 
@@ -958,7 +1015,7 @@ get_input_opts(int argc, char **argv)
 		{OPT_RUN_CATEGORIES, 1, 0, 0},
 		{OPT_ITER_NUM, 1, 0, 0},
 		{OPT_VERBOSE, 1, 0, 0},
-		{OPT_SEARCH_SCALAR, 0, 0, 0},
+		{OPT_SEARCH_ALG, 1, 0, 0},
 		{OPT_IPV6, 0, 0, 0},
 		{NULL, 0, 0, 0}
 	};
@@ -1002,8 +1059,8 @@ get_input_opts(int argc, char **argv)
 			config.verbose = get_uint32_opt(optarg,
 				lgopts[opt_idx].name, DUMP_NONE, DUMP_MAX);
 		} else if (strcmp(lgopts[opt_idx].name,
-				OPT_SEARCH_SCALAR) == 0) {
-			config.scalar = 1;
+				OPT_SEARCH_ALG) == 0) {
+			get_alg_opt(optarg, lgopts[opt_idx].name);
 		} else if (strcmp(lgopts[opt_idx].name, OPT_IPV6) == 0) {
 			config.ipv6 = 1;
 		}
