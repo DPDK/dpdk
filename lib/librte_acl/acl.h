@@ -47,6 +47,11 @@ extern"C" {
 #define RTE_ACL_DFA_MAX		UINT8_MAX
 #define RTE_ACL_DFA_SIZE	(UINT8_MAX + 1)
 
+#define	RTE_ACL_DFA_GR64_SIZE	64
+#define	RTE_ACL_DFA_GR64_NUM	(RTE_ACL_DFA_SIZE / RTE_ACL_DFA_GR64_SIZE)
+#define	RTE_ACL_DFA_GR64_BIT	\
+	(CHAR_BIT * sizeof(uint32_t) / RTE_ACL_DFA_GR64_NUM)
+
 typedef int bits_t;
 
 #define	RTE_ACL_BIT_SET_SIZE	((UINT8_MAX + 1) / (sizeof(bits_t) * CHAR_BIT))
@@ -100,8 +105,11 @@ struct rte_acl_node {
 	/* number of ranges (transitions w/ consecutive bits) */
 	int32_t                 id;
 	struct rte_acl_match_results *mrt; /* only valid when match_flag != 0 */
-	char                         transitions[RTE_ACL_QUAD_SIZE];
-	/* boundaries for ranged node */
+	union {
+		char            transitions[RTE_ACL_QUAD_SIZE];
+		/* boundaries for ranged node */
+		uint8_t         dfa_gr64[RTE_ACL_DFA_GR64_NUM];
+	};
 	struct rte_acl_node     *next;
 	/* free list link or pointer to duplicate node during merge */
 	struct rte_acl_node     *prev;

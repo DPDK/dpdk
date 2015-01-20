@@ -94,15 +94,6 @@ resolve_priority_scalar(uint64_t transition, int n,
 	}
 }
 
-/*
- * When processing the transition, rather than using if/else
- * construct, the offset is calculated for DFA and QRANGE and
- * then conditionally added to the address based on node type.
- * This is done to avoid branch mis-predictions. Since the
- * offset is rather simple calculation it is more efficient
- * to do the calculation and do a condition move rather than
- * a conditional branch to determine which calculation to do.
- */
 static inline uint32_t
 scan_forward(uint32_t input, uint32_t max)
 {
@@ -117,18 +108,27 @@ scalar_transition(const uint64_t *trans_table, uint64_t transition,
 
 	/* break transition into component parts */
 	ranges = transition >> (sizeof(index) * CHAR_BIT);
-
-	/* calc address for a QRANGE node */
-	c = input * SCALAR_QRANGE_MULT;
-	a = ranges | SCALAR_QRANGE_MIN;
 	index = transition & ~RTE_ACL_NODE_INDEX;
-	a -= (c & SCALAR_QRANGE_MASK);
-	b = c & SCALAR_QRANGE_MIN;
 	addr = transition ^ index;
-	a &= SCALAR_QRANGE_MIN;
-	a ^= (ranges ^ b) & (a ^ b);
-	x = scan_forward(a, 32) >> 3;
-	addr += (index == RTE_ACL_NODE_DFA) ? input : x;
+
+	if (index != RTE_ACL_NODE_DFA) {
+		/* calc address for a QRANGE/SINGLE node */
+		c = (uint32_t)input * SCALAR_QRANGE_MULT;
+		a = ranges | SCALAR_QRANGE_MIN;
+		a -= (c & SCALAR_QRANGE_MASK);
+		b = c & SCALAR_QRANGE_MIN;
+		a &= SCALAR_QRANGE_MIN;
+		a ^= (ranges ^ b) & (a ^ b);
+		x = scan_forward(a, 32) >> 3;
+	} else {
+		/* calc address for a DFA node */
+		x = ranges >> (input /
+			RTE_ACL_DFA_GR64_SIZE * RTE_ACL_DFA_GR64_BIT);
+		x &= UINT8_MAX;
+		x = input - x;
+	}
+
+	addr += x;
 
 	/* pickup next transition */
 	transition = *(trans_table + addr);
