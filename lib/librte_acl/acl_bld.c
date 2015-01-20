@@ -1907,7 +1907,7 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 				bcx.num_tries, bcx.cfg.num_categories,
 				RTE_ACL_MAX_FIELDS * RTE_DIM(bcx.tries) *
 				sizeof(ctx->data_indexes[0]),
-				bcx.num_build_rules);
+				bcx.num_build_rules + 1);
 		if (rc == 0) {
 
 			/* set data indexes. */
