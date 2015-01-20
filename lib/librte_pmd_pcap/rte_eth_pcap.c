@@ -735,6 +735,7 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 
 	data->dev_private = *internals;
 	data->port_id = (*eth_dev)->data->port_id;
+	snprintf(data->name, sizeof(data->name), "%s", (*eth_dev)->data->name);
 	data->nb_rx_queues = (uint16_t)nb_rx_queues;
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
 	data->dev_link = pmd_link;
