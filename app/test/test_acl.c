@@ -111,7 +111,7 @@ test_classify_run(struct rte_acl_ctx *acx)
 	 * these will run quite a few times, it's necessary to test code paths
 	 * from num=0 to num>8
 	 */
-	for (count = 0; count < RTE_DIM(acl_test_data); count++) {
+	for (count = 0; count <= RTE_DIM(acl_test_data); count++) {
 		ret = rte_acl_classify(acx, data, results,
 				count, RTE_ACL_MAX_CATEGORIES);
 		if (ret != 0) {
@@ -128,6 +128,7 @@ test_classify_run(struct rte_acl_ctx *acx)
 					"(expected %"PRIu32" got %"PRIu32")!\n",
 					__LINE__, i, acl_test_data[i].allow,
 					result);
+				ret = -EINVAL;
 				goto err;
 			}
 		}
@@ -140,6 +141,7 @@ test_classify_run(struct rte_acl_ctx *acx)
 					"(expected %"PRIu32" got %"PRIu32")!\n",
 					__LINE__, i, acl_test_data[i].deny,
 					result);
+				ret = -EINVAL;
 				goto err;
 			}
 		}
@@ -150,7 +152,7 @@ test_classify_run(struct rte_acl_ctx *acx)
 			RTE_DIM(acl_test_data), RTE_ACL_MAX_CATEGORIES,
 			RTE_ACL_CLASSIFY_SCALAR);
 	if (ret != 0) {
-		printf("Line %i: SSE classify failed!\n", __LINE__);
+		printf("Line %i: scalar classify failed!\n", __LINE__);
 		goto err;
 	}
 
@@ -162,6 +164,7 @@ test_classify_run(struct rte_acl_ctx *acx)
 					"(expected %"PRIu32" got %"PRIu32")!\n",
 					__LINE__, i, acl_test_data[i].allow,
 					result);
+			ret = -EINVAL;
 			goto err;
 		}
 	}
@@ -174,6 +177,7 @@ test_classify_run(struct rte_acl_ctx *acx)
 					"(expected %"PRIu32" got %"PRIu32")!\n",
 					__LINE__, i, acl_test_data[i].deny,
 					result);
+			ret = -EINVAL;
 			goto err;
 		}
 	}
