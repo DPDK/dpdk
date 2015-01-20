@@ -214,6 +214,13 @@ rte_rdtsc(void)
 /*
  * rte_tailq related.
  */
+
+struct rte_tailq_entry {
+	TAILQ_ENTRY(rte_tailq_entry) next; /**< Pointer entries for a tailq list
+ */
+	void *data; /**< Pointer to the data referenced by this tailq entry */
+};
+
 static inline void *
 rte_dummy_tailq(void)
 {
@@ -248,6 +255,7 @@ rte_zmalloc_socket(__rte_unused const char *type, size_t size, unsigned align,
 	void *ptr;
 	int rc;
 
+	align = (align != 0) ? align : RTE_CACHE_LINE_SIZE;
 	rc = posix_memalign(&ptr, align, size);
 	if (rc != 0) {
 		rte_errno = rc;
@@ -257,6 +265,8 @@ rte_zmalloc_socket(__rte_unused const char *type, size_t size, unsigned align,
 	memset(ptr, 0, size);
 	return ptr;
 }
+
+#define	rte_zmalloc(type, sz, align)	rte_zmalloc_socket(type, sz, align, 0)
 
 /*
  * rte_debug related
@@ -270,6 +280,8 @@ rte_zmalloc_socket(__rte_unused const char *type, size_t size, unsigned align,
 	RTE_LOG(CRIT, EAL, fmt, ##args);     \
 	exit(err);                           \
 } while (0)
+
+#define	rte_cpu_get_flag_enabled(x)	(0)
 
 #ifdef __cplusplus
 }
