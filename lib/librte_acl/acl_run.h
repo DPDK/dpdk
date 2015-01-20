@@ -40,7 +40,6 @@
 #define MAX_SEARCHES_AVX16	16
 #define MAX_SEARCHES_SSE8	8
 #define MAX_SEARCHES_SSE4	4
-#define MAX_SEARCHES_SSE2	2
 #define MAX_SEARCHES_SCALAR	2
 
 #define GET_NEXT_4BYTES(prm, idx)	\

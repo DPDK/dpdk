@@ -45,10 +45,6 @@ static const rte_xmm_t xmm_shuffle_input = {
 	.u32 = {0x00000000, 0x04040404, 0x08080808, 0x0c0c0c0c},
 };
 
-static const rte_xmm_t xmm_shuffle_input64 = {
-	.u32 = {0x00000000, 0x04040404, 0x80808080, 0x80808080},
-};
-
 static const rte_xmm_t xmm_ones_16 = {
 	.u16 = {1, 1, 1, 1, 1, 1, 1, 1},
 };
@@ -62,15 +58,6 @@ static const rte_xmm_t xmm_match_mask = {
 	},
 };
 
-static const rte_xmm_t xmm_match_mask64 = {
-	.u32 = {
-		RTE_ACL_NODE_MATCH,
-		0,
-		RTE_ACL_NODE_MATCH,
-		0,
-	},
-};
-
 static const rte_xmm_t xmm_index_mask = {
 	.u32 = {
 		RTE_ACL_NODE_INDEX,
@@ -79,16 +66,6 @@ static const rte_xmm_t xmm_index_mask = {
 		RTE_ACL_NODE_INDEX,
 	},
 };
-
-static const rte_xmm_t xmm_index_mask64 = {
-	.u32 = {
-		RTE_ACL_NODE_INDEX,
-		RTE_ACL_NODE_INDEX,
-		0,
-		0,
-	},
-};
-
 
 /*
  * Resolve priority for multiple results (sse version).
@@ -158,22 +135,6 @@ acl_process_matches(xmm_t *indices, int slot, const struct rte_acl_ctx *ctx,
 
 	/* update indices with new transitions. */
 	*indices = MM_SET64(transition2, transition1);
-}
-
-/*
- * Check for a match in 2 transitions (contained in SSE register)
- */
-static inline __attribute__((always_inline)) void
-acl_match_check_x2(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
-	struct acl_flow_data *flows, xmm_t *indices, xmm_t match_mask)
-{
-	xmm_t temp;
-
-	temp = MM_AND(match_mask, *indices);
-	while (!MM_TESTZ(temp, temp)) {
-		acl_process_matches(indices, slot, ctx, parms, flows);
-		temp = MM_AND(match_mask, *indices);
-	}
 }
 
 /*
@@ -456,77 +417,6 @@ search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 		/* Check for any matches. */
 		acl_match_check_x4(0, ctx, parms, &flows,
 			&indices1, &indices2, xmm_match_mask.x);
-	}
-
-	return 0;
-}
-
-static inline __attribute__((always_inline)) xmm_t
-transition2(xmm_t next_input, const uint64_t *trans, xmm_t *indices1)
-{
-	uint64_t t;
-	xmm_t addr, indices2;
-
-	indices2 = _mm_setzero_si128();
-
-	addr = calc_addr_sse(xmm_index_mask.x, next_input, xmm_shuffle_input.x,
-		xmm_ones_16.x, *indices1, indices2);
-
-	/* Gather 64 bit transitions and pack 2 per register. */
-
-	t = trans[MM_CVT32(addr)];
-
-	/* get slot 1 */
-	addr = MM_SHUFFLE32(addr, SHUFFLE32_SLOT1);
-	*indices1 = MM_SET64(trans[MM_CVT32(addr)], t);
-
-	return MM_SRL32(next_input, CHAR_BIT);
-}
-
-/*
- * Execute trie traversal with 2 traversals in parallel.
- */
-static inline int
-search_sse_2(const struct rte_acl_ctx *ctx, const uint8_t **data,
-	uint32_t *results, uint32_t total_packets, uint32_t categories)
-{
-	int n;
-	struct acl_flow_data flows;
-	uint64_t index_array[MAX_SEARCHES_SSE2];
-	struct completion cmplt[MAX_SEARCHES_SSE2];
-	struct parms parms[MAX_SEARCHES_SSE2];
-	xmm_t input, indices;
-
-	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
-		total_packets, categories, ctx->trans_table);
-
-	for (n = 0; n < MAX_SEARCHES_SSE2; n++) {
-		cmplt[n].count = 0;
-		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
-	}
-
-	indices = MM_LOADU((xmm_t *) &index_array[0]);
-
-	/* Check for any matches. */
-	acl_match_check_x2(0, ctx, parms, &flows, &indices,
-		xmm_match_mask64.x);
-
-	while (flows.started > 0) {
-
-		/* Gather 4 bytes of input data for each stream. */
-		input = _mm_cvtsi32_si128(GET_NEXT_4BYTES(parms, 0));
-		input = MM_INSERT32(input, GET_NEXT_4BYTES(parms, 1), 1);
-
-		/* Process the 4 bytes of input on each stream. */
-
-		input = transition2(input, flows.trans, &indices);
-		input = transition2(input, flows.trans, &indices);
-		input = transition2(input, flows.trans, &indices);
-		input = transition2(input, flows.trans, &indices);
-
-		/* Check for any matches. */
-		acl_match_check_x2(0, ctx, parms, &flows, &indices,
-			xmm_match_mask64.x);
 	}
 
 	return 0;

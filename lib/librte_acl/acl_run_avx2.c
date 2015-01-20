@@ -49,6 +49,6 @@ rte_acl_classify_avx2(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	else if (num >= MAX_SEARCHES_SSE4)
 		return search_sse_4(ctx, data, results, num, categories);
 	else
-		return search_sse_2(ctx, data, results, num,
+		return rte_acl_classify_scalar(ctx, data, results, num,
 			categories);
 }
