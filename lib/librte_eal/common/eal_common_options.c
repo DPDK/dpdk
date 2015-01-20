@@ -268,6 +268,9 @@ eal_parse_corelist(const char *corelist)
 	if (count == 0)
 		return -1;
 
+	/* Update the count of enabled logical cores of the EAL configuration */
+	cfg->lcore_count = count;
+
 	lcores_parsed = 1;
 	return 0;
 }
