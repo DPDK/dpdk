@@ -1178,8 +1178,9 @@ setup_acl(struct rte_acl_rule *route_base,
 			rte_exit(EXIT_FAILURE, "add rules failed\n");
 
 	/* Perform builds */
-	acl_build_param.num_categories = DEFAULT_MAX_CATEGORIES;
+	memset(&acl_build_param, 0, sizeof(acl_build_param));
 
+	acl_build_param.num_categories = DEFAULT_MAX_CATEGORIES;
 	acl_build_param.num_fields = dim;
 	memcpy(&acl_build_param.defs, ipv6 ? ipv6_defs : ipv4_defs,
 		ipv6 ? sizeof(ipv6_defs) : sizeof(ipv4_defs));

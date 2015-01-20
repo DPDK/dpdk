@@ -94,6 +94,8 @@ struct rte_acl_config {
 	uint32_t num_fields;     /**< Number of field definitions. */
 	struct rte_acl_field_def defs[RTE_ACL_MAX_FIELDS];
 	/**< array of field definitions. */
+	size_t max_size;
+	/**< max memory limit for internal run-time structures. */
 };
 
 /**

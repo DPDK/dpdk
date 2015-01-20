@@ -85,6 +85,7 @@
 #define	OPT_SEARCH_ALG		"alg"
 #define	OPT_BLD_CATEGORIES	"bldcat"
 #define	OPT_RUN_CATEGORIES	"runcat"
+#define	OPT_MAX_SIZE		"maxsize"
 #define	OPT_ITER_NUM		"iter"
 #define	OPT_VERBOSE		"verbose"
 #define	OPT_IPV6		"ipv6"
@@ -126,6 +127,7 @@ static struct {
 	const char         *prgname;
 	const char         *rule_file;
 	const char         *trace_file;
+	size_t              max_size;
 	uint32_t            bld_categories;
 	uint32_t            run_categories;
 	uint32_t            nb_rules;
@@ -780,6 +782,8 @@ acx_init(void)
 	FILE *f;
 	struct rte_acl_config cfg;
 
+	memset(&cfg, 0, sizeof(cfg));
+
 	/* setup ACL build config. */
 	if (config.ipv6) {
 		cfg.num_fields = RTE_DIM(ipv6_defs);
@@ -789,6 +793,7 @@ acx_init(void)
 		memcpy(&cfg.defs, ipv4_defs, sizeof(ipv4_defs));
 	}
 	cfg.num_categories = config.bld_categories;
+	cfg.max_size = config.max_size;
 
 	/* setup ACL creation parameters. */
 	prm.rule_size = RTE_ACL_RULE_SZ(cfg.num_fields);
@@ -899,8 +904,8 @@ search_ip5tuples(__attribute__((unused)) void *arg)
 	return 0;
 }
 
-static uint32_t
-get_uint32_opt(const char *opt, const char *name, uint32_t min, uint32_t max)
+static unsigned long
+get_ulong_opt(const char *opt, const char *name, size_t min, size_t max)
 {
 	unsigned long val;
 	char *end;
@@ -964,6 +969,9 @@ print_usage(const char *prgname)
 			"=<number of categories to run with> "
 			"should be either 1 or multiple of %zu, "
 			"but not greater then %u]\n"
+		"[--" OPT_MAX_SIZE
+			"=<size limit (in bytes) for runtime ACL strucutures> "
+			"leave 0 for default behaviour]\n"
 		"[--" OPT_ITER_NUM "=<number of iterations to perform>]\n"
 		"[--" OPT_VERBOSE "=<verbose level>]\n"
 		"[--" OPT_SEARCH_ALG "=%s]\n"
@@ -984,6 +992,7 @@ dump_config(FILE *f)
 	fprintf(f, "%s:%u\n", OPT_TRACE_STEP, config.trace_step);
 	fprintf(f, "%s:%u\n", OPT_BLD_CATEGORIES, config.bld_categories);
 	fprintf(f, "%s:%u\n", OPT_RUN_CATEGORIES, config.run_categories);
+	fprintf(f, "%s:%zu\n", OPT_MAX_SIZE, config.max_size);
 	fprintf(f, "%s:%u\n", OPT_ITER_NUM, config.iter_num);
 	fprintf(f, "%s:%u\n", OPT_VERBOSE, config.verbose);
 	fprintf(f, "%s:%u(%s)\n", OPT_SEARCH_ALG, config.alg.alg,
@@ -1010,6 +1019,7 @@ get_input_opts(int argc, char **argv)
 		{OPT_TRACE_FILE, 1, 0, 0},
 		{OPT_TRACE_NUM, 1, 0, 0},
 		{OPT_RULE_NUM, 1, 0, 0},
+		{OPT_MAX_SIZE, 1, 0, 0},
 		{OPT_TRACE_STEP, 1, 0, 0},
 		{OPT_BLD_CATEGORIES, 1, 0, 0},
 		{OPT_RUN_CATEGORIES, 1, 0, 0},
@@ -1034,29 +1044,32 @@ get_input_opts(int argc, char **argv)
 		} else if (strcmp(lgopts[opt_idx].name, OPT_TRACE_FILE) == 0) {
 			config.trace_file = optarg;
 		} else if (strcmp(lgopts[opt_idx].name, OPT_RULE_NUM) == 0) {
-			config.nb_rules = get_uint32_opt(optarg,
+			config.nb_rules = get_ulong_opt(optarg,
 				lgopts[opt_idx].name, 1, RTE_ACL_MAX_INDEX + 1);
+		} else if (strcmp(lgopts[opt_idx].name, OPT_MAX_SIZE) == 0) {
+			config.max_size = get_ulong_opt(optarg,
+				lgopts[opt_idx].name, 0, SIZE_MAX);
 		} else if (strcmp(lgopts[opt_idx].name, OPT_TRACE_NUM) == 0) {
-			config.nb_traces = get_uint32_opt(optarg,
+			config.nb_traces = get_ulong_opt(optarg,
 				lgopts[opt_idx].name, 1, UINT32_MAX);
 		} else if (strcmp(lgopts[opt_idx].name, OPT_TRACE_STEP) == 0) {
-			config.trace_step = get_uint32_opt(optarg,
+			config.trace_step = get_ulong_opt(optarg,
 				lgopts[opt_idx].name, 1, TRACE_STEP_MAX);
 		} else if (strcmp(lgopts[opt_idx].name,
 				OPT_BLD_CATEGORIES) == 0) {
-			config.bld_categories = get_uint32_opt(optarg,
+			config.bld_categories = get_ulong_opt(optarg,
 				lgopts[opt_idx].name, 1,
 				RTE_ACL_MAX_CATEGORIES);
 		} else if (strcmp(lgopts[opt_idx].name,
 				OPT_RUN_CATEGORIES) == 0) {
-			config.run_categories = get_uint32_opt(optarg,
+			config.run_categories = get_ulong_opt(optarg,
 				lgopts[opt_idx].name, 1,
 				RTE_ACL_MAX_CATEGORIES);
 		} else if (strcmp(lgopts[opt_idx].name, OPT_ITER_NUM) == 0) {
-			config.iter_num = get_uint32_opt(optarg,
-				lgopts[opt_idx].name, 1, UINT16_MAX);
+			config.iter_num = get_ulong_opt(optarg,
+				lgopts[opt_idx].name, 1, INT32_MAX);
 		} else if (strcmp(lgopts[opt_idx].name, OPT_VERBOSE) == 0) {
-			config.verbose = get_uint32_opt(optarg,
+			config.verbose = get_ulong_opt(optarg,
 				lgopts[opt_idx].name, DUMP_NONE, DUMP_MAX);
 		} else if (strcmp(lgopts[opt_idx].name,
 				OPT_SEARCH_ALG) == 0) {

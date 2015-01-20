@@ -180,7 +180,7 @@ struct rte_acl_ctx {
 
 int rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	struct rte_acl_bld_trie *node_bld_trie, uint32_t num_tries,
-	uint32_t num_categories, uint32_t data_index_sz);
+	uint32_t num_categories, uint32_t data_index_sz, size_t max_size);
 
 typedef int (*rte_acl_classify_t)
 (const struct rte_acl_ctx *, const uint8_t **, uint32_t *, uint32_t, uint32_t);

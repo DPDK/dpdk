@@ -41,10 +41,9 @@
 /* number of pointers per alloc */
 #define ACL_PTR_ALLOC	32
 
-/* variable for dividing rule sets */
-#define NODE_MAX	2500
-#define NODE_PERCENTAGE	(0.40)
-#define RULE_PERCENTAGE	(0.40)
+/* macros for dividing rule sets heuristics */
+#define NODE_MAX	0x4000
+#define NODE_MIN	0x800
 
 /* TALLY are statistics per field */
 enum {
@@ -97,6 +96,7 @@ struct acl_build_context {
 	const struct rte_acl_ctx *acx;
 	struct rte_acl_build_rule *build_rules;
 	struct rte_acl_config     cfg;
+	int32_t                   node_max;
 	uint32_t                  node;
 	uint32_t                  num_nodes;
 	uint32_t                  category_mask;
@@ -1447,7 +1447,7 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 			return NULL;
 
 		node_count = context->num_nodes - node_count;
-		if (node_count > NODE_MAX) {
+		if (node_count > context->node_max) {
 			*last = prev;
 			return trie;
 		}
@@ -1628,6 +1628,9 @@ rule_cmp_wildness(struct rte_acl_build_rule *r1, struct rte_acl_build_rule *r2)
 	return 0;
 }
 
+/*
+ * Sort list of rules based on the rules wildness.
+ */
 static struct rte_acl_build_rule *
 sort_rules(struct rte_acl_build_rule *head)
 {
@@ -1636,21 +1639,22 @@ sort_rules(struct rte_acl_build_rule *head)
 
 	new_head = NULL;
 	while (head != NULL) {
+
+		/* remove element from the head of the old list. */
 		r = head;
 		head = r->next;
 		r->next = NULL;
-		if (new_head == NULL) {
-			new_head = r;
-		} else {
-			for (p = &new_head;
-					(l = *p) != NULL &&
-					rule_cmp_wildness(l, r) >= 0;
-					p = &l->next)
-				;
 
-			r->next = *p;
-			*p = r;
-		}
+		/* walk through new sorted list to find a proper place. */
+		for (p = &new_head;
+				(l = *p) != NULL &&
+				rule_cmp_wildness(l, r) >= 0;
+				p = &l->next)
+			;
+
+		/* insert element into the new sorted list. */
+		r->next = *p;
+		*p = r;
 	}
 
 	return new_head;
@@ -1789,9 +1793,11 @@ acl_build_log(const struct acl_build_context *ctx)
 	uint32_t n;
 
 	RTE_LOG(DEBUG, ACL, "Build phase for ACL \"%s\":\n"
+		"node limit for tree split: %u\n"
 		"nodes created: %u\n"
 		"memory consumed: %zu\n",
 		ctx->acx->name,
+		ctx->node_max,
 		ctx->num_nodes,
 		ctx->pool.alloc);
 
@@ -1868,11 +1874,48 @@ acl_set_data_indexes(struct rte_acl_ctx *ctx)
 	}
 }
 
+/*
+ * Internal routine, performs 'build' phase of trie generation:
+ * - setups build context.
+ * - analizes given set of rules.
+ * - builds internal tree(s).
+ */
+static int
+acl_bld(struct acl_build_context *bcx, struct rte_acl_ctx *ctx,
+	const struct rte_acl_config *cfg, uint32_t node_max)
+{
+	int32_t rc;
+
+	/* setup build context. */
+	memset(bcx, 0, sizeof(*bcx));
+	bcx->acx = ctx;
+	bcx->pool.alignment = ACL_POOL_ALIGN;
+	bcx->pool.min_alloc = ACL_POOL_ALLOC_MIN;
+	bcx->cfg = *cfg;
+	bcx->category_mask = LEN2MASK(bcx->cfg.num_categories);
+	bcx->node_max = node_max;
+
+	/* Create a build rules copy. */
+	rc = acl_build_rules(bcx);
+	if (rc != 0)
+		return rc;
+
+	/* No rules to build for that context+config */
+	if (bcx->build_rules == NULL) {
+		rc = -EINVAL;
+	} else {
+		/* build internal trie representation. */
+		rc = acl_build_tries(bcx, bcx->build_rules);
+	}
+	return rc;
+}
 
 int
 rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 {
-	int rc;
+	int32_t rc;
+	uint32_t n;
+	size_t max_size;
 	struct acl_build_context bcx;
 
 	if (ctx == NULL || cfg == NULL || cfg->num_categories == 0 ||
@@ -1881,44 +1924,39 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 
 	acl_build_reset(ctx);
 
-	memset(&bcx, 0, sizeof(bcx));
-	bcx.acx = ctx;
-	bcx.pool.alignment = ACL_POOL_ALIGN;
-	bcx.pool.min_alloc = ACL_POOL_ALLOC_MIN;
-	bcx.cfg = *cfg;
-	bcx.category_mask = LEN2MASK(bcx.cfg.num_categories);
-
-
-	/* Create a build rules copy. */
-	rc = acl_build_rules(&bcx);
-	if (rc != 0)
-		return rc;
-
-	/* No rules to build for that context+config */
-	if (bcx.build_rules == NULL) {
-		rc = -EINVAL;
-
-	/* build internal trie representation. */
-	} else if ((rc = acl_build_tries(&bcx, bcx.build_rules)) == 0) {
-
-		/* allocate and fill run-time  structures. */
-		rc = rte_acl_gen(ctx, bcx.tries, bcx.bld_tries,
-				bcx.num_tries, bcx.cfg.num_categories,
-				RTE_ACL_MAX_FIELDS * RTE_DIM(bcx.tries) *
-				sizeof(ctx->data_indexes[0]));
-		if (rc == 0) {
-
-			/* set data indexes. */
-			acl_set_data_indexes(ctx);
-
-			/* copy in build config. */
-			ctx->config = *cfg;
-		}
+	if (cfg->max_size == 0) {
+		n = NODE_MIN;
+		max_size = SIZE_MAX;
+	} else {
+		n = NODE_MAX;
+		max_size = cfg->max_size;
 	}
 
-	acl_build_log(&bcx);
+	for (rc = -ERANGE; n >= NODE_MIN && rc == -ERANGE; n /= 2) {
 
-	/* cleanup after build. */
-	tb_free_pool(&bcx.pool);
+		/* perform build phase. */
+		rc = acl_bld(&bcx, ctx, cfg, n);
+
+		if (rc == 0) {
+			/* allocate and fill run-time  structures. */
+			rc = rte_acl_gen(ctx, bcx.tries, bcx.bld_tries,
+				bcx.num_tries, bcx.cfg.num_categories,
+				RTE_ACL_MAX_FIELDS * RTE_DIM(bcx.tries) *
+				sizeof(ctx->data_indexes[0]), max_size);
+			if (rc == 0) {
+				/* set data indexes. */
+				acl_set_data_indexes(ctx);
+
+				/* copy in build config. */
+				ctx->config = *cfg;
+			}
+		}
+
+		acl_build_log(&bcx);
+
+		/* cleanup after build. */
+		tb_free_pool(&bcx.pool);
+	}
+
 	return rc;
 }

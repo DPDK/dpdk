@@ -32,7 +32,6 @@
  */
 
 #include <rte_acl.h>
-#include "acl_vect.h"
 #include "acl.h"
 
 #define	QRANGE_MIN	((uint8_t)INT8_MIN)
@@ -63,7 +62,8 @@ struct rte_acl_indices {
 static void
 acl_gen_log_stats(const struct rte_acl_ctx *ctx,
 	const struct acl_node_counters *counts,
-	const struct rte_acl_indices *indices)
+	const struct rte_acl_indices *indices,
+	size_t max_size)
 {
 	RTE_LOG(DEBUG, ACL, "Gen phase for ACL \"%s\":\n"
 		"runtime memory footprint on socket %d:\n"
@@ -71,7 +71,8 @@ acl_gen_log_stats(const struct rte_acl_ctx *ctx,
 		"quad nodes/vectors/bytes used: %d/%d/%zu\n"
 		"DFA nodes/group64/bytes used: %d/%d/%zu\n"
 		"match nodes/bytes used: %d/%zu\n"
-		"total: %zu bytes\n",
+		"total: %zu bytes\n"
+		"max limit: %zu bytes\n",
 		ctx->name, ctx->socket_id,
 		counts->single, counts->single * sizeof(uint64_t),
 		counts->quad, counts->quad_vectors,
@@ -80,7 +81,8 @@ acl_gen_log_stats(const struct rte_acl_ctx *ctx,
 		indices->dfa_index * sizeof(uint64_t),
 		counts->match,
 		counts->match * sizeof(struct rte_acl_match_results),
-		ctx->mem_sz);
+		ctx->mem_sz,
+		max_size);
 }
 
 static uint64_t
@@ -474,7 +476,7 @@ acl_calc_counts_indices(struct acl_node_counters *counts,
 int
 rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	struct rte_acl_bld_trie *node_bld_trie, uint32_t num_tries,
-	uint32_t num_categories, uint32_t data_index_sz)
+	uint32_t num_categories, uint32_t data_index_sz, size_t max_size)
 {
 	void *mem;
 	size_t total_size;
@@ -495,6 +497,14 @@ rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 		indices.match_start * sizeof(uint64_t) +
 		(counts.match + 1) * sizeof(struct rte_acl_match_results) +
 		XMM_SIZE;
+
+	if (total_size > max_size) {
+		RTE_LOG(DEBUG, ACL,
+			"Gen phase for ACL ctx \"%s\" exceeds max_size limit, "
+			"bytes required: %zu, allowed: %zu\n",
+			ctx->name, total_size, max_size);
+		return -ERANGE;
+	}
 
 	mem = rte_zmalloc_socket(ctx->name, total_size, RTE_CACHE_LINE_SIZE,
 			ctx->socket_id);
@@ -546,6 +556,6 @@ rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	ctx->trans_table = node_array;
 	memcpy(ctx->trie, trie, sizeof(ctx->trie));
 
-	acl_gen_log_stats(ctx, &counts, &indices);
+	acl_gen_log_stats(ctx, &counts, &indices, max_size);
 	return 0;
 }

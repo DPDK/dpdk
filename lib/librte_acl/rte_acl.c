@@ -543,6 +543,7 @@ rte_acl_ipv4vlan_build(struct rte_acl_ctx *ctx,
 	if (ctx == NULL || layout == NULL)
 		return -EINVAL;
 
+	memset(&cfg, 0, sizeof(cfg));
 	acl_ipv4vlan_config(&cfg, layout, num_categories);
 	return rte_acl_build(ctx, &cfg);
 }
