@@ -242,7 +242,7 @@ extern rte_power_freq_change_t rte_power_freq_max;
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-rte_power_freq_change_t rte_power_freq_min;
+extern rte_power_freq_change_t rte_power_freq_min;
 
 #ifdef __cplusplus
 }
