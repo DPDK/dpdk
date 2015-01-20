@@ -172,9 +172,9 @@ acl_match_check_x4(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
  */
 static inline __attribute__((always_inline)) xmm_t
 calc_addr_sse(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
-	xmm_t ones_16, xmm_t indices1, xmm_t indices2)
+	xmm_t ones_16, xmm_t tr_lo, xmm_t tr_hi)
 {
-	xmm_t addr, node_types, range, temp;
+	xmm_t addr, node_types;
 	xmm_t dfa_msk, dfa_ofs, quad_ofs;
 	xmm_t in, r, t;
 
@@ -187,18 +187,14 @@ calc_addr_sse(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 	 * it reaches a match.
 	 */
 
-	/* Shuffle low 32 into temp and high 32 into indices2 */
-	temp = (xmm_t)MM_SHUFFLEPS((__m128)indices1, (__m128)indices2, 0x88);
-	range = (xmm_t)MM_SHUFFLEPS((__m128)indices1, (__m128)indices2, 0xdd);
-
 	t = MM_XOR(index_mask, index_mask);
 
 	/* shuffle input byte to all 4 positions of 32 bit value */
 	in = MM_SHUFFLE8(next_input, shuffle_input);
 
 	/* Calc node type and node addr */
-	node_types = MM_ANDNOT(index_mask, temp);
-	addr = MM_AND(index_mask, temp);
+	node_types = MM_ANDNOT(index_mask, tr_lo);
+	addr = MM_AND(index_mask, tr_lo);
 
 	/*
 	 * Calc addr for DFAs - addr = dfa_index + input_byte
@@ -211,7 +207,7 @@ calc_addr_sse(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 	r = _mm_add_epi8(r, range_base);
 
 	t = _mm_srli_epi32(in, 24);
-	r = _mm_shuffle_epi8(range, r);
+	r = _mm_shuffle_epi8(tr_hi, r);
 
 	dfa_ofs = _mm_sub_epi32(t, r);
 
@@ -224,22 +220,22 @@ calc_addr_sse(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
 	 */
 
 	/* check ranges */
-	temp = MM_CMPGT8(in, range);
+	t = MM_CMPGT8(in, tr_hi);
 
 	/* convert -1 to 1 (bytes greater than input byte */
-	temp = MM_SIGN8(temp, temp);
+	t = MM_SIGN8(t, t);
 
 	/* horizontal add pairs of bytes into words */
-	temp = MM_MADD8(temp, temp);
+	t = MM_MADD8(t, t);
 
 	/* horizontal add pairs of words into dwords */
-	quad_ofs = MM_MADD16(temp, ones_16);
+	quad_ofs = MM_MADD16(t, ones_16);
 
-	/* mask to range type nodes */
-	temp = _mm_blendv_epi8(quad_ofs, dfa_ofs, dfa_msk);
+	/* blend DFA and QUAD/SINGLE. */
+	t = _mm_blendv_epi8(quad_ofs, dfa_ofs, dfa_msk);
 
 	/* add index into node position */
-	return MM_ADD32(addr, temp);
+	return MM_ADD32(addr, t);
 }
 
 /*
@@ -249,13 +245,19 @@ static inline __attribute__((always_inline)) xmm_t
 transition4(xmm_t next_input, const uint64_t *trans,
 	xmm_t *indices1, xmm_t *indices2)
 {
-	xmm_t addr;
+	xmm_t addr, tr_lo, tr_hi;
 	uint64_t trans0, trans2;
+
+	/* Shuffle low 32 into tr_lo and high 32 into tr_hi */
+	tr_lo = (xmm_t)_mm_shuffle_ps((__m128)*indices1, (__m128)*indices2,
+		0x88);
+	tr_hi = (xmm_t)_mm_shuffle_ps((__m128)*indices1, (__m128)*indices2,
+		0xdd);
 
 	 /* Calculate the address (array index) for all 4 transitions. */
 
 	addr = calc_addr_sse(xmm_index_mask.x, next_input, xmm_shuffle_input.x,
-		xmm_ones_16.x, *indices1, *indices2);
+		xmm_ones_16.x, tr_lo, tr_hi);
 
 	 /* Gather 64 bit transitions and pack back into 2 registers. */
 
