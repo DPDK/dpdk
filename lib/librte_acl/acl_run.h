@@ -256,10 +256,6 @@ acl_match_check(uint64_t transition, int slot,
 
 		/* Fill the slot with the next trie or idle trie */
 		transition = acl_start_next_trie(flows, parms, slot, ctx);
-
-	} else if (transition == ctx->idle) {
-		/* reset indirection table for idle slots */
-		parms[slot].data_index = idle;
 	}
 
 	return transition;
