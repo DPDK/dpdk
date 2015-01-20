@@ -420,7 +420,7 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, __m128i ip, uint16_t hop[4],
 	tbl[3] = *(const uint16_t *)&lpm->tbl24[idx >> 32];
 
 	/* get 4 indexes for tbl8[]. */
-	i8.m = _mm_and_si128(ip, mask8);
+	i8.x = _mm_and_si128(ip, mask8);
 
 	pt = (uint64_t)tbl[0] |
 		(uint64_t)tbl[1] << 16 |

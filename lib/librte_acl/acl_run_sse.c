@@ -359,16 +359,16 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 
 	 /* Check for any matches. */
 	acl_match_check_x4(0, ctx, parms, &flows,
-		&indices1, &indices2, mm_match_mask.m);
+		&indices1, &indices2, mm_match_mask.x);
 	acl_match_check_x4(4, ctx, parms, &flows,
-		&indices3, &indices4, mm_match_mask.m);
+		&indices3, &indices4, mm_match_mask.x);
 
 	while (flows.started > 0) {
 
 		/* Gather 4 bytes of input data for each stream. */
-		input0 = MM_INSERT32(mm_ones_16.m, GET_NEXT_4BYTES(parms, 0),
+		input0 = MM_INSERT32(mm_ones_16.x, GET_NEXT_4BYTES(parms, 0),
 			0);
-		input1 = MM_INSERT32(mm_ones_16.m, GET_NEXT_4BYTES(parms, 4),
+		input1 = MM_INSERT32(mm_ones_16.x, GET_NEXT_4BYTES(parms, 4),
 			0);
 
 		input0 = MM_INSERT32(input0, GET_NEXT_4BYTES(parms, 1), 1);
@@ -382,43 +382,43 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 
 		 /* Process the 4 bytes of input on each stream. */
 
-		input0 = transition4(mm_index_mask.m, input0,
-			mm_shuffle_input.m, mm_ones_16.m,
+		input0 = transition4(mm_index_mask.x, input0,
+			mm_shuffle_input.x, mm_ones_16.x,
 			flows.trans, &indices1, &indices2);
 
-		input1 = transition4(mm_index_mask.m, input1,
-			mm_shuffle_input.m, mm_ones_16.m,
+		input1 = transition4(mm_index_mask.x, input1,
+			mm_shuffle_input.x, mm_ones_16.x,
 			flows.trans, &indices3, &indices4);
 
-		input0 = transition4(mm_index_mask.m, input0,
-			mm_shuffle_input.m, mm_ones_16.m,
+		input0 = transition4(mm_index_mask.x, input0,
+			mm_shuffle_input.x, mm_ones_16.x,
 			flows.trans, &indices1, &indices2);
 
-		input1 = transition4(mm_index_mask.m, input1,
-			mm_shuffle_input.m, mm_ones_16.m,
+		input1 = transition4(mm_index_mask.x, input1,
+			mm_shuffle_input.x, mm_ones_16.x,
 			flows.trans, &indices3, &indices4);
 
-		input0 = transition4(mm_index_mask.m, input0,
-			mm_shuffle_input.m, mm_ones_16.m,
+		input0 = transition4(mm_index_mask.x, input0,
+			mm_shuffle_input.x, mm_ones_16.x,
 			flows.trans, &indices1, &indices2);
 
-		input1 = transition4(mm_index_mask.m, input1,
-			mm_shuffle_input.m, mm_ones_16.m,
+		input1 = transition4(mm_index_mask.x, input1,
+			mm_shuffle_input.x, mm_ones_16.x,
 			flows.trans, &indices3, &indices4);
 
-		input0 = transition4(mm_index_mask.m, input0,
-			mm_shuffle_input.m, mm_ones_16.m,
+		input0 = transition4(mm_index_mask.x, input0,
+			mm_shuffle_input.x, mm_ones_16.x,
 			flows.trans, &indices1, &indices2);
 
-		input1 = transition4(mm_index_mask.m, input1,
-			mm_shuffle_input.m, mm_ones_16.m,
+		input1 = transition4(mm_index_mask.x, input1,
+			mm_shuffle_input.x, mm_ones_16.x,
 			flows.trans, &indices3, &indices4);
 
 		 /* Check for any matches. */
 		acl_match_check_x4(0, ctx, parms, &flows,
-			&indices1, &indices2, mm_match_mask.m);
+			&indices1, &indices2, mm_match_mask.x);
 		acl_match_check_x4(4, ctx, parms, &flows,
-			&indices3, &indices4, mm_match_mask.m);
+			&indices3, &indices4, mm_match_mask.x);
 	}
 
 	return 0;
@@ -451,36 +451,36 @@ search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 
 	/* Check for any matches. */
 	acl_match_check_x4(0, ctx, parms, &flows,
-		&indices1, &indices2, mm_match_mask.m);
+		&indices1, &indices2, mm_match_mask.x);
 
 	while (flows.started > 0) {
 
 		/* Gather 4 bytes of input data for each stream. */
-		input = MM_INSERT32(mm_ones_16.m, GET_NEXT_4BYTES(parms, 0), 0);
+		input = MM_INSERT32(mm_ones_16.x, GET_NEXT_4BYTES(parms, 0), 0);
 		input = MM_INSERT32(input, GET_NEXT_4BYTES(parms, 1), 1);
 		input = MM_INSERT32(input, GET_NEXT_4BYTES(parms, 2), 2);
 		input = MM_INSERT32(input, GET_NEXT_4BYTES(parms, 3), 3);
 
 		/* Process the 4 bytes of input on each stream. */
-		input = transition4(mm_index_mask.m, input,
-			mm_shuffle_input.m, mm_ones_16.m,
+		input = transition4(mm_index_mask.x, input,
+			mm_shuffle_input.x, mm_ones_16.x,
 			flows.trans, &indices1, &indices2);
 
-		 input = transition4(mm_index_mask.m, input,
-			mm_shuffle_input.m, mm_ones_16.m,
+		 input = transition4(mm_index_mask.x, input,
+			mm_shuffle_input.x, mm_ones_16.x,
 			flows.trans, &indices1, &indices2);
 
-		 input = transition4(mm_index_mask.m, input,
-			mm_shuffle_input.m, mm_ones_16.m,
+		 input = transition4(mm_index_mask.x, input,
+			mm_shuffle_input.x, mm_ones_16.x,
 			flows.trans, &indices1, &indices2);
 
-		 input = transition4(mm_index_mask.m, input,
-			mm_shuffle_input.m, mm_ones_16.m,
+		 input = transition4(mm_index_mask.x, input,
+			mm_shuffle_input.x, mm_ones_16.x,
 			flows.trans, &indices1, &indices2);
 
 		/* Check for any matches. */
 		acl_match_check_x4(0, ctx, parms, &flows,
-			&indices1, &indices2, mm_match_mask.m);
+			&indices1, &indices2, mm_match_mask.x);
 	}
 
 	return 0;
@@ -534,35 +534,35 @@ search_sse_2(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	indices = MM_LOADU((xmm_t *) &index_array[0]);
 
 	/* Check for any matches. */
-	acl_match_check_x2(0, ctx, parms, &flows, &indices, mm_match_mask64.m);
+	acl_match_check_x2(0, ctx, parms, &flows, &indices, mm_match_mask64.x);
 
 	while (flows.started > 0) {
 
 		/* Gather 4 bytes of input data for each stream. */
-		input = MM_INSERT32(mm_ones_16.m, GET_NEXT_4BYTES(parms, 0), 0);
+		input = MM_INSERT32(mm_ones_16.x, GET_NEXT_4BYTES(parms, 0), 0);
 		input = MM_INSERT32(input, GET_NEXT_4BYTES(parms, 1), 1);
 
 		/* Process the 4 bytes of input on each stream. */
 
-		input = transition2(mm_index_mask64.m, input,
-			mm_shuffle_input64.m, mm_ones_16.m,
+		input = transition2(mm_index_mask64.x, input,
+			mm_shuffle_input64.x, mm_ones_16.x,
 			flows.trans, &indices);
 
-		input = transition2(mm_index_mask64.m, input,
-			mm_shuffle_input64.m, mm_ones_16.m,
+		input = transition2(mm_index_mask64.x, input,
+			mm_shuffle_input64.x, mm_ones_16.x,
 			flows.trans, &indices);
 
-		input = transition2(mm_index_mask64.m, input,
-			mm_shuffle_input64.m, mm_ones_16.m,
+		input = transition2(mm_index_mask64.x, input,
+			mm_shuffle_input64.x, mm_ones_16.x,
 			flows.trans, &indices);
 
-		input = transition2(mm_index_mask64.m, input,
-			mm_shuffle_input64.m, mm_ones_16.m,
+		input = transition2(mm_index_mask64.x, input,
+			mm_shuffle_input64.x, mm_ones_16.x,
 			flows.trans, &indices);
 
 		/* Check for any matches. */
 		acl_match_check_x2(0, ctx, parms, &flows, &indices,
-			mm_match_mask64.m);
+			mm_match_mask64.x);
 	}
 
 	return 0;

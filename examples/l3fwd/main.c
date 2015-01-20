@@ -1170,7 +1170,7 @@ processx4_step2(const struct lcore_conf *qconf, __m128i dip, uint32_t flag,
 	if (likely(flag != 0)) {
 		rte_lpm_lookupx4(qconf->ipv4_lookup_struct, dip, dprt, portid);
 	} else {
-		dst.m = dip;
+		dst.x = dip;
 		dprt[0] = get_dst_port(qconf, pkt[0], dst.u32[0], portid);
 		dprt[1] = get_dst_port(qconf, pkt[1], dst.u32[1], portid);
 		dprt[2] = get_dst_port(qconf, pkt[2], dst.u32[2], portid);
