@@ -44,86 +44,70 @@
 extern "C" {
 #endif
 
-#define	MM_ADD16(a, b)		_mm_add_epi16(a, b)
-#define	MM_ADD32(a, b)		_mm_add_epi32(a, b)
-#define	MM_ALIGNR8(a, b, c)	_mm_alignr_epi8(a, b, c)
-#define	MM_AND(a, b)		_mm_and_si128(a, b)
-#define MM_ANDNOT(a, b)		_mm_andnot_si128(a, b)
-#define MM_BLENDV8(a, b, c)	_mm_blendv_epi8(a, b, c)
-#define MM_CMPEQ16(a, b)	_mm_cmpeq_epi16(a, b)
-#define MM_CMPEQ32(a, b)	_mm_cmpeq_epi32(a, b)
-#define	MM_CMPEQ8(a, b)		_mm_cmpeq_epi8(a, b)
-#define MM_CMPGT32(a, b)	_mm_cmpgt_epi32(a, b)
-#define MM_CMPGT8(a, b)		_mm_cmpgt_epi8(a, b)
-#define MM_CVT(a)		_mm_cvtsi32_si128(a)
-#define	MM_CVT32(a)		_mm_cvtsi128_si32(a)
-#define MM_CVTU32(a)		_mm_cvtsi32_si128(a)
-#define	MM_INSERT16(a, c, b)	_mm_insert_epi16(a, c, b)
-#define	MM_INSERT32(a, c, b)	_mm_insert_epi32(a, c, b)
-#define	MM_LOAD(a)		_mm_load_si128(a)
-#define	MM_LOADH_PI(a, b)	_mm_loadh_pi(a, b)
-#define	MM_LOADU(a)		_mm_loadu_si128(a)
-#define	MM_MADD16(a, b)		_mm_madd_epi16(a, b)
-#define	MM_MADD8(a, b)		_mm_maddubs_epi16(a, b)
-#define	MM_MOVEMASK8(a)		_mm_movemask_epi8(a)
-#define MM_OR(a, b)		_mm_or_si128(a, b)
-#define	MM_SET1_16(a)		_mm_set1_epi16(a)
-#define	MM_SET1_32(a)		_mm_set1_epi32(a)
-#define	MM_SET1_64(a)		_mm_set1_epi64(a)
-#define	MM_SET1_8(a)		_mm_set1_epi8(a)
-#define	MM_SET32(a, b, c, d)	_mm_set_epi32(a, b, c, d)
-#define	MM_SHUFFLE32(a, b)	_mm_shuffle_epi32(a, b)
-#define	MM_SHUFFLE8(a, b)	_mm_shuffle_epi8(a, b)
-#define	MM_SHUFFLEPS(a, b, c)	_mm_shuffle_ps(a, b, c)
-#define	MM_SIGN8(a, b)		_mm_sign_epi8(a, b)
-#define	MM_SLL64(a, b)		_mm_sll_epi64(a, b)
-#define	MM_SRL128(a, b)		_mm_srli_si128(a, b)
-#define MM_SRL16(a, b)		_mm_srli_epi16(a, b)
-#define	MM_SRL32(a, b)		_mm_srli_epi32(a, b)
-#define	MM_STORE(a, b)		_mm_store_si128(a, b)
-#define	MM_STOREU(a, b)		_mm_storeu_si128(a, b)
-#define	MM_TESTZ(a, b)		_mm_testz_si128(a, b)
-#define	MM_XOR(a, b)		_mm_xor_si128(a, b)
-
-#define	MM_SET16(a, b, c, d, e, f, g, h)	\
-	_mm_set_epi16(a, b, c, d, e, f, g, h)
-
-#define	MM_SET8(c0, c1, c2, c3, c4, c5, c6, c7,	\
-		c8, c9, cA, cB, cC, cD, cE, cF)	\
-	_mm_set_epi8(c0, c1, c2, c3, c4, c5, c6, c7,	\
-		c8, c9, cA, cB, cC, cD, cE, cF)
-
-#ifdef RTE_ARCH_X86_64
-
-#define	MM_CVT64(a)		_mm_cvtsi128_si64(a)
-
-#else
-
-#define	MM_CVT64(a)	({ \
-	rte_xmm_t m;       \
-	m.m = (a);         \
-	(m.u64[0]);        \
-})
-
-#endif /*RTE_ARCH_X86_64 */
 
 /*
- * Prior to version 12.1 icc doesn't support _mm_set_epi64x.
+ * Takes 2 SIMD registers containing N transitions eachi (tr0, tr1).
+ * Shuffles it into different representation:
+ * lo - contains low 32 bits of given N transitions.
+ * hi - contains high 32 bits of given N transitions.
  */
-#if (defined(__ICC) && __ICC < 1210)
+#define	ACL_TR_HILO(P, TC, tr0, tr1, lo, hi)                        do { \
+	lo = (typeof(lo))_##P##_shuffle_ps((TC)(tr0), (TC)(tr1), 0x88);  \
+	hi = (typeof(hi))_##P##_shuffle_ps((TC)(tr0), (TC)(tr1), 0xdd);  \
+} while (0)
 
-#define	MM_SET64(a, b)	({ \
-	rte_xmm_t m;       \
-	m.u64[0] = b;      \
-	m.u64[1] = a;      \
-	(m.m);             \
-})
 
-#else
+/*
+ * Calculate the address of the next transition for
+ * all types of nodes. Note that only DFA nodes and range
+ * nodes actually transition to another node. Match
+ * nodes not supposed to be encountered here.
+ * For quad range nodes:
+ * Calculate number of range boundaries that are less than the
+ * input value. Range boundaries for each node are in signed 8 bit,
+ * ordered from -128 to 127.
+ * This is effectively a popcnt of bytes that are greater than the
+ * input byte.
+ * Single nodes are processed in the same ways as quad range nodes.
+*/
+#define ACL_TR_CALC_ADDR(P, S,					\
+	addr, index_mask, next_input, shuffle_input,		\
+	ones_16, range_base, tr_lo, tr_hi)               do {	\
+								\
+	typeof(addr) in, node_type, r, t;			\
+	typeof(addr) dfa_msk, dfa_ofs, quad_ofs;		\
+								\
+	t = _##P##_xor_si##S(index_mask, index_mask);		\
+	in = _##P##_shuffle_epi8(next_input, shuffle_input);	\
+								\
+	/* Calc node type and node addr */			\
+	node_type = _##P##_andnot_si##S(index_mask, tr_lo);	\
+	addr = _##P##_and_si##S(index_mask, tr_lo);		\
+								\
+	/* mask for DFA type(0) nodes */			\
+	dfa_msk = _##P##_cmpeq_epi32(node_type, t);		\
+								\
+	/* DFA calculations. */					\
+	r = _##P##_srli_epi32(in, 30);				\
+	r = _##P##_add_epi8(r, range_base);			\
+	t = _##P##_srli_epi32(in, 24);				\
+	r = _##P##_shuffle_epi8(tr_hi, r);			\
+								\
+	dfa_ofs = _##P##_sub_epi32(t, r);			\
+								\
+	/* QUAD/SINGLE caluclations. */				\
+	t = _##P##_cmpgt_epi8(in, tr_hi);			\
+	t = _##P##_sign_epi8(t, t);				\
+	t = _##P##_maddubs_epi16(t, t);				\
+	quad_ofs = _##P##_madd_epi16(t, ones_16);		\
+								\
+	/* blend DFA and QUAD/SINGLE. */			\
+	t = _##P##_blendv_epi8(quad_ofs, dfa_ofs, dfa_msk);	\
+								\
+	/* calculate address for next transitions. */		\
+	addr = _##P##_add_epi32(addr, t);			\
+} while (0)
 
-#define	MM_SET64(a, b)		_mm_set_epi64x(a, b)
-
-#endif /* (defined(__ICC) && __ICC < 1210) */
 
 #ifdef __cplusplus
 }

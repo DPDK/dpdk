@@ -109,6 +109,18 @@ typedef union rte_ymm {
 })
 #endif
 
+/*
+ * Prior to version 12.1 icc doesn't support _mm_set_epi64x.
+ */
+#if (defined(__ICC) && __ICC < 1210)
+#define _mm_set_epi64x(a, b)  ({ \
+	rte_xmm_t m;             \
+	m.u64[0] = b;            \
+	m.u64[1] = a;            \
+	(m.x);                   \
+})
+#endif /* (defined(__ICC) && __ICC < 1210) */
+
 #ifdef __cplusplus
 }
 #endif

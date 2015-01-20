@@ -67,6 +67,12 @@ static const rte_xmm_t xmm_index_mask = {
 	},
 };
 
+static const rte_xmm_t xmm_range_base = {
+	.u32 = {
+		0xffffff00, 0xffffff04, 0xffffff08, 0xffffff0c,
+	},
+};
+
 /*
  * Resolve priority for multiple results (sse version).
  * This consists comparing the priority of the current traversal with the
@@ -90,25 +96,28 @@ resolve_priority_sse(uint64_t transition, int n, const struct rte_acl_ctx *ctx,
 			(xmm_t *)(&parms[n].cmplt->priority[x]);
 
 		/* get results and priorities for completed trie */
-		results = MM_LOADU((const xmm_t *)&p[transition].results[x]);
-		priority = MM_LOADU((const xmm_t *)&p[transition].priority[x]);
+		results = _mm_loadu_si128(
+			(const xmm_t *)&p[transition].results[x]);
+		priority = _mm_loadu_si128(
+			(const xmm_t *)&p[transition].priority[x]);
 
 		/* if this is not the first completed trie */
 		if (parms[n].cmplt->count != ctx->num_tries) {
 
 			/* get running best results and their priorities */
-			results1 = MM_LOADU(saved_results);
-			priority1 = MM_LOADU(saved_priority);
+			results1 = _mm_loadu_si128(saved_results);
+			priority1 = _mm_loadu_si128(saved_priority);
 
 			/* select results that are highest priority */
-			selector = MM_CMPGT32(priority1, priority);
-			results = MM_BLENDV8(results, results1, selector);
-			priority = MM_BLENDV8(priority, priority1, selector);
+			selector = _mm_cmpgt_epi32(priority1, priority);
+			results = _mm_blendv_epi8(results, results1, selector);
+			priority = _mm_blendv_epi8(priority, priority1,
+				selector);
 		}
 
 		/* save running best results and their priorities */
-		MM_STOREU(saved_results, results);
-		MM_STOREU(saved_priority, priority);
+		_mm_storeu_si128(saved_results, results);
+		_mm_storeu_si128(saved_priority, priority);
 	}
 }
 
@@ -122,11 +131,11 @@ acl_process_matches(xmm_t *indices, int slot, const struct rte_acl_ctx *ctx,
 	uint64_t transition1, transition2;
 
 	/* extract transition from low 64 bits. */
-	transition1 = MM_CVT64(*indices);
+	transition1 = _mm_cvtsi128_si64(*indices);
 
 	/* extract transition from high 64 bits. */
-	*indices = MM_SHUFFLE32(*indices, SHUFFLE32_SWAP64);
-	transition2 = MM_CVT64(*indices);
+	*indices = _mm_shuffle_epi32(*indices, SHUFFLE32_SWAP64);
+	transition2 = _mm_cvtsi128_si64(*indices);
 
 	transition1 = acl_match_check(transition1, slot, ctx,
 		parms, flows, resolve_priority_sse);
@@ -134,7 +143,7 @@ acl_process_matches(xmm_t *indices, int slot, const struct rte_acl_ctx *ctx,
 		parms, flows, resolve_priority_sse);
 
 	/* update indices with new transitions. */
-	*indices = MM_SET64(transition2, transition1);
+	*indices = _mm_set_epi64x(transition2, transition1);
 }
 
 /*
@@ -148,98 +157,24 @@ acl_match_check_x4(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
 	xmm_t temp;
 
 	/* put low 32 bits of each transition into one register */
-	temp = (xmm_t)MM_SHUFFLEPS((__m128)*indices1, (__m128)*indices2,
+	temp = (xmm_t)_mm_shuffle_ps((__m128)*indices1, (__m128)*indices2,
 		0x88);
 	/* test for match node */
-	temp = MM_AND(match_mask, temp);
+	temp = _mm_and_si128(match_mask, temp);
 
-	while (!MM_TESTZ(temp, temp)) {
+	while (!_mm_testz_si128(temp, temp)) {
 		acl_process_matches(indices1, slot, ctx, parms, flows);
 		acl_process_matches(indices2, slot + 2, ctx, parms, flows);
 
-		temp = (xmm_t)MM_SHUFFLEPS((__m128)*indices1,
+		temp = (xmm_t)_mm_shuffle_ps((__m128)*indices1,
 					(__m128)*indices2,
 					0x88);
-		temp = MM_AND(match_mask, temp);
+		temp = _mm_and_si128(match_mask, temp);
 	}
 }
 
 /*
- * Calculate the address of the next transition for
- * all types of nodes. Note that only DFA nodes and range
- * nodes actually transition to another node. Match
- * nodes don't move.
- */
-static inline __attribute__((always_inline)) xmm_t
-calc_addr_sse(xmm_t index_mask, xmm_t next_input, xmm_t shuffle_input,
-	xmm_t ones_16, xmm_t tr_lo, xmm_t tr_hi)
-{
-	xmm_t addr, node_types;
-	xmm_t dfa_msk, dfa_ofs, quad_ofs;
-	xmm_t in, r, t;
-
-	const xmm_t range_base = _mm_set_epi32(0xffffff0c, 0xffffff08,
-		0xffffff04, 0xffffff00);
-
-	/*
-	 * Note that no transition is done for a match
-	 * node and therefore a stream freezes when
-	 * it reaches a match.
-	 */
-
-	t = MM_XOR(index_mask, index_mask);
-
-	/* shuffle input byte to all 4 positions of 32 bit value */
-	in = MM_SHUFFLE8(next_input, shuffle_input);
-
-	/* Calc node type and node addr */
-	node_types = MM_ANDNOT(index_mask, tr_lo);
-	addr = MM_AND(index_mask, tr_lo);
-
-	/*
-	 * Calc addr for DFAs - addr = dfa_index + input_byte
-	 */
-
-	/* mask for DFA type (0) nodes */
-	dfa_msk = MM_CMPEQ32(node_types, t);
-
-	r = _mm_srli_epi32(in, 30);
-	r = _mm_add_epi8(r, range_base);
-
-	t = _mm_srli_epi32(in, 24);
-	r = _mm_shuffle_epi8(tr_hi, r);
-
-	dfa_ofs = _mm_sub_epi32(t, r);
-
-	/*
-	 * Calculate number of range boundaries that are less than the
-	 * input value. Range boundaries for each node are in signed 8 bit,
-	 * ordered from -128 to 127 in the indices2 register.
-	 * This is effectively a popcnt of bytes that are greater than the
-	 * input byte.
-	 */
-
-	/* check ranges */
-	t = MM_CMPGT8(in, tr_hi);
-
-	/* convert -1 to 1 (bytes greater than input byte */
-	t = MM_SIGN8(t, t);
-
-	/* horizontal add pairs of bytes into words */
-	t = MM_MADD8(t, t);
-
-	/* horizontal add pairs of words into dwords */
-	quad_ofs = MM_MADD16(t, ones_16);
-
-	/* blend DFA and QUAD/SINGLE. */
-	t = _mm_blendv_epi8(quad_ofs, dfa_ofs, dfa_msk);
-
-	/* add index into node position */
-	return MM_ADD32(addr, t);
-}
-
-/*
- * Process 4 transitions (in 2 SIMD registers) in parallel
+ * Process 4 transitions (in 2 XMM registers) in parallel
  */
 static inline __attribute__((always_inline)) xmm_t
 transition4(xmm_t next_input, const uint64_t *trans,
@@ -249,39 +184,36 @@ transition4(xmm_t next_input, const uint64_t *trans,
 	uint64_t trans0, trans2;
 
 	/* Shuffle low 32 into tr_lo and high 32 into tr_hi */
-	tr_lo = (xmm_t)_mm_shuffle_ps((__m128)*indices1, (__m128)*indices2,
-		0x88);
-	tr_hi = (xmm_t)_mm_shuffle_ps((__m128)*indices1, (__m128)*indices2,
-		0xdd);
+	ACL_TR_HILO(mm, __m128, *indices1, *indices2, tr_lo, tr_hi);
 
 	 /* Calculate the address (array index) for all 4 transitions. */
-
-	addr = calc_addr_sse(xmm_index_mask.x, next_input, xmm_shuffle_input.x,
-		xmm_ones_16.x, tr_lo, tr_hi);
+	ACL_TR_CALC_ADDR(mm, 128, addr, xmm_index_mask.x, next_input,
+		xmm_shuffle_input.x, xmm_ones_16.x, xmm_range_base.x,
+		tr_lo, tr_hi);
 
 	 /* Gather 64 bit transitions and pack back into 2 registers. */
 
-	trans0 = trans[MM_CVT32(addr)];
+	trans0 = trans[_mm_cvtsi128_si32(addr)];
 
 	/* get slot 2 */
 
 	/* {x0, x1, x2, x3} -> {x2, x1, x2, x3} */
-	addr = MM_SHUFFLE32(addr, SHUFFLE32_SLOT2);
-	trans2 = trans[MM_CVT32(addr)];
+	addr = _mm_shuffle_epi32(addr, SHUFFLE32_SLOT2);
+	trans2 = trans[_mm_cvtsi128_si32(addr)];
 
 	/* get slot 1 */
 
 	/* {x2, x1, x2, x3} -> {x1, x1, x2, x3} */
-	addr = MM_SHUFFLE32(addr, SHUFFLE32_SLOT1);
-	*indices1 = MM_SET64(trans[MM_CVT32(addr)], trans0);
+	addr = _mm_shuffle_epi32(addr, SHUFFLE32_SLOT1);
+	*indices1 = _mm_set_epi64x(trans[_mm_cvtsi128_si32(addr)], trans0);
 
 	/* get slot 3 */
 
 	/* {x1, x1, x2, x3} -> {x3, x1, x2, x3} */
-	addr = MM_SHUFFLE32(addr, SHUFFLE32_SLOT3);
-	*indices2 = MM_SET64(trans[MM_CVT32(addr)], trans2);
+	addr = _mm_shuffle_epi32(addr, SHUFFLE32_SLOT3);
+	*indices2 = _mm_set_epi64x(trans[_mm_cvtsi128_si32(addr)], trans2);
 
-	return MM_SRL32(next_input, CHAR_BIT);
+	return _mm_srli_epi32(next_input, CHAR_BIT);
 }
 
 /*
@@ -314,11 +246,11 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	 * indices4 contains index_array[6,7]
 	 */
 
-	indices1 = MM_LOADU((xmm_t *) &index_array[0]);
-	indices2 = MM_LOADU((xmm_t *) &index_array[2]);
+	indices1 = _mm_loadu_si128((xmm_t *) &index_array[0]);
+	indices2 = _mm_loadu_si128((xmm_t *) &index_array[2]);
 
-	indices3 = MM_LOADU((xmm_t *) &index_array[4]);
-	indices4 = MM_LOADU((xmm_t *) &index_array[6]);
+	indices3 = _mm_loadu_si128((xmm_t *) &index_array[4]);
+	indices4 = _mm_loadu_si128((xmm_t *) &index_array[6]);
 
 	 /* Check for any matches. */
 	acl_match_check_x4(0, ctx, parms, &flows,
@@ -332,14 +264,14 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 		input0 = _mm_cvtsi32_si128(GET_NEXT_4BYTES(parms, 0));
 		input1 = _mm_cvtsi32_si128(GET_NEXT_4BYTES(parms, 4));
 
-		input0 = MM_INSERT32(input0, GET_NEXT_4BYTES(parms, 1), 1);
-		input1 = MM_INSERT32(input1, GET_NEXT_4BYTES(parms, 5), 1);
+		input0 = _mm_insert_epi32(input0, GET_NEXT_4BYTES(parms, 1), 1);
+		input1 = _mm_insert_epi32(input1, GET_NEXT_4BYTES(parms, 5), 1);
 
-		input0 = MM_INSERT32(input0, GET_NEXT_4BYTES(parms, 2), 2);
-		input1 = MM_INSERT32(input1, GET_NEXT_4BYTES(parms, 6), 2);
+		input0 = _mm_insert_epi32(input0, GET_NEXT_4BYTES(parms, 2), 2);
+		input1 = _mm_insert_epi32(input1, GET_NEXT_4BYTES(parms, 6), 2);
 
-		input0 = MM_INSERT32(input0, GET_NEXT_4BYTES(parms, 3), 3);
-		input1 = MM_INSERT32(input1, GET_NEXT_4BYTES(parms, 7), 3);
+		input0 = _mm_insert_epi32(input0, GET_NEXT_4BYTES(parms, 3), 3);
+		input1 = _mm_insert_epi32(input1, GET_NEXT_4BYTES(parms, 7), 3);
 
 		 /* Process the 4 bytes of input on each stream. */
 
@@ -395,8 +327,8 @@ search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
 	}
 
-	indices1 = MM_LOADU((xmm_t *) &index_array[0]);
-	indices2 = MM_LOADU((xmm_t *) &index_array[2]);
+	indices1 = _mm_loadu_si128((xmm_t *) &index_array[0]);
+	indices2 = _mm_loadu_si128((xmm_t *) &index_array[2]);
 
 	/* Check for any matches. */
 	acl_match_check_x4(0, ctx, parms, &flows,
@@ -406,9 +338,9 @@ search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 
 		/* Gather 4 bytes of input data for each stream. */
 		input = _mm_cvtsi32_si128(GET_NEXT_4BYTES(parms, 0));
-		input = MM_INSERT32(input, GET_NEXT_4BYTES(parms, 1), 1);
-		input = MM_INSERT32(input, GET_NEXT_4BYTES(parms, 2), 2);
-		input = MM_INSERT32(input, GET_NEXT_4BYTES(parms, 3), 3);
+		input = _mm_insert_epi32(input, GET_NEXT_4BYTES(parms, 1), 1);
+		input = _mm_insert_epi32(input, GET_NEXT_4BYTES(parms, 2), 2);
+		input = _mm_insert_epi32(input, GET_NEXT_4BYTES(parms, 3), 3);
 
 		/* Process the 4 bytes of input on each stream. */
 		input = transition4(input, flows.trans, &indices1, &indices2);
