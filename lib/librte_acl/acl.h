@@ -146,7 +146,6 @@ enum {
 struct rte_acl_trie {
 	uint32_t        type;
 	uint32_t        count;
-	int32_t         smallest;  /* smallest rule in this trie */
 	uint32_t        root_index;
 	const uint32_t *data_index;
 	uint32_t        num_data_indexes;
@@ -181,7 +180,7 @@ struct rte_acl_ctx {
 
 int rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	struct rte_acl_bld_trie *node_bld_trie, uint32_t num_tries,
-	uint32_t num_categories, uint32_t data_index_sz, int match_num);
+	uint32_t num_categories, uint32_t data_index_sz);
 
 typedef int (*rte_acl_classify_t)
 (const struct rte_acl_ctx *, const uint8_t **, uint32_t *, uint32_t, uint32_t);

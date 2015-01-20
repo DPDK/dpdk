@@ -1719,7 +1719,6 @@ acl_build_tries(struct acl_build_context *context,
 		context->tries[n].type = RTE_ACL_UNUSED_TRIE;
 		context->bld_tries[n].trie = NULL;
 		context->tries[n].count = 0;
-		context->tries[n].smallest = INT32_MAX;
 	}
 
 	context->tries[0].type = RTE_ACL_FULL_TRIE;
@@ -1906,8 +1905,7 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 		rc = rte_acl_gen(ctx, bcx.tries, bcx.bld_tries,
 				bcx.num_tries, bcx.cfg.num_categories,
 				RTE_ACL_MAX_FIELDS * RTE_DIM(bcx.tries) *
-				sizeof(ctx->data_indexes[0]),
-				bcx.num_build_rules + 1);
+				sizeof(ctx->data_indexes[0]));
 		if (rc == 0) {
 
 			/* set data indexes. */

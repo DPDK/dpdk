@@ -50,14 +50,14 @@ struct acl_node_counters {
 	int32_t quad_vectors;
 	int32_t dfa;
 	int32_t dfa_gr64;
-	int32_t smallest_match;
 };
 
 struct rte_acl_indices {
-	int                dfa_index;
-	int                quad_index;
-	int                single_index;
-	int                match_index;
+	int32_t dfa_index;
+	int32_t quad_index;
+	int32_t single_index;
+	int32_t match_index;
+	int32_t match_start;
 };
 
 static void
@@ -243,9 +243,9 @@ acl_count_fanout(struct rte_acl_node *node)
 /*
  * Determine the type of nodes and count each type
  */
-static int
+static void
 acl_count_trie_types(struct acl_node_counters *counts,
-	struct rte_acl_node *node, uint64_t no_match, int match, int force_dfa)
+	struct rte_acl_node *node, uint64_t no_match, int force_dfa)
 {
 	uint32_t n;
 	int num_ptrs;
@@ -253,16 +253,12 @@ acl_count_trie_types(struct acl_node_counters *counts,
 
 	/* skip if this node has been counted */
 	if (node->node_type != (uint32_t)RTE_ACL_NODE_UNDEFINED)
-		return match;
+		return;
 
 	if (node->match_flag != 0 || node->num_ptrs == 0) {
 		counts->match++;
-		if (node->match_flag == -1)
-			node->match_flag = match++;
 		node->node_type = RTE_ACL_NODE_MATCH;
-		if (counts->smallest_match > node->match_flag)
-			counts->smallest_match = node->match_flag;
-		return match;
+		return;
 	}
 
 	num_ptrs = acl_count_fanout(node);
@@ -299,11 +295,9 @@ acl_count_trie_types(struct acl_node_counters *counts,
 	 */
 	for (n = 0; n < node->num_ptrs; n++) {
 		if (node->ptrs[n].ptr != NULL)
-			match = acl_count_trie_types(counts, node->ptrs[n].ptr,
-				no_match, match, 0);
+			acl_count_trie_types(counts, node->ptrs[n].ptr,
+				no_match, 0);
 	}
-
-	return match;
 }
 
 static void
@@ -400,9 +394,13 @@ acl_gen_node(struct rte_acl_node *node, uint64_t *node_array,
 		break;
 	case RTE_ACL_NODE_MATCH:
 		match = ((struct rte_acl_match_results *)
-			(node_array + index->match_index));
-		memcpy(match + node->match_flag, node->mrt, sizeof(*node->mrt));
-		node->node_index = node->match_flag | node->node_type;
+			(node_array + index->match_start));
+		for (n = 0; n != RTE_DIM(match->results); n++)
+			RTE_ACL_VERIFY(match->results[0] == 0);
+		memcpy(match + index->match_index, node->mrt,
+			sizeof(*node->mrt));
+		node->node_index = index->match_index | node->node_type;
+		index->match_index += 1;
 		break;
 	case RTE_ACL_NODE_UNDEFINED:
 		RTE_ACL_VERIFY(node->node_type !=
@@ -443,11 +441,11 @@ acl_gen_node(struct rte_acl_node *node, uint64_t *node_array,
 	}
 }
 
-static int
+static void
 acl_calc_counts_indices(struct acl_node_counters *counts,
-	struct rte_acl_indices *indices, struct rte_acl_trie *trie,
+	struct rte_acl_indices *indices,
 	struct rte_acl_bld_trie *node_bld_trie, uint32_t num_tries,
-	int match_num, uint64_t no_match)
+	uint64_t no_match)
 {
 	uint32_t n;
 
@@ -456,21 +454,18 @@ acl_calc_counts_indices(struct acl_node_counters *counts,
 
 	/* Get stats on nodes */
 	for (n = 0; n < num_tries; n++) {
-		counts->smallest_match = INT32_MAX;
-		match_num = acl_count_trie_types(counts, node_bld_trie[n].trie,
-			no_match, match_num, 1);
-		trie[n].smallest = counts->smallest_match;
+		acl_count_trie_types(counts, node_bld_trie[n].trie,
+			no_match, 1);
 	}
 
 	indices->dfa_index = RTE_ACL_DFA_SIZE + 1;
 	indices->quad_index = indices->dfa_index +
 		counts->dfa_gr64 * RTE_ACL_DFA_GR64_SIZE;
 	indices->single_index = indices->quad_index + counts->quad_vectors;
-	indices->match_index = indices->single_index + counts->single + 1;
-	indices->match_index = RTE_ALIGN(indices->match_index,
+	indices->match_start = indices->single_index + counts->single + 1;
+	indices->match_start = RTE_ALIGN(indices->match_start,
 		(XMM_SIZE / sizeof(uint64_t)));
-
-	return match_num;
+	indices->match_index = 1;
 }
 
 /*
@@ -479,7 +474,7 @@ acl_calc_counts_indices(struct acl_node_counters *counts,
 int
 rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	struct rte_acl_bld_trie *node_bld_trie, uint32_t num_tries,
-	uint32_t num_categories, uint32_t data_index_sz, int match_num)
+	uint32_t num_categories, uint32_t data_index_sz)
 {
 	void *mem;
 	size_t total_size;
@@ -492,13 +487,13 @@ rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	no_match = RTE_ACL_NODE_MATCH;
 
 	/* Fill counts and indices arrays from the nodes. */
-	match_num = acl_calc_counts_indices(&counts, &indices, trie,
-		node_bld_trie, num_tries, match_num, no_match);
+	acl_calc_counts_indices(&counts, &indices,
+		node_bld_trie, num_tries, no_match);
 
 	/* Allocate runtime memory (align to cache boundary) */
 	total_size = RTE_ALIGN(data_index_sz, RTE_CACHE_LINE_SIZE) +
-		indices.match_index * sizeof(uint64_t) +
-		(match_num + 2) * sizeof(struct rte_acl_match_results) +
+		indices.match_start * sizeof(uint64_t) +
+		(counts.match + 1) * sizeof(struct rte_acl_match_results) +
 		XMM_SIZE;
 
 	mem = rte_zmalloc_socket(ctx->name, total_size, RTE_CACHE_LINE_SIZE,
@@ -511,7 +506,7 @@ rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	}
 
 	/* Fill the runtime structure */
-	match_index = indices.match_index;
+	match_index = indices.match_start;
 	node_array = (uint64_t *)((uintptr_t)mem +
 		RTE_ALIGN(data_index_sz, RTE_CACHE_LINE_SIZE));
 
