@@ -1940,7 +1940,6 @@ ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	if (stats == NULL)
 		return;
 
-	memset(stats, 0, sizeof(*stats));
 	stats->ipackets = hw_stats->vfgprc;
 	stats->ibytes = hw_stats->vfgorc;
 	stats->opackets = hw_stats->vfgptc;

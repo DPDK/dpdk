@@ -1250,7 +1250,6 @@ eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 	if (rte_stats == NULL)
 		return;
 
-	memset(rte_stats, 0, sizeof(*rte_stats));
 	rte_stats->ipackets = hw_stats->gprc;
 	rte_stats->ibytes = hw_stats->gorc;
 	rte_stats->opackets = hw_stats->gptc;

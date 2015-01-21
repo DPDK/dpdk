@@ -1362,11 +1362,7 @@ bond_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
 	struct rte_eth_stats slave_stats;
-
 	int i;
-
-	/* clear bonded stats before populating from slaves */
-	memset(stats, 0, sizeof(*stats));
 
 	for (i = 0; i < internals->slave_count; i++) {
 		rte_eth_stats_get(internals->slaves[i].port_id, &slave_stats);

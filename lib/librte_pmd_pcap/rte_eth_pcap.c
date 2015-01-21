@@ -405,7 +405,6 @@ eth_stats_get(struct rte_eth_dev *dev,
 	unsigned long rx_total = 0, tx_total = 0, tx_err_total = 0;
 	const struct pmd_internals *internal = dev->data->dev_private;
 
-	memset(igb_stats, 0, sizeof(*igb_stats));
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS && i < internal->nb_rx_queues;
 			i++) {
 		igb_stats->q_ipackets[i] = internal->rx_queue[i].rx_pkts;

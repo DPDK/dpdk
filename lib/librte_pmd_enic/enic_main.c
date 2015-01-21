@@ -211,7 +211,6 @@ void enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)
 {
 	struct vnic_stats *stats;
 
-	memset(r_stats, 0, sizeof(*r_stats));
 	if (vnic_dev_stats_dump(enic->vdev, &stats)) {
 		dev_err(enic, "Error in getting stats\n");
 		return;

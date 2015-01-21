@@ -1673,7 +1673,6 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 static void
 i40evf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
-	memset(stats, 0, sizeof(*stats));
 	if (i40evf_get_statics(dev, stats))
 		PMD_DRV_LOG(ERR, "Get statics failed");
 }
