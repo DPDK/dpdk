@@ -41,6 +41,10 @@
  * Implementation of IP packet fragmentation and reassembly.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdio.h>
 
@@ -349,5 +353,9 @@ void rte_ip_frag_free_death_row(struct rte_ip_frag_death_row *dr,
  */
 void
 rte_ip_frag_table_statistics_dump(FILE * f, const struct rte_ip_frag_tbl *tbl);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_IP_FRAG_H_ */
