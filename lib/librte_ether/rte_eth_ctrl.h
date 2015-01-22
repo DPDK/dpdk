@@ -55,6 +55,7 @@ enum rte_filter_type {
 	RTE_ETH_FILTER_ETHERTYPE,
 	RTE_ETH_FILTER_TUNNEL,
 	RTE_ETH_FILTER_FDIR,
+	RTE_ETH_FILTER_HASH,
 	RTE_ETH_FILTER_MAX
 };
 
@@ -447,6 +448,68 @@ struct rte_eth_fdir_stats {
 	uint64_t f_remove;     /**< Number of failed removed filters. */
 	uint32_t guarant_cnt;  /**< Number of filters in guaranteed spaces. */
 	uint32_t best_cnt;     /**< Number of filters in best effort spaces. */
+};
+
+/**
+ * Hash filter information types.
+ * - RTE_ETH_HASH_FILTER_SYM_HASH_ENA_PER_PORT is for getting/setting the
+ *   information/configuration of 'symmetric hash enable' per port.
+ * - RTE_ETH_HASH_FILTER_GLOBAL_CONFIG is for getting/setting the global
+ *   configurations of hash filters. Those global configurations are valid
+ *   for all ports of the same NIC.
+ */
+enum rte_eth_hash_filter_info_type {
+	RTE_ETH_HASH_FILTER_INFO_TYPE_UNKNOWN = 0,
+	/** Symmetric hash enable per port */
+	RTE_ETH_HASH_FILTER_SYM_HASH_ENA_PER_PORT,
+	/** Configure globally for hash filter */
+	RTE_ETH_HASH_FILTER_GLOBAL_CONFIG,
+	RTE_ETH_HASH_FILTER_INFO_TYPE_MAX,
+};
+
+/**
+ * Hash function types.
+ */
+enum rte_eth_hash_function {
+	RTE_ETH_HASH_FUNCTION_DEFAULT = 0,
+	RTE_ETH_HASH_FUNCTION_TOEPLITZ, /**< Toeplitz */
+	RTE_ETH_HASH_FUNCTION_SIMPLE_XOR, /**< Simple XOR */
+	RTE_ETH_HASH_FUNCTION_MAX,
+};
+
+#define UINT32_BIT (CHAR_BIT * sizeof(uint32_t))
+#define RTE_SYM_HASH_MASK_ARRAY_SIZE \
+	(RTE_ALIGN(RTE_ETH_FLOW_TYPE_MAX, UINT32_BIT)/UINT32_BIT)
+/**
+ * A structure used to set or get global hash function configurations which
+ * include symmetric hash enable per flow type and hash function type.
+ * Each bit in sym_hash_enable_mask[] indicates if the symmetric hash of the
+ * coresponding flow type is enabled or not.
+ * Each bit in valid_bit_mask[] indicates if the corresponding bit in
+ * sym_hash_enable_mask[] is valid or not. For the configurations gotten, it
+ * also means if the flow type is supported by hardware or not.
+ */
+struct rte_eth_hash_global_conf {
+	enum rte_eth_hash_function hash_func; /**< Hash function type */
+	/** Bit mask for symmetric hash enable per flow type */
+	uint32_t sym_hash_enable_mask[RTE_SYM_HASH_MASK_ARRAY_SIZE];
+	/** Bit mask indicates if the corresponding bit is valid */
+	uint32_t valid_bit_mask[RTE_SYM_HASH_MASK_ARRAY_SIZE];
+};
+
+/**
+ * A structure used to set or get hash filter information, to support filter
+ * type of 'RTE_ETH_FILTER_HASH' and its operations.
+ */
+struct rte_eth_hash_filter_info {
+	enum rte_eth_hash_filter_info_type info_type; /**< Information type */
+	/** Details of hash filter information */
+	union {
+		/** For RTE_ETH_HASH_FILTER_SYM_HASH_ENA_PER_PORT */
+		uint8_t enable;
+		/** Global configurations of hash filter */
+		struct rte_eth_hash_global_conf global_conf;
+	} info;
 };
 
 #ifdef __cplusplus
