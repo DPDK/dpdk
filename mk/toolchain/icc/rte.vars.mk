@@ -66,11 +66,18 @@ TOOLCHAIN_ASFLAGS =
 # Turn off some ICC warnings -
 #   Remark #271   : trailing comma is nonstandard
 #   Warning #1478 : function "<func_name>" (declared at line N of "<filename>")
+#   error #13368: loop was not vectorized with "vector always assert"
+#   error #15527: loop was not vectorized: function call to fprintf cannot be vectorize
 #                   was declared "deprecated"
 WERROR_FLAGS := -Wall -Werror-all -w2 -diag-disable 271 -diag-warning 1478
+WERROR_FLAGS += -diag-disable 13368 -diag-disable 15527
 
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
+# disable max-inline params boundaries for ICC 15 compiler
+ifeq ($(shell test $(ICC_MAJOR_VERSION) -eq 15 && echo 1), 1)
+	TOOLCHAIN_CFLAGS += -no-inline-max-size -no-inline-max-total-size
+endif
 
 export CC AS AR LD OBJCOPY OBJDUMP STRIP READELF
 export TOOLCHAIN_CFLAGS TOOLCHAIN_LDFLAGS TOOLCHAIN_ASFLAGS
