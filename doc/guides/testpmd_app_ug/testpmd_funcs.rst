@@ -1392,61 +1392,34 @@ Filter Functions
 
 This section details the available filter functions that are available.
 
-add_ethertype_filter
+ethertype_filter
 ~~~~~~~~~~~~~~~~~~~~
 
-Add a L2 Ethertype filter, which identify packets by their L2 Ethertype mainly assign them to a receive queue.
+Add or delete a L2 Ethertype filter, which identify packets by their L2 Ethertype mainly assign them to a receive queue.
 
-add_ethertype_filter (port_id) ethertype (eth_value) priority (enable|disable) (pri_value) queue (queue_id) index (idx)
+ethertype_filter (port_id) (add|del) (mac_addr|mac_ignr) (mac_address) ethertype (ether_type) (drop|fwd) queue (queue_id)
 
 The available information parameters are:
 
 *   port_id:  the port which the Ethertype filter assigned on.
 
-*   eth_value: the EtherType value want to match,
+*   mac_addr: compare destination mac address.
+
+*   mac_ignr: ignore destination mac address match.
+
+*   mac_address: destination mac address to match.
+
+*   ether_type: the EtherType value want to match,
     for example 0x0806 for ARP packet. 0x0800 (IPv4) and 0x86DD (IPv6) are invalid.
 
-*   enable: user priority participates in the match.
+*   queue_id : The receive queue associated with this EtherType filter. It is meaningless when deleting or dropping.
 
-*   disable: user priority doesn't participate in the match.
-
-*   pri_value: user priority value that want to match.
-
-*   queue_id : The receive queue associated with this EtherType filter
-
-*   index: the index of this EtherType filter
-
-Example:
+Example, to add/remove an ethertype filter rule:
 
 .. code-block:: console
 
-    testpmd> add_ethertype_filter 0 ethertype 0x0806 priority disable 0 queue 3 index 0
-    Assign ARP packet to receive queue 3
-
-remove_ethertype_filter
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Remove a L2 Ethertype filter
-
-remove_ethertype_filter (port_id) index (idx)
-
-get_ethertype_filter
-~~~~~~~~~~~~~~~~~~~~
-
-Get and display a L2 Ethertype filter
-
-get_ethertype_filter (port_id) index (idx)
-
-Example:
-
-.. code-block:: console
-
-    testpmd> get_ethertype_filter 0 index 0
-
-    filter[0]:
-        ethertype: 0x0806
-        priority: disable, 0
-        queue: 3
+    testpmd> ethertype_filter 0 add mac_ignr ethertype 0x0806 fwd queue 3
+    testpmd> ethertype_filter 0 del mac_ignr ethertype 0x0806 fwd queue 3
 
 add_2tuple_filter
 ~~~~~~~~~~~~~~~~~
