@@ -75,6 +75,7 @@
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
 #include <rte_devargs.h>
+#include <rte_eth_ctrl.h>
 
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
@@ -735,6 +736,21 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"flow_director_flex_payload (port_id)"
 			" (l2|l3|l4) (config)\n"
 			"    Configure flex payload selection.\n\n"
+
+			"get_sym_hash_ena_per_port (port_id)\n"
+			"    get symmetric hash enable configuration per port.\n\n"
+
+			"set_sym_hash_ena_per_port (port_id) (enable|disable)\n"
+			"    set symmetric hash enable configuration per port"
+			" to enable or disable.\n\n"
+
+			"get_hash_global_config (port_id)\n"
+			"    Get the global configurations of hash filters.\n\n"
+
+			"set_hash_global_config (port_id) (toeplitz|simple_xor|default)"
+			" (ip4|ip4-frag|tcp4|udp4|#sctp4|ip6|ip6-frag|tcp6|udp6|sctp6)"
+			" (enable|disable)\n"
+			"    Set the global configurations of hash filters.\n\n"
 		);
 	}
 }
@@ -8670,6 +8686,319 @@ cmdline_parse_inst_t cmd_set_flow_director_flex_payload = {
 	},
 };
 
+/* *** Classification Filters Control *** */
+/* *** Get symmetric hash enable per port *** */
+struct cmd_get_sym_hash_ena_per_port_result {
+	cmdline_fixed_string_t get_sym_hash_ena_per_port;
+	uint8_t port_id;
+};
+
+static void
+cmd_get_sym_hash_per_port_parsed(void *parsed_result,
+				 __rte_unused struct cmdline *cl,
+				 __rte_unused void *data)
+{
+	struct cmd_get_sym_hash_ena_per_port_result *res = parsed_result;
+	struct rte_eth_hash_filter_info info;
+	int ret;
+
+	if (rte_eth_dev_filter_supported(res->port_id,
+				RTE_ETH_FILTER_HASH) < 0) {
+		printf("RTE_ETH_FILTER_HASH not supported on port: %d\n",
+							res->port_id);
+		return;
+	}
+
+	memset(&info, 0, sizeof(info));
+	info.info_type = RTE_ETH_HASH_FILTER_SYM_HASH_ENA_PER_PORT;
+	ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_HASH,
+						RTE_ETH_FILTER_GET, &info);
+
+	if (ret < 0) {
+		printf("Cannot get symmetric hash enable per port "
+					"on port %u\n", res->port_id);
+		return;
+	}
+
+	printf("Symmetric hash is %s on port %u\n", info.info.enable ?
+				"enabled" : "disabled", res->port_id);
+}
+
+cmdline_parse_token_string_t cmd_get_sym_hash_ena_per_port_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_get_sym_hash_ena_per_port_result,
+		get_sym_hash_ena_per_port, "get_sym_hash_ena_per_port");
+cmdline_parse_token_num_t cmd_get_sym_hash_ena_per_port_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_get_sym_hash_ena_per_port_result,
+		port_id, UINT8);
+
+cmdline_parse_inst_t cmd_get_sym_hash_ena_per_port = {
+	.f = cmd_get_sym_hash_per_port_parsed,
+	.data = NULL,
+	.help_str = "get_sym_hash_ena_per_port port_id",
+	.tokens = {
+		(void *)&cmd_get_sym_hash_ena_per_port_all,
+		(void *)&cmd_get_sym_hash_ena_per_port_port_id,
+		NULL,
+	},
+};
+
+/* *** Set symmetric hash enable per port *** */
+struct cmd_set_sym_hash_ena_per_port_result {
+	cmdline_fixed_string_t set_sym_hash_ena_per_port;
+	cmdline_fixed_string_t enable;
+	uint8_t port_id;
+};
+
+static void
+cmd_set_sym_hash_per_port_parsed(void *parsed_result,
+				 __rte_unused struct cmdline *cl,
+				 __rte_unused void *data)
+{
+	struct cmd_set_sym_hash_ena_per_port_result *res = parsed_result;
+	struct rte_eth_hash_filter_info info;
+	int ret;
+
+	if (rte_eth_dev_filter_supported(res->port_id,
+				RTE_ETH_FILTER_HASH) < 0) {
+		printf("RTE_ETH_FILTER_HASH not supported on port: %d\n",
+							res->port_id);
+		return;
+	}
+
+	memset(&info, 0, sizeof(info));
+	info.info_type = RTE_ETH_HASH_FILTER_SYM_HASH_ENA_PER_PORT;
+	if (!strcmp(res->enable, "enable"))
+		info.info.enable = 1;
+	ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_HASH,
+					RTE_ETH_FILTER_SET, &info);
+	if (ret < 0) {
+		printf("Cannot set symmetric hash enable per port on "
+					"port %u\n", res->port_id);
+		return;
+	}
+	printf("Symmetric hash has been set to %s on port %u\n",
+					res->enable, res->port_id);
+}
+
+cmdline_parse_token_string_t cmd_set_sym_hash_ena_per_port_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_sym_hash_ena_per_port_result,
+		set_sym_hash_ena_per_port, "set_sym_hash_ena_per_port");
+cmdline_parse_token_num_t cmd_set_sym_hash_ena_per_port_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_sym_hash_ena_per_port_result,
+		port_id, UINT8);
+cmdline_parse_token_string_t cmd_set_sym_hash_ena_per_port_enable =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_sym_hash_ena_per_port_result,
+		enable, "enable#disable");
+
+cmdline_parse_inst_t cmd_set_sym_hash_ena_per_port = {
+	.f = cmd_set_sym_hash_per_port_parsed,
+	.data = NULL,
+	.help_str = "set_sym_hash_ena_per_port port_id enable|disable",
+	.tokens = {
+		(void *)&cmd_set_sym_hash_ena_per_port_all,
+		(void *)&cmd_set_sym_hash_ena_per_port_port_id,
+		(void *)&cmd_set_sym_hash_ena_per_port_enable,
+		NULL,
+	},
+};
+
+/* Get global config of hash function */
+struct cmd_get_hash_global_config_result {
+	cmdline_fixed_string_t get_hash_global_config;
+	uint8_t port_id;
+};
+
+static char *
+flowtype_to_str(enum rte_eth_flow_type ftype)
+{
+	uint16_t i;
+	static struct {
+		char str[16];
+		enum rte_eth_flow_type ftype;
+	} ftype_table[] = {
+		{"ip4", RTE_ETH_FLOW_TYPE_IPV4_OTHER},
+		{"ip4-frag", RTE_ETH_FLOW_TYPE_FRAG_IPV4},
+		{"udp4", RTE_ETH_FLOW_TYPE_UDPV4},
+		{"tcp4", RTE_ETH_FLOW_TYPE_TCPV4},
+		{"sctp4", RTE_ETH_FLOW_TYPE_SCTPV4},
+		{"ip6", RTE_ETH_FLOW_TYPE_IPV6_OTHER},
+		{"ip6-frag", RTE_ETH_FLOW_TYPE_FRAG_IPV6},
+		{"udp6", RTE_ETH_FLOW_TYPE_UDPV6},
+		{"tcp6", RTE_ETH_FLOW_TYPE_TCPV6},
+		{"sctp6", RTE_ETH_FLOW_TYPE_TCPV6},
+	};
+
+	for (i = 0; i < RTE_DIM(ftype_table); i++) {
+		if (ftype_table[i].ftype == ftype)
+			return ftype_table[i].str;
+	}
+
+	return NULL;
+}
+
+static void
+cmd_get_hash_global_config_parsed(void *parsed_result,
+				  __rte_unused struct cmdline *cl,
+				  __rte_unused void *data)
+{
+	struct cmd_get_hash_global_config_result *res = parsed_result;
+	struct rte_eth_hash_filter_info info;
+	uint32_t idx, offset, i;
+	char *str;
+	int ret;
+
+	if (rte_eth_dev_filter_supported(res->port_id,
+			RTE_ETH_FILTER_HASH) < 0) {
+		printf("RTE_ETH_FILTER_HASH not supported on port %d\n",
+							res->port_id);
+		return;
+	}
+
+	memset(&info, 0, sizeof(info));
+	info.info_type = RTE_ETH_HASH_FILTER_GLOBAL_CONFIG;
+	ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_HASH,
+					RTE_ETH_FILTER_GET, &info);
+	if (ret < 0) {
+		printf("Cannot get hash global configurations by port %d\n",
+							res->port_id);
+		return;
+	}
+
+	switch (info.info.global_conf.hash_func) {
+	case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
+		printf("Hash function is Toeplitz\n");
+		break;
+	case RTE_ETH_HASH_FUNCTION_SIMPLE_XOR:
+		printf("Hash function is Simple XOR\n");
+		break;
+	default:
+		printf("Unknown hash function\n");
+		break;
+	}
+
+	for (i = 0; i < RTE_ETH_FLOW_TYPE_MAX; i++) {
+		idx = i / UINT32_BIT;
+		offset = i % UINT32_BIT;
+		if (!(info.info.global_conf.valid_bit_mask[idx] &
+						(1UL << offset)))
+			continue;
+		str = flowtype_to_str((enum rte_eth_flow_type)i);
+		if (!str)
+			continue;
+		printf("Symmetric hash is %s globally for flow type %s "
+							"by port %d\n",
+			((info.info.global_conf.sym_hash_enable_mask[idx] &
+			(1UL << offset)) ? "enabled" : "disabled"), str,
+							res->port_id);
+	}
+}
+
+cmdline_parse_token_string_t cmd_get_hash_global_config_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_get_hash_global_config_result,
+		get_hash_global_config, "get_hash_global_config");
+cmdline_parse_token_num_t cmd_get_hash_global_config_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_get_hash_global_config_result,
+		port_id, UINT8);
+
+cmdline_parse_inst_t cmd_get_hash_global_config = {
+	.f = cmd_get_hash_global_config_parsed,
+	.data = NULL,
+	.help_str = "get_hash_global_config port_id",
+	.tokens = {
+		(void *)&cmd_get_hash_global_config_all,
+		(void *)&cmd_get_hash_global_config_port_id,
+		NULL,
+	},
+};
+
+/* Set global config of hash function */
+struct cmd_set_hash_global_config_result {
+	cmdline_fixed_string_t set_hash_global_config;
+	uint8_t port_id;
+	cmdline_fixed_string_t hash_func;
+	cmdline_fixed_string_t flow_type;
+	cmdline_fixed_string_t enable;
+};
+
+static void
+cmd_set_hash_global_config_parsed(void *parsed_result,
+				  __rte_unused struct cmdline *cl,
+				  __rte_unused void *data)
+{
+	struct cmd_set_hash_global_config_result *res = parsed_result;
+	struct rte_eth_hash_filter_info info;
+	uint32_t ftype, idx, offset;
+	int ret;
+
+	if (rte_eth_dev_filter_supported(res->port_id,
+				RTE_ETH_FILTER_HASH) < 0) {
+		printf("RTE_ETH_FILTER_HASH not supported on port %d\n",
+							res->port_id);
+		return;
+	}
+	memset(&info, 0, sizeof(info));
+	info.info_type = RTE_ETH_HASH_FILTER_GLOBAL_CONFIG;
+	if (!strcmp(res->hash_func, "toeplitz"))
+		info.info.global_conf.hash_func =
+			RTE_ETH_HASH_FUNCTION_TOEPLITZ;
+	else if (!strcmp(res->hash_func, "simple_xor"))
+		info.info.global_conf.hash_func =
+			RTE_ETH_HASH_FUNCTION_SIMPLE_XOR;
+	else if (!strcmp(res->hash_func, "default"))
+		info.info.global_conf.hash_func =
+			RTE_ETH_HASH_FUNCTION_DEFAULT;
+
+	ftype = str2flowtype(res->flow_type);
+	idx = ftype / (CHAR_BIT * sizeof(uint32_t));
+	offset = ftype % (CHAR_BIT * sizeof(uint32_t));
+	info.info.global_conf.valid_bit_mask[idx] |= (1UL << offset);
+	if (!strcmp(res->enable, "enable"))
+		info.info.global_conf.sym_hash_enable_mask[idx] |=
+						(1UL << offset);
+	ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_HASH,
+					RTE_ETH_FILTER_SET, &info);
+	if (ret < 0)
+		printf("Cannot set global hash configurations by port %d\n",
+							res->port_id);
+	else
+		printf("Global hash configurations have been set "
+			"succcessfully by port %d\n", res->port_id);
+}
+
+cmdline_parse_token_string_t cmd_set_hash_global_config_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_global_config_result,
+		set_hash_global_config, "set_hash_global_config");
+cmdline_parse_token_num_t cmd_set_hash_global_config_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_hash_global_config_result,
+		port_id, UINT8);
+cmdline_parse_token_string_t cmd_set_hash_global_config_hash_func =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_global_config_result,
+		hash_func, "toeplitz#simple_xor#default");
+cmdline_parse_token_string_t cmd_set_hash_global_config_flow_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_global_config_result,
+		flow_type,
+		"ip4#ip4-frag#tcp4#udp4#sctp4#ip6#ip6-frag#tcp6#udp6#sctp6");
+cmdline_parse_token_string_t cmd_set_hash_global_config_enable =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_global_config_result,
+		enable, "enable#disable");
+
+cmdline_parse_inst_t cmd_set_hash_global_config = {
+	.f = cmd_set_hash_global_config_parsed,
+	.data = NULL,
+	.help_str = "set_hash_global_config port_id "
+		"toeplitz|simple_xor|default "
+		"ip4|ip4-frag|tcp4|udp4|#sctp4|ip6|ip6-frag|tcp6|udp6|sctp6 "
+		"enable|disable",
+	.tokens = {
+		(void *)&cmd_set_hash_global_config_all,
+		(void *)&cmd_set_hash_global_config_port_id,
+		(void *)&cmd_set_hash_global_config_hash_func,
+		(void *)&cmd_set_hash_global_config_flow_type,
+		(void *)&cmd_set_hash_global_config_enable,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -8807,6 +9136,10 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_flush_flow_director,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_flex_mask,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_flex_payload,
+	(cmdline_parse_inst_t *)&cmd_get_sym_hash_ena_per_port,
+	(cmdline_parse_inst_t *)&cmd_set_sym_hash_ena_per_port,
+	(cmdline_parse_inst_t *)&cmd_get_hash_global_config,
+	(cmdline_parse_inst_t *)&cmd_set_hash_global_config,
 	NULL,
 };
 
