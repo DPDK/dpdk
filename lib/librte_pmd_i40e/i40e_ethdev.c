@@ -73,7 +73,7 @@
 /* Maximun number of VSI */
 #define I40E_MAX_NUM_VSIS          (384UL)
 
-/* Default queue interrupt throttling time in microseconds*/
+/* Default queue interrupt throttling time in microseconds */
 #define I40E_ITR_INDEX_DEFAULT          0
 #define I40E_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
 #define I40E_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
@@ -199,9 +199,6 @@ static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 				enum rte_filter_op filter_op,
 				void *arg);
 static void i40e_configure_registers(struct i40e_hw *hw);
-
-/* Default hash key buffer for RSS */
-static uint32_t rss_key_default[I40E_PFQF_HKEY_MAX_INDEX + 1];
 
 static struct rte_pci_id pci_id_i40e_map[] = {
 #define RTE_PCI_DEV_ID_DECL_I40E(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
@@ -5039,9 +5036,12 @@ i40e_pf_config_rss(struct i40e_pf *pf)
 	}
 	if (rss_conf.rss_key == NULL || rss_conf.rss_key_len <
 		(I40E_PFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t)) {
-		/* Calculate the default hash key */
-		for (i = 0; i <= I40E_PFQF_HKEY_MAX_INDEX; i++)
-			rss_key_default[i] = (uint32_t)rte_rand();
+		/* Random default keys */
+		static uint32_t rss_key_default[] = {0x6b793944,
+			0x23504cb5, 0x5bea75b6, 0x309f4f12, 0x3dc0a2b8,
+			0x024ddcdf, 0x339b8ca0, 0x4c4af64a, 0x34fac605,
+			0x55d85839, 0x3a58997d, 0x2ec938e1, 0x66031581};
+
 		rss_conf.rss_key = (uint8_t *)rss_key_default;
 		rss_conf.rss_key_len = (I40E_PFQF_HKEY_MAX_INDEX + 1) *
 							sizeof(uint32_t);
