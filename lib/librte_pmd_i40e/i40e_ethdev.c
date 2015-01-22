@@ -93,6 +93,18 @@
 		I40E_PFINT_ICR0_ENA_VFLR_MASK | \
 		I40E_PFINT_ICR0_ENA_ADMINQ_MASK)
 
+#define I40E_FLOW_TYPES ( \
+	(1UL << RTE_ETH_FLOW_TYPE_UDPV4) | \
+	(1UL << RTE_ETH_FLOW_TYPE_TCPV4) | \
+	(1UL << RTE_ETH_FLOW_TYPE_SCTPV4) | \
+	(1UL << RTE_ETH_FLOW_TYPE_IPV4_OTHER) | \
+	(1UL << RTE_ETH_FLOW_TYPE_FRAG_IPV4) | \
+	(1UL << RTE_ETH_FLOW_TYPE_UDPV6) | \
+	(1UL << RTE_ETH_FLOW_TYPE_TCPV6) | \
+	(1UL << RTE_ETH_FLOW_TYPE_SCTPV6) | \
+	(1UL << RTE_ETH_FLOW_TYPE_IPV6_OTHER) | \
+	(1UL << RTE_ETH_FLOW_TYPE_FRAG_IPV6))
+
 static int eth_i40e_dev_init(\
 			__attribute__((unused)) struct eth_driver *eth_drv,
 			struct rte_eth_dev *eth_dev);
@@ -199,6 +211,7 @@ static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 				enum rte_filter_op filter_op,
 				void *arg);
 static void i40e_configure_registers(struct i40e_hw *hw);
+static void i40e_hw_init(struct i40e_hw *hw);
 
 static struct rte_pci_id pci_id_i40e_map[] = {
 #define RTE_PCI_DEV_ID_DECL_I40E(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
@@ -397,6 +410,9 @@ eth_i40e_dev_init(__rte_unused struct eth_driver *eth_drv,
 
 	/* Make sure all is clean before doing PF reset */
 	i40e_clear_hw(hw);
+
+	/* Initialize the hardware */
+	i40e_hw_init(hw);
 
 	/* Reset here to make sure all is clean for each PF */
 	ret = i40e_pf_reset(hw);
@@ -5136,6 +5152,260 @@ i40e_pf_config_mq_rx(struct i40e_pf *pf)
 	return ret;
 }
 
+/* Get the symmetric hash enable configurations per port */
+static void
+i40e_get_symmetric_hash_enable_per_port(struct i40e_hw *hw, uint8_t *enable)
+{
+	uint32_t reg = I40E_READ_REG(hw, I40E_PRTQF_CTL_0);
+
+	*enable = reg & I40E_PRTQF_CTL_0_HSYM_ENA_MASK ? 1 : 0;
+}
+
+/* Set the symmetric hash enable configurations per port */
+static void
+i40e_set_symmetric_hash_enable_per_port(struct i40e_hw *hw, uint8_t enable)
+{
+	uint32_t reg = I40E_READ_REG(hw, I40E_PRTQF_CTL_0);
+
+	if (enable > 0) {
+		if (reg & I40E_PRTQF_CTL_0_HSYM_ENA_MASK) {
+			PMD_DRV_LOG(INFO, "Symmetric hash has already "
+							"been enabled");
+			return;
+		}
+		reg |= I40E_PRTQF_CTL_0_HSYM_ENA_MASK;
+	} else {
+		if (!(reg & I40E_PRTQF_CTL_0_HSYM_ENA_MASK)) {
+			PMD_DRV_LOG(INFO, "Symmetric hash has already "
+							"been disabled");
+			return;
+		}
+		reg &= ~I40E_PRTQF_CTL_0_HSYM_ENA_MASK;
+	}
+	I40E_WRITE_REG(hw, I40E_PRTQF_CTL_0, reg);
+	I40E_WRITE_FLUSH(hw);
+}
+
+/*
+ * Get global configurations of hash function type and symmetric hash enable
+ * per flow type (pctype). Note that global configuration means it affects all
+ * the ports on the same NIC.
+ */
+static int
+i40e_get_hash_filter_global_config(struct i40e_hw *hw,
+				   struct rte_eth_hash_global_conf *g_cfg)
+{
+	uint32_t reg, mask = I40E_FLOW_TYPES;
+	uint32_t i;
+	enum i40e_filter_pctype pctype;
+
+	memset(g_cfg, 0, sizeof(*g_cfg));
+	reg = I40E_READ_REG(hw, I40E_GLQF_CTL);
+	if (reg & I40E_GLQF_CTL_HTOEP_MASK)
+		g_cfg->hash_func = RTE_ETH_HASH_FUNCTION_TOEPLITZ;
+	else
+		g_cfg->hash_func = RTE_ETH_HASH_FUNCTION_SIMPLE_XOR;
+	PMD_DRV_LOG(DEBUG, "Hash function is %s",
+		(reg & I40E_GLQF_CTL_HTOEP_MASK) ? "Toeplitz" : "Simple XOR");
+
+	for (i = 0; mask && i < RTE_ETH_FLOW_TYPE_MAX; i++) {
+		if (!(mask & (1UL << i)))
+			continue;
+		mask &= ~(1UL << i);
+		/* Bit set indicats the coresponding flow type is supported */
+		g_cfg->valid_bit_mask[0] |= (1UL << i);
+		pctype = i40e_flowtype_to_pctype((enum rte_eth_flow_type)i);
+		reg = I40E_READ_REG(hw, I40E_GLQF_HSYM(pctype));
+		if (reg & I40E_GLQF_HSYM_SYMH_ENA_MASK)
+			g_cfg->sym_hash_enable_mask[0] |= (1UL << i);
+	}
+
+	return 0;
+}
+
+static int
+i40e_hash_global_config_check(struct rte_eth_hash_global_conf *g_cfg)
+{
+	uint32_t i;
+	uint32_t mask0, i40e_mask = I40E_FLOW_TYPES;
+
+	if (g_cfg->hash_func != RTE_ETH_HASH_FUNCTION_TOEPLITZ &&
+		g_cfg->hash_func != RTE_ETH_HASH_FUNCTION_SIMPLE_XOR &&
+		g_cfg->hash_func != RTE_ETH_HASH_FUNCTION_DEFAULT) {
+		PMD_DRV_LOG(ERR, "Unsupported hash function type %d",
+						g_cfg->hash_func);
+		return -EINVAL;
+	}
+
+	/*
+	 * As i40e supports less than 32 flow types, only first 32 bits need to
+	 * be checked.
+	 */
+	mask0 = g_cfg->valid_bit_mask[0];
+	for (i = 0; i < RTE_SYM_HASH_MASK_ARRAY_SIZE; i++) {
+		if (i == 0) {
+			/* Check if any unsupported flow type configured */
+			if ((mask0 | i40e_mask) ^ i40e_mask)
+				goto mask_err;
+		} else {
+			if (g_cfg->valid_bit_mask[i])
+				goto mask_err;
+		}
+	}
+
+	return 0;
+
+mask_err:
+	PMD_DRV_LOG(ERR, "i40e unsupported flow type bit(s) configured");
+
+	return -EINVAL;
+}
+
+/*
+ * Set global configurations of hash function type and symmetric hash enable
+ * per flow type (pctype). Note any modifying global configuration will affect
+ * all the ports on the same NIC.
+ */
+static int
+i40e_set_hash_filter_global_config(struct i40e_hw *hw,
+				   struct rte_eth_hash_global_conf *g_cfg)
+{
+	int ret;
+	uint32_t i, reg;
+	uint32_t mask0 = g_cfg->valid_bit_mask[0];
+	enum i40e_filter_pctype pctype;
+
+	/* Check the input parameters */
+	ret = i40e_hash_global_config_check(g_cfg);
+	if (ret < 0)
+		return ret;
+
+	for (i = 0; mask0 && i < UINT32_BIT; i++) {
+		if (!(mask0 & (1UL << i)))
+			continue;
+		mask0 &= ~(1UL << i);
+		pctype = i40e_flowtype_to_pctype((enum rte_eth_flow_type)i);
+		reg = (g_cfg->sym_hash_enable_mask[0] & (1UL << i)) ?
+				I40E_GLQF_HSYM_SYMH_ENA_MASK : 0;
+		I40E_WRITE_REG(hw, I40E_GLQF_HSYM(pctype), reg);
+	}
+
+	reg = I40E_READ_REG(hw, I40E_GLQF_CTL);
+	if (g_cfg->hash_func == RTE_ETH_HASH_FUNCTION_TOEPLITZ) {
+		/* Toeplitz */
+		if (reg & I40E_GLQF_CTL_HTOEP_MASK) {
+			PMD_DRV_LOG(DEBUG, "Hash function already set to "
+								"Toeplitz");
+			goto out;
+		}
+		reg |= I40E_GLQF_CTL_HTOEP_MASK;
+	} else if (g_cfg->hash_func == RTE_ETH_HASH_FUNCTION_SIMPLE_XOR) {
+		/* Simple XOR */
+		if (!(reg & I40E_GLQF_CTL_HTOEP_MASK)) {
+			PMD_DRV_LOG(DEBUG, "Hash function already set to "
+							"Simple XOR");
+			goto out;
+		}
+		reg &= ~I40E_GLQF_CTL_HTOEP_MASK;
+	} else
+		/* Use the default, and keep it as it is */
+		goto out;
+
+	I40E_WRITE_REG(hw, I40E_GLQF_CTL, reg);
+
+out:
+	I40E_WRITE_FLUSH(hw);
+
+	return 0;
+}
+
+static int
+i40e_hash_filter_get(struct i40e_hw *hw, struct rte_eth_hash_filter_info *info)
+{
+	int ret = 0;
+
+	if (!hw || !info) {
+		PMD_DRV_LOG(ERR, "Invalid pointer");
+		return -EFAULT;
+	}
+
+	switch (info->info_type) {
+	case RTE_ETH_HASH_FILTER_SYM_HASH_ENA_PER_PORT:
+		i40e_get_symmetric_hash_enable_per_port(hw,
+					&(info->info.enable));
+		break;
+	case RTE_ETH_HASH_FILTER_GLOBAL_CONFIG:
+		ret = i40e_get_hash_filter_global_config(hw,
+				&(info->info.global_conf));
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Hash filter info type (%d) not supported",
+							info->info_type);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+static int
+i40e_hash_filter_set(struct i40e_hw *hw, struct rte_eth_hash_filter_info *info)
+{
+	int ret = 0;
+
+	if (!hw || !info) {
+		PMD_DRV_LOG(ERR, "Invalid pointer");
+		return -EFAULT;
+	}
+
+	switch (info->info_type) {
+	case RTE_ETH_HASH_FILTER_SYM_HASH_ENA_PER_PORT:
+		i40e_set_symmetric_hash_enable_per_port(hw, info->info.enable);
+		break;
+	case RTE_ETH_HASH_FILTER_GLOBAL_CONFIG:
+		ret = i40e_set_hash_filter_global_config(hw,
+				&(info->info.global_conf));
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Hash filter info type (%d) not supported",
+							info->info_type);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+/* Operations for hash function */
+static int
+i40e_hash_filter_ctrl(struct rte_eth_dev *dev,
+		      enum rte_filter_op filter_op,
+		      void *arg)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret = 0;
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_NOP:
+		break;
+	case RTE_ETH_FILTER_GET:
+		ret = i40e_hash_filter_get(hw,
+			(struct rte_eth_hash_filter_info *)arg);
+		break;
+	case RTE_ETH_FILTER_SET:
+		ret = i40e_hash_filter_set(hw,
+			(struct rte_eth_hash_filter_info *)arg);
+		break;
+	default:
+		PMD_DRV_LOG(WARNING, "Filter operation (%d) not supported",
+								filter_op);
+		ret = -ENOTSUP;
+		break;
+	}
+
+	return ret;
+}
+
 /*
  * Configure ethertype filter, which can director packet by filtering
  * with mac address and ether_type or only ether_type
@@ -5238,6 +5508,9 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	switch (filter_type) {
+	case RTE_ETH_FILTER_HASH:
+		ret = i40e_hash_filter_ctrl(dev, filter_op, arg);
+		break;
 	case RTE_ETH_FILTER_MACVLAN:
 		ret = i40e_mac_filter_handle(dev, filter_op, arg);
 		break;
@@ -5260,10 +5533,26 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 	return ret;
 }
 
+/*
+ * As some registers wouldn't be reset unless a global hardware reset,
+ * hardware initialization is needed to put those registers into an
+ * expected initial state.
+ */
+static void
+i40e_hw_init(struct i40e_hw *hw)
+{
+	/* clear the PF Queue Filter control register */
+	I40E_WRITE_REG(hw, I40E_PFQF_CTL_0, 0);
+
+	/* Disable symmetric hash per port */
+	i40e_set_symmetric_hash_enable_per_port(hw, 0);
+}
+
 enum i40e_filter_pctype
 i40e_flowtype_to_pctype(enum rte_eth_flow_type flow_type)
 {
-	static const enum i40e_filter_pctype pctype_table[] = {
+	static const enum i40e_filter_pctype
+		pctype_table[RTE_ETH_FLOW_TYPE_MAX] = {
 		[RTE_ETH_FLOW_TYPE_UDPV4] = I40E_FILTER_PCTYPE_NONF_IPV4_UDP,
 		[RTE_ETH_FLOW_TYPE_TCPV4] = I40E_FILTER_PCTYPE_NONF_IPV4_TCP,
 		[RTE_ETH_FLOW_TYPE_SCTPV4] = I40E_FILTER_PCTYPE_NONF_IPV4_SCTP,
@@ -5286,7 +5575,8 @@ i40e_flowtype_to_pctype(enum rte_eth_flow_type flow_type)
 enum rte_eth_flow_type
 i40e_pctype_to_flowtype(enum i40e_filter_pctype pctype)
 {
-	static const enum rte_eth_flow_type flowtype_table[] = {
+	static const enum rte_eth_flow_type
+		flowtype_table[RTE_ETH_FLOW_TYPE_MAX] = {
 		[I40E_FILTER_PCTYPE_NONF_IPV4_UDP] = RTE_ETH_FLOW_TYPE_UDPV4,
 		[I40E_FILTER_PCTYPE_NONF_IPV4_TCP] = RTE_ETH_FLOW_TYPE_TCPV4,
 		[I40E_FILTER_PCTYPE_NONF_IPV4_SCTP] = RTE_ETH_FLOW_TYPE_SCTPV4,
