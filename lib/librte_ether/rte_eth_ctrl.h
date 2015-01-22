@@ -62,8 +62,8 @@ enum rte_filter_type {
  * Generic operations on filters
  */
 enum rte_filter_op {
+	/** used to check whether the type filter is supported */
 	RTE_ETH_FILTER_NOP = 0,
-	/**< used to check whether the type filter is supported */
 	RTE_ETH_FILTER_ADD,      /**< add filter entry */
 	RTE_ETH_FILTER_UPDATE,   /**< update filter entry */
 	RTE_ETH_FILTER_DELETE,   /**< delete filter entry */
@@ -75,16 +75,15 @@ enum rte_filter_op {
 	RTE_ETH_FILTER_OP_MAX
 };
 
-/**
+/*
  * MAC filter type
  */
 enum rte_mac_filter_type {
 	RTE_MAC_PERFECT_MATCH = 1, /**< exact match of MAC addr. */
-	RTE_MACVLAN_PERFECT_MATCH,
-	/**< exact match of MAC addr and VLAN ID. */
+	RTE_MACVLAN_PERFECT_MATCH, /**< exact match of MAC addr and VLAN ID. */
 	RTE_MAC_HASH_MATCH, /**< hash match of MAC addr. */
+	/** hash match of MAC addr and exact match of VLAN ID. */
 	RTE_MACVLAN_HASH_MATCH,
-	/**< hash match of MAC addr and exact match of VLAN ID. */
 };
 
 /**
