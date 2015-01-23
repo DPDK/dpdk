@@ -1,0 +1,388 @@
+DPDK Maintainers
+================
+
+The intention of this file is to provide a set of names that we can rely on
+for helping in patch reviews and questions.
+These names are additional recipients for emails sent to dev@dpdk.org.
+Please avoid private emails.
+
+Descriptions of section entries:
+
+	M: Maintainer's Full Name <address@domain>
+	T: Git tree location.
+	F: Files and directories with wildcard patterns.
+	   A trailing slash includes all files and subdirectory files.
+	   A wildcard includes all files but not subdirectories.
+	   One pattern per line. Multiple F: lines acceptable.
+	X: Files and directories exclusion, same rules as F:
+	K: Keyword regex pattern to match content.
+	   One regex pattern per line. Multiple K: lines acceptable.
+
+
+General Project Administration
+------------------------------
+M: Thomas Monjalon <thomas.monjalon@6wind.com>
+T: git://dpdk.org/dpdk
+F: MAINTAINERS
+F: scripts/check-maintainers.sh
+
+
+Security Issues
+---------------
+M: maintainers@dpdk.org
+
+
+Documentation (with overlaps)
+-------------
+F: doc/
+
+
+Build System
+------------
+F: GNUmakefile
+F: Makefile
+F: config/
+F: mk/
+F: pkg/
+F: scripts/depdirs-rule.sh
+F: scripts/gen-build-mk.sh
+F: scripts/gen-config-h.sh
+F: scripts/relpath.sh
+
+
+Environment Abstraction Layer
+-----------------------------
+
+EAL API and common code
+M: Thomas Monjalon <thomas.monjalon@6wind.com>
+F: lib/librte_eal/common/*
+F: lib/librte_eal/common/include/*
+F: lib/librte_eal/common/include/generic/
+F: app/test/test_alarm.c
+F: app/test/test_atomic.c
+F: app/test/test_byteorder.c
+F: app/test/test_common.c
+F: app/test/test_cpuflags.c
+F: app/test/test_cycles.c
+F: app/test/test_debug.c
+F: app/test/test_devargs.c
+F: app/test/test_eal*
+F: app/test/test_errno.c
+F: app/test/test_func_reentrancy.c
+F: app/test/test_interrupts.c
+F: app/test/test_logs.c
+F: app/test/test_memcpy*
+F: app/test/test_memory.c
+F: app/test/test_memzone.c
+F: app/test/test_pci.c
+F: app/test/test_per_lcore.c
+F: app/test/test_prefetch.c
+F: app/test/test_rwlock.c
+F: app/test/test_spinlock.c
+F: app/test/test_string_fns.c
+F: app/test/test_tailq.c
+F: app/test/test_version.c
+
+Secondary process
+K: RTE_PROC_
+F: doc/guides/prog_guide/multi_proc_support.rst
+F: app/test/test_mp_secondary.c
+F: examples/multi_process/
+F: doc/guides/sample_app_ug/multi_process.rst
+
+IBM Power
+F: lib/librte_eal/common/include/arch/ppc_64/
+
+Intel x86
+F: lib/librte_eal/common/include/arch/x86/
+
+Linux EAL (with overlaps)
+F: lib/librte_eal/linuxapp/Makefile
+F: lib/librte_eal/linuxapp/eal/
+F: doc/guides/linux_gsg/
+
+Linux UIO
+F: lib/librte_eal/linuxapp/igb_uio/
+F: lib/librte_eal/linuxapp/eal/*uio*
+
+Linux VFIO
+F: lib/librte_eal/linuxapp/eal/*vfio*
+
+Linux Xen
+F: lib/librte_eal/linuxapp/xen_dom0/
+F: lib/librte_eal/linuxapp/eal/*xen*
+F: lib/librte_eal/linuxapp/eal/include/exec-env/rte_dom0_common.h
+F: lib/librte_mempool/rte_dom0_mempool.c
+F: lib/librte_pmd_xenvirt/
+F: app/test-pmd/mempool_*
+F: examples/vhost_xen/
+F: doc/guides/prog_guide/intel_dpdk_xen_based_packet_switch_sol.rst
+
+FreeBSD EAL (with overlaps)
+F: lib/librte_eal/bsdapp/Makefile
+F: lib/librte_eal/bsdapp/eal/
+F: doc/guides/freebsd_gsg/
+
+FreeBSD contigmem
+F: lib/librte_eal/bsdapp/contigmem/
+
+FreeBSD UIO
+F: lib/librte_eal/bsdapp/nic_uio/
+
+
+Core Libraries
+--------------
+
+Memory management
+F: lib/librte_malloc/
+F: doc/guides/prog_guide/malloc_lib.rst
+F: app/test/test_malloc.c
+F: lib/librte_mempool/
+F: doc/guides/prog_guide/mempool_lib.rst
+F: app/test/test_mempool*
+F: app/test/test_func_reentrancy.c
+
+Ring queue
+F: lib/librte_ring/
+F: app/test/test_ring*
+F: app/test/test_func_reentrancy.c
+
+Packet buffer
+F: lib/librte_mbuf/
+F: doc/guides/prog_guide/mbuf_lib.rst
+F: app/test/test_mbuf.c
+
+Ethernet API
+M: Thomas Monjalon <thomas.monjalon@6wind.com>
+F: lib/librte_ether/
+
+
+Drivers
+-------
+
+Link bonding
+F: lib/librte_pmd_bond/
+F: doc/guides/prog_guide/link_bonding_poll_mode_drv_lib.rst
+F: app/test/test_link_bonding.c
+
+Linux KNI
+F: lib/librte_eal/linuxapp/kni/
+F: lib/librte_kni/
+F: doc/guides/prog_guide/kernel_nic_interface.rst
+F: app/test/test_kni.c
+F: examples/kni/
+F: doc/guides/sample_app_ug/kernel_nic_interface.rst
+
+Linux AF_PACKET
+F: lib/librte_pmd_af_packet/
+
+Cisco enic
+F: lib/librte_pmd_enic/
+
+Intel e1000
+F: lib/librte_pmd_e1000/
+
+Intel ixgbe
+F: lib/librte_pmd_ixgbe/
+
+Intel i40e
+F: lib/librte_pmd_i40e/
+
+RedHat virtio
+F: lib/librte_pmd_virtio/
+F: doc/guides/prog_guide/poll_mode_drv_emulated_virtio_nic.rst
+F: lib/librte_vhost/
+F: doc/guides/prog_guide/vhost_lib.rst
+F: examples/vhost/
+F: doc/guides/sample_app_ug/vhost.rst
+
+VMware vmxnet3
+F: lib/librte_pmd_vmxnet3/
+F: doc/guides/prog_guide/poll_mode_drv_paravirtual_vmxnets_nic.rst
+
+PCAP PMD
+F: lib/librte_pmd_pcap/
+F: doc/guides/prog_guide/libpcap_ring_based_poll_mode_drv.rst
+
+Ring PMD
+F: lib/librte_pmd_ring/
+F: doc/guides/prog_guide/ring_lib.rst
+F: app/test/test_pmd_ring.c
+
+
+Packet processing
+-----------------
+
+Network headers
+F: lib/librte_net/
+
+IP fragmentation & reassembly
+F: lib/librte_ip_frag/
+F: doc/guides/prog_guide/ip_fragment_reassembly_lib.rst
+F: examples/ip_fragmentation/
+F: doc/guides/sample_app_ug/ip_frag.rst
+F: examples/ip_reassembly/
+F: doc/guides/sample_app_ug/ip_reassembly.rst
+
+Distributor
+F: lib/librte_distributor/
+F: doc/guides/prog_guide/packet_distrib_lib.rst
+F: app/test/test_distributor*
+F: examples/distributor/
+F: doc/guides/sample_app_ug/dist_app.rst
+
+Hierarchical scheduler
+F: lib/librte_sched/
+F: doc/guides/prog_guide/qos_framework.rst
+F: app/test/test_red.c
+F: app/test/test_sched.c
+F: examples/qos_sched/
+F: doc/guides/sample_app_ug/qos_scheduler.rst
+
+
+Packet Framework
+----------------
+F: lib/librte_pipeline/
+F: lib/librte_port/
+F: lib/librte_table/
+F: doc/guides/prog_guide/packet_framework.rst
+F: app/test/test_table*
+F: app/test-pipeline/
+F: doc/guides/sample_app_ug/test_pipeline.rst
+F: examples/ip_pipeline/
+F: doc/guides/sample_app_ug/internet_proto_ip_pipeline.rst
+
+
+Algorithms
+----------
+
+ACL
+F: lib/librte_acl/
+F: doc/guides/prog_guide/packet_classif_access_ctrl.rst
+F: app/test-acl/
+F: app/test/test_acl.*
+F: examples/l3fwd-acl/
+F: doc/guides/sample_app_ug/l3_forward_access_ctrl.rst
+
+Hashes
+F: lib/librte_hash/
+F: doc/guides/prog_guide/hash_lib.rst
+F: app/test/test_hash*
+F: app/test/test_func_reentrancy.c
+
+LPM
+F: lib/librte_lpm/
+F: doc/guides/prog_guide/lpm*
+F: app/test/test_lpm*
+F: app/test/test_func_reentrancy.c
+
+Traffic metering
+F: lib/librte_meter/
+F: doc/guides/sample_app_ug/qos_scheduler.rst
+F: app/test/test_meter.c
+F: examples/qos_meter/
+F: doc/guides/sample_app_ug/qos_metering.rst
+
+
+Other libraries
+---------------
+
+Configuration file
+F: lib/librte_cfgfile/
+
+Interactive command line
+F: lib/librte_cmdline/
+F: app/cmdline_test/
+F: app/test/test_cmdline*
+F: examples/cmdline/
+F: doc/guides/sample_app_ug/cmd_line.rst
+
+Qemu IVSHMEM
+F: lib/librte_ivshmem/
+F: lib/librte_eal/linuxapp/eal/eal_ivshmem.c
+F: doc/guides/prog_guide/ivshmem_lib.rst
+F: app/test/test_ivshmem.c
+F: examples/l2fwd-ivshmem/
+
+Key/Value parsing
+F: lib/librte_kvargs/
+F: app/test/test_kvargs.c
+
+Power management
+F: lib/librte_power/
+F: doc/guides/prog_guide/power_man.rst
+F: app/test/test_power*
+F: examples/l3fwd-power/
+F: doc/guides/sample_app_ug/l3_forward_power_man.rst
+F: examples/vm_power_manager/
+F: doc/guides/sample_app_ug/vm_power_management.rst
+
+Timers
+F: lib/librte_timer/
+F: doc/guides/prog_guide/timer_lib.rst
+F: app/test/test_timer*
+F: examples/timer/
+F: doc/guides/sample_app_ug/timer.rst
+
+
+Test Applications
+-----------------
+
+Unit tests framework
+F: app/test/autotest*
+F: app/test/commands.c
+F: app/test/packet_burst_generator.c
+F: app/test/packet_burst_generator.h
+F: app/test/process.h
+F: app/test/test.c
+F: app/test/test.h
+F: app/test/test_pmd_perf.c
+F: app/test/virtual_pmd.c
+F: app/test/virtual_pmd.h
+
+Driver testing tool
+F: app/test-pmd/
+F: doc/guides/testpmd_app_ug/
+
+
+Other Example Applications
+--------------------------
+
+F: examples/dpdk_qat/
+F: doc/guides/sample_app_ug/intel_quickassist.rst
+
+F: examples/exception_path/
+F: doc/guides/sample_app_ug/exception_path.rst
+
+F: examples/helloworld/
+F: doc/guides/sample_app_ug/hello_world.rst
+
+F: examples/ipv4_multicast/
+F: doc/guides/sample_app_ug/ipv4_multicast.rst
+
+F: examples/l2fwd/
+F: doc/guides/sample_app_ug/l2_forward_real_virtual.rst
+
+F: examples/l3fwd/
+F: doc/guides/sample_app_ug/l3_forward.rst
+
+F: examples/l3fwd-vf/
+F: doc/guides/sample_app_ug/l3_forward_virtual.rst
+
+F: examples/link_status_interrupt/
+F: doc/guides/sample_app_ug/link_status_intr.rst
+
+F: examples/load_balancer/
+F: doc/guides/sample_app_ug/load_balancer.rst
+
+F: examples/netmap_compat/
+F: doc/guides/sample_app_ug/netmap_compatibility.rst
+
+F: examples/quota_watermark/
+F: doc/guides/sample_app_ug/quota_watermark.rst
+
+F: examples/skeleton/
+
+F: examples/vmdq/
+F: examples/vmdq_dcb/
+F: doc/guides/sample_app_ug/vmdq_dcb_forwarding.rst
