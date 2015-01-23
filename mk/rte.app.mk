@@ -325,7 +325,7 @@ $(RTE_OUTPUT)/app/$(APP).map: $(APP)
 # Clean all generated files
 #
 .PHONY: clean
-clean: _postclean
+clean:: _postclean
 	$(Q)rm -f $(_BUILD_TARGETS) $(_INSTALL_TARGETS) $(_CLEAN_TARGETS)
 
 .PHONY: doclean
