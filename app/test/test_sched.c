@@ -46,13 +46,6 @@
 #include <rte_sched.h>
 
 
-#define VERIFY(exp,fmt,args...)                    	                \
-		if (!(exp)) {                                               \
-			printf(fmt, ##args);                                    \
-			return -1;                                              \
-		}
-
-
 #define SUBPORT 	0
 #define PIPE 		1
 #define TC 			2
@@ -166,48 +159,49 @@ test_sched(void)
 	int err;
 
 	mp = create_mempool();
+	TEST_ASSERT_NOT_NULL(mp, "Error creating mempool\n");
 
 	port_param.socket = 0;
 	port_param.rate = (uint64_t) 10000 * 1000 * 1000 / 8;
 
 	port = rte_sched_port_config(&port_param);
-	VERIFY(port != NULL, "Error config sched port\n");
-
+	TEST_ASSERT_NOT_NULL(port, "Error config sched port\n");
 
 	err = rte_sched_subport_config(port, SUBPORT, subport_param);
-	VERIFY(err == 0, "Error config sched, err=%d\n", err);
+	TEST_ASSERT_SUCCESS(err, "Error config sched, err=%d\n", err);
 
 	for (pipe = 0; pipe < port_param.n_pipes_per_subport; pipe ++) {
 		err = rte_sched_pipe_config(port, SUBPORT, pipe, 0);
-		VERIFY(err == 0, "Error config sched pipe %u, err=%d\n", pipe, err);
+		TEST_ASSERT_SUCCESS(err, "Error config sched pipe %u, err=%d\n", pipe, err);
 	}
 
 	for (i = 0; i < 10; i++) {
 		in_mbufs[i] = rte_pktmbuf_alloc(mp);
+		TEST_ASSERT_NOT_NULL(in_mbufs[i], "Packet allocation failed\n");
 		prepare_pkt(in_mbufs[i]);
 	}
 
 
 	err = rte_sched_port_enqueue(port, in_mbufs, 10);
-	VERIFY(err == 10, "Wrong enqueue, err=%d\n", err);
+	TEST_ASSERT_EQUAL(err, 10, "Wrong enqueue, err=%d\n", err);
 
 	err = rte_sched_port_dequeue(port, out_mbufs, 10);
-	VERIFY(err == 10, "Wrong dequeue, err=%d\n", err);
+	TEST_ASSERT_EQUAL(err, 10, "Wrong dequeue, err=%d\n", err);
 
 	for (i = 0; i < 10; i++) {
 		enum rte_meter_color color;
 		uint32_t subport, traffic_class, queue;
 
 		color = rte_sched_port_pkt_read_color(out_mbufs[i]);
-		VERIFY(color == e_RTE_METER_YELLOW, "Wrong color\n");
+		TEST_ASSERT_EQUAL(color, e_RTE_METER_YELLOW, "Wrong color\n");
 
 		rte_sched_port_pkt_read_tree_path(out_mbufs[i],
 				&subport, &pipe, &traffic_class, &queue);
 
-		VERIFY(subport == SUBPORT, "Wrong subport\n");
-		VERIFY(pipe == PIPE, "Wrong pipe\n");
-		VERIFY(traffic_class == TC, "Wrong traffic_class\n");
-		VERIFY(queue == QUEUE, "Wrong queue\n");
+		TEST_ASSERT_EQUAL(subport, SUBPORT, "Wrong subport\n");
+		TEST_ASSERT_EQUAL(pipe, PIPE, "Wrong pipe\n");
+		TEST_ASSERT_EQUAL(traffic_class, TC, "Wrong traffic_class\n");
+		TEST_ASSERT_EQUAL(queue, QUEUE, "Wrong queue\n");
 
 	}
 
@@ -215,12 +209,15 @@ test_sched(void)
 	struct rte_sched_subport_stats subport_stats;
 	uint32_t tc_ov;
 	rte_sched_subport_read_stats(port, SUBPORT, &subport_stats, &tc_ov);
-	//VERIFY(subport_stats.n_pkts_tc[TC-1] == 10, "Wrong subport stats\n");
-
+#if 0
+	TEST_ASSERT_EQUAL(subport_stats.n_pkts_tc[TC-1], 10, "Wrong subport stats\n");
+#endif
 	struct rte_sched_queue_stats queue_stats;
 	uint16_t qlen;
 	rte_sched_queue_read_stats(port, QUEUE, &queue_stats, &qlen);
-	//VERIFY(queue_stats.n_pkts == 10, "Wrong queue stats\n");
+#if 0
+	TEST_ASSERT_EQUAL(queue_stats.n_pkts, 10, "Wrong queue stats\n");
+#endif
 
 	rte_sched_port_free(port);
 
