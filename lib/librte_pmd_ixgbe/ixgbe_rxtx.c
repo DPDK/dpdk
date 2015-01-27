@@ -3806,7 +3806,7 @@ ixgbe_setup_loopback_link_82599(struct ixgbe_hw *hw)
 /*
  * Start Transmit and Receive Units.
  */
-void
+int
 ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
@@ -3816,6 +3816,7 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 	uint32_t dmatxctl;
 	uint32_t rxctrl;
 	uint16_t i;
+	int ret = 0;
 
 	PMD_INIT_FUNC_TRACE();
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -3838,14 +3839,20 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
-		if (!txq->tx_deferred_start)
-			ixgbe_dev_tx_queue_start(dev, i);
+		if (!txq->tx_deferred_start) {
+			ret = ixgbe_dev_tx_queue_start(dev, i);
+			if (ret < 0)
+				return ret;
+		}
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
-		if (!rxq->rx_deferred_start)
-			ixgbe_dev_rx_queue_start(dev, i);
+		if (!rxq->rx_deferred_start) {
+			ret = ixgbe_dev_rx_queue_start(dev, i);
+			if (ret < 0)
+				return ret;
+		}
 	}
 
 	/* Enable Receive engine */
@@ -3860,6 +3867,7 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 			dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_82599_TX_RX)
 		ixgbe_setup_loopback_link_82599(hw);
 
+	return 0;
 }
 
 /*

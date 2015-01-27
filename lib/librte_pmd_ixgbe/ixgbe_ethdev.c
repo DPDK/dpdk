@@ -1495,7 +1495,11 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
-	ixgbe_dev_rxtx_start(dev);
+	err = ixgbe_dev_rxtx_start(dev);
+	if (err < 0) {
+		PMD_INIT_LOG(ERR, "Unable to start rxtx queues");
+		goto error;
+	}
 
 	if (ixgbe_is_sfp(hw) && hw->phy.multispeed_fiber) {
 		err = hw->mac.ops.setup_sfp(hw);
