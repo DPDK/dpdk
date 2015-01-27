@@ -131,6 +131,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
 LDLIBS += -lpcap
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_VHOST),y)
+LDLIBS += -lfuse
+endif
+
 LDLIBS += --start-group
 
 ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),n)
@@ -197,7 +201,6 @@ endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST), y)
 LDLIBS += -lrte_vhost
-LDLIBS += -lfuse
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_ENIC_PMD),y)
