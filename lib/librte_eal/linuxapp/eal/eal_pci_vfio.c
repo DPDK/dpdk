@@ -62,6 +62,9 @@
 
 #ifdef VFIO_PRESENT
 
+#define PAGE_SIZE   (sysconf(_SC_PAGESIZE))
+#define PAGE_MASK   (~(PAGE_SIZE - 1))
+
 #define VFIO_DIR "/dev/vfio"
 #define VFIO_CONTAINER_PATH "/dev/vfio/vfio"
 #define VFIO_GROUP_FMT "/dev/vfio/%u"
@@ -72,10 +75,12 @@ static struct vfio_config vfio_cfg;
 
 /* get PCI BAR number where MSI-X interrupts are */
 static int
-pci_vfio_get_msix_bar(int fd, int *msix_bar)
+pci_vfio_get_msix_bar(int fd, int *msix_bar, uint32_t *msix_table_offset,
+		      uint32_t *msix_table_size)
 {
 	int ret;
 	uint32_t reg;
+	uint16_t flags;
 	uint8_t cap_id, cap_offset;
 
 	/* read PCI capability pointer from config space */
@@ -134,7 +139,18 @@ pci_vfio_get_msix_bar(int fd, int *msix_bar)
 				return -1;
 			}
 
+			ret = pread64(fd, &flags, sizeof(flags),
+					VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
+					cap_offset + 2);
+			if (ret != sizeof(flags)) {
+				RTE_LOG(ERR, EAL, "Cannot read table flags from PCI config "
+						"space!\n");
+				return -1;
+			}
+
 			*msix_bar = reg & RTE_PCI_MSIX_TABLE_BIR;
+			*msix_table_offset = reg & RTE_PCI_MSIX_TABLE_OFFSET;
+			*msix_table_size = 16 * (1 + (flags & RTE_PCI_MSIX_FLAGS_QSIZE));
 
 			return 0;
 		}
@@ -532,6 +548,8 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	int i, ret, msix_bar;
 	struct mapped_pci_resource *vfio_res = NULL;
 	struct pci_map *maps;
+	uint32_t msix_table_offset = 0;
+	uint32_t msix_table_size = 0;
 
 	dev->intr_handle.fd = -1;
 	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
@@ -657,9 +675,10 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	}
 
 	/* get MSI-X BAR, if any (we have to know where it is because we can't
-	 * mmap it when using VFIO) */
+	 * easily mmap it when using VFIO) */
 	msix_bar = -1;
-	ret = pci_vfio_get_msix_bar(vfio_dev_fd, &msix_bar);
+	ret = pci_vfio_get_msix_bar(vfio_dev_fd, &msix_bar,
+				    &msix_table_offset, &msix_table_size);
 	if (ret < 0) {
 		RTE_LOG(ERR, EAL, "  %s cannot get MSI-X BAR number!\n", pci_addr);
 		close(vfio_dev_fd);
@@ -702,6 +721,9 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	for (i = 0; i < (int) vfio_res->nb_maps; i++) {
 		struct vfio_region_info reg = { .argsz = sizeof(reg) };
 		void *bar_addr;
+		struct memreg {
+			uint32_t offset, size;
+		} memreg[2] = {};
 
 		reg.index = i;
 
@@ -720,21 +742,77 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 		if ((reg.flags & VFIO_REGION_INFO_FLAG_MMAP) == 0)
 			continue;
 
-		/* skip MSI-X BAR */
-		if (i == msix_bar)
-			continue;
+		if (i == msix_bar) {
+			/*
+			 * VFIO will not let us map the MSI-X table,
+			 * but we can map around it.
+			 */
+			uint32_t table_start = msix_table_offset;
+			uint32_t table_end = table_start + msix_table_size;
+			table_end = (table_end + ~PAGE_MASK) & PAGE_MASK;
+			table_start &= PAGE_MASK;
 
+			if (table_start == 0 && table_end >= reg.size) {
+				/* Cannot map this BAR */
+				RTE_LOG(DEBUG, EAL, "Skipping BAR %d\n", i);
+				continue;
+			} else {
+				memreg[0].offset = reg.offset;
+				memreg[0].size = table_start;
+				memreg[1].offset = table_end;
+				memreg[1].size = reg.size - table_end;
+
+				RTE_LOG(DEBUG, EAL,
+					"Trying to map BAR %d that contains the MSI-X "
+					"table. Trying offsets: "
+					"%04x:%04x, %04x:%04x\n", i,
+					memreg[0].offset, memreg[0].size,
+					memreg[1].offset, memreg[1].size);
+			}
+		} else {
+			memreg[0].offset = reg.offset;
+			memreg[0].size = reg.size;
+		}
+
+		/* try to figure out an address */
 		if (internal_config.process_type == RTE_PROC_PRIMARY) {
 			/* try mapping somewhere close to the end of hugepages */
 			if (pci_map_addr == NULL)
 				pci_map_addr = pci_find_max_end_va();
 
-			bar_addr = pci_map_resource(pci_map_addr, vfio_dev_fd, reg.offset,
-					reg.size);
+			bar_addr = pci_map_addr;
 			pci_map_addr = RTE_PTR_ADD(bar_addr, (size_t) reg.size);
 		} else {
-			bar_addr = pci_map_resource(maps[i].addr, vfio_dev_fd, reg.offset,
-					reg.size);
+			bar_addr = maps[i].addr;
+		}
+
+		/* reserve the address using an inaccessible mapping */
+		bar_addr = mmap(bar_addr, reg.size, 0, MAP_PRIVATE |
+				MAP_ANONYMOUS, -1, 0);
+		if (bar_addr != MAP_FAILED) {
+			void *map_addr = NULL;
+			if (memreg[0].size) {
+				/* actual map of first part */
+				map_addr = pci_map_resource(bar_addr, vfio_dev_fd,
+							    memreg[0].offset,
+							    memreg[0].size,
+							    MAP_FIXED);
+			}
+
+			/* if there's a second part, try to map it */
+			if (map_addr != MAP_FAILED
+			    && memreg[1].offset && memreg[1].size) {
+				void *second_addr = RTE_PTR_ADD(bar_addr, memreg[1].offset);
+				map_addr = pci_map_resource(second_addr,
+							    vfio_dev_fd, memreg[1].offset,
+							    memreg[1].size,
+							    MAP_FIXED);
+			}
+
+			if (map_addr == MAP_FAILED || !map_addr) {
+				munmap(bar_addr, reg.size);
+				bar_addr = MAP_FAILED;
+			}
 		}
 
 		if (bar_addr == MAP_FAILED ||

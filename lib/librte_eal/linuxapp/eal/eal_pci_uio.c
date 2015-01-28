@@ -146,7 +146,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 
 			if (pci_map_resource(uio_res->maps[i].addr, fd,
 					     (off_t)uio_res->maps[i].offset,
-					     (size_t)uio_res->maps[i].size)
+					     (size_t)uio_res->maps[i].size, 0)
 			    != uio_res->maps[i].addr) {
 				RTE_LOG(ERR, EAL,
 					"Cannot mmap device resource\n");
@@ -409,7 +409,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 					pci_map_addr = pci_find_max_end_va();
 
 				mapaddr = pci_map_resource(pci_map_addr, fd, (off_t)offset,
-						(size_t)maps[j].size);
+						(size_t)maps[j].size, 0);
 				if (mapaddr == MAP_FAILED)
 					fail = 1;
 

@@ -118,13 +118,14 @@ pci_find_max_end_va(void)
 
 /* map a particular resource from a file */
 void *
-pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size)
+pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size,
+		 int additional_flags)
 {
 	void *mapaddr;
 
 	/* Map the PCI memory resource of device */
 	mapaddr = mmap(requested_addr, size, PROT_READ | PROT_WRITE,
-			MAP_SHARED, fd, offset);
+			MAP_SHARED | additional_flags, fd, offset);
 	if (mapaddr == MAP_FAILED) {
 		RTE_LOG(ERR, EAL, "%s(): cannot mmap(%d, %p, 0x%lx, 0x%lx): %s (%p)\n",
 			__func__, fd, requested_addr,
