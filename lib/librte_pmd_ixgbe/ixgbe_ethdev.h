@@ -102,6 +102,7 @@
  * Information about the fdir mode.
  */
 struct ixgbe_hw_fdir_info {
+	uint8_t     flex_bytes_offset;
 	uint16_t    collision;
 	uint16_t    free;
 	uint16_t    maxhash;

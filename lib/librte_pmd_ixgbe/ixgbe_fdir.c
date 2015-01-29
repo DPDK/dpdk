@@ -62,9 +62,15 @@
 #define SIG_BUCKET_64KB_HASH_MASK       0x1FFF  /* 13 bits */
 #define SIG_BUCKET_128KB_HASH_MASK      0x3FFF  /* 14 bits */
 #define SIG_BUCKET_256KB_HASH_MASK      0x7FFF  /* 15 bits */
+#define IXGBE_DEFAULT_FLEXBYTES_OFFSET  12 /* default flexbytes offset in bytes */
+#define IXGBE_MAX_FLX_SOURCE_OFF        62
+#define IXGBE_FDIRCTRL_FLEX_MASK        (0x1F << IXGBE_FDIRCTRL_FLEX_SHIFT)
 #define IXGBE_FDIRCMD_CMD_INTERVAL_US   10
 
+static int ixgbe_set_fdir_flex_conf(struct rte_eth_dev *dev,
+		const struct rte_eth_fdir_flex_conf *conf);
 static int fdir_erase_filter_82599(struct ixgbe_hw *hw, uint32_t fdirhash);
+static int fdir_enable_82599(struct ixgbe_hw *hw, uint32_t fdirctrl);
 static int ixgbe_fdir_filter_to_atr_input(
 		const struct rte_eth_fdir_filter *fdir_filter,
 		union ixgbe_atr_input *input);
@@ -92,7 +98,8 @@ static int ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
  *  @hw: pointer to hardware structure
  *  @fdirctrl: value to write to flow director control register
  **/
-static void fdir_enable_82599(struct ixgbe_hw *hw, u32 fdirctrl)
+static int
+fdir_enable_82599(struct ixgbe_hw *hw, uint32_t fdirctrl)
 {
 	int i;
 
@@ -132,16 +139,20 @@ static void fdir_enable_82599(struct ixgbe_hw *hw, u32 fdirctrl)
 		msec_delay(1);
 	}
 
-	if (i >= IXGBE_FDIR_INIT_DONE_POLL)
-		PMD_INIT_LOG(WARNING, "Flow Director poll time exceeded!");
+	if (i >= IXGBE_FDIR_INIT_DONE_POLL) {
+		PMD_INIT_LOG(ERR, "Flow Director poll time exceeded "
+			"during enabling!");
+		return -ETIMEDOUT;
+	}
+	return 0;
 }
 
 /*
  * Set appropriate bits in fdirctrl for: variable reporting levels, moving
  * flexbytes matching field, and drop queue (only for perfect matching mode).
  */
-static int
-configure_fdir_flags(struct rte_fdir_conf *conf, uint32_t *fdirctrl)
+static inline int
+configure_fdir_flags(const struct rte_fdir_conf *conf, uint32_t *fdirctrl)
 {
 	*fdirctrl = 0;
 
@@ -183,13 +194,88 @@ configure_fdir_flags(struct rte_fdir_conf *conf, uint32_t *fdirctrl)
 		return -EINVAL;
 	};
 
-	*fdirctrl |= (conf->flexbytes_offset << IXGBE_FDIRCTRL_FLEX_SHIFT);
+	*fdirctrl |= (IXGBE_DEFAULT_FLEXBYTES_OFFSET / sizeof(uint16_t)) <<
+		     IXGBE_FDIRCTRL_FLEX_SHIFT;
 
 	if (conf->mode == RTE_FDIR_MODE_PERFECT) {
 		*fdirctrl |= IXGBE_FDIRCTRL_PERFECT_MATCH;
 		*fdirctrl |= (conf->drop_queue << IXGBE_FDIRCTRL_DROP_Q_SHIFT);
 	}
+	/*
+	 * Continue setup of fdirctrl register bits:
+	 *  Set the maximum length per hash bucket to 0xA filters
+	 *  Send interrupt when 64 filters are left
+	 */
+	*fdirctrl |= (0xA << IXGBE_FDIRCTRL_MAX_LENGTH_SHIFT) |
+		    (4 << IXGBE_FDIRCTRL_FULL_THRESH_SHIFT);
 
+	return 0;
+}
+
+/*
+ * ixgbe_check_fdir_flex_conf -check if the flex payload and mask configuration
+ * arguments are valid
+ */
+static int
+ixgbe_set_fdir_flex_conf(struct rte_eth_dev *dev,
+		const struct rte_eth_fdir_flex_conf *conf)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_hw_fdir_info *info =
+			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
+	const struct rte_eth_flex_payload_cfg *flex_cfg;
+	const struct rte_eth_fdir_flex_mask *flex_mask;
+	uint32_t fdirctrl, fdirm;
+	uint16_t flexbytes = 0;
+	uint16_t i;
+
+	fdirctrl = IXGBE_READ_REG(hw, IXGBE_FDIRCTRL);
+	fdirm = IXGBE_READ_REG(hw, IXGBE_FDIRM);
+
+	if (conf == NULL) {
+		PMD_DRV_LOG(INFO, "NULL pointer.");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < conf->nb_payloads; i++) {
+		flex_cfg = &conf->flex_set[i];
+		if (flex_cfg->type != RTE_ETH_RAW_PAYLOAD) {
+			PMD_DRV_LOG(ERR, "unsupported payload type.");
+			return -EINVAL;
+		}
+		if (((flex_cfg->src_offset[0] & 0x1) == 0) &&
+		    (flex_cfg->src_offset[1] == flex_cfg->src_offset[0] + 1) &&
+		    (flex_cfg->src_offset[0] <= IXGBE_MAX_FLX_SOURCE_OFF)) {
+			fdirctrl &= ~IXGBE_FDIRCTRL_FLEX_MASK;
+			fdirctrl |= (flex_cfg->src_offset[0] / sizeof(uint16_t)) <<
+					IXGBE_FDIRCTRL_FLEX_SHIFT;
+		} else {
+			PMD_DRV_LOG(ERR, "invalid flexbytes arguments.");
+			return -EINVAL;
+		}
+	}
+
+	for (i = 0; i < conf->nb_flexmasks; i++) {
+		flex_mask = &conf->flex_mask[i];
+		if (flex_mask->flow_type != RTE_ETH_FLOW_TYPE_RAW) {
+			PMD_DRV_LOG(ERR, "unsupported flow type.");
+			return -EINVAL;
+		}
+		flexbytes = (uint16_t)(((flex_mask->mask[0] << 8) & 0xFF00) |
+					((flex_mask->mask[1]) & 0xFF));
+		if (flexbytes == UINT16_MAX)
+			fdirm &= ~IXGBE_FDIRM_FLEX;
+		else if (flexbytes != 0) {
+			/* IXGBE_FDIRM_FLEX is set by default when set mask */
+			PMD_DRV_LOG(ERR, " invalid flexbytes mask arguments.");
+			return -EINVAL;
+		}
+	}
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRCTRL, fdirctrl);
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRM, fdirm);
+	info->flex_bytes_offset = (uint8_t)((fdirctrl &
+					    IXGBE_FDIRCTRL_FLEX_MASK) >>
+					    IXGBE_FDIRCTRL_FLEX_SHIFT);
 	return 0;
 }
 
@@ -231,7 +317,19 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 	for (i = 1; i < 8; i++)
 		IXGBE_WRITE_REG(hw, IXGBE_RXPBSIZE(i), 0);
 
-	fdir_enable_82599(hw, fdirctrl);
+
+	err = ixgbe_set_fdir_flex_conf(dev,
+		&dev->data->dev_conf.fdir_conf.flex_conf);
+	if (err < 0) {
+		PMD_INIT_LOG(ERR, " Error on setting FD flexible arguments.");
+		return err;
+	}
+
+	err = fdir_enable_82599(hw, fdirctrl);
+	if (err < 0) {
+		PMD_INIT_LOG(ERR, " Error on enabling FD.");
+		return err;
+	}
 	return 0;
 }
 
