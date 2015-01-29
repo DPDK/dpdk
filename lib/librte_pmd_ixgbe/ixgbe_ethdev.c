@@ -360,7 +360,6 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.set_vf_vlan_filter   = ixgbe_set_pool_vlan_filter,
 	.set_queue_rate_limit = ixgbe_set_queue_rate_limit,
 	.set_vf_rate_limit    = ixgbe_set_vf_rate_limit,
-	.fdir_infos_get               = ixgbe_fdir_info_get,
 	.reta_update          = ixgbe_dev_rss_reta_update,
 	.reta_query           = ixgbe_dev_rss_reta_query,
 #ifdef RTE_NIC_BYPASS

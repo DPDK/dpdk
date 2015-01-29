@@ -130,6 +130,11 @@ static int ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 			      const struct rte_eth_fdir_filter *fdir_filter,
 			      bool del,
 			      bool update);
+static void ixgbe_fdir_info_get(struct rte_eth_dev *dev,
+			struct rte_eth_fdir_info *fdir_info);
+static void ixgbe_fdir_stats_get(struct rte_eth_dev *dev,
+			struct rte_eth_fdir_stats *fdir_stats);
+
 /**
  * This function is based on ixgbe_fdir_enable_82599() in ixgbe/ixgbe_82599.c.
  * It adds extra configuration of fdirctrl that is common for all filter types.
@@ -959,19 +964,61 @@ ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 	return err;
 }
 
-void
-ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir *fdir)
+#define FDIRENTRIES_NUM_SHIFT 10
+static void
+ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_hw_fdir_info *info =
 			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
-	uint32_t reg;
+	uint32_t fdirctrl, max_num;
+	uint8_t offset;
 
-	if (hw->mac.type != ixgbe_mac_82599EB &&
-		hw->mac.type != ixgbe_mac_X540 &&
-		hw->mac.type != ixgbe_mac_X550 &&
-		hw->mac.type != ixgbe_mac_X550EM_x)
-		return;
+	fdirctrl = IXGBE_READ_REG(hw, IXGBE_FDIRCTRL);
+	offset = ((fdirctrl & IXGBE_FDIRCTRL_FLEX_MASK) >>
+			IXGBE_FDIRCTRL_FLEX_SHIFT) * sizeof(uint16_t);
+
+	fdir_info->mode = dev->data->dev_conf.fdir_conf.mode;
+	max_num = (1 << (FDIRENTRIES_NUM_SHIFT +
+			(fdirctrl & FDIRCTRL_PBALLOC_MASK)));
+	if (fdir_info->mode == RTE_FDIR_MODE_PERFECT)
+		fdir_info->guarant_spc = max_num;
+	else if (fdir_info->mode == RTE_FDIR_MODE_SIGNATURE)
+		fdir_info->guarant_spc = max_num * 4;
+
+	fdir_info->mask.vlan_tci_mask = info->mask.vlan_tci_mask;
+	fdir_info->mask.ipv4_mask.src_ip = info->mask.src_ipv4_mask;
+	fdir_info->mask.ipv4_mask.dst_ip = info->mask.dst_ipv4_mask;
+	IPV6_MASK_TO_ADDR(info->mask.src_ipv6_mask,
+			fdir_info->mask.ipv6_mask.src_ip);
+	IPV6_MASK_TO_ADDR(info->mask.dst_ipv6_mask,
+			fdir_info->mask.ipv6_mask.dst_ip);
+	fdir_info->mask.src_port_mask = info->mask.src_port_mask;
+	fdir_info->mask.dst_port_mask = info->mask.dst_port_mask;
+	fdir_info->max_flexpayload = IXGBE_FDIR_MAX_FLEX_LEN;
+	fdir_info->flow_types_mask[0] = IXGBE_FDIR_FLOW_TYPES;
+	fdir_info->flex_payload_unit = sizeof(uint16_t);
+	fdir_info->max_flex_payload_segment_num = 1;
+	fdir_info->flex_payload_limit = 62;
+	fdir_info->flex_conf.nb_payloads = 1;
+	fdir_info->flex_conf.flex_set[0].type = RTE_ETH_RAW_PAYLOAD;
+	fdir_info->flex_conf.flex_set[0].src_offset[0] = offset;
+	fdir_info->flex_conf.flex_set[0].src_offset[1] = offset + 1;
+	fdir_info->flex_conf.nb_flexmasks = 1;
+	fdir_info->flex_conf.flex_mask[0].flow_type = RTE_ETH_FLOW_TYPE_RAW;
+	fdir_info->flex_conf.flex_mask[0].mask[0] =
+			(uint8_t)(info->mask.flex_bytes_mask & 0x00FF);
+	fdir_info->flex_conf.flex_mask[0].mask[1] =
+			(uint8_t)((info->mask.flex_bytes_mask & 0xFF00) >> 8);
+}
+
+static void
+ixgbe_fdir_stats_get(struct rte_eth_dev *dev, struct rte_eth_fdir_stats *fdir_stats)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_hw_fdir_info *info =
+			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
+	uint32_t reg, max_num;
 
 	/* Get the information from registers */
 	reg = IXGBE_READ_REG(hw, IXGBE_FDIRFREE);
@@ -999,14 +1046,23 @@ ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir *fdir)
 		IXGBE_FDIRFSTAT_FADD_SHIFT;
 
 	/*  Copy the new information in the fdir parameter */
-	fdir->collision = info->collision;
-	fdir->free = info->free;
-	fdir->maxhash = info->maxhash;
-	fdir->maxlen = info->maxlen;
-	fdir->remove = info->remove;
-	fdir->add = info->add;
-	fdir->f_remove = info->f_remove;
-	fdir->f_add = info->f_add;
+	fdir_stats->collision = info->collision;
+	fdir_stats->free = info->free;
+	fdir_stats->maxhash = info->maxhash;
+	fdir_stats->maxlen = info->maxlen;
+	fdir_stats->remove = info->remove;
+	fdir_stats->add = info->add;
+	fdir_stats->f_remove = info->f_remove;
+	fdir_stats->f_add = info->f_add;
+
+	reg = IXGBE_READ_REG(hw, IXGBE_FDIRCTRL);
+	max_num = (1 << (FDIRENTRIES_NUM_SHIFT +
+			(reg & FDIRCTRL_PBALLOC_MASK)));
+	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_PERFECT)
+			fdir_stats->guarant_cnt = max_num - fdir_stats->free;
+	else if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_SIGNATURE)
+		fdir_stats->guarant_cnt = max_num * 4 - fdir_stats->free;
+
 }
 
 /*
@@ -1046,6 +1102,12 @@ ixgbe_fdir_ctrl_func(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_DELETE:
 		ret = ixgbe_add_del_fdir_filter(dev,
 			(struct rte_eth_fdir_filter *)arg, TRUE, FALSE);
+		break;
+	case RTE_ETH_FILTER_INFO:
+		ixgbe_fdir_info_get(dev, (struct rte_eth_fdir_info *)arg);
+		break;
+	case RTE_ETH_FILTER_STATS:
+		ixgbe_fdir_stats_get(dev, (struct rte_eth_fdir_stats *)arg);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "unknown operation %u", filter_op);

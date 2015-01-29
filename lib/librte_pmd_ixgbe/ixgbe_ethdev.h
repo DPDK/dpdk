@@ -323,9 +323,6 @@ int ixgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
  */
 int ixgbe_fdir_configure(struct rte_eth_dev *dev);
 
-void ixgbe_fdir_info_get(struct rte_eth_dev *dev,
-		struct rte_eth_fdir *fdir);
-
 void ixgbe_configure_dcb(struct rte_eth_dev *dev);
 
 /*
