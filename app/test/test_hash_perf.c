@@ -56,10 +56,7 @@
 #include <rte_hash.h>
 #include <rte_fbk_hash.h>
 #include <rte_jhash.h>
-
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 #include <rte_hash_crc.h>
-#endif
 
 /* Types of hash table performance test that can be performed */
 enum hash_test_t {
@@ -97,11 +94,7 @@ struct tbl_perf_test_params {
  */
 #define HASHTEST_ITERATIONS 1000000
 
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 static rte_hash_function hashtest_funcs[] = {rte_jhash, rte_hash_crc};
-#else
-static rte_hash_function hashtest_funcs[] = {rte_jhash};
-#endif
 static uint32_t hashtest_initvals[] = {0};
 static uint32_t hashtest_key_lens[] = {2, 4, 5, 6, 7, 8, 10, 11, 15, 16, 21, 31, 32, 33, 63, 64};
 /******************************************************************************/
@@ -243,7 +236,6 @@ struct tbl_perf_test_params tbl_perf_params[] =
 {       LOOKUP,  ITERATIONS,  1048576,           4,      64,    rte_jhash,   0},
 {       LOOKUP,  ITERATIONS,  1048576,           8,      64,    rte_jhash,   0},
 {       LOOKUP,  ITERATIONS,  1048576,          16,      64,    rte_jhash,   0},
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 /* Small table, add */
 /*  Test type | Iterations | Entries | BucketSize | KeyLen |    HashFunc | InitVal */
 { ADD_ON_EMPTY,        1024,     1024,           1,      16, rte_hash_crc,   0},
@@ -376,7 +368,6 @@ struct tbl_perf_test_params tbl_perf_params[] =
 {       LOOKUP,  ITERATIONS,  1048576,           4,      64, rte_hash_crc,   0},
 {       LOOKUP,  ITERATIONS,  1048576,           8,      64, rte_hash_crc,   0},
 {       LOOKUP,  ITERATIONS,  1048576,          16,      64, rte_hash_crc,   0},
-#endif
 };
 
 /******************************************************************************/
@@ -423,10 +414,8 @@ static const char *get_hash_name(rte_hash_function f)
 	if (f == rte_jhash)
 		return "jhash";
 
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 	if (f == rte_hash_crc)
 		return "rte_hash_crc";
-#endif
 
 	return "UnknownHash";
 }

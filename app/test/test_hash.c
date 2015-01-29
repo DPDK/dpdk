@@ -55,10 +55,7 @@
 #include <rte_hash.h>
 #include <rte_fbk_hash.h>
 #include <rte_jhash.h>
-
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 #include <rte_hash_crc.h>
-#endif
 
 /*******************************************************************************
  * Hash function performance test configuration section. Each performance test
@@ -67,11 +64,7 @@
  * The five arrays below control what tests are performed. Every combination
  * from the array entries is tested.
  */
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 static rte_hash_function hashtest_funcs[] = {rte_jhash, rte_hash_crc};
-#else
-static rte_hash_function hashtest_funcs[] = {rte_jhash};
-#endif
 static uint32_t hashtest_initvals[] = {0};
 static uint32_t hashtest_key_lens[] = {0, 2, 4, 5, 6, 7, 8, 10, 11, 15, 16, 21, 31, 32, 33, 63, 64};
 /******************************************************************************/
