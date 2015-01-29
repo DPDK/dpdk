@@ -363,6 +363,40 @@ crc32c_2words(uint64_t data, uint32_t init_val)
 	return crc;
 }
 
+static inline uint32_t
+crc32c_sse42_u32(uint32_t data, uint32_t init_val)
+{
+	__asm__ volatile(
+			"crc32l %[data], %[init_val];"
+			: [init_val] "+r" (init_val)
+			: [data] "rm" (data));
+	return init_val;
+}
+
+static inline uint32_t
+crc32c_sse42_u64(uint64_t data, uint64_t init_val)
+{
+	__asm__ volatile(
+			"crc32q %[data], %[init_val];"
+			: [init_val] "+r" (init_val)
+			: [data] "rm" (data));
+	return init_val;
+}
+
+static inline uint32_t
+crc32c_sse42_u64_mimic(uint64_t data, uint64_t init_val)
+{
+	union {
+		uint32_t u32[2];
+		uint64_t u64;
+	} d;
+
+	d.u64 = data;
+	init_val = crc32c_sse42_u32(d.u32[0], init_val);
+	init_val = crc32c_sse42_u32(d.u32[1], init_val);
+	return init_val;
+}
+
 /**
  * Use single crc32 instruction to perform a hash on a 4 byte value.
  *
