@@ -344,6 +344,18 @@ struct rte_eth_fdir_filter {
 };
 
 /**
+ *  A structure used to configure FDIR masks that are used by the device
+ *  to match the various fields of RX packet headers.
+ */
+struct rte_eth_fdir_masks {
+	uint16_t vlan_tci_mask;
+	struct rte_eth_ipv4_flow   ipv4_mask;
+	struct rte_eth_ipv6_flow   ipv6_mask;
+	uint16_t src_port_mask;
+	uint16_t dst_port_mask;
+};
+
+/**
  * Payload type
  */
 enum rte_eth_payload_type {
@@ -409,6 +421,7 @@ enum rte_fdir_mode {
  */
 struct rte_eth_fdir_info {
 	enum rte_fdir_mode mode;     /**< Flow director mode */
+	struct rte_eth_fdir_masks mask;
 	struct rte_eth_fdir_flex_conf flex_conf;
 	/**< Flex payload configuration information */
 	uint32_t guarant_spc;          /**< Guaranteed spaces.*/
