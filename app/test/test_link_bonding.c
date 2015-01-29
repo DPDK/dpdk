@@ -182,7 +182,6 @@ struct rte_fdir_conf fdir_conf = {
 	.mode = RTE_FDIR_MODE_NONE,
 	.pballoc = RTE_FDIR_PBALLOC_64K,
 	.status = RTE_FDIR_REPORT_STATUS,
-	.flexbytes_offset = 0x6,
 	.drop_queue = 127,
 };
 

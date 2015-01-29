@@ -145,10 +145,6 @@ usage(char* progname)
 	       "(N: none  or match (default) or always).\n");
 	printf("  --pkt-filter-size=N: set Flow Director mode "
 	       "(N: 64K (default mode) or 128K or 256K).\n");
-	printf("  --pkt-filter-flexbytes-offset=N: set flexbytes-offset. "
-	       "The offset is defined in word units counted from the "
-	       "first byte of the destination Ethernet MAC address. "
-	       "0 <= N <= 32.\n");
 	printf("  --pkt-filter-drop-queue=N: set drop-queue. "
 	       "In perfect mode, when you add a rule with queue = -1 "
 	       "the packet will be enqueued into the rx drop-queue. "
@@ -517,7 +513,6 @@ launch_args_parse(int argc, char** argv)
 		{ "pkt-filter-mode",            1, 0, 0 },
 		{ "pkt-filter-report-hash",     1, 0, 0 },
 		{ "pkt-filter-size",            1, 0, 0 },
-		{ "pkt-filter-flexbytes-offset",1, 0, 0 },
 		{ "pkt-filter-drop-queue",      1, 0, 0 },
 		{ "crc-strip",                  0, 0, 0 },
 		{ "enable-rx-cksum",            0, 0, 0 },
@@ -739,17 +734,6 @@ launch_args_parse(int argc, char** argv)
 					rte_exit(EXIT_FAILURE, "pkt-filter-size %s invalid -"
 						 " must be: 64K or 128K or 256K\n",
 						 optarg);
-			}
-			if (!strcmp(lgopts[opt_idx].name,
-				    "pkt-filter-flexbytes-offset")) {
-				n = atoi(optarg);
-				if ( n >= 0 && n <= (int) 32)
-					fdir_conf.flexbytes_offset =
-						(uint8_t) n;
-				else
-					rte_exit(EXIT_FAILURE,
-						 "flexbytes %d invalid - must"
-						 "be  >= 0 && <= 32\n", n);
 			}
 			if (!strcmp(lgopts[opt_idx].name,
 				    "pkt-filter-drop-queue")) {
