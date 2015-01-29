@@ -2648,7 +2648,7 @@ i40e_vsi_config_tc_queue_mapping(struct i40e_vsi *vsi,
 			rte_cpu_to_le_16(I40E_AQ_VSI_QUE_MAP_CONTIG);
 		info->queue_mapping[0] = rte_cpu_to_le_16(vsi->base_queue);
 	}
-	info->valid_sections =
+	info->valid_sections |=
 		rte_cpu_to_le_16(I40E_AQ_VSI_PROP_QUEUE_MAP_VALID);
 
 	return I40E_SUCCESS;
