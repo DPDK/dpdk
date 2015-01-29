@@ -183,6 +183,7 @@ struct rte_eth_tunnel_filter_conf {
  */
 enum rte_eth_flow_type {
 	RTE_ETH_FLOW_TYPE_NONE = 0,
+	RTE_ETH_FLOW_TYPE_RAW,
 	RTE_ETH_FLOW_TYPE_UDPV4,
 	RTE_ETH_FLOW_TYPE_TCPV4,
 	RTE_ETH_FLOW_TYPE_SCTPV4,
@@ -347,6 +348,7 @@ struct rte_eth_fdir_filter {
  */
 enum rte_eth_payload_type {
 	RTE_ETH_PAYLOAD_UNKNOWN = 0,
+	RTE_ETH_RAW_PAYLOAD,
 	RTE_ETH_L2_PAYLOAD,
 	RTE_ETH_L3_PAYLOAD,
 	RTE_ETH_L4_PAYLOAD,
