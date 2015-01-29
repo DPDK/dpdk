@@ -1772,60 +1772,6 @@ set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
 	}
 }
 
-void
-fdir_add_signature_filter(portid_t port_id, uint8_t queue_id,
-			  struct rte_fdir_filter *fdir_filter)
-{
-	int diag;
-
-	if (port_id_is_invalid(port_id))
-		return;
-
-	diag = rte_eth_dev_fdir_add_signature_filter(port_id, fdir_filter,
-						     queue_id);
-	if (diag == 0)
-		return;
-
-	printf("rte_eth_dev_fdir_add_signature_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
-}
-
-void
-fdir_update_signature_filter(portid_t port_id, uint8_t queue_id,
-			     struct rte_fdir_filter *fdir_filter)
-{
-	int diag;
-
-	if (port_id_is_invalid(port_id))
-		return;
-
-	diag = rte_eth_dev_fdir_update_signature_filter(port_id, fdir_filter,
-							queue_id);
-	if (diag == 0)
-		return;
-
-	printf("rte_eth_dev_fdir_update_signature_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
-}
-
-void
-fdir_remove_signature_filter(portid_t port_id,
-			     struct rte_fdir_filter *fdir_filter)
-{
-	int diag;
-
-	if (port_id_is_invalid(port_id))
-		return;
-
-	diag = rte_eth_dev_fdir_remove_signature_filter(port_id, fdir_filter);
-	if (diag == 0)
-		return;
-
-	printf("rte_eth_dev_fdir_add_signature_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
-
-}
-
 static inline void
 print_fdir_flex_payload(struct rte_eth_fdir_flex_conf *flex_conf)
 {
@@ -1952,76 +1898,6 @@ fdir_get_infos(portid_t port_id)
 	       fdir_info.guarant_spc, fdir_info.guarant_spc);
 	printf("  %s############################%s\n",
 	       fdir_stats_border, fdir_stats_border);
-}
-
-void
-fdir_add_perfect_filter(portid_t port_id, uint16_t soft_id, uint8_t queue_id,
-			uint8_t drop, struct rte_fdir_filter *fdir_filter)
-{
-	int diag;
-
-	if (port_id_is_invalid(port_id))
-		return;
-
-	diag = rte_eth_dev_fdir_add_perfect_filter(port_id, fdir_filter,
-						   soft_id, queue_id, drop);
-	if (diag == 0)
-		return;
-
-	printf("rte_eth_dev_fdir_add_perfect_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
-}
-
-void
-fdir_update_perfect_filter(portid_t port_id, uint16_t soft_id, uint8_t queue_id,
-			   uint8_t drop, struct rte_fdir_filter *fdir_filter)
-{
-	int diag;
-
-	if (port_id_is_invalid(port_id))
-		return;
-
-	diag = rte_eth_dev_fdir_update_perfect_filter(port_id, fdir_filter,
-						      soft_id, queue_id, drop);
-	if (diag == 0)
-		return;
-
-	printf("rte_eth_dev_fdir_update_perfect_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
-}
-
-void
-fdir_remove_perfect_filter(portid_t port_id, uint16_t soft_id,
-			   struct rte_fdir_filter *fdir_filter)
-{
-	int diag;
-
-	if (port_id_is_invalid(port_id))
-		return;
-
-	diag = rte_eth_dev_fdir_remove_perfect_filter(port_id, fdir_filter,
-						      soft_id);
-	if (diag == 0)
-		return;
-
-	printf("rte_eth_dev_fdir_update_perfect_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
-}
-
-void
-fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks)
-{
-	int diag;
-
-	if (port_id_is_invalid(port_id))
-		return;
-
-	diag = rte_eth_dev_fdir_set_masks(port_id, fdir_masks);
-	if (diag == 0)
-		return;
-
-	printf("rte_eth_dev_set_masks_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
 }
 
 void

@@ -525,23 +525,7 @@ void close_port(portid_t pid);
 int all_ports_stopped(void);
 int port_is_started(portid_t port_id);
 void pmd_test_exit(void);
-
-void fdir_add_signature_filter(portid_t port_id, uint8_t queue_id,
-			       struct rte_fdir_filter *fdir_filter);
-void fdir_update_signature_filter(portid_t port_id, uint8_t queue_id,
-				  struct rte_fdir_filter *fdir_filter);
-void fdir_remove_signature_filter(portid_t port_id,
-				  struct rte_fdir_filter *fdir_filter);
 void fdir_get_infos(portid_t port_id);
-void fdir_add_perfect_filter(portid_t port_id, uint16_t soft_id,
-			     uint8_t queue_id, uint8_t drop,
-			     struct rte_fdir_filter *fdir_filter);
-void fdir_update_perfect_filter(portid_t port_id, uint16_t soft_id,
-				uint8_t queue_id, uint8_t drop,
-				struct rte_fdir_filter *fdir_filter);
-void fdir_remove_perfect_filter(portid_t port_id, uint16_t soft_id,
-				struct rte_fdir_filter *fdir_filter);
-void fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks);
 void fdir_set_flex_mask(portid_t port_id,
 			   struct rte_eth_fdir_flex_mask *cfg);
 void fdir_set_flex_payload(portid_t port_id,

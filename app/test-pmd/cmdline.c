@@ -116,7 +116,6 @@ static void cmd_help_brief_parsed(__attribute__((unused)) void *parsed_result,
 		"information.\n"
 		"    help config     : Configuration information.\n"
 		"    help ports      : Configuring ports.\n"
-		"    help flowdir    : Flow Director filter help.\n"
 		"    help registers  : Reading and setting port registers.\n"
 		"    help filters    : Filters configuration help.\n"
 		"    help all        : All of the above sections.\n\n"
@@ -497,71 +496,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 		);
 	}
 
-
-	if (show_all || !strcmp(res->section, "flowdir")) {
-
-		cmdline_printf(
-			cl,
-			"\n"
-			"Flow director mode:\n"
-			"-------------------\n\n"
-
-			"add_signature_filter (port_id) (ip|udp|tcp|sctp)"
-			" src (src_ip_address) (src_port)"
-			" dst (dst_ip_address) (dst_port)"
-			" flexbytes (flexbytes_values) vlan (vlan_id)"
-			" queue (queue_id)\n"
-			"    Add a signature filter.\n\n"
-
-			"upd_signature_filter (port_id) (ip|udp|tcp|sctp)"
-			" src (src_ip_address) (src_port)"
-			" dst (dst_ip_address) (dst_port)"
-			" flexbytes (flexbytes_values) vlan (vlan_id)"
-			" queue (queue_id)\n"
-			"    Update a signature filter.\n\n"
-
-			"rm_signature_filter (port_id) (ip|udp|tcp|sctp)"
-			" src (src_ip_address) (src_port)"
-			" dst (dst_ip_address) (dst_port)"
-			" flexbytes (flexbytes_values) vlan (vlan_id)\n"
-			"    Remove a signature filter.\n\n"
-
-			"add_perfect_filter (port_id) (ip|udp|tcp|sctp)"
-			" src (src_ip_address) (src_port)"
-			" dst (dst_ip_address) (dst_port)"
-			" flexbytes (flexbytes_values) vlan (vlan_id)"
-			" queue (queue_id) soft (soft_id)\n"
-			"    Add a perfect filter.\n\n"
-
-			"upd_perfect_filter (port_id) (ip|udp|tcp|sctp)"
-			" src (src_ip_address) (src_port)"
-			" dst (dst_ip_address) (dst_port)"
-			" flexbytes (flexbytes_values) vlan (vlan_id)"
-			" queue (queue_id)\n"
-			"    Update a perfect filter.\n\n"
-
-			"rm_perfect_filter (port_id) (ip|udp|tcp|sctp)"
-			" src (src_ip_address) (src_port)"
-			" dst (dst_ip_address) (dst_port)"
-			" flexbytes (flexbytes_values) vlan (vlan_id)"
-			" soft (soft_id)\n"
-			"    Remove a perfect filter.\n\n"
-
-			"set_masks_filter (port_id) only_ip_flow (0|1)"
-			" src_mask (ip_src_mask) (src_port_mask)"
-			" dst_mask (ip_dst_mask) (dst_port_mask)"
-			" flexbytes (0|1) vlan_id (0|1) vlan_prio (0|1)\n"
-			"    Set IPv4 filter masks.\n\n"
-
-			"set_ipv6_masks_filter (port_id) only_ip_flow (0|1)"
-			" src_mask (ip_src_mask) (src_port_mask)"
-			" dst_mask (ip_dst_mask) (dst_port_mask)"
-			" flexbytes (0|1) vlan_id (0|1) vlan_prio (0|1)"
-			" compare_dst (0|1)\n"
-			"    Set IPv6 filter masks.\n\n"
-		);
-	}
-
 	if (show_all || !strcmp(res->section, "ports")) {
 
 		cmdline_printf(
@@ -708,25 +642,26 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"get_flex_filter (port_id) index (idx)\n"
 			"    get info of a flex filter.\n\n"
 
-			"flow_director_filter (port_id) (add|del)"
+			"flow_director_filter (port_id) (add|del|update)"
 			" flow (ip4|ip4-frag|ip6|ip6-frag)"
 			" src (src_ip_address) dst (dst_ip_address)"
-			" flexbytes (flexbytes_value)"
+			" vlan (vlan_value) flexbytes (flexbytes_value)"
 			" (drop|fwd) queue (queue_id) fd_id (fd_id_value)\n"
 			"    Add/Del an IP type flow director filter.\n\n"
 
-			"flow_director_filter (port_id) (add|del)"
+			"flow_director_filter (port_id) (add|del|update)"
 			" flow (udp4|tcp4|udp6|tcp6)"
 			" src (src_ip_address) (src_port)"
 			" dst (dst_ip_address) (dst_port)"
-			" flexbytes (flexbytes_value)"
+			" vlan (vlan_value) flexbytes (flexbytes_value)"
 			" (drop|fwd) queue (queue_id) fd_id (fd_id_value)\n"
 			"    Add/Del an UDP/TCP type flow director filter.\n\n"
 
-			"flow_director_filter (port_id) (add|del)"
+			"flow_director_filter (port_id) (add|del|update)"
 			" flow (sctp4|sctp6)"
-			" src (src_ip_address) dst (dst_ip_address)"
-			" tag (verification_tag)"
+			" src (src_ip_address) (src_port)"
+			" dst (dst_ip_address) (dst_port)"
+			" tag (verification_tag) vlan (vlan_value)"
 			" flexbytes (flexbytes_value) (drop|fwd)"
 			" queue (queue_id) fd_id (fd_id_value)\n"
 			"    Add/Del a SCTP type flow director filter.\n\n"
@@ -734,13 +669,18 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"flush_flow_director (port_id)\n"
 			"    Flush all flow director entries of a device.\n\n"
 
+			"flow_director_mask (port_id) vlan (vlan_value)"
+			" src_mask (ipv4_src) (ipv6_src) (src_port)"
+			" dst_mask (ipv4_dst) (ipv6_dst) (dst_port)\n"
+			"    Set flow director mask.\n\n"
+
 			"flow_director_flex_mask (port_id)"
-			" flow (ip4|ip4-frag|tcp4|udp4|sctp4|ip6|ip6-frag|tcp6|udp6|sctp6|all)"
+			" flow (raw|ip4|ip4-frag|tcp4|udp4|sctp4|ip6|ip6-frag|tcp6|udp6|sctp6|all)"
 			" (mask)\n"
 			"    Configure mask of flex payload.\n\n"
 
 			"flow_director_flex_payload (port_id)"
-			" (l2|l3|l4) (config)\n"
+			" (raw|l2|l3|l4) (config)\n"
 			"    Configure flex payload selection.\n\n"
 
 			"get_sym_hash_ena_per_port (port_id)\n"
@@ -766,7 +706,7 @@ cmdline_parse_token_string_t cmd_help_long_help =
 
 cmdline_parse_token_string_t cmd_help_long_section =
 	TOKEN_STRING_INITIALIZER(struct cmd_help_long_result, section,
-			"all#control#display#config#flowdir#"
+			"all#control#display#config#"
 			"ports#registers#filters");
 
 cmdline_parse_inst_t cmd_help_long = {
@@ -4457,503 +4397,6 @@ cmdline_parse_inst_t cmd_set_allmulti_mode_one = {
 	},
 };
 
-/* *** ADD/REMOVE A PKT FILTER *** */
-struct cmd_pkt_filter_result {
-	cmdline_fixed_string_t pkt_filter;
-	uint8_t  port_id;
-	cmdline_fixed_string_t protocol;
-	cmdline_fixed_string_t src;
-	cmdline_ipaddr_t ip_src;
-	uint16_t port_src;
-	cmdline_fixed_string_t dst;
-	cmdline_ipaddr_t ip_dst;
-	uint16_t port_dst;
-	cmdline_fixed_string_t flexbytes;
-	uint16_t flexbytes_value;
-	cmdline_fixed_string_t vlan;
-	uint16_t  vlan_id;
-	cmdline_fixed_string_t queue;
-	int8_t  queue_id;
-	cmdline_fixed_string_t soft;
-	uint8_t  soft_id;
-};
-
-static void
-cmd_pkt_filter_parsed(void *parsed_result,
-			  __attribute__((unused)) struct cmdline *cl,
-			  __attribute__((unused)) void *data)
-{
-	struct rte_fdir_filter fdir_filter;
-	struct cmd_pkt_filter_result *res = parsed_result;
-
-	memset(&fdir_filter, 0, sizeof(struct rte_fdir_filter));
-
-	if (res->ip_src.family == AF_INET)
-		fdir_filter.ip_src.ipv4_addr = res->ip_src.addr.ipv4.s_addr;
-	else
-		memcpy(&(fdir_filter.ip_src.ipv6_addr),
-		       &(res->ip_src.addr.ipv6),
-		       sizeof(struct in6_addr));
-
-	if (res->ip_dst.family == AF_INET)
-		fdir_filter.ip_dst.ipv4_addr = res->ip_dst.addr.ipv4.s_addr;
-	else
-		memcpy(&(fdir_filter.ip_dst.ipv6_addr),
-		       &(res->ip_dst.addr.ipv6),
-		       sizeof(struct in6_addr));
-
-	fdir_filter.port_dst = rte_cpu_to_be_16(res->port_dst);
-	fdir_filter.port_src = rte_cpu_to_be_16(res->port_src);
-
-	if (!strcmp(res->protocol, "udp"))
-		fdir_filter.l4type = RTE_FDIR_L4TYPE_UDP;
-	else if (!strcmp(res->protocol, "tcp"))
-		fdir_filter.l4type = RTE_FDIR_L4TYPE_TCP;
-	else if (!strcmp(res->protocol, "sctp"))
-		fdir_filter.l4type = RTE_FDIR_L4TYPE_SCTP;
-	else /* default only IP */
-		fdir_filter.l4type = RTE_FDIR_L4TYPE_NONE;
-
-	if (res->ip_dst.family == AF_INET6)
-		fdir_filter.iptype = RTE_FDIR_IPTYPE_IPV6;
-	else
-		fdir_filter.iptype = RTE_FDIR_IPTYPE_IPV4;
-
-	fdir_filter.vlan_id    = rte_cpu_to_be_16(res->vlan_id);
-	fdir_filter.flex_bytes = rte_cpu_to_be_16(res->flexbytes_value);
-
-	if (!strcmp(res->pkt_filter, "add_signature_filter"))
-		fdir_add_signature_filter(res->port_id, res->queue_id,
-					  &fdir_filter);
-	else if (!strcmp(res->pkt_filter, "upd_signature_filter"))
-		fdir_update_signature_filter(res->port_id, res->queue_id,
-					     &fdir_filter);
-	else if (!strcmp(res->pkt_filter, "rm_signature_filter"))
-		fdir_remove_signature_filter(res->port_id, &fdir_filter);
-	else if (!strcmp(res->pkt_filter, "add_perfect_filter"))
-		fdir_add_perfect_filter(res->port_id, res->soft_id,
-					res->queue_id,
-					(uint8_t) (res->queue_id < 0),
-					&fdir_filter);
-	else if (!strcmp(res->pkt_filter, "upd_perfect_filter"))
-		fdir_update_perfect_filter(res->port_id, res->soft_id,
-					   res->queue_id,
-					   (uint8_t) (res->queue_id < 0),
-					   &fdir_filter);
-	else if (!strcmp(res->pkt_filter, "rm_perfect_filter"))
-		fdir_remove_perfect_filter(res->port_id, res->soft_id,
-					   &fdir_filter);
-
-}
-
-
-cmdline_parse_token_num_t cmd_pkt_filter_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_result,
-			      port_id, UINT8);
-cmdline_parse_token_string_t cmd_pkt_filter_protocol =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 protocol, "ip#tcp#udp#sctp");
-cmdline_parse_token_string_t cmd_pkt_filter_src =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 src, "src");
-cmdline_parse_token_ipaddr_t cmd_pkt_filter_ip_src =
-	TOKEN_IPADDR_INITIALIZER(struct cmd_pkt_filter_result,
-				 ip_src);
-cmdline_parse_token_num_t cmd_pkt_filter_port_src =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_result,
-			      port_src, UINT16);
-cmdline_parse_token_string_t cmd_pkt_filter_dst =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 dst, "dst");
-cmdline_parse_token_ipaddr_t cmd_pkt_filter_ip_dst =
-	TOKEN_IPADDR_INITIALIZER(struct cmd_pkt_filter_result,
-				 ip_dst);
-cmdline_parse_token_num_t cmd_pkt_filter_port_dst =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_result,
-			      port_dst, UINT16);
-cmdline_parse_token_string_t cmd_pkt_filter_flexbytes =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 flexbytes, "flexbytes");
-cmdline_parse_token_num_t cmd_pkt_filter_flexbytes_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_result,
-			      flexbytes_value, UINT16);
-cmdline_parse_token_string_t cmd_pkt_filter_vlan =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 vlan, "vlan");
-cmdline_parse_token_num_t cmd_pkt_filter_vlan_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_result,
-			      vlan_id, UINT16);
-cmdline_parse_token_string_t cmd_pkt_filter_queue =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 queue, "queue");
-cmdline_parse_token_num_t cmd_pkt_filter_queue_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_result,
-			      queue_id, INT8);
-cmdline_parse_token_string_t cmd_pkt_filter_soft =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 soft, "soft");
-cmdline_parse_token_num_t cmd_pkt_filter_soft_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_result,
-			      soft_id, UINT16);
-
-
-cmdline_parse_token_string_t cmd_pkt_filter_add_signature_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 pkt_filter, "add_signature_filter");
-cmdline_parse_inst_t cmd_add_signature_filter = {
-	.f = cmd_pkt_filter_parsed,
-	.data = NULL,
-	.help_str = "add a signature filter",
-	.tokens = {
-		(void *)&cmd_pkt_filter_add_signature_filter,
-		(void *)&cmd_pkt_filter_port_id,
-		(void *)&cmd_pkt_filter_protocol,
-		(void *)&cmd_pkt_filter_src,
-		(void *)&cmd_pkt_filter_ip_src,
-		(void *)&cmd_pkt_filter_port_src,
-		(void *)&cmd_pkt_filter_dst,
-		(void *)&cmd_pkt_filter_ip_dst,
-		(void *)&cmd_pkt_filter_port_dst,
-		(void *)&cmd_pkt_filter_flexbytes,
-		(void *)&cmd_pkt_filter_flexbytes_value,
-		(void *)&cmd_pkt_filter_vlan,
-		(void *)&cmd_pkt_filter_vlan_id,
-		(void *)&cmd_pkt_filter_queue,
-		(void *)&cmd_pkt_filter_queue_id,
-		NULL,
-	},
-};
-
-
-cmdline_parse_token_string_t cmd_pkt_filter_upd_signature_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 pkt_filter, "upd_signature_filter");
-cmdline_parse_inst_t cmd_upd_signature_filter = {
-	.f = cmd_pkt_filter_parsed,
-	.data = NULL,
-	.help_str = "update a signature filter",
-	.tokens = {
-		(void *)&cmd_pkt_filter_upd_signature_filter,
-		(void *)&cmd_pkt_filter_port_id,
-		(void *)&cmd_pkt_filter_protocol,
-		(void *)&cmd_pkt_filter_src,
-		(void *)&cmd_pkt_filter_ip_src,
-		(void *)&cmd_pkt_filter_port_src,
-		(void *)&cmd_pkt_filter_dst,
-		(void *)&cmd_pkt_filter_ip_dst,
-		(void *)&cmd_pkt_filter_port_dst,
-		(void *)&cmd_pkt_filter_flexbytes,
-		(void *)&cmd_pkt_filter_flexbytes_value,
-		(void *)&cmd_pkt_filter_vlan,
-		(void *)&cmd_pkt_filter_vlan_id,
-		(void *)&cmd_pkt_filter_queue,
-		(void *)&cmd_pkt_filter_queue_id,
-		NULL,
-	},
-};
-
-
-cmdline_parse_token_string_t cmd_pkt_filter_rm_signature_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 pkt_filter, "rm_signature_filter");
-cmdline_parse_inst_t cmd_rm_signature_filter = {
-	.f = cmd_pkt_filter_parsed,
-	.data = NULL,
-	.help_str = "remove a signature filter",
-	.tokens = {
-		(void *)&cmd_pkt_filter_rm_signature_filter,
-		(void *)&cmd_pkt_filter_port_id,
-		(void *)&cmd_pkt_filter_protocol,
-		(void *)&cmd_pkt_filter_src,
-		(void *)&cmd_pkt_filter_ip_src,
-		(void *)&cmd_pkt_filter_port_src,
-		(void *)&cmd_pkt_filter_dst,
-		(void *)&cmd_pkt_filter_ip_dst,
-		(void *)&cmd_pkt_filter_port_dst,
-		(void *)&cmd_pkt_filter_flexbytes,
-		(void *)&cmd_pkt_filter_flexbytes_value,
-		(void *)&cmd_pkt_filter_vlan,
-		(void *)&cmd_pkt_filter_vlan_id,
-		NULL
-		},
-};
-
-
-cmdline_parse_token_string_t cmd_pkt_filter_add_perfect_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 pkt_filter, "add_perfect_filter");
-cmdline_parse_inst_t cmd_add_perfect_filter = {
-	.f = cmd_pkt_filter_parsed,
-	.data = NULL,
-	.help_str = "add a perfect filter",
-	.tokens = {
-		(void *)&cmd_pkt_filter_add_perfect_filter,
-		(void *)&cmd_pkt_filter_port_id,
-		(void *)&cmd_pkt_filter_protocol,
-		(void *)&cmd_pkt_filter_src,
-		(void *)&cmd_pkt_filter_ip_src,
-		(void *)&cmd_pkt_filter_port_src,
-		(void *)&cmd_pkt_filter_dst,
-		(void *)&cmd_pkt_filter_ip_dst,
-		(void *)&cmd_pkt_filter_port_dst,
-		(void *)&cmd_pkt_filter_flexbytes,
-		(void *)&cmd_pkt_filter_flexbytes_value,
-		(void *)&cmd_pkt_filter_vlan,
-		(void *)&cmd_pkt_filter_vlan_id,
-		(void *)&cmd_pkt_filter_queue,
-		(void *)&cmd_pkt_filter_queue_id,
-		(void *)&cmd_pkt_filter_soft,
-		(void *)&cmd_pkt_filter_soft_id,
-		NULL,
-	},
-};
-
-
-cmdline_parse_token_string_t cmd_pkt_filter_upd_perfect_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 pkt_filter, "upd_perfect_filter");
-cmdline_parse_inst_t cmd_upd_perfect_filter = {
-	.f = cmd_pkt_filter_parsed,
-	.data = NULL,
-	.help_str = "update a perfect filter",
-	.tokens = {
-		(void *)&cmd_pkt_filter_upd_perfect_filter,
-		(void *)&cmd_pkt_filter_port_id,
-		(void *)&cmd_pkt_filter_protocol,
-		(void *)&cmd_pkt_filter_src,
-		(void *)&cmd_pkt_filter_ip_src,
-		(void *)&cmd_pkt_filter_port_src,
-		(void *)&cmd_pkt_filter_dst,
-		(void *)&cmd_pkt_filter_ip_dst,
-		(void *)&cmd_pkt_filter_port_dst,
-		(void *)&cmd_pkt_filter_flexbytes,
-		(void *)&cmd_pkt_filter_flexbytes_value,
-		(void *)&cmd_pkt_filter_vlan,
-		(void *)&cmd_pkt_filter_vlan_id,
-		(void *)&cmd_pkt_filter_queue,
-		(void *)&cmd_pkt_filter_queue_id,
-		(void *)&cmd_pkt_filter_soft,
-		(void *)&cmd_pkt_filter_soft_id,
-		NULL,
-	},
-};
-
-
-cmdline_parse_token_string_t cmd_pkt_filter_rm_perfect_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_result,
-				 pkt_filter, "rm_perfect_filter");
-cmdline_parse_inst_t cmd_rm_perfect_filter = {
-	.f = cmd_pkt_filter_parsed,
-	.data = NULL,
-	.help_str = "remove a perfect filter",
-	.tokens = {
-		(void *)&cmd_pkt_filter_rm_perfect_filter,
-		(void *)&cmd_pkt_filter_port_id,
-		(void *)&cmd_pkt_filter_protocol,
-		(void *)&cmd_pkt_filter_src,
-		(void *)&cmd_pkt_filter_ip_src,
-		(void *)&cmd_pkt_filter_port_src,
-		(void *)&cmd_pkt_filter_dst,
-		(void *)&cmd_pkt_filter_ip_dst,
-		(void *)&cmd_pkt_filter_port_dst,
-		(void *)&cmd_pkt_filter_flexbytes,
-		(void *)&cmd_pkt_filter_flexbytes_value,
-		(void *)&cmd_pkt_filter_vlan,
-		(void *)&cmd_pkt_filter_vlan_id,
-		(void *)&cmd_pkt_filter_soft,
-		(void *)&cmd_pkt_filter_soft_id,
-		NULL,
-	},
-};
-
-/* *** SETUP MASKS FILTER *** */
-struct cmd_pkt_filter_masks_result {
-	cmdline_fixed_string_t filter_mask;
-	uint8_t  port_id;
-	cmdline_fixed_string_t src_mask;
-	uint32_t ip_src_mask;
-	uint16_t ipv6_src_mask;
-	uint16_t port_src_mask;
-	cmdline_fixed_string_t dst_mask;
-	uint32_t ip_dst_mask;
-	uint16_t ipv6_dst_mask;
-	uint16_t port_dst_mask;
-	cmdline_fixed_string_t flexbytes;
-	uint8_t flexbytes_value;
-	cmdline_fixed_string_t vlan_id;
-	uint8_t  vlan_id_value;
-	cmdline_fixed_string_t vlan_prio;
-	uint8_t  vlan_prio_value;
-	cmdline_fixed_string_t only_ip_flow;
-	uint8_t  only_ip_flow_value;
-	cmdline_fixed_string_t comp_ipv6_dst;
-	uint8_t  comp_ipv6_dst_value;
-};
-
-static void
-cmd_pkt_filter_masks_parsed(void *parsed_result,
-			  __attribute__((unused)) struct cmdline *cl,
-			  __attribute__((unused)) void *data)
-{
-	struct rte_fdir_masks fdir_masks;
-	struct cmd_pkt_filter_masks_result *res = parsed_result;
-
-	memset(&fdir_masks, 0, sizeof(struct rte_fdir_masks));
-
-	fdir_masks.only_ip_flow  = res->only_ip_flow_value;
-	fdir_masks.vlan_id       = res->vlan_id_value;
-	fdir_masks.vlan_prio     = res->vlan_prio_value;
-	fdir_masks.dst_ipv4_mask = res->ip_dst_mask;
-	fdir_masks.src_ipv4_mask = res->ip_src_mask;
-	fdir_masks.src_port_mask = res->port_src_mask;
-	fdir_masks.dst_port_mask = res->port_dst_mask;
-	fdir_masks.flexbytes     = res->flexbytes_value;
-
-	fdir_set_masks(res->port_id, &fdir_masks);
-}
-
-cmdline_parse_token_string_t cmd_pkt_filter_masks_filter_mask =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_masks_result,
-				 filter_mask, "set_masks_filter");
-cmdline_parse_token_num_t cmd_pkt_filter_masks_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
-			      port_id, UINT8);
-cmdline_parse_token_string_t cmd_pkt_filter_masks_only_ip_flow =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_masks_result,
-				 only_ip_flow, "only_ip_flow");
-cmdline_parse_token_num_t cmd_pkt_filter_masks_only_ip_flow_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
-			      only_ip_flow_value, UINT8);
-cmdline_parse_token_string_t cmd_pkt_filter_masks_src_mask =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_masks_result,
-				 src_mask, "src_mask");
-cmdline_parse_token_num_t cmd_pkt_filter_masks_ip_src_mask =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
-			      ip_src_mask, UINT32);
-cmdline_parse_token_num_t cmd_pkt_filter_masks_port_src_mask =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
-			      port_src_mask, UINT16);
-cmdline_parse_token_string_t cmd_pkt_filter_masks_dst_mask =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_masks_result,
-				 dst_mask, "dst_mask");
-cmdline_parse_token_num_t cmd_pkt_filter_masks_ip_dst_mask =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
-			      ip_dst_mask, UINT32);
-cmdline_parse_token_num_t cmd_pkt_filter_masks_port_dst_mask =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
-			      port_dst_mask, UINT16);
-cmdline_parse_token_string_t cmd_pkt_filter_masks_flexbytes =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_masks_result,
-				 flexbytes, "flexbytes");
-cmdline_parse_token_num_t cmd_pkt_filter_masks_flexbytes_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
-			      flexbytes_value, UINT8);
-cmdline_parse_token_string_t cmd_pkt_filter_masks_vlan_id =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_masks_result,
-				 vlan_id, "vlan_id");
-cmdline_parse_token_num_t cmd_pkt_filter_masks_vlan_id_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
-			      vlan_id_value, UINT8);
-cmdline_parse_token_string_t cmd_pkt_filter_masks_vlan_prio =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_masks_result,
-				 vlan_prio, "vlan_prio");
-cmdline_parse_token_num_t cmd_pkt_filter_masks_vlan_prio_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
-			      vlan_prio_value, UINT8);
-
-cmdline_parse_inst_t cmd_set_masks_filter = {
-	.f = cmd_pkt_filter_masks_parsed,
-	.data = NULL,
-	.help_str = "setup masks filter",
-	.tokens = {
-		(void *)&cmd_pkt_filter_masks_filter_mask,
-		(void *)&cmd_pkt_filter_masks_port_id,
-		(void *)&cmd_pkt_filter_masks_only_ip_flow,
-		(void *)&cmd_pkt_filter_masks_only_ip_flow_value,
-		(void *)&cmd_pkt_filter_masks_src_mask,
-		(void *)&cmd_pkt_filter_masks_ip_src_mask,
-		(void *)&cmd_pkt_filter_masks_port_src_mask,
-		(void *)&cmd_pkt_filter_masks_dst_mask,
-		(void *)&cmd_pkt_filter_masks_ip_dst_mask,
-		(void *)&cmd_pkt_filter_masks_port_dst_mask,
-		(void *)&cmd_pkt_filter_masks_flexbytes,
-		(void *)&cmd_pkt_filter_masks_flexbytes_value,
-		(void *)&cmd_pkt_filter_masks_vlan_id,
-		(void *)&cmd_pkt_filter_masks_vlan_id_value,
-		(void *)&cmd_pkt_filter_masks_vlan_prio,
-		(void *)&cmd_pkt_filter_masks_vlan_prio_value,
-		NULL,
-	},
-};
-
-static void
-cmd_pkt_filter_masks_ipv6_parsed(void *parsed_result,
-			  __attribute__((unused)) struct cmdline *cl,
-			  __attribute__((unused)) void *data)
-{
-	struct rte_fdir_masks fdir_masks;
-	struct cmd_pkt_filter_masks_result *res = parsed_result;
-
-	memset(&fdir_masks, 0, sizeof(struct rte_fdir_masks));
-
-	fdir_masks.set_ipv6_mask = 1;
-	fdir_masks.only_ip_flow  = res->only_ip_flow_value;
-	fdir_masks.vlan_id       = res->vlan_id_value;
-	fdir_masks.vlan_prio     = res->vlan_prio_value;
-	fdir_masks.dst_ipv6_mask = res->ipv6_dst_mask;
-	fdir_masks.src_ipv6_mask = res->ipv6_src_mask;
-	fdir_masks.src_port_mask = res->port_src_mask;
-	fdir_masks.dst_port_mask = res->port_dst_mask;
-	fdir_masks.flexbytes     = res->flexbytes_value;
-	fdir_masks.comp_ipv6_dst = res->comp_ipv6_dst_value;
-
-	fdir_set_masks(res->port_id, &fdir_masks);
-}
-
-cmdline_parse_token_string_t cmd_pkt_filter_masks_filter_mask_ipv6 =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_masks_result,
-				 filter_mask, "set_ipv6_masks_filter");
-cmdline_parse_token_num_t cmd_pkt_filter_masks_src_mask_ipv6_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
-			      ipv6_src_mask, UINT16);
-cmdline_parse_token_num_t cmd_pkt_filter_masks_dst_mask_ipv6_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
-			      ipv6_dst_mask, UINT16);
-
-cmdline_parse_token_string_t cmd_pkt_filter_masks_comp_ipv6_dst =
-	TOKEN_STRING_INITIALIZER(struct cmd_pkt_filter_masks_result,
-				 comp_ipv6_dst, "compare_dst");
-cmdline_parse_token_num_t cmd_pkt_filter_masks_comp_ipv6_dst_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_pkt_filter_masks_result,
-			      comp_ipv6_dst_value, UINT8);
-
-cmdline_parse_inst_t cmd_set_ipv6_masks_filter = {
-	.f = cmd_pkt_filter_masks_ipv6_parsed,
-	.data = NULL,
-	.help_str = "setup ipv6 masks filter",
-	.tokens = {
-		(void *)&cmd_pkt_filter_masks_filter_mask_ipv6,
-		(void *)&cmd_pkt_filter_masks_port_id,
-		(void *)&cmd_pkt_filter_masks_only_ip_flow,
-		(void *)&cmd_pkt_filter_masks_only_ip_flow_value,
-		(void *)&cmd_pkt_filter_masks_src_mask,
-		(void *)&cmd_pkt_filter_masks_src_mask_ipv6_value,
-		(void *)&cmd_pkt_filter_masks_port_src_mask,
-		(void *)&cmd_pkt_filter_masks_dst_mask,
-		(void *)&cmd_pkt_filter_masks_dst_mask_ipv6_value,
-		(void *)&cmd_pkt_filter_masks_port_dst_mask,
-		(void *)&cmd_pkt_filter_masks_flexbytes,
-		(void *)&cmd_pkt_filter_masks_flexbytes_value,
-		(void *)&cmd_pkt_filter_masks_vlan_id,
-		(void *)&cmd_pkt_filter_masks_vlan_id_value,
-		(void *)&cmd_pkt_filter_masks_vlan_prio,
-		(void *)&cmd_pkt_filter_masks_vlan_prio_value,
-		(void *)&cmd_pkt_filter_masks_comp_ipv6_dst,
-		(void *)&cmd_pkt_filter_masks_comp_ipv6_dst_value,
-		NULL,
-	},
-};
-
 /* *** SETUP ETHERNET LINK FLOW CONTROL *** */
 struct cmd_link_flow_ctrl_set_result {
 	cmdline_fixed_string_t set;
@@ -8186,6 +7629,8 @@ struct cmd_flow_director_result {
 	uint16_t port_dst;
 	cmdline_fixed_string_t verify_tag;
 	uint32_t verify_tag_value;
+	cmdline_fixed_string_t vlan;
+	uint16_t vlan_value;
 	cmdline_fixed_string_t flexbytes;
 	cmdline_fixed_string_t flexbytes_value;
 	cmdline_fixed_string_t drop;
@@ -8241,6 +7686,7 @@ str2flowtype(char *string)
 		char str[32];
 		enum rte_eth_flow_type type;
 	} flowtype_str[] = {
+		{"raw", RTE_ETH_FLOW_TYPE_RAW},
 		{"ip4", RTE_ETH_FLOW_TYPE_IPV4_OTHER},
 		{"ip4-frag", RTE_ETH_FLOW_TYPE_FRAG_IPV4},
 		{"udp4", RTE_ETH_FLOW_TYPE_UDPV4},
@@ -8311,6 +7757,7 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 	entry.input.flow_type = str2flowtype(res->flow_type);
 	switch (entry.input.flow_type) {
 	case RTE_ETH_FLOW_TYPE_IPV4_OTHER:
+	case RTE_ETH_FLOW_TYPE_FRAG_IPV4:
 	case RTE_ETH_FLOW_TYPE_UDPV4:
 	case RTE_ETH_FLOW_TYPE_TCPV4:
 		IPV4_ADDR_TO_UINT(res->ip_dst,
@@ -8333,6 +7780,7 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 				rte_cpu_to_be_32(res->verify_tag_value);
 		break;
 	case RTE_ETH_FLOW_TYPE_IPV6_OTHER:
+	case RTE_ETH_FLOW_TYPE_FRAG_IPV6:
 	case RTE_ETH_FLOW_TYPE_UDPV6:
 	case RTE_ETH_FLOW_TYPE_TCPV6:
 		IPV6_ADDR_TO_ARRAY(res->ip_dst,
@@ -8362,6 +7810,8 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		   flexbytes,
 		   RTE_ETH_FDIR_MAX_FLEXLEN);
 
+	entry.input.flow_ext.vlan_tci = rte_cpu_to_be_16(res->vlan_value);
+
 	entry.action.flex_off = 0;  /*use 0 by default */
 	if (!strcmp(res->drop, "drop"))
 		entry.action.behavior = RTE_ETH_FDIR_REJECT;
@@ -8374,9 +7824,12 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 	if (!strcmp(res->ops, "add"))
 		ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_FDIR,
 					     RTE_ETH_FILTER_ADD, &entry);
-	else
+	else if (!strcmp(res->ops, "del"))
 		ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_FDIR,
 					     RTE_ETH_FILTER_DELETE, &entry);
+	else
+		ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_FDIR,
+					     RTE_ETH_FILTER_UPDATE, &entry);
 	if (ret < 0)
 		printf("flow director programming error: (%s)\n",
 			strerror(-ret));
@@ -8390,7 +7843,7 @@ cmdline_parse_token_num_t cmd_flow_director_port_id =
 			      port_id, UINT8);
 cmdline_parse_token_string_t cmd_flow_director_ops =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
-				 ops, "add#del");
+				 ops, "add#del#update");
 cmdline_parse_token_string_t cmd_flow_director_flow =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
 				 flow, "flow");
@@ -8423,6 +7876,12 @@ cmdline_parse_token_string_t cmd_flow_director_verify_tag =
 cmdline_parse_token_num_t cmd_flow_director_verify_tag_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
 			      verify_tag_value, UINT32);
+cmdline_parse_token_string_t cmd_flow_director_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 vlan, "vlan");
+cmdline_parse_token_num_t cmd_flow_director_vlan_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
+			      vlan_value, UINT16);
 cmdline_parse_token_string_t cmd_flow_director_flexbytes =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
 				 flexbytes, "flexbytes");
@@ -8459,6 +7918,8 @@ cmdline_parse_inst_t cmd_add_del_ip_flow_director = {
 		(void *)&cmd_flow_director_ip_src,
 		(void *)&cmd_flow_director_dst,
 		(void *)&cmd_flow_director_ip_dst,
+		(void *)&cmd_flow_director_vlan,
+		(void *)&cmd_flow_director_vlan_value,
 		(void *)&cmd_flow_director_flexbytes,
 		(void *)&cmd_flow_director_flexbytes_value,
 		(void *)&cmd_flow_director_drop,
@@ -8486,6 +7947,8 @@ cmdline_parse_inst_t cmd_add_del_udp_flow_director = {
 		(void *)&cmd_flow_director_dst,
 		(void *)&cmd_flow_director_ip_dst,
 		(void *)&cmd_flow_director_port_dst,
+		(void *)&cmd_flow_director_vlan,
+		(void *)&cmd_flow_director_vlan_value,
 		(void *)&cmd_flow_director_flexbytes,
 		(void *)&cmd_flow_director_flexbytes_value,
 		(void *)&cmd_flow_director_drop,
@@ -8509,10 +7972,14 @@ cmdline_parse_inst_t cmd_add_del_sctp_flow_director = {
 		(void *)&cmd_flow_director_flow_type,
 		(void *)&cmd_flow_director_src,
 		(void *)&cmd_flow_director_ip_src,
+		(void *)&cmd_flow_director_port_dst,
 		(void *)&cmd_flow_director_dst,
 		(void *)&cmd_flow_director_ip_dst,
+		(void *)&cmd_flow_director_port_dst,
 		(void *)&cmd_flow_director_verify_tag,
 		(void *)&cmd_flow_director_verify_tag_value,
+		(void *)&cmd_flow_director_vlan,
+		(void *)&cmd_flow_director_vlan_value,
 		(void *)&cmd_flow_director_flexbytes,
 		(void *)&cmd_flow_director_flexbytes_value,
 		(void *)&cmd_flow_director_drop,
@@ -8569,6 +8036,112 @@ cmdline_parse_inst_t cmd_flush_flow_director = {
 	},
 };
 
+/* *** deal with flow director mask *** */
+struct cmd_flow_director_mask_result {
+	cmdline_fixed_string_t flow_director_mask;
+	uint8_t port_id;
+	cmdline_fixed_string_t vlan;
+	uint16_t vlan_value;
+	cmdline_fixed_string_t src_mask;
+	cmdline_ipaddr_t ipv4_src;
+	cmdline_ipaddr_t ipv6_src;
+	uint16_t port_src;
+	cmdline_fixed_string_t dst_mask;
+	cmdline_ipaddr_t ipv4_dst;
+	cmdline_ipaddr_t ipv6_dst;
+	uint16_t port_dst;
+};
+
+static void
+cmd_flow_director_mask_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	struct cmd_flow_director_mask_result *res = parsed_result;
+	struct rte_eth_fdir_masks *mask;
+	struct rte_port *port;
+
+	if (res->port_id > nb_ports) {
+		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+		return;
+	}
+
+	port = &ports[res->port_id];
+	/** Check if the port is not started **/
+	if (port->port_status != RTE_PORT_STOPPED) {
+		printf("Please stop port %d first\n", res->port_id);
+		return;
+	}
+	mask = &port->dev_conf.fdir_conf.mask;
+
+	mask->vlan_tci_mask = res->vlan_value;
+	IPV4_ADDR_TO_UINT(res->ipv4_src, mask->ipv4_mask.src_ip);
+	IPV4_ADDR_TO_UINT(res->ipv4_dst, mask->ipv4_mask.dst_ip);
+	IPV6_ADDR_TO_ARRAY(res->ipv6_src, mask->ipv6_mask.src_ip);
+	IPV6_ADDR_TO_ARRAY(res->ipv6_dst, mask->ipv6_mask.dst_ip);
+	mask->src_port_mask = res->port_src;
+	mask->dst_port_mask = res->port_dst;
+
+	cmd_reconfig_device_queue(res->port_id, 1, 1);
+}
+
+cmdline_parse_token_string_t cmd_flow_director_mask =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_mask_result,
+				 flow_director_mask, "flow_director_mask");
+cmdline_parse_token_num_t cmd_flow_director_mask_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_mask_result,
+			      port_id, UINT8);
+cmdline_parse_token_string_t cmd_flow_director_mask_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_mask_result,
+				 vlan, "vlan");
+cmdline_parse_token_num_t cmd_flow_director_mask_vlan_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_mask_result,
+			      vlan_value, UINT16);
+cmdline_parse_token_string_t cmd_flow_director_mask_src =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_mask_result,
+				 src_mask, "src_mask");
+cmdline_parse_token_ipaddr_t cmd_flow_director_mask_ipv4_src =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_flow_director_mask_result,
+				 ipv4_src);
+cmdline_parse_token_ipaddr_t cmd_flow_director_mask_ipv6_src =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_flow_director_mask_result,
+				 ipv6_src);
+cmdline_parse_token_num_t cmd_flow_director_mask_port_src =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_mask_result,
+			      port_src, UINT16);
+cmdline_parse_token_string_t cmd_flow_director_mask_dst =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_mask_result,
+				 dst_mask, "dst_mask");
+cmdline_parse_token_ipaddr_t cmd_flow_director_mask_ipv4_dst =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_flow_director_mask_result,
+				 ipv4_dst);
+cmdline_parse_token_ipaddr_t cmd_flow_director_mask_ipv6_dst =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_flow_director_mask_result,
+				 ipv6_dst);
+cmdline_parse_token_num_t cmd_flow_director_mask_port_dst =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_mask_result,
+			      port_dst, UINT16);
+cmdline_parse_inst_t cmd_set_flow_director_mask = {
+	.f = cmd_flow_director_mask_parsed,
+	.data = NULL,
+	.help_str = "set flow director's mask on NIC",
+	.tokens = {
+		(void *)&cmd_flow_director_mask,
+		(void *)&cmd_flow_director_mask_port_id,
+		(void *)&cmd_flow_director_mask_vlan,
+		(void *)&cmd_flow_director_mask_vlan_value,
+		(void *)&cmd_flow_director_mask_src,
+		(void *)&cmd_flow_director_mask_ipv4_src,
+		(void *)&cmd_flow_director_mask_ipv6_src,
+		(void *)&cmd_flow_director_mask_port_src,
+		(void *)&cmd_flow_director_mask_dst,
+		(void *)&cmd_flow_director_mask_ipv4_dst,
+		(void *)&cmd_flow_director_mask_ipv6_dst,
+		(void *)&cmd_flow_director_mask_port_dst,
+		NULL,
+	},
+};
+
 /* *** deal with flow director mask on flexible payload *** */
 struct cmd_flow_director_flex_mask_result {
 	cmdline_fixed_string_t flow_director_flexmask;
@@ -8584,6 +8157,7 @@ cmd_flow_director_flex_mask_parsed(void *parsed_result,
 			  __attribute__((unused)) void *data)
 {
 	struct cmd_flow_director_flex_mask_result *res = parsed_result;
+	struct rte_eth_fdir_info fdir_info;
 	struct rte_eth_fdir_flex_mask flex_mask;
 	struct rte_port *port;
 	enum rte_eth_flow_type i;
@@ -8609,14 +8183,20 @@ cmd_flow_director_flex_mask_parsed(void *parsed_result,
 		printf("error: Cannot parse mask input.\n");
 		return;
 	}
+
 	if (!strcmp(res->flow_type, "all")) {
-		for (i = RTE_ETH_FLOW_TYPE_UDPV4;
+		memset(&fdir_info, 0, sizeof(fdir_info));
+		rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_FDIR,
+				       RTE_ETH_FILTER_INFO, &fdir_info);
+		for (i = RTE_ETH_FLOW_TYPE_RAW;
 		     i <= RTE_ETH_FLOW_TYPE_FRAG_IPV6;
 		     i++) {
-			flex_mask.flow_type = i;
-			fdir_set_flex_mask(res->port_id, &flex_mask);
+			if (fdir_info.flow_types_mask[0] & (1 << i)) {
+				flex_mask.flow_type = i;
+				fdir_set_flex_mask(res->port_id, &flex_mask);
+			}
 		}
-		cmd_reconfig_device_queue(res->port_id, 1, 0);
+		cmd_reconfig_device_queue(res->port_id, 1, 1);
 		return;
 	}
 	flex_mask.flow_type = str2flowtype(res->flow_type);
@@ -8637,7 +8217,7 @@ cmdline_parse_token_string_t cmd_flow_director_flexmask_flow =
 cmdline_parse_token_string_t cmd_flow_director_flexmask_flow_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
 				 flow_type,
-				"ip4#ip4-frag#tcp4#udp4#sctp4#"
+				"raw#ip4#ip4-frag#tcp4#udp4#sctp4#"
 				"ip6#ip6-frag#tcp6#udp6#sctp6#all");
 cmdline_parse_token_string_t cmd_flow_director_flexmask_mask =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
@@ -8727,7 +8307,9 @@ cmd_flow_director_flxpld_parsed(void *parsed_result,
 
 	memset(&flex_cfg, 0, sizeof(struct rte_eth_flex_payload_cfg));
 
-	if (!strcmp(res->payload_layer, "l2"))
+	if (!strcmp(res->payload_layer, "raw"))
+		flex_cfg.type = RTE_ETH_RAW_PAYLOAD;
+	else if (!strcmp(res->payload_layer, "l2"))
 		flex_cfg.type = RTE_ETH_L2_PAYLOAD;
 	else if (!strcmp(res->payload_layer, "l3"))
 		flex_cfg.type = RTE_ETH_L3_PAYLOAD;
@@ -8754,7 +8336,7 @@ cmdline_parse_token_num_t cmd_flow_director_flexpayload_port_id =
 			      port_id, UINT8);
 cmdline_parse_token_string_t cmd_flow_director_flexpayload_payload_layer =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flexpayload_result,
-				 payload_layer, "l2#l3#l4");
+				 payload_layer, "raw#l2#l3#l4");
 cmdline_parse_token_string_t cmd_flow_director_flexpayload_payload_cfg =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flexpayload_result,
 				 payload_cfg, NULL);
@@ -9159,14 +8741,6 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_write_reg_bit_field,
 	(cmdline_parse_inst_t *)&cmd_write_reg_bit,
 	(cmdline_parse_inst_t *)&cmd_read_rxd_txd,
-	(cmdline_parse_inst_t *)&cmd_add_signature_filter,
-	(cmdline_parse_inst_t *)&cmd_upd_signature_filter,
-	(cmdline_parse_inst_t *)&cmd_rm_signature_filter,
-	(cmdline_parse_inst_t *)&cmd_add_perfect_filter,
-	(cmdline_parse_inst_t *)&cmd_upd_perfect_filter,
-	(cmdline_parse_inst_t *)&cmd_rm_perfect_filter,
-	(cmdline_parse_inst_t *)&cmd_set_masks_filter,
-	(cmdline_parse_inst_t *)&cmd_set_ipv6_masks_filter,
 	(cmdline_parse_inst_t *)&cmd_stop,
 	(cmdline_parse_inst_t *)&cmd_mac_addr,
 	(cmdline_parse_inst_t *)&cmd_set_qmap,
@@ -9221,6 +8795,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_add_del_udp_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_sctp_flow_director,
 	(cmdline_parse_inst_t *)&cmd_flush_flow_director,
+	(cmdline_parse_inst_t *)&cmd_set_flow_director_mask,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_flex_mask,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_flex_payload,
 	(cmdline_parse_inst_t *)&cmd_get_sym_hash_ena_per_port,

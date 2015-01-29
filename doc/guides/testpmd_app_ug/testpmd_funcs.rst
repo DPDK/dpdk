@@ -71,7 +71,6 @@ These are divided into sections and can be accessed using help, help section or 
         help display    : Displaying port, stats and config information.
         help config     : Configuration information.
         help ports      : Configuring ports.
-        help flowdir    : Flow Director filter help.
         help registers  : Reading and setting port registers.
         help filters    : Filters configuration help.
         help all        : All of the above sections.
@@ -971,192 +970,6 @@ Where the threshold type can be:
 *   txrst: Set the transmit RS bit threshold of TX rings, 0 <= value <= txd.
     These threshold options are also available from the command-line.
 
-Flow Director Functions
------------------------
-
-The Flow Director works in receive mode to identify specific flows or sets of flows and route them to specific queues.
-
-Two types of filtering are supported which are referred to as Perfect Match and Signature filters:
-
-*   Perfect match filters.
-    The hardware checks a match between the masked fields of the received packets and the programmed filters.
-
-*   Signature filters.
-    The hardware checks a match between a hash-based signature of the masked fields of the received packet.
-
-The Flow Director filters can match the following fields in a packet:
-
-*   Source IP and destination IP addresses.
-
-*   Source port and destination port numbers (for UDP and TCP packets).
-
-*   IPv4/IPv6 and UDP/ TCP/SCTP protocol match.
-
-*   VLAN header.
-
-*   Flexible 2-byte tuple match anywhere in the first 64 bytes of the packet.
-
-The Flow Director can also mask out parts of all of these fields so that filters are only applied to certain fields
-or parts of the fields.
-For example it is possible to mask out sub-nets of IP addresses or to ignore VLAN headers.
-
-In the following sections, several common parameters are used in the Flow Director filters.
-These are explained below:
-
-*   src: A pair of source address values. The source IP, in IPv4 or IPv6 format, and the source port:
-
-    src 192.168.0.1 1024
-
-    src 2001:DB8:85A3:0:0:8A2E:370:7000 1024
-
-*   dst: A pair of destination address values. The destination IP, in IPv4 or IPv6 format, and the destination port.
-
-*   flexbytes: A 2-byte tuple to be matched within the first 64 bytes of a packet.
-
-The offset where the match occurs is set by the --pkt-filter-flexbytes-offset command-line parameter
-and is counted from the first byte of the destination Ethernet MAC address.
-The default offset is 0xC bytes, which is the "Type" word in the MAC header.
-Typically, the flexbyte value is set to 0x0800 to match the IPv4 MAC type or 0x86DD to match IPv6.
-These values change when a VLAN tag is added.
-
-*   vlan: The VLAN header to match in the packet.
-
-*   queue: The index of the RX queue to route matched packets to.
-
-*   soft: The 16-bit value in the MBUF flow director ID field for RX packets matching the filter.
-
-add_signature_filter
-~~~~~~~~~~~~~~~~~~~~
-
-Add a signature filter:
-
-# Command is displayed on several lines for clarity.
-
-add_signature_filter (port_id) (ip|udp|tcp|sctp)
-
-    src (src_ip_address) (src_port)
-
-    dst (dst_ip_address) (dst_port)
-
-    flexbytes (flexbytes_values)
-
-    vlan (vlan_id) queue (queue_id)
-
-upd_signature_filter
-~~~~~~~~~~~~~~~~~~~~
-
-Update a signature filter:
-
-# Command is displayed on several lines for clarity.
-
-upd_signature_filter (port_id) (ip|udp|tcp|sctp)
-
-    src (src_ip_address) (src_port)
-
-    dst (dst_ip_address) (dst_port)
-
-    flexbytes (flexbytes_values)
-
-    vlan (vlan_id) queue (queue_id)
-
-rm_signature_filter
-~~~~~~~~~~~~~~~~~~~
-
-Remove a signature filter:
-
-# Command is displayed on several lines for clarity.
-
-rm_signature_filter (port_id) (ip|udp|tcp|sctp)
-
-    src (src_ip_address) (src_port)
-
-    dst (dst_ip_address) (dst_port)
-
-    flexbytes (flexbytes_values)
-
-    vlan (vlan_id)
-
-add_perfect_filter
-~~~~~~~~~~~~~~~~~~
-
-Add a perfect filter:
-
-# Command is displayed on several lines for clarity.
-
-add_perfect_filter (port_id) (ip|udp|tcp|sctp)
-
-    src (src_ip_address) (src_port)
-
-    dst (dst_ip_address) (dst_port)
-
-    flexbytes (flexbytes_values)
-
-    vlan (vlan_id) queue (queue_id) soft (soft_id)
-
-upd_perfect_filter
-~~~~~~~~~~~~~~~~~~
-
-Update a perfect filter:
-
-# Command is displayed on several lines for clarity.
-
-upd_perfect_filter (port_id) (ip|udp|tcp|sctp)
-
-    src (src_ip_address) (src_port)
-
-    dst (dst_ip_address) (dst_port)
-
-    flexbytes (flexbytes_values)
-
-    vlan (vlan_id) queue (queue_id)
-
-rm_perfect_filter
-~~~~~~~~~~~~~~~~~
-
-Remove a perfect filter:
-
-rm_perfect_filter (port_id) (ip|udp|tcp|sctp)
-
-    src (src_ip_address) (src_port)
-
-    dst (dst_ip_address) (dst_port)
-
-    flexbytes (flexbytes_values)
-
-    vlan (vlan_id) soft (soft_id)
-
-set_masks_filter
-~~~~~~~~~~~~~~~~
-
-Set IPv4 filter masks:
-
-# Command is displayed on several lines for clarity.
-
-set_masks_filter (port_id) only_ip_flow (0|1)
-
-    src_mask (ip_src_mask) (src_port_mask)
-
-    dst_mask (ip_dst_mask) (dst_port_mask)
-
-    flexbytes (0|1) vlan_id (0|1) vlan_prio (0|1)
-
-set_ipv6_masks_filter
-~~~~~~~~~~~~~~~~~~~~~
-
-Set IPv6 filter masks:
-
-# Command is displayed on several lines for clarity.
-
-set_ipv6_masks_filter (port_id) only_ip_flow (0|1)
-
-    src_mask (ip_src_mask) (src_port_mask)
-
-    dst_mask (ip_dst_mask) (dst_port_mask)
-
-    flexbytes (0|1) vlan_id (0|1) vlan_prio (0|1)
-
-    compare_dst (0|1)
-
 Link Bonding Functions
 ----------------------
 
@@ -1663,3 +1476,103 @@ Example:
     0000000000000000000000000000000000000000000000000000000000
 
         priority: 3   queue: 3
+
+flow_director_filter
+~~~~~~~~~~~~~~~~~~~~
+
+The Flow Director works in receive mode to identify specific flows or sets of flows and route them to specific queues.
+
+Two types of filtering are supported which are referred to as Perfect Match and Signature filters, the match mode
+is set by the --pkt-filter-mode command-line parameter:
+
+*   Perfect match filters.
+    The hardware checks a match between the masked fields of the received packets and the programmed filters.
+
+*   Signature filters.
+    The hardware checks a match between a hash-based signature of the masked fields of the received packet.
+
+The Flow Director filters can match the different fields for different type of packet: flow type, specific input set
+per flow type and the flexible payload. The Flow Director can also mask out parts of all of these fields so that filters
+are only applied to certain fields or parts of the fields.
+
+Different NICs may have different capabilities, command show port fdir (port_id) can be used to acquire the information.
+
+# Commands to add flow director filters of different flow types.
+
+flow_director_filter (port_id) (add|del|update) flow (ip4|ip4-frag|ip6|ip6-frag)
+src (src_ip_address) dst (dst_ip_address) vlan (vlan_value) flexbytes (flexbytes_value)
+(drop|fwd) queue (queue_id) fd_id (fd_id_value)
+
+flow_director_filter (port_id) (add|del|update) flow (udp4|tcp4|udp6|tcp6)
+src (src_ip_address) (src_port) dst (dst_ip_address) (dst_port) vlan (vlan_value)
+flexbytes (flexbytes_value) (drop|fwd) queue (queue_id) fd_id (fd_id_value)
+
+flow_director_filter (port_id) (add|del|update) flow (sctp4|sctp6)
+src (src_ip_address) (src_port) dst (dst_ip_address) (dst_port) tag (verification_tag)
+vlan (vlan_value) flexbytes (flexbytes_value) (drop|fwd) queue (queue_id) fd_id (fd_id_value)
+
+For example, to add an udp flow type filter:
+
+.. code-block:: console
+
+    testpmd> flow_director_filter 0 add flow udp4 src 2.2.2.3 32 dst 2.2.2.5 33 vlan 0x1 flexbytes (0x88,0x48) fwd queue 1 fd_id 1
+
+For example, add an ip4 flow type filter:
+
+.. code-block:: console
+
+    testpmd> flow_director_filter 0 add flow ip4 src 2.2.2.3 dst 2.2.2.5 vlan 0x1 flexbytes (0x88,0x48) fwd queue 1 fd_id 1
+
+flush_flow_director
+~~~~~~~~~~~~~~~~~~~
+
+flush all flow director filters on a device:
+
+flush_flow_director (port_id)
+
+Example, to flush all flow director filter on port 0:
+
+.. code-block:: console
+
+   testpmd> flush_flow_director 0
+
+flow_director_mask
+~~~~~~~~~~~~~~~~~~
+
+set flow director's masks on match input set
+
+flow_director_mask (port_id) vlan (vlan_value) src_mask (ipv4_src) (ipv6_src) (src_port) dst_mask (ipv4_dst) (ipv6_dst) (dst_port)
+
+Example, to set flow director mask on port 0:
+
+.. code-block:: console
+
+   testpmd> flow_director_mask 0 vlan 0xefff src_mask 255.255.255.255 FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF 0xFFFF dst_mask 255.255.255.255 FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF 0xFFFF
+
+
+flow_director_flex_mask
+~~~~~~~~~~~~~~~~~~~~~~~
+
+set masks of flow director's flexible payload based on certain flow type:
+
+flow_director_flex_mask (port_id) flow (raw|ip4|ip4-frag|tcp4|udp4|sctp4|ip6|ip6-frag|tcp6|udp6|sctp6|all) (mask)
+
+Example, to set flow director's udpv4 flex mask on port 0:
+
+.. code-block:: console
+
+   testpmd> flow_director_flex_mask 0 flow all (0xff,0xff,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+
+
+flow_director_flex_payload
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Configure flexible payload selection.
+
+flow_director_flex_payload (port_id) (raw|l2|l3|l4) (config)
+
+For example, to select the first 16 bytes from the offset 4 (bytes) of packet’s payload as flexible payload.
+
+.. code-block:: console
+
+   testpmd> flow_director_flex_payload 0 l4 (4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
