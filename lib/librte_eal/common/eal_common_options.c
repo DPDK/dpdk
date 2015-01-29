@@ -55,37 +55,38 @@
 const char
 eal_short_options[] =
 	"b:" /* pci-blacklist */
-	"w:" /* pci-whitelist */
 	"c:" /* coremask */
-	"d:"
+	"d:" /* driver */
 	"l:" /* corelist */
-	"m:"
-	"n:"
-	"r:"
-	"v";
+	"m:" /* memory size */
+	"n:" /* memory channels */
+	"r:" /* memory ranks */
+	"v"  /* version */
+	"w:" /* pci-whitelist */
+	;
 
 const struct option
 eal_long_options[] = {
-	{OPT_HUGE_DIR, 1, 0, OPT_HUGE_DIR_NUM},
-	{OPT_MASTER_LCORE, 1, 0, OPT_MASTER_LCORE_NUM},
-	{OPT_PROC_TYPE, 1, 0, OPT_PROC_TYPE_NUM},
-	{OPT_NO_SHCONF, 0, 0, OPT_NO_SHCONF_NUM},
-	{OPT_NO_HPET, 0, 0, OPT_NO_HPET_NUM},
-	{OPT_VMWARE_TSC_MAP, 0, 0, OPT_VMWARE_TSC_MAP_NUM},
-	{OPT_NO_PCI, 0, 0, OPT_NO_PCI_NUM},
-	{OPT_NO_HUGE, 0, 0, OPT_NO_HUGE_NUM},
-	{OPT_FILE_PREFIX, 1, 0, OPT_FILE_PREFIX_NUM},
-	{OPT_SOCKET_MEM, 1, 0, OPT_SOCKET_MEM_NUM},
-	{OPT_PCI_WHITELIST, 1, 0, OPT_PCI_WHITELIST_NUM},
-	{OPT_PCI_BLACKLIST, 1, 0, OPT_PCI_BLACKLIST_NUM},
-	{OPT_VDEV, 1, 0, OPT_VDEV_NUM},
-	{OPT_SYSLOG, 1, NULL, OPT_SYSLOG_NUM},
-	{OPT_LOG_LEVEL, 1, NULL, OPT_LOG_LEVEL_NUM},
-	{OPT_BASE_VIRTADDR, 1, 0, OPT_BASE_VIRTADDR_NUM},
-	{OPT_XEN_DOM0, 0, 0, OPT_XEN_DOM0_NUM},
-	{OPT_CREATE_UIO_DEV, 1, NULL, OPT_CREATE_UIO_DEV_NUM},
-	{OPT_VFIO_INTR, 1, NULL, OPT_VFIO_INTR_NUM},
-	{0, 0, 0, 0}
+	{OPT_BASE_VIRTADDR,     1, NULL, OPT_BASE_VIRTADDR_NUM    },
+	{OPT_CREATE_UIO_DEV,    1, NULL, OPT_CREATE_UIO_DEV_NUM   },
+	{OPT_FILE_PREFIX,       1, NULL, OPT_FILE_PREFIX_NUM      },
+	{OPT_HUGE_DIR,          1, NULL, OPT_HUGE_DIR_NUM         },
+	{OPT_LOG_LEVEL,         1, NULL, OPT_LOG_LEVEL_NUM        },
+	{OPT_MASTER_LCORE,      1, NULL, OPT_MASTER_LCORE_NUM     },
+	{OPT_NO_HPET,           0, NULL, OPT_NO_HPET_NUM          },
+	{OPT_NO_HUGE,           0, NULL, OPT_NO_HUGE_NUM          },
+	{OPT_NO_PCI,            0, NULL, OPT_NO_PCI_NUM           },
+	{OPT_NO_SHCONF,         0, NULL, OPT_NO_SHCONF_NUM        },
+	{OPT_PCI_BLACKLIST,     1, NULL, OPT_PCI_BLACKLIST_NUM    },
+	{OPT_PCI_WHITELIST,     1, NULL, OPT_PCI_WHITELIST_NUM    },
+	{OPT_PROC_TYPE,         1, NULL, OPT_PROC_TYPE_NUM        },
+	{OPT_SOCKET_MEM,        1, NULL, OPT_SOCKET_MEM_NUM       },
+	{OPT_SYSLOG,            1, NULL, OPT_SYSLOG_NUM           },
+	{OPT_VDEV,              1, NULL, OPT_VDEV_NUM             },
+	{OPT_VFIO_INTR,         1, NULL, OPT_VFIO_INTR_NUM        },
+	{OPT_VMWARE_TSC_MAP,    0, NULL, OPT_VMWARE_TSC_MAP_NUM   },
+	{OPT_XEN_DOM0,          0, NULL, OPT_XEN_DOM0_NUM         },
+	{0,                     0, NULL, 0                        }
 };
 
 static int lcores_parsed;
@@ -578,37 +579,36 @@ eal_check_common_options(struct internal_config *internal_cfg)
 void
 eal_common_usage(void)
 {
-	printf("-c COREMASK -n NUM [-m NB] [-r NUM] [-b <domain:bus:devid.func>]"
-	       "[--proc-type primary|secondary|auto]\n\n"
+	printf("-c COREMASK|-l CORELIST -n CHANNELS [options]\n\n"
 	       "EAL common options:\n"
-	       "  -c COREMASK  : A hexadecimal bitmask of cores to run on\n"
-	       "  -l CORELIST  : List of cores to run on\n"
-	       "                 The argument format is <c1>[-c2][,c3[-c4],...]\n"
-	       "                 where c1, c2, etc are core indexes between 0 and %d\n"
-	       "  --"OPT_MASTER_LCORE" ID: Core ID that is used as master\n"
-	       "  -n NUM       : Number of memory channels\n"
-	       "  -v           : Display version information on startup\n"
-	       "  -m MB        : memory to allocate (see also --"OPT_SOCKET_MEM")\n"
-	       "  -r NUM       : force number of memory ranks (don't detect)\n"
-	       "  --"OPT_SYSLOG"     : set syslog facility\n"
-	       "  --"OPT_LOG_LEVEL"  : set default log level\n"
-	       "  --"OPT_PROC_TYPE"  : type of this process\n"
-	       "  --"OPT_PCI_BLACKLIST", -b: add a PCI device in black list.\n"
-	       "               Prevent EAL from using this PCI device. The argument\n"
-	       "               format is <domain:bus:devid.func>.\n"
-	       "  --"OPT_PCI_WHITELIST", -w: add a PCI device in white list.\n"
-	       "               Only use the specified PCI devices. The argument format\n"
-	       "               is <[domain:]bus:devid.func>. This option can be present\n"
-	       "               several times (once per device).\n"
-	       "               [NOTE: PCI whitelist cannot be used with -b option]\n"
-	       "  --"OPT_VDEV": add a virtual device.\n"
-	       "               The argument format is <driver><id>[,key=val,...]\n"
-	       "               (ex: --vdev=eth_pcap0,iface=eth2).\n"
-	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of native RDTSC\n"
+	       "  -c COREMASK         Hexadecimal bitmask of cores to run on\n"
+	       "  -l CORELIST         List of cores to run on\n"
+	       "                      The argument format is <c1>[-c2][,c3[-c4],...]\n"
+	       "                      where c1, c2, etc are core indexes between 0 and %d\n"
+	       "  --"OPT_MASTER_LCORE" ID   Core ID that is used as master\n"
+	       "  -n CHANNELS         Number of memory channels\n"
+	       "  -m MB               Memory to allocate (see also --"OPT_SOCKET_MEM")\n"
+	       "  -r RANKS            Force number of memory ranks (don't detect)\n"
+	       "  -b, --"OPT_PCI_BLACKLIST" Add a PCI device in black list.\n"
+	       "                      Prevent EAL from using this PCI device. The argument\n"
+	       "                      format is <domain:bus:devid.func>.\n"
+	       "  -w, --"OPT_PCI_WHITELIST" Add a PCI device in white list.\n"
+	       "                      Only use the specified PCI devices. The argument format\n"
+	       "                      is <[domain:]bus:devid.func>. This option can be present\n"
+	       "                      several times (once per device).\n"
+	       "                      [NOTE: PCI whitelist cannot be used with -b option]\n"
+	       "  --"OPT_VDEV"              Add a virtual device.\n"
+	       "                      The argument format is <driver><id>[,key=val,...]\n"
+	       "                      (ex: --vdev=eth_pcap0,iface=eth2).\n"
+	       "  --"OPT_VMWARE_TSC_MAP"    Use VMware TSC map instead of native RDTSC\n"
+	       "  --"OPT_PROC_TYPE"         Type of this process (primary|secondary|auto)\n"
+	       "  --"OPT_SYSLOG"            Set syslog facility\n"
+	       "  --"OPT_LOG_LEVEL"         Set default log level\n"
+	       "  -v                  Display version information on startup\n"
 	       "\nEAL options for DEBUG use only:\n"
-	       "  --"OPT_NO_HUGE"  : use malloc instead of hugetlbfs\n"
-	       "  --"OPT_NO_PCI"   : disable pci\n"
-	       "  --"OPT_NO_HPET"  : disable hpet\n"
-	       "  --"OPT_NO_SHCONF": no shared config (mmap'd files)\n"
+	       "  --"OPT_NO_HUGE"           Use malloc instead of hugetlbfs\n"
+	       "  --"OPT_NO_PCI"            Disable PCI\n"
+	       "  --"OPT_NO_HPET"           Disable HPET\n"
+	       "  --"OPT_NO_SHCONF"         No shared config (mmap'd files)\n"
 	       "\n", RTE_MAX_LCORE);
 }

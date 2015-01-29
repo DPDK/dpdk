@@ -352,17 +352,14 @@ eal_usage(const char *prgname)
 	printf("\nUsage: %s ", prgname);
 	eal_common_usage();
 	printf("EAL Linux options:\n"
-	       "  -d LIB.so    : add driver (can be used multiple times)\n"
-	       "  --"OPT_XEN_DOM0" : support application running on Xen Domain0 "
-			   "without hugetlbfs\n"
-	       "  --"OPT_SOCKET_MEM" : memory to allocate on specific\n"
-		   "                 sockets (use comma separated values)\n"
-	       "  --"OPT_HUGE_DIR"   : directory where hugetlbfs is mounted\n"
-	       "  --"OPT_FILE_PREFIX": prefix for hugepage filenames\n"
-	       "  --"OPT_BASE_VIRTADDR": specify base virtual address\n"
-	       "  --"OPT_VFIO_INTR": specify desired interrupt mode for VFIO "
-			   "(legacy|msi|msix)\n"
-	       "  --"OPT_CREATE_UIO_DEV": create /dev/uioX (usually done by hotplug)\n"
+	       "  -d LIB.so           Add driver (can be used multiple times)\n"
+	       "  --"OPT_SOCKET_MEM"        Memory to allocate on sockets (comma separated values)\n"
+	       "  --"OPT_HUGE_DIR"          Directory where hugetlbfs is mounted\n"
+	       "  --"OPT_FILE_PREFIX"       Prefix for hugepage filenames\n"
+	       "  --"OPT_BASE_VIRTADDR"     Base virtual address\n"
+	       "  --"OPT_CREATE_UIO_DEV"    Create /dev/uioX (usually done by hotplug)\n"
+	       "  --"OPT_VFIO_INTR"         Interrupt mode for VFIO (legacy|msi|msix)\n"
+	       "  --"OPT_XEN_DOM0"          Support running on Xen dom0 without hugetlbfs\n"
 	       "\n");
 	/* Allow the application to print its usage message too if hook is set */
 	if ( rte_application_usage_hook ) {
