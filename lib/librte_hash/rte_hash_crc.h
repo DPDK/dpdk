@@ -413,6 +413,22 @@ rte_hash_crc_4byte(uint32_t data, uint32_t init_val)
 }
 
 /**
+ * Use single crc32 instruction to perform a hash on a 8 byte value.
+ *
+ * @param data
+ *   Data to perform hash on.
+ * @param init_val
+ *   Value to initialise hash generator.
+ * @return
+ *   32bit calculated hash value.
+ */
+static inline uint32_t
+rte_hash_crc_8byte(uint64_t data, uint32_t init_val)
+{
+	return crc32c_sse42_u64(data, init_val);
+}
+
+/**
  * Use crc32 instruction to perform a hash.
  *
  * @param data
