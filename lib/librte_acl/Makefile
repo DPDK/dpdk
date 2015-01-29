@@ -70,12 +70,7 @@ endif
 SYMLINK-$(CONFIG_RTE_LIBRTE_ACL)-include := rte_acl_osdep.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_ACL)-include += rte_acl.h
 
-ifeq ($(CONFIG_RTE_LIBRTE_ACL_STANDALONE),y)
-# standalone build
-SYMLINK-$(CONFIG_RTE_LIBRTE_ACL)-include += rte_acl_osdep_alone.h
-else
 # this lib needs eal
 DEPDIRS-$(CONFIG_RTE_LIBRTE_ACL) += lib/librte_eal lib/librte_malloc
-endif
 
 include $(RTE_SDK)/mk/rte.lib.mk

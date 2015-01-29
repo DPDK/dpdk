@@ -60,13 +60,6 @@
 
 #define DIM(x) RTE_DIM(x)
 
-/*
- * To build ACL standalone.
- */
-#ifdef RTE_LIBRTE_ACL_STANDALONE
-#include <rte_acl_osdep_alone.h>
-#else
-
 #include <rte_common.h>
 #include <rte_common_vect.h>
 #include <rte_memory.h>
@@ -86,7 +79,5 @@
 #include <rte_cpuflags.h>
 #include <rte_log.h>
 #include <rte_debug.h>
-
-#endif /* RTE_LIBRTE_ACL_STANDALONE */
 
 #endif /* _RTE_ACL_OSDEP_H_ */

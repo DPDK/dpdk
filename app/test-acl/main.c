@@ -35,32 +35,12 @@
 #include <getopt.h>
 #include <string.h>
 
-#ifndef RTE_LIBRTE_ACL_STANDALONE
-
 #include <rte_cycles.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_ip.h>
 
 #define	PRINT_USAGE_START	"%s [EAL options]\n"
-
-#else
-
-#define IPv4(a, b, c, d) ((uint32_t)(((a) & 0xff) << 24) | \
-				(((b) & 0xff) << 16) |     \
-				(((c) & 0xff) << 8)  |     \
-				((d) & 0xff))
-
-#define	RTE_LCORE_FOREACH_SLAVE(x)	while (((x) = 0))
-
-#define	rte_eal_remote_launch(a, b, c)	DUMMY_MACRO
-#define	rte_eal_mp_wait_lcore()		DUMMY_MACRO
-
-#define	rte_eal_init(c, v)	(0)
-
-#define	PRINT_USAGE_START	"%s\n"
-
-#endif /*RTE_LIBRTE_ACL_STANDALONE */
 
 #define	RTE_LOGTYPE_TESTACL	RTE_LOGTYPE_USER1
 
