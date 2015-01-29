@@ -101,7 +101,20 @@
 /*
  * Information about the fdir mode.
  */
+
+struct ixgbe_hw_fdir_mask {
+	uint16_t vlan_tci_mask;
+	uint32_t src_ipv4_mask;
+	uint32_t dst_ipv4_mask;
+	uint16_t src_ipv6_mask;
+	uint16_t dst_ipv6_mask;
+	uint16_t src_port_mask;
+	uint16_t dst_port_mask;
+	uint16_t flex_bytes_mask;
+};
+
 struct ixgbe_hw_fdir_info {
+	struct ixgbe_hw_fdir_mask mask;
 	uint8_t     flex_bytes_offset;
 	uint16_t    collision;
 	uint16_t    free;
@@ -312,9 +325,6 @@ int ixgbe_fdir_configure(struct rte_eth_dev *dev);
 
 void ixgbe_fdir_info_get(struct rte_eth_dev *dev,
 		struct rte_eth_fdir *fdir);
-
-int ixgbe_fdir_set_masks(struct rte_eth_dev *dev,
-		struct rte_fdir_masks *fdir_masks);
 
 void ixgbe_configure_dcb(struct rte_eth_dev *dev);
 
