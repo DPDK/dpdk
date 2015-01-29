@@ -486,7 +486,7 @@ rte_hash_crc_8byte(uint64_t data, uint32_t init_val)
 }
 
 /**
- * Use crc32 instruction to perform a hash.
+ * Calculate CRC32 hash on user-supplied byte array.
  *
  * @param data
  *   Data to perform hash on.
@@ -501,23 +501,38 @@ static inline uint32_t
 rte_hash_crc(const void *data, uint32_t data_len, uint32_t init_val)
 {
 	unsigned i;
-	uint32_t temp = 0;
-	const uint32_t *p32 = (const uint32_t *)data;
+	uint64_t temp = 0;
+	const uint64_t *p64 = (const uint64_t *)data;
 
-	for (i = 0; i < data_len / 4; i++) {
-		init_val = rte_hash_crc_4byte(*p32++, init_val);
+	for (i = 0; i < data_len / 8; i++) {
+		init_val = rte_hash_crc_8byte(*p64++, init_val);
 	}
 
-	switch (3 - (data_len & 0x03)) {
+	switch (7 - (data_len & 0x07)) {
 	case 0:
-		temp |= *((const uint8_t *)p32 + 2) << 16;
+		temp |= (uint64_t) *((const uint8_t *)p64 + 6) << 48;
 		/* Fallthrough */
 	case 1:
-		temp |= *((const uint8_t *)p32 + 1) << 8;
+		temp |= (uint64_t) *((const uint8_t *)p64 + 5) << 40;
 		/* Fallthrough */
 	case 2:
-		temp |= *((const uint8_t *)p32);
+		temp |= (uint64_t) *((const uint8_t *)p64 + 4) << 32;
+		temp |= *((const uint32_t *)p64);
+		init_val = rte_hash_crc_8byte(temp, init_val);
+		break;
+	case 3:
+		init_val = rte_hash_crc_4byte(*(const uint32_t *)p64, init_val);
+		break;
+	case 4:
+		temp |= *((const uint8_t *)p64 + 2) << 16;
+		/* Fallthrough */
+	case 5:
+		temp |= *((const uint8_t *)p64 + 1) << 8;
+		/* Fallthrough */
+	case 6:
+		temp |= *((const uint8_t *)p64);
 		init_val = rte_hash_crc_4byte(temp, init_val);
+		/* Fallthrough */
 	default:
 		break;
 	}
