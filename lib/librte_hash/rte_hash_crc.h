@@ -45,7 +45,6 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include <nmmintrin.h>
 
 /* Lookup tables for software implementation of CRC32C */
 static const uint32_t crc32c_tables[8][256] = {{
@@ -410,7 +409,7 @@ crc32c_sse42_u64_mimic(uint64_t data, uint64_t init_val)
 static inline uint32_t
 rte_hash_crc_4byte(uint32_t data, uint32_t init_val)
 {
-	return _mm_crc32_u32(init_val, data);
+	return crc32c_sse42_u32(data, init_val);
 }
 
 /**
