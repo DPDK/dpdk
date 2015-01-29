@@ -150,6 +150,12 @@ CFLAGS_test_kni.o += -Wno-deprecated-declarations
 endif
 CFLAGS += -D_GNU_SOURCE
 
+# Disable VTA for memcpy test
+ifeq ($(CC), gcc)
+CFLAGS_test_memcpy.o += -fno-var-tracking-assignments
+CFLAGS_test_memcpy_perf.o += -fno-var-tracking-assignments
+endif
+
 # this application needs libraries first
 DEPDIRS-y += lib
 
