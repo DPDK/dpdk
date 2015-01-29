@@ -98,6 +98,7 @@
 
 static const char *flowtype_str[RTE_ETH_FLOW_TYPE_MAX] = {
 	NULL,
+	"raw",
 	"udp4",
 	"tcp4",
 	"sctp4",
@@ -1773,14 +1774,34 @@ set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
 }
 
 static inline void
-print_fdir_flex_payload(struct rte_eth_fdir_flex_conf *flex_conf)
+print_fdir_mask(struct rte_eth_fdir_masks *mask)
+{
+	printf("\n    vlan_tci: 0x%04x, src_ipv4: 0x%08x, dst_ipv4: 0x%08x,"
+		      " src_port: 0x%04x, dst_port: 0x%04x",
+		mask->vlan_tci_mask, mask->ipv4_mask.src_ip,
+		mask->ipv4_mask.dst_ip,
+		mask->src_port_mask, mask->dst_port_mask);
+
+	printf("\n    src_ipv6: 0x%08x,0x%08x,0x%08x,0x%08x,"
+		     " dst_ipv6: 0x%08x,0x%08x,0x%08x,0x%08x",
+		mask->ipv6_mask.src_ip[0], mask->ipv6_mask.src_ip[1],
+		mask->ipv6_mask.src_ip[2], mask->ipv6_mask.src_ip[3],
+		mask->ipv6_mask.dst_ip[0], mask->ipv6_mask.dst_ip[1],
+		mask->ipv6_mask.dst_ip[2], mask->ipv6_mask.dst_ip[3]);
+	printf("\n");
+}
+
+static inline void
+print_fdir_flex_payload(struct rte_eth_fdir_flex_conf *flex_conf, uint32_t num)
 {
 	struct rte_eth_flex_payload_cfg *cfg;
-	int i, j;
+	uint32_t i, j;
 
 	for (i = 0; i < flex_conf->nb_payloads; i++) {
 		cfg = &flex_conf->flex_set[i];
-		if (cfg->type == RTE_ETH_L2_PAYLOAD)
+		if (cfg->type == RTE_ETH_RAW_PAYLOAD)
+			printf("\n    RAW:  ");
+		else if (cfg->type == RTE_ETH_L2_PAYLOAD)
 			printf("\n    L2_PAYLOAD:  ");
 		else if (cfg->type == RTE_ETH_L3_PAYLOAD)
 			printf("\n    L3_PAYLOAD:  ");
@@ -1788,22 +1809,22 @@ print_fdir_flex_payload(struct rte_eth_fdir_flex_conf *flex_conf)
 			printf("\n    L4_PAYLOAD:  ");
 		else
 			printf("\n    UNKNOWN PAYLOAD(%u):  ", cfg->type);
-		for (j = 0; j < RTE_ETH_FDIR_MAX_FLEXLEN; j++)
+		for (j = 0; j < num; j++)
 			printf("  %-5u", cfg->src_offset[j]);
 	}
 	printf("\n");
 }
 
 static inline void
-print_fdir_flex_mask(struct rte_eth_fdir_flex_conf *flex_conf)
+print_fdir_flex_mask(struct rte_eth_fdir_flex_conf *flex_conf, uint32_t num)
 {
 	struct rte_eth_fdir_flex_mask *mask;
-	int i, j;
+	uint32_t i, j;
 
 	for (i = 0; i < flex_conf->nb_flexmasks; i++) {
 		mask = &flex_conf->flex_mask[i];
 		printf("\n    %s:\t", flowtype_str[mask->flow_type]);
-		for (j = 0; j < RTE_ETH_FDIR_MAX_FLEXLEN; j++)
+		for (j = 0; j < num; j++)
 			printf(" %02x", mask->mask[j]);
 	}
 	printf("\n");
@@ -1836,26 +1857,8 @@ fdir_get_infos(portid_t port_id)
 		return;
 	ret = rte_eth_dev_filter_supported(port_id, RTE_ETH_FILTER_FDIR);
 	if (ret < 0) {
-		/* use the old fdir APIs to get info */
-		struct rte_eth_fdir fdir;
-		memset(&fdir, 0, sizeof(fdir));
-		ret = rte_eth_dev_fdir_get_infos(port_id, &fdir);
-		if (ret < 0) {
-			printf("\n getting fdir info fails on port %-2d\n",
-				port_id);
-			return;
-		}
-		printf("\n  %s FDIR infos for port %-2d     %s\n",
-			fdir_stats_border, port_id, fdir_stats_border);
-		printf("  collision: %-10"PRIu64"  free:     %"PRIu64"\n"
-		       "  maxhash:   %-10"PRIu64"  maxlen:   %"PRIu64"\n"
-		       "  add:	     %-10"PRIu64"  remove:   %"PRIu64"\n"
-		       "  f_add:     %-10"PRIu64"  f_remove: %"PRIu64"\n",
-		       (uint64_t)(fdir.collision), (uint64_t)(fdir.free),
-		       (uint64_t)(fdir.maxhash), (uint64_t)(fdir.maxlen),
-		       fdir.add, fdir.remove, fdir.f_add, fdir.f_remove);
-		printf("  %s############################%s\n",
-		       fdir_stats_border, fdir_stats_border);
+		printf("\n FDIR is not supported on port %-2d\n",
+			port_id);
 		return;
 	}
 
@@ -1884,18 +1887,28 @@ fdir_get_infos(portid_t port_id)
 		fdir_info.flex_payload_unit,
 		fdir_info.max_flex_payload_segment_num,
 		fdir_info.flex_bitmask_unit, fdir_info.max_flex_bitmask_num);
+	printf("  MASK: ");
+	print_fdir_mask(&fdir_info.mask);
 	if (fdir_info.flex_conf.nb_payloads > 0) {
 		printf("  FLEX PAYLOAD SRC OFFSET:");
-		print_fdir_flex_payload(&fdir_info.flex_conf);
+		print_fdir_flex_payload(&fdir_info.flex_conf, fdir_info.max_flexpayload);
 	}
 	if (fdir_info.flex_conf.nb_flexmasks > 0) {
 		printf("  FLEX MASK CFG:");
-		print_fdir_flex_mask(&fdir_info.flex_conf);
+		print_fdir_flex_mask(&fdir_info.flex_conf, fdir_info.max_flexpayload);
 	}
-	printf("  guarant_count: %-10"PRIu32"  best_count:    %-10"PRIu32"\n",
+	printf("  guarant_count: %-10"PRIu32"  best_count:    %"PRIu32"\n",
 	       fdir_stat.guarant_cnt, fdir_stat.best_cnt);
-	printf("  guarant_space: %-10"PRIu32"  best_space:    %-10"PRIu32"\n",
-	       fdir_info.guarant_spc, fdir_info.guarant_spc);
+	printf("  guarant_space: %-10"PRIu32"  best_space:    %"PRIu32"\n",
+	       fdir_info.guarant_spc, fdir_info.best_spc);
+	printf("  collision:     %-10"PRIu32"  free:          %"PRIu32"\n"
+	       "  maxhash:       %-10"PRIu32"  maxlen:        %"PRIu32"\n"
+	       "  add:	         %-10"PRIu64"  remove:        %"PRIu64"\n"
+	       "  f_add:         %-10"PRIu64"  f_remove:      %"PRIu64"\n",
+	       fdir_stat.collision, fdir_stat.free,
+	       fdir_stat.maxhash, fdir_stat.maxlen,
+	       fdir_stat.add, fdir_stat.remove,
+	       fdir_stat.f_add, fdir_stat.f_remove);
 	printf("  %s############################%s\n",
 	       fdir_stats_border, fdir_stats_border);
 }
