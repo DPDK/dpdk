@@ -45,6 +45,8 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <rte_cpuflags.h>
+#include <rte_branch_prediction.h>
 
 /* Lookup tables for software implementation of CRC32C */
 static const uint32_t crc32c_tables[8][256] = {{
@@ -396,8 +398,52 @@ crc32c_sse42_u64_mimic(uint64_t data, uint64_t init_val)
 	return init_val;
 }
 
+#define CRC32_SW            (1U << 0)
+#define CRC32_SSE42         (1U << 1)
+#define CRC32_x64           (1U << 2)
+#define CRC32_SSE42_x64     (CRC32_x64|CRC32_SSE42)
+
+static uint8_t crc32_alg = CRC32_SW;
+
+/**
+ * Allow or disallow use of SSE4.2 instrinsics for CRC32 hash
+ * calculation.
+ *
+ * @param alg
+ *   An OR of following flags:
+ *   - (CRC32_SW) Don't use SSE4.2 intrinsics
+ *   - (CRC32_SSE42) Use SSE4.2 intrinsics if available
+ *   - (CRC32_SSE42_x64) Use 64-bit SSE4.2 intrinsic if available (default)
+ *
+ */
+static inline void
+rte_hash_crc_set_alg(uint8_t alg)
+{
+	switch (alg) {
+	case CRC32_SSE42_x64:
+		if (! rte_cpu_get_flag_enabled(RTE_CPUFLAG_EM64T))
+			alg = CRC32_SSE42;
+	case CRC32_SSE42:
+		if (! rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_2))
+			alg = CRC32_SW;
+	case CRC32_SW:
+		crc32_alg = alg;
+	default:
+		break;
+	}
+}
+
+/* Setting the best available algorithm */
+static inline void __attribute__((constructor))
+rte_hash_crc_init_alg(void)
+{
+	rte_hash_crc_set_alg(CRC32_SSE42_x64);
+}
+
 /**
  * Use single crc32 instruction to perform a hash on a 4 byte value.
+ * Fall back to software crc32 implementation in case SSE4.2 is
+ * not supported
  *
  * @param data
  *   Data to perform hash on.
@@ -409,11 +455,16 @@ crc32c_sse42_u64_mimic(uint64_t data, uint64_t init_val)
 static inline uint32_t
 rte_hash_crc_4byte(uint32_t data, uint32_t init_val)
 {
-	return crc32c_sse42_u32(data, init_val);
+	if (likely(crc32_alg & CRC32_SSE42))
+		return crc32c_sse42_u32(data, init_val);
+
+	return crc32c_1word(data, init_val);
 }
 
 /**
  * Use single crc32 instruction to perform a hash on a 8 byte value.
+ * Fall back to software crc32 implementation in case SSE4.2 is
+ * not supported
  *
  * @param data
  *   Data to perform hash on.
@@ -425,7 +476,13 @@ rte_hash_crc_4byte(uint32_t data, uint32_t init_val)
 static inline uint32_t
 rte_hash_crc_8byte(uint64_t data, uint32_t init_val)
 {
-	return crc32c_sse42_u64(data, init_val);
+	if (likely(crc32_alg == CRC32_SSE42_x64))
+		return crc32c_sse42_u64(data, init_val);
+
+	if (likely(crc32_alg & CRC32_SSE42))
+		return crc32c_sse42_u64_mimic(data, init_val);
+
+	return crc32c_2words(data, init_val);
 }
 
 /**
