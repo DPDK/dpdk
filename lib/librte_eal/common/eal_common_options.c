@@ -57,6 +57,7 @@ eal_short_options[] =
 	"b:" /* pci-blacklist */
 	"c:" /* coremask */
 	"d:" /* driver */
+	"h"  /* help */
 	"l:" /* corelist */
 	"m:" /* memory size */
 	"n:" /* memory channels */
@@ -70,6 +71,7 @@ eal_long_options[] = {
 	{OPT_BASE_VIRTADDR,     1, NULL, OPT_BASE_VIRTADDR_NUM    },
 	{OPT_CREATE_UIO_DEV,    1, NULL, OPT_CREATE_UIO_DEV_NUM   },
 	{OPT_FILE_PREFIX,       1, NULL, OPT_FILE_PREFIX_NUM      },
+	{OPT_HELP,              0, NULL, OPT_HELP_NUM             },
 	{OPT_HUGE_DIR,          1, NULL, OPT_HUGE_DIR_NUM         },
 	{OPT_LOG_LEVEL,         1, NULL, OPT_LOG_LEVEL_NUM        },
 	{OPT_MASTER_LCORE,      1, NULL, OPT_MASTER_LCORE_NUM     },
@@ -605,6 +607,7 @@ eal_common_usage(void)
 	       "  --"OPT_SYSLOG"            Set syslog facility\n"
 	       "  --"OPT_LOG_LEVEL"         Set default log level\n"
 	       "  -v                  Display version information on startup\n"
+	       "  -h, --help          This help\n"
 	       "\nEAL options for DEBUG use only:\n"
 	       "  --"OPT_NO_HUGE"           Use malloc instead of hugetlbfs\n"
 	       "  --"OPT_NO_PCI"            Disable PCI\n"

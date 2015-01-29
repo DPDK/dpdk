@@ -35,6 +35,8 @@
 
 enum {
 	/* long options mapped to a short option */
+#define OPT_HELP              "help"
+	OPT_HELP_NUM            = 'h',
 #define OPT_PCI_BLACKLIST     "pci-blacklist"
 	OPT_PCI_BLACKLIST_NUM   = 'b',
 #define OPT_PCI_WHITELIST     "pci-whitelist"

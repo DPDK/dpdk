@@ -520,8 +520,10 @@ eal_parse_args(int argc, char **argv)
 		int ret;
 
 		/* getopt is not happy, stop right now */
-		if (opt == '?')
+		if (opt == '?') {
+			eal_usage(prgname);
 			return -1;
+		}
 
 		ret = eal_parse_common_option(opt, optarg, &internal_config);
 		/* common parser is not happy */
@@ -534,6 +536,10 @@ eal_parse_args(int argc, char **argv)
 			continue;
 
 		switch (opt) {
+		case 'h':
+			eal_usage(prgname);
+			exit(EXIT_SUCCESS);
+
 		/* force loading of external driver */
 		case 'd':
 			solib = malloc(sizeof(*solib));
