@@ -286,6 +286,19 @@ struct rte_fdir_conf fdir_conf = {
 	.mode = RTE_FDIR_MODE_NONE,
 	.pballoc = RTE_FDIR_PBALLOC_64K,
 	.status = RTE_FDIR_REPORT_STATUS,
+	.mask = {
+		.vlan_tci_mask = 0x0,
+		.ipv4_mask     = {
+			.src_ip = 0xFFFFFFFF,
+			.dst_ip = 0xFFFFFFFF,
+		},
+		.ipv6_mask     = {
+			.src_ip = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+			.dst_ip = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+		},
+		.src_port_mask = 0xFFFF,
+		.dst_port_mask = 0xFFFF,
+	},
 	.drop_queue = 127,
 };
 
