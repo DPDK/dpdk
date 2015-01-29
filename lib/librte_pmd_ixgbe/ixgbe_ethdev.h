@@ -309,28 +309,8 @@ int ixgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
  */
 int ixgbe_fdir_configure(struct rte_eth_dev *dev);
 
-int ixgbe_fdir_add_signature_filter(struct rte_eth_dev *dev,
-		struct rte_fdir_filter *fdir_filter, uint8_t queue);
-
-int ixgbe_fdir_update_signature_filter(struct rte_eth_dev *dev,
-		struct rte_fdir_filter *fdir_filter, uint8_t queue);
-
-int ixgbe_fdir_remove_signature_filter(struct rte_eth_dev *dev,
-		struct rte_fdir_filter *fdir_filter);
-
 void ixgbe_fdir_info_get(struct rte_eth_dev *dev,
 		struct rte_eth_fdir *fdir);
-
-int ixgbe_fdir_add_perfect_filter(struct rte_eth_dev *dev,
-		struct rte_fdir_filter *fdir_filter, uint16_t soft_id,
-		uint8_t queue, uint8_t drop);
-
-int ixgbe_fdir_update_perfect_filter(struct rte_eth_dev *dev,
-		struct rte_fdir_filter *fdir_filter,uint16_t soft_id,
-		uint8_t queue, uint8_t drop);
-
-int ixgbe_fdir_remove_perfect_filter(struct rte_eth_dev *dev,
-		struct rte_fdir_filter *fdir_filter, uint16_t soft_id);
 
 int ixgbe_fdir_set_masks(struct rte_eth_dev *dev,
 		struct rte_fdir_masks *fdir_masks);
@@ -355,4 +335,7 @@ void ixgbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
 int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 
 uint32_t ixgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val);
+
+int ixgbe_fdir_ctrl_func(struct rte_eth_dev *dev,
+			enum rte_filter_op filter_op, void *arg);
 #endif /* _IXGBE_ETHDEV_H_ */

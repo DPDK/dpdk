@@ -360,13 +360,7 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.set_vf_vlan_filter   = ixgbe_set_pool_vlan_filter,
 	.set_queue_rate_limit = ixgbe_set_queue_rate_limit,
 	.set_vf_rate_limit    = ixgbe_set_vf_rate_limit,
-	.fdir_add_signature_filter    = ixgbe_fdir_add_signature_filter,
-	.fdir_update_signature_filter = ixgbe_fdir_update_signature_filter,
-	.fdir_remove_signature_filter = ixgbe_fdir_remove_signature_filter,
 	.fdir_infos_get               = ixgbe_fdir_info_get,
-	.fdir_add_perfect_filter      = ixgbe_fdir_add_perfect_filter,
-	.fdir_update_perfect_filter   = ixgbe_fdir_update_perfect_filter,
-	.fdir_remove_perfect_filter   = ixgbe_fdir_remove_perfect_filter,
 	.fdir_set_masks               = ixgbe_fdir_set_masks,
 	.reta_update          = ixgbe_dev_rss_reta_update,
 	.reta_query           = ixgbe_dev_rss_reta_query,
@@ -4212,6 +4206,9 @@ ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 	switch (filter_type) {
 	case RTE_ETH_FILTER_ETHERTYPE:
 		ret = ixgbe_ethertype_filter_handle(dev, filter_op, arg);
+		break;
+	case RTE_ETH_FILTER_FDIR:
+		ret = ixgbe_fdir_ctrl_func(dev, filter_op, arg);
 		break;
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
