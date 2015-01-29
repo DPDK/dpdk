@@ -130,6 +130,7 @@ static int ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 			      const struct rte_eth_fdir_filter *fdir_filter,
 			      bool del,
 			      bool update);
+static int ixgbe_fdir_flush(struct rte_eth_dev *dev);
 static void ixgbe_fdir_info_get(struct rte_eth_dev *dev,
 			struct rte_eth_fdir_info *fdir_info);
 static void ixgbe_fdir_stats_get(struct rte_eth_dev *dev,
@@ -964,6 +965,28 @@ ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 	return err;
 }
 
+static int
+ixgbe_fdir_flush(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_hw_fdir_info *info =
+			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
+	int ret;
+
+	ret = ixgbe_reinit_fdir_tables_82599(hw);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "Failed to re-initialize FD table.");
+		return ret;
+	}
+
+	info->f_add = 0;
+	info->f_remove = 0;
+	info->add = 0;
+	info->remove = 0;
+
+	return ret;
+}
+
 #define FDIRENTRIES_NUM_SHIFT 10
 static void
 ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info)
@@ -1102,6 +1125,9 @@ ixgbe_fdir_ctrl_func(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_DELETE:
 		ret = ixgbe_add_del_fdir_filter(dev,
 			(struct rte_eth_fdir_filter *)arg, TRUE, FALSE);
+		break;
+	case RTE_ETH_FILTER_FLUSH:
+		ret = ixgbe_fdir_flush(dev);
 		break;
 	case RTE_ETH_FILTER_INFO:
 		ixgbe_fdir_info_get(dev, (struct rte_eth_fdir_info *)arg);
