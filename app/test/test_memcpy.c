@@ -78,55 +78,8 @@ static size_t buf_sizes[TEST_VALUE_RANGE];
 #define TEST_BATCH_SIZE         100
 
 /* Data is aligned on this many bytes (power of 2) */
-#define ALIGNMENT_UNIT          16
+#define ALIGNMENT_UNIT          32
 
-
-
-/* Structure with base memcpy func pointer, and number of bytes it copies */
-struct base_memcpy_func {
-	void (*func)(uint8_t *dst, const uint8_t *src);
-	unsigned size;
-};
-
-/* To create base_memcpy_func structure entries */
-#define BASE_FUNC(n) {rte_mov##n, n}
-
-/* Max number of bytes that can be copies with a "base" memcpy functions */
-#define MAX_BASE_FUNC_SIZE 256
-
-/*
- * Test the "base" memcpy functions, that a copy fixed number of bytes.
- */
-static int
-base_func_test(void)
-{
-	const struct base_memcpy_func base_memcpy_funcs[6] = {
-		BASE_FUNC(16),
-		BASE_FUNC(32),
-		BASE_FUNC(48),
-		BASE_FUNC(64),
-		BASE_FUNC(128),
-		BASE_FUNC(256),
-	};
-	unsigned i, j;
-	unsigned num_funcs = sizeof(base_memcpy_funcs) / sizeof(base_memcpy_funcs[0]);
-	uint8_t dst[MAX_BASE_FUNC_SIZE];
-	uint8_t src[MAX_BASE_FUNC_SIZE];
-
-	for (i = 0; i < num_funcs; i++) {
-		unsigned size = base_memcpy_funcs[i].size;
-		for (j = 0; j < size; j++) {
-			dst[j] = 0;
-			src[j] = (uint8_t) rte_rand();
-		}
-		base_memcpy_funcs[i].func(dst, src);
-		for (j = 0; j < size; j++)
-			if (dst[j] != src[j])
-				return -1;
-	}
-
-	return 0;
-}
 
 /*
  * Create two buffers, and initialise one with random values. These are copied
@@ -216,9 +169,6 @@ test_memcpy(void)
 	int ret;
 
 	ret = func_test();
-	if (ret != 0)
-		return -1;
-	ret = base_func_test();
 	if (ret != 0)
 		return -1;
 	return 0;
