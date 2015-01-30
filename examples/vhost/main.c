@@ -1308,8 +1308,8 @@ switch_worker(__attribute__((unused)) void *arg)
 				/* If this is the first received packet we need to learn the MAC and setup VMDQ */
 				if (unlikely(vdev->ready == DEVICE_MAC_LEARNING) && tx_count) {
 					if (vdev->remove || (link_vmdq(vdev, pkts_burst[0]) == -1)) {
-						while (tx_count--)
-							rte_pktmbuf_free(pkts_burst[tx_count]);
+						while (tx_count)
+							rte_pktmbuf_free(pkts_burst[--tx_count]);
 					}
 				}
 				while (tx_count)
