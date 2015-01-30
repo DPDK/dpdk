@@ -53,7 +53,6 @@ Programmer's Guide
     ivshmem_lib
     poll_mode_drv_emulated_virtio_nic
     poll_mode_drv_paravirtual_vmxnets_nic
-    intel_dpdk_xen_based_packet_switch_sol
     libpcap_ring_based_poll_mode_drv
     link_bonding_poll_mode_drv_lib
     mlx4_poll_mode_drv

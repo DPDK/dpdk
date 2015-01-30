@@ -132,9 +132,9 @@ F: lib/librte_eal/linuxapp/eal/*xen*
 F: lib/librte_eal/linuxapp/eal/include/exec-env/rte_dom0_common.h
 F: lib/librte_mempool/rte_dom0_mempool.c
 F: lib/librte_pmd_xenvirt/
+F: doc/guides/xen/
 F: app/test-pmd/mempool_*
 F: examples/vhost_xen/
-F: doc/guides/prog_guide/intel_dpdk_xen_based_packet_switch_sol.rst
 
 FreeBSD EAL (with overlaps)
 M: Bruce Richardson <bruce.richardson@intel.com>
