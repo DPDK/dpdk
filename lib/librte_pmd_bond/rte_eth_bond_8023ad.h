@@ -36,6 +36,10 @@
 
 #include <rte_ether.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Actor/partner states
  */
@@ -210,5 +214,9 @@ rte_eth_bond_8023ad_setup(uint8_t port_id,
 int
 rte_eth_bond_8023ad_slave_info(uint8_t port_id, uint8_t slave_id,
 		struct rte_eth_bond_8023ad_slave_info *conf);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* RTE_ETH_BOND_8023AD_H_ */

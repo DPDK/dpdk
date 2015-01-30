@@ -34,10 +34,6 @@
 #ifndef _RTE_ETH_BOND_PRIVATE_H_
 #define _RTE_ETH_BOND_PRIVATE_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_ethdev.h>
 #include <rte_spinlock.h>
 
@@ -275,9 +271,5 @@ bond_ethdev_parse_bond_mac_addr_kvarg(const char *key __rte_unused,
 int
 bond_ethdev_parse_time_ms_kvarg(const char *key __rte_unused,
 		const char *value, void *extra_args);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
