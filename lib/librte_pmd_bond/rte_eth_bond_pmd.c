@@ -282,18 +282,19 @@ ipv6_hash(struct ipv6_hdr *ipv6_hdr)
 }
 
 static inline size_t
-get_vlan_offset(struct ether_hdr *eth_hdr)
+get_vlan_offset(struct ether_hdr *eth_hdr, uint16_t *proto)
 {
 	size_t vlan_offset = 0;
 
-	/* Calculate VLAN offset */
-	if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == eth_hdr->ether_type) {
+	if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
 		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
 		vlan_offset = sizeof(struct vlan_hdr);
+		*proto = vlan_hdr->eth_proto;
 
-		while (rte_cpu_to_be_16(ETHER_TYPE_VLAN) ==
-				vlan_hdr->eth_proto) {
+		if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
 			vlan_hdr = vlan_hdr + 1;
+
+			*proto = vlan_hdr->eth_proto;
 			vlan_offset += sizeof(struct vlan_hdr);
 		}
 	}
@@ -314,17 +315,18 @@ uint16_t
 xmit_l23_hash(const struct rte_mbuf *buf, uint8_t slave_count)
 {
 	struct ether_hdr *eth_hdr = rte_pktmbuf_mtod(buf, struct ether_hdr *);
-	size_t vlan_offset = get_vlan_offset(eth_hdr);
+	uint16_t proto = eth_hdr->ether_type;
+	size_t vlan_offset = get_vlan_offset(eth_hdr, &proto);
 	uint32_t hash, l3hash = 0;
 
 	hash = ether_hash(eth_hdr);
 
-	if (buf->ol_flags & PKT_RX_IPV4_HDR) {
+	if (rte_cpu_to_be_16(ETHER_TYPE_IPv4) == proto) {
 		struct ipv4_hdr *ipv4_hdr = (struct ipv4_hdr *)
 				((char *)(eth_hdr + 1) + vlan_offset);
 		l3hash = ipv4_hash(ipv4_hdr);
 
-	} else if  (buf->ol_flags & PKT_RX_IPV6_HDR) {
+	} else if (rte_cpu_to_be_16(ETHER_TYPE_IPv6) == proto) {
 		struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)
 				((char *)(eth_hdr + 1) + vlan_offset);
 		l3hash = ipv6_hash(ipv6_hdr);
@@ -341,12 +343,14 @@ uint16_t
 xmit_l34_hash(const struct rte_mbuf *buf, uint8_t slave_count)
 {
 	struct ether_hdr *eth_hdr = rte_pktmbuf_mtod(buf, struct ether_hdr *);
-	size_t vlan_offset = get_vlan_offset(eth_hdr);
+	uint16_t proto = eth_hdr->ether_type;
+	size_t vlan_offset = get_vlan_offset(eth_hdr, &proto);
+
 	struct udp_hdr *udp_hdr = NULL;
 	struct tcp_hdr *tcp_hdr = NULL;
 	uint32_t hash, l3hash = 0, l4hash = 0;
 
-	if (buf->ol_flags & PKT_RX_IPV4_HDR) {
+	if (rte_cpu_to_be_16(ETHER_TYPE_IPv4) == proto) {
 		struct ipv4_hdr *ipv4_hdr = (struct ipv4_hdr *)
 				((char *)(eth_hdr + 1) + vlan_offset);
 		size_t ip_hdr_offset;
@@ -365,7 +369,7 @@ xmit_l34_hash(const struct rte_mbuf *buf, uint8_t slave_count)
 					ip_hdr_offset);
 			l4hash = HASH_L4_PORTS(udp_hdr);
 		}
-	} else if  (buf->ol_flags & PKT_RX_IPV6_HDR) {
+	} else if  (rte_cpu_to_be_16(ETHER_TYPE_IPv6) == proto) {
 		struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)
 				((char *)(eth_hdr + 1) + vlan_offset);
 		l3hash = ipv6_hash(ipv6_hdr);

@@ -83,7 +83,8 @@ copy_buf_to_pkt(void *buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
 
 void
 initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
-		struct ether_addr *dst_mac, uint8_t vlan_enabled, uint16_t van_id)
+		struct ether_addr *dst_mac, uint8_t ipv4, uint8_t vlan_enabled,
+		uint16_t van_id)
 {
 	ether_addr_copy(dst_mac, &eth_hdr->d_addr);
 	ether_addr_copy(src_mac, &eth_hdr->s_addr);
@@ -94,10 +95,17 @@ initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
 
 		eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
 
-		vhdr->eth_proto =  rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+		if (ipv4)
+			vhdr->eth_proto =  rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+		else
+			vhdr->eth_proto =  rte_cpu_to_be_16(ETHER_TYPE_IPv6);
+
 		vhdr->vlan_tci = van_id;
 	} else {
-		eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+		if (ipv4)
+			eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+		else
+			eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
 	}
 
 }
@@ -257,19 +265,9 @@ nomore_mbuf:
 		if (ipv4) {
 			pkt->vlan_tci  = ETHER_TYPE_IPv4;
 			pkt->l3_len = sizeof(struct ipv4_hdr);
-
-			if (vlan_enabled)
-				pkt->ol_flags = PKT_RX_IPV4_HDR | PKT_RX_VLAN_PKT;
-			else
-				pkt->ol_flags = PKT_RX_IPV4_HDR;
 		} else {
 			pkt->vlan_tci  = ETHER_TYPE_IPv6;
 			pkt->l3_len = sizeof(struct ipv6_hdr);
-
-			if (vlan_enabled)
-				pkt->ol_flags = PKT_RX_IPV6_HDR | PKT_RX_VLAN_PKT;
-			else
-				pkt->ol_flags = PKT_RX_IPV6_HDR;
 		}
 
 		pkts_burst[nb_pkt] = pkt;

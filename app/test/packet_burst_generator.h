@@ -53,7 +53,8 @@ extern "C" {
 
 void
 initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
-		struct ether_addr *dst_mac, uint8_t vlan_enabled, uint16_t van_id);
+		struct ether_addr *dst_mac, uint8_t ipv4, uint8_t vlan_enabled,
+		uint16_t van_id);
 
 uint16_t
 initialize_udp_header(struct udp_hdr *udp_hdr, uint16_t src_port,
