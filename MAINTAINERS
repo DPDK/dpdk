@@ -39,6 +39,7 @@ F: doc/
 
 Build System
 ------------
+M: Olivier Matz <olivier.matz@6wind.com>
 F: GNUmakefile
 F: Makefile
 F: config/
@@ -133,21 +134,27 @@ F: lib/librte_eal/bsdapp/nic_uio/
 Core Libraries
 --------------
 
-Memory management
+Dynamic memory
 F: lib/librte_malloc/
 F: doc/guides/prog_guide/malloc_lib.rst
 F: app/test/test_malloc.c
+F: app/test/test_func_reentrancy.c
+
+Memory pool
+M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_mempool/
 F: doc/guides/prog_guide/mempool_lib.rst
 F: app/test/test_mempool*
 F: app/test/test_func_reentrancy.c
 
 Ring queue
+M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_ring/
 F: app/test/test_ring*
 F: app/test/test_func_reentrancy.c
 
 Packet buffer
+M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_mbuf/
 F: doc/guides/prog_guide/mbuf_lib.rst
 F: app/test/test_mbuf.c
@@ -293,6 +300,7 @@ Configuration file
 F: lib/librte_cfgfile/
 
 Interactive command line
+M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_cmdline/
 F: app/cmdline_test/
 F: app/test/test_cmdline*
@@ -307,6 +315,7 @@ F: app/test/test_ivshmem.c
 F: examples/l2fwd-ivshmem/
 
 Key/Value parsing
+M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_kvargs/
 F: app/test/test_kvargs.c
 
