@@ -213,15 +213,20 @@ F: lib/librte_pmd_enic/
 
 Intel e1000
 F: lib/librte_pmd_e1000/
+F: doc/guides/nics/e1000em.rst
+F: doc/guides/nics/intel_vf.rst
 
 Intel ixgbe
 M: Helin Zhang <helin.zhang@intel.com>
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: lib/librte_pmd_ixgbe/
+F: doc/guides/nics/ixgbe.rst
+F: doc/guides/nics/intel_vf.rst
 
 Intel i40e
 M: Helin Zhang <helin.zhang@intel.com>
 F: lib/librte_pmd_i40e/
+F: doc/guides/nics/intel_vf.rst
 
 Intel fm10k
 M: Jing Chen <jing.d.chen@intel.com>
@@ -230,12 +235,12 @@ F: lib/librte_pmd_fm10k/
 Mellanox mlx4
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
 F: lib/librte_pmd_mlx4/
-F: doc/guides/prog_guide/mlx4_poll_mode_drv.rst
+F: doc/guides/nics/mlx4.rst
 
 RedHat virtio
 M: Changchun Ouyang <changchun.ouyang@intel.com>
 F: lib/librte_pmd_virtio/
-F: doc/guides/prog_guide/poll_mode_drv_emulated_virtio_nic.rst
+F: doc/guides/nics/virtio.rst
 F: lib/librte_vhost/
 F: doc/guides/prog_guide/vhost_lib.rst
 F: examples/vhost/
@@ -244,18 +249,18 @@ F: doc/guides/sample_app_ug/vhost.rst
 VMware vmxnet3
 M: Yong Wang <yongwang@vmware.com>
 F: lib/librte_pmd_vmxnet3/
-F: doc/guides/prog_guide/poll_mode_drv_paravirtual_vmxnets_nic.rst
+F: doc/guides/nics/vmxnet3.rst
 
 PCAP PMD
 M: Nicolás Pernas Maradei <nicolas.pernas.maradei@emutex.com>
 M: John McNamara <john.mcnamara@intel.com>
 F: lib/librte_pmd_pcap/
-F: doc/guides/prog_guide/libpcap_ring_based_poll_mode_drv.rst
+F: doc/guides/nics/pcap_ring.rst
 
 Ring PMD
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/librte_pmd_ring/
-F: doc/guides/prog_guide/ring_lib.rst
+F: doc/guides/nics/pcap_ring.rst
 F: app/test/test_pmd_ring.c
 
 Null PMD

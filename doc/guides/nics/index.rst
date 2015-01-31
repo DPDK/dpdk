@@ -28,20 +28,36 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DPDK documentation
-==================
+Network Interface Controller Drivers
+====================================
 
-Contents:
+|today|
+
+
+**Contents**
 
 .. toctree::
-   :maxdepth: 1
-   :titlesonly:
+    :maxdepth: 3
+    :numbered:
 
-   linux_gsg/index
-   freebsd_gsg/index
-   xen/index
-   prog_guide/index
-   nics/index
-   sample_app_ug/index
-   testpmd_app_ug/index
-   rel_notes/index
+    e1000em
+    ixgbe
+    intel_vf
+    mlx4
+    virtio
+    vmxnet3
+    pcap_ring
+
+**Figures**
+
+:ref:`Figure 1. Virtualization for a Single Port NIC in SR-IOV Mode <nic_figure_1>`
+
+:ref:`Figure 2. SR-IOV Performance Benchmark Setup <nic_figure_2>`
+
+:ref:`Figure 3. Fast Host-based Packet Processing <nic_figure_3>`
+
+:ref:`Figure 4. SR-IOV Inter-VM Communication <nic_figure_4>`
+
+:ref:`Figure 5. Virtio Host2VM Communication Example Using KNI vhost Back End <nic_figure_5>`
+
+:ref:`Figure 6. Virtio Host2VM Communication Example Using Qemu vhost Back End <nic_figure_6>`

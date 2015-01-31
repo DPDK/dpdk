@@ -72,13 +72,11 @@ For more detail on SR-IOV, please refer to the following documents:
 
 *   `Scalable I/O Virtualized Servers <http://www.intel.com/content/www/us/en/virtualization/server-virtualization/scalable-i-o-virtualized-servers-paper.html>`_
 
-.. _pg_figure_10:
+.. _nic_figure_1:
 
-**Figure 10. Virtualization for a Single Port NIC in SR-IOV Mode**
+**Figure 1. Virtualization for a Single Port NIC in SR-IOV Mode**
 
-.. image24_png has been renamed
-
-|single_port_nic|
+.. image:: img/single_port_nic.*
 
 Physical and Virtual Function Infrastructure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -514,13 +512,11 @@ The setup procedure is as follows:
 
     *   The Virtual Machine Monitor (see Figure 11) is equivalent to a Host OS with KVM installed as described in the instructions.
 
-.. _pg_figure_11:
+.. _nic_figure_2:
 
-**Figure 11. Performance Benchmark Setup**
+**Figure 2. Performance Benchmark Setup**
 
-.. image25_png has been renamed
-
-|perf_benchmark|
+.. image:: img/perf_benchmark.*
 
 DPDK SR-IOV PMD PF/VF Driver Usage Model
 ----------------------------------------
@@ -538,13 +534,11 @@ DPI can be offloaded on the host fast path.
 Figure 12 shows the scenario where some VMs directly communicate externally via a VFs,
 while others connect to a virtual switch and share the same uplink bandwidth.
 
-.. _pg_figure_12:
+.. _nic_figure_3:
 
-**Figure 12. Fast Host-based Packet Processing**
+**Figure 3. Fast Host-based Packet Processing**
 
-.. image26_png has been renamed
-
-|fast_pkt_proc|
+.. image:: img/fast_pkt_proc.*
 
 SR-IOV (PF/VF) Approach for Inter-VM Communication
 --------------------------------------------------
@@ -566,18 +560,8 @@ that is, the packet is forwarded to the correct PF pool.
 The SR-IOV NIC switch forwards the packet to a specific VM according to the MAC destination address
 which belongs to the destination VF on the VM.
 
-.. _pg_figure_13:
+.. _nic_figure_4:
 
-**Figure 13. Inter-VM Communication**
+**Figure 4. Inter-VM Communication**
 
-.. image27_png has been renamed
-
-|inter_vm_comms|
-
-.. |perf_benchmark| image:: img/perf_benchmark.*
-
-.. |single_port_nic| image:: img/single_port_nic.*
-
-.. |inter_vm_comms| image:: img/inter_vm_comms.*
-
-.. |fast_pkt_proc| image:: img/fast_pkt_proc.*
+.. image:: img/inter_vm_comms.*

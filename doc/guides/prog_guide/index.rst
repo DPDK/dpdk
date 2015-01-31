@@ -48,14 +48,8 @@ Programmer's Guide
     mempool_lib
     mbuf_lib
     poll_mode_drv
-    i40e_ixgbe_igb_virt_func_drv
-    driver_vm_emul_dev
     ivshmem_lib
-    poll_mode_drv_emulated_virtio_nic
-    poll_mode_drv_paravirtual_vmxnets_nic
-    libpcap_ring_based_poll_mode_drv
     link_bonding_poll_mode_drv_lib
-    mlx4_poll_mode_drv
     timer_lib
     hash_lib
     lpm_lib
@@ -103,18 +97,6 @@ Programmer's Guide
 :ref:`Figure 8. An mbuf with One Segment <pg_figure_8>`
 
 :ref:`Figure 9. An mbuf with Three Segments <pg_figure_9>`
-
-:ref:`Figure 10. Virtualization for a Single Port NIC in SR-IOV Mode <pg_figure_10>`
-
-:ref:`Figure 11. Performance Benchmark Setup <pg_figure_11>`
-
-:ref:`Figure 12. Fast Host-based Packet Processing <pg_figure_12>`
-
-:ref:`Figure 13. Inter-VM Communication <pg_figure_13>`
-
-:ref:`Figure 14. Host2VM Communication Example Using kni vhost Back End <pg_figure_14>`
-
-:ref:`Figure 15. Host2VM Communication Example Using qemu vhost Back End <pg_figure_15>`
 
 :ref:`Figure 16. Memory Sharing inthe Intel® DPDK Multi-process Sample Application <pg_figure_16>`
 

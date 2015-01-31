@@ -106,13 +106,11 @@ Virtio with kni vhost Back End
 
 This section demonstrates kni vhost back end example setup for Phy-VM Communication.
 
-.. _pg_figure_14:
+.. _nic_figure_5:
 
-**Figure 14. Host2VM Communication Example Using kni vhost Back End**
+**Figure 5. Host2VM Communication Example Using kni vhost Back End**
 
-.. image29_png has been renamed
-
-|host_vm_comms|
+.. image:: img/host_vm_comms.*
 
 Host2VM communication example
 
@@ -176,9 +174,7 @@ Host2VM communication example
 
     We use testpmd as the forwarding application in this example.
 
-    .. image30_png has been renamed
-
-    |console|
+    .. image:: img/console.*
 
 #.  Use IXIA packet generator to inject a packet stream into the KNI physical port.
 
@@ -189,13 +185,11 @@ Host2VM communication example
 Virtio with qemu virtio Back End
 --------------------------------
 
-.. _pg_figure_15:
+.. _nic_figure_6:
 
-**Figure 15. Host2VM Communication Example Using qemu vhost Back End**
+**Figure 6. Host2VM Communication Example Using qemu vhost Back End**
 
-   .. image31_png has been renamed
-
-   |host_vm_comms_qemu|
+.. image:: img/host_vm_comms_qemu.*
 
 .. code-block:: console
 
@@ -213,9 +207,3 @@ In this example, the packet reception flow path is:
 The packet transmission flow is:
 
     IXIA packet generator-> Guest VM 82599 VF port1 rx burst-> Guest VM virtio port 0 tx burst-> tap -> Linux Bridge->82599 PF-> IXIA packet generator
-
-.. |host_vm_comms| image:: img/host_vm_comms.*
-
-.. |console| image:: img/console.*
-
-.. |host_vm_comms_qemu| image:: img/host_vm_comms_qemu.*

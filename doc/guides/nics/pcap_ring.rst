@@ -199,9 +199,7 @@ Multiple devices may be specified, separated by commas.
     Telling cores to stop...
     Waiting for lcores to finish...
 
-.. image38_png has been renamed
-
-|forward_stats|
+.. image:: img/forward_stats.*
 
 .. code-block:: console
 
@@ -267,5 +265,3 @@ while the rte_ring specific functions are direct function calls in the code and 
    by calling rte_eth_dev_configure() to set the number of receive and transmit queues,
    then calling rte_eth_rx_queue_setup() / tx_queue_setup() for each of those queues and
    finally calling rte_eth_dev_start() to allow transmission and reception of packets to begin.
-
-.. |forward_stats| image:: img/forward_stats.*
