@@ -37,10 +37,9 @@ include $(RTE_SDK)/mk/internal/rte.depdirs-pre.mk
 
 # VPATH contains at least SRCDIR
 VPATH += $(SRCDIR)
-
 ifeq ($(RTE_BUILD_SHARED_LIB),y)
-LIB := $(patsubst %.a,%.so,$(LIB))
 
+LIB := $(patsubst %.a,%.so.$(LIBABIVER),$(LIB))
 CPU_LDFLAGS += --version-script=$(SRCDIR)/$(EXPORT_MAP)
 
 endif
@@ -113,6 +112,10 @@ lib_dir = [ -d $(RTE_OUTPUT)/lib ] || mkdir -p $(RTE_OUTPUT)/lib;
 #
 ifeq ($(RTE_BUILD_SHARED_LIB),y)
 $(LIB): $(OBJS-y) $(DEP_$(LIB)) FORCE
+ifeq ($(LIBABIVER),)
+	@echo "Must Specify a $(LIB) ABI version"
+	@false
+endif
 	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	$(if $(D),\
 		@echo -n "$< -> $@ " ; \
@@ -126,6 +129,7 @@ $(LIB): $(OBJS-y) $(DEP_$(LIB)) FORCE
 		$(depfile_missing),\
 		$(depfile_newer)),\
 		$(O_TO_S_DO))
+
 ifeq ($(RTE_BUILD_COMBINE_LIBS),y)
 	$(if $(or \
         $(file_missing),\
@@ -163,9 +167,13 @@ endif
 # install lib in $(RTE_OUTPUT)/lib
 #
 $(RTE_OUTPUT)/lib/$(LIB): $(LIB)
+	$(eval LIBSONAME := $(basename $(LIB)))
 	@echo "  INSTALL-LIB $(LIB)"
 	@[ -d $(RTE_OUTPUT)/lib ] || mkdir -p $(RTE_OUTPUT)/lib
 	$(Q)cp -f $(LIB) $(RTE_OUTPUT)/lib
+ifeq ($(RTE_BUILD_SHARED_LIB),y)
+	$(Q)ln -s -f $< $(RTE_OUTPUT)/lib/$(LIBSONAME)
+endif
 
 #
 # Clean all generated files

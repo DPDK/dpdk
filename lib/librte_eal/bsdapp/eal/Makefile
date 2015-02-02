@@ -48,6 +48,8 @@ CFLAGS += $(WERROR_FLAGS) -O3
 
 EXPORT_MAP := rte_eal_version.map
 
+LIBABIVER := 1
+
 # specific to linuxapp exec-env
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) := eal.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += eal_memory.c

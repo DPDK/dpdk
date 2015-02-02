@@ -41,6 +41,8 @@ CFLAGS += $(WERROR_FLAGS)
 
 EXPORT_MAP := rte_pmd_ixgbe_version.map
 
+LIBABIVER := 1
+
 ifeq ($(CC), icc)
 #
 # CFLAGS for icc

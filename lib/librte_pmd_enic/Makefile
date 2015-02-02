@@ -39,6 +39,8 @@ LIB = librte_pmd_enic.a
 
 EXPORT_MAP := rte_pmd_enic_version.map
 
+LIBABIVER := 1
+
 CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_enic/vnic/
 CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_enic/
 CFLAGS += -O3

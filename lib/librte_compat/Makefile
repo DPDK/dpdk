@@ -32,6 +32,8 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 
+LIBABIVER := 1
+
 # install includes
 SYMLINK-y-include := rte_compat.h
 

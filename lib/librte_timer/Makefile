@@ -38,6 +38,8 @@ CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 
 EXPORT_MAP := rte_timer_version.map
 
+LIBABIVER := 1
+
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_TIMER) := rte_timer.c
 

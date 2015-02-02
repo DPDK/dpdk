@@ -36,6 +36,8 @@ LIB = librte_vhost.a
 
 EXPORT_MAP := rte_vhost_version.map
 
+LIBABIVER := 1
+
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3 -D_FILE_OFFSET_BITS=64 -lfuse
 LDFLAGS += -lfuse
 # all source are stored in SRCS-y

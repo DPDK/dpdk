@@ -68,6 +68,8 @@ VPATH += $(RTE_SDK)/lib/librte_pmd_vmxnet3/vmxnet3
 
 EXPORT_MAP := rte_pmd_vmxnet3_version.map
 
+LIBABIVER := 1
+
 #
 # all source are stored in SRCS-y
 #

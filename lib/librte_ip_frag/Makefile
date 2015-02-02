@@ -39,6 +39,8 @@ CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 
 EXPORT_MAP := rte_ipfrag_version.map
 
+LIBABIVER := 1
+
 #source files
 ifeq ($(CONFIG_RTE_MBUF_REFCNT),y)
 SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += rte_ipv4_fragmentation.c

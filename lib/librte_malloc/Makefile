@@ -34,6 +34,8 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # library name
 LIB = librte_malloc.a
 
+LIBABIVER := 1
+
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 
 EXPORT_MAP := rte_malloc_version.map
