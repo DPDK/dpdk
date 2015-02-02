@@ -33,6 +33,8 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 LIB = librte_eal.a
 
+EXPORT_MAP := rte_eal_version.map
+
 VPATH += $(RTE_SDK)/lib/librte_eal/common
 
 CFLAGS += -I$(SRCDIR)/include

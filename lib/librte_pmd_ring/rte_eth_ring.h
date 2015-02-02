@@ -50,12 +50,6 @@ int rte_eth_from_rings(const char *name,
 int rte_eth_ring_pair_create(const char *name, const unsigned numa_node);
 int rte_eth_ring_pair_attach(const char *name, const unsigned numa_node);
 
-/**
- * For use by test apps only. Called as part of EAL init to set up any dummy NICs
- * configured on command line.
- */
-int rte_pmd_ring_devinit(const char *name, const char *params);
-
 #ifdef __cplusplus
 }
 #endif

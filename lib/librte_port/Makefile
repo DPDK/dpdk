@@ -39,6 +39,8 @@ LIB = librte_port.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+EXPORT_MAP := rte_port_version.map
+
 #
 # all source are stored in SRCS-y
 #

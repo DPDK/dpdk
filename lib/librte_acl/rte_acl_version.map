@@ -1,0 +1,21 @@
+DPDK_2.0 {
+	global:
+
+	rte_acl_add_rules;
+	rte_acl_build;
+	rte_acl_classify;
+	rte_acl_classify_alg;
+	rte_acl_classify_scalar;
+	rte_acl_create;
+	rte_acl_dump;
+	rte_acl_find_existing;
+	rte_acl_free;
+	rte_acl_ipv4vlan_add_rules;
+	rte_acl_ipv4vlan_build;
+	rte_acl_list_dump;
+	rte_acl_reset;
+	rte_acl_reset_rules;
+	rte_acl_set_ctx_classify;
+
+	local: *;
+};

@@ -1,0 +1,18 @@
+DPDK_2.0 {
+	global:
+
+	rte_power_exit;
+	rte_power_freq_down;
+	rte_power_freq_max;
+	rte_power_freq_min;
+	rte_power_freq_up;
+	rte_power_freqs;
+	rte_power_get_env;
+	rte_power_get_freq;
+	rte_power_init;
+	rte_power_set_env;
+	rte_power_set_freq;
+	rte_power_unset_env;
+
+	local: *;
+};

@@ -1,0 +1,22 @@
+DPDK_2.0 {
+	global:
+
+	rte_approx;
+	rte_red_config_init;
+	rte_red_log2_1_minus_Wq;
+	rte_red_pow2_frac_inv;
+	rte_red_rand_seed;
+	rte_red_rand_val;
+	rte_red_rt_data_init;
+	rte_sched_pipe_config;
+	rte_sched_port_config;
+	rte_sched_port_dequeue;
+	rte_sched_port_enqueue;
+	rte_sched_port_free;
+	rte_sched_port_get_memory_footprint;
+	rte_sched_queue_read_stats;
+	rte_sched_subport_config;
+	rte_sched_subport_read_stats;
+
+	local: *;
+};

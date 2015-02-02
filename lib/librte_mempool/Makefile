@@ -36,6 +36,8 @@ LIB = librte_mempool.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 
+EXPORT_MAP := rte_mempool_version.map
+
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_MEMPOOL) +=  rte_mempool.c
 ifeq ($(CONFIG_RTE_LIBRTE_XEN_DOM0),y)

@@ -39,6 +39,8 @@ LIB = librte_pmd_i40e.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+EXPORT_MAP := rte_pmd_i40e_version.map
+
 #
 # Add extra flags for base driver files (also known as shared code)
 # to disable warnings

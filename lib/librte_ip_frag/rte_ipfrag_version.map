@@ -1,0 +1,13 @@
+DPDK_2.0 {
+	global:
+
+	rte_ip_frag_free_death_row;
+	rte_ip_frag_table_create;
+	rte_ip_frag_table_statistics_dump;
+	rte_ipv4_frag_reassemble_packet;
+	rte_ipv4_fragment_packet;
+	rte_ipv6_frag_reassemble_packet;
+	rte_ipv6_fragment_packet;
+
+	local: *;
+};

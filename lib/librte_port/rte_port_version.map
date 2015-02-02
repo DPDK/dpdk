@@ -1,0 +1,18 @@
+DPDK_2.0 {
+	global:
+
+	rte_port_ethdev_reader_ops;
+	rte_port_ethdev_writer_ops;
+	rte_port_ring_reader_ipv4_frag_ops;
+	rte_port_ring_reader_ops;
+	rte_port_ring_reader_ops;
+	rte_port_ring_writer_ipv4_ras_ops;
+	rte_port_ring_writer_ops;
+	rte_port_ring_writer_ops;
+	rte_port_sched_reader_ops;
+	rte_port_sched_writer_ops;
+	rte_port_sink_ops;
+	rte_port_source_ops;
+
+	local: *;
+};

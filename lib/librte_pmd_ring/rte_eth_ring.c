@@ -472,7 +472,7 @@ out:
 	return ret;
 }
 
-int
+static int
 rte_pmd_ring_devinit(const char *name, const char *params)
 {
 	struct rte_kvargs *kvlist;

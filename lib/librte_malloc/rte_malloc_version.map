@@ -1,0 +1,19 @@
+DPDK_2.0 {
+	global:
+
+	rte_calloc;
+	rte_calloc_socket;
+	rte_free;
+	rte_malloc;
+	rte_malloc_dump_stats;
+	rte_malloc_get_socket_stats;
+	rte_malloc_set_limit;
+	rte_malloc_socket;
+	rte_malloc_validate;
+	rte_malloc_virt2phy;
+	rte_realloc;
+	rte_zmalloc;
+	rte_zmalloc_socket;
+
+	local: *;
+};

@@ -37,6 +37,8 @@ LIB = librte_distributor.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 
+EXPORT_MAP := rte_distributor_version.map
+
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) := rte_distributor.c
 

@@ -39,6 +39,7 @@ LIB = librte_pmd_virtio_uio.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+EXPORT_MAP := rte_pmd_virtio_version.map
 
 #
 # all source are stored in SRCS-y

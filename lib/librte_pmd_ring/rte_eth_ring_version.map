@@ -1,0 +1,9 @@
+DPDK_2.0 {
+	global:
+
+	rte_eth_from_rings;
+	rte_eth_ring_pair_attach;
+	rte_eth_ring_pair_create;
+
+	local: *;
+};

@@ -37,6 +37,8 @@ LIB = librte_hash.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 
+EXPORT_MAP := rte_hash_version.map
+
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_HASH) := rte_hash.c
 SRCS-$(CONFIG_RTE_LIBRTE_HASH) += rte_fbk_hash.c

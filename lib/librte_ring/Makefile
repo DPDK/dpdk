@@ -36,6 +36,8 @@ LIB = librte_ring.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 
+EXPORT_MAP := rte_ring_version.map
+
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_RING) := rte_ring.c
 

@@ -1,0 +1,19 @@
+DPDK_2.0 {
+	global:
+
+	rte_fbk_hash_create;
+	rte_fbk_hash_find_existing;
+	rte_fbk_hash_free;
+	rte_hash_add_key;
+	rte_hash_add_key_with_hash;
+	rte_hash_create;
+	rte_hash_del_key;
+	rte_hash_del_key_with_hash;
+	rte_hash_find_existing;
+	rte_hash_free;
+	rte_hash_lookup;
+	rte_hash_lookup_bulk;
+	rte_hash_lookup_with_hash;
+
+	local: *;
+};

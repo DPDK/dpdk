@@ -1,0 +1,22 @@
+DPDK_2.0 {
+	global:
+
+	rte_pipeline_check;
+	rte_pipeline_create;
+	rte_pipeline_flush;
+	rte_pipeline_free;
+	rte_pipeline_port_in_connect_to_table;
+	rte_pipeline_port_in_create;
+	rte_pipeline_port_in_disable;
+	rte_pipeline_port_in_enable;
+	rte_pipeline_port_out_create;
+	rte_pipeline_port_out_packet_insert;
+	rte_pipeline_run;
+	rte_pipeline_table_create;
+	rte_pipeline_table_default_entry_add;
+	rte_pipeline_table_default_entry_delete;
+	rte_pipeline_table_entry_add;
+	rte_pipeline_table_entry_delete;
+
+	local: *;
+};

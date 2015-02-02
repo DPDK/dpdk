@@ -1,0 +1,13 @@
+DPDK_2.0 {
+	global:
+
+	rte_ring_create;
+	rte_ring_dump;
+	rte_ring_get_memsize;
+	rte_ring_init;
+	rte_ring_list_dump;
+	rte_ring_lookup;
+	rte_ring_set_water_mark;
+
+	local: *;
+};

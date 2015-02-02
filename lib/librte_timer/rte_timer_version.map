@@ -1,0 +1,15 @@
+DPDK_2.0 {
+	global:
+
+	rte_timer_dump_stats;
+	rte_timer_init;
+	rte_timer_manage;
+	rte_timer_pending;
+	rte_timer_reset;
+	rte_timer_reset_sync;
+	rte_timer_stop;
+	rte_timer_stop_sync;
+	rte_timer_subsystem_init;
+
+	local: *;
+};

@@ -1,0 +1,7 @@
+DPDK_2.0 {
+	global:
+
+	rte_mempool_gntalloc_create;
+
+	local: *;
+};

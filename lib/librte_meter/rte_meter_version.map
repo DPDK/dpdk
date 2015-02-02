@@ -1,0 +1,12 @@
+DPDK_2.0 {
+	global:
+
+	rte_meter_srtcm_color_aware_check;
+	rte_meter_srtcm_color_blind_check;
+	rte_meter_srtcm_config;
+	rte_meter_trtcm_color_aware_check;
+	rte_meter_trtcm_color_blind_check;
+	rte_meter_trtcm_config;
+
+	local: *;
+};

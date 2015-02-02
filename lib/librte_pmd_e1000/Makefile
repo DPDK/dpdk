@@ -39,6 +39,8 @@ LIB = librte_pmd_e1000.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+EXPORT_MAP := rte_pmd_e1000_version.map
+
 ifeq ($(CC), icc)
 #
 # CFLAGS for icc

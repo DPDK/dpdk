@@ -39,6 +39,8 @@ LIB = libethdev.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+EXPORT_MAP := rte_ether_version.map
+
 SRCS-y += rte_ethdev.c
 
 #

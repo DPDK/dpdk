@@ -1,0 +1,10 @@
+DPDK_2.0 {
+	global:
+
+	rte_kvargs_count;
+	rte_kvargs_free;
+	rte_kvargs_parse;
+	rte_kvargs_process;
+
+	local: *;
+};
