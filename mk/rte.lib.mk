@@ -40,7 +40,11 @@ VPATH += $(SRCDIR)
 
 ifeq ($(RTE_BUILD_SHARED_LIB),y)
 LIB := $(patsubst %.a,%.so,$(LIB))
+
+CPU_LDFLAGS += --version-script=$(SRCDIR)/$(EXPORT_MAP)
+
 endif
+
 
 _BUILD = $(LIB)
 _INSTALL = $(INSTALL-FILES-y) $(SYMLINK-FILES-y) $(RTE_OUTPUT)/lib/$(LIB)
