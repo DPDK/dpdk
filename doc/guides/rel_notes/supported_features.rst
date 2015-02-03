@@ -51,7 +51,7 @@ Supported Features
 
     *   Intel® X710 40 Gigabit Ethernet Controller
 
-*   Support NIC filters in addition to flow director for Intel� 1GbE and 10GbE Controllers
+*   Support NIC filters in addition to flow director for Intel® 1GbE and 10GbE Controllers
 
 *   Virtualization (KVM)
 
