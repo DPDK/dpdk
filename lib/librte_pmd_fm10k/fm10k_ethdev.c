@@ -44,6 +44,10 @@
 /* Default delay to acquire mailbox lock */
 #define FM10K_MBXLOCK_DELAY_US 20
 
+/* Number of chars per uint32 type */
+#define CHARS_PER_UINT32 (sizeof(uint32_t))
+#define BIT_MASK_PER_UINT32 ((1 << CHARS_PER_UINT32) - 1)
+
 static void
 fm10k_mbx_initlock(struct fm10k_hw *hw)
 {
@@ -70,6 +74,22 @@ fm10k_dev_configure(struct rte_eth_dev *dev)
 
 	if (dev->data->dev_conf.rxmode.hw_strip_crc == 0)
 		PMD_INIT_LOG(WARNING, "fm10k always strip CRC");
+
+	return 0;
+}
+
+static int
+fm10k_link_update(struct rte_eth_dev *dev,
+	__rte_unused int wait_to_complete)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	/* The host-interface link is always up.  The speed is ~50Gbps per Gen3
+	 * x8 PCIe interface. For now, we leave the speed undefined since there
+	 * is no 50Gbps Ethernet. */
+	dev->data->dev_link.link_speed  = 0;
+	dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	dev->data->dev_link.link_status = 1;
 
 	return 0;
 }
@@ -119,6 +139,144 @@ fm10k_stats_reset(struct rte_eth_dev *dev)
 	fm10k_rebind_hw_stats(hw, hw_stats);
 }
 
+static void
+fm10k_dev_infos_get(struct rte_eth_dev *dev,
+	struct rte_eth_dev_info *dev_info)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+
+	dev_info->min_rx_bufsize     = FM10K_MIN_RX_BUF_SIZE;
+	dev_info->max_rx_pktlen      = FM10K_MAX_PKT_SIZE;
+	dev_info->max_rx_queues      = hw->mac.max_queues;
+	dev_info->max_tx_queues      = hw->mac.max_queues;
+	dev_info->max_mac_addrs      = 1;
+	dev_info->max_hash_mac_addrs = 0;
+	dev_info->max_vfs            = FM10K_MAX_VF_NUM;
+	dev_info->max_vmdq_pools     = ETH_64_POOLS;
+	dev_info->rx_offload_capa =
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM  |
+		DEV_RX_OFFLOAD_TCP_CKSUM;
+	dev_info->tx_offload_capa    = 0;
+	dev_info->reta_size = FM10K_MAX_RSS_INDICES;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = FM10K_DEFAULT_RX_PTHRESH,
+			.hthresh = FM10K_DEFAULT_RX_HTHRESH,
+			.wthresh = FM10K_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = FM10K_RX_FREE_THRESH_DEFAULT(0),
+		.rx_drop_en = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = FM10K_DEFAULT_TX_PTHRESH,
+			.hthresh = FM10K_DEFAULT_TX_HTHRESH,
+			.wthresh = FM10K_DEFAULT_TX_WTHRESH,
+		},
+		.tx_free_thresh = FM10K_TX_FREE_THRESH_DEFAULT(0),
+		.tx_rs_thresh = FM10K_TX_RS_THRESH_DEFAULT(0),
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
+				ETH_TXQ_FLAGS_NOOFFLOADS,
+	};
+
+}
+
+static int
+fm10k_reta_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t i, j, idx, shift;
+	uint8_t mask;
+	uint32_t reta;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (reta_size > FM10K_MAX_RSS_INDICES) {
+		PMD_INIT_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)", reta_size, FM10K_MAX_RSS_INDICES);
+		return -EINVAL;
+	}
+
+	/*
+	 * Update Redirection Table RETA[n], n=0..31. The redirection table has
+	 * 128-entries in 32 registers
+	 */
+	for (i = 0; i < FM10K_MAX_RSS_INDICES; i += CHARS_PER_UINT32) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
+				BIT_MASK_PER_UINT32);
+		if (mask == 0)
+			continue;
+
+		reta = 0;
+		if (mask != BIT_MASK_PER_UINT32)
+			reta = FM10K_READ_REG(hw, FM10K_RETA(0, i >> 2));
+
+		for (j = 0; j < CHARS_PER_UINT32; j++) {
+			if (mask & (0x1 << j)) {
+				if (mask != 0xF)
+					reta &= ~(UINT8_MAX << CHAR_BIT * j);
+				reta |= reta_conf[idx].reta[shift + j] <<
+						(CHAR_BIT * j);
+			}
+		}
+		FM10K_WRITE_REG(hw, FM10K_RETA(0, i >> 2), reta);
+	}
+
+	return 0;
+}
+
+static int
+fm10k_reta_query(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t i, j, idx, shift;
+	uint8_t mask;
+	uint32_t reta;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (reta_size < FM10K_MAX_RSS_INDICES) {
+		PMD_INIT_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)", reta_size, FM10K_MAX_RSS_INDICES);
+		return -EINVAL;
+	}
+
+	/*
+	 * Read Redirection Table RETA[n], n=0..31. The redirection table has
+	 * 128-entries in 32 registers
+	 */
+	for (i = 0; i < FM10K_MAX_RSS_INDICES; i += CHARS_PER_UINT32) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
+				BIT_MASK_PER_UINT32);
+		if (mask == 0)
+			continue;
+
+		reta = FM10K_READ_REG(hw, FM10K_RETA(0, i >> 2));
+		for (j = 0; j < CHARS_PER_UINT32; j++) {
+			if (mask & (0x1 << j))
+				reta_conf[idx].reta[shift + j] = ((reta >>
+					CHAR_BIT * j) & UINT8_MAX);
+		}
+	}
+
+	return 0;
+}
+
 /* Mailbox message handler in VF */
 static const struct fm10k_msg_data fm10k_msgdata_vf[] = {
 	FM10K_TLV_MSG_TEST_HANDLER(fm10k_tlv_msg_test),
@@ -165,6 +323,10 @@ static struct eth_dev_ops fm10k_eth_dev_ops = {
 	.dev_configure		= fm10k_dev_configure,
 	.stats_get		= fm10k_stats_get,
 	.stats_reset		= fm10k_stats_reset,
+	.link_update		= fm10k_link_update,
+	.dev_infos_get		= fm10k_dev_infos_get,
+	.reta_update		= fm10k_reta_update,
+	.reta_query		= fm10k_reta_query,
 };
 
 static int
