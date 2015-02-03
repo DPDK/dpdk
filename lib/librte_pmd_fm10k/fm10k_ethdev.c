@@ -41,6 +41,7 @@
 #include "fm10k.h"
 #include "base/fm10k_api.h"
 
+#define FM10K_RX_BUFF_ALIGN 512
 /* Default delay to acquire mailbox lock */
 #define FM10K_MBXLOCK_DELAY_US 20
 
@@ -65,6 +66,46 @@ static void
 fm10k_mbx_unlock(struct fm10k_hw *hw)
 {
 	rte_spinlock_unlock(FM10K_DEV_PRIVATE_TO_MBXLOCK(hw->back));
+}
+
+/*
+ * clean queue, descriptor rings, free software buffers used when stopping
+ * device.
+ */
+static inline void
+rx_queue_clean(struct fm10k_rx_queue *q)
+{
+	union fm10k_rx_desc zero = {.q = {0, 0, 0, 0} };
+	uint32_t i;
+	PMD_INIT_FUNC_TRACE();
+
+	/* zero descriptor rings */
+	for (i = 0; i < q->nb_desc; ++i)
+		q->hw_ring[i] = zero;
+
+	/* free software buffers */
+	for (i = 0; i < q->nb_desc; ++i) {
+		if (q->sw_ring[i]) {
+			rte_pktmbuf_free_seg(q->sw_ring[i]);
+			q->sw_ring[i] = NULL;
+		}
+	}
+}
+
+/*
+ * free all queue memory used when releasing the queue (i.e. configure)
+ */
+static inline void
+rx_queue_free(struct fm10k_rx_queue *q)
+{
+	PMD_INIT_FUNC_TRACE();
+	if (q) {
+		PMD_INIT_LOG(DEBUG, "Freeing rx queue %p", q);
+		rx_queue_clean(q);
+		if (q->sw_ring)
+			rte_free(q->sw_ring);
+		rte_free(q);
+	}
 }
 
 static int
@@ -184,6 +225,217 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 				ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
 
+}
+
+static inline int
+check_nb_desc(uint16_t min, uint16_t max, uint16_t mult, uint16_t request)
+{
+	if ((request < min) || (request > max) || ((request % mult) != 0))
+		return -1;
+	else
+		return 0;
+}
+
+/*
+ * Create a memzone for hardware descriptor rings. Malloc cannot be used since
+ * the physical address is required. If the memzone is already created, then
+ * this function returns a pointer to the existing memzone.
+ */
+static inline const struct rte_memzone *
+allocate_hw_ring(const char *driver_name, const char *ring_name,
+	uint8_t port_id, uint16_t queue_id, int socket_id,
+	uint32_t size, uint32_t align)
+{
+	char name[RTE_MEMZONE_NAMESIZE];
+	const struct rte_memzone *mz;
+
+	snprintf(name, sizeof(name), "%s_%s_%d_%d_%d",
+		 driver_name, ring_name, port_id, queue_id, socket_id);
+
+	/* return the memzone if it already exists */
+	mz = rte_memzone_lookup(name);
+	if (mz)
+		return mz;
+
+#ifdef RTE_LIBRTE_XEN_DOM0
+	return rte_memzone_reserve_bounded(name, size, socket_id, 0, align,
+					   RTE_PGSIZE_2M);
+#else
+	return rte_memzone_reserve_aligned(name, size, socket_id, 0, align);
+#endif
+}
+
+static inline int
+check_thresh(uint16_t min, uint16_t max, uint16_t div, uint16_t request)
+{
+	if ((request < min) || (request > max) || ((div % request) != 0))
+		return -1;
+	else
+		return 0;
+}
+
+static inline int
+handle_rxconf(struct fm10k_rx_queue *q, const struct rte_eth_rxconf *conf)
+{
+	uint16_t rx_free_thresh;
+
+	if (conf->rx_free_thresh == 0)
+		rx_free_thresh = FM10K_RX_FREE_THRESH_DEFAULT(q);
+	else
+		rx_free_thresh = conf->rx_free_thresh;
+
+	/* make sure the requested threshold satisfies the constraints */
+	if (check_thresh(FM10K_RX_FREE_THRESH_MIN(q),
+			FM10K_RX_FREE_THRESH_MAX(q),
+			FM10K_RX_FREE_THRESH_DIV(q),
+			rx_free_thresh)) {
+		PMD_INIT_LOG(ERR, "rx_free_thresh (%u) must be "
+			"less than or equal to %u, "
+			"greater than or equal to %u, "
+			"and a divisor of %u",
+			rx_free_thresh, FM10K_RX_FREE_THRESH_MAX(q),
+			FM10K_RX_FREE_THRESH_MIN(q),
+			FM10K_RX_FREE_THRESH_DIV(q));
+		return (-EINVAL);
+	}
+
+	q->alloc_thresh = rx_free_thresh;
+	q->drop_en = conf->rx_drop_en;
+	q->rx_deferred_start = conf->rx_deferred_start;
+
+	return 0;
+}
+
+/*
+ * Hardware requires specific alignment for Rx packet buffers. At
+ * least one of the following two conditions must be satisfied.
+ *  1. Address is 512B aligned
+ *  2. Address is 8B aligned and buffer does not cross 4K boundary.
+ *
+ * As such, the driver may need to adjust the DMA address within the
+ * buffer by up to 512B. The mempool element size is checked here
+ * to make sure a maximally sized Ethernet frame can still be wholly
+ * contained within the buffer after 512B alignment.
+ *
+ * return 1 if the element size is valid, otherwise return 0.
+ */
+static int
+mempool_element_size_valid(struct rte_mempool *mp)
+{
+	uint32_t min_size;
+
+	/* elt_size includes mbuf header and headroom */
+	min_size = mp->elt_size - sizeof(struct rte_mbuf) -
+			RTE_PKTMBUF_HEADROOM;
+
+	/* account for up to 512B of alignment */
+	min_size -= FM10K_RX_BUFF_ALIGN;
+
+	/* sanity check for overflow */
+	if (min_size > mp->elt_size)
+		return 0;
+
+	if (min_size < ETHER_MAX_VLAN_FRAME_LEN)
+		return 0;
+
+	/* size is valid */
+	return 1;
+}
+
+static int
+fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
+	uint16_t nb_desc, unsigned int socket_id,
+	const struct rte_eth_rxconf *conf, struct rte_mempool *mp)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct fm10k_rx_queue *q;
+	const struct rte_memzone *mz;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* make sure the mempool element size can account for alignment. */
+	if (!mempool_element_size_valid(mp)) {
+		PMD_INIT_LOG(ERR, "Error : Mempool element size is too small");
+		return (-EINVAL);
+	}
+
+	/* make sure a valid number of descriptors have been requested */
+	if (check_nb_desc(FM10K_MIN_RX_DESC, FM10K_MAX_RX_DESC,
+				FM10K_MULT_RX_DESC, nb_desc)) {
+		PMD_INIT_LOG(ERR, "Number of Rx descriptors (%u) must be "
+			"less than or equal to %"PRIu32", "
+			"greater than or equal to %u, "
+			"and a multiple of %u",
+			nb_desc, (uint32_t)FM10K_MAX_RX_DESC, FM10K_MIN_RX_DESC,
+			FM10K_MULT_RX_DESC);
+		return (-EINVAL);
+	}
+
+	/*
+	 * if this queue existed already, free the associated memory. The
+	 * queue cannot be reused in case we need to allocate memory on
+	 * different socket than was previously used.
+	 */
+	if (dev->data->rx_queues[queue_id] != NULL) {
+		rx_queue_free(dev->data->rx_queues[queue_id]);
+		dev->data->rx_queues[queue_id] = NULL;
+	}
+
+	/* allocate memory for the queue structure */
+	q = rte_zmalloc_socket("fm10k", sizeof(*q), RTE_CACHE_LINE_SIZE,
+				socket_id);
+	if (q == NULL) {
+		PMD_INIT_LOG(ERR, "Cannot allocate queue structure");
+		return (-ENOMEM);
+	}
+
+	/* setup queue */
+	q->mp = mp;
+	q->nb_desc = nb_desc;
+	q->port_id = dev->data->port_id;
+	q->queue_id = queue_id;
+	q->tail_ptr = (volatile uint32_t *)
+		&((uint32_t *)hw->hw_addr)[FM10K_RDT(queue_id)];
+	if (handle_rxconf(q, conf))
+		return (-EINVAL);
+
+	/* allocate memory for the software ring */
+	q->sw_ring = rte_zmalloc_socket("fm10k sw ring",
+					nb_desc * sizeof(struct rte_mbuf *),
+					RTE_CACHE_LINE_SIZE, socket_id);
+	if (q->sw_ring == NULL) {
+		PMD_INIT_LOG(ERR, "Cannot allocate software ring");
+		rte_free(q);
+		return (-ENOMEM);
+	}
+
+	/*
+	 * allocate memory for the hardware descriptor ring. A memzone large
+	 * enough to hold the maximum ring size is requested to allow for
+	 * resizing in later calls to the queue setup function.
+	 */
+	mz = allocate_hw_ring(dev->driver->pci_drv.name, "rx_ring",
+				dev->data->port_id, queue_id, socket_id,
+				FM10K_MAX_RX_RING_SZ, FM10K_ALIGN_RX_DESC);
+	if (mz == NULL) {
+		PMD_INIT_LOG(ERR, "Cannot allocate hardware ring");
+		rte_free(q->sw_ring);
+		rte_free(q);
+		return (-ENOMEM);
+	}
+	q->hw_ring = mz->addr;
+	q->hw_ring_phys_addr = mz->phys_addr;
+
+	dev->data->rx_queues[queue_id] = q;
+	return 0;
+}
+
+static void
+fm10k_rx_queue_release(void *queue)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	rx_queue_free(queue);
 }
 
 static int
@@ -325,6 +577,8 @@ static struct eth_dev_ops fm10k_eth_dev_ops = {
 	.stats_reset		= fm10k_stats_reset,
 	.link_update		= fm10k_link_update,
 	.dev_infos_get		= fm10k_dev_infos_get,
+	.rx_queue_setup		= fm10k_rx_queue_setup,
+	.rx_queue_release	= fm10k_rx_queue_release,
 	.reta_update		= fm10k_reta_update,
 	.reta_query		= fm10k_reta_query,
 };
