@@ -1,7 +1,7 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
-#   Copyright(c) 2013 6WIND S.A.
+#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+#   Copyright(c) 2013-2015 6WIND S.A.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -37,12 +37,22 @@ endif
 endif
 
 RTE_SPHINX_BUILD = sphinx-build
+RTE_PDFLATEX_VERBOSE := --interaction=nonstopmode
+
 ifndef V
 RTE_SPHINX_VERBOSE := -q
+RTE_PDFLATEX_VERBOSE := --interaction=batchmode
+RTE_INKSCAPE_VERBOSE := >/dev/null 2>&1
 endif
 ifeq '$V' '0'
 RTE_SPHINX_VERBOSE := -q
+RTE_PDFLATEX_VERBOSE := --interaction=batchmode
+RTE_INKSCAPE_VERBOSE := >/dev/null 2>&1
 endif
+
+RTE_PDF_DPI ?= 300
+
+RTE_GUIDES := $(filter %/, $(wildcard $(RTE_SDK)/doc/guides/*/))
 
 .PHONY: help
 help:
@@ -50,10 +60,10 @@ help:
 	@$(MAKE) -rR showconfigs | sed 's,^,\t\t\t\t,'
 
 .PHONY: all
-all: api-html guides-html
+all: api-html guides-html guides-pdf
 
 .PHONY: clean
-clean: api-html-clean guides-html-clean
+clean: api-html-clean guides-html-clean guides-pdf-clean
 
 .PHONY: api-html
 api-html: api-html-clean
@@ -79,7 +89,31 @@ guides-%-clean:
 	$(Q)rm -rf $(RTE_OUTPUT)/doc/$*/guides
 	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/$* 2>&- || true
 
+guides-pdf-clean: guides-pdf-img-clean
+guides-pdf-img-clean:
+	$(Q)rm -f $(RTE_SDK)/doc/guides/*/img/*.pdf
+
+guides-pdf: $(addprefix guides-pdf-, $(notdir $(RTE_GUIDES:/=))) ;
 guides-%:
-	@echo 'sphinx for guides...'
+	@echo 'sphinx processing $@...'
 	$(Q)$(RTE_SPHINX_BUILD) -b $* $(RTE_SPHINX_VERBOSE) \
-		-c $(RTE_SDK)/doc/guides $(RTE_SDK)/doc/guides $(RTE_OUTPUT)/doc/$*/guides
+		-c $(RTE_SDK)/doc/guides $(RTE_SDK)/doc/guides \
+		$(RTE_OUTPUT)/doc/$*/guides
+
+guides-pdf-%:
+	@echo 'sphinx processing $@...'
+	$(Q)$(RTE_SPHINX_BUILD) -b latex $(RTE_SPHINX_VERBOSE) \
+		-c $(RTE_SDK)/doc/guides $(RTE_SDK)/doc/guides/$* \
+		$(RTE_OUTPUT)/doc/pdf/guides/$*
+	$(Q)rm -f $^
+	@echo 'pdflatex processing $@...'
+	$(Q)$(MAKE) all-pdf -sC $(RTE_OUTPUT)/doc/pdf/guides/$* \
+		LATEXOPTS=$(RTE_PDFLATEX_VERBOSE)
+	$(Q)mv $(RTE_OUTPUT)/doc/pdf/guides/$*/doc.pdf \
+		$(RTE_OUTPUT)/doc/pdf/guides/$*.pdf
+
+# Each PDF depends on generated images *.pdf from *.svg
+$(foreach guide, $(RTE_GUIDES), $(foreach img, $(wildcard $(guide)img/*.svg), \
+	$(eval guides-pdf-$(notdir $(guide:/=)): $(img:svg=pdf))))
+%.pdf: %.svg
+	$(Q)inkscape -d $(RTE_PDF_DPI) -D -f $< -A $@ $(RTE_INKSCAPE_VERBOSE)
