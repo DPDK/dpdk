@@ -216,6 +216,7 @@ F: examples/vhost/
 F: doc/guides/sample_app_ug/vhost.rst
 
 VMware vmxnet3
+M: Yong Wang <yongwang@vmware.com>
 F: lib/librte_pmd_vmxnet3/
 F: doc/guides/prog_guide/poll_mode_drv_paravirtual_vmxnets_nic.rst
 
