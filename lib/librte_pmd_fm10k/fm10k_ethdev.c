@@ -108,6 +108,48 @@ rx_queue_free(struct fm10k_rx_queue *q)
 	}
 }
 
+/*
+ * clean queue, descriptor rings, free software buffers used when stopping
+ * device
+ */
+static inline void
+tx_queue_clean(struct fm10k_tx_queue *q)
+{
+	struct fm10k_tx_desc zero = {0, 0, 0, 0, 0, 0};
+	uint32_t i;
+	PMD_INIT_FUNC_TRACE();
+
+	/* zero descriptor rings */
+	for (i = 0; i < q->nb_desc; ++i)
+		q->hw_ring[i] = zero;
+
+	/* free software buffers */
+	for (i = 0; i < q->nb_desc; ++i) {
+		if (q->sw_ring[i]) {
+			rte_pktmbuf_free_seg(q->sw_ring[i]);
+			q->sw_ring[i] = NULL;
+		}
+	}
+}
+
+/*
+ * free all queue memory used when releasing the queue (i.e. configure)
+ */
+static inline void
+tx_queue_free(struct fm10k_tx_queue *q)
+{
+	PMD_INIT_FUNC_TRACE();
+	if (q) {
+		PMD_INIT_LOG(DEBUG, "Freeing tx queue %p", q);
+		tx_queue_clean(q);
+		if (q->rs_tracker.list)
+			rte_free(q->rs_tracker.list);
+		if (q->sw_ring)
+			rte_free(q->sw_ring);
+		rte_free(q);
+	}
+}
+
 static int
 fm10k_dev_configure(struct rte_eth_dev *dev)
 {
@@ -438,6 +480,167 @@ fm10k_rx_queue_release(void *queue)
 	rx_queue_free(queue);
 }
 
+static inline int
+handle_txconf(struct fm10k_tx_queue *q, const struct rte_eth_txconf *conf)
+{
+	uint16_t tx_free_thresh;
+	uint16_t tx_rs_thresh;
+
+	/* constraint MACROs require that tx_free_thresh is configured
+	 * before tx_rs_thresh */
+	if (conf->tx_free_thresh == 0)
+		tx_free_thresh = FM10K_TX_FREE_THRESH_DEFAULT(q);
+	else
+		tx_free_thresh = conf->tx_free_thresh;
+
+	/* make sure the requested threshold satisfies the constraints */
+	if (check_thresh(FM10K_TX_FREE_THRESH_MIN(q),
+			FM10K_TX_FREE_THRESH_MAX(q),
+			FM10K_TX_FREE_THRESH_DIV(q),
+			tx_free_thresh)) {
+		PMD_INIT_LOG(ERR, "tx_free_thresh (%u) must be "
+			"less than or equal to %u, "
+			"greater than or equal to %u, "
+			"and a divisor of %u",
+			tx_free_thresh, FM10K_TX_FREE_THRESH_MAX(q),
+			FM10K_TX_FREE_THRESH_MIN(q),
+			FM10K_TX_FREE_THRESH_DIV(q));
+		return (-EINVAL);
+	}
+
+	q->free_thresh = tx_free_thresh;
+
+	if (conf->tx_rs_thresh == 0)
+		tx_rs_thresh = FM10K_TX_RS_THRESH_DEFAULT(q);
+	else
+		tx_rs_thresh = conf->tx_rs_thresh;
+
+	q->tx_deferred_start = conf->tx_deferred_start;
+
+	/* make sure the requested threshold satisfies the constraints */
+	if (check_thresh(FM10K_TX_RS_THRESH_MIN(q),
+			FM10K_TX_RS_THRESH_MAX(q),
+			FM10K_TX_RS_THRESH_DIV(q),
+			tx_rs_thresh)) {
+		PMD_INIT_LOG(ERR, "tx_rs_thresh (%u) must be "
+			"less than or equal to %u, "
+			"greater than or equal to %u, "
+			"and a divisor of %u",
+			tx_rs_thresh, FM10K_TX_RS_THRESH_MAX(q),
+			FM10K_TX_RS_THRESH_MIN(q),
+			FM10K_TX_RS_THRESH_DIV(q));
+		return (-EINVAL);
+	}
+
+	q->rs_thresh = tx_rs_thresh;
+
+	return 0;
+}
+
+static int
+fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
+	uint16_t nb_desc, unsigned int socket_id,
+	const struct rte_eth_txconf *conf)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct fm10k_tx_queue *q;
+	const struct rte_memzone *mz;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* make sure a valid number of descriptors have been requested */
+	if (check_nb_desc(FM10K_MIN_TX_DESC, FM10K_MAX_TX_DESC,
+				FM10K_MULT_TX_DESC, nb_desc)) {
+		PMD_INIT_LOG(ERR, "Number of Tx descriptors (%u) must be "
+			"less than or equal to %"PRIu32", "
+			"greater than or equal to %u, "
+			"and a multiple of %u",
+			nb_desc, (uint32_t)FM10K_MAX_TX_DESC, FM10K_MIN_TX_DESC,
+			FM10K_MULT_TX_DESC);
+		return (-EINVAL);
+	}
+
+	/*
+	 * if this queue existed already, free the associated memory. The
+	 * queue cannot be reused in case we need to allocate memory on
+	 * different socket than was previously used.
+	 */
+	if (dev->data->tx_queues[queue_id] != NULL) {
+		tx_queue_free(dev->data->tx_queues[queue_id]);
+		dev->data->tx_queues[queue_id] = NULL;
+	}
+
+	/* allocate memory for the queue structure */
+	q = rte_zmalloc_socket("fm10k", sizeof(*q), RTE_CACHE_LINE_SIZE,
+				socket_id);
+	if (q == NULL) {
+		PMD_INIT_LOG(ERR, "Cannot allocate queue structure");
+		return (-ENOMEM);
+	}
+
+	/* setup queue */
+	q->nb_desc = nb_desc;
+	q->port_id = dev->data->port_id;
+	q->queue_id = queue_id;
+	q->tail_ptr = (volatile uint32_t *)
+		&((uint32_t *)hw->hw_addr)[FM10K_TDT(queue_id)];
+	if (handle_txconf(q, conf))
+		return (-EINVAL);
+
+	/* allocate memory for the software ring */
+	q->sw_ring = rte_zmalloc_socket("fm10k sw ring",
+					nb_desc * sizeof(struct rte_mbuf *),
+					RTE_CACHE_LINE_SIZE, socket_id);
+	if (q->sw_ring == NULL) {
+		PMD_INIT_LOG(ERR, "Cannot allocate software ring");
+		rte_free(q);
+		return (-ENOMEM);
+	}
+
+	/*
+	 * allocate memory for the hardware descriptor ring. A memzone large
+	 * enough to hold the maximum ring size is requested to allow for
+	 * resizing in later calls to the queue setup function.
+	 */
+	mz = allocate_hw_ring(dev->driver->pci_drv.name, "tx_ring",
+				dev->data->port_id, queue_id, socket_id,
+				FM10K_MAX_TX_RING_SZ, FM10K_ALIGN_TX_DESC);
+	if (mz == NULL) {
+		PMD_INIT_LOG(ERR, "Cannot allocate hardware ring");
+		rte_free(q->sw_ring);
+		rte_free(q);
+		return (-ENOMEM);
+	}
+	q->hw_ring = mz->addr;
+	q->hw_ring_phys_addr = mz->phys_addr;
+
+	/*
+	 * allocate memory for the RS bit tracker. Enough slots to hold the
+	 * descriptor index for each RS bit needing to be set are required.
+	 */
+	q->rs_tracker.list = rte_zmalloc_socket("fm10k rs tracker",
+				((nb_desc + 1) / q->rs_thresh) *
+				sizeof(uint16_t),
+				RTE_CACHE_LINE_SIZE, socket_id);
+	if (q->rs_tracker.list == NULL) {
+		PMD_INIT_LOG(ERR, "Cannot allocate RS bit tracker");
+		rte_free(q->sw_ring);
+		rte_free(q);
+		return (-ENOMEM);
+	}
+
+	dev->data->tx_queues[queue_id] = q;
+	return 0;
+}
+
+static void
+fm10k_tx_queue_release(void *queue)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	tx_queue_free(queue);
+}
+
 static int
 fm10k_reta_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_reta_entry64 *reta_conf,
@@ -579,6 +782,8 @@ static struct eth_dev_ops fm10k_eth_dev_ops = {
 	.dev_infos_get		= fm10k_dev_infos_get,
 	.rx_queue_setup		= fm10k_rx_queue_setup,
 	.rx_queue_release	= fm10k_rx_queue_release,
+	.tx_queue_setup		= fm10k_tx_queue_setup,
+	.tx_queue_release	= fm10k_tx_queue_release,
 	.reta_update		= fm10k_reta_update,
 	.reta_query		= fm10k_reta_query,
 };
