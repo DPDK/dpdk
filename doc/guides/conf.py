@@ -29,6 +29,8 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import subprocess
+from sphinx.highlighting import PygmentsBridge
+from pygments.formatters.latex import LatexFormatter
 
 project = 'DPDK'
 
@@ -46,3 +48,32 @@ latex_documents = [
      '',
      'manual')
 ]
+
+# Latex directives to be included directly in the latex/pdf docs.
+latex_preamble = r"""
+\usepackage[utf8]{inputenc}
+\usepackage{DejaVuSansMono}
+\usepackage[T1]{fontenc}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\RecustomVerbatimEnvironment{Verbatim}{Verbatim}{xleftmargin=5mm}
+"""
+
+# Configuration for the latex/pdf docs.
+latex_elements = {
+    'papersize': 'a4paper',
+    'pointsize': '11pt',
+    # customize Latex formatting
+    'preamble': latex_preamble
+}
+
+# Override the default Latex formatter in order to modify the
+# code/verbatim blocks.
+class CustomLatexFormatter(LatexFormatter):
+    def __init__(self, **options):
+        super(CustomLatexFormatter, self).__init__(**options)
+        # Use the second smallest font size for code/verbatim blocks.
+        self.verboptions = r'formatcom=\footnotesize'
+
+# Replace the default latex formatter.
+PygmentsBridge.latex_formatter = CustomLatexFormatter
