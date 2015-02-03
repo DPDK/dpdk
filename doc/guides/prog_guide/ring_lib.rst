@@ -347,30 +347,30 @@ References
 
     *   `Linux Lockless Ring Buffer Design <http://lwn.net/Articles/340400/>`_
 
-.. |ring1| image:: img/ring1.svg
+.. |ring1| image:: img/ring1.*
 
-.. |ring-enqueue1| image:: img/ring-enqueue1.svg
+.. |ring-enqueue1| image:: img/ring-enqueue1.*
 
-.. |ring-enqueue2| image:: img/ring-enqueue2.svg
+.. |ring-enqueue2| image:: img/ring-enqueue2.*
 
-.. |ring-enqueue3| image:: img/ring-enqueue3.svg
+.. |ring-enqueue3| image:: img/ring-enqueue3.*
 
-.. |ring-dequeue1| image:: img/ring-dequeue1.svg
+.. |ring-dequeue1| image:: img/ring-dequeue1.*
 
-.. |ring-dequeue2| image:: img/ring-dequeue2.svg
+.. |ring-dequeue2| image:: img/ring-dequeue2.*
 
-.. |ring-dequeue3| image:: img/ring-dequeue3.svg
+.. |ring-dequeue3| image:: img/ring-dequeue3.*
 
-.. |ring-mp-enqueue1| image:: img/ring-mp-enqueue1.svg
+.. |ring-mp-enqueue1| image:: img/ring-mp-enqueue1.*
 
-.. |ring-mp-enqueue2| image:: img/ring-mp-enqueue2.svg
+.. |ring-mp-enqueue2| image:: img/ring-mp-enqueue2.*
 
-.. |ring-mp-enqueue3| image:: img/ring-mp-enqueue3.svg
+.. |ring-mp-enqueue3| image:: img/ring-mp-enqueue3.*
 
-.. |ring-mp-enqueue4| image:: img/ring-mp-enqueue4.svg
+.. |ring-mp-enqueue4| image:: img/ring-mp-enqueue4.*
 
-.. |ring-mp-enqueue5| image:: img/ring-mp-enqueue5.svg
+.. |ring-mp-enqueue5| image:: img/ring-mp-enqueue5.*
 
-.. |ring-modulo1| image:: img/ring-modulo1.svg
+.. |ring-modulo1| image:: img/ring-modulo1.*
 
-.. |ring-modulo2| image:: img/ring-modulo2.svg
+.. |ring-modulo2| image:: img/ring-modulo2.*

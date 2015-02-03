@@ -1728,38 +1728,38 @@ For each input packet, the steps for the srTCM / trTCM algorithms are:
     When the output color is not red, a number of tokens equal to the length of the IP packet are
     subtracted from the C or E /P or both buckets, depending on the algorithm and the output color of the packet.
 
-.. |flow_tru_droppper| image:: img/flow_tru_droppper.png
+.. |flow_tru_droppper| image:: img/flow_tru_droppper.*
 
-.. |drop_probability_graph| image:: img/drop_probability_graph.png
+.. |drop_probability_graph| image:: img/drop_probability_graph.*
 
-.. |drop_probability_eq3| image:: img/drop_probability_eq3.png
+.. |drop_probability_eq3| image:: img/drop_probability_eq3.*
 
-.. |eq2_expression| image:: img/eq2_expression.png
+.. |eq2_expression| image:: img/eq2_expression.*
 
-.. |drop_probability_eq4| image:: img/drop_probability_eq4.png
+.. |drop_probability_eq4| image:: img/drop_probability_eq4.*
 
-.. |pkt_drop_probability| image:: img/pkt_drop_probability.png
+.. |pkt_drop_probability| image:: img/pkt_drop_probability.*
 
-.. |pkt_proc_pipeline_qos| image:: img/pkt_proc_pipeline_qos.png
+.. |pkt_proc_pipeline_qos| image:: img/pkt_proc_pipeline_qos.*
 
-.. |ex_data_flow_tru_dropper| image:: img/ex_data_flow_tru_dropper.png
+.. |ex_data_flow_tru_dropper| image:: img/ex_data_flow_tru_dropper.*
 
-.. |ewma_filter_eq_1| image:: img/ewma_filter_eq_1.png
+.. |ewma_filter_eq_1| image:: img/ewma_filter_eq_1.*
 
-.. |ewma_filter_eq_2| image:: img/ewma_filter_eq_2.png
+.. |ewma_filter_eq_2| image:: img/ewma_filter_eq_2.*
 
-.. |data_struct_per_port| image:: img/data_struct_per_port.png
+.. |data_struct_per_port| image:: img/data_struct_per_port.*
 
-.. |prefetch_pipeline| image:: img/prefetch_pipeline.png
+.. |prefetch_pipeline| image:: img/prefetch_pipeline.*
 
-.. |pipe_prefetch_sm| image:: img/pipe_prefetch_sm.png
+.. |pipe_prefetch_sm| image:: img/pipe_prefetch_sm.*
 
-.. |blk_diag_dropper| image:: img/blk_diag_dropper.png
+.. |blk_diag_dropper| image:: img/blk_diag_dropper.*
 
-.. |m_definition| image:: img/m_definition.png
+.. |m_definition| image:: img/m_definition.*
 
-.. |eq2_factor| image:: img/eq2_factor.png
+.. |eq2_factor| image:: img/eq2_factor.*
 
-.. |sched_hier_per_port| image:: img/sched_hier_per_port.png
+.. |sched_hier_per_port| image:: img/sched_hier_per_port.*
 
-.. |hier_sched_blk| image:: img/hier_sched_blk.png
+.. |hier_sched_blk| image:: img/hier_sched_blk.*

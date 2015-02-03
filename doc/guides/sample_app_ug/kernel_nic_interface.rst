@@ -75,7 +75,7 @@ The packet flow through the Kernel NIC Interface application is as shown in the 
 
 **Figure 2. Kernel NIC Application Packet Flow**
 
-.. image3_png has been renamed to kernel_nic.png
+.. image3_png has been renamed to kernel_nic.*
 
 |kernel_nic|
 
@@ -617,4 +617,4 @@ Currently, setting a new MTU and configuring the network interface (up/ down) ar
         return ret;
     }
 
-.. |kernel_nic| image:: img/kernel_nic.png
+.. |kernel_nic| image:: img/kernel_nic.*

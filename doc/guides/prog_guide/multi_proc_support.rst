@@ -200,4 +200,4 @@ instead of the functions which do the hashing internally, such as rte_hash_add()
     If the number of required DPDK processes exceeds that of the number of available HPET comparators,
     the TSC (which is the default timer in this release) must be used as a time source across all processes instead of the HPET.
 
-.. |multi_process_memory| image:: img/multi_process_memory.svg
+.. |multi_process_memory| image:: img/multi_process_memory.*

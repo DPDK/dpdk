@@ -111,6 +111,6 @@ i.e. to save power at times of lighter load,
 it is possible to have a worker stop processing packets by calling "rte_distributor_return_pkt()" to indicate that
 it has finished the current packet and does not want a new one.
 
-.. |packet_distributor1| image:: img/packet_distributor1.png
+.. |packet_distributor1| image:: img/packet_distributor1.*
 
-.. |packet_distributor2| image:: img/packet_distributor2.png
+.. |packet_distributor2| image:: img/packet_distributor2.*

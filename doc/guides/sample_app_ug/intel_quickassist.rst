@@ -221,4 +221,4 @@ performing AES-CBC-128 encryption with AES-XCBC-MAC-96 hash, the following setti
 Refer to the *DPDK Test Report* for more examples of traffic generator setup and the application startup command lines.
 If no errors are generated in response to the startup commands, the application is running correctly.
 
-.. |quickassist_block_diagram| image:: img/quickassist_block_diagram.png
+.. |quickassist_block_diagram| image:: img/quickassist_block_diagram.*

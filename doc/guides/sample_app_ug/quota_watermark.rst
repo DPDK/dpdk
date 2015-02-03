@@ -499,8 +499,8 @@ low_watermark from the rte_memzone previously created by qw.
         low_watermark = (unsigned int *) qw_memzone->addr + sizeof(int);
     }
 
-.. |pipeline_overview| image:: img/pipeline_overview.png
+.. |pipeline_overview| image:: img/pipeline_overview.*
 
-.. |ring_pipeline_perf_setup| image:: img/ring_pipeline_perf_setup.png
+.. |ring_pipeline_perf_setup| image:: img/ring_pipeline_perf_setup.*
 
-.. |threads_pipelines| image:: img/threads_pipelines.png
+.. |threads_pipelines| image:: img/threads_pipelines.*

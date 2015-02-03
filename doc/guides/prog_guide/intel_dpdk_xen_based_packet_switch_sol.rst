@@ -457,8 +457,8 @@ The packet flow is:
 
 packet generator->Virtio in guest VM1->switching backend->Virtio in guest VM2->switching backend->wire
 
-.. |grant_table| image:: img/grant_table.png
+.. |grant_table| image:: img/grant_table.*
 
-.. |grant_refs| image:: img/grant_refs.png
+.. |grant_refs| image:: img/grant_refs.*
 
-.. |dpdk_xen_pkt_switch| image:: img/dpdk_xen_pkt_switch.png
+.. |dpdk_xen_pkt_switch| image:: img/dpdk_xen_pkt_switch.*

@@ -434,10 +434,10 @@ Create a bonded device in balance mode with two slaves specified by their PCI ad
 
     $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'eth_bond0,mode=2, slave=0000:00a:00.01,slave=0000:004:00.00,xmit_policy=l34' -- --port-topology=chained
 
-.. |bond-overview| image:: img/bond-overview.svg
-.. |bond-mode-0| image:: img/bond-mode-0.svg
-.. |bond-mode-1| image:: img/bond-mode-1.svg
-.. |bond-mode-2| image:: img/bond-mode-2.svg
-.. |bond-mode-3| image:: img/bond-mode-3.svg
-.. |bond-mode-4| image:: img/bond-mode-4.svg
-.. |bond-mode-5| image:: img/bond-mode-5.svg
+.. |bond-overview| image:: img/bond-overview.*
+.. |bond-mode-0| image:: img/bond-mode-0.*
+.. |bond-mode-1| image:: img/bond-mode-1.*
+.. |bond-mode-2| image:: img/bond-mode-2.*
+.. |bond-mode-3| image:: img/bond-mode-3.*
+.. |bond-mode-4| image:: img/bond-mode-4.*
+.. |bond-mode-5| image:: img/bond-mode-5.*

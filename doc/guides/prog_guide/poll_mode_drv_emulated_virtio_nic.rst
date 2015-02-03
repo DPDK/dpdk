@@ -214,8 +214,8 @@ The packet transmission flow is:
 
     IXIA packet generator-> Guest VM 82599 VF port1 rx burst-> Guest VM virtio port 0 tx burst-> tap -> Linux Bridge->82599 PF-> IXIA packet generator
 
-.. |host_vm_comms| image:: img/host_vm_comms.png
+.. |host_vm_comms| image:: img/host_vm_comms.*
 
-.. |console| image:: img/console.png
+.. |console| image:: img/console.*
 
-.. |host_vm_comms_qemu| image:: img/host_vm_comms_qemu.png
+.. |host_vm_comms_qemu| image:: img/host_vm_comms_qemu.*

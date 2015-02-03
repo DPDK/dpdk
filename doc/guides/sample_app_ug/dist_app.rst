@@ -172,6 +172,6 @@ Sample Application. See Section 9.4.4, "RX Queue Initialization".
 TX queue initialization is done in the same way as it is done in the L2 Forwarding
 Sample Application. See Section 9.4.5, "TX Queue Initialization".
 
-.. |dist_perf| image:: img/dist_perf.svg
+.. |dist_perf| image:: img/dist_perf.*
 
-.. |dist_app| image:: img/dist_app.svg
+.. |dist_app| image:: img/dist_app.*

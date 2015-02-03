@@ -747,12 +747,12 @@ The above message indicates that device 0 has been registered with MAC address c
 Any packets received on the NIC with these values is placed on the devices receive queue.
 When a virtio-net device transmits packets, the VLAN tag is added to the packet by the DPDK vhost sample code.
 
-.. |vhost_net_arch| image:: img/vhost_net_arch.png
+.. |vhost_net_arch| image:: img/vhost_net_arch.*
 
-.. |qemu_virtio_net| image:: img/qemu_virtio_net.png
+.. |qemu_virtio_net| image:: img/qemu_virtio_net.*
 
-.. |tx_dpdk_testpmd| image:: img/tx_dpdk_testpmd.png
+.. |tx_dpdk_testpmd| image:: img/tx_dpdk_testpmd.*
 
-.. |vhost_net_sample_app| image:: img/vhost_net_sample_app.png
+.. |vhost_net_sample_app| image:: img/vhost_net_sample_app.*
 
-.. |virtio_linux_vhost| image:: img/virtio_linux_vhost.png
+.. |virtio_linux_vhost| image:: img/virtio_linux_vhost.*

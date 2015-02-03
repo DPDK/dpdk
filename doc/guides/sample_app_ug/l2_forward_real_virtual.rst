@@ -527,6 +527,6 @@ however it improves performance:
         prev_tsc = cur_tsc;
     }
 
-.. |l2_fwd_benchmark_setup| image:: img/l2_fwd_benchmark_setup.svg
+.. |l2_fwd_benchmark_setup| image:: img/l2_fwd_benchmark_setup.*
 
-.. |l2_fwd_virtenv_benchmark_setup| image:: img/l2_fwd_virtenv_benchmark_setup.png
+.. |l2_fwd_virtenv_benchmark_setup| image:: img/l2_fwd_virtenv_benchmark_setup.*

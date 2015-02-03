@@ -281,10 +281,10 @@ Even if the option is turned on, kni-vhost will ignore the information that the 
 When working with legacy virtio on the guest, it is better to turn off unsupported offload features using ethtool -K.
 Otherwise, there may be problems such as an incorrect L4 checksum error.
 
-.. |kni_traffic_flow| image:: img/kni_traffic_flow.png
+.. |kni_traffic_flow| image:: img/kni_traffic_flow.*
 
-.. |vhost_net_arch| image:: img/vhost_net_arch.png
+.. |vhost_net_arch| image:: img/vhost_net_arch.*
 
-.. |pkt_flow_kni| image:: img/pkt_flow_kni.png
+.. |pkt_flow_kni| image:: img/pkt_flow_kni.*
 
-.. |kernel_nic_intf| image:: img/kernel_nic_intf.png
+.. |kernel_nic_intf| image:: img/kernel_nic_intf.*

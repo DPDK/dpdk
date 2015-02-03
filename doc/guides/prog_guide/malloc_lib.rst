@@ -233,4 +233,4 @@ and if so, they are merged with the current elements.
 This means that we can never have two free memory blocks adjacent to one another,
 they are always merged into a single block.
 
-.. |malloc_heap| image:: img/malloc_heap.png
+.. |malloc_heap| image:: img/malloc_heap.*

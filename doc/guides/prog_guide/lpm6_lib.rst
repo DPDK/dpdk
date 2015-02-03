@@ -232,4 +232,4 @@ Use Case: IPv6 Forwarding
 
 The LPM algorithm is used to implement the Classless Inter-Domain Routing (CIDR) strategy used by routers implementing IP forwarding.
 
-.. |tbl24_tbl8_tbl8| image:: img/tbl24_tbl8_tbl8.png
+.. |tbl24_tbl8_tbl8| image:: img/tbl24_tbl8_tbl8.*

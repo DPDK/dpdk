@@ -220,4 +220,4 @@ References
 *   Pankaj Gupta, Algorithms for Routing Lookups and Packet Classification, PhD Thesis, Stanford University,
     2000  (`http://klamath.stanford.edu/~pankaj/thesis/ thesis_1sided.pdf <http://klamath.stanford.edu/~pankaj/thesis/%20thesis_1sided.pdf>`_ )
 
-.. |tbl24_tbl8| image:: img/tbl24_tbl8.png
+.. |tbl24_tbl8| image:: img/tbl24_tbl8.*

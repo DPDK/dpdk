@@ -248,4 +248,4 @@ To generate the statistics output, use the following command:
 Please note that the statistics output will appear on the terminal where the vmdq_dcb_app is running,
 rather than the terminal from which the HUP signal was sent.
 
-.. |vmdq_dcb_example| image:: img/vmdq_dcb_example.svg
+.. |vmdq_dcb_example| image:: img/vmdq_dcb_example.*

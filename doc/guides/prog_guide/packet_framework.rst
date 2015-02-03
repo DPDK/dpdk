@@ -1168,16 +1168,16 @@ with all the implementations sharing the same API: pure SW implementation (no ac
 The selection between these implementations could be done at build time or at run-time (recommended), based on which accelerators are present in the system,
 with no application changes required.
 
-.. |figure33| image:: img/figure33.png
+.. |figure33| image:: img/figure33.*
 
-.. |figure35| image:: img/figure35.png
+.. |figure35| image:: img/figure35.*
 
-.. |figure39| image:: img/figure39.png
+.. |figure39| image:: img/figure39.*
 
-.. |figure34| image:: img/figure34.png
+.. |figure34| image:: img/figure34.*
 
-.. |figure32| image:: img/figure32.png
+.. |figure32| image:: img/figure32.*
 
-.. |figure37| image:: img/figure37.png
+.. |figure37| image:: img/figure37.*
 
-.. |figure38| image:: img/figure38.png
+.. |figure38| image:: img/figure38.*

@@ -141,8 +141,8 @@ Below are some examples:
 
 *   Any application that needs to allocate fixed-sized objects in the data plane and that will be continuously utilized by the system.
 
-.. |memory-management| image:: img/memory-management.svg
+.. |memory-management| image:: img/memory-management.*
 
-.. |memory-management2| image:: img/memory-management2.svg
+.. |memory-management2| image:: img/memory-management2.*
 
-.. |mempool| image:: img/mempool.svg
+.. |mempool| image:: img/mempool.*

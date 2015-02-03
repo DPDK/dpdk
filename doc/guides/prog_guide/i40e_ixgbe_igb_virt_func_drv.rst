@@ -574,10 +574,10 @@ which belongs to the destination VF on the VM.
 
 |inter_vm_comms|
 
-.. |perf_benchmark| image:: img/perf_benchmark.png
+.. |perf_benchmark| image:: img/perf_benchmark.*
 
-.. |single_port_nic| image:: img/single_port_nic.png
+.. |single_port_nic| image:: img/single_port_nic.*
 
-.. |inter_vm_comms| image:: img/inter_vm_comms.png
+.. |inter_vm_comms| image:: img/inter_vm_comms.*
 
-.. |fast_pkt_proc| image:: img/fast_pkt_proc.png
+.. |fast_pkt_proc| image:: img/fast_pkt_proc.*

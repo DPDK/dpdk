@@ -282,4 +282,4 @@ The profile for input traffic is TCP/IPv4 packets with:
 
 *   source TCP port fixed to 0
 
-.. |test_pipeline_app| image:: img/test_pipeline_app.png
+.. |test_pipeline_app| image:: img/test_pipeline_app.*

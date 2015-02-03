@@ -204,4 +204,4 @@ The librte_net library is a collection of IP protocol definitions and convenienc
 It is based on code from the FreeBSD* IP stack and contains protocol numbers (for use in IP headers),
 IP-related macros, IPv4/IPv6 header structures and TCP, UDP and SCTP header structures.
 
-.. |architecture-overview| image:: img/architecture-overview.svg
+.. |architecture-overview| image:: img/architecture-overview.*

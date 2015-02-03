@@ -398,6 +398,6 @@ adds rules parsed from the file into the database and build an ACL trie.
 It is important to note that the application creates an independent copy of each database for each socket CPU
 involved in the task to reduce the time for remote memory access.
 
-.. |ipv4_acl_rule| image:: img/ipv4_acl_rule.png
+.. |ipv4_acl_rule| image:: img/ipv4_acl_rule.*
 
-.. |example_rules| image:: img/example_rules.png
+.. |example_rules| image:: img/example_rules.*

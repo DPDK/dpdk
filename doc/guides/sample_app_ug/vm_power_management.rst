@@ -356,6 +356,6 @@ Where {core_num} is the lcore and channel to change frequency by scaling up/down
 
   set_cpu_freq {core_num} up|down|min|max
 
-.. |vm_power_mgr_highlevel| image:: img/vm_power_mgr_highlevel.svg
+.. |vm_power_mgr_highlevel| image:: img/vm_power_mgr_highlevel.*
 
-.. |vm_power_mgr_vm_request_seq| image:: img/vm_power_mgr_vm_request_seq.svg
+.. |vm_power_mgr_vm_request_seq| image:: img/vm_power_mgr_vm_request_seq.*

@@ -348,4 +348,4 @@ This application classifies based on the QinQ double VLAN tags and the IP destin
 
 Please refer to the "QoS Scheduler" chapter in the *DPDK Programmer's Guide* for more information about these parameters.
 
-.. |qos_sched_app_arch| image:: img/qos_sched_app_arch.png
+.. |qos_sched_app_arch| image:: img/qos_sched_app_arch.*

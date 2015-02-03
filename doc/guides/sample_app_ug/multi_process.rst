@@ -775,10 +775,10 @@ so it remaps the resource to the new core ID slot.
         return 0;
     }
 
-.. |sym_multi_proc_app| image:: img/sym_multi_proc_app.png
+.. |sym_multi_proc_app| image:: img/sym_multi_proc_app.*
 
-.. |client_svr_sym_multi_proc_app| image:: img/client_svr_sym_multi_proc_app.png
+.. |client_svr_sym_multi_proc_app| image:: img/client_svr_sym_multi_proc_app.*
 
-.. |master_slave_proc| image:: img/master_slave_proc.png
+.. |master_slave_proc| image:: img/master_slave_proc.*
 
-.. |slave_proc_recov| image:: img/slave_proc_recov.png
+.. |slave_proc_recov| image:: img/slave_proc_recov.*

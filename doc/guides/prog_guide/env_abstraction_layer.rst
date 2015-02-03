@@ -369,4 +369,4 @@ We expect only 50% of CPU spend on packet IO.
     echo  50000 > pkt_io/cpu.cfs_quota_us
 
 
-.. |linuxapp_launch| image:: img/linuxapp_launch.svg
+.. |linuxapp_launch| image:: img/linuxapp_launch.*

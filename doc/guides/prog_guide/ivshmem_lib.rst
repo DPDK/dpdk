@@ -155,4 +155,4 @@ As a result, if the user wishes to shut down or restart the IVSHMEM host applica
 it is not enough to simply shut the application down.
 The virtual machine must also be shut down (if not, it will hold onto outdated host data).
 
-.. |ivshmem| image:: img/ivshmem.png
+.. |ivshmem| image:: img/ivshmem.*

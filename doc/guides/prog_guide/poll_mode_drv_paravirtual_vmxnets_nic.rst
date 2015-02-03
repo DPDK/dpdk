@@ -177,8 +177,8 @@ In this example, the packet flow path is:
     Packet generator -> 82599 VF -> Guest VM 82599 port 0 rx burst -> Guest VM VMXNET3 port 1 tx burst -> VMXNET3
     device -> VMware ESXi vSwitch -> VMXNET3 device -> Guest VM VMXNET3 port 0 rx burst -> Guest VM 82599 VF port 1 tx burst -> 82599 VF -> Packet generator
 
-.. |vm_vm_comms| image:: img/vm_vm_comms.png
+.. |vm_vm_comms| image:: img/vm_vm_comms.*
 
-.. |vmxnet3_int| image:: img/vmxnet3_int.png
+.. |vmxnet3_int| image:: img/vmxnet3_int.*
 
-.. |vswitch_vm| image:: img/vswitch_vm.png
+.. |vswitch_vm| image:: img/vswitch_vm.*

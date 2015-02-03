@@ -242,4 +242,4 @@ are on the same or different CPU sockets, the following run-time scenarios are p
     then it has to be transmitted out by a NIC connected to socket C.
     The performance price for crossing the CPU socket boundary is paid twice for this packet.
 
-.. |load_bal_app_arch| image:: img/load_bal_app_arch.png
+.. |load_bal_app_arch| image:: img/load_bal_app_arch.*

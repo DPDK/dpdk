@@ -189,6 +189,6 @@ Use Cases
 
 All networking application should use mbufs to transport network packets.
 
-.. |mbuf1| image:: img/mbuf1.svg
+.. |mbuf1| image:: img/mbuf1.*
 
-.. |mbuf2| image:: img/mbuf2.svg
+.. |mbuf2| image:: img/mbuf2.*
