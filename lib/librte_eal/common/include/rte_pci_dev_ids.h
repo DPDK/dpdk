@@ -132,6 +132,14 @@
 #define RTE_PCI_DEV_ID_DECL_VMXNET3(vend, dev)
 #endif
 
+#ifndef RTE_PCI_DEV_ID_DECL_FM10K
+#define RTE_PCI_DEV_ID_DECL_FM10K(vend, dev)
+#endif
+
+#ifndef RTE_PCI_DEV_ID_DECL_FM10KVF
+#define RTE_PCI_DEV_ID_DECL_FM10KVF(vend, dev)
+#endif
+
 #ifndef PCI_VENDOR_ID_INTEL
 /** Vendor ID used by Intel devices */
 #define PCI_VENDOR_ID_INTEL 0x8086
@@ -474,6 +482,12 @@ RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_QSFP_B)
 RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_QSFP_C)
 RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_10G_BASE_T)
 
+/*************** Physical FM10K devices from fm10k_type.h ***************/
+
+#define FM10K_DEV_ID_PF                   0x15A4
+
+RTE_PCI_DEV_ID_DECL_FM10K(PCI_VENDOR_ID_INTEL, FM10K_DEV_ID_PF)
+
 /****************** Virtual IGB devices from e1000_hw.h ******************/
 
 #define E1000_DEV_ID_82576_VF                   0x10CA
@@ -526,6 +540,12 @@ RTE_PCI_DEV_ID_DECL_VIRTIO(PCI_VENDOR_ID_QUMRANET, QUMRANET_DEV_ID_VIRTIO)
 
 RTE_PCI_DEV_ID_DECL_VMXNET3(PCI_VENDOR_ID_VMWARE, VMWARE_DEV_ID_VMXNET3)
 
+/*************** Virtual FM10K devices from fm10k_type.h ***************/
+
+#define FM10K_DEV_ID_VF                   0x15A5
+
+RTE_PCI_DEV_ID_DECL_FM10KVF(PCI_VENDOR_ID_INTEL, FM10K_DEV_ID_VF)
+
 /*
  * Undef all RTE_PCI_DEV_ID_DECL_* here.
  */
@@ -538,3 +558,5 @@ RTE_PCI_DEV_ID_DECL_VMXNET3(PCI_VENDOR_ID_VMWARE, VMWARE_DEV_ID_VMXNET3)
 #undef RTE_PCI_DEV_ID_DECL_I40EVF
 #undef RTE_PCI_DEV_ID_DECL_VIRTIO
 #undef RTE_PCI_DEV_ID_DECL_VMXNET3
+#undef RTE_PCI_DEV_ID_DECL_FM10K
+#undef RTE_PCI_DEV_ID_DECL_FM10KVF
