@@ -137,9 +137,9 @@ For hash tables, the following parameters can be selected:
 |       |                        | entries.                                                 | hash table with the following key format:             |
 |       |                        |                                                          |                                                       |
 |       |                        |                                                          | [4-byte index, 4 bytes of 0]                          |
-+-------+------------------------+----------------------------------------------------------+                                                       |
-| 4     | hash-[spec]-8-ext      |  Extendible bucket hash table with 8-byte key size       | The action configured for all table entries is        |
-|       |                        |  and 16 million entries.                                 | "Sendto output port", with the output port index      |
+|       |                        |                                                          |                                                       |
+|       |                        |                                                          | The action configured for all table entries is        |
+|       |                        |                                                          | "Sendto output port", with the output port index      |
 |       |                        |                                                          | uniformly distributed for the range of output ports.  |
 |       |                        |                                                          |                                                       |
 |       |                        |                                                          | The default table rule (used in the case of a lookup  |
@@ -152,13 +152,17 @@ For hash tables, the following parameters can be selected:
 |       |                        |                                                          | [destination IPv4 address, 4 bytes of 0]              |
 |       |                        |                                                          |                                                       |
 +-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+
+| 4     | hash-[spec]-8-ext      | Extendible bucket hash table with 8-byte key size        | Same as hash-[spec]-8-lru table entries, above.       |
+|       |                        | and 16 million entries.                                  |                                                       |
+|       |                        |                                                          |                                                       |
++-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+
 | 5     | hash-[spec]-16-lru     | LRU hash table with 16-byte key size and 16 million      | 16 million entries are successfully added to the hash |
 |       |                        | entries.                                                 | table with the following key format:                  |
 |       |                        |                                                          |                                                       |
 |       |                        |                                                          | [4-byte index, 12 bytes of 0]                         |
-+-------+------------------------+----------------------------------------------------------+                                                       |
-| 6     | hash-[spec]-ash-16-ext | Extendible bucket hash table with 16-byte key size       | The action configured for all table entries is        |
-|       |                        | and 16 million entries.                                  | "Send to output port", with the output port index     |
+|       |                        |                                                          |                                                       |
+|       |                        |                                                          | The action configured for all table entries is        |
+|       |                        |                                                          | "Send to output port", with the output port index     |
 |       |                        |                                                          | uniformly distributed for the range of output ports.  |
 |       |                        |                                                          |                                                       |
 |       |                        |                                                          | The default table rule (used in the case of a lookup  |
@@ -171,13 +175,17 @@ For hash tables, the following parameters can be selected:
 |       |                        |                                                          | [destination IPv4 address, 12 bytes of 0]             |
 |       |                        |                                                          |                                                       |
 +-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+
+| 6     | hash-[spec]-16-ext     | Extendible bucket hash table with 16-byte key size       | Same as hash-[spec]-16-lru table entries, above.      |
+|       |                        | and 16 million entries.                                  |                                                       |
+|       |                        |                                                          |                                                       |
++-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+
 | 7     | hash-[spec]-32-lru     | LRU hash table with 32-byte key size and 16 million      | 16 million entries are successfully added to the hash |
-|       |                        | entries.                                                 |  table with the following key format:                 |
+|       |                        | entries.                                                 | table with the following key format:                  |
 |       |                        |                                                          |                                                       |
 |       |                        |                                                          | [4-byte index, 28 bytes of 0].                        |
-+-------+------------------------+----------------------------------------------------------+                                                       |
-| 8     | hash-[spec]-32-ext     | Extendible bucket hash table with 32-byte key size       | The action configured for all table entries is        |
-|       |                        | and 16 million entries.                                  | "Send to output port", with the output port index     |
+|       |                        |                                                          |                                                       |
+|       |                        |                                                          | The action configured for all table entries is        |
+|       |                        |                                                          | "Send to output port", with the output port index     |
 |       |                        |                                                          | uniformly distributed for the range of output ports.  |
 |       |                        |                                                          |                                                       |
 |       |                        |                                                          | The default table rule (used in the case of a lookup  |
@@ -188,6 +196,10 @@ For hash tables, the following parameters can be selected:
 |       |                        |                                                          | Lpmcore B to use for table lookup:                    |
 |       |                        |                                                          |                                                       |
 |       |                        |                                                          | [destination IPv4 address, 28 bytes of 0]             |
+|       |                        |                                                          |                                                       |
++-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+
+| 8     | hash-[spec]-32-ext     | Extendible bucket hash table with 32-byte key size       | Same as hash-[spec]-32-lru table entries, above.      |
+|       |                        | and 16 million entries.                                  |                                                       |
 |       |                        |                                                          |                                                       |
 +-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+
 | 9     | lpm                    | Longest Prefix Match (LPM) IPv4 table.                   | In the case of two ports, two routes                  |
