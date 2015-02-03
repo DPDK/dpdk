@@ -69,6 +69,43 @@ fm10k_mbx_unlock(struct fm10k_hw *hw)
 }
 
 /*
+ * reset queue to initial state, allocate software buffers used when starting
+ * device.
+ * return 0 on success
+ * return -ENOMEM if buffers cannot be allocated
+ * return -EINVAL if buffers do not satisfy alignment condition
+ */
+static inline int
+rx_queue_reset(struct fm10k_rx_queue *q)
+{
+	uint64_t dma_addr;
+	int i, diag;
+	PMD_INIT_FUNC_TRACE();
+
+	diag = rte_mempool_get_bulk(q->mp, (void **)q->sw_ring, q->nb_desc);
+	if (diag != 0)
+		return -ENOMEM;
+
+	for (i = 0; i < q->nb_desc; ++i) {
+		fm10k_pktmbuf_reset(q->sw_ring[i], q->port_id);
+		if (!fm10k_addr_alignment_valid(q->sw_ring[i])) {
+			rte_mempool_put_bulk(q->mp, (void **)q->sw_ring,
+						q->nb_desc);
+			return -EINVAL;
+		}
+		dma_addr = MBUF_DMA_ADDR_DEFAULT(q->sw_ring[i]);
+		q->hw_ring[i].q.pkt_addr = dma_addr;
+		q->hw_ring[i].q.hdr_addr = dma_addr;
+	}
+
+	q->next_dd = 0;
+	q->next_alloc = 0;
+	q->next_trigger = q->alloc_thresh - 1;
+	FM10K_PCI_REG_WRITE(q->tail_ptr, q->nb_desc - 1);
+	return 0;
+}
+
+/*
  * clean queue, descriptor rings, free software buffers used when stopping
  * device.
  */
@@ -106,6 +143,49 @@ rx_queue_free(struct fm10k_rx_queue *q)
 			rte_free(q->sw_ring);
 		rte_free(q);
 	}
+}
+
+/*
+ * disable RX queue, wait unitl HW finished necessary flush operation
+ */
+static inline int
+rx_queue_disable(struct fm10k_hw *hw, uint16_t qnum)
+{
+	uint32_t reg, i;
+
+	reg = FM10K_READ_REG(hw, FM10K_RXQCTL(qnum));
+	FM10K_WRITE_REG(hw, FM10K_RXQCTL(qnum),
+			reg & ~FM10K_RXQCTL_ENABLE);
+
+	/* Wait 100us at most */
+	for (i = 0; i < FM10K_QUEUE_DISABLE_TIMEOUT; i++) {
+		rte_delay_us(1);
+		reg = FM10K_READ_REG(hw, FM10K_RXQCTL(i));
+		if (!(reg & FM10K_RXQCTL_ENABLE))
+			break;
+	}
+
+	if (i == FM10K_QUEUE_DISABLE_TIMEOUT)
+		return -1;
+
+	return 0;
+}
+
+/*
+ * reset queue to initial state, allocate software buffers used when starting
+ * device
+ */
+static inline void
+tx_queue_reset(struct fm10k_tx_queue *q)
+{
+	PMD_INIT_FUNC_TRACE();
+	q->last_free = 0;
+	q->next_free = 0;
+	q->nb_used = 0;
+	q->nb_free = q->nb_desc - 1;
+	q->free_trigger = q->nb_free - q->free_thresh;
+	fifo_reset(&q->rs_tracker, (q->nb_desc + 1) / q->rs_thresh);
+	FM10K_PCI_REG_WRITE(q->tail_ptr, 0);
 }
 
 /*
@@ -150,6 +230,32 @@ tx_queue_free(struct fm10k_tx_queue *q)
 	}
 }
 
+/*
+ * disable TX queue, wait unitl HW finished necessary flush operation
+ */
+static inline int
+tx_queue_disable(struct fm10k_hw *hw, uint16_t qnum)
+{
+	uint32_t reg, i;
+
+	reg = FM10K_READ_REG(hw, FM10K_TXDCTL(qnum));
+	FM10K_WRITE_REG(hw, FM10K_TXDCTL(qnum),
+			reg & ~FM10K_TXDCTL_ENABLE);
+
+	/* Wait 100us at most */
+	for (i = 0; i < FM10K_QUEUE_DISABLE_TIMEOUT; i++) {
+		rte_delay_us(1);
+		reg = FM10K_READ_REG(hw, FM10K_TXDCTL(i));
+		if (!(reg & FM10K_TXDCTL_ENABLE))
+			break;
+	}
+
+	if (i == FM10K_QUEUE_DISABLE_TIMEOUT)
+		return -1;
+
+	return 0;
+}
+
 static int
 fm10k_dev_configure(struct rte_eth_dev *dev)
 {
@@ -157,6 +263,118 @@ fm10k_dev_configure(struct rte_eth_dev *dev)
 
 	if (dev->data->dev_conf.rxmode.hw_strip_crc == 0)
 		PMD_INIT_LOG(WARNING, "fm10k always strip CRC");
+
+	return 0;
+}
+
+static int
+fm10k_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int err = -1;
+	uint32_t reg;
+	struct fm10k_rx_queue *rxq;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rx_queue_id < dev->data->nb_rx_queues) {
+		rxq = dev->data->rx_queues[rx_queue_id];
+		err = rx_queue_reset(rxq);
+		if (err == -ENOMEM) {
+			PMD_INIT_LOG(ERR, "Failed to alloc memory : %d", err);
+			return err;
+		} else if (err == -EINVAL) {
+			PMD_INIT_LOG(ERR, "Invalid buffer address alignment :"
+				" %d", err);
+			return err;
+		}
+
+		/* Setup the HW Rx Head and Tail Descriptor Pointers
+		 * Note: this must be done AFTER the queue is enabled on real
+		 * hardware, but BEFORE the queue is enabled when using the
+		 * emulation platform. Do it in both places for now and remove
+		 * this comment and the following two register writes when the
+		 * emulation platform is no longer being used.
+		 */
+		FM10K_WRITE_REG(hw, FM10K_RDH(rx_queue_id), 0);
+		FM10K_WRITE_REG(hw, FM10K_RDT(rx_queue_id), rxq->nb_desc - 1);
+
+		/* Set PF ownership flag for PF devices */
+		reg = FM10K_READ_REG(hw, FM10K_RXQCTL(rx_queue_id));
+		if (hw->mac.type == fm10k_mac_pf)
+			reg |= FM10K_RXQCTL_PF;
+		reg |= FM10K_RXQCTL_ENABLE;
+		/* enable RX queue */
+		FM10K_WRITE_REG(hw, FM10K_RXQCTL(rx_queue_id), reg);
+		FM10K_WRITE_FLUSH(hw);
+
+		/* Setup the HW Rx Head and Tail Descriptor Pointers
+		 * Note: this must be done AFTER the queue is enabled
+		 */
+		FM10K_WRITE_REG(hw, FM10K_RDH(rx_queue_id), 0);
+		FM10K_WRITE_REG(hw, FM10K_RDT(rx_queue_id), rxq->nb_desc - 1);
+	}
+
+	return err;
+}
+
+static int
+fm10k_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rx_queue_id < dev->data->nb_rx_queues) {
+		/* Disable RX queue */
+		rx_queue_disable(hw, rx_queue_id);
+
+		/* Free mbuf and clean HW ring */
+		rx_queue_clean(dev->data->rx_queues[rx_queue_id]);
+	}
+
+	return 0;
+}
+
+static int
+fm10k_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	/** @todo - this should be defined in the shared code */
+#define FM10K_TXDCTL_WRITE_BACK_MIN_DELAY	0x00010000
+	uint32_t txdctl = FM10K_TXDCTL_WRITE_BACK_MIN_DELAY;
+	int err = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (tx_queue_id < dev->data->nb_tx_queues) {
+		tx_queue_reset(dev->data->tx_queues[tx_queue_id]);
+
+		/* reset head and tail pointers */
+		FM10K_WRITE_REG(hw, FM10K_TDH(tx_queue_id), 0);
+		FM10K_WRITE_REG(hw, FM10K_TDT(tx_queue_id), 0);
+
+		/* enable TX queue */
+		FM10K_WRITE_REG(hw, FM10K_TXDCTL(tx_queue_id),
+					FM10K_TXDCTL_ENABLE | txdctl);
+		FM10K_WRITE_FLUSH(hw);
+	} else
+		err = -1;
+
+	return err;
+}
+
+static int
+fm10k_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (tx_queue_id < dev->data->nb_tx_queues) {
+		tx_queue_disable(hw, tx_queue_id);
+		tx_queue_clean(dev->data->tx_queues[tx_queue_id]);
+	}
 
 	return 0;
 }
@@ -780,6 +998,10 @@ static struct eth_dev_ops fm10k_eth_dev_ops = {
 	.stats_reset		= fm10k_stats_reset,
 	.link_update		= fm10k_link_update,
 	.dev_infos_get		= fm10k_dev_infos_get,
+	.rx_queue_start		= fm10k_dev_rx_queue_start,
+	.rx_queue_stop		= fm10k_dev_rx_queue_stop,
+	.tx_queue_start		= fm10k_dev_tx_queue_start,
+	.tx_queue_stop		= fm10k_dev_tx_queue_stop,
 	.rx_queue_setup		= fm10k_rx_queue_setup,
 	.rx_queue_release	= fm10k_rx_queue_release,
 	.tx_queue_setup		= fm10k_tx_queue_setup,

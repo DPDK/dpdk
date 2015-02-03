@@ -221,4 +221,62 @@ static inline uint16_t fifo_remove(struct fifo *fifo)
 		fifo->tail = fifo->list;
 	return val;
 }
+
+static inline void
+fm10k_pktmbuf_reset(struct rte_mbuf *mb, uint8_t in_port)
+{
+	rte_mbuf_refcnt_set(mb, 1);
+	mb->next = NULL;
+	mb->nb_segs = 1;
+
+	/* enforce 512B alignment on default Rx virtual addresses */
+	mb->data_off = (uint16_t)(RTE_PTR_ALIGN((char *)mb->buf_addr +
+			RTE_PKTMBUF_HEADROOM, FM10K_RX_DATABUF_ALIGN)
+			- (char *)mb->buf_addr);
+	mb->port = in_port;
+}
+
+/*
+ * Verify Rx packet buffer alignment is valid.
+ *
+ * Hardware requires specific alignment for Rx packet buffers. At
+ * least one of the following two conditions must be satisfied.
+ *  1. Address is 512B aligned
+ *  2. Address is 8B aligned and buffer does not cross 4K boundary.
+ *
+ * Return 1 if buffer alignment satisfies at least one condition,
+ * otherwise return 0.
+ *
+ * Note: Alignment is checked by the driver when the Rx queue is reset. It
+ *       is assumed that if an entire descriptor ring can be filled with
+ *       buffers containing valid alignment, then all buffers in that mempool
+ *       have valid address alignment. It is the responsibility of the user
+ *       to ensure all buffers have valid alignment, as it is the user who
+ *       creates the mempool.
+ * Note: It is assumed the buffer needs only to store a maximum size Ethernet
+ *       frame.
+ */
+static inline int
+fm10k_addr_alignment_valid(struct rte_mbuf *mb)
+{
+	uint64_t addr = MBUF_DMA_ADDR_DEFAULT(mb);
+	uint64_t boundary1, boundary2;
+
+	/* 512B aligned? */
+	if (RTE_ALIGN(addr, 512) == addr)
+		return 1;
+
+	/* 8B aligned, and max Ethernet frame would not cross a 4KB boundary? */
+	if (RTE_ALIGN(addr, 8) == addr) {
+		boundary1 = RTE_ALIGN_FLOOR(addr, 4096);
+		boundary2 = RTE_ALIGN_FLOOR(addr + ETHER_MAX_VLAN_FRAME_LEN,
+						4096);
+		if (boundary1 == boundary2)
+			return 1;
+	}
+
+	PMD_INIT_LOG(ERR, "Error: Invalid buffer alignment!");
+
+	return 0;
+}
 #endif
