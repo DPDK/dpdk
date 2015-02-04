@@ -1344,6 +1344,256 @@ fm10k_rss_hash_conf_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void
+fm10k_dev_enable_intr_pf(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t int_map = FM10K_INT_MAP_IMMEDIATE;
+
+	/* Bind all local non-queue interrupt to vector 0 */
+	int_map |= 0;
+
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_Mailbox), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_PCIeFault), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_SwitchUpDown), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_SwitchEvent), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_SRAM), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_VFLR), int_map);
+
+	/* Enable misc causes */
+	FM10K_WRITE_REG(hw, FM10K_EIMR, FM10K_EIMR_ENABLE(PCA_FAULT) |
+				FM10K_EIMR_ENABLE(THI_FAULT) |
+				FM10K_EIMR_ENABLE(FUM_FAULT) |
+				FM10K_EIMR_ENABLE(MAILBOX) |
+				FM10K_EIMR_ENABLE(SWITCHREADY) |
+				FM10K_EIMR_ENABLE(SWITCHNOTREADY) |
+				FM10K_EIMR_ENABLE(SRAMERROR) |
+				FM10K_EIMR_ENABLE(VFLR));
+
+	/* Enable ITR 0 */
+	FM10K_WRITE_REG(hw, FM10K_ITR(0), FM10K_ITR_AUTOMASK |
+					FM10K_ITR_MASK_CLEAR);
+	FM10K_WRITE_FLUSH(hw);
+}
+
+static void
+fm10k_dev_enable_intr_vf(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t int_map = FM10K_INT_MAP_IMMEDIATE;
+
+	/* Bind all local non-queue interrupt to vector 0 */
+	int_map |= 0;
+
+	/* Only INT 0 available, other 15 are reserved. */
+	FM10K_WRITE_REG(hw, FM10K_VFINT_MAP, int_map);
+
+	/* Enable ITR 0 */
+	FM10K_WRITE_REG(hw, FM10K_VFITR(0), FM10K_ITR_AUTOMASK |
+					FM10K_ITR_MASK_CLEAR);
+	FM10K_WRITE_FLUSH(hw);
+}
+
+static int
+fm10k_dev_handle_fault(struct fm10k_hw *hw, uint32_t eicr)
+{
+	struct fm10k_fault fault;
+	int err;
+	const char *estr = "Unknown error";
+
+	/* Process PCA fault */
+	if (eicr & FM10K_EIMR_PCA_FAULT) {
+		err = fm10k_get_fault(hw, FM10K_PCA_FAULT, &fault);
+		if (err)
+			goto error;
+		switch (fault.type) {
+		case PCA_NO_FAULT:
+			estr = "PCA_NO_FAULT"; break;
+		case PCA_UNMAPPED_ADDR:
+			estr = "PCA_UNMAPPED_ADDR"; break;
+		case PCA_BAD_QACCESS_PF:
+			estr = "PCA_BAD_QACCESS_PF"; break;
+		case PCA_BAD_QACCESS_VF:
+			estr = "PCA_BAD_QACCESS_VF"; break;
+		case PCA_MALICIOUS_REQ:
+			estr = "PCA_MALICIOUS_REQ"; break;
+		case PCA_POISONED_TLP:
+			estr = "PCA_POISONED_TLP"; break;
+		case PCA_TLP_ABORT:
+			estr = "PCA_TLP_ABORT"; break;
+		default:
+			goto error;
+		}
+		PMD_INIT_LOG(ERR, "%s: %s(%d) Addr:0x%"PRIx64" Spec: 0x%x",
+			estr, fault.func ? "VF" : "PF", fault.func,
+			fault.address, fault.specinfo);
+	}
+
+	/* Process THI fault */
+	if (eicr & FM10K_EIMR_THI_FAULT) {
+		err = fm10k_get_fault(hw, FM10K_THI_FAULT, &fault);
+		if (err)
+			goto error;
+		switch (fault.type) {
+		case THI_NO_FAULT:
+			estr = "THI_NO_FAULT"; break;
+		case THI_MAL_DIS_Q_FAULT:
+			estr = "THI_MAL_DIS_Q_FAULT"; break;
+		default:
+			goto error;
+		}
+		PMD_INIT_LOG(ERR, "%s: %s(%d) Addr:0x%"PRIx64" Spec: 0x%x",
+			estr, fault.func ? "VF" : "PF", fault.func,
+			fault.address, fault.specinfo);
+	}
+
+	/* Process FUM fault */
+	if (eicr & FM10K_EIMR_FUM_FAULT) {
+		err = fm10k_get_fault(hw, FM10K_FUM_FAULT, &fault);
+		if (err)
+			goto error;
+		switch (fault.type) {
+		case FUM_NO_FAULT:
+			estr = "FUM_NO_FAULT"; break;
+		case FUM_UNMAPPED_ADDR:
+			estr = "FUM_UNMAPPED_ADDR"; break;
+		case FUM_POISONED_TLP:
+			estr = "FUM_POISONED_TLP"; break;
+		case FUM_BAD_VF_QACCESS:
+			estr = "FUM_BAD_VF_QACCESS"; break;
+		case FUM_ADD_DECODE_ERR:
+			estr = "FUM_ADD_DECODE_ERR"; break;
+		case FUM_RO_ERROR:
+			estr = "FUM_RO_ERROR"; break;
+		case FUM_QPRC_CRC_ERROR:
+			estr = "FUM_QPRC_CRC_ERROR"; break;
+		case FUM_CSR_TIMEOUT:
+			estr = "FUM_CSR_TIMEOUT"; break;
+		case FUM_INVALID_TYPE:
+			estr = "FUM_INVALID_TYPE"; break;
+		case FUM_INVALID_LENGTH:
+			estr = "FUM_INVALID_LENGTH"; break;
+		case FUM_INVALID_BE:
+			estr = "FUM_INVALID_BE"; break;
+		case FUM_INVALID_ALIGN:
+			estr = "FUM_INVALID_ALIGN"; break;
+		default:
+			goto error;
+		}
+		PMD_INIT_LOG(ERR, "%s: %s(%d) Addr:0x%"PRIx64" Spec: 0x%x",
+			estr, fault.func ? "VF" : "PF", fault.func,
+			fault.address, fault.specinfo);
+	}
+
+	if (estr)
+		return 0;
+	return 0;
+error:
+	PMD_INIT_LOG(ERR, "Failed to handle fault event.");
+	return err;
+}
+
+/**
+ * PF interrupt handler triggered by NIC for handling specific interrupt.
+ *
+ * @param handle
+ *  Pointer to interrupt handle.
+ * @param param
+ *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *
+ * @return
+ *  void
+ */
+static void
+fm10k_dev_interrupt_handler_pf(
+			__rte_unused struct rte_intr_handle *handle,
+			void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t cause, status;
+
+	if (hw->mac.type != fm10k_mac_pf)
+		return;
+
+	cause = FM10K_READ_REG(hw, FM10K_EICR);
+
+	/* Handle PCI fault cases */
+	if (cause & FM10K_EICR_FAULT_MASK) {
+		PMD_INIT_LOG(ERR, "INT: find fault!");
+		fm10k_dev_handle_fault(hw, cause);
+	}
+
+	/* Handle switch up/down */
+	if (cause & FM10K_EICR_SWITCHNOTREADY)
+		PMD_INIT_LOG(ERR, "INT: Switch is not ready");
+
+	if (cause & FM10K_EICR_SWITCHREADY)
+		PMD_INIT_LOG(INFO, "INT: Switch is ready");
+
+	/* Handle mailbox message */
+	fm10k_mbx_lock(hw);
+	hw->mbx.ops.process(hw, &hw->mbx);
+	fm10k_mbx_unlock(hw);
+
+	/* Handle SRAM error */
+	if (cause & FM10K_EICR_SRAMERROR) {
+		PMD_INIT_LOG(ERR, "INT: SRAM error on PEP");
+
+		status = FM10K_READ_REG(hw, FM10K_SRAM_IP);
+		/* Write to clear pending bits */
+		FM10K_WRITE_REG(hw, FM10K_SRAM_IP, status);
+
+		/* Todo: print out error message after shared code  updates */
+	}
+
+	/* Clear these 3 events if having any */
+	cause &= FM10K_EICR_SWITCHNOTREADY | FM10K_EICR_MAILBOX |
+		 FM10K_EICR_SWITCHREADY;
+	if (cause)
+		FM10K_WRITE_REG(hw, FM10K_EICR, cause);
+
+	/* Re-enable interrupt from device side */
+	FM10K_WRITE_REG(hw, FM10K_ITR(0), FM10K_ITR_AUTOMASK |
+					FM10K_ITR_MASK_CLEAR);
+	/* Re-enable interrupt from host side */
+	rte_intr_enable(&(dev->pci_dev->intr_handle));
+}
+
+/**
+ * VF interrupt handler triggered by NIC for handling specific interrupt.
+ *
+ * @param handle
+ *  Pointer to interrupt handle.
+ * @param param
+ *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *
+ * @return
+ *  void
+ */
+static void
+fm10k_dev_interrupt_handler_vf(
+			__rte_unused struct rte_intr_handle *handle,
+			void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->mac.type != fm10k_mac_vf)
+		return;
+
+	/* Handle mailbox message if lock is acquired */
+	fm10k_mbx_lock(hw);
+	hw->mbx.ops.process(hw, &hw->mbx);
+	fm10k_mbx_unlock(hw);
+
+	/* Re-enable interrupt from device side */
+	FM10K_WRITE_REG(hw, FM10K_VFITR(0), FM10K_ITR_AUTOMASK |
+					FM10K_ITR_MASK_CLEAR);
+	/* Re-enable interrupt from host side */
+	rte_intr_enable(&(dev->pci_dev->intr_handle));
+}
+
 /* Mailbox message handler in VF */
 static const struct fm10k_msg_data fm10k_msgdata_vf[] = {
 	FM10K_TLV_MSG_TEST_HANDLER(fm10k_tlv_msg_test),
@@ -1524,6 +1774,21 @@ eth_fm10k_dev_init(__rte_unused struct eth_driver *eth_drv,
 		return -EIO;
 	}
 
+	/*PF/VF has different interrupt handling mechanism */
+	if (hw->mac.type == fm10k_mac_pf) {
+		/* register callback func to eal lib */
+		rte_intr_callback_register(&(dev->pci_dev->intr_handle),
+			fm10k_dev_interrupt_handler_pf, (void *)dev);
+
+		/* enable MISC interrupt */
+		fm10k_dev_enable_intr_pf(dev);
+	} else { /* VF */
+		rte_intr_callback_register(&(dev->pci_dev->intr_handle),
+			fm10k_dev_interrupt_handler_vf, (void *)dev);
+
+		fm10k_dev_enable_intr_vf(dev);
+	}
+
 	/*
 	 * Below function will trigger operations on mailbox, acquire lock to
 	 * avoid race condition from interrupt handler. Operations on mailbox
@@ -1552,6 +1817,9 @@ eth_fm10k_dev_init(__rte_unused struct eth_driver *eth_drv,
 					FM10K_XCAST_MODE_MULTI);
 
 	fm10k_mbx_unlock(hw);
+
+	/* enable uio intr after callback registered */
+	rte_intr_enable(&(dev->pci_dev->intr_handle));
 
 	return 0;
 }
