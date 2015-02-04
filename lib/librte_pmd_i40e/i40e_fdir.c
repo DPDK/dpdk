@@ -677,11 +677,8 @@ i40e_fdir_configure(struct rte_eth_dev *dev)
 		i40e_set_flx_pld_cfg(pf, &conf->flex_set[i]);
 	/* configure flex mask*/
 	for (i = 0; i < conf->nb_flexmasks; i++) {
-		pctype = i40e_flowtype_to_pctype(
-			conf->flex_mask[i].flow_type);
-		i40e_set_flex_mask_on_pctype(pf,
-				pctype,
-				&conf->flex_mask[i]);
+		pctype = i40e_flowtype_to_pctype(conf->flex_mask[i].flow_type);
+		i40e_set_flex_mask_on_pctype(pf, pctype, &conf->flex_mask[i]);
 	}
 
 	return ret;
