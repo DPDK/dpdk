@@ -787,6 +787,20 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 
 }
 
+static int
+fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* @todo - add support for the VF */
+	if (hw->mac.type != fm10k_mac_pf)
+		return -ENOTSUP;
+
+	return fm10k_update_vlan(hw, vlan_id, 0, on);
+}
+
 static inline int
 check_nb_desc(uint16_t min, uint16_t max, uint16_t mult, uint16_t request)
 {
@@ -1388,6 +1402,7 @@ static struct eth_dev_ops fm10k_eth_dev_ops = {
 	.stats_reset		= fm10k_stats_reset,
 	.link_update		= fm10k_link_update,
 	.dev_infos_get		= fm10k_dev_infos_get,
+	.vlan_filter_set	= fm10k_vlan_filter_set,
 	.rx_queue_start		= fm10k_dev_rx_queue_start,
 	.rx_queue_stop		= fm10k_dev_rx_queue_stop,
 	.tx_queue_start		= fm10k_dev_tx_queue_start,
