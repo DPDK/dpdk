@@ -2039,6 +2039,7 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 				ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
 	dev_info->reta_size = ETH_RSS_RETA_SIZE_128;
+	dev_info->flow_type_rss_offloads = IXGBE_RSS_OFFLOAD_ALL;
 }
 
 static void

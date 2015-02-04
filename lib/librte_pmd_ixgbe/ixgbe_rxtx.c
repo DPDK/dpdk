@@ -80,17 +80,6 @@
 #include "ixgbe/ixgbe_common.h"
 #include "ixgbe_rxtx.h"
 
-#define IXGBE_RSS_OFFLOAD_ALL ( \
-		ETH_RSS_IPV4 | \
-		ETH_RSS_IPV4_TCP | \
-		ETH_RSS_IPV6 | \
-		ETH_RSS_IPV6_EX | \
-		ETH_RSS_IPV6_TCP | \
-		ETH_RSS_IPV6_TCP_EX | \
-		ETH_RSS_IPV4_UDP | \
-		ETH_RSS_IPV6_UDP | \
-		ETH_RSS_IPV6_UDP_EX)
-
 /* Bit Mask to indicate what bits required for building TX context */
 #define IXGBE_TX_OFFLOAD_MASK (			 \
 		PKT_TX_VLAN_PKT |		 \
@@ -2432,19 +2421,19 @@ ixgbe_hw_rss_hash_set(struct ixgbe_hw *hw, struct rte_eth_rss_conf *rss_conf)
 	mrqc = IXGBE_MRQC_RSSEN; /* Enable RSS */
 	if (rss_hf & ETH_RSS_IPV4)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV4;
-	if (rss_hf & ETH_RSS_IPV4_TCP)
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV4_TCP;
 	if (rss_hf & ETH_RSS_IPV6)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV6;
 	if (rss_hf & ETH_RSS_IPV6_EX)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV6_EX;
-	if (rss_hf & ETH_RSS_IPV6_TCP)
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV6_TCP;
 	if (rss_hf & ETH_RSS_IPV6_TCP_EX)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV6_EX_TCP;
-	if (rss_hf & ETH_RSS_IPV4_UDP)
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV4_UDP;
-	if (rss_hf & ETH_RSS_IPV6_UDP)
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV6_UDP;
 	if (rss_hf & ETH_RSS_IPV6_UDP_EX)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV6_EX_UDP;
@@ -2518,19 +2507,19 @@ ixgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	if (mrqc & IXGBE_MRQC_RSS_FIELD_IPV4)
 		rss_hf |= ETH_RSS_IPV4;
 	if (mrqc & IXGBE_MRQC_RSS_FIELD_IPV4_TCP)
-		rss_hf |= ETH_RSS_IPV4_TCP;
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
 	if (mrqc & IXGBE_MRQC_RSS_FIELD_IPV6)
 		rss_hf |= ETH_RSS_IPV6;
 	if (mrqc & IXGBE_MRQC_RSS_FIELD_IPV6_EX)
 		rss_hf |= ETH_RSS_IPV6_EX;
 	if (mrqc & IXGBE_MRQC_RSS_FIELD_IPV6_TCP)
-		rss_hf |= ETH_RSS_IPV6_TCP;
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
 	if (mrqc & IXGBE_MRQC_RSS_FIELD_IPV6_EX_TCP)
 		rss_hf |= ETH_RSS_IPV6_TCP_EX;
 	if (mrqc & IXGBE_MRQC_RSS_FIELD_IPV4_UDP)
-		rss_hf |= ETH_RSS_IPV4_UDP;
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
 	if (mrqc & IXGBE_MRQC_RSS_FIELD_IPV6_UDP)
-		rss_hf |= ETH_RSS_IPV6_UDP;
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
 	if (mrqc & IXGBE_MRQC_RSS_FIELD_IPV6_EX_UDP)
 		rss_hf |= ETH_RSS_IPV6_UDP_EX;
 	rss_conf->rss_hf = rss_hf;

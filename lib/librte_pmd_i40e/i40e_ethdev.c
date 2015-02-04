@@ -1533,6 +1533,7 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_TX_OFFLOAD_SCTP_CKSUM |
 		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 	dev_info->reta_size = pf->hash_lut_size;
+	dev_info->flow_type_rss_offloads = I40E_RSS_OFFLOAD_ALL;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -4589,26 +4590,26 @@ i40e_config_hena(uint64_t flags)
 	if (!flags)
 		return hena;
 
-	if (flags & ETH_RSS_NONF_IPV4_UDP)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
-	if (flags & ETH_RSS_NONF_IPV4_TCP)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP;
-	if (flags & ETH_RSS_NONF_IPV4_SCTP)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_SCTP;
-	if (flags & ETH_RSS_NONF_IPV4_OTHER)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_OTHER;
 	if (flags & ETH_RSS_FRAG_IPV4)
 		hena |= 1ULL << I40E_FILTER_PCTYPE_FRAG_IPV4;
-	if (flags & ETH_RSS_NONF_IPV6_UDP)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_UDP;
-	if (flags & ETH_RSS_NONF_IPV6_TCP)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP;
-	if (flags & ETH_RSS_NONF_IPV6_SCTP)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_SCTP;
-	if (flags & ETH_RSS_NONF_IPV6_OTHER)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_OTHER;
+	if (flags & ETH_RSS_NONFRAG_IPV4_TCP)
+		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP;
+	if (flags & ETH_RSS_NONFRAG_IPV4_UDP)
+		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
+	if (flags & ETH_RSS_NONFRAG_IPV4_SCTP)
+		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_SCTP;
+	if (flags & ETH_RSS_NONFRAG_IPV4_OTHER)
+		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_OTHER;
 	if (flags & ETH_RSS_FRAG_IPV6)
 		hena |= 1ULL << I40E_FILTER_PCTYPE_FRAG_IPV6;
+	if (flags & ETH_RSS_NONFRAG_IPV6_TCP)
+		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP;
+	if (flags & ETH_RSS_NONFRAG_IPV6_UDP)
+		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_UDP;
+	if (flags & ETH_RSS_NONFRAG_IPV6_SCTP)
+		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_SCTP;
+	if (flags & ETH_RSS_NONFRAG_IPV6_OTHER)
+		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_OTHER;
 	if (flags & ETH_RSS_L2_PAYLOAD)
 		hena |= 1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD;
 
@@ -4623,27 +4624,26 @@ i40e_parse_hena(uint64_t flags)
 
 	if (!flags)
 		return rss_hf;
-
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_UDP))
-		rss_hf |= ETH_RSS_NONF_IPV4_UDP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP))
-		rss_hf |= ETH_RSS_NONF_IPV4_TCP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_SCTP))
-		rss_hf |= ETH_RSS_NONF_IPV4_SCTP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_OTHER))
-		rss_hf |= ETH_RSS_NONF_IPV4_OTHER;
 	if (flags & (1ULL << I40E_FILTER_PCTYPE_FRAG_IPV4))
 		rss_hf |= ETH_RSS_FRAG_IPV4;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_UDP))
-		rss_hf |= ETH_RSS_NONF_IPV6_UDP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP))
-		rss_hf |= ETH_RSS_NONF_IPV6_TCP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_SCTP))
-		rss_hf |= ETH_RSS_NONF_IPV6_SCTP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_OTHER))
-		rss_hf |= ETH_RSS_NONF_IPV6_OTHER;
+	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP))
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_UDP))
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_SCTP))
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_SCTP;
+	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_OTHER))
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_OTHER;
 	if (flags & (1ULL << I40E_FILTER_PCTYPE_FRAG_IPV6))
 		rss_hf |= ETH_RSS_FRAG_IPV6;
+	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP))
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_UDP))
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
+	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_SCTP))
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_SCTP;
+	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_OTHER))
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_OTHER;
 	if (flags & (1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD))
 		rss_hf |= ETH_RSS_L2_PAYLOAD;
 

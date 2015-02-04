@@ -98,6 +98,17 @@
 #define IXGBE_5TUPLE_MAX_PRI            7
 #define IXGBE_5TUPLE_MIN_PRI            1
 
+#define IXGBE_RSS_OFFLOAD_ALL ( \
+	ETH_RSS_IPV4 | \
+	ETH_RSS_NONFRAG_IPV4_TCP | \
+	ETH_RSS_NONFRAG_IPV4_UDP | \
+	ETH_RSS_IPV6 | \
+	ETH_RSS_NONFRAG_IPV6_TCP | \
+	ETH_RSS_NONFRAG_IPV6_UDP | \
+	ETH_RSS_IPV6_EX | \
+	ETH_RSS_IPV6_TCP_EX | \
+	ETH_RSS_IPV6_UDP_EX)
+
 /*
  * Information about the fdir mode.
  */

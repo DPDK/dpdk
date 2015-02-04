@@ -645,6 +645,7 @@ vmxnet3_dev_info_get(__attribute__((unused))struct rte_eth_dev *dev, struct rte_
 
 	dev_info->default_txconf.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
 						ETH_TXQ_FLAGS_NOOFFLOADS;
+	dev_info->flow_type_rss_offloads = VMXNET3_RSS_OFFLOAD_ALL;
 }
 
 /* return 0 means link status changed, -1 means not changed */

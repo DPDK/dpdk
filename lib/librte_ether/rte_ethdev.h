@@ -351,97 +351,70 @@ struct rte_eth_rss_conf {
 	uint64_t rss_hf;     /**< Hash functions to apply - see below. */
 };
 
-/* Supported RSS offloads */
-/* for 1G & 10G */
-#define ETH_RSS_IPV4_SHIFT                    0
-#define ETH_RSS_IPV4_TCP_SHIFT                1
-#define ETH_RSS_IPV6_SHIFT                    2
-#define ETH_RSS_IPV6_EX_SHIFT                 3
-#define ETH_RSS_IPV6_TCP_SHIFT                4
-#define ETH_RSS_IPV6_TCP_EX_SHIFT             5
-#define ETH_RSS_IPV4_UDP_SHIFT                6
-#define ETH_RSS_IPV6_UDP_SHIFT                7
-#define ETH_RSS_IPV6_UDP_EX_SHIFT             8
-/* for 40G only */
-#define ETH_RSS_NONF_IPV4_UDP_SHIFT           31
-#define ETH_RSS_NONF_IPV4_TCP_SHIFT           33
-#define ETH_RSS_NONF_IPV4_SCTP_SHIFT          34
-#define ETH_RSS_NONF_IPV4_OTHER_SHIFT         35
-#define ETH_RSS_FRAG_IPV4_SHIFT               36
-#define ETH_RSS_NONF_IPV6_UDP_SHIFT           41
-#define ETH_RSS_NONF_IPV6_TCP_SHIFT           43
-#define ETH_RSS_NONF_IPV6_SCTP_SHIFT          44
-#define ETH_RSS_NONF_IPV6_OTHER_SHIFT         45
-#define ETH_RSS_FRAG_IPV6_SHIFT               46
-#define ETH_RSS_FCOE_OX_SHIFT                 48
-#define ETH_RSS_FCOE_RX_SHIFT                 49
-#define ETH_RSS_FCOE_OTHER_SHIFT              50
-#define ETH_RSS_L2_PAYLOAD_SHIFT              63
-
-/* for 1G & 10G */
-#define ETH_RSS_IPV4                    (1 << ETH_RSS_IPV4_SHIFT)
-#define ETH_RSS_IPV4_TCP                (1 << ETH_RSS_IPV4_TCP_SHIFT)
-#define ETH_RSS_IPV6                    (1 << ETH_RSS_IPV6_SHIFT)
-#define ETH_RSS_IPV6_EX                 (1 << ETH_RSS_IPV6_EX_SHIFT)
-#define ETH_RSS_IPV6_TCP                (1 << ETH_RSS_IPV6_TCP_SHIFT)
-#define ETH_RSS_IPV6_TCP_EX             (1 << ETH_RSS_IPV6_TCP_EX_SHIFT)
-#define ETH_RSS_IPV4_UDP                (1 << ETH_RSS_IPV4_UDP_SHIFT)
-#define ETH_RSS_IPV6_UDP                (1 << ETH_RSS_IPV6_UDP_SHIFT)
-#define ETH_RSS_IPV6_UDP_EX             (1 << ETH_RSS_IPV6_UDP_EX_SHIFT)
-/* for 40G only */
-#define ETH_RSS_NONF_IPV4_UDP           (1ULL << ETH_RSS_NONF_IPV4_UDP_SHIFT)
-#define ETH_RSS_NONF_IPV4_TCP           (1ULL << ETH_RSS_NONF_IPV4_TCP_SHIFT)
-#define ETH_RSS_NONF_IPV4_SCTP          (1ULL << ETH_RSS_NONF_IPV4_SCTP_SHIFT)
-#define ETH_RSS_NONF_IPV4_OTHER         (1ULL << ETH_RSS_NONF_IPV4_OTHER_SHIFT)
-#define ETH_RSS_FRAG_IPV4               (1ULL << ETH_RSS_FRAG_IPV4_SHIFT)
-#define ETH_RSS_NONF_IPV6_UDP           (1ULL << ETH_RSS_NONF_IPV6_UDP_SHIFT)
-#define ETH_RSS_NONF_IPV6_TCP           (1ULL << ETH_RSS_NONF_IPV6_TCP_SHIFT)
-#define ETH_RSS_NONF_IPV6_SCTP          (1ULL << ETH_RSS_NONF_IPV6_SCTP_SHIFT)
-#define ETH_RSS_NONF_IPV6_OTHER         (1ULL << ETH_RSS_NONF_IPV6_OTHER_SHIFT)
-#define ETH_RSS_FRAG_IPV6               (1ULL << ETH_RSS_FRAG_IPV6_SHIFT)
-/* FCOE relevant should not be used */
-#define ETH_RSS_FCOE_OX                 (1ULL << ETH_RSS_FCOE_OX_SHIFT)
-#define ETH_RSS_FCOE_RX                 (1ULL << ETH_RSS_FCOE_RX_SHIFT)
-#define ETH_RSS_FCOE_OTHER              (1ULL << ETH_RSS_FCOE_OTHER_SHIFT)
-#define ETH_RSS_L2_PAYLOAD              (1ULL << ETH_RSS_L2_PAYLOAD_SHIFT)
+/*
+ * The RSS offload types are defined based on flow types which are defined
+ * in rte_eth_ctrl.h. Different NIC hardwares may support different RSS offload
+ * types. The supported flow types or RSS offload types can be queried by
+ * rte_eth_dev_info_get().
+ */
+#define ETH_RSS_IPV4               (1ULL << RTE_ETH_FLOW_IPV4)
+#define ETH_RSS_FRAG_IPV4          (1ULL << RTE_ETH_FLOW_FRAG_IPV4)
+#define ETH_RSS_NONFRAG_IPV4_TCP   (1ULL << RTE_ETH_FLOW_NONFRAG_IPV4_TCP)
+#define ETH_RSS_NONFRAG_IPV4_UDP   (1ULL << RTE_ETH_FLOW_NONFRAG_IPV4_UDP)
+#define ETH_RSS_NONFRAG_IPV4_SCTP  (1ULL << RTE_ETH_FLOW_NONFRAG_IPV4_SCTP)
+#define ETH_RSS_NONFRAG_IPV4_OTHER (1ULL << RTE_ETH_FLOW_NONFRAG_IPV4_OTHER)
+#define ETH_RSS_IPV6               (1ULL << RTE_ETH_FLOW_IPV6)
+#define ETH_RSS_FRAG_IPV6          (1ULL << RTE_ETH_FLOW_FRAG_IPV6)
+#define ETH_RSS_NONFRAG_IPV6_TCP   (1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_TCP)
+#define ETH_RSS_NONFRAG_IPV6_UDP   (1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_UDP)
+#define ETH_RSS_NONFRAG_IPV6_SCTP  (1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_SCTP)
+#define ETH_RSS_NONFRAG_IPV6_OTHER (1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER)
+#define ETH_RSS_L2_PAYLOAD         (1ULL << RTE_ETH_FLOW_L2_PAYLOAD)
+#define ETH_RSS_IPV6_EX            (1ULL << RTE_ETH_FLOW_IPV6_EX)
+#define ETH_RSS_IPV6_TCP_EX        (1ULL << RTE_ETH_FLOW_IPV6_TCP_EX)
+#define ETH_RSS_IPV6_UDP_EX        (1ULL << RTE_ETH_FLOW_IPV6_UDP_EX)
 
 #define ETH_RSS_IP ( \
-		ETH_RSS_IPV4 | \
-		ETH_RSS_IPV6 | \
-		ETH_RSS_NONF_IPV4_OTHER | \
-		ETH_RSS_FRAG_IPV4 | \
-		ETH_RSS_NONF_IPV6_OTHER | \
-		ETH_RSS_FRAG_IPV6)
+	ETH_RSS_IPV4 | \
+	ETH_RSS_FRAG_IPV4 | \
+	ETH_RSS_NONFRAG_IPV4_OTHER | \
+	ETH_RSS_IPV6 | \
+	ETH_RSS_FRAG_IPV6 | \
+	ETH_RSS_NONFRAG_IPV6_OTHER | \
+	ETH_RSS_IPV6_EX)
+
 #define ETH_RSS_UDP ( \
-		ETH_RSS_IPV4 | \
-		ETH_RSS_IPV6 | \
-		ETH_RSS_IPV4_UDP | \
-		ETH_RSS_IPV6_UDP | \
-		ETH_RSS_IPV6_UDP_EX | \
-		ETH_RSS_NONF_IPV4_UDP | \
-		ETH_RSS_NONF_IPV6_UDP)
+	ETH_RSS_NONFRAG_IPV4_UDP | \
+	ETH_RSS_NONFRAG_IPV6_UDP | \
+	ETH_RSS_IPV6_UDP_EX)
+
+#define ETH_RSS_TCP ( \
+	ETH_RSS_NONFRAG_IPV4_TCP | \
+	ETH_RSS_NONFRAG_IPV6_TCP | \
+	ETH_RSS_IPV6_TCP_EX)
+
+#define ETH_RSS_SCTP ( \
+	ETH_RSS_NONFRAG_IPV4_SCTP | \
+	ETH_RSS_NONFRAG_IPV6_SCTP)
+
 /**< Mask of valid RSS hash protocols */
 #define ETH_RSS_PROTO_MASK ( \
-		ETH_RSS_IPV4 | \
-		ETH_RSS_IPV4_TCP | \
-		ETH_RSS_IPV6 | \
-		ETH_RSS_IPV6_EX | \
-		ETH_RSS_IPV6_TCP | \
-		ETH_RSS_IPV6_TCP_EX | \
-		ETH_RSS_IPV4_UDP | \
-		ETH_RSS_IPV6_UDP | \
-		ETH_RSS_IPV6_UDP_EX | \
-		ETH_RSS_NONF_IPV4_UDP | \
-		ETH_RSS_NONF_IPV4_TCP | \
-		ETH_RSS_NONF_IPV4_SCTP | \
-		ETH_RSS_NONF_IPV4_OTHER | \
-		ETH_RSS_FRAG_IPV4 | \
-		ETH_RSS_NONF_IPV6_UDP | \
-		ETH_RSS_NONF_IPV6_TCP | \
-		ETH_RSS_NONF_IPV6_SCTP | \
-		ETH_RSS_NONF_IPV6_OTHER | \
-		ETH_RSS_FRAG_IPV6 | \
-		ETH_RSS_L2_PAYLOAD)
+	ETH_RSS_IPV4 | \
+	ETH_RSS_FRAG_IPV4 | \
+	ETH_RSS_NONFRAG_IPV4_TCP | \
+	ETH_RSS_NONFRAG_IPV4_UDP | \
+	ETH_RSS_NONFRAG_IPV4_SCTP | \
+	ETH_RSS_NONFRAG_IPV4_OTHER | \
+	ETH_RSS_IPV6 | \
+	ETH_RSS_FRAG_IPV6 | \
+	ETH_RSS_NONFRAG_IPV6_TCP | \
+	ETH_RSS_NONFRAG_IPV6_UDP | \
+	ETH_RSS_NONFRAG_IPV6_SCTP | \
+	ETH_RSS_NONFRAG_IPV6_OTHER | \
+	ETH_RSS_L2_PAYLOAD | \
+	ETH_RSS_IPV6_EX | \
+	ETH_RSS_IPV6_TCP_EX | \
+	ETH_RSS_IPV6_UDP_EX)
 
 /*
  * Definitions used for redirection table entry size.
@@ -938,6 +911,8 @@ struct rte_eth_dev_info {
 	uint32_t tx_offload_capa; /**< Device TX offload capabilities. */
 	uint16_t reta_size;
 	/**< Device redirection table size, the total number of entries. */
+	/** Bit mask of RSS offloads, the bit offset also means flow type */
+	uint64_t flow_type_rss_offloads;
 	struct rte_eth_rxconf default_rxconf; /**< Default RX configuration */
 	struct rte_eth_txconf default_txconf; /**< Default TX configuration */
 	uint16_t vmdq_queue_base; /**< First queue ID for VMDQ pools. */

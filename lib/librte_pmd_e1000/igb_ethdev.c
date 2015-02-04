@@ -1378,6 +1378,7 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		break;
 	}
 	dev_info->reta_size = ETH_RSS_RETA_SIZE_128;
+	dev_info->flow_type_rss_offloads = IGB_RSS_OFFLOAD_ALL;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {

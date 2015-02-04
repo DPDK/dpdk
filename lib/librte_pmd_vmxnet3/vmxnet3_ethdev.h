@@ -61,6 +61,12 @@
 #define VMXNET3_RSS_MAX_KEY_SIZE        40
 #define VMXNET3_RSS_MAX_IND_TABLE_SIZE  128
 
+#define VMXNET3_RSS_OFFLOAD_ALL ( \
+	ETH_RSS_IPV4 | \
+	ETH_RSS_NONFRAG_IPV4_TCP | \
+	ETH_RSS_IPV6 | \
+	ETH_RSS_NONFRAG_IPV6_TCP)
+
 /* RSS configuration structure - shared with device through GPA */
 typedef
 struct VMXNET3_RSSConf {

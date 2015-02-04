@@ -94,11 +94,10 @@ static const struct rte_eth_conf port_conf_default = {
 		.mq_mode = ETH_MQ_TX_NONE,
 	},
 	.rx_adv_conf = {
-			.rss_conf = {
-				.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6 |
-					ETH_RSS_IPV4_TCP | ETH_RSS_IPV4_UDP |
-					ETH_RSS_IPV6_TCP | ETH_RSS_IPV6_UDP,
-			}
+		.rss_conf = {
+			.rss_hf = ETH_RSS_IP | ETH_RSS_UDP |
+				ETH_RSS_TCP | ETH_RSS_SCTP,
+		}
 	},
 };
 

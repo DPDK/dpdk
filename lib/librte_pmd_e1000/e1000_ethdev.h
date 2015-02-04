@@ -97,6 +97,17 @@
 #define E1000_FTQF_QUEUE_SHIFT           16
 #define E1000_FTQF_QUEUE_ENABLE          0x00000100
 
+#define IGB_RSS_OFFLOAD_ALL ( \
+	ETH_RSS_IPV4 | \
+	ETH_RSS_NONFRAG_IPV4_TCP | \
+	ETH_RSS_NONFRAG_IPV4_UDP | \
+	ETH_RSS_IPV6 | \
+	ETH_RSS_NONFRAG_IPV6_TCP | \
+	ETH_RSS_NONFRAG_IPV6_UDP | \
+	ETH_RSS_IPV6_EX | \
+	ETH_RSS_IPV6_TCP_EX | \
+	ETH_RSS_IPV6_UDP_EX)
+
 /* structure for interrupt relative data */
 struct e1000_interrupt {
 	uint32_t flags;

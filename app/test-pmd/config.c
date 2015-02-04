@@ -347,6 +347,21 @@ port_infos_display(portid_t port_id)
 	rte_eth_dev_info_get(port_id, &dev_info);
 	if (dev_info.reta_size > 0)
 		printf("Redirection table size: %u\n", dev_info.reta_size);
+	if (!dev_info.flow_type_rss_offloads)
+		printf("No flow type is supported.\n");
+	else {
+		uint16_t i;
+		char *p;
+
+		printf("Supported flow types:\n");
+		for (i = RTE_ETH_FLOW_UNKNOWN + 1; i < RTE_ETH_FLOW_MAX;
+								i++) {
+			if (!(dev_info.flow_type_rss_offloads & (1ULL << i)))
+				continue;
+			p = flowtype_to_str(i);
+			printf("  %s\n", (p ? p : "unknown"));
+		}
+	}
 }
 
 int
@@ -815,6 +830,29 @@ port_rss_reta_info(portid_t port_id,
 void
 port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 {
+	struct rss_type_info {
+		char str[32];
+		uint64_t rss_type;
+	};
+	static const struct rss_type_info rss_type_table[] = {
+		{"ipv4", ETH_RSS_IPV4},
+		{"ipv4-frag", ETH_RSS_FRAG_IPV4},
+		{"ipv4-tcp", ETH_RSS_NONFRAG_IPV4_TCP},
+		{"ipv4-udp", ETH_RSS_NONFRAG_IPV4_UDP},
+		{"ipv4-sctp", ETH_RSS_NONFRAG_IPV4_SCTP},
+		{"ipv4-other", ETH_RSS_NONFRAG_IPV4_OTHER},
+		{"ipv6", ETH_RSS_IPV6},
+		{"ipv6-frag", ETH_RSS_FRAG_IPV6},
+		{"ipv6-tcp", ETH_RSS_NONFRAG_IPV6_TCP},
+		{"ipv6-udp", ETH_RSS_NONFRAG_IPV6_UDP},
+		{"ipv6-sctp", ETH_RSS_NONFRAG_IPV6_SCTP},
+		{"ipv6-other", ETH_RSS_NONFRAG_IPV6_OTHER},
+		{"l2-payload", ETH_RSS_L2_PAYLOAD},
+		{"ipv6-ex", ETH_RSS_IPV6_EX},
+		{"ipv6-tcp-ex", ETH_RSS_IPV6_TCP_EX},
+		{"ipv6-udp-ex", ETH_RSS_IPV6_UDP_EX},
+	};
+
 	struct rte_eth_rss_conf rss_conf;
 	uint8_t rss_key[10 * 4];
 	uint64_t rss_hf;
@@ -846,24 +884,10 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 		return;
 	}
 	printf("RSS functions:\n ");
-	if (rss_hf & ETH_RSS_IPV4)
-		printf("ip4");
-	if (rss_hf & ETH_RSS_IPV4_TCP)
-		printf(" tcp4");
-	if (rss_hf & ETH_RSS_IPV4_UDP)
-		printf(" udp4");
-	if (rss_hf & ETH_RSS_IPV6)
-		printf(" ip6");
-	if (rss_hf & ETH_RSS_IPV6_EX)
-		printf(" ip6-ex");
-	if (rss_hf & ETH_RSS_IPV6_TCP)
-		printf(" tcp6");
-	if (rss_hf & ETH_RSS_IPV6_TCP_EX)
-		printf(" tcp6-ex");
-	if (rss_hf & ETH_RSS_IPV6_UDP)
-		printf(" udp6");
-	if (rss_hf & ETH_RSS_IPV6_UDP_EX)
-		printf(" udp6-ex");
+	for (i = 0; i < RTE_DIM(rss_type_table); i++) {
+		if (rss_hf & rss_type_table[i].rss_type)
+			printf("%s ", rss_type_table[i].str);
+	}
 	printf("\n");
 	if (!show_rss_key)
 		return;

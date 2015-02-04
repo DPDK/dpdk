@@ -323,15 +323,15 @@ fm10k_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	 */
 	hf = dev_conf->rx_adv_conf.rss_conf.rss_hf;
 	mrqc = 0;
-	mrqc |= (hf & ETH_RSS_IPV4_TCP)    ? FM10K_MRQC_TCP_IPV4 : 0;
-	mrqc |= (hf & ETH_RSS_IPV4)        ? FM10K_MRQC_IPV4     : 0;
-	mrqc |= (hf & ETH_RSS_IPV6)        ? FM10K_MRQC_IPV6     : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_EX)     ? FM10K_MRQC_IPV6     : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_TCP)    ? FM10K_MRQC_TCP_IPV6 : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_TCP_EX) ? FM10K_MRQC_TCP_IPV6 : 0;
-	mrqc |= (hf & ETH_RSS_IPV4_UDP)    ? FM10K_MRQC_UDP_IPV4 : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_UDP)    ? FM10K_MRQC_UDP_IPV6 : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_UDP_EX) ? FM10K_MRQC_UDP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_IPV4)              ? FM10K_MRQC_IPV4     : 0;
+	mrqc |= (hf & ETH_RSS_IPV6)              ? FM10K_MRQC_IPV6     : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_EX)           ? FM10K_MRQC_IPV6     : 0;
+	mrqc |= (hf & ETH_RSS_NONFRAG_IPV4_TCP)  ? FM10K_MRQC_TCP_IPV4 : 0;
+	mrqc |= (hf & ETH_RSS_NONFRAG_IPV6_TCP)  ? FM10K_MRQC_TCP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_TCP_EX)       ? FM10K_MRQC_TCP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_NONFRAG_IPV4_UDP)  ? FM10K_MRQC_UDP_IPV4 : 0;
+	mrqc |= (hf & ETH_RSS_NONFRAG_IPV6_UDP)  ? FM10K_MRQC_UDP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_UDP_EX)       ? FM10K_MRQC_UDP_IPV6 : 0;
 
 	if (mrqc == 0) {
 		PMD_INIT_LOG(ERR, "Specified RSS mode 0x%"PRIx64"is not"
@@ -1284,15 +1284,15 @@ fm10k_rss_hash_update(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	mrqc = 0;
-	mrqc |= (hf & ETH_RSS_IPV4_TCP)    ? FM10K_MRQC_TCP_IPV4 : 0;
-	mrqc |= (hf & ETH_RSS_IPV4)        ? FM10K_MRQC_IPV4     : 0;
-	mrqc |= (hf & ETH_RSS_IPV6)        ? FM10K_MRQC_IPV6     : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_EX)     ? FM10K_MRQC_IPV6     : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_TCP)    ? FM10K_MRQC_TCP_IPV6 : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_TCP_EX) ? FM10K_MRQC_TCP_IPV6 : 0;
-	mrqc |= (hf & ETH_RSS_IPV4_UDP)    ? FM10K_MRQC_UDP_IPV4 : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_UDP)    ? FM10K_MRQC_UDP_IPV6 : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_UDP_EX) ? FM10K_MRQC_UDP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_IPV4)              ? FM10K_MRQC_IPV4     : 0;
+	mrqc |= (hf & ETH_RSS_IPV6)              ? FM10K_MRQC_IPV6     : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_EX)           ? FM10K_MRQC_IPV6     : 0;
+	mrqc |= (hf & ETH_RSS_NONFRAG_IPV4_TCP)  ? FM10K_MRQC_TCP_IPV4 : 0;
+	mrqc |= (hf & ETH_RSS_NONFRAG_IPV6_TCP)  ? FM10K_MRQC_TCP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_TCP_EX)       ? FM10K_MRQC_TCP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_NONFRAG_IPV4_UDP)  ? FM10K_MRQC_UDP_IPV4 : 0;
+	mrqc |= (hf & ETH_RSS_NONFRAG_IPV6_UDP)  ? FM10K_MRQC_UDP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_UDP_EX)       ? FM10K_MRQC_UDP_IPV6 : 0;
 
 	/* If the mapping doesn't fit any supported, return */
 	if (mrqc == 0)
@@ -1329,15 +1329,15 @@ fm10k_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	mrqc = FM10K_READ_REG(hw, FM10K_MRQC(0));
 	hf = 0;
-	hf |= (mrqc & FM10K_MRQC_TCP_IPV4) ? ETH_RSS_IPV4_TCP    : 0;
-	hf |= (mrqc & FM10K_MRQC_IPV4)     ? ETH_RSS_IPV4        : 0;
-	hf |= (mrqc & FM10K_MRQC_IPV6)     ? ETH_RSS_IPV6        : 0;
-	hf |= (mrqc & FM10K_MRQC_IPV6)     ? ETH_RSS_IPV6_EX     : 0;
-	hf |= (mrqc & FM10K_MRQC_TCP_IPV6) ? ETH_RSS_IPV6_TCP    : 0;
-	hf |= (mrqc & FM10K_MRQC_TCP_IPV6) ? ETH_RSS_IPV6_TCP_EX : 0;
-	hf |= (mrqc & FM10K_MRQC_UDP_IPV4) ? ETH_RSS_IPV4_UDP    : 0;
-	hf |= (mrqc & FM10K_MRQC_UDP_IPV6) ? ETH_RSS_IPV6_UDP    : 0;
-	hf |= (mrqc & FM10K_MRQC_UDP_IPV6) ? ETH_RSS_IPV6_UDP_EX : 0;
+	hf |= (mrqc & FM10K_MRQC_IPV4)     ? ETH_RSS_IPV4              : 0;
+	hf |= (mrqc & FM10K_MRQC_IPV6)     ? ETH_RSS_IPV6              : 0;
+	hf |= (mrqc & FM10K_MRQC_IPV6)     ? ETH_RSS_IPV6_EX           : 0;
+	hf |= (mrqc & FM10K_MRQC_TCP_IPV4) ? ETH_RSS_NONFRAG_IPV4_TCP  : 0;
+	hf |= (mrqc & FM10K_MRQC_TCP_IPV6) ? ETH_RSS_NONFRAG_IPV6_TCP  : 0;
+	hf |= (mrqc & FM10K_MRQC_TCP_IPV6) ? ETH_RSS_IPV6_TCP_EX       : 0;
+	hf |= (mrqc & FM10K_MRQC_UDP_IPV4) ? ETH_RSS_NONFRAG_IPV4_UDP  : 0;
+	hf |= (mrqc & FM10K_MRQC_UDP_IPV6) ? ETH_RSS_NONFRAG_IPV6_UDP  : 0;
+	hf |= (mrqc & FM10K_MRQC_UDP_IPV6) ? ETH_RSS_IPV6_UDP_EX       : 0;
 
 	rss_conf->rss_hf = hf;
 
