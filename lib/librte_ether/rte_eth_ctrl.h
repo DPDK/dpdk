@@ -509,30 +509,30 @@ enum rte_fdir_mode {
  * It can be gotten to help taking specific configurations per device.
  */
 struct rte_eth_fdir_info {
-	enum rte_fdir_mode mode;     /**< Flow director mode */
+	enum rte_fdir_mode mode; /**< Flow director mode */
 	struct rte_eth_fdir_masks mask;
+	/** Flex payload configuration information */
 	struct rte_eth_fdir_flex_conf flex_conf;
-	/**< Flex payload configuration information */
-	uint32_t guarant_spc;          /**< Guaranteed spaces.*/
-	uint32_t best_spc;             /**< Best effort spaces.*/
+	uint32_t guarant_spc; /**< Guaranteed spaces.*/
+	uint32_t best_spc; /**< Best effort spaces.*/
+	/** Bit mask for every supported flow type. */
 	uint32_t flow_types_mask[RTE_ETH_FLOW_TYPE_MAX / sizeof(uint32_t)];
-	/**< Bit mask for every supported flow type. */
-	uint32_t max_flexpayload;      /**< Total flex payload in bytes. */
+	uint32_t max_flexpayload; /**< Total flex payload in bytes. */
+	/** Flexible payload unit in bytes. Size and alignments of all flex
+	    payload segments should be multiplies of this value. */
 	uint32_t flex_payload_unit;
-	/**< Flexible payload unit in bytes. Size and alignments of all flex
-	     payload segments should be multiplies of this value. */
+	/** Max number of flexible payload continuous segments.
+	    Each segment should be a multiple of flex_payload_unit.*/
 	uint32_t max_flex_payload_segment_num;
-	/**< Max number of flexible payload continuous segments.
-	     Each segment should be a multiple of flex_payload_unit.*/
+	/** Maximum src_offset in bytes allowed. It indicates that
+	    src_offset[i] in struct rte_eth_flex_payload_cfg should be less
+	    than this value. */
 	uint16_t flex_payload_limit;
-	/**< Maximum src_offset in bytes allowed. It indicates that
-	     src_offset[i] in struct rte_eth_flex_payload_cfg should be
-	     less than this value. */
+	/** Flex bitmask unit in bytes. Size of flex bitmasks should be a
+	    multiply of this value. */
 	uint32_t flex_bitmask_unit;
-	/**< Flex bitmask unit in bytes. Size of flex bitmasks should
-	     be a multiply of this value. */
+	/** Max supported size of flex bitmasks in flex_bitmask_unit */
 	uint32_t max_flex_bitmask_num;
-	/**< Max supported size of flex bitmasks in flex_bitmask_unit */
 };
 
 /**
