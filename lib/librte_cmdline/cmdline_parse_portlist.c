@@ -136,7 +136,7 @@ cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 	if (!buf || ! *buf)
 		return (-1);
 
-	if (res && ressize < PORTLIST_TOKEN_SIZE)
+	if (res && ressize < sizeof(cmdline_portlist_t))
 		return -1;
 
 	pl = res;
