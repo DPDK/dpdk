@@ -270,6 +270,78 @@ fm10k_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+fm10k_dev_mq_rx_configure(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	uint32_t mrqc, *key, i, reta, j;
+	uint64_t hf;
+
+#define RSS_KEY_SIZE 40
+	static uint8_t rss_intel_key[RSS_KEY_SIZE] = {
+		0x6D, 0x5A, 0x56, 0xDA, 0x25, 0x5B, 0x0E, 0xC2,
+		0x41, 0x67, 0x25, 0x3D, 0x43, 0xA3, 0x8F, 0xB0,
+		0xD0, 0xCA, 0x2B, 0xCB, 0xAE, 0x7B, 0x30, 0xB4,
+		0x77, 0xCB, 0x2D, 0xA3, 0x80, 0x30, 0xF2, 0x0C,
+		0x6A, 0x42, 0xB7, 0x3B, 0xBE, 0xAC, 0x01, 0xFA,
+	};
+
+	if (dev->data->nb_rx_queues == 1 ||
+	    dev_conf->rxmode.mq_mode != ETH_MQ_RX_RSS ||
+	    dev_conf->rx_adv_conf.rss_conf.rss_hf == 0)
+		return;
+
+	/* random key is rss_intel_key (default) or user provided (rss_key) */
+	if (dev_conf->rx_adv_conf.rss_conf.rss_key == NULL)
+		key = (uint32_t *)rss_intel_key;
+	else
+		key = (uint32_t *)dev_conf->rx_adv_conf.rss_conf.rss_key;
+
+	/* Now fill our hash function seeds, 4 bytes at a time */
+	for (i = 0; i < RSS_KEY_SIZE / sizeof(*key); ++i)
+		FM10K_WRITE_REG(hw, FM10K_RSSRK(0, i), key[i]);
+
+	/*
+	 * Fill in redirection table
+	 * The byte-swap is needed because NIC registers are in
+	 * little-endian order.
+	 */
+	reta = 0;
+	for (i = 0, j = 0; i < FM10K_RETA_SIZE; i++, j++) {
+		if (j == dev->data->nb_rx_queues)
+			j = 0;
+		reta = (reta << CHAR_BIT) | j;
+		if ((i & 3) == 3)
+			FM10K_WRITE_REG(hw, FM10K_RETA(0, i >> 2),
+					rte_bswap32(reta));
+	}
+
+	/*
+	 * Generate RSS hash based on packet types, TCP/UDP
+	 * port numbers and/or IPv4/v6 src and dst addresses
+	 */
+	hf = dev_conf->rx_adv_conf.rss_conf.rss_hf;
+	mrqc = 0;
+	mrqc |= (hf & ETH_RSS_IPV4_TCP)    ? FM10K_MRQC_TCP_IPV4 : 0;
+	mrqc |= (hf & ETH_RSS_IPV4)        ? FM10K_MRQC_IPV4     : 0;
+	mrqc |= (hf & ETH_RSS_IPV6)        ? FM10K_MRQC_IPV6     : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_EX)     ? FM10K_MRQC_IPV6     : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_TCP)    ? FM10K_MRQC_TCP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_TCP_EX) ? FM10K_MRQC_TCP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_IPV4_UDP)    ? FM10K_MRQC_UDP_IPV4 : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_UDP)    ? FM10K_MRQC_UDP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_UDP_EX) ? FM10K_MRQC_UDP_IPV6 : 0;
+
+	if (mrqc == 0) {
+		PMD_INIT_LOG(ERR, "Specified RSS mode 0x%"PRIx64"is not"
+			"supported", hf);
+		return;
+	}
+
+	FM10K_WRITE_REG(hw, FM10K_MRQC(0), mrqc);
+}
+
 static int
 fm10k_dev_tx_init(struct rte_eth_dev *dev)
 {
@@ -359,6 +431,8 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 		FM10K_WRITE_FLUSH(hw);
 	}
 
+	/* Configure RSS if applicable */
+	fm10k_dev_mq_rx_configure(dev);
 	return 0;
 }
 
@@ -1164,6 +1238,86 @@ fm10k_reta_query(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+fm10k_rss_hash_update(struct rte_eth_dev *dev,
+	struct rte_eth_rss_conf *rss_conf)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t *key = (uint32_t *)rss_conf->rss_key;
+	uint32_t mrqc;
+	uint64_t hf = rss_conf->rss_hf;
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rss_conf->rss_key_len < FM10K_RSSRK_SIZE *
+		FM10K_RSSRK_ENTRIES_PER_REG)
+		return -EINVAL;
+
+	if (hf == 0)
+		return -EINVAL;
+
+	mrqc = 0;
+	mrqc |= (hf & ETH_RSS_IPV4_TCP)    ? FM10K_MRQC_TCP_IPV4 : 0;
+	mrqc |= (hf & ETH_RSS_IPV4)        ? FM10K_MRQC_IPV4     : 0;
+	mrqc |= (hf & ETH_RSS_IPV6)        ? FM10K_MRQC_IPV6     : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_EX)     ? FM10K_MRQC_IPV6     : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_TCP)    ? FM10K_MRQC_TCP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_TCP_EX) ? FM10K_MRQC_TCP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_IPV4_UDP)    ? FM10K_MRQC_UDP_IPV4 : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_UDP)    ? FM10K_MRQC_UDP_IPV6 : 0;
+	mrqc |= (hf & ETH_RSS_IPV6_UDP_EX) ? FM10K_MRQC_UDP_IPV6 : 0;
+
+	/* If the mapping doesn't fit any supported, return */
+	if (mrqc == 0)
+		return -EINVAL;
+
+	if (key != NULL)
+		for (i = 0; i < FM10K_RSSRK_SIZE; ++i)
+			FM10K_WRITE_REG(hw, FM10K_RSSRK(0, i), key[i]);
+
+	FM10K_WRITE_REG(hw, FM10K_MRQC(0), mrqc);
+
+	return 0;
+}
+
+static int
+fm10k_rss_hash_conf_get(struct rte_eth_dev *dev,
+	struct rte_eth_rss_conf *rss_conf)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t *key = (uint32_t *)rss_conf->rss_key;
+	uint32_t mrqc;
+	uint64_t hf;
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rss_conf->rss_key_len < FM10K_RSSRK_SIZE *
+				FM10K_RSSRK_ENTRIES_PER_REG)
+		return -EINVAL;
+
+	if (key != NULL)
+		for (i = 0; i < FM10K_RSSRK_SIZE; ++i)
+			key[i] = FM10K_READ_REG(hw, FM10K_RSSRK(0, i));
+
+	mrqc = FM10K_READ_REG(hw, FM10K_MRQC(0));
+	hf = 0;
+	hf |= (mrqc & FM10K_MRQC_TCP_IPV4) ? ETH_RSS_IPV4_TCP    : 0;
+	hf |= (mrqc & FM10K_MRQC_IPV4)     ? ETH_RSS_IPV4        : 0;
+	hf |= (mrqc & FM10K_MRQC_IPV6)     ? ETH_RSS_IPV6        : 0;
+	hf |= (mrqc & FM10K_MRQC_IPV6)     ? ETH_RSS_IPV6_EX     : 0;
+	hf |= (mrqc & FM10K_MRQC_TCP_IPV6) ? ETH_RSS_IPV6_TCP    : 0;
+	hf |= (mrqc & FM10K_MRQC_TCP_IPV6) ? ETH_RSS_IPV6_TCP_EX : 0;
+	hf |= (mrqc & FM10K_MRQC_UDP_IPV4) ? ETH_RSS_IPV4_UDP    : 0;
+	hf |= (mrqc & FM10K_MRQC_UDP_IPV6) ? ETH_RSS_IPV6_UDP    : 0;
+	hf |= (mrqc & FM10K_MRQC_UDP_IPV6) ? ETH_RSS_IPV6_UDP_EX : 0;
+
+	rss_conf->rss_hf = hf;
+
+	return 0;
+}
+
 /* Mailbox message handler in VF */
 static const struct fm10k_msg_data fm10k_msgdata_vf[] = {
 	FM10K_TLV_MSG_TEST_HANDLER(fm10k_tlv_msg_test),
@@ -1232,6 +1386,8 @@ static struct eth_dev_ops fm10k_eth_dev_ops = {
 	.tx_queue_release	= fm10k_tx_queue_release,
 	.reta_update		= fm10k_reta_update,
 	.reta_query		= fm10k_reta_query,
+	.rss_hash_update	= fm10k_rss_hash_update,
+	.rss_hash_conf_get	= fm10k_rss_hash_conf_get,
 };
 
 static int
