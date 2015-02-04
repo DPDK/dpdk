@@ -1923,11 +1923,11 @@ fdir_get_infos(portid_t port_id)
 	       fdir_stats_border, port_id, fdir_stats_border);
 	printf("  MODE: ");
 	if (fdir_info.mode == RTE_FDIR_MODE_PERFECT)
-			printf("  PERFECT\n");
+		printf("  PERFECT\n");
 	else if (fdir_info.mode == RTE_FDIR_MODE_SIGNATURE)
-			printf("  SIGNATURE\n");
+		printf("  SIGNATURE\n");
 	else
-			printf("  DISABLE\n");
+		printf("  DISABLE\n");
 	printf("  SUPPORTED FLOW TYPE: ");
 	print_fdir_flow_type(fdir_info.flow_types_mask[0]);
 	printf("  FLEX PAYLOAD INFO:\n");
