@@ -69,14 +69,16 @@
 #define IXGBE_FDIRCMD_CMD_INTERVAL_US   10
 
 #define IXGBE_FDIR_FLOW_TYPES ( \
-	(1 << RTE_ETH_FLOW_TYPE_UDPV4) | \
-	(1 << RTE_ETH_FLOW_TYPE_TCPV4) | \
-	(1 << RTE_ETH_FLOW_TYPE_SCTPV4) | \
-	(1 << RTE_ETH_FLOW_TYPE_IPV4_OTHER) | \
-	(1 << RTE_ETH_FLOW_TYPE_UDPV6) | \
-	(1 << RTE_ETH_FLOW_TYPE_TCPV6) | \
-	(1 << RTE_ETH_FLOW_TYPE_SCTPV6) | \
-	(1 << RTE_ETH_FLOW_TYPE_IPV6_OTHER))
+	(1 << RTE_ETH_FLOW_FRAG_IPV4) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_UDP) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_TCP) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_SCTP) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_OTHER) | \
+	(1 << RTE_ETH_FLOW_FRAG_IPV4) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_UDP) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_TCP) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_SCTP) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER))
 
 #define IPV6_ADDR_TO_MASK(ipaddr, ipv6m) do { \
 	uint8_t ipv6_addr[16]; \
@@ -408,7 +410,7 @@ ixgbe_set_fdir_flex_conf(struct rte_eth_dev *dev,
 
 	for (i = 0; i < conf->nb_flexmasks; i++) {
 		flex_mask = &conf->flex_mask[i];
-		if (flex_mask->flow_type != RTE_ETH_FLOW_TYPE_RAW) {
+		if (flex_mask->flow_type != RTE_ETH_FLOW_RAW) {
 			PMD_DRV_LOG(ERR, "unsupported flow type.");
 			return -EINVAL;
 		}
@@ -503,28 +505,28 @@ ixgbe_fdir_filter_to_atr_input(const struct rte_eth_fdir_filter *fdir_filter,
 		(fdir_filter->input.flow_ext.flexbytes[0] & 0xFF));
 
 	switch (fdir_filter->input.flow_type) {
-	case RTE_ETH_FLOW_TYPE_UDPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
 		input->formatted.flow_type = IXGBE_ATR_FLOW_TYPE_UDPV4;
 		break;
-	case RTE_ETH_FLOW_TYPE_TCPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
 		input->formatted.flow_type = IXGBE_ATR_FLOW_TYPE_TCPV4;
 		break;
-	case RTE_ETH_FLOW_TYPE_SCTPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_SCTP:
 		input->formatted.flow_type = IXGBE_ATR_FLOW_TYPE_SCTPV4;
 		break;
-	case RTE_ETH_FLOW_TYPE_IPV4_OTHER:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
 		input->formatted.flow_type = IXGBE_ATR_FLOW_TYPE_IPV4;
 		break;
-	case RTE_ETH_FLOW_TYPE_UDPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
 		input->formatted.flow_type = IXGBE_ATR_FLOW_TYPE_UDPV6;
 		break;
-	case RTE_ETH_FLOW_TYPE_TCPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
 		input->formatted.flow_type = IXGBE_ATR_FLOW_TYPE_TCPV6;
 		break;
-	case RTE_ETH_FLOW_TYPE_SCTPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_SCTP:
 		input->formatted.flow_type = IXGBE_ATR_FLOW_TYPE_SCTPV6;
 		break;
-	case RTE_ETH_FLOW_TYPE_IPV6_OTHER:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
 		input->formatted.flow_type = IXGBE_ATR_FLOW_TYPE_IPV6;
 		break;
 	default:
@@ -533,30 +535,30 @@ ixgbe_fdir_filter_to_atr_input(const struct rte_eth_fdir_filter *fdir_filter,
 	}
 
 	switch (fdir_filter->input.flow_type) {
-	case RTE_ETH_FLOW_TYPE_UDPV4:
-	case RTE_ETH_FLOW_TYPE_TCPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
 		input->formatted.src_port =
 			fdir_filter->input.flow.udp4_flow.src_port;
 		input->formatted.dst_port =
 			fdir_filter->input.flow.udp4_flow.dst_port;
 	/*for SCTP flow type, port and verify_tag are meaningless in ixgbe.*/
-	case RTE_ETH_FLOW_TYPE_SCTPV4:
-	case RTE_ETH_FLOW_TYPE_IPV4_OTHER:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_SCTP:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
 		input->formatted.src_ip[0] =
 			fdir_filter->input.flow.ip4_flow.src_ip;
 		input->formatted.dst_ip[0] =
 			fdir_filter->input.flow.ip4_flow.dst_ip;
 		break;
 
-	case RTE_ETH_FLOW_TYPE_UDPV6:
-	case RTE_ETH_FLOW_TYPE_TCPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
 		input->formatted.src_port =
 			fdir_filter->input.flow.udp6_flow.src_port;
 		input->formatted.dst_port =
 			fdir_filter->input.flow.udp6_flow.dst_port;
 	/*for SCTP flow type, port and verify_tag are meaningless in ixgbe.*/
-	case RTE_ETH_FLOW_TYPE_SCTPV6:
-	case RTE_ETH_FLOW_TYPE_IPV6_OTHER:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_SCTP:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
 		rte_memcpy(input->formatted.src_ip,
 			   fdir_filter->input.flow.ipv6_flow.src_ip,
 			   sizeof(input->formatted.src_ip));
@@ -1028,7 +1030,7 @@ ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info
 	fdir_info->flex_conf.flex_set[0].src_offset[0] = offset;
 	fdir_info->flex_conf.flex_set[0].src_offset[1] = offset + 1;
 	fdir_info->flex_conf.nb_flexmasks = 1;
-	fdir_info->flex_conf.flex_mask[0].flow_type = RTE_ETH_FLOW_TYPE_RAW;
+	fdir_info->flex_conf.flex_mask[0].flow_type = RTE_ETH_FLOW_RAW;
 	fdir_info->flex_conf.flex_mask[0].mask[0] =
 			(uint8_t)(info->mask.flex_bytes_mask & 0x00FF);
 	fdir_info->flex_conf.flex_mask[0].mask[1] =

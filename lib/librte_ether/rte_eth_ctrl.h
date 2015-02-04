@@ -46,6 +46,36 @@
 extern "C" {
 #endif
 
+/*
+ * A packet can be identified by hardware as different flow types. Different
+ * NIC hardwares may support different flow types.
+ * Basically, the NIC hardware identifies the flow type as deep protocol as
+ * possible, and exclusively. For example, if a packet is identified as
+ * 'RTE_ETH_FLOW_NONFRAG_IPV4_TCP', it will not be any of other flow types,
+ * though it is an actual IPV4 packet.
+ * Note that the flow types are used to define RSS offload types in
+ * rte_ethdev.h.
+ */
+#define RTE_ETH_FLOW_UNKNOWN             0
+#define RTE_ETH_FLOW_RAW                 1
+#define RTE_ETH_FLOW_IPV4                2
+#define RTE_ETH_FLOW_FRAG_IPV4           3
+#define RTE_ETH_FLOW_NONFRAG_IPV4_TCP    4
+#define RTE_ETH_FLOW_NONFRAG_IPV4_UDP    5
+#define RTE_ETH_FLOW_NONFRAG_IPV4_SCTP   6
+#define RTE_ETH_FLOW_NONFRAG_IPV4_OTHER  7
+#define RTE_ETH_FLOW_IPV6                8
+#define RTE_ETH_FLOW_FRAG_IPV6           9
+#define RTE_ETH_FLOW_NONFRAG_IPV6_TCP   10
+#define RTE_ETH_FLOW_NONFRAG_IPV6_UDP   11
+#define RTE_ETH_FLOW_NONFRAG_IPV6_SCTP  12
+#define RTE_ETH_FLOW_NONFRAG_IPV6_OTHER 13
+#define RTE_ETH_FLOW_L2_PAYLOAD         14
+#define RTE_ETH_FLOW_IPV6_EX            15
+#define RTE_ETH_FLOW_IPV6_TCP_EX        16
+#define RTE_ETH_FLOW_IPV6_UDP_EX        17
+#define RTE_ETH_FLOW_MAX                18
+
 /**
  * Feature filter types
  */
@@ -268,25 +298,6 @@ struct rte_eth_tunnel_filter_conf {
 #define RTE_ETH_FDIR_MAX_FLEXLEN         16 /** < Max length of flexbytes. */
 
 /**
- * Flow type
- */
-enum rte_eth_flow_type {
-	RTE_ETH_FLOW_TYPE_NONE = 0,
-	RTE_ETH_FLOW_TYPE_RAW,
-	RTE_ETH_FLOW_TYPE_UDPV4,
-	RTE_ETH_FLOW_TYPE_TCPV4,
-	RTE_ETH_FLOW_TYPE_SCTPV4,
-	RTE_ETH_FLOW_TYPE_IPV4_OTHER,
-	RTE_ETH_FLOW_TYPE_FRAG_IPV4,
-	RTE_ETH_FLOW_TYPE_UDPV6,
-	RTE_ETH_FLOW_TYPE_TCPV6,
-	RTE_ETH_FLOW_TYPE_SCTPV6,
-	RTE_ETH_FLOW_TYPE_IPV6_OTHER,
-	RTE_ETH_FLOW_TYPE_FRAG_IPV6,
-	RTE_ETH_FLOW_TYPE_MAX = 64,
-};
-
-/**
  * A structure used to define the input for IPV4 flow
  */
 struct rte_eth_ipv4_flow {
@@ -381,7 +392,7 @@ struct rte_eth_fdir_flow_ext {
  * A structure used to define the input for a flow director filter entry
  */
 struct rte_eth_fdir_input {
-	enum rte_eth_flow_type flow_type;      /**< Type of flow */
+	uint16_t flow_type;
 	union rte_eth_fdir_flow flow;
 	/**< Flow fields to match, dependent on flow_type */
 	struct rte_eth_fdir_flow_ext flow_ext;
@@ -474,7 +485,7 @@ struct rte_eth_flex_payload_cfg {
  * for each flow type
  */
 struct rte_eth_fdir_flex_mask {
-	enum rte_eth_flow_type flow_type;  /**< Flow type */
+	uint16_t flow_type;
 	uint8_t mask[RTE_ETH_FDIR_MAX_FLEXLEN];
 	/**< Mask for the whole flexible payload */
 };
@@ -488,7 +499,7 @@ struct rte_eth_fdir_flex_conf {
 	uint16_t nb_flexmasks; /**< The number of following mask */
 	struct rte_eth_flex_payload_cfg flex_set[RTE_ETH_PAYLOAD_MAX];
 	/**< Flex payload configuration for each payload type */
-	struct rte_eth_fdir_flex_mask flex_mask[RTE_ETH_FLOW_TYPE_MAX];
+	struct rte_eth_fdir_flex_mask flex_mask[RTE_ETH_FLOW_MAX];
 	/**< Flex mask configuration for each flow type */
 };
 
@@ -503,7 +514,7 @@ enum rte_fdir_mode {
 
 #define UINT32_BIT (CHAR_BIT * sizeof(uint32_t))
 #define RTE_FLOW_MASK_ARRAY_SIZE \
-(RTE_ALIGN(RTE_ETH_FLOW_TYPE_MAX, UINT32_BIT)/UINT32_BIT)
+	(RTE_ALIGN(RTE_ETH_FLOW_MAX, UINT32_BIT)/UINT32_BIT)
 
 /**
  * A structure used to get the information of flow director filter.
@@ -586,7 +597,7 @@ enum rte_eth_hash_function {
 };
 
 #define RTE_SYM_HASH_MASK_ARRAY_SIZE \
-	(RTE_ALIGN(RTE_ETH_FLOW_TYPE_MAX, UINT32_BIT)/UINT32_BIT)
+	(RTE_ALIGN(RTE_ETH_FLOW_MAX, UINT32_BIT)/UINT32_BIT)
 /**
  * A structure used to set or get global hash function configurations which
  * include symmetric hash enable per flow type and hash function type.

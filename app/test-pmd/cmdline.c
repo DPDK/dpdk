@@ -623,14 +623,14 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Add/Del a flex filter.\n\n"
 
 			"flow_director_filter (port_id) (add|del|update)"
-			" flow (ip4|ip4-frag|ip6|ip6-frag)"
+			" flow (ipv4-other|ipv4-frag|ipv6-other|ipv6-frag)"
 			" src (src_ip_address) dst (dst_ip_address)"
 			" vlan (vlan_value) flexbytes (flexbytes_value)"
 			" (drop|fwd) queue (queue_id) fd_id (fd_id_value)\n"
 			"    Add/Del an IP type flow director filter.\n\n"
 
 			"flow_director_filter (port_id) (add|del|update)"
-			" flow (udp4|tcp4|udp6|tcp6)"
+			" flow (ipv4-tcp|ipv4-udp|ipv6-tcp|ipv6-udp)"
 			" src (src_ip_address) (src_port)"
 			" dst (dst_ip_address) (dst_port)"
 			" vlan (vlan_value) flexbytes (flexbytes_value)"
@@ -638,7 +638,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Add/Del an UDP/TCP type flow director filter.\n\n"
 
 			"flow_director_filter (port_id) (add|del|update)"
-			" flow (sctp4|sctp6)"
+			" flow (ipv4-sctp|ipv6-sctp)"
 			" src (src_ip_address) (src_port)"
 			" dst (dst_ip_address) (dst_port)"
 			" tag (verification_tag) vlan (vlan_value)"
@@ -656,6 +656,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"flow_director_flex_mask (port_id)"
 			" flow (raw|ip4|ip4-frag|tcp4|udp4|sctp4|ip6|ip6-frag|tcp6|udp6|sctp6|all)"
+			" flow (raw|ipv4-other|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|"
+			"ipv6-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|all)"
 			" (mask)\n"
 			"    Configure mask of flex payload.\n\n"
 
@@ -674,7 +676,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Get the global configurations of hash filters.\n\n"
 
 			"set_hash_global_config (port_id) (toeplitz|simple_xor|default)"
-			" (ip4|ip4-frag|tcp4|udp4|#sctp4|ip6|ip6-frag|tcp6|udp6|sctp6)"
+			" (ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|"
+			"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload)"
 			" (enable|disable)\n"
 			"    Set the global configurations of hash filters.\n\n"
 		);
@@ -7582,32 +7585,35 @@ parse_flexbytes(const char *q_arg, uint8_t *flexbytes, uint16_t max_num)
 	return ret;
 }
 
-static enum rte_eth_flow_type
+static uint16_t
 str2flowtype(char *string)
 {
 	uint8_t i = 0;
 	static const struct {
 		char str[32];
-		enum rte_eth_flow_type type;
+		uint16_t type;
 	} flowtype_str[] = {
-		{"raw", RTE_ETH_FLOW_TYPE_RAW},
-		{"ip4", RTE_ETH_FLOW_TYPE_IPV4_OTHER},
-		{"ip4-frag", RTE_ETH_FLOW_TYPE_FRAG_IPV4},
-		{"udp4", RTE_ETH_FLOW_TYPE_UDPV4},
-		{"tcp4", RTE_ETH_FLOW_TYPE_TCPV4},
-		{"sctp4", RTE_ETH_FLOW_TYPE_SCTPV4},
-		{"ip6", RTE_ETH_FLOW_TYPE_IPV6_OTHER},
-		{"ip6-frag", RTE_ETH_FLOW_TYPE_FRAG_IPV6},
-		{"udp6", RTE_ETH_FLOW_TYPE_UDPV6},
-		{"tcp6", RTE_ETH_FLOW_TYPE_TCPV6},
-		{"sctp6", RTE_ETH_FLOW_TYPE_TCPV6},
+		{"raw", RTE_ETH_FLOW_RAW},
+		{"ipv4", RTE_ETH_FLOW_IPV4},
+		{"ipv4-frag", RTE_ETH_FLOW_FRAG_IPV4},
+		{"ipv4-tcp", RTE_ETH_FLOW_NONFRAG_IPV4_TCP},
+		{"ipv4-udp", RTE_ETH_FLOW_NONFRAG_IPV4_UDP},
+		{"ipv4-sctp", RTE_ETH_FLOW_NONFRAG_IPV4_SCTP},
+		{"ipv4-other", RTE_ETH_FLOW_NONFRAG_IPV4_OTHER},
+		{"ipv6", RTE_ETH_FLOW_IPV6},
+		{"ipv6-frag", RTE_ETH_FLOW_FRAG_IPV6},
+		{"ipv6-tcp", RTE_ETH_FLOW_NONFRAG_IPV6_TCP},
+		{"ipv6-udp", RTE_ETH_FLOW_NONFRAG_IPV6_UDP},
+		{"ipv6-sctp", RTE_ETH_FLOW_NONFRAG_IPV6_SCTP},
+		{"ipv6-other", RTE_ETH_FLOW_NONFRAG_IPV6_OTHER},
+		{"l2_payload", RTE_ETH_FLOW_L2_PAYLOAD},
 	};
 
 	for (i = 0; i < RTE_DIM(flowtype_str); i++) {
 		if (!strcmp(flowtype_str[i].str, string))
 			return flowtype_str[i].type;
 	}
-	return RTE_ETH_FLOW_TYPE_NONE;
+	return RTE_ETH_FLOW_UNKNOWN;
 }
 
 #define IPV4_ADDR_TO_UINT(ip_addr, ip) \
@@ -7660,10 +7666,10 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 
 	entry.input.flow_type = str2flowtype(res->flow_type);
 	switch (entry.input.flow_type) {
-	case RTE_ETH_FLOW_TYPE_IPV4_OTHER:
-	case RTE_ETH_FLOW_TYPE_FRAG_IPV4:
-	case RTE_ETH_FLOW_TYPE_UDPV4:
-	case RTE_ETH_FLOW_TYPE_TCPV4:
+	case RTE_ETH_FLOW_FRAG_IPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
 		IPV4_ADDR_TO_UINT(res->ip_dst,
 			entry.input.flow.ip4_flow.dst_ip);
 		IPV4_ADDR_TO_UINT(res->ip_src,
@@ -7674,7 +7680,7 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		entry.input.flow.udp4_flow.src_port =
 				rte_cpu_to_be_16(res->port_src);
 		break;
-	case RTE_ETH_FLOW_TYPE_SCTPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_SCTP:
 		IPV4_ADDR_TO_UINT(res->ip_dst,
 			entry.input.flow.sctp4_flow.ip.dst_ip);
 		IPV4_ADDR_TO_UINT(res->ip_src,
@@ -7683,10 +7689,10 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		entry.input.flow.sctp4_flow.verify_tag =
 				rte_cpu_to_be_32(res->verify_tag_value);
 		break;
-	case RTE_ETH_FLOW_TYPE_IPV6_OTHER:
-	case RTE_ETH_FLOW_TYPE_FRAG_IPV6:
-	case RTE_ETH_FLOW_TYPE_UDPV6:
-	case RTE_ETH_FLOW_TYPE_TCPV6:
+	case RTE_ETH_FLOW_FRAG_IPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
 		IPV6_ADDR_TO_ARRAY(res->ip_dst,
 			entry.input.flow.ipv6_flow.dst_ip);
 		IPV6_ADDR_TO_ARRAY(res->ip_src,
@@ -7697,7 +7703,7 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		entry.input.flow.udp6_flow.src_port =
 				rte_cpu_to_be_16(res->port_src);
 		break;
-	case RTE_ETH_FLOW_TYPE_SCTPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_SCTP:
 		IPV6_ADDR_TO_ARRAY(res->ip_dst,
 			entry.input.flow.sctp6_flow.ip.dst_ip);
 		IPV6_ADDR_TO_ARRAY(res->ip_src,
@@ -7753,9 +7759,8 @@ cmdline_parse_token_string_t cmd_flow_director_flow =
 				 flow, "flow");
 cmdline_parse_token_string_t cmd_flow_director_flow_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
-				 flow_type,
-				 "ip4#ip4-frag#tcp4#udp4#sctp4#"
-				 "ip6#ip6-frag#tcp6#udp6#sctp6");
+		flow_type, "ipv4-other#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#"
+		"ipv6-other#ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp");
 cmdline_parse_token_string_t cmd_flow_director_src =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
 				 src, "src");
@@ -8064,7 +8069,8 @@ cmd_flow_director_flex_mask_parsed(void *parsed_result,
 	struct rte_eth_fdir_info fdir_info;
 	struct rte_eth_fdir_flex_mask flex_mask;
 	struct rte_port *port;
-	enum rte_eth_flow_type i;
+	uint32_t flow_type_mask;
+	uint16_t i;
 	int ret;
 
 	if (res->port_id > nb_ports) {
@@ -8088,14 +8094,22 @@ cmd_flow_director_flex_mask_parsed(void *parsed_result,
 		return;
 	}
 
+	memset(&fdir_info, 0, sizeof(fdir_info));
+	ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_FDIR,
+				RTE_ETH_FILTER_INFO, &fdir_info);
+	if (ret < 0) {
+		printf("Cannot get FDir filter info\n");
+		return;
+	}
+
+	flow_type_mask = fdir_info.flow_types_mask[0];
 	if (!strcmp(res->flow_type, "all")) {
-		memset(&fdir_info, 0, sizeof(fdir_info));
-		rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_FDIR,
-				       RTE_ETH_FILTER_INFO, &fdir_info);
-		for (i = RTE_ETH_FLOW_TYPE_RAW;
-		     i <= RTE_ETH_FLOW_TYPE_FRAG_IPV6;
-		     i++) {
-			if (fdir_info.flow_types_mask[0] & (1 << i)) {
+		if (!flow_type_mask) {
+			printf("No flow type supported\n");
+			return;
+		}
+		for (i = RTE_ETH_FLOW_UNKNOWN; i < RTE_ETH_FLOW_MAX; i++) {
+			if (flow_type_mask & (1 << i)) {
 				flex_mask.flow_type = i;
 				fdir_set_flex_mask(res->port_id, &flex_mask);
 			}
@@ -8104,6 +8118,11 @@ cmd_flow_director_flex_mask_parsed(void *parsed_result,
 		return;
 	}
 	flex_mask.flow_type = str2flowtype(res->flow_type);
+	if (!(flow_type_mask & (1 << flex_mask.flow_type))) {
+		printf("Flow type %s not supported on port %d\n",
+				res->flow_type, res->port_id);
+		return;
+	}
 	fdir_set_flex_mask(res->port_id, &flex_mask);
 	cmd_reconfig_device_queue(res->port_id, 1, 1);
 }
@@ -8120,9 +8139,8 @@ cmdline_parse_token_string_t cmd_flow_director_flexmask_flow =
 				 flow, "flow");
 cmdline_parse_token_string_t cmd_flow_director_flexmask_flow_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
-				 flow_type,
-				"raw#ip4#ip4-frag#tcp4#udp4#sctp4#"
-				"ip6#ip6-frag#tcp6#udp6#sctp6#all");
+		flow_type, "raw#ipv4-other#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#"
+		"ipv6-other#ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#all");
 cmdline_parse_token_string_t cmd_flow_director_flexmask_mask =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
 				 mask, NULL);
@@ -8381,23 +8399,26 @@ struct cmd_get_hash_global_config_result {
 };
 
 static char *
-flowtype_to_str(enum rte_eth_flow_type ftype)
+flowtype_to_str(uint16_t ftype)
 {
 	uint16_t i;
 	static struct {
 		char str[16];
-		enum rte_eth_flow_type ftype;
+		uint16_t ftype;
 	} ftype_table[] = {
-		{"ip4", RTE_ETH_FLOW_TYPE_IPV4_OTHER},
-		{"ip4-frag", RTE_ETH_FLOW_TYPE_FRAG_IPV4},
-		{"udp4", RTE_ETH_FLOW_TYPE_UDPV4},
-		{"tcp4", RTE_ETH_FLOW_TYPE_TCPV4},
-		{"sctp4", RTE_ETH_FLOW_TYPE_SCTPV4},
-		{"ip6", RTE_ETH_FLOW_TYPE_IPV6_OTHER},
-		{"ip6-frag", RTE_ETH_FLOW_TYPE_FRAG_IPV6},
-		{"udp6", RTE_ETH_FLOW_TYPE_UDPV6},
-		{"tcp6", RTE_ETH_FLOW_TYPE_TCPV6},
-		{"sctp6", RTE_ETH_FLOW_TYPE_TCPV6},
+		{"ipv4", RTE_ETH_FLOW_IPV4},
+		{"ipv4-frag", RTE_ETH_FLOW_FRAG_IPV4},
+		{"ipv4-tcp", RTE_ETH_FLOW_NONFRAG_IPV4_TCP},
+		{"ipv4-udp", RTE_ETH_FLOW_NONFRAG_IPV4_UDP},
+		{"ipv4-sctp", RTE_ETH_FLOW_NONFRAG_IPV4_SCTP},
+		{"ipv4-other", RTE_ETH_FLOW_NONFRAG_IPV4_OTHER},
+		{"ipv6", RTE_ETH_FLOW_IPV6},
+		{"ipv6-frag", RTE_ETH_FLOW_FRAG_IPV6},
+		{"ipv6-tcp", RTE_ETH_FLOW_NONFRAG_IPV6_TCP},
+		{"ipv6-udp", RTE_ETH_FLOW_NONFRAG_IPV6_UDP},
+		{"ipv6-sctp", RTE_ETH_FLOW_NONFRAG_IPV6_SCTP},
+		{"ipv6-other", RTE_ETH_FLOW_NONFRAG_IPV6_OTHER},
+		{"l2_payload", RTE_ETH_FLOW_L2_PAYLOAD},
 	};
 
 	for (i = 0; i < RTE_DIM(ftype_table); i++) {
@@ -8415,7 +8436,8 @@ cmd_get_hash_global_config_parsed(void *parsed_result,
 {
 	struct cmd_get_hash_global_config_result *res = parsed_result;
 	struct rte_eth_hash_filter_info info;
-	uint32_t idx, offset, i;
+	uint32_t idx, offset;
+	uint16_t i;
 	char *str;
 	int ret;
 
@@ -8448,13 +8470,13 @@ cmd_get_hash_global_config_parsed(void *parsed_result,
 		break;
 	}
 
-	for (i = 0; i < RTE_ETH_FLOW_TYPE_MAX; i++) {
+	for (i = 0; i < RTE_ETH_FLOW_MAX; i++) {
 		idx = i / UINT32_BIT;
 		offset = i % UINT32_BIT;
 		if (!(info.info.global_conf.valid_bit_mask[idx] &
 						(1UL << offset)))
 			continue;
-		str = flowtype_to_str((enum rte_eth_flow_type)i);
+		str = flowtype_to_str(i);
 		if (!str)
 			continue;
 		printf("Symmetric hash is %s globally for flow type %s "
@@ -8549,7 +8571,8 @@ cmdline_parse_token_string_t cmd_set_hash_global_config_hash_func =
 cmdline_parse_token_string_t cmd_set_hash_global_config_flow_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_global_config_result,
 		flow_type,
-		"ip4#ip4-frag#tcp4#udp4#sctp4#ip6#ip6-frag#tcp6#udp6#sctp6");
+		"ipv4#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#ipv4-other#ipv6#"
+		"ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#ipv6-other#l2_payload");
 cmdline_parse_token_string_t cmd_set_hash_global_config_enable =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_global_config_result,
 		enable, "enable#disable");
@@ -8559,7 +8582,8 @@ cmdline_parse_inst_t cmd_set_hash_global_config = {
 	.data = NULL,
 	.help_str = "set_hash_global_config port_id "
 		"toeplitz|simple_xor|default "
-		"ip4|ip4-frag|tcp4|udp4|#sctp4|ip6|ip6-frag|tcp6|udp6|sctp6 "
+		"ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|"
+		"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload "
 		"enable|disable",
 	.tokens = {
 		(void *)&cmd_set_hash_global_config_all,

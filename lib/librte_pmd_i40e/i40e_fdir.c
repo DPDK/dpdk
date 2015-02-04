@@ -94,17 +94,17 @@
 			I40E_PRTQF_FLX_PIT_DEST_OFF_SHIFT) & \
 			I40E_PRTQF_FLX_PIT_DEST_OFF_MASK))
 
-#define I40E_FDIR_FLOW_TYPES ( \
-	(1 << RTE_ETH_FLOW_TYPE_UDPV4) | \
-	(1 << RTE_ETH_FLOW_TYPE_TCPV4) | \
-	(1 << RTE_ETH_FLOW_TYPE_SCTPV4) | \
-	(1 << RTE_ETH_FLOW_TYPE_IPV4_OTHER) | \
-	(1 << RTE_ETH_FLOW_TYPE_FRAG_IPV4) | \
-	(1 << RTE_ETH_FLOW_TYPE_UDPV6) | \
-	(1 << RTE_ETH_FLOW_TYPE_TCPV6) | \
-	(1 << RTE_ETH_FLOW_TYPE_SCTPV6) | \
-	(1 << RTE_ETH_FLOW_TYPE_IPV6_OTHER) | \
-	(1 << RTE_ETH_FLOW_TYPE_FRAG_IPV6))
+#define I40E_FDIR_FLOWS ( \
+	(1 << RTE_ETH_FLOW_FRAG_IPV4) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_UDP) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_TCP) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_SCTP) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_OTHER) | \
+	(1 << RTE_ETH_FLOW_FRAG_IPV6) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_UDP) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_TCP) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_SCTP) | \
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER))
 
 #define I40E_FLEX_WORD_MASK(off) (0x80 >> (off))
 
@@ -498,13 +498,13 @@ i40e_check_fdir_flex_conf(const struct rte_eth_fdir_flex_conf *conf)
 	}
 
 	/* check flex mask setting configuration */
-	if (conf->nb_flexmasks > RTE_ETH_FLOW_TYPE_FRAG_IPV6) {
+	if (conf->nb_flexmasks >= RTE_ETH_FLOW_MAX) {
 		PMD_DRV_LOG(ERR, "invalid number of flex masks.");
 		return -EINVAL;
 	}
 	for (i = 0; i < conf->nb_flexmasks; i++) {
 		flex_mask = &conf->flex_mask[i];
-		if (!I40E_VALID_FLOW_TYPE(flex_mask->flow_type)) {
+		if (!I40E_VALID_FLOW(flex_mask->flow_type)) {
 			PMD_DRV_LOG(WARNING, "invalid flow type.");
 			return -EINVAL;
 		}
@@ -692,24 +692,24 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 	struct ipv4_hdr *ip;
 	struct ipv6_hdr *ip6;
 	static const uint8_t next_proto[] = {
-		[RTE_ETH_FLOW_TYPE_UDPV4] = IPPROTO_UDP,
-		[RTE_ETH_FLOW_TYPE_TCPV4] = IPPROTO_TCP,
-		[RTE_ETH_FLOW_TYPE_SCTPV4] = IPPROTO_SCTP,
-		[RTE_ETH_FLOW_TYPE_IPV4_OTHER] = IPPROTO_IP,
-		[RTE_ETH_FLOW_TYPE_FRAG_IPV4] = IPPROTO_IP,
-		[RTE_ETH_FLOW_TYPE_UDPV6] = IPPROTO_UDP,
-		[RTE_ETH_FLOW_TYPE_TCPV6] = IPPROTO_TCP,
-		[RTE_ETH_FLOW_TYPE_SCTPV6] = IPPROTO_SCTP,
-		[RTE_ETH_FLOW_TYPE_IPV6_OTHER] = IPPROTO_NONE,
-		[RTE_ETH_FLOW_TYPE_FRAG_IPV6] = IPPROTO_NONE,
+		[RTE_ETH_FLOW_FRAG_IPV4] = IPPROTO_IP,
+		[RTE_ETH_FLOW_NONFRAG_IPV4_TCP] = IPPROTO_TCP,
+		[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] = IPPROTO_UDP,
+		[RTE_ETH_FLOW_NONFRAG_IPV4_SCTP] = IPPROTO_SCTP,
+		[RTE_ETH_FLOW_NONFRAG_IPV4_OTHER] = IPPROTO_IP,
+		[RTE_ETH_FLOW_FRAG_IPV6] = IPPROTO_NONE,
+		[RTE_ETH_FLOW_NONFRAG_IPV6_TCP] = IPPROTO_TCP,
+		[RTE_ETH_FLOW_NONFRAG_IPV6_UDP] = IPPROTO_UDP,
+		[RTE_ETH_FLOW_NONFRAG_IPV6_SCTP] = IPPROTO_SCTP,
+		[RTE_ETH_FLOW_NONFRAG_IPV6_OTHER] = IPPROTO_NONE,
 	};
 
 	switch (fdir_input->flow_type) {
-	case RTE_ETH_FLOW_TYPE_UDPV4:
-	case RTE_ETH_FLOW_TYPE_TCPV4:
-	case RTE_ETH_FLOW_TYPE_SCTPV4:
-	case RTE_ETH_FLOW_TYPE_IPV4_OTHER:
-	case RTE_ETH_FLOW_TYPE_FRAG_IPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_SCTP:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
+	case RTE_ETH_FLOW_FRAG_IPV4:
 		ip = (struct ipv4_hdr *)(raw_pkt + sizeof(struct ether_hdr));
 
 		ether->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
@@ -726,11 +726,11 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 		ip->dst_addr = fdir_input->flow.ip4_flow.src_ip;
 		ip->next_proto_id = next_proto[fdir_input->flow_type];
 		break;
-	case RTE_ETH_FLOW_TYPE_UDPV6:
-	case RTE_ETH_FLOW_TYPE_TCPV6:
-	case RTE_ETH_FLOW_TYPE_SCTPV6:
-	case RTE_ETH_FLOW_TYPE_IPV6_OTHER:
-	case RTE_ETH_FLOW_TYPE_FRAG_IPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_SCTP:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
+	case RTE_ETH_FLOW_FRAG_IPV6:
 		ip6 = (struct ipv6_hdr *)(raw_pkt + sizeof(struct ether_hdr));
 
 		ether->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
@@ -784,7 +784,7 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 
 	/* fill the L4 head */
 	switch (fdir_input->flow_type) {
-	case RTE_ETH_FLOW_TYPE_UDPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
 		udp = (struct udp_hdr *)(raw_pkt + sizeof(struct ether_hdr) +
 				sizeof(struct ipv4_hdr));
 		payload = (unsigned char *)udp + sizeof(struct udp_hdr);
@@ -798,7 +798,7 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		udp->dgram_len = rte_cpu_to_be_16(I40E_FDIR_UDP_DEFAULT_LEN);
 		break;
 
-	case RTE_ETH_FLOW_TYPE_TCPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
 		tcp = (struct tcp_hdr *)(raw_pkt + sizeof(struct ether_hdr) +
 					 sizeof(struct ipv4_hdr));
 		payload = (unsigned char *)tcp + sizeof(struct tcp_hdr);
@@ -812,21 +812,21 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		tcp->data_off = I40E_FDIR_TCP_DEFAULT_DATAOFF;
 		break;
 
-	case RTE_ETH_FLOW_TYPE_SCTPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_SCTP:
 		sctp = (struct sctp_hdr *)(raw_pkt + sizeof(struct ether_hdr) +
 					   sizeof(struct ipv4_hdr));
 		payload = (unsigned char *)sctp + sizeof(struct sctp_hdr);
 		sctp->tag = fdir_input->flow.sctp4_flow.verify_tag;
 		break;
 
-	case RTE_ETH_FLOW_TYPE_IPV4_OTHER:
-	case RTE_ETH_FLOW_TYPE_FRAG_IPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
+	case RTE_ETH_FLOW_FRAG_IPV4:
 		payload = raw_pkt + sizeof(struct ether_hdr) +
 			  sizeof(struct ipv4_hdr);
 		set_idx = I40E_FLXPLD_L3_IDX;
 		break;
 
-	case RTE_ETH_FLOW_TYPE_UDPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
 		udp = (struct udp_hdr *)(raw_pkt + sizeof(struct ether_hdr) +
 					 sizeof(struct ipv6_hdr));
 		payload = (unsigned char *)udp + sizeof(struct udp_hdr);
@@ -840,7 +840,7 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		udp->dgram_len = rte_cpu_to_be_16(I40E_FDIR_IPv6_PAYLOAD_LEN);
 		break;
 
-	case RTE_ETH_FLOW_TYPE_TCPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
 		tcp = (struct tcp_hdr *)(raw_pkt + sizeof(struct ether_hdr) +
 					 sizeof(struct ipv6_hdr));
 		payload = (unsigned char *)tcp + sizeof(struct tcp_hdr);
@@ -854,15 +854,15 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		tcp->dst_port = fdir_input->flow.udp6_flow.src_port;
 		break;
 
-	case RTE_ETH_FLOW_TYPE_SCTPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_SCTP:
 		sctp = (struct sctp_hdr *)(raw_pkt + sizeof(struct ether_hdr) +
 					   sizeof(struct ipv6_hdr));
 		payload = (unsigned char *)sctp + sizeof(struct sctp_hdr);
 		sctp->tag = fdir_input->flow.sctp6_flow.verify_tag;
 		break;
 
-	case RTE_ETH_FLOW_TYPE_IPV6_OTHER:
-	case RTE_ETH_FLOW_TYPE_FRAG_IPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
+	case RTE_ETH_FLOW_FRAG_IPV6:
 		payload = raw_pkt + sizeof(struct ether_hdr) +
 			  sizeof(struct ipv6_hdr);
 		set_idx = I40E_FLXPLD_L3_IDX;
@@ -983,7 +983,7 @@ i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 		return -ENOTSUP;
 	}
 
-	if (!I40E_VALID_FLOW_TYPE(filter->input.flow_type)) {
+	if (!I40E_VALID_FLOW(filter->input.flow_type)) {
 		PMD_DRV_LOG(ERR, "invalid flow_type input.");
 		return -EINVAL;
 	}
@@ -1214,7 +1214,7 @@ i40e_fdir_info_get_flex_mask(struct i40e_pf *pf,
 {
 	struct i40e_fdir_flex_mask *mask;
 	struct rte_eth_fdir_flex_mask *ptr = flex_mask;
-	enum rte_eth_flow_type flow_type;
+	uint16_t flow_type;
 	uint8_t i, j;
 	uint16_t off_bytes, mask_tmp;
 
@@ -1270,7 +1270,7 @@ i40e_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir)
 	fdir->best_spc =
 		(uint32_t)hw->func_caps.fd_filters_best_effort;
 	fdir->max_flexpayload = I40E_FDIR_MAX_FLEX_LEN;
-	fdir->flow_types_mask[0] = I40E_FDIR_FLOW_TYPES;
+	fdir->flow_types_mask[0] = I40E_FDIR_FLOWS;
 	fdir->flex_payload_unit = sizeof(uint16_t);
 	fdir->flex_bitmask_unit = sizeof(uint16_t);
 	fdir->max_flex_payload_segment_num = I40E_MAX_FLXPLD_FIED;

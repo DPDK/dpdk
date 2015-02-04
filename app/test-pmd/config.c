@@ -96,20 +96,7 @@
 
 #include "testpmd.h"
 
-static const char *flowtype_str[RTE_ETH_FLOW_TYPE_MAX] = {
-	NULL,
-	"raw",
-	"udp4",
-	"tcp4",
-	"sctp4",
-	"ip4",
-	"ip4-frag",
-	"udp6",
-	"tcp6",
-	"sctp6",
-	"ip6",
-	"ip6-frag",
-};
+static char *flowtype_to_str(uint16_t flow_type);
 
 static void
 print_ethaddr(const char *name, struct ether_addr *eth_addr)
@@ -1815,15 +1802,51 @@ print_fdir_flex_payload(struct rte_eth_fdir_flex_conf *flex_conf, uint32_t num)
 	printf("\n");
 }
 
+static char *
+flowtype_to_str(uint16_t flow_type)
+{
+	struct flow_type_info {
+		char str[32];
+		uint16_t ftype;
+	};
+
+	uint8_t i;
+	static struct flow_type_info flowtype_str_table[] = {
+		{"raw", RTE_ETH_FLOW_RAW},
+		{"ipv4", RTE_ETH_FLOW_IPV4},
+		{"ipv4-frag", RTE_ETH_FLOW_FRAG_IPV4},
+		{"ipv4-tcp", RTE_ETH_FLOW_NONFRAG_IPV4_TCP},
+		{"ipv4-udp", RTE_ETH_FLOW_NONFRAG_IPV4_UDP},
+		{"ipv4-sctp", RTE_ETH_FLOW_NONFRAG_IPV4_SCTP},
+		{"ipv4-other", RTE_ETH_FLOW_NONFRAG_IPV4_OTHER},
+		{"ipv6", RTE_ETH_FLOW_IPV6},
+		{"ipv6-frag", RTE_ETH_FLOW_FRAG_IPV6},
+		{"ipv6-tcp", RTE_ETH_FLOW_NONFRAG_IPV6_TCP},
+		{"ipv6-udp", RTE_ETH_FLOW_NONFRAG_IPV6_UDP},
+		{"ipv6-sctp", RTE_ETH_FLOW_NONFRAG_IPV6_SCTP},
+		{"ipv6-other", RTE_ETH_FLOW_NONFRAG_IPV6_OTHER},
+		{"l2_payload", RTE_ETH_FLOW_L2_PAYLOAD},
+	};
+
+	for (i = 0; i < RTE_DIM(flowtype_str_table); i++) {
+		if (flowtype_str_table[i].ftype == flow_type)
+			return flowtype_str_table[i].str;
+	}
+
+	return NULL;
+}
+
 static inline void
 print_fdir_flex_mask(struct rte_eth_fdir_flex_conf *flex_conf, uint32_t num)
 {
 	struct rte_eth_fdir_flex_mask *mask;
 	uint32_t i, j;
+	char *p;
 
 	for (i = 0; i < flex_conf->nb_flexmasks; i++) {
 		mask = &flex_conf->flex_mask[i];
-		printf("\n    %s:\t", flowtype_str[mask->flow_type]);
+		p = flowtype_to_str(mask->flow_type);
+		printf("\n    %s:\t", p ? p : "unknown");
 		for (j = 0; j < num; j++)
 			printf(" %02x", mask->mask[j]);
 	}
@@ -1833,13 +1856,17 @@ print_fdir_flex_mask(struct rte_eth_fdir_flex_conf *flex_conf, uint32_t num)
 static inline void
 print_fdir_flow_type(uint32_t flow_types_mask)
 {
-	int i = 0;
+	int i;
+	char *p;
 
-	for (i = RTE_ETH_FLOW_TYPE_UDPV4;
-	     i <= RTE_ETH_FLOW_TYPE_FRAG_IPV6;
-	     i++) {
-		if (flow_types_mask & (1 << i))
-			printf(" %s", flowtype_str[i]);
+	for (i = RTE_ETH_FLOW_UNKNOWN; i < RTE_ETH_FLOW_MAX; i++) {
+		if (!(flow_types_mask & (1 << i)))
+			continue;
+		p = flowtype_to_str(i);
+		if (p)
+			printf(" %s", p);
+		else
+			printf(" unknown");
 	}
 	printf("\n");
 }
@@ -1922,13 +1949,13 @@ fdir_set_flex_mask(portid_t port_id, struct rte_eth_fdir_flex_mask *cfg)
 
 	port = &ports[port_id];
 	flex_conf = &port->dev_conf.fdir_conf.flex_conf;
-	for (i = 0; i < RTE_ETH_FLOW_TYPE_MAX; i++) {
+	for (i = 0; i < RTE_ETH_FLOW_MAX; i++) {
 		if (cfg->flow_type == flex_conf->flex_mask[i].flow_type) {
 			idx = i;
 			break;
 		}
 	}
-	if (i >= RTE_ETH_FLOW_TYPE_MAX) {
+	if (i >= RTE_ETH_FLOW_MAX) {
 		if (flex_conf->nb_flexmasks < RTE_DIM(flex_conf->flex_mask)) {
 			idx = flex_conf->nb_flexmasks;
 			flex_conf->nb_flexmasks++;

@@ -471,10 +471,8 @@ const struct rte_memzone *i40e_memzone_reserve(const char *name,
 					int socket_id);
 int i40e_fdir_configure(struct rte_eth_dev *dev);
 void i40e_fdir_teardown(struct i40e_pf *pf);
-enum i40e_filter_pctype i40e_flowtype_to_pctype(
-				enum rte_eth_flow_type flow_type);
-enum rte_eth_flow_type i40e_pctype_to_flowtype(
-				enum i40e_filter_pctype pctype);
+enum i40e_filter_pctype i40e_flowtype_to_pctype(uint16_t flow_type);
+uint16_t i40e_pctype_to_flowtype(enum i40e_filter_pctype pctype);
 int i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 			  enum rte_filter_op filter_op,
 			  void *arg);
@@ -540,28 +538,30 @@ i40e_init_adminq_parameter(struct i40e_hw *hw)
 	hw->aq.asq_buf_size = I40E_AQ_BUF_SZ;
 }
 
-#define I40E_VALID_FLOW_TYPE(flow_type) \
-	((flow_type) == RTE_ETH_FLOW_TYPE_UDPV4 || \
-	(flow_type) == RTE_ETH_FLOW_TYPE_TCPV4 || \
-	(flow_type) == RTE_ETH_FLOW_TYPE_SCTPV4 || \
-	(flow_type) == RTE_ETH_FLOW_TYPE_IPV4_OTHER || \
-	(flow_type) == RTE_ETH_FLOW_TYPE_FRAG_IPV4 || \
-	(flow_type) == RTE_ETH_FLOW_TYPE_UDPV6 || \
-	(flow_type) == RTE_ETH_FLOW_TYPE_TCPV6 || \
-	(flow_type) == RTE_ETH_FLOW_TYPE_SCTPV6 || \
-	(flow_type) == RTE_ETH_FLOW_TYPE_IPV6_OTHER || \
-	(flow_type) == RTE_ETH_FLOW_TYPE_FRAG_IPV6)
+#define I40E_VALID_FLOW(flow_type) \
+	((flow_type) == RTE_ETH_FLOW_FRAG_IPV4 || \
+	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV4_TCP || \
+	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV4_UDP || \
+	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV4_SCTP || \
+	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV4_OTHER || \
+	(flow_type) == RTE_ETH_FLOW_FRAG_IPV6 || \
+	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV6_TCP || \
+	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV6_UDP || \
+	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV6_SCTP || \
+	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV6_OTHER || \
+	(flow_type) == RTE_ETH_FLOW_L2_PAYLOAD)
 
 #define I40E_VALID_PCTYPE(pctype) \
-	((pctype) == I40E_FILTER_PCTYPE_NONF_IPV4_UDP || \
+	((pctype) == I40E_FILTER_PCTYPE_FRAG_IPV4 || \
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV4_TCP || \
+	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV4_UDP || \
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV4_SCTP || \
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV4_OTHER || \
-	(pctype) == I40E_FILTER_PCTYPE_FRAG_IPV4 || \
+	(pctype) == I40E_FILTER_PCTYPE_FRAG_IPV6 || \
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV6_UDP || \
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV6_TCP || \
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV6_SCTP || \
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV6_OTHER || \
-	(pctype) == I40E_FILTER_PCTYPE_FRAG_IPV6)
+	(pctype) == I40E_FILTER_PCTYPE_L2_PAYLOAD)
 
 #endif /* _I40E_ETHDEV_H_ */

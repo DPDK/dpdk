@@ -94,16 +94,17 @@
 		I40E_PFINT_ICR0_ENA_ADMINQ_MASK)
 
 #define I40E_FLOW_TYPES ( \
-	(1UL << RTE_ETH_FLOW_TYPE_UDPV4) | \
-	(1UL << RTE_ETH_FLOW_TYPE_TCPV4) | \
-	(1UL << RTE_ETH_FLOW_TYPE_SCTPV4) | \
-	(1UL << RTE_ETH_FLOW_TYPE_IPV4_OTHER) | \
-	(1UL << RTE_ETH_FLOW_TYPE_FRAG_IPV4) | \
-	(1UL << RTE_ETH_FLOW_TYPE_UDPV6) | \
-	(1UL << RTE_ETH_FLOW_TYPE_TCPV6) | \
-	(1UL << RTE_ETH_FLOW_TYPE_SCTPV6) | \
-	(1UL << RTE_ETH_FLOW_TYPE_IPV6_OTHER) | \
-	(1UL << RTE_ETH_FLOW_TYPE_FRAG_IPV6))
+	(1UL << RTE_ETH_FLOW_FRAG_IPV4) | \
+	(1UL << RTE_ETH_FLOW_NONFRAG_IPV4_TCP) | \
+	(1UL << RTE_ETH_FLOW_NONFRAG_IPV4_UDP) | \
+	(1UL << RTE_ETH_FLOW_NONFRAG_IPV4_SCTP) | \
+	(1UL << RTE_ETH_FLOW_NONFRAG_IPV4_OTHER) | \
+	(1UL << RTE_ETH_FLOW_FRAG_IPV6) | \
+	(1UL << RTE_ETH_FLOW_NONFRAG_IPV6_TCP) | \
+	(1UL << RTE_ETH_FLOW_NONFRAG_IPV6_UDP) | \
+	(1UL << RTE_ETH_FLOW_NONFRAG_IPV6_SCTP) | \
+	(1UL << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER) | \
+	(1UL << RTE_ETH_FLOW_L2_PAYLOAD))
 
 static int eth_i40e_dev_init(\
 			__attribute__((unused)) struct eth_driver *eth_drv,
@@ -5197,7 +5198,7 @@ i40e_get_hash_filter_global_config(struct i40e_hw *hw,
 				   struct rte_eth_hash_global_conf *g_cfg)
 {
 	uint32_t reg, mask = I40E_FLOW_TYPES;
-	uint32_t i;
+	uint16_t i;
 	enum i40e_filter_pctype pctype;
 
 	memset(g_cfg, 0, sizeof(*g_cfg));
@@ -5209,13 +5210,13 @@ i40e_get_hash_filter_global_config(struct i40e_hw *hw,
 	PMD_DRV_LOG(DEBUG, "Hash function is %s",
 		(reg & I40E_GLQF_CTL_HTOEP_MASK) ? "Toeplitz" : "Simple XOR");
 
-	for (i = 0; mask && i < RTE_ETH_FLOW_TYPE_MAX; i++) {
+	for (i = 0; mask && i < RTE_ETH_FLOW_MAX; i++) {
 		if (!(mask & (1UL << i)))
 			continue;
 		mask &= ~(1UL << i);
 		/* Bit set indicats the coresponding flow type is supported */
 		g_cfg->valid_bit_mask[0] |= (1UL << i);
-		pctype = i40e_flowtype_to_pctype((enum rte_eth_flow_type)i);
+		pctype = i40e_flowtype_to_pctype(i);
 		reg = I40E_READ_REG(hw, I40E_GLQF_HSYM(pctype));
 		if (reg & I40E_GLQF_HSYM_SYMH_ENA_MASK)
 			g_cfg->sym_hash_enable_mask[0] |= (1UL << i);
@@ -5272,7 +5273,8 @@ i40e_set_hash_filter_global_config(struct i40e_hw *hw,
 				   struct rte_eth_hash_global_conf *g_cfg)
 {
 	int ret;
-	uint32_t i, reg;
+	uint16_t i;
+	uint32_t reg;
 	uint32_t mask0 = g_cfg->valid_bit_mask[0];
 	enum i40e_filter_pctype pctype;
 
@@ -5285,7 +5287,7 @@ i40e_set_hash_filter_global_config(struct i40e_hw *hw,
 		if (!(mask0 & (1UL << i)))
 			continue;
 		mask0 &= ~(1UL << i);
-		pctype = i40e_flowtype_to_pctype((enum rte_eth_flow_type)i);
+		pctype = i40e_flowtype_to_pctype(i);
 		reg = (g_cfg->sym_hash_enable_mask[0] & (1UL << i)) ?
 				I40E_GLQF_HSYM_SYMH_ENA_MASK : 0;
 		I40E_WRITE_REG(hw, I40E_GLQF_HSYM(pctype), reg);
@@ -5550,48 +5552,56 @@ i40e_hw_init(struct i40e_hw *hw)
 }
 
 enum i40e_filter_pctype
-i40e_flowtype_to_pctype(enum rte_eth_flow_type flow_type)
+i40e_flowtype_to_pctype(uint16_t flow_type)
 {
-	static const enum i40e_filter_pctype
-		pctype_table[RTE_ETH_FLOW_TYPE_MAX] = {
-		[RTE_ETH_FLOW_TYPE_UDPV4] = I40E_FILTER_PCTYPE_NONF_IPV4_UDP,
-		[RTE_ETH_FLOW_TYPE_TCPV4] = I40E_FILTER_PCTYPE_NONF_IPV4_TCP,
-		[RTE_ETH_FLOW_TYPE_SCTPV4] = I40E_FILTER_PCTYPE_NONF_IPV4_SCTP,
-		[RTE_ETH_FLOW_TYPE_IPV4_OTHER] =
-					I40E_FILTER_PCTYPE_NONF_IPV4_OTHER,
-		[RTE_ETH_FLOW_TYPE_FRAG_IPV4] =
-					I40E_FILTER_PCTYPE_FRAG_IPV4,
-		[RTE_ETH_FLOW_TYPE_UDPV6] = I40E_FILTER_PCTYPE_NONF_IPV6_UDP,
-		[RTE_ETH_FLOW_TYPE_TCPV6] = I40E_FILTER_PCTYPE_NONF_IPV6_TCP,
-		[RTE_ETH_FLOW_TYPE_SCTPV6] = I40E_FILTER_PCTYPE_NONF_IPV6_SCTP,
-		[RTE_ETH_FLOW_TYPE_IPV6_OTHER] =
-					I40E_FILTER_PCTYPE_NONF_IPV6_OTHER,
-		[RTE_ETH_FLOW_TYPE_FRAG_IPV6] =
-					I40E_FILTER_PCTYPE_FRAG_IPV6,
+	static const enum i40e_filter_pctype pctype_table[] = {
+		[RTE_ETH_FLOW_FRAG_IPV4] = I40E_FILTER_PCTYPE_FRAG_IPV4,
+		[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] =
+			I40E_FILTER_PCTYPE_NONF_IPV4_UDP,
+		[RTE_ETH_FLOW_NONFRAG_IPV4_TCP] =
+			I40E_FILTER_PCTYPE_NONF_IPV4_TCP,
+		[RTE_ETH_FLOW_NONFRAG_IPV4_SCTP] =
+			I40E_FILTER_PCTYPE_NONF_IPV4_SCTP,
+		[RTE_ETH_FLOW_NONFRAG_IPV4_OTHER] =
+			I40E_FILTER_PCTYPE_NONF_IPV4_OTHER,
+		[RTE_ETH_FLOW_FRAG_IPV6] = I40E_FILTER_PCTYPE_FRAG_IPV6,
+		[RTE_ETH_FLOW_NONFRAG_IPV6_UDP] =
+			I40E_FILTER_PCTYPE_NONF_IPV6_UDP,
+		[RTE_ETH_FLOW_NONFRAG_IPV6_TCP] =
+			I40E_FILTER_PCTYPE_NONF_IPV6_TCP,
+		[RTE_ETH_FLOW_NONFRAG_IPV6_SCTP] =
+			I40E_FILTER_PCTYPE_NONF_IPV6_SCTP,
+		[RTE_ETH_FLOW_NONFRAG_IPV6_OTHER] =
+			I40E_FILTER_PCTYPE_NONF_IPV6_OTHER,
+		[RTE_ETH_FLOW_L2_PAYLOAD] = I40E_FILTER_PCTYPE_L2_PAYLOAD,
 	};
 
 	return pctype_table[flow_type];
 }
 
-enum rte_eth_flow_type
+uint16_t
 i40e_pctype_to_flowtype(enum i40e_filter_pctype pctype)
 {
-	static const enum rte_eth_flow_type
-		flowtype_table[RTE_ETH_FLOW_TYPE_MAX] = {
-		[I40E_FILTER_PCTYPE_NONF_IPV4_UDP] = RTE_ETH_FLOW_TYPE_UDPV4,
-		[I40E_FILTER_PCTYPE_NONF_IPV4_TCP] = RTE_ETH_FLOW_TYPE_TCPV4,
-		[I40E_FILTER_PCTYPE_NONF_IPV4_SCTP] = RTE_ETH_FLOW_TYPE_SCTPV4,
+	static const uint16_t flowtype_table[] = {
+		[I40E_FILTER_PCTYPE_FRAG_IPV4] = RTE_ETH_FLOW_FRAG_IPV4,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_UDP] =
+			RTE_ETH_FLOW_NONFRAG_IPV4_UDP,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_TCP] =
+			RTE_ETH_FLOW_NONFRAG_IPV4_TCP,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_SCTP] =
+			RTE_ETH_FLOW_NONFRAG_IPV4_SCTP,
 		[I40E_FILTER_PCTYPE_NONF_IPV4_OTHER] =
-					RTE_ETH_FLOW_TYPE_IPV4_OTHER,
-		[I40E_FILTER_PCTYPE_FRAG_IPV4] =
-					RTE_ETH_FLOW_TYPE_FRAG_IPV4,
-		[I40E_FILTER_PCTYPE_NONF_IPV6_UDP] = RTE_ETH_FLOW_TYPE_UDPV6,
-		[I40E_FILTER_PCTYPE_NONF_IPV6_TCP] = RTE_ETH_FLOW_TYPE_TCPV6,
-		[I40E_FILTER_PCTYPE_NONF_IPV6_SCTP] = RTE_ETH_FLOW_TYPE_SCTPV6,
+			RTE_ETH_FLOW_NONFRAG_IPV4_OTHER,
+		[I40E_FILTER_PCTYPE_FRAG_IPV6] = RTE_ETH_FLOW_FRAG_IPV6,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_UDP] =
+			RTE_ETH_FLOW_NONFRAG_IPV6_UDP,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_TCP] =
+			RTE_ETH_FLOW_NONFRAG_IPV6_TCP,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_SCTP] =
+			RTE_ETH_FLOW_NONFRAG_IPV6_SCTP,
 		[I40E_FILTER_PCTYPE_NONF_IPV6_OTHER] =
-					RTE_ETH_FLOW_TYPE_IPV6_OTHER,
-		[I40E_FILTER_PCTYPE_FRAG_IPV6] =
-					RTE_ETH_FLOW_TYPE_FRAG_IPV6,
+			RTE_ETH_FLOW_NONFRAG_IPV6_OTHER,
+		[I40E_FILTER_PCTYPE_L2_PAYLOAD] = RTE_ETH_FLOW_L2_PAYLOAD,
 	};
 
 	return flowtype_table[pctype];
