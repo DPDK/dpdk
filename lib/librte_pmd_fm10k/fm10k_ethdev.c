@@ -423,12 +423,24 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 		FM10K_WRITE_REG(hw, FM10K_SRRCTL(i),
 				buf_size >> FM10K_SRRCTL_BSIZEPKT_SHIFT);
 
+		/* It adds dual VLAN length for supporting dual VLAN */
+		if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
+				2 * FM10K_VLAN_TAG_SIZE) > buf_size){
+			dev->data->scattered_rx = 1;
+			dev->rx_pkt_burst = fm10k_recv_scattered_pkts;
+		}
+
 		/* Enable drop on empty, it's RO for VF */
 		if (hw->mac.type == fm10k_mac_pf && rxq->drop_en)
 			rxdctl |= FM10K_RXDCTL_DROP_ON_EMPTY;
 
 		FM10K_WRITE_REG(hw, FM10K_RXDCTL(i), rxdctl);
 		FM10K_WRITE_FLUSH(hw);
+	}
+
+	if (dev->data->dev_conf.rxmode.enable_scatter) {
+		dev->rx_pkt_burst = fm10k_recv_scattered_pkts;
+		dev->data->scattered_rx = 1;
 	}
 
 	/* Configure RSS if applicable */
@@ -1402,6 +1414,9 @@ eth_fm10k_dev_init(__rte_unused struct eth_driver *eth_drv,
 	dev->dev_ops = &fm10k_eth_dev_ops;
 	dev->rx_pkt_burst = &fm10k_recv_pkts;
 	dev->tx_pkt_burst = &fm10k_xmit_pkts;
+
+	if (dev->data->scattered_rx)
+		dev->rx_pkt_burst = &fm10k_recv_scattered_pkts;
 
 	/* only initialize in the primary process */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

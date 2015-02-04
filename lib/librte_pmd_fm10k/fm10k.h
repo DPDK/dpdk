@@ -284,6 +284,9 @@ fm10k_addr_alignment_valid(struct rte_mbuf *mb)
 uint16_t fm10k_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t nb_pkts);
 
+uint16_t fm10k_recv_scattered_pkts(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+
 uint16_t fm10k_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_pkts);
 #endif

@@ -195,6 +195,151 @@ fm10k_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return count;
 }
 
+uint16_t
+fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+				uint16_t nb_pkts)
+{
+	struct rte_mbuf *mbuf;
+	union fm10k_rx_desc desc;
+	struct fm10k_rx_queue *q = rx_queue;
+	uint16_t count = 0;
+	uint16_t nb_rcv, nb_seg;
+	int alloc = 0;
+	uint16_t next_dd;
+	struct rte_mbuf *first_seg = q->pkt_first_seg;
+	struct rte_mbuf *last_seg = q->pkt_last_seg;
+	int ret;
+
+	next_dd = q->next_dd;
+	nb_rcv = 0;
+
+	nb_seg = RTE_MIN(nb_pkts, q->alloc_thresh);
+	for (count = 0; count < nb_seg; count++) {
+		mbuf = q->sw_ring[next_dd];
+		desc = q->hw_ring[next_dd];
+		if (!(desc.d.staterr & FM10K_RXD_STATUS_DD))
+			break;
+#ifdef RTE_LIBRTE_FM10K_DEBUG_RX
+		dump_rxd(&desc);
+#endif
+
+		if (++next_dd == q->nb_desc) {
+			next_dd = 0;
+			alloc = 1;
+		}
+
+		/* Prefetch next mbuf while processing current one. */
+		rte_prefetch0(q->sw_ring[next_dd]);
+
+		/*
+		 * When next RX descriptor is on a cache-line boundary,
+		 * prefetch the next 4 RX descriptors and the next 8 pointers
+		 * to mbufs.
+		 */
+		if ((next_dd & 0x3) == 0) {
+			rte_prefetch0(&q->hw_ring[next_dd]);
+			rte_prefetch0(&q->sw_ring[next_dd]);
+		}
+
+		/* Fill data length */
+		rte_pktmbuf_data_len(mbuf) = desc.w.length;
+
+		/*
+		 * If this is the first buffer of the received packet,
+		 * set the pointer to the first mbuf of the packet and
+		 * initialize its context.
+		 * Otherwise, update the total length and the number of segments
+		 * of the current scattered packet, and update the pointer to
+		 * the last mbuf of the current packet.
+		 */
+		if (!first_seg) {
+			first_seg = mbuf;
+			first_seg->pkt_len = desc.w.length;
+		} else {
+			first_seg->pkt_len =
+					(uint16_t)(first_seg->pkt_len +
+					rte_pktmbuf_data_len(mbuf));
+			first_seg->nb_segs++;
+			last_seg->next = mbuf;
+		}
+
+		/*
+		 * If this is not the last buffer of the received packet,
+		 * update the pointer to the last mbuf of the current scattered
+		 * packet and continue to parse the RX ring.
+		 */
+		if (!(desc.d.staterr & FM10K_RXD_STATUS_EOP)) {
+			last_seg = mbuf;
+			continue;
+		}
+
+		first_seg->ol_flags = 0;
+#ifdef RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE
+		rx_desc_to_ol_flags(first_seg, &desc);
+#endif
+		first_seg->hash.rss = desc.d.rss;
+
+		/* Prefetch data of first segment, if configured to do so. */
+		rte_packet_prefetch((char *)first_seg->buf_addr +
+			first_seg->data_off);
+
+		/*
+		 * Store the mbuf address into the next entry of the array
+		 * of returned packets.
+		 */
+		rx_pkts[nb_rcv++] = first_seg;
+
+		/*
+		 * Setup receipt context for a new packet.
+		 */
+		first_seg = NULL;
+	}
+
+	q->next_dd = next_dd;
+
+	if ((q->next_dd > q->next_trigger) || (alloc == 1)) {
+		ret = rte_mempool_get_bulk(q->mp,
+					(void **)&q->sw_ring[q->next_alloc],
+					q->alloc_thresh);
+
+		if (unlikely(ret != 0)) {
+			uint8_t port = q->port_id;
+			PMD_RX_LOG(ERR, "Failed to alloc mbuf");
+			/*
+			 * Need to restore next_dd if we cannot allocate new
+			 * buffers to replenish the old ones.
+			 */
+			q->next_dd = (q->next_dd + q->nb_desc - count) %
+								q->nb_desc;
+			rte_eth_devices[port].data->rx_mbuf_alloc_failed++;
+			return 0;
+		}
+
+		for (; q->next_alloc <= q->next_trigger; ++q->next_alloc) {
+			mbuf = q->sw_ring[q->next_alloc];
+
+			/* setup static mbuf fields */
+			fm10k_pktmbuf_reset(mbuf, q->port_id);
+
+			/* write descriptor */
+			desc.q.pkt_addr = MBUF_DMA_ADDR_DEFAULT(mbuf);
+			desc.q.hdr_addr = MBUF_DMA_ADDR_DEFAULT(mbuf);
+			q->hw_ring[q->next_alloc] = desc;
+		}
+		FM10K_PCI_REG_WRITE(q->tail_ptr, q->next_trigger);
+		q->next_trigger += q->alloc_thresh;
+		if (q->next_trigger >= q->nb_desc) {
+			q->next_trigger = q->alloc_thresh - 1;
+			q->next_alloc = 0;
+		}
+	}
+
+	q->pkt_first_seg = first_seg;
+	q->pkt_last_seg = last_seg;
+
+	return nb_rcv;
+}
+
 static inline void tx_free_descriptors(struct fm10k_tx_queue *q)
 {
 	uint16_t next_rs, count = 0;
