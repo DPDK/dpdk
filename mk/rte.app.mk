@@ -211,6 +211,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_I40E_PMD),y)
 LDLIBS += -lrte_pmd_i40e
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_FM10K_PMD),y)
+LDLIBS += -lrte_pmd_fm10k
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)
 LDLIBS += -lrte_pmd_ixgbe
 endif
