@@ -88,6 +88,20 @@ parse_fx () # <index file>
 	done
 }
 
+# Check patterns in F: and X:
+check_fx () # <index file>
+{
+	IFS='
+'
+	for line in $(sed -n 's,^[FX]: ,,p' $1 | tr '*' '#') ; do
+		line=$(printf "$line" | tr '#' '*')
+		match=$(files "$line")
+		if [ -z "$match" ] ; then
+			echo "$line"
+		fi
+	done
+}
+
 # Add a line to a set of lines if it begins with right pattern
 add_line_to_if () # <new line> <lines> <head pattern>
 {
@@ -112,6 +126,10 @@ echo '# files not listed'
 echo '##########'
 aminusb "$all" "$listed"
 
-# TODO: check patterns that match nothing
+echo '##########'
+echo '# wrong patterns'
+echo '##########'
+check_fx MAINTAINERS
+
 # TODO: check overlaps
 # TODO: check orphan areas
