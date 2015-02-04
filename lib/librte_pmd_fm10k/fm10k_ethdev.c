@@ -1562,6 +1562,7 @@ eth_fm10k_dev_init(__rte_unused struct eth_driver *eth_drv,
  */
 static struct rte_pci_id pci_id_fm10k_map[] = {
 #define RTE_PCI_DEV_ID_DECL_FM10K(vend, dev) { RTE_PCI_DEVICE(vend, dev) },
+#define RTE_PCI_DEV_ID_DECL_FM10KVF(vend, dev) { RTE_PCI_DEVICE(vend, dev) },
 #include "rte_pci_dev_ids.h"
 	{ .vendor_id = 0, /* sentinel */ },
 };
