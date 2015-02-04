@@ -49,6 +49,10 @@ F: scripts/depdirs-rule.sh
 F: scripts/gen-build-mk.sh
 F: scripts/gen-config-h.sh
 F: scripts/relpath.sh
+F: doc/build-sdk-quick.txt
+F: doc/guides/prog_guide/build_app.rst
+F: doc/guides/prog_guide/dev_kit_*
+F: doc/guides/prog_guide/ext_app_lib_make_help.rst
 
 ABI versioning
 M: Neil Horman <nhorman@tuxdriver.com>
@@ -63,6 +67,7 @@ M: Thomas Monjalon <thomas.monjalon@6wind.com>
 F: lib/librte_eal/common/*
 F: lib/librte_eal/common/include/*
 F: lib/librte_eal/common/include/generic/
+F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: app/test/test_alarm.c
 F: app/test/test_atomic.c
 F: app/test/test_byteorder.c
@@ -154,6 +159,7 @@ F: app/test/test_func_reentrancy.c
 Ring queue
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_ring/
+F: doc/guides/prog_guide/ring_lib.rst
 F: app/test/test_ring*
 F: app/test/test_func_reentrancy.c
 
