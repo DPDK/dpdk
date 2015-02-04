@@ -529,7 +529,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set crc-strip/rx-checksum/hardware-vlan/drop_en"
 			" for ports.\n\n"
 
-			"port config all rss (ip|udp|none)\n"
+			"port config all rss (all|ip|tcp|udp|sctp|ether|none)\n"
 			"    Set the RSS mode.\n\n"
 
 			"port config port-id rss reta (hash,queue)[,(hash,queue)]\n"
@@ -1321,10 +1321,20 @@ cmd_config_rss_parsed(void *parsed_result,
 	struct rte_eth_rss_conf rss_conf;
 	uint8_t i;
 
-	if (!strcmp(res->value, "ip"))
+	if (!strcmp(res->value, "all"))
+		rss_conf.rss_hf = ETH_RSS_IP | ETH_RSS_TCP |
+				ETH_RSS_UDP | ETH_RSS_SCTP |
+					ETH_RSS_L2_PAYLOAD;
+	else if (!strcmp(res->value, "ip"))
 		rss_conf.rss_hf = ETH_RSS_IP;
 	else if (!strcmp(res->value, "udp"))
 		rss_conf.rss_hf = ETH_RSS_UDP;
+	else if (!strcmp(res->value, "tcp"))
+		rss_conf.rss_hf = ETH_RSS_TCP;
+	else if (!strcmp(res->value, "sctp"))
+		rss_conf.rss_hf = ETH_RSS_SCTP;
+	else if (!strcmp(res->value, "ether"))
+		rss_conf.rss_hf = ETH_RSS_L2_PAYLOAD;
 	else if (!strcmp(res->value, "none"))
 		rss_conf.rss_hf = 0;
 	else {
@@ -1345,12 +1355,13 @@ cmdline_parse_token_string_t cmd_config_rss_all =
 cmdline_parse_token_string_t cmd_config_rss_name =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rss, name, "rss");
 cmdline_parse_token_string_t cmd_config_rss_value =
-	TOKEN_STRING_INITIALIZER(struct cmd_config_rss, value, "ip#udp#none");
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss, value,
+		"all#ip#tcp#udp#sctp#ether#none");
 
 cmdline_parse_inst_t cmd_config_rss = {
 	.f = cmd_config_rss_parsed,
 	.data = NULL,
-	.help_str = "port config all rss ip|udp|none",
+	.help_str = "port config all rss all|ip|tcp|udp|sctp|ether|none",
 	.tokens = {
 		(void *)&cmd_config_rss_port,
 		(void *)&cmd_config_rss_keyword,
