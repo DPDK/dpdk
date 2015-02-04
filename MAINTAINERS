@@ -50,6 +50,10 @@ F: scripts/gen-build-mk.sh
 F: scripts/gen-config-h.sh
 F: scripts/relpath.sh
 
+ABI versioning
+M: Neil Horman <nhorman@tuxdriver.com>
+F: lib/librte_compat/
+F: doc/guides/rel_notes/abi.rst
 
 Environment Abstraction Layer
 -----------------------------
