@@ -44,10 +44,13 @@
 #define FM10K_RX_BUFF_ALIGN 512
 /* Default delay to acquire mailbox lock */
 #define FM10K_MBXLOCK_DELAY_US 20
+#define UINT64_LOWER_32BITS_MASK 0x00000000ffffffffULL
 
 /* Number of chars per uint32 type */
 #define CHARS_PER_UINT32 (sizeof(uint32_t))
 #define BIT_MASK_PER_UINT32 ((1 << CHARS_PER_UINT32) - 1)
+
+static void fm10k_close_mbx_service(struct fm10k_hw *hw);
 
 static void
 fm10k_mbx_initlock(struct fm10k_hw *hw)
@@ -268,6 +271,98 @@ fm10k_dev_configure(struct rte_eth_dev *dev)
 }
 
 static int
+fm10k_dev_tx_init(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int i, ret;
+	struct fm10k_tx_queue *txq;
+	uint64_t base_addr;
+	uint32_t size;
+
+	/* Disable TXINT to avoid possible interrupt */
+	for (i = 0; i < hw->mac.max_queues; i++)
+		FM10K_WRITE_REG(hw, FM10K_TXINT(i),
+				3 << FM10K_TXINT_TIMER_SHIFT);
+
+	/* Setup TX queue */
+	for (i = 0; i < dev->data->nb_tx_queues; ++i) {
+		txq = dev->data->tx_queues[i];
+		base_addr = txq->hw_ring_phys_addr;
+		size = txq->nb_desc * sizeof(struct fm10k_tx_desc);
+
+		/* disable queue to avoid issues while updating state */
+		ret = tx_queue_disable(hw, i);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "failed to disable queue %d", i);
+			return -1;
+		}
+
+		/* set location and size for descriptor ring */
+		FM10K_WRITE_REG(hw, FM10K_TDBAL(i),
+				base_addr & UINT64_LOWER_32BITS_MASK);
+		FM10K_WRITE_REG(hw, FM10K_TDBAH(i),
+				base_addr >> (CHAR_BIT * sizeof(uint32_t)));
+		FM10K_WRITE_REG(hw, FM10K_TDLEN(i), size);
+	}
+	return 0;
+}
+
+static int
+fm10k_dev_rx_init(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int i, ret;
+	struct fm10k_rx_queue *rxq;
+	uint64_t base_addr;
+	uint32_t size;
+	uint32_t rxdctl = FM10K_RXDCTL_WRITE_BACK_MIN_DELAY;
+	uint16_t buf_size;
+	struct rte_pktmbuf_pool_private *mbp_priv;
+
+	/* Disable RXINT to avoid possible interrupt */
+	for (i = 0; i < hw->mac.max_queues; i++)
+		FM10K_WRITE_REG(hw, FM10K_RXINT(i),
+				3 << FM10K_RXINT_TIMER_SHIFT);
+
+	/* Setup RX queues */
+	for (i = 0; i < dev->data->nb_rx_queues; ++i) {
+		rxq = dev->data->rx_queues[i];
+		base_addr = rxq->hw_ring_phys_addr;
+		size = rxq->nb_desc * sizeof(union fm10k_rx_desc);
+
+		/* disable queue to avoid issues while updating state */
+		ret = rx_queue_disable(hw, i);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "failed to disable queue %d", i);
+			return -1;
+		}
+
+		/* Setup the Base and Length of the Rx Descriptor Ring */
+		FM10K_WRITE_REG(hw, FM10K_RDBAL(i),
+				base_addr & UINT64_LOWER_32BITS_MASK);
+		FM10K_WRITE_REG(hw, FM10K_RDBAH(i),
+				base_addr >> (CHAR_BIT * sizeof(uint32_t)));
+		FM10K_WRITE_REG(hw, FM10K_RDLEN(i), size);
+
+		/* Configure the Rx buffer size for one buff without split */
+		mbp_priv = rte_mempool_get_priv(rxq->mp);
+		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
+					RTE_PKTMBUF_HEADROOM);
+		FM10K_WRITE_REG(hw, FM10K_SRRCTL(i),
+				buf_size >> FM10K_SRRCTL_BSIZEPKT_SHIFT);
+
+		/* Enable drop on empty, it's RO for VF */
+		if (hw->mac.type == fm10k_mac_pf && rxq->drop_en)
+			rxdctl |= FM10K_RXDCTL_DROP_ON_EMPTY;
+
+		FM10K_WRITE_REG(hw, FM10K_RXDCTL(i), rxdctl);
+		FM10K_WRITE_FLUSH(hw);
+	}
+
+	return 0;
+}
+
+static int
 fm10k_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -377,6 +472,125 @@ fm10k_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	return 0;
+}
+
+/* fls = find last set bit = 32 minus the number of leading zeros */
+#ifndef fls
+#define fls(x) (((x) == 0) ? 0 : (32 - __builtin_clz((x))))
+#endif
+#define BSIZEPKT_ROUNDUP ((1 << FM10K_SRRCTL_BSIZEPKT_SHIFT) - 1)
+static int
+fm10k_dev_start(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int i, diag;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* stop, init, then start the hw */
+	diag = fm10k_stop_hw(hw);
+	if (diag != FM10K_SUCCESS) {
+		PMD_INIT_LOG(ERR, "Hardware stop failed: %d", diag);
+		return -EIO;
+	}
+
+	diag = fm10k_init_hw(hw);
+	if (diag != FM10K_SUCCESS) {
+		PMD_INIT_LOG(ERR, "Hardware init failed: %d", diag);
+		return -EIO;
+	}
+
+	diag = fm10k_start_hw(hw);
+	if (diag != FM10K_SUCCESS) {
+		PMD_INIT_LOG(ERR, "Hardware start failed: %d", diag);
+		return -EIO;
+	}
+
+	diag = fm10k_dev_tx_init(dev);
+	if (diag) {
+		PMD_INIT_LOG(ERR, "TX init failed: %d", diag);
+		return diag;
+	}
+
+	diag = fm10k_dev_rx_init(dev);
+	if (diag) {
+		PMD_INIT_LOG(ERR, "RX init failed: %d", diag);
+		return diag;
+	}
+
+	if (hw->mac.type == fm10k_mac_pf) {
+		/* Establish only VSI 0 as valid */
+		FM10K_WRITE_REG(hw, FM10K_DGLORTMAP(0), FM10K_DGLORTMAP_ANY);
+
+		/* Configure RSS bits used in RETA table */
+		FM10K_WRITE_REG(hw, FM10K_DGLORTDEC(0),
+				fls(dev->data->nb_rx_queues - 1) <<
+				FM10K_DGLORTDEC_RSSLENGTH_SHIFT);
+
+		/* Invalidate all other GLORT entries */
+		for (i = 1; i < FM10K_DGLORT_COUNT; i++)
+			FM10K_WRITE_REG(hw, FM10K_DGLORTMAP(i),
+					FM10K_DGLORTMAP_NONE);
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct fm10k_rx_queue *rxq;
+		rxq = dev->data->rx_queues[i];
+
+		if (rxq->rx_deferred_start)
+			continue;
+		diag = fm10k_dev_rx_queue_start(dev, i);
+		if (diag != 0) {
+			int j;
+			for (j = 0; j < i; ++j)
+				rx_queue_clean(dev->data->rx_queues[j]);
+			return diag;
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct fm10k_tx_queue *txq;
+		txq = dev->data->tx_queues[i];
+
+		if (txq->tx_deferred_start)
+			continue;
+		diag = fm10k_dev_tx_queue_start(dev, i);
+		if (diag != 0) {
+			int j;
+			for (j = 0; j < dev->data->nb_rx_queues; ++j)
+				rx_queue_clean(dev->data->rx_queues[j]);
+			return diag;
+		}
+	}
+
+	return 0;
+}
+
+static void
+fm10k_dev_stop(struct rte_eth_dev *dev)
+{
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		fm10k_dev_tx_queue_stop(dev, i);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		fm10k_dev_rx_queue_stop(dev, i);
+}
+
+static void
+fm10k_dev_close(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Stop mailbox service first */
+	fm10k_close_mbx_service(hw);
+	fm10k_dev_stop(dev);
+	fm10k_stop_hw(hw);
 }
 
 static int
@@ -992,8 +1206,18 @@ fm10k_setup_mbx_service(struct fm10k_hw *hw)
 	return hw->mbx.ops.connect(hw, &hw->mbx);
 }
 
+static void
+fm10k_close_mbx_service(struct fm10k_hw *hw)
+{
+	/* Disconnect from SM for PF device or PF for VF device */
+	hw->mbx.ops.disconnect(hw, &hw->mbx);
+}
+
 static struct eth_dev_ops fm10k_eth_dev_ops = {
 	.dev_configure		= fm10k_dev_configure,
+	.dev_start		= fm10k_dev_start,
+	.dev_stop		= fm10k_dev_stop,
+	.dev_close		= fm10k_dev_close,
 	.stats_get		= fm10k_stats_get,
 	.stats_reset		= fm10k_stats_reset,
 	.link_update		= fm10k_link_update,
