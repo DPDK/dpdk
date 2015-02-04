@@ -83,6 +83,7 @@ VPATH += $(RTE_SDK)/lib/librte_pmd_fm10k/base
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += fm10k_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += fm10k_rxtx.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += fm10k_pf.c
 SRCS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += fm10k_tlv.c

@@ -1244,6 +1244,8 @@ eth_fm10k_dev_init(__rte_unused struct eth_driver *eth_drv,
 	PMD_INIT_FUNC_TRACE();
 
 	dev->dev_ops = &fm10k_eth_dev_ops;
+	dev->rx_pkt_burst = &fm10k_recv_pkts;
+	dev->tx_pkt_burst = &fm10k_xmit_pkts;
 
 	/* only initialize in the primary process */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

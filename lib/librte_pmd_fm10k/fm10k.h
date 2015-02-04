@@ -279,4 +279,11 @@ fm10k_addr_alignment_valid(struct rte_mbuf *mb)
 
 	return 0;
 }
+
+/* Rx and Tx prototypes */
+uint16_t fm10k_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+	uint16_t nb_pkts);
+
+uint16_t fm10k_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+	uint16_t nb_pkts);
 #endif
