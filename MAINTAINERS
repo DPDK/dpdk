@@ -363,6 +363,7 @@ F: app/test/virtual_pmd.c
 F: app/test/virtual_pmd.h
 
 Driver testing tool
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: app/test-pmd/
 F: doc/guides/testpmd_app_ug/
 
