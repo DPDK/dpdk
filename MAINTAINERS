@@ -214,6 +214,7 @@ M: Helin Zhang <helin.zhang@intel.com>
 F: lib/librte_pmd_i40e/
 
 RedHat virtio
+M: Changchun Ouyang <changchun.ouyang@intel.com>
 F: lib/librte_pmd_virtio/
 F: doc/guides/prog_guide/poll_mode_drv_emulated_virtio_nic.rst
 F: lib/librte_vhost/
