@@ -70,14 +70,22 @@ parse_fx () # <index file>
 			whitelist=$(files $flines)
 			blacklist=$(files $xlines)
 			match=$(aminusb "$whitelist" "$blacklist")
+			if [ -n "$whitelist" ] ; then
+				printf "# $title "
+				maintainers=$(echo "$maintainers" | sed -r 's,.*<(.*)>.*,\1,')
+				maintainers=$(printf "$maintainers" | sed -e 's,^,<,' -e 's,$,>,')
+				echo $maintainers
+			fi
 			if [ -n "$match" ] ; then
-				echo "# $title"
 				echo "$match"
 			fi
 			# flush section
+			unset maintainers
 			unset flines
 			unset xlines
 		elif echo "$line" | grep -q '^[A-Z]: ' ; then
+			# maintainer
+			maintainers=$(add_line_to_if "$line" "$maintainers" 'M: ')
 			# file matching pattern
 			flines=$(add_line_to_if "$line" "$flines" 'F: ')
 			# file exclusion pattern
@@ -118,18 +126,32 @@ aminusb () # <lines a> <lines b>
 	printf "$1\n$2\n$2" | sort | uniq -u | sed '/^$/d'
 }
 
-all=$(files ./)
-listed=$(parse_fx MAINTAINERS | sed '/^#/d' | sort -u)
+printf 'sections: '
+parsed=$(parse_fx MAINTAINERS)
+echo "$parsed" | grep -c '^#'
+printf 'with maintainer: '
+echo "$parsed" | grep -c '^#.*@'
+printf 'maintainers: '
+grep '^M:.*<' MAINTAINERS | sort -u | wc -l
 
+echo
+echo '##########'
+echo '# orphan areas'
+echo '##########'
+echo "$parsed" | sed -rn 's,^#([^@]*)$,\1,p' | uniq
+
+echo
 echo '##########'
 echo '# files not listed'
 echo '##########'
+all=$(files ./)
+listed=$(echo "$parsed" | sed '/^#/d' | sort -u)
 aminusb "$all" "$listed"
 
+echo
 echo '##########'
 echo '# wrong patterns'
 echo '##########'
 check_fx MAINTAINERS
 
 # TODO: check overlaps
-# TODO: check orphan areas
