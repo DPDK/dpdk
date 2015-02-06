@@ -129,14 +129,17 @@ F: examples/vhost_xen/
 F: doc/guides/prog_guide/intel_dpdk_xen_based_packet_switch_sol.rst
 
 FreeBSD EAL (with overlaps)
+M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/librte_eal/bsdapp/Makefile
 F: lib/librte_eal/bsdapp/eal/
 F: doc/guides/freebsd_gsg/
 
 FreeBSD contigmem
+M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/librte_eal/bsdapp/contigmem/
 
 FreeBSD UIO
+M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/librte_eal/bsdapp/nic_uio/
 
 
@@ -246,6 +249,7 @@ F: examples/ip_reassembly/
 F: doc/guides/sample_app_ug/ip_reassembly.rst
 
 Distributor
+M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/librte_distributor/
 F: doc/guides/prog_guide/packet_distrib_lib.rst
 F: app/test/test_distributor*
