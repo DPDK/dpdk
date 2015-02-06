@@ -293,12 +293,14 @@ F: examples/l3fwd-acl/
 F: doc/guides/sample_app_ug/l3_forward_access_ctrl.rst
 
 Hashes
+M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/librte_hash/
 F: doc/guides/prog_guide/hash_lib.rst
 F: app/test/test_hash*
 F: app/test/test_func_reentrancy.c
 
 LPM
+M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/librte_lpm/
 F: doc/guides/prog_guide/lpm*
 F: app/test/test_lpm*
