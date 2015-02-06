@@ -5584,7 +5584,7 @@ cmdline_parse_token_string_t cmd_showport_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_result, what,
 				 "info#stats#xstats#fdir#stat_qmap");
 cmdline_parse_token_num_t cmd_showport_portnum =
-	TOKEN_NUM_INITIALIZER(struct cmd_showport_result, portnum, INT32);
+	TOKEN_NUM_INITIALIZER(struct cmd_showport_result, portnum, UINT8);
 
 cmdline_parse_inst_t cmd_showport = {
 	.f = cmd_showport_parsed,
