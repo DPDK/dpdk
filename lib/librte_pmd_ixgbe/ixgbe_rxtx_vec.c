@@ -402,10 +402,10 @@ reassemble_packets(struct igb_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 	struct rte_mbuf *pkts[RTE_IXGBE_VPMD_RX_BURST]; /*finished pkts*/
 	struct rte_mbuf *start = rxq->pkt_first_seg;
 	struct rte_mbuf *end =  rxq->pkt_last_seg;
-	unsigned pkt_idx = 0, buf_idx = 0;
+	unsigned pkt_idx, buf_idx;
 
 
-	while (buf_idx < nb_bufs) {
+	for (buf_idx = 0, pkt_idx = 0; buf_idx < nb_bufs; buf_idx++) {
 		if (end != NULL) {
 			/* processing a split packet */
 			end->next = rx_bufs[buf_idx];
@@ -448,7 +448,6 @@ reassemble_packets(struct igb_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 			rx_bufs[buf_idx]->data_len += rxq->crc_len;
 			rx_bufs[buf_idx]->pkt_len += rxq->crc_len;
 		}
-		buf_idx++;
 	}
 
 	/* save the partial packet for next time */
