@@ -171,20 +171,14 @@ usage(char* progname)
 	printf("  --txd=N: set the number of descriptors in TX rings to N.\n");
 	printf("  --burst=N: set the number of packets per burst to N.\n");
 	printf("  --mbcache=N: set the cache of mbuf memory pool to N.\n");
-	printf("  --rxpt=N: set prefetch threshold register of RX rings to N "
-	       "(0 <= N <= 16).\n");
-	printf("  --rxht=N: set the host threshold register of RX rings to N "
-	       "(0 <= N <= 16).\n");
+	printf("  --rxpt=N: set prefetch threshold register of RX rings to N.\n");
+	printf("  --rxht=N: set the host threshold register of RX rings to N.\n");
 	printf("  --rxfreet=N: set the free threshold of RX descriptors to N "
 	       "(0 <= N < value of rxd).\n");
-	printf("  --rxwt=N: set the write-back threshold register of RX rings "
-	       "to N (0 <= N <= 16).\n");
-	printf("  --txpt=N: set the prefetch threshold register of TX rings "
-	       "to N (0 <= N <= 16).\n");
-	printf("  --txht=N: set the nhost threshold register of TX rings to N "
-	       "(0 <= N <= 16).\n");
-	printf("  --txwt=N: set the write-back threshold register of TX rings "
-	       "to N (0 <= N <= 16).\n");
+	printf("  --rxwt=N: set the write-back threshold register of RX rings to N.\n");
+	printf("  --txpt=N: set the prefetch threshold register of TX rings to N.\n");
+	printf("  --txht=N: set the nhost threshold register of TX rings to N.\n");
+	printf("  --txwt=N: set the write-back threshold register of TX rings to N.\n");
 	printf("  --txfreet=N: set the transmit free threshold of TX rings to N "
 	       "(0 <= N <= value of txd).\n");
 	printf("  --txrst=N: set the transmit RS bit threshold of TX rings to N "
