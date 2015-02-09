@@ -476,13 +476,13 @@ uint16_t
 virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	struct virtqueue *rxvq = rx_queue;
-	struct virtio_hw *hw = rxvq->hw;
+	struct virtio_hw *hw;
 	struct rte_mbuf *rxm, *new_mbuf;
-	uint16_t nb_used, num, nb_rx = 0;
+	uint16_t nb_used, num, nb_rx;
 	uint32_t len[VIRTIO_MBUF_BURST_SZ];
 	struct rte_mbuf *rcv_pkts[VIRTIO_MBUF_BURST_SZ];
 	int error;
-	uint32_t i, nb_enqueued = 0;
+	uint32_t i, nb_enqueued;
 	const uint32_t hdr_size = sizeof(struct virtio_net_hdr);
 
 	nb_used = VIRTQUEUE_NUSED(rxvq);
@@ -499,6 +499,11 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	num = virtqueue_dequeue_burst_rx(rxvq, rcv_pkts, len, num);
 	PMD_RX_LOG(DEBUG, "used:%d dequeue:%d", nb_used, num);
+
+	hw = rxvq->hw;
+	nb_rx = 0;
+	nb_enqueued = 0;
+
 	for (i = 0; i < num ; i++) {
 		rxm = rcv_pkts[i];
 
@@ -567,17 +572,17 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 			uint16_t nb_pkts)
 {
 	struct virtqueue *rxvq = rx_queue;
-	struct virtio_hw *hw = rxvq->hw;
+	struct virtio_hw *hw;
 	struct rte_mbuf *rxm, *new_mbuf;
-	uint16_t nb_used, num, nb_rx = 0;
+	uint16_t nb_used, num, nb_rx;
 	uint32_t len[VIRTIO_MBUF_BURST_SZ];
 	struct rte_mbuf *rcv_pkts[VIRTIO_MBUF_BURST_SZ];
 	struct rte_mbuf *prev;
 	int error;
-	uint32_t i = 0, nb_enqueued = 0;
-	uint32_t seg_num = 0;
-	uint16_t extra_idx = 0;
-	uint32_t seg_res = 0;
+	uint32_t i, nb_enqueued;
+	uint32_t seg_num;
+	uint16_t extra_idx;
+	uint32_t seg_res;
 	const uint32_t hdr_size = sizeof(struct virtio_net_hdr_mrg_rxbuf);
 
 	nb_used = VIRTQUEUE_NUSED(rxvq);
@@ -588,6 +593,14 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 		return 0;
 
 	PMD_RX_LOG(DEBUG, "used:%d\n", nb_used);
+
+	hw = rxvq->hw;
+	nb_rx = 0;
+	i = 0;
+	nb_enqueued = 0;
+	seg_num = 0;
+	extra_idx = 0;
+	seg_res = 0;
 
 	while (i < nb_used) {
 		struct virtio_net_hdr_mrg_rxbuf *header;
