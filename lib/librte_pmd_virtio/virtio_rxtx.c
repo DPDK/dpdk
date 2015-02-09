@@ -49,6 +49,7 @@
 #include <rte_prefetch.h>
 #include <rte_string_fns.h>
 #include <rte_errno.h>
+#include <rte_byteorder.h>
 
 #include "virtio_logs.h"
 #include "virtio_ethdev.h"
@@ -407,8 +408,8 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOOFFLOADS)
-	    != ETH_TXQ_FLAGS_NOOFFLOADS) {
+	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOXSUMS)
+	    != ETH_TXQ_FLAGS_NOXSUMS) {
 		PMD_INIT_LOG(ERR, "TX checksum offload not supported\n");
 		return -EINVAL;
 	}
@@ -445,6 +446,7 @@ uint16_t
 virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	struct virtqueue *rxvq = rx_queue;
+	struct virtio_hw *hw = rxvq->hw;
 	struct rte_mbuf *rxm, *new_mbuf;
 	uint16_t nb_used, num, nb_rx = 0;
 	uint32_t len[VIRTIO_MBUF_BURST_SZ];
@@ -487,6 +489,9 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->next = NULL;
 		rxm->pkt_len = (uint32_t)(len[i] - hdr_size);
 		rxm->data_len = (uint16_t)(len[i] - hdr_size);
+
+		if (hw->vlan_strip)
+			rte_vlan_strip(rxm);
 
 		VIRTIO_DUMP_PACKET(rxm, rxm->data_len);
 
@@ -715,6 +720,17 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 */
 		if (likely(need <= 0)) {
 			txm = tx_pkts[nb_tx];
+
+			/* Do VLAN tag insertion */
+			if (txm->ol_flags & PKT_TX_VLAN_PKT) {
+				error = rte_vlan_insert(&txm);
+				if (unlikely(error)) {
+					rte_pktmbuf_free(txm);
+					++nb_tx;
+					continue;
+				}
+			}
+
 			/* Enqueue Packet buffers */
 			error = virtqueue_enqueue_xmit(txvq, txm);
 			if (unlikely(error)) {

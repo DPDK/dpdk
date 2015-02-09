@@ -643,6 +643,9 @@ struct rte_eth_rxconf {
 #define ETH_TXQ_FLAGS_NOOFFLOADS \
 		(ETH_TXQ_FLAGS_NOVLANOFFL | ETH_TXQ_FLAGS_NOXSUMSCTP | \
 		 ETH_TXQ_FLAGS_NOXSUMUDP  | ETH_TXQ_FLAGS_NOXSUMTCP)
+#define ETH_TXQ_FLAGS_NOXSUMS \
+		(ETH_TXQ_FLAGS_NOXSUMSCTP | ETH_TXQ_FLAGS_NOXSUMUDP | \
+		 ETH_TXQ_FLAGS_NOXSUMTCP)
 /**
  * A structure used to configure a TX ring of an Ethernet port.
  */

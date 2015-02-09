@@ -168,6 +168,7 @@ struct virtio_hw {
 	uint32_t    max_tx_queues;
 	uint32_t    max_rx_queues;
 	uint16_t    vtnet_hdr_size;
+	uint8_t	    vlan_strip;
 	uint8_t	    use_msix;
 	uint8_t     mac_addr[ETHER_ADDR_LEN];
 };

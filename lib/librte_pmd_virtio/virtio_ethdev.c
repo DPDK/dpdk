@@ -1049,6 +1049,8 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		return (-EINVAL);
 	}
 
+	hw->vlan_strip = rxmode->hw_vlan_strip;
+
 	ret = vtpci_irq_config(hw, 0);
 	if (ret != 0)
 		PMD_DRV_LOG(ERR, "failed to set config vector");
