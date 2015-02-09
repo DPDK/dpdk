@@ -49,6 +49,8 @@ extern "C" {
 
 #include <rte_memcpy.h>
 #include <rte_random.h>
+#include <rte_mbuf.h>
+#include <rte_byteorder.h>
 
 #define ETHER_ADDR_LEN  6 /**< Length of Ethernet address. */
 #define ETHER_TYPE_LEN  2 /**< Length of Ethernet type field. */
@@ -332,6 +334,80 @@ struct vxlan_hdr {
 
 #define ETHER_VXLAN_HLEN (sizeof(struct udp_hdr) + sizeof(struct vxlan_hdr))
 /**< VXLAN tunnel header length. */
+
+/**
+ * Extract VLAN tag information into mbuf
+ *
+ * Software version of VLAN stripping
+ *
+ * @param m
+ *   The packet mbuf.
+ * @return
+ *   - 0: Success
+ *   - 1: not a vlan packet
+ */
+static inline int rte_vlan_strip(struct rte_mbuf *m)
+{
+	struct ether_hdr *eh
+		 = rte_pktmbuf_mtod(m, struct ether_hdr *);
+
+	if (eh->ether_type != rte_cpu_to_be_16(ETHER_TYPE_VLAN))
+		return -1;
+
+	struct vlan_hdr *vh = (struct vlan_hdr *)(eh + 1);
+	m->ol_flags |= PKT_RX_VLAN_PKT;
+	m->vlan_tci = rte_be_to_cpu_16(vh->vlan_tci);
+
+	/* Copy ether header over rather than moving whole packet */
+	memmove(rte_pktmbuf_adj(m, sizeof(struct vlan_hdr)),
+		eh, 2 * ETHER_ADDR_LEN);
+
+	return 0;
+}
+
+/**
+ * Insert VLAN tag into mbuf.
+ *
+ * Software version of VLAN unstripping
+ *
+ * @param m
+ *   The packet mbuf.
+ * @return
+ *   - 0: On success
+ *   -EPERM: mbuf is is shared overwriting would be unsafe
+ *   -ENOSPC: not enough headroom in mbuf
+ */
+static inline int rte_vlan_insert(struct rte_mbuf **m)
+{
+	struct ether_hdr *oh, *nh;
+	struct vlan_hdr *vh;
+
+#ifdef RTE_MBUF_REFCNT
+	/* Can't insert header if mbuf is shared */
+	if (rte_mbuf_refcnt_read(*m) > 1) {
+		struct rte_mbuf *copy;
+
+		copy = rte_pktmbuf_clone(*m, (*m)->pool);
+		if (unlikely(copy == NULL))
+			return -ENOMEM;
+		rte_pktmbuf_free(*m);
+		*m = copy;
+	}
+#endif
+	oh = rte_pktmbuf_mtod(*m, struct ether_hdr *);
+	nh = (struct ether_hdr *)
+		rte_pktmbuf_prepend(*m, sizeof(struct vlan_hdr));
+	if (nh == NULL)
+		return -ENOSPC;
+
+	memmove(nh, oh, 2 * ETHER_ADDR_LEN);
+	nh->ether_type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
+
+	vh = (struct vlan_hdr *) (nh + 1);
+	vh->vlan_tci = rte_cpu_to_be_16((*m)->vlan_tci);
+
+	return 0;
+}
 
 #ifdef __cplusplus
 }
