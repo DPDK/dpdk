@@ -794,11 +794,52 @@ virtio_has_msix(const struct rte_pci_addr *loc)
 
 	return (d != NULL);
 }
+
+/* Extract I/O port numbers from sysfs */
+static int virtio_resource_init(struct rte_pci_device *pci_dev)
+{
+	char dirname[PATH_MAX];
+	char filename[PATH_MAX];
+	unsigned long start, size;
+
+	if (get_uio_dev(&pci_dev->addr, dirname, sizeof(dirname)) < 0)
+		return -1;
+
+	/* get portio size */
+	snprintf(filename, sizeof(filename),
+		     "%s/portio/port0/size", dirname);
+	if (parse_sysfs_value(filename, &size) < 0) {
+		PMD_INIT_LOG(ERR, "%s(): cannot parse size",
+			     __func__);
+		return -1;
+	}
+
+	/* get portio start */
+	snprintf(filename, sizeof(filename),
+		 "%s/portio/port0/start", dirname);
+	if (parse_sysfs_value(filename, &start) < 0) {
+		PMD_INIT_LOG(ERR, "%s(): cannot parse portio start",
+			     __func__);
+		return -1;
+	}
+	pci_dev->mem_resource[0].addr = (void *)(uintptr_t)start;
+	pci_dev->mem_resource[0].len =  (uint64_t)size;
+	PMD_INIT_LOG(DEBUG,
+		     "PCI Port IO found start=0x%lx with size=0x%lx",
+		     start, size);
+	return 0;
+}
 #else
 static int
 virtio_has_msix(const struct rte_pci_addr *loc __rte_unused)
 {
 	/* nic_uio does not enable interrupts, return 0 (false). */
+	return 0;
+}
+
+static int virtio_resource_init(struct rte_pci_device *pci_dev __rte_unused)
+{
+	/* no setup required */
 	return 0;
 }
 #endif
@@ -831,40 +872,9 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 		return 0;
 
 	pci_dev = eth_dev->pci_dev;
+	if (virtio_resource_init(pci_dev) < 0)
+		return -1;
 
-#ifdef RTE_EXEC_ENV_LINUXAPP
-	{
-		char dirname[PATH_MAX];
-		char filename[PATH_MAX];
-		unsigned long start, size;
-
-		if (get_uio_dev(&pci_dev->addr, dirname, sizeof(dirname)) < 0)
-			return -1;
-
-		/* get portio size */
-		snprintf(filename, sizeof(filename),
-			     "%s/portio/port0/size", dirname);
-		if (parse_sysfs_value(filename, &size) < 0) {
-			PMD_INIT_LOG(ERR, "%s(): cannot parse size",
-				     __func__);
-			return -1;
-		}
-
-		/* get portio start */
-		snprintf(filename, sizeof(filename),
-			     "%s/portio/port0/start", dirname);
-		if (parse_sysfs_value(filename, &start) < 0) {
-			PMD_INIT_LOG(ERR, "%s(): cannot parse portio start",
-				     __func__);
-			return -1;
-		}
-		pci_dev->mem_resource[0].addr = (void *)(uintptr_t)start;
-		pci_dev->mem_resource[0].len =  (uint64_t)size;
-		PMD_INIT_LOG(DEBUG,
-			     "PCI Port IO found start=0x%lx with size=0x%lx",
-			     start, size);
-	}
-#endif
 	hw->use_msix = virtio_has_msix(&pci_dev->addr);
 	hw->io_base = (uint32_t)(uintptr_t)pci_dev->mem_resource[0].addr;
 
