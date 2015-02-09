@@ -885,6 +885,15 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return 0;
 
+	/* Allocate memory for storing MAC addresses */
+	eth_dev->data->mac_addrs = rte_zmalloc("virtio", ETHER_ADDR_LEN, 0);
+	if (eth_dev->data->mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR,
+			"Failed to allocate %d bytes needed to store MAC addresses",
+			ETHER_ADDR_LEN);
+		return -ENOMEM;
+	}
+
 	pci_dev = eth_dev->pci_dev;
 	if (virtio_resource_init(pci_dev) < 0)
 		return -1;
@@ -909,15 +918,6 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 	} else {
 		eth_dev->rx_pkt_burst = &virtio_recv_pkts;
 		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr);
-	}
-
-	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("virtio", ETHER_ADDR_LEN, 0);
-	if (eth_dev->data->mac_addrs == NULL) {
-		PMD_INIT_LOG(ERR,
-			"Failed to allocate %d bytes needed to store MAC addresses",
-			ETHER_ADDR_LEN);
-		return -ENOMEM;
 	}
 
 	/* Copy the permanent MAC address to: virtio_hw */
