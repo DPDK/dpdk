@@ -398,9 +398,15 @@ virtio_dev_cq_queue_setup(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx,
 static void
 virtio_dev_close(struct rte_eth_dev *dev)
 {
+	struct virtio_hw *hw = dev->data->dev_private;
+
 	PMD_INIT_LOG(DEBUG, "virtio_dev_close");
 
-	virtio_dev_stop(dev);
+	/* reset the NIC */
+	vtpci_irq_config(hw, VIRTIO_MSI_NO_VECTOR);
+	vtpci_reset(hw);
+	hw->started = 0;
+	virtio_dev_free_mbufs(dev);
 }
 
 static void
@@ -986,6 +992,9 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 	/* Setup interrupt callback  */
 	rte_intr_callback_register(&pci_dev->intr_handle,
 				   virtio_interrupt_handler, eth_dev);
+
+	virtio_dev_cq_start(eth_dev);
+
 	return 0;
 }
 
@@ -1040,7 +1049,6 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 {
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct virtio_hw *hw = dev->data->dev_private;
-	int ret;
 
 	PMD_INIT_LOG(DEBUG, "configure");
 
@@ -1051,11 +1059,12 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 
 	hw->vlan_strip = rxmode->hw_vlan_strip;
 
-	ret = vtpci_irq_config(hw, 0);
-	if (ret != 0)
+	if (vtpci_irq_config(hw, 0) == VIRTIO_MSI_NO_VECTOR) {
 		PMD_DRV_LOG(ERR, "failed to set config vector");
+		return -EBUSY;
+	}
 
-	return ret;
+	return 0;
 }
 
 
@@ -1064,17 +1073,6 @@ virtio_dev_start(struct rte_eth_dev *dev)
 {
 	uint16_t nb_queues, i;
 	struct virtio_hw *hw = dev->data->dev_private;
-
-	/* Tell the host we've noticed this device. */
-	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_ACK);
-
-	/* Tell the host we've known how to drive the device. */
-	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER);
-
-	virtio_dev_cq_start(dev);
-
-	/* Do final configuration before rx/tx engine starts */
-	virtio_dev_rxtx_start(dev);
 
 	/* check if lsc interrupt feature is enabled */
 	if (dev->data->dev_conf.intr_conf.lsc) {
@@ -1092,7 +1090,15 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	/* Initialize Link state */
 	virtio_dev_link_update(dev, 0);
 
+	/* On restart after stop do not touch queues */
+	if (hw->started)
+		return 0;
+
+	/* Do final configuration before rx/tx engine starts */
+	virtio_dev_rxtx_start(dev);
 	vtpci_reinit_complete(hw);
+
+	hw->started = 1;
 
 	/*Notify the backend
 	 *Otherwise the tap backend might already stop its queue due to fullness.
@@ -1164,17 +1170,20 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 }
 
 /*
- * Stop device: disable rx and tx functions to allow for reconfiguring.
+ * Stop device: disable interrupt and mark link down
  */
 static void
 virtio_dev_stop(struct rte_eth_dev *dev)
 {
-	struct virtio_hw *hw = dev->data->dev_private;
+	struct rte_eth_link link;
 
-	/* reset the NIC */
-	vtpci_irq_config(hw, 0);
-	vtpci_reset(hw);
-	virtio_dev_free_mbufs(dev);
+	PMD_INIT_LOG(DEBUG, "stop");
+
+	if (dev->data->dev_conf.intr_conf.lsc)
+		rte_intr_disable(&dev->pci_dev->intr_handle);
+
+	memset(&link, 0, sizeof(link));
+	virtio_dev_atomic_write_link_status(dev, &link);
 }
 
 static int

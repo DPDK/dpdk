@@ -139,15 +139,9 @@ vtpci_isr(struct virtio_hw *hw)
 
 
 /* Enable one vector (0) for Link State Intrerrupt */
-int
+uint16_t
 vtpci_irq_config(struct virtio_hw *hw, uint16_t vec)
 {
 	VIRTIO_WRITE_REG_2(hw, VIRTIO_MSI_CONFIG_VECTOR, vec);
-	vec = VIRTIO_READ_REG_2(hw, VIRTIO_MSI_CONFIG_VECTOR);
-	if (vec == VIRTIO_MSI_NO_VECTOR) {
-		PMD_DRV_LOG(ERR, "failed to set config vector");
-		return -EBUSY;
-	}
-
-	return 0;
+	return VIRTIO_READ_REG_2(hw, VIRTIO_MSI_CONFIG_VECTOR);
 }
