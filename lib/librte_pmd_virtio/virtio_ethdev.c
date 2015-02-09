@@ -294,7 +294,6 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	vq->port_id = dev->data->port_id;
 	vq->queue_id = queue_idx;
 	vq->vq_queue_index = vtpci_queue_idx;
-	vq->vq_alignment = VIRTIO_PCI_VRING_ALIGN;
 	vq->vq_nentries = vq_size;
 	vq->vq_free_cnt = vq_size;
 

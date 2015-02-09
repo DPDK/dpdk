@@ -138,8 +138,7 @@ struct virtqueue {
 	uint8_t     port_id;              /**< Device port identifier. */
 
 	void        *vq_ring_virt_mem;    /**< linear address of vring*/
-	int         vq_alignment;
-	int         vq_ring_size;
+	unsigned int vq_ring_size;
 	phys_addr_t vq_ring_mem;          /**< physical address of vring */
 
 	struct vring vq_ring;    /**< vring keeping desc, used and avail */

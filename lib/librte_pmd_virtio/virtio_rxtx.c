@@ -257,7 +257,7 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 	 * Reinitialise since virtio port might have been stopped and restarted
 	 */
 	memset(vq->vq_ring_virt_mem, 0, vq->vq_ring_size);
-	vring_init(vr, size, ring_mem, vq->vq_alignment);
+	vring_init(vr, size, ring_mem, VIRTIO_PCI_VRING_ALIGN);
 	vq->vq_used_cons_idx = 0;
 	vq->vq_desc_head_idx = 0;
 	vq->vq_avail_idx = 0;
