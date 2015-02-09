@@ -516,14 +516,13 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	}
 
 	if (likely(nb_enqueued)) {
-		virtio_wmb();
+		vq_update_avail_idx(rxvq);
+
 		if (unlikely(virtqueue_kick_prepare(rxvq))) {
 			virtqueue_notify(rxvq);
 			PMD_RX_LOG(DEBUG, "Notified\n");
 		}
 	}
-
-	vq_update_avail_idx(rxvq);
 
 	return nb_rx;
 }
@@ -668,13 +667,13 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 	}
 
 	if (likely(nb_enqueued)) {
+		vq_update_avail_idx(rxvq);
+
 		if (unlikely(virtqueue_kick_prepare(rxvq))) {
 			virtqueue_notify(rxvq);
 			PMD_RX_LOG(DEBUG, "Notified");
 		}
 	}
-
-	vq_update_avail_idx(rxvq);
 
 	return nb_rx;
 }
@@ -735,14 +734,16 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			break;
 		}
 	}
-	vq_update_avail_idx(txvq);
-	virtio_wmb();
 
 	txvq->packets += nb_tx;
 
-	if (unlikely(virtqueue_kick_prepare(txvq))) {
-		virtqueue_notify(txvq);
-		PMD_TX_LOG(DEBUG, "Notified backend after xmit");
+	if (likely(nb_tx)) {
+		vq_update_avail_idx(txvq);
+
+		if (unlikely(virtqueue_kick_prepare(txvq))) {
+			virtqueue_notify(txvq);
+			PMD_TX_LOG(DEBUG, "Notified backend after xmit");
+		}
 	}
 
 	return nb_tx;
