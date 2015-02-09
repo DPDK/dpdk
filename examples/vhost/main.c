@@ -159,6 +159,9 @@ static uint32_t num_devices;
 static uint32_t zero_copy;
 static int mergeable;
 
+/* Do vlan strip on host, enabled on default */
+static uint32_t vlan_strip = 1;
+
 /* number of descriptors to apply*/
 static uint32_t num_rx_descriptor = RTE_TEST_RX_DESC_DEFAULT_ZCP;
 static uint32_t num_tx_descriptor = RTE_TEST_TX_DESC_DEFAULT_ZCP;
@@ -564,6 +567,7 @@ us_vhost_usage(const char *prgname)
 	"		--rx-retry-delay [0-N]: timeout(in usecond) between retries on RX. This makes effect only if retries on rx enabled\n"
 	"		--rx-retry-num [0-N]: the number of retries on rx. This makes effect only if retries on rx enabled\n"
 	"		--mergeable [0|1]: disable(default)/enable RX mergeable buffers\n"
+	"		--vlan-strip [0|1]: disable/enable(default) RX VLAN strip on host\n"
 	"		--stats [0-N]: 0: Disable stats, N: Time in seconds to print stats\n"
 	"		--dev-basename: The basename to be used for the character device.\n"
 	"		--zero-copy [0|1]: disable(default)/enable rx/tx "
@@ -591,6 +595,7 @@ us_vhost_parse_args(int argc, char **argv)
 		{"rx-retry-delay", required_argument, NULL, 0},
 		{"rx-retry-num", required_argument, NULL, 0},
 		{"mergeable", required_argument, NULL, 0},
+		{"vlan-strip", required_argument, NULL, 0},
 		{"stats", required_argument, NULL, 0},
 		{"dev-basename", required_argument, NULL, 0},
 		{"zero-copy", required_argument, NULL, 0},
@@ -688,6 +693,22 @@ us_vhost_parse_args(int argc, char **argv)
 						vmdq_conf_default.rxmode.max_rx_pkt_len
 							= JUMBO_FRAME_MAX_SIZE;
 					}
+				}
+			}
+
+			/* Enable/disable RX VLAN strip on host. */
+			if (!strncmp(long_option[option_index].name,
+				"vlan-strip", MAX_LONG_OPT_SZ)) {
+				ret = parse_num_opt(optarg, 1);
+				if (ret == -1) {
+					RTE_LOG(INFO, VHOST_CONFIG,
+						"Invalid argument for VLAN strip [0|1]\n");
+					us_vhost_usage(prgname);
+					return -1;
+				} else {
+					vlan_strip = !!ret;
+					vmdq_conf_default.rxmode.hw_vlan_strip =
+						vlan_strip;
 				}
 			}
 
@@ -950,7 +971,9 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 					dev->device_fh);
 
 	/* Enable stripping of the vlan tag as we handle routing. */
-	rte_eth_dev_set_vlan_strip_on_queue(ports[0], (uint16_t)vdev->vmdq_rx_q, 1);
+	if (vlan_strip)
+		rte_eth_dev_set_vlan_strip_on_queue(ports[0],
+			(uint16_t)vdev->vmdq_rx_q, 1);
 
 	/* Set device as ready for RX. */
 	vdev->ready = DEVICE_RX;
