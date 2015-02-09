@@ -537,6 +537,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 			uint16_t nb_pkts)
 {
 	struct virtqueue *rxvq = rx_queue;
+	struct virtio_hw *hw = rxvq->hw;
 	struct rte_mbuf *rxm, *new_mbuf;
 	uint16_t nb_used, num, nb_rx = 0;
 	uint32_t len[VIRTIO_MBUF_BURST_SZ];
@@ -642,6 +643,9 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 			};
 			seg_res -= rcv_cnt;
 		}
+
+		if (hw->vlan_strip)
+			rte_vlan_strip(rx_pkts[nb_rx]);
 
 		VIRTIO_DUMP_PACKET(rx_pkts[nb_rx],
 			rx_pkts[nb_rx]->data_len);
