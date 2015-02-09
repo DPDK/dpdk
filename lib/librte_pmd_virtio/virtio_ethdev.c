@@ -90,6 +90,8 @@ static void virtio_mac_addr_add(struct rte_eth_dev *dev,
 				struct ether_addr *mac_addr,
 				uint32_t index, uint32_t vmdq __rte_unused);
 static void virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
+static void virtio_mac_addr_set(struct rte_eth_dev *dev,
+				struct ether_addr *mac_addr);
 
 static int virtio_dev_queue_stats_mapping_set(
 	__rte_unused struct rte_eth_dev *eth_dev,
@@ -519,6 +521,7 @@ static struct eth_dev_ops virtio_eth_dev_ops = {
 	.vlan_filter_set         = virtio_vlan_filter_set,
 	.mac_addr_add            = virtio_mac_addr_add,
 	.mac_addr_remove         = virtio_mac_addr_remove,
+	.mac_addr_set            = virtio_mac_addr_set,
 };
 
 static inline int
@@ -732,6 +735,27 @@ virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	}
 
 	virtio_mac_table_set(hw, uc, mc);
+}
+
+static void
+virtio_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+
+	memcpy(hw->mac_addr, mac_addr, ETHER_ADDR_LEN);
+
+	/* Use atomic update if available */
+	if (vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_MAC_ADDR)) {
+		struct virtio_pmd_ctrl ctrl;
+		int len = ETHER_ADDR_LEN;
+
+		ctrl.hdr.class = VIRTIO_NET_CTRL_MAC;
+		ctrl.hdr.cmd = VIRTIO_NET_CTRL_MAC_ADDR_SET;
+
+		memcpy(ctrl.data, mac_addr, ETHER_ADDR_LEN);
+		virtio_send_command(hw->cvq, &ctrl, &len, 1);
+	} else if (vtpci_with_feature(hw, VIRTIO_NET_F_MAC))
+		virtio_set_hwaddr(hw);
 }
 
 static int

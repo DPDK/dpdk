@@ -1241,6 +1241,10 @@ typedef void (*eth_mac_addr_add_t)(struct rte_eth_dev *dev,
 				  uint32_t vmdq);
 /**< @internal Set a MAC address into Receive Address Address Register */
 
+typedef void (*eth_mac_addr_set_t)(struct rte_eth_dev *dev,
+				  struct ether_addr *mac_addr);
+/**< @internal Set a MAC address into Receive Address Address Register */
+
 typedef int (*eth_uc_hash_table_set_t)(struct rte_eth_dev *dev,
 				  struct ether_addr *mac_addr,
 				  uint8_t on);
@@ -1460,6 +1464,7 @@ struct eth_dev_ops {
 	priority_flow_ctrl_set_t   priority_flow_ctrl_set; /**< Setup priority flow control.*/
 	eth_mac_addr_remove_t      mac_addr_remove; /**< Remove MAC address */
 	eth_mac_addr_add_t         mac_addr_add;  /**< Add a MAC address */
+	eth_mac_addr_set_t         mac_addr_set;  /**< Set a MAC address */
 	eth_uc_hash_table_set_t    uc_hash_table_set;  /**< Set Unicast Table Array */
 	eth_uc_all_hash_table_set_t uc_all_hash_table_set;  /**< Set Unicast hash bitmap */
 	eth_mirror_rule_set_t	   mirror_rule_set;  /**< Add a traffic mirror rule.*/
