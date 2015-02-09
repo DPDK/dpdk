@@ -46,9 +46,18 @@
 #include "virtio_ring.h"
 #include "virtio_logs.h"
 
-#define mb()  rte_mb()
-#define wmb() rte_wmb()
-#define rmb() rte_rmb()
+/*
+ * Per virtio_config.h in Linux.
+ *     For virtio_pci on SMP, we don't need to order with respect to MMIO
+ *     accesses through relaxed memory I/O windows, so smp_mb() et al are
+ *     sufficient.
+ *
+ * This driver is for virtio_pci on SMP and therefore can assume
+ * weaker (compiler barriers)
+ */
+#define virtio_mb()	rte_mb()
+#define virtio_rmb()	rte_compiler_barrier()
+#define virtio_wmb()	rte_compiler_barrier()
 
 #ifdef RTE_PMD_PACKET_PREFETCH
 #define rte_packet_prefetch(p)  rte_prefetch1(p)
@@ -225,7 +234,7 @@ virtqueue_full(const struct virtqueue *vq)
 static inline void
 vq_update_avail_idx(struct virtqueue *vq)
 {
-	rte_compiler_barrier();
+	virtio_wmb();
 	vq->vq_ring.avail->idx = vq->vq_avail_idx;
 }
 
@@ -255,7 +264,7 @@ static inline void
 virtqueue_notify(struct virtqueue *vq)
 {
 	/*
-	 * Ensure updated avail->idx is visible to host. mb() necessary?
+	 * Ensure updated avail->idx is visible to host.
 	 * For virtio on IA, the notificaiton is through io port operation
 	 * which is a serialization instruction itself.
 	 */

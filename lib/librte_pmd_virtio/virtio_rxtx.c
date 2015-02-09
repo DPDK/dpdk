@@ -456,7 +456,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	nb_used = VIRTQUEUE_NUSED(rxvq);
 
-	rmb();
+	virtio_rmb();
 
 	num = (uint16_t)(likely(nb_used <= nb_pkts) ? nb_used : nb_pkts);
 	num = (uint16_t)(likely(num <= VIRTIO_MBUF_BURST_SZ) ? num : VIRTIO_MBUF_BURST_SZ);
@@ -516,6 +516,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	}
 
 	if (likely(nb_enqueued)) {
+		virtio_wmb();
 		if (unlikely(virtqueue_kick_prepare(rxvq))) {
 			virtqueue_notify(rxvq);
 			PMD_RX_LOG(DEBUG, "Notified\n");
@@ -547,7 +548,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 
 	nb_used = VIRTQUEUE_NUSED(rxvq);
 
-	rmb();
+	virtio_rmb();
 
 	if (nb_used == 0)
 		return 0;
@@ -694,7 +695,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	PMD_TX_LOG(DEBUG, "%d packets to xmit", nb_pkts);
 	nb_used = VIRTQUEUE_NUSED(txvq);
 
-	rmb();
+	virtio_rmb();
 
 	num = (uint16_t)(likely(nb_used < VIRTIO_MBUF_BURST_SZ) ? nb_used : VIRTIO_MBUF_BURST_SZ);
 
@@ -735,6 +736,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 	}
 	vq_update_avail_idx(txvq);
+	virtio_wmb();
 
 	txvq->packets += nb_tx;
 
