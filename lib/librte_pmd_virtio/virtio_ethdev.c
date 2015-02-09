@@ -1053,14 +1053,12 @@ virtio_dev_start(struct rte_eth_dev *dev)
 		vtpci_read_dev_config(hw,
 				offsetof(struct virtio_net_config, status),
 				&status, sizeof(status));
-		if ((status & VIRTIO_NET_S_LINK_UP) == 0) {
+		if ((status & VIRTIO_NET_S_LINK_UP) == 0)
 			PMD_INIT_LOG(ERR, "Port: %d Link is DOWN",
 				     dev->data->port_id);
-			return -EIO;
-		} else {
+		else
 			PMD_INIT_LOG(DEBUG, "Port: %d Link is UP",
 				     dev->data->port_id);
-		}
 	}
 	vtpci_reinit_complete(hw);
 
