@@ -845,6 +845,34 @@ static int virtio_resource_init(struct rte_pci_device *pci_dev __rte_unused)
 #endif
 
 /*
+ * Process Virtio Config changed interrupt and call the callback
+ * if link state changed.
+ */
+static void
+virtio_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
+			 void *param)
+{
+	struct rte_eth_dev *dev = param;
+	struct virtio_hw *hw =
+		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint8_t isr;
+
+	/* Read interrupt status which clears interrupt */
+	isr = vtpci_isr(hw);
+	PMD_DRV_LOG(INFO, "interrupt status = %#x", isr);
+
+	if (rte_intr_enable(&dev->pci_dev->intr_handle) < 0)
+		PMD_DRV_LOG(ERR, "interrupt enable failed");
+
+	if (isr & VIRTIO_PCI_ISR_CONFIG) {
+		if (virtio_dev_link_update(dev, 0) == 0)
+			_rte_eth_dev_callback_process(dev,
+						      RTE_ETH_EVENT_INTR_LSC);
+	}
+
+}
+
+/*
  * This function is based on probe() function in virtio_pci.c
  * It returns 0 on success.
  */
@@ -964,6 +992,10 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id);
+
+	/* Setup interrupt callback  */
+	rte_intr_callback_register(&pci_dev->intr_handle,
+				   virtio_interrupt_handler, eth_dev);
 	return 0;
 }
 
@@ -971,7 +1003,7 @@ static struct eth_driver rte_virtio_pmd = {
 	{
 		.name = "rte_virtio_pmd",
 		.id_table = pci_id_virtio_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	},
 	.eth_dev_init = eth_virtio_dev_init,
 	.dev_private_size = sizeof(struct virtio_adapter),
@@ -1017,6 +1049,9 @@ static int
 virtio_dev_configure(struct rte_eth_dev *dev)
 {
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	struct virtio_hw *hw =
+		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
 
 	PMD_INIT_LOG(DEBUG, "configure");
 
@@ -1025,7 +1060,11 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		return (-EINVAL);
 	}
 
-	return 0;
+	ret = vtpci_irq_config(hw, 0);
+	if (ret != 0)
+		PMD_DRV_LOG(ERR, "failed to set config vector");
+
+	return ret;
 }
 
 
@@ -1033,7 +1072,6 @@ static int
 virtio_dev_start(struct rte_eth_dev *dev)
 {
 	uint16_t nb_queues, i;
-	uint16_t status;
 	struct virtio_hw *hw =
 		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1048,18 +1086,22 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	/* Do final configuration before rx/tx engine starts */
 	virtio_dev_rxtx_start(dev);
 
-	/* Check VIRTIO_NET_F_STATUS for link status*/
-	if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
-		vtpci_read_dev_config(hw,
-				offsetof(struct virtio_net_config, status),
-				&status, sizeof(status));
-		if ((status & VIRTIO_NET_S_LINK_UP) == 0)
-			PMD_INIT_LOG(ERR, "Port: %d Link is DOWN",
-				     dev->data->port_id);
-		else
-			PMD_INIT_LOG(DEBUG, "Port: %d Link is UP",
-				     dev->data->port_id);
+	/* check if lsc interrupt feature is enabled */
+	if (dev->data->dev_conf.intr_conf.lsc) {
+		if (!vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
+			PMD_DRV_LOG(ERR, "link status not supported by host");
+			return -ENOTSUP;
+		}
+
+		if (rte_intr_enable(&dev->pci_dev->intr_handle) < 0) {
+			PMD_DRV_LOG(ERR, "interrupt enable failed");
+			return -EIO;
+		}
 	}
+
+	/* Initialize Link state */
+	virtio_dev_link_update(dev, 0);
+
 	vtpci_reinit_complete(hw);
 
 	/*Notify the backend
@@ -1141,6 +1183,7 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	/* reset the NIC */
+	vtpci_irq_config(hw, 0);
 	vtpci_reset(hw);
 	virtio_dev_free_mbufs(dev);
 }
@@ -1157,6 +1200,7 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 	old = link;
 	link.link_duplex = FULL_DUPLEX;
 	link.link_speed  = SPEED_10G;
+
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
 		PMD_INIT_LOG(DEBUG, "Get link status from hw");
 		vtpci_read_dev_config(hw,
@@ -1175,10 +1219,8 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 		link.link_status = 1;   /* Link up */
 	}
 	virtio_dev_atomic_write_link_status(dev, &link);
-	if (old.link_status == link.link_status)
-		return -1;
-	/*changed*/
-	return 0;
+
+	return (old.link_status == link.link_status) ? -1 : 0;
 }
 
 static void

@@ -261,4 +261,8 @@ void vtpci_write_dev_config(struct virtio_hw *, uint64_t, void *, int);
 
 void vtpci_read_dev_config(struct virtio_hw *, uint64_t, void *, int);
 
+uint8_t vtpci_isr(struct virtio_hw *);
+
+int vtpci_irq_config(struct virtio_hw *, uint16_t);
+
 #endif /* _VIRTIO_PCI_H_ */
