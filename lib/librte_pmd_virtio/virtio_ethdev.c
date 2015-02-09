@@ -176,14 +176,15 @@ virtio_send_command(struct virtqueue *vq, struct virtio_pmd_ctrl *ctrl,
 
 	virtqueue_notify(vq);
 
-	while (vq->vq_used_cons_idx == vq->vq_ring.used->idx)
+	rte_rmb();
+	while (vq->vq_used_cons_idx == vq->vq_ring.used->idx) {
+		rte_rmb();
 		usleep(100);
+	}
 
 	while (vq->vq_used_cons_idx != vq->vq_ring.used->idx) {
 		uint32_t idx, desc_idx, used_idx;
 		struct vring_used_elem *uep;
-
-		virtio_rmb();
 
 		used_idx = (uint32_t)(vq->vq_used_cons_idx
 				& (vq->vq_nentries - 1));

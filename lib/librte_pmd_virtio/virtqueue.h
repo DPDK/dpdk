@@ -164,6 +164,7 @@ struct virtqueue {
 	struct rte_mempool       *mpool;  /**< mempool for mbuf allocation */
 	uint16_t    queue_id;             /**< DPDK queue index. */
 	uint8_t     port_id;              /**< Device port identifier. */
+	uint16_t    vq_queue_index;       /**< PCI queue index */
 
 	void        *vq_ring_virt_mem;    /**< linear address of vring*/
 	unsigned int vq_ring_size;
@@ -172,7 +173,7 @@ struct virtqueue {
 	struct vring vq_ring;    /**< vring keeping desc, used and avail */
 	uint16_t    vq_free_cnt; /**< num of desc available */
 	uint16_t    vq_nentries; /**< vring desc numbers */
-	uint16_t    vq_queue_index;       /**< PCI queue index */
+	uint16_t    vq_free_thresh; /**< free threshold */
 	/**
 	 * Head of the free chain in the descriptor table. If
 	 * there are no free descriptors, this will be set to

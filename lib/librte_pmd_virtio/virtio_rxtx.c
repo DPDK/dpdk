@@ -129,17 +129,32 @@ virtqueue_dequeue_burst_rx(struct virtqueue *vq, struct rte_mbuf **rx_pkts,
 	return i;
 }
 
-static void
-virtqueue_dequeue_pkt_tx(struct virtqueue *vq)
-{
-	struct vring_used_elem *uep;
-	uint16_t used_idx, desc_idx;
+#ifndef DEFAULT_TX_FREE_THRESH
+#define DEFAULT_TX_FREE_THRESH 32
+#endif
 
-	used_idx = (uint16_t)(vq->vq_used_cons_idx & (vq->vq_nentries - 1));
-	uep = &vq->vq_ring.used->ring[used_idx];
-	desc_idx = (uint16_t) uep->id;
-	vq->vq_used_cons_idx++;
-	vq_ring_free_chain(vq, desc_idx);
+/* Cleanup from completed transmits. */
+static void
+virtio_xmit_cleanup(struct virtqueue *vq, uint16_t num)
+{
+	uint16_t i, used_idx, desc_idx;
+	for (i = 0; i < num; i++) {
+		struct vring_used_elem *uep;
+		struct vq_desc_extra *dxp;
+
+		used_idx = (uint16_t)(vq->vq_used_cons_idx & (vq->vq_nentries - 1));
+		uep = &vq->vq_ring.used->ring[used_idx];
+
+		desc_idx = (uint16_t) uep->id;
+		dxp = &vq->vq_descx[desc_idx];
+		vq->vq_used_cons_idx++;
+		vq_ring_free_chain(vq, desc_idx);
+
+		if (dxp->cookie != NULL) {
+			rte_pktmbuf_free(dxp->cookie);
+			dxp->cookie = NULL;
+		}
+	}
 }
 
 
@@ -203,8 +218,6 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 
 	idx = head_idx;
 	dxp = &txvq->vq_descx[idx];
-	if (dxp->cookie != NULL)
-		rte_pktmbuf_free(dxp->cookie);
 	dxp->cookie = (void *)cookie;
 	dxp->ndescs = needed;
 
@@ -404,6 +417,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 {
 	uint8_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
 	struct virtqueue *vq;
+	uint16_t tx_free_thresh;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -420,6 +434,22 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		PMD_INIT_LOG(ERR, "rvq initialization failed");
 		return ret;
 	}
+
+	tx_free_thresh = tx_conf->tx_free_thresh;
+	if (tx_free_thresh == 0)
+		tx_free_thresh =
+			RTE_MIN(vq->vq_nentries / 4, DEFAULT_TX_FREE_THRESH);
+
+	if (tx_free_thresh >= (vq->vq_nentries - 3)) {
+		RTE_LOG(ERR, PMD, "tx_free_thresh must be less than the "
+			"number of TX entries minus 3 (%u)."
+			" (tx_free_thresh=%u port=%u queue=%u)\n",
+			vq->vq_nentries - 3,
+			tx_free_thresh, dev->data->port_id, queue_idx);
+		return -EINVAL;
+	}
+
+	vq->vq_free_thresh = tx_free_thresh;
 
 	dev->data->tx_queues[queue_idx] = vq;
 	return 0;
@@ -691,10 +721,8 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct virtqueue *txvq = tx_queue;
 	struct rte_mbuf *txm;
-	uint16_t nb_used, nb_tx, num;
+	uint16_t nb_used, nb_tx;
 	int error;
-
-	nb_tx = 0;
 
 	if (unlikely(nb_pkts < 1))
 		return nb_pkts;
@@ -703,21 +731,26 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	nb_used = VIRTQUEUE_NUSED(txvq);
 
 	virtio_rmb();
+	if (likely(nb_used > txvq->vq_free_thresh))
+		virtio_xmit_cleanup(txvq, nb_used);
 
-	num = (uint16_t)(likely(nb_used < VIRTIO_MBUF_BURST_SZ) ? nb_used : VIRTIO_MBUF_BURST_SZ);
+	nb_tx = 0;
 
 	while (nb_tx < nb_pkts) {
 		/* Need one more descriptor for virtio header. */
 		int need = tx_pkts[nb_tx]->nb_segs - txvq->vq_free_cnt + 1;
-		int deq_cnt = RTE_MIN(need, (int)num);
 
-		num -= (deq_cnt > 0) ? deq_cnt : 0;
-		while (deq_cnt > 0) {
-			virtqueue_dequeue_pkt_tx(txvq);
-			deq_cnt--;
+		/*Positive value indicates it need free vring descriptors */
+		if (unlikely(need > 0)) {
+			nb_used = VIRTQUEUE_NUSED(txvq);
+			virtio_rmb();
+			need = RTE_MIN(need, (int)nb_used);
+
+			virtio_xmit_cleanup(txvq, need);
+			need = (int)tx_pkts[nb_tx]->nb_segs -
+				txvq->vq_free_cnt + 1;
 		}
 
-		need = (int)tx_pkts[nb_tx]->nb_segs - txvq->vq_free_cnt + 1;
 		/*
 		 * Zero or negative value indicates it has enough free
 		 * descriptors to use for transmitting.
@@ -726,7 +759,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			txm = tx_pkts[nb_tx];
 
 			/* Do VLAN tag insertion */
-			if (txm->ol_flags & PKT_TX_VLAN_PKT) {
+			if (unlikely(txm->ol_flags & PKT_TX_VLAN_PKT)) {
 				error = rte_vlan_insert(&txm);
 				if (unlikely(error)) {
 					rte_pktmbuf_free(txm);
