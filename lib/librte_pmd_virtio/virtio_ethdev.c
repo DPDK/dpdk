@@ -38,6 +38,7 @@
 #include <unistd.h>
 #ifdef RTE_EXEC_ENV_LINUXAPP
 #include <dirent.h>
+#include <fcntl.h>
 #endif
 
 #include <rte_ethdev.h>
@@ -408,11 +409,13 @@ static void
 virtio_dev_close(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
+	struct rte_pci_device *pci_dev = dev->pci_dev;
 
 	PMD_INIT_LOG(DEBUG, "virtio_dev_close");
 
 	/* reset the NIC */
-	vtpci_irq_config(hw, VIRTIO_MSI_NO_VECTOR);
+	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
+		vtpci_irq_config(hw, VIRTIO_MSI_NO_VECTOR);
 	vtpci_reset(hw);
 	hw->started = 0;
 	virtio_dev_free_mbufs(dev);
@@ -846,9 +849,9 @@ parse_sysfs_value(const char *filename, unsigned long *val)
 	return 0;
 }
 
-static int get_uio_dev(struct rte_pci_addr *loc, char *buf, unsigned int buflen)
+static int get_uio_dev(struct rte_pci_addr *loc, char *buf, unsigned int buflen,
+			unsigned int *uio_num)
 {
-	unsigned int uio_num;
 	struct dirent *e;
 	DIR *dir;
 	char dirname[PATH_MAX];
@@ -885,18 +888,18 @@ static int get_uio_dev(struct rte_pci_addr *loc, char *buf, unsigned int buflen)
 
 		/* first try uio%d */
 		errno = 0;
-		uio_num = strtoull(e->d_name + shortprefix_len, &endptr, 10);
+		*uio_num = strtoull(e->d_name + shortprefix_len, &endptr, 10);
 		if (errno == 0 && endptr != (e->d_name + shortprefix_len)) {
-			snprintf(buf, buflen, "%s/uio%u", dirname, uio_num);
+			snprintf(buf, buflen, "%s/uio%u", dirname, *uio_num);
 			break;
 		}
 
 		/* then try uio:uio%d */
 		errno = 0;
-		uio_num = strtoull(e->d_name + longprefix_len, &endptr, 10);
+		*uio_num = strtoull(e->d_name + longprefix_len, &endptr, 10);
 		if (errno == 0 && endptr != (e->d_name + longprefix_len)) {
 			snprintf(buf, buflen, "%s/uio:uio%u", dirname,
-				     uio_num);
+				     *uio_num);
 			break;
 		}
 	}
@@ -929,13 +932,16 @@ virtio_has_msix(const struct rte_pci_addr *loc)
 }
 
 /* Extract I/O port numbers from sysfs */
-static int virtio_resource_init(struct rte_pci_device *pci_dev)
+static int virtio_resource_init_by_uio(struct rte_pci_device *pci_dev)
 {
 	char dirname[PATH_MAX];
 	char filename[PATH_MAX];
 	unsigned long start, size;
+	unsigned int uio_num;
+	struct rte_pci_driver *pci_drv =
+			(struct rte_pci_driver *)pci_dev->driver;
 
-	if (get_uio_dev(&pci_dev->addr, dirname, sizeof(dirname)) < 0)
+	if (get_uio_dev(&pci_dev->addr, dirname, sizeof(dirname), &uio_num) < 0)
 		return -1;
 
 	/* get portio size */
@@ -960,8 +966,100 @@ static int virtio_resource_init(struct rte_pci_device *pci_dev)
 	PMD_INIT_LOG(DEBUG,
 		     "PCI Port IO found start=0x%lx with size=0x%lx",
 		     start, size);
+
+	/* save fd */
+	memset(dirname, 0, sizeof(dirname));
+	snprintf(dirname, sizeof(dirname), "/dev/uio%u", uio_num);
+	pci_dev->intr_handle.fd = open(dirname, O_RDWR);
+	if (pci_dev->intr_handle.fd < 0) {
+		PMD_INIT_LOG(ERR, "Cannot open %s: %s\n",
+			devname, strerror(errno));
+		return -1;
+	}
+
+	pci_dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
+	pci_drv->drv_flags |= RTE_PCI_DRV_INTR_LSC;
+
 	return 0;
 }
+
+/* Extract port I/O numbers from proc/ioports */
+static int virtio_resource_init_by_ioports(struct rte_pci_device *pci_dev)
+{
+	uint16_t start, end;
+	int size;
+	FILE *fp;
+	char *line = NULL;
+	char pci_id[16];
+	int found = 0;
+	size_t linesz;
+	struct rte_pci_driver *pci_drv =
+			(struct rte_pci_driver *)pci_dev->driver;
+
+	snprintf(pci_id, sizeof(pci_id), PCI_PRI_FMT,
+		 pci_dev->addr.domain,
+		 pci_dev->addr.bus,
+		 pci_dev->addr.devid,
+		 pci_dev->addr.function);
+
+	fp = fopen("/proc/ioports", "r");
+	if (fp == NULL) {
+		PMD_INIT_LOG(ERR, "%s(): can't open ioports", __func__);
+		return -1;
+	}
+
+	while (getdelim(&line, &linesz, '\n', fp) > 0) {
+		char *ptr = line;
+		char *left;
+		int n;
+
+		n = strcspn(ptr, ":");
+		ptr[n] = 0;
+		left = &ptr[n+1];
+
+		while (*left && isspace(*left))
+			left++;
+
+		if (!strncmp(left, pci_id, strlen(pci_id))) {
+			found = 1;
+
+			while (*ptr && isspace(*ptr))
+				ptr++;
+
+			sscanf(ptr, "%04hx-%04hx", &start, &end);
+			size = end - start + 1;
+
+			break;
+		}
+	}
+
+	free(line);
+	fclose(fp);
+
+	if (!found)
+		return -1;
+
+	pci_dev->mem_resource[0].addr = (void *)(uintptr_t)(uint32_t)start;
+	pci_dev->mem_resource[0].len =  (uint64_t)size;
+	PMD_INIT_LOG(DEBUG,
+		"PCI Port IO found start=0x%x with size=0x%x",
+		start, size);
+
+	/* can't support lsc interrupt without uio */
+	pci_drv->drv_flags &= ~RTE_PCI_DRV_INTR_LSC;
+
+	return 0;
+}
+
+/* Extract I/O port numbers from sysfs */
+static int virtio_resource_init(struct rte_pci_device *pci_dev)
+{
+	if (virtio_resource_init_by_uio(pci_dev) == 0)
+		return 0;
+	else
+		return virtio_resource_init_by_ioports(pci_dev);
+}
+
 #else
 static int
 virtio_has_msix(const struct rte_pci_addr *loc __rte_unused)
@@ -970,7 +1068,7 @@ virtio_has_msix(const struct rte_pci_addr *loc __rte_unused)
 	return 0;
 }
 
-static int virtio_resource_init(struct rte_pci_device *pci_dev __rte_unused)
+static int virtio_resource_init(struct rte_pci_device *pci_dev)
 {
 	/* no setup required */
 	return 0;
@@ -1125,7 +1223,8 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 			pci_dev->id.device_id);
 
 	/* Setup interrupt callback  */
-	rte_intr_callback_register(&pci_dev->intr_handle,
+	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
+		rte_intr_callback_register(&pci_dev->intr_handle,
 				   virtio_interrupt_handler, eth_dev);
 
 	virtio_dev_cq_start(eth_dev);
@@ -1137,7 +1236,6 @@ static struct eth_driver rte_virtio_pmd = {
 	{
 		.name = "rte_virtio_pmd",
 		.id_table = pci_id_virtio_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	},
 	.eth_dev_init = eth_virtio_dev_init,
 	.dev_private_size = sizeof(struct virtio_hw),
@@ -1184,6 +1282,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 {
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct virtio_hw *hw = dev->data->dev_private;
+	struct rte_pci_device *pci_dev = dev->pci_dev;
 
 	PMD_INIT_LOG(DEBUG, "configure");
 
@@ -1201,10 +1300,11 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 
-	if (vtpci_irq_config(hw, 0) == VIRTIO_MSI_NO_VECTOR) {
-		PMD_DRV_LOG(ERR, "failed to set config vector");
-		return -EBUSY;
-	}
+	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
+		if (vtpci_irq_config(hw, 0) == VIRTIO_MSI_NO_VECTOR) {
+			PMD_DRV_LOG(ERR, "failed to set config vector");
+			return -EBUSY;
+		}
 
 	return 0;
 }
@@ -1215,9 +1315,11 @@ virtio_dev_start(struct rte_eth_dev *dev)
 {
 	uint16_t nb_queues, i;
 	struct virtio_hw *hw = dev->data->dev_private;
+	struct rte_pci_device *pci_dev = dev->pci_dev;
 
 	/* check if lsc interrupt feature is enabled */
-	if (dev->data->dev_conf.intr_conf.lsc) {
+	if ((dev->data->dev_conf.intr_conf.lsc) &&
+		(pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)) {
 		if (!vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
 			PMD_DRV_LOG(ERR, "link status not supported by host");
 			return -ENOTSUP;

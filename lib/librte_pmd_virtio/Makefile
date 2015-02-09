@@ -57,4 +57,6 @@ DEPDIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += lib/librte_eal lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += lib/librte_mempool lib/librte_mbuf
 DEPDIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += lib/librte_net lib/librte_malloc
 
+CFLAGS_virtio_ethdev.o += -Wno-cast-qual
+
 include $(RTE_SDK)/mk/rte.lib.mk
