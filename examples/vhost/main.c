@@ -1115,6 +1115,7 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 	unsigned len, ret, offset = 0;
 	const uint16_t lcore_id = rte_lcore_id();
 	struct virtio_net *dev = vdev->dev;
+	struct ether_hdr *nh;
 
 	/*check if destination is local VM*/
 	if ((vm2vm_mode == VM2VM_SOFTWARE) && (virtio_tx_local(vdev, m) == 0)) {
@@ -1135,28 +1136,38 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 	tx_q = &lcore_tx_queue[lcore_id];
 	len = tx_q->len;
 
-	m->ol_flags = PKT_TX_VLAN_PKT;
+	nh = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	if (unlikely(nh->ether_type == rte_cpu_to_be_16(ETHER_TYPE_VLAN))) {
+		/* Guest has inserted the vlan tag. */
+		struct vlan_hdr *vh = (struct vlan_hdr *) (nh + 1);
+		uint16_t vlan_tag_be = rte_cpu_to_be_16(vlan_tag);
+		if ((vm2vm_mode == VM2VM_HARDWARE) &&
+			(vh->vlan_tci != vlan_tag_be))
+			vh->vlan_tci = vlan_tag_be;
+	} else {
+		m->ol_flags = PKT_TX_VLAN_PKT;
 
-	/*
-	 * Find the right seg to adjust the data len when offset is
-	 * bigger than tail room size.
-	 */
-	if (unlikely(vm2vm_mode == VM2VM_HARDWARE)) {
-		if (likely(offset <= rte_pktmbuf_tailroom(m)))
-			m->data_len += offset;
-		else {
-			struct rte_mbuf *seg = m;
+		/*
+		 * Find the right seg to adjust the data len when offset is
+		 * bigger than tail room size.
+		 */
+		if (unlikely(vm2vm_mode == VM2VM_HARDWARE)) {
+			if (likely(offset <= rte_pktmbuf_tailroom(m)))
+				m->data_len += offset;
+			else {
+				struct rte_mbuf *seg = m;
 
-			while ((seg->next != NULL) &&
-				(offset > rte_pktmbuf_tailroom(seg)))
-				seg = seg->next;
+				while ((seg->next != NULL) &&
+					(offset > rte_pktmbuf_tailroom(seg)))
+					seg = seg->next;
 
-			seg->data_len += offset;
+				seg->data_len += offset;
+			}
+			m->pkt_len += offset;
 		}
-		m->pkt_len += offset;
-	}
 
-	m->vlan_tci = vlan_tag;
+		m->vlan_tci = vlan_tag;
+	}
 
 	tx_q->m_table[len] = m;
 	len++;
