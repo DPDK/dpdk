@@ -84,6 +84,8 @@ static void virtio_dev_tx_queue_release(__rte_unused void *txq);
 static void virtio_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 static void virtio_dev_stats_reset(struct rte_eth_dev *dev);
 static void virtio_dev_free_mbufs(struct rte_eth_dev *dev);
+static int virtio_vlan_filter_set(struct rte_eth_dev *dev,
+				uint16_t vlan_id, int on);
 
 static int virtio_dev_queue_stats_mapping_set(
 	__rte_unused struct rte_eth_dev *eth_dev,
@@ -512,6 +514,7 @@ static struct eth_dev_ops virtio_eth_dev_ops = {
 	.tx_queue_release        = virtio_dev_tx_queue_release,
 	/* collect stats per queue */
 	.queue_stats_mapping_set = virtio_dev_queue_stats_mapping_set,
+	.vlan_filter_set         = virtio_vlan_filter_set,
 };
 
 static inline int
@@ -641,14 +644,31 @@ virtio_get_hwaddr(struct virtio_hw *hw)
 	}
 }
 
+static int
+virtio_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	struct virtio_pmd_ctrl ctrl;
+	int len;
+
+	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_VLAN))
+		return -ENOTSUP;
+
+	ctrl.hdr.class = VIRTIO_NET_CTRL_VLAN;
+	ctrl.hdr.cmd = on ? VIRTIO_NET_CTRL_VLAN_ADD : VIRTIO_NET_CTRL_VLAN_DEL;
+	memcpy(ctrl.data, &vlan_id, sizeof(vlan_id));
+	len = sizeof(vlan_id);
+
+	return virtio_send_command(hw->cvq, &ctrl, &len, 1);
+}
 
 static void
 virtio_negotiate_features(struct virtio_hw *hw)
 {
 	uint32_t host_features, mask;
 
-	mask = VIRTIO_NET_F_CTRL_VLAN;
-	mask |= VIRTIO_NET_F_CSUM | VIRTIO_NET_F_GUEST_CSUM;
+	/* checksum offload not implemented */
+	mask = VIRTIO_NET_F_CSUM | VIRTIO_NET_F_GUEST_CSUM;
 
 	/* TSO and LRO are only available when their corresponding
 	 * checksum offload feature is also negotiated.
@@ -1058,6 +1078,13 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	hw->vlan_strip = rxmode->hw_vlan_strip;
+
+	if (rxmode->hw_vlan_filter
+	    && !vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_VLAN)) {
+		PMD_DRV_LOG(NOTICE,
+			    "vlan filtering not available on this host");
+		return -ENOTSUP;
+	}
 
 	if (vtpci_irq_config(hw, 0) == VIRTIO_MSI_NO_VECTOR) {
 		PMD_DRV_LOG(ERR, "failed to set config vector");
