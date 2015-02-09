@@ -86,6 +86,10 @@ static void virtio_dev_stats_reset(struct rte_eth_dev *dev);
 static void virtio_dev_free_mbufs(struct rte_eth_dev *dev);
 static int virtio_vlan_filter_set(struct rte_eth_dev *dev,
 				uint16_t vlan_id, int on);
+static void virtio_mac_addr_add(struct rte_eth_dev *dev,
+				struct ether_addr *mac_addr,
+				uint32_t index, uint32_t vmdq __rte_unused);
+static void virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 
 static int virtio_dev_queue_stats_mapping_set(
 	__rte_unused struct rte_eth_dev *eth_dev,
@@ -504,8 +508,6 @@ static struct eth_dev_ops virtio_eth_dev_ops = {
 	.stats_get               = virtio_dev_stats_get,
 	.stats_reset             = virtio_dev_stats_reset,
 	.link_update             = virtio_dev_link_update,
-	.mac_addr_add            = NULL,
-	.mac_addr_remove         = NULL,
 	.rx_queue_setup          = virtio_dev_rx_queue_setup,
 	/* meaningfull only to multiple queue */
 	.rx_queue_release        = virtio_dev_rx_queue_release,
@@ -515,6 +517,8 @@ static struct eth_dev_ops virtio_eth_dev_ops = {
 	/* collect stats per queue */
 	.queue_stats_mapping_set = virtio_dev_queue_stats_mapping_set,
 	.vlan_filter_set         = virtio_vlan_filter_set,
+	.mac_addr_add            = virtio_mac_addr_add,
+	.mac_addr_remove         = virtio_mac_addr_remove,
 };
 
 static inline int
@@ -642,6 +646,92 @@ virtio_get_hwaddr(struct virtio_hw *hw)
 		eth_random_addr(&hw->mac_addr[0]);
 		virtio_set_hwaddr(hw);
 	}
+}
+
+static int
+virtio_mac_table_set(struct virtio_hw *hw,
+		     const struct virtio_net_ctrl_mac *uc,
+		     const struct virtio_net_ctrl_mac *mc)
+{
+	struct virtio_pmd_ctrl ctrl;
+	int err, len[2];
+
+	ctrl.hdr.class = VIRTIO_NET_CTRL_MAC;
+	ctrl.hdr.cmd = VIRTIO_NET_CTRL_MAC_TABLE_SET;
+
+	len[0] = uc->entries * ETHER_ADDR_LEN + sizeof(uc->entries);
+	memcpy(ctrl.data, uc, len[0]);
+
+	len[1] = mc->entries * ETHER_ADDR_LEN + sizeof(mc->entries);
+	memcpy(ctrl.data + len[0], mc, len[1]);
+
+	err = virtio_send_command(hw->cvq, &ctrl, len, 2);
+	if (err != 0)
+		PMD_DRV_LOG(NOTICE, "mac table set failed: %d", err);
+
+	return err;
+}
+
+static void
+virtio_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+		    uint32_t index, uint32_t vmdq __rte_unused)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	const struct ether_addr *addrs = dev->data->mac_addrs;
+	unsigned int i;
+	struct virtio_net_ctrl_mac *uc, *mc;
+
+	if (index >= VIRTIO_MAX_MAC_ADDRS) {
+		PMD_DRV_LOG(ERR, "mac address index %u out of range", index);
+		return;
+	}
+
+	uc = alloca(VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN + sizeof(uc->entries));
+	uc->entries = 0;
+	mc = alloca(VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN + sizeof(mc->entries));
+	mc->entries = 0;
+
+	for (i = 0; i < VIRTIO_MAX_MAC_ADDRS; i++) {
+		const struct ether_addr *addr
+			= (i == index) ? mac_addr : addrs + i;
+		struct virtio_net_ctrl_mac *tbl
+			= is_multicast_ether_addr(addr) ? mc : uc;
+
+		memcpy(&tbl->macs[tbl->entries++], addr, ETHER_ADDR_LEN);
+	}
+
+	virtio_mac_table_set(hw, uc, mc);
+}
+
+static void
+virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	struct ether_addr *addrs = dev->data->mac_addrs;
+	struct virtio_net_ctrl_mac *uc, *mc;
+	unsigned int i;
+
+	if (index >= VIRTIO_MAX_MAC_ADDRS) {
+		PMD_DRV_LOG(ERR, "mac address index %u out of range", index);
+		return;
+	}
+
+	uc = alloca(VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN + sizeof(uc->entries));
+	uc->entries = 0;
+	mc = alloca(VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN + sizeof(mc->entries));
+	mc->entries = 0;
+
+	for (i = 0; i < VIRTIO_MAX_MAC_ADDRS; i++) {
+		struct virtio_net_ctrl_mac *tbl;
+
+		if (i == index || is_zero_ether_addr(addrs + i))
+			continue;
+
+		tbl = is_multicast_ether_addr(addrs + i) ? mc : uc;
+		memcpy(&tbl->macs[tbl->entries++], addrs + i, ETHER_ADDR_LEN);
+	}
+
+	virtio_mac_table_set(hw, uc, mc);
 }
 
 static int

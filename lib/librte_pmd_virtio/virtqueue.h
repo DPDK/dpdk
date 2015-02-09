@@ -99,6 +99,34 @@ enum { VTNET_RQ = 0, VTNET_TQ = 1, VTNET_CQ = 2 };
 #define VIRTIO_NET_CTRL_RX_NOBCAST      5
 
 /**
+ * Control the MAC
+ *
+ * The MAC filter table is managed by the hypervisor, the guest should
+ * assume the size is infinite.  Filtering should be considered
+ * non-perfect, ie. based on hypervisor resources, the guest may
+ * received packets from sources not specified in the filter list.
+ *
+ * In addition to the class/cmd header, the TABLE_SET command requires
+ * two out scatterlists.  Each contains a 4 byte count of entries followed
+ * by a concatenated byte stream of the ETH_ALEN MAC addresses.  The
+ * first sg list contains unicast addresses, the second is for multicast.
+ * This functionality is present if the VIRTIO_NET_F_CTRL_RX feature
+ * is available.
+ *
+ * The ADDR_SET command requests one out scatterlist, it contains a
+ * 6 bytes MAC address. This functionality is present if the
+ * VIRTIO_NET_F_CTRL_MAC_ADDR feature is available.
+ */
+struct virtio_net_ctrl_mac {
+	uint32_t entries;
+	uint8_t macs[][ETHER_ADDR_LEN];
+} __attribute__((__packed__));
+
+#define VIRTIO_NET_CTRL_MAC    1
+ #define VIRTIO_NET_CTRL_MAC_TABLE_SET        0
+ #define VIRTIO_NET_CTRL_MAC_ADDR_SET         1
+
+/**
  * Control VLAN filtering
  *
  * The VLAN filter table is controlled via a simple ADD/DEL interface.
@@ -121,7 +149,7 @@ typedef uint8_t virtio_net_ctrl_ack;
 #define VIRTIO_NET_OK     0
 #define VIRTIO_NET_ERR    1
 
-#define VIRTIO_MAX_CTRL_DATA 128
+#define VIRTIO_MAX_CTRL_DATA 2048
 
 struct virtio_pmd_ctrl {
 	struct virtio_net_ctrl_hdr hdr;
@@ -179,6 +207,10 @@ struct virtqueue {
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET        0
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX        0x8000
+#endif
+#ifndef VIRTIO_NET_F_CTRL_MAC_ADDR
+#define VIRTIO_NET_F_CTRL_MAC_ADDR 0x800000
+#define VIRTIO_NET_CTRL_MAC_ADDR_SET         1
 #endif
 
 /**
