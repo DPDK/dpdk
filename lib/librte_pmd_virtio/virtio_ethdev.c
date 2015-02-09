@@ -207,8 +207,7 @@ virtio_send_command(struct virtqueue *vq, struct virtio_pmd_ctrl *ctrl,
 static int
 virtio_set_multiple_queues(struct rte_eth_dev *dev, uint16_t nb_queues)
 {
-	struct virtio_hw *hw
-		= VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtio_pmd_ctrl ctrl;
 	int dlen[1];
 	int ret;
@@ -242,8 +241,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	const struct rte_memzone *mz;
 	uint16_t vq_size;
 	int size;
-	struct virtio_hw *hw =
-		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtqueue  *vq = NULL;
 
 	/* Write the virtqueue index to the Queue Select Field */
@@ -383,8 +381,7 @@ virtio_dev_cq_queue_setup(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx,
 	struct virtqueue *vq;
 	uint16_t nb_desc = 0;
 	int ret;
-	struct virtio_hw *hw =
-		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 	ret = virtio_dev_queue_setup(dev, VTNET_CQ, VTNET_SQ_CQ_QUEUE_IDX,
@@ -410,8 +407,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 static void
 virtio_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
-	struct virtio_hw *hw
-		= VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtio_pmd_ctrl ctrl;
 	int dlen[1];
 	int ret;
@@ -430,8 +426,7 @@ virtio_dev_promiscuous_enable(struct rte_eth_dev *dev)
 static void
 virtio_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
-	struct virtio_hw *hw
-		= VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtio_pmd_ctrl ctrl;
 	int dlen[1];
 	int ret;
@@ -450,8 +445,7 @@ virtio_dev_promiscuous_disable(struct rte_eth_dev *dev)
 static void
 virtio_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
-	struct virtio_hw *hw
-		= VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtio_pmd_ctrl ctrl;
 	int dlen[1];
 	int ret;
@@ -470,8 +464,7 @@ virtio_dev_allmulticast_enable(struct rte_eth_dev *dev)
 static void
 virtio_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
-	struct virtio_hw *hw
-		= VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtio_pmd_ctrl ctrl;
 	int dlen[1];
 	int ret;
@@ -853,8 +846,7 @@ virtio_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 			 void *param)
 {
 	struct rte_eth_dev *dev = param;
-	struct virtio_hw *hw =
-		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 	uint8_t isr;
 
 	/* Read interrupt status which clears interrupt */
@@ -880,12 +872,11 @@ static int
 eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 		struct rte_eth_dev *eth_dev)
 {
+	struct virtio_hw *hw = eth_dev->data->dev_private;
 	struct virtio_net_config *config;
 	struct virtio_net_config local_config;
 	uint32_t offset_conf = sizeof(config->mac);
 	struct rte_pci_device *pci_dev;
-	struct virtio_hw *hw =
-		VIRTIO_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
 	RTE_BUILD_BUG_ON(RTE_PKTMBUF_HEADROOM < sizeof(struct virtio_net_hdr));
 
@@ -1006,7 +997,7 @@ static struct eth_driver rte_virtio_pmd = {
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	},
 	.eth_dev_init = eth_virtio_dev_init,
-	.dev_private_size = sizeof(struct virtio_adapter),
+	.dev_private_size = sizeof(struct virtio_hw),
 };
 
 /*
@@ -1049,8 +1040,7 @@ static int
 virtio_dev_configure(struct rte_eth_dev *dev)
 {
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
-	struct virtio_hw *hw =
-		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 	int ret;
 
 	PMD_INIT_LOG(DEBUG, "configure");
@@ -1072,8 +1062,7 @@ static int
 virtio_dev_start(struct rte_eth_dev *dev)
 {
 	uint16_t nb_queues, i;
-	struct virtio_hw *hw =
-		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 
 	/* Tell the host we've noticed this device. */
 	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_ACK);
@@ -1179,8 +1168,7 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 static void
 virtio_dev_stop(struct rte_eth_dev *dev)
 {
-	struct virtio_hw *hw =
-		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 
 	/* reset the NIC */
 	vtpci_irq_config(hw, 0);
@@ -1193,8 +1181,7 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 {
 	struct rte_eth_link link, old;
 	uint16_t status;
-	struct virtio_hw *hw =
-		VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 	memset(&link, 0, sizeof(link));
 	virtio_dev_atomic_read_link_status(dev, &link);
 	old = link;
@@ -1226,7 +1213,7 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 static void
 virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
-	struct virtio_hw *hw = VIRTIO_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct virtio_hw *hw = dev->data->dev_private;
 
 	dev_info->driver_name = dev->driver->pci_drv.name;
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;

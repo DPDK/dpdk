@@ -110,15 +110,6 @@ uint16_t virtio_recv_mergeable_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 uint16_t virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 
-/*
- * Structure to store private data for each driver instance (for each port).
- */
-struct virtio_adapter {
-	struct virtio_hw hw;
-};
-
-#define VIRTIO_DEV_PRIVATE_TO_HW(adapter)\
-	(&((struct virtio_adapter *)adapter)->hw)
 
 /*
  * The VIRTIO_NET_F_GUEST_TSO[46] features permit the host to send us
