@@ -859,11 +859,7 @@ eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
 	struct virtio_hw *hw =
 		VIRTIO_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
-	if (RTE_PKTMBUF_HEADROOM < sizeof(struct virtio_net_hdr)) {
-		PMD_INIT_LOG(ERR,
-			"MBUF HEADROOM should be enough to hold virtio net hdr\n");
-		return -1;
-	}
+	RTE_BUILD_BUG_ON(RTE_PKTMBUF_HEADROOM < sizeof(struct virtio_net_hdr));
 
 	eth_dev->dev_ops = &virtio_eth_dev_ops;
 	eth_dev->tx_pkt_burst = &virtio_xmit_pkts;
