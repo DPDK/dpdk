@@ -187,6 +187,7 @@ F: doc/guides/prog_guide/link_bonding_poll_mode_drv_lib.rst
 F: app/test/test_link_bonding.c
 
 Linux KNI
+M: Helin Zhang <helin.zhang@intel.com>
 F: lib/librte_eal/linuxapp/kni/
 F: lib/librte_kni/
 F: doc/guides/prog_guide/kernel_nic_interface.rst
@@ -208,6 +209,7 @@ Intel ixgbe
 F: lib/librte_pmd_ixgbe/
 
 Intel i40e
+M: Helin Zhang <helin.zhang@intel.com>
 F: lib/librte_pmd_i40e/
 
 RedHat virtio
