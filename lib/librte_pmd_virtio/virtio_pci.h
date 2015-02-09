@@ -253,8 +253,6 @@ void vtpci_reset(struct virtio_hw *);
 
 void vtpci_reinit_complete(struct virtio_hw *);
 
-uint8_t vtpci_get_status(struct virtio_hw *);
-
 void vtpci_set_status(struct virtio_hw *, uint8_t);
 
 uint32_t vtpci_negotiate_features(struct virtio_hw *, uint32_t);
