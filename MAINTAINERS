@@ -63,7 +63,7 @@ Environment Abstraction Layer
 -----------------------------
 
 EAL API and common code
-M: Thomas Monjalon <thomas.monjalon@6wind.com>
+M: David Marchand <david.marchand@6wind.com>
 F: lib/librte_eal/common/*
 F: lib/librte_eal/common/include/*
 F: lib/librte_eal/common/include/generic/
@@ -107,6 +107,7 @@ Intel x86
 F: lib/librte_eal/common/include/arch/x86/
 
 Linux EAL (with overlaps)
+M: David Marchand <david.marchand@6wind.com>
 F: lib/librte_eal/linuxapp/Makefile
 F: lib/librte_eal/linuxapp/eal/
 F: doc/guides/linux_gsg/
