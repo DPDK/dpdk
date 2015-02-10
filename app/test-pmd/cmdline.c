@@ -2316,6 +2316,11 @@ static void cmd_set_list_parsed(void *parsed_result,
 	} parsed_items;
 	unsigned int nb_item;
 
+	if (test_done == 0) {
+		printf("Please stop forwarding first\n");
+		return;
+	}
+
 	res = parsed_result;
 	if (!strcmp(res->list_name, "corelist")) {
 		nb_item = parse_item_list(res->list_of_items, "core",
@@ -2370,6 +2375,10 @@ static void cmd_set_mask_parsed(void *parsed_result,
 {
 	struct cmd_setmask_result *res = parsed_result;
 
+	if (test_done == 0) {
+		printf("Please stop forwarding first\n");
+		return;
+	}
 	if (!strcmp(res->mask, "coremask"))
 		set_fwd_lcores_mask(res->hexavalue);
 	else if (!strcmp(res->mask, "portmask"))
