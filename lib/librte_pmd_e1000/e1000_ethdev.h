@@ -67,14 +67,6 @@
 
 #define E1000_IMIR_DSTPORT             0x0000FFFF
 #define E1000_IMIR_PRIORITY            0xE0000000
-#define E1000_IMIR_EXT_SIZE_BP         0x00001000
-#define E1000_IMIR_EXT_CTRL_UGR        0x00002000
-#define E1000_IMIR_EXT_CTRL_ACK        0x00004000
-#define E1000_IMIR_EXT_CTRL_PSH        0x00008000
-#define E1000_IMIR_EXT_CTRL_RST        0x00010000
-#define E1000_IMIR_EXT_CTRL_SYN        0x00020000
-#define E1000_IMIR_EXT_CTRL_FIN        0x00040000
-#define E1000_IMIR_EXT_CTRL_BP         0x00080000
 #define E1000_MAX_TTQF_FILTERS         8
 #define E1000_2TUPLE_MAX_PRI           7
 
@@ -101,11 +93,6 @@
 #define E1000_MAX_FTQF_FILTERS           8
 #define E1000_FTQF_PROTOCOL_MASK         0x000000FF
 #define E1000_FTQF_5TUPLE_MASK_SHIFT     28
-#define E1000_FTQF_PROTOCOL_COMP_MASK    0x10000000
-#define E1000_FTQF_SOURCE_ADDR_MASK      0x20000000
-#define E1000_FTQF_DEST_ADDR_MASK        0x40000000
-#define E1000_FTQF_SOURCE_PORT_MASK      0x80000000
-#define E1000_FTQF_VF_MASK_EN            0x00008000
 #define E1000_FTQF_QUEUE_MASK            0x03ff0000
 #define E1000_FTQF_QUEUE_SHIFT           16
 #define E1000_FTQF_QUEUE_ENABLE          0x00000100
@@ -154,6 +141,56 @@ struct e1000_flex_filter {
 	uint16_t queue; /* rx queue assigned to */
 };
 
+TAILQ_HEAD(e1000_5tuple_filter_list, e1000_5tuple_filter);
+TAILQ_HEAD(e1000_2tuple_filter_list, e1000_2tuple_filter);
+
+struct e1000_5tuple_filter_info {
+	uint32_t dst_ip;
+	uint32_t src_ip;
+	uint16_t dst_port;
+	uint16_t src_port;
+	uint8_t proto;           /* l4 protocol. */
+	/* the packet matched above 5tuple and contain any set bit will hit this filter. */
+	uint8_t tcp_flags;
+	uint8_t priority;        /* seven levels (001b-111b), 111b is highest,
+				      used when more than one filter matches. */
+	uint8_t dst_ip_mask:1,   /* if mask is 1b, do not compare dst ip. */
+		src_ip_mask:1,   /* if mask is 1b, do not compare src ip. */
+		dst_port_mask:1, /* if mask is 1b, do not compare dst port. */
+		src_port_mask:1, /* if mask is 1b, do not compare src port. */
+		proto_mask:1;    /* if mask is 1b, do not compare protocol. */
+};
+
+struct e1000_2tuple_filter_info {
+	uint16_t dst_port;
+	uint8_t proto;           /* l4 protocol. */
+	/* the packet matched above 2tuple and contain any set bit will hit this filter. */
+	uint8_t tcp_flags;
+	uint8_t priority;        /* seven levels (001b-111b), 111b is highest,
+				      used when more than one filter matches. */
+	uint8_t dst_ip_mask:1,   /* if mask is 1b, do not compare dst ip. */
+		src_ip_mask:1,   /* if mask is 1b, do not compare src ip. */
+		dst_port_mask:1, /* if mask is 1b, do not compare dst port. */
+		src_port_mask:1, /* if mask is 1b, do not compare src port. */
+		proto_mask:1;    /* if mask is 1b, do not compare protocol. */
+};
+
+/* 5tuple filter structure */
+struct e1000_5tuple_filter {
+	TAILQ_ENTRY(e1000_5tuple_filter) entries;
+	uint16_t index;       /* the index of 5tuple filter */
+	struct e1000_5tuple_filter_info filter_info;
+	uint16_t queue;       /* rx queue assigned to */
+};
+
+/* 2tuple filter structure */
+struct e1000_2tuple_filter {
+	TAILQ_ENTRY(e1000_2tuple_filter) entries;
+	uint16_t index;         /* the index of 2tuple filter */
+	struct e1000_2tuple_filter_info filter_info;
+	uint16_t queue;       /* rx queue assigned to */
+};
+
 /*
  * Structure to store filters' info.
  */
@@ -163,6 +200,12 @@ struct e1000_filter_info {
 	uint16_t ethertype_filters[E1000_MAX_ETQF_FILTERS];
 	uint8_t flex_mask;	/* Bit mask for every used flex filter */
 	struct e1000_flex_filter_list flex_list;
+	/* Bit mask for every used 5tuple filter */
+	uint8_t fivetuple_mask;
+	struct e1000_5tuple_filter_list fivetuple_list;
+	/* Bit mask for every used 2tuple filter */
+	uint8_t twotuple_mask;
+	struct e1000_2tuple_filter_list twotuple_list;
 };
 
 /*
