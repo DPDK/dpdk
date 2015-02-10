@@ -5,8 +5,6 @@ DPDK_2.0 {
 	rte_eth_allmulticast_disable;
 	rte_eth_allmulticast_enable;
 	rte_eth_allmulticast_get;
-	rte_eth_dev_add_2tuple_filter;
-	rte_eth_dev_add_5tuple_filter;
 	rte_eth_dev_add_ethertype_filter;
 	rte_eth_dev_allocate;
 	rte_eth_dev_bypass_event_show;
@@ -35,8 +33,6 @@ DPDK_2.0 {
 	rte_eth_dev_filter_supported;
 	rte_eth_dev_flow_ctrl_get;
 	rte_eth_dev_flow_ctrl_set;
-	rte_eth_dev_get_2tuple_filter;
-	rte_eth_dev_get_5tuple_filter;
 	rte_eth_dev_get_ethertype_filter;
 	rte_eth_dev_get_mtu;
 	rte_eth_dev_get_vlan_offload;
@@ -44,8 +40,6 @@ DPDK_2.0 {
 	rte_eth_dev_mac_addr_add;
 	rte_eth_dev_mac_addr_remove;
 	rte_eth_dev_priority_flow_ctrl_set;
-	rte_eth_dev_remove_2tuple_filter;
-	rte_eth_dev_remove_5tuple_filter;
 	rte_eth_dev_remove_ethertype_filter;
 	rte_eth_dev_rss_hash_conf_get;
 	rte_eth_dev_rss_hash_update;

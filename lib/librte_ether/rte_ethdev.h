@@ -966,47 +966,6 @@ struct rte_eth_dev_callback;
 /** @internal Structure to keep track of registered callbacks */
 TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
 
-
-#define TCP_URG_FLAG 0x20
-#define TCP_UGR_FLAG 0x20
-#define TCP_ACK_FLAG 0x10
-#define TCP_PSH_FLAG 0x08
-#define TCP_RST_FLAG 0x04
-#define TCP_SYN_FLAG 0x02
-#define TCP_FIN_FLAG 0x01
-#define TCP_FLAG_ALL 0x3F
-
-/**
- *  A structure used to define a 2tuple filter.
- */
-struct rte_2tuple_filter {
-	uint16_t dst_port;        /**< big endian. */
-	uint8_t protocol;
-	uint8_t tcp_flags;
-	uint16_t priority;        /**< used when more than one filter matches. */
-	uint8_t dst_port_mask:1,  /**< if mask is 1b, means not compare. */
-		protocol_mask:1;
-};
-
-/**
- *  A structure used to define a 5tuple filter.
- */
-struct rte_5tuple_filter {
-	uint32_t dst_ip;         /**< destination IP address in big endian. */
-	uint32_t src_ip;         /**< source IP address in big endian. */
-	uint16_t dst_port;       /**< destination port in big endian. */
-	uint16_t src_port;       /**< source Port big endian. */
-	uint8_t protocol;        /**< l4 protocol. */
-	uint8_t tcp_flags;       /**< tcp flags. */
-	uint16_t priority;       /**< seven evels (001b-111b), 111b is highest,
-				      used when more than one filter matches. */
-	uint8_t dst_ip_mask:1,   /**< if mask is 1b, do not compare dst ip. */
-		src_ip_mask:1,   /**< if mask is 1b, do not compare src ip. */
-		dst_port_mask:1, /**< if mask is 1b, do not compare dst port. */
-		src_port_mask:1, /**< if mask is 1b, do not compare src port. */
-		protocol_mask:1; /**< if mask is 1b, do not compare protocol. */
-};
-
 /*
  * Definitions of all functions exported by an Ethernet driver through the
  * the generic structure of type *eth_dev_ops* supplied in the *rte_eth_dev*
@@ -1342,34 +1301,6 @@ typedef int32_t (*bypass_ver_show_t)(struct rte_eth_dev *dev, uint32_t *ver);
 typedef int32_t (*bypass_wd_reset_t)(struct rte_eth_dev *dev);
 #endif
 
-typedef int (*eth_add_2tuple_filter_t)(struct rte_eth_dev *dev,
-			uint16_t index, struct rte_2tuple_filter *filter,
-			uint16_t rx_queue);
-/**< @internal Setup a new 2tuple filter rule on an Ethernet device */
-
-typedef int (*eth_remove_2tuple_filter_t)(struct rte_eth_dev *dev,
-			uint16_t index);
-/**< @internal Remove a 2tuple filter rule on an Ethernet device */
-
-typedef int (*eth_get_2tuple_filter_t)(struct rte_eth_dev *dev,
-			uint16_t index, struct rte_2tuple_filter *filter,
-			uint16_t *rx_queue);
-/**< @internal Get a 2tuple filter rule on an Ethernet device */
-
-typedef int (*eth_add_5tuple_filter_t)(struct rte_eth_dev *dev,
-			uint16_t index, struct rte_5tuple_filter *filter,
-			uint16_t rx_queue);
-/**< @internal Setup a new 5tuple filter rule on an Ethernet device */
-
-typedef int (*eth_remove_5tuple_filter_t)(struct rte_eth_dev *dev,
-			uint16_t index);
-/**< @internal Remove a 5tuple filter rule on an Ethernet device */
-
-typedef int (*eth_get_5tuple_filter_t)(struct rte_eth_dev *dev,
-			uint16_t index, struct rte_5tuple_filter *filter,
-			uint16_t *rx_queue);
-/**< @internal Get a 5tuple filter rule on an Ethernet device */
-
 typedef int (*eth_filter_ctrl_t)(struct rte_eth_dev *dev,
 				 enum rte_filter_type filter_type,
 				 enum rte_filter_op filter_op,
@@ -1472,12 +1403,6 @@ struct eth_dev_ops {
 	rss_hash_update_t rss_hash_update;
 	/** Get current RSS hash configuration. */
 	rss_hash_conf_get_t rss_hash_conf_get;
-	eth_add_2tuple_filter_t        add_2tuple_filter;    /**< add 2tuple filter. */
-	eth_remove_2tuple_filter_t     remove_2tuple_filter; /**< remove 2tuple filter. */
-	eth_get_2tuple_filter_t        get_2tuple_filter;    /**< get 2tuple filter. */
-	eth_add_5tuple_filter_t        add_5tuple_filter;    /**< add 5tuple filter. */
-	eth_remove_5tuple_filter_t     remove_5tuple_filter; /**< remove 5tuple filter. */
-	eth_get_5tuple_filter_t        get_5tuple_filter;    /**< get 5tuple filter. */
 	eth_filter_ctrl_t              filter_ctrl;          /**< common filter control*/
 };
 
@@ -3362,127 +3287,6 @@ rte_eth_dev_udp_tunnel_add(uint8_t port_id,
 int
 rte_eth_dev_udp_tunnel_delete(uint8_t port_id,
 			      struct rte_eth_udp_tunnel *tunnel_udp);
-
-
-/**
- * Add a new 2tuple filter rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param index
- *   The identifier of 2tuple filter.
- * @param filter
- *   The pointer to the structure describing the 2tuple filter rule.
- *   The *rte_2tuple_filter* structure includes the values of the different
- *   fields to match: protocol, dst_port and
- *   tcp_flags if the protocol is tcp type.
- * @param rx_queue
- *   The index of the RX queue where to store RX packets matching the added
- *   2tuple filter.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support 2tuple filter.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if the filter information is not correct.
- */
-int rte_eth_dev_add_2tuple_filter(uint8_t port_id, uint16_t index,
-			struct rte_2tuple_filter *filter, uint16_t rx_queue);
-
-/**
- * remove a 2tuple filter rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param index
- *   The identifier of 2tuple filter.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support 2tuple filter.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if the filter information is not correct.
- */
-int rte_eth_dev_remove_2tuple_filter(uint8_t port_id, uint16_t index);
-
-/**
- * Get an 2tuple filter rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param index
- *   The identifier of 2tuple filter.
- * @param filter
- *   A pointer to a structure of type *rte_2tuple_filter* to be filled with
- *   the information of the 2tuple filter.
- * @param rx_queue
- *   A pointer to get the queue index.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support 2tuple filter.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if the filter information is not correct.
- *   - (-ENOENT) if no enabled filter in this index.
- */
-int rte_eth_dev_get_2tuple_filter(uint8_t port_id, uint16_t index,
-			struct rte_2tuple_filter *filter, uint16_t *rx_queue);
-
-/**
- * Add a new 5tuple filter rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param index
- *   The identifier of 5tuple filter.
- * @param filter
- *   The pointer to the structure describing the 5tuple filter rule.
- *   The *rte_5tuple_filter* structure includes the values of the different
- *   fields to match: dst src IP, dst src port, protocol and relative masks
- * @param rx_queue
- *   The index of the RX queue where to store RX packets matching the added
- *   5tuple filter.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support 5tuple filter.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if the filter information is not correct.
- */
-int rte_eth_dev_add_5tuple_filter(uint8_t port_id, uint16_t index,
-			struct rte_5tuple_filter *filter, uint16_t rx_queue);
-
-/**
- * remove a 5tuple filter rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param index
- *   The identifier of 5tuple filter.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support 5tuple filter.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if the filter information is not correct.
- */
-int rte_eth_dev_remove_5tuple_filter(uint8_t port_id, uint16_t index);
-
-/**
- * Get an 5tuple filter rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param index
- *   The identifier of 5tuple filter.
- * @param filter
- *   A pointer to a structure of type *rte_5tuple_filter* to be filled with
- *   the information of the 5tuple filter.
- * @param rx_queue
- *   A pointer to get the queue index.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support 5tuple filter.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if the filter information is not correct.
- */
-int rte_eth_dev_get_5tuple_filter(uint8_t port_id, uint16_t index,
-			struct rte_5tuple_filter *filter, uint16_t *rx_queue);
 
 /**
  * Check whether the filter type is supported on an Ethernet device.
