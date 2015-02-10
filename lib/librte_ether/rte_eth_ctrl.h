@@ -55,6 +55,7 @@ enum rte_filter_type {
 	RTE_ETH_FILTER_ETHERTYPE,
 	RTE_ETH_FILTER_FLEXIBLE,
 	RTE_ETH_FILTER_SYN,
+	RTE_ETH_FILTER_NTUPLE,
 	RTE_ETH_FILTER_TUNNEL,
 	RTE_ETH_FILTER_FDIR,
 	RTE_ETH_FILTER_HASH,
@@ -146,6 +147,55 @@ struct rte_eth_syn_filter {
 	uint8_t hig_pri;     /**< 1 - higher priority than other filters,
 				  0 - lower priority. */
 	uint16_t queue;      /**< Queue assigned to when match */
+};
+
+/**
+ * Define all structures for ntuple Filter type.
+ */
+
+#define RTE_NTUPLE_FLAGS_DST_IP    0x0001 /**< If set, dst_ip is part of ntuple */
+#define RTE_NTUPLE_FLAGS_SRC_IP    0x0002 /**< If set, src_ip is part of ntuple */
+#define RTE_NTUPLE_FLAGS_DST_PORT  0x0004 /**< If set, dst_port is part of ntuple */
+#define RTE_NTUPLE_FLAGS_SRC_PORT  0x0008 /**< If set, src_port is part of ntuple */
+#define RTE_NTUPLE_FLAGS_PROTO     0x0010 /**< If set, protocol is part of ntuple */
+#define RTE_NTUPLE_FLAGS_TCP_FLAG  0x0020 /**< If set, tcp flag is involved */
+
+#define RTE_5TUPLE_FLAGS ( \
+		RTE_NTUPLE_FLAGS_DST_IP | \
+		RTE_NTUPLE_FLAGS_SRC_IP | \
+		RTE_NTUPLE_FLAGS_DST_PORT | \
+		RTE_NTUPLE_FLAGS_SRC_PORT | \
+		RTE_NTUPLE_FLAGS_PROTO)
+
+#define RTE_2TUPLE_FLAGS ( \
+		RTE_NTUPLE_FLAGS_DST_PORT | \
+		RTE_NTUPLE_FLAGS_PROTO)
+
+
+/**
+ * A structure used to define the ntuple filter entry
+ * to support RTE_ETH_FILTER_NTUPLE with RTE_ETH_FILTER_ADD,
+ * RTE_ETH_FILTER_DELETE and RTE_ETH_FILTER_GET operations.
+ */
+struct rte_eth_ntuple_filter {
+	uint16_t flags;          /**< Flags from RTE_NTUPLE_FLAGS_* */
+	uint32_t dst_ip;         /**< Destination IP address in big endian. */
+	uint32_t dst_ip_mask;    /**< Mask of destination IP address. */
+	uint32_t src_ip;         /**< Source IP address in big endian. */
+	uint32_t src_ip_mask;    /**< Mask of destination IP address. */
+	uint16_t dst_port;       /**< Destination port in big endian. */
+	uint16_t dst_port_mask;  /**< Mask of destination port. */
+	uint16_t src_port;       /**< Source Port in big endian. */
+	uint16_t src_port_mask;  /**< Mask of source port. */
+	uint8_t proto;           /**< L4 protocol. */
+	uint8_t proto_mask;      /**< Mask of L4 protocol. */
+	/** tcp_flags only meaningful when the proto is TCP.
+	    The packet matched above ntuple fields and contain
+	    any set bit in tcp_flags will hit this filter. */
+	uint8_t tcp_flags;
+	uint16_t priority;       /**< seven levels (001b-111b), 111b is highest,
+				      used when more than one filter matches. */
+	uint16_t queue;          /**< Queue assigned to when match*/
 };
 
 /**

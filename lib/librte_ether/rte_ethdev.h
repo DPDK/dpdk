@@ -966,6 +966,8 @@ struct rte_eth_dev_callback;
 /** @internal Structure to keep track of registered callbacks */
 TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
 
+
+#define TCP_URG_FLAG 0x20
 #define TCP_UGR_FLAG 0x20
 #define TCP_ACK_FLAG 0x10
 #define TCP_PSH_FLAG 0x08
