@@ -177,12 +177,54 @@ struct ixgbe_vf_info {
 };
 
 /*
+ *  Possible l4type of 5tuple filters.
+ */
+enum ixgbe_5tuple_protocol {
+	IXGBE_FILTER_PROTOCOL_TCP = 0,
+	IXGBE_FILTER_PROTOCOL_UDP,
+	IXGBE_FILTER_PROTOCOL_SCTP,
+	IXGBE_FILTER_PROTOCOL_NONE,
+};
+
+TAILQ_HEAD(ixgbe_5tuple_filter_list, ixgbe_5tuple_filter);
+
+struct ixgbe_5tuple_filter_info {
+	uint32_t dst_ip;
+	uint32_t src_ip;
+	uint16_t dst_port;
+	uint16_t src_port;
+	enum ixgbe_5tuple_protocol proto;        /* l4 protocol. */
+	uint8_t priority;        /* seven levels (001b-111b), 111b is highest,
+				      used when more than one filter matches. */
+	uint8_t dst_ip_mask:1,   /* if mask is 1b, do not compare dst ip. */
+		src_ip_mask:1,   /* if mask is 1b, do not compare src ip. */
+		dst_port_mask:1, /* if mask is 1b, do not compare dst port. */
+		src_port_mask:1, /* if mask is 1b, do not compare src port. */
+		proto_mask:1;    /* if mask is 1b, do not compare protocol. */
+};
+
+/* 5tuple filter structure */
+struct ixgbe_5tuple_filter {
+	TAILQ_ENTRY(ixgbe_5tuple_filter) entries;
+	uint16_t index;       /* the index of 5tuple filter */
+	struct ixgbe_5tuple_filter_info filter_info;
+	uint16_t queue;       /* rx queue assigned to */
+};
+
+#define IXGBE_5TUPLE_ARRAY_SIZE \
+	(RTE_ALIGN(IXGBE_MAX_FTQF_FILTERS, (sizeof(uint32_t) * NBBY)) / \
+	 (sizeof(uint32_t) * NBBY))
+
+/*
  * Structure to store filters' info.
  */
 struct ixgbe_filter_info {
 	uint8_t ethertype_mask;  /* Bit mask for every used ethertype filter */
 	/* store used ethertype filters*/
 	uint16_t ethertype_filters[IXGBE_MAX_ETQF_FILTERS];
+	/* Bit mask for every used 5tuple filter */
+	uint32_t fivetuple_mask[IXGBE_5TUPLE_ARRAY_SIZE];
+	struct ixgbe_5tuple_filter_list fivetuple_list;
 };
 
 /*
@@ -204,16 +246,6 @@ struct ixgbe_adapter {
 	struct ixgbe_bypass_info    bps;
 #endif /* RTE_NIC_BYPASS */
 	struct ixgbe_filter_info    filter;
-};
-
-/*
- *  Possible l4type of 5tuple filters.
- */
-enum ixgbe_5tuple_protocol {
-	IXGBE_FILTER_PROTOCOL_TCP = 0,
-	IXGBE_FILTER_PROTOCOL_UDP,
-	IXGBE_FILTER_PROTOCOL_SCTP,
-	IXGBE_FILTER_PROTOCOL_NONE,
 };
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\

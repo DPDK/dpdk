@@ -234,14 +234,18 @@ static int ixgbe_syn_filter_get(struct rte_eth_dev *dev,
 static int ixgbe_syn_filter_handle(struct rte_eth_dev *dev,
 			enum rte_filter_op filter_op,
 			void *arg);
-static int ixgbe_add_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
-			struct rte_5tuple_filter *filter, uint16_t rx_queue);
-static int ixgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
-			uint16_t index);
-static int ixgbe_get_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
-			struct rte_5tuple_filter *filter, uint16_t *rx_queue);
-
-static int ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
+static int ixgbe_add_5tuple_filter(struct rte_eth_dev *dev,
+			struct ixgbe_5tuple_filter *filter);
+static void ixgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
+			struct ixgbe_5tuple_filter *filter);
+static int ixgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ntuple_filter *filter,
+			bool add);
+static int ixgbe_ntuple_filter_handle(struct rte_eth_dev *dev,
+				enum rte_filter_op filter_op,
+				void *arg);
+static int ixgbe_get_ntuple_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ntuple_filter *filter);
 static int ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ethertype_filter *filter,
 			bool add);
@@ -254,6 +258,7 @@ static int ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_type filter_type,
 		     enum rte_filter_op filter_op,
 		     void *arg);
+static int ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -378,10 +383,7 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 #endif /* RTE_NIC_BYPASS */
 	.rss_hash_update      = ixgbe_dev_rss_hash_update,
 	.rss_hash_conf_get    = ixgbe_dev_rss_hash_conf_get,
-	.add_5tuple_filter       = ixgbe_add_5tuple_filter,
-	.remove_5tuple_filter    = ixgbe_remove_5tuple_filter,
-	.get_5tuple_filter       = ixgbe_get_5tuple_filter,
-	.filter_ctrl             = ixgbe_dev_filter_ctrl,
+	.filter_ctrl          = ixgbe_dev_filter_ctrl,
 };
 
 /*
@@ -728,6 +730,8 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(eth_dev->data->dev_private);
 	struct ixgbe_dcb_config *dcb_config =
 		IXGBE_DEV_PRIVATE_TO_DCB_CFG(eth_dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(eth_dev->data->dev_private);
 	uint32_t ctrl_ext;
 	uint16_t csum;
 	int diag, i;
@@ -908,6 +912,11 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	/* enable support intr */
 	ixgbe_enable_intr(eth_dev);
+
+	/* initialize 5tuple filter list */
+	TAILQ_INIT(&filter_info->fivetuple_list);
+	memset(filter_info->fivetuple_mask, 0,
+		sizeof(uint32_t) * IXGBE_5TUPLE_ARRAY_SIZE);
 
 	return 0;
 }
@@ -1604,6 +1613,9 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_vf_info *vfinfo =
 		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct ixgbe_5tuple_filter *p_5tuple, *p_5tuple_next;
 	int vf;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1633,6 +1645,18 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	/* Clear recorded link status */
 	memset(&link, 0, sizeof(link));
 	rte_ixgbe_dev_atomic_write_link_status(dev, &link);
+
+	/* Remove all ntuple filters of the device */
+	for (p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list);
+	     p_5tuple != NULL; p_5tuple = p_5tuple_next) {
+		p_5tuple_next = TAILQ_NEXT(p_5tuple, entries);
+		TAILQ_REMOVE(&filter_info->fivetuple_list,
+			     p_5tuple, entries);
+		rte_free(p_5tuple);
+	}
+	memset(filter_info->fivetuple_mask, 0,
+		sizeof(uint32_t) * IXGBE_5TUPLE_ARRAY_SIZE);
+
 }
 
 /*
@@ -3674,7 +3698,6 @@ ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 	}
 }
 
-
 #define MAC_TYPE_FILTER_SUP(type)    do {\
 	if ((type) != ixgbe_mac_82599EB && (type) != ixgbe_mac_X540 &&\
 		(type) != ixgbe_mac_X550)\
@@ -3813,62 +3836,69 @@ revert_protocol_type(enum ixgbe_5tuple_protocol protocol)
  *    - On failure, a negative value.
  */
 static int
-ixgbe_add_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
-			struct rte_5tuple_filter *filter, uint16_t rx_queue)
+ixgbe_add_5tuple_filter(struct rte_eth_dev *dev,
+			struct ixgbe_5tuple_filter *filter)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t ftqf, sdpqf = 0;
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	int i, idx, shift;
+	uint32_t ftqf, sdpqf;
 	uint32_t l34timir = 0;
 	uint8_t mask = 0xff;
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
+	/*
+	 * look for an unused 5tuple filter index,
+	 * and insert the filter to list.
+	 */
+	for (i = 0; i < IXGBE_MAX_FTQF_FILTERS; i++) {
+		idx = i / (sizeof(uint32_t) * NBBY);
+		shift = i % (sizeof(uint32_t) * NBBY);
+		if (!(filter_info->fivetuple_mask[idx] & (1 << shift))) {
+			filter_info->fivetuple_mask[idx] |= 1 << shift;
+			filter->index = i;
+			TAILQ_INSERT_TAIL(&filter_info->fivetuple_list,
+					  filter,
+					  entries);
+			break;
+		}
+	}
+	if (i >= IXGBE_MAX_FTQF_FILTERS) {
+		PMD_DRV_LOG(ERR, "5tuple filters are full.");
 		return -ENOSYS;
-
-	if (index >= IXGBE_MAX_FTQF_FILTERS ||
-		rx_queue >= IXGBE_MAX_RX_QUEUE_NUM ||
-		filter->priority > IXGBE_5TUPLE_MAX_PRI ||
-		filter->priority < IXGBE_5TUPLE_MIN_PRI)
-		return -EINVAL;  /* filter index is out of range. */
-
-	if (filter->tcp_flags) {
-		PMD_INIT_LOG(INFO, "82599EB not tcp flags in 5tuple");
-		return -EINVAL;
 	}
 
-	ftqf = IXGBE_READ_REG(hw, IXGBE_FTQF(index));
-	if (ftqf & IXGBE_FTQF_QUEUE_ENABLE)
-		return -EINVAL;  /* filter index is in use. */
+	sdpqf = (uint32_t)(filter->filter_info.dst_port <<
+				IXGBE_SDPQF_DSTPORT_SHIFT);
+	sdpqf = sdpqf | (filter->filter_info.src_port & IXGBE_SDPQF_SRCPORT);
 
-	ftqf = 0;
-	sdpqf = (uint32_t)(filter->dst_port << IXGBE_SDPQF_DSTPORT_SHIFT);
-	sdpqf = sdpqf | (filter->src_port & IXGBE_SDPQF_SRCPORT);
-
-	ftqf |= (uint32_t)(convert_protocol_type(filter->protocol) &
+	ftqf = (uint32_t)(filter->filter_info.proto &
 		IXGBE_FTQF_PROTOCOL_MASK);
-	ftqf |= (uint32_t)((filter->priority & IXGBE_FTQF_PRIORITY_MASK) <<
-		IXGBE_FTQF_PRIORITY_SHIFT);
-	if (filter->src_ip_mask == 0) /* 0 means compare. */
+	ftqf |= (uint32_t)((filter->filter_info.priority &
+		IXGBE_FTQF_PRIORITY_MASK) << IXGBE_FTQF_PRIORITY_SHIFT);
+	if (filter->filter_info.src_ip_mask == 0) /* 0 means compare. */
 		mask &= IXGBE_FTQF_SOURCE_ADDR_MASK;
-	if (filter->dst_ip_mask == 0)
+	if (filter->filter_info.dst_ip_mask == 0)
 		mask &= IXGBE_FTQF_DEST_ADDR_MASK;
-	if (filter->src_port_mask == 0)
+	if (filter->filter_info.src_port_mask == 0)
 		mask &= IXGBE_FTQF_SOURCE_PORT_MASK;
-	if (filter->dst_port_mask == 0)
+	if (filter->filter_info.dst_port_mask == 0)
 		mask &= IXGBE_FTQF_DEST_PORT_MASK;
-	if (filter->protocol_mask == 0)
+	if (filter->filter_info.proto_mask == 0)
 		mask &= IXGBE_FTQF_PROTOCOL_COMP_MASK;
 	ftqf |= mask << IXGBE_FTQF_5TUPLE_MASK_SHIFT;
 	ftqf |= IXGBE_FTQF_POOL_MASK_EN;
 	ftqf |= IXGBE_FTQF_QUEUE_ENABLE;
 
-	IXGBE_WRITE_REG(hw, IXGBE_DAQF(index), filter->dst_ip);
-	IXGBE_WRITE_REG(hw, IXGBE_SAQF(index), filter->src_ip);
-	IXGBE_WRITE_REG(hw, IXGBE_SDPQF(index), sdpqf);
-	IXGBE_WRITE_REG(hw, IXGBE_FTQF(index), ftqf);
+	IXGBE_WRITE_REG(hw, IXGBE_DAQF(idx), filter->filter_info.dst_ip);
+	IXGBE_WRITE_REG(hw, IXGBE_SAQF(idx), filter->filter_info.src_ip);
+	IXGBE_WRITE_REG(hw, IXGBE_SDPQF(idx), sdpqf);
+	IXGBE_WRITE_REG(hw, IXGBE_FTQF(idx), ftqf);
 
 	l34timir |= IXGBE_L34T_IMIR_RESERVE;
-	l34timir |= (uint32_t)(rx_queue << IXGBE_L34T_IMIR_QUEUE_SHIFT);
-	IXGBE_WRITE_REG(hw, IXGBE_L34T_IMIR(index), l34timir);
+	l34timir |= (uint32_t)(filter->queue <<
+				IXGBE_L34T_IMIR_QUEUE_SHIFT);
+	IXGBE_WRITE_REG(hw, IXGBE_L34T_IMIR(i), l34timir);
 	return 0;
 }
 
@@ -3877,92 +3907,27 @@ ixgbe_add_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
  *
  * @param
  * dev: Pointer to struct rte_eth_dev.
- * index: the index the filter allocates.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
+ * filter: the pointer of the filter will be removed.
  */
-static int
+static void
 ixgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
-			uint16_t index)
+			struct ixgbe_5tuple_filter *filter)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	uint16_t index = filter->index;
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
-
-	if (index >= IXGBE_MAX_FTQF_FILTERS)
-		return -EINVAL;  /* filter index is out of range. */
+	filter_info->fivetuple_mask[index / (sizeof(uint32_t) * NBBY)] &=
+				~(1 << (index % (sizeof(uint32_t) * NBBY)));
+	TAILQ_REMOVE(&filter_info->fivetuple_list, filter, entries);
+	rte_free(filter);
 
 	IXGBE_WRITE_REG(hw, IXGBE_DAQF(index), 0);
 	IXGBE_WRITE_REG(hw, IXGBE_SAQF(index), 0);
 	IXGBE_WRITE_REG(hw, IXGBE_SDPQF(index), 0);
 	IXGBE_WRITE_REG(hw, IXGBE_FTQF(index), 0);
 	IXGBE_WRITE_REG(hw, IXGBE_L34T_IMIR(index), 0);
-	return 0;
-}
-
-/*
- * get a 5tuple filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * index: the index the filter allocates
- * filter: ponter to the filter that returns.
- * *rx_queue: pointer of the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-ixgbe_get_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
-			struct rte_5tuple_filter *filter, uint16_t *rx_queue)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t sdpqf, ftqf, l34timir;
-	uint8_t mask;
-	enum ixgbe_5tuple_protocol proto;
-
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
-
-	if (index >= IXGBE_MAX_FTQF_FILTERS)
-		return -EINVAL;  /* filter index is out of range. */
-
-	ftqf = IXGBE_READ_REG(hw, IXGBE_FTQF(index));
-	if (ftqf & IXGBE_FTQF_QUEUE_ENABLE) {
-		proto = (enum ixgbe_5tuple_protocol)(ftqf & IXGBE_FTQF_PROTOCOL_MASK);
-		filter->protocol = revert_protocol_type(proto);
-		filter->priority = (ftqf >> IXGBE_FTQF_PRIORITY_SHIFT) &
-					IXGBE_FTQF_PRIORITY_MASK;
-		mask = (uint8_t)((ftqf >> IXGBE_FTQF_5TUPLE_MASK_SHIFT) &
-					IXGBE_FTQF_5TUPLE_MASK_MASK);
-		filter->src_ip_mask =
-			(mask & IXGBE_FTQF_SOURCE_ADDR_MASK) ? 1 : 0;
-		filter->dst_ip_mask =
-			(mask & IXGBE_FTQF_DEST_ADDR_MASK) ? 1 : 0;
-		filter->src_port_mask =
-			(mask & IXGBE_FTQF_SOURCE_PORT_MASK) ? 1 : 0;
-		filter->dst_port_mask =
-			(mask & IXGBE_FTQF_DEST_PORT_MASK) ? 1 : 0;
-		filter->protocol_mask =
-			(mask & IXGBE_FTQF_PROTOCOL_COMP_MASK) ? 1 : 0;
-
-		sdpqf = IXGBE_READ_REG(hw, IXGBE_SDPQF(index));
-		filter->dst_port = (sdpqf & IXGBE_SDPQF_DSTPORT) >>
-					IXGBE_SDPQF_DSTPORT_SHIFT;
-		filter->src_port = sdpqf & IXGBE_SDPQF_SRCPORT;
-		filter->dst_ip = IXGBE_READ_REG(hw, IXGBE_DAQF(index));
-		filter->src_ip = IXGBE_READ_REG(hw, IXGBE_SAQF(index));
-
-		l34timir = IXGBE_READ_REG(hw, IXGBE_L34T_IMIR(index));
-		*rx_queue = (l34timir & IXGBE_L34T_IMIR_QUEUE) >>
-					IXGBE_L34T_IMIR_QUEUE_SHIFT;
-		return 0;
-	}
-	return -ENOENT;
 }
 
 static int
@@ -3997,6 +3962,263 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	/* update max frame size */
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame;
 	return 0;
+}
+
+#define MAC_TYPE_FILTER_SUP_EXT(type)    do {\
+	if ((type) != ixgbe_mac_82599EB && (type) != ixgbe_mac_X540)\
+		return -ENOTSUP;\
+} while (0)
+
+static inline struct ixgbe_5tuple_filter *
+ixgbe_5tuple_filter_lookup(struct ixgbe_5tuple_filter_list *filter_list,
+			struct ixgbe_5tuple_filter_info *key)
+{
+	struct ixgbe_5tuple_filter *it;
+
+	TAILQ_FOREACH(it, filter_list, entries) {
+		if (memcmp(key, &it->filter_info,
+			sizeof(struct ixgbe_5tuple_filter_info)) == 0) {
+			return it;
+		}
+	}
+	return NULL;
+}
+
+/* translate elements in struct rte_eth_ntuple_filter to struct ixgbe_5tuple_filter_info*/
+static inline int
+ntuple_filter_to_5tuple(struct rte_eth_ntuple_filter *filter,
+			struct ixgbe_5tuple_filter_info *filter_info)
+{
+	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM ||
+		filter->priority > IXGBE_5TUPLE_MAX_PRI ||
+		filter->priority < IXGBE_5TUPLE_MIN_PRI)
+		return -EINVAL;
+
+	switch (filter->dst_ip_mask) {
+	case UINT32_MAX:
+		filter_info->dst_ip_mask = 0;
+		filter_info->dst_ip = filter->dst_ip;
+		break;
+	case 0:
+		filter_info->dst_ip_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid dst_ip mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->src_ip_mask) {
+	case UINT32_MAX:
+		filter_info->src_ip_mask = 0;
+		filter_info->src_ip = filter->src_ip;
+		break;
+	case 0:
+		filter_info->src_ip_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid src_ip mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->dst_port_mask) {
+	case UINT16_MAX:
+		filter_info->dst_port_mask = 0;
+		filter_info->dst_port = filter->dst_port;
+		break;
+	case 0:
+		filter_info->dst_port_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid dst_port mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->src_port_mask) {
+	case UINT16_MAX:
+		filter_info->src_port_mask = 0;
+		filter_info->src_port = filter->src_port;
+		break;
+	case 0:
+		filter_info->src_port_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid src_port mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->proto_mask) {
+	case UINT8_MAX:
+		filter_info->proto_mask = 0;
+		filter_info->proto =
+			convert_protocol_type(filter->proto);
+		break;
+	case 0:
+		filter_info->proto_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid protocol mask.");
+		return -EINVAL;
+	}
+
+	filter_info->priority = (uint8_t)filter->priority;
+	return 0;
+}
+
+/*
+ * add or delete a ntuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * ntuple_filter: Pointer to struct rte_eth_ntuple_filter
+ * add: if true, add filter, if false, remove filter
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+ixgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ntuple_filter *ntuple_filter,
+			bool add)
+{
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct ixgbe_5tuple_filter_info filter_5tuple;
+	struct ixgbe_5tuple_filter *filter;
+	int ret;
+
+	if (ntuple_filter->flags != RTE_5TUPLE_FLAGS) {
+		PMD_DRV_LOG(ERR, "only 5tuple is supported.");
+		return -EINVAL;
+	}
+
+	memset(&filter_5tuple, 0, sizeof(struct ixgbe_5tuple_filter_info));
+	ret = ntuple_filter_to_5tuple(ntuple_filter, &filter_5tuple);
+	if (ret < 0)
+		return ret;
+
+	filter = ixgbe_5tuple_filter_lookup(&filter_info->fivetuple_list,
+					 &filter_5tuple);
+	if (filter != NULL && add) {
+		PMD_DRV_LOG(ERR, "filter exists.");
+		return -EEXIST;
+	}
+	if (filter == NULL && !add) {
+		PMD_DRV_LOG(ERR, "filter doesn't exist.");
+		return -ENOENT;
+	}
+
+	if (add) {
+		filter = rte_zmalloc("ixgbe_5tuple_filter",
+				sizeof(struct ixgbe_5tuple_filter), 0);
+		if (filter == NULL)
+			return -ENOMEM;
+		(void)rte_memcpy(&filter->filter_info,
+				 &filter_5tuple,
+				 sizeof(struct ixgbe_5tuple_filter_info));
+		filter->queue = ntuple_filter->queue;
+		ret = ixgbe_add_5tuple_filter(dev, filter);
+		if (ret < 0) {
+			rte_free(filter);
+			return ret;
+		}
+	} else
+		ixgbe_remove_5tuple_filter(dev, filter);
+
+	return 0;
+}
+
+/*
+ * get a ntuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * ntuple_filter: Pointer to struct rte_eth_ntuple_filter
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+ixgbe_get_ntuple_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ntuple_filter *ntuple_filter)
+{
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct ixgbe_5tuple_filter_info filter_5tuple;
+	struct ixgbe_5tuple_filter *filter;
+	int ret;
+
+	if (ntuple_filter->flags != RTE_5TUPLE_FLAGS) {
+		PMD_DRV_LOG(ERR, "only 5tuple is supported.");
+		return -EINVAL;
+	}
+
+	memset(&filter_5tuple, 0, sizeof(struct ixgbe_5tuple_filter_info));
+	ret = ntuple_filter_to_5tuple(ntuple_filter, &filter_5tuple);
+	if (ret < 0)
+		return ret;
+
+	filter = ixgbe_5tuple_filter_lookup(&filter_info->fivetuple_list,
+					 &filter_5tuple);
+	if (filter == NULL) {
+		PMD_DRV_LOG(ERR, "filter doesn't exist.");
+		return -ENOENT;
+	}
+	ntuple_filter->queue = filter->queue;
+	return 0;
+}
+
+/*
+ * ixgbe_ntuple_filter_handle - Handle operations for ntuple filter.
+ * @dev: pointer to rte_eth_dev structure
+ * @filter_op:operation will be taken.
+ * @arg: a pointer to specific structure corresponding to the filter_op
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+ixgbe_ntuple_filter_handle(struct rte_eth_dev *dev,
+				enum rte_filter_op filter_op,
+				void *arg)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	MAC_TYPE_FILTER_SUP_EXT(hw->mac.type);
+
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return 0;
+
+	if (arg == NULL) {
+		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u.",
+			    filter_op);
+		return -EINVAL;
+	}
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+		ret = ixgbe_add_del_ntuple_filter(dev,
+			(struct rte_eth_ntuple_filter *)arg,
+			TRUE);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		ret = ixgbe_add_del_ntuple_filter(dev,
+			(struct rte_eth_ntuple_filter *)arg,
+			FALSE);
+		break;
+	case RTE_ETH_FILTER_GET:
+		ret = ixgbe_get_ntuple_filter(dev,
+			(struct rte_eth_ntuple_filter *)arg);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unsupported operation %u.", filter_op);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
 }
 
 static inline int
@@ -4194,6 +4416,9 @@ ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 	int ret = -EINVAL;
 
 	switch (filter_type) {
+	case RTE_ETH_FILTER_NTUPLE:
+		ret = ixgbe_ntuple_filter_handle(dev, filter_op, arg);
+		break;
 	case RTE_ETH_FILTER_ETHERTYPE:
 		ret = ixgbe_ethertype_filter_handle(dev, filter_op, arg);
 		break;
