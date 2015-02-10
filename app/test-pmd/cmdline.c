@@ -600,28 +600,19 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" (ether_type) (drop|fwd) queue (queue_id)\n"
 			"    Add/Del an ethertype filter.\n\n"
 
-			"add_2tuple_filter (port_id) protocol (pro_value) (pro_mask)"
-			" dst_port (port_value) (port_mask) flags (flg_value) priority (prio_value)"
-			" queue (queue_id) index (idx)\n"
-			"    add a 2tuple filter.\n\n"
+			"2tuple_filter (port_id) (add|del)"
+			" dst_port (dst_port_value) protocol (protocol_value)"
+			" mask (mask_value) tcp_flags (tcp_flags_value)"
+			" priority (prio_value) queue (queue_id)\n"
+			"    Add/Del a 2tuple filter.\n\n"
 
-			"remove_2tuple_filter (port_id) index (idx)\n"
-			"    remove a 2tuple filter.\n\n"
-
-			"get_2tuple_filter (port_id) index (idx)\n"
-			"    get info of a 2tuple filter.\n\n"
-
-			"add_5tuple_filter (port_id) dst_ip (dst_address) src_ip (src_address)"
-			" dst_port (dst_port_value) src_port (src_port_value) protocol (protocol_value)"
-			" mask (mask_value) flags (flags_value) priority (prio_value)"
-			" queue (queue_id) index (idx)\n"
-			"    add a 5tuple filter.\n\n"
-
-			"remove_5tuple_filter (port_id) index (idx)\n"
-			"    remove a 5tuple filter.\n\n"
-
-			"get_5tuple_filter (port_id) index (idx)\n"
-			"    get info of a 5tuple filter.\n\n"
+			"5tuple_filter (port_id) (add|del)"
+			" dst_ip (dst_address) src_ip (src_address)"
+			" dst_port (dst_port_value) src_port (src_port_value)"
+			" protocol (protocol_value)"
+			" mask (mask_value) tcp_flags (tcp_flags_value)"
+			" priority (prio_value) queue (queue_id)\n"
+			"    Add/Del a 5tuple filter.\n\n"
 
 			"syn_filter (port_id) (add|del) priority (high|low) queue (queue_id)"
 			"    Add/Del syn filter.\n\n"
@@ -6886,21 +6877,20 @@ cmdline_parse_inst_t cmd_syn_filter = {
 /* *** ADD/REMOVE A 2tuple FILTER *** */
 struct cmd_2tuple_filter_result {
 	cmdline_fixed_string_t filter;
-	uint8_t port_id;
-	cmdline_fixed_string_t protocol;
-	uint8_t protocol_value;
-	uint8_t protocol_mask;
+	uint8_t  port_id;
+	cmdline_fixed_string_t ops;
 	cmdline_fixed_string_t dst_port;
 	uint16_t dst_port_value;
-	uint16_t dst_port_mask;
-	cmdline_fixed_string_t flags;
-	uint8_t flags_value;
+	cmdline_fixed_string_t protocol;
+	uint8_t protocol_value;
+	cmdline_fixed_string_t mask;
+	uint8_t  mask_value;
+	cmdline_fixed_string_t tcp_flags;
+	uint8_t tcp_flags_value;
 	cmdline_fixed_string_t priority;
-	uint8_t priority_value;
+	uint8_t  priority_value;
 	cmdline_fixed_string_t queue;
-	uint16_t queue_id;
-	cmdline_fixed_string_t index;
-	uint16_t index_value;
+	uint16_t  queue_id;
 };
 
 static void
@@ -6908,59 +6898,92 @@ cmd_2tuple_filter_parsed(void *parsed_result,
 			__attribute__((unused)) struct cmdline *cl,
 			__attribute__((unused)) void *data)
 {
-	int ret = 0;
-	struct rte_2tuple_filter filter;
+	struct rte_eth_ntuple_filter filter;
 	struct cmd_2tuple_filter_result *res = parsed_result;
+	int ret = 0;
 
-	memset(&filter, 0, sizeof(struct rte_2tuple_filter));
+	ret = rte_eth_dev_filter_supported(res->port_id, RTE_ETH_FILTER_NTUPLE);
+	if (ret < 0) {
+		printf("ntuple filter is not supported on port %u.\n",
+			res->port_id);
+		return;
+	}
 
-	if (!strcmp(res->filter, "add_2tuple_filter")) {
-		/* need convert to big endian. */
-		filter.dst_port = rte_cpu_to_be_16(res->dst_port_value);
-		filter.protocol = res->protocol_value;
-		filter.dst_port_mask = (res->dst_port_mask) ? 0 : 1;
-		filter.protocol_mask = (res->protocol_mask) ? 0 : 1;
-		filter.priority = res->priority_value;
-		filter.tcp_flags = res->flags_value;
-		ret = rte_eth_dev_add_2tuple_filter(res->port_id,
-			res->index_value, &filter, res->queue_id);
-	} else if (!strcmp(res->filter, "remove_2tuple_filter"))
-		ret = rte_eth_dev_remove_2tuple_filter(res->port_id,
-			res->index_value);
-	else if (!strcmp(res->filter, "get_2tuple_filter"))
-		get_2tuple_filter(res->port_id, res->index_value);
+	memset(&filter, 0, sizeof(struct rte_eth_ntuple_filter));
 
+	filter.flags = RTE_2TUPLE_FLAGS;
+	filter.dst_port_mask = (res->mask_value & 0x02) ? UINT16_MAX : 0;
+	filter.proto_mask = (res->mask_value & 0x01) ? UINT8_MAX : 0;
+	filter.proto = res->protocol_value;
+	filter.priority = res->priority_value;
+	if (res->tcp_flags_value != 0 && filter.proto != IPPROTO_TCP) {
+		printf("nonzero tcp_flags is only meaningful"
+			" when protocol is TCP.\n");
+		return;
+	}
+	if (res->tcp_flags_value > TCP_FLAG_ALL) {
+		printf("invalid TCP flags.\n");
+		return;
+	}
+
+	if (res->tcp_flags_value != 0) {
+		filter.flags |= RTE_NTUPLE_FLAGS_TCP_FLAG;
+		filter.tcp_flags = res->tcp_flags_value;
+	}
+
+	/* need convert to big endian. */
+	filter.dst_port = rte_cpu_to_be_16(res->dst_port_value);
+	filter.queue = res->queue_id;
+
+	if (!strcmp(res->ops, "add"))
+		ret = rte_eth_dev_filter_ctrl(res->port_id,
+				RTE_ETH_FILTER_NTUPLE,
+				RTE_ETH_FILTER_ADD,
+				&filter);
+	else
+		ret = rte_eth_dev_filter_ctrl(res->port_id,
+				RTE_ETH_FILTER_NTUPLE,
+				RTE_ETH_FILTER_DELETE,
+				&filter);
 	if (ret < 0)
-		printf("2tuple filter setting error: (%s)\n", strerror(-ret));
+		printf("2tuple filter programming error: (%s)\n",
+			strerror(-ret));
+
 }
 
+cmdline_parse_token_string_t cmd_2tuple_filter_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				 filter, "2tuple_filter");
 cmdline_parse_token_num_t cmd_2tuple_filter_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
 				port_id, UINT8);
-cmdline_parse_token_string_t cmd_2tuple_filter_protocol =
+cmdline_parse_token_string_t cmd_2tuple_filter_ops =
 	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
-				 protocol, "protocol");
-cmdline_parse_token_num_t cmd_2tuple_filter_protocol_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
-				 protocol_value, UINT8);
-cmdline_parse_token_num_t cmd_2tuple_filter_protocol_mask =
-	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
-				protocol_mask, UINT8);
+				 ops, "add#del");
 cmdline_parse_token_string_t cmd_2tuple_filter_dst_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
 				dst_port, "dst_port");
 cmdline_parse_token_num_t cmd_2tuple_filter_dst_port_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
 				dst_port_value, UINT16);
-cmdline_parse_token_num_t cmd_2tuple_filter_dst_port_mask =
-	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
-				dst_port_mask, UINT16);
-cmdline_parse_token_string_t cmd_2tuple_filter_flags =
+cmdline_parse_token_string_t cmd_2tuple_filter_protocol =
 	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
-				flags, "flags");
-cmdline_parse_token_num_t cmd_2tuple_filter_flags_value =
+				protocol, "protocol");
+cmdline_parse_token_num_t cmd_2tuple_filter_protocol_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
-				flags_value, UINT8);
+				protocol_value, UINT8);
+cmdline_parse_token_string_t cmd_2tuple_filter_mask =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				mask, "mask");
+cmdline_parse_token_num_t cmd_2tuple_filter_mask_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				mask_value, INT8);
+cmdline_parse_token_string_t cmd_2tuple_filter_tcp_flags =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				tcp_flags, "tcp_flags");
+cmdline_parse_token_num_t cmd_2tuple_filter_tcp_flags_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				tcp_flags_value, UINT8);
 cmdline_parse_token_string_t cmd_2tuple_filter_priority =
 	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
 				priority, "priority");
@@ -6973,67 +6996,27 @@ cmdline_parse_token_string_t cmd_2tuple_filter_queue =
 cmdline_parse_token_num_t cmd_2tuple_filter_queue_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
 				queue_id, UINT16);
-cmdline_parse_token_string_t cmd_2tuple_filter_index =
-	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
-				index, "index");
-cmdline_parse_token_num_t cmd_2tuple_filter_index_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
-				index_value, UINT16);
-cmdline_parse_token_string_t cmd_2tuple_filter_add_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
-				filter, "add_2tuple_filter");
-cmdline_parse_inst_t cmd_add_2tuple_filter = {
+
+cmdline_parse_inst_t cmd_2tuple_filter = {
 	.f = cmd_2tuple_filter_parsed,
 	.data = NULL,
 	.help_str = "add a 2tuple filter",
 	.tokens = {
-		(void *)&cmd_2tuple_filter_add_filter,
+		(void *)&cmd_2tuple_filter_filter,
 		(void *)&cmd_2tuple_filter_port_id,
-		(void *)&cmd_2tuple_filter_protocol,
-		(void *)&cmd_2tuple_filter_protocol_value,
-		(void *)&cmd_2tuple_filter_protocol_mask,
+		(void *)&cmd_2tuple_filter_ops,
 		(void *)&cmd_2tuple_filter_dst_port,
 		(void *)&cmd_2tuple_filter_dst_port_value,
-		(void *)&cmd_2tuple_filter_dst_port_mask,
-		(void *)&cmd_2tuple_filter_flags,
-		(void *)&cmd_2tuple_filter_flags_value,
+		(void *)&cmd_2tuple_filter_protocol,
+		(void *)&cmd_2tuple_filter_protocol_value,
+		(void *)&cmd_2tuple_filter_mask,
+		(void *)&cmd_2tuple_filter_mask_value,
+		(void *)&cmd_2tuple_filter_tcp_flags,
+		(void *)&cmd_2tuple_filter_tcp_flags_value,
 		(void *)&cmd_2tuple_filter_priority,
 		(void *)&cmd_2tuple_filter_priority_value,
 		(void *)&cmd_2tuple_filter_queue,
 		(void *)&cmd_2tuple_filter_queue_id,
-		(void *)&cmd_2tuple_filter_index,
-		(void *)&cmd_2tuple_filter_index_value,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t cmd_2tuple_filter_remove_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
-				filter, "remove_2tuple_filter");
-cmdline_parse_inst_t cmd_remove_2tuple_filter = {
-	.f = cmd_2tuple_filter_parsed,
-	.data = NULL,
-	.help_str = "remove a 2tuple filter",
-	.tokens = {
-		(void *)&cmd_2tuple_filter_remove_filter,
-		(void *)&cmd_2tuple_filter_port_id,
-		(void *)&cmd_2tuple_filter_index,
-		(void *)&cmd_2tuple_filter_index_value,
-		NULL,
-	},
-};
-cmdline_parse_token_string_t cmd_2tuple_filter_get_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
-				filter, "get_2tuple_filter");
-cmdline_parse_inst_t cmd_get_2tuple_filter = {
-	.f = cmd_2tuple_filter_parsed,
-	.data = NULL,
-	.help_str = "get a 2tuple filter",
-	.tokens = {
-		(void *)&cmd_2tuple_filter_get_filter,
-		(void *)&cmd_2tuple_filter_port_id,
-		(void *)&cmd_2tuple_filter_index,
-		(void *)&cmd_2tuple_filter_index_value,
 		NULL,
 	},
 };
@@ -7042,6 +7025,7 @@ cmdline_parse_inst_t cmd_get_2tuple_filter = {
 struct cmd_5tuple_filter_result {
 	cmdline_fixed_string_t filter;
 	uint8_t  port_id;
+	cmdline_fixed_string_t ops;
 	cmdline_fixed_string_t dst_ip;
 	cmdline_ipaddr_t dst_ip_value;
 	cmdline_fixed_string_t src_ip;
@@ -7054,14 +7038,12 @@ struct cmd_5tuple_filter_result {
 	uint8_t protocol_value;
 	cmdline_fixed_string_t mask;
 	uint8_t  mask_value;
-	cmdline_fixed_string_t flags;
-	uint8_t flags_value;
+	cmdline_fixed_string_t tcp_flags;
+	uint8_t tcp_flags_value;
 	cmdline_fixed_string_t priority;
 	uint8_t  priority_value;
 	cmdline_fixed_string_t queue;
 	uint16_t  queue_id;
-	cmdline_fixed_string_t index;
-	uint16_t  index_value;
 };
 
 static void
@@ -7069,62 +7051,92 @@ cmd_5tuple_filter_parsed(void *parsed_result,
 			__attribute__((unused)) struct cmdline *cl,
 			__attribute__((unused)) void *data)
 {
-	int ret = 0;
-	struct rte_5tuple_filter filter;
+	struct rte_eth_ntuple_filter filter;
 	struct cmd_5tuple_filter_result *res = parsed_result;
+	int ret = 0;
 
-	memset(&filter, 0, sizeof(struct rte_5tuple_filter));
+	ret = rte_eth_dev_filter_supported(res->port_id, RTE_ETH_FILTER_NTUPLE);
+	if (ret < 0) {
+		printf("ntuple filter is not supported on port %u.\n",
+			res->port_id);
+		return;
+	}
 
-	if (!strcmp(res->filter, "add_5tuple_filter")) {
-		filter.dst_ip_mask = (res->mask_value & 0x10) ? 0 : 1;
-		filter.src_ip_mask = (res->mask_value & 0x08) ? 0 : 1;
-		filter.dst_port_mask = (res->mask_value & 0x04) ? 0 : 1;
-		filter.src_port_mask = (res->mask_value & 0x02) ? 0 : 1;
-		filter.protocol = res->protocol_value;
-		filter.protocol_mask = (res->mask_value & 0x01) ? 0 : 1;
-		filter.priority = res->priority_value;
-		filter.tcp_flags = res->flags_value;
+	memset(&filter, 0, sizeof(struct rte_eth_ntuple_filter));
 
-		if (res->dst_ip_value.family == AF_INET)
-			/* no need to convert, already big endian. */
-			filter.dst_ip = res->dst_ip_value.addr.ipv4.s_addr;
-		else {
-			if (filter.dst_ip_mask == 0) {
-				printf("can not support ipv6 involved compare.\n");
-				return;
-			}
-			filter.dst_ip = 0;
+	filter.flags = RTE_5TUPLE_FLAGS;
+	filter.dst_ip_mask = (res->mask_value & 0x10) ? UINT32_MAX : 0;
+	filter.src_ip_mask = (res->mask_value & 0x08) ? UINT32_MAX : 0;
+	filter.dst_port_mask = (res->mask_value & 0x04) ? UINT16_MAX : 0;
+	filter.src_port_mask = (res->mask_value & 0x02) ? UINT16_MAX : 0;
+	filter.proto_mask = (res->mask_value & 0x01) ? UINT8_MAX : 0;
+	filter.proto = res->protocol_value;
+	filter.priority = res->priority_value;
+	if (res->tcp_flags_value != 0 && filter.proto != IPPROTO_TCP) {
+		printf("nonzero tcp_flags is only meaningful"
+			" when protocol is TCP.\n");
+		return;
+	}
+	if (res->tcp_flags_value > TCP_FLAG_ALL) {
+		printf("invalid TCP flags.\n");
+		return;
+	}
+
+	if (res->tcp_flags_value != 0) {
+		filter.flags |= RTE_NTUPLE_FLAGS_TCP_FLAG;
+		filter.tcp_flags = res->tcp_flags_value;
+	}
+
+	if (res->dst_ip_value.family == AF_INET)
+		/* no need to convert, already big endian. */
+		filter.dst_ip = res->dst_ip_value.addr.ipv4.s_addr;
+	else {
+		if (filter.dst_ip_mask == 0) {
+			printf("can not support ipv6 involved compare.\n");
+			return;
 		}
+		filter.dst_ip = 0;
+	}
 
-		if (res->src_ip_value.family == AF_INET)
-			/* no need to convert, already big endian. */
-			filter.src_ip = res->src_ip_value.addr.ipv4.s_addr;
-		else {
-			if (filter.src_ip_mask == 0) {
-				printf("can not support ipv6 involved compare.\n");
-				return;
-			}
-			filter.src_ip = 0;
+	if (res->src_ip_value.family == AF_INET)
+		/* no need to convert, already big endian. */
+		filter.src_ip = res->src_ip_value.addr.ipv4.s_addr;
+	else {
+		if (filter.src_ip_mask == 0) {
+			printf("can not support ipv6 involved compare.\n");
+			return;
 		}
-		/* need convert to big endian. */
-		filter.dst_port = rte_cpu_to_be_16(res->dst_port_value);
-		filter.src_port = rte_cpu_to_be_16(res->src_port_value);
+		filter.src_ip = 0;
+	}
+	/* need convert to big endian. */
+	filter.dst_port = rte_cpu_to_be_16(res->dst_port_value);
+	filter.src_port = rte_cpu_to_be_16(res->src_port_value);
+	filter.queue = res->queue_id;
 
-		ret = rte_eth_dev_add_5tuple_filter(res->port_id,
-			res->index_value, &filter, res->queue_id);
-	} else if (!strcmp(res->filter, "remove_5tuple_filter"))
-		ret = rte_eth_dev_remove_5tuple_filter(res->port_id,
-			res->index_value);
-	else if (!strcmp(res->filter, "get_5tuple_filter"))
-		get_5tuple_filter(res->port_id, res->index_value);
+	if (!strcmp(res->ops, "add"))
+		ret = rte_eth_dev_filter_ctrl(res->port_id,
+				RTE_ETH_FILTER_NTUPLE,
+				RTE_ETH_FILTER_ADD,
+				&filter);
+	else
+		ret = rte_eth_dev_filter_ctrl(res->port_id,
+				RTE_ETH_FILTER_NTUPLE,
+				RTE_ETH_FILTER_DELETE,
+				&filter);
 	if (ret < 0)
-		printf("5tuple filter setting error: (%s)\n", strerror(-ret));
+		printf("5tuple filter programming error: (%s)\n",
+			strerror(-ret));
 }
 
-
+cmdline_parse_token_string_t cmd_5tuple_filter_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				 filter, "5tuple_filter");
 cmdline_parse_token_num_t cmd_5tuple_filter_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
 				port_id, UINT8);
+cmdline_parse_token_string_t cmd_5tuple_filter_ops =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				 ops, "add#del");
 cmdline_parse_token_string_t cmd_5tuple_filter_dst_ip =
 	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
 				dst_ip, "dst_ip");
@@ -7161,12 +7173,12 @@ cmdline_parse_token_string_t cmd_5tuple_filter_mask =
 cmdline_parse_token_num_t cmd_5tuple_filter_mask_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
 				mask_value, INT8);
-cmdline_parse_token_string_t cmd_5tuple_filter_flags =
+cmdline_parse_token_string_t cmd_5tuple_filter_tcp_flags =
 	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
-				flags, "flags");
-cmdline_parse_token_num_t cmd_5tuple_filter_flags_value =
+				tcp_flags, "tcp_flags");
+cmdline_parse_token_num_t cmd_5tuple_filter_tcp_flags_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
-				flags_value, UINT8);
+				tcp_flags_value, UINT8);
 cmdline_parse_token_string_t cmd_5tuple_filter_priority =
 	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
 				priority, "priority");
@@ -7179,23 +7191,15 @@ cmdline_parse_token_string_t cmd_5tuple_filter_queue =
 cmdline_parse_token_num_t cmd_5tuple_filter_queue_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
 				queue_id, UINT16);
-cmdline_parse_token_string_t cmd_5tuple_filter_index =
-	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
-				index, "index");
-cmdline_parse_token_num_t cmd_5tuple_filter_index_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
-				index_value, UINT16);
 
-cmdline_parse_token_string_t cmd_5tuple_filter_add_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
-				 filter, "add_5tuple_filter");
-cmdline_parse_inst_t cmd_add_5tuple_filter = {
+cmdline_parse_inst_t cmd_5tuple_filter = {
 	.f = cmd_5tuple_filter_parsed,
 	.data = NULL,
-	.help_str = "add a 5tuple filter",
+	.help_str = "add/del a 5tuple filter",
 	.tokens = {
-		(void *)&cmd_5tuple_filter_add_filter,
+		(void *)&cmd_5tuple_filter_filter,
 		(void *)&cmd_5tuple_filter_port_id,
+		(void *)&cmd_5tuple_filter_ops,
 		(void *)&cmd_5tuple_filter_dst_ip,
 		(void *)&cmd_5tuple_filter_dst_ip_value,
 		(void *)&cmd_5tuple_filter_src_ip,
@@ -7208,46 +7212,12 @@ cmdline_parse_inst_t cmd_add_5tuple_filter = {
 		(void *)&cmd_5tuple_filter_protocol_value,
 		(void *)&cmd_5tuple_filter_mask,
 		(void *)&cmd_5tuple_filter_mask_value,
-		(void *)&cmd_5tuple_filter_flags,
-		(void *)&cmd_5tuple_filter_flags_value,
+		(void *)&cmd_5tuple_filter_tcp_flags,
+		(void *)&cmd_5tuple_filter_tcp_flags_value,
 		(void *)&cmd_5tuple_filter_priority,
 		(void *)&cmd_5tuple_filter_priority_value,
 		(void *)&cmd_5tuple_filter_queue,
 		(void *)&cmd_5tuple_filter_queue_id,
-		(void *)&cmd_5tuple_filter_index,
-		(void *)&cmd_5tuple_filter_index_value,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t cmd_5tuple_filter_remove_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
-				filter, "remove_5tuple_filter");
-cmdline_parse_inst_t cmd_remove_5tuple_filter = {
-	.f = cmd_5tuple_filter_parsed,
-	.data = NULL,
-	.help_str = "remove a 5tuple filter",
-	.tokens = {
-		(void *)&cmd_5tuple_filter_remove_filter,
-		(void *)&cmd_5tuple_filter_port_id,
-		(void *)&cmd_5tuple_filter_index,
-		(void *)&cmd_5tuple_filter_index_value,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t cmd_5tuple_filter_get_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
-				filter, "get_5tuple_filter");
-cmdline_parse_inst_t cmd_get_5tuple_filter = {
-	.f = cmd_5tuple_filter_parsed,
-	.data = NULL,
-	.help_str = "get a 5tuple filter",
-	.tokens = {
-		(void *)&cmd_5tuple_filter_get_filter,
-		(void *)&cmd_5tuple_filter_port_id,
-		(void *)&cmd_5tuple_filter_index,
-		(void *)&cmd_5tuple_filter_index_value,
 		NULL,
 	},
 };
@@ -8714,12 +8684,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_dump_one,
 	(cmdline_parse_inst_t *)&cmd_ethertype_filter,
 	(cmdline_parse_inst_t *)&cmd_syn_filter,
-	(cmdline_parse_inst_t *)&cmd_add_2tuple_filter,
-	(cmdline_parse_inst_t *)&cmd_remove_2tuple_filter,
-	(cmdline_parse_inst_t *)&cmd_get_2tuple_filter,
-	(cmdline_parse_inst_t *)&cmd_add_5tuple_filter,
-	(cmdline_parse_inst_t *)&cmd_remove_5tuple_filter,
-	(cmdline_parse_inst_t *)&cmd_get_5tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_2tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_5tuple_filter,
 	(cmdline_parse_inst_t *)&cmd_flex_filter,
 	(cmdline_parse_inst_t *)&cmd_add_del_ip_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_udp_flow_director,

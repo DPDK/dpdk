@@ -1234,76 +1234,48 @@ Example, to add/remove an ethertype filter rule:
     testpmd> ethertype_filter 0 add mac_ignr ethertype 0x0806 fwd queue 3
     testpmd> ethertype_filter 0 del mac_ignr ethertype 0x0806 fwd queue 3
 
-add_2tuple_filter
+2tuple_filter
 ~~~~~~~~~~~~~~~~~
 
-Add a 2-tuple filter,
+Add or delete a 2-tuple filter,
 which identify packets by specific protocol and destination TCP/UDP port
 and forwards packets into one of the receive queues.
 
-add_2tuple_filter (port_id) protocol (pro_value) (pro_mask) dst_port (port_value) (port_mask)
-flags (flg_value) priority (prio_value) queue (queue_id) index (idx)
+2tuple_filter (port_id) (add|del) dst_port (dst_port_value) protocol (protocol_value)
+mask (mask_value) tcp_flags (tcp_flags_value) priority (prio_value) queue (queue_id)
 
 The available information parameters are:
 
 *   port_id: the port which the 2-tuple filter assigned on.
 
-*   pro_value: IP L4 protocol
+*   dst_port_value: destination port in L4.
 
-*   pro_mask: protocol participates in the match or not, 1 means participate
+*   protocol_value: IP L4 protocol.
 
-*   port_value: destination port in L4.
+*   mask_value: participates in the match or not by bit for field above, 1b means participate.
 
-*   port_mask: destination port participates in the match or not, 1 means participate.
+*   tcp_flags_value: TCP control bits. The non-zero value is invalid, when the pro_value is not set to 0x06 (TCP).
 
-*   flg_value: TCP control bits. The non-zero value is invalid, when the pro_value is not set to 0x06 (TCP).
+*   prio_value: priority of this filter.
 
-*   prio_value: the priority of this filter.
+*   queue_id: The receive queue associated with this 2-tuple filter.
 
-*   queue_id: The receive queue associated with this 2-tuple filter
-
-*   index: the index of this 2-tuple filter
-
-Example:
+Example, to add/remove an 2tuple filter rule:
 
 .. code-block:: console
 
-    testpmd> add_2tuple_filter 0 protocol 0x06 1 dst_port 32 1 flags 0x02 priority 3 queue 3 index 0
+    testpmd> 2tuple_filter 0 add dst_port 32 protocol 0x06 mask 0x03 tcp_flags 0x02 priority 3 queue 3
+    testpmd> 2tuple_filter 0 del dst_port 32 protocol 0x06 mask 0x03 tcp_flags 0x02 priority 3 queue 3
 
-remove_2tuple_filter
-~~~~~~~~~~~~~~~~~~~~
-
-Remove a 2-tuple filter
-
-remove_2tuple_filter (port_id) index (idx)
-
-get_2tuple_filter
+5tuple_filter
 ~~~~~~~~~~~~~~~~~
 
-Get and display a 2-tuple filter
-
-get_2tuple_filter (port_id) index (idx)
-
-Example:
-
-.. code-block:: console
-
-    testpmd> get_2tuple_filter 0 index 0
-
-    filter[0]:
-        Destination Port: 0x0020 mask: 1
-        protocol: 0x06 mask:1 tcp_flags: 0x02
-        priority: 3   queue: 3
-
-add_5tuple_filter
-~~~~~~~~~~~~~~~~~
-
-Add a 5-tuple filter,
+Add or delete a 5-tuple filter,
 which consists of a 5-tuple (protocol, source and destination IP addresses, source and destination TCP/UDP/SCTP port)
 and routes packets into one of the receive queues.
 
-add_5tuple_filter (port_id) dst_ip (dst_address) src_ip (src_address) dst_port (dst_port_value) src_port (src_port_value)
-protocol (protocol_value) mask (mask_value) flags (flags_value) priority (prio_value) queue (queue_id) index (idx)
+5tuple_filter (port_id) (add|del) dst_ip (dst_address) src_ip (src_address) dst_port (dst_port_value) src_port (src_port_value)
+protocol (protocol_value) mask (mask_value) tcp_flags (tcp_flags_value) priority (prio_value) queue (queue_id)
 
 The available information parameters are:
 
@@ -1321,47 +1293,18 @@ The available information parameters are:
 
 *   mask_value: participates in the match or not by bit for field above, 1b means participate
 
-*   flags_value: TCP control bits. The non-zero value is invalid, when the protocol_value is not set to 0x06 (TCP).
+*   tcp_flags_value: TCP control bits. The non-zero value is invalid, when the protocol_value is not set to 0x06 (TCP).
 
 *   prio_value: the priority of this filter.
 
 *   queue_id: The receive queue associated with this 5-tuple filter.
 
-*   index: the index of this 5-tuple filter
-
-Example:
+Example, to add/remove an 5tuple filter rule:
 
 .. code-block:: console
 
-    testpmd> add_5tuple_filter 1 dst_ip 2.2.2.5 src_ip 2.2.2.4 dst_port 64 src_port 32 protocol 0x06 mask 0x1F flags 0x0 priority 3 queue 3 index 0
-
-remove_5tuple_filter
-~~~~~~~~~~~~~~~~~~~~
-
-Remove a 5-tuple filter
-
-remove_5tuple_filter (port_id) index (idx)
-
-get_5tuple_filter
-~~~~~~~~~~~~~~~~~
-
-Get and display a 5-tuple filter
-
-get_5tuple_filter (port_id) index (idx)
-
-Example:
-
-.. code-block:: console
-
-    testpmd> get_5tuple_filter 1 index 0
-
-    filter[0]:
-        Destination IP: 0x02020205 mask: 1
-        Source IP: 0x02020204 mask: 1
-        Destination Port: 0x0040 mask: 1
-        Source Port: 0x0020 mask: 1
-        protocol: 0x06 mask: 1
-        priority: 3 flags: 0x00 queue: 3
+    testpmd> 5tuple_filter 0 add dst_ip 2.2.2.5 src_ip 2.2.2.4 dst_port 64 src_port 32 protocol 0x06 mask 0x1F flags 0x0 priority 3 queue 3
+    testpmd> 5tuple_filter 0 del dst_ip 2.2.2.5 src_ip 2.2.2.4 dst_port 64 src_port 32 protocol 0x06 mask 0x1F flags 0x0 priority 3 queue 3
 
 syn_filter
 ~~~~~~~~~~~~~~
