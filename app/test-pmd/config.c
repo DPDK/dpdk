@@ -2060,27 +2060,6 @@ set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 }
 
 void
-get_syn_filter(uint8_t port_id)
-{
-	struct rte_syn_filter filter;
-	int ret = 0;
-	uint16_t rx_queue;
-
-	memset(&filter, 0, sizeof(filter));
-	ret = rte_eth_dev_get_syn_filter(port_id, &filter, &rx_queue);
-
-	if (ret < 0) {
-		if (ret == (-ENOENT))
-			printf("syn filter is not enabled\n");
-		else
-			printf("get syn filter fails(%s)\n", strerror(-ret));
-		return;
-	}
-	printf("syn filter: priority: %s, queue: %d\n",
-		filter.hig_pri ? "high" : "low",
-		rx_queue);
-}
-void
 get_2tuple_filter(uint8_t port_id, uint16_t index)
 {
 	struct rte_2tuple_filter filter;

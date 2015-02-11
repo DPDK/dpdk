@@ -1363,12 +1363,12 @@ Example:
         protocol: 0x06 mask: 1
         priority: 3 flags: 0x00 queue: 3
 
-add_syn_filter
+syn_filter
 ~~~~~~~~~~~~~~
 
-Add SYN filter, which can forward TCP packets whose *SYN* flag is set into a separate queue.
+By SYN filter, TCP packets whose *SYN* flag is set can be forwarded to a separate queue.
 
-add_syn_filter (port_id) priority (high|low) queue (queue_id)
+syn_filter (port_id) (add|del) priority (high|low) queue (queue_id)
 
 The available information parameters are:
 
@@ -1384,29 +1384,7 @@ Example:
 
 .. code-block:: console
 
-    testpmd> add_syn_filter 0 priority high queue 3,
-
-remove_syn_filter
-~~~~~~~~~~~~~~~~~
-
-Remove SYN filter
-
-remove_syn_filter (port_id)
-
-get_syn_filter
-~~~~~~~~~~~~~~
-
-Get and display SYN filter
-
-get_syn_filter (port_id)
-
-Example:
-
-.. code-block:: console
-
-    testpmd> get_syn_filter 0
-
-    syn filter: on, priority: high, queue: 3
+    testpmd> syn_filter 0 add priority high queue 3
 
 flex_filter
 ~~~~~~~~~~~
