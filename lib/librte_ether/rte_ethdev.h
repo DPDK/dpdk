@@ -975,14 +975,6 @@ TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
 #define TCP_FLAG_ALL 0x3F
 
 /**
- *  A structure used to define an syn filter.
- */
-struct rte_syn_filter {
-	uint8_t hig_pri; /**< 1 means higher pri than 2tuple, 5tupe,
-			      and flex filter, 0 means lower pri. */
-};
-
-/**
  *  A structure used to define a 2tuple filter.
  */
 struct rte_2tuple_filter {
@@ -1348,17 +1340,6 @@ typedef int32_t (*bypass_ver_show_t)(struct rte_eth_dev *dev, uint32_t *ver);
 typedef int32_t (*bypass_wd_reset_t)(struct rte_eth_dev *dev);
 #endif
 
-typedef int (*eth_add_syn_filter_t)(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t rx_queue);
-/**< @internal add syn filter rule on an Ethernet device */
-
-typedef int (*eth_remove_syn_filter_t)(struct rte_eth_dev *dev);
-/**< @internal remove syn filter rule on an Ethernet device */
-
-typedef int (*eth_get_syn_filter_t)(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t *rx_queue);
-/**< @internal Get syn filter rule on an Ethernet device */
-
 typedef int (*eth_add_2tuple_filter_t)(struct rte_eth_dev *dev,
 			uint16_t index, struct rte_2tuple_filter *filter,
 			uint16_t rx_queue);
@@ -1489,9 +1470,6 @@ struct eth_dev_ops {
 	rss_hash_update_t rss_hash_update;
 	/** Get current RSS hash configuration. */
 	rss_hash_conf_get_t rss_hash_conf_get;
-	eth_add_syn_filter_t           add_syn_filter;       /**< add syn filter. */
-	eth_remove_syn_filter_t        remove_syn_filter;    /**< remove syn filter. */
-	eth_get_syn_filter_t           get_syn_filter;       /**< get syn filter. */
 	eth_add_2tuple_filter_t        add_2tuple_filter;    /**< add 2tuple filter. */
 	eth_remove_2tuple_filter_t     remove_2tuple_filter; /**< remove 2tuple filter. */
 	eth_get_2tuple_filter_t        get_2tuple_filter;    /**< get 2tuple filter. */
@@ -3383,51 +3361,6 @@ int
 rte_eth_dev_udp_tunnel_delete(uint8_t port_id,
 			      struct rte_eth_udp_tunnel *tunnel_udp);
 
-/**
- * add syn filter
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param rx_queue
- *   The index of RX queue where to store RX packets matching the syn filter.
- * @param filter
- *   The pointer to the structure describing the syn filter rule.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support.
- *   - (-EINVAL) if bad parameter.
- */
-int rte_eth_dev_add_syn_filter(uint8_t port_id,
-			struct rte_syn_filter *filter, uint16_t rx_queue);
-
-/**
- * remove syn filter
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support.
- *   - (-EINVAL) if bad parameter.
- */
-int rte_eth_dev_remove_syn_filter(uint8_t port_id);
-
-/**
- * get syn filter
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param filter
- *   The pointer to the structure describing the syn filter.
- * @param rx_queue
- *   A pointer to get the queue index of syn filter.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support.
- *   - (-EINVAL) if bad parameter.
- */
-int rte_eth_dev_get_syn_filter(uint8_t port_id,
-			struct rte_syn_filter *filter, uint16_t *rx_queue);
 
 /**
  * Add a new 2tuple filter rule on an Ethernet device.

@@ -3011,56 +3011,6 @@ rte_eth_dev_bypass_wd_reset(uint8_t port_id)
 #endif
 
 int
-rte_eth_dev_add_syn_filter(uint8_t port_id,
-			struct rte_syn_filter *filter, uint16_t rx_queue)
-{
-	struct rte_eth_dev *dev;
-
-	if (port_id >= nb_ports) {
-		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return -ENODEV;
-	}
-
-	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->add_syn_filter, -ENOTSUP);
-	return (*dev->dev_ops->add_syn_filter)(dev, filter, rx_queue);
-}
-
-int
-rte_eth_dev_remove_syn_filter(uint8_t port_id)
-{
-	struct rte_eth_dev *dev;
-
-	if (port_id >= nb_ports) {
-		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return -ENODEV;
-	}
-
-	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->remove_syn_filter, -ENOTSUP);
-	return (*dev->dev_ops->remove_syn_filter)(dev);
-}
-
-int
-rte_eth_dev_get_syn_filter(uint8_t port_id,
-			struct rte_syn_filter *filter, uint16_t *rx_queue)
-{
-	struct rte_eth_dev *dev;
-
-	if (filter == NULL || rx_queue == NULL)
-		return -EINVAL;
-
-	if (port_id >= nb_ports) {
-		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return -ENODEV;
-	}
-
-	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_syn_filter, -ENOTSUP);
-	return (*dev->dev_ops->get_syn_filter)(dev, filter, rx_queue);
-}
-
-int
 rte_eth_dev_add_2tuple_filter(uint8_t port_id, uint16_t index,
 			struct rte_2tuple_filter *filter, uint16_t rx_queue)
 {
