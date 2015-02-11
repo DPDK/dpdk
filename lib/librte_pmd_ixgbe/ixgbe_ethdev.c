@@ -226,11 +226,14 @@ static void ixgbevf_add_mac_addr(struct rte_eth_dev *dev,
 				 struct ether_addr *mac_addr,
 				 uint32_t index, uint32_t pool);
 static void ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
-static int ixgbe_add_syn_filter(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t rx_queue);
-static int ixgbe_remove_syn_filter(struct rte_eth_dev *dev);
-static int ixgbe_get_syn_filter(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t *rx_queue);
+static int ixgbe_syn_filter_set(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter,
+			bool add);
+static int ixgbe_syn_filter_get(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter);
+static int ixgbe_syn_filter_handle(struct rte_eth_dev *dev,
+			enum rte_filter_op filter_op,
+			void *arg);
 static int ixgbe_add_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
 			struct rte_5tuple_filter *filter, uint16_t rx_queue);
 static int ixgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
@@ -375,9 +378,6 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 #endif /* RTE_NIC_BYPASS */
 	.rss_hash_update      = ixgbe_dev_rss_hash_update,
 	.rss_hash_conf_get    = ixgbe_dev_rss_hash_conf_get,
-	.add_syn_filter	         = ixgbe_add_syn_filter,
-	.remove_syn_filter       = ixgbe_remove_syn_filter,
-	.get_syn_filter          = ixgbe_get_syn_filter,
 	.add_5tuple_filter       = ixgbe_add_5tuple_filter,
 	.remove_5tuple_filter    = ixgbe_remove_5tuple_filter,
 	.get_5tuple_filter       = ixgbe_get_5tuple_filter,
@@ -3674,106 +3674,104 @@ ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 	}
 }
 
-/*
- * add syn filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * filter: ponter to the filter that will be added.
- * rx_queue: the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
+
+#define MAC_TYPE_FILTER_SUP(type)    do {\
+	if ((type) != ixgbe_mac_82599EB && (type) != ixgbe_mac_X540 &&\
+		(type) != ixgbe_mac_X550)\
+		return -ENOTSUP;\
+} while (0)
+
 static int
-ixgbe_add_syn_filter(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t rx_queue)
+ixgbe_syn_filter_set(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter,
+			bool add)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t synqf;
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
-
-	if (rx_queue >= IXGBE_MAX_RX_QUEUE_NUM)
+	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM)
 		return -EINVAL;
 
 	synqf = IXGBE_READ_REG(hw, IXGBE_SYNQF);
 
-	if (synqf & IXGBE_SYN_FILTER_ENABLE)
-		return -EINVAL;
+	if (add) {
+		if (synqf & IXGBE_SYN_FILTER_ENABLE)
+			return -EINVAL;
+		synqf = (uint32_t)(((filter->queue << IXGBE_SYN_FILTER_QUEUE_SHIFT) &
+			IXGBE_SYN_FILTER_QUEUE) | IXGBE_SYN_FILTER_ENABLE);
 
-	synqf = (uint32_t)(((rx_queue << IXGBE_SYN_FILTER_QUEUE_SHIFT) &
-		IXGBE_SYN_FILTER_QUEUE) | IXGBE_SYN_FILTER_ENABLE);
-
-	if (filter->hig_pri)
-		synqf |= IXGBE_SYN_FILTER_SYNQFP;
-	else
-		synqf &= ~IXGBE_SYN_FILTER_SYNQFP;
-
+		if (filter->hig_pri)
+			synqf |= IXGBE_SYN_FILTER_SYNQFP;
+		else
+			synqf &= ~IXGBE_SYN_FILTER_SYNQFP;
+	} else {
+		if (!(synqf & IXGBE_SYN_FILTER_ENABLE))
+			return -ENOENT;
+		synqf &= ~(IXGBE_SYN_FILTER_QUEUE | IXGBE_SYN_FILTER_ENABLE);
+	}
 	IXGBE_WRITE_REG(hw, IXGBE_SYNQF, synqf);
+	IXGBE_WRITE_FLUSH(hw);
 	return 0;
 }
 
-/*
- * remove syn filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
 static int
-ixgbe_remove_syn_filter(struct rte_eth_dev *dev)
+ixgbe_syn_filter_get(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t synqf;
+	uint32_t synqf = IXGBE_READ_REG(hw, IXGBE_SYNQF);
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
-
-	synqf = IXGBE_READ_REG(hw, IXGBE_SYNQF);
-
-	synqf &= ~(IXGBE_SYN_FILTER_QUEUE | IXGBE_SYN_FILTER_ENABLE);
-
-	IXGBE_WRITE_REG(hw, IXGBE_SYNQF, synqf);
-	return 0;
-}
-
-/*
- * get the syn filter's info
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * filter: ponter to the filter that returns.
- * *rx_queue: pointer to the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-ixgbe_get_syn_filter(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t *rx_queue)
-
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t synqf;
-
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
-
-	synqf = IXGBE_READ_REG(hw, IXGBE_SYNQF);
 	if (synqf & IXGBE_SYN_FILTER_ENABLE) {
 		filter->hig_pri = (synqf & IXGBE_SYN_FILTER_SYNQFP) ? 1 : 0;
-		*rx_queue = (uint16_t)((synqf & IXGBE_SYN_FILTER_QUEUE) >> 1);
+		filter->queue = (uint16_t)((synqf & IXGBE_SYN_FILTER_QUEUE) >> 1);
 		return 0;
 	}
 	return -ENOENT;
 }
+
+static int
+ixgbe_syn_filter_handle(struct rte_eth_dev *dev,
+			enum rte_filter_op filter_op,
+			void *arg)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	MAC_TYPE_FILTER_SUP(hw->mac.type);
+
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return 0;
+
+	if (arg == NULL) {
+		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u",
+			    filter_op);
+		return -EINVAL;
+	}
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+		ret = ixgbe_syn_filter_set(dev,
+				(struct rte_eth_syn_filter *)arg,
+				TRUE);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		ret = ixgbe_syn_filter_set(dev,
+				(struct rte_eth_syn_filter *)arg,
+				FALSE);
+		break;
+	case RTE_ETH_FILTER_GET:
+		ret = ixgbe_syn_filter_get(dev,
+				(struct rte_eth_syn_filter *)arg);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unsupported operation %u\n", filter_op);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
 
 static inline enum ixgbe_5tuple_protocol
 convert_protocol_type(uint8_t protocol_value)
@@ -4001,12 +3999,6 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
-#define MAC_TYPE_FILTER_SUP(type)    do {\
-	if ((type) != ixgbe_mac_82599EB && (type) != ixgbe_mac_X540 &&\
-		(type) != ixgbe_mac_X550)\
-		return -ENOTSUP;\
-} while (0)
-
 static inline int
 ixgbe_ethertype_filter_lookup(struct ixgbe_filter_info *filter_info,
 			uint16_t ethertype)
@@ -4204,6 +4196,9 @@ ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 	switch (filter_type) {
 	case RTE_ETH_FILTER_ETHERTYPE:
 		ret = ixgbe_ethertype_filter_handle(dev, filter_op, arg);
+		break;
+	case RTE_ETH_FILTER_SYN:
+		ret = ixgbe_syn_filter_handle(dev, filter_op, arg);
 		break;
 	case RTE_ETH_FILTER_FDIR:
 		ret = ixgbe_fdir_ctrl_func(dev, filter_op, arg);
