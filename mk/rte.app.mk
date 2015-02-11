@@ -125,6 +125,10 @@ LDLIBS += -lm
 LDLIBS += -lrt
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_VHOST), y)
+LDLIBS += -lrte_vhost
+endif
+
 endif # ! CONFIG_RTE_BUILD_COMBINE_LIBS
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
@@ -197,10 +201,6 @@ endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_VIRTIO_PMD),y)
 LDLIBS += -lrte_pmd_virtio_uio
-endif
-
-ifeq ($(CONFIG_RTE_LIBRTE_VHOST), y)
-LDLIBS += -lrte_vhost
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_ENIC_PMD),y)
