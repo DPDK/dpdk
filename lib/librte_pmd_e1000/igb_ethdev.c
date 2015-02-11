@@ -149,11 +149,15 @@ static int eth_igb_rss_reta_update(struct rte_eth_dev *dev,
 static int eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 				  struct rte_eth_rss_reta_entry64 *reta_conf,
 				  uint16_t reta_size);
-static int eth_igb_add_syn_filter(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t rx_queue);
-static int eth_igb_remove_syn_filter(struct rte_eth_dev *dev);
-static int eth_igb_get_syn_filter(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t *rx_queue);
+
+static int eth_igb_syn_filter_set(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter,
+			bool add);
+static int eth_igb_syn_filter_get(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter);
+static int eth_igb_syn_filter_handle(struct rte_eth_dev *dev,
+			enum rte_filter_op filter_op,
+			void *arg);
 static int eth_igb_add_2tuple_filter(struct rte_eth_dev *dev,
 			uint16_t index,
 			struct rte_2tuple_filter *filter, uint16_t rx_queue);
@@ -265,9 +269,6 @@ static struct eth_dev_ops eth_igb_ops = {
 	.reta_query           = eth_igb_rss_reta_query,
 	.rss_hash_update      = eth_igb_rss_hash_update,
 	.rss_hash_conf_get    = eth_igb_rss_hash_conf_get,
-	.add_syn_filter          = eth_igb_add_syn_filter,
-	.remove_syn_filter       = eth_igb_remove_syn_filter,
-	.get_syn_filter          = eth_igb_get_syn_filter,
 	.add_2tuple_filter       = eth_igb_add_2tuple_filter,
 	.remove_2tuple_filter    = eth_igb_remove_2tuple_filter,
 	.get_2tuple_filter       = eth_igb_get_2tuple_filter,
@@ -2404,98 +2405,104 @@ eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 		return -ENOTSUP;\
 } while (0)
 
-/*
- * add the syn filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * filter: ponter to the filter that will be added.
- * rx_queue: the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
 static int
-eth_igb_add_syn_filter(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t rx_queue)
+eth_igb_syn_filter_set(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter,
+			bool add)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t synqf, rfctl;
 
-	MAC_TYPE_FILTER_SUP(hw->mac.type);
-
-	if (rx_queue >= IGB_MAX_RX_QUEUE_NUM)
+	if (filter->queue >= IGB_MAX_RX_QUEUE_NUM)
 		return -EINVAL;
 
 	synqf = E1000_READ_REG(hw, E1000_SYNQF(0));
-	if (synqf & E1000_SYN_FILTER_ENABLE)
-		return -EINVAL;
 
-	synqf = (uint32_t)(((rx_queue << E1000_SYN_FILTER_QUEUE_SHIFT) &
-		E1000_SYN_FILTER_QUEUE) | E1000_SYN_FILTER_ENABLE);
+	if (add) {
+		if (synqf & E1000_SYN_FILTER_ENABLE)
+			return -EINVAL;
 
-	rfctl = E1000_READ_REG(hw, E1000_RFCTL);
-	if (filter->hig_pri)
-		rfctl |= E1000_RFCTL_SYNQFP;
-	else
-		rfctl &= ~E1000_RFCTL_SYNQFP;
+		synqf = (uint32_t)(((filter->queue << E1000_SYN_FILTER_QUEUE_SHIFT) &
+			E1000_SYN_FILTER_QUEUE) | E1000_SYN_FILTER_ENABLE);
+
+		rfctl = E1000_READ_REG(hw, E1000_RFCTL);
+		if (filter->hig_pri)
+			rfctl |= E1000_RFCTL_SYNQFP;
+		else
+			rfctl &= ~E1000_RFCTL_SYNQFP;
+
+		E1000_WRITE_REG(hw, E1000_RFCTL, rfctl);
+	} else {
+		if (!(synqf & E1000_SYN_FILTER_ENABLE))
+			return -ENOENT;
+		synqf = 0;
+	}
 
 	E1000_WRITE_REG(hw, E1000_SYNQF(0), synqf);
-	E1000_WRITE_REG(hw, E1000_RFCTL, rfctl);
+	E1000_WRITE_FLUSH(hw);
 	return 0;
 }
 
-/*
- * remove the syn filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
 static int
-eth_igb_remove_syn_filter(struct rte_eth_dev *dev)
-{
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	MAC_TYPE_FILTER_SUP(hw->mac.type);
-
-	E1000_WRITE_REG(hw, E1000_SYNQF(0), 0);
-	return 0;
-}
-
-/*
- * get the syn filter's info
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * filter: ponter to the filter that returns.
- * *rx_queue: pointer to the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-eth_igb_get_syn_filter(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t *rx_queue)
+eth_igb_syn_filter_get(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t synqf, rfctl;
 
-	MAC_TYPE_FILTER_SUP(hw->mac.type);
 	synqf = E1000_READ_REG(hw, E1000_SYNQF(0));
 	if (synqf & E1000_SYN_FILTER_ENABLE) {
 		rfctl = E1000_READ_REG(hw, E1000_RFCTL);
 		filter->hig_pri = (rfctl & E1000_RFCTL_SYNQFP) ? 1 : 0;
-		*rx_queue = (uint8_t)((synqf & E1000_SYN_FILTER_QUEUE) >>
+		filter->queue = (uint8_t)((synqf & E1000_SYN_FILTER_QUEUE) >>
 				E1000_SYN_FILTER_QUEUE_SHIFT);
 		return 0;
 	}
+
 	return -ENOENT;
+}
+
+static int
+eth_igb_syn_filter_handle(struct rte_eth_dev *dev,
+			enum rte_filter_op filter_op,
+			void *arg)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	MAC_TYPE_FILTER_SUP(hw->mac.type);
+
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return 0;
+
+	if (arg == NULL) {
+		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u",
+			    filter_op);
+		return -EINVAL;
+	}
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+		ret = eth_igb_syn_filter_set(dev,
+				(struct rte_eth_syn_filter *)arg,
+				TRUE);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		ret = eth_igb_syn_filter_set(dev,
+				(struct rte_eth_syn_filter *)arg,
+				FALSE);
+		break;
+	case RTE_ETH_FILTER_GET:
+		ret = eth_igb_syn_filter_get(dev,
+				(struct rte_eth_syn_filter *)arg);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unsupported operation %u\n", filter_op);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
 }
 
 #define MAC_TYPE_FILTER_SUP_EXT(type)    do {\
@@ -3311,6 +3318,9 @@ eth_igb_filter_ctrl(struct rte_eth_dev *dev,
 	switch (filter_type) {
 	case RTE_ETH_FILTER_ETHERTYPE:
 		ret = igb_ethertype_filter_handle(dev, filter_op, arg);
+		break;
+	case RTE_ETH_FILTER_SYN:
+		ret = eth_igb_syn_filter_handle(dev, filter_op, arg);
 		break;
 	case RTE_ETH_FILTER_FLEXIBLE:
 		ret = eth_igb_flex_filter_handle(dev, filter_op, arg);
