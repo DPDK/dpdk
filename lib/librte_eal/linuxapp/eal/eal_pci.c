@@ -272,8 +272,15 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	dev->max_vfs = 0;
 	snprintf(filename, sizeof(filename), "%s/max_vfs", dirname);
 	if (!access(filename, F_OK) &&
-	    eal_parse_sysfs_value(filename, &tmp) == 0) {
+	    eal_parse_sysfs_value(filename, &tmp) == 0)
 		dev->max_vfs = (uint16_t)tmp;
+	else {
+		/* for non igb_uio driver, need kernel version >= 3.8 */
+		snprintf(filename, sizeof(filename),
+			 "%s/sriov_numvfs", dirname);
+		if (!access(filename, F_OK) &&
+		    eal_parse_sysfs_value(filename, &tmp) == 0)
+			dev->max_vfs = (uint16_t)tmp;
 	}
 
 	/* get numa node */
