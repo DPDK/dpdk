@@ -54,6 +54,7 @@ enum rte_filter_type {
 	RTE_ETH_FILTER_MACVLAN,
 	RTE_ETH_FILTER_ETHERTYPE,
 	RTE_ETH_FILTER_FLEXIBLE,
+	RTE_ETH_FILTER_SYN,
 	RTE_ETH_FILTER_TUNNEL,
 	RTE_ETH_FILTER_FDIR,
 	RTE_ETH_FILTER_HASH,
@@ -134,6 +135,17 @@ struct rte_eth_flex_filter {
 					not compare corresponding byte. */
 	uint8_t priority;
 	uint16_t queue;       /**< Queue assigned to when match. */
+};
+
+/**
+ * A structure used to define the TCP syn filter entry
+ * to support RTE_ETH_FILTER_SYN with RTE_ETH_FILTER_ADD,
+ * RTE_ETH_FILTER_DELETE and RTE_ETH_FILTER_GET operations.
+ */
+struct rte_eth_syn_filter {
+	uint8_t hig_pri;     /**< 1 - higher priority than other filters,
+				  0 - lower priority. */
+	uint16_t queue;      /**< Queue assigned to when match */
 };
 
 /**
