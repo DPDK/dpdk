@@ -35,7 +35,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #define _IXGBE_API_H_
 
 #include "ixgbe_type.h"
-#ident "$Id: ixgbe_api.h,v 1.123 2013/11/22 01:02:01 jtkirshe Exp $"
 
 void ixgbe_dcb_get_rtrup2tc(struct ixgbe_hw *hw, u8 *map);
 

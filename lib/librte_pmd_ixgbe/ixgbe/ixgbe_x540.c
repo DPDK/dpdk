@@ -69,57 +69,57 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
 
 
 	/* EEPROM */
-	eeprom->ops.init_params = &ixgbe_init_eeprom_params_X540;
-	eeprom->ops.read = &ixgbe_read_eerd_X540;
-	eeprom->ops.read_buffer = &ixgbe_read_eerd_buffer_X540;
-	eeprom->ops.write = &ixgbe_write_eewr_X540;
-	eeprom->ops.write_buffer = &ixgbe_write_eewr_buffer_X540;
-	eeprom->ops.update_checksum = &ixgbe_update_eeprom_checksum_X540;
-	eeprom->ops.validate_checksum = &ixgbe_validate_eeprom_checksum_X540;
-	eeprom->ops.calc_checksum = &ixgbe_calc_eeprom_checksum_X540;
+	eeprom->ops.init_params = ixgbe_init_eeprom_params_X540;
+	eeprom->ops.read = ixgbe_read_eerd_X540;
+	eeprom->ops.read_buffer = ixgbe_read_eerd_buffer_X540;
+	eeprom->ops.write = ixgbe_write_eewr_X540;
+	eeprom->ops.write_buffer = ixgbe_write_eewr_buffer_X540;
+	eeprom->ops.update_checksum = ixgbe_update_eeprom_checksum_X540;
+	eeprom->ops.validate_checksum = ixgbe_validate_eeprom_checksum_X540;
+	eeprom->ops.calc_checksum = ixgbe_calc_eeprom_checksum_X540;
 
 	/* PHY */
-	phy->ops.init = &ixgbe_init_phy_ops_generic;
+	phy->ops.init = ixgbe_init_phy_ops_generic;
 	phy->ops.reset = NULL;
 
 	/* MAC */
-	mac->ops.reset_hw = &ixgbe_reset_hw_X540;
-	mac->ops.enable_relaxed_ordering = &ixgbe_enable_relaxed_ordering_gen2;
-	mac->ops.get_media_type = &ixgbe_get_media_type_X540;
+	mac->ops.reset_hw = ixgbe_reset_hw_X540;
+	mac->ops.enable_relaxed_ordering = ixgbe_enable_relaxed_ordering_gen2;
+	mac->ops.get_media_type = ixgbe_get_media_type_X540;
 	mac->ops.get_supported_physical_layer =
-				    &ixgbe_get_supported_physical_layer_X540;
+				    ixgbe_get_supported_physical_layer_X540;
 	mac->ops.read_analog_reg8 = NULL;
 	mac->ops.write_analog_reg8 = NULL;
-	mac->ops.start_hw = &ixgbe_start_hw_X540;
-	mac->ops.get_san_mac_addr = &ixgbe_get_san_mac_addr_generic;
-	mac->ops.set_san_mac_addr = &ixgbe_set_san_mac_addr_generic;
-	mac->ops.get_device_caps = &ixgbe_get_device_caps_generic;
-	mac->ops.get_wwn_prefix = &ixgbe_get_wwn_prefix_generic;
-	mac->ops.get_fcoe_boot_status = &ixgbe_get_fcoe_boot_status_generic;
-	mac->ops.acquire_swfw_sync = &ixgbe_acquire_swfw_sync_X540;
-	mac->ops.release_swfw_sync = &ixgbe_release_swfw_sync_X540;
-	mac->ops.disable_sec_rx_path = &ixgbe_disable_sec_rx_path_generic;
-	mac->ops.enable_sec_rx_path = &ixgbe_enable_sec_rx_path_generic;
+	mac->ops.start_hw = ixgbe_start_hw_X540;
+	mac->ops.get_san_mac_addr = ixgbe_get_san_mac_addr_generic;
+	mac->ops.set_san_mac_addr = ixgbe_set_san_mac_addr_generic;
+	mac->ops.get_device_caps = ixgbe_get_device_caps_generic;
+	mac->ops.get_wwn_prefix = ixgbe_get_wwn_prefix_generic;
+	mac->ops.get_fcoe_boot_status = ixgbe_get_fcoe_boot_status_generic;
+	mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X540;
+	mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X540;
+	mac->ops.disable_sec_rx_path = ixgbe_disable_sec_rx_path_generic;
+	mac->ops.enable_sec_rx_path = ixgbe_enable_sec_rx_path_generic;
 
 	/* RAR, Multicast, VLAN */
-	mac->ops.set_vmdq = &ixgbe_set_vmdq_generic;
-	mac->ops.set_vmdq_san_mac = &ixgbe_set_vmdq_san_mac_generic;
-	mac->ops.clear_vmdq = &ixgbe_clear_vmdq_generic;
-	mac->ops.insert_mac_addr = &ixgbe_insert_mac_addr_generic;
+	mac->ops.set_vmdq = ixgbe_set_vmdq_generic;
+	mac->ops.set_vmdq_san_mac = ixgbe_set_vmdq_san_mac_generic;
+	mac->ops.clear_vmdq = ixgbe_clear_vmdq_generic;
+	mac->ops.insert_mac_addr = ixgbe_insert_mac_addr_generic;
 	mac->rar_highwater = 1;
-	mac->ops.set_vfta = &ixgbe_set_vfta_generic;
-	mac->ops.set_vlvf = &ixgbe_set_vlvf_generic;
-	mac->ops.clear_vfta = &ixgbe_clear_vfta_generic;
-	mac->ops.init_uta_tables = &ixgbe_init_uta_tables_generic;
-	mac->ops.set_mac_anti_spoofing = &ixgbe_set_mac_anti_spoofing;
-	mac->ops.set_vlan_anti_spoofing = &ixgbe_set_vlan_anti_spoofing;
+	mac->ops.set_vfta = ixgbe_set_vfta_generic;
+	mac->ops.set_vlvf = ixgbe_set_vlvf_generic;
+	mac->ops.clear_vfta = ixgbe_clear_vfta_generic;
+	mac->ops.init_uta_tables = ixgbe_init_uta_tables_generic;
+	mac->ops.set_mac_anti_spoofing = ixgbe_set_mac_anti_spoofing;
+	mac->ops.set_vlan_anti_spoofing = ixgbe_set_vlan_anti_spoofing;
 
 	/* Link */
 	mac->ops.get_link_capabilities =
-				&ixgbe_get_copper_link_capabilities_generic;
-	mac->ops.setup_link = &ixgbe_setup_mac_link_X540;
-	mac->ops.setup_rxpba = &ixgbe_set_rxpba_generic;
-	mac->ops.check_link = &ixgbe_check_mac_link_generic;
+				ixgbe_get_copper_link_capabilities_generic;
+	mac->ops.setup_link = ixgbe_setup_mac_link_X540;
+	mac->ops.setup_rxpba = ixgbe_set_rxpba_generic;
+	mac->ops.check_link = ixgbe_check_mac_link_generic;
 
 
 	mac->mcft_size		= IXGBE_X540_MC_TBL_SIZE;
@@ -145,9 +145,9 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
 	mac->ops.blink_led_stop = ixgbe_blink_led_stop_X540;
 
 	/* Manageability interface */
-	mac->ops.set_fw_drv_ver = &ixgbe_set_fw_drv_ver_generic;
+	mac->ops.set_fw_drv_ver = ixgbe_set_fw_drv_ver_generic;
 
-	mac->ops.get_rtrup2tc = &ixgbe_dcb_get_rtrup2tc_generic;
+	mac->ops.get_rtrup2tc = ixgbe_dcb_get_rtrup2tc_generic;
 
 	return ret_val;
 }

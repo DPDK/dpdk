@@ -35,7 +35,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_type.h"
 #include "ixgbe_dcb.h"
 #include "ixgbe_dcb_82598.h"
-#ident "$Id: ixgbe_dcb_82598.c,v 1.29 2012/03/30 06:45:33 jtkirshe Exp $"
 
 /**
  * ixgbe_dcb_get_tc_stats_82598 - Return status data for each traffic class

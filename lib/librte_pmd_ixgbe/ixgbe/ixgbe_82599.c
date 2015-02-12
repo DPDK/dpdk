@@ -36,7 +36,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_api.h"
 #include "ixgbe_common.h"
 #include "ixgbe_phy.h"
-#ident "$Id: ixgbe_82599.c,v 1.334 2013/12/04 22:34:00 jtkirshe Exp $"
 
 #define IXGBE_82599_MAX_TX_QUEUES 128
 #define IXGBE_82599_MAX_RX_QUEUES 128
@@ -71,10 +70,10 @@ void ixgbe_init_mac_link_ops_82599(struct ixgbe_hw *hw)
 	if ((mac->ops.get_media_type(hw) == ixgbe_media_type_fiber) &&
 	    !ixgbe_mng_enabled(hw)) {
 		mac->ops.disable_tx_laser =
-				       &ixgbe_disable_tx_laser_multispeed_fiber;
+				       ixgbe_disable_tx_laser_multispeed_fiber;
 		mac->ops.enable_tx_laser =
-					&ixgbe_enable_tx_laser_multispeed_fiber;
-		mac->ops.flap_tx_laser = &ixgbe_flap_tx_laser_multispeed_fiber;
+					ixgbe_enable_tx_laser_multispeed_fiber;
+		mac->ops.flap_tx_laser = ixgbe_flap_tx_laser_multispeed_fiber;
 
 	} else {
 		mac->ops.disable_tx_laser = NULL;
@@ -84,15 +83,15 @@ void ixgbe_init_mac_link_ops_82599(struct ixgbe_hw *hw)
 
 	if (hw->phy.multispeed_fiber) {
 		/* Set up dual speed SFP+ support */
-		mac->ops.setup_link = &ixgbe_setup_mac_link_multispeed_fiber;
+		mac->ops.setup_link = ixgbe_setup_mac_link_multispeed_fiber;
 	} else {
 		if ((ixgbe_get_media_type(hw) == ixgbe_media_type_backplane) &&
 		     (hw->phy.smart_speed == ixgbe_smart_speed_auto ||
 		      hw->phy.smart_speed == ixgbe_smart_speed_on) &&
 		      !ixgbe_verify_lesm_fw_enabled_82599(hw)) {
-			mac->ops.setup_link = &ixgbe_setup_mac_link_smartspeed;
+			mac->ops.setup_link = ixgbe_setup_mac_link_smartspeed;
 		} else {
-			mac->ops.setup_link = &ixgbe_setup_mac_link_82599;
+			mac->ops.setup_link = ixgbe_setup_mac_link_82599;
 		}
 	}
 }
@@ -129,8 +128,8 @@ s32 ixgbe_init_phy_ops_82599(struct ixgbe_hw *hw)
 		IXGBE_WRITE_REG(hw, IXGBE_ESDP, esdp);
 		IXGBE_WRITE_FLUSH(hw);
 
-		phy->ops.read_i2c_byte = &ixgbe_read_i2c_byte_82599;
-		phy->ops.write_i2c_byte = &ixgbe_write_i2c_byte_82599;
+		phy->ops.read_i2c_byte = ixgbe_read_i2c_byte_82599;
+		phy->ops.write_i2c_byte = ixgbe_write_i2c_byte_82599;
 	}
 	/* Identify the PHY or SFP module */
 	ret_val = phy->ops.identify(hw);
@@ -144,18 +143,18 @@ s32 ixgbe_init_phy_ops_82599(struct ixgbe_hw *hw)
 
 	/* If copper media, overwrite with copper function pointers */
 	if (mac->ops.get_media_type(hw) == ixgbe_media_type_copper) {
-		mac->ops.setup_link = &ixgbe_setup_copper_link_82599;
+		mac->ops.setup_link = ixgbe_setup_copper_link_82599;
 		mac->ops.get_link_capabilities =
-				  &ixgbe_get_copper_link_capabilities_generic;
+				  ixgbe_get_copper_link_capabilities_generic;
 	}
 
 	/* Set necessary function pointers based on PHY type */
 	switch (hw->phy.type) {
 	case ixgbe_phy_tn:
-		phy->ops.setup_link = &ixgbe_setup_phy_link_tnx;
-		phy->ops.check_link = &ixgbe_check_phy_link_tnx;
+		phy->ops.setup_link = ixgbe_setup_phy_link_tnx;
+		phy->ops.check_link = ixgbe_check_phy_link_tnx;
 		phy->ops.get_firmware_version =
-			     &ixgbe_get_phy_firmware_version_tnx;
+			     ixgbe_get_phy_firmware_version_tnx;
 		break;
 	default:
 		break;
@@ -325,47 +324,47 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw)
 	ret_val = ixgbe_init_ops_generic(hw);
 
 	/* PHY */
-	phy->ops.identify = &ixgbe_identify_phy_82599;
-	phy->ops.init = &ixgbe_init_phy_ops_82599;
+	phy->ops.identify = ixgbe_identify_phy_82599;
+	phy->ops.init = ixgbe_init_phy_ops_82599;
 
 	/* MAC */
-	mac->ops.reset_hw = &ixgbe_reset_hw_82599;
-	mac->ops.enable_relaxed_ordering = &ixgbe_enable_relaxed_ordering_gen2;
-	mac->ops.get_media_type = &ixgbe_get_media_type_82599;
+	mac->ops.reset_hw = ixgbe_reset_hw_82599;
+	mac->ops.enable_relaxed_ordering = ixgbe_enable_relaxed_ordering_gen2;
+	mac->ops.get_media_type = ixgbe_get_media_type_82599;
 	mac->ops.get_supported_physical_layer =
-				    &ixgbe_get_supported_physical_layer_82599;
-	mac->ops.disable_sec_rx_path = &ixgbe_disable_sec_rx_path_generic;
-	mac->ops.enable_sec_rx_path = &ixgbe_enable_sec_rx_path_generic;
-	mac->ops.enable_rx_dma = &ixgbe_enable_rx_dma_82599;
-	mac->ops.read_analog_reg8 = &ixgbe_read_analog_reg8_82599;
-	mac->ops.write_analog_reg8 = &ixgbe_write_analog_reg8_82599;
-	mac->ops.start_hw = &ixgbe_start_hw_82599;
-	mac->ops.get_san_mac_addr = &ixgbe_get_san_mac_addr_generic;
-	mac->ops.set_san_mac_addr = &ixgbe_set_san_mac_addr_generic;
-	mac->ops.get_device_caps = &ixgbe_get_device_caps_generic;
-	mac->ops.get_wwn_prefix = &ixgbe_get_wwn_prefix_generic;
-	mac->ops.get_fcoe_boot_status = &ixgbe_get_fcoe_boot_status_generic;
-	mac->ops.prot_autoc_read = &prot_autoc_read_82599;
-	mac->ops.prot_autoc_write = &prot_autoc_write_82599;
+				    ixgbe_get_supported_physical_layer_82599;
+	mac->ops.disable_sec_rx_path = ixgbe_disable_sec_rx_path_generic;
+	mac->ops.enable_sec_rx_path = ixgbe_enable_sec_rx_path_generic;
+	mac->ops.enable_rx_dma = ixgbe_enable_rx_dma_82599;
+	mac->ops.read_analog_reg8 = ixgbe_read_analog_reg8_82599;
+	mac->ops.write_analog_reg8 = ixgbe_write_analog_reg8_82599;
+	mac->ops.start_hw = ixgbe_start_hw_82599;
+	mac->ops.get_san_mac_addr = ixgbe_get_san_mac_addr_generic;
+	mac->ops.set_san_mac_addr = ixgbe_set_san_mac_addr_generic;
+	mac->ops.get_device_caps = ixgbe_get_device_caps_generic;
+	mac->ops.get_wwn_prefix = ixgbe_get_wwn_prefix_generic;
+	mac->ops.get_fcoe_boot_status = ixgbe_get_fcoe_boot_status_generic;
+	mac->ops.prot_autoc_read = prot_autoc_read_82599;
+	mac->ops.prot_autoc_write = prot_autoc_write_82599;
 
 	/* RAR, Multicast, VLAN */
-	mac->ops.set_vmdq = &ixgbe_set_vmdq_generic;
-	mac->ops.set_vmdq_san_mac = &ixgbe_set_vmdq_san_mac_generic;
-	mac->ops.clear_vmdq = &ixgbe_clear_vmdq_generic;
-	mac->ops.insert_mac_addr = &ixgbe_insert_mac_addr_generic;
+	mac->ops.set_vmdq = ixgbe_set_vmdq_generic;
+	mac->ops.set_vmdq_san_mac = ixgbe_set_vmdq_san_mac_generic;
+	mac->ops.clear_vmdq = ixgbe_clear_vmdq_generic;
+	mac->ops.insert_mac_addr = ixgbe_insert_mac_addr_generic;
 	mac->rar_highwater = 1;
-	mac->ops.set_vfta = &ixgbe_set_vfta_generic;
-	mac->ops.set_vlvf = &ixgbe_set_vlvf_generic;
-	mac->ops.clear_vfta = &ixgbe_clear_vfta_generic;
-	mac->ops.init_uta_tables = &ixgbe_init_uta_tables_generic;
-	mac->ops.setup_sfp = &ixgbe_setup_sfp_modules_82599;
-	mac->ops.set_mac_anti_spoofing = &ixgbe_set_mac_anti_spoofing;
-	mac->ops.set_vlan_anti_spoofing = &ixgbe_set_vlan_anti_spoofing;
+	mac->ops.set_vfta = ixgbe_set_vfta_generic;
+	mac->ops.set_vlvf = ixgbe_set_vlvf_generic;
+	mac->ops.clear_vfta = ixgbe_clear_vfta_generic;
+	mac->ops.init_uta_tables = ixgbe_init_uta_tables_generic;
+	mac->ops.setup_sfp = ixgbe_setup_sfp_modules_82599;
+	mac->ops.set_mac_anti_spoofing = ixgbe_set_mac_anti_spoofing;
+	mac->ops.set_vlan_anti_spoofing = ixgbe_set_vlan_anti_spoofing;
 
 	/* Link */
-	mac->ops.get_link_capabilities = &ixgbe_get_link_capabilities_82599;
-	mac->ops.check_link = &ixgbe_check_mac_link_generic;
-	mac->ops.setup_rxpba = &ixgbe_set_rxpba_generic;
+	mac->ops.get_link_capabilities = ixgbe_get_link_capabilities_82599;
+	mac->ops.check_link = ixgbe_check_mac_link_generic;
+	mac->ops.setup_rxpba = ixgbe_set_rxpba_generic;
 	ixgbe_init_mac_link_ops_82599(hw);
 
 	mac->mcft_size		= IXGBE_82599_MC_TBL_SIZE;
@@ -382,18 +381,18 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw)
 	hw->mbx.ops.init_params = ixgbe_init_mbx_params_pf;
 
 	/* EEPROM */
-	eeprom->ops.read = &ixgbe_read_eeprom_82599;
-	eeprom->ops.read_buffer = &ixgbe_read_eeprom_buffer_82599;
+	eeprom->ops.read = ixgbe_read_eeprom_82599;
+	eeprom->ops.read_buffer = ixgbe_read_eeprom_buffer_82599;
 
 	/* Manageability interface */
-	mac->ops.set_fw_drv_ver = &ixgbe_set_fw_drv_ver_generic;
+	mac->ops.set_fw_drv_ver = ixgbe_set_fw_drv_ver_generic;
 
 	mac->ops.get_thermal_sensor_data =
-					 &ixgbe_get_thermal_sensor_data_generic;
+					 ixgbe_get_thermal_sensor_data_generic;
 	mac->ops.init_thermal_sensor_thresh =
-				      &ixgbe_init_thermal_sensor_thresh_generic;
+				      ixgbe_init_thermal_sensor_thresh_generic;
 
-	mac->ops.get_rtrup2tc = &ixgbe_dcb_get_rtrup2tc_generic;
+	mac->ops.get_rtrup2tc = ixgbe_dcb_get_rtrup2tc_generic;
 
 	return ret_val;
 }

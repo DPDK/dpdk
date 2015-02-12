@@ -74,7 +74,6 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "ixgbe_osdep.h"
 
-#ident "$Id: ixgbe_type.h,v 1.630 2013/11/22 22:48:40 jtkirshe Exp $"
 
 /* Vendor ID */
 #define IXGBE_INTEL_VENDOR_ID			0x8086
@@ -1975,12 +1974,12 @@ enum {
 #define IXGBE_SWFW_REGSMP	0x80000000 /* Register Semaphore bit 31 */
 
 /* SW_FW_SYNC/GSSR definitions */
-#define IXGBE_GSSR_EEP_SM	0x0001
-#define IXGBE_GSSR_PHY0_SM	0x0002
-#define IXGBE_GSSR_PHY1_SM	0x0004
-#define IXGBE_GSSR_MAC_CSR_SM	0x0008
-#define IXGBE_GSSR_FLASH_SM	0x0010
-#define IXGBE_GSSR_SW_MNG_SM	0x0400
+#define IXGBE_GSSR_EEP_SM		0x0001
+#define IXGBE_GSSR_PHY0_SM		0x0002
+#define IXGBE_GSSR_PHY1_SM		0x0004
+#define IXGBE_GSSR_MAC_CSR_SM		0x0008
+#define IXGBE_GSSR_FLASH_SM		0x0010
+#define IXGBE_GSSR_SW_MNG_SM		0x0400
 #define IXGBE_GSSR_SHARED_I2C_SM 0x1806 /* Wait for both phys and both I2Cs */
 #define IXGBE_GSSR_I2C_MASK	0x1800
 #define IXGBE_GSSR_NVM_PHY_MASK	0xF

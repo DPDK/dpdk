@@ -54,30 +54,30 @@ s32 ixgbe_init_ops_X550(struct ixgbe_hw *hw)
 	DEBUGFUNC("ixgbe_init_ops_X550");
 
 	ret_val = ixgbe_init_ops_X540(hw);
-	mac->ops.dmac_config = &ixgbe_dmac_config_X550;
-	mac->ops.dmac_config_tcs = &ixgbe_dmac_config_tcs_X550;
-	mac->ops.dmac_update_tcs = &ixgbe_dmac_update_tcs_X550;
-	mac->ops.setup_eee = &ixgbe_setup_eee_X550;
+	mac->ops.dmac_config = ixgbe_dmac_config_X550;
+	mac->ops.dmac_config_tcs = ixgbe_dmac_config_tcs_X550;
+	mac->ops.dmac_update_tcs = ixgbe_dmac_update_tcs_X550;
+	mac->ops.setup_eee = ixgbe_setup_eee_X550;
 	mac->ops.set_source_address_pruning =
-			&ixgbe_set_source_address_pruning_X550;
+			ixgbe_set_source_address_pruning_X550;
 	mac->ops.set_ethertype_anti_spoofing =
-			&ixgbe_set_ethertype_anti_spoofing_X550;
+			ixgbe_set_ethertype_anti_spoofing_X550;
 
-	mac->ops.get_rtrup2tc = &ixgbe_dcb_get_rtrup2tc_generic;
-	eeprom->ops.init_params = &ixgbe_init_eeprom_params_X550;
-	eeprom->ops.calc_checksum = &ixgbe_calc_eeprom_checksum_X550;
-	eeprom->ops.read = &ixgbe_read_ee_hostif_X550;
-	eeprom->ops.read_buffer = &ixgbe_read_ee_hostif_buffer_X550;
-	eeprom->ops.write = &ixgbe_write_ee_hostif_X550;
-	eeprom->ops.write_buffer = &ixgbe_write_ee_hostif_buffer_X550;
-	eeprom->ops.update_checksum = &ixgbe_update_eeprom_checksum_X550;
-	eeprom->ops.validate_checksum = &ixgbe_validate_eeprom_checksum_X550;
+	mac->ops.get_rtrup2tc = ixgbe_dcb_get_rtrup2tc_generic;
+	eeprom->ops.init_params = ixgbe_init_eeprom_params_X550;
+	eeprom->ops.calc_checksum = ixgbe_calc_eeprom_checksum_X550;
+	eeprom->ops.read = ixgbe_read_ee_hostif_X550;
+	eeprom->ops.read_buffer = ixgbe_read_ee_hostif_buffer_X550;
+	eeprom->ops.write = ixgbe_write_ee_hostif_X550;
+	eeprom->ops.write_buffer = ixgbe_write_ee_hostif_buffer_X550;
+	eeprom->ops.update_checksum = ixgbe_update_eeprom_checksum_X550;
+	eeprom->ops.validate_checksum = ixgbe_validate_eeprom_checksum_X550;
 
-	mac->ops.disable_mdd = &ixgbe_disable_mdd_X550;
-	mac->ops.enable_mdd = &ixgbe_enable_mdd_X550;
-	mac->ops.mdd_event = &ixgbe_mdd_event_X550;
-	mac->ops.restore_mdd_vf = &ixgbe_restore_mdd_vf_X550;
-	mac->ops.disable_rx = &ixgbe_disable_rx_x550;
+	mac->ops.disable_mdd = ixgbe_disable_mdd_X550;
+	mac->ops.enable_mdd = ixgbe_enable_mdd_X550;
+	mac->ops.mdd_event = ixgbe_mdd_event_X550;
+	mac->ops.restore_mdd_vf = ixgbe_restore_mdd_vf_X550;
+	mac->ops.disable_rx = ixgbe_disable_rx_x550;
 	return ret_val;
 }
 
@@ -178,12 +178,12 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 
 	mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550;
 	mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
-	mac->ops.get_media_type = &ixgbe_get_media_type_X550em;
-	mac->ops.setup_sfp = &ixgbe_setup_sfp_modules_X550em;
-	mac->ops.get_link_capabilities = &ixgbe_get_link_capabilities_X550em;
-	mac->ops.reset_hw = &ixgbe_reset_hw_X550em;
+	mac->ops.get_media_type = ixgbe_get_media_type_X550em;
+	mac->ops.setup_sfp = ixgbe_setup_sfp_modules_X550em;
+	mac->ops.get_link_capabilities = ixgbe_get_link_capabilities_X550em;
+	mac->ops.reset_hw = ixgbe_reset_hw_X550em;
 	mac->ops.get_supported_physical_layer =
-				    &ixgbe_get_supported_physical_layer_X550em;
+				    ixgbe_get_supported_physical_layer_X550em;
 
 	/* PHY */
 	phy->ops.init = &ixgbe_init_phy_ops_X550em;
@@ -194,14 +194,14 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 
 
 	/* EEPROM */
-	eeprom->ops.init_params = &ixgbe_init_eeprom_params_X540;
-	eeprom->ops.read = &ixgbe_read_ee_hostif_X550;
-	eeprom->ops.read_buffer = &ixgbe_read_ee_hostif_buffer_X550;
-	eeprom->ops.write = &ixgbe_write_ee_hostif_X550;
-	eeprom->ops.write_buffer = &ixgbe_write_ee_hostif_buffer_X550;
-	eeprom->ops.update_checksum = &ixgbe_update_eeprom_checksum_X550;
-	eeprom->ops.validate_checksum = &ixgbe_validate_eeprom_checksum_X550;
-	eeprom->ops.calc_checksum = &ixgbe_calc_eeprom_checksum_X550;
+	eeprom->ops.init_params = ixgbe_init_eeprom_params_X540;
+	eeprom->ops.read = ixgbe_read_ee_hostif_X550;
+	eeprom->ops.read_buffer = ixgbe_read_ee_hostif_buffer_X550;
+	eeprom->ops.write = ixgbe_write_ee_hostif_X550;
+	eeprom->ops.write_buffer = ixgbe_write_ee_hostif_buffer_X550;
+	eeprom->ops.update_checksum = ixgbe_update_eeprom_checksum_X550;
+	eeprom->ops.validate_checksum = ixgbe_validate_eeprom_checksum_X550;
+	eeprom->ops.calc_checksum = ixgbe_calc_eeprom_checksum_X550;
 
 	return ret_val;
 }
@@ -1620,8 +1620,7 @@ s32 ixgbe_calc_eeprom_checksum_X550(struct ixgbe_hw *hw)
  *  Performs checksum calculation and validates the EEPROM checksum.  If the
  *  caller does not need checksum_val, the value can be NULL.
  **/
-s32 ixgbe_validate_eeprom_checksum_X550(struct ixgbe_hw *hw,
-					u16 *checksum_val)
+s32 ixgbe_validate_eeprom_checksum_X550(struct ixgbe_hw *hw, u16 *checksum_val)
 {
 	s32 status;
 	u16 checksum;

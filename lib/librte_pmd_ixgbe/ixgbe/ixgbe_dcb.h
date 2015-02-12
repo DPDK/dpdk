@@ -34,8 +34,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef _IXGBE_DCB_H_
 #define _IXGBE_DCB_H_
 
-#ident "$Id: ixgbe_dcb.h,v 1.39 2012/04/17 00:07:40 jtkirshe Exp $"
-
 #include "ixgbe_type.h"
 
 /* DCB defines */

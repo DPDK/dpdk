@@ -33,7 +33,6 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef _IXGBE_82598_H_
 #define _IXGBE_82598_H_
-#ident "$Id: ixgbe_82598.h,v 1.3 2012/03/27 22:16:51 jtkirshe Exp $"
 
 u32 ixgbe_get_pcie_msix_count_82598(struct ixgbe_hw *hw);
 s32 ixgbe_fc_enable_82598(struct ixgbe_hw *hw);

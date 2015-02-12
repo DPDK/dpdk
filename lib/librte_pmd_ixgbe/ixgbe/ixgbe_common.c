@@ -36,7 +36,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_dcb.h"
 #include "ixgbe_dcb_82599.h"
 #include "ixgbe_api.h"
-#ident "$Id: ixgbe_common.c,v 1.382 2013/11/22 01:02:01 jtkirshe Exp $"
 
 STATIC s32 ixgbe_acquire_eeprom(struct ixgbe_hw *hw);
 STATIC s32 ixgbe_get_eeprom_semaphore(struct ixgbe_hw *hw);
@@ -75,66 +74,66 @@ s32 ixgbe_init_ops_generic(struct ixgbe_hw *hw)
 	DEBUGFUNC("ixgbe_init_ops_generic");
 
 	/* EEPROM */
-	eeprom->ops.init_params = &ixgbe_init_eeprom_params_generic;
+	eeprom->ops.init_params = ixgbe_init_eeprom_params_generic;
 	/* If EEPROM is valid (bit 8 = 1), use EERD otherwise use bit bang */
 	if (eec & IXGBE_EEC_PRES) {
-		eeprom->ops.read = &ixgbe_read_eerd_generic;
-		eeprom->ops.read_buffer = &ixgbe_read_eerd_buffer_generic;
+		eeprom->ops.read = ixgbe_read_eerd_generic;
+		eeprom->ops.read_buffer = ixgbe_read_eerd_buffer_generic;
 	} else {
-		eeprom->ops.read = &ixgbe_read_eeprom_bit_bang_generic;
+		eeprom->ops.read = ixgbe_read_eeprom_bit_bang_generic;
 		eeprom->ops.read_buffer =
-				 &ixgbe_read_eeprom_buffer_bit_bang_generic;
+				 ixgbe_read_eeprom_buffer_bit_bang_generic;
 	}
-	eeprom->ops.write = &ixgbe_write_eeprom_generic;
-	eeprom->ops.write_buffer = &ixgbe_write_eeprom_buffer_bit_bang_generic;
+	eeprom->ops.write = ixgbe_write_eeprom_generic;
+	eeprom->ops.write_buffer = ixgbe_write_eeprom_buffer_bit_bang_generic;
 	eeprom->ops.validate_checksum =
-				      &ixgbe_validate_eeprom_checksum_generic;
-	eeprom->ops.update_checksum = &ixgbe_update_eeprom_checksum_generic;
-	eeprom->ops.calc_checksum = &ixgbe_calc_eeprom_checksum_generic;
+				      ixgbe_validate_eeprom_checksum_generic;
+	eeprom->ops.update_checksum = ixgbe_update_eeprom_checksum_generic;
+	eeprom->ops.calc_checksum = ixgbe_calc_eeprom_checksum_generic;
 
 	/* MAC */
-	mac->ops.init_hw = &ixgbe_init_hw_generic;
+	mac->ops.init_hw = ixgbe_init_hw_generic;
 	mac->ops.reset_hw = NULL;
-	mac->ops.start_hw = &ixgbe_start_hw_generic;
-	mac->ops.clear_hw_cntrs = &ixgbe_clear_hw_cntrs_generic;
+	mac->ops.start_hw = ixgbe_start_hw_generic;
+	mac->ops.clear_hw_cntrs = ixgbe_clear_hw_cntrs_generic;
 	mac->ops.get_media_type = NULL;
 	mac->ops.get_supported_physical_layer = NULL;
-	mac->ops.enable_rx_dma = &ixgbe_enable_rx_dma_generic;
-	mac->ops.get_mac_addr = &ixgbe_get_mac_addr_generic;
-	mac->ops.stop_adapter = &ixgbe_stop_adapter_generic;
-	mac->ops.get_bus_info = &ixgbe_get_bus_info_generic;
-	mac->ops.set_lan_id = &ixgbe_set_lan_id_multi_port_pcie;
-	mac->ops.acquire_swfw_sync = &ixgbe_acquire_swfw_sync;
-	mac->ops.release_swfw_sync = &ixgbe_release_swfw_sync;
-	mac->ops.prot_autoc_read = &prot_autoc_read_generic;
-	mac->ops.prot_autoc_write = &prot_autoc_write_generic;
+	mac->ops.enable_rx_dma = ixgbe_enable_rx_dma_generic;
+	mac->ops.get_mac_addr = ixgbe_get_mac_addr_generic;
+	mac->ops.stop_adapter = ixgbe_stop_adapter_generic;
+	mac->ops.get_bus_info = ixgbe_get_bus_info_generic;
+	mac->ops.set_lan_id = ixgbe_set_lan_id_multi_port_pcie;
+	mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync;
+	mac->ops.release_swfw_sync = ixgbe_release_swfw_sync;
+	mac->ops.prot_autoc_read = prot_autoc_read_generic;
+	mac->ops.prot_autoc_write = prot_autoc_write_generic;
 
 	/* LEDs */
-	mac->ops.led_on = &ixgbe_led_on_generic;
-	mac->ops.led_off = &ixgbe_led_off_generic;
-	mac->ops.blink_led_start = &ixgbe_blink_led_start_generic;
-	mac->ops.blink_led_stop = &ixgbe_blink_led_stop_generic;
+	mac->ops.led_on = ixgbe_led_on_generic;
+	mac->ops.led_off = ixgbe_led_off_generic;
+	mac->ops.blink_led_start = ixgbe_blink_led_start_generic;
+	mac->ops.blink_led_stop = ixgbe_blink_led_stop_generic;
 
 	/* RAR, Multicast, VLAN */
-	mac->ops.set_rar = &ixgbe_set_rar_generic;
-	mac->ops.clear_rar = &ixgbe_clear_rar_generic;
+	mac->ops.set_rar = ixgbe_set_rar_generic;
+	mac->ops.clear_rar = ixgbe_clear_rar_generic;
 	mac->ops.insert_mac_addr = NULL;
 	mac->ops.set_vmdq = NULL;
 	mac->ops.clear_vmdq = NULL;
-	mac->ops.init_rx_addrs = &ixgbe_init_rx_addrs_generic;
-	mac->ops.update_uc_addr_list = &ixgbe_update_uc_addr_list_generic;
-	mac->ops.update_mc_addr_list = &ixgbe_update_mc_addr_list_generic;
-	mac->ops.enable_mc = &ixgbe_enable_mc_generic;
-	mac->ops.disable_mc = &ixgbe_disable_mc_generic;
+	mac->ops.init_rx_addrs = ixgbe_init_rx_addrs_generic;
+	mac->ops.update_uc_addr_list = ixgbe_update_uc_addr_list_generic;
+	mac->ops.update_mc_addr_list = ixgbe_update_mc_addr_list_generic;
+	mac->ops.enable_mc = ixgbe_enable_mc_generic;
+	mac->ops.disable_mc = ixgbe_disable_mc_generic;
 	mac->ops.clear_vfta = NULL;
 	mac->ops.set_vfta = NULL;
 	mac->ops.set_vlvf = NULL;
 	mac->ops.init_uta_tables = NULL;
-	mac->ops.enable_rx = &ixgbe_enable_rx_generic;
-	mac->ops.disable_rx = &ixgbe_disable_rx_generic;
+	mac->ops.enable_rx = ixgbe_enable_rx_generic;
+	mac->ops.disable_rx = ixgbe_disable_rx_generic;
 
 	/* Flow Control */
-	mac->ops.fc_enable = &ixgbe_fc_enable_generic;
+	mac->ops.fc_enable = ixgbe_fc_enable_generic;
 
 	/* Link */
 	mac->ops.get_link_capabilities = NULL;

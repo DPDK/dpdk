@@ -34,7 +34,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_api.h"
 #include "ixgbe_common.h"
 #include "ixgbe_phy.h"
-#ident "$Id: ixgbe_phy.c,v 1.155 2013/08/14 22:34:03 jtkirshe Exp $"
 
 STATIC void ixgbe_i2c_start(struct ixgbe_hw *hw);
 STATIC void ixgbe_i2c_stop(struct ixgbe_hw *hw);
@@ -245,27 +244,27 @@ s32 ixgbe_init_phy_ops_generic(struct ixgbe_hw *hw)
 	DEBUGFUNC("ixgbe_init_phy_ops_generic");
 
 	/* PHY */
-	phy->ops.identify = &ixgbe_identify_phy_generic;
-	phy->ops.reset = &ixgbe_reset_phy_generic;
-	phy->ops.read_reg = &ixgbe_read_phy_reg_generic;
-	phy->ops.write_reg = &ixgbe_write_phy_reg_generic;
-	phy->ops.read_reg_mdi = &ixgbe_read_phy_reg_mdi;
-	phy->ops.write_reg_mdi = &ixgbe_write_phy_reg_mdi;
-	phy->ops.setup_link = &ixgbe_setup_phy_link_generic;
-	phy->ops.setup_link_speed = &ixgbe_setup_phy_link_speed_generic;
+	phy->ops.identify = ixgbe_identify_phy_generic;
+	phy->ops.reset = ixgbe_reset_phy_generic;
+	phy->ops.read_reg = ixgbe_read_phy_reg_generic;
+	phy->ops.write_reg = ixgbe_write_phy_reg_generic;
+	phy->ops.read_reg_mdi = ixgbe_read_phy_reg_mdi;
+	phy->ops.write_reg_mdi = ixgbe_write_phy_reg_mdi;
+	phy->ops.setup_link = ixgbe_setup_phy_link_generic;
+	phy->ops.setup_link_speed = ixgbe_setup_phy_link_speed_generic;
 	phy->ops.check_link = NULL;
 	phy->ops.get_firmware_version = ixgbe_get_phy_firmware_version_generic;
-	phy->ops.read_i2c_byte = &ixgbe_read_i2c_byte_generic;
-	phy->ops.write_i2c_byte = &ixgbe_write_i2c_byte_generic;
-	phy->ops.read_i2c_sff8472 = &ixgbe_read_i2c_sff8472_generic;
-	phy->ops.read_i2c_eeprom = &ixgbe_read_i2c_eeprom_generic;
-	phy->ops.write_i2c_eeprom = &ixgbe_write_i2c_eeprom_generic;
-	phy->ops.i2c_bus_clear = &ixgbe_i2c_bus_clear;
-	phy->ops.identify_sfp = &ixgbe_identify_module_generic;
+	phy->ops.read_i2c_byte = ixgbe_read_i2c_byte_generic;
+	phy->ops.write_i2c_byte = ixgbe_write_i2c_byte_generic;
+	phy->ops.read_i2c_sff8472 = ixgbe_read_i2c_sff8472_generic;
+	phy->ops.read_i2c_eeprom = ixgbe_read_i2c_eeprom_generic;
+	phy->ops.write_i2c_eeprom = ixgbe_write_i2c_eeprom_generic;
+	phy->ops.i2c_bus_clear = ixgbe_i2c_bus_clear;
+	phy->ops.identify_sfp = ixgbe_identify_module_generic;
 	phy->sfp_type = ixgbe_sfp_type_unknown;
-	phy->ops.read_i2c_combined = &ixgbe_read_i2c_combined_generic;
-	phy->ops.write_i2c_combined = &ixgbe_write_i2c_combined_generic;
-	phy->ops.check_overtemp = &ixgbe_tn_check_overtemp;
+	phy->ops.read_i2c_combined = ixgbe_read_i2c_combined_generic;
+	phy->ops.write_i2c_combined = ixgbe_write_i2c_combined_generic;
+	phy->ops.check_overtemp = ixgbe_tn_check_overtemp;
 	return IXGBE_SUCCESS;
 }
 

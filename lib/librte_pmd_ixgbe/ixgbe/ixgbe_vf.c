@@ -35,7 +35,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_api.h"
 #include "ixgbe_type.h"
 #include "ixgbe_vf.h"
-#ident "$Id: ixgbe_vf.c,v 1.62 2013/06/27 21:30:59 jtkirshe Exp $"
 
 #ifndef IXGBE_VFWRITE_REG
 #define IXGBE_VFWRITE_REG IXGBE_WRITE_REG

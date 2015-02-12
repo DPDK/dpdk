@@ -33,7 +33,6 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef _IXGBE_DCB_82598_H_
 #define _IXGBE_DCB_82598_H_
-#ident "$Id: ixgbe_dcb_82598.h,v 1.12 2012/03/26 22:28:19 jtkirshe Exp $"
 
 /* DCB register definitions */
 

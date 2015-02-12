@@ -33,7 +33,6 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef __IXGBE_VF_H__
 #define __IXGBE_VF_H__
-#ident "$Id: ixgbe_vf.h,v 1.37 2013/11/07 08:18:53 jtkirshe Exp $"
 
 #define IXGBE_VF_IRQ_CLEAR_MASK	7
 #define IXGBE_VF_MAX_TX_QUEUES	8
@@ -138,8 +137,4 @@ int ixgbevf_negotiate_api_version(struct ixgbe_hw *hw, int api);
 int ixgbevf_get_queues(struct ixgbe_hw *hw, unsigned int *num_tcs,
 		       unsigned int *default_tc);
 
-#ifdef IXGBEVF_OSDEP2
-#include "ixgbevf_osdep2.h"
-
-#endif /* IXGBEVF_OSDEP2 */
 #endif /* __IXGBE_VF_H__ */

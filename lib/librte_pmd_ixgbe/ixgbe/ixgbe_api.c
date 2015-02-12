@@ -33,7 +33,6 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "ixgbe_api.h"
 #include "ixgbe_common.h"
-#ident "$Id: ixgbe_api.c,v 1.207 2013/11/22 01:02:01 jtkirshe Exp $"
 
 /**
  * ixgbe_dcb_get_rtrup2tc - read rtrup2tc reg

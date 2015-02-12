@@ -35,7 +35,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #define _IXGBE_X540_H_
 
 #include "ixgbe_type.h"
-#ident "$Id: ixgbe_x540.h,v 1.11 2013/10/11 08:36:03 jtkirshe Exp $"
 
 s32 ixgbe_get_link_capabilities_X540(struct ixgbe_hw *hw,
 				     ixgbe_link_speed *speed, bool *autoneg);

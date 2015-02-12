@@ -36,7 +36,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_dcb.h"
 #include "ixgbe_dcb_82598.h"
 #include "ixgbe_dcb_82599.h"
-#ident "$Id: ixgbe_dcb.c,v 1.55 2013/11/22 01:02:01 jtkirshe Exp $"
 
 /**
  * ixgbe_dcb_calculate_tc_credits - This calculates the ieee traffic class
