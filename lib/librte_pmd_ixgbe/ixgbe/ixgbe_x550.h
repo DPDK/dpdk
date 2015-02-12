@@ -44,6 +44,7 @@ s32 ixgbe_get_bus_info_X550em(struct ixgbe_hw *hw);
 s32 ixgbe_init_eeprom_params_X550(struct ixgbe_hw *hw);
 s32 ixgbe_update_eeprom_checksum_X550(struct ixgbe_hw *hw);
 s32 ixgbe_calc_eeprom_checksum_X550(struct ixgbe_hw *hw);
+s32 ixgbe_calc_checksum_X550(struct ixgbe_hw *hw, u16 *buffer, u32 buffer_size);
 s32 ixgbe_validate_eeprom_checksum_X550(struct ixgbe_hw *hw, u16 *checksum_val);
 s32 ixgbe_update_flash_X550(struct ixgbe_hw *hw);
 s32 ixgbe_write_ee_hostif_buffer_X550(struct ixgbe_hw *hw,

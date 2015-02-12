@@ -1727,19 +1727,28 @@ out:
  * Returns error status for any failure
  */
 STATIC s32 ixgbe_checksum_ptr_x550(struct ixgbe_hw *hw, u16 ptr,
-				   u16 size, u16 *csum)
+				   u16 size, u16 *csum, u16 *buffer,
+				   u32 buffer_size)
 {
 	u16 buf[256];
 	s32 status;
 	u16 length, bufsz, i, start;
+	u16 *local_buffer;
 
 	bufsz = sizeof(buf) / sizeof(buf[0]);
 
 	/* Read a chunk at the pointer location */
-	status = ixgbe_read_ee_hostif_buffer_X550(hw, ptr, bufsz, buf);
-	if (status) {
-		DEBUGOUT("Failed to read EEPROM image\n");
-		return status;
+	if (!buffer) {
+		status = ixgbe_read_ee_hostif_buffer_X550(hw, ptr, bufsz, buf);
+		if (status) {
+			DEBUGOUT("Failed to read EEPROM image\n");
+			return status;
+		}
+		local_buffer = buf;
+	} else {
+		if (buffer_size < ptr)
+			return  IXGBE_ERR_PARAM;
+		local_buffer = &buffer[ptr];
 	}
 
 	if (size) {
@@ -1747,7 +1756,7 @@ STATIC s32 ixgbe_checksum_ptr_x550(struct ixgbe_hw *hw, u16 ptr,
 		length = size;
 	} else {
 		start = 1;
-		length = buf[0];
+		length = local_buffer[0];
 
 		/* Skip pointer section if length is invalid. */
 		if (length == 0xFFFF || length == 0 ||
@@ -1755,8 +1764,11 @@ STATIC s32 ixgbe_checksum_ptr_x550(struct ixgbe_hw *hw, u16 ptr,
 			return IXGBE_SUCCESS;
 	}
 
+	if (buffer && ((u32)start + (u32)length > buffer_size))
+		return IXGBE_ERR_PARAM;
+
 	for (i = start; length; i++, length--) {
-		if (i == bufsz) {
+		if (i == bufsz && !buffer) {
 			ptr += bufsz;
 			i = 0;
 			if (length < bufsz)
@@ -1770,20 +1782,23 @@ STATIC s32 ixgbe_checksum_ptr_x550(struct ixgbe_hw *hw, u16 ptr,
 				return status;
 			}
 		}
-		*csum += buf[i];
+		*csum += local_buffer[i];
 	}
 	return IXGBE_SUCCESS;
 }
 
 /**
- *  ixgbe_calc_eeprom_checksum_X550 - Calculates and returns the checksum
+ *  ixgbe_calc_checksum_X550 - Calculates and returns the checksum
  *  @hw: pointer to hardware structure
+ *  @buffer: pointer to buffer containing calculated checksum
+ *  @buffer_size: size of buffer
  *
  *  Returns a negative error code on error, or the 16-bit checksum
  **/
-s32 ixgbe_calc_eeprom_checksum_X550(struct ixgbe_hw *hw)
+s32 ixgbe_calc_checksum_X550(struct ixgbe_hw *hw, u16 *buffer, u32 buffer_size)
 {
 	u16 eeprom_ptrs[IXGBE_EEPROM_LAST_WORD + 1];
+	u16 *local_buffer;
 	s32 status;
 	u16 checksum = 0;
 	u16 pointer, i, size;
@@ -1792,13 +1807,20 @@ s32 ixgbe_calc_eeprom_checksum_X550(struct ixgbe_hw *hw)
 
 	hw->eeprom.ops.init_params(hw);
 
-	/* Read pointer area */
-	status = ixgbe_read_ee_hostif_buffer_X550(hw, 0,
-						  IXGBE_EEPROM_LAST_WORD + 1,
-						  eeprom_ptrs);
-	if (status) {
-		DEBUGOUT("Failed to read EEPROM image\n");
-		return status;
+	if (!buffer) {
+		/* Read pointer area */
+		status = ixgbe_read_ee_hostif_buffer_X550(hw, 0,
+						     IXGBE_EEPROM_LAST_WORD + 1,
+						     eeprom_ptrs);
+		if (status) {
+			DEBUGOUT("Failed to read EEPROM image\n");
+			return status;
+		}
+		local_buffer = eeprom_ptrs;
+	} else {
+		if (buffer_size < IXGBE_EEPROM_LAST_WORD)
+			return IXGBE_ERR_PARAM;
+		local_buffer = buffer;
 	}
 
 	/*
@@ -1807,7 +1829,7 @@ s32 ixgbe_calc_eeprom_checksum_X550(struct ixgbe_hw *hw)
 	 */
 	for (i = 0; i <= IXGBE_EEPROM_LAST_WORD; i++)
 		if (i != IXGBE_EEPROM_CHECKSUM)
-			checksum += eeprom_ptrs[i];
+			checksum += local_buffer[i];
 
 	/*
 	 * Include all data from pointers 0x3, 0x6-0xE.  This excludes the
@@ -1817,7 +1839,7 @@ s32 ixgbe_calc_eeprom_checksum_X550(struct ixgbe_hw *hw)
 		if (i == IXGBE_PHY_PTR || i == IXGBE_OPTION_ROM_PTR)
 			continue;
 
-		pointer = eeprom_ptrs[i];
+		pointer = local_buffer[i];
 
 		/* Skip pointer section if the pointer is invalid. */
 		if (pointer == 0xFFFF || pointer == 0 ||
@@ -1837,7 +1859,8 @@ s32 ixgbe_calc_eeprom_checksum_X550(struct ixgbe_hw *hw)
 			break;
 		}
 
-		status = ixgbe_checksum_ptr_x550(hw, pointer, size, &checksum);
+		status = ixgbe_checksum_ptr_x550(hw, pointer, size, &checksum,
+						buffer, buffer_size);
 		if (status)
 			return status;
 	}
@@ -1845,6 +1868,17 @@ s32 ixgbe_calc_eeprom_checksum_X550(struct ixgbe_hw *hw)
 	checksum = (u16)IXGBE_EEPROM_SUM - checksum;
 
 	return (s32)checksum;
+}
+
+/**
+ *  ixgbe_calc_eeprom_checksum_X550 - Calculates and returns the checksum
+ *  @hw: pointer to hardware structure
+ *
+ *  Returns a negative error code on error, or the 16-bit checksum
+ **/
+s32 ixgbe_calc_eeprom_checksum_X550(struct ixgbe_hw *hw)
+{
+	return ixgbe_calc_checksum_X550(hw, NULL, 0);
 }
 
 /**
