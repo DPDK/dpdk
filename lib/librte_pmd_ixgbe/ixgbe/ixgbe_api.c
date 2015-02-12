@@ -537,6 +537,20 @@ s32 ixgbe_setup_phy_link(struct ixgbe_hw *hw)
 }
 
 /**
+ * ixgbe_setup_internal_phy - Configure integrated PHY
+ * @hw: pointer to hardware structure
+ *
+ * Reconfigure the integrated PHY in order to enable talk to the external PHY.
+ * Returns success if not implemented, since nothing needs to be done in this
+ * case.
+ */
+s32 ixgbe_setup_internal_phy(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->phy.ops.setup_internal_link, (hw),
+			       IXGBE_SUCCESS);
+}
+
+/**
  *  ixgbe_check_phy_link - Determine link and speed status
  *  @hw: pointer to hardware structure
  *

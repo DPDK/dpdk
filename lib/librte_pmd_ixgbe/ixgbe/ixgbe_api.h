@@ -70,6 +70,7 @@ s32 ixgbe_write_phy_reg(struct ixgbe_hw *hw, u32 reg_addr, u32 device_type,
 			u16 phy_data);
 
 s32 ixgbe_setup_phy_link(struct ixgbe_hw *hw);
+s32 ixgbe_setup_internal_phy(struct ixgbe_hw *hw);
 s32 ixgbe_check_phy_link(struct ixgbe_hw *hw,
 			 ixgbe_link_speed *speed,
 			 bool *link_up);

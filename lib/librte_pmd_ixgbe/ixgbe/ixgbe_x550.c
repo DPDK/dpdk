@@ -185,8 +185,6 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 				    ixgbe_get_supported_physical_layer_X550em;
 
 	/* PHY */
-	phy->ops.read_reg = ixgbe_read_phy_reg_x550em;
-	phy->ops.write_reg = ixgbe_write_phy_reg_x550em;
 	phy->ops.init = ixgbe_init_phy_ops_X550em;
 	phy->ops.identify = ixgbe_identify_phy_x550em;
 	if (mac->ops.get_media_type(hw) != ixgbe_media_type_copper)
@@ -944,6 +942,11 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 	switch (hw->phy.type) {
 	case ixgbe_phy_x550em_kr:
 		phy->ops.setup_link = ixgbe_setup_kr_x550em;
+		phy->ops.read_reg = ixgbe_read_phy_reg_x550em;
+		phy->ops.write_reg = ixgbe_write_phy_reg_x550em;
+		break;
+	case ixgbe_phy_x550em_ext_t:
+		phy->ops.setup_internal_link = ixgbe_setup_internal_phy_x550em;
 		break;
 	default:
 		break;
@@ -984,6 +987,13 @@ s32 ixgbe_reset_hw_X550em(struct ixgbe_hw *hw)
 
 	if (status == IXGBE_ERR_SFP_NOT_SUPPORTED)
 		return status;
+
+	/* start the external PHY */
+	if (hw->phy.type == ixgbe_phy_x550em_ext_t) {
+		status = ixgbe_init_ext_t_x550em(hw);
+		if (status)
+			return status;
+	}
 
 	/* Setup SFP module if there is one present. */
 	if (hw->phy.sfp_setup_needed) {
@@ -1049,6 +1059,97 @@ mac_reset_top:
 	hw->mac.num_rar_entries = 128;
 	hw->mac.ops.init_rx_addrs(hw);
 
+
+	return status;
+}
+
+/**
+ * ixgbe_init_ext_t_x550em - Start (unstall) the external Base T PHY.
+ * @hw: pointer to hardware structure
+ */
+s32 ixgbe_init_ext_t_x550em(struct ixgbe_hw *hw)
+{
+	u32 status;
+	u16 reg;
+	u32 retries = 1;
+
+	/* TODO: The number of attempts and delay between attempts is undefined */
+	do {
+		/* decrement retries counter and exit if we hit 0 */
+		if (retries < 1) {
+			ERROR_REPORT1(IXGBE_ERROR_INVALID_STATE,
+				      "External PHY not yet finished resetting.");
+			return IXGBE_ERR_PHY;
+		}
+		retries--;
+
+		usec_delay(0);
+
+		status = hw->phy.ops.read_reg(hw,
+					      IXGBE_MDIO_TX_VENDOR_ALARMS_3,
+					      IXGBE_MDIO_PMA_PMD_DEV_TYPE,
+					      &reg);
+
+		if (status != IXGBE_SUCCESS)
+			return status;
+
+		/* Verify PHY FW reset has completed */
+	} while ((reg & IXGBE_MDIO_TX_VENDOR_ALARMS_3_RST_MASK) != 1);
+
+	/* Set port to low power mode */
+	status = hw->phy.ops.read_reg(hw,
+				      IXGBE_MDIO_VENDOR_SPECIFIC_1_CONTROL,
+				      IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				      &reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	reg |= IXGBE_MDIO_PHY_SET_LOW_POWER_MODE;
+
+	status = hw->phy.ops.write_reg(hw,
+				       IXGBE_MDIO_VENDOR_SPECIFIC_1_CONTROL,
+				       IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				       reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* Enable the transmitter */
+	status = hw->phy.ops.read_reg(hw,
+				      IXGBE_MDIO_PMD_STD_TX_DISABLE_CNTR,
+				      IXGBE_MDIO_PMA_PMD_DEV_TYPE,
+				      &reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	reg &= ~IXGBE_MDIO_PMD_GLOBAL_TX_DISABLE;
+
+	status = hw->phy.ops.write_reg(hw,
+				       IXGBE_MDIO_PMD_STD_TX_DISABLE_CNTR,
+				       IXGBE_MDIO_PMA_PMD_DEV_TYPE,
+				       reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* Un-stall the PHY FW */
+	status = hw->phy.ops.read_reg(hw,
+				      IXGBE_MDIO_GLOBAL_RES_PR_10,
+				      IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				      &reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	reg &= ~IXGBE_MDIO_POWER_UP_STALL;
+
+	status = hw->phy.ops.write_reg(hw,
+				       IXGBE_MDIO_GLOBAL_RES_PR_10,
+				       IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				       reg);
+
 	return status;
 }
 
@@ -1095,10 +1196,12 @@ s32 ixgbe_setup_kr_x550em(struct ixgbe_hw *hw)
 /**
  *  ixgbe_setup_ixfi_x550em - Configure the KR PHY for iXFI.
  *  @hw: pointer to hardware structure
+ *  @speed: the link speed to force
  *
- *  Configures the integrated KR PHY to use iXFI mode.
+ *  Configures the integrated KR PHY to use iXFI mode. Used to connect an
+ *  internal and external PHY at a specific speed, without autonegotiation.
  **/
-s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
 {
 	s32 status;
 	u32 reg_val;
@@ -1112,7 +1215,20 @@ s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw)
 
 	reg_val &= ~IXGBE_KRM_LINK_CTRL_1_TETH_AN_ENABLE;
 	reg_val &= ~IXGBE_KRM_LINK_CTRL_1_TETH_FORCE_SPEED_MASK;
-	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_FORCE_SPEED_10G;
+
+	/* Select forced link speed for internal PHY. */
+	switch (*speed) {
+	case IXGBE_LINK_SPEED_10GB_FULL:
+		reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_FORCE_SPEED_10G;
+		break;
+	case IXGBE_LINK_SPEED_1GB_FULL:
+		reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_FORCE_SPEED_1G;
+		break;
+	default:
+		/* Other link speeds are not supported by internal KR PHY. */
+		return IXGBE_ERR_LINK_SETUP;
+	}
+
 	status = ixgbe_write_iosf_sb_reg_x550(hw,
 					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 					IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
@@ -1188,6 +1304,74 @@ s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw)
 					IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 
 	return status;
+}
+
+/**
+ * ixgbe_setup_internal_phy_x550em - Configure integrated KR PHY
+ * @hw: point to hardware structure
+ *
+ * Configures the integrated KR PHY to talk to the external PHY. The base
+ * driver will call this function when it gets notification via interrupt from
+ * the external PHY. This function forces the internal PHY into iXFI mode at
+ * the correct speed.
+ *
+ * A return of a non-zero value indicates an error, and the base driver should
+ * not report link up.
+ */
+s32 ixgbe_setup_internal_phy_x550em(struct ixgbe_hw *hw)
+{
+	u32 status;
+	u16 lasi, autoneg_status, speed;
+	ixgbe_link_speed force_speed;
+
+	/* Verify that the external link status has changed */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_XENPAK_LASI_STATUS,
+				      IXGBE_MDIO_PMA_PMD_DEV_TYPE,
+				      &lasi);
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* If there was no change in link status, we can just exit */
+	if (!(lasi & IXGBE_XENPAK_LASI_LINK_STATUS_ALARM))
+		return IXGBE_SUCCESS;
+
+	/* we read this twice back to back to indicate current status */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
+				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				      &autoneg_status);
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
+				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				      &autoneg_status);
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* If link is not up return an error indicating treat link as down */
+	if (!(autoneg_status & IXGBE_MDIO_AUTO_NEG_LINK_STATUS))
+		return IXGBE_ERR_INVALID_LINK_SETTINGS;
+
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_VENDOR_STAT,
+				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				      &speed);
+
+	/* clear everything but the speed and duplex bits */
+	speed &= IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_MASK;
+
+	switch (speed) {
+	case IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_10GB_FULL:
+		force_speed = IXGBE_LINK_SPEED_10GB_FULL;
+		break;
+	case IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_1GB_FULL:
+		force_speed = IXGBE_LINK_SPEED_1GB_FULL;
+		break;
+	default:
+		/* Internal PHY does not support anything else */
+		return IXGBE_ERR_INVALID_LINK_SETTINGS;
+	}
+
+	return ixgbe_setup_ixfi_x550em(hw, &force_speed);
 }
 
 /**
@@ -1748,6 +1932,7 @@ s32 ixgbe_update_flash_X550(struct ixgbe_hw *hw)
 u32 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw)
 {
 	u32 physical_layer = IXGBE_PHYSICAL_LAYER_UNKNOWN;
+	u16 ext_ability = 0;
 
 	DEBUGFUNC("ixgbe_get_supported_physical_layer_X550em");
 
@@ -1761,6 +1946,15 @@ u32 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw)
 	case ixgbe_phy_x550em_kx4:
 		physical_layer = IXGBE_PHYSICAL_LAYER_10GBASE_KX4 |
 				 IXGBE_PHYSICAL_LAYER_1000BASE_KX;
+		break;
+	case ixgbe_phy_x550em_ext_t:
+		hw->phy.ops.read_reg(hw, IXGBE_MDIO_PHY_EXT_ABILITY,
+				     IXGBE_MDIO_PMA_PMD_DEV_TYPE,
+				     &ext_ability);
+		if (ext_ability & IXGBE_MDIO_PHY_10GBASET_ABILITY)
+			physical_layer |= IXGBE_PHYSICAL_LAYER_10GBASE_T;
+		if (ext_ability & IXGBE_MDIO_PHY_1000BASET_ABILITY)
+			physical_layer |= IXGBE_PHYSICAL_LAYER_1000BASE_T;
 		break;
 	default:
 		break;
