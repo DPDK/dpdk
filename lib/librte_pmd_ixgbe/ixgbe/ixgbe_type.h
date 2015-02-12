@@ -187,6 +187,12 @@ POSSIBILITY OF SUCH DAMAGE.
 					0x00001000 : 0x00000004)
 #define IXGBE_I2C_DATA_OUT_BY_MAC(_hw)(((_hw)->mac.type) >= ixgbe_mac_X550 ? \
 					0x00000400 : 0x00000008)
+#define IXGBE_I2C_BB_EN_BY_MAC(hw) ((hw)->mac.type >= ixgbe_mac_X550 ? \
+				    0x00000100 : 0)
+#define IXGBE_I2C_DATA_OE_N_EN_BY_MAC(hw) ((hw)->mac.type >= ixgbe_mac_X550 ? \
+					   0x00000800 : 0)
+#define IXGBE_I2C_CLK_OE_N_EN_BY_MAC(hw) ((hw)->mac.type >= ixgbe_mac_X550 ? \
+					  0x00002000 : 0)
 #define IXGBE_I2C_CLOCK_STRETCHING_TIMEOUT	500
 
 #define IXGBE_I2C_THERMAL_SENSOR_ADDR	0xF8
