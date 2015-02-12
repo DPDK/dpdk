@@ -1502,10 +1502,10 @@ s32 ixgbe_read_ee_hostif_data_X550(struct ixgbe_hw *hw, u16 offset,
 	struct ixgbe_hic_read_shadow_ram buffer;
 
 	DEBUGFUNC("ixgbe_read_ee_hostif_data_X550");
-	buffer.hdr.cmd = FW_READ_SHADOW_RAM_CMD;
-	buffer.hdr.buf_len1 = 0;
-	buffer.hdr.buf_len2 = FW_READ_SHADOW_RAM_LEN;
-	buffer.hdr.checksum = FW_DEFAULT_CHECKSUM;
+	buffer.hdr.req.cmd = FW_READ_SHADOW_RAM_CMD;
+	buffer.hdr.req.buf_lenh = 0;
+	buffer.hdr.req.buf_lenl = FW_READ_SHADOW_RAM_LEN;
+	buffer.hdr.req.checksum = FW_DEFAULT_CHECKSUM;
 
 	/* convert offset from words to bytes */
 	buffer.address = IXGBE_CPU_TO_BE32(offset * 2);
@@ -1582,10 +1582,10 @@ s32 ixgbe_read_ee_hostif_buffer_X550(struct ixgbe_hw *hw,
 		else
 			words_to_read = words;
 
-		buffer.hdr.cmd = FW_READ_SHADOW_RAM_CMD;
-		buffer.hdr.buf_len1 = 0;
-		buffer.hdr.buf_len2 = FW_READ_SHADOW_RAM_LEN;
-		buffer.hdr.checksum = FW_DEFAULT_CHECKSUM;
+		buffer.hdr.req.cmd = FW_READ_SHADOW_RAM_CMD;
+		buffer.hdr.req.buf_lenh = 0;
+		buffer.hdr.req.buf_lenl = FW_READ_SHADOW_RAM_LEN;
+		buffer.hdr.req.checksum = FW_DEFAULT_CHECKSUM;
 
 		/* convert offset from words to bytes */
 		buffer.address = IXGBE_CPU_TO_BE32((offset + current_word) * 2);
@@ -1637,10 +1637,10 @@ s32 ixgbe_write_ee_hostif_data_X550(struct ixgbe_hw *hw, u16 offset,
 
 	DEBUGFUNC("ixgbe_write_ee_hostif_data_X550");
 
-	buffer.hdr.cmd = FW_WRITE_SHADOW_RAM_CMD;
-	buffer.hdr.buf_len1 = 0;
-	buffer.hdr.buf_len2 = FW_WRITE_SHADOW_RAM_LEN;
-	buffer.hdr.checksum = FW_DEFAULT_CHECKSUM;
+	buffer.hdr.req.cmd = FW_WRITE_SHADOW_RAM_CMD;
+	buffer.hdr.req.buf_lenh = 0;
+	buffer.hdr.req.buf_lenl = FW_WRITE_SHADOW_RAM_LEN;
+	buffer.hdr.req.checksum = FW_DEFAULT_CHECKSUM;
 
 	 /* one word */
 	buffer.length = IXGBE_CPU_TO_BE16(sizeof(u16));
@@ -1987,14 +1987,14 @@ s32 ixgbe_update_eeprom_checksum_X550(struct ixgbe_hw *hw)
 s32 ixgbe_update_flash_X550(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_SUCCESS;
-	struct ixgbe_hic_hdr2 buffer;
+	union ixgbe_hic_hdr2 buffer;
 
 	DEBUGFUNC("ixgbe_update_flash_X550");
 
-	buffer.cmd = FW_SHADOW_RAM_DUMP_CMD;
-	buffer.buf_len1 = 0;
-	buffer.buf_len2 = FW_SHADOW_RAM_DUMP_LEN;
-	buffer.checksum = FW_DEFAULT_CHECKSUM;
+	buffer.req.cmd = FW_SHADOW_RAM_DUMP_CMD;
+	buffer.req.buf_lenh = 0;
+	buffer.req.buf_lenl = FW_SHADOW_RAM_DUMP_LEN;
+	buffer.req.checksum = FW_DEFAULT_CHECKSUM;
 
 	status = ixgbe_host_interface_command(hw, (u32 *)&buffer,
 					      sizeof(buffer), false);

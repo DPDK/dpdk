@@ -2795,11 +2795,23 @@ struct ixgbe_hic_hdr {
 	u8 checksum;
 };
 
-struct ixgbe_hic_hdr2 {
+struct ixgbe_hic_hdr2_req {
 	u8 cmd;
-	u8 buf_len1;
-	u8 buf_len2;
+	u8 buf_lenh;
+	u8 buf_lenl;
 	u8 checksum;
+};
+
+struct ixgbe_hic_hdr2_rsp {
+	u8 cmd;
+	u8 buf_lenl;
+	u8 buf_lenh_status;	/* 7-5: high bits of buf_len, 4-0: status */
+	u8 checksum;
+};
+
+union ixgbe_hic_hdr2 {
+	struct ixgbe_hic_hdr2_req req;
+	struct ixgbe_hic_hdr2_rsp rsp;
 };
 
 struct ixgbe_hic_drv_info {
@@ -2815,7 +2827,7 @@ struct ixgbe_hic_drv_info {
 
 /* These need to be dword aligned */
 struct ixgbe_hic_read_shadow_ram {
-	struct ixgbe_hic_hdr2 hdr;
+	union ixgbe_hic_hdr2 hdr;
 	u32 address;
 	u16 length;
 	u16 pad2;
@@ -2824,7 +2836,7 @@ struct ixgbe_hic_read_shadow_ram {
 };
 
 struct ixgbe_hic_write_shadow_ram {
-	struct ixgbe_hic_hdr2 hdr;
+	union ixgbe_hic_hdr2 hdr;
 	u32 address;
 	u16 length;
 	u16 pad2;
