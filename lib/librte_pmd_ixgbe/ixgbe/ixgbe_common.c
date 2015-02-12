@@ -4346,6 +4346,36 @@ u8 ixgbe_calculate_checksum(u8 *buffer, u32 length)
 }
 
 /**
+ *  ixgbe_get_hi_status - Get host interface command status
+ *  @hw: pointer to the HW structure
+ *  @return_code: reads and returns code
+ *
+ *  Check if command returned with success. On success return IXGBE_SUCCESS
+ *  else return IXGBE_ERR_HOST_INTERFACE_COMMAND.
+ **/
+s32 ixgbe_get_hi_status(struct ixgbe_hw *hw, u8 *ret_status)
+{
+	struct ixgbe_hic_hdr response;
+	u32 *response_val = (u32 *)&response;
+
+	DEBUGFUNC("ixgbe_get_host_interface_status");
+
+	/* Read the command response */
+	*response_val = IXGBE_CPU_TO_LE32(IXGBE_READ_REG(hw, IXGBE_FLEX_MNG));
+
+	if (ret_status)
+		*ret_status = response.cmd_or_resp.ret_status;
+
+	if (response.cmd_or_resp.ret_status != FW_CEM_RESP_STATUS_SUCCESS) {
+		DEBUGOUT1("Host interface error=%x.\n",
+			  response.cmd_or_resp.ret_status);
+		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
+	}
+
+	return IXGBE_SUCCESS;
+}
+
+/**
  *  ixgbe_host_interface_command - Issue command to manageability block
  *  @hw: pointer to the HW structure
  *  @buffer: contains the command to write and where the return status will
