@@ -1874,6 +1874,21 @@ s32 ixgbe_write_i2c_eeprom_generic(struct ixgbe_hw *hw, u8 byte_offset,
 }
 
 /**
+ * ixgbe_is_sfp_probe - Returns true if SFP is being detected
+ * @hw: pointer to hardware structure
+ * @offset: eeprom offset to be read
+ * @addr: I2C address to be read
+ */
+STATIC bool ixgbe_is_sfp_probe(struct ixgbe_hw *hw, u8 offset, u8 addr)
+{
+	if (addr == IXGBE_I2C_EEPROM_DEV_ADDR &&
+	    offset == IXGBE_SFF_IDENTIFIER &&
+	    hw->phy.sfp_type == ixgbe_sfp_type_not_present)
+		return true;
+	return false;
+}
+
+/**
  *  ixgbe_read_i2c_byte_generic - Reads 8 bit word over I2C
  *  @hw: pointer to hardware structure
  *  @byte_offset: byte offset to read
@@ -1893,6 +1908,9 @@ s32 ixgbe_read_i2c_byte_generic(struct ixgbe_hw *hw, u8 byte_offset,
 	*data = 0;
 
 	DEBUGFUNC("ixgbe_read_i2c_byte_generic");
+
+	if (ixgbe_is_sfp_probe(hw, byte_offset, dev_addr))
+		max_retry = IXGBE_SFP_DETECT_RETRIES;
 
 	do {
 		if (hw->mac.ops.acquire_swfw_sync(hw, swfw_mask))
