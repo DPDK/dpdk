@@ -402,28 +402,27 @@ i40e_srcoff_to_flx_pit(const uint16_t *src_offset,
 
 	while (j < I40E_FDIR_MAX_FLEX_LEN) {
 		size = 1;
-		for (; j < I40E_FDIR_MAX_FLEX_LEN; j++) {
+		for (; j < I40E_FDIR_MAX_FLEX_LEN - 1; j++) {
 			if (src_offset[j + 1] == src_offset[j] + 1)
 				size++;
-			else {
-				src_tmp = src_offset[j] + 1 - size;
-				/* the flex_pit need to be sort by scr_offset */
-				for (i = 0; i < num; i++) {
-					if (src_tmp < flex_pit[i].src_offset)
-						break;
-				}
-				/* if insert required, move backward */
-				for (k = num; k > i; k--)
-					flex_pit[k] = flex_pit[k - 1];
-				/* insert */
-				flex_pit[i].dst_offset = j + 1 - size;
-				flex_pit[i].src_offset = src_tmp;
-				flex_pit[i].size = size;
-				j++;
-				num++;
+			else
 				break;
-			}
 		}
+		src_tmp = src_offset[j] + 1 - size;
+		/* the flex_pit need to be sort by src_offset */
+		for (i = 0; i < num; i++) {
+			if (src_tmp < flex_pit[i].src_offset)
+				break;
+		}
+		/* if insert required, move backward */
+		for (k = num; k > i; k--)
+			flex_pit[k] = flex_pit[k - 1];
+		/* insert */
+		flex_pit[i].dst_offset = j + 1 - size;
+		flex_pit[i].src_offset = src_tmp;
+		flex_pit[i].size = size;
+		j++;
+		num++;
 	}
 	return num;
 }
