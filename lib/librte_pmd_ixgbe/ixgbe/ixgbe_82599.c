@@ -1333,14 +1333,15 @@ reset_hw_out:
 /**
  * ixgbe_fdir_check_cmd_complete - poll to check whether FDIRCMD is complete
  * @hw: pointer to hardware structure
+ * @fdircmd: current value of FDIRCMD register
  */
-STATIC s32 ixgbe_fdir_check_cmd_complete(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_fdir_check_cmd_complete(struct ixgbe_hw *hw, u32 *fdircmd)
 {
 	int i;
 
 	for (i = 0; i < IXGBE_FDIRCMD_CMD_POLL; i++) {
-		if (!(IXGBE_READ_REG(hw, IXGBE_FDIRCMD) &
-		      IXGBE_FDIRCMD_CMD_MASK))
+		*fdircmd = IXGBE_READ_REG(hw, IXGBE_FDIRCMD);
+		if (!(*fdircmd & IXGBE_FDIRCMD_CMD_MASK))
 			return IXGBE_SUCCESS;
 		usec_delay(10);
 	}
@@ -1357,6 +1358,7 @@ s32 ixgbe_reinit_fdir_tables_82599(struct ixgbe_hw *hw)
 	s32 err;
 	int i;
 	u32 fdirctrl = IXGBE_READ_REG(hw, IXGBE_FDIRCTRL);
+	u32 fdircmd;
 	fdirctrl &= ~IXGBE_FDIRCTRL_INIT_DONE;
 
 	DEBUGFUNC("ixgbe_reinit_fdir_tables_82599");
@@ -1365,7 +1367,7 @@ s32 ixgbe_reinit_fdir_tables_82599(struct ixgbe_hw *hw)
 	 * Before starting reinitialization process,
 	 * FDIRCMD.CMD must be zero.
 	 */
-	err = ixgbe_fdir_check_cmd_complete(hw);
+	err = ixgbe_fdir_check_cmd_complete(hw, &fdircmd);
 	if (err) {
 		DEBUGOUT("Flow Director previous command did not complete, aborting table re-initialization.\n");
 		return err;
@@ -1621,6 +1623,9 @@ u32 ixgbe_atr_compute_sig_hash_82599(union ixgbe_atr_hash_dword input,
  *  @input: unique input dword
  *  @common: compressed common input dword
  *  @queue: queue index to direct traffic to
+ *
+ * Note that the tunnel bit in input must not be set when the hardware
+ * tunneling support does not exist.
  **/
 s32 ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 					  union ixgbe_atr_hash_dword input,
@@ -1628,6 +1633,8 @@ s32 ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 					  u8 queue)
 {
 	u64 fdirhashcmd;
+	u8 flow_type;
+	bool tunnel;
 	u32 fdircmd;
 	s32 err;
 
@@ -1638,7 +1645,10 @@ s32 ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 	 * lowest 2 bits are FDIRCMD.L4TYPE, third lowest bit is FDIRCMD.IPV6
 	 * fifth is FDIRCMD.TUNNEL_FILTER
 	 */
-	switch (input.formatted.flow_type) {
+	tunnel = !!(input.formatted.flow_type & IXGBE_ATR_L4TYPE_TUNNEL_MASK);
+	flow_type = input.formatted.flow_type &
+		    (IXGBE_ATR_L4TYPE_TUNNEL_MASK - 1);
+	switch (flow_type) {
 	case IXGBE_ATR_FLOW_TYPE_TCPV4:
 	case IXGBE_ATR_FLOW_TYPE_UDPV4:
 	case IXGBE_ATR_FLOW_TYPE_SCTPV4:
@@ -1654,8 +1664,10 @@ s32 ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 	/* configure FDIRCMD register */
 	fdircmd = IXGBE_FDIRCMD_CMD_ADD_FLOW | IXGBE_FDIRCMD_FILTER_UPDATE |
 		  IXGBE_FDIRCMD_LAST | IXGBE_FDIRCMD_QUEUE_EN;
-	fdircmd |= input.formatted.flow_type << IXGBE_FDIRCMD_FLOW_TYPE_SHIFT;
+	fdircmd |= (u32)flow_type << IXGBE_FDIRCMD_FLOW_TYPE_SHIFT;
 	fdircmd |= (u32)queue << IXGBE_FDIRCMD_RX_QUEUE_SHIFT;
+	if (tunnel)
+		fdircmd |= IXGBE_FDIRCMD_TUNNEL_FILTER;
 
 	/*
 	 * The lower 32-bits of fdirhashcmd is for FDIRHASH, the upper 32-bits
@@ -1665,7 +1677,7 @@ s32 ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 	fdirhashcmd |= ixgbe_atr_compute_sig_hash_82599(input, common);
 	IXGBE_WRITE_REG64(hw, IXGBE_FDIRHASH, fdirhashcmd);
 
-	err = ixgbe_fdir_check_cmd_complete(hw);
+	err = ixgbe_fdir_check_cmd_complete(hw, &fdircmd);
 	if (err) {
 		DEBUGOUT("Flow Director command did not complete!\n");
 		return err;
@@ -1902,33 +1914,39 @@ s32 ixgbe_fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 			return IXGBE_ERR_CONFIG;
 		}
 		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRIP6M, fdirip6m);
+
+		/* Set all bits in FDIRSIP4M and FDIRDIP4M cloud mode */
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRDIP4M, 0xFFFFFFFF);
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIP4M, 0xFFFFFFFF);
 	}
 
 	/* Now mask VM pool and destination IPv6 - bits 5 and 2 */
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRM, fdirm);
 
-	/* store the TCP/UDP port masks, bit reversed from port layout */
-	fdirtcpm = ixgbe_get_fdirtcpm_82599(input_mask);
+	if (!cloud_mode) {
+		/* store the TCP/UDP port masks, bit reversed from port
+		 * layout */
+		fdirtcpm = ixgbe_get_fdirtcpm_82599(input_mask);
 
-	/* write both the same so that UDP and TCP use the same mask */
-	IXGBE_WRITE_REG(hw, IXGBE_FDIRTCPM, ~fdirtcpm);
-	IXGBE_WRITE_REG(hw, IXGBE_FDIRUDPM, ~fdirtcpm);
-	/* also use it for SCTP */
-	switch (hw->mac.type) {
-	case ixgbe_mac_X550:
-	case ixgbe_mac_X550EM_x:
-		IXGBE_WRITE_REG(hw, IXGBE_FDIRSCTPM, ~fdirtcpm);
-		break;
-	default:
-		break;
+		/* write both the same so that UDP and TCP use the same mask */
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRTCPM, ~fdirtcpm);
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRUDPM, ~fdirtcpm);
+		/* also use it for SCTP */
+		switch (hw->mac.type) {
+		case ixgbe_mac_X550:
+		case ixgbe_mac_X550EM_x:
+			IXGBE_WRITE_REG(hw, IXGBE_FDIRSCTPM, ~fdirtcpm);
+			break;
+		default:
+			break;
+		}
+
+		/* store source and destination IP masks (big-enian) */
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIP4M,
+				     ~input_mask->formatted.src_ip[0]);
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRDIP4M,
+				     ~input_mask->formatted.dst_ip[0]);
 	}
-
-	/* store source and destination IP masks (big-endian) */
-	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIP4M,
-			     ~input_mask->formatted.src_ip[0]);
-	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRDIP4M,
-			     ~input_mask->formatted.dst_ip[0]);
-
 	return IXGBE_SUCCESS;
 }
 
@@ -1942,26 +1960,30 @@ s32 ixgbe_fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 	s32 err;
 
 	DEBUGFUNC("ixgbe_fdir_write_perfect_filter_82599");
+	if (!cloud_mode) {
+		/* currently IPv6 is not supported, must be programmed with 0 */
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIPv6(0),
+				     input->formatted.src_ip[0]);
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIPv6(1),
+				     input->formatted.src_ip[1]);
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIPv6(2),
+				     input->formatted.src_ip[2]);
 
-	/* currently IPv6 is not supported, must be programmed with 0 */
-	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIPv6(0),
-			     input->formatted.src_ip[0]);
-	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIPv6(1),
-			     input->formatted.src_ip[1]);
-	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIPv6(2),
-			     input->formatted.src_ip[2]);
+		/* record the source address (big-endian) */
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRIPSA,
+			input->formatted.src_ip[0]);
 
-	/* record the source address (big-endian) */
-	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRIPSA, input->formatted.src_ip[0]);
+		/* record the first 32 bits of the destination address
+		 * (big-endian) */
+		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRIPDA,
+			input->formatted.dst_ip[0]);
 
-	/* record the first 32 bits of the destination address (big-endian) */
-	IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRIPDA, input->formatted.dst_ip[0]);
-
-	/* record source and destination port (little-endian)*/
-	fdirport = IXGBE_NTOHS(input->formatted.dst_port);
-	fdirport <<= IXGBE_FDIRPORT_DESTINATION_SHIFT;
-	fdirport |= IXGBE_NTOHS(input->formatted.src_port);
-	IXGBE_WRITE_REG(hw, IXGBE_FDIRPORT, fdirport);
+		/* record source and destination port (little-endian)*/
+		fdirport = IXGBE_NTOHS(input->formatted.dst_port);
+		fdirport <<= IXGBE_FDIRPORT_DESTINATION_SHIFT;
+		fdirport |= IXGBE_NTOHS(input->formatted.src_port);
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRPORT, fdirport);
+	}
 
 	/* record VLAN (little-endian) and flex_bytes(big-endian) */
 	fdirvlan = IXGBE_STORE_AS_BE16(input->formatted.flex_bytes);
@@ -2008,7 +2030,7 @@ s32 ixgbe_fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 	fdircmd |= (u32)input->formatted.vm_pool << IXGBE_FDIRCMD_VT_POOL_SHIFT;
 
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRCMD, fdircmd);
-	err = ixgbe_fdir_check_cmd_complete(hw);
+	err = ixgbe_fdir_check_cmd_complete(hw, &fdircmd);
 	if (err) {
 		DEBUGOUT("Flow Director command did not complete!\n");
 		return err;
@@ -2022,7 +2044,7 @@ s32 ixgbe_fdir_erase_perfect_filter_82599(struct ixgbe_hw *hw,
 					  u16 soft_id)
 {
 	u32 fdirhash;
-	u32 fdircmd = 0;
+	u32 fdircmd;
 	s32 err;
 
 	/* configure FDIRHASH register */
@@ -2036,7 +2058,7 @@ s32 ixgbe_fdir_erase_perfect_filter_82599(struct ixgbe_hw *hw,
 	/* Query if filter is present */
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRCMD, IXGBE_FDIRCMD_CMD_QUERY_REM_FILT);
 
-	err = ixgbe_fdir_check_cmd_complete(hw);
+	err = ixgbe_fdir_check_cmd_complete(hw, &fdircmd);
 	if (err) {
 		DEBUGOUT("Flow Director command did not complete!\n");
 		return err;
