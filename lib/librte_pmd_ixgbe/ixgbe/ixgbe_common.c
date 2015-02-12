@@ -4864,6 +4864,22 @@ void ixgbe_enable_rx_generic(struct ixgbe_hw *hw)
 }
 
 /**
+ * ixgbe_mng_present - returns true when management capability is present
+ * @hw: pointer to hardware structure
+ */
+bool ixgbe_mng_present(struct ixgbe_hw *hw)
+{
+	u32 fwsm;
+
+	if (hw->mac.type < ixgbe_mac_82599EB)
+		return false;
+
+	fwsm = IXGBE_READ_REG(hw, IXGBE_FWSM);
+	fwsm &= IXGBE_FWSM_MODE_MASK;
+	return fwsm == IXGBE_FWSM_FW_MODE_PT;
+}
+
+/**
  * ixgbe_mng_enabled - Is the manageability engine enabled?
  * @hw: pointer to hardware structure
  *
