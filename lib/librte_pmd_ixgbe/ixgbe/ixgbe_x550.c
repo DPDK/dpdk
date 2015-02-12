@@ -543,7 +543,7 @@ s32 ixgbe_write_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 			break;
 	}
 
-	if ((command & IXGBE_SB_IOSF_CTRL_CMPL_ERR_MASK) != 0) {
+	if ((command & IXGBE_SB_IOSF_CTRL_RESP_STAT_MASK) != 0) {
 		error = (command & IXGBE_SB_IOSF_CTRL_CMPL_ERR_MASK) >>
 			 IXGBE_SB_IOSF_CTRL_CMPL_ERR_SHIFT;
 		ERROR_REPORT2(IXGBE_ERROR_POLLING,
@@ -591,7 +591,7 @@ s32 ixgbe_read_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 			break;
 	}
 
-	if ((command & IXGBE_SB_IOSF_CTRL_CMPL_ERR_MASK) != 0) {
+	if ((command & IXGBE_SB_IOSF_CTRL_RESP_STAT_MASK) != 0) {
 		error = (command & IXGBE_SB_IOSF_CTRL_CMPL_ERR_MASK) >>
 			 IXGBE_SB_IOSF_CTRL_CMPL_ERR_SHIFT;
 		ERROR_REPORT2(IXGBE_ERROR_POLLING,
