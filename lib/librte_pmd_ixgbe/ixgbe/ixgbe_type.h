@@ -1481,6 +1481,15 @@ struct ixgbe_dmac_config {
 #define IXGBE_SDP0_GPIEN	0x00000001 /* SDP0 */
 #define IXGBE_SDP1_GPIEN	0x00000002 /* SDP1 */
 #define IXGBE_SDP2_GPIEN	0x00000004 /* SDP2 */
+#define IXGBE_SDP0_GPIEN_X540	0x00000002 /* SDP0 on X540 and X550 */
+#define IXGBE_SDP1_GPIEN_X540	0x00000004 /* SDP1 on X540 and X550 */
+#define IXGBE_SDP2_GPIEN_X540	0x00000008 /* SDP2 on X540 and X550 */
+#define IXGBE_SDP0_GPIEN_BY_MAC(_hw) ((_hw)->mac.type >= ixgbe_mac_X540 ? \
+				      IXGBE_SDP0_GPIEN_X540 : IXGBE_SDP0_GPIEN)
+#define IXGBE_SDP1_GPIEN_BY_MAC(_hw) ((_hw)->mac.type >= ixgbe_mac_X540 ? \
+				      IXGBE_SDP1_GPIEN_X540 : IXGBE_SDP1_GPIEN)
+#define IXGBE_SDP2_GPIEN_BY_MAC(_hw) ((_hw)->mac.type >= ixgbe_mac_X540 ? \
+				      IXGBE_SDP2_GPIEN_X540 : IXGBE_SDP2_GPIEN)
 #define IXGBE_GPIE_MSIX_MODE	0x00000010 /* MSI-X mode */
 #define IXGBE_GPIE_OCD		0x00000020 /* Other Clear Disable */
 #define IXGBE_GPIE_EIMEN	0x00000040 /* Immediate Interrupt Enable */
@@ -1658,6 +1667,18 @@ enum {
 #define IXGBE_EICR_GPI_SDP1	0x02000000 /* Gen Purpose Interrupt on SDP1 */
 #define IXGBE_EICR_GPI_SDP2	0x04000000 /* Gen Purpose Interrupt on SDP2 */
 #define IXGBE_EICR_ECC		0x10000000 /* ECC Error */
+#define IXGBE_EICR_GPI_SDP0_X540 0x02000000 /* Gen Purpose Interrupt on SDP0 */
+#define IXGBE_EICR_GPI_SDP1_X540 0x04000000 /* Gen Purpose Interrupt on SDP1 */
+#define IXGBE_EICR_GPI_SDP2_X540 0x08000000 /* Gen Purpose Interrupt on SDP2 */
+#define IXGBE_EICR_GPI_SDP0_BY_MAC(_hw)	((_hw)->mac.type >= ixgbe_mac_X540 ? \
+					 IXGBE_EICR_GPI_SDP0_X540 : \
+					 IXGBE_EICR_GPI_SDP0)
+#define IXGBE_EICR_GPI_SDP1_BY_MAC(_hw)	((_hw)->mac.type >= ixgbe_mac_X540 ? \
+					 IXGBE_EICR_GPI_SDP1_X540 : \
+					 IXGBE_EICR_GPI_SDP1)
+#define IXGBE_EICR_GPI_SDP2_BY_MAC(_hw)	((_hw)->mac.type >= ixgbe_mac_X540 ? \
+					 IXGBE_EICR_GPI_SDP2_X540 : \
+					 IXGBE_EICR_GPI_SDP2)
 #define IXGBE_EICR_PBUR		0x10000000 /* Packet Buffer Handler Error */
 #define IXGBE_EICR_DHER		0x20000000 /* Descriptor Handler Error */
 #define IXGBE_EICR_TCP_TIMER	0x40000000 /* TCP Timer */
@@ -1676,6 +1697,9 @@ enum {
 #define IXGBE_EICS_GPI_SDP1	IXGBE_EICR_GPI_SDP1 /* SDP1 Gen Purpose Int */
 #define IXGBE_EICS_GPI_SDP2	IXGBE_EICR_GPI_SDP2 /* SDP2 Gen Purpose Int */
 #define IXGBE_EICS_ECC		IXGBE_EICR_ECC /* ECC Error */
+#define IXGBE_EICS_GPI_SDP0_BY_MAC(_hw)	IXGBE_EICR_GPI_SDP0_BY_MAC(_hw)
+#define IXGBE_EICS_GPI_SDP1_BY_MAC(_hw)	IXGBE_EICR_GPI_SDP1_BY_MAC(_hw)
+#define IXGBE_EICS_GPI_SDP2_BY_MAC(_hw)	IXGBE_EICR_GPI_SDP2_BY_MAC(_hw)
 #define IXGBE_EICS_PBUR		IXGBE_EICR_PBUR /* Pkt Buf Handler Err */
 #define IXGBE_EICS_DHER		IXGBE_EICR_DHER /* Desc Handler Error */
 #define IXGBE_EICS_TCP_TIMER	IXGBE_EICR_TCP_TIMER /* TCP Timer */
@@ -1695,6 +1719,9 @@ enum {
 #define IXGBE_EIMS_GPI_SDP1	IXGBE_EICR_GPI_SDP1 /* SDP1 Gen Purpose Int */
 #define IXGBE_EIMS_GPI_SDP2	IXGBE_EICR_GPI_SDP2 /* SDP2 Gen Purpose Int */
 #define IXGBE_EIMS_ECC		IXGBE_EICR_ECC /* ECC Error */
+#define IXGBE_EIMS_GPI_SDP0_BY_MAC(_hw)	IXGBE_EICR_GPI_SDP0_BY_MAC(_hw)
+#define IXGBE_EIMS_GPI_SDP1_BY_MAC(_hw)	IXGBE_EICR_GPI_SDP1_BY_MAC(_hw)
+#define IXGBE_EIMS_GPI_SDP2_BY_MAC(_hw)	IXGBE_EICR_GPI_SDP2_BY_MAC(_hw)
 #define IXGBE_EIMS_PBUR		IXGBE_EICR_PBUR /* Pkt Buf Handler Err */
 #define IXGBE_EIMS_DHER		IXGBE_EICR_DHER /* Descr Handler Error */
 #define IXGBE_EIMS_TCP_TIMER	IXGBE_EICR_TCP_TIMER /* TCP Timer */
@@ -1713,6 +1740,9 @@ enum {
 #define IXGBE_EIMC_GPI_SDP1	IXGBE_EICR_GPI_SDP1 /* SDP1 Gen Purpose Int */
 #define IXGBE_EIMC_GPI_SDP2	IXGBE_EICR_GPI_SDP2  /* SDP2 Gen Purpose Int */
 #define IXGBE_EIMC_ECC		IXGBE_EICR_ECC /* ECC Error */
+#define IXGBE_EIMC_GPI_SDP0_BY_MAC(_hw)	IXGBE_EICR_GPI_SDP0_BY_MAC(_hw)
+#define IXGBE_EIMC_GPI_SDP1_BY_MAC(_hw)	IXGBE_EICR_GPI_SDP1_BY_MAC(_hw)
+#define IXGBE_EIMC_GPI_SDP2_BY_MAC(_hw)	IXGBE_EICR_GPI_SDP2_BY_MAC(_hw)
 #define IXGBE_EIMC_PBUR		IXGBE_EICR_PBUR /* Pkt Buf Handler Err */
 #define IXGBE_EIMC_DHER		IXGBE_EICR_DHER /* Desc Handler Err */
 #define IXGBE_EIMC_TCP_TIMER	IXGBE_EICR_TCP_TIMER /* TCP Timer */
@@ -2013,6 +2043,7 @@ enum {
 #define IXGBE_GSSR_PHY1_SM		0x0004
 #define IXGBE_GSSR_MAC_CSR_SM		0x0008
 #define IXGBE_GSSR_FLASH_SM		0x0010
+#define IXGBE_GSSR_NVM_UPDATE_SM	0x0200
 #define IXGBE_GSSR_SW_MNG_SM		0x0400
 #define IXGBE_GSSR_SHARED_I2C_SM 0x1806 /* Wait for both phys and both I2Cs */
 #define IXGBE_GSSR_I2C_MASK	0x1800
