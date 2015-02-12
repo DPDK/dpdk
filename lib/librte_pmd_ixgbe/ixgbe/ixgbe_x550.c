@@ -1513,7 +1513,8 @@ s32 ixgbe_read_ee_hostif_data_X550(struct ixgbe_hw *hw, u16 offset,
 	buffer.length = IXGBE_CPU_TO_BE16(sizeof(u16));
 
 	status = ixgbe_host_interface_command(hw, (u32 *)&buffer,
-					      sizeof(buffer), false);
+					      sizeof(buffer),
+					      IXGBE_HI_COMMAND_TIMEOUT, false);
 
 	if (status)
 		return status;
@@ -1592,7 +1593,9 @@ s32 ixgbe_read_ee_hostif_buffer_X550(struct ixgbe_hw *hw,
 		buffer.length = IXGBE_CPU_TO_BE16(words_to_read * 2);
 
 		status = ixgbe_host_interface_command(hw, (u32 *)&buffer,
-						      sizeof(buffer), false);
+						      sizeof(buffer),
+						      IXGBE_HI_COMMAND_TIMEOUT,
+						      false);
 
 		if (status) {
 			DEBUGOUT("Host interface command failed\n");
@@ -1648,7 +1651,8 @@ s32 ixgbe_write_ee_hostif_data_X550(struct ixgbe_hw *hw, u16 offset,
 	buffer.address = IXGBE_CPU_TO_BE32(offset * 2);
 
 	status = ixgbe_host_interface_command(hw, (u32 *)&buffer,
-					      sizeof(buffer), false);
+					      sizeof(buffer),
+					      IXGBE_HI_COMMAND_TIMEOUT, false);
 
 	return status;
 }
@@ -1997,7 +2001,8 @@ s32 ixgbe_update_flash_X550(struct ixgbe_hw *hw)
 	buffer.req.checksum = FW_DEFAULT_CHECKSUM;
 
 	status = ixgbe_host_interface_command(hw, (u32 *)&buffer,
-					      sizeof(buffer), false);
+					      sizeof(buffer),
+					      IXGBE_HI_COMMAND_TIMEOUT, false);
 
 	return status;
 }
@@ -2094,7 +2099,7 @@ void ixgbe_disable_rx_x550(struct ixgbe_hw *hw)
 
 		status = ixgbe_host_interface_command(hw, (u32 *)&fw_cmd,
 					sizeof(struct ixgbe_hic_disable_rxen),
-					true);
+					IXGBE_HI_COMMAND_TIMEOUT, true);
 
 		/* If we fail - disable RX using register write */
 		if (status) {

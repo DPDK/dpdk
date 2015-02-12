@@ -4381,6 +4381,7 @@ s32 ixgbe_get_hi_status(struct ixgbe_hw *hw, u8 *ret_status)
  *  @buffer: contains the command to write and where the return status will
  *   be placed
  *  @length: length of buffer, must be multiple of 4 bytes
+ *  @timeout: time in ms to wait for command completion
  *  @return_data: read and return data from the buffer (true) or not (false)
  *   Needed because FW structures are big endian and decoding of
  *   these fields can be 8 bit or 16 bit based on command. Decoding
@@ -4392,12 +4393,12 @@ s32 ixgbe_get_hi_status(struct ixgbe_hw *hw, u8 *ret_status)
  *  else return IXGBE_ERR_HOST_INTERFACE_COMMAND.
  **/
 s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
-				 u32 length, bool return_data)
+				 u32 length, u32 timeout, bool return_data)
 {
 	u32 hicr, i, bi, fwsts;
 	u32 hdr_size = sizeof(struct ixgbe_hic_hdr);
 	u16 buf_len;
-	u8 dword_len;
+	u16 dword_len;
 
 	DEBUGFUNC("ixgbe_host_interface_command");
 
@@ -4434,7 +4435,7 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 	/* Setting this bit tells the ARC that a new command is pending. */
 	IXGBE_WRITE_REG(hw, IXGBE_HICR, hicr | IXGBE_HICR_C);
 
-	for (i = 0; i < IXGBE_HI_COMMAND_TIMEOUT; i++) {
+	for (i = 0; i < timeout; i++) {
 		hicr = IXGBE_READ_REG(hw, IXGBE_HICR);
 		if (!(hicr & IXGBE_HICR_C))
 			break;
@@ -4442,7 +4443,7 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 	}
 
 	/* Check command completion */
-	if (i == IXGBE_HI_COMMAND_TIMEOUT ||
+	if ((timeout != 0 && i == timeout) ||
 	    !(IXGBE_READ_REG(hw, IXGBE_HICR) & IXGBE_HICR_SV)) {
 		ERROR_REPORT1(IXGBE_ERROR_CAUTION,
 			     "Command has failed with no status valid.\n");
@@ -4527,7 +4528,9 @@ s32 ixgbe_set_fw_drv_ver_generic(struct ixgbe_hw *hw, u8 maj, u8 min,
 
 	for (i = 0; i <= FW_CEM_MAX_RETRIES; i++) {
 		ret_val = ixgbe_host_interface_command(hw, (u32 *)&fw_cmd,
-						       sizeof(fw_cmd), true);
+						       sizeof(fw_cmd),
+						       IXGBE_HI_COMMAND_TIMEOUT,
+						       true);
 		if (ret_val != IXGBE_SUCCESS)
 			continue;
 
