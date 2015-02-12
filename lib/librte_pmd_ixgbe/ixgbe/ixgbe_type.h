@@ -74,6 +74,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "ixgbe_osdep.h"
 
+/* Override this by setting IOMEM in your ixgbe_osdep.h header */
 
 /* Vendor ID */
 #define IXGBE_INTEL_VENDOR_ID			0x8086
@@ -3689,7 +3690,7 @@ struct ixgbe_mbx_info {
 };
 
 struct ixgbe_hw {
-	u8 *hw_addr;
+	u8 IOMEM *hw_addr;
 	void *back;
 	struct ixgbe_mac_info mac;
 	struct ixgbe_addr_filter_info addr_ctrl;

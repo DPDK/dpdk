@@ -113,6 +113,8 @@ typedef int		bool;
 #define wmb()	rte_wmb()
 #define rmb()	rte_rmb()
 
+#define IOMEM
+
 #define prefetch(x) rte_prefetch0(x)
 
 #define IXGBE_PCI_REG(reg) (*((volatile uint32_t *)(reg)))
