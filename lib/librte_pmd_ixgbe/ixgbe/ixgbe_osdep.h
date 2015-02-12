@@ -119,11 +119,11 @@ typedef int		bool;
 
 static inline uint32_t ixgbe_read_addr(volatile void* addr)
 {
-	return IXGBE_PCI_REG(addr);
+	return rte_le_to_cpu_32(IXGBE_PCI_REG(addr));
 }
 
 #define IXGBE_PCI_REG_WRITE(reg, value) do { \
-	IXGBE_PCI_REG((reg)) = (value); \
+	IXGBE_PCI_REG((reg)) = (rte_cpu_to_le_32(value)); \
 } while(0)
 
 #define IXGBE_PCI_REG_ADDR(hw, reg) \
