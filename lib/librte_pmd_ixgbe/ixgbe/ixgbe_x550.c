@@ -1063,6 +1063,8 @@ s32 ixgbe_setup_kr_x550em(struct ixgbe_hw *hw)
 	status = ixgbe_read_iosf_sb_reg_x550(hw,
 		IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
 		IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
+	if (status)
+		return status;
 
 	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_ENABLE;
 	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_FEC_REQ;
