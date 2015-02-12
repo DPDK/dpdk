@@ -339,11 +339,11 @@ extern queueid_t nb_txq;
 extern uint16_t nb_rxd;
 extern uint16_t nb_txd;
 
-extern uint16_t rx_free_thresh;
-extern uint8_t rx_drop_en;
-extern uint16_t tx_free_thresh;
-extern uint16_t tx_rs_thresh;
-extern uint32_t txq_flags;
+extern int16_t rx_free_thresh;
+extern int8_t rx_drop_en;
+extern int16_t tx_free_thresh;
+extern int16_t tx_rs_thresh;
+extern int32_t txq_flags;
 
 extern uint8_t dcb_config;
 extern uint8_t dcb_test;
@@ -364,8 +364,12 @@ extern uint8_t  tx_pkt_nb_segs; /**< Number of segments in TX packets */
 
 extern uint16_t nb_pkt_per_burst;
 extern uint16_t mb_mempool_cache;
-extern struct rte_eth_thresh rx_thresh;
-extern struct rte_eth_thresh tx_thresh;
+extern int8_t rx_pthresh;
+extern int8_t rx_hthresh;
+extern int8_t rx_wthresh;
+extern int8_t tx_pthresh;
+extern int8_t tx_hthresh;
+extern int8_t tx_wthresh;
 
 extern struct fwd_config cur_fwd_config;
 extern struct fwd_engine *cur_fwd_eng;

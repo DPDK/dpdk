@@ -2097,17 +2097,17 @@ cmd_config_thresh_parsed(void *parsed_result,
 	}
 
 	if (!strcmp(res->name, "txpt"))
-		tx_thresh.pthresh = res->value;
+		tx_pthresh = res->value;
 	else if(!strcmp(res->name, "txht"))
-		tx_thresh.hthresh = res->value;
+		tx_hthresh = res->value;
 	else if(!strcmp(res->name, "txwt"))
-		tx_thresh.wthresh = res->value;
+		tx_wthresh = res->value;
 	else if(!strcmp(res->name, "rxpt"))
-		rx_thresh.pthresh = res->value;
+		rx_pthresh = res->value;
 	else if(!strcmp(res->name, "rxht"))
-		rx_thresh.hthresh = res->value;
+		rx_hthresh = res->value;
 	else if(!strcmp(res->name, "rxwt"))
-		rx_thresh.wthresh = res->value;
+		rx_wthresh = res->value;
 	else {
 		printf("Unknown parameter\n");
 		return;

@@ -774,18 +774,23 @@ rxtx_config_display(void)
 		printf("  packet len=%u - nb packet segments=%d\n",
 				(unsigned)tx_pkt_length, (int) tx_pkt_nb_segs);
 
+	struct rte_eth_rxconf *rx_conf = &ports[0].rx_conf;
+	struct rte_eth_txconf *tx_conf = &ports[0].tx_conf;
+
 	printf("  nb forwarding cores=%d - nb forwarding ports=%d\n",
 	       nb_fwd_lcores, nb_fwd_ports);
 	printf("  RX queues=%d - RX desc=%d - RX free threshold=%d\n",
-	       nb_rxq, nb_rxd, rx_free_thresh);
+	       nb_rxq, nb_rxd, rx_conf->rx_free_thresh);
 	printf("  RX threshold registers: pthresh=%d hthresh=%d wthresh=%d\n",
-	       rx_thresh.pthresh, rx_thresh.hthresh, rx_thresh.wthresh);
+	       rx_conf->rx_thresh.pthresh, rx_conf->rx_thresh.hthresh,
+	       rx_conf->rx_thresh.wthresh);
 	printf("  TX queues=%d - TX desc=%d - TX free threshold=%d\n",
-	       nb_txq, nb_txd, tx_free_thresh);
+	       nb_txq, nb_txd, tx_conf->tx_free_thresh);
 	printf("  TX threshold registers: pthresh=%d hthresh=%d wthresh=%d\n",
-	       tx_thresh.pthresh, tx_thresh.hthresh, tx_thresh.wthresh);
+	       tx_conf->tx_thresh.pthresh, tx_conf->tx_thresh.hthresh,
+	       tx_conf->tx_thresh.wthresh);
 	printf("  TX RS bit threshold=%d - TXQ flags=0x%"PRIx32"\n",
-	       tx_rs_thresh, txq_flags);
+	       tx_conf->tx_rs_thresh, tx_conf->txq_flags);
 }
 
 void

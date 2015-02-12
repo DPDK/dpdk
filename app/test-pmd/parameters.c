@@ -835,14 +835,14 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "txfreet")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					tx_free_thresh = (uint16_t)n;
+					tx_free_thresh = (int16_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "txfreet must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "txrst")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					tx_rs_thresh = (uint16_t)n;
+					tx_rs_thresh = (int16_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "txrst must be >= 0\n");
 			}
@@ -850,7 +850,7 @@ launch_args_parse(int argc, char** argv)
 				char *end = NULL;
 				n = strtoul(optarg, &end, 16);
 				if (n >= 0)
-					txq_flags = (uint32_t)n;
+					txq_flags = (int32_t)n;
 				else
 					rte_exit(EXIT_FAILURE,
 						 "txqflags must be >= 0\n");
@@ -880,49 +880,49 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "txpt")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					tx_thresh.pthresh = (uint8_t)n;
+					tx_pthresh = (int8_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "txpt must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "txht")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					tx_thresh.hthresh = (uint8_t)n;
+					tx_hthresh = (int8_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "txht must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "txwt")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					tx_thresh.wthresh = (uint8_t)n;
+					tx_wthresh = (int8_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "txwt must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "rxpt")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					rx_thresh.pthresh = (uint8_t)n;
+					rx_pthresh = (int8_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "rxpt must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "rxht")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					rx_thresh.hthresh = (uint8_t)n;
+					rx_hthresh = (int8_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "rxht must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "rxwt")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					rx_thresh.wthresh = (uint8_t)n;
+					rx_wthresh = (int8_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "rxwt must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "rxfreet")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					rx_free_thresh = (uint16_t)n;
+					rx_free_thresh = (int16_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "rxfreet must be >= 0\n");
 			}

@@ -199,55 +199,43 @@ queueid_t nb_txq = 1; /**< Number of TX queues per port. */
 uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT; /**< Number of RX descriptors. */
 uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT; /**< Number of TX descriptors. */
 
+#define RTE_PMD_PARAM_UNSET -1
 /*
  * Configurable values of RX and TX ring threshold registers.
  */
-#define RX_PTHRESH 8 /**< Default value of RX prefetch threshold register. */
-#define RX_HTHRESH 8 /**< Default value of RX host threshold register. */
-#define RX_WTHRESH 0 /**< Default value of RX write-back threshold register. */
 
-#define TX_PTHRESH 32 /**< Default value of TX prefetch threshold register. */
-#define TX_HTHRESH 0 /**< Default value of TX host threshold register. */
-#define TX_WTHRESH 0 /**< Default value of TX write-back threshold register. */
+int8_t rx_pthresh = RTE_PMD_PARAM_UNSET;
+int8_t rx_hthresh = RTE_PMD_PARAM_UNSET;
+int8_t rx_wthresh = RTE_PMD_PARAM_UNSET;
 
-struct rte_eth_thresh rx_thresh = {
-	.pthresh = RX_PTHRESH,
-	.hthresh = RX_HTHRESH,
-	.wthresh = RX_WTHRESH,
-};
-
-struct rte_eth_thresh tx_thresh = {
-	.pthresh = TX_PTHRESH,
-	.hthresh = TX_HTHRESH,
-	.wthresh = TX_WTHRESH,
-};
+int8_t tx_pthresh = RTE_PMD_PARAM_UNSET;
+int8_t tx_hthresh = RTE_PMD_PARAM_UNSET;
+int8_t tx_wthresh = RTE_PMD_PARAM_UNSET;
 
 /*
  * Configurable value of RX free threshold.
  */
-uint16_t rx_free_thresh = 32; /* Refill RX descriptors once every 32 packets,
-		This setting is needed for ixgbe to enable bulk alloc or vector
-		receive functionality. */
+int16_t rx_free_thresh = RTE_PMD_PARAM_UNSET;
 
 /*
  * Configurable value of RX drop enable.
  */
-uint8_t rx_drop_en = 0; /* Drop packets when no descriptors for queue. */
+int8_t rx_drop_en = RTE_PMD_PARAM_UNSET;
 
 /*
  * Configurable value of TX free threshold.
  */
-uint16_t tx_free_thresh = 0; /* Use default values. */
+int16_t tx_free_thresh = RTE_PMD_PARAM_UNSET;
 
 /*
  * Configurable value of TX RS bit threshold.
  */
-uint16_t tx_rs_thresh = 0; /* Use default values. */
+int16_t tx_rs_thresh = RTE_PMD_PARAM_UNSET;
 
 /*
  * Configurable value of TX queue flags.
  */
-uint32_t txq_flags = 0; /* No flags set. */
+int32_t txq_flags = RTE_PMD_PARAM_UNSET;
 
 /*
  * Receive Side Scaling (RSS) configuration.
@@ -1682,6 +1670,47 @@ map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port)
 	}
 }
 
+static void
+rxtx_port_config(struct rte_port *port)
+{
+	port->rx_conf = port->dev_info.default_rxconf;
+	port->tx_conf = port->dev_info.default_txconf;
+
+	/* Check if any RX/TX parameters have been passed */
+	if (rx_pthresh != RTE_PMD_PARAM_UNSET)
+		port->rx_conf.rx_thresh.pthresh = rx_pthresh;
+
+	if (rx_hthresh != RTE_PMD_PARAM_UNSET)
+		port->rx_conf.rx_thresh.hthresh = rx_hthresh;
+
+	if (rx_wthresh != RTE_PMD_PARAM_UNSET)
+		port->rx_conf.rx_thresh.wthresh = rx_wthresh;
+
+	if (rx_free_thresh != RTE_PMD_PARAM_UNSET)
+		port->rx_conf.rx_free_thresh = rx_free_thresh;
+
+	if (rx_drop_en != RTE_PMD_PARAM_UNSET)
+		port->rx_conf.rx_drop_en = rx_drop_en;
+
+	if (tx_pthresh != RTE_PMD_PARAM_UNSET)
+		port->tx_conf.tx_thresh.pthresh = tx_pthresh;
+
+	if (tx_hthresh != RTE_PMD_PARAM_UNSET)
+		port->tx_conf.tx_thresh.hthresh = tx_hthresh;
+
+	if (tx_wthresh != RTE_PMD_PARAM_UNSET)
+		port->tx_conf.tx_thresh.wthresh = tx_wthresh;
+
+	if (tx_rs_thresh != RTE_PMD_PARAM_UNSET)
+		port->tx_conf.tx_rs_thresh = tx_rs_thresh;
+
+	if (tx_free_thresh != RTE_PMD_PARAM_UNSET)
+		port->tx_conf.tx_free_thresh = tx_free_thresh;
+
+	if (txq_flags != RTE_PMD_PARAM_UNSET)
+		port->tx_conf.txq_flags = txq_flags;
+}
+
 void
 init_port_config(void)
 {
@@ -1718,13 +1747,7 @@ init_port_config(void)
 			port->dev_conf.txmode.mq_mode = ETH_MQ_TX_NONE;
 		}
 
-		port->rx_conf.rx_thresh = rx_thresh;
-		port->rx_conf.rx_free_thresh = rx_free_thresh;
-		port->rx_conf.rx_drop_en = rx_drop_en;
-		port->tx_conf.tx_thresh = tx_thresh;
-		port->tx_conf.tx_rs_thresh = tx_rs_thresh;
-		port->tx_conf.tx_free_thresh = tx_free_thresh;
-		port->tx_conf.txq_flags = txq_flags;
+		rxtx_port_config(port);
 
 		rte_eth_macaddr_get(pid, &port->eth_addr);
 
@@ -1846,11 +1869,7 @@ init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf)
 	rte_port = &ports[pid];
 	memcpy(&rte_port->dev_conf, &port_conf,sizeof(struct rte_eth_conf));
 
-	rte_port->rx_conf.rx_thresh = rx_thresh;
-	rte_port->rx_conf.rx_free_thresh = rx_free_thresh;
-	rte_port->tx_conf.tx_thresh = tx_thresh;
-	rte_port->tx_conf.tx_rs_thresh = tx_rs_thresh;
-	rte_port->tx_conf.tx_free_thresh = tx_free_thresh;
+	rxtx_port_config(rte_port);
 	/* VLAN filter */
 	rte_port->dev_conf.rxmode.hw_vlan_filter = 1;
 	for (i = 0; i < nb_vlan; i++){
