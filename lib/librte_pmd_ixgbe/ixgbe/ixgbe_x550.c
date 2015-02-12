@@ -109,9 +109,11 @@ STATIC s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 		hw->phy.type = ixgbe_phy_x550em_kx4;
 		break;
 	case IXGBE_DEV_ID_X550EM_X_KR:
-	case IXGBE_DEV_ID_X550EM_X:
 		hw->phy.type = ixgbe_phy_x550em_kr;
 		break;
+	case IXGBE_DEV_ID_X550EM_X_1G_T:
+	case IXGBE_DEV_ID_X550EM_X_10G_T:
+		return ixgbe_identify_phy_generic(hw);
 	default:
 		break;
 	}
@@ -401,8 +403,7 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 
 			hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
 				IXGBE_MDIO_AUTO_NEG_DEV_TYPE, autoneg_eee_reg);
-		} else if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR ||
-			   hw->device_id == IXGBE_DEV_ID_X550EM_X) {
+		} else if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR) {
 			status = ixgbe_read_iosf_sb_reg_x550(hw,
 				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
@@ -432,8 +433,7 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 
 			hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
 				IXGBE_MDIO_AUTO_NEG_DEV_TYPE, autoneg_eee_reg);
-		} else if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR ||
-			   hw->device_id == IXGBE_DEV_ID_X550EM_X) {
+		} else if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR) {
 			status = ixgbe_read_iosf_sb_reg_x550(hw,
 				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
@@ -764,13 +764,16 @@ enum ixgbe_media_type ixgbe_get_media_type_X550em(struct ixgbe_hw *hw)
 
 	/* Detect if there is a copper PHY attached. */
 	switch (hw->device_id) {
-	case IXGBE_DEV_ID_X550EM_X:
 	case IXGBE_DEV_ID_X550EM_X_KR:
 	case IXGBE_DEV_ID_X550EM_X_KX4:
 		media_type = ixgbe_media_type_backplane;
 		break;
 	case IXGBE_DEV_ID_X550EM_X_SFP:
 		media_type = ixgbe_media_type_fiber;
+		break;
+	case IXGBE_DEV_ID_X550EM_X_1G_T:
+	case IXGBE_DEV_ID_X550EM_X_10G_T:
+		media_type = ixgbe_media_type_copper;
 		break;
 	default:
 		media_type = ixgbe_media_type_unknown;

@@ -167,9 +167,10 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_X550T:
 		hw->mac.type = ixgbe_mac_X550;
 		break;
-	case IXGBE_DEV_ID_X550EM_X:
 	case IXGBE_DEV_ID_X550EM_X_KX4:
 	case IXGBE_DEV_ID_X550EM_X_KR:
+	case IXGBE_DEV_ID_X550EM_X_10G_T:
+	case IXGBE_DEV_ID_X550EM_X_1G_T:
 	case IXGBE_DEV_ID_X550EM_X_SFP:
 		hw->mac.type = ixgbe_mac_X550EM_x;
 		break;
