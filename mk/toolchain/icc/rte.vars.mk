@@ -69,8 +69,12 @@ TOOLCHAIN_ASFLAGS =
 #   error #13368: loop was not vectorized with "vector always assert"
 #   error #15527: loop was not vectorized: function call to fprintf cannot be vectorize
 #                   was declared "deprecated"
-WERROR_FLAGS := -Wall -Werror-all -w2 -diag-disable 271 -diag-warning 1478
+WERROR_FLAGS := -Wall -w2 -diag-disable 271 -diag-warning 1478
 WERROR_FLAGS += -diag-disable 13368 -diag-disable 15527
+
+ifeq ($(RTE_DEVEL_BUILD),y)
+WERROR_FLAGS += -Werror-all
+endif
 
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk

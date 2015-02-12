@@ -343,6 +343,8 @@ Useful Variables Provided by the Build System
     By default, the variable is set to /lib/modules/$(shell uname -r)/build,
     which is correct when the target machine is also the build machine.
 
+*   RTE_DEVEL_BUILD: Stricter options (stop on warning). It defaults to y in a git tree.
+
 Variables that Can be Set/Overridden in a Makefile Only
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

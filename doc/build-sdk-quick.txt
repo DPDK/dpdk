@@ -15,6 +15,7 @@ Build variables
 	EXTRA_LDFLAGS    linker options
 	EXTRA_LDLIBS     linker library options
 	RTE_KERNELDIR    linux headers path
+	RTE_DEVEL_BUILD  stricter options (default: y in git tree)
 	CROSS     toolchain prefix
 	V         verbose
 	D         debug dependencies

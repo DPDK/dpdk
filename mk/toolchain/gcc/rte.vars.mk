@@ -71,11 +71,15 @@ ifeq (,$(findstring -O0,$(EXTRA_CFLAGS)))
 endif
 endif
 
-WERROR_FLAGS := -W -Wall -Werror -Wstrict-prototypes -Wmissing-prototypes
+WERROR_FLAGS := -W -Wall -Wstrict-prototypes -Wmissing-prototypes
 WERROR_FLAGS += -Wmissing-declarations -Wold-style-definition -Wpointer-arith
 WERROR_FLAGS += -Wcast-align -Wnested-externs -Wcast-qual
 WERROR_FLAGS += -Wformat-nonliteral -Wformat-security
 WERROR_FLAGS += -Wundef -Wwrite-strings
+
+ifeq ($(RTE_DEVEL_BUILD),y)
+WERROR_FLAGS += -Werror
+endif
 
 # There are many issues reported for ARMv7 architecture
 # which are not necessarily fatal. Report as warnings.
