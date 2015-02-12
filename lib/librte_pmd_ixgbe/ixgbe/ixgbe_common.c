@@ -4579,7 +4579,8 @@ void ixgbe_set_rxpba_generic(struct ixgbe_hw *hw, int num_pb, u32 headroom,
  **/
 void ixgbe_clear_tx_pending(struct ixgbe_hw *hw)
 {
-	u32 gcr_ext, hlreg0;
+	u32 gcr_ext, hlreg0, i, poll;
+	u16 value;
 
 	/*
 	 * If double reset is not requested then all transactions should
@@ -4596,6 +4597,25 @@ void ixgbe_clear_tx_pending(struct ixgbe_hw *hw)
 	hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0 | IXGBE_HLREG0_LPBK);
 
+	/* Wait for a last completion before clearing buffers */
+	IXGBE_WRITE_FLUSH(hw);
+	msec_delay(3);
+
+	/*
+	 * Before proceeding, make sure that the PCIe block does not have
+	 * transactions pending.
+	 */
+	poll = ixgbe_pcie_timeout_poll(hw);
+	for (i = 0; i < poll; i++) {
+		usec_delay(100);
+		value = IXGBE_READ_PCIE_WORD(hw, IXGBE_PCI_DEVICE_STATUS);
+		if (IXGBE_REMOVED(hw->hw_addr))
+			goto out;
+		if (!(value & IXGBE_PCI_DEVICE_STATUS_TRANSACTION_PENDING))
+			goto out;
+	}
+
+out:
 	/* initiate cleaning flow for buffers in the PCIe transaction layer */
 	gcr_ext = IXGBE_READ_REG(hw, IXGBE_GCR_EXT);
 	IXGBE_WRITE_REG(hw, IXGBE_GCR_EXT,
