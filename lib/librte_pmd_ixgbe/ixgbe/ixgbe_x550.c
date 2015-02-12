@@ -820,7 +820,7 @@ s32 ixgbe_setup_sfp_modules_X550em(struct ixgbe_hw *hw)
 	hw->phy.ops.reset = NULL;
 
 	/* The CS4227 slice address is the base address + the port-pair reg
-	 * offset. I.e. Slice 0 = 0x0000 and slice 1 = 0x1000.
+	 * offset. I.e. Slice 0 = 0x12B0 and slice 1 = 0x22B0.
 	 */
 	reg_slice = IXGBE_CS4227_SPARE24_LSB + (hw->phy.lan_id << 12);
 
@@ -832,6 +832,10 @@ s32 ixgbe_setup_sfp_modules_X550em(struct ixgbe_hw *hw)
 	/* Configure CS4227 for connection type. */
 	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
 					   edc_mode);
+
+	if (ret_val != IXGBE_SUCCESS)
+		ret_val = ixgbe_write_i2c_combined(hw, 0x80, reg_slice,
+						   edc_mode);
 
 	return ret_val;
 }
