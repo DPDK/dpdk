@@ -940,6 +940,11 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 
 	/* Set functions pointers based on phy type */
 	switch (hw->phy.type) {
+	case ixgbe_phy_x550em_kx4:
+		phy->ops.setup_link = ixgbe_setup_kx4_x550em;
+		phy->ops.read_reg = ixgbe_read_phy_reg_x550em;
+		phy->ops.write_reg = ixgbe_write_phy_reg_x550em;
+		break;
 	case ixgbe_phy_x550em_kr:
 		phy->ops.setup_link = ixgbe_setup_kr_x550em;
 		phy->ops.read_reg = ixgbe_read_phy_reg_x550em;
@@ -1194,7 +1199,44 @@ s32 ixgbe_setup_kr_x550em(struct ixgbe_hw *hw)
 }
 
 /**
- *  ixgbe_setup_ixfi_x550em - Configure the KR PHY for iXFI.
+ *  ixgbe_setup_kx4_x550em - Configure the KX4 PHY.
+ *  @hw: pointer to hardware structure
+ *
+ *  Configures the integrated KX4 PHY.
+ **/
+s32 ixgbe_setup_kx4_x550em(struct ixgbe_hw *hw)
+{
+	s32 status;
+	u32 reg_val;
+
+	status = ixgbe_read_iosf_sb_reg_x550(hw, IXGBE_KX4_LINK_CNTL_1,
+		IXGBE_SB_IOSF_TARGET_KX4_PCS0 + hw->bus.lan_id, &reg_val);
+	if (status)
+		return status;
+
+	reg_val &= ~(IXGBE_KX4_LINK_CNTL_1_TETH_AN_CAP_KX4 |
+			IXGBE_KX4_LINK_CNTL_1_TETH_AN_CAP_KX);
+
+	reg_val |= IXGBE_KX4_LINK_CNTL_1_TETH_AN_ENABLE;
+
+	/* Advertise 10G support. */
+	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_10GB_FULL)
+		reg_val |= IXGBE_KX4_LINK_CNTL_1_TETH_AN_CAP_KX4;
+
+	/* Advertise 1G support. */
+	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_1GB_FULL)
+		reg_val |= IXGBE_KX4_LINK_CNTL_1_TETH_AN_CAP_KX;
+
+	/* Restart auto-negotiation. */
+	reg_val |= IXGBE_KX4_LINK_CNTL_1_TETH_AN_RESTART;
+	status = ixgbe_write_iosf_sb_reg_x550(hw, IXGBE_KX4_LINK_CNTL_1,
+		IXGBE_SB_IOSF_TARGET_KX4_PCS0 + hw->bus.lan_id, reg_val);
+
+	return status;
+}
+
+/**
+ *  ixgbe_setup_ixfi_x550em - Configure the KR PHY for iXFI mode.
  *  @hw: pointer to hardware structure
  *  @speed: the link speed to force
  *
