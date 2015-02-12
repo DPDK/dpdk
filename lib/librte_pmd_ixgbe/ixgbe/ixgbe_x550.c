@@ -173,8 +173,9 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	mac->ops.disable_sec_rx_path = NULL;
 	mac->ops.enable_sec_rx_path = NULL;
 
-	/* PCIe bus info not supported in X550EM */
-	mac->ops.get_bus_info = NULL;
+	/* X550EM bus type is internal*/
+	hw->bus.type = ixgbe_bus_type_internal;
+	mac->ops.get_bus_info = ixgbe_get_bus_info_X550em;
 
 	mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550;
 	mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
@@ -1770,6 +1771,24 @@ u32 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw)
 		physical_layer = ixgbe_get_supported_phy_sfp_layer_generic(hw);
 
 	return physical_layer;
+}
+
+/**
+ * ixgbe_get_bus_info_x550em - Set PCI bus info
+ * @hw: pointer to hardware structure
+ *
+ * Sets bus link width and speed to unknown because X550em is
+ * not a PCI device.
+ **/
+s32 ixgbe_get_bus_info_X550em(struct ixgbe_hw *hw)
+{
+
+	DEBUGFUNC("ixgbe_get_bus_info_x550em");
+
+	hw->bus.width = ixgbe_bus_width_unknown;
+	hw->bus.speed = ixgbe_bus_speed_unknown;
+
+	return IXGBE_SUCCESS;
 }
 
 /**

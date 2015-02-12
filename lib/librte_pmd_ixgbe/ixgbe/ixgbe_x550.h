@@ -40,6 +40,7 @@ s32 ixgbe_dmac_config_X550(struct ixgbe_hw *hw);
 s32 ixgbe_dmac_config_tcs_X550(struct ixgbe_hw *hw);
 s32 ixgbe_dmac_update_tcs_X550(struct ixgbe_hw *hw);
 
+s32 ixgbe_get_bus_info_X550em(struct ixgbe_hw *hw);
 s32 ixgbe_init_eeprom_params_X550(struct ixgbe_hw *hw);
 s32 ixgbe_update_eeprom_checksum_X550(struct ixgbe_hw *hw);
 s32 ixgbe_calc_eeprom_checksum_X550(struct ixgbe_hw *hw);
