@@ -213,6 +213,10 @@ Intel i40e
 M: Helin Zhang <helin.zhang@intel.com>
 F: lib/librte_pmd_i40e/
 
+Intel fm10k
+M: Jing Chen <jing.d.chen@intel.com>
+F: lib/librte_pmd_fm10k/
+
 RedHat virtio
 M: Changchun Ouyang <changchun.ouyang@intel.com>
 F: lib/librte_pmd_virtio/
