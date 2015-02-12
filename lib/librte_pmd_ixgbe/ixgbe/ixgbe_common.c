@@ -953,7 +953,8 @@ void ixgbe_set_pci_config_data_generic(struct ixgbe_hw *hw, u16 link_status)
 {
 	struct ixgbe_mac_info *mac = &hw->mac;
 
-	hw->bus.type = ixgbe_bus_type_pci_express;
+	if (hw->bus.type == ixgbe_bus_type_unknown)
+		hw->bus.type = ixgbe_bus_type_pci_express;
 
 	switch (link_status & IXGBE_PCI_LINK_WIDTH) {
 	case IXGBE_PCI_LINK_WIDTH_1:
