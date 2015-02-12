@@ -176,7 +176,7 @@ pci_mknod_uio_dev(const char *sysfs_uio_path, unsigned uio_num)
 		return -1;
 	}
 
-	ret = fscanf(f, "%d:%d", &major, &minor);
+	ret = fscanf(f, "%u:%u", &major, &minor);
 	if (ret != 2) {
 		RTE_LOG(ERR, EAL, "%s(): cannot parse sysfs to get major:minor\n",
 			__func__);
