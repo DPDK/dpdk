@@ -2899,8 +2899,7 @@ STATIC s32 ixgbe_fc_autoneg_fiber(struct ixgbe_hw *hw)
 	linkstat = IXGBE_READ_REG(hw, IXGBE_PCS1GLSTA);
 	if ((!!(linkstat & IXGBE_PCS1GLSTA_AN_COMPLETE) == 0) ||
 	    (!!(linkstat & IXGBE_PCS1GLSTA_AN_TIMED_OUT) == 1)) {
-		ERROR_REPORT1(IXGBE_ERROR_POLLING,
-			     "Auto-Negotiation did not complete or timed out");
+		DEBUGOUT("Auto-Negotiation did not complete or timed out\n");
 		goto out;
 	}
 
@@ -2935,16 +2934,14 @@ STATIC s32 ixgbe_fc_autoneg_backplane(struct ixgbe_hw *hw)
 	 */
 	links = IXGBE_READ_REG(hw, IXGBE_LINKS);
 	if ((links & IXGBE_LINKS_KX_AN_COMP) == 0) {
-		ERROR_REPORT1(IXGBE_ERROR_POLLING,
-			     "Auto-Negotiation did not complete");
+		DEBUGOUT("Auto-Negotiation did not complete\n");
 		goto out;
 	}
 
 	if (hw->mac.type == ixgbe_mac_82599EB) {
 		links2 = IXGBE_READ_REG(hw, IXGBE_LINKS2);
 		if ((links2 & IXGBE_LINKS2_AN_SUPPORTED) == 0) {
-			ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
-				     "Link partner is not AN enabled");
+			DEBUGOUT("Link partner is not AN enabled\n");
 			goto out;
 		}
 	}
