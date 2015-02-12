@@ -744,6 +744,44 @@ s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
 				      autoneg_reg);
 	}
 
+	if (hw->mac.type == ixgbe_mac_X550) {
+		if (speed & IXGBE_LINK_SPEED_5GB_FULL) {
+			/* Set or unset auto-negotiation 1G advertisement */
+			hw->phy.ops.read_reg(hw,
+				IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
+				IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				&autoneg_reg);
+
+			autoneg_reg &= ~IXGBE_MII_5GBASE_T_ADVERTISE;
+			if (hw->phy.autoneg_advertised &
+			     IXGBE_LINK_SPEED_5GB_FULL)
+				autoneg_reg |= IXGBE_MII_5GBASE_T_ADVERTISE;
+
+			hw->phy.ops.write_reg(hw,
+				IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
+				IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				autoneg_reg);
+		}
+
+		if (speed & IXGBE_LINK_SPEED_2_5GB_FULL) {
+			/* Set or unset auto-negotiation 1G advertisement */
+			hw->phy.ops.read_reg(hw,
+				IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
+				IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				&autoneg_reg);
+
+			autoneg_reg &= ~IXGBE_MII_2_5GBASE_T_ADVERTISE;
+			if (hw->phy.autoneg_advertised &
+			    IXGBE_LINK_SPEED_2_5GB_FULL)
+				autoneg_reg |= IXGBE_MII_2_5GBASE_T_ADVERTISE;
+
+			hw->phy.ops.write_reg(hw,
+				IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
+				IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				autoneg_reg);
+		}
+	}
+
 	if (speed & IXGBE_LINK_SPEED_1GB_FULL) {
 		/* Set or unset auto-negotiation 1G advertisement */
 		hw->phy.ops.read_reg(hw,
@@ -815,6 +853,12 @@ s32 ixgbe_setup_phy_link_speed_generic(struct ixgbe_hw *hw,
 	if (speed & IXGBE_LINK_SPEED_10GB_FULL)
 		hw->phy.autoneg_advertised |= IXGBE_LINK_SPEED_10GB_FULL;
 
+	if (speed & IXGBE_LINK_SPEED_5GB_FULL)
+		hw->phy.autoneg_advertised |= IXGBE_LINK_SPEED_5GB_FULL;
+
+	if (speed & IXGBE_LINK_SPEED_2_5GB_FULL)
+		hw->phy.autoneg_advertised |= IXGBE_LINK_SPEED_2_5GB_FULL;
+
 	if (speed & IXGBE_LINK_SPEED_1GB_FULL)
 		hw->phy.autoneg_advertised |= IXGBE_LINK_SPEED_1GB_FULL;
 
@@ -833,7 +877,8 @@ s32 ixgbe_setup_phy_link_speed_generic(struct ixgbe_hw *hw,
  *  @speed: pointer to link speed
  *  @autoneg: boolean auto-negotiation value
  *
- *  Determines the link capabilities by reading the AUTOC register.
+ *  Determines the supported link capabilities by reading the PHY auto
+ *  negotiation register.
  **/
 s32 ixgbe_get_copper_link_capabilities_generic(struct ixgbe_hw *hw,
 					       ixgbe_link_speed *speed,
@@ -858,6 +903,15 @@ s32 ixgbe_get_copper_link_capabilities_generic(struct ixgbe_hw *hw,
 			*speed |= IXGBE_LINK_SPEED_1GB_FULL;
 		if (speed_ability & IXGBE_MDIO_PHY_SPEED_100M)
 			*speed |= IXGBE_LINK_SPEED_100_FULL;
+	}
+
+	/* Internal PHY does not support 100 Mbps */
+	if (hw->mac.type == ixgbe_mac_X550EM_x)
+		*speed &= ~IXGBE_LINK_SPEED_100_FULL;
+
+	if (hw->mac.type == ixgbe_mac_X550) {
+		*speed |= IXGBE_LINK_SPEED_2_5GB_FULL;
+		*speed |= IXGBE_LINK_SPEED_5GB_FULL;
 	}
 
 	return status;
