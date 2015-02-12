@@ -566,6 +566,17 @@ s32 ixgbe_setup_phy_link_speed(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 }
 
 /**
+ * ixgbe_set_phy_power - Control the phy power state
+ * @hw: pointer to hardware structure
+ * @on: true for on, false for off
+ */
+s32 ixgbe_set_phy_power(struct ixgbe_hw *hw, bool on)
+{
+	return ixgbe_call_func(hw, hw->phy.ops.set_phy_power, (hw, on),
+			       IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
  *  ixgbe_check_link - Get link and speed status
  *  @hw: pointer to hardware structure
  *

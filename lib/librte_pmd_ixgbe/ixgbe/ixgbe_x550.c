@@ -187,11 +187,12 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 				    ixgbe_get_supported_physical_layer_X550em;
 
 	/* PHY */
-	phy->ops.init = &ixgbe_init_phy_ops_X550em;
-	phy->ops.identify = &ixgbe_identify_phy_x550em;
 	phy->ops.read_reg = ixgbe_read_phy_reg_x550em;
 	phy->ops.write_reg = ixgbe_write_phy_reg_x550em;
-	phy->ops.setup_link = ixgbe_setup_kr_x550em;
+	phy->ops.init = ixgbe_init_phy_ops_X550em;
+	phy->ops.identify = ixgbe_identify_phy_x550em;
+	if (mac->ops.get_media_type(hw) != ixgbe_media_type_copper)
+		phy->ops.set_phy_power = NULL;
 
 
 	/* EEPROM */

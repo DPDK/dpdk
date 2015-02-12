@@ -76,6 +76,7 @@ s32 ixgbe_check_phy_link(struct ixgbe_hw *hw,
 s32 ixgbe_setup_phy_link_speed(struct ixgbe_hw *hw,
 			       ixgbe_link_speed speed,
 			       bool autoneg_wait_to_complete);
+s32 ixgbe_set_phy_power(struct ixgbe_hw *, bool on);
 void ixgbe_disable_tx_laser(struct ixgbe_hw *hw);
 void ixgbe_enable_tx_laser(struct ixgbe_hw *hw);
 void ixgbe_flap_tx_laser(struct ixgbe_hw *hw);

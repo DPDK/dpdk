@@ -2550,3 +2550,33 @@ s32 ixgbe_tn_check_overtemp(struct ixgbe_hw *hw)
 out:
 	return status;
 }
+
+/**
+ * ixgbe_set_copper_phy_power - Control power for copper phy
+ * @hw: pointer to hardware structure
+ * @on: true for on, false for off
+ */
+s32 ixgbe_set_copper_phy_power(struct ixgbe_hw *hw, bool on)
+{
+	u32 status;
+	u16 reg;
+
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_VENDOR_SPECIFIC_1_CONTROL,
+				      IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				      &reg);
+	if (status)
+		return status;
+
+	if (on) {
+		reg &= ~IXGBE_MDIO_PHY_SET_LOW_POWER_MODE;
+	} else {
+		if (ixgbe_check_reset_blocked(hw))
+			return 0;
+		reg |= IXGBE_MDIO_PHY_SET_LOW_POWER_MODE;
+	}
+
+	status = hw->phy.ops.write_reg(hw, IXGBE_MDIO_VENDOR_SPECIFIC_1_CONTROL,
+				       IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				       reg);
+	return status;
+}
