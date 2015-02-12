@@ -3606,7 +3606,6 @@ struct ixgbe_phy_info {
 	u32 revision;
 	enum ixgbe_media_type media_type;
 	u32 phy_semaphore_mask;
-	u8 lan_id;
 	bool reset_disable;
 	ixgbe_autoneg_advertised autoneg_advertised;
 	enum ixgbe_smart_speed smart_speed;

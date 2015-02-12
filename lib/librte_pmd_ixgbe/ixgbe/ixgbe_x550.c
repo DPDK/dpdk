@@ -94,10 +94,8 @@ STATIC s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 	switch (hw->device_id) {
 	case IXGBE_DEV_ID_X550EM_X_SFP:
 		/* set up for CS4227 usage */
-		hw->phy.lan_id = IXGBE_READ_REG(hw, IXGBE_STATUS) &
-				 IXGBE_STATUS_LAN_ID_1;
 		hw->phy.phy_semaphore_mask = IXGBE_GSSR_SHARED_I2C_SM;
-		if (hw->phy.lan_id) {
+		if (hw->bus.lan_id) {
 
 			esdp &= ~(IXGBE_ESDP_SDP1_NATIVE | IXGBE_ESDP_SDP1);
 			esdp |= IXGBE_ESDP_SDP1_DIR;
@@ -408,7 +406,7 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 		} else if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR ||
 			   hw->device_id == IXGBE_DEV_ID_X550EM_X) {
 			status = ixgbe_read_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
+				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
 			if (status != IXGBE_SUCCESS)
 				return status;
@@ -417,7 +415,7 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 				    IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX;
 
 			status = ixgbe_write_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
+				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
 			if (status != IXGBE_SUCCESS)
 				return status;
@@ -439,7 +437,7 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 		} else if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR ||
 			   hw->device_id == IXGBE_DEV_ID_X550EM_X) {
 			status = ixgbe_read_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
+				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
 			if (status != IXGBE_SUCCESS)
 				return status;
@@ -448,7 +446,7 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 				IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX);
 
 			status = ixgbe_write_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
+				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
 			if (status != IXGBE_SUCCESS)
 				return status;
@@ -824,7 +822,7 @@ s32 ixgbe_setup_sfp_modules_X550em(struct ixgbe_hw *hw)
 	/* The CS4227 slice address is the base address + the port-pair reg
 	 * offset. I.e. Slice 0 = 0x12B0 and slice 1 = 0x22B0.
 	 */
-	reg_slice = IXGBE_CS4227_SPARE24_LSB + (hw->phy.lan_id << 12);
+	reg_slice = IXGBE_CS4227_SPARE24_LSB + (hw->bus.lan_id << 12);
 
 	if (setup_linear)
 		edc_mode = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
@@ -922,10 +920,9 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 
 	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_SFP) {
 		esdp = IXGBE_READ_REG(hw, IXGBE_ESDP);
-		phy->lan_id = IXGBE_READ_REG(hw, IXGBE_STATUS) &
-			      IXGBE_STATUS_LAN_ID_1;
 		phy->phy_semaphore_mask = IXGBE_GSSR_SHARED_I2C_SM;
-		if (phy->lan_id) {
+
+		if (hw->bus.lan_id) {
 			esdp &= ~(IXGBE_ESDP_SDP1_NATIVE | IXGBE_ESDP_SDP1);
 			esdp |= IXGBE_ESDP_SDP1_DIR;
 		}
@@ -1067,7 +1064,7 @@ s32 ixgbe_setup_kr_x550em(struct ixgbe_hw *hw)
 	u32 reg_val;
 
 	status = ixgbe_read_iosf_sb_reg_x550(hw,
-		IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
+		IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 		IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status)
 		return status;
@@ -1089,7 +1086,7 @@ s32 ixgbe_setup_kr_x550em(struct ixgbe_hw *hw)
 	/* Restart auto-negotiation. */
 	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
 	status = ixgbe_write_iosf_sb_reg_x550(hw,
-		IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
+		IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 		IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 
 	return status;
@@ -1108,35 +1105,36 @@ s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw)
 
 	/* Disable AN and force speed to 10G Serial. */
 	status = ixgbe_read_iosf_sb_reg_x550(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 					IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
+
 	reg_val &= ~IXGBE_KRM_LINK_CTRL_1_TETH_AN_ENABLE;
 	reg_val &= ~IXGBE_KRM_LINK_CTRL_1_TETH_FORCE_SPEED_MASK;
 	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_FORCE_SPEED_10G;
 	status = ixgbe_write_iosf_sb_reg_x550(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 					IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
 	/* Disable training protocol FSM. */
 	status = ixgbe_read_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->phy.lan_id),
+				IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 	reg_val |= IXGBE_KRM_RX_TRN_LINKUP_CTRL_CONV_WO_PROTOCOL;
 	status = ixgbe_write_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->phy.lan_id),
+				IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
 	/* Disable Flex from training TXFFE. */
 	status = ixgbe_read_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_DSP_TXFFE_STATE_4(hw->phy.lan_id),
+				IXGBE_KRM_DSP_TXFFE_STATE_4(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
@@ -1144,12 +1142,12 @@ s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw)
 	reg_val &= ~IXGBE_KRM_DSP_TXFFE_STATE_CP1_CN1_EN;
 	reg_val &= ~IXGBE_KRM_DSP_TXFFE_STATE_CO_ADAPT_EN;
 	status = ixgbe_write_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_DSP_TXFFE_STATE_4(hw->phy.lan_id),
+				IXGBE_KRM_DSP_TXFFE_STATE_4(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 	status = ixgbe_read_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_DSP_TXFFE_STATE_5(hw->phy.lan_id),
+				IXGBE_KRM_DSP_TXFFE_STATE_5(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
@@ -1157,14 +1155,14 @@ s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw)
 	reg_val &= ~IXGBE_KRM_DSP_TXFFE_STATE_CP1_CN1_EN;
 	reg_val &= ~IXGBE_KRM_DSP_TXFFE_STATE_CO_ADAPT_EN;
 	status = ixgbe_write_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_DSP_TXFFE_STATE_5(hw->phy.lan_id),
+				IXGBE_KRM_DSP_TXFFE_STATE_5(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
 	/* Enable override for coefficients. */
 	status = ixgbe_read_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_TX_COEFF_CTRL_1(hw->phy.lan_id),
+				IXGBE_KRM_TX_COEFF_CTRL_1(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
@@ -1173,20 +1171,20 @@ s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw)
 	reg_val |= IXGBE_KRM_TX_COEFF_CTRL_1_CPLUS1_OVRRD_EN;
 	reg_val |= IXGBE_KRM_TX_COEFF_CTRL_1_CMINUS1_OVRRD_EN;
 	status = ixgbe_write_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_TX_COEFF_CTRL_1(hw->phy.lan_id),
+				IXGBE_KRM_TX_COEFF_CTRL_1(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
 	/* Toggle port SW reset by AN reset. */
 	status = ixgbe_read_iosf_sb_reg_x550(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 					IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
 	status = ixgbe_write_iosf_sb_reg_x550(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 					IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 
 	return status;
@@ -1205,7 +1203,7 @@ s32 ixgbe_setup_phy_loopback_x550em(struct ixgbe_hw *hw)
 
 	/* Disable AN and force speed to 10G Serial. */
 	status = ixgbe_read_iosf_sb_reg_x550(hw,
-		IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
+		IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 		IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
@@ -1213,47 +1211,47 @@ s32 ixgbe_setup_phy_loopback_x550em(struct ixgbe_hw *hw)
 	reg_val &= ~IXGBE_KRM_LINK_CTRL_1_TETH_FORCE_SPEED_MASK;
 	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_FORCE_SPEED_10G;
 	status = ixgbe_write_iosf_sb_reg_x550(hw,
-		IXGBE_KRM_LINK_CTRL_1(hw->phy.lan_id),
+		IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 		IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
 	/* Set near-end loopback clocks. */
 	status = ixgbe_read_iosf_sb_reg_x550(hw,
-		IXGBE_KRM_PORT_CAR_GEN_CTRL(hw->phy.lan_id),
+		IXGBE_KRM_PORT_CAR_GEN_CTRL(hw->bus.lan_id),
 		IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 	reg_val |= IXGBE_KRM_PORT_CAR_GEN_CTRL_NELB_32B;
 	reg_val |= IXGBE_KRM_PORT_CAR_GEN_CTRL_NELB_KRPCS;
 	status = ixgbe_write_iosf_sb_reg_x550(hw,
-		IXGBE_KRM_PORT_CAR_GEN_CTRL(hw->phy.lan_id),
+		IXGBE_KRM_PORT_CAR_GEN_CTRL(hw->bus.lan_id),
 		IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
 	/* Set loopback enable. */
 	status = ixgbe_read_iosf_sb_reg_x550(hw,
-		IXGBE_KRM_PMD_DFX_BURNIN(hw->phy.lan_id),
+		IXGBE_KRM_PMD_DFX_BURNIN(hw->bus.lan_id),
 		IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 	reg_val |= IXGBE_KRM_PMD_DFX_BURNIN_TX_RX_KR_LB_MASK;
 	status = ixgbe_write_iosf_sb_reg_x550(hw,
-		IXGBE_KRM_PMD_DFX_BURNIN(hw->phy.lan_id),
+		IXGBE_KRM_PMD_DFX_BURNIN(hw->bus.lan_id),
 		IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
 	/* Training bypass. */
 	status = ixgbe_read_iosf_sb_reg_x550(hw,
-		IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->phy.lan_id),
+		IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->bus.lan_id),
 		IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 	reg_val |= IXGBE_KRM_RX_TRN_LINKUP_CTRL_PROTOCOL_BYPASS;
 	status = ixgbe_write_iosf_sb_reg_x550(hw,
-		IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->phy.lan_id),
+		IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->bus.lan_id),
 		IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 
 	return status;
@@ -1819,7 +1817,7 @@ void ixgbe_disable_rx_x550(struct ixgbe_hw *hw)
 		fw_cmd.hdr.cmd = FW_DISABLE_RXEN_CMD;
 		fw_cmd.hdr.buf_len = FW_DISABLE_RXEN_LEN;
 		fw_cmd.hdr.checksum = FW_DEFAULT_CHECKSUM;
-		fw_cmd.port_number = hw->phy.lan_id;
+		fw_cmd.port_number = (u8)hw->bus.lan_id;
 
 		status = ixgbe_host_interface_command(hw, (u32 *)&fw_cmd,
 					sizeof(struct ixgbe_hic_disable_rxen),

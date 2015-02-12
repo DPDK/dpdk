@@ -747,7 +747,7 @@ STATIC void ixgbe_set_mux(struct ixgbe_hw *hw, u8 state)
 {
 	u32 esdp;
 
-	if (!hw->phy.lan_id)
+	if (!hw->bus.lan_id)
 		return;
 	esdp = IXGBE_READ_REG(hw, IXGBE_ESDP);
 	if (state)
