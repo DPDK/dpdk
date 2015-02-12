@@ -169,8 +169,10 @@ u32 ixgbe_atr_compute_sig_hash_82599(union ixgbe_atr_hash_dword input,
 bool ixgbe_verify_lesm_fw_enabled_82599(struct ixgbe_hw *hw);
 s32 ixgbe_read_i2c_byte(struct ixgbe_hw *hw, u8 byte_offset, u8 dev_addr,
 			u8 *data);
+s32 ixgbe_read_i2c_combined(struct ixgbe_hw *hw, u8 addr, u16 reg, u16 *val);
 s32 ixgbe_write_i2c_byte(struct ixgbe_hw *hw, u8 byte_offset, u8 dev_addr,
 			 u8 data);
+s32 ixgbe_write_i2c_combined(struct ixgbe_hw *hw, u8 addr, u16 reg, u16 val);
 s32 ixgbe_write_i2c_eeprom(struct ixgbe_hw *hw, u8 byte_offset, u8 eeprom_data);
 s32 ixgbe_get_san_mac_addr(struct ixgbe_hw *hw, u8 *san_mac_addr);
 s32 ixgbe_set_san_mac_addr(struct ixgbe_hw *hw, u8 *san_mac_addr);

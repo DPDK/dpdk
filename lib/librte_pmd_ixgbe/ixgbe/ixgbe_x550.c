@@ -789,6 +789,7 @@ s32 ixgbe_setup_sfp_modules_X550em(struct ixgbe_hw *hw)
 {
 	bool setup_linear;
 	u16 reg_slice, edc_mode;
+	s32 ret_val;
 
 	DEBUGFUNC("ixgbe_setup_sfp_modules_X550em");
 
@@ -829,8 +830,10 @@ s32 ixgbe_setup_sfp_modules_X550em(struct ixgbe_hw *hw)
 		edc_mode = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
 
 	/* Configure CS4227 for connection type. */
-	return hw->phy.ops.write_i2c_combined(hw, IXGBE_CS4227,
-					      reg_slice, edc_mode);
+	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
+					   edc_mode);
+
+	return ret_val;
 }
 
 /**
