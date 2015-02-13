@@ -2939,7 +2939,11 @@ csum_show(int port_id)
 		printf("Warning: hardware SCTP checksum enabled but not "
 			"supported by port %d\n", port_id);
 	}
-
+	if ((ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM) &&
+		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) == 0) {
+		printf("Warning: hardware outer IP checksum enabled but not "
+			"supported by port %d\n", port_id);
+	}
 }
 
 static void
