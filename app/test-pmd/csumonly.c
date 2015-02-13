@@ -97,7 +97,14 @@ struct testpmd_offload_info {
 	uint16_t outer_ethertype;
 	uint16_t outer_l2_len;
 	uint16_t outer_l3_len;
+	uint8_t outer_l4_proto;
 	uint16_t tso_segsz;
+};
+
+/* simplified GRE header (flags must be 0) */
+struct simple_gre_hdr {
+	uint16_t flags;
+	uint16_t proto;
 };
 
 static uint16_t
@@ -209,6 +216,7 @@ parse_vxlan(struct udp_hdr *udp_hdr, struct testpmd_offload_info *info,
 	info->outer_ethertype = info->ethertype;
 	info->outer_l2_len = info->l2_len;
 	info->outer_l3_len = info->l3_len;
+	info->outer_l4_proto = info->l4_proto;
 
 	eth_hdr = (struct ether_hdr *)((char *)udp_hdr +
 		sizeof(struct udp_hdr) +
@@ -216,6 +224,63 @@ parse_vxlan(struct udp_hdr *udp_hdr, struct testpmd_offload_info *info,
 
 	parse_ethernet(eth_hdr, info);
 	info->l2_len += ETHER_VXLAN_HLEN; /* add udp + vxlan */
+}
+
+/* Parse a gre header */
+static void
+parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
+{
+	struct ether_hdr *eth_hdr;
+	struct ipv4_hdr *ipv4_hdr;
+	struct ipv6_hdr *ipv6_hdr;
+
+	/* if flags != 0; it's not supported */
+	if (gre_hdr->flags != 0)
+		return;
+
+	if (gre_hdr->proto == _htons(ETHER_TYPE_IPv4)) {
+		info->is_tunnel = 1;
+		info->outer_ethertype = info->ethertype;
+		info->outer_l2_len = info->l2_len;
+		info->outer_l3_len = info->l3_len;
+		info->outer_l4_proto = info->l4_proto;
+
+		ipv4_hdr = (struct ipv4_hdr *)((char *)gre_hdr +
+			sizeof(struct simple_gre_hdr));
+
+		parse_ipv4(ipv4_hdr, info);
+		info->ethertype = _htons(ETHER_TYPE_IPv4);
+		info->l2_len = 0;
+
+	} else if (gre_hdr->proto == _htons(ETHER_TYPE_IPv6)) {
+		info->is_tunnel = 1;
+		info->outer_ethertype = info->ethertype;
+		info->outer_l2_len = info->l2_len;
+		info->outer_l3_len = info->l3_len;
+		info->outer_l4_proto = info->l4_proto;
+
+		ipv6_hdr = (struct ipv6_hdr *)((char *)gre_hdr +
+			sizeof(struct simple_gre_hdr));
+
+		info->ethertype = _htons(ETHER_TYPE_IPv6);
+		parse_ipv6(ipv6_hdr, info);
+		info->l2_len = 0;
+
+	} else if (gre_hdr->proto == _htons(0x6558)) { /* ETH_P_TEB in linux */
+		info->is_tunnel = 1;
+		info->outer_ethertype = info->ethertype;
+		info->outer_l2_len = info->l2_len;
+		info->outer_l3_len = info->l3_len;
+		info->outer_l4_proto = info->l4_proto;
+
+		eth_hdr = (struct ether_hdr *)((char *)gre_hdr +
+			sizeof(struct simple_gre_hdr));
+
+		parse_ethernet(eth_hdr, info);
+	} else
+		return;
+
+	info->l2_len += sizeof(struct simple_gre_hdr);
 }
 
 /* modify the IPv4 or IPv4 source address of a packet */
@@ -317,7 +382,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
  * packet */
 static uint64_t
 process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
-uint16_t testpmd_ol_flags)
+	uint16_t testpmd_ol_flags)
 {
 	struct ipv4_hdr *ipv4_hdr = outer_l3_hdr;
 	struct ipv6_hdr *ipv6_hdr = outer_l3_hdr;
@@ -334,6 +399,9 @@ uint16_t testpmd_ol_flags)
 			ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
 	} else if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM)
 		ol_flags |= PKT_TX_OUTER_IPV6;
+
+	if (info->outer_l4_proto != IPPROTO_UDP)
+		return ol_flags;
 
 	/* outer UDP checksum is always done in software as we have no
 	 * hardware supporting it today, and no API for it. */
@@ -368,6 +436,8 @@ uint16_t testpmd_ol_flags)
  *   Ether / (vlan) / IP|IP6 / UDP|TCP|SCTP .
  *   Ether / (vlan) / outer IP|IP6 / outer UDP / VxLAN / Ether / IP|IP6 /
  *           UDP|TCP|SCTP
+ *   Ether / (vlan) / outer IP|IP6 / GRE / Ether / IP|IP6 / UDP|TCP|SCTP
+ *   Ether / (vlan) / outer IP|IP6 / GRE / IP|IP6 / UDP|TCP|SCTP
  *
  * The testpmd command line for this forward engine sets the flags
  * TESTPMD_TX_OFFLOAD_* in ports[tx_port].tx_ol_flags. They control
@@ -437,12 +507,19 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		parse_ethernet(eth_hdr, &info);
 		l3_hdr = (char *)eth_hdr + info.l2_len;
 
-		/* check if it's a supported tunnel (only vxlan for now) */
-		if ((testpmd_ol_flags & TESTPMD_TX_OFFLOAD_PARSE_TUNNEL) &&
-			info.l4_proto == IPPROTO_UDP) {
-			struct udp_hdr *udp_hdr;
-			udp_hdr = (struct udp_hdr *)((char *)l3_hdr + info.l3_len);
-			parse_vxlan(udp_hdr, &info, m->ol_flags);
+		/* check if it's a supported tunnel */
+		if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_PARSE_TUNNEL) {
+			if (info.l4_proto == IPPROTO_UDP) {
+				struct udp_hdr *udp_hdr;
+				udp_hdr = (struct udp_hdr *)((char *)l3_hdr +
+					info.l3_len);
+				parse_vxlan(udp_hdr, &info, m->ol_flags);
+			} else if (info.l4_proto == IPPROTO_GRE) {
+				struct simple_gre_hdr *gre_hdr;
+				gre_hdr = (struct simple_gre_hdr *)
+					((char *)l3_hdr + info.l3_len);
+				parse_gre(gre_hdr, &info);
+			}
 		}
 
 		/* update l3_hdr and outer_l3_hdr if a tunnel was parsed */
