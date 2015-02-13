@@ -259,12 +259,15 @@ process_outer_cksums(void *outer_l3_hdr, uint16_t outer_ethertype,
 		ipv4_hdr->hdr_checksum = 0;
 		ol_flags |= PKT_TX_OUTER_IPV4;
 
-		if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM)
+		if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM)
 			ol_flags |= PKT_TX_OUTER_IP_CKSUM;
 		else
 			ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
-	} else if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM)
+	} else if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM)
 		ol_flags |= PKT_TX_OUTER_IPV6;
+
+	/* outer UDP checksum is always done in software as we have no
+	 * hardware supporting it today, and no API for it. */
 
 	udp_hdr = (struct udp_hdr *)((char *)outer_l3_hdr + outer_l3_len);
 	/* do not recalculate udp cksum if it was 0 */
@@ -300,8 +303,8 @@ process_outer_cksums(void *outer_l3_hdr, uint16_t outer_ethertype,
  * The testpmd command line for this forward engine sets the flags
  * TESTPMD_TX_OFFLOAD_* in ports[tx_port].tx_ol_flags. They control
  * wether a checksum must be calculated in software or in hardware. The
- * IP, UDP, TCP and SCTP flags always concern the inner layer.  The
- * VxLAN flag concerns the outer IP (if packet is recognized as a vxlan packet).
+ * IP, UDP, TCP and SCTP flags always concern the inner layer. The
+ * OUTER_IP is only useful for tunnel packets.
  */
 static void
 pkt_burst_checksum_forward(struct fwd_stream *fs)
@@ -432,18 +435,18 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		/* step 4: fill the mbuf meta data (flags and header lengths) */
 
 		if (tunnel == 1) {
-			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) {
+			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM) {
 				m->outer_l2_len = outer_l2_len;
 				m->outer_l3_len = outer_l3_len;
 				m->l2_len = l4_tun_len + l2_len;
 				m->l3_len = l3_len;
 			}
 			else {
-				/* if we don't do vxlan cksum in hw,
-				   outer checksum will be wrong because
-				   we changed the ip, but it shows that
-				   we can process the inner header cksum
-				   in the nic */
+				/* if there is a outer UDP cksum
+				   processed in sw and the inner in hw,
+				   the outer checksum will be wrong as
+				   the payload will be modified by the
+				   hardware */
 				m->l2_len = outer_l2_len + outer_l3_len +
 					sizeof(struct udp_hdr) +
 					sizeof(struct vxlan_hdr) + l2_len;
@@ -502,7 +505,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 					"m->l4_len=%d\n",
 					m->l2_len, m->l3_len, m->l4_len);
 			if ((tunnel == 1) &&
-				(testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM))
+				(testpmd_ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM))
 				printf("tx: m->outer_l2_len=%d m->outer_l3_len=%d\n",
 					m->outer_l2_len, m->outer_l3_len);
 			if (tso_segsz != 0)

@@ -125,8 +125,8 @@ struct fwd_stream {
 #define TESTPMD_TX_OFFLOAD_TCP_CKSUM         0x0004
 /** Offload SCTP checksum in csum forward engine */
 #define TESTPMD_TX_OFFLOAD_SCTP_CKSUM        0x0008
-/** Offload VxLAN checksum in csum forward engine */
-#define TESTPMD_TX_OFFLOAD_VXLAN_CKSUM       0x0010
+/** Offload outer IP checksum in csum forward engine for recognized tunnels */
+#define TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM    0x0010
 /** Parse tunnel in csum forward engine. If set, dissect tunnel headers
  * of rx packets. If not set, treat inner headers as payload. */
 #define TESTPMD_TX_OFFLOAD_PARSE_TUNNEL      0x0020

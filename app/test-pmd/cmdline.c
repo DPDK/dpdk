@@ -317,12 +317,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Disable hardware insertion of a VLAN header in"
 			" packets sent on a port.\n\n"
 
-			"csum set (ip|udp|tcp|sctp|vxlan) (hw|sw) (port_id)\n"
+			"csum set (ip|udp|tcp|sctp|outer-ip) (hw|sw) (port_id)\n"
 			"    Select hardware or software calculation of the"
 			" checksum with when transmitting a packet using the"
 			" csum forward engine.\n"
 			"    ip|udp|tcp|sctp always concern the inner layer.\n"
-			"    vxlan concerns the outer IP and UDP layer (in"
+			"    outer-ip concerns the outer IP layer (in"
 			" case the packet is recognized as a vxlan packet by"
 			" the forward engine)\n"
 			"    Please check the NIC datasheet for HW limits.\n\n"
@@ -2914,8 +2914,8 @@ csum_show(int port_id)
 		(ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) ? "hw" : "sw");
 	printf("SCTP checksum offload is %s\n",
 		(ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) ? "hw" : "sw");
-	printf("VxLAN checksum offload is %s\n",
-		(ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) ? "hw" : "sw");
+	printf("Outer-Ip checksum offload is %s\n",
+		(ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM) ? "hw" : "sw");
 
 	/* display warnings if configuration is not supported by the NIC */
 	rte_eth_dev_info_get(port_id, &dev_info);
@@ -2969,8 +2969,8 @@ cmd_csum_parsed(void *parsed_result,
 			mask = TESTPMD_TX_OFFLOAD_TCP_CKSUM;
 		} else if (!strcmp(res->proto, "sctp")) {
 			mask = TESTPMD_TX_OFFLOAD_SCTP_CKSUM;
-		} else if (!strcmp(res->proto, "vxlan")) {
-			mask = TESTPMD_TX_OFFLOAD_VXLAN_CKSUM;
+		} else if (!strcmp(res->proto, "outer-ip")) {
+			mask = TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM;
 		}
 
 		if (hw)
@@ -2989,7 +2989,7 @@ cmdline_parse_token_string_t cmd_csum_mode =
 				mode, "set");
 cmdline_parse_token_string_t cmd_csum_proto =
 	TOKEN_STRING_INITIALIZER(struct cmd_csum_result,
-				proto, "ip#tcp#udp#sctp#vxlan");
+				proto, "ip#tcp#udp#sctp#outer-ip");
 cmdline_parse_token_string_t cmd_csum_hwsw =
 	TOKEN_STRING_INITIALIZER(struct cmd_csum_result,
 				hwsw, "hw#sw");
@@ -3001,7 +3001,7 @@ cmdline_parse_inst_t cmd_csum_set = {
 	.f = cmd_csum_parsed,
 	.data = NULL,
 	.help_str = "enable/disable hardware calculation of L3/L4 checksum when "
-		"using csum forward engine: csum set ip|tcp|udp|sctp|vxlan hw|sw <port>",
+		"using csum forward engine: csum set ip|tcp|udp|sctp|outer-ip hw|sw <port>",
 	.tokens = {
 		(void *)&cmd_csum_csum,
 		(void *)&cmd_csum_mode,
