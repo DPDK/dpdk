@@ -49,16 +49,9 @@ int
 rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 {
 	struct rte_devargs *devargs = NULL;
-	char buf[RTE_DEVARGS_LEN];
+	char *buf = NULL;
 	char *sep;
 	int ret;
-
-	ret = snprintf(buf, sizeof(buf), "%s", devargs_str);
-	if (ret < 0 || ret >= (int)sizeof(buf)) {
-		RTE_LOG(ERR, EAL, "user device args too large: <%s>\n",
-			devargs_str);
-		goto fail;
-	}
 
 	/* use malloc instead of rte_malloc as it's called early at init */
 	devargs = malloc(sizeof(*devargs));
@@ -69,11 +62,21 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	memset(devargs, 0, sizeof(*devargs));
 	devargs->type = devtype;
 
+	buf = strdup(devargs_str);
+	if (buf == NULL) {
+		RTE_LOG(ERR, EAL, "cannot allocate temp memory for devargs\n");
+		goto fail;
+	}
+
 	/* set the first ',' to '\0' to split name and arguments */
 	sep = strchr(buf, ',');
 	if (sep != NULL) {
 		sep[0] = '\0';
-		snprintf(devargs->args, sizeof(devargs->args), "%s", sep + 1);
+		devargs->args = strdup(sep + 1);
+		if (devargs->args == NULL) {
+			RTE_LOG(ERR, EAL, "cannot allocate for devargs args\n");
+			goto fail;
+		}
 	}
 
 	switch (devargs->type) {
@@ -97,10 +100,15 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 		break;
 	}
 
+	free(buf);
 	TAILQ_INSERT_TAIL(&devargs_list, devargs, next);
 	return 0;
 
 fail:
+	if (devargs->args)
+		free(devargs->args);
+	if (buf)
+		free(buf);
 	if (devargs)
 		free(devargs);
 	return -1;

@@ -88,8 +88,8 @@ struct rte_devargs {
 			char drv_name[32];
 		} virtual;
 	};
-#define RTE_DEVARGS_LEN 256
-	char args[RTE_DEVARGS_LEN]; /**< Arguments string as given by user. */
+	/** Arguments string as given by user. */
+	char *args;
 };
 
 /** user device double-linked queue type definition */
