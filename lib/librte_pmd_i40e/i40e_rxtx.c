@@ -471,16 +471,6 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 			uint16_t outer_l3_len,
 			uint32_t *cd_tunneling)
 {
-	if (!l2_len) {
-		PMD_DRV_LOG(DEBUG, "L2 length set to 0");
-		return;
-	}
-
-	if (!l3_len) {
-		PMD_DRV_LOG(DEBUG, "L3 length set to 0");
-		return;
-	}
-
 	/* UDP tunneling packet TX checksum offload */
 	if (ol_flags & PKT_TX_OUTER_IP_CKSUM) {
 
