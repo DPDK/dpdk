@@ -317,7 +317,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Disable hardware insertion of a VLAN header in"
 			" packets sent on a port.\n\n"
 
-			"tx_cksum set (ip|udp|tcp|sctp|vxlan) (hw|sw) (port_id)\n"
+			"csum set (ip|udp|tcp|sctp|vxlan) (hw|sw) (port_id)\n"
 			"    Select hardware or software calculation of the"
 			" checksum with when transmitting a packet using the"
 			" csum forward engine.\n"
@@ -327,7 +327,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" the forward engine)\n"
 			"    Please check the NIC datasheet for HW limits.\n\n"
 
-			"tx_checksum show (port_id)\n"
+			"csum show (port_id)\n"
 			"    Display tx checksum offload configuration\n\n"
 
 			"tso set (segsize) (portid)\n"
@@ -2883,8 +2883,8 @@ cmdline_parse_inst_t cmd_tx_vlan_reset = {
 
 
 /* *** ENABLE HARDWARE INSERTION OF CHECKSUM IN TX PACKETS *** */
-struct cmd_tx_cksum_result {
-	cmdline_fixed_string_t tx_cksum;
+struct cmd_csum_result {
+	cmdline_fixed_string_t csum;
 	cmdline_fixed_string_t mode;
 	cmdline_fixed_string_t proto;
 	cmdline_fixed_string_t hwsw;
@@ -2892,11 +2892,11 @@ struct cmd_tx_cksum_result {
 };
 
 static void
-cmd_tx_cksum_parsed(void *parsed_result,
+cmd_csum_parsed(void *parsed_result,
 		       __attribute__((unused)) struct cmdline *cl,
 		       __attribute__((unused)) void *data)
 {
-	struct cmd_tx_cksum_result *res = parsed_result;
+	struct cmd_csum_result *res = parsed_result;
 	int hw = 0;
 	uint16_t ol_flags, mask = 0;
 	struct rte_eth_dev_info dev_info;
@@ -2965,49 +2965,49 @@ cmd_tx_cksum_parsed(void *parsed_result,
 	}
 }
 
-cmdline_parse_token_string_t cmd_tx_cksum_tx_cksum =
-	TOKEN_STRING_INITIALIZER(struct cmd_tx_cksum_result,
-				tx_cksum, "tx_checksum");
-cmdline_parse_token_string_t cmd_tx_cksum_mode =
-	TOKEN_STRING_INITIALIZER(struct cmd_tx_cksum_result,
+cmdline_parse_token_string_t cmd_csum_csum =
+	TOKEN_STRING_INITIALIZER(struct cmd_csum_result,
+				csum, "csum");
+cmdline_parse_token_string_t cmd_csum_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_csum_result,
 				mode, "set");
-cmdline_parse_token_string_t cmd_tx_cksum_proto =
-	TOKEN_STRING_INITIALIZER(struct cmd_tx_cksum_result,
+cmdline_parse_token_string_t cmd_csum_proto =
+	TOKEN_STRING_INITIALIZER(struct cmd_csum_result,
 				proto, "ip#tcp#udp#sctp#vxlan");
-cmdline_parse_token_string_t cmd_tx_cksum_hwsw =
-	TOKEN_STRING_INITIALIZER(struct cmd_tx_cksum_result,
+cmdline_parse_token_string_t cmd_csum_hwsw =
+	TOKEN_STRING_INITIALIZER(struct cmd_csum_result,
 				hwsw, "hw#sw");
-cmdline_parse_token_num_t cmd_tx_cksum_portid =
-	TOKEN_NUM_INITIALIZER(struct cmd_tx_cksum_result,
+cmdline_parse_token_num_t cmd_csum_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_csum_result,
 				port_id, UINT8);
 
-cmdline_parse_inst_t cmd_tx_cksum_set = {
-	.f = cmd_tx_cksum_parsed,
+cmdline_parse_inst_t cmd_csum_set = {
+	.f = cmd_csum_parsed,
 	.data = NULL,
 	.help_str = "enable/disable hardware calculation of L3/L4 checksum when "
-		"using csum forward engine: tx_cksum set ip|tcp|udp|sctp|vxlan hw|sw <port>",
+		"using csum forward engine: csum set ip|tcp|udp|sctp|vxlan hw|sw <port>",
 	.tokens = {
-		(void *)&cmd_tx_cksum_tx_cksum,
-		(void *)&cmd_tx_cksum_mode,
-		(void *)&cmd_tx_cksum_proto,
-		(void *)&cmd_tx_cksum_hwsw,
-		(void *)&cmd_tx_cksum_portid,
+		(void *)&cmd_csum_csum,
+		(void *)&cmd_csum_mode,
+		(void *)&cmd_csum_proto,
+		(void *)&cmd_csum_hwsw,
+		(void *)&cmd_csum_portid,
 		NULL,
 	},
 };
 
-cmdline_parse_token_string_t cmd_tx_cksum_mode_show =
-	TOKEN_STRING_INITIALIZER(struct cmd_tx_cksum_result,
+cmdline_parse_token_string_t cmd_csum_mode_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_csum_result,
 				mode, "show");
 
-cmdline_parse_inst_t cmd_tx_cksum_show = {
-	.f = cmd_tx_cksum_parsed,
+cmdline_parse_inst_t cmd_csum_show = {
+	.f = cmd_csum_parsed,
 	.data = NULL,
-	.help_str = "show checksum offload configuration: tx_cksum show <port>",
+	.help_str = "show checksum offload configuration: csum show <port>",
 	.tokens = {
-		(void *)&cmd_tx_cksum_tx_cksum,
-		(void *)&cmd_tx_cksum_mode_show,
-		(void *)&cmd_tx_cksum_portid,
+		(void *)&cmd_csum_csum,
+		(void *)&cmd_csum_mode_show,
+		(void *)&cmd_csum_portid,
 		NULL,
 	},
 };
@@ -9059,8 +9059,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_set,
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_reset,
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_set_pvid,
-	(cmdline_parse_inst_t *)&cmd_tx_cksum_set,
-	(cmdline_parse_inst_t *)&cmd_tx_cksum_show,
+	(cmdline_parse_inst_t *)&cmd_csum_set,
+	(cmdline_parse_inst_t *)&cmd_csum_show,
 	(cmdline_parse_inst_t *)&cmd_tso_set,
 	(cmdline_parse_inst_t *)&cmd_tso_show,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
