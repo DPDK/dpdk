@@ -482,7 +482,7 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 	}
 
 	/* UDP tunneling packet TX checksum offload */
-	if (unlikely(ol_flags & PKT_TX_UDP_TUNNEL_PKT)) {
+	if (unlikely(ol_flags & PKT_TX_OUTER_IP_CKSUM)) {
 
 		*td_offset |= (outer_l2_len >> 1)
 				<< I40E_TX_DESC_LENGTH_MACLEN_SHIFT;
@@ -497,7 +497,6 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 		/* Now set the ctx descriptor fields */
 		*cd_tunneling |= (outer_l3_len >> 2) <<
 				I40E_TXD_CTX_QW0_EXT_IPLEN_SHIFT |
-				I40E_TXD_CTX_UDP_TUNNELING |
 				(l2_len >> 1) <<
 				I40E_TXD_CTX_QW0_NATLEN_SHIFT;
 
@@ -1165,8 +1164,7 @@ i40e_calc_context_desc(uint64_t flags)
 {
 	uint64_t mask = 0ULL;
 
-	if (flags | PKT_TX_UDP_TUNNEL_PKT)
-		mask |= PKT_TX_UDP_TUNNEL_PKT;
+	mask |= PKT_TX_OUTER_IP_CKSUM;
 
 #ifdef RTE_LIBRTE_IEEE1588
 	mask |= PKT_TX_IEEE1588_TMST;
