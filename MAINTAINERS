@@ -185,7 +185,7 @@ Link bonding
 M: Declan Doherty <declan.doherty@intel.com>
 F: lib/librte_pmd_bond/
 F: doc/guides/prog_guide/link_bonding_poll_mode_drv_lib.rst
-F: app/test/test_link_bonding.c
+F: app/test/test_link_bonding*
 
 Linux KNI
 M: Helin Zhang <helin.zhang@intel.com>

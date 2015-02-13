@@ -131,6 +131,7 @@ SRCS-y += virtual_pmd.c
 SRCS-y += packet_burst_generator.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += test_acl.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += test_link_bonding.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += test_link_bonding_mode4.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += test_pmd_ring.c
 SRCS-$(CONFIG_RTE_LIBRTE_KVARGS) += test_kvargs.c
 

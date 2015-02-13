@@ -57,7 +57,7 @@
 
 #include "test.h"
 
-#define TEST_MAX_NUMBER_OF_PORTS (16)
+#define TEST_MAX_NUMBER_OF_PORTS (6)
 
 #define RX_RING_SIZE 128
 #define RX_FREE_THRESH 32
