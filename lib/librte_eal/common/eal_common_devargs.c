@@ -48,7 +48,7 @@ struct rte_devargs_list devargs_list =
 int
 rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 {
-	struct rte_devargs *devargs;
+	struct rte_devargs *devargs = NULL;
 	char buf[RTE_DEVARGS_LEN];
 	char *sep;
 	int ret;
@@ -57,14 +57,14 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	if (ret < 0 || ret >= (int)sizeof(buf)) {
 		RTE_LOG(ERR, EAL, "user device args too large: <%s>\n",
 			devargs_str);
-		return -1;
+		goto fail;
 	}
 
 	/* use malloc instead of rte_malloc as it's called early at init */
 	devargs = malloc(sizeof(*devargs));
 	if (devargs == NULL) {
 		RTE_LOG(ERR, EAL, "cannot allocate devargs\n");
-		return -1;
+		goto fail;
 	}
 	memset(devargs, 0, sizeof(*devargs));
 	devargs->type = devtype;
@@ -81,28 +81,29 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	case RTE_DEVTYPE_BLACKLISTED_PCI:
 		/* try to parse pci identifier */
 		if (eal_parse_pci_BDF(buf, &devargs->pci.addr) != 0 &&
-			eal_parse_pci_DomBDF(buf, &devargs->pci.addr) != 0) {
-			RTE_LOG(ERR, EAL,
-				"invalid PCI identifier <%s>\n", buf);
-			free(devargs);
-			return -1;
+		    eal_parse_pci_DomBDF(buf, &devargs->pci.addr) != 0) {
+			RTE_LOG(ERR, EAL, "invalid PCI identifier <%s>\n", buf);
+			goto fail;
 		}
 		break;
 	case RTE_DEVTYPE_VIRTUAL:
 		/* save driver name */
 		ret = snprintf(devargs->virtual.drv_name,
-			sizeof(devargs->virtual.drv_name), "%s", buf);
+			       sizeof(devargs->virtual.drv_name), "%s", buf);
 		if (ret < 0 || ret >= (int)sizeof(devargs->virtual.drv_name)) {
-			RTE_LOG(ERR, EAL,
-				"driver name too large: <%s>\n", buf);
-			free(devargs);
-			return -1;
+			RTE_LOG(ERR, EAL, "driver name too large: <%s>\n", buf);
+			goto fail;
 		}
 		break;
 	}
 
 	TAILQ_INSERT_TAIL(&devargs_list, devargs, next);
 	return 0;
+
+fail:
+	if (devargs)
+		free(devargs);
+	return -1;
 }
 
 /* count the number of devices of a specified type */
