@@ -74,6 +74,11 @@
 
 #define I40E_TXD_CMD (I40E_TX_DESC_CMD_EOP | I40E_TX_DESC_CMD_RS)
 
+#define I40E_TX_CKSUM_OFFLOAD_MASK (		 \
+		PKT_TX_IP_CKSUM |		 \
+		PKT_TX_L4_MASK |		 \
+		PKT_TX_OUTER_IP_CKSUM)
+
 #define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
 	(uint64_t) ((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
 
@@ -1272,10 +1277,12 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Enable checksum offloading */
 		cd_tunneling_params = 0;
-		i40e_txd_enable_checksum(ol_flags, &td_cmd, &td_offset,
-						l2_len, l3_len, outer_l2_len,
-						outer_l3_len,
-						&cd_tunneling_params);
+		if (unlikely(ol_flags & I40E_TX_CKSUM_OFFLOAD_MASK)) {
+			i40e_txd_enable_checksum(ol_flags, &td_cmd, &td_offset,
+				l2_len, l3_len, outer_l2_len,
+				outer_l3_len,
+				&cd_tunneling_params);
+		}
 
 		if (unlikely(nb_ctx)) {
 			/* Setup TX context descriptor if required */
