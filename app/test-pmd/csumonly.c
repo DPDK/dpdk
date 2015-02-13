@@ -373,7 +373,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		l3_hdr = (char *)eth_hdr + l2_len;
 
 		/* check if it's a supported tunnel (only vxlan for now) */
-		if (l4_proto == IPPROTO_UDP) {
+		if ((testpmd_ol_flags & TESTPMD_TX_OFFLOAD_PARSE_TUNNEL) &&
+			l4_proto == IPPROTO_UDP) {
 			udp_hdr = (struct udp_hdr *)((char *)l3_hdr + l3_len);
 
 			/* check udp destination port, 4789 is the default

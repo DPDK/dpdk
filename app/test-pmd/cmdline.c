@@ -327,6 +327,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" the forward engine)\n"
 			"    Please check the NIC datasheet for HW limits.\n\n"
 
+			"csum parse-tunnel (on|off) (tx_port_id)\n"
+			"    If disabled, treat tunnel packets as non-tunneled"
+			" packets (treat inner headers as payload). The port\n"
+			"    argument is the port used for TX in csum forward"
+			" engine.\n\n"
+
 			"csum show (port_id)\n"
 			"    Display tx checksum offload configuration\n\n"
 
@@ -2898,6 +2904,8 @@ csum_show(int port_id)
 	uint16_t ol_flags;
 
 	ol_flags = ports[port_id].tx_ol_flags;
+	printf("Parse tunnel is %s\n",
+		(ol_flags & TESTPMD_TX_OFFLOAD_PARSE_TUNNEL) ? "on" : "off");
 	printf("IP checksum offload is %s\n",
 		(ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM) ? "hw" : "sw");
 	printf("UDP checksum offload is %s\n",
@@ -3016,6 +3024,63 @@ cmdline_parse_inst_t cmd_csum_show = {
 		(void *)&cmd_csum_csum,
 		(void *)&cmd_csum_mode_show,
 		(void *)&cmd_csum_portid,
+		NULL,
+	},
+};
+
+/* Enable/disable tunnel parsing */
+struct cmd_csum_tunnel_result {
+	cmdline_fixed_string_t csum;
+	cmdline_fixed_string_t parse;
+	cmdline_fixed_string_t onoff;
+	uint8_t port_id;
+};
+
+static void
+cmd_csum_tunnel_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	struct cmd_csum_tunnel_result *res = parsed_result;
+
+	if (port_id_is_invalid(res->port_id)) {
+		printf("invalid port %d\n", res->port_id);
+		return;
+	}
+
+	if (!strcmp(res->onoff, "on"))
+		ports[res->port_id].tx_ol_flags |=
+			TESTPMD_TX_OFFLOAD_PARSE_TUNNEL;
+	else
+		ports[res->port_id].tx_ol_flags &=
+			(~TESTPMD_TX_OFFLOAD_PARSE_TUNNEL);
+
+	csum_show(res->port_id);
+}
+
+cmdline_parse_token_string_t cmd_csum_tunnel_csum =
+	TOKEN_STRING_INITIALIZER(struct cmd_csum_tunnel_result,
+				csum, "csum");
+cmdline_parse_token_string_t cmd_csum_tunnel_parse =
+	TOKEN_STRING_INITIALIZER(struct cmd_csum_tunnel_result,
+				parse, "parse_tunnel");
+cmdline_parse_token_string_t cmd_csum_tunnel_onoff =
+	TOKEN_STRING_INITIALIZER(struct cmd_csum_tunnel_result,
+				onoff, "on#off");
+cmdline_parse_token_num_t cmd_csum_tunnel_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_csum_tunnel_result,
+				port_id, UINT8);
+
+cmdline_parse_inst_t cmd_csum_tunnel = {
+	.f = cmd_csum_tunnel_parsed,
+	.data = NULL,
+	.help_str = "enable/disable parsing of tunnels for csum engine: "
+	"csum parse_tunnel on|off <tx-port>",
+	.tokens = {
+		(void *)&cmd_csum_tunnel_csum,
+		(void *)&cmd_csum_tunnel_parse,
+		(void *)&cmd_csum_tunnel_onoff,
+		(void *)&cmd_csum_tunnel_portid,
 		NULL,
 	},
 };
@@ -9069,6 +9134,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_set_pvid,
 	(cmdline_parse_inst_t *)&cmd_csum_set,
 	(cmdline_parse_inst_t *)&cmd_csum_show,
+	(cmdline_parse_inst_t *)&cmd_csum_tunnel,
 	(cmdline_parse_inst_t *)&cmd_tso_set,
 	(cmdline_parse_inst_t *)&cmd_tso_show,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
