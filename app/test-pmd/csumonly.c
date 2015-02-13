@@ -86,6 +86,21 @@
 #define _htons(x) (x)
 #endif
 
+/* structure that caches offload info for the current packet */
+struct testpmd_offload_info {
+	uint16_t ethertype;
+	uint16_t l2_len;
+	uint16_t l3_len;
+	uint16_t l4_len;
+	uint8_t l4_proto;
+	uint8_t l4_tun_len;
+	uint8_t is_tunnel;
+	uint16_t outer_ethertype;
+	uint16_t outer_l2_len;
+	uint16_t outer_l3_len;
+	uint16_t tso_segsz;
+};
+
 static uint16_t
 get_psd_sum(void *l3_hdr, uint16_t ethertype, uint64_t ol_flags)
 {
@@ -106,38 +121,36 @@ get_udptcp_checksum(void *l3_hdr, void *l4_hdr, uint16_t ethertype)
 
 /* Parse an IPv4 header to fill l3_len, l4_len, and l4_proto */
 static void
-parse_ipv4(struct ipv4_hdr *ipv4_hdr, uint16_t *l3_len, uint8_t *l4_proto,
-	uint16_t *l4_len)
+parse_ipv4(struct ipv4_hdr *ipv4_hdr, struct testpmd_offload_info *info)
 {
 	struct tcp_hdr *tcp_hdr;
 
-	*l3_len = (ipv4_hdr->version_ihl & 0x0f) * 4;
-	*l4_proto = ipv4_hdr->next_proto_id;
+	info->l3_len = (ipv4_hdr->version_ihl & 0x0f) * 4;
+	info->l4_proto = ipv4_hdr->next_proto_id;
 
 	/* only fill l4_len for TCP, it's useful for TSO */
-	if (*l4_proto == IPPROTO_TCP) {
-		tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr + *l3_len);
-		*l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
+	if (info->l4_proto == IPPROTO_TCP) {
+		tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr + info->l3_len);
+		info->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
 	} else
-		*l4_len = 0;
+		info->l4_len = 0;
 }
 
 /* Parse an IPv6 header to fill l3_len, l4_len, and l4_proto */
 static void
-parse_ipv6(struct ipv6_hdr *ipv6_hdr, uint16_t *l3_len, uint8_t *l4_proto,
-	uint16_t *l4_len)
+parse_ipv6(struct ipv6_hdr *ipv6_hdr, struct testpmd_offload_info *info)
 {
 	struct tcp_hdr *tcp_hdr;
 
-	*l3_len = sizeof(struct ipv6_hdr);
-	*l4_proto = ipv6_hdr->proto;
+	info->l3_len = sizeof(struct ipv6_hdr);
+	info->l4_proto = ipv6_hdr->proto;
 
 	/* only fill l4_len for TCP, it's useful for TSO */
-	if (*l4_proto == IPPROTO_TCP) {
-		tcp_hdr = (struct tcp_hdr *)((char *)ipv6_hdr + *l3_len);
-		*l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
+	if (info->l4_proto == IPPROTO_TCP) {
+		tcp_hdr = (struct tcp_hdr *)((char *)ipv6_hdr + info->l3_len);
+		info->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
 	} else
-		*l4_len = 0;
+		info->l4_len = 0;
 }
 
 /*
@@ -146,35 +159,34 @@ parse_ipv6(struct ipv6_hdr *ipv6_hdr, uint16_t *l3_len, uint8_t *l4_proto,
  * header. The l4_len argument is only set in case of TCP (useful for TSO).
  */
 static void
-parse_ethernet(struct ether_hdr *eth_hdr, uint16_t *ethertype, uint16_t *l2_len,
-	uint16_t *l3_len, uint8_t *l4_proto, uint16_t *l4_len)
+parse_ethernet(struct ether_hdr *eth_hdr, struct testpmd_offload_info *info)
 {
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
 
-	*l2_len = sizeof(struct ether_hdr);
-	*ethertype = eth_hdr->ether_type;
+	info->l2_len = sizeof(struct ether_hdr);
+	info->ethertype = eth_hdr->ether_type;
 
-	if (*ethertype == _htons(ETHER_TYPE_VLAN)) {
+	if (info->ethertype == _htons(ETHER_TYPE_VLAN)) {
 		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
 
-		*l2_len  += sizeof(struct vlan_hdr);
-		*ethertype = vlan_hdr->eth_proto;
+		info->l2_len  += sizeof(struct vlan_hdr);
+		info->ethertype = vlan_hdr->eth_proto;
 	}
 
-	switch (*ethertype) {
+	switch (info->ethertype) {
 	case _htons(ETHER_TYPE_IPv4):
-		ipv4_hdr = (struct ipv4_hdr *) ((char *)eth_hdr + *l2_len);
-		parse_ipv4(ipv4_hdr, l3_len, l4_proto, l4_len);
+		ipv4_hdr = (struct ipv4_hdr *) ((char *)eth_hdr + info->l2_len);
+		parse_ipv4(ipv4_hdr, info);
 		break;
 	case _htons(ETHER_TYPE_IPv6):
-		ipv6_hdr = (struct ipv6_hdr *) ((char *)eth_hdr + *l2_len);
-		parse_ipv6(ipv6_hdr, l3_len, l4_proto, l4_len);
+		ipv6_hdr = (struct ipv6_hdr *) ((char *)eth_hdr + info->l2_len);
+		parse_ipv6(ipv6_hdr, info);
 		break;
 	default:
-		*l4_len = 0;
-		*l3_len = 0;
-		*l4_proto = 0;
+		info->l4_len = 0;
+		info->l3_len = 0;
+		info->l4_proto = 0;
 		break;
 	}
 }
@@ -197,8 +209,8 @@ change_ip_addresses(void *l3_hdr, uint16_t ethertype)
 /* if possible, calculate the checksum of a packet in hw or sw,
  * depending on the testpmd command line configuration */
 static uint64_t
-process_inner_cksums(void *l3_hdr, uint16_t ethertype, uint16_t l3_len,
-	uint8_t l4_proto, uint16_t tso_segsz, uint16_t testpmd_ol_flags)
+process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
+	uint16_t testpmd_ol_flags)
 {
 	struct ipv4_hdr *ipv4_hdr = l3_hdr;
 	struct udp_hdr *udp_hdr;
@@ -206,12 +218,12 @@ process_inner_cksums(void *l3_hdr, uint16_t ethertype, uint16_t l3_len,
 	struct sctp_hdr *sctp_hdr;
 	uint64_t ol_flags = 0;
 
-	if (ethertype == _htons(ETHER_TYPE_IPv4)) {
+	if (info->ethertype == _htons(ETHER_TYPE_IPv4)) {
 		ipv4_hdr = l3_hdr;
 		ipv4_hdr->hdr_checksum = 0;
 
 		ol_flags |= PKT_TX_IPV4;
-		if (tso_segsz != 0 && l4_proto == IPPROTO_TCP) {
+		if (info->tso_segsz != 0 && info->l4_proto == IPPROTO_TCP) {
 			ol_flags |= PKT_TX_IP_CKSUM;
 		} else {
 			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM)
@@ -220,41 +232,44 @@ process_inner_cksums(void *l3_hdr, uint16_t ethertype, uint16_t l3_len,
 				ipv4_hdr->hdr_checksum =
 					rte_ipv4_cksum(ipv4_hdr);
 		}
-	} else if (ethertype == _htons(ETHER_TYPE_IPv6))
+	} else if (info->ethertype == _htons(ETHER_TYPE_IPv6))
 		ol_flags |= PKT_TX_IPV6;
 	else
 		return 0; /* packet type not supported, nothing to do */
 
-	if (l4_proto == IPPROTO_UDP) {
-		udp_hdr = (struct udp_hdr *)((char *)l3_hdr + l3_len);
+	if (info->l4_proto == IPPROTO_UDP) {
+		udp_hdr = (struct udp_hdr *)((char *)l3_hdr + info->l3_len);
 		/* do not recalculate udp cksum if it was 0 */
 		if (udp_hdr->dgram_cksum != 0) {
 			udp_hdr->dgram_cksum = 0;
 			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) {
 				ol_flags |= PKT_TX_UDP_CKSUM;
 				udp_hdr->dgram_cksum = get_psd_sum(l3_hdr,
-					ethertype, ol_flags);
+					info->ethertype, ol_flags);
 			} else {
 				udp_hdr->dgram_cksum =
 					get_udptcp_checksum(l3_hdr, udp_hdr,
-						ethertype);
+						info->ethertype);
 			}
 		}
-	} else if (l4_proto == IPPROTO_TCP) {
-		tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + l3_len);
+	} else if (info->l4_proto == IPPROTO_TCP) {
+		tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + info->l3_len);
 		tcp_hdr->cksum = 0;
-		if (tso_segsz != 0) {
+		if (info->tso_segsz != 0) {
 			ol_flags |= PKT_TX_TCP_SEG;
-			tcp_hdr->cksum = get_psd_sum(l3_hdr, ethertype, ol_flags);
+			tcp_hdr->cksum = get_psd_sum(l3_hdr, info->ethertype,
+				ol_flags);
 		} else if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) {
 			ol_flags |= PKT_TX_TCP_CKSUM;
-			tcp_hdr->cksum = get_psd_sum(l3_hdr, ethertype, ol_flags);
+			tcp_hdr->cksum = get_psd_sum(l3_hdr, info->ethertype,
+				ol_flags);
 		} else {
 			tcp_hdr->cksum =
-				get_udptcp_checksum(l3_hdr, tcp_hdr, ethertype);
+				get_udptcp_checksum(l3_hdr, tcp_hdr,
+					info->ethertype);
 		}
-	} else if (l4_proto == IPPROTO_SCTP) {
-		sctp_hdr = (struct sctp_hdr *)((char *)l3_hdr + l3_len);
+	} else if (info->l4_proto == IPPROTO_SCTP) {
+		sctp_hdr = (struct sctp_hdr *)((char *)l3_hdr + info->l3_len);
 		sctp_hdr->cksum = 0;
 		/* sctp payload must be a multiple of 4 to be
 		 * offloaded */
@@ -274,15 +289,15 @@ process_inner_cksums(void *l3_hdr, uint16_t ethertype, uint16_t l3_len,
  * meaning IP + UDP). The caller already checked that it's a vxlan
  * packet */
 static uint64_t
-process_outer_cksums(void *outer_l3_hdr, uint16_t outer_ethertype,
-	uint16_t outer_l3_len, uint16_t testpmd_ol_flags)
+process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
+uint16_t testpmd_ol_flags)
 {
 	struct ipv4_hdr *ipv4_hdr = outer_l3_hdr;
 	struct ipv6_hdr *ipv6_hdr = outer_l3_hdr;
 	struct udp_hdr *udp_hdr;
 	uint64_t ol_flags = 0;
 
-	if (outer_ethertype == _htons(ETHER_TYPE_IPv4)) {
+	if (info->outer_ethertype == _htons(ETHER_TYPE_IPv4)) {
 		ipv4_hdr->hdr_checksum = 0;
 		ol_flags |= PKT_TX_OUTER_IPV4;
 
@@ -296,11 +311,11 @@ process_outer_cksums(void *outer_l3_hdr, uint16_t outer_ethertype,
 	/* outer UDP checksum is always done in software as we have no
 	 * hardware supporting it today, and no API for it. */
 
-	udp_hdr = (struct udp_hdr *)((char *)outer_l3_hdr + outer_l3_len);
+	udp_hdr = (struct udp_hdr *)((char *)outer_l3_hdr + info->outer_l3_len);
 	/* do not recalculate udp cksum if it was 0 */
 	if (udp_hdr->dgram_cksum != 0) {
 		udp_hdr->dgram_cksum = 0;
-		if (outer_ethertype == _htons(ETHER_TYPE_IPv4))
+		if (info->outer_ethertype == _htons(ETHER_TYPE_IPv4))
 			udp_hdr->dgram_cksum =
 				rte_ipv4_udptcp_cksum(ipv4_hdr, udp_hdr);
 		else
@@ -347,14 +362,9 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint16_t i;
 	uint64_t ol_flags;
 	uint16_t testpmd_ol_flags;
-	uint8_t l4_proto, l4_tun_len = 0;
-	uint16_t ethertype = 0, outer_ethertype = 0;
-	uint16_t l2_len = 0, l3_len = 0, l4_len = 0;
-	uint16_t outer_l2_len = 0, outer_l3_len = 0;
-	uint16_t tso_segsz;
-	int tunnel = 0;
 	uint32_t rx_bad_ip_csum;
 	uint32_t rx_bad_l4_csum;
+	struct testpmd_offload_info info;
 
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
@@ -381,13 +391,13 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 	txp = &ports[fs->tx_port];
 	testpmd_ol_flags = txp->tx_ol_flags;
-	tso_segsz = txp->tso_segsz;
+	memset(&info, 0, sizeof(info));
+	info.tso_segsz = txp->tso_segsz;
 
 	for (i = 0; i < nb_rx; i++) {
 
 		ol_flags = 0;
-		tunnel = 0;
-		l4_tun_len = 0;
+		info.is_tunnel = 0;
 		m = pkts_burst[i];
 
 		/* Update the L3/L4 checksum error packet statistics */
@@ -398,49 +408,47 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		 * and inner headers */
 
 		eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
-		parse_ethernet(eth_hdr, &ethertype, &l2_len, &l3_len,
-			&l4_proto, &l4_len);
-		l3_hdr = (char *)eth_hdr + l2_len;
+		parse_ethernet(eth_hdr, &info);
+		l3_hdr = (char *)eth_hdr + info.l2_len;
 
 		/* check if it's a supported tunnel (only vxlan for now) */
 		if ((testpmd_ol_flags & TESTPMD_TX_OFFLOAD_PARSE_TUNNEL) &&
-			l4_proto == IPPROTO_UDP) {
-			udp_hdr = (struct udp_hdr *)((char *)l3_hdr + l3_len);
+			info.l4_proto == IPPROTO_UDP) {
+			udp_hdr = (struct udp_hdr *)((char *)l3_hdr + info.l3_len);
 
 			/* check udp destination port, 4789 is the default
 			 * vxlan port (rfc7348) */
 			if (udp_hdr->dst_port == _htons(4789)) {
-				l4_tun_len = ETHER_VXLAN_HLEN;
-				tunnel = 1;
+				info.l4_tun_len = ETHER_VXLAN_HLEN;
+				info.is_tunnel = 1;
 
 			/* currently, this flag is set by i40e only if the
 			 * packet is vxlan */
 			} else if (m->ol_flags & (PKT_RX_TUNNEL_IPV4_HDR |
 					PKT_RX_TUNNEL_IPV6_HDR))
-				tunnel = 1;
+				info.is_tunnel = 1;
 
-			if (tunnel == 1) {
-				outer_ethertype = ethertype;
-				outer_l2_len = l2_len;
-				outer_l3_len = l3_len;
+			if (info.is_tunnel == 1) {
+				info.outer_ethertype = info.ethertype;
+				info.outer_l2_len = info.l2_len;
+				info.outer_l3_len = info.l3_len;
 				outer_l3_hdr = l3_hdr;
 
 				eth_hdr = (struct ether_hdr *)((char *)udp_hdr +
 					sizeof(struct udp_hdr) +
 					sizeof(struct vxlan_hdr));
 
-				parse_ethernet(eth_hdr, &ethertype, &l2_len,
-					&l3_len, &l4_proto, &l4_len);
-				l3_hdr = (char *)eth_hdr + l2_len;
+				parse_ethernet(eth_hdr, &info);
+				l3_hdr = (char *)eth_hdr + info.l2_len;
 			}
 		}
 
 		/* step 2: change all source IPs (v4 or v6) so we need
 		 * to recompute the chksums even if they were correct */
 
-		change_ip_addresses(l3_hdr, ethertype);
-		if (tunnel == 1)
-			change_ip_addresses(outer_l3_hdr, outer_ethertype);
+		change_ip_addresses(l3_hdr, info.ethertype);
+		if (info.is_tunnel == 1)
+			change_ip_addresses(outer_l3_hdr, info.outer_ethertype);
 
 		/* step 3: depending on user command line configuration,
 		 * recompute checksum either in software or flag the
@@ -448,25 +456,24 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		 * is configured, prepare the mbuf for TCP segmentation. */
 
 		/* process checksums of inner headers first */
-		ol_flags |= process_inner_cksums(l3_hdr, ethertype,
-			l3_len, l4_proto, tso_segsz, testpmd_ol_flags);
+		ol_flags |= process_inner_cksums(l3_hdr, &info, testpmd_ol_flags);
 
 		/* Then process outer headers if any. Note that the software
 		 * checksum will be wrong if one of the inner checksums is
 		 * processed in hardware. */
-		if (tunnel == 1) {
-			ol_flags |= process_outer_cksums(outer_l3_hdr,
-				outer_ethertype, outer_l3_len, testpmd_ol_flags);
+		if (info.is_tunnel == 1) {
+			ol_flags |= process_outer_cksums(outer_l3_hdr, &info,
+				testpmd_ol_flags);
 		}
 
 		/* step 4: fill the mbuf meta data (flags and header lengths) */
 
-		if (tunnel == 1) {
+		if (info.is_tunnel == 1) {
 			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM) {
-				m->outer_l2_len = outer_l2_len;
-				m->outer_l3_len = outer_l3_len;
-				m->l2_len = l4_tun_len + l2_len;
-				m->l3_len = l3_len;
+				m->outer_l2_len = info.outer_l2_len;
+				m->outer_l3_len = info.outer_l3_len;
+				m->l2_len = info.l4_tun_len + info.l2_len;
+				m->l3_len = info.l3_len;
 			}
 			else {
 				/* if there is a outer UDP cksum
@@ -474,21 +481,22 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				   the outer checksum will be wrong as
 				   the payload will be modified by the
 				   hardware */
-				m->l2_len = outer_l2_len + outer_l3_len +
+				m->l2_len = info.outer_l2_len +
+					info.outer_l3_len +
 					sizeof(struct udp_hdr) +
-					sizeof(struct vxlan_hdr) + l2_len;
-				m->l3_len = l3_len;
-				m->l4_len = l4_len;
+					sizeof(struct vxlan_hdr) + info.l2_len;
+				m->l3_len = info.l3_len;
+				m->l4_len = info.l4_len;
 			}
 		} else {
 			/* this is only useful if an offload flag is
 			 * set, but it does not hurt to fill it in any
 			 * case */
-			m->l2_len = l2_len;
-			m->l3_len = l3_len;
-			m->l4_len = l4_len;
+			m->l2_len = info.l2_len;
+			m->l3_len = info.l3_len;
+			m->l4_len = info.l4_len;
 		}
-		m->tso_segsz = tso_segsz;
+		m->tso_segsz = info.tso_segsz;
 		m->ol_flags = ol_flags;
 
 		/* if verbose mode is enabled, dump debug info */
@@ -515,27 +523,27 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			/* dump rx parsed packet info */
 			printf("rx: l2_len=%d ethertype=%x l3_len=%d "
 				"l4_proto=%d l4_len=%d\n",
-				l2_len, rte_be_to_cpu_16(ethertype),
-				l3_len, l4_proto, l4_len);
-			if (tunnel == 1)
+				info.l2_len, rte_be_to_cpu_16(info.ethertype),
+				info.l3_len, info.l4_proto, info.l4_len);
+			if (info.is_tunnel == 1)
 				printf("rx: outer_l2_len=%d outer_ethertype=%x "
-					"outer_l3_len=%d\n", outer_l2_len,
-					rte_be_to_cpu_16(outer_ethertype),
-					outer_l3_len);
+					"outer_l3_len=%d\n", info.outer_l2_len,
+					rte_be_to_cpu_16(info.outer_ethertype),
+					info.outer_l3_len);
 			/* dump tx packet info */
 			if ((testpmd_ol_flags & (TESTPMD_TX_OFFLOAD_IP_CKSUM |
 						TESTPMD_TX_OFFLOAD_UDP_CKSUM |
 						TESTPMD_TX_OFFLOAD_TCP_CKSUM |
 						TESTPMD_TX_OFFLOAD_SCTP_CKSUM)) ||
-				tso_segsz != 0)
+				info.tso_segsz != 0)
 				printf("tx: m->l2_len=%d m->l3_len=%d "
 					"m->l4_len=%d\n",
 					m->l2_len, m->l3_len, m->l4_len);
-			if ((tunnel == 1) &&
+			if ((info.is_tunnel == 1) &&
 				(testpmd_ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM))
 				printf("tx: m->outer_l2_len=%d m->outer_l3_len=%d\n",
 					m->outer_l2_len, m->outer_l3_len);
-			if (tso_segsz != 0)
+			if (info.tso_segsz != 0)
 				printf("tx: m->tso_segsz=%d\n", m->tso_segsz);
 			printf("tx: flags=");
 			for (j = 0; j < sizeof(tx_flags)/sizeof(*tx_flags); j++) {
