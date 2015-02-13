@@ -130,8 +130,12 @@ SRCS-y += test_devargs.c
 SRCS-y += virtual_pmd.c
 SRCS-y += packet_burst_generator.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += test_acl.c
+
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += test_link_bonding.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += test_link_bonding_mode4.c
+endif
+
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += test_pmd_ring.c
 SRCS-$(CONFIG_RTE_LIBRTE_KVARGS) += test_kvargs.c
 
@@ -148,6 +152,17 @@ CFLAGS += -D_GNU_SOURCE
 
 # this application needs libraries first
 DEPDIRS-y += lib
+
+# Link against shared libraries when needed
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_BOND),y)
+ifneq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)
+$(error Link bonding tests require CONFIG_RTE_LIBRTE_PMD_RING=y)
+else
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
+LDLIBS += -lrte_pmd_ring
+endif
+endif
+endif
 
 include $(RTE_SDK)/mk/rte.app.mk
 
