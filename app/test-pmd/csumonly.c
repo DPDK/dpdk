@@ -104,6 +104,42 @@ get_udptcp_checksum(void *l3_hdr, void *l4_hdr, uint16_t ethertype)
 		return rte_ipv6_udptcp_cksum(l3_hdr, l4_hdr);
 }
 
+/* Parse an IPv4 header to fill l3_len, l4_len, and l4_proto */
+static void
+parse_ipv4(struct ipv4_hdr *ipv4_hdr, uint16_t *l3_len, uint8_t *l4_proto,
+	uint16_t *l4_len)
+{
+	struct tcp_hdr *tcp_hdr;
+
+	*l3_len = (ipv4_hdr->version_ihl & 0x0f) * 4;
+	*l4_proto = ipv4_hdr->next_proto_id;
+
+	/* only fill l4_len for TCP, it's useful for TSO */
+	if (*l4_proto == IPPROTO_TCP) {
+		tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr + *l3_len);
+		*l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
+	} else
+		*l4_len = 0;
+}
+
+/* Parse an IPv6 header to fill l3_len, l4_len, and l4_proto */
+static void
+parse_ipv6(struct ipv6_hdr *ipv6_hdr, uint16_t *l3_len, uint8_t *l4_proto,
+	uint16_t *l4_len)
+{
+	struct tcp_hdr *tcp_hdr;
+
+	*l3_len = sizeof(struct ipv6_hdr);
+	*l4_proto = ipv6_hdr->proto;
+
+	/* only fill l4_len for TCP, it's useful for TSO */
+	if (*l4_proto == IPPROTO_TCP) {
+		tcp_hdr = (struct tcp_hdr *)((char *)ipv6_hdr + *l3_len);
+		*l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
+	} else
+		*l4_len = 0;
+}
+
 /*
  * Parse an ethernet header to fill the ethertype, l2_len, l3_len and
  * ipproto. This function is able to recognize IPv4/IPv6 with one optional vlan
@@ -115,7 +151,6 @@ parse_ethernet(struct ether_hdr *eth_hdr, uint16_t *ethertype, uint16_t *l2_len,
 {
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
-	struct tcp_hdr *tcp_hdr;
 
 	*l2_len = sizeof(struct ether_hdr);
 	*ethertype = eth_hdr->ether_type;
@@ -130,26 +165,18 @@ parse_ethernet(struct ether_hdr *eth_hdr, uint16_t *ethertype, uint16_t *l2_len,
 	switch (*ethertype) {
 	case _htons(ETHER_TYPE_IPv4):
 		ipv4_hdr = (struct ipv4_hdr *) ((char *)eth_hdr + *l2_len);
-		*l3_len = (ipv4_hdr->version_ihl & 0x0f) * 4;
-		*l4_proto = ipv4_hdr->next_proto_id;
+		parse_ipv4(ipv4_hdr, l3_len, l4_proto, l4_len);
 		break;
 	case _htons(ETHER_TYPE_IPv6):
 		ipv6_hdr = (struct ipv6_hdr *) ((char *)eth_hdr + *l2_len);
-		*l3_len = sizeof(struct ipv6_hdr);
-		*l4_proto = ipv6_hdr->proto;
+		parse_ipv6(ipv6_hdr, l3_len, l4_proto, l4_len);
 		break;
 	default:
+		*l4_len = 0;
 		*l3_len = 0;
 		*l4_proto = 0;
 		break;
 	}
-
-	if (*l4_proto == IPPROTO_TCP) {
-		tcp_hdr = (struct tcp_hdr *)((char *)eth_hdr +
-			*l2_len + *l3_len);
-		*l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
-	} else
-		*l4_len = 0;
 }
 
 /* modify the IPv4 or IPv4 source address of a packet */
