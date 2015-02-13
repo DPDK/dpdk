@@ -283,6 +283,35 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 	info->l2_len += sizeof(struct simple_gre_hdr);
 }
 
+
+/* Parse an encapsulated ip or ipv6 header */
+static void
+parse_encap_ip(void *encap_ip, struct testpmd_offload_info *info)
+{
+	struct ipv4_hdr *ipv4_hdr = encap_ip;
+	struct ipv6_hdr *ipv6_hdr = encap_ip;
+	uint8_t ip_version;
+
+	ip_version = (ipv4_hdr->version_ihl & 0xf0) >> 4;
+
+	if (ip_version != 4 && ip_version != 6)
+		return;
+
+	info->is_tunnel = 1;
+	info->outer_ethertype = info->ethertype;
+	info->outer_l2_len = info->l2_len;
+	info->outer_l3_len = info->l3_len;
+
+	if (ip_version == 4) {
+		parse_ipv4(ipv4_hdr, info);
+		info->ethertype = _htons(ETHER_TYPE_IPv4);
+	} else {
+		parse_ipv6(ipv6_hdr, info);
+		info->ethertype = _htons(ETHER_TYPE_IPv6);
+	}
+	info->l2_len = 0;
+}
+
 /* modify the IPv4 or IPv4 source address of a packet */
 static void
 change_ip_addresses(void *l3_hdr, uint16_t ethertype)
@@ -438,6 +467,7 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
  *           UDP|TCP|SCTP
  *   Ether / (vlan) / outer IP|IP6 / GRE / Ether / IP|IP6 / UDP|TCP|SCTP
  *   Ether / (vlan) / outer IP|IP6 / GRE / IP|IP6 / UDP|TCP|SCTP
+ *   Ether / (vlan) / outer IP|IP6 / IP|IP6 / UDP|TCP|SCTP
  *
  * The testpmd command line for this forward engine sets the flags
  * TESTPMD_TX_OFFLOAD_* in ports[tx_port].tx_ol_flags. They control
@@ -519,6 +549,10 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				gre_hdr = (struct simple_gre_hdr *)
 					((char *)l3_hdr + info.l3_len);
 				parse_gre(gre_hdr, &info);
+			} else if (info.l4_proto == IPPROTO_IPIP) {
+				void *encap_ip_hdr;
+				encap_ip_hdr = (char *)l3_hdr + info.l3_len;
+				parse_encap_ip(encap_ip_hdr, &info);
 			}
 		}
 

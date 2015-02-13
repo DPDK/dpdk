@@ -324,7 +324,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    ip|udp|tcp|sctp always concern the inner layer.\n"
 			"    outer-ip concerns the outer IP layer in"
 			" case the packet is recognized as a tunnel packet by"
-			" the forward engine (vxlan and gre are supported)\n"
+			" the forward engine (vxlan, gre and ipip are supported)\n"
 			"    Please check the NIC datasheet for HW limits.\n\n"
 
 			"csum parse-tunnel (on|off) (tx_port_id)\n"
