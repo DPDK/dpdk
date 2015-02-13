@@ -229,9 +229,11 @@ kni_thread_single(void *unused)
 			}
 		}
 		up_read(&kni_list_lock);
+#ifdef RTE_KNI_PREEMPT_DEFAULT
 		/* reschedule out for a while */
 		schedule_timeout_interruptible(usecs_to_jiffies( \
 				KNI_KTHREAD_RESCHEDULE_INTERVAL));
+#endif
 	}
 
 	return 0;
@@ -252,8 +254,10 @@ kni_thread_multiple(void *param)
 #endif
 			kni_net_poll_resp(dev);
 		}
+#ifdef RTE_KNI_PREEMPT_DEFAULT
 		schedule_timeout_interruptible(usecs_to_jiffies( \
 				KNI_KTHREAD_RESCHEDULE_INTERVAL));
+#endif
 	}
 
 	return 0;
