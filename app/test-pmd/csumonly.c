@@ -93,7 +93,6 @@ struct testpmd_offload_info {
 	uint16_t l3_len;
 	uint16_t l4_len;
 	uint8_t l4_proto;
-	uint8_t l4_tun_len;
 	uint8_t is_tunnel;
 	uint16_t outer_ethertype;
 	uint16_t outer_l2_len;
@@ -189,6 +188,34 @@ parse_ethernet(struct ether_hdr *eth_hdr, struct testpmd_offload_info *info)
 		info->l4_proto = 0;
 		break;
 	}
+}
+
+/* Parse a vxlan header */
+static void
+parse_vxlan(struct udp_hdr *udp_hdr, struct testpmd_offload_info *info,
+	uint64_t mbuf_olflags)
+{
+	struct ether_hdr *eth_hdr;
+
+	/* check udp destination port, 4789 is the default vxlan port
+	 * (rfc7348) or that the rx offload flag is set (i40e only
+	 * currently) */
+	if (udp_hdr->dst_port != _htons(4789) &&
+		(mbuf_olflags & (PKT_RX_TUNNEL_IPV4_HDR |
+			PKT_RX_TUNNEL_IPV6_HDR)) == 0)
+		return;
+
+	info->is_tunnel = 1;
+	info->outer_ethertype = info->ethertype;
+	info->outer_l2_len = info->l2_len;
+	info->outer_l3_len = info->l3_len;
+
+	eth_hdr = (struct ether_hdr *)((char *)udp_hdr +
+		sizeof(struct udp_hdr) +
+		sizeof(struct vxlan_hdr));
+
+	parse_ethernet(eth_hdr, info);
+	info->l2_len += ETHER_VXLAN_HLEN; /* add udp + vxlan */
 }
 
 /* modify the IPv4 or IPv4 source address of a packet */
@@ -356,7 +383,6 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	struct rte_mbuf *m;
 	struct ether_hdr *eth_hdr;
 	void *l3_hdr = NULL, *outer_l3_hdr = NULL; /* can be IPv4 or IPv6 */
-	struct udp_hdr *udp_hdr;
 	uint16_t nb_rx;
 	uint16_t nb_tx;
 	uint16_t i;
@@ -414,33 +440,15 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		/* check if it's a supported tunnel (only vxlan for now) */
 		if ((testpmd_ol_flags & TESTPMD_TX_OFFLOAD_PARSE_TUNNEL) &&
 			info.l4_proto == IPPROTO_UDP) {
+			struct udp_hdr *udp_hdr;
 			udp_hdr = (struct udp_hdr *)((char *)l3_hdr + info.l3_len);
+			parse_vxlan(udp_hdr, &info, m->ol_flags);
+		}
 
-			/* check udp destination port, 4789 is the default
-			 * vxlan port (rfc7348) */
-			if (udp_hdr->dst_port == _htons(4789)) {
-				info.l4_tun_len = ETHER_VXLAN_HLEN;
-				info.is_tunnel = 1;
-
-			/* currently, this flag is set by i40e only if the
-			 * packet is vxlan */
-			} else if (m->ol_flags & (PKT_RX_TUNNEL_IPV4_HDR |
-					PKT_RX_TUNNEL_IPV6_HDR))
-				info.is_tunnel = 1;
-
-			if (info.is_tunnel == 1) {
-				info.outer_ethertype = info.ethertype;
-				info.outer_l2_len = info.l2_len;
-				info.outer_l3_len = info.l3_len;
-				outer_l3_hdr = l3_hdr;
-
-				eth_hdr = (struct ether_hdr *)((char *)udp_hdr +
-					sizeof(struct udp_hdr) +
-					sizeof(struct vxlan_hdr));
-
-				parse_ethernet(eth_hdr, &info);
-				l3_hdr = (char *)eth_hdr + info.l2_len;
-			}
+		/* update l3_hdr and outer_l3_hdr if a tunnel was parsed */
+		if (info.is_tunnel) {
+			outer_l3_hdr = l3_hdr;
+			l3_hdr = (char *)l3_hdr + info.outer_l3_len + info.l2_len;
 		}
 
 		/* step 2: change all source IPs (v4 or v6) so we need
@@ -472,7 +480,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM) {
 				m->outer_l2_len = info.outer_l2_len;
 				m->outer_l3_len = info.outer_l3_len;
-				m->l2_len = info.l4_tun_len + info.l2_len;
+				m->l2_len = info.l2_len;
 				m->l3_len = info.l3_len;
 			}
 			else {
@@ -482,9 +490,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				   the payload will be modified by the
 				   hardware */
 				m->l2_len = info.outer_l2_len +
-					info.outer_l3_len +
-					sizeof(struct udp_hdr) +
-					sizeof(struct vxlan_hdr) + info.l2_len;
+					info.outer_l3_len + info.l2_len;
 				m->l3_len = info.l3_len;
 				m->l4_len = info.l4_len;
 			}
