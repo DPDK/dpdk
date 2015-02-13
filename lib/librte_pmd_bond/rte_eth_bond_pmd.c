@@ -1622,32 +1622,32 @@ bond_init(const char *name, const char *params)
 	/* Parse link bonding mode */
 	if (rte_kvargs_count(kvlist, PMD_BOND_MODE_KVARG) == 1) {
 		if (rte_kvargs_process(kvlist, PMD_BOND_MODE_KVARG,
-				&bond_ethdev_parse_slave_mode_kvarg, &bonding_mode) != 0) {
-			RTE_LOG(ERR, EAL, "Invalid mode for bonded device %s\n", name);
-			return -1;
+				&bond_ethdev_parse_slave_mode_kvarg,
+				&bonding_mode) != 0) {
+			RTE_LOG(ERR, EAL, "Invalid mode for bonded device %s\n",
+					name);
+			goto parse_error;
 		}
 	} else {
-		RTE_LOG(ERR, EAL,
-				"Mode must be specified only once for bonded device %s\n",
-				name);
-		return -1;
+		RTE_LOG(ERR, EAL, "Mode must be specified only once for bonded "
+				"device %s\n", name);
+		goto parse_error;
 	}
 
 	/* Parse socket id to create bonding device on */
 	arg_count = rte_kvargs_count(kvlist, PMD_BOND_SOCKET_ID_KVARG);
 	if (arg_count == 1) {
 		if (rte_kvargs_process(kvlist, PMD_BOND_SOCKET_ID_KVARG,
-				&bond_ethdev_parse_socket_id_kvarg, &socket_id) != 0) {
-			RTE_LOG(ERR, EAL,
-					"Invalid socket Id specified for bonded device %s\n",
-					name);
-			return -1;
+				&bond_ethdev_parse_socket_id_kvarg, &socket_id)
+				!= 0) {
+			RTE_LOG(ERR, EAL, "Invalid socket Id specified for "
+					"bonded device %s\n", name);
+			goto parse_error;
 		}
 	} else if (arg_count > 1) {
-		RTE_LOG(ERR, EAL,
-				"Socket Id can be specified only once for bonded device %s\n",
-				name);
-		return -1;
+		RTE_LOG(ERR, EAL, "Socket Id can be specified only once for "
+				"bonded device %s\n", name);
+		goto parse_error;
 	} else {
 		socket_id = rte_socket_id();
 	}
@@ -1655,18 +1655,21 @@ bond_init(const char *name, const char *params)
 	/* Create link bonding eth device */
 	port_id = rte_eth_bond_create(name, bonding_mode, socket_id);
 	if (port_id < 0) {
-		RTE_LOG(ERR, EAL,
-				"Failed to create socket %s in mode %u on socket %u.\n",
-				name, bonding_mode, socket_id);
-		return -1;
+		RTE_LOG(ERR, EAL, "Failed to create socket %s in mode %u on "
+				"socket %u.\n",	name, bonding_mode, socket_id);
+		goto parse_error;
 	}
 	internals = rte_eth_devices[port_id].data->dev_private;
 	internals->kvlist = kvlist;
 
-	RTE_LOG(INFO, EAL,
-			"Create bonded device %s on port %d in mode %u on socket %u.\n",
-			name, port_id, bonding_mode, socket_id);
+	RTE_LOG(INFO, EAL, "Create bonded device %s on port %d in mode %u on "
+			"socket %u.\n",	name, port_id, bonding_mode, socket_id);
 	return 0;
+
+parse_error:
+	rte_kvargs_free(kvlist);
+
+	return -1;
 }
 
 /* this part will resolve the slave portids after all the other pdev and vdev
