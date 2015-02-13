@@ -48,6 +48,8 @@ static void free_devargs_list(void)
 	while (!TAILQ_EMPTY(&devargs_list)) {
 		devargs = TAILQ_FIRST(&devargs_list);
 		TAILQ_REMOVE(&devargs_list, devargs, next);
+		if (devargs->args)
+			free(devargs->args);
 		free(devargs);
 	}
 }
@@ -92,7 +94,7 @@ test_devargs(void)
 	if (strncmp(devargs->virtual.drv_name, "eth_ring1",
 			sizeof(devargs->virtual.drv_name)) != 0)
 		goto fail;
-	if (strncmp(devargs->args, "k1=val,k2=val2", sizeof(devargs->args)) != 0)
+	if (!devargs->args || strcmp(devargs->args, "k1=val,k2=val2") != 0)
 		goto fail;
 	free_devargs_list();
 
@@ -105,7 +107,7 @@ test_devargs(void)
 		devargs->pci.addr.devid != 0 ||
 		devargs->pci.addr.function != 1)
 		goto fail;
-	if (strncmp(devargs->args, "", sizeof(devargs->args)) != 0)
+	if (devargs->args)
 		goto fail;
 	free_devargs_list();
 
