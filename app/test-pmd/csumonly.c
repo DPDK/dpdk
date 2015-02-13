@@ -593,6 +593,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				m->outer_l3_len = info.outer_l3_len;
 				m->l2_len = info.l2_len;
 				m->l3_len = info.l3_len;
+				m->l4_len = info.l4_len;
 			}
 			else {
 				/* if there is a outer UDP cksum
