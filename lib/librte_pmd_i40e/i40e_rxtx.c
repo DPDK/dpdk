@@ -1298,6 +1298,18 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			ctx_txd->l2tag2 = rte_cpu_to_le_16(cd_l2tag2);
 			ctx_txd->type_cmd_tso_mss =
 				rte_cpu_to_le_64(cd_type_cmd_tso_mss);
+
+			PMD_TX_LOG(DEBUG, "mbuf: %p, TCD[%u]:\n"
+				"tunneling_params: %#x;\n"
+				"l2tag2: %#hx;\n"
+				"rsvd: %#hx;\n"
+				"type_cmd_tso_mss: %#lx;\n",
+				tx_pkt, tx_id,
+				ctx_txd->tunneling_params,
+				ctx_txd->l2tag2,
+				ctx_txd->rsvd,
+				ctx_txd->type_cmd_tso_mss);
+
 			txe->last_id = tx_last;
 			tx_id = txe->next_id;
 			txe = txn;
@@ -1315,6 +1327,16 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			/* Setup TX Descriptor */
 			slen = m_seg->data_len;
 			buf_dma_addr = RTE_MBUF_DATA_DMA_ADDR(m_seg);
+
+			PMD_TX_LOG(DEBUG, "mbuf: %p, TDD[%u]:\n"
+				"buf_dma_addr: %#"PRIx64";\n"
+				"td_cmd: %#x;\n"
+				"td_offset: %#x;\n"
+				"td_len: %u;\n"
+				"td_tag: %#x;\n",
+				tx_pkt, tx_id, buf_dma_addr,
+				td_cmd, td_offset, slen, td_tag);
+
 			txd->buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
 			txd->cmd_type_offset_bsz = i40e_build_ctob(td_cmd,
 						td_offset, slen, td_tag);
