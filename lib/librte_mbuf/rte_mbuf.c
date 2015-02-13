@@ -240,7 +240,6 @@ const char *rte_get_tx_ol_flag_name(uint64_t mask)
 	case PKT_TX_SCTP_CKSUM: return "PKT_TX_SCTP_CKSUM";
 	case PKT_TX_UDP_CKSUM: return "PKT_TX_UDP_CKSUM";
 	case PKT_TX_IEEE1588_TMST: return "PKT_TX_IEEE1588_TMST";
-	case PKT_TX_UDP_TUNNEL_PKT: return "PKT_TX_UDP_TUNNEL_PKT";
 	case PKT_TX_TCP_SEG: return "PKT_TX_TCP_SEG";
 	case PKT_TX_IPV4: return "PKT_TX_IPV4";
 	case PKT_TX_IPV6: return "PKT_TX_IPV6";

@@ -255,9 +255,6 @@ process_outer_cksums(void *outer_l3_hdr, uint16_t outer_ethertype,
 	struct udp_hdr *udp_hdr;
 	uint64_t ol_flags = 0;
 
-	if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM)
-		ol_flags |= PKT_TX_UDP_TUNNEL_PKT;
-
 	if (outer_ethertype == _htons(ETHER_TYPE_IPv4)) {
 		ipv4_hdr->hdr_checksum = 0;
 		ol_flags |= PKT_TX_OUTER_IPV4;
@@ -473,7 +470,6 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				{ PKT_TX_UDP_CKSUM, PKT_TX_L4_MASK },
 				{ PKT_TX_TCP_CKSUM, PKT_TX_L4_MASK },
 				{ PKT_TX_SCTP_CKSUM, PKT_TX_L4_MASK },
-				{ PKT_TX_UDP_TUNNEL_PKT, PKT_TX_UDP_TUNNEL_PKT },
 				{ PKT_TX_IPV4, PKT_TX_IPV4 },
 				{ PKT_TX_IPV6, PKT_TX_IPV6 },
 				{ PKT_TX_OUTER_IP_CKSUM, PKT_TX_OUTER_IP_CKSUM },

@@ -117,11 +117,8 @@ extern "C" {
  *    and set it in the TCP header. Refer to rte_ipv4_phdr_cksum() and
  *    rte_ipv6_phdr_cksum() that can be used as helpers.
  */
-#define PKT_TX_TCP_SEG       (1ULL << 49)
+#define PKT_TX_TCP_SEG       (1ULL << 50)
 
-/** TX packet is an UDP tunneled packet. It must be specified when using
- *  outer checksum offload (PKT_TX_OUTER_IP_CKSUM) */
-#define PKT_TX_UDP_TUNNEL_PKT (1ULL << 50) /**< TX packet is an UDP tunneled packet */
 #define PKT_TX_IEEE1588_TMST (1ULL << 51) /**< TX IEEE1588 packet to timestamp. */
 
 /**

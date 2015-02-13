@@ -482,7 +482,7 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 	}
 
 	/* UDP tunneling packet TX checksum offload */
-	if (unlikely(ol_flags & PKT_TX_OUTER_IP_CKSUM)) {
+	if (ol_flags & PKT_TX_OUTER_IP_CKSUM) {
 
 		*td_offset |= (outer_l2_len >> 1)
 				<< I40E_TX_DESC_LENGTH_MACLEN_SHIFT;
