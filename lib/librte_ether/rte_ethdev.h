@@ -916,6 +916,7 @@ struct rte_eth_conf {
 #define DEV_TX_OFFLOAD_SCTP_CKSUM  0x00000010
 #define DEV_TX_OFFLOAD_TCP_TSO     0x00000020
 #define DEV_TX_OFFLOAD_UDP_TSO     0x00000040
+#define DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM 0x00000080 /**< Used for tunneling packet. */
 
 struct rte_eth_dev_info {
 	struct rte_pci_device *pci_dev; /**< Device PCI information. */
