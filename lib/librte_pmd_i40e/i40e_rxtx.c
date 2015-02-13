@@ -501,7 +501,7 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 			<< I40E_TX_DESC_LENGTH_MACLEN_SHIFT;
 
 	/* Enable L3 checksum offloads */
-	if (ol_flags & PKT_TX_IPV4_CSUM) {
+	if (ol_flags & PKT_TX_IP_CKSUM) {
 		*td_cmd |= I40E_TX_DESC_CMD_IIPT_IPV4_CSUM;
 		*td_offset |= (l3_len >> 2) << I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
 	} else if (ol_flags & PKT_TX_IPV4) {

@@ -142,7 +142,6 @@ extern "C" {
 #define PKT_TX_L4_MASK       (3ULL << 52) /**< Mask for L4 cksum offload request. */
 
 #define PKT_TX_IP_CKSUM      (1ULL << 54) /**< IP cksum of TX pkt. computed by NIC. */
-#define PKT_TX_IPV4_CSUM     PKT_TX_IP_CKSUM /**< Alias of PKT_TX_IP_CKSUM. */
 
 /** Packet is IPv4 without requiring IP checksum offload. */
 #define PKT_TX_IPV4          (1ULL << 55)
