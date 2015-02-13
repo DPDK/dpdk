@@ -183,16 +183,15 @@ process_inner_cksums(void *l3_hdr, uint16_t ethertype, uint16_t l3_len,
 		ipv4_hdr = l3_hdr;
 		ipv4_hdr->hdr_checksum = 0;
 
+		ol_flags |= PKT_TX_IPV4;
 		if (tso_segsz != 0 && l4_proto == IPPROTO_TCP) {
 			ol_flags |= PKT_TX_IP_CKSUM;
 		} else {
 			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM)
 				ol_flags |= PKT_TX_IP_CKSUM;
-			else {
+			else
 				ipv4_hdr->hdr_checksum =
 					rte_ipv4_cksum(ipv4_hdr);
-				ol_flags |= PKT_TX_IPV4;
-			}
 		}
 	} else if (ethertype == _htons(ETHER_TYPE_IPv6))
 		ol_flags |= PKT_TX_IPV6;
@@ -261,6 +260,7 @@ process_outer_cksums(void *outer_l3_hdr, uint16_t outer_ethertype,
 
 	if (outer_ethertype == _htons(ETHER_TYPE_IPv4)) {
 		ipv4_hdr->hdr_checksum = 0;
+		ol_flags |= PKT_TX_OUTER_IPV4;
 
 		if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM)
 			ol_flags |= PKT_TX_OUTER_IP_CKSUM;

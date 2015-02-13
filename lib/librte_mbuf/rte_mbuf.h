@@ -141,24 +141,55 @@ extern "C" {
 #define PKT_TX_UDP_CKSUM     (3ULL << 52) /**< UDP cksum of TX pkt. computed by NIC. */
 #define PKT_TX_L4_MASK       (3ULL << 52) /**< Mask for L4 cksum offload request. */
 
-#define PKT_TX_IP_CKSUM      (1ULL << 54) /**< IP cksum of TX pkt. computed by NIC. */
+/**
+ * Offload the IP checksum in the hardware. The flag PKT_TX_IPV4 should
+ * also be set by the application, although a PMD will only check
+ * PKT_TX_IP_CKSUM.
+ *  - set the IP checksum field in the packet to 0
+ *  - fill the mbuf offload information: l2_len, l3_len
+ */
+#define PKT_TX_IP_CKSUM      (1ULL << 54)
 
-/** Packet is IPv4 without requiring IP checksum offload. */
+/**
+ * Packet is IPv4. This flag must be set when using any offload feature
+ * (TSO, L3 or L4 checksum) to tell the NIC that the packet is an IPv4
+ * packet. If the packet is a tunneled packet, this flag is related to
+ * the inner headers.
+ */
 #define PKT_TX_IPV4          (1ULL << 55)
 
-/** Tell the NIC it's an IPv6 packet.*/
+/**
+ * Packet is IPv6. This flag must be set when using an offload feature
+ * (TSO or L4 checksum) to tell the NIC that the packet is an IPv6
+ * packet. If the packet is a tunneled packet, this flag is related to
+ * the inner headers.
+ */
 #define PKT_TX_IPV6          (1ULL << 56)
 
 #define PKT_TX_VLAN_PKT      (1ULL << 57) /**< TX packet is a 802.1q VLAN packet. */
 
-/** Outer IP checksum of TX packet, computed by NIC for tunneling packet.
- *  The tunnel type must also be specified, ex: PKT_TX_UDP_TUNNEL_PKT. */
+/**
+ * Offload the IP checksum of an external header in the hardware. The
+ * flag PKT_TX_OUTER_IPV4 should also be set by the application, alto ugh
+ * a PMD will only check PKT_TX_IP_CKSUM.  The IP checksum field in the
+ * packet must be set to 0.
+ *  - set the outer IP checksum field in the packet to 0
+ *  - fill the mbuf offload information: outer_l2_len, outer_l3_len
+ */
 #define PKT_TX_OUTER_IP_CKSUM   (1ULL << 58)
 
-/** Packet is outer IPv4 without requiring IP checksum offload for tunneling packet. */
+/**
+ * Packet outer header is IPv4. This flag must be set when using any
+ * outer offload feature (L3 or L4 checksum) to tell the NIC that the
+ * outer header of the tunneled packet is an IPv4 packet.
+ */
 #define PKT_TX_OUTER_IPV4   (1ULL << 59)
 
-/** Tell the NIC it's an outer IPv6 packet for tunneling packet */
+/**
+ * Packet outer header is IPv6. This flag must be set when using any
+ * outer offload feature (L4 checksum) to tell the NIC that the outer
+ * header of the tunneled packet is an IPv6 packet.
+ */
 #define PKT_TX_OUTER_IPV6    (1ULL << 60)
 
 /* Use final bit of flags to indicate a control mbuf */
