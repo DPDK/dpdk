@@ -2892,14 +2892,56 @@ struct cmd_csum_result {
 };
 
 static void
+csum_show(int port_id)
+{
+	struct rte_eth_dev_info dev_info;
+	uint16_t ol_flags;
+
+	ol_flags = ports[port_id].tx_ol_flags;
+	printf("IP checksum offload is %s\n",
+		(ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM) ? "hw" : "sw");
+	printf("UDP checksum offload is %s\n",
+		(ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) ? "hw" : "sw");
+	printf("TCP checksum offload is %s\n",
+		(ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) ? "hw" : "sw");
+	printf("SCTP checksum offload is %s\n",
+		(ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) ? "hw" : "sw");
+	printf("VxLAN checksum offload is %s\n",
+		(ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) ? "hw" : "sw");
+
+	/* display warnings if configuration is not supported by the NIC */
+	rte_eth_dev_info_get(port_id, &dev_info);
+	if ((ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM) &&
+		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM) == 0) {
+		printf("Warning: hardware IP checksum enabled but not "
+			"supported by port %d\n", port_id);
+	}
+	if ((ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) &&
+		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_UDP_CKSUM) == 0) {
+		printf("Warning: hardware UDP checksum enabled but not "
+			"supported by port %d\n", port_id);
+	}
+	if ((ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) &&
+		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_CKSUM) == 0) {
+		printf("Warning: hardware TCP checksum enabled but not "
+			"supported by port %d\n", port_id);
+	}
+	if ((ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) &&
+		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_SCTP_CKSUM) == 0) {
+		printf("Warning: hardware SCTP checksum enabled but not "
+			"supported by port %d\n", port_id);
+	}
+
+}
+
+static void
 cmd_csum_parsed(void *parsed_result,
 		       __attribute__((unused)) struct cmdline *cl,
 		       __attribute__((unused)) void *data)
 {
 	struct cmd_csum_result *res = parsed_result;
 	int hw = 0;
-	uint16_t ol_flags, mask = 0;
-	struct rte_eth_dev_info dev_info;
+	uint16_t mask = 0;
 
 	if (port_id_is_invalid(res->port_id)) {
 		printf("invalid port %d\n", res->port_id);
@@ -2928,41 +2970,7 @@ cmd_csum_parsed(void *parsed_result,
 		else
 			ports[res->port_id].tx_ol_flags &= (~mask);
 	}
-
-	ol_flags = ports[res->port_id].tx_ol_flags;
-	printf("IP checksum offload is %s\n",
-		(ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM) ? "hw" : "sw");
-	printf("UDP checksum offload is %s\n",
-		(ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) ? "hw" : "sw");
-	printf("TCP checksum offload is %s\n",
-		(ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) ? "hw" : "sw");
-	printf("SCTP checksum offload is %s\n",
-		(ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) ? "hw" : "sw");
-	printf("VxLAN checksum offload is %s\n",
-		(ol_flags & TESTPMD_TX_OFFLOAD_VXLAN_CKSUM) ? "hw" : "sw");
-
-	/* display warnings if configuration is not supported by the NIC */
-	rte_eth_dev_info_get(res->port_id, &dev_info);
-	if ((ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM) &&
-		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM) == 0) {
-		printf("Warning: hardware IP checksum enabled but not "
-			"supported by port %d\n", res->port_id);
-	}
-	if ((ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) &&
-		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_UDP_CKSUM) == 0) {
-		printf("Warning: hardware UDP checksum enabled but not "
-			"supported by port %d\n", res->port_id);
-	}
-	if ((ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) &&
-		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_CKSUM) == 0) {
-		printf("Warning: hardware TCP checksum enabled but not "
-			"supported by port %d\n", res->port_id);
-	}
-	if ((ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) &&
-		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_SCTP_CKSUM) == 0) {
-		printf("Warning: hardware SCTP checksum enabled but not "
-			"supported by port %d\n", res->port_id);
-	}
+	csum_show(res->port_id);
 }
 
 cmdline_parse_token_string_t cmd_csum_csum =
