@@ -379,7 +379,7 @@ skipdev:
 static int
 pci_scan(void)
 {
-	int fd = -1;
+	int fd;
 	unsigned dev_count = 0;
 	struct pci_conf matches[16];
 	struct pci_conf_io conf_io = {
