@@ -138,7 +138,7 @@ add_xen_guest(int32_t dom_id)
 	if ((guest = get_xen_guest(dom_id)) != NULL)
 		return guest;
 
-	guest = (struct xen_guest * )calloc(1, sizeof(struct xen_guest));
+	guest = calloc(1, sizeof(struct xen_guest));
 	if (guest) {
 		RTE_LOG(ERR, XENHOST, "  %s: return newly created guest with %d rings\n", __func__, guest->vring_num);
 		TAILQ_INSERT_TAIL(&guest_root, guest, next);

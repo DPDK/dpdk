@@ -1044,13 +1044,13 @@ add_rules(const char *rule_path,
 
 	fseek(fh, 0, SEEK_SET);
 
-	acl_rules = (uint8_t *)calloc(acl_num, rule_size);
+	acl_rules = calloc(acl_num, rule_size);
 
 	if (NULL == acl_rules)
 		rte_exit(EXIT_FAILURE, "%s: failed to malloc memory\n",
 			__func__);
 
-	route_rules = (uint8_t *)calloc(route_num, rule_size);
+	route_rules = calloc(route_num, rule_size);
 
 	if (NULL == route_rules)
 		rte_exit(EXIT_FAILURE, "%s: failed to malloc memory\n",

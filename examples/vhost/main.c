@@ -2615,9 +2615,10 @@ new_device (struct virtio_net *dev)
 
 		}
 
-		vdev->regions_hpa = (struct virtio_memory_regions_hpa *) rte_zmalloc("vhost hpa region",
-			sizeof(struct virtio_memory_regions_hpa) * vdev->nregions_hpa,
-			RTE_CACHE_LINE_SIZE);
+		vdev->regions_hpa = rte_calloc("vhost hpa region",
+					       vdev->nregions_hpa,
+					       sizeof(struct virtio_memory_regions_hpa),
+					       RTE_CACHE_LINE_SIZE);
 		if (vdev->regions_hpa == NULL) {
 			RTE_LOG(ERR, VHOST_CONFIG, "Cannot allocate memory for hpa region\n");
 			rte_free(vdev);

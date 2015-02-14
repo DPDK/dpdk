@@ -248,8 +248,8 @@ parse_gntnode(int dom_id, char *path)
 		goto err;
 	}
 
-	gntnode = (struct xen_gntnode *)calloc(1, sizeof(struct xen_gntnode));
-	gnt = (struct xen_gnt *)calloc(gref_num, sizeof(struct xen_gnt));
+	gntnode = calloc(1, sizeof(struct xen_gntnode));
+	gnt = calloc(gref_num, sizeof(struct xen_gnt));
 	if (gnt == NULL || gntnode == NULL)
 		goto err;
 
