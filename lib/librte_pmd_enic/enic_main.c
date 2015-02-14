@@ -1046,7 +1046,7 @@ int enic_probe(struct enic *enic)
 	struct rte_pci_device *pdev = enic->pdev;
 	int err = -1;
 
-	dev_info(enic, " Initializing ENIC PMD version %s\n", DRV_VERSION);
+	dev_debug(enic, " Initializing ENIC PMD version %s\n", DRV_VERSION);
 
 	enic->bar0.vaddr = (void *)pdev->mem_resource[0].addr;
 	enic->bar0.len = pdev->mem_resource[0].len;
