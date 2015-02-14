@@ -121,9 +121,8 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_fdir_filter *params,
 			enic->fdir.stats.f_add++;
 			return -ENOSPC;
 		}
-		key = (struct enic_fdir_node *)rte_zmalloc(
-			"enic_fdir_node",
-			sizeof(struct enic_fdir_node), 0);
+		key = rte_zmalloc("enic_fdir_node",
+				  sizeof(struct enic_fdir_node), 0);
 		if (!key) {
 			enic->fdir.stats.f_add++;
 			return -ENOMEM;
