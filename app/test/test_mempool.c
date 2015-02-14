@@ -360,7 +360,7 @@ test_mempool_basic_ex(struct rte_mempool * mp)
 	if (mp == NULL)
 		return ret;
 
-	obj = (void **)rte_zmalloc("test_mempool_basic_ex", (MEMPOOL_SIZE * sizeof(void *)), 0);
+	obj = rte_calloc("test_mempool_basic_ex", MEMPOOL_SIZE , sizeof(void *), 0);
 	if (obj == NULL) {
 		printf("test_mempool_basic_ex fail to rte_malloc\n");
 		return ret;

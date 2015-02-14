@@ -448,13 +448,13 @@ run_single_tbl_perf_test(const struct rte_hash *h, hash_operation func,
 
 	/* Initialise */
 	num_buckets = params->entries / params->bucket_entries;
-	key = (uint8_t *) rte_zmalloc("hash key",
-			params->key_len * sizeof(uint8_t), 16);
+	key = rte_zmalloc("hash key",
+			  params->key_len * sizeof(uint8_t), 16);
 	if (key == NULL)
 		return -1;
 
-	bucket_occupancies = (uint32_t *) rte_zmalloc("bucket occupancies",
-			num_buckets * sizeof(uint32_t), 16);
+	bucket_occupancies = rte_calloc("bucket occupancies",
+					num_buckets, sizeof(uint32_t), 16);
 	if (bucket_occupancies == NULL) {
 		rte_free(key);
 		return -1;
