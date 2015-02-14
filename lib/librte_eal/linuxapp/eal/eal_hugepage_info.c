@@ -84,8 +84,6 @@ get_num_hugepages(const char *subdir)
 	else
 		nr_hp_file = "free_hugepages";
 
-	memset(path, 0, sizeof(path));
-
 	snprintf(path, sizeof(path), "%s/%s/%s",
 			sys_dir_path, subdir, nr_hp_file);
 
