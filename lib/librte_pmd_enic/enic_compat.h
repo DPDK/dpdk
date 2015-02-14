@@ -41,6 +41,7 @@
 
 #include <rte_atomic.h>
 #include <rte_malloc.h>
+#include <rte_log.h>
 
 #define ENIC_PAGE_ALIGN 4096ULL
 #define ENIC_ALIGN      ENIC_PAGE_ALIGN
@@ -75,10 +76,13 @@
 #define kzalloc(size, flags) calloc(1, size)
 #define kfree(x) free(x)
 
-#define dev_err(x, args...) printf("rte_enic_pmd : Error - " args)
-#define dev_info(x, args...) printf("rte_enic_pmd: Info - " args)
-#define dev_warning(x, args...) printf("rte_enic_pmd: Warning - " args)
-#define dev_trace(x, args...) printf("rte_enic_pmd: Trace - " args)
+#define dev_printk(level, fmt, args...)	\
+	RTE_LOG(level, PMD, "rte_enic_pmd: " fmt, ## args)
+
+#define dev_err(x, args...) dev_printk(ERR, args)
+#define dev_info(x, args...) dev_printk(INFO,  args)
+#define dev_warning(x, args...) dev_printk(WARNING, args)
+#define dev_debug(x, args...) dev_printk(DEBUG, args)
 
 #define __le16 u16
 #define __le32 u32
