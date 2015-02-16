@@ -62,7 +62,7 @@ Compilation of the DPDK
 *   coreutils:  cmp, sed, grep, arch
 
 *   gcc: versions 4.5.x or later is recommended for i686/x86_64. versions 4.8.x or later is recommanded
-    for ppc_64. On some distributions, some specific compiler flags and linker flags are enabled by
+    for ppc_64 and x86_x32 ABI. On some distributions, some specific compiler flags and linker flags are enabled by
     default and affect performance (- fstack-protector, for example). Please refer to the documentation
     of your distribution and to gcc -dumpspecs.
 
@@ -78,7 +78,14 @@ Compilation of the DPDK
 
     glibc.ppc64, libgcc.ppc64, libstdc++.ppc64 and glibc-devel.ppc64 for IBM ppc_64;
 
-*   Python, version 2.6 or 2.7, to use various helper scripts included in the DPDK package
+.. note::
+
+    x86_x32 ABI is currently supported with distribution packages only on Ubuntu
+    higher than 13.10 or recent debian distribution. The only supported  compiler is gcc 4.8+.
+
+.. note::
+
+    Python, version 2.6 or 2.7, to use various helper scripts included in the DPDK package
 
 
 **Optional Tools:**
