@@ -212,4 +212,161 @@ Memory zones can be reserved with specific start address alignment by supplying 
 The alignment value should be a power of two and not less than the cache line size (64 bytes).
 Memory zones can also be reserved from either 2 MB or 1 GB hugepages, provided that both are available on the system.
 
+
+Multiple pthread
+----------------
+
+DPDK usually pin one pthread per core to avoid task switch overhead. It gains
+performance a lot, but it's not flexible and not always efficient.
+
+Power management helps to improve the cpu efficient by limiting the cpu runtime frequency.
+But there's more reasonable motivation to utilize the ineffective idle cycles under the full capability of cpu.
+
+By OS scheduing and cgroup, to each pthread on specified cpu, it can simply assign the cpu quota.
+It gives another way to improve the cpu efficiency. But the prerequisite is to run DPDK execution conext from multiple pthread on one core.
+
+For flexibility, it's also useful to allow the pthread affinity not only to a cpu but to a cpu set.
+
+
+EAL pthread and lcore Affinity
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In terms of lcore, it stands for an EAL execution unit in the EAL pthread.
+EAL pthread indicates all the pthreads created/managed by EAL, they execute the tasks issued by *remote_launch*.
+In each EAL pthread, there's a TLS called *_lcore_id* for the unique identification.
+As EAL pthreads usually 1:1 bind to the physical cpu, *_lcore_id* typically equals to the cpu id.
+
+In multiple pthread case, EAL pthread is no longer always bind to one specific physical cpu.
+It may affinity to a cpuset. Then the *_lcore_id* won't always be the same as cpu id.
+So there's an EAL long option '--lcores' defined to assign the cpu affinity of lcores.
+For a specified lcore id or id group, it allows to set the cpuset for that EAL pthread.
+
+The format pattern:
+	--lcores='<lcore_set>[@cpu_set][,<lcore_set>[@cpu_set],...]'
+
+'lcore_set' and 'cpu_set' can be a single number, range or a group.
+
+A number is a "digit([0-9]+)"; a range is "<number>-<number>"; a group is "(<number|range>[,<number|range>,...])".
+
+If not supply a '\@cpu_set', the value of 'cpu_set' uses the same value as 'lcore_set'.
+
+    ::
+
+    	For example, "--lcores='1,2@(5-7),(3-5)@(0,2),(0,6),7-8'" which means start 9 EAL thread;
+    	    lcore 0 runs on cpuset 0x41 (cpu 0,6);
+    	    lcore 1 runs on cpuset 0x2 (cpu 1);
+    	    lcore 2 runs on cpuset 0xe0 (cpu 5,6,7);
+    	    lcore 3,4,5 runs on cpuset 0x5 (cpu 0,2);
+    	    lcore 6 runs on cpuset 0x41 (cpu 0,6);
+    	    lcore 7 runs on cpuset 0x80 (cpu 7);
+    	    lcore 8 runs on cpuset 0x100 (cpu 8).
+
+By this option, for each given lcore id, the associated cpus can be assigned.
+It's also compatible with the pattern of corelist('-l') option.
+
+non-EAL pthread support
+~~~~~~~~~~~~~~~~~~~~~~~
+
+It allows to use DPDK execution context in any user pthread(aka. non-EAL pthread).
+
+In a non-EAL pthread, the *_lcore_id* is always LCORE_ID_ANY which means it's not an EAL thread along with a valid *_lcore_id*.
+Then the libraries won't take *_lcore_id* as unique id. Instead of it, some libraries use another alternative unique id(e.g. tid);
+some are totaly no impact; and some work with some limitation(e.g. timer, mempool).
+
+All these impacts are mentioned in :ref:`known_issue_label` section.
+
+Public Thread API
+~~~~~~~~~~~~~~~~~
+
+There are two public API ``rte_thread_set_affinity()`` and ``rte_pthread_get_affinity()`` introduced for threads.
+When they're used in any pthread context, the Thread Local Storage(TLS) will be set/get.
+
+Those TLS include *_cpuset* and *_socket_id*:
+
+*	*_cpuset* stores the cpus bitmap to which the pthread affinity.
+
+*	*_socket_id* stores the NUMA node of the cpuset. If the cpus in cpuset belong to different NUMA node, the *_socket_id* set to SOCKTE_ID_ANY.
+
+
+.. _known_issue_label:
+
+Known Issues
+~~~~~~~~~~~~
+
++ rte_mempool
+
+  The rte_mempool uses a per-lcore cache inside mempool.
+  For non-EAL pthread, ``rte_lcore_id()`` will not return a valid number.
+  So for now, when rte_mempool is used in non-EAL pthread, the put/get operations will bypass the mempool cache.
+  There's performance penalty if bypassing the mempool cache. The work for none-EAL mempool cache support is in progress.
+
+  However, there's another problem. The rte_mempool is not preemptable. This comes from rte_ring.
+
++ rte_ring
+
+  rte_ring supports multi-producer enqueue and multi-consumer dequeue. But it's non-preemptive.
+
+  .. note::
+
+    The "non-preemptive" constraint means:
+
+    - a pthread doing multi-producers enqueues on a given ring must not
+      be preempted by another pthread doing a multi-producer enqueue on
+      the same ring.
+    - a pthread doing multi-consumers dequeues on a given ring must not
+      be preempted by another pthread doing a multi-consumer dequeue on
+      the same ring.
+
+    Bypassing this constraints may cause the 2nd pthread to spin until the 1st one is scheduled again.
+    Moreover, if the 1st pthread is preempted by a context that has an higher priority, it may even cause a dead lock.
+
+  But it doesn't means we can't use. Just need to narrow down the situation when it's used by multi-pthread on the same core.
+
+  1. It CAN be used for any single-producer or single-consumer situation.
+
+  2. It MAY be used by multi-producer/consumer pthread whose scheduling policy are all SCHED_OTHER(cfs). User SHOULD aware of the performance penalty before using it.
+
+  3. It MUST not be used by multi-producer/consumer pthread, while some of their scheduling policies is SCHED_FIFO or SCHED_RR.
+
+  ``RTE_RING_PAUSE_REP_COUNT`` is defined for rte_ring to reduce contention. It's mainly for case 2, a yield is issued after number of times pause repeat.
+
+  It adds a sched_yield() syscall if the thread spins for too long, waiting other thread to finish its operations on the ring.
+  That gives pre-empted thread a chance to proceed and finish with ring enqnue/dequeue operation.
+
++ rte_timer
+
+  It's not allowed to run ``rte_timer_manager()`` on a non-EAL pthread. But it's all right to reset/stop the timer from a non-EAL pthread.
+
++ rte_log
+
+  In non-EAL pthread, there's no per thread loglevel and logtype. It uses the global loglevel.
+
++ misc
+
+  The debug statistics of rte_ring, rte_mempool and rte_timer are not supported in a non-EAL pthread.
+
+cgroup control
+~~~~~~~~~~~~~~
+
+Here's a simple example, there's two pthreads(t0 and t1) doing packet IO on the same core($cpu).
+We expect only 50% of CPU spend on packet IO.
+
+  .. code::
+
+    mkdir /sys/fs/cgroup/cpu/pkt_io
+    mkdir /sys/fs/cgroup/cpuset/pkt_io
+
+    echo $cpu > /sys/fs/cgroup/cpuset/cpuset.cpus
+
+    echo $t0 > /sys/fs/cgroup/cpu/pkt_io/tasks
+    echo $t0 > /sys/fs/cgroup/cpuset/pkt_io/tasks
+
+    echo $t1 > /sys/fs/cgroup/cpu/pkt_io/tasks
+    echo $t1 > /sys/fs/cgroup/cpuset/pkt_io/tasks
+
+    cd /sys/fs/cgroup/cpu/pkt_io
+    echo 100000 > pkt_io/cpu.cfs_period_us
+    echo  50000 > pkt_io/cpu.cfs_quota_us
+
+
 .. |linuxapp_launch| image:: img/linuxapp_launch.svg
