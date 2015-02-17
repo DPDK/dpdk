@@ -39,6 +39,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <sys/queue.h>
+#include <sys/syscall.h>
 
 #include <rte_debug.h>
 #include <rte_atomic.h>
@@ -230,4 +231,10 @@ eal_thread_loop(__attribute__((unused)) void *arg)
 	/* never reached */
 	/* pthread_exit(NULL); */
 	/* return NULL; */
+}
+
+/* require calling thread tid by gettid() */
+int rte_sys_gettid(void)
+{
+	return (int)syscall(SYS_gettid);
 }

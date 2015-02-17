@@ -41,6 +41,9 @@
  */
 
 #include <stdint.h>
+#include <sched.h>
+
+#include <rte_per_lcore.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -261,6 +264,30 @@ rte_set_application_usage_hook( rte_usage_hook_t usage_func );
  *   Nonzero if hugepages are enabled.
  */
 int rte_eal_has_hugepages(void);
+
+/**
+ * A wrap API for syscall gettid.
+ *
+ * @return
+ *   On success, returns the thread ID of calling process.
+ *   It is always successful.
+ */
+int rte_sys_gettid(void);
+
+/**
+ * Get system unique thread id.
+ *
+ * @return
+ *   On success, returns the thread ID of calling process.
+ *   It is always successful.
+ */
+static inline int rte_gettid(void)
+{
+	static RTE_DEFINE_PER_LCORE(int, _thread_id) = -1;
+	if (RTE_PER_LCORE(_thread_id) == -1)
+		RTE_PER_LCORE(_thread_id) = rte_sys_gettid();
+	return RTE_PER_LCORE(_thread_id);
+}
 
 #ifdef __cplusplus
 }
