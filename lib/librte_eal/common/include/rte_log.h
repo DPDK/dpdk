@@ -144,6 +144,11 @@ uint32_t rte_get_log_level(void);
 void rte_set_log_type(uint32_t type, int enable);
 
 /**
+ * Get the global log type.
+ */
+uint32_t rte_get_log_type(void);
+
+/**
  * Get the current loglevel for the message being processed.
  *
  * Before calling the user-defined stream for logging, the log
