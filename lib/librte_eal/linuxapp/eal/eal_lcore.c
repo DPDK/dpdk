@@ -158,11 +158,19 @@ rte_eal_cpu_init(void)
 	 * ones and enable them by default.
 	 */
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		/* init cpuset for per lcore config */
+		CPU_ZERO(&lcore_config[lcore_id].cpuset);
+
+		/* in 1:1 mapping, record related cpu detected state */
 		lcore_config[lcore_id].detected = cpu_detected(lcore_id);
 		if (lcore_config[lcore_id].detected == 0) {
 			config->lcore_role[lcore_id] = ROLE_OFF;
 			continue;
 		}
+
+		/* By default, lcore 1:1 map to cpu id */
+		CPU_SET(lcore_id, &lcore_config[lcore_id].cpuset);
+
 		/* By default, each detected core is enabled */
 		config->lcore_role[lcore_id] = ROLE_RTE;
 		lcore_config[lcore_id].core_id = cpu_core_id(lcore_id);

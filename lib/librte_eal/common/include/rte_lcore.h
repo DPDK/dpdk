@@ -50,6 +50,13 @@ extern "C" {
 
 #define LCORE_ID_ANY -1    /**< Any lcore. */
 
+#if defined(__linux__)
+	typedef	cpu_set_t rte_cpuset_t;
+#elif defined(__FreeBSD__)
+#include <pthread_np.h>
+	typedef cpuset_t rte_cpuset_t;
+#endif
+
 /**
  * Structure storing internal configuration (per-lcore)
  */
@@ -65,6 +72,7 @@ struct lcore_config {
 	unsigned socket_id;        /**< physical socket id for this lcore */
 	unsigned core_id;          /**< core number on socket for this lcore */
 	int core_index;            /**< relative index, starting from 0 */
+	rte_cpuset_t cpuset;       /**< cpu set which the lcore affinity to */
 };
 
 /**
