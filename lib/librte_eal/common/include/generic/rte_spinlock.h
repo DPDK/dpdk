@@ -179,7 +179,7 @@ static inline void rte_spinlock_recursive_init(rte_spinlock_recursive_t *slr)
  */
 static inline void rte_spinlock_recursive_lock(rte_spinlock_recursive_t *slr)
 {
-	int id = rte_lcore_id();
+	int id = rte_gettid();
 
 	if (slr->user != id) {
 		rte_spinlock_lock(&slr->sl);
@@ -212,7 +212,7 @@ static inline void rte_spinlock_recursive_unlock(rte_spinlock_recursive_t *slr)
  */
 static inline int rte_spinlock_recursive_trylock(rte_spinlock_recursive_t *slr)
 {
-	int id = rte_lcore_id();
+	int id = rte_gettid();
 
 	if (slr->user != id) {
 		if (rte_spinlock_trylock(&slr->sl) == 0)
