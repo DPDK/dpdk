@@ -45,6 +45,7 @@
 
 #include "eal_private.h"
 #include "eal_filesystem.h"
+#include "eal_thread.h"
 
 #define SYS_CPU_DIR "/sys/devices/system/cpu/cpu%u"
 #define CORE_ID_FILE "topology/core_id"
@@ -71,8 +72,8 @@ cpu_detected(unsigned lcore_id)
  * Note: physical package id != NUMA node, but we use it as a
  * fallback for kernels which don't create a nodeY link
  */
-static unsigned
-cpu_socket_id(unsigned lcore_id)
+unsigned
+eal_cpu_socket_id(unsigned lcore_id)
 {
 	const char node_prefix[] = "node";
 	const size_t prefix_len = sizeof(node_prefix) - 1;
@@ -174,7 +175,7 @@ rte_eal_cpu_init(void)
 		/* By default, each detected core is enabled */
 		config->lcore_role[lcore_id] = ROLE_RTE;
 		lcore_config[lcore_id].core_id = cpu_core_id(lcore_id);
-		lcore_config[lcore_id].socket_id = cpu_socket_id(lcore_id);
+		lcore_config[lcore_id].socket_id = eal_cpu_socket_id(lcore_id);
 		if (lcore_config[lcore_id].socket_id >= RTE_MAX_NUMA_NODES)
 #ifdef RTE_EAL_ALLOW_INV_SOCKET_ID
 			lcore_config[lcore_id].socket_id = 0;

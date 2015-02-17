@@ -41,6 +41,7 @@
 #include <rte_debug.h>
 
 #include "eal_private.h"
+#include "eal_thread.h"
 
 /* No topology information available on FreeBSD including NUMA info */
 #define cpu_core_id(X) 0
@@ -111,4 +112,10 @@ rte_eal_cpu_init(void)
 	RTE_LOG(DEBUG, EAL, "Detected %u lcore(s)\n", config->lcore_count);
 
 	return 0;
+}
+
+unsigned
+eal_cpu_socket_id(__rte_unused unsigned cpu_id)
+{
+	return cpu_socket_id(cpu_id);
 }

@@ -50,4 +50,15 @@ __attribute__((noreturn)) void *eal_thread_loop(void *arg);
  */
 void eal_thread_init_master(unsigned lcore_id);
 
+/**
+ * Get the NUMA socket id from cpu id.
+ * This function is private to EAL.
+ *
+ * @param cpu_id
+ *   The logical process id.
+ * @return
+ *   socket_id or SOCKET_ID_ANY
+ */
+unsigned eal_cpu_socket_id(unsigned cpu_id);
+
 #endif /* EAL_THREAD_H */
