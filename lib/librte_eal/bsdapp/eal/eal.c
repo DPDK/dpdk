@@ -437,6 +437,7 @@ rte_eal_init(int argc, char **argv)
 	int i, fctret, ret;
 	pthread_t thread_id;
 	static rte_atomic32_t run_once = RTE_ATOMIC32_INIT(0);
+	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 
 	if (!rte_atomic32_test_and_set(&run_once))
 		return -1;
@@ -507,14 +508,17 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_pci_init() < 0)
 		rte_panic("Cannot init PCI\n");
 
-	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%p)\n",
-		rte_config.master_lcore, thread_id);
-
 	eal_check_mem_on_local_socket();
 
 	rte_eal_mcfg_complete();
 
 	eal_thread_init_master(rte_config.master_lcore);
+
+	ret = eal_thread_dump_affinity(cpuset, RTE_CPU_AFFINITY_STR_LEN);
+
+	RTE_LOG(DEBUG, EAL, "Master lcore %u is ready (tid=%p;cpuset=[%s%s])\n",
+		rte_config.master_lcore, thread_id, cpuset,
+		ret == 0 ? "" : "...");
 
 	if (rte_eal_dev_init() < 0)
 		rte_panic("Cannot init pmd devices\n");

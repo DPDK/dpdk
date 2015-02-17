@@ -705,6 +705,7 @@ rte_eal_init(int argc, char **argv)
 	static rte_atomic32_t run_once = RTE_ATOMIC32_INIT(0);
 	struct shared_driver *solib = NULL;
 	const char *logid;
+	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 
 	if (!rte_atomic32_test_and_set(&run_once))
 		return -1;
@@ -805,8 +806,11 @@ rte_eal_init(int argc, char **argv)
 
 	eal_thread_init_master(rte_config.master_lcore);
 
-	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%x)\n",
-		rte_config.master_lcore, (int)thread_id);
+	ret = eal_thread_dump_affinity(cpuset, RTE_CPU_AFFINITY_STR_LEN);
+
+	RTE_LOG(DEBUG, EAL, "Master lcore %u is ready (tid=%x;cpuset=[%s%s])\n",
+		rte_config.master_lcore, (int)thread_id, cpuset,
+		ret == 0 ? "" : "...");
 
 	if (rte_eal_dev_init() < 0)
 		rte_panic("Cannot init pmd devices\n");

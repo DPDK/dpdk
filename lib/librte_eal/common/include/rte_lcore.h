@@ -148,7 +148,7 @@ rte_lcore_index(int lcore_id)
 static inline unsigned
 rte_socket_id(void)
 {
-	return lcore_config[rte_lcore_id()].socket_id;
+	return RTE_PER_LCORE(_socket_id);
 }
 
 /**
