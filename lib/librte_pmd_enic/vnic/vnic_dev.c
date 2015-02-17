@@ -242,9 +242,9 @@ unsigned int vnic_dev_desc_ring_size(struct vnic_dev_ring *ring,
 	if (desc_count == 0)
 		desc_count = 4096;
 
-	ring->desc_count = ALIGN(desc_count, count_align);
+	ring->desc_count = VNIC_ALIGN(desc_count, count_align);
 
-	ring->desc_size = ALIGN(desc_size, desc_align);
+	ring->desc_size = VNIC_ALIGN(desc_size, desc_align);
 
 	ring->size = ring->desc_count * ring->desc_size;
 	ring->size_unaligned = ring->size + ring->base_align;
@@ -294,7 +294,7 @@ int vnic_dev_alloc_desc_ring(__attribute__((unused)) struct vnic_dev *vdev,
 
 	ring->base_addr_unaligned = (dma_addr_t)rz->phys_addr;
 
-	ring->base_addr = ALIGN(ring->base_addr_unaligned,
+	ring->base_addr = VNIC_ALIGN(ring->base_addr_unaligned,
 		ring->base_align);
 	ring->descs = (u8 *)ring->descs_unaligned +
 	    (ring->base_addr - ring->base_addr_unaligned);

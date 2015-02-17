@@ -66,9 +66,9 @@
 #define ENIC_CALC_IP_CKSUM      1
 #define ENIC_CALC_TCP_UDP_CKSUM 2
 #define ENIC_MAX_MTU            9000
-#define PAGE_SIZE               4096
+#define ENIC_PAGE_SIZE          4096
 #define PAGE_ROUND_UP(x) \
-	((((unsigned long)(x)) + PAGE_SIZE-1) & (~(PAGE_SIZE-1)))
+	((((unsigned long)(x)) + ENIC_PAGE_SIZE-1) & (~(ENIC_PAGE_SIZE-1)))
 
 #define ENICPMD_VFIO_PATH          "/dev/vfio/vfio"
 /*#define ENIC_DESC_COUNT_MAKE_ODD (x) do{if ((~(x)) & 1) { (x)--; } }while(0)*/

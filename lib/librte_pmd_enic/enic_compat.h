@@ -68,7 +68,7 @@
 #define pr_warn(y, args...) dev_warning(0, y, ##args)
 #define BUG() pr_err("BUG at %s:%d", __func__, __LINE__)
 
-#define ALIGN(x, a)              __ALIGN_MASK(x, (typeof(x))(a)-1)
+#define VNIC_ALIGN(x, a)         __ALIGN_MASK(x, (typeof(x))(a)-1)
 #define __ALIGN_MASK(x, mask)    (((x)+(mask))&~(mask))
 #define udelay usleep
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
