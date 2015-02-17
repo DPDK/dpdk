@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <assert.h>
 
 #include <rte_atomic.h>
 #include <rte_common.h>
@@ -79,9 +80,10 @@ static struct priv_timer priv_timer[RTE_MAX_LCORE];
 
 /* when debug is enabled, store some statistics */
 #ifdef RTE_LIBRTE_TIMER_DEBUG
-#define __TIMER_STAT_ADD(name, n) do {				\
-		unsigned __lcore_id = rte_lcore_id();		\
-		priv_timer[__lcore_id].stats.name += (n);	\
+#define __TIMER_STAT_ADD(name, n) do {					\
+		unsigned __lcore_id = rte_lcore_id();			\
+		if (__lcore_id < RTE_MAX_LCORE)				\
+			priv_timer[__lcore_id].stats.name += (n);	\
 	} while(0)
 #else
 #define __TIMER_STAT_ADD(name, n) do {} while(0)
@@ -135,7 +137,7 @@ timer_set_config_state(struct rte_timer *tim,
 
 		/* timer is running on another core, exit */
 		if (prev_status.state == RTE_TIMER_RUNNING &&
-		    (unsigned)prev_status.owner != lcore_id)
+		    prev_status.owner != (uint16_t)lcore_id)
 			return -1;
 
 		/* timer is being configured on another core */
@@ -366,9 +368,16 @@ __rte_timer_reset(struct rte_timer *tim, uint64_t expire,
 
 	/* round robin for tim_lcore */
 	if (tim_lcore == (unsigned)LCORE_ID_ANY) {
-		tim_lcore = rte_get_next_lcore(priv_timer[lcore_id].prev_lcore,
-					       0, 1);
-		priv_timer[lcore_id].prev_lcore = tim_lcore;
+		if (lcore_id < RTE_MAX_LCORE) {
+			/* EAL thread with valid lcore_id */
+			tim_lcore = rte_get_next_lcore(
+				priv_timer[lcore_id].prev_lcore,
+				0, 1);
+			priv_timer[lcore_id].prev_lcore = tim_lcore;
+		} else
+			/* non-EAL thread do not run rte_timer_manage(),
+			 * so schedule the timer on the first enabled lcore. */
+			tim_lcore = rte_get_next_lcore(LCORE_ID_ANY, 0, 1);
 	}
 
 	/* wait that the timer is in correct status before update,
@@ -378,7 +387,8 @@ __rte_timer_reset(struct rte_timer *tim, uint64_t expire,
 		return -1;
 
 	__TIMER_STAT_ADD(reset, 1);
-	if (prev_status.state == RTE_TIMER_RUNNING) {
+	if (prev_status.state == RTE_TIMER_RUNNING &&
+	    lcore_id < RTE_MAX_LCORE) {
 		priv_timer[lcore_id].updated = 1;
 	}
 
@@ -455,7 +465,8 @@ rte_timer_stop(struct rte_timer *tim)
 		return -1;
 
 	__TIMER_STAT_ADD(stop, 1);
-	if (prev_status.state == RTE_TIMER_RUNNING) {
+	if (prev_status.state == RTE_TIMER_RUNNING &&
+	    lcore_id < RTE_MAX_LCORE) {
 		priv_timer[lcore_id].updated = 1;
 	}
 
@@ -498,6 +509,9 @@ void rte_timer_manage(void)
 	struct rte_timer *prev[MAX_SKIPLIST_DEPTH + 1];
 	uint64_t cur_time;
 	int i, ret;
+
+	/* timer manager only runs on EAL thread with valid lcore_id */
+	assert(lcore_id < RTE_MAX_LCORE);
 
 	__TIMER_STAT_ADD(manage, 1);
 	/* optimize for the case where per-cpu list is empty */

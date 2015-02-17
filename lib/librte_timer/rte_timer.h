@@ -76,7 +76,7 @@ extern "C" {
 #define RTE_TIMER_RUNNING 2 /**< State: timer function is running. */
 #define RTE_TIMER_CONFIG  3 /**< State: timer is being configured. */
 
-#define RTE_TIMER_NO_OWNER -1 /**< Timer has no owner. */
+#define RTE_TIMER_NO_OWNER -2 /**< Timer has no owner. */
 
 /**
  * Timer type: Periodic or single (one-shot).
@@ -310,7 +310,7 @@ int rte_timer_pending(struct rte_timer *tim);
 /**
  * Manage the timer list and execute callback functions.
  *
- * This function must be called periodically from all cores
+ * This function must be called periodically from EAL lcores
  * main_loop(). It browses the list of pending timers and runs all
  * timers that are expired.
  *
