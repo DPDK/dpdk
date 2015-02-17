@@ -188,10 +188,12 @@ struct rte_ring {
  *   The number to add to the object-oriented statistics.
  */
 #ifdef RTE_LIBRTE_RING_DEBUG
-#define __RING_STAT_ADD(r, name, n) do {		\
-		unsigned __lcore_id = rte_lcore_id();	\
-		r->stats[__lcore_id].name##_objs += n;	\
-		r->stats[__lcore_id].name##_bulk += 1;	\
+#define __RING_STAT_ADD(r, name, n) do {                        \
+		unsigned __lcore_id = rte_lcore_id();           \
+		if (__lcore_id < RTE_MAX_LCORE) {               \
+			r->stats[__lcore_id].name##_objs += n;  \
+			r->stats[__lcore_id].name##_bulk += 1;  \
+		}                                               \
 	} while(0)
 #else
 #define __RING_STAT_ADD(r, name, n) do {} while(0)
