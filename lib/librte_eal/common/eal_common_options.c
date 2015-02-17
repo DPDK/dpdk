@@ -45,6 +45,7 @@
 #include <rte_lcore.h>
 #include <rte_version.h>
 #include <rte_devargs.h>
+#include <rte_memcpy.h>
 
 #include "eal_internal_cfg.h"
 #include "eal_options.h"
@@ -73,6 +74,7 @@ eal_long_options[] = {
 	{OPT_FILE_PREFIX,       1, NULL, OPT_FILE_PREFIX_NUM      },
 	{OPT_HELP,              0, NULL, OPT_HELP_NUM             },
 	{OPT_HUGE_DIR,          1, NULL, OPT_HUGE_DIR_NUM         },
+	{OPT_LCORES,            1, NULL, OPT_LCORES_NUM           },
 	{OPT_LOG_LEVEL,         1, NULL, OPT_LOG_LEVEL_NUM        },
 	{OPT_MASTER_LCORE,      1, NULL, OPT_MASTER_LCORE_NUM     },
 	{OPT_NO_HPET,           0, NULL, OPT_NO_HPET_NUM          },
@@ -258,9 +260,11 @@ eal_parse_corelist(const char *corelist)
 			if (min == RTE_MAX_LCORE)
 				min = idx;
 			for (idx = min; idx <= max; idx++) {
-				cfg->lcore_role[idx] = ROLE_RTE;
-				lcore_config[idx].core_index = count;
-				count++;
+				if (cfg->lcore_role[idx] != ROLE_RTE) {
+					cfg->lcore_role[idx] = ROLE_RTE;
+					lcore_config[idx].core_index = count;
+					count++;
+				}
 			}
 			min = RTE_MAX_LCORE;
 		} else
@@ -293,6 +297,283 @@ eal_parse_master_lcore(const char *arg)
 		return -1;
 	master_lcore_parsed = 1;
 	return 0;
+}
+
+/*
+ * Parse elem, the elem could be single number/range or '(' ')' group
+ * 1) A single number elem, it's just a simple digit. e.g. 9
+ * 2) A single range elem, two digits with a '-' between. e.g. 2-6
+ * 3) A group elem, combines multiple 1) or 2) with '( )'. e.g (0,2-4,6)
+ *    Within group elem, '-' used for a range separator;
+ *                       ',' used for a single number.
+ */
+static int
+eal_parse_set(const char *input, uint16_t set[], unsigned num)
+{
+	unsigned idx;
+	const char *str = input;
+	char *end = NULL;
+	unsigned min, max;
+
+	memset(set, 0, num * sizeof(uint16_t));
+
+	while (isblank(*str))
+		str++;
+
+	/* only digit or left bracket is qualify for start point */
+	if ((!isdigit(*str) && *str != '(') || *str == '\0')
+		return -1;
+
+	/* process single number or single range of number */
+	if (*str != '(') {
+		errno = 0;
+		idx = strtoul(str, &end, 10);
+		if (errno || end == NULL || idx >= num)
+			return -1;
+		else {
+			while (isblank(*end))
+				end++;
+
+			min = idx;
+			max = idx;
+			if (*end == '-') {
+				/* process single <number>-<number> */
+				end++;
+				while (isblank(*end))
+					end++;
+				if (!isdigit(*end))
+					return -1;
+
+				errno = 0;
+				idx = strtoul(end, &end, 10);
+				if (errno || end == NULL || idx >= num)
+					return -1;
+				max = idx;
+				while (isblank(*end))
+					end++;
+				if (*end != ',' && *end != '\0')
+					return -1;
+			}
+
+			if (*end != ',' && *end != '\0' &&
+			    *end != '@')
+				return -1;
+
+			for (idx = RTE_MIN(min, max);
+			     idx <= RTE_MAX(min, max); idx++)
+				set[idx] = 1;
+
+			return end - input;
+		}
+	}
+
+	/* process set within bracket */
+	str++;
+	while (isblank(*str))
+		str++;
+	if (*str == '\0')
+		return -1;
+
+	min = RTE_MAX_LCORE;
+	do {
+
+		/* go ahead to the first digit */
+		while (isblank(*str))
+			str++;
+		if (!isdigit(*str))
+			return -1;
+
+		/* get the digit value */
+		errno = 0;
+		idx = strtoul(str, &end, 10);
+		if (errno || end == NULL || idx >= num)
+			return -1;
+
+		/* go ahead to separator '-',',' and ')' */
+		while (isblank(*end))
+			end++;
+		if (*end == '-') {
+			if (min == RTE_MAX_LCORE)
+				min = idx;
+			else /* avoid continuous '-' */
+				return -1;
+		} else if ((*end == ',') || (*end == ')')) {
+			max = idx;
+			if (min == RTE_MAX_LCORE)
+				min = idx;
+			for (idx = RTE_MIN(min, max);
+			     idx <= RTE_MAX(min, max); idx++)
+				set[idx] = 1;
+
+			min = RTE_MAX_LCORE;
+		} else
+			return -1;
+
+		str = end + 1;
+	} while (*end != '\0' && *end != ')');
+
+	return str - input;
+}
+
+/* convert from set array to cpuset bitmap */
+static int
+convert_to_cpuset(rte_cpuset_t *cpusetp,
+	      uint16_t *set, unsigned num)
+{
+	unsigned idx;
+
+	CPU_ZERO(cpusetp);
+
+	for (idx = 0; idx < num; idx++) {
+		if (!set[idx])
+			continue;
+
+		if (!lcore_config[idx].detected) {
+			RTE_LOG(ERR, EAL, "core %u "
+				"unavailable\n", idx);
+			return -1;
+		}
+
+		CPU_SET(idx, cpusetp);
+	}
+
+	return 0;
+}
+
+/*
+ * The format pattern: --lcores='<lcores[@cpus]>[<,lcores[@cpus]>...]'
+ * lcores, cpus could be a single digit/range or a group.
+ * '(' and ')' are necessary if it's a group.
+ * If not supply '@cpus', the value of cpus uses the same as lcores.
+ * e.g. '1,2@(5-7),(3-5)@(0,2),(0,6),7-8' means start 9 EAL thread as below
+ *   lcore 0 runs on cpuset 0x41 (cpu 0,6)
+ *   lcore 1 runs on cpuset 0x2 (cpu 1)
+ *   lcore 2 runs on cpuset 0xe0 (cpu 5,6,7)
+ *   lcore 3,4,5 runs on cpuset 0x5 (cpu 0,2)
+ *   lcore 6 runs on cpuset 0x41 (cpu 0,6)
+ *   lcore 7 runs on cpuset 0x80 (cpu 7)
+ *   lcore 8 runs on cpuset 0x100 (cpu 8)
+ */
+static int
+eal_parse_lcores(const char *lcores)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+	static uint16_t set[RTE_MAX_LCORE];
+	unsigned idx = 0;
+	int i;
+	unsigned count = 0;
+	const char *lcore_start = NULL;
+	const char *end = NULL;
+	int offset;
+	rte_cpuset_t cpuset;
+	int lflags = 0;
+	int ret = -1;
+
+	if (lcores == NULL)
+		return -1;
+
+	/* Remove all blank characters ahead and after */
+	while (isblank(*lcores))
+		lcores++;
+	i = strnlen(lcores, sysconf(_SC_ARG_MAX));
+	while ((i > 0) && isblank(lcores[i - 1]))
+		i--;
+
+	CPU_ZERO(&cpuset);
+
+	/* Reset lcore config */
+	for (idx = 0; idx < RTE_MAX_LCORE; idx++) {
+		cfg->lcore_role[idx] = ROLE_OFF;
+		lcore_config[idx].core_index = -1;
+		CPU_ZERO(&lcore_config[idx].cpuset);
+	}
+
+	/* Get list of cores */
+	do {
+		while (isblank(*lcores))
+			lcores++;
+		if (*lcores == '\0')
+			goto err;
+
+		/* record lcore_set start point */
+		lcore_start = lcores;
+
+		/* go across a complete bracket */
+		if (*lcore_start == '(') {
+			lcores += strcspn(lcores, ")");
+			if (*lcores++ == '\0')
+				goto err;
+		}
+
+		/* scan the separator '@', ','(next) or '\0'(finish) */
+		lcores += strcspn(lcores, "@,");
+
+		if (*lcores == '@') {
+			/* explicit assign cpu_set */
+			offset = eal_parse_set(lcores + 1, set, RTE_DIM(set));
+			if (offset < 0)
+				goto err;
+
+			/* prepare cpu_set and update the end cursor */
+			if (0 > convert_to_cpuset(&cpuset,
+						  set, RTE_DIM(set)))
+				goto err;
+			end = lcores + 1 + offset;
+		} else { /* ',' or '\0' */
+			/* haven't given cpu_set, current loop done */
+			end = lcores;
+
+			/* go back to check <number>-<number> */
+			offset = strcspn(lcore_start, "(-");
+			if (offset < (end - lcore_start) &&
+			    *(lcore_start + offset) != '(')
+				lflags = 1;
+		}
+
+		if (*end != ',' && *end != '\0')
+			goto err;
+
+		/* parse lcore_set from start point */
+		if (0 > eal_parse_set(lcore_start, set, RTE_DIM(set)))
+			goto err;
+
+		/* without '@', by default using lcore_set as cpu_set */
+		if (*lcores != '@' &&
+		    0 > convert_to_cpuset(&cpuset, set, RTE_DIM(set)))
+			goto err;
+
+		/* start to update lcore_set */
+		for (idx = 0; idx < RTE_MAX_LCORE; idx++) {
+			if (!set[idx])
+				continue;
+
+			if (cfg->lcore_role[idx] != ROLE_RTE) {
+				lcore_config[idx].core_index = count;
+				cfg->lcore_role[idx] = ROLE_RTE;
+				count++;
+			}
+
+			if (lflags) {
+				CPU_ZERO(&cpuset);
+				CPU_SET(idx, &cpuset);
+			}
+			rte_memcpy(&lcore_config[idx].cpuset, &cpuset,
+				   sizeof(rte_cpuset_t));
+		}
+
+		lcores = end + 1;
+	} while (*end != '\0');
+
+	if (count == 0)
+		goto err;
+
+	cfg->lcore_count = count;
+	lcores_parsed = 1;
+	ret = 0;
+
+err:
+
+	return ret;
 }
 
 static int
@@ -495,6 +776,13 @@ eal_parse_common_option(int opt, const char *optarg,
 		conf->log_level = log;
 		break;
 	}
+	case OPT_LCORES_NUM:
+		if (eal_parse_lcores(optarg) < 0) {
+			RTE_LOG(ERR, EAL, "invalid parameter for --"
+				OPT_LCORES "\n");
+			return -1;
+		}
+		break;
 
 	/* don't know what to do, leave this to caller */
 	default:
@@ -533,7 +821,7 @@ eal_check_common_options(struct internal_config *internal_cfg)
 
 	if (!lcores_parsed) {
 		RTE_LOG(ERR, EAL, "CPU cores must be enabled with options "
-			"-c or -l\n");
+			"-c, -l or --lcores\n");
 		return -1;
 	}
 	if (cfg->lcore_role[cfg->master_lcore] != ROLE_RTE) {
@@ -587,6 +875,14 @@ eal_common_usage(void)
 	       "  -l CORELIST         List of cores to run on\n"
 	       "                      The argument format is <c1>[-c2][,c3[-c4],...]\n"
 	       "                      where c1, c2, etc are core indexes between 0 and %d\n"
+	       "  --"OPT_LCORES" COREMAP    Map lcore set to physical cpu set\n"
+	       "                      The argument format is\n"
+	       "                            '<lcores[@cpus]>[<,lcores[@cpus]>...]'\n"
+	       "                      lcores and cpus list are grouped by '(' and ')'\n"
+	       "                      Within the group, '-' is used for range separator,\n"
+	       "                      ',' is used for single number separator.\n"
+	       "                      '( )' can be omitted for single element group,\n"
+	       "                      '@' can be omitted if cpus and lcores have the same value\n"
 	       "  --"OPT_MASTER_LCORE" ID   Core ID that is used as master\n"
 	       "  -n CHANNELS         Number of memory channels\n"
 	       "  -m MB               Memory to allocate (see also --"OPT_SOCKET_MEM")\n"
