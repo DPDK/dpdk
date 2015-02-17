@@ -170,7 +170,7 @@ eal_parse_coremask(const char *coremask)
 	if (coremask[0] == '0' && ((coremask[1] == 'x')
 		|| (coremask[1] == 'X')))
 		coremask += 2;
-	i = strnlen(coremask, PATH_MAX);
+	i = strlen(coremask);
 	while ((i > 0) && isblank(coremask[i - 1]))
 		i--;
 	if (i == 0)
@@ -230,7 +230,7 @@ eal_parse_corelist(const char *corelist)
 	/* Remove all blank characters ahead and after */
 	while (isblank(*corelist))
 		corelist++;
-	i = strnlen(corelist, sysconf(_SC_ARG_MAX));
+	i = strlen(corelist);
 	while ((i > 0) && isblank(corelist[i - 1]))
 		i--;
 
@@ -475,7 +475,7 @@ eal_parse_lcores(const char *lcores)
 	/* Remove all blank characters ahead and after */
 	while (isblank(*lcores))
 		lcores++;
-	i = strnlen(lcores, sysconf(_SC_ARG_MAX));
+	i = strlen(lcores);
 	while ((i > 0) && isblank(lcores[i - 1]))
 		i--;
 
