@@ -5194,7 +5194,7 @@ cmd_link_flow_ctrl_set_parsed(void *parsed_result,
 	struct cmd_link_flow_ctrl_set_result *res = parsed_result;
 	cmdline_parse_inst_t *cmd = data;
 	struct rte_eth_fc_conf fc_conf;
-	int rx_fc_en, tx_fc_en;
+	int rx_fc_en, tx_fc_en = 0;
 	int ret;
 
 	/*
