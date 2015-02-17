@@ -198,10 +198,12 @@ struct rte_mempool {
  *   Number to add to the object-oriented statistics.
  */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-#define __MEMPOOL_STAT_ADD(mp, name, n) do {			\
-		unsigned __lcore_id = rte_lcore_id();		\
-		mp->stats[__lcore_id].name##_objs += n;		\
-		mp->stats[__lcore_id].name##_bulk += 1;		\
+#define __MEMPOOL_STAT_ADD(mp, name, n) do {                    \
+		unsigned __lcore_id = rte_lcore_id();           \
+		if (__lcore_id < RTE_MAX_LCORE) {               \
+			mp->stats[__lcore_id].name##_objs += n;	\
+			mp->stats[__lcore_id].name##_bulk += 1;	\
+		}                                               \
 	} while(0)
 #else
 #define __MEMPOOL_STAT_ADD(mp, name, n) do {} while(0)
@@ -767,8 +769,9 @@ __mempool_put_bulk(struct rte_mempool *mp, void * const *obj_table,
 	__MEMPOOL_STAT_ADD(mp, put, n);
 
 #if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
-	/* cache is not enabled or single producer */
-	if (unlikely(cache_size == 0 || is_mp == 0))
+	/* cache is not enabled or single producer or non-EAL thread */
+	if (unlikely(cache_size == 0 || is_mp == 0 ||
+		     lcore_id >= RTE_MAX_LCORE))
 		goto ring_enqueue;
 
 	/* Go straight to ring if put would overflow mem allocated for cache */
@@ -952,7 +955,8 @@ __mempool_get_bulk(struct rte_mempool *mp, void **obj_table,
 	uint32_t cache_size = mp->cache_size;
 
 	/* cache is not enabled or single consumer */
-	if (unlikely(cache_size == 0 || is_mc == 0 || n >= cache_size))
+	if (unlikely(cache_size == 0 || is_mc == 0 ||
+		     n >= cache_size || lcore_id >= RTE_MAX_LCORE))
 		goto ring_dequeue;
 
 	cache = &mp->local_cache[lcore_id];
