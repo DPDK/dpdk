@@ -45,7 +45,7 @@
 #include "eal_internal_cfg.h"
 #include "eal_filesystem.h"
 
-#define PAGE_SIZE (sysconf(_SC_PAGESIZE))
+#define EAL_PAGE_SIZE (sysconf(_SC_PAGESIZE))
 
 /*
  * Get physical address of any mapped virtual address in the current process.
@@ -93,7 +93,8 @@ rte_eal_contigmem_init(void)
 			char physaddr_str[64];
 
 			addr = mmap(NULL, hpi->hugepage_sz, PROT_READ|PROT_WRITE,
-					MAP_SHARED, hpi->lock_descriptor, j * PAGE_SIZE);
+				    MAP_SHARED, hpi->lock_descriptor,
+				    j * EAL_PAGE_SIZE);
 			if (addr == MAP_FAILED) {
 				RTE_LOG(ERR, EAL, "Failed to mmap buffer %u from %s\n",
 						j, hpi->hugedir);
@@ -167,7 +168,8 @@ rte_eal_contigmem_attach(void)
 		struct rte_memseg *seg = &mcfg->memseg[i];
 
 		addr = mmap(seg->addr, hpi->hugepage_sz, PROT_READ|PROT_WRITE,
-				MAP_SHARED|MAP_FIXED, fd_hugepage, i * PAGE_SIZE);
+			    MAP_SHARED|MAP_FIXED, fd_hugepage,
+			    i * EAL_PAGE_SIZE);
 		if (addr == MAP_FAILED || addr != seg->addr) {
 			RTE_LOG(ERR, EAL, "Failed to mmap buffer %u from %s\n",
 				i, hpi->hugedir);
