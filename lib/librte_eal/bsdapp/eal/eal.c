@@ -514,6 +514,8 @@ rte_eal_init(int argc, char **argv)
 
 	rte_eal_mcfg_complete();
 
+	eal_thread_init_master(rte_config.master_lcore);
+
 	if (rte_eal_dev_init() < 0)
 		rte_panic("Cannot init pmd devices\n");
 
@@ -536,8 +538,6 @@ rte_eal_init(int argc, char **argv)
 		if (ret != 0)
 			rte_panic("Cannot create thread\n");
 	}
-
-	eal_thread_init_master(rte_config.master_lcore);
 
 	/*
 	 * Launch a dummy function on all slave lcores, so that master lcore
