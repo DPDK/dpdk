@@ -83,6 +83,8 @@ DPDK_2.0 {
 	rte_snprintf;
 	rte_strerror;
 	rte_strsplit;
+	rte_thread_get_affinity;
+	rte_thread_set_affinity;
 	rte_vlog;
 	rte_xen_dom0_memory_attach;
 	rte_xen_dom0_memory_init;

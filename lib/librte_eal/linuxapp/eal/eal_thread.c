@@ -57,6 +57,8 @@
 #include "eal_thread.h"
 
 RTE_DEFINE_PER_LCORE(unsigned, _lcore_id);
+RTE_DEFINE_PER_LCORE(unsigned, _socket_id);
+RTE_DEFINE_PER_LCORE(rte_cpuset_t, _cpuset);
 
 /*
  * Send a message to a slave lcore identified by slave_id to call a

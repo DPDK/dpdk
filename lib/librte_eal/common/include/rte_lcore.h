@@ -80,7 +80,9 @@ struct lcore_config {
  */
 extern struct lcore_config lcore_config[RTE_MAX_LCORE];
 
-RTE_DECLARE_PER_LCORE(unsigned, _lcore_id); /**< Per core "core id". */
+RTE_DECLARE_PER_LCORE(unsigned, _lcore_id);  /**< Per thread "lcore id". */
+RTE_DECLARE_PER_LCORE(unsigned, _socket_id); /**< Per thread "socket id". */
+RTE_DECLARE_PER_LCORE(rte_cpuset_t, _cpuset); /**< Per thread "cpuset". */
 
 /**
  * Return the ID of the execution unit we are running on.
@@ -228,6 +230,28 @@ rte_get_next_lcore(unsigned i, int skip_master, int wrap)
 	for (i = rte_get_next_lcore(-1, 1, 0);				\
 	     i<RTE_MAX_LCORE;						\
 	     i = rte_get_next_lcore(i, 1, 0))
+
+/**
+ * Set core affinity of the current thread.
+ * Support both EAL and non-EAL thread and update TLS.
+ *
+ * @param cpusetp
+ *   Point to cpu_set_t for setting current thread affinity.
+ * @return
+ *   On success, return 0; otherwise return -1;
+ */
+int rte_thread_set_affinity(rte_cpuset_t *cpusetp);
+
+/**
+ * Get core affinity of the current thread.
+ *
+ * @param cpusetp
+ *   Point to cpu_set_t for getting current thread cpu affinity.
+ *   It presumes input is not NULL, otherwise it causes panic.
+ *
+ */
+void rte_thread_get_affinity(rte_cpuset_t *cpusetp);
+
 
 #ifdef __cplusplus
 }
