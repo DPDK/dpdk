@@ -44,7 +44,12 @@ extern "C" {
 static inline unsigned
 malloc_get_numa_socket(void)
 {
-	return rte_socket_id();
+	unsigned socket_id = rte_socket_id();
+
+	if (socket_id == (unsigned)SOCKET_ID_ANY)
+		return 0;
+
+	return socket_id;
 }
 
 void *
