@@ -127,6 +127,11 @@ struct rte_ring_debug_stats {
 #define RTE_RING_NAMESIZE 32 /**< The maximum length of a ring name. */
 #define RTE_RING_MZ_PREFIX "RG_"
 
+#ifndef RTE_RING_PAUSE_REP_COUNT
+#define RTE_RING_PAUSE_REP_COUNT 0 /**< Yield after pause num of times, no yield
+                                    *   if RTE_RING_PAUSE_REP not defined. */
+#endif
+
 /**
  * An RTE ring structure.
  *
@@ -410,7 +415,7 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	uint32_t cons_tail, free_entries;
 	const unsigned max = n;
 	int success;
-	unsigned i;
+	unsigned i, rep = 0;
 	uint32_t mask = r->prod.mask;
 	int ret;
 
@@ -468,9 +473,18 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	 * If there are other enqueues in progress that preceded us,
 	 * we need to wait for them to complete
 	 */
-	while (unlikely(r->prod.tail != prod_head))
+	while (unlikely(r->prod.tail != prod_head)) {
 		rte_pause();
 
+		/* Set RTE_RING_PAUSE_REP_COUNT to avoid spin too long waiting
+		 * for other thread finish. It gives pre-empted thread a chance
+		 * to proceed and finish with ring dequeue operation. */
+		if (RTE_RING_PAUSE_REP_COUNT &&
+		    ++rep == RTE_RING_PAUSE_REP_COUNT) {
+			rep = 0;
+			sched_yield();
+		}
+	}
 	r->prod.tail = prod_next;
 	return ret;
 }
@@ -589,7 +603,7 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 	uint32_t cons_next, entries;
 	const unsigned max = n;
 	int success;
-	unsigned i;
+	unsigned i, rep = 0;
 	uint32_t mask = r->prod.mask;
 
 	/* move cons.head atomically */
@@ -634,9 +648,18 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 	 * If there are other dequeues in progress that preceded us,
 	 * we need to wait for them to complete
 	 */
-	while (unlikely(r->cons.tail != cons_head))
+	while (unlikely(r->cons.tail != cons_head)) {
 		rte_pause();
 
+		/* Set RTE_RING_PAUSE_REP_COUNT to avoid spin too long waiting
+		 * for other thread finish. It gives pre-empted thread a chance
+		 * to proceed and finish with ring dequeue operation. */
+		if (RTE_RING_PAUSE_REP_COUNT &&
+		    ++rep == RTE_RING_PAUSE_REP_COUNT) {
+			rep = 0;
+			sched_yield();
+		}
+	}
 	__RING_STAT_ADD(r, deq_success, n);
 	r->cons.tail = cons_next;
 
