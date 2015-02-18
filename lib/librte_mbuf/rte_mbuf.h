@@ -247,11 +247,8 @@ struct rte_mbuf {
 	 * config option.
 	 */
 	union {
-#ifdef RTE_MBUF_REFCNT
 		rte_atomic16_t refcnt_atomic; /**< Atomically accessed refcnt */
 		uint16_t refcnt;              /**< Non-atomically accessed refcnt */
-#endif
-		uint16_t refcnt_reserved;     /**< Do not use this field */
 	};
 	uint8_t nb_segs;          /**< Number of segments. */
 	uint8_t port;             /**< Input port. */
@@ -384,7 +381,6 @@ if (!(exp)) {                                                        \
 
 #endif /*  RTE_LIBRTE_MBUF_DEBUG */
 
-#ifdef RTE_MBUF_REFCNT
 #ifdef RTE_MBUF_REFCNT_ATOMIC
 
 /**
@@ -466,15 +462,6 @@ rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 		rte_prefetch0(m);               \
 } while (0)
 
-#else /* ! RTE_MBUF_REFCNT */
-
-/** Mbuf prefetch */
-#define RTE_MBUF_PREFETCH_TO_FREE(m) do { } while(0)
-
-#define rte_mbuf_refcnt_set(m,v) do { } while(0)
-
-#endif /* RTE_MBUF_REFCNT */
-
 
 /**
  * Sanity checks on an mbuf.
@@ -509,10 +496,8 @@ static inline struct rte_mbuf *__rte_mbuf_raw_alloc(struct rte_mempool *mp)
 	if (rte_mempool_get(mp, &mb) < 0)
 		return NULL;
 	m = (struct rte_mbuf *)mb;
-#ifdef RTE_MBUF_REFCNT
 	RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(m) == 0);
 	rte_mbuf_refcnt_set(m, 1);
-#endif /* RTE_MBUF_REFCNT */
 	return (m);
 }
 
@@ -527,9 +512,7 @@ static inline struct rte_mbuf *__rte_mbuf_raw_alloc(struct rte_mempool *mp)
 static inline void __attribute__((always_inline))
 __rte_mbuf_raw_free(struct rte_mbuf *m)
 {
-#ifdef RTE_MBUF_REFCNT
 	RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(m) == 0);
-#endif /* RTE_MBUF_REFCNT */
 	rte_mempool_put(m->pool, m);
 }
 
@@ -704,8 +687,6 @@ static inline struct rte_mbuf *rte_pktmbuf_alloc(struct rte_mempool *mp)
 	return (m);
 }
 
-#ifdef RTE_MBUF_REFCNT
-
 /**
  * Attach packet mbuf to another packet mbuf.
  * After attachment we refer the mbuf we attached as 'indirect',
@@ -779,15 +760,11 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 	m->ol_flags = 0;
 }
 
-#endif /* RTE_MBUF_REFCNT */
-
-
 static inline struct rte_mbuf* __attribute__((always_inline))
 __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, 0);
 
-#ifdef RTE_MBUF_REFCNT
 	if (likely (rte_mbuf_refcnt_read(m) == 1) ||
 			likely (rte_mbuf_refcnt_update(m, -1) == 0)) {
 
@@ -803,12 +780,9 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 			if (rte_mbuf_refcnt_update(md, -1) == 0)
 				__rte_mbuf_raw_free(md);
 		}
-#endif
 		return(m);
-#ifdef RTE_MBUF_REFCNT
 	}
 	return (NULL);
-#endif
 }
 
 /**
@@ -850,8 +824,6 @@ static inline void rte_pktmbuf_free(struct rte_mbuf *m)
 		m = m_next;
 	}
 }
-
-#ifdef RTE_MBUF_REFCNT
 
 /**
  * Creates a "clone" of the given packet mbuf.
@@ -926,8 +898,6 @@ static inline void rte_pktmbuf_refcnt_update(struct rte_mbuf *m, int16_t v)
 		rte_mbuf_refcnt_update(m, v);
 	} while ((m = m->next) != NULL);
 }
-
-#endif /* RTE_MBUF_REFCNT */
 
 /**
  * Get the headroom in a packet mbuf.

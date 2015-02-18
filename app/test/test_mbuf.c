@@ -81,7 +81,7 @@
 
 static struct rte_mempool *pktmbuf_pool = NULL;
 
-#if defined RTE_MBUF_REFCNT  && defined RTE_MBUF_REFCNT_ATOMIC
+#ifdef RTE_MBUF_REFCNT_ATOMIC
 
 static struct rte_mempool *refcnt_pool = NULL;
 static struct rte_ring *refcnt_mbuf_ring = NULL;
@@ -322,9 +322,6 @@ fail:
 static int
 testclone_testupdate_testdetach(void)
 {
-#ifndef RTE_MBUF_REFCNT
-	return 0;
-#else
 	struct rte_mbuf *mc = NULL;
 	struct rte_mbuf *clone = NULL;
 
@@ -363,7 +360,6 @@ fail:
 	if (mc)
 		rte_pktmbuf_free(mc);
 	return -1;
-#endif /* RTE_MBUF_REFCNT */
 }
 #undef GOTO_FAIL
 
@@ -396,13 +392,11 @@ test_pktmbuf_pool(void)
 		printf("Error pool not empty");
 		ret = -1;
 	}
-#ifdef RTE_MBUF_REFCNT
 	extra = rte_pktmbuf_clone(m[0], pktmbuf_pool);
 	if(extra != NULL) {
 		printf("Error pool not empty");
 		ret = -1;
 	}
-#endif
 	/* free them */
 	for (i=0; i<NB_MBUF; i++) {
 		if (m[i] != NULL)
@@ -504,12 +498,11 @@ test_pktmbuf_free_segment(void)
 
 /*
  * Stress test for rte_mbuf atomic refcnt.
- * Implies that:
- * RTE_MBUF_REFCNT and RTE_MBUF_REFCNT_ATOMIC are both defined.
+ * Implies that RTE_MBUF_REFCNT_ATOMIC is defined.
  * For more efficency, recomended to run with RTE_LIBRTE_MBUF_DEBUG defined.
  */
 
-#if defined RTE_MBUF_REFCNT  && defined RTE_MBUF_REFCNT_ATOMIC
+#ifdef RTE_MBUF_REFCNT_ATOMIC
 
 static int
 test_refcnt_slave(__attribute__((unused)) void *arg)
@@ -614,7 +607,7 @@ test_refcnt_master(void)
 static int
 test_refcnt_mbuf(void)
 {
-#if defined RTE_MBUF_REFCNT  && defined RTE_MBUF_REFCNT_ATOMIC
+#ifdef RTE_MBUF_REFCNT_ATOMIC
 
 	unsigned lnum, master, slave, tref;
 
@@ -747,7 +740,6 @@ test_failing_mbuf_sanity_check(void)
 		return -1;
 	}
 
-#ifdef RTE_MBUF_REFCNT
 	badbuf = *buf;
 	badbuf.refcnt = 0;
 	if (verify_mbuf_check_panics(&badbuf)) {
@@ -761,7 +753,6 @@ test_failing_mbuf_sanity_check(void)
 		printf("Error with bad-refcnt(MAX) mbuf test\n");
 		return -1;
 	}
-#endif
 
 	return 0;
 }

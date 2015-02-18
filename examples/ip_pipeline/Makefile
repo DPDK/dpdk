@@ -51,11 +51,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_tx.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_flow_classification.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_routing.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_passthrough.c
-
-ifeq ($(CONFIG_RTE_MBUF_REFCNT),y)
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_ipv4_frag.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_ipv4_ras.c
-endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_firewall.c

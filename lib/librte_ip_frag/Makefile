@@ -42,12 +42,8 @@ EXPORT_MAP := rte_ipfrag_version.map
 LIBABIVER := 1
 
 #source files
-ifeq ($(CONFIG_RTE_MBUF_REFCNT),y)
 SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += rte_ipv4_fragmentation.c
 SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += rte_ipv6_fragmentation.c
-else
-$(info WARNING: Fragmentation feature is disabled because it needs MBUF_REFCNT.)
-endif
 SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += rte_ipv4_reassembly.c
 SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += rte_ipv6_reassembly.c
 SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += rte_ip_frag_common.c

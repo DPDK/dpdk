@@ -707,9 +707,7 @@ test_set_bonding_mode(void)
 	int bonding_modes[] = { BONDING_MODE_ROUND_ROBIN,
 							BONDING_MODE_ACTIVE_BACKUP,
 							BONDING_MODE_BALANCE,
-#ifdef RTE_MBUF_REFCNT
 							BONDING_MODE_BROADCAST
-#endif
 							};
 
 	/* Test supported link bonding modes */
@@ -1429,7 +1427,6 @@ test_roundrobin_tx_burst(void)
 	return remove_slaves_and_stop_bonded_device();
 }
 
-#ifdef RTE_MBUF_REFCNT
 static int
 verify_mbufs_ref_count(struct rte_mbuf **mbufs, int nb_mbufs, int val)
 {
@@ -1443,8 +1440,6 @@ verify_mbufs_ref_count(struct rte_mbuf **mbufs, int nb_mbufs, int val)
 	}
 	return 0;
 }
-#endif
-
 
 static void
 free_mbufs(struct rte_mbuf **mbufs, int nb_mbufs)
@@ -1549,12 +1544,10 @@ test_roundrobin_tx_burst_slave_tx_fail(void)
 				(unsigned int)port_stats.opackets, slave_expected_tx_count);
 	}
 
-#ifdef RTE_MBUF_REFCNT
 	/* Verify that all mbufs have a ref value of zero */
 	TEST_ASSERT_SUCCESS(verify_mbufs_ref_count(&pkt_burst[tx_count],
 			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT, 1),
 			"mbufs refcnts not as expected");
-#endif
 	free_mbufs(&pkt_burst[tx_count], TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT);
 
 	/* Clean up and remove slaves from bonded device */
@@ -3063,12 +3056,10 @@ test_balance_tx_burst_slave_tx_fail(void)
 				(unsigned int)port_stats.opackets,
 				TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2);
 
-#ifdef RTE_MBUF_REFCNT
 	/* Verify that all mbufs have a ref value of zero */
 	TEST_ASSERT_SUCCESS(verify_mbufs_ref_count(&pkts_burst_1[tx_count_1],
 			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT, 1),
 			"mbufs refcnts not as expected");
-#endif
 
 	free_mbufs(&pkts_burst_1[tx_count_1],
 			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT);
@@ -3478,9 +3469,6 @@ test_balance_verify_slave_link_status_change_behaviour(void)
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
 }
-
-#ifdef RTE_MBUF_REFCNT
-/** Broadcast Mode Tests */
 
 static int
 test_broadcast_tx_burst(void)
@@ -4009,7 +3997,6 @@ test_broadcast_verify_slave_link_status_change_behaviour(void)
 	/* Clean up and remove slaves from bonded device */
 	return remove_slaves_and_stop_bonded_device();
 }
-#endif
 
 static int
 test_reconfigure_bonded_device(void)
@@ -5003,14 +4990,12 @@ static struct unit_test_suite link_bonding_test_suite  = {
 		TEST_CASE(test_alb_reply_from_client),
 		TEST_CASE(test_alb_receive_vlan_reply),
 		TEST_CASE(test_alb_ipv4_tx),
-#ifdef RTE_MBUF_REFCNT
 		TEST_CASE(test_broadcast_tx_burst),
 		TEST_CASE(test_broadcast_tx_burst_slave_tx_fail),
 		TEST_CASE(test_broadcast_rx_burst),
 		TEST_CASE(test_broadcast_verify_promiscuous_enable_disable),
 		TEST_CASE(test_broadcast_verify_mac_assignment),
 		TEST_CASE(test_broadcast_verify_slave_link_status_change_behaviour),
-#endif
 		TEST_CASE(test_reconfigure_bonded_device),
 		TEST_CASE(test_close_bonded_device),
 

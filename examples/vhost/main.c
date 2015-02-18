@@ -747,19 +747,6 @@ us_vhost_parse_args(int argc, char **argv)
 					return -1;
 				} else
 					zero_copy = ret;
-
-				if (zero_copy) {
-#ifdef RTE_MBUF_REFCNT
-					RTE_LOG(ERR, VHOST_CONFIG, "Before running "
-					"zero copy vhost APP, please "
-					"disable RTE_MBUF_REFCNT\n"
-					"in config file and then rebuild DPDK "
-					"core lib!\n"
-					"Otherwise please disable zero copy "
-					"flag in command line!\n");
-					return -1;
-#endif
-				}
 			}
 
 			/* Specify the descriptor number on RX. */

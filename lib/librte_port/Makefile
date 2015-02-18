@@ -49,9 +49,7 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ring.c
 ifeq ($(CONFIG_RTE_LIBRTE_IP_FRAG),y)
-ifeq ($(CONFIG_RTE_MBUF_REFCNT),y)
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_frag.c
-endif
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ras.c
 endif
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_sched.c
@@ -62,9 +60,7 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ethdev.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ring.h
 ifeq ($(CONFIG_RTE_LIBRTE_IP_FRAG),y)
-ifeq ($(CONFIG_RTE_MBUF_REFCNT),y)
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_frag.h
-endif
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ras.h
 endif
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_sched.h

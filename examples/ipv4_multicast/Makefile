@@ -39,10 +39,6 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-ifneq ($(CONFIG_RTE_MBUF_REFCNT),y)
-$(error This application requires RTE_MBUF_REFCNT to be enabled)
-endif
-
 # binary name
 APP = ipv4_multicast
 

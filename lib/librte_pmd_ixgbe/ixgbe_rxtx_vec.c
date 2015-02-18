@@ -539,20 +539,12 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 	 */
 	txep = &((struct igb_tx_entry_v *)txq->sw_ring)[txq->tx_next_dd -
 			(n - 1)];
-#ifdef RTE_MBUF_REFCNT
 	m = __rte_pktmbuf_prefree_seg(txep[0].mbuf);
-#else
-	m = txep[0].mbuf;
-#endif
 	if (likely(m != NULL)) {
 		free[0] = m;
 		nb_free = 1;
 		for (i = 1; i < n; i++) {
-#ifdef RTE_MBUF_REFCNT
 			m = __rte_pktmbuf_prefree_seg(txep[i].mbuf);
-#else
-			m = txep[i].mbuf;
-#endif
 			if (likely(m != NULL)) {
 				if (likely(m->pool == free[0]->pool))
 					free[nb_free++] = m;

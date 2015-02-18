@@ -180,7 +180,6 @@ rte_ip_frag_table_destroy( struct rte_ip_frag_tbl *tbl)
 	rte_free(tbl);
 }
 
-#ifdef RTE_MBUF_REFCNT
 /**
  * This function implements the fragmentation of IPv6 packets.
  *
@@ -209,7 +208,6 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 		uint16_t mtu_size,
 		struct rte_mempool *pool_direct,
 		struct rte_mempool *pool_indirect);
-#endif
 
 /*
  * This function implements reassembly of fragmented IPv6 packets.
@@ -258,7 +256,6 @@ rte_ipv6_frag_get_ipv6_fragment_header(struct ipv6_hdr *hdr)
 		return NULL;
 }
 
-#ifdef RTE_MBUF_REFCNT
 /**
  * IPv4 fragmentation.
  *
@@ -287,7 +284,6 @@ int32_t rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 			uint16_t nb_pkts_out, uint16_t mtu_size,
 			struct rte_mempool *pool_direct,
 			struct rte_mempool *pool_indirect);
-#endif
 
 /*
  * This function implements reassembly of fragmented IPv4 packets.
