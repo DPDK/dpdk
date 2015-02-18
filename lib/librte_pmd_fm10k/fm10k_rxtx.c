@@ -41,11 +41,9 @@
 #define rte_packet_prefetch(p)  do {} while (0)
 #endif
 
+#ifdef RTE_LIBRTE_FM10K_DEBUG_RX
 static inline void dump_rxd(union fm10k_rx_desc *rxd)
 {
-#ifndef RTE_LIBRTE_FM10K_DEBUG_RX
-	RTE_SET_USED(rxd);
-#endif
 	PMD_RX_LOG(DEBUG, "+----------------|----------------+");
 	PMD_RX_LOG(DEBUG, "|     GLORT      | PKT HDR & TYPE |");
 	PMD_RX_LOG(DEBUG, "|   0x%08x   |   0x%08x   |", rxd->d.glort,
@@ -62,6 +60,7 @@ static inline void dump_rxd(union fm10k_rx_desc *rxd)
 	PMD_RX_LOG(DEBUG, "|       0x%016lx        |", rxd->q.timestamp);
 	PMD_RX_LOG(DEBUG, "+----------------|----------------+");
 }
+#endif
 
 static inline void
 rx_desc_to_ol_flags(struct rte_mbuf *m, const union fm10k_rx_desc *d)
