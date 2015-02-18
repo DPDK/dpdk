@@ -189,6 +189,8 @@ extern "C" {
  */
 #define PKT_TX_OUTER_IPV6    (1ULL << 60)
 
+#define IND_ATTACHED_MBUF    (1ULL << 62) /**< Indirect attached mbuf */
+
 /* Use final bit of flags to indicate a control mbuf */
 #define CTRL_MBUF_FLAG       (1ULL << 63) /**< Mbuf contains control data */
 
@@ -335,13 +337,12 @@ struct rte_mbuf {
 /**
  * Returns TRUE if given mbuf is indirect, or FALSE otherwise.
  */
-#define RTE_MBUF_INDIRECT(mb)   (RTE_MBUF_FROM_BADDR((mb)->buf_addr) != (mb))
+#define RTE_MBUF_INDIRECT(mb)   ((mb)->ol_flags & IND_ATTACHED_MBUF)
 
 /**
  * Returns TRUE if given mbuf is direct, or FALSE otherwise.
  */
-#define RTE_MBUF_DIRECT(mb)     (RTE_MBUF_FROM_BADDR((mb)->buf_addr) == (mb))
-
+#define RTE_MBUF_DIRECT(mb)     (!RTE_MBUF_INDIRECT(mb))
 
 /**
  * Private data in case of pktmbuf pool.
@@ -743,7 +744,7 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
 	mi->next = NULL;
 	mi->pkt_len = mi->data_len;
 	mi->nb_segs = 1;
-	mi->ol_flags = md->ol_flags;
+	mi->ol_flags = md->ol_flags | IND_ATTACHED_MBUF;
 	mi->packet_type = md->packet_type;
 
 	__rte_mbuf_sanity_check(mi, 1);
@@ -774,6 +775,8 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 			RTE_PKTMBUF_HEADROOM : m->buf_len;
 
 	m->data_len = 0;
+
+	m->ol_flags = 0;
 }
 
 #endif /* RTE_MBUF_REFCNT */
@@ -787,7 +790,6 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 #ifdef RTE_MBUF_REFCNT
 	if (likely (rte_mbuf_refcnt_read(m) == 1) ||
 			likely (rte_mbuf_refcnt_update(m, -1) == 0)) {
-		struct rte_mbuf *md = RTE_MBUF_FROM_BADDR(m->buf_addr);
 
 		rte_mbuf_refcnt_set(m, 0);
 
@@ -795,7 +797,8 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 		 *  - detach mbuf
 		 *  - free attached mbuf segment
 		 */
-		if (unlikely (md != m)) {
+		if (RTE_MBUF_INDIRECT(m)) {
+			struct rte_mbuf *md = RTE_MBUF_FROM_BADDR(m->buf_addr);
 			rte_pktmbuf_detach(m);
 			if (rte_mbuf_refcnt_update(md, -1) == 0)
 				__rte_mbuf_raw_free(md);

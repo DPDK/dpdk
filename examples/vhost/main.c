@@ -139,6 +139,8 @@
 /* Number of descriptors per cacheline. */
 #define DESC_PER_CACHELINE (RTE_CACHE_LINE_SIZE / sizeof(struct vring_desc))
 
+#define MBUF_EXT_MEM(mb)   (RTE_MBUF_FROM_BADDR((mb)->buf_addr) != (mb))
+
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
 
@@ -1601,7 +1603,7 @@ txmbuf_clean_zcp(struct virtio_net *dev, struct vpool *vpool)
 
 	for (index = 0; index < mbuf_count; index++) {
 		mbuf = __rte_mbuf_raw_alloc(vpool->pool);
-		if (likely(RTE_MBUF_INDIRECT(mbuf)))
+		if (likely(MBUF_EXT_MEM(mbuf)))
 			pktmbuf_detach_zcp(mbuf);
 		rte_ring_sp_enqueue(vpool->ring, mbuf);
 
@@ -1664,7 +1666,7 @@ static void mbuf_destroy_zcp(struct vpool *vpool)
 	for (index = 0; index < mbuf_count; index++) {
 		mbuf = __rte_mbuf_raw_alloc(vpool->pool);
 		if (likely(mbuf != NULL)) {
-			if (likely(RTE_MBUF_INDIRECT(mbuf)))
+			if (likely(MBUF_EXT_MEM(mbuf)))
 				pktmbuf_detach_zcp(mbuf);
 			rte_ring_sp_enqueue(vpool->ring, (void *)mbuf);
 		}
