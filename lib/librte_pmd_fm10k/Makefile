@@ -55,7 +55,7 @@ else ifeq ($(CC), clang)
 #
 CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
 CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
-CFLAGS_BASE_DRIVER += -Wno-unused-variable -Wno-unused-but-set-variable
+CFLAGS_BASE_DRIVER += -Wno-unused-variable
 CFLAGS_BASE_DRIVER += -Wno-missing-field-initializers
 
 else
