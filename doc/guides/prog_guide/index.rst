@@ -61,6 +61,7 @@ Programmer's Guide
     lpm_lib
     lpm6_lib
     packet_distrib_lib
+    reorder_lib
     ip_fragment_reassembly_lib
     multi_proc_support
     kernel_nic_interface
