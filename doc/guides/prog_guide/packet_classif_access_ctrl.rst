@@ -269,10 +269,60 @@ When creating a set of rules, for each rule, additional information must be supp
     When adding new rules into an ACL context, all fields must be in host byte order (LSB).
     When the search is performed for an input tuple, all fields in that tuple must be in network byte order (MSB).
 
+RT memory size limit
+~~~~~~~~~~~~~~~~~~~~
+
+Build phase (rte_acl_build()) creates for a given set of rules internal structure for further run-time traversal.
+With current implementation it is a set of multi-bit tries (with stride == 8).
+Depending on the rules set, that could consume significant amount of memory.
+In attempt to conserve some space ACL build process tries to split the given
+rule-set into several non-intersecting subsets and construct a separate trie
+for each of them.
+Depending on the rule-set, it might reduce RT memory requirements but might
+increase classification time.
+There is a possibility at build-time to specify maximum memory limit for internal RT structures for given AC context.
+It could be done via **max_size** field of the **rte_acl_config** strucure.
+Setting it to the value greater than zero, instructs rte_acl_build() to:
+
+*   attempt to minimise number of tries in the RT table, but
+*   make sure that size of RT table wouldn't exceed given value.
+
+Setting it to zero makes rte_acl_build() to use the default behaviour:
+try to minimise size of the RT structures, but doesn't expose any hard limit on it.
+
+That gives the user the ability to decisions about performance/space trade-off.
+For example:
+
+.. code-block:: c
+
+    struct rte_acl_ctx * acx;
+    struct rte_acl_config cfg;
+    int ret;
+
+    /*
+     * assuming that acx points to already created and
+     * populated with rules AC context and cfg filled properly.
+     */
+
+     /* try to build AC context, with RT strcutures less then 8MB. */
+     cfg.max_size = 0x800000;
+     ret = rte_acl_build(acx, &cfg);
+
+     /*
+      * RT strcutures can't fit into 8MB for given context.
+      * Try to build without exposing any hard limit.
+      */
+     if (ret == -ERANGE) {
+        cfg.max_size = 0;
+        ret = rte_acl_build(acx, &cfg);
+     }
+
+
+
 Classification methods
 ~~~~~~~~~~~~~~~~~~~~~~
 
-After rte_acl_build() over given ACL context has finished successfully, it can be used to perform classification - search for a ACL rule with highest priority over the input data.
+After rte_acl_build() over given AC context has finished successfully, it can be used to perform classification - search for a rule with highest priority over the input data.
 There are several implementations of classify algorithm:
 
 *   **RTE_ACL_CLASSIFY_SCALAR**: generic implementation, doesn't require any specific HW support.
