@@ -71,6 +71,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_DISTRIBUTOR),y)
 LDLIBS += -lrte_distributor
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_REORDER),y)
+LDLIBS += -lrte_reorder
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 LDLIBS += -lrte_kni
