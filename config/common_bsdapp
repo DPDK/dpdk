@@ -344,6 +344,11 @@ CONFIG_RTE_SCHED_PORT_N_GRINDERS=8
 CONFIG_RTE_LIBRTE_DISTRIBUTOR=y
 
 #
+# Compile the reorder library
+#
+CONFIG_RTE_LIBRTE_REORDER=y
+
+#
 # Compile librte_port
 #
 CONFIG_RTE_LIBRTE_PORT=y

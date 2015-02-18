@@ -289,6 +289,9 @@ struct rte_mbuf {
 		uint32_t usr;	  /**< User defined tags. See @rte_distributor_process */
 	} hash;                   /**< hash information */
 
+	/* sequence number - field used in distributor and reorder library */
+	uint32_t seqn;
+
 	/* second cache line - fields only used in slow path or on TX */
 	MARKER cacheline1 __rte_cache_aligned;
 
