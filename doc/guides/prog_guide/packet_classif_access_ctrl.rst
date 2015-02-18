@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -51,8 +51,18 @@ The library API provides the following basic operations:
 Overview
 --------
 
+Rule definition
+~~~~~~~~~~~~~~~
+
 The current implementation allows the user for each AC context to specify its own rule (set of fields)
 over which packet classification will be performed.
+Though there are few restrictions on the rule fields layout:
+
+*  First field in the rule definition has to be one byte long.
+*  All subsequent fields has to be grouped into sets of 4 consecutive bytes.
+
+This is done mainly for performance reasons - search function processes the first input byte as part of the flow setup and then the inner loop of the search function is unrolled to process four input bytes at a time.
+
 To define each field inside an AC rule, the following structure is used:
 
 .. code-block:: c
@@ -85,10 +95,7 @@ To define each field inside an AC rule, the following structure is used:
     A zero-based value that represents the position of the field inside the rule; 0 to N-1 for N fields.
 
 *   input_index
-    For performance reasons, the inner loop of the search function is unrolled to process four input bytes at a time.
-    This requires the input to be grouped into sets of 4 consecutive bytes.
-    The loop processes the first input byte as part of the setup and then
-    subsequent bytes must be in groups of 4 consecutive bytes.
+    As mentioned above, all input fields, except the very first one, must be in groups of 4 consecutive bytes.
     The input index specifies to which input group that field belongs to.
 
 *   offset
