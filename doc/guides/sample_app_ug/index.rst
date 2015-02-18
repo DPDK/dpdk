@@ -60,6 +60,7 @@ Sample Applications User Guide
     intel_quickassist
     quota_watermark
     timer
+    packet_ordering
     vmdq_dcb_forwarding
     vhost
     netmap_compatibility
