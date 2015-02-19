@@ -613,7 +613,7 @@ check_rx_burst_bulk_alloc_preconditions(__rte_unused struct i40e_rx_queue *rxq)
 			     "rxq->nb_rx_desc=%d",
 			     rxq->rx_free_thresh, rxq->nb_rx_desc);
 		ret = -EINVAL;
-	} else if (!(rxq->nb_rx_desc % rxq->rx_free_thresh) == 0) {
+	} else if (rxq->nb_rx_desc % rxq->rx_free_thresh != 0) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
 			     "rxq->nb_rx_desc=%d, "
 			     "rxq->rx_free_thresh=%d",
