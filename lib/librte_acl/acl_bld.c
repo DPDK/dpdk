@@ -302,8 +302,6 @@ acl_add_ptr(struct acl_build_context *context,
 		/* add room for more pointers */
 		num_ptrs = node->max_ptrs + ACL_PTR_ALLOC;
 		ptrs = acl_build_alloc(context, num_ptrs, sizeof(*ptrs));
-		if (ptrs == NULL)
-			return -ENOMEM;
 
 		/* copy current points to new memory allocation */
 		if (node->ptrs != NULL) {
@@ -477,16 +475,12 @@ acl_dup_node(struct acl_build_context *context, struct rte_acl_node *node)
 	struct rte_acl_node *next;
 
 	next = acl_alloc_node(context, node->level);
-	if (next == NULL)
-		return NULL;
 
 	/* allocate the pointers */
 	if (node->num_ptrs > 0) {
 		next->ptrs = acl_build_alloc(context,
 			node->max_ptrs,
 			sizeof(struct rte_acl_ptr_set));
-		if (next->ptrs == NULL)
-			return NULL;
 		next->max_ptrs = node->max_ptrs;
 	}
 
@@ -669,8 +663,6 @@ acl_merge_intersect(struct acl_build_context *context,
 
 	/* Duplicate A for intersection */
 	node_c = acl_dup_node(context, node_a->ptrs[idx_a].ptr);
-	if (node_c == NULL)
-		return -1;
 
 	/* Remove intersection from A */
 	acl_exclude_ptr(context, node_a, idx_a, intersect_ptr);
@@ -1328,14 +1320,10 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 	rule = head;
 
 	trie = acl_alloc_node(context, 0);
-	if (trie == NULL)
-		return NULL;
 
 	while (rule != NULL) {
 
 		root = acl_alloc_node(context, 0);
-		if (root == NULL)
-			return NULL;
 
 		root->ref_count = 1;
 		end = root;
@@ -1419,10 +1407,9 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 		 * Setup the results for this rule.
 		 * The result and priority of each category.
 		 */
-		if (end->mrt == NULL &&
-				(end->mrt = acl_build_alloc(context, 1,
-				sizeof(*end->mrt))) == NULL)
-			return NULL;
+		if (end->mrt == NULL)
+			end->mrt = acl_build_alloc(context, 1,
+				sizeof(*end->mrt));
 
 		for (m = 0; m < context->cfg.num_categories; m++) {
 			if (rule->f->data.category_mask & (1 << m)) {
@@ -1760,13 +1747,6 @@ acl_build_tries(struct acl_build_context *context,
 
 		/* Create a new copy of config for remaining rules. */
 		config = acl_build_alloc(context, 1, sizeof(*config));
-		if (config == NULL) {
-			RTE_LOG(ERR, ACL,
-				"New config allocation for %u-th "
-				"trie failed\n", num_tries);
-			return -ENOMEM;
-		}
-
 		memcpy(config, rule_sets[n]->config, sizeof(*config));
 
 		/* Make remaining rules use new config. */
@@ -1825,12 +1805,6 @@ acl_build_rules(struct acl_build_context *bcx)
 	sz = ofs + n * fn * sizeof(*wp);
 
 	br = tb_alloc(&bcx->pool, sz);
-	if (br == NULL) {
-		RTE_LOG(ERR, ACL, "ACL context %s: failed to create a copy "
-			"of %u build rules (%zu bytes)\n",
-			bcx->acx->name, n, sz);
-		return -ENOMEM;
-	}
 
 	wp = (uint32_t *)((uintptr_t)br + ofs);
 	num = 0;
@@ -1894,6 +1868,16 @@ acl_bld(struct acl_build_context *bcx, struct rte_acl_ctx *ctx,
 	bcx->cfg = *cfg;
 	bcx->category_mask = LEN2MASK(bcx->cfg.num_categories);
 	bcx->node_max = node_max;
+
+	rc = sigsetjmp(bcx->pool.fail, 0);
+
+	/* build phase runs out of memory. */
+	if (rc != 0) {
+		RTE_LOG(ERR, ACL,
+			"ACL context: %s, %s() failed with error code: %d\n",
+			bcx->acx->name, __func__, rc);
+		return rc;
+	}
 
 	/* Create a build rules copy. */
 	rc = acl_build_rules(bcx);
