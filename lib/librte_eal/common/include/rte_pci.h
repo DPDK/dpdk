@@ -93,10 +93,10 @@ extern struct pci_device_list pci_device_list; /**< Global list of PCI devices. 
 #define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
 
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
-#define PCI_PRI_FMT "%.4"PRIx16":%.2"PRIx8":%.2"PRIx8".%"PRIx8
+#define PCI_PRI_FMT "%.4" PRIx16 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
 
 /** Short formatting string, without domain, for PCI device: Ex: 00:01.0 */
-#define PCI_SHORT_PRI_FMT "%.2"PRIx8":%.2"PRIx8".%"PRIx8
+#define PCI_SHORT_PRI_FMT "%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
 
 /** Nb. of values in PCI device identifier format string. */
 #define PCI_FMT_NVAL 4

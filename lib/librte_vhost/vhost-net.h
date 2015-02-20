@@ -59,9 +59,9 @@ extern struct vhost_net_device_ops const *ops;
 	char packet[VHOST_MAX_PRINT_BUFF]; \
 	\
 	if ((header)) \
-		snprintf(packet, VHOST_MAX_PRINT_BUFF, "(%"PRIu64") Header size %d: ", (device->device_fh), (size)); \
+		snprintf(packet, VHOST_MAX_PRINT_BUFF, "(%" PRIu64 ") Header size %d: ", (device->device_fh), (size)); \
 	else \
-		snprintf(packet, VHOST_MAX_PRINT_BUFF, "(%"PRIu64") Packet size %d: ", (device->device_fh), (size)); \
+		snprintf(packet, VHOST_MAX_PRINT_BUFF, "(%" PRIu64 ") Packet size %d: ", (device->device_fh), (size)); \
 	for (index = 0; index < (size); index++) { \
 		snprintf(packet + strnlen(packet, VHOST_MAX_PRINT_BUFF), VHOST_MAX_PRINT_BUFF - strnlen(packet, VHOST_MAX_PRINT_BUFF), \
 			"%02hhx ", pkt_addr[index]); \

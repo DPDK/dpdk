@@ -342,7 +342,7 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE1) {
 				rte_log_set_history(0);
 				RTE_LOG(CRIT, MEMPOOL,
-					"obj=%p, mempool=%p, cookie=%"PRIx64"\n",
+					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
 					obj, mp, cookie);
 				rte_panic("MEMPOOL: bad header cookie (put)\n");
 			}
@@ -352,7 +352,7 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE2) {
 				rte_log_set_history(0);
 				RTE_LOG(CRIT, MEMPOOL,
-					"obj=%p, mempool=%p, cookie=%"PRIx64"\n",
+					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
 					obj, mp, cookie);
 				rte_panic("MEMPOOL: bad header cookie (get)\n");
 			}
@@ -363,7 +363,7 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 			    cookie != RTE_MEMPOOL_HEADER_COOKIE2) {
 				rte_log_set_history(0);
 				RTE_LOG(CRIT, MEMPOOL,
-					"obj=%p, mempool=%p, cookie=%"PRIx64"\n",
+					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
 					obj, mp, cookie);
 				rte_panic("MEMPOOL: bad header cookie (audit)\n");
 			}
@@ -372,7 +372,7 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 		if (cookie != RTE_MEMPOOL_TRAILER_COOKIE) {
 			rte_log_set_history(0);
 			RTE_LOG(CRIT, MEMPOOL,
-				"obj=%p, mempool=%p, cookie=%"PRIx64"\n",
+				"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
 				obj, mp, cookie);
 			rte_panic("MEMPOOL: bad trailer cookie\n");
 		}
