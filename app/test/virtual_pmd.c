@@ -36,6 +36,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_memory.h>
+#include <rte_ring.h>
 
 #include "virtual_pmd.h"
 
@@ -46,8 +47,8 @@ static const char *virtual_ethdev_driver_name = "Virtual PMD";
 struct virtual_ethdev_private {
 	struct rte_eth_stats eth_stats;
 
-	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST];
-	int rx_pkt_burst_len;
+	struct rte_ring *rx_queue;
+	struct rte_ring *tx_queue;
 
 	int tx_burst_fail_count;
 };
@@ -74,8 +75,16 @@ virtual_ethdev_start_fail(struct rte_eth_dev *eth_dev __rte_unused)
 }
 static void  virtual_ethdev_stop(struct rte_eth_dev *eth_dev __rte_unused)
 {
+	struct rte_mbuf *pkt = NULL;
+	struct virtual_ethdev_private *prv = eth_dev->data->dev_private;
+
 	eth_dev->data->dev_link.link_status = 0;
 	eth_dev->data->dev_started = 0;
+	while (rte_ring_dequeue(prv->rx_queue, (void **)&pkt) != -ENOENT)
+		rte_pktmbuf_free(pkt);
+
+	while (rte_ring_dequeue(prv->tx_queue, (void **)&pkt) != -ENOENT)
+		rte_pktmbuf_free(pkt);
 }
 
 static void
@@ -214,8 +223,10 @@ static void
 virtual_ethdev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
+	struct rte_mbuf *pkt = NULL;
 
-	dev_private->rx_pkt_burst_len = 0;
+	while (rte_ring_dequeue(dev_private->tx_queue, (void **)&pkt) == -ENOBUFS)
+			rte_pktmbuf_free(pkt);
 
 	/* Reset internal statistics */
 	memset(&dev_private->eth_stats, 0, sizeof(dev_private->eth_stats));
@@ -318,29 +329,23 @@ virtual_ethdev_rx_burst_success(void *queue __rte_unused,
 	struct virtual_ethdev_queue *pq_map;
 	struct virtual_ethdev_private *dev_private;
 
-	int i;
+	int rx_count, i;
 
 	pq_map = (struct virtual_ethdev_queue *)queue;
-
 	vrtl_eth_dev = &rte_eth_devices[pq_map->port_id];
-
 	dev_private = vrtl_eth_dev->data->dev_private;
 
-	if (dev_private->rx_pkt_burst_len > 0) {
-		if (dev_private->rx_pkt_burst_len < nb_pkts) {
+	rx_count = rte_ring_dequeue_burst(dev_private->rx_queue, (void **) bufs,
+			nb_pkts);
 
-			for (i = 0; i < dev_private->rx_pkt_burst_len; i++) {
-				bufs[i] = dev_private->rx_pkt_burst[i];
-				dev_private->rx_pkt_burst[i] = NULL;
-			}
+	/* increments ipackets count */
+	dev_private->eth_stats.ipackets += rx_count;
 
-			dev_private->eth_stats.ipackets = dev_private->rx_pkt_burst_len;
-		}
-		/* reset private burst values */
-		dev_private->rx_pkt_burst_len = 0;
-	}
+	/* increments ibytes count */
+	for (i = 0; i < rx_count; i++)
+		dev_private->eth_stats.ibytes += rte_pktmbuf_pkt_len(bufs[i]);
 
-	return dev_private->eth_stats.ipackets;
+	return rx_count;
 }
 
 static uint16_t
@@ -359,26 +364,26 @@ virtual_ethdev_tx_burst_success(void *queue, struct rte_mbuf **bufs,
 
 	struct rte_eth_dev *vrtl_eth_dev;
 	struct virtual_ethdev_private *dev_private;
-	uint64_t obytes = 0;
+
 	int i;
 
-	for (i = 0; i < nb_pkts; i++)
-		obytes += rte_pktmbuf_pkt_len(bufs[i]);
 	vrtl_eth_dev = &rte_eth_devices[tx_q->port_id];
 	dev_private = vrtl_eth_dev->data->dev_private;
 
-	if (vrtl_eth_dev->data->dev_link.link_status) {
-		/* increment opacket count */
-		dev_private->eth_stats.opackets += nb_pkts;
-		dev_private->eth_stats.obytes += obytes;
-		/* free packets in burst */
-		for (i = 0; i < nb_pkts; i++)
-			rte_pktmbuf_free(bufs[i]);
+	if (!vrtl_eth_dev->data->dev_link.link_status)
+		nb_pkts = 0;
+	else
+		nb_pkts = rte_ring_enqueue_burst(dev_private->tx_queue, (void **)bufs,
+				nb_pkts);
 
-		return nb_pkts;
-	}
+	/* increment opacket count */
+	dev_private->eth_stats.opackets += nb_pkts;
 
-	return 0;
+	/* increment obytes count */
+	for (i = 0; i < nb_pkts; i++)
+		dev_private->eth_stats.obytes += rte_pktmbuf_pkt_len(bufs[i]);
+
+	return nb_pkts;
 }
 
 static uint16_t
@@ -476,23 +481,28 @@ virtual_ethdev_simulate_link_status_interrupt(uint8_t port_id,
 	_rte_eth_dev_callback_process(vrtl_eth_dev, RTE_ETH_EVENT_INTR_LSC);
 }
 
-
-
-void
+int
 virtual_ethdev_add_mbufs_to_rx_queue(uint8_t port_id,
 		struct rte_mbuf **pkt_burst, int burst_length)
 {
-	struct virtual_ethdev_private *dev_private = NULL;
+	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
+	struct virtual_ethdev_private *dev_private =
+			vrtl_eth_dev->data->dev_private;
+
+	return rte_ring_enqueue_burst(dev_private->rx_queue, (void **)pkt_burst,
+			burst_length);
+}
+
+int
+virtual_ethdev_get_mbufs_from_tx_queue(uint8_t port_id,
+		struct rte_mbuf **pkt_burst, int burst_length)
+{
+	struct virtual_ethdev_private *dev_private;
 	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
 
-	int i;
-
 	dev_private = vrtl_eth_dev->data->dev_private;
-
-	for (i = 0; i < burst_length; i++)
-		dev_private->rx_pkt_burst[i] = pkt_burst[i];
-
-	dev_private->rx_pkt_burst_len = burst_length;
+	return rte_ring_dequeue_burst(dev_private->tx_queue, (void **)pkt_burst,
+		burst_length);
 }
 
 static uint8_t
@@ -510,7 +520,6 @@ get_number_of_sockets(void)
 	return ++sockets;
 }
 
-
 int
 virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 		uint8_t socket_id, uint8_t isr_support)
@@ -522,6 +531,7 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	struct eth_dev_ops *dev_ops = NULL;
 	struct rte_pci_id *id_table = NULL;
 	struct virtual_ethdev_private *dev_private = NULL;
+	char name_buf[RTE_RING_NAMESIZE];
 
 
 	/* now do all data allocation - for eth_dev structure, dummy pci driver
@@ -553,6 +563,20 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 
 	dev_private = rte_zmalloc_socket(name, sizeof(*dev_private), 0, socket_id);
 	if (dev_private == NULL)
+		goto err;
+
+	memset(dev_private, 0, sizeof(*dev_private));
+
+	snprintf(name_buf, sizeof(name_buf), "%s_rxQ", name);
+	dev_private->rx_queue = rte_ring_create(name_buf, MAX_PKT_BURST, socket_id,
+			0);
+	if (dev_private->rx_queue == NULL)
+		goto err;
+
+	snprintf(name_buf, sizeof(name_buf), "%s_txQ", name);
+	dev_private->tx_queue = rte_ring_create(name_buf, MAX_PKT_BURST, socket_id,
+			0);
+	if (dev_private->tx_queue == NULL)
 		goto err;
 
 	/* reserve an ethdev entry */
@@ -594,7 +618,6 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	eth_dev->data->scattered_rx = 0;
 	eth_dev->data->all_multicast = 0;
 
-	memset(dev_private, 0, sizeof(*dev_private));
 	eth_dev->data->dev_private = dev_private;
 
 	eth_dev->dev_ops = dev_ops;

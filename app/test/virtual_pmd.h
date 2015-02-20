@@ -54,10 +54,13 @@ void
 virtual_ethdev_simulate_link_status_interrupt(uint8_t port_id,
 		uint8_t link_status);
 
-void
+int
 virtual_ethdev_add_mbufs_to_rx_queue(uint8_t port_id,
 		struct rte_mbuf **pkts_burst, int burst_length);
 
+int
+virtual_ethdev_get_mbufs_from_tx_queue(uint8_t port_id,
+		struct rte_mbuf **pkt_burst, int burst_length);
 
 /** Control methods for the dev_ops functions pointer to control the behavior
  *  of the Virtual PMD */

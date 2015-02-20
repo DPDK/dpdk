@@ -1313,17 +1313,22 @@ generate_test_burst(struct rte_mbuf **pkts_burst, uint16_t burst_size,
 		uint8_t vlan, uint8_t ipv4, uint8_t toggle_dst_mac,
 		uint8_t toggle_ip_addr, uint8_t toggle_udp_port)
 {
-	uint16_t pktlen, generated_burst_size;
+	uint16_t pktlen, generated_burst_size, ether_type;
 	void *ip_hdr;
+
+	if (ipv4)
+		ether_type = ETHER_TYPE_IPv4;
+	else
+		ether_type = ETHER_TYPE_IPv6;
 
 	if (toggle_dst_mac)
 		initialize_eth_header(test_params->pkt_eth_hdr,
 				(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_1,
-				ipv4, vlan, vlan_id);
+				ether_type, vlan, vlan_id);
 	else
 		initialize_eth_header(test_params->pkt_eth_hdr,
 				(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_0,
-				ipv4, vlan, vlan_id);
+				ether_type, vlan, vlan_id);
 
 
 	if (toggle_udp_port)
@@ -2094,7 +2099,8 @@ test_activebackup_tx_burst(void)
 			"Failed to initialize bonded device with slaves");
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
-			(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_0, 1, 0, 0);
+			(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_0,
+			ETHER_TYPE_IPv4,  0, 0);
 	pktlen = initialize_udp_header(test_params->pkt_udp_hdr, src_port,
 			dst_port_0, 16);
 	pktlen = initialize_ipv4_header(test_params->pkt_ipv4_hdr, src_addr,
@@ -2637,7 +2643,8 @@ test_balance_l2_tx_burst(void)
 			"Failed to set balance xmit policy.");
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
-			(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_0, 1, 0, 0);
+			(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_0,
+			ETHER_TYPE_IPv4, 0, 0);
 	pktlen = initialize_udp_header(test_params->pkt_udp_hdr, src_port,
 			dst_port_0, 16);
 	pktlen = initialize_ipv4_header(test_params->pkt_ipv4_hdr, src_addr,
@@ -2651,7 +2658,8 @@ test_balance_l2_tx_burst(void)
 			"failed to generate packet burst");
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
-			(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_1, 1, 0, 0);
+			(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_1,
+			ETHER_TYPE_IPv4, 0, 0);
 
 	/* Generate a burst 2 of packets to transmit */
 	TEST_ASSERT_EQUAL(generate_packet_burst(test_params->mbuf_pool, &pkts_burst[1][0],
@@ -3488,7 +3496,8 @@ test_broadcast_tx_burst(void)
 			"Failed to intialise bonded device");
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
-			(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_0, 1, 0, 0);
+			(struct ether_addr *)src_mac, (struct ether_addr *)dst_mac_0,
+			ETHER_TYPE_IPv4, 0, 0);
 
 	pktlen = initialize_udp_header(test_params->pkt_udp_hdr, src_port,
 			dst_port_0, 16);
@@ -4041,6 +4050,23 @@ testsuite_teardown(void)
 	return remove_slaves_and_stop_bonded_device();
 }
 
+static void
+free_virtualpmd_tx_queue(void)
+{
+	int i, slave_port, to_free_cnt;
+	struct rte_mbuf *pkts_to_free[MAX_PKT_BURST];
+
+	/* Free tx queue of virtual pmd */
+	for (slave_port = 0; slave_port < test_params->bonded_slave_count;
+			slave_port++) {
+		to_free_cnt = virtual_ethdev_get_mbufs_from_tx_queue(
+				test_params->slave_port_ids[slave_port],
+				pkts_to_free, MAX_PKT_BURST);
+		for (i = 0; i < to_free_cnt; i++)
+			rte_pktmbuf_free(pkts_to_free[i]);
+	}
+}
+
 static int
 test_tlb_tx_burst(void)
 {
@@ -4068,11 +4094,11 @@ test_tlb_tx_burst(void)
 		if (i % 2 == 0) {
 			initialize_eth_header(test_params->pkt_eth_hdr,
 					(struct ether_addr *)src_mac,
-					(struct ether_addr *)dst_mac_0, 1, 0, 0);
+					(struct ether_addr *)dst_mac_0, ETHER_TYPE_IPv4, 0, 0);
 		} else {
 			initialize_eth_header(test_params->pkt_eth_hdr,
 					(struct ether_addr *)test_params->default_slave_mac,
-					(struct ether_addr *)dst_mac_0, 1, 0, 0);
+					(struct ether_addr *)dst_mac_0, ETHER_TYPE_IPv4, 0, 0);
 		}
 		pktlen = initialize_udp_header(test_params->pkt_udp_hdr, src_port,
 				dst_port_0, 16);
@@ -4085,6 +4111,8 @@ test_tlb_tx_burst(void)
 		nb_tx = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkt_burst,
 				burst_size);
 		nb_tx2 += nb_tx;
+
+		free_virtualpmd_tx_queue();
 
 		TEST_ASSERT_EQUAL(nb_tx, burst_size,
 				"number of packet not equal burst size");
@@ -4474,14 +4502,13 @@ test_tlb_verify_slave_link_status_change_failover(void)
 
 	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (int8_t)0,
-				"(%d) port_stats.opackets not as expected\n",
-				test_params->slave_port_ids[0]);
+			"(%d) port_stats.opackets not as expected\n",
+			test_params->slave_port_ids[0]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
 	TEST_ASSERT_NOT_EQUAL(port_stats.opackets, (int8_t)0,
-					"(%d) port_stats.opackets not as expected\n",
-					test_params->slave_port_ids[1]);
-
+			"(%d) port_stats.opackets not as expected\n",
+			test_params->slave_port_ids[1]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
 	TEST_ASSERT_NOT_EQUAL(port_stats.opackets, (int8_t)0,
@@ -4534,6 +4561,386 @@ test_tlb_verify_slave_link_status_change_failover(void)
 	return remove_slaves_and_stop_bonded_device();
 }
 
+#define TEST_ALB_SLAVE_COUNT	2
+
+static uint8_t mac_client1[] = {0x00, 0xAA, 0x55, 0xFF, 0xCC, 1};
+static uint8_t mac_client2[] = {0x00, 0xAA, 0x55, 0xFF, 0xCC, 2};
+static uint8_t mac_client3[] = {0x00, 0xAA, 0x55, 0xFF, 0xCC, 3};
+static uint8_t mac_client4[] = {0x00, 0xAA, 0x55, 0xFF, 0xCC, 4};
+
+static uint32_t ip_host = IPV4_ADDR(192, 168, 0, 0);
+static uint32_t ip_client1 = IPV4_ADDR(192, 168, 0, 1);
+static uint32_t ip_client2 = IPV4_ADDR(192, 168, 0, 2);
+static uint32_t ip_client3 = IPV4_ADDR(192, 168, 0, 3);
+static uint32_t ip_client4 = IPV4_ADDR(192, 168, 0, 4);
+
+static int
+test_alb_change_mac_in_reply_sent(void)
+{
+	struct rte_mbuf *pkt;
+	struct rte_mbuf *pkts_sent[MAX_PKT_BURST];
+
+	struct ether_hdr *eth_pkt;
+	struct arp_hdr *arp_pkt;
+
+	int slave_idx, nb_pkts, pkt_idx;
+	int retval = 0;
+
+	struct ether_addr bond_mac, client_mac;
+	struct ether_addr *slave_mac1, *slave_mac2;
+
+	TEST_ASSERT_SUCCESS(
+			initialize_bonded_device_with_slaves(BONDING_MODE_ALB,
+					0, TEST_ALB_SLAVE_COUNT, 1),
+			"Failed to initialize_bonded_device_with_slaves.");
+
+	/* Flush tx queue */
+	rte_eth_tx_burst(test_params->bonded_port_id, 0, NULL, 0);
+	for (slave_idx = 0; slave_idx < test_params->bonded_slave_count;
+			slave_idx++) {
+		nb_pkts = virtual_ethdev_get_mbufs_from_tx_queue(
+				test_params->slave_port_ids[slave_idx], pkts_sent,
+				MAX_PKT_BURST);
+	}
+
+	ether_addr_copy(
+			rte_eth_devices[test_params->bonded_port_id].data->mac_addrs,
+			&bond_mac);
+
+	/*
+	 * Generating four packets with different mac and ip addresses and sending
+	 * them through the bonding port.
+	 */
+	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
+	memcpy(client_mac.addr_bytes, mac_client1, ETHER_ADDR_LEN);
+	eth_pkt = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
+			0);
+	arp_pkt = (struct arp_hdr *)((char *)eth_pkt + sizeof(struct ether_hdr));
+	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client1,
+			ARP_OP_REPLY);
+	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
+
+	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
+	memcpy(client_mac.addr_bytes, mac_client2, ETHER_ADDR_LEN);
+	eth_pkt = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
+			0);
+	arp_pkt = (struct arp_hdr *)((char *)eth_pkt + sizeof(struct ether_hdr));
+	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client2,
+			ARP_OP_REPLY);
+	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
+
+	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
+	memcpy(client_mac.addr_bytes, mac_client3, ETHER_ADDR_LEN);
+	eth_pkt = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
+			0);
+	arp_pkt = (struct arp_hdr *)((char *)eth_pkt + sizeof(struct ether_hdr));
+	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client3,
+			ARP_OP_REPLY);
+	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
+
+	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
+	memcpy(client_mac.addr_bytes, mac_client4, ETHER_ADDR_LEN);
+	eth_pkt = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
+			0);
+	arp_pkt = (struct arp_hdr *)((char *)eth_pkt + sizeof(struct ether_hdr));
+	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client4,
+			ARP_OP_REPLY);
+	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
+
+	slave_mac1 =
+			rte_eth_devices[test_params->slave_port_ids[0]].data->mac_addrs;
+	slave_mac2 =
+			rte_eth_devices[test_params->slave_port_ids[1]].data->mac_addrs;
+
+	/*
+	 * Checking if packets are properly distributed on bonding ports. Packets
+	 * 0 and 2 should be sent on port 0 and packets 1 and 3 on port 1.
+	 */
+	for (slave_idx = 0; slave_idx < test_params->bonded_slave_count; slave_idx++) {
+		nb_pkts = virtual_ethdev_get_mbufs_from_tx_queue(
+				test_params->slave_port_ids[slave_idx], pkts_sent,
+				MAX_PKT_BURST);
+
+		for (pkt_idx = 0; pkt_idx < nb_pkts; pkt_idx++) {
+			eth_pkt = rte_pktmbuf_mtod(pkts_sent[pkt_idx], struct ether_hdr *);
+			arp_pkt = (struct arp_hdr *)((char *)eth_pkt + sizeof(struct ether_hdr));
+
+			if (slave_idx%2 == 0) {
+				if (!is_same_ether_addr(slave_mac1, &arp_pkt->arp_data.arp_sha)) {
+					retval = -1;
+					goto test_end;
+				}
+			} else {
+				if (!is_same_ether_addr(slave_mac2, &arp_pkt->arp_data.arp_sha)) {
+					retval = -1;
+					goto test_end;
+				}
+			}
+		}
+	}
+
+test_end:
+	retval += remove_slaves_and_stop_bonded_device();
+	return retval;
+}
+
+static int
+test_alb_reply_from_client(void)
+{
+	struct ether_hdr *eth_pkt;
+	struct arp_hdr *arp_pkt;
+
+	struct rte_mbuf *pkt;
+	struct rte_mbuf *pkts_sent[MAX_PKT_BURST];
+
+	int slave_idx, nb_pkts, pkt_idx, nb_pkts_sum = 0;
+	int retval = 0;
+
+	struct ether_addr bond_mac, client_mac;
+	struct ether_addr *slave_mac1, *slave_mac2;
+
+	TEST_ASSERT_SUCCESS(
+			initialize_bonded_device_with_slaves(BONDING_MODE_ALB,
+					0, TEST_ALB_SLAVE_COUNT, 1),
+			"Failed to initialize_bonded_device_with_slaves.");
+
+	/* Flush tx queue */
+	rte_eth_tx_burst(test_params->bonded_port_id, 0, NULL, 0);
+	for (slave_idx = 0; slave_idx < test_params->bonded_slave_count; slave_idx++) {
+		nb_pkts = virtual_ethdev_get_mbufs_from_tx_queue(
+				test_params->slave_port_ids[slave_idx], pkts_sent,
+				MAX_PKT_BURST);
+	}
+
+	ether_addr_copy(
+			rte_eth_devices[test_params->bonded_port_id].data->mac_addrs,
+			&bond_mac);
+
+	/*
+	 * Generating four packets with different mac and ip addresses and placing
+	 * them in the rx queue to be received by the bonding driver on rx_burst.
+	 */
+	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
+	memcpy(client_mac.addr_bytes, mac_client1, ETHER_ADDR_LEN);
+	eth_pkt = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
+			0);
+	arp_pkt = (struct arp_hdr *)((char *)eth_pkt + sizeof(struct ether_hdr));
+	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client1, ip_host,
+			ARP_OP_REPLY);
+	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
+			1);
+
+	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
+	memcpy(client_mac.addr_bytes, mac_client2, ETHER_ADDR_LEN);
+	eth_pkt = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
+			0);
+	arp_pkt = (struct arp_hdr *)((char *)eth_pkt + sizeof(struct ether_hdr));
+	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client2, ip_host,
+			ARP_OP_REPLY);
+	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
+			1);
+
+	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
+	memcpy(client_mac.addr_bytes, mac_client3, ETHER_ADDR_LEN);
+	eth_pkt = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
+			0);
+	arp_pkt = (struct arp_hdr *)((char *)eth_pkt + sizeof(struct ether_hdr));
+	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client3, ip_host,
+			ARP_OP_REPLY);
+	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
+			1);
+
+	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
+	memcpy(client_mac.addr_bytes, mac_client4, ETHER_ADDR_LEN);
+	eth_pkt = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
+			0);
+	arp_pkt = (struct arp_hdr *)((char *)eth_pkt + sizeof(struct ether_hdr));
+	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client4, ip_host,
+			ARP_OP_REPLY);
+	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
+			1);
+
+	/*
+	 * Issue rx_burst and tx_burst to force bonding driver to send update ARP
+	 * packets to every client in alb table.
+	 */
+	rte_eth_rx_burst(test_params->bonded_port_id, 0, pkts_sent, MAX_PKT_BURST);
+	rte_eth_tx_burst(test_params->bonded_port_id, 0, NULL, 0);
+
+	slave_mac1 = rte_eth_devices[test_params->slave_port_ids[0]].data->mac_addrs;
+	slave_mac2 = rte_eth_devices[test_params->slave_port_ids[1]].data->mac_addrs;
+
+	/*
+	 * Checking if update ARP packets were properly send on slave ports.
+	 */
+	for (slave_idx = 0; slave_idx < test_params->bonded_slave_count; slave_idx++) {
+		nb_pkts = virtual_ethdev_get_mbufs_from_tx_queue(
+				test_params->slave_port_ids[slave_idx], pkts_sent, MAX_PKT_BURST);
+		nb_pkts_sum += nb_pkts;
+
+		for (pkt_idx = 0; pkt_idx < nb_pkts; pkt_idx++) {
+			eth_pkt = rte_pktmbuf_mtod(pkts_sent[pkt_idx], struct ether_hdr *);
+			arp_pkt = (struct arp_hdr *)((char *)eth_pkt + sizeof(struct ether_hdr));
+
+			if (slave_idx%2 == 0) {
+				if (!is_same_ether_addr(slave_mac1, &arp_pkt->arp_data.arp_sha)) {
+					retval = -1;
+					goto test_end;
+				}
+			} else {
+				if (!is_same_ether_addr(slave_mac2, &arp_pkt->arp_data.arp_sha)) {
+					retval = -1;
+					goto test_end;
+				}
+			}
+		}
+	}
+
+	/* Check if proper number of packets was send */
+	if (nb_pkts_sum < 4) {
+		retval = -1;
+		goto test_end;
+	}
+
+test_end:
+	retval += remove_slaves_and_stop_bonded_device();
+	return retval;
+}
+
+static int
+test_alb_receive_vlan_reply(void)
+{
+	struct ether_hdr *eth_pkt;
+	struct vlan_hdr *vlan_pkt;
+	struct arp_hdr *arp_pkt;
+
+	struct rte_mbuf *pkt;
+	struct rte_mbuf *pkts_sent[MAX_PKT_BURST];
+
+	int slave_idx, nb_pkts, pkt_idx;
+	int retval = 0;
+
+	struct ether_addr bond_mac, client_mac;
+
+	TEST_ASSERT_SUCCESS(
+			initialize_bonded_device_with_slaves(BONDING_MODE_ALB,
+					0, TEST_ALB_SLAVE_COUNT, 1),
+			"Failed to initialize_bonded_device_with_slaves.");
+
+	/* Flush tx queue */
+	rte_eth_tx_burst(test_params->bonded_port_id, 0, NULL, 0);
+	for (slave_idx = 0; slave_idx < test_params->bonded_slave_count; slave_idx++) {
+		nb_pkts = virtual_ethdev_get_mbufs_from_tx_queue(
+				test_params->slave_port_ids[slave_idx], pkts_sent,
+				MAX_PKT_BURST);
+	}
+
+	ether_addr_copy(
+			rte_eth_devices[test_params->bonded_port_id].data->mac_addrs,
+			&bond_mac);
+
+	/*
+	 * Generating packet with double VLAN header and placing it in the rx queue.
+	 */
+	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
+	memcpy(client_mac.addr_bytes, mac_client1, ETHER_ADDR_LEN);
+	eth_pkt = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_VLAN, 0,
+			0);
+	vlan_pkt = (struct vlan_hdr *)((char *)(eth_pkt + 1));
+	vlan_pkt->vlan_tci = rte_cpu_to_be_16(1);
+	vlan_pkt->eth_proto = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
+	vlan_pkt = vlan_pkt+1;
+	vlan_pkt->vlan_tci = rte_cpu_to_be_16(2);
+	vlan_pkt->eth_proto = rte_cpu_to_be_16(ETHER_TYPE_ARP);
+	arp_pkt = (struct arp_hdr *)((char *)(vlan_pkt + 1));
+	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client1, ip_host,
+			ARP_OP_REPLY);
+	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
+			1);
+
+	rte_eth_rx_burst(test_params->bonded_port_id, 0, pkts_sent, MAX_PKT_BURST);
+	rte_eth_tx_burst(test_params->bonded_port_id, 0, NULL, 0);
+
+	/*
+	 * Checking if VLAN headers in generated ARP Update packet are correct.
+	 */
+	for (slave_idx = 0; slave_idx < test_params->bonded_slave_count; slave_idx++) {
+		nb_pkts = virtual_ethdev_get_mbufs_from_tx_queue(
+				test_params->slave_port_ids[slave_idx], pkts_sent,
+				MAX_PKT_BURST);
+
+		for (pkt_idx = 0; pkt_idx < nb_pkts; pkt_idx++) {
+			eth_pkt = rte_pktmbuf_mtod(pkts_sent[pkt_idx], struct ether_hdr *);
+			vlan_pkt = (struct vlan_hdr *)((char *)(eth_pkt + 1));
+			if (vlan_pkt->vlan_tci != rte_cpu_to_be_16(1)) {
+				retval = -1;
+				goto test_end;
+			}
+			if (vlan_pkt->eth_proto != rte_cpu_to_be_16(ETHER_TYPE_VLAN)) {
+				retval = -1;
+				goto test_end;
+			}
+			vlan_pkt = vlan_pkt+1;
+			if (vlan_pkt->vlan_tci != rte_cpu_to_be_16(2)) {
+				retval = -1;
+				goto test_end;
+			}
+			if (vlan_pkt->eth_proto != rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
+				retval = -1;
+				goto test_end;
+			}
+		}
+	}
+
+test_end:
+	retval += remove_slaves_and_stop_bonded_device();
+	return retval;
+}
+
+static int
+test_alb_ipv4_tx(void)
+{
+	int burst_size, retval, pkts_send;
+	struct rte_mbuf *pkt_burst[MAX_PKT_BURST];
+
+	retval = 0;
+
+	TEST_ASSERT_SUCCESS(
+			initialize_bonded_device_with_slaves(BONDING_MODE_ALB,
+					0, TEST_ALB_SLAVE_COUNT, 1),
+			"Failed to initialize_bonded_device_with_slaves.");
+
+	burst_size = 32;
+
+	/* Generate test bursts of packets to transmit */
+	if (generate_test_burst(pkt_burst, burst_size, 0, 1, 0, 0, 0) != burst_size) {
+		retval = -1;
+		goto test_end;
+	}
+
+	/*
+	 * Checking if ipv4 traffic is transmitted via TLB policy.
+	 */
+	pkts_send = rte_eth_tx_burst(
+			test_params->bonded_port_id, 0, pkt_burst, burst_size);
+	if (pkts_send != burst_size) {
+		retval = -1;
+		goto test_end;
+	}
+
+test_end:
+	retval += remove_slaves_and_stop_bonded_device();
+	return retval;
+}
 
 static struct unit_test_suite link_bonding_test_suite  = {
 	.suite_name = "Link Bonding Unit Test Suite",
@@ -4593,6 +5000,10 @@ static struct unit_test_suite link_bonding_test_suite  = {
 		TEST_CASE(test_tlb_verify_mac_assignment),
 		TEST_CASE(test_tlb_verify_promiscuous_enable_disable),
 		TEST_CASE(test_tlb_verify_slave_link_status_change_failover),
+		TEST_CASE(test_alb_change_mac_in_reply_sent),
+		TEST_CASE(test_alb_reply_from_client),
+		TEST_CASE(test_alb_receive_vlan_reply),
+		TEST_CASE(test_alb_ipv4_tx),
 #ifdef RTE_MBUF_REFCNT
 		TEST_CASE(test_broadcast_tx_burst),
 		TEST_CASE(test_broadcast_tx_burst_slave_tx_fail),

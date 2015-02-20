@@ -40,6 +40,7 @@ extern "C" {
 
 #include <rte_mbuf.h>
 #include <rte_ether.h>
+#include <rte_arp.h>
 #include <rte_ip.h>
 #include <rte_udp.h>
 
@@ -50,11 +51,15 @@ extern "C" {
 #define PACKET_BURST_GEN_PKT_LEN 60
 #define PACKET_BURST_GEN_PKT_LEN_128 128
 
-
 void
 initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
-		struct ether_addr *dst_mac, uint8_t ipv4, uint8_t vlan_enabled,
-		uint16_t van_id);
+		struct ether_addr *dst_mac, uint16_t ether_type,
+		uint8_t vlan_enabled, uint16_t van_id);
+
+void
+initialize_arp_header(struct arp_hdr *arp_hdr, struct ether_addr *src_mac,
+		struct ether_addr *dst_mac, uint32_t src_ip, uint32_t dst_ip,
+		uint32_t opcode);
 
 uint16_t
 initialize_udp_header(struct udp_hdr *udp_hdr, uint16_t src_port,

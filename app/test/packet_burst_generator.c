@@ -80,11 +80,10 @@ copy_buf_to_pkt(void *buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
 	copy_buf_to_pkt_segs(buf, len, pkt, offset);
 }
 
-
 void
 initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
-		struct ether_addr *dst_mac, uint8_t ipv4, uint8_t vlan_enabled,
-		uint16_t van_id)
+		struct ether_addr *dst_mac, uint16_t ether_type,
+		uint8_t vlan_enabled, uint16_t van_id)
 {
 	ether_addr_copy(dst_mac, &eth_hdr->d_addr);
 	ether_addr_copy(src_mac, &eth_hdr->s_addr);
@@ -95,19 +94,27 @@ initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
 
 		eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
 
-		if (ipv4)
-			vhdr->eth_proto =  rte_cpu_to_be_16(ETHER_TYPE_IPv4);
-		else
-			vhdr->eth_proto =  rte_cpu_to_be_16(ETHER_TYPE_IPv6);
-
+		vhdr->eth_proto =  rte_cpu_to_be_16(ether_type);
 		vhdr->vlan_tci = van_id;
 	} else {
-		if (ipv4)
-			eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
-		else
-			eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
+		eth_hdr->ether_type = rte_cpu_to_be_16(ether_type);
 	}
+}
 
+void
+initialize_arp_header(struct arp_hdr *arp_hdr, struct ether_addr *src_mac,
+		struct ether_addr *dst_mac, uint32_t src_ip, uint32_t dst_ip,
+		uint32_t opcode)
+{
+	arp_hdr->arp_hrd = rte_cpu_to_be_16(ARP_HRD_ETHER);
+	arp_hdr->arp_pro = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+	arp_hdr->arp_hln = ETHER_ADDR_LEN;
+	arp_hdr->arp_pln = sizeof(uint32_t);
+	arp_hdr->arp_op = rte_cpu_to_be_16(opcode);
+	ether_addr_copy(src_mac, &arp_hdr->arp_data.arp_sha);
+	arp_hdr->arp_data.arp_sip = src_ip;
+	ether_addr_copy(dst_mac, &arp_hdr->arp_data.arp_tha);
+	arp_hdr->arp_data.arp_tip = dst_ip;
 }
 
 uint16_t
@@ -265,9 +272,19 @@ nomore_mbuf:
 		if (ipv4) {
 			pkt->vlan_tci  = ETHER_TYPE_IPv4;
 			pkt->l3_len = sizeof(struct ipv4_hdr);
+
+			if (vlan_enabled)
+				pkt->ol_flags = PKT_RX_IPV4_HDR | PKT_RX_VLAN_PKT;
+			else
+				pkt->ol_flags = PKT_RX_IPV4_HDR;
 		} else {
 			pkt->vlan_tci  = ETHER_TYPE_IPv6;
 			pkt->l3_len = sizeof(struct ipv6_hdr);
+
+			if (vlan_enabled)
+				pkt->ol_flags = PKT_RX_IPV6_HDR | PKT_RX_VLAN_PKT;
+			else
+				pkt->ol_flags = PKT_RX_IPV6_HDR;
 		}
 
 		pkts_burst[nb_pkt] = pkt;
