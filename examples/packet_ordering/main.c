@@ -82,6 +82,11 @@ struct worker_thread_args {
 	struct rte_ring *ring_out;
 };
 
+struct send_thread_args {
+	struct rte_ring *ring_in;
+	struct rte_reorder_buffer *buffer;
+};
+
 struct output_buffer {
 	unsigned count;
 	struct rte_mbuf *mbufs[MAX_PKTS_BURST];
@@ -455,7 +460,7 @@ flush_one_port(struct output_buffer *outbuf, uint8_t outp)
  * transmitting.
  */
 static int
-send_thread(struct rte_ring *ring_in)
+send_thread(struct send_thread_args *args)
 {
 	int ret;
 	unsigned int i, dret;
@@ -464,15 +469,13 @@ send_thread(struct rte_ring *ring_in)
 	static struct output_buffer tx_buffers[RTE_MAX_ETHPORTS];
 	struct rte_mbuf *mbufs[MAX_PKTS_BURST];
 	struct rte_mbuf *rombufs[MAX_PKTS_BURST] = {NULL};
-	struct rte_reorder_buffer *buffer;
 
-	RTE_LOG(INFO, REORDERAPP, "%s() started on lcore %u\n", __func__,
-							rte_lcore_id());
-	buffer = rte_reorder_create("PKT_RO", rte_socket_id(), REORDER_BUFFER_SIZE);
+	RTE_LOG(INFO, REORDERAPP, "%s() started on lcore %u\n", __func__, rte_lcore_id());
+
 	while (!quit_signal) {
 
 		/* deque the mbufs from workers_to_tx ring */
-		nb_dq_mbufs = rte_ring_dequeue_burst(ring_in,
+		nb_dq_mbufs = rte_ring_dequeue_burst(args->ring_in,
 				(void *)mbufs, MAX_PKTS_BURST);
 
 		if (unlikely(nb_dq_mbufs == 0))
@@ -482,7 +485,7 @@ send_thread(struct rte_ring *ring_in)
 
 		for (i = 0; i < nb_dq_mbufs; i++) {
 			/* send dequeued mbufs for reordering */
-			ret = rte_reorder_insert(buffer, mbufs[i]);
+			ret = rte_reorder_insert(args->buffer, mbufs[i]);
 
 			if (ret == -1 && rte_errno == ERANGE) {
 				/* Too early pkts should be transmitted out directly */
@@ -510,7 +513,7 @@ send_thread(struct rte_ring *ring_in)
 		 * drain MAX_PKTS_BURST of reordered
 		 * mbufs for transmit
 		 */
-		dret = rte_reorder_drain(buffer, rombufs, MAX_PKTS_BURST);
+		dret = rte_reorder_drain(args->buffer, rombufs, MAX_PKTS_BURST);
 		for (i = 0; i < dret; i++) {
 
 			struct output_buffer *outbuf;
@@ -584,6 +587,7 @@ main(int argc, char **argv)
 	uint8_t port_id;
 	uint8_t nb_ports_available;
 	struct worker_thread_args worker_args = {NULL, NULL};
+	struct send_thread_args send_args = {NULL, NULL};
 	struct rte_ring *rx_to_workers;
 	struct rte_ring *workers_to_tx;
 
@@ -661,6 +665,13 @@ main(int argc, char **argv)
 	if (workers_to_tx == NULL)
 		rte_exit(EXIT_FAILURE, "%s\n", rte_strerror(rte_errno));
 
+	if (!disable_reorder) {
+		send_args.buffer = rte_reorder_create("PKT_RO", rte_socket_id(),
+				REORDER_BUFFER_SIZE);
+		if (send_args.buffer == NULL)
+			rte_exit(EXIT_FAILURE, "%s\n", rte_strerror(rte_errno));
+	}
+
 	last_lcore_id   = get_last_lcore_id();
 	master_lcore_id = rte_get_master_lcore();
 
@@ -673,14 +684,16 @@ main(int argc, char **argv)
 			rte_eal_remote_launch(worker_thread, (void *)&worker_args,
 					lcore_id);
 
-	if (disable_reorder)
+	if (disable_reorder) {
 		/* Start tx_thread() on the last slave core */
 		rte_eal_remote_launch((lcore_function_t *)tx_thread, workers_to_tx,
 				last_lcore_id);
-	else
+	} else {
+		send_args.ring_in = workers_to_tx;
 		/* Start send_thread() on the last slave core */
-		rte_eal_remote_launch((lcore_function_t *)send_thread, workers_to_tx,
-				last_lcore_id);
+		rte_eal_remote_launch((lcore_function_t *)send_thread,
+				(void *)&send_args, last_lcore_id);
+	}
 
 	/* Start rx_thread() on the master core */
 	rx_thread(rx_to_workers);
