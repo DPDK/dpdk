@@ -116,7 +116,7 @@ activate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
 	if (internals->mode == BONDING_MODE_8023AD)
 		bond_mode_8023ad_activate_slave(eth_dev, port_id);
 
-	if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING
+	if (internals->mode == BONDING_MODE_TLB
 			|| internals->mode == BONDING_MODE_ALB) {
 
 		internals->tlb_slaves_order[active_count] = port_id;
@@ -128,7 +128,7 @@ activate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
 	internals->active_slaves[internals->active_slave_count] = port_id;
 	internals->active_slave_count++;
 
-	if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING)
+	if (internals->mode == BONDING_MODE_TLB)
 		bond_tlb_activate_slave(internals);
 	if (internals->mode == BONDING_MODE_ALB)
 		bond_mode_alb_client_list_upd(eth_dev);
@@ -144,7 +144,7 @@ deactivate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
 	if (internals->mode == BONDING_MODE_8023AD) {
 		bond_mode_8023ad_stop(eth_dev);
 		bond_mode_8023ad_deactivate_slave(eth_dev, port_id);
-	} else if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING
+	} else if (internals->mode == BONDING_MODE_TLB
 			|| internals->mode == BONDING_MODE_ALB)
 		bond_tlb_disable(internals);
 
@@ -167,7 +167,7 @@ deactivate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
 	if (eth_dev->data->dev_started) {
 		if (internals->mode == BONDING_MODE_8023AD) {
 			bond_mode_8023ad_start(eth_dev);
-		} else if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING) {
+		} else if (internals->mode == BONDING_MODE_TLB) {
 			bond_tlb_enable(internals);
 		} else if (internals->mode == BONDING_MODE_ALB) {
 			bond_tlb_enable(internals);

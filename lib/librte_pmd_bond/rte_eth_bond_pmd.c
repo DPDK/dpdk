@@ -1225,7 +1225,7 @@ mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev)
 		bond_mode_8023ad_mac_address_update(bonded_eth_dev);
 		break;
 	case BONDING_MODE_ACTIVE_BACKUP:
-	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
+	case BONDING_MODE_TLB:
 	case BONDING_MODE_ALB:
 	default:
 		for (i = 0; i < internals->slave_count; i++) {
@@ -1288,7 +1288,7 @@ bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, int mode)
 				"Using mode 4, it is necessary to do TX burst and RX burst "
 				"at least every 100ms.\n");
 		break;
-	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
+	case BONDING_MODE_TLB:
 		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_tlb;
 		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst_active_backup;
 		break;
@@ -1514,7 +1514,7 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 	if (internals->mode == BONDING_MODE_8023AD)
 		bond_mode_8023ad_start(eth_dev);
 
-	if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING ||
+	if (internals->mode == BONDING_MODE_TLB ||
 			internals->mode == BONDING_MODE_ALB)
 		bond_tlb_enable(internals);
 
@@ -1547,7 +1547,7 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 		}
 	}
 
-	if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING ||
+	if (internals->mode == BONDING_MODE_TLB ||
 			internals->mode == BONDING_MODE_ALB) {
 		bond_tlb_disable(internals);
 		for (i = 0; i < internals->active_slave_count; i++)
@@ -1807,7 +1807,7 @@ bond_ethdev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 		break;
 	/* Promiscuous mode is propagated only to primary slave */
 	case BONDING_MODE_ACTIVE_BACKUP:
-	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
+	case BONDING_MODE_TLB:
 	case BONDING_MODE_ALB:
 	default:
 		rte_eth_promiscuous_enable(internals->current_primary_port);
@@ -1837,7 +1837,7 @@ bond_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
 		break;
 	/* Promiscuous mode is propagated only to primary slave */
 	case BONDING_MODE_ACTIVE_BACKUP:
-	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
+	case BONDING_MODE_TLB:
 	case BONDING_MODE_ALB:
 	default:
 		rte_eth_promiscuous_disable(internals->current_primary_port);

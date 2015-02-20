@@ -4053,7 +4053,7 @@ test_tlb_tx_burst(void)
 	uint64_t floor_obytes = 0, ceiling_obytes = 0;
 
 	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves
-			(BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING, 1, 3, 1),
+			(BONDING_MODE_TLB, 1, 3, 1),
 			"Failed to initialise bonded device");
 
 	burst_size = 20 * test_params->bonded_slave_count;
@@ -4153,7 +4153,7 @@ test_tlb_rx_burst(void)
 
 	/* Initialize bonded device with 4 slaves in transmit load balancing mode */
 	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
-			BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING,
+			BONDING_MODE_TLB,
 			TEST_ADAPTIVE_TRANSMIT_LOAD_BALANCING_RX_BURST_SLAVE_COUNT, 1, 1),
 			"Failed to initialize bonded device");
 
@@ -4231,7 +4231,7 @@ test_tlb_verify_promiscuous_enable_disable(void)
 
 	/* Initialize bonded device with 4 slaves in transmit load balancing mode */
 	TEST_ASSERT_SUCCESS( initialize_bonded_device_with_slaves(
-			BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING, 0, 4, 1),
+			BONDING_MODE_TLB, 0, 4, 1),
 			"Failed to initialize bonded device");
 
 	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
@@ -4289,7 +4289,7 @@ test_tlb_verify_mac_assignment(void)
 
 	/* Initialize bonded device with 2 slaves in active backup mode */
 	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
-			BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING, 0, 2, 1),
+			BONDING_MODE_TLB, 0, 2, 1),
 			"Failed to initialize bonded device");
 
 	/* Verify that bonded MACs is that of first slave and that the other slave
@@ -4409,7 +4409,7 @@ test_tlb_verify_slave_link_status_change_failover(void)
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
 	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
-			BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING, 0,
+			BONDING_MODE_TLB, 0,
 			TEST_ADAPTIVE_TRANSMIT_LOAD_BALANCING_RX_BURST_SLAVE_COUNT, 1),
 			"Failed to initialize bonded device with slaves");
 
@@ -4472,20 +4472,21 @@ test_tlb_verify_slave_link_status_change_failover(void)
 		rte_delay_us(11000);
 	}
 
+	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	TEST_ASSERT_EQUAL(port_stats.opackets, (int8_t)0,
+				"(%d) port_stats.opackets not as expected\n",
+				test_params->slave_port_ids[0]);
+
+	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	TEST_ASSERT_NOT_EQUAL(port_stats.opackets, (int8_t)0,
+					"(%d) port_stats.opackets not as expected\n",
+					test_params->slave_port_ids[1]);
+
+
 	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
 	TEST_ASSERT_NOT_EQUAL(port_stats.opackets, (int8_t)0,
 			"(%d) port_stats.opackets not as expected\n",
 			test_params->slave_port_ids[2]);
-
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-	TEST_ASSERT_EQUAL(port_stats.opackets, (int8_t)0,
-			"(%d) port_stats.opackets not as expected\n",
-			test_params->slave_port_ids[0]);
-
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
-	TEST_ASSERT_NOT_EQUAL(port_stats.opackets, (int8_t)0,
-			"(%d) port_stats.opackets not as expected\n",
-			test_params->slave_port_ids[1]);
 
 	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
 	TEST_ASSERT_NOT_EQUAL(port_stats.opackets, (int8_t)0,

@@ -174,7 +174,7 @@ bond_ethdev_parse_slave_mode_kvarg(const char *key __rte_unused,
 	case BONDING_MODE_BROADCAST:
 #endif
 	case BONDING_MODE_8023AD:
-	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
+	case BONDING_MODE_TLB:
 	case BONDING_MODE_ALB:
 		return 0;
 	default:
