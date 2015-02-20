@@ -36,6 +36,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <linux/pci_regs.h>
 
 #include <rte_log.h>
 #include <rte_pci.h>
@@ -47,71 +48,73 @@
 #include "eal_filesystem.h"
 #include "eal_pci_init.h"
 
-static int pci_parse_sysfs_value(const char *filename, uint64_t *val);
-
 void *pci_map_addr = NULL;
 
 
 #define OFF_MAX              ((uint64_t)(off_t)-1)
 static int
-pci_uio_get_mappings(const char *devname, struct pci_map maps[], int nb_maps)
+pci_uio_get_mappings(struct rte_pci_device *dev,
+			struct pci_map maps[], int nb_maps)
 {
-	int i;
-	char dirname[PATH_MAX];
+	struct rte_pci_addr *loc = &dev->addr;
+	int i = 0;
 	char filename[PATH_MAX];
-	uint64_t offset, size;
+	unsigned long long start_addr, end_addr, flags;
+	FILE *f;
 
-	for (i = 0; i != nb_maps; i++) {
+	snprintf(filename, sizeof(filename),
+		SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/resource",
+		loc->domain, loc->bus, loc->devid, loc->function);
 
-		/* check if map directory exists */
-		snprintf(dirname, sizeof(dirname),
-			"%s/maps/map%u", devname, i);
-
-		if (access(dirname, F_OK) != 0)
-			break;
-
-		/* get mapping offset */
-		snprintf(filename, sizeof(filename),
-			"%s/offset", dirname);
-		if (pci_parse_sysfs_value(filename, &offset) < 0) {
-			RTE_LOG(ERR, EAL,
-				"%s(): cannot parse offset of %s\n",
-				__func__, dirname);
-			return -1;
-		}
-
-		/* get mapping size */
-		snprintf(filename, sizeof(filename),
-			"%s/size", dirname);
-		if (pci_parse_sysfs_value(filename, &size) < 0) {
-			RTE_LOG(ERR, EAL,
-				"%s(): cannot parse size of %s\n",
-				__func__, dirname);
-			return -1;
-		}
-
-		/* get mapping physical address */
-		snprintf(filename, sizeof(filename),
-			"%s/addr", dirname);
-		if (pci_parse_sysfs_value(filename, &maps[i].phaddr) < 0) {
-			RTE_LOG(ERR, EAL,
-				"%s(): cannot parse addr of %s\n",
-				__func__, dirname);
-			return -1;
-		}
-
-		if ((offset > OFF_MAX) || (size > SIZE_MAX)) {
-			RTE_LOG(ERR, EAL,
-				"%s(): offset/size exceed system max value\n",
-				__func__);
-			return -1;
-		}
-
-		maps[i].offset = offset;
-		maps[i].size = size;
+	f = fopen(filename, "r");
+	if (f == NULL) {
+		RTE_LOG(ERR, EAL,
+		"%s(): cannot open sysfs %s\n",
+		__func__, filename);
+		return -1;
 	}
 
+	while (fscanf(f, "%llx %llx %llx", &start_addr,
+			&end_addr, &flags) == 3 && i < nb_maps) {
+		if (flags & IORESOURCE_MEM) {
+			maps[i].offset = 0x0;
+			maps[i].size = end_addr - start_addr + 1;
+			maps[i].phaddr = start_addr;
+			i++;
+		}
+	}
+	fclose(f);
+
 	return i;
+}
+
+static int
+pci_uio_set_bus_master(int dev_fd)
+{
+	uint16_t reg;
+	int ret;
+
+	ret = pread(dev_fd, &reg, sizeof(reg), PCI_COMMAND);
+	if (ret != sizeof(reg)) {
+		RTE_LOG(ERR, EAL,
+			"Cannot read command from PCI config space!\n");
+		return -1;
+	}
+
+	/* return if bus mastering is already on */
+	if (reg & PCI_COMMAND_MASTER)
+		return 0;
+
+	reg |= PCI_COMMAND_MASTER;
+
+	ret = pwrite(dev_fd, &reg, sizeof(reg), PCI_COMMAND);
+	if (ret != sizeof(reg)) {
+		RTE_LOG(ERR, EAL,
+			"Cannot write command to PCI config space!\n");
+		return -1;
+	}
+
+	return 0;
 }
 
 static int
@@ -127,6 +130,10 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 			continue;
 
 		for (i = 0; i != uio_res->nb_maps; i++) {
+			/* ignore mappings unused in primary process */
+			if (uio_res->maps[i].addr == NULL)
+				continue;
+
 			/*
 			 * open devname, to mmap it
 			 */
@@ -282,6 +289,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 {
 	int i, j;
 	char dirname[PATH_MAX];
+	char cfgname[PATH_MAX];
 	char devname[PATH_MAX]; /* contains the /dev/uioX */
 	void *mapaddr;
 	int uio_num;
@@ -294,6 +302,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	struct pci_map *maps;
 
 	dev->intr_handle.fd = -1;
+	dev->intr_handle.uio_cfg_fd = -1;
 	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
 
 	/* secondary processes - use already recorded details */
@@ -318,6 +327,28 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	}
 	dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
 
+	snprintf(cfgname, sizeof(cfgname),
+			"/sys/class/uio/uio%u/device/config", uio_num);
+	dev->intr_handle.uio_cfg_fd = open(cfgname, O_RDWR);
+	if (dev->intr_handle.uio_cfg_fd < 0) {
+		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
+			cfgname, strerror(errno));
+		return -1;
+	}
+
+	/* update devname for mmap  */
+	snprintf(devname, sizeof(devname),
+		SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/resource%d",
+		loc->domain, loc->bus, loc->devid, loc->function, 0);
+
+	/* set bus master that is not done by uio_pci_generic */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		if (pci_uio_set_bus_master(dev->intr_handle.uio_cfg_fd)) {
+			RTE_LOG(ERR, EAL, "Cannot set up bus mastering!\n");
+			return -1;
+		}
+	}
+
 	/* allocate the mapping details for secondary processes*/
 	uio_res = rte_zmalloc("UIO_RES", sizeof(*uio_res), 0);
 	if (uio_res == NULL) {
@@ -330,13 +361,12 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	memcpy(&uio_res->pci_addr, &dev->addr, sizeof(uio_res->pci_addr));
 
 	/* collect info about device mappings */
-	nb_maps = pci_uio_get_mappings(dirname, uio_res->maps,
-				       RTE_DIM(uio_res->maps));
+	nb_maps = pci_uio_get_mappings(dev, uio_res->maps,
+					RTE_DIM(uio_res->maps));
 	if (nb_maps < 0) {
 		rte_free(uio_res);
 		return nb_maps;
 	}
-
 	uio_res->nb_maps = nb_maps;
 
 	/* Map all BARs */
@@ -401,40 +431,5 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	TAILQ_INSERT_TAIL(pci_res_list, uio_res, next);
 
-	return 0;
-}
-
-/*
- * parse a sysfs file containing one integer value
- * different to the eal version, as it needs to work with 64-bit values
- */
-static int
-pci_parse_sysfs_value(const char *filename, uint64_t *val)
-{
-	FILE *f;
-	char buf[BUFSIZ];
-	char *end = NULL;
-
-	f = fopen(filename, "r");
-	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): cannot open sysfs value %s\n",
-				__func__, filename);
-		return -1;
-	}
-
-	if (fgets(buf, sizeof(buf), f) == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): cannot read sysfs value %s\n",
-				__func__, filename);
-		fclose(f);
-		return -1;
-	}
-	*val = strtoull(buf, &end, 0);
-	if ((buf[0] == '\0') || (end == NULL) || (*end != '\n')) {
-		RTE_LOG(ERR, EAL, "%s(): cannot parse sysfs value %s\n",
-				__func__, filename);
-		fclose(f);
-		return -1;
-	}
-	fclose(f);
 	return 0;
 }

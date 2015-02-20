@@ -50,8 +50,12 @@ enum rte_intr_handle_type {
 
 /** Handle for interrupts. */
 struct rte_intr_handle {
-	int vfio_dev_fd;                 /**< VFIO device file descriptor */
-	int fd;                          /**< file descriptor */
+	union {
+		int vfio_dev_fd;  /**< VFIO device file descriptor */
+		int uio_cfg_fd;  /**< UIO config file descriptor
+					for uio_pci_generic */
+	};
+	int fd;	 /**< interrupt event file descriptor */
 	enum rte_intr_handle_type type;  /**< handle type */
 };
 

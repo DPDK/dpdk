@@ -104,6 +104,9 @@ extern struct pci_device_list pci_device_list; /**< Global list of PCI devices. 
 /** Nb. of values in PCI resource format. */
 #define PCI_RESOURCE_FMT_NVAL 3
 
+/** IO resource type: memory address space */
+#define IORESOURCE_MEM        0x00000200
+
 /**
  * A structure describing a PCI resource.
  */

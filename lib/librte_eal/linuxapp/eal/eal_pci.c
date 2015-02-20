@@ -138,8 +138,6 @@ pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size)
 }
 
 /* parse the "resource" sysfs file */
-#define IORESOURCE_MEM  0x00000200
-
 static int
 pci_parse_sysfs_resource(const char *filename, struct rte_pci_device *dev)
 {
@@ -519,7 +517,7 @@ pci_map_device(struct rte_pci_device *dev)
 			return ret;
 	}
 #endif
-	/* map resources for devices that use igb_uio */
+	/* map resources for devices that use uio_pci_generic or igb_uio */
 	if (!mapped) {
 		ret = pci_uio_map_resource(dev);
 		if (ret != 0)
