@@ -101,6 +101,15 @@ extern "C" {
  * This mode provides an adaptive transmit load balancing. It dynamically
  * changes the transmitting slave, according to the computed load. Statistics
  * are collected in 100ms intervals and scheduled every 10ms */
+#define BONDING_MODE_ALB	(6)
+/**< Adaptive Load Balancing (Mode 6)
+ * This mode includes adaptive TLB and receive load balancing (RLB). In RLB the
+ * bonding driver intercepts ARP replies send by local system and overwrites its
+ * source MAC address, so that different peers send data to the server on
+ * different slave interfaces. When local system sends ARP request, it saves IP
+ * information from it. When ARP reply from that peer is received, its MAC is
+ * stored, one of slave MACs assigned and ARP reply send to that peer.
+ */
 
 /* Balance Mode Transmit Policies */
 #define BALANCE_XMIT_POLICY_LAYER2		(0)

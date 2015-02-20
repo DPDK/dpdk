@@ -56,6 +56,26 @@
 /* Table for statistics in mode 5 TLB */
 static uint64_t tlb_last_obytets[RTE_MAX_ETHPORTS];
 
+static inline size_t
+get_vlan_offset(struct ether_hdr *eth_hdr, uint16_t *proto)
+{
+	size_t vlan_offset = 0;
+
+	if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
+		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
+
+		vlan_offset = sizeof(struct vlan_hdr);
+		*proto = vlan_hdr->eth_proto;
+
+		if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
+			vlan_hdr = vlan_hdr + 1;
+			*proto = vlan_hdr->eth_proto;
+			vlan_offset += sizeof(struct vlan_hdr);
+		}
+	}
+	return vlan_offset;
+}
+
 static uint16_t
 bond_ethdev_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
@@ -173,6 +193,34 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 }
 
 static uint16_t
+bond_ethdev_rx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	struct bond_tx_queue *bd_tx_q = (struct bond_tx_queue *)queue;
+	struct bond_dev_private *internals = bd_tx_q->dev_private;
+
+	struct ether_hdr *eth_h;
+
+	uint16_t ether_type, offset;
+	uint16_t nb_recv_pkts;
+
+	int i;
+
+	nb_recv_pkts = bond_ethdev_rx_burst(queue, bufs, nb_pkts);
+
+	for (i = 0; i < nb_recv_pkts; i++) {
+		eth_h = rte_pktmbuf_mtod(bufs[i], struct ether_hdr *);
+		ether_type = eth_h->ether_type;
+		offset = get_vlan_offset(eth_h, &ether_type);
+
+		if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
+			bond_mode_alb_arp_recv(eth_h, offset, internals);
+		}
+	}
+
+	return nb_recv_pkts;
+}
+
+static uint16_t
 bond_ethdev_tx_burst_round_robin(void *queue, struct rte_mbuf **bufs,
 		uint16_t nb_pkts)
 {
@@ -281,26 +329,6 @@ ipv6_hash(struct ipv6_hdr *ipv6_hdr)
 			(word_src_addr[3] ^ word_dst_addr[3]);
 }
 
-static inline size_t
-get_vlan_offset(struct ether_hdr *eth_hdr, uint16_t *proto)
-{
-	size_t vlan_offset = 0;
-
-	if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
-		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
-		vlan_offset = sizeof(struct vlan_hdr);
-		*proto = vlan_hdr->eth_proto;
-
-		if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
-			vlan_hdr = vlan_hdr + 1;
-
-			*proto = vlan_hdr->eth_proto;
-			vlan_offset += sizeof(struct vlan_hdr);
-		}
-	}
-	return vlan_offset;
-}
-
 uint16_t
 xmit_l2_hash(const struct rte_mbuf *buf, uint8_t slave_count)
 {
@@ -396,6 +424,15 @@ struct bwg_slave {
 	uint8_t slave;
 };
 
+void
+bond_tlb_activate_slave(struct bond_dev_private *internals) {
+	int i;
+
+	for (i = 0; i < internals->active_slave_count; i++) {
+		tlb_last_obytets[internals->active_slaves[i]] = 0;
+	}
+}
+
 static int
 bandwidth_cmp(const void *a, const void *b)
 {
@@ -426,7 +463,7 @@ bandwidth_left(int port_id, uint64_t load, uint8_t update_idx,
 	uint64_t link_bwg = link_status.link_speed * 1000000ULL / 8;
 	if (link_bwg == 0)
 		return;
-	link_bwg = (link_bwg * (update_idx+1) * REORDER_PERIOD_MS);
+	link_bwg = link_bwg * (update_idx+1) * REORDER_PERIOD_MS;
 	bwg_slave->bwg_left_int = (link_bwg - 1000*load) / link_bwg;
 	bwg_slave->bwg_left_remainder = (link_bwg - 1000*load) % link_bwg;
 }
@@ -457,8 +494,9 @@ bond_ethdev_update_tlb_slave_cb(void *arg)
 				internals->slave_update_idx, &bwg_array[i]);
 		bwg_array[i].slave = slave_id;
 
-		if (update_stats)
+		if (update_stats) {
 			tlb_last_obytets[slave_id] = slave_stats.obytes;
+		}
 	}
 
 	if (update_stats == 1)
@@ -467,7 +505,7 @@ bond_ethdev_update_tlb_slave_cb(void *arg)
 	slave_count = i;
 	qsort(bwg_array, slave_count, sizeof(bwg_array[0]), bandwidth_cmp);
 	for (i = 0; i < slave_count; i++)
-		internals->active_slaves[i] = bwg_array[i].slave;
+		internals->tlb_slaves_order[i] = bwg_array[i].slave;
 
 	rte_eal_alarm_set(REORDER_PERIOD_MS * 1000, bond_ethdev_update_tlb_slave_cb,
 			(struct bond_dev_private *)internals);
@@ -494,8 +532,8 @@ bond_ethdev_tx_burst_tlb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	if (num_of_slaves < 1)
 		return num_tx_total;
 
-	memcpy(slaves, internals->active_slaves,
-				sizeof(internals->active_slaves[0]) * num_of_slaves);
+	memcpy(slaves, internals->tlb_slaves_order,
+				sizeof(internals->tlb_slaves_order[0]) * num_of_slaves);
 
 
 	ether_addr_copy(primary_port->data->mac_addrs, &primary_slave_addr);
@@ -506,9 +544,7 @@ bond_ethdev_tx_burst_tlb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	}
 
 	for (i = 0; i < num_of_slaves; i++) {
-		ether_addr_copy(&internals->slaves[slaves[i]].persisted_mac_addr,
-				&active_slave_addr);
-
+		rte_eth_macaddr_get(slaves[i], &active_slave_addr);
 		for (j = num_tx_total; j < nb_pkts; j++) {
 			if (j + 3 < nb_pkts)
 				rte_prefetch0(rte_pktmbuf_mtod(bufs[j+3], void*));
@@ -523,6 +559,147 @@ bond_ethdev_tx_burst_tlb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 		if (num_tx_total == nb_pkts)
 			break;
+	}
+
+	return num_tx_total;
+}
+
+void
+bond_tlb_disable(struct bond_dev_private *internals)
+{
+	rte_eal_alarm_cancel(bond_ethdev_update_tlb_slave_cb, internals);
+}
+
+void
+bond_tlb_enable(struct bond_dev_private *internals)
+{
+	bond_ethdev_update_tlb_slave_cb(internals);
+}
+
+static uint16_t
+bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	struct bond_tx_queue *bd_tx_q = (struct bond_tx_queue *)queue;
+	struct bond_dev_private *internals = bd_tx_q->dev_private;
+
+	struct ether_hdr *eth_h;
+	uint16_t ether_type, offset;
+
+	struct client_data *client_info;
+
+	/*
+	 * We create transmit buffers for every slave and one additional to send
+	 * through tlb. In worst case every packet will be send on one port.
+	 */
+	struct rte_mbuf *slave_bufs[RTE_MAX_ETHPORTS + 1][nb_pkts];
+	uint16_t slave_bufs_pkts[RTE_MAX_ETHPORTS + 1] = { 0 };
+
+	/*
+	 * We create separate transmit buffers for update packets as they wont be
+	 * counted in num_tx_total.
+	 */
+	struct rte_mbuf *update_bufs[RTE_MAX_ETHPORTS][ALB_HASH_TABLE_SIZE];
+	uint16_t update_bufs_pkts[RTE_MAX_ETHPORTS] = { 0 };
+
+	struct rte_mbuf *upd_pkt;
+	size_t pkt_size;
+
+	uint16_t num_send, num_not_send = 0;
+	uint16_t num_tx_total = 0;
+	uint8_t slave_idx;
+
+	int i, j;
+
+	/* Search tx buffer for ARP packets and forward them to alb */
+	for (i = 0; i < nb_pkts; i++) {
+		eth_h = rte_pktmbuf_mtod(bufs[i], struct ether_hdr *);
+		ether_type = eth_h->ether_type;
+		offset = get_vlan_offset(eth_h, &ether_type);
+
+		if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
+			slave_idx = bond_mode_alb_arp_xmit(eth_h, offset, internals);
+
+			/* Change src mac in eth header */
+			rte_eth_macaddr_get(slave_idx, &eth_h->s_addr);
+
+			/* Add packet to slave tx buffer */
+			slave_bufs[slave_idx][slave_bufs_pkts[slave_idx]] = bufs[i];
+			slave_bufs_pkts[slave_idx]++;
+		} else {
+			/* If packet is not ARP, send it with TLB policy */
+			slave_bufs[RTE_MAX_ETHPORTS][slave_bufs_pkts[RTE_MAX_ETHPORTS]] =
+					bufs[i];
+			slave_bufs_pkts[RTE_MAX_ETHPORTS]++;
+		}
+	}
+
+	/* Update connected client ARP tables */
+	if (internals->mode6.ntt) {
+		for (i = 0; i < ALB_HASH_TABLE_SIZE; i++) {
+			client_info = &internals->mode6.client_table[i];
+
+			if (client_info->in_use) {
+				/* Allocate new packet to send ARP update on current slave */
+				upd_pkt = rte_pktmbuf_alloc(internals->mode6.mempool);
+				if (upd_pkt == NULL) {
+					RTE_LOG(ERR, PMD, "Failed to allocate ARP packet from pool\n");
+					continue;
+				}
+				pkt_size = sizeof(struct ether_hdr) + sizeof(struct arp_hdr)
+						+ client_info->vlan_count * sizeof(struct vlan_hdr);
+				upd_pkt->data_len = pkt_size;
+				upd_pkt->pkt_len = pkt_size;
+
+				slave_idx = bond_mode_alb_arp_upd(client_info, upd_pkt,
+						internals);
+
+				/* Add packet to update tx buffer */
+				update_bufs[slave_idx][update_bufs_pkts[slave_idx]] = upd_pkt;
+				update_bufs_pkts[slave_idx]++;
+			}
+		}
+		internals->mode6.ntt = 0;
+	}
+
+	/* Send ARP packets on proper slaves */
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+		if (slave_bufs_pkts[i] > 0) {
+			num_send = rte_eth_tx_burst(i, bd_tx_q->queue_id,
+					slave_bufs[i], slave_bufs_pkts[i]);
+			for (j = 0; j < slave_bufs_pkts[i] - num_send; j++) {
+				bufs[nb_pkts - 1 - num_not_send - j] =
+						slave_bufs[i][nb_pkts - 1 - j];
+			}
+
+			num_tx_total += num_send;
+			num_not_send += slave_bufs_pkts[i] - num_send;
+		}
+	}
+
+	/* Send update packets on proper slaves */
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+		if (update_bufs_pkts[i] > 0) {
+			num_send = rte_eth_tx_burst(i, bd_tx_q->queue_id, update_bufs[i],
+					update_bufs_pkts[i]);
+			for (j = num_send; j < update_bufs_pkts[i]; j++) {
+				rte_pktmbuf_free(update_bufs[i][j]);
+			}
+		}
+	}
+
+	/* Send non-ARP packets using tlb policy */
+	if (slave_bufs_pkts[RTE_MAX_ETHPORTS] > 0) {
+		num_send = bond_ethdev_tx_burst_tlb(queue,
+				slave_bufs[RTE_MAX_ETHPORTS],
+				slave_bufs_pkts[RTE_MAX_ETHPORTS]);
+
+		for (j = 0; j < slave_bufs_pkts[RTE_MAX_ETHPORTS]; j++) {
+			bufs[nb_pkts - 1 - num_not_send - j] =
+					slave_bufs[RTE_MAX_ETHPORTS][nb_pkts - 1 - j];
+		}
+
+		num_tx_total += num_send;
+		num_not_send += slave_bufs_pkts[RTE_MAX_ETHPORTS] - num_send;
 	}
 
 	return num_tx_total;
@@ -856,6 +1033,7 @@ mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev)
 		break;
 	case BONDING_MODE_ACTIVE_BACKUP:
 	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
+	case BONDING_MODE_ALB:
 	default:
 		for (i = 0; i < internals->slave_count; i++) {
 			if (internals->slaves[i].port_id ==
@@ -920,6 +1098,13 @@ bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, int mode)
 	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
 		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_tlb;
 		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst_active_backup;
+		break;
+	case BONDING_MODE_ALB:
+		if (bond_mode_alb_enable(eth_dev) != 0)
+			return -1;
+
+		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_alb;
+		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst_alb;
 		break;
 	default:
 		return -1;
@@ -1136,8 +1321,9 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 	if (internals->mode == BONDING_MODE_8023AD)
 		bond_mode_8023ad_start(eth_dev);
 
-	if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING)
-		bond_ethdev_update_tlb_slave_cb(internals);
+	if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING ||
+			internals->mode == BONDING_MODE_ALB)
+		bond_tlb_enable(internals);
 
 	return 0;
 }
@@ -1168,8 +1354,11 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 		}
 	}
 
-	if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING) {
-		rte_eal_alarm_cancel(bond_ethdev_update_tlb_slave_cb, internals);
+	if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING ||
+			internals->mode == BONDING_MODE_ALB) {
+		bond_tlb_disable(internals);
+		for (i = 0; i < internals->active_slave_count; i++)
+			tlb_last_obytets[internals->active_slaves[i]] = 0;
 	}
 
 	internals->active_slave_count = 0;
@@ -1366,7 +1555,11 @@ bond_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
 	struct rte_eth_stats slave_stats;
+
 	int i;
+
+	/* clear bonded stats before populating from slaves */
+	memset(stats, 0, sizeof(*stats));
 
 	for (i = 0; i < internals->slave_count; i++) {
 		rte_eth_stats_get(internals->slaves[i].port_id, &slave_stats);
@@ -1422,6 +1615,7 @@ bond_ethdev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 	/* Promiscuous mode is propagated only to primary slave */
 	case BONDING_MODE_ACTIVE_BACKUP:
 	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
+	case BONDING_MODE_ALB:
 	default:
 		rte_eth_promiscuous_enable(internals->current_primary_port);
 	}
@@ -1451,6 +1645,7 @@ bond_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
 	/* Promiscuous mode is propagated only to primary slave */
 	case BONDING_MODE_ACTIVE_BACKUP:
 	case BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING:
+	case BONDING_MODE_ALB:
 	default:
 		rte_eth_promiscuous_disable(internals->current_primary_port);
 	}

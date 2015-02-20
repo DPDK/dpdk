@@ -39,6 +39,7 @@
 
 #include "rte_eth_bond.h"
 #include "rte_eth_bond_8023ad_private.h"
+#include "rte_eth_bond_alb.h"
 
 #define PMD_BOND_SLAVE_PORT_KVARG			("slave")
 #define PMD_BOND_PRIMARY_SLAVE_KVARG		("primary")
@@ -148,6 +149,8 @@ struct bond_dev_private {
 	/**< Arary of bonded slaves details */
 
 	struct mode8023ad_private mode4;
+	uint8_t tlb_slaves_order[RTE_MAX_ETHPORTS]; /* TLB active slaves send order */
+	struct mode_alb_private mode6;
 
 	uint32_t rx_offload_capa;            /** Rx offload capability */
 	uint32_t tx_offload_capa;            /** Tx offload capability */
@@ -271,5 +274,14 @@ bond_ethdev_parse_bond_mac_addr_kvarg(const char *key __rte_unused,
 int
 bond_ethdev_parse_time_ms_kvarg(const char *key __rte_unused,
 		const char *value, void *extra_args);
+
+void
+bond_tlb_disable(struct bond_dev_private *internals);
+
+void
+bond_tlb_enable(struct bond_dev_private *internals);
+
+void
+bond_tlb_activate_slave(struct bond_dev_private *internals);
 
 #endif

@@ -111,15 +111,27 @@ void
 activate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
 {
 	struct bond_dev_private *internals = eth_dev->data->dev_private;
+	uint8_t active_count = internals->active_slave_count;
 
 	if (internals->mode == BONDING_MODE_8023AD)
 		bond_mode_8023ad_activate_slave(eth_dev, port_id);
+
+	if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING
+			|| internals->mode == BONDING_MODE_ALB) {
+
+		internals->tlb_slaves_order[active_count] = port_id;
+	}
 
 	RTE_VERIFY(internals->active_slave_count <
 			(RTE_DIM(internals->active_slaves) - 1));
 
 	internals->active_slaves[internals->active_slave_count] = port_id;
 	internals->active_slave_count++;
+
+	if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING)
+		bond_tlb_activate_slave(internals);
+	if (internals->mode == BONDING_MODE_ALB)
+		bond_mode_alb_client_list_upd(eth_dev);
 }
 
 void
@@ -132,7 +144,9 @@ deactivate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
 	if (internals->mode == BONDING_MODE_8023AD) {
 		bond_mode_8023ad_stop(eth_dev);
 		bond_mode_8023ad_deactivate_slave(eth_dev, port_id);
-	}
+	} else if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING
+			|| internals->mode == BONDING_MODE_ALB)
+		bond_tlb_disable(internals);
 
 	slave_pos = find_slave_by_id(internals->active_slaves, active_count,
 			port_id);
@@ -150,8 +164,16 @@ deactivate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
 	RTE_VERIFY(active_count < RTE_DIM(internals->active_slaves));
 	internals->active_slave_count = active_count;
 
-	if (eth_dev->data->dev_started && internals->mode == BONDING_MODE_8023AD)
-		bond_mode_8023ad_start(eth_dev);
+	if (eth_dev->data->dev_started) {
+		if (internals->mode == BONDING_MODE_8023AD) {
+			bond_mode_8023ad_start(eth_dev);
+		} else if (internals->mode == BONDING_MODE_ADAPTIVE_TRANSMIT_LOAD_BALANCING) {
+			bond_tlb_enable(internals);
+		} else if (internals->mode == BONDING_MODE_ALB) {
+			bond_tlb_enable(internals);
+			bond_mode_alb_client_list_upd(eth_dev);
+		}
+	}
 }
 
 uint8_t
