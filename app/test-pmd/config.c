@@ -1679,21 +1679,22 @@ rx_vlan_filter_set(portid_t port_id, int on)
 	       "diag=%d\n", port_id, on, diag);
 }
 
-void
+int
 rx_vft_set(portid_t port_id, uint16_t vlan_id, int on)
 {
 	int diag;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
+		return 1;
 	if (vlan_id_is_invalid(vlan_id))
-		return;
+		return 1;
 	diag = rte_eth_dev_vlan_filter(port_id, vlan_id, on);
 	if (diag == 0)
-		return;
+		return 0;
 	printf("rte_eth_dev_vlan_filter(port_pi=%d, vlan_id=%d, on=%d) failed "
 	       "diag=%d\n",
 	       port_id, vlan_id, on, diag);
+	return -1;
 }
 
 void
@@ -1703,8 +1704,10 @@ rx_vlan_all_filter_set(portid_t port_id, int on)
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
-	for (vlan_id = 0; vlan_id < 4096; vlan_id++)
-		rx_vft_set(port_id, vlan_id, on);
+	for (vlan_id = 0; vlan_id < 4096; vlan_id++) {
+		if (rx_vft_set(port_id, vlan_id, on))
+			break;
+	}
 }
 
 void

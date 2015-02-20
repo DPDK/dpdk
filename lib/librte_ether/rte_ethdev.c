@@ -2002,8 +2002,8 @@ rte_eth_dev_vlan_filter(uint8_t port_id, uint16_t vlan_id, int on)
 		return (-EINVAL);
 	}
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_filter_set, -ENOTSUP);
-	(*dev->dev_ops->vlan_filter_set)(dev, vlan_id, on);
-	return (0);
+
+	return (*dev->dev_ops->vlan_filter_set)(dev, vlan_id, on);
 }
 
 int
