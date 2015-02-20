@@ -423,6 +423,8 @@ rx_vlan add (vlan_id|all) (port_id)
 .. note::
 
     VLAN filter must be set on that port. VLAN ID < 4096.
+    Depending on the NIC used, number of vlan_ids may be limited to the maximum entries
+    in VFTA table. This is important if enabling all vlan_ids.
 
 rx_vlan rm
 ~~~~~~~~~~
