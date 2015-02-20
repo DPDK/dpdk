@@ -114,7 +114,7 @@ static int
 virtio_send_command(struct virtqueue *vq, struct virtio_pmd_ctrl *ctrl,
 		int *dlen, int pkt_num)
 {
-	uint32_t head = vq->vq_desc_head_idx, i;
+	uint16_t head = vq->vq_desc_head_idx, i;
 	int k, sum = 0;
 	virtio_net_ctrl_ack status = ~0;
 	struct virtio_pmd_ctrl result;
@@ -241,7 +241,7 @@ virtio_set_multiple_queues(struct rte_eth_dev *dev, uint16_t nb_queues)
 int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			int queue_type,
 			uint16_t queue_idx,
-			uint8_t  vtpci_queue_idx,
+			uint16_t  vtpci_queue_idx,
 			uint16_t nb_desc,
 			unsigned int socket_id,
 			struct virtqueue **pvq)

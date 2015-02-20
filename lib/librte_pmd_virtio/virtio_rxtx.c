@@ -382,7 +382,7 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			__rte_unused const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp)
 {
-	uint8_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_RQ_QUEUE_IDX;
+	uint16_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_RQ_QUEUE_IDX;
 	struct virtqueue *vq;
 	int ret;
 
@@ -650,7 +650,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 			/*
 			 * Get extra segments for current uncompleted packet.
 			 */
-			uint32_t  rcv_cnt =
+			uint16_t  rcv_cnt =
 				RTE_MIN(seg_res, RTE_DIM(rcv_pkts));
 			if (likely(VIRTQUEUE_NUSED(rxvq) >= rcv_cnt)) {
 				uint32_t rx_num =
