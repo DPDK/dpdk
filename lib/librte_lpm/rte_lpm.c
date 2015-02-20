@@ -298,6 +298,9 @@ rule_add(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 				return rule_index;
 			}
 		}
+
+		if (rule_index == lpm->max_rules)
+			return -ENOSPC;
 	} else {
 		/* Calculate the position in which the rule will be stored. */
 		rule_index = 0;
