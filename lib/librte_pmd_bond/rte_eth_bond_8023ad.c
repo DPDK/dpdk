@@ -747,7 +747,7 @@ bond_mode_8023ad_periodic_cb(void *arg)
 	struct ether_addr slave_addr;
 
 	void *pkt = NULL;
-	uint16_t i, slave_id;
+	uint8_t i, slave_id;
 
 
 	/* Update link status on each port */
@@ -1050,7 +1050,7 @@ int
 bond_mode_8023ad_enable(struct rte_eth_dev *bond_dev)
 {
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
-	uint16_t i;
+	uint8_t i;
 
 	for (i = 0; i < internals->active_slave_count; i++)
 		bond_mode_8023ad_activate_slave(bond_dev, i);

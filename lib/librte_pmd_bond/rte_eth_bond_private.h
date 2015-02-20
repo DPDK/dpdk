@@ -66,7 +66,7 @@ extern const char *driver_name;
 
 /** Port Queue Mapping Structure */
 struct bond_rx_queue {
-	int queue_id;
+	uint16_t queue_id;
 	/**< Queue Id */
 	struct bond_dev_private *dev_private;
 	/**< Reference to eth_dev private structure */
@@ -79,7 +79,7 @@ struct bond_rx_queue {
 };
 
 struct bond_tx_queue {
-	int queue_id;
+	uint16_t queue_id;
 	/**< Queue Id */
 	struct bond_dev_private *dev_private;
 	/**< Reference to dev private structure */

@@ -617,7 +617,7 @@ bandwidth_cmp(const void *a, const void *b)
 }
 
 static void
-bandwidth_left(int port_id, uint64_t load, uint8_t update_idx,
+bandwidth_left(uint8_t port_id, uint64_t load, uint8_t update_idx,
 		struct bwg_slave *bwg_slave)
 {
 	struct rte_eth_link link_status;
@@ -1296,7 +1296,8 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	struct bond_rx_queue *bd_rx_q;
 	struct bond_tx_queue *bd_tx_q;
 
-	int errval, q_id;
+	int errval;
+	uint16_t q_id;
 
 	/* Stop slave */
 	rte_eth_dev_stop(slave_eth_dev->data->port_id);
@@ -2045,7 +2046,8 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 	char *name = dev->data->name;
 	struct bond_dev_private *internals = dev->data->dev_private;
 	struct rte_kvargs *kvlist = internals->kvlist;
-	int arg_count, port_id = dev - rte_eth_devices;
+	int arg_count;
+	uint8_t port_id = dev - rte_eth_devices;
 
 	/*
 	 * if no kvlist, it means that this bonded device has been created
