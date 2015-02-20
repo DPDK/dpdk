@@ -285,11 +285,10 @@ struct rte_mbuf {
 			     PKT_RX_FDIR_* flag in ol_flags. */
 		} fdir;           /**< Filter identifier if FDIR enabled */
 		uint32_t sched;   /**< Hierarchical scheduler */
-		uint32_t usr;	  /**< User defined tags. See @rte_distributor_process */
+		uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
 	} hash;                   /**< hash information */
 
-	/* sequence number - field used in distributor and reorder library */
-	uint32_t seqn;
+	uint32_t seqn; /**< Sequence number. See also rte_reorder_insert() */
 
 	/* second cache line - fields only used in slow path or on TX */
 	MARKER cacheline1 __rte_cache_aligned;
