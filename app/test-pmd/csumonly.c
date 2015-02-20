@@ -79,6 +79,10 @@
 #define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
 #define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
+#define GRE_KEY_PRESENT 0x2000
+#define GRE_KEY_LEN     4
+#define GRE_SUPPORTED_FIELDS GRE_KEY_PRESENT
+
 /* We cannot use rte_cpu_to_be_16() on a constant in a switch/case */
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 #define _htons(x) ((uint16_t)((((x) & 0x00ffU) << 8) | (((x) & 0xff00U) >> 8)))
@@ -101,7 +105,7 @@ struct testpmd_offload_info {
 	uint16_t tso_segsz;
 };
 
-/* simplified GRE header (flags must be 0) */
+/* simplified GRE header */
 struct simple_gre_hdr {
 	uint16_t flags;
 	uint16_t proto;
@@ -233,10 +237,16 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
+	uint8_t gre_len = 0;
 
-	/* if flags != 0; it's not supported */
-	if (gre_hdr->flags != 0)
+	/* check which fields are supported */
+	if ((gre_hdr->flags & _htons(~GRE_SUPPORTED_FIELDS)) != 0)
 		return;
+
+	gre_len += sizeof(struct simple_gre_hdr);
+
+	if (gre_hdr->flags & _htons(GRE_KEY_PRESENT))
+		gre_len += GRE_KEY_LEN;
 
 	if (gre_hdr->proto == _htons(ETHER_TYPE_IPv4)) {
 		info->is_tunnel = 1;
@@ -245,8 +255,7 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 		info->outer_l3_len = info->l3_len;
 		info->outer_l4_proto = info->l4_proto;
 
-		ipv4_hdr = (struct ipv4_hdr *)((char *)gre_hdr +
-			sizeof(struct simple_gre_hdr));
+		ipv4_hdr = (struct ipv4_hdr *)((char *)gre_hdr + gre_len);
 
 		parse_ipv4(ipv4_hdr, info);
 		info->ethertype = _htons(ETHER_TYPE_IPv4);
@@ -259,28 +268,26 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 		info->outer_l3_len = info->l3_len;
 		info->outer_l4_proto = info->l4_proto;
 
-		ipv6_hdr = (struct ipv6_hdr *)((char *)gre_hdr +
-			sizeof(struct simple_gre_hdr));
+		ipv6_hdr = (struct ipv6_hdr *)((char *)gre_hdr + gre_len);
 
 		info->ethertype = _htons(ETHER_TYPE_IPv6);
 		parse_ipv6(ipv6_hdr, info);
 		info->l2_len = 0;
 
-	} else if (gre_hdr->proto == _htons(0x6558)) { /* ETH_P_TEB in linux */
+	} else if (gre_hdr->proto == _htons(ETHER_TYPE_TEB)) {
 		info->is_tunnel = 1;
 		info->outer_ethertype = info->ethertype;
 		info->outer_l2_len = info->l2_len;
 		info->outer_l3_len = info->l3_len;
 		info->outer_l4_proto = info->l4_proto;
 
-		eth_hdr = (struct ether_hdr *)((char *)gre_hdr +
-			sizeof(struct simple_gre_hdr));
+		eth_hdr = (struct ether_hdr *)((char *)gre_hdr + gre_len);
 
 		parse_ethernet(eth_hdr, info);
 	} else
 		return;
 
-	info->l2_len += sizeof(struct simple_gre_hdr);
+	info->l2_len += gre_len;
 }
 
 
