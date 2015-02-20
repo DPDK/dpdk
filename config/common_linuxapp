@@ -231,6 +231,8 @@ CONFIG_RTE_LIBRTE_PMD_PCAP=n
 # Compile link bonding PMD library
 #
 CONFIG_RTE_LIBRTE_PMD_BOND=y
+CONFIG_RTE_LIBRTE_BOND_DEBUG_ALB=n
+CONFIG_RTE_LIBRTE_BOND_DEBUG_ALB_L1=n
 
 #
 # Compile software PMD backed by AF_PACKET sockets (Linux only)

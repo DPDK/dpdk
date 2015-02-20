@@ -192,17 +192,186 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 	return num_rx_total;
 }
 
+#if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
+uint32_t burstnumberRX;
+uint32_t burstnumberTX;
+
+#ifdef RTE_LIBRTE_BOND_DEBUG_ALB
+
+static void
+arp_op_name(uint16_t arp_op, char *buf)
+{
+	switch (arp_op) {
+	case ARP_OP_REQUEST:
+		snprintf(buf, sizeof("ARP Request"), "%s", "ARP Request");
+		return;
+	case ARP_OP_REPLY:
+		snprintf(buf, sizeof("ARP Reply"), "%s", "ARP Reply");
+		return;
+	case ARP_OP_REVREQUEST:
+		snprintf(buf, sizeof("Reverse ARP Request"), "%s",
+				"Reverse ARP Request");
+		return;
+	case ARP_OP_REVREPLY:
+		snprintf(buf, sizeof("Reverse ARP Reply"), "%s",
+				"Reverse ARP Reply");
+		return;
+	case ARP_OP_INVREQUEST:
+		snprintf(buf, sizeof("Peer Identify Request"), "%s",
+				"Peer Identify Request");
+		return;
+	case ARP_OP_INVREPLY:
+		snprintf(buf, sizeof("Peer Identify Reply"), "%s",
+				"Peer Identify Reply");
+		return;
+	default:
+		break;
+	}
+	snprintf(buf, sizeof("Unknown"), "%s", "Unknown");
+	return;
+}
+#endif
+#define MaxIPv4String	16
+static void
+ipv4_addr_to_dot(uint32_t be_ipv4_addr, char *buf, uint8_t buf_size)
+{
+	uint32_t ipv4_addr;
+
+	ipv4_addr = rte_be_to_cpu_32(be_ipv4_addr);
+	snprintf(buf, buf_size, "%d.%d.%d.%d", (ipv4_addr >> 24) & 0xFF,
+		(ipv4_addr >> 16) & 0xFF, (ipv4_addr >> 8) & 0xFF,
+		ipv4_addr & 0xFF);
+}
+
+#define MAX_CLIENTS_NUMBER	128
+uint8_t active_clients;
+struct client_stats_t {
+	uint8_t port;
+	uint32_t ipv4_addr;
+	uint32_t ipv4_rx_packets;
+	uint32_t ipv4_tx_packets;
+};
+struct client_stats_t client_stats[MAX_CLIENTS_NUMBER];
+
+static void
+update_client_stats(uint32_t addr, uint8_t port, uint32_t *TXorRXindicator)
+{
+	int i = 0;
+
+	for (; i < MAX_CLIENTS_NUMBER; i++)	{
+		if ((client_stats[i].ipv4_addr == addr) && (client_stats[i].port == port))	{
+			/* Just update RX packets number for this client */
+			if (TXorRXindicator == &burstnumberRX)
+				client_stats[i].ipv4_rx_packets++;
+			else
+				client_stats[i].ipv4_tx_packets++;
+			return;
+		}
+	}
+	/* We have a new client. Insert him to the table, and increment stats */
+	if (TXorRXindicator == &burstnumberRX)
+		client_stats[active_clients].ipv4_rx_packets++;
+	else
+		client_stats[active_clients].ipv4_tx_packets++;
+	client_stats[active_clients].ipv4_addr = addr;
+	client_stats[active_clients].port = port;
+	active_clients++;
+
+}
+
+void print_client_stats(void);
+void print_client_stats(void)
+{
+	int i = 0;
+	char buf[MaxIPv4String];
+
+	for (; i < active_clients; i++)	{
+		ipv4_addr_to_dot(client_stats[i].ipv4_addr, buf, MaxIPv4String);
+		printf("port:%d client:%s RX:%d TX:%d\n", client_stats[i].port,	buf,
+				client_stats[i].ipv4_rx_packets,
+				client_stats[i].ipv4_tx_packets);
+	}
+}
+#ifdef RTE_LIBRTE_BOND_DEBUG_ALB
+#define MODE6_DEBUG(info, src_ip, dst_ip, eth_h, arp_op, port, burstnumber)	\
+		RTE_LOG(DEBUG, PMD, \
+		"%s " \
+		"port:%d " \
+		"SrcMAC:%02X:%02X:%02X:%02X:%02X:%02X " \
+		"SrcIP:%s " \
+		"DstMAC:%02X:%02X:%02X:%02X:%02X:%02X " \
+		"DstIP:%s " \
+		"%s " \
+		"%d\n", \
+		info, \
+		port, \
+		eth_h->s_addr.addr_bytes[0], \
+		eth_h->s_addr.addr_bytes[1], \
+		eth_h->s_addr.addr_bytes[2], \
+		eth_h->s_addr.addr_bytes[3], \
+		eth_h->s_addr.addr_bytes[4], \
+		eth_h->s_addr.addr_bytes[5], \
+		src_ip, \
+		eth_h->d_addr.addr_bytes[0], \
+		eth_h->d_addr.addr_bytes[1], \
+		eth_h->d_addr.addr_bytes[2], \
+		eth_h->d_addr.addr_bytes[3], \
+		eth_h->d_addr.addr_bytes[4], \
+		eth_h->d_addr.addr_bytes[5], \
+		dst_ip, \
+		arp_op, \
+		++burstnumber)
+#endif
+
+static void
+mode6_debug(const char __attribute__((unused)) *info, struct ether_hdr *eth_h,
+		uint8_t port, uint32_t __attribute__((unused)) *burstnumber)
+{
+	struct ipv4_hdr *ipv4_h;
+#ifdef RTE_LIBRTE_BOND_DEBUG_ALB
+	struct arp_hdr *arp_h;
+	char dst_ip[16];
+	char ArpOp[24];
+	char buf[16];
+#endif
+	char src_ip[16];
+
+	uint16_t ether_type = eth_h->ether_type;
+	uint16_t offset = get_vlan_offset(eth_h, &ether_type);
+
+#ifdef RTE_LIBRTE_BOND_DEBUG_ALB
+	snprintf(buf, 16, "%s", info);
+#endif
+
+	if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
+		ipv4_h = (struct ipv4_hdr *)((char *)(eth_h + 1) + offset);
+		ipv4_addr_to_dot(ipv4_h->src_addr, src_ip, MaxIPv4String);
+#ifdef RTE_LIBRTE_BOND_DEBUG_ALB
+		ipv4_addr_to_dot(ipv4_h->dst_addr, dst_ip, MaxIPv4String);
+		MODE6_DEBUG(buf, src_ip, dst_ip, eth_h, "", port, *burstnumber);
+#endif
+		update_client_stats(ipv4_h->src_addr, port, burstnumber);
+	}
+#ifdef RTE_LIBRTE_BOND_DEBUG_ALB
+	else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
+		arp_h = (struct arp_hdr *)((char *)(eth_h + 1) + offset);
+		ipv4_addr_to_dot(arp_h->arp_data.arp_sip, src_ip, MaxIPv4String);
+		ipv4_addr_to_dot(arp_h->arp_data.arp_tip, dst_ip, MaxIPv4String);
+		arp_op_name(rte_be_to_cpu_16(arp_h->arp_op), ArpOp);
+		MODE6_DEBUG(buf, src_ip, dst_ip, eth_h, ArpOp, port, *burstnumber);
+	}
+#endif
+}
+#endif
+
 static uint16_t
 bond_ethdev_rx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	struct bond_tx_queue *bd_tx_q = (struct bond_tx_queue *)queue;
 	struct bond_dev_private *internals = bd_tx_q->dev_private;
-
 	struct ether_hdr *eth_h;
-
 	uint16_t ether_type, offset;
 	uint16_t nb_recv_pkts;
-
 	int i;
 
 	nb_recv_pkts = bond_ethdev_rx_burst(queue, bufs, nb_pkts);
@@ -213,8 +382,15 @@ bond_ethdev_rx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		offset = get_vlan_offset(eth_h, &ether_type);
 
 		if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
+#if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
+			mode6_debug("RX ARP:", eth_h, bufs[i]->port, &burstnumberRX);
+#endif
 			bond_mode_alb_arp_recv(eth_h, offset, internals);
 		}
+#if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
+		else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4))
+			mode6_debug("RX IPv4:", eth_h, bufs[i]->port, &burstnumberRX);
+#endif
 	}
 
 	return nb_recv_pkts;
@@ -552,6 +728,9 @@ bond_ethdev_tx_burst_tlb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			ether_hdr = rte_pktmbuf_mtod(bufs[j], struct ether_hdr *);
 			if (is_same_ether_addr(&ether_hdr->s_addr, &primary_slave_addr))
 				ether_addr_copy(&active_slave_addr, &ether_hdr->s_addr);
+#if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
+					mode6_debug("TX IPv4:", ether_hdr, slaves[i], &burstnumberTX);
+#endif
 		}
 
 		num_tx_total += rte_eth_tx_burst(slaves[i], bd_tx_q->queue_id,
@@ -673,6 +852,14 @@ bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 			num_tx_total += num_send;
 			num_not_send += slave_bufs_pkts[i] - num_send;
+
+#if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
+	/* Print TX stats including update packets */
+			for (j = 0; j < slave_bufs_pkts[i]; j++) {
+				eth_h = rte_pktmbuf_mtod(slave_bufs[i][j], struct ether_hdr *);
+				mode6_debug("TX ARP:", eth_h, i, &burstnumberTX);
+			}
+#endif
 		}
 	}
 
@@ -684,6 +871,12 @@ bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			for (j = num_send; j < update_bufs_pkts[i]; j++) {
 				rte_pktmbuf_free(update_bufs[i][j]);
 			}
+#if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
+			for (j = 0; j < update_bufs_pkts[i]; j++) {
+				eth_h = rte_pktmbuf_mtod(update_bufs[i][j], struct ether_hdr *);
+				mode6_debug("TX ARPupd:", eth_h, i, &burstnumberTX);
+			}
+#endif
 		}
 	}
 

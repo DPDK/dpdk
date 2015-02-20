@@ -233,6 +233,8 @@ CONFIG_RTE_LIBRTE_PMD_PCAP=y
 # Compile link bonding PMD library
 #
 CONFIG_RTE_LIBRTE_PMD_BOND=y
+CONFIG_RTE_LIBRTE_BOND_DEBUG_ALB=n
+CONFIG_RTE_LIBRTE_BOND_DEBUG_ALB_L1=n
 
 #
 # Do prefetch of packet data within PMD driver receive function
