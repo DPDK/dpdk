@@ -292,11 +292,11 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" a port\n\n"
 
 			"tunnel_filter add (port_id) (outer_mac) (inner_mac) (ip_addr) "
-			"(inner_vlan) (tunnel_type) (filter_type) (tenant_id) (queue_id)\n"
+			"(inner_vlan) (vxlan|nvgre) (filter_type) (tenant_id) (queue_id)\n"
 			"   add a tunnel filter of a port.\n\n"
 
 			"tunnel_filter rm (port_id) (outer_mac) (inner_mac) (ip_addr) "
-			"(inner_vlan) (tunnel_type) (filter_type) (tenant_id) (queue_id)\n"
+			"(inner_vlan) (vxlan|nvgre) (filter_type) (tenant_id) (queue_id)\n"
 			"   remove a tunnel filter of a port.\n\n"
 
 			"rx_vxlan_port add (udp_port) (port_id)\n"
@@ -6297,8 +6297,10 @@ cmd_tunnel_filter_parsed(void *parsed_result,
 
 	if (!strcmp(res->tunnel_type, "vxlan"))
 		tunnel_filter_conf.tunnel_type = RTE_TUNNEL_TYPE_VXLAN;
+	else if (!strcmp(res->tunnel_type, "nvgre"))
+		tunnel_filter_conf.tunnel_type = RTE_TUNNEL_TYPE_NVGRE;
 	else {
-		printf("Only VXLAN is supported now.\n");
+		printf("The tunnel type %s not supported.\n", res->tunnel_type);
 		return;
 	}
 
@@ -6342,7 +6344,7 @@ cmdline_parse_token_ipaddr_t cmd_tunnel_filter_ip_value =
 	ip_value);
 cmdline_parse_token_string_t cmd_tunnel_filter_tunnel_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_filter_result,
-	tunnel_type, "vxlan");
+	tunnel_type, "vxlan#nvgre");
 
 cmdline_parse_token_string_t cmd_tunnel_filter_filter_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_filter_result,
@@ -6360,7 +6362,7 @@ cmdline_parse_inst_t cmd_tunnel_filter = {
 	.data = (void *)0,
 	.help_str = "add/rm tunnel filter of a port: "
 			"tunnel_filter add port_id outer_mac inner_mac ip "
-			"inner_vlan tunnel_type(vxlan) filter_type "
+			"inner_vlan tunnel_type(vxlan|nvgre) filter_type "
 			"(imac-ivlan|imac-ivlan-tenid|imac-tenid|"
 			"imac|omac-imac-tenid) "
 			"tenant_id queue_num",
