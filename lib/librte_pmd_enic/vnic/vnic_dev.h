@@ -55,7 +55,7 @@ static inline u64 readq(void __iomem *reg)
 static inline void writeq(u64 val, void __iomem *reg)
 {
 	writel(val & 0xffffffff, reg);
-	writel(val >> 32, (char *)reg + 0x4UL);
+	writel((u32)(val >> 32), (char *)reg + 0x4UL);
 }
 #endif
 
@@ -136,7 +136,7 @@ void vnic_dev_cmd_proxy_end(struct vnic_dev *vdev);
 int vnic_dev_fw_info(struct vnic_dev *vdev,
 	struct vnic_devcmd_fw_info **fw_info);
 int vnic_dev_asic_info(struct vnic_dev *vdev, u16 *asic_type, u16 *asic_rev);
-int vnic_dev_spec(struct vnic_dev *vdev, unsigned int offset, unsigned int size,
+int vnic_dev_spec(struct vnic_dev *vdev, unsigned int offset, size_t size,
 	void *value);
 int vnic_dev_stats_clear(struct vnic_dev *vdev);
 int vnic_dev_stats_dump(struct vnic_dev *vdev, struct vnic_stats **stats);

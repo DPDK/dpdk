@@ -43,7 +43,7 @@
 #include <rte_malloc.h>
 #include <rte_log.h>
 
-#define ENIC_PAGE_ALIGN 4096ULL
+#define ENIC_PAGE_ALIGN 4096UL
 #define ENIC_ALIGN      ENIC_PAGE_ALIGN
 #define NAME_MAX        255
 #define ETH_ALEN        6

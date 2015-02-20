@@ -110,7 +110,7 @@ struct enic {
 	pthread_t err_intr_thread;
 	int promisc;
 	int allmulti;
-	int ig_vlan_strip_en;
+	uint8_t ig_vlan_strip_en;
 	int link_status;
 	u8 hw_ip_checksum;
 

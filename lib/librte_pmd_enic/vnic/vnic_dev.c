@@ -474,7 +474,7 @@ static int vnic_dev_capable(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd)
 	return !(err || a0);
 }
 
-int vnic_dev_spec(struct vnic_dev *vdev, unsigned int offset, unsigned int size,
+int vnic_dev_spec(struct vnic_dev *vdev, unsigned int offset, size_t size,
 	void *value)
 {
 	u64 a0, a1;
