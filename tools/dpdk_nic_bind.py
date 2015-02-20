@@ -43,7 +43,7 @@ ETHERNET_CLASS = "0200"
 # Each device within this is itself a dictionary of device properties
 devices = {}
 # list of supported DPDK drivers
-dpdk_drivers = [ "igb_uio", "vfio-pci" ]
+dpdk_drivers = [ "igb_uio", "vfio-pci", "uio_pci_generic" ]
 
 # command-line arg flags
 b_flag = None
