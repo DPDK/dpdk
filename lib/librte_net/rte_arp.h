@@ -39,6 +39,7 @@
  */
 
 #include <stdint.h>
+#include <rte_ether.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,10 +49,10 @@ extern "C" {
  * ARP header IPv4 payload.
  */
 struct arp_ipv4 {
-	uint8_t  arp_sha[6]; /* sender hardware address */
-	uint8_t  arp_sip[4]; /* sender IP address */
-	uint8_t  arp_tha[6]; /* target hardware address */
-	uint8_t  arp_tip[4]; /* target IP address */
+	struct ether_addr arp_sha;  /**< sender hardware address */
+	uint32_t          arp_sip;  /**< sender IP address */
+	struct ether_addr arp_tha;  /**< target hardware address */
+	uint32_t          arp_tip;  /**< target IP address */
 } __attribute__((__packed__));
 
 /**
@@ -72,9 +73,7 @@ struct arp_hdr {
 #define	ARP_OP_INVREQUEST 8 /* request to identify peer */
 #define	ARP_OP_INVREPLY   9 /* response identifying peer */
 
-	union {
-		struct arp_ipv4 arp_ip;
-	} arp_data;
+	struct arp_ipv4 arp_data;
 } __attribute__((__packed__));
 
 #ifdef __cplusplus

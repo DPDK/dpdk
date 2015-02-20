@@ -371,18 +371,14 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 				continue;
 			}
 			if (verbose_level > 0) {
-				memcpy(&eth_addr,
-				       arp_h->arp_data.arp_ip.arp_sha, 6);
+				ether_addr_copy(&arp_h->arp_data.arp_sha, &eth_addr);
 				ether_addr_dump("        sha=", &eth_addr);
-				memcpy(&ip_addr,
-				       arp_h->arp_data.arp_ip.arp_sip, 4);
+				ip_addr = arp_h->arp_data.arp_sip;
 				ipv4_addr_dump(" sip=", ip_addr);
 				printf("\n");
-				memcpy(&eth_addr,
-				       arp_h->arp_data.arp_ip.arp_tha, 6);
+				ether_addr_copy(&arp_h->arp_data.arp_tha, &eth_addr);
 				ether_addr_dump("        tha=", &eth_addr);
-				memcpy(&ip_addr,
-				       arp_h->arp_data.arp_ip.arp_tip, 4);
+				ip_addr = arp_h->arp_data.arp_tip;
 				ipv4_addr_dump(" tip=", ip_addr);
 				printf("\n");
 			}
@@ -402,17 +398,14 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 					&eth_h->s_addr);
 
 			arp_h->arp_op = rte_cpu_to_be_16(ARP_OP_REPLY);
-			memcpy(&eth_addr, arp_h->arp_data.arp_ip.arp_tha, 6);
-			memcpy(arp_h->arp_data.arp_ip.arp_tha,
-			       arp_h->arp_data.arp_ip.arp_sha, 6);
-			memcpy(arp_h->arp_data.arp_ip.arp_sha,
-			       &eth_h->s_addr, 6);
+			ether_addr_copy(&arp_h->arp_data.arp_tha, &eth_addr);
+			ether_addr_copy(&arp_h->arp_data.arp_sha, &arp_h->arp_data.arp_tha);
+			ether_addr_copy(&eth_addr, &arp_h->arp_data.arp_sha);
 
 			/* Swap IP addresses in ARP payload */
-			memcpy(&ip_addr, arp_h->arp_data.arp_ip.arp_sip, 4);
-			memcpy(arp_h->arp_data.arp_ip.arp_sip,
-			       arp_h->arp_data.arp_ip.arp_tip, 4);
-			memcpy(arp_h->arp_data.arp_ip.arp_tip, &ip_addr, 4);
+			ip_addr = arp_h->arp_data.arp_sip;
+			arp_h->arp_data.arp_sip = arp_h->arp_data.arp_tip;
+			arp_h->arp_data.arp_tip = ip_addr;
 			pkts_burst[nb_replies++] = pkt;
 			continue;
 		}
