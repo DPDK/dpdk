@@ -995,17 +995,6 @@ struct rte_2tuple_filter {
 };
 
 /**
- *  A structure used to define a flex filter.
- */
-struct rte_flex_filter {
-	uint16_t len;
-	uint32_t dwords[32];  /**< flex bytes in big endian. */
-	uint8_t mask[16];     /**< if mask bit is 1b, do not compare
-				   corresponding byte in dwords. */
-	uint8_t priority;
-};
-
-/**
  *  A structure used to define a 5tuple filter.
  */
 struct rte_5tuple_filter {
@@ -1398,20 +1387,6 @@ typedef int (*eth_get_5tuple_filter_t)(struct rte_eth_dev *dev,
 			uint16_t *rx_queue);
 /**< @internal Get a 5tuple filter rule on an Ethernet device */
 
-typedef int (*eth_add_flex_filter_t)(struct rte_eth_dev *dev,
-			uint16_t index, struct rte_flex_filter *filter,
-			uint16_t rx_queue);
-/**< @internal Setup a new flex filter rule on an Ethernet device */
-
-typedef int (*eth_remove_flex_filter_t)(struct rte_eth_dev *dev,
-			uint16_t index);
-/**< @internal Remove a flex filter rule on an Ethernet device */
-
-typedef int (*eth_get_flex_filter_t)(struct rte_eth_dev *dev,
-			uint16_t index, struct rte_flex_filter *filter,
-			uint16_t *rx_queue);
-/**< @internal Get a flex filter rule on an Ethernet device */
-
 typedef int (*eth_filter_ctrl_t)(struct rte_eth_dev *dev,
 				 enum rte_filter_type filter_type,
 				 enum rte_filter_op filter_op,
@@ -1523,9 +1498,6 @@ struct eth_dev_ops {
 	eth_add_5tuple_filter_t        add_5tuple_filter;    /**< add 5tuple filter. */
 	eth_remove_5tuple_filter_t     remove_5tuple_filter; /**< remove 5tuple filter. */
 	eth_get_5tuple_filter_t        get_5tuple_filter;    /**< get 5tuple filter. */
-	eth_add_flex_filter_t          add_flex_filter;      /**< add flex filter. */
-	eth_remove_flex_filter_t       remove_flex_filter;   /**< remove flex filter. */
-	eth_get_flex_filter_t          get_flex_filter;      /**< get flex filter. */
 	eth_filter_ctrl_t              filter_ctrl;          /**< common filter control*/
 };
 
@@ -3576,67 +3548,6 @@ int rte_eth_dev_remove_5tuple_filter(uint8_t port_id, uint16_t index);
  */
 int rte_eth_dev_get_5tuple_filter(uint8_t port_id, uint16_t index,
 			struct rte_5tuple_filter *filter, uint16_t *rx_queue);
-
-/**
- * Add a new flex filter rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param index
- *   The identifier of flex filter.
- * @param filter
- *   The pointer to the structure describing the flex filter rule.
- *   The *rte_flex_filter* structure includes the values of the different fields
- *   to match: the dwords (first len bytes of packet ) and relative masks.
- * @param rx_queue
- *   The index of the RX queue where to store RX packets matching the added
- *   flex filter.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support flex filter.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if the filter information is not correct.
- *   - (-ENOENT) if no enabled filter in this index.
- */
-int rte_eth_dev_add_flex_filter(uint8_t port_id, uint16_t index,
-			struct rte_flex_filter *filter, uint16_t rx_queue);
-
-/**
- * remove a flex filter rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param index
- *   The identifier of flex filter.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support flex filter.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if the filter information is not correct.
- */
-int rte_eth_dev_remove_flex_filter(uint8_t port_id, uint16_t index);
-
-/**
- * Get an flex filter rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param index
- *   The identifier of flex filter.
- * @param filter
- *   A pointer to a structure of type *rte_flex_filter* to be filled with
- *   the information of the flex filter.
- * @param rx_queue
- *   A pointer to get the queue index.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support flex filter.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if the filter information is not correct.
- *   - (-ENOENT) if no enabled filter in this index.
- */
-int rte_eth_dev_get_flex_filter(uint8_t port_id, uint16_t index,
-			struct rte_flex_filter *filter, uint16_t *rx_queue);
 
 /**
  * Check whether the filter type is supported on an Ethernet device.

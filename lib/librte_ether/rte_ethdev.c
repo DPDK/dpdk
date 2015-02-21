@@ -3177,57 +3177,6 @@ rte_eth_dev_get_5tuple_filter(uint8_t port_id, uint16_t index,
 }
 
 int
-rte_eth_dev_add_flex_filter(uint8_t port_id, uint16_t index,
-			struct rte_flex_filter *filter, uint16_t rx_queue)
-{
-	struct rte_eth_dev *dev;
-
-	if (port_id >= nb_ports) {
-		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return -ENODEV;
-	}
-
-	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->add_flex_filter, -ENOTSUP);
-	return (*dev->dev_ops->add_flex_filter)(dev, index, filter, rx_queue);
-}
-
-int
-rte_eth_dev_remove_flex_filter(uint8_t port_id, uint16_t index)
-{
-	struct rte_eth_dev *dev;
-
-	if (port_id >= nb_ports) {
-		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return -ENODEV;
-	}
-
-	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->remove_flex_filter, -ENOTSUP);
-	return (*dev->dev_ops->remove_flex_filter)(dev, index);
-}
-
-int
-rte_eth_dev_get_flex_filter(uint8_t port_id, uint16_t index,
-			struct rte_flex_filter *filter, uint16_t *rx_queue)
-{
-	struct rte_eth_dev *dev;
-
-	if (filter == NULL || rx_queue == NULL)
-		return -EINVAL;
-
-	if (port_id >= nb_ports) {
-		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
-		return -ENODEV;
-	}
-
-	dev = &rte_eth_devices[port_id];
-	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_flex_filter, -ENOTSUP);
-	return (*dev->dev_ops->get_flex_filter)(dev, index, filter,
-						rx_queue);
-}
-
-int
 rte_eth_dev_filter_supported(uint8_t port_id, enum rte_filter_type filter_type)
 {
 	struct rte_eth_dev *dev;
