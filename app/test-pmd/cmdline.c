@@ -632,15 +632,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"get_syn_filter (port_id) "
 			"    get syn filter info.\n\n"
 
-			"add_flex_filter (port_id) len (len_value) bytes (bytes_string) mask (mask_value)"
-			" priority (prio_value) queue (queue_id) index (idx)\n"
-			"    add a flex filter.\n\n"
-
-			"remove_flex_filter (port_id) index (idx)\n"
-			"    remove a flex filter.\n\n"
-
-			"get_flex_filter (port_id) index (idx)\n"
-			"    get info of a flex filter.\n\n"
+			"flex_filter (port_id) (add|del) len (len_value)"
+			" bytes (bytes_value) mask (mask_value)"
+			" priority (prio_value) queue (queue_id)\n"
+			"    Add/Del a flex filter.\n\n"
 
 			"flow_director_filter (port_id) (add|del|update)"
 			" flow (ip4|ip4-frag|ip6|ip6-frag)"
@@ -7271,6 +7266,7 @@ cmdline_parse_inst_t cmd_get_5tuple_filter = {
 /* *** ADD/REMOVE A flex FILTER *** */
 struct cmd_flex_filter_result {
 	cmdline_fixed_string_t filter;
+	cmdline_fixed_string_t ops;
 	uint8_t port_id;
 	cmdline_fixed_string_t len;
 	uint8_t len_value;
@@ -7282,8 +7278,6 @@ struct cmd_flex_filter_result {
 	uint8_t priority_value;
 	cmdline_fixed_string_t queue;
 	uint16_t queue_id;
-	cmdline_fixed_string_t index;
-	uint16_t index_value;
 };
 
 static int xdigit2val(unsigned char c)
@@ -7304,113 +7298,106 @@ cmd_flex_filter_parsed(void *parsed_result,
 			  __attribute__((unused)) void *data)
 {
 	int ret = 0;
-	struct rte_flex_filter filter;
+	struct rte_eth_flex_filter filter;
 	struct cmd_flex_filter_result *res = parsed_result;
 	char *bytes_ptr, *mask_ptr;
-	uint16_t len, i, j;
+	uint16_t len, i, j = 0;
 	char c;
-	int val, mod = 0;
-	uint32_t dword = 0;
+	int val;
 	uint8_t byte = 0;
-	uint8_t hex = 0;
 
-	if (!strcmp(res->filter, "add_flex_filter")) {
-		if (res->len_value > 128) {
-			printf("the len exceed the max length 128\n");
-			return;
-		}
-		memset(&filter, 0, sizeof(struct rte_flex_filter));
-		filter.len = res->len_value;
-		filter.priority = res->priority_value;
-		bytes_ptr = res->bytes_value;
-		mask_ptr = res->mask_value;
+	if (res->len_value > RTE_FLEX_FILTER_MAXLEN) {
+		printf("the len exceed the max length 128\n");
+		return;
+	}
+	memset(&filter, 0, sizeof(struct rte_eth_flex_filter));
+	filter.len = res->len_value;
+	filter.priority = res->priority_value;
+	filter.queue = res->queue_id;
+	bytes_ptr = res->bytes_value;
+	mask_ptr = res->mask_value;
 
-		j = 0;
-		 /* translate bytes string to uint_32 array. */
-		if (bytes_ptr[0] == '0' && ((bytes_ptr[1] == 'x') ||
-			(bytes_ptr[1] == 'X')))
-			bytes_ptr += 2;
-		len = strnlen(bytes_ptr, res->len_value * 2);
-		if (len == 0 || (len % 8 != 0)) {
-			printf("please check len and bytes input\n");
-			return;
-		}
-		for (i = 0; i < len; i++) {
-			c = bytes_ptr[i];
-			if (isxdigit(c) == 0) {
-				/* invalid characters. */
-				printf("invalid input\n");
-				return;
-			}
-			val = xdigit2val(c);
-			mod = i % 8;
-			if (i % 2) {
-				byte |= val;
-				dword |= byte << (4 * mod - 4);
-				byte = 0;
-			} else
-				byte |= val << 4;
-			if (mod == 7) {
-				filter.dwords[j] = dword;
-				printf("dwords[%d]:%08x ", j, filter.dwords[j]);
-				j++;
-				dword = 0;
-			}
-		}
-		printf("\n");
-		 /* translate mask string to uint8_t array. */
-		j = 0;
-		if (mask_ptr[0] == '0' && ((mask_ptr[1] == 'x') ||
-			(mask_ptr[1] == 'X')))
-			mask_ptr += 2;
-		len = strnlen(mask_ptr, (res->len_value+3)/4);
-		if (len == 0) {
+	 /* translate bytes string to array. */
+	if (bytes_ptr[0] == '0' && ((bytes_ptr[1] == 'x') ||
+		(bytes_ptr[1] == 'X')))
+		bytes_ptr += 2;
+	len = strnlen(bytes_ptr, res->len_value * 2);
+	if (len == 0 || (len % 8 != 0)) {
+		printf("please check len and bytes input\n");
+		return;
+	}
+	for (i = 0; i < len; i++) {
+		c = bytes_ptr[i];
+		if (isxdigit(c) == 0) {
+			/* invalid characters. */
 			printf("invalid input\n");
 			return;
 		}
-		for (i = 0; i < len; i++) {
-			c = mask_ptr[i];
-			if (isxdigit(c) == 0) {
-				/* invalid characters. */
-				printf("invalid input\n");
-				return;
-			}
-			val = xdigit2val(c);
-			hex |= (uint8_t)(val & 0x8) >> 3;
-			hex |= (uint8_t)(val & 0x4) >> 1;
-			hex |= (uint8_t)(val & 0x2) << 1;
-			hex |= (uint8_t)(val & 0x1) << 3;
-			if (i % 2) {
-				byte |= hex << 4;
-				filter.mask[j] = byte;
-				printf("mask[%d]:%02x ", j, filter.mask[j]);
-				j++;
-				byte = 0;
-			} else
-				byte |= hex;
-			hex = 0;
+		val = xdigit2val(c);
+		if (i % 2) {
+			byte |= val;
+			filter.bytes[j] = byte;
+			printf("bytes[%d]:%02x ", j, filter.bytes[j]);
+			j++;
+			byte = 0;
+		} else
+			byte |= val << 4;
+	}
+	printf("\n");
+	 /* translate mask string to uint8_t array. */
+	if (mask_ptr[0] == '0' && ((mask_ptr[1] == 'x') ||
+		(mask_ptr[1] == 'X')))
+		mask_ptr += 2;
+	len = strnlen(mask_ptr, (res->len_value + 3) / 4);
+	if (len == 0) {
+		printf("invalid input\n");
+		return;
+	}
+	j = 0;
+	byte = 0;
+	for (i = 0; i < len; i++) {
+		c = mask_ptr[i];
+		if (isxdigit(c) == 0) {
+			/* invalid characters. */
+			printf("invalid input\n");
+			return;
 		}
-		printf("\n");
-		printf("call function rte_eth_dev_add_flex_filter: "
-			"index = %d, queue-id = %d, len = %d, priority = %d\n",
-			res->index_value, res->queue_id,
-			filter.len, filter.priority);
-		ret = rte_eth_dev_add_flex_filter(res->port_id, res->index_value,
-				&filter, res->queue_id);
+		val = xdigit2val(c);
+		if (i % 2) {
+			byte |= val;
+			filter.mask[j] = byte;
+			printf("mask[%d]:%02x ", j, filter.mask[j]);
+			j++;
+			byte = 0;
+		} else
+			byte |= val << 4;
+	}
+	printf("\n");
 
-	} else if (!strcmp(res->filter, "remove_flex_filter"))
-		ret = rte_eth_dev_remove_flex_filter(res->port_id,
-			res->index_value);
-	else if (!strcmp(res->filter, "get_flex_filter"))
-		get_flex_filter(res->port_id, res->index_value);
+	if (!strcmp(res->ops, "add"))
+		ret = rte_eth_dev_filter_ctrl(res->port_id,
+				RTE_ETH_FILTER_FLEXIBLE,
+				RTE_ETH_FILTER_ADD,
+				&filter);
+	else
+		ret = rte_eth_dev_filter_ctrl(res->port_id,
+				RTE_ETH_FILTER_FLEXIBLE,
+				RTE_ETH_FILTER_DELETE,
+				&filter);
 
 	if (ret < 0)
 		printf("flex filter setting error: (%s)\n", strerror(-ret));
 }
 
+cmdline_parse_token_string_t cmd_flex_filter_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				filter, "flex_filter");
 cmdline_parse_token_num_t cmd_flex_filter_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
 				port_id, UINT8);
+cmdline_parse_token_string_t cmd_flex_filter_ops =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				ops, "add#del");
 cmdline_parse_token_string_t cmd_flex_filter_len =
 	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
 				len, "len");
@@ -7441,22 +7428,14 @@ cmdline_parse_token_string_t cmd_flex_filter_queue =
 cmdline_parse_token_num_t cmd_flex_filter_queue_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
 				queue_id, UINT16);
-cmdline_parse_token_string_t cmd_flex_filter_index =
-	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
-				index, "index");
-cmdline_parse_token_num_t cmd_flex_filter_index_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
-				index_value, UINT16);
-cmdline_parse_token_string_t cmd_flex_filter_add_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
-				filter, "add_flex_filter");
-cmdline_parse_inst_t cmd_add_flex_filter = {
+cmdline_parse_inst_t cmd_flex_filter = {
 	.f = cmd_flex_filter_parsed,
 	.data = NULL,
-	.help_str = "add a flex filter",
+	.help_str = "add/del a flex filter",
 	.tokens = {
-		(void *)&cmd_flex_filter_add_filter,
+		(void *)&cmd_flex_filter_filter,
 		(void *)&cmd_flex_filter_port_id,
+		(void *)&cmd_flex_filter_ops,
 		(void *)&cmd_flex_filter_len,
 		(void *)&cmd_flex_filter_len_value,
 		(void *)&cmd_flex_filter_bytes,
@@ -7467,40 +7446,6 @@ cmdline_parse_inst_t cmd_add_flex_filter = {
 		(void *)&cmd_flex_filter_priority_value,
 		(void *)&cmd_flex_filter_queue,
 		(void *)&cmd_flex_filter_queue_id,
-		(void *)&cmd_flex_filter_index,
-		(void *)&cmd_flex_filter_index_value,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t cmd_flex_filter_remove_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
-				filter, "remove_flex_filter");
-cmdline_parse_inst_t cmd_remove_flex_filter = {
-	.f = cmd_flex_filter_parsed,
-	.data = NULL,
-	.help_str = "remove a flex filter",
-	.tokens = {
-		(void *)&cmd_flex_filter_remove_filter,
-		(void *)&cmd_flex_filter_port_id,
-		(void *)&cmd_flex_filter_index,
-		(void *)&cmd_flex_filter_index_value,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t cmd_flex_filter_get_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
-				filter, "get_flex_filter");
-cmdline_parse_inst_t cmd_get_flex_filter = {
-	.f = cmd_flex_filter_parsed,
-	.data = NULL,
-	.help_str = "get a flex filter",
-	.tokens = {
-		(void *)&cmd_flex_filter_get_filter,
-		(void *)&cmd_flex_filter_port_id,
-		(void *)&cmd_flex_filter_index,
-		(void *)&cmd_flex_filter_index_value,
 		NULL,
 	},
 };
@@ -8788,9 +8733,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_add_5tuple_filter,
 	(cmdline_parse_inst_t *)&cmd_remove_5tuple_filter,
 	(cmdline_parse_inst_t *)&cmd_get_5tuple_filter,
-	(cmdline_parse_inst_t *)&cmd_add_flex_filter,
-	(cmdline_parse_inst_t *)&cmd_remove_flex_filter,
-	(cmdline_parse_inst_t *)&cmd_get_flex_filter,
+	(cmdline_parse_inst_t *)&cmd_flex_filter,
 	(cmdline_parse_inst_t *)&cmd_add_del_ip_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_udp_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_sctp_flow_director,

@@ -1408,74 +1408,38 @@ Example:
 
     syn filter: on, priority: high, queue: 3
 
-add_flex_filter
-~~~~~~~~~~~~~~~
+flex_filter
+~~~~~~~~~~~
 
-Add a Flex filter,
-which recognizes any arbitrary pattern within the first 128 bytes of the packet
+With flex filter, packets can be recognized by any arbitrary pattern within the first 128 bytes of the packet
 and routes packets into one of the receive queues.
 
-add_flex_filter (port_id) len (len_value) bytes (bytes_string) mask (mask_value)
-priority (prio_value) queue (queue_id) index (idx)
+flex_filter (port_id) (add|del) len (len_value) bytes (bytes_value)
+mask (mask_value) priority (prio_value) queue (queue_id)
 
 The available information parameters are:
 
-*   port_id: the port which the Flex filter assigned on.
+*   port_id: the port which the Flex filter is assigned on.
 
-*   len_value: filter length in byte, no greater than 128.
+*   len_value: filter length in bytes, no greater than 128.
 
-*   bytes_string: a sting in format of octal, means the value the flex filter need to match.
+*   bytes_value: a string in hexadecimal, means the value the flex filter needs to match.
 
-*   mask_value: a sting in format of octal, bit 1 means corresponding byte in DWORD participates in the match.
+*   mask_value: a string in hexadecimal, bit 1 means corresponding byte participates in the match.
 
 *   prio_value: the priority of this filter.
 
-*   queue_id: The receive queue associated with this Flex filter.
-
-*   index: the index of this Flex filter
+*   queue_id: the receive queue associated with this Flex filter.
 
 Example:
 
 .. code-block:: console
 
-   testpmd> add_flex_filter 0 len 16 bytes 0x00000000000000000000000008060000 mask 000C priority 3 queue 3 index 0
+   testpmd> flex_filter 0 add len 16 bytes 0x00000000000000000000000008060000
+        mask 000C priority 3 queue 3
 
-Assign a packet whose 13th and 14th bytes are 0x0806 to queue 3.
-
-remove_flex_filter
-~~~~~~~~~~~~~~~~~~
-
-Remove a Flex filter
-
-remove_flex_filter (port_id) index (idx)
-
-get_flex_filter
-~~~~~~~~~~~~~~~
-
-Get and display a Flex filter
-
-get_flex_filter (port_id) index (idx)
-
-Example:
-
-.. code-block:: console
-
-    testpmd> get_flex_filter 0 index 0
-
-    filter[0]:
-
-        length: 16
-
-        dword[]: 0x00000000 00000000 00000000 08060000 00000000 00000000 00000000
-    00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
-    00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
-    00000000 00000000 00000000 00000000 00000000 00000000 00000000
-
-        mask[]:
-    0b0000000000001100000000000000000000000000000000000000000000000000000000
-    0000000000000000000000000000000000000000000000000000000000
-
-        priority: 3   queue: 3
+   testpmd> flex_filter 0 del len 16 bytes 0x00000000000000000000000008060000
+        mask 000C priority 3 queue 3
 
 flow_director_filter
 ~~~~~~~~~~~~~~~~~~~~

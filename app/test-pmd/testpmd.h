@@ -548,7 +548,6 @@ void get_syn_filter(uint8_t port_id);
 void get_ethertype_filter(uint8_t port_id, uint16_t index);
 void get_2tuple_filter(uint8_t port_id, uint16_t index);
 void get_5tuple_filter(uint8_t port_id, uint16_t index);
-void get_flex_filter(uint8_t port_id, uint16_t index);
 int port_id_is_invalid(portid_t port_id);
 int rx_queue_id_is_invalid(queueid_t rxq_id);
 int tx_queue_id_is_invalid(queueid_t txq_id);

@@ -2146,36 +2146,3 @@ get_5tuple_filter(uint8_t port_id, uint16_t index)
 			filter.priority, filter.tcp_flags, rx_queue);
 	}
 }
-void
-get_flex_filter(uint8_t port_id, uint16_t index)
-
-{
-	struct rte_flex_filter filter;
-	int ret = 0;
-	uint16_t rx_queue;
-	int i, j;
-
-	memset(&filter, 0, sizeof(filter));
-	ret = rte_eth_dev_get_flex_filter(port_id, index,
-				&filter, &rx_queue);
-	if (ret < 0) {
-		if (ret == (-ENOENT))
-			printf("filter[%d] is not enabled\n", index);
-		else
-			printf("get flex filter fails(%s)\n", strerror(-ret));
-		return;
-	} else {
-		printf("filter[%d]: ", index);
-		printf("\n    length: %d", filter.len);
-		printf("\n    dword[]: 0x");
-		for (i = 0; i < 32; i++)
-			printf("%08x ", (unsigned)rte_be_to_cpu_32(filter.dwords[i]));
-		printf("\n    mask[]: 0b");
-		for (i = 0; i < 16; i++) {
-			for (j = 0; j < 8; j++)
-				printf("%c", (filter.mask[i] & (1 << j)) ? '1' : '0');
-		}
-		printf("\n    priority: %d    queue: %d\n",
-			filter.priority, rx_queue);
-	}
-}
