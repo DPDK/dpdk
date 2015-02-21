@@ -999,6 +999,7 @@ rte_pipeline_compute_masks(struct rte_pipeline *p, uint64_t pkts_mask)
 {
 	p->action_mask1[RTE_PIPELINE_ACTION_DROP] = 0;
 	p->action_mask1[RTE_PIPELINE_ACTION_PORT] = 0;
+	p->action_mask1[RTE_PIPELINE_ACTION_PORT_META] = 0;
 	p->action_mask1[RTE_PIPELINE_ACTION_TABLE] = 0;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
@@ -1224,6 +1225,7 @@ rte_pipeline_run(struct rte_pipeline *p)
 		pkts_mask = RTE_LEN2MASK(n_pkts, uint64_t);
 		p->action_mask0[RTE_PIPELINE_ACTION_DROP] = 0;
 		p->action_mask0[RTE_PIPELINE_ACTION_PORT] = 0;
+		p->action_mask0[RTE_PIPELINE_ACTION_PORT_META] = 0;
 		p->action_mask0[RTE_PIPELINE_ACTION_TABLE] = 0;
 
 		/* Input port user actions */
@@ -1300,6 +1302,9 @@ rte_pipeline_run(struct rte_pipeline *p)
 				p->action_mask0[RTE_PIPELINE_ACTION_PORT] |=
 					p->action_mask1[
 						RTE_PIPELINE_ACTION_PORT];
+				p->action_mask0[RTE_PIPELINE_ACTION_PORT_META] |=
+					p->action_mask1[
+						RTE_PIPELINE_ACTION_PORT_META];
 				p->action_mask0[RTE_PIPELINE_ACTION_TABLE] |=
 					p->action_mask1[
 						RTE_PIPELINE_ACTION_TABLE];
