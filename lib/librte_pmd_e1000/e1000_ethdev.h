@@ -78,11 +78,16 @@
 #define E1000_MAX_TTQF_FILTERS         8
 #define E1000_2TUPLE_MAX_PRI           7
 
-#define E1000_MAX_FLEXIBLE_FILTERS       8
+#define E1000_MAX_FLEX_FILTERS           8
 #define E1000_MAX_FHFT                   4
 #define E1000_MAX_FHFT_EXT               4
+#define E1000_FHFT_SIZE_IN_DWD           64
 #define E1000_MAX_FLEX_FILTER_PRI        7
 #define E1000_MAX_FLEX_FILTER_LEN        128
+#define E1000_MAX_FLEX_FILTER_DWDS \
+	(E1000_MAX_FLEX_FILTER_LEN / sizeof(uint32_t))
+#define E1000_FLEX_FILTERS_MASK_SIZE \
+	(E1000_MAX_FLEX_FILTER_DWDS / 4)
 #define E1000_FHFT_QUEUEING_LEN          0x0000007F
 #define E1000_FHFT_QUEUEING_QUEUE        0x00000700
 #define E1000_FHFT_QUEUEING_PRIO         0x00070000
@@ -131,6 +136,24 @@ struct e1000_vf_info {
 	uint16_t tx_rate;
 };
 
+TAILQ_HEAD(e1000_flex_filter_list, e1000_flex_filter);
+
+struct e1000_flex_filter_info {
+	uint16_t len;
+	uint32_t dwords[E1000_MAX_FLEX_FILTER_DWDS]; /* flex bytes in dword. */
+	/* if mask bit is 1b, do not compare corresponding byte in dwords. */
+	uint8_t mask[E1000_FLEX_FILTERS_MASK_SIZE];
+	uint8_t priority;
+};
+
+/* Flex filter structure */
+struct e1000_flex_filter {
+	TAILQ_ENTRY(e1000_flex_filter) entries;
+	uint16_t index; /* index of flex filter */
+	struct e1000_flex_filter_info filter_info;
+	uint16_t queue; /* rx queue assigned to */
+};
+
 /*
  * Structure to store filters' info.
  */
@@ -138,6 +161,8 @@ struct e1000_filter_info {
 	uint8_t ethertype_mask; /* Bit mask for every used ethertype filter */
 	/* store used ethertype filters*/
 	uint16_t ethertype_filters[E1000_MAX_ETQF_FILTERS];
+	uint8_t flex_mask;	/* Bit mask for every used flex filter */
+	struct e1000_flex_filter_list flex_list;
 };
 
 /*
