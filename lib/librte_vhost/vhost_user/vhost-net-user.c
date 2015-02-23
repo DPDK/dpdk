@@ -41,6 +41,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include <rte_log.h>
 #include <rte_virtio_net.h>
@@ -51,8 +52,9 @@
 #include "virtio-net-user.h"
 
 #define MAX_VIRTIO_BACKLOG 128
-static void vserver_new_vq_conn(int fd, void *data);
-static void vserver_message_handler(int fd, void *dat);
+
+static void vserver_new_vq_conn(int fd, void *data, int *remove);
+static void vserver_message_handler(int fd, void *dat, int *remove);
 struct vhost_net_device_ops const *ops;
 
 struct connfd_ctx {
@@ -61,10 +63,18 @@ struct connfd_ctx {
 };
 
 #define MAX_VHOST_SERVER 1024
-static struct {
+struct _vhost_server {
 	struct vhost_server *server[MAX_VHOST_SERVER];
-	struct fdset fdset;	/**< The fd list this vhost server manages. */
-} g_vhost_server;
+	struct fdset fdset;
+};
+
+static struct _vhost_server g_vhost_server = {
+	.fdset = {
+		.fd = { [0 ... MAX_FDS - 1] = {-1, NULL, NULL, NULL, 0} },
+		.fd_mutex = PTHREAD_MUTEX_INITIALIZER,
+		.num = 0
+	},
+};
 
 static int vserver_idx;
 
@@ -261,7 +271,7 @@ send_vhost_message(int sockfd, struct VhostUserMsg *msg)
 
 /* call back when there is new virtio connection.  */
 static void
-vserver_new_vq_conn(int fd, void *dat)
+vserver_new_vq_conn(int fd, void *dat, __rte_unused int *remove)
 {
 	struct vhost_server *vserver = (struct vhost_server *)dat;
 	int conn_fd;
@@ -304,7 +314,7 @@ vserver_new_vq_conn(int fd, void *dat)
 
 /* callback when there is message on the connfd */
 static void
-vserver_message_handler(int connfd, void *dat)
+vserver_message_handler(int connfd, void *dat, int *remove)
 {
 	struct vhost_device_ctx ctx;
 	struct connfd_ctx *cfd_ctx = (struct connfd_ctx *)dat;
@@ -319,7 +329,7 @@ vserver_message_handler(int connfd, void *dat)
 			"vhost read message failed\n");
 
 		close(connfd);
-		fdset_del(&g_vhost_server.fdset, connfd);
+		*remove = 1;
 		free(cfd_ctx);
 		user_destroy_device(ctx);
 		ops->destroy_device(ctx);
@@ -330,7 +340,7 @@ vserver_message_handler(int connfd, void *dat)
 			"vhost peer closed\n");
 
 		close(connfd);
-		fdset_del(&g_vhost_server.fdset, connfd);
+		*remove = 1;
 		free(cfd_ctx);
 		user_destroy_device(ctx);
 		ops->destroy_device(ctx);
@@ -342,7 +352,7 @@ vserver_message_handler(int connfd, void *dat)
 			"vhost read incorrect message\n");
 
 		close(connfd);
-		fdset_del(&g_vhost_server.fdset, connfd);
+		*remove = 1;
 		free(cfd_ctx);
 		user_destroy_device(ctx);
 		ops->destroy_device(ctx);
@@ -426,10 +436,8 @@ rte_vhost_driver_register(const char *path)
 {
 	struct vhost_server *vserver;
 
-	if (vserver_idx == 0) {
-		fdset_init(&g_vhost_server.fdset);
+	if (vserver_idx == 0)
 		ops = get_virtio_net_callbacks();
-	}
 	if (vserver_idx == MAX_VHOST_SERVER)
 		return -1;
 

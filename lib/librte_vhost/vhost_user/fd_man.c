@@ -40,6 +40,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <rte_common.h>
 #include <rte_log.h>
 
 #include "fd_man.h"
@@ -145,6 +146,8 @@ fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
 	if (pfdset == NULL || fd == -1)
 		return -1;
 
+	pthread_mutex_lock(&pfdset->fd_mutex);
+
 	/* Find a free slot in the list. */
 	i = fdset_find_free_slot(pfdset);
 	if (i == -1)
@@ -152,6 +155,8 @@ fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
 
 	fdset_add_fd(pfdset, i, fd, rcb, wcb, dat);
 	pfdset->num++;
+
+	pthread_mutex_unlock(&pfdset->fd_mutex);
 
 	return 0;
 }
@@ -164,17 +169,36 @@ fdset_del(struct fdset *pfdset, int fd)
 {
 	int i;
 
+	if (pfdset == NULL || fd == -1)
+		return;
+
+again:
+	pthread_mutex_lock(&pfdset->fd_mutex);
+
 	i = fdset_find_fd(pfdset, fd);
 	if (i != -1 && fd != -1) {
+		/* busy indicates r/wcb is executing! */
+		if (pfdset->fd[i].busy == 1) {
+			pthread_mutex_unlock(&pfdset->fd_mutex);
+			goto again;
+		}
+
 		pfdset->fd[i].fd = -1;
 		pfdset->fd[i].rcb = pfdset->fd[i].wcb = NULL;
 		pfdset->num--;
 	}
+
+	pthread_mutex_unlock(&pfdset->fd_mutex);
 }
 
 /**
  * This functions runs in infinite blocking loop until there is no fd in
  * pfdset. It calls corresponding r/w handler if there is event on the fd.
+ *
+ * Before the callback is called, we set the flag to busy status; If other
+ * thread(now rte_vhost_driver_unregister) calls fdset_del concurrently, it
+ * will wait until the flag is reset to zero(which indicates the callback is
+ * finished), then it could free the context after fdset_del.
  */
 void
 fdset_event_dispatch(struct fdset *pfdset)
@@ -183,6 +207,10 @@ fdset_event_dispatch(struct fdset *pfdset)
 	int i, maxfds;
 	struct fdentry *pfdentry;
 	int num = MAX_FDS;
+	fd_cb rcb, wcb;
+	void *dat;
+	int fd;
+	int remove1, remove2;
 
 	if (pfdset == NULL)
 		return;
@@ -190,18 +218,41 @@ fdset_event_dispatch(struct fdset *pfdset)
 	while (1) {
 		FD_ZERO(&rfds);
 		FD_ZERO(&wfds);
+		pthread_mutex_lock(&pfdset->fd_mutex);
+
 		maxfds = fdset_fill(&rfds, &wfds, pfdset);
-		if (maxfds == -1)
-			return;
+		if (maxfds == -1) {
+			pthread_mutex_unlock(&pfdset->fd_mutex);
+			sleep(1);
+			continue;
+		}
+
+		pthread_mutex_unlock(&pfdset->fd_mutex);
 
 		select(maxfds + 1, &rfds, &wfds, NULL, NULL);
 
 		for (i = 0; i < num; i++) {
+			remove1 = remove2 = 0;
+			pthread_mutex_lock(&pfdset->fd_mutex);
 			pfdentry = &pfdset->fd[i];
-			if (pfdentry->fd >= 0 && FD_ISSET(pfdentry->fd, &rfds) && pfdentry->rcb)
-				pfdentry->rcb(pfdentry->fd, pfdentry->dat);
-			if (pfdentry->fd >= 0 && FD_ISSET(pfdentry->fd, &wfds) && pfdentry->wcb)
-				pfdentry->wcb(pfdentry->fd, pfdentry->dat);
+			fd = pfdentry->fd;
+			rcb = pfdentry->rcb;
+			wcb = pfdentry->wcb;
+			dat = pfdentry->dat;
+			pfdentry->busy = 1;
+			pthread_mutex_unlock(&pfdset->fd_mutex);
+			if (fd >= 0 && FD_ISSET(fd, &rfds) && rcb)
+				rcb(fd, dat, &remove1);
+			if (fd >= 0 && FD_ISSET(fd, &wfds) && wcb)
+				wcb(fd, dat, &remove2);
+			pfdentry->busy = 0;
+			/*
+			 * fdset_del needs to check busy flag.
+			 * We don't allow fdset_del to be called in callback
+			 * directly.
+			 */
+			if (remove1 || remove2)
+				fdset_del(pfdset, fd);
 		}
 	}
 }
