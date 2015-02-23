@@ -336,6 +336,13 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	}
 }
 
+static struct eth_driver rte_null_pmd = {
+	.pci_drv = {
+		.name = "rte_null_pmd",
+		.drv_flags = RTE_PCI_DRV_DETACHABLE,
+	},
+};
+
 static void
 eth_queue_release(void *q)
 {
@@ -429,10 +436,12 @@ eth_dev_null_create(const char *name,
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &eth_addr;
+	strncpy(data->name, eth_dev->data->name, strlen(eth_dev->data->name));
 
 	eth_dev->data = data;
 	eth_dev->dev_ops = &ops;
 	eth_dev->pci_dev = pci_dev;
+	eth_dev->driver = &rte_null_pmd;
 
 	/* finally assign rx and tx ops */
 	if (packet_copy) {
@@ -536,10 +545,36 @@ rte_pmd_null_devinit(const char *name, const char *params)
 	return eth_dev_null_create(name, numa_node, packet_size, packet_copy);
 }
 
+static int
+rte_pmd_null_devuninit(const char *name)
+{
+	struct rte_eth_dev *eth_dev = NULL;
+
+	if (name == NULL)
+		return -EINVAL;
+
+	RTE_LOG(INFO, PMD, "Closing null ethdev on numa socket %u\n",
+			rte_socket_id());
+
+	/* reserve an ethdev entry */
+	eth_dev = rte_eth_dev_allocated(name);
+	if (eth_dev == NULL)
+		return -1;
+
+	rte_free(eth_dev->data->dev_private);
+	rte_free(eth_dev->data);
+	rte_free(eth_dev->pci_dev);
+
+	rte_eth_dev_release_port(eth_dev);
+
+	return 0;
+}
+
 static struct rte_driver pmd_null_drv = {
 	.name = "eth_null",
 	.type = PMD_VDEV,
 	.init = rte_pmd_null_devinit,
+	.uninit = rte_pmd_null_devuninit,
 };
 
 PMD_REGISTER_DRIVER(pmd_null_drv);
