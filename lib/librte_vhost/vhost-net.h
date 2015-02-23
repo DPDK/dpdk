@@ -93,6 +93,9 @@ struct vhost_net_device_ops {
 	int (*new_device)(struct vhost_device_ctx);
 	void (*destroy_device)(struct vhost_device_ctx);
 
+	void (*set_ifname)(struct vhost_device_ctx,
+		const char *if_name, unsigned int if_len);
+
 	int (*get_features)(struct vhost_device_ctx, uint64_t *);
 	int (*set_features)(struct vhost_device_ctx, uint64_t *);
 

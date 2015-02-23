@@ -38,12 +38,8 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
-
 
 #include <sys/socket.h>
-#include <linux/if_tun.h>
-#include <linux/if.h>
 
 #include <rte_ethdev.h>
 #include <rte_log.h>
@@ -51,7 +47,6 @@
 #include <rte_memory.h>
 #include <rte_virtio_net.h>
 
-#include "vhost_cuse/eventfd_copy.h"
 #include "vhost-net.h"
 #include "virtio-net.h"
 
@@ -357,6 +352,24 @@ destroy_device(struct vhost_device_ctx ctx)
 	}
 }
 
+static void
+set_ifname(struct vhost_device_ctx ctx,
+	const char *if_name, unsigned int if_len)
+{
+	struct virtio_net *dev;
+	unsigned int len;
+
+	dev = get_device(ctx);
+	if (dev == NULL)
+		return;
+
+	len = if_len > sizeof(dev->ifname) ?
+		sizeof(dev->ifname) : if_len;
+
+	strncpy(dev->ifname, if_name, len);
+}
+
+
 /*
  * Called from CUSE IOCTL: VHOST_SET_OWNER
  * This function just returns success at the moment unless
@@ -617,43 +630,6 @@ set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 }
 
 /*
- * Function to get the tap device name from the provided file descriptor and
- * save it in the device structure.
- */
-static int
-get_ifname(struct virtio_net *dev, int tap_fd, int pid)
-{
-	int fd_tap;
-	struct ifreq ifr;
-	uint32_t size, ifr_size;
-	int ret;
-
-    fd_tap = eventfd_copy(tap_fd, pid);
-    if (fd_tap < 0)
-        return -1;
-
-	ret = ioctl(fd_tap, TUNGETIFF, &ifr);
-
-	if (close(fd_tap) < 0)
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") fd close failed\n",
-			dev->device_fh);
-
-	if (ret >= 0) {
-		ifr_size = strnlen(ifr.ifr_name, sizeof(ifr.ifr_name));
-		size = ifr_size > sizeof(dev->ifname) ?
-				sizeof(dev->ifname) : ifr_size;
-
-		strncpy(dev->ifname, ifr.ifr_name, size);
-	} else
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") TUNGETIFF ioctl failed\n",
-			dev->device_fh);
-
-	return 0;
-}
-
-/*
  * Called from CUSE IOCTL: VHOST_NET_SET_BACKEND
  * To complete device initialisation when the virtio driver is loaded,
  * we are provided with a valid fd for a tap device (not used by us).
@@ -681,7 +657,6 @@ set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	if (!(dev->flags & VIRTIO_DEV_RUNNING)) {
 		if (((int)dev->virtqueue[VIRTIO_TXQ]->backend != VIRTIO_DEV_STOPPED) &&
 			((int)dev->virtqueue[VIRTIO_RXQ]->backend != VIRTIO_DEV_STOPPED)) {
-			get_ifname(dev, file->fd, ctx.pid);
 			return notify_ops->new_device(dev);
 		}
 	/* Otherwise we remove it. */
@@ -698,6 +673,8 @@ set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 static const struct vhost_net_device_ops vhost_device_ops = {
 	.new_device = new_device,
 	.destroy_device = destroy_device,
+
+	.set_ifname = set_ifname,
 
 	.get_features = get_features,
 	.set_features = set_features,

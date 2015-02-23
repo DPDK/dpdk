@@ -43,6 +43,10 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <linux/if_tun.h>
+#include <linux/if.h>
 #include <errno.h>
 
 #include <rte_log.h>
@@ -51,6 +55,7 @@
 #include "vhost-net.h"
 #include "virtio-net-cdev.h"
 #include "virtio-net.h"
+#include "eventfd_copy.h"
 
 /* Line size for reading maps file. */
 static const uint32_t BUFSIZE = PATH_MAX;
@@ -367,4 +372,52 @@ cuse_set_mem_table(struct vhost_device_ctx ctx,
 	dev->mem->nregions = valid_regions;
 
 	return 0;
+}
+
+/*
+ * Function to get the tap device name from the provided file descriptor and
+ * save it in the device structure.
+ */
+static int
+get_ifname(struct vhost_device_ctx ctx, struct virtio_net *dev, int tap_fd, int pid)
+{
+	int fd_tap;
+	struct ifreq ifr;
+	uint32_t ifr_size;
+	int ret;
+
+	fd_tap = eventfd_copy(tap_fd, pid);
+	if (fd_tap < 0)
+		return -1;
+
+	ret = ioctl(fd_tap, TUNGETIFF, &ifr);
+
+	if (close(fd_tap) < 0)
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"(%"PRIu64") fd close failed\n",
+			dev->device_fh);
+
+	if (ret >= 0) {
+		ifr_size = strnlen(ifr.ifr_name, sizeof(ifr.ifr_name));
+		ops->set_ifname(ctx, ifr.ifr_name, ifr_size);
+	} else
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"(%"PRIu64") TUNGETIFF ioctl failed\n",
+			dev->device_fh);
+
+	return 0;
+}
+
+int cuse_set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
+{
+	struct virtio_net *dev;
+
+	dev = get_device(ctx);
+	if (dev == NULL)
+		return -1;
+
+	if (!(dev->flags & VIRTIO_DEV_RUNNING) && file->fd != VIRTIO_DEV_STOPPED)
+		get_ifname(ctx, dev, file->fd, ctx.pid);
+
+	return ops->set_backend(ctx, file);
 }

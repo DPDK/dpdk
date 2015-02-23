@@ -196,7 +196,13 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 	case VHOST_NET_SET_BACKEND:
 		LOG_DEBUG(VHOST_CONFIG,
 			"(%"PRIu64") IOCTL: VHOST_NET_SET_BACKEND\n", ctx.fh);
-		VHOST_IOCTL_R(struct vhost_vring_file, file, ops->set_backend);
+		if (!in_buf) {
+			VHOST_IOCTL_RETRY(sizeof(file), 0);
+			break;
+		}
+		file = *(const struct vhost_vring_file *)in_buf;
+		result = cuse_set_backend(ctx, &file);
+		fuse_reply_ioctl(req, result, NULL, 0);
 		break;
 
 	case VHOST_GET_FEATURES:

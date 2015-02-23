@@ -268,6 +268,7 @@ vserver_new_vq_conn(int fd, void *dat)
 	struct connfd_ctx *ctx;
 	int fh;
 	struct vhost_device_ctx vdev_ctx = { 0 };
+	unsigned int size;
 
 	conn_fd = accept(fd, NULL, NULL);
 	RTE_LOG(INFO, VHOST_CONFIG,
@@ -287,6 +288,12 @@ vserver_new_vq_conn(int fd, void *dat)
 		close(conn_fd);
 		return;
 	}
+
+	vdev_ctx.fh = fh;
+	size = strnlen(vserver->path, PATH_MAX);
+	ops->set_ifname(vdev_ctx, vserver->path,
+		size);
+
 	RTE_LOG(INFO, VHOST_CONFIG, "new device, handle is %d\n", fh);
 
 	ctx->vserver = vserver;

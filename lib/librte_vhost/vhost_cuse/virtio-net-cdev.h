@@ -42,4 +42,7 @@ int
 cuse_set_mem_table(struct vhost_device_ctx ctx,
 	const struct vhost_memory *mem_regions_addr, uint32_t nregions);
 
+int
+cuse_set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *);
+
 #endif
