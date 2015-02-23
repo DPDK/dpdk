@@ -3810,19 +3810,6 @@ convert_protocol_type(uint8_t protocol_value)
 		return IXGBE_FILTER_PROTOCOL_NONE;
 }
 
-static inline uint8_t
-revert_protocol_type(enum ixgbe_5tuple_protocol protocol)
-{
-	if (protocol == IXGBE_FILTER_PROTOCOL_TCP)
-		return IPPROTO_TCP;
-	else if (protocol == IXGBE_FILTER_PROTOCOL_UDP)
-		return IPPROTO_UDP;
-	else if (protocol == IXGBE_FILTER_PROTOCOL_SCTP)
-		return IPPROTO_SCTP;
-	else
-		return 0;
-}
-
 /*
  * add a 5tuple filter
  *
