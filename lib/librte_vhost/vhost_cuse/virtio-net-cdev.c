@@ -47,7 +47,10 @@
 
 #include <rte_log.h>
 
+#include "rte_virtio_net.h"
 #include "vhost-net.h"
+#include "virtio-net-cdev.h"
+#include "virtio-net.h"
 
 /* Line size for reading maps file. */
 static const uint32_t BUFSIZE = PATH_MAX;
@@ -250,6 +253,118 @@ host_memory_map(pid_t pid, uint64_t addr,
 		"Mem File: %s->%s - Size: %llu - VA: %p\n",
 		memfile, resolved_path,
 		(unsigned long long)*mapped_size, map);
+
+	return 0;
+}
+
+int
+cuse_set_mem_table(struct vhost_device_ctx ctx,
+	const struct vhost_memory *mem_regions_addr, uint32_t nregions)
+{
+	uint64_t size = offsetof(struct vhost_memory, regions);
+	uint32_t idx, valid_regions;
+	struct virtio_memory_regions *pregion;
+	struct vhost_memory_region *mem_regions = (void *)(uintptr_t)
+		((uint64_t)(uintptr_t)mem_regions_addr + size);
+	uint64_t base_address = 0, mapped_address, mapped_size;
+	struct virtio_net *dev;
+
+	dev = get_device(ctx);
+	if (dev == NULL)
+		return -1;
+
+	if (dev->mem && dev->mem->mapped_address) {
+		munmap((void *)(uintptr_t)dev->mem->mapped_address,
+			(size_t)dev->mem->mapped_size);
+		free(dev->mem);
+		dev->mem = NULL;
+	}
+
+	dev->mem = calloc(1, sizeof(struct virtio_memory) +
+		sizeof(struct virtio_memory_regions) * nregions);
+	if (dev->mem == NULL) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"(%"PRIu64") Failed to allocate memory for dev->mem\n",
+			dev->device_fh);
+		return -1;
+	}
+
+	pregion = &dev->mem->regions[0];
+
+	for (idx = 0; idx < nregions; idx++) {
+		pregion[idx].guest_phys_address =
+			mem_regions[idx].guest_phys_addr;
+		pregion[idx].guest_phys_address_end =
+			pregion[idx].guest_phys_address +
+			mem_regions[idx].memory_size;
+		pregion[idx].memory_size =
+			mem_regions[idx].memory_size;
+		pregion[idx].userspace_address =
+			mem_regions[idx].userspace_addr;
+
+		LOG_DEBUG(VHOST_CONFIG,
+			"REGION: %u - GPA: %p - QVA: %p - SIZE (%"PRIu64")\n",
+			idx,
+			(void *)(uintptr_t)pregion[idx].guest_phys_address,
+			(void *)(uintptr_t)pregion[idx].userspace_address,
+			pregion[idx].memory_size);
+
+		/*set the base address mapping*/
+		if (pregion[idx].guest_phys_address == 0x0) {
+			base_address =
+				pregion[idx].userspace_address;
+			/* Map VM memory file */
+			if (host_memory_map(ctx.pid, base_address,
+				&mapped_address, &mapped_size) != 0) {
+				free(dev->mem);
+				dev->mem = NULL;
+				return -1;
+			}
+			dev->mem->mapped_address = mapped_address;
+			dev->mem->base_address = base_address;
+			dev->mem->mapped_size = mapped_size;
+		}
+	}
+
+	/* Check that we have a valid base address. */
+	if (base_address == 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Failed to find base address of qemu memory file.\n");
+		free(dev->mem);
+		dev->mem = NULL;
+		return -1;
+	}
+
+	valid_regions = nregions;
+	for (idx = 0; idx < nregions; idx++) {
+		if ((pregion[idx].userspace_address < base_address) ||
+			(pregion[idx].userspace_address >
+			(base_address + mapped_size)))
+			valid_regions--;
+	}
+
+
+	if (valid_regions != nregions) {
+		valid_regions = 0;
+		for (idx = nregions; 0 != idx--; ) {
+			if ((pregion[idx].userspace_address < base_address) ||
+			(pregion[idx].userspace_address >
+			(base_address + mapped_size))) {
+				memmove(&pregion[idx], &pregion[idx + 1],
+					sizeof(struct virtio_memory_regions) *
+					valid_regions);
+			} else
+				valid_regions++;
+		}
+	}
+
+	for (idx = 0; idx < valid_regions; idx++) {
+		pregion[idx].address_offset =
+			mapped_address - base_address +
+			pregion[idx].userspace_address -
+			pregion[idx].guest_phys_address;
+	}
+	dev->mem->nregions = valid_regions;
 
 	return 0;
 }

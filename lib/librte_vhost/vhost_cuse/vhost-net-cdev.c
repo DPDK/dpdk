@@ -44,6 +44,7 @@
 #include <rte_string_fns.h>
 #include <rte_virtio_net.h>
 
+#include "virtio-net-cdev.h"
 #include "vhost-net.h"
 #include "eventfd_copy.h"
 
@@ -57,7 +58,7 @@ static const char cuse_device_name[] = "/dev/cuse";
 static const char default_cdev[] = "vhost-net";
 
 static struct fuse_session *session;
-static struct vhost_net_device_ops const *ops;
+struct vhost_net_device_ops const *ops;
 
 /*
  * Returns vhost_device_ctx from given fuse_req_t. The index is populated later
@@ -247,8 +248,8 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 			break;
 
 		default:
-			result = ops->set_mem_table(ctx,
-					in_buf, mem_temp.nregions);
+			result = cuse_set_mem_table(ctx, in_buf,
+				mem_temp.nregions);
 			if (result)
 				fuse_reply_err(req, EINVAL);
 			else

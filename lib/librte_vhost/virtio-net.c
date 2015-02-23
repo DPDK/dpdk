@@ -31,8 +31,6 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <dirent.h>
-#include <fuse/cuse_lowlevel.h>
 #include <linux/vhost.h>
 #include <linux/virtio_net.h>
 #include <stddef.h>
@@ -55,6 +53,7 @@
 
 #include "vhost_cuse/eventfd_copy.h"
 #include "vhost-net.h"
+#include "virtio-net.h"
 
 /*
  * Device linked list structure for configuration.
@@ -65,7 +64,7 @@ struct virtio_net_config_ll {
 };
 
 /* device ops to add/remove device to/from data core. */
-static struct virtio_net_device_ops const *notify_ops;
+struct virtio_net_device_ops const *notify_ops;
 /* root address of the linked list of managed virtio devices */
 static struct virtio_net_config_ll *ll_root;
 
@@ -75,26 +74,6 @@ static struct virtio_net_config_ll *ll_root;
 				(1ULL << VIRTIO_NET_F_CTRL_RX))
 static uint64_t VHOST_FEATURES = VHOST_SUPPORTED_FEATURES;
 
-/* Line size for reading maps file. */
-static const uint32_t BUFSIZE = PATH_MAX;
-
-/* Size of prot char array in procmap. */
-#define PROT_SZ 5
-
-/* Number of elements in procmap struct. */
-#define PROCMAP_SZ 8
-
-/* Structure containing information gathered from maps file. */
-struct procmap {
-	uint64_t va_start;	/* Start virtual address in file. */
-	uint64_t len;		/* Size of file. */
-	uint64_t pgoff;		/* Not used. */
-	uint32_t maj;		/* Not used. */
-	uint32_t min;		/* Not used. */
-	uint32_t ino;		/* Not used. */
-	char prot[PROT_SZ];	/* Not used. */
-	char fname[PATH_MAX];	/* File name. */
-};
 
 /*
  * Converts QEMU virtual address to Vhost virtual address. This function is
@@ -121,191 +100,6 @@ qva_to_vva(struct virtio_net *dev, uint64_t qemu_va)
 	return vhost_va;
 }
 
-/*
- * Locate the file containing QEMU's memory space and
- * map it to our address space.
- */
-static int
-host_memory_map(struct virtio_net *dev, struct virtio_memory *mem,
-	pid_t pid, uint64_t addr)
-{
-	struct dirent *dptr = NULL;
-	struct procmap procmap;
-	DIR *dp = NULL;
-	int fd;
-	int i;
-	char memfile[PATH_MAX];
-	char mapfile[PATH_MAX];
-	char procdir[PATH_MAX];
-	char resolved_path[PATH_MAX];
-	char *path = NULL;
-	FILE *fmap;
-	void *map;
-	uint8_t found = 0;
-	char line[BUFSIZE];
-	char dlm[] = "-   :   ";
-	char *str, *sp, *in[PROCMAP_SZ];
-	char *end = NULL;
-
-	/* Path where mem files are located. */
-	snprintf(procdir, PATH_MAX, "/proc/%u/fd/", pid);
-	/* Maps file used to locate mem file. */
-	snprintf(mapfile, PATH_MAX, "/proc/%u/maps", pid);
-
-	fmap = fopen(mapfile, "r");
-	if (fmap == NULL) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to open maps file for pid %d\n",
-			dev->device_fh, pid);
-		return -1;
-	}
-
-	/* Read through maps file until we find out base_address. */
-	while (fgets(line, BUFSIZE, fmap) != 0) {
-		str = line;
-		errno = 0;
-		/* Split line into fields. */
-		for (i = 0; i < PROCMAP_SZ; i++) {
-			in[i] = strtok_r(str, &dlm[i], &sp);
-			if ((in[i] == NULL) || (errno != 0)) {
-				fclose(fmap);
-				return -1;
-			}
-			str = NULL;
-		}
-
-		/* Convert/Copy each field as needed. */
-		procmap.va_start = strtoull(in[0], &end, 16);
-		if ((in[0] == '\0') || (end == NULL) || (*end != '\0') ||
-			(errno != 0)) {
-			fclose(fmap);
-			return -1;
-		}
-
-		procmap.len = strtoull(in[1], &end, 16);
-		if ((in[1] == '\0') || (end == NULL) || (*end != '\0') ||
-			(errno != 0)) {
-			fclose(fmap);
-			return -1;
-		}
-
-		procmap.pgoff = strtoull(in[3], &end, 16);
-		if ((in[3] == '\0') || (end == NULL) || (*end != '\0') ||
-			(errno != 0)) {
-			fclose(fmap);
-			return -1;
-		}
-
-		procmap.maj = strtoul(in[4], &end, 16);
-		if ((in[4] == '\0') || (end == NULL) || (*end != '\0') ||
-			(errno != 0)) {
-			fclose(fmap);
-			return -1;
-		}
-
-		procmap.min = strtoul(in[5], &end, 16);
-		if ((in[5] == '\0') || (end == NULL) || (*end != '\0') ||
-			(errno != 0)) {
-			fclose(fmap);
-			return -1;
-		}
-
-		procmap.ino = strtoul(in[6], &end, 16);
-		if ((in[6] == '\0') || (end == NULL) || (*end != '\0') ||
-			(errno != 0)) {
-			fclose(fmap);
-			return -1;
-		}
-
-		memcpy(&procmap.prot, in[2], PROT_SZ);
-		memcpy(&procmap.fname, in[7], PATH_MAX);
-
-		if (procmap.va_start == addr) {
-			procmap.len = procmap.len - procmap.va_start;
-			found = 1;
-			break;
-		}
-	}
-	fclose(fmap);
-
-	if (!found) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to find memory file in pid %d maps file\n",
-			dev->device_fh, pid);
-		return -1;
-	}
-
-	/* Find the guest memory file among the process fds. */
-	dp = opendir(procdir);
-	if (dp == NULL) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Cannot open pid %d process directory\n",
-			dev->device_fh, pid);
-		return -1;
-	}
-
-	found = 0;
-
-	/* Read the fd directory contents. */
-	while (NULL != (dptr = readdir(dp))) {
-		snprintf(memfile, PATH_MAX, "/proc/%u/fd/%s",
-				pid, dptr->d_name);
-		path = realpath(memfile, resolved_path);
-		if ((path == NULL) && (strlen(resolved_path) == 0)) {
-			RTE_LOG(ERR, VHOST_CONFIG,
-				"(%"PRIu64") Failed to resolve fd directory\n",
-				dev->device_fh);
-			closedir(dp);
-			return -1;
-		}
-		if (strncmp(resolved_path, procmap.fname,
-			strnlen(procmap.fname, PATH_MAX)) == 0) {
-			found = 1;
-			break;
-		}
-	}
-
-	closedir(dp);
-
-	if (found == 0) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to find memory file for pid %d\n",
-			dev->device_fh, pid);
-		return -1;
-	}
-	/* Open the shared memory file and map the memory into this process. */
-	fd = open(memfile, O_RDWR);
-
-	if (fd == -1) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to open %s for pid %d\n",
-			dev->device_fh, memfile, pid);
-		return -1;
-	}
-
-	map = mmap(0, (size_t)procmap.len, PROT_READ|PROT_WRITE,
-		MAP_POPULATE|MAP_SHARED, fd, 0);
-	close(fd);
-
-	if (map == MAP_FAILED) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Error mapping the file %s for pid %d\n",
-			dev->device_fh, memfile, pid);
-		return -1;
-	}
-
-	/* Store the memory address and size in the device data structure */
-	mem->mapped_address = (uint64_t)(uintptr_t)map;
-	mem->mapped_size = procmap.len;
-
-	LOG_DEBUG(VHOST_CONFIG,
-		"(%"PRIu64") Mem File: %s->%s - Size: %llu - VA: %p\n",
-		dev->device_fh,
-		memfile, resolved_path,
-		(unsigned long long)mem->mapped_size, map);
-
-	return 0;
-}
 
 /*
  * Retrieves an entry from the devices configuration linked list.
@@ -329,7 +123,7 @@ get_config_ll_entry(struct vhost_device_ctx ctx)
  * Searches the configuration core linked list and
  * retrieves the device if it exists.
  */
-static struct virtio_net *
+struct virtio_net *
 get_device(struct vhost_device_ctx ctx)
 {
 	struct virtio_net_config_ll *ll_dev;
@@ -647,145 +441,6 @@ set_features(struct vhost_device_ctx ctx, uint64_t *pu)
 	return 0;
 }
 
-
-/*
- * Called from CUSE IOCTL: VHOST_SET_MEM_TABLE
- * This function creates and populates the memory structure for the device.
- * This includes storing offsets used to translate buffer addresses.
- */
-static int
-set_mem_table(struct vhost_device_ctx ctx, const void *mem_regions_addr,
-	uint32_t nregions)
-{
-	struct virtio_net *dev;
-	struct vhost_memory_region *mem_regions;
-	struct virtio_memory *mem;
-	uint64_t size = offsetof(struct vhost_memory, regions);
-	uint32_t regionidx, valid_regions;
-
-	dev = get_device(ctx);
-	if (dev == NULL)
-		return -1;
-
-	if (dev->mem) {
-		munmap((void *)(uintptr_t)dev->mem->mapped_address,
-			(size_t)dev->mem->mapped_size);
-		free(dev->mem);
-	}
-
-	/* Malloc the memory structure depending on the number of regions. */
-	mem = calloc(1, sizeof(struct virtio_memory) +
-		(sizeof(struct virtio_memory_regions) * nregions));
-	if (mem == NULL) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to allocate memory for dev->mem.\n",
-			dev->device_fh);
-		return -1;
-	}
-
-	mem->nregions = nregions;
-
-	mem_regions = (void *)(uintptr_t)
-			((uint64_t)(uintptr_t)mem_regions_addr + size);
-
-	for (regionidx = 0; regionidx < mem->nregions; regionidx++) {
-		/* Populate the region structure for each region. */
-		mem->regions[regionidx].guest_phys_address =
-			mem_regions[regionidx].guest_phys_addr;
-		mem->regions[regionidx].guest_phys_address_end =
-			mem->regions[regionidx].guest_phys_address +
-			mem_regions[regionidx].memory_size;
-		mem->regions[regionidx].memory_size =
-			mem_regions[regionidx].memory_size;
-		mem->regions[regionidx].userspace_address =
-			mem_regions[regionidx].userspace_addr;
-
-		LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") REGION: %u - GPA: %p - QEMU VA: %p - SIZE (%"PRIu64")\n", dev->device_fh,
-			regionidx,
-			(void *)(uintptr_t)mem->regions[regionidx].guest_phys_address,
-			(void *)(uintptr_t)mem->regions[regionidx].userspace_address,
-			mem->regions[regionidx].memory_size);
-
-		/*set the base address mapping*/
-		if (mem->regions[regionidx].guest_phys_address == 0x0) {
-			mem->base_address =
-				mem->regions[regionidx].userspace_address;
-			/* Map VM memory file */
-			if (host_memory_map(dev, mem, ctx.pid,
-				mem->base_address) != 0) {
-				free(mem);
-				return -1;
-			}
-		}
-	}
-
-	/* Check that we have a valid base address. */
-	if (mem->base_address == 0) {
-		RTE_LOG(ERR, VHOST_CONFIG, "(%"PRIu64") Failed to find base address of qemu memory file.\n", dev->device_fh);
-		free(mem);
-		return -1;
-	}
-
-	/*
-	 * Check if all of our regions have valid mappings.
-	 * Usually one does not exist in the QEMU memory file.
-	 */
-	valid_regions = mem->nregions;
-	for (regionidx = 0; regionidx < mem->nregions; regionidx++) {
-		if ((mem->regions[regionidx].userspace_address <
-			mem->base_address) ||
-			(mem->regions[regionidx].userspace_address >
-			(mem->base_address + mem->mapped_size)))
-				valid_regions--;
-	}
-
-	/*
-	 * If a region does not have a valid mapping,
-	 * we rebuild our memory struct to contain only valid entries.
-	 */
-	if (valid_regions != mem->nregions) {
-		LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") Not all memory regions exist in the QEMU mem file. Re-populating mem structure\n",
-			dev->device_fh);
-
-		/*
-		 * Re-populate the memory structure with only valid regions.
-		 * Invalid regions are over-written with memmove.
-		 */
-		valid_regions = 0;
-
-		for (regionidx = mem->nregions; 0 != regionidx--;) {
-			if ((mem->regions[regionidx].userspace_address <
-				mem->base_address) ||
-				(mem->regions[regionidx].userspace_address >
-				(mem->base_address + mem->mapped_size))) {
-				memmove(&mem->regions[regionidx],
-					&mem->regions[regionidx + 1],
-					sizeof(struct virtio_memory_regions) *
-						valid_regions);
-			} else {
-				valid_regions++;
-			}
-		}
-	}
-	mem->nregions = valid_regions;
-	dev->mem = mem;
-
-	/*
-	 * Calculate the address offset for each region.
-	 * This offset is used to identify the vhost virtual address
-	 * corresponding to a QEMU guest physical address.
-	 */
-	for (regionidx = 0; regionidx < dev->mem->nregions; regionidx++) {
-		dev->mem->regions[regionidx].address_offset =
-			dev->mem->regions[regionidx].userspace_address -
-				dev->mem->base_address +
-				dev->mem->mapped_address -
-				dev->mem->regions[regionidx].guest_phys_address;
-
-	}
-	return 0;
-}
-
 /*
  * Called from CUSE IOCTL: VHOST_SET_VRING_NUM
  * The virtio device sends us the size of the descriptor ring.
@@ -1039,8 +694,6 @@ static const struct vhost_net_device_ops vhost_device_ops = {
 
 	.get_features = get_features,
 	.set_features = set_features,
-
-	.set_mem_table = set_mem_table,
 
 	.set_vring_num = set_vring_num,
 	.set_vring_addr = set_vring_addr,

@@ -41,6 +41,8 @@
 
 #include <rte_log.h>
 
+#define VHOST_MEMORY_MAX_NREGIONS 8
+
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER1
@@ -91,8 +93,6 @@ struct vhost_net_device_ops {
 
 	int (*get_features)(struct vhost_device_ctx, uint64_t *);
 	int (*set_features)(struct vhost_device_ctx, uint64_t *);
-
-	int (*set_mem_table)(struct vhost_device_ctx, const void *, uint32_t);
 
 	int (*set_vring_num)(struct vhost_device_ctx, struct vhost_vring_state *);
 	int (*set_vring_addr)(struct vhost_device_ctx, struct vhost_vring_addr *);
