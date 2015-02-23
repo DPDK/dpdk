@@ -45,6 +45,7 @@
 #include <rte_virtio_net.h>
 
 #include "vhost-net.h"
+#include "eventfd_copy.h"
 
 #define FUSE_OPT_DUMMY "\0\0"
 #define FUSE_OPT_FORE  "-f\0\0"
@@ -284,17 +285,37 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 		break;
 
 	case VHOST_SET_VRING_KICK:
-		LOG_DEBUG(VHOST_CONFIG,
-			"(%"PRIu64") IOCTL: VHOST_SET_VRING_KICK\n", ctx.fh);
-		VHOST_IOCTL_R(struct vhost_vring_file, file,
-			ops->set_vring_kick);
-		break;
-
 	case VHOST_SET_VRING_CALL:
-		LOG_DEBUG(VHOST_CONFIG,
-			"(%"PRIu64") IOCTL: VHOST_SET_VRING_CALL\n", ctx.fh);
-		VHOST_IOCTL_R(struct vhost_vring_file, file,
-			ops->set_vring_call);
+		if (cmd == VHOST_SET_VRING_KICK)
+			LOG_DEBUG(VHOST_CONFIG,
+				"(%"PRIu64") IOCTL: VHOST_SET_VRING_KICK\n",
+			ctx.fh);
+		else
+			LOG_DEBUG(VHOST_CONFIG,
+				"(%"PRIu64") IOCTL: VHOST_SET_VRING_CALL\n",
+			ctx.fh);
+		if (!in_buf)
+			VHOST_IOCTL_RETRY(sizeof(struct vhost_vring_file), 0);
+		else {
+			int fd;
+			file = *(const struct vhost_vring_file *)in_buf;
+			LOG_DEBUG(VHOST_CONFIG,
+				"idx:%d fd:%d\n", file.index, file.fd);
+			fd = eventfd_copy(file.fd, ctx.pid);
+			if (fd < 0) {
+				fuse_reply_ioctl(req, -1, NULL, 0);
+				result = -1;
+				break;
+			}
+			file.fd = fd;
+			if (cmd == VHOST_SET_VRING_KICK) {
+				result = ops->set_vring_kick(ctx, &file);
+				fuse_reply_ioctl(req, result, NULL, 0);
+			} else {
+				result = ops->set_vring_call(ctx, &file);
+				fuse_reply_ioctl(req, result, NULL, 0);
+			}
+		}
 		break;
 
 	default:

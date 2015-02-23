@@ -38,10 +38,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/eventfd.h>
-#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+
 
 #include <sys/socket.h>
 #include <linux/if_tun.h>
@@ -53,8 +53,8 @@
 #include <rte_memory.h>
 #include <rte_virtio_net.h>
 
+#include "vhost_cuse/eventfd_copy.h"
 #include "vhost-net.h"
-#include "eventfd_link/eventfd_link.h"
 
 /*
  * Device linked list structure for configuration.
@@ -63,8 +63,6 @@ struct virtio_net_config_ll {
 	struct virtio_net dev;			/* Virtio device.*/
 	struct virtio_net_config_ll *next;	/* Next dev on linked list.*/
 };
-
-const char eventfd_cdev[] = "/dev/eventfd-link";
 
 /* device ops to add/remove device to/from data core. */
 static struct virtio_net_device_ops const *notify_ops;
@@ -904,37 +902,6 @@ get_vring_base(struct vhost_device_ctx ctx, uint32_t index,
 	return 0;
 }
 
-/*
- * This function uses the eventfd_link kernel module to copy an eventfd file
- * descriptor provided by QEMU in to our process space.
- */
-static int
-eventfd_copy(struct virtio_net *dev, struct eventfd_copy *eventfd_copy)
-{
-	int eventfd_link, ret;
-
-	/* Open the character device to the kernel module. */
-	eventfd_link = open(eventfd_cdev, O_RDWR);
-	if (eventfd_link < 0) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") eventfd_link module is not loaded\n",
-			dev->device_fh);
-		return -1;
-	}
-
-	/* Call the IOCTL to copy the eventfd. */
-	ret = ioctl(eventfd_link, EVENTFD_COPY, eventfd_copy);
-	close(eventfd_link);
-
-	if (ret < 0) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") EVENTFD_COPY ioctl failed\n",
-			dev->device_fh);
-		return -1;
-	}
-
-	return 0;
-}
 
 /*
  * Called from CUSE IOCTL: VHOST_SET_VRING_CALL
@@ -945,7 +912,6 @@ static int
 set_vring_call(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 {
 	struct virtio_net *dev;
-	struct eventfd_copy	eventfd_kick;
 	struct vhost_virtqueue *vq;
 
 	dev = get_device(ctx);
@@ -958,14 +924,7 @@ set_vring_call(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	if (vq->kickfd)
 		close((int)vq->kickfd);
 
-	/* Populate the eventfd_copy structure and call eventfd_copy. */
-	vq->kickfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-	eventfd_kick.source_fd = vq->kickfd;
-	eventfd_kick.target_fd = file->fd;
-	eventfd_kick.target_pid = ctx.pid;
-
-	if (eventfd_copy(dev, &eventfd_kick))
-		return -1;
+	vq->kickfd = file->fd;
 
 	return 0;
 }
@@ -979,7 +938,6 @@ static int
 set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 {
 	struct virtio_net *dev;
-	struct eventfd_copy eventfd_call;
 	struct vhost_virtqueue *vq;
 
 	dev = get_device(ctx);
@@ -991,15 +949,7 @@ set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 
 	if (vq->callfd)
 		close((int)vq->callfd);
-
-	/* Populate the eventfd_copy structure and call eventfd_copy. */
-	vq->callfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-	eventfd_call.source_fd = vq->callfd;
-	eventfd_call.target_fd = file->fd;
-	eventfd_call.target_pid = ctx.pid;
-
-	if (eventfd_copy(dev, &eventfd_call))
-		return -1;
+	vq->callfd = file->fd;
 
 	return 0;
 }
@@ -1011,21 +961,18 @@ set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 static int
 get_ifname(struct virtio_net *dev, int tap_fd, int pid)
 {
-	struct eventfd_copy fd_tap;
+	int fd_tap;
 	struct ifreq ifr;
 	uint32_t size, ifr_size;
 	int ret;
 
-	fd_tap.source_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-	fd_tap.target_fd = tap_fd;
-	fd_tap.target_pid = pid;
+    fd_tap = eventfd_copy(tap_fd, pid);
+    if (fd_tap < 0)
+        return -1;
 
-	if (eventfd_copy(dev, &fd_tap))
-		return -1;
+	ret = ioctl(fd_tap, TUNGETIFF, &ifr);
 
-	ret = ioctl(fd_tap.source_fd, TUNGETIFF, &ifr);
-
-	if (close(fd_tap.source_fd) < 0)
+	if (close(fd_tap) < 0)
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%"PRIu64") fd close failed\n",
 			dev->device_fh);
