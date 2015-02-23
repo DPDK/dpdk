@@ -38,7 +38,7 @@
 #include <rte_memcpy.h>
 #include <rte_virtio_net.h>
 
-#include "vhost-net-cdev.h"
+#include "vhost-net.h"
 
 #define MAX_PKT_BURST 32
 

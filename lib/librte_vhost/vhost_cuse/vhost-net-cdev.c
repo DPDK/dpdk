@@ -44,7 +44,7 @@
 #include <rte_string_fns.h>
 #include <rte_virtio_net.h>
 
-#include "vhost-net-cdev.h"
+#include "vhost-net.h"
 
 #define FUSE_OPT_DUMMY "\0\0"
 #define FUSE_OPT_FORE  "-f\0\0"

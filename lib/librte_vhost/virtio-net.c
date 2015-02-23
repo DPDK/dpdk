@@ -53,7 +53,7 @@
 #include <rte_memory.h>
 #include <rte_virtio_net.h>
 
-#include "vhost-net-cdev.h"
+#include "vhost-net.h"
 #include "eventfd_link/eventfd_link.h"
 
 /*
