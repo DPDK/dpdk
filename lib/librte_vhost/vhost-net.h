@@ -41,7 +41,9 @@
 
 #include <rte_log.h>
 
-#define VHOST_MEMORY_MAX_NREGIONS 8
+#include "rte_virtio_net.h"
+
+extern struct vhost_net_device_ops const *ops;
 
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1

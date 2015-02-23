@@ -92,8 +92,9 @@ qva_to_vva(struct virtio_net *dev, uint64_t qemu_va)
 		if ((qemu_va >= region->userspace_address) &&
 			(qemu_va <= region->userspace_address +
 			region->memory_size)) {
-			vhost_va = dev->mem->mapped_address + qemu_va -
-					dev->mem->base_address;
+			vhost_va = qemu_va + region->guest_phys_address +
+				region->address_offset -
+				region->userspace_address;
 			break;
 		}
 	}
@@ -259,6 +260,11 @@ init_device(struct virtio_net *dev)
 		(sizeof(struct virtio_net) - (size_t)vq_offset));
 	memset(dev->virtqueue[VIRTIO_RXQ], 0, sizeof(struct vhost_virtqueue));
 	memset(dev->virtqueue[VIRTIO_TXQ], 0, sizeof(struct vhost_virtqueue));
+
+	dev->virtqueue[VIRTIO_RXQ]->kickfd = (eventfd_t)-1;
+	dev->virtqueue[VIRTIO_RXQ]->callfd = (eventfd_t)-1;
+	dev->virtqueue[VIRTIO_TXQ]->kickfd = (eventfd_t)-1;
+	dev->virtqueue[VIRTIO_TXQ]->callfd = (eventfd_t)-1;
 
 	/* Backends are set to -1 indicating an inactive device. */
 	dev->virtqueue[VIRTIO_RXQ]->backend = VIRTIO_DEV_STOPPED;
@@ -576,7 +582,7 @@ set_vring_call(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	/* file->index refers to the queue index. The txq is 1, rxq is 0. */
 	vq = dev->virtqueue[file->index];
 
-	if (vq->kickfd)
+	if ((int)vq->kickfd >= 0)
 		close((int)vq->kickfd);
 
 	vq->kickfd = file->fd;
@@ -602,8 +608,9 @@ set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	/* file->index refers to the queue index. The txq is 1, rxq is 0. */
 	vq = dev->virtqueue[file->index];
 
-	if (vq->callfd)
+	if ((int)vq->callfd >= 0)
 		close((int)vq->callfd);
+
 	vq->callfd = file->fd;
 
 	return 0;

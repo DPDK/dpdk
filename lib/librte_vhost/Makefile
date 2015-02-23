@@ -38,10 +38,14 @@ EXPORT_MAP := rte_vhost_version.map
 
 LIBABIVER := 1
 
-CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -I vhost_cuse -O3 -D_FILE_OFFSET_BITS=64 -lfuse
+CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3 -D_FILE_OFFSET_BITS=64
+CFLAGS += -I vhost_cuse -lfuse
+CFLAGS += -I vhost_user
 LDFLAGS += -lfuse
 # all source are stored in SRCS-y
-SRCS-$(CONFIG_RTE_LIBRTE_VHOST) := virtio-net.c vhost_cuse/vhost-net-cdev.c vhost_cuse/virtio-net-cdev.c vhost_cuse/eventfd_copy.c vhost_rxtx.c
+SRCS-$(CONFIG_RTE_LIBRTE_VHOST) := virtio-net.c vhost_rxtx.c vhost_cuse/eventfd_copy.c
+#SRCS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost_cuse/vhost-net-cdev.c vhost_cuse/virtio-net-cdev.c vhost_cuse/eventfd_copy.c
+SRCS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost_user/vhost-net-user.c vhost_user/virtio-net-user.c vhost_user/fd_man.c
 
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_VHOST)-include += rte_virtio_net.h

@@ -50,6 +50,8 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 
+#define VHOST_MEMORY_MAX_NREGIONS 8
+
 /* Used to indicate that the device is running on a data core */
 #define VIRTIO_DEV_RUNNING 1
 
