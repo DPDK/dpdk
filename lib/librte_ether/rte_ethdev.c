@@ -337,6 +337,19 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 			dev->data->nb_rx_queues = 0;
 			return -(ENOMEM);
 		}
+#ifdef RTE_ETHDEV_RXTX_CALLBACKS
+		dev->post_rx_burst_cbs = rte_zmalloc(
+			"ethdev->post_rx_burst_cbs",
+			sizeof(*dev->post_rx_burst_cbs) * nb_queues,
+			RTE_CACHE_LINE_SIZE);
+		if (dev->post_rx_burst_cbs == NULL) {
+			rte_free(dev->data->rx_queues);
+			dev->data->rx_queues = NULL;
+			dev->data->nb_rx_queues = 0;
+			return -ENOMEM;
+		}
+#endif
+
 	} else { /* re-configure */
 		FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_release, -ENOTSUP);
 
@@ -348,10 +361,23 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 				RTE_CACHE_LINE_SIZE);
 		if (rxq == NULL)
 			return -(ENOMEM);
-
-		if (nb_queues > old_nb_queues)
+#ifdef RTE_ETHDEV_RXTX_CALLBACKS
+		dev->post_rx_burst_cbs = rte_realloc(
+			dev->post_rx_burst_cbs,
+			sizeof(*dev->post_rx_burst_cbs) *
+				nb_queues, RTE_CACHE_LINE_SIZE);
+		if (dev->post_rx_burst_cbs == NULL)
+			return -ENOMEM;
+#endif
+		if (nb_queues > old_nb_queues) {
+			uint16_t new_qs = nb_queues - old_nb_queues;
 			memset(rxq + old_nb_queues, 0,
-				sizeof(rxq[0]) * (nb_queues - old_nb_queues));
+				sizeof(rxq[0]) * new_qs);
+#ifdef RTE_ETHDEV_RXTX_CALLBACKS
+			memset(dev->post_rx_burst_cbs + old_nb_queues, 0,
+				sizeof(dev->post_rx_burst_cbs[0]) * new_qs);
+#endif
+		}
 
 		dev->data->rx_queues = rxq;
 
@@ -479,6 +505,19 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 			dev->data->nb_tx_queues = 0;
 			return -(ENOMEM);
 		}
+#ifdef RTE_ETHDEV_RXTX_CALLBACKS
+		dev->pre_tx_burst_cbs = rte_zmalloc(
+			"ethdev->pre_tx_burst_cbs",
+			sizeof(*dev->pre_tx_burst_cbs) * nb_queues,
+			RTE_CACHE_LINE_SIZE);
+		if (dev->pre_tx_burst_cbs == NULL) {
+			rte_free(dev->data->tx_queues);
+			dev->data->tx_queues = NULL;
+			dev->data->nb_tx_queues = 0;
+			return -ENOMEM;
+		}
+#endif
+
 	} else { /* re-configure */
 		FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_release, -ENOTSUP);
 
@@ -489,11 +528,24 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 		txq = rte_realloc(txq, sizeof(txq[0]) * nb_queues,
 				RTE_CACHE_LINE_SIZE);
 		if (txq == NULL)
-			return -(ENOMEM);
-
-		if (nb_queues > old_nb_queues)
+			return -ENOMEM;
+#ifdef RTE_ETHDEV_RXTX_CALLBACKS
+		dev->pre_tx_burst_cbs = rte_realloc(
+			dev->pre_tx_burst_cbs,
+			sizeof(*dev->pre_tx_burst_cbs) *
+				nb_queues, RTE_CACHE_LINE_SIZE);
+		if (dev->pre_tx_burst_cbs == NULL)
+			return -ENOMEM;
+#endif
+		if (nb_queues > old_nb_queues) {
+			uint16_t new_qs = nb_queues - old_nb_queues;
 			memset(txq + old_nb_queues, 0,
-				sizeof(txq[0]) * (nb_queues - old_nb_queues));
+				sizeof(txq[0]) * new_qs);
+#ifdef RTE_ETHDEV_RXTX_CALLBACKS
+			memset(dev->pre_tx_burst_cbs + old_nb_queues, 0,
+				sizeof(dev->pre_tx_burst_cbs[0]) * new_qs);
+#endif
+		}
 
 		dev->data->tx_queues = txq;
 
@@ -3040,4 +3092,140 @@ rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type,
 	dev = &rte_eth_devices[port_id];
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->filter_ctrl, -ENOTSUP);
 	return (*dev->dev_ops->filter_ctrl)(dev, filter_type, filter_op, arg);
+}
+
+void *
+rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
+		rte_rxtx_callback_fn fn, void *user_param)
+{
+#ifndef RTE_ETHDEV_RXTX_CALLBACKS
+	rte_errno = ENOTSUP;
+	return NULL;
+#endif
+	/* check input parameters */
+	if (port_id >= nb_ports || fn == NULL ||
+		    queue_id >= rte_eth_devices[port_id].data->nb_rx_queues) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	struct rte_eth_rxtx_callback *cb = rte_zmalloc(NULL, sizeof(*cb), 0);
+
+	if (cb == NULL) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	cb->fn = fn;
+	cb->param = user_param;
+	cb->next = rte_eth_devices[port_id].post_rx_burst_cbs[queue_id];
+	rte_eth_devices[port_id].post_rx_burst_cbs[queue_id] = cb;
+	return cb;
+}
+
+void *
+rte_eth_add_tx_callback(uint8_t port_id, uint16_t queue_id,
+		rte_rxtx_callback_fn fn, void *user_param)
+{
+#ifndef RTE_ETHDEV_RXTX_CALLBACKS
+	rte_errno = ENOTSUP;
+	return NULL;
+#endif
+	/* check input parameters */
+	if (port_id >= nb_ports || fn == NULL ||
+		    queue_id >= rte_eth_devices[port_id].data->nb_tx_queues) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	struct rte_eth_rxtx_callback *cb = rte_zmalloc(NULL, sizeof(*cb), 0);
+
+	if (cb == NULL) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	cb->fn = fn;
+	cb->param = user_param;
+	cb->next = rte_eth_devices[port_id].pre_tx_burst_cbs[queue_id];
+	rte_eth_devices[port_id].pre_tx_burst_cbs[queue_id] = cb;
+	return cb;
+}
+
+int
+rte_eth_remove_rx_callback(uint8_t port_id, uint16_t queue_id,
+		struct rte_eth_rxtx_callback *user_cb)
+{
+#ifndef RTE_ETHDEV_RXTX_CALLBACKS
+	return (-ENOTSUP);
+#endif
+	/* Check input parameters. */
+	if (port_id >= nb_ports || user_cb == NULL ||
+		    queue_id >= rte_eth_devices[port_id].data->nb_rx_queues) {
+		return (-EINVAL);
+	}
+
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct rte_eth_rxtx_callback *cb = dev->post_rx_burst_cbs[queue_id];
+	struct rte_eth_rxtx_callback *prev_cb;
+
+	/* Reset head pointer and remove user cb if first in the list. */
+	if (cb == user_cb) {
+		dev->post_rx_burst_cbs[queue_id] = user_cb->next;
+		return 0;
+	}
+
+	/* Remove the user cb from the callback list. */
+	do {
+		prev_cb = cb;
+		cb = cb->next;
+
+		if (cb == user_cb) {
+			prev_cb->next = user_cb->next;
+			return 0;
+		}
+
+	} while (cb != NULL);
+
+	/* Callback wasn't found. */
+	return (-EINVAL);
+}
+
+int
+rte_eth_remove_tx_callback(uint8_t port_id, uint16_t queue_id,
+		struct rte_eth_rxtx_callback *user_cb)
+{
+#ifndef RTE_ETHDEV_RXTX_CALLBACKS
+	return (-ENOTSUP);
+#endif
+	/* Check input parameters. */
+	if (port_id >= nb_ports || user_cb == NULL ||
+		    queue_id >= rte_eth_devices[port_id].data->nb_tx_queues) {
+		return (-EINVAL);
+	}
+
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct rte_eth_rxtx_callback *cb = dev->pre_tx_burst_cbs[queue_id];
+	struct rte_eth_rxtx_callback *prev_cb;
+
+	/* Reset head pointer and remove user cb if first in the list. */
+	if (cb == user_cb) {
+		dev->pre_tx_burst_cbs[queue_id] = user_cb->next;
+		return 0;
+	}
+
+	/* Remove the user cb from the callback list. */
+	do {
+		prev_cb = cb;
+		cb = cb->next;
+
+		if (cb == user_cb) {
+			prev_cb->next = user_cb->next;
+			return 0;
+		}
+
+	} while (cb != NULL);
+
+	/* Callback wasn't found. */
+	return (-EINVAL);
 }

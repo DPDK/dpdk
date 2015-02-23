@@ -2,6 +2,8 @@ DPDK_2.0 {
 	global:
 
 	_rte_eth_dev_callback_process;
+	rte_eth_add_rx_callback;
+	rte_eth_add_tx_callback;
 	rte_eth_allmulticast_disable;
 	rte_eth_allmulticast_enable;
 	rte_eth_allmulticast_get;
@@ -81,6 +83,8 @@ DPDK_2.0 {
 	rte_eth_promiscuous_disable;
 	rte_eth_promiscuous_enable;
 	rte_eth_promiscuous_get;
+	rte_eth_remove_rx_callback;
+	rte_eth_remove_tx_callback;
 	rte_eth_rx_burst;
 	rte_eth_rx_descriptor_done;
 	rte_eth_rx_queue_count;

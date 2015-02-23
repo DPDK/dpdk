@@ -1382,6 +1382,47 @@ struct eth_dev_ops {
 };
 
 /**
+ * Function type used for callbacks for processing packets on RX and TX
+ *
+ * If configured for RX, it is called with a burst of packets that have just
+ * been received on the given port and queue. On TX, it is called with a burst
+ * of packets immediately before those packets are put onto the hardware queue
+ * for transmission.
+ *
+ * @param port
+ *   The ethernet port on which rx or tx is being performed
+ * @param queue
+ *   The queue on the ethernet port which is being used to receive or transmit
+ *   the packets.
+ * @param pkts
+ *   The burst of packets on which processing is to be done. On RX, these
+ *   packets have just been received. On TX, they are about to be transmitted.
+ * @param nb_pkts
+ *   The number of packets in the burst pointed to by "pkts"
+ * @param user_param
+ *   The arbitrary user parameter passed in by the application when the callback
+ *   was originally configured.
+ * @return
+ *   The number of packets remaining in pkts are processing.
+ *	* On RX, this will be returned to the user as the return value from
+ *	  rte_eth_rx_burst.
+ *	* On TX, this will be the number of packets actually written to the NIC.
+ */
+typedef uint16_t (*rte_rxtx_callback_fn)(uint8_t port, uint16_t queue,
+	struct rte_mbuf *pkts[], uint16_t nb_pkts, void *user_param);
+
+/**
+ * @internal
+ * Structure used to hold information about the callbacks to be called for a
+ * queue on RX and TX.
+ */
+struct rte_eth_rxtx_callback {
+	struct rte_eth_rxtx_callback *next;
+	rte_rxtx_callback_fn fn;
+	void *param;
+};
+
+/**
  * @internal
  * The generic data structure associated with each ethernet device.
  *
@@ -1398,7 +1439,18 @@ struct rte_eth_dev {
 	const struct eth_driver *driver;/**< Driver for this device */
 	struct eth_dev_ops *dev_ops;    /**< Functions exported by PMD */
 	struct rte_pci_device *pci_dev; /**< PCI info. supplied by probing */
-	struct rte_eth_dev_cb_list link_intr_cbs; /**< User application callbacks on interrupt */
+	/** User application callbacks for NIC interrupts */
+	struct rte_eth_dev_cb_list link_intr_cbs;
+	/**
+	 * User-supplied functions called from rx_burst to post-process
+	 * received packets before passing them to the user
+	 */
+	struct rte_eth_rxtx_callback **post_rx_burst_cbs;
+	/**
+	 * User-supplied functions called from tx_burst to pre-process
+	 * received packets before passing them to the driver for transmission.
+	 */
+	struct rte_eth_rxtx_callback **pre_tx_burst_cbs;
 };
 
 struct rte_eth_dev_sriov {
@@ -2252,7 +2304,23 @@ rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
 	struct rte_eth_dev *dev;
 
 	dev = &rte_eth_devices[port_id];
-	return (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id], rx_pkts, nb_pkts);
+
+	nb_pkts = (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id], rx_pkts,
+			nb_pkts);
+
+#ifdef RTE_ETHDEV_RXTX_CALLBACKS
+	struct rte_eth_rxtx_callback *cb = dev->post_rx_burst_cbs[queue_id];
+
+	if (unlikely(cb != NULL)) {
+		do {
+			nb_pkts = cb->fn(port_id, queue_id, rx_pkts, nb_pkts,
+					cb->param);
+			cb = cb->next;
+		} while (cb != NULL);
+	}
+#endif
+
+	return nb_pkts;
 }
 #endif
 
@@ -2379,6 +2447,19 @@ rte_eth_tx_burst(uint8_t port_id, uint16_t queue_id,
 	struct rte_eth_dev *dev;
 
 	dev = &rte_eth_devices[port_id];
+
+#ifdef RTE_ETHDEV_RXTX_CALLBACKS
+	struct rte_eth_rxtx_callback *cb = dev->pre_tx_burst_cbs[queue_id];
+
+	if (unlikely(cb != NULL)) {
+		do {
+			nb_pkts = cb->fn(port_id, queue_id, tx_pkts, nb_pkts,
+					cb->param);
+			cb = cb->next;
+		} while (cb != NULL);
+	}
+#endif
+
 	return (*dev->tx_pkt_burst)(dev->data->tx_queues[queue_id], tx_pkts, nb_pkts);
 }
 #endif
@@ -3298,6 +3379,122 @@ int rte_eth_dev_filter_supported(uint8_t port_id, enum rte_filter_type filter_ty
  */
 int rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type,
 			enum rte_filter_op filter_op, void *arg);
+
+/**
+ * Add a callback to be called on packet RX on a given port and queue.
+ *
+ * This API configures a function to be called for each burst of
+ * packets received on a given NIC port queue. The return value is a pointer
+ * that can be used to later remove the callback using
+ * rte_eth_remove_rx_callback().
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The queue on the Ethernet device on which the callback is to be added.
+ * @param fn
+ *   The callback function
+ * @param user_param
+ *   A generic pointer parameter which will be passed to each invocation of the
+ *   callback function on this port and queue.
+ *
+ * @return
+ *   NULL on error.
+ *   On success, a pointer value which can later be used to remove the callback.
+ */
+void *rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
+		rte_rxtx_callback_fn fn, void *user_param);
+
+/**
+ * Add a callback to be called on packet TX on a given port and queue.
+ *
+ * This API configures a function to be called for each burst of
+ * packets sent on a given NIC port queue. The return value is a pointer
+ * that can be used to later remove the callback using
+ * rte_eth_remove_tx_callback().
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The queue on the Ethernet device on which the callback is to be added.
+ * @param fn
+ *   The callback function
+ * @param user_param
+ *   A generic pointer parameter which will be passed to each invocation of the
+ *   callback function on this port and queue.
+ *
+ * @return
+ *   NULL on error.
+ *   On success, a pointer value which can later be used to remove the callback.
+ */
+void *rte_eth_add_tx_callback(uint8_t port_id, uint16_t queue_id,
+		rte_rxtx_callback_fn fn, void *user_param);
+
+/**
+ * Remove an RX packet callback from a given port and queue.
+ *
+ * This function is used to removed callbacks that were added to a NIC port
+ * queue using rte_eth_add_rx_callback().
+ *
+ * Note: the callback is removed from the callback list but it isn't freed
+ * since the it may still be in use. The memory for the callback can be
+ * subsequently freed back by the application by calling rte_free():
+ *
+ *  - Immediately - if the port is stopped, or the user knows that no
+ *    callbacks are in flight e.g. if called from the thread doing RX/TX
+ *    on that queue.
+ *
+ * - After a short delay - where the delay is sufficient to allow any
+ *   in-flight callbacks to complete.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The queue on the Ethernet device from which the callback is to be removed.
+ * @param user_cb
+ *   User supplied callback created via rte_eth_add_rx_callback().
+ *
+ * @return
+ *   - 0: Success. Callback was removed.
+ *   - -ENOTSUP: Callback support is not available.
+ *   - -EINVAL:  The port_id or the queue_id is out of range, or the callback
+ *               is NULL or not found for the port/queue.
+ */
+int rte_eth_remove_rx_callback(uint8_t port_id, uint16_t queue_id,
+		struct rte_eth_rxtx_callback *user_cb);
+
+/**
+ * Remove a TX packet callback from a given port and queue.
+ *
+ * This function is used to removed callbacks that were added to a NIC port
+ * queue using rte_eth_add_tx_callback().
+ *
+ * Note: the callback is removed from the callback list but it isn't freed
+ * since the it may still be in use. The memory for the callback can be
+ * subsequently freed back by the application by calling rte_free():
+ *
+ *  - Immediately - if the port is stopped, or the user knows that no
+ *    callbacks are in flight e.g. if called from the thread doing RX/TX
+ *    on that queue.
+ *
+ * - After a short delay - where the delay is sufficient to allow any
+ *   in-flight callbacks to complete.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The queue on the Ethernet device from which the callback is to be removed.
+ * @param user_cb
+ *   User supplied callback created via rte_eth_add_tx_callback().
+ *
+ * @return
+ *   - 0: Success. Callback was removed.
+ *   - -ENOTSUP: Callback support is not available.
+ *   - -EINVAL:  The port_id or the queue_id is out of range, or the callback
+ *               is NULL or not found for the port/queue.
+ */
+int rte_eth_remove_tx_callback(uint8_t port_id, uint16_t queue_id,
+		struct rte_eth_rxtx_callback *user_cb);
 
 #ifdef __cplusplus
 }
