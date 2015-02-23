@@ -62,7 +62,7 @@ else
 #
 # CFLAGS for gcc
 #
-ifneq ($(shell test $(GCC_MAJOR_VERSION) -le 4 -a $(GCC_MINOR_VERSION) -le 3 && echo 1), 1)
+ifeq ($(shell test $(GCC_VERSION) -ge 440 && echo 1), 1)
 CFLAGS     += -Wno-deprecated
 endif
 CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value

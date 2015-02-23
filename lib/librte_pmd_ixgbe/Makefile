@@ -60,18 +60,18 @@ else
 #
 # CFLAGS for gcc
 #
-ifneq ($(shell test $(GCC_MAJOR_VERSION) -le 4 -a $(GCC_MINOR_VERSION) -le 3 && echo 1), 1)
+ifeq ($(shell test $(GCC_VERSION) -ge 440 && echo 1), 1)
 CFLAGS     += -Wno-deprecated
 endif
 CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
 CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
 
-ifeq ($(shell test $(GCC_MAJOR_VERSION) -ge 4 -a $(GCC_MINOR_VERSION) -ge 6 && echo 1), 1)
+ifeq ($(shell test $(GCC_VERSION) -ge 460 && echo 1), 1)
 CFLAGS_ixgbe_common.o += -Wno-unused-but-set-variable
 CFLAGS_ixgbe_x550.o += -Wno-unused-but-set-variable -Wno-maybe-uninitialized
 endif
 
-ifeq ($(shell test $(GCC_MAJOR_VERSION) -le 4 -a $(GCC_MINOR_VERSION) -le 6 && echo 1), 1)
+ifeq ($(shell test $(GCC_VERSION) -le 460 && echo 1), 1)
 CFLAGS_ixgbe_x550.o += -Wno-uninitialized
 CFLAGS_ixgbe_phy.o += -Wno-uninitialized
 endif

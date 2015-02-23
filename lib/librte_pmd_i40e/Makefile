@@ -69,7 +69,7 @@ CFLAGS_BASE_DRIVER += -Wno-pointer-to-int-cast
 CFLAGS_BASE_DRIVER += -Wno-format-nonliteral
 CFLAGS_BASE_DRIVER += -Wno-format-security
 
-ifeq ($(shell test $(GCC_MAJOR_VERSION) -ge 4 -a $(GCC_MINOR_VERSION) -ge 4 && echo 1), 1)
+ifeq ($(shell test $(GCC_VERSION) -ge 440 && echo 1), 1)
 CFLAGS_BASE_DRIVER += -Wno-unused-but-set-variable
 endif
 
