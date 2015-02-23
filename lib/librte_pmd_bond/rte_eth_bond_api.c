@@ -273,7 +273,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	eth_dev->data->nb_rx_queues = (uint16_t)1;
 	eth_dev->data->nb_tx_queues = (uint16_t)1;
 
-	TAILQ_INIT(&(eth_dev->callbacks));
+	TAILQ_INIT(&(eth_dev->link_intr_cbs));
 
 	eth_dev->data->dev_link.link_status = 0;
 

@@ -340,7 +340,7 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	eth_dev->driver = eth_drv;
 	eth_dev->dev_ops = &ops;
 	eth_dev->pci_dev = pci_dev;
-	TAILQ_INIT(&(eth_dev->callbacks));
+	TAILQ_INIT(&(eth_dev->link_intr_cbs));
 
 	/* finally assign rx and tx ops */
 	eth_dev->rx_pkt_burst = eth_ring_rx;

@@ -1398,7 +1398,7 @@ struct rte_eth_dev {
 	const struct eth_driver *driver;/**< Driver for this device */
 	struct eth_dev_ops *dev_ops;    /**< Functions exported by PMD */
 	struct rte_pci_device *pci_dev; /**< PCI info. supplied by probing */
-	struct rte_eth_dev_cb_list callbacks; /**< User application callbacks */
+	struct rte_eth_dev_cb_list link_intr_cbs; /**< User application callbacks on interrupt */
 };
 
 struct rte_eth_dev_sriov {

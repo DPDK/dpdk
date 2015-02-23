@@ -265,7 +265,7 @@ rte_eth_dev_init(struct rte_pci_driver *pci_drv,
 	eth_dev->data->rx_mbuf_alloc_failed = 0;
 
 	/* init user callbacks */
-	TAILQ_INIT(&(eth_dev->callbacks));
+	TAILQ_INIT(&(eth_dev->link_intr_cbs));
 
 	/*
 	 * Set the default MTU.
@@ -2743,7 +2743,7 @@ rte_eth_dev_callback_register(uint8_t port_id,
 	dev = &rte_eth_devices[port_id];
 	rte_spinlock_lock(&rte_eth_dev_cb_lock);
 
-	TAILQ_FOREACH(user_cb, &(dev->callbacks), next) {
+	TAILQ_FOREACH(user_cb, &(dev->link_intr_cbs), next) {
 		if (user_cb->cb_fn == cb_fn &&
 			user_cb->cb_arg == cb_arg &&
 			user_cb->event == event) {
@@ -2757,7 +2757,7 @@ rte_eth_dev_callback_register(uint8_t port_id,
 		user_cb->cb_fn = cb_fn;
 		user_cb->cb_arg = cb_arg;
 		user_cb->event = event;
-		TAILQ_INSERT_TAIL(&(dev->callbacks), user_cb, next);
+		TAILQ_INSERT_TAIL(&(dev->link_intr_cbs), user_cb, next);
 	}
 
 	rte_spinlock_unlock(&rte_eth_dev_cb_lock);
@@ -2784,7 +2784,7 @@ rte_eth_dev_callback_unregister(uint8_t port_id,
 	rte_spinlock_lock(&rte_eth_dev_cb_lock);
 
 	ret = 0;
-	for (cb = TAILQ_FIRST(&dev->callbacks); cb != NULL; cb = next) {
+	for (cb = TAILQ_FIRST(&dev->link_intr_cbs); cb != NULL; cb = next) {
 
 		next = TAILQ_NEXT(cb, next);
 
@@ -2798,7 +2798,7 @@ rte_eth_dev_callback_unregister(uint8_t port_id,
 		 * then remove it.
 		 */
 		if (cb->active == 0) {
-			TAILQ_REMOVE(&(dev->callbacks), cb, next);
+			TAILQ_REMOVE(&(dev->link_intr_cbs), cb, next);
 			rte_free(cb);
 		} else {
 			ret = -EAGAIN;
@@ -2817,7 +2817,7 @@ _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
 	struct rte_eth_dev_callback dev_cb;
 
 	rte_spinlock_lock(&rte_eth_dev_cb_lock);
-	TAILQ_FOREACH(cb_lst, &(dev->callbacks), next) {
+	TAILQ_FOREACH(cb_lst, &(dev->link_intr_cbs), next) {
 		if (cb_lst->cb_fn == NULL || cb_lst->event != event)
 			continue;
 		dev_cb = *cb_lst;
