@@ -75,8 +75,8 @@ struct procmap {
  * map it to our address space.
  */
 static int
-host_memory_map(struct virtio_net *dev, struct virtio_memory *mem,
-	pid_t pid, uint64_t addr)
+host_memory_map(pid_t pid, uint64_t addr,
+	uint64_t *mapped_address, uint64_t *mapped_size)
 {
 	struct dirent *dptr = NULL;
 	struct procmap procmap;
@@ -104,8 +104,8 @@ host_memory_map(struct virtio_net *dev, struct virtio_memory *mem,
 	fmap = fopen(mapfile, "r");
 	if (fmap == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to open maps file for pid %d\n",
-			dev->device_fh, pid);
+			"Failed to open maps file for pid %d\n",
+			pid);
 		return -1;
 	}
 
@@ -179,8 +179,8 @@ host_memory_map(struct virtio_net *dev, struct virtio_memory *mem,
 
 	if (!found) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to find memory file in pid %d maps file\n",
-			dev->device_fh, pid);
+			"Failed to find memory file in pid %d maps file\n",
+			pid);
 		return -1;
 	}
 
@@ -188,8 +188,8 @@ host_memory_map(struct virtio_net *dev, struct virtio_memory *mem,
 	dp = opendir(procdir);
 	if (dp == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Cannot open pid %d process directory\n",
-			dev->device_fh, pid);
+			"Cannot open pid %d process directory\n",
+			pid);
 		return -1;
 	}
 
@@ -202,8 +202,7 @@ host_memory_map(struct virtio_net *dev, struct virtio_memory *mem,
 		path = realpath(memfile, resolved_path);
 		if ((path == NULL) && (strlen(resolved_path) == 0)) {
 			RTE_LOG(ERR, VHOST_CONFIG,
-				"(%"PRIu64") Failed to resolve fd directory\n",
-				dev->device_fh);
+				"Failed to resolve fd directory\n");
 			closedir(dp);
 			return -1;
 		}
@@ -218,8 +217,8 @@ host_memory_map(struct virtio_net *dev, struct virtio_memory *mem,
 
 	if (found == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to find memory file for pid %d\n",
-			dev->device_fh, pid);
+			"Failed to find memory file for pid %d\n",
+			pid);
 		return -1;
 	}
 	/* Open the shared memory file and map the memory into this process. */
@@ -227,31 +226,30 @@ host_memory_map(struct virtio_net *dev, struct virtio_memory *mem,
 
 	if (fd == -1) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to open %s for pid %d\n",
-			dev->device_fh, memfile, pid);
+			"Failed to open %s for pid %d\n",
+			memfile, pid);
 		return -1;
 	}
 
 	map = mmap(0, (size_t)procmap.len, PROT_READ|PROT_WRITE,
-		MAP_POPULATE|MAP_SHARED, fd, 0);
+			MAP_POPULATE|MAP_SHARED, fd, 0);
 	close(fd);
 
 	if (map == MAP_FAILED) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Error mapping the file %s for pid %d\n",
-			dev->device_fh, memfile, pid);
+			"Error mapping the file %s for pid %d\n",
+			memfile, pid);
 		return -1;
 	}
 
 	/* Store the memory address and size in the device data structure */
-	mem->mapped_address = (uint64_t)(uintptr_t)map;
-	mem->mapped_size = procmap.len;
+	*mapped_address = (uint64_t)(uintptr_t)map;
+	*mapped_size = procmap.len;
 
 	LOG_DEBUG(VHOST_CONFIG,
-		"(%"PRIu64") Mem File: %s->%s - Size: %llu - VA: %p\n",
-		dev->device_fh,
+		"Mem File: %s->%s - Size: %llu - VA: %p\n",
 		memfile, resolved_path,
-		(unsigned long long)mem->mapped_size, map);
+		(unsigned long long)*mapped_size, map);
 
 	return 0;
 }
