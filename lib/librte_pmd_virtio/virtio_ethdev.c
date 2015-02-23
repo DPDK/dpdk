@@ -1471,6 +1471,9 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = VIRTIO_MIN_RX_BUFSIZE;
 	dev_info->max_rx_pktlen = VIRTIO_MAX_RX_PKTLEN;
 	dev_info->max_mac_addrs = VIRTIO_MAX_MAC_ADDRS;
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.txq_flags = ETH_TXQ_FLAGS_NOOFFLOADS
+	};
 }
 
 /*
