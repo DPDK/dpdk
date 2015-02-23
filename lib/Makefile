@@ -55,6 +55,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += librte_pmd_virtio
 DIRS-$(CONFIG_RTE_LIBRTE_VMXNET3_PMD) += librte_pmd_vmxnet3
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += librte_pmd_xenvirt
 DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += librte_vhost
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL) += librte_pmd_null
 DIRS-$(CONFIG_RTE_LIBRTE_HASH) += librte_hash
 DIRS-$(CONFIG_RTE_LIBRTE_LPM) += librte_lpm
 DIRS-$(CONFIG_RTE_LIBRTE_ACL) += librte_acl

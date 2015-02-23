@@ -248,6 +248,10 @@ F: lib/librte_pmd_ring/
 F: doc/guides/prog_guide/ring_lib.rst
 F: app/test/test_pmd_ring.c
 
+Null PMD
+M: Tetsuya Mukawa <mukawa@igel.co.jp>
+F: lib/librte_pmd_null/
+
 
 Packet processing
 -----------------
