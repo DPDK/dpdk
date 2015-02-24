@@ -107,6 +107,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_HASH),y)
 LDLIBS += -lrte_hash
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_JOBSTATS),y)
+LDLIBS += -lrte_jobstats
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_LPM),y)
 LDLIBS += -lrte_lpm
 endif

@@ -52,6 +52,7 @@ DIRS-y += ipv4_multicast
 DIRS-$(CONFIG_RTE_LIBRTE_KNI) += kni
 DIRS-y += l2fwd
 DIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += l2fwd-ivshmem
+DIRS-$(CONFIG_RTE_LIBRTE_JOBSTATS) += l2fwd-jobstats
 DIRS-y += l3fwd
 DIRS-$(CONFIG_RTE_LIBRTE_ACL) += l3fwd-acl
 DIRS-$(CONFIG_RTE_LIBRTE_POWER) += l3fwd-power
