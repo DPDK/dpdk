@@ -113,7 +113,7 @@ Host2VM communication example
 
         insmod rte_kni.ko
 
-    Other basic DPDK preparations like hugepage enabling, igb_uio port binding are not listed here.
+    Other basic DPDK preparations like hugepage enabling, uio port binding are not listed here.
     Please refer to the *DPDK Getting Started Guide* for detailed instructions.
 
 #.  Launch the kni user application:
@@ -154,7 +154,7 @@ Host2VM communication example
     In the above example, virtio port 0 in the guest VM will be associated with vEth0, which in turns corresponds to a physical port,
     which means received packets come from vEth0, and transmitted packets is sent to vEth0.
 
-#.  In the guest, bind the virtio device to the igb_uio kernel module and start the forwarding application.
+#.  In the guest, bind the virtio device to the uio_pci_generic kernel module and start the forwarding application.
     When the virtio port in guest bursts rx, it is getting packets from the raw socket's receive queue.
     When the virtio port bursts tx, it is sending packet to the tx_q.
 
@@ -162,8 +162,8 @@ Host2VM communication example
 
         modprobe uio
         echo 512 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages
-        insmod x86_64-native-linuxapp-gcc/kmod/igb_uio.ko
-        python tools/dpdk_nic_bind.py -b igb_uio 00:03.0
+        modprobe uio_pci_generic
+        python tools/dpdk_nic_bind.py -b uio_pci_generic 00:03.0
 
     We use testpmd as the forwarding application in this example.
 

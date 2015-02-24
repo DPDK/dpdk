@@ -306,12 +306,12 @@ Building and Running the Switching Backend
         Refer to the *DPDK Getting Started Guide* for more information on memory management in the DPDK.
         In the above command, 4 GB memory is reserved (2048 of 2 MB pages) for DPDK.
 
-#.  Load igb_uio and bind one Intel NIC controller to igb_uio:
+#.  Load uio_pci_generic and bind one Intel NIC controller to it:
 
     .. code-block:: console
 
-        insmod x86_64-native-linuxapp-gcc/kmod/igb_uio.ko
-        python tools/dpdk_nic_bind.py -b igb_uio 0000:09:00:00.0
+        modprobe uio_pci_generic
+        python tools/dpdk_nic_bind.py -b uio_pci_generic 0000:09:00:00.0
 
     In this case, 0000:09:00.0 is the PCI address for the NIC controller.
 

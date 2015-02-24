@@ -224,7 +224,7 @@ Otherwise, by default, KNI will not enable its backend support capability.
 
 Of course, as a prerequisite, the vhost/vhost-net kernel CONFIG should be chosen before compiling the kernel.
 
-#.  Compile the DPDK and insert igb_uio as normal.
+#.  Compile the DPDK and insert uio_pci_generic/igb_uio kernel modules as normal.
 
 #.  Insert the KNI kernel module:
 

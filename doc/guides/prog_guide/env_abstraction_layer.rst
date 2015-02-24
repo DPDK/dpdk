@@ -66,7 +66,7 @@ EAL in a Linux-userland Execution Environment
 ---------------------------------------------
 
 In a Linux user space environment, the DPDK application runs as a user-space application using the pthread library.
-PCI information about devices and address space is discovered through the /sys kernel interface and through a module called igb_uio.
+PCI information about devices and address space is discovered through the /sys kernel interface and through kernel modules such as uio_pci_generic, or igb_uio.
 Refer to the UIO: User-space drivers documentation in the Linux kernel. This memory is mmap'd in the application.
 
 The EAL performs physical memory allocation using mmap() in hugetlbfs (using huge page sizes to increase performance).
@@ -134,10 +134,10 @@ PCI Access
 ~~~~~~~~~~
 
 The EAL uses the /sys/bus/pci utilities provided by the kernel to scan the content on the PCI bus.
-
-To access PCI memory, a kernel module called igb_uio provides a /dev/uioX device file
+To access PCI memory, a kernel module called uio_pci_generic provides a /dev/uioX device file
+and resource files in /sys
 that can be mmap'd to obtain access to PCI address space from the application.
-It uses the uio kernel feature (userland driver).
+The DPDK-specific igb_uio module can also be used for this. Both drivers use the uio kernel feature (userland driver).
 
 Per-lcore and Shared Variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
