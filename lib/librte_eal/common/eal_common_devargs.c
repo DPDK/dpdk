@@ -73,10 +73,13 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	if (sep != NULL) {
 		sep[0] = '\0';
 		devargs->args = strdup(sep + 1);
-		if (devargs->args == NULL) {
-			RTE_LOG(ERR, EAL, "cannot allocate for devargs args\n");
-			goto fail;
-		}
+	} else {
+		devargs->args = strdup("");
+	}
+
+	if (devargs->args == NULL) {
+		RTE_LOG(ERR, EAL, "cannot allocate for devargs args\n");
+		goto fail;
 	}
 
 	switch (devargs->type) {

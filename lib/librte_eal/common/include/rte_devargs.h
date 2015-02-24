@@ -88,7 +88,7 @@ struct rte_devargs {
 			char drv_name[32];
 		} virtual;
 	};
-	/** Arguments string as given by user. */
+	/** Arguments string as given by user or "" for no argument. */
 	char *args;
 };
 
