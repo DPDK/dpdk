@@ -117,7 +117,7 @@ struct rte_pci_resource {
 };
 
 /** Maximum number of PCI resources. */
-#define PCI_MAX_RESOURCE 7
+#define PCI_MAX_RESOURCE 6
 
 /**
  * A structure describing an ID for a PCI driver. Each driver provides a

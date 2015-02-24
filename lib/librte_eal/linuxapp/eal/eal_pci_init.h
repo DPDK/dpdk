@@ -38,6 +38,7 @@
 
 struct pci_map {
 	void *addr;
+	char *path;
 	uint64_t offset;
 	uint64_t size;
 	uint64_t phaddr;

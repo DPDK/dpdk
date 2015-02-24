@@ -829,6 +829,7 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 		maps[i].addr = bar_addr;
 		maps[i].offset = reg.offset;
 		maps[i].size = reg.size;
+		maps[i].path = NULL; /* vfio doesn't have per-resource paths */
 		dev->mem_resource[i].addr = bar_addr;
 	}
 

@@ -137,10 +137,10 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 			/*
 			 * open devname, to mmap it
 			 */
-			fd = open(uio_res->path, O_RDWR);
+			fd = open(uio_res->maps[i].path, O_RDWR);
 			if (fd < 0) {
 				RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
-					uio_res->path, strerror(errno));
+					uio_res->maps[i].path, strerror(errno));
 				return -1;
 			}
 
@@ -149,7 +149,8 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 					     (size_t)uio_res->maps[i].size, 0)
 			    != uio_res->maps[i].addr) {
 				RTE_LOG(ERR, EAL,
-					"Cannot mmap device resource\n");
+					"Cannot mmap device resource file: %s\n",
+					uio_res->maps[i].path);
 				close(fd);
 				return -1;
 			}
@@ -294,8 +295,6 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	void *mapaddr;
 	int uio_num;
 	uint64_t phaddr;
-	uint64_t offset;
-	uint64_t pagesz;
 	int nb_maps;
 	struct rte_pci_addr *loc = &dev->addr;
 	struct mapped_pci_resource *uio_res;
@@ -336,11 +335,6 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		return -1;
 	}
 
-	/* update devname for mmap  */
-	snprintf(devname, sizeof(devname),
-		SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/resource%d",
-		loc->domain, loc->bus, loc->devid, loc->function, 0);
-
 	/* set bus master that is not done by uio_pci_generic */
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		if (pci_uio_set_bus_master(dev->intr_handle.uio_cfg_fd)) {
@@ -370,8 +364,6 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	uio_res->nb_maps = nb_maps;
 
 	/* Map all BARs */
-	pagesz = sysconf(_SC_PAGESIZE);
-
 	maps = uio_res->maps;
 	for (i = 0; i != PCI_MAX_RESOURCE; i++) {
 		int fd;
@@ -389,10 +381,15 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		/* if matching map is found, then use it */
 		if (j != nb_maps) {
 			int fail = 0;
-			offset = j * pagesz;
+
+			/* update devname for mmap  */
+			snprintf(devname, sizeof(devname),
+				SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/resource%d",
+				loc->domain, loc->bus, loc->devid, loc->function,
+				i);
 
 			/*
-			 * open devname, to mmap it
+			 * open resource file, to mmap it
 			 */
 			fd = open(devname, O_RDWR);
 			if (fd < 0) {
@@ -408,13 +405,17 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 				if (pci_map_addr == NULL)
 					pci_map_addr = pci_find_max_end_va();
 
-				mapaddr = pci_map_resource(pci_map_addr, fd, (off_t)offset,
+				mapaddr = pci_map_resource(pci_map_addr, fd, 0,
 						(size_t)maps[j].size, 0);
 				if (mapaddr == MAP_FAILED)
 					fail = 1;
 
 				pci_map_addr = RTE_PTR_ADD(mapaddr, (size_t) maps[j].size);
 			}
+
+			maps[j].path = rte_malloc(NULL, strlen(devname) + 1, 0);
+			if (maps[j].path == NULL)
+				fail = 1;
 
 			if (fail) {
 				rte_free(uio_res);
@@ -424,7 +425,8 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 			close(fd);
 
 			maps[j].addr = mapaddr;
-			maps[j].offset = offset;
+			maps[j].offset = 0;
+			strcpy(maps[j].path, devname);
 			dev->mem_resource[i].addr = mapaddr;
 		}
 	}
