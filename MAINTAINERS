@@ -117,6 +117,7 @@ F: lib/librte_eal/linuxapp/igb_uio/
 F: lib/librte_eal/linuxapp/eal/*uio*
 
 Linux VFIO
+M: Anatoly Burakov <anatoly.burakov@intel.com>
 F: lib/librte_eal/linuxapp/eal/*vfio*
 
 Linux Xen
@@ -348,6 +349,7 @@ F: examples/cmdline/
 F: doc/guides/sample_app_ug/cmd_line.rst
 
 Qemu IVSHMEM
+M: Anatoly Burakov <anatoly.burakov@intel.com>
 F: lib/librte_ivshmem/
 F: lib/librte_eal/linuxapp/eal/eal_ivshmem.c
 F: doc/guides/prog_guide/ivshmem_lib.rst
