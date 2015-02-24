@@ -377,6 +377,11 @@ F: app/test/test_timer*
 F: examples/timer/
 F: doc/guides/sample_app_ug/timer.rst
 
+Job statistics
+M: Pawel Wodkowski <pawelx.wodkowski@intel.com>
+F: lib/librte_jobstats/
+F: examples/l2fwd-jobstats/
+
 
 Test Applications
 -----------------
