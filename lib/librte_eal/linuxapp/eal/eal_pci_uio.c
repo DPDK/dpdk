@@ -304,11 +304,9 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	}
 
 	/* set bus master that is not done by uio_pci_generic */
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		if (pci_uio_set_bus_master(dev->intr_handle.uio_cfg_fd)) {
-			RTE_LOG(ERR, EAL, "Cannot set up bus mastering!\n");
-			return -1;
-		}
+	if (pci_uio_set_bus_master(dev->intr_handle.uio_cfg_fd)) {
+		RTE_LOG(ERR, EAL, "Cannot set up bus mastering!\n");
+		return -1;
 	}
 
 	/* allocate the mapping details for secondary processes*/
