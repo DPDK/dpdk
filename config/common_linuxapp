@@ -304,6 +304,11 @@ CONFIG_RTE_LIBRTE_HASH=y
 CONFIG_RTE_LIBRTE_HASH_DEBUG=n
 
 #
+# Compile librte_jobstats
+#
+CONFIG_RTE_LIBRTE_JOBSTATS=y
+
+#
 # Compile librte_lpm
 #
 CONFIG_RTE_LIBRTE_LPM=y

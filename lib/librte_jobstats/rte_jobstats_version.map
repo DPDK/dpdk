@@ -1,0 +1,19 @@
+DPDK_2.0 {
+	global:
+
+	rte_jobstats_context_finish;
+	rte_jobstats_context_init;
+	rte_jobstats_context_reset;
+	rte_jobstats_context_start;
+	rte_jobstats_finish;
+	rte_jobstats_init;
+	rte_jobstats_reset;
+	rte_jobstats_set_max;
+	rte_jobstats_set_min;
+	rte_jobstats_set_period;
+	rte_jobstats_set_target;
+	rte_jobstats_set_update_period_function;
+	rte_jobstats_start;
+
+	local: *;
+};

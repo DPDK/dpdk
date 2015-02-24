@@ -59,6 +59,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_LPM) += librte_lpm
 DIRS-$(CONFIG_RTE_LIBRTE_ACL) += librte_acl
 DIRS-$(CONFIG_RTE_LIBRTE_NET) += librte_net
 DIRS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += librte_ip_frag
+DIRS-$(CONFIG_RTE_LIBRTE_JOBSTATS) += librte_jobstats
 DIRS-$(CONFIG_RTE_LIBRTE_POWER) += librte_power
 DIRS-$(CONFIG_RTE_LIBRTE_METER) += librte_meter
 DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += librte_sched
