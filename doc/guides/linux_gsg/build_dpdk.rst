@@ -133,7 +133,8 @@ use the make config T=<target> command:
 
 .. warning::
 
-    The igb_uio module must be compiled with the same kernel as the one running on the target.
+    Any kernel modules to be used, e.g. igb_uio, kni, must be compiled with the
+    same kernel as the one running on the target.
     If the DPDK is not being built on the target machine,
     the RTE_KERNELDIR environment variable should be used to point the compilation at a copy of the kernel version to be used on the target machine.
 
@@ -154,28 +155,29 @@ Browsing the Installed DPDK Environment Target
 
 Once a target is created it contains all libraries and header files for the DPDK environment that are required to build customer applications.
 In addition, the test and testpmd applications are built under the build/app directory, which may be used for testing.
-In the case of Linux, a kmod  directory is also present that contains a module to install:
+A kmod  directory is also present that contains kernel modules which may be loaded if needed:
 
 .. code-block:: console
 
     $ ls x86_64-native-linuxapp-gcc
     app build hostapp include kmod lib Makefile
 
-Loading the DPDK igb_uio Module
--------------------------------
+Loading Modules to Enable Userspace IO for DPDK
+-----------------------------------------------
 
-To run any DPDK application, the igb_uio module can be loaded into the running kernel.
-The module is found in the kmod sub-directory of the DPDK target directory.
-This module should be loaded using the insmod command as shown below (assuming that the current directory is the DPDK target directory).
-In many cases, the uio support in the Linux* kernel is compiled as a module rather than as part of the kernel,
-so it is often necessary to load the uio module first:
+To run any DPDK application, a suitable uio module can be loaded into the running kernel.
+In most cases, the standard uio_pci_generic module included in the linux kernel
+can provide the uio capability. This module can be loaded using the command
 
 .. code-block:: console
 
-    sudo modprobe uio
-    sudo insmod kmod/igb_uio.ko
+    sudo modprobe uio_pci_generic
 
-Since DPDK release 1.7 provides VFIO support, compilation and use of igb_uio module has become optional for platforms that support using VFIO.
+As an alternative to the uio_pci_generic, the DPDK also includes the igb_uio
+module which can be found in the kmod subdirectory referred to above.
+
+Since DPDK release 1.7 onward provides VFIO support, use of UIO is optional
+for platforms that support using VFIO.
 
 Loading VFIO Module
 -------------------
@@ -195,24 +197,29 @@ Also, to use VFIO, both kernel and BIOS must support and be configured to use IO
 For proper operation of VFIO when running DPDK applications as a non-privileged user, correct permissions should also be set up.
 This can be done by using the DPDK setup script (called setup.sh and located in the tools directory).
 
-Binding and Unbinding Network Ports to/from the igb_uioor VFIO Modules
+Binding and Unbinding Network Ports to/from the Kernel Modules
 ----------------------------------------------------------------------
 
 As of release 1.4, DPDK applications no longer automatically unbind all supported network ports from the kernel driver in use.
-Instead, all ports that are to be used by an DPDK application must be bound to the igb_uio or vfio-pci module before the application is run.
+Instead, all ports that are to be used by an DPDK application must be bound to the
+uio_pci_generic, igb_uio or vfio-pci module before the application is run.
 Any network ports under Linux* control will be ignored by the DPDK poll-mode drivers and cannot be used by the application.
 
 .. warning::
 
     The DPDK will, by default, no longer automatically unbind network ports from the kernel driver at startup.
-    Any ports to be used by an DPDK application must be unbound from Linux* control and bound to the igb_uio or vfio-pci module before the application is run.
+    Any ports to be used by an DPDK application must be unbound from Linux* control and
+    bound to the uio_pci_generic, igb_uio or vfio-pci module before the application is run.
 
-To bind ports to the igb_uio or vfio-pci module for DPDK use, and then subsequently return ports to Linux* control,
+To bind ports to the uio_pci_generic, igb_uio or vfio-pci module for DPDK use,
+and then subsequently return ports to Linux* control,
 a utility script called dpdk_nic _bind.py is provided in the tools subdirectory.
 This utility can be used to provide a view of the current state of the network ports on the system,
-and to bind and unbind those ports from the different kernel modules, including igb_uio and vfio-pci.
+and to bind and unbind those ports from the different kernel modules, including the uio and vfio modules.
 The following are some examples of how the script can be used.
 A full description of the script and its parameters can be obtained by calling the script with the --help or --usage options.
+Note that the uio or vfio kernel modules to be used, should be loaded into the kernel before
+running the dpdk_nic_bind.py script.
 
 .. warning::
 
@@ -235,33 +242,33 @@ To see the status of all network ports on the system:
 
     root@host:DPDK# ./tools/dpdk_nic_bind.py --status
 
-    Network devices using IGB_UIO driver
-    ====================================
-    0000:82:00.0 '82599EB 10-Gigabit SFI/SFP+ Network Connection' drv=igb_uio unused=ixgbe
-    0000:82:00.1 '82599EB 10-Gigabit SFI/SFP+ Network Connection' drv=igb_uio unused=ixgbe
+    Network devices using DPDK-compatible driver
+    ============================================
+    0000:82:00.0 '82599EB 10-Gigabit SFI/SFP+ Network Connection' drv=uio_pci_generic unused=ixgbe
+    0000:82:00.1 '82599EB 10-Gigabit SFI/SFP+ Network Connection' drv=uio_pci_generic unused=ixgbe
 
     Network devices using kernel driver
     ===================================
-    0000:04:00.0 'I350 Gigabit Network Connection' if=em0 drv=igb unused=igb_uio *Active*
-    0000:04:00.1 'I350 Gigabit Network Connection' if=eth1 drv=igb unused=igb_uio
-    0000:04:00.2 'I350 Gigabit Network Connection' if=eth2 drv=igb unused=igb_uio
-    0000:04:00.3 'I350 Gigabit Network Connection' if=eth3 drv=igb unused=igb_uio
+    0000:04:00.0 'I350 Gigabit Network Connection' if=em0 drv=igb unused=uio_pci_generic *Active*
+    0000:04:00.1 'I350 Gigabit Network Connection' if=eth1 drv=igb unused=uio_pci_generic
+    0000:04:00.2 'I350 Gigabit Network Connection' if=eth2 drv=igb unused=uio_pci_generic
+    0000:04:00.3 'I350 Gigabit Network Connection' if=eth3 drv=igb unused=uio_pci_generic
 
     Other network devices
     =====================
     <none>
 
-To bind device eth1, 04:00.1, to the igb_uio driver:
+To bind device eth1, 04:00.1, to the uio_pci_generic driver:
 
 .. code-block:: console
 
-    root@host:DPDK# ./tools/dpdk_nic_bind.py --bind=igb_uio 04:00.1
+    root@host:DPDK# ./tools/dpdk_nic_bind.py --bind=uio_pci_generic 04:00.1
 
 or, alternatively,
 
 .. code-block:: console
 
-    root@host:DPDK# ./tools/dpdk_nic_bind.py --bind=igb_uio eth1
+    root@host:DPDK# ./tools/dpdk_nic_bind.py --bind=uio_pci_generic eth1
 
 To restore device 82:00.0 to its original kernel binding:
 

@@ -98,6 +98,8 @@ the Linux user account being used to run the DPDK application has access to them
 
 *   The userspace-io device files in  /dev, for example,  /dev/uio0, /dev/uio1, and so on
 
+*   The userspace-io sysfs config and resource files, for example for uio0: /sys/class/uio/uio0/device/config /sys/class/uio/uio0/device/resource*
+
 *   If the HPET is to be used,  /dev/hpet
 
 .. note::

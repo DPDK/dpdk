@@ -99,7 +99,8 @@ Running a Sample Application
 
 .. warning::
 
-    Any ports to be used by the application must be already bound to the igb_uio module, as described in Section 3.5, prior to running the application.
+    Any ports to be used by the application must be already bound to an appropriate kernel
+    module, as described in Section 3.5, prior to running the application.
 
 The application is linked with the DPDK target environment's Environmental Abstraction Layer (EAL) library,
 which provides some options that are generic to every DPDK application.
@@ -174,7 +175,7 @@ This can be useful when using other processors to understand the mapping of the 
 .. note::
 
     A more graphical view of the logical core layout may be obtained using the lstopo Linux utility.
-    On Fedora* 18, this may be installed and run using the following command:
+    On Fedora* Linux, this may be installed and run using the following command:
 
 .. code-block:: console
 
