@@ -38,10 +38,10 @@
 
 #find out GCC version
 
-GCC_VERSION = $(subst .,,$(shell $(CC) -dumpversion))
+GCC_VERSION = $(subst .,,$(shell $(CC) -dumpversion | cut -f1-2 -d.))
 
 # if GCC is older than 4.x
-ifeq ($(shell test $(GCC_VERSION) -lt 400 && echo 1), 1)
+ifeq ($(shell test $(GCC_VERSION) -lt 40 && echo 1), 1)
 	MACHINE_CFLAGS =
 $(warning You are using GCC < 4.x. This is neither supported, nor tested.)
 
@@ -55,18 +55,18 @@ else
 # GCC 4.6.x - added support for corei7, corei7-avx
 # GCC 4.7.x - added support for fsgsbase, rdrnd, f16c, core-avx-i, core-avx2
 
-	ifeq ($(shell test $(GCC_VERSION) -le 470 && echo 1), 1)
+	ifeq ($(shell test $(GCC_VERSION) -le 47 && echo 1), 1)
 		MACHINE_CFLAGS := $(patsubst -march=core-avx-i,-march=corei7-avx,$(MACHINE_CFLAGS))
 		MACHINE_CFLAGS := $(patsubst -march=core-avx2,-march=core-avx2,$(MACHINE_CFLAGS))
 	endif
-	ifeq ($(shell test $(GCC_VERSION) -lt 460 && echo 1), 1)
+	ifeq ($(shell test $(GCC_VERSION) -lt 46 && echo 1), 1)
 		MACHINE_CFLAGS := $(patsubst -march=corei7-avx,-march=core2 -maes -mpclmul -mavx,$(MACHINE_CFLAGS))
 		MACHINE_CFLAGS := $(patsubst -march=corei7,-march=core2 -maes -mpclmul,$(MACHINE_CFLAGS))
 	endif
-	ifeq ($(shell test $(GCC_VERSION) -lt 450 && echo 1), 1)
+	ifeq ($(shell test $(GCC_VERSION) -lt 45 && echo 1), 1)
 		MACHINE_CFLAGS := $(patsubst -march=atom,-march=core2 -mssse3,$(MACHINE_CFLAGS))
 	endif
-	ifeq ($(shell test $(GCC_VERSION) -lt 440 && echo 1), 1)
+	ifeq ($(shell test $(GCC_VERSION) -lt 44 && echo 1), 1)
 		MACHINE_CFLAGS := $(filter-out -mavx -mpclmul -maes,$(MACHINE_CFLAGS))
 		ifneq ($(findstring SSE4_2, $(CPUFLAGS)),)
 			MACHINE_CFLAGS += -msse4.2
@@ -75,12 +75,12 @@ else
 			MACHINE_CFLAGS += -msse4.1
 		endif
 	endif
-	ifeq ($(shell test $(GCC_VERSION) -lt 430 && echo 1), 1)
+	ifeq ($(shell test $(GCC_VERSION) -lt 43 && echo 1), 1)
 		MACHINE_CFLAGS := $(filter-out -msse% -mssse%,$(MACHINE_CFLAGS))
 		MACHINE_CFLAGS := $(patsubst -march=core2,-march=generic,$(MACHINE_CFLAGS))
 		MACHINE_CFLAGS += -msse3
 	endif
-	ifeq ($(shell test $(GCC_VERSION) -lt 420 && echo 1), 1)
+	ifeq ($(shell test $(GCC_VERSION) -lt 42 && echo 1), 1)
 		MACHINE_CFLAGS := $(filter-out -march% -mtune% -msse%,$(MACHINE_CFLAGS))
 	endif
 endif
