@@ -168,6 +168,23 @@ pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size,
 	return mapaddr;
 }
 
+/* unmap a particular resource */
+void
+pci_unmap_resource(void *requested_addr, size_t size)
+{
+	if (requested_addr == NULL)
+		return;
+
+	/* Unmap the PCI memory resource of device */
+	if (munmap(requested_addr, size)) {
+		RTE_LOG(ERR, EAL, "%s(): cannot munmap(%p, 0x%lx): %s\n",
+			__func__, requested_addr, (unsigned long)size,
+			strerror(errno));
+	} else
+		RTE_LOG(DEBUG, EAL, "  PCI memory unmapped at %p\n",
+				requested_addr);
+}
+
 /* parse the "resource" sysfs file */
 static int
 pci_parse_sysfs_resource(const char *filename, struct rte_pci_device *dev)

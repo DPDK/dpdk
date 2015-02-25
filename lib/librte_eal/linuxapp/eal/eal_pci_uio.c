@@ -386,3 +386,68 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	return 0;
 }
+
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+static void
+pci_uio_unmap(struct mapped_pci_resource *uio_res)
+{
+	int i;
+
+	if (uio_res == NULL)
+		return;
+
+	for (i = 0; i != uio_res->nb_maps; i++)
+		pci_unmap_resource(uio_res->maps[i].addr,
+				(size_t)uio_res->maps[i].size);
+}
+
+static struct mapped_pci_resource *
+pci_uio_find_resource(struct rte_pci_device *dev)
+{
+	struct mapped_pci_resource *uio_res;
+
+	if (dev == NULL)
+		return NULL;
+
+	TAILQ_FOREACH(uio_res, pci_res_list, next) {
+
+		/* skip this element if it doesn't match our PCI address */
+		if (!rte_eal_compare_pci_addr(&uio_res->pci_addr, &dev->addr))
+			return uio_res;
+	}
+	return NULL;
+}
+
+/* unmap the PCI resource of a PCI device in virtual memory */
+void
+pci_uio_unmap_resource(struct rte_pci_device *dev)
+{
+	struct mapped_pci_resource *uio_res;
+
+	if (dev == NULL)
+		return;
+
+	/* find an entry for the device */
+	uio_res = pci_uio_find_resource(dev);
+	if (uio_res == NULL)
+		return;
+
+	/* secondary processes - just free maps */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return pci_uio_unmap(uio_res);
+
+	TAILQ_REMOVE(pci_res_list, uio_res, next);
+
+	/* unmap all resources */
+	pci_uio_unmap(uio_res);
+
+	/* free uio resource */
+	rte_free(uio_res);
+
+	/* close fd if in primary process */
+	close(dev->intr_handle.fd);
+
+	dev->intr_handle.fd = -1;
+	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+}
+#endif /* RTE_LIBRTE_EAL_HOTPLUG */

@@ -72,6 +72,13 @@ void *pci_map_resource(void *requested_addr, int fd, off_t offset,
 /* map IGB_UIO resource prototype */
 int pci_uio_map_resource(struct rte_pci_device *dev);
 
+void pci_unmap_resource(void *requested_addr, size_t size);
+
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+/* unmap IGB_UIO resource prototype */
+void pci_uio_unmap_resource(struct rte_pci_device *dev);
+#endif /* RTE_LIBRTE_EAL_HOTPLUG */
+
 #ifdef VFIO_PRESENT
 
 #define VFIO_MAX_GROUPS 64
