@@ -447,7 +447,8 @@ rte_timer_reset_sync(struct rte_timer *tim, uint64_t ticks,
 		     rte_timer_cb_t fct, void *arg)
 {
 	while (rte_timer_reset(tim, ticks, type, tim_lcore,
-			       fct, arg) != 0);
+			       fct, arg) != 0)
+		rte_pause();
 }
 
 /* Stop the timer associated with the timer handle tim */
