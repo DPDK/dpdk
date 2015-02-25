@@ -498,6 +498,13 @@ static struct eth_dev_ops ops = {
 		.stats_reset = eth_stats_reset,
 };
 
+static struct eth_driver rte_pcap_pmd = {
+	.pci_drv = {
+		.name = "rte_pcap_pmd",
+		.drv_flags = RTE_PCI_DRV_DETACHABLE,
+	},
+};
+
 /*
  * Function handler that opens the pcap file for reading a stores a
  * reference of it for use it later on.
@@ -713,6 +720,10 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 	if (*eth_dev == NULL)
 		goto error;
 
+	/* check length of device name */
+	if ((strlen((*eth_dev)->data->name) + 1) > sizeof(data->name))
+		goto error;
+
 	/* now put it all together
 	 * - store queue data in internals,
 	 * - store numa_node info in pci_driver
@@ -739,10 +750,13 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &eth_addr;
+	strncpy(data->name,
+		(*eth_dev)->data->name, strlen((*eth_dev)->data->name));
 
 	(*eth_dev)->data = data;
 	(*eth_dev)->dev_ops = &ops;
 	(*eth_dev)->pci_dev = pci_dev;
+	(*eth_dev)->driver = &rte_pcap_pmd;
 
 	return 0;
 
@@ -927,10 +941,36 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 
 }
 
+static int
+rte_pmd_pcap_devuninit(const char *name)
+{
+	struct rte_eth_dev *eth_dev = NULL;
+
+	RTE_LOG(INFO, PMD, "Closing pcap ethdev on numa socket %u\n",
+			rte_socket_id());
+
+	if (name == NULL)
+		return -1;
+
+	/* reserve an ethdev entry */
+	eth_dev = rte_eth_dev_allocated(name);
+	if (eth_dev == NULL)
+		return -1;
+
+	rte_free(eth_dev->data->dev_private);
+	rte_free(eth_dev->data);
+	rte_free(eth_dev->pci_dev);
+
+	rte_eth_dev_release_port(eth_dev);
+
+	return 0;
+}
+
 static struct rte_driver pmd_pcap_drv = {
 	.name = "eth_pcap",
 	.type = PMD_VDEV,
 	.init = rte_pmd_pcap_devinit,
+	.uninit = rte_pmd_pcap_devuninit,
 };
 
 PMD_REGISTER_DRIVER(pmd_pcap_drv);
