@@ -174,8 +174,12 @@ rte_kvargs_process(const struct rte_kvargs *kvlist,
 void
 rte_kvargs_free(struct rte_kvargs *kvlist)
 {
+	if (!kvlist)
+		return;
+
 	if (kvlist->str != NULL)
 		free(kvlist->str);
+
 	free(kvlist);
 }
 
