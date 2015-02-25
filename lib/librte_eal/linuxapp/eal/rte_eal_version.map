@@ -44,6 +44,7 @@ DPDK_2.0 {
 	rte_eal_pci_probe;
 	rte_eal_pci_probe_one;
 	rte_eal_pci_register;
+	rte_eal_pci_scan;
 	rte_eal_pci_unregister;
 	rte_eal_process_type;
 	rte_eal_remote_launch;

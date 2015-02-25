@@ -201,7 +201,7 @@ rte_eth_dev_data_alloc(void)
 				RTE_MAX_ETHPORTS * sizeof(*rte_eth_dev_data));
 }
 
-static struct rte_eth_dev *
+struct rte_eth_dev *
 rte_eth_dev_allocated(const char *name)
 {
 	unsigned i;
@@ -270,7 +270,6 @@ rte_eth_dev_create_unique_device_name(char *name, size_t size,
 			pci_dev->addr.function);
 	if (ret < 0)
 		return ret;
-
 	return 0;
 }
 
@@ -426,6 +425,306 @@ rte_eth_dev_count(void)
 {
 	return (nb_ports);
 }
+
+static enum rte_eth_dev_type
+rte_eth_dev_get_device_type(uint8_t port_id)
+{
+	if (!rte_eth_dev_is_valid_port(port_id))
+		return -1;
+	return rte_eth_devices[port_id].dev_type;
+}
+
+static int
+rte_eth_dev_save(struct rte_eth_dev *devs, size_t size)
+{
+	if ((devs == NULL) ||
+	    (size != sizeof(struct rte_eth_dev) * RTE_MAX_ETHPORTS))
+		return -EINVAL;
+
+	/* save current rte_eth_devices */
+	memcpy(devs, rte_eth_devices, size);
+	return 0;
+}
+
+static int
+rte_eth_dev_get_changed_port(struct rte_eth_dev *devs, uint8_t *port_id)
+{
+	if ((devs == NULL) || (port_id == NULL))
+		return -EINVAL;
+
+	/* check which port was attached or detached */
+	for (*port_id = 0; *port_id < RTE_MAX_ETHPORTS; (*port_id)++, devs++) {
+		if (rte_eth_devices[*port_id].attached ^ devs->attached)
+			return 0;
+	}
+	return -ENODEV;
+}
+
+static int
+rte_eth_dev_get_addr_by_port(uint8_t port_id, struct rte_pci_addr *addr)
+{
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -EINVAL;
+	}
+
+	if (addr == NULL) {
+		PMD_DEBUG_TRACE("Null pointer is specified\n");
+		return -EINVAL;
+	}
+
+	*addr = rte_eth_devices[port_id].pci_dev->addr;
+	return 0;
+}
+
+static int
+rte_eth_dev_get_name_by_port(uint8_t port_id, char *name)
+{
+	char *tmp;
+
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -EINVAL;
+	}
+
+	if (name == NULL) {
+		PMD_DEBUG_TRACE("Null pointer is specified\n");
+		return -EINVAL;
+	}
+
+	/* shouldn't check 'rte_eth_devices[i].data',
+	 * because it might be overwritten by VDEV PMD */
+	tmp = rte_eth_dev_data[port_id].name;
+	strcpy(name, tmp);
+	return 0;
+}
+
+static int
+rte_eth_dev_is_detachable(uint8_t port_id)
+{
+	uint32_t drv_flags;
+
+	if (port_id >= RTE_MAX_ETHPORTS) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -EINVAL;
+	}
+
+	if (rte_eth_devices[port_id].dev_type == RTE_ETH_DEV_PCI) {
+		switch (rte_eth_devices[port_id].pci_dev->pt_driver) {
+		case RTE_PT_IGB_UIO:
+		case RTE_PT_UIO_GENERIC:
+			break;
+		case RTE_PT_VFIO:
+		default:
+			return -ENOTSUP;
+		}
+	}
+
+	drv_flags = rte_eth_devices[port_id].driver->pci_drv.drv_flags;
+	return !(drv_flags & RTE_PCI_DRV_DETACHABLE);
+}
+
+/* So far, DPDK hotplug function only supports linux */
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+/* attach the new physical device, then store port_id of the device */
+static int
+rte_eth_dev_attach_pdev(struct rte_pci_addr *addr, uint8_t *port_id)
+{
+	uint8_t new_port_id;
+	struct rte_eth_dev devs[RTE_MAX_ETHPORTS];
+
+	if ((addr == NULL) || (port_id == NULL))
+		goto err;
+
+	/* save current port status */
+	if (rte_eth_dev_save(devs, sizeof(devs)))
+		goto err;
+	/* re-construct pci_device_list */
+	if (rte_eal_pci_scan())
+		goto err;
+	/* invoke probe func of the driver can handle the new device.
+	 * TODO:
+	 * rte_eal_pci_probe_one() should return port_id.
+	 * And rte_eth_dev_save() and rte_eth_dev_get_changed_port()
+	 * should be removed. */
+	if (rte_eal_pci_probe_one(addr))
+		goto err;
+	/* get port_id enabled by above procedures */
+	if (rte_eth_dev_get_changed_port(devs, &new_port_id))
+		goto err;
+
+	*port_id = new_port_id;
+	return 0;
+err:
+	RTE_LOG(ERR, EAL, "Driver, cannot attach the device\n");
+	return -1;
+}
+
+/* detach the new physical device, then store pci_addr of the device */
+static int
+rte_eth_dev_detach_pdev(uint8_t port_id, struct rte_pci_addr *addr)
+{
+	struct rte_pci_addr freed_addr;
+	struct rte_pci_addr vp;
+
+	if (addr == NULL)
+		goto err;
+
+	/* check whether the driver supports detach feature, or not */
+	if (rte_eth_dev_is_detachable(port_id))
+		goto err;
+
+	/* get pci address by port id */
+	if (rte_eth_dev_get_addr_by_port(port_id, &freed_addr))
+		goto err;
+
+	/* Zerod pci addr means the port comes from virtual device */
+	vp.domain = vp.bus = vp.devid = vp.function = 0;
+	if (rte_eal_compare_pci_addr(&vp, &freed_addr) == 0)
+		goto err;
+
+	/* invoke close func of the driver,
+	 * also remove the device from pci_device_list */
+	if (rte_eal_pci_close_one(&freed_addr))
+		goto err;
+
+	*addr = freed_addr;
+	return 0;
+err:
+	RTE_LOG(ERR, EAL, "Driver, cannot detach the device\n");
+	return -1;
+}
+
+/* attach the new virtual device, then store port_id of the device */
+static int
+rte_eth_dev_attach_vdev(const char *vdevargs, uint8_t *port_id)
+{
+	char *name = NULL, *args = NULL;
+	uint8_t new_port_id;
+	struct rte_eth_dev devs[RTE_MAX_ETHPORTS];
+	int ret = -1;
+
+	if ((vdevargs == NULL) || (port_id == NULL))
+		goto end;
+
+	/* parse vdevargs, then retrieve device name and args */
+	if (rte_eal_parse_devargs_str(vdevargs, &name, &args))
+		goto end;
+
+	/* save current port status */
+	if (rte_eth_dev_save(devs, sizeof(devs)))
+		goto end;
+	/* walk around dev_driver_list to find the driver of the device,
+	 * then invoke probe function o the driver.
+	 * TODO:
+	 * rte_eal_vdev_init() should return port_id,
+	 * And rte_eth_dev_save() and rte_eth_dev_get_changed_port()
+	 * should be removed. */
+	if (rte_eal_vdev_init(name, args))
+		goto end;
+	/* get port_id enabled by above procedures */
+	if (rte_eth_dev_get_changed_port(devs, &new_port_id))
+		goto end;
+	ret = 0;
+	*port_id = new_port_id;
+end:
+	if (name)
+		free(name);
+	if (args)
+		free(args);
+
+	if (ret < 0)
+		RTE_LOG(ERR, EAL, "Driver, cannot attach the device\n");
+	return ret;
+}
+
+/* detach the new virtual device, then store the name of the device */
+static int
+rte_eth_dev_detach_vdev(uint8_t port_id, char *vdevname)
+{
+	char name[RTE_ETH_NAME_MAX_LEN];
+
+	if (vdevname == NULL)
+		goto err;
+
+	/* check whether the driver supports detach feature, or not */
+	if (rte_eth_dev_is_detachable(port_id))
+		goto err;
+
+	/* get device name by port id */
+	if (rte_eth_dev_get_name_by_port(port_id, name))
+		goto err;
+	/* walk around dev_driver_list to find the driver of the device,
+	 * then invoke close function o the driver */
+	if (rte_eal_vdev_uninit(name))
+		goto err;
+
+	strncpy(vdevname, name, sizeof(name));
+	return 0;
+err:
+	RTE_LOG(ERR, EAL, "Driver, cannot detach the device\n");
+	return -1;
+}
+
+/* attach the new device, then store port_id of the device */
+int
+rte_eth_dev_attach(const char *devargs, uint8_t *port_id)
+{
+	struct rte_pci_addr addr;
+
+	if ((devargs == NULL) || (port_id == NULL))
+		return -EINVAL;
+
+	if (eal_parse_pci_DomBDF(devargs, &addr) == 0)
+		return rte_eth_dev_attach_pdev(&addr, port_id);
+	else
+		return rte_eth_dev_attach_vdev(devargs, port_id);
+}
+
+/* detach the device, then store the name of the device */
+int
+rte_eth_dev_detach(uint8_t port_id, char *name)
+{
+	struct rte_pci_addr addr;
+	int ret;
+
+	if (name == NULL)
+		return -EINVAL;
+
+	if (rte_eth_dev_get_device_type(port_id) == RTE_ETH_DEV_PCI) {
+		ret = rte_eth_dev_get_addr_by_port(port_id, &addr);
+		if (ret < 0)
+			return ret;
+
+		ret = rte_eth_dev_detach_pdev(port_id, &addr);
+		if (ret == 0)
+			snprintf(name, RTE_ETH_NAME_MAX_LEN,
+				"%04x:%02x:%02x.%d",
+				addr.domain, addr.bus,
+				addr.devid, addr.function);
+
+		return ret;
+	} else
+		return rte_eth_dev_detach_vdev(port_id, name);
+}
+#else /* RTE_LIBRTE_EAL_HOTPLUG */
+int
+rte_eth_dev_attach(const char *devargs __rte_unused,
+			uint8_t *port_id __rte_unused)
+{
+	RTE_LOG(ERR, EAL, "Hotplug support isn't enabled\n");
+	return -1;
+}
+
+/* detach the device, then store the name of the device */
+int
+rte_eth_dev_detach(uint8_t port_id __rte_unused,
+			char *name __rte_unused)
+{
+	RTE_LOG(ERR, EAL, "Hotplug support isn't enabled\n");
+	return -1;
+}
+#endif /* RTE_LIBRTE_EAL_HOTPLUG */
 
 static int
 rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)

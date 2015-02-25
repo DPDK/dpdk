@@ -175,6 +175,8 @@ extern "C" {
 #include <rte_log.h>
 #include <rte_interrupts.h>
 #include <rte_pci.h>
+#include <rte_dev.h>
+#include <rte_devargs.h>
 #include <rte_mbuf.h>
 #include "rte_ether.h"
 #include "rte_eth_ctrl.h"
@@ -1540,6 +1542,16 @@ extern struct rte_eth_dev rte_eth_devices[];
 extern uint8_t rte_eth_dev_count(void);
 
 /**
+ * Function for internal use by port hotplug functions.
+ * Returns a ethdev slot specified by the unique identifier name.
+ * @param	name
+ *  The pointer to the Unique identifier name for each Ethernet device
+ * @return
+ *   - The pointer to the ethdev slot, on success. NULL on error
+ */
+extern struct rte_eth_dev *rte_eth_dev_allocated(const char *name);
+
+/**
  * Function for internal use by dummy drivers primarily, e.g. ring-based
  * driver.
  * Allocates a new ethdev slot for an ethernet device and returns the pointer
@@ -1564,6 +1576,32 @@ struct rte_eth_dev *rte_eth_dev_allocate(const char *name,
  *   - 0 on success, negative on error
  */
 int rte_eth_dev_release_port(struct rte_eth_dev *eth_dev);
+
+/**
+ * Attach a new Ethernet device specified by aruguments.
+ *
+ * @param devargs
+ *  A pointer to a strings array describing the new device
+ *  to be attached. The strings should be a pci address like
+ *  '0000:01:00.0' or virtual device name like 'eth_pcap0'.
+ * @param port_id
+ *  A pointer to a port identifier actually attached.
+ * @return
+ *  0 on success and port_id is filled, negative on error
+ */
+int rte_eth_dev_attach(const char *devargs, uint8_t *port_id);
+
+/**
+ * Detach a Ethernet device specified by port identifier.
+ *
+ * @param port_id
+ *   The port identifier of the device to detach.
+ * @param addr
+ *  A pointer to a device name actually detached.
+ * @return
+ *  0 on success and devname is filled, negative on error
+ */
+int rte_eth_dev_detach(uint8_t port_id, char *devname);
 
 struct eth_driver;
 /**

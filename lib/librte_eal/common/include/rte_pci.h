@@ -313,6 +313,15 @@ rte_eal_compare_pci_addr(struct rte_pci_addr *addr, struct rte_pci_addr *addr2)
 }
 
 /**
+ * Scan the content of the PCI bus, and the devices in the devices
+ * list
+ *
+ * @return
+ *  0 on success, negative on error
+ */
+int rte_eal_pci_scan(void);
+
+/**
  * Probe the PCI bus for registered drivers.
  *
  * Scan the content of the PCI bus, and call the probe() function for

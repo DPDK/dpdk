@@ -8,6 +8,8 @@ DPDK_2.0 {
 	rte_eth_allmulticast_enable;
 	rte_eth_allmulticast_get;
 	rte_eth_dev_allocate;
+	rte_eth_dev_allocated;
+	rte_eth_dev_attach;
 	rte_eth_dev_bypass_event_show;
 	rte_eth_dev_bypass_event_store;
 	rte_eth_dev_bypass_init;
@@ -22,6 +24,7 @@ DPDK_2.0 {
 	rte_eth_dev_close;
 	rte_eth_dev_configure;
 	rte_eth_dev_count;
+	rte_eth_dev_detach;
 	rte_eth_dev_fdir_add_perfect_filter;
 	rte_eth_dev_fdir_add_signature_filter;
 	rte_eth_dev_fdir_get_infos;

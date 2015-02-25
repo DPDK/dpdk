@@ -440,8 +440,8 @@ error:
  * Scan the content of the PCI bus, and the devices in the devices
  * list
  */
-static int
-pci_scan(void)
+int
+rte_eal_pci_scan(void)
 {
 	struct dirent *e;
 	DIR *dir;
@@ -773,7 +773,7 @@ rte_eal_pci_init(void)
 	if (internal_config.no_pci)
 		return 0;
 
-	if (pci_scan() < 0) {
+	if (rte_eal_pci_scan() < 0) {
 		RTE_LOG(ERR, EAL, "%s(): Cannot scan PCI bus\n", __func__);
 		return -1;
 	}
