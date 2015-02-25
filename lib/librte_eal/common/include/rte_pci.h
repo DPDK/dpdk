@@ -216,6 +216,8 @@ struct rte_pci_driver {
 #define RTE_PCI_DRV_FORCE_UNBIND 0x0004
 /** Device driver supports link state interrupt */
 #define RTE_PCI_DRV_INTR_LSC	0x0008
+/** Device driver supports detaching capability */
+#define RTE_PCI_DRV_DETACHABLE	0x0010
 
 /**< Internal use only - Macro used by pci addr parsing functions **/
 #define GET_PCIADDR_FIELD(in, fd, lim, dlm)                   \
