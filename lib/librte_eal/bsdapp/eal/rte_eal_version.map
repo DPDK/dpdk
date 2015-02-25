@@ -10,6 +10,7 @@ DPDK_2.0 {
 	pci_driver_list;
 	per_lcore__lcore_id;
 	per_lcore__rte_errno;
+	per_lcore__socket_id;
 	rte_cpu_check_supported;
 	rte_cpu_get_flag_enabled;
 	rte_cycles_vmware_tsc_map;
@@ -83,6 +84,7 @@ DPDK_2.0 {
 	rte_snprintf;
 	rte_strerror;
 	rte_strsplit;
+	rte_sys_gettid;
 	rte_thread_get_affinity;
 	rte_thread_set_affinity;
 	rte_vlog;
