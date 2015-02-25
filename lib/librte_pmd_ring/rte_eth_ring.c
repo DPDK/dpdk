@@ -297,7 +297,7 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		goto error;
 
 	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate(name);
+	eth_dev = rte_eth_dev_allocate(name, RTE_ETH_DEV_VIRTUAL);
 	if (eth_dev == NULL)
 		goto error;
 

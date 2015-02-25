@@ -649,7 +649,7 @@ rte_pmd_init_internals(const char *name,
 	}
 
 	/* reserve an ethdev entry */
-	*eth_dev = rte_eth_dev_allocate(name);
+	*eth_dev = rte_eth_dev_allocate(name, RTE_ETH_DEV_VIRTUAL);
 	if (*eth_dev == NULL)
 		goto error;
 

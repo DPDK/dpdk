@@ -648,7 +648,7 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 		goto err;
 
 	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate(name);
+	eth_dev = rte_eth_dev_allocate(name, RTE_ETH_DEV_VIRTUAL);
 	if (eth_dev == NULL)
 		goto err;
 

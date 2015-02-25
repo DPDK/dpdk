@@ -1422,6 +1422,17 @@ struct rte_eth_rxtx_callback {
 	void *param;
 };
 
+/*
+ * The eth device type
+ */
+enum rte_eth_dev_type {
+	RTE_ETH_DEV_UNKNOWN,	/**< unknown device type */
+	RTE_ETH_DEV_PCI,
+		/**< Physical function and Virtual function of PCI devices */
+	RTE_ETH_DEV_VIRTUAL,	/**< non hardware device */
+	RTE_ETH_DEV_MAX		/**< max value of this enum */
+};
+
 /**
  * @internal
  * The generic data structure associated with each ethernet device.
@@ -1452,6 +1463,7 @@ struct rte_eth_dev {
 	 */
 	struct rte_eth_rxtx_callback **pre_tx_burst_cbs;
 	uint8_t attached; /**< Flag indicating the port is attached */
+	enum rte_eth_dev_type dev_type; /**< Flag indicating the device type */
 };
 
 struct rte_eth_dev_sriov {
@@ -1534,10 +1546,12 @@ extern uint8_t rte_eth_dev_count(void);
  * to that slot for the driver to use.
  *
  * @param	name	Unique identifier name for each Ethernet device
+ * @param	type	Device type of this Ethernet device
  * @return
  *   - Slot in the rte_dev_devices array for a new device;
  */
-struct rte_eth_dev *rte_eth_dev_allocate(const char *name);
+struct rte_eth_dev *rte_eth_dev_allocate(const char *name,
+		enum rte_eth_dev_type type);
 
 /**
  * Function for internal use by dummy drivers primarily, e.g. ring-based
