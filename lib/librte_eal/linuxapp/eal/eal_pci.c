@@ -555,25 +555,29 @@ pci_config_space_set(struct rte_pci_device *dev)
 static int
 pci_map_device(struct rte_pci_device *dev)
 {
-	int ret, mapped = 0;
+	int ret = -1;
 
 	/* try mapping the NIC resources using VFIO if it exists */
+	switch (dev->pt_driver) {
+	case RTE_PT_VFIO:
 #ifdef VFIO_PRESENT
-	if (pci_vfio_is_enabled()) {
-		ret = pci_vfio_map_resource(dev);
-		if (ret == 0)
-			mapped = 1;
-		else if (ret < 0)
-			return ret;
-	}
+		if (pci_vfio_is_enabled())
+			ret = pci_vfio_map_resource(dev);
 #endif
-	/* map resources for devices that use uio_pci_generic or igb_uio */
-	if (!mapped) {
+		break;
+	case RTE_PT_IGB_UIO:
+	case RTE_PT_UIO_GENERIC:
+		/* map resources for devices that use uio */
 		ret = pci_uio_map_resource(dev);
-		if (ret != 0)
-			return ret;
+		break;
+	default:
+		RTE_LOG(DEBUG, EAL, "  Not managed by known pt driver,"
+			" skipped\n");
+		ret = 1;
+		break;
 	}
-	return 0;
+
+	return ret;
 }
 
 /*
