@@ -97,6 +97,35 @@ error:
 	return -1;
 }
 
+static int
+pci_get_kernel_driver_by_path(const char *filename, char *dri_name)
+{
+	int count;
+	char path[PATH_MAX];
+	char *name;
+
+	if (!filename || !dri_name)
+		return -1;
+
+	count = readlink(filename, path, PATH_MAX);
+	if (count >= PATH_MAX)
+		return -1;
+
+	/* For device does not have a driver */
+	if (count < 0)
+		return 1;
+
+	path[count] = '\0';
+
+	name = strrchr(path, '/');
+	if (name) {
+		strncpy(dri_name, name + 1, strlen(name + 1) + 1);
+		return 0;
+	}
+
+	return -1;
+}
+
 void *
 pci_find_max_end_va(void)
 {
@@ -221,11 +250,12 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	char filename[PATH_MAX];
 	unsigned long tmp;
 	struct rte_pci_device *dev;
+	char driver[PATH_MAX];
+	int ret;
 
 	dev = malloc(sizeof(*dev));
-	if (dev == NULL) {
+	if (dev == NULL)
 		return -1;
-	}
 
 	memset(dev, 0, sizeof(*dev));
 	dev->addr.domain = domain;
@@ -303,6 +333,25 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 		free(dev);
 		return -1;
 	}
+
+	/* parse driver */
+	snprintf(filename, sizeof(filename), "%s/driver", dirname);
+	ret = pci_get_kernel_driver_by_path(filename, driver);
+	if (!ret) {
+		if (!strcmp(driver, "vfio-pci"))
+			dev->pt_driver = RTE_PT_VFIO;
+		else if (!strcmp(driver, "igb_uio"))
+			dev->pt_driver = RTE_PT_IGB_UIO;
+		else if (!strcmp(driver, "uio_pci_generic"))
+			dev->pt_driver = RTE_PT_UIO_GENERIC;
+		else
+			dev->pt_driver = RTE_PT_UNKNOWN;
+	} else if (ret < 0) {
+		RTE_LOG(ERR, EAL, "Fail to get kernel driver\n");
+		free(dev);
+		return -1;
+	} else
+		dev->pt_driver = RTE_PT_UNKNOWN;
 
 	/* device is valid, add in list (sorted) */
 	if (TAILQ_EMPTY(&pci_device_list)) {

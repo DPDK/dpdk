@@ -142,6 +142,13 @@ struct rte_pci_addr {
 
 struct rte_devargs;
 
+enum rte_pt_driver {
+	RTE_PT_UNKNOWN		= 0,
+	RTE_PT_IGB_UIO		= 1,
+	RTE_PT_VFIO		= 2,
+	RTE_PT_UIO_GENERIC	= 3,
+};
+
 /**
  * A structure describing a PCI device.
  */
@@ -155,6 +162,7 @@ struct rte_pci_device {
 	uint16_t max_vfs;                       /**< sriov enable if not zero */
 	int numa_node;                          /**< NUMA node connection */
 	struct rte_devargs *devargs;            /**< Device user arguments */
+	enum rte_pt_driver pt_driver;		/**< Driver of passthrough */
 };
 
 /** Any PCI device identifier (vendor, device, ...) */
