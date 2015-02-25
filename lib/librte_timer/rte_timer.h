@@ -115,7 +115,7 @@ struct rte_timer;
 /**
  * Callback function type for timer expiry.
  */
-typedef void (rte_timer_cb_t)(struct rte_timer *, void *);
+typedef void (*rte_timer_cb_t)(struct rte_timer *, void *);
 
 #define MAX_SKIPLIST_DEPTH 10
 
@@ -128,7 +128,7 @@ struct rte_timer
 	struct rte_timer *sl_next[MAX_SKIPLIST_DEPTH];
 	volatile union rte_timer_status status; /**< Status of timer. */
 	uint64_t period;       /**< Period of timer (0 if not periodic). */
-	rte_timer_cb_t *f;     /**< Callback function. */
+	rte_timer_cb_t f;      /**< Callback function. */
 	void *arg;             /**< Argument to callback function. */
 };
 
