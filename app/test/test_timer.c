@@ -253,6 +253,7 @@ timer_stress2_main_loop(__attribute__((unused)) void *arg)
 	unsigned lcore_id = rte_lcore_id();
 
 	if (lcore_id == rte_get_master_lcore()) {
+		cb_count = 0;
 		timers = rte_malloc(NULL, sizeof(*timers) * NB_STRESS2_TIMERS, 0);
 		if (timers == NULL) {
 			printf("Test Failed\n");
@@ -311,6 +312,12 @@ timer_stress2_main_loop(__attribute__((unused)) void *arg)
 	/* now check that we get the right number of callbacks */
 	if (lcore_id == rte_get_master_lcore()) {
 		rte_timer_manage();
+
+		/* clean up statics, in case we run again */
+		rte_free(timers);
+		timers = NULL;
+		ready = 0;
+
 		if (cb_count != NB_STRESS2_TIMERS) {
 			printf("Test Failed\n");
 			printf("- Stress test 2, part 2 failed\n");
