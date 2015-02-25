@@ -270,20 +270,6 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	return (0);
 }
 
-/* Compare two PCI device addresses. */
-static int
-pci_addr_comparison(struct rte_pci_addr *addr, struct rte_pci_addr *addr2)
-{
-	uint64_t dev_addr = (addr->domain << 24) + (addr->bus << 16) + (addr->devid << 8) + addr->function;
-	uint64_t dev_addr2 = (addr2->domain << 24) + (addr2->bus << 16) + (addr2->devid << 8) + addr2->function;
-
-	if (dev_addr > dev_addr2)
-		return 1;
-	else
-		return 0;
-}
-
-
 /* Scan one pci sysfs entry, and fill the devices list from it. */
 static int
 pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
@@ -356,12 +342,23 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 	}
 	else {
 		struct rte_pci_device *dev2 = NULL;
+		int ret;
 
 		TAILQ_FOREACH(dev2, &pci_device_list, next) {
-			if (pci_addr_comparison(&dev->addr, &dev2->addr))
+			ret = rte_eal_compare_pci_addr(&dev->addr, &dev2->addr);
+			if (ret > 0)
 				continue;
-			else {
+			else if (ret < 0) {
 				TAILQ_INSERT_BEFORE(dev2, dev, next);
+				return 0;
+			} else { /* already registered */
+				/* update pt_driver */
+				dev2->pt_driver = dev->pt_driver;
+				dev2->max_vfs = dev->max_vfs;
+				memmove(dev2->mem_resource,
+					dev->mem_resource,
+					sizeof(dev->mem_resource));
+				free(dev);
 				return 0;
 			}
 		}

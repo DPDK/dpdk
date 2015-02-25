@@ -93,7 +93,7 @@ static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 		if (devargs->type != RTE_DEVTYPE_BLACKLISTED_PCI &&
 			devargs->type != RTE_DEVTYPE_WHITELISTED_PCI)
 			continue;
-		if (!memcmp(&dev->addr, &devargs->pci.addr, sizeof(dev->addr)))
+		if (!rte_eal_compare_pci_addr(&dev->addr, &devargs->pci.addr))
 			return devargs;
 	}
 	return NULL;

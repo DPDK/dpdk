@@ -91,7 +91,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 	TAILQ_FOREACH(uio_res, pci_res_list, next) {
 
 		/* skip this element if it doesn't match our PCI address */
-		if (memcmp(&uio_res->pci_addr, &dev->addr, sizeof(dev->addr)))
+		if (rte_eal_compare_pci_addr(&uio_res->pci_addr, &dev->addr))
 			continue;
 
 		for (i = 0; i != uio_res->nb_maps; i++) {

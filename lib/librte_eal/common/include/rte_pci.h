@@ -270,6 +270,40 @@ eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
 }
 #undef GET_PCIADDR_FIELD
 
+/* Compare two PCI device addresses. */
+/**
+ * Utility function to compare two PCI device addresses.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address to compare
+ * @param addr2
+ *	The PCI Bus-Device-Function address to compare
+ * @return
+ *	0 on equal PCI address.
+ *	Positive on addr is greater than addr2.
+ *	Negative on addr is less than addr2, or error.
+ */
+static inline int
+rte_eal_compare_pci_addr(struct rte_pci_addr *addr, struct rte_pci_addr *addr2)
+{
+	uint64_t dev_addr, dev_addr2;
+
+	if ((addr == NULL) || (addr2 == NULL))
+		return -1;
+
+	dev_addr = (addr->domain << 24) | (addr->bus << 16) |
+				(addr->devid << 8) | addr->function;
+	dev_addr2 = (addr2->domain << 24) | (addr2->bus << 16) |
+				(addr2->devid << 8) | addr2->function;
+
+	if (dev_addr > dev_addr2)
+		return 1;
+	else if (dev_addr < dev_addr2)
+		return -1;
+	else
+		return 0;
+}
+
 /**
  * Probe the PCI bus for registered drivers.
  *
