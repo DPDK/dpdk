@@ -56,6 +56,7 @@ Programmer's Guide
     intel_dpdk_xen_based_packet_switch_sol
     libpcap_ring_based_poll_mode_drv
     link_bonding_poll_mode_drv_lib
+    mlx4_poll_mode_drv
     timer_lib
     hash_lib
     lpm_lib

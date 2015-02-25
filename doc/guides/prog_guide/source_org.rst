@@ -83,6 +83,7 @@ The lib directory contains::
     +-- librte_pmd_e1000    # 1GbE poll mode drivers (igb and em)
     +-- librte_pmd_ixgbe    # 10GbE poll mode driver
     +-- librte_pmd_i40e     # 40GbE poll mode driver
+    +-- librte_pmd_mlx4     # Mellanox ConnectX-3 poll mode driver
     +-- librte_pmd_pcap     # PCAP poll mode driver
     +-- librte_pmd_ring     # ring poll mode driver
     +-- librte_pmd_virtio   # virtio poll mode driver

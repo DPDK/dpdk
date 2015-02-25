@@ -223,6 +223,7 @@ F: lib/librte_pmd_fm10k/
 Mellanox mlx4
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
 F: lib/librte_pmd_mlx4/
+F: doc/guides/prog_guide/mlx4_poll_mode_drv.rst
 
 RedHat virtio
 M: Changchun Ouyang <changchun.ouyang@intel.com>
