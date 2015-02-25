@@ -45,6 +45,7 @@ F: Makefile
 F: config/
 F: mk/
 F: pkg/
+F: scripts/auto-config-h.sh
 F: scripts/depdirs-rule.sh
 F: scripts/gen-build-mk.sh
 F: scripts/gen-config-h.sh
