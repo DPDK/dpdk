@@ -78,7 +78,7 @@ struct cmdline_token_ops cmdline_token_portlist_ops = {
 };
 
 static void
-parse_set_list(cmdline_portlist_t * pl, int low, int high)
+parse_set_list(cmdline_portlist_t *pl, size_t low, size_t high)
 {
 	do {
 		pl->map |= (1 << low++);
@@ -86,7 +86,7 @@ parse_set_list(cmdline_portlist_t * pl, int low, int high)
 }
 
 static int
-parse_ports(cmdline_portlist_t * pl, const char * str)
+parse_ports(cmdline_portlist_t *pl, const char *str)
 {
 	size_t ps, pe;
 	const char *first, *last;
