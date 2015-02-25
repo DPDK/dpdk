@@ -247,10 +247,12 @@ static int
 timer_stress2_main_loop(__attribute__((unused)) void *arg)
 {
 	static struct rte_timer *timers;
-	int i;
+	int i, ret;
 	static volatile int ready = 0;
 	uint64_t delay = rte_get_timer_hz() / 4;
 	unsigned lcore_id = rte_lcore_id();
+	int32_t my_collisions = 0;
+	static rte_atomic32_t collisions = RTE_ATOMIC32_INIT(0);
 
 	if (lcore_id == rte_get_master_lcore()) {
 		cb_count = 0;
@@ -269,15 +271,25 @@ timer_stress2_main_loop(__attribute__((unused)) void *arg)
 	}
 
 	/* have all cores schedule all timers on master lcore */
-	for (i = 0; i < NB_STRESS2_TIMERS; i++)
-		rte_timer_reset(&timers[i], delay, SINGLE, rte_get_master_lcore(),
+	for (i = 0; i < NB_STRESS2_TIMERS; i++) {
+		ret = rte_timer_reset(&timers[i], delay, SINGLE, rte_get_master_lcore(),
 				timer_stress2_cb, NULL);
+		/* there will be collisions when multiple cores simultaneously
+		 * configure the same timers */
+		if (ret != 0)
+			my_collisions++;
+	}
+	if (my_collisions != 0)
+		rte_atomic32_add(&collisions, my_collisions);
 
 	ready = 0;
 	rte_delay_ms(500);
 
 	/* now check that we get the right number of callbacks */
 	if (lcore_id == rte_get_master_lcore()) {
+		my_collisions = rte_atomic32_read(&collisions);
+		if (my_collisions != 0)
+			printf("- %d timer reset collisions (OK)\n", my_collisions);
 		rte_timer_manage();
 		if (cb_count != NB_STRESS2_TIMERS) {
 			printf("Test Failed\n");
@@ -317,6 +329,7 @@ timer_stress2_main_loop(__attribute__((unused)) void *arg)
 		rte_free(timers);
 		timers = NULL;
 		ready = 0;
+		rte_atomic32_set(&collisions, 0);
 
 		if (cb_count != NB_STRESS2_TIMERS) {
 			printf("Test Failed\n");

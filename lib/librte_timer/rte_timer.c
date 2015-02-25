@@ -434,10 +434,8 @@ rte_timer_reset(struct rte_timer *tim, uint64_t ticks,
 	else
 		period = 0;
 
-	__rte_timer_reset(tim,  cur_time + ticks, period, tim_lcore,
+	return __rte_timer_reset(tim,  cur_time + ticks, period, tim_lcore,
 			  fct, arg, 0);
-
-	return 0;
 }
 
 /* loop until rte_timer_reset() succeed */
