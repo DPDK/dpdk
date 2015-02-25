@@ -255,6 +255,17 @@ rte_eth_dev_allocate(const char *name)
 	return eth_dev;
 }
 
+int
+rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
+{
+	if (eth_dev == NULL)
+		return -EINVAL;
+
+	eth_dev->attached = 0;
+	nb_ports--;
+	return 0;
+}
+
 static int
 rte_eth_dev_init(struct rte_pci_driver *pci_drv,
 		 struct rte_pci_device *pci_dev)

@@ -1539,6 +1539,18 @@ extern uint8_t rte_eth_dev_count(void);
  */
 struct rte_eth_dev *rte_eth_dev_allocate(const char *name);
 
+/**
+ * Function for internal use by dummy drivers primarily, e.g. ring-based
+ * driver.
+ * Release the specified ethdev port.
+ *
+ * @param eth_dev
+ * The *eth_dev* pointer is the address of the *rte_eth_dev* structure.
+ * @return
+ *   - 0 on success, negative on error
+ */
+int rte_eth_dev_release_port(struct rte_eth_dev *eth_dev);
+
 struct eth_driver;
 /**
  * @internal
