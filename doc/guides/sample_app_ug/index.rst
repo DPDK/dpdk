@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -43,6 +43,7 @@ Sample Applications User Guide
     cmd_line
     exception_path
     hello_world
+    skeleton
     ip_frag
     ipv4_multicast
     ip_reassembly
