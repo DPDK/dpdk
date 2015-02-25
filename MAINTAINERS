@@ -463,6 +463,7 @@ F: doc/guides/sample_app_ug/quota_watermark.rst
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: John McNamara <john.mcnamara@intel.com>
 F: examples/rxtx_callbacks/
+F: doc/guides/sample_app_ug/rxtx_callbacks.rst
 
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: John McNamara <john.mcnamara@intel.com>

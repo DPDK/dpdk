@@ -44,6 +44,7 @@ Sample Applications User Guide
     exception_path
     hello_world
     skeleton
+    rxtx_callbacks
     ip_frag
     ipv4_multicast
     ip_reassembly
