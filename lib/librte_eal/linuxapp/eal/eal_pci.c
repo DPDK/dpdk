@@ -595,6 +595,31 @@ pci_map_device(struct rte_pci_device *dev)
 	return ret;
 }
 
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+static void
+pci_unmap_device(struct rte_pci_device *dev)
+{
+	if (dev == NULL)
+		return;
+
+	/* try unmapping the NIC resources using VFIO if it exists */
+	switch (dev->pt_driver) {
+	case RTE_PT_VFIO:
+		RTE_LOG(ERR, EAL, "Hotplug doesn't support vfio yet\n");
+		break;
+	case RTE_PT_IGB_UIO:
+	case RTE_PT_UIO_GENERIC:
+		/* unmap resources for devices that use uio */
+		pci_uio_unmap_resource(dev);
+		break;
+	default:
+		RTE_LOG(DEBUG, EAL, "  Not managed by known pt driver,"
+			" skipped\n");
+		break;
+	}
+}
+#endif /* RTE_LIBRTE_EAL_HOTPLUG */
+
 /*
  * If vendor/device ID match, call the devinit() function of the
  * driver.
@@ -665,6 +690,75 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 	/* return positive value if driver is not found */
 	return 1;
 }
+
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+/*
+ * If vendor/device ID match, call the devuninit() function of the
+ * driver.
+ */
+int
+rte_eal_pci_close_one_driver(struct rte_pci_driver *dr,
+		struct rte_pci_device *dev)
+{
+	struct rte_pci_id *id_table;
+
+	if ((dr == NULL) || (dev == NULL))
+		return -EINVAL;
+
+	for (id_table = dr->id_table ; id_table->vendor_id != 0; id_table++) {
+
+		/* check if device's identifiers match the driver's ones */
+		if (id_table->vendor_id != dev->id.vendor_id &&
+		    id_table->vendor_id != PCI_ANY_ID)
+			continue;
+		if (id_table->device_id != dev->id.device_id &&
+		    id_table->device_id != PCI_ANY_ID)
+			continue;
+		if (id_table->subsystem_vendor_id !=
+		    dev->id.subsystem_vendor_id &&
+		    id_table->subsystem_vendor_id != PCI_ANY_ID)
+			continue;
+		if (id_table->subsystem_device_id !=
+		    dev->id.subsystem_device_id &&
+		    id_table->subsystem_device_id != PCI_ANY_ID)
+			continue;
+
+		struct rte_pci_addr *loc = &dev->addr;
+
+		RTE_LOG(DEBUG, EAL,
+				"PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
+				loc->domain, loc->bus, loc->devid,
+				loc->function, dev->numa_node);
+
+		RTE_LOG(DEBUG, EAL, "  remove driver: %x:%x %s\n",
+				dev->id.vendor_id, dev->id.device_id,
+				dr->name);
+
+		/* call the driver devuninit() function */
+		if (dr->devuninit && (dr->devuninit(dev) < 0))
+			return -1;	/* negative value is an error */
+
+		/* clear driver structure */
+		dev->driver = NULL;
+
+		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
+			/* unmap resources for devices that use igb_uio */
+			pci_unmap_device(dev);
+
+		return 0;
+	}
+	/* return positive value if driver is not found */
+	return 1;
+}
+#else /* RTE_LIBRTE_EAL_HOTPLUG */
+int
+rte_eal_pci_close_one_driver(struct rte_pci_driver *dr __rte_unused,
+		struct rte_pci_device *dev __rte_unused)
+{
+	RTE_LOG(ERR, EAL, "Hotplug support isn't enabled\n");
+	return -1;
+}
+#endif /* RTE_LIBRTE_EAL_HOTPLUG */
 
 /* Init the PCI EAL subsystem */
 int

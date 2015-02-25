@@ -192,12 +192,18 @@ struct rte_pci_driver;
 typedef int (pci_devinit_t)(struct rte_pci_driver *, struct rte_pci_device *);
 
 /**
+ * Uninitialisation function for the driver called during hotplugging.
+ */
+typedef int (pci_devuninit_t)(struct rte_pci_device *);
+
+/**
  * A structure describing a PCI driver.
  */
 struct rte_pci_driver {
 	TAILQ_ENTRY(rte_pci_driver) next;       /**< Next in list. */
 	const char *name;                       /**< Driver name. */
 	pci_devinit_t *devinit;                 /**< Device init. function. */
+	pci_devuninit_t *devuninit;             /**< Device uninit function. */
 	struct rte_pci_id *id_table;            /**< ID table, NULL terminated. */
 	uint32_t drv_flags;                     /**< Flags contolling handling of device. */
 };
@@ -316,6 +322,38 @@ rte_eal_compare_pci_addr(struct rte_pci_addr *addr, struct rte_pci_addr *addr2)
  *   - Negative on error.
  */
 int rte_eal_pci_probe(void);
+
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+/**
+ * Probe the single PCI device.
+ *
+ * Scan the content of the PCI bus, and find the pci device specified by pci
+ * address, then call the probe() function for registered driver that has a
+ * matching entry in its id_table for discovered device.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address to probe.
+ * @return
+ *   - 0 on success.
+ *   - Negative on error.
+ */
+int rte_eal_pci_probe_one(struct rte_pci_addr *addr);
+
+/**
+ * Close the single PCI device.
+ *
+ * Scan the content of the PCI bus, and find the pci device specified by pci
+ * address, then call the close() function for registered driver that has a
+ * matching entry in its id_table for discovered device.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address to close.
+ * @return
+ *   - 0 on success.
+ *   - Negative on error.
+ */
+int rte_eal_pci_close_one(struct rte_pci_addr *addr);
+#endif /* RTE_LIBRTE_EAL_HOTPLUG */
 
 /**
  * Dump the content of the PCI bus.

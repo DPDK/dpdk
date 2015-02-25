@@ -165,6 +165,21 @@ int rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr,
 		struct rte_pci_device *dev);
 
 /**
+ * Munmap memory for single PCI device
+ *
+ * This function is private to EAL.
+ *
+ * @param	dr
+ *  The pointer to the pci driver structure
+ * @param	dev
+ *  The pointer to the pci device structure
+ * @return
+ *   0 on success, negative on error
+ */
+int rte_eal_pci_close_one_driver(struct rte_pci_driver *dr,
+		struct rte_pci_device *dev);
+
+/**
  * Init tail queues for non-EAL library structures. This is to allow
  * the rings, mempools, etc. lists to be shared among multiple processes
  *
