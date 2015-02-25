@@ -527,7 +527,7 @@ out:
 static int
 rte_pmd_ring_devinit(const char *name, const char *params)
 {
-	struct rte_kvargs *kvlist;
+	struct rte_kvargs *kvlist = NULL;
 	int ret = 0;
 	struct node_action_list *info = NULL;
 
@@ -548,7 +548,7 @@ rte_pmd_ring_devinit(const char *name, const char *params)
 			info = rte_zmalloc("struct node_action_list", sizeof(struct node_action_list) +
 					   (sizeof(struct node_action_pair) * ret), 0);
 			if (!info)
-				goto out;
+				goto out_free;
 
 			info->total = ret;
 			info->list = (struct node_action_pair*)(info + 1);
@@ -567,8 +567,8 @@ rte_pmd_ring_devinit(const char *name, const char *params)
 	}
 
 out_free:
+	rte_kvargs_free(kvlist);
 	rte_free(info);
-out:
 	return ret;
 }
 
