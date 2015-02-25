@@ -112,11 +112,15 @@ nic_stats_display(portid_t port_id)
 	struct rte_eth_stats stats;
 	struct rte_port *port = &ports[port_id];
 	uint8_t i;
+	portid_t pid;
 
 	static const char *nic_stats_border = "########################";
 
-	if (port_id >= nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		printf("Valid port range is [0");
+		FOREACH_PORT(pid, ports)
+			printf(", %d", pid);
+		printf("]\n");
 		return;
 	}
 	rte_eth_stats_get(port_id, &stats);
@@ -189,8 +193,13 @@ nic_stats_display(portid_t port_id)
 void
 nic_stats_clear(portid_t port_id)
 {
-	if (port_id >= nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+	portid_t pid;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		printf("Valid port range is [0");
+		FOREACH_PORT(pid, ports)
+			printf(", %d", pid);
+		printf("]\n");
 		return;
 	}
 	rte_eth_stats_reset(port_id);
@@ -237,11 +246,15 @@ nic_stats_mapping_display(portid_t port_id)
 {
 	struct rte_port *port = &ports[port_id];
 	uint16_t i;
+	portid_t pid;
 
 	static const char *nic_stats_mapping_border = "########################";
 
-	if (port_id >= nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		printf("Valid port range is [0");
+		FOREACH_PORT(pid, ports)
+			printf(", %d", pid);
+		printf("]\n");
 		return;
 	}
 
@@ -290,9 +303,13 @@ port_infos_display(portid_t port_id)
 	int vlan_offload;
 	struct rte_mempool * mp;
 	static const char *info_border = "*********************";
+	portid_t pid;
 
-	if (port_id >= nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		printf("Valid port range is [0");
+		FOREACH_PORT(pid, ports)
+			printf(", %d", pid);
+		printf("]\n");
 		return;
 	}
 	port = &ports[port_id];
@@ -365,11 +382,14 @@ port_infos_display(portid_t port_id)
 }
 
 int
-port_id_is_invalid(portid_t port_id)
+port_id_is_invalid(portid_t port_id, enum print_warning warning)
 {
-	if (port_id < nb_ports)
+	if (ports[port_id].enabled)
 		return 0;
-	printf("Invalid port %d (must be < nb_ports=%d)\n", port_id, nb_ports);
+
+	if (warning == ENABLED_WARN)
+		printf("Invalid port %d\n", port_id);
+
 	return 1;
 }
 
@@ -428,7 +448,7 @@ port_reg_bit_display(portid_t port_id, uint32_t reg_off, uint8_t bit_x)
 	uint32_t reg_v;
 
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (port_reg_off_is_invalid(port_id, reg_off))
 		return;
@@ -447,7 +467,7 @@ port_reg_bit_field_display(portid_t port_id, uint32_t reg_off,
 	uint8_t  l_bit;
 	uint8_t  h_bit;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (port_reg_off_is_invalid(port_id, reg_off))
 		return;
@@ -474,7 +494,7 @@ port_reg_display(portid_t port_id, uint32_t reg_off)
 {
 	uint32_t reg_v;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (port_reg_off_is_invalid(port_id, reg_off))
 		return;
@@ -488,7 +508,7 @@ port_reg_bit_set(portid_t port_id, uint32_t reg_off, uint8_t bit_pos,
 {
 	uint32_t reg_v;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (port_reg_off_is_invalid(port_id, reg_off))
 		return;
@@ -516,7 +536,7 @@ port_reg_bit_field_set(portid_t port_id, uint32_t reg_off,
 	uint8_t  l_bit;
 	uint8_t  h_bit;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (port_reg_off_is_invalid(port_id, reg_off))
 		return;
@@ -550,7 +570,7 @@ port_reg_bit_field_set(portid_t port_id, uint32_t reg_off,
 void
 port_reg_set(portid_t port_id, uint32_t reg_off, uint32_t reg_v)
 {
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (port_reg_off_is_invalid(port_id, reg_off))
 		return;
@@ -563,7 +583,7 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 {
 	int diag;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	diag = rte_eth_dev_set_mtu(port_id, mtu);
 	if (diag == 0)
@@ -726,7 +746,7 @@ rx_ring_desc_display(portid_t port_id, queueid_t rxq_id, uint16_t rxd_id)
 {
 	const struct rte_memzone *rx_mz;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (rx_queue_id_is_invalid(rxq_id))
 		return;
@@ -743,7 +763,7 @@ tx_ring_desc_display(portid_t port_id, queueid_t txq_id, uint16_t txd_id)
 {
 	const struct rte_memzone *tx_mz;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (tx_queue_id_is_invalid(txq_id))
 		return;
@@ -804,7 +824,7 @@ port_rss_reta_info(portid_t port_id,
 	uint16_t i, idx, shift;
 	int ret;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	ret = rte_eth_dev_rss_reta_query(port_id, reta_conf, nb_entries);
@@ -859,7 +879,7 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 	uint8_t i;
 	int diag;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	/* Get RSS hash key if asked to display it */
 	rss_conf.rss_key = (show_rss_key) ? rss_key : NULL;
@@ -1423,12 +1443,8 @@ set_fwd_ports_list(unsigned int *portlist, unsigned int nb_pt)
  again:
 	for (i = 0; i < nb_pt; i++) {
 		port_id = (portid_t) portlist[i];
-		if (port_id >= nb_ports) {
-			printf("Invalid port id %u >= %u\n",
-			       (unsigned int) port_id,
-			       (unsigned int) nb_ports);
+		if (port_id_is_invalid(port_id, ENABLED_WARN))
 			return;
-		}
 		if (record_now)
 			fwd_ports_ids[i] = port_id;
 	}
@@ -1586,7 +1602,7 @@ vlan_extend_set(portid_t port_id, int on)
 	int diag;
 	int vlan_offload;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
@@ -1608,7 +1624,7 @@ rx_vlan_strip_set(portid_t port_id, int on)
 	int diag;
 	int vlan_offload;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
@@ -1629,7 +1645,7 @@ rx_vlan_strip_set_on_queue(portid_t port_id, uint16_t queue_id, int on)
 {
 	int diag;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	diag = rte_eth_dev_set_vlan_strip_on_queue(port_id, queue_id, on);
@@ -1644,7 +1660,7 @@ rx_vlan_filter_set(portid_t port_id, int on)
 	int diag;
 	int vlan_offload;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
@@ -1665,7 +1681,7 @@ rx_vft_set(portid_t port_id, uint16_t vlan_id, int on)
 {
 	int diag;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (vlan_id_is_invalid(vlan_id))
 		return;
@@ -1682,7 +1698,7 @@ rx_vlan_all_filter_set(portid_t port_id, int on)
 {
 	uint16_t vlan_id;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	for (vlan_id = 0; vlan_id < 4096; vlan_id++)
 		rx_vft_set(port_id, vlan_id, on);
@@ -1692,7 +1708,7 @@ void
 vlan_tpid_set(portid_t port_id, uint16_t tp_id)
 {
 	int diag;
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	diag = rte_eth_dev_set_vlan_ether_type(port_id, tp_id);
@@ -1707,7 +1723,7 @@ vlan_tpid_set(portid_t port_id, uint16_t tp_id)
 void
 tx_vlan_set(portid_t port_id, uint16_t vlan_id)
 {
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (vlan_id_is_invalid(vlan_id))
 		return;
@@ -1718,7 +1734,7 @@ tx_vlan_set(portid_t port_id, uint16_t vlan_id)
 void
 tx_vlan_reset(portid_t port_id)
 {
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	ports[port_id].tx_ol_flags &= ~TESTPMD_TX_OFFLOAD_INSERT_VLAN;
 }
@@ -1726,7 +1742,7 @@ tx_vlan_reset(portid_t port_id)
 void
 tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on)
 {
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	rte_eth_dev_set_vlan_pvid(port_id, vlan_id, on);
@@ -1738,7 +1754,7 @@ set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
 	uint16_t i;
 	uint8_t existing_mapping_found = 0;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	if (is_rx ? (rx_queue_id_is_invalid(queue_id)) : (tx_queue_id_is_invalid(queue_id)))
@@ -1904,7 +1920,7 @@ fdir_get_infos(portid_t port_id)
 
 	static const char *fdir_stats_border = "########################";
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	ret = rte_eth_dev_filter_supported(port_id, RTE_ETH_FILTER_FDIR);
 	if (ret < 0) {
@@ -2030,7 +2046,7 @@ set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 {
 	int diag;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (is_rx)
 		diag = rte_eth_dev_set_vf_rx(port_id,vf,on);
@@ -2052,7 +2068,7 @@ set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id, uint64_t vf_mask, uint8_t on)
 {
 	int diag;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (vlan_id_is_invalid(vlan_id))
 		return;
@@ -2069,7 +2085,7 @@ set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate)
 	int diag;
 	struct rte_eth_link link;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return 1;
 	rte_eth_link_get_nowait(port_id, &link);
 	if (rate > link.link_speed) {
@@ -2094,7 +2110,7 @@ set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 	if (q_msk == 0)
 		return 0;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return 1;
 	rte_eth_link_get_nowait(port_id, &link);
 	if (rate > link.link_speed) {

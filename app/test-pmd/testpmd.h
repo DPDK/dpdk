@@ -137,6 +137,7 @@ struct fwd_stream {
  * The data structure associated with each port.
  */
 struct rte_port {
+	uint8_t                 enabled;    /**< Port enabled or not */
 	struct rte_eth_dev_info dev_info;   /**< PCI info + driver name */
 	struct rte_eth_conf     dev_conf;   /**< Port configuration. */
 	struct ether_addr       eth_addr;   /**< Port ethernet address */
@@ -161,6 +162,14 @@ struct rte_port {
 	struct rte_eth_rxconf   rx_conf;    /**< rx configuration */
 	struct rte_eth_txconf   tx_conf;    /**< tx configuration */
 };
+
+extern portid_t __rte_unused
+find_next_port(portid_t p, struct rte_port *ports, int size);
+
+#define FOREACH_PORT(p, ports) \
+	for (p = find_next_port(0, ports, RTE_MAX_ETHPORTS); \
+	    p < RTE_MAX_ETHPORTS; \
+	    p = find_next_port(p + 1, ports, RTE_MAX_ETHPORTS))
 
 /**
  * The data structure associated with each forwarding logical core.
@@ -522,6 +531,8 @@ int init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf);
 int start_port(portid_t pid);
 void stop_port(portid_t pid);
 void close_port(portid_t pid);
+void attach_port(char *identifier);
+void detach_port(uint8_t port_id);
 int all_ports_stopped(void);
 int port_is_started(portid_t port_id);
 void pmd_test_exit(void);
@@ -548,9 +559,14 @@ void get_syn_filter(uint8_t port_id);
 void get_ethertype_filter(uint8_t port_id, uint16_t index);
 void get_2tuple_filter(uint8_t port_id, uint16_t index);
 void get_5tuple_filter(uint8_t port_id, uint16_t index);
-int port_id_is_invalid(portid_t port_id);
 int rx_queue_id_is_invalid(queueid_t rxq_id);
 int tx_queue_id_is_invalid(queueid_t txq_id);
+
+enum print_warning {
+	ENABLED_WARN = 0,
+	DISABLED_WARN
+};
+int port_id_is_invalid(portid_t port_id, enum print_warning warning);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the

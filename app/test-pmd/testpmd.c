@@ -71,6 +71,7 @@
 #include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_dev.h>
 #include <rte_string_fns.h>
 #ifdef RTE_LIBRTE_PMD_XENVIRT
 #include <rte_eth_xenvirt.h>
@@ -315,13 +316,27 @@ uint16_t nb_rx_queue_stats_mappings = 0;
 
 /* Forward function declarations */
 static void map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port);
-static void check_all_ports_link_status(uint8_t port_num, uint32_t port_mask);
+static void check_all_ports_link_status(uint32_t port_mask);
 
 /*
  * Check if all the ports are started.
  * If yes, return positive value. If not, return zero.
  */
 static int all_ports_started(void);
+
+/*
+ * Find next enabled port
+ */
+portid_t
+find_next_port(portid_t p, struct rte_port *ports, int size)
+{
+	if (ports == NULL)
+		rte_exit(-EINVAL, "failed to find a next port id\n");
+
+	while ((ports[p].enabled == 0) && (p < size))
+		p++;
+	return p;
+}
 
 /*
  * Setup default configuration.
@@ -552,7 +567,8 @@ init_config(void)
 				+ RTE_TEST_TX_DESC_MAX + MAX_PKT_BURST;
 
 		if (!numa_support)
-			nb_mbuf_per_pool = (nb_mbuf_per_pool * nb_ports);
+			nb_mbuf_per_pool =
+				(nb_mbuf_per_pool * RTE_MAX_ETHPORTS);
 	}
 
 	if (!numa_support) {
@@ -565,14 +581,19 @@ init_config(void)
 
 	/* Configuration of Ethernet ports. */
 	ports = rte_zmalloc("testpmd: ports",
-			    sizeof(struct rte_port) * nb_ports,
+			    sizeof(struct rte_port) * RTE_MAX_ETHPORTS,
 			    RTE_CACHE_LINE_SIZE);
 	if (ports == NULL) {
-		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d struct rte_port) "
-							"failed\n", nb_ports);
+		rte_exit(EXIT_FAILURE,
+				"rte_zmalloc(%d struct rte_port) failed\n",
+				RTE_MAX_ETHPORTS);
 	}
 
-	for (pid = 0; pid < nb_ports; pid++) {
+	/* enabled allocated ports */
+	for (pid = 0; pid < nb_ports; pid++)
+		ports[pid].enabled = 1;
+
+	FOREACH_PORT(pid, ports) {
 		port = &ports[pid];
 		rte_eth_dev_info_get(pid, &port->dev_info);
 
@@ -602,8 +623,7 @@ init_config(void)
 			nb_mbuf_per_pool = nb_mbuf_per_pool/nb_ports;
 
 		for (i = 0; i < MAX_SOCKET; i++) {
-			nb_mbuf = (nb_mbuf_per_pool *
-						port_per_socket[i]);
+			nb_mbuf = (nb_mbuf_per_pool * RTE_MAX_ETHPORTS);
 			if (nb_mbuf)
 				mbuf_pool_create(mbuf_data_size,
 						nb_mbuf,i);
@@ -635,14 +655,6 @@ reconfig(portid_t new_port_id, unsigned socket_id)
 	struct rte_port *port;
 
 	/* Reconfiguration of Ethernet ports. */
-	ports = rte_realloc(ports,
-			    sizeof(struct rte_port) * nb_ports,
-			    RTE_CACHE_LINE_SIZE);
-	if (ports == NULL) {
-		rte_exit(EXIT_FAILURE, "rte_realloc(%d struct rte_port) failed\n",
-				nb_ports);
-	}
-
 	port = &ports[new_port_id];
 	rte_eth_dev_info_get(new_port_id, &port->dev_info);
 
@@ -663,7 +675,7 @@ init_fwd_streams(void)
 	streamid_t sm_id, nb_fwd_streams_new;
 
 	/* set socket id according to numa or not */
-	for (pid = 0; pid < nb_ports; pid++) {
+	FOREACH_PORT(pid, ports) {
 		port = &ports[pid];
 		if (nb_rxq > port->dev_info.max_rx_queues) {
 			printf("Fail: nb_rxq(%d) is greater than "
@@ -1264,7 +1276,7 @@ all_ports_started(void)
 	portid_t pi;
 	struct rte_port *port;
 
-	for (pi = 0; pi < nb_ports; pi++) {
+	FOREACH_PORT(pi, ports) {
 		port = &ports[pi];
 		/* Check if there is a port which is not started */
 		if (port->port_status != RTE_PORT_STARTED)
@@ -1272,6 +1284,45 @@ all_ports_started(void)
 	}
 
 	/* No port is not started */
+	return 1;
+}
+
+int
+all_ports_stopped(void)
+{
+	portid_t pi;
+	struct rte_port *port;
+
+	FOREACH_PORT(pi, ports) {
+		port = &ports[pi];
+		if (port->port_status != RTE_PORT_STOPPED)
+			return 0;
+	}
+
+	return 1;
+}
+
+int
+port_is_started(portid_t port_id)
+{
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return 0;
+
+	if (ports[port_id].port_status != RTE_PORT_STARTED)
+		return 0;
+
+	return 1;
+}
+
+static int
+port_is_closed(portid_t port_id)
+{
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return 0;
+
+	if (ports[port_id].port_status != RTE_PORT_CLOSED)
+		return 0;
+
 	return 1;
 }
 
@@ -1296,8 +1347,8 @@ start_port(portid_t pid)
 
 	if(dcb_config)
 		dcb_test = 1;
-	for (pi = 0; pi < nb_ports; pi++) {
-		if (pid < nb_ports && pid != pi)
+	FOREACH_PORT(pi, ports) {
+		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
 			continue;
 
 		port = &ports[pi];
@@ -1421,7 +1472,7 @@ start_port(portid_t pid)
 	}
 
 	if (need_check_link_status && !no_link_check)
-		check_all_ports_link_status(nb_ports, RTE_PORT_ALL);
+		check_all_ports_link_status(RTE_PORT_ALL);
 	else
 		printf("Please stop the ports first\n");
 
@@ -1446,8 +1497,8 @@ stop_port(portid_t pid)
 	}
 	printf("Stopping ports...\n");
 
-	for (pi = 0; pi < nb_ports; pi++) {
-		if (pid < nb_ports && pid != pi)
+	FOREACH_PORT(pi, ports) {
+		if (!port_id_is_invalid(pid, DISABLED_WARN) && pid != pi)
 			continue;
 
 		port = &ports[pi];
@@ -1463,7 +1514,7 @@ stop_port(portid_t pid)
 		need_check_link_status = 1;
 	}
 	if (need_check_link_status && !no_link_check)
-		check_all_ports_link_status(nb_ports, RTE_PORT_ALL);
+		check_all_ports_link_status(RTE_PORT_ALL);
 
 	printf("Done\n");
 }
@@ -1481,8 +1532,8 @@ close_port(portid_t pid)
 
 	printf("Closing ports...\n");
 
-	for (pi = 0; pi < nb_ports; pi++) {
-		if (pid < nb_ports && pid != pi)
+	FOREACH_PORT(pi, ports) {
+		if (!port_id_is_invalid(pid, DISABLED_WARN) && pid != pi)
 			continue;
 
 		port = &ports[pi];
@@ -1502,31 +1553,83 @@ close_port(portid_t pid)
 	printf("Done\n");
 }
 
-int
-all_ports_stopped(void)
+void
+attach_port(char *identifier)
 {
-	portid_t pi;
-	struct rte_port *port;
+	portid_t i, j, pi = 0;
 
-	for (pi = 0; pi < nb_ports; pi++) {
-		port = &ports[pi];
-		if (port->port_status != RTE_PORT_STOPPED)
-			return 0;
+	printf("Attaching a new port...\n");
+
+	if (identifier == NULL) {
+		printf("Invalid parameters are specified\n");
+		return;
 	}
 
-	return 1;
+	if (test_done == 0) {
+		printf("Please stop forwarding first\n");
+		return;
+	}
+
+	if (rte_eth_dev_attach(identifier, &pi))
+		return;
+
+	ports[pi].enabled = 1;
+	reconfig(pi, rte_eth_dev_socket_id(pi));
+	rte_eth_promiscuous_enable(pi);
+
+	nb_ports = rte_eth_dev_count();
+
+	/* set_default_fwd_ports_config(); */
+	bzero(fwd_ports_ids, sizeof(fwd_ports_ids));
+	i = 0;
+	FOREACH_PORT(j, ports) {
+		fwd_ports_ids[i] = j;
+		i++;
+	}
+	nb_cfg_ports = nb_ports;
+	nb_fwd_ports++;
+
+	ports[pi].port_status = RTE_PORT_STOPPED;
+
+	printf("Port %d is attached. Now total ports is %d\n", pi, nb_ports);
+	printf("Done\n");
 }
 
-int
-port_is_started(portid_t port_id)
+void
+detach_port(uint8_t port_id)
 {
-	if (port_id_is_invalid(port_id))
-		return -1;
+	portid_t i, pi = 0;
+	char name[RTE_ETH_NAME_MAX_LEN];
 
-	if (ports[port_id].port_status != RTE_PORT_STARTED)
-		return 0;
+	printf("Detaching a port...\n");
 
-	return 1;
+	if (!port_is_closed(port_id)) {
+		printf("Please close port first\n");
+		return;
+	}
+
+	rte_eth_promiscuous_disable(port_id);
+
+	if (rte_eth_dev_detach(port_id, name))
+		return;
+
+	ports[port_id].enabled = 0;
+	nb_ports = rte_eth_dev_count();
+
+	/* set_default_fwd_ports_config(); */
+	bzero(fwd_ports_ids, sizeof(fwd_ports_ids));
+	i = 0;
+	FOREACH_PORT(pi, ports) {
+		fwd_ports_ids[i] = pi;
+		i++;
+	}
+	nb_cfg_ports = nb_ports;
+	nb_fwd_ports--;
+
+	printf("Port '%s' is detached. Now total ports is %d\n",
+			name, nb_ports);
+	printf("Done\n");
+	return;
 }
 
 void
@@ -1534,7 +1637,7 @@ pmd_test_exit(void)
 {
 	portid_t pt_id;
 
-	for (pt_id = 0; pt_id < nb_ports; pt_id++) {
+	FOREACH_PORT(pt_id, ports) {
 		printf("Stopping port %d...", pt_id);
 		fflush(stdout);
 		rte_eth_dev_close(pt_id);
@@ -1553,7 +1656,7 @@ struct pmd_test_command {
 
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
-check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
+check_all_ports_link_status(uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
@@ -1564,7 +1667,7 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 	fflush(stdout);
 	for (count = 0; count <= MAX_CHECK_TIME; count++) {
 		all_ports_up = 1;
-		for (portid = 0; portid < port_num; portid++) {
+		FOREACH_PORT(portid, ports) {
 			if ((port_mask & (1 << portid)) == 0)
 				continue;
 			memset(&link, 0, sizeof(link));
@@ -1729,7 +1832,7 @@ init_port_config(void)
 	portid_t pid;
 	struct rte_port *port;
 
-	for (pid = 0; pid < nb_ports; pid++) {
+	FOREACH_PORT(pid, ports) {
 		port = &ports[pid];
 		port->dev_conf.rxmode = rx_mode;
 		port->dev_conf.fdir_conf = fdir_conf;
@@ -1908,7 +2011,7 @@ main(int argc, char** argv)
 
 	nb_ports = (portid_t) rte_eth_dev_count();
 	if (nb_ports == 0)
-		rte_exit(EXIT_FAILURE, "No probed ethernet device\n");
+		RTE_LOG(WARNING, EAL, "No probed ethernet devices\n");
 
 	set_def_fwd_config();
 	if (nb_lcores == 0)
@@ -1930,7 +2033,7 @@ main(int argc, char** argv)
 		rte_exit(EXIT_FAILURE, "Start ports failed\n");
 
 	/* set all ports to promiscuous mode by default */
-	for (port_id = 0; port_id < nb_ports; port_id++)
+	FOREACH_PORT(port_id, ports)
 		rte_eth_promiscuous_enable(port_id);
 
 #ifdef RTE_LIBRTE_CMDLINE

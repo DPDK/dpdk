@@ -807,6 +807,63 @@ The following sections show functions for configuring ports.
 
     Port configuration changes only become active when forwarding is started/restarted.
 
+port attach
+~~~~~~~~~~~
+
+Attach a port specified by pci address or virtual device args.
+
+To attach a new pci device, the device should be recognized by kernel first.
+Then it should be moved under DPDK management.
+Finally the port can be attached to testpmd.
+On the other hand, to attach a port created by virtual device, above steps are not needed.
+
+port attach (identifier)
+
+For example, to attach a port whose pci address is 0000:02:00.0.
+
+.. code-block:: console
+
+    testpmd> port attach 0000:02:00.0
+    Attaching a new port...
+    ... snip ...
+    Port 0 is attached. Now total ports is 1
+    Done
+
+For example, to attach a port created by pcap PMD.
+
+.. code-block:: console
+
+    testpmd> port attach eth_pcap0,iface=eth0
+    Attaching a new port...
+    ... snip ...
+    Port 0 is attached. Now total ports is 1
+    Done
+
+In this case, identifier is "eth_pcap0,iface=eth0".
+This identifier format is the same as "--vdev" format of DPDK applications.
+
+port detach
+~~~~~~~~~~~
+
+Detach a specific port.
+
+Before detaching a port, the port should be closed.
+Also to remove a pci device completely from the system, first detach the port from testpmd.
+Then the device should be moved under kernel management.
+Finally the device can be removed using kernel pci hotplug functionality.
+On the other hand, to remove a port created by a virtual device, above steps are not needed.
+
+port detach (port_id)
+
+For example, to detach a port 0.
+
+.. code-block:: console
+
+    testpmd> port detach 0
+    Detaching a port...
+    ... snip ...
+    Done
+
 port start
 ~~~~~~~~~~
 

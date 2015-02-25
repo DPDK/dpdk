@@ -513,6 +513,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port close (port_id|all)\n"
 			"    Close all ports or port_id.\n\n"
 
+			"port attach (ident)\n"
+			"    Attach physical or virtual dev by pci address or virtual device name\n\n"
+
+			"port detach (port_id)\n"
+			"    Detach physical or virtual dev by port_id\n\n"
+
 			"port config (port_id|all)"
 			" speed (10|100|1000|10000|40000|auto)"
 			" duplex (half|full|auto)\n"
@@ -793,6 +799,89 @@ cmdline_parse_inst_t cmd_operate_specific_port = {
 	},
 };
 
+/* *** attach a specified port *** */
+struct cmd_operate_attach_port_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t identifier;
+};
+
+static void cmd_operate_attach_port_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_operate_attach_port_result *res = parsed_result;
+
+	if (!strcmp(res->keyword, "attach"))
+		attach_port(res->identifier);
+	else
+		printf("Unknown parameter\n");
+}
+
+cmdline_parse_token_string_t cmd_operate_attach_port_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_attach_port_result,
+			port, "port");
+cmdline_parse_token_string_t cmd_operate_attach_port_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_attach_port_result,
+			keyword, "attach");
+cmdline_parse_token_string_t cmd_operate_attach_port_identifier =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_attach_port_result,
+			identifier, NULL);
+
+cmdline_parse_inst_t cmd_operate_attach_port = {
+	.f = cmd_operate_attach_port_parsed,
+	.data = NULL,
+	.help_str = "port attach identifier, "
+		"identifier: pci address or virtual dev name",
+	.tokens = {
+		(void *)&cmd_operate_attach_port_port,
+		(void *)&cmd_operate_attach_port_keyword,
+		(void *)&cmd_operate_attach_port_identifier,
+		NULL,
+	},
+};
+
+/* *** detach a specified port *** */
+struct cmd_operate_detach_port_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	uint8_t port_id;
+};
+
+static void cmd_operate_detach_port_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_operate_detach_port_result *res = parsed_result;
+
+	if (!strcmp(res->keyword, "detach"))
+		detach_port(res->port_id);
+	else
+		printf("Unknown parameter\n");
+}
+
+cmdline_parse_token_string_t cmd_operate_detach_port_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_detach_port_result,
+			port, "port");
+cmdline_parse_token_string_t cmd_operate_detach_port_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_detach_port_result,
+			keyword, "detach");
+cmdline_parse_token_num_t cmd_operate_detach_port_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_operate_detach_port_result,
+			port_id, UINT8);
+
+cmdline_parse_inst_t cmd_operate_detach_port = {
+	.f = cmd_operate_detach_port_parsed,
+	.data = NULL,
+	.help_str = "port detach port_id",
+	.tokens = {
+		(void *)&cmd_operate_detach_port_port,
+		(void *)&cmd_operate_detach_port_keyword,
+		(void *)&cmd_operate_detach_port_port_id,
+		NULL,
+	},
+};
+
 /* *** configure speed for all ports *** */
 struct cmd_config_speed_all {
 	cmdline_fixed_string_t port;
@@ -847,7 +936,7 @@ cmd_config_speed_all_parsed(void *parsed_result,
 		return;
 	}
 
-	for (pid = 0; pid < nb_ports; pid++) {
+	FOREACH_PORT(pid, ports) {
 		ports[pid].dev_conf.link_speed = link_speed;
 		ports[pid].dev_conf.link_duplex = link_duplex;
 	}
@@ -915,10 +1004,8 @@ cmd_config_speed_specific_parsed(void *parsed_result,
 		return;
 	}
 
-	if (res->id >= nb_ports) {
-		printf("Port id %d must be less than %d\n", res->id, nb_ports);
+	if (port_id_is_invalid(res->id, ENABLED_WARN))
 		return;
-	}
 
 	if (!strcmp(res->value1, "10"))
 		link_speed = ETH_LINK_SPEED_10;
@@ -1489,7 +1576,7 @@ cmd_config_rxtx_queue_parsed(void *parsed_result,
 		return;
 	}
 
-	if (port_id_is_invalid(res->portid))
+	if (port_id_is_invalid(res->portid, ENABLED_WARN))
 		return;
 
 	if (port_is_started(res->portid) != 1) {
@@ -2889,7 +2976,7 @@ cmd_csum_parsed(void *parsed_result,
 	int hw = 0;
 	uint16_t mask = 0;
 
-	if (port_id_is_invalid(res->port_id)) {
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN)) {
 		printf("invalid port %d\n", res->port_id);
 		return;
 	}
@@ -2981,10 +3068,8 @@ cmd_csum_tunnel_parsed(void *parsed_result,
 {
 	struct cmd_csum_tunnel_result *res = parsed_result;
 
-	if (port_id_is_invalid(res->port_id)) {
-		printf("invalid port %d\n", res->port_id);
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
-	}
 
 	if (!strcmp(res->onoff, "on"))
 		ports[res->port_id].tx_ol_flags |=
@@ -3039,7 +3124,7 @@ cmd_tso_set_parsed(void *parsed_result,
 	struct cmd_tso_set_result *res = parsed_result;
 	struct rte_eth_dev_info dev_info;
 
-	if (port_id_is_invalid(res->port_id))
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
 	if (!strcmp(res->mode, "set"))
@@ -4015,10 +4100,8 @@ static void cmd_set_bond_mac_addr_parsed(void *parsed_result,
 	struct cmd_set_bond_mac_addr_result *res = parsed_result;
 	int ret;
 
-	if (res->port_num >= nb_ports) {
-		printf("Port id %d must be less than %d\n", res->port_num, nb_ports);
+	if (port_id_is_invalid(res->port_num, ENABLED_WARN))
 		return;
-	}
 
 	ret = rte_eth_bond_mac_address_set(res->port_num, &res->address);
 
@@ -4255,7 +4338,7 @@ static void cmd_set_promisc_mode_parsed(void *parsed_result,
 
 	/* all ports */
 	if (allports) {
-		for (i = 0; i < nb_ports; i++) {
+		FOREACH_PORT(i, ports) {
 			if (enable)
 				rte_eth_promiscuous_enable(i);
 			else
@@ -4335,7 +4418,7 @@ static void cmd_set_allmulti_mode_parsed(void *parsed_result,
 
 	/* all ports */
 	if (allports) {
-		for (i = 0; i < nb_ports; i++) {
+		FOREACH_PORT(i, ports) {
 			if (enable)
 				rte_eth_allmulticast_enable(i);
 			else
@@ -5023,25 +5106,25 @@ static void cmd_showportall_parsed(void *parsed_result,
 	struct cmd_showportall_result *res = parsed_result;
 	if (!strcmp(res->show, "clear")) {
 		if (!strcmp(res->what, "stats"))
-			for (i = 0; i < nb_ports; i++)
+			FOREACH_PORT(i, ports)
 				nic_stats_clear(i);
 		else if (!strcmp(res->what, "xstats"))
-			for (i = 0; i < nb_ports; i++)
+			FOREACH_PORT(i, ports)
 				nic_xstats_clear(i);
 	} else if (!strcmp(res->what, "info"))
-		for (i = 0; i < nb_ports; i++)
+		FOREACH_PORT(i, ports)
 			port_infos_display(i);
 	else if (!strcmp(res->what, "stats"))
-		for (i = 0; i < nb_ports; i++)
+		FOREACH_PORT(i, ports)
 			nic_stats_display(i);
 	else if (!strcmp(res->what, "xstats"))
-		for (i = 0; i < nb_ports; i++)
+		FOREACH_PORT(i, ports)
 			nic_xstats_display(i);
 	else if (!strcmp(res->what, "fdir"))
-		for (i = 0; i < nb_ports; i++)
+		FOREACH_PORT(i, ports)
 			fdir_get_infos(i);
 	else if (!strcmp(res->what, "stat_qmap"))
-		for (i = 0; i < nb_ports; i++)
+		FOREACH_PORT(i, ports)
 			nic_stats_mapping_display(i);
 }
 
@@ -8687,6 +8770,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_qmap,
 	(cmdline_parse_inst_t *)&cmd_operate_port,
 	(cmdline_parse_inst_t *)&cmd_operate_specific_port,
+	(cmdline_parse_inst_t *)&cmd_operate_attach_port,
+	(cmdline_parse_inst_t *)&cmd_operate_detach_port,
 	(cmdline_parse_inst_t *)&cmd_config_speed_all,
 	(cmdline_parse_inst_t *)&cmd_config_speed_specific,
 	(cmdline_parse_inst_t *)&cmd_config_rx_tx,
@@ -8758,7 +8843,7 @@ prompt(void)
 static void
 cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue)
 {
-	if (id < nb_ports) {
+	if (!port_id_is_invalid(id, DISABLED_WARN)) {
 		/* check if need_reconfig has been set to 1 */
 		if (ports[id].need_reconfig == 0)
 			ports[id].need_reconfig = dev;
@@ -8768,7 +8853,7 @@ cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue)
 	} else {
 		portid_t pid;
 
-		for (pid = 0; pid < nb_ports; pid++) {
+		FOREACH_PORT(pid, ports) {
 			/* check if need_reconfig has been set to 1 */
 			if (ports[pid].need_reconfig == 0)
 				ports[pid].need_reconfig = dev;
@@ -8786,10 +8871,8 @@ bypass_is_supported(portid_t port_id)
 	struct rte_port   *port;
 	struct rte_pci_id *pci_id;
 
-	if (port_id >= nb_ports) {
-		printf("\tPort id must be less than %d.\n", nb_ports);
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return 0;
-	}
 
 	/* Get the device id. */
 	port    = &ports[port_id];

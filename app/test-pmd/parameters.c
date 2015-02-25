@@ -366,6 +366,7 @@ parse_portnuma_config(const char *q_arg)
 	};
 	unsigned long int_fld[_NUM_FLD];
 	char *str_fld[_NUM_FLD];
+	portid_t pid;
 
 	/* reset from value set at definition */
 	while ((p = strchr(p0,'(')) != NULL) {
@@ -387,8 +388,11 @@ parse_portnuma_config(const char *q_arg)
 				return -1;
 		}
 		port_id = (uint8_t)int_fld[FLD_PORT];
-		if (port_id >= nb_ports) {
-			printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+		if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+			printf("Valid port range is [0");
+			FOREACH_PORT(pid, ports)
+				printf(", %d", pid);
+			printf("]\n");
 			return -1;
 		}
 		socket_id = (uint8_t)int_fld[FLD_SOCKET];
@@ -419,6 +423,7 @@ parse_ringnuma_config(const char *q_arg)
 	};
 	unsigned long int_fld[_NUM_FLD];
 	char *str_fld[_NUM_FLD];
+	portid_t pid;
 	#define RX_RING_ONLY 0x1
 	#define TX_RING_ONLY 0x2
 	#define RXTX_RING    0x3
@@ -443,8 +448,11 @@ parse_ringnuma_config(const char *q_arg)
 				return -1;
 		}
 		port_id = (uint8_t)int_fld[FLD_PORT];
-		if (port_id >= nb_ports) {
-			printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+		if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+			printf("Valid port range is [0");
+			FOREACH_PORT(pid, ports)
+				printf(", %d", pid);
+			printf("]\n");
 			return -1;
 		}
 		socket_id = (uint8_t)int_fld[FLD_SOCKET];
@@ -615,12 +623,12 @@ launch_args_parse(int argc, char** argv)
 #endif
 			if (!strcmp(lgopts[opt_idx].name, "nb-ports")) {
 				n = atoi(optarg);
-				if (n > 0 && n <= nb_ports)
+				if (n > 0 &&
+				    !port_id_is_invalid(n, DISABLED_WARN))
 					nb_fwd_ports = (uint8_t) n;
 				else
 					rte_exit(EXIT_FAILURE,
-						 "nb-ports should be > 0 and <= %d\n",
-						 nb_ports);
+						 "Invalid port %d\n", n);
 			}
 			if (!strcmp(lgopts[opt_idx].name, "nb-cores")) {
 				n = atoi(optarg);
