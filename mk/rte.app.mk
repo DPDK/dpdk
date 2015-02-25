@@ -147,6 +147,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_VHOST),y)
 LDLIBS += -lfuse
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_MLX4_PMD),y)
+LDLIBS += -libverbs
+endif
+
 LDLIBS += --start-group
 
 ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),n)
@@ -229,6 +233,10 @@ endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_E1000_PMD),y)
 LDLIBS += -lrte_pmd_e1000
+endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_MLX4_PMD),y)
+LDLIBS += -lrte_pmd_mlx4
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)

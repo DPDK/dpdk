@@ -220,6 +220,10 @@ Intel fm10k
 M: Jing Chen <jing.d.chen@intel.com>
 F: lib/librte_pmd_fm10k/
 
+Mellanox mlx4
+M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
+F: lib/librte_pmd_mlx4/
+
 RedHat virtio
 M: Changchun Ouyang <changchun.ouyang@intel.com>
 F: lib/librte_pmd_virtio/
