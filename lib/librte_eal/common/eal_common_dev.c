@@ -32,6 +32,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
 #include <sys/queue.h>
@@ -40,6 +41,7 @@
 #include <rte_devargs.h>
 #include <rte_debug.h>
 #include <rte_devargs.h>
+#include <rte_log.h>
 
 #include "eal_private.h"
 
@@ -62,6 +64,32 @@ rte_eal_driver_unregister(struct rte_driver *driver)
 }
 
 int
+rte_eal_vdev_init(const char *name, const char *args)
+{
+	struct rte_driver *driver;
+
+	if (name == NULL)
+		return -EINVAL;
+
+	TAILQ_FOREACH(driver, &dev_driver_list, next) {
+		if (driver->type != PMD_VDEV)
+			continue;
+
+		/*
+		 * search a driver prefix in virtual device name.
+		 * For example, if the driver is pcap PMD, driver->name
+		 * will be "eth_pcap", but "name" will be "eth_pcapN".
+		 * So use strncmp to compare.
+		 */
+		if (!strncmp(driver->name, name, strlen(driver->name)))
+			return driver->init(name, args);
+	}
+
+	RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
+	return -EINVAL;
+}
+
+int
 rte_eal_dev_init(void)
 {
 	struct rte_devargs *devargs;
@@ -79,22 +107,11 @@ rte_eal_dev_init(void)
 		if (devargs->type != RTE_DEVTYPE_VIRTUAL)
 			continue;
 
-		TAILQ_FOREACH(driver, &dev_driver_list, next) {
-			if (driver->type != PMD_VDEV)
-				continue;
-
-			/* search a driver prefix in virtual device name */
-			if (!strncmp(driver->name, devargs->virtual.drv_name,
-					strlen(driver->name))) {
-				driver->init(devargs->virtual.drv_name,
-					devargs->args);
-				break;
-			}
-		}
-
-		if (driver == NULL) {
-			rte_panic("no driver found for %s\n",
-				  devargs->virtual.drv_name);
+		if (rte_eal_vdev_init(devargs->virtual.drv_name,
+					devargs->args)) {
+			RTE_LOG(ERR, EAL, "failed to initialize %s device\n",
+					devargs->virtual.drv_name);
+			return -1;
 		}
 	}
 
@@ -107,3 +124,31 @@ rte_eal_dev_init(void)
 	}
 	return 0;
 }
+
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+int
+rte_eal_vdev_uninit(const char *name)
+{
+	struct rte_driver *driver;
+
+	if (name == NULL)
+		return -EINVAL;
+
+	TAILQ_FOREACH(driver, &dev_driver_list, next) {
+		if (driver->type != PMD_VDEV)
+			continue;
+
+		/*
+		 * search a driver prefix in virtual device name.
+		 * For example, if the driver is pcap PMD, driver->name
+		 * will be "eth_pcap", but "name" will be "eth_pcapN".
+		 * So use strncmp to compare.
+		 */
+		if (!strncmp(driver->name, name, strlen(driver->name)))
+			return driver->uninit(name);
+	}
+
+	RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
+	return -EINVAL;
+}
+#endif /* RTE_LIBRTE_EAL_HOTPLUG */

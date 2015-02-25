@@ -38,6 +38,7 @@ DPDK_2.0 {
 	rte_eal_lcore_role;
 	rte_eal_mp_remote_launch;
 	rte_eal_mp_wait_lcore;
+	rte_eal_parse_devargs_str;
 	rte_eal_pci_close_one;
 	rte_eal_pci_dump;
 	rte_eal_pci_probe;
@@ -50,6 +51,8 @@ DPDK_2.0 {
 	rte_eal_tailq_lookup_by_idx;
 	rte_eal_tailq_reserve;
 	rte_eal_tailq_reserve_by_idx;
+	rte_eal_vdev_init;
+	rte_eal_vdev_uninit;
 	rte_eal_wait_lcore;
 	rte_exit;
 	rte_get_hpet_cycles;

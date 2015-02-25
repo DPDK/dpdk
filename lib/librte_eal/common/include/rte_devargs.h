@@ -99,6 +99,34 @@ TAILQ_HEAD(rte_devargs_list, rte_devargs);
 extern struct rte_devargs_list devargs_list;
 
 /**
+ * Parse a devargs string.
+ *
+ * For PCI devices, the format of arguments string is "PCI_ADDR" or
+ * "PCI_ADDR,key=val,key2=val2,...". Examples: "08:00.1", "0000:5:00.0",
+ * "04:00.0,arg=val".
+ *
+ * For virtual devices, the format of arguments string is "DRIVER_NAME*"
+ * or "DRIVER_NAME*,key=val,key2=val2,...". Examples: "eth_ring",
+ * "eth_ring0", "eth_pmdAnything,arg=0:arg2=1".
+ *
+ * The function parses the arguments string to get driver name and driver
+ * arguments.
+ *
+ * @param devargs_str
+ *   The arguments as given by the user.
+ * @param drvname
+ *   The pointer to the string to store parsed driver name.
+ * @param drvargs
+ *   The pointer to the string to store parsed driver arguments.
+ *
+ * @return
+ *   - 0 on success
+ *   - A negative value on error
+ */
+int rte_eal_parse_devargs_str(const char *devargs_str,
+				char **drvname, char **drvargs);
+
+/**
  * Add a device to the user device list
  *
  * For PCI devices, the format of arguments string is "PCI_ADDR" or

@@ -57,6 +57,11 @@ TAILQ_HEAD(rte_driver_list, rte_driver);
 typedef int (rte_dev_init_t)(const char *name, const char *args);
 
 /**
+ * Uninitilization function called for each device driver once.
+ */
+typedef int (rte_dev_uninit_t)(const char *name);
+
+/**
  * Driver type enumeration
  */
 enum pmd_type {
@@ -72,6 +77,7 @@ struct rte_driver {
 	enum pmd_type type;		   /**< PMD Driver type */
 	const char *name;                   /**< Driver name. */
 	rte_dev_init_t *init;              /**< Device init. function. */
+	rte_dev_uninit_t *uninit;          /**< Device uninit. function. */
 };
 
 /**
@@ -96,6 +102,28 @@ void rte_eal_driver_unregister(struct rte_driver *driver);
  * Initalize all the registered drivers in this process
  */
 int rte_eal_dev_init(void);
+
+/**
+ * Initialize a driver specified by name.
+ *
+ * @param name
+ *   The pointer to a driver name to be initialized.
+ * @param args
+ *   The pointer to arguments used by driver initialization.
+ * @return
+ *  0 on success, negative on error
+ */
+int rte_eal_vdev_init(const char *name, const char *args);
+
+/**
+ * Uninitalize a driver specified by name.
+ *
+ * @param name
+ *   The pointer to a driver name to be initialized.
+ * @return
+ *  0 on success, negative on error
+ */
+int rte_eal_vdev_uninit(const char *name);
 
 #define PMD_REGISTER_DRIVER(d)\
 void devinitfn_ ##d(void);\

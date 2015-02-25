@@ -44,13 +44,46 @@
 struct rte_devargs_list devargs_list =
 	TAILQ_HEAD_INITIALIZER(devargs_list);
 
+int
+rte_eal_parse_devargs_str(const char *devargs_str,
+			char **drvname, char **drvargs)
+{
+	char *sep;
+
+	if ((devargs_str) == NULL || (drvname) == NULL || (drvargs == NULL))
+		return -1;
+
+	*drvname = strdup(devargs_str);
+	if (drvname == NULL) {
+		RTE_LOG(ERR, EAL,
+			"cannot allocate temp memory for driver name\n");
+		return -1;
+	}
+
+	/* set the first ',' to '\0' to split name and arguments */
+	sep = strchr(*drvname, ',');
+	if (sep != NULL) {
+		sep[0] = '\0';
+		*drvargs = strdup(sep + 1);
+	} else {
+		*drvargs = strdup("");
+	}
+
+	if (*drvargs == NULL) {
+		RTE_LOG(ERR, EAL,
+			"cannot allocate temp memory for driver arguments\n");
+		free(*drvname);
+		return -1;
+	}
+	return 0;
+}
+
 /* store a whitelist parameter for later parsing */
 int
 rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 {
 	struct rte_devargs *devargs = NULL;
 	char *buf = NULL;
-	char *sep;
 	int ret;
 
 	/* use malloc instead of rte_malloc as it's called early at init */
@@ -62,25 +95,8 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	memset(devargs, 0, sizeof(*devargs));
 	devargs->type = devtype;
 
-	buf = strdup(devargs_str);
-	if (buf == NULL) {
-		RTE_LOG(ERR, EAL, "cannot allocate temp memory for devargs\n");
+	if (rte_eal_parse_devargs_str(devargs_str, &buf, &devargs->args))
 		goto fail;
-	}
-
-	/* set the first ',' to '\0' to split name and arguments */
-	sep = strchr(buf, ',');
-	if (sep != NULL) {
-		sep[0] = '\0';
-		devargs->args = strdup(sep + 1);
-	} else {
-		devargs->args = strdup("");
-	}
-
-	if (devargs->args == NULL) {
-		RTE_LOG(ERR, EAL, "cannot allocate for devargs args\n");
-		goto fail;
-	}
 
 	switch (devargs->type) {
 	case RTE_DEVTYPE_WHITELISTED_PCI:
