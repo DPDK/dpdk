@@ -381,6 +381,7 @@ F: examples/vm_power_manager/
 F: doc/guides/sample_app_ug/vm_power_management.rst
 
 Timers
+M: Robert Sanford <rsanford@akamai.com>
 F: lib/librte_timer/
 F: doc/guides/prog_guide/timer_lib.rst
 F: app/test/test_timer*
