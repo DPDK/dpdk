@@ -465,16 +465,13 @@ static inline void
 i40e_txd_enable_checksum(uint64_t ol_flags,
 			uint32_t *td_cmd,
 			uint32_t *td_offset,
-			uint8_t l2_len,
-			uint16_t l3_len,
-			uint8_t outer_l2_len,
-			uint16_t outer_l3_len,
+			union i40e_tx_offload tx_offload,
 			uint32_t *cd_tunneling)
 {
 	/* UDP tunneling packet TX checksum offload */
 	if (ol_flags & PKT_TX_OUTER_IP_CKSUM) {
 
-		*td_offset |= (outer_l2_len >> 1)
+		*td_offset |= (tx_offload.outer_l2_len >> 1)
 				<< I40E_TX_DESC_LENGTH_MACLEN_SHIFT;
 
 		if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
@@ -485,25 +482,28 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 			*cd_tunneling |= I40E_TX_CTX_EXT_IP_IPV6;
 
 		/* Now set the ctx descriptor fields */
-		*cd_tunneling |= (outer_l3_len >> 2) <<
+		*cd_tunneling |= (tx_offload.outer_l3_len >> 2) <<
 				I40E_TXD_CTX_QW0_EXT_IPLEN_SHIFT |
-				(l2_len >> 1) <<
+				(tx_offload.l2_len >> 1) <<
 				I40E_TXD_CTX_QW0_NATLEN_SHIFT;
 
 	} else
-		*td_offset |= (l2_len >> 1)
+		*td_offset |= (tx_offload.l2_len >> 1)
 			<< I40E_TX_DESC_LENGTH_MACLEN_SHIFT;
 
 	/* Enable L3 checksum offloads */
 	if (ol_flags & PKT_TX_IP_CKSUM) {
 		*td_cmd |= I40E_TX_DESC_CMD_IIPT_IPV4_CSUM;
-		*td_offset |= (l3_len >> 2) << I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
+		*td_offset |= (tx_offload.l3_len >> 2)
+				<< I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
 	} else if (ol_flags & PKT_TX_IPV4) {
 		*td_cmd |= I40E_TX_DESC_CMD_IIPT_IPV4;
-		*td_offset |= (l3_len >> 2) << I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
+		*td_offset |= (tx_offload.l3_len >> 2)
+				<< I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
 	} else if (ol_flags & PKT_TX_IPV6) {
 		*td_cmd |= I40E_TX_DESC_CMD_IIPT_IPV6;
-		*td_offset |= (l3_len >> 2) << I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
+		*td_offset |= (tx_offload.l3_len >> 2)
+				<< I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
 	}
 
 	/* Enable L4 checksum offloads */
@@ -1183,15 +1183,12 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint32_t tx_flags;
 	uint32_t td_tag;
 	uint64_t ol_flags;
-	uint8_t l2_len;
-	uint16_t l3_len;
-	uint8_t outer_l2_len;
-	uint16_t outer_l3_len;
 	uint16_t nb_used;
 	uint16_t nb_ctx;
 	uint16_t tx_last;
 	uint16_t slen;
 	uint64_t buf_dma_addr;
+	union i40e_tx_offload tx_offload = { .data = 0 };
 
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
@@ -1213,10 +1210,10 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		RTE_MBUF_PREFETCH_TO_FREE(txe->mbuf);
 
 		ol_flags = tx_pkt->ol_flags;
-		l2_len = tx_pkt->l2_len;
-		l3_len = tx_pkt->l3_len;
-		outer_l2_len = tx_pkt->outer_l2_len;
-		outer_l3_len = tx_pkt->outer_l3_len;
+		tx_offload.l2_len = tx_pkt->l2_len;
+		tx_offload.l3_len = tx_pkt->l3_len;
+		tx_offload.outer_l2_len = tx_pkt->outer_l2_len;
+		tx_offload.outer_l3_len = tx_pkt->outer_l3_len;
 
 		/* Calculate the number of context descriptors needed. */
 		nb_ctx = i40e_calc_context_desc(ol_flags);
@@ -1267,9 +1264,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		cd_tunneling_params = 0;
 		if (unlikely(ol_flags & I40E_TX_CKSUM_OFFLOAD_MASK)) {
 			i40e_txd_enable_checksum(ol_flags, &td_cmd, &td_offset,
-				l2_len, l3_len, outer_l2_len,
-				outer_l3_len,
-				&cd_tunneling_params);
+				tx_offload, &cd_tunneling_params);
 		}
 
 		if (unlikely(nb_ctx)) {

@@ -154,6 +154,17 @@ struct i40e_tx_queue {
 	bool tx_deferred_start; /**< don't start this queue in dev start */
 };
 
+/** Offload features */
+union i40e_tx_offload {
+	uint64_t data;
+	struct {
+		uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
+		uint64_t l3_len:9; /**< L3 (IP) Header Length. */
+		uint64_t outer_l2_len:8; /**< outer L2 Header Length */
+		uint64_t outer_l3_len:16; /**< outer L3 Header Length */
+	};
+};
+
 int i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int i40e_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
