@@ -426,6 +426,9 @@ rte_eth_dev_count(void)
 	return (nb_ports);
 }
 
+/* So far, DPDK hotplug function only supports linux */
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+
 static enum rte_eth_dev_type
 rte_eth_dev_get_device_type(uint8_t port_id)
 {
@@ -524,8 +527,6 @@ rte_eth_dev_is_detachable(uint8_t port_id)
 	return !(drv_flags & RTE_PCI_DRV_DETACHABLE);
 }
 
-/* So far, DPDK hotplug function only supports linux */
-#ifdef RTE_LIBRTE_EAL_HOTPLUG
 /* attach the new physical device, then store port_id of the device */
 static int
 rte_eth_dev_attach_pdev(struct rte_pci_addr *addr, uint8_t *port_id)
