@@ -506,6 +506,13 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 				<< I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
 	}
 
+	if (ol_flags & PKT_TX_TCP_SEG) {
+		*td_cmd |= I40E_TX_DESC_CMD_L4T_EOFT_TCP;
+		*td_offset |= (tx_offload.l4_len >> 2)
+			<< I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+		return;
+	}
+
 	/* Enable L4 checksum offloads */
 	switch (ol_flags & PKT_TX_L4_MASK) {
 	case PKT_TX_TCP_CKSUM:
@@ -1154,7 +1161,7 @@ i40e_calc_context_desc(uint64_t flags)
 {
 	uint64_t mask = 0ULL;
 
-	mask |= PKT_TX_OUTER_IP_CKSUM;
+	mask |= (PKT_TX_OUTER_IP_CKSUM | PKT_TX_TCP_SEG);
 
 #ifdef RTE_LIBRTE_IEEE1588
 	mask |= PKT_TX_IEEE1588_TMST;
@@ -1163,6 +1170,39 @@ i40e_calc_context_desc(uint64_t flags)
 		return 1;
 
 	return 0;
+}
+
+/* set i40e TSO context descriptor */
+static inline uint64_t
+i40e_set_tso_ctx(struct rte_mbuf *mbuf, union i40e_tx_offload tx_offload)
+{
+	uint64_t ctx_desc = 0;
+	uint32_t cd_cmd, hdr_len, cd_tso_len;
+
+	if (!tx_offload.l4_len) {
+		PMD_DRV_LOG(DEBUG, "L4 length set to 0");
+		return ctx_desc;
+	}
+
+	/**
+	 * in case of tunneling packet, the outer_l2_len and
+	 * outer_l3_len must be 0.
+	 */
+	hdr_len = tx_offload.outer_l2_len +
+		tx_offload.outer_l3_len +
+		tx_offload.l2_len +
+		tx_offload.l3_len +
+		tx_offload.l4_len;
+
+	cd_cmd = I40E_TX_CTX_DESC_TSO;
+	cd_tso_len = mbuf->pkt_len - hdr_len;
+	ctx_desc |= ((uint64_t)cd_cmd << I40E_TXD_CTX_QW1_CMD_SHIFT) |
+		((uint64_t)cd_tso_len <<
+		 I40E_TXD_CTX_QW1_TSO_LEN_SHIFT) |
+		((uint64_t)mbuf->tso_segsz <<
+		 I40E_TXD_CTX_QW1_MSS_SHIFT);
+
+	return ctx_desc;
 }
 
 uint16_t
@@ -1214,6 +1254,8 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		tx_offload.l3_len = tx_pkt->l3_len;
 		tx_offload.outer_l2_len = tx_pkt->outer_l2_len;
 		tx_offload.outer_l3_len = tx_pkt->outer_l3_len;
+		tx_offload.l4_len = tx_pkt->l4_len;
+		tx_offload.tso_segsz = tx_pkt->tso_segsz;
 
 		/* Calculate the number of context descriptors needed. */
 		nb_ctx = i40e_calc_context_desc(ol_flags);
@@ -1282,12 +1324,20 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				rte_pktmbuf_free_seg(txe->mbuf);
 				txe->mbuf = NULL;
 			}
-#ifdef RTE_LIBRTE_IEEE1588
-			if (ol_flags & PKT_TX_IEEE1588_TMST)
+
+			/* TSO enabled means no timestamp */
+			if (ol_flags & PKT_TX_TCP_SEG)
 				cd_type_cmd_tso_mss |=
-					((uint64_t)I40E_TX_CTX_DESC_TSYN <<
-						I40E_TXD_CTX_QW1_CMD_SHIFT);
+					i40e_set_tso_ctx(tx_pkt, tx_offload);
+			else {
+#ifdef RTE_LIBRTE_IEEE1588
+				if (ol_flags & PKT_TX_IEEE1588_TMST)
+					cd_type_cmd_tso_mss |=
+						((uint64_t)I40E_TX_CTX_DESC_TSYN <<
+						 I40E_TXD_CTX_QW1_CMD_SHIFT);
 #endif
+			}
+
 			ctx_txd->tunneling_params =
 				rte_cpu_to_le_32(cd_tunneling_params);
 			ctx_txd->l2tag2 = rte_cpu_to_le_16(cd_l2tag2);
