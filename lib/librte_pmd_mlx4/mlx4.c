@@ -4627,7 +4627,6 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		DEBUG("port %u MTU is %u", priv->port, priv->mtu);
 
 		/* from rte_ethdev.c */
-#if RTE_VERSION >= RTE_VERSION_NUM(1, 7, 0, 0)
 		{
 			char name[RTE_ETH_NAME_MAX_LEN];
 
@@ -4635,9 +4634,6 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 				 ibv_get_device_name(ibv_dev), port);
 			eth_dev = rte_eth_dev_allocate(name);
 		}
-#else
-		eth_dev = rte_eth_dev_allocate();
-#endif
 		if (eth_dev == NULL) {
 			ERROR("can not allocate rte ethdev");
 			err = ENOMEM;
@@ -4648,11 +4644,7 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		eth_dev->pci_dev = pci_dev;
 		eth_dev->driver = &mlx4_driver;
 		eth_dev->data->rx_mbuf_alloc_failed = 0;
-#if RTE_VERSION >= RTE_VERSION_NUM(1, 7, 0, 0)
 		eth_dev->data->mtu = ETHER_MTU;
-#else
-		eth_dev->data->max_frame_size = ETHER_MAX_LEN;
-#endif
 
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx4_dev_ops;
