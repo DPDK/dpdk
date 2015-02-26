@@ -3541,7 +3541,7 @@ rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
 	return NULL;
 #endif
 	/* check input parameters */
-	if (port_id >= nb_ports || fn == NULL ||
+	if (!rte_eth_dev_is_valid_port(port_id) || fn == NULL ||
 		    queue_id >= rte_eth_devices[port_id].data->nb_rx_queues) {
 		rte_errno = EINVAL;
 		return NULL;
@@ -3570,7 +3570,7 @@ rte_eth_add_tx_callback(uint8_t port_id, uint16_t queue_id,
 	return NULL;
 #endif
 	/* check input parameters */
-	if (port_id >= nb_ports || fn == NULL ||
+	if (!rte_eth_dev_is_valid_port(port_id) || fn == NULL ||
 		    queue_id >= rte_eth_devices[port_id].data->nb_tx_queues) {
 		rte_errno = EINVAL;
 		return NULL;
@@ -3598,7 +3598,7 @@ rte_eth_remove_rx_callback(uint8_t port_id, uint16_t queue_id,
 	return (-ENOTSUP);
 #endif
 	/* Check input parameters. */
-	if (port_id >= nb_ports || user_cb == NULL ||
+	if (!rte_eth_dev_is_valid_port(port_id) || user_cb == NULL ||
 		    queue_id >= rte_eth_devices[port_id].data->nb_rx_queues) {
 		return (-EINVAL);
 	}
@@ -3637,7 +3637,7 @@ rte_eth_remove_tx_callback(uint8_t port_id, uint16_t queue_id,
 	return (-ENOTSUP);
 #endif
 	/* Check input parameters. */
-	if (port_id >= nb_ports || user_cb == NULL ||
+	if (!rte_eth_dev_is_valid_port(port_id) || user_cb == NULL ||
 		    queue_id >= rte_eth_devices[port_id].data->nb_tx_queues) {
 		return (-EINVAL);
 	}
