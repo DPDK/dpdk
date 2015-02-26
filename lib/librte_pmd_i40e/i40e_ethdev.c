@@ -1531,7 +1531,8 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_TX_OFFLOAD_UDP_CKSUM |
 		DEV_TX_OFFLOAD_TCP_CKSUM |
 		DEV_TX_OFFLOAD_SCTP_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_TCP_TSO;
 	dev_info->reta_size = pf->hash_lut_size;
 	dev_info->flow_type_rss_offloads = I40E_RSS_OFFLOAD_ALL;
 
