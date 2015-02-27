@@ -433,7 +433,7 @@ static enum rte_eth_dev_type
 rte_eth_dev_get_device_type(uint8_t port_id)
 {
 	if (!rte_eth_dev_is_valid_port(port_id))
-		return -1;
+		return RTE_ETH_DEV_UNKNOWN;
 	return rte_eth_devices[port_id].dev_type;
 }
 
