@@ -579,20 +579,6 @@ init_config(void)
 						 socket_num);
 	}
 
-	/* Configuration of Ethernet ports. */
-	ports = rte_zmalloc("testpmd: ports",
-			    sizeof(struct rte_port) * RTE_MAX_ETHPORTS,
-			    RTE_CACHE_LINE_SIZE);
-	if (ports == NULL) {
-		rte_exit(EXIT_FAILURE,
-				"rte_zmalloc(%d struct rte_port) failed\n",
-				RTE_MAX_ETHPORTS);
-	}
-
-	/* enabled allocated ports */
-	for (pid = 0; pid < nb_ports; pid++)
-		ports[pid].enabled = 1;
-
 	FOREACH_PORT(pid, ports) {
 		port = &ports[pid];
 		rte_eth_dev_info_get(pid, &port->dev_info);
@@ -1999,6 +1985,26 @@ init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf)
 	return 0;
 }
 
+static void
+init_port(void)
+{
+	portid_t pid;
+
+	/* Configuration of Ethernet ports. */
+	ports = rte_zmalloc("testpmd: ports",
+			    sizeof(struct rte_port) * RTE_MAX_ETHPORTS,
+			    RTE_CACHE_LINE_SIZE);
+	if (ports == NULL) {
+		rte_exit(EXIT_FAILURE,
+				"rte_zmalloc(%d struct rte_port) failed\n",
+				RTE_MAX_ETHPORTS);
+	}
+
+	/* enabled allocated ports */
+	for (pid = 0; pid < nb_ports; pid++)
+		ports[pid].enabled = 1;
+}
+
 int
 main(int argc, char** argv)
 {
@@ -2012,6 +2018,9 @@ main(int argc, char** argv)
 	nb_ports = (portid_t) rte_eth_dev_count();
 	if (nb_ports == 0)
 		RTE_LOG(WARNING, EAL, "No probed ethernet devices\n");
+
+	/* allocate port structures, and init them */
+	init_port();
 
 	set_def_fwd_config();
 	if (nb_lcores == 0)
