@@ -1633,6 +1633,9 @@ pmd_test_exit(void)
 {
 	portid_t pt_id;
 
+	if (test_done == 0)
+		stop_packet_forwarding();
+
 	FOREACH_PORT(pt_id, ports) {
 		printf("Stopping port %d...", pt_id);
 		fflush(stdout);
