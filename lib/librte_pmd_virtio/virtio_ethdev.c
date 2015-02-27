@@ -1068,7 +1068,7 @@ virtio_has_msix(const struct rte_pci_addr *loc __rte_unused)
 	return 0;
 }
 
-static int virtio_resource_init(struct rte_pci_device *pci_dev)
+static int virtio_resource_init(struct rte_pci_device *pci_dev __rte_unused)
 {
 	/* no setup required */
 	return 0;
