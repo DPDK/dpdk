@@ -81,7 +81,6 @@ struct lcore_config {
 extern struct lcore_config lcore_config[RTE_MAX_LCORE];
 
 RTE_DECLARE_PER_LCORE(unsigned, _lcore_id);  /**< Per thread "lcore id". */
-RTE_DECLARE_PER_LCORE(unsigned, _socket_id); /**< Per thread "socket id". */
 RTE_DECLARE_PER_LCORE(rte_cpuset_t, _cpuset); /**< Per thread "cpuset". */
 
 /**
@@ -145,11 +144,7 @@ rte_lcore_index(int lcore_id)
  * @return
  *   the ID of current lcoreid's physical socket
  */
-static inline unsigned
-rte_socket_id(void)
-{
-	return RTE_PER_LCORE(_socket_id);
-}
+unsigned rte_socket_id(void);
 
 /**
  * Get the ID of the physical socket of the specified lcore

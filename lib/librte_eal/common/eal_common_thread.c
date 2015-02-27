@@ -46,6 +46,13 @@
 
 #include "eal_thread.h"
 
+RTE_DECLARE_PER_LCORE(unsigned , _socket_id);
+
+unsigned rte_socket_id(void)
+{
+	return RTE_PER_LCORE(_socket_id);
+}
+
 int eal_cpuset_socket_id(rte_cpuset_t *cpusetp)
 {
 	unsigned cpu = 0;
