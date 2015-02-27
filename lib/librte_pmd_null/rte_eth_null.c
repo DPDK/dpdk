@@ -287,7 +287,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 static void
 eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 {
-	unsigned i;
+	unsigned i, num_stats;
 	unsigned long rx_total = 0, tx_total = 0, tx_err_total = 0;
 	const struct pmd_internals *internal;
 
@@ -296,15 +296,17 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 
 	internal = dev->data->dev_private;
 	memset(igb_stats, 0, sizeof(*igb_stats));
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
-			i < internal->nb_rx_queues; i++) {
+	num_stats = RTE_MIN((unsigned)RTE_ETHDEV_QUEUE_STAT_CNTRS,
+					internal->nb_rx_queues);
+	for (i = 0; i < num_stats; i++) {
 		igb_stats->q_ipackets[i] =
 			internal->rx_null_queues[i].rx_pkts.cnt;
 		rx_total += igb_stats->q_ipackets[i];
 	}
 
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
-			i < internal->nb_tx_queues; i++) {
+	num_stats = RTE_MIN((unsigned)RTE_ETHDEV_QUEUE_STAT_CNTRS,
+					internal->nb_tx_queues);
+	for (i = 0; i < num_stats; i++) {
 		igb_stats->q_opackets[i] =
 			internal->tx_null_queues[i].tx_pkts.cnt;
 		igb_stats->q_errors[i] =
