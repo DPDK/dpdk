@@ -58,7 +58,8 @@ Vhost API Overview
       register two callbacks, new_destory and destroy_device.
       When virtio device is activated or deactivated by guest virtual machine,
       the callback will be called, then vSwitch could put the device onto data
-      core or remove the device from data core.
+      core or remove the device from data core by setting or unsetting
+      VIRTIO_DEV_RUNNING on the device flags.
 
 *   Read/write packets from/to guest virtual machine
 
