@@ -68,19 +68,28 @@ Features and Limitations of virtio PMD
 
 In this release, the virtio PMD driver provides the basic functionality of packet reception and transmission.
 
-*   This release does not support mergeable buffers per packet for performance reasons.
-    The packet size supported is from 64 to 1518.
-    rte_mbuf should be big enough to hold the whole packet.
+*   It supports merge-able buffers per packet when receiving packets and scattered buffer per packet
+    when transmitting packets. The packet size supported is from 64 to 1518.
+
+*   It supports multicast packets and promiscuous mode.
 
 *   The descriptor number for the RX/TX queue is hard-coded to be 256 by qemu.
     If given a different descriptor number by the upper application,
     the virtio PMD generates a warning and fall back to the hard-coded value.
 
-*   Features such as mac/vlan filter are not supported.
+*   Features of mac/vlan filter are supported, negotiation with vhost/backend are needed to support them.
+    When backend can't support vlan filter, virtio app on guest should disable vlan filter to make sure
+    the virtio port is configured correctly. E.g. specify '--disable-hw-vlan' in testpmd command line.
 
 *   RTE_PKTMBUF_HEADROOM should be defined larger than sizeof(struct virtio_net_hdr), which is 10 bytes.
 
 *   Virtio does not support runtime configuration.
+
+*   Virtio supports Link State interrupt.
+
+*   Virtio supports software vlan stripping and inserting.
+
+*   Virtio supports using port IO to get PCI resource when uio/igb_uio module is not available.
 
 Prerequisites
 -------------
