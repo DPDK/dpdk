@@ -1315,7 +1315,7 @@ port_is_closed(portid_t port_id)
 int
 start_port(portid_t pid)
 {
-	int diag, need_check_link_status = 0;
+	int diag, need_check_link_status = -1;
 	portid_t pi;
 	queueid_t qi;
 	struct rte_port *port;
@@ -1337,6 +1337,7 @@ start_port(portid_t pid)
 		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
 			continue;
 
+		need_check_link_status = 0;
 		port = &ports[pi];
 		if (rte_atomic16_cmpset(&(port->port_status), RTE_PORT_STOPPED,
 						 RTE_PORT_HANDLING) == 0) {
@@ -1457,9 +1458,9 @@ start_port(portid_t pid)
 		need_check_link_status = 1;
 	}
 
-	if (need_check_link_status && !no_link_check)
+	if (need_check_link_status == 1 && !no_link_check)
 		check_all_ports_link_status(RTE_PORT_ALL);
-	else
+	else if (need_check_link_status == 0)
 		printf("Please stop the ports first\n");
 
 	printf("Done\n");
