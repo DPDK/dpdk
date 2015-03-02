@@ -195,6 +195,8 @@ rte_mov256blocks(uint8_t *dst, const uint8_t *src, size_t n)
 static inline void *
 rte_memcpy(void *dst, const void *src, size_t n)
 {
+	uintptr_t dstu = (uintptr_t)dst;
+	uintptr_t srcu = (uintptr_t)src;
 	void *ret = dst;
 	int dstofss;
 	int bits;
@@ -204,22 +206,22 @@ rte_memcpy(void *dst, const void *src, size_t n)
 	 */
 	if (n < 16) {
 		if (n & 0x01) {
-			*(uint8_t *)dst = *(const uint8_t *)src;
-			src = (const uint8_t *)src + 1;
-			dst = (uint8_t *)dst + 1;
+			*(uint8_t *)dstu = *(const uint8_t *)srcu;
+			srcu = (uintptr_t)((const uint8_t *)srcu + 1);
+			dstu = (uintptr_t)((uint8_t *)dstu + 1);
 		}
 		if (n & 0x02) {
-			*(uint16_t *)dst = *(const uint16_t *)src;
-			src = (const uint16_t *)src + 1;
-			dst = (uint16_t *)dst + 1;
+			*(uint16_t *)dstu = *(const uint16_t *)srcu;
+			srcu = (uintptr_t)((const uint16_t *)srcu + 1);
+			dstu = (uintptr_t)((uint16_t *)dstu + 1);
 		}
 		if (n & 0x04) {
-			*(uint32_t *)dst = *(const uint32_t *)src;
-			src = (const uint32_t *)src + 1;
-			dst = (uint32_t *)dst + 1;
+			*(uint32_t *)dstu = *(const uint32_t *)srcu;
+			srcu = (uintptr_t)((const uint32_t *)srcu + 1);
+			dstu = (uintptr_t)((uint32_t *)dstu + 1);
 		}
 		if (n & 0x08) {
-			*(uint64_t *)dst = *(const uint64_t *)src;
+			*(uint64_t *)dstu = *(const uint64_t *)srcu;
 		}
 		return ret;
 	}
@@ -492,6 +494,8 @@ static inline void *
 rte_memcpy(void *dst, const void *src, size_t n)
 {
 	__m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8;
+	uintptr_t dstu = (uintptr_t)dst;
+	uintptr_t srcu = (uintptr_t)src;
 	void *ret = dst;
 	int dstofss;
 	int srcofs;
@@ -501,22 +505,22 @@ rte_memcpy(void *dst, const void *src, size_t n)
 	 */
 	if (n < 16) {
 		if (n & 0x01) {
-			*(uint8_t *)dst = *(const uint8_t *)src;
-			src = (const uint8_t *)src + 1;
-			dst = (uint8_t *)dst + 1;
+			*(uint8_t *)dstu = *(const uint8_t *)srcu;
+			srcu = (uintptr_t)((const uint8_t *)srcu + 1);
+			dstu = (uintptr_t)((uint8_t *)dstu + 1);
 		}
 		if (n & 0x02) {
-			*(uint16_t *)dst = *(const uint16_t *)src;
-			src = (const uint16_t *)src + 1;
-			dst = (uint16_t *)dst + 1;
+			*(uint16_t *)dstu = *(const uint16_t *)srcu;
+			srcu = (uintptr_t)((const uint16_t *)srcu + 1);
+			dstu = (uintptr_t)((uint16_t *)dstu + 1);
 		}
 		if (n & 0x04) {
-			*(uint32_t *)dst = *(const uint32_t *)src;
-			src = (const uint32_t *)src + 1;
-			dst = (uint32_t *)dst + 1;
+			*(uint32_t *)dstu = *(const uint32_t *)srcu;
+			srcu = (uintptr_t)((const uint32_t *)srcu + 1);
+			dstu = (uintptr_t)((uint32_t *)dstu + 1);
 		}
 		if (n & 0x08) {
-			*(uint64_t *)dst = *(const uint64_t *)src;
+			*(uint64_t *)dstu = *(const uint64_t *)srcu;
 		}
 		return ret;
 	}
