@@ -70,7 +70,8 @@ int
 eal_hugepage_info_init(void)
 {
 	size_t sysctl_size;
-	int buffer_size, num_buffers, fd, error;
+	int num_buffers, fd, error;
+	int64_t buffer_size;
 	/* re-use the linux "internal config" structure for our memory data */
 	struct hugepage_info *hpi = &internal_config.hugepage_info[0];
 	struct hugepage_info *tmp_hpi;
@@ -101,13 +102,13 @@ eal_hugepage_info_init(void)
 
 	if (buffer_size >= 1<<30)
 		RTE_LOG(INFO, EAL, "Contigmem driver has %d buffers, each of size %dGB\n",
-				num_buffers, buffer_size>>30);
+				num_buffers, (int)(buffer_size>>30));
 	else if (buffer_size >= 1<<20)
 		RTE_LOG(INFO, EAL, "Contigmem driver has %d buffers, each of size %dMB\n",
-				num_buffers, buffer_size>>20);
+				num_buffers, (int)(buffer_size>>20));
 	else
 		RTE_LOG(INFO, EAL, "Contigmem driver has %d buffers, each of size %dKB\n",
-				num_buffers, buffer_size>>10);
+				num_buffers, (int)(buffer_size>>10));
 
 	internal_config.num_hugepage_sizes = 1;
 	hpi->hugedir = CONTIGMEM_DEV;

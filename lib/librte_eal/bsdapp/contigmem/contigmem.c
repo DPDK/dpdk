@@ -63,20 +63,20 @@ static d_mmap_single_t  contigmem_mmap_single;
 static d_open_t         contigmem_open;
 
 static int              contigmem_num_buffers = RTE_CONTIGMEM_DEFAULT_NUM_BUFS;
-static int              contigmem_buffer_size = RTE_CONTIGMEM_DEFAULT_BUF_SIZE;
+static int64_t          contigmem_buffer_size = RTE_CONTIGMEM_DEFAULT_BUF_SIZE;
 
 static eventhandler_tag contigmem_eh_tag;
 static void            *contigmem_buffers[RTE_CONTIGMEM_MAX_NUM_BUFS];
 static struct cdev     *contigmem_cdev = NULL;
 
 TUNABLE_INT("hw.contigmem.num_buffers", &contigmem_num_buffers);
-TUNABLE_INT("hw.contigmem.buffer_size", &contigmem_buffer_size);
+TUNABLE_QUAD("hw.contigmem.buffer_size", &contigmem_buffer_size);
 
 static SYSCTL_NODE(_hw, OID_AUTO, contigmem, CTLFLAG_RD, 0, "contigmem");
 
 SYSCTL_INT(_hw_contigmem, OID_AUTO, num_buffers, CTLFLAG_RD,
 	&contigmem_num_buffers, 0, "Number of contigmem buffers allocated");
-SYSCTL_INT(_hw_contigmem, OID_AUTO, buffer_size, CTLFLAG_RD,
+SYSCTL_QUAD(_hw_contigmem, OID_AUTO, buffer_size, CTLFLAG_RD,
 	&contigmem_buffer_size, 0, "Size of each contiguous buffer");
 
 static SYSCTL_NODE(_hw_contigmem, OID_AUTO, physaddr, CTLFLAG_RD, 0,
@@ -133,7 +133,7 @@ contigmem_load()
 
 	if (contigmem_buffer_size < PAGE_SIZE ||
 			(contigmem_buffer_size & (contigmem_buffer_size - 1)) != 0) {
-		printf("buffer size 0x%x is not greater than PAGE_SIZE and "
+		printf("buffer size 0x%lx is not greater than PAGE_SIZE and "
 				"power of two\n", contigmem_buffer_size);
 		return (EINVAL);
 	}
