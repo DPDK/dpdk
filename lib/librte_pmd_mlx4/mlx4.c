@@ -60,6 +60,16 @@
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
 
+/* Verbs header. */
+/* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-pedantic"
+#endif
+#include <infiniband/verbs.h>
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-pedantic"
+#endif
+
 /* DPDK headers don't like -pedantic. */
 #ifdef PEDANTIC
 #pragma GCC diagnostic ignored "-pedantic"
@@ -77,18 +87,6 @@
 #include <rte_atomic.h>
 #include <rte_version.h>
 #include <rte_log.h>
-#ifdef PEDANTIC
-#pragma GCC diagnostic error "-pedantic"
-#endif
-
-/* Verbs header. */
-/* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
-#ifdef PEDANTIC
-#pragma GCC diagnostic ignored "-pedantic"
-#endif
-
-#include <infiniband/verbs.h>
-
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-pedantic"
 #endif
