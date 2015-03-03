@@ -34,6 +34,8 @@
 #ifndef _FM10K_LOGS_H_
 #define _FM10K_LOGS_H_
 
+#include <rte_log.h>
+
 #define PMD_INIT_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, RTE_LOGTYPE_PMD, \
 		"PMD: %s(): " fmt "\n", __func__, ##args)
