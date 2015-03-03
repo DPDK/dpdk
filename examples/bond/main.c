@@ -650,7 +650,6 @@ cmdline_parse_inst_t cmd_quit = {
 	},
 };
 
-extern void print_client_stats(void);
 struct cmd_show_result {
 	cmdline_fixed_string_t show;
 };
@@ -680,10 +679,6 @@ static void cmd_show_parsed(__attribute__((unused)) void *parsed_result,
 			global_flag_stru_p->port_packets[1],
 			global_flag_stru_p->port_packets[2]);
 	rte_spinlock_unlock(&global_flag_stru_p->lock);
-
-#if defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1) || defined(RTE_LIBRTE_BOND_DEBUG_ALB)
-	print_client_stats();
-#endif
 }
 
 cmdline_parse_token_string_t cmd_show_show =

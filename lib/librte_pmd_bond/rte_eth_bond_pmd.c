@@ -279,19 +279,6 @@ update_client_stats(uint32_t addr, uint8_t port, uint32_t *TXorRXindicator)
 
 }
 
-void print_client_stats(void);
-void print_client_stats(void)
-{
-	int i = 0;
-	char buf[MaxIPv4String];
-
-	for (; i < active_clients; i++)	{
-		ipv4_addr_to_dot(client_stats[i].ipv4_addr, buf, MaxIPv4String);
-		printf("port:%d client:%s RX:%d TX:%d\n", client_stats[i].port,	buf,
-				client_stats[i].ipv4_rx_packets,
-				client_stats[i].ipv4_tx_packets);
-	}
-}
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
 #define MODE6_DEBUG(info, src_ip, dst_ip, eth_h, arp_op, port, burstnumber)	\
 		RTE_LOG(DEBUG, PMD, \
