@@ -535,9 +535,8 @@ rte_table_hash_entry_delete_key16_ext(
 
 					memset(bucket, 0,
 						sizeof(struct rte_bucket_4_16));
-					bucket_index = (bucket -
-						((struct rte_bucket_4_16 *)
-						f->memory)) - f->n_buckets;
+					bucket_index = (((uint8_t *)bucket -
+						(uint8_t *)f->memory)/f->bucket_size) - f->n_buckets;
 					f->stack[f->stack_pos++] = bucket_index;
 				}
 
