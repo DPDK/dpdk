@@ -155,6 +155,44 @@ For example,
 
     Launch the DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
 
+*   Using the DPDK PMD PF ixgbe driver to enable VF RSS:
+
+    Same steps as above to install the modules of uio, igb_uio, specify max_vfs for PCI device, and
+    launch the DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
+
+    The available queue number(at most 4) per VF depends on the total number of pool, which is
+    determined by the max number of VF at PF initialization stage and the number of queue specified
+    in config:
+
+    *   If the max number of VF is set in the range of 1 to 32:
+
+        If the number of rxq is specified as 4(e.g. '--rxq 4' in testpmd), then there are totally 32
+        pools(ETH_32_POOLS), and each VF could have 4 or less(e.g. 2) queues;
+
+        If the number of rxq is specified as 2(e.g. '--rxq 2' in testpmd), then there are totally 32
+        pools(ETH_32_POOLS), and each VF could have 2 queues;
+
+    *   If the max number of VF is in the range of 33 to 64:
+
+        If the number of rxq is 4 ('--rxq 4' in testpmd), then error message is expected as rxq is not
+        correct at this case;
+
+        If the number of rxq is 2 ('--rxq 2' in testpmd), then there is totally 64 pools(ETH_64_POOLS),
+        and each VF have 2 queues;
+
+    On host, to enable VF RSS functionality, rx mq mode should be set as ETH_MQ_RX_VMDQ_RSS
+    or ETH_MQ_RX_RSS mode, and SRIOV mode should be activated(max_vfs >= 1).
+    It also needs config VF RSS information like hash function, RSS key, RSS key length.
+
+    .. code-block:: console
+
+        testpmd -c 0xffff -n 4 -- --coremask=<core-mask> --rxq=4 --txq=4 -i
+
+    The limitation for VF RSS on Intel® 82599 10 Gigabit Ethernet Controller is:
+    The hash and key are shared among PF and all VF, the RETA table with 128 entries is also shared
+    among PF and all VF; So it could not to provide a method to query the hash and reta content per
+    VF on guest, while, if possible, please query them on host(PF) for the shared RETA information.
+
 Virtual Function enumeration is performed in the following sequence by the Linux* pci driver for a dual-port NIC.
 When you enable the four Virtual Functions with the above command, the four enabled functions have a Function#
 represented by (Bus#, Device#, Function#) in sequence starting from 0 to 3.
