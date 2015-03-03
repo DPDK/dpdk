@@ -98,20 +98,24 @@ include $(RTE_SDK)/mk/rte.lib.mk
 export CC CFLAGS CPPFLAGS EXTRA_CFLAGS EXTRA_CPPFLAGS
 export AUTO_CONFIG_CFLAGS = -Wno-error
 
+ifndef V
+AUTOCONF_OUTPUT := >/dev/null
+endif
+
 mlx4_autoconf.h: $(RTE_SDK)/scripts/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q sh -- '$<' '$@' \
 		RSS_SUPPORT \
 		infiniband/verbs.h \
-		enum IBV_EXP_DEVICE_UD_RSS
+		enum IBV_EXP_DEVICE_UD_RSS $(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		INLINE_RECV \
 		infiniband/verbs.h \
-		enum IBV_EXP_DEVICE_ATTR_INLINE_RECV_SZ
+		enum IBV_EXP_DEVICE_ATTR_INLINE_RECV_SZ $(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		SEND_RAW_WR_SUPPORT \
 		infiniband/verbs.h \
-		type 'struct ibv_send_wr_raw'
+		type 'struct ibv_send_wr_raw' $(AUTOCONF_OUTPUT)
 
 mlx4.o: mlx4_autoconf.h
 
