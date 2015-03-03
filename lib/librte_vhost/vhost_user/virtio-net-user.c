@@ -109,6 +109,10 @@ user_set_mem_table(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 	if (dev == NULL)
 		return -1;
 
+	/* Remove from the data plane. */
+	if (dev->flags & VIRTIO_DEV_RUNNING)
+		notify_ops->destroy_device(dev);
+
 	if (dev->mem) {
 		free_mem_region(dev);
 		free(dev->mem);
