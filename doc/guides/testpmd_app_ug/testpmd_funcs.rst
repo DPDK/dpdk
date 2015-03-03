@@ -1549,7 +1549,7 @@ Configure flexible payload selection.
 
 flow_director_flex_payload (port_id) (raw|l2|l3|l4) (config)
 
-For example, to select the first 16 bytes from the offset 4 (bytes) of packet’s payload as flexible payload.
+For example, to select the first 16 bytes from the offset 4 (bytes) of packet's payload as flexible payload.
 
 .. code-block:: console
 
