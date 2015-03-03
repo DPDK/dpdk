@@ -971,7 +971,7 @@ static int virtio_resource_init_by_uio(struct rte_pci_device *pci_dev)
 	pci_dev->intr_handle.fd = open(dirname, O_RDWR);
 	if (pci_dev->intr_handle.fd < 0) {
 		PMD_INIT_LOG(ERR, "Cannot open %s: %s\n",
-			devname, strerror(errno));
+			dirname, strerror(errno));
 		return -1;
 	}
 
