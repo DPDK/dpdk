@@ -468,6 +468,14 @@ The value is 64 by default.
 
     user@target:~$ ./build/app/vhost-switch -c f -n 4 --huge-dir /mnt/huge -- --zero-copy 1 --tx-desc-num [0, n]
 
+**VLAN strip.**
+The VLAN strip option enable/disable the VLAN strip on host, if disabled, the guest will receive the packets with VLAN tag.
+It is enabled by default.
+
+.. code-block:: console
+
+    user@target:~$ ./build/app/vhost-switch -c f -n 4 --huge-dir /mnt/huge -- --vlan-strip [0, 1]
+
 Running the Virtual Machine (QEMU)
 ----------------------------------
 
