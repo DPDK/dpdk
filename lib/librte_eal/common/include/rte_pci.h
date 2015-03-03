@@ -158,7 +158,7 @@ struct rte_pci_device {
 	struct rte_pci_id id;                   /**< PCI ID. */
 	struct rte_pci_resource mem_resource[PCI_MAX_RESOURCE];   /**< PCI Memory Resource */
 	struct rte_intr_handle intr_handle;     /**< Interrupt handle */
-	const struct rte_pci_driver *driver;    /**< Associated driver */
+	struct rte_pci_driver *driver;          /**< Associated driver */
 	uint16_t max_vfs;                       /**< sriov enable if not zero */
 	int numa_node;                          /**< NUMA node connection */
 	struct rte_devargs *devargs;            /**< Device user arguments */

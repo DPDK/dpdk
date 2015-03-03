@@ -938,8 +938,6 @@ static int virtio_resource_init_by_uio(struct rte_pci_device *pci_dev)
 	char filename[PATH_MAX];
 	unsigned long start, size;
 	unsigned int uio_num;
-	struct rte_pci_driver *pci_drv =
-			(struct rte_pci_driver *)pci_dev->driver;
 
 	if (get_uio_dev(&pci_dev->addr, dirname, sizeof(dirname), &uio_num) < 0)
 		return -1;
@@ -978,7 +976,7 @@ static int virtio_resource_init_by_uio(struct rte_pci_device *pci_dev)
 	}
 
 	pci_dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
-	pci_drv->drv_flags |= RTE_PCI_DRV_INTR_LSC;
+	pci_dev->driver->drv_flags |= RTE_PCI_DRV_INTR_LSC;
 
 	return 0;
 }
@@ -993,8 +991,6 @@ static int virtio_resource_init_by_ioports(struct rte_pci_device *pci_dev)
 	char pci_id[16];
 	int found = 0;
 	size_t linesz;
-	struct rte_pci_driver *pci_drv =
-			(struct rte_pci_driver *)pci_dev->driver;
 
 	snprintf(pci_id, sizeof(pci_id), PCI_PRI_FMT,
 		 pci_dev->addr.domain,
@@ -1046,7 +1042,7 @@ static int virtio_resource_init_by_ioports(struct rte_pci_device *pci_dev)
 		start, size);
 
 	/* can't support lsc interrupt without uio */
-	pci_drv->drv_flags &= ~RTE_PCI_DRV_INTR_LSC;
+	pci_dev->driver->drv_flags &= ~RTE_PCI_DRV_INTR_LSC;
 
 	return 0;
 }
