@@ -175,8 +175,11 @@ def check_modules():
 
     # check if we have at least one loaded module
     if True not in [mod["Found"] for mod in mods] and b_flag is not None:
-        print "Error - no supported modules are loaded"
-        sys.exit(1)
+        if b_flag in dpdk_drivers:
+            print "Error - no supported modules(DPDK driver) are loaded"
+            sys.exit(1)
+        else:
+            print "Warning - no supported modules(DPDK driver) are loaded"
 
     # change DPDK driver list to only contain drivers that are loaded
     dpdk_drivers = [mod["Name"] for mod in mods if mod["Found"]]
