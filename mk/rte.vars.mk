@@ -86,9 +86,9 @@ $(error RTE_TARGET is not defined)
 endif
 
 ifeq ($(BUILDING_RTE_SDK),)
-# if we are building an external app/lib, include rte.extvars.mk that will
+# if we are building an external app/lib, include internal/rte.extvars.mk that will
 # define RTE_OUTPUT, RTE_SRCDIR, RTE_EXTMK, RTE_SDK_BIN, (etc ...)
-include $(RTE_SDK)/mk/rte.extvars.mk
+include $(RTE_SDK)/mk/internal/rte.extvars.mk
 endif
 
 CONFIG_RTE_LIBRTE_E1000_PMD = $(CONFIG_RTE_LIBRTE_IGB_PMD)
