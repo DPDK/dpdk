@@ -43,6 +43,7 @@ DPDK_2.0 {
 	rte_eth_dev_mac_addr_add;
 	rte_eth_dev_mac_addr_remove;
 	rte_eth_dev_priority_flow_ctrl_set;
+	rte_eth_dev_release_port;
 	rte_eth_dev_rss_hash_conf_get;
 	rte_eth_dev_rss_hash_update;
 	rte_eth_dev_rss_reta_query;
