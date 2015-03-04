@@ -58,7 +58,7 @@ test_errno(void)
 	/* use a small selection of standard errors for testing */
 	int std_errs[] = {EAGAIN, EBADF, EACCES, EINTR, EINVAL};
 	/* test ALL registered RTE error codes for overlap */
-	int rte_errs[] = {E_RTE_SECONDARY, E_RTE_NO_CONFIG, E_RTE_NO_TAILQ};
+	int rte_errs[] = {E_RTE_SECONDARY, E_RTE_NO_CONFIG};
 	unsigned i;
 
 	rte_errno = 0;

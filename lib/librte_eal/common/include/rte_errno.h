@@ -84,7 +84,6 @@ enum {
 
 	E_RTE_SECONDARY, /**< Operation not allowed in secondary processes */
 	E_RTE_NO_CONFIG, /**< Missing rte_config */
-	E_RTE_NO_TAILQ,  /**< Uninitialised TAILQ */
 
 	RTE_MAX_ERRNO    /**< Max RTE error number */
 };

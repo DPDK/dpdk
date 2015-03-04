@@ -64,8 +64,6 @@ rte_strerror(int errnum)
 			return "Invalid call in secondary process";
 		case E_RTE_NO_CONFIG:
 			return "Missing rte_config structure";
-		case E_RTE_NO_TAILQ:
-			return "No TAILQ initialised";
 		default:
 			strerror_r(errnum, RTE_PER_LCORE(retval), RETVAL_SZ);
 		}
