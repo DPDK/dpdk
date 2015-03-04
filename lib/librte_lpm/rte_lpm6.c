@@ -45,7 +45,6 @@
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_memcpy.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>

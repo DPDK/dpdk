@@ -36,7 +36,6 @@
 
 #include <stdint.h>
 
-#include <rte_tailq.h>
 #include <rte_ether.h>
 
 #include "virtio-net.h"

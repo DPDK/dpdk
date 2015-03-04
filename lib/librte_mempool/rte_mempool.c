@@ -48,7 +48,6 @@
 #include <rte_malloc.h>
 #include <rte_atomic.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>

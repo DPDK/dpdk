@@ -34,7 +34,6 @@
 #include <stddef.h>
 
 #include <rte_debug.h>
-#include <rte_tailq.h>
 
 #include "ip_frag_common.h"
 
