@@ -49,8 +49,6 @@ DPDK_2.0 {
 	rte_eal_remote_launch;
 	rte_eal_tailq_lookup;
 	rte_eal_tailq_lookup_by_idx;
-	rte_eal_tailq_reserve;
-	rte_eal_tailq_reserve_by_idx;
 	rte_eal_vdev_init;
 	rte_eal_vdev_uninit;
 	rte_eal_wait_lcore;

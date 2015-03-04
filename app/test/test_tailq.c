@@ -60,7 +60,7 @@ test_tailq_create(void)
 	unsigned i;
 
 	/* create a first tailq and check its non-null */
-	d_head = RTE_TAILQ_RESERVE_BY_IDX(DEFAULT_TAILQ, rte_tailq_entry_head);
+	d_head = RTE_TAILQ_LOOKUP_BY_IDX(DEFAULT_TAILQ, rte_tailq_entry_head);
 	if (d_head == NULL)
 		do_return("Error allocating dummy_q0\n");
 
@@ -69,13 +69,13 @@ test_tailq_create(void)
 	TAILQ_INSERT_TAIL(d_head, &d_elem, next);
 
 	/* try allocating dummy_q0 again, and check for failure */
-	if (RTE_TAILQ_RESERVE_BY_IDX(DEFAULT_TAILQ, rte_tailq_entry_head) == NULL)
+	if (RTE_TAILQ_LOOKUP_BY_IDX(DEFAULT_TAILQ, rte_tailq_entry_head) == NULL)
 		do_return("Error, non-null result returned when attemption to "
 				"re-allocate a tailq\n");
 
 	/* now fill up the tailq slots available and check we get an error */
 	for (i = RTE_TAILQ_NUM; i < RTE_MAX_TAILQ; i++){
-		if ((d_head = RTE_TAILQ_RESERVE_BY_IDX(i,
+		if ((d_head = RTE_TAILQ_LOOKUP_BY_IDX(i,
 				rte_tailq_entry_head)) == NULL)
 			break;
 	}
@@ -111,54 +111,12 @@ test_tailq_lookup(void)
 	return 0;
 }
 
-/* test for deprecated functions - mainly for coverage */
-static int
-test_tailq_deprecated(void)
-{
-	struct rte_tailq_entry_head *d_head;
-
-	/* since TAILQ_RESERVE is not able to create new tailqs,
-	 * we should find an existing one (IOW, RTE_TAILQ_RESERVE behaves identical
-	 * to RTE_TAILQ_LOOKUP).
-	 *
-	 * PCI_RESOURCE_LIST tailq is guaranteed to
-	 * be present in any DPDK app. */
-	d_head = RTE_TAILQ_RESERVE("PCI_RESOURCE_LIST", rte_tailq_entry_head);
-	if (d_head == NULL)
-		do_return("Error finding PCI_RESOURCE_LIST\n");
-
-	d_head = RTE_TAILQ_LOOKUP("PCI_RESOURCE_LIST", rte_tailq_entry_head);
-	if (d_head == NULL)
-		do_return("Error finding PCI_RESOURCE_LIST\n");
-
-	/* try doing that with non-existent names */
-	d_head = RTE_TAILQ_RESERVE("random name", rte_tailq_entry_head);
-	if (d_head != NULL)
-		do_return("Non-existent tailq found!\n");
-
-	d_head = RTE_TAILQ_LOOKUP("random name", rte_tailq_entry_head);
-	if (d_head != NULL)
-		do_return("Non-existent tailq found!\n");
-
-	/* try doing the same with NULL names */
-	d_head = RTE_TAILQ_RESERVE(NULL, rte_tailq_entry_head);
-	if (d_head != NULL)
-		do_return("NULL tailq found!\n");
-
-	d_head = RTE_TAILQ_LOOKUP(NULL, rte_tailq_entry_head);
-	if (d_head != NULL)
-		do_return("NULL tailq found!\n");
-
-	return 0;
-}
-
 static int
 test_tailq(void)
 {
 	int ret = 0;
 	ret |= test_tailq_create();
 	ret |= test_tailq_lookup();
-	ret |= test_tailq_deprecated();
 	return ret;
 }
 

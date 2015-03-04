@@ -94,18 +94,6 @@ rte_eal_tailq_lookup_by_idx(const unsigned tailq_idx)
 	return &mcfg->tailq_head[tailq_idx];
 }
 
-struct rte_tailq_head *
-rte_eal_tailq_reserve(const char *name)
-{
-	return rte_eal_tailq_lookup(name);
-}
-
-inline struct rte_tailq_head *
-rte_eal_tailq_reserve_by_idx(const unsigned tailq_idx)
-{
-	return rte_eal_tailq_lookup_by_idx(tailq_idx);
-}
-
 void
 rte_dump_tailq(FILE *f)
 {
