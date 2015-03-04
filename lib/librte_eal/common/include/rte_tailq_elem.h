@@ -78,8 +78,6 @@ rte_tailq_elem(RTE_TAILQ_LPM, "RTE_LPM")
 
 rte_tailq_elem(RTE_TAILQ_LPM6, "RTE_LPM6")
 
-rte_tailq_elem(RTE_TAILQ_PM, "RTE_PM")
-
 rte_tailq_elem(RTE_TAILQ_ACL, "RTE_ACL")
 
 rte_tailq_elem(RTE_TAILQ_DISTRIBUTOR, "RTE_DISTRIBUTOR")
