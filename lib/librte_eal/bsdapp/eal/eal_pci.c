@@ -493,7 +493,7 @@ rte_eal_pci_init(void)
 {
 	TAILQ_INIT(&pci_driver_list);
 	TAILQ_INIT(&pci_device_list);
-	uio_res_list = RTE_TAILQ_RESERVE_BY_IDX(RTE_TAILQ_PCI, uio_res_list);
+	uio_res_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_PCI, uio_res_list);
 
 	/* for debug purposes, PCI can be disabled */
 	if (internal_config.no_pci)
