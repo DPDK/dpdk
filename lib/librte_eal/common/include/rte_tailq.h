@@ -107,25 +107,6 @@ struct rte_tailq_elem {
 	RTE_TAILQ_CAST(rte_eal_tailq_lookup(name), struct_name)
 
 /**
- * Utility macro to make looking up a tailqueue for a particular struct easier.
- *
- * @param idx
- *   The tailq idx defined in rte_tail_t to be given to the tail queue.
- *
- * @param struct_name
- *   The name of the list type we are using. (Generally this is the same as the
- *   first parameter passed to TAILQ_HEAD macro)
- *
- * @return
- *   The return value from rte_eal_tailq_lookup, typecast to the appropriate
- *   structure pointer type.
- *   NULL on error, since the tailq_head is the first
- *   element in the rte_tailq_head structure.
- */
-#define RTE_TAILQ_LOOKUP_BY_IDX(idx, struct_name) \
-	RTE_TAILQ_CAST(rte_eal_tailq_lookup_by_idx(idx), struct_name)
-
-/**
  * Dump tail queues to the console.
  *
  * @param f
@@ -147,21 +128,6 @@ void rte_dump_tailq(FILE *f);
  *   A pointer to the tail queue head structure.
  */
 struct rte_tailq_head *rte_eal_tailq_lookup(const char *name);
-
-/**
- * Lookup for a tail queue.
- *
- * Get a pointer to a tail queue header of a tail
- * queue identified by the name given as an argument.
- * Note: this function is not multi-thread safe, and should only be called from
- * a single thread at a time
- *
- * @param idx
- *   The tailq idx defined in rte_tail_t to be given to the tail queue.
- * @return
- *   A pointer to the tail queue head structure.
- */
-struct rte_tailq_head *rte_eal_tailq_lookup_by_idx(const unsigned idx);
 
 /**
  * Register a tail queue.

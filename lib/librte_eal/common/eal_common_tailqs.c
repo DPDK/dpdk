@@ -55,14 +55,6 @@
 
 #include "eal_private.h"
 
-/**
- * Name of tailq_head
- */
-const char* rte_tailq_names[RTE_MAX_TAILQ] = {
-#define rte_tailq_elem(idx, name)     name,
-#include <rte_tailq_elem.h>
-};
-
 TAILQ_HEAD(rte_tailq_elem_head, rte_tailq_elem);
 /* local tailq list */
 static struct rte_tailq_elem_head rte_tailq_elem_head =
@@ -81,30 +73,12 @@ rte_eal_tailq_lookup(const char *name)
 		return NULL;
 
 	for (i = 0; i < RTE_MAX_TAILQ; i++) {
-		if (i < RTE_TAILQ_NUM &&
-		    !strncmp(name, rte_tailq_names[i], RTE_TAILQ_NAMESIZE-1))
-			return &mcfg->tailq_head[i];
-
-		/* if past static entries, look at shared mem for names */
 		if (!strncmp(name, mcfg->tailq_head[i].name,
 			     RTE_TAILQ_NAMESIZE-1))
 			return &mcfg->tailq_head[i];
 	}
 
 	return NULL;
-}
-
-inline struct rte_tailq_head *
-rte_eal_tailq_lookup_by_idx(const unsigned tailq_idx)
-{
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-
-	if (tailq_idx >= RTE_MAX_TAILQ) {
-		RTE_LOG(ERR, EAL, "%s(): No more room in config\n", __func__);
-		return NULL;
-	}
-
-	return &mcfg->tailq_head[tailq_idx];
 }
 
 void
@@ -119,15 +93,9 @@ rte_dump_tailq(FILE *f)
 	for (i = 0; i < RTE_MAX_TAILQ; i++) {
 		const struct rte_tailq_head *tailq = &mcfg->tailq_head[i];
 		const struct rte_tailq_entry_head *head = &tailq->tailq_head;
-		const char *name = "nil";
-
-		if (rte_tailq_names[i])
-			name = rte_tailq_names[i];
-		else if (tailq->name)
-			name = tailq->name;
 
 		fprintf(f, "Tailq %u: qname:<%s>, tqh_first:%p, tqh_last:%p\n",
-			i, name, head->tqh_first, head->tqh_last);
+			i, tailq->name, head->tqh_first, head->tqh_last);
 	}
 	rte_rwlock_read_unlock(&mcfg->qlock);
 }
@@ -209,20 +177,9 @@ error:
 int
 rte_eal_tailqs_init(void)
 {
-	unsigned i;
-	struct rte_mem_config *mcfg = NULL;
 	struct rte_tailq_elem *t;
 
-	RTE_BUILD_BUG_ON(RTE_MAX_TAILQ < RTE_TAILQ_NUM);
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		mcfg = rte_eal_get_configuration()->mem_config;
-		for (i = 0; i < RTE_TAILQ_NUM; i++)
-			TAILQ_INIT(&mcfg->tailq_head[i].tailq_head);
-	}
-
-	/* mark those static entries as already taken */
-	rte_tailqs_count = RTE_TAILQ_NUM;
+	rte_tailqs_count = 0;
 
 	TAILQ_FOREACH(t, &rte_tailq_elem_head, next) {
 		/* second part of register job for "early" tailqs, see

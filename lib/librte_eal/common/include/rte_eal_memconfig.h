@@ -45,15 +45,6 @@ extern "C" {
 #endif
 
 /**
- * Index type of tailq_head
- */
-enum rte_tailq_t {
-#define rte_tailq_elem(idx, name)     idx,
-#define rte_tailq_end(idx)            idx
-#include <rte_tailq_elem.h>
-};
-
-/**
  * the structure for the memory configuration for the RTE.
  * Used by the rte_config structure. It is separated out, as for multi-process
  * support, the memory details should be shared across instances
