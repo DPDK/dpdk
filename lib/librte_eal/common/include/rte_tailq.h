@@ -70,6 +70,12 @@ struct rte_tailq_head {
 };
 
 /**
+ * Return the first tailq entry casted to the right struct.
+ */
+#define RTE_TAILQ_CAST(tailq_entry, struct_name) \
+	(struct struct_name *)&(tailq_entry)->tailq_head
+
+/**
  * Utility macro to make reserving a tailqueue for a particular struct easier.
  *
  * @param name
@@ -86,7 +92,7 @@ struct rte_tailq_head {
  *   element in the rte_tailq_head structure.
  */
 #define RTE_TAILQ_RESERVE(name, struct_name) \
-	(struct struct_name *)(&rte_eal_tailq_reserve(name)->tailq_head)
+	RTE_TAILQ_CAST(rte_eal_tailq_reserve(name), struct_name)
 
 /**
  * Utility macro to make reserving a tailqueue for a particular struct easier.
@@ -106,7 +112,7 @@ struct rte_tailq_head {
  *   element in the rte_tailq_head structure.
  */
 #define RTE_TAILQ_RESERVE_BY_IDX(idx, struct_name) \
-	(struct struct_name *)(&rte_eal_tailq_reserve_by_idx(idx)->tailq_head)
+	RTE_TAILQ_CAST(rte_eal_tailq_reserve_by_idx(idx), struct_name)
 
 /**
  * Utility macro to make looking up a tailqueue for a particular struct easier.
@@ -125,7 +131,7 @@ struct rte_tailq_head {
  *   element in the rte_tailq_head structure.
  */
 #define RTE_TAILQ_LOOKUP(name, struct_name) \
-	(struct struct_name *)(&rte_eal_tailq_lookup(name)->tailq_head)
+	RTE_TAILQ_CAST(rte_eal_tailq_lookup(name), struct_name)
 
 /**
  * Utility macro to make looking up a tailqueue for a particular struct easier.
@@ -144,7 +150,7 @@ struct rte_tailq_head {
  *   element in the rte_tailq_head structure.
  */
 #define RTE_TAILQ_LOOKUP_BY_IDX(idx, struct_name) \
-	(struct struct_name *)(&rte_eal_tailq_lookup_by_idx(idx)->tailq_head)
+	RTE_TAILQ_CAST(rte_eal_tailq_lookup_by_idx(idx), struct_name)
 
 /**
  * Reserve a slot in the tailq list for a particular tailq header
