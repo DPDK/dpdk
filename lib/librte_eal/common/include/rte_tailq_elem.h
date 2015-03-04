@@ -64,26 +64,6 @@
 #define rte_tailq_end(idx)
 #endif /* rte_tailq_end */
 
-rte_tailq_elem(RTE_TAILQ_PCI, "PCI_RESOURCE_LIST")
-
-rte_tailq_elem(RTE_TAILQ_MEMPOOL, "RTE_MEMPOOL")
-
-rte_tailq_elem(RTE_TAILQ_RING, "RTE_RING")
-
-rte_tailq_elem(RTE_TAILQ_HASH, "RTE_HASH")
-
-rte_tailq_elem(RTE_TAILQ_FBK_HASH, "RTE_FBK_HASH")
-
-rte_tailq_elem(RTE_TAILQ_LPM, "RTE_LPM")
-
-rte_tailq_elem(RTE_TAILQ_LPM6, "RTE_LPM6")
-
-rte_tailq_elem(RTE_TAILQ_ACL, "RTE_ACL")
-
-rte_tailq_elem(RTE_TAILQ_DISTRIBUTOR, "RTE_DISTRIBUTOR")
-
-rte_tailq_elem(RTE_TAILQ_REORDER, "RTE_REORDER")
-
 rte_tailq_end(RTE_TAILQ_NUM)
 
 #undef rte_tailq_elem

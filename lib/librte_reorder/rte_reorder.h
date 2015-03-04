@@ -102,7 +102,6 @@ rte_reorder_init(struct rte_reorder_buffer *b, unsigned int bufsize,
  *   Pointer to reorder buffer instance or NULL if object not found with rte_errno
  *   set appropriately. Possible rte_errno values include:
  *    - ENOENT - required entry not available to return.
- *    - E_RTE_NO_TAILQ - no tailq list could be got for the
  *    reorder instance list
  */
 struct rte_reorder_buffer *

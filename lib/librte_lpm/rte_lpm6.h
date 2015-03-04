@@ -72,7 +72,6 @@ struct rte_lpm6_config {
  *   to an appropriate values. Possible rte_errno values include:
  *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
  *    - E_RTE_SECONDARY - function was called from a secondary process instance
- *    - E_RTE_NO_TAILQ - no tailq list could be got for the lpm object list
  *    - EINVAL - invalid parameter passed to function
  *    - ENOSPC - the maximum number of memzones has already been allocated
  *    - EEXIST - a memzone with the same name already exists

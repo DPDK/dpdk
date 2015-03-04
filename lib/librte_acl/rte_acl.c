@@ -38,6 +38,11 @@
 
 TAILQ_HEAD(rte_acl_list, rte_tailq_entry);
 
+static struct rte_tailq_elem rte_acl_tailq = {
+	.name = "RTE_ACL",
+};
+EAL_REGISTER_TAILQ(rte_acl_tailq)
+
 /*
  * If the compiler doesn't support AVX2 instructions,
  * then the dummy one would be used instead for AVX2 classify method.
@@ -129,12 +134,7 @@ rte_acl_find_existing(const char *name)
 	struct rte_acl_list *acl_list;
 	struct rte_tailq_entry *te;
 
-	/* check that we have an initialised tail queue */
-	acl_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_ACL, rte_acl_list);
-	if (acl_list == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	acl_list = RTE_TAILQ_CAST(rte_acl_tailq.head, rte_acl_list);
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(te, acl_list, next) {
@@ -160,12 +160,7 @@ rte_acl_free(struct rte_acl_ctx *ctx)
 	if (ctx == NULL)
 		return;
 
-	/* check that we have an initialised tail queue */
-	acl_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_ACL, rte_acl_list);
-	if (acl_list == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return;
-	}
+	acl_list = RTE_TAILQ_CAST(rte_acl_tailq.head, rte_acl_list);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
@@ -197,12 +192,7 @@ rte_acl_create(const struct rte_acl_param *param)
 	struct rte_tailq_entry *te;
 	char name[sizeof(ctx->name)];
 
-	/* check that we have an initialised tail queue */
-	acl_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_ACL, rte_acl_list);
-	if (acl_list == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	acl_list = RTE_TAILQ_CAST(rte_acl_tailq.head, rte_acl_list);
 
 	/* check that input parameters are valid. */
 	if (param == NULL || param->name == NULL) {
@@ -365,12 +355,7 @@ rte_acl_list_dump(void)
 	struct rte_acl_list *acl_list;
 	struct rte_tailq_entry *te;
 
-	/* check that we have an initialised tail queue */
-	acl_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_ACL, rte_acl_list);
-	if (acl_list == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return;
-	}
+	acl_list = RTE_TAILQ_CAST(rte_acl_tailq.head, rte_acl_list);
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(te, acl_list, next) {

@@ -78,6 +78,11 @@ enum valid_flag {
 
 TAILQ_HEAD(rte_lpm6_list, rte_tailq_entry);
 
+static struct rte_tailq_elem rte_lpm6_tailq = {
+	.name = "RTE_LPM6",
+};
+EAL_REGISTER_TAILQ(rte_lpm6_tailq)
+
 /** Tbl entry structure. It is the same for both tbl24 and tbl8 */
 struct rte_lpm6_tbl_entry {
 	uint32_t next_hop:	21;  /**< Next hop / next table to be checked. */
@@ -150,12 +155,7 @@ rte_lpm6_create(const char *name, int socket_id,
 	uint64_t mem_size, rules_size;
 	struct rte_lpm6_list *lpm_list;
 
-	/* Check that we have an initialised tail queue */
-	if ((lpm_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM6, rte_lpm6_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	lpm_list = RTE_TAILQ_CAST(rte_lpm6_tailq.head, rte_lpm6_list);
 
 	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm6_tbl_entry) != sizeof(uint32_t));
 
@@ -237,12 +237,7 @@ rte_lpm6_find_existing(const char *name)
 	struct rte_tailq_entry *te;
 	struct rte_lpm6_list *lpm_list;
 
-	/* Check that we have an initialised tail queue */
-	if ((lpm_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM6,
-			rte_lpm6_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	lpm_list = RTE_TAILQ_CAST(rte_lpm6_tailq.head, rte_lpm6_list);
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(te, lpm_list, next) {
@@ -273,12 +268,7 @@ rte_lpm6_free(struct rte_lpm6 *lpm)
 	if (lpm == NULL)
 		return;
 
-	/* check that we have an initialised tail queue */
-	if ((lpm_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM, rte_lpm6_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return;
-	}
+	lpm_list = RTE_TAILQ_CAST(rte_lpm6_tailq.head, rte_lpm6_list);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 

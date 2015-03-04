@@ -117,7 +117,6 @@ struct rte_hash {
  *   Possible rte_errno errors include:
  *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
  *    - E_RTE_SECONDARY - function was called from a secondary process instance
- *    - E_RTE_NO_TAILQ - no tailq list could be got for the hash table list
  *    - ENOENT - missing entry
  *    - EINVAL - invalid parameter passed to function
  *    - ENOSPC - the maximum number of memzones has already been allocated

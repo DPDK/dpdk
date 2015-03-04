@@ -170,7 +170,6 @@ struct rte_acl_param {
  *   Pointer to ACL context structure that is used in future ACL
  *   operations, or NULL on error, with error code set in rte_errno.
  *   Possible rte_errno errors include:
- *   - E_RTE_NO_TAILQ - no tailq list could be got for the ACL context list
  *   - EINVAL - invalid parameter passed to function
  */
 struct rte_acl_ctx *

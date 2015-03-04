@@ -101,6 +101,8 @@ extern "C" {
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 
+#define RTE_TAILQ_RING_NAME "RTE_RING"
+
 enum rte_ring_queue_behavior {
 	RTE_RING_QUEUE_FIXED = 0, /* Enq/Deq a fixed number of items from a ring */
 	RTE_RING_QUEUE_VARIABLE   /* Enq/Deq as many items a possible from ring */
@@ -291,7 +293,6 @@ int rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
  *    rte_errno set appropriately. Possible errno values include:
  *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
  *    - E_RTE_SECONDARY - function was called from a secondary process instance
- *    - E_RTE_NO_TAILQ - no tailq list could be got for the ring list
  *    - EINVAL - count provided is not a power of 2
  *    - ENOSPC - the maximum number of memzones has already been allocated
  *    - EEXIST - a memzone with the same name already exists

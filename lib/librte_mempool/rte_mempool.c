@@ -62,6 +62,11 @@
 
 TAILQ_HEAD(rte_mempool_list, rte_tailq_entry);
 
+static struct rte_tailq_elem rte_mempool_tailq = {
+	.name = "RTE_MEMPOOL",
+};
+EAL_REGISTER_TAILQ(rte_mempool_tailq)
+
 #define CACHE_FLUSHTHRESH_MULTIPLIER 1.5
 
 /*
@@ -432,13 +437,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 			  RTE_CACHE_LINE_MASK) != 0);
 #endif
 
-	/* check that we have an initialised tail queue */
-	mempool_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL,
-					       rte_mempool_list);
-	if (mempool_list == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	mempool_list = RTE_TAILQ_CAST(rte_mempool_tailq.head, rte_mempool_list);
 
 	/* asked cache too big */
 	if (cache_size > RTE_MEMPOOL_CACHE_MAX_SIZE) {
@@ -834,11 +833,7 @@ rte_mempool_list_dump(FILE *f)
 	struct rte_tailq_entry *te;
 	struct rte_mempool_list *mempool_list;
 
-	if ((mempool_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL, rte_mempool_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return;
-	}
+	mempool_list = RTE_TAILQ_CAST(rte_mempool_tailq.head, rte_mempool_list);
 
 	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
 
@@ -858,11 +853,7 @@ rte_mempool_lookup(const char *name)
 	struct rte_tailq_entry *te;
 	struct rte_mempool_list *mempool_list;
 
-	if ((mempool_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL, rte_mempool_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	mempool_list = RTE_TAILQ_CAST(rte_mempool_tailq.head, rte_mempool_list);
 
 	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
 
@@ -888,11 +879,7 @@ void rte_mempool_walk(void (*func)(const struct rte_mempool *, void *),
 	struct rte_tailq_entry *te = NULL;
 	struct rte_mempool_list *mempool_list;
 
-	if ((mempool_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL, rte_mempool_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return;
-	}
+	mempool_list = RTE_TAILQ_CAST(rte_mempool_tailq.head, rte_mempool_list);
 
 	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
 

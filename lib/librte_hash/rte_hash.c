@@ -58,8 +58,12 @@
 
 #include "rte_hash.h"
 
-
 TAILQ_HEAD(rte_hash_list, rte_tailq_entry);
+
+static struct rte_tailq_elem rte_hash_tailq = {
+	.name = "RTE_HASH",
+};
+EAL_REGISTER_TAILQ(rte_hash_tailq)
 
 /* Macro to enable/disable run-time checking of function parameters */
 #if defined(RTE_LIBRTE_HASH_DEBUG)
@@ -144,12 +148,7 @@ rte_hash_find_existing(const char *name)
 	struct rte_tailq_entry *te;
 	struct rte_hash_list *hash_list;
 
-	/* check that we have an initialised tail queue */
-	if ((hash_list =
-			RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_HASH, rte_hash_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	hash_list = RTE_TAILQ_CAST(rte_hash_tailq.head, rte_hash_list);
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(te, hash_list, next) {
@@ -176,12 +175,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	char hash_name[RTE_HASH_NAMESIZE];
 	struct rte_hash_list *hash_list;
 
-	/* check that we have an initialised tail queue */
-	if ((hash_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_HASH, rte_hash_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	hash_list = RTE_TAILQ_CAST(rte_hash_tailq.head, rte_hash_list);
 
 	/* Check for valid parameters */
 	if ((params == NULL) ||
@@ -274,12 +268,7 @@ rte_hash_free(struct rte_hash *h)
 	if (h == NULL)
 		return;
 
-	/* check that we have an initialised tail queue */
-	if ((hash_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_HASH, rte_hash_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return;
-	}
+	hash_list = RTE_TAILQ_CAST(rte_hash_tailq.head, rte_hash_list);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 

@@ -45,6 +45,11 @@
 
 TAILQ_HEAD(rte_reorder_list, rte_tailq_entry);
 
+static struct rte_tailq_elem rte_reorder_tailq = {
+	.name = "RTE_REORDER",
+};
+EAL_REGISTER_TAILQ(rte_reorder_tailq)
+
 #define NO_FLAGS 0
 #define RTE_REORDER_PREFIX "RO_"
 #define RTE_REORDER_NAMESIZE 32
@@ -126,12 +131,7 @@ rte_reorder_create(const char *name, unsigned socket_id, unsigned int size)
 	const unsigned int bufsize = sizeof(struct rte_reorder_buffer) +
 					(2 * size * sizeof(struct rte_mbuf *));
 
-	/* check that we have an initialised tail queue */
-	reorder_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_REORDER, rte_reorder_list);
-	if (!reorder_list) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	reorder_list = RTE_TAILQ_CAST(rte_reorder_tailq.head, rte_reorder_list);
 
 	/* Check user arguments. */
 	if (!rte_is_power_of_2(size)) {
@@ -219,12 +219,7 @@ rte_reorder_free(struct rte_reorder_buffer *b)
 	if (b == NULL)
 		return;
 
-	/* check that we have an initialised tail queue */
-	reorder_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_REORDER, rte_reorder_list);
-	if (!reorder_list) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return;
-	}
+	reorder_list = RTE_TAILQ_CAST(rte_reorder_tailq.head, rte_reorder_list);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
@@ -255,12 +250,7 @@ rte_reorder_find_existing(const char *name)
 	struct rte_tailq_entry *te;
 	struct rte_reorder_list *reorder_list;
 
-	/* check that we have an initialised tail queue */
-	reorder_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_REORDER, rte_reorder_list);
-	if (!reorder_list) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	reorder_list = RTE_TAILQ_CAST(rte_reorder_tailq.head, rte_reorder_list);
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(te, reorder_list, next) {

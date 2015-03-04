@@ -372,7 +372,6 @@ struct rte_fbk_hash_table *rte_fbk_hash_find_existing(const char *name);
  *   Possible rte_errno error values include:
  *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
  *    - E_RTE_SECONDARY - function was called from a secondary process instance
- *    - E_RTE_NO_TAILQ - no tailq list could be got for the fbk hash table list
  *    - EINVAL - invalid parameter value passed to function
  *    - ENOSPC - the maximum number of memzones has already been allocated
  *    - EEXIST - a memzone with the same name already exists

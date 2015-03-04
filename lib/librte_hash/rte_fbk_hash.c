@@ -55,6 +55,11 @@
 
 TAILQ_HEAD(rte_fbk_hash_list, rte_tailq_entry);
 
+static struct rte_tailq_elem rte_fbk_hash_tailq = {
+	.name = "RTE_FBK_HASH",
+};
+EAL_REGISTER_TAILQ(rte_fbk_hash_tailq)
+
 /**
  * Performs a lookup for an existing hash table, and returns a pointer to
  * the table if found.
@@ -72,13 +77,8 @@ rte_fbk_hash_find_existing(const char *name)
 	struct rte_tailq_entry *te;
 	struct rte_fbk_hash_list *fbk_hash_list;
 
-	/* check that we have an initialised tail queue */
-	if ((fbk_hash_list =
-			RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_FBK_HASH,
-					rte_fbk_hash_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	fbk_hash_list = RTE_TAILQ_CAST(rte_fbk_hash_tailq.head,
+				       rte_fbk_hash_list);
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(te, fbk_hash_list, next) {
@@ -115,13 +115,8 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 	uint32_t i;
 	struct rte_fbk_hash_list *fbk_hash_list;
 
-	/* check that we have an initialised tail queue */
-	if ((fbk_hash_list =
-			RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_FBK_HASH,
-					rte_fbk_hash_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	fbk_hash_list = RTE_TAILQ_CAST(rte_fbk_hash_tailq.head,
+				       rte_fbk_hash_list);
 
 	/* Error checking of parameters. */
 	if ((!rte_is_power_of_2(params->entries)) ||
@@ -208,13 +203,8 @@ rte_fbk_hash_free(struct rte_fbk_hash_table *ht)
 	if (ht == NULL)
 		return;
 
-	/* check that we have an initialised tail queue */
-	if ((fbk_hash_list =
-			RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_FBK_HASH,
-					rte_fbk_hash_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return;
-	}
+	fbk_hash_list = RTE_TAILQ_CAST(rte_fbk_hash_tailq.head,
+				       rte_fbk_hash_list);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 

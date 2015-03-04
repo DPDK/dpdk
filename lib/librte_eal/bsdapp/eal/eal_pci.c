@@ -107,6 +107,11 @@ TAILQ_HEAD(uio_res_list, uio_resource);
 
 static struct uio_res_list *uio_res_list = NULL;
 
+static struct rte_tailq_elem rte_pci_tailq = {
+	.name = "PCI_RESOURCE_LIST",
+};
+EAL_REGISTER_TAILQ(rte_pci_tailq)
+
 /* unbind kernel driver for this device */
 static int
 pci_unbind_kernel_driver(struct rte_pci_device *dev __rte_unused)
@@ -492,7 +497,7 @@ rte_eal_pci_init(void)
 {
 	TAILQ_INIT(&pci_driver_list);
 	TAILQ_INIT(&pci_device_list);
-	uio_res_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_PCI, uio_res_list);
+	uio_res_list = RTE_TAILQ_CAST(rte_pci_tailq.head, uio_res_list);
 
 	/* for debug purposes, PCI can be disabled */
 	if (internal_config.no_pci)

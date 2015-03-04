@@ -115,6 +115,11 @@ struct rte_distributor {
 
 TAILQ_HEAD(rte_distributor_list, rte_distributor);
 
+static struct rte_tailq_elem rte_distributor_tailq = {
+	.name = "RTE_DISTRIBUTOR",
+};
+EAL_REGISTER_TAILQ(rte_distributor_tailq)
+
 /**** APIs called by workers ****/
 
 void
@@ -460,14 +465,6 @@ rte_distributor_create(const char *name,
 		return NULL;
 	}
 
-	/* check that we have an initialised tail queue */
-	distributor_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_DISTRIBUTOR,
-				rte_distributor_list);
-	if (distributor_list == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
-
 	snprintf(mz_name, sizeof(mz_name), RTE_DISTRIB_PREFIX"%s", name);
 	mz = rte_memzone_reserve(mz_name, sizeof(*d), socket_id, NO_FLAGS);
 	if (mz == NULL) {
@@ -478,6 +475,9 @@ rte_distributor_create(const char *name,
 	d = mz->addr;
 	snprintf(d->name, sizeof(d->name), "%s", name);
 	d->num_workers = num_workers;
+
+	distributor_list = RTE_TAILQ_CAST(rte_distributor_tailq.head,
+					  rte_distributor_list);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_INSERT_TAIL(distributor_list, d, next);

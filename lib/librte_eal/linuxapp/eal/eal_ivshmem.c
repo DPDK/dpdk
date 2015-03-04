@@ -53,7 +53,6 @@
 #include <rte_malloc.h>
 #include <rte_common.h>
 #include <rte_ivshmem.h>
-#include <rte_tailq_elem.h>
 
 #include "eal_internal_cfg.h"
 #include "eal_private.h"
@@ -764,8 +763,8 @@ rte_eal_ivshmem_obj_init(void)
 		return 0;
 
 	/* check that we have an initialised ring tail queue */
-	if ((ring_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_RING, rte_ring_list)) == NULL) {
+	ring_list = RTE_TAILQ_LOOKUP(RTE_TAILQ_RING_NAME, rte_ring_list);
+	if (ring_list == NULL) {
 		RTE_LOG(ERR, EAL, "No rte_ring tailq found!\n");
 		return -1;
 	}
