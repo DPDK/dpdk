@@ -195,64 +195,6 @@ rte_set_application_usage_hook( rte_usage_hook_t usage_func );
  */
 #define RTE_EAL_MEMPOOL_RWLOCK            (&rte_eal_get_configuration()->mem_config->mplock)
 
-
-/**
- * Utility macro to do a thread-safe tailq 'INSERT' of rte_mem_config
- *
- * @param idx
- *   a kind of tailq define in enum rte_tailq_t
- *
- * @param type
- *   type of list(tailq head)
- *
- * @param elm
- *   The element will be added into the list
- *
- */
-#define RTE_EAL_TAILQ_INSERT_TAIL(idx, type, elm) do {	\
-	struct type *list;                                      \
-	list = RTE_TAILQ_LOOKUP_BY_IDX(idx, type);              \
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);            \
-	TAILQ_INSERT_TAIL(list, elm, next);                     \
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);          \
-} while (0)
-
-/**
- * Utility macro to do a thread-safe tailq 'REMOVE' of rte_mem_config
- *
- * @param idx
- *   a kind of tailq define in enum rte_tailq_t
- *
- * @param type
- *   type of list(tailq head)
- *
- * @param elm
- *   The element will be remove from the list
- *
- */
-#define RTE_EAL_TAILQ_REMOVE(idx, type, elm) do {	\
-	struct type *list;                                      \
-	list = RTE_TAILQ_LOOKUP_BY_IDX(idx, type);              \
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);            \
-	TAILQ_REMOVE(list, elm, next);                          \
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);          \
-} while (0)                                                     \
-
-
-/**
- *  macro to check TAILQ exist
- *
- *  @param idx
- *    a kind of tailq define in enum rte_tailq_t
- *
- */
-#define RTE_EAL_TAILQ_EXIST_CHECK(idx) do {   \
-	if (RTE_TAILQ_LOOKUP_BY_IDX(idx, rte_tailq_head) == NULL){      \
-		rte_errno = E_RTE_NO_TAILQ;				\
-		return NULL;						\
-	}								\
-} while(0)
-
 /**
  * Whether EAL is using huge pages (disabled by --no-huge option).
  * The no-huge mode cannot be used with UIO poll-mode drivers like igb/ixgbe.

@@ -403,6 +403,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 {
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	char rg_name[RTE_RING_NAMESIZE];
+	struct rte_mempool_list *mempool_list;
 	struct rte_mempool *mp = NULL;
 	struct rte_tailq_entry *te;
 	struct rte_ring *r;
@@ -432,8 +433,9 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 #endif
 
 	/* check that we have an initialised tail queue */
-	if (RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL,
-			rte_mempool_list) == NULL) {
+	mempool_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_MEMPOOL,
+					       rte_mempool_list);
+	if (mempool_list == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
 		return NULL;
 	}
@@ -599,7 +601,9 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 
 	te->data = (void *) mp;
 
-	RTE_EAL_TAILQ_INSERT_TAIL(RTE_TAILQ_MEMPOOL, rte_mempool_list, te);
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	TAILQ_INSERT_TAIL(mempool_list, te, next);
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 exit:
 	rte_rwlock_write_unlock(RTE_EAL_MEMPOOL_RWLOCK);
