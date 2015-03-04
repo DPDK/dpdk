@@ -46,6 +46,7 @@ extern "C" {
 
 #include <sys/queue.h>
 #include <stdio.h>
+#include <rte_debug.h>
 
 /** dummy structure type used by the rte_tailq APIs */
 struct rte_tailq_entry {
@@ -67,6 +68,17 @@ TAILQ_HEAD(rte_tailq_entry_head, rte_tailq_entry);
  */
 struct rte_tailq_head {
 	struct rte_tailq_entry_head tailq_head; /**< NOTE: must be first element */
+	char name[RTE_TAILQ_NAMESIZE];
+};
+
+struct rte_tailq_elem {
+	/**
+	 * Reference to head in shared mem, updated at init time by
+	 * rte_eal_tailqs_init()
+	 */
+	struct rte_tailq_head *head;
+	TAILQ_ENTRY(rte_tailq_elem) next;
+	const char name[RTE_TAILQ_NAMESIZE];
 };
 
 /**
@@ -150,6 +162,32 @@ struct rte_tailq_head *rte_eal_tailq_lookup(const char *name);
  *   A pointer to the tail queue head structure.
  */
 struct rte_tailq_head *rte_eal_tailq_lookup_by_idx(const unsigned idx);
+
+/**
+ * Register a tail queue.
+ *
+ * Register a tail queue from shared memory.
+ * This function is mainly used by EAL_REGISTER_TAILQ macro which is used to
+ * register tailq from the different dpdk libraries. Since this macro is a
+ * constructor, the function has no access to dpdk shared memory, so the
+ * registered tailq can not be used before call to rte_eal_init() which calls
+ * rte_eal_tailqs_init().
+ *
+ * @param t
+ *   The tailq element which contains the name of the tailq you want to
+ *   create (/retrieve when in secondary process).
+ * @return
+ *   0 on success or -1 in case of an error.
+ */
+int rte_eal_tailq_register(struct rte_tailq_elem *t);
+
+#define EAL_REGISTER_TAILQ(t) \
+void tailqinitfn_ ##t(void); \
+void __attribute__((constructor, used)) tailqinitfn_ ##t(void) \
+{ \
+	if (rte_eal_tailq_register(&t) < 0) \
+		rte_panic("Cannot initialize tailq: %s\n", t.name); \
+}
 
 #ifdef __cplusplus
 }
