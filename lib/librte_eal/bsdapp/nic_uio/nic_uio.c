@@ -55,6 +55,9 @@ __FBSDID("$FreeBSD$");
 
 #define MAX_BARS (PCIR_MAX_BAR_0 + 1)
 
+#define MAX_DETACHED_DEVICES	128
+static device_t detached_devices[MAX_DETACHED_DEVICES] = {};
+static int num_detached = 0;
 
 struct nic_uio_softc {
 	device_t        dev_t;
@@ -289,17 +292,37 @@ nic_uio_load(void)
 		function = strtol(token, NULL, 10);
 
 		dev = pci_find_bsf(bus, device, function);
-		if (dev != NULL)
-			for (i = 0; i < NUM_DEVICES; i++)
-				if (pci_get_vendor(dev) == devices[i].vend &&
-						pci_get_device(dev) == devices[i].dev)
-							device_detach(dev);
+		if (dev == NULL)
+			continue;
+
+		for (i = 0; i < NUM_DEVICES; i++)
+			if (pci_get_vendor(dev) == devices[i].vend &&
+					pci_get_device(dev) == devices[i].dev) {
+						if (num_detached < MAX_DETACHED_DEVICES) {
+							printf("nic_uio_load: detaching and storing dev=%p\n", dev);
+							detached_devices[num_detached++] = dev;
+						} else
+							printf("nic_uio_load: reached MAX_DETACHED_DEVICES=%d. dev=%p won't be reattached\n",
+								MAX_DETACHED_DEVICES, dev);
+						device_detach(dev);
+			}
 	}
 }
 
 static void
 nic_uio_unload(void)
 {
+	int i;
+	printf("nic_uio_unload: entered...\n");
+
+	for (i = 0; i < num_detached; i++) {
+		printf("nic_uio_unload: calling to device_probe_and_attach for dev=%p...\n",
+			detached_devices[i]);
+		device_probe_and_attach(detached_devices[i]);
+		printf("nic_uio_unload: done.\n");
+	}
+
+	printf("nic_uio_unload: leaving...\n");
 }
 
 static int
