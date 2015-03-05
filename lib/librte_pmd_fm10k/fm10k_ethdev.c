@@ -1668,8 +1668,7 @@ static struct eth_dev_ops fm10k_eth_dev_ops = {
 };
 
 static int
-eth_fm10k_dev_init(__rte_unused struct eth_driver *eth_drv,
-	struct rte_eth_dev *dev)
+eth_fm10k_dev_init(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int diag;

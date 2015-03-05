@@ -70,8 +70,7 @@
 
 #define PROCESS_SYS_EVENTS 0
 
-static int eth_vmxnet3_dev_init(struct eth_driver *eth_drv,
-		struct rte_eth_dev *eth_dev);
+static int eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev);
 static int vmxnet3_dev_configure(struct rte_eth_dev *dev);
 static int vmxnet3_dev_start(struct rte_eth_dev *dev);
 static void vmxnet3_dev_stop(struct rte_eth_dev *dev);
@@ -182,8 +181,7 @@ vmxnet3_disable_intr(struct vmxnet3_hw *hw)
  * It returns 0 on success.
  */
 static int
-eth_vmxnet3_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
-		     struct rte_eth_dev *eth_dev)
+eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
 	struct vmxnet3_hw *hw = eth_dev->data->dev_private;

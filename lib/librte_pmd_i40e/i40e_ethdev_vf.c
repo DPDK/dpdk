@@ -1149,8 +1149,7 @@ err:
 }
 
 static int
-i40evf_dev_init(__rte_unused struct eth_driver *eth_drv,
-		struct rte_eth_dev *eth_dev)
+i40evf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(\
 			eth_dev->data->dev_private);

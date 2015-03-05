@@ -106,9 +106,7 @@
 	(1UL << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER) | \
 	(1UL << RTE_ETH_FLOW_L2_PAYLOAD))
 
-static int eth_i40e_dev_init(\
-			__attribute__((unused)) struct eth_driver *eth_drv,
-			struct rte_eth_dev *eth_dev);
+static int eth_i40e_dev_init(struct rte_eth_dev *eth_dev);
 static int i40e_dev_configure(struct rte_eth_dev *dev);
 static int i40e_dev_start(struct rte_eth_dev *dev);
 static void i40e_dev_stop(struct rte_eth_dev *dev);
@@ -364,8 +362,7 @@ static inline void i40e_flex_payload_reg_init(struct i40e_hw *hw)
 }
 
 static int
-eth_i40e_dev_init(__rte_unused struct eth_driver *eth_drv,
-                  struct rte_eth_dev *dev)
+eth_i40e_dev_init(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev;
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);

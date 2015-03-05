@@ -117,8 +117,7 @@
 
 #define IXGBE_QUEUE_STAT_COUNTERS (sizeof(hw_stats->qprc) / sizeof(hw_stats->qprc[0]))
 
-static int eth_ixgbe_dev_init(struct eth_driver *eth_drv,
-		struct rte_eth_dev *eth_dev);
+static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int  ixgbe_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbe_dev_start(struct rte_eth_dev *dev);
 static void ixgbe_dev_stop(struct rte_eth_dev *dev);
@@ -184,8 +183,7 @@ static void ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index);
 static void ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config);
 
 /* For Virtual Function support */
-static int eth_ixgbevf_dev_init(struct eth_driver *eth_drv,
-		struct rte_eth_dev *eth_dev);
+static int eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev);
 static int  ixgbevf_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_start(struct rte_eth_dev *dev);
 static void ixgbevf_dev_stop(struct rte_eth_dev *dev);
@@ -718,8 +716,7 @@ ixgbe_swfw_lock_reset(struct ixgbe_hw *hw)
  * It returns 0 on success.
  */
 static int
-eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
-		     struct rte_eth_dev *eth_dev)
+eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
 	struct ixgbe_hw *hw =
@@ -967,8 +964,7 @@ generate_random_mac_addr(struct ether_addr *mac_addr)
  * Virtual Function device init
  */
 static int
-eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
-		     struct rte_eth_dev *eth_dev)
+eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	int diag;
 	uint32_t tc, tcs;

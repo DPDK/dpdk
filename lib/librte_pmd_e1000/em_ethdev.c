@@ -217,8 +217,7 @@ rte_em_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 }
 
 static int
-eth_em_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
-		struct rte_eth_dev *eth_dev)
+eth_em_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
 	struct e1000_hw *hw =

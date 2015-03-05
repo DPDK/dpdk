@@ -555,9 +555,7 @@ struct enic *enicpmd_list_head = NULL;
 /* Initialize the driver
  * It returns 0 on success.
  */
-static int eth_enicpmd_dev_init(
-	__attribute__((unused))struct eth_driver *eth_drv,
-	struct rte_eth_dev *eth_dev)
+static int eth_enicpmd_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pdev;
 	struct rte_pci_addr *addr;

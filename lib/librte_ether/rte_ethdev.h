@@ -1609,9 +1609,6 @@ struct eth_driver;
  * Initialization function of an Ethernet driver invoked for each matching
  * Ethernet PCI device detected during the PCI probing phase.
  *
- * @param eth_drv
- *   The pointer to the [matching] Ethernet driver structure supplied by
- *   the PMD when it registered itself.
  * @param eth_dev
  *   The *eth_dev* pointer is the address of the *rte_eth_dev* structure
  *   associated with the matching device and which have been [automatically]
@@ -1621,6 +1618,8 @@ struct eth_driver;
  *
  *   - *pci_dev*: Holds the pointers to the *rte_pci_device* structure which
  *     contains the generic PCI information of the matching device.
+ *
+ *   - *driver*: Holds the pointer to the *eth_driver* structure.
  *
  *   - *dev_private*: Holds a pointer to the device private data structure.
  *
@@ -1635,17 +1634,13 @@ struct eth_driver;
  *        of the *eth_dev* structure.
  *   - <0: Error code of the device initialization failure.
  */
-typedef int (*eth_dev_init_t)(struct eth_driver  *eth_drv,
-			      struct rte_eth_dev *eth_dev);
+typedef int (*eth_dev_init_t)(struct rte_eth_dev *eth_dev);
 
 /**
  * @internal
  * Finalization function of an Ethernet driver invoked for each matching
  * Ethernet PCI device detected during the PCI closing phase.
  *
- * @param eth_drv
- *   The pointer to the [matching] Ethernet driver structure supplied by
- *   the PMD when it registered itself.
  * @param eth_dev
  *   The *eth_dev* pointer is the address of the *rte_eth_dev* structure
  *   associated with the matching device and which have been [automatically]
@@ -1656,8 +1651,7 @@ typedef int (*eth_dev_init_t)(struct eth_driver  *eth_drv,
  *        of the *eth_dev* structure.
  *   - <0: Error code of the device initialization failure.
  */
-typedef int (*eth_dev_uninit_t)(const struct eth_driver  *eth_drv,
-				  struct rte_eth_dev *eth_dev);
+typedef int (*eth_dev_uninit_t)(struct rte_eth_dev *eth_dev);
 
 /**
  * @internal

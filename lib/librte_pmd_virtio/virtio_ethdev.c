@@ -62,8 +62,7 @@
 #include "virtqueue.h"
 
 
-static int eth_virtio_dev_init(struct eth_driver *eth_drv,
-		struct rte_eth_dev *eth_dev);
+static int eth_virtio_dev_init(struct rte_eth_dev *eth_dev);
 static int  virtio_dev_configure(struct rte_eth_dev *dev);
 static int  virtio_dev_start(struct rte_eth_dev *dev);
 static void virtio_dev_stop(struct rte_eth_dev *dev);
@@ -1103,8 +1102,7 @@ virtio_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
  * It returns 0 on success.
  */
 static int
-eth_virtio_dev_init(__rte_unused struct eth_driver *eth_drv,
-		struct rte_eth_dev *eth_dev)
+eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct virtio_hw *hw = eth_dev->data->dev_private;
 	struct virtio_net_config *config;

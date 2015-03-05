@@ -324,7 +324,7 @@ rte_eth_dev_init(struct rte_pci_driver *pci_drv,
 	eth_dev->data->mtu = ETHER_MTU;
 
 	/* Invoke PMD device initialization function */
-	diag = (*eth_drv->eth_dev_init)(eth_drv, eth_dev);
+	diag = (*eth_drv->eth_dev_init)(eth_dev);
 	if (diag == 0)
 		return (0);
 
@@ -362,7 +362,7 @@ rte_eth_dev_uninit(struct rte_pci_device *pci_dev)
 
 	/* Invoke PMD device uninit function */
 	if (*eth_drv->eth_dev_uninit) {
-		ret = (*eth_drv->eth_dev_uninit)(eth_drv, eth_dev);
+		ret = (*eth_drv->eth_dev_uninit)(eth_dev);
 		if (ret)
 			return ret;
 	}

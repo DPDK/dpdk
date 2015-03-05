@@ -453,8 +453,7 @@ igb_reset_swfw_lock(struct e1000_hw *hw)
 }
 
 static int
-eth_igb_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
-		   struct rte_eth_dev *eth_dev)
+eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 {
 	int error = 0;
 	struct rte_pci_device *pci_dev;
@@ -614,8 +613,7 @@ err_late:
  * Virtual Function device init
  */
 static int
-eth_igbvf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
-		struct rte_eth_dev *eth_dev)
+eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
 	struct e1000_hw *hw =
