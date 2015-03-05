@@ -75,7 +75,7 @@ else
 $(RTE_OUTPUT)/.config: $(RTE_CONFIG_TEMPLATE) FORCE | $(RTE_OUTPUT)
 	$(Q)if [ "$(RTE_CONFIG_TEMPLATE)" != "" -a -f "$(RTE_CONFIG_TEMPLATE)" ]; then \
 		$(CPP) -undef -P -x assembler-with-cpp \
-		-fdirectives-only -ffreestanding \
+		-ffreestanding \
 		-o $(RTE_OUTPUT)/.config_tmp $(RTE_CONFIG_TEMPLATE) ; \
 		if ! cmp -s $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config; then \
 			cp $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config ; \
