@@ -211,25 +211,26 @@ fdset_event_dispatch(struct fdset *pfdset)
 	void *dat;
 	int fd;
 	int remove1, remove2;
+	int ret;
 
 	if (pfdset == NULL)
 		return;
 
 	while (1) {
+		struct timeval tv;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 		FD_ZERO(&rfds);
 		FD_ZERO(&wfds);
 		pthread_mutex_lock(&pfdset->fd_mutex);
 
 		maxfds = fdset_fill(&rfds, &wfds, pfdset);
-		if (maxfds == -1) {
-			pthread_mutex_unlock(&pfdset->fd_mutex);
-			sleep(1);
-			continue;
-		}
 
 		pthread_mutex_unlock(&pfdset->fd_mutex);
 
-		select(maxfds + 1, &rfds, &wfds, NULL, NULL);
+		ret = select(maxfds + 1, &rfds, &wfds, NULL, &tv);
+		if (ret <= 0)
+			continue;
 
 		for (i = 0; i < num; i++) {
 			remove1 = remove2 = 0;
