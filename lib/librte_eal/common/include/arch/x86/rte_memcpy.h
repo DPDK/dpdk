@@ -198,8 +198,8 @@ rte_memcpy(void *dst, const void *src, size_t n)
 	uintptr_t dstu = (uintptr_t)dst;
 	uintptr_t srcu = (uintptr_t)src;
 	void *ret = dst;
-	int dstofss;
-	int bits;
+	size_t dstofss;
+	size_t bits;
 
 	/**
 	 * Copy less than 16 bytes
@@ -273,7 +273,7 @@ COPY_BLOCK_64_BACK31:
 	/**
 	 * Make store aligned when copy size exceeds 512 bytes
 	 */
-	dstofss = 32 - (int)((long long)(void *)dst & 0x1F);
+	dstofss = 32 - ((uintptr_t)dst & 0x1F);
 	n -= dstofss;
 	rte_mov32((uint8_t *)dst, (const uint8_t *)src);
 	src = (const uint8_t *)src + dstofss;
@@ -497,8 +497,8 @@ rte_memcpy(void *dst, const void *src, size_t n)
 	uintptr_t dstu = (uintptr_t)dst;
 	uintptr_t srcu = (uintptr_t)src;
 	void *ret = dst;
-	int dstofss;
-	int srcofs;
+	size_t dstofss;
+	size_t srcofs;
 
 	/**
 	 * Copy less than 16 bytes
@@ -593,12 +593,12 @@ COPY_BLOCK_64_BACK15:
 	 * unaligned copy functions require up to 15 bytes
 	 * backwards access.
 	 */
-	dstofss = 16 - (int)((long long)(void *)dst & 0x0F) + 16;
+	dstofss = 16 - ((uintptr_t)dst & 0x0F) + 16;
 	n -= dstofss;
 	rte_mov32((uint8_t *)dst, (const uint8_t *)src);
 	src = (const uint8_t *)src + dstofss;
 	dst = (uint8_t *)dst + dstofss;
-	srcofs = (int)((long long)(const void *)src & 0x0F);
+	srcofs = ((uintptr_t)src & 0x0F);
 
 	/**
 	 * For aligned copy
