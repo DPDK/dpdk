@@ -1476,29 +1476,29 @@ Different NICs may have different capabilities, command show port fdir (port_id)
 
 # Commands to add flow director filters of different flow types.
 
-flow_director_filter (port_id) (add|del|update) flow (ip4|ip4-frag|ip6|ip6-frag)
+flow_director_filter (port_id) (add|del|update) flow (ipv4-other|ipv4-frag|ipv6-other|ipv6-frag)
 src (src_ip_address) dst (dst_ip_address) vlan (vlan_value) flexbytes (flexbytes_value)
 (drop|fwd) queue (queue_id) fd_id (fd_id_value)
 
-flow_director_filter (port_id) (add|del|update) flow (udp4|tcp4|udp6|tcp6)
+flow_director_filter (port_id) (add|del|update) flow (ipv4-tcp|ipv4-udp|ipv6-tcp|ipv6-udp)
 src (src_ip_address) (src_port) dst (dst_ip_address) (dst_port) vlan (vlan_value)
 flexbytes (flexbytes_value) (drop|fwd) queue (queue_id) fd_id (fd_id_value)
 
-flow_director_filter (port_id) (add|del|update) flow (sctp4|sctp6)
+flow_director_filter (port_id) (add|del|update) flow (ipv4-sctp|ipv6-sctp)
 src (src_ip_address) (src_port) dst (dst_ip_address) (dst_port) tag (verification_tag)
 vlan (vlan_value) flexbytes (flexbytes_value) (drop|fwd) queue (queue_id) fd_id (fd_id_value)
 
-For example, to add an udp flow type filter:
+For example, to add an ipv4-udp flow type filter:
 
 .. code-block:: console
 
-    testpmd> flow_director_filter 0 add flow udp4 src 2.2.2.3 32 dst 2.2.2.5 33 vlan 0x1 flexbytes (0x88,0x48) fwd queue 1 fd_id 1
+    testpmd> flow_director_filter 0 add flow ipv4-udp src 2.2.2.3 32 dst 2.2.2.5 33 vlan 0x1 flexbytes (0x88,0x48) fwd queue 1 fd_id 1
 
-For example, add an ip4 flow type filter:
+For example, add an ipv4-other flow type filter:
 
 .. code-block:: console
 
-    testpmd> flow_director_filter 0 add flow ip4 src 2.2.2.3 dst 2.2.2.5 vlan 0x1 flexbytes (0x88,0x48) fwd queue 1 fd_id 1
+    testpmd> flow_director_filter 0 add flow ipv4-other src 2.2.2.3 dst 2.2.2.5 vlan 0x1 flexbytes (0x88,0x48) fwd queue 1 fd_id 1
 
 flush_flow_director
 ~~~~~~~~~~~~~~~~~~~
@@ -1532,9 +1532,10 @@ flow_director_flex_mask
 
 set masks of flow director's flexible payload based on certain flow type:
 
-flow_director_flex_mask (port_id) flow (raw|ip4|ip4-frag|tcp4|udp4|sctp4|ip6|ip6-frag|tcp6|udp6|sctp6|all) (mask)
+flow_director_flex_mask (port_id) flow (none|ipv4-other|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|
+ipv6-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|all) (mask)
 
-Example, to set flow director's udpv4 flex mask on port 0:
+Example, to set flow director's flex mask for all flow type on port 0:
 
 .. code-block:: console
 
