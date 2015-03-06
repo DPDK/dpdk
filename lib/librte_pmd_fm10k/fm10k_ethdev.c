@@ -142,9 +142,12 @@ rx_queue_free(struct fm10k_rx_queue *q)
 	if (q) {
 		PMD_INIT_LOG(DEBUG, "Freeing rx queue %p", q);
 		rx_queue_clean(q);
-		if (q->sw_ring)
+		if (q->sw_ring) {
 			rte_free(q->sw_ring);
+			q->sw_ring = NULL;
+		}
 		rte_free(q);
+		q = NULL;
 	}
 }
 
@@ -225,11 +228,16 @@ tx_queue_free(struct fm10k_tx_queue *q)
 	if (q) {
 		PMD_INIT_LOG(DEBUG, "Freeing tx queue %p", q);
 		tx_queue_clean(q);
-		if (q->rs_tracker.list)
+		if (q->rs_tracker.list) {
 			rte_free(q->rs_tracker.list);
-		if (q->sw_ring)
+			q->rs_tracker.list = NULL;
+		}
+		if (q->sw_ring) {
 			rte_free(q->sw_ring);
+			q->sw_ring = NULL;
+		}
 		rte_free(q);
+		q = NULL;
 	}
 }
 
