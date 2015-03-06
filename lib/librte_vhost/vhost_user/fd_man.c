@@ -172,23 +172,19 @@ fdset_del(struct fdset *pfdset, int fd)
 	if (pfdset == NULL || fd == -1)
 		return;
 
-again:
-	pthread_mutex_lock(&pfdset->fd_mutex);
+	do {
+		pthread_mutex_lock(&pfdset->fd_mutex);
 
-	i = fdset_find_fd(pfdset, fd);
-	if (i != -1 && fd != -1) {
-		/* busy indicates r/wcb is executing! */
-		if (pfdset->fd[i].busy == 1) {
-			pthread_mutex_unlock(&pfdset->fd_mutex);
-			goto again;
+		i = fdset_find_fd(pfdset, fd);
+		if (i != -1 && pfdset->fd[i].busy == 0) {
+			/* busy indicates r/wcb is executing! */
+			pfdset->fd[i].fd = -1;
+			pfdset->fd[i].rcb = pfdset->fd[i].wcb = NULL;
+			pfdset->num--;
+			i = -1;
 		}
-
-		pfdset->fd[i].fd = -1;
-		pfdset->fd[i].rcb = pfdset->fd[i].wcb = NULL;
-		pfdset->num--;
-	}
-
-	pthread_mutex_unlock(&pfdset->fd_mutex);
+		pthread_mutex_unlock(&pfdset->fd_mutex);
+	} while (i != -1);
 }
 
 /**
