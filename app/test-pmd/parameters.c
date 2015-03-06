@@ -153,6 +153,9 @@ usage(char* progname)
 	printf("  --crc-strip: enable CRC stripping by hardware.\n");
 	printf("  --enable-rx-cksum: enable rx hardware checksum offload.\n");
 	printf("  --disable-hw-vlan: disable hardware vlan.\n");
+	printf("  --disable-hw-vlan-filter: disable hardware vlan filter.\n");
+	printf("  --disable-hw-vlan-strip: disable hardware vlan strip.\n");
+	printf("  --disable-hw-vlan-extend: disable hardware vlan extend.\n");
 	printf("  --enable-drop-en: enable per queue packet drop.\n");
 	printf("  --disable-rss: disable rss.\n");
 	printf("  --port-topology=N: set port topology (N: paired (default) or "
@@ -525,6 +528,9 @@ launch_args_parse(int argc, char** argv)
 		{ "crc-strip",                  0, 0, 0 },
 		{ "enable-rx-cksum",            0, 0, 0 },
 		{ "disable-hw-vlan",            0, 0, 0 },
+		{ "disable-hw-vlan-filter",     0, 0, 0 },
+		{ "disable-hw-vlan-strip",      0, 0, 0 },
+		{ "disable-hw-vlan-extend",     0, 0, 0 },
 		{ "enable-drop-en",            0, 0, 0 },
 		{ "disable-rss",                0, 0, 0 },
 		{ "port-topology",              1, 0, 0 },
@@ -763,6 +769,18 @@ launch_args_parse(int argc, char** argv)
 				rx_mode.hw_vlan_strip  = 0;
 				rx_mode.hw_vlan_extend = 0;
 			}
+
+			if (!strcmp(lgopts[opt_idx].name,
+					"disable-hw-vlan-filter"))
+				rx_mode.hw_vlan_filter = 0;
+
+			if (!strcmp(lgopts[opt_idx].name,
+					"disable-hw-vlan-strip"))
+				rx_mode.hw_vlan_strip  = 0;
+
+			if (!strcmp(lgopts[opt_idx].name,
+					"disable-hw-vlan-extend"))
+				rx_mode.hw_vlan_extend = 0;
 
 			if (!strcmp(lgopts[opt_idx].name, "enable-drop-en"))
 				rx_drop_en = 1;
