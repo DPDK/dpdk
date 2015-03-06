@@ -185,13 +185,13 @@ cleanup_device(struct virtio_net *dev)
 	}
 
 	/* Close any event notifiers opened by device. */
-	if (dev->virtqueue[VIRTIO_RXQ]->callfd)
+	if ((int)dev->virtqueue[VIRTIO_RXQ]->callfd >= 0)
 		close((int)dev->virtqueue[VIRTIO_RXQ]->callfd);
-	if (dev->virtqueue[VIRTIO_RXQ]->kickfd)
+	if ((int)dev->virtqueue[VIRTIO_RXQ]->kickfd >= 0)
 		close((int)dev->virtqueue[VIRTIO_RXQ]->kickfd);
-	if (dev->virtqueue[VIRTIO_TXQ]->callfd)
+	if ((int)dev->virtqueue[VIRTIO_TXQ]->callfd >= 0)
 		close((int)dev->virtqueue[VIRTIO_TXQ]->callfd);
-	if (dev->virtqueue[VIRTIO_TXQ]->kickfd)
+	if ((int)dev->virtqueue[VIRTIO_TXQ]->kickfd >= 0)
 		close((int)dev->virtqueue[VIRTIO_TXQ]->kickfd);
 }
 
