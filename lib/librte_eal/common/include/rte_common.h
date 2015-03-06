@@ -51,6 +51,14 @@ extern "C" {
 #include <errno.h>
 #include <limits.h>
 
+#ifndef typeof
+#define typeof __typeof__
+#endif
+
+#ifndef asm
+#define asm __asm__
+#endif
+
 /*********** Macros to eliminate unused variable warnings ********/
 
 /**
