@@ -262,6 +262,18 @@ They must be separated from the EAL options, shown in the previous section, with
 
     Disable hardware VLAN.
 
+*   --disable-hw-vlan-filter
+
+    Disable hardware VLAN filter.
+
+*   --disable-hw-vlan-strip
+
+    Disable hardware VLAN strip.
+
+*   --disable-hw-vlan-extend
+
+    Disable hardware VLAN extend.
+
 *   --enable-drop-en
 
     Enable per-queue packet drop for packets with no descriptors.
