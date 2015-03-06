@@ -226,7 +226,7 @@ test_crc32_hash_alg_equiv(void)
 	if (i == CRC32_ITERATIONS)
 		return 0;
 
-	printf("Failed test data (hex, %lu bytes total):\n", data_len);
+	printf("Failed test data (hex, %zu bytes total):\n", data_len);
 	for (j = 0; j < data_len; j++)
 		printf("%02X%c", ((uint8_t *)data64)[j],
 				((j+1) % 16 == 0 || j == data_len - 1) ? '\n' : ' ');
