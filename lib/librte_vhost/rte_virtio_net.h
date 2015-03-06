@@ -86,8 +86,8 @@ struct vhost_virtqueue {
 	uint16_t		vhost_hlen;		/**< Vhost header length (varies depending on RX merge buffers. */
 	volatile uint16_t	last_used_idx;		/**< Last index used on the available ring */
 	volatile uint16_t	last_used_idx_res;	/**< Used for multiple devices reserving buffers. */
-	eventfd_t		callfd;			/**< Currently unused as polling mode is enabled. */
-	eventfd_t		kickfd;			/**< Used to notify the guest (trigger interrupt). */
+	eventfd_t		callfd;			/**< Used to notify the guest (trigger interrupt). */
+	eventfd_t		kickfd;			/**< Currently unused as polling mode is enabled. */
 	struct buf_vector	buf_vec[BUF_VECTOR_MAX];	/**< for scatter RX. */
 } __rte_cache_aligned;
 

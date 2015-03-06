@@ -1434,7 +1434,7 @@ put_desc_to_used_list_zcp(struct vhost_virtqueue *vq, uint16_t desc_idx)
 
 	/* Kick the guest if necessary. */
 	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
-		eventfd_write((int)vq->kickfd, 1);
+		eventfd_write((int)vq->callfd, 1);
 }
 
 /*
@@ -1627,7 +1627,7 @@ txmbuf_clean_zcp(struct virtio_net *dev, struct vpool *vpool)
 
 	/* Kick guest if required. */
 	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
-		eventfd_write((int)vq->kickfd, 1);
+		eventfd_write((int)vq->callfd, 1);
 
 	return 0;
 }
@@ -1775,7 +1775,7 @@ virtio_dev_rx_zcp(struct virtio_net *dev, struct rte_mbuf **pkts,
 
 	/* Kick the guest if necessary. */
 	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
-		eventfd_write((int)vq->kickfd, 1);
+		eventfd_write((int)vq->callfd, 1);
 
 	return count;
 }

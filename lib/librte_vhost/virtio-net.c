@@ -595,10 +595,10 @@ set_vring_call(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	/* file->index refers to the queue index. The txq is 1, rxq is 0. */
 	vq = dev->virtqueue[file->index];
 
-	if ((int)vq->kickfd >= 0)
-		close((int)vq->kickfd);
+	if ((int)vq->callfd >= 0)
+		close((int)vq->callfd);
 
-	vq->kickfd = file->fd;
+	vq->callfd = file->fd;
 
 	return 0;
 }
@@ -621,10 +621,10 @@ set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	/* file->index refers to the queue index. The txq is 1, rxq is 0. */
 	vq = dev->virtqueue[file->index];
 
-	if ((int)vq->callfd >= 0)
-		close((int)vq->callfd);
+	if ((int)vq->kickfd >= 0)
+		close((int)vq->kickfd);
 
-	vq->callfd = file->fd;
+	vq->kickfd = file->fd;
 
 	return 0;
 }

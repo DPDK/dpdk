@@ -290,13 +290,13 @@ user_get_vring_base(struct vhost_device_ctx ctx,
 	 * sent and only sent in vhost_vring_stop.
 	 * TODO: cleanup the vring, it isn't usable since here.
 	 */
-	if (((int)dev->virtqueue[VIRTIO_RXQ]->callfd) >= 0) {
-		close(dev->virtqueue[VIRTIO_RXQ]->callfd);
-		dev->virtqueue[VIRTIO_RXQ]->callfd = (eventfd_t)-1;
+	if (((int)dev->virtqueue[VIRTIO_RXQ]->kickfd) >= 0) {
+		close(dev->virtqueue[VIRTIO_RXQ]->kickfd);
+		dev->virtqueue[VIRTIO_RXQ]->kickfd = (eventfd_t)-1;
 	}
-	if (((int)dev->virtqueue[VIRTIO_TXQ]->callfd) >= 0) {
-		close(dev->virtqueue[VIRTIO_TXQ]->callfd);
-		dev->virtqueue[VIRTIO_TXQ]->callfd = (eventfd_t)-1;
+	if (((int)dev->virtqueue[VIRTIO_TXQ]->kickfd) >= 0) {
+		close(dev->virtqueue[VIRTIO_TXQ]->kickfd);
+		dev->virtqueue[VIRTIO_TXQ]->kickfd = (eventfd_t)-1;
 	}
 
 	return 0;
