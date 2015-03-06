@@ -69,12 +69,10 @@
 #define IXGBE_FDIRCMD_CMD_INTERVAL_US   10
 
 #define IXGBE_FDIR_FLOW_TYPES ( \
-	(1 << RTE_ETH_FLOW_FRAG_IPV4) | \
 	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_UDP) | \
 	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_TCP) | \
 	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_SCTP) | \
 	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_OTHER) | \
-	(1 << RTE_ETH_FLOW_FRAG_IPV4) | \
 	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_UDP) | \
 	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_TCP) | \
 	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_SCTP) | \
@@ -410,8 +408,8 @@ ixgbe_set_fdir_flex_conf(struct rte_eth_dev *dev,
 
 	for (i = 0; i < conf->nb_flexmasks; i++) {
 		flex_mask = &conf->flex_mask[i];
-		if (flex_mask->flow_type != RTE_ETH_FLOW_RAW) {
-			PMD_DRV_LOG(ERR, "unsupported flow type.");
+		if (flex_mask->flow_type != RTE_ETH_FLOW_UNKNOWN) {
+			PMD_DRV_LOG(ERR, "flexmask should be set globally.");
 			return -EINVAL;
 		}
 		flexbytes = (uint16_t)(((flex_mask->mask[0] << 8) & 0xFF00) |
@@ -1030,7 +1028,7 @@ ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info
 	fdir_info->flex_conf.flex_set[0].src_offset[0] = offset;
 	fdir_info->flex_conf.flex_set[0].src_offset[1] = offset + 1;
 	fdir_info->flex_conf.nb_flexmasks = 1;
-	fdir_info->flex_conf.flex_mask[0].flow_type = RTE_ETH_FLOW_RAW;
+	fdir_info->flex_conf.flex_mask[0].flow_type = RTE_ETH_FLOW_UNKNOWN;
 	fdir_info->flex_conf.flex_mask[0].mask[0] =
 			(uint8_t)(info->mask.flex_bytes_mask & 0x00FF);
 	fdir_info->flex_conf.flex_mask[0].mask[1] =

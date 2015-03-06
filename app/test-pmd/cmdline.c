@@ -661,8 +661,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set flow director mask.\n\n"
 
 			"flow_director_flex_mask (port_id)"
-			" flow (raw|ip4|ip4-frag|tcp4|udp4|sctp4|ip6|ip6-frag|tcp6|udp6|sctp6|all)"
-			" flow (raw|ipv4-other|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|"
+			" flow (none|ipv4-other|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|"
 			"ipv6-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|all)"
 			" (mask)\n"
 			"    Configure mask of flex payload.\n\n"
@@ -8228,6 +8227,19 @@ cmd_flow_director_flex_mask_parsed(void *parsed_result,
 		return;
 	}
 
+	if (!strcmp(res->flow_type, "none")) {
+		/* means don't specify the flow type */
+		flex_mask.flow_type = RTE_ETH_FLOW_UNKNOWN;
+		for (i = 0; i < RTE_ETH_FLOW_MAX; i++)
+			memset(&port->dev_conf.fdir_conf.flex_conf.flex_mask[i],
+			       0, sizeof(struct rte_eth_fdir_flex_mask));
+		port->dev_conf.fdir_conf.flex_conf.nb_flexmasks = 1;
+		(void)rte_memcpy(&port->dev_conf.fdir_conf.flex_conf.flex_mask[0],
+				 &flex_mask,
+				 sizeof(struct rte_eth_fdir_flex_mask));
+		cmd_reconfig_device_queue(res->port_id, 1, 1);
+		return;
+	}
 	flow_type_mask = fdir_info.flow_types_mask[0];
 	if (!strcmp(res->flow_type, "all")) {
 		if (!flow_type_mask) {
@@ -8265,7 +8277,7 @@ cmdline_parse_token_string_t cmd_flow_director_flexmask_flow =
 				 flow, "flow");
 cmdline_parse_token_string_t cmd_flow_director_flexmask_flow_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
-		flow_type, "raw#ipv4-other#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#"
+		flow_type, "none#ipv4-other#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#"
 		"ipv6-other#ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#all");
 cmdline_parse_token_string_t cmd_flow_director_flexmask_mask =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
