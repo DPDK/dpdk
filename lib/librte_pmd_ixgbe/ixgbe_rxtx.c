@@ -1753,7 +1753,7 @@ ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
 		IXGBE_CTX_NUM * sizeof(struct ixgbe_advctx_info));
 }
 
-static struct ixgbe_txq_ops def_txq_ops = {
+static const struct ixgbe_txq_ops def_txq_ops = {
 	.release_mbufs = ixgbe_tx_queue_release_mbufs,
 	.free_swring = ixgbe_tx_free_swring,
 	.reset = ixgbe_reset_tx_queue,

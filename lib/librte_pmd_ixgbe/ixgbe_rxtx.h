@@ -211,7 +211,7 @@ struct igb_tx_queue {
 	uint32_t            ctx_curr;      /**< Hardware context states. */
 	/** Hardware context0 history. */
 	struct ixgbe_advctx_info ctx_cache[IXGBE_CTX_NUM];
-	struct ixgbe_txq_ops *ops;          /**< txq ops */
+	const struct ixgbe_txq_ops *ops;       /**< txq ops */
 	uint8_t             tx_deferred_start; /**< not in global dev start. */
 };
 
