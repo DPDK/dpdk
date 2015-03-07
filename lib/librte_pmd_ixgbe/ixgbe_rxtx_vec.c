@@ -45,12 +45,12 @@
 #endif
 
 static inline void
-ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
+ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 {
 	int i;
 	uint16_t rx_id;
 	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct igb_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
+	struct ixgbe_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
 	struct rte_mbuf *mb0, *mb1;
 	__m128i hdr_room = _mm_set_epi64x(RTE_PKTMBUF_HEADROOM,
 			RTE_PKTMBUF_HEADROOM);
@@ -187,11 +187,11 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
  * - don't support ol_flags for rss and csum err
  */
 static inline uint16_t
-_recv_raw_pkts_vec(struct igb_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+_recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts, uint8_t *split_packet)
 {
 	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct igb_rx_entry *sw_ring;
+	struct ixgbe_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
 	int pos;
 	uint64_t var;
@@ -396,7 +396,7 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 }
 
 static inline uint16_t
-reassemble_packets(struct igb_rx_queue *rxq, struct rte_mbuf **rx_bufs,
+reassemble_packets(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 		uint16_t nb_bufs, uint8_t *split_flags)
 {
 	struct rte_mbuf *pkts[RTE_IXGBE_VPMD_RX_BURST]; /*finished pkts*/
@@ -468,7 +468,7 @@ uint16_t
 ixgbe_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
-	struct igb_rx_queue *rxq = rx_queue;
+	struct ixgbe_rx_queue *rxq = rx_queue;
 	uint8_t split_flags[RTE_IXGBE_VPMD_RX_BURST] = {0};
 
 	/* get some new buffers */
@@ -517,9 +517,9 @@ vtx(volatile union ixgbe_adv_tx_desc *txdp,
 }
 
 static inline int __attribute__((always_inline))
-ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
+ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 {
-	struct igb_tx_entry_v *txep;
+	struct ixgbe_tx_entry_v *txep;
 	uint32_t status;
 	uint32_t n;
 	uint32_t i;
@@ -537,7 +537,7 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 	 * first buffer to free from S/W ring is at index
 	 * tx_next_dd - (tx_rs_thresh-1)
 	 */
-	txep = &((struct igb_tx_entry_v *)txq->sw_ring)[txq->tx_next_dd -
+	txep = &((struct ixgbe_tx_entry_v *)txq->sw_ring)[txq->tx_next_dd -
 			(n - 1)];
 	m = __rte_pktmbuf_prefree_seg(txep[0].mbuf);
 	if (likely(m != NULL)) {
@@ -575,7 +575,7 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 }
 
 static inline void __attribute__((always_inline))
-tx_backlog_entry(struct igb_tx_entry_v *txep,
+tx_backlog_entry(struct ixgbe_tx_entry_v *txep,
 		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i;
@@ -587,9 +587,9 @@ uint16_t
 ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		       uint16_t nb_pkts)
 {
-	struct igb_tx_queue *txq = (struct igb_tx_queue *)tx_queue;
+	struct ixgbe_tx_queue *txq = (struct ixgbe_tx_queue *)tx_queue;
 	volatile union ixgbe_adv_tx_desc *txdp;
-	struct igb_tx_entry_v *txep;
+	struct ixgbe_tx_entry_v *txep;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = DCMD_DTYP_FLAGS;
 	uint64_t rs = IXGBE_ADVTXD_DCMD_RS|DCMD_DTYP_FLAGS;
@@ -607,7 +607,7 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	tx_id = txq->tx_tail;
 	txdp = &txq->tx_ring[tx_id];
-	txep = &((struct igb_tx_entry_v *)txq->sw_ring)[tx_id];
+	txep = &((struct ixgbe_tx_entry_v *)txq->sw_ring)[tx_id];
 
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
 
@@ -628,7 +628,7 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		/* avoid reach the end of ring */
 		txdp = &(txq->tx_ring[tx_id]);
-		txep = &(((struct igb_tx_entry_v *)txq->sw_ring)[tx_id]);
+		txep = &(((struct ixgbe_tx_entry_v *)txq->sw_ring)[tx_id]);
 	}
 
 	tx_backlog_entry(txep, tx_pkts, nb_commit);
@@ -651,10 +651,10 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 }
 
 static void
-ixgbe_tx_queue_release_mbufs(struct igb_tx_queue *txq)
+ixgbe_tx_queue_release_mbufs(struct ixgbe_tx_queue *txq)
 {
 	unsigned i;
-	struct igb_tx_entry_v *txe;
+	struct ixgbe_tx_entry_v *txe;
 	uint16_t nb_free, max_desc;
 
 	if (txq->sw_ring != NULL) {
@@ -664,36 +664,36 @@ ixgbe_tx_queue_release_mbufs(struct igb_tx_queue *txq)
 		for (i = txq->tx_next_dd - (txq->tx_rs_thresh - 1);
 		     nb_free < max_desc && i != txq->tx_tail;
 		     i = (i + 1) & max_desc) {
-			txe = (struct igb_tx_entry_v *)&txq->sw_ring[i];
+			txe = (struct ixgbe_tx_entry_v *)&txq->sw_ring[i];
 			if (txe->mbuf != NULL)
 				rte_pktmbuf_free_seg(txe->mbuf);
 		}
 		/* reset tx_entry */
 		for (i = 0; i < txq->nb_tx_desc; i++) {
-			txe = (struct igb_tx_entry_v *)&txq->sw_ring[i];
+			txe = (struct ixgbe_tx_entry_v *)&txq->sw_ring[i];
 			txe->mbuf = NULL;
 		}
 	}
 }
 
 static void
-ixgbe_tx_free_swring(struct igb_tx_queue *txq)
+ixgbe_tx_free_swring(struct ixgbe_tx_queue *txq)
 {
 	if (txq == NULL)
 		return;
 
 	if (txq->sw_ring != NULL) {
-		rte_free((struct igb_rx_entry *)txq->sw_ring - 1);
+		rte_free((struct ixgbe_rx_entry *)txq->sw_ring - 1);
 		txq->sw_ring = NULL;
 	}
 }
 
 static void
-ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
+ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 {
 	static const union ixgbe_adv_tx_desc zeroed_desc = { .read = {
 			.buffer_addr = 0} };
-	struct igb_tx_entry_v *txe = (struct igb_tx_entry_v *)txq->sw_ring;
+	struct ixgbe_tx_entry_v *txe = (struct ixgbe_tx_entry_v *)txq->sw_ring;
 	uint16_t i;
 
 	/* Zero out HW ring memory */
@@ -730,7 +730,7 @@ static const struct ixgbe_txq_ops vec_txq_ops = {
 };
 
 int
-ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq)
+ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq)
 {
 	uintptr_t p;
 	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */
@@ -747,14 +747,14 @@ ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq)
 	return 0;
 }
 
-int ixgbe_txq_vec_setup(struct igb_tx_queue *txq)
+int ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq)
 {
 	if (txq->sw_ring == NULL)
 		return -1;
 
 	/* leave the first one for overflow */
-	txq->sw_ring = (struct igb_tx_entry *)
-		((struct igb_tx_entry_v *)txq->sw_ring + 1);
+	txq->sw_ring = (struct ixgbe_tx_entry *)
+		((struct ixgbe_tx_entry_v *)txq->sw_ring + 1);
 	txq->ops = &vec_txq_ops;
 
 	return 0;

@@ -75,14 +75,14 @@
 /**
  * Structure associated with each descriptor of the RX ring of a RX queue.
  */
-struct igb_rx_entry {
+struct ixgbe_rx_entry {
 	struct rte_mbuf *mbuf; /**< mbuf associated with RX descriptor. */
 };
 
 /**
  * Structure associated with each descriptor of the TX ring of a TX queue.
  */
-struct igb_tx_entry {
+struct ixgbe_tx_entry {
 	struct rte_mbuf *mbuf; /**< mbuf associated with TX desc, if any. */
 	uint16_t next_id; /**< Index of next descriptor in ring. */
 	uint16_t last_id; /**< Index of last scattered descriptor. */
@@ -91,20 +91,20 @@ struct igb_tx_entry {
 /**
  * Structure associated with each descriptor of the TX ring of a TX queue.
  */
-struct igb_tx_entry_v {
+struct ixgbe_tx_entry_v {
 	struct rte_mbuf *mbuf; /**< mbuf associated with TX desc, if any. */
 };
 
 /**
  * Structure associated with each RX queue.
  */
-struct igb_rx_queue {
+struct ixgbe_rx_queue {
 	struct rte_mempool  *mb_pool; /**< mbuf pool to populate RX ring. */
 	volatile union ixgbe_adv_rx_desc *rx_ring; /**< RX ring virtual address. */
 	uint64_t            rx_ring_phys_addr; /**< RX ring DMA address. */
 	volatile uint32_t   *rdt_reg_addr; /**< RDT register address. */
 	volatile uint32_t   *rdh_reg_addr; /**< RDH register address. */
-	struct igb_rx_entry *sw_ring; /**< address of RX software ring. */
+	struct ixgbe_rx_entry *sw_ring; /**< address of RX software ring. */
 	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet. */
 	struct rte_mbuf *pkt_last_seg; /**< Last segment of current packet. */
 	uint64_t            mbuf_initializer; /**< value to init mbufs */
@@ -182,11 +182,11 @@ struct ixgbe_advctx_info {
 /**
  * Structure associated with each TX queue.
  */
-struct igb_tx_queue {
+struct ixgbe_tx_queue {
 	/** TX ring virtual address. */
 	volatile union ixgbe_adv_tx_desc *tx_ring;
 	uint64_t            tx_ring_phys_addr; /**< TX ring DMA address. */
-	struct igb_tx_entry *sw_ring;      /**< virtual address of SW ring. */
+	struct ixgbe_tx_entry *sw_ring;      /**< virtual address of SW ring. */
 	volatile uint32_t   *tdt_reg_addr; /**< Address of TDT register. */
 	uint16_t            nb_tx_desc;    /**< number of TX descriptors. */
 	uint16_t            tx_tail;       /**< current value of TDT reg. */
@@ -216,9 +216,9 @@ struct igb_tx_queue {
 };
 
 struct ixgbe_txq_ops {
-	void (*release_mbufs)(struct igb_tx_queue *txq);
-	void (*free_swring)(struct igb_tx_queue *txq);
-	void (*reset)(struct igb_tx_queue *txq);
+	void (*release_mbufs)(struct ixgbe_tx_queue *txq);
+	void (*free_swring)(struct ixgbe_tx_queue *txq);
+	void (*reset)(struct ixgbe_tx_queue *txq);
 };
 
 /*
@@ -253,7 +253,7 @@ struct ixgbe_txq_ops {
  * the queue parameters. Used in tx_queue_setup by primary process and then
  * in dev_init by secondary process when attaching to an existing ethdev.
  */
-void ixgbe_set_tx_function(struct rte_eth_dev *dev, struct igb_tx_queue *txq);
+void ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq);
 
 #ifdef RTE_IXGBE_INC_VECTOR
 uint16_t ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -262,8 +262,8 @@ uint16_t ixgbe_recv_scattered_pkts_vec(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 uint16_t ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
-int ixgbe_txq_vec_setup(struct igb_tx_queue *txq);
-int ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq);
+int ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq);
+int ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq);
 int ixgbe_rx_vec_condition_check(struct rte_eth_dev *dev);
 #endif
 

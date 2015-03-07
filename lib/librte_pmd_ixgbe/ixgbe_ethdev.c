@@ -744,7 +744,7 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	 * RX and TX function.
 	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY){
-		struct igb_tx_queue *txq;
+		struct ixgbe_tx_queue *txq;
 		/* TX queue function in primary, set by last queue initialized
 		 * Tx queue may not initialized by primary process */
 		if (eth_dev->data->tx_queues) {
