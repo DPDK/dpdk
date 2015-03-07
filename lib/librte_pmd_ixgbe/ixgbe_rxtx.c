@@ -859,14 +859,14 @@ rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
 {
 	uint64_t pkt_flags;
 
-	static uint64_t ip_pkt_types_map[16] = {
+	static const uint64_t ip_pkt_types_map[16] = {
 		0, PKT_RX_IPV4_HDR, PKT_RX_IPV4_HDR_EXT, PKT_RX_IPV4_HDR_EXT,
 		PKT_RX_IPV6_HDR, 0, 0, 0,
 		PKT_RX_IPV6_HDR_EXT, 0, 0, 0,
 		PKT_RX_IPV6_HDR_EXT, 0, 0, 0,
 	};
 
-	static uint64_t ip_rss_types_map[16] = {
+	static const uint64_t ip_rss_types_map[16] = {
 		0, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
 		0, PKT_RX_RSS_HASH, 0, PKT_RX_RSS_HASH,
 		PKT_RX_RSS_HASH, 0, 0, 0,
