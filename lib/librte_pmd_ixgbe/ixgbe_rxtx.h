@@ -253,7 +253,7 @@ struct ixgbe_txq_ops {
  * the queue parameters. Used in tx_queue_setup by primary process and then
  * in dev_init by secondary process when attaching to an existing ethdev.
  */
-void set_tx_function(struct rte_eth_dev *dev, struct igb_tx_queue *txq);
+void ixgbe_set_tx_function(struct rte_eth_dev *dev, struct igb_tx_queue *txq);
 
 #ifdef RTE_IXGBE_INC_VECTOR
 uint16_t ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,

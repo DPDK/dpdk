@@ -749,7 +749,7 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 		 * Tx queue may not initialized by primary process */
 		if (eth_dev->data->tx_queues) {
 			txq = eth_dev->data->tx_queues[eth_dev->data->nb_tx_queues-1];
-			set_tx_function(eth_dev, txq);
+			ixgbe_set_tx_function(eth_dev, txq);
 		} else {
 			/* Use default TX function if we get here */
 			PMD_INIT_LOG(INFO, "No TX queues configured yet. "

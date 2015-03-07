@@ -1764,7 +1764,7 @@ static const struct ixgbe_txq_ops def_txq_ops = {
  * in dev_init by secondary process when attaching to an existing ethdev.
  */
 void
-set_tx_function(struct rte_eth_dev *dev, struct igb_tx_queue *txq)
+ixgbe_set_tx_function(struct rte_eth_dev *dev, struct igb_tx_queue *txq)
 {
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
 	if (((txq->txq_flags & IXGBE_SIMPLE_FLAGS) == IXGBE_SIMPLE_FLAGS)
@@ -1959,7 +1959,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		     txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
 
 	/* set up vector or scalar TX function as appropriate */
-	set_tx_function(dev, txq);
+	ixgbe_set_tx_function(dev, txq);
 
 	txq->ops->reset(txq);
 
