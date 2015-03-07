@@ -945,7 +945,10 @@ eth_igb_stop(struct rte_eth_dev *dev)
 	}
 
 	/* Power down the phy. Needed to make the link go Down */
-	e1000_power_down_phy(hw);
+	if (hw->phy.media_type == e1000_media_type_copper)
+		e1000_power_down_phy(hw);
+	else
+		e1000_shutdown_fiber_serdes_link(hw);
 
 	igb_dev_clear_queues(dev);
 
