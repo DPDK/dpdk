@@ -1144,7 +1144,7 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 }
 
 /* split requests into chunks of size RTE_PMD_IXGBE_RX_MAX_BURST */
-uint16_t
+static uint16_t
 ixgbe_recv_pkts_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t nb_pkts)
 {
