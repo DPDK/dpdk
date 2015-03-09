@@ -996,11 +996,11 @@ main(int argc, char **argv)
 				drain_tsc, 0);
 
 		rte_timer_init(&qconf->flush_timer);
-		rte_timer_reset(&qconf->flush_timer, drain_tsc, PERIODICAL, lcore_id,
-				&l2fwd_flush_job, NULL);
+		ret = rte_timer_reset(&qconf->flush_timer, drain_tsc, PERIODICAL,
+				lcore_id, &l2fwd_flush_job, NULL);
 
 		if (ret < 0) {
-			rte_exit(1, "Failed to add flush job for lcore %u: %s",
+			rte_exit(1, "Failed to reset flush job timer for lcore %u: %s",
 					lcore_id, rte_strerror(-ret));
 		}
 
@@ -1018,8 +1018,13 @@ main(int argc, char **argv)
 			rte_jobstats_set_update_period_function(job, l2fwd_job_update_cb);
 
 			rte_timer_init(&qconf->rx_timers[i]);
-			rte_timer_reset(&qconf->rx_timers[i], 0, PERIODICAL, lcore_id,
+			ret = rte_timer_reset(&qconf->rx_timers[i], 0, PERIODICAL, lcore_id,
 					&l2fwd_fwd_job, (void *)(uintptr_t)i);
+
+			if (ret < 0) {
+				rte_exit(1, "Failed to reset lcore %u port %u job timer: %s",
+						lcore_id, qconf->rx_port_list[i], rte_strerror(-ret));
+			}
 		}
 	}
 
