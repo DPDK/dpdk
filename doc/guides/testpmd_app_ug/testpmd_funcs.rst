@@ -138,16 +138,32 @@ For example:
     ********************* Infos for port 0 *********************
 
     MAC address: XX:XX:XX:XX:XX:XX
+    Connect to socket: 0
+    memory allocation on the socket: 0
     Link status: up
-    Link speed: 10000 Mbps
+    Link speed: 40000 Mbps
     Link duplex: full-duplex
     Promiscuous mode: enabled
     Allmulticast mode: disabled
-    Maximum number of MAC addresses: 127
+    Maximum number of MAC addresses: 64
+    Maximum number of MAC addresses of hash filtering: 0
     VLAN offload:
         strip on
         filter on
         qinq(extend) off
+    Redirection table size: 512
+    Supported flow types:
+      ipv4-frag
+      ipv4-tcp
+      ipv4-udp
+      ipv4-sctp
+      ipv4-other
+      ipv6-frag
+      ipv6-tcp
+      ipv6-udp
+      ipv6-sctp
+      ipv6-other
+      l2_payload
 
 show port rss reta
 ~~~~~~~~~~~~~~~~~~
@@ -1036,7 +1052,7 @@ port config - RSS
 
 Set the RSS (Receive Side Scaling) mode on or off:
 
-port config all rss (ip|udp|none)
+port config all rss (all|ip|tcp|udp|sctp|ether|none)
 
 RSS is on by default.
 
@@ -1587,3 +1603,57 @@ For example, to select the first 16 bytes from the offset 4 (bytes) of packet's 
 .. code-block:: console
 
    testpmd> flow_director_flex_payload 0 l4 (4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
+
+get_sym_hash_ena_per_port
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Get symmetric hash enable configuration per port.
+
+get_sym_hash_ena_per_port (port_id)
+
+For example, to get symmetric hash enable configuration of port 1.
+
+.. code-block:: console
+
+    testpmd> get_sym_hash_ena_per_port 1
+
+set_sym_hash_ena_per_port
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set symmetric hash enable configuration per port to enable or disable.
+
+set_sym_hash_ena_per_port (port_id) (enable|disable)
+
+For example, to set symmetric hash enable configuration of port 1 to enable.
+
+.. code-block:: console
+
+    testpmd> set_sym_hash_ena_per_port 1 enable
+
+get_hash_global_config
+~~~~~~~~~~~~~~~~~~~~~~
+
+Get the global configurations of hash filters.
+
+get_hash_global_config (port_id)
+
+For example, to get the global configurations of hash filters of port 1.
+
+.. code-block:: console
+
+    testpmd> get_hash_global_config 1
+
+set_hash_global_config
+~~~~~~~~~~~~~~~~~~~~~~
+
+Set the global configurations of hash filters.
+
+set_hash_global_config (port_id) (toeplitz|simple_xor|default)
+(ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload)
+(enable|disable)
+
+For example, to enable simple_xor for flow type of ipv6 on port 2.
+
+.. code-block:: console
+
+    testpmd> set_hash_global_config 2 simple_xor ipv6 enable
