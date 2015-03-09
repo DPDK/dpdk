@@ -1326,6 +1326,9 @@ start_port(portid_t pid)
 		return -1;
 	}
 
+	if (port_id_is_invalid(pid, ENABLED_WARN))
+		return 0;
+
 	if (init_fwd_streams() < 0) {
 		printf("Fail from init_fwd_streams()\n");
 		return -1;
@@ -1482,10 +1485,14 @@ stop_port(portid_t pid)
 		dcb_test = 0;
 		dcb_config = 0;
 	}
+
+	if (port_id_is_invalid(pid, ENABLED_WARN))
+		return;
+
 	printf("Stopping ports...\n");
 
 	FOREACH_PORT(pi, ports) {
-		if (!port_id_is_invalid(pid, DISABLED_WARN) && pid != pi)
+		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
 			continue;
 
 		port = &ports[pi];
@@ -1517,10 +1524,13 @@ close_port(portid_t pid)
 		return;
 	}
 
+	if (port_id_is_invalid(pid, ENABLED_WARN))
+		return;
+
 	printf("Closing ports...\n");
 
 	FOREACH_PORT(pi, ports) {
-		if (!port_id_is_invalid(pid, DISABLED_WARN) && pid != pi)
+		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
 			continue;
 
 		port = &ports[pi];

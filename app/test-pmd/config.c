@@ -384,6 +384,9 @@ port_infos_display(portid_t port_id)
 int
 port_id_is_invalid(portid_t port_id, enum print_warning warning)
 {
+	if (port_id == (portid_t)RTE_PORT_ALL)
+		return 0;
+
 	if (ports[port_id].enabled)
 		return 0;
 
