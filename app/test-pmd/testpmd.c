@@ -332,7 +332,7 @@ find_next_port(portid_t p, struct rte_port *ports, int size)
 	if (ports == NULL)
 		rte_exit(-EINVAL, "failed to find a next port id\n");
 
-	while ((ports[p].enabled == 0) && (p < size))
+	while ((p < size) && (ports[p].enabled == 0))
 		p++;
 	return p;
 }
