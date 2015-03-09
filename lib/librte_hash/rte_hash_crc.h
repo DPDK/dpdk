@@ -47,6 +47,7 @@ extern "C" {
 #include <stdint.h>
 #include <rte_cpuflags.h>
 #include <rte_branch_prediction.h>
+#include <rte_common.h>
 
 /* Lookup tables for software implementation of CRC32C */
 static const uint32_t crc32c_tables[8][256] = {{
@@ -364,21 +365,13 @@ crc32c_2words(uint64_t data, uint32_t init_val)
 	return crc;
 }
 
+#if defined(RTE_ARCH_I686) || defined(RTE_ARCH_X86_64)
+
 static inline uint32_t
 crc32c_sse42_u32(uint32_t data, uint32_t init_val)
 {
 	__asm__ volatile(
 			"crc32l %[data], %[init_val];"
-			: [init_val] "+r" (init_val)
-			: [data] "rm" (data));
-	return init_val;
-}
-
-static inline uint32_t
-crc32c_sse42_u64(uint64_t data, uint64_t init_val)
-{
-	__asm__ volatile(
-			"crc32q %[data], %[init_val];"
 			: [init_val] "+r" (init_val)
 			: [data] "rm" (data));
 	return init_val;
@@ -397,6 +390,47 @@ crc32c_sse42_u64_mimic(uint64_t data, uint64_t init_val)
 	init_val = crc32c_sse42_u32(d.u32[1], init_val);
 	return init_val;
 }
+
+#else
+
+static inline uint32_t
+crc32c_sse42_u32(__rte_unused uint32_t data,
+                 __rte_unused uint32_t init_val)
+{
+	return 0;
+}
+
+static inline uint32_t
+crc32c_sse42_u64_mimic(__rte_unused uint32_t data,
+                       __rte_unused uint32_t init_val)
+{
+	return 0;
+}
+
+#endif
+
+#ifdef RTE_ARCH_X86_64
+
+static inline uint32_t
+crc32c_sse42_u64(uint64_t data, uint64_t init_val)
+{
+	__asm__ volatile(
+			"crc32q %[data], %[init_val];"
+			: [init_val] "+r" (init_val)
+			: [data] "rm" (data));
+	return init_val;
+}
+
+#else
+
+static inline uint32_t
+crc32c_sse42_u64(__rte_unused uint64_t data,
+                 __rte_unused uint64_t init_val)
+{
+	return 0;
+}
+
+#endif
 
 #define CRC32_SW            (1U << 0)
 #define CRC32_SSE42         (1U << 1)
