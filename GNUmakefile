@@ -40,6 +40,6 @@ export RTE_SDK
 # directory list
 #
 
-ROOTDIRS-y := scripts lib app
+ROOTDIRS-y := lib app
 
 include $(RTE_SDK)/mk/rte.sdkroot.mk

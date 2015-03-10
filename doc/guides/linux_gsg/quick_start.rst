@@ -211,9 +211,7 @@ The following selection demonstrates the creation of the x86_64-native-linuxapp-
     ================== Installing x86_64-native-linuxapp-gcc
 
     Configuration done
-    == Build scripts
-    == Build scripts/testhost
-    HOSTCC testhost.o
+    == Build lib
     ...
     Build complete
     RTE_TARGET exported as x86_64-native -linuxapp-gcc
