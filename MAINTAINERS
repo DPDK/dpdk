@@ -210,6 +210,8 @@ Intel e1000
 F: lib/librte_pmd_e1000/
 
 Intel ixgbe
+M: Helin Zhang <helin.zhang@intel.com>
+M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: lib/librte_pmd_ixgbe/
 
 Intel i40e
