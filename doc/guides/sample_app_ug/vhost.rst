@@ -45,7 +45,7 @@ Background
 Virtio networking (virtio-net) was developed as the Linux* KVM para-virtualized method for communicating network packets
 between host and guest.
 It was found that virtio-net performance was poor due to context switching and packet copying between host, guest, and QEMU.
-The following figure shows the system architecture for a virtio- based networking (virtio-net).
+The following figure shows the system architecture for a virtio-based networking (virtio-net).
 
 .. _figure_16:
 
@@ -89,20 +89,34 @@ Sample Code Overview
 The DPDK vhost-net sample code demonstrates KVM (QEMU) offloading the servicing of a Virtual Machine's (VM's)
 virtio-net devices to a DPDK-based application in place of the kernel's vhost-net module.
 
-The DPDK vhost-net sample code is a simple packet switching application with the following features:
+The DPDK vhost-net sample code is based on vhost library. Vhost library is developed for user space ethernet switch to
+easily integrate with vhost functionality.
+
+The vhost library implements the following features:
 
 *   Management of virtio-net device creation/destruction events.
 
-*   Mapping of the VM's physical memory into the DPDK vhost-net sample code's address space.
+*   Mapping of the VM's physical memory into the DPDK vhost-net's address space.
 
 *   Triggering/receiving notifications to/from VMs via eventfds.
 
 *   A virtio-net back-end implementation providing a subset of virtio-net features.
 
+There are two vhost implementations in vhost library, vhost cuse and vhost user. In vhost cuse, a character device driver is implemented to
+receive and process vhost requests through ioctl messages. In vhost user, a socket server is created to received vhost requests through
+socket messages. Most of the messages share the same handler routine.
+
+.. note::
+    **Any vhost cuse specific requirement in the following sections will be emphasized**.
+
+Two impelmentations are turned on and off statically through configure file. Only one implementation could be turned on. They don't co-exist in current implementation.
+
+The vhost sample code application is a simple packet switching application with the following feature:
+
 *   Packet switching between virtio-net devices and the network interface card,
     including using VMDQs to reduce the switching that needs to be performed in software.
 
-The following figure shows the architecture of the Vhost sample application.
+The following figure shows the architecture of the Vhost sample application based on vhost-cuse.
 
 .. _figure_18:
 
@@ -131,15 +145,19 @@ The example in this section have been validated with the following distributions
 
 *   Fedora* 19
 
+*   Fedora* 20
+
 Prerequisites
 -------------
 
 This section lists prerequisite packages that must be installed.
 
-Installing Packages on the Host
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Installing Packages on the Host(vhost cuse required)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The vhost sample code uses the following packages; fuse, fuse-devel, and kernel- modules-extra.
+The vhost cuse code uses the following packages; fuse, fuse-devel, and kernel-modules-extra.
+The vhost user code don't rely on those modules as eventfds are already installed into vhost process through
+unix domain socket.
 
 #.  Install Fuse Development Libraries and headers:
 
@@ -152,6 +170,11 @@ The vhost sample code uses the following packages; fuse, fuse-devel, and kernel-
     .. code-block:: console
 
         yum -y install kernel-modules-extra
+
+QEMU simulator
+~~~~~~~~~~~~~~
+
+For vhost user, qemu 2.2 is required.
 
 Setting up the Execution Environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -202,7 +225,7 @@ In this section, we create a second hugetlbs mount point to allocate hugepages f
 
     .. code-block:: console
 
-        echo 256 > /sys/kernel/mm/hugepages/hugepages-2048kB/ nr_hugepages
+        echo 256 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
 
 #.  Mount hugetlbs at a separate mount point for 2 MB pages:
 
@@ -251,6 +274,8 @@ at the command line as follows.
 
     Observe that in the example, "-device" and "-netdev" are repeated for two virtio-net devices.
 
+For vhost cuse:
+
 .. code-block:: console
 
     user@target:~$ qemu-system-x86_64 ... \
@@ -259,15 +284,46 @@ at the command line as follows.
     -netdev tap,id=hostnet2,vhost=on,vhostfd=<open fd> \
     -device virtio-net-pci, netdev=hostnet2,id=net1
 
+For vhost user:
+
+.. code-block:: console
+
+    user@target:~$ qemu-system-x86_64 ... \
+    -chardev socket,id=char1,path=<sock_path> \
+    -netdev type=vhost-user,id=hostnet1,chardev=char1 \
+    -device virtio-net-pci,netdev=hostnet1,id=net1 \
+    -chardev socket,id=char2,path=<sock_path> \
+    -netdev type=vhost-user,id=hostnet2,chardev=char2 \
+    -device virtio-net-pci,netdev=hostnet2,id=net2
+
+sock_path is the path for the socket file created by vhost.
 
 Compiling the Sample Code
 -------------------------
+#.  Compile vhost lib:
+
+    To enable vhost, turn on vhost library in the configure file config/common_linuxapp.
+
+    .. code-block:: console
+
+        CONFIG_RTE_LIBRTE_VHOST=n
+
+    vhost user is turned on by default in the lib/librte_vhost/Makefile.
+    To enable vhost cuse, uncomment vhost cuse and comment vhost user manually. In future, a configure will be created for switch between two implementations.
+
+    .. code-block:: console
+
+        SRCS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost_cuse/vhost-net-cdev.c vhost_cuse/virtio-net-cdev.c vhost_cuse/eventfd_copy.c
+        #SRCS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost_user/vhost-net-user.c vhost_user/virtio-net-user.c vhost_user/fd_man.c
+
+     After vhost is enabled and the implementation is selected, build the vhost library.
 
 #.  Go to the examples directory:
 
     .. code-block:: console
 
-        export RTE_SDK=/path/to/rte_sdk cd ${RTE_SDK}/examples/vhost-net
+        export RTE_SDK=/path/to/rte_sdk
+        cd ${RTE_SDK}/examples/vhost
 
 #.  Set the target (a default target is used if not specified). For example:
 
@@ -309,13 +365,13 @@ Compiling the Sample Code
         cd ${RTE_SDK}/examples/vhost
         make
 
-#.  Go to the eventfd_link directory:
+#.  Go to the eventfd_link directory(vhost cuse required):
 
     .. code-block:: console
 
-        cd ${RTE_SDK}/examples/vhost-net/eventfd_link
+        cd ${RTE_SDK}/lib/librte_vhost/eventfd_link
 
-#.  Build the eventfd_link kernel module:
+#.  Build the eventfd_link kernel module(vhost cuse required):
 
     .. code-block:: console
 
@@ -324,20 +380,20 @@ Compiling the Sample Code
 Running the Sample Code
 -----------------------
 
-#.  Install the cuse kernel module:
+#.  Install the cuse kernel module(vhost cuse required):
 
     .. code-block:: console
 
         modprobe cuse
 
-#.  Go to the eventfd_link directory:
+#.  Go to the eventfd_link directory(vhost cuse required):
 
     .. code-block:: console
 
         export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/vhost-net/eventfd_link
+        cd ${RTE_SDK}/lib/librte_vhost/eventfd_link
 
-#.  Install the eventfd_link module:
+#.  Install the eventfd_link module(vhost cuse required):
 
     .. code-block:: console
 
@@ -348,13 +404,21 @@ Running the Sample Code
     .. code-block:: console
 
         export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/vhost-net
+        cd ${RTE_SDK}/examples/vhost
 
 #.  Run the vhost-switch sample code:
+
+    vhost cuse:
 
     .. code-block:: console
 
         user@target:~$ ./build/app/vhost-switch -c f -n 4 --huge-dir / mnt/huge -- -p 0x1 --dev-basename usvhost --dev-index 1
+
+    vhost user: a socket file named usvhost will be created under current directory. Use its path as the socket path in guest's qemu commandline.
+
+    .. code-block:: console
+
+        user@target:~$ ./build/app/vhost-switch -c f -n 4 --huge-dir / mnt/huge -- -p 0x1 --dev-basename usvhost
 
 .. note::
 
@@ -364,7 +428,7 @@ Parameters
 ~~~~~~~~~~
 
 **Basename and Index.**
-The DPDK vhost-net sample code uses a Linux* character device to communicate with QEMU.
+vhost cuse uses a Linux* character device to communicate with QEMU.
 The basename and the index are used to generate the character devices name.
 
     /dev/<basename>-<index>
@@ -485,15 +549,15 @@ QEMU must be executed with specific parameters to:
 
     .. code-block:: console
 
-        user@target:~$ qemu-system-x86_64 ... -device virtio-net-pci, netdev=hostnet1,id=net1 ...
+        user@target:~$ qemu-system-x86_64 ... -device virtio-net-pci,netdev=hostnet1,id=net1 ...
 
 *   Ensure the guest's virtio-net network adapter is configured with offloads disabled.
 
     .. code-block:: console
 
-        user@target:~$ qemu-system-x86_64 ... -device virtio-net-pci, netdev=hostnet1,id=net1,csum=off,gso=off,guest_tso4=off,guest_ tso6=off,guest_ecn=off
+        user@target:~$ qemu-system-x86_64 ... -device virtio-net-pci,netdev=hostnet1,id=net1,csum=off,gso=off,guest_tso4=off,guest_tso6=off,guest_ecn=off
 
-*   Redirect QEMU to communicate with the DPDK vhost-net sample code in place of the vhost-net kernel module.
+*   Redirect QEMU to communicate with the DPDK vhost-net sample code in place of the vhost-net kernel module(vhost cuse).
 
     .. code-block:: console
 
@@ -510,8 +574,8 @@ QEMU must be executed with specific parameters to:
     The QEMU wrapper (qemu-wrap.py) is a Python script designed to automate the QEMU configuration described above.
     It also facilitates integration with libvirt, although the script may also be used standalone without libvirt.
 
-Redirecting QEMU to vhost-net Sample Code
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Redirecting QEMU to vhost-net Sample Code(vhost cuse)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To redirect QEMU to the vhost-net sample code implementation of the vhost-net API,
 an open file descriptor must be passed to QEMU running as a child process.
@@ -524,7 +588,7 @@ an open file descriptor must be passed to QEMU running as a child process.
 
 .. note::
 
-    This process is automated in the QEMU wrapper script discussed in Section 22.7.3.
+    This process is automated in the QEMU wrapper script discussed in Section 24.7.3.
 
 Mapping the Virtual Machine's Memory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -541,7 +605,8 @@ In this case, the path passed to the guest should be that of the 1 GB page huget
 
 .. note::
 
-    This process is automated in the QEMU wrapper script discussed in Section 22.7.3.
+    This process is automated in the QEMU wrapper script discussed in Section 24.7.3.
+    The following two sections only applies to vhost cuse. For vhost-user, please make corresponding changes to qemu-wrapper script and guest XML file.
 
 QEMU Wrapper Script
 ~~~~~~~~~~~~~~~~~~~
@@ -570,8 +635,8 @@ which will become the following call to QEMU:
 .. code-block:: console
 
     /usr/local/bin/qemu-system-x86_64 -machine pc-i440fx-1.4,accel=kvm,usb=off -cpu SandyBridge -smp 4,sockets=4,cores=1,threads=1
-    -netdev tap,id=hostnet1,vhost=on,vhostfd=<open fd> -device virtio-net- pci,netdev=hostnet1,id=net1,
-    csum=off,gso=off,guest_tso4=off,gu est_tso6=off,guest_ecn=off -hda <disk img> -m 4096 -mem-path /dev/hugepages -mem-prealloc
+    -netdev tap,id=hostnet1,vhost=on,vhostfd=<open fd> -device virtio-net-pci,netdev=hostnet1,id=net1,
+    csum=off,gso=off,guest_tso4=off,guest_tso6=off,guest_ecn=off -hda <disk img> -m 4096 -mem-path /dev/hugepages -mem-prealloc
 
 Libvirt Integration
 ~~~~~~~~~~~~~~~~~~~
@@ -638,7 +703,7 @@ To call the QEMU wrapper automatically from libvirt, the following configuration
 
             emul_path = "/usr/local/bin/qemu-system-x86_64"
 
-    *   Configure the "us_vhost_path" variable to point to the DPDK vhost- net sample code's character devices name.
+    *   Configure the "us_vhost_path" variable to point to the DPDK vhost-net sample code's character devices name.
         DPDK vhost-net sample code's character device will be in the format "/dev/<basename>-<index>".
 
         .. code-block:: xml
@@ -658,7 +723,7 @@ The number of free hugepages can be checked as follows:
 
 .. code-block:: console
 
-    user@target:cat /sys/kernel/mm/hugepages/hugepages-<pagesize> / nr_hugepages
+    user@target:cat /sys/kernel/mm/hugepages/hugepages-<pagesize>/nr_hugepages
 
 The command above indicates how many hugepages are free to support QEMU's allocation request.
 
