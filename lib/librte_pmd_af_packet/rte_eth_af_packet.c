@@ -442,7 +442,8 @@ rte_pmd_init_internals(const char *name,
 	struct tpacket_req *req;
 	struct pkt_rx_queue *rx_queue;
 	struct pkt_tx_queue *tx_queue;
-	int rc, qsockfd, tpver, discard;
+	int rc, tpver, discard;
+	int qsockfd = -1;
 	unsigned int i, q, rdsize;
 	int fanout_arg __rte_unused, bypass __rte_unused;
 
@@ -691,9 +692,14 @@ error:
 				rte_free((*internals)->rx_queue[q].rd);
 			if ((*internals)->tx_queue[q].rd)
 				rte_free((*internals)->tx_queue[q].rd);
+			if (((*internals)->rx_queue[q].sockfd != 0) &&
+				((*internals)->rx_queue[q].sockfd != qsockfd))
+				close((*internals)->rx_queue[q].sockfd);
 		}
 		rte_free(*internals);
 	}
+	if (qsockfd != -1)
+		close(qsockfd);
 	return -1;
 }
 
@@ -802,7 +808,7 @@ int
 rte_pmd_af_packet_devinit(const char *name, const char *params)
 {
 	unsigned numa_node;
-	int ret;
+	int ret = 0;
 	struct rte_kvargs *kvlist;
 	int sockfd = -1;
 
@@ -811,8 +817,10 @@ rte_pmd_af_packet_devinit(const char *name, const char *params)
 	numa_node = rte_socket_id();
 
 	kvlist = rte_kvargs_parse(params, valid_arguments);
-	if (kvlist == NULL)
-		return -1;
+	if (kvlist == NULL) {
+		ret = -1;
+		goto exit;
+	}
 
 	/*
 	 * If iface argument is passed we open the NICs and use them for
@@ -823,16 +831,15 @@ rte_pmd_af_packet_devinit(const char *name, const char *params)
 		ret = rte_kvargs_process(kvlist, ETH_AF_PACKET_IFACE_ARG,
 		                         &open_packet_iface, &sockfd);
 		if (ret < 0)
-			return -1;
+			goto exit;
 	}
 
 	ret = rte_eth_from_packet(name, &sockfd, numa_node, kvlist);
 	close(sockfd); /* no longer needed */
 
-	if (ret < 0)
-		return -1;
-
-	return 0;
+exit:
+	rte_kvargs_free(kvlist);
+	return ret;
 }
 
 static struct rte_driver pmd_af_packet_drv = {
