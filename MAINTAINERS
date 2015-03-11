@@ -247,6 +247,7 @@ F: lib/librte_pmd_pcap/
 F: doc/guides/prog_guide/libpcap_ring_based_poll_mode_drv.rst
 
 Ring PMD
+M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/librte_pmd_ring/
 F: doc/guides/prog_guide/ring_lib.rst
 F: app/test/test_pmd_ring.c
