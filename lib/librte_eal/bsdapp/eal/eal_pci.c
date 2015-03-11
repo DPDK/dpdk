@@ -105,12 +105,10 @@ struct uio_resource {
 
 TAILQ_HEAD(uio_res_list, uio_resource);
 
-static struct uio_res_list *uio_res_list = NULL;
-
-static struct rte_tailq_elem rte_pci_tailq = {
-	.name = "PCI_RESOURCE_LIST",
+static struct rte_tailq_elem rte_uio_tailq = {
+	.name = "UIO_RESOURCE_LIST",
 };
-EAL_REGISTER_TAILQ(rte_pci_tailq)
+EAL_REGISTER_TAILQ(rte_uio_tailq)
 
 /* unbind kernel driver for this device */
 static int
@@ -165,6 +163,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 {
         size_t i;
         struct uio_resource *uio_res;
+	struct uio_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, uio_res_list);
 
 	TAILQ_FOREACH(uio_res, uio_res_list, next) {
 
@@ -202,6 +201,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	uint64_t pagesz;
 	struct rte_pci_addr *loc = &dev->addr;
 	struct uio_resource *uio_res;
+	struct uio_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, uio_res_list);
 	struct uio_map *maps;
 
 	dev->intr_handle.fd = -1;
@@ -497,7 +497,6 @@ rte_eal_pci_init(void)
 {
 	TAILQ_INIT(&pci_driver_list);
 	TAILQ_INIT(&pci_device_list);
-	uio_res_list = RTE_TAILQ_CAST(rte_pci_tailq.head, uio_res_list);
 
 	/* for debug purposes, PCI can be disabled */
 	if (internal_config.no_pci)

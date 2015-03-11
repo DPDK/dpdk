@@ -64,6 +64,11 @@
 #define PAGE_SIZE   (sysconf(_SC_PAGESIZE))
 #define PAGE_MASK   (~(PAGE_SIZE - 1))
 
+static struct rte_tailq_elem rte_vfio_tailq = {
+	.name = "VFIO_RESOURCE_LIST",
+};
+EAL_REGISTER_TAILQ(rte_vfio_tailq)
+
 #define VFIO_DIR "/dev/vfio"
 #define VFIO_CONTAINER_PATH "/dev/vfio/vfio"
 #define VFIO_GROUP_FMT "/dev/vfio/%u"
@@ -546,6 +551,8 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	struct rte_pci_addr *loc = &dev->addr;
 	int i, ret, msix_bar;
 	struct mapped_pci_resource *vfio_res = NULL;
+	struct mapped_pci_res_list *vfio_res_list = RTE_TAILQ_CAST(rte_vfio_tailq.head, mapped_pci_res_list);
+
 	struct pci_map *maps;
 	uint32_t msix_table_offset = 0;
 	uint32_t msix_table_size = 0;
@@ -700,7 +707,7 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 				VFIO_PCI_BAR5_REGION_INDEX + 1);
 	} else {
 		/* if we're in a secondary process, just find our tailq entry */
-		TAILQ_FOREACH(vfio_res, pci_res_list, next) {
+		TAILQ_FOREACH(vfio_res, vfio_res_list, next) {
 			if (memcmp(&vfio_res->pci_addr, &dev->addr, sizeof(dev->addr)))
 				continue;
 			break;
@@ -854,7 +861,7 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	}
 
 	if (internal_config.process_type == RTE_PROC_PRIMARY)
-		TAILQ_INSERT_TAIL(pci_res_list, vfio_res, next);
+		TAILQ_INSERT_TAIL(vfio_res_list, vfio_res, next);
 
 	return 0;
 }

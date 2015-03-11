@@ -41,6 +41,7 @@
 
 #include <rte_log.h>
 #include <rte_pci.h>
+#include <rte_eal_memconfig.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 
@@ -50,6 +51,10 @@
 
 void *pci_map_addr = NULL;
 
+static struct rte_tailq_elem rte_uio_tailq = {
+	.name = "UIO_RESOURCE_LIST",
+};
+EAL_REGISTER_TAILQ(rte_uio_tailq)
 
 #define OFF_MAX              ((uint64_t)(off_t)-1)
 
@@ -87,8 +92,9 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 {
 	int fd, i;
 	struct mapped_pci_resource *uio_res;
+	struct mapped_pci_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
 
-	TAILQ_FOREACH(uio_res, pci_res_list, next) {
+	TAILQ_FOREACH(uio_res, uio_res_list, next) {
 
 		/* skip this element if it doesn't match our PCI address */
 		if (rte_eal_compare_pci_addr(&uio_res->pci_addr, &dev->addr))
@@ -266,6 +272,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	uint64_t phaddr;
 	struct rte_pci_addr *loc = &dev->addr;
 	struct mapped_pci_resource *uio_res;
+	struct mapped_pci_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
 	struct pci_map *maps;
 
 	dev->intr_handle.fd = -1;
@@ -382,7 +389,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	uio_res->nb_maps = map_idx;
 
-	TAILQ_INSERT_TAIL(pci_res_list, uio_res, next);
+	TAILQ_INSERT_TAIL(uio_res_list, uio_res, next);
 
 	return 0;
 }
@@ -405,11 +412,12 @@ static struct mapped_pci_resource *
 pci_uio_find_resource(struct rte_pci_device *dev)
 {
 	struct mapped_pci_resource *uio_res;
+	struct mapped_pci_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
 
 	if (dev == NULL)
 		return NULL;
 
-	TAILQ_FOREACH(uio_res, pci_res_list, next) {
+	TAILQ_FOREACH(uio_res, uio_res_list, next) {
 
 		/* skip this element if it doesn't match our PCI address */
 		if (!rte_eal_compare_pci_addr(&uio_res->pci_addr, &dev->addr))
@@ -423,6 +431,7 @@ void
 pci_uio_unmap_resource(struct rte_pci_device *dev)
 {
 	struct mapped_pci_resource *uio_res;
+	struct mapped_pci_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
 
 	if (dev == NULL)
 		return;
@@ -436,7 +445,7 @@ pci_uio_unmap_resource(struct rte_pci_device *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return pci_uio_unmap(uio_res);
 
-	TAILQ_REMOVE(pci_res_list, uio_res, next);
+	TAILQ_REMOVE(uio_res_list, uio_res, next);
 
 	/* unmap all resources */
 	pci_uio_unmap(uio_res);

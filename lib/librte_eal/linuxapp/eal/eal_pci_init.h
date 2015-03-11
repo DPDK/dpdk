@@ -58,7 +58,6 @@ struct mapped_pci_resource {
 };
 
 TAILQ_HEAD(mapped_pci_res_list, mapped_pci_resource);
-extern struct mapped_pci_res_list *pci_res_list;
 
 /*
  * Helper function to map PCI resources right after hugepages in virtual memory
