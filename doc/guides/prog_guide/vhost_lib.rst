@@ -31,25 +31,28 @@
 Vhost Library
 =============
 
-The vhost cuse (cuse: user space character device driver) library implements a
-vhost cuse driver. It also creates, manages and destroys vhost devices for
-corresponding virtio devices in the guest. Vhost supported vSwitch could register
-callbacks to this library, which will be called when a vhost device is activated
-or deactivated by guest virtual machine.
+The vhost library implements a user space vhost driver. It supports both vhost-cuse
+(cuse: user space character device) and vhost-user(user space socket server).
+It also creates, manages and destroys vhost devices for corresponding virtio
+devices in the guest. Vhost supported vSwitch could register callbacks to this
+library, which will be called when a vhost device is activated or deactivated
+by guest virtual machine.
 
 Vhost API Overview
 ------------------
 
 *   Vhost driver registration
 
-      rte_vhost_driver_register registers the vhost cuse driver into the system.
-      Character device file will be created in the /dev directory.
+      rte_vhost_driver_register registers the vhost driver into the system.
+      For vhost-cuse, character device file will be created under the /dev directory.
       Character device name is specified as the parameter.
+      For vhost-user, a unix domain socket server will be created with the parameter as
+      the local socket path.
 
 *   Vhost session start
 
       rte_vhost_driver_session_start starts the vhost session loop.
-      Vhost cuse session is an infinite blocking loop.
+      Vhost session is an infinite blocking loop.
       Put the session in a dedicate DPDK thread.
 
 *   Callback register
@@ -74,6 +77,8 @@ Vhost API Overview
 Vhost Implementation
 --------------------
 
+Vhost cuse implementation
+~~~~~~~~~~~~~~~~~~~~~~~~~
 When vSwitch registers the vhost driver, it will register a cuse device driver
 into the system and creates a character device file. This cuse driver will
 receive vhost open/release/IOCTL message from QEMU simulator.
@@ -90,13 +95,41 @@ which means vhost could access the shared virtio ring and the guest physical
 address specified in the entry of the ring.
 
 The guest virtual machine tells the vhost whether the virtio device is ready
-for processing or is de-activated through VHOST_SET_BACKEND message.
+for processing or is de-activated through VHOST_NET_SET_BACKEND message.
 The registered callback from vSwitch will be called.
 
 When the release call is released, vhost will destroy the device.
 
+Vhost user implementation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+When vSwitch registers a vhost driver, it will create a unix domain socket server
+into the system. This server will listen for a connection and process the vhost message from
+QEMU simulator.
+
+When there is a new socket connection, it means a new virtio device has been created in
+the guest virtual machine, and the vhost driver will create a vhost device for this virtio device.
+
+For messages with a file descriptor, the file descriptor could be directly used in the vhost
+process as it is already installed by unix domain socket.
+
+ * VHOST_SET_MEM_TABLE
+ * VHOST_SET_VRING_KICK
+ * VHOST_SET_VRING_CALL
+ * VHOST_SET_LOG_FD
+ * VHOST_SET_VRING_ERR
+
+For VHOST_SET_MEM_TABLE message, QEMU will send us information for each memory region and its
+file descriptor in the ancillary data of the message. The fd is used to map that region.
+
+There is no VHOST_NET_SET_BACKEND message as in vhost cuse to signal us whether virtio device
+is ready or should be stopped.
+VHOST_SET_VRING_KICK is used as the signal to put the vhost device onto data plane.
+VHOST_GET_VRING_BASE is used as the signal to remove vhost device from data plane.
+
+When the socket connection is closed, vhost will destroy the device.
+
 Vhost supported vSwitch reference
 ---------------------------------
 
-For how to support vhost in vSwitch, please refer to vhost example in the
+For more vhost details and how to support vhost in vSwitch, please refer to vhost example in the
 DPDK Sample Applications Guide.
