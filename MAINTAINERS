@@ -106,6 +106,8 @@ IBM Power
 F: lib/librte_eal/common/include/arch/ppc_64/
 
 Intel x86
+M: Bruce Richardson <bruce.richardson@intel.com>
+M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: lib/librte_eal/common/include/arch/x86/
 
 Linux EAL (with overlaps)
