@@ -756,8 +756,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 			                   "Using default TX function.");
 		}
 
-		if (eth_dev->data->scattered_rx)
-			eth_dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
+		ixgbe_set_rx_function(eth_dev);
+
 		return 0;
 	}
 	pci_dev = eth_dev->pci_dev;
@@ -1429,11 +1429,20 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 {
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
 	/* set flag to update link status after init */
 	intr->flags |= IXGBE_FLAG_NEED_LINK_UPDATE;
+
+	/*
+	 * Initialize to TRUE. If any of Rx queues doesn't meet the bulk
+	 * allocation or vector Rx preconditions we will reset it.
+	 */
+	hw->rx_bulk_alloc_allowed = true;
+	hw->rx_vec_allowed = true;
 
 	return 0;
 }

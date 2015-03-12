@@ -760,7 +760,7 @@ int ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq)
 	return 0;
 }
 
-int ixgbe_rx_vec_condition_check(struct rte_eth_dev *dev)
+int ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
 {
 #ifndef RTE_LIBRTE_IEEE1588
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;

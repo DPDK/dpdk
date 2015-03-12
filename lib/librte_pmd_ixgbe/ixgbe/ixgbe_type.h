@@ -3657,6 +3657,8 @@ struct ixgbe_hw {
 	bool force_full_reset;
 	bool allow_unsupported_sfp;
 	bool wol_enabled;
+	bool rx_bulk_alloc_allowed;
+	bool rx_vec_allowed;
 };
 
 #define ixgbe_call_func(hw, func, params, error) \
