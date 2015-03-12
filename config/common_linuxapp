@@ -414,10 +414,12 @@ CONFIG_RTE_KNI_VHOST_DEBUG_TX=n
 
 #
 # Compile vhost library
-# fuse-devel is needed to run vhost.
+# fuse-devel is needed to run vhost-cuse.
 # fuse-devel enables user space char driver development
+# vhost-user is turned on by default.
 #
 CONFIG_RTE_LIBRTE_VHOST=n
+CONFIG_RTE_LIBRTE_VHOST_USER=y
 CONFIG_RTE_LIBRTE_VHOST_DEBUG=n
 
 #
