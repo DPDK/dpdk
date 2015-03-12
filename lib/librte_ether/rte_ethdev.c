@@ -3497,7 +3497,7 @@ rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type,
 
 void *
 rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
-		rte_rxtx_callback_fn fn, void *user_param)
+		rte_rx_callback_fn fn, void *user_param)
 {
 #ifndef RTE_ETHDEV_RXTX_CALLBACKS
 	rte_errno = ENOTSUP;
@@ -3517,7 +3517,7 @@ rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
 		return NULL;
 	}
 
-	cb->fn = fn;
+	cb->fn.rx = fn;
 	cb->param = user_param;
 	cb->next = rte_eth_devices[port_id].post_rx_burst_cbs[queue_id];
 	rte_eth_devices[port_id].post_rx_burst_cbs[queue_id] = cb;
@@ -3526,7 +3526,7 @@ rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
 
 void *
 rte_eth_add_tx_callback(uint8_t port_id, uint16_t queue_id,
-		rte_rxtx_callback_fn fn, void *user_param)
+		rte_tx_callback_fn fn, void *user_param)
 {
 #ifndef RTE_ETHDEV_RXTX_CALLBACKS
 	rte_errno = ENOTSUP;
@@ -3546,7 +3546,7 @@ rte_eth_add_tx_callback(uint8_t port_id, uint16_t queue_id,
 		return NULL;
 	}
 
-	cb->fn = fn;
+	cb->fn.tx = fn;
 	cb->param = user_param;
 	cb->next = rte_eth_devices[port_id].pre_tx_burst_cbs[queue_id];
 	rte_eth_devices[port_id].pre_tx_burst_cbs[queue_id] = cb;

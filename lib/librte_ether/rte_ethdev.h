@@ -1384,33 +1384,52 @@ struct eth_dev_ops {
 };
 
 /**
- * Function type used for callbacks for processing packets on RX and TX
+ * Function type used for RX packet processing packet callbacks.
  *
- * If configured for RX, it is called with a burst of packets that have just
- * been received on the given port and queue. On TX, it is called with a burst
- * of packets immediately before those packets are put onto the hardware queue
- * for transmission.
+ * The callback function is called on RX with a burst of packets that have
+ * been received on the given port and queue.
  *
  * @param port
- *   The ethernet port on which rx or tx is being performed
+ *   The Ethernet port on which RX is being performed.
  * @param queue
- *   The queue on the ethernet port which is being used to receive or transmit
- *   the packets.
+ *   The queue on the Ethernet port which is being used to receive the packets.
  * @param pkts
- *   The burst of packets on which processing is to be done. On RX, these
- *   packets have just been received. On TX, they are about to be transmitted.
+ *   The burst of packets that have just been received.
  * @param nb_pkts
- *   The number of packets in the burst pointed to by "pkts"
+ *   The number of packets in the burst pointed to by "pkts".
+ * @param max_pkts
+ *   The max number of packets that can be stored in the "pkts" array.
  * @param user_param
  *   The arbitrary user parameter passed in by the application when the callback
  *   was originally configured.
  * @return
- *   The number of packets remaining in pkts are processing.
- *	* On RX, this will be returned to the user as the return value from
- *	  rte_eth_rx_burst.
- *	* On TX, this will be the number of packets actually written to the NIC.
+ *   The number of packets returned to the user.
  */
-typedef uint16_t (*rte_rxtx_callback_fn)(uint8_t port, uint16_t queue,
+typedef uint16_t (*rte_rx_callback_fn)(uint8_t port, uint16_t queue,
+	struct rte_mbuf *pkts[], uint16_t nb_pkts, uint16_t max_pkts,
+	void *user_param);
+
+/**
+ * Function type used for TX packet processing packet callbacks.
+ *
+ * The callback function is called on TX with a burst of packets immediately
+ * before the packets are put onto the hardware queue for transmission.
+ *
+ * @param port
+ *   The Ethernet port on which TX is being performed.
+ * @param queue
+ *   The queue on the Ethernet port which is being used to transmit the packets.
+ * @param pkts
+ *   The burst of packets that are about to be transmitted.
+ * @param nb_pkts
+ *   The number of packets in the burst pointed to by "pkts".
+ * @param user_param
+ *   The arbitrary user parameter passed in by the application when the callback
+ *   was originally configured.
+ * @return
+ *   The number of packets to be written to the NIC.
+ */
+typedef uint16_t (*rte_tx_callback_fn)(uint8_t port, uint16_t queue,
 	struct rte_mbuf *pkts[], uint16_t nb_pkts, void *user_param);
 
 /**
@@ -1420,7 +1439,10 @@ typedef uint16_t (*rte_rxtx_callback_fn)(uint8_t port, uint16_t queue,
  */
 struct rte_eth_rxtx_callback {
 	struct rte_eth_rxtx_callback *next;
-	rte_rxtx_callback_fn fn;
+	union{
+		rte_rx_callback_fn rx;
+		rte_tx_callback_fn tx;
+	} fn;
 	void *param;
 };
 
@@ -2386,28 +2408,28 @@ extern uint16_t rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
 #else
 static inline uint16_t
 rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
-		 struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+		 struct rte_mbuf **rx_pkts, const uint16_t nb_pkts)
 {
 	struct rte_eth_dev *dev;
 
 	dev = &rte_eth_devices[port_id];
 
-	nb_pkts = (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id], rx_pkts,
-			nb_pkts);
+	int16_t nb_rx = (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id],
+			rx_pkts, nb_pkts);
 
 #ifdef RTE_ETHDEV_RXTX_CALLBACKS
 	struct rte_eth_rxtx_callback *cb = dev->post_rx_burst_cbs[queue_id];
 
 	if (unlikely(cb != NULL)) {
 		do {
-			nb_pkts = cb->fn(port_id, queue_id, rx_pkts, nb_pkts,
-					cb->param);
+			nb_rx = cb->fn.rx(port_id, queue_id, rx_pkts, nb_rx,
+						nb_pkts, cb->param);
 			cb = cb->next;
 		} while (cb != NULL);
 	}
 #endif
 
-	return nb_pkts;
+	return nb_rx;
 }
 #endif
 
@@ -2540,7 +2562,7 @@ rte_eth_tx_burst(uint8_t port_id, uint16_t queue_id,
 
 	if (unlikely(cb != NULL)) {
 		do {
-			nb_pkts = cb->fn(port_id, queue_id, tx_pkts, nb_pkts,
+			nb_pkts = cb->fn.tx(port_id, queue_id, tx_pkts, nb_pkts,
 					cb->param);
 			cb = cb->next;
 		} while (cb != NULL);
@@ -3490,7 +3512,7 @@ int rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type,
  *   On success, a pointer value which can later be used to remove the callback.
  */
 void *rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
-		rte_rxtx_callback_fn fn, void *user_param);
+		rte_rx_callback_fn fn, void *user_param);
 
 /**
  * Add a callback to be called on packet TX on a given port and queue.
@@ -3515,7 +3537,7 @@ void *rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
  *   On success, a pointer value which can later be used to remove the callback.
  */
 void *rte_eth_add_tx_callback(uint8_t port_id, uint16_t queue_id,
-		rte_rxtx_callback_fn fn, void *user_param);
+		rte_tx_callback_fn fn, void *user_param);
 
 /**
  * Remove an RX packet callback from a given port and queue.
