@@ -3680,7 +3680,8 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 
 	IXGBE_WRITE_REG(hw, IXGBE_RXCSUM, rxcsum);
 
-	if (hw->mac.type == ixgbe_mac_82599EB) {
+	if (hw->mac.type == ixgbe_mac_82599EB ||
+	    hw->mac.type == ixgbe_mac_X540) {
 		rdrxctl = IXGBE_READ_REG(hw, IXGBE_RDRXCTL);
 		if (dev->data->dev_conf.rxmode.hw_strip_crc)
 			rdrxctl |= IXGBE_RDRXCTL_CRCSTRIP;
