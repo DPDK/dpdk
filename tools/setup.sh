@@ -220,7 +220,7 @@ load_vfio_module()
 
 	# make sure regular users can read /dev/vfio
 	echo "chmod /dev/vfio"
-	sudo /usr/bin/chmod a+x /dev/vfio
+	sudo chmod a+x /dev/vfio
 	if [ $? -ne 0 ] ; then
 		echo "FAIL"
 		quit
@@ -278,7 +278,7 @@ set_vfio_permissions()
 {
 	# make sure regular users can read /dev/vfio
 	echo "chmod /dev/vfio"
-	sudo /usr/bin/chmod a+x /dev/vfio
+	sudo chmod a+x /dev/vfio
 	if [ $? -ne 0 ] ; then
 		echo "FAIL"
 		quit
@@ -287,7 +287,7 @@ set_vfio_permissions()
 
 	# make sure regular user can access everything inside /dev/vfio
 	echo "chmod /dev/vfio/*"
-	sudo /usr/bin/chmod 0666 /dev/vfio/*
+	sudo chmod 0666 /dev/vfio/*
 	if [ $? -ne 0 ] ; then
 		echo "FAIL"
 		quit
