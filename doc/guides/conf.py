@@ -32,7 +32,7 @@ import subprocess
 
 project = 'DPDK'
 
-copyright = '2014, Intel'
+html_show_copyright = False
 
 version = subprocess.check_output(["make","-sRrC","../../", "showversion"])
 
