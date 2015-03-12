@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -103,6 +103,8 @@ The following is a list of DPDK documents in the suggested reading order:
 
     *   IP Reassembly
 
+    *   IP Pipeline
+
     *   IP Fragmentation
 
     *   IPv4 Multicast
@@ -111,6 +113,8 @@ The following is a list of DPDK documents in the suggested reading order:
 
     *   L2 Forwarding IVSHMEM
 
+    *   L2 Forwarding Jobstats
+
     *   L3 Forwarding
 
     *   L3 Forwarding with Access Control
@@ -118,6 +122,8 @@ The following is a list of DPDK documents in the suggested reading order:
     *   L3 Forwarding with Power Management
 
     *   L3 Forwarding in a Virtualized Environment
+
+    *   Link Bonding
 
     *   Link Status Interrupt
 
@@ -149,6 +155,10 @@ The following is a list of DPDK documents in the suggested reading order:
 
     *   Distributor
 
+    *   RX-TX Callbacks
+
+    *   Skeleton
+
     In addition, there are some other applications that are built when the libraries are created.
     The source for these applications is in the DPDK/app directory and are called:
 
@@ -163,6 +173,6 @@ The following is a list of DPDK documents in the suggested reading order:
     *   The testpmd application provides a number of different packet throughput tests and examples of features such as
         how to use the Flow Director found in the Intel® 82599 10 Gigabit Ethernet Controller.
 
-    The testpmd application is documented in the *DPDK Testpmd Application Note* (525362).
+    The testpmd application is documented in the *DPDK Testpmd Application Note*.
     The test application is not currently documented.
     However, you should be able to run and use test application with the command line help that is provided in the application.
