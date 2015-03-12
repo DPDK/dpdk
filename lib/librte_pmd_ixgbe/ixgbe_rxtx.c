@@ -1027,7 +1027,7 @@ ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq)
 	struct ixgbe_rx_entry *rxep;
 	struct rte_mbuf *mb;
 	uint16_t alloc_idx;
-	uint64_t dma_addr;
+	__le64 dma_addr;
 	int diag, i;
 
 	/* allocate buffers in bulk directly into the S/W ring */
@@ -1050,7 +1050,7 @@ ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq)
 		mb->port = rxq->port_id;
 
 		/* populate the descriptors */
-		dma_addr = (uint64_t)mb->buf_physaddr + RTE_PKTMBUF_HEADROOM;
+		dma_addr = rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb));
 		rxdp[i].read.hdr_addr = dma_addr;
 		rxdp[i].read.pkt_addr = dma_addr;
 	}
@@ -1558,13 +1558,14 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->ol_flags = pkt_flags;
 
 		if (likely(pkt_flags & PKT_RX_RSS_HASH))
-			first_seg->hash.rss = rxd.wb.lower.hi_dword.rss;
+			first_seg->hash.rss =
+				    rte_le_to_cpu_32(rxd.wb.lower.hi_dword.rss);
 		else if (pkt_flags & PKT_RX_FDIR) {
 			first_seg->hash.fdir.hash =
-				(uint16_t)((rxd.wb.lower.hi_dword.csum_ip.csum)
-					   & IXGBE_ATR_HASH_MASK);
+			    rte_le_to_cpu_16(rxd.wb.lower.hi_dword.csum_ip.csum)
+					   & IXGBE_ATR_HASH_MASK;
 			first_seg->hash.fdir.id =
-				rxd.wb.lower.hi_dword.csum_ip.ip_id;
+			  rte_le_to_cpu_16(rxd.wb.lower.hi_dword.csum_ip.ip_id);
 		}
 
 		/* Prefetch data of first segment, if configured to do so. */
