@@ -58,4 +58,24 @@ New Features
 
 *   Packet Distributor Sample Application
 
+*   Poll Mode Driver - PCIE host-interface of Intel Ethernet Switch FM10000 Series (librte_pmd_fm10k)
+
+    *   Basic Rx/Tx functions for PF/VF
+
+    *   Interrupt handling support for PF/VF
+
+    *   Per queue start/stop functions for PF/VF
+
+    *   Support Mailbox handling between PF/VF and PF/Switch Manager
+
+    *   Receive Side Scaling (RSS) for PF/VF
+
+    *   Scatter receive function for PF/VF
+
+    *   Reta update/query for PF/VF
+
+    *   VLAN filter set for PF
+
+    *   Link status query for PF/VF
+
 For further features supported in this release, see Chapter 3 Supported Features.
