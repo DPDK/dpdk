@@ -8885,14 +8885,7 @@ prompt(void)
 static void
 cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue)
 {
-	if (!port_id_is_invalid(id, DISABLED_WARN)) {
-		/* check if need_reconfig has been set to 1 */
-		if (ports[id].need_reconfig == 0)
-			ports[id].need_reconfig = dev;
-		/* check if need_reconfig_queues has been set to 1 */
-		if (ports[id].need_reconfig_queues == 0)
-			ports[id].need_reconfig_queues = queue;
-	} else {
+	if (id == (portid_t)RTE_PORT_ALL) {
 		portid_t pid;
 
 		FOREACH_PORT(pid, ports) {
@@ -8903,6 +8896,13 @@ cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue)
 			if (ports[pid].need_reconfig_queues == 0)
 				ports[pid].need_reconfig_queues = queue;
 		}
+	} else if (!port_id_is_invalid(id, DISABLED_WARN)) {
+		/* check if need_reconfig has been set to 1 */
+		if (ports[id].need_reconfig == 0)
+			ports[id].need_reconfig = dev;
+		/* check if need_reconfig_queues has been set to 1 */
+		if (ports[id].need_reconfig_queues == 0)
+			ports[id].need_reconfig_queues = queue;
 	}
 }
 
