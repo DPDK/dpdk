@@ -44,6 +44,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <string.h>
 #include <rte_common.h>
 
 /**
