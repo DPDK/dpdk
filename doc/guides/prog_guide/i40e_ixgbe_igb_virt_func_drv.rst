@@ -53,9 +53,10 @@ Refer to Figure 10.
 
 Therefore, a NIC is logically distributed among multiple virtual machines (as shown in Figure 10),
 while still having global data in common to share with the Physical Function and other Virtual Functions.
-The DPDK i40evf, igbvf or ixgbevf as a Poll Mode Driver (PMD) serves for the Intel® 82576 Gigabit Ethernet Controller,
+The DPDK fm10kvf, i40evf, igbvf or ixgbevf as a Poll Mode Driver (PMD) serves for the Intel® 82576 Gigabit Ethernet Controller,
 Intel® Ethernet Controller I350 family, Intel® 82599 10 Gigabit Ethernet Controller NIC,
-or Intel® Fortville 10/40 Gigabit Ethernet Controller NIC's virtual PCI function.
+Intel® Fortville 10/40 Gigabit Ethernet Controller NIC's virtual PCI function,or PCIE host-interface of the Intel Ethernet Switch
+FM10000 Series.
 Meanwhile the DPDK Poll Mode Driver (PMD) also supports "Physical Function" of such NIC's on the host.
 
 The DPDK PF/VF Poll Mode Driver (PMD) supports the Layer 2 switch on Intel® 82576 Gigabit Ethernet Controller,
@@ -92,6 +93,37 @@ For global resource access, a Virtual Function has to send a request to the Phys
 and the Physical Function operates on the global resources on behalf of the Virtual Function.
 For this out-of-band communication, an SR-IOV enabled NIC provides a memory buffer for each Virtual Function,
 which is called a "Mailbox".
+
+The PCIE host-interface of Intel Ethernet Switch FM10000 Series VF infrastructure
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In a virtualized environment, the programmer can enable a maximum of *64 Virtual Functions (VF)*
+globally per PCIE host-interface of the Intel Ethernet Switch FM10000 Series device.
+Each VF can have a maximum of 16 queue pairs.
+The Physical Function in host could be only configured by the Linux* fm10k driver
+(in the case of the Linux Kernel-based Virtual Machine [KVM]), DPDK PMD PF driver doesn't support it yet.
+
+For example,
+
+*   Using Linux* fm10k driver:
+
+    .. code-block:: console
+
+        rmmod fm10k (To remove the fm10k module)
+        insmod fm0k.ko max_vfs=2,2 (To enable two Virtual Functions per port)
+
+Virtual Function enumeration is performed in the following sequence by the Linux* pci driver for a dual-port NIC.
+When you enable the four Virtual Functions with the above command, the four enabled functions have a Function#
+represented by (Bus#, Device#, Function#) in sequence starting from 0 to 3.
+However:
+
+*   Virtual Functions 0 and 2 belong to Physical Function 0
+
+*   Virtual Functions 1 and 3 belong to Physical Function 1
+
+.. note::
+
+    The above is an important consideration to take into account when targeting specific packets to a selected port.
 
 Intel® Fortville 10/40 Gigabit Ethernet Controller VF Infrastructure
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

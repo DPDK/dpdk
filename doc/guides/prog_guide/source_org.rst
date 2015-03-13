@@ -81,6 +81,7 @@ The lib directory contains::
     +-- librte_net          # various IP-related headers
     +-- librte_pmd_bond     # bonding poll mode driver
     +-- librte_pmd_e1000    # 1GbE poll mode drivers (igb and em)
+    +-- librte_pmd_fm10k    # Host interface PMD driver for FM10000 Series
     +-- librte_pmd_ixgbe    # 10GbE poll mode driver
     +-- librte_pmd_i40e     # 40GbE poll mode driver
     +-- librte_pmd_mlx4     # Mellanox ConnectX-3 poll mode driver
