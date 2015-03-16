@@ -90,7 +90,7 @@ elem_start_pt(struct malloc_elem *elem, size_t size, unsigned align)
 {
 	const uintptr_t end_pt = (uintptr_t)elem +
 			elem->size - MALLOC_ELEM_TRAILER_LEN;
-	const uintptr_t new_data_start = rte_align_floor_int((end_pt - size),align);
+	const uintptr_t new_data_start = RTE_ALIGN_FLOOR((end_pt - size), align);
 	const uintptr_t new_elem_start = new_data_start - MALLOC_ELEM_HEADER_LEN;
 
 	/* if the new start point is before the exist start, it won't fit */

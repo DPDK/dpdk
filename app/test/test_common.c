@@ -122,8 +122,8 @@ test_align(void)
 
 		for (i = 1; i <= MAX_NUM; i++) {
 			/* align floor */
-			if (rte_align_floor_int((uintptr_t)i, p) % p)
-				FAIL_ALIGN("rte_align_floor_int", i, p);
+			if (RTE_ALIGN_FLOOR((uintptr_t)i, p) % p)
+				FAIL_ALIGN("RTE_ALIGN_FLOOR", i, p);
 
 			val = RTE_PTR_ALIGN_FLOOR((uintptr_t) i, p);
 			if (ERROR_FLOOR(val, i, p))
