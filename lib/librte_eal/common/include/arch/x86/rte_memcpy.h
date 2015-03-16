@@ -43,7 +43,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <x86intrin.h>
+#include <rte_common_vect.h>
 
 #ifdef __cplusplus
 extern "C" {
