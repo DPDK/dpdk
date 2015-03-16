@@ -160,11 +160,12 @@ eth_null_copy_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
 	int i;
 	struct null_queue *h = q;
-	unsigned packet_size = h->internals->packet_size;
+	unsigned packet_size;
 
 	if ((q == NULL) || (bufs == NULL))
 		return 0;
 
+	packet_size = h->internals->packet_size;
 	for (i = 0; i < nb_bufs; i++) {
 		rte_memcpy(h->dummy_packet, rte_pktmbuf_mtod(bufs[i], void *),
 					packet_size);
