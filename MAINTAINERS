@@ -60,6 +60,8 @@ ABI versioning
 M: Neil Horman <nhorman@tuxdriver.com>
 F: lib/librte_compat/
 F: doc/guides/rel_notes/abi.rst
+F: scripts/validate-abi.sh
+
 
 Environment Abstraction Layer
 -----------------------------
