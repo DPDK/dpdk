@@ -888,12 +888,13 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_IFACE_ARG,
 				&open_rx_tx_iface, &pcaps);
 		if (ret < 0)
-			return -1;
+			goto free_kvlist;
 		dumpers.pcaps[0] = pcaps.pcaps[0];
 		dumpers.names[0] = pcaps.names[0];
 		dumpers.types[0] = pcaps.types[0];
-		return rte_eth_from_pcaps(name, &pcaps, 1, &dumpers, 1,
+		ret = rte_eth_from_pcaps(name, &pcaps, 1, &dumpers, 1,
 				numa_node, kvlist, 1);
+		goto free_kvlist;
 	}
 
 	/*
@@ -911,7 +912,7 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	}
 
 	if (ret < 0)
-		return -1;
+		goto free_kvlist;
 
 	/*
 	 * We check whether we want to open a TX stream to a real NIC or a
@@ -930,15 +931,18 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	}
 
 	if (ret < 0)
-		return -1;
+		goto free_kvlist;
 
 	if (using_dumpers)
-		return rte_eth_from_pcaps_n_dumpers(name, &pcaps, pcaps.num_of_rx,
+		ret = rte_eth_from_pcaps_n_dumpers(name, &pcaps, pcaps.num_of_rx,
 				&dumpers, dumpers.num_of_tx, numa_node, kvlist);
-
-	return rte_eth_from_pcaps(name, &pcaps, pcaps.num_of_rx, &dumpers,
+	else
+		ret = rte_eth_from_pcaps(name, &pcaps, pcaps.num_of_rx, &dumpers,
 			dumpers.num_of_tx, numa_node, kvlist, 0);
 
+free_kvlist:
+	rte_kvargs_free(kvlist);
+	return ret;
 }
 
 static int
