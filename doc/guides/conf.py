@@ -63,6 +63,9 @@ latex_preamble = r"""
 latex_elements = {
     'papersize': 'a4paper',
     'pointsize': '11pt',
+    # remove blank pages
+    'classoptions': ',openany,oneside',
+    'babel': '\\usepackage[english]{babel}',
     # customize Latex formatting
     'preamble': latex_preamble
 }
