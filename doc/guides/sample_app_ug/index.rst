@@ -49,6 +49,7 @@ Sample Applications User Guide
     ipv4_multicast
     ip_reassembly
     kernel_nic_interface
+    l2_forward_job_stats
     l2_forward_real_virtual
     l3_forward
     l3_forward_power_man
