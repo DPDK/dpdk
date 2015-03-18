@@ -395,6 +395,31 @@ igb_vf_set_vlan(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 }
 
 static int
+igb_vf_set_rlpml(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t rlpml = msgbuf[1] & E1000_VMOLR_RLPML_MASK;
+	uint32_t max_frame = rlpml + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	uint32_t vmolr;
+
+	if ((max_frame < ETHER_MIN_LEN) || (max_frame > ETHER_MAX_JUMBO_FRAME_LEN))
+		return -1;
+
+	vmolr = E1000_READ_REG(hw, E1000_VMOLR(vf));
+
+	vmolr &= ~E1000_VMOLR_RLPML_MASK;
+	vmolr |= rlpml;
+
+	/* Enable Long Packet support */
+	vmolr |= E1000_VMOLR_LPE;
+
+	E1000_WRITE_REG(hw, E1000_VMOLR(vf), vmolr);
+	E1000_WRITE_FLUSH(hw);
+
+	return 0;
+}
+
+static int
 igb_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 {
 	uint16_t mbx_size = E1000_VFMAILBOX_SIZE;
@@ -427,6 +452,9 @@ igb_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 		break;
 	case E1000_VF_SET_MULTICAST:
 		retval = igb_vf_set_multicast(dev, vf, msgbuf);
+		break;
+	case E1000_VF_SET_LPE:
+		retval = igb_vf_set_rlpml(dev, vf, msgbuf);
 		break;
 	case E1000_VF_SET_VLAN:
 		retval = igb_vf_set_vlan(dev, vf, msgbuf);
