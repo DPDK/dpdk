@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_COMMON_VECT_H_
-#define _RTE_COMMON_VECT_H_
+#ifndef _RTE_VECT_H_
+#define _RTE_VECT_H_
 
 /**
  * @file
@@ -125,4 +125,4 @@ typedef union rte_ymm {
 }
 #endif
 
-#endif /* _RTE_COMMON__VECT_H_ */
+#endif /* _RTE_VECT_H_ */

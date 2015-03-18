@@ -61,7 +61,7 @@
 #define DIM(x) RTE_DIM(x)
 
 #include <rte_common.h>
-#include <rte_common_vect.h>
+#include <rte_vect.h>
 #include <rte_memory.h>
 #include <rte_log.h>
 #include <rte_memcpy.h>

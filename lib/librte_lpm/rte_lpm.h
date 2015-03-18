@@ -46,7 +46,7 @@
 #include <rte_branch_prediction.h>
 #include <rte_memory.h>
 #include <rte_common.h>
-#include <rte_common_vect.h>
+#include <rte_vect.h>
 
 #ifdef __cplusplus
 extern "C" {
