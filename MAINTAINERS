@@ -247,6 +247,8 @@ F: lib/librte_pmd_vmxnet3/
 F: doc/guides/prog_guide/poll_mode_drv_paravirtual_vmxnets_nic.rst
 
 PCAP PMD
+M: Nicolás Pernas Maradei <nicolas.pernas.maradei@emutex.com>
+M: John McNamara <john.mcnamara@intel.com>
 F: lib/librte_pmd_pcap/
 F: doc/guides/prog_guide/libpcap_ring_based_poll_mode_drv.rst
 
