@@ -34,7 +34,7 @@ project = 'DPDK'
 
 html_show_copyright = False
 
-version = subprocess.check_output(['make', '-sRrC', '../../', 'showversion'])
+version = subprocess.check_output(['make', '-sRrC', '../../', 'showversion']).decode('utf-8')
 release = version
 
 master_doc = 'index'
