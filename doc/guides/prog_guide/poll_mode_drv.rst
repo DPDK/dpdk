@@ -198,15 +198,7 @@ the Intel® 82599 10 Gigabit Ethernet Controller controllers in the testpmd appl
 Other features such as the L3/L4 5-Tuple packet filtering feature of a port can be configured in the same way.
 Ethernet* flow control (pause frame) can be configured on the individual port.
 Refer to the testpmd source code for details.
-Also, L4 (UDP/TCP/ SCTP) checksum offload by the NIC can be enabled for an individual packet as long as the packet mbuf is set up correctly.
-In terms of UDP tunneling packet, the PKT_TX_UDP_TUNNEL_PKT flag must be set to enable tunneling packet TX checksum offload for both outer layer and inner layer.
-Refer to the testpmd source code (specifically the csumonly.c file) for details.
-
-That being said, the support of some offload features implies the addition of dedicated status bit(s) and value field(s) into the rte_mbuf
-data structure, along with their appropriate handling by the receive/transmit functions exported by each PMD.
-
-For instance, this is the case for the IEEE1588 packet timestamp mechanism, the VLAN tagging and the IP checksum computation, as described in
-the Section 7.6 "Meta Information".
+Also, L4 (UDP/TCP/ SCTP) checksum offload by the NIC can be enabled for an individual packet as long as the packet mbuf is set up correctly. See `Hardware Offload`_ for details.
 
 Configuration of Transmit and Receive Queues
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -256,6 +248,20 @@ One descriptor in the TX ring is used as a sentinel to avoid a hardware race con
 .. note::
 
     When configuring for DCB operation, at port initialization, both the number of transmit queues and the number of receive queues must be set to 128.
+
+Hardware Offload
+~~~~~~~~~~~~~~~~
+
+Depending on driver capabilities advertised by
+``rte_eth_dev_info_get()``, the PMD may support hardware offloading
+feature like checksumming, TCP segmentation or VLAN insertion.
+
+The support of these offload features implies the addition of dedicated
+status bit(s) and value field(s) into the rte_mbuf data structure, along
+with their appropriate handling by the receive/transmit functions
+exported by each PMD. The list of flags and their precise meaning is
+described in the mbuf API documentation and in the in :ref:`Mbuf Library
+<Mbuf_Library>`, section "Meta Information".
 
 Poll Mode Driver API
 --------------------
