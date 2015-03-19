@@ -62,13 +62,15 @@ else
 #
 # CFLAGS for gcc
 #
-ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
-CFLAGS     += -Wno-deprecated
-endif
 CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
 CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
-CFLAGS_BASE_DRIVER += -Wno-unused-variable -Wno-unused-but-set-variable
+CFLAGS_BASE_DRIVER += -Wno-unused-variable
 CFLAGS_BASE_DRIVER += -Wno-missing-field-initializers
+
+ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
+CFLAGS     += -Wno-deprecated
+CFLAGS_BASE_DRIVER += -Wno-unused-but-set-variable
+endif
 endif
 
 #

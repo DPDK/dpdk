@@ -62,13 +62,14 @@ else
 #
 ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
 CFLAGS     += -Wno-deprecated
+CFLAGS_ixgbe_common.o += -Wno-unused-but-set-variable
+CFLAGS_ixgbe_x550.o += -Wno-unused-but-set-variable
 endif
 CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
 CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
 
 ifeq ($(shell test $(GCC_VERSION) -ge 46 && echo 1), 1)
-CFLAGS_ixgbe_common.o += -Wno-unused-but-set-variable
-CFLAGS_ixgbe_x550.o += -Wno-unused-but-set-variable -Wno-maybe-uninitialized
+CFLAGS_ixgbe_x550.o += -Wno-maybe-uninitialized
 endif
 
 ifeq ($(shell test $(GCC_VERSION) -ge 50 && echo 1), 1)
