@@ -50,6 +50,10 @@
 #include <emmintrin.h>
 #endif
 
+#ifdef __SSE3__
+#include <tmmintrin.h>
+#endif
+
 #if defined(__SSE4_2__) || defined(__SSE4_1__)
 #include <smmintrin.h>
 #endif
