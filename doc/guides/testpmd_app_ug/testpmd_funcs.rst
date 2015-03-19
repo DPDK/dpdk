@@ -505,28 +505,60 @@ Disable hardware insertion of a VLAN header in packets sent on a port:
 
 tx_vlan reset (port_id)
 
-tx_checksum set
-~~~~~~~~~~~~~~~
+csum set
+~~~~~~~~
 
 Select hardware or software calculation of the checksum when
 transmitting a packet using the csum forward engine:
 
-tx_cksum set (ip|udp|tcp|sctp|vxlan)
+csum set (ip|udp|tcp|sctp|outer-ip) (hw|sw) (port_id)
 
-ip|udp|tcp|sctp always concern the inner layer.
-vxlan concerns the outer IP and UDP layer (in case the packet
-is recognized as a vxlan packet by the forward engine)
+- ip|udp|tcp|sctp always concern the inner layer.
+
+- outer-ip concerns the outer IP layer in case the packet is recognized
+  as a tunnel packet by the forward engine (vxlan, gre and ipip are
+  supported). See "csum parse-tunnel" command.
 
 .. note::
 
     Check the NIC Datasheet for hardware limits.
 
-tx_checksum show
-~~~~~~~~~~~~~~~~
+csum parse-tunnel
+~~~~~~~~~~~~~~~~~
+
+Define how tunneled packets should be handled by the csum forward
+engine.
+
+csum parse-tunnel (on|off) (tx_port_id)
+
+If enabled, the csum forward engine will try to recognize supported
+tunnel headers (vxlan, gre, ipip).
+
+If disabled, treat tunnel packets as non-tunneled packets (a inner
+header is handled as a packet payload).
+
+.. note::
+
+   The port argument is the TX port like in the "csum set" command.
+
+Example:
+
+Consider a packet as following:
+"eth_out/ipv4_out/udp_out/vxlan/eth_in/ipv4_in/tcp_in"
+
+- If parse-tunnel is enabled, the ip|udp|tcp|sctp parameters of "csum
+  set" command are about inner headers (here ipv4_in and tcp_in), and the
+  outer-ip parameter is about outer headers (here ipv4_out).
+
+- If parse-tunnel is disabled, the ip|udp|tcp|sctp parameters of "csum
+  set" command are about outer headers, here ipv4_out and udp_out.
+
+csum show
+~~~~~~~~~
 
 Display tx checksum offload configuration:
 
-tx_checksum show (port_id)
+csum show (port_id)
 
 tso set
 ~~~~~~~
@@ -536,7 +568,8 @@ Enable TCP Segmentation Offload in csum forward engine:
 tso set (segsize) (port_id)
 
 .. note::
-   Please check the NIC datasheet for HW limits
+
+   Check the NIC datasheet for hardware limits
 
 tso show
 ~~~~~~~~

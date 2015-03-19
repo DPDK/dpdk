@@ -317,7 +317,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"csum set (ip|udp|tcp|sctp|outer-ip) (hw|sw) (port_id)\n"
 			"    Select hardware or software calculation of the"
-			" checksum with when transmitting a packet using the"
+			" checksum when transmitting a packet using the"
 			" csum forward engine.\n"
 			"    ip|udp|tcp|sctp always concern the inner layer.\n"
 			"    outer-ip concerns the outer IP layer in"
