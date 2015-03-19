@@ -92,12 +92,14 @@ SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_options.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_thread.c
 
 CFLAGS_eal.o := -D_GNU_SOURCE
+CFLAGS_eal_interrupts.o := -D_GNU_SOURCE
 CFLAGS_eal_lcore.o := -D_GNU_SOURCE
 CFLAGS_eal_thread.o := -D_GNU_SOURCE
 CFLAGS_eal_log.o := -D_GNU_SOURCE
 CFLAGS_eal_common_log.o := -D_GNU_SOURCE
 CFLAGS_eal_hugepage_info.o := -D_GNU_SOURCE
 CFLAGS_eal_pci.o := -D_GNU_SOURCE
+CFLAGS_eal_pci_uio.o := -D_GNU_SOURCE
 CFLAGS_eal_pci_vfio.o := -D_GNU_SOURCE
 CFLAGS_eal_common_whitelist.o := -D_GNU_SOURCE
 CFLAGS_eal_common_options.o := -D_GNU_SOURCE
