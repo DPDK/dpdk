@@ -82,9 +82,9 @@ Application Makefile
 
 The default makefile provided with the Hello World sample application is a good starting point. It includes:
 
-*   $(RTE_SDK)/mk/DPDK.vars.mk at the beginning
+*   $(RTE_SDK)/mk/rte.vars.mk at the beginning
 
-*   $(RTE_SDK)/mk/DPDK.extapp.mk at the end
+*   $(RTE_SDK)/mk/rte.extapp.mk at the end
 
 The user must define several variables:
 
@@ -97,9 +97,9 @@ Library Makefile
 
 It is also possible to build a library in the same way:
 
-*   Include $(RTE_SDK)/mk/DPDK.vars.mk at the beginning.
+*   Include $(RTE_SDK)/mk/rte.vars.mk at the beginning.
 
-*   Include $(RTE_SDK)/mk/DPDK.extlib.mk  at the end.
+*   Include $(RTE_SDK)/mk/rte.extlib.mk  at the end.
 
 The only difference is that APP should be replaced by LIB, which contains the name of the library. For example, libfoo.a.
 

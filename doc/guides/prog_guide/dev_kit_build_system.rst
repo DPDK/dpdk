@@ -194,7 +194,7 @@ To compile an application, the user must set the RTE_SDK and RTE_TARGET environm
     cd /path/to/my_app
 
 For a new application, the user must create their own Makefile that includes some .mk files, such as
-${RTE_SDK}/mk/DPDK.vars.mk, and ${RTE_SDK}/mk/ DPDK.app.mk.
+${RTE_SDK}/mk/rte.vars.mk, and ${RTE_SDK}/mk/ rte.app.mk.
 This is described in
 :ref:`Building Your Own Application <Building_Your_Own_Application>`.
 
@@ -217,11 +217,11 @@ General Rules For DPDK Makefiles
 
 In the DPDK, Makefiles always follow the same scheme:
 
-#. Include $(RTE_SDK)/mk/DPDK.vars.mk at the beginning.
+#. Include $(RTE_SDK)/mk/rte.vars.mk at the beginning.
 
 #. Define specific variables for RTE build system.
 
-#. Include a specific $(RTE_SDK)/mk/DPDK.XYZ.mk, where XYZ can be app, lib, extapp, extlib, obj, gnuconfigure,
+#. Include a specific $(RTE_SDK)/mk/rte.XYZ.mk, where XYZ can be app, lib, extapp, extlib, obj, gnuconfigure,
    and so on, depending on what kind of object you want to build.
    :ref:`See Makefile Types <Makefile_Types>` below.
 
@@ -231,7 +231,7 @@ In the DPDK, Makefiles always follow the same scheme:
 
    ..  code-block:: make
 
-        include $(RTE_SDK)/mk/DPDK.vars.mk
+        include $(RTE_SDK)/mk/rte.vars.mk
 
         # binary name
         APP = helloworld
@@ -242,7 +242,7 @@ In the DPDK, Makefiles always follow the same scheme:
         CFLAGS += -O3
         CFLAGS += $(WERROR_FLAGS)
 
-        include $(RTE_SDK)/mk/DPDK.extapp.mk
+        include $(RTE_SDK)/mk/rte.extapp.mk
 
 .. _Makefile_Types:
 

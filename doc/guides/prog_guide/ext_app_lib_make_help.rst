@@ -36,11 +36,11 @@ External Application/Library Makefile help
 External applications or libraries should include specific Makefiles from RTE_SDK, located in mk directory.
 These Makefiles are:
 
-*   ${RTE_SDK}/mk/DPDK.extapp.mk: Build an application
+*   ${RTE_SDK}/mk/rte.extapp.mk: Build an application
 
-*   ${RTE_SDK}/mk/DPDK.extlib.mk: Build a static library
+*   ${RTE_SDK}/mk/rte.extlib.mk: Build a static library
 
-*   ${RTE_SDK}/mk/DPDK.extobj.mk: Build objects (.o)
+*   ${RTE_SDK}/mk/rte.extobj.mk: Build objects (.o)
 
 Prerequisites
 -------------
