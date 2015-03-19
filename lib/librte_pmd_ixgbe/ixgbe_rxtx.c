@@ -2122,8 +2122,8 @@ ixgbe_reset_rx_queue(struct ixgbe_hw *hw, struct ixgbe_rx_queue *rxq)
 	 * entries is always allocated
 	 */
 	memset(&rxq->fake_mbuf, 0x0, sizeof(rxq->fake_mbuf));
-	for (i = 0; i < RTE_PMD_IXGBE_RX_MAX_BURST; ++i) {
-		rxq->sw_ring[rxq->nb_rx_desc + i].mbuf = &rxq->fake_mbuf;
+	for (i = rxq->nb_rx_desc; i < len; ++i) {
+		rxq->sw_ring[i].mbuf = &rxq->fake_mbuf;
 	}
 
 	rxq->rx_nb_avail = 0;
