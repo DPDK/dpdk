@@ -152,8 +152,10 @@ CFLAGS += -D_GNU_SOURCE
 
 # Disable VTA for memcpy test
 ifeq ($(CC), gcc)
+ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
 CFLAGS_test_memcpy.o += -fno-var-tracking-assignments
 CFLAGS_test_memcpy_perf.o += -fno-var-tracking-assignments
+endif
 endif
 
 # this application needs libraries first
