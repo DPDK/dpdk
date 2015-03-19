@@ -83,7 +83,7 @@ free_mem_region(struct virtio_net *dev)
 	for (idx = 0; idx < dev->mem->nregions; idx++) {
 		if (region[idx].mapped_address) {
 			alignment = region[idx].blksz;
-			munmap((void *)
+			munmap((void *)(uintptr_t)
 				RTE_ALIGN_FLOOR(
 					region[idx].mapped_address, alignment),
 				RTE_ALIGN_CEIL(
@@ -155,7 +155,7 @@ user_set_mem_table(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 
 		RTE_LOG(INFO, VHOST_CONFIG,
 			"mapped region %d fd:%d to %p sz:0x%"PRIx64" off:0x%"PRIx64"\n",
-			idx, pmsg->fds[idx], (void *)mapped_address,
+			idx, pmsg->fds[idx], (void *)(uintptr_t)mapped_address,
 			mapped_size, memory.regions[idx].mmap_offset);
 
 		if (mapped_address == (uint64_t)(uintptr_t)MAP_FAILED) {
@@ -194,7 +194,7 @@ user_set_mem_table(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 err_mmap:
 	while (idx--) {
 		alignment = pregion_orig[idx].blksz;
-		munmap((void *)RTE_ALIGN_FLOOR(
+		munmap((void *)(uintptr_t)RTE_ALIGN_FLOOR(
 			pregion_orig[idx].mapped_address, alignment),
 			RTE_ALIGN_CEIL(pregion_orig[idx].mapped_size,
 					alignment));

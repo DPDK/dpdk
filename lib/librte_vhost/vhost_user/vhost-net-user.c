@@ -277,7 +277,7 @@ vserver_new_vq_conn(int fd, void *dat, __rte_unused int *remove)
 	int conn_fd;
 	struct connfd_ctx *ctx;
 	int fh;
-	struct vhost_device_ctx vdev_ctx = { 0 };
+	struct vhost_device_ctx vdev_ctx = { (pid_t)0, 0 };
 	unsigned int size;
 
 	conn_fd = accept(fd, NULL, NULL);
