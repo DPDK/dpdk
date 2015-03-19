@@ -169,7 +169,7 @@ struct test_command {
 void add_test_command(struct test_command *t);
 
 #define REGISTER_TEST_COMMAND(t) \
-static void testfn_##t(void);\
+static void __attribute__((used)) testfn_##t(void);\
 void __attribute__((constructor, used)) testfn_##t(void)\
 {\
 	add_test_command(&t);\
