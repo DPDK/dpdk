@@ -32,7 +32,7 @@ New Features
 ============
 *   Link Bonding
 
-    *   Support for 802.3ad link aggregation (mode 4) and transmit load balancing (mode 5) to the link bonding library.
+    *   Support for adaptive load balancing (mode 6) to the link bonding library.
 
     *   Support for registration of link status change callbacks with link bonding devices.
 

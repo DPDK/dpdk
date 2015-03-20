@@ -39,7 +39,8 @@ Supported Features
 
 *   Support for VFIO for mapping BARs and setting up interrupts
 
-*   Link Bonding PMD Library supporting round-robin, active backup, balance(layer 2, layer 2+3, and layer 3+4) and broadcast bonding modes
+*   Link Bonding PMD Library supporting round-robin, active backup, balance(layer 2, layer 2+3, and layer 3+4), broadcast bonding modes
+    802.3ad link aggregation (mode 4), transmit load balancing (mode 5) and adaptive load balancing (mode 6)
 
 *   Support zero copy mode RX/TX in user space vhost sample
 
@@ -312,6 +313,8 @@ Supported Features
     *   L3 Forwarding in a Virtualized Environment
 
     *   L3 Forwarding with Power Management
+
+    *   Bonding mode 6
 
     *   QoS Scheduling
 
