@@ -308,6 +308,8 @@ Supported Features
 
     *   L2 Forwarding (supports virtualized and non-virtualized environments)
 
+    *   L2 Forwarding Job Stats
+
     *   L3 Forwarding (IPv4 and IPv6)
 
     *   L3 Forwarding in a Virtualized Environment
@@ -369,6 +371,8 @@ Supported Features
     processes to access the NIC port queues directly.
 
 *   CPU-specific compiler optimization
+
+*   Job stats library for load/cpu utilization measurements
 
 *   Improvements to the Load Balancing sample application
 

@@ -58,6 +58,8 @@ New Features
 
 *   Packet Distributor Sample Application
 
+*   Job Stats library and Sample Application.
+
 *   Poll Mode Driver - PCIE host-interface of Intel Ethernet Switch FM10000 Series (librte_pmd_fm10k)
 
     *   Basic Rx/Tx functions for PF/VF
