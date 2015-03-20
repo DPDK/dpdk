@@ -3059,11 +3059,15 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		ctxt.connection_type = 0x1;
 		ctxt.flags = I40E_AQ_VSI_TYPE_VF;
 
-		/* Configure switch ID */
-		ctxt.info.valid_sections |=
-			rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SWITCH_VALID);
-		ctxt.info.switch_id =
-			rte_cpu_to_le_16(I40E_AQ_VSI_SW_ID_FLAG_ALLOW_LB);
+		/**
+		 * Do not configure switch ID to enable VEB switch by
+		 * I40E_AQ_VSI_SW_ID_FLAG_ALLOW_LB. Because in Fortville,
+		 * if the source mac address of packet sent from VF is not
+		 * listed in the VEB's mac table, the VEB will switch the
+		 * packet back to the VF. Need to enable it when HW issue
+		 * is fixed.
+		 */
+
 		/* Configure port/vlan */
 		ctxt.info.valid_sections |=
 			rte_cpu_to_le_16(I40E_AQ_VSI_PROP_VLAN_VALID);
