@@ -191,3 +191,38 @@ In this case, this has to be done manually on the VM host, using the following c
 
 where <interface> being the interface providing the virtual functions for example, eth0, <VF function> being the virtual function number, for example 0,
 and <MAC address> being the desired MAC address.
+
+Is it safe to add an entry to the hash table while running?
+------------------------------------------------------------
+Currently the table implementation is not a thread safe implementation and assumes that locking between threads and processes is handled by the user's application.
+This is likely to be supported in future releases.
+
+What is the purpose of setting iommu=pt?
+----------------------------------------
+DPDK uses a 1:1 mapping and does not support IOMMU. IOMMU allows for simpler VM physical address translation.
+The second role of IOMMU is to allow protection from unwanted memory access by an unsafe device that has DMA privileges.
+Unfortunately, the protection comes with an extremely high perfomance cost for high speed NICs.
+
+iommu=pt disables IOMMU support for the hypervisor.
+
+When trying to send packets from an application to itself, meaning smac==dmac, using Intel(R) 82599 VF packets are lost.
+------------------------------------------------------------------------------------------------------------------------
+Check on register LLE(PFVMTXSSW[n]), which allows an individual pool to send traffic and have it looped back to itself.
+
+Can I split packet RX to use DPDK and have an application's higher order functions continue using Linux* pthread?
+-----------------------------------------------------------------------------------------------------------------
+The DPDK's lcore threads are Linux* pthreads bound onto specific cores. Configure the DPDK to do work on the same
+cores and run the application's other work on other cores using the DPDK's "coremask" setting to specify which
+cores it should launch itself on.
+
+Is it possible to exchange data between DPDK processes and regular userspace processes via some shared memory or IPC mechanism?
+-------------------------------------------------------------------------------------------------------------------------------
+Yes - DPDK processes are regular Linux/BSD processes, and can use all OS provided IPC mechanisms.
+
+Can the multiple queues in Intel(R) I350 be used with DPDK?
+-----------------------------------------------------------
+I350 has RSS support and 8 queue pairs can be used in RSS mode. It should work with multi-queue DPDK applications using RSS.
+
+How can hugepage-backed memory be shared among multiple processes?
+------------------------------------------------------------------
+See the Primary and Secondary examples in the multi-process sample application.
