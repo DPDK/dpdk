@@ -2103,6 +2103,9 @@ static int igb_set_features(struct net_device *netdev,
 static int igb_ndo_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
 			   struct net_device *dev,
 			   const unsigned char *addr,
+#ifdef HAVE_NDO_FDB_ADD_VID
+			   u16 vid,
+#endif
 			   u16 flags)
 #else
 static int igb_ndo_fdb_add(struct ndmsg *ndm,
@@ -2259,7 +2262,11 @@ static int igb_ndo_bridge_getlink(struct sk_buff *skb, u32 pid, u32 seq,
 	else
 		mode = BRIDGE_MODE_VEPA;
 
+#ifdef HAVE_NDO_FDB_ADD_VID
+	return ndo_dflt_bridge_getlink(skb, pid, seq, dev, mode, 0, 0);
+#else
 	return ndo_dflt_bridge_getlink(skb, pid, seq, dev, mode);
+#endif /* HAVE_NDO_FDB_ADD_VID */
 }
 #endif /* HAVE_BRIDGE_ATTRIBS */
 #endif /* NTF_SELF */
