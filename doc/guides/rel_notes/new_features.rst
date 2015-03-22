@@ -30,6 +30,13 @@
 
 New Features
 ============
+*   Poll-mode driver support for an early release of the PCIE host interface of the Intel(R) Ethernet Switch FM10000.
+
+.. note:: The software is intended to run on pre-release hardware and may contain unknown or unresolved defects or
+          issues related to functionality and performance.
+          The poll mode driver is also pre-release and will be updated to a released version post hardware and base driver release.
+          Should the official hardware release be made between DPDK releases an updated poll-mode driver will be made available.
+
 *   Link Bonding
 
     *   Support for adaptive load balancing (mode 6) to the link bonding library.
