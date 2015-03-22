@@ -31,19 +31,19 @@
 Supported Operating Systems
 ===========================
 
-The following Linux* distributions were successfully used to generate or run the Intel® DPDK.
+The following Linux* distributions were successfully used to generate or run DPDK.
 
-*   FreeBSD* 9.2
+*   FreeBSD* 10
 
-*   Fedora release 18
+*   Fedora release 20
 
-*   Ubuntu* 12.04 LTS
+*   Ubuntu* 14.04 LTS
 
-*   Wind River* Linux* 5
+*   Wind River* Linux* 6
 
-*   Red Hat* Enterprise Linux 6.3
+*   Red Hat* Enterprise Linux 6.5
 
-*   SUSE Enterprise Linux* 11 SP2
+*   SUSE Enterprise Linux* 11 SP3
 
 These distributions may need additional packages that are not installed by default, or a specific kernel.
 Refer to the *DPDK Getting Started Guide* for details.
