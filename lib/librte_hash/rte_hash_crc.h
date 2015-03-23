@@ -366,7 +366,6 @@ crc32c_2words(uint64_t data, uint32_t init_val)
 }
 
 #if defined(RTE_ARCH_I686) || defined(RTE_ARCH_X86_64)
-
 static inline uint32_t
 crc32c_sse42_u32(uint32_t data, uint32_t init_val)
 {
@@ -390,27 +389,9 @@ crc32c_sse42_u64_mimic(uint64_t data, uint64_t init_val)
 	init_val = crc32c_sse42_u32(d.u32[1], init_val);
 	return init_val;
 }
-
-#else
-
-static inline uint32_t
-crc32c_sse42_u32(__rte_unused uint32_t data,
-                 __rte_unused uint32_t init_val)
-{
-	return 0;
-}
-
-static inline uint32_t
-crc32c_sse42_u64_mimic(__rte_unused uint32_t data,
-                       __rte_unused uint32_t init_val)
-{
-	return 0;
-}
-
 #endif
 
 #ifdef RTE_ARCH_X86_64
-
 static inline uint32_t
 crc32c_sse42_u64(uint64_t data, uint64_t init_val)
 {
@@ -420,16 +401,6 @@ crc32c_sse42_u64(uint64_t data, uint64_t init_val)
 			: [data] "rm" (data));
 	return init_val;
 }
-
-#else
-
-static inline uint32_t
-crc32c_sse42_u64(__rte_unused uint64_t data,
-                 __rte_unused uint64_t init_val)
-{
-	return 0;
-}
-
 #endif
 
 #define CRC32_SW            (1U << 0)
@@ -489,8 +460,10 @@ rte_hash_crc_init_alg(void)
 static inline uint32_t
 rte_hash_crc_4byte(uint32_t data, uint32_t init_val)
 {
+#if defined RTE_ARCH_I686 || defined RTE_ARCH_X86_64
 	if (likely(crc32_alg & CRC32_SSE42))
 		return crc32c_sse42_u32(data, init_val);
+#endif
 
 	return crc32c_1word(data, init_val);
 }
@@ -510,11 +483,15 @@ rte_hash_crc_4byte(uint32_t data, uint32_t init_val)
 static inline uint32_t
 rte_hash_crc_8byte(uint64_t data, uint32_t init_val)
 {
+#ifdef RTE_ARCH_X86_64
 	if (likely(crc32_alg == CRC32_SSE42_x64))
 		return crc32c_sse42_u64(data, init_val);
+#endif
 
+#if defined RTE_ARCH_I686 || defined RTE_ARCH_X86_64
 	if (likely(crc32_alg & CRC32_SSE42))
 		return crc32c_sse42_u64_mimic(data, init_val);
+#endif
 
 	return crc32c_2words(data, init_val);
 }
