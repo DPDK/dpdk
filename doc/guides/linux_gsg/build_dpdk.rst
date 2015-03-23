@@ -166,7 +166,7 @@ Loading Modules to Enable Userspace IO for DPDK
 -----------------------------------------------
 
 To run any DPDK application, a suitable uio module can be loaded into the running kernel.
-In most cases, the standard uio_pci_generic module included in the linux kernel
+In many cases, the standard uio_pci_generic module included in the linux kernel
 can provide the uio capability. This module can be loaded using the command
 
 .. code-block:: console
@@ -174,7 +174,18 @@ can provide the uio capability. This module can be loaded using the command
     sudo modprobe uio_pci_generic
 
 As an alternative to the uio_pci_generic, the DPDK also includes the igb_uio
-module which can be found in the kmod subdirectory referred to above.
+module which can be found in the kmod subdirectory referred to above. It can
+be loaded as shown below:
+
+.. code-block:: console
+
+    sudo modprobe uio
+    sudo insmod kmod/igb_uio.ko
+
+.. note::
+
+    For some devices which lack support for legacy interrupts, e.g. virtual function
+    (VF) devices, the igb_uio module may be needed in place of uio_pci_generic.
 
 Since DPDK release 1.7 onward provides VFIO support, use of UIO is optional
 for platforms that support using VFIO.
