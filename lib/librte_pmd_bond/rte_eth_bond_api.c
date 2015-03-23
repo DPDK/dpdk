@@ -230,11 +230,8 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 		goto err;
 	}
 
-	pci_drv = rte_zmalloc_socket(name, sizeof(*pci_drv), 0, socket_id);
-	if (pci_drv == NULL) {
-		RTE_BOND_LOG(ERR, "Unable to malloc pci_drv on socket");
-		goto err;
-	}
+	pci_drv = &eth_drv->pci_drv;
+
 	pci_id_table = rte_zmalloc_socket(name, sizeof(*pci_id_table), 0, socket_id);
 	if (pci_id_table == NULL) {
 		RTE_BOND_LOG(ERR, "Unable to malloc pci_id_table on socket");
@@ -266,9 +263,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	pci_dev->numa_node = socket_id;
 	pci_drv->name = driver_name;
 
-	eth_drv->pci_drv = (struct rte_pci_driver)(*pci_drv);
 	eth_dev->driver = eth_drv;
-
 	eth_dev->data->dev_private = internals;
 	eth_dev->data->nb_rx_queues = (uint16_t)1;
 	eth_dev->data->nb_tx_queues = (uint16_t)1;
@@ -325,8 +320,6 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 err:
 	if (pci_dev)
 		rte_free(pci_dev);
-	if (pci_drv)
-		rte_free(pci_drv);
 	if (pci_id_table)
 		rte_free(pci_id_table);
 	if (eth_drv)
