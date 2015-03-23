@@ -117,6 +117,7 @@ eventfd_link_ioctl(struct file *f, unsigned int ioctl, unsigned long arg)
 		 * Release the existing eventfd in the source process
 		 */
 		spin_lock(&files->file_lock);
+		fput(file);
 		filp_close(file, files);
 		fdt = files_fdtable(files);
 		fdt->fd[eventfd_copy.source_fd] = NULL;
