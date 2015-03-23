@@ -70,7 +70,7 @@ eal_short_options[] =
 const struct option
 eal_long_options[] = {
 	{OPT_BASE_VIRTADDR,     1, NULL, OPT_BASE_VIRTADDR_NUM    },
-	{OPT_CREATE_UIO_DEV,    1, NULL, OPT_CREATE_UIO_DEV_NUM   },
+	{OPT_CREATE_UIO_DEV,    0, NULL, OPT_CREATE_UIO_DEV_NUM   },
 	{OPT_FILE_PREFIX,       1, NULL, OPT_FILE_PREFIX_NUM      },
 	{OPT_HELP,              0, NULL, OPT_HELP_NUM             },
 	{OPT_HUGE_DIR,          1, NULL, OPT_HUGE_DIR_NUM         },
@@ -131,6 +131,7 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	internal_cfg->no_hpet = 1;
 #endif
 	internal_cfg->vmware_tsc_map = 0;
+	internal_cfg->create_uio_dev = 0;
 }
 
 /*
