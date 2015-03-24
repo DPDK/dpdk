@@ -513,35 +513,36 @@ rte_hash_crc(const void *data, uint32_t data_len, uint32_t init_val)
 {
 	unsigned i;
 	uint64_t temp = 0;
-	const uint64_t *p64 = (const uint64_t *)data;
+	uintptr_t pd = (uintptr_t) data;
 
 	for (i = 0; i < data_len / 8; i++) {
-		init_val = rte_hash_crc_8byte(*p64++, init_val);
+		init_val = rte_hash_crc_8byte(*(const uint64_t *)pd, init_val);
+		pd += 8;
 	}
 
 	switch (7 - (data_len & 0x07)) {
 	case 0:
-		temp |= (uint64_t) *((const uint8_t *)p64 + 6) << 48;
+		temp |= (uint64_t) *((const uint8_t *)pd + 6) << 48;
 		/* Fallthrough */
 	case 1:
-		temp |= (uint64_t) *((const uint8_t *)p64 + 5) << 40;
+		temp |= (uint64_t) *((const uint8_t *)pd + 5) << 40;
 		/* Fallthrough */
 	case 2:
-		temp |= (uint64_t) *((const uint8_t *)p64 + 4) << 32;
-		temp |= *((const uint32_t *)p64);
+		temp |= (uint64_t) *((const uint8_t *)pd + 4) << 32;
+		temp |= *(const uint32_t *)pd;
 		init_val = rte_hash_crc_8byte(temp, init_val);
 		break;
 	case 3:
-		init_val = rte_hash_crc_4byte(*(const uint32_t *)p64, init_val);
+		init_val = rte_hash_crc_4byte(*(const uint32_t *)pd, init_val);
 		break;
 	case 4:
-		temp |= *((const uint8_t *)p64 + 2) << 16;
+		temp |= *((const uint8_t *)pd + 2) << 16;
 		/* Fallthrough */
 	case 5:
-		temp |= *((const uint8_t *)p64 + 1) << 8;
+		temp |= *((const uint8_t *)pd + 1) << 8;
 		/* Fallthrough */
 	case 6:
-		temp |= *((const uint8_t *)p64);
+		temp |= *(const uint8_t *)pd;
 		init_val = rte_hash_crc_4byte(temp, init_val);
 		/* Fallthrough */
 	default:
