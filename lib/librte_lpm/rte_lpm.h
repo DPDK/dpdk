@@ -44,6 +44,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <rte_branch_prediction.h>
+#include <rte_byteorder.h>
 #include <rte_memory.h>
 #include <rte_common.h>
 #include <rte_vect.h>
@@ -96,6 +97,7 @@ extern "C" {
 /** Bitmask used to indicate successful lookup */
 #define RTE_LPM_LOOKUP_SUCCESS          0x0100
 
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 /** @internal Tbl24 entry structure. */
 struct rte_lpm_tbl24_entry {
 	/* Stores Next hop or group index (i.e. gindex)into tbl8. */
@@ -117,6 +119,24 @@ struct rte_lpm_tbl8_entry {
 	uint8_t valid_group :1; /**< Group validation flag. */
 	uint8_t depth       :6; /**< Rule depth. */
 };
+#else
+struct rte_lpm_tbl24_entry {
+	uint8_t depth       :6;
+	uint8_t ext_entry   :1;
+	uint8_t valid       :1;
+	union {
+		uint8_t tbl8_gindex;
+		uint8_t next_hop;
+	};
+};
+
+struct rte_lpm_tbl8_entry {
+	uint8_t depth       :6;
+	uint8_t valid_group :1;
+	uint8_t valid       :1;
+	uint8_t next_hop;
+};
+#endif
 
 /** @internal Rule structure. */
 struct rte_lpm_rule {
