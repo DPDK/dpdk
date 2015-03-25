@@ -3882,10 +3882,10 @@ ixgbe_add_5tuple_filter(struct rte_eth_dev *dev,
 	ftqf |= IXGBE_FTQF_POOL_MASK_EN;
 	ftqf |= IXGBE_FTQF_QUEUE_ENABLE;
 
-	IXGBE_WRITE_REG(hw, IXGBE_DAQF(idx), filter->filter_info.dst_ip);
-	IXGBE_WRITE_REG(hw, IXGBE_SAQF(idx), filter->filter_info.src_ip);
-	IXGBE_WRITE_REG(hw, IXGBE_SDPQF(idx), sdpqf);
-	IXGBE_WRITE_REG(hw, IXGBE_FTQF(idx), ftqf);
+	IXGBE_WRITE_REG(hw, IXGBE_DAQF(i), filter->filter_info.dst_ip);
+	IXGBE_WRITE_REG(hw, IXGBE_SAQF(i), filter->filter_info.src_ip);
+	IXGBE_WRITE_REG(hw, IXGBE_SDPQF(i), sdpqf);
+	IXGBE_WRITE_REG(hw, IXGBE_FTQF(i), ftqf);
 
 	l34timir |= IXGBE_L34T_IMIR_RESERVE;
 	l34timir |= (uint32_t)(filter->queue <<
