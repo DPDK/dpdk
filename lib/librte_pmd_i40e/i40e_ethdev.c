@@ -3120,6 +3120,7 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		ctxt.info.valid_sections |=
 			rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SCHED_VALID);
 	} else if (type == I40E_VSI_FDIR) {
+		memset(&ctxt, 0, sizeof(ctxt));
 		vsi->uplink_seid = uplink_vsi->uplink_seid;
 		ctxt.pf_num = hw->pf_id;
 		ctxt.vf_num = 0;
@@ -3143,7 +3144,7 @@ i40e_vsi_setup(struct i40e_pf *pf,
 
 	if (vsi->type != I40E_VSI_MAIN) {
 		ret = i40e_aq_add_vsi(hw, &ctxt, NULL);
-		if (ret) {
+		if (ret != I40E_SUCCESS) {
 			PMD_DRV_LOG(ERR, "add vsi failed, aq_err=%d",
 				    hw->aq.asq_last_status);
 			goto fail_msix_alloc;
