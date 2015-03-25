@@ -125,11 +125,6 @@ Compilation options
   Toggle software counters. No counters are available if this option is
   disabled since hardware counters are not supported.
 
-- ``CONFIG_RTE_LIBRTE_MLX4_COMPAT_VMWARE`` (default **1**)
-
-  Toggle VMware compatibility code. It also requires the environment
-  variable ``MLX4_COMPAT_VMWARE`` set to a nonzero value at runtime.
-
 Environment variables
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -138,12 +133,6 @@ Environment variables
   A nonzero value enables inline receive for packets up to that size. May
   significantly improve performance in some cases but lower it in
   others. Requires careful testing.
-
-- ``MLX4_COMPAT_VMWARE``
-
-  Only supported when compiled with
-  ``CONFIG_RTE_LIBRTE_MLX4_COMPAT_VMWARE=1``. Adds workarounds to run in
-  VMware systems that do not support the flows API properly.
 
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~

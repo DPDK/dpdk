@@ -80,14 +80,6 @@
 #define MLX4_PMD_SOFT_COUNTERS 1
 #endif
 
-/*
- * If defined, enable VMware compatibility code. It also requires the
- * environment variable MLX4_COMPAT_VMWARE set to a nonzero value at runtime.
- */
-#ifndef MLX4_COMPAT_VMWARE
-#define MLX4_COMPAT_VMWARE 1
-#endif
-
 enum {
 	PCI_VENDOR_ID_MELLANOX = 0x15b3,
 };

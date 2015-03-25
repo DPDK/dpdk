@@ -278,9 +278,6 @@ struct priv {
 	unsigned int hw_tss:1; /* TSS is supported. */
 	unsigned int hw_rss:1; /* RSS is supported. */
 	unsigned int rss:1; /* RSS is enabled. */
-#ifdef MLX4_COMPAT_VMWARE
-	unsigned int vmware:1; /* Use VMware compatibility. */
-#endif
 	unsigned int vf:1; /* This is a VF device. */
 #ifdef INLINE_RECV
 	unsigned int inl_recv_size; /* Inline recv size */
@@ -1825,7 +1822,7 @@ rxq_free_elts(struct rxq *rxq)
 static void
 rxq_mac_addr_del(struct rxq *rxq, unsigned int mac_index)
 {
-#if defined(NDEBUG) || defined(MLX4_COMPAT_VMWARE)
+#ifndef NDEBUG
 	struct priv *priv = rxq->priv;
 	const uint8_t (*mac)[ETHER_ADDR_LEN] =
 		(const uint8_t (*)[ETHER_ADDR_LEN])
@@ -1842,16 +1839,6 @@ rxq_mac_addr_del(struct rxq *rxq, unsigned int mac_index)
 	      (void *)rxq,
 	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5],
 	      mac_index);
-#ifdef MLX4_COMPAT_VMWARE
-	if (priv->vmware) {
-		union ibv_gid gid = { .raw = { 0 } };
-
-		memcpy(&gid.raw[10], *mac, sizeof(*mac));
-		claim_zero(ibv_detach_mcast(rxq->qp, &gid, 0));
-		BITFIELD_RESET(rxq->mac_configured, mac_index);
-		return;
-	}
-#endif
 	assert(rxq->mac_flow[mac_index] != NULL);
 	claim_zero(ibv_exp_destroy_flow(rxq->mac_flow[mac_index]));
 	rxq->mac_flow[mac_index] = NULL;
@@ -1960,22 +1947,6 @@ rxq_mac_addr_add(struct rxq *rxq, unsigned int mac_index)
 	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5],
 	      mac_index,
 	      vlans);
-#ifdef MLX4_COMPAT_VMWARE
-	if (priv->vmware) {
-		union ibv_gid gid = { .raw = { 0 } };
-
-		/* Call multicast attach with unicast mac to get traffic. */
-		memcpy(&gid.raw[10], *mac, sizeof(*mac));
-		errno = 0;
-		if (ibv_attach_mcast(rxq->qp, &gid, 0)) {
-			if (errno)
-				return errno;
-			return EINVAL;
-		}
-		BITFIELD_SET(rxq->mac_configured, mac_index);
-		return 0;
-	}
-#endif
 	/* Create related flow. */
 	errno = 0;
 	flow = ibv_exp_create_flow(rxq->qp, attr);
@@ -2173,13 +2144,6 @@ rxq_allmulticast_enable(struct rxq *rxq)
 		.flags = 0
 	};
 
-#ifdef MLX4_COMPAT_VMWARE
-	if (rxq->priv->vmware) {
-		ERROR("%p: allmulticast mode is not supported in VMware",
-		      (void *)rxq);
-		return EINVAL;
-	}
-#endif
 	DEBUG("%p: enabling allmulticast mode", (void *)rxq);
 	if (rxq->allmulti_flow != NULL)
 		return EBUSY;
@@ -2208,13 +2172,6 @@ rxq_allmulticast_enable(struct rxq *rxq)
 static void
 rxq_allmulticast_disable(struct rxq *rxq)
 {
-#ifdef MLX4_COMPAT_VMWARE
-	if (rxq->priv->vmware) {
-		ERROR("%p: allmulticast mode is not supported in VMware",
-		      (void *)rxq);
-		return;
-	}
-#endif
 	DEBUG("%p: disabling allmulticast mode", (void *)rxq);
 	if (rxq->allmulti_flow == NULL)
 		return;
@@ -2243,13 +2200,6 @@ rxq_promiscuous_enable(struct rxq *rxq)
 		.flags = 0
 	};
 
-#ifdef MLX4_COMPAT_VMWARE
-	if (rxq->priv->vmware) {
-		ERROR("%p: promiscuous mode is not supported in VMware",
-		      (void *)rxq);
-		return EINVAL;
-	}
-#endif
 	if (rxq->priv->vf)
 		return 0;
 	DEBUG("%p: enabling promiscuous mode", (void *)rxq);
@@ -2280,13 +2230,6 @@ rxq_promiscuous_enable(struct rxq *rxq)
 static void
 rxq_promiscuous_disable(struct rxq *rxq)
 {
-#ifdef MLX4_COMPAT_VMWARE
-	if (rxq->priv->vmware) {
-		ERROR("%p: promiscuous mode is not supported in VMware",
-		      (void *)rxq);
-		return;
-	}
-#endif
 	if (rxq->priv->vf)
 		return;
 	DEBUG("%p: disabling promiscuous mode", (void *)rxq);
@@ -4594,12 +4537,7 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		}
 #endif /* INLINE_RECV */
 
-#ifdef MLX4_COMPAT_VMWARE
-		if (mlx4_getenv_int("MLX4_COMPAT_VMWARE"))
-			priv->vmware = 1;
-#else /* MLX4_COMPAT_VMWARE */
 		(void)mlx4_getenv_int;
-#endif /* MLX4_COMPAT_VMWARE */
 		priv->vf = vf;
 		if (ibv_query_gid(ctx, port, 0, &temp_gid)) {
 			ERROR("ibv_query_gid() failure");
