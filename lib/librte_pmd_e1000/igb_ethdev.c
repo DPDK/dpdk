@@ -2908,7 +2908,7 @@ eth_igb_flex_filter_handle(struct rte_eth_dev *dev,
 	struct rte_eth_flex_filter *filter;
 	int ret = 0;
 
-	MAC_TYPE_FILTER_SUP(hw->mac.type);
+	MAC_TYPE_FILTER_SUP_EXT(hw->mac.type);
 
 	if (filter_op == RTE_ETH_FILTER_NOP)
 		return ret;
