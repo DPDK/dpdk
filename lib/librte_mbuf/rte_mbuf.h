@@ -764,6 +764,16 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, 0);
 
+	/*
+	 * Check to see if this is the last reference to the mbuf.
+	 * Note: the double check here is deliberate. If the ref_cnt is "atomic"
+	 * the call to "refcnt_update" is a very expensive operation, so we
+	 * don't want to call it in the case where we know we are the holder
+	 * of the last reference to this mbuf i.e. ref_cnt == 1.
+	 * If however, ref_cnt != 1, it's still possible that we may still be
+	 * the final decrementer of the count, so we need to check that
+	 * result also, to make sure the mbuf is freed properly.
+	 */
 	if (likely (rte_mbuf_refcnt_read(m) == 1) ||
 			likely (rte_mbuf_refcnt_update(m, -1) == 0)) {
 
