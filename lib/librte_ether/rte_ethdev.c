@@ -741,19 +741,6 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 			dev->data->nb_rx_queues = 0;
 			return -(ENOMEM);
 		}
-#ifdef RTE_ETHDEV_RXTX_CALLBACKS
-		dev->post_rx_burst_cbs = rte_zmalloc(
-			"ethdev->post_rx_burst_cbs",
-			sizeof(*dev->post_rx_burst_cbs) * nb_queues,
-			RTE_CACHE_LINE_SIZE);
-		if (dev->post_rx_burst_cbs == NULL) {
-			rte_free(dev->data->rx_queues);
-			dev->data->rx_queues = NULL;
-			dev->data->nb_rx_queues = 0;
-			return -ENOMEM;
-		}
-#endif
-
 	} else { /* re-configure */
 		FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_release, -ENOTSUP);
 
@@ -765,22 +752,10 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 				RTE_CACHE_LINE_SIZE);
 		if (rxq == NULL)
 			return -(ENOMEM);
-#ifdef RTE_ETHDEV_RXTX_CALLBACKS
-		dev->post_rx_burst_cbs = rte_realloc(
-			dev->post_rx_burst_cbs,
-			sizeof(*dev->post_rx_burst_cbs) *
-				nb_queues, RTE_CACHE_LINE_SIZE);
-		if (dev->post_rx_burst_cbs == NULL)
-			return -ENOMEM;
-#endif
 		if (nb_queues > old_nb_queues) {
 			uint16_t new_qs = nb_queues - old_nb_queues;
 			memset(rxq + old_nb_queues, 0,
 				sizeof(rxq[0]) * new_qs);
-#ifdef RTE_ETHDEV_RXTX_CALLBACKS
-			memset(dev->post_rx_burst_cbs + old_nb_queues, 0,
-				sizeof(dev->post_rx_burst_cbs[0]) * new_qs);
-#endif
 		}
 
 		dev->data->rx_queues = rxq;
@@ -909,19 +884,6 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 			dev->data->nb_tx_queues = 0;
 			return -(ENOMEM);
 		}
-#ifdef RTE_ETHDEV_RXTX_CALLBACKS
-		dev->pre_tx_burst_cbs = rte_zmalloc(
-			"ethdev->pre_tx_burst_cbs",
-			sizeof(*dev->pre_tx_burst_cbs) * nb_queues,
-			RTE_CACHE_LINE_SIZE);
-		if (dev->pre_tx_burst_cbs == NULL) {
-			rte_free(dev->data->tx_queues);
-			dev->data->tx_queues = NULL;
-			dev->data->nb_tx_queues = 0;
-			return -ENOMEM;
-		}
-#endif
-
 	} else { /* re-configure */
 		FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_release, -ENOTSUP);
 
@@ -933,22 +895,10 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 				RTE_CACHE_LINE_SIZE);
 		if (txq == NULL)
 			return -ENOMEM;
-#ifdef RTE_ETHDEV_RXTX_CALLBACKS
-		dev->pre_tx_burst_cbs = rte_realloc(
-			dev->pre_tx_burst_cbs,
-			sizeof(*dev->pre_tx_burst_cbs) *
-				nb_queues, RTE_CACHE_LINE_SIZE);
-		if (dev->pre_tx_burst_cbs == NULL)
-			return -ENOMEM;
-#endif
 		if (nb_queues > old_nb_queues) {
 			uint16_t new_qs = nb_queues - old_nb_queues;
 			memset(txq + old_nb_queues, 0,
 				sizeof(txq[0]) * new_qs);
-#ifdef RTE_ETHDEV_RXTX_CALLBACKS
-			memset(dev->pre_tx_burst_cbs + old_nb_queues, 0,
-				sizeof(dev->pre_tx_burst_cbs[0]) * new_qs);
-#endif
 		}
 
 		dev->data->tx_queues = txq;
@@ -1161,6 +1111,20 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 
 	if (!rte_eth_dev_is_valid_port(port_id)) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return (-EINVAL);
+	}
+
+	if (nb_rx_q > RTE_MAX_QUEUES_PER_PORT) {
+		PMD_DEBUG_TRACE(
+			"Number of RX queues requested (%u) is greater than max supported(%d)\n",
+			nb_rx_q, RTE_MAX_QUEUES_PER_PORT);
+		return (-EINVAL);
+	}
+
+	if (nb_tx_q > RTE_MAX_QUEUES_PER_PORT) {
+		PMD_DEBUG_TRACE(
+			"Number of TX queues requested (%u) is greater than max supported(%d)\n",
+			nb_tx_q, RTE_MAX_QUEUES_PER_PORT);
 		return (-EINVAL);
 	}
 

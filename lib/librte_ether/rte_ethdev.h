@@ -1458,12 +1458,12 @@ struct rte_eth_dev {
 	 * User-supplied functions called from rx_burst to post-process
 	 * received packets before passing them to the user
 	 */
-	struct rte_eth_rxtx_callback **post_rx_burst_cbs;
+	struct rte_eth_rxtx_callback *post_rx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
 	/**
 	 * User-supplied functions called from tx_burst to pre-process
 	 * received packets before passing them to the driver for transmission.
 	 */
-	struct rte_eth_rxtx_callback **pre_tx_burst_cbs;
+	struct rte_eth_rxtx_callback *pre_tx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
 	uint8_t attached; /**< Flag indicating the port is attached */
 	enum rte_eth_dev_type dev_type; /**< Flag indicating the device type */
 };
