@@ -1097,6 +1097,16 @@ virtio_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 
 }
 
+static void
+rx_func_get(struct rte_eth_dev *eth_dev)
+{
+	struct virtio_hw *hw = eth_dev->data->dev_private;
+	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF))
+		eth_dev->rx_pkt_burst = &virtio_recv_mergeable_pkts;
+	else
+		eth_dev->rx_pkt_burst = &virtio_recv_pkts;
+}
+
 /*
  * This function is based on probe() function in virtio_pci.c
  * It returns 0 on success.
@@ -1115,8 +1125,10 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &virtio_eth_dev_ops;
 	eth_dev->tx_pkt_burst = &virtio_xmit_pkts;
 
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		rx_func_get(eth_dev);
 		return 0;
+	}
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("virtio", ETHER_ADDR_LEN, 0);
@@ -1144,14 +1156,13 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER);
 	virtio_negotiate_features(hw);
 
+	rx_func_get(eth_dev);
+
 	/* Setting up rx_header size for the device */
-	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
-		eth_dev->rx_pkt_burst = &virtio_recv_mergeable_pkts;
+	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF))
 		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr_mrg_rxbuf);
-	} else {
-		eth_dev->rx_pkt_burst = &virtio_recv_pkts;
+	else
 		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr);
-	}
 
 	/* Copy the permanent MAC address to: virtio_hw */
 	virtio_get_hwaddr(hw);
