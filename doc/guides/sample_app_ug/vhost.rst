@@ -1,3 +1,4 @@
+
 ..  BSD LICENSE
     Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
     All rights reserved.
@@ -713,19 +714,60 @@ To call the QEMU wrapper automatically from libvirt, the following configuration
 Common Issues
 ~~~~~~~~~~~~~
 
-**QEMU failing to allocate memory on hugetlbfs.**
+*   QEMU failing to allocate memory on hugetlbfs, with an error like the following::
 
-file_ram_alloc: can't mmap RAM pages: Cannot allocate memory
+       file_ram_alloc: can't mmap RAM pages: Cannot allocate memory
 
-When running QEMU the above error implies that it has failed to allocate memory for the Virtual Machine on the hugetlbfs.
-This is typically due to insufficient hugepages being free to support the allocation request.
-The number of free hugepages can be checked as follows:
+    When running QEMU the above error indicates that it has failed to allocate memory for the Virtual Machine on
+    the hugetlbfs. This is typically due to insufficient hugepages being free to support the allocation request.
+    The number of free hugepages can be checked as follows:
 
-.. code-block:: console
+    .. code-block:: console
 
-    user@target:cat /sys/kernel/mm/hugepages/hugepages-<pagesize>/nr_hugepages
+        cat /sys/kernel/mm/hugepages/hugepages-<pagesize>/nr_hugepages
 
-The command above indicates how many hugepages are free to support QEMU's allocation request.
+    The command above indicates how many hugepages are free to support QEMU's allocation request.
+
+*   User space VHOST when the guest has 2MB sized huge pages:
+
+    The guest may have 2MB or 1GB sized huge pages. The user space VHOST should work properly in both cases.
+
+*   User space VHOST will not work with QEMU without the ``-mem-prealloc`` option:
+
+    The current implementation works properly only when the guest memory is pre-allocated, so it is required to
+    use a QEMU version (e.g. 1.6) which supports ``-mem-prealloc``. The ``-mem-prealloc`` option must be
+    specified explicitly in the QEMU command line.
+
+*   User space VHOST will not work with a QEMU version without shared memory mapping:
+
+    As shared memory mapping is mandatory for user space VHOST to work properly with the guest, user space VHOST
+    needs access to the shared memory from the guest to receive and transmit packets. It is important to make sure
+    the QEMU version supports shared memory mapping.
+
+*   Issues with ``virsh destroy`` not destroying the VM:
+
+    Using libvirt ``virsh create`` the ``qemu-wrap.py`` spawns a new process to run ``qemu-kvm``. This impacts the behavior
+    of ``virsh destroy`` which kills the process running ``qemu-wrap.py`` without actually destroying the VM (it leaves
+    the ``qemu-kvm`` process running):
+
+    This following patch should fix this issue:
+        http://dpdk.org/ml/archives/dev/2014-June/003607.html
+
+*   In an Ubuntu environment, QEMU fails to start a new guest normally with user space VHOST due to not being able
+    to allocate huge pages for the new guest:
+
+    The solution for this issue is to add ``-boot c`` into the QEMU command line to make sure the huge pages are
+    allocated properly and then the guest should start normally.
+
+    Use ``cat /proc/meminfo`` to check if there is any changes in the value of ``HugePages_Total`` and ``HugePages_Free``
+    after the guest startup.
+
+*   Log message: ``eventfd_link: module verification failed: signature and/or required key missing - tainting kernel``:
+
+    This log message may be ignored. The message occurs due to the kernel module ``eventfd_link``, which is not a standard
+    Linux module but which is necessary for the user space VHOST current implementation (CUSE-based) to communicate with
+    the guest.
+
 
 Running DPDK in the Virtual Machine
 -----------------------------------
