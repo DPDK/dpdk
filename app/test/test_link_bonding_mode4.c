@@ -1181,7 +1181,6 @@ test_mode4_expired(void)
 {
 	struct slave_conf *slave, *exp_slave = NULL;
 	struct rte_mbuf *pkts[MAX_PKT_BURST];
-	struct rte_mbuf *pkt = NULL;
 	int retval;
 	uint32_t old_delay;
 
@@ -1239,7 +1238,9 @@ test_mode4_expired(void)
 			/* Remove replay for slave that supose to be expired. */
 			if (slave == exp_slave) {
 				while (rte_ring_count(slave->rx_queue) > 0) {
-					rte_ring_dequeue(slave->rx_queue, (void **)&pkt);
+					void *pkt = NULL;
+
+					rte_ring_dequeue(slave->rx_queue, &pkt);
 					rte_pktmbuf_free(pkt);
 				}
 			}

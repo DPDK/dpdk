@@ -75,15 +75,15 @@ virtual_ethdev_start_fail(struct rte_eth_dev *eth_dev __rte_unused)
 }
 static void  virtual_ethdev_stop(struct rte_eth_dev *eth_dev __rte_unused)
 {
-	struct rte_mbuf *pkt = NULL;
+	void *pkt = NULL;
 	struct virtual_ethdev_private *prv = eth_dev->data->dev_private;
 
 	eth_dev->data->dev_link.link_status = 0;
 	eth_dev->data->dev_started = 0;
-	while (rte_ring_dequeue(prv->rx_queue, (void **)&pkt) != -ENOENT)
+	while (rte_ring_dequeue(prv->rx_queue, &pkt) != -ENOENT)
 		rte_pktmbuf_free(pkt);
 
-	while (rte_ring_dequeue(prv->tx_queue, (void **)&pkt) != -ENOENT)
+	while (rte_ring_dequeue(prv->tx_queue, &pkt) != -ENOENT)
 		rte_pktmbuf_free(pkt);
 }
 
@@ -223,9 +223,9 @@ static void
 virtual_ethdev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
-	struct rte_mbuf *pkt = NULL;
+	void *pkt = NULL;
 
-	while (rte_ring_dequeue(dev_private->tx_queue, (void **)&pkt) == -ENOBUFS)
+	while (rte_ring_dequeue(dev_private->tx_queue, &pkt) == -ENOBUFS)
 			rte_pktmbuf_free(pkt);
 
 	/* Reset internal statistics */
