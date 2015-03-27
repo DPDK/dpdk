@@ -42,6 +42,30 @@ See the DPDK Getting Started Guide for more information on these options.
 
     Set the hexadecimal bitmask of the cores to run on.
 
+*   -l CORELIST
+
+    List of cores to run on
+
+    The argument format is <c1>[-c2][,c3[-c4],...]
+    where c1, c2, etc are core indexes between 0 and 128
+
+*   --lcores COREMAP
+
+    Map lcore set to physical cpu set
+
+    The argument format is
+        '<lcores[@cpus]>[<,lcores[@cpus]>...]'
+
+    lcores and cpus list are grouped by '(' and ')'
+    Within the group, '-' is used for range separator,
+    ',' is used for single number separator.
+    '( )' can be omitted for single element group,
+    '@' can be omitted if cpus and lcores have the same value
+
+*   --master-lcore ID
+
+    Core ID that is used as master
+
 *   -n NUM
 
     Set the number of memory channels to use.
