@@ -1021,7 +1021,7 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 }
 
 static inline int
-ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq)
+ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq, bool reset_mbuf)
 {
 	volatile union ixgbe_adv_rx_desc *rxdp;
 	struct ixgbe_rx_entry *rxep;
@@ -1042,21 +1042,20 @@ ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq)
 	for (i = 0; i < rxq->rx_free_thresh; ++i) {
 		/* populate the static rte mbuf fields */
 		mb = rxep[i].mbuf;
+		if (reset_mbuf) {
+			mb->next = NULL;
+			mb->nb_segs = 1;
+			mb->port = rxq->port_id;
+		}
+
 		rte_mbuf_refcnt_set(mb, 1);
-		mb->next = NULL;
 		mb->data_off = RTE_PKTMBUF_HEADROOM;
-		mb->nb_segs = 1;
-		mb->port = rxq->port_id;
 
 		/* populate the descriptors */
 		dma_addr = rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb));
 		rxdp[i].read.hdr_addr = dma_addr;
 		rxdp[i].read.pkt_addr = dma_addr;
 	}
-
-	/* update tail pointer */
-	rte_wmb();
-	IXGBE_PCI_REG_WRITE(rxq->rdt_reg_addr, rxq->rx_free_trigger);
 
 	/* update state of internal queue structure */
 	rxq->rx_free_trigger = rxq->rx_free_trigger + rxq->rx_free_thresh;
@@ -1109,7 +1108,9 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	/* if required, allocate new buffers to replenish descriptors */
 	if (rxq->rx_tail > rxq->rx_free_trigger) {
-		if (ixgbe_rx_alloc_bufs(rxq) != 0) {
+		uint16_t cur_free_trigger = rxq->rx_free_trigger;
+
+		if (ixgbe_rx_alloc_bufs(rxq, true) != 0) {
 			int i, j;
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
 				   "queue_id=%u", (unsigned) rxq->port_id,
@@ -1129,6 +1130,10 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 			return 0;
 		}
+
+		/* update tail pointer */
+		rte_wmb();
+		IXGBE_PCI_REG_WRITE(rxq->rdt_reg_addr, cur_free_trigger);
 	}
 
 	if (rxq->rx_tail >= rxq->nb_rx_desc)
@@ -1179,6 +1184,12 @@ ixgbe_recv_pkts_bulk_alloc(__rte_unused void *rx_queue,
 	return 0;
 }
 
+static inline int
+ixgbe_rx_alloc_bufs(__rte_unused struct ixgbe_rx_queue *rxq,
+		    __rte_unused bool reset_mbuf)
+{
+	return -ENOMEM;
+}
 #endif /* RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC */
 
 uint16_t
@@ -1363,6 +1374,64 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return (nb_rx);
 }
 
+/**
+ * Detect an RSC descriptor.
+ */
+static inline uint32_t
+ixgbe_rsc_count(union ixgbe_adv_rx_desc *rx)
+{
+	return (rte_le_to_cpu_32(rx->wb.lower.lo_dword.data) &
+		IXGBE_RXDADV_RSCCNT_MASK) >> IXGBE_RXDADV_RSCCNT_SHIFT;
+}
+
+/**
+ * ixgbe_fill_cluster_head_buf - fill the first mbuf of the returned packet
+ *
+ * Fill the following info in the HEAD buffer of the Rx cluster:
+ *    - RX port identifier
+ *    - hardware offload data, if any:
+ *      - RSS flag & hash
+ *      - IP checksum flag
+ *      - VLAN TCI, if any
+ *      - error flags
+ * @head HEAD of the packet cluster
+ * @desc HW descriptor to get data from
+ * @port_id Port ID of the Rx queue
+ */
+static inline void
+ixgbe_fill_cluster_head_buf(
+	struct rte_mbuf *head,
+	union ixgbe_adv_rx_desc *desc,
+	uint8_t port_id,
+	uint32_t staterr)
+{
+	uint32_t hlen_type_rss;
+	uint64_t pkt_flags;
+
+	head->port = port_id;
+
+	/*
+	 * The vlan_tci field is only valid when PKT_RX_VLAN_PKT is
+	 * set in the pkt_flags field.
+	 */
+	head->vlan_tci = rte_le_to_cpu_16(desc->wb.upper.vlan);
+	hlen_type_rss = rte_le_to_cpu_32(desc->wb.lower.lo_dword.data);
+	pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
+	pkt_flags |= rx_desc_status_to_pkt_flags(staterr);
+	pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
+	head->ol_flags = pkt_flags;
+
+	if (likely(pkt_flags & PKT_RX_RSS_HASH))
+		head->hash.rss = rte_le_to_cpu_32(desc->wb.lower.hi_dword.rss);
+	else if (pkt_flags & PKT_RX_FDIR) {
+		head->hash.fdir.hash =
+			rte_le_to_cpu_16(desc->wb.lower.hi_dword.csum_ip.csum)
+							  & IXGBE_ATR_HASH_MASK;
+		head->hash.fdir.id =
+			rte_le_to_cpu_16(desc->wb.lower.hi_dword.csum_ip.ip_id);
+	}
+}
+
 uint16_t
 ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			  uint16_t nb_pkts)
@@ -1379,12 +1448,10 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	union ixgbe_adv_rx_desc rxd;
 	uint64_t dma; /* Physical address of mbuf data buffer */
 	uint32_t staterr;
-	uint32_t hlen_type_rss;
 	uint16_t rx_id;
 	uint16_t nb_rx;
 	uint16_t nb_hold;
 	uint16_t data_len;
-	uint64_t pkt_flags;
 
 	nb_rx = 0;
 	nb_hold = 0;
@@ -1542,40 +1609,9 @@ ixgbe_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 					(uint16_t) (data_len - ETHER_CRC_LEN);
 		}
 
-		/*
-		 * Initialize the first mbuf of the returned packet:
-		 *    - RX port identifier,
-		 *    - hardware offload data, if any:
-		 *      - RSS flag & hash,
-		 *      - IP checksum flag,
-		 *      - VLAN TCI, if any,
-		 *      - error flags.
-		 */
-		first_seg->port = rxq->port_id;
-
-		/*
-		 * The vlan_tci field is only valid when PKT_RX_VLAN_PKT is
-		 * set in the pkt_flags field.
-		 */
-		first_seg->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
-		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
-		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
-		pkt_flags = (pkt_flags |
-				rx_desc_status_to_pkt_flags(staterr));
-		pkt_flags = (pkt_flags |
-				rx_desc_error_to_pkt_flags(staterr));
-		first_seg->ol_flags = pkt_flags;
-
-		if (likely(pkt_flags & PKT_RX_RSS_HASH))
-			first_seg->hash.rss =
-				    rte_le_to_cpu_32(rxd.wb.lower.hi_dword.rss);
-		else if (pkt_flags & PKT_RX_FDIR) {
-			first_seg->hash.fdir.hash =
-			    rte_le_to_cpu_16(rxd.wb.lower.hi_dword.csum_ip.csum)
-					   & IXGBE_ATR_HASH_MASK;
-			first_seg->hash.fdir.id =
-			  rte_le_to_cpu_16(rxd.wb.lower.hi_dword.csum_ip.ip_id);
-		}
+		/* Initialize the first mbuf of the returned packet */
+		ixgbe_fill_cluster_head_buf(first_seg, &rxd, rxq->port_id,
+					    staterr);
 
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_packet_prefetch((char *)first_seg->buf_addr +
