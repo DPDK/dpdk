@@ -110,6 +110,9 @@ struct ipv4_hdr {
 					   (((c) & 0xff) << 8)  | \
 					   ((d) & 0xff))
 
+/** Maximal IPv4 packet length (including a header) */
+#define IPV4_MAX_PKT_LEN        65535
+
 /** Internet header length mask for version_ihl field */
 #define IPV4_HDR_IHL_MASK	(0x0f)
 /**

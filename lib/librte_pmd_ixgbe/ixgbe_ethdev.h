@@ -62,6 +62,14 @@
 #endif
 #define IXGBE_HWSTRIP_BITMAP_SIZE (IXGBE_MAX_RX_QUEUE_NUM / (sizeof(uint32_t) * NBBY))
 
+/* EITR Inteval is in 2048ns uinits for 1G and 10G link */
+#define IXGBE_EITR_INTERVAL_UNIT_NS	2048
+#define IXGBE_EITR_ITR_INT_SHIFT       3
+#define IXGBE_EITR_INTERVAL_US(us) \
+	(((us) * 1000 / IXGBE_EITR_INTERVAL_UNIT_NS << IXGBE_EITR_ITR_INT_SHIFT) & \
+		IXGBE_EITR_ITR_INT_MASK)
+
+
 /* Loopback operation modes */
 /* 82599 specific loopback operation types */
 #define IXGBE_LPBK_82599_NONE   0x0 /* Default value. Loopback is disabled. */
@@ -342,6 +350,11 @@ uint16_t ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
 
 uint16_t ixgbe_recv_scattered_pkts(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+
+uint16_t ixgbe_recv_pkts_lro_single_alloc(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t ixgbe_recv_pkts_lro_bulk_alloc(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
 uint16_t ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,

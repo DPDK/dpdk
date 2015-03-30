@@ -79,6 +79,10 @@ struct ixgbe_rx_entry {
 	struct rte_mbuf *mbuf; /**< mbuf associated with RX descriptor. */
 };
 
+struct ixgbe_rsc_entry {
+	struct rte_mbuf *fbuf; /**< First segment of the fragmented packet. */
+};
+
 /**
  * Structure associated with each descriptor of the TX ring of a TX queue.
  */
@@ -105,6 +109,7 @@ struct ixgbe_rx_queue {
 	volatile uint32_t   *rdt_reg_addr; /**< RDT register address. */
 	volatile uint32_t   *rdh_reg_addr; /**< RDH register address. */
 	struct ixgbe_rx_entry *sw_ring; /**< address of RX software ring. */
+	struct ixgbe_rsc_entry *sw_rsc_ring; /**< address of RSC software ring. */
 	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet. */
 	struct rte_mbuf *pkt_last_seg; /**< Last segment of current packet. */
 	uint64_t            mbuf_initializer; /**< value to init mbufs */
@@ -126,6 +131,7 @@ struct ixgbe_rx_queue {
 	uint8_t             port_id;  /**< Device port identifier. */
 	uint8_t             crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
 	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
+	uint8_t             rsc_en;   /**< If not 0, RSC is enabled. */
 	uint8_t             rx_deferred_start; /**< not in global dev start. */
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */

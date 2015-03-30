@@ -1644,6 +1644,7 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 
 	/* Clear stored conf */
 	dev->data->scattered_rx = 0;
+	dev->data->lro = 0;
 
 	/* Clear recorded link status */
 	memset(&link, 0, sizeof(link));
@@ -2012,6 +2013,16 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_UDP_CKSUM  |
 		DEV_RX_OFFLOAD_TCP_CKSUM;
+
+	/*
+	 * RSC is only supported by 82599 and x540 PF devices in a non-SR-IOV
+	 * mode.
+	 */
+	if ((hw->mac.type == ixgbe_mac_82599EB ||
+	     hw->mac.type == ixgbe_mac_X540) &&
+	    !RTE_ETH_DEV_SRIOV(dev).active)
+		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TCP_LRO;
+
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_VLAN_INSERT |
 		DEV_TX_OFFLOAD_IPV4_CKSUM  |
