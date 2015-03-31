@@ -31,7 +31,7 @@
 Release Notes
 =============
 
-Package Version: 1.8
+Package Version: 2.0
 
 |today|
 

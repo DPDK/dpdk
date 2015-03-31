@@ -32,7 +32,7 @@ Description of Release
 ======================
 
 These release notes cover the new features,
-fixed bugs and known issues for Data Plane Development Kit (DPDK) release version 1.7.0.
+fixed bugs and known issues for Data Plane Development Kit (DPDK) release version 2.0.0.
 
 For instructions on compiling and running the release, see the *DPDK Getting Started Guide*.
 
