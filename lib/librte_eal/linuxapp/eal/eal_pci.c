@@ -340,19 +340,19 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	ret = pci_get_kernel_driver_by_path(filename, driver);
 	if (!ret) {
 		if (!strcmp(driver, "vfio-pci"))
-			dev->pt_driver = RTE_PT_VFIO;
+			dev->kdrv = RTE_KDRV_VFIO;
 		else if (!strcmp(driver, "igb_uio"))
-			dev->pt_driver = RTE_PT_IGB_UIO;
+			dev->kdrv = RTE_KDRV_IGB_UIO;
 		else if (!strcmp(driver, "uio_pci_generic"))
-			dev->pt_driver = RTE_PT_UIO_GENERIC;
+			dev->kdrv = RTE_KDRV_UIO_GENERIC;
 		else
-			dev->pt_driver = RTE_PT_UNKNOWN;
+			dev->kdrv = RTE_KDRV_UNKNOWN;
 	} else if (ret < 0) {
 		RTE_LOG(ERR, EAL, "Fail to get kernel driver\n");
 		free(dev);
 		return -1;
 	} else
-		dev->pt_driver = RTE_PT_UNKNOWN;
+		dev->kdrv = RTE_KDRV_UNKNOWN;
 
 	/* device is valid, add in list (sorted) */
 	if (TAILQ_EMPTY(&pci_device_list)) {
@@ -370,8 +370,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 				TAILQ_INSERT_BEFORE(dev2, dev, next);
 				return 0;
 			} else { /* already registered */
-				/* update pt_driver */
-				dev2->pt_driver = dev->pt_driver;
+				dev2->kdrv = dev->kdrv;
 				dev2->max_vfs = dev->max_vfs;
 				memmove(dev2->mem_resource,
 					dev->mem_resource,
@@ -570,20 +569,20 @@ pci_map_device(struct rte_pci_device *dev)
 	int ret = -1;
 
 	/* try mapping the NIC resources using VFIO if it exists */
-	switch (dev->pt_driver) {
-	case RTE_PT_VFIO:
+	switch (dev->kdrv) {
+	case RTE_KDRV_VFIO:
 #ifdef VFIO_PRESENT
 		if (pci_vfio_is_enabled())
 			ret = pci_vfio_map_resource(dev);
 #endif
 		break;
-	case RTE_PT_IGB_UIO:
-	case RTE_PT_UIO_GENERIC:
+	case RTE_KDRV_IGB_UIO:
+	case RTE_KDRV_UIO_GENERIC:
 		/* map resources for devices that use uio */
 		ret = pci_uio_map_resource(dev);
 		break;
 	default:
-		RTE_LOG(DEBUG, EAL, "  Not managed by known pt driver,"
+		RTE_LOG(DEBUG, EAL, "  Not managed by a supported kernel driver,"
 			" skipped\n");
 		ret = 1;
 		break;
@@ -600,17 +599,17 @@ pci_unmap_device(struct rte_pci_device *dev)
 		return;
 
 	/* try unmapping the NIC resources using VFIO if it exists */
-	switch (dev->pt_driver) {
-	case RTE_PT_VFIO:
+	switch (dev->kdrv) {
+	case RTE_KDRV_VFIO:
 		RTE_LOG(ERR, EAL, "Hotplug doesn't support vfio yet\n");
 		break;
-	case RTE_PT_IGB_UIO:
-	case RTE_PT_UIO_GENERIC:
+	case RTE_KDRV_IGB_UIO:
+	case RTE_KDRV_UIO_GENERIC:
 		/* unmap resources for devices that use uio */
 		pci_uio_unmap_resource(dev);
 		break;
 	default:
-		RTE_LOG(DEBUG, EAL, "  Not managed by known pt driver,"
+		RTE_LOG(DEBUG, EAL, "  Not managed by a supported kernel driver,"
 			" skipped\n");
 		break;
 	}

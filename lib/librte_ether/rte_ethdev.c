@@ -512,11 +512,11 @@ rte_eth_dev_is_detachable(uint8_t port_id)
 	}
 
 	if (rte_eth_devices[port_id].dev_type == RTE_ETH_DEV_PCI) {
-		switch (rte_eth_devices[port_id].pci_dev->pt_driver) {
-		case RTE_PT_IGB_UIO:
-		case RTE_PT_UIO_GENERIC:
+		switch (rte_eth_devices[port_id].pci_dev->kdrv) {
+		case RTE_KDRV_IGB_UIO:
+		case RTE_KDRV_UIO_GENERIC:
 			break;
-		case RTE_PT_VFIO:
+		case RTE_KDRV_VFIO:
 		default:
 			return -ENOTSUP;
 		}

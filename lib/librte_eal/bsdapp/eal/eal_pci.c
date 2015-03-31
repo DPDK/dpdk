@@ -356,8 +356,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 				TAILQ_INSERT_BEFORE(dev2, dev, next);
 				return 0;
 			} else { /* already registered */
-				/* update pt_driver */
-				dev2->pt_driver = dev->pt_driver;
+				dev2->kdrv = dev->kdrv;
 				dev2->max_vfs = dev->max_vfs;
 				memmove(dev2->mem_resource,
 					dev->mem_resource,
