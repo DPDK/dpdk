@@ -64,8 +64,9 @@
 extern "C" {
 #endif
 
-/* deprecated feature, renamed in RTE_MBUF_REFCNT */
+/* deprecated options */
 #pragma GCC poison RTE_MBUF_SCATTER_GATHER
+#pragma GCC poison RTE_MBUF_REFCNT
 
 /*
  * Packet Offload Features Flags. It also carry packet type information.

@@ -338,28 +338,6 @@ Compiling the Sample Code
 
     .. code-block:: console
 
-        make
-
-    .. note::
-
-        Note For zero copy, need firstly disable CONFIG_RTE_MBUF_SCATTER_GATHER,
-        CONFIG_RTE_LIBRTE_IP_FRAG and CONFIG_RTE_LIBRTE_DISTRIBUTOR
-        in the config file and then re-configure and compile the core lib, and then build the application:
-
-    .. code-block:: console
-
-        vi ${RTE_SDK}/config/common_linuxapp
-
-    change it as follows:
-
-    ::
-
-        CONFIG_RTE_MBUF_SCATTER_GATHER=n
-        CONFIG_RTE_LIBRTE_IP_FRAG=n
-        CONFIG_RTE_LIBRTE_DISTRIBUTOR=n
-
-    .. code-block:: console
-
         cd ${RTE_SDK}
         make config ${RTE_TARGET}
         make install ${RTE_TARGET}

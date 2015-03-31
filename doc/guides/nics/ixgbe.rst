@@ -168,8 +168,6 @@ When CONFIG_RTE_IXGBE_RX_OLFLAGS_DISABLE=y, better performance can be achieved:
 
     ./x86_64-native-linuxapp-gcc/app/testpmd -c 300 -n 4 -- -i --burst=32 --rxfreet=32 --mbcache=250 --txpt=32 --rxht=8 --rxwt=0 --txfreet=32 --txrst=32 --txqflags=0xf01 --disable-hw-vlan
 
-If scatter gather lists are not required, set CONFIG_RTE_MBUF_SCATTER_GATHER=n for better throughput.
-
 l3fwd
 ^^^^^
 

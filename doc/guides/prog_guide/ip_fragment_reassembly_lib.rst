@@ -54,7 +54,6 @@ Finally 'direct' and 'indirect' mbufs for each fragnemt are linked together via 
 
 The caller has an ability to explicitly specify which mempools should be used to allocate 'direct' and 'indirect' mbufs from.
 
-Note that configuration macro RTE_MBUF_SCATTER_GATHER has to be enabled to make fragmentation library build and work correctly.
 For more information about direct and indirect mbufs, refer to the *DPDK Programmers guide 7.7 Direct and Indirect Buffers.*
 
 Packet reassembly

@@ -383,7 +383,6 @@ static inline int rte_vlan_insert(struct rte_mbuf **m)
 	struct ether_hdr *oh, *nh;
 	struct vlan_hdr *vh;
 
-#ifdef RTE_MBUF_REFCNT
 	/* Can't insert header if mbuf is shared */
 	if (rte_mbuf_refcnt_read(*m) > 1) {
 		struct rte_mbuf *copy;
@@ -394,7 +393,7 @@ static inline int rte_vlan_insert(struct rte_mbuf **m)
 		rte_pktmbuf_free(*m);
 		*m = copy;
 	}
-#endif
+
 	oh = rte_pktmbuf_mtod(*m, struct ether_hdr *);
 	nh = (struct ether_hdr *)
 		rte_pktmbuf_prepend(*m, sizeof(struct vlan_hdr));
