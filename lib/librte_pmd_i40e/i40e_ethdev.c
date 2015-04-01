@@ -1081,28 +1081,37 @@ i40e_dev_set_link_down(__rte_unused struct rte_eth_dev *dev)
 
 int
 i40e_dev_link_update(struct rte_eth_dev *dev,
-		     __rte_unused int wait_to_complete)
+		     int wait_to_complete)
 {
+#define CHECK_INTERVAL 100  /* 100ms */
+#define MAX_REPEAT_TIME 10  /* 1s (10 * 100ms) in total */
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_link_status link_status;
 	struct rte_eth_link link, old;
 	int status;
+	unsigned rep_cnt = MAX_REPEAT_TIME;
 
 	memset(&link, 0, sizeof(link));
 	memset(&old, 0, sizeof(old));
 	memset(&link_status, 0, sizeof(link_status));
 	rte_i40e_dev_atomic_read_link_status(dev, &old);
 
-	/* Get link status information from hardware */
-	status = i40e_aq_get_link_info(hw, false, &link_status, NULL);
-	if (status != I40E_SUCCESS) {
-		link.link_speed = ETH_LINK_SPEED_100;
-		link.link_duplex = ETH_LINK_FULL_DUPLEX;
-		PMD_DRV_LOG(ERR, "Failed to get link info");
-		goto out;
-	}
+	do {
+		/* Get link status information from hardware */
+		status = i40e_aq_get_link_info(hw, false, &link_status, NULL);
+		if (status != I40E_SUCCESS) {
+			link.link_speed = ETH_LINK_SPEED_100;
+			link.link_duplex = ETH_LINK_FULL_DUPLEX;
+			PMD_DRV_LOG(ERR, "Failed to get link info");
+			goto out;
+		}
 
-	link.link_status = link_status.link_info & I40E_AQ_LINK_UP;
+		link.link_status = link_status.link_info & I40E_AQ_LINK_UP;
+		if (!wait_to_complete)
+			break;
+
+		rte_delay_ms(CHECK_INTERVAL);
+	} while (!link.link_status && rep_cnt--);
 
 	if (!link.link_status)
 		goto out;
