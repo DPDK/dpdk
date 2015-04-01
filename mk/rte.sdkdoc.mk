@@ -85,21 +85,15 @@ api-html-clean:
 	$(Q)rm -f $(RTE_OUTPUT)/doc/html/api/*
 	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/html/api 2>&- || true
 
-guides-%-clean:
-	$(Q)rm -rf $(RTE_OUTPUT)/doc/$*/guides
-	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/$* 2>&- || true
-
 guides-pdf-clean: guides-pdf-img-clean
 guides-pdf-img-clean:
 	$(Q)rm -f $(RTE_SDK)/doc/guides/*/img/*.pdf
 
-guides-pdf: $(addprefix guides-pdf-, $(notdir $(RTE_GUIDES:/=))) ;
-guides-%:
-	@echo 'sphinx processing $@...'
-	$(Q)$(RTE_SPHINX_BUILD) -b $* $(RTE_SPHINX_VERBOSE) \
-		-c $(RTE_SDK)/doc/guides $(RTE_SDK)/doc/guides \
-		$(RTE_OUTPUT)/doc/$*/guides
+guides-%-clean:
+	$(Q)rm -rf $(RTE_OUTPUT)/doc/$*/guides
+	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/$* 2>&- || true
 
+guides-pdf: $(addprefix guides-pdf-, $(notdir $(RTE_GUIDES:/=))) ;
 guides-pdf-%:
 	@echo 'sphinx processing $@...'
 	$(Q)$(RTE_SPHINX_BUILD) -b latex $(RTE_SPHINX_VERBOSE) \
@@ -111,6 +105,12 @@ guides-pdf-%:
 		LATEXOPTS=$(RTE_PDFLATEX_VERBOSE)
 	$(Q)mv $(RTE_OUTPUT)/doc/pdf/guides/$*/doc.pdf \
 		$(RTE_OUTPUT)/doc/pdf/guides/$*.pdf
+
+guides-%:
+	@echo 'sphinx processing $@...'
+	$(Q)$(RTE_SPHINX_BUILD) -b $* $(RTE_SPHINX_VERBOSE) \
+		-c $(RTE_SDK)/doc/guides $(RTE_SDK)/doc/guides \
+		$(RTE_OUTPUT)/doc/$*/guides
 
 # Each PDF depends on generated images *.pdf from *.svg
 $(foreach guide, $(RTE_GUIDES), $(foreach img, $(wildcard $(guide)img/*.svg), \
