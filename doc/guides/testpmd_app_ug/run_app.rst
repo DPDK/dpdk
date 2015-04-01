@@ -405,6 +405,12 @@ They must be separated from the EAL options, shown in the previous section, with
     Set the hexadecimal bitmask of TX queue flags, where 0 <= N <= 0x7FFFFFFF.
     The default value is 0.
 
+    Note::
+
+        When using hardware offload functions such as vlan, checksum...,
+        add txqflags=0, since depending on the PMD,
+        txqflags might be set to a non-zero value.
+
 *   --rx-queue-stats-mapping=(port,queue,mapping)[,(port,queue,mapping)]
 
     Set the RX queues statistics counters mapping 0 <= mapping <= 15.
