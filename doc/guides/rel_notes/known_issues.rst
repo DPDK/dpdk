@@ -31,7 +31,7 @@
 Known Issues and Limitations
 ============================
 
-This section describes known issues with the DPDK software, Release 1.8.0.
+This section describes known issues with the DPDK software.
 
 Pause Frame Forwarding does not work properly on igb
 ----------------------------------------------------
