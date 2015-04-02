@@ -31,8 +31,15 @@ MLX4 poll mode driver library
 =============================
 
 The MLX4 poll mode driver library (**librte_pmd_mlx4**) implements support
-for **Mellanox ConnectX-3** 10/40 Gbps adapters (EN 40, EN 10, Pro EN 40) as
-well as their virtual functions (VF) in SR-IOV context.
+for **Mellanox ConnectX-3 EN** 10/40 Gbps adapters as well as their virtual
+functions (VF) in SR-IOV context.
+
+Information and documentation about this family of adapters can be found on
+the `Mellanox website <http://www.mellanox.com>`_. Help is also provided by
+the `Mellanox community <http://community.mellanox.com/welcome>`_.
+
+There is also a `section dedicated to this poll mode driver
+<http://www.mellanox.com/page/products_dyn?product_family=209&mtag=pmd_for_dpdk>`_.
 
 .. note::
 
@@ -78,7 +85,7 @@ Features and limitations
 - Multiple MAC addresses (unicast, multicast) can be configured.
 - Scattered packets are supported for TX and RX.
 
-..
+.. break
 
 - RSS hash key cannot be modified.
 - Hardware counters are not implemented (they are software counters).
@@ -89,6 +96,8 @@ Configuration
 
 Compilation options
 ~~~~~~~~~~~~~~~~~~~
+
+These options can be modified in the ``.config`` file.
 
 - ``CONFIG_RTE_LIBRTE_MLX4_PMD`` (default **n**)
 
@@ -146,6 +155,30 @@ Run-time configuration
 
 - **ethtool** operations on related kernel interfaces also affect the PMD.
 
+Kernel module parameters
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The **mlx4_core** kernel module has several parameters that affect the
+behavior and/or the performance of librte_pmd_mlx4. Some of them are described
+below.
+
+- **num_vfs** (integer or triplet, optionally prefixed by device address
+  strings)
+
+  Create the given number of VFs on the specified devices.
+
+- **log_num_mgm_entry_size** (integer)
+
+  Device-managed flow steering (DMFS) is required by DPDK applications. It is
+  enabled by using a negative value, the last four bits of which have a
+  special meaning.
+
+  - **-1**: force device-managed flow steering (DMFS).
+  - **-7**: configure optimized steering mode to improve performance with the
+    following limitation: Ethernet frames with the port MAC address as the
+    destination cannot be received, even in promiscuous mode. Additional MAC
+    addresses can still be set by ``rte_eth_dev_mac_addr_addr()``.
+
 Prerequisites
 -------------
 
@@ -185,6 +218,26 @@ DPDK and must be installed separately:
   - mlx4_ib: InifiniBand device driver.
   - ib_uverbs: user space driver for verbs (entry point for libibverbs).
 
+- **Firmware update**
+
+  Mellanox OFED releases include firmware updates for ConnectX-3 adapters.
+
+  Because each release provides new features, these updates must be applied to
+  match the kernel modules and libraries they come with.
+
+.. note::
+
+   Both libraries are BSD and GPL licensed. Linux kernel modules are GPL
+   licensed.
+
+Currently supported by DPDK:
+
+- Mellanox OFED **2.4-1**.
+- Firmware version **2.33.5000** and higher.
+
+Getting Mellanox OFED
+~~~~~~~~~~~~~~~~~~~~~
+
 While these libraries and kernel modules are available on OpenFabrics
 Aliance's `website <https://www.openfabrics.org/>`_ and provided by package
 managers on most distributions, this PMD requires Ethernet extensions that
@@ -193,13 +246,31 @@ may not be supported at the moment (this is a work in progress).
 `Mellanox OFED
 <http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux_sw_drivers>`_
 includes the necessary support and should be used in the meantime. For DPDK,
-only libibverbs, libmlx4 and mlnx-ofed-kernel packages are required from
-that distribution.
+only libibverbs, libmlx4, mlnx-ofed-kernel packages and firmware updates are
+required from that distribution.
 
 .. note::
 
-   Both libraries are BSD and GPL licensed. Linux kernel modules are GPL
-   licensed.
+   Several versions of Mellanox OFED are available. Installing the version
+   this DPDK release was developed and tested against is strongly
+   recommended. Please check the `prerequisites`_.
+
+Getting libibverbs and libmlx4 from DPDK.org
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Based on Mellanox OFED, optimized libibverbs and libmlx4 versions can be
+optionally downloaded from DPDK.org:
+
+`<http://www.dpdk.org/download/mlx4>`_
+
+Some enhancements are done for better performance with DPDK applications and
+are not merged upstream yet.
+
+Since it is partly achieved by tuning compilation options to disable features
+not needed by DPDK, linking these libraries statically and avoid system-wide
+installation is the preferred method.
+
+Installation documentation is available from the above link.
 
 Usage example
 -------------
