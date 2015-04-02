@@ -88,30 +88,30 @@ make O=%{target} doc
 
 %install
 rm -rf %{buildroot}
-make           O=%{target}     DESTDIR=%{destdir}
-mkdir -p                               %{buildroot}%{moddir}
-mv    %{destdir}/%{target}/kmod/*.ko   %{buildroot}%{moddir}
-rmdir %{destdir}/%{target}/kmod
-mkdir -p                               %{buildroot}%{_sbindir}
-ln -s %{datadir}/tools/*nic_bind.py    %{buildroot}%{_sbindir}/dpdk_nic_bind
-mkdir -p                               %{buildroot}%{_bindir}
-mv    %{destdir}/%{target}/app/testpmd %{buildroot}%{_bindir}
-rmdir %{destdir}/%{target}/app
-mv    %{destdir}/%{target}/include     %{buildroot}%{_includedir}
-mv    %{destdir}/%{target}/lib         %{buildroot}%{_libdir}
-mkdir -p                               %{buildroot}%{docdir}
-mv    %{destdir}/%{target}/doc/*       %{buildroot}%{docdir}
-rmdir %{destdir}/%{target}/doc
-mkdir -p                               %{buildroot}%{datadir}
-mv    %{destdir}/%{target}/.config     %{buildroot}%{datadir}/config
-mv    %{destdir}/%{target}             %{buildroot}%{datadir}
-mv    %{destdir}/scripts               %{buildroot}%{datadir}
-mv    %{destdir}/mk                    %{buildroot}%{datadir}
-cp -a            examples              %{buildroot}%{datadir}
-cp -a            tools                 %{buildroot}%{datadir}
-ln -s            %{datadir}/config     %{buildroot}%{datadir}/%{target}/.config
-ln -s            %{_includedir}        %{buildroot}%{datadir}/%{target}/include
-ln -s            %{_libdir}            %{buildroot}%{datadir}/%{target}/lib
+make            O=%{target}      DESTDIR=%{destdir}
+mkdir -p                                 %{buildroot}%{moddir}
+mv     %{destdir}/%{target}/kmod/*.ko    %{buildroot}%{moddir}
+rmdir  %{destdir}/%{target}/kmod
+mkdir -p                                 %{buildroot}%{_sbindir}
+ln -s  %{datadir}/tools/*nic_bind.py     %{buildroot}%{_sbindir}/dpdk_nic_bind
+mkdir -p                                 %{buildroot}%{_bindir}
+mv     %{destdir}/%{target}/app/testpmd  %{buildroot}%{_bindir}
+rmdir  %{destdir}/%{target}/app
+mv     %{destdir}/%{target}/include      %{buildroot}%{_includedir}
+mv     %{destdir}/%{target}/lib          %{buildroot}%{_libdir}
+mkdir -p                                 %{buildroot}%{docdir}
+mv     %{destdir}/%{target}/doc/*        %{buildroot}%{docdir}
+rmdir  %{destdir}/%{target}/doc
+mkdir -p                                 %{buildroot}%{datadir}
+mv     %{destdir}/%{target}/.config      %{buildroot}%{datadir}/config
+mv     %{destdir}/%{target}              %{buildroot}%{datadir}
+mv     %{destdir}/scripts                %{buildroot}%{datadir}
+mv     %{destdir}/mk                     %{buildroot}%{datadir}
+cp -a             examples               %{buildroot}%{datadir}
+cp -a             tools                  %{buildroot}%{datadir}
+ln -s             %{datadir}/config      %{buildroot}%{datadir}/%{target}/.config
+ln -s             %{_includedir}         %{buildroot}%{datadir}/%{target}/include
+ln -s             %{_libdir}             %{buildroot}%{datadir}/%{target}/lib
 
 %files
 %dir %{datadir}
