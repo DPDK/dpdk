@@ -44,7 +44,9 @@ ExclusiveArch: i686, x86_64
 %global target %{_arch}-native-linuxapp-gcc
 %global machine default
 
-BuildRequires: kernel-devel, kernel-headers, libpcap-devel, xen-devel, doxygen, python-sphinx
+BuildRequires: kernel-devel, kernel-headers, libpcap-devel, xen-devel
+BuildRequires: doxygen, python-sphinx, inkscape
+BuildRequires: texlive-collection-latexextra, texlive-collection-fontsextra
 
 %description
 DPDK core includes kernel modules, core libraries and tools.
@@ -65,7 +67,7 @@ Summary: Data Plane Development Kit API documentation
 BuildArch: noarch
 %description doc
 DPDK doc is divided in two parts: API details in doxygen HTML format
-and guides in sphinx HTML format.
+and guides in sphinx HTML/PDF formats.
 
 %global destdir %{buildroot}%{_prefix}
 %global moddir  /lib/modules/%(uname -r)/extra
@@ -80,6 +82,7 @@ make O=%{target} T=%{target} config
 sed -ri 's,(RTE_MACHINE=).*,\1%{machine},' %{target}/.config
 sed -ri 's,(RTE_APP_TEST=).*,\1n,'         %{target}/.config
 sed -ri 's,(RTE_BUILD_SHARED_LIB=).*,\1y,' %{target}/.config
+sed -ri 's,(LIBRTE_VHOST=).*,\1y,'         %{target}/.config
 sed -ri 's,(LIBRTE_PMD_PCAP=).*,\1y,'      %{target}/.config
 sed -ri 's,(LIBRTE_PMD_XENVIRT=).*,\1y,'   %{target}/.config
 sed -ri 's,(LIBRTE_XEN_DOM0=).*,\1y,'      %{target}/.config
@@ -100,8 +103,10 @@ rmdir  %{destdir}/%{target}/app
 mv     %{destdir}/%{target}/include      %{buildroot}%{_includedir}
 mv     %{destdir}/%{target}/lib          %{buildroot}%{_libdir}
 mkdir -p                                 %{buildroot}%{docdir}
-mv     %{destdir}/%{target}/doc/*        %{buildroot}%{docdir}
-rmdir  %{destdir}/%{target}/doc
+rm -rf %{destdir}/%{target}/doc/*/*/.{build,doc}*
+mv     %{destdir}/%{target}/doc/html/*   %{buildroot}%{docdir}
+mv     %{destdir}/%{target}/doc/*/*/*pdf %{buildroot}%{docdir}/guides
+rm -rf %{destdir}/%{target}/doc
 mkdir -p                                 %{buildroot}%{datadir}
 mv     %{destdir}/%{target}/.config      %{buildroot}%{datadir}/config
 mv     %{destdir}/%{target}              %{buildroot}%{datadir}
