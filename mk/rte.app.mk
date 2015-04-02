@@ -143,7 +143,7 @@ ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
 LDLIBS += -lpcap
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_VHOST),y)
+ifeq ($(CONFIG_RTE_LIBRTE_VHOST)$(CONFIG_RTE_LIBRTE_VHOST_USER),yn)
 LDLIBS += -lfuse
 endif
 
