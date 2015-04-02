@@ -99,7 +99,7 @@ guides-pdf-%:
 	$(Q)$(RTE_SPHINX_BUILD) -b latex $(RTE_SPHINX_VERBOSE) \
 		-c $(RTE_SDK)/doc/guides $(RTE_SDK)/doc/guides/$* \
 		$(RTE_OUTPUT)/doc/pdf/guides/$*
-	$(Q)rm -f $^
+	$(if $^,$(Q)rm -f $^)
 	@echo 'pdflatex processing $@...'
 	$(Q)$(MAKE) all-pdf -sC $(RTE_OUTPUT)/doc/pdf/guides/$* \
 		LATEXOPTS=$(RTE_PDFLATEX_VERBOSE)
