@@ -349,7 +349,7 @@ cgroup control
 The following is a simple example of cgroup control usage, there are two pthreads(t0 and t1) doing packet I/O on the same core ($CPU).
 We expect only 50% of CPU spend on packet IO.
 
-  .. code::
+  .. code-block:: console
 
     mkdir /sys/fs/cgroup/cpu/pkt_io
     mkdir /sys/fs/cgroup/cpuset/pkt_io

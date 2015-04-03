@@ -494,7 +494,7 @@ The rte_eth_rx_burst() function writes the mbuf pointers in a local table and re
 
 After first read second try is issued.
 
-.. code::
+.. code-block:: c
 
     if (total_nb_rx == MAX_PKT_BURST) {
         const uint16_t nb_rx = rte_eth_rx_burst((uint8_t) portid, 0, pkts_burst,
@@ -510,7 +510,7 @@ After first read second try is issued.
 
 This second read is important to give job stats library a feedback how many packets was processed.
 
-.. code::
+.. code-block:: c
 
     /* Adjust period time in which we are running here. */
     if (rte_jobstats_finish(job, total_nb_rx) != 0) {
