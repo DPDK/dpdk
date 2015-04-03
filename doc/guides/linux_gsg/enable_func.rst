@@ -176,6 +176,8 @@ High Performance of Small Packets on 40G NIC
 As there might be firmware fixes for performance enhancement in latest version
 of firmware image, the firmware update might be needed for getting high performance.
 Check with the local Intel's Network Division application engineers for firmware updates.
+The base driver to support firmware version of FVL3E will be integrated in the next
+DPDK release, so currently the validated firmware version is 4.2.6.
 
 Enabling Extended Tag and Setting Max Read Request Size
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
