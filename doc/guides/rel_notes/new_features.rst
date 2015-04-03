@@ -32,6 +32,24 @@ New Features
 ============
 *   Poll-mode driver support for an early release of the PCIE host interface of the Intel(R) Ethernet Switch FM10000.
 
+    *   Basic Rx/Tx functions for PF/VF
+
+    *   Interrupt handling support for PF/VF
+
+    *   Per queue start/stop functions for PF/VF
+
+    *   Support Mailbox handling between PF/VF and PF/Switch Manager
+
+    *   Receive Side Scaling (RSS) for PF/VF
+
+    *   Scatter receive function for PF/VF
+
+    *   Reta update/query for PF/VF
+
+    *   VLAN filter set for PF
+
+    *   Link status query for PF/VF
+
 .. note:: The software is intended to run on pre-release hardware and may contain unknown or unresolved defects or
           issues related to functionality and performance.
           The poll mode driver is also pre-release and will be updated to a released version post hardware and base driver release.
@@ -44,6 +62,42 @@ New Features
     *   Support for registration of link status change callbacks with link bonding devices.
 
     *   Support for slaves devices which do not support link status change interrupts in the link bonding library via a link status polling mechanism.
+
+*   PCI Hotplug with NULL PMD sample application
+
+*   ABI versioning
+
+*   x32 ABI
+
+*   Non-EAL Thread Support
+
+*   Multi-pthread Support
+
+*   Re-order Library
+
+*   ACL for AVX2
+
+*   Architecture Independent CRC Hash
+
+*   uio_pci_generic Support
+
+*   KNI Optimizations
+
+*   Vhost-user support
+
+*   Virtio (link, vlan, mac, port IO, perf)
+
+*   IXGBE-VF RSS
+
+*   RX/TX Callbacks
+
+*   Unified Flow Types
+
+*   Indirect Attached MBUF Flag
+
+*   Use default port configuration in TestPMD
+
+*   Tunnel offloading in TestPMD
 
 *   Poll Mode Driver - 40 GbE Controllers (librte_pmd_i40e)
 
@@ -66,25 +120,5 @@ New Features
 *   Packet Distributor Sample Application
 
 *   Job Stats library and Sample Application.
-
-*   Poll Mode Driver - PCIE host-interface of Intel Ethernet Switch FM10000 Series (librte_pmd_fm10k)
-
-    *   Basic Rx/Tx functions for PF/VF
-
-    *   Interrupt handling support for PF/VF
-
-    *   Per queue start/stop functions for PF/VF
-
-    *   Support Mailbox handling between PF/VF and PF/Switch Manager
-
-    *   Receive Side Scaling (RSS) for PF/VF
-
-    *   Scatter receive function for PF/VF
-
-    *   Reta update/query for PF/VF
-
-    *   VLAN filter set for PF
-
-    *   Link status query for PF/VF
 
 For further features supported in this release, see Chapter 3 Supported Features.
