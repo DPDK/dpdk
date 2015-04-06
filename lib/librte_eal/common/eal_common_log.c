@@ -265,13 +265,14 @@ rte_log_dump_history(FILE *out)
  * defined by the previous call to rte_openlog_stream().
  */
 int
-rte_vlog(__attribute__((unused)) uint32_t level,
-	 __attribute__((unused)) uint32_t logtype,
-	   const char *format, va_list ap)
+rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
 {
 	int ret;
 	FILE *f = rte_logs.file;
 	unsigned lcore_id;
+
+	if ((level > rte_logs.level) || !(logtype & rte_logs.type))
+		return 0;
 
 	/* save loglevel and logtype in a global per-lcore variable */
 	lcore_id = rte_lcore_id();
@@ -288,6 +289,7 @@ rte_vlog(__attribute__((unused)) uint32_t level,
 /*
  * Generates a log message The message will be sent in the stream
  * defined by the previous call to rte_openlog_stream().
+ * No need to check level here, done by rte_vlog().
  */
 int
 rte_log(uint32_t level, uint32_t logtype, const char *format, ...)
