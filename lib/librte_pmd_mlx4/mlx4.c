@@ -4162,7 +4162,7 @@ mlx4_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	return -ret;
 }
 
-static struct eth_dev_ops mlx4_dev_ops = {
+static const struct eth_dev_ops mlx4_dev_ops = {
 	.dev_configure = mlx4_dev_configure,
 	.dev_start = mlx4_dev_start,
 	.dev_stop = mlx4_dev_stop,

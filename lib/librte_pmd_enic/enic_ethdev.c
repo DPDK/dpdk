@@ -507,7 +507,7 @@ static uint16_t enicpmd_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return work_done;
 }
 
-static struct eth_dev_ops enicpmd_eth_dev_ops = {
+static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.dev_configure        = enicpmd_dev_configure,
 	.dev_start            = enicpmd_dev_start,
 	.dev_stop             = enicpmd_dev_stop,

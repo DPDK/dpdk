@@ -384,7 +384,7 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static struct eth_dev_ops ops = {
+static const struct eth_dev_ops ops = {
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
 	.dev_close = eth_dev_close,

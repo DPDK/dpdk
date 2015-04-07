@@ -499,7 +499,7 @@ virtio_dev_allmulticast_disable(struct rte_eth_dev *dev)
 /*
  * dev_ops for virtio, bare necessities for basic operation
  */
-static struct eth_dev_ops virtio_eth_dev_ops = {
+static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.dev_configure           = virtio_dev_configure,
 	.dev_start               = virtio_dev_start,
 	.dev_stop                = virtio_dev_stop,

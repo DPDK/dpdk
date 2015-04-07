@@ -218,7 +218,7 @@ static struct rte_pci_id pci_id_i40e_map[] = {
 { .vendor_id = 0, /* sentinel */ },
 };
 
-static struct eth_dev_ops i40e_eth_dev_ops = {
+static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.dev_configure                = i40e_dev_configure,
 	.dev_start                    = i40e_dev_start,
 	.dev_stop                     = i40e_dev_stop,

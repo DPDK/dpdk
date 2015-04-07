@@ -148,7 +148,7 @@ static int i40evf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 /* Default hash key buffer for RSS */
 static uint32_t rss_key_default[I40E_VFQF_HKEY_MAX_INDEX + 1];
 
-static struct eth_dev_ops i40evf_eth_dev_ops = {
+static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.dev_configure        = i40evf_dev_configure,
 	.dev_start            = i40evf_dev_start,
 	.dev_stop             = i40evf_dev_stop,

@@ -483,19 +483,19 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static struct eth_dev_ops ops = {
-		.dev_start = eth_dev_start,
-		.dev_stop =	eth_dev_stop,
-		.dev_close = eth_dev_close,
-		.dev_configure = eth_dev_configure,
-		.dev_infos_get = eth_dev_info,
-		.rx_queue_setup = eth_rx_queue_setup,
-		.tx_queue_setup = eth_tx_queue_setup,
-		.rx_queue_release = eth_queue_release,
-		.tx_queue_release = eth_queue_release,
-		.link_update = eth_link_update,
-		.stats_get = eth_stats_get,
-		.stats_reset = eth_stats_reset,
+static const struct eth_dev_ops ops = {
+	.dev_start = eth_dev_start,
+	.dev_stop =	eth_dev_stop,
+	.dev_close = eth_dev_close,
+	.dev_configure = eth_dev_configure,
+	.dev_infos_get = eth_dev_info,
+	.rx_queue_setup = eth_rx_queue_setup,
+	.tx_queue_setup = eth_tx_queue_setup,
+	.rx_queue_release = eth_queue_release,
+	.tx_queue_release = eth_queue_release,
+	.link_update = eth_link_update,
+	.stats_get = eth_stats_get,
+	.stats_reset = eth_stats_reset,
 };
 
 static struct eth_driver rte_pcap_pmd = {

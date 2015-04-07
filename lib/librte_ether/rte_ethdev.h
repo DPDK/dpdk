@@ -1472,7 +1472,7 @@ struct rte_eth_dev {
 	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function. */
 	struct rte_eth_dev_data *data;  /**< Pointer to device data */
 	const struct eth_driver *driver;/**< Driver for this device */
-	struct eth_dev_ops *dev_ops;    /**< Functions exported by PMD */
+	const struct eth_dev_ops *dev_ops; /**< Functions exported by PMD */
 	struct rte_pci_device *pci_dev; /**< PCI info. supplied by probing */
 	/** User application callbacks for NIC interrupts */
 	struct rte_eth_dev_cb_list link_intr_cbs;

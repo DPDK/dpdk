@@ -242,21 +242,21 @@ virtual_ethdev_promiscuous_mode_disable(struct rte_eth_dev *dev __rte_unused)
 {}
 
 
-static struct eth_dev_ops virtual_ethdev_default_dev_ops = {
-		.dev_configure = virtual_ethdev_configure_success,
-		.dev_start = virtual_ethdev_start_success,
-		.dev_stop = virtual_ethdev_stop,
-		.dev_close = virtual_ethdev_close,
-		.dev_infos_get = virtual_ethdev_info_get,
-		.rx_queue_setup = virtual_ethdev_rx_queue_setup_success,
-		.tx_queue_setup = virtual_ethdev_tx_queue_setup_success,
-		.rx_queue_release = virtual_ethdev_rx_queue_release,
-		.tx_queue_release = virtual_ethdev_tx_queue_release,
-		.link_update = virtual_ethdev_link_update_success,
-		.stats_get = virtual_ethdev_stats_get,
-		.stats_reset = virtual_ethdev_stats_reset,
-		.promiscuous_enable = virtual_ethdev_promiscuous_mode_enable,
-		.promiscuous_disable = virtual_ethdev_promiscuous_mode_disable
+static const struct eth_dev_ops virtual_ethdev_default_dev_ops = {
+	.dev_configure = virtual_ethdev_configure_success,
+	.dev_start = virtual_ethdev_start_success,
+	.dev_stop = virtual_ethdev_stop,
+	.dev_close = virtual_ethdev_close,
+	.dev_infos_get = virtual_ethdev_info_get,
+	.rx_queue_setup = virtual_ethdev_rx_queue_setup_success,
+	.tx_queue_setup = virtual_ethdev_tx_queue_setup_success,
+	.rx_queue_release = virtual_ethdev_rx_queue_release,
+	.tx_queue_release = virtual_ethdev_tx_queue_release,
+	.link_update = virtual_ethdev_link_update_success,
+	.stats_get = virtual_ethdev_stats_get,
+	.stats_reset = virtual_ethdev_stats_reset,
+	.promiscuous_enable = virtual_ethdev_promiscuous_mode_enable,
+	.promiscuous_disable = virtual_ethdev_promiscuous_mode_disable
 };
 
 

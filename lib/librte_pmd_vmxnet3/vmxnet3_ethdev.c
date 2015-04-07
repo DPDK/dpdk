@@ -99,7 +99,7 @@ static struct rte_pci_id pci_id_vmxnet3_map[] = {
 { .vendor_id = 0, /* sentinel */ },
 };
 
-static struct eth_dev_ops vmxnet3_eth_dev_ops = {
+static const struct eth_dev_ops vmxnet3_eth_dev_ops = {
 	.dev_configure        = vmxnet3_dev_configure,
 	.dev_start            = vmxnet3_dev_start,
 	.dev_stop             = vmxnet3_dev_stop,

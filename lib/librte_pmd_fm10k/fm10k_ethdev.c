@@ -1651,7 +1651,7 @@ fm10k_close_mbx_service(struct fm10k_hw *hw)
 	hw->mbx.ops.disconnect(hw, &hw->mbx);
 }
 
-static struct eth_dev_ops fm10k_eth_dev_ops = {
+static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.dev_configure		= fm10k_dev_configure,
 	.dev_start		= fm10k_dev_start,
 	.dev_stop		= fm10k_dev_stop,

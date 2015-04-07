@@ -234,22 +234,22 @@ static int
 eth_link_update(struct rte_eth_dev *dev __rte_unused,
 		int wait_to_complete __rte_unused) { return 0; }
 
-static struct eth_dev_ops ops = {
-		.dev_start = eth_dev_start,
-		.dev_stop = eth_dev_stop,
-		.dev_set_link_up = eth_dev_set_link_up,
-		.dev_set_link_down = eth_dev_set_link_down,
-		.dev_configure = eth_dev_configure,
-		.dev_infos_get = eth_dev_info,
-		.rx_queue_setup = eth_rx_queue_setup,
-		.tx_queue_setup = eth_tx_queue_setup,
-		.rx_queue_release = eth_queue_release,
-		.tx_queue_release = eth_queue_release,
-		.link_update = eth_link_update,
-		.stats_get = eth_stats_get,
-		.stats_reset = eth_stats_reset,
-		.mac_addr_remove = eth_mac_addr_remove,
-		.mac_addr_add = eth_mac_addr_add,
+static const struct eth_dev_ops ops = {
+	.dev_start = eth_dev_start,
+	.dev_stop = eth_dev_stop,
+	.dev_set_link_up = eth_dev_set_link_up,
+	.dev_set_link_down = eth_dev_set_link_down,
+	.dev_configure = eth_dev_configure,
+	.dev_infos_get = eth_dev_info,
+	.rx_queue_setup = eth_rx_queue_setup,
+	.tx_queue_setup = eth_tx_queue_setup,
+	.rx_queue_release = eth_queue_release,
+	.tx_queue_release = eth_queue_release,
+	.link_update = eth_link_update,
+	.stats_get = eth_stats_get,
+	.stats_reset = eth_stats_reset,
+	.mac_addr_remove = eth_mac_addr_remove,
+	.mac_addr_add = eth_mac_addr_add,
 };
 
 int

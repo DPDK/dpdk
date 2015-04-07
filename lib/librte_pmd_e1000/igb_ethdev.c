@@ -235,7 +235,7 @@ static struct rte_pci_id pci_id_igbvf_map[] = {
 {.device_id = 0},
 };
 
-static struct eth_dev_ops eth_igb_ops = {
+static const struct eth_dev_ops eth_igb_ops = {
 	.dev_configure        = eth_igb_configure,
 	.dev_start            = eth_igb_start,
 	.dev_stop             = eth_igb_stop,
@@ -275,7 +275,7 @@ static struct eth_dev_ops eth_igb_ops = {
  * dev_ops for virtual function, bare necessities for basic vf
  * operation have been implemented
  */
-static struct eth_dev_ops igbvf_eth_dev_ops = {
+static const struct eth_dev_ops igbvf_eth_dev_ops = {
 	.dev_configure        = igbvf_dev_configure,
 	.dev_start            = igbvf_dev_start,
 	.dev_stop             = igbvf_dev_stop,

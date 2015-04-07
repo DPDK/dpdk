@@ -317,7 +317,7 @@ static struct rte_pci_id pci_id_ixgbevf_map[] = {
 
 };
 
-static struct eth_dev_ops ixgbe_eth_dev_ops = {
+static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.dev_configure        = ixgbe_dev_configure,
 	.dev_start            = ixgbe_dev_start,
 	.dev_stop             = ixgbe_dev_stop,
@@ -387,8 +387,7 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
  * dev_ops for virtual function, bare necessities for basic vf
  * operation have been implemented
  */
-static struct eth_dev_ops ixgbevf_eth_dev_ops = {
-
+static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.dev_configure        = ixgbevf_dev_configure,
 	.dev_start            = ixgbevf_dev_start,
 	.dev_stop             = ixgbevf_dev_stop,

@@ -133,7 +133,7 @@ static struct rte_pci_id pci_id_em_map[] = {
 {.device_id = 0},
 };
 
-static struct eth_dev_ops eth_em_ops = {
+static const struct eth_dev_ops eth_em_ops = {
 	.dev_configure        = eth_em_configure,
 	.dev_start            = eth_em_start,
 	.dev_stop             = eth_em_stop,
