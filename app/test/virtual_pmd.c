@@ -45,6 +45,7 @@
 static const char *virtual_ethdev_driver_name = "Virtual PMD";
 
 struct virtual_ethdev_private {
+	struct eth_dev_ops dev_ops;
 	struct rte_eth_stats eth_stats;
 
 	struct rte_ring *rx_queue;
@@ -262,61 +263,67 @@ static struct eth_dev_ops virtual_ethdev_default_dev_ops = {
 void
 virtual_ethdev_start_fn_set_success(uint8_t port_id, uint8_t success)
 {
-	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
+	struct eth_dev_ops *dev_ops = &dev_private->dev_ops;
 
 	if (success)
-		vrtl_eth_dev->dev_ops->dev_start = virtual_ethdev_start_success;
+		dev_ops->dev_start = virtual_ethdev_start_success;
 	else
-		vrtl_eth_dev->dev_ops->dev_start = virtual_ethdev_start_fail;
+		dev_ops->dev_start = virtual_ethdev_start_fail;
 
 }
 
 void
 virtual_ethdev_configure_fn_set_success(uint8_t port_id, uint8_t success)
 {
-	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
+	struct eth_dev_ops *dev_ops = &dev_private->dev_ops;
 
 	if (success)
-		vrtl_eth_dev->dev_ops->dev_configure = virtual_ethdev_configure_success;
+		dev_ops->dev_configure = virtual_ethdev_configure_success;
 	else
-		vrtl_eth_dev->dev_ops->dev_configure = virtual_ethdev_configure_fail;
+		dev_ops->dev_configure = virtual_ethdev_configure_fail;
 }
 
 void
 virtual_ethdev_rx_queue_setup_fn_set_success(uint8_t port_id, uint8_t success)
 {
-	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
+	struct eth_dev_ops *dev_ops = &dev_private->dev_ops;
 
 	if (success)
-		vrtl_eth_dev->dev_ops->rx_queue_setup =
-				virtual_ethdev_rx_queue_setup_success;
+		dev_ops->rx_queue_setup = virtual_ethdev_rx_queue_setup_success;
 	else
-		vrtl_eth_dev->dev_ops->rx_queue_setup =
-				virtual_ethdev_rx_queue_setup_fail;
+		dev_ops->rx_queue_setup = virtual_ethdev_rx_queue_setup_fail;
 }
 
 void
 virtual_ethdev_tx_queue_setup_fn_set_success(uint8_t port_id, uint8_t success)
 {
-	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
+	struct eth_dev_ops *dev_ops = &dev_private->dev_ops;
 
 	if (success)
-		vrtl_eth_dev->dev_ops->tx_queue_setup =
-				virtual_ethdev_tx_queue_setup_success;
+		dev_ops->tx_queue_setup = virtual_ethdev_tx_queue_setup_success;
 	else
-		vrtl_eth_dev->dev_ops->tx_queue_setup =
-				virtual_ethdev_tx_queue_setup_fail;
+		dev_ops->tx_queue_setup = virtual_ethdev_tx_queue_setup_fail;
 }
 
 void
 virtual_ethdev_link_update_fn_set_success(uint8_t port_id, uint8_t success)
 {
-	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
+	struct eth_dev_ops *dev_ops = &dev_private->dev_ops;
 
 	if (success)
-		vrtl_eth_dev->dev_ops->link_update = virtual_ethdev_link_update_success;
+		dev_ops->link_update = virtual_ethdev_link_update_success;
 	else
-		vrtl_eth_dev->dev_ops->link_update = virtual_ethdev_link_update_fail;
+		dev_ops->link_update = virtual_ethdev_link_update_fail;
 }
 
 
@@ -528,7 +535,6 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	struct rte_eth_dev *eth_dev = NULL;
 	struct eth_driver *eth_drv = NULL;
 	struct rte_pci_driver *pci_drv = NULL;
-	struct eth_dev_ops *dev_ops = NULL;
 	struct rte_pci_id *id_table = NULL;
 	struct virtual_ethdev_private *dev_private = NULL;
 	char name_buf[RTE_RING_NAMESIZE];
@@ -551,10 +557,6 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 
 	pci_drv = rte_zmalloc_socket(name, sizeof(*pci_drv), 0, socket_id);
 	if (pci_drv == NULL)
-		goto err;
-
-	dev_ops = rte_zmalloc_socket(name, sizeof(*dev_ops), 0, socket_id);
-	if (dev_ops == NULL)
 		goto err;
 
 	id_table = rte_zmalloc_socket(name, sizeof(*id_table), 0, socket_id);
@@ -618,11 +620,9 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 
 	eth_dev->data->dev_private = dev_private;
 
-	eth_dev->dev_ops = dev_ops;
-
 	/* Copy default device operation functions */
-	memcpy(eth_dev->dev_ops, &virtual_ethdev_default_dev_ops,
-			sizeof(*eth_dev->dev_ops));
+	dev_private->dev_ops = virtual_ethdev_default_dev_ops;
+	eth_dev->dev_ops = &dev_private->dev_ops;
 
 	eth_dev->pci_dev = pci_dev;
 	eth_dev->pci_dev->driver = &eth_drv->pci_drv;
@@ -638,7 +638,6 @@ err:
 	rte_free(pci_dev);
 	rte_free(pci_drv);
 	rte_free(eth_drv);
-	rte_free(dev_ops);
 	rte_free(id_table);
 	rte_free(dev_private);
 
