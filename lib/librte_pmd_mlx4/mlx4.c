@@ -792,10 +792,10 @@ txq_alloc_elts(struct txq *txq, unsigned int elts_n)
 error:
 	if (mr_linear != NULL)
 		claim_zero(ibv_dereg_mr(mr_linear));
-	if (elts_linear != NULL)
-		rte_free(elts_linear);
-	if (elts != NULL)
-		rte_free(elts);
+
+	rte_free(elts_linear);
+	rte_free(elts);
+
 	DEBUG("%p: failed, freed everything", (void *)txq);
 	assert(ret > 0);
 	return ret;
@@ -823,8 +823,8 @@ txq_free_elts(struct txq *txq)
 	txq->mr_linear = NULL;
 	if (mr_linear != NULL)
 		claim_zero(ibv_dereg_mr(mr_linear));
-	if (elts_linear != NULL)
-		rte_free(elts_linear);
+
+	rte_free(elts_linear);
 	if (elts == NULL)
 		return;
 	for (i = 0; (i != elemof(*elts)); ++i) {
@@ -4602,8 +4602,7 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		continue;
 
 port_error:
-		if (priv)
-			rte_free(priv);
+		rte_free(priv);
 		if (pd)
 			claim_zero(ibv_dealloc_pd(pd));
 		if (ctx)

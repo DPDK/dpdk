@@ -760,12 +760,11 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 
 	return 0;
 
-	error: if (data)
-		rte_free(data);
-	if (pci_dev)
-		rte_free(pci_dev);
-	if (*internals)
-		rte_free(*internals);
+error: 
+	rte_free(data);
+	rte_free(pci_dev);
+	rte_free(*internals);
+
 	return -1;
 }
 

@@ -983,8 +983,7 @@ static void enic_dev_deinit(struct enic *enic)
 {
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 
-	if (eth_dev->data->mac_addrs)
-		rte_free(eth_dev->data->mac_addrs);
+	rte_free(eth_dev->data->mac_addrs);
 }
 
 

@@ -349,12 +349,10 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	return 0;
 
 error:
-	if (data)
-		rte_free(data);
-	if (pci_dev)
-		rte_free(pci_dev);
-	if (internals)
-		rte_free(internals);
+	rte_free(data);
+	rte_free(pci_dev);
+	rte_free(internals);
+
 	return -1;
 }
 

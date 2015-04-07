@@ -318,14 +318,11 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	return eth_dev->data->port_id;
 
 err:
-	if (pci_dev)
-		rte_free(pci_dev);
-	if (pci_id_table)
-		rte_free(pci_id_table);
-	if (eth_drv)
-		rte_free(eth_drv);
-	if (internals)
-		rte_free(internals);
+	rte_free(pci_dev);
+	rte_free(pci_id_table);
+	rte_free(eth_drv);
+	rte_free(internals);
+
 	return -1;
 }
 

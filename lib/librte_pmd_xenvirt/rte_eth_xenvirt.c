@@ -679,12 +679,10 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 	return 0;
 
 err:
-	if (data)
-		rte_free(data);
-	if (pci_dev)
-		rte_free(pci_dev);
-	if (internals)
-		rte_free(internals);
+	rte_free(data);
+	rte_free(pci_dev);
+	rte_free(internals);
+
 	return -1;
 }
 

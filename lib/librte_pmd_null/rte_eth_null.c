@@ -355,8 +355,7 @@ eth_queue_release(void *q)
 		return;
 
 	nq = q;
-	if (nq->dummy_packet)
-		rte_free(nq->dummy_packet);
+	rte_free(nq->dummy_packet);
 }
 
 static int
@@ -458,12 +457,10 @@ eth_dev_null_create(const char *name,
 	return 0;
 
 error:
-	if (data)
-		rte_free(data);
-	if (pci_dev)
-		rte_free(pci_dev);
-	if (internals)
-		rte_free(internals);
+	rte_free(data);
+	rte_free(pci_dev);
+	rte_free(internals);
+
 	return -1;
 }
 

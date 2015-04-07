@@ -680,18 +680,16 @@ rte_pmd_init_internals(const char *name,
 	return 0;
 
 error:
-	if (data)
-		rte_free(data);
-	if (pci_dev)
-		rte_free(pci_dev);
+	rte_free(data);
+	rte_free(pci_dev);
+
 	if (*internals) {
 		for (q = 0; q < nb_queues; q++) {
 			munmap((*internals)->rx_queue[q].map,
 			       2 * req->tp_block_size * req->tp_block_nr);
-			if ((*internals)->rx_queue[q].rd)
-				rte_free((*internals)->rx_queue[q].rd);
-			if ((*internals)->tx_queue[q].rd)
-				rte_free((*internals)->tx_queue[q].rd);
+
+			rte_free((*internals)->rx_queue[q].rd);
+			rte_free((*internals)->tx_queue[q].rd);
 			if (((*internals)->rx_queue[q].sockfd != 0) &&
 				((*internals)->rx_queue[q].sockfd != qsockfd))
 				close((*internals)->rx_queue[q].sockfd);
