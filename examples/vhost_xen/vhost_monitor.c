@@ -298,10 +298,9 @@ virtio_net_config_ll *new_device(unsigned int virtio_idx, struct xen_guest *gues
 err:
 	if (new_ll_dev)
 		free(new_ll_dev);
-	if (virtqueue_rx)
-		rte_free(virtqueue_rx);
-	if (virtqueue_tx)
-		rte_free(virtqueue_tx);
+	rte_free(virtqueue_rx);
+	rte_free(virtqueue_tx);
+
 	return NULL;
 }
 

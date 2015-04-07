@@ -800,9 +800,7 @@ channel_manager_exit(void)
 		rte_free(vm_info);
 	}
 
-	if (global_cpumaps != NULL)
-		rte_free(global_cpumaps);
-	if (global_vircpuinfo != NULL)
-		rte_free(global_vircpuinfo);
+	rte_free(global_cpumaps);
+	rte_free(global_vircpuinfo);
 	disconnect_hypervisor();
 }

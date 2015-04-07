@@ -2747,8 +2747,7 @@ new_device (struct virtio_net *dev)
 		RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Failed to add device to data core\n", dev->device_fh);
 		vdev->ready = DEVICE_SAFE_REMOVE;
 		destroy_device(dev);
-		if (vdev->regions_hpa)
-			rte_free(vdev->regions_hpa);
+		rte_free(vdev->regions_hpa);
 		rte_free(vdev);
 		return -1;
 	}
