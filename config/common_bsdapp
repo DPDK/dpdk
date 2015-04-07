@@ -214,6 +214,7 @@ CONFIG_RTE_LIBRTE_MLX4_SOFT_COUNTERS=1
 # Compile burst-oriented Cisco ENIC PMD driver
 #
 CONFIG_RTE_LIBRTE_ENIC_PMD=y
+CONFIG_RTE_LIBRTE_ENIC_DEBUG=n
 
 #
 # Compile burst-oriented VIRTIO PMD driver

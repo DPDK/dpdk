@@ -48,8 +48,12 @@
 #include "vnic_enet.h"
 #include "enic.h"
 
+#ifdef RTE_LIBRTE_ENIC_DEBUG
 #define ENICPMD_FUNC_TRACE() \
 	RTE_LOG(DEBUG, PMD, "ENICPMD trace: %s\n", __func__)
+#else
+#define ENICPMD_FUNC_TRACE() (void)0
+#endif
 
 /*
  * The set of PCI devices this driver supports
