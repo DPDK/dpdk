@@ -565,8 +565,6 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	if (dev_private == NULL)
 		goto err;
 
-	memset(dev_private, 0, sizeof(*dev_private));
-
 	snprintf(name_buf, sizeof(name_buf), "%s_rxQ", name);
 	dev_private->rx_queue = rte_ring_create(name_buf, MAX_PKT_BURST, socket_id,
 			0);
