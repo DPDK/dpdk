@@ -635,18 +635,12 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	return eth_dev->data->port_id;
 
 err:
-	if (pci_dev)
-		rte_free(pci_dev);
-	if (pci_drv)
-		rte_free(pci_drv);
-	if (eth_drv)
-		rte_free(eth_drv);
-	if (dev_ops)
-		rte_free(dev_ops);
-	if (id_table)
-		rte_free(id_table);
-	if (dev_private)
-		rte_free(dev_private);
+	rte_free(pci_dev);
+	rte_free(pci_drv);
+	rte_free(eth_drv);
+	rte_free(dev_ops);
+	rte_free(id_table);
+	rte_free(dev_private);
 
 	return -1;
 }

@@ -387,7 +387,7 @@ struct tbl_perf_test_params tbl_perf_params[] =
 	if (cond) {							\
 		printf("ERROR line %d: " str "\n", __LINE__, ##__VA_ARGS__); \
 		if (handle) rte_fbk_hash_free(handle);			\
-		if (keys) rte_free(keys);				\
+		rte_free(keys);						\
 		return -1;						\
 	}								\
 } while(0)
