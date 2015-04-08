@@ -309,13 +309,12 @@ Compiling the Sample Code
 
         CONFIG_RTE_LIBRTE_VHOST=n
 
-    vhost user is turned on by default in the lib/librte_vhost/Makefile.
-    To enable vhost cuse, uncomment vhost cuse and comment vhost user manually. In future, a configure will be created for switch between two implementations.
+    vhost user is turned on by default in the configure file config/common_linuxapp.
+    To enable vhost cuse, disable vhost user.
 
     .. code-block:: console
 
-        SRCS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost_cuse/vhost-net-cdev.c vhost_cuse/virtio-net-cdev.c vhost_cuse/eventfd_copy.c
-        #SRCS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost_user/vhost-net-user.c vhost_user/virtio-net-user.c vhost_user/fd_man.c
+        CONFIG_RTE_LIBRTE_VHOST_USER=y
 
      After vhost is enabled and the implementation is selected, build the vhost library.
 
