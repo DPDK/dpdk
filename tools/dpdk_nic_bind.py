@@ -391,7 +391,7 @@ def unbind_all(dev_list, force=False):
         unbind_one(d, force)
 
 def bind_all(dev_list, driver, force=False):
-    """Unbind method, takes a list of device locations"""
+    """Bind method, takes a list of device locations"""
     global devices
 
     dev_list = map(dev_id_from_dev_name, dev_list)
