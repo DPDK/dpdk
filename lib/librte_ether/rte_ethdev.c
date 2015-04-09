@@ -179,7 +179,7 @@ enum {
 	DEV_ATTACHED
 };
 
-static inline void
+static void
 rte_eth_dev_data_alloc(void)
 {
 	const unsigned flags = 0;
@@ -255,7 +255,7 @@ rte_eth_dev_allocate(const char *name, enum rte_eth_dev_type type)
 	return eth_dev;
 }
 
-static inline int
+static int
 rte_eth_dev_create_unique_device_name(char *name, size_t size,
 		struct rte_pci_device *pci_dev)
 {
@@ -2415,7 +2415,7 @@ rte_eth_dev_priority_flow_ctrl_set(uint8_t port_id, struct rte_eth_pfc_conf *pfc
 	return (-ENOTSUP);
 }
 
-static inline int
+static int
 rte_eth_check_reta_mask(struct rte_eth_rss_reta_entry64 *reta_conf,
 			uint16_t reta_size)
 {
@@ -2439,7 +2439,7 @@ rte_eth_check_reta_mask(struct rte_eth_rss_reta_entry64 *reta_conf,
 	return -EINVAL;
 }
 
-static inline int
+static int
 rte_eth_check_reta_entry(struct rte_eth_rss_reta_entry64 *reta_conf,
 			 uint16_t reta_size,
 			 uint8_t max_rxq)
@@ -2648,7 +2648,7 @@ rte_eth_led_off(uint8_t port_id)
  * Returns index into MAC address array of addr. Use 00:00:00:00:00:00 to find
  * an empty spot.
  */
-static inline int
+static int
 get_mac_addr_index(uint8_t port_id, struct ether_addr *addr)
 {
 	struct rte_eth_dev_info dev_info;
@@ -2789,7 +2789,7 @@ rte_eth_dev_set_vf_rxmode(uint8_t port_id,  uint16_t vf,
  * Returns index into MAC address array of addr. Use 00:00:00:00:00:00 to find
  * an empty spot.
  */
-static inline int
+static int
 get_hash_mac_addr_index(uint8_t port_id, struct ether_addr *addr)
 {
 	struct rte_eth_dev_info dev_info;
