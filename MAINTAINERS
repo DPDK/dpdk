@@ -183,6 +183,7 @@ F: app/test/test_mbuf.c
 Ethernet API
 M: Thomas Monjalon <thomas.monjalon@6wind.com>
 F: lib/librte_ether/
+F: scripts/test-null.sh
 
 
 Drivers
