@@ -251,6 +251,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_PMD_AF_PACKET),y)
 LDLIBS += -lrte_pmd_af_packet
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_NULL),y)
+LDLIBS += -lrte_pmd_null
+endif
+
 endif # plugins
 
 endif # ! CONFIG_RTE_BUILD_COMBINE_LIBS
