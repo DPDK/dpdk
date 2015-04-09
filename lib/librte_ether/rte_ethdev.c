@@ -119,34 +119,34 @@ struct rte_eth_xstats_name_off {
 	unsigned offset;
 };
 
-static struct rte_eth_xstats_name_off rte_stats_strings[] = {
-	 {"rx_packets", offsetof(struct rte_eth_stats, ipackets)},
-	 {"tx_packets", offsetof(struct rte_eth_stats, opackets)},
-	 {"rx_bytes", offsetof(struct rte_eth_stats, ibytes)},
-	 {"tx_bytes", offsetof(struct rte_eth_stats, obytes)},
-	 {"tx_errors", offsetof(struct rte_eth_stats, oerrors)},
-	 {"rx_missed_errors", offsetof(struct rte_eth_stats, imissed)},
-	 {"rx_crc_errors", offsetof(struct rte_eth_stats, ibadcrc)},
-	 {"rx_bad_length_errors", offsetof(struct rte_eth_stats, ibadlen)},
-	 {"rx_errors", offsetof(struct rte_eth_stats, ierrors)},
-	 {"alloc_rx_buff_failed", offsetof(struct rte_eth_stats, rx_nombuf)},
-	 {"fdir_match", offsetof(struct rte_eth_stats, fdirmatch)},
-	 {"fdir_miss", offsetof(struct rte_eth_stats, fdirmiss)},
-	 {"tx_flow_control_xon", offsetof(struct rte_eth_stats, tx_pause_xon)},
-	 {"rx_flow_control_xon", offsetof(struct rte_eth_stats, rx_pause_xon)},
-	 {"tx_flow_control_xoff", offsetof(struct rte_eth_stats, tx_pause_xoff)},
-	 {"rx_flow_control_xoff", offsetof(struct rte_eth_stats, rx_pause_xoff)},
+static const struct rte_eth_xstats_name_off rte_stats_strings[] = {
+	{"rx_packets", offsetof(struct rte_eth_stats, ipackets)},
+	{"tx_packets", offsetof(struct rte_eth_stats, opackets)},
+	{"rx_bytes", offsetof(struct rte_eth_stats, ibytes)},
+	{"tx_bytes", offsetof(struct rte_eth_stats, obytes)},
+	{"tx_errors", offsetof(struct rte_eth_stats, oerrors)},
+	{"rx_missed_errors", offsetof(struct rte_eth_stats, imissed)},
+	{"rx_crc_errors", offsetof(struct rte_eth_stats, ibadcrc)},
+	{"rx_bad_length_errors", offsetof(struct rte_eth_stats, ibadlen)},
+	{"rx_errors", offsetof(struct rte_eth_stats, ierrors)},
+	{"alloc_rx_buff_failed", offsetof(struct rte_eth_stats, rx_nombuf)},
+	{"fdir_match", offsetof(struct rte_eth_stats, fdirmatch)},
+	{"fdir_miss", offsetof(struct rte_eth_stats, fdirmiss)},
+	{"tx_flow_control_xon", offsetof(struct rte_eth_stats, tx_pause_xon)},
+	{"rx_flow_control_xon", offsetof(struct rte_eth_stats, rx_pause_xon)},
+	{"tx_flow_control_xoff", offsetof(struct rte_eth_stats, tx_pause_xoff)},
+	{"rx_flow_control_xoff", offsetof(struct rte_eth_stats, rx_pause_xoff)},
 };
 #define RTE_NB_STATS (sizeof(rte_stats_strings) / sizeof(rte_stats_strings[0]))
 
-static struct rte_eth_xstats_name_off rte_rxq_stats_strings[] = {
+static const struct rte_eth_xstats_name_off rte_rxq_stats_strings[] = {
 	{"rx_packets", offsetof(struct rte_eth_stats, q_ipackets)},
 	{"rx_bytes", offsetof(struct rte_eth_stats, q_ibytes)},
 };
 #define RTE_NB_RXQ_STATS (sizeof(rte_rxq_stats_strings) /	\
 		sizeof(rte_rxq_stats_strings[0]))
 
-static struct rte_eth_xstats_name_off rte_txq_stats_strings[] = {
+static const struct rte_eth_xstats_name_off rte_txq_stats_strings[] = {
 	{"tx_packets", offsetof(struct rte_eth_stats, q_opackets)},
 	{"tx_bytes", offsetof(struct rte_eth_stats, q_obytes)},
 	{"tx_errors", offsetof(struct rte_eth_stats, q_errors)},
@@ -2649,7 +2649,7 @@ rte_eth_led_off(uint8_t port_id)
  * an empty spot.
  */
 static int
-get_mac_addr_index(uint8_t port_id, struct ether_addr *addr)
+get_mac_addr_index(uint8_t port_id, const struct ether_addr *addr)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
@@ -2664,7 +2664,7 @@ get_mac_addr_index(uint8_t port_id, struct ether_addr *addr)
 	return -1;
 }
 
-static struct ether_addr null_mac_addr = {{0, 0, 0, 0, 0, 0}};
+static const struct ether_addr null_mac_addr;
 
 int
 rte_eth_dev_mac_addr_add(uint8_t port_id, struct ether_addr *addr,
@@ -2790,7 +2790,7 @@ rte_eth_dev_set_vf_rxmode(uint8_t port_id,  uint16_t vf,
  * an empty spot.
  */
 static int
-get_hash_mac_addr_index(uint8_t port_id, struct ether_addr *addr)
+get_hash_mac_addr_index(uint8_t port_id, const struct ether_addr *addr)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
