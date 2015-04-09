@@ -69,33 +69,64 @@ RTE_PCI_DEV_ID_DECL_ENIC(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_CISCO_VIC_ENET_VF)
 {.vendor_id = 0, /* Sentinal */},
 };
 
-static int enicpmd_fdir_remove_perfect_filter(struct rte_eth_dev *eth_dev,
-		struct rte_fdir_filter *fdir_filter,
-		__rte_unused uint16_t soft_id)
+static int
+enicpmd_fdir_ctrl_func(struct rte_eth_dev *eth_dev,
+			enum rte_filter_op filter_op, void *arg)
 {
 	struct enic *enic = pmd_priv(eth_dev);
+	int ret = 0;
 
 	ENICPMD_FUNC_TRACE();
-	return enic_fdir_del_fltr(enic, fdir_filter);
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return 0;
+
+	if (arg == NULL && filter_op != RTE_ETH_FILTER_FLUSH)
+		return -EINVAL;
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+	case RTE_ETH_FILTER_UPDATE:
+		ret = enic_fdir_add_fltr(enic,
+			(struct rte_eth_fdir_filter *)arg);
+		break;
+
+	case RTE_ETH_FILTER_DELETE:
+		ret = enic_fdir_del_fltr(enic,
+			(struct rte_eth_fdir_filter *)arg);
+		break;
+
+	case RTE_ETH_FILTER_STATS:
+		enic_fdir_stats_get(enic, (struct rte_eth_fdir_stats *)arg);
+		break;
+
+	case RTE_ETH_FILTER_FLUSH:
+	case RTE_ETH_FILTER_INFO:
+		dev_warning(enic, "unsupported operation %u", filter_op);
+		ret = -ENOTSUP;
+		break;
+	default:
+		dev_err(enic, "unknown operation %u", filter_op);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
 }
 
-static int enicpmd_fdir_add_perfect_filter(struct rte_eth_dev *eth_dev,
-	struct rte_fdir_filter *fdir_filter, __rte_unused uint16_t soft_id,
-	uint8_t queue, uint8_t drop)
+static int
+enicpmd_dev_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg)
 {
-	struct enic *enic = pmd_priv(eth_dev);
+	int ret = -EINVAL;
 
-	ENICPMD_FUNC_TRACE();
-	return enic_fdir_add_fltr(enic, fdir_filter, (uint16_t)queue, drop);
-}
+	if (RTE_ETH_FILTER_FDIR == filter_type)
+		ret = enicpmd_fdir_ctrl_func(dev, filter_op, arg);
+	else
+		dev_warning(enic, "Filter type (%d) not supported",
+			filter_type);
 
-static void enicpmd_fdir_info_get(struct rte_eth_dev *eth_dev,
-	struct rte_eth_fdir *fdir)
-{
-	struct enic *enic = pmd_priv(eth_dev);
-
-	ENICPMD_FUNC_TRACE();
-	*fdir = enic->fdir.stats;
+	return ret;
 }
 
 static void enicpmd_dev_tx_queue_release(void *txq)
@@ -545,14 +576,8 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.priority_flow_ctrl_set = NULL,
 	.mac_addr_add         = enicpmd_add_mac_addr,
 	.mac_addr_remove      = enicpmd_remove_mac_addr,
-	.fdir_add_signature_filter    = NULL,
-	.fdir_update_signature_filter = NULL,
-	.fdir_remove_signature_filter = NULL,
-	.fdir_infos_get               = enicpmd_fdir_info_get,
-	.fdir_add_perfect_filter      = enicpmd_fdir_add_perfect_filter,
-	.fdir_update_perfect_filter   = enicpmd_fdir_add_perfect_filter,
-	.fdir_remove_perfect_filter   = enicpmd_fdir_remove_perfect_filter,
 	.fdir_set_masks               = NULL,
+	.filter_ctrl          = enicpmd_dev_filter_ctrl,
 };
 
 struct enic *enicpmd_list_head = NULL;

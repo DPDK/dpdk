@@ -80,13 +80,13 @@
 #define ENICPMD_FDIR_MAX           64
 
 struct enic_fdir_node {
-	struct rte_fdir_filter filter;
+	struct rte_eth_fdir_filter filter;
 	u16 fltr_id;
 	u16 rq_index;
 };
 
 struct enic_fdir {
-	struct rte_eth_fdir stats;
+	struct rte_eth_fdir_stats stats;
 	struct rte_hash *hash;
 	struct enic_fdir_node *nodes[ENICPMD_FDIR_MAX];
 };
@@ -111,7 +111,7 @@ struct enic {
 	pthread_t err_intr_thread;
 	int promisc;
 	int allmulti;
-	uint8_t ig_vlan_strip_en;
+	u8 ig_vlan_strip_en;
 	int link_status;
 	u8 hw_ip_checksum;
 
@@ -155,10 +155,12 @@ static inline struct enic *pmd_priv(struct rte_eth_dev *eth_dev)
 	return (struct enic *)eth_dev->data->dev_private;
 }
 
+extern void enic_fdir_stats_get(struct enic *enic,
+	struct rte_eth_fdir_stats *stats);
 extern int enic_fdir_add_fltr(struct enic *enic,
-	struct rte_fdir_filter *params, u16 queue, u8 drop);
+	struct rte_eth_fdir_filter *params);
 extern int enic_fdir_del_fltr(struct enic *enic,
-	struct rte_fdir_filter *params);
+	struct rte_eth_fdir_filter *params);
 extern void enic_free_wq(void *txq);
 extern int enic_alloc_intr_resources(struct enic *enic);
 extern int enic_setup_finish(struct enic *enic);

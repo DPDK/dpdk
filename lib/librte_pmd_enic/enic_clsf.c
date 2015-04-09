@@ -65,7 +65,12 @@
 #define ENICPMD_CLSF_HASH_ENTRIES       ENICPMD_FDIR_MAX
 #define ENICPMD_CLSF_BUCKET_ENTRIES     4
 
-int enic_fdir_del_fltr(struct enic *enic, struct rte_fdir_filter *params)
+void enic_fdir_stats_get(struct enic *enic, struct rte_eth_fdir_stats *stats)
+{
+	*stats = enic->fdir.stats;
+}
+
+int enic_fdir_del_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 {
 	int32_t pos;
 	struct enic_fdir_node *key;
@@ -92,23 +97,33 @@ int enic_fdir_del_fltr(struct enic *enic, struct rte_fdir_filter *params)
 	return 0;
 }
 
-int enic_fdir_add_fltr(struct enic *enic, struct rte_fdir_filter *params,
-	u16 queue, u8 drop)
+int enic_fdir_add_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 {
 	struct enic_fdir_node *key;
 	struct filter fltr = {0};
 	int32_t pos;
 	u8 do_free = 0;
 	u16 old_fltr_id = 0;
+	u32 flowtype_supported;
+	u16 flex_bytes;
+	u16 queue;
 
-	if (!enic->fdir.hash || params->vlan_id || !params->l4type ||
-		(RTE_FDIR_IPTYPE_IPV6 == params->iptype) ||
-		(RTE_FDIR_L4TYPE_SCTP == params->l4type) ||
-		params->flex_bytes || drop) {
+	flowtype_supported = (
+		(RTE_ETH_FLOW_NONFRAG_IPV4_TCP == params->input.flow_type) ||
+		(RTE_ETH_FLOW_NONFRAG_IPV4_UDP == params->input.flow_type));
+
+	flex_bytes = ((params->input.flow_ext.flexbytes[1] << 8 & 0xFF00) |
+		(params->input.flow_ext.flexbytes[0] & 0xFF));
+
+	if (!enic->fdir.hash ||
+		(params->input.flow_ext.vlan_tci & 0xFFF) ||
+		!flowtype_supported || flex_bytes ||
+		params->action.behavior /* drop */) {
 		enic->fdir.stats.f_add++;
 		return -ENOTSUP;
 	}
 
+	queue = params->action.rx_queue;
 	/* See if the key is already there in the table */
 	pos = rte_hash_del_key(enic->fdir.hash, params);
 	switch (pos) {
@@ -168,12 +183,16 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_fdir_filter *params,
 	key->rq_index = queue;
 
 	fltr.type = FILTER_IPV4_5TUPLE;
-	fltr.u.ipv4.src_addr = rte_be_to_cpu_32(params->ip_src.ipv4_addr);
-	fltr.u.ipv4.dst_addr = rte_be_to_cpu_32(params->ip_dst.ipv4_addr);
-	fltr.u.ipv4.src_port = rte_be_to_cpu_16(params->port_src);
-	fltr.u.ipv4.dst_port = rte_be_to_cpu_16(params->port_dst);
+	fltr.u.ipv4.src_addr = rte_be_to_cpu_32(
+		params->input.flow.ip4_flow.src_ip);
+	fltr.u.ipv4.dst_addr = rte_be_to_cpu_32(
+		params->input.flow.ip4_flow.dst_ip);
+	fltr.u.ipv4.src_port = rte_be_to_cpu_16(
+		params->input.flow.udp4_flow.src_port);
+	fltr.u.ipv4.dst_port = rte_be_to_cpu_16(
+		params->input.flow.udp4_flow.dst_port);
 
-	if (RTE_FDIR_L4TYPE_TCP == params->l4type)
+	if (RTE_ETH_FLOW_NONFRAG_IPV4_TCP == params->input.flow_type)
 		fltr.u.ipv4.protocol = PROTO_TCP;
 	else
 		fltr.u.ipv4.protocol = PROTO_UDP;
