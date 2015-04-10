@@ -149,10 +149,15 @@ This section describes an example setup for Phy-vSwitch-VM-Phy communication.
     Other instructions on preparing to use DPDK such as, hugepage enabling, uio port binding are not listed here.
     Please refer to *DPDK Getting Started Guide and DPDK Sample Application's User Guide* for detailed instructions.
 
-The packet reception and transmission flow path is:
+The packet reception and transmission flow path is::
 
-    Packet generator -> 82576 -> VMware ESXi vSwitch -> VMXNET3 device -> Guest VM VMXNET3 port 0 rx burst -> Guest
-    VM 82599 VF port 0 tx burst -> 82599 VF -> Packet generator
+    Packet generator -> 82576
+                     -> VMware ESXi vSwitch
+                     -> VMXNET3 device
+                     -> Guest VM VMXNET3 port 0 rx burst
+                     -> Guest VM 82599 VF port 0 tx burst
+                     -> 82599 VF
+                     -> Packet generator
 
 VMXNET3 Chaining VMs Connected to a vSwitch
 -------------------------------------------
@@ -166,7 +171,15 @@ The following figure shows an example VM-to-VM communication over a Phy-VM-vSwit
     When using the L2 Forwarding or L3 Forwarding applications,
     a destination MAC address needs to be written in packets to hit the other VM's VMXNET3 interface.
 
-In this example, the packet flow path is:
+In this example, the packet flow path is::
 
-    Packet generator -> 82599 VF -> Guest VM 82599 port 0 rx burst -> Guest VM VMXNET3 port 1 tx burst -> VMXNET3
-    device -> VMware ESXi vSwitch -> VMXNET3 device -> Guest VM VMXNET3 port 0 rx burst -> Guest VM 82599 VF port 1 tx burst -> 82599 VF -> Packet generator
+    Packet generator -> 82599 VF
+                     -> Guest VM 82599 port 0 rx burst
+                     -> Guest VM VMXNET3 port 1 tx burst
+                     -> VMXNET3 device
+                     -> VMware ESXi vSwitch
+                     -> VMXNET3 device
+                     -> Guest VM VMXNET3 port 0 rx burst
+                     -> Guest VM 82599 VF port 1 tx burst
+                     -> 82599 VF
+                     -> Packet generator
