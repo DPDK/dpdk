@@ -31,169 +31,244 @@
 Glossary
 ========
 
-===============                   =========================================================================================================
-Term                              Definition
-===============                   =========================================================================================================
-ACL                               Access Control List
 
-API                               Application Programming Interface
+ACL
+   Access Control List
 
-ASLR                              Linux* kernel Address-Space Layout Randomization
+API
+   Application Programming Interface
 
-BSD                               Berkeley Software Distribution
+ASLR
+   Linux* kernel Address-Space Layout Randomization
 
-Clr                               Clear
+BSD
+   Berkeley Software Distribution
 
-CIDR                              Classless Inter-Domain Routing
+Clr
+   Clear
 
-Control Plane                     The control plane is concerned with the routing of packets and with providing a start or end point.
+CIDR
+   Classless Inter-Domain Routing
 
-Core                              A core may include several lcores or threads if the processor supports hyperthreading.
+Control Plane
+   The control plane is concerned with the routing of packets and with
+   providing a start or end point.
 
-Core Components                   A set of libraries provided by the DPDK, including eal, ring, mempool, mbuf, timers, and so on.
+Core
+   A core may include several lcores or threads if the processor supports
+   hyperthreading.
 
-CPU                               Central Processing Unit
+Core Components
+   A set of libraries provided by the DPDK, including eal, ring, mempool,
+   mbuf, timers, and so on.
 
-CRC                               Cyclic Redundancy Check
+CPU
+   Central Processing Unit
 
-ctrlmbuf                          An *mbuf* carrying control data.
+CRC
+   Cyclic Redundancy Check
 
-Data Plane                        In contrast to the control plane,
-                                  the data plane in a network architecture are the layers involved when forwarding packets.
-                                  These layers must be highly optimized to achieve good performance.
+ctrlmbuf
+   An *mbuf* carrying control data.
 
-DIMM                              Dual In-line Memory Module
+Data Plane
+   In contrast to the control plane, the data plane in a network architecture
+   are the layers involved when forwarding packets.  These layers must be
+   highly optimized to achieve good performance.
 
-Doxygen                           A documentation generator used in the DPDK to generate the API reference.
+DIMM
+   Dual In-line Memory Module
 
-DPDK                              Data Plane Development Kit
+Doxygen
+   A documentation generator used in the DPDK to generate the API reference.
 
-DRAM                              Dynamic Random Access Memory
+DPDK
+   Data Plane Development Kit
 
-EAL                               The Environment Abstraction Layer (EAL) provides a generic interface that hides the environment specifics
-                                  from the applications and libraries.
-                                  The services expected from the EAL are:
-                                  development kit loading and launching, core affinity/ assignment procedures,
-                                  system memory allocation/description, PCI bus access, inter-partition communication.
+DRAM
+   Dynamic Random Access Memory
 
-FIFO                              First In First Out
+EAL
+   The Environment Abstraction Layer (EAL) provides a generic interface that
+   hides the environment specifics from the applications and libraries.  The
+   services expected from the EAL are: development kit loading and launching,
+   core affinity/ assignment procedures, system memory allocation/description,
+   PCI bus access, inter-partition communication.
 
-FPGA                              Field Programmable Gate Array
+FIFO
+   First In First Out
 
-GbE                               Gigabit Ethernet
+FPGA
+   Field Programmable Gate Array
 
-HW                                Hardware
+GbE
+   Gigabit Ethernet
 
-HPET                              High Precision Event Timer;
-                                  a hardware timer that provides a precise time reference on x86 platforms.
+HW
+   Hardware
 
-ID                                Identifier
+HPET
+   High Precision Event Timer; a hardware timer that provides a precise time
+   reference on x86 platforms.
 
-IOCTL                             Input/Output Control
+ID
+   Identifier
 
-I/O                               Input/Output
+IOCTL
+   Input/Output Control
 
-IP                                Internet Protocol
+I/O
+   Input/Output
 
-IPv4                              Internet Protocol version 4
+IP
+   Internet Protocol
 
-IPv6                              Internet Protocol version 6
+IPv4
+   Internet Protocol version 4
 
-lcore                             A logical execution unit of the processor, sometimes called a *hardware thread*.
+IPv6
+   Internet Protocol version 6
 
-KNI                               Kernel Network Interface
+lcore
+   A logical execution unit of the processor, sometimes called a *hardware
+   thread*.
 
-L1                                Layer 1
+KNI
+   Kernel Network Interface
 
-L2                                Layer 2
+L1
+   Layer 1
 
-L3                                Layer 3
+L2
+   Layer 2
 
-L4                                Layer 4
+L3
+   Layer 3
 
-LAN                               Local Area Network
+L4
+   Layer 4
 
-LPM                               Longest Prefix Match
+LAN
+   Local Area Network
 
-master lcore                      The execution unit that executes the main() function and that launches other lcores.
+LPM
+   Longest Prefix Match
 
-mbuf                              An mbuf is a data structure used internally to carry messages (mainly network packets).
-                                  The name is derived from BSD stacks.
-                                  To understand the concepts of packet buffers or mbuf,
-                                  refer to *TCP/IP Illustrated, Volume 2: The Implementation*.
+master lcore
+   The execution unit that executes the main() function and that launches
+   other lcores.
 
-MESI                              Modified Exclusive Shared Invalid (CPU cache coherency protocol)
+mbuf
+   An mbuf is a data structure used internally to carry messages (mainly
+   network packets).  The name is derived from BSD stacks.  To understand the
+   concepts of packet buffers or mbuf, refer to *TCP/IP Illustrated, Volume 2:
+   The Implementation*.
 
-MTU                               Maximum Transfer Unit
+MESI
+   Modified Exclusive Shared Invalid (CPU cache coherency protocol)
 
-NIC                               Network Interface Card
+MTU
+   Maximum Transfer Unit
 
-OOO                               Out Of Order (execution of instructions within the CPU pipeline)
+NIC
+   Network Interface Card
 
-NUMA                              Non-uniform Memory Access
+OOO
+   Out Of Order (execution of instructions within the CPU pipeline)
 
-PCI                               Peripheral Connect Interface
+NUMA
+   Non-uniform Memory Access
 
-PHY                               An abbreviation for the physical layer of the OSI model.
+PCI
+   Peripheral Connect Interface
 
-pktmbuf                           An *mbuf* carrying a network packet.
+PHY
+   An abbreviation for the physical layer of the OSI model.
 
-PMD                               Poll Mode Driver
+pktmbuf
+   An *mbuf* carrying a network packet.
 
-QoS                               Quality of Service
+PMD
+   Poll Mode Driver
 
-RCU                               Read-Copy-Update algorithm, an alternative to simple rwlocks.
+QoS
+   Quality of Service
 
-Rd                                Read
+RCU
+   Read-Copy-Update algorithm, an alternative to simple rwlocks.
 
-RED                               Random Early Detection
+Rd
+   Read
 
-RSS                               Receive Side Scaling
+RED
+   Random Early Detection
 
-RTE                               Run Time Environment.
-                                  Provides a fast and simple framework for fast packet processing,
-                                  in a lightweight environment as a Linux* application and
-                                  using Poll Mode Drivers (PMDs) to increase speed.
+RSS
+   Receive Side Scaling
 
-Rx                                Reception
+RTE
+   Run Time Environment. Provides a fast and simple framework for fast packet
+   processing, in a lightweight environment as a Linux* application and using
+   Poll Mode Drivers (PMDs) to increase speed.
 
-Slave lcore                       Any *lcore* that is not the *master lcore*.
+Rx
+   Reception
 
-Socket                            A physical CPU, that includes several *cores*.
+Slave lcore
+   Any *lcore* that is not the *master lcore*.
 
-SLA                               Service Level Agreement
+Socket
+   A physical CPU, that includes several *cores*.
 
-srTCM                             Single Rate Three Color Marking
+SLA
+   Service Level Agreement
 
-SRTD                              Scheduler Round Trip Delay
+srTCM
+   Single Rate Three Color Marking
 
-SW                                Software
+SRTD
+   Scheduler Round Trip Delay
 
-Target                            In the DPDK, the target is a combination of architecture,
-                                  machine, executive environment and toolchain.
-                                  For example: i686-native-linuxapp-gcc.
+SW
+   Software
 
-TCP                               Transmission Control Protocol
+Target
+   In the DPDK, the target is a combination of architecture, machine,
+   executive environment and toolchain.  For example:
+   i686-native-linuxapp-gcc.
 
-TC                                Traffic Class
+TCP
+   Transmission Control Protocol
 
-TLB                               Translation Lookaside Buffer
+TC
+   Traffic Class
 
-TLS                               Thread Local Storage
+TLB
+   Translation Lookaside Buffer
 
-trTCM                             Two Rate Three Color Marking
+TLS
+   Thread Local Storage
 
-TSC                               Time Stamp Counter
+trTCM
+   Two Rate Three Color Marking
 
-Tx                                Transmission
+TSC
+   Time Stamp Counter
 
-TUN/TAP                           TUN and TAP are virtual network kernel devices.
+Tx
+   Transmission
 
-VLAN                              Virtual Local Area Network
+TUN/TAP
+   TUN and TAP are virtual network kernel devices.
 
-Wr                                Write
+VLAN
+   Virtual Local Area Network
 
-WRED                              Weighted Random Early Detection
+Wr
+   Write
 
-WRR                               Weighted Round Robin
-===============                   =========================================================================================================
+WRED
+   Weighted Random Early Detection
+
+WRR
+   Weighted Round Robin
