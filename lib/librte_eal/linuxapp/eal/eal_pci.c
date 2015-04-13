@@ -346,6 +346,12 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	/* parse driver */
 	snprintf(filename, sizeof(filename), "%s/driver", dirname);
 	ret = pci_get_kernel_driver_by_path(filename, driver);
+	if (ret < 0) {
+		RTE_LOG(ERR, EAL, "Fail to get kernel driver\n");
+		free(dev);
+		return -1;
+	}
+
 	if (!ret) {
 		if (!strcmp(driver, "vfio-pci"))
 			dev->kdrv = RTE_KDRV_VFIO;
@@ -355,37 +361,31 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 			dev->kdrv = RTE_KDRV_UIO_GENERIC;
 		else
 			dev->kdrv = RTE_KDRV_UNKNOWN;
-	} else if (ret < 0) {
-		RTE_LOG(ERR, EAL, "Fail to get kernel driver\n");
-		free(dev);
-		return -1;
 	} else
 		dev->kdrv = RTE_KDRV_UNKNOWN;
 
 	/* device is valid, add in list (sorted) */
 	if (TAILQ_EMPTY(&pci_device_list)) {
 		TAILQ_INSERT_TAIL(&pci_device_list, dev, next);
-	}
-	else {
-		struct rte_pci_device *dev2 = NULL;
+	} else {
+		struct rte_pci_device *dev2;
 		int ret;
 
 		TAILQ_FOREACH(dev2, &pci_device_list, next) {
 			ret = rte_eal_compare_pci_addr(&dev->addr, &dev2->addr);
 			if (ret > 0)
 				continue;
-			else if (ret < 0) {
+
+			if (ret < 0) {
 				TAILQ_INSERT_BEFORE(dev2, dev, next);
-				return 0;
 			} else { /* already registered */
 				dev2->kdrv = dev->kdrv;
 				dev2->max_vfs = dev->max_vfs;
-				memmove(dev2->mem_resource,
-					dev->mem_resource,
+				memmove(dev2->mem_resource, dev->mem_resource,
 					sizeof(dev->mem_resource));
 				free(dev);
-				return 0;
 			}
+			return 0;
 		}
 		TAILQ_INSERT_TAIL(&pci_device_list, dev, next);
 	}
