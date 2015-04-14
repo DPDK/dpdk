@@ -80,5 +80,14 @@ WERROR_FLAGS += -Wundef -Wwrite-strings
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
 
+# workaround GCC bug with warning "missing initializer" for "= {0}"
+ifeq ($(shell test $(GCC_VERSION) -lt 47 && echo 1), 1)
+WERROR_FLAGS += -Wno-missing-field-initializers
+endif
+# workaround GCC bug with warning "may be used uninitialized"
+ifeq ($(shell test $(GCC_VERSION) -lt 47 && echo 1), 1)
+WERROR_FLAGS += -Wno-uninitialized
+endif
+
 export CC AS AR LD OBJCOPY OBJDUMP STRIP READELF
 export TOOLCHAIN_CFLAGS TOOLCHAIN_LDFLAGS TOOLCHAIN_ASFLAGS

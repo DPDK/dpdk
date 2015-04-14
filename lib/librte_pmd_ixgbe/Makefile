@@ -76,10 +76,6 @@ ifeq ($(shell test $(GCC_VERSION) -ge 50 && echo 1), 1)
 CFLAGS_ixgbe_common.o += -Wno-logical-not-parentheses
 endif
 
-ifeq ($(shell test $(GCC_VERSION) -le 46 && echo 1), 1)
-CFLAGS_ixgbe_x550.o += -Wno-uninitialized
-CFLAGS_ixgbe_phy.o += -Wno-uninitialized
-endif
 endif
 
 #

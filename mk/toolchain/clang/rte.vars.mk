@@ -72,5 +72,8 @@ WERROR_FLAGS += -Wundef -Wwrite-strings
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
 
+# workaround clang bug with warning "missing field initializer" for "= {0}"
+WERROR_FLAGS += -Wno-missing-field-initializers
+
 export CC AS AR LD OBJCOPY OBJDUMP STRIP READELF
 export TOOLCHAIN_CFLAGS TOOLCHAIN_LDFLAGS TOOLCHAIN_ASFLAGS
