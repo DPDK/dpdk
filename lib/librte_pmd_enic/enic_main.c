@@ -344,7 +344,7 @@ static int enic_rq_alloc_buf(struct vnic_rq *rq)
 		hdr_mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 
 		hdr_mbuf->nb_segs = 2;
-		hdr_mbuf->port = rq->index;
+		hdr_mbuf->port = enic->port_id;
 		hdr_mbuf->next = mbuf;
 
 		dma_addr = (dma_addr_t)
@@ -359,7 +359,7 @@ static int enic_rq_alloc_buf(struct vnic_rq *rq)
 		type = RQ_ENET_TYPE_NOT_SOP;
 	} else {
 		mbuf->nb_segs = 1;
-		mbuf->port = rq->index;
+		mbuf->port = enic->port_id;
 	}
 
 	mbuf->data_off = RTE_PKTMBUF_HEADROOM;

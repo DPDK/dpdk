@@ -99,6 +99,7 @@ struct enic {
 	struct vnic_dev_bar bar0;
 	struct vnic_dev *vdev;
 
+	unsigned int port_id;
 	struct rte_eth_dev *rte_dev;
 	struct enic_fdir fdir;
 	char bdf_name[ENICPMD_BDF_LENGTH];

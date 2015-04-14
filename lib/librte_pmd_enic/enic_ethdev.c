@@ -567,6 +567,7 @@ static int eth_enicpmd_dev_init(struct rte_eth_dev *eth_dev)
 
 	ENICPMD_FUNC_TRACE();
 
+	enic->port_id = eth_dev->data->port_id;
 	enic->rte_dev = eth_dev;
 	eth_dev->dev_ops = &enicpmd_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &enicpmd_recv_pkts;
