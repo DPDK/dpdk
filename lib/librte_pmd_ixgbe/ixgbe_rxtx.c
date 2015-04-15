@@ -579,7 +579,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t tx_ol_req;
 	uint32_t ctx = 0;
 	uint32_t new_ctx;
-	union ixgbe_tx_offload tx_offload = { .data = 0 };
+	union ixgbe_tx_offload tx_offload = {0};
 
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
@@ -2052,8 +2052,7 @@ ixgbe_dev_tx_queue_release(void *txq)
 static void
 ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 {
-	static const union ixgbe_adv_tx_desc zeroed_desc = { .read = {
-			.buffer_addr = 0}};
+	static const union ixgbe_adv_tx_desc zeroed_desc = {{0}};
 	struct ixgbe_tx_entry *txe = txq->sw_ring;
 	uint16_t prev, i;
 
@@ -2445,8 +2444,7 @@ check_rx_burst_bulk_alloc_preconditions(__rte_unused struct ixgbe_rx_queue *rxq)
 static void
 ixgbe_reset_rx_queue(struct ixgbe_hw *hw, struct ixgbe_rx_queue *rxq)
 {
-	static const union ixgbe_adv_rx_desc zeroed_desc = { .read = {
-			.pkt_addr = 0}};
+	static const union ixgbe_adv_rx_desc zeroed_desc = {{0}};
 	unsigned i;
 	uint16_t len = rxq->nb_rx_desc;
 

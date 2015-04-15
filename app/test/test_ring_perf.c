@@ -253,7 +253,7 @@ static void
 run_on_core_pair(struct lcore_pair *cores,
 		lcore_function_t f1, lcore_function_t f2)
 {
-	struct thread_params param1 = {.size = 0}, param2 = {.size = 0};
+	struct thread_params param1 = {0}, param2 = {0};
 	unsigned i;
 	for (i = 0; i < sizeof(bulk_sizes)/sizeof(bulk_sizes[0]); i++) {
 		lcore_count = 0;

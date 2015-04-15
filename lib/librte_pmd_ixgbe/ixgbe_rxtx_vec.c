@@ -691,8 +691,7 @@ ixgbe_tx_free_swring(struct ixgbe_tx_queue *txq)
 static void
 ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 {
-	static const union ixgbe_adv_tx_desc zeroed_desc = { .read = {
-			.buffer_addr = 0} };
+	static const union ixgbe_adv_tx_desc zeroed_desc = {{0}};
 	struct ixgbe_tx_entry_v *txe = (struct ixgbe_tx_entry_v *)txq->sw_ring;
 	uint16_t i;
 

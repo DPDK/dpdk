@@ -1164,8 +1164,7 @@ igb_reset_tx_queue_stat(struct igb_tx_queue *txq)
 static void
 igb_reset_tx_queue(struct igb_tx_queue *txq, struct rte_eth_dev *dev)
 {
-	static const union e1000_adv_tx_desc zeroed_desc = { .read = {
-			.buffer_addr = 0}};
+	static const union e1000_adv_tx_desc zeroed_desc = {{0}};
 	struct igb_tx_entry *txe = txq->sw_ring;
 	uint16_t i, prev;
 	struct e1000_hw *hw;
@@ -1330,8 +1329,7 @@ eth_igb_rx_queue_release(void *rxq)
 static void
 igb_reset_rx_queue(struct igb_rx_queue *rxq)
 {
-	static const union e1000_adv_rx_desc zeroed_desc = { .read = {
-			.pkt_addr = 0}};
+	static const union e1000_adv_rx_desc zeroed_desc = {{0}};
 	unsigned i;
 
 	/* Zero out HW ring memory */

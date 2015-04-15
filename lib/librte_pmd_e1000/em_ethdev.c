@@ -130,7 +130,7 @@ static struct rte_pci_id pci_id_em_map[] = {
 #define RTE_PCI_DEV_ID_DECL_EM(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"
 
-{.device_id = 0},
+{0},
 };
 
 static const struct eth_dev_ops eth_em_ops = {
