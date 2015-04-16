@@ -292,7 +292,8 @@ eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
  *	Negative on addr is less than addr2, or error.
  */
 static inline int
-rte_eal_compare_pci_addr(struct rte_pci_addr *addr, struct rte_pci_addr *addr2)
+rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
+			 const struct rte_pci_addr *addr2)
 {
 	uint64_t dev_addr, dev_addr2;
 
@@ -348,7 +349,7 @@ int rte_eal_pci_probe(void);
  *   - 0 on success.
  *   - Negative on error.
  */
-int rte_eal_pci_probe_one(struct rte_pci_addr *addr);
+int rte_eal_pci_probe_one(const struct rte_pci_addr *addr);
 
 /**
  * Close the single PCI device.
@@ -363,7 +364,7 @@ int rte_eal_pci_probe_one(struct rte_pci_addr *addr);
  *   - 0 on success.
  *   - Negative on error.
  */
-int rte_eal_pci_close_one(struct rte_pci_addr *addr);
+int rte_eal_pci_close_one(const struct rte_pci_addr *addr);
 #endif /* RTE_LIBRTE_EAL_HOTPLUG */
 
 /**

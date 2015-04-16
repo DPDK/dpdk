@@ -158,7 +158,7 @@ pci_close_all_drivers(struct rte_pci_device *dev)
  * the driver of the devive.
  */
 int
-rte_eal_pci_probe_one(struct rte_pci_addr *addr)
+rte_eal_pci_probe_one(const struct rte_pci_addr *addr)
 {
 	struct rte_pci_device *dev = NULL;
 	int ret = 0;
@@ -189,7 +189,7 @@ err_return:
  * the driver of the devive.
  */
 int
-rte_eal_pci_close_one(struct rte_pci_addr *addr)
+rte_eal_pci_close_one(const struct rte_pci_addr *addr)
 {
 	struct rte_pci_device *dev = NULL;
 	int ret = 0;
