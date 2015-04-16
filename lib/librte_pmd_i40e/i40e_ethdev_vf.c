@@ -999,7 +999,7 @@ i40evf_get_link_status(struct rte_eth_dev *dev, struct rte_eth_link *link)
 	return 0;
 }
 
-static struct rte_pci_id pci_id_i40evf_map[] = {
+static const struct rte_pci_id pci_id_i40evf_map[] = {
 #define RTE_PCI_DEV_ID_DECL_I40EVF(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"
 { .vendor_id = 0, /* sentinel */ },

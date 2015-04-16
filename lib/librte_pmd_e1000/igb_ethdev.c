@@ -216,7 +216,7 @@ static enum e1000_fc_mode igb_fc_setting = e1000_fc_full;
 /*
  * The set of PCI devices this driver supports
  */
-static struct rte_pci_id pci_id_igb_map[] = {
+static const struct rte_pci_id pci_id_igb_map[] = {
 
 #define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"
@@ -227,7 +227,7 @@ static struct rte_pci_id pci_id_igb_map[] = {
 /*
  * The set of PCI devices this driver supports (for 82576&I350 VF)
  */
-static struct rte_pci_id pci_id_igbvf_map[] = {
+static const struct rte_pci_id pci_id_igbvf_map[] = {
 
 #define RTE_PCI_DEV_ID_DECL_IGBVF(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"

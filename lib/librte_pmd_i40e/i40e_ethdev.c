@@ -212,7 +212,7 @@ static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 static void i40e_configure_registers(struct i40e_hw *hw);
 static void i40e_hw_init(struct i40e_hw *hw);
 
-static struct rte_pci_id pci_id_i40e_map[] = {
+static const struct rte_pci_id pci_id_i40e_map[] = {
 #define RTE_PCI_DEV_ID_DECL_I40E(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"
 { .vendor_id = 0, /* sentinel */ },

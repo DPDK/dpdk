@@ -562,6 +562,7 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	id_table = rte_zmalloc_socket(name, sizeof(*id_table), 0, socket_id);
 	if (id_table == NULL)
 		goto err;
+	id_table->device_id = 0xBEEF;
 
 	dev_private = rte_zmalloc_socket(name, sizeof(*dev_private), 0, socket_id);
 	if (dev_private == NULL)
@@ -626,8 +627,6 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 
 	eth_dev->pci_dev = pci_dev;
 	eth_dev->pci_dev->driver = &eth_drv->pci_drv;
-
-	eth_dev->pci_dev->driver->id_table->device_id = 0xBEEF;
 
 	eth_dev->rx_pkt_burst = virtual_ethdev_rx_burst_success;
 	eth_dev->tx_pkt_burst = virtual_ethdev_tx_burst_success;

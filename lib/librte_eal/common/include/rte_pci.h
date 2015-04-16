@@ -204,7 +204,7 @@ struct rte_pci_driver {
 	const char *name;                       /**< Driver name. */
 	pci_devinit_t *devinit;                 /**< Device init. function. */
 	pci_devuninit_t *devuninit;             /**< Device uninit function. */
-	struct rte_pci_id *id_table;            /**< ID table, NULL terminated. */
+	const struct rte_pci_id *id_table;	/**< ID table, NULL terminated. */
 	uint32_t drv_flags;                     /**< Flags contolling handling of device. */
 };
 

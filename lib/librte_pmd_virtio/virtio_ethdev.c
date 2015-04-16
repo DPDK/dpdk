@@ -102,7 +102,7 @@ static int virtio_dev_queue_stats_mapping_set(
 /*
  * The set of PCI devices this driver supports
  */
-static struct rte_pci_id pci_id_virtio_map[] = {
+static const struct rte_pci_id pci_id_virtio_map[] = {
 
 #define RTE_PCI_DEV_ID_DECL_VIRTIO(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"

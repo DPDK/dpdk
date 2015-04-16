@@ -624,9 +624,9 @@ int
 rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *dev)
 {
 	int ret;
-	struct rte_pci_id *id_table;
+	const struct rte_pci_id *id_table;
 
-	for (id_table = dr->id_table ; id_table->vendor_id != 0; id_table++) {
+	for (id_table = dr->id_table; id_table->vendor_id != 0; id_table++) {
 
 		/* check if device's identifiers match the driver's ones */
 		if (id_table->vendor_id != dev->id.vendor_id &&
@@ -696,12 +696,12 @@ int
 rte_eal_pci_close_one_driver(struct rte_pci_driver *dr,
 		struct rte_pci_device *dev)
 {
-	struct rte_pci_id *id_table;
+	const struct rte_pci_id *id_table;
 
 	if ((dr == NULL) || (dev == NULL))
 		return -EINVAL;
 
-	for (id_table = dr->id_table ; id_table->vendor_id != 0; id_table++) {
+	for (id_table = dr->id_table; id_table->vendor_id != 0; id_table++) {
 
 		/* check if device's identifiers match the driver's ones */
 		if (id_table->vendor_id != dev->id.vendor_id &&

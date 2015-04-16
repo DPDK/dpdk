@@ -125,7 +125,7 @@ static enum e1000_fc_mode em_fc_setting = e1000_fc_full;
 /*
  * The set of PCI devices this driver supports
  */
-static struct rte_pci_id pci_id_em_map[] = {
+static const struct rte_pci_id pci_id_em_map[] = {
 
 #define RTE_PCI_DEV_ID_DECL_EM(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"

@@ -237,14 +237,12 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 		RTE_BOND_LOG(ERR, "Unable to malloc pci_id_table on socket");
 		goto err;
 	}
+	pci_id_table->device_id = PCI_ANY_ID;
+	pci_id_table->subsystem_device_id = PCI_ANY_ID;
+	pci_id_table->vendor_id = PCI_ANY_ID;
+	pci_id_table->subsystem_vendor_id = PCI_ANY_ID;
 
 	pci_drv->id_table = pci_id_table;
-
-	pci_drv->id_table->device_id = PCI_ANY_ID;
-	pci_drv->id_table->subsystem_device_id = PCI_ANY_ID;
-	pci_drv->id_table->vendor_id = PCI_ANY_ID;
-	pci_drv->id_table->subsystem_vendor_id = PCI_ANY_ID;
-
 	pci_drv->drv_flags = RTE_PCI_DRV_INTR_LSC;
 
 	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, socket_id);

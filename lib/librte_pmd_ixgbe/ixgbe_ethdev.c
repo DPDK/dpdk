@@ -297,7 +297,7 @@ static int ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 /*
  * The set of PCI devices this driver supports
  */
-static struct rte_pci_id pci_id_ixgbe_map[] = {
+static const struct rte_pci_id pci_id_ixgbe_map[] = {
 
 #define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"
@@ -309,7 +309,7 @@ static struct rte_pci_id pci_id_ixgbe_map[] = {
 /*
  * The set of PCI devices this driver supports (for 82599 VF)
  */
-static struct rte_pci_id pci_id_ixgbevf_map[] = {
+static const struct rte_pci_id pci_id_ixgbevf_map[] = {
 
 #define RTE_PCI_DEV_ID_DECL_IXGBEVF(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"

@@ -4632,7 +4632,7 @@ error:
 	return -err;
 }
 
-static struct rte_pci_id mlx4_pci_id_map[] = {
+static const struct rte_pci_id mlx4_pci_id_map[] = {
 	{
 		.vendor_id = PCI_VENDOR_ID_MELLANOX,
 		.device_id = PCI_DEVICE_ID_MELLANOX_CONNECTX3,

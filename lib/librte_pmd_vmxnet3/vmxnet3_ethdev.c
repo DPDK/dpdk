@@ -91,7 +91,7 @@ static void vmxnet3_process_events(struct vmxnet3_hw *);
 /*
  * The set of PCI devices this driver supports
  */
-static struct rte_pci_id pci_id_vmxnet3_map[] = {
+static const struct rte_pci_id pci_id_vmxnet3_map[] = {
 
 #define RTE_PCI_DEV_ID_DECL_VMXNET3(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"
