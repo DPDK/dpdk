@@ -246,7 +246,7 @@ int enic_clsf_init(struct enic *enic)
 		.name = "enicpmd_clsf_hash",
 		.entries = ENICPMD_CLSF_HASH_ENTRIES,
 		.bucket_entries = ENICPMD_CLSF_BUCKET_ENTRIES,
-		.key_len = sizeof(struct rte_fdir_filter),
+		.key_len = RTE_HASH_KEY_LENGTH_MAX,
 		.hash_func = DEFAULT_HASH_FUNC,
 		.hash_func_init_val = 0,
 		.socket_id = SOCKET_0,
