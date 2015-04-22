@@ -1921,7 +1921,6 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 {
 	struct e1000_hw     *hw;
 	struct igb_rx_queue *rxq;
-	struct rte_pktmbuf_pool_private *mbp_priv;
 	uint32_t rctl;
 	uint32_t rxcsum;
 	uint32_t srrctl;
@@ -1991,9 +1990,8 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		/*
 		 * Configure RX buffer size.
 		 */
-		mbp_priv = rte_mempool_get_priv(rxq->mb_pool);
-		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
-				       RTE_PKTMBUF_HEADROOM);
+		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
+			RTE_PKTMBUF_HEADROOM);
 		if (buf_size >= 1024) {
 			/*
 			 * Configure the BSIZEPACKET field of the SRRCTL
@@ -2221,7 +2219,6 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 {
 	struct e1000_hw     *hw;
 	struct igb_rx_queue *rxq;
-	struct rte_pktmbuf_pool_private *mbp_priv;
 	uint32_t srrctl;
 	uint16_t buf_size;
 	uint16_t rctl_bsize;
@@ -2262,9 +2259,8 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 		/*
 		 * Configure RX buffer size.
 		 */
-		mbp_priv = rte_mempool_get_priv(rxq->mb_pool);
-		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
-				       RTE_PKTMBUF_HEADROOM);
+		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
+			RTE_PKTMBUF_HEADROOM);
 		if (buf_size >= 1024) {
 			/*
 			 * Configure the BSIZEPACKET field of the SRRCTL

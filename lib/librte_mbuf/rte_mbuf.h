@@ -642,6 +642,47 @@ void rte_pktmbuf_init(struct rte_mempool *mp, void *opaque_arg,
 void rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg);
 
 /**
+ * Get the data room size of mbufs stored in a pktmbuf_pool
+ *
+ * The data room size is the amount of data that can be stored in a
+ * mbuf including the headroom (RTE_PKTMBUF_HEADROOM).
+ *
+ * @param mp
+ *   The packet mbuf pool.
+ * @return
+ *   The data room size of mbufs stored in this mempool.
+ */
+static inline uint16_t
+rte_pktmbuf_data_room_size(struct rte_mempool *mp)
+{
+	struct rte_pktmbuf_pool_private *mbp_priv;
+
+	mbp_priv = (struct rte_pktmbuf_pool_private *)rte_mempool_get_priv(mp);
+	return mbp_priv->mbuf_data_room_size;
+}
+
+/**
+ * Get the application private size of mbufs stored in a pktmbuf_pool
+ *
+ * The private size of mbuf is a zone located between the rte_mbuf
+ * structure and the data buffer where an application can store data
+ * associated to a packet.
+ *
+ * @param mp
+ *   The packet mbuf pool.
+ * @return
+ *   The private size of mbufs stored in this mempool.
+ */
+static inline uint16_t
+rte_pktmbuf_priv_size(struct rte_mempool *mp)
+{
+	struct rte_pktmbuf_pool_private *mbp_priv;
+
+	mbp_priv = (struct rte_pktmbuf_pool_private *)rte_mempool_get_priv(mp);
+	return mbp_priv->mbuf_priv_size;
+}
+
+/**
  * Reset the fields of a packet mbuf to their default values.
  *
  * The given mbuf must have only one segment.

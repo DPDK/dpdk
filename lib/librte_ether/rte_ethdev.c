@@ -1439,7 +1439,6 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 	int ret;
 	uint32_t mbp_buf_size;
 	struct rte_eth_dev *dev;
-	struct rte_pktmbuf_pool_private *mbp_priv;
 	struct rte_eth_dev_info dev_info;
 
 	/* This function is only safe when called from the primary process
@@ -1478,8 +1477,7 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 				(int) sizeof(struct rte_pktmbuf_pool_private));
 		return -ENOSPC;
 	}
-	mbp_priv = rte_mempool_get_priv(mp);
-	mbp_buf_size = mbp_priv->mbuf_data_room_size;
+	mbp_buf_size = rte_pktmbuf_data_room_size(mp);
 
 	if ((mbp_buf_size - RTE_PKTMBUF_HEADROOM) < dev_info.min_rx_bufsize) {
 		PMD_DEBUG_TRACE("%s mbuf_data_room_size %d < %d "

@@ -2444,11 +2444,10 @@ i40e_rx_queue_config(struct i40e_rx_queue *rxq)
 	struct i40e_pf *pf = I40E_VSI_TO_PF(rxq->vsi);
 	struct i40e_hw *hw = I40E_VSI_TO_HW(rxq->vsi);
 	struct rte_eth_dev_data *data = pf->dev_data;
-	struct rte_pktmbuf_pool_private *mbp_priv =
-			rte_mempool_get_priv(rxq->mp);
-	uint16_t buf_size = (uint16_t)(mbp_priv->mbuf_data_room_size -
-						RTE_PKTMBUF_HEADROOM);
-	uint16_t len;
+	uint16_t buf_size, len;
+
+	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
+		RTE_PKTMBUF_HEADROOM);
 
 	switch (pf->flags & (I40E_FLAG_HEADER_SPLIT_DISABLED |
 			I40E_FLAG_HEADER_SPLIT_ENABLED)) {
@@ -2506,7 +2505,6 @@ i40e_rx_queue_init(struct i40e_rx_queue *rxq)
 	uint16_t pf_q = rxq->reg_idx;
 	uint16_t buf_size;
 	struct i40e_hmc_obj_rxq rx_ctx;
-	struct rte_pktmbuf_pool_private *mbp_priv;
 
 	err = i40e_rx_queue_config(rxq);
 	if (err < 0) {
@@ -2553,9 +2551,8 @@ i40e_rx_queue_init(struct i40e_rx_queue *rxq)
 
 	rxq->qrx_tail = hw->hw_addr + I40E_QRX_TAIL(pf_q);
 
-	mbp_priv = rte_mempool_get_priv(rxq->mp);
-	buf_size = (uint16_t)(mbp_priv->mbuf_data_room_size -
-					RTE_PKTMBUF_HEADROOM);
+	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
+		RTE_PKTMBUF_HEADROOM);
 
 	/* Check if scattered RX needs to be used. */
 	if ((rxq->max_pkt_len + 2 * I40E_VLAN_TAG_SIZE) > buf_size) {

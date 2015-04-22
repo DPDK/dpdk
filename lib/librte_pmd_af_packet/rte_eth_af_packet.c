@@ -348,15 +348,13 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 {
 	struct pmd_internals *internals = dev->data->dev_private;
 	struct pkt_rx_queue *pkt_q = &internals->rx_queue[rx_queue_id];
-	struct rte_pktmbuf_pool_private *mbp_priv;
 	uint16_t buf_size;
 
 	pkt_q->mb_pool = mb_pool;
 
 	/* Now get the space available for data in the mbuf */
-	mbp_priv = rte_mempool_get_priv(pkt_q->mb_pool);
-	buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
-	                       RTE_PKTMBUF_HEADROOM);
+	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(pkt_q->mb_pool) -
+		RTE_PKTMBUF_HEADROOM);
 
 	if (ETH_FRAME_LEN > buf_size) {
 		RTE_LOG(ERR, PMD,

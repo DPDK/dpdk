@@ -4203,7 +4203,6 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
 	struct ixgbe_rx_queue *rxq;
-	struct rte_pktmbuf_pool_private *mbp_priv;
 	uint64_t bus_addr;
 	uint32_t rxctrl;
 	uint32_t fctrl;
@@ -4320,9 +4319,8 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		 * The value is in 1 KB resolution. Valid values can be from
 		 * 1 KB to 16 KB.
 		 */
-		mbp_priv = rte_mempool_get_priv(rxq->mb_pool);
-		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
-				       RTE_PKTMBUF_HEADROOM);
+		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
+			RTE_PKTMBUF_HEADROOM);
 		srrctl |= ((buf_size >> IXGBE_SRRCTL_BSIZEPKT_SHIFT) &
 			   IXGBE_SRRCTL_BSIZEPKT_MASK);
 
@@ -4738,7 +4736,6 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
 	struct ixgbe_rx_queue *rxq;
-	struct rte_pktmbuf_pool_private *mbp_priv;
 	uint64_t bus_addr;
 	uint32_t srrctl, psrtype = 0;
 	uint16_t buf_size;
@@ -4825,9 +4822,8 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 		 * The value is in 1 KB resolution. Valid values can be from
 		 * 1 KB to 16 KB.
 		 */
-		mbp_priv = rte_mempool_get_priv(rxq->mb_pool);
-		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
-				       RTE_PKTMBUF_HEADROOM);
+		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
+			RTE_PKTMBUF_HEADROOM);
 		srrctl |= ((buf_size >> IXGBE_SRRCTL_BSIZEPKT_SHIFT) &
 			   IXGBE_SRRCTL_BSIZEPKT_MASK);
 

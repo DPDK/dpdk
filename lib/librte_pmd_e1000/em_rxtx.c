@@ -1668,12 +1668,11 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 	/* Determine RX bufsize. */
 	rctl_bsize = EM_MAX_BUF_SIZE;
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		struct rte_pktmbuf_pool_private *mbp_priv;
 		uint32_t buf_size;
 
 		rxq = dev->data->rx_queues[i];
-		mbp_priv = rte_mempool_get_priv(rxq->mb_pool);
-		buf_size = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
+		buf_size = rte_pktmbuf_data_room_size(rxq->mb_pool) -
+			RTE_PKTMBUF_HEADROOM;
 		rctl_bsize = RTE_MIN(rctl_bsize, buf_size);
 	}
 

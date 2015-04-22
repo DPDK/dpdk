@@ -838,14 +838,11 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	uint8_t i;
 	char mem_name[32];
 	uint16_t buf_size;
-	struct rte_pktmbuf_pool_private *mbp_priv;
 
 	PMD_INIT_FUNC_TRACE();
 
-	mbp_priv = (struct rte_pktmbuf_pool_private *)
-		rte_mempool_get_priv(mp);
-	buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
-			       RTE_PKTMBUF_HEADROOM);
+	buf_size = rte_pktmbuf_data_room_size(mp) -
+		RTE_PKTMBUF_HEADROOM;
 
 	if (dev->data->dev_conf.rxmode.max_rx_pkt_len > buf_size) {
 		PMD_INIT_LOG(ERR, "buf_size = %u, max_pkt_len = %u, "

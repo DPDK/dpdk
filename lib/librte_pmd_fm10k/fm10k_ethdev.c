@@ -397,7 +397,6 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 	uint32_t size;
 	uint32_t rxdctl = FM10K_RXDCTL_WRITE_BACK_MIN_DELAY;
 	uint16_t buf_size;
-	struct rte_pktmbuf_pool_private *mbp_priv;
 
 	/* Disable RXINT to avoid possible interrupt */
 	for (i = 0; i < hw->mac.max_queues; i++)
@@ -425,9 +424,8 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 		FM10K_WRITE_REG(hw, FM10K_RDLEN(i), size);
 
 		/* Configure the Rx buffer size for one buff without split */
-		mbp_priv = rte_mempool_get_priv(rxq->mp);
-		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
-					RTE_PKTMBUF_HEADROOM);
+		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
+			RTE_PKTMBUF_HEADROOM);
 		FM10K_WRITE_REG(hw, FM10K_SRRCTL(i),
 				buf_size >> FM10K_SRRCTL_BSIZEPKT_SHIFT);
 

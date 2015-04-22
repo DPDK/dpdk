@@ -571,13 +571,11 @@ i40evf_fill_virtchnl_vsi_rxq_info(struct i40e_virtchnl_rxq_info *rxq_info,
 	rxq_info->queue_id = queue_id;
 	rxq_info->max_pkt_size = max_pkt_size;
 	if (queue_id < nb_rxq) {
-		struct rte_pktmbuf_pool_private *mbp_priv;
-
 		rxq_info->ring_len = rxq->nb_rx_desc;
 		rxq_info->dma_ring_addr = rxq->rx_ring_phys_addr;
-		mbp_priv = rte_mempool_get_priv(rxq->mp);
 		rxq_info->databuffer_size =
-			mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
+			(rte_pktmbuf_data_room_size(rxq->mp) -
+				RTE_PKTMBUF_HEADROOM);
 	}
 }
 

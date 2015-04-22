@@ -136,7 +136,6 @@ eth_pcap_rx(void *queue,
 	const u_char *packet;
 	struct rte_mbuf *mbuf;
 	struct pcap_rx_queue *pcap_q = queue;
-	struct rte_pktmbuf_pool_private *mbp_priv;
 	uint16_t num_rx = 0;
 	uint16_t buf_size;
 
@@ -157,8 +156,7 @@ eth_pcap_rx(void *queue,
 			break;
 
 		/* Now get the space available for data in the mbuf */
-		mbp_priv =  rte_mempool_get_priv(pcap_q->mb_pool);
-		buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
+		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(pcap_q->mb_pool) -
 				RTE_PKTMBUF_HEADROOM);
 
 		if (header.len <= buf_size) {
