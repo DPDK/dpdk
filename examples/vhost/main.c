@@ -2844,11 +2844,10 @@ static void
 setup_mempool_tbl(int socket, uint32_t index, char *pool_name,
 	char *ring_name, uint32_t nb_mbuf)
 {
-	uint16_t roomsize = VIRTIO_DESCRIPTOR_LEN_ZCP + RTE_PKTMBUF_HEADROOM;
 	vpool_array[index].pool
 		= rte_mempool_create(pool_name, nb_mbuf, MBUF_SIZE_ZCP,
 		MBUF_CACHE_SIZE_ZCP, sizeof(struct rte_pktmbuf_pool_private),
-		rte_pktmbuf_pool_init, (void *)(uintptr_t)roomsize,
+		rte_pktmbuf_pool_init, NULL,
 		rte_pktmbuf_init, NULL, socket, 0);
 	if (vpool_array[index].pool != NULL) {
 		vpool_array[index].ring
@@ -2870,7 +2869,7 @@ setup_mempool_tbl(int socket, uint32_t index, char *pool_name,
 		}
 
 		/* Need consider head room. */
-		vpool_array[index].buf_size = roomsize - RTE_PKTMBUF_HEADROOM;
+		vpool_array[index].buf_size = VIRTIO_DESCRIPTOR_LEN_ZCP;
 	} else {
 		rte_exit(EXIT_FAILURE, "mempool_create(%s) failed", pool_name);
 	}

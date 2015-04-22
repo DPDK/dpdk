@@ -443,6 +443,7 @@ testpmd_mbuf_pool_ctor(struct rte_mempool *mp,
 	mbp_ctor_arg = (struct mbuf_pool_ctor_arg *) opaque_arg;
 	mbp_priv = rte_mempool_get_priv(mp);
 	mbp_priv->mbuf_data_room_size = mbp_ctor_arg->seg_buf_size;
+	mbp_priv->mbuf_priv_size = 0;
 }
 
 static void

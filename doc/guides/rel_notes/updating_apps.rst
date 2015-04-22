@@ -4,6 +4,18 @@ Updating Applications from Previous Versions
 Although backward compatibility is being maintained across DPDK releases, code written for previous versions of the DPDK
 may require some code updates to benefit from performance and user experience enhancements provided in later DPDK releases.
 
+DPDK 2.0 to DPDK 2.1
+--------------------
+
+*   The second argument of rte_pktmbuf_pool_init(mempool, opaque) is now a
+    pointer to a struct rte_pktmbuf_pool_private instead of a uint16_t
+    casted into a pointer. Backward compatibility is preserved when the
+    argument was NULL which is the majority of use cases, but not if the
+    opaque pointer was not NULL, as it is not technically feasible. In
+    this case, the application has to be modified to properly fill a
+    rte_pktmbuf_pool_private structure and pass it to
+    rte_pktmbuf_pool_init().
+
 DPDK 1.7 to DPDK 1.8
 --------------------
 

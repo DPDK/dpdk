@@ -81,17 +81,30 @@ rte_ctrlmbuf_init(struct rte_mempool *mp,
 void
 rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg)
 {
-	struct rte_pktmbuf_pool_private *mbp_priv;
+	struct rte_pktmbuf_pool_private *user_mbp_priv, *mbp_priv;
+	struct rte_pktmbuf_pool_private default_mbp_priv;
 	uint16_t roomsz;
 
+	RTE_MBUF_ASSERT(mp->elt_size >= sizeof(struct rte_mbuf));
+
+	/* if no structure is provided, assume no mbuf private area */
+	user_mbp_priv = opaque_arg;
+	if (user_mbp_priv == NULL) {
+		default_mbp_priv.mbuf_priv_size = 0;
+		if (mp->elt_size > sizeof(struct rte_mbuf))
+			roomsz = mp->elt_size - sizeof(struct rte_mbuf);
+		else
+			roomsz = 0;
+		default_mbp_priv.mbuf_data_room_size = roomsz;
+		user_mbp_priv = &default_mbp_priv;
+	}
+
+	RTE_MBUF_ASSERT(mp->elt_size >= sizeof(struct rte_mbuf) +
+		user_mbp_priv->mbuf_data_room_size +
+		user_mbp_priv->mbuf_priv_size);
+
 	mbp_priv = rte_mempool_get_priv(mp);
-	roomsz = (uint16_t)(uintptr_t)opaque_arg;
-
-	/* Use default data room size. */
-	if (0 == roomsz)
-		roomsz = 2048 + RTE_PKTMBUF_HEADROOM;
-
-	mbp_priv->mbuf_data_room_size = roomsz;
+	memcpy(mbp_priv, user_mbp_priv, sizeof(*mbp_priv));
 }
 
 /*
