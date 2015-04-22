@@ -699,14 +699,16 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Cannot init packet mbuf pool\n");
 
 	header_pool = rte_mempool_create("header_pool", NB_HDR_MBUF,
-	    HDR_MBUF_SIZE, 32, 0, NULL, NULL, rte_pktmbuf_init, NULL,
+	    HDR_MBUF_SIZE, 32, sizeof(struct rte_pktmbuf_pool_private),
+	    rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
 	    rte_socket_id(), 0);
 
 	if (header_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init header mbuf pool\n");
 
 	clone_pool = rte_mempool_create("clone_pool", NB_CLONE_MBUF,
-	    CLONE_MBUF_SIZE, 32, 0, NULL, NULL, rte_pktmbuf_init, NULL,
+	    CLONE_MBUF_SIZE, 32, sizeof(struct rte_pktmbuf_pool_private),
+	    rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
 	    rte_socket_id(), 0);
 
 	if (clone_pool == NULL)

@@ -764,8 +764,8 @@ init_mem(void)
 
 			mp = rte_mempool_create(buf, NB_MBUF,
 							   sizeof(struct rte_mbuf), 32,
-							   0,
-							   NULL, NULL,
+							   sizeof(struct rte_pktmbuf_pool_private),
+							   rte_pktmbuf_pool_init, NULL,
 							   rte_pktmbuf_init, NULL,
 							   socket, 0);
 			if (mp == NULL) {

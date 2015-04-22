@@ -363,6 +363,8 @@ app_get_ring_resp(uint32_t core_id)
 static void
 app_init_mbuf_pools(void)
 {
+	struct rte_pktmbuf_pool_private indirect_mbp_priv;
+
 	/* Init the buffer pool */
 	RTE_LOG(INFO, USER1, "Creating the mbuf pool ...\n");
 	app.pool = rte_mempool_create(
@@ -380,13 +382,15 @@ app_init_mbuf_pools(void)
 
 	/* Init the indirect buffer pool */
 	RTE_LOG(INFO, USER1, "Creating the indirect mbuf pool ...\n");
+	indirect_mbp_priv.mbuf_data_room_size = 0;
+	indirect_mbp_priv.mbuf_priv_size = sizeof(struct app_pkt_metadata);
 	app.indirect_pool = rte_mempool_create(
 		"indirect mempool",
 		app.pool_size,
 		sizeof(struct rte_mbuf) + sizeof(struct app_pkt_metadata),
 		app.pool_cache_size,
-		0,
-		NULL, NULL,
+		sizeof(struct rte_pktmbuf_pool_private),
+		rte_pktmbuf_pool_init, &indirect_mbp_priv,
 		rte_pktmbuf_init, NULL,
 		rte_socket_id(),
 		0);
