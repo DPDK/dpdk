@@ -48,7 +48,7 @@ static struct rte_mempool *mp;
 
 #define RING_SIZE 256
 
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   512
 
 static int
@@ -406,12 +406,8 @@ test_pmd_ring_pair_create_attach(void)
 static int
 test_pmd_ring(void)
 {
-	mp = rte_mempool_create("mbuf_pool", NB_MBUF,
-			MBUF_SIZE, 32,
-			sizeof(struct rte_pktmbuf_pool_private),
-			rte_pktmbuf_pool_init, NULL,
-			rte_pktmbuf_init, NULL,
-			rte_socket_id(), 0);
+	mp = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF, 32,
+		0, MBUF_DATA_SIZE, rte_socket_id());
 	if (mp == NULL)
 		return -1;
 

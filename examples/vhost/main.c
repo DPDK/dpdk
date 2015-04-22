@@ -67,7 +67,7 @@
 							(num_switching_cores*MBUF_CACHE_SIZE))
 
 #define MBUF_CACHE_SIZE 128
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 
 /*
  * No frame data buffer allocated from host are required for zero copy
@@ -75,8 +75,7 @@
  * directly use it.
  */
 #define VIRTIO_DESCRIPTOR_LEN_ZCP 1518
-#define MBUF_SIZE_ZCP (VIRTIO_DESCRIPTOR_LEN_ZCP + sizeof(struct rte_mbuf) \
-	+ RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SIZE_ZCP (VIRTIO_DESCRIPTOR_LEN_ZCP + RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE_ZCP 0
 
 #define MAX_PKT_BURST 32 		/* Max burst size for RX/TX */
@@ -2844,11 +2843,8 @@ static void
 setup_mempool_tbl(int socket, uint32_t index, char *pool_name,
 	char *ring_name, uint32_t nb_mbuf)
 {
-	vpool_array[index].pool
-		= rte_mempool_create(pool_name, nb_mbuf, MBUF_SIZE_ZCP,
-		MBUF_CACHE_SIZE_ZCP, sizeof(struct rte_pktmbuf_pool_private),
-		rte_pktmbuf_pool_init, NULL,
-		rte_pktmbuf_init, NULL, socket, 0);
+	vpool_array[index].pool	= rte_pktmbuf_pool_create(pool_name, nb_mbuf,
+		MBUF_CACHE_SIZE_ZCP, 0, MBUF_DATA_SIZE_ZCP, socket);
 	if (vpool_array[index].pool != NULL) {
 		vpool_array[index].ring
 			= rte_ring_create(ring_name,
@@ -2932,15 +2928,9 @@ main(int argc, char *argv[])
 
 	if (zero_copy == 0) {
 		/* Create the mbuf pool. */
-		mbuf_pool = rte_mempool_create(
-				"MBUF_POOL",
-				NUM_MBUFS_PER_PORT
-				* valid_num_ports,
-				MBUF_SIZE, MBUF_CACHE_SIZE,
-				sizeof(struct rte_pktmbuf_pool_private),
-				rte_pktmbuf_pool_init, NULL,
-				rte_pktmbuf_init, NULL,
-				rte_socket_id(), 0);
+		mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL",
+			NUM_MBUFS_PER_PORT * valid_num_ports, MBUF_CACHE_SIZE,
+			0, MBUF_DATA_SIZE, rte_socket_id());
 		if (mbuf_pool == NULL)
 			rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 

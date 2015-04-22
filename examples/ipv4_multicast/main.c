@@ -77,13 +77,12 @@
 #define	MCAST_CLONE_PORTS	2
 #define	MCAST_CLONE_SEGS	2
 
-#define	PKT_MBUF_SIZE	(2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define	PKT_MBUF_DATA_SIZE	(2048 + RTE_PKTMBUF_HEADROOM)
 #define	NB_PKT_MBUF	8192
 
-#define	HDR_MBUF_SIZE	(sizeof(struct rte_mbuf) + 2 * RTE_PKTMBUF_HEADROOM)
+#define	HDR_MBUF_DATA_SIZE	(2 * RTE_PKTMBUF_HEADROOM)
 #define	NB_HDR_MBUF	(NB_PKT_MBUF * MAX_PORTS)
 
-#define	CLONE_MBUF_SIZE	(sizeof(struct rte_mbuf))
 #define	NB_CLONE_MBUF	(NB_PKT_MBUF * MCAST_CLONE_PORTS * MCAST_CLONE_SEGS * 2)
 
 /* allow max jumbo frame 9.5 KB */
@@ -690,26 +689,20 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Invalid IPV4_MULTICAST parameters\n");
 
 	/* create the mbuf pools */
-	packet_pool = rte_mempool_create("packet_pool", NB_PKT_MBUF,
-	    PKT_MBUF_SIZE, 32, sizeof(struct rte_pktmbuf_pool_private),
-	    rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
-	    rte_socket_id(), 0);
+	packet_pool = rte_pktmbuf_pool_create("packet_pool", NB_PKT_MBUF, 32,
+		0, PKT_MBUF_DATA_SIZE, rte_socket_id());
 
 	if (packet_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init packet mbuf pool\n");
 
-	header_pool = rte_mempool_create("header_pool", NB_HDR_MBUF,
-	    HDR_MBUF_SIZE, 32, sizeof(struct rte_pktmbuf_pool_private),
-	    rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
-	    rte_socket_id(), 0);
+	header_pool = rte_pktmbuf_pool_create("header_pool", NB_HDR_MBUF, 32,
+		0, HDR_MBUF_DATA_SIZE, rte_socket_id());
 
 	if (header_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init header mbuf pool\n");
 
-	clone_pool = rte_mempool_create("clone_pool", NB_CLONE_MBUF,
-	    CLONE_MBUF_SIZE, 32, sizeof(struct rte_pktmbuf_pool_private),
-	    rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
-	    rte_socket_id(), 0);
+	clone_pool = rte_pktmbuf_pool_create("clone_pool", NB_CLONE_MBUF, 32,
+		0, 0, rte_socket_id());
 
 	if (clone_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init clone mbuf pool\n");

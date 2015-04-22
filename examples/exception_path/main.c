@@ -81,11 +81,10 @@
 #define MAX_PORTS               (RTE_MAX_LCORE / 2)
 
 /* Max size of a single packet */
-#define MAX_PACKET_SZ           2048
+#define MAX_PACKET_SZ (2048)
 
-/* Number of bytes needed for each mbuf */
-#define MBUF_SZ \
-	(MAX_PACKET_SZ + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+/* Size of the data buffer in each mbuf */
+#define MBUF_DATA_SZ (MAX_PACKET_SZ + RTE_PKTMBUF_HEADROOM)
 
 /* Number of mbufs in mempool that is created */
 #define NB_MBUF                 8192
@@ -532,11 +531,8 @@ main(int argc, char** argv)
 	parse_args(argc, argv);
 
 	/* Create the mbuf pool */
-	pktmbuf_pool = rte_mempool_create("mbuf_pool", NB_MBUF, MBUF_SZ,
-			MEMPOOL_CACHE_SZ,
-			sizeof(struct rte_pktmbuf_pool_private),
-			rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
-			rte_socket_id(), 0);
+	pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF,
+			MEMPOOL_CACHE_SZ, 0, MBUF_DATA_SZ, rte_socket_id());
 	if (pktmbuf_pool == NULL) {
 		FATAL_ERROR("Could not initialise mbuf pool");
 		return -1;

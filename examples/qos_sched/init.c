@@ -335,13 +335,9 @@ int app_init(void)
 
 		/* create the mbuf pools for each RX Port */
 		snprintf(pool_name, MAX_NAME_LEN, "mbuf_pool%u", i);
-		qos_conf[i].mbuf_pool = rte_mempool_create(pool_name, mp_size, MBUF_SIZE,
-						burst_conf.rx_burst * 4,
-						sizeof(struct rte_pktmbuf_pool_private),
-						rte_pktmbuf_pool_init, NULL,
-						rte_pktmbuf_init, NULL,
-						rte_eth_dev_socket_id(qos_conf[i].rx_port),
-						0);
+		qos_conf[i].mbuf_pool = rte_pktmbuf_pool_create(pool_name,
+			mp_size, burst_conf.rx_burst * 4, 0, MBUF_DATA_SIZE,
+			rte_eth_dev_socket_id(qos_conf[i].rx_port));
 		if (qos_conf[i].mbuf_pool == NULL)
 			rte_exit(EXIT_FAILURE, "Cannot init mbuf pool for socket %u\n", i);
 

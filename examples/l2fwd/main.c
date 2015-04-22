@@ -71,7 +71,7 @@
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   8192
 
 #define MAX_PKT_BURST 32
@@ -560,13 +560,8 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Invalid L2FWD arguments\n");
 
 	/* create the mbuf pool */
-	l2fwd_pktmbuf_pool =
-		rte_mempool_create("mbuf_pool", NB_MBUF,
-				   MBUF_SIZE, 32,
-				   sizeof(struct rte_pktmbuf_pool_private),
-				   rte_pktmbuf_pool_init, NULL,
-				   rte_pktmbuf_init, NULL,
-				   rte_socket_id(), 0);
+	l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF, 32,
+		0, MBUF_DATA_SIZE, rte_socket_id());
 	if (l2fwd_pktmbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
 

@@ -40,7 +40,7 @@
 #define RX_DESC_PER_QUEUE   128
 #define TX_DESC_PER_QUEUE   512
 
-#define MBUF_SIZE     (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SIZE     (2048 + RTE_PKTMBUF_HEADROOM)
 #define MBUF_PER_POOL 8192
 
 #define QUOTA_WATERMARK_MEMZONE_NAME "qw_global_vars"

@@ -50,7 +50,7 @@
 #define REORDER_BUFFER_SIZE 16384
 #define NUM_MBUFS (2*REORDER_BUFFER_SIZE)
 #define REORDER_BUFFER_SIZE_INVALID 2049
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 
 struct reorder_unittest_params {
 	struct rte_mempool *p;
@@ -351,12 +351,8 @@ test_setup(void)
 
 	/* mempool creation */
 	if (test_params->p == NULL) {
-		test_params->p = rte_mempool_create("RO_MBUF_POOL", NUM_MBUFS,
-				MBUF_SIZE, BURST,
-				sizeof(struct rte_pktmbuf_pool_private),
-				rte_pktmbuf_pool_init, NULL,
-				rte_pktmbuf_init, NULL,
-				rte_socket_id(), 0);
+		test_params->p = rte_pktmbuf_pool_create("RO_MBUF_POOL",
+			NUM_MBUFS, BURST, 0, MBUF_DATA_SIZE, rte_socket_id());
 		if (test_params->p == NULL) {
 			printf("%s: Error creating mempool\n", __func__);
 			return -1;

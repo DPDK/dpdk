@@ -89,15 +89,10 @@ app_init_mbuf_pools(void)
 	printf("Getting/Creating the mempool ...\n");
 	pool = rte_mempool_lookup("mempool");
 	if (!pool) {
-		pool = rte_mempool_create(
+		pool = rte_pktmbuf_pool_create(
 			"mempool",
 			POOL_SIZE,
-			POOL_BUFFER_SIZE,
-			POOL_CACHE_SIZE,
-			sizeof(struct rte_pktmbuf_pool_private),
-			rte_pktmbuf_pool_init, NULL,
-			rte_pktmbuf_init, NULL,
-			0,
+			POOL_CACHE_SIZE, 0, POOL_BUFFER_SIZE,
 			0);
 		if (pool == NULL)
 			rte_panic("Cannot create mbuf pool\n");

@@ -47,9 +47,8 @@
 #include "compat_netmap.h"
 
 
-#define	BUF_SIZE	2048
-#define MBUF_SIZE	(BUF_SIZE + sizeof(struct rte_mbuf) + \
-	RTE_PKTMBUF_HEADROOM)
+#define BUF_SIZE	(2048)
+#define MBUF_DATA_SIZE	(BUF_SIZE + RTE_PKTMBUF_HEADROOM)
 
 #define MBUF_PER_POOL	8192
 
@@ -272,11 +271,8 @@ int main(int argc, char *argv[])
 	if (rte_eth_dev_count() < 1)
 		rte_exit(EXIT_FAILURE, "Not enough ethernet ports available\n");
 
-	pool = rte_mempool_create("mbuf_pool", MBUF_PER_POOL, MBUF_SIZE, 32,
-				sizeof(struct rte_pktmbuf_pool_private),
-				rte_pktmbuf_pool_init, NULL,
-				rte_pktmbuf_init, NULL,
-				rte_socket_id(), 0);
+	pool = rte_pktmbuf_pool_create("mbuf_pool", MBUF_PER_POOL, 32, 0,
+		MBUF_DATA_SIZE, rte_socket_id());
 	if (pool == NULL)
 		rte_exit(EXIT_FAILURE, "Couldn't create mempool\n");
 

@@ -406,11 +406,11 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 
 #ifdef RTE_LIBRTE_PMD_XENVIRT
 	rte_mp = rte_mempool_gntalloc_create(pool_name, nb_mbuf, mb_size,
-                                   (unsigned) mb_mempool_cache,
-                                   sizeof(struct rte_pktmbuf_pool_private),
-                                   rte_pktmbuf_pool_init, NULL,
-                                   rte_pktmbuf_init, NULL,
-                                   socket_id, 0);
+		(unsigned) mb_mempool_cache,
+		sizeof(struct rte_pktmbuf_pool_private),
+		rte_pktmbuf_pool_init, NULL,
+		rte_pktmbuf_init, NULL,
+		socket_id, 0);
 
 
 
@@ -423,12 +423,9 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 				    rte_pktmbuf_init, NULL,
 				    socket_id, 0);
 	else
-		rte_mp = rte_mempool_create(pool_name, nb_mbuf, mb_size,
-				    (unsigned) mb_mempool_cache,
-				    sizeof(struct rte_pktmbuf_pool_private),
-				    rte_pktmbuf_pool_init, NULL,
-				    rte_pktmbuf_init, NULL,
-				    socket_id, 0);
+		/* wrapper to rte_mempool_create() */
+		rte_mp = rte_pktmbuf_pool_create(pool_name, nb_mbuf,
+			mb_mempool_cache, 0, mbuf_seg_size, socket_id);
 
 #endif
 

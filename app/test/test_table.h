@@ -65,7 +65,7 @@
 #define PORT_TX_RING_SIZE   512
 #define RING_RX_SIZE        128
 #define RING_TX_SIZE        128
-#define POOL_BUFFER_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define POOL_BUFFER_SIZE    (2048 + RTE_PKTMBUF_HEADROOM)
 #define POOL_SIZE           (32 * 1024)
 #define POOL_CACHE_SIZE     256
 #define BURST_SIZE          8
@@ -73,7 +73,6 @@
 #define MAX_DUMMY_PORTS     2
 #define MP_NAME             "dummy_port_mempool"
 #define MBUF_COUNT          (8000 * MAX_DUMMY_PORTS)
-#define MBUF_SIZE        (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define MP_CACHE_SZ         256
 #define MP_SOCKET           0
 #define MP_FLAGS            0

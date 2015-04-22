@@ -61,7 +61,7 @@
 
 #include "test.h"
 
-#define MBUF_SIZE               2048
+#define MBUF_DATA_SIZE          2048
 #define NB_MBUF                 128
 #define MBUF_TEST_DATA_LEN      1464
 #define MBUF_TEST_DATA_LEN2     50
@@ -73,7 +73,6 @@
 #define REFCNT_MAX_TIMEOUT      10
 #define REFCNT_MAX_REF          (RTE_MAX_LCORE)
 #define REFCNT_MBUF_NUM         64
-#define REFCNT_MBUF_SIZE        (sizeof (struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define REFCNT_RING_SIZE        (REFCNT_MBUF_NUM * REFCNT_MAX_REF)
 
 #define MAKE_STRING(x)          # x
@@ -622,12 +621,10 @@ test_refcnt_mbuf(void)
 	/* create refcnt pool & ring if they don't exist */
 
 	if (refcnt_pool == NULL &&
-			(refcnt_pool = rte_mempool_create(
-			MAKE_STRING(refcnt_pool),
-			REFCNT_MBUF_NUM, REFCNT_MBUF_SIZE, 0,
-			sizeof(struct rte_pktmbuf_pool_private),
-			rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
-			SOCKET_ID_ANY, 0)) == NULL) {
+			(refcnt_pool = rte_pktmbuf_pool_create(
+				MAKE_STRING(refcnt_pool),
+				REFCNT_MBUF_NUM, 0, 0, 0,
+				SOCKET_ID_ANY)) == NULL) {
 		printf("%s: cannot allocate " MAKE_STRING(refcnt_pool) "\n",
 		    __func__);
 		return (-1);
@@ -764,13 +761,8 @@ test_mbuf(void)
 
 	/* create pktmbuf pool if it does not exist */
 	if (pktmbuf_pool == NULL) {
-		pktmbuf_pool =
-			rte_mempool_create("test_pktmbuf_pool", NB_MBUF,
-					   MBUF_SIZE, 32,
-					   sizeof(struct rte_pktmbuf_pool_private),
-					   rte_pktmbuf_pool_init, NULL,
-					   rte_pktmbuf_init, NULL,
-					   SOCKET_ID_ANY, 0);
+		pktmbuf_pool = rte_pktmbuf_pool_create("test_pktmbuf_pool",
+			NB_MBUF, 32, 0, MBUF_DATA_SIZE, SOCKET_ID_ANY);
 	}
 
 	if (pktmbuf_pool == NULL) {

@@ -67,7 +67,7 @@
 							(num_switching_cores*MBUF_CACHE_SIZE))
 
 #define MBUF_CACHE_SIZE 64
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 
 /*
  * RX and TX Prefetch, Host, and Write-back threshold values should be
@@ -1474,12 +1474,9 @@ main(int argc, char *argv[])
 	}
 
 	/* Create the mbuf pool. */
-	mbuf_pool = rte_mempool_create("MBUF_POOL", NUM_MBUFS_PER_PORT * valid_num_ports,
-				       MBUF_SIZE, MBUF_CACHE_SIZE,
-				       sizeof(struct rte_pktmbuf_pool_private),
-				       rte_pktmbuf_pool_init, NULL,
-				       rte_pktmbuf_init, NULL,
-				       rte_socket_id(), 0);
+	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL",
+		NUM_MBUFS_PER_PORT * valid_num_ports, MBUF_CACHE_SIZE, 0,
+		MBUF_DATA_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 

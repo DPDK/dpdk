@@ -50,7 +50,7 @@ extern "C" {
 #define APP_RX_DESC_DEFAULT 128
 #define APP_TX_DESC_DEFAULT 256
 
-#define MBUF_SIZE (1528 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SIZE (1528 + RTE_PKTMBUF_HEADROOM)
 #define APP_RING_SIZE (8*1024)
 #define NB_MBUF   (2*1024*1024)
 

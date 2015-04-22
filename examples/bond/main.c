@@ -96,7 +96,7 @@
 
 #define RTE_LOGTYPE_DCB RTE_LOGTYPE_USER1
 
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   (1024*8)
 
 #define MAX_PKT_BURST 32
@@ -738,12 +738,8 @@ main(int argc, char *argv[])
 	else if (nb_ports > MAX_PORTS)
 		rte_exit(EXIT_FAILURE, "You can have max 4 ports\n");
 
-	mbuf_pool = rte_mempool_create("MBUF_POOL", NB_MBUF,
-				       MBUF_SIZE, 32,
-				       sizeof(struct rte_pktmbuf_pool_private),
-				       rte_pktmbuf_pool_init, NULL,
-				       rte_pktmbuf_init, NULL,
-				       rte_socket_id(), 0);
+	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", NB_MBUF, 32,
+		0, MBUF_DATA_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 

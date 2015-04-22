@@ -146,8 +146,7 @@ struct app_params app = {
 	.bsz_swq_wr = 64,
 
 	/* Buffer pool */
-	.pool_buffer_size = 2048 + sizeof(struct rte_mbuf) +
-		RTE_PKTMBUF_HEADROOM,
+	.pool_buffer_size = 2048 + RTE_PKTMBUF_HEADROOM,
 	.pool_size = 32 * 1024,
 	.pool_cache_size = 256,
 
@@ -363,37 +362,18 @@ app_get_ring_resp(uint32_t core_id)
 static void
 app_init_mbuf_pools(void)
 {
-	struct rte_pktmbuf_pool_private indirect_mbp_priv;
-
 	/* Init the buffer pool */
 	RTE_LOG(INFO, USER1, "Creating the mbuf pool ...\n");
-	app.pool = rte_mempool_create(
-		"mempool",
-		app.pool_size,
-		app.pool_buffer_size,
-		app.pool_cache_size,
-		sizeof(struct rte_pktmbuf_pool_private),
-		rte_pktmbuf_pool_init, NULL,
-		rte_pktmbuf_init, NULL,
-		rte_socket_id(),
-		0);
+	app.pool = rte_pktmbuf_pool_create("mempool", app.pool_size,
+		app.pool_cache_size, 0, app.pool_buffer_size, rte_socket_id());
 	if (app.pool == NULL)
 		rte_panic("Cannot create mbuf pool\n");
 
 	/* Init the indirect buffer pool */
 	RTE_LOG(INFO, USER1, "Creating the indirect mbuf pool ...\n");
-	indirect_mbp_priv.mbuf_data_room_size = 0;
-	indirect_mbp_priv.mbuf_priv_size = sizeof(struct app_pkt_metadata);
-	app.indirect_pool = rte_mempool_create(
-		"indirect mempool",
-		app.pool_size,
-		sizeof(struct rte_mbuf) + sizeof(struct app_pkt_metadata),
-		app.pool_cache_size,
-		sizeof(struct rte_pktmbuf_pool_private),
-		rte_pktmbuf_pool_init, &indirect_mbp_priv,
-		rte_pktmbuf_init, NULL,
-		rte_socket_id(),
-		0);
+	app.indirect_pool = rte_pktmbuf_pool_create("indirect mempool",
+		app.pool_size, app.pool_cache_size,
+		sizeof(struct app_pkt_metadata), 0, rte_socket_id());
 	if (app.indirect_pool == NULL)
 		rte_panic("Cannot create mbuf pool\n");
 

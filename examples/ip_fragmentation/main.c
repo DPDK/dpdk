@@ -76,7 +76,7 @@
 
 #define RTE_LOGTYPE_IP_FRAG RTE_LOGTYPE_USER1
 
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 
 /* allow max jumbo frame 9.5 KB */
 #define JUMBO_FRAME_MAX_SIZE	0x2600
@@ -744,12 +744,8 @@ init_mem(void)
 					socket);
 			snprintf(buf, sizeof(buf), "pool_direct_%i", socket);
 
-			mp = rte_mempool_create(buf, NB_MBUF,
-						   MBUF_SIZE, 32,
-						   sizeof(struct rte_pktmbuf_pool_private),
-						   rte_pktmbuf_pool_init, NULL,
-						   rte_pktmbuf_init, NULL,
-						   socket, 0);
+			mp = rte_pktmbuf_pool_create(buf, NB_MBUF, 32,
+				0, MBUF_DATA_SIZE, socket);
 			if (mp == NULL) {
 				RTE_LOG(ERR, IP_FRAG, "Cannot create direct mempool\n");
 				return -1;
@@ -762,12 +758,8 @@ init_mem(void)
 					socket);
 			snprintf(buf, sizeof(buf), "pool_indirect_%i", socket);
 
-			mp = rte_mempool_create(buf, NB_MBUF,
-							   sizeof(struct rte_mbuf), 32,
-							   sizeof(struct rte_pktmbuf_pool_private),
-							   rte_pktmbuf_pool_init, NULL,
-							   rte_pktmbuf_init, NULL,
-							   socket, 0);
+			mp = rte_pktmbuf_pool_create(buf, NB_MBUF, 32, 0, 0,
+				socket);
 			if (mp == NULL) {
 				RTE_LOG(ERR, IP_FRAG, "Cannot create indirect mempool\n");
 				return -1;

@@ -70,7 +70,7 @@
 
 #include "crypto.h"
 
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   (32 * 1024)
 
 #define MAX_PKT_BURST 32
@@ -598,7 +598,6 @@ print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 static int
 init_mem(void)
 {
-	const unsigned flags = 0;
 	int socketid;
 	unsigned lcoreid;
 	char s[64];
@@ -613,11 +612,8 @@ init_mem(void)
 		if (pktmbuf_pool[socketid] == NULL) {
 			snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
 			pktmbuf_pool[socketid] =
-				rte_mempool_create(s, NB_MBUF, MBUF_SIZE, 32,
-					sizeof(struct rte_pktmbuf_pool_private),
-					rte_pktmbuf_pool_init, NULL,
-					rte_pktmbuf_init, NULL,
-					socketid, flags);
+				rte_pktmbuf_pool_create(s, NB_MBUF, 32, 0,
+					MBUF_DATA_SIZE, socketid);
 			if (pktmbuf_pool[socketid] == NULL) {
 				printf("Cannot init mbuf pool on socket %d\n", socketid);
 				return -1;

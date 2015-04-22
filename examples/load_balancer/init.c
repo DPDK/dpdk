@@ -127,16 +127,10 @@ app_init_mbuf_pools(void)
 
 		snprintf(name, sizeof(name), "mbuf_pool_%u", socket);
 		printf("Creating the mbuf pool for socket %u ...\n", socket);
-		app.pools[socket] = rte_mempool_create(
-			name,
-			APP_DEFAULT_MEMPOOL_BUFFERS,
-			APP_DEFAULT_MBUF_SIZE,
+		app.pools[socket] = rte_pktmbuf_pool_create(
+			name, APP_DEFAULT_MEMPOOL_BUFFERS,
 			APP_DEFAULT_MEMPOOL_CACHE_SIZE,
-			sizeof(struct rte_pktmbuf_pool_private),
-			rte_pktmbuf_pool_init, NULL,
-			rte_pktmbuf_init, NULL,
-			socket,
-			0);
+			0, APP_DEFAULT_MBUF_DATA_SIZE, socket);
 		if (app.pools[socket] == NULL) {
 			rte_panic("Cannot create mbuf pool on socket %u\n", socket);
 		}

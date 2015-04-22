@@ -94,7 +94,7 @@
 
 #define MEMPOOL_CACHE_SIZE 256
 
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 
 /*
  * This expression is used to calculate the number of mbufs needed depending on user input, taking
@@ -924,13 +924,9 @@ init_mem(unsigned nb_mbuf)
 		}
 		if (pktmbuf_pool[socketid] == NULL) {
 			snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
-			pktmbuf_pool[socketid] =
-				rte_mempool_create(s, nb_mbuf, MBUF_SIZE,
-						   MEMPOOL_CACHE_SIZE,
-					sizeof(struct rte_pktmbuf_pool_private),
-					rte_pktmbuf_pool_init, NULL,
-					rte_pktmbuf_init, NULL,
-					socketid, 0);
+			pktmbuf_pool[socketid] = rte_pktmbuf_pool_create(s,
+				nb_mbuf, MEMPOOL_CACHE_SIZE, 0, MBUF_DATA_SIZE,
+				socketid);
 			if (pktmbuf_pool[socketid] == NULL)
 				rte_exit(EXIT_FAILURE, "Cannot init mbuf pool on socket %d\n", socketid);
 			else

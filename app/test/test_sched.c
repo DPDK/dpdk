@@ -86,8 +86,7 @@ static struct rte_sched_port_params port_param = {
 };
 
 #define NB_MBUF          32
-#define MAX_PACKET_SZ    2048
-#define MBUF_SZ (MAX_PACKET_SZ + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SZ     (2048 + RTE_PKTMBUF_HEADROOM)
 #define PKT_BURST_SZ     32
 #define MEMPOOL_CACHE_SZ PKT_BURST_SZ
 #define SOCKET           0
@@ -100,17 +99,8 @@ create_mempool(void)
 
 	mp = rte_mempool_lookup("test_sched");
 	if (!mp)
-		mp = rte_mempool_create("test_sched",
-				NB_MBUF,
-				MBUF_SZ,
-				MEMPOOL_CACHE_SZ,
-				sizeof(struct rte_pktmbuf_pool_private),
-				rte_pktmbuf_pool_init,
-				NULL,
-				rte_pktmbuf_init,
-				NULL,
-				SOCKET,
-				0);
+		mp = rte_pktmbuf_pool_create("test_sched", NB_MBUF,
+			MEMPOOL_CACHE_SZ, 0, MBUF_DATA_SZ, SOCKET);
 
 	return mp;
 }

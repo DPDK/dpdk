@@ -63,7 +63,7 @@ bond_mode_alb_enable(struct rte_eth_dev *bond_dev)
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
 	struct client_data *hash_table = internals->mode6.client_table;
 
-	uint16_t element_size;
+	uint16_t data_size;
 	char mem_name[RTE_ETH_NAME_MAX_LEN];
 	int socket_id = bond_dev->pci_dev->numa_node;
 
@@ -79,15 +79,13 @@ bond_mode_alb_enable(struct rte_eth_dev *bond_dev)
 		 * 256 is size of ETH header, ARP header and nested VLAN headers.
 		 * The value is chosen to be cache aligned.
 		 */
-		element_size = 256 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM;
+		data_size = 256 + RTE_PKTMBUF_HEADROOM;
 		snprintf(mem_name, sizeof(mem_name), "%s_MODE6", bond_dev->data->name);
-		internals->mode6.mempool = rte_mempool_create(mem_name,
-				512 * RTE_MAX_ETHPORTS,
-				element_size,
-				RTE_MEMPOOL_CACHE_MAX_SIZE >= 32 ?
-						32 : RTE_MEMPOOL_CACHE_MAX_SIZE,
-				sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init,
-				NULL, rte_pktmbuf_init, NULL, socket_id, 0);
+		internals->mode6.mempool = rte_pktmbuf_pool_create(mem_name,
+			512 * RTE_MAX_ETHPORTS,
+			RTE_MEMPOOL_CACHE_MAX_SIZE >= 32 ?
+				32 : RTE_MEMPOOL_CACHE_MAX_SIZE,
+			0, data_size, socket_id);
 
 		if (internals->mode6.mempool == NULL) {
 			RTE_LOG(ERR, PMD, "%s: Failed to initialize ALB mempool.\n",

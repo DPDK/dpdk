@@ -71,9 +71,7 @@
 #define MBUFS_PER_CLIENT 1536
 #define MBUFS_PER_PORT 1536
 #define MBUF_CACHE_SIZE 512
-#define MBUF_OVERHEAD (sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
-#define RX_MBUF_DATA_SIZE 2048
-#define MBUF_SIZE (RX_MBUF_DATA_SIZE + MBUF_OVERHEAD)
+#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 
 #define RTE_MP_RX_DESC_DEFAULT 512
 #define RTE_MP_TX_DESC_DEFAULT 512
@@ -104,10 +102,8 @@ init_mbuf_pools(void)
 	 * seems faster to use a cache instead */
 	printf("Creating mbuf pool '%s' [%u mbufs] ...\n",
 			PKTMBUF_POOL_NAME, num_mbufs);
-	pktmbuf_pool = rte_mempool_create(PKTMBUF_POOL_NAME, num_mbufs,
-			MBUF_SIZE, MBUF_CACHE_SIZE,
-			sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init,
-			NULL, rte_pktmbuf_init, NULL, rte_socket_id(), NO_FLAGS );
+	pktmbuf_pool = rte_pktmbuf_pool_create(PKTMBUF_POOL_NAME, num_mbufs,
+		MBUF_CACHE_SIZE, 0, MBUF_DATA_SIZE, rte_socket_id());
 
 	return (pktmbuf_pool == NULL); /* 0  on success */
 }
