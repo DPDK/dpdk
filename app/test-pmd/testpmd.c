@@ -393,83 +393,23 @@ set_def_fwd_config(void)
 /*
  * Configuration initialisation done once at init time.
  */
-struct mbuf_ctor_arg {
-	uint16_t seg_buf_offset; /**< offset of data in data segment of mbuf. */
-	uint16_t seg_buf_size;   /**< size of data segment in mbuf. */
-};
-
-struct mbuf_pool_ctor_arg {
-	uint16_t seg_buf_size; /**< size of data segment in mbuf. */
-};
-
-static void
-testpmd_mbuf_ctor(struct rte_mempool *mp,
-		  void *opaque_arg,
-		  void *raw_mbuf,
-		  __attribute__((unused)) unsigned i)
-{
-	struct mbuf_ctor_arg *mb_ctor_arg;
-	struct rte_mbuf    *mb;
-
-	mb_ctor_arg = (struct mbuf_ctor_arg *) opaque_arg;
-	mb = (struct rte_mbuf *) raw_mbuf;
-
-	mb->pool         = mp;
-	mb->buf_addr     = (void *) ((char *)mb + mb_ctor_arg->seg_buf_offset);
-	mb->buf_physaddr = (uint64_t) (rte_mempool_virt2phy(mp, mb) +
-			mb_ctor_arg->seg_buf_offset);
-	mb->buf_len      = mb_ctor_arg->seg_buf_size;
-	mb->ol_flags     = 0;
-	mb->data_off     = RTE_PKTMBUF_HEADROOM;
-	mb->nb_segs      = 1;
-	mb->tx_offload   = 0;
-	mb->vlan_tci     = 0;
-	mb->hash.rss     = 0;
-}
-
-static void
-testpmd_mbuf_pool_ctor(struct rte_mempool *mp,
-		       void *opaque_arg)
-{
-	struct mbuf_pool_ctor_arg      *mbp_ctor_arg;
-	struct rte_pktmbuf_pool_private *mbp_priv;
-
-	if (mp->private_data_size < sizeof(struct rte_pktmbuf_pool_private)) {
-		printf("%s(%s) private_data_size %d < %d\n",
-		       __func__, mp->name, (int) mp->private_data_size,
-		       (int) sizeof(struct rte_pktmbuf_pool_private));
-		return;
-	}
-	mbp_ctor_arg = (struct mbuf_pool_ctor_arg *) opaque_arg;
-	mbp_priv = rte_mempool_get_priv(mp);
-	mbp_priv->mbuf_data_room_size = mbp_ctor_arg->seg_buf_size;
-	mbp_priv->mbuf_priv_size = 0;
-}
-
 static void
 mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		 unsigned int socket_id)
 {
 	char pool_name[RTE_MEMPOOL_NAMESIZE];
 	struct rte_mempool *rte_mp;
-	struct mbuf_pool_ctor_arg mbp_ctor_arg;
-	struct mbuf_ctor_arg mb_ctor_arg;
 	uint32_t mb_size;
 
-	mbp_ctor_arg.seg_buf_size = (uint16_t) (RTE_PKTMBUF_HEADROOM +
-						mbuf_seg_size);
-	mb_ctor_arg.seg_buf_offset =
-		(uint16_t) RTE_CACHE_LINE_ROUNDUP(sizeof(struct rte_mbuf));
-	mb_ctor_arg.seg_buf_size = mbp_ctor_arg.seg_buf_size;
-	mb_size = mb_ctor_arg.seg_buf_offset + mb_ctor_arg.seg_buf_size;
+	mb_size = sizeof(struct rte_mbuf) + mbuf_seg_size;
 	mbuf_poolname_build(socket_id, pool_name, sizeof(pool_name));
 
 #ifdef RTE_LIBRTE_PMD_XENVIRT
 	rte_mp = rte_mempool_gntalloc_create(pool_name, nb_mbuf, mb_size,
                                    (unsigned) mb_mempool_cache,
                                    sizeof(struct rte_pktmbuf_pool_private),
-                                   testpmd_mbuf_pool_ctor, &mbp_ctor_arg,
-                                   testpmd_mbuf_ctor, &mb_ctor_arg,
+                                   rte_pktmbuf_pool_init, NULL,
+                                   rte_pktmbuf_init, NULL,
                                    socket_id, 0);
 
 
@@ -479,15 +419,15 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		rte_mp = mempool_anon_create(pool_name, nb_mbuf, mb_size,
 				    (unsigned) mb_mempool_cache,
 				    sizeof(struct rte_pktmbuf_pool_private),
-				    testpmd_mbuf_pool_ctor, &mbp_ctor_arg,
-				    testpmd_mbuf_ctor, &mb_ctor_arg,
+				    rte_pktmbuf_pool_init, NULL,
+				    rte_pktmbuf_init, NULL,
 				    socket_id, 0);
 	else
 		rte_mp = rte_mempool_create(pool_name, nb_mbuf, mb_size,
 				    (unsigned) mb_mempool_cache,
 				    sizeof(struct rte_pktmbuf_pool_private),
-				    testpmd_mbuf_pool_ctor, &mbp_ctor_arg,
-				    testpmd_mbuf_ctor, &mb_ctor_arg,
+				    rte_pktmbuf_pool_init, NULL,
+				    rte_pktmbuf_init, NULL,
 				    socket_id, 0);
 
 #endif
