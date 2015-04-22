@@ -806,44 +806,50 @@ static inline struct rte_mbuf *rte_pktmbuf_alloc(struct rte_mempool *mp)
  * After attachment we refer the mbuf we attached as 'indirect',
  * while mbuf we attached to as 'direct'.
  * Right now, not supported:
- *  - attachment to indirect mbuf (e.g. - md  has to be direct).
  *  - attachment for already indirect mbuf (e.g. - mi has to be direct).
  *  - mbuf we trying to attach (mi) is used by someone else
  *    e.g. it's reference counter is greater then 1.
  *
  * @param mi
  *   The indirect packet mbuf.
- * @param md
- *   The direct packet mbuf.
+ * @param m
+ *   The packet mbuf we're attaching to.
  */
-static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
+static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *m)
 {
-	RTE_MBUF_ASSERT(RTE_MBUF_DIRECT(md) &&
-	    RTE_MBUF_DIRECT(mi) &&
+	struct rte_mbuf *md;
+
+	RTE_MBUF_ASSERT(RTE_MBUF_DIRECT(mi) &&
 	    rte_mbuf_refcnt_read(mi) == 1);
 
-	rte_mbuf_refcnt_update(md, 1);
-	mi->buf_physaddr = md->buf_physaddr;
-	mi->buf_addr = md->buf_addr;
-	mi->buf_len = md->buf_len;
-	mi->priv_size = md->priv_size;
+	/* if m is not direct, get the mbuf that embeds the data */
+	if (RTE_MBUF_DIRECT(m))
+		md = m;
+	else
+		md = rte_mbuf_from_indirect(m);
 
-	mi->next = md->next;
-	mi->data_off = md->data_off;
-	mi->data_len = md->data_len;
-	mi->port = md->port;
-	mi->vlan_tci = md->vlan_tci;
-	mi->tx_offload = md->tx_offload;
-	mi->hash = md->hash;
+	rte_mbuf_refcnt_update(md, 1);
+	mi->priv_size = m->priv_size;
+	mi->buf_physaddr = m->buf_physaddr;
+	mi->buf_addr = m->buf_addr;
+	mi->buf_len = m->buf_len;
+
+	mi->next = m->next;
+	mi->data_off = m->data_off;
+	mi->data_len = m->data_len;
+	mi->port = m->port;
+	mi->vlan_tci = m->vlan_tci;
+	mi->tx_offload = m->tx_offload;
+	mi->hash = m->hash;
 
 	mi->next = NULL;
 	mi->pkt_len = mi->data_len;
 	mi->nb_segs = 1;
-	mi->ol_flags = md->ol_flags | IND_ATTACHED_MBUF;
-	mi->packet_type = md->packet_type;
+	mi->ol_flags = m->ol_flags | IND_ATTACHED_MBUF;
+	mi->packet_type = m->packet_type;
 
 	__rte_mbuf_sanity_check(mi, 1);
-	__rte_mbuf_sanity_check(md, 0);
+	__rte_mbuf_sanity_check(m, 0);
 }
 
 /**
