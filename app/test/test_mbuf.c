@@ -320,43 +320,42 @@ fail:
 static int
 testclone_testupdate_testdetach(void)
 {
-	struct rte_mbuf *mc = NULL;
+	struct rte_mbuf *m = NULL;
 	struct rte_mbuf *clone = NULL;
 
 	/* alloc a mbuf */
-
-	mc = rte_pktmbuf_alloc(pktmbuf_pool);
-	if (mc == NULL)
+	m = rte_pktmbuf_alloc(pktmbuf_pool);
+	if (m == NULL)
 		GOTO_FAIL("ooops not allocating mbuf");
 
-	if (rte_pktmbuf_pkt_len(mc) != 0)
+	if (rte_pktmbuf_pkt_len(m) != 0)
 		GOTO_FAIL("Bad length");
 
 
 	/* clone the allocated mbuf */
-	clone = rte_pktmbuf_clone(mc, pktmbuf_pool);
+	clone = rte_pktmbuf_clone(m, pktmbuf_pool);
 	if (clone == NULL)
 		GOTO_FAIL("cannot clone data\n");
 	rte_pktmbuf_free(clone);
 
-	mc->next = rte_pktmbuf_alloc(pktmbuf_pool);
-	if(mc->next == NULL)
+	m->next = rte_pktmbuf_alloc(pktmbuf_pool);
+	if (m->next == NULL)
 		GOTO_FAIL("Next Pkt Null\n");
 
-	clone = rte_pktmbuf_clone(mc, pktmbuf_pool);
+	clone = rte_pktmbuf_clone(m, pktmbuf_pool);
 	if (clone == NULL)
 		GOTO_FAIL("cannot clone data\n");
 
 	/* free mbuf */
-	rte_pktmbuf_free(mc);
+	rte_pktmbuf_free(m);
 	rte_pktmbuf_free(clone);
-	mc = NULL;
+	m = NULL;
 	clone = NULL;
 	return 0;
 
 fail:
-	if (mc)
-		rte_pktmbuf_free(mc);
+	if (m)
+		rte_pktmbuf_free(m);
 	return -1;
 }
 #undef GOTO_FAIL
