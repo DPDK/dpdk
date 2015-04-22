@@ -16,6 +16,10 @@ DPDK 2.0 to DPDK 2.1
     rte_pktmbuf_pool_private structure and pass it to
     rte_pktmbuf_pool_init().
 
+*   A simpler helper rte_pktmbuf_pool_create() can be used to create a
+    packet mbuf pool. The old way using rte_mempool_create() is still
+    supported though and is still used for more specific cases.
+
 DPDK 1.7 to DPDK 1.8
 --------------------
 

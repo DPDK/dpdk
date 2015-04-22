@@ -642,6 +642,46 @@ void rte_pktmbuf_init(struct rte_mempool *mp, void *opaque_arg,
 void rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg);
 
 /**
+ * Create a mbuf pool.
+ *
+ * This function creates and initializes a packet mbuf pool. It is
+ * a wrapper to rte_mempool_create() with the proper packet constructor
+ * and mempool constructor.
+ *
+ * @param name
+ *   The name of the mbuf pool.
+ * @param n
+ *   The number of elements in the mbuf pool. The optimum size (in terms
+ *   of memory usage) for a mempool is when n is a power of two minus one:
+ *   n = (2^q - 1).
+ * @param cache_size
+ *   Size of the per-core object cache. See rte_mempool_create() for
+ *   details.
+ * @param priv_size
+ *   Size of application private are between the rte_mbuf structure
+ *   and the data buffer.
+ * @param data_room_size
+ *   Size of data buffer in each mbuf, including RTE_PKTMBUF_HEADROOM.
+ * @param socket_id
+ *   The socket identifier where the memory should be allocated. The
+ *   value can be *SOCKET_ID_ANY* if there is no NUMA constraint for the
+ *   reserved zone.
+ * @return
+ *   The pointer to the new allocated mempool, on success. NULL on error
+ *   with rte_errno set appropriately. Possible rte_errno values include:
+ *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
+ *    - E_RTE_SECONDARY - function was called from a secondary process instance
+ *    - EINVAL - cache size provided is too large
+ *    - ENOSPC - the maximum number of memzones has already been allocated
+ *    - EEXIST - a memzone with the same name already exists
+ *    - ENOMEM - no appropriate memory area found in which to create memzone
+ */
+struct rte_mempool *
+rte_pktmbuf_pool_create(const char *name, unsigned n,
+	unsigned cache_size, uint16_t priv_size, uint16_t data_room_size,
+	int socket_id);
+
+/**
  * Get the data room size of mbufs stored in a pktmbuf_pool
  *
  * The data room size is the amount of data that can be stored in a

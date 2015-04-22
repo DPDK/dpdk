@@ -143,6 +143,27 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	m->port = 0xff;
 }
 
+/* helper to create a mbuf pool */
+struct rte_mempool *
+rte_pktmbuf_pool_create(const char *name, unsigned n,
+	unsigned cache_size, uint16_t priv_size, uint16_t data_room_size,
+	int socket_id)
+{
+	struct rte_pktmbuf_pool_private mbp_priv;
+	unsigned elt_size;
+
+
+	elt_size = sizeof(struct rte_mbuf) + (unsigned)priv_size +
+		(unsigned)data_room_size;
+	mbp_priv.mbuf_data_room_size = data_room_size;
+	mbp_priv.mbuf_priv_size = priv_size;
+
+	return rte_mempool_create(name, n, elt_size,
+		cache_size, sizeof(struct rte_pktmbuf_pool_private),
+		rte_pktmbuf_pool_init, &mbp_priv, rte_pktmbuf_init, NULL,
+		socket_id, 0);
+}
+
 /* do some sanity checks on a mbuf: panic if it fails */
 void
 rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)

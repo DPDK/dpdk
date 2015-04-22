@@ -11,3 +11,11 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_2.1 {
+       global:
+
+       rte_pktmbuf_pool_create;
+
+       local: *;
+} DPDK_2.0;
