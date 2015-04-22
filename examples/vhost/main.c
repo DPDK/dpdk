@@ -138,7 +138,7 @@
 /* Number of descriptors per cacheline. */
 #define DESC_PER_CACHELINE (RTE_CACHE_LINE_SIZE / sizeof(struct vring_desc))
 
-#define MBUF_EXT_MEM(mb)   (RTE_MBUF_FROM_BADDR((mb)->buf_addr) != (mb))
+#define MBUF_EXT_MEM(mb)   (rte_mbuf_from_indirect(mb) != (mb))
 
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
@@ -1549,7 +1549,7 @@ attach_rxmbuf_zcp(struct virtio_net *dev)
 static inline void pktmbuf_detach_zcp(struct rte_mbuf *m)
 {
 	const struct rte_mempool *mp = m->pool;
-	void *buf = RTE_MBUF_TO_BADDR(m);
+	void *buf = rte_mbuf_to_baddr(m);
 	uint32_t buf_ofs;
 	uint32_t buf_len = mp->elt_size - sizeof(*m);
 	m->buf_physaddr = rte_mempool_virt2phy(mp, m) + sizeof(*m);

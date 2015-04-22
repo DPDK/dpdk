@@ -119,9 +119,10 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 		 __attribute__((unused)) unsigned i)
 {
 	struct rte_mbuf *m = _m;
-	uint32_t mbuf_size, buf_len;
+	uint32_t mbuf_size, buf_len, priv_size;
 
-	mbuf_size = sizeof(struct rte_mbuf) + rte_pktmbuf_priv_size(mp);
+	priv_size = rte_pktmbuf_priv_size(mp);
+	mbuf_size = sizeof(struct rte_mbuf) + priv_size;
 	buf_len = rte_pktmbuf_data_room_size(mp);
 
 	RTE_MBUF_ASSERT(mp->elt_size >= mbuf_size);
@@ -129,7 +130,8 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 
 	memset(m, 0, mp->elt_size);
 
-	/* start of buffer is just after mbuf structure */
+	/* start of buffer is after mbuf structure and priv data */
+	m->priv_size = priv_size;
 	m->buf_addr = (char *)m + mbuf_size;
 	m->buf_physaddr = rte_mempool_virt2phy(mp, m) + mbuf_size;
 	m->buf_len = (uint16_t)buf_len;

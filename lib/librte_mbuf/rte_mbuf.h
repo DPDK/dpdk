@@ -318,18 +318,49 @@ struct rte_mbuf {
 			/* uint64_t unused:8; */
 		};
 	};
+
+	/** Size of the application private data. In case of an indirect
+	 * mbuf, it stores the direct mbuf private data size. */
+	uint16_t priv_size;
 } __rte_cache_aligned;
 
-/**
- * Given the buf_addr returns the pointer to corresponding mbuf.
- */
-#define RTE_MBUF_FROM_BADDR(ba)     (((struct rte_mbuf *)(ba)) - 1)
+static inline uint16_t rte_pktmbuf_priv_size(struct rte_mempool *mp);
 
 /**
- * Given the pointer to mbuf returns an address where it's  buf_addr
- * should point to.
+ * Return the mbuf owning the data buffer address of an indirect mbuf.
+ *
+ * @param mi
+ *   The pointer to the indirect mbuf.
+ * @return
+ *   The address of the direct mbuf corresponding to buffer_addr.
  */
-#define RTE_MBUF_TO_BADDR(mb)       (((struct rte_mbuf *)(mb)) + 1)
+static inline struct rte_mbuf *
+rte_mbuf_from_indirect(struct rte_mbuf *mi)
+{
+	struct rte_mbuf *md;
+
+	/* mi->buf_addr and mi->priv_size correspond to buffer and
+	 * private size of the direct mbuf */
+	md = (struct rte_mbuf *)((char *)mi->buf_addr - sizeof(*mi) -
+		mi->priv_size);
+	return md;
+}
+
+/**
+ * Return the buffer address embedded in the given mbuf.
+ *
+ * @param md
+ *   The pointer to the mbuf.
+ * @return
+ *   The address of the data buffer owned by the mbuf.
+ */
+static inline char *
+rte_mbuf_to_baddr(struct rte_mbuf *md)
+{
+	char *buffer_addr;
+	buffer_addr = (char *)md + sizeof(*md) + rte_pktmbuf_priv_size(md->pool);
+	return buffer_addr;
+}
 
 /**
  * Returns TRUE if given mbuf is indirect, or FALSE otherwise.
@@ -771,6 +802,7 @@ static inline struct rte_mbuf *rte_pktmbuf_alloc(struct rte_mempool *mp)
 
 /**
  * Attach packet mbuf to another packet mbuf.
+ *
  * After attachment we refer the mbuf we attached as 'indirect',
  * while mbuf we attached to as 'direct'.
  * Right now, not supported:
@@ -784,7 +816,6 @@ static inline struct rte_mbuf *rte_pktmbuf_alloc(struct rte_mempool *mp)
  * @param md
  *   The direct packet mbuf.
  */
-
 static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
 {
 	RTE_MBUF_ASSERT(RTE_MBUF_DIRECT(md) &&
@@ -795,6 +826,7 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
 	mi->buf_physaddr = md->buf_physaddr;
 	mi->buf_addr = md->buf_addr;
 	mi->buf_len = md->buf_len;
+	mi->priv_size = md->priv_size;
 
 	mi->next = md->next;
 	mi->data_off = md->data_off;
@@ -815,7 +847,8 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
 }
 
 /**
- * Detach an indirect packet mbuf -
+ * Detach an indirect packet mbuf.
+ *
  *  - restore original mbuf address and length values.
  *  - reset pktmbuf data and data_len to their default values.
  *  All other fields of the given packet mbuf will be left intact.
@@ -823,22 +856,21 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
  * @param m
  *   The indirect attached packet mbuf.
  */
-
 static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 {
-	const struct rte_mempool *mp = m->pool;
-	void *buf = RTE_MBUF_TO_BADDR(m);
-	uint32_t buf_len = mp->elt_size - sizeof(*m);
-	m->buf_physaddr = rte_mempool_virt2phy(mp, m) + sizeof (*m);
+	struct rte_mempool *mp = m->pool;
+	uint32_t mbuf_size, buf_len, priv_size;
 
-	m->buf_addr = buf;
+	priv_size = rte_pktmbuf_priv_size(mp);
+	mbuf_size = sizeof(struct rte_mbuf) + priv_size;
+	buf_len = rte_pktmbuf_data_room_size(mp);
+
+	m->priv_size = priv_size;
+	m->buf_addr = (char *)m + mbuf_size;
+	m->buf_physaddr = rte_mempool_virt2phy(mp, m) + mbuf_size;
 	m->buf_len = (uint16_t)buf_len;
-
-	m->data_off = (RTE_PKTMBUF_HEADROOM <= m->buf_len) ?
-			RTE_PKTMBUF_HEADROOM : m->buf_len;
-
+	m->data_off = RTE_MIN(RTE_PKTMBUF_HEADROOM, (uint16_t)m->buf_len);
 	m->data_len = 0;
-
 	m->ol_flags = 0;
 }
 
@@ -867,7 +899,7 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 		 *  - free attached mbuf segment
 		 */
 		if (RTE_MBUF_INDIRECT(m)) {
-			struct rte_mbuf *md = RTE_MBUF_FROM_BADDR(m->buf_addr);
+			struct rte_mbuf *md = rte_mbuf_from_indirect(m);
 			rte_pktmbuf_detach(m);
 			if (rte_mbuf_refcnt_update(md, -1) == 0)
 				__rte_mbuf_raw_free(md);
