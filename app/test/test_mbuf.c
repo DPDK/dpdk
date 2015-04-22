@@ -126,6 +126,7 @@ static unsigned refcnt_lcore[RTE_MAX_LCORE];
  *
  * #. Test packet cloning
  *    - Clone a mbuf and verify the data
+ *    - Clone the cloned mbuf and verify the data
  */
 
 #define GOTO_FAIL(str, ...) do {					\
@@ -326,6 +327,7 @@ testclone_testupdate_testdetach(void)
 {
 	struct rte_mbuf *m = NULL;
 	struct rte_mbuf *clone = NULL;
+	struct rte_mbuf *clone2 = NULL;
 	uint32_t *data;
 
 	/* alloc a mbuf */
@@ -383,11 +385,35 @@ testclone_testupdate_testdetach(void)
 	if (rte_mbuf_refcnt_read(m->next) != 2)
 		GOTO_FAIL("invalid refcnt in m->next\n");
 
+	/* try to clone the clone */
+
+	clone2 = rte_pktmbuf_clone(clone, pktmbuf_pool);
+	if (clone2 == NULL)
+		GOTO_FAIL("cannot clone the clone\n");
+
+	data = rte_pktmbuf_mtod(clone2, uint32_t *);
+	if (*data != MAGIC_DATA)
+		GOTO_FAIL("invalid data in clone2\n");
+
+	data = rte_pktmbuf_mtod(clone2->next, uint32_t *);
+	if (*data != MAGIC_DATA)
+		GOTO_FAIL("invalid data in clone2->next\n");
+
+	if (rte_mbuf_refcnt_read(m) != 3)
+		GOTO_FAIL("invalid refcnt in m\n");
+
+	if (rte_mbuf_refcnt_read(m->next) != 3)
+		GOTO_FAIL("invalid refcnt in m->next\n");
+
 	/* free mbuf */
 	rte_pktmbuf_free(m);
 	rte_pktmbuf_free(clone);
+	rte_pktmbuf_free(clone2);
+
 	m = NULL;
 	clone = NULL;
+	clone2 = NULL;
+	printf("%s ok\n", __func__);
 	return 0;
 
 fail:
@@ -395,6 +421,8 @@ fail:
 		rte_pktmbuf_free(m);
 	if (clone)
 		rte_pktmbuf_free(clone);
+	if (clone2)
+		rte_pktmbuf_free(clone2);
 	return -1;
 }
 #undef GOTO_FAIL
