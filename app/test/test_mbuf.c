@@ -75,6 +75,8 @@
 #define REFCNT_MBUF_NUM         64
 #define REFCNT_RING_SIZE        (REFCNT_MBUF_NUM * REFCNT_MAX_REF)
 
+#define MAGIC_DATA              0x42424242
+
 #define MAKE_STRING(x)          # x
 
 static struct rte_mempool *pktmbuf_pool = NULL;
@@ -122,6 +124,8 @@ static unsigned refcnt_lcore[RTE_MAX_LCORE];
  *    - Repeat the test to check that allocation operations
  *      reinitialize the mbuf correctly.
  *
+ * #. Test packet cloning
+ *    - Clone a mbuf and verify the data
  */
 
 #define GOTO_FAIL(str, ...) do {					\
@@ -322,6 +326,7 @@ testclone_testupdate_testdetach(void)
 {
 	struct rte_mbuf *m = NULL;
 	struct rte_mbuf *clone = NULL;
+	uint32_t *data;
 
 	/* alloc a mbuf */
 	m = rte_pktmbuf_alloc(pktmbuf_pool);
@@ -331,20 +336,52 @@ testclone_testupdate_testdetach(void)
 	if (rte_pktmbuf_pkt_len(m) != 0)
 		GOTO_FAIL("Bad length");
 
+	rte_pktmbuf_append(m, sizeof(uint32_t));
+	data = rte_pktmbuf_mtod(m, uint32_t *);
+	*data = MAGIC_DATA;
 
 	/* clone the allocated mbuf */
 	clone = rte_pktmbuf_clone(m, pktmbuf_pool);
 	if (clone == NULL)
 		GOTO_FAIL("cannot clone data\n");
-	rte_pktmbuf_free(clone);
 
+	data = rte_pktmbuf_mtod(clone, uint32_t *);
+	if (*data != MAGIC_DATA)
+		GOTO_FAIL("invalid data in clone\n");
+
+	if (rte_mbuf_refcnt_read(m) != 2)
+		GOTO_FAIL("invalid refcnt in m\n");
+
+	/* free the clone */
+	rte_pktmbuf_free(clone);
+	clone = NULL;
+
+	/* same test with a chained mbuf */
 	m->next = rte_pktmbuf_alloc(pktmbuf_pool);
 	if (m->next == NULL)
 		GOTO_FAIL("Next Pkt Null\n");
 
+	rte_pktmbuf_append(m->next, sizeof(uint32_t));
+	data = rte_pktmbuf_mtod(m->next, uint32_t *);
+	*data = MAGIC_DATA;
+
 	clone = rte_pktmbuf_clone(m, pktmbuf_pool);
 	if (clone == NULL)
 		GOTO_FAIL("cannot clone data\n");
+
+	data = rte_pktmbuf_mtod(clone, uint32_t *);
+	if (*data != MAGIC_DATA)
+		GOTO_FAIL("invalid data in clone\n");
+
+	data = rte_pktmbuf_mtod(clone->next, uint32_t *);
+	if (*data != MAGIC_DATA)
+		GOTO_FAIL("invalid data in clone->next\n");
+
+	if (rte_mbuf_refcnt_read(m) != 2)
+		GOTO_FAIL("invalid refcnt in m\n");
+
+	if (rte_mbuf_refcnt_read(m->next) != 2)
+		GOTO_FAIL("invalid refcnt in m->next\n");
 
 	/* free mbuf */
 	rte_pktmbuf_free(m);
@@ -356,6 +393,8 @@ testclone_testupdate_testdetach(void)
 fail:
 	if (m)
 		rte_pktmbuf_free(m);
+	if (clone)
+		rte_pktmbuf_free(clone);
 	return -1;
 }
 #undef GOTO_FAIL
