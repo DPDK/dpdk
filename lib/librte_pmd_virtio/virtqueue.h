@@ -37,7 +37,6 @@
 #include <stdint.h>
 
 #include <rte_atomic.h>
-#include <rte_mbuf.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_mempool.h>
@@ -45,6 +44,8 @@
 #include "virtio_pci.h"
 #include "virtio_ring.h"
 #include "virtio_logs.h"
+
+struct rte_mbuf;
 
 /*
  * Per virtio_config.h in Linux.

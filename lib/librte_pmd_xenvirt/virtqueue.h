@@ -42,9 +42,10 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_mempool.h>
-#include <rte_mbuf.h>
 
 #include "virtio_logs.h"
+
+struct rte_mbuf;
 
 /* The alignment to use between consumer and producer parts of vring. */
 #define VIRTIO_PCI_VRING_ALIGN 4096
