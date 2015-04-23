@@ -48,7 +48,8 @@
 
 #include <rte_memory.h>
 #include <rte_mempool.h>
-#include <rte_mbuf.h>
+
+struct rte_mbuf;
 
 #define VHOST_MEMORY_MAX_NREGIONS 8
 
