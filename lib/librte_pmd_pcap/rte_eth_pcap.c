@@ -56,6 +56,8 @@
 #define ETH_PCAP_TX_IFACE_ARG "tx_iface"
 #define ETH_PCAP_IFACE_ARG    "iface"
 
+#define ETH_PCAP_ARG_MAXLEN	64
+
 static char errbuf[PCAP_ERRBUF_SIZE];
 static struct timeval start_time;
 static uint64_t start_cycles;
@@ -67,8 +69,8 @@ struct pcap_rx_queue {
 	struct rte_mempool *mb_pool;
 	volatile unsigned long rx_pkts;
 	volatile unsigned long err_pkts;
-	const char *name;
-	const char *type;
+	char name[PATH_MAX];
+	char type[ETH_PCAP_ARG_MAXLEN];
 };
 
 struct pcap_tx_queue {
@@ -76,8 +78,8 @@ struct pcap_tx_queue {
 	pcap_t *pcap;
 	volatile unsigned long tx_pkts;
 	volatile unsigned long err_pkts;
-	const char *name;
-	const char *type;
+	char name[PATH_MAX];
+	char type[ETH_PCAP_ARG_MAXLEN];
 };
 
 struct rx_pcaps {
@@ -790,14 +792,22 @@ rte_eth_from_pcaps_n_dumpers(const char *name,
 		return -1;
 
 	for (i = 0; i < nb_rx_queues; i++) {
-		internals->rx_queue->pcap = rx_queues->pcaps[i];
-		internals->rx_queue->name = rx_queues->names[i];
-		internals->rx_queue->type = rx_queues->types[i];
+		internals->rx_queue[i].pcap = rx_queues->pcaps[i];
+		snprintf(internals->rx_queue[i].name,
+			sizeof(internals->rx_queue[i].name), "%s",
+			rx_queues->names[i]);
+		snprintf(internals->rx_queue[i].type,
+			sizeof(internals->rx_queue[i].type), "%s",
+			rx_queues->types[i]);
 	}
 	for (i = 0; i < nb_tx_queues; i++) {
-		internals->tx_queue->dumper = tx_queues->dumpers[i];
-		internals->tx_queue->name = tx_queues->names[i];
-		internals->tx_queue->type = tx_queues->types[i];
+		internals->tx_queue[i].dumper = tx_queues->dumpers[i];
+		snprintf(internals->tx_queue[i].name,
+			sizeof(internals->tx_queue[i].name), "%s",
+			tx_queues->names[i]);
+		snprintf(internals->tx_queue[i].type,
+			sizeof(internals->tx_queue[i].type), "%s",
+			tx_queues->types[i]);
 	}
 
 	/* using multiple pcaps/interfaces */
@@ -809,7 +819,6 @@ rte_eth_from_pcaps_n_dumpers(const char *name,
 	return 0;
 }
 
-	struct rx_pcaps pcaps;
 static int
 rte_eth_from_pcaps(const char *name,
 		struct rx_pcaps *rx_queues,
@@ -835,14 +844,22 @@ rte_eth_from_pcaps(const char *name,
 		return -1;
 
 	for (i = 0; i < nb_rx_queues; i++) {
-		internals->rx_queue->pcap = rx_queues->pcaps[i];
-		internals->rx_queue->name = rx_queues->names[i];
-		internals->rx_queue->type = rx_queues->types[i];
+		internals->rx_queue[i].pcap = rx_queues->pcaps[i];
+		snprintf(internals->rx_queue[i].name,
+			sizeof(internals->rx_queue[i].name), "%s",
+			rx_queues->names[i]);
+		snprintf(internals->rx_queue[i].type,
+			sizeof(internals->rx_queue[i].type), "%s",
+			rx_queues->types[i]);
 	}
 	for (i = 0; i < nb_tx_queues; i++) {
-		internals->tx_queue->pcap = tx_queues->pcaps[i];
-		internals->tx_queue->name = tx_queues->names[i];
-		internals->tx_queue->type = tx_queues->types[i];
+		internals->tx_queue[i].dumper = tx_queues->dumpers[i];
+		snprintf(internals->tx_queue[i].name,
+			sizeof(internals->tx_queue[i].name), "%s",
+			tx_queues->names[i]);
+		snprintf(internals->tx_queue[i].type,
+			sizeof(internals->tx_queue[i].type), "%s",
+			tx_queues->types[i]);
 	}
 
 	/* store wether we are using a single interface for rx/tx or not */
