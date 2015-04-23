@@ -180,9 +180,10 @@ extern "C" {
 #include <rte_pci.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
-#include <rte_mbuf.h>
 #include "rte_ether.h"
 #include "rte_eth_ctrl.h"
+
+struct rte_mbuf;
 
 /**
  * A structure used to retrieve statistics for an Ethernet port.
