@@ -37,6 +37,8 @@
 #include <string.h>
 #include <rte_cycles.h>
 #include <rte_errno.h>
+#include <rte_mempool.h>
+#include <rte_mbuf.h>
 #include <rte_distributor.h>
 
 #define ITER_POWER 20 /* log 2 of how many iterations we do when timing. */

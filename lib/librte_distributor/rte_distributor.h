@@ -46,11 +46,10 @@
 extern "C" {
 #endif
 
-#include <rte_mbuf.h>
-
 #define RTE_DISTRIBUTOR_NAMESIZE 32 /**< Length of name for instance */
 
 struct rte_distributor;
+struct rte_mbuf;
 
 /**
  * Function to create a new distributor instance
