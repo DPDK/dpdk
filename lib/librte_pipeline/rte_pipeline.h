@@ -85,9 +85,10 @@ extern "C" {
 
 #include <stdint.h>
 
-#include <rte_mbuf.h>
 #include <rte_port.h>
 #include <rte_table.h>
+
+struct rte_mbuf;
 
 /*
  * Pipeline
