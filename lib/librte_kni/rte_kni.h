@@ -47,7 +47,6 @@
  */
 
 #include <rte_pci.h>
-#include <rte_mbuf.h>
 
 #include <exec-env/rte_kni_common.h>
 
@@ -56,6 +55,7 @@ extern "C" {
 #endif
 
 struct rte_kni;
+struct rte_mbuf;
 
 /**
  * Structure which has the function pointers for KNI interface.
