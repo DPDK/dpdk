@@ -55,8 +55,9 @@ extern "C" {
  ***/
 
 #include <stdint.h>
-#include <rte_mbuf.h>
 #include <rte_port.h>
+
+struct rte_mbuf;
 
 /**
  * Lookup table create
