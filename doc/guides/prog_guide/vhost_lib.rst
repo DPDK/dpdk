@@ -46,7 +46,7 @@ Vhost API Overview
       rte_vhost_driver_register registers the vhost driver into the system.
       For vhost-cuse, character device file will be created under the /dev directory.
       Character device name is specified as the parameter.
-      For vhost-user, a unix domain socket server will be created with the parameter as
+      For vhost-user, a Unix domain socket server will be created with the parameter as
       the local socket path.
 
 *   Vhost session start
@@ -102,7 +102,7 @@ When the release call is released, vhost will destroy the device.
 
 Vhost user implementation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-When vSwitch registers a vhost driver, it will create a unix domain socket server
+When vSwitch registers a vhost driver, it will create a Unix domain socket server
 into the system. This server will listen for a connection and process the vhost message from
 QEMU simulator.
 
@@ -110,7 +110,7 @@ When there is a new socket connection, it means a new virtio device has been cre
 the guest virtual machine, and the vhost driver will create a vhost device for this virtio device.
 
 For messages with a file descriptor, the file descriptor could be directly used in the vhost
-process as it is already installed by unix domain socket.
+process as it is already installed by Unix domain socket.
 
  * VHOST_SET_MEM_TABLE
  * VHOST_SET_VRING_KICK

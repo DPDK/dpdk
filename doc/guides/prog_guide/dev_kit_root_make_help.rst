@@ -154,9 +154,22 @@ Test Targets
 Documentation Targets
 ---------------------
 
-*   doxydoc
+*   doc
 
-    Generate the Doxygen documentation (pdf only).
+    Generate the Doxygen documentation (API, html and pdf).
+
+*   doc-api-html
+
+    Generate the Doxygen API documentation in html.
+
+*   doc-guides-html
+
+    Generate the guides documentation in html.
+
+*   doc-guides-pdf
+
+    Generate the guides documentation in pdf.
+
 
 Deps Targets
 ------------

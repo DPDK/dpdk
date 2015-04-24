@@ -61,7 +61,7 @@ Compilation of the DPDK
 
 *   coreutils:  cmp, sed, grep, arch
 
-*   gcc: versions 4.5.x or later is recommended for i686/x86_64. versions 4.8.x or later is recommanded
+*   gcc: versions 4.5.x or later is recommended for i686/x86_64. versions 4.8.x or later is recommended
     for ppc_64 and x86_x32 ABI. On some distributions, some specific compiler flags and linker flags are enabled by
     default and affect performance (- fstack-protector, for example). Please refer to the documentation
     of your distribution and to gcc -dumpspecs.
@@ -81,7 +81,7 @@ Compilation of the DPDK
 .. note::
 
     x86_x32 ABI is currently supported with distribution packages only on Ubuntu
-    higher than 13.10 or recent debian distribution. The only supported  compiler is gcc 4.8+.
+    higher than 13.10 or recent Debian distribution. The only supported  compiler is gcc 4.8+.
 
 .. note::
 
@@ -121,7 +121,7 @@ System Software
 
 For details of the patches needed to use the DPDK with earlier kernel versions,
 see the DPDK FAQ included in the *DPDK Release Notes*.
-Note also that Redhat* Linux* 6.2 and 6.3 uses a 2.6.32 kernel that already has all the necessary patches applied.
+Note also that Red hat* Linux* 6.2 and 6.3 uses a 2.6.32 kernel that already has all the necessary patches applied.
 
 *   glibc >= 2.7 (for features related to cpuset)
 
@@ -139,7 +139,7 @@ Note also that Redhat* Linux* 6.2 and 6.3 uses a 2.6.32 kernel that already has 
 
 *   Kernel configuration
 
-    In the Fedora* OS and other common distributions, such as Ubuntu*, or RedHat Enterprise Linux*,
+    In the Fedora* OS and other common distributions, such as Ubuntu*, or Red Hat Enterprise Linux*,
     the vendor supplied kernel configurations can be used to run most DPDK applications.
 
     For other kernel builds, options which should be enabled for DPDK include:

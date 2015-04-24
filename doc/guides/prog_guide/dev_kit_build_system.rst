@@ -317,7 +317,7 @@ Useful Variables Provided by the Build System
     When compiling an external application, the variable points to the root of external application sources.
 
 *   RTE_OUTPUT: The path to which output files are written.
-    Typically, it is $(RTE_SRCDIR)/build, but it can be overriden by the O= option in the make command line.
+    Typically, it is $(RTE_SRCDIR)/build, but it can be overridden by the O= option in the make command line.
 
 *   RTE_TARGET: A string identifying the target for which we are building.
     The format is arch-machine-execenv-toolchain.

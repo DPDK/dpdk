@@ -55,7 +55,7 @@ Therefore, a NIC is logically distributed among multiple virtual machines (as sh
 while still having global data in common to share with the Physical Function and other Virtual Functions.
 The DPDK fm10kvf, i40evf, igbvf or ixgbevf as a Poll Mode Driver (PMD) serves for the Intel® 82576 Gigabit Ethernet Controller,
 Intel® Ethernet Controller I350 family, Intel® 82599 10 Gigabit Ethernet Controller NIC,
-Intel® Fortville 10/40 Gigabit Ethernet Controller NIC's virtual PCI function,or PCIE host-interface of the Intel Ethernet Switch
+Intel® Fortville 10/40 Gigabit Ethernet Controller NIC's virtual PCI function, or PCIe host-interface of the Intel Ethernet Switch
 FM10000 Series.
 Meanwhile the DPDK Poll Mode Driver (PMD) also supports "Physical Function" of such NIC's on the host.
 
@@ -536,7 +536,7 @@ The setup procedure is as follows:
 
     Run the DPDK l2fwd sample application in the Guest OS with Hugepages enabled.
     For the expected benchmark performance, you must pin the cores from the Guest OS to the Host OS (taskset can be used to do this) and
-    you must also look at the PCI Bus layout on the board to ensure you are not running the traffic over the QPI Inteface.
+    you must also look at the PCI Bus layout on the board to ensure you are not running the traffic over the QPI Interface.
 
 .. note::
 

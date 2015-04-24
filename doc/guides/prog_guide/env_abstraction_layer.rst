@@ -224,7 +224,7 @@ However, alternately it is possible to utilize the idle cycles available to take
 the full capability of the CPU.
 
 By taking advantage of cgroup, the CPU utilization quota can be simply assigned.
-This gives another way to improve the CPU efficienct, however, there is a prerequisite;
+This gives another way to improve the CPU efficiency, however, there is a prerequisite;
 DPDK must handle the context switching between multiple pthreads per core.
 
 For further flexibility, it is useful to set pthread affinity not only to a CPU but to a CPU set.
@@ -284,7 +284,7 @@ Those TLS include *_cpuset* and *_socket_id*:
 
 *	*_cpuset* stores the CPUs bitmap to which the pthread is affinitized.
 
-*	*_socket_id* stores the NUMA node of the CPU set. If the CPUs in CPU set belong to different NUMA node, the *_socket_id* will be set to SOCKTE_ID_ANY.
+*	*_socket_id* stores the NUMA node of the CPU set. If the CPUs in CPU set belong to different NUMA node, the *_socket_id* will be set to SOCKET_ID_ANY.
 
 
 .. _known_issue_label:
@@ -302,7 +302,7 @@ Known Issues
 + rte_ring
 
   rte_ring supports multi-producer enqueue and multi-consumer dequeue.
-  However, it is non-preemptive, this has a knock on effect of making rte_mempool non-preemtable.
+  However, it is non-preemptive, this has a knock on effect of making rte_mempool non-preemptable.
 
   .. note::
 
@@ -329,7 +329,7 @@ Known Issues
   ``RTE_RING_PAUSE_REP_COUNT`` is defined for rte_ring to reduce contention. It's mainly for case 2, a yield is issued after number of times pause repeat.
 
   It adds a sched_yield() syscall if the thread spins for too long while waiting on the other thread to finish its operations on the ring.
-  This gives the pre-empted thread a chance to proceed and finish with the ring enqueue/dequeue operation.
+  This gives the preempted thread a chance to proceed and finish with the ring enqueue/dequeue operation.
 
 + rte_timer
 

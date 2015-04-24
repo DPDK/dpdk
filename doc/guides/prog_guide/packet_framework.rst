@@ -330,7 +330,7 @@ so the key search can be narrowed down from the full set of keys currently in th
 to just the set of keys currently in the identified table bucket.
 
 The performance of the hash table lookup operation is greatly improved,
-provided that the table keys are evenly distributed amongst the hash table buckets,
+provided that the table keys are evenly distributed among the hash table buckets,
 which can be achieved by using a hash function with uniform distribution.
 The rule to map a key to its bucket can simply be to use the key signature (modulo the number of table buckets) as the table bucket ID:
 
@@ -439,7 +439,7 @@ The possible options are:
     When a key needs to be picked and dropped, the first candidate for drop, i.e. the current LRU key, is always picked.
     The LRU logic requires maintaining specific data structures per each bucket.
 
-#.  **Extendible Bucket Hash Table.**
+#.  **Extendable Bucket Hash Table.**
     The bucket is extended with space for 4 more keys.
     This is done by allocating additional memory at table initialization time,
     which is used to create a pool of free keys (the size of this pool is configurable and always a multiple of 4).
@@ -449,11 +449,11 @@ The possible options are:
     when the key to be deleted is the only key that was used within its group of 4 keys at that time.
     On key lookup operation, if the current bucket is in extended state and a match is not found in the first group of 4 keys,
     the search continues beyond the first group of 4 keys, potentially until all keys in this bucket are examined.
-    The extendible bucket logic requires maintaining specific data structures per table and per each bucket.
+    The extendable bucket logic requires maintaining specific data structures per table and per each bucket.
 
 .. _pg_table_23:
 
-**Table 23 Configuration Parameters Specific to Extendible Bucket Hash Table**
+**Table 23 Configuration Parameters Specific to Extendable Bucket Hash Table**
 
 +---+---------------------------+--------------------------------------------------+
 | # | Parameter                 | Details                                          |
@@ -576,7 +576,7 @@ either with pre-computed signature or "do-sig").
 |   |                         |                              |                           |                               |
 +---+-------------------------+------------------------------+---------------------------+-------------------------------+
 | 2 | Bucket extensions array | n_buckets_ext (configurable) | 32                        | This array is only created    |
-|   |                         |                              |                           | for extendible bucket tables. |
+|   |                         |                              |                           | for extendable bucket tables. |
 |   |                         |                              |                           |                               |
 +---+-------------------------+------------------------------+---------------------------+-------------------------------+
 | 3 | Key array               | n_keys                       | key_size (configurable)   | Keys added to the hash table. |
@@ -601,7 +601,7 @@ either with pre-computed signature or "do-sig").
 |   |                  |                    | Entry 0 stores the index (0 .. 3) of the MRU key, while entry 3  |
 |   |                  |                    | stores the index of the LRU key.                                 |
 |   |                  |                    |                                                                  |
-|   |                  |                    | For extendible bucket tables, this field represents the next     |
+|   |                  |                    | For extendable bucket tables, this field represents the next     |
 |   |                  |                    | pointer (i.e. the pointer to the next group of 4 keys linked to  |
 |   |                  |                    | the current bucket). The next pointer is not NULL if the bucket  |
 |   |                  |                    | is currently extended or NULL otherwise.                         |
@@ -867,7 +867,7 @@ Figure 37, Figure 38, Table 30 and 31 detail the main data structures used to im
 |   |                         |                              |                      |                                    |
 +---+-------------------------+------------------------------+----------------------+------------------------------------+
 | 2 | Bucket extensions array | n_buckets_ext (configurable) | *8-byte key size:*   | This array is only created for     |
-|   |                         |                              |                      | extendible bucket tables.          |
+|   |                         |                              |                      | extendable bucket tables.          |
 |   |                         |                              |                      |                                    |
 |   |                         |                              | 64 + 4 x entry_size  |                                    |
 |   |                         |                              |                      |                                    |
@@ -888,7 +888,7 @@ Figure 37, Figure 38, Table 30 and 31 detail the main data structures used to im
 +===+===============+====================+===============================================================================+
 | 1 | Valid         | 8                  | Bit X (X = 0 .. 3) is set to 1 if key X is valid or to 0 otherwise.           |
 |   |               |                    |                                                                               |
-|   |               |                    | Bit 4 is only used for extendible bucket tables to help with the              |
+|   |               |                    | Bit 4 is only used for extendable bucket tables to help with the              |
 |   |               |                    | implementation of the branchless logic. In this case, bit 4 is set to 1 if    |
 |   |               |                    | next pointer is valid (not NULL) or to 0 otherwise.                           |
 |   |               |                    |                                                                               |
@@ -897,7 +897,7 @@ Figure 37, Figure 38, Table 30 and 31 detail the main data structures used to im
 |   |               |                    | stored as array of 4 entries of 2 bytes each. Entry 0 stores the index        |
 |   |               |                    | (0 .. 3) of the MRU key, while entry 3 stores the index of the LRU key.       |
 |   |               |                    |                                                                               |
-|   |               |                    | For extendible bucket tables, this field represents the next pointer (i.e.    |
+|   |               |                    | For extendable bucket tables, this field represents the next pointer (i.e.    |
 |   |               |                    | the pointer to the next group of 4 keys linked to the current bucket). The    |
 |   |               |                    | next pointer is not NULL if the bucket is currently extended or NULL          |
 |   |               |                    | otherwise.                                                                    |
@@ -962,7 +962,7 @@ Additional notes:
 #.  The pipelined version of the bucket search algorithm is executed only if there are at least 5 packets in the burst of input packets.
     If there are less than 5 packets in the burst of input packets, a non-optimized implementation of the bucket search algorithm is executed.
 
-#.  For extendible bucket hash tables only,
+#.  For extendable bucket hash tables only,
     once the pipelined version of the bucket search algorithm has been executed for all the packets in the burst of input packets,
     the non-optimized implementation of the bucket search algorithm is also executed for any packets that did not produce a lookup hit,
     but have the bucket in extended state.
@@ -1148,7 +1148,7 @@ Mechanisms to share the same table between multiple threads:
     The threads performing table entry add/delete operations send table update requests to the reader (typically through message passing queues),
     which does the actual table updates and then sends the response back to the request initiator.
 
-#.  **Single writer thread performing table entry add/delete operations and multiple reader threads that performtable lookup operations with read-only access to the table entries.**
+#.  **Single writer thread performing table entry add/delete operations and multiple reader threads that perform table lookup operations with read-only access to the table entries.**
     The reader threads use the main table copy while the writer is updating the mirror copy.
     Once the writer update is done, the writer can signal to the readers and busy wait until all readers swaps between the mirror copy (which now becomes the main copy) and
     the mirror copy (which now becomes the main copy).

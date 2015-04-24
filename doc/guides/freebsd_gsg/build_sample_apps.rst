@@ -136,7 +136,7 @@ The EAL options for FreeBSD* are as follows:
     (multiple -b options are allowed).
 
 *   --use-device
-    : use the specified ethernet device(s) only.  Use comma-separate
+    : use the specified Ethernet device(s) only.  Use comma-separate
     <[domain:]bus:devid.func> values. Cannot be used with -b option.
 
 *   -r NUM

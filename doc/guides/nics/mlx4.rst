@@ -239,7 +239,7 @@ Getting Mellanox OFED
 ~~~~~~~~~~~~~~~~~~~~~
 
 While these libraries and kernel modules are available on OpenFabrics
-Aliance's `website <https://www.openfabrics.org/>`_ and provided by package
+Alliance's `website <https://www.openfabrics.org/>`_ and provided by package
 managers on most distributions, this PMD requires Ethernet extensions that
 may not be supported at the moment (this is a work in progress).
 

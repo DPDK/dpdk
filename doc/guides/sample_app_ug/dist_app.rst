@@ -104,7 +104,7 @@ Explanation
 -----------
 
 The distributor application consists of three types of threads: a receive
-thread (lcore_rx()), a set of worker threads(locre_worker())
+thread (lcore_rx()), a set of worker threads(lcore_worker())
 and a transmit thread(lcore_tx()). How these threads work together is shown
 in Fig2 below. The main() function launches  threads of these three types.
 Each thread has a while loop which will be doing processing and which is

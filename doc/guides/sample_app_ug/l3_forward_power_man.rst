@@ -341,7 +341,7 @@ to generate hints based on recent network load trends.
                      */
                     rte_delay_us(lcore_idle_hint);
                 else
-                    /* long sleep force runing thread to suspend */
+                    /* long sleep force ruining thread to suspend */
                     usleep(lcore_idle_hint);
 
                stats[lcore_id].sleep_time += lcore_idle_hint;

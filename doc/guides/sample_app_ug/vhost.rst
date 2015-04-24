@@ -37,7 +37,7 @@ The vhost sample application demonstrates integration of the Data Plane Developm
 with the Linux* KVM hypervisor by implementing the vhost-net offload API.
 The sample application performs simple packet switching between virtual machines based on Media Access Control
 (MAC) address or Virtual Local Area Network (VLAN) tag.
-The splitting of ethernet traffic from an external switch is performed in hardware by the Virtual Machine Device Queues
+The splitting of Ethernet traffic from an external switch is performed in hardware by the Virtual Machine Device Queues
 (VMDQ) and Data Center Bridging (DCB) features of the Intel® 82599 10 Gigabit Ethernet Controller.
 
 Background
@@ -90,7 +90,7 @@ Sample Code Overview
 The DPDK vhost-net sample code demonstrates KVM (QEMU) offloading the servicing of a Virtual Machine's (VM's)
 virtio-net devices to a DPDK-based application in place of the kernel's vhost-net module.
 
-The DPDK vhost-net sample code is based on vhost library. Vhost library is developed for user space ethernet switch to
+The DPDK vhost-net sample code is based on vhost library. Vhost library is developed for user space Ethernet switch to
 easily integrate with vhost functionality.
 
 The vhost library implements the following features:
@@ -110,7 +110,7 @@ socket messages. Most of the messages share the same handler routine.
 .. note::
     **Any vhost cuse specific requirement in the following sections will be emphasized**.
 
-Two impelmentations are turned on and off statically through configure file. Only one implementation could be turned on. They don't co-exist in current implementation.
+Two implementations are turned on and off statically through configure file. Only one implementation could be turned on. They don't co-exist in current implementation.
 
 The vhost sample code application is a simple packet switching application with the following feature:
 
@@ -158,7 +158,7 @@ Installing Packages on the Host(vhost cuse required)
 
 The vhost cuse code uses the following packages; fuse, fuse-devel, and kernel-modules-extra.
 The vhost user code don't rely on those modules as eventfds are already installed into vhost process through
-unix domain socket.
+Unix domain socket.
 
 #.  Install Fuse Development Libraries and headers:
 
@@ -491,7 +491,7 @@ This option is disabled by default.
 
 **RX descriptor number.**
 The RX descriptor number option specify the Ethernet RX descriptor number,
-Linux legacy virtio-net has different behaviour in how to use the vring descriptor from DPDK based virtio-net PMD,
+Linux legacy virtio-net has different behavior in how to use the vring descriptor from DPDK based virtio-net PMD,
 the former likely allocate half for virtio header, another half for frame buffer,
 while the latter allocate all for frame buffer,
 this lead to different number for available frame buffer in vring,
@@ -502,7 +502,7 @@ So it is valid only in zero copy mode is enabled. The value is 32 by default.
 
     user@target:~$ ./build/app/vhost-switch -c f -n 4 --huge-dir /mnt/huge -- --zero-copy 1 --rx-desc-num [0, n]
 
-**TX descriptornumber.**
+**TX descriptor number.**
 The TX descriptor number option specify the Ethernet TX descriptor number, it is valid only in zero copy mode is enabled.
 The value is 64 by default.
 

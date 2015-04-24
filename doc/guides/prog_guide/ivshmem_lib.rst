@@ -32,7 +32,7 @@ IVSHMEM Library
 ===============
 
 The DPDK IVSHMEM library facilitates fast zero-copy data sharing among virtual machines
-(host-to-guest or guest-to-guest) by means of QEUMU's IVSHMEM mechanism.
+(host-to-guest or guest-to-guest) by means of QEMU's IVSHMEM mechanism.
 
 The library works by providing a command line for QEMU to map several hugepages into a single IVSHMEM device.
 For the guest to know what is inside any given IVSHMEM device
@@ -107,7 +107,7 @@ Best Practices for Writing IVSHMEM Applications
 -----------------------------------------------
 
 When considering the use of IVSHMEM for sharing memory, security implications need to be carefully evaluated.
-IVSHMEM is not suitable for untrusted guests, as IVSHMEM is essentially a window into the host processs memory.
+IVSHMEM is not suitable for untrusted guests, as IVSHMEM is essentially a window into the host process memory.
 This also has implications for the multiple VM scenarios.
 While the IVSHMEM library tries to share as little memory as possible,
 it is quite probable that data designated for one VM might also be present in an IVSMHMEM device designated for another VM.
@@ -137,7 +137,7 @@ For performance reasons,
 it is best to pin host processes and QEMU processes to different cores so that they do not interfere with each other.
 If NUMA support is enabled, it is also desirable to keep host process' hugepage memory and QEMU process on the same NUMA node.
 
-For the best performance across all NUMA nodes, each QUEMU core should be pinned to host CPU core on the appropriate NUMA node.
+For the best performance across all NUMA nodes, each QEMU core should be pinned to host CPU core on the appropriate NUMA node.
 QEMU's virtual NUMA nodes should also be set up to correspond to physical NUMA nodes.
 More on how to set up DPDK and QEMU NUMA support can be found in *DPDK Getting Started Guide* and
 `QEMU documentation <http://qemu.weilnetz.de/qemu-doc.html>`_ respectively.

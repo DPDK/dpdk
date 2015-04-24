@@ -220,7 +220,7 @@ The application has built-in performance enhancements for the NUMA case:
 #.  Memory for the NIC RX or TX rings is allocated on the same socket with the lcore handling the respective ring.
 
 In the case where multiple CPU sockets are used in the system,
-it is recommended to enable at least one lcore to fulfil the I/O role for the NIC ports that
+it is recommended to enable at least one lcore to fulfill the I/O role for the NIC ports that
 are directly attached to that CPU socket through the PCI Express* bus.
 It is always recommended to handle the packet I/O with lcores from the same CPU socket as the NICs.
 

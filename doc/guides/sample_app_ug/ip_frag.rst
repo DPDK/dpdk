@@ -40,7 +40,7 @@ Overview
 
 The application demonstrates the use of zero-copy buffers for packet fragmentation.
 The initialization and run-time paths are very similar to those of the L2 forwarding application
-(see Chapter 9 "L2 Forwarding Simple Application (in Real and Virtualised Environments)" for more information).
+(see Chapter 9 "L2 Forwarding Simple Application (in Real and Virtualized Environments)" for more information).
 This guide highlights the differences between the two applications.
 
 There are three key differences from the L2 Forwarding sample application:

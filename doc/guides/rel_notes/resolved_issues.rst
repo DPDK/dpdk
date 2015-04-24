@@ -84,7 +84,7 @@ Vhost-xen cannot detect Domain U application exit on Xen version 4.0.1
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Description                    | When using DPDK applications on Xen 4.0.1, e.g. TestPMD Sample Application,          |
-|                                | on killing the application (e.g. killall testmd) vhost-switch cannot detect          |
+|                                | on killing the application (e.g. killall testpmd) vhost-switch cannot detect         |
 |                                | the domain U exited and does not free the Virtio device.                             |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
@@ -211,11 +211,11 @@ KNI does not provide Ethtool support for all NICs supported by the Poll-Mode Dri
 | Title                           | KNI does not provide ethtool support for all NICs supported by the Poll Mode Drivers  |
 |                                 |                                                                                       |
 +=================================+=======================================================================================+
-| Refererence #                   | IXA00383835                                                                           |
+| Reference #                     | IXA00383835                                                                           |
 |                                 |                                                                                       |
 +---------------------------------+---------------------------------------------------------------------------------------+
-| Description                     | To support ethtool functionality using the KNI, the KNI libray includes seperate      |
-|                                 | driver code based off the Linux kernel drivers, because this driver code is seperate  |
+| Description                     | To support ethtool functionality using the KNI, the KNI library includes separate     |
+|                                 | driver code based off the Linux kernel drivers, because this driver code is separate  |
 |                                 | from the poll-mode drivers, the set of supported NICs for these two components may    |
 |                                 | differ.                                                                               |
 |                                 |                                                                                       |
@@ -247,7 +247,7 @@ Linux IPv4 forwarding is not stable with vhost-switch on high packet rate
 | Title                           | Linux IPv4 forwarding is not stable with vhost-switch on high packet rate.            |
 |                                 |                                                                                       |
 +=================================+=======================================================================================+
-| Refererence #                   | IXA00384430                                                                           |
+| Reference #                     | IXA00384430                                                                           |
 |                                 |                                                                                       |
 +---------------------------------+---------------------------------------------------------------------------------------+
 | Description                     | Linux IPv4 forwarding is not stable in Guest when Tx traffic is high from traffic     |
@@ -261,7 +261,7 @@ Linux IPv4 forwarding is not stable with vhost-switch on high packet rate
 | Resolution/Workaround           | N/A                                                                                   |
 |                                 |                                                                                       |
 +---------------------------------+---------------------------------------------------------------------------------------+
-| AffectedEnvironment/Platform    | All                                                                                   |
+| Affected Environment/Platform   | All                                                                                   |
 |                                 |                                                                                       |
 +---------------------------------+---------------------------------------------------------------------------------------+
 | Driver/Module                   | Sample application                                                                    |
@@ -431,7 +431,7 @@ Initialization failure with Intel® Ethernet Controller X540-T2
 |                                 |                                                                                       |
 +---------------------------------+---------------------------------------------------------------------------------------+
 | Description                     | This device causes a failure during initialization when the software tries to read    |
-|                                 | the part number from the device EEPROM.                                               |
+|                                 | the part number from the device EPROM.                                                |
 |                                 |                                                                                       |
 +---------------------------------+---------------------------------------------------------------------------------------+
 | Implication                     | Device cannot be used.                                                                |
@@ -998,7 +998,7 @@ No traffic through bridge when using exception_path sample application
 |                                 | not forwarded by the bridge.                                                          |
 |                                 |                                                                                       |
 +---------------------------------+---------------------------------------------------------------------------------------+
-| Implication                     | The sample application does not work as described in its sample application quide.    |
+| Implication                     | The sample application does not work as described in its sample application guide.    |
 |                                 |                                                                                       |
 +---------------------------------+---------------------------------------------------------------------------------------+
 | Resolution/Workaround           | If you cannot get packets though the bridge, it might be because IP packet filtering  |
@@ -1105,8 +1105,8 @@ When running multi-process applications, “rte_malloc” functions cannot be us
 |                                 |                                                                                       |
 +---------------------------------+---------------------------------------------------------------------------------------+
 
-Configuring maximum packet length for IGB with VLAN enabled may not take intoaccount the length of VLAN tag
------------------------------------------------------------------------------------------------------------
+Configuring maximum packet length for IGB with VLAN enabled may not take into account the length of VLAN tag
+------------------------------------------------------------------------------------------------------------
 
 +---------------------------------+---------------------------------------------------------------------------------------+
 | Title                           | Configuring maximum packet length for IGB with VLAN enabled may not take into account |
@@ -1177,7 +1177,7 @@ EAL can silently reserve less memory than requested
 | Implication                     | The application fails to start.                                                       |
 |                                 |                                                                                       |
 +---------------------------------+---------------------------------------------------------------------------------------+
-| Resolution                      | EAL will detect if this condition occurs and will give anappropriate error message    |
+| Resolution                      | EAL will detect if this condition occurs and will give an appropriate error message   |
 |                                 | describing steps to fix the problem.                                                  |
 |                                 |                                                                                       |
 +---------------------------------+---------------------------------------------------------------------------------------+
@@ -1366,17 +1366,17 @@ Packet reception issues when virtualization is enabled
 
 
 
-Double VLAN does not work on Intel® 40GbE ethernet contoller
-------------------------------------------------------------
+Double VLAN does not work on Intel® 40GbE Ethernet controller
+-------------------------------------------------------------
 
 +---------------------------------+---------------------------------------------------------------------------------------+
-| Title                           | Double VLAN does not work on Intel® 40GbE ethernet controller                         |
+| Title                           | Double VLAN does not work on Intel® 40GbE Ethernet controller                         |
 |                                 |                                                                                       |
 +=================================+=======================================================================================+
 | Reference #                     | IXA00369908                                                                           |
 |                                 |                                                                                       |
 +---------------------------------+---------------------------------------------------------------------------------------+
-| Description                     | On Intel® 40 GbE ethernet controller double VLAN does not work.                       |
+| Description                     | On Intel® 40 GbE Ethernet controller double VLAN does not work.                       |
 |                                 | This was confirmed as a Firmware issue which will be fixed in later versions of       |
 |                                 | firmware.                                                                             |
 +---------------------------------+---------------------------------------------------------------------------------------+

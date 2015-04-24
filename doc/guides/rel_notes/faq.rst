@@ -201,7 +201,7 @@ What is the purpose of setting iommu=pt?
 ----------------------------------------
 DPDK uses a 1:1 mapping and does not support IOMMU. IOMMU allows for simpler VM physical address translation.
 The second role of IOMMU is to allow protection from unwanted memory access by an unsafe device that has DMA privileges.
-Unfortunately, the protection comes with an extremely high perfomance cost for high speed NICs.
+Unfortunately, the protection comes with an extremely high performance cost for high speed NICs.
 
 iommu=pt disables IOMMU support for the hypervisor.
 

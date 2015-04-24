@@ -167,7 +167,7 @@ a vxlan-encapsulated tcp packet:
     mb->ol_flags |= PKT_TX_IPV4 | PKT_TX_IP_CSUM
     set out_ip checksum to 0 in the packet
 
-  This is supported on hardwares advertising DEV_TX_OFFLOAD_IPV4_CKSUM.
+  This is supported on hardware advertising DEV_TX_OFFLOAD_IPV4_CKSUM.
 
 - calculate checksum of out_ip and out_udp::
 
@@ -177,7 +177,7 @@ a vxlan-encapsulated tcp packet:
     set out_ip checksum to 0 in the packet
     set out_udp checksum to pseudo header using rte_ipv4_phdr_cksum()
 
-   This is supported on hardwares advertising DEV_TX_OFFLOAD_IPV4_CKSUM
+   This is supported on hardware advertising DEV_TX_OFFLOAD_IPV4_CKSUM
    and DEV_TX_OFFLOAD_UDP_CKSUM.
 
 - calculate checksum of in_ip::
@@ -188,7 +188,7 @@ a vxlan-encapsulated tcp packet:
     set in_ip checksum to 0 in the packet
 
   This is similar to case 1), but l2_len is different. It is supported
-  on hardwares advertising DEV_TX_OFFLOAD_IPV4_CKSUM.
+  on hardware advertising DEV_TX_OFFLOAD_IPV4_CKSUM.
   Note that it can only work if outer L4 checksum is 0.
 
 - calculate checksum of in_ip and in_tcp::

@@ -98,7 +98,7 @@ Programmer's Guide
 
 :ref:`Figure 9. An mbuf with Three Segments <pg_figure_9>`
 
-:ref:`Figure 16. Memory Sharing inthe Intel® DPDK Multi-process Sample Application <pg_figure_16>`
+:ref:`Figure 16. Memory Sharing in the Intel® DPDK Multi-process Sample Application <pg_figure_16>`
 
 :ref:`Figure 17. Components of an Intel® DPDK KNI Application <pg_figure_17>`
 
@@ -194,7 +194,7 @@ Programmer's Guide
 
 :ref:`Table 22. Configuration parameters common for all hash table types <pg_table_22>`
 
-:ref:`Table 23. Configuration parameters specific to extendible bucket hash table <pg_table_23>`
+:ref:`Table 23. Configuration parameters specific to extendable bucket hash table <pg_table_23>`
 
 :ref:`Table 24. Configuration parameters specific to pre-computed key signature hash table <pg_table_24>`
 

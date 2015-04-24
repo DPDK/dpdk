@@ -269,7 +269,7 @@ therefore will be accessible by the secondary process as it initializes.
     for(i = 0; i < num_ports; i++){
         if(proc_type == RTE_PROC_PRIMARY)
             if (smp_port_init(ports[i], mp, (uint16_t)num_procs) < 0)
-                rte_exit(EXIT_FAILURE, "Error initialising ports\n");
+                rte_exit(EXIT_FAILURE, "Error initializing ports\n");
     }
 
 In the secondary instance, rather than initializing the network ports, the port information exported by the primary process is used,
@@ -569,7 +569,7 @@ and the master needs to see the update and print them out.
 So, it needs to allocate a heap buffer using rte_zmalloc.
 In addition, if the -f option is specified,
 an array is needed to store the allocated core ID for the floating process so that the master can return it
-after a slave has exited accidently.
+after a slave has exited accidentally.
 
 .. code-block:: c
 

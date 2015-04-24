@@ -432,7 +432,7 @@ Some hardware off-load functions are not supported by the VF Driver
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Implication                    | Any configuration for these items in the VF register will be ignored. The behavior   |
-|                                | is dependant on the current PF setting.                                              |
+|                                | is dependent on the current PF setting.                                              |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Resolution/ Workaround         | For the PF (Physical Function) status on which the VF driver depends, there is an    |
@@ -683,8 +683,8 @@ Binding PCI devices to igb_uio fails on Linux* kernel 3.9 when more than one dev
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 
-GCC might generate Intel® AVX instructions forprocessors without Intel® AVX support
------------------------------------------------------------------------------------
+GCC might generate Intel® AVX instructions for processors without Intel® AVX support
+------------------------------------------------------------------------------------
 
 +--------------------------------+--------------------------------------------------------------------------------------+
 | Title                          | Gcc might generate Intel® AVX instructions for processors without Intel® AVX support |
@@ -749,11 +749,11 @@ Ethertype filter could receive other packets (non-assigned) in Niantic
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 
-Cannot set link speed on Intel® 40G ethernet controller
+Cannot set link speed on Intel® 40G Ethernet controller
 -------------------------------------------------------
 
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Title                          | Cannot set link speed on Intel® 40G ethernet controller                              |
+| Title                          | Cannot set link speed on Intel® 40G Ethernet controller                              |
 |                                |                                                                                      |
 +================================+======================================================================================+
 | Reference #                    | IXA00386379                                                                          |
@@ -764,7 +764,7 @@ Cannot set link speed on Intel® 40G ethernet controller
 |                                | It cannot set the link to specific speed.                                            |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Implication                    | The link speed cannot be changed forcedly, though it can be configured by            |
+| Implication                    | The link speed cannot be changed forcibly, though it can be configured by            |
 |                                | application.                                                                         |
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
@@ -778,11 +778,11 @@ Cannot set link speed on Intel® 40G ethernet controller
 |                                |                                                                                      |
 +--------------------------------+--------------------------------------------------------------------------------------+
 
-Stopping the port does not down the link on Intel® 40G ethernet controller
+Stopping the port does not down the link on Intel® 40G Ethernet controller
 --------------------------------------------------------------------------
 
 +--------------------------------+--------------------------------------------------------------------------------------+
-| Title                          | Stopping the port does not down the link on Intel® 40G ethernet controller           |
+| Title                          | Stopping the port does not down the link on Intel® 40G Ethernet controller           |
 |                                |                                                                                      |
 +================================+======================================================================================+
 | Reference #                    | IXA00386380                                                                          |

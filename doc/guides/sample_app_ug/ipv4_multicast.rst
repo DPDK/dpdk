@@ -232,12 +232,12 @@ Thereafter, a destination Ethernet address is constructed:
 
 .. code-block:: c
 
-    /* construct destination ethernet address */
+    /* construct destination Ethernet address */
 
     dst_eth_addr = ETHER_ADDR_FOR_IPV4_MCAST(dest_addr);
 
 Since Ethernet addresses are also part of the multicast process, each outgoing packet carries the same destination Ethernet address.
-The destination Ethernet address is constructed from the lower 23 bits of the multicast group ORed
+The destination Ethernet address is constructed from the lower 23 bits of the multicast group OR-ed
 with the Ethernet address 01:00:5e:00:00:00, as per RFC 1112:
 
 .. code-block:: c

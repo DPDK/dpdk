@@ -209,7 +209,7 @@ Then, a call to init_dpdk(), defined in init.c, is made to initialize the poll m
             rte_exit(EXIT_FAILURE, "rte_eal_pci_probe(): error %d\n", ret);
 
         if (rte_eth_dev_count() < 2)
-            rte_exit(EXIT_FAILURE, "Not enough ethernet port available\n");
+            rte_exit(EXIT_FAILURE, "Not enough Ethernet port available\n");
     }
 
 To fully understand this code, it is recommended to study the chapters that relate to the *Poll Mode Driver*
@@ -492,7 +492,7 @@ low_watermark from the rte_memzone previously created by qw.
 
         qw_memzone = rte_memzone_lookup(QUOTA_WATERMARK_MEMZONE_NAME);
         if (qw_memzone == NULL)
-            rte_exit(EXIT_FAILURE, "Could't find memzone\n");
+            rte_exit(EXIT_FAILURE, "Couldn't find memzone\n");
 
         quota = qw_memzone->addr;
 

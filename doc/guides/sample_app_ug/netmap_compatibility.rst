@@ -114,7 +114,7 @@ namely rte_netmap_init() and rte_netmap_init_port().
 These two initialization functions take compat_netmap specific data structures as parameters:
 struct rte_netmap_conf and struct rte_netmap_port_conf.
 Those structures' fields are Netmap related and are self-explanatory for developers familiar with Netmap.
-They are definedin $RTE_SDK/examples/netmap_compat/ lib/compat_netmap.h.
+They are defined in $RTE_SDK/examples/netmap_compat/ lib/compat_netmap.h.
 
 The bridge application is an example largely based on the bridge example shipped with the Netmap distribution.
 It shows how a minimal Netmap application with minimal and straightforward source code changes can be run on top of the DPDK.

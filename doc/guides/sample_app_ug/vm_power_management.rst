@@ -139,7 +139,7 @@ Host Operating System
 The Host OS must also have the *apci_cpufreq* module installed, in some cases
 the *intel_pstate* driver may be the default Power Management environment.
 To enable *acpi_cpufreq* and disable *intel_pstate*, add the following
-to the grub linux command line:
+to the grub Linux command line:
 
 .. code-block:: console
 
@@ -220,7 +220,7 @@ on cores 0 & 1 on a system with 4 memory channels:
 
  ./build/vm_power_mgr -c 0x3 -n 4
 
-After successful initialisation the user is presented with VM Power Manager CLI:
+After successful initialization the user is presented with VM Power Manager CLI:
 
 .. code-block:: console
 
@@ -343,7 +343,7 @@ for example to run on cores 0,1,2,3 on a system with 4 memory channels:
  ./build/guest_vm_power_mgr -c 0xf -n 4
 
 
-After successful initialisation the user is presented with VM Power Manager Guest CLI:
+After successful initialization the user is presented with VM Power Manager Guest CLI:
 
 .. code-block:: console
 

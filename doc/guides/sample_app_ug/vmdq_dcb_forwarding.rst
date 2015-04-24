@@ -142,7 +142,7 @@ a default structure is provided for VMDQ and DCB configuration to be filled in l
 
 .. code-block:: c
 
-    /* empty vmdq+dcb configuration structure. Filled in programatically */
+    /* empty vmdq+dcb configuration structure. Filled in programmatically */
 
     static const struct rte_eth_conf vmdq_dcb_conf_default = {
         .rxmode = {
@@ -228,7 +228,7 @@ so the pools parameter in the rte_eth_vmdq_dcb_conf structure is specified as a 
 Once the network port has been initialized using the correct VMDQ and DCB values,
 the initialization of the port's RX and TX hardware rings is performed similarly to that
 in the L2 Forwarding sample application.
-See Chapter 9, "L2 Forwarding Sample Aplication (in Real and Virtualized Environments)" for more information.
+See Chapter 9, "L2 Forwarding Sample Application (in Real and Virtualized Environments)" for more information.
 
 Statistics Display
 ~~~~~~~~~~~~~~~~~~

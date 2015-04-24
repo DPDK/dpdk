@@ -510,7 +510,7 @@ tx_vlan set (vlan_id) (port_id)
 tx_vlan set pvid
 ~~~~~~~~~~~~~~~~
 
-Set port based hardware insertion of VLAN ID in pacekts sent on a port:
+Set port based hardware insertion of VLAN ID in packets sent on a port:
 
 tx_vlan set pvid (port_id) (vlan_id) (on|off)
 
@@ -1214,7 +1214,7 @@ For example, set a Link Bonding device (port 10) to use a balance policy of laye
 set bonding mon_period
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Set the link status monitoring polling period in milliseconds for a bonding devicie.
+Set the link status monitoring polling period in milliseconds for a bonding device.
 
 This adds support for PMD slave devices which do not support link status interrupts.
 When the mon_period is set to a value greater than 0 then all PMD's which do not support

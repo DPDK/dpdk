@@ -170,14 +170,14 @@ Supported Features
 *   Support for multiple instances of the Intel®  DPDK
 
 *   Support for Intel®  82574L Gigabit Ethernet Controller - Intel®  Gigabit CT Desktop Adapter
-    (previously code named “Hartwell”)
+    (previously code named "Hartwell")
 
-*   Support for Intel® Ethernet Controller I210 (previously code named “Springville”)
+*   Support for Intel® Ethernet Controller I210 (previously code named "Springville")
 
 *   Early access support for the Quad-port Intel®  Ethernet Server Adapter X520-4 and X520-DA2
-    (code named “Spring Fountain”)
+    (code named "Spring Fountain")
 
-*   Support for Intel®  X710/XL710 40 Gigabit Ethernet Controller (code named “Fortville”)
+*   Support for Intel®  X710/XL710 40 Gigabit Ethernet Controller (code named "Fortville")
 
 *   Core components:
 
@@ -223,16 +223,16 @@ Supported Features
 
 *   IGB Poll Mode Driver - 1 GbE Controllers (librte_pmd_e1000)
 
-    *   Support for Intel® 82576 Gigabit Ethernet Controller (previously code named “Kawela”)
+    *   Support for Intel® 82576 Gigabit Ethernet Controller (previously code named "Kawela")
 
-    *   Support for Intel® 82580 Gigabit Ethernet Controller (previously code named “Barton Hills”)
+    *   Support for Intel® 82580 Gigabit Ethernet Controller (previously code named "Barton Hills")
 
-    *   Support for Intel®  I350 Gigabit Ethernet Controller (previously code named “Powerville”)
+    *   Support for Intel®  I350 Gigabit Ethernet Controller (previously code named "Powerville")
 
     *   Support for Intel® 82574L Gigabit Ethernet Controller - Intel® Gigabit CT Desktop Adapter
-        (previously code named “Hartwell”)
+        (previously code named "Hartwell")
 
-    *   Support for Intel® Ethernet Controller I210 (previously code named “Springville”)
+    *   Support for Intel® Ethernet Controller I210 (previously code named "Springville")
 
     *   Support for L2 Ethertype filters, SYN filters, 2-tuple filters and Flex filters for 82580 and i350
 
@@ -240,11 +240,11 @@ Supported Features
 
 *   Poll Mode Driver - 10 GbE Controllers (librte_pmd_ixgbe)
 
-    *   Support for Intel® 82599 10 Gigabit Ethernet Controller (previously code named “Niantic”)
+    *   Support for Intel® 82599 10 Gigabit Ethernet Controller (previously code named "Niantic")
 
-    *   Support for Intel® Ethernet Server Adapter X520-T2 (previously code named “Iron Pond”)
+    *   Support for Intel® Ethernet Server Adapter X520-T2 (previously code named "Iron Pond")
 
-    *   Support for Intel® Ethernet Controller X540-T2 (previously code named “Twin Pond”)
+    *   Support for Intel® Ethernet Controller X540-T2 (previously code named "Twin Pond")
 
     *   Support for Virtual Machine Device Queues (VMDq) and Data Center Bridging (DCB) to divide
         incoming traffic into 128 RX queues. DCB is also supported for transmitting packets.
@@ -351,7 +351,7 @@ Supported Features
 *   Improvements to SR-IOV switch configurability on the Intel® 82599 Ethernet Controllers in
     a virtualized environment.
 
-*   An API for L2 Ethernet Address “whitelist” filtering
+*   An API for L2 Ethernet Address "whitelist" filtering
 
 *   An API for resetting statistics counters
 
@@ -363,7 +363,7 @@ Supported Features
 
 *   Support for zero-copy Multicast
 
-*   New APIs to allow the “blacklisting” of specific NIC ports.
+*   New APIs to allow the "blacklisting" of specific NIC ports.
 
 *   Header files for common protocols (IP, SCTP, TCP, UDP)
 

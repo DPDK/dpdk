@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 ntel Corporation. All rights reserved.
+    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -87,7 +87,7 @@ Currently the Link Bonding PMD library supports 4 modes of operation:
     This mode provides transmit load balancing (based on the selected
     transmission policy) and fault tolerance. The default policy (layer2) uses
     a simple calculation based on the packet flow source and destination MAC
-    addresses aswell as the number of active slaves available to the bonded
+    addresses as well as the number of active slaves available to the bonded
     device to classify the packet to a specific slave to transmit on. Alternate
     transmission policies supported are layer 2+3, this takes the IP source and
     destination addresses into the calculation of the transmit slave port and
@@ -95,7 +95,7 @@ Currently the Link Bonding PMD library supports 4 modes of operation:
     destination addresses as well as the TCP/UDP source and destination port.
 
 .. note::
-    The colouring differences of the packets are used to identify different flow
+    The coloring differences of the packets are used to identify different flow
     classification calculated by the selected transmit policy
 
 

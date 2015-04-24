@@ -881,7 +881,7 @@ The evolution of the WRR design solution from simple to complex is shown in Tabl
 |   |            |                 |             | introducing a cost per byte that is different for each   |
 |   |            |                 |             | queue. Queues with lower weights have a higher cost per  |
 |   |            |                 |             | byte. This way, it is still meaningful to compare the    |
-|   |            |                 |             | consumption amongst different queues in order to select  |
+|   |            |                 |             | consumption among different queues in order to select    |
 |   |            |                 |             | the next queue.                                          |
 |   |            |                 |             |                                                          |
 |   |            |                 |             | w(i) = Weight of queue #i                                |
@@ -984,7 +984,7 @@ with the third approach selected for implementation.
 +=====+===========================+=========================================================================+
 | 1   | Don't care                | First come, first served.                                               |
 |     |                           |                                                                         |
-|     |                           | This approach is not fair amongst subport member pipes, as pipes that   |
+|     |                           | This approach is not fair among subport member pipes, as pipes that     |
 |     |                           | are served first will use up as much bandwidth for TC X as they need,   |
 |     |                           | while pipes that are served later will receive poor service due to      |
 |     |                           | bandwidth for TC X at the subport level being scarce.                   |

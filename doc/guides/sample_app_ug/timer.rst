@@ -114,7 +114,7 @@ The main loop is very simple in this example:
         /*
          *   Call the timer handler on each core: as we don't
          *   need a very precise timer, so only call
-         *   rte_timer_manage() every ~10ms (at 2 Ghz). In a real
+         *   rte_timer_manage() every ~10ms (at 2 GHz). In a real
          *   application, this will enhance performances as
          *   reading the HPET timer is not efficient.
         */

@@ -36,10 +36,10 @@ The IP Fragmentation and Reassembly Library implements IPv4 and IPv6 packet frag
 Packet fragmentation
 --------------------
 
-Packet fragmentation routines devide input packet into number of fragments.
+Packet fragmentation routines divide input packet into number of fragments.
 Both rte_ipv4_fragment_packet() and rte_ipv6_fragment_packet() functions assume that input mbuf data
 points to the start of the IP header of the packet (i.e. L2 header is already stripped out).
-To avoid copying fo the actual packet's data zero-copy technique is used (rte_pktmbuf_attach).
+To avoid copying of the actual packet's data zero-copy technique is used (rte_pktmbuf_attach).
 For each fragment two new mbufs are created:
 
 *   Direct mbuf -- mbuf that will contain L3 header of the new fragment.
@@ -50,7 +50,7 @@ For each fragment two new mbufs are created:
 Then L3 header is copied from the original mbuf into the 'direct' mbuf and updated to reflect new fragmented status.
 Note that for IPv4, header checksum is not recalculated and is set to zero.
 
-Finally 'direct' and 'indirect' mbufs for each fragnemt are linked together via mbuf's next filed to compose a packet for the new fragment.
+Finally 'direct' and 'indirect' mbufs for each fragment are linked together via mbuf's next filed to compose a packet for the new fragment.
 
 The caller has an ability to explicitly specify which mempools should be used to allocate 'direct' and 'indirect' mbufs from.
 
@@ -66,9 +66,9 @@ Fragment table maintains information about already received fragments of the pac
 
 Each IP packet is uniquely identified by triple <Source IP address>, <Destination IP address>, <ID>.
 
-Note that all update/lookup operations on Fragmen Table are not thread safe.
+Note that all update/lookup operations on Fragment Table are not thread safe.
 So if different execution contexts (threads/processes) will access the same table simultaneously,
-then some exernal syncing mechanism have to be provided.
+then some external syncing mechanism have to be provided.
 
 Each table entry can hold information about packets consisting of up to RTE_LIBRTE_IP_FRAG_MAX (by default: 4) fragments.
 
@@ -80,11 +80,11 @@ Code example, that demonstrates creation of a new Fragment table:
     bucket_num = max_flow_num + max_flow_num / 4;
     frag_tbl = rte_ip_frag_table_create(max_flow_num, bucket_entries, max_flow_num, frag_cycles, socket_id);
 
-Internally Fragmen table is a simple hash table.
+Internally Fragment table is a simple hash table.
 The basic idea is to use two hash functions and <bucket_entries> \* associativity.
 This provides 2 \* <bucket_entries> possible locations in the hash table for each key.
 When the collision occurs and all 2 \* <bucket_entries> are occupied,
-instead of resinserting existing keys into alternative locations, ip_frag_tbl_add() just returns a faiure.
+instead of reinserting existing keys into alternative locations, ip_frag_tbl_add() just returns a failure.
 
 Also, entries that resides in the table longer then <max_cycles> are considered as invalid,
 and could be removed/replaced by the new ones.
@@ -120,7 +120,7 @@ These functions are responsible for:
 
     b) If no, then return a NULL to the caller.
 
-If at any stage of packet processing an error is envountered
+If at any stage of packet processing an error is encountered
 (e.g: can't insert new entry into the Fragment Table, or invalid/timed-out fragment),
 then the function will free all associated with the packet fragments,
 mark the table entry as invalid and return NULL to the caller.

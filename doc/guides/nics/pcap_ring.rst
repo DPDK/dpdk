@@ -50,7 +50,7 @@ the DPDK also includes two pure-software PMDs. These two drivers are:
 Using the Drivers from the EAL Command Line
 -------------------------------------------
 
-For ease of use, the DPDK EAL also has been extended to allow pseudo-ethernet devices,
+For ease of use, the DPDK EAL also has been extended to allow pseudo-Ethernet devices,
 using one or more of these drivers,
 to be created at application startup time during EAL initialization.
 
@@ -226,7 +226,7 @@ and use these as a source of packet input to the application.
 Usage Examples
 ^^^^^^^^^^^^^^
 
-To create two pseudo-ethernet ports where all traffic sent to a port is looped back
+To create two pseudo-Ethernet ports where all traffic sent to a port is looped back
 for reception on the same port (error handling omitted for clarity):
 
 .. code-block:: c

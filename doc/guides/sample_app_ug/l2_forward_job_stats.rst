@@ -459,15 +459,15 @@ In the l2fwd_main_loop() function three loops are placed.
         rte_pause();
     }
 
-First inifnite for loop is to minimize impact of stats reading. Lock is only locked/unlocked when asked.
+First infinite for loop is to minimize impact of stats reading. Lock is only locked/unlocked when asked.
 
 Second inner while loop do the whole jobs management. When any job is ready, the use rte_timer_manage() is used to call the job handler.
 In this place functions l2fwd_fwd_job() and l2fwd_flush_job() are called when needed.
 Then rte_jobstats_context_finish() is called to mark loop end - no other jobs are ready to execute. By this time stats are ready to be read
 and if stats_read_pending is set, loop breaks allowing stats to be read.
 
-Third do-while loop is the idle job (idle stats counter). Its only purpose is moniting if any job is ready or stats job read is pending
-for this lcore. Statistics from this part of code is considered as the headroom available fo additional processing.
+Third do-while loop is the idle job (idle stats counter). Its only purpose is monitoring if any job is ready or stats job read is pending
+for this lcore. Statistics from this part of code is considered as the headroom available for additional processing.
 
 Receive, Process and Transmit Packets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -595,7 +595,7 @@ If the table is full, the whole packets table is transmitted using the l2fwd_sen
     }
 
 To ensure that no packets remain in the tables, the flush job exists. The l2fwd_flush_job()
-is called periodicaly to for each lcore draining TX queue of each port.
+is called periodically to for each lcore draining TX queue of each port.
 This technique introduces some latency when there are not many packets to send,
 however it improves performance:
 

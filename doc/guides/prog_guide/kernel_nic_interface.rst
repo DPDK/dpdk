@@ -267,7 +267,7 @@ Then, using the qemu-kvm command with the -netdev option to assign such raw sock
 
 .. note::
 
-    The key word tap must exist as qemu-kvm now only supports vhost with a tap beckend, so here we cheat qemu-kvm by an existing fd.
+    The key word tap must exist as qemu-kvm now only supports vhost with a tap backend, so here we cheat qemu-kvm by an existing fd.
 
 Compatibility Configure Option
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

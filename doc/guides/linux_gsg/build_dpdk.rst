@@ -166,7 +166,7 @@ Loading Modules to Enable Userspace IO for DPDK
 -----------------------------------------------
 
 To run any DPDK application, a suitable uio module can be loaded into the running kernel.
-In many cases, the standard uio_pci_generic module included in the linux kernel
+In many cases, the standard uio_pci_generic module included in the Linux kernel
 can provide the uio capability. This module can be loaded using the command
 
 .. code-block:: console

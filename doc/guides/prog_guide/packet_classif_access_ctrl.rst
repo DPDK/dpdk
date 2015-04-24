@@ -281,14 +281,14 @@ for each of them.
 Depending on the rule-set, it might reduce RT memory requirements but might
 increase classification time.
 There is a possibility at build-time to specify maximum memory limit for internal RT structures for given AC context.
-It could be done via **max_size** field of the **rte_acl_config** strucure.
+It could be done via **max_size** field of the **rte_acl_config** structure.
 Setting it to the value greater than zero, instructs rte_acl_build() to:
 
-*   attempt to minimise number of tries in the RT table, but
+*   attempt to minimize number of tries in the RT table, but
 *   make sure that size of RT table wouldn't exceed given value.
 
-Setting it to zero makes rte_acl_build() to use the default behaviour:
-try to minimise size of the RT structures, but doesn't expose any hard limit on it.
+Setting it to zero makes rte_acl_build() to use the default behavior:
+try to minimize size of the RT structures, but doesn't expose any hard limit on it.
 
 That gives the user the ability to decisions about performance/space trade-off.
 For example:
@@ -304,12 +304,12 @@ For example:
      * populated with rules AC context and cfg filled properly.
      */
 
-     /* try to build AC context, with RT strcutures less then 8MB. */
+     /* try to build AC context, with RT structures less then 8MB. */
      cfg.max_size = 0x800000;
      ret = rte_acl_build(acx, &cfg);
 
      /*
-      * RT strcutures can't fit into 8MB for given context.
+      * RT structures can't fit into 8MB for given context.
       * Try to build without exposing any hard limit.
       */
      if (ret == -ERANGE) {

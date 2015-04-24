@@ -226,7 +226,7 @@ The following selection demonstrates the starting of the DPDK UIO driver.
     Loading DPDK UIO module
 
 The following selection demonstrates the creation of hugepages in a NUMA system.
-1024 2 Mbyte pages are assigned to each node.
+1024 2 MByte pages are assigned to each node.
 The result is that the application should use -m 4096 for starting the application to access both memory areas
 (this is done automatically if the -m option is not provided).
 
@@ -239,7 +239,7 @@ The result is that the application should use -m 4096 for starting the applicati
     Option: 15
 
     Removing currently reserved hugepages
-    nmounting /mnt/huge and removing directory
+    mounting /mnt/huge and removing directory
     Input the number of 2MB pages for each node
     Example: to have 128MB of hugepages available per node,
     enter '64' to reserve 64 * 2MB pages on each node

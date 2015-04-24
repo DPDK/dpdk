@@ -85,7 +85,7 @@ the expiry time of the first list entry is maintained within the per-core timer 
 On 64-bit platforms, this value can be checked without the need to take a lock on the overall structure.
 (Since expiry times are maintained as 64-bit values,
 a check on the value cannot be done on 32-bit platforms without using either a compare-and-swap (CAS) instruction or using a lock,
-so this additional check is skipped in favour of checking as normal once the lock has been taken.)
+so this additional check is skipped in favor of checking as normal once the lock has been taken.)
 On both 64-bit and 32-bit platforms,
 a call to rte_timer_manage() returns without taking a lock in the case where the timer list for the calling core is empty.
 

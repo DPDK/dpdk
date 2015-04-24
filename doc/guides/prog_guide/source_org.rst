@@ -114,7 +114,7 @@ The examples directory contains sample applications that show how libraries can 
     examples
     +-- cmdline            # Example of using cmdline library
     +-- dpdk_qat           # Example showing integration with Intel QuickAssist
-    +-- exception_path     # Sending packets to and from Linux ethernet device (TAP)
+    +-- exception_path     # Sending packets to and from Linux Ethernet device (TAP)
     +-- helloworld         # Helloworld basic example
     +-- ip_reassembly      # Example showing IP Reassembly
     +-- ip_fragmentation   # Example showing IPv4 Fragmentation

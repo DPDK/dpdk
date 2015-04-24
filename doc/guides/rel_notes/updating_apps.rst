@@ -87,7 +87,7 @@ Intel® DPDK 1.2 to Intel® DPDK 1.3
 
 Note the following difference between releases 1.2 and 1.3:
 
-*   In release 1.3, the Intel® DPDK supports two different 1 GBe drivers: igb and em.
+*   In release 1.3, the Intel® DPDK supports two different 1 GbE drivers: igb and em.
     Both of them are located in the same library: lib_pmd_e1000.a.
     Therefore, the name of the library to link with for the igb PMD has changed from librte_pmd_igb.a to librte_pmd_e1000.a.
 
@@ -125,7 +125,7 @@ Note the following difference between release 1.1 and release 1.2:
 
 *   The method used for managing mbufs on the NIC TX rings for the 10 GbE driver has been modified to improve performance.
     As a result, different parameter values should be passed to the rte_eth_tx_queue_setup() function.
-    The recommended default values are to have tx_thresh.tx_wt hresh, tx_free_thresh,
+    The recommended default values are to have tx_thresh.tx_wthresh, tx_free_thresh,
     as well as the new parameter tx_rs_thresh (all in the struct rte_eth_txconf datatype) set to zero.
     See the "Configuration of Transmit and Receive Queues" section in the *Intel® DPDK Programmer's Guide* for more details.
 
