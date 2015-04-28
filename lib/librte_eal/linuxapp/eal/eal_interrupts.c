@@ -361,7 +361,7 @@ vfio_disable_msix(struct rte_intr_handle *intr_handle) {
 #endif
 
 static int
-uio_intr_disable(struct rte_intr_handle *intr_handle)
+uio_intx_intr_disable(struct rte_intr_handle *intr_handle)
 {
 	unsigned char command_high;
 
@@ -385,7 +385,7 @@ uio_intr_disable(struct rte_intr_handle *intr_handle)
 }
 
 static int
-uio_intr_enable(struct rte_intr_handle *intr_handle)
+uio_intx_intr_enable(struct rte_intr_handle *intr_handle)
 {
 	unsigned char command_high;
 
@@ -405,6 +405,34 @@ uio_intr_enable(struct rte_intr_handle *intr_handle)
 		return -1;
 	}
 
+	return 0;
+}
+
+static int
+uio_intr_disable(struct rte_intr_handle *intr_handle)
+{
+	const int value = 0;
+
+	if (write(intr_handle->fd, &value, sizeof(value)) < 0) {
+		RTE_LOG(ERR, EAL,
+			"Error disabling interrupts for fd %d (%s)\n",
+			intr_handle->fd, strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+
+static int
+uio_intr_enable(struct rte_intr_handle *intr_handle)
+{
+	const int value = 1;
+
+	if (write(intr_handle->fd, &value, sizeof(value)) < 0) {
+		RTE_LOG(ERR, EAL,
+			"Error enabling interrupts for fd %d (%s)\n",
+			intr_handle->fd, strerror(errno));
+		return -1;
+	}
 	return 0;
 }
 
@@ -556,6 +584,10 @@ rte_intr_enable(struct rte_intr_handle *intr_handle)
 		if (uio_intr_enable(intr_handle))
 			return -1;
 		break;
+	case RTE_INTR_HANDLE_UIO_INTX:
+		if (uio_intx_intr_enable(intr_handle))
+			return -1;
+		break;
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
 		return -1;
@@ -594,6 +626,10 @@ rte_intr_disable(struct rte_intr_handle *intr_handle)
 	/* write to the uio fd to disable the interrupt */
 	case RTE_INTR_HANDLE_UIO:
 		if (uio_intr_disable(intr_handle))
+			return -1;
+		break;
+	case RTE_INTR_HANDLE_UIO_INTX:
+		if (uio_intx_intr_disable(intr_handle))
 			return -1;
 		break;
 	/* not used at this moment */

@@ -299,7 +299,6 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 			devname, strerror(errno));
 		return -1;
 	}
-	dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
 
 	snprintf(cfgname, sizeof(cfgname),
 			"/sys/class/uio/uio%u/device/config", uio_num);
@@ -310,10 +309,16 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		return -1;
 	}
 
-	/* set bus master that is not done by uio_pci_generic */
-	if (pci_uio_set_bus_master(dev->intr_handle.uio_cfg_fd)) {
-		RTE_LOG(ERR, EAL, "Cannot set up bus mastering!\n");
-		return -1;
+	if (dev->kdrv == RTE_KDRV_IGB_UIO)
+		dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
+	else {
+		dev->intr_handle.type = RTE_INTR_HANDLE_UIO_INTX;
+
+		/* set bus master that is not done by uio_pci_generic */
+		if (pci_uio_set_bus_master(dev->intr_handle.uio_cfg_fd)) {
+			RTE_LOG(ERR, EAL, "Cannot set up bus mastering!\n");
+			return -1;
+		}
 	}
 
 	/* allocate the mapping details for secondary processes*/
