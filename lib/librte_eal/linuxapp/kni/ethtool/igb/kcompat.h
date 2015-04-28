@@ -3885,4 +3885,10 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 #define HAVE_NDO_FDB_ADD_VID
 #endif /* >= 3.19.0 */
 
+#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(4,0,0) )
+/* vlan_tx_xx functions got renamed to skb_vlan */
+#define vlan_tx_tag_get skb_vlan_tag_get
+#define vlan_tx_tag_present skb_vlan_tag_present
+#define HAVE_NDO_BRIDGE_SET_DEL_LINK_FLAGS
+#endif /* 4.0.0 */
 #endif /* _KCOMPAT_H_ */
