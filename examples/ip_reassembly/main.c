@@ -85,7 +85,7 @@
 
 #define MAX_JUMBO_PKT_LEN  9600
 
-#define	BUF_SIZE	2048
+#define	BUF_SIZE	RTE_MBUF_DEFAULT_DATAROOM
 #define MBUF_SIZE	\
 	(BUF_SIZE + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 

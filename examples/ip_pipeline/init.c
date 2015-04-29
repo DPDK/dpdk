@@ -146,7 +146,7 @@ struct app_params app = {
 	.bsz_swq_wr = 64,
 
 	/* Buffer pool */
-	.pool_buffer_size = 2048 + RTE_PKTMBUF_HEADROOM,
+	.pool_buffer_size = RTE_MBUF_DEFAULT_BUF_SIZE,
 	.pool_size = 32 * 1024,
 	.pool_cache_size = 256,
 

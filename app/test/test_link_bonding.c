@@ -75,11 +75,9 @@
 	ETH_TXQ_FLAGS_NOXSUMSCTP | ETH_TXQ_FLAGS_NOXSUMUDP | \
 	ETH_TXQ_FLAGS_NOXSUMTCP)
 
-#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE (250)
 #define BURST_SIZE (32)
 
-#define DEFAULT_MBUF_DATA_SIZE	(2048)
 #define RTE_TEST_RX_DESC_MAX	(2048)
 #define RTE_TEST_TX_DESC_MAX	(2048)
 #define MAX_PKT_BURST			(512)
@@ -280,8 +278,8 @@ test_setup(void)
 			RTE_TEST_TX_DESC_MAX + MAX_PKT_BURST;
 	if (test_params->mbuf_pool == NULL) {
 		test_params->mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL",
-			nb_mbuf_per_pool, MBUF_CACHE_SIZE, 0, MBUF_DATA_SIZE,
-			rte_socket_id());
+			nb_mbuf_per_pool, MBUF_CACHE_SIZE, 0,
+			RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 		TEST_ASSERT_NOT_NULL(test_params->mbuf_pool,
 				"rte_mempool_create failed");
 	}

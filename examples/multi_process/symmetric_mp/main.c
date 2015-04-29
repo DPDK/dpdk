@@ -78,7 +78,6 @@
 
 #define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 
-#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUFS 64*1024 /* use 64k mbufs */
 #define MBUF_CACHE_SIZE 256
 #define PKT_BURST 32
@@ -447,7 +446,7 @@ main(int argc, char **argv)
 	mp = (proc_type == RTE_PROC_SECONDARY) ?
 			rte_mempool_lookup(_SMP_MBUF_POOL) :
 			rte_pktmbuf_pool_create(_SMP_MBUF_POOL, NB_MBUFS,
-				MBUF_CACHE_SIZE, 0, MBUF_DATA_SIZE,
+				MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
 				rte_socket_id());
 	if (mp == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get memory pool for buffers\n");

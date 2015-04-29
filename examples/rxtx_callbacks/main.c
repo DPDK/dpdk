@@ -43,7 +43,6 @@
 #define TX_RING_SIZE 512
 
 #define NUM_MBUFS 8191
-#define MBUF_DATA_SIZE (1600 + RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE 250
 #define BURST_SIZE 32
 
@@ -205,8 +204,8 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Error: number of ports must be even\n");
 
 	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL",
-		NUM_MBUFS * nb_ports, MBUF_CACHE_SIZE, 0, MBUF_DATA_SIZE,
-		rte_socket_id());
+		NUM_MBUFS * nb_ports, MBUF_CACHE_SIZE, 0,
+		RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 

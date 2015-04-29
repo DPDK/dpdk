@@ -72,7 +72,6 @@
 
 #define RTE_LOGTYPE_LSI RTE_LOGTYPE_USER1
 
-#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   8192
 
 #define MAX_PKT_BURST 32
@@ -615,7 +614,7 @@ main(int argc, char **argv)
 	/* create the mbuf pool */
 	lsi_pktmbuf_pool =
 		rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF, 32, 0,
-			MBUF_DATA_SIZE, rte_socket_id());
+			RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (lsi_pktmbuf_pool == NULL)
 		rte_panic("Cannot init mbuf pool\n");
 

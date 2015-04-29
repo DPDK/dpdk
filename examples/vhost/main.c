@@ -66,16 +66,16 @@
 							(num_switching_cores*RTE_TEST_TX_DESC_DEFAULT) +\
 							(num_switching_cores*MBUF_CACHE_SIZE))
 
-#define MBUF_CACHE_SIZE 128
-#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
+#define MBUF_CACHE_SIZE	128
+#define MBUF_DATA_SIZE	RTE_MBUF_DEFAULT_BUF_SIZE
 
 /*
  * No frame data buffer allocated from host are required for zero copy
  * implementation, guest will allocate the frame data buffer, and vhost
  * directly use it.
  */
-#define VIRTIO_DESCRIPTOR_LEN_ZCP 1518
-#define MBUF_DATA_SIZE_ZCP (VIRTIO_DESCRIPTOR_LEN_ZCP + RTE_PKTMBUF_HEADROOM)
+#define VIRTIO_DESCRIPTOR_LEN_ZCP	RTE_MBUF_DEFAULT_DATAROOM
+#define MBUF_DATA_SIZE_ZCP		RTE_MBUF_DEFAULT_BUF_SIZE
 #define MBUF_CACHE_SIZE_ZCP 0
 
 #define MAX_PKT_BURST 32 		/* Max burst size for RX/TX */

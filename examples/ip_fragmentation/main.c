@@ -76,8 +76,6 @@
 
 #define RTE_LOGTYPE_IP_FRAG RTE_LOGTYPE_USER1
 
-#define MBUF_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
-
 /* allow max jumbo frame 9.5 KB */
 #define JUMBO_FRAME_MAX_SIZE	0x2600
 
@@ -745,7 +743,7 @@ init_mem(void)
 			snprintf(buf, sizeof(buf), "pool_direct_%i", socket);
 
 			mp = rte_pktmbuf_pool_create(buf, NB_MBUF, 32,
-				0, MBUF_DATA_SIZE, socket);
+				0, RTE_MBUF_DEFAULT_BUF_SIZE, socket);
 			if (mp == NULL) {
 				RTE_LOG(ERR, IP_FRAG, "Cannot create direct mempool\n");
 				return -1;

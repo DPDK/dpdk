@@ -77,7 +77,8 @@
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 #define MBUF_NAME	"mbuf_pool_%d"
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_SIZE	\
+(RTE_MBUF_DEFAULT_DATAROOM + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   8192
 #define RING_MASTER_NAME	"l2fwd_ring_m2s_"
 #define RING_SLAVE_NAME		"l2fwd_ring_s2m_"

@@ -65,11 +65,9 @@
 #define RX_RING_SIZE 128
 #define TX_RING_SIZE 512
 
-#define MBUF_DATA_SIZE          (2048 + RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE         (250)
 #define BURST_SIZE              (32)
 
-#define DEFAULT_MBUF_DATA_SIZE  (2048)
 #define TEST_RX_DESC_MAX        (2048)
 #define TEST_TX_DESC_MAX        (2048)
 #define MAX_PKT_BURST           (32)
@@ -389,8 +387,8 @@ test_setup(void)
 		nb_mbuf_per_pool = TEST_RX_DESC_MAX + DEF_PKT_BURST +
 					TEST_TX_DESC_MAX + MAX_PKT_BURST;
 		test_params.mbuf_pool = rte_pktmbuf_pool_create("TEST_MODE4",
-			nb_mbuf_per_pool, MBUF_CACHE_SIZE, 0, MBUF_DATA_SIZE,
-			socket_id);
+			nb_mbuf_per_pool, MBUF_CACHE_SIZE, 0,
+			RTE_MBUF_DEFAULT_BUF_SIZE, socket_id);
 
 		TEST_ASSERT(test_params.mbuf_pool != NULL,
 			"rte_mempool_create failed\n");

@@ -70,7 +70,6 @@
 
 #include "crypto.h"
 
-#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   (32 * 1024)
 
 #define MAX_PKT_BURST 32
@@ -613,7 +612,7 @@ init_mem(void)
 			snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
 			pktmbuf_pool[socketid] =
 				rte_pktmbuf_pool_create(s, NB_MBUF, 32, 0,
-					MBUF_DATA_SIZE, socketid);
+					RTE_MBUF_DEFAULT_BUF_SIZE, socketid);
 			if (pktmbuf_pool[socketid] == NULL) {
 				printf("Cannot init mbuf pool on socket %d\n", socketid);
 				return -1;

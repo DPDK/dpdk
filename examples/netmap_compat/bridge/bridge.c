@@ -47,7 +47,7 @@
 #include "compat_netmap.h"
 
 
-#define BUF_SIZE	(2048)
+#define BUF_SIZE	RTE_MBUF_DEFAULT_DATAROOM
 #define MBUF_DATA_SIZE	(BUF_SIZE + RTE_PKTMBUF_HEADROOM)
 
 #define MBUF_PER_POOL	8192

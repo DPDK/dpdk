@@ -217,6 +217,16 @@ const char *rte_get_rx_ol_flag_name(uint64_t mask);
  */
 const char *rte_get_tx_ol_flag_name(uint64_t mask);
 
+/**
+ * Some NICs need at least 2KB buffer to RX standard Ethernet frame without
+ * splitting it into multiple segments.
+ * So, for mbufs that planned to be involved into RX/TX, the recommended
+ * minimal buffer length is 2KB + RTE_PKTMBUF_HEADROOM.
+ */
+#define	RTE_MBUF_DEFAULT_DATAROOM	2048
+#define	RTE_MBUF_DEFAULT_BUF_SIZE	\
+	(RTE_MBUF_DEFAULT_DATAROOM + RTE_PKTMBUF_HEADROOM)
+
 /* define a set of marker types that can be used to refer to set points in the
  * mbuf */
 typedef void    *MARKER[0];   /**< generic marker for a point in a structure */

@@ -71,7 +71,6 @@ static uint32_t l2fwd_ivshmem_enabled_port_mask = 0;
 static struct ether_addr l2fwd_ivshmem_ports_eth_addr[RTE_MAX_ETHPORTS];
 
 #define NB_MBUF   8192
-#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
@@ -671,7 +670,7 @@ int main(int argc, char **argv)
 	/* create a shared mbuf pool */
 	l2fwd_ivshmem_pktmbuf_pool =
 		rte_pktmbuf_pool_create(MBUF_MP_NAME, NB_MBUF, 32,
-			0, MBUF_DATA_SIZE, rte_socket_id());
+			0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (l2fwd_ivshmem_pktmbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
 

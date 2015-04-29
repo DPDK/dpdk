@@ -47,7 +47,6 @@
 #define NB_ETHPORTS_USED                (1)
 #define NB_SOCKETS                      (2)
 #define MEMPOOL_CACHE_SIZE 250
-#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 #define MAX_PKT_BURST                   (32)
 #define RTE_TEST_RX_DESC_DEFAULT        (128)
 #define RTE_TEST_TX_DESC_DEFAULT        (512)
@@ -290,8 +289,8 @@ init_mbufpool(unsigned nb_mbuf)
 			snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
 			mbufpool[socketid] =
 				rte_pktmbuf_pool_create(s, nb_mbuf,
-					MEMPOOL_CACHE_SIZE, 0, MBUF_DATA_SIZE,
-					socketid);
+					MEMPOOL_CACHE_SIZE, 0,
+					RTE_MBUF_DEFAULT_BUF_SIZE, socketid);
 			if (mbufpool[socketid] == NULL)
 				rte_exit(EXIT_FAILURE,
 					"Cannot init mbuf pool on socket %d\n",

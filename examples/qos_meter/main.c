@@ -70,7 +70,6 @@
  * Buffer pool configuration
  *
  ***/
-#define MBUF_DATA_SIZE      (2048 + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF             8192
 #define MEMPOOL_CACHE_SIZE  256
 
@@ -361,7 +360,7 @@ main(int argc, char **argv)
 
 	/* Buffer pool init */
 	pool = rte_pktmbuf_pool_create("pool", NB_MBUF, MEMPOOL_CACHE_SIZE,
-		0, MBUF_DATA_SIZE, rte_socket_id());
+		0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (pool == NULL)
 		rte_exit(EXIT_FAILURE, "Buffer pool creation error\n");
 

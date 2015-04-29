@@ -212,8 +212,6 @@ quit_workers(struct rte_distributor *d, struct rte_mempool *p)
 	worker_idx = 0;
 }
 
-#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
-
 static int
 test_distributor_perf(void)
 {
@@ -244,7 +242,7 @@ test_distributor_perf(void)
 			(BIG_BATCH * 2) - 1 : (511 * rte_lcore_count());
 	if (p == NULL) {
 		p = rte_pktmbuf_pool_create("DPT_MBUF_POOL", nb_bufs, BURST,
-			0, MBUF_DATA_SIZE, rte_socket_id());
+			0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 		if (p == NULL) {
 			printf("Error creating mempool\n");
 			return -1;

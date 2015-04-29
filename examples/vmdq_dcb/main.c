@@ -74,7 +74,6 @@
 
 #define NUM_MBUFS 64*1024
 #define MBUF_CACHE_SIZE 64
-#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 
 #define INVALID_PORT_ID 0xFF
 
@@ -442,7 +441,7 @@ main(int argc, char *argv[])
 	}
 
 	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS * nb_ports,
-		MBUF_CACHE_SIZE, 0, MBUF_DATA_SIZE, rte_socket_id());
+		MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 

@@ -48,7 +48,8 @@
  * Default size of the mbuf data buffer to receive standard 1518-byte
  * Ethernet frames in a mono-segment memory buffer.
  */
-#define DEFAULT_MBUF_DATA_SIZE 2048 /**< Default size of mbuf data buffer. */
+#define DEFAULT_MBUF_DATA_SIZE RTE_MBUF_DEFAULT_BUF_SIZE
+/**< Default size of mbuf data buffer. */
 
 /*
  * The maximum number of segments per packet is used when creating

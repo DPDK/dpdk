@@ -71,7 +71,6 @@
 #define MBUFS_PER_CLIENT 1536
 #define MBUFS_PER_PORT 1536
 #define MBUF_CACHE_SIZE 512
-#define MBUF_DATA_SIZE (2048 + RTE_PKTMBUF_HEADROOM)
 
 #define RTE_MP_RX_DESC_DEFAULT 512
 #define RTE_MP_TX_DESC_DEFAULT 512
@@ -103,7 +102,7 @@ init_mbuf_pools(void)
 	printf("Creating mbuf pool '%s' [%u mbufs] ...\n",
 			PKTMBUF_POOL_NAME, num_mbufs);
 	pktmbuf_pool = rte_pktmbuf_pool_create(PKTMBUF_POOL_NAME, num_mbufs,
-		MBUF_CACHE_SIZE, 0, MBUF_DATA_SIZE, rte_socket_id());
+		MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 
 	return (pktmbuf_pool == NULL); /* 0  on success */
 }

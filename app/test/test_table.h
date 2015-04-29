@@ -65,7 +65,7 @@
 #define PORT_TX_RING_SIZE   512
 #define RING_RX_SIZE        128
 #define RING_TX_SIZE        128
-#define POOL_BUFFER_SIZE    (2048 + RTE_PKTMBUF_HEADROOM)
+#define POOL_BUFFER_SIZE    RTE_MBUF_DEFAULT_BUF_SIZE
 #define POOL_SIZE           (32 * 1024)
 #define POOL_CACHE_SIZE     256
 #define BURST_SIZE          8
