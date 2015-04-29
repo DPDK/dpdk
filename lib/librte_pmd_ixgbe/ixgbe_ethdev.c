@@ -986,7 +986,7 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	 * RX function */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY){
 		if (eth_dev->data->scattered_rx)
-			eth_dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
+			eth_dev->rx_pkt_burst = ixgbe_recv_pkts_lro_single_alloc;
 		return 0;
 	}
 
