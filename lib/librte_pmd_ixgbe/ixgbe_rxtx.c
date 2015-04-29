@@ -2489,7 +2489,6 @@ ixgbe_reset_rx_queue(struct ixgbe_adapter *adapter, struct ixgbe_rx_queue *rxq)
 	rxq->nb_rx_hold = 0;
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
-	rxq->rsc_en = 0;
 }
 
 int
@@ -4188,8 +4187,6 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 		 * interrupt vector.
 		 */
 		ixgbe_set_ivar(dev, rxq->reg_idx, i, 0);
-
-		rxq->rsc_en = 1;
 	}
 
 	dev->data->lro = 1;
