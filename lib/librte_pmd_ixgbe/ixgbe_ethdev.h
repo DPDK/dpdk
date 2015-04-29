@@ -265,6 +265,9 @@ struct ixgbe_adapter {
 	struct ixgbe_bypass_info    bps;
 #endif /* RTE_NIC_BYPASS */
 	struct ixgbe_filter_info    filter;
+
+	bool rx_bulk_alloc_allowed;
+	bool rx_vec_allowed;
 };
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\

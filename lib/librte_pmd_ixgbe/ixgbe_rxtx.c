@@ -2442,7 +2442,7 @@ check_rx_burst_bulk_alloc_preconditions(__rte_unused struct ixgbe_rx_queue *rxq)
 
 /* Reset dynamic ixgbe_rx_queue fields back to defaults */
 static void
-ixgbe_reset_rx_queue(struct ixgbe_hw *hw, struct ixgbe_rx_queue *rxq)
+ixgbe_reset_rx_queue(struct ixgbe_adapter *adapter, struct ixgbe_rx_queue *rxq)
 {
 	static const union ixgbe_adv_rx_desc zeroed_desc = {{0}};
 	unsigned i;
@@ -2458,7 +2458,7 @@ ixgbe_reset_rx_queue(struct ixgbe_hw *hw, struct ixgbe_rx_queue *rxq)
 	 * constraints here to see if we need to zero out memory after the end
 	 * of the H/W descriptor ring.
 	 */
-	if (hw->rx_bulk_alloc_allowed)
+	if (adapter->rx_bulk_alloc_allowed)
 		/* zero out extra memory */
 		len += RTE_PMD_IXGBE_RX_MAX_BURST;
 
@@ -2504,6 +2504,8 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	struct ixgbe_rx_queue *rxq;
 	struct ixgbe_hw     *hw;
 	uint16_t len;
+	struct ixgbe_adapter *adapter =
+		(struct ixgbe_adapter *)dev->data->dev_private;
 	struct rte_eth_dev_info dev_info = { 0 };
 	struct rte_eth_rxmode *dev_rx_mode = &dev->data->dev_conf.rxmode;
 	bool rsc_requested = false;
@@ -2602,7 +2604,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 				    "preconditions - canceling the feature for "
 				    "the whole port[%d]",
 			     rxq->queue_id, rxq->port_id);
-		hw->rx_bulk_alloc_allowed = false;
+		adapter->rx_bulk_alloc_allowed = false;
 	}
 
 	/*
@@ -2611,7 +2613,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 * function does not access an invalid memory region.
 	 */
 	len = nb_desc;
-	if (hw->rx_bulk_alloc_allowed)
+	if (adapter->rx_bulk_alloc_allowed)
 		len += RTE_PMD_IXGBE_RX_MAX_BURST;
 
 	rxq->sw_ring = rte_zmalloc_socket("rxq->sw_ring",
@@ -2644,13 +2646,13 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 				    "preconditions - canceling the feature for "
 				    "the whole port[%d]",
 			     rxq->queue_id, rxq->port_id);
-		hw->rx_vec_allowed = false;
+		adapter->rx_vec_allowed = false;
 	} else
 		ixgbe_rxq_vec_setup(rxq);
 
 	dev->data->rx_queues[queue_idx] = rxq;
 
-	ixgbe_reset_rx_queue(hw, rxq);
+	ixgbe_reset_rx_queue(adapter, rxq);
 
 	return 0;
 }
@@ -2704,7 +2706,8 @@ void
 ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 {
 	unsigned i;
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_adapter *adapter =
+		(struct ixgbe_adapter *)dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2720,7 +2723,7 @@ ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 		struct ixgbe_rx_queue *rxq = dev->data->rx_queues[i];
 		if (rxq != NULL) {
 			ixgbe_rx_queue_release_mbufs(rxq);
-			ixgbe_reset_rx_queue(hw, rxq);
+			ixgbe_reset_rx_queue(adapter, rxq);
 		}
 	}
 }
@@ -3969,20 +3972,21 @@ ixgbe_set_ivar(struct rte_eth_dev *dev, u8 entry, u8 vector, s8 type)
 
 void ixgbe_set_rx_function(struct rte_eth_dev *dev)
 {
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_adapter *adapter =
+		(struct ixgbe_adapter *)dev->data->dev_private;
 
 	/*
 	 * In order to allow Vector Rx there are a few configuration
 	 * conditions to be met and Rx Bulk Allocation should be allowed.
 	 */
 	if (ixgbe_rx_vec_dev_conf_condition_check(dev) ||
-	    !hw->rx_bulk_alloc_allowed) {
+	    !adapter->rx_bulk_alloc_allowed) {
 		PMD_INIT_LOG(DEBUG, "Port[%d] doesn't meet Vector Rx "
 				    "preconditions or RTE_IXGBE_INC_VECTOR is "
 				    "not enabled",
 			     dev->data->port_id);
 
-		hw->rx_vec_allowed = false;
+		adapter->rx_vec_allowed = false;
 	}
 
 	/*
@@ -3993,7 +3997,7 @@ void ixgbe_set_rx_function(struct rte_eth_dev *dev)
 	 * Otherwise use a single allocation version.
 	 */
 	if (dev->data->lro) {
-		if (hw->rx_bulk_alloc_allowed) {
+		if (adapter->rx_bulk_alloc_allowed) {
 			PMD_INIT_LOG(INFO, "LRO is requested. Using a bulk "
 					   "allocation version");
 			dev->rx_pkt_burst = ixgbe_recv_pkts_lro_bulk_alloc;
@@ -4007,7 +4011,7 @@ void ixgbe_set_rx_function(struct rte_eth_dev *dev)
 		 * Set the non-LRO scattered callback: there are Vector and
 		 * single allocation versions.
 		 */
-		if (hw->rx_vec_allowed) {
+		if (adapter->rx_vec_allowed) {
 			PMD_INIT_LOG(DEBUG, "Using Vector Scattered Rx "
 					    "callback (port=%d).",
 				     dev->data->port_id);
@@ -4029,12 +4033,12 @@ void ixgbe_set_rx_function(struct rte_eth_dev *dev)
 	 *    - Bulk Allocation
 	 *    - Single buffer allocation (the simplest one)
 	 */
-	} else if (hw->rx_vec_allowed) {
+	} else if (adapter->rx_vec_allowed) {
 		PMD_INIT_LOG(INFO, "Vector rx enabled, please make sure RX "
 				   "burst size no less than 32.");
 
 		dev->rx_pkt_burst = ixgbe_recv_pkts_vec;
-	} else if (hw->rx_bulk_alloc_allowed) {
+	} else if (adapter->rx_bulk_alloc_allowed) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
 				    "satisfied. Rx Burst Bulk Alloc function "
 				    "will be used on port=%d.",
@@ -4592,6 +4596,8 @@ int
 ixgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct ixgbe_hw     *hw;
+	struct ixgbe_adapter *adapter =
+		(struct ixgbe_adapter *)dev->data->dev_private;
 	struct ixgbe_rx_queue *rxq;
 	uint32_t rxdctl;
 	int poll_ms;
@@ -4619,7 +4625,7 @@ ixgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		rte_delay_us(RTE_IXGBE_WAIT_100_US);
 
 		ixgbe_rx_queue_release_mbufs(rxq);
-		ixgbe_reset_rx_queue(hw, rxq);
+		ixgbe_reset_rx_queue(adapter, rxq);
 	} else
 		return -1;
 

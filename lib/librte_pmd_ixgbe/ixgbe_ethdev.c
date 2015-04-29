@@ -1428,8 +1428,8 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 {
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
-	struct ixgbe_hw *hw =
-		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_adapter *adapter =
+		(struct ixgbe_adapter *)dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1440,8 +1440,8 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 	 * Initialize to TRUE. If any of Rx queues doesn't meet the bulk
 	 * allocation or vector Rx preconditions we will reset it.
 	 */
-	hw->rx_bulk_alloc_allowed = true;
-	hw->rx_vec_allowed = true;
+	adapter->rx_bulk_alloc_allowed = true;
+	adapter->rx_vec_allowed = true;
 
 	return 0;
 }
