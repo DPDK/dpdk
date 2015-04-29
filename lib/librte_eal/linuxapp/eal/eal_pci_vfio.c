@@ -294,7 +294,7 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 		}
 
 		/* set up an eventfd for interrupts */
-		fd = eventfd(0, 0);
+		fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 		if (fd < 0) {
 			RTE_LOG(ERR, EAL, "  cannot set up eventfd, "
 					"error %i (%s)\n", errno, strerror(errno));
