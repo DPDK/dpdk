@@ -178,6 +178,9 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	*(volatile uint16_t *)&vq->used->idx += count;
 	vq->last_used_idx = res_end_idx;
 
+	/* flush used->idx update before we read avail->flags. */
+	rte_mb();
+
 	/* Kick the guest if necessary. */
 	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
 		eventfd_write((int)vq->callfd, 1);
@@ -504,6 +507,9 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 
 		*(volatile uint16_t *)&vq->used->idx += entry_success;
 		vq->last_used_idx = res_end_idx;
+
+		/* flush used->idx update before we read avail->flags. */
+		rte_mb();
 
 		/* Kick the guest if necessary. */
 		if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
