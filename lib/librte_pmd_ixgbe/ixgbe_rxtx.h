@@ -79,7 +79,7 @@ struct ixgbe_rx_entry {
 	struct rte_mbuf *mbuf; /**< mbuf associated with RX descriptor. */
 };
 
-struct ixgbe_rsc_entry {
+struct ixgbe_scattered_rx_entry {
 	struct rte_mbuf *fbuf; /**< First segment of the fragmented packet. */
 };
 
@@ -109,7 +109,7 @@ struct ixgbe_rx_queue {
 	volatile uint32_t   *rdt_reg_addr; /**< RDT register address. */
 	volatile uint32_t   *rdh_reg_addr; /**< RDH register address. */
 	struct ixgbe_rx_entry *sw_ring; /**< address of RX software ring. */
-	struct ixgbe_rsc_entry *sw_rsc_ring; /**< address of RSC software ring. */
+	struct ixgbe_scattered_rx_entry *sw_sc_ring; /**< address of scattered Rx software ring. */
 	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet. */
 	struct rte_mbuf *pkt_last_seg; /**< Last segment of current packet. */
 	uint64_t            mbuf_initializer; /**< value to init mbufs */

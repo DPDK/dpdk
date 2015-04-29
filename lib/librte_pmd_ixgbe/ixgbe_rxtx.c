@@ -1466,7 +1466,7 @@ ixgbe_recv_pkts_lro(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
 	struct ixgbe_rx_queue *rxq = rx_queue;
 	volatile union ixgbe_adv_rx_desc *rx_ring = rxq->rx_ring;
 	struct ixgbe_rx_entry *sw_ring = rxq->sw_ring;
-	struct ixgbe_rsc_entry *sw_rsc_ring = rxq->sw_rsc_ring;
+	struct ixgbe_scattered_rx_entry *sw_sc_ring = rxq->sw_sc_ring;
 	uint16_t rx_id = rxq->rx_tail;
 	uint16_t nb_rx = 0;
 	uint16_t nb_hold = rxq->nb_rx_hold;
@@ -1475,8 +1475,8 @@ ixgbe_recv_pkts_lro(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
 	while (nb_rx < nb_pkts) {
 		bool eop;
 		struct ixgbe_rx_entry *rxe;
-		struct ixgbe_rsc_entry *rsc_entry;
-		struct ixgbe_rsc_entry *next_rsc_entry;
+		struct ixgbe_scattered_rx_entry *sc_entry;
+		struct ixgbe_scattered_rx_entry *next_sc_entry;
 		struct ixgbe_rx_entry *next_rxe;
 		struct rte_mbuf *first_seg;
 		struct rte_mbuf *rxm;
@@ -1619,14 +1619,14 @@ next_desc:
 			else
 				nextp_id = next_id;
 
-			next_rsc_entry = &sw_rsc_ring[nextp_id];
+			next_sc_entry = &sw_sc_ring[nextp_id];
 			next_rxe = &sw_ring[nextp_id];
 			rte_ixgbe_prefetch(next_rxe);
 		}
 
-		rsc_entry = &sw_rsc_ring[rx_id];
-		first_seg = rsc_entry->fbuf;
-		rsc_entry->fbuf = NULL;
+		sc_entry = &sw_sc_ring[rx_id];
+		first_seg = sc_entry->fbuf;
+		sc_entry->fbuf = NULL;
 
 		/*
 		 * If this is the first buffer of the received packet,
@@ -1651,11 +1651,11 @@ next_desc:
 		/*
 		 * If this is not the last buffer of the received packet, update
 		 * the pointer to the first mbuf at the NEXTP entry in the
-		 * sw_rsc_ring and continue to parse the RX ring.
+		 * sw_sc_ring and continue to parse the RX ring.
 		 */
 		if (!eop) {
 			rxm->next = next_rxe->mbuf;
-			next_rsc_entry->fbuf = first_seg;
+			next_sc_entry->fbuf = first_seg;
 			goto next_desc;
 		}
 
@@ -2305,7 +2305,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 }
 
 /**
- * ixgbe_free_rsc_cluster - free the not-yet-completed RSC cluster
+ * ixgbe_free_sc_cluster - free the not-yet-completed scattered cluster
  *
  * The "next" pointer of the last segment of (not-yet-completed) RSC clusters
  * in the sw_rsc_ring is not set to NULL but rather points to the next
@@ -2314,10 +2314,10 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
  * will just free first "nb_segs" segments of the cluster explicitly by calling
  * an rte_pktmbuf_free_seg().
  *
- * @m RSC cluster head
+ * @m scattered cluster head
  */
 static void
-ixgbe_free_rsc_cluster(struct rte_mbuf *m)
+ixgbe_free_sc_cluster(struct rte_mbuf *m)
 {
 	uint8_t i, nb_segs = m->nb_segs;
 	struct rte_mbuf *next_seg;
@@ -2353,11 +2353,11 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
 #endif
 	}
 
-	if (rxq->sw_rsc_ring)
+	if (rxq->sw_sc_ring)
 		for (i = 0; i < rxq->nb_rx_desc; i++)
-			if (rxq->sw_rsc_ring[i].fbuf) {
-				ixgbe_free_rsc_cluster(rxq->sw_rsc_ring[i].fbuf);
-				rxq->sw_rsc_ring[i].fbuf = NULL;
+			if (rxq->sw_sc_ring[i].fbuf) {
+				ixgbe_free_sc_cluster(rxq->sw_sc_ring[i].fbuf);
+				rxq->sw_sc_ring[i].fbuf = NULL;
 			}
 }
 
@@ -2367,7 +2367,7 @@ ixgbe_rx_queue_release(struct ixgbe_rx_queue *rxq)
 	if (rxq != NULL) {
 		ixgbe_rx_queue_release_mbufs(rxq);
 		rte_free(rxq->sw_ring);
-		rte_free(rxq->sw_rsc_ring);
+		rte_free(rxq->sw_sc_ring);
 		rte_free(rxq);
 	}
 }
@@ -2624,20 +2624,20 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	if (rsc_requested) {
-		rxq->sw_rsc_ring =
-			rte_zmalloc_socket("rxq->sw_rsc_ring",
-					   sizeof(struct ixgbe_rsc_entry) * len,
+		rxq->sw_sc_ring =
+			rte_zmalloc_socket("rxq->sw_sc_ring",
+					   sizeof(struct ixgbe_scattered_rx_entry) * len,
 					   RTE_CACHE_LINE_SIZE, socket_id);
-		if (!rxq->sw_rsc_ring) {
+		if (!rxq->sw_sc_ring) {
 			ixgbe_rx_queue_release(rxq);
 			return (-ENOMEM);
 		}
 	} else
-		rxq->sw_rsc_ring = NULL;
+		rxq->sw_sc_ring = NULL;
 
-	PMD_INIT_LOG(DEBUG, "sw_ring=%p sw_rsc_ring=%p hw_ring=%p "
+	PMD_INIT_LOG(DEBUG, "sw_ring=%p sw_sc_ring=%p hw_ring=%p "
 			    "dma_addr=0x%"PRIx64,
-		     rxq->sw_ring, rxq->sw_rsc_ring, rxq->rx_ring,
+		     rxq->sw_ring, rxq->sw_sc_ring, rxq->rx_ring,
 		     rxq->rx_ring_phys_addr);
 
 	if (!rte_is_power_of_2(nb_desc)) {
