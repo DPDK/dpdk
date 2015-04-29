@@ -3780,6 +3780,11 @@ void ixgbe_set_rx_function(struct rte_eth_dev *dev)
 				     dev->data->port_id);
 
 			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts_vec;
+		} else if (adapter->rx_bulk_alloc_allowed) {
+			PMD_INIT_LOG(INFO, "Using a Scattered with bulk "
+					   "allocation callback (port=%d).",
+				     dev->data->port_id);
+			dev->rx_pkt_burst = ixgbe_recv_pkts_lro_bulk_alloc;
 		} else {
 			PMD_INIT_LOG(DEBUG, "Using Regualr (non-vector, "
 					    "single allocation) "
