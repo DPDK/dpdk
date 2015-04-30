@@ -64,7 +64,7 @@ extern "C" {
 #include "rte_port.h"
 
 /** ring_writer_ipv4_ras port parameters */
-struct rte_port_ring_writer_ipv4_ras_params {
+struct rte_port_ring_writer_ras_params {
 	/** Underlying single consumer ring that has to be pre-initialized. */
 	struct rte_ring *ring;
 
@@ -73,8 +73,15 @@ struct rte_port_ring_writer_ipv4_ras_params {
 	uint32_t tx_burst_sz;
 };
 
+#define rte_port_ring_writer_ipv4_ras_params rte_port_ring_writer_ras_params
+
+#define rte_port_ring_writer_ipv6_ras_params rte_port_ring_writer_ras_params
+
 /** ring_writer_ipv4_ras port operations */
 extern struct rte_port_out_ops rte_port_ring_writer_ipv4_ras_ops;
+
+/** ring_writer_ipv6_ras port operations */
+extern struct rte_port_out_ops rte_port_ring_writer_ipv6_ras_ops;
 
 #ifdef __cplusplus
 }
