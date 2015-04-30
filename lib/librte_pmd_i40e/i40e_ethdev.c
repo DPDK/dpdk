@@ -791,6 +791,10 @@ i40e_phy_conf_link(struct i40e_hw *hw, uint8_t abilities, uint8_t force_speed)
 			I40E_LINK_SPEED_100MB;
 	int ret = -ENOTSUP;
 
+	/* Skip it on 40G interfaces, as a workaround for the link issue */
+	if (i40e_is_40G_device(hw->device_id))
+		return I40E_SUCCESS;
+
 	status = i40e_aq_get_phy_capabilities(hw, false, false, &phy_ab,
 					      NULL);
 	if (status)
