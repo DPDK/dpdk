@@ -551,6 +551,30 @@ struct i40e_rx_ptype_decoded i40e_ptype_lookup[] = {
 	I40E_PTT_UNUSED_ENTRY(255)
 };
 
+
+/**
+ * i40e_validate_mac_addr - Validate unicast MAC address
+ * @mac_addr: pointer to MAC address
+ *
+ * Tests a MAC address to ensure it is a valid Individual Address
+ **/
+enum i40e_status_code i40e_validate_mac_addr(u8 *mac_addr)
+{
+	enum i40e_status_code status = I40E_SUCCESS;
+
+	DEBUGFUNC("i40e_validate_mac_addr");
+
+	/* Broadcast addresses ARE multicast addresses
+	 * Make sure it is not a multicast address
+	 * Reject the zero address
+	 */
+	if (I40E_IS_MULTICAST(mac_addr) ||
+	    (mac_addr[0] == 0 && mac_addr[1] == 0 && mac_addr[2] == 0 &&
+	      mac_addr[3] == 0 && mac_addr[4] == 0 && mac_addr[5] == 0))
+		status = I40E_ERR_INVALID_MAC_ADDR;
+
+	return status;
+}
 #ifdef PF_DRIVER
 
 /**
@@ -735,25 +759,60 @@ void i40e_pre_tx_queue_cfg(struct i40e_hw *hw, u32 queue, bool enable)
 }
 
 /**
- * i40e_validate_mac_addr - Validate unicast MAC address
- * @mac_addr: pointer to MAC address
+ *  i40e_read_pba_string - Reads part number string from EEPROM
+ *  @hw: pointer to hardware structure
+ *  @pba_num: stores the part number string from the EEPROM
+ *  @pba_num_size: part number string buffer length
  *
- * Tests a MAC address to ensure it is a valid Individual Address
+ *  Reads the part number string from the EEPROM.
  **/
-enum i40e_status_code i40e_validate_mac_addr(u8 *mac_addr)
+enum i40e_status_code i40e_read_pba_string(struct i40e_hw *hw, u8 *pba_num,
+					    u32 pba_num_size)
 {
 	enum i40e_status_code status = I40E_SUCCESS;
+	u16 pba_word = 0;
+	u16 pba_size = 0;
+	u16 pba_ptr = 0;
+	u16 i = 0;
 
-	DEBUGFUNC("i40e_validate_mac_addr");
+	status = i40e_read_nvm_word(hw, I40E_SR_PBA_FLAGS, &pba_word);
+	if ((status != I40E_SUCCESS) || (pba_word != 0xFAFA)) {
+		DEBUGOUT("Failed to read PBA flags or flag is invalid.\n");
+		return status;
+	}
 
-	/* Broadcast addresses ARE multicast addresses
-	 * Make sure it is not a multicast address
-	 * Reject the zero address
+	status = i40e_read_nvm_word(hw, I40E_SR_PBA_BLOCK_PTR, &pba_ptr);
+	if (status != I40E_SUCCESS) {
+		DEBUGOUT("Failed to read PBA Block pointer.\n");
+		return status;
+	}
+
+	status = i40e_read_nvm_word(hw, pba_ptr, &pba_size);
+	if (status != I40E_SUCCESS) {
+		DEBUGOUT("Failed to read PBA Block size.\n");
+		return status;
+	}
+
+	/* Subtract one to get PBA word count (PBA Size word is included in
+	 * total size)
 	 */
-	if (I40E_IS_MULTICAST(mac_addr) ||
-	    (mac_addr[0] == 0 && mac_addr[1] == 0 && mac_addr[2] == 0 &&
-	      mac_addr[3] == 0 && mac_addr[4] == 0 && mac_addr[5] == 0))
-		status = I40E_ERR_INVALID_MAC_ADDR;
+	pba_size--;
+	if (pba_num_size < (((u32)pba_size * 2) + 1)) {
+		DEBUGOUT("Buffer to small for PBA data.\n");
+		return I40E_ERR_PARAM;
+	}
+
+	for (i = 0; i < pba_size; i++) {
+		status = i40e_read_nvm_word(hw, (pba_ptr + 1) + i, &pba_word);
+		if (status != I40E_SUCCESS) {
+			DEBUGOUT1("Failed to read PBA Block word %d.\n", i);
+			return status;
+		}
+
+		pba_num[(i * 2)] = (pba_word >> 8) & 0xFF;
+		pba_num[(i * 2) + 1] = pba_word & 0xFF;
+	}
+	pba_num[(pba_size * 2)] = '\0';
 
 	return status;
 }
@@ -2620,6 +2679,77 @@ i40e_aq_read_nvm_exit:
 }
 
 /**
+ * i40e_aq_read_nvm_config - read an nvm config block
+ * @hw: pointer to the hw struct
+ * @cmd_flags: NVM access admin command bits
+ * @field_id: field or feature id
+ * @data: buffer for result
+ * @buf_size: buffer size
+ * @element_count: pointer to count of elements read by FW
+ * @cmd_details: pointer to command details structure or NULL
+ **/
+enum i40e_status_code i40e_aq_read_nvm_config(struct i40e_hw *hw,
+				u8 cmd_flags, u32 field_id, void *data,
+				u16 buf_size, u16 *element_count,
+				struct i40e_asq_cmd_details *cmd_details)
+{
+	struct i40e_aq_desc desc;
+	struct i40e_aqc_nvm_config_read *cmd =
+		(struct i40e_aqc_nvm_config_read *)&desc.params.raw;
+	enum i40e_status_code status;
+
+	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_nvm_config_read);
+	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF));
+	if (buf_size > I40E_AQ_LARGE_BUF)
+		desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_LB);
+
+	cmd->cmd_flags = CPU_TO_LE16(cmd_flags);
+	cmd->element_id = CPU_TO_LE16((u16)(0xffff & field_id));
+	if (cmd_flags & I40E_AQ_ANVM_FEATURE_OR_IMMEDIATE_MASK)
+		cmd->element_id_msw = CPU_TO_LE16((u16)(field_id >> 16));
+	else
+		cmd->element_id_msw = 0;
+
+	status = i40e_asq_send_command(hw, &desc, data, buf_size, cmd_details);
+
+	if (!status && element_count)
+		*element_count = LE16_TO_CPU(cmd->element_count);
+
+	return status;
+}
+
+/**
+ * i40e_aq_write_nvm_config - write an nvm config block
+ * @hw: pointer to the hw struct
+ * @cmd_flags: NVM access admin command bits
+ * @data: buffer for result
+ * @buf_size: buffer size
+ * @element_count: count of elements to be written
+ * @cmd_details: pointer to command details structure or NULL
+ **/
+enum i40e_status_code i40e_aq_write_nvm_config(struct i40e_hw *hw,
+				u8 cmd_flags, void *data, u16 buf_size,
+				u16 element_count,
+				struct i40e_asq_cmd_details *cmd_details)
+{
+	struct i40e_aq_desc desc;
+	struct i40e_aqc_nvm_config_write *cmd =
+		(struct i40e_aqc_nvm_config_write *)&desc.params.raw;
+	enum i40e_status_code status;
+
+	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_nvm_config_write);
+	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
+	if (buf_size > I40E_AQ_LARGE_BUF)
+		desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_LB);
+
+	cmd->element_count = CPU_TO_LE16(element_count);
+	cmd->cmd_flags = CPU_TO_LE16(cmd_flags);
+	status = i40e_asq_send_command(hw, &desc, data, buf_size, cmd_details);
+
+	return status;
+}
+
+/**
  * i40e_aq_erase_nvm
  * @hw: pointer to the hw struct
  * @module_pointer: module pointer location in words from the NVM beginning
@@ -3029,6 +3159,45 @@ enum i40e_status_code i40e_aq_get_lldp_mib(struct i40e_hw *hw, u8 bridge_type,
 			*remote_len = LE16_TO_CPU(resp->remote_len);
 	}
 
+	return status;
+}
+
+/**
+ * i40e_aq_set_lldp_mib - Set the LLDP MIB
+ * @hw: pointer to the hw struct
+ * @mib_type: Local, Remote or both Local and Remote MIBs
+ * @buff: pointer to a user supplied buffer to store the MIB block
+ * @buff_size: size of the buffer (in bytes)
+ * @cmd_details: pointer to command details structure or NULL
+ *
+ * Set the LLDP MIB.
+ **/
+enum i40e_status_code i40e_aq_set_lldp_mib(struct i40e_hw *hw,
+				u8 mib_type, void *buff, u16 buff_size,
+				struct i40e_asq_cmd_details *cmd_details)
+{
+	struct i40e_aq_desc desc;
+	struct i40e_aqc_lldp_set_local_mib *cmd =
+		(struct i40e_aqc_lldp_set_local_mib *)&desc.params.raw;
+	enum i40e_status_code status;
+
+	if (buff_size == 0 || !buff)
+		return I40E_ERR_PARAM;
+
+	i40e_fill_default_direct_cmd_desc(&desc,
+				i40e_aqc_opc_lldp_set_local_mib);
+	/* Indirect Command */
+	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
+	if (buff_size > I40E_AQ_LARGE_BUF)
+		desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_LB);
+	desc.datalen = CPU_TO_LE16(buff_size);
+
+	cmd->type = mib_type;
+	cmd->length = CPU_TO_LE16(buff_size);
+	cmd->address_high = CPU_TO_LE32(I40E_HI_WORD((u64)buff));
+	cmd->address_low =  CPU_TO_LE32(I40E_LO_DWORD((u64)buff));
+
+	status = i40e_asq_send_command(hw, &desc, buff, buff_size, cmd_details);
 	return status;
 }
 

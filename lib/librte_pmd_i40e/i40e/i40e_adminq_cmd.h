@@ -1797,12 +1797,12 @@ I40E_CHECK_CMD_LENGTH(i40e_aqc_nvm_update);
 /* NVM Config Read (indirect 0x0704) */
 struct i40e_aqc_nvm_config_read {
 	__le16	cmd_flags;
-#define ANVM_SINGLE_OR_MULTIPLE_FEATURES_MASK	1
-#define ANVM_READ_SINGLE_FEATURE		0
-#define ANVM_READ_MULTIPLE_FEATURES		1
+#define I40E_AQ_ANVM_SINGLE_OR_MULTIPLE_FEATURES_MASK	1
+#define I40E_AQ_ANVM_READ_SINGLE_FEATURE		0
+#define I40E_AQ_ANVM_READ_MULTIPLE_FEATURES		1
 	__le16	element_count;
 	__le16	element_id; /* Feature/field ID */
-	u8	reserved[2];
+	__le16	element_id_msw;	/* MSWord of field ID */
 	__le32	address_high;
 	__le32	address_low;
 };
@@ -1820,9 +1820,16 @@ struct i40e_aqc_nvm_config_write {
 
 I40E_CHECK_CMD_LENGTH(i40e_aqc_nvm_config_write);
 
+/* Used for 0x0704 as well as for 0x0705 commands */
+#define I40E_AQ_ANVM_FEATURE_OR_IMMEDIATE_SHIFT		1
+#define I40E_AQ_ANVM_FEATURE_OR_IMMEDIATE_MASK		(1 << I40E_AQ_ANVM_FEATURE_OR_IMMEDIATE_SHIFT)
+#define I40E_AQ_ANVM_FEATURE				0
+#define I40E_AQ_ANVM_IMMEDIATE_FIELD			(1 << FEATURE_OR_IMMEDIATE_SHIFT)
 struct i40e_aqc_nvm_config_data_feature {
 	__le16 feature_id;
-	__le16 instance_id;
+#define I40E_AQ_ANVM_FEATURE_OPTION_OEM_ONLY		0x01
+#define I40E_AQ_ANVM_FEATURE_OPTION_DWORD_MAP		0x08
+#define I40E_AQ_ANVM_FEATURE_OPTION_POR_CSR		0x10
 	__le16 feature_options;
 	__le16 feature_selection;
 };
