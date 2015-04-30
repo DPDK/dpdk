@@ -760,7 +760,8 @@ STATIC enum i40e_status_code i40e_nvmupd_state_init(struct i40e_hw *hw,
 	case I40E_NVMUPD_READ_SA:
 		status = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
 		if (status) {
-			*perrno = i40e_aq_rc_to_posix(hw->aq.asq_last_status);
+			*perrno = i40e_aq_rc_to_posix(status,
+						     hw->aq.asq_last_status);
 		} else {
 			status = i40e_nvmupd_nvm_read(hw, cmd, bytes, perrno);
 			i40e_release_nvm(hw);
@@ -770,7 +771,8 @@ STATIC enum i40e_status_code i40e_nvmupd_state_init(struct i40e_hw *hw,
 	case I40E_NVMUPD_READ_SNT:
 		status = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
 		if (status) {
-			*perrno = i40e_aq_rc_to_posix(hw->aq.asq_last_status);
+			*perrno = i40e_aq_rc_to_posix(status,
+						     hw->aq.asq_last_status);
 		} else {
 			status = i40e_nvmupd_nvm_read(hw, cmd, bytes, perrno);
 			hw->nvmupd_state = I40E_NVMUPD_STATE_READING;
@@ -780,7 +782,8 @@ STATIC enum i40e_status_code i40e_nvmupd_state_init(struct i40e_hw *hw,
 	case I40E_NVMUPD_WRITE_ERA:
 		status = i40e_acquire_nvm(hw, I40E_RESOURCE_WRITE);
 		if (status) {
-			*perrno = i40e_aq_rc_to_posix(hw->aq.asq_last_status);
+			*perrno = i40e_aq_rc_to_posix(status,
+						     hw->aq.asq_last_status);
 		} else {
 			status = i40e_nvmupd_nvm_erase(hw, cmd, perrno);
 			if (status)
@@ -793,7 +796,8 @@ STATIC enum i40e_status_code i40e_nvmupd_state_init(struct i40e_hw *hw,
 	case I40E_NVMUPD_WRITE_SA:
 		status = i40e_acquire_nvm(hw, I40E_RESOURCE_WRITE);
 		if (status) {
-			*perrno = i40e_aq_rc_to_posix(hw->aq.asq_last_status);
+			*perrno = i40e_aq_rc_to_posix(status,
+						     hw->aq.asq_last_status);
 		} else {
 			status = i40e_nvmupd_nvm_write(hw, cmd, bytes, perrno);
 			if (status)
@@ -806,7 +810,8 @@ STATIC enum i40e_status_code i40e_nvmupd_state_init(struct i40e_hw *hw,
 	case I40E_NVMUPD_WRITE_SNT:
 		status = i40e_acquire_nvm(hw, I40E_RESOURCE_WRITE);
 		if (status) {
-			*perrno = i40e_aq_rc_to_posix(hw->aq.asq_last_status);
+			*perrno = i40e_aq_rc_to_posix(status,
+						     hw->aq.asq_last_status);
 		} else {
 			status = i40e_nvmupd_nvm_write(hw, cmd, bytes, perrno);
 			hw->nvmupd_state = I40E_NVMUPD_STATE_WRITING;
@@ -816,12 +821,14 @@ STATIC enum i40e_status_code i40e_nvmupd_state_init(struct i40e_hw *hw,
 	case I40E_NVMUPD_CSUM_SA:
 		status = i40e_acquire_nvm(hw, I40E_RESOURCE_WRITE);
 		if (status) {
-			*perrno = i40e_aq_rc_to_posix(hw->aq.asq_last_status);
+			*perrno = i40e_aq_rc_to_posix(status,
+						     hw->aq.asq_last_status);
 		} else {
 			status = i40e_update_nvm_checksum(hw);
 			if (status) {
 				*perrno = hw->aq.asq_last_status ?
-				   i40e_aq_rc_to_posix(hw->aq.asq_last_status) :
+				   i40e_aq_rc_to_posix(status,
+						       hw->aq.asq_last_status) :
 				   -EIO;
 				i40e_release_nvm(hw);
 			} else {
@@ -919,7 +926,8 @@ retry:
 		status = i40e_update_nvm_checksum(hw);
 		if (status)
 			*perrno = hw->aq.asq_last_status ?
-				   i40e_aq_rc_to_posix(hw->aq.asq_last_status) :
+				   i40e_aq_rc_to_posix(status,
+						       hw->aq.asq_last_status) :
 				   -EIO;
 		break;
 
@@ -927,7 +935,8 @@ retry:
 		status = i40e_update_nvm_checksum(hw);
 		if (status) {
 			*perrno = hw->aq.asq_last_status ?
-				   i40e_aq_rc_to_posix(hw->aq.asq_last_status) :
+				   i40e_aq_rc_to_posix(status,
+						       hw->aq.asq_last_status) :
 				   -EIO;
 		} else {
 			hw->aq.nvm_release_on_done = true;
@@ -1092,7 +1101,7 @@ STATIC enum i40e_status_code i40e_nvmupd_nvm_read(struct i40e_hw *hw,
 				  bytes, last, NULL);
 	DEBUGOUT1("i40e_nvmupd_nvm_read status %d\n", status);
 	if (status != I40E_SUCCESS)
-		*perrno = i40e_aq_rc_to_posix(hw->aq.asq_last_status);
+		*perrno = i40e_aq_rc_to_posix(status, hw->aq.asq_last_status);
 
 	return status;
 }
@@ -1122,7 +1131,7 @@ STATIC enum i40e_status_code i40e_nvmupd_nvm_erase(struct i40e_hw *hw,
 				   last, NULL);
 	DEBUGOUT1("i40e_nvmupd_nvm_erase status %d\n", status);
 	if (status != I40E_SUCCESS)
-		*perrno = i40e_aq_rc_to_posix(hw->aq.asq_last_status);
+		*perrno = i40e_aq_rc_to_posix(status, hw->aq.asq_last_status);
 
 	return status;
 }
@@ -1153,7 +1162,7 @@ STATIC enum i40e_status_code i40e_nvmupd_nvm_write(struct i40e_hw *hw,
 				    (u16)cmd->data_size, bytes, last, NULL);
 	DEBUGOUT1("i40e_nvmupd_nvm_write status %d\n", status);
 	if (status != I40E_SUCCESS)
-		*perrno = i40e_aq_rc_to_posix(hw->aq.asq_last_status);
+		*perrno = i40e_aq_rc_to_posix(status, hw->aq.asq_last_status);
 
 	return status;
 }
