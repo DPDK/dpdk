@@ -563,7 +563,6 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 	u16 eetrack_lo, eetrack_hi;
 	int retry = 0;
 #endif
-
 	/* verify input for valid configuration */
 	if ((hw->aq.num_arq_entries == 0) ||
 	    (hw->aq.num_asq_entries == 0) ||
@@ -634,7 +633,8 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 
 	/* pre-emptive resource lock release */
 	i40e_aq_release_resource(hw, I40E_NVM_RESOURCE_ID, 0, NULL);
-	hw->aq.nvm_busy = false;
+	hw->aq.nvm_release_on_done = false;
+	hw->nvmupd_state = I40E_NVMUPD_STATE_INIT;
 
 	ret_code = i40e_aq_set_hmc_resource_profile(hw,
 						    I40E_HMC_PROFILE_DEFAULT,
@@ -779,14 +779,6 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 		goto asq_send_command_exit;
 	}
 
-#ifdef PF_DRIVER
-	if (i40e_is_nvm_update_op(desc) && hw->aq.nvm_busy) {
-		i40e_debug(hw, I40E_DEBUG_AQ_MESSAGE, "AQTX: NVM busy.\n");
-		status = I40E_ERR_NVM;
-		goto asq_send_command_exit;
-	}
-
-#endif
 	details = I40E_ADMINQ_DETAILS(hw->aq.asq, hw->aq.asq.next_to_use);
 	if (cmd_details) {
 		i40e_memcpy(details,
@@ -938,11 +930,6 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 		status = I40E_ERR_ADMIN_QUEUE_TIMEOUT;
 	}
 
-#ifdef PF_DRIVER
-	if (!status && i40e_is_nvm_update_op(desc))
-		hw->aq.nvm_busy = true;
-
-#endif /* PF_DRIVER */
 asq_send_command_error:
 	i40e_release_spinlock(&hw->aq.asq_spinlock);
 asq_send_command_exit:
@@ -996,9 +983,6 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 	ntu = (rd32(hw, hw->aq.arq.head) & I40E_PF_ARQH_ARQH_MASK);
 	if (ntu == ntc) {
 		/* nothing to do - shouldn't need to update ring's values */
-		i40e_debug(hw,
-			   I40E_DEBUG_AQ_MESSAGE,
-			   "AQRX: Queue is empty.\n");
 		ret_code = I40E_ERR_ADMIN_QUEUE_NO_WORK;
 		goto clean_arq_element_out;
 	}
@@ -1062,7 +1046,6 @@ clean_arq_element_out:
 
 #ifdef PF_DRIVER
 	if (i40e_is_nvm_update_op(&e->desc)) {
-		hw->aq.nvm_busy = false;
 		if (hw->aq.nvm_release_on_done) {
 			i40e_release_nvm(hw);
 			hw->aq.nvm_release_on_done = false;

@@ -103,7 +103,6 @@ struct i40e_adminq_info {
 	u32 fw_build;                   /* firmware build number */
 	u16 api_maj_ver;                /* api major version */
 	u16 api_min_ver;                /* api minor version */
-	bool nvm_busy;
 	bool nvm_release_on_done;
 
 	struct i40e_spinlock asq_spinlock; /* Send queue spinlock */
@@ -157,7 +156,7 @@ STATIC inline int i40e_aq_rc_to_posix(int aq_ret, u16 aq_rc)
 
 /* general information */
 #define I40E_AQ_LARGE_BUF		512
-#define I40E_ASQ_CMD_TIMEOUT		100  /* msecs */
+#define I40E_ASQ_CMD_TIMEOUT		250  /* msecs */
 
 void i40e_fill_default_direct_cmd_desc(struct i40e_aq_desc *desc,
 				       u16 opcode);
