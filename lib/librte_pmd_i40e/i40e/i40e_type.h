@@ -250,12 +250,12 @@ struct i40e_link_status {
 	u8 an_info;
 	u8 ext_info;
 	u8 loopback;
-	bool an_enabled;
 	/* is Link Status Event notification to SW enabled */
 	bool lse_enable;
 	u16 max_frame_size;
 	bool crc_enable;
 	u8 pacing;
+	u8 requested_speeds;
 };
 
 struct i40e_phy_info {
@@ -340,8 +340,7 @@ enum i40e_aq_resource_access_type {
 };
 
 struct i40e_nvm_info {
-	u64 hw_semaphore_timeout; /* 2usec global time (GTIME resolution) */
-	u64 hw_semaphore_wait;    /* - || - */
+	u64 hw_semaphore_timeout; /* usec global time (GTIME resolution) */
 	u32 timeout;              /* [ms] */
 	u16 sr_size;              /* Shadow RAM size in words */
 	bool blank_nvm_mode;      /* is NVM empty (no FW present)*/
@@ -511,7 +510,7 @@ struct i40e_hw {
 	u8 *hw_addr;
 	void *back;
 
-	/* function pointer structs */
+	/* subsystem structs */
 	struct i40e_phy_info phy;
 	struct i40e_mac_info mac;
 	struct i40e_bus_info bus;
@@ -672,13 +671,14 @@ enum i40e_rx_desc_status_bits {
 	I40E_RX_DESC_STATUS_CRCP_SHIFT		= 4,
 	I40E_RX_DESC_STATUS_TSYNINDX_SHIFT	= 5, /* 2 BITS */
 	I40E_RX_DESC_STATUS_TSYNVALID_SHIFT	= 7,
-	I40E_RX_DESC_STATUS_PIF_SHIFT		= 8,
+	I40E_RX_DESC_STATUS_RESERVED1_SHIFT	= 8,
+
 	I40E_RX_DESC_STATUS_UMBCAST_SHIFT	= 9, /* 2 BITS */
 	I40E_RX_DESC_STATUS_FLM_SHIFT		= 11,
 	I40E_RX_DESC_STATUS_FLTSTAT_SHIFT	= 12, /* 2 BITS */
 	I40E_RX_DESC_STATUS_LPBK_SHIFT		= 14,
 	I40E_RX_DESC_STATUS_IPV6EXADD_SHIFT	= 15,
-	I40E_RX_DESC_STATUS_RESERVED_SHIFT	= 16, /* 2 BITS */
+	I40E_RX_DESC_STATUS_RESERVED2_SHIFT	= 16, /* 2 BITS */
 	I40E_RX_DESC_STATUS_UDP_0_SHIFT		= 18,
 	I40E_RX_DESC_STATUS_LAST /* this entry must be last!!! */
 };
@@ -1213,6 +1213,14 @@ struct i40e_eth_stats {
 	u64 tx_errors;			/* tepc */
 };
 
+/* Statistics collected per VEB per TC */
+struct i40e_veb_tc_stats {
+	u64 tc_rx_packets[I40E_MAX_TRAFFIC_CLASS];
+	u64 tc_rx_bytes[I40E_MAX_TRAFFIC_CLASS];
+	u64 tc_tx_packets[I40E_MAX_TRAFFIC_CLASS];
+	u64 tc_tx_bytes[I40E_MAX_TRAFFIC_CLASS];
+};
+
 /* Statistics collected by the MAC */
 struct i40e_hw_port_stats {
 	/* eth stats collected by the port */
@@ -1295,6 +1303,8 @@ struct i40e_hw_port_stats {
 #define I40E_SR_VPD_PTR				0x2F
 #define I40E_SR_PXE_SETUP_PTR			0x30
 #define I40E_SR_PXE_CONFIG_CUST_OPTIONS_PTR	0x31
+#define I40E_SR_NVM_ORIGINAL_EETRACK_LO		0x34
+#define I40E_SR_NVM_ORIGINAL_EETRACK_HI		0x35
 #define I40E_SR_SW_ETHERNET_MAC_ADDRESS_PTR	0x37
 #define I40E_SR_POR_REGS_AUTO_LOAD_PTR		0x38
 #define I40E_SR_EMPR_REGS_AUTO_LOAD_PTR		0x3A
@@ -1307,6 +1317,9 @@ struct i40e_hw_port_stats {
 #define I40E_SR_3RD_FREE_PROVISION_AREA_PTR	0x44
 #define I40E_SR_2ND_FREE_PROVISION_AREA_PTR	0x46
 #define I40E_SR_EMP_SR_SETTINGS_PTR		0x48
+#define I40E_SR_FEATURE_CONFIGURATION_PTR	0x49
+#define I40E_SR_CONFIGURATION_METADATA_PTR	0x4D
+#define I40E_SR_IMMEDIATE_VALUES_PTR		0x4E
 
 /* Auxiliary field, mask and shift definition for Shadow RAM and NVM Flash */
 #define I40E_SR_VPD_MODULE_MAX_SIZE		1024
