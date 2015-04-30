@@ -36,6 +36,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "i40e_prototype.h"
 #include "i40e_virtchnl.h"
 
+
 /**
  * i40e_set_mac_type - Sets MAC type
  * @hw: pointer to the HW structure
@@ -867,7 +868,7 @@ STATIC enum i40e_media_type i40e_get_media_type(struct i40e_hw *hw)
 	return media;
 }
 
-#define I40E_PF_RESET_WAIT_COUNT	100
+#define I40E_PF_RESET_WAIT_COUNT	110
 /**
  * i40e_pf_reset - Reset the PF
  * @hw: pointer to the hardware structure
@@ -886,8 +887,9 @@ enum i40e_status_code i40e_pf_reset(struct i40e_hw *hw)
 	 * The grst delay value is in 100ms units, and we'll wait a
 	 * couple counts longer to be sure we don't just miss the end.
 	 */
-	grst_del = rd32(hw, I40E_GLGEN_RSTCTL) & I40E_GLGEN_RSTCTL_GRSTDEL_MASK
-			>> I40E_GLGEN_RSTCTL_GRSTDEL_SHIFT;
+	grst_del = (rd32(hw, I40E_GLGEN_RSTCTL) &
+			I40E_GLGEN_RSTCTL_GRSTDEL_MASK) >>
+			I40E_GLGEN_RSTCTL_GRSTDEL_SHIFT;
 	for (cnt = 0; cnt < grst_del + 2; cnt++) {
 		reg = rd32(hw, I40E_GLGEN_RSTAT);
 		if (!(reg & I40E_GLGEN_RSTAT_DEVSTATE_MASK))
@@ -1306,7 +1308,7 @@ enum i40e_status_code i40e_set_fc(struct i40e_hw *hw, u8 *aq_failures,
 		return status;
 	}
 
-	memset(&config, 0, sizeof(struct i40e_aq_set_phy_config));
+	memset(&config, 0, sizeof(config));
 	/* clear the old pause settings */
 	config.abilities = abilities.abilities & ~(I40E_AQ_PHY_FLAG_PAUSE_TX) &
 			   ~(I40E_AQ_PHY_FLAG_PAUSE_RX);
@@ -1474,7 +1476,7 @@ enum i40e_status_code i40e_aq_get_link_info(struct i40e_hw *hw,
 
 	/* save off old link status information */
 	i40e_memcpy(&hw->phy.link_info_old, hw_link_info,
-		    sizeof(struct i40e_link_status), I40E_NONDMA_TO_NONDMA);
+		    sizeof(*hw_link_info), I40E_NONDMA_TO_NONDMA);
 
 	/* update link status */
 	hw_link_info->phy_type = (enum i40e_aq_phy_type)resp->phy_type;
@@ -1515,7 +1517,7 @@ enum i40e_status_code i40e_aq_get_link_info(struct i40e_hw *hw,
 
 	/* save link status information */
 	if (link)
-		i40e_memcpy(link, hw_link_info, sizeof(struct i40e_link_status),
+		i40e_memcpy(link, hw_link_info, sizeof(*hw_link_info),
 			    I40E_NONDMA_TO_NONDMA);
 
 	/* flag cleared so helper functions don't call AQ again */
@@ -1524,6 +1526,7 @@ enum i40e_status_code i40e_aq_get_link_info(struct i40e_hw *hw,
 aq_get_link_info_exit:
 	return status;
 }
+
 
 /**
  * i40e_aq_set_phy_int_mask
@@ -2251,7 +2254,7 @@ enum i40e_status_code i40e_aq_add_macvlan(struct i40e_hw *hw, u16 seid,
 	if (count == 0 || !mv_list || !hw)
 		return I40E_ERR_PARAM;
 
-	buf_size = count * sizeof(struct i40e_aqc_add_macvlan_element_data);
+	buf_size = count * sizeof(*mv_list);
 
 	/* prep the rest of the request */
 	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_add_macvlan);
@@ -2293,7 +2296,7 @@ enum i40e_status_code i40e_aq_remove_macvlan(struct i40e_hw *hw, u16 seid,
 	if (count == 0 || !mv_list || !hw)
 		return I40E_ERR_PARAM;
 
-	buf_size = count * sizeof(struct i40e_aqc_remove_macvlan_element_data);
+	buf_size = count * sizeof(*mv_list);
 
 	/* prep the rest of the request */
 	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_remove_macvlan);
@@ -2333,7 +2336,7 @@ enum i40e_status_code i40e_aq_add_vlan(struct i40e_hw *hw, u16 seid,
 	if (count == 0 || !v_list || !hw)
 		return I40E_ERR_PARAM;
 
-	buf_size = count * sizeof(struct i40e_aqc_add_remove_vlan_element_data);
+	buf_size = count * sizeof(*v_list);
 
 	/* prep the rest of the request */
 	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_add_vlan);
@@ -2373,7 +2376,7 @@ enum i40e_status_code i40e_aq_remove_vlan(struct i40e_hw *hw, u16 seid,
 	if (count == 0 || !v_list || !hw)
 		return I40E_ERR_PARAM;
 
-	buf_size = count * sizeof(struct i40e_aqc_add_remove_vlan_element_data);
+	buf_size = count * sizeof(*v_list);
 
 	/* prep the rest of the request */
 	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_remove_vlan);
@@ -3162,7 +3165,7 @@ enum i40e_status_code i40e_aq_get_lldp_mib(struct i40e_hw *hw, u8 bridge_type,
 	return status;
 }
 
-/**
+ /**
  * i40e_aq_set_lldp_mib - Set the LLDP MIB
  * @hw: pointer to the hw struct
  * @mib_type: Local, Remote or both Local and Remote MIBs
@@ -3515,7 +3518,7 @@ enum i40e_status_code i40e_aq_add_udp_tunnel(struct i40e_hw *hw,
 
 	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
 
-	if (!status)
+	if (!status && filter_index)
 		*filter_index = resp->index;
 
 	return status;
@@ -3566,8 +3569,7 @@ enum i40e_status_code i40e_aq_get_switch_resource_alloc(struct i40e_hw *hw,
 	struct i40e_aqc_get_switch_resource_alloc *cmd_resp =
 		(struct i40e_aqc_get_switch_resource_alloc *)&desc.params.raw;
 	enum i40e_status_code status;
-	u16 length = count
-		   * sizeof(struct i40e_aqc_switch_resource_alloc_element_resp);
+	u16 length = count * sizeof(*buf);
 
 	i40e_fill_default_direct_cmd_desc(&desc,
 					i40e_aqc_opc_get_switch_resource_alloc);
@@ -3578,7 +3580,7 @@ enum i40e_status_code i40e_aq_get_switch_resource_alloc(struct i40e_hw *hw,
 
 	status = i40e_asq_send_command(hw, &desc, buf, length, cmd_details);
 
-	if (!status)
+	if (!status && num_entries)
 		*num_entries = cmd_resp->num_entries;
 
 	return status;
@@ -3993,7 +3995,7 @@ enum i40e_status_code i40e_aq_add_statistics(struct i40e_hw *hw, u16 seid,
 
 	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
 
-	if (!status)
+	if (!status && stat_index)
 		*stat_index = LE16_TO_CPU(cmd_resp->stat_index);
 
 	return status;
@@ -4580,8 +4582,7 @@ enum i40e_status_code i40e_aq_add_cloud_filters(struct i40e_hw *hw,
 	i40e_fill_default_direct_cmd_desc(&desc,
 					  i40e_aqc_opc_add_cloud_filters);
 
-	buff_len = sizeof(struct i40e_aqc_add_remove_cloud_filters_element_data) *
-			  filter_count;
+	buff_len = filter_count * sizeof(*filters);
 	desc.datalen = CPU_TO_LE16(buff_len);
 	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
 	cmd->num_filters = filter_count;
@@ -4618,8 +4619,7 @@ enum i40e_status_code i40e_aq_remove_cloud_filters(struct i40e_hw *hw,
 	i40e_fill_default_direct_cmd_desc(&desc,
 					  i40e_aqc_opc_remove_cloud_filters);
 
-	buff_len = sizeof(struct i40e_aqc_add_remove_cloud_filters_element_data) *
-		filter_count;
+	buff_len = filter_count * sizeof(*filters);
 	desc.datalen = CPU_TO_LE16(buff_len);
 	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
 	cmd->num_filters = filter_count;
@@ -4834,7 +4834,7 @@ enum i40e_status_code i40e_aq_alternate_write_done(struct i40e_hw *hw,
 	cmd->cmd_flags = CPU_TO_LE16(bios_mode);
 
 	status = i40e_asq_send_command(hw, &desc, NULL, 0, NULL);
-	if (!status)
+	if (!status && reset_needed)
 		*reset_needed = ((LE16_TO_CPU(cmd->cmd_flags) &
 				 I40E_AQ_ALTERNATE_RESET_NEEDED) != 0);
 
@@ -4989,7 +4989,7 @@ enum i40e_status_code i40e_aq_configure_partition_bw(struct i40e_hw *hw,
 {
 	enum i40e_status_code status;
 	struct i40e_aq_desc desc;
-	u16 bwd_size = sizeof(struct i40e_aqc_configure_partition_bw_data);
+	u16 bwd_size = sizeof(*bw_data);
 
 	i40e_fill_default_direct_cmd_desc(&desc,
 				i40e_aqc_opc_configure_partition_bw);
