@@ -128,8 +128,6 @@ enum i40e_status_code i40e_aq_set_link_restart_an(struct i40e_hw *hw,
 enum i40e_status_code i40e_aq_get_link_info(struct i40e_hw *hw,
 				bool enable_lse, struct i40e_link_status *link,
 				struct i40e_asq_cmd_details *cmd_details);
-enum i40e_status_code i40e_update_link_info(struct i40e_hw *hw,
-					    bool enable_lse);
 enum i40e_status_code i40e_aq_set_local_advt_reg(struct i40e_hw *hw,
 				u64 advt_reg,
 				struct i40e_asq_cmd_details *cmd_details);
