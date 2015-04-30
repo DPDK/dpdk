@@ -1978,7 +1978,7 @@ enum i40e_status_code i40e_aq_send_driver_version(struct i40e_hw *hw,
 
 	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_driver_version);
 
-	desc.flags |= CPU_TO_LE16(I40E_AQ_FLAG_SI);
+	desc.flags |= CPU_TO_LE16(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD);
 	cmd->driver_major_ver = dv->major_version;
 	cmd->driver_minor_ver = dv->minor_version;
 	cmd->driver_build_ver = dv->build_version;
