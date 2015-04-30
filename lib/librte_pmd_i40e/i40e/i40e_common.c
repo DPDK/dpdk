@@ -1909,6 +1909,7 @@ enum i40e_status_code i40e_aq_get_switch_config(struct i40e_hw *hw,
  * @hw: pointer to the hw struct
  * @fw_major_version: firmware major version
  * @fw_minor_version: firmware minor version
+ * @fw_build: firmware build number
  * @api_major_version: major queue version
  * @api_minor_version: minor queue version
  * @cmd_details: pointer to command details structure or NULL
@@ -1917,6 +1918,7 @@ enum i40e_status_code i40e_aq_get_switch_config(struct i40e_hw *hw,
  **/
 enum i40e_status_code i40e_aq_get_firmware_version(struct i40e_hw *hw,
 				u16 *fw_major_version, u16 *fw_minor_version,
+				u32 *fw_build,
 				u16 *api_major_version, u16 *api_minor_version,
 				struct i40e_asq_cmd_details *cmd_details)
 {
@@ -1934,6 +1936,8 @@ enum i40e_status_code i40e_aq_get_firmware_version(struct i40e_hw *hw,
 			*fw_major_version = LE16_TO_CPU(resp->fw_major);
 		if (fw_minor_version != NULL)
 			*fw_minor_version = LE16_TO_CPU(resp->fw_minor);
+		if (fw_build != NULL)
+			*fw_build = LE32_TO_CPU(resp->fw_build);
 		if (api_major_version != NULL)
 			*api_major_version = LE16_TO_CPU(resp->api_major);
 		if (api_minor_version != NULL)
