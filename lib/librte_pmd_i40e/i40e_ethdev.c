@@ -1269,9 +1269,6 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			    I40E_GLPRT_BPTCL(hw->port),
 			    pf->offset_loaded, &os->eth.tx_broadcast,
 			    &ns->eth.tx_broadcast);
-	i40e_stat_update_32(hw, I40E_GLPRT_TDPC(hw->port),
-			    pf->offset_loaded, &os->eth.tx_discards,
-			    &ns->eth.tx_discards);
 	/* GLPRT_TEPC not supported */
 
 	/* additional port specific stats */
