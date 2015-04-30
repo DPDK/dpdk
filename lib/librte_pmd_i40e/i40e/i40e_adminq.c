@@ -37,7 +37,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "i40e_adminq.h"
 #include "i40e_prototype.h"
 
-#ifndef VF_DRIVER
+#ifdef PF_DRIVER
 /**
  * i40e_is_nvm_update_op - return true if this is an NVM update operation
  * @desc: API request descriptor
@@ -48,7 +48,7 @@ STATIC INLINE bool i40e_is_nvm_update_op(struct i40e_aq_desc *desc)
 		desc->opcode == CPU_TO_LE16(i40e_aqc_opc_nvm_update));
 }
 
-#endif /* VF_DRIVER */
+#endif /* PF_DRIVER */
 /**
  *  i40e_adminq_init_regs - Initialize AdminQ registers
  *  @hw: pointer to the hardware structure
@@ -559,7 +559,7 @@ enum i40e_status_code i40e_shutdown_arq(struct i40e_hw *hw)
 enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 {
 	enum i40e_status_code ret_code;
-#ifndef VF_DRIVER
+#ifdef PF_DRIVER
 	u16 eetrack_lo, eetrack_hi;
 	int retry = 0;
 #endif
@@ -593,7 +593,7 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 	if (ret_code != I40E_SUCCESS)
 		goto init_adminq_free_asq;
 
-#ifndef VF_DRIVER
+#ifdef PF_DRIVER
 	/* There are some cases where the firmware may not be quite ready
 	 * for AdminQ operations, so we retry the AdminQ setup a few times
 	 * if we see timeouts in this first AQ call.
@@ -633,13 +633,13 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 						    I40E_HMC_PROFILE_DEFAULT,
 						    0,
 						    NULL);
+#endif /* PF_DRIVER */
 	ret_code = I40E_SUCCESS;
 
-#endif /* VF_DRIVER */
 	/* success! */
 	goto init_adminq_exit;
 
-#ifndef VF_DRIVER
+#ifdef PF_DRIVER
 init_adminq_free_arq:
 	i40e_shutdown_arq(hw);
 #endif
@@ -772,7 +772,7 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 		goto asq_send_command_exit;
 	}
 
-#ifndef VF_DRIVER
+#ifdef PF_DRIVER
 	if (i40e_is_nvm_update_op(desc) && hw->aq.nvm_busy) {
 		i40e_debug(hw, I40E_DEBUG_AQ_MESSAGE, "AQTX: NVM busy.\n");
 		status = I40E_ERR_NVM;
@@ -931,11 +931,11 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 		status = I40E_ERR_ADMIN_QUEUE_TIMEOUT;
 	}
 
-#ifndef VF_DRIVER
+#ifdef PF_DRIVER
 	if (!status && i40e_is_nvm_update_op(desc))
 		hw->aq.nvm_busy = true;
 
-#endif /* VF_DRIVER */
+#endif /* PF_DRIVER */
 asq_send_command_error:
 	i40e_release_spinlock(&hw->aq.asq_spinlock);
 asq_send_command_exit:
@@ -1053,7 +1053,7 @@ clean_arq_element_out:
 		*pending = (ntc > ntu ? hw->aq.arq.count : 0) + (ntu - ntc);
 	i40e_release_spinlock(&hw->aq.arq_spinlock);
 
-#ifndef VF_DRIVER
+#ifdef PF_DRIVER
 	if (i40e_is_nvm_update_op(&e->desc)) {
 		hw->aq.nvm_busy = false;
 		if (hw->aq.nvm_release_on_done) {

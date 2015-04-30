@@ -37,7 +37,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_pmd_i40e.a
 
 CFLAGS += -O3
-CFLAGS += $(WERROR_FLAGS)
+CFLAGS += $(WERROR_FLAGS) -DPF_DRIVER -DVF_DRIVER -DINTEGRATED_VF
 
 EXPORT_MAP := rte_pmd_i40e_version.map
 

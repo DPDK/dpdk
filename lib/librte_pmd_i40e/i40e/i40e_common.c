@@ -43,7 +43,7 @@ POSSIBILITY OF SUCH DAMAGE.
  * This function sets the mac type of the adapter based on the
  * vendor ID and device ID stored in the hw structure.
  **/
-#ifdef VF_DRIVER
+#if defined(INTEGRATED_VF) || defined(VF_DRIVER)
 enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 #else
 STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
@@ -547,7 +547,7 @@ struct i40e_rx_ptype_decoded i40e_ptype_lookup[] = {
 	I40E_PTT_UNUSED_ENTRY(255)
 };
 
-#ifndef VF_DRIVER
+#ifdef PF_DRIVER
 
 /**
  * i40e_init_shared_code - Initialize the shared code
@@ -4692,6 +4692,8 @@ enum i40e_status_code i40e_aq_configure_partition_bw(struct i40e_hw *hw,
 
 	return status;
 }
+#endif /* PF_DRIVER */
+#ifdef VF_DRIVER
 
 /**
  * i40e_aq_send_msg_to_pf

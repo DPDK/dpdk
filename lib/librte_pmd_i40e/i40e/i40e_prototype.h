@@ -77,7 +77,7 @@ void i40e_resume_aq(struct i40e_hw *hw);
 bool i40e_check_asq_alive(struct i40e_hw *hw);
 enum i40e_status_code i40e_aq_queue_shutdown(struct i40e_hw *hw, bool unloading);
 
-#ifndef VF_DRIVER
+#ifdef PF_DRIVER
 
 u32 i40e_led_get(struct i40e_hw *hw);
 void i40e_led_set(struct i40e_hw *hw, u32 mode, bool blink);
@@ -392,7 +392,7 @@ enum i40e_status_code i40e_nvmupd_command(struct i40e_hw *hw,
 					  struct i40e_nvm_access *cmd,
 					  u8 *bytes, int *);
 void i40e_set_pci_config_data(struct i40e_hw *hw, u16 link_status);
-#endif /* VF_DRIVER */
+#endif /* PF_DRIVER */
 
 #if defined(I40E_QV) || defined(VF_DRIVER)
 enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw);
