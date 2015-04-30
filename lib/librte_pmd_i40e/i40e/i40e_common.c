@@ -1448,6 +1448,10 @@ enum i40e_status_code i40e_aq_get_link_info(struct i40e_hw *hw,
 	else
 		hw_link_info->lse_enable = false;
 
+	if ((hw->aq.fw_maj_ver < 4 || (hw->aq.fw_maj_ver == 4 &&
+	     hw->aq.fw_min_ver < 40)) && hw_link_info->phy_type == 0xE)
+		hw_link_info->phy_type = I40E_PHY_TYPE_10GBASE_SFPP_CU;
+
 	/* save link status information */
 	if (link)
 		i40e_memcpy(link, hw_link_info, sizeof(struct i40e_link_status),
