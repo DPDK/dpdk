@@ -91,6 +91,9 @@ enum i40e_status_code i40e_aq_get_firmware_version(struct i40e_hw *hw,
 enum i40e_status_code i40e_aq_debug_write_register(struct i40e_hw *hw,
 				u32 reg_addr, u64 reg_val,
 				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_debug_read_register(struct i40e_hw *hw,
+				u32  reg_addr, u64 *reg_val,
+				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_set_phy_debug(struct i40e_hw *hw, u8 cmd_flags,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_set_default_vsi(struct i40e_hw *hw, u16 vsi_id,

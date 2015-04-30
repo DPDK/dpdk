@@ -5623,25 +5623,6 @@ i40e_pctype_to_flowtype(enum i40e_filter_pctype pctype)
 	return flowtype_table[pctype];
 }
 
-static int
-i40e_debug_read_register(struct i40e_hw *hw, uint32_t addr, uint64_t *val)
-{
-	struct i40e_aq_desc desc;
-	enum i40e_status_code status;
-
-	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_debug_read_reg);
-	desc.params.internal.param1 = rte_cpu_to_le_32(addr);
-	status = i40e_asq_send_command(hw, &desc, NULL, 0, NULL);
-	if (status < 0)
-		return status;
-
-	*val = ((uint64_t)(rte_le_to_cpu_32(desc.params.internal.param2)) <<
-					(CHAR_BIT * sizeof(uint32_t))) +
-				rte_le_to_cpu_32(desc.params.internal.param3);
-
-	return status;
-}
-
 /*
  * On X710, performance number is far from the expectation on recent firmware
  * versions; on XL710, performance number is also far from the expectation on
@@ -5692,7 +5673,8 @@ i40e_configure_registers(struct i40e_hw *hw)
 					I40E_GL_SWR_PM_UP_THR_EF_VALUE;
 		}
 
-		ret = i40e_debug_read_register(hw, reg_table[i].addr, &reg);
+		ret = i40e_aq_debug_read_register(hw, reg_table[i].addr,
+							&reg, NULL);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to read from 0x%"PRIx32,
 							reg_table[i].addr);
