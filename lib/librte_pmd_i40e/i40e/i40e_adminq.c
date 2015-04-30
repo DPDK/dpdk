@@ -58,7 +58,7 @@ STATIC INLINE bool i40e_is_nvm_update_op(struct i40e_aq_desc *desc)
 STATIC void i40e_adminq_init_regs(struct i40e_hw *hw)
 {
 	/* set head and tail registers in our local struct */
-	if (hw->mac.type == I40E_MAC_VF) {
+	if (i40e_is_vf(hw)) {
 		hw->aq.asq.tail = I40E_VF_ATQT1;
 		hw->aq.asq.head = I40E_VF_ATQH1;
 		hw->aq.asq.len  = I40E_VF_ATQLEN1;
@@ -594,6 +594,11 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 		goto init_adminq_free_asq;
 
 #ifdef PF_DRIVER
+#ifdef INTEGRATED_VF
+	/* VF has no need of firmware */
+	if (i40e_is_vf(hw))
+		goto init_adminq_exit;
+#endif
 	/* There are some cases where the firmware may not be quite ready
 	 * for AdminQ operations, so we retry the AdminQ setup a few times
 	 * if we see timeouts in this first AQ call.
