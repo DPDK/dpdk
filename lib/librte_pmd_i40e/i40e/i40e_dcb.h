@@ -81,6 +81,11 @@ POSSIBILITY OF SUCH DAMAGE.
 #define I40E_IEEE_ETS_PRIO_0_MASK	(0x7 << I40E_IEEE_ETS_PRIO_0_SHIFT)
 #define I40E_IEEE_ETS_PRIO_1_SHIFT	4
 #define I40E_IEEE_ETS_PRIO_1_MASK	(0x7 << I40E_IEEE_ETS_PRIO_1_SHIFT)
+#define I40E_CEE_PGID_PRIO_0_SHIFT	0
+#define I40E_CEE_PGID_PRIO_0_MASK	(0xF << I40E_CEE_PGID_PRIO_0_SHIFT)
+#define I40E_CEE_PGID_PRIO_1_SHIFT	4
+#define I40E_CEE_PGID_PRIO_1_MASK	(0xF << I40E_CEE_PGID_PRIO_1_SHIFT)
+#define I40E_CEE_PGID_STRICT		15
 
 /* Defines for IEEE TSA types */
 #define I40E_IEEE_TSA_STRICT		0
@@ -102,6 +107,20 @@ POSSIBILITY OF SUCH DAMAGE.
 #define I40E_IEEE_APP_PRIO_SHIFT	5
 #define I40E_IEEE_APP_PRIO_MASK		(0x7 << I40E_IEEE_APP_PRIO_SHIFT)
 
+/* TLV definitions for preparing MIB */
+#define I40E_TLV_ID_CHASSIS_ID		0
+#define I40E_TLV_ID_PORT_ID		1
+#define I40E_TLV_ID_TIME_TO_LIVE	2
+#define I40E_IEEE_TLV_ID_ETS_CFG	3
+#define I40E_IEEE_TLV_ID_ETS_REC	4
+#define I40E_IEEE_TLV_ID_PFC_CFG	5
+#define I40E_IEEE_TLV_ID_APP_PRI	6
+#define I40E_TLV_ID_END_OF_LLDPPDU	7
+#define I40E_TLV_ID_START		I40E_IEEE_TLV_ID_ETS_CFG
+
+#define I40E_IEEE_ETS_TLV_LENGTH	25
+#define I40E_IEEE_PFC_TLV_LENGTH	6
+#define I40E_IEEE_APP_TLV_LENGTH	11
 
 #pragma pack(1)
 
@@ -158,4 +177,5 @@ enum i40e_status_code i40e_aq_get_dcb_config(struct i40e_hw *hw, u8 mib_type,
 					     struct i40e_dcbx_config *dcbcfg);
 enum i40e_status_code i40e_get_dcb_config(struct i40e_hw *hw);
 enum i40e_status_code i40e_init_dcb(struct i40e_hw *hw);
+
 #endif /* _I40E_DCB_H_ */

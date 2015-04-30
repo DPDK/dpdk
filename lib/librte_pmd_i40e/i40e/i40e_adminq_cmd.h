@@ -262,6 +262,9 @@ enum i40e_admin_queue_opc {
 	i40e_aqc_opc_lldp_delete_tlv	= 0x0A04,
 	i40e_aqc_opc_lldp_stop		= 0x0A05,
 	i40e_aqc_opc_lldp_start		= 0x0A06,
+	i40e_aqc_opc_get_cee_dcb_cfg	= 0x0A07,
+	i40e_aqc_opc_lldp_set_local_mib	= 0x0A08,
+	i40e_aqc_opc_lldp_stop_start_spec_agent	= 0x0A09,
 
 	/* Tunnel commands */
 	i40e_aqc_opc_add_udp_tunnel	= 0x0B00,
@@ -1994,9 +1997,77 @@ struct i40e_aqc_lldp_start {
 
 I40E_CHECK_CMD_LENGTH(i40e_aqc_lldp_start);
 
-/* Apply MIB changes (0x0A07)
- * uses the generic struc as it contains no data
+/* Get CEE DCBX Oper Config (0x0A07)
+ * uses the generic descriptor struct
+ * returns below as indirect response
  */
+
+#define I40E_AQC_CEE_APP_FCOE_SHIFT	0x0
+#define I40E_AQC_CEE_APP_FCOE_MASK	(0x7 << I40E_AQC_CEE_APP_FCOE_SHIFT)
+#define I40E_AQC_CEE_APP_ISCSI_SHIFT	0x3
+#define I40E_AQC_CEE_APP_ISCSI_MASK	(0x7 << I40E_AQC_CEE_APP_ISCSI_SHIFT)
+#define I40E_AQC_CEE_APP_FIP_SHIFT	0x8
+#define I40E_AQC_CEE_APP_FIP_MASK	(0x7 << I40E_AQC_CEE_APP_FIP_SHIFT)
+#define I40E_AQC_CEE_PG_STATUS_SHIFT	0x0
+#define I40E_AQC_CEE_PG_STATUS_MASK	(0x7 << I40E_AQC_CEE_PG_STATUS_SHIFT)
+#define I40E_AQC_CEE_PFC_STATUS_SHIFT	0x3
+#define I40E_AQC_CEE_PFC_STATUS_MASK	(0x7 << I40E_AQC_CEE_PFC_STATUS_SHIFT)
+#define I40E_AQC_CEE_APP_STATUS_SHIFT	0x8
+#define I40E_AQC_CEE_APP_STATUS_MASK	(0x7 << I40E_AQC_CEE_APP_STATUS_SHIFT)
+struct i40e_aqc_get_cee_dcb_cfg_v1_resp {
+	u8	reserved1;
+	u8	oper_num_tc;
+	u8	oper_prio_tc[4];
+	u8	reserved2;
+	u8	oper_tc_bw[8];
+	u8	oper_pfc_en;
+	u8	reserved3;
+	__le16	oper_app_prio;
+	u8	reserved4;
+	__le16	tlv_status;
+};
+
+I40E_CHECK_STRUCT_LEN(0x18, i40e_aqc_get_cee_dcb_cfg_v1_resp);
+
+struct i40e_aqc_get_cee_dcb_cfg_resp {
+	u8	oper_num_tc;
+	u8	oper_prio_tc[4];
+	u8	oper_tc_bw[8];
+	u8	oper_pfc_en;
+	__le16	oper_app_prio;
+	__le32	tlv_status;
+	u8	reserved[12];
+};
+
+I40E_CHECK_STRUCT_LEN(0x20, i40e_aqc_get_cee_dcb_cfg_resp);
+
+/*	Set Local LLDP MIB (indirect 0x0A08)
+ *	Used to replace the local MIB of a given LLDP agent. e.g. DCBx
+ */
+struct i40e_aqc_lldp_set_local_mib {
+#define SET_LOCAL_MIB_AC_TYPE_DCBX_SHIFT	0
+#define SET_LOCAL_MIB_AC_TYPE_DCBX_MASK		(1 << SET_LOCAL_MIB_AC_TYPE_DCBX_SHIFT)
+	u8	type;
+	u8	reserved0;
+	__le16	length;
+	u8	reserved1[4];
+	__le32	address_high;
+	__le32	address_low;
+};
+
+I40E_CHECK_CMD_LENGTH(i40e_aqc_lldp_set_local_mib);
+
+/*	Stop/Start LLDP Agent (direct 0x0A09)
+ *	Used for stopping/starting specific LLDP agent. e.g. DCBx
+ */
+struct i40e_aqc_lldp_stop_start_specific_agent {
+#define I40E_AQC_START_SPECIFIC_AGENT_SHIFT	0
+#define I40E_AQC_START_SPECIFIC_AGENT_MASK	(1 << I40E_AQC_START_SPECIFIC_AGENT_SHIFT)
+	u8	command;
+	u8	reserved[15];
+};
+
+I40E_CHECK_CMD_LENGTH(i40e_aqc_lldp_stop_start_specific_agent);
 
 /* Add Udp Tunnel command and completion (direct 0x0B00) */
 struct i40e_aqc_add_udp_tunnel {

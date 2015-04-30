@@ -225,6 +225,12 @@ enum i40e_status_code i40e_aq_stop_lldp(struct i40e_hw *hw, bool shutdown_agent,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_start_lldp(struct i40e_hw *hw,
 				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_get_cee_dcb_config(struct i40e_hw *hw,
+				void *buff, u16 buff_size,
+				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_start_stop_dcbx(struct i40e_hw *hw,
+				bool start_agent,
+				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_add_udp_tunnel(struct i40e_hw *hw,
 				u16 udp_port, u8 protocol_index,
 				u8 *filter_index,
@@ -324,6 +330,8 @@ enum i40e_status_code i40e_aq_query_switch_comp_bw_config(struct i40e_hw *hw,
 		struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_resume_port_tx(struct i40e_hw *hw,
 				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_read_lldp_cfg(struct i40e_hw *hw,
+					struct i40e_lldp_variables *lldp_cfg);
 enum i40e_status_code i40e_aq_add_cloud_filters(struct i40e_hw *hw,
 		u16 vsi,
 		struct i40e_aqc_add_remove_cloud_filters_element_data *filters,
