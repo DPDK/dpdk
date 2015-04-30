@@ -38,10 +38,6 @@
 
 #include "rte_port_frag.h"
 
-/* Default byte size for the IPv4 Maximum Transfer Unit (MTU).
- * This value includes the size of IPv4 header. */
-#define	IPV4_MTU_DEFAULT ETHER_MTU
-
 /* Max number of fragments per packet allowed */
 #define	IPV4_MAX_FRAGS_PER_PACKET 0x80
 
@@ -160,7 +156,7 @@ rte_port_ring_reader_ipv4_frag_rx(void *port,
 		p->n_pkts--;
 
 		/* If not jumbo, pass current packet to output */
-		if (pkt->pkt_len <= IPV4_MTU_DEFAULT) {
+		if (pkt->pkt_len <= p->mtu) {
 			pkts[n_pkts_out++] = pkt;
 
 			n_pkts_to_provide = n_pkts - n_pkts_out;
