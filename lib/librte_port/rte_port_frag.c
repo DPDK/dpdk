@@ -39,9 +39,17 @@
 #include "rte_port_frag.h"
 
 /* Max number of fragments per packet allowed */
-#define	IPV4_MAX_FRAGS_PER_PACKET 0x80
+#define	RTE_PORT_FRAG_MAX_FRAGS_PER_PACKET 0x80
 
-struct rte_port_ring_reader_ipv4_frag {
+typedef int32_t
+		(*frag_op)(struct rte_mbuf *pkt_in,
+			struct rte_mbuf **pkts_out,
+			uint16_t nb_pkts_out,
+			uint16_t mtu_size,
+			struct rte_mempool *pool_direct,
+			struct rte_mempool *pool_indirect);
+
+struct rte_port_ring_reader_frag {
 	/* Input parameters */
 	struct rte_ring *ring;
 	uint32_t mtu;
@@ -51,19 +59,21 @@ struct rte_port_ring_reader_ipv4_frag {
 
 	/* Internal buffers */
 	struct rte_mbuf *pkts[RTE_PORT_IN_BURST_SIZE_MAX];
-	struct rte_mbuf *frags[IPV4_MAX_FRAGS_PER_PACKET];
+	struct rte_mbuf *frags[RTE_PORT_FRAG_MAX_FRAGS_PER_PACKET];
 	uint32_t n_pkts;
 	uint32_t pos_pkts;
 	uint32_t n_frags;
 	uint32_t pos_frags;
+
+	frag_op f_frag;
 } __rte_cache_aligned;
 
 static void *
-rte_port_ring_reader_ipv4_frag_create(void *params, int socket_id)
+rte_port_ring_reader_frag_create(void *params, int socket_id, int is_ipv4)
 {
-	struct rte_port_ring_reader_ipv4_frag_params *conf =
-			(struct rte_port_ring_reader_ipv4_frag_params *) params;
-	struct rte_port_ring_reader_ipv4_frag *port;
+	struct rte_port_ring_reader_frag_params *conf =
+			(struct rte_port_ring_reader_frag_params *) params;
+	struct rte_port_ring_reader_frag *port;
 
 	/* Check input parameters */
 	if (conf == NULL) {
@@ -109,16 +119,31 @@ rte_port_ring_reader_ipv4_frag_create(void *params, int socket_id)
 	port->n_frags = 0;
 	port->pos_frags = 0;
 
+	port->f_frag = (is_ipv4) ?
+			rte_ipv4_fragment_packet : rte_ipv6_fragment_packet;
+
 	return port;
 }
 
+static void *
+rte_port_ring_reader_ipv4_frag_create(void *params, int socket_id)
+{
+	return rte_port_ring_reader_frag_create(params, socket_id, 1);
+}
+
+static void *
+rte_port_ring_reader_ipv6_frag_create(void *params, int socket_id)
+{
+	return rte_port_ring_reader_frag_create(params, socket_id, 0);
+}
+
 static int
-rte_port_ring_reader_ipv4_frag_rx(void *port,
+rte_port_ring_reader_frag_rx(void *port,
 		struct rte_mbuf **pkts,
 		uint32_t n_pkts)
 {
-	struct rte_port_ring_reader_ipv4_frag *p =
-			(struct rte_port_ring_reader_ipv4_frag *) port;
+	struct rte_port_ring_reader_frag *p =
+			(struct rte_port_ring_reader_frag *) port;
 	uint32_t n_pkts_out;
 
 	n_pkts_out = 0;
@@ -167,10 +192,10 @@ rte_port_ring_reader_ipv4_frag_rx(void *port,
 		}
 
 		/* Fragment current packet into the "frags" buffer */
-		status = rte_ipv4_fragment_packet(
+		status = p->f_frag(
 			pkt,
 			p->frags,
-			IPV4_MAX_FRAGS_PER_PACKET,
+			RTE_PORT_FRAG_MAX_FRAGS_PER_PACKET,
 			p->mtu,
 			p->pool_direct,
 			p->pool_indirect
@@ -215,7 +240,7 @@ rte_port_ring_reader_ipv4_frag_rx(void *port,
 }
 
 static int
-rte_port_ring_reader_ipv4_frag_free(void *port)
+rte_port_ring_reader_frag_free(void *port)
 {
 	if (port == NULL) {
 		RTE_LOG(ERR, PORT, "%s: Parameter port is NULL\n", __func__);
@@ -232,6 +257,12 @@ rte_port_ring_reader_ipv4_frag_free(void *port)
  */
 struct rte_port_in_ops rte_port_ring_reader_ipv4_frag_ops = {
 	.f_create = rte_port_ring_reader_ipv4_frag_create,
-	.f_free = rte_port_ring_reader_ipv4_frag_free,
-	.f_rx = rte_port_ring_reader_ipv4_frag_rx,
+	.f_free = rte_port_ring_reader_frag_free,
+	.f_rx = rte_port_ring_reader_frag_rx,
+};
+
+struct rte_port_in_ops rte_port_ring_reader_ipv6_frag_ops = {
+	.f_create = rte_port_ring_reader_ipv6_frag_create,
+	.f_free = rte_port_ring_reader_frag_free,
+	.f_rx = rte_port_ring_reader_frag_rx,
 };

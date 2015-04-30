@@ -63,7 +63,7 @@ extern "C" {
 #include "rte_port.h"
 
 /** ring_reader_ipv4_frag port parameters */
-struct rte_port_ring_reader_ipv4_frag_params {
+struct rte_port_ring_reader_frag_params {
 	/** Underlying single consumer ring that has to be pre-initialized. */
 	struct rte_ring *ring;
 
@@ -84,8 +84,15 @@ struct rte_port_ring_reader_ipv4_frag_params {
 	struct rte_mempool *pool_indirect;
 };
 
+#define rte_port_ring_reader_ipv4_frag_params rte_port_ring_reader_frag_params
+
+#define rte_port_ring_reader_ipv6_frag_params rte_port_ring_reader_frag_params
+
 /** ring_reader_ipv4_frag port operations */
 extern struct rte_port_in_ops rte_port_ring_reader_ipv4_frag_ops;
+
+/** ring_reader_ipv6_frag port operations */
+extern struct rte_port_in_ops rte_port_ring_reader_ipv6_frag_ops;
 
 #ifdef __cplusplus
 }
