@@ -54,11 +54,8 @@ endif
 LDLIBS += -L$(RTE_SDK_BIN)/lib
 
 #
-# Include libraries depending on config if NO_AUTOLIBS is not set
 # Order is important: from higher level to lower level
 #
-ifeq ($(NO_AUTOLIBS),)
-
 LDLIBS += --whole-archive
 
 ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),y)
@@ -264,8 +261,6 @@ LDLIBS += $(EXECENV_LDLIBS)
 LDLIBS += --end-group
 
 LDLIBS += --no-whole-archive
-
-endif # ifeq ($(NO_AUTOLIBS),)
 
 LDLIBS += $(CPU_LDLIBS)
 

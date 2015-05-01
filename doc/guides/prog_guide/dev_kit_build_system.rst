@@ -407,8 +407,6 @@ Variables that Can be Set/Overridden by the User in a Makefile or Command Line
 
 *   LDFLAGS_my_app: Specific flags to add when linking my_app.
 
-*   NO_AUTOLIBS: If set, the libraries provided by the framework will not be included in the LDLIBS variable automatically.
-
 *   EXTRA_CFLAGS: The content of this variable is appended after CFLAGS when compiling.
 
 *   EXTRA_LDFLAGS: The content of this variable is appended after LDFLAGS when linking.
