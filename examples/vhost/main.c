@@ -1105,7 +1105,7 @@ find_local_dest(struct virtio_net *dev, struct rte_mbuf *m,
 			"(%"PRIu64") TX: pkt to local VM device id:"
 			"(%"PRIu64") vlan tag: %d.\n",
 			dev->device_fh, dev_ll->vdev->dev->device_fh,
-			vlan_tag);
+			(int)*vlan_tag);
 
 			break;
 		}
