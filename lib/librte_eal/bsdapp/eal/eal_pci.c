@@ -432,7 +432,7 @@ error:
 int
 rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *dev)
 {
-	struct rte_pci_id *id_table;
+	const struct rte_pci_id *id_table;
 	int ret;
 
 	for (id_table = dr->id_table ; id_table->vendor_id != 0; id_table++) {
