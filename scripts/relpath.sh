@@ -43,8 +43,13 @@ if [ $# -ne 2 ]; then
 	exit 1
 fi
 
-REL1=${1#/}
-REL2=${2#/}
+# get the real absolute path, derefencing symlinks
+ABS1=$(readlink -f $1)
+ABS2=$(readlink -f $2)
+
+# remove leading slash
+REL1=${ABS1#/}
+REL2=${ABS2#/}
 
 left1=${REL1%%/*}
 right1=${REL1#*/}
