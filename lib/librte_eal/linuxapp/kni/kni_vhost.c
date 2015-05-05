@@ -76,7 +76,7 @@ static struct proto kni_raw_proto = {
 };
 
 static inline int
-kni_vhost_net_tx(struct kni_dev *kni, struct iovec *iov,
+kni_vhost_net_tx(struct kni_dev *kni, struct msghdr *m,
 		 unsigned offset, unsigned len)
 {
 	struct rte_kni_mbuf *pkt_kva = NULL;
@@ -84,7 +84,11 @@ kni_vhost_net_tx(struct kni_dev *kni, struct iovec *iov,
 	int ret;
 
 	KNI_DBG_TX("tx offset=%d, len=%d, iovlen=%d\n",
-		   offset, len, (int)iov->iov_len);
+#ifdef HAVE_IOV_ITER_MSGHDR
+		   offset, len, (int)m->msg_iter.iov->iov_len);
+#else
+		   offset, len, (int)m->msg_iov->iov_len);
+#endif
 
 	/**
 	 * Check if it has at least one free entry in tx_q and
@@ -108,7 +112,12 @@ kni_vhost_net_tx(struct kni_dev *kni, struct iovec *iov,
 		data_kva = pkt_kva->buf_addr + pkt_kva->data_off
 		           - kni->mbuf_va + kni->mbuf_kva;
 
-		memcpy_fromiovecend(data_kva, iov, offset, len);
+#ifdef HAVE_IOV_ITER_MSGHDR
+		copy_from_iter(data_kva, len, &m->msg_iter);
+#else
+		memcpy_fromiovecend(data_kva, m->msg_iov, offset, len);
+#endif
+
 		if (unlikely(len < ETH_ZLEN)) {
 			memset(data_kva + len, 0, ETH_ZLEN - len);
 			len = ETH_ZLEN;
@@ -143,7 +152,7 @@ drop:
 }
 
 static inline int
-kni_vhost_net_rx(struct kni_dev *kni, struct iovec *iov,
+kni_vhost_net_rx(struct kni_dev *kni, struct msghdr *m,
 		 unsigned offset, unsigned len)
 {
 	uint32_t pkt_len;
@@ -177,10 +186,18 @@ kni_vhost_net_rx(struct kni_dev *kni, struct iovec *iov,
 		goto drop;
 
 	KNI_DBG_RX("rx offset=%d, len=%d, pkt_len=%d, iovlen=%d\n",
-		   offset, len, pkt_len, (int)iov->iov_len);
+#ifdef HAVE_IOV_ITER_MSGHDR
+		   offset, len, pkt_len, (int)m->msg_iter.iov->iov_len);
+#else
+		   offset, len, pkt_len, (int)m->msg_iov->iov_len);
+#endif
 
 	data_kva = kva->buf_addr + kva->data_off - kni->mbuf_va + kni->mbuf_kva;
-	if (unlikely(memcpy_toiovecend(iov, data_kva, offset, pkt_len)))
+#ifdef HAVE_IOV_ITER_MSGHDR
+	if (unlikely(copy_to_iter(data_kva, pkt_len, &m->msg_iter)))
+#else
+	if (unlikely(memcpy_toiovecend(m->msg_iov, data_kva, offset, pkt_len)))
+#endif
 		goto drop;
 
 	/* Update statistics */
@@ -348,7 +365,11 @@ kni_sock_sndmsg(struct kiocb *iocb, struct socket *sock,
 		return 0;
 
 	KNI_DBG_TX("kni_sndmsg len %ld, flags 0x%08x, nb_iov %d\n",
+#ifdef HAVE_IOV_ITER_MSGHDR
+		   len, q->flags, (int)m->msg_iter.iov->iov_len);
+#else
 		   len, q->flags, (int)m->msg_iovlen);
+#endif
 
 #ifdef RTE_KNI_VHOST_VNET_HDR_EN
 	if (likely(q->flags & IFF_VNET_HDR)) {
@@ -362,7 +383,7 @@ kni_sock_sndmsg(struct kiocb *iocb, struct socket *sock,
 	if (unlikely(len < ETH_HLEN + q->vnet_hdr_sz))
 		return -EINVAL;
 
-	return kni_vhost_net_tx(q->kni, m->msg_iov, vnet_hdr_len, len);
+	return kni_vhost_net_tx(q->kni, m, vnet_hdr_len, len);
 }
 
 static int
@@ -391,7 +412,7 @@ kni_sock_rcvmsg(struct kiocb *iocb, struct socket *sock,
 #endif
 
 	if (unlikely(0 == (pkt_len = kni_vhost_net_rx(q->kni,
-		m->msg_iov, vnet_hdr_len, len))))
+		m, vnet_hdr_len, len))))
 		return 0;
 
 #ifdef RTE_KNI_VHOST_VNET_HDR_EN

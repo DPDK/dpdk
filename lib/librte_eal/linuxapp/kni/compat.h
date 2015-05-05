@@ -19,3 +19,7 @@
 #define sk_sleep(s) (s)->sk_sleep
 
 #endif /* < 2.6.35 */
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0)
+#define HAVE_IOV_ITER_MSGHDR
+#endif
