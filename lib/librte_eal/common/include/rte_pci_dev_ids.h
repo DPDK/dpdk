@@ -140,6 +140,10 @@
 #define RTE_PCI_DEV_ID_DECL_FM10KVF(vend, dev)
 #endif
 
+#ifndef RTE_PCI_DEV_ID_DECL_ENIC
+#define RTE_PCI_DEV_ID_DECL_ENIC(vend, dev)
+#endif
+
 #ifndef PCI_VENDOR_ID_INTEL
 /** Vendor ID used by Intel devices */
 #define PCI_VENDOR_ID_INTEL 0x8086
@@ -153,6 +157,11 @@
 #ifndef PCI_VENDOR_ID_VMWARE
 /** Vendor ID used by VMware devices */
 #define PCI_VENDOR_ID_VMWARE 0x15AD
+#endif
+
+#ifndef PCI_VENDOR_ID_CISCO
+/** Vendor ID used by Cisco VIC devices */
+#define PCI_VENDOR_ID_CISCO 0x1137
 #endif
 
 /******************** Physical EM devices from e1000_hw.h ********************/
@@ -547,6 +556,14 @@ RTE_PCI_DEV_ID_DECL_VMXNET3(PCI_VENDOR_ID_VMWARE, VMWARE_DEV_ID_VMXNET3)
 #define FM10K_DEV_ID_VF                   0x15A5
 
 RTE_PCI_DEV_ID_DECL_FM10KVF(PCI_VENDOR_ID_INTEL, FM10K_DEV_ID_VF)
+
+/****************** Cisco VIC devices ******************/
+
+#define PCI_DEVICE_ID_CISCO_VIC_ENET         0x0043  /* ethernet vnic */
+#define PCI_DEVICE_ID_CISCO_VIC_ENET_VF      0x0071  /* enet SRIOV VF */
+
+RTE_PCI_DEV_ID_DECL_ENIC(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_CISCO_VIC_ENET)
+RTE_PCI_DEV_ID_DECL_ENIC(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_CISCO_VIC_ENET_VF)
 
 /*
  * Undef all RTE_PCI_DEV_ID_DECL_* here.
