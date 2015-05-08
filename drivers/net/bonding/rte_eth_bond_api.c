@@ -260,6 +260,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 
 	pci_dev->numa_node = socket_id;
 	pci_drv->name = driver_name;
+	pci_dev->driver = pci_drv;
 
 	eth_dev->driver = eth_drv;
 	eth_dev->data->dev_private = internals;
