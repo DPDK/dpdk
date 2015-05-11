@@ -129,5 +129,5 @@ rte_dom0_mempool_create(const char *name, unsigned elt_num, unsigned elt_size,
 
 	free(pa);
 
-	return (mp);
+	return mp;
 }

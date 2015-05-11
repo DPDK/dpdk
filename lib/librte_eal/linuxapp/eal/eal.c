@@ -884,13 +884,13 @@ rte_eal_init(int argc, char **argv)
 enum rte_lcore_role_t
 rte_eal_lcore_role(unsigned lcore_id)
 {
-	return (rte_config.lcore_role[lcore_id]);
+	return rte_config.lcore_role[lcore_id];
 }
 
 enum rte_proc_type_t
 rte_eal_process_type(void)
 {
-	return (rte_config.process_type);
+	return rte_config.process_type;
 }
 
 int rte_eal_has_hugepages(void)

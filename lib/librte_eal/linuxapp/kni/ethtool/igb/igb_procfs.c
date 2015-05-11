@@ -262,7 +262,7 @@ int igb_procfs_topdir_init(void)
 {
 	igb_top_dir = proc_mkdir("driver/igb", NULL);
 	if (igb_top_dir == NULL)
-		return (-ENOMEM);
+		return -ENOMEM;
 
 	return 0;
 }

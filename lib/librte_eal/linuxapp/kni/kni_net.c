@@ -88,7 +88,7 @@ kni_net_open(struct net_device *dev)
 	req.if_up = 1;
 	ret = kni_net_process_request(kni, &req);
 
-	return (ret == 0 ? req.result : ret);
+	return (ret == 0) ? req.result : ret;
 }
 
 static int
@@ -107,7 +107,7 @@ kni_net_release(struct net_device *dev)
 	req.if_up = 0;
 	ret = kni_net_process_request(kni, &req);
 
-	return (ret == 0 ? req.result : ret);
+	return (ret == 0) ? req.result : ret;
 }
 
 /*
@@ -512,7 +512,7 @@ kni_net_change_mtu(struct net_device *dev, int new_mtu)
 	if (ret == 0 && req.result == 0)
 		dev->mtu = new_mtu;
 
-	return (ret == 0 ? req.result : ret);
+	return (ret == 0) ? req.result : ret;
 }
 
 /*
@@ -598,7 +598,7 @@ kni_net_header(struct sk_buff *skb, struct net_device *dev,
 	memcpy(eth->h_dest,   daddr ? daddr : dev->dev_addr, dev->addr_len);
 	eth->h_proto = htons(type);
 
-	return (dev->hard_header_len);
+	return dev->hard_header_len;
 }
 
 

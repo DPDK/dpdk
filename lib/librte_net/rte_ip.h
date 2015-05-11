@@ -243,7 +243,7 @@ rte_ipv4_cksum(const struct ipv4_hdr *ipv4_hdr)
 {
 	uint16_t cksum;
 	cksum = rte_raw_cksum(ipv4_hdr, sizeof(struct ipv4_hdr));
-	return ((cksum == 0xffff) ? cksum : ~cksum);
+	return (cksum == 0xffff) ? cksum : ~cksum;
 }
 
 /**

@@ -880,7 +880,7 @@ get_socket_mem_size(int socket)
 			size += hpi->hugepage_sz * hpi->num_pages[socket];
 	}
 
-	return (size);
+	return size;
 }
 
 /*
@@ -1341,7 +1341,7 @@ rte_eal_hugepage_init(void)
 			"of memory.\n",
 			i, nr_hugefiles, RTE_STR(CONFIG_RTE_MAX_MEMSEG),
 			RTE_MAX_MEMSEG);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	return 0;

@@ -102,7 +102,7 @@ parse_ports(cmdline_portlist_t *pl, const char *str)
 		ps = strtoul(first, &end, 10);
 		if (errno != 0 || end == first ||
 		    (end[0] != '-' && end[0] != 0 && end != last))
-			return (-1);
+			return -1;
 
 		/* Support for N-M portlist format */
 		if (end[0] == '-') {
@@ -111,18 +111,18 @@ parse_ports(cmdline_portlist_t *pl, const char *str)
 			pe = strtoul(first, &end, 10);
 			if (errno != 0 || end == first ||
 			    (end[0] != 0 && end != last))
-				return (-1);
+				return -1;
 		} else {
 			pe = ps;
 		}
 
 		if (ps > pe || pe >= sizeof (pl->map) * 8)
-			return (-1);
+			return -1;
 
 		parse_set_list(pl, ps, pe);
 	}
 
-	return (0);
+	return 0;
 }
 
 int
@@ -134,7 +134,7 @@ cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 	cmdline_portlist_t *pl;
 
 	if (!buf || ! *buf)
-		return (-1);
+		return -1;
 
 	if (res && ressize < sizeof(cmdline_portlist_t))
 		return -1;
@@ -146,7 +146,7 @@ cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 		token_len++;
 
 	if (token_len >= PORTLIST_TOKEN_SIZE)
-		return (-1);
+		return -1;
 
 	snprintf(portlist_str, token_len+1, "%s", buf);
 
@@ -155,7 +155,7 @@ cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 		if (strcmp("all", portlist_str) == 0)
 			pl->map	= UINT32_MAX;
 		else if (parse_ports(pl, portlist_str) != 0)
-			return (-1);
+			return -1;
 	}
 
 	return token_len;

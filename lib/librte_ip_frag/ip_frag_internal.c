@@ -200,7 +200,7 @@ ip_frag_process(struct ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr,
 		ip_frag_key_invalidate(&fp->key);
 		IP_FRAG_MBUF2DR(dr, mb);
 
-		return (NULL);
+		return NULL;
 	}
 
 	fp->frags[idx].ofs = ofs;
@@ -211,7 +211,7 @@ ip_frag_process(struct ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr,
 
 	/* not all fragments are collected yet. */
 	if (likely (fp->frag_size < fp->total_size)) {
-		return (mb);
+		return mb;
 
 	/* if we collected all fragments, then try to reassemble. */
 	} else if (fp->frag_size == fp->total_size &&
@@ -259,7 +259,7 @@ ip_frag_process(struct ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr,
 
 	/* we are done with that entry, invalidate it. */
 	ip_frag_key_invalidate(&fp->key);
-	return (mb);
+	return mb;
 }
 
 
@@ -327,7 +327,7 @@ ip_frag_find(struct rte_ip_frag_tbl *tbl, struct rte_ip_frag_death_row *dr,
 	IP_FRAG_TBL_STAT_UPDATE(&tbl->stat, fail_total, (pkt == NULL));
 
 	tbl->last = pkt;
-	return (pkt);
+	return pkt;
 }
 
 struct ip_frag_pkt *
@@ -347,7 +347,7 @@ ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 	assoc = tbl->bucket_entries;
 
 	if (tbl->last != NULL && ip_frag_key_cmp(key, &tbl->last->key) == 0)
-		return (tbl->last);
+		return tbl->last;
 
 	/* different hashing methods for IPv4 and IPv6 */
 	if (key->key_len == IPV4_KEYLEN)
@@ -414,5 +414,5 @@ ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 
 	*free = empty;
 	*stale = old;
-	return (NULL);
+	return NULL;
 }

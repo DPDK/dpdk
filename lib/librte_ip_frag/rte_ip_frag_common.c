@@ -83,7 +83,7 @@ rte_ip_frag_table_create(uint32_t bucket_num, uint32_t bucket_entries,
 			nb_entries > UINT32_MAX || nb_entries == 0 ||
 			nb_entries < max_entries) {
 		RTE_LOG(ERR, USER1, "%s: invalid input parameter\n", __func__);
-		return (NULL);
+		return NULL;
 	}
 
 	sz = sizeof (*tbl) + nb_entries * sizeof (tbl->pkt[0]);
@@ -92,7 +92,7 @@ rte_ip_frag_table_create(uint32_t bucket_num, uint32_t bucket_entries,
 		RTE_LOG(ERR, USER1,
 			"%s: allocation of %zu bytes at socket %d failed do\n",
 			__func__, sz, socket_id);
-		return (NULL);
+		return NULL;
 	}
 
 	RTE_LOG(INFO, USER1, "%s: allocated of %zu bytes at socket %d\n",
@@ -106,7 +106,7 @@ rte_ip_frag_table_create(uint32_t bucket_num, uint32_t bucket_entries,
 	tbl->entry_mask = (tbl->nb_entries - 1) & ~(tbl->bucket_entries  - 1);
 
 	TAILQ_INIT(&(tbl->lru));
-	return (tbl);
+	return tbl;
 }
 
 /* dump frag table statistics to file */

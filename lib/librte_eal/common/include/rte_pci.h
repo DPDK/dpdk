@@ -228,7 +228,7 @@ do {                                                               \
 	errno = 0;                                              \
 	val = strtoul((in), &end, 16);                          \
 	if (errno != 0 || end[0] != (dlm) || val > (lim))       \
-		return (-EINVAL);                               \
+		return -EINVAL;                                 \
 	(fd) = (typeof (fd))val;                                \
 	(in) = end + 1;                                         \
 } while(0)
@@ -253,7 +253,7 @@ eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr)
 	GET_PCIADDR_FIELD(input, dev_addr->bus, UINT8_MAX, ':');
 	GET_PCIADDR_FIELD(input, dev_addr->devid, UINT8_MAX, '.');
 	GET_PCIADDR_FIELD(input, dev_addr->function, UINT8_MAX, 0);
-	return (0);
+	return 0;
 }
 
 /**
@@ -275,7 +275,7 @@ eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
 	GET_PCIADDR_FIELD(input, dev_addr->bus, UINT8_MAX, ':');
 	GET_PCIADDR_FIELD(input, dev_addr->devid, UINT8_MAX, '.');
 	GET_PCIADDR_FIELD(input, dev_addr->function, UINT8_MAX, 0);
-	return (0);
+	return 0;
 }
 #undef GET_PCIADDR_FIELD
 

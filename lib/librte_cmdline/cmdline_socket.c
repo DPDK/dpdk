@@ -86,7 +86,7 @@ cmdline_file_new(cmdline_parse_ctx_t *ctx, const char *prompt, const char *path)
 		dprintf("open() failed\n");
 		return NULL;
 	}
-	return (cmdline_new(ctx, prompt, fd, -1));
+	return cmdline_new(ctx, prompt, fd, -1);
 }
 
 struct cmdline *

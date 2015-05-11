@@ -552,7 +552,7 @@ static inline struct rte_mbuf *__rte_mbuf_raw_alloc(struct rte_mempool *mp)
 	m = (struct rte_mbuf *)mb;
 	RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(m) == 0);
 	rte_mbuf_refcnt_set(m, 1);
-	return (m);
+	return m;
 }
 
 /**
@@ -648,7 +648,7 @@ void rte_ctrlmbuf_init(struct rte_mempool *mp, void *opaque_arg,
 static inline int
 rte_is_ctrlmbuf(struct rte_mbuf *m)
 {
-	return (!!(m->ol_flags & CTRL_MBUF_FLAG));
+	return !!(m->ol_flags & CTRL_MBUF_FLAG);
 }
 
 /* Operations on pkt mbuf */
@@ -819,7 +819,7 @@ static inline struct rte_mbuf *rte_pktmbuf_alloc(struct rte_mempool *mp)
 	struct rte_mbuf *m;
 	if ((m = __rte_mbuf_raw_alloc(mp)) != NULL)
 		rte_pktmbuf_reset(m);
-	return (m);
+	return m;
 }
 
 /**
@@ -919,9 +919,9 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 			if (rte_mbuf_refcnt_update(md, -1) == 0)
 				__rte_mbuf_raw_free(md);
 		}
-		return(m);
+		return m;
 	}
-	return (NULL);
+	return NULL;
 }
 
 /**
@@ -989,7 +989,7 @@ static inline struct rte_mbuf *rte_pktmbuf_clone(struct rte_mbuf *md,
 	uint8_t nseg;
 
 	if (unlikely ((mc = rte_pktmbuf_alloc(mp)) == NULL))
-		return (NULL);
+		return NULL;
 
 	mi = mc;
 	prev = &mi->next;
@@ -1011,11 +1011,11 @@ static inline struct rte_mbuf *rte_pktmbuf_clone(struct rte_mbuf *md,
 	/* Allocation of new indirect segment failed */
 	if (unlikely (mi == NULL)) {
 		rte_pktmbuf_free(mc);
-		return (NULL);
+		return NULL;
 	}
 
 	__rte_mbuf_sanity_check(mc, 1);
-	return (mc);
+	return mc;
 }
 
 /**

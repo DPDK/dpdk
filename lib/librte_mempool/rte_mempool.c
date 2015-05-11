@@ -208,7 +208,7 @@ rte_mempool_obj_iter(void *vaddr, uint32_t elt_num, size_t elt_sz, size_t align,
 		}
 	}
 
-	return (i);
+	return i;
 }
 
 /*
@@ -317,7 +317,7 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 	/* this is the size of an object, including header and trailer */
 	sz->total_size = sz->header_size + sz->elt_size + sz->trailer_size;
 
-	return (sz->total_size);
+	return sz->total_size;
 }
 
 
@@ -338,7 +338,7 @@ rte_mempool_xmem_size(uint32_t elt_num, size_t elt_sz, uint32_t pg_shift)
 		sz = RTE_ALIGN_CEIL(elt_sz, pg_sz) * elt_num;
 	}
 
-	return (sz);
+	return sz;
 }
 
 /*
@@ -367,12 +367,12 @@ rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t elt_sz,
 	if ((n = rte_mempool_obj_iter(vaddr, elt_num, elt_sz, 1,
 			paddr, pg_num, pg_shift, mempool_lelem_iter,
 			&uv)) != elt_num) {
-		return (-(ssize_t)n);
+		return -(ssize_t)n;
 	}
 
 	uv = RTE_ALIGN_CEIL(uv, pg_sz);
 	usz = uv - va;
-	return (usz);
+	return usz;
 }
 
 /* create the mempool */
@@ -384,18 +384,18 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		   int socket_id, unsigned flags)
 {
 #ifdef RTE_LIBRTE_XEN_DOM0
-	return (rte_dom0_mempool_create(name, n, elt_size,
+	return rte_dom0_mempool_create(name, n, elt_size,
 		cache_size, private_data_size,
 		mp_init, mp_init_arg,
 		obj_init, obj_init_arg,
-		socket_id, flags));
+		socket_id, flags);
 #else
-	return (rte_mempool_xmem_create(name, n, elt_size,
+	return rte_mempool_xmem_create(name, n, elt_size,
 		cache_size, private_data_size,
 		mp_init, mp_init_arg,
 		obj_init, obj_init_arg,
 		socket_id, flags,
-		NULL, NULL, MEMPOOL_PG_NUM_DEFAULT, MEMPOOL_PG_SHIFT_MAX));
+		NULL, NULL, MEMPOOL_PG_NUM_DEFAULT, MEMPOOL_PG_SHIFT_MAX);
 #endif
 }
 

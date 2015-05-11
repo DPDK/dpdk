@@ -135,12 +135,12 @@ my_inet_pton(int af, const char *src, void *dst)
 {
 	switch (af) {
 		case AF_INET:
-			return (inet_pton4(src, dst));
+			return inet_pton4(src, dst);
 		case AF_INET6:
-			return (inet_pton6(src, dst));
+			return inet_pton6(src, dst);
 		default:
 			errno = EAFNOSUPPORT;
-			return (-1);
+			return -1;
 	}
 	/* NOTREACHED */
 }
@@ -172,26 +172,26 @@ inet_pton4(const char *src, unsigned char *dst)
 			unsigned int new = *tp * 10 + (pch - digits);
 
 			if (new > 255)
-				return (0);
+				return 0;
 			if (! saw_digit) {
 				if (++octets > 4)
-					return (0);
+					return 0;
 				saw_digit = 1;
 			}
 			*tp = (unsigned char)new;
 		} else if (ch == '.' && saw_digit) {
 			if (octets == 4)
-				return (0);
+				return 0;
 			*++tp = 0;
 			saw_digit = 0;
 		} else
-			return (0);
+			return 0;
 	}
 	if (octets < 4)
-		return (0);
+		return 0;
 
 	memcpy(dst, tmp, INADDRSZ);
-	return (1);
+	return 1;
 }
 
 /* int
@@ -224,7 +224,7 @@ inet_pton6(const char *src, unsigned char *dst)
 	/* Leading :: requires some special handling. */
 	if (*src == ':')
 		if (*++src != ':')
-			return (0);
+			return 0;
 	curtok = src;
 	saw_xdigit = count_xdigit = 0;
 	val = 0;
@@ -236,11 +236,11 @@ inet_pton6(const char *src, unsigned char *dst)
 			pch = strchr((xdigits = xdigits_u), ch);
 		if (pch != NULL) {
 			if (count_xdigit >= 4)
-				return (0);
+				return 0;
 			val <<= 4;
 			val |= (pch - xdigits);
 			if (val > 0xffff)
-				return (0);
+				return 0;
 			saw_xdigit = 1;
 			count_xdigit++;
 			continue;
@@ -249,14 +249,14 @@ inet_pton6(const char *src, unsigned char *dst)
 			curtok = src;
 			if (!saw_xdigit) {
 				if (colonp)
-					return (0);
+					return 0;
 				colonp = tp;
 				continue;
 			} else if (*src == '\0') {
-				return (0);
+				return 0;
 			}
 			if (tp + sizeof(int16_t) > endp)
-				return (0);
+				return 0;
 			*tp++ = (unsigned char) ((val >> 8) & 0xff);
 			*tp++ = (unsigned char) (val & 0xff);
 			saw_xdigit = 0;
@@ -272,11 +272,11 @@ inet_pton6(const char *src, unsigned char *dst)
 			dbloct_count += 2;
 			break;  /* '\0' was seen by inet_pton4(). */
 		}
-		return (0);
+		return 0;
 	}
 	if (saw_xdigit) {
 		if (tp + sizeof(int16_t) > endp)
-			return (0);
+			return 0;
 		*tp++ = (unsigned char) ((val >> 8) & 0xff);
 		*tp++ = (unsigned char) (val & 0xff);
 		dbloct_count++;
@@ -300,9 +300,9 @@ inet_pton6(const char *src, unsigned char *dst)
 		tp = endp;
 	}
 	if (tp != endp)
-		return (0);
+		return 0;
 	memcpy(dst, tmp, IN6ADDRSZ);
-	return (1);
+	return 1;
 }
 
 int

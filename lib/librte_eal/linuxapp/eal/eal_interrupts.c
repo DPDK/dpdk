@@ -505,7 +505,7 @@ rte_intr_callback_register(struct rte_intr_handle *intr_handle,
 		if (write(intr_pipe.writefd, "1", 1) < 0)
 			return -EPIPE;
 
-	return (ret);
+	return ret;
 }
 
 int
@@ -569,7 +569,7 @@ rte_intr_callback_unregister(struct rte_intr_handle *intr_handle,
 		ret = -EPIPE;
 	}
 
-	return (ret);
+	return ret;
 }
 
 int

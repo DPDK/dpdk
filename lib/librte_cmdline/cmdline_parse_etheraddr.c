@@ -105,32 +105,32 @@ my_ether_aton(const char *a)
 		errno = 0;
 		o[i] = strtoul(a, &end, 16);
 		if (errno != 0 || end == a || (end[0] != ':' && end[0] != 0))
-			return (NULL);
+			return NULL;
 		a = end + 1;
 	} while (++i != sizeof (o) / sizeof (o[0]) && end[0] != 0);
 
 	/* Junk at the end of line */
 	if (end[0] != 0)
-		return (NULL);
+		return NULL;
 
 	/* Support the format XX:XX:XX:XX:XX:XX */
 	if (i == ETHER_ADDR_LEN) {
 		while (i-- != 0) {
 			if (o[i] > UINT8_MAX)
-				return (NULL);
+				return NULL;
 			ether_addr.ea_oct[i] = (uint8_t)o[i];
 		}
 	/* Support the format XXXX:XXXX:XXXX */
 	} else if (i == ETHER_ADDR_LEN / 2) {
 		while (i-- != 0) {
 			if (o[i] > UINT16_MAX)
-				return (NULL);
+				return NULL;
 			ether_addr.ea_oct[i * 2] = (uint8_t)(o[i] >> 8);
 			ether_addr.ea_oct[i * 2 + 1] = (uint8_t)(o[i] & 0xff);
 		}
 	/* unknown format */
 	} else
-		return (NULL);
+		return NULL;
 
 	return (struct ether_addr *)&ether_addr;
 }

@@ -73,7 +73,7 @@ ipv4_frag_reassemble(const struct ip_frag_pkt *fp)
 
 		/* error - hole in the packet. */
 		if (m == prev) {
-			return (NULL);
+			return NULL;
 		}
 	}
 
@@ -94,7 +94,7 @@ ipv4_frag_reassemble(const struct ip_frag_pkt *fp)
 		rte_cpu_to_be_16(IPV4_HDR_DF_FLAG));
 	ip_hdr->hdr_checksum = 0;
 
-	return (m);
+	return m;
 }
 
 /*
@@ -151,7 +151,7 @@ rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 	/* try to find/add entry into the fragment's table. */
 	if ((fp = ip_frag_find(tbl, dr, &key, tms)) == NULL) {
 		IP_FRAG_MBUF2DR(dr, mb);
-		return (NULL);
+		return NULL;
 	}
 
 	IP_FRAG_LOG(DEBUG, "%s:%d:\n"
@@ -178,5 +178,5 @@ rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		fp, fp->key.src_dst[0], fp->key.id, fp->start,
 		fp->total_size, fp->frag_size, fp->last_idx);
 
-	return (mb);
+	return mb;
 }

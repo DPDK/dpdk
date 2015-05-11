@@ -120,7 +120,7 @@ align_phys_boundary(const struct rte_memseg *ms, size_t len, size_t align,
 		addr_offset = start - ms->phys_addr;
 	}
 
-	return (addr_offset);
+	return addr_offset;
 }
 
 static const struct rte_memzone *

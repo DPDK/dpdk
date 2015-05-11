@@ -179,10 +179,10 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 			    != uio_res->maps[i].addr) {
 				RTE_LOG(ERR, EAL,
 					"Cannot mmap device resource\n");
-				return (-1);
+				return -1;
 			}
 		}
-		return (0);
+		return 0;
 	}
 
 	RTE_LOG(ERR, EAL, "Cannot find resource for device\n");
@@ -209,7 +209,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	/* secondary processes - use already recorded details */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return (pci_uio_map_secondary(dev));
+		return pci_uio_map_secondary(dev);
 
 	snprintf(devname, sizeof(devname), "/dev/uio@pci:%u:%u:%u",
 			dev->addr.bus, dev->addr.devid, dev->addr.function);
@@ -233,7 +233,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	if ((uio_res = rte_zmalloc("UIO_RES", sizeof (*uio_res), 0)) == NULL) {
 		RTE_LOG(ERR, EAL,
 			"%s(): cannot store uio mmap details\n", __func__);
-		return (-1);
+		return -1;
 	}
 
 	snprintf(uio_res->path, sizeof(uio_res->path), "%s", devname);
@@ -261,7 +261,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 						(size_t)maps[j].size)
 		    ) == NULL) {
 			rte_free(uio_res);
-			return (-1);
+			return -1;
 		}
 
 		maps[j].addr = mapaddr;
@@ -271,7 +271,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	TAILQ_INSERT_TAIL(uio_res_list, uio_res, next);
 
-	return (0);
+	return 0;
 }
 
 /* Scan one pci sysfs entry, and fill the devices list from it. */

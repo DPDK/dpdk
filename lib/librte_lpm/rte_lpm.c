@@ -371,7 +371,7 @@ rule_find(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth)
 	for (rule_index = rule_gindex; rule_index < last_rule; rule_index++) {
 		/* If rule is found return the rule index. */
 		if (lpm->rules_tbl[rule_index].ip == ip_masked)
-			return (rule_index);
+			return rule_index;
 	}
 
 	/* If rule is not found return -EINVAL. */

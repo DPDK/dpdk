@@ -131,7 +131,7 @@ nic_uio_mmap(struct cdev *cdev, vm_ooffset_t offset, vm_paddr_t *paddr,
 		int prot, vm_memattr_t *memattr)
 {
 	*paddr = offset;
-	return (0);
+	return 0;
 }
 
 static int
@@ -197,10 +197,10 @@ nic_uio_probe (device_t dev)
 			pci_get_device(dev) == devices[i].dev) {
 
 			device_set_desc(dev, "Intel(R) DPDK PCI Device");
-			return (BUS_PROBE_SPECIFIC);
+			return BUS_PROBE_SPECIFIC;
 		}
 
-	return (ENXIO);
+	return ENXIO;
 }
 
 static int
@@ -305,7 +305,7 @@ nic_uio_unload(void)
 static int
 nic_uio_shutdown(void)
 {
-	return (0);
+	return 0;
 }
 
 static int
@@ -326,5 +326,5 @@ nic_uio_modevent(module_t mod, int type, void *arg)
 		break;
 	}
 
-	return (0);
+	return 0;
 }

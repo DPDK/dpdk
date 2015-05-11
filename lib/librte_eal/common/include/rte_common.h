@@ -291,7 +291,7 @@ rte_pause(void) {}
 static inline uint32_t
 rte_bsf32(uint32_t v)
 {
-	return (__builtin_ctz(v));
+	return __builtin_ctz(v);
 }
 
 #ifndef offsetof
