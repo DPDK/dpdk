@@ -64,6 +64,12 @@
 #include <termios.h>
 #include <cmdline_rdline.h>
 
+/**
+ * @file
+ *
+ * Command line API
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -84,6 +90,21 @@ void cmdline_printf(const struct cmdline *cl, const char *fmt, ...)
 	__attribute__((format(printf,2,3)));
 int cmdline_in(struct cmdline *cl, const char *buf, int size);
 int cmdline_write_char(struct rdline *rdl, char c);
+
+/**
+ * This function is nonblocking equivalent of ``cmdline_interact()``. It polls
+ * *cl* for one character and interpret it. If return value is *RDLINE_EXITED*
+ * it mean that ``cmdline_quit()`` was invoked.
+ *
+ * @param cl
+ *   The command line object.
+ *
+ * @return
+ *   On success return object status - one of *enum rdline_status*.
+ *   On error return negative value.
+ */
+int cmdline_poll(struct cmdline *cl);
+
 void cmdline_interact(struct cmdline *cl);
 void cmdline_quit(struct cmdline *cl);
 

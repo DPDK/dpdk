@@ -69,3 +69,11 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_2.1 {
+	global:
+
+	cmdline_poll;
+
+	local: *;
+} DPDK_2.0;
