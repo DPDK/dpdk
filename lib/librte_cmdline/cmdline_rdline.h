@@ -84,6 +84,7 @@
  *   instance.
  */
 
+#include <stdio.h>
 #include <cmdline_cirbuf.h>
 #include <cmdline_vt100.h>
 

@@ -61,6 +61,9 @@
 #ifndef _CMDLINE_H_
 #define _CMDLINE_H_
 
+#include <termios.h>
+#include <cmdline_rdline.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -61,6 +61,8 @@
 #ifndef _CMDLINE_VT100_H_
 #define _CMDLINE_VT100_H_
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
