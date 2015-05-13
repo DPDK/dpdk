@@ -35,6 +35,7 @@ M: maintainers@dpdk.org
 Documentation (with overlaps)
 -------------
 M: Siobhan Butler <siobhan.a.butler@intel.com>
+M: John McNamara <john.mcnamara@intel.com>
 F: doc/
 
 
