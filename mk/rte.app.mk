@@ -141,7 +141,7 @@ _LDLIBS-y += $(EXECENV_LDLIBS)
 _LDLIBS-y += --end-group
 _LDLIBS-y += --no-whole-archive
 
-LDLIBS += $(_LDLIBS-y) $(CPU_LDLIBS)
+LDLIBS += $(_LDLIBS-y) $(CPU_LDLIBS) $(EXTRA_LDLIBS)
 
 .PHONY: all
 all: install

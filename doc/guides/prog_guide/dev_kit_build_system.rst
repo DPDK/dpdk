@@ -411,6 +411,8 @@ Variables that Can be Set/Overridden by the User in a Makefile or Command Line
 
 *   EXTRA_LDFLAGS: The content of this variable is appended after LDFLAGS when linking.
 
+*   EXTRA_LDLIBS: The content of this variable is appended after LDLIBS when linking.
+
 *   EXTRA_ASFLAGS: The content of this variable is appended after ASFLAGS when assembling.
 
 *   EXTRA_CPPFLAGS: The content of this variable is appended after CPPFLAGS when using a C preprocessor on assembly files.

@@ -13,6 +13,7 @@ Build variables
 	EXTRA_CPPFLAGS   preprocessor options
 	EXTRA_CFLAGS     compiler options
 	EXTRA_LDFLAGS    linker options
+	EXTRA_LDLIBS     linker library options
 	RTE_KERNELDIR    linux headers path
 	CROSS     toolchain prefix
 	V         verbose

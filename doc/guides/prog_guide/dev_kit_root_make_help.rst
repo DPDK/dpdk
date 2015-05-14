@@ -218,7 +218,7 @@ The following variables can be specified on the command line:
 
     Enable dependency debugging. This provides some useful information about why a target is built or not.
 
-*   EXTRA_CFLAGS=, EXTRA_LDFLAGS=, EXTRA_ASFLAGS=, EXTRA_CPPFLAGS=
+*   EXTRA_CFLAGS=, EXTRA_LDFLAGS=, EXTRA_LDLIBS=, EXTRA_ASFLAGS=, EXTRA_CPPFLAGS=
 
     Append specific compilation, link or asm flags.
 
