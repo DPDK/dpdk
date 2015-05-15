@@ -42,6 +42,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL) += null
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += pcap
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_RING) += ring
+DIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio
 
 include $(RTE_SDK)/mk/rte.sharelib.mk
 include $(RTE_SDK)/mk/rte.subdir.mk
