@@ -50,7 +50,7 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_ivshmem
 CFLAGS += -I$(RTE_SDK)/drivers/net/ring
 CFLAGS += -I$(RTE_SDK)/drivers/net/pcap
 CFLAGS += -I$(RTE_SDK)/drivers/net/af_packet
-CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_xenvirt
+CFLAGS += -I$(RTE_SDK)/drivers/net/xenvirt
 CFLAGS += $(WERROR_FLAGS) -O3
 
 # specific to linuxapp exec-env

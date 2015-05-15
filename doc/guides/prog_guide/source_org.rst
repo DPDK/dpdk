@@ -79,7 +79,6 @@ The lib directory contains::
     +-- librte_mempool      # memory pool manager (fixedsized objects)
     +-- librte_meter        # QoS metering library
     +-- librte_net          # various IP-related headers
-    +-- librte_pmd_xenvirt  # Xen virtio poll mode driver
     +-- librte_power        # power management library
     +-- librte_ring         # software rings (act as lockless FIFOs)
     +-- librte_sched        # QoS scheduler and dropper library
@@ -109,6 +108,7 @@ The drivers directory has a net subdirectory which contains::
     +-- ring               # ring poll mode driver
     +-- virtio             # virtio poll mode driver
     +-- vmxnet3            # VMXNET3 poll mode driver
+    +-- xenvirt            # Xen virtio poll mode driver
 
 Applications
 ------------
