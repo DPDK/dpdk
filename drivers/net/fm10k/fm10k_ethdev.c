@@ -1302,7 +1302,11 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 		return (-ENOMEM);
 	}
 	q->hw_ring = mz->addr;
+#ifdef RTE_LIBRTE_XEN_DOM0
+	q->hw_ring_phys_addr = rte_mem_phy2mch(mz->memseg_id, mz->phys_addr);
+#else
 	q->hw_ring_phys_addr = mz->phys_addr;
+#endif
 
 	dev->data->rx_queues[queue_id] = q;
 	return 0;
@@ -1448,7 +1452,11 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 		return (-ENOMEM);
 	}
 	q->hw_ring = mz->addr;
+#ifdef RTE_LIBRTE_XEN_DOM0
+	q->hw_ring_phys_addr = rte_mem_phy2mch(mz->memseg_id, mz->phys_addr);
+#else
 	q->hw_ring_phys_addr = mz->phys_addr;
+#endif
 
 	/*
 	 * allocate memory for the RS bit tracker. Enough slots to hold the
