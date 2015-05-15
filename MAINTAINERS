@@ -211,7 +211,7 @@ M: John W. Linville <linville@tuxdriver.com>
 F: drivers/net/af_packet/
 
 Cisco enic
-F: lib/librte_pmd_enic/
+F: drivers/net/enic/
 
 Intel e1000
 F: drivers/net/e1000/

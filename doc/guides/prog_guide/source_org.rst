@@ -107,6 +107,7 @@ The drivers directory has a net subdirectory which contains::
     +-- af_packet          # poll mode driver based on linux af_packet
     +-- bonding            # bonding poll mode driver
     +-- e1000              # 1GbE poll mode drivers (igb and em)
+    +-- enic               # Cisco VIC Ethernet NIC Poll-mode Driver
 
 Applications
 ------------
