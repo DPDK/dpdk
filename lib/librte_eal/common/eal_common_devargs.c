@@ -31,11 +31,15 @@
  */
 
 /* This file manages the list of devices and their arguments, as given
- * by the user at startup */
+ * by the user at startup
+ *
+ * Code here should not call rte_log since the EAL environment
+ * may not be initialized.
+ */
 
+#include <stdio.h>
 #include <string.h>
 
-#include <rte_log.h>
 #include <rte_pci.h>
 #include <rte_devargs.h>
 #include "eal_private.h"
@@ -54,11 +58,8 @@ rte_eal_parse_devargs_str(const char *devargs_str,
 		return -1;
 
 	*drvname = strdup(devargs_str);
-	if (drvname == NULL) {
-		RTE_LOG(ERR, EAL,
-			"cannot allocate temp memory for driver name\n");
+	if (drvname == NULL)
 		return -1;
-	}
 
 	/* set the first ',' to '\0' to split name and arguments */
 	sep = strchr(*drvname, ',');
@@ -70,8 +71,6 @@ rte_eal_parse_devargs_str(const char *devargs_str,
 	}
 
 	if (*drvargs == NULL) {
-		RTE_LOG(ERR, EAL,
-			"cannot allocate temp memory for driver arguments\n");
 		free(*drvname);
 		return -1;
 	}
@@ -88,10 +87,9 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 
 	/* use malloc instead of rte_malloc as it's called early at init */
 	devargs = malloc(sizeof(*devargs));
-	if (devargs == NULL) {
-		RTE_LOG(ERR, EAL, "cannot allocate devargs\n");
+	if (devargs == NULL)
 		goto fail;
-	}
+
 	memset(devargs, 0, sizeof(*devargs));
 	devargs->type = devtype;
 
@@ -103,19 +101,17 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	case RTE_DEVTYPE_BLACKLISTED_PCI:
 		/* try to parse pci identifier */
 		if (eal_parse_pci_BDF(buf, &devargs->pci.addr) != 0 &&
-		    eal_parse_pci_DomBDF(buf, &devargs->pci.addr) != 0) {
-			RTE_LOG(ERR, EAL, "invalid PCI identifier <%s>\n", buf);
+		    eal_parse_pci_DomBDF(buf, &devargs->pci.addr) != 0)
 			goto fail;
-		}
+
 		break;
 	case RTE_DEVTYPE_VIRTUAL:
 		/* save driver name */
 		ret = snprintf(devargs->virtual.drv_name,
 			       sizeof(devargs->virtual.drv_name), "%s", buf);
-		if (ret < 0 || ret >= (int)sizeof(devargs->virtual.drv_name)) {
-			RTE_LOG(ERR, EAL, "driver name too large: <%s>\n", buf);
+		if (ret < 0 || ret >= (int)sizeof(devargs->virtual.drv_name))
 			goto fail;
-		}
+
 		break;
 	}
 
