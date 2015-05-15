@@ -35,6 +35,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET) += af_packet
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += bonding
 DIRS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000
 DIRS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += enic
+DIRS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += fm10k
 
 include $(RTE_SDK)/mk/rte.sharelib.mk
 include $(RTE_SDK)/mk/rte.subdir.mk

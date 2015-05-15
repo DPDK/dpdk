@@ -232,7 +232,7 @@ F: doc/guides/nics/intel_vf.rst
 
 Intel fm10k
 M: Jing Chen <jing.d.chen@intel.com>
-F: lib/librte_pmd_fm10k/
+F: drivers/net/fm10k/
 
 Mellanox mlx4
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>

@@ -43,7 +43,6 @@ DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
 DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ether
 DIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += librte_pmd_ixgbe
 DIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += librte_pmd_i40e
-DIRS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += librte_pmd_fm10k
 DIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += librte_pmd_mlx4
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_RING) += librte_pmd_ring
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += librte_pmd_pcap
