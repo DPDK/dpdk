@@ -76,10 +76,10 @@ endif
 #
 # Add extra flags for base driver source files to disable warnings in them
 #
-BASE_DRIVER_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(RTE_SDK)/lib/librte_pmd_fm10k/base/*.c)))
+BASE_DRIVER_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(SRCDIR)/base/*.c)))
 $(foreach obj, $(BASE_DRIVER_OBJS), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
 
-VPATH += $(RTE_SDK)/lib/librte_pmd_fm10k/base
+VPATH += $(SRCDIR)/base
 
 #
 # all source are stored in SRCS-y

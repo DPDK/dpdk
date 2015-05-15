@@ -64,7 +64,7 @@ CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
 
 endif
 
-VPATH += $(RTE_SDK)/lib/librte_pmd_vmxnet3/vmxnet3
+VPATH += $(SRCDIR)/vmxnet3
 
 EXPORT_MAP := rte_pmd_vmxnet3_version.map
 

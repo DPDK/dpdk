@@ -41,12 +41,12 @@ EXPORT_MAP := rte_pmd_enic_version.map
 
 LIBABIVER := 1
 
-CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_enic/vnic/
-CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_enic/
+CFLAGS += -I$(SRCDIR)/vnic/
+CFLAGS += -I$(SRCDIR)
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -Wno-strict-aliasing
 
-VPATH += $(RTE_SDK)/lib/librte_pmd_enic/src
+VPATH += $(SRCDIR)/src
 
 #
 # all source are stored in SRCS-y
