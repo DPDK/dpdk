@@ -79,7 +79,6 @@ The lib directory contains::
     +-- librte_mempool      # memory pool manager (fixedsized objects)
     +-- librte_meter        # QoS metering library
     +-- librte_net          # various IP-related headers
-    +-- librte_pmd_mlx4     # Mellanox ConnectX-3 poll mode driver
     +-- librte_pmd_pcap     # PCAP poll mode driver
     +-- librte_pmd_ring     # ring poll mode driver
     +-- librte_pmd_virtio   # virtio poll mode driver
@@ -108,6 +107,7 @@ The drivers directory has a net subdirectory which contains::
     +-- fm10k              # Host interface PMD driver for FM10000 Series
     +-- i40e               # 40GbE poll mode driver
     +-- ixgbe              # 10GbE poll mode driver
+    +-- mlx4               # Mellanox ConnectX-3 poll mode driver
 
 Applications
 ------------

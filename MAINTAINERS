@@ -236,7 +236,7 @@ F: drivers/net/fm10k/
 
 Mellanox mlx4
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
-F: lib/librte_pmd_mlx4/
+F: drivers/net/mlx4/
 F: doc/guides/nics/mlx4.rst
 
 RedHat virtio
