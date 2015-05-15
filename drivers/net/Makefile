@@ -40,6 +40,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e
 DIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe
 DIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL) += null
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += pcap
 
 include $(RTE_SDK)/mk/rte.sharelib.mk
 include $(RTE_SDK)/mk/rte.subdir.mk

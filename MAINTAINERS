@@ -256,7 +256,7 @@ F: doc/guides/nics/vmxnet3.rst
 PCAP PMD
 M: Nicolás Pernas Maradei <nicolas.pernas.maradei@emutex.com>
 M: John McNamara <john.mcnamara@intel.com>
-F: lib/librte_pmd_pcap/
+F: drivers/net/pcap/
 F: doc/guides/nics/pcap_ring.rst
 
 Ring PMD
