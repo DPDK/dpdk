@@ -79,7 +79,6 @@ The lib directory contains::
     +-- librte_mempool      # memory pool manager (fixedsized objects)
     +-- librte_meter        # QoS metering library
     +-- librte_net          # various IP-related headers
-    +-- librte_pmd_e1000    # 1GbE poll mode drivers (igb and em)
     +-- librte_pmd_fm10k    # Host interface PMD driver for FM10000 Series
     +-- librte_pmd_ixgbe    # 10GbE poll mode driver
     +-- librte_pmd_i40e     # 40GbE poll mode driver
@@ -107,6 +106,7 @@ The drivers directory has a net subdirectory which contains::
     drivers/net
     +-- af_packet          # poll mode driver based on linux af_packet
     +-- bonding            # bonding poll mode driver
+    +-- e1000              # 1GbE poll mode drivers (igb and em)
 
 Applications
 ------------

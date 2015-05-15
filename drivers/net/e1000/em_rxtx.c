@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -70,9 +70,9 @@
 #include <rte_string_fns.h>
 
 #include "e1000_logs.h"
-#include "e1000/e1000_api.h"
+#include "base/e1000_api.h"
 #include "e1000_ethdev.h"
-#include "e1000/e1000_osdep.h"
+#include "base/e1000_osdep.h"
 
 #define	E1000_TXD_VLAN_SHIFT	16
 

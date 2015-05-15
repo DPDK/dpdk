@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -49,9 +49,9 @@
 #include <rte_malloc.h>
 #include <rte_random.h>
 
-#include "e1000/e1000_defines.h"
-#include "e1000/e1000_regs.h"
-#include "e1000/e1000_hw.h"
+#include "base/e1000_defines.h"
+#include "base/e1000_regs.h"
+#include "base/e1000_hw.h"
 #include "e1000_ethdev.h"
 
 static inline uint16_t

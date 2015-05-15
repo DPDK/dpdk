@@ -214,7 +214,7 @@ Cisco enic
 F: lib/librte_pmd_enic/
 
 Intel e1000
-F: lib/librte_pmd_e1000/
+F: drivers/net/e1000/
 F: doc/guides/nics/e1000em.rst
 F: doc/guides/nics/intel_vf.rst
 

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -69,7 +69,7 @@
 #include <rte_string_fns.h>
 
 #include "e1000_logs.h"
-#include "e1000/e1000_api.h"
+#include "base/e1000_api.h"
 #include "e1000_ethdev.h"
 
 /* Bit Mask to indicate what bits required for building TX context */

@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -60,10 +60,10 @@ endif
 # Add extra flags for base driver files (also known as shared code)
 # to disable warnings in them
 #
-BASE_DRIVER_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(SRCDIR)/e1000/*.c)))
+BASE_DRIVER_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(SRCDIR)/base/*.c)))
 $(foreach obj, $(BASE_DRIVER_OBJS), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
 
-VPATH += $(SRCDIR)/e1000
+VPATH += $(SRCDIR)/base
 
 #
 # all source are stored in SRCS-y
