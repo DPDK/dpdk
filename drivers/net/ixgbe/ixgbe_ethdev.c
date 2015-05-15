@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -62,9 +62,9 @@
 #include <rte_dev.h>
 
 #include "ixgbe_logs.h"
-#include "ixgbe/ixgbe_api.h"
-#include "ixgbe/ixgbe_vf.h"
-#include "ixgbe/ixgbe_common.h"
+#include "base/ixgbe_api.h"
+#include "base/ixgbe_vf.h"
+#include "base/ixgbe_common.h"
 #include "ixgbe_ethdev.h"
 #include "ixgbe_bypass.h"
 #include "ixgbe_rxtx.h"
@@ -461,7 +461,7 @@ rte_ixgbe_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 }
 
 /*
- * This function is the same as ixgbe_is_sfp() in ixgbe/ixgbe.h.
+ * This function is the same as ixgbe_is_sfp() in base/ixgbe.h.
  */
 static inline int
 ixgbe_is_sfp(struct ixgbe_hw *hw)
@@ -509,7 +509,7 @@ ixgbe_enable_intr(struct rte_eth_dev *dev)
 }
 
 /*
- * This function is based on ixgbe_disable_intr() in ixgbe/ixgbe.h.
+ * This function is based on ixgbe_disable_intr() in base/ixgbe.h.
  */
 static void
 ixgbe_disable_intr(struct ixgbe_hw *hw)
@@ -710,7 +710,7 @@ ixgbe_swfw_lock_reset(struct ixgbe_hw *hw)
 }
 
 /*
- * This function is based on code in ixgbe_attach() in ixgbe/ixgbe.c.
+ * This function is based on code in ixgbe_attach() in base/ixgbe.c.
  * It returns 0 on success.
  */
 static int
@@ -1740,7 +1740,7 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 }
 
 /*
- * This function is based on ixgbe_update_stats_counters() in ixgbe/ixgbe.c
+ * This function is based on ixgbe_update_stats_counters() in base/ixgbe.c
  */
 static void
 ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)

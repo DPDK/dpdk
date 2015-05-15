@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -31,11 +31,11 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "ixgbe/ixgbe_type.h"
-#include "ixgbe/ixgbe_82599.h"
-#include "ixgbe/ixgbe_api.h"
-#include "ixgbe/ixgbe_common.h"
-#include "ixgbe/ixgbe_phy.h"
+#include "base/ixgbe_type.h"
+#include "base/ixgbe_82599.h"
+#include "base/ixgbe_api.h"
+#include "base/ixgbe_common.h"
+#include "base/ixgbe_phy.h"
 #include "ixgbe_bypass_defines.h"
 #include "ixgbe_bypass.h"
 

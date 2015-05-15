@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   Copyright 2014 6WIND S.A.
  *   All rights reserved.
  *
@@ -73,11 +73,11 @@
 #include <rte_ip.h>
 
 #include "ixgbe_logs.h"
-#include "ixgbe/ixgbe_api.h"
-#include "ixgbe/ixgbe_vf.h"
+#include "base/ixgbe_api.h"
+#include "base/ixgbe_vf.h"
 #include "ixgbe_ethdev.h"
-#include "ixgbe/ixgbe_dcb.h"
-#include "ixgbe/ixgbe_common.h"
+#include "base/ixgbe_dcb.h"
+#include "base/ixgbe_common.h"
 #include "ixgbe_rxtx.h"
 
 /* Bit Mask to indicate what bits required for building TX context */

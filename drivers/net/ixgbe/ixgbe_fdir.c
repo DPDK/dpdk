@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -45,8 +45,8 @@
 #include <rte_ethdev.h>
 
 #include "ixgbe_logs.h"
-#include "ixgbe/ixgbe_api.h"
-#include "ixgbe/ixgbe_common.h"
+#include "base/ixgbe_api.h"
+#include "base/ixgbe_common.h"
 #include "ixgbe_ethdev.h"
 
 /* To get PBALLOC (Packet Buffer Allocation) bits from FDIRCTRL value */
@@ -137,7 +137,7 @@ static void ixgbe_fdir_stats_get(struct rte_eth_dev *dev,
 			struct rte_eth_fdir_stats *fdir_stats);
 
 /**
- * This function is based on ixgbe_fdir_enable_82599() in ixgbe/ixgbe_82599.c.
+ * This function is based on ixgbe_fdir_enable_82599() in base/ixgbe_82599.c.
  * It adds extra configuration of fdirctrl that is common for all filter types.
  *
  *  Initialize Flow Director control registers
@@ -281,7 +281,7 @@ reverse_fdir_bitmasks(uint16_t hi_dword, uint16_t lo_dword)
 }
 
 /*
- * This is based on ixgbe_fdir_set_input_mask_82599() in ixgbe/ixgbe_82599.c,
+ * This is based on ixgbe_fdir_set_input_mask_82599() in base/ixgbe_82599.c,
  * but makes use of the rte_fdir_masks structure to see which bits to set.
  */
 static int
@@ -743,7 +743,7 @@ atr_compute_sig_hash_82599(union ixgbe_atr_input *input,
 
 /*
  * This is based on ixgbe_fdir_write_perfect_filter_82599() in
- * ixgbe/ixgbe_82599.c, with the ability to set extra flags in FDIRCMD register
+ * base/ixgbe_82599.c, with the ability to set extra flags in FDIRCMD register
  * added, and IPv6 support also added. The hash value is also pre-calculated
  * as the pballoc value is needed to do it.
  */
@@ -800,7 +800,7 @@ fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 
 /**
  * This function is based on ixgbe_atr_add_signature_filter_82599() in
- * ixgbe/ixgbe_82599.c, but uses a pre-calculated hash value. It also supports
+ * base/ixgbe_82599.c, but uses a pre-calculated hash value. It also supports
  * setting extra fields in the FDIRCMD register, and removes the code that was
  * verifying the flow_type field. According to the documentation, a flow type of
  * 00 (i.e. not TCP, UDP, or SCTP) is not supported, however it appears to
@@ -842,7 +842,7 @@ fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 
 /*
  * This is based on ixgbe_fdir_erase_perfect_filter_82599() in
- * ixgbe/ixgbe_82599.c. It is modified to take in the hash as a parameter so
+ * base/ixgbe_82599.c. It is modified to take in the hash as a parameter so
  * that it can be used for removing signature and perfect filters.
  */
 static int

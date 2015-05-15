@@ -221,7 +221,7 @@ F: doc/guides/nics/intel_vf.rst
 Intel ixgbe
 M: Helin Zhang <helin.zhang@intel.com>
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
-F: lib/librte_pmd_ixgbe/
+F: drivers/net/ixgbe/
 F: doc/guides/nics/ixgbe.rst
 F: doc/guides/nics/intel_vf.rst
 

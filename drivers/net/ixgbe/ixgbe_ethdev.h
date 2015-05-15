@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -33,9 +33,9 @@
 
 #ifndef _IXGBE_ETHDEV_H_
 #define _IXGBE_ETHDEV_H_
-#include "ixgbe/ixgbe_dcb.h"
-#include "ixgbe/ixgbe_dcb_82599.h"
-#include "ixgbe/ixgbe_dcb_82598.h"
+#include "base/ixgbe_dcb.h"
+#include "base/ixgbe_dcb_82599.h"
+#include "base/ixgbe_dcb_82598.h"
 #include "ixgbe_bypass.h"
 
 /* need update link, bit flag */
