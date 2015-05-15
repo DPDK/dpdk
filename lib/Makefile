@@ -41,7 +41,6 @@ DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += librte_timer
 DIRS-$(CONFIG_RTE_LIBRTE_CFGFILE) += librte_cfgfile
 DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
 DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ether
-DIRS-$(CONFIG_RTE_LIBRTE_VMXNET3_PMD) += librte_pmd_vmxnet3
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += librte_pmd_xenvirt
 DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += librte_vhost
 DIRS-$(CONFIG_RTE_LIBRTE_HASH) += librte_hash
