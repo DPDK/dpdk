@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,6 @@ export RTE_SDK
 # directory list
 #
 
-ROOTDIRS-y := lib app
+ROOTDIRS-y := lib drivers app
 
 include $(RTE_SDK)/mk/rte.sdkroot.mk

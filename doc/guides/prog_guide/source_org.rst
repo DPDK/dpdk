@@ -95,6 +95,18 @@ The lib directory contains::
     +-- librte_sched        # QoS scheduler and dropper library
     +-- librte_timer        # timer library
 
+Drivers
+-------
+
+Drivers are special libraries which provide poll-mode driver implementations for
+devices - either hardware devices or pseudo/virtual devices. They are contained
+in the "drivers" subdirectory, classified by type, and each compiles to a
+library with the format "librte_pmd_X.a" where "X" is the driver name.
+
+The drivers directory has a net subdirectory which contains::
+
+    drivers/net
+
 Applications
 ------------
 

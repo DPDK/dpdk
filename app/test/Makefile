@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -159,7 +159,7 @@ endif
 endif
 
 # this application needs libraries first
-DEPDIRS-y += lib
+DEPDIRS-y += lib drivers
 
 # Link against shared libraries when needed
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_BOND),y)

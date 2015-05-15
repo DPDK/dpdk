@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -66,7 +66,7 @@ endif
 CFLAGS_cmdline.o := -D_GNU_SOURCE
 
 # this application needs libraries first
-DEPDIRS-y += lib
+DEPDIRS-y += lib drivers
 
 include $(RTE_SDK)/mk/rte.app.mk
 

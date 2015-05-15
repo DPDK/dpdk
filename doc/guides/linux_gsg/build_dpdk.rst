@@ -45,11 +45,13 @@ First, uncompress the archive and move to the uncompressed DPDK source directory
    user@host:~$ unzip DPDK-<version>.zip
    user@host:~$ cd DPDK-<version>
    user@host:~/DPDK-<version>$ ls
-   app/   config/   examples/   lib/   LICENSE.GPL   LICENSE.LGPL   Makefile   mk/   scripts/   tools/
+   app/   config/   drivers/   examples/   lib/   LICENSE.GPL   LICENSE.LGPL   Makefile   mk/   scripts/   tools/
 
 The DPDK is composed of several directories:
 
 *   lib: Source code of DPDK libraries
+
+*   drivers: Source code of DPDK poll-mode drivers
 
 *   app: Source code of DPDK applications (automatic tests)
 
@@ -153,9 +155,9 @@ In addition, the make clean command can be used to remove any existing compiled 
 Browsing the Installed DPDK Environment Target
 ----------------------------------------------
 
-Once a target is created it contains all libraries and header files for the DPDK environment that are required to build customer applications.
+Once a target is created it contains all libraries, including poll-mode drivers, and header files for the DPDK environment that are required to build customer applications.
 In addition, the test and testpmd applications are built under the build/app directory, which may be used for testing.
-A kmod  directory is also present that contains kernel modules which may be loaded if needed:
+A kmod  directory is also present that contains kernel modules which may be loaded if needed.
 
 .. code-block:: console
 
