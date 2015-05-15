@@ -205,7 +205,7 @@ clear_hugedir(const char * hugedir)
 	/* open directory */
 	dir = opendir(hugedir);
 	if (!dir) {
-		RTE_LOG(INFO, EAL, "Unable to open hugepage directory %s\n",
+		RTE_LOG(ERR, EAL, "Unable to open hugepage directory %s\n",
 				hugedir);
 		goto error;
 	}
@@ -213,7 +213,7 @@ clear_hugedir(const char * hugedir)
 
 	dirent = readdir(dir);
 	if (!dirent) {
-		RTE_LOG(INFO, EAL, "Unable to read hugepage directory %s\n",
+		RTE_LOG(ERR, EAL, "Unable to read hugepage directory %s\n",
 				hugedir);
 		goto error;
 	}
@@ -253,7 +253,7 @@ error:
 	if (dir)
 		closedir(dir);
 
-	RTE_LOG(INFO, EAL, "Error while clearing hugepage dir: %s\n",
+	RTE_LOG(ERR, EAL, "Error while clearing hugepage dir: %s\n",
 		strerror(errno));
 
 	return -1;
@@ -308,7 +308,7 @@ eal_hugepage_info_init(void)
 
 			num_pages = get_num_hugepages(dirent->d_name);
 			if (num_pages > 0)
-				RTE_LOG(INFO, EAL,
+				RTE_LOG(NOTICE, EAL,
 					"%" PRIu32 " hugepages of size "
 					"%" PRIu64 " reserved, but no mounted "
 					"hugetlbfs found for that size\n",

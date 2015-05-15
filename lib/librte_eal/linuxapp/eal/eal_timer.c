@@ -188,7 +188,7 @@ rte_eal_hpet_init(int make_default)
 	int fd, ret;
 
 	if (internal_config.no_hpet) {
-		RTE_LOG(INFO, EAL, "HPET is disabled\n");
+		RTE_LOG(NOTICE, EAL, "HPET is disabled\n");
 		return -1;
 	}
 

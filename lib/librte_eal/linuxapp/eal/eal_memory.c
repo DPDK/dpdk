@@ -245,7 +245,7 @@ get_virtual_area(size_t *size, size_t hugepage_sz)
 	}
 	else addr = NULL;
 
-	RTE_LOG(INFO, EAL, "Ask a virtual area of 0x%zx bytes\n", *size);
+	RTE_LOG(DEBUG, EAL, "Ask a virtual area of 0x%zx bytes\n", *size);
 
 	fd = open("/dev/zero", O_RDONLY);
 	if (fd < 0){
@@ -261,7 +261,8 @@ get_virtual_area(size_t *size, size_t hugepage_sz)
 
 	if (addr == MAP_FAILED) {
 		close(fd);
-		RTE_LOG(INFO, EAL, "Cannot get a virtual area\n");
+		RTE_LOG(ERR, EAL, "Cannot get a virtual area: %s\n",
+			strerror(errno));
 		return NULL;
 	}
 
@@ -274,7 +275,7 @@ get_virtual_area(size_t *size, size_t hugepage_sz)
 	aligned_addr &= (~(hugepage_sz - 1));
 	addr = (void *)(aligned_addr);
 
-	RTE_LOG(INFO, EAL, "Virtual area found at %p (size = 0x%zx)\n",
+	RTE_LOG(DEBUG, EAL, "Virtual area found at %p (size = 0x%zx)\n",
 		addr, *size);
 
 	/* increment offset */
@@ -610,7 +611,7 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 
 	f = fopen("/proc/self/numa_maps", "r");
 	if (f == NULL) {
-		RTE_LOG(INFO, EAL, "cannot open /proc/self/numa_maps,"
+		RTE_LOG(NOTICE, EAL, "cannot open /proc/self/numa_maps,"
 				" consider that all memory is in socket_id 0\n");
 		return 0;
 	}
@@ -1007,7 +1008,7 @@ calc_num_pages_per_socket(uint64_t * memory,
 					0x100000);
 			available = requested -
 					((unsigned) (memory[socket] / 0x100000));
-			RTE_LOG(INFO, EAL, "Not enough memory available on socket %u! "
+			RTE_LOG(ERR, EAL, "Not enough memory available on socket %u! "
 					"Requested: %uMB, available: %uMB\n", socket,
 					requested, available);
 			return -1;
@@ -1018,7 +1019,7 @@ calc_num_pages_per_socket(uint64_t * memory,
 	if (total_mem > 0) {
 		requested = (unsigned) (internal_config.memory / 0x100000);
 		available = requested - (unsigned) (total_mem / 0x100000);
-		RTE_LOG(INFO, EAL, "Not enough memory available! Requested: %uMB,"
+		RTE_LOG(ERR, EAL, "Not enough memory available! Requested: %uMB,"
 				" available: %uMB\n", requested, available);
 		return -1;
 	}
@@ -1227,13 +1228,13 @@ rte_eal_hugepage_init(void)
 	for (i = 0; i < (int) internal_config.num_hugepage_sizes; i++) {
 		for (j = 0; j < RTE_MAX_NUMA_NODES; j++) {
 			if (used_hp[i].num_pages[j] > 0) {
-				RTE_LOG(INFO, EAL,
-						"Requesting %u pages of size %uMB"
-						" from socket %i\n",
-						used_hp[i].num_pages[j],
-						(unsigned)
-							(used_hp[i].hugepage_sz / 0x100000),
-						j);
+				RTE_LOG(DEBUG, EAL,
+					"Requesting %u pages of size %uMB"
+					" from socket %i\n",
+					used_hp[i].num_pages[j],
+					(unsigned)
+					(used_hp[i].hugepage_sz / 0x100000),
+					j);
 			}
 		}
 	}

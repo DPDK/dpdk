@@ -899,7 +899,7 @@ pci_vfio_enable(void)
 	if (vfio_cfg.vfio_container_fd != -1)
 		vfio_cfg.vfio_enabled = 1;
 	else
-		RTE_LOG(INFO, EAL, "VFIO support could not be initialized\n");
+		RTE_LOG(NOTICE, EAL, "VFIO support could not be initialized\n");
 
 	return 0;
 }
