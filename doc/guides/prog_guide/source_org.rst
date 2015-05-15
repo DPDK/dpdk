@@ -106,6 +106,7 @@ library with the format "librte_pmd_X.a" where "X" is the driver name.
 The drivers directory has a net subdirectory which contains::
 
     drivers/net
+    +-- af_packet          # poll mode driver based on linux af_packet
 
 Applications
 ------------

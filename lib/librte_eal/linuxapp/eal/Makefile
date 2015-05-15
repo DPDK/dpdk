@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -49,7 +49,7 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_ether
 CFLAGS += -I$(RTE_SDK)/lib/librte_ivshmem
 CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_ring
 CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_pcap
-CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_af_packet
+CFLAGS += -I$(RTE_SDK)/drivers/net/af_packet
 CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_xenvirt
 CFLAGS += $(WERROR_FLAGS) -O3
 

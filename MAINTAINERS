@@ -208,7 +208,7 @@ F: doc/guides/sample_app_ug/kernel_nic_interface.rst
 
 Linux AF_PACKET
 M: John W. Linville <linville@tuxdriver.com>
-F: lib/librte_pmd_af_packet/
+F: drivers/net/af_packet/
 
 Cisco enic
 F: lib/librte_pmd_enic/
