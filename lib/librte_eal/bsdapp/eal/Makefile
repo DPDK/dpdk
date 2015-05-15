@@ -42,7 +42,7 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_ring
 CFLAGS += -I$(RTE_SDK)/lib/librte_mempool
 CFLAGS += -I$(RTE_SDK)/lib/librte_malloc
 CFLAGS += -I$(RTE_SDK)/lib/librte_ether
-CFLAGS += -I$(RTE_SDK)/lib/librte_pmd_ring
+CFLAGS += -I$(RTE_SDK)/drivers/net/ring
 CFLAGS += -I$(RTE_SDK)/drivers/net/pcap
 CFLAGS += $(WERROR_FLAGS) -O3
 

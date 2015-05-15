@@ -261,7 +261,7 @@ F: doc/guides/nics/pcap_ring.rst
 
 Ring PMD
 M: Bruce Richardson <bruce.richardson@intel.com>
-F: lib/librte_pmd_ring/
+F: drivers/net/ring/
 F: doc/guides/nics/pcap_ring.rst
 F: app/test/test_pmd_ring.c
 
