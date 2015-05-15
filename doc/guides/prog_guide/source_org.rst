@@ -108,6 +108,7 @@ The drivers directory has a net subdirectory which contains::
     +-- i40e               # 40GbE poll mode driver
     +-- ixgbe              # 10GbE poll mode driver
     +-- mlx4               # Mellanox ConnectX-3 poll mode driver
+    +-- null               # NULL poll mode driver for testing
 
 Applications
 ------------

@@ -267,7 +267,7 @@ F: app/test/test_pmd_ring.c
 
 Null PMD
 M: Tetsuya Mukawa <mukawa@igel.co.jp>
-F: lib/librte_pmd_null/
+F: drivers/net/null/
 
 
 Packet processing
