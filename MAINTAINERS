@@ -192,7 +192,7 @@ Drivers
 
 Link bonding
 M: Declan Doherty <declan.doherty@intel.com>
-F: lib/librte_pmd_bond/
+F: drivers/net/bonding/
 F: doc/guides/prog_guide/link_bonding_poll_mode_drv_lib.rst
 F: app/test/test_link_bonding*
 F: examples/bond/

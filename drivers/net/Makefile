@@ -32,6 +32,7 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET) += af_packet
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += bonding
 
 include $(RTE_SDK)/mk/rte.sharelib.mk
 include $(RTE_SDK)/mk/rte.subdir.mk
