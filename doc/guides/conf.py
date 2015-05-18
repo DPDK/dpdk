@@ -29,6 +29,9 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import subprocess
+from docutils import nodes
+from distutils.version import LooseVersion
+from sphinx import __version__ as sphinx_version
 from sphinx.highlighting import PygmentsBridge
 from pygments.formatters.latex import LatexFormatter
 
@@ -80,3 +83,66 @@ class CustomLatexFormatter(LatexFormatter):
 
 # Replace the default latex formatter.
 PygmentsBridge.latex_formatter = CustomLatexFormatter
+
+######## :numref: fallback ########
+# The following hook functions add some simple handling for the :numref:
+# directive for Sphinx versions prior to 1.3.1. The functions replace the
+# :numref: reference with a link to the target (for all Sphinx doc types).
+# It doesn't try to label figures/tables.
+
+def numref_role(reftype, rawtext, text, lineno, inliner):
+    """
+    Add a Sphinx role to handle numref references. Note, we can't convert
+    the link here because the doctree isn't build and the target information
+    isn't available.
+    """
+    # Add an identifier to distinguish numref from other references.
+    newnode = nodes.reference('',
+                              '',
+                              refuri='_local_numref_#%s' % text,
+                              internal=True)
+    return [newnode], []
+
+def process_numref(app, doctree, from_docname):
+    """
+    Process the numref nodes once the doctree has been built and prior to
+    writing the files. The processing involves replacing the numref with a
+    link plus text to indicate if it is a Figure or Table link.
+    """
+
+    # Iterate over the reference nodes in the doctree.
+    for node in doctree.traverse(nodes.reference):
+        target = node.get('refuri', '')
+
+        # Look for numref nodes.
+        if target.startswith('_local_numref_#'):
+            target = target.replace('_local_numref_#', '')
+
+            # Get the target label and link information from the Sphinx env.
+            data = app.builder.env.domains['std'].data
+            docname, label, _ = data['labels'].get(target, ('', '', ''))
+            relative_url = app.builder.get_relative_uri(from_docname, docname)
+
+            # Add a text label to the link.
+            if target.startswith('figure'):
+                caption = 'Figure'
+            elif target.startswith('table'):
+                caption = 'Table'
+            else:
+                caption = 'Link'
+
+            # New reference node with the updated link information.
+            newnode = nodes.reference('',
+                                      caption,
+                                      refuri='%s#%s' % (relative_url, label),
+                                      internal=True)
+            node.replace_self(newnode)
+
+def setup(app):
+    if LooseVersion(sphinx_version) < LooseVersion('1.3.1'):
+        print('Upgrade sphinx to version >= 1.3.1 for '
+              'improved Figure/Table number handling.')
+        # Add a role to handle :numref: references.
+        app.add_role('numref', numref_role)
+        # Process the numref references once the doctree has been created.
+        app.connect('doctree-resolved', process_numref)
