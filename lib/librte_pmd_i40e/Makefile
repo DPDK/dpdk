@@ -48,7 +48,7 @@ LIBABIVER := 1
 # to disable warnings
 #
 ifeq ($(CC), icc)
-CFLAGS_BASE_DRIVER = -wd593
+CFLAGS_BASE_DRIVER = -wd593 -wd188
 else ifeq ($(CC), clang)
 CFLAGS_BASE_DRIVER += -Wno-sign-compare
 CFLAGS_BASE_DRIVER += -Wno-unused-value
