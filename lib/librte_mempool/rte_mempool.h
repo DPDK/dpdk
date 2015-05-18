@@ -468,7 +468,7 @@ typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
  *   If cache_size is non-zero, the rte_mempool library will try to
  *   limit the accesses to the common lockless pool, by maintaining a
  *   per-lcore object cache. This argument must be lower or equal to
- *   CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE. It is advised to choose
+ *   CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE and n / 1.5. It is advised to choose
  *   cache_size to have "n modulo cache_size == 0": if this is
  *   not the case, some elements will always stay in the pool and will
  *   never be used. The access to the per-lcore table is of course

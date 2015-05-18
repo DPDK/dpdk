@@ -68,6 +68,8 @@ static struct rte_tailq_elem rte_mempool_tailq = {
 EAL_REGISTER_TAILQ(rte_mempool_tailq)
 
 #define CACHE_FLUSHTHRESH_MULTIPLIER 1.5
+#define CALC_CACHE_FLUSHTHRESH(c)	\
+	((typeof(c))((c) * CACHE_FLUSHTHRESH_MULTIPLIER))
 
 /*
  * return the greatest common divisor between a and b (fast algorithm)
@@ -440,7 +442,8 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	mempool_list = RTE_TAILQ_CAST(rte_mempool_tailq.head, rte_mempool_list);
 
 	/* asked cache too big */
-	if (cache_size > RTE_MEMPOOL_CACHE_MAX_SIZE) {
+	if (cache_size > RTE_MEMPOOL_CACHE_MAX_SIZE ||
+	    CALC_CACHE_FLUSHTHRESH(cache_size) > n) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -565,8 +568,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	mp->header_size = objsz.header_size;
 	mp->trailer_size = objsz.trailer_size;
 	mp->cache_size = cache_size;
-	mp->cache_flushthresh = (uint32_t)
-		(cache_size * CACHE_FLUSHTHRESH_MULTIPLIER);
+	mp->cache_flushthresh = CALC_CACHE_FLUSHTHRESH(cache_size);
 	mp->private_data_size = private_data_size;
 
 	/* calculate address of the first element for continuous mempool. */
