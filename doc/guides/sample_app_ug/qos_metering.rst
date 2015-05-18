@@ -140,29 +140,29 @@ The traffic meter parameters are configured in the application source code with 
 Assuming the input traffic is generated at line rate and all packets are 64 bytes Ethernet frames (IPv4 packet size of 46 bytes)
 and green, the expected output traffic should be marked as shown in the following table:
 
-.. _table_1:
+.. _table_qos_metering_1:
 
-**Table 1. Output Traffic Marking**
+.. table:: Output Traffic Marking
 
-+-------------+------------------+-------------------+----------------+
-| **Mode**    | **Green (Mpps)** | **Yellow (Mpps)** | **Red (Mpps)** |
-|             |                  |                   |                |
-+=============+==================+===================+================+
-| srTCM blind | 1                | 1                 | 12.88          |
-|             |                  |                   |                |
-+-------------+------------------+-------------------+----------------+
-| srTCM color | 1                | 1                 | 12.88          |
-|             |                  |                   |                |
-+-------------+------------------+-------------------+----------------+
-| trTCM blind | 1                | 0.5               | 13.38          |
-|             |                  |                   |                |
-+-------------+------------------+-------------------+----------------+
-| trTCM color | 1                | 0.5               | 13.38          |
-|             |                  |                   |                |
-+-------------+------------------+-------------------+----------------+
-| FWD         | 14.88            | 0                 | 0              |
-|             |                  |                   |                |
-+-------------+------------------+-------------------+----------------+
+   +-------------+------------------+-------------------+----------------+
+   | **Mode**    | **Green (Mpps)** | **Yellow (Mpps)** | **Red (Mpps)** |
+   |             |                  |                   |                |
+   +=============+==================+===================+================+
+   | srTCM blind | 1                | 1                 | 12.88          |
+   |             |                  |                   |                |
+   +-------------+------------------+-------------------+----------------+
+   | srTCM color | 1                | 1                 | 12.88          |
+   |             |                  |                   |                |
+   +-------------+------------------+-------------------+----------------+
+   | trTCM blind | 1                | 0.5               | 13.38          |
+   |             |                  |                   |                |
+   +-------------+------------------+-------------------+----------------+
+   | trTCM color | 1                | 0.5               | 13.38          |
+   |             |                  |                   |                |
+   +-------------+------------------+-------------------+----------------+
+   | FWD         | 14.88            | 0                 | 0              |
+   |             |                  |                   |                |
+   +-------------+------------------+-------------------+----------------+
 
 To set up the policing scheme as desired, it is necessary to modify the main.h source file,
 where this policy is implemented as a static structure, as follows:

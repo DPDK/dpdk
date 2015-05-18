@@ -134,8 +134,8 @@ Sample Applications User Guide
 
 **Tables**
 
-:ref:`Table 1.Output Traffic Marking <table_1>`
+:numref:`table_qos_metering_1` :ref:`table_qos_metering_1`
 
-:ref:`Table 2.Entity Types <table_2>`
+:numref:`table_qos_scheduler_1` :ref:`table_qos_scheduler_1`
 
-:ref:`Table 3.Table Types <table_3>`
+:numref:`table_test_pipeline_1` :ref:`table_test_pipeline_1`

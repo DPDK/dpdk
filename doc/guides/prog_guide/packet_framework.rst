@@ -82,49 +82,49 @@ Port Library Design
 Port Types
 ~~~~~~~~~~
 
-Table 19 is a non-exhaustive list of ports that can be implemented with the Packet Framework.
+:numref:`table_qos_19` is a non-exhaustive list of ports that can be implemented with the Packet Framework.
 
-.. _pg_table_19:
+.. _table_qos_19:
 
-**Table 19 Port Types**
+.. table:: Port Types
 
-+---+------------------+---------------------------------------------------------------------------------------+
-| # | Port type        | Description                                                                           |
-|   |                  |                                                                                       |
-+===+==================+=======================================================================================+
-| 1 | SW ring          | SW circular buffer used for message passing between the application threads. Uses     |
-|   |                  | the DPDK rte_ring primitive. Expected to be the most commonly used type of            |
-|   |                  | port.                                                                                 |
-|   |                  |                                                                                       |
-+---+------------------+---------------------------------------------------------------------------------------+
-| 2 | HW ring          | Queue of buffer descriptors used to interact with NIC, switch or accelerator ports.   |
-|   |                  | For NIC ports, it uses the DPDK rte_eth_rx_queue or rte_eth_tx_queue                  |
-|   |                  | primitives.                                                                           |
-|   |                  |                                                                                       |
-+---+------------------+---------------------------------------------------------------------------------------+
-| 3 | IP reassembly    | Input packets are either IP fragments or complete IP datagrams. Output packets are    |
-|   |                  | complete IP datagrams.                                                                |
-|   |                  |                                                                                       |
-+---+------------------+---------------------------------------------------------------------------------------+
-| 4 | IP fragmentation | Input packets are jumbo (IP datagrams with length bigger than MTU) or non-jumbo       |
-|   |                  | packets. Output packets are non-jumbo packets.                                        |
-|   |                  |                                                                                       |
-+---+------------------+---------------------------------------------------------------------------------------+
-| 5 | Traffic manager  | Traffic manager attached to a specific NIC output port, performing congestion         |
-|   |                  | management and hierarchical scheduling according to pre-defined SLAs.                 |
-|   |                  |                                                                                       |
-+---+------------------+---------------------------------------------------------------------------------------+
-| 6 | KNI              | Send/receive packets to/from Linux kernel space.                                      |
-|   |                  |                                                                                       |
-+---+------------------+---------------------------------------------------------------------------------------+
-| 7 | Source           | Input port used as packet generator. Similar to Linux kernel /dev/zero character      |
-|   |                  | device.                                                                               |
-|   |                  |                                                                                       |
-+---+------------------+---------------------------------------------------------------------------------------+
-| 8 | Sink             | Output port used to drop all input packets. Similar to Linux kernel /dev/null         |
-|   |                  | character device.                                                                     |
-|   |                  |                                                                                       |
-+---+------------------+---------------------------------------------------------------------------------------+
+   +---+------------------+---------------------------------------------------------------------------------------+
+   | # | Port type        | Description                                                                           |
+   |   |                  |                                                                                       |
+   +===+==================+=======================================================================================+
+   | 1 | SW ring          | SW circular buffer used for message passing between the application threads. Uses     |
+   |   |                  | the DPDK rte_ring primitive. Expected to be the most commonly used type of            |
+   |   |                  | port.                                                                                 |
+   |   |                  |                                                                                       |
+   +---+------------------+---------------------------------------------------------------------------------------+
+   | 2 | HW ring          | Queue of buffer descriptors used to interact with NIC, switch or accelerator ports.   |
+   |   |                  | For NIC ports, it uses the DPDK rte_eth_rx_queue or rte_eth_tx_queue                  |
+   |   |                  | primitives.                                                                           |
+   |   |                  |                                                                                       |
+   +---+------------------+---------------------------------------------------------------------------------------+
+   | 3 | IP reassembly    | Input packets are either IP fragments or complete IP datagrams. Output packets are    |
+   |   |                  | complete IP datagrams.                                                                |
+   |   |                  |                                                                                       |
+   +---+------------------+---------------------------------------------------------------------------------------+
+   | 4 | IP fragmentation | Input packets are jumbo (IP datagrams with length bigger than MTU) or non-jumbo       |
+   |   |                  | packets. Output packets are non-jumbo packets.                                        |
+   |   |                  |                                                                                       |
+   +---+------------------+---------------------------------------------------------------------------------------+
+   | 5 | Traffic manager  | Traffic manager attached to a specific NIC output port, performing congestion         |
+   |   |                  | management and hierarchical scheduling according to pre-defined SLAs.                 |
+   |   |                  |                                                                                       |
+   +---+------------------+---------------------------------------------------------------------------------------+
+   | 6 | KNI              | Send/receive packets to/from Linux kernel space.                                      |
+   |   |                  |                                                                                       |
+   +---+------------------+---------------------------------------------------------------------------------------+
+   | 7 | Source           | Input port used as packet generator. Similar to Linux kernel /dev/zero character      |
+   |   |                  | device.                                                                               |
+   |   |                  |                                                                                       |
+   +---+------------------+---------------------------------------------------------------------------------------+
+   | 8 | Sink             | Output port used to drop all input packets. Similar to Linux kernel /dev/null         |
+   |   |                  | character device.                                                                     |
+   |   |                  |                                                                                       |
+   +---+------------------+---------------------------------------------------------------------------------------+
 
 Port Interface
 ~~~~~~~~~~~~~~
@@ -134,29 +134,29 @@ Each input/output port is required to implement an abstract interface that
 defines the initialization and run-time operation of the port.
 The port abstract interface is described in.
 
-.. _pg_table_20:
+.. _table_qos_20:
 
-**Table 20 Port Abstract Interface**
+.. table:: 20 Port Abstract Interface
 
-+---+----------------+-----------------------------------------------------------------------------------------+
-| # | Port Operation | Description                                                                             |
-|   |                |                                                                                         |
-+===+================+=========================================================================================+
-| 1 | Create         | Create the low-level port object (e.g. queue). Can internally allocate memory.          |
-|   |                |                                                                                         |
-+---+----------------+-----------------------------------------------------------------------------------------+
-| 2 | Free           | Free the resources (e.g. memory) used by the low-level port object.                     |
-|   |                |                                                                                         |
-+---+----------------+-----------------------------------------------------------------------------------------+
-| 3 | RX             | Read a burst of input packets. Non-blocking operation. Only defined for input ports.    |
-|   |                |                                                                                         |
-+---+----------------+-----------------------------------------------------------------------------------------+
-| 4 | TX             | Write a burst of input packets. Non-blocking operation. Only defined for output ports.  |
-|   |                |                                                                                         |
-+---+----------------+-----------------------------------------------------------------------------------------+
-| 5 | Flush          | Flush the output buffer. Only defined for output ports.                                 |
-|   |                |                                                                                         |
-+---+----------------+-----------------------------------------------------------------------------------------+
+   +---+----------------+-----------------------------------------------------------------------------------------+
+   | # | Port Operation | Description                                                                             |
+   |   |                |                                                                                         |
+   +===+================+=========================================================================================+
+   | 1 | Create         | Create the low-level port object (e.g. queue). Can internally allocate memory.          |
+   |   |                |                                                                                         |
+   +---+----------------+-----------------------------------------------------------------------------------------+
+   | 2 | Free           | Free the resources (e.g. memory) used by the low-level port object.                     |
+   |   |                |                                                                                         |
+   +---+----------------+-----------------------------------------------------------------------------------------+
+   | 3 | RX             | Read a burst of input packets. Non-blocking operation. Only defined for input ports.    |
+   |   |                |                                                                                         |
+   +---+----------------+-----------------------------------------------------------------------------------------+
+   | 4 | TX             | Write a burst of input packets. Non-blocking operation. Only defined for output ports.  |
+   |   |                |                                                                                         |
+   +---+----------------+-----------------------------------------------------------------------------------------+
+   | 5 | Flush          | Flush the output buffer. Only defined for output ports.                                 |
+   |   |                |                                                                                         |
+   +---+----------------+-----------------------------------------------------------------------------------------+
 
 Table Library Design
 --------------------
@@ -164,113 +164,113 @@ Table Library Design
 Table Types
 ~~~~~~~~~~~
 
-.. _pg_table_21:
+:numref:`table_qos_21` is a non-exhaustive list of types of tables that can be implemented with the Packet Framework.
 
-Table 21 is a non-exhaustive list of types of tables that can be implemented with the Packet Framework.
+.. _table_qos_21:
 
-**Table 21 Table Types**
+.. table:: Table Types
 
-+---+----------------------------+-----------------------------------------------------------------------------+
-| # | Table Type                 | Description                                                                 |
-|   |                            |                                                                             |
-+===+============================+=============================================================================+
-| 1 | Hash table                 | Lookup key is n-tuple based.                                                |
-|   |                            |                                                                             |
-|   |                            | Typically, the lookup key is hashed to produce a signature that is used to  |
-|   |                            | identify a bucket of entries where the lookup key is searched next.         |
-|   |                            |                                                                             |
-|   |                            | The signature associated with the lookup key of each input packet is either |
-|   |                            | read from the packet descriptor (pre-computed signature) or computed at     |
-|   |                            | table lookup time.                                                          |
-|   |                            |                                                                             |
-|   |                            | The table lookup, add entry and delete entry operations, as well as any     |
-|   |                            | other pipeline block that pre-computes the signature all have to use the    |
-|   |                            | same hashing algorithm to generate the signature.                           |
-|   |                            |                                                                             |
-|   |                            | Typically used to implement flow classification tables, ARP caches, routing |
-|   |                            | table for tunnelling protocols, etc.                                        |
-|   |                            |                                                                             |
-+---+----------------------------+-----------------------------------------------------------------------------+
-| 2 | Longest Prefix Match (LPM) | Lookup key is the IP address.                                               |
-|   |                            |                                                                             |
-|   |                            | Each table entries has an associated IP prefix (IP and depth).              |
-|   |                            |                                                                             |
-|   |                            | The table lookup operation selects the IP prefix that is matched by the     |
-|   |                            | lookup key; in case of multiple matches, the entry with the longest prefix  |
-|   |                            | depth wins.                                                                 |
-|   |                            |                                                                             |
-|   |                            | Typically used to implement IP routing tables.                              |
-|   |                            |                                                                             |
-+---+----------------------------+-----------------------------------------------------------------------------+
-| 3 | Access Control List (ACLs) | Lookup key is 7-tuple of two VLAN/MPLS labels, IP destination address,      |
-|   |                            | IP source addresses, L4 protocol, L4 destination port, L4 source port.      |
-|   |                            |                                                                             |
-|   |                            | Each table entry has an associated ACL and priority. The ACL contains bit   |
-|   |                            | masks for the VLAN/MPLS labels, IP prefix for IP destination address, IP    |
-|   |                            | prefix for IP source addresses, L4 protocol and bitmask, L4 destination     |
-|   |                            | port and bit mask, L4 source port and bit mask.                             |
-|   |                            |                                                                             |
-|   |                            | The table lookup operation selects the ACL that is matched by the lookup    |
-|   |                            | key; in case of multiple matches, the entry with the highest priority wins. |
-|   |                            |                                                                             |
-|   |                            | Typically used to implement rule databases for firewalls, etc.              |
-|   |                            |                                                                             |
-+---+----------------------------+-----------------------------------------------------------------------------+
-| 4 | Pattern matching search    | Lookup key is the packet payload.                                           |
-|   |                            |                                                                             |
-|   |                            | Table is a database of patterns, with each pattern having a priority        |
-|   |                            | assigned.                                                                   |
-|   |                            |                                                                             |
-|   |                            | The table lookup operation selects the patterns that is matched by the      |
-|   |                            | input packet; in case of multiple matches, the matching pattern with the    |
-|   |                            | highest priority wins.                                                      |
-|   |                            |                                                                             |
-+---+----------------------------+-----------------------------------------------------------------------------+
-| 5 | Array                      | Lookup key is the table entry index itself.                                 |
-|   |                            |                                                                             |
-+---+----------------------------+-----------------------------------------------------------------------------+
+   +---+----------------------------+-----------------------------------------------------------------------------+
+   | # | Table Type                 | Description                                                                 |
+   |   |                            |                                                                             |
+   +===+============================+=============================================================================+
+   | 1 | Hash table                 | Lookup key is n-tuple based.                                                |
+   |   |                            |                                                                             |
+   |   |                            | Typically, the lookup key is hashed to produce a signature that is used to  |
+   |   |                            | identify a bucket of entries where the lookup key is searched next.         |
+   |   |                            |                                                                             |
+   |   |                            | The signature associated with the lookup key of each input packet is either |
+   |   |                            | read from the packet descriptor (pre-computed signature) or computed at     |
+   |   |                            | table lookup time.                                                          |
+   |   |                            |                                                                             |
+   |   |                            | The table lookup, add entry and delete entry operations, as well as any     |
+   |   |                            | other pipeline block that pre-computes the signature all have to use the    |
+   |   |                            | same hashing algorithm to generate the signature.                           |
+   |   |                            |                                                                             |
+   |   |                            | Typically used to implement flow classification tables, ARP caches, routing |
+   |   |                            | table for tunnelling protocols, etc.                                        |
+   |   |                            |                                                                             |
+   +---+----------------------------+-----------------------------------------------------------------------------+
+   | 2 | Longest Prefix Match (LPM) | Lookup key is the IP address.                                               |
+   |   |                            |                                                                             |
+   |   |                            | Each table entries has an associated IP prefix (IP and depth).              |
+   |   |                            |                                                                             |
+   |   |                            | The table lookup operation selects the IP prefix that is matched by the     |
+   |   |                            | lookup key; in case of multiple matches, the entry with the longest prefix  |
+   |   |                            | depth wins.                                                                 |
+   |   |                            |                                                                             |
+   |   |                            | Typically used to implement IP routing tables.                              |
+   |   |                            |                                                                             |
+   +---+----------------------------+-----------------------------------------------------------------------------+
+   | 3 | Access Control List (ACLs) | Lookup key is 7-tuple of two VLAN/MPLS labels, IP destination address,      |
+   |   |                            | IP source addresses, L4 protocol, L4 destination port, L4 source port.      |
+   |   |                            |                                                                             |
+   |   |                            | Each table entry has an associated ACL and priority. The ACL contains bit   |
+   |   |                            | masks for the VLAN/MPLS labels, IP prefix for IP destination address, IP    |
+   |   |                            | prefix for IP source addresses, L4 protocol and bitmask, L4 destination     |
+   |   |                            | port and bit mask, L4 source port and bit mask.                             |
+   |   |                            |                                                                             |
+   |   |                            | The table lookup operation selects the ACL that is matched by the lookup    |
+   |   |                            | key; in case of multiple matches, the entry with the highest priority wins. |
+   |   |                            |                                                                             |
+   |   |                            | Typically used to implement rule databases for firewalls, etc.              |
+   |   |                            |                                                                             |
+   +---+----------------------------+-----------------------------------------------------------------------------+
+   | 4 | Pattern matching search    | Lookup key is the packet payload.                                           |
+   |   |                            |                                                                             |
+   |   |                            | Table is a database of patterns, with each pattern having a priority        |
+   |   |                            | assigned.                                                                   |
+   |   |                            |                                                                             |
+   |   |                            | The table lookup operation selects the patterns that is matched by the      |
+   |   |                            | input packet; in case of multiple matches, the matching pattern with the    |
+   |   |                            | highest priority wins.                                                      |
+   |   |                            |                                                                             |
+   +---+----------------------------+-----------------------------------------------------------------------------+
+   | 5 | Array                      | Lookup key is the table entry index itself.                                 |
+   |   |                            |                                                                             |
+   +---+----------------------------+-----------------------------------------------------------------------------+
 
 Table Interface
 ~~~~~~~~~~~~~~~
 
 Each table is required to implement an abstract interface that defines the initialization
 and run-time operation of the table.
-The table abstract interface is described in Table 29.
+The table abstract interface is described in :numref:`table_qos_29_1`.
 
-.. _pg_table_29_1:
+.. _table_qos_29_1:
 
-**Table 29 Table Abstract Interface**
+.. table:: Table Abstract Interface
 
-+---+-----------------+----------------------------------------------------------------------------------------+
-| # | Table operation | Description                                                                            |
-|   |                 |                                                                                        |
-+===+=================+========================================================================================+
-| 1 | Create          | Create the low-level data structures of the lookup table. Can internally allocate      |
-|   |                 | memory.                                                                                |
-|   |                 |                                                                                        |
-+---+-----------------+----------------------------------------------------------------------------------------+
-| 2 | Free            | Free up all the resources used by the lookup table.                                    |
-|   |                 |                                                                                        |
-+---+-----------------+----------------------------------------------------------------------------------------+
-| 3 | Add entry       | Add new entry to the lookup table.                                                     |
-|   |                 |                                                                                        |
-+---+-----------------+----------------------------------------------------------------------------------------+
-| 4 | Delete entry    | Delete specific entry from the lookup table.                                           |
-|   |                 |                                                                                        |
-+---+-----------------+----------------------------------------------------------------------------------------+
-| 5 | Lookup          | Look up a burst of input packets and return a bit mask specifying the result of the    |
-|   |                 | lookup operation for each packet: a set bit signifies lookup hit for the corresponding |
-|   |                 | packet, while a cleared bit a lookup miss.                                             |
-|   |                 |                                                                                        |
-|   |                 | For each lookup hit packet, the lookup operation also returns a pointer to the table   |
-|   |                 | entry that was hit, which contains the actions to be applied on the packet and any     |
-|   |                 | associated metadata.                                                                   |
-|   |                 |                                                                                        |
-|   |                 | For each lookup miss packet, the actions to be applied on the packet and any           |
-|   |                 | associated metadata are specified by the default table entry preconfigured for lookup  |
-|   |                 | miss.                                                                                  |
-|   |                 |                                                                                        |
-+---+-----------------+----------------------------------------------------------------------------------------+
+   +---+-----------------+----------------------------------------------------------------------------------------+
+   | # | Table operation | Description                                                                            |
+   |   |                 |                                                                                        |
+   +===+=================+========================================================================================+
+   | 1 | Create          | Create the low-level data structures of the lookup table. Can internally allocate      |
+   |   |                 | memory.                                                                                |
+   |   |                 |                                                                                        |
+   +---+-----------------+----------------------------------------------------------------------------------------+
+   | 2 | Free            | Free up all the resources used by the lookup table.                                    |
+   |   |                 |                                                                                        |
+   +---+-----------------+----------------------------------------------------------------------------------------+
+   | 3 | Add entry       | Add new entry to the lookup table.                                                     |
+   |   |                 |                                                                                        |
+   +---+-----------------+----------------------------------------------------------------------------------------+
+   | 4 | Delete entry    | Delete specific entry from the lookup table.                                           |
+   |   |                 |                                                                                        |
+   +---+-----------------+----------------------------------------------------------------------------------------+
+   | 5 | Lookup          | Look up a burst of input packets and return a bit mask specifying the result of the    |
+   |   |                 | lookup operation for each packet: a set bit signifies lookup hit for the corresponding |
+   |   |                 | packet, while a cleared bit a lookup miss.                                             |
+   |   |                 |                                                                                        |
+   |   |                 | For each lookup hit packet, the lookup operation also returns a pointer to the table   |
+   |   |                 | entry that was hit, which contains the actions to be applied on the packet and any     |
+   |   |                 | associated metadata.                                                                   |
+   |   |                 |                                                                                        |
+   |   |                 | For each lookup miss packet, the actions to be applied on the packet and any           |
+   |   |                 | associated metadata are specified by the default table entry preconfigured for lookup  |
+   |   |                 | miss.                                                                                  |
+   |   |                 |                                                                                        |
+   +---+-----------------+----------------------------------------------------------------------------------------+
 
 
 Hash Table Design
@@ -391,38 +391,38 @@ The MAC address of the next hop station becomes the destination MAC address of t
 Hash Table Types
 ^^^^^^^^^^^^^^^^
 
-.. _pg_table_22:
+:numref:`table_qos_22` lists the hash table configuration parameters shared by all different hash table types.
 
-Table 22 lists the hash table configuration parameters shared by all different hash table types.
+.. _table_qos_22:
 
-**Table 22 Configuration Parameters Common for All Hash Table Types**
+.. table:: Configuration Parameters Common for All Hash Table Types
 
-+---+---------------------------+------------------------------------------------------------------------------+
-| # | Parameter                 | Details                                                                      |
-|   |                           |                                                                              |
-+===+===========================+==============================================================================+
-| 1 | Key size                  | Measured as number of bytes. All keys have the same size.                    |
-|   |                           |                                                                              |
-+---+---------------------------+------------------------------------------------------------------------------+
-| 2 | Key value (key data) size | Measured as number of bytes.                                                 |
-|   |                           |                                                                              |
-+---+---------------------------+------------------------------------------------------------------------------+
-| 3 | Number of buckets         | Needs to be a power of two.                                                  |
-|   |                           |                                                                              |
-+---+---------------------------+------------------------------------------------------------------------------+
-| 4 | Maximum number of keys    | Needs to be a power of two.                                                  |
-|   |                           |                                                                              |
-+---+---------------------------+------------------------------------------------------------------------------+
-| 5 | Hash function             | Examples: jhash, CRC hash, etc.                                              |
-|   |                           |                                                                              |
-+---+---------------------------+------------------------------------------------------------------------------+
-| 6 | Hash function seed        | Parameter to be passed to the hash function.                                 |
-|   |                           |                                                                              |
-+---+---------------------------+------------------------------------------------------------------------------+
-| 7 | Key offset                | Offset of the lookup key byte array within the packet meta-data stored in    |
-|   |                           | the packet buffer.                                                           |
-|   |                           |                                                                              |
-+---+---------------------------+------------------------------------------------------------------------------+
+   +---+---------------------------+------------------------------------------------------------------------------+
+   | # | Parameter                 | Details                                                                      |
+   |   |                           |                                                                              |
+   +===+===========================+==============================================================================+
+   | 1 | Key size                  | Measured as number of bytes. All keys have the same size.                    |
+   |   |                           |                                                                              |
+   +---+---------------------------+------------------------------------------------------------------------------+
+   | 2 | Key value (key data) size | Measured as number of bytes.                                                 |
+   |   |                           |                                                                              |
+   +---+---------------------------+------------------------------------------------------------------------------+
+   | 3 | Number of buckets         | Needs to be a power of two.                                                  |
+   |   |                           |                                                                              |
+   +---+---------------------------+------------------------------------------------------------------------------+
+   | 4 | Maximum number of keys    | Needs to be a power of two.                                                  |
+   |   |                           |                                                                              |
+   +---+---------------------------+------------------------------------------------------------------------------+
+   | 5 | Hash function             | Examples: jhash, CRC hash, etc.                                              |
+   |   |                           |                                                                              |
+   +---+---------------------------+------------------------------------------------------------------------------+
+   | 6 | Hash function seed        | Parameter to be passed to the hash function.                                 |
+   |   |                           |                                                                              |
+   +---+---------------------------+------------------------------------------------------------------------------+
+   | 7 | Key offset                | Offset of the lookup key byte array within the packet meta-data stored in    |
+   |   |                           | the packet buffer.                                                           |
+   |   |                           |                                                                              |
+   +---+---------------------------+------------------------------------------------------------------------------+
 
 Bucket Full Problem
 """""""""""""""""""
@@ -452,17 +452,17 @@ The possible options are:
     the search continues beyond the first group of 4 keys, potentially until all keys in this bucket are examined.
     The extendable bucket logic requires maintaining specific data structures per table and per each bucket.
 
-.. _pg_table_23:
+.. _table_qos_23:
 
-**Table 23 Configuration Parameters Specific to Extendable Bucket Hash Table**
+.. table:: Configuration Parameters Specific to Extendible Bucket Hash Table
 
-+---+---------------------------+--------------------------------------------------+
-| # | Parameter                 | Details                                          |
-|   |                           |                                                  |
-+===+===========================+==================================================+
-| 1 | Number of additional keys | Needs to be a power of two, at least equal to 4. |
-|   |                           |                                                  |
-+---+---------------------------+--------------------------------------------------+
+   +---+---------------------------+--------------------------------------------------+
+   | # | Parameter                 | Details                                          |
+   |   |                           |                                                  |
+   +===+===========================+==================================================+
+   | 1 | Number of additional keys | Needs to be a power of two, at least equal to 4. |
+   |   |                           |                                                  |
+   +---+---------------------------+--------------------------------------------------+
 
 
 Signature Computation
@@ -481,17 +481,17 @@ The possible options for key signature computation are:
     The same CPU core reads the key from the packet meta-data, uses it to compute the key signature
     and also performs the bucket search step of the key lookup operation.
 
-.. _pg_table_24:
+.. _table_qos_24:
 
-**Table 24 Configuration Parameters Specific to Pre-computed Key Signature Hash Table**
+.. table:: Configuration Parameters Specific to Pre-computed Key Signature Hash Table
 
-+---+------------------+-----------------------------------------------------------------------+
-| # | Parameter        | Details                                                               |
-|   |                  |                                                                       |
-+===+==================+=======================================================================+
-| 1 | Signature offset | Offset of the pre-computed key signature within the packet meta-data. |
-|   |                  |                                                                       |
-+---+------------------+-----------------------------------------------------------------------+
+   +---+------------------+-----------------------------------------------------------------------+
+   | # | Parameter        | Details                                                               |
+   |   |                  |                                                                       |
+   +===+==================+=======================================================================+
+   | 1 | Signature offset | Offset of the pre-computed key signature within the packet meta-data. |
+   |   |                  |                                                                       |
+   +---+------------------+-----------------------------------------------------------------------+
 
 Key Size Optimized Hash Tables
 """"""""""""""""""""""""""""""
@@ -554,7 +554,7 @@ This avoids the important cost associated with flushing the CPU core execution p
 Configurable Key Size Hash Table
 """"""""""""""""""""""""""""""""
 
-:numref:`figure_figure34`, Table 25 and Table 26 detail the main data structures used to implement configurable key size hash tables (either LRU or extendable bucket,
+:numref:`figure_figure34`, :numref:`table_qos_25` and :numref:`table_qos_26` detail the main data structures used to implement configurable key size hash tables (either LRU or extendable bucket,
 either with pre-computed signature or "do-sig").
 
 .. _figure_figure34:
@@ -564,70 +564,70 @@ either with pre-computed signature or "do-sig").
    Data Structures for Configurable Key Size Hash Tables
 
 
-.. _pg_table_25:
+.. _table_qos_25:
 
-**Table 25 Main Large Data Structures (Arrays) used for Configurable Key Size Hash Tables**
+.. table:: Main Large Data Structures (Arrays) used for Configurable Key Size Hash Tables
 
-+---+-------------------------+------------------------------+---------------------------+-------------------------------+
-| # | Array name              | Number of entries            | Entry size (bytes)        | Description                   |
-|   |                         |                              |                           |                               |
-+===+=========================+==============================+===========================+===============================+
-| 1 | Bucket array            | n_buckets (configurable)     | 32                        | Buckets of the hash table.    |
-|   |                         |                              |                           |                               |
-+---+-------------------------+------------------------------+---------------------------+-------------------------------+
-| 2 | Bucket extensions array | n_buckets_ext (configurable) | 32                        | This array is only created    |
-|   |                         |                              |                           | for extendable bucket tables. |
-|   |                         |                              |                           |                               |
-+---+-------------------------+------------------------------+---------------------------+-------------------------------+
-| 3 | Key array               | n_keys                       | key_size (configurable)   | Keys added to the hash table. |
-|   |                         |                              |                           |                               |
-+---+-------------------------+------------------------------+---------------------------+-------------------------------+
-| 4 | Data array              | n_keys                       | entry_size (configurable) | Key values (key data)         |
-|   |                         |                              |                           | associated with the hash      |
-|   |                         |                              |                           | table keys.                   |
-|   |                         |                              |                           |                               |
-+---+-------------------------+------------------------------+---------------------------+-------------------------------+
+   +---+-------------------------+------------------------------+---------------------------+-------------------------------+
+   | # | Array name              | Number of entries            | Entry size (bytes)        | Description                   |
+   |   |                         |                              |                           |                               |
+   +===+=========================+==============================+===========================+===============================+
+   | 1 | Bucket array            | n_buckets (configurable)     | 32                        | Buckets of the hash table.    |
+   |   |                         |                              |                           |                               |
+   +---+-------------------------+------------------------------+---------------------------+-------------------------------+
+   | 2 | Bucket extensions array | n_buckets_ext (configurable) | 32                        | This array is only created    |
+   |   |                         |                              |                           | for extendible bucket tables. |
+   |   |                         |                              |                           |                               |
+   +---+-------------------------+------------------------------+---------------------------+-------------------------------+
+   | 3 | Key array               | n_keys                       | key_size (configurable)   | Keys added to the hash table. |
+   |   |                         |                              |                           |                               |
+   +---+-------------------------+------------------------------+---------------------------+-------------------------------+
+   | 4 | Data array              | n_keys                       | entry_size (configurable) | Key values (key data)         |
+   |   |                         |                              |                           | associated with the hash      |
+   |   |                         |                              |                           | table keys.                   |
+   |   |                         |                              |                           |                               |
+   +---+-------------------------+------------------------------+---------------------------+-------------------------------+
 
-.. _pg_table_26:
+.. _table_qos_26:
 
-**Table 26 Field Description for Bucket Array Entry (Configurable Key Size Hash Tables)**
+.. table:: Field Description for Bucket Array Entry (Configurable Key Size Hash Tables)
 
-+---+------------------+--------------------+------------------------------------------------------------------+
-| # | Field name       | Field size (bytes) | Description                                                      |
-|   |                  |                    |                                                                  |
-+===+==================+====================+==================================================================+
-| 1 | Next Ptr/LRU     | 8                  | For LRU tables, this fields represents the LRU list for the      |
-|   |                  |                    | current bucket stored as array of 4 entries of 2 bytes each.     |
-|   |                  |                    | Entry 0 stores the index (0 .. 3) of the MRU key, while entry 3  |
-|   |                  |                    | stores the index of the LRU key.                                 |
-|   |                  |                    |                                                                  |
-|   |                  |                    | For extendable bucket tables, this field represents the next     |
-|   |                  |                    | pointer (i.e. the pointer to the next group of 4 keys linked to  |
-|   |                  |                    | the current bucket). The next pointer is not NULL if the bucket  |
-|   |                  |                    | is currently extended or NULL otherwise.                         |
-|   |                  |                    | To help the branchless implementation, bit 0 (least significant  |
-|   |                  |                    | bit) of this field is set to 1 if the next pointer is not NULL   |
-|   |                  |                    | and to 0 otherwise.                                              |
-|   |                  |                    |                                                                  |
-+---+------------------+--------------------+------------------------------------------------------------------+
-| 2 | Sig[0 .. 3]      | 4 x 2              | If key X (X = 0 .. 3) is valid, then sig X bits 15 .. 1 store    |
-|   |                  |                    | the most significant 15 bits of key X signature and sig X bit 0  |
-|   |                  |                    | is set to 1.                                                     |
-|   |                  |                    |                                                                  |
-|   |                  |                    | If key X is not valid, then sig X is set to zero.                |
-|   |                  |                    |                                                                  |
-+---+------------------+--------------------+------------------------------------------------------------------+
-| 3 | Key Pos [0 .. 3] | 4 x 4              | If key X is valid (X = 0 .. 3), then Key Pos X represents the    |
-|   |                  |                    | index into the key array where key X is stored, as well as the   |
-|   |                  |                    | index into the data array where the value associated with key X  |
-|   |                  |                    | is stored.                                                       |
-|   |                  |                    |                                                                  |
-|   |                  |                    | If key X is not valid, then the value of Key Pos X is undefined. |
-|   |                  |                    |                                                                  |
-+---+------------------+--------------------+------------------------------------------------------------------+
+   +---+------------------+--------------------+------------------------------------------------------------------+
+   | # | Field name       | Field size (bytes) | Description                                                      |
+   |   |                  |                    |                                                                  |
+   +===+==================+====================+==================================================================+
+   | 1 | Next Ptr/LRU     | 8                  | For LRU tables, this fields represents the LRU list for the      |
+   |   |                  |                    | current bucket stored as array of 4 entries of 2 bytes each.     |
+   |   |                  |                    | Entry 0 stores the index (0 .. 3) of the MRU key, while entry 3  |
+   |   |                  |                    | stores the index of the LRU key.                                 |
+   |   |                  |                    |                                                                  |
+   |   |                  |                    | For extendible bucket tables, this field represents the next     |
+   |   |                  |                    | pointer (i.e. the pointer to the next group of 4 keys linked to  |
+   |   |                  |                    | the current bucket). The next pointer is not NULL if the bucket  |
+   |   |                  |                    | is currently extended or NULL otherwise.                         |
+   |   |                  |                    | To help the branchless implementation, bit 0 (least significant  |
+   |   |                  |                    | bit) of this field is set to 1 if the next pointer is not NULL   |
+   |   |                  |                    | and to 0 otherwise.                                              |
+   |   |                  |                    |                                                                  |
+   +---+------------------+--------------------+------------------------------------------------------------------+
+   | 2 | Sig[0 .. 3]      | 4 x 2              | If key X (X = 0 .. 3) is valid, then sig X bits 15 .. 1 store    |
+   |   |                  |                    | the most significant 15 bits of key X signature and sig X bit 0  |
+   |   |                  |                    | is set to 1.                                                     |
+   |   |                  |                    |                                                                  |
+   |   |                  |                    | If key X is not valid, then sig X is set to zero.                |
+   |   |                  |                    |                                                                  |
+   +---+------------------+--------------------+------------------------------------------------------------------+
+   | 3 | Key Pos [0 .. 3] | 4 x 4              | If key X is valid (X = 0 .. 3), then Key Pos X represents the    |
+   |   |                  |                    | index into the key array where key X is stored, as well as the   |
+   |   |                  |                    | index into the data array where the value associated with key X  |
+   |   |                  |                    | is stored.                                                       |
+   |   |                  |                    |                                                                  |
+   |   |                  |                    | If key X is not valid, then the value of Key Pos X is undefined. |
+   |   |                  |                    |                                                                  |
+   +---+------------------+--------------------+------------------------------------------------------------------+
 
 
-:numref:`figure_figure35` and Table 27 detail the bucket search pipeline stages (either LRU or extendable bucket,
+:numref:`figure_figure35` and :numref:`table_qos_27` detail the bucket search pipeline stages (either LRU or extendable bucket,
 either with pre-computed signature or "do-sig").
 For each pipeline stage, the described operations are applied to each of the two packets handled by that stage.
 
@@ -639,80 +639,80 @@ For each pipeline stage, the described operations are applied to each of the two
    Tables)
 
 
-.. _pg_table_27:
+.. _table_qos_27:
 
-**Table 27 Description of the Bucket Search Pipeline Stages (Configurable Key Size Hash Tables)**
+.. table:: Description of the Bucket Search Pipeline Stages (Configurable Key Size Hash Tables)
 
-+---+---------------------------+------------------------------------------------------------------------------+
-| # | Stage name                | Description                                                                  |
-|   |                           |                                                                              |
-+===+===========================+==============================================================================+
-| 0 | Prefetch packet meta-data | Select next two packets from the burst of input packets.                     |
-|   |                           |                                                                              |
-|   |                           | Prefetch packet meta-data containing the key and key signature.              |
-|   |                           |                                                                              |
-+---+---------------------------+------------------------------------------------------------------------------+
-| 1 | Prefetch table bucket     | Read the key signature from the packet meta-data (for extendable bucket hash |
-|   |                           | tables) or read the key from the packet meta-data and compute key signature  |
-|   |                           | (for LRU tables).                                                            |
-|   |                           |                                                                              |
-|   |                           | Identify the bucket ID using the key signature.                              |
-|   |                           |                                                                              |
-|   |                           | Set bit 0 of the signature to 1 (to match only signatures of valid keys from |
-|   |                           | the table).                                                                  |
-|   |                           |                                                                              |
-|   |                           | Prefetch the bucket.                                                         |
-|   |                           |                                                                              |
-+---+---------------------------+------------------------------------------------------------------------------+
-| 2 | Prefetch table key        | Read the key signatures from the bucket.                                     |
-|   |                           |                                                                              |
-|   |                           | Compare the signature of the input key against the 4 key signatures from the |
-|   |                           | packet. As result, the following is obtained:                                |
-|   |                           |                                                                              |
-|   |                           | *match*                                                                      |
-|   |                           | = equal to TRUE if there was at least one signature match and to FALSE in    |
-|   |                           | the case of no signature match;                                              |
-|   |                           |                                                                              |
-|   |                           | *match_many*                                                                 |
-|   |                           | = equal to TRUE is there were more than one signature matches (can be up to  |
-|   |                           | 4 signature matches in the worst case scenario) and to FALSE otherwise;      |
-|   |                           |                                                                              |
-|   |                           | *match_pos*                                                                  |
-|   |                           | = the index of the first key that produced signature match (only valid if    |
-|   |                           | match is true).                                                              |
-|   |                           |                                                                              |
-|   |                           | For extendable bucket hash tables only, set                                  |
-|   |                           | *match_many*                                                                 |
-|   |                           | to TRUE if next pointer is valid.                                            |
-|   |                           |                                                                              |
-|   |                           | Prefetch the bucket key indicated by                                         |
-|   |                           | *match_pos*                                                                  |
-|   |                           | (even if                                                                     |
-|   |                           | *match_pos*                                                                  |
-|   |                           | does not point to valid key valid).                                          |
-|   |                           |                                                                              |
-+---+---------------------------+------------------------------------------------------------------------------+
-| 3 | Prefetch table data       | Read the bucket key indicated by                                             |
-|   |                           | *match_pos*.                                                                 |
-|   |                           |                                                                              |
-|   |                           | Compare the bucket key against the input key. As result, the following is    |
-|   |                           | obtained:                                                                    |
-|   |                           | *match_key*                                                                  |
-|   |                           | = equal to TRUE if the two keys match and to FALSE otherwise.                |
-|   |                           |                                                                              |
-|   |                           | Report input key as lookup hit only when both                                |
-|   |                           | *match*                                                                      |
-|   |                           | and                                                                          |
-|   |                           | *match_key*                                                                  |
-|   |                           | are equal to TRUE and as lookup miss otherwise.                              |
-|   |                           |                                                                              |
-|   |                           | For LRU tables only, use branchless logic to update the bucket LRU list      |
-|   |                           | (the current key becomes the new MRU) only on lookup hit.                    |
-|   |                           |                                                                              |
-|   |                           | Prefetch the key value (key data) associated with the current key (to avoid  |
-|   |                           | branches, this is done on both lookup hit and miss).                         |
-|   |                           |                                                                              |
-+---+---------------------------+------------------------------------------------------------------------------+
+   +---+---------------------------+------------------------------------------------------------------------------+
+   | # | Stage name                | Description                                                                  |
+   |   |                           |                                                                              |
+   +===+===========================+==============================================================================+
+   | 0 | Prefetch packet meta-data | Select next two packets from the burst of input packets.                     |
+   |   |                           |                                                                              |
+   |   |                           | Prefetch packet meta-data containing the key and key signature.              |
+   |   |                           |                                                                              |
+   +---+---------------------------+------------------------------------------------------------------------------+
+   | 1 | Prefetch table bucket     | Read the key signature from the packet meta-data (for extendable bucket hash |
+   |   |                           | tables) or read the key from the packet meta-data and compute key signature  |
+   |   |                           | (for LRU tables).                                                            |
+   |   |                           |                                                                              |
+   |   |                           | Identify the bucket ID using the key signature.                              |
+   |   |                           |                                                                              |
+   |   |                           | Set bit 0 of the signature to 1 (to match only signatures of valid keys from |
+   |   |                           | the table).                                                                  |
+   |   |                           |                                                                              |
+   |   |                           | Prefetch the bucket.                                                         |
+   |   |                           |                                                                              |
+   +---+---------------------------+------------------------------------------------------------------------------+
+   | 2 | Prefetch table key        | Read the key signatures from the bucket.                                     |
+   |   |                           |                                                                              |
+   |   |                           | Compare the signature of the input key against the 4 key signatures from the |
+   |   |                           | packet. As result, the following is obtained:                                |
+   |   |                           |                                                                              |
+   |   |                           | *match*                                                                      |
+   |   |                           | = equal to TRUE if there was at least one signature match and to FALSE in    |
+   |   |                           | the case of no signature match;                                              |
+   |   |                           |                                                                              |
+   |   |                           | *match_many*                                                                 |
+   |   |                           | = equal to TRUE is there were more than one signature matches (can be up to  |
+   |   |                           | 4 signature matches in the worst case scenario) and to FALSE otherwise;      |
+   |   |                           |                                                                              |
+   |   |                           | *match_pos*                                                                  |
+   |   |                           | = the index of the first key that produced signature match (only valid if    |
+   |   |                           | match is true).                                                              |
+   |   |                           |                                                                              |
+   |   |                           | For extendable bucket hash tables only, set                                  |
+   |   |                           | *match_many*                                                                 |
+   |   |                           | to TRUE if next pointer is valid.                                            |
+   |   |                           |                                                                              |
+   |   |                           | Prefetch the bucket key indicated by                                         |
+   |   |                           | *match_pos*                                                                  |
+   |   |                           | (even if                                                                     |
+   |   |                           | *match_pos*                                                                  |
+   |   |                           | does not point to valid key valid).                                          |
+   |   |                           |                                                                              |
+   +---+---------------------------+------------------------------------------------------------------------------+
+   | 3 | Prefetch table data       | Read the bucket key indicated by                                             |
+   |   |                           | *match_pos*.                                                                 |
+   |   |                           |                                                                              |
+   |   |                           | Compare the bucket key against the input key. As result, the following is    |
+   |   |                           | obtained:                                                                    |
+   |   |                           | *match_key*                                                                  |
+   |   |                           | = equal to TRUE if the two keys match and to FALSE otherwise.                |
+   |   |                           |                                                                              |
+   |   |                           | Report input key as lookup hit only when both                                |
+   |   |                           | *match*                                                                      |
+   |   |                           | and                                                                          |
+   |   |                           | *match_key*                                                                  |
+   |   |                           | are equal to TRUE and as lookup miss otherwise.                              |
+   |   |                           |                                                                              |
+   |   |                           | For LRU tables only, use branchless logic to update the bucket LRU list      |
+   |   |                           | (the current key becomes the new MRU) only on lookup hit.                    |
+   |   |                           |                                                                              |
+   |   |                           | Prefetch the key value (key data) associated with the current key (to avoid  |
+   |   |                           | branches, this is done on both lookup hit and miss).                         |
+   |   |                           |                                                                              |
+   +---+---------------------------+------------------------------------------------------------------------------+
 
 
 Additional notes:
@@ -731,90 +731,90 @@ Additional notes:
 
 **Key Signature Comparison Logic**
 
-The key signature comparison logic is described in Table 28.
+The key signature comparison logic is described in :numref:`table_qos_28`.
 
-.. _pg_table_28:
+.. _table_qos_28:
 
-**Table 28 Lookup Tables for Match, Match_Many and Match_Pos**
+.. table:: Lookup Tables for Match, Match_Many and Match_Pos
 
-+----+------+---------------+--------------------+--------------------+
-| #  | mask | match (1 bit) | match_many (1 bit) | match_pos (2 bits) |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 0  | 0000 | 0             | 0                  | 00                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 1  | 0001 | 1             | 0                  | 00                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 2  | 0010 | 1             | 0                  | 01                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 3  | 0011 | 1             | 1                  | 00                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 4  | 0100 | 1             | 0                  | 10                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 5  | 0101 | 1             | 1                  | 00                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 6  | 0110 | 1             | 1                  | 01                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 7  | 0111 | 1             | 1                  | 00                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 8  | 1000 | 1             | 0                  | 11                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 9  | 1001 | 1             | 1                  | 00                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 10 | 1010 | 1             | 1                  | 01                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 11 | 1011 | 1             | 1                  | 00                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 12 | 1100 | 1             | 1                  | 10                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 13 | 1101 | 1             | 1                  | 00                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 14 | 1110 | 1             | 1                  | 01                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
-| 15 | 1111 | 1             | 1                  | 00                 |
-|    |      |               |                    |                    |
-+----+------+---------------+--------------------+--------------------+
+   +----+------+---------------+--------------------+--------------------+
+   | #  | mask | match (1 bit) | match_many (1 bit) | match_pos (2 bits) |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 0  | 0000 | 0             | 0                  | 00                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 1  | 0001 | 1             | 0                  | 00                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 2  | 0010 | 1             | 0                  | 01                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 3  | 0011 | 1             | 1                  | 00                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 4  | 0100 | 1             | 0                  | 10                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 5  | 0101 | 1             | 1                  | 00                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 6  | 0110 | 1             | 1                  | 01                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 7  | 0111 | 1             | 1                  | 00                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 8  | 1000 | 1             | 0                  | 11                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 9  | 1001 | 1             | 1                  | 00                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 10 | 1010 | 1             | 1                  | 01                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 11 | 1011 | 1             | 1                  | 00                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 12 | 1100 | 1             | 1                  | 10                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 13 | 1101 | 1             | 1                  | 00                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 14 | 1110 | 1             | 1                  | 01                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
+   | 15 | 1111 | 1             | 1                  | 00                 |
+   |    |      |               |                    |                    |
+   +----+------+---------------+--------------------+--------------------+
 
 The input *mask* hash bit X (X = 0 .. 3) set to 1 if input signature is equal to bucket signature X and set to 0 otherwise.
 The outputs *match*, *match_many* and *match_pos* are 1 bit, 1 bit and 2 bits in size respectively and their meaning has been explained above.
 
-As displayed in Table 29, the lookup tables for *match* and *match_many* can be collapsed into a single 32-bit value and the lookup table for
+As displayed in :numref:`table_qos_29`, the lookup tables for *match* and *match_many* can be collapsed into a single 32-bit value and the lookup table for
 *match_pos* can be collapsed into a 64-bit value.
 Given the input *mask*, the values for *match*, *match_many* and *match_pos* can be obtained by indexing their respective bit array to extract 1 bit,
 1 bit and 2 bits respectively with branchless logic.
 
-.. _pg_table_29:
+.. _table_qos_29:
 
-**Table 29 Collapsed Lookup Tables for Match, Match_Many and Match_Pos**
+.. table:: Collapsed Lookup Tables for Match, Match_Many and Match_Pos
 
-+------------+------------------------------------------+-------------------+
-|            | Bit array                                | Hexadecimal value |
-|            |                                          |                   |
-+------------+------------------------------------------+-------------------+
-| match      | 1111_1111_1111_1110                      | 0xFFFELLU         |
-|            |                                          |                   |
-+------------+------------------------------------------+-------------------+
-| match_many | 1111_1110_1110_1000                      | 0xFEE8LLU         |
-|            |                                          |                   |
-+------------+------------------------------------------+-------------------+
-| match_pos  | 0001_0010_0001_0011__0001_0010_0001_0000 | 0x12131210LLU     |
-|            |                                          |                   |
-+------------+------------------------------------------+-------------------+
+   +------------+------------------------------------------+-------------------+
+   |            | Bit array                                | Hexadecimal value |
+   |            |                                          |                   |
+   +------------+------------------------------------------+-------------------+
+   | match      | 1111_1111_1111_1110                      | 0xFFFELLU         |
+   |            |                                          |                   |
+   +------------+------------------------------------------+-------------------+
+   | match_many | 1111_1110_1110_1000                      | 0xFEE8LLU         |
+   |            |                                          |                   |
+   +------------+------------------------------------------+-------------------+
+   | match_pos  | 0001_0010_0001_0011__0001_0010_0001_0000 | 0x12131210LLU     |
+   |            |                                          |                   |
+   +------------+------------------------------------------+-------------------+
 
 
 The pseudo-code for match, match_many and match_pos is::
@@ -828,7 +828,7 @@ The pseudo-code for match, match_many and match_pos is::
 Single Key Size Hash Tables
 """""""""""""""""""""""""""
 
-:numref:`figure_figure37`, :numref:`figure_figure38`, Table 30 and 31 detail the main data structures used to implement 8-byte and 16-byte key hash tables
+:numref:`figure_figure37`, :numref:`figure_figure38`, :numref:`table_qos_30` and :numref:`table_qos_31` detail the main data structures used to implement 8-byte and 16-byte key hash tables
 (either LRU or extendable bucket, either with pre-computed signature or "do-sig").
 
 .. _figure_figure37:
@@ -845,67 +845,67 @@ Single Key Size Hash Tables
    Data Structures for 16-byte Key Hash Tables
 
 
-.. _pg_table_30:
+.. _table_qos_30:
 
-**Table 30 Main Large Data Structures (Arrays) used for 8-byte and 16-byte Key Size Hash Tables**
+.. table:: Main Large Data Structures (Arrays) used for 8-byte and 16-byte Key Size Hash Tables
 
-+---+-------------------------+------------------------------+----------------------+------------------------------------+
-| # | Array name              | Number of entries            | Entry size (bytes)   | Description                        |
-|   |                         |                              |                      |                                    |
-+===+=========================+==============================+======================+====================================+
-| 1 | Bucket array            | n_buckets (configurable)     | *8-byte key size:*   | Buckets of the hash table.         |
-|   |                         |                              |                      |                                    |
-|   |                         |                              | 64 + 4 x entry_size  |                                    |
-|   |                         |                              |                      |                                    |
-|   |                         |                              |                      |                                    |
-|   |                         |                              | *16-byte key size:*  |                                    |
-|   |                         |                              |                      |                                    |
-|   |                         |                              | 128 + 4 x entry_size |                                    |
-|   |                         |                              |                      |                                    |
-+---+-------------------------+------------------------------+----------------------+------------------------------------+
-| 2 | Bucket extensions array | n_buckets_ext (configurable) | *8-byte key size:*   | This array is only created for     |
-|   |                         |                              |                      | extendable bucket tables.          |
-|   |                         |                              |                      |                                    |
-|   |                         |                              | 64 + 4 x entry_size  |                                    |
-|   |                         |                              |                      |                                    |
-|   |                         |                              |                      |                                    |
-|   |                         |                              | *16-byte key size:*  |                                    |
-|   |                         |                              |                      |                                    |
-|   |                         |                              | 128 + 4 x entry_size |                                    |
-|   |                         |                              |                      |                                    |
-+---+-------------------------+------------------------------+----------------------+------------------------------------+
+   +---+-------------------------+------------------------------+----------------------+------------------------------------+
+   | # | Array name              | Number of entries            | Entry size (bytes)   | Description                        |
+   |   |                         |                              |                      |                                    |
+   +===+=========================+==============================+======================+====================================+
+   | 1 | Bucket array            | n_buckets (configurable)     | *8-byte key size:*   | Buckets of the hash table.         |
+   |   |                         |                              |                      |                                    |
+   |   |                         |                              | 64 + 4 x entry_size  |                                    |
+   |   |                         |                              |                      |                                    |
+   |   |                         |                              |                      |                                    |
+   |   |                         |                              | *16-byte key size:*  |                                    |
+   |   |                         |                              |                      |                                    |
+   |   |                         |                              | 128 + 4 x entry_size |                                    |
+   |   |                         |                              |                      |                                    |
+   +---+-------------------------+------------------------------+----------------------+------------------------------------+
+   | 2 | Bucket extensions array | n_buckets_ext (configurable) | *8-byte key size:*   | This array is only created for     |
+   |   |                         |                              |                      | extendible bucket tables.          |
+   |   |                         |                              |                      |                                    |
+   |   |                         |                              | 64 + 4 x entry_size  |                                    |
+   |   |                         |                              |                      |                                    |
+   |   |                         |                              |                      |                                    |
+   |   |                         |                              | *16-byte key size:*  |                                    |
+   |   |                         |                              |                      |                                    |
+   |   |                         |                              | 128 + 4 x entry_size |                                    |
+   |   |                         |                              |                      |                                    |
+   +---+-------------------------+------------------------------+----------------------+------------------------------------+
 
-.. _pg_table_31:
+.. _table_qos_31:
 
-**Table 31 Field Description for Bucket Array Entry (8-byte and 16-byte Key Hash Tables)**
+.. table:: Field Description for Bucket Array Entry (8-byte and 16-byte Key Hash Tables)
 
-+---+---------------+--------------------+-------------------------------------------------------------------------------+
-| # | Field name    | Field size (bytes) | Description                                                                   |
-|   |               |                    |                                                                               |
-+===+===============+====================+===============================================================================+
-| 1 | Valid         | 8                  | Bit X (X = 0 .. 3) is set to 1 if key X is valid or to 0 otherwise.           |
-|   |               |                    |                                                                               |
-|   |               |                    | Bit 4 is only used for extendable bucket tables to help with the              |
-|   |               |                    | implementation of the branchless logic. In this case, bit 4 is set to 1 if    |
-|   |               |                    | next pointer is valid (not NULL) or to 0 otherwise.                           |
-|   |               |                    |                                                                               |
-+---+---------------+--------------------+-------------------------------------------------------------------------------+
-| 2 | Next Ptr/LRU  | 8                  | For LRU tables, this fields represents the LRU list for the current bucket    |
-|   |               |                    | stored as array of 4 entries of 2 bytes each. Entry 0 stores the index        |
-|   |               |                    | (0 .. 3) of the MRU key, while entry 3 stores the index of the LRU key.       |
-|   |               |                    |                                                                               |
-|   |               |                    | For extendable bucket tables, this field represents the next pointer (i.e.    |
-|   |               |                    | the pointer to the next group of 4 keys linked to the current bucket). The    |
-|   |               |                    | next pointer is not NULL if the bucket is currently extended or NULL          |
-|   |               |                    | otherwise.                                                                    |
-|   |               |                    |                                                                               |
-+---+---------------+--------------------+-------------------------------------------------------------------------------+
-| 3 | Key [0 .. 3]  | 4 x key_size       | Full keys.                                                                    |
-|   |               |                    |                                                                               |
-+---+---------------+--------------------+-------------------------------------------------------------------------------+
-| 4 | Data [0 .. 3] | 4 x entry_size     | Full key values (key data) associated with keys 0 .. 3.                       |
-|   |               |                    |                                                                               |
-+---+---------------+--------------------+-------------------------------------------------------------------------------+
+   +---+---------------+--------------------+-------------------------------------------------------------------------------+
+   | # | Field name    | Field size (bytes) | Description                                                                   |
+   |   |               |                    |                                                                               |
+   +===+===============+====================+===============================================================================+
+   | 1 | Valid         | 8                  | Bit X (X = 0 .. 3) is set to 1 if key X is valid or to 0 otherwise.           |
+   |   |               |                    |                                                                               |
+   |   |               |                    | Bit 4 is only used for extendible bucket tables to help with the              |
+   |   |               |                    | implementation of the branchless logic. In this case, bit 4 is set to 1 if    |
+   |   |               |                    | next pointer is valid (not NULL) or to 0 otherwise.                           |
+   |   |               |                    |                                                                               |
+   +---+---------------+--------------------+-------------------------------------------------------------------------------+
+   | 2 | Next Ptr/LRU  | 8                  | For LRU tables, this fields represents the LRU list for the current bucket    |
+   |   |               |                    | stored as array of 4 entries of 2 bytes each. Entry 0 stores the index        |
+   |   |               |                    | (0 .. 3) of the MRU key, while entry 3 stores the index of the LRU key.       |
+   |   |               |                    |                                                                               |
+   |   |               |                    | For extendible bucket tables, this field represents the next pointer (i.e.    |
+   |   |               |                    | the pointer to the next group of 4 keys linked to the current bucket). The    |
+   |   |               |                    | next pointer is not NULL if the bucket is currently extended or NULL          |
+   |   |               |                    | otherwise.                                                                    |
+   |   |               |                    |                                                                               |
+   +---+---------------+--------------------+-------------------------------------------------------------------------------+
+   | 3 | Key [0 .. 3]  | 4 x key_size       | Full keys.                                                                    |
+   |   |               |                    |                                                                               |
+   +---+---------------+--------------------+-------------------------------------------------------------------------------+
+   | 4 | Data [0 .. 3] | 4 x entry_size     | Full key values (key data) associated with keys 0 .. 3.                       |
+   |   |               |                    |                                                                               |
+   +---+---------------+--------------------+-------------------------------------------------------------------------------+
 
 and detail the bucket search pipeline used to implement 8-byte and 16-byte key hash tables (either LRU or extendable bucket,
 either with pre-computed signature or "do-sig").
@@ -919,42 +919,42 @@ For each pipeline stage, the described operations are applied to each of the two
    Tables)
 
 
-.. _pg_table_32:
+.. _table_qos_32:
 
-**Table 32 Description of the Bucket Search Pipeline Stages (8-byte and 16-byte Key Hash Tables)**
+.. table:: Description of the Bucket Search Pipeline Stages (8-byte and 16-byte Key Hash Tables)
 
-+---+---------------------------+-----------------------------------------------------------------------------+
-| # | Stage name                | Description                                                                 |
-|   |                           |                                                                             |
-+===+===========================+=============================================================================+
-| 0 | Prefetch packet meta-data | #.  Select next two packets from the burst of input packets.                |
-|   |                           |                                                                             |
-|   |                           | #.  Prefetch packet meta-data containing the key and key signature.         |
-|   |                           |                                                                             |
-+---+---------------------------+-----------------------------------------------------------------------------+
-| 1 | Prefetch table bucket     | #.  Read the key signature from the packet meta-data (for extendable bucket |
-|   |                           |     hash tables) or read the key from the packet meta-data and compute key  |
-|   |                           |     signature (for LRU tables).                                             |
-|   |                           |                                                                             |
-|   |                           | #.  Identify the bucket ID using the key signature.                         |
-|   |                           |                                                                             |
-|   |                           | #.  Prefetch the bucket.                                                    |
-|   |                           |                                                                             |
-+---+---------------------------+-----------------------------------------------------------------------------+
-| 2 | Prefetch table data       | #.  Read the bucket.                                                        |
-|   |                           |                                                                             |
-|   |                           | #.  Compare all 4 bucket keys against the input key.                        |
-|   |                           |                                                                             |
-|   |                           | #.  Report input key as lookup hit only when a match is identified (more    |
-|   |                           |     than one key match is not possible)                                     |
-|   |                           |                                                                             |
-|   |                           | #.  For LRU tables only, use branchless logic to update the bucket LRU list |
-|   |                           |     (the current key becomes the new MRU) only on lookup hit.               |
-|   |                           |                                                                             |
-|   |                           | #.  Prefetch the key value (key data) associated with the matched key (to   |
-|   |                           |     avoid branches, this is done on both lookup hit and miss).              |
-|   |                           |                                                                             |
-+---+---------------------------+-----------------------------------------------------------------------------+
+   +---+---------------------------+-----------------------------------------------------------------------------+
+   | # | Stage name                | Description                                                                 |
+   |   |                           |                                                                             |
+   +===+===========================+=============================================================================+
+   | 0 | Prefetch packet meta-data | #.  Select next two packets from the burst of input packets.                |
+   |   |                           |                                                                             |
+   |   |                           | #.  Prefetch packet meta-data containing the key and key signature.         |
+   |   |                           |                                                                             |
+   +---+---------------------------+-----------------------------------------------------------------------------+
+   | 1 | Prefetch table bucket     | #.  Read the key signature from the packet meta-data (for extendable bucket |
+   |   |                           |     hash tables) or read the key from the packet meta-data and compute key  |
+   |   |                           |     signature (for LRU tables).                                             |
+   |   |                           |                                                                             |
+   |   |                           | #.  Identify the bucket ID using the key signature.                         |
+   |   |                           |                                                                             |
+   |   |                           | #.  Prefetch the bucket.                                                    |
+   |   |                           |                                                                             |
+   +---+---------------------------+-----------------------------------------------------------------------------+
+   | 2 | Prefetch table data       | #.  Read the bucket.                                                        |
+   |   |                           |                                                                             |
+   |   |                           | #.  Compare all 4 bucket keys against the input key.                        |
+   |   |                           |                                                                             |
+   |   |                           | #.  Report input key as lookup hit only when a match is identified (more    |
+   |   |                           |     than one key match is not possible)                                     |
+   |   |                           |                                                                             |
+   |   |                           | #.  For LRU tables only, use branchless logic to update the bucket LRU list |
+   |   |                           |     (the current key becomes the new MRU) only on lookup hit.               |
+   |   |                           |                                                                             |
+   |   |                           | #.  Prefetch the key value (key data) associated with the matched key (to   |
+   |   |                           |     avoid branches, this is done on both lookup hit and miss).              |
+   |   |                           |                                                                             |
+   +---+---------------------------+-----------------------------------------------------------------------------+
 
 Additional notes:
 
@@ -1041,27 +1041,27 @@ The reserved actions are handled directly by the Packet Framework without the us
 through the table action handler configuration.
 A special category of the reserved actions is represented by the next hop actions, which regulate the packet flow between input ports,
 tables and output ports through the pipeline.
-Table 33 lists the next hop actions.
+:numref:`table_qos_33` lists the next hop actions.
 
-.. _pg_table_33:
+.. _table_qos_33:
 
-**Table 33 Next Hop Actions (Reserved)**
+.. table:: Next Hop Actions (Reserved)
 
-+---+---------------------+-----------------------------------------------------------------------------------+
-| # | Next hop action     | Description                                                                       |
-|   |                     |                                                                                   |
-+===+=====================+===================================================================================+
-| 1 | Drop                | Drop the current packet.                                                          |
-|   |                     |                                                                                   |
-+---+---------------------+-----------------------------------------------------------------------------------+
-| 2 | Send to output port | Send the current packet to specified output port. The output port ID is metadata  |
-|   |                     | stored in the same table entry.                                                   |
-|   |                     |                                                                                   |
-+---+---------------------+-----------------------------------------------------------------------------------+
-| 3 | Send to table       | Send the current packet to specified table. The table ID is metadata stored in    |
-|   |                     | the same table entry.                                                             |
-|   |                     |                                                                                   |
-+---+---------------------+-----------------------------------------------------------------------------------+
+   +---+---------------------+-----------------------------------------------------------------------------------+
+   | # | Next hop action     | Description                                                                       |
+   |   |                     |                                                                                   |
+   +===+=====================+===================================================================================+
+   | 1 | Drop                | Drop the current packet.                                                          |
+   |   |                     |                                                                                   |
+   +---+---------------------+-----------------------------------------------------------------------------------+
+   | 2 | Send to output port | Send the current packet to specified output port. The output port ID is metadata  |
+   |   |                     | stored in the same table entry.                                                   |
+   |   |                     |                                                                                   |
+   +---+---------------------+-----------------------------------------------------------------------------------+
+   | 3 | Send to table       | Send the current packet to specified table. The table ID is metadata stored in    |
+   |   |                     | the same table entry.                                                             |
+   |   |                     |                                                                                   |
+   +---+---------------------+-----------------------------------------------------------------------------------+
 
 User Actions
 ^^^^^^^^^^^^
@@ -1072,39 +1072,39 @@ and their associated meta-data is private to each table.
 Within the same table, all the table entries (including the table default entry) share the same definition
 for the user actions and their associated meta-data,
 with each table entry having its own set of enabled user actions and its own copy of the action meta-data.
-Table 34 contains a non-exhaustive list of user action examples.
+:numref:`table_qos_34` contains a non-exhaustive list of user action examples.
 
-.. _pg_table_34:
+.. _table_qos_34:
 
-**Table 34 User Action Examples**
+.. table:: User Action Examples
 
-+---+-----------------------------------+---------------------------------------------------------------------+
-| # | User action                       | Description                                                         |
-|   |                                   |                                                                     |
-+===+===================================+=====================================================================+
-| 1 | Metering                          | Per flow traffic metering using the srTCM and trTCM algorithms.     |
-|   |                                   |                                                                     |
-+---+-----------------------------------+---------------------------------------------------------------------+
-| 2 | Statistics                        | Update the statistics counters maintained per flow.                 |
-|   |                                   |                                                                     |
-+---+-----------------------------------+---------------------------------------------------------------------+
-| 3 | App ID                            | Per flow state machine fed by variable length sequence of packets   |
-|   |                                   | at the flow initialization with the purpose of identifying the      |
-|   |                                   | traffic type and application.                                       |
-|   |                                   |                                                                     |
-+---+-----------------------------------+---------------------------------------------------------------------+
-| 4 | Push/pop labels                   | Push/pop VLAN/MPLS labels to/from the current packet.               |
-|   |                                   |                                                                     |
-+---+-----------------------------------+---------------------------------------------------------------------+
-| 5 | Network Address Translation (NAT) | Translate between the internal (LAN) and external (WAN) IP          |
-|   |                                   | destination/source address and/or L4 protocol destination/source    |
-|   |                                   | port.                                                               |
-|   |                                   |                                                                     |
-+---+-----------------------------------+---------------------------------------------------------------------+
-| 6 | TTL update                        | Decrement IP TTL and, in case of IPv4 packets, update the IP        |
-|   |                                   | checksum.                                                           |
-|   |                                   |                                                                     |
-+---+-----------------------------------+---------------------------------------------------------------------+
+   +---+-----------------------------------+---------------------------------------------------------------------+
+   | # | User action                       | Description                                                         |
+   |   |                                   |                                                                     |
+   +===+===================================+=====================================================================+
+   | 1 | Metering                          | Per flow traffic metering using the srTCM and trTCM algorithms.     |
+   |   |                                   |                                                                     |
+   +---+-----------------------------------+---------------------------------------------------------------------+
+   | 2 | Statistics                        | Update the statistics counters maintained per flow.                 |
+   |   |                                   |                                                                     |
+   +---+-----------------------------------+---------------------------------------------------------------------+
+   | 3 | App ID                            | Per flow state machine fed by variable length sequence of packets   |
+   |   |                                   | at the flow initialization with the purpose of identifying the      |
+   |   |                                   | traffic type and application.                                       |
+   |   |                                   |                                                                     |
+   +---+-----------------------------------+---------------------------------------------------------------------+
+   | 4 | Push/pop labels                   | Push/pop VLAN/MPLS labels to/from the current packet.               |
+   |   |                                   |                                                                     |
+   +---+-----------------------------------+---------------------------------------------------------------------+
+   | 5 | Network Address Translation (NAT) | Translate between the internal (LAN) and external (WAN) IP          |
+   |   |                                   | destination/source address and/or L4 protocol destination/source    |
+   |   |                                   | port.                                                               |
+   |   |                                   |                                                                     |
+   +---+-----------------------------------+---------------------------------------------------------------------+
+   | 6 | TTL update                        | Decrement IP TTL and, in case of IPv4 packets, update the IP        |
+   |   |                                   | checksum.                                                           |
+   |   |                                   |                                                                     |
+   +---+-----------------------------------+---------------------------------------------------------------------+
 
 Multicore Scaling
 -----------------

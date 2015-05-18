@@ -321,28 +321,28 @@ The Port/Subport/Pipe/Traffic Class/Queue are the hierarchical entities in a typ
 The traffic flows that need to be configured are application dependent.
 This application classifies based on the QinQ double VLAN tags and the IP destination address as indicated in the following table.
 
-.. _table_2:
+.. _table_qos_scheduler_1:
 
-**Table 2. Entity Types**
+.. table:: Entity Types
 
-+----------------+-------------------------+--------------------------------------------------+----------------------------------+
-| **Level Name** | **Siblings per Parent** | **QoS Functional Description**                   | **Selected By**                  |
-|                |                         |                                                  |                                  |
-+================+=========================+==================================================+==================================+
-| Port           | -                       | Ethernet port                                    | Physical port                    |
-|                |                         |                                                  |                                  |
-+----------------+-------------------------+--------------------------------------------------+----------------------------------+
-| Subport        | Config (8)              | Traffic shaped (token bucket)                    | Outer VLAN tag                   |
-|                |                         |                                                  |                                  |
-+----------------+-------------------------+--------------------------------------------------+----------------------------------+
-| Pipe           | Config (4k)             | Traffic shaped (token bucket)                    | Inner VLAN tag                   |
-|                |                         |                                                  |                                  |
-+----------------+-------------------------+--------------------------------------------------+----------------------------------+
-| Traffic Class  | 4                       | TCs of the same pipe services in strict priority | Destination IP address (0.0.X.0) |
-|                |                         |                                                  |                                  |
-+----------------+-------------------------+--------------------------------------------------+----------------------------------+
-| Queue          | 4                       | Queue of the same TC serviced in WRR             | Destination IP address (0.0.0.X) |
-|                |                         |                                                  |                                  |
-+----------------+-------------------------+--------------------------------------------------+----------------------------------+
+   +----------------+-------------------------+--------------------------------------------------+----------------------------------+
+   | **Level Name** | **Siblings per Parent** | **QoS Functional Description**                   | **Selected By**                  |
+   |                |                         |                                                  |                                  |
+   +================+=========================+==================================================+==================================+
+   | Port           | -                       | Ethernet port                                    | Physical port                    |
+   |                |                         |                                                  |                                  |
+   +----------------+-------------------------+--------------------------------------------------+----------------------------------+
+   | Subport        | Config (8)              | Traffic shaped (token bucket)                    | Outer VLAN tag                   |
+   |                |                         |                                                  |                                  |
+   +----------------+-------------------------+--------------------------------------------------+----------------------------------+
+   | Pipe           | Config (4k)             | Traffic shaped (token bucket)                    | Inner VLAN tag                   |
+   |                |                         |                                                  |                                  |
+   +----------------+-------------------------+--------------------------------------------------+----------------------------------+
+   | Traffic Class  | 4                       | TCs of the same pipe services in strict priority | Destination IP address (0.0.X.0) |
+   |                |                         |                                                  |                                  |
+   +----------------+-------------------------+--------------------------------------------------+----------------------------------+
+   | Queue          | 4                       | Queue of the same TC serviced in WRR             | Destination IP address (0.0.0.X) |
+   |                |                         |                                                  |                                  |
+   +----------------+-------------------------+--------------------------------------------------+----------------------------------+
 
 Please refer to the "QoS Scheduler" chapter in the *DPDK Programmer's Guide* for more information about these parameters.

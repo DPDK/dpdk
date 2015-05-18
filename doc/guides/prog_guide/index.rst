@@ -174,72 +174,70 @@ Programmer's Guide
 
 **Tables**
 
-:ref:`Table 1. Packet Processing Pipeline Implementing QoS <pg_table_1>`
+:numref:`table_qos_1` :ref:`table_qos_1`
 
-:ref:`Table 2. Infrastructure Blocks Used by the Packet Processing Pipeline <pg_table_2>`
+:numref:`table_qos_2` :ref:`table_qos_2`
 
-:ref:`Table 3. Port Scheduling Hierarchy <pg_table_3>`
+:numref:`table_qos_3` :ref:`table_qos_3`
 
-:ref:`Table 4. Scheduler Internal Data Structures per Port <pg_table_4>`
+:numref:`table_qos_4` :ref:`table_qos_4`
 
-:ref:`Table 5. Ethernet Frame Overhead Fields <pg_table_5>`
+:numref:`table_qos_5` :ref:`table_qos_5`
 
-:ref:`Table 6. Token Bucket Generic Operations <pg_table_6>`
+:numref:`table_qos_6` :ref:`table_qos_6`
 
-:ref:`Table 7. Token Bucket Generic Parameters <pg_table_7>`
+:numref:`table_qos_7` :ref:`table_qos_7`
 
-:ref:`Table 8. Token Bucket Persistent Data Structure <pg_table_8>`
+:numref:`table_qos_8` :ref:`table_qos_8`
 
-:ref:`Table 9. Token Bucket Operations <pg_table_9>`
+:numref:`table_qos_9` :ref:`table_qos_9`
 
-:ref:`Table 10. Subport/Pipe Traffic Class Upper Limit Enforcement Persistent Data Structure <pg_table_10>`
+:numref:`table_qos_10` :ref:`table_qos_10`
 
-:ref:`Table 11. Subport/Pipe Traffic Class Upper Limit Enforcement Operations <pg_table_11>`
+:numref:`table_qos_11` :ref:`table_qos_11`
 
-:ref:`Table 12. Weighted Round Robin (WRR) <pg_table_12>`
+:numref:`table_qos_12` :ref:`table_qos_12`
 
-:ref:`Table 13. Subport Traffic Class Oversubscription <pg_table_13>`
+:numref:`table_qos_13` :ref:`table_qos_13`
 
-:ref:`Table 14. Watermark Propagation from Subport Level to Member Pipes at the Beginning of Each Traffic Class Upper Limit Enforcement Period <pg_table_14>`
+:numref:`table_qos_14` :ref:`table_qos_14`
 
-:ref:`Table 15. Watermark Calculation <pg_table_15>`
+:numref:`table_qos_15` :ref:`table_qos_15`
 
-:ref:`Table 16. RED Configuration Parameters <pg_table_16>`
+:numref:`table_qos_16` :ref:`table_qos_16`
 
-:ref:`Table 17. Relative Performance of Alternative Approaches <pg_table_17>`
+:numref:`table_qos_17` :ref:`table_qos_17`
 
-:ref:`Table 18. RED Configuration Corresponding to RED Configuration File <pg_table_18>`
+:numref:`table_qos_18` :ref:`table_qos_18`
 
-:ref:`Table 19. Port types <pg_table_19>`
+:numref:`table_qos_19` :ref:`table_qos_19`
 
-:ref:`Table 20. Port abstract interface <pg_table_20>`
+:numref:`table_qos_20` :ref:`table_qos_20`
 
-:ref:`Table 21. Table types <pg_table_21>`
+:numref:`table_qos_21` :ref:`table_qos_21`
 
-:ref:`Table 29. Table Abstract Interface <pg_table_29_1>`
+:numref:`table_qos_22` :ref:`table_qos_22`
 
-:ref:`Table 22. Configuration parameters common for all hash table types <pg_table_22>`
+:numref:`table_qos_23` :ref:`table_qos_23`
 
-:ref:`Table 23. Configuration parameters specific to extendable bucket hash table <pg_table_23>`
+:numref:`table_qos_24` :ref:`table_qos_24`
 
-:ref:`Table 24. Configuration parameters specific to pre-computed key signature hash table <pg_table_24>`
+:numref:`table_qos_25` :ref:`table_qos_25`
 
-:ref:`Table 25. The main large data structures (arrays) used for configurable key size hash tables <pg_table_25>`
+:numref:`table_qos_26` :ref:`table_qos_26`
 
-:ref:`Table 26. Field description for bucket array entry (configurable key size hash tables) <pg_table_26>`
+:numref:`table_qos_27` :ref:`table_qos_27`
 
-:ref:`Table 27. Description of the bucket search pipeline stages (configurable key size hash tables) <pg_table_27>`
+:numref:`table_qos_28` :ref:`table_qos_28`
 
-:ref:`Table 28. Lookup tables for match, match_many, match_pos <pg_table_28>`
+:numref:`table_qos_29` :ref:`table_qos_29`
 
-:ref:`Table 29. Collapsed lookup tables for match, match_many and match_pos <pg_table_29>`
+:numref:`table_qos_30` :ref:`table_qos_30`
 
-:ref:`Table 30. The main large data structures (arrays) used for 8-byte and 16-byte key size hash tables <pg_table_30>`
+:numref:`table_qos_31` :ref:`table_qos_31`
 
-:ref:`Table 31. Field description for bucket array entry (8-byte and 16-byte key hash tables) <pg_table_31>`
+:numref:`table_qos_32` :ref:`table_qos_32`
 
-:ref:`Table 32. Description of the bucket search pipeline stages (8-byte and 16-byte key hash tables) <pg_table_32>`
+:numref:`table_qos_33` :ref:`table_qos_33`
 
-:ref:`Table 33. Next hop actions (reserved) <pg_table_33>`
-
-:ref:`Table 34. User action examples <pg_table_34>`
+:numref:`table_qos_34` :ref:`table_qos_34`
