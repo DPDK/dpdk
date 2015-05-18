@@ -67,11 +67,11 @@ DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += qos_sched
 DIRS-y += quota_watermark
 DIRS-$(CONFIG_RTE_ETHDEV_RXTX_CALLBACKS) += rxtx_callbacks
 DIRS-y += skeleton
-DIRS-y += timer
+DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += timer
 DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost
 DIRS-$(CONFIG_RTE_LIBRTE_XEN_DOM0) += vhost_xen
 DIRS-y += vmdq
 DIRS-y += vmdq_dcb
-DIRS-y += vm_power_manager
+DIRS-$(CONFIG_RTE_LIBRTE_POWER) += vm_power_manager
 
 include $(RTE_SDK)/mk/rte.extsubdir.mk
