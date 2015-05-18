@@ -824,7 +824,7 @@ rte_netmap_mmap(void *addr, size_t length,
 		return (MAP_FAILED);
 	}
 
-	return ((void *)((uintptr_t)netmap.mem + offset));
+	return (void *)((uintptr_t)netmap.mem + (uintptr_t)offset);
 }
 
 /**
