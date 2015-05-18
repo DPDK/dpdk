@@ -72,13 +72,12 @@ The disadvantages:
 
 A simplified representation of a Ring is shown in with consumer and producer head and tail pointers to objects stored in the data structure.
 
-.. _pg_figure_4:
+.. _figure_ring1:
 
-**Figure 4. Ring Structure**
+.. figure:: img/ring1.*
 
-.. image5_png has been replaced
+   Ring Structure
 
-|ring1|
 
 References for Ring Implementation in FreeBSD*
 ----------------------------------------------
@@ -155,9 +154,13 @@ The prod_next local variable points to the next element of the table, or several
 
 If there is not enough room in the ring (this is detected by checking cons_tail), it returns an error.
 
-.. image6_png has been replaced
 
-|ring-enqueue1|
+.. _figure_ring-enqueue1:
+
+.. figure:: img/ring-enqueue1.*
+
+   Enqueue first step
+
 
 Enqueue Second Step
 ^^^^^^^^^^^^^^^^^^^
@@ -166,9 +169,13 @@ The second step is to modify *ring->prod_head* in ring structure to point to the
 
 A pointer to the added object is copied in the ring (obj4).
 
-.. image7_png has been replaced
 
-|ring-enqueue2|
+.. _figure_ring-enqueue2:
+
+.. figure:: img/ring-enqueue2.*
+
+   Enqueue second step
+
 
 Enqueue Last Step
 ^^^^^^^^^^^^^^^^^
@@ -176,9 +183,13 @@ Enqueue Last Step
 Once the object is added in the ring, ring->prod_tail in the ring structure is modified to point to the same location as *ring->prod_head*.
 The enqueue operation is finished.
 
-.. image8_png has been replaced
 
-|ring-enqueue3|
+.. _figure_ring-enqueue3:
+
+.. figure:: img/ring-enqueue3.*
+
+   Enqueue last step
+
 
 Single Consumer Dequeue
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -196,9 +207,13 @@ The cons_next local variable points to the next element of the table, or several
 
 If there are not enough objects in the ring (this is detected by checking prod_tail), it returns an error.
 
-.. image9_png has been replaced
 
-|ring-dequeue1|
+.. _figure_ring-dequeue1:
+
+.. figure:: img/ring-dequeue1.*
+
+   Dequeue last step
+
 
 Dequeue Second Step
 ^^^^^^^^^^^^^^^^^^^
@@ -207,9 +222,13 @@ The second step is to modify ring->cons_head in the ring structure to point to t
 
 The pointer to the dequeued object (obj1) is copied in the pointer given by the user.
 
-.. image10_png has been replaced
 
-|ring-dequeue2|
+.. _figure_ring-dequeue2:
+
+.. figure:: img/ring-dequeue2.*
+
+   Dequeue second step
+
 
 Dequeue Last Step
 ^^^^^^^^^^^^^^^^^
@@ -217,9 +236,13 @@ Dequeue Last Step
 Finally, ring->cons_tail in the ring structure is modified to point to the same location as ring->cons_head.
 The dequeue operation is finished.
 
-.. image11_png has been replaced
 
-|ring-dequeue3|
+.. _figure_ring-dequeue3:
+
+.. figure:: img/ring-dequeue3.*
+
+   Dequeue last step
+
 
 Multiple Producers Enqueue
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -229,8 +252,8 @@ In this example, only the producer head and tail (prod_head and prod_tail) are m
 
 The initial state is to have a prod_head and prod_tail pointing at the same location.
 
-MC Enqueue First Step
-^^^^^^^^^^^^^^^^^^^^^
+Multiple Consumer Enqueue First Step
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 On both cores, *ring->prod_head* and ring->cons_tail are copied in local variables.
 The prod_next local variable points to the next element of the table,
@@ -238,12 +261,16 @@ or several elements after in the case of bulk enqueue.
 
 If there is not enough room in the ring (this is detected by checking cons_tail), it returns an error.
 
-.. image12_png has been replaced
 
-|ring-mp-enqueue1|
+.. _figure_ring-mp-enqueue1:
 
-MC Enqueue Second Step
-^^^^^^^^^^^^^^^^^^^^^^
+.. figure:: img/ring-mp-enqueue1.*
+
+   Multiple consumer enqueue first step
+
+
+Multiple Consumer Enqueue Second Step
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The second step is to modify ring->prod_head in the ring structure to point to the same location as prod_next.
 This operation is done using a Compare And Swap (CAS) instruction, which does the following operations atomically:
@@ -256,41 +283,57 @@ This operation is done using a Compare And Swap (CAS) instruction, which does th
 
 In the figure, the operation succeeded on core 1, and step one restarted on core 2.
 
-.. image13_png has been replaced
 
-|ring-mp-enqueue2|
+.. _figure_ring-mp-enqueue2:
 
-MC Enqueue Third Step
-^^^^^^^^^^^^^^^^^^^^^
+.. figure:: img/ring-mp-enqueue2.*
+
+   Multiple consumer enqueue second step
+
+
+Multiple Consumer Enqueue Third Step
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The CAS operation is retried on core 2 with success.
 
 The core 1 updates one element of the ring(obj4), and the core 2 updates another one (obj5).
 
-.. image14_png has been replaced
 
-|ring-mp-enqueue3|
+.. _figure_ring-mp-enqueue3:
 
-MC Enqueue Fourth Step
-^^^^^^^^^^^^^^^^^^^^^^
+.. figure:: img/ring-mp-enqueue3.*
+
+   Multiple consumer enqueue third step
+
+
+Multiple Consumer Enqueue Fourth Step
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Each core now wants to update ring->prod_tail.
 A core can only update it if ring->prod_tail is equal to the prod_head local variable.
 This is only true on core 1. The operation is finished on core 1.
 
-.. image15_png has been replaced
 
-|ring-mp-enqueue4|
+.. _figure_ring-mp-enqueue4:
 
-MC Enqueue Last Step
-^^^^^^^^^^^^^^^^^^^^
+.. figure:: img/ring-mp-enqueue4.*
+
+   Multiple consumer enqueue fourth step
+
+
+Multiple Consumer Enqueue Last Step
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once ring->prod_tail is updated by core 1, core 2 is allowed to update it too.
 The operation is also finished on core 2.
 
-.. image16_png has been replaced
 
-|ring-mp-enqueue5|
+.. _figure_ring-mp-enqueue5:
+
+.. figure:: img/ring-mp-enqueue5.*
+
+   Multiple consumer enqueue last step
+
 
 Modulo 32-bit Indexes
 ~~~~~~~~~~~~~~~~~~~~~
@@ -309,15 +352,23 @@ The following are two examples that help to explain how indexes are used in a ri
     In addition, the four indexes are defined as unsigned 16-bit integers,
     as opposed to unsigned 32-bit integers in the more realistic case.
 
-.. image17_png has been replaced
 
-|ring-modulo1|
+.. _figure_ring-modulo1:
+
+.. figure:: img/ring-modulo1.*
+
+   Modulo 32-bit indexes - Example 1
+
 
 This ring contains 11000 entries.
 
-.. image18_png has been replaced
 
-|ring-modulo2|
+.. _figure_ring-modulo2:
+
+.. figure:: img/ring-modulo2.*
+
+      Modulo 32-bit indexes - Example 2
+
 
 This ring contains 12536 entries.
 
@@ -346,31 +397,3 @@ References
     *   `bufring.c in FreeBSD <http://svn.freebsd.org/viewvc/base/release/8.0.0/sys/kern/subr_bufring.c?revision=199625&amp;view=markup>`_ (version 8)
 
     *   `Linux Lockless Ring Buffer Design <http://lwn.net/Articles/340400/>`_
-
-.. |ring1| image:: img/ring1.*
-
-.. |ring-enqueue1| image:: img/ring-enqueue1.*
-
-.. |ring-enqueue2| image:: img/ring-enqueue2.*
-
-.. |ring-enqueue3| image:: img/ring-enqueue3.*
-
-.. |ring-dequeue1| image:: img/ring-dequeue1.*
-
-.. |ring-dequeue2| image:: img/ring-dequeue2.*
-
-.. |ring-dequeue3| image:: img/ring-dequeue3.*
-
-.. |ring-mp-enqueue1| image:: img/ring-mp-enqueue1.*
-
-.. |ring-mp-enqueue2| image:: img/ring-mp-enqueue2.*
-
-.. |ring-mp-enqueue3| image:: img/ring-mp-enqueue3.*
-
-.. |ring-mp-enqueue4| image:: img/ring-mp-enqueue4.*
-
-.. |ring-mp-enqueue5| image:: img/ring-mp-enqueue5.*
-
-.. |ring-modulo1| image:: img/ring-modulo1.*
-
-.. |ring-modulo2| image:: img/ring-modulo2.*

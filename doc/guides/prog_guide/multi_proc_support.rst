@@ -83,13 +83,12 @@ and point to the same objects, in both processes.
     Refer to Section 23.3 "Multi-process Limitations" for details of
     how Linux kernel Address-Space Layout Randomization (ASLR) can affect memory sharing.
 
-.. _pg_figure_16:
+.. _figure_multi_process_memory:
 
-**Figure 16. Memory Sharing in the DPDK Multi-process Sample Application**
+.. figure:: img/multi_process_memory.*
 
-.. image42_png has been replaced
+   Memory Sharing in the DPDK Multi-process Sample Application
 
-|multi_process_memory|
 
 The EAL also supports an auto-detection mode (set by EAL --proc-type=auto flag ),
 whereby an DPDK process is started as a secondary instance if a primary instance is already running.
@@ -199,5 +198,3 @@ instead of the functions which do the hashing internally, such as rte_hash_add()
     which means that only the first, primary DPDK process instance can open and mmap  /dev/hpet.
     If the number of required DPDK processes exceeds that of the number of available HPET comparators,
     the TSC (which is the default timer in this release) must be used as a time source across all processes instead of the HPET.
-
-.. |multi_process_memory| image:: img/multi_process_memory.*

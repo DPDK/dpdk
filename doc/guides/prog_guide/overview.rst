@@ -120,13 +120,12 @@ Core Components
 The *core components* are a set of libraries that provide all the elements needed
 for high-performance packet processing applications.
 
-.. _pg_figure_1:
+.. _figure_architecture-overview:
 
-**Figure 1. Core Components Architecture**
+.. figure:: img/architecture-overview.*
 
-.. image2_png has been replaced
+   Core Components Architecture
 
-|architecture-overview|
 
 Memory Manager (librte_malloc)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -203,5 +202,3 @@ librte_net
 The librte_net library is a collection of IP protocol definitions and convenience macros.
 It is based on code from the FreeBSD* IP stack and contains protocol numbers (for use in IP headers),
 IP-related macros, IPv4/IPv6 header structures and TCP, UDP and SCTP header structures.
-
-.. |architecture-overview| image:: img/architecture-overview.*

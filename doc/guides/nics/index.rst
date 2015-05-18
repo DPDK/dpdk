@@ -50,14 +50,20 @@ Network Interface Controller Drivers
 
 **Figures**
 
-:ref:`Figure 1. Virtualization for a Single Port NIC in SR-IOV Mode <nic_figure_1>`
+:numref:`figure_single_port_nic` :ref:`figure_single_port_nic`
 
-:ref:`Figure 2. SR-IOV Performance Benchmark Setup <nic_figure_2>`
+:numref:`figure_perf_benchmark` :ref:`figure_perf_benchmark`
 
-:ref:`Figure 3. Fast Host-based Packet Processing <nic_figure_3>`
+:numref:`figure_fast_pkt_proc` :ref:`figure_fast_pkt_proc`
 
-:ref:`Figure 4. SR-IOV Inter-VM Communication <nic_figure_4>`
+:numref:`figure_inter_vm_comms` :ref:`figure_inter_vm_comms`
 
-:ref:`Figure 5. Virtio Host2VM Communication Example Using KNI vhost Back End <nic_figure_5>`
+:numref:`figure_host_vm_comms` :ref:`figure_host_vm_comms`
 
-:ref:`Figure 6. Virtio Host2VM Communication Example Using Qemu vhost Back End <nic_figure_6>`
+:numref:`figure_host_vm_comms_qemu` :ref:`figure_host_vm_comms_qemu`
+
+:numref:`figure_vmxnet3_int` :ref:`figure_vmxnet3_int`
+
+:numref:`figure_vswitch_vm` :ref:`figure_vswitch_vm`
+
+:numref:`figure_vm_vm_comms` :ref:`figure_vm_vm_comms`

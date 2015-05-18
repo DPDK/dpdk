@@ -54,27 +54,25 @@ Also, the MAC addresses are affected as follows:
 
 *   The destination MAC address is replaced by  02:00:00:00:00:TX_PORT_ID
 
-This application can be used to benchmark performance using a traffic-generator, as shown in the Figure 3.
+This application can be used to benchmark performance using a traffic-generator, as shown in the :numref:`figure_l2_fwd_benchmark_setup`.
 
-The application can also be used in a virtualized environment as shown in Figure 4.
+The application can also be used in a virtualized environment as shown in :numref:`figure_l2_fwd_virtenv_benchmark_setup`.
 
 The L2 Forwarding application can also be used as a starting point for developing a new application based on the DPDK.
 
-.. _figure_3:
+.. _figure_l2_fwd_benchmark_setup:
 
-**Figure 3. Performance Benchmark Setup (Basic Environment)**
+.. figure:: img/l2_fwd_benchmark_setup.*
 
-.. image4_png has been replaced
+   Performance Benchmark Setup (Basic Environment)
 
-|l2_fwd_benchmark_setup|
 
-.. _figure_4:
+.. _figure_l2_fwd_virtenv_benchmark_setup:
 
-**Figure 4. Performance Benchmark Setup (Virtualized Environment)**
+.. figure:: img/l2_fwd_virtenv_benchmark_setup.*
 
-.. image5_png has been renamed
+   Performance Benchmark Setup (Virtualized Environment)
 
-|l2_fwd_virtenv_benchmark_setup|
 
 Virtual Function Setup Instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -526,7 +524,3 @@ however it improves performance:
 
         prev_tsc = cur_tsc;
     }
-
-.. |l2_fwd_benchmark_setup| image:: img/l2_fwd_benchmark_setup.*
-
-.. |l2_fwd_virtenv_benchmark_setup| image:: img/l2_fwd_virtenv_benchmark_setup.*

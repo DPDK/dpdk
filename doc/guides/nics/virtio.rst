@@ -106,11 +106,12 @@ Virtio with kni vhost Back End
 
 This section demonstrates kni vhost back end example setup for Phy-VM Communication.
 
-.. _nic_figure_5:
+.. _figure_host_vm_comms:
 
-**Figure 5. Host2VM Communication Example Using kni vhost Back End**
+.. figure:: img/host_vm_comms.*
 
-.. image:: img/host_vm_comms.*
+   Host2VM Communication Example Using kni vhost Back End
+
 
 Host2VM communication example
 
@@ -174,7 +175,9 @@ Host2VM communication example
 
     We use testpmd as the forwarding application in this example.
 
-    .. image:: img/console.*
+    .. figure:: img/console.*
+
+       Running testpmd
 
 #.  Use IXIA packet generator to inject a packet stream into the KNI physical port.
 
@@ -185,11 +188,12 @@ Host2VM communication example
 Virtio with qemu virtio Back End
 --------------------------------
 
-.. _nic_figure_6:
+.. _figure_host_vm_comms_qemu:
 
-**Figure 6. Host2VM Communication Example Using qemu vhost Back End**
+.. figure:: img/host_vm_comms_qemu.*
 
-.. image:: img/host_vm_comms_qemu.*
+   Host2VM Communication Example Using qemu vhost Back End
+
 
 .. code-block:: console
 

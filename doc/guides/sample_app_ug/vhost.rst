@@ -48,13 +48,12 @@ between host and guest.
 It was found that virtio-net performance was poor due to context switching and packet copying between host, guest, and QEMU.
 The following figure shows the system architecture for a virtio-based networking (virtio-net).
 
-.. _figure_16:
+.. _figure_qemu_virtio_net:
 
-**Figure16. QEMU Virtio-net (prior to vhost-net)**
+.. figure:: img/qemu_virtio_net.*
 
-.. image19_png has been renamed
+   System Architecture for Virtio-based Networking (virtio-net).
 
-|qemu_virtio_net|
 
 The Linux* Kernel vhost-net module was developed as an offload mechanism for virtio-net.
 The vhost-net module enables KVM (QEMU) to offload the servicing of virtio-net devices to the vhost-net kernel module,
@@ -76,13 +75,12 @@ This is achieved by QEMU sharing the following information with the vhost-net mo
 
 The following figure shows the system architecture for virtio-net networking with vhost-net offload.
 
-.. _figure_17:
+.. _figure_virtio_linux_vhost:
 
-**Figure 17. Virtio with Linux* Kernel Vhost**
+.. figure:: img/virtio_linux_vhost.*
 
-.. image20_png has been renamed
+   Virtio with Linux
 
-|virtio_linux_vhost|
 
 Sample Code Overview
 --------------------
@@ -119,23 +117,21 @@ The vhost sample code application is a simple packet switching application with 
 
 The following figure shows the architecture of the Vhost sample application based on vhost-cuse.
 
-.. _figure_18:
+.. _figure_vhost_net_arch:
 
-**Figure 18. Vhost-net Architectural Overview**
+.. figure:: img/vhost_net_arch.*
 
-.. image21_png has been renamed
+   Vhost-net Architectural Overview
 
-|vhost_net_arch|
 
 The following figure shows the flow of packets through the vhost-net sample application.
 
-.. _figure_19:
+.. _figure_vhost_net_sample_app:
 
-**Figure 19. Packet Flow Through the vhost-net Sample Application**
+.. figure:: img/vhost_net_sample_app.*
 
-.. image22_png  has been renamed
+   Packet Flow Through the vhost-net Sample Application
 
-|vhost_net_sample_app|
 
 Supported Distributions
 -----------------------
@@ -771,13 +767,12 @@ In the "wait and retry" mode if the virtqueue is found to be full, then testpmd 
 The "wait and retry" algorithm is implemented in DPDK testpmd as a forwarding method call "mac_retry".
 The following sequence diagram describes the algorithm in detail.
 
-.. _figure_20:
+.. _figure_tx_dpdk_testpmd:
 
-**Figure 20. Packet Flow on TX in DPDK-testpmd**
+.. figure:: img/tx_dpdk_testpmd.*
 
-.. image23_png has been renamed
+   Packet Flow on TX in DPDK-testpmd
 
-|tx_dpdk_testpmd|
 
 Running Testpmd
 ~~~~~~~~~~~~~~~
@@ -838,13 +833,3 @@ For example:
 The above message indicates that device 0 has been registered with MAC address cc:bb:bb:bb:bb:bb and VLAN tag 1000.
 Any packets received on the NIC with these values is placed on the devices receive queue.
 When a virtio-net device transmits packets, the VLAN tag is added to the packet by the DPDK vhost sample code.
-
-.. |vhost_net_arch| image:: img/vhost_net_arch.*
-
-.. |qemu_virtio_net| image:: img/qemu_virtio_net.*
-
-.. |tx_dpdk_testpmd| image:: img/tx_dpdk_testpmd.*
-
-.. |vhost_net_sample_app| image:: img/vhost_net_sample_app.*
-
-.. |virtio_linux_vhost| image:: img/virtio_linux_vhost.*

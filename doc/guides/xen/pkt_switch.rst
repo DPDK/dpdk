@@ -52,9 +52,13 @@ The switching back end maps those grant table references and creates shared ring
 
 The following diagram describes the functionality of the DPDK Xen Packet- Switching Solution.
 
-.. image35_png has been renamed
 
-|dpdk_xen_pkt_switch|
+.. _figure_dpdk_xen_pkt_switch:
+
+.. figure:: img/dpdk_xen_pkt_switch.*
+
+   Functionality of the DPDK Xen Packet Switching Solution.
+
 
 Note 1 The Xen hypervisor uses a mechanism called a Grant Table to share memory between domains
 (`http://wiki.xen.org/wiki/Grant Table <http://wiki.xen.org/wiki/Grant%20Table>`_).
@@ -62,9 +66,13 @@ Note 1 The Xen hypervisor uses a mechanism called a Grant Table to share memory 
 A diagram of the design is shown below, where "gva" is the Guest Virtual Address,
 which is the data pointer of the mbuf, and "hva" is the Host Virtual Address:
 
-.. image36_png has been renamed
 
-|grant_table|
+.. _figure_grant_table:
+
+.. figure:: img/grant_table.*
+
+   DPDK Xen Layout
+
 
 In this design, a Virtio ring is used as a para-virtualized interface for better performance over a Xen private ring
 when packet switching to and from a VM.
@@ -139,9 +147,13 @@ Take idx#_mempool_gref node for example, the host maps those Grant references to
 The real Grant reference information is stored in this virtual address space,
 where (gref, pfn) pairs follow each other with -1 as the terminator.
 
-.. image37_pnng has been renamed
 
-|grant_refs|
+.. _figure_grant_refs:
+
+.. figure:: img/grant_refs.*
+
+   Mapping Grant references to a continuous virtual address space
+
 
 After all gref# IDs are retrieved, the host maps them to a continuous virtual address space.
 With the guest mempool virtual address, the host establishes 1:1 address mapping.
@@ -456,9 +468,3 @@ then sent out through hardware with destination MAC address 00:00:00:00:00:33.
 The packet flow is:
 
 packet generator->Virtio in guest VM1->switching backend->Virtio in guest VM2->switching backend->wire
-
-.. |grant_table| image:: img/grant_table.*
-
-.. |grant_refs| image:: img/grant_refs.*
-
-.. |dpdk_xen_pkt_switch| image:: img/dpdk_xen_pkt_switch.*

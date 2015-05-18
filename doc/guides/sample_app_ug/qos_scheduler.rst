@@ -38,13 +38,12 @@ Overview
 
 The architecture of the QoS scheduler application is shown in the following figure.
 
-.. _figure_10:
+.. _figure_qos_sched_app_arch:
 
-**Figure 10. QoS Scheduler Application Architecture**
+.. figure:: img/qos_sched_app_arch.*
 
-.. image13_png has been renamed
+   QoS Scheduler Application Architecture
 
-|qos_sched_app_arch|
 
 There are two flavors of the runtime execution for this application,
 with two or three threads per each packet flow configuration being used.
@@ -347,5 +346,3 @@ This application classifies based on the QinQ double VLAN tags and the IP destin
 +----------------+-------------------------+--------------------------------------------------+----------------------------------+
 
 Please refer to the "QoS Scheduler" chapter in the *DPDK Programmer's Guide* for more information about these parameters.
-
-.. |qos_sched_app_arch| image:: img/qos_sched_app_arch.*

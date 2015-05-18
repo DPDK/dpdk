@@ -71,13 +71,12 @@ it is just for performance testing, or it can work together with VMDq support in
 
 The packet flow through the Kernel NIC Interface application is as shown in the following figure.
 
-.. _figure_2:
+.. _figure_kernel_nic:
 
-**Figure 2. Kernel NIC Application Packet Flow**
+.. figure:: img/kernel_nic.*
 
-.. image3_png has been renamed to kernel_nic.*
+   Kernel NIC Application Packet Flow
 
-|kernel_nic|
 
 Compiling the Application
 -------------------------
@@ -616,5 +615,3 @@ Currently, setting a new MTU and configuring the network interface (up/ down) ar
             RTE_LOG(ERR, APP, "Failed to start port %d\n", port_id);
         return ret;
     }
-
-.. |kernel_nic| image:: img/kernel_nic.*

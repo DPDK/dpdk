@@ -35,7 +35,10 @@ In addition to Poll Mode Drivers (PMDs) for physical and virtual hardware,
 DPDK also includes a pure-software library that
 allows physical PMD's to be bonded together to create a single logical PMD.
 
-|bond-overview|
+.. figure:: img/bond-overview.*
+
+   Bonded PMDs
+
 
 The Link Bonding PMD library(librte_pmd_bond) supports bonding of groups of
 ``rte_eth_dev`` ports of the same speed and duplex to provide
@@ -62,7 +65,10 @@ Currently the Link Bonding PMD library supports 4 modes of operation:
 
 *   **Round-Robin (Mode 0):**
 
-|bond-mode-0|
+.. figure:: img/bond-mode-0.*
+
+   Round-Robin (Mode 0)
+
 
     This mode provides load balancing and fault tolerance by transmission of
     packets in sequential order from the first available slave device through
@@ -72,7 +78,10 @@ Currently the Link Bonding PMD library supports 4 modes of operation:
 
 *   **Active Backup (Mode 1):**
 
-|bond-mode-1|
+.. figure:: img/bond-mode-1.*
+
+   Active Backup (Mode 1)
+
 
     In this mode only one slave in the bond is active at any time, a different
     slave becomes active if, and only if, the primary active slave fails,
@@ -82,7 +91,10 @@ Currently the Link Bonding PMD library supports 4 modes of operation:
 
 *   **Balance XOR (Mode 2):**
 
-|bond-mode-2|
+.. figure:: img/bond-mode-2.*
+
+   Balance XOR (Mode 2)
+
 
     This mode provides transmit load balancing (based on the selected
     transmission policy) and fault tolerance. The default policy (layer2) uses
@@ -101,14 +113,20 @@ Currently the Link Bonding PMD library supports 4 modes of operation:
 
 *   **Broadcast (Mode 3):**
 
-|bond-mode-3|
+.. figure:: img/bond-mode-3.*
+
+   Broadcast (Mode 3)
+
 
     This mode provides fault tolerance by transmission of packets on all slave
     ports.
 
 *   **Link Aggregation 802.3AD (Mode 4):**
 
-|bond-mode-4|
+.. figure:: img/bond-mode-4.*
+
+   Link Aggregation 802.3AD (Mode 4)
+
 
     This mode provides dynamic link aggregation according to the 802.3ad
     specification. It negotiates and monitors aggregation groups that share the
@@ -128,7 +146,10 @@ Currently the Link Bonding PMD library supports 4 modes of operation:
 
 *   **Transmit Load Balancing (Mode 5):**
 
-|bond-mode-5|
+.. figure:: img/bond-mode-5.*
+
+   Transmit Load Balancing (Mode 5)
+
 
     This mode provides an adaptive transmit load balancing. It dynamically
     changes the transmitting slave, according to the computed load. Statistics
@@ -433,11 +454,3 @@ Create a bonded device in balance mode with two slaves specified by their PCI ad
 .. code-block:: console
 
     $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'eth_bond0,mode=2, slave=0000:00a:00.01,slave=0000:004:00.00,xmit_policy=l34' -- --port-topology=chained
-
-.. |bond-overview| image:: img/bond-overview.*
-.. |bond-mode-0| image:: img/bond-mode-0.*
-.. |bond-mode-1| image:: img/bond-mode-1.*
-.. |bond-mode-2| image:: img/bond-mode-2.*
-.. |bond-mode-3| image:: img/bond-mode-3.*
-.. |bond-mode-4| image:: img/bond-mode-4.*
-.. |bond-mode-5| image:: img/bond-mode-5.*

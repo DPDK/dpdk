@@ -44,6 +44,9 @@ release = version
 
 master_doc = 'index'
 
+# Figures, tables and code-blocks automatically numbered if they have caption
+numfig = True
+
 latex_documents = [
     ('index',
      'doc.tex',

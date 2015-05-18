@@ -53,7 +53,7 @@ All traffic is read from a single incoming port (port 0) and output on port 1, w
 The traffic is split into 128 queues on input, where each thread of the application reads from multiple queues.
 For example, when run with 8 threads, that is, with the -c FF option, each thread receives and forwards packets from 16 queues.
 
-As supplied, the sample application configures the VMDQ feature to have 16 pools with 8 queues each as indicated in Figure 15.
+As supplied, the sample application configures the VMDQ feature to have 16 pools with 8 queues each as indicated in :numref:`figure_vmdq_dcb_example`.
 The Intel® 82599 10 Gigabit Ethernet Controller NIC also supports the splitting of traffic into 32 pools of 4 queues each and
 this can be used by changing the NUM_POOLS parameter in the supplied code.
 The NUM_POOLS parameter can be passed on the command line, after the EAL parameters:
@@ -64,13 +64,12 @@ The NUM_POOLS parameter can be passed on the command line, after the EAL paramet
 
 where, NP can be 16 or 32.
 
-.. _figure_15:
+.. _figure_vmdq_dcb_example:
 
-**Figure 15. Packet Flow Through the VMDQ and DCB Sample Application**
+.. figure:: img/vmdq_dcb_example.*
 
-.. image18_png has been replaced
+   Packet Flow Through the VMDQ and DCB Sample Application
 
-|vmdq_dcb_example|
 
 In Linux* user space, the application can display statistics with the number of packets received on each queue.
 To have the application display the statistics, send a SIGHUP signal to the running application process, as follows:
@@ -247,5 +246,3 @@ To generate the statistics output, use the following command:
 
 Please note that the statistics output will appear on the terminal where the vmdq_dcb_app is running,
 rather than the terminal from which the HUP signal was sent.
-
-.. |vmdq_dcb_example| image:: img/vmdq_dcb_example.*

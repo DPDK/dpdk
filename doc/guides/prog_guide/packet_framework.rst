@@ -66,15 +66,15 @@ one of the table entries (on lookup hit) or the default table entry (on lookup m
 provides the set of actions to be applied on the current packet,
 as well as the next hop for the packet, which can be either another table, an output port or packet drop.
 
-An example of packet processing pipeline is presented in Figure 32:
+An example of packet processing pipeline is presented in :numref:`figure_figure32`:
 
-.. _pg_figure_32:
+.. _figure_figure32:
 
-**Figure 32 Example of Packet Processing Pipeline where Input Ports 0 and 1 are Connected with Output Ports 0, 1 and 2 through Tables 0 and 1**
+.. figure:: img/figure32.*
 
-.. Object_1_png has been renamed
+   Example of Packet Processing Pipeline where Input Ports 0 and 1
+   are Connected with Output Ports 0, 1 and 2 through Tables 0 and 1
 
-|figure32|
 
 Port Library Design
 -------------------
@@ -344,13 +344,14 @@ considering *n_bits* as the number of bits set in *bucket_mask = n_buckets - 1*,
 this means that all the keys that end up in the same hash table bucket have the lower *n_bits* of their signature identical.
 In order to reduce the number of keys in the same bucket (collisions), the number of hash table buckets needs to be increased.
 
-In packet processing context, the sequence of operations involved in hash table operations is described in Figure 33:
+In packet processing context, the sequence of operations involved in hash table operations is described in :numref:`figure_figure33`:
 
-.. _pg_figure_33:
+.. _figure_figure33:
 
-**Figure 33 Sequence of Steps for Hash Table Operations in a Packet Processing Context**
+.. figure:: img/figure33.*
 
-|figure33|
+   Sequence of Steps for Hash Table Operations in a Packet Processing Context
+
 
 
 Hash Table Use Cases
@@ -553,16 +554,15 @@ This avoids the important cost associated with flushing the CPU core execution p
 Configurable Key Size Hash Table
 """"""""""""""""""""""""""""""""
 
-Figure 34, Table 25 and Table 26 detail the main data structures used to implement configurable key size hash tables (either LRU or extendable bucket,
+:numref:`figure_figure34`, Table 25 and Table 26 detail the main data structures used to implement configurable key size hash tables (either LRU or extendable bucket,
 either with pre-computed signature or "do-sig").
 
-.. _pg_figure_34:
+.. _figure_figure34:
 
-**Figure 34 Data Structures for Configurable Key Size Hash Tables**
+.. figure:: img/figure34.*
 
-.. image65_png has been renamed
+   Data Structures for Configurable Key Size Hash Tables
 
-|figure34|
 
 .. _pg_table_25:
 
@@ -627,15 +627,17 @@ either with pre-computed signature or "do-sig").
 +---+------------------+--------------------+------------------------------------------------------------------+
 
 
-Figure 35 and Table 27 detail the bucket search pipeline stages (either LRU or extendable bucket,
+:numref:`figure_figure35` and Table 27 detail the bucket search pipeline stages (either LRU or extendable bucket,
 either with pre-computed signature or "do-sig").
 For each pipeline stage, the described operations are applied to each of the two packets handled by that stage.
 
-.. _pg_figure_35:
+.. _figure_figure35:
 
-**Figure 35 Bucket Search Pipeline for Key Lookup Operation (Configurable Key Size Hash Tables)**
+.. figure:: img/figure35.*
 
-|figure35|
+   Bucket Search Pipeline for Key Lookup Operation (Configurable Key Size Hash
+   Tables)
+
 
 .. _pg_table_27:
 
@@ -814,11 +816,8 @@ Given the input *mask*, the values for *match*, *match_many* and *match_pos* can
 |            |                                          |                   |
 +------------+------------------------------------------+-------------------+
 
-The pseudo-code is displayed in Figure 36.
 
-.. _pg_figure_36:
-
-**Figure 36 Pseudo-code for match, match_many and match_pos**
+The pseudo-code for match, match_many and match_pos is::
 
     match = (0xFFFELLU >> mask) & 1;
 
@@ -829,24 +828,22 @@ The pseudo-code is displayed in Figure 36.
 Single Key Size Hash Tables
 """""""""""""""""""""""""""
 
-Figure 37, Figure 38, Table 30 and 31 detail the main data structures used to implement 8-byte and 16-byte key hash tables
+:numref:`figure_figure37`, :numref:`figure_figure38`, Table 30 and 31 detail the main data structures used to implement 8-byte and 16-byte key hash tables
 (either LRU or extendable bucket, either with pre-computed signature or "do-sig").
 
-.. _pg_figure_37:
+.. _figure_figure37:
 
-**Figure 37 Data Structures for 8-byte Key Hash Tables**
+.. figure:: img/figure37.*
 
-.. image66_png has been renamed
+   Data Structures for 8-byte Key Hash Tables
 
-|figure37|
 
-.. _pg_figure_38:
+.. _figure_figure38:
 
-**Figure 38 Data Structures for 16-byte Key Hash Tables**
+.. figure:: img/figure38.*
 
-.. image67_png has been renamed
+   Data Structures for 16-byte Key Hash Tables
 
-|figure38|
 
 .. _pg_table_30:
 
@@ -914,11 +911,13 @@ and detail the bucket search pipeline used to implement 8-byte and 16-byte key h
 either with pre-computed signature or "do-sig").
 For each pipeline stage, the described operations are applied to each of the two packets handled by that stage.
 
-.. _pg_figure_39:
+.. _figure_figure39:
 
-**Figure 39 Bucket Search Pipeline for Key Lookup Operation (Single Key Size Hash Tables)**
+.. figure:: img/figure39.*
 
-|figure39|
+   Bucket Search Pipeline for Key Lookup Operation (Single Key Size Hash
+   Tables)
+
 
 .. _pg_table_32:
 
@@ -1167,17 +1166,3 @@ Usually, to support a specific functional block, specific implementation of Pack
 with all the implementations sharing the same API: pure SW implementation (no acceleration), implementation using accelerator A, implementation using accelerator B, etc.
 The selection between these implementations could be done at build time or at run-time (recommended), based on which accelerators are present in the system,
 with no application changes required.
-
-.. |figure33| image:: img/figure33.*
-
-.. |figure35| image:: img/figure35.*
-
-.. |figure39| image:: img/figure39.*
-
-.. |figure34| image:: img/figure34.*
-
-.. |figure32| image:: img/figure32.*
-
-.. |figure37| image:: img/figure37.*
-
-.. |figure38| image:: img/figure38.*

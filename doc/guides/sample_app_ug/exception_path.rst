@@ -46,13 +46,12 @@ The second thread reads from a TAP interface and writes the data unmodified to t
 
 The packet flow through the exception path application is as shown in the following figure.
 
-.. _figure_1:
+.. _figure_exception_path_example:
 
-**Figure 1. Packet Flow**
+.. figure:: img/exception_path_example.*
 
-.. image2_png has been replaced
+   Packet Flow
 
-|exception_path_example|
 
 To make throughput measurements, kernel bridges must be setup to forward data between the bridges appropriately.
 
@@ -327,4 +326,3 @@ To remove bridges and persistent TAP interfaces, the following commands are used
     brctl delbr br0
     openvpn --rmtun --dev tap_dpdk_00
 
-.. |exception_path_example| image:: img/exception_path_example.*

@@ -108,9 +108,11 @@ This is not feasible due to resource restrictions.
 By splitting the process in different tables/levels and limiting the number of tbl8s,
 we can greatly reduce memory consumption while maintaining a very good lookup speed (one memory access per level).
 
-.. image40_png has been renamed
 
-|tbl24_tbl8_tbl8|
+.. figure:: img/tbl24_tbl8_tbl8.*
+
+   Table split into different levels
+
 
 An entry in a table contains the following fields:
 
@@ -231,5 +233,3 @@ Use Case: IPv6 Forwarding
 -------------------------
 
 The LPM algorithm is used to implement the Classless Inter-Domain Routing (CIDR) strategy used by routers implementing IP forwarding.
-
-.. |tbl24_tbl8_tbl8| image:: img/tbl24_tbl8_tbl8.*

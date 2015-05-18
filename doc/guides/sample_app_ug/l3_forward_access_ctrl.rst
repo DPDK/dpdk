@@ -142,9 +142,13 @@ Other lines types are considered invalid.
 
 *   A typical IPv4 ACL rule line should have a format as shown below:
 
-.. image6_png has been renamed
 
-|ipv4_acl_rule|
+.. _figure_ipv4_acl_rule:
+
+.. figure:: img/ipv4_acl_rule.*
+
+   A typical IPv4 ACL rule
+
 
 IPv4 addresses are specified in CIDR format as specified in RFC 4632.
 They consist of the dot notation for the address and a prefix length separated by '/'.
@@ -164,15 +168,12 @@ For example: 6/0xfe matches protocol values 6 and 7.
 Rules File Example
 ~~~~~~~~~~~~~~~~~~
 
-.. _figure_5_1:
+.. _figure_example_rules:
 
-Figure 5 is an example of a rules file. This file has three rules, one for ACL and two for route information.
+.. figure:: img/example_rules.*
 
-**Figure 5.Example Rules File**
+   Rules example
 
-.. image7_png has been renamed
-
-|example_rules|
 
 Each rule is explained as follows:
 
@@ -397,7 +398,3 @@ Finally, the application creates contexts handler from the ACL library,
 adds rules parsed from the file into the database and build an ACL trie.
 It is important to note that the application creates an independent copy of each database for each socket CPU
 involved in the task to reduce the time for remote memory access.
-
-.. |ipv4_acl_rule| image:: img/ipv4_acl_rule.*
-
-.. |example_rules| image:: img/example_rules.*

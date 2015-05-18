@@ -85,13 +85,12 @@ A check is also performed at initialization time to ensure that the micro archit
 Then, the main() function is called. The core initialization and launch is done in rte_eal_init() (see the API documentation).
 It consist of calls to the pthread library (more specifically, pthread_self(), pthread_create(), and pthread_setaffinity_np()).
 
-.. _pg_figure_2:
+.. _figure_linuxapp_launch:
 
-**Figure 2. EAL Initialization in a Linux Application Environment**
+.. figure:: img/linuxapp_launch.*
 
-.. image3_png has been replaced
+   EAL Initialization in a Linux Application Environment
 
-|linuxapp_launch|
 
 .. note::
 
@@ -367,4 +366,3 @@ We expect only 50% of CPU spend on packet IO.
     echo  50000 > pkt_io/cpu.cfs_quota_us
 
 
-.. |linuxapp_launch| image:: img/linuxapp_launch.*

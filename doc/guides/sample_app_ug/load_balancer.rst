@@ -44,13 +44,12 @@ Overview
 
 The architecture of the Load Balance application is presented in the following figure.
 
-.. _figure_5:
+.. _figure_load_bal_app_arch:
 
-**Figure 5. Load Balancer Application Architecture**
+.. figure:: img/load_bal_app_arch.*
 
-.. image8_png has been renamed
+   Load Balancer Application Architecture
 
-|load_bal_app_arch|
 
 For the sake of simplicity, the diagram illustrates a specific case of two I/O RX and two I/O TX lcores off loading the packet I/O
 overhead incurred by four NIC ports from four worker cores, with each I/O lcore handling RX/TX for two NIC ports.
@@ -241,5 +240,3 @@ are on the same or different CPU sockets, the following run-time scenarios are p
 #.  ABC: The packet is received on socket A, it is processed by an lcore on socket B,
     then it has to be transmitted out by a NIC connected to socket C.
     The performance price for crossing the CPU socket boundary is paid twice for this packet.
-
-.. |load_bal_app_arch| image:: img/load_bal_app_arch.*

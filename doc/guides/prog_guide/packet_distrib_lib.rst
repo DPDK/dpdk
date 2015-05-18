@@ -38,7 +38,10 @@ which is responsible for load balancing or distributing packets,
 and a set of worker lcores which are responsible for receiving the packets from the distributor and operating on them.
 The model of operation is shown in the diagram below.
 
-|packet_distributor1|
+.. figure:: img/packet_distributor1.*
+
+   Packet Distributor mode of operation
+
 
 Distributor Core Operation
 --------------------------
@@ -91,9 +94,11 @@ No packet ordering guarantees are made about packets which do not share a common
 Using the process and returned_pkts API, the following application workflow can be used,
 while allowing packet order within a packet flow -- identified by a tag -- to be maintained.
 
-.. image41_png has been renamed
 
-|packet_distributor2|
+.. figure:: img/packet_distributor2.*
+
+   Application workflow
+
 
 The flush and clear_returns API calls, mentioned previously,
 are likely of less use that the process and returned_pkts APIS, and are principally provided to aid in unit testing of the library.
@@ -110,7 +115,3 @@ Since it may be desirable to vary the number of worker cores, depending on the t
 i.e. to save power at times of lighter load,
 it is possible to have a worker stop processing packets by calling "rte_distributor_return_pkt()" to indicate that
 it has finished the current packet and does not want a new one.
-
-.. |packet_distributor1| image:: img/packet_distributor1.*
-
-.. |packet_distributor2| image:: img/packet_distributor2.*

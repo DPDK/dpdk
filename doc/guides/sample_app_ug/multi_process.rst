@@ -190,13 +190,12 @@ such as a client-server mode of operation seen in the next example,
 where different processes perform different tasks, yet co-operate to form a packet-processing system.)
 The following diagram shows the data-flow through the application, using two processes.
 
-.. _figure_6:
+.. _figure_sym_multi_proc_app:
 
-**Figure 6. Example Data Flow in a Symmetric Multi-process Application**
+.. figure:: img/sym_multi_proc_app.*
 
-.. image9_png has been renamed
+   Example Data Flow in a Symmetric Multi-process Application
 
-|sym_multi_proc_app|
 
 As the diagram shows, each process reads packets from each of the network ports in use.
 RSS is used to distribute incoming packets on each port to different hardware RX queues.
@@ -296,13 +295,12 @@ In this case, the client applications just perform level-2 forwarding of packets
 
 The following diagram shows the data-flow through the application, using two client processes.
 
-.. _figure_7:
+.. _figure_client_svr_sym_multi_proc_app:
 
-**Figure 7. Example Data Flow in a Client-Server Symmetric Multi-process Application**
+.. figure:: img/client_svr_sym_multi_proc_app.*
 
-.. image10_png has been renamed
+   Example Data Flow in a Client-Server Symmetric Multi-process Application
 
-|client_svr_sym_multi_proc_app|
 
 Running the Application
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -395,13 +393,12 @@ Once the master process begins to run, it tries to initialize all the resources 
 memory, CPU cores, driver, ports, and so on, as the other examples do.
 Thereafter, it creates slave processes, as shown in the following figure.
 
-.. _figure_8:
+.. _figure_master_slave_proc:
 
-**Figure 8. Master-slave Process Workflow**
+.. figure:: img/master_slave_proc.*
 
-.. image11_png has been renamed
+   Master-slave Process Workflow
 
-|master_slave_proc|
 
 The master process calls the rte_eal_mp_remote_launch() EAL function to launch an application function for each pinned thread through the pipe.
 Then, it waits to check if any slave processes have exited.
@@ -475,13 +472,12 @@ Therefore, to provide the capability to resume the new slave instance if the pre
 
 The following diagram describes slave process recovery.
 
-.. _figure_9:
+.. _figure_slave_proc_recov:
 
-**Figure 9. Slave Process Recovery Process Flow**
+.. figure:: img/slave_proc_recov.*
 
-.. image12_png has been renamed
+   Slave Process Recovery Process Flow
 
-|slave_proc_recov|
 
 Floating Process Support
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -774,11 +770,3 @@ so it remaps the resource to the new core ID slot.
         }
         return 0;
     }
-
-.. |sym_multi_proc_app| image:: img/sym_multi_proc_app.*
-
-.. |client_svr_sym_multi_proc_app| image:: img/client_svr_sym_multi_proc_app.*
-
-.. |master_slave_proc| image:: img/master_slave_proc.*
-
-.. |slave_proc_recov| image:: img/slave_proc_recov.*

@@ -117,13 +117,12 @@ The key fields of the heap structure and their function are described below (see
     since these are never touched except when they are to be freed again -
     at which point the pointer to the block is an input to the free() function.
 
-.. _pg_figure_3:
+.. _figure_malloc_heap:
 
-**Figure 3. Example of a malloc heap and malloc elements within the malloc library**
+.. figure:: img/malloc_heap.*
 
-.. image4_png has been renamed
+   Example of a malloc heap and malloc elements within the malloc library
 
-|malloc_heap|
 
 Structure: malloc_elem
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -232,5 +231,3 @@ These next and previous elements are then checked to see if they too are free,
 and if so, they are merged with the current elements.
 This means that we can never have two free memory blocks adjacent to one another,
 they are always merged into a single block.
-
-.. |malloc_heap| image:: img/malloc_heap.*

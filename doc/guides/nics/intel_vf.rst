@@ -49,9 +49,9 @@ SR-IOV Mode Utilization in a DPDK Environment
 The DPDK uses the SR-IOV feature for hardware-based I/O sharing in IOV mode.
 Therefore, it is possible to partition SR-IOV capability on Ethernet controller NIC resources logically and
 expose them to a virtual machine as a separate PCI function called a "Virtual Function".
-Refer to Figure 10.
+Refer to :numref:`figure_single_port_nic`.
 
-Therefore, a NIC is logically distributed among multiple virtual machines (as shown in Figure 10),
+Therefore, a NIC is logically distributed among multiple virtual machines (as shown in :numref:`figure_single_port_nic`),
 while still having global data in common to share with the Physical Function and other Virtual Functions.
 The DPDK fm10kvf, i40evf, igbvf or ixgbevf as a Poll Mode Driver (PMD) serves for the Intel® 82576 Gigabit Ethernet Controller,
 Intel® Ethernet Controller I350 family, Intel® 82599 10 Gigabit Ethernet Controller NIC,
@@ -72,11 +72,12 @@ For more detail on SR-IOV, please refer to the following documents:
 
 *   `Scalable I/O Virtualized Servers <http://www.intel.com/content/www/us/en/virtualization/server-virtualization/scalable-i-o-virtualized-servers-paper.html>`_
 
-.. _nic_figure_1:
+.. _figure_single_port_nic:
 
-**Figure 1. Virtualization for a Single Port NIC in SR-IOV Mode**
+.. figure:: img/single_port_nic.*
 
-.. image:: img/single_port_nic.*
+   Virtualization for a Single Port NIC in SR-IOV Mode
+
 
 Physical and Virtual Function Infrastructure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -548,13 +549,14 @@ The setup procedure is as follows:
         can also be used to bind and unbind devices to a virtual machine in Ubuntu.
         If this option is used, step 6 in the instructions provided will be different.
 
-    *   The Virtual Machine Monitor (see Figure 11) is equivalent to a Host OS with KVM installed as described in the instructions.
+    *   The Virtual Machine Monitor (see :numref:`figure_perf_benchmark`) is equivalent to a Host OS with KVM installed as described in the instructions.
 
-.. _nic_figure_2:
+.. _figure_perf_benchmark:
 
-**Figure 2. Performance Benchmark Setup**
+.. figure:: img/perf_benchmark.*
 
-.. image:: img/perf_benchmark.*
+   Performance Benchmark Setup
+
 
 DPDK SR-IOV PMD PF/VF Driver Usage Model
 ----------------------------------------
@@ -569,14 +571,15 @@ the DPDK VF PMD driver performs the same throughput result as a non-VT native en
 With such host instance fast packet processing, lots of services such as filtering, QoS,
 DPI can be offloaded on the host fast path.
 
-Figure 12 shows the scenario where some VMs directly communicate externally via a VFs,
+:numref:`figure_fast_pkt_proc` shows the scenario where some VMs directly communicate externally via a VFs,
 while others connect to a virtual switch and share the same uplink bandwidth.
 
-.. _nic_figure_3:
+.. _figure_fast_pkt_proc:
 
-**Figure 3. Fast Host-based Packet Processing**
+.. figure:: img/fast_pkt_proc.*
 
-.. image:: img/fast_pkt_proc.*
+   Fast Host-based Packet Processing
+
 
 SR-IOV (PF/VF) Approach for Inter-VM Communication
 --------------------------------------------------
@@ -587,7 +590,7 @@ So VF-to-VF traffic within the same physical port (VM0<->VM1) have hardware acce
 However, when VF crosses physical ports (VM0<->VM2), there is no such hardware bridge.
 In this case, the DPDK PMD PF driver provides host forwarding between such VMs.
 
-Figure 13 shows an example.
+:numref:`figure_inter_vm_comms` shows an example.
 In this case an update of the MAC address lookup tables in both the NIC and host DPDK application is required.
 
 In the NIC, writing the destination of a MAC address belongs to another cross device VM to the PF specific pool.
@@ -598,8 +601,8 @@ that is, the packet is forwarded to the correct PF pool.
 The SR-IOV NIC switch forwards the packet to a specific VM according to the MAC destination address
 which belongs to the destination VF on the VM.
 
-.. _nic_figure_4:
+.. _figure_inter_vm_comms:
 
-**Figure 4. Inter-VM Communication**
+.. figure:: img/inter_vm_comms.*
 
-.. image:: img/inter_vm_comms.*
+   Inter-VM Communication

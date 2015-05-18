@@ -90,9 +90,11 @@ Instead, this approach takes advantage of the fact that rules longer than 24 bit
 By splitting the process in two different tables/levels and limiting the number of tbl8s,
 we can greatly reduce memory consumption while maintaining a very good lookup speed (one memory access, most of the times).
 
-.. image39 has been renamed
 
-|tbl24_tbl8|
+.. figure:: img/tbl24_tbl8.*
+
+   Table split into different levels
+
 
 An entry in tbl24 contains the following fields:
 
@@ -219,5 +221,3 @@ References
 
 *   Pankaj Gupta, Algorithms for Routing Lookups and Packet Classification, PhD Thesis, Stanford University,
     2000  (`http://klamath.stanford.edu/~pankaj/thesis/ thesis_1sided.pdf <http://klamath.stanford.edu/~pankaj/thesis/%20thesis_1sided.pdf>`_ )
-
-.. |tbl24_tbl8| image:: img/tbl24_tbl8.*

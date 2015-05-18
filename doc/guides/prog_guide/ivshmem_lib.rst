@@ -43,9 +43,11 @@ they are automatically recognized by the DPDK Environment Abstraction Layer (EAL
 
 A typical DPDK IVSHMEM use case looks like the following.
 
-.. image28_png has been renamed
 
-|ivshmem|
+.. figure:: img/ivshmem.*
+
+   Typical Ivshmem use case
+
 
 The same could work with several virtual machines, providing host-to-VM or VM-to-VM communication.
 The maximum number of metadata files is 32 (by default) and each metadata file can contain different (or even the same) hugepages.
@@ -154,5 +156,3 @@ It is important to note that once QEMU is started, it holds on to the hugepages 
 As a result, if the user wishes to shut down or restart the IVSHMEM host application,
 it is not enough to simply shut the application down.
 The virtual machine must also be shut down (if not, it will hold onto outdated host data).
-
-.. |ivshmem| image:: img/ivshmem.*

@@ -80,71 +80,97 @@ Programmer's Guide
 
 **Figures**
 
-:ref:`Figure 1. Core Components Architecture <pg_figure_1>`
+:numref:`figure_architecture-overview` :ref:`figure_architecture-overview`
 
-:ref:`Figure 2. EAL Initialization in a Linux Application Environment <pg_figure_2>`
+:numref:`figure_linuxapp_launch` :ref:`figure_linuxapp_launch`
 
-:ref:`Figure 3. Example of a malloc heap and malloc elements within the malloc library <pg_figure_3>`
+:numref:`figure_malloc_heap` :ref:`figure_malloc_heap`
 
-:ref:`Figure 4. Ring Structure <pg_figure_4>`
+:numref:`figure_ring1` :ref:`figure_ring1`
 
-:ref:`Figure 5. Two Channels and Quad-ranked DIMM Example <pg_figure_5>`
+:numref:`figure_ring-enqueue1` :ref:`figure_ring-enqueue1`
 
-:ref:`Figure 6. Three Channels and Two Dual-ranked DIMM Example <pg_figure_6>`
+:numref:`figure_ring-enqueue2` :ref:`figure_ring-enqueue2`
 
-:ref:`Figure 7. A mempool in Memory with its Associated Ring <pg_figure_7>`
+:numref:`figure_ring-enqueue3` :ref:`figure_ring-enqueue3`
 
-:ref:`Figure 8. An mbuf with One Segment <pg_figure_8>`
+:numref:`figure_ring-dequeue1` :ref:`figure_ring-dequeue1`
 
-:ref:`Figure 9. An mbuf with Three Segments <pg_figure_9>`
+:numref:`figure_ring-dequeue2` :ref:`figure_ring-dequeue2`
 
-:ref:`Figure 16. Memory Sharing in the Intel® DPDK Multi-process Sample Application <pg_figure_16>`
+:numref:`figure_ring-dequeue3` :ref:`figure_ring-dequeue3`
 
-:ref:`Figure 17. Components of an Intel® DPDK KNI Application <pg_figure_17>`
+:numref:`figure_ring-mp-enqueue1` :ref:`figure_ring-mp-enqueue1`
 
-:ref:`Figure 18. Packet Flow via mbufs in the Intel DPDK® KNI <pg_figure_18>`
+:numref:`figure_ring-mp-enqueue2` :ref:`figure_ring-mp-enqueue2`
 
-:ref:`Figure 19. vHost-net Architecture Overview <pg_figure_19>`
+:numref:`figure_ring-mp-enqueue3` :ref:`figure_ring-mp-enqueue3`
 
-:ref:`Figure 20. KNI Traffic Flow <pg_figure_20>`
+:numref:`figure_ring-mp-enqueue4` :ref:`figure_ring-mp-enqueue4`
 
-:ref:`Figure 21. Complex Packet Processing Pipeline with QoS Support <pg_figure_21>`
+:numref:`figure_ring-mp-enqueue5` :ref:`figure_ring-mp-enqueue5`
 
-:ref:`Figure 22. Hierarchical Scheduler Block Internal Diagram <pg_figure_22>`
+:numref:`figure_ring-modulo1` :ref:`figure_ring-modulo1`
 
-:ref:`Figure 23. Scheduling Hierarchy per Port <pg_figure_23>`
+:numref:`figure_ring-modulo2` :ref:`figure_ring-modulo2`
 
-:ref:`Figure 24. Internal Data Structures per Port <pg_figure_24>`
+:numref:`figure_memory-management` :ref:`figure_memory-management`
 
-:ref:`Figure 25. Prefetch Pipeline for the Hierarchical Scheduler Enqueue Operation <pg_figure_25>`
+:numref:`figure_memory-management2` :ref:`figure_memory-management2`
 
-:ref:`Figure 26. Pipe Prefetch State Machine for the Hierarchical Scheduler Dequeue Operation <pg_figure_26>`
+:numref:`figure_mempool` :ref:`figure_mempool`
 
-:ref:`Figure 27. High-level Block Diagram of the Intel® DPDK Dropper <pg_figure_27>`
+:numref:`figure_mbuf1` :ref:`figure_mbuf1`
 
-:ref:`Figure 28. Flow Through the Dropper <pg_figure_28>`
+:numref:`figure_mbuf2` :ref:`figure_mbuf2`
 
-:ref:`Figure 29. Example Data Flow Through Dropper <pg_figure_29>`
+:numref:`figure_multi_process_memory` :ref:`figure_multi_process_memory`
 
-:ref:`Figure 30. Packet Drop Probability for a Given RED Configuration <pg_figure_30>`
+:numref:`figure_kernel_nic_intf` :ref:`figure_kernel_nic_intf`
 
-:ref:`Figure 31. Initial Drop Probability (pb), Actual Drop probability (pa) Computed Using a Factor 1 (Blue Curve) and a Factor 2 (Red Curve) <pg_figure_31>`
+:numref:`figure_pkt_flow_kni` :ref:`figure_pkt_flow_kni`
 
-:ref:`Figure 32. Example of packet processing pipeline. The input ports 0 and 1 are connected with the output ports 0, 1 and 2 through tables 0 and 1. <pg_figure_32>`
+:numref:`figure_vhost_net_arch2` :ref:`figure_vhost_net_arch2`
 
-:ref:`Figure 33. Sequence of steps for hash table operations in packet processing context <pg_figure_33>`
+:numref:`figure_kni_traffic_flow` :ref:`figure_kni_traffic_flow`
 
-:ref:`Figure 34. Data structures for configurable key size hash tables <pg_figure_34>`
 
-:ref:`Figure 35. Bucket search pipeline for key lookup operation (configurable key size hash tables) <pg_figure_35>`
+:numref:`figure_pkt_proc_pipeline_qos` :ref:`figure_pkt_proc_pipeline_qos`
 
-:ref:`Figure 36. Pseudo-code for match, match_many and match_pos <pg_figure_36>`
+:numref:`figure_hier_sched_blk` :ref:`figure_hier_sched_blk`
 
-:ref:`Figure 37. Data structures for 8-byte key hash tables <pg_figure_37>`
+:numref:`figure_sched_hier_per_port` :ref:`figure_sched_hier_per_port`
 
-:ref:`Figure 38. Data structures for 16-byte key hash tables <pg_figure_38>`
+:numref:`figure_data_struct_per_port` :ref:`figure_data_struct_per_port`
 
-:ref:`Figure 39. Bucket search pipeline for key lookup operation (single key size hash tables) <pg_figure_39>`
+:numref:`figure_prefetch_pipeline` :ref:`figure_prefetch_pipeline`
+
+:numref:`figure_pipe_prefetch_sm` :ref:`figure_pipe_prefetch_sm`
+
+:numref:`figure_blk_diag_dropper` :ref:`figure_blk_diag_dropper`
+
+:numref:`figure_flow_tru_droppper` :ref:`figure_flow_tru_droppper`
+
+:numref:`figure_ex_data_flow_tru_dropper` :ref:`figure_ex_data_flow_tru_dropper`
+
+:numref:`figure_pkt_drop_probability` :ref:`figure_pkt_drop_probability`
+
+:numref:`figure_drop_probability_graph` :ref:`figure_drop_probability_graph`
+
+:numref:`figure_figure32` :ref:`figure_figure32`
+
+:numref:`figure_figure33` :ref:`figure_figure33`
+
+:numref:`figure_figure34` :ref:`figure_figure34`
+
+:numref:`figure_figure35` :ref:`figure_figure35`
+
+:numref:`figure_figure37` :ref:`figure_figure37`
+
+:numref:`figure_figure38` :ref:`figure_figure38`
+
+:numref:`figure_figure39` :ref:`figure_figure39`
+
 
 **Tables**
 

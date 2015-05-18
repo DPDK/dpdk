@@ -47,11 +47,12 @@ into each other.
 This application can be used to benchmark performance using the traffic
 generator as shown in the figure below.
 
-.. _figure_22:
+.. _figure_dist_perf:
 
-**Figure 22. Performance Benchmarking Setup (Basic Environment)**
+.. figure:: img/dist_perf.*
 
-|dist_perf|
+   Performance Benchmarking Setup (Basic Environment)
+
 
 Compiling the Application
 -------------------------
@@ -106,7 +107,7 @@ Explanation
 The distributor application consists of three types of threads: a receive
 thread (lcore_rx()), a set of worker threads(lcore_worker())
 and a transmit thread(lcore_tx()). How these threads work together is shown
-in Fig2 below. The main() function launches  threads of these three types.
+in :numref:`figure_dist_app` below. The main() function launches  threads of these three types.
 Each thread has a while loop which will be doing processing and which is
 terminated only upon SIGINT or ctrl+C. The receive and transmit threads
 communicate using a software ring (rte_ring structure).
@@ -136,11 +137,12 @@ Users who wish to terminate the running of the application have to press ctrl+C
 in the application will terminate all running threads gracefully and print
 final statistics to the user.
 
-.. _figure_23:
+.. _figure_dist_app:
 
-**Figure 23. Distributor Sample Application Layout**
+.. figure:: img/dist_app.*
 
-|dist_app|
+   Distributor Sample Application Layout
+
 
 Debug Logging Support
 ---------------------
@@ -171,7 +173,3 @@ Sample Application. See Section 9.4.4, "RX Queue Initialization".
 
 TX queue initialization is done in the same way as it is done in the L2 Forwarding
 Sample Application. See Section 9.4.5, "TX Queue Initialization".
-
-.. |dist_perf| image:: img/dist_perf.*
-
-.. |dist_app| image:: img/dist_app.*

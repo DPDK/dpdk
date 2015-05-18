@@ -74,28 +74,27 @@ When running an application, the EAL command line options provide the ability to
 
     The command line must always have the number of memory channels specified for the processor.
 
-Examples of alignment for different DIMM architectures are shown in Figure 5 and Figure 6.
+Examples of alignment for different DIMM architectures are shown in
+:numref:`figure_memory-management` and :numref:`figure_memory-management2`.
 
-.. _pg_figure_5:
+.. _figure_memory-management:
 
-**Figure 5. Two Channels and Quad-ranked DIMM Example**
+.. figure:: img/memory-management.*
 
-.. image19_png has been replaced
+   Two Channels and Quad-ranked DIMM Example
 
-|memory-management|
 
 In this case, the assumption is that a packet is 16 blocks of 64 bytes, which is not true.
 
 The Intel® 5520 chipset has three channels, so in most cases,
 no padding is required between objects (except for objects whose size are n x 3 x 64 bytes blocks).
 
-.. _pg_figure_6:
+.. _figure_memory-management2:
 
-**Figure 6. Three Channels and Two Dual-ranked DIMM Example**
+.. figure:: img/memory-management2.*
 
-.. image20_png has been replaced
+   Three Channels and Two Dual-ranked DIMM Example
 
-|memory-management2|
 
 When creating a new pool, the user can specify to use this feature or not.
 
@@ -119,15 +118,14 @@ This cache can be enabled or disabled at creation of the pool.
 
 The maximum size of the cache is static and is defined at compilation time (CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE).
 
-Figure 7 shows a cache in operation.
+:numref:`figure_mempool` shows a cache in operation.
 
-.. _pg_figure_7:
+.. _figure_mempool:
 
-**Figure 7. A mempool in Memory with its Associated Ring**
+.. figure:: img/mempool.*
 
-.. image21_png has been replaced
+   A mempool in Memory with its Associated Ring
 
-|mempool|
 
 Use Cases
 ---------
@@ -140,9 +138,3 @@ Below are some examples:
 *   :ref:`Environment Abstraction Layer <Environment_Abstraction_Layer>` , for logging service
 
 *   Any application that needs to allocate fixed-sized objects in the data plane and that will be continuously utilized by the system.
-
-.. |memory-management| image:: img/memory-management.*
-
-.. |memory-management2| image:: img/memory-management2.*
-
-.. |mempool| image:: img/mempool.*

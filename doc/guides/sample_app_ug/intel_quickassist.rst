@@ -46,17 +46,16 @@ For this sample application, there is a dependency on either of:
 Overview
 --------
 
-An overview of the application is provided in Figure 11.
+An overview of the application is provided in :numref:`figure_quickassist_block_diagram`.
 For simplicity, only two NIC ports and one Intel® QuickAssist Technology device are shown in this diagram,
 although the number of NIC ports and Intel® QuickAssist Technology devices can be different.
 
-.. _figure_11:
+.. _figure_quickassist_block_diagram:
 
-**Figure 11. Intel® QuickAssist Technology Application Block Diagram**
+.. figure:: img/quickassist_block_diagram.*
 
-.. image14_png has been renamed
+   Intel® QuickAssist Technology Application Block Diagram
 
-|quickassist_block_diagram|
 
 The application allows the configuration of the following items:
 
@@ -220,5 +219,3 @@ performing AES-CBC-128 encryption with AES-XCBC-MAC-96 hash, the following setti
 
 Refer to the *DPDK Test Report* for more examples of traffic generator setup and the application startup command lines.
 If no errors are generated in response to the startup commands, the application is running correctly.
-
-.. |quickassist_block_diagram| image:: img/quickassist_block_diagram.*

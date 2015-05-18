@@ -71,23 +71,21 @@ Message buffers may be used to carry control information, packets, events,
 and so on between different entities in the system.
 Message buffers may also use their buffer pointers to point to other message buffer data sections or other structures.
 
-Figure 8 and Figure 9 show some of these scenarios.
+:numref:`figure_mbuf1` and :numref:`figure_mbuf2` show some of these scenarios.
 
-.. _pg_figure_8:
+.. _figure_mbuf1:
 
-**Figure 8. An mbuf with One Segment**
+.. figure:: img/mbuf1.*
 
-.. image22_png  has been replaced
+   An mbuf with One Segment
 
-|mbuf1|
 
-.. _pg_figure_9:
+.. _figure_mbuf2:
 
-**Figure 9. An mbuf with Three Segments**
+.. figure:: img/mbuf2.*
 
-.. image23_png has been replaced
+   An mbuf with Three Segments
 
-|mbuf2|
 
 The Buffer Manager implements a fairly standard set of buffer access functions to manipulate network packets.
 
@@ -277,7 +275,3 @@ Use Cases
 ---------
 
 All networking application should use mbufs to transport network packets.
-
-.. |mbuf1| image:: img/mbuf1.*
-
-.. |mbuf2| image:: img/mbuf2.*

@@ -38,13 +38,12 @@ Packet Pipeline with QoS Support
 
 An example of a complex packet processing pipeline with QoS support is shown in the following figure.
 
-.. _pg_figure_21:
+.. _figure_pkt_proc_pipeline_qos:
 
-**Figure 21. Complex Packet Processing Pipeline with QoS Support**
+.. figure:: img/pkt_proc_pipeline_qos.*
 
-.. image47_png has been renamed
+   Complex Packet Processing Pipeline with QoS Support
 
-|pkt_proc_pipeline_qos|
 
 This pipeline can be built using reusable DPDK software libraries.
 The main blocks implementing QoS in this pipeline are: the policer, the dropper and the scheduler.
@@ -139,13 +138,12 @@ It typically acts like a buffer that is able to temporarily store a large number
 as the NIC TX is requesting more packets for transmission,
 these packets are later on removed and handed over to the NIC TX with the packet selection logic observing the predefined SLAs (dequeue operation).
 
-.. _pg_figure_22:
+.. _figure_hier_sched_blk:
 
-**Figure 22. Hierarchical Scheduler Block Internal Diagram**
+.. figure:: img/hier_sched_blk.*
 
-.. image48_png has been renamed
+   Hierarchical Scheduler Block Internal Diagram
 
-|hier_sched_blk|
 
 The hierarchical scheduler is optimized for a large number of packet queues.
 When only a small number of queues are needed, message passing queues should be used instead of this block.
@@ -154,7 +152,7 @@ See Section 26.2.5 "Worst Case Scenarios for Performance" for a more detailed di
 Scheduling Hierarchy
 ~~~~~~~~~~~~~~~~~~~~
 
-The scheduling hierarchy is shown in Figure 23.
+The scheduling hierarchy is shown in :numref:`figure_sched_hier_per_port`.
 The first level of the hierarchy is the Ethernet TX port 1/10/40 GbE,
 with subsequent hierarchy levels defined as subport, pipe, traffic class and queue.
 
@@ -163,13 +161,12 @@ Each traffic class is the representation of a different traffic type with specif
 delay and jitter requirements, such as voice, video or data transfers.
 Each queue hosts packets from one or multiple connections of the same type belonging to the same user.
 
-.. _pg_figure_23:
+.. _figure_sched_hier_per_port:
 
-**Figure 23. Scheduling Hierarchy per Port**
+.. figure:: img/sched_hier_per_port.*
 
-.. image49_png has been renamed
+   Scheduling Hierarchy per Port
 
-|sched_hier_per_port|
 
 The functionality of each hierarchical level is detailed in the following table.
 
@@ -293,13 +290,12 @@ Internal Data Structures per Port
 
 A schematic of the internal data structures in shown in with details in.
 
-.. _pg_figure_24:
+.. _figure_data_struct_per_port:
 
-**Figure 24. Internal Data Structures per Port**
+.. figure:: img/data_struct_per_port.*
 
-.. image50_png has been renamed
+    Internal Data Structures per Port
 
-|data_struct_per_port|
 
 .. _pg_table_4:
 
@@ -434,16 +430,15 @@ the processor should not attempt to access the data structure currently under pr
 The only other work available is to execute different stages of the enqueue sequence of operations on other input packets,
 thus resulting in a pipelined implementation for the enqueue operation.
 
-Figure 25 illustrates a pipelined implementation for the enqueue operation with 4 pipeline stages and each stage executing 2 different input packets.
+:numref:`figure_prefetch_pipeline` illustrates a pipelined implementation for the enqueue operation with 4 pipeline stages and each stage executing 2 different input packets.
 No input packet can be part of more than one pipeline stage at a given time.
 
-.. _pg_figure_25:
+.. _figure_prefetch_pipeline:
 
-**Figure 25. Prefetch Pipeline for the Hierarchical Scheduler Enqueue Operation**
+.. figure:: img/prefetch_pipeline.*
 
-.. image51 has been renamed
+    Prefetch Pipeline for the Hierarchical Scheduler Enqueue Operation
 
-|prefetch_pipeline|
 
 The congestion management scheme implemented by the enqueue pipeline described above is very basic:
 packets are enqueued until a specific queue becomes full,
@@ -478,13 +473,13 @@ The dequeue pipe state machine exploits the data presence into the processor cac
 therefore it tries to send as many packets from the same pipe TC and pipe as possible (up to the available packets and credits) before
 moving to the next active TC from the same pipe (if any) or to another active pipe.
 
-.. _pg_figure_26:
+.. _figure_pipe_prefetch_sm:
 
-**Figure 26. Pipe Prefetch State Machine for the Hierarchical Scheduler Dequeue Operation**
+.. figure:: img/pipe_prefetch_sm.*
 
-.. image52 has been renamed
+   Pipe Prefetch State Machine for the Hierarchical Scheduler Dequeue
+   Operation
 
-|pipe_prefetch_sm|
 
 Timing and Synchronization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1173,17 +1168,16 @@ Dropper
 The purpose of the DPDK dropper is to drop packets arriving at a packet scheduler to avoid congestion.
 The dropper supports the Random Early Detection (RED),
 Weighted Random Early Detection (WRED) and tail drop algorithms.
-Figure 1 illustrates how the dropper integrates with the scheduler.
+:numref:`figure_blk_diag_dropper` illustrates how the dropper integrates with the scheduler.
 The DPDK currently does not support congestion management
 so the dropper provides the only method for congestion avoidance.
 
-.. _pg_figure_27:
+.. _figure_blk_diag_dropper:
 
-**Figure 27. High-level Block Diagram of the DPDK Dropper**
+.. figure:: img/blk_diag_dropper.*
 
-.. image53_png has been renamed
+   High-level Block Diagram of the DPDK Dropper
 
-|blk_diag_dropper|
 
 The dropper uses the Random Early Detection (RED) congestion avoidance algorithm as documented in the reference publication.
 The purpose of the RED algorithm is to monitor a packet queue,
@@ -1202,16 +1196,15 @@ In the case of severe congestion, the dropper resorts to tail drop.
 This occurs when a packet queue has reached maximum capacity and cannot store any more packets.
 In this situation, all arriving packets are dropped.
 
-The flow through the dropper is illustrated in Figure 28.
+The flow through the dropper is illustrated in :numref:`figure_flow_tru_droppper`.
 The RED/WRED algorithm is exercised first and tail drop second.
 
-.. _pg_figure_28:
+.. _figure_flow_tru_droppper:
 
-**Figure 28. Flow Through the Dropper**
+.. figure:: img/flow_tru_droppper.*
 
-..  image54_png has been renamed
+   Flow Through the Dropper
 
-|flow_tru_droppper|
 
 The use cases supported by the dropper are:
 
@@ -1270,17 +1263,16 @@ for example, a filter weight parameter value of 9 corresponds to a filter weight
 Enqueue Operation
 ~~~~~~~~~~~~~~~~~
 
-In the example shown in Figure 29, q (actual queue size) is the input value,
+In the example shown in :numref:`figure_ex_data_flow_tru_dropper`, q (actual queue size) is the input value,
 avg (average queue size) and count (number of packets since the last drop) are run-time values,
 decision is the output value and the remaining values are configuration parameters.
 
-.. _pg_figure_29:
+.. _figure_ex_data_flow_tru_dropper:
 
-**Figure 29. Example Data Flow Through Dropper**
+.. figure:: img/ex_data_flow_tru_dropper.*
 
-.. image55_png has been renamed
+   Example Data Flow Through Dropper
 
-|ex_data_flow_tru_dropper|
 
 EWMA Filter Microblock
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -1298,11 +1290,7 @@ Average Queue Size Calculation when the Queue is not Empty
 
 The definition of the EWMA filter is given in the following equation.
 
-**Equation 1.**
-
-.. image56_png has been renamed
-
-|ewma_filter_eq_1|
+.. image:: img/ewma_filter_eq_1.*
 
 Where:
 
@@ -1326,11 +1314,7 @@ When the queue becomes empty, average queue size should decay gradually to zero 
 or remaining stagnant at the last computed value.
 When a packet is enqueued on an empty queue, the average queue size is computed using the following formula:
 
-**Equation 2.**
-
-.. image57_png has been renamed
-
-|ewma_filter_eq_2|
+.. image:: img/ewma_filter_eq_2.*
 
 Where:
 
@@ -1338,9 +1322,7 @@ Where:
 
 In the dropper module, *m* is defined as:
 
-.. image58_png has been renamed
-
-|m_definition|
+.. image:: img/m_definition.*
 
 Where:
 
@@ -1374,15 +1356,13 @@ A numerical method is used to compute the factor (1-wq)^m that appears in Equati
 
 This method is based on the following identity:
 
-.. image59_png has been renamed
+.. image:: img/eq2_factor.*
 
-|eq2_factor|
 
 This allows us to express the following:
 
-.. image60_png has been renamed
+.. image:: img/eq2_expression.*
 
-|eq2_expression|
 
 In the dropper module, a look-up table is used to compute log2(1-wq) for each value of wq supported by the dropper module.
 The factor (1-wq)^m can then be obtained by multiplying the table value by *m* and applying shift operations.
@@ -1465,11 +1445,7 @@ Initial Packet Drop Probability
 
 The initial drop probability is calculated using the following equation.
 
-**Equation 3.**
-
-.. image61_png has been renamed
-
-|drop_probability_eq3|
+.. image:: img/drop_probability_eq3.*
 
 Where:
 
@@ -1481,19 +1457,18 @@ Where:
 
 *   *maxth*  = maximum threshold
 
-The calculation of the packet drop probability using Equation 3 is illustrated in Figure 30.
+The calculation of the packet drop probability using Equation 3 is illustrated in :numref:`figure_pkt_drop_probability`.
 If the average queue size is below the minimum threshold, an arriving packet is enqueued.
 If the average queue size is at or above the maximum threshold, an arriving packet is dropped.
 If the average queue size is between the minimum and maximum thresholds,
 a drop probability is calculated to determine if the packet should be enqueued or dropped.
 
-.. _pg_figure_30:
+.. _figure_pkt_drop_probability:
 
-**Figure 30. Packet Drop Probability for a Given RED Configuration**
+.. figure:: img/pkt_drop_probability.*
 
-.. image62_png has been renamed
+   Packet Drop Probability for a Given RED Configuration
 
-|pkt_drop_probability|
 
 Actual Drop Probability
 """""""""""""""""""""""
@@ -1501,11 +1476,7 @@ Actual Drop Probability
 If the average queue size is between the minimum and maximum thresholds,
 then the actual drop probability is calculated from the following equation.
 
-**Equation 4.**
-
-.. image63_png has been renamed
-
-|drop_probability_eq4|
+.. image:: img/drop_probability_eq4.*
 
 Where:
 
@@ -1518,7 +1489,7 @@ given in the reference document where a value of 1 is used instead.
 It should be noted that the value pa computed from can be negative or greater than 1.
 If this is the case, then a value of 1 should be used instead.
 
-The initial and actual drop probabilities are shown in Figure 31.
+The initial and actual drop probabilities are shown in :numref:`figure_drop_probability_graph`.
 The actual drop probability is shown for the case where
 the formula given in the reference document1 is used (blue curve)
 and also for the case where the formula implemented in the dropper module,
@@ -1528,13 +1499,13 @@ compared to the mark probability configuration parameter specified by the user.
 The choice to deviate from the reference document is simply a design decision and
 one that has been taken by other RED implementations, for example, FreeBSD* ALTQ RED.
 
-.. _pg_figure_31:
+.. _figure_drop_probability_graph:
 
-**Figure 31. Initial Drop Probability (pb), Actual Drop probability (pa) Computed Using a Factor 1 (Blue Curve) and a Factor 2 (Red Curve)**
+.. figure:: img/drop_probability_graph.*
 
-.. image64_png has been renamed
+   Initial Drop Probability (pb), Actual Drop probability (pa) Computed Using
+   a Factor 1 (Blue Curve) and a Factor 2 (Red Curve)
 
-|drop_probability_graph|
 
 .. _Queue_Empty_Operation:
 
@@ -1727,39 +1698,3 @@ For each input packet, the steps for the srTCM / trTCM algorithms are:
     the input color of the packet is also considered.
     When the output color is not red, a number of tokens equal to the length of the IP packet are
     subtracted from the C or E /P or both buckets, depending on the algorithm and the output color of the packet.
-
-.. |flow_tru_droppper| image:: img/flow_tru_droppper.*
-
-.. |drop_probability_graph| image:: img/drop_probability_graph.*
-
-.. |drop_probability_eq3| image:: img/drop_probability_eq3.*
-
-.. |eq2_expression| image:: img/eq2_expression.*
-
-.. |drop_probability_eq4| image:: img/drop_probability_eq4.*
-
-.. |pkt_drop_probability| image:: img/pkt_drop_probability.*
-
-.. |pkt_proc_pipeline_qos| image:: img/pkt_proc_pipeline_qos.*
-
-.. |ex_data_flow_tru_dropper| image:: img/ex_data_flow_tru_dropper.*
-
-.. |ewma_filter_eq_1| image:: img/ewma_filter_eq_1.*
-
-.. |ewma_filter_eq_2| image:: img/ewma_filter_eq_2.*
-
-.. |data_struct_per_port| image:: img/data_struct_per_port.*
-
-.. |prefetch_pipeline| image:: img/prefetch_pipeline.*
-
-.. |pipe_prefetch_sm| image:: img/pipe_prefetch_sm.*
-
-.. |blk_diag_dropper| image:: img/blk_diag_dropper.*
-
-.. |m_definition| image:: img/m_definition.*
-
-.. |eq2_factor| image:: img/eq2_factor.*
-
-.. |sched_hier_per_port| image:: img/sched_hier_per_port.*
-
-.. |hier_sched_blk| image:: img/hier_sched_blk.*

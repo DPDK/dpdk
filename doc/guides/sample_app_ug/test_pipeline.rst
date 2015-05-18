@@ -49,13 +49,12 @@ The application uses three CPU cores:
 
 *   Core C ("TX core") receives traffic from core B through software queues and sends it to the NIC ports for transmission.
 
-.. _figure_21:
+.. _figure_test_pipeline_app:
 
-**Figure 21.Test Pipeline Application**
+.. figure:: img/test_pipeline_app.*
 
-.. image24_png has been renamed
+   Test Pipeline Application
 
-|test_pipeline_app|
 
 Compiling the Application
 -------------------------
@@ -281,5 +280,3 @@ The profile for input traffic is TCP/IPv4 packets with:
 *   destination TCP port fixed to 0
 
 *   source TCP port fixed to 0
-
-.. |test_pipeline_app| image:: img/test_pipeline_app.*

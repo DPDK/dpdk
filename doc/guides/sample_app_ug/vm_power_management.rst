@@ -74,11 +74,12 @@ The solution is comprised of two high-level components:
    The l3fwd-power application will use this implementation when deployed on a VM
    (see Chapter 11 "L3 Forwarding with Power Management Application").
 
-.. _figure_24:
+.. _figure_vm_power_mgr_highlevel:
 
-**Figure 24. Highlevel Solution**
+.. figure:: img/vm_power_mgr_highlevel.*
 
-|vm_power_mgr_highlevel|
+   Highlevel Solution
+
 
 Overview
 --------
@@ -105,11 +106,12 @@ at runtime based on the environment.
 Upon receiving a request, the host translates the vCPU to a pCPU via
 the libvirt API before forwarding to the host librte_power.
 
-.. _figure_25:
+.. _figure_vm_power_mgr_vm_request_seq:
 
-**Figure 25. VM request to scale frequency**
+.. figure:: img/vm_power_mgr_vm_request_seq.*
 
-|vm_power_mgr_vm_request_seq|
+   VM request to scale frequency
+
 
 Performance Considerations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -355,7 +357,3 @@ Where {core_num} is the lcore and channel to change frequency by scaling up/down
 .. code-block:: console
 
   set_cpu_freq {core_num} up|down|min|max
-
-.. |vm_power_mgr_highlevel| image:: img/vm_power_mgr_highlevel.*
-
-.. |vm_power_mgr_vm_request_seq| image:: img/vm_power_mgr_vm_request_seq.*

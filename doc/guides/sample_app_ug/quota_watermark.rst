@@ -54,15 +54,14 @@ and ports 2 and 3 forward into each other.
 The MAC addresses of the forwarded Ethernet frames are not affected.
 
 Internally, packets are pulled from the ports by the master logical core and put on a variable length processing pipeline,
-each stage of which being connected by rings, as shown in Figure 12.
+each stage of which being connected by rings, as shown in :numref:`figure_pipeline_overview`.
 
-.. _figure_12:
+.. _figure_pipeline_overview:
 
-**Figure 12. Pipeline Overview**
+.. figure:: img/pipeline_overview.*
 
-.. image15_png has been renamed
+   Pipeline Overview
 
-|pipeline_overview|
 
 An adjustable quota value controls how many packets are being moved through the pipeline per enqueue and dequeue.
 Adjustable watermark values associated with the rings control a back-off mechanism that
@@ -79,15 +78,14 @@ eventually lead to an Ethernet flow control frame being send to the source.
 
 On top of serving as an example of quota and watermark usage,
 this application can be used to benchmark ring based processing pipelines performance using a traffic- generator,
-as shown in Figure 13.
+as shown in :numref:`figure_ring_pipeline_perf_setup`.
 
-.. _figure_13:
+.. _figure_ring_pipeline_perf_setup:
 
-**Figure 13. Ring-based Processing Pipeline Performance Setup**
+.. figure:: img/ring_pipeline_perf_setup.*
 
-.. image16_png has been renamed
+   Ring-based Processing Pipeline Performance Setup
 
-|ring_pipeline_perf_setup|
 
 Compiling the Application
 -------------------------
@@ -311,7 +309,7 @@ Logical Cores Assignment
 The application uses the master logical core to poll all the ports for new packets and enqueue them on a ring associated with the port.
 
 Each logical core except the last runs pipeline_stage() after a ring for each used port is initialized on that core.
-pipeline_stage() on core X dequeues packets from core X-1's rings and enqueue them on its own rings. See Figure 14.
+pipeline_stage() on core X dequeues packets from core X-1's rings and enqueue them on its own rings. See :numref:`figure_threads_pipelines`.
 
 .. code-block:: c
 
@@ -340,16 +338,12 @@ sending them out on the destination port setup by pair_ports().
 Receive, Process and Transmit Packets
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. _figure_14:
+.. _figure_threads_pipelines:
 
-Figure 14 shows where each thread in the pipeline is.
-It should be used as a reference while reading the rest of this section.
+.. figure:: img/threads_pipelines.*
 
-**Figure 14. Threads and Pipelines**
+   Threads and Pipelines
 
-.. image17_png has been renamed
-
-|threads_pipelines|
 
 In the receive_stage() function running on the master logical core,
 the main task is to read ingress packets from the RX ports and enqueue them
@@ -498,9 +492,3 @@ low_watermark from the rte_memzone previously created by qw.
 
         low_watermark = (unsigned int *) qw_memzone->addr + sizeof(int);
     }
-
-.. |pipeline_overview| image:: img/pipeline_overview.*
-
-.. |ring_pipeline_perf_setup| image:: img/ring_pipeline_perf_setup.*
-
-.. |threads_pipelines| image:: img/threads_pipelines.*
