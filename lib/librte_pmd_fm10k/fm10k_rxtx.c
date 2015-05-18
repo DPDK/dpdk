@@ -30,6 +30,9 @@
  *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <inttypes.h>
+
 #include <rte_ethdev.h>
 #include <rte_common.h>
 #include "fm10k.h"
@@ -57,7 +60,7 @@ static inline void dump_rxd(union fm10k_rx_desc *rxd)
 	PMD_RX_LOG(DEBUG, "|   0x%08x   |   0x%08x   |", 0, rxd->d.rss);
 	PMD_RX_LOG(DEBUG, "+----------------|----------------+");
 	PMD_RX_LOG(DEBUG, "|            TIME TAG             |");
-	PMD_RX_LOG(DEBUG, "|       0x%016lx        |", rxd->q.timestamp);
+	PMD_RX_LOG(DEBUG, "|       0x%016"PRIx64"        |", rxd->q.timestamp);
 	PMD_RX_LOG(DEBUG, "+----------------|----------------+");
 }
 #endif

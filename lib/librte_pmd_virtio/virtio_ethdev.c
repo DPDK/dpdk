@@ -336,7 +336,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	vq->vq_ring_mem = mz->phys_addr;
 	vq->vq_ring_virt_mem = mz->addr;
 	PMD_INIT_LOG(DEBUG, "vq->vq_ring_mem:      0x%"PRIx64, (uint64_t)mz->phys_addr);
-	PMD_INIT_LOG(DEBUG, "vq->vq_ring_virt_mem: 0x%"PRIx64, (uint64_t)mz->addr);
+	PMD_INIT_LOG(DEBUG, "vq->vq_ring_virt_mem: 0x%"PRIx64, (uint64_t)(uintptr_t)mz->addr);
 	vq->virtio_net_hdr_mz  = NULL;
 	vq->virtio_net_hdr_mem = 0;
 

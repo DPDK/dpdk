@@ -1348,7 +1348,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				"tunneling_params: %#x;\n"
 				"l2tag2: %#hx;\n"
 				"rsvd: %#hx;\n"
-				"type_cmd_tso_mss: %#lx;\n",
+				"type_cmd_tso_mss: %#"PRIx64";\n",
 				tx_pkt, tx_id,
 				ctx_txd->tunneling_params,
 				ctx_txd->l2tag2,

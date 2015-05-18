@@ -1200,19 +1200,19 @@ i40e_update_vsi_stats(struct i40e_vsi *vsi)
 
 	PMD_DRV_LOG(DEBUG, "***************** VSI[%u] stats start *******************",
 		    vsi->vsi_id);
-	PMD_DRV_LOG(DEBUG, "rx_bytes:            %lu", nes->rx_bytes);
-	PMD_DRV_LOG(DEBUG, "rx_unicast:          %lu", nes->rx_unicast);
-	PMD_DRV_LOG(DEBUG, "rx_multicast:        %lu", nes->rx_multicast);
-	PMD_DRV_LOG(DEBUG, "rx_broadcast:        %lu", nes->rx_broadcast);
-	PMD_DRV_LOG(DEBUG, "rx_discards:         %lu", nes->rx_discards);
-	PMD_DRV_LOG(DEBUG, "rx_unknown_protocol: %lu",
+	PMD_DRV_LOG(DEBUG, "rx_bytes:            %"PRIu64"", nes->rx_bytes);
+	PMD_DRV_LOG(DEBUG, "rx_unicast:          %"PRIu64"", nes->rx_unicast);
+	PMD_DRV_LOG(DEBUG, "rx_multicast:        %"PRIu64"", nes->rx_multicast);
+	PMD_DRV_LOG(DEBUG, "rx_broadcast:        %"PRIu64"", nes->rx_broadcast);
+	PMD_DRV_LOG(DEBUG, "rx_discards:         %"PRIu64"", nes->rx_discards);
+	PMD_DRV_LOG(DEBUG, "rx_unknown_protocol: %"PRIu64"",
 		    nes->rx_unknown_protocol);
-	PMD_DRV_LOG(DEBUG, "tx_bytes:            %lu", nes->tx_bytes);
-	PMD_DRV_LOG(DEBUG, "tx_unicast:          %lu", nes->tx_unicast);
-	PMD_DRV_LOG(DEBUG, "tx_multicast:        %lu", nes->tx_multicast);
-	PMD_DRV_LOG(DEBUG, "tx_broadcast:        %lu", nes->tx_broadcast);
-	PMD_DRV_LOG(DEBUG, "tx_discards:         %lu", nes->tx_discards);
-	PMD_DRV_LOG(DEBUG, "tx_errors:           %lu", nes->tx_errors);
+	PMD_DRV_LOG(DEBUG, "tx_bytes:            %"PRIu64"", nes->tx_bytes);
+	PMD_DRV_LOG(DEBUG, "tx_unicast:          %"PRIu64"", nes->tx_unicast);
+	PMD_DRV_LOG(DEBUG, "tx_multicast:        %"PRIu64"", nes->tx_multicast);
+	PMD_DRV_LOG(DEBUG, "tx_broadcast:        %"PRIu64"", nes->tx_broadcast);
+	PMD_DRV_LOG(DEBUG, "tx_discards:         %"PRIu64"", nes->tx_discards);
+	PMD_DRV_LOG(DEBUG, "tx_errors:           %"PRIu64"", nes->tx_errors);
 	PMD_DRV_LOG(DEBUG, "***************** VSI[%u] stats end *******************",
 		    vsi->vsi_id);
 }
@@ -1424,73 +1424,73 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->ierrors  = stats->ibadcrc + stats->ibadlen + stats->imissed;
 
 	PMD_DRV_LOG(DEBUG, "***************** PF stats start *******************");
-	PMD_DRV_LOG(DEBUG, "rx_bytes:            %lu", ns->eth.rx_bytes);
-	PMD_DRV_LOG(DEBUG, "rx_unicast:          %lu", ns->eth.rx_unicast);
-	PMD_DRV_LOG(DEBUG, "rx_multicast:        %lu", ns->eth.rx_multicast);
-	PMD_DRV_LOG(DEBUG, "rx_broadcast:        %lu", ns->eth.rx_broadcast);
-	PMD_DRV_LOG(DEBUG, "rx_discards:         %lu", ns->eth.rx_discards);
-	PMD_DRV_LOG(DEBUG, "rx_unknown_protocol: %lu",
+	PMD_DRV_LOG(DEBUG, "rx_bytes:            %"PRIu64"", ns->eth.rx_bytes);
+	PMD_DRV_LOG(DEBUG, "rx_unicast:          %"PRIu64"", ns->eth.rx_unicast);
+	PMD_DRV_LOG(DEBUG, "rx_multicast:        %"PRIu64"", ns->eth.rx_multicast);
+	PMD_DRV_LOG(DEBUG, "rx_broadcast:        %"PRIu64"", ns->eth.rx_broadcast);
+	PMD_DRV_LOG(DEBUG, "rx_discards:         %"PRIu64"", ns->eth.rx_discards);
+	PMD_DRV_LOG(DEBUG, "rx_unknown_protocol: %"PRIu64"",
 		    ns->eth.rx_unknown_protocol);
-	PMD_DRV_LOG(DEBUG, "tx_bytes:            %lu", ns->eth.tx_bytes);
-	PMD_DRV_LOG(DEBUG, "tx_unicast:          %lu", ns->eth.tx_unicast);
-	PMD_DRV_LOG(DEBUG, "tx_multicast:        %lu", ns->eth.tx_multicast);
-	PMD_DRV_LOG(DEBUG, "tx_broadcast:        %lu", ns->eth.tx_broadcast);
-	PMD_DRV_LOG(DEBUG, "tx_discards:         %lu", ns->eth.tx_discards);
-	PMD_DRV_LOG(DEBUG, "tx_errors:           %lu", ns->eth.tx_errors);
+	PMD_DRV_LOG(DEBUG, "tx_bytes:            %"PRIu64"", ns->eth.tx_bytes);
+	PMD_DRV_LOG(DEBUG, "tx_unicast:          %"PRIu64"", ns->eth.tx_unicast);
+	PMD_DRV_LOG(DEBUG, "tx_multicast:        %"PRIu64"", ns->eth.tx_multicast);
+	PMD_DRV_LOG(DEBUG, "tx_broadcast:        %"PRIu64"", ns->eth.tx_broadcast);
+	PMD_DRV_LOG(DEBUG, "tx_discards:         %"PRIu64"", ns->eth.tx_discards);
+	PMD_DRV_LOG(DEBUG, "tx_errors:           %"PRIu64"", ns->eth.tx_errors);
 
-	PMD_DRV_LOG(DEBUG, "tx_dropped_link_down:     %lu",
+	PMD_DRV_LOG(DEBUG, "tx_dropped_link_down:     %"PRIu64"",
 		    ns->tx_dropped_link_down);
-	PMD_DRV_LOG(DEBUG, "crc_errors:               %lu", ns->crc_errors);
-	PMD_DRV_LOG(DEBUG, "illegal_bytes:            %lu",
+	PMD_DRV_LOG(DEBUG, "crc_errors:               %"PRIu64"", ns->crc_errors);
+	PMD_DRV_LOG(DEBUG, "illegal_bytes:            %"PRIu64"",
 		    ns->illegal_bytes);
-	PMD_DRV_LOG(DEBUG, "error_bytes:              %lu", ns->error_bytes);
-	PMD_DRV_LOG(DEBUG, "mac_local_faults:         %lu",
+	PMD_DRV_LOG(DEBUG, "error_bytes:              %"PRIu64"", ns->error_bytes);
+	PMD_DRV_LOG(DEBUG, "mac_local_faults:         %"PRIu64"",
 		    ns->mac_local_faults);
-	PMD_DRV_LOG(DEBUG, "mac_remote_faults:        %lu",
+	PMD_DRV_LOG(DEBUG, "mac_remote_faults:        %"PRIu64"",
 		    ns->mac_remote_faults);
-	PMD_DRV_LOG(DEBUG, "rx_length_errors:         %lu",
+	PMD_DRV_LOG(DEBUG, "rx_length_errors:         %"PRIu64"",
 		    ns->rx_length_errors);
-	PMD_DRV_LOG(DEBUG, "link_xon_rx:              %lu", ns->link_xon_rx);
-	PMD_DRV_LOG(DEBUG, "link_xoff_rx:             %lu", ns->link_xoff_rx);
+	PMD_DRV_LOG(DEBUG, "link_xon_rx:              %"PRIu64"", ns->link_xon_rx);
+	PMD_DRV_LOG(DEBUG, "link_xoff_rx:             %"PRIu64"", ns->link_xoff_rx);
 	for (i = 0; i < 8; i++) {
-		PMD_DRV_LOG(DEBUG, "priority_xon_rx[%d]:      %lu",
+		PMD_DRV_LOG(DEBUG, "priority_xon_rx[%d]:      %"PRIu64"",
 				i, ns->priority_xon_rx[i]);
-		PMD_DRV_LOG(DEBUG, "priority_xoff_rx[%d]:     %lu",
+		PMD_DRV_LOG(DEBUG, "priority_xoff_rx[%d]:     %"PRIu64"",
 				i, ns->priority_xoff_rx[i]);
 	}
-	PMD_DRV_LOG(DEBUG, "link_xon_tx:              %lu", ns->link_xon_tx);
-	PMD_DRV_LOG(DEBUG, "link_xoff_tx:             %lu", ns->link_xoff_tx);
+	PMD_DRV_LOG(DEBUG, "link_xon_tx:              %"PRIu64"", ns->link_xon_tx);
+	PMD_DRV_LOG(DEBUG, "link_xoff_tx:             %"PRIu64"", ns->link_xoff_tx);
 	for (i = 0; i < 8; i++) {
-		PMD_DRV_LOG(DEBUG, "priority_xon_tx[%d]:      %lu",
+		PMD_DRV_LOG(DEBUG, "priority_xon_tx[%d]:      %"PRIu64"",
 				i, ns->priority_xon_tx[i]);
-		PMD_DRV_LOG(DEBUG, "priority_xoff_tx[%d]:     %lu",
+		PMD_DRV_LOG(DEBUG, "priority_xoff_tx[%d]:     %"PRIu64"",
 				i, ns->priority_xoff_tx[i]);
-		PMD_DRV_LOG(DEBUG, "priority_xon_2_xoff[%d]:  %lu",
+		PMD_DRV_LOG(DEBUG, "priority_xon_2_xoff[%d]:  %"PRIu64"",
 				i, ns->priority_xon_2_xoff[i]);
 	}
-	PMD_DRV_LOG(DEBUG, "rx_size_64:               %lu", ns->rx_size_64);
-	PMD_DRV_LOG(DEBUG, "rx_size_127:              %lu", ns->rx_size_127);
-	PMD_DRV_LOG(DEBUG, "rx_size_255:              %lu", ns->rx_size_255);
-	PMD_DRV_LOG(DEBUG, "rx_size_511:              %lu", ns->rx_size_511);
-	PMD_DRV_LOG(DEBUG, "rx_size_1023:             %lu", ns->rx_size_1023);
-	PMD_DRV_LOG(DEBUG, "rx_size_1522:             %lu", ns->rx_size_1522);
-	PMD_DRV_LOG(DEBUG, "rx_size_big:              %lu", ns->rx_size_big);
-	PMD_DRV_LOG(DEBUG, "rx_undersize:             %lu", ns->rx_undersize);
-	PMD_DRV_LOG(DEBUG, "rx_fragments:             %lu", ns->rx_fragments);
-	PMD_DRV_LOG(DEBUG, "rx_oversize:              %lu", ns->rx_oversize);
-	PMD_DRV_LOG(DEBUG, "rx_jabber:                %lu", ns->rx_jabber);
-	PMD_DRV_LOG(DEBUG, "tx_size_64:               %lu", ns->tx_size_64);
-	PMD_DRV_LOG(DEBUG, "tx_size_127:              %lu", ns->tx_size_127);
-	PMD_DRV_LOG(DEBUG, "tx_size_255:              %lu", ns->tx_size_255);
-	PMD_DRV_LOG(DEBUG, "tx_size_511:              %lu", ns->tx_size_511);
-	PMD_DRV_LOG(DEBUG, "tx_size_1023:             %lu", ns->tx_size_1023);
-	PMD_DRV_LOG(DEBUG, "tx_size_1522:             %lu", ns->tx_size_1522);
-	PMD_DRV_LOG(DEBUG, "tx_size_big:              %lu", ns->tx_size_big);
-	PMD_DRV_LOG(DEBUG, "mac_short_packet_dropped: %lu",
+	PMD_DRV_LOG(DEBUG, "rx_size_64:               %"PRIu64"", ns->rx_size_64);
+	PMD_DRV_LOG(DEBUG, "rx_size_127:              %"PRIu64"", ns->rx_size_127);
+	PMD_DRV_LOG(DEBUG, "rx_size_255:              %"PRIu64"", ns->rx_size_255);
+	PMD_DRV_LOG(DEBUG, "rx_size_511:              %"PRIu64"", ns->rx_size_511);
+	PMD_DRV_LOG(DEBUG, "rx_size_1023:             %"PRIu64"", ns->rx_size_1023);
+	PMD_DRV_LOG(DEBUG, "rx_size_1522:             %"PRIu64"", ns->rx_size_1522);
+	PMD_DRV_LOG(DEBUG, "rx_size_big:              %"PRIu64"", ns->rx_size_big);
+	PMD_DRV_LOG(DEBUG, "rx_undersize:             %"PRIu64"", ns->rx_undersize);
+	PMD_DRV_LOG(DEBUG, "rx_fragments:             %"PRIu64"", ns->rx_fragments);
+	PMD_DRV_LOG(DEBUG, "rx_oversize:              %"PRIu64"", ns->rx_oversize);
+	PMD_DRV_LOG(DEBUG, "rx_jabber:                %"PRIu64"", ns->rx_jabber);
+	PMD_DRV_LOG(DEBUG, "tx_size_64:               %"PRIu64"", ns->tx_size_64);
+	PMD_DRV_LOG(DEBUG, "tx_size_127:              %"PRIu64"", ns->tx_size_127);
+	PMD_DRV_LOG(DEBUG, "tx_size_255:              %"PRIu64"", ns->tx_size_255);
+	PMD_DRV_LOG(DEBUG, "tx_size_511:              %"PRIu64"", ns->tx_size_511);
+	PMD_DRV_LOG(DEBUG, "tx_size_1023:             %"PRIu64"", ns->tx_size_1023);
+	PMD_DRV_LOG(DEBUG, "tx_size_1522:             %"PRIu64"", ns->tx_size_1522);
+	PMD_DRV_LOG(DEBUG, "tx_size_big:              %"PRIu64"", ns->tx_size_big);
+	PMD_DRV_LOG(DEBUG, "mac_short_packet_dropped: %"PRIu64"",
 			ns->mac_short_packet_dropped);
-	PMD_DRV_LOG(DEBUG, "checksum_error:           %lu",
+	PMD_DRV_LOG(DEBUG, "checksum_error:           %"PRIu64"",
 		    ns->checksum_error);
-	PMD_DRV_LOG(DEBUG, "fdir_match:               %lu", ns->fd_sb_match);
+	PMD_DRV_LOG(DEBUG, "fdir_match:               %"PRIu64"", ns->fd_sb_match);
 	PMD_DRV_LOG(DEBUG, "***************** PF stats end ********************");
 }
 
