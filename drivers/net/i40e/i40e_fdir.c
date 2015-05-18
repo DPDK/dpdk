@@ -50,7 +50,7 @@
 #include <rte_sctp.h>
 
 #include "i40e_logs.h"
-#include "i40e/i40e_type.h"
+#include "base/i40e_type.h"
 #include "i40e_ethdev.h"
 #include "i40e_rxtx.h"
 

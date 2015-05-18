@@ -80,7 +80,6 @@ The lib directory contains::
     +-- librte_meter        # QoS metering library
     +-- librte_net          # various IP-related headers
     +-- librte_pmd_ixgbe    # 10GbE poll mode driver
-    +-- librte_pmd_i40e     # 40GbE poll mode driver
     +-- librte_pmd_mlx4     # Mellanox ConnectX-3 poll mode driver
     +-- librte_pmd_pcap     # PCAP poll mode driver
     +-- librte_pmd_ring     # ring poll mode driver
@@ -108,6 +107,7 @@ The drivers directory has a net subdirectory which contains::
     +-- e1000              # 1GbE poll mode drivers (igb and em)
     +-- enic               # Cisco VIC Ethernet NIC Poll-mode Driver
     +-- fm10k              # Host interface PMD driver for FM10000 Series
+    +-- i40e               # 40GbE poll mode driver
 
 Applications
 ------------

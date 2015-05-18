@@ -77,10 +77,10 @@ endif
 
 CFLAGS_i40e_lan_hmc.o += -Wno-error
 endif
-OBJS_BASE_DRIVER=$(patsubst %.c,%.o,$(notdir $(wildcard $(SRCDIR)/i40e/*.c)))
+OBJS_BASE_DRIVER=$(patsubst %.c,%.o,$(notdir $(wildcard $(SRCDIR)/base/*.c)))
 $(foreach obj, $(OBJS_BASE_DRIVER), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
 
-VPATH += $(SRCDIR)/i40e
+VPATH += $(SRCDIR)/base
 
 #
 # all source are stored in SRCS-y

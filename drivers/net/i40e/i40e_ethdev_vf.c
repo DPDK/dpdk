@@ -60,9 +60,9 @@
 #include <rte_dev.h>
 
 #include "i40e_logs.h"
-#include "i40e/i40e_prototype.h"
-#include "i40e/i40e_adminq_cmd.h"
-#include "i40e/i40e_type.h"
+#include "base/i40e_prototype.h"
+#include "base/i40e_adminq_cmd.h"
+#include "base/i40e_type.h"
 
 #include "i40e_rxtx.h"
 #include "i40e_ethdev.h"
