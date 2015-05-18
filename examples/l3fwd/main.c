@@ -72,6 +72,9 @@
 #include <rte_udp.h>
 #include <rte_string_fns.h>
 
+#include <cmdline_parse.h>
+#include <cmdline_parse_etheraddr.h>
+
 #define APP_LOOKUP_EXACT_MATCH          0
 #define APP_LOOKUP_LPM                  1
 #define DO_RFC_1812_CHECKS
@@ -159,6 +162,7 @@ static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
+static uint64_t dest_eth_addr[RTE_MAX_ETHPORTS];
 static struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 
 static __m128i val_eth[RTE_MAX_ETHPORTS];
@@ -738,7 +742,6 @@ simple_ipv4_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 {
 	struct ether_hdr *eth_hdr[4];
 	struct ipv4_hdr *ipv4_hdr[4];
-	void *d_addr_bytes[4];
 	uint8_t dst_port[4];
 	int32_t ret[4];
 	union ipv4_5tuple_host key[4];
@@ -823,16 +826,6 @@ simple_ipv4_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 	if (dst_port[3] >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port[3]) == 0)
 		dst_port[3] = portid;
 
-	/* 02:00:00:00:00:xx */
-	d_addr_bytes[0] = &eth_hdr[0]->d_addr.addr_bytes[0];
-	d_addr_bytes[1] = &eth_hdr[1]->d_addr.addr_bytes[0];
-	d_addr_bytes[2] = &eth_hdr[2]->d_addr.addr_bytes[0];
-	d_addr_bytes[3] = &eth_hdr[3]->d_addr.addr_bytes[0];
-	*((uint64_t *)d_addr_bytes[0]) = 0x000000000002 + ((uint64_t)dst_port[0] << 40);
-	*((uint64_t *)d_addr_bytes[1]) = 0x000000000002 + ((uint64_t)dst_port[1] << 40);
-	*((uint64_t *)d_addr_bytes[2]) = 0x000000000002 + ((uint64_t)dst_port[2] << 40);
-	*((uint64_t *)d_addr_bytes[3]) = 0x000000000002 + ((uint64_t)dst_port[3] << 40);
-
 #ifdef DO_RFC_1812_CHECKS
 	/* Update time to live and header checksum */
 	--(ipv4_hdr[0]->time_to_live);
@@ -844,6 +837,12 @@ simple_ipv4_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 	++(ipv4_hdr[2]->hdr_checksum);
 	++(ipv4_hdr[3]->hdr_checksum);
 #endif
+
+	/* dst addr */
+	*(uint64_t *)&eth_hdr[0]->d_addr = dest_eth_addr[dst_port[0]];
+	*(uint64_t *)&eth_hdr[1]->d_addr = dest_eth_addr[dst_port[1]];
+	*(uint64_t *)&eth_hdr[2]->d_addr = dest_eth_addr[dst_port[2]];
+	*(uint64_t *)&eth_hdr[3]->d_addr = dest_eth_addr[dst_port[3]];
 
 	/* src addr */
 	ether_addr_copy(&ports_eth_addr[dst_port[0]], &eth_hdr[0]->s_addr);
@@ -880,7 +879,6 @@ simple_ipv6_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 {
 	struct ether_hdr *eth_hdr[4];
 	__attribute__((unused)) struct ipv6_hdr *ipv6_hdr[4];
-	void *d_addr_bytes[4];
 	uint8_t dst_port[4];
 	int32_t ret[4];
 	union ipv6_5tuple_host key[4];
@@ -921,15 +919,11 @@ simple_ipv6_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 	if (dst_port[3] >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port[3]) == 0)
 		dst_port[3] = portid;
 
-	/* 02:00:00:00:00:xx */
-	d_addr_bytes[0] = &eth_hdr[0]->d_addr.addr_bytes[0];
-	d_addr_bytes[1] = &eth_hdr[1]->d_addr.addr_bytes[0];
-	d_addr_bytes[2] = &eth_hdr[2]->d_addr.addr_bytes[0];
-	d_addr_bytes[3] = &eth_hdr[3]->d_addr.addr_bytes[0];
-	*((uint64_t *)d_addr_bytes[0]) = 0x000000000002 + ((uint64_t)dst_port[0] << 40);
-	*((uint64_t *)d_addr_bytes[1]) = 0x000000000002 + ((uint64_t)dst_port[1] << 40);
-	*((uint64_t *)d_addr_bytes[2]) = 0x000000000002 + ((uint64_t)dst_port[2] << 40);
-	*((uint64_t *)d_addr_bytes[3]) = 0x000000000002 + ((uint64_t)dst_port[3] << 40);
+	/* dst addr */
+	*(uint64_t *)&eth_hdr[0]->d_addr = dest_eth_addr[dst_port[0]];
+	*(uint64_t *)&eth_hdr[1]->d_addr = dest_eth_addr[dst_port[1]];
+	*(uint64_t *)&eth_hdr[2]->d_addr = dest_eth_addr[dst_port[2]];
+	*(uint64_t *)&eth_hdr[3]->d_addr = dest_eth_addr[dst_port[3]];
 
 	/* src addr */
 	ether_addr_copy(&ports_eth_addr[dst_port[0]], &eth_hdr[0]->s_addr);
@@ -950,7 +944,6 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 {
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
-	void *d_addr_bytes;
 	uint8_t dst_port;
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
@@ -974,16 +967,13 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 				(enabled_port_mask & 1 << dst_port) == 0)
 			dst_port = portid;
 
-		/* 02:00:00:00:00:xx */
-		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
-		*((uint64_t *)d_addr_bytes) = ETHER_LOCAL_ADMIN_ADDR +
-			((uint64_t)dst_port << 40);
-
 #ifdef DO_RFC_1812_CHECKS
 		/* Update time to live and header checksum */
 		--(ipv4_hdr->time_to_live);
 		++(ipv4_hdr->hdr_checksum);
 #endif
+		/* dst addr */
+		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[dst_port];
 
 		/* src addr */
 		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
@@ -1002,10 +992,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 		if (dst_port >= RTE_MAX_ETHPORTS || (enabled_port_mask & 1 << dst_port) == 0)
 			dst_port = portid;
 
-		/* 02:00:00:00:00:xx */
-		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
-		*((uint64_t *)d_addr_bytes) = ETHER_LOCAL_ADMIN_ADDR +
-			((uint64_t)dst_port << 40);
+		/* dst addr */
+		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[dst_port];
 
 		/* src addr */
 		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
@@ -1742,6 +1730,7 @@ print_usage(const char *prgname)
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
 		"  -P : enable promiscuous mode\n"
 		"  --config (port,queue,lcore): rx queues configuration\n"
+		"  --eth-dest=X,MM:MM:MM:MM:MM:MM: optional, ethernet destination for port X\n"
 		"  --no-numa: optional, disable numa awareness\n"
 		"  --ipv6: optional, specify it if running ipv6 packets\n"
 		"  --enable-jumbo: enable jumbo frame"
@@ -1852,7 +1841,36 @@ parse_config(const char *q_arg)
 	return 0;
 }
 
+static void
+parse_eth_dest(const char *optarg)
+{
+	uint8_t portid;
+	char *port_end;
+	uint8_t c, *dest, peer_addr[6];
+
+	errno = 0;
+	portid = strtoul(optarg, &port_end, 10);
+	if (errno != 0 || port_end == optarg || *port_end++ != ',')
+		rte_exit(EXIT_FAILURE,
+		"Invalid eth-dest: %s", optarg);
+	if (portid >= RTE_MAX_ETHPORTS)
+		rte_exit(EXIT_FAILURE,
+		"eth-dest: port %d >= RTE_MAX_ETHPORTS(%d)\n",
+		portid, RTE_MAX_ETHPORTS);
+
+	if (cmdline_parse_etheraddr(NULL, port_end,
+		&peer_addr, sizeof(peer_addr)) < 0)
+		rte_exit(EXIT_FAILURE,
+		"Invalid ethernet address: %s\n",
+		port_end);
+	dest = (uint8_t *)&dest_eth_addr[portid];
+	for (c = 0; c < 6; c++)
+		dest[c] = peer_addr[c];
+	*(uint64_t *)(val_eth + portid) = dest_eth_addr[portid];
+}
+
 #define CMD_LINE_OPT_CONFIG "config"
+#define CMD_LINE_OPT_ETH_DEST "eth-dest"
 #define CMD_LINE_OPT_NO_NUMA "no-numa"
 #define CMD_LINE_OPT_IPV6 "ipv6"
 #define CMD_LINE_OPT_ENABLE_JUMBO "enable-jumbo"
@@ -1868,6 +1886,7 @@ parse_args(int argc, char **argv)
 	char *prgname = argv[0];
 	static struct option lgopts[] = {
 		{CMD_LINE_OPT_CONFIG, 1, 0, 0},
+		{CMD_LINE_OPT_ETH_DEST, 1, 0, 0},
 		{CMD_LINE_OPT_NO_NUMA, 0, 0, 0},
 		{CMD_LINE_OPT_IPV6, 0, 0, 0},
 		{CMD_LINE_OPT_ENABLE_JUMBO, 0, 0, 0},
@@ -1905,6 +1924,11 @@ parse_args(int argc, char **argv)
 					print_usage(prgname);
 					return -1;
 				}
+			}
+
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_ETH_DEST,
+				sizeof(CMD_LINE_OPT_CONFIG))) {
+					parse_eth_dest(optarg);
 			}
 
 			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_NO_NUMA,
@@ -2410,6 +2434,12 @@ main(int argc, char **argv)
 	argc -= ret;
 	argv += ret;
 
+	/* pre-init dst MACs for all ports to 02:00:00:00:00:xx */
+	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
+		dest_eth_addr[portid] = ETHER_LOCAL_ADMIN_ADDR + ((uint64_t)portid << 40);
+		*(uint64_t *)(val_eth + portid) = dest_eth_addr[portid];
+	}
+
 	/* parse application arguments (after the EAL ones) */
 	ret = parse_args(argc, argv);
 	if (ret < 0)
@@ -2458,12 +2488,13 @@ main(int argc, char **argv)
 		rte_eth_macaddr_get(portid, &ports_eth_addr[portid]);
 		print_ethaddr(" Address:", &ports_eth_addr[portid]);
 		printf(", ");
+		print_ethaddr("Destination:",
+			(const struct ether_addr *)&dest_eth_addr[portid]);
+		printf(", ");
 
 		/*
-		 * prepare dst and src MACs for each port.
+		 * prepare src MACs for each port.
 		 */
-		*(uint64_t *)(val_eth + portid) =
-			ETHER_LOCAL_ADMIN_ADDR + ((uint64_t)portid << 40);
 		ether_addr_copy(&ports_eth_addr[portid],
 			(struct ether_addr *)(val_eth + portid) + 1);
 
