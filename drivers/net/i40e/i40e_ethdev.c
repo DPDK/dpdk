@@ -1565,7 +1565,7 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 				ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
 
-	if (pf->flags | I40E_FLAG_VMDQ) {
+	if (pf->flags & I40E_FLAG_VMDQ) {
 		dev_info->max_vmdq_pools = pf->max_nb_vmdq_vsi;
 		dev_info->vmdq_queue_base = dev_info->max_rx_queues;
 		dev_info->vmdq_queue_num = pf->vmdq_nb_qps *
