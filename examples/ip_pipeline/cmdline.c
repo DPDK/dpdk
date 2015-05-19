@@ -268,12 +268,6 @@ cmd_run_file_parsed(
 	struct cmdline *file_cl;
 	int fd;
 
-	/* Check params */
-	if (!params->file_path) {
-		printf("Illegal value for file path (%s)\n", params->file_path);
-		return;
-	}
-
 	fd = open(params->file_path, O_RDONLY, 0);
 	if (fd < 0) {
 		printf("Illegal value for file path (%s)\n", params->file_path);
