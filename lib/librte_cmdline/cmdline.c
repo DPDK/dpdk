@@ -193,8 +193,10 @@ cmdline_printf(const struct cmdline *cl, const char *fmt, ...)
 	va_start(ap, fmt);
 	ret = vsnprintf(buf, BUFSIZ, fmt, ap);
 	va_end(ap);
-	if (ret < 0)
+	if (ret < 0) {
+		free(buf);
 		return;
+	}
 	if (ret >= BUFSIZ)
 		ret = BUFSIZ - 1;
 	write(cl->s_out, buf, ret);
