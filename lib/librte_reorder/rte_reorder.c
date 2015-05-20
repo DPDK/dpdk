@@ -73,6 +73,7 @@ struct rte_reorder_buffer {
 	unsigned int memsize; /**< memory area size of reorder buffer */
 	struct cir_buffer ready_buf; /**< temp buffer for dequeued entries */
 	struct cir_buffer order_buf; /**< buffer used to reorder entries */
+	int is_initialized;
 } __rte_cache_aligned;
 
 static void
@@ -324,6 +325,11 @@ rte_reorder_insert(struct rte_reorder_buffer *b, struct rte_mbuf *mbuf)
 {
 	uint32_t offset, position;
 	struct cir_buffer *order_buf = &b->order_buf;
+
+	if (!b->is_initialized) {
+		b->min_seqn = mbuf->seqn;
+		b->is_initialized = 1;
+	}
 
 	/*
 	 * calculate the offset from the head pointer we need to go.
