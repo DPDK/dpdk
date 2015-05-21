@@ -75,6 +75,22 @@ struct rte_port_ring_writer_params {
 /** ring_writer port operations */
 extern struct rte_port_out_ops rte_port_ring_writer_ops;
 
+/** ring_writer_nodrop port parameters */
+struct rte_port_ring_writer_nodrop_params {
+	/** Underlying single producer ring that has to be pre-initialized */
+	struct rte_ring *ring;
+
+	/** Recommended burst size to ring. The actual burst size can be
+		bigger or smaller than this value. */
+	uint32_t tx_burst_sz;
+
+	/** Maximum number of retries, 0 for no limit */
+	uint32_t n_retries;
+};
+
+/** ring_writer_nodrop port operations */
+extern struct rte_port_out_ops rte_port_ring_writer_nodrop_ops;
+
 #ifdef __cplusplus
 }
 #endif
