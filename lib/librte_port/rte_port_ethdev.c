@@ -99,8 +99,6 @@ rte_port_ethdev_reader_free(void *port)
 /*
  * Port ETHDEV Writer
  */
-#define RTE_PORT_ETHDEV_WRITER_APPROACH                  1
-
 struct rte_port_ethdev_writer {
 	struct rte_mbuf *tx_buf[2 * RTE_PORT_IN_BURST_SIZE_MAX];
 	uint32_t tx_burst_sz;
@@ -171,45 +169,6 @@ rte_port_ethdev_writer_tx(void *port, struct rte_mbuf *pkt)
 	return 0;
 }
 
-#if RTE_PORT_ETHDEV_WRITER_APPROACH == 0
-
-static int
-rte_port_ethdev_writer_tx_bulk(void *port,
-		struct rte_mbuf **pkts,
-		uint64_t pkts_mask)
-{
-	struct rte_port_ethdev_writer *p =
-		(struct rte_port_ethdev_writer *) port;
-
-	if ((pkts_mask & (pkts_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
-		uint32_t i;
-
-		for (i = 0; i < n_pkts; i++) {
-			struct rte_mbuf *pkt = pkts[i];
-
-			p->tx_buf[p->tx_buf_count++] = pkt;
-			if (p->tx_buf_count >= p->tx_burst_sz)
-				send_burst(p);
-		}
-	} else {
-		for ( ; pkts_mask; ) {
-			uint32_t pkt_index = __builtin_ctzll(pkts_mask);
-			uint64_t pkt_mask = 1LLU << pkt_index;
-			struct rte_mbuf *pkt = pkts[pkt_index];
-
-			p->tx_buf[p->tx_buf_count++] = pkt;
-			if (p->tx_buf_count >= p->tx_burst_sz)
-				send_burst(p);
-			pkts_mask &= ~pkt_mask;
-		}
-	}
-
-	return 0;
-}
-
-#elif RTE_PORT_ETHDEV_WRITER_APPROACH == 1
-
 static int
 rte_port_ethdev_writer_tx_bulk(void *port,
 		struct rte_mbuf **pkts,
@@ -254,12 +213,6 @@ rte_port_ethdev_writer_tx_bulk(void *port,
 
 	return 0;
 }
-
-#else
-
-#error Invalid value for RTE_PORT_ETHDEV_WRITER_APPROACH
-
-#endif
 
 static int
 rte_port_ethdev_writer_flush(void *port)
