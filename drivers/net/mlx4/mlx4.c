@@ -832,8 +832,8 @@ txq_free_elts(struct txq *txq)
 
 		if (WR_ID(elt->wr.wr_id).offset == 0)
 			continue;
-		rte_pktmbuf_free((void *)(elt->sges[0].addr -
-					  WR_ID(elt->wr.wr_id).offset));
+		rte_pktmbuf_free((void *)((uintptr_t)elt->sges[0].addr -
+			WR_ID(elt->wr.wr_id).offset));
 	}
 	rte_free(elts);
 }
@@ -1067,7 +1067,8 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* Clean up old buffer. */
 		if (likely(WR_ID(wr->wr_id).offset != 0)) {
 			struct rte_mbuf *tmp = (void *)
-				(elt->sges[0].addr - WR_ID(wr->wr_id).offset);
+				((uintptr_t)elt->sges[0].addr -
+				 WR_ID(wr->wr_id).offset);
 
 			/* Faster than rte_pktmbuf_free(). */
 			do {
@@ -1143,7 +1144,8 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			/* Update SGE. */
 			sge->addr = (uintptr_t)rte_pktmbuf_mtod(buf, char *);
 			if (txq->priv->vf)
-				rte_prefetch0((volatile void *)sge->addr);
+				rte_prefetch0((volatile void *)
+					(uintptr_t)sge->addr);
 			sge->length = DATA_LEN(buf);
 			sge->lkey = lkey;
 #if (MLX4_PMD_MAX_INLINE > 0) || defined(MLX4_PMD_SOFT_COUNTERS)
@@ -1742,7 +1744,8 @@ rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n, struct rte_mbuf **pool)
 		/* Make sure elts index and SGE mbuf pointer can be deduced
 		 * from WR ID. */
 		if ((WR_ID(wr->wr_id).id != i) ||
-		    ((void *)(sge->addr - WR_ID(wr->wr_id).offset) != buf)) {
+		    ((void *)((uintptr_t)sge->addr -
+			WR_ID(wr->wr_id).offset) != buf)) {
 			ERROR("%p: cannot store index and offset in WR ID",
 			      (void *)rxq);
 			sge->addr = 0;
@@ -1769,8 +1772,8 @@ error:
 			if (elt->sge.addr == 0)
 				continue;
 			assert(WR_ID(elt->wr.wr_id).id == i);
-			buf = (void *)
-				(elt->sge.addr - WR_ID(elt->wr.wr_id).offset);
+			buf = (void *)((uintptr_t)elt->sge.addr -
+				WR_ID(elt->wr.wr_id).offset);
 			rte_pktmbuf_free_seg(buf);
 		}
 		rte_free(elts);
@@ -1805,7 +1808,8 @@ rxq_free_elts(struct rxq *rxq)
 		if (elt->sge.addr == 0)
 			continue;
 		assert(WR_ID(elt->wr.wr_id).id == i);
-		buf = (void *)(elt->sge.addr - WR_ID(elt->wr.wr_id).offset);
+		buf = (void *)((uintptr_t)elt->sge.addr -
+			WR_ID(elt->wr.wr_id).offset);
 		rte_pktmbuf_free_seg(buf);
 	}
 	rte_free(elts);
@@ -2508,8 +2512,8 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint32_t len = wc->byte_len;
 		struct rxq_elt *elt = &(*elts)[WR_ID(wr_id).id];
 		struct ibv_recv_wr *wr = &elt->wr;
-		struct rte_mbuf *seg =
-			(void *)(elt->sge.addr - WR_ID(wr_id).offset);
+		struct rte_mbuf *seg = (void *)((uintptr_t)elt->sge.addr -
+			WR_ID(wr_id).offset);
 		struct rte_mbuf *rep;
 
 		/* Sanity checks. */
@@ -2891,7 +2895,8 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 		for (i = 0; (i != elemof(*elts)); ++i) {
 			struct rxq_elt *elt = &(*elts)[i];
 			struct rte_mbuf *buf = (void *)
-				(elt->sge.addr - WR_ID(elt->wr.wr_id).offset);
+				((uintptr_t)elt->sge.addr -
+				 WR_ID(elt->wr.wr_id).offset);
 
 			assert(WR_ID(elt->wr.wr_id).id == i);
 			pool[k++] = buf;
