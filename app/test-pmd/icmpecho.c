@@ -400,7 +400,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			arp_h->arp_op = rte_cpu_to_be_16(ARP_OP_REPLY);
 			ether_addr_copy(&arp_h->arp_data.arp_tha, &eth_addr);
 			ether_addr_copy(&arp_h->arp_data.arp_sha, &arp_h->arp_data.arp_tha);
-			ether_addr_copy(&eth_addr, &arp_h->arp_data.arp_sha);
+			ether_addr_copy(&eth_h->s_addr, &arp_h->arp_data.arp_sha);
 
 			/* Swap IP addresses in ARP payload */
 			ip_addr = arp_h->arp_data.arp_sip;
