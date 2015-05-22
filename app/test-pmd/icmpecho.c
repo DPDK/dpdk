@@ -295,6 +295,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	uint16_t vlan_id;
 	uint16_t arp_op;
 	uint16_t arp_pro;
+	uint32_t cksum;
 	uint8_t  i;
 	int l2_len;
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
@@ -445,7 +446,8 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 		 * - switch IPv4 source and destinations addresses,
 		 * - set IP_ICMP_ECHO_REPLY in ICMP header.
 		 * No need to re-compute the IP header checksum.
-		 * Reset ICMP checksum.
+		 * ICMP checksum is computed by assuming it is valid in the
+		 * echo request and not verified.
 		 */
 		ether_addr_copy(&eth_h->s_addr, &eth_addr);
 		ether_addr_copy(&eth_h->d_addr, &eth_h->s_addr);
@@ -454,7 +456,12 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 		ip_h->src_addr = ip_h->dst_addr;
 		ip_h->dst_addr = ip_addr;
 		icmp_h->icmp_type = IP_ICMP_ECHO_REPLY;
-		icmp_h->icmp_cksum = 0;
+		cksum = ~icmp_h->icmp_cksum & 0xffff;
+		cksum += ~htons(IP_ICMP_ECHO_REQUEST << 8) & 0xffff;
+		cksum += htons(IP_ICMP_ECHO_REPLY << 8);
+		cksum = (cksum & 0xffff) + (cksum >> 16);
+		cksum = (cksum & 0xffff) + (cksum >> 16);
+		icmp_h->icmp_cksum = ~cksum;
 		pkts_burst[nb_replies++] = pkt;
 	}
 
