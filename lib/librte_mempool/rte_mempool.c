@@ -361,7 +361,7 @@ rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t elt_sz,
 	if ((n = rte_mempool_obj_iter(vaddr, elt_num, elt_sz, 1,
 			paddr, pg_num, pg_shift, mempool_lelem_iter,
 			&uv)) != elt_num) {
-		return (-n);
+		return (-(ssize_t)n);
 	}
 
 	uv = RTE_ALIGN_CEIL(uv, pg_sz);
