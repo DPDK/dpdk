@@ -114,19 +114,20 @@ static int
 virtio_send_command(struct virtqueue *vq, struct virtio_pmd_ctrl *ctrl,
 		int *dlen, int pkt_num)
 {
-	uint16_t head = vq->vq_desc_head_idx, i;
+	uint32_t head, i;
 	int k, sum = 0;
 	virtio_net_ctrl_ack status = ~0;
 	struct virtio_pmd_ctrl result;
 
 	ctrl->status = status;
 
-	if (!vq->hw->cvq) {
+	if (!(vq && vq->hw->cvq)) {
 		PMD_INIT_LOG(ERR,
 			     "%s(): Control queue is not supported.",
 			     __func__);
 		return -1;
 	}
+	head = vq->vq_desc_head_idx;
 
 	PMD_INIT_LOG(DEBUG, "vq->vq_desc_head_idx = %d, status = %d, "
 		"vq->hw->cvq = %p vq = %p",
