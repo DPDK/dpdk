@@ -47,6 +47,8 @@
  */
 
 #include <rte_pci.h>
+#include <rte_memory.h>
+#include <rte_mempool.h>
 
 #include <exec-env/rte_kni_common.h>
 
