@@ -850,9 +850,8 @@ eal_check_common_options(struct internal_config *internal_cfg)
 			"be specified at the same time\n");
 		return -1;
 	}
-	if (internal_cfg->no_hugetlbfs &&
-			(mem_parsed || internal_cfg->force_sockets == 1)) {
-		RTE_LOG(ERR, EAL, "Options -m or --"OPT_SOCKET_MEM" cannot "
+	if (internal_cfg->no_hugetlbfs && internal_cfg->force_sockets == 1) {
+		RTE_LOG(ERR, EAL, "Option --"OPT_SOCKET_MEM" cannot "
 			"be specified together with --"OPT_NO_HUGE"\n");
 		return -1;
 	}
