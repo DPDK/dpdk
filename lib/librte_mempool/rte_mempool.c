@@ -156,7 +156,7 @@ rte_mempool_obj_iter(void *vaddr, uint32_t elt_num, size_t elt_sz, size_t align,
 	rte_mempool_obj_iter_t obj_iter, void *obj_iter_arg)
 {
 	uint32_t i, j, k;
-	uint32_t pgn;
+	uint32_t pgn, pgf;
 	uintptr_t end, start, va;
 	uintptr_t pg_sz;
 
@@ -171,10 +171,14 @@ rte_mempool_obj_iter(void *vaddr, uint32_t elt_num, size_t elt_sz, size_t align,
 		start = RTE_ALIGN_CEIL(va, align);
 		end = start + elt_sz;
 
-		pgn = (end >> pg_shift) - (start >> pg_shift);
+		/* index of the first page for the next element. */
+		pgf = (end >> pg_shift) - (start >> pg_shift);
+
+		/* index of the last page for the current element. */
+		pgn = ((end - 1) >> pg_shift) - (start >> pg_shift);
 		pgn += j;
 
-		/* do we have enough space left for the next element. */
+		/* do we have enough space left for the element. */
 		if (pgn >= pg_num)
 			break;
 
@@ -194,7 +198,7 @@ rte_mempool_obj_iter(void *vaddr, uint32_t elt_num, size_t elt_sz, size_t align,
 				obj_iter(obj_iter_arg, (void *)start,
 					(void *)end, i);
 			va = end;
-			j = pgn;
+			j += pgf;
 			i++;
 		} else {
 			va = RTE_ALIGN_CEIL((va + 1), pg_sz);
