@@ -674,6 +674,12 @@ rte_kni_get(const char *name)
 	return NULL;
 }
 
+const char *
+rte_kni_get_name(const struct rte_kni *kni)
+{
+	return kni->name;
+}
+
 /*
  * It is deprecated and just for backward compatibility.
  */

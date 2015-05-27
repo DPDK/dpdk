@@ -248,6 +248,16 @@ extern uint8_t rte_kni_get_port_id(struct rte_kni *kni) \
 extern struct rte_kni *rte_kni_get(const char *name);
 
 /**
+ * Get the name given to a KNI device
+ *
+ * @param kni
+ *   The KNI instance to query
+ * @return
+ *   The pointer to the KNI name
+ */
+extern const char *rte_kni_get_name(const struct rte_kni *kni);
+
+/**
  * Get the KNI context of the specific port.
  *
  * Note: It is deprecated and just for backward compatibility.
