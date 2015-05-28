@@ -194,6 +194,10 @@ static int eth_igb_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_op filter_op,
 		     void *arg);
 
+static int eth_igb_set_mc_addr_list(struct rte_eth_dev *dev,
+				    struct ether_addr *mc_addr_set,
+				    uint32_t nb_mc_addr);
+
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
  */
@@ -269,6 +273,7 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.rss_hash_update      = eth_igb_rss_hash_update,
 	.rss_hash_conf_get    = eth_igb_rss_hash_conf_get,
 	.filter_ctrl          = eth_igb_filter_ctrl,
+	.set_mc_addr_list     = eth_igb_set_mc_addr_list,
 };
 
 /*
@@ -289,6 +294,7 @@ static const struct eth_dev_ops igbvf_eth_dev_ops = {
 	.rx_queue_release     = eth_igb_rx_queue_release,
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
 	.tx_queue_release     = eth_igb_tx_queue_release,
+	.set_mc_addr_list     = eth_igb_set_mc_addr_list,
 };
 
 /**
@@ -3640,6 +3646,18 @@ eth_igb_filter_ctrl(struct rte_eth_dev *dev,
 	}
 
 	return ret;
+}
+
+static int
+eth_igb_set_mc_addr_list(struct rte_eth_dev *dev,
+			 struct ether_addr *mc_addr_set,
+			 uint32_t nb_mc_addr)
+{
+	struct e1000_hw *hw;
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	e1000_update_mc_addr_list(hw, (u8 *)mc_addr_set, nb_mc_addr);
+	return 0;
 }
 
 static struct rte_driver pmd_igb_drv = {

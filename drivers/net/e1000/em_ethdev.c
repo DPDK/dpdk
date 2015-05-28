@@ -116,6 +116,10 @@ static void eth_em_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		uint32_t index, uint32_t pool);
 static void eth_em_rar_clear(struct rte_eth_dev *dev, uint32_t index);
 
+static int eth_em_set_mc_addr_list(struct rte_eth_dev *dev,
+				   struct ether_addr *mc_addr_set,
+				   uint32_t nb_mc_addr);
+
 #define EM_FC_PAUSE_TIME 0x0680
 #define EM_LINK_UPDATE_CHECK_TIMEOUT  90  /* 9s */
 #define EM_LINK_UPDATE_CHECK_INTERVAL 100 /* ms */
@@ -161,6 +165,7 @@ static const struct eth_dev_ops eth_em_ops = {
 	.flow_ctrl_set        = eth_em_flow_ctrl_set,
 	.mac_addr_add         = eth_em_rar_set,
 	.mac_addr_remove      = eth_em_rar_clear,
+	.set_mc_addr_list     = eth_em_set_mc_addr_list,
 };
 
 /**
@@ -1519,6 +1524,18 @@ eth_em_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	/* update max frame size */
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+	return 0;
+}
+
+static int
+eth_em_set_mc_addr_list(struct rte_eth_dev *dev,
+			struct ether_addr *mc_addr_set,
+			uint32_t nb_mc_addr)
+{
+	struct e1000_hw *hw;
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	e1000_update_mc_addr_list(hw, (u8 *)mc_addr_set, nb_mc_addr);
 	return 0;
 }
 
