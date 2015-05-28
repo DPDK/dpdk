@@ -257,6 +257,10 @@ static int ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     void *arg);
 static int ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 
+static int ixgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
+				      struct ether_addr *mc_addr_set,
+				      uint32_t nb_mc_addr);
+
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
  */
@@ -381,6 +385,7 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.rss_hash_update      = ixgbe_dev_rss_hash_update,
 	.rss_hash_conf_get    = ixgbe_dev_rss_hash_conf_get,
 	.filter_ctrl          = ixgbe_dev_filter_ctrl,
+	.set_mc_addr_list     = ixgbe_dev_set_mc_addr_list,
 };
 
 /*
@@ -406,6 +411,7 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.tx_queue_release     = ixgbe_dev_tx_queue_release,
 	.mac_addr_add         = ixgbevf_add_mac_addr,
 	.mac_addr_remove      = ixgbevf_remove_mac_addr,
+	.set_mc_addr_list     = ixgbe_dev_set_mc_addr_list,
 };
 
 /**
@@ -4437,6 +4443,32 @@ ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 	}
 
 	return ret;
+}
+
+static u8 *
+ixgbe_dev_addr_list_itr(__attribute__((unused)) struct ixgbe_hw *hw,
+			u8 **mc_addr_ptr, u32 *vmdq)
+{
+	u8 *mc_addr;
+
+	*vmdq = 0;
+	mc_addr = *mc_addr_ptr;
+	*mc_addr_ptr = (mc_addr + sizeof(struct ether_addr));
+	return mc_addr;
+}
+
+static int
+ixgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
+			   struct ether_addr *mc_addr_set,
+			   uint32_t nb_mc_addr)
+{
+	struct ixgbe_hw *hw;
+	u8 *mc_addr_list;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	mc_addr_list = (u8 *)mc_addr_set;
+	return ixgbe_update_mc_addr_list(hw, mc_addr_list, nb_mc_addr,
+					 ixgbe_dev_addr_list_itr, TRUE);
 }
 
 static struct rte_driver rte_ixgbe_driver = {
