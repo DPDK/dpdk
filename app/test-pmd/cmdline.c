@@ -8733,6 +8733,57 @@ cmdline_parse_inst_t cmd_set_hash_global_config = {
 	},
 };
 
+/* *** ADD/REMOVE A MULTICAST MAC ADDRESS TO/FROM A PORT *** */
+struct cmd_mcast_addr_result {
+	cmdline_fixed_string_t mcast_addr_cmd;
+	cmdline_fixed_string_t what;
+	uint8_t port_num;
+	struct ether_addr mc_addr;
+};
+
+static void cmd_mcast_addr_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_mcast_addr_result *res = parsed_result;
+
+	if (!is_multicast_ether_addr(&res->mc_addr)) {
+		printf("Invalid multicast addr %02X:%02X:%02X:%02X:%02X:%02X\n",
+		       res->mc_addr.addr_bytes[0], res->mc_addr.addr_bytes[1],
+		       res->mc_addr.addr_bytes[2], res->mc_addr.addr_bytes[3],
+		       res->mc_addr.addr_bytes[4], res->mc_addr.addr_bytes[5]);
+		return;
+	}
+	if (strcmp(res->what, "add") == 0)
+		mcast_addr_add(res->port_num, &res->mc_addr);
+	else
+		mcast_addr_remove(res->port_num, &res->mc_addr);
+}
+
+cmdline_parse_token_string_t cmd_mcast_addr_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_mcast_addr_result,
+				 mcast_addr_cmd, "mcast_addr");
+cmdline_parse_token_string_t cmd_mcast_addr_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_mcast_addr_result, what,
+				 "add#remove");
+cmdline_parse_token_num_t cmd_mcast_addr_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_mcast_addr_result, port_num, UINT8);
+cmdline_parse_token_etheraddr_t cmd_mcast_addr_addr =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_mac_addr_result, address);
+
+cmdline_parse_inst_t cmd_mcast_addr = {
+	.f = cmd_mcast_addr_parsed,
+	.data = (void *)0,
+	.help_str = "mcast_addr add|remove X <mcast_addr>: add/remove multicast MAC address on port X",
+	.tokens = {
+		(void *)&cmd_mcast_addr_cmd,
+		(void *)&cmd_mcast_addr_what,
+		(void *)&cmd_mcast_addr_portnum,
+		(void *)&cmd_mcast_addr_addr,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -8862,6 +8913,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_sym_hash_ena_per_port,
 	(cmdline_parse_inst_t *)&cmd_get_hash_global_config,
 	(cmdline_parse_inst_t *)&cmd_set_hash_global_config,
+	(cmdline_parse_inst_t *)&cmd_mcast_addr,
 	NULL,
 };
 

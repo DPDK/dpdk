@@ -2130,3 +2130,145 @@ set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 		port_id, diag);
 	return diag;
 }
+
+/*
+ * Functions to manage the set of filtered Multicast MAC addresses.
+ *
+ * A pool of filtered multicast MAC addresses is associated with each port.
+ * The pool is allocated in chunks of MCAST_POOL_INC multicast addresses.
+ * The address of the pool and the number of valid multicast MAC addresses
+ * recorded in the pool are stored in the fields "mc_addr_pool" and
+ * "mc_addr_nb" of the "rte_port" data structure.
+ *
+ * The function "rte_eth_dev_set_mc_addr_list" of the PMDs API imposes
+ * to be supplied a contiguous array of multicast MAC addresses.
+ * To comply with this constraint, the set of multicast addresses recorded
+ * into the pool are systematically compacted at the beginning of the pool.
+ * Hence, when a multicast address is removed from the pool, all following
+ * addresses, if any, are copied back to keep the set contiguous.
+ */
+#define MCAST_POOL_INC 32
+
+static int
+mcast_addr_pool_extend(struct rte_port *port)
+{
+	struct ether_addr *mc_pool;
+	size_t mc_pool_size;
+
+	/*
+	 * If a free entry is available at the end of the pool, just
+	 * increment the number of recorded multicast addresses.
+	 */
+	if ((port->mc_addr_nb % MCAST_POOL_INC) != 0) {
+		port->mc_addr_nb++;
+		return 0;
+	}
+
+	/*
+	 * [re]allocate a pool with MCAST_POOL_INC more entries.
+	 * The previous test guarantees that port->mc_addr_nb is a multiple
+	 * of MCAST_POOL_INC.
+	 */
+	mc_pool_size = sizeof(struct ether_addr) * (port->mc_addr_nb +
+						    MCAST_POOL_INC);
+	mc_pool = (struct ether_addr *) realloc(port->mc_addr_pool,
+						mc_pool_size);
+	if (mc_pool == NULL) {
+		printf("allocation of pool of %u multicast addresses failed\n",
+		       port->mc_addr_nb + MCAST_POOL_INC);
+		return -ENOMEM;
+	}
+
+	port->mc_addr_pool = mc_pool;
+	port->mc_addr_nb++;
+	return 0;
+
+}
+
+static void
+mcast_addr_pool_remove(struct rte_port *port, uint32_t addr_idx)
+{
+	port->mc_addr_nb--;
+	if (addr_idx == port->mc_addr_nb) {
+		/* No need to recompact the set of multicast addressses. */
+		if (port->mc_addr_nb == 0) {
+			/* free the pool of multicast addresses. */
+			free(port->mc_addr_pool);
+			port->mc_addr_pool = NULL;
+		}
+		return;
+	}
+	memmove(&port->mc_addr_pool[addr_idx],
+		&port->mc_addr_pool[addr_idx + 1],
+		sizeof(struct ether_addr) * (port->mc_addr_nb - addr_idx));
+}
+
+static void
+eth_port_multicast_addr_list_set(uint8_t port_id)
+{
+	struct rte_port *port;
+	int diag;
+
+	port = &ports[port_id];
+	diag = rte_eth_dev_set_mc_addr_list(port_id, port->mc_addr_pool,
+					    port->mc_addr_nb);
+	if (diag == 0)
+		return;
+	printf("rte_eth_dev_set_mc_addr_list(port=%d, nb=%u) failed. diag=%d\n",
+	       port->mc_addr_nb, port_id, -diag);
+}
+
+void
+mcast_addr_add(uint8_t port_id, struct ether_addr *mc_addr)
+{
+	struct rte_port *port;
+	uint32_t i;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	port = &ports[port_id];
+
+	/*
+	 * Check that the added multicast MAC address is not already recorded
+	 * in the pool of multicast addresses.
+	 */
+	for (i = 0; i < port->mc_addr_nb; i++) {
+		if (is_same_ether_addr(mc_addr, &port->mc_addr_pool[i])) {
+			printf("multicast address already filtered by port\n");
+			return;
+		}
+	}
+
+	if (mcast_addr_pool_extend(port) != 0)
+		return;
+	ether_addr_copy(mc_addr, &port->mc_addr_pool[i]);
+	eth_port_multicast_addr_list_set(port_id);
+}
+
+void
+mcast_addr_remove(uint8_t port_id, struct ether_addr *mc_addr)
+{
+	struct rte_port *port;
+	uint32_t i;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	port = &ports[port_id];
+
+	/*
+	 * Search the pool of multicast MAC addresses for the removed address.
+	 */
+	for (i = 0; i < port->mc_addr_nb; i++) {
+		if (is_same_ether_addr(mc_addr, &port->mc_addr_pool[i]))
+			break;
+	}
+	if (i == port->mc_addr_nb) {
+		printf("multicast address not filtered by port %d\n", port_id);
+		return;
+	}
+
+	mcast_addr_pool_remove(port, i);
+	eth_port_multicast_addr_list_set(port_id);
+}

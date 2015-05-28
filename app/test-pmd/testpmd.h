@@ -162,6 +162,8 @@ struct rte_port {
 	uint8_t			dcb_flag;   /**< enable dcb */
 	struct rte_eth_rxconf   rx_conf;    /**< rx configuration */
 	struct rte_eth_txconf   tx_conf;    /**< tx configuration */
+	struct ether_addr       *mc_addr_pool; /**< pool of multicast addrs */
+	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
 };
 
 extern portid_t __rte_unused
@@ -562,6 +564,10 @@ void get_2tuple_filter(uint8_t port_id, uint16_t index);
 void get_5tuple_filter(uint8_t port_id, uint16_t index);
 int rx_queue_id_is_invalid(queueid_t rxq_id);
 int tx_queue_id_is_invalid(queueid_t txq_id);
+
+/* Functions to manage the set of filtered Multicast MAC addresses */
+void mcast_addr_add(uint8_t port_id, struct ether_addr *mc_addr);
+void mcast_addr_remove(uint8_t port_id, struct ether_addr *mc_addr);
 
 enum print_warning {
 	ENABLED_WARN = 0,
