@@ -45,6 +45,10 @@
 #define FM10K_MBXLOCK_DELAY_US 20
 #define UINT64_LOWER_32BITS_MASK 0x00000000ffffffffULL
 
+/* Max try times to acquire switch status */
+#define MAX_QUERY_SWITCH_STATE_TIMES 10
+/* Wait interval to get switch status */
+#define WAIT_SWITCH_MSG_US    100000
 /* Number of chars per uint32 type */
 #define CHARS_PER_UINT32 (sizeof(uint32_t))
 #define BIT_MASK_PER_UINT32 ((1 << CHARS_PER_UINT32) - 1)
@@ -1919,6 +1923,32 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 		fm10k_dev_enable_intr_vf(dev);
 	}
 
+	/* Enable uio intr after callback registered */
+	rte_intr_enable(&(dev->pci_dev->intr_handle));
+
+	hw->mac.ops.update_int_moderator(hw);
+
+	/* Make sure Switch Manager is ready before going forward. */
+	if (hw->mac.type == fm10k_mac_pf) {
+		int switch_ready = 0;
+		int i;
+
+		for (i = 0; i < MAX_QUERY_SWITCH_STATE_TIMES; i++) {
+			fm10k_mbx_lock(hw);
+			hw->mac.ops.get_host_state(hw, &switch_ready);
+			fm10k_mbx_unlock(hw);
+			if (switch_ready)
+				break;
+			/* Delay some time to acquire async LPORT_MAP info. */
+			rte_delay_us(WAIT_SWITCH_MSG_US);
+		}
+
+		if (switch_ready == 0) {
+			PMD_INIT_LOG(ERR, "switch is not ready");
+			return -1;
+		}
+	}
+
 	/*
 	 * Below function will trigger operations on mailbox, acquire lock to
 	 * avoid race condition from interrupt handler. Operations on mailbox
@@ -1928,7 +1958,7 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	 */
 	fm10k_mbx_lock(hw);
 	/* Enable port first */
-	hw->mac.ops.update_lport_state(hw, 0, 0, 1);
+	hw->mac.ops.update_lport_state(hw, hw->mac.dglort_map, 1, 1);
 
 	/* Update default vlan */
 	hw->mac.ops.update_vlan(hw, hw->mac.default_vid, 0, true);
@@ -1948,8 +1978,6 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 
 	fm10k_mbx_unlock(hw);
 
-	/* enable uio intr after callback registered */
-	rte_intr_enable(&(dev->pci_dev->intr_handle));
 
 	return 0;
 }
