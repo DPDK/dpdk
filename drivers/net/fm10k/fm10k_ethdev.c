@@ -1873,23 +1873,19 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	}
 
 	diag = fm10k_read_mac_addr(hw);
-	if (diag != FM10K_SUCCESS) {
-		/*
-		 * TODO: remove special handling on VF. Need shared code to
-		 * fix first.
-		 */
-		if (hw->mac.type == fm10k_mac_pf) {
-			PMD_INIT_LOG(ERR, "Read MAC addr failed: %d", diag);
-			return -EIO;
-		} else {
-			/* Generate a random addr */
-			eth_random_addr(hw->mac.addr);
-			memcpy(hw->mac.perm_addr, hw->mac.addr, ETH_ALEN);
-		}
-	}
 
 	ether_addr_copy((const struct ether_addr *)hw->mac.addr,
 			&dev->data->mac_addrs[0]);
+
+	if (diag != FM10K_SUCCESS ||
+		!is_valid_assigned_ether_addr(dev->data->mac_addrs)) {
+
+		/* Generate a random addr */
+		eth_random_addr(hw->mac.addr);
+		memcpy(hw->mac.perm_addr, hw->mac.addr, ETH_ALEN);
+		ether_addr_copy((const struct ether_addr *)hw->mac.addr,
+		&dev->data->mac_addrs[0]);
+	}
 
 	/* Reset the hw statistics */
 	fm10k_stats_reset(dev);
