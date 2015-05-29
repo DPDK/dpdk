@@ -90,7 +90,7 @@ static inline int
 ip_frag_key_is_empty(const struct ip_frag_key * key)
 {
 	uint32_t i;
-	for (i = 0; i < key->key_len; i++)
+	for (i = 0; i < RTE_MIN(key->key_len, RTE_DIM(key->src_dst)); i++)
 		if (key->src_dst[i] != 0)
 			return 0;
 	return 1;
