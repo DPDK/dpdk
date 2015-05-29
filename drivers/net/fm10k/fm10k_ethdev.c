@@ -785,6 +785,17 @@ fm10k_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
+	if (hw->mac.default_vid && hw->mac.default_vid <= ETHER_MAX_VLAN_ID) {
+		fm10k_mbx_lock(hw);
+		/* Update default vlan */
+		hw->mac.ops.update_vlan(hw, hw->mac.default_vid, 0, true);
+
+		/* Add default mac/vlan filter to PF/Switch manager */
+		hw->mac.ops.update_uc_addr(hw, hw->mac.dglort_map, hw->mac.addr,
+				hw->mac.default_vid, true, 0);
+		fm10k_mbx_unlock(hw);
+	}
+
 	return 0;
 }
 
@@ -1956,15 +1967,12 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	/* Enable port first */
 	hw->mac.ops.update_lport_state(hw, hw->mac.dglort_map, 1, 1);
 
-	/* Update default vlan */
-	hw->mac.ops.update_vlan(hw, hw->mac.default_vid, 0, true);
-
 	/*
-	 * Add default mac/vlan filter. glort is assigned by SM for PF, while is
+	 * Add default mac. glort is assigned by SM for PF, while is
 	 * unused for VF. PF will assign correct glort for VF.
 	 */
 	hw->mac.ops.update_uc_addr(hw, hw->mac.dglort_map, hw->mac.addr,
-			      hw->mac.default_vid, 1, 0);
+				0, 1, 0);
 
 	/* Set unicast mode by default. App can change to other mode in other
 	 * API func.
