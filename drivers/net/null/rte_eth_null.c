@@ -298,7 +298,8 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 	internal = dev->data->dev_private;
 	memset(igb_stats, 0, sizeof(*igb_stats));
 	num_stats = RTE_MIN((unsigned)RTE_ETHDEV_QUEUE_STAT_CNTRS,
-					internal->nb_rx_queues);
+			RTE_MIN(internal->nb_rx_queues,
+				RTE_DIM(internal->rx_null_queues)));
 	for (i = 0; i < num_stats; i++) {
 		igb_stats->q_ipackets[i] =
 			internal->rx_null_queues[i].rx_pkts.cnt;
@@ -306,7 +307,8 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 	}
 
 	num_stats = RTE_MIN((unsigned)RTE_ETHDEV_QUEUE_STAT_CNTRS,
-					internal->nb_tx_queues);
+			RTE_MIN(internal->nb_tx_queues,
+				RTE_DIM(internal->tx_null_queues)));
 	for (i = 0; i < num_stats; i++) {
 		igb_stats->q_opackets[i] =
 			internal->tx_null_queues[i].tx_pkts.cnt;
@@ -331,9 +333,9 @@ eth_stats_reset(struct rte_eth_dev *dev)
 		return;
 
 	internal = dev->data->dev_private;
-	for (i = 0; i < internal->nb_rx_queues; i++)
+	for (i = 0; i < RTE_DIM(internal->rx_null_queues); i++)
 		internal->rx_null_queues[i].rx_pkts.cnt = 0;
-	for (i = 0; i < internal->nb_tx_queues; i++) {
+	for (i = 0; i < RTE_DIM(internal->tx_null_queues); i++) {
 		internal->tx_null_queues[i].tx_pkts.cnt = 0;
 		internal->tx_null_queues[i].err_pkts.cnt = 0;
 	}
