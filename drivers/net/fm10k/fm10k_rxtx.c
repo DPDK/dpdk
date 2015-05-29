@@ -402,9 +402,9 @@ static inline void tx_xmit_pkt(struct fm10k_tx_queue *q, struct rte_mbuf *mb)
 		q->nb_used = q->nb_used + mb->nb_segs;
 	}
 
-	q->hw_ring[last_id].flags = flags;
 	q->nb_free -= mb->nb_segs;
 
+	q->hw_ring[q->next_free].flags = 0;
 	/* set checksum flags on first descriptor of packet. SCTP checksum
 	 * offload is not supported, but we do not explicitly check for this
 	 * case in favor of greatly simplified processing. */
@@ -415,16 +415,27 @@ static inline void tx_xmit_pkt(struct fm10k_tx_queue *q, struct rte_mbuf *mb)
 	if (mb->ol_flags & PKT_TX_VLAN_PKT)
 		q->hw_ring[q->next_free].vlan = mb->vlan_tci;
 
+	q->sw_ring[q->next_free] = mb;
+	q->hw_ring[q->next_free].buffer_addr =
+			rte_cpu_to_le_64(MBUF_DMA_ADDR(mb));
+	q->hw_ring[q->next_free].buflen =
+			rte_cpu_to_le_16(rte_pktmbuf_data_len(mb));
+	if (++q->next_free == q->nb_desc)
+		q->next_free = 0;
+
 	/* fill up the rings */
-	for (; mb != NULL; mb = mb->next) {
+	for (mb = mb->next; mb != NULL; mb = mb->next) {
 		q->sw_ring[q->next_free] = mb;
 		q->hw_ring[q->next_free].buffer_addr =
 				rte_cpu_to_le_64(MBUF_DMA_ADDR(mb));
 		q->hw_ring[q->next_free].buflen =
 				rte_cpu_to_le_16(rte_pktmbuf_data_len(mb));
+		q->hw_ring[q->next_free].flags = 0;
 		if (++q->next_free == q->nb_desc)
 			q->next_free = 0;
 	}
+
+	q->hw_ring[last_id].flags = flags;
 }
 
 uint16_t
