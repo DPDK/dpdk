@@ -444,9 +444,14 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 
 		/* It adds dual VLAN length for supporting dual VLAN */
 		if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
-				2 * FM10K_VLAN_TAG_SIZE) > buf_size){
+				2 * FM10K_VLAN_TAG_SIZE) > buf_size ||
+			dev->data->dev_conf.rxmode.enable_scatter) {
+			uint32_t reg;
 			dev->data->scattered_rx = 1;
 			dev->rx_pkt_burst = fm10k_recv_scattered_pkts;
+			reg = FM10K_READ_REG(hw, FM10K_SRRCTL(i));
+			reg |= FM10K_SRRCTL_BUFFER_CHAINING_EN;
+			FM10K_WRITE_REG(hw, FM10K_SRRCTL(i), reg);
 		}
 
 		/* Enable drop on empty, it's RO for VF */
@@ -455,11 +460,6 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 
 		FM10K_WRITE_REG(hw, FM10K_RXDCTL(i), rxdctl);
 		FM10K_WRITE_FLUSH(hw);
-	}
-
-	if (dev->data->dev_conf.rxmode.enable_scatter) {
-		dev->rx_pkt_burst = fm10k_recv_scattered_pkts;
-		dev->data->scattered_rx = 1;
 	}
 
 	/* Configure RSS if applicable */
