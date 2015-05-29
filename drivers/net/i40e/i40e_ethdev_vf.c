@@ -1199,7 +1199,7 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
  * virtual function driver struct
  */
 static struct eth_driver rte_i40evf_pmd = {
-	{
+	.pci_drv = {
 		.name = "rte_i40evf_pmd",
 		.id_table = pci_id_i40evf_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,

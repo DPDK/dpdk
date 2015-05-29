@@ -265,7 +265,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 };
 
 static struct eth_driver rte_i40e_pmd = {
-	{
+	.pci_drv = {
 		.name = "rte_i40e_pmd",
 		.id_table = pci_id_i40e_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,

@@ -1238,7 +1238,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 }
 
 static struct eth_driver rte_virtio_pmd = {
-	{
+	.pci_drv = {
 		.name = "rte_virtio_pmd",
 		.id_table = pci_id_virtio_map,
 	},

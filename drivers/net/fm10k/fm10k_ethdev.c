@@ -1841,7 +1841,7 @@ static const struct rte_pci_id pci_id_fm10k_map[] = {
 };
 
 static struct eth_driver rte_pmd_fm10k = {
-	{
+	.pci_drv = {
 		.name = "rte_pmd_fm10k",
 		.id_table = pci_id_fm10k_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
