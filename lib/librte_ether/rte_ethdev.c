@@ -3627,3 +3627,20 @@ rte_eth_remove_tx_callback(uint8_t port_id, uint16_t queue_id,
 	/* Callback wasn't found. */
 	return -EINVAL;
 }
+
+int
+rte_eth_dev_set_mc_addr_list(uint8_t port_id,
+			     struct ether_addr *mc_addr_set,
+			     uint32_t nb_mc_addr)
+{
+	struct rte_eth_dev *dev;
+
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_mc_addr_list, -ENOTSUP);
+	return dev->dev_ops->set_mc_addr_list(dev, mc_addr_set, nb_mc_addr);
+}

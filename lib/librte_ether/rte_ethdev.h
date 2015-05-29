@@ -1228,6 +1228,10 @@ typedef int (*eth_udp_tunnel_del_t)(struct rte_eth_dev *dev,
 				    struct rte_eth_udp_tunnel *tunnel_udp);
 /**< @internal Delete tunneling UDP info */
 
+typedef int (*eth_set_mc_addr_list_t)(struct rte_eth_dev *dev,
+				      struct ether_addr *mc_addr_set,
+				      uint32_t nb_mc_addr);
+/**< @internal set the list of multicast addresses on an Ethernet device */
 
 #ifdef RTE_NIC_BYPASS
 
@@ -1386,6 +1390,7 @@ struct eth_dev_ops {
 	/** Get current RSS hash configuration. */
 	rss_hash_conf_get_t rss_hash_conf_get;
 	eth_filter_ctrl_t              filter_ctrl;          /**< common filter control*/
+	eth_set_mc_addr_list_t set_mc_addr_list; /**< set list of mcast addrs */
 };
 
 /**
@@ -3614,5 +3619,26 @@ int rte_eth_remove_tx_callback(uint8_t port_id, uint16_t queue_id,
 #ifdef __cplusplus
 }
 #endif
+
+/**
+ * Set the list of multicast addresses to filter on an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param mc_addr_set
+ *   The array of multicast addresses to set. Equal to NULL when the function
+ *   is invoked to flush the set of filtered addresses.
+ * @param nb_mc_addr
+ *   The number of multicast addresses in the *mc_addr_set* array. Equal to 0
+ *   when the function is invoked to flush the set of filtered addresses.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOTSUP) if PMD of *port_id* doesn't support multicast filtering.
+ *   - (-ENOSPC) if *port_id* has not enough multicast filtering resources.
+ */
+int rte_eth_dev_set_mc_addr_list(uint8_t port_id,
+				 struct ether_addr *mc_addr_set,
+				 uint32_t nb_mc_addr);
 
 #endif /* _RTE_ETHDEV_H_ */
