@@ -41,7 +41,6 @@
 #include "fm10k.h"
 #include "base/fm10k_api.h"
 
-#define FM10K_RX_BUFF_ALIGN 512
 /* Default delay to acquire mailbox lock */
 #define FM10K_MBXLOCK_DELAY_US 20
 #define UINT64_LOWER_32BITS_MASK 0x00000000ffffffffULL
@@ -431,6 +430,15 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 		/* Configure the Rx buffer size for one buff without split */
 		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
 			RTE_PKTMBUF_HEADROOM);
+		/* As RX buffer is aligned to 512B within mbuf, some bytes are
+		 * reserved for this purpose, and the worst case could be 511B.
+		 * But SRR reg assumes all buffers have the same size. In order
+		 * to fill the gap, we'll have to consider the worst case and
+		 * assume 512B is reserved. If we don't do so, it's possible
+		 * for HW to overwrite data to next mbuf.
+		 */
+		buf_size -= FM10K_RX_DATABUF_ALIGN;
+
 		FM10K_WRITE_REG(hw, FM10K_SRRCTL(i),
 				buf_size >> FM10K_SRRCTL_BSIZEPKT_SHIFT);
 
@@ -1025,7 +1033,7 @@ mempool_element_size_valid(struct rte_mempool *mp)
 			RTE_PKTMBUF_HEADROOM;
 
 	/* account for up to 512B of alignment */
-	min_size -= FM10K_RX_BUFF_ALIGN;
+	min_size -= FM10K_RX_DATABUF_ALIGN;
 
 	/* sanity check for overflow */
 	if (min_size > mp->elt_size)

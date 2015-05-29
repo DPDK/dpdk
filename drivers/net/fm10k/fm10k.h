@@ -191,7 +191,8 @@ struct fm10k_tx_queue {
 
 /* enforce 512B alignment on default Rx DMA addresses */
 #define MBUF_DMA_ADDR_DEFAULT(mb) \
-	((uint64_t) RTE_ALIGN(((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM), 512))
+	((uint64_t) RTE_ALIGN(((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM),\
+			FM10K_RX_DATABUF_ALIGN))
 
 static inline void fifo_reset(struct fifo *fifo, uint32_t len)
 {
@@ -263,7 +264,7 @@ fm10k_addr_alignment_valid(struct rte_mbuf *mb)
 	uint64_t boundary1, boundary2;
 
 	/* 512B aligned? */
-	if (RTE_ALIGN(addr, 512) == addr)
+	if (RTE_ALIGN(addr, FM10K_RX_DATABUF_ALIGN) == addr)
 		return 1;
 
 	/* 8B aligned, and max Ethernet frame would not cross a 4KB boundary? */
