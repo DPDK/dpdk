@@ -1188,7 +1188,9 @@ rte_eal_hugepage_init(void)
 		int socket = tmp_hp[i].socket_id;
 
 		/* find a hugepage info with right size and increment num_pages */
-		for (j = 0; j < (int) internal_config.num_hugepage_sizes; j++) {
+		const int nb_hpsizes = RTE_MIN(MAX_HUGEPAGE_SIZES,
+				(int)internal_config.num_hugepage_sizes);
+		for (j = 0; j < nb_hpsizes; j++) {
 			if (tmp_hp[i].size ==
 					internal_config.hugepage_info[j].hugepage_sz) {
 #ifdef RTE_EAL_SINGLE_FILE_SEGMENTS
