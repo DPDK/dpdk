@@ -551,7 +551,7 @@ i40e_set_flx_pld_cfg(struct i40e_pf *pf,
 	memset(flex_pit, 0, sizeof(flex_pit));
 	num = i40e_srcoff_to_flx_pit(cfg->src_offset, flex_pit);
 
-	for (i = 0; i < num; i++) {
+	for (i = 0; i < RTE_MIN(num, RTE_DIM(flex_pit)); i++) {
 		field_idx = layer_idx * I40E_MAX_FLXPLD_FIED + i;
 		/* record the info in fdir structure */
 		pf->fdir.flex_set[field_idx].src_offset =
