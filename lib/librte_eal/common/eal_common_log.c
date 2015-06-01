@@ -119,7 +119,10 @@ rte_log_add_in_history(const char *buf, size_t size)
 	/* get a buffer for adding in history */
 	if (log_history_size > RTE_LOG_HISTORY) {
 		hist_buf = STAILQ_FIRST(&log_history);
-		STAILQ_REMOVE_HEAD(&log_history, next);
+		if (hist_buf) {
+			STAILQ_REMOVE_HEAD(&log_history, next);
+			log_history_size--;
+		}
 	}
 	else {
 		if (rte_mempool_mc_get(log_history_mp, &obj) < 0)
@@ -234,6 +237,7 @@ rte_log_dump_history(FILE *out)
 	rte_spinlock_lock(&log_list_lock);
 	tmp_log_history = log_history;
 	STAILQ_INIT(&log_history);
+	log_history_size = 0;
 	rte_spinlock_unlock(&log_list_lock);
 
 	for (i=0; i<RTE_LOG_HISTORY; i++) {
