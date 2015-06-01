@@ -43,11 +43,10 @@ def num_sockets():
 		return 1
 	return result
 
-# spread given number for all sockets
-# e.g. 32 becomes 16,16 or 8,8,8,8 etc.
-def all_sockets(num):
-	mem_per_socket = num / num_sockets()
-	return ",".join([str(mem_per_socket)] * num_sockets())
+# Assign given number to each socket
+# e.g. 32 becomes 32,32 or 32,32,32,32
+def per_sockets(num):
+    return ",".join([str(num)] * num_sockets())
 
 # groups of tests that can be run in parallel
 # the grouping has been found largely empirically
@@ -55,7 +54,7 @@ parallel_test_group_list = [
 
 {
 	"Prefix":	"group_1",
-	"Memory" :	all_sockets(8),
+	"Memory" :	per_sockets(8),
 	"Tests" :
 	[
 		{
@@ -165,7 +164,7 @@ parallel_test_group_list = [
 },
 {
 	"Prefix":	"group_3",
-	"Memory" :	all_sockets(1024),
+	"Memory" :	per_sockets(1024),
 	"Tests" :
 	[
 		{
@@ -208,7 +207,7 @@ parallel_test_group_list = [
 },
 {
 	"Prefix":	"group_4",
-	"Memory" :	all_sockets(128),
+	"Memory" :	per_sockets(128),
 	"Tests" :
 	[
 		{
@@ -251,7 +250,7 @@ parallel_test_group_list = [
 },
 {
 	"Prefix":	"group_5",
-	"Memory" :	"16",
+	"Memory" :	"32",
 	"Tests" :
 	[
 		{
@@ -288,7 +287,7 @@ parallel_test_group_list = [
 },
 {
 	"Prefix":	"group_6",
-	"Memory" :	all_sockets(620),
+	"Memory" :	per_sockets(620),
 	"Tests" :
 	[
 		{
@@ -368,7 +367,7 @@ non_parallel_test_group_list = [
 },
 {
 	"Prefix":	"mempool_perf",
-	"Memory" :	all_sockets(256),
+	"Memory" :	per_sockets(256),
 	"Tests" :
 	[
 		{
@@ -387,7 +386,7 @@ non_parallel_test_group_list = [
 },
 {
 	"Prefix":	"memcpy_perf",
-	"Memory" :	all_sockets(512),
+	"Memory" :	per_sockets(512),
 	"Tests" :
 	[
 		{
@@ -400,7 +399,7 @@ non_parallel_test_group_list = [
 },
 {
 	"Prefix":	"hash_perf",
-	"Memory" :	all_sockets(512),
+	"Memory" :	per_sockets(512),
 	"Tests" :
 	[
 		{
@@ -413,7 +412,7 @@ non_parallel_test_group_list = [
 },
 {
 	"Prefix" :      "power",
-	"Memory" :      all_sockets(512),
+	"Memory" :      per_sockets(512),
 	"Tests" :
 	[
 		{
@@ -426,7 +425,7 @@ non_parallel_test_group_list = [
 },
 {
 	"Prefix" :      "power_acpi_cpufreq",
-	"Memory" :      all_sockets(512),
+	"Memory" :      per_sockets(512),
 	"Tests" :
 	[
 		{
@@ -465,7 +464,7 @@ non_parallel_test_group_list = [
 },
 {
 	"Prefix":	"timer_perf",
-	"Memory" :	all_sockets(512),
+	"Memory" :	per_sockets(512),
 	"Tests" :
 	[
 		{
@@ -482,7 +481,7 @@ non_parallel_test_group_list = [
 #
 {
 	"Prefix":	"ring_perf",
-	"Memory" :	all_sockets(512),
+	"Memory" :	per_sockets(512),
 	"Tests" :
 	[
 		{
