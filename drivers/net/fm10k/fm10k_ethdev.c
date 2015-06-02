@@ -760,7 +760,7 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->max_tx_queues      = hw->mac.max_queues;
 	dev_info->max_mac_addrs      = 1;
 	dev_info->max_hash_mac_addrs = 0;
-	dev_info->max_vfs            = FM10K_MAX_VF_NUM;
+	dev_info->max_vfs            = dev->pci_dev->max_vfs;
 	dev_info->max_vmdq_pools     = ETH_64_POOLS;
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
