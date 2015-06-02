@@ -231,7 +231,9 @@ parse_arg_rx(const char *arg)
 			return -7;
 		}
 		lp->type = e_APP_LCORE_IO;
-		for (i = 0; i < lp->io.rx.n_nic_queues; i ++) {
+		const size_t n_queues = RTE_MIN(lp->io.rx.n_nic_queues,
+		                                RTE_DIM(lp->io.rx.nic_queues));
+		for (i = 0; i < n_queues; i ++) {
 			if ((lp->io.rx.nic_queues[i].port == port) &&
 			    (lp->io.rx.nic_queues[i].queue == queue)) {
 				return -8;
@@ -308,7 +310,9 @@ parse_arg_tx(const char *arg)
 			return -7;
 		}
 		lp->type = e_APP_LCORE_IO;
-		for (i = 0; i < lp->io.tx.n_nic_ports; i ++) {
+		const size_t n_ports = RTE_MIN(lp->io.tx.n_nic_ports,
+		                               RTE_DIM(lp->io.tx.nic_ports));
+		for (i = 0; i < n_ports; i ++) {
 			if (lp->io.tx.nic_ports[i] == port) {
 				return -8;
 			}
@@ -791,7 +795,9 @@ app_get_lcore_for_nic_rx(uint8_t port, uint8_t queue, uint32_t *lcore_out)
 			continue;
 		}
 
-		for (i = 0; i < lp->rx.n_nic_queues; i ++) {
+		const size_t n_queues = RTE_MIN(lp->rx.n_nic_queues,
+		                                RTE_DIM(lp->rx.nic_queues));
+		for (i = 0; i < n_queues; i ++) {
 			if ((lp->rx.nic_queues[i].port == port) &&
 			    (lp->rx.nic_queues[i].queue == queue)) {
 				*lcore_out = lcore;
@@ -816,7 +822,9 @@ app_get_lcore_for_nic_tx(uint8_t port, uint32_t *lcore_out)
 			continue;
 		}
 
-		for (i = 0; i < lp->tx.n_nic_ports; i ++) {
+		const size_t n_ports = RTE_MIN(lp->tx.n_nic_ports,
+		                               RTE_DIM(lp->tx.nic_ports));
+		for (i = 0; i < n_ports; i ++) {
 			if (lp->tx.nic_ports[i] == port) {
 				*lcore_out = lcore;
 				return 0;
