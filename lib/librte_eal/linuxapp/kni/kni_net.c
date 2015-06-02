@@ -491,6 +491,11 @@ kni_net_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	return 0;
 }
 
+static void
+kni_net_set_rx_mode(struct net_device *dev)
+{
+}
+
 static int
 kni_net_change_mtu(struct net_device *dev, int new_mtu)
 {
@@ -652,6 +657,7 @@ static const struct net_device_ops kni_net_netdev_ops = {
 	.ndo_start_xmit = kni_net_tx,
 	.ndo_change_mtu = kni_net_change_mtu,
 	.ndo_do_ioctl = kni_net_ioctl,
+	.ndo_set_rx_mode = kni_net_set_rx_mode,
 	.ndo_get_stats = kni_net_stats,
 	.ndo_tx_timeout = kni_net_tx_timeout,
 	.ndo_set_mac_address = kni_net_set_mac,
