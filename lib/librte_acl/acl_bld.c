@@ -1044,9 +1044,7 @@ acl_merge_trie(struct acl_build_context *context,
 	 * a subtree of the merging tree (node B side). Otherwise,
 	 * just use node A.
 	 */
-	if (level > 0 &&
-			node_a->subtree_id !=
-			(subtree_id | RTE_ACL_SUBTREE_NODE)) {
+	if (level > 0) {
 		node_c = acl_dup_node(context, node_a);
 		node_c->subtree_id = subtree_id | RTE_ACL_SUBTREE_NODE;
 	}
