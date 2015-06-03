@@ -131,7 +131,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 {
 	unsigned ret;
 	uint32_t len;
-	unsigned i, num, num_rq, num_fq;
+	unsigned i, num, num_fq;
 	struct rte_kni_mbuf *kva;
 	struct rte_kni_mbuf *va[MBUF_BURST_SZ];
 	void * data_kva;
@@ -139,24 +139,19 @@ kni_net_rx_normal(struct kni_dev *kni)
 	struct sk_buff *skb;
 	struct net_device *dev = kni->net_dev;
 
-	/* Get the number of entries in rx_q */
-	num_rq = kni_fifo_count(kni->rx_q);
-
 	/* Get the number of free entries in free_q */
-	num_fq = kni_fifo_free_count(kni->free_q);
-
-	/* Calculate the number of entries to dequeue in rx_q */
-	num = min(num_rq, num_fq);
-	num = min(num, (unsigned)MBUF_BURST_SZ);
-
-	/* Return if no entry in rx_q and no free entry in free_q */
-	if (num == 0)
+	if ((num_fq = kni_fifo_free_count(kni->free_q)) == 0) {
+		/* No room on the free_q, bail out */
 		return;
+	}
+
+	/* Calculate the number of entries to dequeue from rx_q */
+	num = min(num_fq, (unsigned)MBUF_BURST_SZ);
 
 	/* Burst dequeue from rx_q */
 	ret = kni_fifo_get(kni->rx_q, (void **)va, num);
 	if (ret == 0)
-		return; /* Failing should not happen */
+		return;
 
 	/* Transfer received packets to netif */
 	for (i = 0; i < num; i++) {
