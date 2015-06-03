@@ -213,13 +213,12 @@ static int
 kni_thread_single(void *unused)
 {
 	int j;
-	struct kni_dev *dev, *n;
+	struct kni_dev *dev;
 
 	while (!kthread_should_stop()) {
 		down_read(&kni_list_lock);
 		for (j = 0; j < KNI_RX_LOOP_NUM; j++) {
-			list_for_each_entry_safe(dev, n,
-					&kni_list_head, list) {
+			list_for_each_entry(dev, &kni_list_head, list) {
 #ifdef RTE_KNI_VHOST
 				kni_chk_vhost_rx(dev);
 #else
