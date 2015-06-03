@@ -131,7 +131,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 {
 	unsigned ret;
 	uint32_t len;
-	unsigned i, num, num_fq;
+	unsigned i, num_rx, num_fq;
 	struct rte_kni_mbuf *kva;
 	struct rte_kni_mbuf *va[MBUF_BURST_SZ];
 	void * data_kva;
@@ -140,21 +140,22 @@ kni_net_rx_normal(struct kni_dev *kni)
 	struct net_device *dev = kni->net_dev;
 
 	/* Get the number of free entries in free_q */
-	if ((num_fq = kni_fifo_free_count(kni->free_q)) == 0) {
+	num_fq = kni_fifo_free_count(kni->free_q);
+	if (num_fq == 0) {
 		/* No room on the free_q, bail out */
 		return;
 	}
 
 	/* Calculate the number of entries to dequeue from rx_q */
-	num = min(num_fq, (unsigned)MBUF_BURST_SZ);
+	num_rx = min(num_fq, (unsigned)MBUF_BURST_SZ);
 
 	/* Burst dequeue from rx_q */
-	ret = kni_fifo_get(kni->rx_q, (void **)va, num);
-	if (ret == 0)
+	num_rx = kni_fifo_get(kni->rx_q, (void **)va, num_rx);
+	if (num_rx == 0)
 		return;
 
 	/* Transfer received packets to netif */
-	for (i = 0; i < num; i++) {
+	for (i = 0; i < num_rx; i++) {
 		kva = (void *)va[i] - kni->mbuf_va + kni->mbuf_kva;
 		len = kva->data_len;
 		data_kva = kva->buf_addr + kva->data_off - kni->mbuf_va
@@ -184,8 +185,8 @@ kni_net_rx_normal(struct kni_dev *kni)
 	}
 
 	/* Burst enqueue mbufs into free_q */
-	ret = kni_fifo_put(kni->free_q, (void **)va, num);
-	if (ret != num)
+	ret = kni_fifo_put(kni->free_q, (void **)va, num_rx);
+	if (ret != num_rx)
 		/* Failing should not happen */
 		KNI_ERR("Fail to enqueue entries into free_q\n");
 }
