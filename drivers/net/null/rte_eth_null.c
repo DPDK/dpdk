@@ -296,7 +296,6 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 		return;
 
 	internal = dev->data->dev_private;
-	memset(igb_stats, 0, sizeof(*igb_stats));
 	num_stats = RTE_MIN((unsigned)RTE_ETHDEV_QUEUE_STAT_CNTRS,
 			RTE_MIN(internal->nb_rx_queues,
 				RTE_DIM(internal->rx_null_queues)));
