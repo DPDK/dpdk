@@ -191,7 +191,8 @@ err:
 }
 
 static int
-test_classify_buid(struct rte_acl_ctx *acx)
+test_classify_buid(struct rte_acl_ctx *acx,
+	const struct rte_acl_ipv4vlan_rule *rules, uint32_t num)
 {
 	int ret;
 	const uint32_t layout[RTE_ACL_IPV4VLAN_NUM] = {
@@ -203,8 +204,7 @@ test_classify_buid(struct rte_acl_ctx *acx)
 	};
 
 	/* add rules to the context */
-	ret = rte_acl_ipv4vlan_add_rules(acx, acl_test_rules,
-			RTE_DIM(acl_test_rules));
+	ret = rte_acl_ipv4vlan_add_rules(acx, rules, num);
 	if (ret != 0) {
 		printf("Line %i: Adding rules to ACL context failed!\n",
 			__LINE__);
@@ -246,7 +246,8 @@ test_classify(void)
 		else
 			rte_acl_reset_rules(acx);
 
-		ret = test_classify_buid(acx);
+		ret = test_classify_buid(acx, acl_test_rules,
+			RTE_DIM(acl_test_rules));
 		if (ret != 0) {
 			printf("Line %i, iter: %d: "
 				"Adding rules to ACL context failed!\n",
@@ -270,6 +271,142 @@ test_classify(void)
 			break;
 		}
 	}
+
+	rte_acl_free(acx);
+	return ret;
+}
+
+static int
+test_build_ports_range(void)
+{
+	static const struct rte_acl_ipv4vlan_rule test_rules[] = {
+		{
+			/* match all packets. */
+			.data = {
+				.userdata = 1,
+				.category_mask = ACL_ALLOW_MASK,
+				.priority = 101,
+			},
+			.src_port_low = 0,
+			.src_port_high = UINT16_MAX,
+			.dst_port_low = 0,
+			.dst_port_high = UINT16_MAX,
+		},
+		{
+			/* match all packets with dst ports [54-65280]. */
+			.data = {
+				.userdata = 2,
+				.category_mask = ACL_ALLOW_MASK,
+				.priority = 102,
+			},
+			.src_port_low = 0,
+			.src_port_high = UINT16_MAX,
+			.dst_port_low = 54,
+			.dst_port_high = 65280,
+		},
+		{
+			/* match all packets with dst ports [0-52]. */
+			.data = {
+				.userdata = 3,
+				.category_mask = ACL_ALLOW_MASK,
+				.priority = 103,
+			},
+			.src_port_low = 0,
+			.src_port_high = UINT16_MAX,
+			.dst_port_low = 0,
+			.dst_port_high = 52,
+		},
+		{
+			/* match all packets with dst ports [53]. */
+			.data = {
+				.userdata = 4,
+				.category_mask = ACL_ALLOW_MASK,
+				.priority = 99,
+			},
+			.src_port_low = 0,
+			.src_port_high = UINT16_MAX,
+			.dst_port_low = 53,
+			.dst_port_high = 53,
+		},
+		{
+			/* match all packets with dst ports [65279-65535]. */
+			.data = {
+				.userdata = 5,
+				.category_mask = ACL_ALLOW_MASK,
+				.priority = 98,
+			},
+			.src_port_low = 0,
+			.src_port_high = UINT16_MAX,
+			.dst_port_low = 65279,
+			.dst_port_high = UINT16_MAX,
+		},
+	};
+
+	static struct ipv4_7tuple test_data[] = {
+		{
+			.proto = 6,
+			.ip_src = IPv4(10, 1, 1, 1),
+			.ip_dst = IPv4(192, 168, 0, 33),
+			.port_dst = 53,
+			.allow = 1,
+		},
+		{
+			.proto = 6,
+			.ip_src = IPv4(127, 84, 33, 1),
+			.ip_dst = IPv4(1, 2, 3, 4),
+			.port_dst = 65281,
+			.allow = 1,
+		},
+	};
+
+	struct rte_acl_ctx *acx;
+	int32_t ret, i, j;
+	uint32_t results[RTE_DIM(test_data)];
+	const uint8_t *data[RTE_DIM(test_data)];
+
+	acx = rte_acl_create(&acl_param);
+	if (acx == NULL) {
+		printf("Line %i: Error creating ACL context!\n", __LINE__);
+		return -1;
+	}
+
+	/* swap all bytes in the data to network order */
+	bswap_test_data(test_data, RTE_DIM(test_data), 1);
+
+	/* store pointers to test data */
+	for (i = 0; i != RTE_DIM(test_data); i++)
+		data[i] = (uint8_t *)&test_data[i];
+
+	for (i = 0; i != RTE_DIM(test_rules); i++) {
+		rte_acl_reset(acx);
+		ret = test_classify_buid(acx, test_rules, i + 1);
+		if (ret != 0) {
+			printf("Line %i, iter: %d: "
+				"Adding rules to ACL context failed!\n",
+				__LINE__, i);
+			break;
+		}
+		ret = rte_acl_classify(acx, data, results,
+			RTE_DIM(data), 1);
+		if (ret != 0) {
+			printf("Line %i, iter: %d: classify failed!\n",
+				__LINE__, i);
+			break;
+		}
+
+		/* check results */
+		for (j = 0; j != RTE_DIM(results); j++) {
+			if (results[j] != test_data[j].allow) {
+				printf("Line %i: Error in allow results at %i "
+					"(expected %"PRIu32" got %"PRIu32")!\n",
+					__LINE__, j, test_data[j].allow,
+					results[j]);
+				ret = -EINVAL;
+			}
+		}
+	}
+
+	bswap_test_data(test_data, RTE_DIM(test_data), 0);
 
 	rte_acl_free(acx);
 	return ret;
@@ -929,6 +1066,8 @@ test_acl(void)
 	if (test_misc() < 0)
 		return -1;
 	if (test_classify() < 0)
+		return -1;
+	if (test_build_ports_range() < 0)
 		return -1;
 
 	return 0;
