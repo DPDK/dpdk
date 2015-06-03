@@ -1766,7 +1766,6 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 	/* now fill the xstats structure */
 
 	count = 0;
-	memset(&eth_stats, 0, sizeof(eth_stats));
 	rte_eth_stats_get(port_id, &eth_stats);
 
 	/* global stats */
