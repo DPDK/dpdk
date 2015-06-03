@@ -363,7 +363,6 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 	/* Add slave details to bonded device */
 	slave_add(internals, slave_eth_dev);
 
-	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(slave_port_id, &dev_info);
 
 	if (internals->slave_count < 1) {
