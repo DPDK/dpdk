@@ -117,7 +117,7 @@ struct acl_build_context {
 
 static int acl_merge_trie(struct acl_build_context *context,
 	struct rte_acl_node *node_a, struct rte_acl_node *node_b,
-	uint32_t level, uint32_t subtree_id, struct rte_acl_node **node_c);
+	uint32_t level, struct rte_acl_node **node_c);
 
 static int acl_merge(struct acl_build_context *context,
 	struct rte_acl_node *node_a, struct rte_acl_node *node_b,
@@ -386,8 +386,8 @@ acl_gen_mask(struct rte_acl_bitset *bitset, uint32_t value, uint32_t mask)
  * Determine if A and/or B are supersets of the intersection.
  */
 static int
-acl_intersect_type(struct rte_acl_bitset *a_bits,
-	struct rte_acl_bitset *b_bits,
+acl_intersect_type(const struct rte_acl_bitset *a_bits,
+	const struct rte_acl_bitset *b_bits,
 	struct rte_acl_bitset *intersect)
 {
 	uint32_t n;
@@ -901,94 +901,6 @@ acl_resolve_leaf(struct acl_build_context *context,
 }
 
 /*
-* Within the existing trie structure, determine which nodes are
-* part of the subtree of the trie to be merged.
-*
-* For these purposes, a subtree is defined as the set of nodes that
-* are 1) not a superset of the intersection with the same level of
-* the merging tree, and 2) do not have any references from a node
-* outside of the subtree.
-*/
-static void
-mark_subtree(struct rte_acl_node *node,
-	struct rte_acl_bitset *level_bits,
-	uint32_t level,
-	uint32_t id)
-{
-	uint32_t n;
-
-	/* mark this node as part of the subtree */
-	node->subtree_id = id | RTE_ACL_SUBTREE_NODE;
-
-	for (n = 0; n < node->num_ptrs; n++) {
-
-		if (node->ptrs[n].ptr != NULL) {
-
-			struct rte_acl_bitset intersect_bits;
-			int intersect;
-
-			/*
-			* Item 1) :
-			* check if this child pointer is not a superset of the
-			* same level of the merging tree.
-			*/
-			intersect = acl_intersect_type(&node->ptrs[n].values,
-				&level_bits[level],
-				&intersect_bits);
-
-			if ((intersect & ACL_INTERSECT_A) == 0) {
-
-				struct rte_acl_node *child = node->ptrs[n].ptr;
-
-				/*
-				 * reset subtree reference if this is
-				 * the first visit by this subtree.
-				 */
-				if (child->subtree_id != id) {
-					child->subtree_id = id;
-					child->subtree_ref_count = 0;
-				}
-
-				/*
-				* Item 2) :
-				* increment the subtree reference count and if
-				* all references are from this subtree then
-				* recurse to that child
-				*/
-				child->subtree_ref_count++;
-				if (child->subtree_ref_count ==
-						child->ref_count)
-					mark_subtree(child, level_bits,
-						level + 1, id);
-			}
-		}
-	}
-}
-
-/*
- * Build the set of bits that define the set of transitions
- * for each level of a trie.
- */
-static void
-build_subset_mask(struct rte_acl_node *node,
-	struct rte_acl_bitset *level_bits,
-	int level)
-{
-	uint32_t n;
-
-	/* Add this node's transitions to the set for this level */
-	for (n = 0; n < RTE_ACL_BIT_SET_SIZE; n++)
-		level_bits[level].bits[n] &= node->values.bits[n];
-
-	/* For each child, add the transitions for the next level */
-	for (n = 0; n < node->num_ptrs; n++)
-		if (node->ptrs[n].ptr != NULL)
-			build_subset_mask(node->ptrs[n].ptr, level_bits,
-				level + 1);
-}
-
-
-/*
  * Merge nodes A and B together,
  *   returns a node that is the path for the intersection
  *
@@ -1014,7 +926,7 @@ build_subset_mask(struct rte_acl_node *node,
 static int
 acl_merge_trie(struct acl_build_context *context,
 	struct rte_acl_node *node_a, struct rte_acl_node *node_b,
-	uint32_t level, uint32_t subtree_id, struct rte_acl_node **return_c)
+	uint32_t level, struct rte_acl_node **return_c)
 {
 	uint32_t n, m, ptrs_c, ptrs_b;
 	uint32_t min_add_c, min_add_b;
@@ -1040,14 +952,12 @@ acl_merge_trie(struct acl_build_context *context,
 	}
 
 	/*
-	 * Create node C as a copy of node A if node A is not part of
-	 * a subtree of the merging tree (node B side). Otherwise,
-	 * just use node A.
+	 * Create node C as a copy of node A, and do: C = merge(A,B);
+	 * If node A can be used instead (A==C), then later we'll
+	 * destroy C and return A.
 	 */
-	if (level > 0) {
+	if (level > 0)
 		node_c = acl_dup_node(context, node_a);
-		node_c->subtree_id = subtree_id | RTE_ACL_SUBTREE_NODE;
-	}
 
 	/*
 	 * If the two node transitions intersect then merge the transitions.
@@ -1094,7 +1004,7 @@ acl_merge_trie(struct acl_build_context *context,
 					if (acl_merge_trie(context,
 							node_c->ptrs[n].ptr,
 							node_b->ptrs[m].ptr,
-							level + 1, subtree_id,
+							level + 1,
 							&child_node_c))
 						return 1;
 
@@ -1312,10 +1222,10 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 	struct rte_acl_build_rule *prev, *rule;
 	struct rte_acl_node *end, *merge, *root, *end_prev;
 	const struct rte_acl_field *fld;
-	struct rte_acl_bitset level_bits[RTE_ACL_MAX_LEVELS];
 
 	prev = head;
 	rule = head;
+	*last = prev;
 
 	trie = acl_alloc_node(context, 0);
 
@@ -1394,7 +1304,7 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 
 			/* merge this field on to the end of the rule */
 			if (acl_merge_trie(context, end_prev, merge, 0,
-					0, NULL) != 0) {
+					NULL) != 0) {
 				return NULL;
 			}
 		}
@@ -1409,7 +1319,7 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 			end->mrt = acl_build_alloc(context, 1,
 				sizeof(*end->mrt));
 
-		for (m = 0; m < context->cfg.num_categories; m++) {
+		for (m = context->cfg.num_categories; 0 != m--; ) {
 			if (rule->f->data.category_mask & (1 << m)) {
 				end->mrt->results[m] = rule->f->data.userdata;
 				end->mrt->priority[m] = rule->f->data.priority;
@@ -1420,15 +1330,10 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 		}
 
 		node_count = context->num_nodes;
-
-		memset(&level_bits[0], UINT8_MAX, sizeof(level_bits));
-		build_subset_mask(root, &level_bits[0], 0);
-		mark_subtree(trie, &level_bits[0], 0, end->match_flag);
 		(*count)++;
 
 		/* merge this rule into the trie */
-		if (acl_merge_trie(context, trie, root, 0, end->match_flag,
-			NULL))
+		if (acl_merge_trie(context, trie, root, 0, NULL))
 			return NULL;
 
 		node_count = context->num_nodes - node_count;

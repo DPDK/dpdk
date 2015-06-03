@@ -151,13 +151,6 @@ struct rte_acl_node {
 	/* free list link or pointer to duplicate node during merge */
 	struct rte_acl_node     *prev;
 	/* points to node from which this node was duplicated */
-
-	uint32_t                subtree_id;
-	uint32_t                subtree_ref_count;
-
-};
-enum {
-	RTE_ACL_SUBTREE_NODE = 0x80000000
 };
 
 /*
