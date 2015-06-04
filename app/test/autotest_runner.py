@@ -154,7 +154,7 @@ def run_test_group(cmdline, test_group):
 			results.append(result)
 
 	# regardless of whether test has crashed, try quitting it
-	try:	
+	try:
 		child.sendline("quit")
 		child.close()
 	# if the test crashed, just do nothing instead
@@ -198,7 +198,7 @@ class AutotestRunner:
 		self.logfile = open(logfile, "w")
 		csvfile = open(csvfile, "w")
 		self.csvwriter = csv.writer(csvfile)
-		
+
 		# prepare results table
 		self.csvwriter.writerow(["test_name","test_result","result_str"])
 
@@ -230,12 +230,12 @@ class AutotestRunner:
 
 	def add_non_parallel_test_group(self,test_group):
 		self.non_parallel_test_groups.append(test_group)
-		
-	
+
+
 	def __process_results(self, results):
 		# this iterates over individual test results
 		for i, result in enumerate(results):
-		
+
 			# increase total number of tests that were run
 			# do not include "start" test
 			if i > 0:
@@ -263,10 +263,10 @@ class AutotestRunner:
 			# if test failed and it wasn't a "start" test
 			if test_result < 0 and not i == 0:
 				self.fails += 1
-		
+
 			# collect logs
 			self.log_buffers.append(log)
-		
+
 			# create report if it exists
 			if report:
 				try:
@@ -276,7 +276,7 @@ class AutotestRunner:
 				else:
 					with f:
 						f.write(report)
-						
+
 			# write test result to CSV file
 			if i != 0:
 				self.csvwriter.writerow([test_name, test_result, result_str])
@@ -299,7 +299,7 @@ class AutotestRunner:
 				# dump tests are specified in full e.g. "Dump_mempool"
 				if "_autotest" in test_id:
 					test_id = test_id[:-len("_autotest")]
-				
+
 				# filter out blacklisted/whitelisted tests
 				if self.blacklist and test_id in self.blacklist:
 					test_group["Tests"].remove(test)
@@ -316,13 +316,13 @@ class AutotestRunner:
 				# put the numbers backwards so that we start
 				# deleting from the end, not from the beginning
 				groups_to_remove.insert(0, i)
-		
+
 		# remove test groups that need to be removed
 		for i in groups_to_remove:
 			del test_groups[i]
-		
+
 		return test_groups
-		
+
 
 
 	# iterate over test groups and run tests associated with them
@@ -332,12 +332,12 @@ class AutotestRunner:
 			self.__filter_groups(self.parallel_test_groups)
 		self.non_parallel_test_groups = \
 			self.__filter_groups(self.non_parallel_test_groups)
-		
+
 		# create a pool of worker threads
 		pool = multiprocessing.Pool(processes=1)
-			
+
 		results = []
-	
+
 		# whatever happens, try to save as much logs as possible
 		try:
 
@@ -370,7 +370,7 @@ class AutotestRunner:
 						continue
 
 					res = group_result.get()
-					
+
 					self.__process_results(res)
 
 					# remove result from results list once we're done with it
@@ -379,11 +379,11 @@ class AutotestRunner:
 			# run non_parallel tests. they are run one by one, synchronously
 			for test_group in self.non_parallel_test_groups:
 				group_result = run_test_group(self.__get_cmdline(test_group), test_group)
-					
+
 				self.__process_results(group_result)
-		
+
 			# get total run time
-			cur_time = time.time()		
+			cur_time = time.time()
 			total_time = int(cur_time - self.start)
 
 			# print out summary
@@ -404,6 +404,5 @@ class AutotestRunner:
 		# drop logs from all executions to a logfile
 		for buf in self.log_buffers:
 			self.logfile.write(buf.replace("\r",""))
-		
-		log_buffers = []
 
+		log_buffers = []

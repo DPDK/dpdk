@@ -73,4 +73,3 @@ for test_group in autotest_data.non_parallel_test_group_list:
 	runner.add_non_parallel_test_group(test_group)
 
 runner.run_all_tests()
-

@@ -56,7 +56,7 @@ parallel_test_group_list = [
 {
 	"Prefix":	"group_1",
 	"Memory" :	all_sockets(8),
-	"Tests" :	
+	"Tests" :
 	[
 		{
 		 "Name" :	"Timer autotest",
@@ -69,7 +69,7 @@ parallel_test_group_list = [
 		 "Command" : 	"debug_autotest",
 		 "Func" :	default_autotest,
 		 "Report" :	None,
-		},	
+		},
 		{
 		 "Name" :	"Errno autotest",
 		 "Command" : 	"errno_autotest",
@@ -87,7 +87,7 @@ parallel_test_group_list = [
 		 "Command" : 	"common_autotest",
 		 "Func" :	default_autotest,
 		 "Report" :	None,
-		},	
+		},
 		{
 		 "Name" :	"Dump log history",
 		 "Command" :	"dump_log_history",
@@ -111,7 +111,7 @@ parallel_test_group_list = [
 {
 	"Prefix":	"group_2",
 	"Memory" :	"32",
-	"Tests" :	
+	"Tests" :
 	[
 		{
 		 "Name" :	"Memory autotest",
@@ -166,7 +166,7 @@ parallel_test_group_list = [
 {
 	"Prefix":	"group_3",
 	"Memory" :	all_sockets(1024),
-	"Tests" :	
+	"Tests" :
 	[
 		{
 		 "Name" :	"LPM autotest",
@@ -209,7 +209,7 @@ parallel_test_group_list = [
 {
 	"Prefix":	"group_4",
 	"Memory" :	all_sockets(128),
-	"Tests" :	
+	"Tests" :
 	[
 		{
 		 "Name" :	"PCI autotest",
@@ -252,7 +252,7 @@ parallel_test_group_list = [
 {
 	"Prefix":	"group_5",
 	"Memory" :	"16",
-	"Tests" :	
+	"Tests" :
 	[
 		{
 		 "Name" :	"Spinlock autotest",
@@ -289,7 +289,7 @@ parallel_test_group_list = [
 {
 	"Prefix":	"group_6",
 	"Memory" :	all_sockets(620),
-	"Tests" :	
+	"Tests" :
 	[
 		{
 		 "Name" :	"Function reentrancy autotest",
@@ -369,7 +369,7 @@ non_parallel_test_group_list = [
 {
 	"Prefix":	"mempool_perf",
 	"Memory" :	all_sockets(256),
-	"Tests" :	
+	"Tests" :
 	[
 		{
 		 "Name" :	"Cycles autotest",
@@ -388,7 +388,7 @@ non_parallel_test_group_list = [
 {
 	"Prefix":	"memcpy_perf",
 	"Memory" :	all_sockets(512),
-	"Tests" :	
+	"Tests" :
 	[
 		{
 		 "Name" :	"Memcpy performance autotest",
@@ -401,7 +401,7 @@ non_parallel_test_group_list = [
 {
 	"Prefix":	"hash_perf",
 	"Memory" :	all_sockets(512),
-	"Tests" :	
+	"Tests" :
 	[
 		{
 		 "Name" :	"Hash performance autotest",
@@ -466,7 +466,7 @@ non_parallel_test_group_list = [
 {
 	"Prefix":	"timer_perf",
 	"Memory" :	all_sockets(512),
-	"Tests" :	
+	"Tests" :
 	[
 		{
 		 "Name" :	"Timer performance autotest",
@@ -476,14 +476,14 @@ non_parallel_test_group_list = [
 		},
 	]
 },
-							
+
 #
 # Please always make sure that ring_perf is the last test!
 #
 {
 	"Prefix":	"ring_perf",
 	"Memory" :	all_sockets(512),
-	"Tests" :	
+	"Tests" :
 	[
 		{
 		 "Name" :	"Ring performance autotest",

@@ -67,7 +67,7 @@ def runHistoryTest(child):
 	while i < history_size / 10:
 		# add 1 to prevent from parsing as octals
 		child.send("1" + str(i).zfill(8) + cmdline_test_data.ENTER)
-		# the app will simply print out the number			
+		# the app will simply print out the number
 		child.expect(str(i + 100000000), timeout=1)
 		i += 1
 	# scroll back history
@@ -111,4 +111,3 @@ except:
 	sys.exit(1)
 child.close()
 sys.exit(0)
-

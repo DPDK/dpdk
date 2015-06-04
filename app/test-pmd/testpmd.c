@@ -1822,10 +1822,10 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 {
         uint8_t i;
 
- 	/*
- 	 * Builds up the correct configuration for dcb+vt based on the vlan tags array
- 	 * given above, and the number of traffic classes available for use.
- 	 */
+	/*
+	 * Builds up the correct configuration for dcb+vt based on the vlan tags array
+	 * given above, and the number of traffic classes available for use.
+	 */
 	if (dcb_conf->dcb_mode == DCB_VT_ENABLED) {
 		struct rte_eth_vmdq_dcb_conf vmdq_rx_conf;
 		struct rte_eth_vmdq_dcb_tx_conf vmdq_tx_conf;

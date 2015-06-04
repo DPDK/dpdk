@@ -130,8 +130,8 @@ mempool_anon_create(const char *name, unsigned elt_num, unsigned elt_size,
 			(rc = get_phys_map(va, pa, pg_num, pg_sz)) == 0) {
 
 		/*
- 		 * Check that allocated size is big enough to hold elt_num
- 		 * objects and a calcualte how many bytes are actually required.
+		 * Check that allocated size is big enough to hold elt_num
+		 * objects and a calcualte how many bytes are actually required.
 		 */
 
 		if ((usz = rte_mempool_xmem_usage(va, elt_num, total_size, pa,

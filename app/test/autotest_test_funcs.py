@@ -295,4 +295,3 @@ def ring_autotest(child, test_name):
 		return -1, "Fail [Bad watermark]"
 
 	return 0, "Success"
-

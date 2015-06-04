@@ -309,4 +309,3 @@ tests = [
 	 "Sequence" : CTRL_D*3,
 	 "Result" : None},
 ]
-

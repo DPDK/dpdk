@@ -46,10 +46,10 @@
 #include <rte_sched.h>
 
 
-#define SUBPORT 	0
-#define PIPE 		1
-#define TC 			2
-#define QUEUE 		3
+#define SUBPORT         0
+#define PIPE            1
+#define TC              2
+#define QUEUE           3
 
 static struct rte_sched_subport_params subport_param[] = {
 	{

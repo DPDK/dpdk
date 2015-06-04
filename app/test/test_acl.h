@@ -35,15 +35,15 @@
 #define TEST_ACL_H_
 
 struct ipv4_7tuple {
-    	uint16_t vlan;
-    	uint16_t domain;
-        uint8_t proto;
-        uint32_t ip_src;
-        uint32_t ip_dst;
-        uint16_t port_src;
-        uint16_t port_dst;
-        uint32_t allow;
-        uint32_t deny;
+	uint16_t vlan;
+	uint16_t domain;
+	uint8_t proto;
+	uint32_t ip_src;
+	uint32_t ip_dst;
+	uint16_t port_src;
+	uint16_t port_dst;
+	uint32_t allow;
+	uint32_t deny;
 };
 
 /* rules for invalid layout test */
