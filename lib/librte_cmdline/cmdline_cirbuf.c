@@ -464,4 +464,3 @@ cirbuf_get_tail(struct cirbuf * cbuf)
 {
 	return cbuf->buf[cbuf->end];
 }
-

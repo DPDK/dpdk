@@ -561,4 +561,3 @@ cmdline_complete(struct cmdline *cl, const char *buf, int *state,
 	}
 	return 0;
 }
-

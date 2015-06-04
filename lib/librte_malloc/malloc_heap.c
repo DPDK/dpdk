@@ -206,4 +206,3 @@ malloc_heap_get_stats(const struct malloc_heap *heap,
 	socket_stats->alloc_count = heap->alloc_count;
 	return 0;
 }
-

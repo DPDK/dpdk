@@ -54,16 +54,16 @@
  * foo is exported as a global symbol.
  *
  * 2) rename the existing function int foo(char *string) to
- * 	int __vsym foo_v20(char *string)
+ *	int __vsym foo_v20(char *string)
  *
  * 3) Add this macro immediately below the function
- * 	VERSION_SYMBOL(foo, _v20, 2.0);
+ *	VERSION_SYMBOL(foo, _v20, 2.0);
  *
  * 4) Implement a new version of foo.
- * 	char foo(int value, int otherval) { ...}
+ *	char foo(int value, int otherval) { ...}
  *
  * 5) Mark the newest version as the default version
- * 	BIND_DEFAULT_SYMBOL(foo, 2.1);
+ *	BIND_DEFAULT_SYMBOL(foo, 2.1);
  *
  */
 

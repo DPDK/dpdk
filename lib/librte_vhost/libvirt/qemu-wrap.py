@@ -49,17 +49,17 @@
 #
 #    3.a) Set the VM to use the launch script
 #
-#    	Set the emulator path contained in the
+#	Set the emulator path contained in the
 #		<emulator><emulator/> tags
 #
-#    	e.g replace <emulator>/usr/bin/qemu-kvm<emulator/>
+#	e.g replace <emulator>/usr/bin/qemu-kvm<emulator/>
 #        with    <emulator>/usr/bin/qemu-wrap.py<emulator/>
 #
 #	 3.b) Set the VM's device's to use vhost-net offload
 #
 #		<interface type="network">
-#       	<model type="virtio"/>
-#       	<driver name="vhost"/>
+#	<model type="virtio"/>
+#	<driver name="vhost"/>
 #		<interface/>
 #
 # 4. Enable libvirt to access our userpace device file by adding it to
@@ -229,7 +229,7 @@ def get_vhost_fd():
 # flags onto the end
 #############################################
 def modify_netdev_arg(arg):
-	
+
     global fd_list
     vhost_in_use = 0
     s = ''
@@ -259,7 +259,7 @@ def modify_netdev_arg(arg):
 
         s+=opt
 
-    return s	
+    return s
 
 
 #############################################
@@ -364,4 +364,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

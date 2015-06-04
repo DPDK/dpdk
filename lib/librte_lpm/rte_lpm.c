@@ -1006,4 +1006,3 @@ rte_lpm_delete_all(struct rte_lpm *lpm)
 	/* Delete all rules form the rules table. */
 	memset(lpm->rules_tbl, 0, sizeof(lpm->rules_tbl[0]) * lpm->max_rules);
 }
-

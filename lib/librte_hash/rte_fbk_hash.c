@@ -226,4 +226,3 @@ rte_fbk_hash_free(struct rte_fbk_hash_table *ht)
 	rte_free(ht);
 	rte_free(te);
 }
-

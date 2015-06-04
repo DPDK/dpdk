@@ -615,7 +615,7 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 		if (unlikely(m == NULL)) {
 			RTE_LOG(ERR, VHOST_DATA,
 				"Failed to allocate memory for mbuf.\n");
-			break;	
+			break;
 		}
 		seg_offset = 0;
 		seg_avail = m->buf_len - RTE_PKTMBUF_HEADROOM;

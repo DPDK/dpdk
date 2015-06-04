@@ -695,4 +695,3 @@ rdline_miniprintf(struct rdline *rdl, const char * buf, unsigned int val)
 		}
 	}
 }
-
