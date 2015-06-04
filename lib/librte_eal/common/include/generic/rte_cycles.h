@@ -130,12 +130,12 @@ rte_get_hpet_hz(void);
  * then the HPET functions are unavailable and should not be called.
  *
  * @param make_default
- * 	If set, the hpet timer becomes the default timer whose values are
- * 	returned by the rte_get_timer_hz/cycles API calls
+ *	If set, the hpet timer becomes the default timer whose values are
+ *	returned by the rte_get_timer_hz/cycles API calls
  *
  * @return
- * 	0 on success,
- * 	-1 on error, and the make_default parameter is ignored.
+ *	0 on success,
+ *	-1 on error, and the make_default parameter is ignored.
  */
 int rte_eal_hpet_init(int make_default);
 

@@ -119,4 +119,3 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP)-include/exec-env := \
 DEPDIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += lib/librte_eal/common
 
 include $(RTE_SDK)/mk/rte.lib.mk
-

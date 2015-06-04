@@ -68,4 +68,3 @@ rte_eal_intr_init(void)
 {
 	return 0;
 }
-

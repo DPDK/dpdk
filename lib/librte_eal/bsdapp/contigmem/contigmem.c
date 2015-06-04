@@ -230,4 +230,3 @@ contigmem_mmap_single(struct cdev *cdev, vm_ooffset_t *offset, vm_size_t size,
 
 	return (0);
 }
-

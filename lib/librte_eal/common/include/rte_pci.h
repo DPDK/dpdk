@@ -239,10 +239,10 @@ do {                                                               \
  * a domain prefix (i.e. domain returned is always 0)
  *
  * @param input
- * 	The input string to be parsed. Should have the format XX:XX.X
+ *	The input string to be parsed. Should have the format XX:XX.X
  * @param dev_addr
- * 	The PCI Bus-Device-Function address to be returned. Domain will always be
- * 	returned as 0
+ *	The PCI Bus-Device-Function address to be returned. Domain will always be
+ *	returned as 0
  * @return
  *  0 on success, negative on error.
  */
@@ -262,9 +262,9 @@ eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr)
  * a domain prefix.
  *
  * @param input
- * 	The input string to be parsed. Should have the format XXXX:XX:XX.X
+ *	The input string to be parsed. Should have the format XXXX:XX:XX.X
  * @param dev_addr
- * 	The PCI Bus-Device-Function address to be returned
+ *	The PCI Bus-Device-Function address to be returned
  * @return
  *  0 on success, negative on error.
  */

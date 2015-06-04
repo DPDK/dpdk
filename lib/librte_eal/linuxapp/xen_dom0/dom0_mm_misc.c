@@ -463,7 +463,7 @@ dom0_memory_reserve(uint32_t rsv_size)
 	}
 
 	sort_viraddr(rsv_mm_info, num_block);
-	
+
 	for (i = 0; i< num_block; i++) {
 
 		/*

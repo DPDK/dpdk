@@ -99,4 +99,3 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP)-include/exec-env := \
 DEPDIRS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += lib/librte_eal/common
 
 include $(RTE_SDK)/mk/rte.lib.mk
-

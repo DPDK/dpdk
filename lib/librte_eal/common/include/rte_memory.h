@@ -196,7 +196,7 @@ phys_addr_t rte_mem_phy2mch(uint32_t memseg_id, const phys_addr_t phy_addr);
  *
  * @return
  *       0: successfully
- *    	 negative: error
+ *	 negative: error
  */
 int rte_xen_dom0_memory_init(void);
 

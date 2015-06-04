@@ -103,7 +103,7 @@ rte_memdump(FILE *f, const char * title, const void * buf, unsigned int len)
 
     line[0] = '\0';
     for (i = 0, out = 0; i < len; i++) {
-    	// Make sure we do not overrun the line buffer length.
+	// Make sure we do not overrun the line buffer length.
 		if ( out >= (LINE_LEN - 4) ) {
 			fprintf(f, "%s", line);
 			out = 0;
@@ -118,4 +118,3 @@ rte_memdump(FILE *f, const char * title, const void * buf, unsigned int len)
 
     fflush(f);
 }
-

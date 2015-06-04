@@ -894,4 +894,3 @@ rte_eal_intr_init(void)
 
 	return -ret;
 }
-

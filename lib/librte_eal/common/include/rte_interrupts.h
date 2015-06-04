@@ -118,4 +118,3 @@ int rte_intr_disable(struct rte_intr_handle *intr_handle);
 #endif
 
 #endif
-

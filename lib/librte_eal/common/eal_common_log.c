@@ -331,4 +331,3 @@ rte_eal_common_log_init(FILE *default_log)
 	rte_openlog_stream(default_log);
 	return 0;
 }
-

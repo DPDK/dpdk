@@ -569,4 +569,3 @@ rte_eal_process_type(void)
 {
 	return (rte_config.process_type);
 }
-

@@ -116,4 +116,3 @@ rte_eal_mp_wait_lcore(void)
 		rte_eal_wait_lcore(lcore_id);
 	}
 }
-
