@@ -147,4 +147,3 @@ struct kni_vhost_queue {
 #endif
 
 #endif
-

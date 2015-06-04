@@ -2311,4 +2311,3 @@ release_i2c_access:
 
 	return status;
 }
-

@@ -1157,4 +1157,3 @@ s32 e1000_init_thermal_sensor_thresh(struct e1000_hw *hw)
 
 	return E1000_SUCCESS;
 }
-

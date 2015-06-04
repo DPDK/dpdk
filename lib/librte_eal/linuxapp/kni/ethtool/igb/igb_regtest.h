@@ -247,5 +247,3 @@ static struct igb_reg_test reg_test_82575[] = {
 						0xFFFFFFFF, 0xFFFFFFFF },
 	{ 0, 0, 0, 0 }
 };
-
-

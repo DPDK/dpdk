@@ -37,11 +37,11 @@
  *
  * Modification by sfeldma@pobox.com to work as backward compat
  * solution for pre-ethtool_ops kernels.
- * 	- copied struct ethtool_ops from ethtool.h
- * 	- defined SET_ETHTOOL_OPS
- * 	- put in some #ifndef NETIF_F_xxx wrappers
- * 	- changes refs to dev->ethtool_ops to ethtool_ops
- * 	- changed dev_ethtool to ethtool_ioctl
+ *	- copied struct ethtool_ops from ethtool.h
+ *	- defined SET_ETHTOOL_OPS
+ *	- put in some #ifndef NETIF_F_xxx wrappers
+ *	- changes refs to dev->ethtool_ops to ethtool_ops
+ *	- changed dev_ethtool to ethtool_ioctl
  *      - remove EXPORT_SYMBOL()s
  *      - added _kc_ prefix in built-in ethtool_op_xxx ops.
  */
@@ -1169,4 +1169,3 @@ int _kc_generic_mii_ioctl(struct mii_if_info *mii_if,
 	return rc;
 }
 #endif /* > 2.4.6 */
-

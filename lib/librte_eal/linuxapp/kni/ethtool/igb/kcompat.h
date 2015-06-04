@@ -1184,7 +1184,7 @@ static inline struct device *pci_dev_to_dev(struct pci_dev *pdev)
 	return (struct device *) pdev;
 }
 
-#define pdev_printk(lvl, pdev, fmt, args...) 	\
+#define pdev_printk(lvl, pdev, fmt, args...)	\
 	printk("%s %s: " fmt, lvl, pci_name(pdev), ## args)
 #define dev_err(dev, fmt, args...)            \
 	pdev_printk(KERN_ERR, to_pci_dev(dev), fmt, ## args)
@@ -3807,7 +3807,7 @@ static inline bool is_link_local_ether_addr(const u8 *addr)
 	     pos = hlist_entry_safe((pos)->member.next, typeof(*(pos)), member))
 
 #undef hlist_for_each_entry_safe
-#define hlist_for_each_entry_safe(pos, n, head, member) 		    \
+#define hlist_for_each_entry_safe(pos, n, head, member)		    \
 	for (pos = hlist_entry_safe((head)->first, typeof(*pos), member);   \
 	     pos && ({ n = pos->member.next; 1; });			    \
 	     pos = hlist_entry_safe(n, typeof(*pos), member))

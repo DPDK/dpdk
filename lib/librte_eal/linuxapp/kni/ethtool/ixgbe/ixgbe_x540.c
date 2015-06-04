@@ -188,12 +188,12 @@ s32 ixgbe_reset_hw_X540(struct ixgbe_hw *hw)
 {
 	s32 status = 0;
 
-	/* 
-	 * Userland DPDK takes the ownershiop of device 
+	/*
+	 * Userland DPDK takes the ownershiop of device
 	 * Kernel driver here used as the simple path for ethtool only
 	 * Won't real reset device anyway
 	 */
-#if 0 
+#if 0
 	u32 ctrl, i;
 
 	/* Call adapter stop to disable tx/rx and clear interrupts */
@@ -935,4 +935,3 @@ s32 ixgbe_blink_led_stop_X540(struct ixgbe_hw *hw, u32 index)
 
 	return 0;
 }
-

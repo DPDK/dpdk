@@ -607,4 +607,3 @@ MODULE_PARM_DESC(kthread_mode,
 "    multiple  Multiple kernel thread mode enabled.\n"
 "\n"
 );
-

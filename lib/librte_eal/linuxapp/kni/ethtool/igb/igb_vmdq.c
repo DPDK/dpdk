@@ -434,4 +434,3 @@ void igb_vmdq_set_ethtool_ops(struct net_device *netdev)
 
 
 #endif /* CONFIG_IGB_VMDQ_NETDEV */
-

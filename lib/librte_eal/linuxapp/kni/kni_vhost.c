@@ -356,7 +356,7 @@ static int
 kni_sock_sndmsg(struct kiocb *iocb, struct socket *sock,
 	   struct msghdr *m, size_t total_len)
 {
- 	struct kni_vhost_queue *q =
+	struct kni_vhost_queue *q =
 		container_of(sock->sk, struct kni_vhost_queue, sk);
 	int vnet_hdr_len = 0;
 	unsigned long len = total_len;
@@ -829,4 +829,3 @@ kni_vhost_init(struct kni_dev *kni)
 
 	return 0;
 }
-

@@ -9500,7 +9500,7 @@ static void igb_vmm_control(struct igb_adapter *adapter)
 	}
 
 		/* enable replication and loopback support */
- 		count = adapter->vfs_allocated_count || adapter->vmdq_pools;
+		count = adapter->vfs_allocated_count || adapter->vmdq_pools;
 		if (adapter->flags & IGB_FLAG_LOOPBACK_ENABLE && count)
 			e1000_vmdq_set_loopback_pf(hw, 1);
 		e1000_vmdq_set_anti_spoofing_pf(hw,

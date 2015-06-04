@@ -208,7 +208,7 @@ static int igb_get_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 
 		ecmd->port = PORT_FIBRE;
 		ecmd->transceiver = XCVR_EXTERNAL;
-	} 
+	}
 
 	if (hw->mac.autoneg != 1)
 		ecmd->advertising &= ~(ADVERTISED_Pause |
@@ -1377,7 +1377,7 @@ static int igb_integrated_phy_loopback(struct igb_adapter *adapter)
 		}
 	} else {
 		/* enable MII loopback */
-		if (hw->phy.type == e1000_phy_82580) 
+		if (hw->phy.type == e1000_phy_82580)
 			e1000_write_phy_reg(hw, I82577_PHY_LBK_CTRL, 0x8041);
 	}
 
@@ -1403,7 +1403,7 @@ static int igb_integrated_phy_loopback(struct igb_adapter *adapter)
 	 */
 	if (hw->phy.type == e1000_phy_m88)
 		igb_phy_disable_receiver(adapter);
-	
+
 	mdelay(500);
 	return 0;
 }
@@ -1434,7 +1434,7 @@ static int igb_setup_loopback_test(struct igb_adapter *adapter)
                         E1000_WRITE_REG(hw, E1000_MPHY_ADDR_CTL, reg);
 
                         reg = E1000_READ_REG(hw, E1000_MPHY_DATA);
-                        reg |= E1000_MPHY_PCS_CLK_REG_DIGINELBEN; 
+                        reg |= E1000_MPHY_PCS_CLK_REG_DIGINELBEN;
                         E1000_WRITE_REG(hw, E1000_MPHY_DATA, reg);
                 }
 
@@ -1489,7 +1489,7 @@ static void igb_loopback_cleanup(struct igb_adapter *adapter)
 	u16 phy_reg;
 
         if ((hw->device_id == E1000_DEV_ID_DH89XXCC_SGMII) ||
- 	    (hw->device_id == E1000_DEV_ID_DH89XXCC_SERDES) ||
+	    (hw->device_id == E1000_DEV_ID_DH89XXCC_SERDES) ||
 	    (hw->device_id == E1000_DEV_ID_DH89XXCC_BACKPLANE) ||
             (hw->device_id == E1000_DEV_ID_DH89XXCC_SFP)) {
 		u32 reg;
@@ -1498,13 +1498,13 @@ static void igb_loopback_cleanup(struct igb_adapter *adapter)
 		reg = E1000_READ_REG(hw, E1000_MPHY_ADDR_CTL);
                 reg = (reg & E1000_MPHY_ADDR_CTL_OFFSET_MASK ) |
                         E1000_MPHY_PCS_CLK_REG_OFFSET;
-        	E1000_WRITE_REG(hw, E1000_MPHY_ADDR_CTL, reg);
+	E1000_WRITE_REG(hw, E1000_MPHY_ADDR_CTL, reg);
 
 		reg = E1000_READ_REG(hw, E1000_MPHY_DATA);
-        	reg &= ~E1000_MPHY_PCS_CLK_REG_DIGINELBEN;
-        	E1000_WRITE_REG(hw, E1000_MPHY_DATA, reg);
+	reg &= ~E1000_MPHY_PCS_CLK_REG_DIGINELBEN;
+	E1000_WRITE_REG(hw, E1000_MPHY_DATA, reg);
 	}
-		
+
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	rctl &= ~(E1000_RCTL_LBM_TCVR | E1000_RCTL_LBM_MAC);
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
@@ -1776,7 +1776,7 @@ static void igb_diag_test(struct net_device *netdev,
 
 		/* power up link for link test */
 		igb_power_up_link(adapter);
-		
+
 		/* Link test performed before hardware reset so autoneg doesn't
 		 * interfere with test result */
 		if (igb_link_test(adapter, &data[4]))
@@ -1981,7 +1981,7 @@ static int igb_set_coalesce(struct net_device *netdev,
 	if (ec->rx_coalesce_usecs == 0) {
 		adapter->dmac = IGB_DMAC_DISABLE;
 	}
-	
+
 	/* convert to rate of irq's per second */
 	if (ec->rx_coalesce_usecs && ec->rx_coalesce_usecs <= 3)
 		adapter->rx_itr_setting = ec->rx_coalesce_usecs;
@@ -2416,7 +2416,7 @@ static void igb_get_dmac(struct net_device *netdev,
 {
 	struct igb_adapter *adapter = netdev_priv(netdev);
 	edata->data = adapter->dmac;
-	
+
 	return;
 }
 #endif
@@ -2855,5 +2855,3 @@ void igb_set_ethtool_ops(struct net_device *netdev)
 }
 #endif /* HAVE_RHEL6_ETHTOOL_OPS_EXT_STRUCT */
 #endif	/* SIOCETHTOOL */
-
-

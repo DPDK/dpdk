@@ -229,7 +229,7 @@ struct igb_lro_stats {
  */
 struct igb_lrohdr {
 	struct iphdr iph;
-	struct tcphdr th; 
+	struct tcphdr th;
 	__be32 ts[0];
 };
 

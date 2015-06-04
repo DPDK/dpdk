@@ -1133,7 +1133,7 @@ static inline struct device *pci_dev_to_dev(struct pci_dev *pdev)
 	return (struct device *) pdev;
 }
 
-#define pdev_printk(lvl, pdev, fmt, args...) 	\
+#define pdev_printk(lvl, pdev, fmt, args...)	\
 	printk("%s %s: " fmt, lvl, pci_name(pdev), ## args)
 #define dev_err(dev, fmt, args...)            \
 	pdev_printk(KERN_ERR, to_pci_dev(dev), fmt, ## args)

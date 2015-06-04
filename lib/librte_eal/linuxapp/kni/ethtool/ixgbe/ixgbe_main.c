@@ -2968,8 +2968,3 @@ void ewarn(struct ixgbe_hw *hw, const char *st, u32 status)
 
 	netif_warn(adapter, drv, adapter->netdev,  "%s", st);
 }
-
-
-
-
-

@@ -305,4 +305,3 @@ extern void rte_kni_close(void);
 #endif
 
 #endif /* _RTE_KNI_H_ */
-

@@ -63,12 +63,12 @@ bool igb_thermal_present(struct igb_adapter *adapter)
 	status = hw->mac.ops.init_thermal_sensor_thresh(hw);
 	if (status != E1000_SUCCESS)
 		return false;
-	
+
 	return true;
 }
 
 
-static int igb_macburn(char *page, char **start, off_t off, int count, 
+static int igb_macburn(char *page, char **start, off_t off, int count,
 			int *eof, void *data)
 {
 	struct e1000_hw *hw;
@@ -89,7 +89,7 @@ static int igb_macburn(char *page, char **start, off_t off, int count,
 		       (unsigned int)hw->mac.perm_addr[5]);
 }
 
-static int igb_macadmn(char *page, char **start, off_t off, 
+static int igb_macadmn(char *page, char **start, off_t off,
 		       int count, int *eof, void *data)
 {
 	struct e1000_hw *hw;
@@ -139,7 +139,7 @@ static int igb_porttype(char *page, char **start, off_t off, int count,
 			test_bit(__IGB_DOWN, &adapter->state));
 }
 
-static int igb_therm_location(char *page, char **start, off_t off, 
+static int igb_therm_location(char *page, char **start, off_t off,
 				     int count, int *eof, void *data)
 {
 	struct igb_therm_proc_data *therm_data =
@@ -151,7 +151,7 @@ static int igb_therm_location(char *page, char **start, off_t off,
 	return snprintf(page, count, "%d\n", therm_data->sensor_data->location);
 }
 
-static int igb_therm_maxopthresh(char *page, char **start, off_t off, 
+static int igb_therm_maxopthresh(char *page, char **start, off_t off,
 				    int count, int *eof, void *data)
 {
 	struct igb_therm_proc_data *therm_data =
@@ -164,7 +164,7 @@ static int igb_therm_maxopthresh(char *page, char **start, off_t off,
 			therm_data->sensor_data->max_op_thresh);
 }
 
-static int igb_therm_cautionthresh(char *page, char **start, off_t off, 
+static int igb_therm_cautionthresh(char *page, char **start, off_t off,
 				      int count, int *eof, void *data)
 {
 	struct igb_therm_proc_data *therm_data =
@@ -177,7 +177,7 @@ static int igb_therm_cautionthresh(char *page, char **start, off_t off,
 			therm_data->sensor_data->caution_thresh);
 }
 
-static int igb_therm_temp(char *page, char **start, off_t off, 
+static int igb_therm_temp(char *page, char **start, off_t off,
 			     int count, int *eof, void *data)
 {
 	s32 status;
@@ -188,7 +188,7 @@ static int igb_therm_temp(char *page, char **start, off_t off,
 		return snprintf(page, count, "error: no therm_data\n");
 
 	status = e1000_get_thermal_sensor_data(therm_data->hw);
- 	if (status != E1000_SUCCESS)
+	if (status != E1000_SUCCESS)
 		snprintf(page, count, "error: status %d returned\n", status);
 
 	return snprintf(page, count, "%d\n", therm_data->sensor_data->temp);
@@ -211,7 +211,7 @@ struct igb_proc_type igb_internal_entries[] = {
 	{"location", &igb_therm_location},
 	{"temp", &igb_therm_temp},
 	{"cautionthresh", &igb_therm_cautionthresh},
-	{"maxopthresh", &igb_therm_maxopthresh},	
+	{"maxopthresh", &igb_therm_maxopthresh},
 	{"", NULL}
 };
 
@@ -243,7 +243,7 @@ void igb_del_proc_entries(struct igb_adapter *adapter)
 			if (igb_proc_entries[index].read == NULL)
 				break;
 		        remove_proc_entry(igb_proc_entries[index].name,
-					  adapter->info_dir); 
+					  adapter->info_dir);
 		}
 		remove_proc_entry("info", adapter->eth_dir);
 	}
@@ -253,12 +253,12 @@ void igb_del_proc_entries(struct igb_adapter *adapter)
 }
 
 /* called from igb_main.c */
-void igb_procfs_exit(struct igb_adapter *adapter) 
+void igb_procfs_exit(struct igb_adapter *adapter)
 {
 	igb_del_proc_entries(adapter);
 }
 
-int igb_procfs_topdir_init(void) 
+int igb_procfs_topdir_init(void)
 {
 	igb_top_dir = proc_mkdir("driver/igb", NULL);
 	if (igb_top_dir == NULL)
@@ -267,13 +267,13 @@ int igb_procfs_topdir_init(void)
 	return 0;
 }
 
-void igb_procfs_topdir_exit(void) 
+void igb_procfs_topdir_exit(void)
 {
 	remove_proc_entry("driver/igb", NULL);
 }
 
 /* called from igb_main.c */
-int igb_procfs_init(struct igb_adapter *adapter) 
+int igb_procfs_init(struct igb_adapter *adapter)
 {
 	int rc = 0;
 	int i;
@@ -305,10 +305,10 @@ int igb_procfs_init(struct igb_adapter *adapter)
 		if (igb_proc_entries[index].read == NULL) {
 			break;
 		}
-		if (!(create_proc_read_entry(igb_proc_entries[index].name, 
-					   0444, 
-					   adapter->info_dir, 
-					   igb_proc_entries[index].read, 
+		if (!(create_proc_read_entry(igb_proc_entries[index].name,
+					   0444,
+					   adapter->info_dir,
+					   igb_proc_entries[index].read,
 					   adapter))) {
 
 			rc = -ENOMEM;
@@ -337,14 +337,14 @@ int igb_procfs_init(struct igb_adapter *adapter)
 			 * will be needing
 			 */
 			adapter->therm_data[i].hw = &adapter->hw;
-			adapter->therm_data[i].sensor_data = 
+			adapter->therm_data[i].sensor_data =
 				&adapter->hw.mac.thermal_sensor_data.sensor[i];
 
 			if (!(create_proc_read_entry(
-					   igb_internal_entries[index].name, 
-					   0444, 
-					   adapter->therm_dir[i], 
-					   igb_internal_entries[index].read, 
+					   igb_internal_entries[index].name,
+					   0444,
+					   adapter->therm_dir[i],
+					   igb_internal_entries[index].read,
 					   &adapter->therm_data[i]))) {
 				rc = -ENOMEM;
 				goto fail;

@@ -1155,4 +1155,3 @@ void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u16 mask)
 	if (hw->mac.ops.release_swfw_sync)
 		hw->mac.ops.release_swfw_sync(hw, mask);
 }
-

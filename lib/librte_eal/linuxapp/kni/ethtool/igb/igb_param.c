@@ -167,7 +167,7 @@ IGB_PARAM(max_vfs, "Number of Virtual Functions: 0 = disable, 1-7 enable, defaul
 /* MDD (Enable Malicious Driver Detection)
  *
  * Only available when SR-IOV is enabled - max_vfs is greater than 0
- * 
+ *
  * Valid Range: 0, 1
  *
  * Default Value:  1
@@ -845,4 +845,3 @@ void igb_check_options(struct igb_adapter *adapter)
 #endif
 	}
 }
-
