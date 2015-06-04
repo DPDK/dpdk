@@ -36,6 +36,8 @@
 
 #include <rte_eth_ctrl.h>
 
+#define I40E_VLAN_TAG_SIZE        4
+
 #define I40E_AQ_LEN               32
 #define I40E_AQ_BUF_SZ            4096
 /* Number of queues per TC should be one of 1, 2, 4, 8, 16, 32, 64 */

@@ -1417,22 +1417,73 @@ i40evf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 }
 
 static int
+i40evf_rxq_init(struct rte_eth_dev *dev, struct i40e_rx_queue *rxq)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_dev_data *dev_data = dev->data;
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	uint16_t buf_size, len;
+
+	rxq->qrx_tail = hw->hw_addr + I40E_QRX_TAIL1(rxq->queue_id);
+	I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
+	I40EVF_WRITE_FLUSH(hw);
+
+	/* Calculate the maximum packet length allowed */
+	mbp_priv = rte_mempool_get_priv(rxq->mp);
+	buf_size = (uint16_t)(mbp_priv->mbuf_data_room_size -
+					RTE_PKTMBUF_HEADROOM);
+	rxq->hs_mode = i40e_header_split_none;
+	rxq->rx_hdr_len = 0;
+	rxq->rx_buf_len = RTE_ALIGN(buf_size, (1 << I40E_RXQ_CTX_DBUFF_SHIFT));
+	len = rxq->rx_buf_len * I40E_MAX_CHAINED_RX_BUFFERS;
+	rxq->max_pkt_len = RTE_MIN(len,
+		dev_data->dev_conf.rxmode.max_rx_pkt_len);
+
+	/**
+	 * Check if the jumbo frame and maximum packet length are set correctly
+	 */
+	if (dev_data->dev_conf.rxmode.jumbo_frame == 1) {
+		if (rxq->max_pkt_len <= ETHER_MAX_LEN ||
+		    rxq->max_pkt_len > I40E_FRAME_SIZE_MAX) {
+			PMD_DRV_LOG(ERR, "maximum packet length must be "
+				"larger than %u and smaller than %u, as jumbo "
+				"frame is enabled", (uint32_t)ETHER_MAX_LEN,
+					(uint32_t)I40E_FRAME_SIZE_MAX);
+			return I40E_ERR_CONFIG;
+		}
+	} else {
+		if (rxq->max_pkt_len < ETHER_MIN_LEN ||
+		    rxq->max_pkt_len > ETHER_MAX_LEN) {
+			PMD_DRV_LOG(ERR, "maximum packet length must be "
+				"larger than %u and smaller than %u, as jumbo "
+				"frame is disabled", (uint32_t)ETHER_MIN_LEN,
+						(uint32_t)ETHER_MAX_LEN);
+			return I40E_ERR_CONFIG;
+		}
+	}
+
+	if (dev_data->dev_conf.rxmode.enable_scatter ||
+	    (rxq->max_pkt_len + 2 * I40E_VLAN_TAG_SIZE) > buf_size) {
+		dev_data->scattered_rx = 1;
+		dev->rx_pkt_burst = i40e_recv_scattered_pkts;
+	}
+
+	return 0;
+}
+
+static int
 i40evf_rx_init(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	uint16_t i;
 	struct i40e_rx_queue **rxq =
 		(struct i40e_rx_queue **)dev->data->rx_queues;
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	i40evf_config_rss(vf);
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		rxq[i]->qrx_tail = hw->hw_addr + I40E_QRX_TAIL1(i);
-		I40E_PCI_REG_WRITE(rxq[i]->qrx_tail, rxq[i]->nb_rx_desc - 1);
+		if (i40evf_rxq_init(dev, rxq[i]) < 0)
+			return -EFAULT;
 	}
-
-	/* Flush the operation to write registers */
-	I40EVF_WRITE_FLUSH(hw);
 
 	return 0;
 }
@@ -1474,28 +1525,6 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	vf->max_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
-	if (dev->data->dev_conf.rxmode.jumbo_frame == 1) {
-		if (vf->max_pkt_len <= ETHER_MAX_LEN ||
-			vf->max_pkt_len > I40E_FRAME_SIZE_MAX) {
-			PMD_DRV_LOG(ERR, "maximum packet length must "
-				    "be larger than %u and smaller than %u,"
-				    "as jumbo frame is enabled",
-				    (uint32_t)ETHER_MAX_LEN,
-				    (uint32_t)I40E_FRAME_SIZE_MAX);
-			return I40E_ERR_CONFIG;
-		}
-	} else {
-		if (vf->max_pkt_len < ETHER_MIN_LEN ||
-			vf->max_pkt_len > ETHER_MAX_LEN) {
-			PMD_DRV_LOG(ERR, "maximum packet length must be "
-				    "larger than %u and smaller than %u, "
-				    "as jumbo frame is disabled",
-				    (uint32_t)ETHER_MIN_LEN,
-				    (uint32_t)ETHER_MAX_LEN);
-			return I40E_ERR_CONFIG;
-		}
-	}
-
 	vf->num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
 					dev->data->nb_tx_queues);
 
