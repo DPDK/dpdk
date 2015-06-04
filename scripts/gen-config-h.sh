@@ -42,4 +42,3 @@ sed 's,CONFIG_\(.*\)=\(.*\)$,#undef \1\
 #define \1 \2,' |
 sed 's,\# CONFIG_\(.*\) is not set$,#undef \1,'
 echo "#endif /* __RTE_CONFIG_H */"
-

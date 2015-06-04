@@ -73,4 +73,3 @@ else
 		MACHINE_CFLAGS := $(patsubst -march=%,-xSSE3,$(MACHINE_CFLAGS))
 	endif
 endif
-

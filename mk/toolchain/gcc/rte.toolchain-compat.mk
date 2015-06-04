@@ -84,4 +84,3 @@ else
 		MACHINE_CFLAGS := $(filter-out -march% -mtune% -msse%,$(MACHINE_CFLAGS))
 	endif
 endif
-

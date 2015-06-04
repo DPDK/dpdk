@@ -241,5 +241,3 @@ done
 git reset --hard
 log "INFO" "ABI CHECK COMPLETE.  REPORTS ARE IN compat_report directory"
 cleanup_and_exit 0
-
-

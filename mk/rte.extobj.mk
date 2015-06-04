@@ -50,4 +50,3 @@ all:
 else
 include $(RTE_SDK)/mk/rte.obj.mk
 endif
-
