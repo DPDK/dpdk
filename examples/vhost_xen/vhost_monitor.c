@@ -181,8 +181,8 @@ add_config_ll_entry(struct virtio_net_config_ll *new_ll_dev)
 			ll_root = new_ll_dev;
 		} else {
 			/* increment through the ll until we find un unused device_id,
- 			 * insert the device at that entry
- 			 */
+			 * insert the device at that entry
+			 */
 			while ((ll_dev->next != NULL) && (ll_dev->dev.device_fh == (ll_dev->next->dev.device_fh - 1)))
 				ll_dev = ll_dev->next;
 
@@ -590,5 +590,3 @@ init_virtio_xen(struct virtio_net_device_ops const *const ops)
 		return -1;
 	return 0;
 }
-
-

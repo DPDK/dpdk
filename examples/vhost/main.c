@@ -61,7 +61,7 @@
 /*
  * Calculate the number of buffers needed per port
  */
-#define NUM_MBUFS_PER_PORT ((MAX_QUEUES*RTE_TEST_RX_DESC_DEFAULT) +  		\
+#define NUM_MBUFS_PER_PORT ((MAX_QUEUES*RTE_TEST_RX_DESC_DEFAULT) +		\
 							(num_switching_cores*MAX_PKT_BURST) +  			\
 							(num_switching_cores*RTE_TEST_TX_DESC_DEFAULT) +\
 							(num_switching_cores*MBUF_CACHE_SIZE))
@@ -78,10 +78,10 @@
 #define MBUF_DATA_SIZE_ZCP		RTE_MBUF_DEFAULT_BUF_SIZE
 #define MBUF_CACHE_SIZE_ZCP 0
 
-#define MAX_PKT_BURST 32 		/* Max burst size for RX/TX */
-#define BURST_TX_DRAIN_US 100 	/* TX drain every ~100us */
+#define MAX_PKT_BURST 32		/* Max burst size for RX/TX */
+#define BURST_TX_DRAIN_US 100	/* TX drain every ~100us */
 
-#define BURST_RX_WAIT_US 15 	/* Defines how long we wait between retries on RX */
+#define BURST_RX_WAIT_US 15	/* Defines how long we wait between retries on RX */
 #define BURST_RX_RETRIES 4		/* Number of retries on RX. */
 
 #define JUMBO_FRAME_MAX_SIZE    0x2600
@@ -3063,4 +3063,3 @@ main(int argc, char *argv[])
 	return 0;
 
 }
-

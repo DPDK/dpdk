@@ -41,4 +41,3 @@ void pair_ports(void);
 void setup_shared_variables(void);
 
 #endif /* _INIT_H_ */
-

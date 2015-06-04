@@ -170,4 +170,3 @@ parse_app_args(uint8_t max_ports, int argc, char *argv[])
 	}
 	return 0;
 }
-

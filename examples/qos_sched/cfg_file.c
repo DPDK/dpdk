@@ -608,5 +608,3 @@ cfg_load_subport(struct cfg_file *cfg, struct rte_sched_subport_params *subport_
 
 	return 0;
 }
-
-

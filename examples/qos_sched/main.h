@@ -70,7 +70,7 @@ extern "C" {
 
 #define MAX_DATA_STREAMS (RTE_MAX_LCORE/2)
 #define MAX_SCHED_SUBPORTS		8
-#define MAX_SCHED_PIPES  		4096
+#define MAX_SCHED_PIPES		4096
 
 #ifndef APP_COLLECT_STAT
 #define APP_COLLECT_STAT		1

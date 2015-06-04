@@ -281,4 +281,3 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_help,
 	NULL,
 };
-

@@ -313,4 +313,3 @@ pipe_stat(uint8_t port_id, uint32_t subport_id, uint32_t pipe_id)
 
         return 0;
 }
-

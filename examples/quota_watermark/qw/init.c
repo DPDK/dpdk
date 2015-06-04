@@ -130,7 +130,7 @@ void init_ring(int lcore_id, uint8_t port_id)
     char ring_name[RTE_RING_NAMESIZE];
 
     snprintf(ring_name, RTE_RING_NAMESIZE,
-    		"core%d_port%d", lcore_id, port_id);
+		"core%d_port%d", lcore_id, port_id);
     ring = rte_ring_create(ring_name, RING_SIZE, rte_socket_id(),
                            RING_F_SP_ENQ | RING_F_SC_DEQ);
 

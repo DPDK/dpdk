@@ -61,7 +61,7 @@
 /*
  * Calculate the number of buffers needed per port
  */
-#define NUM_MBUFS_PER_PORT ((MAX_QUEUES*RTE_TEST_RX_DESC_DEFAULT) +  		\
+#define NUM_MBUFS_PER_PORT ((MAX_QUEUES*RTE_TEST_RX_DESC_DEFAULT) +		\
 							(num_switching_cores*MAX_PKT_BURST) +  			\
 							(num_switching_cores*RTE_TEST_TX_DESC_DEFAULT) +\
 							(num_switching_cores*MBUF_CACHE_SIZE))
@@ -87,9 +87,9 @@
 #define TX_HTHRESH 0  /* Default values of TX host threshold reg. */
 #define TX_WTHRESH 0  /* Default values of TX write-back threshold reg. */
 
-#define MAX_PKT_BURST 32 		/* Max burst size for RX/TX */
-#define MAX_MRG_PKT_BURST 16 	/* Max burst for merge buffers. Set to 1 due to performance issue. */
-#define BURST_TX_DRAIN_US 100 	/* TX drain every ~100us */
+#define MAX_PKT_BURST 32		/* Max burst size for RX/TX */
+#define MAX_MRG_PKT_BURST 16	/* Max burst for merge buffers. Set to 1 due to performance issue. */
+#define BURST_TX_DRAIN_US 100	/* TX drain every ~100us */
 
 /* State of virtio device. */
 #define DEVICE_NOT_READY     0
@@ -725,7 +725,7 @@ link_vmdq(struct virtio_net *dev)
 
 	/* Register the MAC address. */
 	ret = rte_eth_dev_mac_addr_add(ports[0], &dev->mac_address, (uint32_t)dev->device_fh);
- 	if (ret) {
+	if (ret) {
 		RTE_LOG(ERR, VHOST_DATA, "(%"PRIu64") Failed to add device MAC address to VMDQ\n",
 										dev->device_fh);
 		return -1;
@@ -1461,9 +1461,9 @@ main(int argc, char *argv[])
 		nb_ports = RTE_MAX_ETHPORTS;
 
 	/*
-   	 * Update the global var NUM_PORTS and global array PORTS
-  	 * and get value of var VALID_NUM_PORTS according to system ports number
-  	 */
+	 * Update the global var NUM_PORTS and global array PORTS
+	 * and get value of var VALID_NUM_PORTS according to system ports number
+	 */
 	valid_num_ports = check_ports_num(nb_ports);
 
 	if ((valid_num_ports ==  0) || (valid_num_ports > MAX_SUP_PORTS)) {

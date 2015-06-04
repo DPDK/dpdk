@@ -291,5 +291,3 @@ app_mixed_thread(struct thread_conf **confs)
 			conf_idx = 0;
 	}
 }
-
-

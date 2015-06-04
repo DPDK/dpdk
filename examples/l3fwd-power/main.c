@@ -873,7 +873,7 @@ main_loop(__attribute__((unused)) void *dummy)
 				rx_queue->freq_up_hint =
 					power_freq_scaleup_heuristic(lcore_id,
 							portid, queueid);
- 			}
+			}
 
 			/* Prefetch first packets */
 			for (j = 0; j < PREFETCH_OFFSET && j < nb_rx; j++) {
@@ -915,8 +915,8 @@ main_loop(__attribute__((unused)) void *dummy)
 			/**
 			 * All Rx queues empty in recent consecutive polls,
 			 * sleep in a conservative manner, meaning sleep as
- 			 * less as possible.
- 			 */
+			 * less as possible.
+			 */
 			for (i = 1, lcore_idle_hint =
 				qconf->rx_queue_list[0].idle_hint;
 					i < qconf->n_rx_queue; ++i) {
@@ -929,7 +929,7 @@ main_loop(__attribute__((unused)) void *dummy)
 				/**
 				 * execute "pause" instruction to avoid context
 				 * switch for short sleep.
- 				 */
+				 */
 				rte_delay_us(lcore_idle_hint);
 			else
 				/* long sleep force runing thread to suspend */
