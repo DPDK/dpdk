@@ -1862,4 +1862,3 @@ eth_em_tx_init(struct rte_eth_dev *dev)
 	/* This write will effectively turn on the transmit unit. */
 	E1000_WRITE_REG(hw, E1000_TCTL, tctl);
 }
-

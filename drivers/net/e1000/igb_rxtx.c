@@ -2394,4 +2394,3 @@ eth_igbvf_tx_init(struct rte_eth_dev *dev)
 	}
 
 }
-
