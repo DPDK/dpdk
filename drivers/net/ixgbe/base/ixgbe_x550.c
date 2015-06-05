@@ -365,6 +365,10 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	mac->ops.disable_sec_rx_path = NULL;
 	mac->ops.enable_sec_rx_path = NULL;
 
+	/* AUTOC register is not present in x550EM. */
+	mac->ops.prot_autoc_read = NULL;
+	mac->ops.prot_autoc_write = NULL;
+
 	/* X550EM bus type is internal*/
 	hw->bus.type = ixgbe_bus_type_internal;
 	mac->ops.get_bus_info = ixgbe_get_bus_info_X550em;
@@ -378,6 +382,7 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	mac->ops.get_supported_physical_layer =
 				    ixgbe_get_supported_physical_layer_X550em;
 
+		mac->ops.setup_fc = ixgbe_setup_fc_X550em;
 	/* PHY */
 	phy->ops.init = ixgbe_init_phy_ops_X550em;
 	phy->ops.identify = ixgbe_identify_phy_x550em;
@@ -2506,4 +2511,86 @@ s32 ixgbe_get_lcd_t_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *lcd_speed)
 	/* Link partner not capable of lower speeds, return 10G */
 	*lcd_speed = IXGBE_LINK_SPEED_10GB_FULL;
 	return status;
+}
+
+/**
+ *  ixgbe_setup_fc_X550em - Set up flow control
+ *  @hw: pointer to hardware structure
+ *
+ *  Called at init time to set up flow control.
+ **/
+s32 ixgbe_setup_fc_X550em(struct ixgbe_hw *hw)
+{
+	s32 ret_val = IXGBE_SUCCESS;
+	u32 pause, asm_dir, reg_val;
+
+	DEBUGFUNC("ixgbe_setup_fc_X550em");
+
+	/* Validate the requested mode */
+	if (hw->fc.strict_ieee && hw->fc.requested_mode == ixgbe_fc_rx_pause) {
+		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
+			"ixgbe_fc_rx_pause not valid in strict IEEE mode\n");
+		ret_val = IXGBE_ERR_INVALID_LINK_SETTINGS;
+		goto out;
+	}
+
+	/* 10gig parts do not have a word in the EEPROM to determine the
+	 * default flow control setting, so we explicitly set it to full.
+	 */
+	if (hw->fc.requested_mode == ixgbe_fc_default)
+		hw->fc.requested_mode = ixgbe_fc_full;
+
+	/* Determine PAUSE and ASM_DIR bits. */
+	switch (hw->fc.requested_mode) {
+	case ixgbe_fc_none:
+		pause = 0;
+		asm_dir = 0;
+		break;
+	case ixgbe_fc_tx_pause:
+		pause = 0;
+		asm_dir = 1;
+		break;
+	case ixgbe_fc_rx_pause:
+		/* Rx Flow control is enabled and Tx Flow control is
+		 * disabled by software override. Since there really
+		 * isn't a way to advertise that we are capable of RX
+		 * Pause ONLY, we will advertise that we support both
+		 * symmetric and asymmetric Rx PAUSE, as such we fall
+		 * through to the fc_full statement.  Later, we will
+		 * disable the adapter's ability to send PAUSE frames.
+		 */
+	case ixgbe_fc_full:
+		pause = 1;
+		asm_dir = 1;
+		break;
+	default:
+		ERROR_REPORT1(IXGBE_ERROR_ARGUMENT,
+			"Flow control param set incorrectly\n");
+		ret_val = IXGBE_ERR_CONFIG;
+		goto out;
+	}
+
+	if (hw->phy.media_type == ixgbe_media_type_backplane) {
+		ret_val = ixgbe_read_iosf_sb_reg_x550(hw,
+			IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
+			IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
+		if (ret_val != IXGBE_SUCCESS)
+			goto out;
+		reg_val &= ~(IXGBE_KRM_AN_CNTL_1_SYM_PAUSE |
+			IXGBE_KRM_AN_CNTL_1_ASM_PAUSE);
+		if (pause)
+			reg_val |= IXGBE_KRM_AN_CNTL_1_SYM_PAUSE;
+		if (asm_dir)
+			reg_val |= IXGBE_KRM_AN_CNTL_1_ASM_PAUSE;
+		ret_val = ixgbe_write_iosf_sb_reg_x550(hw,
+			IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
+			IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+
+		/* Not all devices fully support AN. */
+		if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR)
+			hw->fc.disable_fc_autoneg = true;
+	}
+
+out:
+	return ret_val;
 }

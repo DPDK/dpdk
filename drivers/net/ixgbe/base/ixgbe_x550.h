@@ -89,6 +89,7 @@ u32 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw);
 void ixgbe_disable_rx_x550(struct ixgbe_hw *hw);
 s32 ixgbe_get_lcd_t_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *lcd_speed);
 s32 ixgbe_enter_lplu_t_x550em(struct ixgbe_hw *hw);
+s32 ixgbe_setup_fc_X550em(struct ixgbe_hw *hw);
 s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 				    ixgbe_link_speed speed,
 				    bool autoneg_wait_to_complete);

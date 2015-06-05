@@ -128,6 +128,7 @@ s32 ixgbe_set_vfta(struct ixgbe_hw *hw, u32 vlan,
 s32 ixgbe_set_vlvf(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 		   bool vlan_on, bool *vfta_changed);
 s32 ixgbe_fc_enable(struct ixgbe_hw *hw);
+s32 ixgbe_setup_fc(struct ixgbe_hw *hw);
 s32 ixgbe_set_fw_drv_ver(struct ixgbe_hw *hw, u8 maj, u8 min, u8 build,
 			 u8 ver);
 s32 ixgbe_get_thermal_sensor_data(struct ixgbe_hw *hw);

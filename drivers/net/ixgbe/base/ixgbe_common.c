@@ -134,6 +134,7 @@ s32 ixgbe_init_ops_generic(struct ixgbe_hw *hw)
 
 	/* Flow Control */
 	mac->ops.fc_enable = ixgbe_fc_enable_generic;
+	mac->ops.setup_fc = ixgbe_setup_fc_generic;
 
 	/* Link */
 	mac->ops.get_link_capabilities = NULL;
@@ -200,19 +201,19 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
 }
 
 /**
- *  ixgbe_setup_fc - Set up flow control
+ *  ixgbe_setup_fc_generic - Set up flow control
  *  @hw: pointer to hardware structure
  *
  *  Called at init time to set up flow control.
  **/
-STATIC s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
+s32 ixgbe_setup_fc_generic(struct ixgbe_hw *hw)
 {
 	s32 ret_val = IXGBE_SUCCESS;
 	u32 reg = 0, reg_bp = 0;
 	u16 reg_cu = 0;
 	bool locked = false;
 
-	DEBUGFUNC("ixgbe_setup_fc");
+	DEBUGFUNC("ixgbe_setup_fc_generic");
 
 	/* Validate the requested mode */
 	if (hw->fc.strict_ieee && hw->fc.requested_mode == ixgbe_fc_rx_pause) {

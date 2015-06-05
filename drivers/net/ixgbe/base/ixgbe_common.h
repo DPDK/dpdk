@@ -111,6 +111,7 @@ s32 ixgbe_enable_sec_rx_path_generic(struct ixgbe_hw *hw);
 s32 ixgbe_fc_enable_generic(struct ixgbe_hw *hw);
 bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw);
 void ixgbe_fc_autoneg(struct ixgbe_hw *hw);
+s32 ixgbe_setup_fc_generic(struct ixgbe_hw *hw);
 
 s32 ixgbe_validate_mac_addr(u8 *mac_addr);
 s32 ixgbe_acquire_swfw_sync(struct ixgbe_hw *hw, u32 mask);

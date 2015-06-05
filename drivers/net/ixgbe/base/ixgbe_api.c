@@ -1069,6 +1069,18 @@ s32 ixgbe_fc_enable(struct ixgbe_hw *hw)
 }
 
 /**
+ *  ixgbe_setup_fc - Set up flow control
+ *  @hw: pointer to hardware structure
+ *
+ *  Called at init time to set up flow control.
+ **/
+s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.setup_fc, (hw),
+		IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
  * ixgbe_set_fw_drv_ver - Try to send the driver version number FW
  * @hw: pointer to hardware structure
  * @maj: driver major number to be sent to firmware
