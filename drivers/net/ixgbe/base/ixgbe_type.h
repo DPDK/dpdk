@@ -2798,6 +2798,7 @@ enum ixgbe_fdir_pballoc_type {
 #define IXGBE_HI_FLASH_ERASE_TIMEOUT	1000 /* Process Erase command limit */
 #define IXGBE_HI_FLASH_UPDATE_TIMEOUT	5000 /* Process Update command limit */
 #define IXGBE_HI_FLASH_APPLY_TIMEOUT	0 /* Process Apply command limit */
+#define IXGBE_HI_PHY_MGMT_REQ_TIMEOUT	2000 /* Wait up to 2 seconds */
 
 /* CEM Support */
 #define FW_CEM_HDR_LEN			0x4
@@ -2818,6 +2819,7 @@ enum ixgbe_fdir_pballoc_type {
 #define FW_MAX_READ_BUFFER_SIZE		1024
 #define FW_DISABLE_RXEN_CMD		0xDE
 #define FW_DISABLE_RXEN_LEN		0x1
+#define FW_PHY_MGMT_REQ_CMD		0x20
 /* Host Interface Command Structures */
 
 struct ixgbe_hic_hdr {

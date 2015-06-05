@@ -972,6 +972,7 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
  */
 s32 ixgbe_reset_hw_X550em(struct ixgbe_hw *hw)
 {
+	struct ixgbe_hic_hdr fw_cmd;
 	ixgbe_link_speed link_speed;
 	s32 status;
 	u32 ctrl = 0;
@@ -979,6 +980,22 @@ s32 ixgbe_reset_hw_X550em(struct ixgbe_hw *hw)
 	bool link_up = false;
 
 	DEBUGFUNC("ixgbe_reset_hw_X550em");
+
+	fw_cmd.cmd = FW_PHY_MGMT_REQ_CMD;
+	fw_cmd.buf_len = 0;
+	fw_cmd.cmd_or_resp.cmd_resv = 0;
+	fw_cmd.checksum = FW_DEFAULT_CHECKSUM;
+	status = ixgbe_host_interface_command(hw, (u32 *)&fw_cmd,
+					      sizeof(fw_cmd),
+					      IXGBE_HI_PHY_MGMT_REQ_TIMEOUT,
+					      true);
+	if (status)
+		ERROR_REPORT2(IXGBE_ERROR_CAUTION,
+			      "PHY mgmt command failed with %d\n", status);
+	else if (fw_cmd.cmd_or_resp.ret_status != FW_CEM_RESP_STATUS_SUCCESS)
+		ERROR_REPORT2(IXGBE_ERROR_CAUTION,
+			      "PHY mgmt command returned %d\n",
+			      fw_cmd.cmd_or_resp.ret_status);
 
 	/* Call adapter stop to disable Tx/Rx and clear interrupts */
 	status = hw->mac.ops.stop_adapter(hw);
