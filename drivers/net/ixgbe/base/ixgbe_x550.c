@@ -2416,6 +2416,8 @@ s32 ixgbe_get_bus_info_X550em(struct ixgbe_hw *hw)
 	hw->bus.width = ixgbe_bus_width_unknown;
 	hw->bus.speed = ixgbe_bus_speed_unknown;
 
+	hw->mac.ops.set_lan_id(hw);
+
 	return IXGBE_SUCCESS;
 }
 
