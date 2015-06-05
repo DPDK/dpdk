@@ -83,9 +83,21 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_I2C_EEPROM_STATUS_IN_PROGRESS	0x3
 
 #define IXGBE_CS4227			0xBE	/* CS4227 address */
+#define IXGBE_CS4227_GLOBAL_ID_LSB	0
+#define IXGBE_CS4227_SCRATCH		2
+#define IXGBE_CS4227_GLOBAL_ID_VALUE	0x03E5
+#define IXGBE_CS4227_SCRATCH_VALUE	0x5aa5
+#define IXGBE_CS4227_RETRIES		5
 #define IXGBE_CS4227_SPARE24_LSB	0x12B0	/* Reg to program EDC */
 #define IXGBE_CS4227_EDC_MODE_CX1	0x0002
 #define IXGBE_CS4227_EDC_MODE_SR	0x0004
+#define IXGBE_CS4227_RESET_HOLD		500	/* microseconds */
+#define IXGBE_CS4227_RESET_DELAY	500	/* milliseconds */
+#define IXGBE_CS4227_CHECK_DELAY	30	/* milliseconds */
+#define IXGBE_PE			0xE0	/* Port expander address */
+#define IXGBE_PE_OUTPUT			1	/* Output register offset */
+#define IXGBE_PE_CONFIG			3	/* Config register offset */
+#define IXGBE_PE_BIT1			(1 << 1)
 
 /* Flow control defines */
 #define IXGBE_TAF_SYM_PAUSE		0x400
