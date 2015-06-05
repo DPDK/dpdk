@@ -259,6 +259,8 @@ s32 ixgbe_start_hw_82598(struct ixgbe_hw *hw)
 	DEBUGFUNC("ixgbe_start_hw_82598");
 
 	ret_val = ixgbe_start_hw_generic(hw);
+	if (ret_val)
+		return ret_val;
 
 	/* Disable relaxed ordering */
 	for (i = 0; ((i < hw->mac.max_tx_queues) &&
@@ -277,8 +279,7 @@ s32 ixgbe_start_hw_82598(struct ixgbe_hw *hw)
 	}
 
 	/* set the completion timeout for interface */
-	if (ret_val == IXGBE_SUCCESS)
-		ixgbe_set_pcie_completion_timeout(hw);
+	ixgbe_set_pcie_completion_timeout(hw);
 
 	return ret_val;
 }
