@@ -1150,7 +1150,8 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		phy->ops.write_reg = ixgbe_write_phy_reg_x550em;
 		break;
 	case ixgbe_phy_x550em_ext_t:
-		phy->ops.setup_internal_link = ixgbe_setup_internal_phy_x550em;
+		phy->ops.setup_internal_link =
+					 ixgbe_setup_internal_phy_t_x550em;
 		phy->ops.enter_lplu = ixgbe_enter_lplu_t_x550em;
 		break;
 	default:
@@ -1537,35 +1538,27 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 }
 
 /**
- * ixgbe_setup_internal_phy_x550em - Configure integrated KR PHY
+ * ixgbe_setup_internal_phy_t_x550em - Configure KR PHY to X557 link
  * @hw: point to hardware structure
  *
- * Configures the integrated KR PHY to talk to the external PHY. The base
- * driver will call this function when it gets notification via interrupt from
- * the external PHY. This function forces the internal PHY into iXFI mode at
- * the correct speed.
+ * Configures the link between the integrated KR PHY and the external X557 PHY
+ * The driver will call this function when it gets a link status change
+ * interrupt from the X557 PHY. This function configures the link speed
+ * between the PHYs to match the link speed of the BASE-T link.
  *
  * A return of a non-zero value indicates an error, and the base driver should
  * not report link up.
  */
-s32 ixgbe_setup_internal_phy_x550em(struct ixgbe_hw *hw)
+s32 ixgbe_setup_internal_phy_t_x550em(struct ixgbe_hw *hw)
 {
 	u32 status;
-	u16 lasi, autoneg_status, speed;
+	u16 autoneg_status, speed;
 	ixgbe_link_speed force_speed;
 
-	/* Verify that the external link status has changed */
-	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_XENPAK_LASI_STATUS,
-				      IXGBE_MDIO_PMA_PMD_DEV_TYPE,
-				      &lasi);
-	if (status != IXGBE_SUCCESS)
-		return status;
+	if (hw->mac.ops.get_media_type(hw) != ixgbe_media_type_copper)
+		return IXGBE_ERR_CONFIG;
 
-	/* If there was no change in link status, we can just exit */
-	if (!(lasi & IXGBE_XENPAK_LASI_LINK_STATUS_ALARM))
-		return IXGBE_SUCCESS;
-
-	/* we read this twice back to back to indicate current status */
+	/* read this twice back to back to indicate current status */
 	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
 				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
 				      &autoneg_status);
