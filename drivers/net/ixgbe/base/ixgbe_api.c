@@ -1293,6 +1293,23 @@ s32 ixgbe_enter_lplu(struct ixgbe_hw *hw)
 }
 
 /**
+ * ixgbe_handle_lasi - Handle external Base T PHY interrupt
+ * @hw: pointer to hardware structure
+ *
+ * Handle external Base T PHY interrupt. If high temperature
+ * failure alarm then return error, else if link status change
+ * then setup internal/external PHY link
+ *
+ * Return IXGBE_ERR_OVERTEMP if interrupt is high temperature
+ * failure alarm, else return PHY access status.
+ */
+s32 ixgbe_handle_lasi(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->phy.ops.handle_lasi, (hw),
+				IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
  *  ixgbe_read_analog_reg8 - Reads 8 bit analog register
  *  @hw: pointer to hardware structure
  *  @reg: analog register to read

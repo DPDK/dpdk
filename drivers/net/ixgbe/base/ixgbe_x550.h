@@ -95,5 +95,9 @@ s32 ixgbe_setup_fc_X550em(struct ixgbe_hw *hw);
 s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 				    ixgbe_link_speed speed,
 				    bool autoneg_wait_to_complete);
+s32 ixgbe_handle_lasi_ext_t_x550em(struct ixgbe_hw *hw);
+s32 ixgbe_setup_mac_link_t_X550em(struct ixgbe_hw *hw,
+				  ixgbe_link_speed speed,
+				  bool autoneg_wait_to_complete);
 #endif /* _IXGBE_X550_H_ */
 

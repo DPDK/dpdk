@@ -1055,10 +1055,11 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_init_mac_link_ops_X550em");
 
-	/* CS4227 does not support autoneg, so disable the laser control
-	 * functions for SFP+ fiber
-	 */
-	 if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_fiber) {
+	 switch (hw->mac.ops.get_media_type(hw)) {
+	 case ixgbe_media_type_fiber:
+		/* CS4227 does not support autoneg, so disable the laser control
+		 * functions for SFP+ fiber
+		 */
 		mac->ops.disable_tx_laser = NULL;
 		mac->ops.enable_tx_laser = NULL;
 		mac->ops.flap_tx_laser = NULL;
@@ -1066,6 +1067,12 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 		mac->ops.setup_mac_link = ixgbe_setup_mac_link_sfp_x550em;
 		mac->ops.set_rate_select_speed =
 					ixgbe_set_soft_rate_select_speed;
+		break;
+	case ixgbe_media_type_copper:
+		mac->ops.setup_link = ixgbe_setup_mac_link_t_X550em;
+		break;
+	default:
+		break;
 	 }
 }
 
@@ -1112,6 +1119,163 @@ s32 ixgbe_get_link_capabilities_X550em(struct ixgbe_hw *hw,
 }
 
 /**
+ * ixgbe_get_lasi_ext_t_x550em - Determime external Base T PHY interrupt cause
+ * @hw: pointer to hardware structure
+ * @lsc: pointer to boolean flag which indicates whether external Base T
+ *       PHY interrupt is lsc
+ *
+ * Determime if external Base T PHY interrupt cause is high temperature
+ * failure alarm or link status change.
+ *
+ * Return IXGBE_ERR_OVERTEMP if interrupt is high temperature
+ * failure alarm, else return PHY access status.
+ */
+STATIC s32 ixgbe_get_lasi_ext_t_x550em(struct ixgbe_hw *hw, bool *lsc)
+{
+	u32 status;
+	u16 reg;
+
+	*lsc = false;
+
+	/* Vendor alarm triggered */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_GLOBAL_CHIP_STD_INT_FLAG,
+				      IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				      &reg);
+
+	if (status != IXGBE_SUCCESS ||
+	    !(reg & IXGBE_MDIO_GLOBAL_VEN_ALM_INT_EN))
+		return status;
+
+	/* Vendor Auto-Neg alarm triggered or Global alarm 1 triggered */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_GLOBAL_INT_CHIP_VEN_FLAG,
+				      IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				      &reg);
+
+	if (status != IXGBE_SUCCESS ||
+	    !(reg & (IXGBE_MDIO_GLOBAL_AN_VEN_ALM_INT_EN |
+	    IXGBE_MDIO_GLOBAL_ALARM_1_INT)))
+		return status;
+
+	/* High temperature failure alarm triggered */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_GLOBAL_ALARM_1,
+				      IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				      &reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* If high temperature failure, then return over temp error and exit */
+	if (reg & IXGBE_MDIO_GLOBAL_ALM_1_HI_TMP_FAIL)
+		return IXGBE_ERR_OVERTEMP;
+
+	/* Vendor alarm 2 triggered */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_GLOBAL_CHIP_STD_INT_FLAG,
+				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &reg);
+
+	if (status != IXGBE_SUCCESS ||
+	    !(reg & IXGBE_MDIO_GLOBAL_STD_ALM2_INT))
+		return status;
+
+	/* link connect/disconnect event occurred */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_VENDOR_TX_ALARM2,
+				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* Indicate LSC */
+	if (reg & IXGBE_MDIO_AUTO_NEG_VEN_LSC)
+		*lsc = true;
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_enable_lasi_ext_t_x550em - Enable external Base T PHY interrupts
+ * @hw: pointer to hardware structure
+ *
+ * Enable link status change and temperature failure alarm for the external
+ * Base T PHY
+ *
+ * Returns PHY access status
+ */
+STATIC s32 ixgbe_enable_lasi_ext_t_x550em(struct ixgbe_hw *hw)
+{
+	u32 status;
+	u16 reg;
+	bool lsc;
+
+	/* Clear interrupt flags */
+	status = ixgbe_get_lasi_ext_t_x550em(hw, &lsc);
+
+	/* Enable link status change alarm */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_PMA_TX_VEN_LASI_INT_MASK,
+				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	reg |= IXGBE_MDIO_PMA_TX_VEN_LASI_INT_EN;
+
+	status = hw->phy.ops.write_reg(hw, IXGBE_MDIO_PMA_TX_VEN_LASI_INT_MASK,
+				       IXGBE_MDIO_AUTO_NEG_DEV_TYPE, reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* Enables high temperature failure alarm */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_GLOBAL_INT_MASK,
+				      IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				      &reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	reg |= IXGBE_MDIO_GLOBAL_INT_HI_TEMP_EN;
+
+	status = hw->phy.ops.write_reg(hw, IXGBE_MDIO_GLOBAL_INT_MASK,
+				       IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				       reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* Enable vendor Auto-Neg alarm and Global Interrupt Mask 1 alarm */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_GLOBAL_INT_CHIP_VEN_MASK,
+				      IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				      &reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	reg |= (IXGBE_MDIO_GLOBAL_AN_VEN_ALM_INT_EN |
+		IXGBE_MDIO_GLOBAL_ALARM_1_INT);
+
+	status = hw->phy.ops.write_reg(hw, IXGBE_MDIO_GLOBAL_INT_CHIP_VEN_MASK,
+				       IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				       reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* Enable chip-wide vendor alarm */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_GLOBAL_INT_CHIP_STD_MASK,
+				      IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				      &reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	reg |= IXGBE_MDIO_GLOBAL_VEN_ALM_INT_EN;
+
+	status = hw->phy.ops.write_reg(hw, IXGBE_MDIO_GLOBAL_INT_CHIP_STD_MASK,
+				       IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE,
+				       reg);
+
+	return status;
+}
+
+/**
  *  ixgbe_init_phy_ops_X550em - PHY/SFP specific init
  *  @hw: pointer to hardware structure
  *
@@ -1136,7 +1300,7 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 	if (ret_val == IXGBE_ERR_SFP_NOT_SUPPORTED)
 		return ret_val;
 
-	/* Setup function pointers based on detected SFP module and speeds */
+	/* Setup function pointers based on detected hardware */
 	ixgbe_init_mac_link_ops_X550em(hw);
 	if (phy->sfp_type != ixgbe_sfp_type_unknown)
 		phy->ops.reset = NULL;
@@ -1157,6 +1321,7 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		phy->ops.setup_internal_link =
 					 ixgbe_setup_internal_phy_t_x550em;
 		phy->ops.enter_lplu = ixgbe_enter_lplu_t_x550em;
+		phy->ops.handle_lasi = ixgbe_handle_lasi_ext_t_x550em;
 		break;
 	default:
 		break;
@@ -1332,6 +1497,9 @@ s32 ixgbe_init_ext_t_x550em(struct ixgbe_hw *hw)
 		if (status != IXGBE_SUCCESS)
 			return status;
 	}
+
+	/* Configure Link Status Alarm and Temperature Threshold interrupts */
+	status = ixgbe_enable_lasi_ext_t_x550em(hw);
 
 	return status;
 }
@@ -2606,4 +2774,67 @@ void ixgbe_release_swfw_sync_X550em(struct ixgbe_hw *hw, u32 mask)
 		ixgbe_set_mux(hw, 0);
 
 	ixgbe_release_swfw_sync_X540(hw, mask);
+}
+
+/**
+ * ixgbe_handle_lasi_ext_t_x550em - Handle external Base T PHY interrupt
+ * @hw: pointer to hardware structure
+ *
+ * Handle external Base T PHY interrupt. If high temperature
+ * failure alarm then return error, else if link status change
+ * then setup internal/external PHY link
+ *
+ * Return IXGBE_ERR_OVERTEMP if interrupt is high temperature
+ * failure alarm, else return PHY access status.
+ */
+s32 ixgbe_handle_lasi_ext_t_x550em(struct ixgbe_hw *hw)
+{
+	bool lsc;
+	u32 status;
+
+	status = ixgbe_get_lasi_ext_t_x550em(hw, &lsc);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	if (lsc)
+		return ixgbe_setup_internal_phy_t_x550em(hw);
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_setup_mac_link_t_X550em - Sets the auto advertised link speed
+ * @hw: pointer to hardware structure
+ * @speed: new link speed
+ * @autoneg_wait_to_complete: true when waiting for completion is needed
+ *
+ * Setup internal/external PHY link speed based on link speed, then set
+ * external PHY auto advertised link speed.
+ *
+ * Returns error status for any failure
+ **/
+s32 ixgbe_setup_mac_link_t_X550em(struct ixgbe_hw *hw,
+				  ixgbe_link_speed speed,
+				  bool autoneg_wait_to_complete)
+{
+	s32 status;
+	ixgbe_link_speed force_speed;
+
+	DEBUGFUNC("ixgbe_setup_mac_link_t_X550em");
+
+	/* Setup internal/external PHY link speed to iXFI (10G), unless
+	 * only 1G is auto advertised then setup KX link.
+	 */
+	if (speed & IXGBE_LINK_SPEED_10GB_FULL)
+		force_speed = IXGBE_LINK_SPEED_10GB_FULL;
+	else
+		force_speed = IXGBE_LINK_SPEED_1GB_FULL;
+
+	status = ixgbe_setup_ixfi_x550em(hw, &force_speed);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	return hw->phy.ops.setup_link_speed(hw, speed, autoneg_wait_to_complete);
 }
