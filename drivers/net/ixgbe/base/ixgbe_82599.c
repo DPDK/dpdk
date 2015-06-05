@@ -1915,7 +1915,12 @@ s32 ixgbe_fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 		}
 		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRIP6M, fdirip6m);
 
-		/* Set all bits in FDIRSIP4M and FDIRDIP4M cloud mode */
+		/* Set all bits in FDIRTCPM, FDIRUDPM, FDIRSIP4M and
+		 * FDIRDIP4M in cloud mode to allow L3/L3 packets to
+		 * tunnel.
+		 */
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRTCPM, 0xFFFFFFFF);
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRUDPM, 0xFFFFFFFF);
 		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRDIP4M, 0xFFFFFFFF);
 		IXGBE_WRITE_REG_BE32(hw, IXGBE_FDIRSIP4M, 0xFFFFFFFF);
 	}
