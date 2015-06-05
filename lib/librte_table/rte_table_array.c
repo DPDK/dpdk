@@ -66,10 +66,8 @@ rte_table_array_create(void *params, int socket_id, uint32_t entry_size)
 	/* Check input parameters */
 	if ((p == NULL) ||
 	    (p->n_entries == 0) ||
-		(!rte_is_power_of_2(p->n_entries)) ||
-		((p->offset & 0x3) != 0)) {
+		(!rte_is_power_of_2(p->n_entries)))
 		return NULL;
-	}
 
 	/* Memory allocation */
 	total_cl_size = (sizeof(struct rte_table_array) +

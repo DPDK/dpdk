@@ -126,19 +126,6 @@ check_params_create(struct rte_table_hash_lru_params *params)
 		return -EINVAL;
 	}
 
-	/* signature offset */
-	if ((params->signature_offset & 0x3) != 0) {
-		RTE_LOG(ERR, TABLE, "%s: signature_offset invalid value\n",
-			__func__);
-		return -EINVAL;
-	}
-
-	/* key offset */
-	if ((params->key_offset & 0x7) != 0) {
-		RTE_LOG(ERR, TABLE, "%s: key_offset invalid value\n", __func__);
-		return -EINVAL;
-	}
-
 	return 0;
 }
 

@@ -175,14 +175,6 @@ rte_pipeline_check_params(struct rte_pipeline_params *params)
 		return -EINVAL;
 	}
 
-	/* offset_port_id */
-	if (params->offset_port_id & 0x3) {
-		RTE_LOG(ERR, PIPELINE,
-			"%s: Incorrect value for parameter offset_port_id\n",
-			__func__);
-		return -EINVAL;
-	}
-
 	return 0;
 }
 

@@ -87,10 +87,6 @@ rte_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 			__func__);
 		return NULL;
 	}
-	if ((p->offset & 0x3) != 0) {
-		RTE_LOG(ERR, TABLE, "%s: Invalid offset\n", __func__);
-		return NULL;
-	}
 
 	entry_size = RTE_ALIGN(entry_size, sizeof(uint64_t));
 

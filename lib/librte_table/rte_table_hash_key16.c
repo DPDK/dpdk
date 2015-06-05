@@ -89,18 +89,6 @@ check_params_create_lru(struct rte_table_hash_key16_lru_params *params) {
 		return -EINVAL;
 	}
 
-	/* signature offset */
-	if ((params->signature_offset & 0x3) != 0) {
-		RTE_LOG(ERR, TABLE, "%s: invalid signature_offset\n", __func__);
-		return -EINVAL;
-	}
-
-	/* key offset */
-	if ((params->key_offset & 0x7) != 0) {
-		RTE_LOG(ERR, TABLE, "%s: invalid key_offset\n", __func__);
-		return -EINVAL;
-	}
-
 	/* f_hash */
 	if (params->f_hash == NULL) {
 		RTE_LOG(ERR, TABLE,
@@ -304,18 +292,6 @@ check_params_create_ext(struct rte_table_hash_key16_ext_params *params) {
 	/* n_entries_ext */
 	if (params->n_entries_ext == 0) {
 		RTE_LOG(ERR, TABLE, "%s: n_entries_ext is zero\n", __func__);
-		return -EINVAL;
-	}
-
-	/* signature offset */
-	if ((params->signature_offset & 0x3) != 0) {
-		RTE_LOG(ERR, TABLE, "%s: invalid signature offset\n", __func__);
-		return -EINVAL;
-	}
-
-	/* key offset */
-	if ((params->key_offset & 0x7) != 0) {
-		RTE_LOG(ERR, TABLE, "%s: invalid key offset\n", __func__);
 		return -EINVAL;
 	}
 
