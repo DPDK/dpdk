@@ -1578,9 +1578,9 @@ s32 ixgbe_setup_internal_phy_x550em(struct ixgbe_hw *hw)
 	if (status != IXGBE_SUCCESS)
 		return status;
 
-	/* If link is not up return an error indicating treat link as down */
+	/* If link is not up, then there is no setup necessary so return  */
 	if (!(autoneg_status & IXGBE_MDIO_AUTO_NEG_LINK_STATUS))
-		return IXGBE_ERR_INVALID_LINK_SETTINGS;
+		return IXGBE_SUCCESS;
 
 	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_VENDOR_STAT,
 				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
