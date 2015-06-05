@@ -233,92 +233,7 @@ int cfg_close(struct cfg_file *cfg)
 }
 
 int
-cfg_num_sections(struct cfg_file *cfg, const char *sectionname, size_t length)
-{
-	int i;
-	int num_sections = 0;
-	for (i = 0; i < cfg->num_sections; i++) {
-		if (strncmp(cfg->sections[i]->name, sectionname, length) == 0)
-			num_sections++;
-	}
-	return num_sections;
-}
-
-int
-cfg_sections(struct cfg_file *cfg, char *sections[], int max_sections)
-{
-	int i;
-	for (i = 0; i < cfg->num_sections && i < max_sections; i++) {
-		snprintf(sections[i], CFG_NAME_LEN, "%s",  cfg->sections[i]->name);
-	}
-	return i;
-}
-
-static const struct cfg_section *
-_get_section(struct cfg_file *cfg, const char *sectionname)
-{
-	int i;
-	for (i = 0; i < cfg->num_sections; i++) {
-		if (strncmp(cfg->sections[i]->name, sectionname,
-				sizeof(cfg->sections[0]->name)) == 0)
-			return cfg->sections[i];
-	}
-	return NULL;
-}
-
-int
-cfg_has_section(struct cfg_file *cfg, const char *sectionname)
-{
-	return (_get_section(cfg, sectionname) != NULL);
-}
-
-int
-cfg_section_num_entries(struct cfg_file *cfg, const char *sectionname)
-{
-	const struct cfg_section *s = _get_section(cfg, sectionname);
-	if (s == NULL)
-		return -1;
-	return s->num_entries;
-}
-
-
-int
-cfg_section_entries(struct cfg_file *cfg, const char *sectionname,
-		struct cfg_entry *entries, int max_entries)
-{
-	int i;
-	const struct cfg_section *sect = _get_section(cfg, sectionname);
-	if (sect == NULL)
-		return -1;
-	for (i = 0; i < max_entries && i < sect->num_entries; i++)
-		entries[i] = *sect->entries[i];
-	return i;
-}
-
-const char *
-cfg_get_entry(struct cfg_file *cfg, const char *sectionname,
-		const char *entryname)
-{
-	int i;
-	const struct cfg_section *sect = _get_section(cfg, sectionname);
-	if (sect == NULL)
-		return NULL;
-	for (i = 0; i < sect->num_entries; i++)
-		if (strncmp(sect->entries[i]->name, entryname, CFG_NAME_LEN) == 0)
-			return sect->entries[i]->value;
-	return NULL;
-}
-
-int
-cfg_has_entry(struct cfg_file *cfg, const char *sectionname,
-		const char *entryname)
-{
-	return (cfg_get_entry(cfg, sectionname, entryname) != NULL);
-}
-
-
-int
-cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
+cfg_load_port(struct rte_cfgfile *cfg, struct rte_sched_port_params *port_params)
 {
 	const char *entry;
 	int j;
@@ -326,19 +241,19 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 	if (!cfg || !port_params)
 		return -1;
 
-	entry = cfg_get_entry(cfg, "port", "frame overhead");
+	entry = rte_cfgfile_get_entry(cfg, "port", "frame overhead");
 	if (entry)
 		port_params->frame_overhead = (uint32_t)atoi(entry);
 
-	entry = cfg_get_entry(cfg, "port", "number of subports per port");
+	entry = rte_cfgfile_get_entry(cfg, "port", "number of subports per port");
 	if (entry)
 		port_params->n_subports_per_port = (uint32_t)atoi(entry);
 
-	entry = cfg_get_entry(cfg, "port", "number of pipes per subport");
+	entry = rte_cfgfile_get_entry(cfg, "port", "number of pipes per subport");
 	if (entry)
 		port_params->n_pipes_per_subport = (uint32_t)atoi(entry);
 
-	entry = cfg_get_entry(cfg, "port", "queue sizes");
+	entry = rte_cfgfile_get_entry(cfg, "port", "queue sizes");
 	if (entry) {
 		char *next;
 
@@ -356,7 +271,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 
 		/* Parse WRED min thresholds */
 		snprintf(str, sizeof(str), "tc %d wred min", j);
-		entry = cfg_get_entry(cfg, "red", str);
+		entry = rte_cfgfile_get_entry(cfg, "red", str);
 		if (entry) {
 			char *next;
 			int k;
@@ -372,7 +287,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 
 		/* Parse WRED max thresholds */
 		snprintf(str, sizeof(str), "tc %d wred max", j);
-		entry = cfg_get_entry(cfg, "red", str);
+		entry = rte_cfgfile_get_entry(cfg, "red", str);
 		if (entry) {
 			char *next;
 			int k;
@@ -388,7 +303,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 
 		/* Parse WRED inverse mark probabilities */
 		snprintf(str, sizeof(str), "tc %d wred inv prob", j);
-		entry = cfg_get_entry(cfg, "red", str);
+		entry = rte_cfgfile_get_entry(cfg, "red", str);
 		if (entry) {
 			char *next;
 			int k;
@@ -405,7 +320,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 
 		/* Parse WRED EWMA filter weights */
 		snprintf(str, sizeof(str), "tc %d wred weight", j);
-		entry = cfg_get_entry(cfg, "red", str);
+		entry = rte_cfgfile_get_entry(cfg, "red", str);
 		if (entry) {
 			char *next;
 			int k;
@@ -425,7 +340,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 }
 
 int
-cfg_load_pipe(struct cfg_file *cfg, struct rte_sched_pipe_params *pipe_params)
+cfg_load_pipe(struct rte_cfgfile *cfg, struct rte_sched_pipe_params *pipe_params)
 {
 	int i, j;
 	char *next;
@@ -435,48 +350,48 @@ cfg_load_pipe(struct cfg_file *cfg, struct rte_sched_pipe_params *pipe_params)
 	if (!cfg || !pipe_params)
 		return -1;
 
-	profiles = cfg_num_sections(cfg, "pipe profile", sizeof("pipe profile") - 1);
+	profiles = rte_cfgfile_num_sections(cfg, "pipe profile", sizeof("pipe profile") - 1);
 	port_params.n_pipe_profiles = profiles;
 
 	for (j = 0; j < profiles; j++) {
 		char pipe_name[32];
 		snprintf(pipe_name, sizeof(pipe_name), "pipe profile %d", j);
 
-		entry = cfg_get_entry(cfg, pipe_name, "tb rate");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tb rate");
 		if (entry)
 			pipe_params[j].tb_rate = (uint32_t)atoi(entry);
 
-		entry = cfg_get_entry(cfg, pipe_name, "tb size");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tb size");
 		if (entry)
 			pipe_params[j].tb_size = (uint32_t)atoi(entry);
 
-		entry = cfg_get_entry(cfg, pipe_name, "tc period");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc period");
 		if (entry)
 			pipe_params[j].tc_period = (uint32_t)atoi(entry);
 
-		entry = cfg_get_entry(cfg, pipe_name, "tc 0 rate");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 0 rate");
 		if (entry)
 			pipe_params[j].tc_rate[0] = (uint32_t)atoi(entry);
 
-		entry = cfg_get_entry(cfg, pipe_name, "tc 1 rate");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 1 rate");
 		if (entry)
 			pipe_params[j].tc_rate[1] = (uint32_t)atoi(entry);
 
-		entry = cfg_get_entry(cfg, pipe_name, "tc 2 rate");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 2 rate");
 		if (entry)
 			pipe_params[j].tc_rate[2] = (uint32_t)atoi(entry);
 
-		entry = cfg_get_entry(cfg, pipe_name, "tc 3 rate");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 3 rate");
 		if (entry)
 			pipe_params[j].tc_rate[3] = (uint32_t)atoi(entry);
 
 #ifdef RTE_SCHED_SUBPORT_TC_OV
-		entry = cfg_get_entry(cfg, pipe_name, "tc 3 oversubscription weight");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 3 oversubscription weight");
 		if (entry)
 			pipe_params[j].tc_ov_weight = (uint8_t)atoi(entry);
 #endif
 
-		entry = cfg_get_entry(cfg, pipe_name, "tc 0 wrr weights");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 0 wrr weights");
 		if (entry) {
 			for(i = 0; i < RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS; i++) {
 				pipe_params[j].wrr_weights[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE*0 + i] =
@@ -486,7 +401,7 @@ cfg_load_pipe(struct cfg_file *cfg, struct rte_sched_pipe_params *pipe_params)
 				entry = next;
 			}
 		}
-		entry = cfg_get_entry(cfg, pipe_name, "tc 1 wrr weights");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 1 wrr weights");
 		if (entry) {
 			for(i = 0; i < RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS; i++) {
 				pipe_params[j].wrr_weights[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE*1 + i] =
@@ -496,7 +411,7 @@ cfg_load_pipe(struct cfg_file *cfg, struct rte_sched_pipe_params *pipe_params)
 				entry = next;
 			}
 		}
-		entry = cfg_get_entry(cfg, pipe_name, "tc 2 wrr weights");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 2 wrr weights");
 		if (entry) {
 			for(i = 0; i < RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS; i++) {
 				pipe_params[j].wrr_weights[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE*2 + i] =
@@ -506,7 +421,7 @@ cfg_load_pipe(struct cfg_file *cfg, struct rte_sched_pipe_params *pipe_params)
 				entry = next;
 			}
 		}
-		entry = cfg_get_entry(cfg, pipe_name, "tc 3 wrr weights");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 3 wrr weights");
 		if (entry) {
 			for(i = 0; i < RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS; i++) {
 				pipe_params[j].wrr_weights[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE*3 + i] =
@@ -521,7 +436,7 @@ cfg_load_pipe(struct cfg_file *cfg, struct rte_sched_pipe_params *pipe_params)
 }
 
 int
-cfg_load_subport(struct cfg_file *cfg, struct rte_sched_subport_params *subport_params)
+cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subport_params)
 {
 	const char *entry;
 	int i, j, k;
@@ -535,39 +450,39 @@ cfg_load_subport(struct cfg_file *cfg, struct rte_sched_subport_params *subport_
 		char sec_name[CFG_NAME_LEN];
 		snprintf(sec_name, sizeof(sec_name), "subport %d", i);
 
-		if (cfg_has_section(cfg, sec_name)) {
-			entry = cfg_get_entry(cfg, sec_name, "tb rate");
+		if (rte_cfgfile_has_section(cfg, sec_name)) {
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tb rate");
 			if (entry)
 				subport_params[i].tb_rate = (uint32_t)atoi(entry);
 
-			entry = cfg_get_entry(cfg, sec_name, "tb size");
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tb size");
 			if (entry)
 				subport_params[i].tb_size = (uint32_t)atoi(entry);
 
-			entry = cfg_get_entry(cfg, sec_name, "tc period");
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc period");
 			if (entry)
 				subport_params[i].tc_period = (uint32_t)atoi(entry);
 
-			entry = cfg_get_entry(cfg, sec_name, "tc 0 rate");
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 0 rate");
 			if (entry)
 				subport_params[i].tc_rate[0] = (uint32_t)atoi(entry);
 
-			entry = cfg_get_entry(cfg, sec_name, "tc 1 rate");
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 1 rate");
 			if (entry)
 				subport_params[i].tc_rate[1] = (uint32_t)atoi(entry);
 
-			entry = cfg_get_entry(cfg, sec_name, "tc 2 rate");
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 2 rate");
 			if (entry)
 				subport_params[i].tc_rate[2] = (uint32_t)atoi(entry);
 
-			entry = cfg_get_entry(cfg, sec_name, "tc 3 rate");
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 3 rate");
 			if (entry)
 				subport_params[i].tc_rate[3] = (uint32_t)atoi(entry);
 
-			int n_entries = cfg_section_num_entries(cfg, sec_name);
-			struct cfg_entry entries[n_entries];
+			int n_entries = rte_cfgfile_section_num_entries(cfg, sec_name);
+			struct rte_cfgfile_entry entries[n_entries];
 
-			cfg_section_entries(cfg, sec_name, entries, n_entries);
+			rte_cfgfile_section_entries(cfg, sec_name, entries, n_entries);
 
 			for (j = 0; j < n_entries; j++) {
 				if (strncmp("pipe", entries[j].name, sizeof("pipe") - 1) == 0) {
@@ -594,7 +509,7 @@ cfg_load_subport(struct cfg_file *cfg, struct rte_sched_subport_params *subport_
 
 						snprintf(profile_name, sizeof(profile_name),
 								"pipe profile %d", profile);
-						if (cfg_has_section(cfg, profile_name))
+						if (rte_cfgfile_has_section(cfg, profile_name))
 							app_pipe_to_profile[i][k] = profile;
 						else
 							rte_exit(EXIT_FAILURE, "Wrong pipe profile %s\n",

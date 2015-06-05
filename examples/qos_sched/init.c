@@ -42,6 +42,7 @@
 #include <rte_sched.h>
 #include <rte_cycles.h>
 #include <rte_string_fns.h>
+#include <rte_cfgfile.h>
 
 #include "main.h"
 #include "cfg_file.h"
@@ -284,16 +285,15 @@ app_load_cfg_profile(const char *profile)
 {
 	if (profile == NULL)
 		return 0;
-
-	struct cfg_file *cfg_file = cfg_load(profile, 0);
-	if (cfg_file == NULL)
+	struct rte_cfgfile *file = rte_cfgfile_load(profile, 0);
+	if (file == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot load configuration profile %s\n", profile);
 
-	cfg_load_port(cfg_file, &port_params);
-	cfg_load_subport(cfg_file, subport_params);
-	cfg_load_pipe(cfg_file, pipe_profiles);
+	cfg_load_port(file, &port_params);
+	cfg_load_subport(file, subport_params);
+	cfg_load_pipe(file, pipe_profiles);
 
-	cfg_close(cfg_file);
+	rte_cfgfile_close(file);
 
 	return 0;
 }

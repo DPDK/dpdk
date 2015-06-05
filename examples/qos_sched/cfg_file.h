@@ -35,6 +35,7 @@
 #define __CFG_FILE_H__
 
 #include <rte_sched.h>
+#include <rte_cfgfile.h>
 
 #define CFG_NAME_LEN 32
 #define CFG_VALUE_LEN 64
@@ -57,44 +58,16 @@ struct cfg_file {
 };
 
 
-int cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port);
+int cfg_load_port(struct rte_cfgfile *cfg, struct rte_sched_port_params *port);
 
-int cfg_load_pipe(struct cfg_file *cfg, struct rte_sched_pipe_params *pipe);
+int cfg_load_pipe(struct rte_cfgfile *cfg, struct rte_sched_pipe_params *pipe);
 
-int cfg_load_subport(struct cfg_file *cfg, struct rte_sched_subport_params *subport);
-
+int cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subport);
 
 /* reads a config file from disk and returns a handle to the config
  * 'flags' is reserved for future use and must be 0
  */
 struct cfg_file *cfg_load(const char *filename, int flags);
-
-/* returns the number of sections in the config */
-int cfg_num_sections(struct cfg_file *cfg, const char *sec_name, size_t length);
-
-/* fills the array "sections" with the names of all the sections in the file
- * (up to a max of max_sections).
- * NOTE: buffers in the sections array must be at least CFG_NAME_LEN big
- */
-int cfg_sections(struct cfg_file *cfg, char *sections[], int max_sections);
-
-/* true if the named section exists, false otherwise */
-int cfg_has_section(struct cfg_file *cfg, const char *sectionname);
-
-/* returns the number of entries in a section */
-int cfg_section_num_entries(struct cfg_file *cfg, const char *sectionname);
-
-/* returns the entries in a section as key-value pairs in the "entries" array */
-int cfg_section_entries(struct cfg_file *cfg, const char *sectionname,
-		struct cfg_entry *entries, int max_entries);
-
-/* returns a pointer to the value of the named entry in the named section */
-const char *cfg_get_entry(struct cfg_file *cfg, const char *sectionname,
-		const char *entryname);
-
-/* true if the given entry exists in the given section, false otherwise */
-int cfg_has_entry(struct cfg_file *cfg, const char *sectionname,
-		const char *entryname);
 
 /* cleans up memory allocated by cfg_load() */
 int cfg_close(struct cfg_file *cfg);
