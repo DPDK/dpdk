@@ -1309,6 +1309,23 @@ s32 ixgbe_read_i2c_byte(struct ixgbe_hw *hw, u8 byte_offset, u8 dev_addr,
 }
 
 /**
+ *  ixgbe_read_i2c_byte_unlocked - Reads 8 bit word via I2C from device address
+ *  @hw: pointer to hardware structure
+ *  @byte_offset: byte offset to read
+ *  @dev_addr: I2C bus address to read from
+ *  @data: value read
+ *
+ *  Performs byte read operation to SFP module's EEPROM over I2C interface.
+ **/
+s32 ixgbe_read_i2c_byte_unlocked(struct ixgbe_hw *hw, u8 byte_offset,
+				 u8 dev_addr, u8 *data)
+{
+	return ixgbe_call_func(hw, hw->phy.ops.read_i2c_byte_unlocked,
+			       (hw, byte_offset, dev_addr, data),
+			       IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
  * ixgbe_read_i2c_combined - Perform I2C read combined operation
  * @hw: pointer to the hardware structure
  * @addr: I2C bus address to read from
@@ -1321,6 +1338,23 @@ s32 ixgbe_read_i2c_combined(struct ixgbe_hw *hw, u8 addr, u16 reg, u16 *val)
 {
 	return ixgbe_call_func(hw, hw->phy.ops.read_i2c_combined, (hw, addr,
 			       reg, val), IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ * ixgbe_read_i2c_combined_unlocked - Perform I2C read combined operation
+ * @hw: pointer to the hardware structure
+ * @addr: I2C bus address to read from
+ * @reg: I2C device register to read from
+ * @val: pointer to location to receive read value
+ *
+ * Returns an error code on error.
+ **/
+s32 ixgbe_read_i2c_combined_unlocked(struct ixgbe_hw *hw, u8 addr, u16 reg,
+				     u16 *val)
+{
+	return ixgbe_call_func(hw, hw->phy.ops.read_i2c_combined_unlocked,
+			       (hw, addr, reg, val),
+			       IXGBE_NOT_IMPLEMENTED);
 }
 
 /**
@@ -1341,6 +1375,24 @@ s32 ixgbe_write_i2c_byte(struct ixgbe_hw *hw, u8 byte_offset, u8 dev_addr,
 }
 
 /**
+ *  ixgbe_write_i2c_byte_unlocked - Writes 8 bit word over I2C
+ *  @hw: pointer to hardware structure
+ *  @byte_offset: byte offset to write
+ *  @dev_addr: I2C bus address to write to
+ *  @data: value to write
+ *
+ *  Performs byte write operation to SFP module's EEPROM over I2C interface
+ *  at a specified device address.
+ **/
+s32 ixgbe_write_i2c_byte_unlocked(struct ixgbe_hw *hw, u8 byte_offset,
+				  u8 dev_addr, u8 data)
+{
+	return ixgbe_call_func(hw, hw->phy.ops.write_i2c_byte_unlocked,
+			       (hw, byte_offset, dev_addr, data),
+			       IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
  * ixgbe_write_i2c_combined - Perform I2C write combined operation
  * @hw: pointer to the hardware structure
  * @addr: I2C bus address to write to
@@ -1353,6 +1405,22 @@ s32 ixgbe_write_i2c_combined(struct ixgbe_hw *hw, u8 addr, u16 reg, u16 val)
 {
 	return ixgbe_call_func(hw, hw->phy.ops.write_i2c_combined, (hw, addr,
 			       reg, val), IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ * ixgbe_write_i2c_combined_unlocked - Perform I2C write combined operation
+ * @hw: pointer to the hardware structure
+ * @addr: I2C bus address to write to
+ * @reg: I2C device register to write to
+ * @val: value to write
+ *
+ * Returns an error code on error.
+ **/
+s32 ixgbe_write_i2c_combined_unlocked(struct ixgbe_hw *hw, u8 addr, u16 reg,
+				      u16 val)
+{
+	return ixgbe_call_func(hw, hw->phy.ops.write_i2c_combined_unlocked,
+			       (hw, addr, reg, val), IXGBE_NOT_IMPLEMENTED);
 }
 
 /**
