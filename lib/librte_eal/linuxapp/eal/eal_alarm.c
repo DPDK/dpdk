@@ -99,14 +99,14 @@ static void
 eal_alarm_callback(struct rte_intr_handle *hdl __rte_unused,
 		void *arg __rte_unused)
 {
-	struct timeval now;
+	struct timespec now;
 	struct alarm_entry *ap;
 
 	rte_spinlock_lock(&alarm_list_lk);
 	while ((ap = LIST_FIRST(&alarm_list)) !=NULL &&
-			gettimeofday(&now, NULL) == 0 &&
+			clock_gettime(CLOCK_MONOTONIC_RAW, &now) == 0 &&
 			(ap->time.tv_sec < now.tv_sec || (ap->time.tv_sec == now.tv_sec &&
-						ap->time.tv_usec <= now.tv_usec))){
+						(ap->time.tv_usec * NS_PER_US) <= now.tv_nsec))) {
 		ap->executing = 1;
 		ap->executing_id = pthread_self();
 		rte_spinlock_unlock(&alarm_list_lk);
@@ -126,11 +126,11 @@ eal_alarm_callback(struct rte_intr_handle *hdl __rte_unused,
 		atime.it_value.tv_sec = ap->time.tv_sec;
 		atime.it_value.tv_nsec = ap->time.tv_usec * NS_PER_US;
 		/* perform borrow for subtraction if necessary */
-		if (now.tv_usec > ap->time.tv_usec)
+		if (now.tv_nsec > (ap->time.tv_usec * NS_PER_US))
 			atime.it_value.tv_sec--, atime.it_value.tv_nsec += US_PER_S * NS_PER_US;
 
 		atime.it_value.tv_sec -= now.tv_sec;
-		atime.it_value.tv_nsec -= now.tv_usec * NS_PER_US;
+		atime.it_value.tv_nsec -= now.tv_nsec;
 		timerfd_settime(intr_handle.fd, 0, &atime, NULL);
 	}
 	rte_spinlock_unlock(&alarm_list_lk);
@@ -139,7 +139,7 @@ eal_alarm_callback(struct rte_intr_handle *hdl __rte_unused,
 int
 rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 {
-	struct timeval now;
+	struct timespec now;
 	int ret = 0;
 	struct alarm_entry *ap, *new_alarm;
 
@@ -152,12 +152,12 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 		return -ENOMEM;
 
 	/* use current time to calculate absolute time of alarm */
-	gettimeofday(&now, NULL);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &now);
 
 	new_alarm->cb_fn = cb_fn;
 	new_alarm->cb_arg = cb_arg;
-	new_alarm->time.tv_usec = (now.tv_usec + us) % US_PER_S;
-	new_alarm->time.tv_sec = now.tv_sec + ((now.tv_usec + us) / US_PER_S);
+	new_alarm->time.tv_usec = ((now.tv_nsec / NS_PER_US) + us) % US_PER_S;
+	new_alarm->time.tv_sec = now.tv_sec + (((now.tv_nsec / NS_PER_US) + us) / US_PER_S);
 
 	rte_spinlock_lock(&alarm_list_lk);
 	if (!handler_registered) {
