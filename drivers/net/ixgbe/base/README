@@ -1,7 +1,7 @@
 ..
      BSD LICENSE
    
-     Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+     Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
      All rights reserved.
    
      Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@ Intel® IXGBE driver
 ===================
 
 This directory contains source code of FreeBSD ixgbe driver of version
-cid-10g-shared-code.2015.02.03 released by LAD. The sub-directory of lad/
+cid-10g-shared-code.2015.03.06 released by ND. The sub-directory of base/
 contains the original source package.
 This driver is valid for the product(s) listed below
 
