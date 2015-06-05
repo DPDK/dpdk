@@ -1383,8 +1383,8 @@ s32 ixgbe_setup_kr_x550em(struct ixgbe_hw *hw)
 		return status;
 
 	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_ENABLE;
-	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_FEC_REQ;
-	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC;
+	reg_val &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_AN_FEC_REQ |
+		     IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC);
 	reg_val &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KR |
 		     IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KX);
 
