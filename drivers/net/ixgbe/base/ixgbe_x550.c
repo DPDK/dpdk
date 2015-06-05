@@ -383,6 +383,9 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 				    ixgbe_get_supported_physical_layer_X550em;
 
 		mac->ops.setup_fc = ixgbe_setup_fc_X550em;
+	mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550em;
+	mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550em;
+
 	/* PHY */
 	phy->ops.init = ixgbe_init_phy_ops_X550em;
 	phy->ops.identify = ixgbe_identify_phy_x550em;
@@ -2546,4 +2549,64 @@ s32 ixgbe_setup_fc_X550em(struct ixgbe_hw *hw)
 
 out:
 	return ret_val;
+}
+
+/**
+ * ixgbe_set_mux - Set mux for port 1 access with CS4227
+ * @hw: pointer to hardware structure
+ * @state: set mux if 1, clear if 0
+ */
+STATIC void ixgbe_set_mux(struct ixgbe_hw *hw, u8 state)
+{
+	u32 esdp;
+
+	if (!hw->bus.lan_id)
+		return;
+	esdp = IXGBE_READ_REG(hw, IXGBE_ESDP);
+	if (state)
+		esdp |= IXGBE_ESDP_SDP1;
+	else
+		esdp &= ~IXGBE_ESDP_SDP1;
+	IXGBE_WRITE_REG(hw, IXGBE_ESDP, esdp);
+	IXGBE_WRITE_FLUSH(hw);
+}
+
+/**
+ *  ixgbe_acquire_swfw_sync_X550em - Acquire SWFW semaphore
+ *  @hw: pointer to hardware structure
+ *  @mask: Mask to specify which semaphore to acquire
+ *
+ *  Acquires the SWFW semaphore and sets the I2C MUX
+ **/
+s32 ixgbe_acquire_swfw_sync_X550em(struct ixgbe_hw *hw, u32 mask)
+{
+	s32 status;
+
+	DEBUGFUNC("ixgbe_acquire_swfw_sync_X550em");
+
+	status = ixgbe_acquire_swfw_sync_X540(hw, mask);
+	if (status)
+		return status;
+
+	if (mask & IXGBE_GSSR_I2C_MASK)
+		ixgbe_set_mux(hw, 1);
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ *  ixgbe_release_swfw_sync_X550em - Release SWFW semaphore
+ *  @hw: pointer to hardware structure
+ *  @mask: Mask to specify which semaphore to release
+ *
+ *  Releases the SWFW semaphore and sets the I2C MUX
+ **/
+void ixgbe_release_swfw_sync_X550em(struct ixgbe_hw *hw, u32 mask)
+{
+	DEBUGFUNC("ixgbe_release_swfw_sync_X550em");
+
+	if (mask & IXGBE_GSSR_I2C_MASK)
+		ixgbe_set_mux(hw, 0);
+
+	ixgbe_release_swfw_sync_X540(hw, mask);
 }

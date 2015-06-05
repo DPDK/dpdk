@@ -739,26 +739,6 @@ STATIC s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw)
 }
 
 /**
- * ixgbe_set_mux - Set mux for port 1 access with CS4227
- * @hw: pointer to hardware structure
- * @state: set mux if 1, clear if 0
- */
-STATIC void ixgbe_set_mux(struct ixgbe_hw *hw, u8 state)
-{
-	u32 esdp;
-
-	if (!hw->bus.lan_id)
-		return;
-	esdp = IXGBE_READ_REG(hw, IXGBE_ESDP);
-	if (state)
-		esdp |= IXGBE_ESDP_SDP1;
-	else
-		esdp &= ~IXGBE_ESDP_SDP1;
-	IXGBE_WRITE_REG(hw, IXGBE_ESDP, esdp);
-	IXGBE_WRITE_FLUSH(hw);
-}
-
-/**
  *  ixgbe_acquire_swfw_sync_X540 - Acquire SWFW semaphore
  *  @hw: pointer to hardware structure
  *  @mask: Mask to specify which semaphore to acquire
@@ -800,8 +780,6 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 			IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC, swfw_sync);
 			ixgbe_release_swfw_sync_semaphore(hw);
 			msec_delay(5);
-			if (swi2c_mask)
-				ixgbe_set_mux(hw, 1);
 			return IXGBE_SUCCESS;
 		}
 		/* Firmware currently using resource (fwmask), hardware
@@ -832,8 +810,6 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 		IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC, swfw_sync);
 		ixgbe_release_swfw_sync_semaphore(hw);
 		msec_delay(5);
-		if (swi2c_mask)
-			ixgbe_set_mux(hw, 1);
 		return IXGBE_SUCCESS;
 	}
 	/* If the resource is not released by other SW the SW can assume that
@@ -871,10 +847,8 @@ void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 
 	DEBUGFUNC("ixgbe_release_swfw_sync_X540");
 
-	if (mask & IXGBE_GSSR_I2C_MASK) {
+	if (mask & IXGBE_GSSR_I2C_MASK)
 		swmask |= mask & IXGBE_GSSR_I2C_MASK;
-		ixgbe_set_mux(hw, 0);
-	}
 	ixgbe_get_swfw_sync_semaphore(hw);
 
 	swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC);
@@ -1036,5 +1010,3 @@ s32 ixgbe_blink_led_stop_X540(struct ixgbe_hw *hw, u32 index)
 
 	return IXGBE_SUCCESS;
 }
-
-
