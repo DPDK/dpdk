@@ -382,7 +382,11 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	mac->ops.get_supported_physical_layer =
 				    ixgbe_get_supported_physical_layer_X550em;
 
+	if (mac->ops.get_media_type(hw) == ixgbe_media_type_copper)
+		mac->ops.setup_fc = ixgbe_setup_fc_generic;
+	else
 		mac->ops.setup_fc = ixgbe_setup_fc_X550em;
+
 	mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550em;
 	mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550em;
 
