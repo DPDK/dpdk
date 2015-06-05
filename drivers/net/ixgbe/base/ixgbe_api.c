@@ -660,6 +660,22 @@ s32 ixgbe_setup_link(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 }
 
 /**
+ *  ixgbe_setup_mac_link - Set link speed
+ *  @hw: pointer to hardware structure
+ *  @speed: new link speed
+ *
+ *  Configures link settings.  Restarts the link.
+ *  Performs autonegotiation if needed.
+ **/
+s32 ixgbe_setup_mac_link(struct ixgbe_hw *hw, ixgbe_link_speed speed,
+			 bool autoneg_wait_to_complete)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.setup_mac_link, (hw, speed,
+			       autoneg_wait_to_complete),
+			       IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
  *  ixgbe_get_link_capabilities - Returns link capabilities
  *  @hw: pointer to hardware structure
  *
@@ -1542,4 +1558,17 @@ void ixgbe_enable_rx(struct ixgbe_hw *hw)
 {
 	if (hw->mac.ops.enable_rx)
 		hw->mac.ops.enable_rx(hw);
+}
+
+/**
+ *  ixgbe_set_rate_select_speed - Set module link speed
+ *  @hw: pointer to hardware structure
+ *  @speed: link speed to set
+ *
+ *  Set module link speed via the rate select.
+ */
+void ixgbe_set_rate_select_speed(struct ixgbe_hw *hw, ixgbe_link_speed speed)
+{
+	if (hw->mac.ops.set_rate_select_speed)
+		hw->mac.ops.set_rate_select_speed(hw, speed);
 }

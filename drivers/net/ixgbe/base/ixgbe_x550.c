@@ -1046,10 +1046,14 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 	/* CS4227 does not support autoneg, so disable the laser control
 	 * functions for SFP+ fiber
 	 */
-	 if (hw->device_id == IXGBE_DEV_ID_X550EM_X_SFP) {
+	 if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_fiber) {
 		mac->ops.disable_tx_laser = NULL;
 		mac->ops.enable_tx_laser = NULL;
 		mac->ops.flap_tx_laser = NULL;
+		mac->ops.setup_link = ixgbe_setup_mac_link_multispeed_fiber;
+		mac->ops.setup_mac_link = ixgbe_setup_mac_link_sfp_x550em;
+		mac->ops.set_rate_select_speed =
+					ixgbe_set_soft_rate_select_speed;
 	 }
 }
 
@@ -1110,7 +1114,7 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_init_phy_ops_X550em");
 
-	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_SFP) {
+	if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_fiber) {
 		phy->phy_semaphore_mask = IXGBE_GSSR_SHARED_I2C_SM;
 		ixgbe_setup_mux_ctl(hw);
 	}
@@ -1553,6 +1557,21 @@ STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
 					IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 
 	return status;
+}
+
+/**
+ *  ixgbe_setup_mac_link_sfp_x550em - Configure the KR PHY for SFP.
+ *  @hw: pointer to hardware structure
+ *
+ *  Configures the integrated KR PHY for SFP support.
+ **/
+s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
+				    ixgbe_link_speed speed,
+				    bool autoneg_wait_to_complete)
+{
+	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
+
+	return ixgbe_setup_ixfi_x550em(hw, &speed);
 }
 
 /**

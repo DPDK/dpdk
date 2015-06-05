@@ -87,5 +87,8 @@ s32 ixgbe_setup_internal_phy_x550em(struct ixgbe_hw *hw);
 s32 ixgbe_setup_phy_loopback_x550em(struct ixgbe_hw *hw);
 u32 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw);
 void ixgbe_disable_rx_x550(struct ixgbe_hw *hw);
+s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
+				    ixgbe_link_speed speed,
+				    bool autoneg_wait_to_complete);
 #endif /* _IXGBE_X550_H_ */
 
