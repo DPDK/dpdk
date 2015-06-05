@@ -390,6 +390,9 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550em;
 	mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550em;
 
+	if (hw->device_id != IXGBE_DEV_ID_X550EM_X_KR)
+		mac->ops.setup_eee = NULL;
+
 	/* PHY */
 	phy->ops.init = ixgbe_init_phy_ops_X550em;
 	phy->ops.identify = ixgbe_identify_phy_x550em;
