@@ -1143,6 +1143,7 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		break;
 	case ixgbe_phy_x550em_ext_t:
 		phy->ops.setup_internal_link = ixgbe_setup_internal_phy_x550em;
+		phy->ops.enter_lplu = ixgbe_enter_lplu_t_x550em;
 		break;
 	default:
 		break;
@@ -2333,4 +2334,176 @@ void ixgbe_disable_rx_x550(struct ixgbe_hw *hw)
 			}
 		}
 	}
+}
+
+/**
+ * ixgbe_enter_lplu_x550em - Transition to low power states
+ *  @hw: pointer to hardware structure
+ *
+ * Configures Low Power Link Up on transition to low power states
+ * (from D0 to non-D0). Link is required to enter LPLU so avoid resetting the
+ * X557 PHY immediately prior to entering LPLU.
+ **/
+s32 ixgbe_enter_lplu_t_x550em(struct ixgbe_hw *hw)
+{
+	u16 autoneg_status, an_10g_cntl_reg, autoneg_reg, speed;
+	s32 status;
+	ixgbe_link_speed lcd_speed;
+
+	/* If blocked by MNG FW, then don't restart AN */
+	if (ixgbe_check_reset_blocked(hw))
+		return IXGBE_SUCCESS;
+
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
+				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				      &autoneg_status);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	status = ixgbe_read_eeprom(hw, NVM_INIT_CTRL_3, &hw->eeprom.ctrl_word_3);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* If link is down, LPLU disabled in NVM, WoL disabled, or manageability
+	 * disabled, then force link down by entering low power mode.
+	 */
+	if (!(autoneg_status & IXGBE_MDIO_AUTO_NEG_LINK_STATUS) ||
+	    !(hw->eeprom.ctrl_word_3 & NVM_INIT_CTRL_3_LPLU) ||
+	    !(hw->wol_enabled || ixgbe_mng_present(hw)))
+		return ixgbe_set_copper_phy_power(hw, FALSE);
+
+	/* Determine LCD */
+	status = ixgbe_get_lcd_t_x550em(hw, &lcd_speed);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* If no valid LCD link speed, then force link down and exit. */
+	if (lcd_speed == IXGBE_LINK_SPEED_UNKNOWN)
+		return ixgbe_set_copper_phy_power(hw, FALSE);
+
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_VENDOR_STAT,
+				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				      &speed);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* clear everything but the speed bits */
+	speed &= IXGBE_MDIO_AUTO_NEG_VEN_STAT_SPEED_MASK;
+
+	/* If current speed is already LCD, then exit. */
+	if (((speed == IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_1GB) &&
+	     (lcd_speed == IXGBE_LINK_SPEED_1GB_FULL)) ||
+	    ((speed == IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_10GB) &&
+	     (lcd_speed == IXGBE_LINK_SPEED_10GB_FULL)))
+		return status;
+
+	/* Clear AN completed indication */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_VENDOR_TX_ALARM,
+				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				      &autoneg_status);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	status = hw->phy.ops.read_reg(hw, IXGBE_MII_10GBASE_T_AUTONEG_CTRL_REG,
+			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+			     &an_10g_cntl_reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	status = hw->phy.ops.read_reg(hw,
+			     IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
+			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+			     &autoneg_reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* Set AN advertizement to only include LCD  */
+	if (lcd_speed == IXGBE_LINK_SPEED_1GB_FULL) {
+		an_10g_cntl_reg &= ~IXGBE_MII_10GBASE_T_ADVERTISE;
+		autoneg_reg |= IXGBE_MII_1GBASE_T_ADVERTISE;
+	}
+
+	if (lcd_speed == IXGBE_LINK_SPEED_10GB_FULL) {
+		an_10g_cntl_reg |= IXGBE_MII_10GBASE_T_ADVERTISE;
+		autoneg_reg &= ~IXGBE_MII_1GBASE_T_ADVERTISE;
+	}
+
+	status = hw->phy.ops.write_reg(hw, IXGBE_MII_10GBASE_T_AUTONEG_CTRL_REG,
+			      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+			      an_10g_cntl_reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	status = hw->phy.ops.write_reg(hw,
+			      IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
+			      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+			      autoneg_reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* Restart PHY auto-negotiation. */
+	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_CONTROL,
+			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &autoneg_reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	autoneg_reg |= IXGBE_MII_RESTART;
+
+	status = hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_CONTROL,
+			      IXGBE_MDIO_AUTO_NEG_DEV_TYPE, autoneg_reg);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	status = ixgbe_setup_ixfi_x550em(hw, &lcd_speed);
+
+	return status;
+}
+
+/**
+ * ixgbe_get_lcd_x550em - Determine lowest common denominator
+ *  @hw: pointer to hardware structure
+ *  @lcd_speed: pointer to lowest common link speed
+ *
+ * Determine lowest common link speed with link partner.
+ **/
+s32 ixgbe_get_lcd_t_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *lcd_speed)
+{
+	u16 an_lp_status;
+	s32 status;
+	u16 word = hw->eeprom.ctrl_word_3;
+
+	*lcd_speed = IXGBE_LINK_SPEED_UNKNOWN;
+
+	status = hw->phy.ops.read_reg(hw, IXGBE_AUTO_NEG_LP_STATUS,
+				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				      &an_lp_status);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* If link partner advertised 1G, return 1G */
+	if (an_lp_status & IXGBE_AUTO_NEG_LP_1000BASE_CAP) {
+		*lcd_speed = IXGBE_LINK_SPEED_1GB_FULL;
+		return status;
+	}
+
+	/* If 10G disabled for LPLU via NVM D10GMP, then return no valid LCD */
+	if ((hw->bus.lan_id && (word & NVM_INIT_CTRL_3_D10GMP_PORT1)) ||
+	    (word & NVM_INIT_CTRL_3_D10GMP_PORT0))
+		return status;
+
+	/* Link partner not capable of lower speeds, return 10G */
+	*lcd_speed = IXGBE_LINK_SPEED_10GB_FULL;
+	return status;
 }

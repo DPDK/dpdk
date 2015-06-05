@@ -1268,6 +1268,19 @@ void ixgbe_restore_mdd_vf(struct ixgbe_hw *hw, u32 vf)
 }
 
 /**
+ *  ixgbe_enter_lplu - Transition to low power states
+ *  @hw: pointer to hardware structure
+ *
+ * Configures Low Power Link Up on transition to low power states
+ * (from D0 to non-D0).
+ **/
+s32 ixgbe_enter_lplu(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->phy.ops.enter_lplu, (hw),
+				IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
  *  ixgbe_read_analog_reg8 - Reads 8 bit analog register
  *  @hw: pointer to hardware structure
  *  @reg: analog register to read

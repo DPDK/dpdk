@@ -1377,6 +1377,7 @@ struct ixgbe_dmac_config {
 #define IXGBE_MDIO_AUTO_NEG_CONTROL	0x0 /* AUTO_NEG Control Reg */
 #define IXGBE_MDIO_AUTO_NEG_STATUS	0x1 /* AUTO_NEG Status Reg */
 #define IXGBE_MDIO_AUTO_NEG_VENDOR_STAT	0xC800 /* AUTO_NEG Vendor Status Reg */
+#define IXGBE_MDIO_AUTO_NEG_VENDOR_TX_ALARM 0xCC00 /* AUTO_NEG Vendor TX Reg */
 #define IXGBE_MDIO_AUTO_NEG_ADVT	0x10 /* AUTO_NEG Advt Reg */
 #define IXGBE_MDIO_AUTO_NEG_LP		0x13 /* AUTO_NEG LP Status Reg */
 #define IXGBE_MDIO_AUTO_NEG_EEE_ADVT	0x3C /* AUTO_NEG EEE Advt Reg */
@@ -1396,6 +1397,10 @@ struct ixgbe_dmac_config {
 #define IXGBE_MDIO_PHY_1000BASET_ABILITY	0x0020 /* 1000BaseT capable */
 #define IXGBE_MDIO_PHY_100BASETX_ABILITY	0x0080 /* 100BaseTX capable */
 #define IXGBE_MDIO_PHY_SET_LOW_POWER_MODE	0x0800 /* Set low power mode */
+#define IXGBE_AUTO_NEG_LP_STATUS	0xE820 /* AUTO NEG Rx LP Status Reg */
+#define IXGBE_AUTO_NEG_LP_1000BASE_CAP	0x8000 /* AUTO NEG Rx LP 1000BaseT Cap */
+#define IXGBE_AUTO_NEG_LP_10GBASE_CAP	0x0800 /* AUTO NEG Rx LP 10GBaseT Cap */
+#define IXGBE_AUTO_NEG_10GBASET_STAT	0x0021 /* AUTO NEG 10G BaseT Stat */
 
 #define IXGBE_MDIO_TX_VENDOR_ALARMS_3		0xCC02 /* Vendor Alarms 3 Reg */
 #define IXGBE_MDIO_TX_VENDOR_ALARMS_3_RST_MASK	0x3 /* PHY Reset Complete Mask */
@@ -1423,7 +1428,8 @@ struct ixgbe_dmac_config {
 
 #define IXGBE_MDIO_AUTO_NEG_LINK_STATUS		0x4 /* Indicates if link is up */
 
-#define IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_MASK		0x7 /* Speed/Duplex Mask */
+#define IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_MASK	0x7 /* Speed/Duplex Mask */
+#define IXGBE_MDIO_AUTO_NEG_VEN_STAT_SPEED_MASK		0x6 /* Speed Mask */
 #define IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_10M_HALF	0x0 /* 10Mb/s Half Duplex */
 #define IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_10M_FULL	0x1 /* 10Mb/s Full Duplex */
 #define IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_100M_HALF	0x2 /* 100Mb/s Half Duplex */
@@ -1432,6 +1438,8 @@ struct ixgbe_dmac_config {
 #define IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_1GB_FULL	0x5 /* 1Gb/s Full Duplex */
 #define IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_10GB_HALF	0x6 /* 10Gb/s Half Duplex */
 #define IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_10GB_FULL	0x7 /* 10Gb/s Full Duplex */
+#define IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_1GB		0x4 /* 1Gb/s */
+#define IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_10GB		0x6 /* 10Gb/s */
 
 #define IXGBE_MII_10GBASE_T_AUTONEG_CTRL_REG	0x20   /* 10G Control Reg */
 #define IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG 0xC400 /* 1G Provisioning 1 */
@@ -2164,6 +2172,11 @@ enum {
 #define IXGBE_EEPROM_RW_ADDR_SHIFT	2 /* Shift to the address bits */
 #define IXGBE_NVM_POLL_WRITE		1 /* Flag for polling for wr complete */
 #define IXGBE_NVM_POLL_READ		0 /* Flag for polling for rd complete */
+
+#define NVM_INIT_CTRL_3		0x38
+#define NVM_INIT_CTRL_3_LPLU	0x8
+#define NVM_INIT_CTRL_3_D10GMP_PORT0 0x40
+#define NVM_INIT_CTRL_3_D10GMP_PORT1 0x100
 
 #define IXGBE_ETH_LENGTH_OF_ADDRESS	6
 
@@ -3627,6 +3640,7 @@ struct ixgbe_phy_operations {
 	s32 (*write_i2c_combined)(struct ixgbe_hw *, u8 addr, u16 reg, u16 val);
 	s32 (*check_overtemp)(struct ixgbe_hw *);
 	s32 (*set_phy_power)(struct ixgbe_hw *, bool on);
+	s32 (*enter_lplu)(struct ixgbe_hw *);
 	s32 (*read_i2c_combined_unlocked)(struct ixgbe_hw *, u8 addr, u16 reg,
 					  u16 *value);
 	s32 (*write_i2c_combined_unlocked)(struct ixgbe_hw *, u8 addr, u16 reg,
@@ -3644,6 +3658,7 @@ struct ixgbe_eeprom_info {
 	u16 word_size;
 	u16 address_bits;
 	u16 word_page_size;
+	u16 ctrl_word_3;
 };
 
 #define IXGBE_FLAGS_DOUBLE_RESET_REQUIRED	0x01
