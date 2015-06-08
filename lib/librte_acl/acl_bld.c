@@ -97,6 +97,7 @@ struct acl_build_context {
 	struct rte_acl_build_rule *build_rules;
 	struct rte_acl_config     cfg;
 	int32_t                   node_max;
+	int32_t                   cur_node_max;
 	uint32_t                  node;
 	uint32_t                  num_nodes;
 	uint32_t                  category_mask;
@@ -1337,7 +1338,7 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 			return NULL;
 
 		node_count = context->num_nodes - node_count;
-		if (node_count > context->node_max) {
+		if (node_count > context->cur_node_max) {
 			*last = prev;
 			return trie;
 		}
@@ -1536,7 +1537,7 @@ acl_build_index(const struct rte_acl_config *config, uint32_t *data_index)
 static struct rte_acl_build_rule *
 build_one_trie(struct acl_build_context *context,
 	struct rte_acl_build_rule *rule_sets[RTE_ACL_MAX_TRIES],
-	uint32_t n)
+	uint32_t n, int32_t node_max)
 {
 	struct rte_acl_build_rule *last;
 	struct rte_acl_config *config;
@@ -1552,6 +1553,8 @@ build_one_trie(struct acl_build_context *context,
 	context->tries[n].num_data_indexes = acl_build_index(config,
 		context->data_indexes[n]);
 	context->tries[n].data_index = context->data_indexes[n];
+
+	context->cur_node_max = node_max;
 
 	context->bld_tries[n].trie = build_trie(context, rule_sets[n],
 		&last, &context->tries[n].count);
@@ -1587,7 +1590,7 @@ acl_build_tries(struct acl_build_context *context,
 
 		num_tries = n + 1;
 
-		last = build_one_trie(context, rule_sets, n);
+		last = build_one_trie(context, rule_sets, n, context->node_max);
 		if (context->bld_tries[n].trie == NULL) {
 			RTE_LOG(ERR, ACL, "Build of %u-th trie failed\n", n);
 			return -ENOMEM;
@@ -1618,8 +1621,11 @@ acl_build_tries(struct acl_build_context *context,
 				head = head->next)
 			head->config = config;
 
-		/* Rebuild the trie for the reduced rule-set. */
-		last = build_one_trie(context, rule_sets, n);
+		/*
+		 * Rebuild the trie for the reduced rule-set.
+		 * Don't try to split it any further.
+		 */
+		last = build_one_trie(context, rule_sets, n, INT32_MAX);
 		if (context->bld_tries[n].trie == NULL || last != NULL) {
 			RTE_LOG(ERR, ACL, "Build of %u-th trie failed\n", n);
 			return -ENOMEM;
