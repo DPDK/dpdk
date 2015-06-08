@@ -47,6 +47,8 @@
 
 #define LEN RTE_ACL_MAX_CATEGORIES
 
+RTE_ACL_RULE_DEF(acl_ipv4vlan_rule, RTE_ACL_IPV4VLAN_NUM_FIELDS);
+
 struct rte_acl_param acl_param = {
 	.name = "acl_ctx",
 	.socket_id = SOCKET_ID_ANY,
@@ -61,6 +63,15 @@ struct rte_acl_ipv4vlan_rule acl_rule = {
 		.dst_port_low = 0,
 		.dst_port_high = UINT16_MAX,
 };
+
+const uint32_t ipv4_7tuple_layout[RTE_ACL_IPV4VLAN_NUM] = {
+	offsetof(struct ipv4_7tuple, proto),
+	offsetof(struct ipv4_7tuple, vlan),
+	offsetof(struct ipv4_7tuple, ip_src),
+	offsetof(struct ipv4_7tuple, ip_dst),
+	offsetof(struct ipv4_7tuple, port_src),
+};
+
 
 /* byteswap to cpu or network order */
 static void
@@ -195,13 +206,6 @@ test_classify_buid(struct rte_acl_ctx *acx,
 	const struct rte_acl_ipv4vlan_rule *rules, uint32_t num)
 {
 	int ret;
-	const uint32_t layout[RTE_ACL_IPV4VLAN_NUM] = {
-			offsetof(struct ipv4_7tuple, proto),
-			offsetof(struct ipv4_7tuple, vlan),
-			offsetof(struct ipv4_7tuple, ip_src),
-			offsetof(struct ipv4_7tuple, ip_dst),
-			offsetof(struct ipv4_7tuple, port_src),
-	};
 
 	/* add rules to the context */
 	ret = rte_acl_ipv4vlan_add_rules(acx, rules, num);
@@ -212,7 +216,8 @@ test_classify_buid(struct rte_acl_ctx *acx,
 	}
 
 	/* try building the context */
-	ret = rte_acl_ipv4vlan_build(acx, layout, RTE_ACL_MAX_CATEGORIES);
+	ret = rte_acl_ipv4vlan_build(acx, ipv4_7tuple_layout,
+		RTE_ACL_MAX_CATEGORIES);
 	if (ret != 0) {
 		printf("Line %i: Building ACL context failed!\n", __LINE__);
 		return ret;
@@ -410,6 +415,414 @@ test_build_ports_range(void)
 
 	rte_acl_free(acx);
 	return ret;
+}
+
+static void
+convert_rule(const struct rte_acl_ipv4vlan_rule *ri,
+	struct acl_ipv4vlan_rule *ro)
+{
+	ro->data = ri->data;
+
+	ro->field[RTE_ACL_IPV4VLAN_PROTO_FIELD].value.u8 = ri->proto;
+	ro->field[RTE_ACL_IPV4VLAN_VLAN1_FIELD].value.u16 = ri->vlan;
+	ro->field[RTE_ACL_IPV4VLAN_VLAN2_FIELD].value.u16 = ri->domain;
+	ro->field[RTE_ACL_IPV4VLAN_SRC_FIELD].value.u32 = ri->src_addr;
+	ro->field[RTE_ACL_IPV4VLAN_DST_FIELD].value.u32 = ri->dst_addr;
+	ro->field[RTE_ACL_IPV4VLAN_SRCP_FIELD].value.u16 = ri->src_port_low;
+	ro->field[RTE_ACL_IPV4VLAN_DSTP_FIELD].value.u16 = ri->dst_port_low;
+
+	ro->field[RTE_ACL_IPV4VLAN_PROTO_FIELD].mask_range.u8 = ri->proto_mask;
+	ro->field[RTE_ACL_IPV4VLAN_VLAN1_FIELD].mask_range.u16 = ri->vlan_mask;
+	ro->field[RTE_ACL_IPV4VLAN_VLAN2_FIELD].mask_range.u16 =
+		ri->domain_mask;
+	ro->field[RTE_ACL_IPV4VLAN_SRC_FIELD].mask_range.u32 =
+		ri->src_mask_len;
+	ro->field[RTE_ACL_IPV4VLAN_DST_FIELD].mask_range.u32 = ri->dst_mask_len;
+	ro->field[RTE_ACL_IPV4VLAN_SRCP_FIELD].mask_range.u16 =
+		ri->src_port_high;
+	ro->field[RTE_ACL_IPV4VLAN_DSTP_FIELD].mask_range.u16 =
+		ri->dst_port_high;
+}
+
+/*
+ * Convert IPV4 source and destination from RTE_ACL_FIELD_TYPE_MASK to
+ * RTE_ACL_FIELD_TYPE_BITMASK.
+ */
+static void
+convert_rule_1(const struct rte_acl_ipv4vlan_rule *ri,
+	struct acl_ipv4vlan_rule *ro)
+{
+	uint32_t v;
+
+	convert_rule(ri, ro);
+	v = ro->field[RTE_ACL_IPV4VLAN_SRC_FIELD].mask_range.u32;
+	ro->field[RTE_ACL_IPV4VLAN_SRC_FIELD].mask_range.u32 =
+		RTE_ACL_MASKLEN_TO_BITMASK(v, sizeof(v));
+	v = ro->field[RTE_ACL_IPV4VLAN_DST_FIELD].mask_range.u32;
+	ro->field[RTE_ACL_IPV4VLAN_DST_FIELD].mask_range.u32 =
+		RTE_ACL_MASKLEN_TO_BITMASK(v, sizeof(v));
+}
+
+/*
+ * Convert IPV4 source and destination from RTE_ACL_FIELD_TYPE_MASK to
+ * RTE_ACL_FIELD_TYPE_RANGE.
+ */
+static void
+convert_rule_2(const struct rte_acl_ipv4vlan_rule *ri,
+	struct acl_ipv4vlan_rule *ro)
+{
+	uint32_t hi, lo, mask;
+
+	convert_rule(ri, ro);
+
+	mask = ro->field[RTE_ACL_IPV4VLAN_SRC_FIELD].mask_range.u32;
+	mask = RTE_ACL_MASKLEN_TO_BITMASK(mask, sizeof(mask));
+	lo = ro->field[RTE_ACL_IPV4VLAN_SRC_FIELD].value.u32 & mask;
+	hi = lo + ~mask;
+	ro->field[RTE_ACL_IPV4VLAN_SRC_FIELD].value.u32 = lo;
+	ro->field[RTE_ACL_IPV4VLAN_SRC_FIELD].mask_range.u32 = hi;
+
+	mask = ro->field[RTE_ACL_IPV4VLAN_DST_FIELD].mask_range.u32;
+	mask = RTE_ACL_MASKLEN_TO_BITMASK(mask, sizeof(mask));
+	lo = ro->field[RTE_ACL_IPV4VLAN_DST_FIELD].value.u32 & mask;
+	hi = lo + ~mask;
+	ro->field[RTE_ACL_IPV4VLAN_DST_FIELD].value.u32 = lo;
+	ro->field[RTE_ACL_IPV4VLAN_DST_FIELD].mask_range.u32 = hi;
+}
+
+/*
+ * Convert rte_acl_ipv4vlan_rule: swap VLAN and PORTS rule fields.
+ */
+static void
+convert_rule_3(const struct rte_acl_ipv4vlan_rule *ri,
+	struct acl_ipv4vlan_rule *ro)
+{
+	struct rte_acl_field t1, t2;
+
+	convert_rule(ri, ro);
+
+	t1 = ro->field[RTE_ACL_IPV4VLAN_VLAN1_FIELD];
+	t2 = ro->field[RTE_ACL_IPV4VLAN_VLAN2_FIELD];
+
+	ro->field[RTE_ACL_IPV4VLAN_VLAN1_FIELD] =
+		ro->field[RTE_ACL_IPV4VLAN_SRCP_FIELD];
+	ro->field[RTE_ACL_IPV4VLAN_VLAN2_FIELD] =
+		ro->field[RTE_ACL_IPV4VLAN_DSTP_FIELD];
+
+	ro->field[RTE_ACL_IPV4VLAN_SRCP_FIELD] = t1;
+	ro->field[RTE_ACL_IPV4VLAN_DSTP_FIELD] = t2;
+}
+
+/*
+ * Convert rte_acl_ipv4vlan_rule: swap SRC and DST IPv4 address rules.
+ */
+static void
+convert_rule_4(const struct rte_acl_ipv4vlan_rule *ri,
+	struct acl_ipv4vlan_rule *ro)
+{
+	struct rte_acl_field t;
+
+	convert_rule(ri, ro);
+
+	t = ro->field[RTE_ACL_IPV4VLAN_SRC_FIELD];
+	ro->field[RTE_ACL_IPV4VLAN_SRC_FIELD] =
+		ro->field[RTE_ACL_IPV4VLAN_DST_FIELD];
+
+	ro->field[RTE_ACL_IPV4VLAN_DST_FIELD] = t;
+}
+
+static void
+ipv4vlan_config(struct rte_acl_config *cfg,
+	const uint32_t layout[RTE_ACL_IPV4VLAN_NUM],
+	uint32_t num_categories)
+{
+	static const struct rte_acl_field_def
+		ipv4_defs[RTE_ACL_IPV4VLAN_NUM_FIELDS] = {
+		{
+			.type = RTE_ACL_FIELD_TYPE_BITMASK,
+			.size = sizeof(uint8_t),
+			.field_index = RTE_ACL_IPV4VLAN_PROTO_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_PROTO,
+		},
+		{
+			.type = RTE_ACL_FIELD_TYPE_BITMASK,
+			.size = sizeof(uint16_t),
+			.field_index = RTE_ACL_IPV4VLAN_VLAN1_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_VLAN,
+		},
+		{
+			.type = RTE_ACL_FIELD_TYPE_BITMASK,
+			.size = sizeof(uint16_t),
+			.field_index = RTE_ACL_IPV4VLAN_VLAN2_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_VLAN,
+		},
+		{
+			.type = RTE_ACL_FIELD_TYPE_MASK,
+			.size = sizeof(uint32_t),
+			.field_index = RTE_ACL_IPV4VLAN_SRC_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_SRC,
+		},
+		{
+			.type = RTE_ACL_FIELD_TYPE_MASK,
+			.size = sizeof(uint32_t),
+			.field_index = RTE_ACL_IPV4VLAN_DST_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_DST,
+		},
+		{
+			.type = RTE_ACL_FIELD_TYPE_RANGE,
+			.size = sizeof(uint16_t),
+			.field_index = RTE_ACL_IPV4VLAN_SRCP_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_PORTS,
+		},
+		{
+			.type = RTE_ACL_FIELD_TYPE_RANGE,
+			.size = sizeof(uint16_t),
+			.field_index = RTE_ACL_IPV4VLAN_DSTP_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_PORTS,
+		},
+	};
+
+	memcpy(&cfg->defs, ipv4_defs, sizeof(ipv4_defs));
+	cfg->num_fields = RTE_DIM(ipv4_defs);
+
+	cfg->defs[RTE_ACL_IPV4VLAN_PROTO_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_PROTO];
+	cfg->defs[RTE_ACL_IPV4VLAN_VLAN1_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_VLAN];
+	cfg->defs[RTE_ACL_IPV4VLAN_VLAN2_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_VLAN] +
+		cfg->defs[RTE_ACL_IPV4VLAN_VLAN1_FIELD].size;
+	cfg->defs[RTE_ACL_IPV4VLAN_SRC_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_SRC];
+	cfg->defs[RTE_ACL_IPV4VLAN_DST_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_DST];
+	cfg->defs[RTE_ACL_IPV4VLAN_SRCP_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_PORTS];
+	cfg->defs[RTE_ACL_IPV4VLAN_DSTP_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_PORTS] +
+		cfg->defs[RTE_ACL_IPV4VLAN_SRCP_FIELD].size;
+
+	cfg->num_categories = num_categories;
+}
+
+static int
+convert_rules(struct rte_acl_ctx *acx,
+	void (*convert)(const struct rte_acl_ipv4vlan_rule *,
+	struct acl_ipv4vlan_rule *),
+	const struct rte_acl_ipv4vlan_rule *rules, uint32_t num)
+{
+	int32_t rc;
+	uint32_t i;
+	struct acl_ipv4vlan_rule r;
+
+	for (i = 0; i != num; i++) {
+		convert(rules + i, &r);
+		rc = rte_acl_add_rules(acx, (struct rte_acl_rule *)&r, 1);
+		if (rc != 0) {
+			printf("Line %i: Adding rule %u to ACL context "
+				"failed with error code: %d\n",
+			__LINE__, i, rc);
+			return rc;
+		}
+	}
+
+	return 0;
+}
+
+static void
+convert_config(struct rte_acl_config *cfg)
+{
+	ipv4vlan_config(cfg, ipv4_7tuple_layout, RTE_ACL_MAX_CATEGORIES);
+}
+
+/*
+ * Convert rte_acl_ipv4vlan_rule to use RTE_ACL_FIELD_TYPE_BITMASK.
+ */
+static void
+convert_config_1(struct rte_acl_config *cfg)
+{
+	ipv4vlan_config(cfg, ipv4_7tuple_layout, RTE_ACL_MAX_CATEGORIES);
+	cfg->defs[RTE_ACL_IPV4VLAN_SRC_FIELD].type = RTE_ACL_FIELD_TYPE_BITMASK;
+	cfg->defs[RTE_ACL_IPV4VLAN_DST_FIELD].type = RTE_ACL_FIELD_TYPE_BITMASK;
+}
+
+/*
+ * Convert rte_acl_ipv4vlan_rule to use RTE_ACL_FIELD_TYPE_RANGE.
+ */
+static void
+convert_config_2(struct rte_acl_config *cfg)
+{
+	ipv4vlan_config(cfg, ipv4_7tuple_layout, RTE_ACL_MAX_CATEGORIES);
+	cfg->defs[RTE_ACL_IPV4VLAN_SRC_FIELD].type = RTE_ACL_FIELD_TYPE_RANGE;
+	cfg->defs[RTE_ACL_IPV4VLAN_DST_FIELD].type = RTE_ACL_FIELD_TYPE_RANGE;
+}
+
+/*
+ * Convert rte_acl_ipv4vlan_rule: swap VLAN and PORTS rule definitions.
+ */
+static void
+convert_config_3(struct rte_acl_config *cfg)
+{
+	struct rte_acl_field_def t1, t2;
+
+	ipv4vlan_config(cfg, ipv4_7tuple_layout, RTE_ACL_MAX_CATEGORIES);
+
+	t1 = cfg->defs[RTE_ACL_IPV4VLAN_VLAN1_FIELD];
+	t2 = cfg->defs[RTE_ACL_IPV4VLAN_VLAN2_FIELD];
+
+	/* swap VLAN1 and SRCP rule definition. */
+	cfg->defs[RTE_ACL_IPV4VLAN_VLAN1_FIELD] =
+		cfg->defs[RTE_ACL_IPV4VLAN_SRCP_FIELD];
+	cfg->defs[RTE_ACL_IPV4VLAN_VLAN1_FIELD].field_index = t1.field_index;
+	cfg->defs[RTE_ACL_IPV4VLAN_VLAN1_FIELD].input_index = t1.input_index;
+
+	/* swap VLAN2 and DSTP rule definition. */
+	cfg->defs[RTE_ACL_IPV4VLAN_VLAN2_FIELD] =
+		cfg->defs[RTE_ACL_IPV4VLAN_DSTP_FIELD];
+	cfg->defs[RTE_ACL_IPV4VLAN_VLAN2_FIELD].field_index = t2.field_index;
+	cfg->defs[RTE_ACL_IPV4VLAN_VLAN2_FIELD].input_index = t2.input_index;
+
+	cfg->defs[RTE_ACL_IPV4VLAN_SRCP_FIELD].type = t1.type;
+	cfg->defs[RTE_ACL_IPV4VLAN_SRCP_FIELD].size = t1.size;
+	cfg->defs[RTE_ACL_IPV4VLAN_SRCP_FIELD].offset = t1.offset;
+
+	cfg->defs[RTE_ACL_IPV4VLAN_DSTP_FIELD].type = t2.type;
+	cfg->defs[RTE_ACL_IPV4VLAN_DSTP_FIELD].size = t2.size;
+	cfg->defs[RTE_ACL_IPV4VLAN_DSTP_FIELD].offset = t2.offset;
+}
+
+/*
+ * Convert rte_acl_ipv4vlan_rule: swap SRC and DST ip address rule definitions.
+ */
+static void
+convert_config_4(struct rte_acl_config *cfg)
+{
+	struct rte_acl_field_def t;
+
+	ipv4vlan_config(cfg, ipv4_7tuple_layout, RTE_ACL_MAX_CATEGORIES);
+
+	t = cfg->defs[RTE_ACL_IPV4VLAN_SRC_FIELD];
+
+	cfg->defs[RTE_ACL_IPV4VLAN_SRC_FIELD] =
+		cfg->defs[RTE_ACL_IPV4VLAN_DST_FIELD];
+	cfg->defs[RTE_ACL_IPV4VLAN_SRC_FIELD].field_index = t.field_index;
+	cfg->defs[RTE_ACL_IPV4VLAN_SRC_FIELD].input_index = t.input_index;
+
+	cfg->defs[RTE_ACL_IPV4VLAN_DST_FIELD].type = t.type;
+	cfg->defs[RTE_ACL_IPV4VLAN_DST_FIELD].size = t.size;
+	cfg->defs[RTE_ACL_IPV4VLAN_DST_FIELD].offset = t.offset;
+}
+
+
+static int
+build_convert_rules(struct rte_acl_ctx *acx,
+	void (*config)(struct rte_acl_config *),
+	size_t max_size)
+{
+	struct rte_acl_config cfg;
+
+	memset(&cfg, 0, sizeof(cfg));
+	config(&cfg);
+	cfg.max_size = max_size;
+	return rte_acl_build(acx, &cfg);
+}
+
+static int
+test_convert_rules(const char *desc,
+	void (*config)(struct rte_acl_config *),
+	void (*convert)(const struct rte_acl_ipv4vlan_rule *,
+	struct acl_ipv4vlan_rule *))
+{
+	struct rte_acl_ctx *acx;
+	int32_t rc;
+	uint32_t i;
+	static const size_t mem_sizes[] = {0, -1};
+
+	printf("running %s(%s)\n", __func__, desc);
+
+	acx = rte_acl_create(&acl_param);
+	if (acx == NULL) {
+		printf("Line %i: Error creating ACL context!\n", __LINE__);
+		return -1;
+	}
+
+	rc = convert_rules(acx, convert, acl_test_rules,
+		RTE_DIM(acl_test_rules));
+	if (rc != 0)
+		printf("Line %i: Error converting ACL rules!\n", __LINE__);
+
+	for (i = 0; rc == 0 && i != RTE_DIM(mem_sizes); i++) {
+
+		rc = build_convert_rules(acx, config, mem_sizes[i]);
+		if (rc != 0) {
+			printf("Line %i: Error @ build_convert_rules(%zu)!\n",
+				__LINE__, mem_sizes[i]);
+			break;
+		}
+
+		rc = test_classify_run(acx);
+		if (rc != 0)
+			printf("%s failed at line %i, max_size=%zu\n",
+				__func__, __LINE__, mem_sizes[i]);
+	}
+
+	rte_acl_free(acx);
+	return rc;
+}
+
+static int
+test_convert(void)
+{
+	static const struct {
+		const char *desc;
+		void (*config)(struct rte_acl_config *);
+		void (*convert)(const struct rte_acl_ipv4vlan_rule *,
+			struct acl_ipv4vlan_rule *);
+	} convert_param[] = {
+		{
+			"acl_ipv4vlan_tuple",
+			convert_config,
+			convert_rule,
+		},
+		{
+			"acl_ipv4vlan_tuple, RTE_ACL_FIELD_TYPE_BITMASK type "
+			"for IPv4",
+			convert_config_1,
+			convert_rule_1,
+		},
+		{
+			"acl_ipv4vlan_tuple, RTE_ACL_FIELD_TYPE_RANGE type "
+			"for IPv4",
+			convert_config_2,
+			convert_rule_2,
+		},
+		{
+			"acl_ipv4vlan_tuple: swap VLAN and PORTs order",
+			convert_config_3,
+			convert_rule_3,
+		},
+		{
+			"acl_ipv4vlan_tuple: swap SRC and DST IPv4 order",
+			convert_config_4,
+			convert_rule_4,
+		},
+	};
+
+	uint32_t i;
+	int32_t rc;
+
+	for (i = 0; i != RTE_DIM(convert_param); i++) {
+		rc = test_convert_rules(convert_param[i].desc,
+			convert_param[i].config,
+			convert_param[i].convert);
+		if (rc != 0) {
+			printf("%s for test-case: %s failed, error code: %d;\n",
+				__func__, convert_param[i].desc, rc);
+			return rc;
+		}
+	}
+
+	return 0;
 }
 
 /*
@@ -1068,6 +1481,8 @@ test_acl(void)
 	if (test_classify() < 0)
 		return -1;
 	if (test_build_ports_range() < 0)
+		return -1;
+	if (test_convert() < 0)
 		return -1;
 
 	return 0;
