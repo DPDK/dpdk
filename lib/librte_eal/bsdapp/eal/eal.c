@@ -306,6 +306,38 @@ eal_get_hugepage_mem_size(void)
 	return (size < SIZE_MAX) ? (size_t)(size) : SIZE_MAX;
 }
 
+/* Parse the arguments for --log-level only */
+static void
+eal_log_level_parse(int argc, char **argv)
+{
+	int opt;
+	char **argvopt;
+	int option_index;
+
+	argvopt = argv;
+
+	eal_reset_internal_config(&internal_config);
+
+	while ((opt = getopt_long(argc, argvopt, eal_short_options,
+				  eal_long_options, &option_index)) != EOF) {
+
+		int ret;
+
+		/* getopt is not happy, stop right now */
+		if (opt == '?')
+			break;
+
+		ret = (opt == OPT_LOG_LEVEL_NUM) ?
+			eal_parse_common_option(opt, optarg, &internal_config) : 0;
+
+		/* common parser is not happy */
+		if (ret < 0)
+			break;
+	}
+
+	optind = 0; /* reset getopt lib */
+}
+
 /* Parse the argument given in the command line of the application */
 static int
 eal_parse_args(int argc, char **argv)
@@ -316,8 +348,6 @@ eal_parse_args(int argc, char **argv)
 	char *prgname = argv[0];
 
 	argvopt = argv;
-
-	eal_reset_internal_config(&internal_config);
 
 	while ((opt = getopt_long(argc, argvopt, eal_short_options,
 				  eal_long_options, &option_index)) != EOF) {
@@ -447,15 +477,17 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_log_early_init() < 0)
 		rte_panic("Cannot init early logs\n");
 
+	eal_log_level_parse(argc, argv);
+
+	/* set log level as early as possible */
+	rte_set_log_level(internal_config.log_level);
+
 	if (rte_eal_cpu_init() < 0)
 		rte_panic("Cannot detect lcores\n");
 
 	fctret = eal_parse_args(argc, argv);
 	if (fctret < 0)
 		exit(1);
-
-	/* set log level as early as possible */
-	rte_set_log_level(internal_config.log_level);
 
 	if (internal_config.no_hugetlbfs == 0 &&
 			internal_config.process_type != RTE_PROC_SECONDARY &&
