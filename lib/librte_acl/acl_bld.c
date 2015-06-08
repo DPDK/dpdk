@@ -1350,7 +1350,7 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 	return trie;
 }
 
-static int
+static void
 acl_calc_wildness(struct rte_acl_build_rule *head,
 	const struct rte_acl_config *config)
 {
@@ -1362,10 +1362,10 @@ acl_calc_wildness(struct rte_acl_build_rule *head,
 		for (n = 0; n < config->num_fields; n++) {
 
 			double wild = 0;
-			uint64_t msk_val =
-				RTE_LEN2MASK(CHAR_BIT * config->defs[n].size,
+			uint32_t bit_len = CHAR_BIT * config->defs[n].size;
+			uint64_t msk_val = RTE_LEN2MASK(bit_len,
 				typeof(msk_val));
-			double size = CHAR_BIT * config->defs[n].size;
+			double size = bit_len;
 			int field_index = config->defs[n].field_index;
 			const struct rte_acl_field *fld = rule->f->field +
 				field_index;
@@ -1382,54 +1382,15 @@ acl_calc_wildness(struct rte_acl_build_rule *head,
 				break;
 
 			case RTE_ACL_FIELD_TYPE_RANGE:
-				switch (rule->config->defs[n].size) {
-				case sizeof(uint8_t):
-					wild = ((double)fld->mask_range.u8 -
-						fld->value.u8) / UINT8_MAX;
-					break;
-				case sizeof(uint16_t):
-					wild = ((double)fld->mask_range.u16 -
-						fld->value.u16) / UINT16_MAX;
-					break;
-				case sizeof(uint32_t):
-					wild = ((double)fld->mask_range.u32 -
-						fld->value.u32) / UINT32_MAX;
-					break;
-				case sizeof(uint64_t):
-					wild = ((double)fld->mask_range.u64 -
-						fld->value.u64) / UINT64_MAX;
-					break;
-				default:
-					RTE_LOG(ERR, ACL,
-						"%s(rule: %u) invalid %u-th "
-						"field, type: %hhu, "
-						"unknown size: %hhu\n",
-						__func__,
-						rule->f->data.userdata,
-						n,
-						rule->config->defs[n].type,
-						rule->config->defs[n].size);
-					return -EINVAL;
-				}
+				wild = (fld->mask_range.u64 & msk_val) -
+					(fld->value.u64 & msk_val);
+				wild = wild / msk_val;
 				break;
-
-			default:
-				RTE_LOG(ERR, ACL,
-					"%s(rule: %u) invalid %u-th "
-					"field, unknown type: %hhu\n",
-					__func__,
-					rule->f->data.userdata,
-					n,
-					rule->config->defs[n].type);
-					return -EINVAL;
-
 			}
 
 			rule->wildness[field_index] = (uint32_t)(wild * 100);
 		}
 	}
-
-	return 0;
 }
 
 static void
@@ -1602,7 +1563,6 @@ static int
 acl_build_tries(struct acl_build_context *context,
 	struct rte_acl_build_rule *head)
 {
-	int32_t rc;
 	uint32_t n, num_tries;
 	struct rte_acl_config *config;
 	struct rte_acl_build_rule *last;
@@ -1621,9 +1581,7 @@ acl_build_tries(struct acl_build_context *context,
 	context->tries[0].type = RTE_ACL_FULL_TRIE;
 
 	/* calc wildness of each field of each rule */
-	rc = acl_calc_wildness(head, config);
-	if (rc != 0)
-		return rc;
+	acl_calc_wildness(head, config);
 
 	for (n = 0;; n = num_tries) {
 
@@ -1801,6 +1759,49 @@ acl_bld(struct acl_build_context *bcx, struct rte_acl_ctx *ctx,
 	return rc;
 }
 
+/*
+ * Check that parameters for acl_build() are valid.
+ */
+static int
+acl_check_bld_param(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
+{
+	static const size_t field_sizes[] = {
+		sizeof(uint8_t), sizeof(uint16_t),
+		sizeof(uint32_t), sizeof(uint64_t),
+	};
+
+	uint32_t i, j;
+
+	if (ctx == NULL || cfg == NULL || cfg->num_categories == 0 ||
+			cfg->num_categories > RTE_ACL_MAX_CATEGORIES ||
+			cfg->num_fields == 0 ||
+			cfg->num_fields > RTE_ACL_MAX_FIELDS)
+		return -EINVAL;
+
+	for (i = 0; i != cfg->num_fields; i++) {
+		if (cfg->defs[i].type > RTE_ACL_FIELD_TYPE_BITMASK) {
+			RTE_LOG(ERR, ACL,
+			"ACL context: %s, invalid type: %hhu for %u-th field\n",
+			ctx->name, cfg->defs[i].type, i);
+			return -EINVAL;
+		}
+		for (j = 0;
+				j != RTE_DIM(field_sizes) &&
+				cfg->defs[i].size != field_sizes[j];
+				j++)
+			;
+
+		if (j == RTE_DIM(field_sizes)) {
+			RTE_LOG(ERR, ACL,
+			"ACL context: %s, invalid size: %hhu for %u-th field\n",
+			ctx->name, cfg->defs[i].size, i);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
 int
 rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 {
@@ -1809,9 +1810,9 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 	size_t max_size;
 	struct acl_build_context bcx;
 
-	if (ctx == NULL || cfg == NULL || cfg->num_categories == 0 ||
-			cfg->num_categories > RTE_ACL_MAX_CATEGORIES)
-		return -EINVAL;
+	rc = acl_check_bld_param(ctx, cfg);
+	if (rc != 0)
+		return rc;
 
 	acl_build_reset(ctx);
 
