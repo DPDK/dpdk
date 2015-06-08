@@ -1362,6 +1362,9 @@ acl_calc_wildness(struct rte_acl_build_rule *head,
 		for (n = 0; n < config->num_fields; n++) {
 
 			double wild = 0;
+			uint64_t msk_val =
+				RTE_LEN2MASK(CHAR_BIT * config->defs[n].size,
+				typeof(msk_val));
 			double size = CHAR_BIT * config->defs[n].size;
 			int field_index = config->defs[n].field_index;
 			const struct rte_acl_field *fld = rule->f->field +
@@ -1369,8 +1372,8 @@ acl_calc_wildness(struct rte_acl_build_rule *head,
 
 			switch (rule->config->defs[n].type) {
 			case RTE_ACL_FIELD_TYPE_BITMASK:
-				wild = (size - __builtin_popcount(
-					fld->mask_range.u8)) /
+				wild = (size - __builtin_popcountll(
+					fld->mask_range.u64 & msk_val)) /
 					size;
 				break;
 
