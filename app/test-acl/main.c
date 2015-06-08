@@ -739,7 +739,8 @@ add_cb_rules(FILE *f, struct rte_acl_ctx *ctx)
 			return rc;
 		}
 
-		v.data.category_mask = LEN2MASK(RTE_ACL_MAX_CATEGORIES);
+		v.data.category_mask = RTE_LEN2MASK(RTE_ACL_MAX_CATEGORIES,
+			typeof(v.data.category_mask));
 		v.data.priority = RTE_ACL_MAX_PRIORITY - n;
 		v.data.userdata = n;
 

@@ -271,7 +271,8 @@ acl_add_rules(struct rte_acl_ctx *ctx, const void *rules, uint32_t num)
 static int
 acl_check_rule(const struct rte_acl_rule_data *rd)
 {
-	if ((rd->category_mask & LEN2MASK(RTE_ACL_MAX_CATEGORIES)) == 0 ||
+	if ((RTE_LEN2MASK(RTE_ACL_MAX_CATEGORIES, typeof(rd->category_mask)) &
+			rd->category_mask) == 0 ||
 			rd->priority > RTE_ACL_MAX_PRIORITY ||
 			rd->priority < RTE_ACL_MIN_PRIORITY ||
 			rd->userdata == RTE_ACL_INVALID_USERDATA)

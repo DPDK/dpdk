@@ -1772,7 +1772,8 @@ acl_bld(struct acl_build_context *bcx, struct rte_acl_ctx *ctx,
 	bcx->pool.alignment = ACL_POOL_ALIGN;
 	bcx->pool.min_alloc = ACL_POOL_ALLOC_MIN;
 	bcx->cfg = *cfg;
-	bcx->category_mask = LEN2MASK(bcx->cfg.num_categories);
+	bcx->category_mask = RTE_LEN2MASK(bcx->cfg.num_categories,
+		typeof(bcx->category_mask));
 	bcx->node_max = node_max;
 
 	rc = sigsetjmp(bcx->pool.fail, 0);

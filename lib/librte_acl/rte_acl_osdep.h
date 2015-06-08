@@ -56,8 +56,6 @@
  * Common defines.
  */
 
-#define	LEN2MASK(ln)	((uint32_t)(((uint64_t)1 << (ln)) - 1))
-
 #define DIM(x) RTE_DIM(x)
 
 #include <rte_common.h>
