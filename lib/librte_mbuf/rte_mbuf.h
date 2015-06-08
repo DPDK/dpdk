@@ -426,21 +426,6 @@ if (!(exp)) {                                                        \
 #ifdef RTE_MBUF_REFCNT_ATOMIC
 
 /**
- * Adds given value to an mbuf's refcnt and returns its new value.
- * @param m
- *   Mbuf to update
- * @param value
- *   Value to add/subtract
- * @return
- *   Updated value
- */
-static inline uint16_t
-rte_mbuf_refcnt_update(struct rte_mbuf *m, int16_t value)
-{
-	return (uint16_t)(rte_atomic16_add_return(&m->refcnt_atomic, value));
-}
-
-/**
  * Reads the value of an mbuf's refcnt.
  * @param m
  *   Mbuf to read
@@ -464,6 +449,33 @@ static inline void
 rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 {
 	rte_atomic16_set(&m->refcnt_atomic, new_value);
+}
+
+/**
+ * Adds given value to an mbuf's refcnt and returns its new value.
+ * @param m
+ *   Mbuf to update
+ * @param value
+ *   Value to add/subtract
+ * @return
+ *   Updated value
+ */
+static inline uint16_t
+rte_mbuf_refcnt_update(struct rte_mbuf *m, int16_t value)
+{
+	/*
+	 * The atomic_add is an expensive operation, so we don't want to
+	 * call it in the case where we know we are the uniq holder of
+	 * this mbuf (i.e. ref_cnt == 1). Otherwise, an atomic
+	 * operation has to be used because concurrent accesses on the
+	 * reference counter can occur.
+	 */
+	if (likely(rte_mbuf_refcnt_read(m) == 1)) {
+		rte_mbuf_refcnt_set(m, 1 + value);
+		return 1 + value;
+	}
+
+	return (uint16_t)(rte_atomic16_add_return(&m->refcnt_atomic, value));
 }
 
 #else /* ! RTE_MBUF_REFCNT_ATOMIC */
@@ -895,20 +907,7 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, 0);
 
-	/*
-	 * Check to see if this is the last reference to the mbuf.
-	 * Note: the double check here is deliberate. If the ref_cnt is "atomic"
-	 * the call to "refcnt_update" is a very expensive operation, so we
-	 * don't want to call it in the case where we know we are the holder
-	 * of the last reference to this mbuf i.e. ref_cnt == 1.
-	 * If however, ref_cnt != 1, it's still possible that we may still be
-	 * the final decrementer of the count, so we need to check that
-	 * result also, to make sure the mbuf is freed properly.
-	 */
-	if (likely (rte_mbuf_refcnt_read(m) == 1) ||
-			likely (rte_mbuf_refcnt_update(m, -1) == 0)) {
-
-		rte_mbuf_refcnt_set(m, 0);
+	if (likely(rte_mbuf_refcnt_update(m, -1) == 0)) {
 
 		/* if this is an indirect mbuf, then
 		 *  - detach mbuf
