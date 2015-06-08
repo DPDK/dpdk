@@ -1262,19 +1262,9 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 				 * all higher bits.
 				 */
 				uint64_t mask;
-
-				if (fld->mask_range.u32 == 0) {
-					mask = 0;
-
-				/*
-				 * arithmetic right shift for the length of
-				 * the mask less the msb.
-				 */
-				} else {
-					mask = -1 <<
-						(rule->config->defs[n].size *
-						CHAR_BIT - fld->mask_range.u32);
-				}
+				mask = RTE_ACL_MASKLEN_TO_BITMASK(
+					fld->mask_range.u32,
+					rule->config->defs[n].size);
 
 				/* gen a mini-trie for this field */
 				merge = acl_gen_mask_trie(context,
