@@ -93,7 +93,7 @@ $(ROOTDIRS-y):
 	@[ -d $(BUILDDIR)/$@ ] || mkdir -p $(BUILDDIR)/$@
 	@echo "== Build $@"
 	$(Q)$(MAKE) S=$@ -f $(RTE_SRCDIR)/$@/Makefile -C $(BUILDDIR)/$@ all
-	@if [ $@ = lib -a $(RTE_BUILD_COMBINE_LIBS) = y ]; then \
+	@if [ $@ = drivers -a $(RTE_BUILD_COMBINE_LIBS) = y ]; then \
 		$(MAKE) -f $(RTE_SDK)/lib/Makefile sharelib; \
 	fi
 
