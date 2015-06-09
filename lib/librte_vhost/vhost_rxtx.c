@@ -265,8 +265,7 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint16_t res_base_idx,
 	 * (guest physical addr -> vhost virtual addr)
 	 */
 	vq = dev->virtqueue[VIRTIO_RXQ];
-	vb_addr =
-		gpa_to_vva(dev, vq->buf_vec[vec_idx].buf_addr);
+	vb_addr = gpa_to_vva(dev, vq->buf_vec[vec_idx].buf_addr);
 	vb_hdr_addr = vb_addr;
 
 	/* Prefetch buffer address. */
@@ -284,8 +283,7 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint16_t res_base_idx,
 
 	seg_avail = rte_pktmbuf_data_len(pkt);
 	vb_offset = vq->vhost_hlen;
-	vb_avail =
-		vq->buf_vec[vec_idx].buf_len - vq->vhost_hlen;
+	vb_avail = vq->buf_vec[vec_idx].buf_len - vq->vhost_hlen;
 
 	entry_len = vq->vhost_hlen;
 
@@ -308,8 +306,7 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint16_t res_base_idx,
 		}
 
 		vec_idx++;
-		vb_addr =
-			gpa_to_vva(dev, vq->buf_vec[vec_idx].buf_addr);
+		vb_addr = gpa_to_vva(dev, vq->buf_vec[vec_idx].buf_addr);
 
 		/* Prefetch buffer address. */
 		rte_prefetch0((void *)(uintptr_t)vb_addr);
