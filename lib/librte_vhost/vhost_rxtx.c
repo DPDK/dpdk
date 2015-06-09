@@ -290,7 +290,6 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint16_t res_base_idx,
 	if (vb_avail == 0) {
 		uint32_t desc_idx =
 			vq->buf_vec[vec_idx].desc_idx;
-		vq->desc[desc_idx].len = vq->vhost_hlen;
 
 		if ((vq->desc[desc_idx].flags
 			& VRING_DESC_F_NEXT) == 0) {
@@ -374,7 +373,6 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint16_t res_base_idx,
 					 */
 					uint32_t desc_idx =
 						vq->buf_vec[vec_idx].desc_idx;
-					vq->desc[desc_idx].len = vb_offset;
 
 					if ((vq->desc[desc_idx].flags &
 						VRING_DESC_F_NEXT) == 0) {
@@ -409,26 +407,13 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint16_t res_base_idx,
 				/*
 				 * This whole packet completes.
 				 */
-				uint32_t desc_idx =
-					vq->buf_vec[vec_idx].desc_idx;
-				vq->desc[desc_idx].len = vb_offset;
-
-				while (vq->desc[desc_idx].flags &
-					VRING_DESC_F_NEXT) {
-					desc_idx = vq->desc[desc_idx].next;
-					 vq->desc[desc_idx].len = 0;
-				}
-
 				/* Update used ring with desc information */
 				vq->used->ring[cur_idx & (vq->size - 1)].id
 					= vq->buf_vec[vec_idx].desc_idx;
 				vq->used->ring[cur_idx & (vq->size - 1)].len
 					= entry_len;
-				entry_len = 0;
-				cur_idx++;
 				entry_success++;
-				seg_avail = 0;
-				cpy_len = RTE_MIN(vb_avail, seg_avail);
+				break;
 			}
 		}
 	}
