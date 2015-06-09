@@ -436,6 +436,34 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint16_t res_base_idx,
 	return entry_success;
 }
 
+static inline void __attribute__((always_inline))
+update_secure_len(struct vhost_virtqueue *vq, uint32_t id,
+	uint32_t *secure_len, uint32_t *vec_idx)
+{
+	uint16_t wrapped_idx = id & (vq->size - 1);
+	uint32_t idx = vq->avail->ring[wrapped_idx];
+	uint8_t next_desc;
+	uint32_t len = *secure_len;
+	uint32_t vec_id = *vec_idx;
+
+	do {
+		next_desc = 0;
+		len += vq->desc[idx].len;
+		vq->buf_vec[vec_id].buf_addr = vq->desc[idx].addr;
+		vq->buf_vec[vec_id].buf_len = vq->desc[idx].len;
+		vq->buf_vec[vec_id].desc_idx = idx;
+		vec_id++;
+
+		if (vq->desc[idx].flags & VRING_DESC_F_NEXT) {
+			idx = vq->desc[idx].next;
+			next_desc = 1;
+		}
+	} while (next_desc);
+
+	*secure_len = len;
+	*vec_idx = vec_id;
+}
+
 /*
  * This function works for mergeable RX.
  */
@@ -445,8 +473,8 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 {
 	struct vhost_virtqueue *vq;
 	uint32_t pkt_idx = 0, entry_success = 0;
-	uint16_t avail_idx, res_cur_idx;
-	uint16_t res_base_idx, res_end_idx;
+	uint16_t avail_idx;
+	uint16_t res_base_idx, res_cur_idx;
 	uint8_t success = 0;
 
 	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") virtio_dev_merge_rx()\n",
@@ -462,17 +490,16 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 		return 0;
 
 	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
-		uint32_t secure_len = 0;
-		uint16_t need_cnt;
-		uint32_t vec_idx = 0;
 		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + vq->vhost_hlen;
-		uint16_t i, id;
 
 		do {
 			/*
 			 * As many data cores may want access to available
 			 * buffers, they need to be reserved.
 			 */
+			uint32_t secure_len = 0;
+			uint32_t vec_idx = 0;
+
 			res_base_idx = vq->last_used_idx_res;
 			res_cur_idx = res_base_idx;
 
@@ -486,22 +513,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 						dev->device_fh);
 					return pkt_idx;
 				} else {
-					uint16_t wrapped_idx =
-						(res_cur_idx) & (vq->size - 1);
-					uint32_t idx =
-						vq->avail->ring[wrapped_idx];
-					uint8_t next_desc;
-
-					do {
-						next_desc = 0;
-						secure_len += vq->desc[idx].len;
-						if (vq->desc[idx].flags &
-							VRING_DESC_F_NEXT) {
-							idx = vq->desc[idx].next;
-							next_desc = 1;
-						}
-					} while (next_desc);
-
+					update_secure_len(vq, res_cur_idx, &secure_len, &vec_idx);
 					res_cur_idx++;
 				}
 			} while (pkt_len > secure_len);
@@ -512,33 +524,8 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 							res_cur_idx);
 		} while (success == 0);
 
-		id = res_base_idx;
-		need_cnt = res_cur_idx - res_base_idx;
-
-		for (i = 0; i < need_cnt; i++, id++) {
-			uint16_t wrapped_idx = id & (vq->size - 1);
-			uint32_t idx = vq->avail->ring[wrapped_idx];
-			uint8_t next_desc;
-			do {
-				next_desc = 0;
-				vq->buf_vec[vec_idx].buf_addr =
-					vq->desc[idx].addr;
-				vq->buf_vec[vec_idx].buf_len =
-					vq->desc[idx].len;
-				vq->buf_vec[vec_idx].desc_idx = idx;
-				vec_idx++;
-
-				if (vq->desc[idx].flags & VRING_DESC_F_NEXT) {
-					idx = vq->desc[idx].next;
-					next_desc = 1;
-				}
-			} while (next_desc);
-		}
-
-		res_end_idx = res_cur_idx;
-
 		entry_success = copy_from_mbuf_to_vring(dev, res_base_idx,
-			res_end_idx, pkts[pkt_idx]);
+			res_cur_idx, pkts[pkt_idx]);
 
 		rte_compiler_barrier();
 
@@ -550,7 +537,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 			rte_pause();
 
 		*(volatile uint16_t *)&vq->used->idx += entry_success;
-		vq->last_used_idx = res_end_idx;
+		vq->last_used_idx = res_cur_idx;
 
 		/* flush used->idx update before we read avail->flags. */
 		rte_mb();
