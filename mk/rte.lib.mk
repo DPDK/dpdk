@@ -70,7 +70,7 @@ else
 _CPU_LDFLAGS := $(CPU_LDFLAGS)
 endif
 
-O_TO_A = $(AR) crus $(LIB) $(OBJS-y)
+O_TO_A = $(AR) crDs $(LIB) $(OBJS-y)
 O_TO_A_STR = $(subst ','\'',$(O_TO_A)) #'# fix syntax highlight
 O_TO_A_DISP = $(if $(V),"$(O_TO_A_STR)","  AR $(@)")
 O_TO_A_CMD = "cmd_$@ = $(O_TO_A_STR)"
