@@ -83,20 +83,20 @@ static void
 run_hash_func_perf_test(rte_hash_function f, uint32_t init_val,
 		uint32_t key_len)
 {
-	static uint8_t key[RTE_HASH_KEY_LENGTH_MAX];
-	uint64_t ticks = 0, start, end;
+	static uint8_t key[HASHTEST_ITERATIONS][RTE_HASH_KEY_LENGTH_MAX];
+	uint64_t ticks, start, end;
 	unsigned i, j;
 
 	for (i = 0; i < HASHTEST_ITERATIONS; i++) {
-
 		for (j = 0; j < key_len; j++)
-			key[j] = (uint8_t) rte_rand();
-
-		start = rte_rdtsc();
-		f(key, key_len, init_val);
-		end = rte_rdtsc();
-		ticks += end - start;
+			key[i][j] = (uint8_t) rte_rand();
 	}
+
+	start = rte_rdtsc();
+	for (i = 0; i < HASHTEST_ITERATIONS; i++)
+		f(key[i], key_len, init_val);
+	end = rte_rdtsc();
+	ticks = end - start;
 
 	printf("%-12s, %-18u, %-13u, %.02f\n", get_hash_name(f), (unsigned) key_len,
 			(unsigned) init_val, (double)ticks / HASHTEST_ITERATIONS);
