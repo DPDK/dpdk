@@ -86,8 +86,8 @@ get_hash_name(rte_hash_function f)
  * Test a hash function.
  */
 static void
-run_hash_func_perf_test(rte_hash_function f, uint32_t init_val,
-		uint32_t key_len)
+run_hash_func_perf_test(uint32_t key_len, uint32_t init_val,
+		rte_hash_function f)
 {
 	static uint8_t key[HASHTEST_ITERATIONS][RTE_HASH_KEY_LENGTH_MAX];
 	uint64_t ticks, start, end;
@@ -121,12 +121,12 @@ run_hash_func_perf_tests(void)
 			HASHTEST_ITERATIONS);
 	printf("Hash Func.  , Key Length (bytes), Initial value, Ticks/Op.\n");
 
-	for (i = 0; i < RTE_DIM(hashtest_funcs); i++) {
-		for (j = 0; j < RTE_DIM(hashtest_initvals); j++) {
-			for (k = 0; k < RTE_DIM(hashtest_key_lens); k++) {
-				run_hash_func_perf_test(hashtest_funcs[i],
-						hashtest_initvals[j],
-						hashtest_key_lens[k]);
+	for (i = 0; i < RTE_DIM(hashtest_initvals); i++) {
+		for (j = 0; j < RTE_DIM(hashtest_key_lens); j++) {
+			for (k = 0; k < RTE_DIM(hashtest_funcs); k++) {
+				run_hash_func_perf_test(hashtest_key_lens[j],
+						hashtest_initvals[i],
+						hashtest_funcs[k]);
 			}
 		}
 	}
