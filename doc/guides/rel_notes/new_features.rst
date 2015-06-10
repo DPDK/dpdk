@@ -121,4 +121,9 @@ New Features
 
 *   Job Stats library and Sample Application.
 
+*   Enhanced Jenkins hash (jhash) library
+
+.. note:: The hash values returned by the new jhash library are different
+          from the ones returned by the previous library.
+
 For further features supported in this release, see Chapter 3 Supported Features.

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -45,38 +45,62 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <string.h>
+#include <rte_byteorder.h>
 
 /* jhash.h: Jenkins hash support.
  *
- * Copyright (C) 1996 Bob Jenkins (bob_jenkins@burtleburtle.net)
+ * Copyright (C) 2006 Bob Jenkins (bob_jenkins@burtleburtle.net)
  *
  * http://burtleburtle.net/bob/hash/
  *
  * These are the credits from Bob's sources:
  *
- * lookup2.c, by Bob Jenkins, December 1996, Public Domain.
- * hash(), hash2(), hash3, and mix() are externally useful functions.
- * Routines to test the hash are included if SELF_TEST is defined.
- * You can use this free for any purpose.  It has no warranty.
+ * lookup3.c, by Bob Jenkins, May 2006, Public Domain.
+ *
+ * These are functions for producing 32-bit hashes for hash table lookup.
+ * hashword(), hashlittle(), hashlittle2(), hashbig(), mix(), and final()
+ * are externally useful functions.  Routines to test the hash are included
+ * if SELF_TEST is defined.  You can use this free for any purpose.  It's in
+ * the public domain.  It has no warranty.
  *
  * $FreeBSD$
  */
 
+#define rot(x, k) (((x) << (k)) | ((x) >> (32-(k))))
+
 /** @internal Internal function. NOTE: Arguments are modified. */
 #define __rte_jhash_mix(a, b, c) do { \
-	a -= b; a -= c; a ^= (c>>13); \
-	b -= c; b -= a; b ^= (a<<8); \
-	c -= a; c -= b; c ^= (b>>13); \
-	a -= b; a -= c; a ^= (c>>12); \
-	b -= c; b -= a; b ^= (a<<16); \
-	c -= a; c -= b; c ^= (b>>5); \
-	a -= b; a -= c; a ^= (c>>3); \
-	b -= c; b -= a; b ^= (a<<10); \
-	c -= a; c -= b; c ^= (b>>15); \
+	a -= c; a ^= rot(c, 4); c += b; \
+	b -= a; b ^= rot(a, 6); a += c; \
+	c -= b; c ^= rot(b, 8); b += a; \
+	a -= c; a ^= rot(c, 16); c += b; \
+	b -= a; b ^= rot(a, 19); a += c; \
+	c -= b; c ^= rot(b, 4); b += a; \
+} while (0)
+
+#define __rte_jhash_final(a, b, c) do { \
+	c ^= b; c -= rot(b, 14); \
+	a ^= c; a -= rot(c, 11); \
+	b ^= a; b -= rot(a, 25); \
+	c ^= b; c -= rot(b, 16); \
+	a ^= c; a -= rot(c, 4);  \
+	b ^= a; b -= rot(a, 14); \
+	c ^= b; c -= rot(b, 24); \
 } while (0)
 
 /** The golden ratio: an arbitrary value. */
-#define RTE_JHASH_GOLDEN_RATIO      0x9e3779b9
+#define RTE_JHASH_GOLDEN_RATIO      0xdeadbeef
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+#define BIT_SHIFT(x, y, k) (((x) >> (k)) | ((uint64_t)(y) << (32-(k))))
+#else
+#define BIT_SHIFT(x, y, k) (((uint64_t)(x) << (k)) | ((y) >> (32-(k))))
+#endif
+
+#define LOWER8b_MASK rte_le_to_cpu_32(0xff)
+#define LOWER16b_MASK rte_le_to_cpu_32(0xffff)
+#define LOWER24b_MASK rte_le_to_cpu_32(0xffffff)
 
 /**
  * The most generic version, hashes an arbitrary sequence
@@ -95,42 +119,130 @@ extern "C" {
 static inline uint32_t
 rte_jhash(const void *key, uint32_t length, uint32_t initval)
 {
-	uint32_t a, b, c, len;
-	const uint8_t *k = (const uint8_t *)key;
-	const uint32_t *k32 = (const uint32_t *)key;
+	uint32_t a, b, c;
 
-	len = length;
-	a = b = RTE_JHASH_GOLDEN_RATIO;
-	c = initval;
+	/* Set up the internal state */
+	a = b = c = RTE_JHASH_GOLDEN_RATIO + ((uint32_t)length) + initval;
 
-	while (len >= 12) {
-		a += k32[0];
-		b += k32[1];
-		c += k32[2];
+	/* Check key alignment. For x86 architecture, first case is always optimal */
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686) || defined(RTE_ARCH_X86_X32)
+	const uint32_t *k = key;
+	const uint32_t s = 0;
+#else
+	const uint32_t *k = (uint32_t *)(uintptr_t)key & (uintptr_t)~3);
+	const uint32_t s = ((uintptr_t)key & 3) * CHAR_BIT;
+#endif
 
-		__rte_jhash_mix(a,b,c);
+	if (s == 0) {
+		while (length > 12) {
+			a += k[0];
+			b += k[1];
+			c += k[2];
 
-		k += (3 * sizeof(uint32_t)), k32 += 3;
-		len -= (3 * sizeof(uint32_t));
+			__rte_jhash_mix(a, b, c);
+
+			k += 3;
+			length -= 12;
+		}
+
+		switch (length) {
+		case 12:
+			c += k[2]; b += k[1]; a += k[0]; break;
+		case 11:
+			c += k[2] & LOWER24b_MASK; b += k[1]; a += k[0]; break;
+		case 10:
+			c += k[2] & LOWER16b_MASK; b += k[1]; a += k[0]; break;
+		case 9:
+			c += k[2] & LOWER8b_MASK; b += k[1]; a += k[0]; break;
+		case 8:
+			b += k[1]; a += k[0]; break;
+		case 7:
+			b += k[1] & LOWER24b_MASK; a += k[0]; break;
+		case 6:
+			b += k[1] & LOWER16b_MASK; a += k[0]; break;
+		case 5:
+			b += k[1] & LOWER8b_MASK; a += k[0]; break;
+		case 4:
+			a += k[0]; break;
+		case 3:
+			a += k[0] & LOWER24b_MASK; break;
+		case 2:
+			a += k[0] & LOWER16b_MASK; break;
+		case 1:
+			a += k[0] & LOWER8b_MASK; break;
+		/* zero length strings require no mixing */
+		case 0:
+			return c;
+		};
+	} else {
+		/* all but the last block: affect some 32 bits of (a, b, c) */
+		while (length > 12) {
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s);
+			c += BIT_SHIFT(k[2], k[3], s);
+			__rte_jhash_mix(a, b, c);
+
+			k += 3;
+			length -= 12;
+		}
+
+		/* last block: affect all 32 bits of (c) */
+		switch (length) {
+		case 12:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s);
+			c += BIT_SHIFT(k[2], k[3], s);
+			break;
+		case 11:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s);
+			c += BIT_SHIFT(k[2], k[3], s) & LOWER24b_MASK;
+			break;
+		case 10:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s);
+			c += BIT_SHIFT(k[2], k[3], s) & LOWER16b_MASK;
+			break;
+		case 9:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s);
+			c += BIT_SHIFT(k[2], k[3], s) & LOWER8b_MASK;
+			break;
+		case 8:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s);
+			break;
+		case 7:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s) & LOWER24b_MASK;
+			break;
+		case 6:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s) & LOWER16b_MASK;
+			break;
+		case 5:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s) & LOWER8b_MASK;
+			break;
+		case 4:
+			a += BIT_SHIFT(k[0], k[1], s);
+			break;
+		case 3:
+			a += BIT_SHIFT(k[0], k[1], s) & LOWER24b_MASK;
+			break;
+		case 2:
+			a += BIT_SHIFT(k[0], k[1], s) & LOWER16b_MASK;
+			break;
+		case 1:
+			a += BIT_SHIFT(k[0], k[1], s) & LOWER8b_MASK;
+			break;
+		/* zero length strings require no mixing */
+		case 0:
+			return c;
+		}
 	}
 
-	c += length;
-	switch (len) {
-		case 11: c += ((uint32_t)k[10] << 24);
-		case 10: c += ((uint32_t)k[9] << 16);
-		case 9 : c += ((uint32_t)k[8] << 8);
-		case 8 : b += ((uint32_t)k[7] << 24);
-		case 7 : b += ((uint32_t)k[6] << 16);
-		case 6 : b += ((uint32_t)k[5] << 8);
-		case 5 : b += k[4];
-		case 4 : a += ((uint32_t)k[3] << 24);
-		case 3 : a += ((uint32_t)k[2] << 16);
-		case 2 : a += ((uint32_t)k[1] << 8);
-		case 1 : a += k[0];
-		default: break;
-	};
-
-	__rte_jhash_mix(a,b,c);
+	__rte_jhash_final(a, b, c);
 
 	return c;
 }
@@ -151,33 +263,54 @@ rte_jhash(const void *key, uint32_t length, uint32_t initval)
 static inline uint32_t
 rte_jhash2(const uint32_t *k, uint32_t length, uint32_t initval)
 {
-	uint32_t a, b, c, len;
+	uint32_t a, b, c;
 
-	a = b = RTE_JHASH_GOLDEN_RATIO;
-	c = initval;
-	len = length;
+	/* Set up the internal state */
+	a = b = c = RTE_JHASH_GOLDEN_RATIO + (((uint32_t)length) << 2) + initval;
 
-	while (len >= 3) {
+	/* Handle most of the key */
+	while (length > 3) {
 		a += k[0];
 		b += k[1];
 		c += k[2];
+
 		__rte_jhash_mix(a, b, c);
-		k += 3; len -= 3;
+
+		k += 3;
+		length -= 3;
 	}
 
-	c += length * 4;
-
-	switch (len) {
-		case 2 : b += k[1];
-		case 1 : a += k[0];
-		default: break;
+	/* Handle the last 3 uint32_t's */
+	switch (length) {
+	case 3:
+		c += k[2];
+		/* Fallthrough */
+	case 2:
+		b += k[1];
+		/* Fallthrough */
+	case 1:
+		a += k[0];
+		__rte_jhash_final(a, b, c);
+		/* Fallthrough */
+	/* case 0: nothing left to add */
+	case 0:
+		break;
 	};
-
-	__rte_jhash_mix(a,b,c);
 
 	return c;
 }
 
+static inline uint32_t
+__rte_jhash_3words(uint32_t a, uint32_t b, uint32_t c, uint32_t initval)
+{
+	a += RTE_JHASH_GOLDEN_RATIO + initval;
+	b += RTE_JHASH_GOLDEN_RATIO + initval;
+	c += RTE_JHASH_GOLDEN_RATIO + initval;
+
+	__rte_jhash_final(a, b, c);
+
+	return c;
+}
 
 /**
  * A special ultra-optimized versions that knows it is hashing exactly
@@ -197,17 +330,7 @@ rte_jhash2(const uint32_t *k, uint32_t length, uint32_t initval)
 static inline uint32_t
 rte_jhash_3words(uint32_t a, uint32_t b, uint32_t c, uint32_t initval)
 {
-	a += RTE_JHASH_GOLDEN_RATIO;
-	b += RTE_JHASH_GOLDEN_RATIO;
-	c += initval;
-
-	__rte_jhash_mix(a, b, c);
-
-	/*
-	 * NOTE: In particular the "c += length; __rte_jhash_mix(a,b,c);"
-	 *       normally done at the end is not done here.
-	 */
-	return c;
+	return __rte_jhash_3words(a + 12, b + 12, c + 12, initval);
 }
 
 /**
@@ -226,7 +349,7 @@ rte_jhash_3words(uint32_t a, uint32_t b, uint32_t c, uint32_t initval)
 static inline uint32_t
 rte_jhash_2words(uint32_t a, uint32_t b, uint32_t initval)
 {
-	return rte_jhash_3words(a, b, 0, initval);
+	return __rte_jhash_3words(a + 8, b + 8, 8, initval);
 }
 
 /**
@@ -243,7 +366,7 @@ rte_jhash_2words(uint32_t a, uint32_t b, uint32_t initval)
 static inline uint32_t
 rte_jhash_1word(uint32_t a, uint32_t initval)
 {
-	return rte_jhash_3words(a, 0, 0, initval);
+	return __rte_jhash_3words(a + 4, 4, 4, initval);
 }
 
 #ifdef __cplusplus
