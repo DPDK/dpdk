@@ -1565,7 +1565,6 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
 
-	dev_info->driver_name = driver_name;
 	dev_info->max_mac_addrs = 1;
 
 	dev_info->max_rx_pktlen = (uint32_t)2048;

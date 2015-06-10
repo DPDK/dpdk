@@ -62,7 +62,7 @@
 
 extern const char *pmd_bond_init_valid_arguments[];
 
-extern const char *driver_name;
+extern const char *pmd_bond_driver_name;
 
 /** Port Queue Mapping Structure */
 struct bond_rx_queue {
@@ -162,7 +162,7 @@ struct bond_dev_private {
 extern struct eth_dev_ops default_dev_ops;
 
 int
-valid_bonded_ethdev(struct rte_eth_dev *eth_dev);
+valid_bonded_ethdev(const struct rte_eth_dev *eth_dev);
 
 /* Search given slave array to find possition of given id.
  * Return slave pos or slaves_count if not found. */

@@ -45,59 +45,30 @@
 #define DEFAULT_POLLING_INTERVAL_10_MS (10)
 
 int
-valid_bonded_ethdev(struct rte_eth_dev *eth_dev)
+valid_bonded_ethdev(const struct rte_eth_dev *eth_dev)
 {
-	size_t len;
-
 	/* Check valid pointer */
-	if (eth_dev->driver->pci_drv.name == NULL || driver_name == NULL)
+	if (eth_dev->driver->pci_drv.name == NULL)
 		return -1;
 
-	/* Check string lengths are equal */
-	len = strlen(driver_name);
-	if (strlen(eth_dev->driver->pci_drv.name) != len)
-		return -1;
-
-	/* Compare strings */
-	return strncmp(eth_dev->driver->pci_drv.name, driver_name, len);
-}
-
-int
-valid_port_id(uint8_t port_id)
-{
-	/* Verify that port id is valid */
-	int ethdev_count = rte_eth_dev_count();
-	if (port_id >= ethdev_count) {
-		RTE_BOND_LOG(ERR, "Port Id %d is greater than rte_eth_dev_count %d",
-				port_id, ethdev_count);
-		return -1;
-	}
-
-	return 0;
+	/* return 0 if driver name matches */
+	return eth_dev->driver->pci_drv.name != pmd_bond_driver_name;
 }
 
 int
 valid_bonded_port_id(uint8_t port_id)
 {
-	/* Verify that port id's are valid */
-	if (valid_port_id(port_id))
+	if (!rte_eth_dev_is_valid_port(port_id))
 		return -1;
 
-	/* Verify that bonded_port_id refers to a bonded port */
-	if (valid_bonded_ethdev(&rte_eth_devices[port_id])) {
-		RTE_BOND_LOG(ERR, "Specified port Id %d is not a bonded eth_dev device",
-				port_id);
-		return -1;
-	}
-
-	return 0;
+	return valid_bonded_ethdev(&rte_eth_devices[port_id]);
 }
 
 int
 valid_slave_port_id(uint8_t port_id)
 {
 	/* Verify that port id's are valid */
-	if (valid_port_id(port_id))
+	if (!rte_eth_dev_is_valid_port(port_id))
 		return -1;
 
 	/* Verify that port_id refers to a non bonded port */
@@ -192,7 +163,7 @@ number_of_sockets(void)
 	return ++sockets;
 }
 
-const char *driver_name = "Link Bonding PMD";
+const char *pmd_bond_driver_name = "Link Bonding PMD";
 
 int
 rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
@@ -259,7 +230,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	}
 
 	pci_dev->numa_node = socket_id;
-	pci_drv->name = driver_name;
+	pci_drv->name = pmd_bond_driver_name;
 	pci_dev->driver = pci_drv;
 
 	eth_dev->driver = eth_drv;
