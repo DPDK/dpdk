@@ -212,6 +212,10 @@ static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 static void i40e_configure_registers(struct i40e_hw *hw);
 static void i40e_hw_init(struct i40e_hw *hw);
 static int i40e_config_qinq(struct i40e_hw *hw, struct i40e_vsi *vsi);
+static int i40e_mirror_rule_set(struct rte_eth_dev *dev,
+			struct rte_eth_mirror_conf *mirror_conf,
+			uint8_t sw_id, uint8_t on);
+static int i40e_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t sw_id);
 
 static const struct rte_pci_id pci_id_i40e_map[] = {
 #define RTE_PCI_DEV_ID_DECL_I40E(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
@@ -263,6 +267,8 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.udp_tunnel_add               = i40e_dev_udp_tunnel_add,
 	.udp_tunnel_del               = i40e_dev_udp_tunnel_del,
 	.filter_ctrl                  = i40e_dev_filter_ctrl,
+	.mirror_rule_set              = i40e_mirror_rule_set,
+	.mirror_rule_reset            = i40e_mirror_rule_reset,
 };
 
 static struct eth_driver rte_i40e_pmd = {
@@ -563,6 +569,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 
 	/* enable uio intr after callback register */
 	rte_intr_enable(&(pci_dev->intr_handle));
+
+	/* initialize mirror rule list */
+	TAILQ_INIT(&pf->mirror_list);
 
 	return 0;
 
@@ -930,6 +939,7 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_vsi *main_vsi = pf->main_vsi;
+	struct i40e_mirror_rule *p_mirror;
 	int i;
 
 	/* Disable all queues */
@@ -953,6 +963,13 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 
 	/* Set link down */
 	i40e_dev_set_link_down(dev);
+
+	/* Remove all mirror rules */
+	while ((p_mirror = TAILQ_FIRST(&pf->mirror_list))) {
+		TAILQ_REMOVE(&pf->mirror_list, p_mirror, rules);
+		rte_free(p_mirror);
+	}
+	pf->nb_mirror_rule = 0;
 
 }
 
@@ -5747,5 +5764,322 @@ i40e_config_qinq(struct i40e_hw *hw, struct i40e_vsi *vsi)
 		}
 	}
 
+	return 0;
+}
+
+/**
+ * i40e_aq_add_mirror_rule
+ * @hw: pointer to the hardware structure
+ * @seid: VEB seid to add mirror rule to
+ * @dst_id: destination vsi seid
+ * @entries: Buffer which contains the entities to be mirrored
+ * @count: number of entities contained in the buffer
+ * @rule_id:the rule_id of the rule to be added
+ *
+ * Add a mirror rule for a given veb.
+ *
+ **/
+static enum i40e_status_code
+i40e_aq_add_mirror_rule(struct i40e_hw *hw,
+			uint16_t seid, uint16_t dst_id,
+			uint16_t rule_type, uint16_t *entries,
+			uint16_t count, uint16_t *rule_id)
+{
+	struct i40e_aq_desc desc;
+	struct i40e_aqc_add_delete_mirror_rule *cmd =
+		(struct i40e_aqc_add_delete_mirror_rule *)&desc.params.raw;
+	struct i40e_aqc_add_delete_mirror_rule_completion *resp =
+		(struct i40e_aqc_add_delete_mirror_rule_completion *)
+		&desc.params.raw;
+	uint16_t buff_len;
+	enum i40e_status_code status;
+
+	i40e_fill_default_direct_cmd_desc(&desc,
+					  i40e_aqc_opc_add_mirror_rule);
+
+	buff_len = sizeof(uint16_t) * count;
+	desc.datalen = rte_cpu_to_le_16(buff_len);
+	if (buff_len > 0)
+		desc.flags |= rte_cpu_to_le_16(
+			(uint16_t)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
+	cmd->rule_type = rte_cpu_to_le_16(rule_type <<
+				I40E_AQC_MIRROR_RULE_TYPE_SHIFT);
+	cmd->num_entries = rte_cpu_to_le_16(count);
+	cmd->seid = rte_cpu_to_le_16(seid);
+	cmd->destination = rte_cpu_to_le_16(dst_id);
+
+	status = i40e_asq_send_command(hw, &desc, entries, buff_len, NULL);
+	PMD_DRV_LOG(INFO, "i40e_aq_add_mirror_rule, aq_status %d,"
+			 "rule_id = %u"
+			 " mirror_rules_used = %u, mirror_rules_free = %u,",
+			 hw->aq.asq_last_status, resp->rule_id,
+			 resp->mirror_rules_used, resp->mirror_rules_free);
+	*rule_id = rte_le_to_cpu_16(resp->rule_id);
+
+	return status;
+}
+
+/**
+ * i40e_aq_del_mirror_rule
+ * @hw: pointer to the hardware structure
+ * @seid: VEB seid to add mirror rule to
+ * @entries: Buffer which contains the entities to be mirrored
+ * @count: number of entities contained in the buffer
+ * @rule_id:the rule_id of the rule to be delete
+ *
+ * Delete a mirror rule for a given veb.
+ *
+ **/
+static enum i40e_status_code
+i40e_aq_del_mirror_rule(struct i40e_hw *hw,
+		uint16_t seid, uint16_t rule_type, uint16_t *entries,
+		uint16_t count, uint16_t rule_id)
+{
+	struct i40e_aq_desc desc;
+	struct i40e_aqc_add_delete_mirror_rule *cmd =
+		(struct i40e_aqc_add_delete_mirror_rule *)&desc.params.raw;
+	uint16_t buff_len = 0;
+	enum i40e_status_code status;
+	void *buff = NULL;
+
+	i40e_fill_default_direct_cmd_desc(&desc,
+					  i40e_aqc_opc_delete_mirror_rule);
+
+	if (rule_type == I40E_AQC_MIRROR_RULE_TYPE_VLAN) {
+		desc.flags |= rte_cpu_to_le_16((uint16_t)(I40E_AQ_FLAG_BUF |
+							  I40E_AQ_FLAG_RD));
+		cmd->num_entries = count;
+		buff_len = sizeof(uint16_t) * count;
+		desc.datalen = rte_cpu_to_le_16(buff_len);
+		buff = (void *)entries;
+	} else
+		/* rule id is filled in destination field for deleting mirror rule */
+		cmd->destination = rte_cpu_to_le_16(rule_id);
+
+	cmd->rule_type = rte_cpu_to_le_16(rule_type <<
+				I40E_AQC_MIRROR_RULE_TYPE_SHIFT);
+	cmd->seid = rte_cpu_to_le_16(seid);
+
+	status = i40e_asq_send_command(hw, &desc, buff, buff_len, NULL);
+
+	return status;
+}
+
+/**
+ * i40e_mirror_rule_set
+ * @dev: pointer to the hardware structure
+ * @mirror_conf: mirror rule info
+ * @sw_id: mirror rule's sw_id
+ * @on: enable/disable
+ *
+ * set a mirror rule.
+ *
+ **/
+static int
+i40e_mirror_rule_set(struct rte_eth_dev *dev,
+			struct rte_eth_mirror_conf *mirror_conf,
+			uint8_t sw_id, uint8_t on)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_mirror_rule *it, *mirr_rule = NULL;
+	struct i40e_mirror_rule *parent = NULL;
+	uint16_t seid, dst_seid, rule_id;
+	uint16_t i, j = 0;
+	int ret;
+
+	PMD_DRV_LOG(DEBUG, "i40e_mirror_rule_set: sw_id = %d.", sw_id);
+
+	if (pf->main_vsi->veb == NULL || pf->vfs == NULL) {
+		PMD_DRV_LOG(ERR, "mirror rule can not be configured"
+			" without veb or vfs.");
+		return -ENOSYS;
+	}
+	if (pf->nb_mirror_rule > I40E_MAX_MIRROR_RULES) {
+		PMD_DRV_LOG(ERR, "mirror table is full.");
+		return -ENOSPC;
+	}
+	if (mirror_conf->dst_pool > pf->vf_num) {
+		PMD_DRV_LOG(ERR, "invalid destination pool %u.",
+				 mirror_conf->dst_pool);
+		return -EINVAL;
+	}
+
+	seid = pf->main_vsi->veb->seid;
+
+	TAILQ_FOREACH(it, &pf->mirror_list, rules) {
+		if (sw_id <= it->index) {
+			mirr_rule = it;
+			break;
+		}
+		parent = it;
+	}
+	if (mirr_rule && sw_id == mirr_rule->index) {
+		if (on) {
+			PMD_DRV_LOG(ERR, "mirror rule exists.");
+			return -EEXIST;
+		} else {
+			ret = i40e_aq_del_mirror_rule(hw, seid,
+					mirr_rule->rule_type,
+					mirr_rule->entries,
+					mirr_rule->num_entries, mirr_rule->id);
+			if (ret < 0) {
+				PMD_DRV_LOG(ERR, "failed to remove mirror rule:"
+						   " ret = %d, aq_err = %d.",
+						   ret, hw->aq.asq_last_status);
+				return -ENOSYS;
+			}
+			TAILQ_REMOVE(&pf->mirror_list, mirr_rule, rules);
+			rte_free(mirr_rule);
+			pf->nb_mirror_rule--;
+			return 0;
+		}
+	} else if (!on) {
+		PMD_DRV_LOG(ERR, "mirror rule doesn't exist.");
+		return -ENOENT;
+	}
+
+	mirr_rule = rte_zmalloc("i40e_mirror_rule",
+				sizeof(struct i40e_mirror_rule) , 0);
+	if (!mirr_rule) {
+		PMD_DRV_LOG(ERR, "failed to allocate memory");
+		return I40E_ERR_NO_MEMORY;
+	}
+	switch (mirror_conf->rule_type) {
+	case ETH_MIRROR_VLAN:
+		for (i = 0, j = 0; i < ETH_MIRROR_MAX_VLANS; i++) {
+			if (mirror_conf->vlan.vlan_mask & (1ULL << i)) {
+				mirr_rule->entries[j] =
+					mirror_conf->vlan.vlan_id[i];
+				j++;
+			}
+		}
+		if (j == 0) {
+			PMD_DRV_LOG(ERR, "vlan is not specified.");
+			rte_free(mirr_rule);
+			return -EINVAL;
+		}
+		mirr_rule->rule_type = I40E_AQC_MIRROR_RULE_TYPE_VLAN;
+		break;
+	case ETH_MIRROR_VIRTUAL_POOL_UP:
+	case ETH_MIRROR_VIRTUAL_POOL_DOWN:
+		/* check if the specified pool bit is out of range */
+		if (mirror_conf->pool_mask > (uint64_t)(1ULL << (pf->vf_num + 1))) {
+			PMD_DRV_LOG(ERR, "pool mask is out of range.");
+			rte_free(mirr_rule);
+			return -EINVAL;
+		}
+		for (i = 0, j = 0; i < pf->vf_num; i++) {
+			if (mirror_conf->pool_mask & (1ULL << i)) {
+				mirr_rule->entries[j] = pf->vfs[i].vsi->seid;
+				j++;
+			}
+		}
+		if (mirror_conf->pool_mask & (1ULL << pf->vf_num)) {
+			/* add pf vsi to entries */
+			mirr_rule->entries[j] = pf->main_vsi_seid;
+			j++;
+		}
+		if (j == 0) {
+			PMD_DRV_LOG(ERR, "pool is not specified.");
+			rte_free(mirr_rule);
+			return -EINVAL;
+		}
+		/* egress and ingress in aq commands means from switch but not port */
+		mirr_rule->rule_type =
+			(mirror_conf->rule_type == ETH_MIRROR_VIRTUAL_POOL_UP) ?
+			I40E_AQC_MIRROR_RULE_TYPE_VPORT_EGRESS :
+			I40E_AQC_MIRROR_RULE_TYPE_VPORT_INGRESS;
+		break;
+	case ETH_MIRROR_UPLINK_PORT:
+		/* egress and ingress in aq commands means from switch but not port*/
+		mirr_rule->rule_type = I40E_AQC_MIRROR_RULE_TYPE_ALL_EGRESS;
+		break;
+	case ETH_MIRROR_DOWNLINK_PORT:
+		mirr_rule->rule_type = I40E_AQC_MIRROR_RULE_TYPE_ALL_INGRESS;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unsupported mirror type %d.",
+			mirror_conf->rule_type);
+		rte_free(mirr_rule);
+		return -EINVAL;
+	}
+
+	/* If the dst_pool is equal to vf_num, consider it as PF */
+	if (mirror_conf->dst_pool == pf->vf_num)
+		dst_seid = pf->main_vsi_seid;
+	else
+		dst_seid = pf->vfs[mirror_conf->dst_pool].vsi->seid;
+
+	ret = i40e_aq_add_mirror_rule(hw, seid, dst_seid,
+				      mirr_rule->rule_type, mirr_rule->entries,
+				      j, &rule_id);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "failed to add mirror rule:"
+				   " ret = %d, aq_err = %d.",
+				   ret, hw->aq.asq_last_status);
+		rte_free(mirr_rule);
+		return -ENOSYS;
+	}
+
+	mirr_rule->index = sw_id;
+	mirr_rule->num_entries = j;
+	mirr_rule->id = rule_id;
+	mirr_rule->dst_vsi_seid = dst_seid;
+
+	if (parent)
+		TAILQ_INSERT_AFTER(&pf->mirror_list, parent, mirr_rule, rules);
+	else
+		TAILQ_INSERT_HEAD(&pf->mirror_list, mirr_rule, rules);
+
+	pf->nb_mirror_rule++;
+	return 0;
+}
+
+/**
+ * i40e_mirror_rule_reset
+ * @dev: pointer to the device
+ * @sw_id: mirror rule's sw_id
+ *
+ * reset a mirror rule.
+ *
+ **/
+static int
+i40e_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t sw_id)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_mirror_rule *it, *mirr_rule = NULL;
+	uint16_t seid;
+	int ret;
+
+	PMD_DRV_LOG(DEBUG, "i40e_mirror_rule_reset: sw_id = %d.", sw_id);
+
+	seid = pf->main_vsi->veb->seid;
+
+	TAILQ_FOREACH(it, &pf->mirror_list, rules) {
+		if (sw_id == it->index) {
+			mirr_rule = it;
+			break;
+		}
+	}
+	if (mirr_rule) {
+		ret = i40e_aq_del_mirror_rule(hw, seid,
+				mirr_rule->rule_type,
+				mirr_rule->entries,
+				mirr_rule->num_entries, mirr_rule->id);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "failed to remove mirror rule:"
+					   " status = %d, aq_err = %d.",
+					   ret, hw->aq.asq_last_status);
+			return -ENOSYS;
+		}
+		TAILQ_REMOVE(&pf->mirror_list, mirr_rule, rules);
+		rte_free(mirr_rule);
+		pf->nb_mirror_rule--;
+	} else {
+		PMD_DRV_LOG(ERR, "mirror rule doesn't exist.");
+		return -ENOENT;
+	}
 	return 0;
 }
