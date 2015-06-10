@@ -300,6 +300,215 @@ rte_jhash2(const uint32_t *k, uint32_t length, uint32_t initval)
 	return c;
 }
 
+/**
+ * Same as rte_jhash, but takes two seeds and return two uint32_ts.
+ * pc and pb must be non-null, and *pc and *pb must both be initialized
+ * with seeds. If you pass in (*pb)=0, the output (*pc) will be
+ * the same as the return value from rte_jhash.
+ *
+ * @param key
+ *   Key to calculate hash of.
+ * @param length
+ *   Length of key in bytes.
+ * @param pc
+ *   IN: seed OUT: primary hash value.
+ * @param pb
+ *   IN: second seed OUT: secondary hash value.
+ */
+static inline void
+rte_jhash_2hashes(const void *key, uint32_t length, uint32_t *pc, uint32_t *pb)
+{
+	uint32_t a, b, c;
+
+	/* Set up the internal state */
+	a = b = c = RTE_JHASH_GOLDEN_RATIO + ((uint32_t)length) + *pc;
+	c += *pb;
+
+	/* Check key alignment. For x86 architecture, first case is always optimal */
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686) || defined(RTE_ARCH_X86_X32)
+	const uint32_t *k = key;
+	const uint32_t s = 0;
+#else
+	const uint32_t *k = (uint32_t *)(uintptr_t)key & (uintptr_t)~3);
+	const uint32_t s = ((uintptr_t)key & 3) * CHAR_BIT;
+#endif
+
+	if (s == 0) {
+		while (length > 12) {
+			a += k[0];
+			b += k[1];
+			c += k[2];
+
+			__rte_jhash_mix(a, b, c);
+
+			k += 3;
+			length -= 12;
+		}
+
+		switch (length) {
+		case 12:
+			c += k[2]; b += k[1]; a += k[0]; break;
+		case 11:
+			c += k[2] & LOWER24b_MASK; b += k[1]; a += k[0]; break;
+		case 10:
+			c += k[2] & LOWER16b_MASK; b += k[1]; a += k[0]; break;
+		case 9:
+			c += k[2] & LOWER8b_MASK; b += k[1]; a += k[0]; break;
+		case 8:
+			b += k[1]; a += k[0]; break;
+		case 7:
+			b += k[1] & LOWER24b_MASK; a += k[0]; break;
+		case 6:
+			b += k[1] & LOWER16b_MASK; a += k[0]; break;
+		case 5:
+			b += k[1] & LOWER8b_MASK; a += k[0]; break;
+		case 4:
+			a += k[0]; break;
+		case 3:
+			a += k[0] & LOWER24b_MASK; break;
+		case 2:
+			a += k[0] & LOWER16b_MASK; break;
+		case 1:
+			a += k[0] & LOWER8b_MASK; break;
+		/* zero length strings require no mixing */
+		case 0:
+			*pc = c;
+			*pb = b;
+			return;
+		};
+	} else {
+		/* all but the last block: affect some 32 bits of (a, b, c) */
+		while (length > 12) {
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s);
+			c += BIT_SHIFT(k[2], k[3], s);
+			__rte_jhash_mix(a, b, c);
+
+			k += 3;
+			length -= 12;
+		}
+
+		/* last block: affect all 32 bits of (c) */
+		switch (length) {
+		case 12:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s);
+			c += BIT_SHIFT(k[2], k[3], s);
+			break;
+		case 11:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s);
+			c += BIT_SHIFT(k[2], k[3], s) & LOWER24b_MASK;
+			break;
+		case 10:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s);
+			c += BIT_SHIFT(k[2], k[3], s) & LOWER16b_MASK;
+			break;
+		case 9:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s);
+			c += BIT_SHIFT(k[2], k[3], s) & LOWER8b_MASK;
+			break;
+		case 8:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s);
+			break;
+		case 7:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s) & LOWER24b_MASK;
+			break;
+		case 6:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s) & LOWER16b_MASK;
+			break;
+		case 5:
+			a += BIT_SHIFT(k[0], k[1], s);
+			b += BIT_SHIFT(k[1], k[2], s) & LOWER8b_MASK;
+			break;
+		case 4:
+			a += BIT_SHIFT(k[0], k[1], s);
+			break;
+		case 3:
+			a += BIT_SHIFT(k[0], k[1], s) & LOWER24b_MASK;
+			break;
+		case 2:
+			a += BIT_SHIFT(k[0], k[1], s) & LOWER16b_MASK;
+			break;
+		case 1:
+			a += BIT_SHIFT(k[0], k[1], s) & LOWER8b_MASK;
+			break;
+		/* zero length strings require no mixing */
+		case 0:
+			*pc = c;
+			*pb = b;
+			return;
+		}
+	}
+
+	__rte_jhash_final(a, b, c);
+
+	*pc = c;
+	*pb = b;
+}
+
+/**
+ * Same as rte_jhash2, but takes two seeds and return two uint32_ts.
+ * pc and pb must be non-null, and *pc and *pb must both be initialized
+ * with seeds. If you pass in (*pb)=0, the output (*pc) will be
+ * the same as the return value from rte_jhash2.
+ *
+ * @param k
+ *   Key to calculate hash of.
+ * @param length
+ *   Length of key in units of 4 bytes.
+ * @param pc
+ *   IN: seed OUT: primary hash value.
+ * @param pb
+ *   IN: second seed OUT: secondary hash value.
+ */
+static inline void
+rte_jhash2_2hashes(const uint32_t *k, uint32_t length, uint32_t *pc, uint32_t *pb)
+{
+	uint32_t a, b, c;
+
+	/* Set up the internal state */
+	a = b = c = RTE_JHASH_GOLDEN_RATIO + (((uint32_t)length) << 2) + *pc;
+	c += *pb;
+
+	/* Handle most of the key */
+	while (length > 3) {
+		a += k[0];
+		b += k[1];
+		c += k[2];
+
+		__rte_jhash_mix(a, b, c);
+
+		k += 3;
+		length -= 3;
+	}
+
+	/* Handle the last 3 uint32_t's */
+	switch (length) {
+	case 3:
+		c += k[2];
+		/* Fallthrough */
+	case 2:
+		b += k[1];
+		/* Fallthrough */
+	case 1:
+		a += k[0];
+		__rte_jhash_final(a, b, c);
+		/* Fallthrough */
+	/* case 0: nothing left to add */
+	case 0:
+		break;
+	};
+
+	*pc = c;
+	*pb = b;
+}
+
 static inline uint32_t
 __rte_jhash_3words(uint32_t a, uint32_t b, uint32_t c, uint32_t initval)
 {
