@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -238,7 +238,7 @@ Of course, as a prerequisite, the vhost/vhost-net kernel CONFIG should be chosen
 
     .. code-block:: console
 
-        ./kni -c -0xf0 -n 4 -- -p 0x3 -P -config="(0,4,6),(1,5,7)"
+        examples/kni/build/app/kni -c -0xf0 -n 4 -- -p 0x3 -P --config="(0,4,6),(1,5,7)"
 
     This command runs the kni sample application with two physical ports.
     Each port pins two forwarding cores (ingress/egress) in user space.
