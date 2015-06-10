@@ -194,7 +194,7 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	pci_dev = eth_dev->pci_dev;
 
 	/*
-	 * for secondary processes, we don't initialise any further as primary
+	 * for secondary processes, we don't initialize any further as primary
 	 * has already done this work.
 	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -213,21 +213,21 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Check h/w version compatibility with driver. */
 	ver = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_VRRS);
-	PMD_INIT_LOG(DEBUG, "Harware version : %d", ver);
+	PMD_INIT_LOG(DEBUG, "Hardware version : %d", ver);
 	if (ver & 0x1)
 		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_VRRS, 1);
 	else {
-		PMD_INIT_LOG(ERR, "Uncompatiable h/w version, should be 0x1");
+		PMD_INIT_LOG(ERR, "Incompatible h/w version, should be 0x1");
 		return -EIO;
 	}
 
 	/* Check UPT version compatibility with driver. */
 	ver = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_UVRS);
-	PMD_INIT_LOG(DEBUG, "UPT harware version : %d", ver);
+	PMD_INIT_LOG(DEBUG, "UPT hardware version : %d", ver);
 	if (ver & 0x1)
 		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_UVRS, 1);
 	else {
-		PMD_INIT_LOG(ERR, "Incompatiable UPT version.");
+		PMD_INIT_LOG(ERR, "Incompatible UPT version.");
 		return -EIO;
 	}
 
