@@ -52,16 +52,10 @@ This driver is valid for the product(s) listed below
 * Intel® Ethernet Server Adapter X520-T2
 * Intel® Ethernet Controller X550-BT2
 
-Updating driver
-===============
+Updating the driver
+===================
 
-The following modifications have been made to this code to integrate it with the
-Intel® DPDK:
+NOTE: The source code in this directory should not be modified apart from
+the following file(s):
 
-
-ixgbe_osdep.h
--------------
-
-The OS dependency layer has been extensively modified to support the drivers in
-the Intel® DPDK environment. It is expected that these files will not need to be
-changed on updating the driver.
+    ixgbe_osdep.h

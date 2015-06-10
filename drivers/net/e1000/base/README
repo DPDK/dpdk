@@ -33,7 +33,12 @@
 This directory contains source code of FreeBSD em & igb drivers of version
 cid-shared-code.2014.04.21 released by LAD. The sub-directory of lad/
 contains the original source package.
-Few changes to the original FreeBSD sources were made to:
-- Adopt it for PMD usage mode:
-	e1000_osdep.c
-	e1000_osdep.h
+
+Updating the driver
+===================
+
+NOTE: The source code in this directory should not be modified apart from
+the following file(s):
+
+    e1000_osdep.c
+    e1000_osdep.h

@@ -38,13 +38,10 @@ In which, upt1_defs.h and vmxnet3_defs.h is introduced without any change.
 The other 4 files: includeCheck.h, vmware_pack_begin.h, vmware_pack_end.h and vmxnet3_osdep.h
 are crated to adapt to the needs from above 2 files.
 
-Updating driver
-===============
+Updating the driver
+===================
 
-The following modifications have been made to this code to integrate it with the
-Intel DPDK:
+NOTE: The source code in this directory should not be modified apart from
+the following file(s):
 
-
--------------
-
-
+    vmxnet3_osdep.h
