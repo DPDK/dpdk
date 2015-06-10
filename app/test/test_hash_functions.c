@@ -47,6 +47,36 @@
 
 #include "test.h"
 
+/*
+ * Hash values calculated for key sizes from array "hashtest_key_lens"
+ * and for initial values from array "hashtest_initvals.
+ * Each key will be formed by increasing each byte by 1:
+ * e.g.: key size = 4, key = 0x03020100
+ *       key size = 8, key = 0x0706050403020100
+ */
+static uint32_t hash_values_jhash[2][10] = {{
+	0x821cc2db, 0xa491f494, 0xace4cd87, 0x9e867842,
+	0xd32442d6, 0x5fbafeab, 0x9cac434c, 0xecad9b0d,
+	0x2dcf235e, 0xaab655d0
+},
+{
+	0xc1111b14, 0x9a95039e, 0x84f208a0, 0xfa28f3fb,
+	0xfa13f7d3, 0xc7aed470, 0x74caa938, 0xa9288066,
+	0xd0140735, 0xbf00519d
+}
+};
+static uint32_t hash_values_crc[2][10] = {{
+	0x91545164, 0x06040eb1, 0x9bb99201, 0xcc4c4fe4,
+	0x14a90993, 0xf8a5dd8c, 0xc62beb31, 0x32bf340e,
+	0x72f9d22b, 0x4a11475e
+},
+{
+	0x98cd4c70, 0xd52c702f, 0x41fc0e1c, 0x3905f65c,
+	0x94bff47f, 0x1bab102d, 0xd2911ed7, 0xe8faa813,
+	0x6bea184b, 0x53028d3e
+}
+};
+
 /*******************************************************************************
  * Hash function performance test configuration section. Each performance test
  * will be performed HASHTEST_ITERATIONS times.
@@ -132,9 +162,105 @@ run_hash_func_perf_tests(void)
 	}
 }
 
+/*
+ * Verify that hash functions return what they are expected to return
+ * (using precalculated values stored above)
+ */
+static int
+verify_precalculated_hash_func_tests(void)
+{
+	unsigned i, j;
+	uint8_t key[64];
+	uint32_t hash;
+
+	for (i = 0; i < 64; i++)
+		key[i] = (uint8_t) i;
+
+	for (i = 0; i < sizeof(hashtest_key_lens) / sizeof(uint32_t); i++) {
+		for (j = 0; j < sizeof(hashtest_initvals) / sizeof(uint32_t); j++) {
+			hash = rte_jhash(key, hashtest_key_lens[i],
+					hashtest_initvals[j]);
+			if (hash != hash_values_jhash[j][i]) {
+				printf("jhash for %u bytes with initial value 0x%x."
+				       "Expected 0x%x, but got 0x%x\n",
+				       hashtest_key_lens[i], hashtest_initvals[j],
+				       hash_values_jhash[j][i], hash);
+				return -1;
+			}
+
+			hash = rte_hash_crc(key, hashtest_key_lens[i],
+					hashtest_initvals[j]);
+			if (hash != hash_values_crc[j][i]) {
+				printf("CRC for %u bytes with initial value 0x%x."
+				       "Expected 0x%x, but got 0x%x\n",
+				       hashtest_key_lens[i], hashtest_initvals[j],
+				       hash_values_crc[j][i], hash);
+				return -1;
+			}
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * Verify that rte_jhash and rte_jhash2 return the same
+ */
+static int
+verify_jhash_32bits(void)
+{
+	unsigned i, j;
+	uint8_t key[64];
+	uint32_t hash, hash32;
+
+	for (i = 0; i < 64; i++)
+		key[i] = rand() & 0xff;
+
+	for (i = 0; i < sizeof(hashtest_key_lens) / sizeof(uint32_t); i++) {
+		for (j = 0; j < sizeof(hashtest_initvals) / sizeof(uint32_t); j++) {
+			/* Key size must be multiple of 4 (32 bits) */
+			if ((hashtest_key_lens[i] & 0x3) == 0) {
+				hash = rte_jhash(key, hashtest_key_lens[i],
+						hashtest_initvals[j]);
+				/* Divide key length by 4 in rte_jhash for 32 bits */
+				hash32 = rte_jhash2((const uint32_t *)key,
+						hashtest_key_lens[i] >> 2,
+						hashtest_initvals[j]);
+				if (hash != hash32) {
+					printf("rte_jhash returns different value (0x%x)"
+					       "than rte_jhash2 (0x%x)\n",
+					       hash, hash32);
+					return -1;
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * Run all functional tests for hash functions
+ */
+static int
+run_hash_func_tests(void)
+{
+	if (verify_precalculated_hash_func_tests() != 0)
+		return -1;
+
+	if (verify_jhash_32bits() != 0)
+		return -1;
+
+	return 0;
+
+}
+
 static int
 test_hash_functions(void)
 {
+	if (run_hash_func_tests() != 0)
+		return -1;
+
 	run_hash_func_perf_tests();
 
 	return 0;
