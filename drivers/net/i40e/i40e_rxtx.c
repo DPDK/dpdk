@@ -813,6 +813,10 @@ i40e_rx_alloc_bufs(struct i40e_rx_queue *rxq)
 
 	rxdp = &rxq->rx_ring[alloc_idx];
 	for (i = 0; i < rxq->rx_free_thresh; i++) {
+		if (likely(i < (rxq->rx_free_thresh - 1)))
+			/* Prefetch next mbuf */
+			rte_prefetch0(rxep[i + 1].mbuf);
+
 		mb = rxep[i].mbuf;
 		rte_mbuf_refcnt_set(mb, 1);
 		mb->next = NULL;
