@@ -409,7 +409,7 @@ rte_eth_driver_register(struct eth_driver *eth_drv)
 	rte_eal_pci_register(&eth_drv->pci_drv);
 }
 
-static int
+int
 rte_eth_dev_is_valid_port(uint8_t port_id)
 {
 	if (port_id >= RTE_MAX_ETHPORTS ||

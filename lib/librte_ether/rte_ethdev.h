@@ -1930,6 +1930,17 @@ extern int rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 extern int rte_eth_dev_socket_id(uint8_t port_id);
 
 /*
+ * Check if port_id of device is attached
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device
+ * @return
+ *   - 0 if port is out of range or not attached
+ *   - 1 if device is attached
+ */
+extern int rte_eth_dev_is_valid_port(uint8_t port_id);
+
+/*
  * Allocate mbuf from mempool, setup the DMA physical address
  * and then start RX for specified queue of a port. It is used
  * when rx_deferred_start flag of the specified queue is true.
