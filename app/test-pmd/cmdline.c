@@ -412,7 +412,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set rate limit for queues in VF of a port\n\n"
 
 			"set port (port_id) mirror-rule (rule_id)"
-			"(pool-mirror|vlan-mirror)\n"
+			" (pool-mirror-up|pool-mirror-down|vlan-mirror)"
 			" (poolmask|vlanid[,vlanid]*) dst-pool (pool_id) (on|off)\n"
 			"   Set pool or vlan type mirror rule on a port.\n"
 			"   e.g., 'set port 0 mirror-rule 0 vlan-mirror 0,1"
@@ -6647,7 +6647,8 @@ cmdline_parse_token_num_t cmd_mirror_mask_ruleid =
 				rule_id, UINT8);
 cmdline_parse_token_string_t cmd_mirror_mask_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_mask_result,
-				what, "pool-mirror#vlan-mirror");
+				what, "pool-mirror-up#pool-mirror-down"
+				      "#vlan-mirror");
 cmdline_parse_token_string_t cmd_mirror_mask_value =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_mask_result,
 				value, NULL);
@@ -6676,13 +6677,16 @@ cmd_set_mirror_mask_parsed(void *parsed_result,
 
 	mr_conf.dst_pool = res->dstpool_id;
 
-	if (!strcmp(res->what, "pool-mirror")) {
-		mr_conf.pool_mask = strtoull(res->value,NULL,16);
-		mr_conf.rule_type_mask = ETH_VMDQ_POOL_MIRROR;
-	} else if(!strcmp(res->what, "vlan-mirror")) {
-		mr_conf.rule_type_mask = ETH_VMDQ_VLAN_MIRROR;
-		nb_item = parse_item_list(res->value, "core",
-					ETH_MIRROR_MAX_VLANS, vlan_list, 1);
+	if (!strcmp(res->what, "pool-mirror-up")) {
+		mr_conf.pool_mask = strtoull(res->value, NULL, 16);
+		mr_conf.rule_type = ETH_MIRROR_VIRTUAL_POOL_UP;
+	} else if (!strcmp(res->what, "pool-mirror-down")) {
+		mr_conf.pool_mask = strtoull(res->value, NULL, 16);
+		mr_conf.rule_type = ETH_MIRROR_VIRTUAL_POOL_DOWN;
+	} else if (!strcmp(res->what, "vlan-mirror")) {
+		mr_conf.rule_type = ETH_MIRROR_VLAN;
+		nb_item = parse_item_list(res->value, "vlan",
+				ETH_MIRROR_MAX_VLANS, vlan_list, 1);
 		if (nb_item <= 0)
 			return;
 
@@ -6697,21 +6701,21 @@ cmd_set_mirror_mask_parsed(void *parsed_result,
 		}
 	}
 
-	if(!strcmp(res->on, "on"))
+	if (!strcmp(res->on, "on"))
 		ret = rte_eth_mirror_rule_set(res->port_id, &mr_conf,
 						res->rule_id, 1);
 	else
 		ret = rte_eth_mirror_rule_set(res->port_id, &mr_conf,
 						res->rule_id, 0);
-	if(ret < 0)
+	if (ret < 0)
 		printf("mirror rule add error: (%s)\n", strerror(-ret));
 }
 
 cmdline_parse_inst_t cmd_set_mirror_mask = {
 		.f = cmd_set_mirror_mask_parsed,
 		.data = NULL,
-		.help_str = "set port X mirror-rule Y pool-mirror|vlan-mirror "
-				"pool_mask|vlan_id[,vlan_id]* dst-pool Z on|off",
+		.help_str = "set port X mirror-rule Y pool-mirror-up|pool-mirror-down|vlan-mirror"
+			    " pool_mask|vlan_id[,vlan_id]* dst-pool Z on|off",
 		.tokens = {
 			(void *)&cmd_mirror_mask_set,
 			(void *)&cmd_mirror_mask_port,
@@ -6778,14 +6782,14 @@ cmd_set_mirror_link_parsed(void *parsed_result,
 	struct rte_eth_mirror_conf mr_conf;
 
 	memset(&mr_conf, 0, sizeof(struct rte_eth_mirror_conf));
-	if(!strcmp(res->what, "uplink-mirror")) {
-		mr_conf.rule_type_mask = ETH_VMDQ_UPLINK_MIRROR;
-	}else if(!strcmp(res->what, "downlink-mirror"))
-		mr_conf.rule_type_mask = ETH_VMDQ_DOWNLIN_MIRROR;
+	if (!strcmp(res->what, "uplink-mirror"))
+		mr_conf.rule_type = ETH_MIRROR_UPLINK_PORT;
+	else
+		mr_conf.rule_type = ETH_MIRROR_DOWNLINK_PORT;
 
 	mr_conf.dst_pool = res->dstpool_id;
 
-	if(!strcmp(res->on, "on"))
+	if (!strcmp(res->on, "on"))
 		ret = rte_eth_mirror_rule_set(res->port_id, &mr_conf,
 						res->rule_id, 1);
 	else
@@ -6793,7 +6797,7 @@ cmd_set_mirror_link_parsed(void *parsed_result,
 						res->rule_id, 0);
 
 	/* check the return value and print it if is < 0 */
-	if(ret < 0)
+	if (ret < 0)
 		printf("mirror rule add error: (%s)\n", strerror(-ret));
 
 }

@@ -2817,7 +2817,7 @@ rte_eth_mirror_rule_set(uint8_t port_id,
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 
 	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	if (mirror_conf->rule_type_mask == 0) {
+	if (mirror_conf->rule_type == 0) {
 		PMD_DEBUG_TRACE("mirror rule type can not be 0.\n");
 		return -EINVAL;
 	}
@@ -2828,9 +2828,16 @@ rte_eth_mirror_rule_set(uint8_t port_id,
 		return -EINVAL;
 	}
 
-	if ((mirror_conf->rule_type_mask & ETH_VMDQ_POOL_MIRROR) &&
-		(mirror_conf->pool_mask == 0)) {
+	if ((mirror_conf->rule_type & (ETH_MIRROR_VIRTUAL_POOL_UP |
+	     ETH_MIRROR_VIRTUAL_POOL_DOWN)) &&
+	    (mirror_conf->pool_mask == 0)) {
 		PMD_DEBUG_TRACE("Invalid mirror pool, pool mask can not be 0.\n");
+		return -EINVAL;
+	}
+
+	if ((mirror_conf->rule_type & ETH_MIRROR_VLAN) &&
+	    mirror_conf->vlan.vlan_mask == 0) {
+		PMD_DEBUG_TRACE("Invalid vlan mask, vlan mask can not be 0.\n");
 		return -EINVAL;
 	}
 

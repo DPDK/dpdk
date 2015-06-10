@@ -3414,6 +3414,14 @@ ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan,
 	return ret;
 }
 
+#define IXGBE_MRCTL_VPME  0x01 /* Virtual Pool Mirroring. */
+#define IXGBE_MRCTL_UPME  0x02 /* Uplink Port Mirroring. */
+#define IXGBE_MRCTL_DPME  0x04 /* Downlink Port Mirroring. */
+#define IXGBE_MRCTL_VLME  0x08 /* VLAN Mirroring. */
+#define IXGBE_INVALID_MIRROR_TYPE(mirror_type) \
+	((mirror_type) & ~(uint8_t)(ETH_MIRROR_VIRTUAL_POOL_UP | \
+	ETH_MIRROR_UPLINK_PORT | ETH_MIRROR_DOWNLINK_PORT | ETH_MIRROR_VLAN))
+
 static int
 ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 			struct rte_eth_mirror_conf *mirror_conf,
@@ -3438,6 +3446,7 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 			(IXGBE_DEV_PRIVATE_TO_PFDATA(dev->data->dev_private));
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint8_t mirror_type = 0;
 
 	if (ixgbe_vmdq_mode_check(hw) < 0)
 		return -ENOTSUP;
@@ -3445,28 +3454,29 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 	if (rule_id >= IXGBE_MAX_MIRROR_RULES)
 		return -EINVAL;
 
-	/* Check if vlan mask is valid */
-	if ((mirror_conf->rule_type_mask & ETH_VMDQ_VLAN_MIRROR) && (on)) {
-		if (mirror_conf->vlan.vlan_mask == 0)
-			return (-EINVAL);
+	if (IXGBE_INVALID_MIRROR_TYPE(mirror_conf->rule_type)) {
+		PMD_DRV_LOG(ERR, "unsupported mirror type 0x%x.",
+			mirror_conf->rule_type);
+		return -EINVAL;
 	}
 
-	/* Check if vlan id is valid and find conresponding VLAN ID index in VLVF */
-	if (mirror_conf->rule_type_mask & ETH_VMDQ_VLAN_MIRROR) {
+	if (mirror_conf->rule_type & ETH_MIRROR_VLAN) {
+		mirror_type |= IXGBE_MRCTL_VLME;
+		/* Check if vlan id is valid and find conresponding VLAN ID index in VLVF */
 		for (i = 0;i < IXGBE_VLVF_ENTRIES; i++) {
 			if (mirror_conf->vlan.vlan_mask & (1ULL << i)) {
 				/* search vlan id related pool vlan filter index */
 				reg_index = ixgbe_find_vlvf_slot(hw,
 						mirror_conf->vlan.vlan_id[i]);
 				if(reg_index < 0)
-					return (-EINVAL);
+					return -EINVAL;
 				vlvf = IXGBE_READ_REG(hw, IXGBE_VLVF(reg_index));
 				if ((vlvf & IXGBE_VLVF_VIEN) &&
-					((vlvf & IXGBE_VLVF_VLANID_MASK)
-						== mirror_conf->vlan.vlan_id[i]))
+				    ((vlvf & IXGBE_VLVF_VLANID_MASK) ==
+				      mirror_conf->vlan.vlan_id[i]))
 					vlan_mask |= (1ULL << reg_index);
 				else
-					return (-EINVAL);
+					return -EINVAL;
 			}
 		}
 
@@ -3494,7 +3504,8 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 	 * if enable pool mirror, write related pool mask register,if disable
 	 * pool mirror, clear PFMRVM register
 	 */
-	if (mirror_conf->rule_type_mask & ETH_VMDQ_POOL_MIRROR) {
+	if (mirror_conf->rule_type & ETH_MIRROR_VIRTUAL_POOL_UP) {
+		mirror_type |= IXGBE_MRCTL_VPME;
 		if (on) {
 			mp_lsb = mirror_conf->pool_mask & 0xFFFFFFFF;
 			mp_msb = mirror_conf->pool_mask >> pool_mask_offset;
@@ -3507,31 +3518,35 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 			mr_info->mr_conf[rule_id].pool_mask = 0;
 		}
 	}
+	if (mirror_conf->rule_type & ETH_MIRROR_UPLINK_PORT)
+		mirror_type |= IXGBE_MRCTL_UPME;
+	if (mirror_conf->rule_type & ETH_MIRROR_DOWNLINK_PORT)
+		mirror_type |= IXGBE_MRCTL_DPME;
 
 	/* read  mirror control register and recalculate it */
-	mr_ctl = IXGBE_READ_REG(hw,IXGBE_MRCTL(rule_id));
+	mr_ctl = IXGBE_READ_REG(hw, IXGBE_MRCTL(rule_id));
 
 	if (on) {
-		mr_ctl |= mirror_conf->rule_type_mask;
+		mr_ctl |= mirror_type;
 		mr_ctl &= mirror_rule_mask;
 		mr_ctl |= mirror_conf->dst_pool << dst_pool_offset;
 	} else
-		mr_ctl &= ~(mirror_conf->rule_type_mask & mirror_rule_mask);
+		mr_ctl &= ~(mirror_conf->rule_type & mirror_rule_mask);
 
-	mr_info->mr_conf[rule_id].rule_type_mask = (uint8_t)(mr_ctl & mirror_rule_mask);
+	mr_info->mr_conf[rule_id].rule_type = mirror_conf->rule_type;
 	mr_info->mr_conf[rule_id].dst_pool = mirror_conf->dst_pool;
 
 	/* write mirrror control  register */
 	IXGBE_WRITE_REG(hw, IXGBE_MRCTL(rule_id), mr_ctl);
 
-        /* write pool mirrror control  register */
-	if (mirror_conf->rule_type_mask & ETH_VMDQ_POOL_MIRROR) {
+	/* write pool mirrror control  register */
+	if (mirror_conf->rule_type == ETH_MIRROR_VIRTUAL_POOL_UP) {
 		IXGBE_WRITE_REG(hw, IXGBE_VMRVM(rule_id), mp_lsb);
 		IXGBE_WRITE_REG(hw, IXGBE_VMRVM(rule_id + rule_mr_offset),
 				mp_msb);
 	}
 	/* write VLAN mirrror control  register */
-	if (mirror_conf->rule_type_mask & ETH_VMDQ_VLAN_MIRROR) {
+	if (mirror_conf->rule_type == ETH_MIRROR_VLAN) {
 		IXGBE_WRITE_REG(hw, IXGBE_VMRVLAN(rule_id), mv_lsb);
 		IXGBE_WRITE_REG(hw, IXGBE_VMRVLAN(rule_id + rule_mr_offset),
 				mv_msb);

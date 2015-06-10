@@ -470,10 +470,11 @@ struct rte_eth_rss_conf {
 /** Maximum nb. of vlan per mirror rule */
 #define ETH_MIRROR_MAX_VLANS       64
 
-#define ETH_VMDQ_POOL_MIRROR    0x0001 /**< Virtual Pool Mirroring. */
-#define ETH_VMDQ_UPLINK_MIRROR  0x0002 /**< Uplink Port Mirroring. */
-#define ETH_VMDQ_DOWNLIN_MIRROR 0x0004 /**< Downlink Port Mirroring. */
-#define ETH_VMDQ_VLAN_MIRROR    0x0008 /**< VLAN Mirroring. */
+#define ETH_MIRROR_VIRTUAL_POOL_UP     0x01  /**< Virtual Pool uplink Mirroring. */
+#define ETH_MIRROR_UPLINK_PORT         0x02  /**< Uplink Port Mirroring. */
+#define ETH_MIRROR_DOWNLINK_PORT       0x04  /**< Downlink Port Mirroring. */
+#define ETH_MIRROR_VLAN                0x08  /**< VLAN Mirroring. */
+#define ETH_MIRROR_VIRTUAL_POOL_DOWN   0x10  /**< Virtual Pool downlink Mirroring. */
 
 /**
  * A structure used to configure VLAN traffic mirror of an Ethernet port.
@@ -488,7 +489,7 @@ struct rte_eth_vlan_mirror {
  * A structure used to configure traffic mirror of an Ethernet port.
  */
 struct rte_eth_mirror_conf {
-	uint8_t rule_type_mask; /**< Mirroring rule type mask we want to set */
+	uint8_t rule_type; /**< Mirroring rule type */
 	uint8_t dst_pool;  /**< Destination pool for this mirror rule. */
 	uint64_t pool_mask; /**< Bitmap of pool for pool mirroring */
 	/** VLAN ID setting for VLAN mirroring. */

@@ -782,9 +782,13 @@ set port (port_id) vf (vf_id) rate (rate_value) queue_mask (queue_mask)
 set port - mirror rule
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Set port or vlan type mirror rule for a port.
+Set pool or vlan type mirror rule for a port:
 
-set port (port_id) mirror-rule (rule_id) (pool-mirror|vlan-mirror) (poolmask|vlanid[,vlanid]*) dst-pool (pool_id) (on|off)
+set port (port_id) mirror-rule (rule_id) (pool-mirror-up|pool-mirror-down|vlan-mirror) (poolmask|vlanid[,vlanid]*) dst-pool (pool_id) (on|off)
+
+Set link mirror rule for a port:
+
+set port (port_id) mirror-rule (rule_id) (uplink-mirror|downlink-mirror) dst-pool (pool_id) (on|off)
 
 For example to enable mirror traffic with vlan 0,1 to pool 0:
 
