@@ -57,8 +57,14 @@
 #define HASHTEST_ITERATIONS 1000000
 
 static rte_hash_function hashtest_funcs[] = {rte_jhash, rte_hash_crc};
-static uint32_t hashtest_initvals[] = {0};
-static uint32_t hashtest_key_lens[] = {2, 4, 5, 6, 7, 8, 10, 11, 15, 16, 21, 31, 32, 33, 63, 64};
+static uint32_t hashtest_initvals[] = {0, 0xdeadbeef};
+static uint32_t hashtest_key_lens[] = {
+	4, 8, 16, 32, 48, 64, /* standard key sizes */
+	9,                    /* IPv4 SRC + DST + protocol, unpadded */
+	13,                   /* IPv4 5-tuple, unpadded */
+	37,                   /* IPv6 5-tuple, unpadded */
+	40                    /* IPv6 5-tuple, padded to 8-byte boundary */
+};
 /******************************************************************************/
 
 /*
@@ -115,15 +121,9 @@ run_hash_func_perf_tests(void)
 			HASHTEST_ITERATIONS);
 	printf("Hash Func.  , Key Length (bytes), Initial value, Ticks/Op.\n");
 
-	for (i = 0;
-	     i < sizeof(hashtest_funcs) / sizeof(rte_hash_function);
-	     i++) {
-		for (j = 0;
-		     j < sizeof(hashtest_initvals) / sizeof(uint32_t);
-		     j++) {
-			for (k = 0;
-			     k < sizeof(hashtest_key_lens) / sizeof(uint32_t);
-			     k++) {
+	for (i = 0; i < RTE_DIM(hashtest_funcs); i++) {
+		for (j = 0; j < RTE_DIM(hashtest_initvals); j++) {
+			for (k = 0; k < RTE_DIM(hashtest_key_lens); k++) {
 				run_hash_func_perf_test(hashtest_funcs[i],
 						hashtest_initvals[j],
 						hashtest_key_lens[k]);
