@@ -6668,11 +6668,11 @@ cmd_set_mirror_mask_parsed(void *parsed_result,
 {
 	int ret,nb_item,i;
 	struct cmd_set_mirror_mask_result *res = parsed_result;
-	struct rte_eth_vmdq_mirror_conf mr_conf;
+	struct rte_eth_mirror_conf mr_conf;
 
-	memset(&mr_conf,0,sizeof(struct rte_eth_vmdq_mirror_conf));
+	memset(&mr_conf, 0, sizeof(struct rte_eth_mirror_conf));
 
-	unsigned int vlan_list[ETH_VMDQ_MAX_VLAN_FILTERS];
+	unsigned int vlan_list[ETH_MIRROR_MAX_VLANS];
 
 	mr_conf.dst_pool = res->dstpool_id;
 
@@ -6682,11 +6682,11 @@ cmd_set_mirror_mask_parsed(void *parsed_result,
 	} else if(!strcmp(res->what, "vlan-mirror")) {
 		mr_conf.rule_type_mask = ETH_VMDQ_VLAN_MIRROR;
 		nb_item = parse_item_list(res->value, "core",
-					ETH_VMDQ_MAX_VLAN_FILTERS,vlan_list,1);
+					ETH_MIRROR_MAX_VLANS, vlan_list, 1);
 		if (nb_item <= 0)
 			return;
 
-		for(i=0; i < nb_item; i++) {
+		for (i = 0; i < nb_item; i++) {
 			if (vlan_list[i] > ETHER_MAX_VLAN_ID) {
 				printf("Invalid vlan_id: must be < 4096\n");
 				return;
@@ -6698,10 +6698,10 @@ cmd_set_mirror_mask_parsed(void *parsed_result,
 	}
 
 	if(!strcmp(res->on, "on"))
-		ret = rte_eth_mirror_rule_set(res->port_id,&mr_conf,
+		ret = rte_eth_mirror_rule_set(res->port_id, &mr_conf,
 						res->rule_id, 1);
 	else
-		ret = rte_eth_mirror_rule_set(res->port_id,&mr_conf,
+		ret = rte_eth_mirror_rule_set(res->port_id, &mr_conf,
 						res->rule_id, 0);
 	if(ret < 0)
 		printf("mirror rule add error: (%s)\n", strerror(-ret));
@@ -6775,9 +6775,9 @@ cmd_set_mirror_link_parsed(void *parsed_result,
 {
 	int ret;
 	struct cmd_set_mirror_link_result *res = parsed_result;
-	struct rte_eth_vmdq_mirror_conf mr_conf;
+	struct rte_eth_mirror_conf mr_conf;
 
-	memset(&mr_conf,0,sizeof(struct rte_eth_vmdq_mirror_conf));
+	memset(&mr_conf, 0, sizeof(struct rte_eth_mirror_conf));
 	if(!strcmp(res->what, "uplink-mirror")) {
 		mr_conf.rule_type_mask = ETH_VMDQ_UPLINK_MIRROR;
 	}else if(!strcmp(res->what, "downlink-mirror"))
@@ -6786,10 +6786,10 @@ cmd_set_mirror_link_parsed(void *parsed_result,
 	mr_conf.dst_pool = res->dstpool_id;
 
 	if(!strcmp(res->on, "on"))
-		ret = rte_eth_mirror_rule_set(res->port_id,&mr_conf,
+		ret = rte_eth_mirror_rule_set(res->port_id, &mr_conf,
 						res->rule_id, 1);
 	else
-		ret = rte_eth_mirror_rule_set(res->port_id,&mr_conf,
+		ret = rte_eth_mirror_rule_set(res->port_id, &mr_conf,
 						res->rule_id, 0);
 
 	/* check the return value and print it if is < 0 */

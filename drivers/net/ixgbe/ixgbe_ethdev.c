@@ -209,7 +209,7 @@ static int ixgbe_set_pool_tx(struct rte_eth_dev *dev,uint16_t pool,uint8_t on);
 static int ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan,
 		uint64_t pool_mask,uint8_t vlan_on);
 static int ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
-		struct rte_eth_vmdq_mirror_conf *mirror_conf,
+		struct rte_eth_mirror_conf *mirror_conf,
 		uint8_t rule_id, uint8_t on);
 static int ixgbe_mirror_rule_reset(struct rte_eth_dev *dev,
 		uint8_t	rule_id);
@@ -3416,7 +3416,7 @@ ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan,
 
 static int
 ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
-			struct rte_eth_vmdq_mirror_conf *mirror_conf,
+			struct rte_eth_mirror_conf *mirror_conf,
 			uint8_t rule_id, uint8_t on)
 {
 	uint32_t mr_ctl,vlvf;
@@ -3440,7 +3440,10 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (ixgbe_vmdq_mode_check(hw) < 0)
-		return (-ENOTSUP);
+		return -ENOTSUP;
+
+	if (rule_id >= IXGBE_MAX_MIRROR_RULES)
+		return -EINVAL;
 
 	/* Check if vlan mask is valid */
 	if ((mirror_conf->rule_type_mask & ETH_VMDQ_VLAN_MIRROR) && (on)) {
@@ -3554,7 +3557,7 @@ ixgbe_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t rule_id)
 		return (-ENOTSUP);
 
 	memset(&mr_info->mr_conf[rule_id], 0,
-		sizeof(struct rte_eth_vmdq_mirror_conf));
+		sizeof(struct rte_eth_mirror_conf));
 
 	/* clear PFVMCTL register */
 	IXGBE_WRITE_REG(hw, IXGBE_MRCTL(rule_id), mr_ctl);

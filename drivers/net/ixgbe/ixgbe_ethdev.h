@@ -177,8 +177,10 @@ struct ixgbe_uta_info {
 	uint32_t uta_shadow[IXGBE_MAX_UTA];
 };
 
+#define IXGBE_MAX_MIRROR_RULES 4  /* Maximum nb. of mirror rules. */
+
 struct ixgbe_mirror_info {
-	struct rte_eth_vmdq_mirror_conf mr_conf[ETH_VMDQ_NUM_MIRROR_RULE];
+	struct rte_eth_mirror_conf mr_conf[IXGBE_MAX_MIRROR_RULES];
 	/**< store PF mirror rules configuration*/
 };
 

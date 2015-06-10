@@ -2811,7 +2811,7 @@ int rte_eth_set_vf_rate_limit(uint8_t port_id, uint16_t vf, uint16_t tx_rate,
 
 int
 rte_eth_mirror_rule_set(uint8_t port_id,
-			struct rte_eth_vmdq_mirror_conf *mirror_conf,
+			struct rte_eth_mirror_conf *mirror_conf,
 			uint8_t rule_id, uint8_t on)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
@@ -2834,12 +2834,6 @@ rte_eth_mirror_rule_set(uint8_t port_id,
 		return -EINVAL;
 	}
 
-	if (rule_id >= ETH_VMDQ_NUM_MIRROR_RULE) {
-		PMD_DEBUG_TRACE("Invalid rule_id, rule_id must be 0-%d\n",
-			ETH_VMDQ_NUM_MIRROR_RULE - 1);
-		return -EINVAL;
-	}
-
 	dev = &rte_eth_devices[port_id];
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->mirror_rule_set, -ENOTSUP);
 
@@ -2852,12 +2846,6 @@ rte_eth_mirror_rule_reset(uint8_t port_id, uint8_t rule_id)
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 
 	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-
-	if (rule_id >= ETH_VMDQ_NUM_MIRROR_RULE) {
-		PMD_DEBUG_TRACE("Invalid rule_id, rule_id must be 0-%d\n",
-			ETH_VMDQ_NUM_MIRROR_RULE-1);
-		return -EINVAL;
-	}
 
 	dev = &rte_eth_devices[port_id];
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->mirror_rule_reset, -ENOTSUP);

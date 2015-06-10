@@ -467,8 +467,8 @@ struct rte_eth_rss_conf {
 #define ETH_VMDQ_ACCEPT_BROADCAST   0x0008 /**< accept broadcast packets. */
 #define ETH_VMDQ_ACCEPT_MULTICAST   0x0010 /**< multicast promiscuous. */
 
-/* Definitions used for VMDQ mirror rules setting */
-#define ETH_VMDQ_NUM_MIRROR_RULE     4 /**< Maximum nb. of mirror rules. . */
+/** Maximum nb. of vlan per mirror rule */
+#define ETH_MIRROR_MAX_VLANS       64
 
 #define ETH_VMDQ_POOL_MIRROR    0x0001 /**< Virtual Pool Mirroring. */
 #define ETH_VMDQ_UPLINK_MIRROR  0x0002 /**< Uplink Port Mirroring. */
@@ -480,18 +480,19 @@ struct rte_eth_rss_conf {
  */
 struct rte_eth_vlan_mirror {
 	uint64_t vlan_mask; /**< mask for valid VLAN ID. */
-	uint16_t vlan_id[ETH_VMDQ_MAX_VLAN_FILTERS];
-	/** VLAN ID list for vlan mirror. */
+	/** VLAN ID list for vlan mirroring. */
+	uint16_t vlan_id[ETH_MIRROR_MAX_VLANS];
 };
 
 /**
  * A structure used to configure traffic mirror of an Ethernet port.
  */
-struct rte_eth_vmdq_mirror_conf {
+struct rte_eth_mirror_conf {
 	uint8_t rule_type_mask; /**< Mirroring rule type mask we want to set */
-	uint8_t dst_pool; /**< Destination pool for this mirror rule. */
+	uint8_t dst_pool;  /**< Destination pool for this mirror rule. */
 	uint64_t pool_mask; /**< Bitmap of pool for pool mirroring */
-	struct rte_eth_vlan_mirror vlan; /**< VLAN ID setting for VLAN mirroring */
+	/** VLAN ID setting for VLAN mirroring. */
+	struct rte_eth_vlan_mirror vlan;
 };
 
 /**
@@ -1215,7 +1216,7 @@ typedef int (*eth_set_vf_rate_limit_t)(struct rte_eth_dev *dev,
 /**< @internal Set VF TX rate */
 
 typedef int (*eth_mirror_rule_set_t)(struct rte_eth_dev *dev,
-				  struct rte_eth_vmdq_mirror_conf *mirror_conf,
+				  struct rte_eth_mirror_conf *mirror_conf,
 				  uint8_t rule_id,
 				  uint8_t on);
 /**< @internal Add a traffic mirroring rule on an Ethernet device */
@@ -3176,7 +3177,7 @@ rte_eth_dev_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
  *   - (-EINVAL) if the mr_conf information is not correct.
  */
 int rte_eth_mirror_rule_set(uint8_t port_id,
-			struct rte_eth_vmdq_mirror_conf *mirror_conf,
+			struct rte_eth_mirror_conf *mirror_conf,
 			uint8_t rule_id,
 			uint8_t on);
 
