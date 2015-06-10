@@ -240,6 +240,51 @@ verify_jhash_32bits(void)
 }
 
 /*
+ * Verify that rte_jhash and rte_jhash_1word, rte_jhash_2words
+ * and rte_jhash_3words return the same
+ */
+static int
+verify_jhash_words(void)
+{
+	unsigned i;
+	uint32_t key[3];
+	uint32_t hash, hash_words;
+
+	for (i = 0; i < 3; i++)
+		key[i] = rand();
+
+	/* Test rte_jhash_1word */
+	hash = rte_jhash(key, 4, 0);
+	hash_words = rte_jhash_1word(key[0], 0);
+	if (hash != hash_words) {
+		printf("rte_jhash returns different value (0x%x)"
+		       "than rte_jhash_1word (0x%x)\n",
+		       hash, hash_words);
+		return -1;
+	}
+	/* Test rte_jhash_2words */
+	hash = rte_jhash(key, 8, 0);
+	hash_words = rte_jhash_2words(key[0], key[1], 0);
+	if (hash != hash_words) {
+		printf("rte_jhash returns different value (0x%x)"
+		       "than rte_jhash_2words (0x%x)\n",
+		       hash, hash_words);
+		return -1;
+	}
+	/* Test rte_jhash_3words */
+	hash = rte_jhash(key, 12, 0);
+	hash_words = rte_jhash_3words(key[0], key[1], key[2], 0);
+	if (hash != hash_words) {
+		printf("rte_jhash returns different value (0x%x)"
+		       "than rte_jhash_3words (0x%x)\n",
+		       hash, hash_words);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
  * Run all functional tests for hash functions
  */
 static int
@@ -249,6 +294,9 @@ run_hash_func_tests(void)
 		return -1;
 
 	if (verify_jhash_32bits() != 0)
+		return -1;
+
+	if (verify_jhash_words() != 0)
 		return -1;
 
 	return 0;
