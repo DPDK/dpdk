@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -83,20 +83,6 @@ struct tbl_perf_test_params {
 
 #define ITERATIONS 10000
 #define LOCAL_FBK_HASH_ENTRIES_MAX (1 << 15)
-
-/*******************************************************************************
- * Hash function performance test configuration section. Each performance test
- * will be performed HASHTEST_ITERATIONS times.
- *
- * The five arrays below control what tests are performed. Every combination
- * from the array entries is tested.
- */
-#define HASHTEST_ITERATIONS 1000000
-
-static rte_hash_function hashtest_funcs[] = {rte_jhash, rte_hash_crc};
-static uint32_t hashtest_initvals[] = {0};
-static uint32_t hashtest_key_lens[] = {2, 4, 5, 6, 7, 8, 10, 11, 15, 16, 21, 31, 32, 33, 63, 64};
-/******************************************************************************/
 
 /*******************************************************************************
  * Hash table performance test configuration section.
@@ -617,60 +603,6 @@ static int run_all_tbl_perf_tests(void)
 	return 0;
 }
 
-/*
- * Test a hash function.
- */
-static void run_hash_func_test(rte_hash_function f, uint32_t init_val,
-		uint32_t key_len)
-{
-	static uint8_t key[RTE_HASH_KEY_LENGTH_MAX];
-	uint64_t ticks = 0, start, end;
-	unsigned i, j;
-
-	for (i = 0; i < HASHTEST_ITERATIONS; i++) {
-
-		for (j = 0; j < key_len; j++)
-			key[j] = (uint8_t) rte_rand();
-
-		start = rte_rdtsc();
-		f(key, key_len, init_val);
-		end = rte_rdtsc();
-		ticks += end - start;
-	}
-
-	printf("%-12s, %-18u, %-13u, %.02f\n", get_hash_name(f), (unsigned) key_len,
-			(unsigned) init_val, (double)ticks / HASHTEST_ITERATIONS);
-}
-
-/*
- * Test all hash functions.
- */
-static void run_hash_func_tests(void)
-{
-	unsigned i, j, k;
-
-	printf("\n\n *** Hash function performance test results ***\n");
-	printf(" Number of iterations for each test = %d\n",
-			HASHTEST_ITERATIONS);
-	printf("Hash Func.  , Key Length (bytes), Initial value, Ticks/Op.\n");
-
-	for (i = 0;
-	     i < sizeof(hashtest_funcs) / sizeof(rte_hash_function);
-	     i++) {
-		for (j = 0;
-		     j < sizeof(hashtest_initvals) / sizeof(uint32_t);
-		     j++) {
-			for (k = 0;
-			     k < sizeof(hashtest_key_lens) / sizeof(uint32_t);
-			     k++) {
-				run_hash_func_test(hashtest_funcs[i],
-						hashtest_initvals[j],
-						hashtest_key_lens[k]);
-			}
-		}
-	}
-}
-
 /* Control operation of performance testing of fbk hash. */
 #define LOAD_FACTOR 0.667	/* How full to make the hash table. */
 #define TEST_SIZE 1000000	/* How many operations to time. */
@@ -757,7 +689,6 @@ test_hash_perf(void)
 {
 	if (run_all_tbl_perf_tests() < 0)
 		return -1;
-	run_hash_func_tests();
 
 	if (fbk_hash_perf_test() < 0)
 		return -1;
