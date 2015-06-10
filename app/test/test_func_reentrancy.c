@@ -228,7 +228,7 @@ hash_create_free(__attribute__((unused)) void *arg)
 		.entries = 16,
 		.bucket_entries = 4,
 		.key_len = 4,
-		.hash_func = (rte_hash_function)rte_jhash2,
+		.hash_func = (rte_hash_function)rte_jhash_32b,
 		.hash_func_init_val = 0,
 		.socket_id = 0,
 	};

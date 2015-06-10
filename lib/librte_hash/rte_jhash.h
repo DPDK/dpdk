@@ -46,6 +46,8 @@ extern "C" {
 
 #include <stdint.h>
 #include <string.h>
+
+#include <rte_log.h>
 #include <rte_byteorder.h>
 
 /* jhash.h: Jenkins hash support.
@@ -279,7 +281,7 @@ rte_jhash_2hashes(const void *key, uint32_t length, uint32_t *pc, uint32_t *pb)
  *   IN: second seed OUT: secondary hash value.
  */
 static inline void
-rte_jhash2_2hashes(const uint32_t *k, uint32_t length, uint32_t *pc, uint32_t *pb)
+rte_jhash_32b_2hashes(const uint32_t *k, uint32_t length, uint32_t *pc, uint32_t *pb)
 {
 	__rte_jhash_2hashes((const void *) k, (length << 2), pc, pb, 0);
 }
@@ -322,11 +324,22 @@ rte_jhash(const void *key, uint32_t length, uint32_t initval)
  *   Calculated hash value.
  */
 static inline uint32_t
+rte_jhash_32b(const uint32_t *k, uint32_t length, uint32_t initval)
+{
+	uint32_t initval2 = 0;
+
+	rte_jhash_32b_2hashes(k, length, &initval, &initval2);
+
+	return initval;
+}
+
+static inline uint32_t
+__attribute__ ((deprecated))
 rte_jhash2(const uint32_t *k, uint32_t length, uint32_t initval)
 {
 	uint32_t initval2 = 0;
 
-	rte_jhash2_2hashes(k, length, &initval, &initval2);
+	rte_jhash_32b_2hashes(k, length, &initval, &initval2);
 
 	return initval;
 }

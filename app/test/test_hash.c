@@ -1177,7 +1177,7 @@ test_hash_add_delete_jhash2(void)
 
 	hash_params_ex.name = "hash_test_jhash2";
 	hash_params_ex.key_len = 4;
-	hash_params_ex.hash_func = (rte_hash_function)rte_jhash2;
+	hash_params_ex.hash_func = (rte_hash_function)rte_jhash_32b;
 
 	handle = rte_hash_create(&hash_params_ex);
 	if (handle == NULL) {
@@ -1216,7 +1216,7 @@ test_hash_add_delete_2_jhash2(void)
 
 	hash_params_ex.name = "hash_test_2_jhash2";
 	hash_params_ex.key_len = 8;
-	hash_params_ex.hash_func = (rte_hash_function)rte_jhash2;
+	hash_params_ex.hash_func = (rte_hash_function)rte_jhash_32b;
 
 	handle = rte_hash_create(&hash_params_ex);
 	if (handle == NULL)

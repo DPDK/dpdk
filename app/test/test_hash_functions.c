@@ -204,7 +204,7 @@ verify_precalculated_hash_func_tests(void)
 }
 
 /*
- * Verify that rte_jhash and rte_jhash2 return the same
+ * Verify that rte_jhash and rte_jhash_32b return the same
  */
 static int
 verify_jhash_32bits(void)
@@ -223,12 +223,12 @@ verify_jhash_32bits(void)
 				hash = rte_jhash(key, hashtest_key_lens[i],
 						hashtest_initvals[j]);
 				/* Divide key length by 4 in rte_jhash for 32 bits */
-				hash32 = rte_jhash2((const uint32_t *)key,
+				hash32 = rte_jhash_32b((const uint32_t *)key,
 						hashtest_key_lens[i] >> 2,
 						hashtest_initvals[j]);
 				if (hash != hash32) {
 					printf("rte_jhash returns different value (0x%x)"
-					       "than rte_jhash2 (0x%x)\n",
+					       "than rte_jhash_32b (0x%x)\n",
 					       hash, hash32);
 					return -1;
 				}
