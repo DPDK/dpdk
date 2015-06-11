@@ -202,18 +202,12 @@ struct virtqueue {
 };
 
 /* If multiqueue is provided by host, then we suppport it. */
-#ifndef VIRTIO_NET_F_MQ
-/* Device supports Receive Flow Steering */
-#define VIRTIO_NET_F_MQ 0x400000
 #define VIRTIO_NET_CTRL_MQ   4
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET        0
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX        0x8000
-#endif
-#ifndef VIRTIO_NET_F_CTRL_MAC_ADDR
-#define VIRTIO_NET_F_CTRL_MAC_ADDR 0x800000
+
 #define VIRTIO_NET_CTRL_MAC_ADDR_SET         1
-#endif
 
 /**
  * This is the first element of the scatter-gather list.  If you don't

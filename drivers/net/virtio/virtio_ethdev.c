@@ -799,23 +799,10 @@ virtio_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 static void
 virtio_negotiate_features(struct virtio_hw *hw)
 {
-	uint32_t host_features, mask;
-
-	/* checksum offload not implemented */
-	mask = VIRTIO_NET_F_CSUM | VIRTIO_NET_F_GUEST_CSUM;
-
-	/* TSO and LRO are only available when their corresponding
-	 * checksum offload feature is also negotiated.
-	 */
-	mask |= VIRTIO_NET_F_HOST_TSO4 | VIRTIO_NET_F_HOST_TSO6 | VIRTIO_NET_F_HOST_ECN;
-	mask |= VIRTIO_NET_F_GUEST_TSO4 | VIRTIO_NET_F_GUEST_TSO6 | VIRTIO_NET_F_GUEST_ECN;
-	mask |= VTNET_LRO_FEATURES;
-
-	/* not negotiating INDIRECT descriptor table support */
-	mask |= VIRTIO_RING_F_INDIRECT_DESC;
+	uint32_t host_features;
 
 	/* Prepare guest_features: feature that driver wants to support */
-	hw->guest_features = VTNET_FEATURES & ~mask;
+	hw->guest_features = VIRTIO_PMD_GUEST_FEATURES;
 	PMD_INIT_LOG(DEBUG, "guest_features before negotiate = %x",
 		hw->guest_features);
 

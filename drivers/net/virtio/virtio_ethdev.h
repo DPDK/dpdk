@@ -56,24 +56,15 @@
 #define VIRTIO_MAX_RX_PKTLEN  9728
 
 /* Features desired/implemented by this driver. */
-#define VTNET_FEATURES \
-	(VIRTIO_NET_F_MAC       | \
-	VIRTIO_NET_F_STATUS     | \
-	VIRTIO_NET_F_MQ         | \
-	VIRTIO_NET_F_CTRL_MAC_ADDR | \
-	VIRTIO_NET_F_CTRL_VQ    | \
-	VIRTIO_NET_F_CTRL_RX    | \
-	VIRTIO_NET_F_CTRL_VLAN  | \
-	VIRTIO_NET_F_CSUM       | \
-	VIRTIO_NET_F_HOST_TSO4  | \
-	VIRTIO_NET_F_HOST_TSO6  | \
-	VIRTIO_NET_F_HOST_ECN   | \
-	VIRTIO_NET_F_GUEST_CSUM | \
-	VIRTIO_NET_F_GUEST_TSO4 | \
-	VIRTIO_NET_F_GUEST_TSO6 | \
-	VIRTIO_NET_F_GUEST_ECN  | \
-	VIRTIO_NET_F_MRG_RXBUF  | \
-	VIRTIO_RING_F_INDIRECT_DESC)
+#define VIRTIO_PMD_GUEST_FEATURES		\
+	(1u << VIRTIO_NET_F_MAC		  |	\
+	 1u << VIRTIO_NET_F_STATUS	  |	\
+	 1u << VIRTIO_NET_F_MQ		  |	\
+	 1u << VIRTIO_NET_F_CTRL_MAC_ADDR |	\
+	 1u << VIRTIO_NET_F_CTRL_VQ	  |	\
+	 1u << VIRTIO_NET_F_CTRL_RX	  |	\
+	 1u << VIRTIO_NET_F_CTRL_VLAN	  |	\
+	 1u << VIRTIO_NET_F_MRG_RXBUF)
 
 /*
  * CQ function prototype

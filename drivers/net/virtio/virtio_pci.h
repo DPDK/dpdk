@@ -96,26 +96,6 @@ struct virtqueue;
 #define VIRTIO_CONFIG_STATUS_FAILED    0x80
 
 /*
- * Generate interrupt when the virtqueue ring is
- * completely used, even if we've suppressed them.
- */
-#define VIRTIO_F_NOTIFY_ON_EMPTY (1 << 24)
-
-/*
- * The guest should never negotiate this feature; it
- * is used to detect faulty drivers.
- */
-#define VIRTIO_F_BAD_FEATURE (1 << 30)
-
-/*
- * Some VirtIO feature bits (currently bits 28 through 31) are
- * reserved for the transport being used (eg. virtio_ring), the
- * rest are per-device feature bits.
- */
-#define VIRTIO_TRANSPORT_F_START 28
-#define VIRTIO_TRANSPORT_F_END   32
-
-/*
  * Each virtqueue indirect descriptor list must be physically contiguous.
  * To allow us to malloc(9) each list individually, limit the number
  * supported to what will fit in one page. With 4KB pages, this is a limit
@@ -128,33 +108,55 @@ struct virtqueue;
 #define VIRTIO_MAX_INDIRECT ((int) (PAGE_SIZE / 16))
 
 /* The feature bitmap for virtio net */
-#define VIRTIO_NET_F_CSUM       0x00001 /* Host handles pkts w/ partial csum */
-#define VIRTIO_NET_F_GUEST_CSUM 0x00002 /* Guest handles pkts w/ partial csum*/
-#define VIRTIO_NET_F_MAC        0x00020 /* Host has given MAC address. */
-#define VIRTIO_NET_F_GSO        0x00040 /* Host handles pkts w/ any GSO type */
-#define VIRTIO_NET_F_GUEST_TSO4 0x00080 /* Guest can handle TSOv4 in. */
-#define VIRTIO_NET_F_GUEST_TSO6 0x00100 /* Guest can handle TSOv6 in. */
-#define VIRTIO_NET_F_GUEST_ECN  0x00200 /* Guest can handle TSO[6] w/ ECN in.*/
-#define VIRTIO_NET_F_GUEST_UFO  0x00400 /* Guest can handle UFO in. */
-#define VIRTIO_NET_F_HOST_TSO4  0x00800 /* Host can handle TSOv4 in. */
-#define VIRTIO_NET_F_HOST_TSO6  0x01000 /* Host can handle TSOv6 in. */
-#define VIRTIO_NET_F_HOST_ECN   0x02000 /* Host can handle TSO[6] w/ ECN in. */
-#define VIRTIO_NET_F_HOST_UFO   0x04000 /* Host can handle UFO in. */
-#define VIRTIO_NET_F_MRG_RXBUF  0x08000 /* Host can merge receive buffers. */
-#define VIRTIO_NET_F_STATUS     0x10000 /* virtio_net_config.status available*/
-#define VIRTIO_NET_F_CTRL_VQ    0x20000 /* Control channel available */
-#define VIRTIO_NET_F_CTRL_RX    0x40000 /* Control channel RX mode support */
-#define VIRTIO_NET_F_CTRL_VLAN  0x80000 /* Control channel VLAN filtering */
-#define VIRTIO_NET_F_CTRL_RX_EXTRA  0x100000 /* Extra RX mode control support */
-#define VIRTIO_RING_F_INDIRECT_DESC 0x10000000 /* Support for indirect buffer descriptors. */
-/* The guest publishes the used index for which it expects an interrupt
- * at the end of the avail ring. Host should ignore the avail->flags field.
- * The host publishes the avail index for which it expects a kick
- * at the end of the used ring. Guest should ignore the used->flags field.
- */
-#define VIRTIO_RING_F_EVENT_IDX 0x20000000
+#define VIRTIO_NET_F_CSUM	0	/* Host handles pkts w/ partial csum */
+#define VIRTIO_NET_F_GUEST_CSUM	1	/* Guest handles pkts w/ partial csum */
+#define VIRTIO_NET_F_MAC	5	/* Host has given MAC address. */
+#define VIRTIO_NET_F_GUEST_TSO4	7	/* Guest can handle TSOv4 in. */
+#define VIRTIO_NET_F_GUEST_TSO6	8	/* Guest can handle TSOv6 in. */
+#define VIRTIO_NET_F_GUEST_ECN	9	/* Guest can handle TSO[6] w/ ECN in. */
+#define VIRTIO_NET_F_GUEST_UFO	10	/* Guest can handle UFO in. */
+#define VIRTIO_NET_F_HOST_TSO4	11	/* Host can handle TSOv4 in. */
+#define VIRTIO_NET_F_HOST_TSO6	12	/* Host can handle TSOv6 in. */
+#define VIRTIO_NET_F_HOST_ECN	13	/* Host can handle TSO[6] w/ ECN in. */
+#define VIRTIO_NET_F_HOST_UFO	14	/* Host can handle UFO in. */
+#define VIRTIO_NET_F_MRG_RXBUF	15	/* Host can merge receive buffers. */
+#define VIRTIO_NET_F_STATUS	16	/* virtio_net_config.status available */
+#define VIRTIO_NET_F_CTRL_VQ	17	/* Control channel available */
+#define VIRTIO_NET_F_CTRL_RX	18	/* Control channel RX mode support */
+#define VIRTIO_NET_F_CTRL_VLAN	19	/* Control channel VLAN filtering */
+#define VIRTIO_NET_F_CTRL_RX_EXTRA 20	/* Extra RX mode control support */
+#define VIRTIO_NET_F_GUEST_ANNOUNCE 21	/* Guest can announce device on the
+					 * network */
+#define VIRTIO_NET_F_MQ		22	/* Device supports Receive Flow
+					 * Steering */
+#define VIRTIO_NET_F_CTRL_MAC_ADDR 23	/* Set MAC address */
 
-#define VIRTIO_NET_S_LINK_UP 1 /* Link is up */
+/* Do we get callbacks when the ring is completely used, even if we've
+ * suppressed them? */
+#define VIRTIO_F_NOTIFY_ON_EMPTY	24
+
+/* Can the device handle any descriptor layout? */
+#define VIRTIO_F_ANY_LAYOUT		27
+
+/* We support indirect buffer descriptors */
+#define VIRTIO_RING_F_INDIRECT_DESC	28
+
+/*
+ * Some VirtIO feature bits (currently bits 28 through 31) are
+ * reserved for the transport being used (eg. virtio_ring), the
+ * rest are per-device feature bits.
+ */
+#define VIRTIO_TRANSPORT_F_START 28
+#define VIRTIO_TRANSPORT_F_END   32
+
+/* The Guest publishes the used index for which it expects an interrupt
+ * at the end of the avail ring. Host should ignore the avail->flags field. */
+/* The Host publishes the avail index for which it expects a kick
+ * at the end of the used ring. Guest should ignore the used->flags field. */
+#define VIRTIO_RING_F_EVENT_IDX		29
+
+#define VIRTIO_NET_S_LINK_UP	1	/* Link is up */
+#define VIRTIO_NET_S_ANNOUNCE	2	/* Announcement is needed */
 
 /*
  * Maximum number of virtqueues per device.
@@ -243,9 +245,9 @@ outl_p(unsigned int data, unsigned int port)
 	outl_p((unsigned int)(value), (VIRTIO_PCI_REG_ADDR((hw), (reg))))
 
 static inline int
-vtpci_with_feature(struct virtio_hw *hw, uint32_t feature)
+vtpci_with_feature(struct virtio_hw *hw, uint32_t bit)
 {
-	return (hw->guest_features & feature) != 0;
+	return (hw->guest_features & (1u << bit)) != 0;
 }
 
 /*
