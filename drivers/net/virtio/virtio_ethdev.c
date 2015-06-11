@@ -426,6 +426,11 @@ virtio_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	int dlen[1];
 	int ret;
 
+	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_RX)) {
+		PMD_INIT_LOG(INFO, "host does not support rx control\n");
+		return;
+	}
+
 	ctrl.hdr.class = VIRTIO_NET_CTRL_RX;
 	ctrl.hdr.cmd = VIRTIO_NET_CTRL_RX_PROMISC;
 	ctrl.data[0] = 1;
@@ -443,6 +448,11 @@ virtio_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	struct virtio_pmd_ctrl ctrl;
 	int dlen[1];
 	int ret;
+
+	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_RX)) {
+		PMD_INIT_LOG(INFO, "host does not support rx control\n");
+		return;
+	}
 
 	ctrl.hdr.class = VIRTIO_NET_CTRL_RX;
 	ctrl.hdr.cmd = VIRTIO_NET_CTRL_RX_PROMISC;
@@ -462,6 +472,11 @@ virtio_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	int dlen[1];
 	int ret;
 
+	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_RX)) {
+		PMD_INIT_LOG(INFO, "host does not support rx control\n");
+		return;
+	}
+
 	ctrl.hdr.class = VIRTIO_NET_CTRL_RX;
 	ctrl.hdr.cmd = VIRTIO_NET_CTRL_RX_ALLMULTI;
 	ctrl.data[0] = 1;
@@ -479,6 +494,11 @@ virtio_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	struct virtio_pmd_ctrl ctrl;
 	int dlen[1];
 	int ret;
+
+	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_RX)) {
+		PMD_INIT_LOG(INFO, "host does not support rx control\n");
+		return;
+	}
 
 	ctrl.hdr.class = VIRTIO_NET_CTRL_RX;
 	ctrl.hdr.cmd = VIRTIO_NET_CTRL_RX_ALLMULTI;
