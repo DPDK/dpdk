@@ -400,9 +400,12 @@ class AutotestRunner:
 		except:
 			print "Exception occured"
 			print sys.exc_info()
+			self.fails = 1
 
 		# drop logs from all executions to a logfile
 		for buf in self.log_buffers:
 			self.logfile.write(buf.replace("\r",""))
 
 		log_buffers = []
+
+		return self.fails
