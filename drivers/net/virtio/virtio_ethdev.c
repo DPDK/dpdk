@@ -228,7 +228,6 @@ virtio_set_multiple_queues(struct rte_eth_dev *dev, uint16_t nb_queues)
 	dlen[0] = sizeof(uint16_t);
 
 	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
-
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Multiqueue configured but send command "
 			  "failed, this is too late now...");
@@ -394,7 +393,6 @@ virtio_dev_cq_queue_setup(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx,
 	PMD_INIT_FUNC_TRACE();
 	ret = virtio_dev_queue_setup(dev, VTNET_CQ, VTNET_SQ_CQ_QUEUE_IDX,
 			vtpci_queue_idx, nb_desc, socket_id, &vq);
-
 	if (ret < 0) {
 		PMD_INIT_LOG(ERR, "control vq initialization failed");
 		return ret;
@@ -434,7 +432,6 @@ virtio_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	dlen[0] = 1;
 
 	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
-
 	if (ret)
 		PMD_INIT_LOG(ERR, "Failed to enable promisc");
 }
@@ -453,7 +450,6 @@ virtio_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	dlen[0] = 1;
 
 	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
-
 	if (ret)
 		PMD_INIT_LOG(ERR, "Failed to disable promisc");
 }
@@ -472,7 +468,6 @@ virtio_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	dlen[0] = 1;
 
 	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
-
 	if (ret)
 		PMD_INIT_LOG(ERR, "Failed to enable allmulticast");
 }
@@ -491,7 +486,6 @@ virtio_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	dlen[0] = 1;
 
 	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
-
 	if (ret)
 		PMD_INIT_LOG(ERR, "Failed to disable allmulticast");
 }
