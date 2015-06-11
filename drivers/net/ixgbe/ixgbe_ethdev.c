@@ -866,6 +866,9 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 		return -EIO;
 	}
 
+	/* Reset the hw statistics */
+	ixgbe_dev_stats_reset(eth_dev);
+
 	/* disable interrupt */
 	ixgbe_disable_intr(hw);
 
@@ -1037,6 +1040,9 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* init_mailbox_params */
 	hw->mbx.ops.init_params(hw);
+
+	/* Reset the hw statistics */
+	ixgbevf_dev_stats_reset(eth_dev);
 
 	/* Disable the interrupts for VF */
 	ixgbevf_intr_disable(hw);
