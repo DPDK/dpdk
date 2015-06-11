@@ -211,6 +211,7 @@ static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 				void *arg);
 static void i40e_configure_registers(struct i40e_hw *hw);
 static void i40e_hw_init(struct i40e_hw *hw);
+static int i40e_config_qinq(struct i40e_hw *hw, struct i40e_vsi *vsi);
 
 static const struct rte_pci_id pci_id_i40e_map[] = {
 #define RTE_PCI_DEV_ID_DECL_I40E(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
@@ -1529,11 +1530,13 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_vfs = dev->pci_dev->max_vfs;
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
+		DEV_RX_OFFLOAD_QINQ_STRIP |
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_UDP_CKSUM |
 		DEV_RX_OFFLOAD_TCP_CKSUM;
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_VLAN_INSERT |
+		DEV_TX_OFFLOAD_QINQ_INSERT |
 		DEV_TX_OFFLOAD_IPV4_CKSUM |
 		DEV_TX_OFFLOAD_UDP_CKSUM |
 		DEV_TX_OFFLOAD_TCP_CKSUM |
@@ -3056,6 +3059,7 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		 * macvlan filter which is expected and cannot be removed.
 		 */
 		i40e_update_default_filter_setting(vsi);
+		i40e_config_qinq(hw, vsi);
 	} else if (type == I40E_VSI_SRIOV) {
 		memset(&ctxt, 0, sizeof(ctxt));
 		/**
@@ -3096,6 +3100,8 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		 * Since VSI is not created yet, only configure parameter,
 		 * will add vsi below.
 		 */
+
+		i40e_config_qinq(hw, vsi);
 	} else if (type == I40E_VSI_VMDQ2) {
 		memset(&ctxt, 0, sizeof(ctxt));
 		/*
@@ -5696,4 +5702,50 @@ i40e_configure_registers(struct i40e_hw *hw)
 		PMD_DRV_LOG(DEBUG, "Write 0x%"PRIx64" to the address of "
 			"0x%"PRIx32, reg_table[i].val, reg_table[i].addr);
 	}
+}
+
+#define I40E_VSI_TSR(_i)            (0x00050800 + ((_i) * 4))
+#define I40E_VSI_TSR_QINQ_CONFIG    0xc030
+#define I40E_VSI_L2TAGSTXVALID(_i)  (0x00042800 + ((_i) * 4))
+#define I40E_VSI_L2TAGSTXVALID_QINQ 0xab
+static int
+i40e_config_qinq(struct i40e_hw *hw, struct i40e_vsi *vsi)
+{
+	uint32_t reg;
+	int ret;
+
+	if (vsi->vsi_id >= I40E_MAX_NUM_VSIS) {
+		PMD_DRV_LOG(ERR, "VSI ID exceeds the maximum");
+		return -EINVAL;
+	}
+
+	/* Configure for double VLAN RX stripping */
+	reg = I40E_READ_REG(hw, I40E_VSI_TSR(vsi->vsi_id));
+	if ((reg & I40E_VSI_TSR_QINQ_CONFIG) != I40E_VSI_TSR_QINQ_CONFIG) {
+		reg |= I40E_VSI_TSR_QINQ_CONFIG;
+		ret = i40e_aq_debug_write_register(hw,
+						   I40E_VSI_TSR(vsi->vsi_id),
+						   reg, NULL);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Failed to update VSI_TSR[%d]",
+				    vsi->vsi_id);
+			return I40E_ERR_CONFIG;
+		}
+	}
+
+	/* Configure for double VLAN TX insertion */
+	reg = I40E_READ_REG(hw, I40E_VSI_L2TAGSTXVALID(vsi->vsi_id));
+	if ((reg & 0xff) != I40E_VSI_L2TAGSTXVALID_QINQ) {
+		reg = I40E_VSI_L2TAGSTXVALID_QINQ;
+		ret = i40e_aq_debug_write_register(hw,
+						   I40E_VSI_L2TAGSTXVALID(
+						   vsi->vsi_id), reg, NULL);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Failed to update "
+				"VSI_L2TAGSTXVALID[%d]", vsi->vsi_id);
+			return I40E_ERR_CONFIG;
+		}
+	}
+
+	return 0;
 }

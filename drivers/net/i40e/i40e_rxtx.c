@@ -94,18 +94,44 @@ static uint16_t i40e_xmit_pkts_simple(void *tx_queue,
 				      struct rte_mbuf **tx_pkts,
 				      uint16_t nb_pkts);
 
+static inline void
+i40e_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union i40e_rx_desc *rxdp)
+{
+	if (rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
+		(1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT)) {
+		mb->ol_flags |= PKT_RX_VLAN_PKT;
+		mb->vlan_tci =
+			rte_le_to_cpu_16(rxdp->wb.qword0.lo_dword.l2tag1);
+		PMD_RX_LOG(DEBUG, "Descriptor l2tag1: %u",
+			   rte_le_to_cpu_16(rxdp->wb.qword0.lo_dword.l2tag1));
+	} else {
+		mb->vlan_tci = 0;
+	}
+#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+	if (rte_le_to_cpu_16(rxdp->wb.qword2.ext_status) &
+		(1 << I40E_RX_DESC_EXT_STATUS_L2TAG2P_SHIFT)) {
+		mb->ol_flags |= PKT_RX_QINQ_PKT;
+		mb->vlan_tci_outer = mb->vlan_tci;
+		mb->vlan_tci = rte_le_to_cpu_16(rxdp->wb.qword2.l2tag2_2);
+		PMD_RX_LOG(DEBUG, "Descriptor l2tag2_1: %u, l2tag2_2: %u",
+			   rte_le_to_cpu_16(rxdp->wb.qword2.l2tag2_1),
+			   rte_le_to_cpu_16(rxdp->wb.qword2.l2tag2_2));
+	} else {
+		mb->vlan_tci_outer = 0;
+	}
+#endif
+	PMD_RX_LOG(DEBUG, "Mbuf vlan_tci: %u, vlan_tci_outer: %u",
+		   mb->vlan_tci, mb->vlan_tci_outer);
+}
+
 /* Translate the rx descriptor status to pkt flags */
 static inline uint64_t
 i40e_rxd_status_to_pkt_flags(uint64_t qword)
 {
 	uint64_t flags;
 
-	/* Check if VLAN packet */
-	flags = qword & (1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT) ?
-							PKT_RX_VLAN_PKT : 0;
-
 	/* Check if RSS_HASH */
-	flags |= (((qword >> I40E_RX_DESC_STATUS_FLTSTAT_SHIFT) &
+	flags = (((qword >> I40E_RX_DESC_STATUS_FLTSTAT_SHIFT) &
 					I40E_RX_DESC_FLTSTAT_RSS_HASH) ==
 			I40E_RX_DESC_FLTSTAT_RSS_HASH) ? PKT_RX_RSS_HASH : 0;
 
@@ -696,16 +722,12 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 			mb = rxep[j].mbuf;
 			qword1 = rte_le_to_cpu_64(\
 				rxdp[j].wb.qword1.status_error_len);
-			rx_status = (qword1 & I40E_RXD_QW1_STATUS_MASK) >>
-						I40E_RXD_QW1_STATUS_SHIFT;
 			pkt_len = ((qword1 & I40E_RXD_QW1_LENGTH_PBUF_MASK) >>
 				I40E_RXD_QW1_LENGTH_PBUF_SHIFT) - rxq->crc_len;
 			mb->data_len = pkt_len;
 			mb->pkt_len = pkt_len;
-			mb->vlan_tci = rx_status &
-				(1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT) ?
-			rte_le_to_cpu_16(\
-				rxdp[j].wb.qword0.lo_dword.l2tag1) : 0;
+			mb->ol_flags = 0;
+			i40e_rxd_to_vlan_tci(mb, &rxdp[j]);
 			pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
 			pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
 			pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
@@ -719,7 +741,7 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 			if (pkt_flags & PKT_RX_FDIR)
 				pkt_flags |= i40e_rxd_build_fdir(&rxdp[j], mb);
 
-			mb->ol_flags = pkt_flags;
+			mb->ol_flags |= pkt_flags;
 		}
 
 		for (j = 0; j < I40E_LOOK_AHEAD; j++)
@@ -945,10 +967,8 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->pkt_len = rx_packet_len;
 		rxm->data_len = rx_packet_len;
 		rxm->port = rxq->port_id;
-
-		rxm->vlan_tci = rx_status &
-			(1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT) ?
-			rte_le_to_cpu_16(rxd.wb.qword0.lo_dword.l2tag1) : 0;
+		rxm->ol_flags = 0;
+		i40e_rxd_to_vlan_tci(rxm, &rxd);
 		pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
 		pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
 		pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
@@ -960,7 +980,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (pkt_flags & PKT_RX_FDIR)
 			pkt_flags |= i40e_rxd_build_fdir(&rxd, rxm);
 
-		rxm->ol_flags = pkt_flags;
+		rxm->ol_flags |= pkt_flags;
 
 		rx_pkts[nb_rx++] = rxm;
 	}
@@ -1105,9 +1125,8 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		}
 
 		first_seg->port = rxq->port_id;
-		first_seg->vlan_tci = (rx_status &
-			(1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT)) ?
-			rte_le_to_cpu_16(rxd.wb.qword0.lo_dword.l2tag1) : 0;
+		first_seg->ol_flags = 0;
+		i40e_rxd_to_vlan_tci(first_seg, &rxd);
 		pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
 		pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
 		pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
@@ -1120,7 +1139,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		if (pkt_flags & PKT_RX_FDIR)
 			pkt_flags |= i40e_rxd_build_fdir(&rxd, rxm);
 
-		first_seg->ol_flags = pkt_flags;
+		first_seg->ol_flags |= pkt_flags;
 
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr,
@@ -1158,17 +1177,15 @@ i40e_recv_scattered_pkts(void *rx_queue,
 static inline uint16_t
 i40e_calc_context_desc(uint64_t flags)
 {
-	uint64_t mask = 0ULL;
-
-	mask |= (PKT_TX_OUTER_IP_CKSUM | PKT_TX_TCP_SEG);
+	static uint64_t mask = PKT_TX_OUTER_IP_CKSUM |
+		PKT_TX_TCP_SEG |
+		PKT_TX_QINQ_PKT;
 
 #ifdef RTE_LIBRTE_IEEE1588
 	mask |= PKT_TX_IEEE1588_TMST;
 #endif
-	if (flags & mask)
-		return 1;
 
-	return 0;
+	return ((flags & mask) ? 1 : 0);
 }
 
 /* set i40e TSO context descriptor */
@@ -1289,9 +1306,9 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Descriptor based VLAN insertion */
-		if (ol_flags & PKT_TX_VLAN_PKT) {
+		if (ol_flags & (PKT_TX_VLAN_PKT | PKT_TX_QINQ_PKT)) {
 			tx_flags |= tx_pkt->vlan_tci <<
-					I40E_TX_FLAG_L2TAG1_SHIFT;
+				I40E_TX_FLAG_L2TAG1_SHIFT;
 			tx_flags |= I40E_TX_FLAG_INSERT_VLAN;
 			td_cmd |= I40E_TX_DESC_CMD_IL2TAG1;
 			td_tag = (tx_flags & I40E_TX_FLAG_L2TAG1_MASK) >>
@@ -1339,6 +1356,12 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			ctx_txd->tunneling_params =
 				rte_cpu_to_le_32(cd_tunneling_params);
+			if (ol_flags & PKT_TX_QINQ_PKT) {
+				cd_l2tag2 = tx_pkt->vlan_tci_outer;
+				cd_type_cmd_tso_mss |=
+					((uint64_t)I40E_TX_CTX_DESC_IL2TAG2 <<
+						I40E_TXD_CTX_QW1_CMD_SHIFT);
+			}
 			ctx_txd->l2tag2 = rte_cpu_to_le_16(cd_l2tag2);
 			ctx_txd->type_cmd_tso_mss =
 				rte_cpu_to_le_64(cd_type_cmd_tso_mss);

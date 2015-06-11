@@ -889,6 +889,7 @@ struct rte_eth_conf {
 #define DEV_RX_OFFLOAD_UDP_CKSUM   0x00000004
 #define DEV_RX_OFFLOAD_TCP_CKSUM   0x00000008
 #define DEV_RX_OFFLOAD_TCP_LRO     0x00000010
+#define DEV_RX_OFFLOAD_QINQ_STRIP  0x00000020
 
 /**
  * TX offload capabilities of a device.
@@ -901,6 +902,7 @@ struct rte_eth_conf {
 #define DEV_TX_OFFLOAD_TCP_TSO     0x00000020
 #define DEV_TX_OFFLOAD_UDP_TSO     0x00000040
 #define DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM 0x00000080 /**< Used for tunneling packet. */
+#define DEV_TX_OFFLOAD_QINQ_INSERT 0x00000100
 
 struct rte_eth_dev_info {
 	struct rte_pci_device *pci_dev; /**< Device PCI information. */
