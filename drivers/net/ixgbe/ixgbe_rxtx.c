@@ -985,7 +985,6 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 			pkt_len = (uint16_t)(rxdp[j].wb.upper.length - rxq->crc_len);
 			mb->data_len = pkt_len;
 			mb->pkt_len = pkt_len;
-			mb->vlan_tci = rxdp[j].wb.upper.vlan;
 			mb->vlan_tci = rte_le_to_cpu_16(rxdp[j].wb.upper.vlan);
 
 			/* convert descriptor fields to rte mbuf flags */
