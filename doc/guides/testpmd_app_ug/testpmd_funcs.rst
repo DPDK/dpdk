@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -882,31 +882,61 @@ Attach a port specified by pci address or virtual device args.
 To attach a new pci device, the device should be recognized by kernel first.
 Then it should be moved under DPDK management.
 Finally the port can be attached to testpmd.
-On the other hand, to attach a port created by virtual device, above steps are not needed.
 
-port attach (identifier)
-
-For example, to attach a port whose pci address is 0000:02:00.0.
+For example, to move a pci device using ixgbe under DPDK management:
 
 .. code-block:: console
 
-    testpmd> port attach 0000:02:00.0
+    ./tools/dpdk_nic_bind.py --status
+
+    Network devices using DPDK-compatible driver
+    ============================================
+    <none>
+
+    Network devices using kernel driver
+    ===================================
+    0000:0a:00.0 '82599ES 10-Gigabit SFI/SFP+ Network Connection' if=eth2 drv=ixgbe unused=
+
+    ./tools/dpdk_nic_bind.py -b igb_uio 0000:0a:00.0
+    ./tools/dpdk_nic_bind.py --status
+
+    Network devices using DPDK-compatible driver
+    ============================================
+    0000:0a:00.0 '82599ES 10-Gigabit SFI/SFP+ Network Connection' drv=igb_uio unused=
+
+To attach a port created by virtual device, above steps are not needed.
+
+port attach (identifier)
+
+For example, to attach a port whose pci address is 0000:0a:00.0.
+
+.. code-block:: console
+
+    testpmd> port attach 0000:0a:00.0
     Attaching a new port...
-    ... snip ...
+    EAL: PCI device 0000:0a:00.0 on NUMA socket -1
+    EAL:   probe driver: 8086:10fb rte_ixgbe_pmd
+    EAL:   PCI memory mapped at 0x7f83bfa00000
+    EAL:   PCI memory mapped at 0x7f83bfa80000
+    PMD: eth_ixgbe_dev_init(): MAC: 2, PHY: 18, SFP+: 5
+    PMD: eth_ixgbe_dev_init(): port 0 vendorID=0x8086 deviceID=0x10fb
     Port 0 is attached. Now total ports is 1
     Done
+    testpmd>
 
 For example, to attach a port created by pcap PMD.
 
 .. code-block:: console
 
-    testpmd> port attach eth_pcap0,iface=eth0
+    testpmd> port attach eth_pcap0
     Attaching a new port...
-    ... snip ...
+    PMD: Initializing pmd_pcap for eth_pcap0
+    PMD: Creating pcap-backed ethdev on numa socket 0
     Port 0 is attached. Now total ports is 1
     Done
+    testpmd>
 
-In this case, identifier is "eth_pcap0,iface=eth0".
+In this case, identifier is "eth_pcap0".
 This identifier format is the same as "--vdev" format of DPDK applications.
 
 For example, to re-attach a bonded port which has been previously detached,
@@ -928,21 +958,59 @@ port detach
 Detach a specific port.
 
 Before detaching a port, the port should be closed.
-Also to remove a pci device completely from the system, first detach the port from testpmd.
-Then the device should be moved under kernel management.
-Finally the device can be removed using kernel pci hotplug functionality.
-On the other hand, to remove a port created by a virtual device, above steps are not needed.
 
 port detach (port_id)
 
-For example, to detach a port 0.
+For example, to detach a pci device port 0.
 
 .. code-block:: console
 
+    testpmd> port close 0
+    Closing ports...
+    Done
     testpmd> port detach 0
     Detaching a port...
-    ... snip ...
+    EAL: PCI device 0000:0a:00.0 on NUMA socket -1
+    EAL:   remove driver: 8086:10fb rte_ixgbe_pmd
+    EAL:   PCI memory unmapped at 0x7f83bfa00000
+    EAL:   PCI memory unmapped at 0x7f83bfa80000
     Done
+    testpmd>
+
+For example, to detach a virtual device port 0.
+
+.. code-block:: console
+
+    testpmd> port close 0
+    Closing ports...
+    Done
+    testpmd> port detach 0
+    Detaching a port...
+    PMD: Closing pcap ethdev on numa socket 0
+    Port 'eth_pcap0' is detached. Now total ports is 0
+    Done
+    testpmd>
+
+To remove a pci device completely from the system, first detach the port from testpmd.
+Then the device should be moved under kernel management.
+Finally the device can be removed using kernel pci hotplug functionality.
+
+For example, to move a pci device under kernel management:
+
+.. code-block:: console
+
+    ./tools/dpdk_nic_bind.py -b ixgbe 0000:0a:00.0
+    ./tools/dpdk_nic_bind.py --status
+
+    Network devices using DPDK-compatible driver
+    ============================================
+    <none>
+
+    Network devices using kernel driver
+    ===================================
+    0000:0a:00.0 '82599ES 10-Gigabit SFI/SFP+ Network Connection' if=eth2 drv=ixgbe unused=igb_uio
+
+To remove a port created by a virtual device, above steps are not needed.
 
 port start
 ~~~~~~~~~~
