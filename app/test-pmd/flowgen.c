@@ -136,7 +136,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ip_hdr;
 	struct udp_hdr *udp_hdr;
-	uint16_t vlan_tci;
+	uint16_t vlan_tci, vlan_tci_outer;
 	uint16_t ol_flags;
 	uint16_t nb_rx;
 	uint16_t nb_tx;
@@ -163,6 +163,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 
 	mbp = current_fwd_lcore()->mbp;
 	vlan_tci = ports[fs->tx_port].tx_vlan_id;
+	vlan_tci_outer = ports[fs->tx_port].tx_vlan_id_outer;
 	ol_flags = ports[fs->tx_port].tx_ol_flags;
 
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
@@ -208,6 +209,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 		pkt->pkt_len		= pkt_size;
 		pkt->ol_flags		= ol_flags;
 		pkt->vlan_tci		= vlan_tci;
+		pkt->vlan_tci_outer	= vlan_tci_outer;
 		pkt->l2_len		= sizeof(struct ether_hdr);
 		pkt->l3_len		= sizeof(struct ipv4_hdr);
 		pkts_burst[nb_pkt]	= pkt;

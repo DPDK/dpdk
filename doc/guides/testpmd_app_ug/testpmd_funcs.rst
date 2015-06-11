@@ -503,9 +503,19 @@ rx_vxlan_port rm (udp_port) (port_id)
 tx_vlan set
 ~~~~~~~~~~~
 
-Set hardware insertion of VLAN ID in packets sent on a port:
+Set hardware insertion of VLAN IDs in packets sent on a port:
 
-tx_vlan set (vlan_id) (port_id)
+tx_vlan set (port_id) vlan_id[, vlan_id_outer]
+
+.. code-block:: console
+
+    Set a single VLAN ID (5) insertion on port 0.
+
+    tx_vlan set 0 5
+
+    Set double VLAN ID (inner: 2, outer: 3) insertion on port 1.
+
+    tx_vlan set 1 2 3
 
 tx_vlan set pvid
 ~~~~~~~~~~~~~~~~

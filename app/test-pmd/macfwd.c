@@ -110,6 +110,8 @@ pkt_burst_mac_forward(struct fwd_stream *fs)
 	txp = &ports[fs->tx_port];
 	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_INSERT_VLAN)
 		ol_flags = PKT_TX_VLAN_PKT;
+	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_INSERT_QINQ)
+		ol_flags |= PKT_TX_QINQ_PKT;
 	for (i = 0; i < nb_rx; i++) {
 		mb = pkts_burst[i];
 		eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
@@ -121,6 +123,7 @@ pkt_burst_mac_forward(struct fwd_stream *fs)
 		mb->l2_len = sizeof(struct ether_hdr);
 		mb->l3_len = sizeof(struct ipv4_hdr);
 		mb->vlan_tci = txp->tx_vlan_id;
+		mb->vlan_tci_outer = txp->tx_vlan_id_outer;
 	}
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_rx);
 	fs->tx_packets += nb_tx;

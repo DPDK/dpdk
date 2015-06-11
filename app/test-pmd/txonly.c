@@ -202,7 +202,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	struct ether_hdr eth_hdr;
 	uint16_t nb_tx;
 	uint16_t nb_pkt;
-	uint16_t vlan_tci;
+	uint16_t vlan_tci, vlan_tci_outer;
 	uint64_t ol_flags = 0;
 	uint8_t  i;
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
@@ -218,8 +218,11 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	mbp = current_fwd_lcore()->mbp;
 	txp = &ports[fs->tx_port];
 	vlan_tci = txp->tx_vlan_id;
+	vlan_tci_outer = txp->tx_vlan_id_outer;
 	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_INSERT_VLAN)
 		ol_flags = PKT_TX_VLAN_PKT;
+	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_INSERT_QINQ)
+		ol_flags |= PKT_TX_QINQ_PKT;
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
 		pkt = tx_mbuf_alloc(mbp);
 		if (pkt == NULL) {
@@ -266,7 +269,8 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		pkt->nb_segs = tx_pkt_nb_segs;
 		pkt->pkt_len = tx_pkt_length;
 		pkt->ol_flags = ol_flags;
-		pkt->vlan_tci  = vlan_tci;
+		pkt->vlan_tci = vlan_tci;
+		pkt->vlan_tci_outer = vlan_tci_outer;
 		pkt->l2_len = sizeof(struct ether_hdr);
 		pkt->l3_len = sizeof(struct ipv4_hdr);
 		pkts_burst[nb_pkt] = pkt;

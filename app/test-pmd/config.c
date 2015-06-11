@@ -1732,8 +1732,24 @@ tx_vlan_set(portid_t port_id, uint16_t vlan_id)
 		return;
 	if (vlan_id_is_invalid(vlan_id))
 		return;
+	tx_vlan_reset(port_id);
 	ports[port_id].tx_ol_flags |= TESTPMD_TX_OFFLOAD_INSERT_VLAN;
 	ports[port_id].tx_vlan_id = vlan_id;
+}
+
+void
+tx_qinq_set(portid_t port_id, uint16_t vlan_id, uint16_t vlan_id_outer)
+{
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+	if (vlan_id_is_invalid(vlan_id))
+		return;
+	if (vlan_id_is_invalid(vlan_id_outer))
+		return;
+	tx_vlan_reset(port_id);
+	ports[port_id].tx_ol_flags |= TESTPMD_TX_OFFLOAD_INSERT_QINQ;
+	ports[port_id].tx_vlan_id = vlan_id;
+	ports[port_id].tx_vlan_id_outer = vlan_id_outer;
 }
 
 void
@@ -1741,7 +1757,10 @@ tx_vlan_reset(portid_t port_id)
 {
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
-	ports[port_id].tx_ol_flags &= ~TESTPMD_TX_OFFLOAD_INSERT_VLAN;
+	ports[port_id].tx_ol_flags &= ~(TESTPMD_TX_OFFLOAD_INSERT_VLAN |
+				TESTPMD_TX_OFFLOAD_INSERT_QINQ);
+	ports[port_id].tx_vlan_id = 0;
+	ports[port_id].tx_vlan_id_outer = 0;
 }
 
 void

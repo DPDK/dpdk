@@ -304,9 +304,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"rx_vxlan_port rm (udp_port) (port_id)\n"
 			"    Remove an UDP port for VXLAN packet filter on a port\n\n"
 
-			"tx_vlan set vlan_id (port_id)\n"
-			"    Set hardware insertion of VLAN ID in packets sent"
-			" on a port.\n\n"
+			"tx_vlan set (port_id) vlan_id[, vlan_id_outer]\n"
+			"    Set hardware insertion of VLAN IDs (single or double VLAN "
+			"depends on the number of VLAN IDs) in packets sent on a port.\n\n"
 
 			"tx_vlan set pvid port_id vlan_id (on|off)\n"
 			"    Set port based TX VLAN insertion.\n\n"
@@ -2799,8 +2799,8 @@ cmdline_parse_inst_t cmd_rx_vlan_filter = {
 struct cmd_tx_vlan_set_result {
 	cmdline_fixed_string_t tx_vlan;
 	cmdline_fixed_string_t set;
-	uint16_t vlan_id;
 	uint8_t port_id;
+	uint16_t vlan_id;
 };
 
 static void
@@ -2809,6 +2809,13 @@ cmd_tx_vlan_set_parsed(void *parsed_result,
 		       __attribute__((unused)) void *data)
 {
 	struct cmd_tx_vlan_set_result *res = parsed_result;
+	int vlan_offload = rte_eth_dev_get_vlan_offload(res->port_id);
+
+	if (vlan_offload & ETH_VLAN_EXTEND_OFFLOAD) {
+		printf("Error, as QinQ has been enabled.\n");
+		return;
+	}
+
 	tx_vlan_set(res->port_id, res->vlan_id);
 }
 
@@ -2828,13 +2835,69 @@ cmdline_parse_token_num_t cmd_tx_vlan_set_portid =
 cmdline_parse_inst_t cmd_tx_vlan_set = {
 	.f = cmd_tx_vlan_set_parsed,
 	.data = NULL,
-	.help_str = "enable hardware insertion of a VLAN header with a given "
-	"TAG Identifier in packets sent on a port",
+	.help_str = "enable hardware insertion of a single VLAN header "
+		"with a given TAG Identifier in packets sent on a port",
 	.tokens = {
 		(void *)&cmd_tx_vlan_set_tx_vlan,
 		(void *)&cmd_tx_vlan_set_set,
-		(void *)&cmd_tx_vlan_set_vlanid,
 		(void *)&cmd_tx_vlan_set_portid,
+		(void *)&cmd_tx_vlan_set_vlanid,
+		NULL,
+	},
+};
+
+/* *** ENABLE HARDWARE INSERTION OF Double VLAN HEADER IN TX PACKETS *** */
+struct cmd_tx_vlan_set_qinq_result {
+	cmdline_fixed_string_t tx_vlan;
+	cmdline_fixed_string_t set;
+	uint8_t port_id;
+	uint16_t vlan_id;
+	uint16_t vlan_id_outer;
+};
+
+static void
+cmd_tx_vlan_set_qinq_parsed(void *parsed_result,
+			    __attribute__((unused)) struct cmdline *cl,
+			    __attribute__((unused)) void *data)
+{
+	struct cmd_tx_vlan_set_qinq_result *res = parsed_result;
+	int vlan_offload = rte_eth_dev_get_vlan_offload(res->port_id);
+
+	if (!(vlan_offload & ETH_VLAN_EXTEND_OFFLOAD)) {
+		printf("Error, as QinQ hasn't been enabled.\n");
+		return;
+	}
+
+	tx_qinq_set(res->port_id, res->vlan_id, res->vlan_id_outer);
+}
+
+cmdline_parse_token_string_t cmd_tx_vlan_set_qinq_tx_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_vlan_set_qinq_result,
+		tx_vlan, "tx_vlan");
+cmdline_parse_token_string_t cmd_tx_vlan_set_qinq_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_vlan_set_qinq_result,
+		set, "set");
+cmdline_parse_token_num_t cmd_tx_vlan_set_qinq_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_tx_vlan_set_qinq_result,
+		port_id, UINT8);
+cmdline_parse_token_num_t cmd_tx_vlan_set_qinq_vlanid =
+	TOKEN_NUM_INITIALIZER(struct cmd_tx_vlan_set_qinq_result,
+		vlan_id, UINT16);
+cmdline_parse_token_num_t cmd_tx_vlan_set_qinq_vlanid_outer =
+	TOKEN_NUM_INITIALIZER(struct cmd_tx_vlan_set_qinq_result,
+		vlan_id_outer, UINT16);
+
+cmdline_parse_inst_t cmd_tx_vlan_set_qinq = {
+	.f = cmd_tx_vlan_set_qinq_parsed,
+	.data = NULL,
+	.help_str = "enable hardware insertion of double VLAN header "
+		"with given TAG Identifiers in packets sent on a port",
+	.tokens = {
+		(void *)&cmd_tx_vlan_set_qinq_tx_vlan,
+		(void *)&cmd_tx_vlan_set_qinq_set,
+		(void *)&cmd_tx_vlan_set_qinq_portid,
+		(void *)&cmd_tx_vlan_set_qinq_vlanid,
+		(void *)&cmd_tx_vlan_set_qinq_vlanid_outer,
 		NULL,
 	},
 };
@@ -8834,6 +8897,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_rx_vlan_filter_all,
 	(cmdline_parse_inst_t *)&cmd_rx_vlan_filter,
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_set,
+	(cmdline_parse_inst_t *)&cmd_tx_vlan_set_qinq,
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_reset,
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_set_pvid,
 	(cmdline_parse_inst_t *)&cmd_csum_set,

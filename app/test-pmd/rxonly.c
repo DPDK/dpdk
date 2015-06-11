@@ -160,6 +160,9 @@ pkt_burst_receive(struct fwd_stream *fs)
 		}
 		if (ol_flags & PKT_RX_VLAN_PKT)
 			printf(" - VLAN tci=0x%x", mb->vlan_tci);
+		if (ol_flags & PKT_RX_QINQ_PKT)
+			printf(" - QinQ VLAN tci=0x%x, VLAN tci outer=0x%x",
+					mb->vlan_tci, mb->vlan_tci_outer);
 		if (is_encapsulation) {
 			struct ipv4_hdr *ipv4_hdr;
 			struct ipv6_hdr *ipv6_hdr;
