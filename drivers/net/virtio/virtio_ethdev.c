@@ -668,13 +668,18 @@ virtio_get_hwaddr(struct virtio_hw *hw)
 	}
 }
 
-static int
+static void
 virtio_mac_table_set(struct virtio_hw *hw,
 		     const struct virtio_net_ctrl_mac *uc,
 		     const struct virtio_net_ctrl_mac *mc)
 {
 	struct virtio_pmd_ctrl ctrl;
 	int err, len[2];
+
+	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_MAC_ADDR)) {
+		PMD_DRV_LOG(INFO, "host does not support mac table\n");
+		return;
+	}
 
 	ctrl.hdr.class = VIRTIO_NET_CTRL_MAC;
 	ctrl.hdr.cmd = VIRTIO_NET_CTRL_MAC_TABLE_SET;
@@ -688,8 +693,6 @@ virtio_mac_table_set(struct virtio_hw *hw,
 	err = virtio_send_command(hw->cvq, &ctrl, len, 2);
 	if (err != 0)
 		PMD_DRV_LOG(NOTICE, "mac table set failed: %d", err);
-
-	return err;
 }
 
 static void
