@@ -267,13 +267,21 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	if (vq_size == 0) {
 		PMD_INIT_LOG(ERR, "%s: virtqueue does not exist", __func__);
 		return -EINVAL;
-	} else if (!rte_is_power_of_2(vq_size)) {
+	}
+
+	if (!rte_is_power_of_2(vq_size)) {
 		PMD_INIT_LOG(ERR, "%s: virtqueue size is not powerof 2", __func__);
 		return -EINVAL;
-	} else if (nb_desc != vq_size) {
-		PMD_INIT_LOG(ERR, "Warning: nb_desc(%d) is not equal to vq size (%d), fall to vq size",
-			nb_desc, vq_size);
-		nb_desc = vq_size;
+	}
+
+	if (nb_desc < vq_size) {
+		if (!rte_is_power_of_2(nb_desc)) {
+			PMD_INIT_LOG(ERR,
+				     "nb_desc(%u) size is not powerof 2",
+				     nb_desc);
+			return -EINVAL;
+		}
+		vq_size = nb_desc;
 	}
 
 	if (queue_type == VTNET_RQ) {
