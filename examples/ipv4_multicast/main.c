@@ -298,6 +298,7 @@ mcast_out_pkt(struct rte_mbuf *pkt, int use_clone)
 	/* copy metadata from source packet*/
 	hdr->port = pkt->port;
 	hdr->vlan_tci = pkt->vlan_tci;
+	hdr->vlan_tci_outer = pkt->vlan_tci_outer;
 	hdr->tx_offload = pkt->tx_offload;
 	hdr->hash = pkt->hash;
 
