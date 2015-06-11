@@ -102,9 +102,15 @@ extern "C" {
 #define PKT_RX_TUNNEL_IPV6_HDR (1ULL << 12) /**< RX tunnel packet with IPv6 header. */
 #define PKT_RX_FDIR_ID       (1ULL << 13) /**< FD id reported if FDIR match. */
 #define PKT_RX_FDIR_FLX      (1ULL << 14) /**< Flexible bytes reported if FDIR match. */
+#define PKT_RX_QINQ_PKT      (1ULL << 15)  /**< RX packet with double VLAN stripped. */
 /* add new RX flags here */
 
 /* add new TX flags here */
+
+/**
+ * Second VLAN insertion (QinQ) flag.
+ */
+#define PKT_TX_QINQ_PKT    (1ULL << 49)   /**< TX packet with double VLAN inserted. */
 
 /**
  * TCP segmentation offload. To enable this offload feature for a
@@ -280,7 +286,7 @@ struct rte_mbuf {
 	uint16_t data_len;        /**< Amount of data in segment buffer. */
 	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
 	uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
-	uint16_t reserved;
+	uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
 	union {
 		uint32_t rss;     /**< RSS hash result if RSS enabled */
 		struct {
@@ -784,6 +790,7 @@ static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 	m->pkt_len = 0;
 	m->tx_offload = 0;
 	m->vlan_tci = 0;
+	m->vlan_tci_outer = 0;
 	m->nb_segs = 1;
 	m->port = 0xff;
 
@@ -856,6 +863,7 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *m)
 	mi->data_len = m->data_len;
 	mi->port = m->port;
 	mi->vlan_tci = m->vlan_tci;
+	mi->vlan_tci_outer = m->vlan_tci_outer;
 	mi->tx_offload = m->tx_offload;
 	mi->hash = m->hash;
 
