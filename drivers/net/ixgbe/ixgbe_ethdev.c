@@ -2953,6 +2953,8 @@ static int
 ixgbevf_dev_configure(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf* conf = &dev->data->dev_conf;
+	struct ixgbe_adapter *adapter =
+			(struct ixgbe_adapter *)dev->data->dev_private;
 
 	PMD_INIT_LOG(DEBUG, "Configured Virtual Function port id: %d",
 		     dev->data->port_id);
@@ -2972,6 +2974,13 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 		conf->rxmode.hw_strip_crc = 0;
 	}
 #endif
+
+	/*
+	 * Initialize to TRUE. If any of Rx queues doesn't meet the bulk
+	 * allocation or vector Rx preconditions we will reset it.
+	 */
+	adapter->rx_bulk_alloc_allowed = true;
+	adapter->rx_vec_allowed = true;
 
 	return 0;
 }

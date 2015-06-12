@@ -4549,7 +4549,6 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 		(uint16_t)dev->data->dev_conf.rxmode.max_rx_pkt_len);
 
 	/* Setup RX queues */
-	dev->rx_pkt_burst = ixgbe_recv_pkts;
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
 
@@ -4615,14 +4614,6 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 			if (!dev->data->scattered_rx)
 				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 			dev->data->scattered_rx = 1;
-#ifdef RTE_IXGBE_INC_VECTOR
-			if (rte_is_power_of_2(rxq->nb_rx_desc))
-				dev->rx_pkt_burst =
-					ixgbe_recv_scattered_pkts_vec;
-			else
-#endif
-				dev->rx_pkt_burst =
-					ixgbe_recv_pkts_lro_single_alloc;
 		}
 	}
 
@@ -4639,6 +4630,8 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 	psrtype |= (dev->data->nb_rx_queues >> 1) <<
 		IXGBE_PSRTYPE_RQPL_SHIFT;
 	IXGBE_WRITE_REG(hw, IXGBE_VFPSRTYPE, psrtype);
+
+	ixgbe_set_rx_function(dev);
 
 	return 0;
 }
