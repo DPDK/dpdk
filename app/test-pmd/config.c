@@ -361,6 +361,8 @@ port_infos_display(portid_t port_id)
 
 	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(port_id, &dev_info);
+	if (dev_info.hash_key_size > 0)
+		printf("Hash key size in bytes: %u\n", dev_info.hash_key_size);
 	if (dev_info.reta_size > 0)
 		printf("Redirection table size: %u\n", dev_info.reta_size);
 	if (!dev_info.flow_type_rss_offloads)
