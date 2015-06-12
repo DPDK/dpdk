@@ -835,7 +835,7 @@ fm10k_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	ipackets = opackets = ibytes = obytes = 0;
 	for (i = 0; (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) &&
-		(i < FM10K_MAX_QUEUES_PF); ++i) {
+		(i < hw->mac.max_queues); ++i) {
 		stats->q_ipackets[i] = hw_stats->q[i].rx_packets.count;
 		stats->q_opackets[i] = hw_stats->q[i].tx_packets.count;
 		stats->q_ibytes[i]   = hw_stats->q[i].rx_bytes.count;
