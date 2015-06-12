@@ -594,6 +594,7 @@ test_pktmbuf_pool_ptr(void)
 		if (m[i] == NULL) {
 			printf("rte_pktmbuf_alloc() failed (%u)\n", i);
 			ret = -1;
+			break;
 		}
 		m[i]->data_off += 64;
 	}
@@ -613,6 +614,7 @@ test_pktmbuf_pool_ptr(void)
 		if (m[i] == NULL) {
 			printf("rte_pktmbuf_alloc() failed (%u)\n", i);
 			ret = -1;
+			break;
 		}
 		if (m[i]->data_off != RTE_PKTMBUF_HEADROOM) {
 			printf("invalid data_off\n");
