@@ -68,6 +68,8 @@
 #define IGB_DEFAULT_TX_HTHRESH      0
 #define IGB_DEFAULT_TX_WTHRESH      0
 
+#define IGB_HKEY_MAX_INDEX 10
+
 /* Bit shift and mask */
 #define IGB_4_BIT_WIDTH  (CHAR_BIT / 2)
 #define IGB_4_BIT_MASK   RTE_LEN2MASK(IGB_4_BIT_WIDTH, uint8_t)
@@ -1383,6 +1385,7 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		/* Should not happen */
 		break;
 	}
+	dev_info->hash_key_size = IGB_HKEY_MAX_INDEX * sizeof(uint32_t);
 	dev_info->reta_size = ETH_RSS_RETA_SIZE_128;
 	dev_info->flow_type_rss_offloads = IGB_RSS_OFFLOAD_ALL;
 

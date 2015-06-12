@@ -914,6 +914,7 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 		DEV_RX_OFFLOAD_TCP_CKSUM;
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_VLAN_INSERT;
+	dev_info->hash_key_size = FM10K_RSSRK_SIZE * sizeof(uint32_t);
 	dev_info->reta_size = FM10K_MAX_RSS_INDICES;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
