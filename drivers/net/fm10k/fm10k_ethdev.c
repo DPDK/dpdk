@@ -51,6 +51,11 @@
 #define BIT_MASK_PER_UINT32 ((1 << CHARS_PER_UINT32) - 1)
 
 static void fm10k_close_mbx_service(struct fm10k_hw *hw);
+static void fm10k_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static void fm10k_dev_promiscuous_disable(struct rte_eth_dev *dev);
+static void fm10k_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static void fm10k_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static inline int fm10k_glort_valid(struct fm10k_hw *hw);
 
 static void
 fm10k_mbx_initlock(struct fm10k_hw *hw)
@@ -564,6 +569,119 @@ fm10k_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	return 0;
+}
+
+static inline int fm10k_glort_valid(struct fm10k_hw *hw)
+{
+	return ((hw->mac.dglort_map & FM10K_DGLORTMAP_NONE)
+		!= FM10K_DGLORTMAP_NONE);
+}
+
+static void
+fm10k_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int status;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Return if it didn't acquire valid glort range */
+	if (!fm10k_glort_valid(hw))
+		return;
+
+	fm10k_mbx_lock(hw);
+	status = hw->mac.ops.update_xcast_mode(hw, hw->mac.dglort_map,
+				FM10K_XCAST_MODE_PROMISC);
+	fm10k_mbx_unlock(hw);
+
+	if (status != FM10K_SUCCESS)
+		PMD_INIT_LOG(ERR, "Failed to enable promiscuous mode");
+}
+
+static void
+fm10k_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint8_t mode;
+	int status;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Return if it didn't acquire valid glort range */
+	if (!fm10k_glort_valid(hw))
+		return;
+
+	if (dev->data->all_multicast == 1)
+		mode = FM10K_XCAST_MODE_ALLMULTI;
+	else
+		mode = FM10K_XCAST_MODE_NONE;
+
+	fm10k_mbx_lock(hw);
+	status = hw->mac.ops.update_xcast_mode(hw, hw->mac.dglort_map,
+				mode);
+	fm10k_mbx_unlock(hw);
+
+	if (status != FM10K_SUCCESS)
+		PMD_INIT_LOG(ERR, "Failed to disable promiscuous mode");
+}
+
+static void
+fm10k_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int status;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Return if it didn't acquire valid glort range */
+	if (!fm10k_glort_valid(hw))
+		return;
+
+	/* If promiscuous mode is enabled, it doesn't make sense to enable
+	 * allmulticast and disable promiscuous since fm10k only can select
+	 * one of the modes.
+	 */
+	if (dev->data->promiscuous) {
+		PMD_INIT_LOG(INFO, "Promiscuous mode is enabled, "\
+			"needn't enable allmulticast");
+		return;
+	}
+
+	fm10k_mbx_lock(hw);
+	status = hw->mac.ops.update_xcast_mode(hw, hw->mac.dglort_map,
+				FM10K_XCAST_MODE_ALLMULTI);
+	fm10k_mbx_unlock(hw);
+
+	if (status != FM10K_SUCCESS)
+		PMD_INIT_LOG(ERR, "Failed to enable allmulticast mode");
+}
+
+static void
+fm10k_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int status;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Return if it didn't acquire valid glort range */
+	if (!fm10k_glort_valid(hw))
+		return;
+
+	if (dev->data->promiscuous) {
+		PMD_INIT_LOG(ERR, "Failed to disable allmulticast mode "\
+			"since promisc mode is enabled");
+		return;
+	}
+
+	fm10k_mbx_lock(hw);
+	/* Change mode to unicast mode */
+	status = hw->mac.ops.update_xcast_mode(hw, hw->mac.dglort_map,
+				FM10K_XCAST_MODE_NONE);
+	fm10k_mbx_unlock(hw);
+
+	if (status != FM10K_SUCCESS)
+		PMD_INIT_LOG(ERR, "Failed to disable allmulticast mode");
 }
 
 /* fls = find last set bit = 32 minus the number of leading zeros */
@@ -1654,6 +1772,10 @@ static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.dev_start		= fm10k_dev_start,
 	.dev_stop		= fm10k_dev_stop,
 	.dev_close		= fm10k_dev_close,
+	.promiscuous_enable     = fm10k_dev_promiscuous_enable,
+	.promiscuous_disable    = fm10k_dev_promiscuous_disable,
+	.allmulticast_enable    = fm10k_dev_allmulticast_enable,
+	.allmulticast_disable   = fm10k_dev_allmulticast_disable,
 	.stats_get		= fm10k_stats_get,
 	.stats_reset		= fm10k_stats_reset,
 	.link_update		= fm10k_link_update,
@@ -1819,7 +1941,7 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	 * API func.
 	 */
 	hw->mac.ops.update_xcast_mode(hw, hw->mac.dglort_map,
-					FM10K_XCAST_MODE_MULTI);
+					FM10K_XCAST_MODE_NONE);
 
 	fm10k_mbx_unlock(hw);
 
