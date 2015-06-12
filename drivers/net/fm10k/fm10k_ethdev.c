@@ -1011,9 +1011,7 @@ handle_rxconf(struct fm10k_rx_queue *q, const struct rte_eth_rxconf *conf)
  *  2. Address is 8B aligned and buffer does not cross 4K boundary.
  *
  * As such, the driver may need to adjust the DMA address within the
- * buffer by up to 512B. The mempool element size is checked here
- * to make sure a maximally sized Ethernet frame can still be wholly
- * contained within the buffer after 512B alignment.
+ * buffer by up to 512B.
  *
  * return 1 if the element size is valid, otherwise return 0.
  */
@@ -1031,9 +1029,6 @@ mempool_element_size_valid(struct rte_mempool *mp)
 
 	/* sanity check for overflow */
 	if (min_size > mp->elt_size)
-		return 0;
-
-	if (min_size < ETHER_MAX_VLAN_FRAME_LEN)
 		return 0;
 
 	/* size is valid */
