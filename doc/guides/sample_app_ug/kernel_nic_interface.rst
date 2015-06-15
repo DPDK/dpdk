@@ -242,15 +242,6 @@ Setup of mbuf pool, driver and queues is similar to the setup done in the L2 For
 In addition, one or more kernel NIC interfaces are allocated for each
 of the configured ports according to the command line parameters.
 
-The code for creating the kernel NIC interface for a specific port is as follows:
-
-.. code-block:: c
-
-    kni = rte_kni_create(port, MAX_PACKET_SZ, pktmbuf_pool, &kni_ops);
-    if (kni == NULL)
-        rte_exit(EXIT_FAILURE, "Fail to create kni dev "
-           "for port: %d\n", port);
-
 The code for allocating the kernel NIC interfaces for a specific port is as follows:
 
 .. code-block:: c

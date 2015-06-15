@@ -129,30 +129,6 @@ extern struct rte_kni *rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 				     struct rte_kni_ops *ops);
 
 /**
- * It create a KNI device for specific port.
- *
- * Note: It is deprecated and just for backward compatibility.
- *
- * @param port_id
- *  Port ID.
- * @param mbuf_size
- *  mbuf size.
- * @param pktmbuf_pool
- *  The mempool for allocting mbufs for packets.
- * @param ops
- *  The pointer to the callbacks for the KNI kernel requests.
- *
- * @return
- *  - The pointer to the context of a KNI interface.
- *  - NULL indicate error.
- */
-extern struct rte_kni *rte_kni_create(uint8_t port_id,
-				      unsigned mbuf_size,
-				      struct rte_mempool *pktmbuf_pool,
-				      struct rte_kni_ops *ops) \
-				      __attribute__ ((deprecated));
-
-/**
  * Release KNI interface according to the context. It will also release the
  * paired KNI interface in kernel space. All processing on the specific KNI
  * context need to be stopped before calling this interface.
@@ -221,21 +197,6 @@ extern unsigned rte_kni_tx_burst(struct rte_kni *kni,
 		struct rte_mbuf **mbufs, unsigned num);
 
 /**
- * Get the port id from KNI interface.
- *
- * Note: It is deprecated and just for backward compatibility.
- *
- * @param kni
- *  The KNI interface context.
- *
- * @return
- *  On success: The port id.
- *  On failure: ~0x0
- */
-extern uint8_t rte_kni_get_port_id(struct rte_kni *kni) \
-				__attribute__ ((deprecated));
-
-/**
  * Get the KNI context of its name.
  *
  * @param name
@@ -256,21 +217,6 @@ extern struct rte_kni *rte_kni_get(const char *name);
  *   The pointer to the KNI name
  */
 extern const char *rte_kni_get_name(const struct rte_kni *kni);
-
-/**
- * Get the KNI context of the specific port.
- *
- * Note: It is deprecated and just for backward compatibility.
- *
- * @param port_id
- *  the port id.
- *
- * @return
- *  On success: Pointer to KNI interface.
- *  On failure: NULL
- */
-extern struct rte_kni *rte_kni_info_get(uint8_t port_id) \
-				__attribute__ ((deprecated));
 
 /**
  * Register KNI request handling for a specified port,and it can

@@ -311,31 +311,6 @@ kni_fail:
 			 max_kni_ifaces);
 }
 
-/* It is deprecated and just for backward compatibility */
-struct rte_kni *
-rte_kni_create(uint8_t port_id,
-	       unsigned mbuf_size,
-	       struct rte_mempool *pktmbuf_pool,
-	       struct rte_kni_ops *ops)
-{
-	struct rte_kni_conf conf;
-	struct rte_eth_dev_info info;
-
-	memset(&info, 0, sizeof(info));
-	memset(&conf, 0, sizeof(conf));
-	rte_eth_dev_info_get(port_id, &info);
-
-	snprintf(conf.name, sizeof(conf.name), "vEth%u", port_id);
-	conf.addr = info.pci_dev->addr;
-	conf.id = info.pci_dev->id;
-	conf.group_id = (uint16_t)port_id;
-	conf.mbuf_size = mbuf_size;
-
-	/* Save the port id for request handling */
-	ops->port_id = port_id;
-
-	return rte_kni_alloc(pktmbuf_pool, &conf, ops);
-}
 
 struct rte_kni *
 rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
@@ -650,16 +625,6 @@ kni_allocate_mbufs(struct rte_kni *kni)
 	}
 }
 
-/* It is deprecated and just for backward compatibility */
-uint8_t
-rte_kni_get_port_id(struct rte_kni *kni)
-{
-	if (!kni)
-		return ~0x0;
-
-	return kni->ops.port_id;
-}
-
 struct rte_kni *
 rte_kni_get(const char *name)
 {
@@ -684,22 +649,6 @@ const char *
 rte_kni_get_name(const struct rte_kni *kni)
 {
 	return kni->name;
-}
-
-/*
- * It is deprecated and just for backward compatibility.
- */
-struct rte_kni *
-rte_kni_info_get(uint8_t port_id)
-{
-	char name[RTE_MEMZONE_NAMESIZE];
-
-	if (port_id >= RTE_MAX_ETHPORTS)
-		return NULL;
-
-	snprintf(name, RTE_MEMZONE_NAMESIZE, "vEth%u", port_id);
-
-	return rte_kni_get(name);
 }
 
 static enum kni_ops_status

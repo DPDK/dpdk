@@ -146,12 +146,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_KVARGS) += test_kvargs.c
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
-# Disable warnings of deprecated-declarations in test_kni.c
-ifeq ($(CC), icc)
-CFLAGS_test_kni.o += -wd1478
-else
-CFLAGS_test_kni.o += -Wno-deprecated-declarations
-endif
 CFLAGS += -D_GNU_SOURCE
 
 # Disable VTA for memcpy test

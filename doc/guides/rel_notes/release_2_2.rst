@@ -21,6 +21,9 @@ API Changes
 
 * The deprecated ACL API ipv4vlan is removed.
 
+* The deprecated KNI functions are removed:
+  rte_kni_create(), rte_kni_get_port_id() and rte_kni_info_get().
+
 
 ABI Changes
 -----------
@@ -56,7 +59,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_ip_frag.so.1
      librte_ivshmem.so.1
      librte_jobstats.so.1
-     librte_kni.so.1
+   + librte_kni.so.2
      librte_kvargs.so.1
    + librte_lpm.so.2
    + librte_mbuf.so.2

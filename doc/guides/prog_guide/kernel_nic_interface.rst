@@ -100,8 +100,6 @@ Refer to rte_kni_common.h in the DPDK source code for more details.
 
 The physical addresses will be re-mapped into the kernel address space and stored in separate KNI contexts.
 
-Once KNI interfaces are created, the KNI context information can be queried by calling the rte_kni_info_get() function.
-
 The KNI interfaces can be deleted by a DPDK application dynamically after being created.
 Furthermore, all those KNI interfaces not deleted will be deleted on the release operation
 of the miscellaneous device (when the DPDK application is closed).

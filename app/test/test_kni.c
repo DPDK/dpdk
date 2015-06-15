@@ -398,17 +398,6 @@ test_kni_processing(uint8_t port_id, struct rte_mempool *mp)
 		printf("fail to create kni\n");
 		return -1;
 	}
-	if (rte_kni_get_port_id(kni) != port_id) {
-		printf("fail to get port id\n");
-		ret = -1;
-		goto fail_kni;
-	}
-
-	if (rte_kni_info_get(RTE_MAX_ETHPORTS)) {
-		printf("Unexpectedly get a KNI successfully\n");
-		ret = -1;
-		goto fail_kni;
-	}
 
 	test_kni_ctx = kni;
 	test_kni_processing_flag = 0;
@@ -591,14 +580,6 @@ test_kni(void)
 		goto fail;
 	}
 
-	/* test of getting port id according to NULL kni context */
-	if (rte_kni_get_port_id(NULL) < RTE_MAX_ETHPORTS) {
-		ret = -1;
-		printf("unexpectedly get port id successfully by NULL kni "
-								"pointer\n");
-		goto fail;
-	}
-
 	/* test of releasing NULL kni context */
 	ret = rte_kni_release(NULL);
 	if (ret == 0) {
@@ -645,23 +626,6 @@ test_kni(void)
 		goto fail;
 	}
 
-	/* test the interface of creating a KNI, for backward compatibility */
-	memset(&ops, 0, sizeof(ops));
-	ops = kni_ops;
-	kni = rte_kni_create(port_id, MAX_PACKET_SZ, mp, &ops);
-	if (!kni) {
-		ret = -1;
-		printf("Fail to create a KNI device for port %d\n", port_id);
-		goto fail;
-	}
-
-	ret = rte_kni_release(kni);
-	if (ret < 0) {
-		printf("Fail to release a KNI device\n");
-		goto fail;
-	}
-
-	ret = 0;
 
 fail:
 	rte_eth_dev_stop(port_id);
