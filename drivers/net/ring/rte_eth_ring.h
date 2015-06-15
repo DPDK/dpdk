@@ -65,9 +65,6 @@ int rte_eth_from_rings(const char *name,
 		const unsigned nb_tx_queues,
 		const unsigned numa_node);
 
-int rte_eth_ring_pair_create(const char *name, const unsigned numa_node);
-int rte_eth_ring_pair_attach(const char *name, const unsigned numa_node);
-
 #ifdef __cplusplus
 }
 #endif

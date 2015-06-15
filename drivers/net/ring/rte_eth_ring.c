@@ -391,62 +391,6 @@ eth_dev_ring_create(const char *name, const unsigned numa_node,
 	return 0;
 }
 
-
-static int
-eth_dev_ring_pair_create(const char *name, const unsigned numa_node,
-		enum dev_action action)
-{
-	/* rx and tx are so-called from point of view of first port.
-	 * They are inverted from the point of view of second port
-	 */
-	struct rte_ring *rx[RTE_PMD_RING_MAX_RX_RINGS];
-	struct rte_ring *tx[RTE_PMD_RING_MAX_TX_RINGS];
-	unsigned i;
-	char rx_rng_name[RTE_RING_NAMESIZE];
-	char tx_rng_name[RTE_RING_NAMESIZE];
-	unsigned num_rings = RTE_MIN(RTE_PMD_RING_MAX_RX_RINGS,
-			RTE_PMD_RING_MAX_TX_RINGS);
-
-	for (i = 0; i < num_rings; i++) {
-		snprintf(rx_rng_name, sizeof(rx_rng_name), "ETH_RX%u_%s", i, name);
-		rx[i] = (action == DEV_CREATE) ?
-				rte_ring_create(rx_rng_name, 1024, numa_node,
-						RING_F_SP_ENQ|RING_F_SC_DEQ) :
-				rte_ring_lookup(rx_rng_name);
-		if (rx[i] == NULL)
-			return -1;
-		snprintf(tx_rng_name, sizeof(tx_rng_name), "ETH_TX%u_%s", i, name);
-		tx[i] = (action == DEV_CREATE) ?
-				rte_ring_create(tx_rng_name, 1024, numa_node,
-						RING_F_SP_ENQ|RING_F_SC_DEQ):
-				rte_ring_lookup(tx_rng_name);
-		if (tx[i] == NULL)
-			return -1;
-	}
-
-	if (rte_eth_from_rings(rx_rng_name, rx, num_rings, tx, num_rings,
-				numa_node) < 0 ||
-			rte_eth_from_rings(tx_rng_name, tx, num_rings, rx,
-				num_rings, numa_node) < 0)
-		return -1;
-
-	return 0;
-}
-
-int
-rte_eth_ring_pair_create(const char *name, const unsigned numa_node)
-{
-	RTE_LOG(WARNING, PMD, "rte_eth_ring_pair_create is deprecated\n");
-	return eth_dev_ring_pair_create(name, numa_node, DEV_CREATE);
-}
-
-int
-rte_eth_ring_pair_attach(const char *name, const unsigned numa_node)
-{
-	RTE_LOG(WARNING, PMD, "rte_eth_ring_pair_attach is deprecated\n");
-	return eth_dev_ring_pair_create(name, numa_node, DEV_ATTACH);
-}
-
 struct node_action_pair {
 	char name[PATH_MAX];
 	unsigned node;

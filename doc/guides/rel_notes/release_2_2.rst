@@ -24,6 +24,9 @@ API Changes
 * The deprecated KNI functions are removed:
   rte_kni_create(), rte_kni_get_port_id() and rte_kni_info_get().
 
+* The deprecated ring PMD functions are removed:
+  rte_eth_ring_pair_create() and rte_eth_ring_pair_attach().
+
 
 ABI Changes
 -----------
@@ -67,7 +70,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_meter.so.1
      librte_pipeline.so.1
      librte_pmd_bond.so.1
-     librte_pmd_ring.so.1
+   + librte_pmd_ring.so.2
      librte_port.so.1
      librte_power.so.1
      librte_reorder.so.1

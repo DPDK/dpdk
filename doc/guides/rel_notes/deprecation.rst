@@ -40,9 +40,6 @@ Deprecation Notices
   the tunnel type, TNI/VNI, inner MAC and inner VLAN are monitored.
   The release 2.2 will contain these changes without backwards compatibility.
 
-* librte_pmd_ring: The deprecated functions rte_eth_ring_pair_create and
-  rte_eth_ring_pair_attach should be removed.
-
 * ABI changes are planned for struct virtio_net in order to support vhost-user
   multiple queues feature.
   It should be integrated in release 2.2 without backward compatibility.
