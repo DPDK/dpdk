@@ -63,6 +63,8 @@ static int
 fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
 static void
 fm10k_MAC_filter_set(struct rte_eth_dev *dev, const u8 *mac, bool add);
+static void
+fm10k_MACVLAN_remove_all(struct rte_eth_dev *dev);
 
 static void
 fm10k_mbx_initlock(struct fm10k_hw *hw)
@@ -821,6 +823,8 @@ fm10k_dev_close(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	fm10k_MACVLAN_remove_all(dev);
+
 	/* Stop mailbox service first */
 	fm10k_close_mbx_service(hw);
 	fm10k_dev_stop(dev);
@@ -950,12 +954,6 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
 
-	/* @todo - add support for the VF */
-	if (hw->mac.type != fm10k_mac_pf) {
-		PMD_INIT_LOG(ERR, "VLAN filter not available on VF");
-		return -ENOTSUP;
-	}
-
 	if (vlan_id > ETH_VLAN_ID_MAX) {
 		PMD_INIT_LOG(ERR, "Invalid vlan_id: must be < 4096");
 		return (-EINVAL);
@@ -1044,12 +1042,6 @@ fm10k_MAC_filter_set(struct rte_eth_dev *dev, const u8 *mac, bool add)
 	hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
 
-	/* @todo - add support for the VF */
-	if (hw->mac.type != fm10k_mac_pf) {
-		PMD_INIT_LOG(ERR, "MAC filter not available on VF");
-		return;
-	}
-
 	i = 0;
 	for (j = 0; j < FM10K_VFTA_SIZE; j++) {
 		if (macvlan->vfta[j]) {
@@ -1097,6 +1089,25 @@ fm10k_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 	if (index < FM10K_MAX_MACADDR_NUM)
 		fm10k_MAC_filter_set(dev, data->mac_addrs[index].addr_bytes,
 				FALSE);
+}
+
+/* Remove all VLAN and MAC address table entries */
+static void
+fm10k_MACVLAN_remove_all(struct rte_eth_dev *dev)
+{
+	uint32_t j, k;
+	struct fm10k_macvlan_filter_info *macvlan;
+
+	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
+	for (j = 0; j < FM10K_VFTA_SIZE; j++) {
+		if (macvlan->vfta[j]) {
+			for (k = 0; k < FM10K_UINT32_BIT_SIZE; k++) {
+				if (macvlan->vfta[j] & (1 << k))
+					fm10k_vlan_filter_set(dev,
+						j * FM10K_UINT32_BIT_SIZE + k, false);
+			}
+		}
+	}
 }
 
 static inline int
@@ -2124,13 +2135,6 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	fm10k_mbx_lock(hw);
 	/* Enable port first */
 	hw->mac.ops.update_lport_state(hw, hw->mac.dglort_map, 1, 1);
-
-	/*
-	 * Add default mac. glort is assigned by SM for PF, while is
-	 * unused for VF. PF will assign correct glort for VF.
-	 */
-	hw->mac.ops.update_uc_addr(hw, hw->mac.dglort_map, hw->mac.addr,
-				0, 1, 0);
 
 	/* Set unicast mode by default. App can change to other mode in other
 	 * API func.
