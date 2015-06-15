@@ -334,9 +334,10 @@ fdir_set_input_mask_82599(struct rte_eth_dev *dev,
 	fdirtcpm = reverse_fdir_bitmasks(input_mask->dst_port_mask,
 					 input_mask->src_port_mask);
 
-	/* write both the same so that UDP and TCP use the same mask */
+	/* write all the same so that UDP, TCP and SCTP use the same mask */
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRTCPM, ~fdirtcpm);
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRUDPM, ~fdirtcpm);
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRSCTPM, ~fdirtcpm);
 	info->mask.src_port_mask = input_mask->src_port_mask;
 	info->mask.dst_port_mask = input_mask->dst_port_mask;
 
@@ -899,9 +900,30 @@ ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 	uint8_t queue;
 	bool is_perfect = FALSE;
 	int err;
+	struct ixgbe_hw_fdir_info *info =
+			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 
 	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_NONE)
 		return -ENOTSUP;
+
+	/*
+	 * Sanity check for x550.
+	 * When adding a new filter with flow type set to IPv4-other,
+	 * the flow director mask should be configed before,
+	 * and the L4 protocol and ports are masked.
+	 */
+	if ((!del) &&
+	    (hw->mac.type == ixgbe_mac_X550 ||
+	     hw->mac.type == ixgbe_mac_X550EM_x) &&
+	    (fdir_filter->input.flow_type ==
+	       RTE_ETH_FLOW_NONFRAG_IPV4_OTHER) &&
+	    (info->mask.src_port_mask != 0 ||
+	     info->mask.dst_port_mask != 0)) {
+		PMD_DRV_LOG(ERR, "By this device,"
+		                 " IPv4-other is not supported without"
+		                 " L4 protocol and ports masked!");
+		return -ENOTSUP;
+	}
 
 	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_PERFECT)
 		is_perfect = TRUE;
