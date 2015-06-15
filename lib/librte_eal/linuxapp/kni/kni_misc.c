@@ -358,7 +358,7 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 		return -EBUSY;
 	}
 
-	net = get_net_ns_by_pid(current->pid);
+	net = get_net_ns_by_pid(task_pid_vnr(current));
 	if (IS_ERR(net)) {
 		free_netdev(net_dev);
 		return PTR_ERR(net);
