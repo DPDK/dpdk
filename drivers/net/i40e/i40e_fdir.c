@@ -44,6 +44,7 @@
 #include <rte_log.h>
 #include <rte_memzone.h>
 #include <rte_malloc.h>
+#include <rte_arp.h>
 #include <rte_ip.h>
 #include <rte_udp.h>
 #include <rte_tcp.h>
@@ -104,7 +105,8 @@
 	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_UDP) | \
 	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_TCP) | \
 	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_SCTP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER))
+	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER) | \
+	(1 << RTE_ETH_FLOW_L2_PAYLOAD))
 
 #define I40E_FLEX_WORD_MASK(off) (0x80 >> (off))
 
@@ -366,7 +368,9 @@ i40e_init_flx_pld(struct i40e_pf *pf)
 
 	/* initialize the masks */
 	for (pctype = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
-	     pctype <= I40E_FILTER_PCTYPE_FRAG_IPV6; pctype++) {
+	     pctype <= I40E_FILTER_PCTYPE_L2_PAYLOAD; pctype++) {
+		if (!I40E_VALID_PCTYPE((enum i40e_filter_pctype)pctype))
+			continue;
 		pf->fdir.flex_mask[pctype].word_mask = 0;
 		I40E_WRITE_REG(hw, I40E_PRTQF_FD_FLXINSET(pctype), 0);
 		for (i = 0; i < I40E_FDIR_BITMASK_NUM_WORD; i++) {
@@ -704,6 +708,9 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 	};
 
 	switch (fdir_input->flow_type) {
+	case RTE_ETH_FLOW_L2_PAYLOAD:
+		ether->ether_type = fdir_input->flow.l2_flow.ether_type;
+		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
 	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
 	case RTE_ETH_FLOW_NONFRAG_IPV4_SCTP:
@@ -865,6 +872,17 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		payload = raw_pkt + sizeof(struct ether_hdr) +
 			  sizeof(struct ipv6_hdr);
 		set_idx = I40E_FLXPLD_L3_IDX;
+		break;
+	case RTE_ETH_FLOW_L2_PAYLOAD:
+		payload = raw_pkt + sizeof(struct ether_hdr);
+		/*
+		 * ARP packet is a special case on which the payload
+		 * starts after the whole ARP header
+		 */
+		if (fdir_input->flow.l2_flow.ether_type ==
+				rte_cpu_to_be_16(ETHER_TYPE_ARP))
+			payload += sizeof(struct arp_hdr);
+		set_idx = I40E_FLXPLD_L2_IDX;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "unknown flow type %u.", fdir_input->flow_type);
@@ -1218,7 +1236,7 @@ i40e_fdir_info_get_flex_mask(struct i40e_pf *pf,
 	uint16_t off_bytes, mask_tmp;
 
 	for (i = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
-	     i <= I40E_FILTER_PCTYPE_FRAG_IPV6;
+	     i <= I40E_FILTER_PCTYPE_L2_PAYLOAD;
 	     i++) {
 		mask =  &pf->fdir.flex_mask[i];
 		if (!I40E_VALID_PCTYPE((enum i40e_filter_pctype)i))
