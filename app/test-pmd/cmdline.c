@@ -652,6 +652,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" queue (queue_id) fd_id (fd_id_value)\n"
 			"    Add/Del a SCTP type flow director filter.\n\n"
 
+			"flow_director_filter (port_id) (add|del|update)"
+			" flow l2_payload ether (ethertype)"
+			" flexbytes (flexbytes_value) (drop|fwd)"
+			" queue (queue_id) fd_id (fd_id_value)\n"
+			"    Add/Del a l2 payload type flow director filter.\n\n"
+
 			"flush_flow_director (port_id)\n"
 			"    Flush all flow director entries of a device.\n\n"
 
@@ -662,7 +668,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"flow_director_flex_mask (port_id)"
 			" flow (none|ipv4-other|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|"
-			"ipv6-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|all)"
+			"ipv6-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|l2_payload|all)"
 			" (mask)\n"
 			"    Configure mask of flex payload.\n\n"
 
@@ -7721,6 +7727,8 @@ struct cmd_flow_director_result {
 	cmdline_fixed_string_t ops;
 	cmdline_fixed_string_t flow;
 	cmdline_fixed_string_t flow_type;
+	cmdline_fixed_string_t ether;
+	uint16_t ether_type;
 	cmdline_fixed_string_t src;
 	cmdline_ipaddr_t ip_src;
 	uint16_t port_src;
@@ -7905,6 +7913,10 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		entry.input.flow.sctp6_flow.verify_tag =
 				rte_cpu_to_be_32(res->verify_tag_value);
 		break;
+	case RTE_ETH_FLOW_L2_PAYLOAD:
+		entry.input.flow.l2_flow.ether_type =
+			rte_cpu_to_be_16(res->ether_type);
+		break;
 	default:
 		printf("invalid parameter.\n");
 		return;
@@ -7953,7 +7965,13 @@ cmdline_parse_token_string_t cmd_flow_director_flow =
 cmdline_parse_token_string_t cmd_flow_director_flow_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
 		flow_type, "ipv4-other#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#"
-		"ipv6-other#ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp");
+		"ipv6-other#ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#l2_payload");
+cmdline_parse_token_string_t cmd_flow_director_ether =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 ether, "ether");
+cmdline_parse_token_num_t cmd_flow_director_ether_type =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
+			      ether_type, UINT16);
 cmdline_parse_token_string_t cmd_flow_director_src =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
 				 src, "src");
@@ -8082,6 +8100,29 @@ cmdline_parse_inst_t cmd_add_del_sctp_flow_director = {
 		(void *)&cmd_flow_director_verify_tag_value,
 		(void *)&cmd_flow_director_vlan,
 		(void *)&cmd_flow_director_vlan_value,
+		(void *)&cmd_flow_director_flexbytes,
+		(void *)&cmd_flow_director_flexbytes_value,
+		(void *)&cmd_flow_director_drop,
+		(void *)&cmd_flow_director_queue,
+		(void *)&cmd_flow_director_queue_id,
+		(void *)&cmd_flow_director_fd_id,
+		(void *)&cmd_flow_director_fd_id_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_add_del_l2_flow_director = {
+	.f = cmd_flow_director_filter_parsed,
+	.data = NULL,
+	.help_str = "add or delete a L2 flow director entry on NIC",
+	.tokens = {
+		(void *)&cmd_flow_director_filter,
+		(void *)&cmd_flow_director_port_id,
+		(void *)&cmd_flow_director_ops,
+		(void *)&cmd_flow_director_flow,
+		(void *)&cmd_flow_director_flow_type,
+		(void *)&cmd_flow_director_ether,
+		(void *)&cmd_flow_director_ether_type,
 		(void *)&cmd_flow_director_flexbytes,
 		(void *)&cmd_flow_director_flexbytes_value,
 		(void *)&cmd_flow_director_drop,
@@ -8346,7 +8387,7 @@ cmdline_parse_token_string_t cmd_flow_director_flexmask_flow =
 cmdline_parse_token_string_t cmd_flow_director_flexmask_flow_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
 		flow_type, "none#ipv4-other#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#"
-		"ipv6-other#ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#all");
+		"ipv6-other#ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#l2_payload#all");
 cmdline_parse_token_string_t cmd_flow_director_flexmask_mask =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
 				 mask, NULL);
@@ -8974,6 +9015,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_add_del_ip_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_udp_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_sctp_flow_director,
+	(cmdline_parse_inst_t *)&cmd_add_del_l2_flow_director,
 	(cmdline_parse_inst_t *)&cmd_flush_flow_director,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_mask,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_flex_mask,

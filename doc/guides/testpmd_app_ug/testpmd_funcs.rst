@@ -1551,6 +1551,9 @@ flow_director_filter (port_id) (add|del|update) flow (ipv4-sctp|ipv6-sctp)
 src (src_ip_address) (src_port) dst (dst_ip_address) (dst_port) tag (verification_tag)
 vlan (vlan_value) flexbytes (flexbytes_value) (drop|fwd) queue (queue_id) fd_id (fd_id_value)
 
+flow_director_filter (port_id) (add|del|update) flow l2_payload
+ether (ethertype) flexbytes (flexbytes_value) (drop|fwd) queue (queue_id) fd_id (fd_id_value)
+
 For example, to add an ipv4-udp flow type filter:
 
 .. code-block:: console
@@ -1596,7 +1599,7 @@ flow_director_flex_mask
 set masks of flow director's flexible payload based on certain flow type:
 
 flow_director_flex_mask (port_id) flow (none|ipv4-other|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|
-ipv6-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|all) (mask)
+ipv6-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|l2_payload|all) (mask)
 
 Example, to set flow director's flex mask for all flow type on port 0:
 
