@@ -2128,11 +2128,14 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	memset(&old, 0, sizeof(old));
 	rte_ixgbe_dev_atomic_read_link_status(dev, &old);
 
+	hw->mac.get_link_status = true;
+
 	/* check if it needs to wait to complete, if lsc interrupt is enabled */
 	if (wait_to_complete == 0 || dev->data->dev_conf.intr_conf.lsc != 0)
 		diag = ixgbe_check_link(hw, &link_speed, &link_up, 0);
 	else
 		diag = ixgbe_check_link(hw, &link_speed, &link_up, 1);
+
 	if (diag != 0) {
 		link.link_speed = ETH_LINK_SPEED_100;
 		link.link_duplex = ETH_LINK_HALF_DUPLEX;
@@ -2140,12 +2143,6 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		if (link.link_status == old.link_status)
 			return -1;
 		return 0;
-	}
-
-	if (link_speed == IXGBE_LINK_SPEED_UNKNOWN &&
-	    !hw->mac.get_link_status) {
-		memcpy(&link, &old, sizeof(link));
-		return -1;
 	}
 
 	if (link_up == 0) {
