@@ -361,11 +361,11 @@ __rte_jhash_3words(uint32_t a, uint32_t b, uint32_t c, uint32_t initval)
  * 3 words.
  *
  * @param a
- *   First word to calcuate hash of.
+ *   First word to calculate hash of.
  * @param b
- *   Second word to calcuate hash of.
+ *   Second word to calculate hash of.
  * @param c
- *   Third word to calcuate hash of.
+ *   Third word to calculate hash of.
  * @param initval
  *   Initialising value of hash.
  * @return
@@ -382,9 +382,9 @@ rte_jhash_3words(uint32_t a, uint32_t b, uint32_t c, uint32_t initval)
  * 2 words.
  *
  * @param a
- *   First word to calcuate hash of.
+ *   First word to calculate hash of.
  * @param b
- *   Second word to calcuate hash of.
+ *   Second word to calculate hash of.
  * @param initval
  *   Initialising value of hash.
  * @return
@@ -401,7 +401,7 @@ rte_jhash_2words(uint32_t a, uint32_t b, uint32_t initval)
  * 1 word.
  *
  * @param a
- *   Word to calcuate hash of.
+ *   Word to calculate hash of.
  * @param initval
  *   Initialising value of hash.
  * @return
