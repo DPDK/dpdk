@@ -57,3 +57,7 @@ Deprecation Notices
   VLAN are monitored. The Cloud mode is for VxLAN and NVGRE, and
   the tunnel type, TNI/VNI, inner MAC and inner VLAN are monitored.
   The release 2.2 will contain these changes without backwards compatibility.
+
+* ABI changes are planned for struct virtio_net in order to support vhost-user
+  multiple queues feature.
+  It should be integrated in release 2.2 without backward compatibility.
