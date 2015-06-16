@@ -298,6 +298,13 @@ struct rte_eth_tunnel_filter_conf {
 #define RTE_ETH_FDIR_MAX_FLEXLEN         16 /** < Max length of flexbytes. */
 
 /**
+ * A structure used to define the input for L2 flow
+ */
+struct rte_eth_l2_flow {
+	uint16_t ether_type;          /**< Ether type to match */
+};
+
+/**
  * A structure used to define the input for IPV4 flow
  */
 struct rte_eth_ipv4_flow {
@@ -369,6 +376,7 @@ struct rte_eth_sctpv6_flow {
  * An union contains the inputs for all types of flow
  */
 union rte_eth_fdir_flow {
+	struct rte_eth_l2_flow     l2_flow;
 	struct rte_eth_udpv4_flow  udp4_flow;
 	struct rte_eth_tcpv4_flow  tcp4_flow;
 	struct rte_eth_sctpv4_flow sctp4_flow;
