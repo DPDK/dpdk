@@ -1522,8 +1522,13 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 			goto error;
 	}
 
-	/* Turn on the laser */
-	ixgbe_enable_tx_laser(hw);
+	if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_copper) {
+		/* Turn on the copper */
+		ixgbe_set_phy_power(hw, true);
+	} else {
+		/* Turn on the laser */
+		ixgbe_enable_tx_laser(hw);
+	}
 
 	err = ixgbe_check_link(hw, &speed, &link_up, 0);
 	if (err)
@@ -1643,8 +1648,13 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 		     vf < dev->pci_dev->max_vfs; vf++)
 		vfinfo[vf].clear_to_send = false;
 
-	/* Turn off the laser */
-	ixgbe_disable_tx_laser(hw);
+	if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_copper) {
+		/* Turn off the copper */
+		ixgbe_set_phy_power(hw, false);
+	} else {
+		/* Turn off the laser */
+		ixgbe_disable_tx_laser(hw);
+	}
 
 	ixgbe_dev_clear_queues(dev);
 
@@ -1670,7 +1680,7 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 }
 
 /*
- * Set device link up: enable tx laser.
+ * Set device link up: enable tx.
  */
 static int
 ixgbe_dev_set_link_up(struct rte_eth_dev *dev)
@@ -1686,18 +1696,21 @@ ixgbe_dev_set_link_up(struct rte_eth_dev *dev)
 			return -ENOTSUP;
 		}
 #endif
-		/* Turn on the laser */
-		ixgbe_enable_tx_laser(hw);
-		return 0;
 	}
 
-	PMD_INIT_LOG(ERR, "Set link up is not supported by device id 0x%x",
-		     hw->device_id);
-	return -ENOTSUP;
+	if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_copper) {
+		/* Turn on the copper */
+		ixgbe_set_phy_power(hw, true);
+	} else {
+		/* Turn on the laser */
+		ixgbe_enable_tx_laser(hw);
+	}
+
+	return 0;
 }
 
 /*
- * Set device link down: disable tx laser.
+ * Set device link down: disable tx.
  */
 static int
 ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
@@ -1713,14 +1726,17 @@ ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
 			return -ENOTSUP;
 		}
 #endif
-		/* Turn off the laser */
-		ixgbe_disable_tx_laser(hw);
-		return 0;
 	}
 
-	PMD_INIT_LOG(ERR, "Set link down is not supported by device id 0x%x",
-		     hw->device_id);
-	return -ENOTSUP;
+	if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_copper) {
+		/* Turn off the copper */
+		ixgbe_set_phy_power(hw, false);
+	} else {
+		/* Turn off the laser */
+		ixgbe_disable_tx_laser(hw);
+	}
+
+	return 0;
 }
 
 /*
