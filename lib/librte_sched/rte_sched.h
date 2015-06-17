@@ -347,6 +347,8 @@ rte_sched_queue_read_stats(struct rte_sched_port *port,
  *   Traffic class ID within pipe (0 .. 3)
  * @param queue
  *   Queue ID within pipe traffic class (0 .. 3)
+ * @param color
+ *   Packet color set
  */
 static inline void
 rte_sched_port_pkt_write(struct rte_mbuf *pkt,

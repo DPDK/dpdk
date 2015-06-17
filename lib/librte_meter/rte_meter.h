@@ -123,7 +123,7 @@ rte_meter_trtcm_config(struct rte_meter_trtcm *m,
  *    Handle to srTCM instance
  * @param time
  *    Current CPU time stamp (measured in CPU cycles)
- * @param pkt_length
+ * @param pkt_len
  *    Length of the current IP packet (measured in bytes)
  * @return
  *    Color assigned to the current IP packet
@@ -140,7 +140,7 @@ rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m,
  *    Handle to srTCM instance
  * @param time
  *    Current CPU time stamp (measured in CPU cycles)
- * @param pkt_length
+ * @param pkt_len
  *    Length of the current IP packet (measured in bytes)
  * @param pkt_color
  *    Input color of the current IP packet
@@ -160,7 +160,7 @@ rte_meter_srtcm_color_aware_check(struct rte_meter_srtcm *m,
  *    Handle to trTCM instance
  * @param time
  *    Current CPU time stamp (measured in CPU cycles)
- * @param pkt_length
+ * @param pkt_len
  *    Length of the current IP packet (measured in bytes)
  * @return
  *    Color assigned to the current IP packet
@@ -177,7 +177,7 @@ rte_meter_trtcm_color_blind_check(struct rte_meter_trtcm *m,
  *    Handle to trTCM instance
  * @param time
  *    Current CPU time stamp (measured in CPU cycles)
- * @param pkt_length
+ * @param pkt_len
  *    Length of the current IP packet (measured in bytes)
  * @param pkt_color
  *    Input color of the current IP packet

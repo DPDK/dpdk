@@ -119,7 +119,7 @@ struct rte_red {
 /**
  * @brief Initialises run-time data
  *
- * @param [in,out] data pointer to RED runtime data
+ * @param red [in,out] data pointer to RED runtime data
  *
  * @return Operation status
  * @retval 0 success
@@ -131,12 +131,12 @@ rte_red_rt_data_init(struct rte_red *red);
 /**
  * @brief Configures a single RED configuration parameter structure.
  *
- * @param [in,out] config pointer to a RED configuration parameter structure
- * @param [in] wq_log2 log2 of the filter weight, valid range is:
+ * @param red_cfg [in,out] config pointer to a RED configuration parameter structure
+ * @param wq_log2 [in]  log2 of the filter weight, valid range is:
  *             RTE_RED_WQ_LOG2_MIN <= wq_log2 <= RTE_RED_WQ_LOG2_MAX
- * @param [in] min_th queue minimum threshold in number of packets
- * @param [in] max_th queue maximum threshold in number of packets
- * @param [in] maxp_inv inverse maximum mark probability
+ * @param min_th [in] queue minimum threshold in number of packets
+ * @param max_th [in] queue maximum threshold in number of packets
+ * @param maxp_inv [in] inverse maximum mark probability
  *
  * @return Operation status
  * @retval 0 success
@@ -170,8 +170,8 @@ rte_fast_rand(void)
  * @brief calculate factor to scale average queue size when queue
  *        becomes empty
  *
- * @param [in] wq_log2, where EWMA filter weight wq = 1/(2 ^ wq_log2)
- * @param [in] m exponent in the computed value (1 - wq) ^ m
+ * @param wq_log2 [in] where EWMA filter weight wq = 1/(2 ^ wq_log2)
+ * @param m [in] exponent in the computed value (1 - wq) ^ m
  *
  * @return computed value
  * @retval ((1 - wq) ^ m) scaled in fixed-point format
@@ -230,9 +230,9 @@ __rte_red_calc_qempty_factor(uint8_t wq_log2, uint16_t m)
  *
  * Note: packet is never dropped in this particular case.
  *
- * @param [in] config pointer to a RED configuration parameter structure
- * @param [in,out] data pointer to RED runtime data
- * @param [in] time current time stamp
+ * @param red_cfg [in] config pointer to a RED configuration parameter structure
+ * @param red [in,out] data pointer to RED runtime data
+ * @param time [in] current time stamp
  *
  * @return Operation status
  * @retval 0 enqueue the packet
@@ -310,8 +310,8 @@ rte_red_enqueue_empty(const struct rte_red_config *red_cfg,
  * @brief make a decision to drop or enqueue a packet based on mark probability
  *        criteria
  *
- * @param [in] config pointer to structure defining RED parameters
- * @param [in,out] data pointer to RED runtime data
+ * @param red_cfg [in] config pointer to structure defining RED parameters
+ * @param red [in,out] data pointer to RED runtime data
  *
  * @return operation status
  * @retval 0 enqueue the packet
@@ -347,9 +347,9 @@ __rte_red_drop(const struct rte_red_config *red_cfg, struct rte_red *red)
 /**
  * @brief Decides if new packet should be enqeued or dropped in queue non-empty case
  *
- * @param [in] config pointer to a RED configuration parameter structure
- * @param [in,out] data pointer to RED runtime data
- * @param [in] q current queue size (measured in packets)
+ * @param red_cfg [in] config pointer to a RED configuration parameter structure
+ * @param red [in,out] data pointer to RED runtime data
+ * @param q [in] current queue size (measured in packets)
  *
  * @return Operation status
  * @retval 0 enqueue the packet
@@ -408,10 +408,10 @@ rte_red_enqueue_nonempty(const struct rte_red_config *red_cfg,
  * Based on new queue average and RED configuration parameters
  * gives verdict whether to enqueue or drop the packet.
  *
- * @param [in] config pointer to a RED configuration parameter structure
- * @param [in,out] data pointer to RED runtime data
- * @param [in] q updated queue size in packets
- * @param [in] time current time stamp
+ * @param red_cfg [in] config pointer to a RED configuration parameter structure
+ * @param red [in,out] data pointer to RED runtime data
+ * @param q [in] updated queue size in packets
+ * @param time [in] current time stamp
  *
  * @return Operation status
  * @retval 0 enqueue the packet
@@ -437,8 +437,8 @@ rte_red_enqueue(const struct rte_red_config *red_cfg,
 /**
  * @brief Callback to records time that queue became empty
  *
- * @param [in,out] data pointer to RED runtime data
- * @param [in] time current time stamp
+ * @param red [in,out] data pointer to RED runtime data
+ * @param time [in] current time stamp
  */
 static inline void
 rte_red_mark_queue_empty(struct rte_red *red, const uint64_t time)
