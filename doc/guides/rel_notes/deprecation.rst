@@ -43,3 +43,7 @@ Deprecation Notices
   Functions: rte_eth_dev_fdir_*.
   Structures: rte_fdir_*, rte_eth_fdir.
   Enums: rte_l4type, rte_iptype.
+
+* ABI changes are planned for struct rte_eth_fdir_flow_ext in order to support
+  flow director filtering in VF. The release 2.1 does not contain these ABI
+  changes, but release 2.2 will, and no backwards compatibility is planned.
