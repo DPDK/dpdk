@@ -905,10 +905,12 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->max_vfs            = dev->pci_dev->max_vfs;
 	dev_info->max_vmdq_pools     = ETH_64_POOLS;
 	dev_info->rx_offload_capa =
+		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_UDP_CKSUM  |
 		DEV_RX_OFFLOAD_TCP_CKSUM;
-	dev_info->tx_offload_capa    = 0;
+	dev_info->tx_offload_capa =
+		DEV_TX_OFFLOAD_VLAN_INSERT;
 	dev_info->reta_size = FM10K_MAX_RSS_INDICES;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
@@ -1008,6 +1010,27 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		macvlan->vfta[vid_idx] &= ~vid_bit;
 	}
 	return 0;
+}
+
+static void
+fm10k_vlan_offload_set(__rte_unused struct rte_eth_dev *dev, int mask)
+{
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		if (!dev->data->dev_conf.rxmode.hw_vlan_strip)
+			PMD_INIT_LOG(ERR, "VLAN stripping is "
+					"always on in fm10k");
+	}
+
+	if (mask & ETH_VLAN_EXTEND_MASK) {
+		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
+			PMD_INIT_LOG(ERR, "VLAN QinQ is not "
+					"supported in fm10k");
+	}
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (!dev->data->dev_conf.rxmode.hw_vlan_filter)
+			PMD_INIT_LOG(ERR, "VLAN filter is always on in fm10k");
+	}
 }
 
 /* Add/Remove a MAC address, and update filters */
@@ -1927,6 +1950,7 @@ static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.link_update		= fm10k_link_update,
 	.dev_infos_get		= fm10k_dev_infos_get,
 	.vlan_filter_set	= fm10k_vlan_filter_set,
+	.vlan_offload_set	= fm10k_vlan_offload_set,
 	.mac_addr_add		= fm10k_macaddr_add,
 	.mac_addr_remove	= fm10k_macaddr_remove,
 	.rx_queue_start		= fm10k_dev_rx_queue_start,
