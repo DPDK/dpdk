@@ -110,7 +110,7 @@
 #define FM10K_VLAN_TAG_SIZE 4
 
 /* Maximum number of MAC addresses per PF/VF */
-#define FM10K_MAX_MACADDR_NUM       1
+#define FM10K_MAX_MACADDR_NUM       64
 
 #define FM10K_UINT32_BIT_SIZE      (CHAR_BIT * sizeof(uint32_t))
 #define FM10K_VFTA_SIZE            (4096 / FM10K_UINT32_BIT_SIZE)
@@ -125,6 +125,7 @@
 
 struct fm10k_macvlan_filter_info {
 	uint16_t vlan_num;       /* Total VLAN number */
+	uint16_t mac_num;        /* Total mac number */
 	uint32_t vfta[FM10K_VFTA_SIZE];        /* VLAN bitmap */
 };
 

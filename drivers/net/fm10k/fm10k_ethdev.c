@@ -59,6 +59,10 @@ static void fm10k_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void fm10k_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void fm10k_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static inline int fm10k_glort_valid(struct fm10k_hw *hw);
+static int
+fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
+static void
+fm10k_MAC_filter_set(struct rte_eth_dev *dev, const u8 *mac, bool add);
 
 static void
 fm10k_mbx_initlock(struct fm10k_hw *hw)
@@ -786,14 +790,11 @@ fm10k_dev_start(struct rte_eth_dev *dev)
 	}
 
 	if (hw->mac.default_vid && hw->mac.default_vid <= ETHER_MAX_VLAN_ID) {
-		fm10k_mbx_lock(hw);
 		/* Update default vlan */
-		hw->mac.ops.update_vlan(hw, hw->mac.default_vid, 0, true);
+		fm10k_vlan_filter_set(dev, hw->mac.default_vid, true);
 
 		/* Add default mac/vlan filter to PF/Switch manager */
-		hw->mac.ops.update_uc_addr(hw, hw->mac.dglort_map, hw->mac.addr,
-				hw->mac.default_vid, true, 0);
-		fm10k_mbx_unlock(hw);
+		fm10k_MAC_filter_set(dev, hw->mac.addr, true);
 	}
 
 	return 0;
@@ -899,7 +900,7 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->max_rx_pktlen      = FM10K_MAX_PKT_SIZE;
 	dev_info->max_rx_queues      = hw->mac.max_queues;
 	dev_info->max_tx_queues      = hw->mac.max_queues;
-	dev_info->max_mac_addrs      = 1;
+	dev_info->max_mac_addrs      = FM10K_MAX_MACADDR_NUM;
 	dev_info->max_hash_mac_addrs = 0;
 	dev_info->max_vfs            = dev->pci_dev->max_vfs;
 	dev_info->max_vmdq_pools     = ETH_64_POOLS;
@@ -938,6 +939,7 @@ static int
 fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
 	s32 result;
+	uint16_t mac_num = 0;
 	uint32_t vid_idx, vid_bit, mac_index;
 	struct fm10k_hw *hw;
 	struct fm10k_macvlan_filter_info *macvlan;
@@ -981,11 +983,17 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 			(result == FM10K_SUCCESS); mac_index++) {
 		if (is_zero_ether_addr(&data->mac_addrs[mac_index]))
 			continue;
+		if (mac_num > macvlan->mac_num - 1) {
+			PMD_INIT_LOG(ERR, "MAC address number "
+					"not match");
+			break;
+		}
 		fm10k_mbx_lock(hw);
 		result = fm10k_update_uc_addr(hw, hw->mac.dglort_map,
 			data->mac_addrs[mac_index].addr_bytes,
 			vlan_id, on, 0);
 		fm10k_mbx_unlock(hw);
+		mac_num++;
 	}
 	if (result != FM10K_SUCCESS) {
 		PMD_INIT_LOG(ERR, "MAC address update failed: %d", result);
@@ -1000,6 +1008,72 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		macvlan->vfta[vid_idx] &= ~vid_bit;
 	}
 	return 0;
+}
+
+/* Add/Remove a MAC address, and update filters */
+static void
+fm10k_MAC_filter_set(struct rte_eth_dev *dev, const u8 *mac, bool add)
+{
+	uint32_t i, j, k;
+	struct fm10k_hw *hw;
+	struct fm10k_macvlan_filter_info *macvlan;
+
+	hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
+
+	/* @todo - add support for the VF */
+	if (hw->mac.type != fm10k_mac_pf) {
+		PMD_INIT_LOG(ERR, "MAC filter not available on VF");
+		return;
+	}
+
+	i = 0;
+	for (j = 0; j < FM10K_VFTA_SIZE; j++) {
+		if (macvlan->vfta[j]) {
+			for (k = 0; k < FM10K_UINT32_BIT_SIZE; k++) {
+				if (macvlan->vfta[j] & (1 << k)) {
+					if (i + 1 > macvlan->vlan_num) {
+						PMD_INIT_LOG(ERR, "vlan number "
+								"not match");
+						return;
+					}
+					fm10k_mbx_lock(hw);
+					fm10k_update_uc_addr(hw,
+						hw->mac.dglort_map, mac,
+						j * FM10K_UINT32_BIT_SIZE + k,
+						add, 0);
+					fm10k_mbx_unlock(hw);
+					i++;
+				}
+			}
+		}
+	}
+
+	if (add)
+		macvlan->mac_num++;
+	else
+		macvlan->mac_num--;
+}
+
+/* Add a MAC address, and update filters */
+static void
+fm10k_macaddr_add(struct rte_eth_dev *dev,
+		 struct ether_addr *mac_addr,
+		 __rte_unused uint32_t index,
+		 __rte_unused uint32_t pool)
+{
+	fm10k_MAC_filter_set(dev, mac_addr->addr_bytes, TRUE);
+}
+
+/* Remove a MAC address, and update filters */
+static void
+fm10k_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct rte_eth_dev_data *data = dev->data;
+
+	if (index < FM10K_MAX_MACADDR_NUM)
+		fm10k_MAC_filter_set(dev, data->mac_addrs[index].addr_bytes,
+				FALSE);
 }
 
 static inline int
@@ -1853,6 +1927,8 @@ static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.link_update		= fm10k_link_update,
 	.dev_infos_get		= fm10k_dev_infos_get,
 	.vlan_filter_set	= fm10k_vlan_filter_set,
+	.mac_addr_add		= fm10k_macaddr_add,
+	.mac_addr_remove	= fm10k_macaddr_remove,
 	.rx_queue_start		= fm10k_dev_rx_queue_start,
 	.rx_queue_stop		= fm10k_dev_rx_queue_stop,
 	.tx_queue_start		= fm10k_dev_tx_queue_start,
@@ -1934,7 +2010,8 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	}
 
 	/* Initialize MAC address(es) */
-	dev->data->mac_addrs = rte_zmalloc("fm10k", ETHER_ADDR_LEN, 0);
+	dev->data->mac_addrs = rte_zmalloc("fm10k",
+			ETHER_ADDR_LEN * FM10K_MAX_MACADDR_NUM, 0);
 	if (dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Cannot allocate memory for MAC addresses");
 		return -ENOMEM;
