@@ -13,9 +13,9 @@ DPDK_2.0 {
 };
 
 DPDK_2.1 {
-       global:
+	global:
 
-       rte_pktmbuf_pool_create;
+	rte_pktmbuf_pool_create;
 
-       local: *;
+	local: *;
 } DPDK_2.0;
