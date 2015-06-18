@@ -109,11 +109,31 @@
 
 #define FM10K_VLAN_TAG_SIZE 4
 
+/* Maximum number of MAC addresses per PF/VF */
+#define FM10K_MAX_MACADDR_NUM       1
+
+#define FM10K_UINT32_BIT_SIZE      (CHAR_BIT * sizeof(uint32_t))
+#define FM10K_VFTA_SIZE            (4096 / FM10K_UINT32_BIT_SIZE)
+
+/* vlan_id is a 12 bit number.
+ * The VFTA array is actually a 4096 bit array, 128 of 32bit elements.
+ * 2^5 = 32. The val of lower 5 bits specifies the bit in the 32bit element.
+ * The higher 7 bit val specifies VFTA array index.
+ */
+#define FM10K_VFTA_BIT(vlan_id)    (1 << ((vlan_id) & 0x1F))
+#define FM10K_VFTA_IDX(vlan_id)    ((vlan_id) >> 5)
+
+struct fm10k_macvlan_filter_info {
+	uint16_t vlan_num;       /* Total VLAN number */
+	uint32_t vfta[FM10K_VFTA_SIZE];        /* VLAN bitmap */
+};
+
 struct fm10k_dev_info {
 	volatile uint32_t enable;
 	volatile uint32_t glort;
 	/* Protect the mailbox to avoid race condition */
 	rte_spinlock_t    mbx_lock;
+	struct fm10k_macvlan_filter_info    macvlan;
 };
 
 /*
@@ -136,6 +156,9 @@ struct fm10k_adapter {
 
 #define FM10K_DEV_PRIVATE_TO_MBXLOCK(adapter) \
 	(&(((struct fm10k_adapter *)adapter)->info.mbx_lock))
+
+#define FM10K_DEV_PRIVATE_TO_MACVLAN(adapter) \
+		(&(((struct fm10k_adapter *)adapter)->info.macvlan))
 
 struct fm10k_rx_queue {
 	struct rte_mempool *mp;

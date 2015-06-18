@@ -937,15 +937,69 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 static int
 fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
-	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	s32 result;
+	uint32_t vid_idx, vid_bit, mac_index;
+	struct fm10k_hw *hw;
+	struct fm10k_macvlan_filter_info *macvlan;
+	struct rte_eth_dev_data *data = dev->data;
 
-	PMD_INIT_FUNC_TRACE();
+	hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
 
 	/* @todo - add support for the VF */
-	if (hw->mac.type != fm10k_mac_pf)
+	if (hw->mac.type != fm10k_mac_pf) {
+		PMD_INIT_LOG(ERR, "VLAN filter not available on VF");
 		return -ENOTSUP;
+	}
 
-	return fm10k_update_vlan(hw, vlan_id, 0, on);
+	if (vlan_id > ETH_VLAN_ID_MAX) {
+		PMD_INIT_LOG(ERR, "Invalid vlan_id: must be < 4096");
+		return (-EINVAL);
+	}
+
+	vid_idx = FM10K_VFTA_IDX(vlan_id);
+	vid_bit = FM10K_VFTA_BIT(vlan_id);
+	/* this VLAN ID is already in the VLAN filter table, return SUCCESS */
+	if (on && (macvlan->vfta[vid_idx] & vid_bit))
+		return 0;
+	/* this VLAN ID is NOT in the VLAN filter table, cannot remove */
+	if (!on && !(macvlan->vfta[vid_idx] & vid_bit)) {
+		PMD_INIT_LOG(ERR, "Invalid vlan_id: not existing "
+			"in the VLAN filter table");
+		return (-EINVAL);
+	}
+
+	fm10k_mbx_lock(hw);
+	result = fm10k_update_vlan(hw, vlan_id, 0, on);
+	fm10k_mbx_unlock(hw);
+	if (result != FM10K_SUCCESS) {
+		PMD_INIT_LOG(ERR, "VLAN update failed: %d", result);
+		return (-EIO);
+	}
+
+	for (mac_index = 0; (mac_index < FM10K_MAX_MACADDR_NUM) &&
+			(result == FM10K_SUCCESS); mac_index++) {
+		if (is_zero_ether_addr(&data->mac_addrs[mac_index]))
+			continue;
+		fm10k_mbx_lock(hw);
+		result = fm10k_update_uc_addr(hw, hw->mac.dglort_map,
+			data->mac_addrs[mac_index].addr_bytes,
+			vlan_id, on, 0);
+		fm10k_mbx_unlock(hw);
+	}
+	if (result != FM10K_SUCCESS) {
+		PMD_INIT_LOG(ERR, "MAC address update failed: %d", result);
+		return (-EIO);
+	}
+
+	if (on) {
+		macvlan->vlan_num++;
+		macvlan->vfta[vid_idx] |= vid_bit;
+	} else {
+		macvlan->vlan_num--;
+		macvlan->vfta[vid_idx] &= ~vid_bit;
+	}
+	return 0;
 }
 
 static inline int
@@ -1818,6 +1872,7 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int diag;
+	struct fm10k_macvlan_filter_info *macvlan;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1832,6 +1887,8 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
+	memset(macvlan, 0, sizeof(*macvlan));
 	/* Vendor and Device ID need to be set before init of shared code */
 	memset(hw, 0, sizeof(*hw));
 	hw->device_id = dev->pci_dev->id.device_id;
