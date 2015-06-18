@@ -346,7 +346,7 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	eth_dev->rx_pkt_burst = eth_ring_rx;
 	eth_dev->tx_pkt_burst = eth_ring_tx;
 
-	return 0;
+	return data->port_id;
 
 error:
 	rte_free(data);
@@ -384,7 +384,7 @@ eth_dev_ring_create(const char *name, const unsigned numa_node,
 			return -1;
 	}
 
-	if (rte_eth_from_rings(name, rxtx, num_rings, rxtx, num_rings, numa_node))
+	if (rte_eth_from_rings(name, rxtx, num_rings, rxtx, num_rings, numa_node) < 0)
 		return -1;
 
 	return 0;
@@ -424,8 +424,9 @@ eth_dev_ring_pair_create(const char *name, const unsigned numa_node,
 	}
 
 	if (rte_eth_from_rings(rx_rng_name, rx, num_rings, tx, num_rings,
-			numa_node) || rte_eth_from_rings(tx_rng_name, tx, num_rings, rx,
-					num_rings, numa_node))
+				numa_node) < 0 ||
+			rte_eth_from_rings(tx_rng_name, tx, num_rings, rx,
+				num_rings, numa_node) < 0)
 		return -1;
 
 	return 0;
