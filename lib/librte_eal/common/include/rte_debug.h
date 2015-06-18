@@ -70,10 +70,8 @@ void rte_dump_registers(void);
  *
  * The function never returns.
  *
- * @param format
- *   The format string
- * @param args
- *   The variable list of arguments.
+ * @param ...
+ *   The format string, followed by the variable list of arguments.
  */
 #define rte_panic(...) rte_panic_(__func__, __VA_ARGS__, "dummy")
 #define rte_panic_(func, format, ...) __rte_panic(func, format "%.0s", __VA_ARGS__)

@@ -1040,10 +1040,10 @@ typedef void (*eth_queue_release_t)(void *queue);
 
 typedef uint32_t (*eth_rx_queue_count_t)(struct rte_eth_dev *dev,
 					 uint16_t rx_queue_id);
-/**< @Get number of available descriptors on a receive queue of an Ethernet device. */
+/**< @internal Get number of available descriptors on a receive queue of an Ethernet device. */
 
 typedef int (*eth_rx_descriptor_done_t)(void *rxq, uint16_t offset);
-/**< @Check DD bit of specific RX descriptor */
+/**< @internal Check DD bit of specific RX descriptor */
 
 typedef int (*mtu_set_t)(struct rte_eth_dev *dev, uint16_t mtu);
 /**< @internal Set MTU. */
@@ -1456,8 +1456,8 @@ struct rte_eth_rxtx_callback {
 	void *param;
 };
 
-/*
- * The eth device type
+/**
+ * The eth device type.
  */
 enum rte_eth_dev_type {
 	RTE_ETH_DEV_UNKNOWN,	/**< unknown device type */
@@ -1629,7 +1629,7 @@ int rte_eth_dev_attach(const char *devargs, uint8_t *port_id);
  *
  * @param port_id
  *   The port identifier of the device to detach.
- * @param addr
+ * @param devname
  *  A pointer to a device name actually detached.
  * @return
  *  0 on success and devname is filled, negative on error
@@ -2474,7 +2474,7 @@ rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id)
  *  The port identifier of the Ethernet device.
  * @param queue_id
  *  The queue id on the specific port.
- * @offset
+ * @param offset
  *  The offset of the descriptor ID from tail.
  * @return
  *  - (1) if the specific DD bit is set.
@@ -3266,7 +3266,7 @@ int rte_eth_dev_bypass_state_show(uint8_t port, uint32_t *state);
  *
  * @param port
  *   The port identifier of the Ethernet device.
- * @param state
+ * @param new_state
  *   The current bypass state.
  *   - (1) Normal mode
  *   - (2) Bypass mode
@@ -3331,7 +3331,7 @@ int rte_eth_dev_bypass_event_store(uint8_t port, uint32_t event, uint32_t state)
  *
  * @param port
  *   The port identifier of the Ethernet device.
- * @param state
+ * @param timeout
  *   The timeout to be set.
  *   - (0) 0 seconds (timer is off)
  *   - (1) 1.5 seconds
@@ -3560,9 +3560,9 @@ void *rte_eth_add_tx_callback(uint8_t port_id, uint16_t queue_id,
  * since the it may still be in use. The memory for the callback can be
  * subsequently freed back by the application by calling rte_free():
  *
- *  - Immediately - if the port is stopped, or the user knows that no
- *    callbacks are in flight e.g. if called from the thread doing RX/TX
- *    on that queue.
+ * - Immediately - if the port is stopped, or the user knows that no
+ *   callbacks are in flight e.g. if called from the thread doing RX/TX
+ *   on that queue.
  *
  * - After a short delay - where the delay is sufficient to allow any
  *   in-flight callbacks to complete.
@@ -3593,9 +3593,9 @@ int rte_eth_remove_rx_callback(uint8_t port_id, uint16_t queue_id,
  * since the it may still be in use. The memory for the callback can be
  * subsequently freed back by the application by calling rte_free():
  *
- *  - Immediately - if the port is stopped, or the user knows that no
- *    callbacks are in flight e.g. if called from the thread doing RX/TX
- *    on that queue.
+ * - Immediately - if the port is stopped, or the user knows that no
+ *   callbacks are in flight e.g. if called from the thread doing RX/TX
+ *   on that queue.
  *
  * - After a short delay - where the delay is sufficient to allow any
  *   in-flight callbacks to complete.

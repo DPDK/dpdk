@@ -220,8 +220,8 @@ rte_align32pow2(uint32_t x)
 /**
  * Aligns 64b input parameter to the next power of 2
  *
- * @param x
- *   The 64b value to algin
+ * @param v
+ *   The 64b value to align
  *
  * @return
  *   Input parameter aligned to the next power of 2
@@ -303,7 +303,7 @@ rte_bsf32(uint32_t v)
 /** Take a macro value and get a string version of it */
 #define RTE_STR(x) _RTE_STR(x)
 
-/** Mask value of type <tp> for the first <ln> bit set. */
+/** Mask value of type "tp" for the first "ln" bit set. */
 #define	RTE_LEN2MASK(ln, tp)	\
 	((tp)((uint64_t)-1 >> (sizeof(uint64_t) * CHAR_BIT - (ln))))
 

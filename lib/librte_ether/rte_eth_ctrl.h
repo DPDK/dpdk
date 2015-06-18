@@ -109,7 +109,7 @@ enum rte_filter_op {
 	RTE_ETH_FILTER_OP_MAX
 };
 
-/*
+/**
  * MAC filter type
  */
 enum rte_mac_filter_type {

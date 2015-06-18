@@ -301,12 +301,7 @@ extern int rte_kni_register_handlers(struct rte_kni *kni,
 extern int rte_kni_unregister_handlers(struct rte_kni *kni);
 
 /**
- *  close KNI device.
- *
- *  @param void
- *
- *  @return
- *   void
+ *  Close KNI device.
  */
 extern void rte_kni_close(void);
 

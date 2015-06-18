@@ -89,7 +89,7 @@ rte_cpu_get_features(uint32_t leaf, uint32_t subleaf, cpuid_registers_t out);
 /**
  * Function for checking a CPU flag availability
  *
- * @param flag
+ * @param feature
  *     CPU flag to query CPU for
  * @return
  *     1 if flag is available

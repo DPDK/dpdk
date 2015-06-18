@@ -68,18 +68,11 @@ int rte_power_set_env(enum power_management_env env);
 /**
  * Unset the global environment configuration.
  * This can only be called after all threads have completed.
- *
- * @param None.
- *
- * @return
- *  None.
  */
 void rte_power_unset_env(void);
 
 /**
  * Get the default power management implementation.
- *
- * @param None.
  *
  * @return
  *  power_management_env The configured environment.
@@ -103,7 +96,6 @@ int rte_power_init(unsigned lcore_id);
 /**
  * Exit power management on a specific lcore. This will call the environment
  * dependent exit function.
- *
  *
  * @param lcore_id
  *  lcore id.

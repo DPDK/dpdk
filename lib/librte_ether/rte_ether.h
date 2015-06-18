@@ -277,7 +277,7 @@ static inline void ether_addr_copy(const struct ether_addr *ea_from,
  *   A pointer to buffer contains the formatted MAC address.
  * @param size
  *   The format buffer size.
- * @param ea_to
+ * @param eth_addr
  *   A pointer to a ether_addr structure.
  */
 static inline void

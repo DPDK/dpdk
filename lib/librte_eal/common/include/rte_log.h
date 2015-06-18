@@ -289,11 +289,9 @@ int rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
  * @param t
  *   The log type, for example, EAL. The short name is expanded by the
  *   macro, so it cannot be an integer value.
- * @param fmt
+ * @param ...
  *   The fmt string, as in printf(3), followed by the variable arguments
  *   required by the format.
- * @param args
- *   The variable list of arguments according to the format string.
  * @return
  *   - 0: Success.
  *   - Negative on error.

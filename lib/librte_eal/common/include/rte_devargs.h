@@ -141,7 +141,7 @@ int rte_eal_parse_devargs_str(const char *devargs_str,
  *
  * @param devtype
  *   The type of the device.
- * @param devargs_list
+ * @param devargs_str
  *   The arguments as given by the user.
  *
  * @return

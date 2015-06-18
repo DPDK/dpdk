@@ -1325,6 +1325,8 @@ struct rte_mempool *rte_mempool_lookup(const char *name);
  *   The flags used for the mempool creation.
  *   Consult rte_mempool_create() for more information about possible values.
  *   The size of each element.
+ * @param sz
+ *   The calculated detailed size the mempool object. May be NULL.
  * @return
  *   Total size of the mempool object.
  */

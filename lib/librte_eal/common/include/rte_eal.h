@@ -171,7 +171,7 @@ typedef void	(*rte_usage_hook_t)(const char * prgname);
  * This routine is optional for the application and will behave as if the set
  * routine was never called as the default behavior.
  *
- * @param func
+ * @param usage_func
  *   The func argument is a function pointer to the application usage routine.
  *   Called function is defined using rte_usage_hook_t typedef, which is of
  *   the form void rte_usage_func(const char * prgname).
@@ -183,7 +183,7 @@ typedef void	(*rte_usage_hook_t)(const char * prgname);
  *     the caller to daisy chain the usage routines if needing more then one.
  */
 rte_usage_hook_t
-rte_set_application_usage_hook( rte_usage_hook_t usage_func );
+rte_set_application_usage_hook(rte_usage_hook_t usage_func);
 
 /**
  * macro to get the lock of tailq in mem_config

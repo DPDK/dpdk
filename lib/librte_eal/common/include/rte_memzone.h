@@ -258,7 +258,7 @@ const struct rte_memzone *rte_memzone_lookup(const char *name);
  * @param f
  *   A pointer to a file for output
  */
-void rte_memzone_dump(FILE *);
+void rte_memzone_dump(FILE *f);
 
 /**
  * Walk list of all memzones
