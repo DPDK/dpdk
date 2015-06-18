@@ -377,6 +377,8 @@ build_config(struct rte_ivshmem_metadata * metadata)
 			for (j = biggest_idx - 1; j >= i; j--) {
 				memcpy(&pages[j+1], &pages[j], sizeof(struct rte_memseg));
 				memset(&pages[j], 0, sizeof(struct rte_memseg));
+				if (j == 0)
+					break;
 			}
 
 			/* put old biggest segment to its new place */
