@@ -201,6 +201,12 @@ rte_kni_init(unsigned int max_kni_ifaces)
 	char obj_name[OBJNAMSIZ];
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 
+	/* Immediately return if KNI is already initialized */
+	if (kni_memzone_pool.initialized) {
+		RTE_LOG(WARNING, KNI, "Double call to rte_kni_init()");
+		return;
+	}
+
 	if (max_kni_ifaces == 0) {
 		RTE_LOG(ERR, KNI, "Invalid number of max_kni_ifaces %d\n",
 							max_kni_ifaces);
