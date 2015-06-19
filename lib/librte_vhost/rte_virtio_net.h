@@ -198,8 +198,14 @@ int rte_vhost_driver_session_start(void);
  * be received from the physical port or from another virtual device. A packet
  * count is returned to indicate the number of packets that were succesfully
  * added to the RX queue.
+ * @param dev
+ *  virtio-net device
  * @param queue_id
  *  virtio queue index in mq case
+ * @param pkts
+ *  array to contain packets to be enqueued
+ * @param count
+ *  packets num to be enqueued
  * @return
  *  num of packets enqueued
  */
@@ -210,10 +216,16 @@ uint16_t rte_vhost_enqueue_burst(struct virtio_net *dev, uint16_t queue_id,
  * This function gets guest buffers from the virtio device TX virtqueue,
  * construct host mbufs, copies guest buffer content to host mbufs and
  * store them in pkts to be processed.
+ * @param dev
+ *  virtio-net device
+ * @param queue_id
+ *  virtio queue index in mq case
  * @param mbuf_pool
  *  mbuf_pool where host mbuf is allocated.
- * @param queue_id
- *  virtio queue index in mq case.
+ * @param pkts
+ *  array to contain packets to be dequeued
+ * @param count
+ *  packets num to be dequeued
  * @return
  *  num of packets dequeued
  */
