@@ -109,7 +109,7 @@ static int fdir_erase_filter_82599(struct ixgbe_hw *hw, uint32_t fdirhash);
 static int fdir_set_input_mask_82599(struct rte_eth_dev *dev,
 		const struct rte_eth_fdir_masks *input_mask);
 static int ixgbe_set_fdir_flex_conf(struct rte_eth_dev *dev,
-		const struct rte_eth_fdir_flex_conf *conf);
+		const struct rte_eth_fdir_flex_conf *conf, uint32_t *fdirctrl);
 static int fdir_enable_82599(struct ixgbe_hw *hw, uint32_t fdirctrl);
 static int ixgbe_fdir_filter_to_atr_input(
 		const struct rte_eth_fdir_filter *fdir_filter,
@@ -247,13 +247,6 @@ configure_fdir_flags(const struct rte_fdir_conf *conf, uint32_t *fdirctrl)
 		*fdirctrl |= IXGBE_FDIRCTRL_PERFECT_MATCH;
 		*fdirctrl |= (conf->drop_queue << IXGBE_FDIRCTRL_DROP_Q_SHIFT);
 	}
-	/*
-	 * Continue setup of fdirctrl register bits:
-	 *  Set the maximum length per hash bucket to 0xA filters
-	 *  Send interrupt when 64 filters are left
-	 */
-	*fdirctrl |= (0xA << IXGBE_FDIRCTRL_MAX_LENGTH_SHIFT) |
-		    (4 << IXGBE_FDIRCTRL_FULL_THRESH_SHIFT);
 
 	return 0;
 }
@@ -370,18 +363,17 @@ fdir_set_input_mask_82599(struct rte_eth_dev *dev,
  */
 static int
 ixgbe_set_fdir_flex_conf(struct rte_eth_dev *dev,
-		const struct rte_eth_fdir_flex_conf *conf)
+		const struct rte_eth_fdir_flex_conf *conf, uint32_t *fdirctrl)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_hw_fdir_info *info =
 			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 	const struct rte_eth_flex_payload_cfg *flex_cfg;
 	const struct rte_eth_fdir_flex_mask *flex_mask;
-	uint32_t fdirctrl, fdirm;
+	uint32_t fdirm;
 	uint16_t flexbytes = 0;
 	uint16_t i;
 
-	fdirctrl = IXGBE_READ_REG(hw, IXGBE_FDIRCTRL);
 	fdirm = IXGBE_READ_REG(hw, IXGBE_FDIRM);
 
 	if (conf == NULL) {
@@ -398,8 +390,9 @@ ixgbe_set_fdir_flex_conf(struct rte_eth_dev *dev,
 		if (((flex_cfg->src_offset[0] & 0x1) == 0) &&
 		    (flex_cfg->src_offset[1] == flex_cfg->src_offset[0] + 1) &&
 		    (flex_cfg->src_offset[0] <= IXGBE_MAX_FLX_SOURCE_OFF)) {
-			fdirctrl &= ~IXGBE_FDIRCTRL_FLEX_MASK;
-			fdirctrl |= (flex_cfg->src_offset[0] / sizeof(uint16_t)) <<
+			*fdirctrl &= ~IXGBE_FDIRCTRL_FLEX_MASK;
+			*fdirctrl |=
+				(flex_cfg->src_offset[0] / sizeof(uint16_t)) <<
 					IXGBE_FDIRCTRL_FLEX_SHIFT;
 		} else {
 			PMD_DRV_LOG(ERR, "invalid flexbytes arguments.");
@@ -423,10 +416,9 @@ ixgbe_set_fdir_flex_conf(struct rte_eth_dev *dev,
 			return -EINVAL;
 		}
 	}
-	IXGBE_WRITE_REG(hw, IXGBE_FDIRCTRL, fdirctrl);
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRM, fdirm);
 	info->mask.flex_bytes_mask = flexbytes ? UINT16_MAX : 0;
-	info->flex_bytes_offset = (uint8_t)((fdirctrl &
+	info->flex_bytes_offset = (uint8_t)((*fdirctrl &
 					    IXGBE_FDIRCTRL_FLEX_MASK) >>
 					    IXGBE_FDIRCTRL_FLEX_SHIFT);
 	return 0;
@@ -476,7 +468,7 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 		return err;
 	}
 	err = ixgbe_set_fdir_flex_conf(dev,
-		&dev->data->dev_conf.fdir_conf.flex_conf);
+		&dev->data->dev_conf.fdir_conf.flex_conf, &fdirctrl);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, " Error on setting FD flexible arguments.");
 		return err;
