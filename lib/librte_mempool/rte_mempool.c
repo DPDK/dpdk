@@ -131,6 +131,7 @@ mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
 	rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg)
 {
 	struct rte_mempool_objhdr *hdr;
+	struct rte_mempool_objtlr *tlr __rte_unused;
 
 	obj = (char *)obj + mp->header_size;
 
@@ -140,7 +141,8 @@ mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE2;
-	__mempool_write_trailer_cookie(obj);
+	tlr = __mempool_get_trailer(obj);
+	tlr->cookie = RTE_MEMPOOL_TRAILER_COOKIE;
 #endif
 	/* call the initializer */
 	if (obj_init)

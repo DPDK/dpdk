@@ -155,6 +155,18 @@ struct rte_mempool_objhdr {
 };
 
 /**
+ * Mempool object trailer structure
+ *
+ * In debug mode, each object stored in mempools are suffixed by this
+ * trailer structure containing a cookie preventing memory corruptions.
+ */
+struct rte_mempool_objtlr {
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	uint64_t cookie;                 /**< Debug cookie. */
+#endif
+};
+
+/**
  * The RTE mempool structure.
  */
 struct rte_mempool {
@@ -249,6 +261,13 @@ static inline struct rte_mempool_objhdr *__mempool_get_header(void *obj)
 		sizeof(struct rte_mempool_objhdr));
 }
 
+/* return the trailer of a mempool object (internal) */
+static inline struct rte_mempool_objtlr *__mempool_get_trailer(void *obj)
+{
+	return (struct rte_mempool_objtlr *)((char *)obj -
+		sizeof(struct rte_mempool_objtlr));
+}
+
 /**
  * Return a pointer to the mempool owning this object.
  *
@@ -263,25 +282,6 @@ static inline struct rte_mempool *rte_mempool_from_obj(void *obj)
 	struct rte_mempool_objhdr *hdr = __mempool_get_header(obj);
 	return hdr->mp;
 }
-
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-/* get trailer cookie value */
-static inline uint64_t __mempool_read_trailer_cookie(void *obj)
-{
-	struct rte_mempool *mp = rte_mempool_from_obj(obj);
-	return *(uint64_t *)((char *)obj + mp->elt_size);
-
-}
-
-/* write trailer cookie value */
-static inline void __mempool_write_trailer_cookie(void *obj)
-{
-	uint64_t *cookie_p;
-	struct rte_mempool *mp = rte_mempool_from_obj(obj);
-	cookie_p = (uint64_t *)((char *)obj + mp->elt_size);
-	*cookie_p = RTE_MEMPOOL_TRAILER_COOKIE;
-}
-#endif /* RTE_LIBRTE_MEMPOOL_DEBUG */
 
 /**
  * @internal Check and update cookies or panic.
@@ -306,6 +306,7 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 					   unsigned n, int free)
 {
 	struct rte_mempool_objhdr *hdr;
+	struct rte_mempool_objtlr *tlr;
 	uint64_t cookie;
 	void *tmp;
 	void *obj;
@@ -356,7 +357,8 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 				rte_panic("MEMPOOL: bad header cookie (audit)\n");
 			}
 		}
-		cookie = __mempool_read_trailer_cookie(obj);
+		tlr = __mempool_get_trailer(obj);
+		cookie = tlr->cookie;
 		if (cookie != RTE_MEMPOOL_TRAILER_COOKIE) {
 			rte_log_set_history(0);
 			RTE_LOG(CRIT, MEMPOOL,
