@@ -46,7 +46,23 @@
 
 #define RTE_TABLE_LPM_MAX_NEXT_HOPS                        256
 
+#ifdef RTE_TABLE_STATS_COLLECT
+
+#define RTE_TABLE_LPM_IPV6_STATS_PKTS_IN_ADD(table, val) \
+	table->stats.n_pkts_in += val
+#define RTE_TABLE_LPM_IPV6_STATS_PKTS_LOOKUP_MISS(table, val) \
+	table->stats.n_pkts_lookup_miss += val
+
+#else
+
+#define RTE_TABLE_LPM_IPV6_STATS_PKTS_IN_ADD(table, val)
+#define RTE_TABLE_LPM_IPV6_STATS_PKTS_LOOKUP_MISS(table, val)
+
+#endif
+
 struct rte_table_lpm_ipv6 {
+	struct rte_table_stats stats;
+
 	/* Input parameters */
 	uint32_t entry_size;
 	uint32_t entry_unique_size;
@@ -323,6 +339,9 @@ rte_table_lpm_ipv6_lookup(
 	uint64_t pkts_out_mask = 0;
 	uint32_t i;
 
+	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	RTE_TABLE_LPM_IPV6_STATS_PKTS_IN_ADD(lpm, n_pkts_in);
+
 	pkts_out_mask = 0;
 	for (i = 0; i < (uint32_t)(RTE_PORT_IN_BURST_SIZE_MAX -
 		__builtin_clzll(pkts_mask)); i++) {
@@ -345,6 +364,20 @@ rte_table_lpm_ipv6_lookup(
 	}
 
 	*lookup_hit_mask = pkts_out_mask;
+	RTE_TABLE_LPM_IPV6_STATS_PKTS_LOOKUP_MISS(lpm, n_pkts_in - __builtin_popcountll(pkts_out_mask));
+	return 0;
+}
+
+static int
+rte_table_lpm_ipv6_stats_read(void *table, struct rte_table_stats *stats, int clear)
+{
+	struct rte_table_lpm_ipv6 *t = (struct rte_table_lpm_ipv6 *) table;
+
+	if (stats != NULL)
+		memcpy(stats, &t->stats, sizeof(t->stats));
+
+	if (clear)
+		memset(&t->stats, 0, sizeof(t->stats));
 
 	return 0;
 }
@@ -355,4 +388,5 @@ struct rte_table_ops rte_table_lpm_ipv6_ops = {
 	.f_add = rte_table_lpm_ipv6_entry_add,
 	.f_delete = rte_table_lpm_ipv6_entry_delete,
 	.f_lookup = rte_table_lpm_ipv6_lookup,
+	.f_stats = rte_table_lpm_ipv6_stats_read,
 };
