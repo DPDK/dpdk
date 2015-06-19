@@ -43,7 +43,23 @@
 #include "rte_table_acl.h"
 #include <rte_ether.h>
 
+#ifdef RTE_TABLE_STATS_COLLECT
+
+#define RTE_TABLE_ACL_STATS_PKTS_IN_ADD(table, val) \
+	table->stats.n_pkts_in += val
+#define RTE_TABLE_ACL_STATS_PKTS_LOOKUP_MISS(table, val) \
+	table->stats.n_pkts_lookup_miss += val
+
+#else
+
+#define RTE_TABLE_ACL_STATS_PKTS_IN_ADD(table, val)
+#define RTE_TABLE_ACL_STATS_PKTS_LOOKUP_MISS(table, val)
+
+#endif
+
 struct rte_table_acl {
+	struct rte_table_stats stats;
+
 	/* Low-level ACL table */
 	char name[2][RTE_ACL_NAMESIZE];
 	struct rte_acl_param acl_params; /* for creating low level acl table */
@@ -441,6 +457,9 @@ rte_table_acl_lookup(
 	uint64_t pkts_out_mask;
 	uint32_t n_pkts, i, j;
 
+	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	RTE_TABLE_ACL_STATS_PKTS_IN_ADD(acl, n_pkts_in);
+
 	/* Input conversion */
 	for (i = 0, j = 0; i < (uint32_t)(RTE_PORT_IN_BURST_SIZE_MAX -
 		__builtin_clzll(pkts_mask)); i++) {
@@ -478,6 +497,21 @@ rte_table_acl_lookup(
 	}
 
 	*lookup_hit_mask = pkts_out_mask;
+	RTE_TABLE_ACL_STATS_PKTS_LOOKUP_MISS(acl, n_pkts_in - __builtin_popcountll(pkts_out_mask));
+
+	return 0;
+}
+
+static int
+rte_table_acl_stats_read(void *table, struct rte_table_stats *stats, int clear)
+{
+	struct rte_table_acl *acl = (struct rte_table_acl *) table;
+
+	if (stats != NULL)
+		memcpy(stats, &acl->stats, sizeof(acl->stats));
+
+	if (clear)
+		memset(&acl->stats, 0, sizeof(acl->stats));
 
 	return 0;
 }
@@ -488,4 +522,5 @@ struct rte_table_ops rte_table_acl_ops = {
 	.f_add = rte_table_acl_entry_add,
 	.f_delete = rte_table_acl_entry_delete,
 	.f_lookup = rte_table_acl_lookup,
+	.f_stats = rte_table_acl_stats_read,
 };
