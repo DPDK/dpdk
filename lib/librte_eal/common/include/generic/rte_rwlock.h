@@ -151,6 +151,56 @@ rte_rwlock_write_unlock(rte_rwlock_t *rwl)
 	rte_atomic32_inc((rte_atomic32_t *)(intptr_t)&rwl->cnt);
 }
 
+/**
+ * Try to execute critical section in a hardware memory transaction, if it
+ * fails or not available take a read lock
+ *
+ * NOTE: An attempt to perform a HW I/O operation inside a hardware memory
+ * transaction always aborts the transaction since the CPU is not able to
+ * roll-back should the transaction fail. Therefore, hardware transactional
+ * locks are not advised to be used around rte_eth_rx_burst() and
+ * rte_eth_tx_burst() calls.
+ *
+ * @param rwl
+ *   A pointer to a rwlock structure.
+ */
+static inline void
+rte_rwlock_read_lock_tm(rte_rwlock_t *rwl);
+
+/**
+ * Commit hardware memory transaction or release the read lock if the lock is used as a fall-back
+ *
+ * @param rwl
+ *   A pointer to the rwlock structure.
+ */
+static inline void
+rte_rwlock_read_unlock_tm(rte_rwlock_t *rwl);
+
+/**
+ * Try to execute critical section in a hardware memory transaction, if it
+ * fails or not available take a write lock
+ *
+ * NOTE: An attempt to perform a HW I/O operation inside a hardware memory
+ * transaction always aborts the transaction since the CPU is not able to
+ * roll-back should the transaction fail. Therefore, hardware transactional
+ * locks are not advised to be used around rte_eth_rx_burst() and
+ * rte_eth_tx_burst() calls.
+ *
+ * @param rwl
+ *   A pointer to a rwlock structure.
+ */
+static inline void
+rte_rwlock_write_lock_tm(rte_rwlock_t *rwl);
+
+/**
+ * Commit hardware memory transaction or release the write lock if the lock is used as a fall-back
+ *
+ * @param rwl
+ *   A pointer to a rwlock structure.
+ */
+static inline void
+rte_rwlock_write_unlock_tm(rte_rwlock_t *rwl);
+
 #ifdef __cplusplus
 }
 #endif
