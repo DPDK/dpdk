@@ -42,7 +42,23 @@
 
 #include "rte_table_array.h"
 
+#ifdef RTE_TABLE_STATS_COLLECT
+
+#define RTE_TABLE_ARRAY_STATS_PKTS_IN_ADD(table, val) \
+	table->stats.n_pkts_in += val
+#define RTE_TABLE_ARRAY_STATS_PKTS_LOOKUP_MISS(table, val) \
+	table->stats.n_pkts_lookup_miss += val
+
+#else
+
+#define RTE_TABLE_ARRAY_STATS_PKTS_IN_ADD(table, val)
+#define RTE_TABLE_ARRAY_STATS_PKTS_LOOKUP_MISS(table, val)
+
+#endif
+
 struct rte_table_array {
+	struct rte_table_stats stats;
+
 	/* Input parameters */
 	uint32_t entry_size;
 	uint32_t n_entries;
@@ -162,7 +178,8 @@ rte_table_array_lookup(
 	void **entries)
 {
 	struct rte_table_array *t = (struct rte_table_array *) table;
-
+	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	RTE_TABLE_ARRAY_STATS_PKTS_IN_ADD(t, n_pkts_in);
 	*lookup_hit_mask = pkts_mask;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
@@ -194,10 +211,25 @@ rte_table_array_lookup(
 	return 0;
 }
 
+static int
+rte_table_array_stats_read(void *table, struct rte_table_stats *stats, int clear)
+{
+	struct rte_table_array *array = (struct rte_table_array *) table;
+
+	if (stats != NULL)
+		memcpy(stats, &array->stats, sizeof(array->stats));
+
+	if (clear)
+		memset(&array->stats, 0, sizeof(array->stats));
+
+	return 0;
+}
+
 struct rte_table_ops rte_table_array_ops = {
 	.f_create = rte_table_array_create,
 	.f_free = rte_table_array_free,
 	.f_add = rte_table_array_entry_add,
 	.f_delete = NULL,
 	.f_lookup = rte_table_array_lookup,
+	.f_stats = rte_table_array_stats_read,
 };
