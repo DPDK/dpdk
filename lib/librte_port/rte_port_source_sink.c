@@ -42,7 +42,23 @@
 /*
  * Port SOURCE
  */
+#ifdef RTE_PORT_STATS_COLLECT
+
+#define RTE_PORT_SOURCE_STATS_PKTS_IN_ADD(port, val) \
+	port->stats.n_pkts_in += val
+#define RTE_PORT_SOURCE_STATS_PKTS_DROP_ADD(port, val) \
+	port->stats.n_pkts_drop += val
+
+#else
+
+#define RTE_PORT_SOURCE_STATS_PKTS_IN_ADD(port, val)
+#define RTE_PORT_SOURCE_STATS_PKTS_DROP_ADD(port, val)
+
+#endif
+
 struct rte_port_source {
+	struct rte_port_in_stats stats;
+
 	struct rte_mempool *mempool;
 };
 
@@ -93,7 +109,25 @@ rte_port_source_rx(void *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 	if (rte_mempool_get_bulk(p->mempool, (void **) pkts, n_pkts) != 0)
 		return 0;
 
+	RTE_PORT_SOURCE_STATS_PKTS_IN_ADD(p, n_pkts);
+
 	return n_pkts;
+}
+
+static int
+rte_port_source_stats_read(void *port,
+		struct rte_port_in_stats *stats, int clear)
+{
+	struct rte_port_source *p =
+		(struct rte_port_source *) port;
+
+	if (stats != NULL)
+		memcpy(stats, &p->stats, sizeof(p->stats));
+
+	if (clear)
+		memset(&p->stats, 0, sizeof(p->stats));
+
+	return 0;
 }
 
 /*
@@ -147,6 +181,7 @@ struct rte_port_in_ops rte_port_source_ops = {
 	.f_create = rte_port_source_create,
 	.f_free = rte_port_source_free,
 	.f_rx = rte_port_source_rx,
+	.f_stats = rte_port_source_stats_read,
 };
 
 struct rte_port_out_ops rte_port_sink_ops = {
