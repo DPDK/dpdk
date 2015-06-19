@@ -112,6 +112,45 @@ struct rte_pipeline_params {
 	uint32_t offset_port_id;
 };
 
+/** Pipeline port in stats. */
+struct rte_pipeline_port_in_stats {
+	/** Port in stats. */
+	struct rte_port_in_stats stats;
+
+	/** Number of packets dropped by action handler. */
+	uint64_t n_pkts_dropped_by_ah;
+
+};
+
+/** Pipeline port out stats. */
+struct rte_pipeline_port_out_stats {
+	/** Port out stats. */
+	struct rte_port_out_stats stats;
+
+	/** Number of packets dropped by action handler. */
+	uint64_t n_pkts_dropped_by_ah;
+};
+
+/** Pipeline table stats. */
+struct rte_pipeline_table_stats {
+	/** Table stats. */
+	struct rte_table_stats stats;
+
+	/** Number of packets dropped by lookup hit action handler. */
+	uint64_t n_pkts_dropped_by_lkp_hit_ah;
+
+	/** Number of packets dropped by lookup miss action handler. */
+	uint64_t n_pkts_dropped_by_lkp_miss_ah;
+
+	/** Number of packets dropped by pipeline in behalf of this table based on
+	 * on action specified in table entry. */
+	uint64_t n_pkts_dropped_lkp_hit;
+
+	/** Number of packets dropped by pipeline in behalf of this table based on
+	 * on action specified in table entry. */
+	uint64_t n_pkts_dropped_lkp_miss;
+};
+
 /**
  * Pipeline create
  *
@@ -426,6 +465,26 @@ int rte_pipeline_table_entry_delete(struct rte_pipeline *p,
 	int *key_found,
 	struct rte_pipeline_table_entry *entry);
 
+/**
+ * Read pipeline table stats.
+ *
+ * This function reads table statistics identified by *table_id* of given
+ * pipeline *p*.
+ *
+ * @param p
+ *   Handle to pipeline instance.
+ * @param table_id
+ *   Port ID what stats will be returned.
+ * @param stats
+ *   Statistics buffer.
+ * @param clear
+ *   If not 0 clear stats after reading.
+ * @return
+ *   0 on success, error code otherwise
+ */
+int rte_pipeline_table_stats_read(struct rte_pipeline *p, uint32_t table_id,
+	struct rte_pipeline_table_stats *stats, int clear);
+
 /*
  * Port IN
  *
@@ -539,6 +598,26 @@ int rte_pipeline_port_in_enable(struct rte_pipeline *p,
  */
 int rte_pipeline_port_in_disable(struct rte_pipeline *p,
 	uint32_t port_id);
+
+/**
+ * Read pipeline port in stats.
+ *
+ * This function reads port in statistics identified by *port_id* of given
+ * pipeline *p*.
+ *
+ * @param p
+ *   Handle to pipeline instance.
+ * @param port_id
+ *   Port ID what stats will be returned.
+ * @param stats
+ *   Statistics buffer.
+ * @param clear
+ *   If not 0 clear stats after reading.
+ * @return
+ *   0 on success, error code otherwise
+ */
+int rte_pipeline_port_in_stats_read(struct rte_pipeline *p, uint32_t port_id,
+	struct rte_pipeline_port_in_stats *stats, int clear);
 
 /*
  * Port OUT
@@ -658,6 +737,25 @@ int rte_pipeline_port_out_packet_insert(struct rte_pipeline *p,
 	uint32_t port_id,
 	struct rte_mbuf *pkt);
 
+/**
+ * Read pipeline port out stats.
+ *
+ * This function reads port out statistics identified by *port_id* of given
+ * pipeline *p*.
+ *
+ * @param p
+ *   Handle to pipeline instance.
+ * @param port_id
+ *   Port ID what stats will be returned.
+ * @param stats
+ *   Statistics buffer.
+ * @param clear
+ *   If not 0 clear stats after reading.
+ * @return
+ *   0 on success, error code otherwise
+ */
+int rte_pipeline_port_out_stats_read(struct rte_pipeline *p, uint32_t port_id,
+	struct rte_pipeline_port_out_stats *stats, int clear);
 #ifdef __cplusplus
 }
 #endif
