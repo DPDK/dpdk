@@ -51,6 +51,20 @@
 #define RTE_PORT_RAS_N_ENTRIES (RTE_PORT_RAS_N_BUCKETS * RTE_PORT_RAS_N_ENTRIES_PER_BUCKET)
 #endif
 
+#ifdef RTE_PORT_STATS_COLLECT
+
+#define RTE_PORT_RING_WRITER_RAS_STATS_PKTS_IN_ADD(port, val) \
+	port->stats.n_pkts_in += val
+#define RTE_PORT_RING_WRITER_RAS_STATS_PKTS_DROP_ADD(port, val) \
+	port->stats.n_pkts_drop += val
+
+#else
+
+#define RTE_PORT_RING_WRITER_RAS_STATS_PKTS_IN_ADD(port, val)
+#define RTE_PORT_RING_WRITER_RAS_STATS_PKTS_DROP_ADD(port, val)
+
+#endif
+
 struct rte_port_ring_writer_ras;
 
 typedef void (*ras_op)(
@@ -63,6 +77,8 @@ static void
 process_ipv6(struct rte_port_ring_writer_ras *p, struct rte_mbuf *pkt);
 
 struct rte_port_ring_writer_ras {
+	struct rte_port_out_stats stats;
+
 	struct rte_mbuf *tx_buf[RTE_PORT_IN_BURST_SIZE_MAX];
 	struct rte_ring *ring;
 	uint32_t tx_burst_sz;
@@ -153,6 +169,7 @@ send_burst(struct rte_port_ring_writer_ras *p)
 	nb_tx = rte_ring_sp_enqueue_burst(p->ring, (void **)p->tx_buf,
 			p->tx_buf_count);
 
+	RTE_PORT_RING_WRITER_RAS_STATS_PKTS_DROP_ADD(p, p->tx_buf_count - nb_tx);
 	for ( ; nb_tx < p->tx_buf_count; nb_tx++)
 		rte_pktmbuf_free(p->tx_buf[nb_tx]);
 
@@ -225,6 +242,7 @@ rte_port_ring_writer_ras_tx(void *port, struct rte_mbuf *pkt)
 	struct rte_port_ring_writer_ras *p =
 			(struct rte_port_ring_writer_ras *) port;
 
+	RTE_PORT_RING_WRITER_RAS_STATS_PKTS_IN_ADD(p, 1);
 	p->f_ras(p, pkt);
 	if (p->tx_buf_count >= p->tx_burst_sz)
 		send_burst(p);
@@ -247,6 +265,7 @@ rte_port_ring_writer_ras_tx_bulk(void *port,
 		for (i = 0; i < n_pkts; i++) {
 			struct rte_mbuf *pkt = pkts[i];
 
+			RTE_PORT_RING_WRITER_RAS_STATS_PKTS_IN_ADD(p, 1);
 			p->f_ras(p, pkt);
 			if (p->tx_buf_count >= p->tx_burst_sz)
 				send_burst(p);
@@ -257,6 +276,7 @@ rte_port_ring_writer_ras_tx_bulk(void *port,
 			uint64_t pkt_mask = 1LLU << pkt_index;
 			struct rte_mbuf *pkt = pkts[pkt_index];
 
+			RTE_PORT_RING_WRITER_RAS_STATS_PKTS_IN_ADD(p, 1);
 			p->f_ras(p, pkt);
 			if (p->tx_buf_count >= p->tx_burst_sz)
 				send_burst(p);
@@ -298,6 +318,22 @@ rte_port_ring_writer_ras_free(void *port)
 	return 0;
 }
 
+static int
+rte_port_ras_writer_stats_read(void *port,
+		struct rte_port_out_stats *stats, int clear)
+{
+	struct rte_port_ring_writer_ras *p =
+		(struct rte_port_ring_writer_ras *) port;
+
+	if (stats != NULL)
+		memcpy(stats, &p->stats, sizeof(p->stats));
+
+	if (clear)
+		memset(&p->stats, 0, sizeof(p->stats));
+
+	return 0;
+}
+
 /*
  * Summary of port operations
  */
@@ -307,6 +343,7 @@ struct rte_port_out_ops rte_port_ring_writer_ipv4_ras_ops = {
 	.f_tx = rte_port_ring_writer_ras_tx,
 	.f_tx_bulk = rte_port_ring_writer_ras_tx_bulk,
 	.f_flush = rte_port_ring_writer_ras_flush,
+	.f_stats = rte_port_ras_writer_stats_read,
 };
 
 struct rte_port_out_ops rte_port_ring_writer_ipv6_ras_ops = {
@@ -315,4 +352,5 @@ struct rte_port_out_ops rte_port_ring_writer_ipv6_ras_ops = {
 	.f_tx = rte_port_ring_writer_ras_tx,
 	.f_tx_bulk = rte_port_ring_writer_ras_tx_bulk,
 	.f_flush = rte_port_ring_writer_ras_flush,
+	.f_stats = rte_port_ras_writer_stats_read,
 };
