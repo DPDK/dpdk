@@ -140,6 +140,21 @@ struct rte_mempool_objsz {
 #define	MEMPOOL_PG_NUM_DEFAULT	1
 
 /**
+ * Mempool object header structure
+ *
+ * Each object stored in mempools are prefixed by this header structure,
+ * it allows to retrieve the mempool pointer from the object. When debug
+ * is enabled, a cookie is also added in this structure preventing
+ * corruptions and double-frees.
+ */
+struct rte_mempool_objhdr {
+	struct rte_mempool *mp;          /**< The mempool owning the object. */
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	uint64_t cookie;                 /**< Debug cookie. */
+#endif
+};
+
+/**
  * The RTE mempool structure.
  */
 struct rte_mempool {
@@ -227,24 +242,11 @@ struct rte_mempool {
 	((mp)->pg_num == MEMPOOL_PG_NUM_DEFAULT && \
 	(mp)->phys_addr == (mp)->elt_pa[0])
 
-/**
- * @internal Get a pointer to a mempool pointer in the object header.
- * @param obj
- *   Pointer to object.
- * @return
- *   The pointer to the mempool from which the object was allocated.
- */
-static inline struct rte_mempool **__mempool_from_obj(void *obj)
+/* return the header of a mempool object (internal) */
+static inline struct rte_mempool_objhdr *__mempool_get_header(void *obj)
 {
-	struct rte_mempool **mpp;
-	unsigned off;
-
-	off = sizeof(struct rte_mempool *);
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-	off += sizeof(uint64_t);
-#endif
-	mpp = (struct rte_mempool **)((char *)obj - off);
-	return mpp;
+	return (struct rte_mempool_objhdr *)((char *)obj -
+		sizeof(struct rte_mempool_objhdr));
 }
 
 /**
@@ -256,36 +258,18 @@ static inline struct rte_mempool **__mempool_from_obj(void *obj)
  * @return
  *   A pointer to the mempool structure.
  */
-static inline const struct rte_mempool *rte_mempool_from_obj(void *obj)
+static inline struct rte_mempool *rte_mempool_from_obj(void *obj)
 {
-	struct rte_mempool * const *mpp;
-	mpp = __mempool_from_obj(obj);
-	return *mpp;
+	struct rte_mempool_objhdr *hdr = __mempool_get_header(obj);
+	return hdr->mp;
 }
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-/* get header cookie value */
-static inline uint64_t __mempool_read_header_cookie(const void *obj)
-{
-	return *(const uint64_t *)((const char *)obj - sizeof(uint64_t));
-}
-
 /* get trailer cookie value */
 static inline uint64_t __mempool_read_trailer_cookie(void *obj)
 {
-	struct rte_mempool **mpp = __mempool_from_obj(obj);
-	return *(uint64_t *)((char *)obj + (*mpp)->elt_size);
-}
-
-/* write header cookie value */
-static inline void __mempool_write_header_cookie(void *obj, int free)
-{
-	uint64_t *cookie_p;
-	cookie_p = (uint64_t *)((char *)obj - sizeof(uint64_t));
-	if (free == 0)
-		*cookie_p = RTE_MEMPOOL_HEADER_COOKIE1;
-	else
-		*cookie_p = RTE_MEMPOOL_HEADER_COOKIE2;
+	struct rte_mempool *mp = rte_mempool_from_obj(obj);
+	return *(uint64_t *)((char *)obj + mp->elt_size);
 
 }
 
@@ -293,8 +277,8 @@ static inline void __mempool_write_header_cookie(void *obj, int free)
 static inline void __mempool_write_trailer_cookie(void *obj)
 {
 	uint64_t *cookie_p;
-	struct rte_mempool **mpp = __mempool_from_obj(obj);
-	cookie_p = (uint64_t *)((char *)obj + (*mpp)->elt_size);
+	struct rte_mempool *mp = rte_mempool_from_obj(obj);
+	cookie_p = (uint64_t *)((char *)obj + mp->elt_size);
 	*cookie_p = RTE_MEMPOOL_TRAILER_COOKIE;
 }
 #endif /* RTE_LIBRTE_MEMPOOL_DEBUG */
@@ -321,6 +305,7 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 					   void * const *obj_table_const,
 					   unsigned n, int free)
 {
+	struct rte_mempool_objhdr *hdr;
 	uint64_t cookie;
 	void *tmp;
 	void *obj;
@@ -338,7 +323,8 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 			rte_panic("MEMPOOL: object is owned by another "
 				  "mempool\n");
 
-		cookie = __mempool_read_header_cookie(obj);
+		hdr = __mempool_get_header(obj);
+		cookie = hdr->cookie;
 
 		if (free == 0) {
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE1) {
@@ -348,7 +334,7 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 					obj, (const void *) mp, cookie);
 				rte_panic("MEMPOOL: bad header cookie (put)\n");
 			}
-			__mempool_write_header_cookie(obj, 1);
+			hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE2;
 		}
 		else if (free == 1) {
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE2) {
@@ -358,7 +344,7 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 					obj, (const void *) mp, cookie);
 				rte_panic("MEMPOOL: bad header cookie (get)\n");
 			}
-			__mempool_write_header_cookie(obj, 0);
+			hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE1;
 		}
 		else if (free == 2) {
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE1 &&

@@ -130,16 +130,16 @@ static void
 mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
 	rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg)
 {
-	struct rte_mempool **mpp;
+	struct rte_mempool_objhdr *hdr;
 
 	obj = (char *)obj + mp->header_size;
 
 	/* set mempool ptr in header */
-	mpp = __mempool_from_obj(obj);
-	*mpp = mp;
+	hdr = (struct rte_mempool_objhdr *)((char *)obj - sizeof(*hdr));
+	hdr->mp = mp;
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-	__mempool_write_header_cookie(obj, 1);
+	hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE2;
 	__mempool_write_trailer_cookie(obj);
 #endif
 	/* call the initializer */
