@@ -31,16 +31,50 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <string.h>
+
 #include <rte_mbuf.h>
+#include <rte_malloc.h>
 
 #include "rte_table_stub.h"
+
+#ifdef RTE_TABLE_STATS_COLLECT
+
+#define RTE_TABLE_LPM_STATS_PKTS_IN_ADD(table, val) \
+	table->stats.n_pkts_in += val
+#define RTE_TABLE_LPM_STATS_PKTS_LOOKUP_MISS(table, val) \
+	table->stats.n_pkts_lookup_miss += val
+
+#else
+
+#define RTE_TABLE_LPM_STATS_PKTS_IN_ADD(table, val)
+#define RTE_TABLE_LPM_STATS_PKTS_LOOKUP_MISS(table, val)
+
+#endif
+
+struct rte_table_stub {
+	struct rte_table_stats stats;
+};
 
 static void *
 rte_table_stub_create(__rte_unused void *params,
 		__rte_unused int socket_id,
 		__rte_unused uint32_t entry_size)
 {
-	return (void *) 1;
+	struct rte_table_stub *stub;
+	uint32_t size;
+
+	size = sizeof(struct rte_table_stub);
+	stub = rte_zmalloc_socket("TABLE", size, RTE_CACHE_LINE_SIZE,
+		socket_id);
+	if (stub == NULL) {
+		RTE_LOG(ERR, TABLE,
+			"%s: Cannot allocate %u bytes for stub table\n",
+			__func__, size);
+		return NULL;
+	}
+
+	return stub;
 }
 
 static int
@@ -51,7 +85,26 @@ rte_table_stub_lookup(
 	uint64_t *lookup_hit_mask,
 	__rte_unused void **entries)
 {
+	__rte_unused struct rte_table_stub *stub = (struct rte_table_stub *) table;
+	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+
+	RTE_TABLE_LPM_STATS_PKTS_IN_ADD(stub, n_pkts_in);
 	*lookup_hit_mask = 0;
+	RTE_TABLE_LPM_STATS_PKTS_LOOKUP_MISS(stub, n_pkts_in);
+
+	return 0;
+}
+
+static int
+rte_table_stub_stats_read(void *table, struct rte_table_stats *stats, int clear)
+{
+	struct rte_table_stub *t = (struct rte_table_stub *) table;
+
+	if (stats != NULL)
+		memcpy(stats, &t->stats, sizeof(t->stats));
+
+	if (clear)
+		memset(&t->stats, 0, sizeof(t->stats));
 
 	return 0;
 }
@@ -62,4 +115,5 @@ struct rte_table_ops rte_table_stub_ops = {
 	.f_add = NULL,
 	.f_delete = NULL,
 	.f_lookup = rte_table_stub_lookup,
+	.f_stats = rte_table_stub_stats_read,
 };
