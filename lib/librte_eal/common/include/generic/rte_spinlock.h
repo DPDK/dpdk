@@ -145,6 +145,59 @@ static inline int rte_spinlock_is_locked (rte_spinlock_t *sl)
 }
 
 /**
+ * Test if hardware transactional memory (lock elision) is supported
+ *
+ * @return
+ *   1 if the hardware transactional memory is supported; 0 otherwise.
+ */
+static inline int rte_tm_supported(void);
+
+/**
+ * Try to execute critical section in a hardware memory transaction,
+ * if it fails or not available take the spinlock.
+ *
+ * NOTE: An attempt to perform a HW I/O operation inside a hardware memory
+ * transaction always aborts the transaction since the CPU is not able to
+ * roll-back should the transaction fail. Therefore, hardware transactional
+ * locks are not advised to be used around rte_eth_rx_burst() and
+ * rte_eth_tx_burst() calls.
+ *
+ * @param sl
+ *   A pointer to the spinlock.
+ */
+static inline void
+rte_spinlock_lock_tm(rte_spinlock_t *sl);
+
+/**
+ * Commit hardware memory transaction or release the spinlock if
+ * the spinlock is used as a fall-back
+ *
+ * @param sl
+ *   A pointer to the spinlock.
+ */
+static inline void
+rte_spinlock_unlock_tm(rte_spinlock_t *sl);
+
+/**
+ * Try to execute critical section in a hardware memory transaction,
+ * if it fails or not available try to take the lock.
+ *
+ * NOTE: An attempt to perform a HW I/O operation inside a hardware memory
+ * transaction always aborts the transaction since the CPU is not able to
+ * roll-back should the transaction fail. Therefore, hardware transactional
+ * locks are not advised to be used around rte_eth_rx_burst() and
+ * rte_eth_tx_burst() calls.
+ *
+ * @param sl
+ *   A pointer to the spinlock.
+ * @return
+ *   1 if the hardware memory transaction is successfully started
+ *   or lock is successfully taken; 0 otherwise.
+ */
+static inline int
+rte_spinlock_trylock_tm(rte_spinlock_t *sl);
+
+/**
  * The rte_spinlock_recursive_t type.
  */
 typedef struct {
@@ -222,5 +275,51 @@ static inline int rte_spinlock_recursive_trylock(rte_spinlock_recursive_t *slr)
 	slr->count++;
 	return 1;
 }
+
+
+/**
+ * Try to execute critical section in a hardware memory transaction,
+ * if it fails or not available take the recursive spinlocks
+ *
+ * NOTE: An attempt to perform a HW I/O operation inside a hardware memory
+ * transaction always aborts the transaction since the CPU is not able to
+ * roll-back should the transaction fail. Therefore, hardware transactional
+ * locks are not advised to be used around rte_eth_rx_burst() and
+ * rte_eth_tx_burst() calls.
+ *
+ * @param slr
+ *   A pointer to the recursive spinlock.
+ */
+static inline void rte_spinlock_recursive_lock_tm(
+	rte_spinlock_recursive_t *slr);
+
+/**
+ * Commit hardware memory transaction or release the recursive spinlock
+ * if the recursive spinlock is used as a fall-back
+ *
+ * @param slr
+ *   A pointer to the recursive spinlock.
+ */
+static inline void rte_spinlock_recursive_unlock_tm(
+	rte_spinlock_recursive_t *slr);
+
+/**
+ * Try to execute critical section in a hardware memory transaction,
+ * if it fails or not available try to take the recursive lock
+ *
+ * NOTE: An attempt to perform a HW I/O operation inside a hardware memory
+ * transaction always aborts the transaction since the CPU is not able to
+ * roll-back should the transaction fail. Therefore, hardware transactional
+ * locks are not advised to be used around rte_eth_rx_burst() and
+ * rte_eth_tx_burst() calls.
+ *
+ * @param slr
+ *   A pointer to the recursive spinlock.
+ * @return
+ *   1 if the hardware memory transaction is successfully started
+ *   or lock is successfully taken; 0 otherwise.
+ */
+static inline int rte_spinlock_recursive_trylock_tm(
+	rte_spinlock_recursive_t *slr);
 
 #endif /* _RTE_SPINLOCK_H_ */

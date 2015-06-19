@@ -39,6 +39,13 @@ extern "C" {
 #endif
 
 #include "generic/rte_spinlock.h"
+#include "rte_rtm.h"
+#include "rte_cpuflags.h"
+#include "rte_branch_prediction.h"
+#include "rte_common.h"
+
+#define RTE_RTM_MAX_RETRIES (10)
+#define RTE_XABORT_LOCK_BUSY (0xff)
 
 #ifndef RTE_FORCE_INTRINSICS
 static inline void
@@ -86,6 +93,106 @@ rte_spinlock_trylock (rte_spinlock_t *sl)
 	return (lockval == 0);
 }
 #endif
+
+static uint8_t rtm_supported; /* cache the flag to avoid the overhead
+				 of the rte_cpu_get_flag_enabled function */
+
+static inline void __attribute__((constructor))
+rte_rtm_init(void)
+{
+	rtm_supported = rte_cpu_get_flag_enabled(RTE_CPUFLAG_RTM);
+}
+
+static inline int rte_tm_supported(void)
+{
+	return rtm_supported;
+}
+
+static inline int
+rte_try_tm(volatile int *lock)
+{
+	if (!rtm_supported)
+		return 0;
+
+	int retries = RTE_RTM_MAX_RETRIES;
+
+	while (likely(retries--)) {
+
+		unsigned int status = rte_xbegin();
+
+		if (likely(RTE_XBEGIN_STARTED == status)) {
+			if (unlikely(*lock))
+				rte_xabort(RTE_XABORT_LOCK_BUSY);
+			else
+				return 1;
+		}
+		while (*lock)
+			rte_pause();
+
+		if ((status & RTE_XABORT_EXPLICIT) &&
+			(RTE_XABORT_CODE(status) == RTE_XABORT_LOCK_BUSY))
+			continue;
+
+		if ((status & RTE_XABORT_RETRY) == 0) /* do not retry */
+			break;
+	}
+	return 0;
+}
+
+static inline void
+rte_spinlock_lock_tm(rte_spinlock_t *sl)
+{
+	if (likely(rte_try_tm(&sl->locked)))
+		return;
+
+	rte_spinlock_lock(sl); /* fall-back */
+}
+
+static inline int
+rte_spinlock_trylock_tm(rte_spinlock_t *sl)
+{
+	if (likely(rte_try_tm(&sl->locked)))
+		return 1;
+
+	return rte_spinlock_trylock(sl);
+}
+
+static inline void
+rte_spinlock_unlock_tm(rte_spinlock_t *sl)
+{
+	if (unlikely(sl->locked))
+		rte_spinlock_unlock(sl);
+	else
+		rte_xend();
+}
+
+static inline void
+rte_spinlock_recursive_lock_tm(rte_spinlock_recursive_t *slr)
+{
+	if (likely(rte_try_tm(&slr->sl.locked)))
+		return;
+
+	rte_spinlock_recursive_lock(slr); /* fall-back */
+}
+
+static inline void
+rte_spinlock_recursive_unlock_tm(rte_spinlock_recursive_t *slr)
+{
+	if (unlikely(slr->sl.locked))
+		rte_spinlock_recursive_unlock(slr);
+	else
+		rte_xend();
+}
+
+static inline int
+rte_spinlock_recursive_trylock_tm(rte_spinlock_recursive_t *slr)
+{
+	if (likely(rte_try_tm(&slr->sl.locked)))
+		return 1;
+
+	return rte_spinlock_recursive_trylock(slr);
+}
+
 
 #ifdef __cplusplus
 }
