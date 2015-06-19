@@ -61,30 +61,30 @@
 
 static void
 get_phys_map(void *va, phys_addr_t pa[], uint32_t pg_num,
-            uint32_t pg_sz, uint32_t memseg_id)
+	uint32_t pg_sz, uint32_t memseg_id)
 {
-    uint32_t i;
-    uint64_t virt_addr, mfn_id;
-    struct rte_mem_config *mcfg;
-    uint32_t page_size = getpagesize();
+	uint32_t i;
+	uint64_t virt_addr, mfn_id;
+	struct rte_mem_config *mcfg;
+	uint32_t page_size = getpagesize();
 
-    /* get pointer to global configuration */
-    mcfg = rte_eal_get_configuration()->mem_config;
-    virt_addr =(uintptr_t) mcfg->memseg[memseg_id].addr;
+	/* get pointer to global configuration */
+	mcfg = rte_eal_get_configuration()->mem_config;
+	virt_addr = (uintptr_t) mcfg->memseg[memseg_id].addr;
 
-    for (i = 0; i != pg_num; i++) {
-        mfn_id = ((uintptr_t)va + i * pg_sz - virt_addr) / RTE_PGSIZE_2M;
-        pa[i] = mcfg->memseg[memseg_id].mfn[mfn_id] * page_size;
-    }
+	for (i = 0; i != pg_num; i++) {
+		mfn_id = ((uintptr_t)va + i * pg_sz - virt_addr) / RTE_PGSIZE_2M;
+		pa[i] = mcfg->memseg[memseg_id].mfn[mfn_id] * page_size;
+	}
 }
 
 /* create the mempool for supporting Dom0 */
 struct rte_mempool *
 rte_dom0_mempool_create(const char *name, unsigned elt_num, unsigned elt_size,
-           unsigned cache_size, unsigned private_data_size,
-           rte_mempool_ctor_t *mp_init, void *mp_init_arg,
-           rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
-           int socket_id, unsigned flags)
+	unsigned cache_size, unsigned private_data_size,
+	rte_mempool_ctor_t *mp_init, void *mp_init_arg,
+	rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
+	int socket_id, unsigned flags)
 {
 	struct rte_mempool *mp = NULL;
 	phys_addr_t *pa;

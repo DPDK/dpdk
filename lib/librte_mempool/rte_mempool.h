@@ -109,6 +109,9 @@ struct rte_mempool_cache {
 } __rte_cache_aligned;
 #endif /* RTE_MEMPOOL_CACHE_MAX_SIZE > 0 */
 
+/**
+ * A structure that stores the size of mempool elements.
+ */
 struct rte_mempool_objsz {
 	uint32_t elt_size;     /**< Size of an element. */
 	uint32_t header_size;  /**< Size of header (before elt). */
@@ -206,7 +209,7 @@ struct rte_mempool {
 	uintptr_t   elt_va_end;
 	/**< Virtual address of the <size + 1> mempool object. */
 	phys_addr_t elt_pa[MEMPOOL_PG_NUM_DEFAULT];
-	/**< Array of physical pages addresses for the mempool objects buffer. */
+	/**< Array of physical page addresses for the mempool objects buffer. */
 
 }  __rte_cache_aligned;
 
@@ -217,6 +220,7 @@ struct rte_mempool {
 
 /**
  * @internal When debug is enabled, store some statistics.
+ *
  * @param mp
  *   Pointer to the memory pool.
  * @param name
@@ -237,18 +241,19 @@ struct rte_mempool {
 #endif
 
 /**
- * Calculates size of the mempool header.
+ * Calculate the size of the mempool header.
+ *
  * @param mp
  *   Pointer to the memory pool.
  * @param pgn
- *   Number of page used to store mempool objects.
+ *   Number of pages used to store mempool objects.
  */
 #define	MEMPOOL_HEADER_SIZE(mp, pgn)	(sizeof(*(mp)) + \
 	RTE_ALIGN_CEIL(((pgn) - RTE_DIM((mp)->elt_pa)) * \
 	sizeof ((mp)->elt_pa[0]), RTE_CACHE_LINE_SIZE))
 
 /**
- * Returns TRUE if whole mempool is allocated in one contiguous block of memory.
+ * Return true if the whole mempool is in contiguous memory.
  */
 #define	MEMPOOL_IS_CONTIG(mp)                      \
 	((mp)->pg_num == MEMPOOL_PG_NUM_DEFAULT && \
@@ -376,21 +381,25 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 #endif /* RTE_LIBRTE_MEMPOOL_DEBUG */
 
 /**
- * An mempool's object iterator callback function.
+ * A mempool object iterator callback function.
  */
 typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
 	void * /*obj_start*/,
 	void * /*obj_end*/,
 	uint32_t /*obj_index */);
 
-/*
- * Iterates across objects of the given size and alignment in the
+/**
+ * Call a function for each mempool object in a memory chunk
+ *
+ * Iterate across objects of the given size and alignment in the
  * provided chunk of memory. The given memory buffer can consist of
  * disjoint physical pages.
- * For each object calls the provided callback (if any).
- * Used to populate mempool, walk through all elements of the mempool,
- * estimate how many elements of the given size could be created in the given
- * memory buffer.
+ *
+ * For each object, calls the provided callback (if any). This function
+ * is used to populate mempool, walk through all elements of the
+ * mempool, estimate how many elements of the given size could be
+ * created in the given memory buffer.
+ *
  * @param vaddr
  *   Virtual address of the memory buffer.
  * @param elt_num
@@ -398,7 +407,7 @@ typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
  * @param elt_sz
  *   Size of each object.
  * @param paddr
- *   Array of phyiscall addresses of the pages that comprises given memory
+ *   Array of physical addresses of the pages that comprises given memory
  *   buffer.
  * @param pg_num
  *   Number of elements in the paddr array.
@@ -407,7 +416,7 @@ typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
  * @param obj_iter
  *   Object iterator callback function (could be NULL).
  * @param obj_iter_arg
- *   User defined Prameter for the object iterator callback function.
+ *   User defined parameter for the object iterator callback function.
  *
  * @return
  *   Number of objects iterated through.
@@ -437,7 +446,7 @@ typedef void (rte_mempool_obj_ctor_t)(struct rte_mempool *, void *,
 typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
 
 /**
- * Creates a new mempool named *name* in memory.
+ * Create a new mempool named *name* in memory.
  *
  * This function uses ``memzone_reserve()`` to allocate memory. The
  * pool contains n elements of elt_size. Its size is set to n.
@@ -525,14 +534,14 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		   int socket_id, unsigned flags);
 
 /**
- * Creates a new mempool named *name* in memory.
+ * Create a new mempool named *name* in memory.
  *
  * This function uses ``memzone_reserve()`` to allocate memory. The
  * pool contains n elements of elt_size. Its size is set to n.
  * Depending on the input parameters, mempool elements can be either allocated
  * together with the mempool header, or an externally provided memory buffer
  * could be used to store mempool objects. In later case, that external
- * memory buffer can consist of set of disjoint phyiscal pages.
+ * memory buffer can consist of set of disjoint physical pages.
  *
  * @param name
  *   The name of the mempool.
@@ -601,7 +610,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
  *   Virtual address of the externally allocated memory buffer.
  *   Will be used to store mempool objects.
  * @param paddr
- *   Array of phyiscall addresses of the pages that comprises given memory
+ *   Array of physical addresses of the pages that comprises given memory
  *   buffer.
  * @param pg_num
  *   Number of elements in the paddr array.
@@ -627,12 +636,12 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 
 #ifdef RTE_LIBRTE_XEN_DOM0
 /**
- * Creates a new mempool named *name* in memory on Xen Dom0.
+ * Create a new mempool named *name* in memory on Xen Dom0.
  *
  * This function uses ``rte_mempool_xmem_create()`` to allocate memory. The
  * pool contains n elements of elt_size. Its size is set to n.
  * All elements of the mempool are allocated together with the mempool header,
- * and memory buffer can consist of set of disjoint phyiscal pages.
+ * and memory buffer can consist of set of disjoint physical pages.
  *
  * @param name
  *   The name of the mempool.
@@ -1305,8 +1314,11 @@ void rte_mempool_list_dump(FILE *f);
 struct rte_mempool *rte_mempool_lookup(const char *name);
 
 /**
+ * Get the header, trailer and total size of a mempool element.
+ *
  * Given a desired size of the mempool element and mempool flags,
- * caluclates header, trailer, body and total sizes of the mempool object.
+ * calculates header, trailer, body and total sizes of the mempool object.
+ *
  * @param elt_size
  *   The size of each element.
  * @param flags
@@ -1322,11 +1334,16 @@ uint32_t rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 	struct rte_mempool_objsz *sz);
 
 /**
- * Calculate maximum amount of memory required to store given number of objects.
- * Assumes that the memory buffer will be aligned at page boundary.
- * Note, that if object size is bigger then page size, then it assumes that
- * we have a subsets of physically continuous  pages big enough to store
- * at least one object.
+ * Get the size of memory required to store mempool elements.
+ *
+ * Calculate the maximum amount of memory required to store given number
+ * of objects. Assume that the memory buffer will be aligned at page
+ * boundary.
+ *
+ * Note that if object size is bigger then page size, then it assumes
+ * that pages are grouped in subsets of physically continuous pages big
+ * enough to store at least one object.
+ *
  * @param elt_num
  *   Number of elements.
  * @param elt_sz
@@ -1340,8 +1357,11 @@ size_t rte_mempool_xmem_size(uint32_t elt_num, size_t elt_sz,
 	uint32_t pg_shift);
 
 /**
+ * Get the size of memory required to store mempool elements.
+ *
  * Calculate how much memory would be actually required with the given
  * memory footprint to store required number of objects.
+ *
  * @param vaddr
  *   Virtual address of the externally allocated memory buffer.
  *   Will be used to store mempool objects.
@@ -1350,17 +1370,17 @@ size_t rte_mempool_xmem_size(uint32_t elt_num, size_t elt_sz,
  * @param elt_sz
  *   The size of each element.
  * @param paddr
- *   Array of phyiscall addresses of the pages that comprises given memory
+ *   Array of physical addresses of the pages that comprises given memory
  *   buffer.
  * @param pg_num
  *   Number of elements in the paddr array.
  * @param pg_shift
  *   LOG2 of the physical pages size.
  * @return
- *   Number of bytes needed to store given number of objects,
- *   aligned to the given page size.
- *   If provided memory buffer is not big enough:
- *   (-1) * actual number of elemnts that can be stored in that buffer.
+ *   On success, the number of bytes needed to store given number of
+ *   objects, aligned to the given page size. If the provided memory
+ *   buffer is too small, return a negative value whose absolute value
+ *   is the actual number of elements that can be stored in that buffer.
  */
 ssize_t rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t elt_sz,
 	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift);

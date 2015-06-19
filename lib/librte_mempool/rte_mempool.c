@@ -347,9 +347,9 @@ rte_mempool_xmem_size(uint32_t elt_num, size_t elt_sz, uint32_t pg_shift)
  */
 static void
 mempool_lelem_iter(void *arg, __rte_unused void *start, void *end,
-        __rte_unused uint32_t idx)
+	__rte_unused uint32_t idx)
 {
-        *(uintptr_t *)arg = (uintptr_t)end;
+	*(uintptr_t *)arg = (uintptr_t)end;
 }
 
 ssize_t
@@ -521,8 +521,8 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 
 	/*
 	 * If user provided an external memory buffer, then use it to
-	 * store mempool objects. Otherwise reserve memzone big enough to
-	 * hold mempool header and metadata plus mempool objects.
+	 * store mempool objects. Otherwise reserve a memzone that is large
+	 * enough to hold mempool header and metadata plus mempool objects.
 	 */
 	mempool_size = MEMPOOL_HEADER_SIZE(mp, pg_num) + private_data_size;
 	if (vaddr == NULL)
@@ -543,7 +543,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 
 	/*
 	 * no more memory: in this case we loose previously reserved
-	 * space for the as we cannot free it
+	 * space for the ring as we cannot free it
 	 */
 	if (mz == NULL) {
 		rte_free(te);
