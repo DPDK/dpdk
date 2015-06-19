@@ -41,6 +41,20 @@
 /* Max number of fragments per packet allowed */
 #define	RTE_PORT_FRAG_MAX_FRAGS_PER_PACKET 0x80
 
+#ifdef RTE_PORT_STATS_COLLECT
+
+#define RTE_PORT_RING_READER_FRAG_STATS_PKTS_IN_ADD(port, val) \
+	port->stats.n_pkts_in += val
+#define RTE_PORT_RING_READER_FRAG_STATS_PKTS_DROP_ADD(port, val) \
+	port->stats.n_pkts_drop += val
+
+#else
+
+#define RTE_PORT_RING_READER_FRAG_STATS_PKTS_IN_ADD(port, val)
+#define RTE_PORT_RING_READER_FRAG_STATS_PKTS_DROP_ADD(port, val)
+
+#endif
+
 typedef int32_t
 		(*frag_op)(struct rte_mbuf *pkt_in,
 			struct rte_mbuf **pkts_out,
@@ -50,6 +64,8 @@ typedef int32_t
 			struct rte_mempool *pool_indirect);
 
 struct rte_port_ring_reader_frag {
+	struct rte_port_in_stats stats;
+
 	/* Input parameters */
 	struct rte_ring *ring;
 	uint32_t mtu;
@@ -171,6 +187,7 @@ rte_port_ring_reader_frag_rx(void *port,
 		if (p->n_pkts == 0) {
 			p->n_pkts = rte_ring_sc_dequeue_burst(p->ring,
 				(void **) p->pkts, RTE_PORT_IN_BURST_SIZE_MAX);
+			RTE_PORT_RING_READER_FRAG_STATS_PKTS_IN_ADD(p, p->n_pkts);
 			if (p->n_pkts == 0)
 				return n_pkts_out;
 			p->pos_pkts = 0;
@@ -203,6 +220,7 @@ rte_port_ring_reader_frag_rx(void *port,
 
 		if (status < 0) {
 			rte_pktmbuf_free(pkt);
+			RTE_PORT_RING_READER_FRAG_STATS_PKTS_DROP_ADD(p, 1);
 			continue;
 		}
 
@@ -252,6 +270,22 @@ rte_port_ring_reader_frag_free(void *port)
 	return 0;
 }
 
+static int
+rte_port_frag_reader_stats_read(void *port,
+		struct rte_port_in_stats *stats, int clear)
+{
+	struct rte_port_ring_reader_frag *p =
+		(struct rte_port_ring_reader_frag *) port;
+
+	if (stats != NULL)
+		memcpy(stats, &p->stats, sizeof(p->stats));
+
+	if (clear)
+		memset(&p->stats, 0, sizeof(p->stats));
+
+	return 0;
+}
+
 /*
  * Summary of port operations
  */
@@ -259,10 +293,12 @@ struct rte_port_in_ops rte_port_ring_reader_ipv4_frag_ops = {
 	.f_create = rte_port_ring_reader_ipv4_frag_create,
 	.f_free = rte_port_ring_reader_frag_free,
 	.f_rx = rte_port_ring_reader_frag_rx,
+	.f_stats = rte_port_frag_reader_stats_read,
 };
 
 struct rte_port_in_ops rte_port_ring_reader_ipv6_frag_ops = {
 	.f_create = rte_port_ring_reader_ipv6_frag_create,
 	.f_free = rte_port_ring_reader_frag_free,
 	.f_rx = rte_port_ring_reader_frag_rx,
+	.f_stats = rte_port_frag_reader_stats_read,
 };
