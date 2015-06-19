@@ -59,6 +59,12 @@ extern "C" {
 
 struct rte_mbuf;
 
+/** Lookup table statistics */
+struct rte_table_stats {
+	uint64_t n_pkts_in;
+	uint64_t n_pkts_lookup_miss;
+};
+
 /**
  * Lookup table create
  *
@@ -187,6 +193,24 @@ typedef int (*rte_table_op_lookup)(
 	uint64_t *lookup_hit_mask,
 	void **entries);
 
+/**
+ * Lookup table stats read
+ *
+ * @param table
+ *   Handle to lookup table instance
+ * @param stats
+ *   Handle to table stats struct to copy data
+ * @param clear
+ *   Flag indicating that stats should be cleared after read
+ *
+ * @return
+ *   Error code or 0 on success.
+ */
+typedef int (*rte_table_op_stats_read)(
+	void *table,
+	struct rte_table_stats *stats,
+	int clear);
+
 /** Lookup table interface defining the lookup table operation */
 struct rte_table_ops {
 	rte_table_op_create f_create;       /**< Create */
@@ -194,6 +218,7 @@ struct rte_table_ops {
 	rte_table_op_entry_add f_add;       /**< Entry add */
 	rte_table_op_entry_delete f_delete; /**< Entry delete */
 	rte_table_op_lookup f_lookup;       /**< Lookup */
+	rte_table_op_stats_read f_stats;	/**< Stats */
 };
 
 #ifdef __cplusplus

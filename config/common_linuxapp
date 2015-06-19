@@ -396,6 +396,7 @@ CONFIG_RTE_PORT_STATS_COLLECT=n
 # Compile librte_table
 #
 CONFIG_RTE_LIBRTE_TABLE=y
+CONFIG_RTE_TABLE_STATS_COLLECT=n
 
 #
 # Compile librte_pipeline
