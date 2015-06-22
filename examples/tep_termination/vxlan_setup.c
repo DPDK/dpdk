@@ -129,8 +129,12 @@ vxlan_port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	uint16_t rx_rings, tx_rings = (uint16_t)rte_lcore_count();
 	const uint16_t rx_ring_size = RTE_TEST_RX_DESC_DEFAULT;
 	const uint16_t tx_ring_size = RTE_TEST_TX_DESC_DEFAULT;
+	struct rte_eth_udp_tunnel tunnel_udp;
 	struct rte_eth_rxconf *rxconf;
 	struct rte_eth_txconf *txconf;
+	struct vxlan_conf *pconf = &vxdev;
+
+	pconf->dst_port = udp_port;
 
 	rte_eth_dev_info_get(port, &dev_info);
 
@@ -176,6 +180,12 @@ vxlan_port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	if (retval < 0)
 		return retval;
 
+	/* Configure UDP port for UDP tunneling */
+	tunnel_udp.udp_port = udp_port;
+	tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN;
+	retval = rte_eth_dev_udp_tunnel_add(port, &tunnel_udp);
+	if (retval < 0)
+		return retval;
 	rte_eth_macaddr_get(port, &ports_eth_addr[port]);
 	RTE_LOG(INFO, PORT, "Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
 			" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
@@ -186,13 +196,14 @@ vxlan_port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 			ports_eth_addr[port].addr_bytes[3],
 			ports_eth_addr[port].addr_bytes[4],
 			ports_eth_addr[port].addr_bytes[5]);
+
 	return 0;
 }
 
 static int
 vxlan_rx_process(struct rte_mbuf *pkt)
 {
-	return  decapsulation(pkt);
+	return decapsulation(pkt);
 }
 
 static void

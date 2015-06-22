@@ -112,6 +112,7 @@
 #define MAC_ADDR_CMP 0xFFFFFFFFFFFFULL
 
 #define CMD_LINE_OPT_NB_DEVICES "nb-devices"
+#define CMD_LINE_OPT_UDP_PORT "udp-port"
 #define CMD_LINE_OPT_RX_RETRY "rx-retry"
 #define CMD_LINE_OPT_RX_RETRY_DELAY "rx-retry-delay"
 #define CMD_LINE_OPT_RX_RETRY_NUM "rx-retry-num"
@@ -135,6 +136,9 @@ struct vpool {
 	struct rte_ring *ring;
 	uint32_t buf_size;
 } vpool_array[MAX_QUEUES+MAX_QUEUES];
+
+/* UDP tunneling port */
+uint16_t udp_port = 4789;
 
 /* overlay packet operation */
 struct ol_switch_ops overlay_options = {
@@ -250,6 +254,7 @@ static void
 tep_termination_usage(const char *prgname)
 {
 	RTE_LOG(INFO, VHOST_CONFIG, "%s [EAL options] -- -p PORTMASK\n"
+	"               --udp-port: UDP destination port for VXLAN packet\n"
 	"		--nb-devices[1-64]: The number of virtIO device\n"
 	"		-p PORTMASK: Set mask for ports to be used by application\n"
 	"		--rx-retry [0|1]: disable/enable(default) retries on rx."
@@ -275,6 +280,7 @@ tep_termination_parse_args(int argc, char **argv)
 	const char *prgname = argv[0];
 	static struct option long_option[] = {
 		{CMD_LINE_OPT_NB_DEVICES, required_argument, NULL, 0},
+		{CMD_LINE_OPT_UDP_PORT, required_argument, NULL, 0},
 		{CMD_LINE_OPT_RX_RETRY, required_argument, NULL, 0},
 		{CMD_LINE_OPT_RX_RETRY_DELAY, required_argument, NULL, 0},
 		{CMD_LINE_OPT_RX_RETRY_NUM, required_argument, NULL, 0},
@@ -324,6 +330,19 @@ tep_termination_parse_args(int argc, char **argv)
 					return -1;
 				} else
 					enable_retry = ret;
+			}
+
+			if (!strncmp(long_option[option_index].name,
+					CMD_LINE_OPT_UDP_PORT,
+					sizeof(CMD_LINE_OPT_UDP_PORT))) {
+				ret = parse_num_opt(optarg, INT16_MAX);
+				if (ret == -1) {
+					RTE_LOG(INFO, VHOST_CONFIG,
+						"Invalid argument for UDP port [0-N]\n");
+					tep_termination_usage(prgname);
+					return -1;
+				} else
+					udp_port = ret;
 			}
 
 			/* Specify the retries delay time (in useconds) on RX.*/
