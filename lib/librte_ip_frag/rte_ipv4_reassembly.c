@@ -85,8 +85,7 @@ ipv4_frag_reassemble(const struct ip_frag_pkt *fp)
 	m->ol_flags |= PKT_TX_IP_CKSUM;
 
 	/* update ipv4 header for the reassmebled packet */
-	ip_hdr = (struct ipv4_hdr*)(rte_pktmbuf_mtod(m, uint8_t *) +
-		m->l2_len);
+	ip_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *, m->l2_len);
 
 	ip_hdr->total_length = rte_cpu_to_be_16((uint16_t)(fp->total_size +
 		m->l3_len));

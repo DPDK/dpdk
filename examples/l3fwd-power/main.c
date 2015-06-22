@@ -638,8 +638,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid,
 	if (m->ol_flags & PKT_RX_IPV4_HDR) {
 		/* Handle IPv4 headers.*/
 		ipv4_hdr =
-			(struct ipv4_hdr *)(rte_pktmbuf_mtod(m, unsigned char*)
-						+ sizeof(struct ether_hdr));
+			rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+						sizeof(struct ether_hdr));
 
 #ifdef DO_RFC_1812_CHECKS
 		/* Check to make sure the packet is valid (RFC1812) */
@@ -677,8 +677,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid,
 		struct ipv6_hdr *ipv6_hdr;
 
 		ipv6_hdr =
-			(struct ipv6_hdr *)(rte_pktmbuf_mtod(m, unsigned char*)
-						+ sizeof(struct ether_hdr));
+			rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *,
+						sizeof(struct ether_hdr));
 
 		dst_port = get_ipv6_dst_port(ipv6_hdr, portid,
 					qconf->ipv6_lookup_struct);

@@ -325,8 +325,9 @@ main_loop(__attribute__((unused)) void *dummy)
 			continue;
 		/* Send packet to either QAT encrypt, QAT decrypt or NIC TX */
 		if (pkt_from_nic_rx) {
-			struct ipv4_hdr *ip  = (struct ipv4_hdr *) (rte_pktmbuf_mtod(pkt, unsigned char *) +
-					sizeof(struct ether_hdr));
+			struct ipv4_hdr *ip  = rte_pktmbuf_mtod_offset(pkt,
+								       struct ipv4_hdr *,
+								       sizeof(struct ether_hdr));
 			if (ip->src_addr & rte_cpu_to_be_32(ACTION_ENCRYPT)) {
 				if (CRYPTO_RESULT_FAIL == crypto_encrypt(pkt,
 					(enum cipher_alg)((ip->src_addr >> 16) & 0xFF),

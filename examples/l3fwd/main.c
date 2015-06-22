@@ -753,14 +753,14 @@ simple_ipv4_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 	eth_hdr[3] = rte_pktmbuf_mtod(m[3], struct ether_hdr *);
 
 	/* Handle IPv4 headers.*/
-	ipv4_hdr[0] = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m[0], unsigned char *) +
-			sizeof(struct ether_hdr));
-	ipv4_hdr[1] = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m[1], unsigned char *) +
-			sizeof(struct ether_hdr));
-	ipv4_hdr[2] = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m[2], unsigned char *) +
-			sizeof(struct ether_hdr));
-	ipv4_hdr[3] = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m[3], unsigned char *) +
-			sizeof(struct ether_hdr));
+	ipv4_hdr[0] = rte_pktmbuf_mtod_offset(m[0], struct ipv4_hdr *,
+					      sizeof(struct ether_hdr));
+	ipv4_hdr[1] = rte_pktmbuf_mtod_offset(m[1], struct ipv4_hdr *,
+					      sizeof(struct ether_hdr));
+	ipv4_hdr[2] = rte_pktmbuf_mtod_offset(m[2], struct ipv4_hdr *,
+					      sizeof(struct ether_hdr));
+	ipv4_hdr[3] = rte_pktmbuf_mtod_offset(m[3], struct ipv4_hdr *,
+					      sizeof(struct ether_hdr));
 
 #ifdef DO_RFC_1812_CHECKS
 	/* Check to make sure the packet is valid (RFC1812) */
@@ -796,14 +796,10 @@ simple_ipv4_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 	}
 #endif // End of #ifdef DO_RFC_1812_CHECKS
 
-	data[0] = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m[0], unsigned char *) +
-		sizeof(struct ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
-	data[1] = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m[1], unsigned char *) +
-		sizeof(struct ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
-	data[2] = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m[2], unsigned char *) +
-		sizeof(struct ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
-	data[3] = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m[3], unsigned char *) +
-		sizeof(struct ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
+	data[0] = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m[0], __m128i *, sizeof(struct ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
+	data[1] = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m[1], __m128i *, sizeof(struct ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
+	data[2] = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m[2], __m128i *, sizeof(struct ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
+	data[3] = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m[3], __m128i *, sizeof(struct ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
 
 	key[0].xmm = _mm_and_si128(data[0], mask0);
 	key[1].xmm = _mm_and_si128(data[1], mask0);
@@ -860,14 +856,9 @@ simple_ipv4_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 static inline void get_ipv6_5tuple(struct rte_mbuf* m0, __m128i mask0, __m128i mask1,
 				 union ipv6_5tuple_host * key)
 {
-        __m128i tmpdata0 = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m0, unsigned char *)
-			+ sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len)));
-        __m128i tmpdata1 = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m0, unsigned char *)
-			+ sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len)
-			+  sizeof(__m128i)));
-        __m128i tmpdata2 = _mm_loadu_si128((__m128i*)(rte_pktmbuf_mtod(m0, unsigned char *)
-			+ sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len)
-			+ sizeof(__m128i) + sizeof(__m128i)));
+        __m128i tmpdata0 = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m0, __m128i *, sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len)));
+        __m128i tmpdata1 = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m0, __m128i *, sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len) + sizeof(__m128i)));
+        __m128i tmpdata2 = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m0, __m128i *, sizeof(struct ether_hdr) + offsetof(struct ipv6_hdr, payload_len) + sizeof(__m128i) + sizeof(__m128i)));
         key->xmm[0] = _mm_and_si128(tmpdata0, mask0);
         key->xmm[1] = tmpdata1;
         key->xmm[2] = _mm_and_si128(tmpdata2, mask1);
@@ -889,14 +880,14 @@ simple_ipv6_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 	eth_hdr[3] = rte_pktmbuf_mtod(m[3], struct ether_hdr *);
 
 	/* Handle IPv6 headers.*/
-	ipv6_hdr[0] = (struct ipv6_hdr *)(rte_pktmbuf_mtod(m[0], unsigned char *) +
-			sizeof(struct ether_hdr));
-	ipv6_hdr[1] = (struct ipv6_hdr *)(rte_pktmbuf_mtod(m[1], unsigned char *) +
-			sizeof(struct ether_hdr));
-	ipv6_hdr[2] = (struct ipv6_hdr *)(rte_pktmbuf_mtod(m[2], unsigned char *) +
-			sizeof(struct ether_hdr));
-	ipv6_hdr[3] = (struct ipv6_hdr *)(rte_pktmbuf_mtod(m[3], unsigned char *) +
-			sizeof(struct ether_hdr));
+	ipv6_hdr[0] = rte_pktmbuf_mtod_offset(m[0], struct ipv6_hdr *,
+					      sizeof(struct ether_hdr));
+	ipv6_hdr[1] = rte_pktmbuf_mtod_offset(m[1], struct ipv6_hdr *,
+					      sizeof(struct ether_hdr));
+	ipv6_hdr[2] = rte_pktmbuf_mtod_offset(m[2], struct ipv6_hdr *,
+					      sizeof(struct ether_hdr));
+	ipv6_hdr[3] = rte_pktmbuf_mtod_offset(m[3], struct ipv6_hdr *,
+					      sizeof(struct ether_hdr));
 
 	get_ipv6_5tuple(m[0], mask1, mask2, &key[0]);
 	get_ipv6_5tuple(m[1], mask1, mask2, &key[1]);
@@ -950,8 +941,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 
 	if (m->ol_flags & PKT_RX_IPV4_HDR) {
 		/* Handle IPv4 headers.*/
-		ipv4_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m, unsigned char *) +
-				sizeof(struct ether_hdr));
+		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+						   sizeof(struct ether_hdr));
 
 #ifdef DO_RFC_1812_CHECKS
 		/* Check to make sure the packet is valid (RFC1812) */
@@ -984,8 +975,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 		/* Handle IPv6 headers.*/
 		struct ipv6_hdr *ipv6_hdr;
 
-		ipv6_hdr = (struct ipv6_hdr *)(rte_pktmbuf_mtod(m, unsigned char *) +
-				sizeof(struct ether_hdr));
+		ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *,
+						   sizeof(struct ether_hdr));
 
 		dst_port = get_ipv6_dst_port(ipv6_hdr, portid, qconf->ipv6_lookup_struct);
 
@@ -1174,10 +1165,10 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 	__m128i ve[FWDSTEP];
 	__m128i *p[FWDSTEP];
 
-	p[0] = (rte_pktmbuf_mtod(pkt[0], __m128i *));
-	p[1] = (rte_pktmbuf_mtod(pkt[1], __m128i *));
-	p[2] = (rte_pktmbuf_mtod(pkt[2], __m128i *));
-	p[3] = (rte_pktmbuf_mtod(pkt[3], __m128i *));
+	p[0] = rte_pktmbuf_mtod(pkt[0], __m128i *);
+	p[1] = rte_pktmbuf_mtod(pkt[1], __m128i *);
+	p[2] = rte_pktmbuf_mtod(pkt[2], __m128i *);
+	p[3] = rte_pktmbuf_mtod(pkt[3], __m128i *);
 
 	ve[0] = val_eth[dst_port[0]];
 	te[0] = _mm_load_si128(p[0]);

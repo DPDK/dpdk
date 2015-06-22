@@ -216,9 +216,9 @@ send_single_packet(struct rte_mbuf *m, uint8_t port);
 #define OFF_IPV42PROTO (offsetof(struct ipv4_hdr, next_proto_id))
 #define OFF_IPV62PROTO (offsetof(struct ipv6_hdr, proto))
 #define MBUF_IPV4_2PROTO(m)	\
-	(rte_pktmbuf_mtod((m), uint8_t *) + OFF_ETHHEAD + OFF_IPV42PROTO)
+	rte_pktmbuf_mtod_offset((m), uint8_t *, OFF_ETHHEAD + OFF_IPV42PROTO)
 #define MBUF_IPV6_2PROTO(m)	\
-	(rte_pktmbuf_mtod((m), uint8_t *) + OFF_ETHHEAD + OFF_IPV62PROTO)
+	rte_pktmbuf_mtod_offset((m), uint8_t *, OFF_ETHHEAD + OFF_IPV62PROTO)
 
 #define GET_CB_FIELD(in, fd, base, lim, dlm)	do {            \
 	unsigned long val;                                      \
@@ -564,9 +564,9 @@ dump_acl4_rule(struct rte_mbuf *m, uint32_t sig)
 {
 	uint32_t offset = sig & ~ACL_DENY_SIGNATURE;
 	unsigned char a, b, c, d;
-	struct ipv4_hdr *ipv4_hdr = (struct ipv4_hdr *)
-					(rte_pktmbuf_mtod(m, unsigned char *) +
-					sizeof(struct ether_hdr));
+	struct ipv4_hdr *ipv4_hdr = rte_pktmbuf_mtod_offset(m,
+							    struct ipv4_hdr *,
+							    sizeof(struct ether_hdr));
 
 	uint32_t_to_char(rte_bswap32(ipv4_hdr->src_addr), &a, &b, &c, &d);
 	printf("Packet Src:%hhu.%hhu.%hhu.%hhu ", a, b, c, d);
@@ -588,9 +588,9 @@ dump_acl6_rule(struct rte_mbuf *m, uint32_t sig)
 {
 	unsigned i;
 	uint32_t offset = sig & ~ACL_DENY_SIGNATURE;
-	struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)
-					(rte_pktmbuf_mtod(m, unsigned char *) +
-					sizeof(struct ether_hdr));
+	struct ipv6_hdr *ipv6_hdr = rte_pktmbuf_mtod_offset(m,
+							    struct ipv6_hdr *,
+							    sizeof(struct ether_hdr));
 
 	printf("Packet Src");
 	for (i = 0; i < RTE_DIM(ipv6_hdr->src_addr); i += sizeof(uint16_t))
@@ -649,8 +649,8 @@ prepare_one_packet(struct rte_mbuf **pkts_in, struct acl_search_t *acl,
 
 	if (type == PKT_RX_IPV4_HDR) {
 
-		ipv4_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(pkt,
-			unsigned char *) + sizeof(struct ether_hdr));
+		ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv4_hdr *,
+						   sizeof(struct ether_hdr));
 
 		/* Check to make sure the packet is valid (RFC1812) */
 		if (is_valid_ipv4_pkt(ipv4_hdr, pkt->pkt_len) >= 0) {

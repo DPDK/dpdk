@@ -873,8 +873,8 @@ virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *
 	vlan_hdr->h_vlan_TCI = htons(vlan_tag);
 
 	/* Copy the remaining packet contents to the mbuf. */
-	rte_memcpy((void *)(rte_pktmbuf_mtod(mbuf, uint8_t *) + VLAN_ETH_HLEN),
-		(const void *)(rte_pktmbuf_mtod(m, uint8_t *) + ETH_HLEN),
+	rte_memcpy(rte_pktmbuf_mtod_offset(mbuf, void *, VLAN_ETH_HLEN),
+		rte_pktmbuf_mtod_offset(m, const void *, ETH_HLEN),
 		(m->data_len - ETH_HLEN));
 	tx_q->m_table[len] = mbuf;
 	len++;

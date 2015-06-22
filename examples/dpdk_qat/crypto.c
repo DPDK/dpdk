@@ -772,8 +772,8 @@ enum crypto_result
 crypto_encrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 {
 	CpaCySymDpOpData *opData =
-			(CpaCySymDpOpData *) (rte_pktmbuf_mtod(rte_buff, char *)
-					+ CRYPTO_OFFSET_TO_OPDATA);
+			rte_pktmbuf_mtod_offset(rte_buff, CpaCySymDpOpData *,
+						CRYPTO_OFFSET_TO_OPDATA);
 	uint32_t lcore_id;
 
 	if (unlikely(c >= NUM_CRYPTO || h >= NUM_HMAC))
@@ -847,8 +847,8 @@ enum crypto_result
 crypto_decrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 {
 
-	CpaCySymDpOpData *opData = (void*) (rte_pktmbuf_mtod(rte_buff, char *)
-			+ CRYPTO_OFFSET_TO_OPDATA);
+	CpaCySymDpOpData *opData = rte_pktmbuf_mtod_offset(rte_buff, void *,
+							   CRYPTO_OFFSET_TO_OPDATA);
 	uint32_t lcore_id;
 
 	if (unlikely(c >= NUM_CRYPTO || h >= NUM_HMAC))

@@ -175,22 +175,25 @@ pkt_burst_receive(struct fwd_stream *fs)
 			 /* Do not support ipv4 option field */
 			if (ol_flags & PKT_RX_TUNNEL_IPV4_HDR) {
 				l3_len = sizeof(struct ipv4_hdr);
-				ipv4_hdr = (struct ipv4_hdr *) (rte_pktmbuf_mtod(mb,
-						unsigned char *) + l2_len);
+				ipv4_hdr = rte_pktmbuf_mtod_offset(mb,
+								   struct ipv4_hdr *,
+								   l2_len);
 				l4_proto = ipv4_hdr->next_proto_id;
 			} else {
 				l3_len = sizeof(struct ipv6_hdr);
-				ipv6_hdr = (struct ipv6_hdr *) (rte_pktmbuf_mtod(mb,
-						unsigned char *) + l2_len);
+				ipv6_hdr = rte_pktmbuf_mtod_offset(mb,
+								   struct ipv6_hdr *,
+								   l2_len);
 				l4_proto = ipv6_hdr->proto;
 			}
 			if (l4_proto == IPPROTO_UDP) {
-				udp_hdr = (struct udp_hdr *) (rte_pktmbuf_mtod(mb,
-						unsigned char *) + l2_len + l3_len);
+				udp_hdr = rte_pktmbuf_mtod_offset(mb,
+								  struct udp_hdr *,
+								  l2_len + l3_len);
 				l4_len = sizeof(struct udp_hdr);
-				vxlan_hdr = (struct vxlan_hdr *) (rte_pktmbuf_mtod(mb,
-						unsigned char *) + l2_len + l3_len
-						 + l4_len);
+				vxlan_hdr = rte_pktmbuf_mtod_offset(mb,
+								    struct vxlan_hdr *,
+								    l2_len + l3_len + l4_len);
 
 				printf(" - VXLAN packet: packet type =%d, "
 					"Destination UDP port =%d, VNI = %d",

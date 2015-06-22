@@ -152,7 +152,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 		while (total_copied < pkt_len) {
 			/* Copy mbuf data to buffer */
 			rte_memcpy((void *)(uintptr_t)(buff_addr + vb_offset),
-				(const void *)(rte_pktmbuf_mtod(buff, const char *) + offset),
+				rte_pktmbuf_mtod_offset(buff, const void *, offset),
 				len_to_cpy);
 			PRINT_PACKET(dev, (uintptr_t)(buff_addr + vb_offset),
 				len_to_cpy, 0);
@@ -318,7 +318,7 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint16_t res_base_idx,
 	while (cpy_len > 0) {
 		/* Copy mbuf data to vring buffer */
 		rte_memcpy((void *)(uintptr_t)(vb_addr + vb_offset),
-			(const void *)(rte_pktmbuf_mtod(pkt, char*) + seg_offset),
+			rte_pktmbuf_mtod_offset(pkt, const void *, seg_offset),
 			cpy_len);
 
 		PRINT_PACKET(dev,
@@ -648,7 +648,7 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 		cur = m;
 		prev = m;
 		while (cpy_len != 0) {
-			rte_memcpy((void *)(rte_pktmbuf_mtod(cur, char *) + seg_offset),
+			rte_memcpy(rte_pktmbuf_mtod_offset(cur, void *, seg_offset),
 				(void *)((uintptr_t)(vb_addr + vb_offset)),
 				cpy_len);
 

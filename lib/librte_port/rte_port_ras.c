@@ -180,8 +180,7 @@ static void
 process_ipv4(struct rte_port_ring_writer_ras *p, struct rte_mbuf *pkt)
 {
 	/* Assume there is no ethernet header */
-	struct ipv4_hdr *pkt_hdr = (struct ipv4_hdr *)
-			(rte_pktmbuf_mtod(pkt, unsigned char *));
+	struct ipv4_hdr *pkt_hdr = rte_pktmbuf_mtod(pkt, struct ipv4_hdr *);
 
 	/* Get "Do not fragment" flag and fragment offset */
 	uint16_t frag_field = rte_be_to_cpu_16(pkt_hdr->fragment_offset);
@@ -210,8 +209,7 @@ static void
 process_ipv6(struct rte_port_ring_writer_ras *p, struct rte_mbuf *pkt)
 {
 	/* Assume there is no ethernet header */
-	struct ipv6_hdr *pkt_hdr = (struct ipv6_hdr *)
-			(rte_pktmbuf_mtod(pkt, unsigned char *));
+	struct ipv6_hdr *pkt_hdr = rte_pktmbuf_mtod(pkt, struct ipv6_hdr *);
 
 	struct ipv6_extension_fragment *frag_hdr;
 	frag_hdr = rte_ipv6_frag_get_ipv6_fragment_header(pkt_hdr);

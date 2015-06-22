@@ -59,7 +59,7 @@ copy_buf_to_pkt_segs(void *buf, unsigned len, struct rte_mbuf *pkt,
 		seg = seg->next;
 	}
 	copy_len = seg->data_len - offset;
-	seg_buf = rte_pktmbuf_mtod(seg, char *) + offset;
+	seg_buf = rte_pktmbuf_mtod_offset(seg, char *, offset);
 	while (len > copy_len) {
 		rte_memcpy(seg_buf, buf, (size_t) copy_len);
 		len -= copy_len;
@@ -74,7 +74,8 @@ static inline void
 copy_buf_to_pkt(void *buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
 {
 	if (offset + len <= pkt->data_len) {
-		rte_memcpy(rte_pktmbuf_mtod(pkt, char *) + offset, buf, (size_t) len);
+		rte_memcpy(rte_pktmbuf_mtod_offset(pkt, char *, offset), buf,
+			   (size_t) len);
 		return;
 	}
 	copy_buf_to_pkt_segs(buf, len, pkt, offset);

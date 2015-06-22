@@ -1104,10 +1104,10 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			linearize = 1;
 		}
 		/* Set WR fields. */
-		assert(((uintptr_t)rte_pktmbuf_mtod(buf, char *) -
+		assert((rte_pktmbuf_mtod(buf, uintptr_t) -
 			(uintptr_t)buf) <= 0xffff);
 		WR_ID(wr->wr_id).offset =
-			((uintptr_t)rte_pktmbuf_mtod(buf, char *) -
+			(rte_pktmbuf_mtod(buf, uintptr_t) -
 			 (uintptr_t)buf);
 		wr->num_sge = segs;
 		/* Register segments as SGEs. */
@@ -1142,7 +1142,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			assert(sge->length == 0);
 			assert(sge->lkey == 0);
 			/* Update SGE. */
-			sge->addr = (uintptr_t)rte_pktmbuf_mtod(buf, char *);
+			sge->addr = rte_pktmbuf_mtod(buf, uintptr_t);
 			if (txq->priv->vf)
 				rte_prefetch0((volatile void *)
 					(uintptr_t)sge->addr);
@@ -1593,8 +1593,7 @@ rxq_alloc_elts_sp(struct rxq *rxq, unsigned int elts_n,
 			assert(sizeof(sge->addr) >= sizeof(uintptr_t));
 			if (j == 0) {
 				/* The first SGE keeps its headroom. */
-				sge->addr = (uintptr_t)rte_pktmbuf_mtod(buf,
-									char *);
+				sge->addr = rte_pktmbuf_mtod(buf, uintptr_t);
 				sge->length = (buf->buf_len -
 					       RTE_PKTMBUF_HEADROOM);
 			} else {
