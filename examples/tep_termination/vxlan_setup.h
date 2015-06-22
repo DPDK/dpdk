@@ -39,6 +39,8 @@ extern uint16_t udp_port;
 extern uint8_t filter_idx;
 extern uint8_t ports[RTE_MAX_ETHPORTS];
 extern struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
+extern uint32_t enable_stats;
+extern struct device_statistics dev_statistics[MAX_DEVICES];
 
 typedef int (*ol_port_configure_t)(uint8_t port,
 				   struct rte_mempool *mbuf_pool);

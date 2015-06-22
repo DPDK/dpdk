@@ -1058,7 +1058,7 @@ print_stats(void)
 {
 	struct virtio_net_data_ll *dev_ll;
 	uint64_t tx_dropped, rx_dropped;
-	uint64_t tx, tx_total, rx, rx_total;
+	uint64_t tx, tx_total, rx, rx_total, rx_ip_csum, rx_l4_csum;
 	uint32_t device_fh;
 	const char clr[] = { 27, '[', '2', 'J', '\0' };
 	const char top_left[] = { 27, '[', '1', ';', '1', 'H', '\0' };
@@ -1083,12 +1083,18 @@ print_stats(void)
 			rx = rte_atomic64_read(
 				&dev_statistics[device_fh].rx_atomic);
 			rx_dropped = rx_total - rx;
+			rx_ip_csum = rte_atomic64_read(
+				&dev_statistics[device_fh].rx_bad_ip_csum);
+			rx_l4_csum = rte_atomic64_read(
+				&dev_statistics[device_fh].rx_bad_l4_csum);
 
 			printf("\nStatistics for device %"PRIu32" ----------"
 					"\nTX total:		%"PRIu64""
 					"\nTX dropped:		%"PRIu64""
 					"\nTX successful:		%"PRIu64""
 					"\nRX total:		%"PRIu64""
+					"\nRX bad IP csum:      %"PRIu64""
+					"\nRX bad L4 csum:      %"PRIu64""
 					"\nRX dropped:		%"PRIu64""
 					"\nRX successful:		%"PRIu64"",
 					device_fh,
@@ -1096,6 +1102,8 @@ print_stats(void)
 					tx_dropped,
 					tx,
 					rx_total,
+					rx_ip_csum,
+					rx_l4_csum,
 					rx_dropped,
 					rx);
 

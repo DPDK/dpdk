@@ -69,6 +69,10 @@ struct device_statistics {
 	uint64_t rx_total;
 	uint64_t tx;
 	rte_atomic64_t rx_atomic;
+	/**< Bad inner IP csum for tunneling pkt */
+	rte_atomic64_t rx_bad_ip_csum;
+	/**< Bad inner L4 csum for tunneling pkt */
+	rte_atomic64_t rx_bad_l4_csum;
 } __rte_cache_aligned;
 
 /**

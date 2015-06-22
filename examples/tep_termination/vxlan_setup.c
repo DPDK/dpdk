@@ -427,6 +427,16 @@ vxlan_rx_pkts(struct virtio_net *dev, struct rte_mbuf **pkts_burst,
 	struct rte_mbuf *pkts_valid[rx_count];
 
 	for (i = 0; i < rx_count; i++) {
+		if (enable_stats) {
+			rte_atomic64_add(
+				&dev_statistics[dev->device_fh].rx_bad_ip_csum,
+				(pkts_burst[i]->ol_flags & PKT_RX_IP_CKSUM_BAD)
+				!= 0);
+			rte_atomic64_add(
+				&dev_statistics[dev->device_fh].rx_bad_ip_csum,
+				(pkts_burst[i]->ol_flags & PKT_RX_L4_CKSUM_BAD)
+				!= 0);
+		}
 		ret = vxlan_rx_process(pkts_burst[i]);
 		if (unlikely(ret < 0))
 			continue;
