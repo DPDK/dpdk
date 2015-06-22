@@ -1742,8 +1742,7 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 	struct rte_eth_stats eth_stats;
 	struct rte_eth_dev *dev;
 	unsigned count, i, q;
-	uint64_t val;
-	char *stats_ptr;
+	uint64_t val, *stats_ptr;
 
 	if (!rte_eth_dev_is_valid_port(port_id)) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
@@ -1770,8 +1769,9 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 
 	/* global stats */
 	for (i = 0; i < RTE_NB_STATS; i++) {
-		stats_ptr = (char *)&eth_stats + rte_stats_strings[i].offset;
-		val = *(uint64_t *)stats_ptr;
+		stats_ptr = RTE_PTR_ADD(&eth_stats,
+					rte_stats_strings[i].offset);
+		val = *stats_ptr;
 		snprintf(xstats[count].name, sizeof(xstats[count].name),
 			"%s", rte_stats_strings[i].name);
 		xstats[count++].value = val;
@@ -1780,10 +1780,10 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 	/* per-rxq stats */
 	for (q = 0; q < dev->data->nb_rx_queues; q++) {
 		for (i = 0; i < RTE_NB_RXQ_STATS; i++) {
-			stats_ptr = (char *)&eth_stats;
-			stats_ptr += rte_rxq_stats_strings[i].offset;
-			stats_ptr += q * sizeof(uint64_t);
-			val = *(uint64_t *)stats_ptr;
+			stats_ptr = RTE_PTR_ADD(&eth_stats,
+					rte_rxq_stats_strings[i].offset +
+					q * sizeof(uint64_t));
+			val = *stats_ptr;
 			snprintf(xstats[count].name, sizeof(xstats[count].name),
 				"rx_queue_%u_%s", q,
 				rte_rxq_stats_strings[i].name);
@@ -1794,10 +1794,10 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 	/* per-txq stats */
 	for (q = 0; q < dev->data->nb_tx_queues; q++) {
 		for (i = 0; i < RTE_NB_TXQ_STATS; i++) {
-			stats_ptr = (char *)&eth_stats;
-			stats_ptr += rte_txq_stats_strings[i].offset;
-			stats_ptr += q * sizeof(uint64_t);
-			val = *(uint64_t *)stats_ptr;
+			stats_ptr = RTE_PTR_ADD(&eth_stats,
+					rte_txq_stats_strings[i].offset +
+					q * sizeof(uint64_t));
+			val = *stats_ptr;
 			snprintf(xstats[count].name, sizeof(xstats[count].name),
 				"tx_queue_%u_%s", q,
 				rte_txq_stats_strings[i].name);
