@@ -375,10 +375,15 @@ ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
 
 	/* check if TCP segmentation required for this packet */
 	if (ol_flags & PKT_TX_TCP_SEG) {
-		/* implies IP cksum and TCP cksum */
-		type_tucmd_mlhl = IXGBE_ADVTXD_TUCMD_IPV4 |
-			IXGBE_ADVTXD_TUCMD_L4T_TCP |
-			IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
+		/* implies IP cksum in IPv4 */
+		if (ol_flags & PKT_TX_IP_CKSUM)
+			type_tucmd_mlhl = IXGBE_ADVTXD_TUCMD_IPV4 |
+				IXGBE_ADVTXD_TUCMD_L4T_TCP |
+				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
+		else
+			type_tucmd_mlhl = IXGBE_ADVTXD_TUCMD_IPV6 |
+				IXGBE_ADVTXD_TUCMD_L4T_TCP |
+				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
 
 		tx_offload_mask.l2_len |= ~0;
 		tx_offload_mask.l3_len |= ~0;
