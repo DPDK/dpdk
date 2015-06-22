@@ -54,6 +54,7 @@
  */
 
 #include <stdint.h>
+#include <rte_common.h>
 #include <rte_mempool.h>
 #include <rte_memory.h>
 #include <rte_atomic.h>
@@ -1080,18 +1081,35 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
 }
 
 /**
+ * A macro that points to an offset into the data in the mbuf.
+ *
+ * The returned pointer is cast to type t. Before using this
+ * function, the user must ensure that the first segment is large
+ * enough to accommodate its data.
+ *
+ * @param m
+ *   The packet mbuf.
+ * @param o
+ *   The offset into the mbuf data.
+ * @param t
+ *   The type to cast the result into.
+ */
+#define rte_pktmbuf_mtod_offset(m, t, o)	\
+	((t)((char *)(m)->buf_addr + (m)->data_off + (o)))
+
+/**
  * A macro that points to the start of the data in the mbuf.
  *
  * The returned pointer is cast to type t. Before using this
- * function, the user must ensure that m_headlen(m) is large enough to
- * read its data.
+ * function, the user must ensure that the first segment is large
+ * enough to accommodate its data.
  *
  * @param m
  *   The packet mbuf.
  * @param t
  *   The type to cast the result into.
  */
-#define rte_pktmbuf_mtod(m, t) ((t)((char *)(m)->buf_addr + (m)->data_off))
+#define rte_pktmbuf_mtod(m, t) rte_pktmbuf_mtod_offset(m, t, 0)
 
 /**
  * A macro that returns the length of the packet.
