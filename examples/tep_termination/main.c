@@ -53,6 +53,7 @@
 
 #include "main.h"
 #include "vxlan.h"
+#include "vxlan_setup.h"
 
 /* the maximum number of external ports supported */
 #define MAX_SUP_PORTS 1
