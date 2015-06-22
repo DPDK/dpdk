@@ -96,23 +96,23 @@ EAL_REGISTER_TAILQ(rte_hash_tailq)
 static inline hash_sig_t *
 get_sig_tbl_bucket(const struct rte_hash *h, uint32_t bucket_index)
 {
-	return (hash_sig_t *)
-			&(h->sig_tbl[bucket_index * h->sig_tbl_bucket_size]);
+	return RTE_PTR_ADD(h->sig_tbl, (bucket_index *
+					h->sig_tbl_bucket_size));
 }
 
 /* Returns a pointer to the first key in specified bucket. */
 static inline uint8_t *
 get_key_tbl_bucket(const struct rte_hash *h, uint32_t bucket_index)
 {
-	return (uint8_t *) &(h->key_tbl[bucket_index * h->bucket_entries *
-				     h->key_tbl_key_size]);
+	return RTE_PTR_ADD(h->key_tbl, (bucket_index * h->bucket_entries *
+					h->key_tbl_key_size));
 }
 
 /* Returns a pointer to a key at a specific position in a specified bucket. */
 static inline void *
 get_key_from_bucket(const struct rte_hash *h, uint8_t *bkt, uint32_t pos)
 {
-	return (void *) &bkt[pos * h->key_tbl_key_size];
+	return RTE_PTR_ADD(bkt, pos * h->key_tbl_key_size);
 }
 
 /* Does integer division with rounding-up of result. */
