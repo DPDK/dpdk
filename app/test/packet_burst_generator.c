@@ -154,7 +154,7 @@ initialize_ipv4_header(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
 		uint32_t dst_addr, uint16_t pkt_data_len)
 {
 	uint16_t pkt_len;
-	uint16_t *ptr16;
+	unaligned_uint16_t *ptr16;
 	uint32_t ip_cksum;
 
 	/*
@@ -175,7 +175,7 @@ initialize_ipv4_header(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
 	/*
 	 * Compute IP header checksum.
 	 */
-	ptr16 = (uint16_t *)ip_hdr;
+	ptr16 = (unaligned_uint16_t *)ip_hdr;
 	ip_cksum = 0;
 	ip_cksum += ptr16[0]; ip_cksum += ptr16[1];
 	ip_cksum += ptr16[2]; ip_cksum += ptr16[3];

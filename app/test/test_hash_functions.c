@@ -223,7 +223,7 @@ verify_jhash_32bits(void)
 				hash = rte_jhash(key, hashtest_key_lens[i],
 						hashtest_initvals[j]);
 				/* Divide key length by 4 in rte_jhash for 32 bits */
-				hash32 = rte_jhash_32b((const uint32_t *)key,
+				hash32 = rte_jhash_32b((const unaligned_uint32_t *)key,
 						hashtest_key_lens[i] >> 2,
 						hashtest_initvals[j]);
 				if (hash != hash32) {

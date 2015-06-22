@@ -282,7 +282,7 @@ ipv4_hdr_cksum(struct ipv4_hdr *ip_h)
 	 * Compute the sum of successive 16-bit words of the IPv4 header,
 	 * skipping the checksum field of the header.
 	 */
-	v16_h = (uint16_t *) ip_h;
+	v16_h = (unaligned_uint16_t *) ip_h;
 	ip_cksum = v16_h[0] + v16_h[1] + v16_h[2] + v16_h[3] +
 		v16_h[4] + v16_h[6] + v16_h[7] + v16_h[8] + v16_h[9];
 

@@ -333,7 +333,7 @@ testclone_testupdate_testdetach(void)
 	struct rte_mbuf *m = NULL;
 	struct rte_mbuf *clone = NULL;
 	struct rte_mbuf *clone2 = NULL;
-	uint32_t *data;
+	unaligned_uint32_t *data;
 
 	/* alloc a mbuf */
 	m = rte_pktmbuf_alloc(pktmbuf_pool);
@@ -344,7 +344,7 @@ testclone_testupdate_testdetach(void)
 		GOTO_FAIL("Bad length");
 
 	rte_pktmbuf_append(m, sizeof(uint32_t));
-	data = rte_pktmbuf_mtod(m, uint32_t *);
+	data = rte_pktmbuf_mtod(m, unaligned_uint32_t *);
 	*data = MAGIC_DATA;
 
 	/* clone the allocated mbuf */
@@ -352,7 +352,7 @@ testclone_testupdate_testdetach(void)
 	if (clone == NULL)
 		GOTO_FAIL("cannot clone data\n");
 
-	data = rte_pktmbuf_mtod(clone, uint32_t *);
+	data = rte_pktmbuf_mtod(clone, unaligned_uint32_t *);
 	if (*data != MAGIC_DATA)
 		GOTO_FAIL("invalid data in clone\n");
 
@@ -369,18 +369,18 @@ testclone_testupdate_testdetach(void)
 		GOTO_FAIL("Next Pkt Null\n");
 
 	rte_pktmbuf_append(m->next, sizeof(uint32_t));
-	data = rte_pktmbuf_mtod(m->next, uint32_t *);
+	data = rte_pktmbuf_mtod(m->next, unaligned_uint32_t *);
 	*data = MAGIC_DATA;
 
 	clone = rte_pktmbuf_clone(m, pktmbuf_pool);
 	if (clone == NULL)
 		GOTO_FAIL("cannot clone data\n");
 
-	data = rte_pktmbuf_mtod(clone, uint32_t *);
+	data = rte_pktmbuf_mtod(clone, unaligned_uint32_t *);
 	if (*data != MAGIC_DATA)
 		GOTO_FAIL("invalid data in clone\n");
 
-	data = rte_pktmbuf_mtod(clone->next, uint32_t *);
+	data = rte_pktmbuf_mtod(clone->next, unaligned_uint32_t *);
 	if (*data != MAGIC_DATA)
 		GOTO_FAIL("invalid data in clone->next\n");
 
@@ -396,11 +396,11 @@ testclone_testupdate_testdetach(void)
 	if (clone2 == NULL)
 		GOTO_FAIL("cannot clone the clone\n");
 
-	data = rte_pktmbuf_mtod(clone2, uint32_t *);
+	data = rte_pktmbuf_mtod(clone2, unaligned_uint32_t *);
 	if (*data != MAGIC_DATA)
 		GOTO_FAIL("invalid data in clone2\n");
 
-	data = rte_pktmbuf_mtod(clone2->next, uint32_t *);
+	data = rte_pktmbuf_mtod(clone2->next, unaligned_uint32_t *);
 	if (*data != MAGIC_DATA)
 		GOTO_FAIL("invalid data in clone2->next\n");
 

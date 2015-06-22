@@ -59,6 +59,16 @@ extern "C" {
 #define asm __asm__
 #endif
 
+#ifdef RTE_ARCH_STRICT_ALIGN
+typedef uint64_t unaligned_uint64_t __attribute__ ((aligned(1)));
+typedef uint32_t unaligned_uint32_t __attribute__ ((aligned(1)));
+typedef uint16_t unaligned_uint16_t __attribute__ ((aligned(1)));
+#else
+typedef uint64_t unaligned_uint64_t;
+typedef uint32_t unaligned_uint32_t;
+typedef uint16_t unaligned_uint16_t;
+#endif
+
 /*********** Macros to eliminate unused variable warnings ********/
 
 /**

@@ -167,7 +167,7 @@ setup_pkt_udp_ip_headers(struct ipv4_hdr *ip_hdr,
 	/*
 	 * Compute IP header checksum.
 	 */
-	ptr16 = (uint16_t*) ip_hdr;
+	ptr16 = (unaligned_uint16_t*) ip_hdr;
 	ip_cksum = 0;
 	ip_cksum += ptr16[0]; ip_cksum += ptr16[1];
 	ip_cksum += ptr16[2]; ip_cksum += ptr16[3];

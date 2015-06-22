@@ -466,8 +466,10 @@ bond_ethdev_tx_burst_active_backup(void *queue,
 static inline uint16_t
 ether_hash(struct ether_hdr *eth_hdr)
 {
-	uint16_t *word_src_addr = (uint16_t *)eth_hdr->s_addr.addr_bytes;
-	uint16_t *word_dst_addr = (uint16_t *)eth_hdr->d_addr.addr_bytes;
+	unaligned_uint16_t *word_src_addr =
+		(unaligned_uint16_t *)eth_hdr->s_addr.addr_bytes;
+	unaligned_uint16_t *word_dst_addr =
+		(unaligned_uint16_t *)eth_hdr->d_addr.addr_bytes;
 
 	return (word_src_addr[0] ^ word_dst_addr[0]) ^
 			(word_src_addr[1] ^ word_dst_addr[1]) ^
@@ -483,8 +485,10 @@ ipv4_hash(struct ipv4_hdr *ipv4_hdr)
 static inline uint32_t
 ipv6_hash(struct ipv6_hdr *ipv6_hdr)
 {
-	uint32_t *word_src_addr = (uint32_t *)&(ipv6_hdr->src_addr[0]);
-	uint32_t *word_dst_addr = (uint32_t *)&(ipv6_hdr->dst_addr[0]);
+	unaligned_uint32_t *word_src_addr =
+		(unaligned_uint32_t *)&(ipv6_hdr->src_addr[0]);
+	unaligned_uint32_t *word_dst_addr =
+		(unaligned_uint32_t *)&(ipv6_hdr->dst_addr[0]);
 
 	return (word_src_addr[0] ^ word_dst_addr[0]) ^
 			(word_src_addr[1] ^ word_dst_addr[1]) ^

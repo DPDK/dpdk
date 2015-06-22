@@ -175,7 +175,7 @@ static inline int is_multicast_ether_addr(const struct ether_addr *ea)
  */
 static inline int is_broadcast_ether_addr(const struct ether_addr *ea)
 {
-	const uint16_t *ea_words = (const uint16_t *)ea;
+	const unaligned_uint16_t *ea_words = (const unaligned_uint16_t *)ea;
 
 	return (ea_words[0] == 0xFFFF && ea_words[1] == 0xFFFF &&
 		ea_words[2] == 0xFFFF);
