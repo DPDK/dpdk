@@ -36,6 +36,7 @@
 
 extern uint16_t nb_devices;
 extern uint16_t udp_port;
+extern uint8_t filter_idx;
 extern uint8_t ports[RTE_MAX_ETHPORTS];
 extern struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 

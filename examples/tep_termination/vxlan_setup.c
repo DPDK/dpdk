@@ -71,6 +71,9 @@
 #define RTE_TEST_RX_DESC_DEFAULT 1024
 #define RTE_TEST_TX_DESC_DEFAULT 512
 
+/* Default inner VLAN ID */
+#define INNER_VLAN_ID 100
+
 /* VXLAN device */
 struct vxlan_conf vxdev;
 
@@ -85,6 +88,11 @@ uint8_t vxlan_overlay_ips[2][4] = { {192, 168, 10, 1}, {192, 168, 30, 1} };
 
 /* Remote VTEP MAC address */
 uint8_t peer_mac[6] = {0x00, 0x11, 0x01, 0x00, 0x00, 0x01};
+
+/* VXLAN RX filter type */
+uint8_t tep_filter_type[] = {RTE_TUNNEL_FILTER_IMAC_TENID,
+			RTE_TUNNEL_FILTER_IMAC_IVLAN_TENID,
+			RTE_TUNNEL_FILTER_OMAC_TENID_IMAC,};
 
 /* Options for configuring ethernet port */
 static const struct rte_eth_conf port_conf = {
@@ -220,11 +228,13 @@ vxlan_tx_process(uint8_t queue_id, struct rte_mbuf *pkt)
 int
 vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
-	int i;
+	int i, ret;
 	struct ether_hdr *pkt_hdr;
 	struct virtio_net *dev = vdev->dev;
 	uint64_t portid = dev->device_fh;
 	struct ipv4_hdr *ip;
+
+	struct rte_eth_tunnel_filter_conf tunnel_filter_conf;
 
 	if (unlikely(portid > VXLAN_N_PORTS)) {
 		RTE_LOG(INFO, VHOST_DATA,
@@ -249,6 +259,34 @@ vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 			vxdev.port[portid].vport_mac.addr_bytes[i] =
 			pkt_hdr->s_addr.addr_bytes[i];
 		vxdev.port[portid].peer_mac.addr_bytes[i] = peer_mac[i];
+	}
+
+	memset(&tunnel_filter_conf, 0,
+		sizeof(struct rte_eth_tunnel_filter_conf));
+
+	tunnel_filter_conf.outer_mac = &ports_eth_addr[0];
+	tunnel_filter_conf.filter_type = tep_filter_type[filter_idx];
+
+	/* inner MAC */
+	tunnel_filter_conf.inner_mac = &vdev->mac_address;
+
+	tunnel_filter_conf.queue_id = vdev->rx_q;
+	tunnel_filter_conf.tenant_id = tenant_id_conf[vdev->rx_q];
+
+	if (tep_filter_type[filter_idx] == RTE_TUNNEL_FILTER_IMAC_IVLAN_TENID)
+		tunnel_filter_conf.inner_vlan = INNER_VLAN_ID;
+
+	tunnel_filter_conf.tunnel_type = RTE_TUNNEL_TYPE_VXLAN;
+
+	ret = rte_eth_dev_filter_ctrl(ports[0],
+		RTE_ETH_FILTER_TUNNEL,
+		RTE_ETH_FILTER_ADD,
+		&tunnel_filter_conf);
+	if (ret) {
+		RTE_LOG(ERR, VHOST_DATA,
+			"%d Failed to add device MAC address to cloud filter\n",
+		vdev->rx_q);
+		return -1;
 	}
 
 	/* Print out inner MAC and VNI info. */
@@ -306,9 +344,36 @@ void
 vxlan_unlink(struct vhost_dev *vdev)
 {
 	unsigned i = 0, rx_count;
+	int ret;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+	struct rte_eth_tunnel_filter_conf tunnel_filter_conf;
 
 	if (vdev->ready == DEVICE_RX) {
+		memset(&tunnel_filter_conf, 0,
+			sizeof(struct rte_eth_tunnel_filter_conf));
+
+		tunnel_filter_conf.outer_mac = &ports_eth_addr[0];
+		tunnel_filter_conf.inner_mac = &vdev->mac_address;
+		tunnel_filter_conf.tenant_id = tenant_id_conf[vdev->rx_q];
+		tunnel_filter_conf.filter_type = tep_filter_type[filter_idx];
+
+		if (tep_filter_type[filter_idx] ==
+			RTE_TUNNEL_FILTER_IMAC_IVLAN_TENID)
+			tunnel_filter_conf.inner_vlan = INNER_VLAN_ID;
+
+		tunnel_filter_conf.queue_id = vdev->rx_q;
+		tunnel_filter_conf.tunnel_type = RTE_TUNNEL_TYPE_VXLAN;
+
+		ret = rte_eth_dev_filter_ctrl(ports[0],
+				RTE_ETH_FILTER_TUNNEL,
+				RTE_ETH_FILTER_DELETE,
+				&tunnel_filter_conf);
+		if (ret) {
+			RTE_LOG(ERR, VHOST_DATA,
+				"%d Failed to add device MAC address to cloud filter\n",
+				vdev->rx_q);
+			return;
+		}
 		for (i = 0; i < ETHER_ADDR_LEN; i++)
 			vdev->mac_address.addr_bytes[i] = 0;
 

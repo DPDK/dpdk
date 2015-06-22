@@ -113,6 +113,7 @@
 
 #define CMD_LINE_OPT_NB_DEVICES "nb-devices"
 #define CMD_LINE_OPT_UDP_PORT "udp-port"
+#define CMD_LINE_OPT_FILTER_TYPE "filter-type"
 #define CMD_LINE_OPT_RX_RETRY "rx-retry"
 #define CMD_LINE_OPT_RX_RETRY_DELAY "rx-retry-delay"
 #define CMD_LINE_OPT_RX_RETRY_NUM "rx-retry-num"
@@ -139,6 +140,9 @@ struct vpool {
 
 /* UDP tunneling port */
 uint16_t udp_port = 4789;
+
+/* RX filter type for tunneling packet */
+uint8_t filter_idx = 1;
 
 /* overlay packet operation */
 struct ol_switch_ops overlay_options = {
@@ -256,6 +260,10 @@ tep_termination_usage(const char *prgname)
 	RTE_LOG(INFO, VHOST_CONFIG, "%s [EAL options] -- -p PORTMASK\n"
 	"               --udp-port: UDP destination port for VXLAN packet\n"
 	"		--nb-devices[1-64]: The number of virtIO device\n"
+	"               --filter-type[1-3]: filter type for tunneling packet\n"
+	"                   1: Inner MAC and tenent ID\n"
+	"                   2: Inner MAC and VLAN, and tenent ID\n"
+	"                   3: Outer MAC, Inner MAC and tenent ID\n"
 	"		-p PORTMASK: Set mask for ports to be used by application\n"
 	"		--rx-retry [0|1]: disable/enable(default) retries on rx."
 	"		 Enable retry if destintation queue is full\n"
@@ -281,6 +289,7 @@ tep_termination_parse_args(int argc, char **argv)
 	static struct option long_option[] = {
 		{CMD_LINE_OPT_NB_DEVICES, required_argument, NULL, 0},
 		{CMD_LINE_OPT_UDP_PORT, required_argument, NULL, 0},
+		{CMD_LINE_OPT_FILTER_TYPE, required_argument, NULL, 0},
 		{CMD_LINE_OPT_RX_RETRY, required_argument, NULL, 0},
 		{CMD_LINE_OPT_RX_RETRY_DELAY, required_argument, NULL, 0},
 		{CMD_LINE_OPT_RX_RETRY_NUM, required_argument, NULL, 0},
@@ -371,6 +380,19 @@ tep_termination_parse_args(int argc, char **argv)
 					return -1;
 				} else
 					burst_rx_retry_num = ret;
+			}
+
+			if (!strncmp(long_option[option_index].name,
+					CMD_LINE_OPT_FILTER_TYPE,
+					sizeof(CMD_LINE_OPT_FILTER_TYPE))) {
+				ret = parse_num_opt(optarg, 3);
+				if ((ret == -1) || (ret == 0)) {
+					RTE_LOG(INFO, VHOST_CONFIG,
+						"Invalid argument for filter type [1-3]\n");
+					tep_termination_usage(prgname);
+					return -1;
+				} else
+					filter_idx = ret - 1;
 			}
 
 			/* Enable/disable stats. */
