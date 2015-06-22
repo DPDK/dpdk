@@ -34,6 +34,10 @@
 #ifndef VXLAN_SETUP_H_
 #define VXLAN_SETUP_H_
 
+extern uint16_t nb_devices;
+extern uint8_t ports[RTE_MAX_ETHPORTS];
+extern struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
+
 typedef int (*ol_port_configure_t)(uint8_t port,
 				   struct rte_mempool *mbuf_pool);
 

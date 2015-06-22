@@ -34,6 +34,9 @@
 #ifndef _VXLAN_H_
 #define _VXLAN_H_
 
+#include <rte_ether.h>
+#include <rte_ip.h>
+
 #define PORT_MIN	49152
 #define PORT_MAX	65535
 #define PORT_RANGE ((PORT_MAX - PORT_MIN) + 1)
@@ -41,6 +44,9 @@
 #define VXLAN_N_PORTS  2
 #define VXLAN_HF_VNI 0x08000000
 #define DEFAULT_VXLAN_PORT 4789
+
+extern struct ipv4_hdr app_ip_hdr[VXLAN_N_PORTS];
+extern struct ether_hdr app_l2_hdr[VXLAN_N_PORTS];
 
 struct vxlan_port {
 	uint32_t vport_id;           /**< VirtIO port id */
@@ -57,4 +63,21 @@ struct vxlan_conf {
 	struct vxlan_port port[VXLAN_N_PORTS]; /**< VXLAN configuration */
 } __rte_cache_aligned;
 
-#endif /* _MAIN_H_ */
+extern struct vxlan_conf vxdev;
+
+/* structure that caches offload info for the current packet */
+union tunnel_offload_info {
+	uint64_t data;
+	struct {
+		uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
+		uint64_t l3_len:9; /**< L3 (IP) Header Length. */
+		uint64_t l4_len:8; /**< L4 Header Length. */
+		uint64_t outer_l2_len:7; /**< outer L2 Header Length */
+		uint64_t outer_l3_len:16; /**< outer L3 Header Length */
+	};
+} __rte_cache_aligned;
+
+int decapsulation(struct rte_mbuf *pkt);
+void encapsulation(struct rte_mbuf *m, uint8_t queue_id);
+
+#endif /* _VXLAN_H_ */

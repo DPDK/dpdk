@@ -1,0 +1,357 @@
+/*-
+ *   BSD LICENSE
+ *
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   All rights reserved.
+ *
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
+ *   are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
+ *       distribution.
+ *     * Neither the name of Intel Corporation nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
+ *
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <getopt.h>
+#include <linux/if_ether.h>
+#include <linux/if_vlan.h>
+#include <linux/virtio_net.h>
+#include <linux/virtio_ring.h>
+#include <sys/param.h>
+#include <unistd.h>
+
+#include <rte_ethdev.h>
+#include <rte_log.h>
+#include <rte_string_fns.h>
+#include <rte_mbuf.h>
+#include <rte_malloc.h>
+#include <rte_ip.h>
+#include <rte_udp.h>
+#include <rte_tcp.h>
+
+#include "main.h"
+#include "rte_virtio_net.h"
+#include "vxlan.h"
+#include "vxlan_setup.h"
+
+#define IPV4_HEADER_LEN 20
+#define UDP_HEADER_LEN  8
+#define VXLAN_HEADER_LEN 8
+
+#define IP_VERSION 0x40
+#define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
+#define IP_DEFTTL  64   /* from RFC 1340. */
+#define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
+
+#define IP_DN_FRAGMENT_FLAG 0x0040
+
+/* Used to compare MAC addresses. */
+#define MAC_ADDR_CMP 0xFFFFFFFFFFFFULL
+
+/* Configurable number of RX/TX ring descriptors */
+#define RTE_TEST_RX_DESC_DEFAULT 1024
+#define RTE_TEST_TX_DESC_DEFAULT 512
+
+/* VXLAN device */
+struct vxlan_conf vxdev;
+
+struct ipv4_hdr app_ip_hdr[VXLAN_N_PORTS];
+struct ether_hdr app_l2_hdr[VXLAN_N_PORTS];
+
+/* local VTEP IP address */
+uint8_t vxlan_multicast_ips[2][4] = { {239, 1, 1, 1 }, {239, 1, 2, 1 } };
+
+/* Remote VTEP IP address */
+uint8_t vxlan_overlay_ips[2][4] = { {192, 168, 10, 1}, {192, 168, 30, 1} };
+
+/* Remote VTEP MAC address */
+uint8_t peer_mac[6] = {0x00, 0x11, 0x01, 0x00, 0x00, 0x01};
+
+/* Options for configuring ethernet port */
+static const struct rte_eth_conf port_conf = {
+	.rxmode = {
+		.split_hdr_size = 0,
+		.header_split   = 0, /**< Header Split disabled */
+		.hw_ip_checksum = 0, /**< IP checksum offload disabled */
+		.hw_vlan_filter = 0, /**< VLAN filtering disabled */
+		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
+		.hw_strip_crc   = 0, /**< CRC stripped by hardware */
+	},
+	.txmode = {
+		.mq_mode = ETH_MQ_TX_NONE,
+	},
+};
+
+/**
+ * The one or two device(s) that belongs to the same tenant ID can
+ * be assigned in a VM.
+ */
+const uint16_t tenant_id_conf[] = {
+	1000, 1000, 1001, 1001, 1002, 1002, 1003, 1003,
+	1004, 1004, 1005, 1005, 1006, 1006, 1007, 1007,
+	1008, 1008, 1009, 1009, 1010, 1010, 1011, 1011,
+	1012, 1012, 1013, 1013, 1014, 1014, 1015, 1015,
+	1016, 1016, 1017, 1017, 1018, 1018, 1019, 1019,
+	1020, 1020, 1021, 1021, 1022, 1022, 1023, 1023,
+	1024, 1024, 1025, 1025, 1026, 1026, 1027, 1027,
+	1028, 1028, 1029, 1029, 1030, 1030, 1031, 1031,
+};
+
+/**
+ * Initialises a given port using global settings and with the rx buffers
+ * coming from the mbuf_pool passed as parameter
+ */
+int
+vxlan_port_init(uint8_t port, struct rte_mempool *mbuf_pool)
+{
+	int retval;
+	uint16_t q;
+	struct rte_eth_dev_info dev_info;
+	uint16_t rx_rings, tx_rings = (uint16_t)rte_lcore_count();
+	const uint16_t rx_ring_size = RTE_TEST_RX_DESC_DEFAULT;
+	const uint16_t tx_ring_size = RTE_TEST_TX_DESC_DEFAULT;
+	struct rte_eth_rxconf *rxconf;
+	struct rte_eth_txconf *txconf;
+
+	rte_eth_dev_info_get(port, &dev_info);
+
+	if (dev_info.max_rx_queues > MAX_QUEUES) {
+		rte_exit(EXIT_FAILURE,
+			"please define MAX_QUEUES no less than %u in %s\n",
+			dev_info.max_rx_queues, __FILE__);
+	}
+
+	rxconf = &dev_info.default_rxconf;
+	txconf = &dev_info.default_txconf;
+	txconf->txq_flags = 0;
+
+	if (port >= rte_eth_dev_count())
+		return -1;
+
+	rx_rings = nb_devices;
+
+	/* Configure ethernet device. */
+	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
+	if (retval != 0)
+		return retval;
+
+	/* Setup the queues. */
+	for (q = 0; q < rx_rings; q++) {
+		retval = rte_eth_rx_queue_setup(port, q, rx_ring_size,
+						rte_eth_dev_socket_id(port),
+						rxconf,
+						mbuf_pool);
+		if (retval < 0)
+			return retval;
+	}
+	for (q = 0; q < tx_rings; q++) {
+		retval = rte_eth_tx_queue_setup(port, q, tx_ring_size,
+						rte_eth_dev_socket_id(port),
+						txconf);
+		if (retval < 0)
+			return retval;
+	}
+
+	/* Start the device. */
+	retval  = rte_eth_dev_start(port);
+	if (retval < 0)
+		return retval;
+
+	rte_eth_macaddr_get(port, &ports_eth_addr[port]);
+	RTE_LOG(INFO, PORT, "Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
+			" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
+			(unsigned)port,
+			ports_eth_addr[port].addr_bytes[0],
+			ports_eth_addr[port].addr_bytes[1],
+			ports_eth_addr[port].addr_bytes[2],
+			ports_eth_addr[port].addr_bytes[3],
+			ports_eth_addr[port].addr_bytes[4],
+			ports_eth_addr[port].addr_bytes[5]);
+	return 0;
+}
+
+static int
+vxlan_rx_process(struct rte_mbuf *pkt)
+{
+	return  decapsulation(pkt);
+}
+
+static void
+vxlan_tx_process(uint8_t queue_id, struct rte_mbuf *pkt)
+{
+	encapsulation(pkt, queue_id);
+	return;
+}
+
+/*
+ * This function learns the MAC address of the device and set init
+ * L2 header and L3 header info.
+ */
+int
+vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
+{
+	int i;
+	struct ether_hdr *pkt_hdr;
+	struct virtio_net *dev = vdev->dev;
+	uint64_t portid = dev->device_fh;
+	struct ipv4_hdr *ip;
+
+	if (unlikely(portid > VXLAN_N_PORTS)) {
+		RTE_LOG(INFO, VHOST_DATA,
+			"(%"PRIu64") WARNING: Not configuring device,"
+			"as already have %d ports for VXLAN.",
+			dev->device_fh, VXLAN_N_PORTS);
+		return -1;
+	}
+
+	/* Learn MAC address of guest device from packet */
+	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	if (is_same_ether_addr(&(pkt_hdr->s_addr), &vdev->mac_address)) {
+		RTE_LOG(INFO, VHOST_DATA,
+			"(%"PRIu64") WARNING: This device is using an existing"
+			" MAC address and has not been registered.\n",
+			dev->device_fh);
+		return -1;
+	}
+
+	for (i = 0; i < ETHER_ADDR_LEN; i++) {
+		vdev->mac_address.addr_bytes[i] =
+			vxdev.port[portid].vport_mac.addr_bytes[i] =
+			pkt_hdr->s_addr.addr_bytes[i];
+		vxdev.port[portid].peer_mac.addr_bytes[i] = peer_mac[i];
+	}
+
+	/* Print out inner MAC and VNI info. */
+	RTE_LOG(INFO, VHOST_DATA,
+		"(%d) MAC_ADDRESS %02x:%02x:%02x:%02x:%02x:%02x and VNI %d registered\n",
+		vdev->rx_q,
+		vdev->mac_address.addr_bytes[0],
+		vdev->mac_address.addr_bytes[1],
+		vdev->mac_address.addr_bytes[2],
+		vdev->mac_address.addr_bytes[3],
+		vdev->mac_address.addr_bytes[4],
+		vdev->mac_address.addr_bytes[5],
+		tenant_id_conf[vdev->rx_q]);
+
+	vxdev.port[portid].vport_id = portid;
+
+	for (i = 0; i < 4; i++) {
+		/* Local VTEP IP */
+		vxdev.port_ip |= vxlan_multicast_ips[portid][i] << (8 * i);
+		/* Remote VTEP IP */
+		vxdev.port[portid].peer_ip |=
+			vxlan_overlay_ips[portid][i] << (8 * i);
+	}
+
+	vxdev.out_key = tenant_id_conf[vdev->rx_q];
+	ether_addr_copy(&vxdev.port[portid].peer_mac,
+			&app_l2_hdr[portid].d_addr);
+	ether_addr_copy(&ports_eth_addr[0],
+			&app_l2_hdr[portid].s_addr);
+	app_l2_hdr[portid].ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+
+	ip = &app_ip_hdr[portid];
+	ip->version_ihl = IP_VHL_DEF;
+	ip->type_of_service = 0;
+	ip->total_length = 0;
+	ip->packet_id = 0;
+	ip->fragment_offset = IP_DN_FRAGMENT_FLAG;
+	ip->time_to_live = IP_DEFTTL;
+	ip->next_proto_id = IPPROTO_UDP;
+	ip->hdr_checksum = 0;
+	ip->src_addr = vxdev.port_ip;
+	ip->dst_addr = vxdev.port[portid].peer_ip;
+
+	/* Set device as ready for RX. */
+	vdev->ready = DEVICE_RX;
+
+	return 0;
+}
+
+/**
+ * Removes cloud filter. Ensures that nothing is adding buffers to the RX
+ * queue before disabling RX on the device.
+ */
+void
+vxlan_unlink(struct vhost_dev *vdev)
+{
+	unsigned i = 0, rx_count;
+	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+
+	if (vdev->ready == DEVICE_RX) {
+		for (i = 0; i < ETHER_ADDR_LEN; i++)
+			vdev->mac_address.addr_bytes[i] = 0;
+
+		/* Clear out the receive buffers */
+		rx_count = rte_eth_rx_burst(ports[0],
+				(uint16_t)vdev->rx_q,
+				pkts_burst, MAX_PKT_BURST);
+
+		while (rx_count) {
+			for (i = 0; i < rx_count; i++)
+				rte_pktmbuf_free(pkts_burst[i]);
+
+			rx_count = rte_eth_rx_burst(ports[0],
+					(uint16_t)vdev->rx_q,
+					pkts_burst, MAX_PKT_BURST);
+		}
+		vdev->ready = DEVICE_MAC_LEARNING;
+	}
+}
+
+/* Transmit packets after encapsulating */
+int
+vxlan_tx_pkts(uint8_t port_id, uint16_t queue_id,
+		struct rte_mbuf **tx_pkts, uint16_t nb_pkts) {
+	int ret = 0;
+	uint16_t i;
+
+	for (i = 0; i < nb_pkts; i++)
+		vxlan_tx_process(queue_id, tx_pkts[i]);
+
+	ret = rte_eth_tx_burst(port_id, queue_id, tx_pkts, nb_pkts);
+
+	return ret;
+}
+
+/* Check for decapsulation and pass packets directly to VIRTIO device */
+int
+vxlan_rx_pkts(struct virtio_net *dev, struct rte_mbuf **pkts_burst,
+		uint32_t rx_count)
+{
+	uint32_t i = 0;
+	uint32_t count = 0;
+	int ret;
+	struct rte_mbuf *pkts_valid[rx_count];
+
+	for (i = 0; i < rx_count; i++) {
+		ret = vxlan_rx_process(pkts_burst[i]);
+		if (unlikely(ret < 0))
+			continue;
+
+		pkts_valid[count] = pkts_burst[i];
+			count++;
+	}
+
+	ret = rte_vhost_enqueue_burst(dev, VIRTIO_RXQ, pkts_valid, count);
+	return ret;
+}

@@ -34,6 +34,8 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
+#include <rte_ether.h>
+
 #ifdef DEBUG
 #define LOG_LEVEL RTE_LOG_DEBUG
 #define LOG_DEBUG(log_type, fmt, args...) RTE_LOG(DEBUG, log_type, fmt, ##args)

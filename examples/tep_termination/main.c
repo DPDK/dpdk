@@ -125,7 +125,7 @@ static uint32_t enabled_port_mask;
 static uint32_t nb_switching_cores;
 
 /* number of devices/queues to support*/
-uint32_t nb_devices;
+uint16_t nb_devices = 2;
 
 /* max ring descriptor, ixgbe, i40e, e1000 all are 4096. */
 #define MAX_RING_DESC 4096
@@ -135,6 +135,16 @@ struct vpool {
 	struct rte_ring *ring;
 	uint32_t buf_size;
 } vpool_array[MAX_QUEUES+MAX_QUEUES];
+
+/* overlay packet operation */
+struct ol_switch_ops overlay_options = {
+	.port_configure = vxlan_port_init,
+	.tunnel_setup = vxlan_link,
+	.tunnel_destroy = vxlan_unlink,
+	.tx_handle = vxlan_tx_pkts,
+	.rx_handle = vxlan_rx_pkts,
+	.param_handle = NULL,
+};
 
 /* Enable stats. */
 uint32_t enable_stats = 0;
@@ -312,9 +322,8 @@ tep_termination_parse_args(int argc, char **argv)
 						"Invalid argument for rx-retry [0|1]\n");
 					tep_termination_usage(prgname);
 					return -1;
-				} else {
+				} else
 					enable_retry = ret;
-				}
 			}
 
 			/* Specify the retries delay time (in useconds) on RX.*/
@@ -327,9 +336,8 @@ tep_termination_parse_args(int argc, char **argv)
 						"Invalid argument for rx-retry-delay [0-N]\n");
 					tep_termination_usage(prgname);
 					return -1;
-				} else {
+				} else
 					burst_rx_delay_time = ret;
-				}
 			}
 
 			/* Specify the retries number on RX. */
@@ -342,9 +350,8 @@ tep_termination_parse_args(int argc, char **argv)
 						"Invalid argument for rx-retry-num [0-N]\n");
 					tep_termination_usage(prgname);
 					return -1;
-				} else {
+				} else
 					burst_rx_retry_num = ret;
-				}
 			}
 
 			/* Enable/disable stats. */
@@ -357,9 +364,8 @@ tep_termination_parse_args(int argc, char **argv)
 							"Invalid argument for stats [0..N]\n");
 					tep_termination_usage(prgname);
 					return -1;
-				} else {
+				} else
 					enable_stats = ret;
-				}
 			}
 
 			/* Set character device basename. */
@@ -459,6 +465,10 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m)
 
 	if (unlikely(len == MAX_PKT_BURST)) {
 		m_table = (struct rte_mbuf **)tx_q->m_table;
+		ret = overlay_options.tx_handle(ports[0],
+			(uint16_t)tx_q->txq_id, m_table,
+			(uint16_t)tx_q->len);
+
 		/* Free any buffers not handled by TX and update
 		 * the port stats.
 		 */
@@ -525,6 +535,10 @@ switch_worker(__rte_unused void *arg)
 				LOG_DEBUG(VHOST_DATA, "TX queue drained after "
 					"timeout with burst size %u\n",
 					tx_q->len);
+				ret = overlay_options.tx_handle(ports[0],
+					(uint16_t)tx_q->txq_id,
+					(struct rte_mbuf **)tx_q->m_table,
+					(uint16_t)tx_q->len);
 				if (unlikely(ret < tx_q->len)) {
 					do {
 						rte_pktmbuf_free(tx_q->m_table[ret]);
@@ -559,6 +573,7 @@ switch_worker(__rte_unused void *arg)
 
 			if (unlikely(vdev->remove)) {
 				dev_ll = dev_ll->next;
+				overlay_options.tunnel_destroy(vdev);
 				vdev->ready = DEVICE_SAFE_REMOVE;
 				continue;
 			}
@@ -584,6 +599,7 @@ switch_worker(__rte_unused void *arg)
 						}
 					}
 
+					ret_count = overlay_options.rx_handle(dev, pkts_burst, rx_count);
 					if (enable_stats) {
 						rte_atomic64_add(
 						&dev_statistics[dev->device_fh].rx_total_atomic,
@@ -606,7 +622,8 @@ switch_worker(__rte_unused void *arg)
 						pkts_burst, MAX_PKT_BURST);
 				/* If this is the first received packet we need to learn the MAC */
 				if (unlikely(vdev->ready == DEVICE_MAC_LEARNING) && tx_count) {
-					if (vdev->remove) {
+					if (vdev->remove ||
+						(overlay_options.tunnel_setup(vdev, pkts_burst[0]) == -1)) {
 						while (tx_count)
 							rte_pktmbuf_free(pkts_burst[--tx_count]);
 					}
@@ -1059,7 +1076,6 @@ main(int argc, char *argv[])
 			"but only %u port can be enabled\n", nb_ports,
 			MAX_SUP_PORTS);
 	}
-
 	/* Create the mbuf pool. */
 	mbuf_pool = rte_mempool_create(
 			"MBUF_POOL",
@@ -1087,6 +1103,9 @@ main(int argc, char *argv[])
 				"Skipping disabled port %d\n", portid);
 			continue;
 		}
+		if (overlay_options.port_configure(portid, mbuf_pool) != 0)
+			rte_exit(EXIT_FAILURE,
+				"Cannot initialize network ports\n");
 	}
 
 	/* Initialise all linked lists. */
@@ -1105,7 +1124,6 @@ main(int argc, char *argv[])
 		rte_eal_remote_launch(switch_worker,
 			mbuf_pool, lcore_id);
 	}
-
 	rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_MRG_RXBUF);
 
 	/* Register CUSE device to handle IOCTLs. */

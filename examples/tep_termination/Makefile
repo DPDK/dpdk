@@ -47,7 +47,7 @@ endif
 APP = tep_termination
 
 # all source are stored in SRCS-y
-SRCS-y := main.c
+SRCS-y := main.c vxlan_setup.c vxlan.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
