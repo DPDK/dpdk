@@ -52,6 +52,7 @@
 #include <rte_virtio_net.h>
 
 #include "main.h"
+#include "vxlan.h"
 
 /* the maximum number of external ports supported */
 #define MAX_SUP_PORTS 1
