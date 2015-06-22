@@ -116,6 +116,8 @@
 #define CMD_LINE_OPT_TX_CHECKSUM "tx-checksum"
 #define CMD_LINE_OPT_TSO_SEGSZ "tso-segsz"
 #define CMD_LINE_OPT_FILTER_TYPE "filter-type"
+#define CMD_LINE_OPT_ENCAP "encap"
+#define CMD_LINE_OPT_DECAP "decap"
 #define CMD_LINE_OPT_RX_RETRY "rx-retry"
 #define CMD_LINE_OPT_RX_RETRY_DELAY "rx-retry-delay"
 #define CMD_LINE_OPT_RX_RETRY_NUM "rx-retry-num"
@@ -148,6 +150,12 @@ uint8_t tx_checksum = 0;
 
 /* TCP segment size */
 uint16_t tso_segsz = 0;
+
+/* enable/disable decapsulation */
+uint8_t rx_decap = 1;
+
+/* enable/disable encapsulation */
+uint8_t tx_encap = 1;
 
 /* RX filter type for tunneling packet */
 uint8_t filter_idx = 1;
@@ -270,6 +278,8 @@ tep_termination_usage(const char *prgname)
 	"		--nb-devices[1-64]: The number of virtIO device\n"
 	"               --tx-checksum [0|1]: inner Tx checksum offload\n"
 	"               --tso-segsz [0-N]: TCP segment size\n"
+	"               --decap [0|1]: tunneling packet decapsulation\n"
+	"               --encap [0|1]: tunneling packet encapsulation\n"
 	"               --filter-type[1-3]: filter type for tunneling packet\n"
 	"                   1: Inner MAC and tenent ID\n"
 	"                   2: Inner MAC and VLAN, and tenent ID\n"
@@ -301,6 +311,8 @@ tep_termination_parse_args(int argc, char **argv)
 		{CMD_LINE_OPT_UDP_PORT, required_argument, NULL, 0},
 		{CMD_LINE_OPT_TX_CHECKSUM, required_argument, NULL, 0},
 		{CMD_LINE_OPT_TSO_SEGSZ, required_argument, NULL, 0},
+		{CMD_LINE_OPT_DECAP, required_argument, NULL, 0},
+		{CMD_LINE_OPT_ENCAP, required_argument, NULL, 0},
 		{CMD_LINE_OPT_FILTER_TYPE, required_argument, NULL, 0},
 		{CMD_LINE_OPT_RX_RETRY, required_argument, NULL, 0},
 		{CMD_LINE_OPT_RX_RETRY_DELAY, required_argument, NULL, 0},
@@ -431,6 +443,34 @@ tep_termination_parse_args(int argc, char **argv)
 					return -1;
 				} else
 					filter_idx = ret - 1;
+			}
+
+			/* Enable/disable encapsulation on RX. */
+			if (!strncmp(long_option[option_index].name,
+				CMD_LINE_OPT_DECAP,
+				sizeof(CMD_LINE_OPT_DECAP))) {
+				ret = parse_num_opt(optarg, 1);
+				if (ret == -1) {
+					RTE_LOG(INFO, VHOST_CONFIG,
+						"Invalid argument for decap [0|1]\n");
+					tep_termination_usage(prgname);
+					return -1;
+				} else
+					rx_decap = ret;
+			}
+
+			/* Enable/disable encapsulation on TX. */
+			if (!strncmp(long_option[option_index].name,
+				CMD_LINE_OPT_ENCAP,
+				sizeof(CMD_LINE_OPT_ENCAP))) {
+				ret = parse_num_opt(optarg, 1);
+				if (ret == -1) {
+					RTE_LOG(INFO, VHOST_CONFIG,
+						"Invalid argument for encap [0|1]\n");
+					tep_termination_usage(prgname);
+					return -1;
+				} else
+					tx_encap = ret;
 			}
 
 			/* Enable/disable stats. */

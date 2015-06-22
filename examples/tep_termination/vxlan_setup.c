@@ -218,13 +218,20 @@ vxlan_port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 static int
 vxlan_rx_process(struct rte_mbuf *pkt)
 {
-	return decapsulation(pkt);
+	int ret = 0;
+
+	if (rx_decap)
+		ret = decapsulation(pkt);
+
+	return ret;
 }
 
 static void
 vxlan_tx_process(uint8_t queue_id, struct rte_mbuf *pkt)
 {
-	encapsulation(pkt, queue_id);
+	if (tx_encap)
+		encapsulation(pkt, queue_id);
+
 	return;
 }
 
