@@ -144,6 +144,11 @@ process_inner_cksums(struct ether_hdr *eth_hdr, union tunnel_offload_info *info)
 		ol_flags |= PKT_TX_TCP_CKSUM;
 		tcp_hdr->cksum = get_psd_sum(l3_hdr, ethertype,
 				ol_flags);
+		if (tso_segsz != 0) {
+			ol_flags |= PKT_TX_TCP_SEG;
+			info->tso_segsz = tso_segsz;
+			info->l4_len = sizeof(struct tcp_hdr);
+		}
 
 	} else if (l4_proto == IPPROTO_SCTP) {
 		sctp_hdr = (struct sctp_hdr *)((char *)l3_hdr + info->l3_len);
@@ -226,6 +231,7 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 		ol_flags |= process_inner_cksums(phdr, &tx_offload);
 		m->l2_len = tx_offload.l2_len;
 		m->l3_len = tx_offload.l3_len;
+		m->l4_len = tx_offload.l4_len;
 		m->l2_len += ETHER_VXLAN_HLEN;
 	}
 
@@ -233,6 +239,7 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 	m->outer_l3_len = sizeof(struct ipv4_hdr);
 
 	m->ol_flags |= ol_flags;
+	m->tso_segsz = tx_offload.tso_segsz;
 
 	/*VXLAN HEADER*/
 	vxlan->vx_flags = rte_cpu_to_be_32(VXLAN_HF_VNI);

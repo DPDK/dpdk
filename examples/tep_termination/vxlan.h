@@ -48,6 +48,7 @@
 extern struct ipv4_hdr app_ip_hdr[VXLAN_N_PORTS];
 extern struct ether_hdr app_l2_hdr[VXLAN_N_PORTS];
 extern uint8_t tx_checksum;
+extern uint16_t tso_segsz;
 
 struct vxlan_port {
 	uint32_t vport_id;           /**< VirtIO port id */
@@ -73,6 +74,7 @@ union tunnel_offload_info {
 		uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
 		uint64_t l3_len:9; /**< L3 (IP) Header Length. */
 		uint64_t l4_len:8; /**< L4 Header Length. */
+		uint64_t tso_segsz:16; /**< TCP TSO segment size */
 		uint64_t outer_l2_len:7; /**< outer L2 Header Length */
 		uint64_t outer_l3_len:16; /**< outer L3 Header Length */
 	};
