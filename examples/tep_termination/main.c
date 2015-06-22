@@ -113,6 +113,7 @@
 
 #define CMD_LINE_OPT_NB_DEVICES "nb-devices"
 #define CMD_LINE_OPT_UDP_PORT "udp-port"
+#define CMD_LINE_OPT_TX_CHECKSUM "tx-checksum"
 #define CMD_LINE_OPT_FILTER_TYPE "filter-type"
 #define CMD_LINE_OPT_RX_RETRY "rx-retry"
 #define CMD_LINE_OPT_RX_RETRY_DELAY "rx-retry-delay"
@@ -140,6 +141,9 @@ struct vpool {
 
 /* UDP tunneling port */
 uint16_t udp_port = 4789;
+
+/* enable/disable inner TX checksum */
+uint8_t tx_checksum = 0;
 
 /* RX filter type for tunneling packet */
 uint8_t filter_idx = 1;
@@ -260,6 +264,7 @@ tep_termination_usage(const char *prgname)
 	RTE_LOG(INFO, VHOST_CONFIG, "%s [EAL options] -- -p PORTMASK\n"
 	"               --udp-port: UDP destination port for VXLAN packet\n"
 	"		--nb-devices[1-64]: The number of virtIO device\n"
+	"               --tx-checksum [0|1]: inner Tx checksum offload\n"
 	"               --filter-type[1-3]: filter type for tunneling packet\n"
 	"                   1: Inner MAC and tenent ID\n"
 	"                   2: Inner MAC and VLAN, and tenent ID\n"
@@ -289,6 +294,7 @@ tep_termination_parse_args(int argc, char **argv)
 	static struct option long_option[] = {
 		{CMD_LINE_OPT_NB_DEVICES, required_argument, NULL, 0},
 		{CMD_LINE_OPT_UDP_PORT, required_argument, NULL, 0},
+		{CMD_LINE_OPT_TX_CHECKSUM, required_argument, NULL, 0},
 		{CMD_LINE_OPT_FILTER_TYPE, required_argument, NULL, 0},
 		{CMD_LINE_OPT_RX_RETRY, required_argument, NULL, 0},
 		{CMD_LINE_OPT_RX_RETRY_DELAY, required_argument, NULL, 0},
@@ -380,6 +386,19 @@ tep_termination_parse_args(int argc, char **argv)
 					return -1;
 				} else
 					burst_rx_retry_num = ret;
+			}
+
+			if (!strncmp(long_option[option_index].name,
+				CMD_LINE_OPT_TX_CHECKSUM,
+				sizeof(CMD_LINE_OPT_TX_CHECKSUM))) {
+				ret = parse_num_opt(optarg, 1);
+				if (ret == -1) {
+					RTE_LOG(INFO, VHOST_CONFIG,
+						"Invalid argument for tx-checksum [0|1]\n");
+					tep_termination_usage(prgname);
+					return -1;
+				} else
+					tx_checksum = ret;
 			}
 
 			if (!strncmp(long_option[option_index].name,

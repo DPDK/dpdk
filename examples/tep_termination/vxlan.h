@@ -47,6 +47,7 @@
 
 extern struct ipv4_hdr app_ip_hdr[VXLAN_N_PORTS];
 extern struct ether_hdr app_l2_hdr[VXLAN_N_PORTS];
+extern uint8_t tx_checksum;
 
 struct vxlan_port {
 	uint32_t vport_id;           /**< VirtIO port id */
