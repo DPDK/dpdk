@@ -136,7 +136,7 @@ mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
 	obj = (char *)obj + mp->header_size;
 
 	/* set mempool ptr in header */
-	hdr = (struct rte_mempool_objhdr *)((char *)obj - sizeof(*hdr));
+	hdr = RTE_PTR_SUB(obj, sizeof(*hdr));
 	hdr->mp = mp;
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
