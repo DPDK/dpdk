@@ -195,7 +195,9 @@ struct ixgbe_tx_queue {
 	volatile uint32_t   *tdt_reg_addr; /**< Address of TDT register. */
 	uint16_t            nb_tx_desc;    /**< number of TX descriptors. */
 	uint16_t            tx_tail;       /**< current value of TDT reg. */
-	uint16_t            tx_free_thresh;/**< minimum TX before freeing. */
+	/**< Start freeing TX buffers if there are less free descriptors than
+	     this value. */
+	uint16_t            tx_free_thresh;
 	/** Number of TX descriptors to use before RS bit is set. */
 	uint16_t            tx_rs_thresh;
 	/** Number of TX descriptors used since RS bit was set. */

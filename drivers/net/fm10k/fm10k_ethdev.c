@@ -203,7 +203,6 @@ tx_queue_reset(struct fm10k_tx_queue *q)
 	q->next_free = 0;
 	q->nb_used = 0;
 	q->nb_free = q->nb_desc - 1;
-	q->free_trigger = q->nb_free - q->free_thresh;
 	fifo_reset(&q->rs_tracker, (q->nb_desc + 1) / q->rs_thresh);
 	FM10K_PCI_REG_WRITE(q->tail_ptr, 0);
 }

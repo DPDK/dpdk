@@ -136,8 +136,9 @@ struct i40e_tx_queue {
 	uint16_t last_desc_cleaned;
 	/**< Total number of TX descriptors ready to be allocated. */
 	uint16_t nb_tx_free;
-	/**< Number of TX descriptors to use before RS bit is set. */
-	uint16_t tx_free_thresh; /**< minimum TX before freeing. */
+	/**< Start freeing TX buffers if there are less free descriptors than
+	     this value. */
+	uint16_t tx_free_thresh;
 	/** Number of TX descriptors to use before RS bit is set. */
 	uint16_t tx_rs_thresh;
 	uint8_t pthresh; /**< Prefetch threshold register. */

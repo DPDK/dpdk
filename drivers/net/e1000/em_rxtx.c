@@ -182,7 +182,9 @@ struct em_tx_queue {
 	volatile uint32_t      *tdt_reg_addr; /**< Address of TDT register. */
 	uint16_t               nb_tx_desc;    /**< number of TX descriptors. */
 	uint16_t               tx_tail;  /**< Current value of TDT register. */
-	uint16_t               tx_free_thresh;/**< minimum TX before freeing. */
+	/**< Start freeing TX buffers if there are less free descriptors than
+	     this value. */
+	uint16_t               tx_free_thresh;
 	/**< Number of TX descriptors to use before RS bit is set. */
 	uint16_t               tx_rs_thresh;
 	/** Number of TX descriptors used since RS bit was set. */
@@ -418,9 +420,8 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	txe = &sw_ring[tx_id];
 
 	/* Determine if the descriptor ring needs to be cleaned. */
-	if ((txq->nb_tx_desc - txq->nb_tx_free) > txq->tx_free_thresh) {
+	 if (txq->nb_tx_free < txq->tx_free_thresh)
 		em_xmit_cleanup(txq);
-	}
 
 	/* TX loop */
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {

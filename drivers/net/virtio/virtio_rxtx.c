@@ -744,7 +744,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	nb_used = VIRTQUEUE_NUSED(txvq);
 
 	virtio_rmb();
-	if (likely(nb_used > txvq->vq_free_thresh))
+	if (likely(nb_used > txvq->vq_nentries - txvq->vq_free_thresh))
 		virtio_xmit_cleanup(txvq, nb_used);
 
 	nb_tx = 0;

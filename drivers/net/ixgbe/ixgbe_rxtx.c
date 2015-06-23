@@ -593,9 +593,8 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	txe = &sw_ring[tx_id];
 
 	/* Determine if the descriptor ring needs to be cleaned. */
-	if ((txq->nb_tx_desc - txq->nb_tx_free) > txq->tx_free_thresh) {
+	if (txq->nb_tx_free < txq->tx_free_thresh)
 		ixgbe_xmit_cleanup(txq);
-	}
 
 	rte_prefetch0(&txe->mbuf->pool);
 

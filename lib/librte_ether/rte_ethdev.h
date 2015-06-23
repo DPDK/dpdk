@@ -632,7 +632,9 @@ struct rte_eth_rxconf {
 struct rte_eth_txconf {
 	struct rte_eth_thresh tx_thresh; /**< TX ring threshold registers. */
 	uint16_t tx_rs_thresh; /**< Drives the setting of RS bit on TXDs. */
-	uint16_t tx_free_thresh; /**< Drives the freeing of TX buffers. */
+	uint16_t tx_free_thresh; /**< Start freeing TX buffers if there are
+				      less free descriptors than this value. */
+
 	uint32_t txq_flags; /**< Set flags for the Tx queue */
 	uint8_t tx_deferred_start; /**< Do not start queue with rte_eth_dev_start(). */
 };
@@ -2534,10 +2536,9 @@ rte_eth_rx_descriptor_done(uint8_t port_id, uint16_t queue_id, uint16_t offset)
  * transparently free the memory buffers of packets previously sent.
  * This feature is driven by the *tx_free_thresh* value supplied to the
  * rte_eth_dev_configure() function at device configuration time.
- * When the number of previously sent packets reached the "minimum transmit
- * packets to free" threshold, the rte_eth_tx_burst() function must
- * [attempt to] free the *rte_mbuf*  buffers of those packets whose
- * transmission was effectively completed.
+ * When the number of free TX descriptors drops below this threshold, the
+ * rte_eth_tx_burst() function must [attempt to] free the *rte_mbuf*  buffers
+ * of those packets whose transmission was effectively completed.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.

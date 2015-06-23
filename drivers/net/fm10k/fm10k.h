@@ -200,7 +200,6 @@ struct fm10k_tx_queue {
 	uint16_t next_free;
 	uint16_t nb_free;
 	uint16_t nb_used;
-	uint16_t free_trigger;
 	uint16_t free_thresh;
 	uint16_t rs_thresh;
 	volatile uint32_t *tail_ptr;

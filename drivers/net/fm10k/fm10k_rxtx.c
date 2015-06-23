@@ -450,7 +450,7 @@ fm10k_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		mb = tx_pkts[count];
 
 		/* running low on descriptors? try to free some... */
-		if (q->nb_free < q->free_trigger)
+		if (q->nb_free < q->free_thresh)
 			tx_free_descriptors(q);
 
 		/* make sure there are enough free descriptors to transmit the
