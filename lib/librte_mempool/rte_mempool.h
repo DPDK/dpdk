@@ -393,11 +393,11 @@ typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
  *
  * Iterate across objects of the given size and alignment in the
  * provided chunk of memory. The given memory buffer can consist of
- * disjoint physical pages.
+ * disjointed physical pages.
  *
- * For each object, calls the provided callback (if any). This function
- * is used to populate mempool, walk through all elements of the
- * mempool, estimate how many elements of the given size could be
+ * For each object, call the provided callback (if any). This function
+ * is used to populate a mempool, or walk through all the elements of a
+ * mempool, or estimate how many elements of the given size could be
  * created in the given memory buffer.
  *
  * @param vaddr
@@ -406,6 +406,8 @@ typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
  *   Maximum number of objects to iterate through.
  * @param elt_sz
  *   Size of each object.
+ * @param align
+ *   Alignment of each object.
  * @param paddr
  *   Array of physical addresses of the pages that comprises given memory
  *   buffer.
@@ -421,7 +423,6 @@ typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
  * @return
  *   Number of objects iterated through.
  */
-
 uint32_t rte_mempool_obj_iter(void *vaddr,
 	uint32_t elt_num, size_t elt_sz, size_t align,
 	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
