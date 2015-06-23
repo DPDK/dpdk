@@ -6,3 +6,4 @@ Guidelines
     :numbered:
 
     coding_style
+    design
