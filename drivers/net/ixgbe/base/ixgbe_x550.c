@@ -693,6 +693,10 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 			link_reg |= IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KR |
 				    IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX;
 
+			/* Must disable FEC when EEE is enabled. */
+			link_reg &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_AN_FEC_REQ |
+				IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC);
+
 			status = ixgbe_write_iosf_sb_reg_x550(hw,
 				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
@@ -722,6 +726,10 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 
 			link_reg &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KR |
 				IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX);
+
+			/* Enable FEC when EEE is disabled. */
+			link_reg |= (IXGBE_KRM_LINK_CTRL_1_TETH_AN_FEC_REQ |
+				IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC);
 
 			status = ixgbe_write_iosf_sb_reg_x550(hw,
 				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
@@ -1638,8 +1646,6 @@ s32 ixgbe_setup_kr_x550em(struct ixgbe_hw *hw)
 		return status;
 
 	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_ENABLE;
-	reg_val &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_AN_FEC_REQ |
-		     IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC);
 	reg_val &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KR |
 		     IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KX);
 
