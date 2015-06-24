@@ -1419,6 +1419,48 @@ STATIC s32 ixgbe_enable_lasi_ext_t_x550em(struct ixgbe_hw *hw)
 }
 
 /**
+ *  ixgbe_setup_kr_speed_x550em - Configure the KR PHY for link speed.
+ *  @hw: pointer to hardware structure
+ *  @speed: link speed
+ *
+ *  Configures the integrated KR PHY.
+ **/
+STATIC s32 ixgbe_setup_kr_speed_x550em(struct ixgbe_hw *hw,
+				       ixgbe_link_speed speed)
+{
+	s32 status;
+	u32 reg_val;
+
+	status = ixgbe_read_iosf_sb_reg_x550(hw,
+		IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+		IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
+	if (status)
+		return status;
+
+	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_ENABLE;
+	reg_val &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_AN_FEC_REQ |
+		     IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC);
+	reg_val &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KR |
+		     IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KX);
+
+	/* Advertise 10G support. */
+	if (speed & IXGBE_LINK_SPEED_10GB_FULL)
+		reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KR;
+
+	/* Advertise 1G support. */
+	if (speed & IXGBE_LINK_SPEED_1GB_FULL)
+		reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KX;
+
+	/* Restart auto-negotiation. */
+	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
+	status = ixgbe_write_iosf_sb_reg_x550(hw,
+		IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+		IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+
+	return status;
+}
+
+/**
  *  ixgbe_init_phy_ops_X550em - PHY/SFP specific init
  *  @hw: pointer to hardware structure
  *
@@ -1429,6 +1471,7 @@ STATIC s32 ixgbe_enable_lasi_ext_t_x550em(struct ixgbe_hw *hw)
 s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 {
 	struct ixgbe_phy_info *phy = &hw->phy;
+	ixgbe_link_speed speed;
 	s32 ret_val;
 
 	DEBUGFUNC("ixgbe_init_phy_ops_X550em");
@@ -1438,6 +1481,18 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 	if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_fiber) {
 		phy->phy_semaphore_mask = IXGBE_GSSR_SHARED_I2C_SM;
 		ixgbe_setup_mux_ctl(hw);
+
+		/* Save NW management interface connected on board. This is used
+		 * to determine internal PHY mode.
+		 */
+		phy->nw_mng_if_sel = IXGBE_READ_REG(hw, IXGBE_NW_MNG_IF_SEL);
+
+		/* If internal PHY mode is KR, then initialize KR link */
+		if (phy->nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE) {
+			speed = IXGBE_LINK_SPEED_10GB_FULL |
+				IXGBE_LINK_SPEED_1GB_FULL;
+			ret_val = ixgbe_setup_kr_speed_x550em(hw, speed);
+		}
 
 		phy->ops.identify_sfp = ixgbe_identify_sfp_module_X550em;
 	}
@@ -1465,8 +1520,23 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		phy->ops.write_reg = ixgbe_write_phy_reg_x550em;
 		break;
 	case ixgbe_phy_x550em_ext_t:
-		phy->ops.setup_internal_link =
-					 ixgbe_setup_internal_phy_t_x550em;
+		/* Save NW management interface connected on board. This is used
+		 * to determine internal PHY mode
+		 */
+		phy->nw_mng_if_sel = IXGBE_READ_REG(hw, IXGBE_NW_MNG_IF_SEL);
+
+		/* If internal link mode is XFI, then setup iXFI internal link,
+		 * else setup KR now.
+		 */
+		if (!(phy->nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE)) {
+			phy->ops.setup_internal_link =
+					      ixgbe_setup_internal_phy_t_x550em;
+		} else {
+			speed = IXGBE_LINK_SPEED_10GB_FULL |
+				IXGBE_LINK_SPEED_1GB_FULL;
+			ret_val = ixgbe_setup_kr_speed_x550em(hw, speed);
+		}
+
 		phy->ops.enter_lplu = ixgbe_enter_lplu_t_x550em;
 		phy->ops.handle_lasi = ixgbe_handle_lasi_ext_t_x550em;
 		phy->ops.reset = ixgbe_reset_phy_t_X550em;
@@ -1640,34 +1710,7 @@ s32 ixgbe_init_ext_t_x550em(struct ixgbe_hw *hw)
  **/
 s32 ixgbe_setup_kr_x550em(struct ixgbe_hw *hw)
 {
-	s32 status;
-	u32 reg_val;
-
-	status = ixgbe_read_iosf_sb_reg_x550(hw,
-		IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-		IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
-	if (status)
-		return status;
-
-	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_ENABLE;
-	reg_val &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KR |
-		     IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KX);
-
-	/* Advertise 10G support. */
-	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_10GB_FULL)
-		reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KR;
-
-	/* Advertise 1G support. */
-	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_1GB_FULL)
-		reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KX;
-
-	/* Restart auto-negotiation. */
-	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
-	status = ixgbe_write_iosf_sb_reg_x550(hw,
-		IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-		IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
-
-	return status;
+	return ixgbe_setup_kr_speed_x550em(hw, hw->phy.autoneg_advertised);
 }
 
 /**
@@ -1821,10 +1864,10 @@ STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
 }
 
 /**
- *  ixgbe_setup_mac_link_sfp_x550em - Configure the CS4227 & KR PHY for SFP
+ *  ixgbe_setup_mac_link_sfp_x550em - Setup internal/external the PHY for SFP
  *  @hw: pointer to hardware structure
  *
- *  Configure the external CS4227 PHY and the integrated KR PHY for SFP support.
+ *  Configure the external PHY and the integrated KR PHY for SFP support.
  **/
 s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 				    ixgbe_link_speed speed,
@@ -1876,8 +1919,9 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
 					   reg_val);
 
-	/* Configure the internal PHY. */
-	ret_val = ixgbe_setup_ixfi_x550em(hw, &speed);
+	/* If internal link mode is XFI, then setup XFI internal link. */
+	if (!(hw->phy.nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE))
+		ret_val = ixgbe_setup_ixfi_x550em(hw, &speed);
 
 	return ret_val;
 }
@@ -2939,7 +2983,7 @@ s32 ixgbe_handle_lasi_ext_t_x550em(struct ixgbe_hw *hw)
 		return status;
 
 	if (lsc)
-		return ixgbe_setup_internal_phy_t_x550em(hw);
+		return ixgbe_setup_internal_phy(hw);
 
 	return IXGBE_SUCCESS;
 }
@@ -2972,10 +3016,13 @@ s32 ixgbe_setup_mac_link_t_X550em(struct ixgbe_hw *hw,
 	else
 		force_speed = IXGBE_LINK_SPEED_1GB_FULL;
 
-	status = ixgbe_setup_ixfi_x550em(hw, &force_speed);
+	/* If internal link mode is XFI, then setup XFI internal link. */
+	if (!(hw->phy.nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE)) {
+		status = ixgbe_setup_ixfi_x550em(hw, &force_speed);
 
-	if (status != IXGBE_SUCCESS)
-		return status;
+		if (status != IXGBE_SUCCESS)
+			return status;
+	}
 
 	return hw->phy.ops.setup_link_speed(hw, speed, autoneg_wait_to_complete);
 }

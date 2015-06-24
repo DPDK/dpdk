@@ -3732,6 +3732,7 @@ struct ixgbe_phy_info {
 	bool multispeed_fiber;
 	bool reset_if_overtemp;
 	bool qsfp_shared_i2c_bus;
+	u32 nw_mng_if_sel;
 };
 
 #include "ixgbe_mbx.h"
@@ -3906,5 +3907,8 @@ struct ixgbe_hw {
 #define IXGBE_SB_IOSF_TARGET_KR_PHY	0
 #define IXGBE_SB_IOSF_TARGET_KX4_PHY	1
 #define IXGBE_SB_IOSF_TARGET_KX4_PCS	2
+
+#define IXGBE_NW_MNG_IF_SEL		0x00011178
+#define IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE (1 << 24)
 
 #endif /* _IXGBE_TYPE_H_ */
