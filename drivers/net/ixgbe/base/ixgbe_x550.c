@@ -1193,8 +1193,11 @@ STATIC s32 ixgbe_get_lasi_ext_t_x550em(struct ixgbe_hw *hw, bool *lsc)
 		return status;
 
 	/* If high temperature failure, then return over temp error and exit */
-	if (reg & IXGBE_MDIO_GLOBAL_ALM_1_HI_TMP_FAIL)
+	if (reg & IXGBE_MDIO_GLOBAL_ALM_1_HI_TMP_FAIL) {
+		/* power down the PHY in case the PHY FW didn't already */
+		ixgbe_set_copper_phy_power(hw, false);
 		return IXGBE_ERR_OVERTEMP;
+	}
 
 	/* Vendor alarm 2 triggered */
 	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_GLOBAL_CHIP_STD_INT_FLAG,
