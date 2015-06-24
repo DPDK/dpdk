@@ -3832,15 +3832,15 @@ struct ixgbe_hw {
 #define IXGBE_NOT_IMPLEMENTED			0x7FFFFFFF
 
 
-#define IXGBE_KRM_PORT_CAR_GEN_CTRL(P)	((P == 0) ? (0x4010) : (0x8010))
-#define IXGBE_KRM_LINK_CTRL_1(P)	((P == 0) ? (0x420C) : (0x820C))
-#define IXGBE_KRM_AN_CNTL_1(P)		((P == 0) ? (0x422C) : (0x822C))
-#define IXGBE_KRM_DSP_TXFFE_STATE_4(P)	((P == 0) ? (0x4634) : (0x8634))
-#define IXGBE_KRM_DSP_TXFFE_STATE_5(P)	((P == 0) ? (0x4638) : (0x8638))
-#define IXGBE_KRM_RX_TRN_LINKUP_CTRL(P)	((P == 0) ? (0x4B00) : (0x8B00))
-#define IXGBE_KRM_PMD_DFX_BURNIN(P)	((P == 0) ? (0x4E00) : (0x8E00))
-#define IXGBE_KRM_TX_COEFF_CTRL_1(P)	((P == 0) ? (0x5520) : (0x9520))
-#define IXGBE_KRM_RX_ANA_CTL(P)		((P == 0) ? (0x5A00) : (0x9A00))
+#define IXGBE_KRM_PORT_CAR_GEN_CTRL(P)	((P) ? 0x8010 : 0x4010)
+#define IXGBE_KRM_LINK_CTRL_1(P)	((P) ? 0x820C : 0x420C)
+#define IXGBE_KRM_AN_CNTL_1(P)		((P) ? 0x822C : 0x422C)
+#define IXGBE_KRM_DSP_TXFFE_STATE_4(P)	((P) ? 0x8634 : 0x4634)
+#define IXGBE_KRM_DSP_TXFFE_STATE_5(P)	((P) ? 0x8638 : 0x4638)
+#define IXGBE_KRM_RX_TRN_LINKUP_CTRL(P)	((P) ? 0x8B00 : 0x4B00)
+#define IXGBE_KRM_PMD_DFX_BURNIN(P)	((P) ? 0x8E00 : 0x4E00)
+#define IXGBE_KRM_TX_COEFF_CTRL_1(P)	((P) ? 0x9520 : 0x5520)
+#define IXGBE_KRM_RX_ANA_CTL(P)		((P) ? 0x9A00 : 0x5A00)
 
 #define IXGBE_KRM_PORT_CAR_GEN_CTRL_NELB_32B		(1 << 9)
 #define IXGBE_KRM_PORT_CAR_GEN_CTRL_NELB_KRPCS		(1 << 11)
