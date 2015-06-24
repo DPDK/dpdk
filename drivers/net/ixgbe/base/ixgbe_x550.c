@@ -1862,6 +1862,38 @@ STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
 }
 
 /**
+ * ixgbe_ext_phy_t_x550em_get_link - Get ext phy link status
+ * @hw: address of hardware structure
+ * @link_up: address of boolean to indicate link status
+ *
+ * Returns error code if unable to get link status.
+ */
+STATIC s32 ixgbe_ext_phy_t_x550em_get_link(struct ixgbe_hw *hw, bool *link_up)
+{
+	u32 ret;
+	u16 autoneg_status;
+
+	*link_up = false;
+
+	/* read this twice back to back to indicate current status */
+	ret = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
+				   IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				   &autoneg_status);
+	if (ret != IXGBE_SUCCESS)
+		return ret;
+
+	ret = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
+				   IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				   &autoneg_status);
+	if (ret != IXGBE_SUCCESS)
+		return ret;
+
+	*link_up = !!(autoneg_status & IXGBE_MDIO_AUTO_NEG_LINK_STATUS);
+
+	return IXGBE_SUCCESS;
+}
+
+/**
  *  ixgbe_setup_mac_link_sfp_x550em - Setup internal/external the PHY for SFP
  *  @hw: pointer to hardware structure
  *
@@ -1938,33 +1970,34 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
  */
 s32 ixgbe_setup_internal_phy_t_x550em(struct ixgbe_hw *hw)
 {
-	u32 status;
-	u16 autoneg_status, speed;
 	ixgbe_link_speed force_speed;
+	bool link_up;
+	u32 status;
+	u16 speed;
 
 	if (hw->mac.ops.get_media_type(hw) != ixgbe_media_type_copper)
 		return IXGBE_ERR_CONFIG;
 
-	/* read this twice back to back to indicate current status */
-	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
-				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				      &autoneg_status);
-	if (status != IXGBE_SUCCESS)
-		return status;
-
-	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
-				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				      &autoneg_status);
-	if (status != IXGBE_SUCCESS)
-		return status;
-
 	/* If link is not up, then there is no setup necessary so return  */
-	if (!(autoneg_status & IXGBE_MDIO_AUTO_NEG_LINK_STATUS))
+	status = ixgbe_ext_phy_t_x550em_get_link(hw, &link_up);
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	if (!link_up)
 		return IXGBE_SUCCESS;
 
 	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_VENDOR_STAT,
 				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
 				      &speed);
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* If link is not still up, then no setup is necessary so return */
+	status = ixgbe_ext_phy_t_x550em_get_link(hw, &link_up);
+	if (status != IXGBE_SUCCESS)
+		return status;
+	if (!link_up)
+		return IXGBE_SUCCESS;
 
 	/* clear everything but the speed and duplex bits */
 	speed &= IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_MASK;
@@ -2689,19 +2722,17 @@ void ixgbe_disable_rx_x550(struct ixgbe_hw *hw)
  **/
 s32 ixgbe_enter_lplu_t_x550em(struct ixgbe_hw *hw)
 {
-	u16 autoneg_status, an_10g_cntl_reg, autoneg_reg, speed;
+	u16 an_10g_cntl_reg, autoneg_reg, speed;
 	s32 status;
 	ixgbe_link_speed lcd_speed;
 	u32 save_autoneg;
+	bool link_up;
 
 	/* If blocked by MNG FW, then don't restart AN */
 	if (ixgbe_check_reset_blocked(hw))
 		return IXGBE_SUCCESS;
 
-	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
-				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				      &autoneg_status);
-
+	status = ixgbe_ext_phy_t_x550em_get_link(hw, &link_up);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
@@ -2713,8 +2744,7 @@ s32 ixgbe_enter_lplu_t_x550em(struct ixgbe_hw *hw)
 	/* If link is down, LPLU disabled in NVM, WoL disabled, or manageability
 	 * disabled, then force link down by entering low power mode.
 	 */
-	if (!(autoneg_status & IXGBE_MDIO_AUTO_NEG_LINK_STATUS) ||
-	    !(hw->eeprom.ctrl_word_3 & NVM_INIT_CTRL_3_LPLU) ||
+	if (!link_up || !(hw->eeprom.ctrl_word_3 & NVM_INIT_CTRL_3_LPLU) ||
 	    !(hw->wol_enabled || ixgbe_mng_present(hw)))
 		return ixgbe_set_copper_phy_power(hw, FALSE);
 
@@ -2735,6 +2765,11 @@ s32 ixgbe_enter_lplu_t_x550em(struct ixgbe_hw *hw)
 	if (status != IXGBE_SUCCESS)
 		return status;
 
+	/* If no link now, speed is invalid so take link down */
+	status = ixgbe_ext_phy_t_x550em_get_link(hw, &link_up);
+	if (status != IXGBE_SUCCESS)
+		return ixgbe_set_copper_phy_power(hw, false);
+
 	/* clear everything but the speed bits */
 	speed &= IXGBE_MDIO_AUTO_NEG_VEN_STAT_SPEED_MASK;
 
@@ -2748,7 +2783,7 @@ s32 ixgbe_enter_lplu_t_x550em(struct ixgbe_hw *hw)
 	/* Clear AN completed indication */
 	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_VENDOR_TX_ALARM,
 				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				      &autoneg_status);
+				      &autoneg_reg);
 
 	if (status != IXGBE_SUCCESS)
 		return status;
