@@ -38,6 +38,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_common.h"
 #include "ixgbe_phy.h"
 
+STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed);
 
 /**
  *  ixgbe_init_ops_X550 - Inits func ptrs and MAC type
@@ -1559,6 +1560,7 @@ s32 ixgbe_reset_hw_X550em(struct ixgbe_hw *hw)
 	s32 status;
 	u32 ctrl = 0;
 	u32 i;
+	u32 hlreg0;
 	bool link_up = false;
 
 	DEBUGFUNC("ixgbe_reset_hw_X550em");
@@ -1650,6 +1652,12 @@ mac_reset_top:
 	hw->mac.num_rar_entries = 128;
 	hw->mac.ops.init_rx_addrs(hw);
 
+	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T) {
+		/* Config MDIO clock speed. */
+		hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
+		hlreg0 &= ~IXGBE_HLREG0_MDCSPD;
+		IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
+	}
 
 	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_SFP)
 		ixgbe_setup_mux_ctl(hw);
