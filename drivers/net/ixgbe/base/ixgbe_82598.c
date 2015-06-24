@@ -659,7 +659,7 @@ STATIC s32 ixgbe_check_mac_link_82598(struct ixgbe_hw *hw,
 		hw->phy.ops.read_reg(hw, 0xC00C, IXGBE_TWINAX_DEV,
 				     &adapt_comp_reg);
 		if (link_up_wait_to_complete) {
-			for (i = 0; i < IXGBE_LINK_UP_TIME; i++) {
+			for (i = 0; i < hw->mac.max_link_up_time; i++) {
 				if ((link_reg & 1) &&
 				    ((adapt_comp_reg & 1) == 0)) {
 					*link_up = true;
@@ -688,7 +688,7 @@ STATIC s32 ixgbe_check_mac_link_82598(struct ixgbe_hw *hw,
 
 	links_reg = IXGBE_READ_REG(hw, IXGBE_LINKS);
 	if (link_up_wait_to_complete) {
-		for (i = 0; i < IXGBE_LINK_UP_TIME; i++) {
+		for (i = 0; i < hw->mac.max_link_up_time; i++) {
 			if (links_reg & IXGBE_LINKS_UP) {
 				*link_up = true;
 				break;

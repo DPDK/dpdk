@@ -114,6 +114,7 @@ s32 ixgbe_init_shared_code(struct ixgbe_hw *hw)
 		status = IXGBE_ERR_DEVICE_NOT_SUPPORTED;
 		break;
 	}
+	hw->mac.max_link_up_time = IXGBE_LINK_UP_TIME;
 
 	return status;
 }

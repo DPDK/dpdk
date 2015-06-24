@@ -3830,6 +3830,7 @@ struct ixgbe_mac_info {
 	bool thermal_sensor_enabled;
 	struct ixgbe_dmac_config dmac_config;
 	bool set_lben;
+	u32  max_link_up_time;
 };
 
 struct ixgbe_phy_info {
