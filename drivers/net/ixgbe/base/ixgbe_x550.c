@@ -990,12 +990,81 @@ enum ixgbe_media_type ixgbe_get_media_type_X550em(struct ixgbe_hw *hw)
 }
 
 /**
+ *  ixgbe_supported_sfp_modules_X550em - Check if SFP module type is supported
+ *  @hw: pointer to hardware structure
+ *  @linear: true if SFP module is linear
+ */
+STATIC s32 ixgbe_supported_sfp_modules_X550em(struct ixgbe_hw *hw, bool *linear)
+{
+	DEBUGFUNC("ixgbe_supported_sfp_modules_X550em");
+
+	switch (hw->phy.sfp_type) {
+	case ixgbe_sfp_type_not_present:
+		return IXGBE_ERR_SFP_NOT_PRESENT;
+	case ixgbe_sfp_type_da_cu_core0:
+	case ixgbe_sfp_type_da_cu_core1:
+		*linear = true;
+		break;
+	case ixgbe_sfp_type_srlr_core0:
+	case ixgbe_sfp_type_srlr_core1:
+	case ixgbe_sfp_type_da_act_lmt_core0:
+	case ixgbe_sfp_type_da_act_lmt_core1:
+	case ixgbe_sfp_type_1g_sx_core0:
+	case ixgbe_sfp_type_1g_sx_core1:
+	case ixgbe_sfp_type_1g_lx_core0:
+	case ixgbe_sfp_type_1g_lx_core1:
+		*linear = false;
+		break;
+	case ixgbe_sfp_type_unknown:
+	case ixgbe_sfp_type_1g_cu_core0:
+	case ixgbe_sfp_type_1g_cu_core1:
+	default:
+		return IXGBE_ERR_SFP_NOT_SUPPORTED;
+	}
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ *  ixgbe_identify_sfp_module_X550em - Identifies SFP modules
+ *  @hw: pointer to hardware structure
+ *
+ *  Searches for and identifies the SFP module and assigns appropriate PHY type.
+ **/
+s32 ixgbe_identify_sfp_module_X550em(struct ixgbe_hw *hw)
+{
+	s32 status;
+	bool linear;
+
+	DEBUGFUNC("ixgbe_identify_sfp_module_X550em");
+
+	status = ixgbe_identify_module_generic(hw);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* Check if SFP module is supported */
+	status = ixgbe_supported_sfp_modules_X550em(hw, &linear);
+
+	return status;
+}
+
+/**
  *  ixgbe_setup_sfp_modules_X550em - Setup MAC link ops
  *  @hw: pointer to hardware structure
  */
 s32 ixgbe_setup_sfp_modules_X550em(struct ixgbe_hw *hw)
 {
+	s32 status;
+	bool linear;
+
 	DEBUGFUNC("ixgbe_setup_sfp_modules_X550em");
+
+	/* Check if SFP module is supported */
+	status = ixgbe_supported_sfp_modules_X550em(hw, &linear);
+
+	if (status != IXGBE_SUCCESS)
+		return status;
 
 	ixgbe_init_mac_link_ops_X550em(hw);
 	hw->phy.ops.reset = NULL;
@@ -1254,6 +1323,8 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 	if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_fiber) {
 		phy->phy_semaphore_mask = IXGBE_GSSR_SHARED_I2C_SM;
 		ixgbe_setup_mux_ctl(hw);
+
+		phy->ops.identify_sfp = ixgbe_identify_sfp_module_X550em;
 	}
 
 	/* Identify the PHY or SFP module */
@@ -1651,31 +1722,18 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 	bool setup_linear = false;
 	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
 
-	/* Configure the external PHY. */
-	switch (hw->phy.sfp_type) {
-	case ixgbe_sfp_type_unknown:
-		return IXGBE_ERR_SFP_NOT_SUPPORTED;
-	case ixgbe_sfp_type_not_present:
+	/* Check if SFP module is supported and linear */
+	ret_val = ixgbe_supported_sfp_modules_X550em(hw, &setup_linear);
+
+	/* If no SFP module present, then return success. Return success since
+	 * there is no reason to configure CS4227 and SFP not present error is
+	 * not excepted in the setup MAC link flow.
+	 */
+	if (ret_val == IXGBE_ERR_SFP_NOT_PRESENT)
 		return IXGBE_SUCCESS;
-	case ixgbe_sfp_type_da_cu_core0:
-	case ixgbe_sfp_type_da_cu_core1:
-		setup_linear = true;
-		break;
-	case ixgbe_sfp_type_srlr_core0:
-	case ixgbe_sfp_type_srlr_core1:
-	case ixgbe_sfp_type_da_act_lmt_core0:
-	case ixgbe_sfp_type_da_act_lmt_core1:
-	case ixgbe_sfp_type_1g_sx_core0:
-	case ixgbe_sfp_type_1g_sx_core1:
-#ifdef SUPPORT_1000BASE_LX
-	case ixgbe_sfp_type_1g_lx_core0:
-	case ixgbe_sfp_type_1g_lx_core1:
-#endif /* SUPPORT_1000BASE_LX */
-		setup_linear = false;
-		break;
-	default:
-		return IXGBE_ERR_SFP_NOT_SUPPORTED;
-	}
+
+	if (ret_val != IXGBE_SUCCESS)
+		return ret_val;
 
 	/* Configure CS4227 for connection rate. */
 	reg_slice = IXGBE_CS4227_LINE_SPARE22_MSB + (hw->bus.lan_id << 12);

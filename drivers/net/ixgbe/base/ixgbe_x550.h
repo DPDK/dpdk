@@ -102,4 +102,5 @@ s32 ixgbe_setup_mac_link_t_X550em(struct ixgbe_hw *hw,
 s32 ixgbe_check_link_t_X550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 			      bool *link_up, bool link_up_wait_to_complete);
 s32 ixgbe_reset_phy_t_X550em(struct ixgbe_hw *hw);
+s32 ixgbe_identify_sfp_module_X550em(struct ixgbe_hw *hw);
 #endif /* _IXGBE_X550_H_ */
