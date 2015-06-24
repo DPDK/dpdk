@@ -758,12 +758,17 @@ STATIC s32 ixgbe_iosf_wait(struct ixgbe_hw *hw, u32 *ctrl)
 s32 ixgbe_write_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 			    u32 device_type, u32 data)
 {
+	u32 gssr = IXGBE_GSSR_PHY1_SM | IXGBE_GSSR_PHY0_SM;
 	u32 command, error;
 	s32 ret;
 
-	ret = ixgbe_iosf_wait(hw, NULL);
+	ret = ixgbe_acquire_swfw_semaphore(hw, gssr);
 	if (ret != IXGBE_SUCCESS)
 		return ret;
+
+	ret = ixgbe_iosf_wait(hw, NULL);
+	if (ret != IXGBE_SUCCESS)
+		goto out;
 
 	command = ((reg_addr << IXGBE_SB_IOSF_CTRL_ADDR_SHIFT) |
 		   (device_type << IXGBE_SB_IOSF_CTRL_TARGET_SELECT_SHIFT));
@@ -781,9 +786,11 @@ s32 ixgbe_write_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 			 IXGBE_SB_IOSF_CTRL_CMPL_ERR_SHIFT;
 		ERROR_REPORT2(IXGBE_ERROR_POLLING,
 			      "Failed to write, error %x\n", error);
-		return IXGBE_ERR_PHY;
+		ret = IXGBE_ERR_PHY;
 	}
 
+out:
+	ixgbe_release_swfw_semaphore(hw, gssr);
 	return ret;
 }
 
@@ -798,12 +805,17 @@ s32 ixgbe_write_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 s32 ixgbe_read_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 			   u32 device_type, u32 *data)
 {
+	u32 gssr = IXGBE_GSSR_PHY1_SM | IXGBE_GSSR_PHY0_SM;
 	u32 command, error;
 	s32 ret;
 
-	ret = ixgbe_iosf_wait(hw, NULL);
+	ret = ixgbe_acquire_swfw_semaphore(hw, gssr);
 	if (ret != IXGBE_SUCCESS)
 		return ret;
+
+	ret = ixgbe_iosf_wait(hw, NULL);
+	if (ret != IXGBE_SUCCESS)
+		goto out;
 
 	command = ((reg_addr << IXGBE_SB_IOSF_CTRL_ADDR_SHIFT) |
 		   (device_type << IXGBE_SB_IOSF_CTRL_TARGET_SELECT_SHIFT));
@@ -818,15 +830,15 @@ s32 ixgbe_read_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 			 IXGBE_SB_IOSF_CTRL_CMPL_ERR_SHIFT;
 		ERROR_REPORT2(IXGBE_ERROR_POLLING,
 				"Failed to read, error %x\n", error);
-		return IXGBE_ERR_PHY;
+		ret = IXGBE_ERR_PHY;
 	}
 
-	if (ret != IXGBE_SUCCESS)
-		return ret;
+	if (ret == IXGBE_SUCCESS)
+		*data = IXGBE_READ_REG(hw, IXGBE_SB_IOSF_INDIRECT_DATA);
 
-	*data = IXGBE_READ_REG(hw, IXGBE_SB_IOSF_INDIRECT_DATA);
-
-	return IXGBE_SUCCESS;
+out:
+	ixgbe_release_swfw_semaphore(hw, gssr);
+	return ret;
 }
 
 /**
