@@ -117,7 +117,9 @@ STATIC s32 ixgbe_write_cs4227(struct ixgbe_hw *hw, u16 reg, u16 value)
  * ixgbe_get_cs4227_status - Return CS4227 status
  * @hw: pointer to hardware structure
  *
- * Returns error if CS4227 not successfully initialized
+ * Performs a diagnostic on the CS4227 chip. Returns an error if it is
+ * not operating correctly.
+ * This function assumes that the caller has acquired the proper semaphore.
  **/
 STATIC s32 ixgbe_get_cs4227_status(struct ixgbe_hw *hw)
 {
@@ -126,6 +128,7 @@ STATIC s32 ixgbe_get_cs4227_status(struct ixgbe_hw *hw)
 	u16 reg_slice, reg_val;
 	u8 retry;
 
+	/* Check register reads. */
 	for (retry = 0; retry < IXGBE_CS4227_RETRIES; ++retry) {
 		status = ixgbe_read_cs4227(hw, IXGBE_CS4227_GLOBAL_ID_LSB,
 					   &value);
@@ -146,8 +149,16 @@ STATIC s32 ixgbe_get_cs4227_status(struct ixgbe_hw *hw)
 	 * Otherwise, this will disrupt link on all ports. Because we
 	 * can only do this the first time, we must check all ports,
 	 * not just our own.
+	 * While we are at it, set the LINE side to 10G SR, which is
+	 * what it needs to be regardless of the actual link.
 	 */
 	if (value != IXGBE_CS4227_SCRATCH_VALUE) {
+		reg_slice = IXGBE_CS4227_LINE_SPARE22_MSB;
+		reg_val = IXGBE_CS4227_SPEED_10G;
+		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
+		if (status != IXGBE_SUCCESS)
+			return status;
+
 		reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB;
 		reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
 		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
@@ -156,6 +167,12 @@ STATIC s32 ixgbe_get_cs4227_status(struct ixgbe_hw *hw)
 
 		reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB;
 		reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
+		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
+		if (status != IXGBE_SUCCESS)
+			return status;
+
+		reg_slice = IXGBE_CS4227_LINE_SPARE22_MSB + (1 << 12);
+		reg_val = IXGBE_CS4227_SPEED_10G;
 		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
 		if (status != IXGBE_SUCCESS)
 			return status;
@@ -1765,6 +1782,67 @@ s32 ixgbe_setup_kx4_x550em(struct ixgbe_hw *hw)
 }
 
 /**
+ *  ixgbe_setup_mac_link_sfp_x550em - Setup internal/external the PHY for SFP
+ *  @hw: pointer to hardware structure
+ *
+ *  Configure the external PHY and the integrated KR PHY for SFP support.
+ **/
+s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
+				    ixgbe_link_speed speed,
+				    bool autoneg_wait_to_complete)
+{
+	s32 ret_val;
+	u16 reg_slice, reg_val;
+	bool setup_linear = false;
+	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
+
+	/* Check if SFP module is supported and linear */
+	ret_val = ixgbe_supported_sfp_modules_X550em(hw, &setup_linear);
+
+	/* If no SFP module present, then return success. Return success since
+	 * there is no reason to configure CS4227 and SFP not present error is
+	 * not excepted in the setup MAC link flow.
+	 */
+	if (ret_val == IXGBE_ERR_SFP_NOT_PRESENT)
+		return IXGBE_SUCCESS;
+
+	if (ret_val != IXGBE_SUCCESS)
+		return ret_val;
+
+	/* Configure CS4227 LINE side to 10G SR. */
+	reg_slice = IXGBE_CS4227_LINE_SPARE22_MSB + (hw->bus.lan_id << 12);
+	reg_val = IXGBE_CS4227_SPEED_10G;
+	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
+		reg_val);
+
+	reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB + (hw->bus.lan_id << 12);
+	reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
+	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
+		reg_val);
+
+	/* Configure CS4227 for HOST connection rate then type. */
+	reg_slice = IXGBE_CS4227_HOST_SPARE22_MSB + (hw->bus.lan_id << 12);
+	reg_val = (speed & IXGBE_LINK_SPEED_10GB_FULL) ?
+		IXGBE_CS4227_SPEED_10G : IXGBE_CS4227_SPEED_1G;
+	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
+					   reg_val);
+
+	reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB + (hw->bus.lan_id << 12);
+	if (setup_linear)
+		reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
+	else
+		reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
+	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
+					   reg_val);
+
+	/* If internal link mode is XFI, then setup XFI internal link. */
+	if (!(hw->phy.nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE))
+		ret_val = ixgbe_setup_ixfi_x550em(hw, &speed);
+
+	return ret_val;
+}
+
+/**
  *  ixgbe_setup_ixfi_x550em - Configure the KR PHY for iXFI mode.
  *  @hw: pointer to hardware structure
  *  @speed: the link speed to force
@@ -1907,69 +1985,6 @@ STATIC s32 ixgbe_ext_phy_t_x550em_get_link(struct ixgbe_hw *hw, bool *link_up)
 	*link_up = !!(autoneg_status & IXGBE_MDIO_AUTO_NEG_LINK_STATUS);
 
 	return IXGBE_SUCCESS;
-}
-
-/**
- *  ixgbe_setup_mac_link_sfp_x550em - Setup internal/external the PHY for SFP
- *  @hw: pointer to hardware structure
- *
- *  Configure the external PHY and the integrated KR PHY for SFP support.
- **/
-s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
-				    ixgbe_link_speed speed,
-				    bool autoneg_wait_to_complete)
-{
-	s32 ret_val;
-	u16 reg_slice, reg_val;
-	bool setup_linear = false;
-	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
-
-	/* Check if SFP module is supported and linear */
-	ret_val = ixgbe_supported_sfp_modules_X550em(hw, &setup_linear);
-
-	/* If no SFP module present, then return success. Return success since
-	 * there is no reason to configure CS4227 and SFP not present error is
-	 * not excepted in the setup MAC link flow.
-	 */
-	if (ret_val == IXGBE_ERR_SFP_NOT_PRESENT)
-		return IXGBE_SUCCESS;
-
-	if (ret_val != IXGBE_SUCCESS)
-		return ret_val;
-
-	/* Configure CS4227 for LINE connection rate then type. */
-	reg_slice = IXGBE_CS4227_LINE_SPARE22_MSB + (hw->bus.lan_id << 12);
-	reg_val = (speed & IXGBE_LINK_SPEED_10GB_FULL) ? 0 : 0x8000;
-	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-					   reg_val);
-
-	reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB + (hw->bus.lan_id << 12);
-	if (setup_linear)
-		reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
-	else
-		reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
-	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-					   reg_val);
-
-	/* Configure CS4227 for HOST connection rate then type. */
-	reg_slice = IXGBE_CS4227_HOST_SPARE22_MSB + (hw->bus.lan_id << 12);
-	reg_val = (speed & IXGBE_LINK_SPEED_10GB_FULL) ? 0 : 0x8000;
-	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-					   reg_val);
-
-	reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB + (hw->bus.lan_id << 12);
-	if (setup_linear)
-		reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
-	else
-		reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
-	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-					   reg_val);
-
-	/* If internal link mode is XFI, then setup XFI internal link. */
-	if (!(hw->phy.nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE))
-		ret_val = ixgbe_setup_ixfi_x550em(hw, &speed);
-
-	return ret_val;
 }
 
 /**
