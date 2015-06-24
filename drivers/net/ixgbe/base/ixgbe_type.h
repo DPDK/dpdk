@@ -625,6 +625,7 @@ struct ixgbe_dmac_config {
 #define IXGBE_EEER			0x043A0 /* EEE register */
 #define IXGBE_EEE_STAT			0x04398 /* EEE Status */
 #define IXGBE_EEE_SU			0x04380 /* EEE Set up */
+#define IXGBE_EEE_SU_TEEE_DLY_SHIFT	26
 #define IXGBE_TLPIC			0x041F4 /* EEE Tx LPI count */
 #define IXGBE_RLPIC			0x041F8 /* EEE Rx LPI count */
 
