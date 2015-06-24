@@ -829,7 +829,7 @@ s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
 
 	if (hw->mac.type == ixgbe_mac_X550) {
 		if (speed & IXGBE_LINK_SPEED_5GB_FULL) {
-			/* Set or unset auto-negotiation 1G advertisement */
+			/* Set or unset auto-negotiation 5G advertisement */
 			hw->phy.ops.read_reg(hw,
 				IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
 				IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
@@ -847,7 +847,7 @@ s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
 		}
 
 		if (speed & IXGBE_LINK_SPEED_2_5GB_FULL) {
-			/* Set or unset auto-negotiation 1G advertisement */
+			/* Set or unset auto-negotiation 2.5G advertisement */
 			hw->phy.ops.read_reg(hw,
 				IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
 				IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
