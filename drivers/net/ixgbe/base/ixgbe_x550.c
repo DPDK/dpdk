@@ -990,7 +990,7 @@ enum ixgbe_media_type ixgbe_get_media_type_X550em(struct ixgbe_hw *hw)
 }
 
 /**
- *  ixgbe_setup_sfp_modules_X550em - Setup SFP module
+ *  ixgbe_setup_sfp_modules_X550em - Setup MAC link ops
  *  @hw: pointer to hardware structure
  */
 s32 ixgbe_setup_sfp_modules_X550em(struct ixgbe_hw *hw)
@@ -1637,10 +1637,10 @@ STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
 }
 
 /**
- *  ixgbe_setup_mac_link_sfp_x550em - Configure the KR PHY for SFP.
+ *  ixgbe_setup_mac_link_sfp_x550em - Configure the CS4227 & KR PHY for SFP
  *  @hw: pointer to hardware structure
  *
- *  Configures the integrated KR PHY for SFP support.
+ *  Configure the external CS4227 PHY and the integrated KR PHY for SFP support.
  **/
 s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 				    ixgbe_link_speed speed,
@@ -1653,6 +1653,10 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 
 	/* Configure the external PHY. */
 	switch (hw->phy.sfp_type) {
+	case ixgbe_sfp_type_unknown:
+		return IXGBE_ERR_SFP_NOT_SUPPORTED;
+	case ixgbe_sfp_type_not_present:
+		return IXGBE_SUCCESS;
 	case ixgbe_sfp_type_da_cu_core0:
 	case ixgbe_sfp_type_da_cu_core1:
 		setup_linear = true;
