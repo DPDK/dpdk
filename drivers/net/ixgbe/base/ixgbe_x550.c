@@ -1540,7 +1540,11 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 			ret_val = ixgbe_setup_kr_speed_x550em(hw, speed);
 		}
 
-		phy->ops.enter_lplu = ixgbe_enter_lplu_t_x550em;
+		/* setup SW LPLU only for first revision */
+		if (!(IXGBE_FUSES0_REV1 & IXGBE_READ_REG(hw,
+						       IXGBE_FUSES0_GROUP(0))))
+			phy->ops.enter_lplu = ixgbe_enter_lplu_t_x550em;
+
 		phy->ops.handle_lasi = ixgbe_handle_lasi_ext_t_x550em;
 		phy->ops.reset = ixgbe_reset_phy_t_X550em;
 		break;
@@ -2739,6 +2743,10 @@ s32 ixgbe_enter_lplu_t_x550em(struct ixgbe_hw *hw)
 	ixgbe_link_speed lcd_speed;
 	u32 save_autoneg;
 	bool link_up;
+
+	/* SW LPLU not required on later HW revisions. */
+	if (IXGBE_FUSES0_REV1 & IXGBE_READ_REG(hw, IXGBE_FUSES0_GROUP(0)))
+		return IXGBE_SUCCESS;
 
 	/* If blocked by MNG FW, then don't restart AN */
 	if (ixgbe_check_reset_blocked(hw))
