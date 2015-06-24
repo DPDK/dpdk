@@ -1572,7 +1572,7 @@ s32 ixgbe_setup_kx4_x550em(struct ixgbe_hw *hw)
 	u32 reg_val;
 
 	status = ixgbe_read_iosf_sb_reg_x550(hw, IXGBE_KX4_LINK_CNTL_1,
-		IXGBE_SB_IOSF_TARGET_KX4_PCS0 + hw->bus.lan_id, &reg_val);
+		IXGBE_SB_IOSF_TARGET_KX4_PCS, &reg_val);
 	if (status)
 		return status;
 
@@ -1592,7 +1592,7 @@ s32 ixgbe_setup_kx4_x550em(struct ixgbe_hw *hw)
 	/* Restart auto-negotiation. */
 	reg_val |= IXGBE_KX4_LINK_CNTL_1_TETH_AN_RESTART;
 	status = ixgbe_write_iosf_sb_reg_x550(hw, IXGBE_KX4_LINK_CNTL_1,
-		IXGBE_SB_IOSF_TARGET_KX4_PCS0 + hw->bus.lan_id, reg_val);
+		IXGBE_SB_IOSF_TARGET_KX4_PCS, reg_val);
 
 	return status;
 }
