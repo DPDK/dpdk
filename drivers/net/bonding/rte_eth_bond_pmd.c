@@ -1361,6 +1361,11 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 		return -1;
 	}
 
+	/* If lsc interrupt is set, check initial slave's link status */
+	if (slave_eth_dev->driver->pci_drv.drv_flags & RTE_PCI_DRV_INTR_LSC)
+		bond_ethdev_lsc_event_callback(slave_eth_dev->data->port_id,
+				RTE_ETH_EVENT_INTR_LSC, &bonded_eth_dev->data->port_id);
+
 	return 0;
 }
 
