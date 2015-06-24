@@ -715,6 +715,39 @@ void ixgbe_set_ethertype_anti_spoofing_X550(struct ixgbe_hw *hw,
 }
 
 /**
+ * ixgbe_iosf_wait - Wait for IOSF command completion
+ * @hw: pointer to hardware structure
+ * @ctrl: pointer to location to receive final IOSF control value
+ *
+ * Returns failing status on timeout
+ *
+ * Note: ctrl can be NULL if the IOSF control register value is not needed
+ **/
+STATIC s32 ixgbe_iosf_wait(struct ixgbe_hw *hw, u32 *ctrl)
+{
+	u32 i, command = 0;
+
+	/* Check every 10 usec to see if the address cycle completed.
+	 * The SB IOSF BUSY bit will clear when the operation is
+	 * complete
+	 */
+	for (i = 0; i < IXGBE_MDIO_COMMAND_TIMEOUT; i++) {
+		command = IXGBE_READ_REG(hw, IXGBE_SB_IOSF_INDIRECT_CTRL);
+		if ((command & IXGBE_SB_IOSF_CTRL_BUSY) == 0)
+			break;
+		usec_delay(10);
+	}
+	if (ctrl)
+		*ctrl = command;
+	if (i == IXGBE_MDIO_COMMAND_TIMEOUT) {
+		ERROR_REPORT1(IXGBE_ERROR_POLLING, "Wait timed out\n");
+		return IXGBE_ERR_PHY;
+	}
+
+	return IXGBE_SUCCESS;
+}
+
+/**
  *  ixgbe_write_iosf_sb_reg_x550 - Writes a value to specified register of the IOSF
  *  device
  *  @hw: pointer to hardware structure
@@ -725,7 +758,12 @@ void ixgbe_set_ethertype_anti_spoofing_X550(struct ixgbe_hw *hw,
 s32 ixgbe_write_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 			    u32 device_type, u32 data)
 {
-	u32 i, command, error;
+	u32 command, error;
+	s32 ret;
+
+	ret = ixgbe_iosf_wait(hw, NULL);
+	if (ret != IXGBE_SUCCESS)
+		return ret;
 
 	command = ((reg_addr << IXGBE_SB_IOSF_CTRL_ADDR_SHIFT) |
 		   (device_type << IXGBE_SB_IOSF_CTRL_TARGET_SELECT_SHIFT));
@@ -735,18 +773,8 @@ s32 ixgbe_write_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 
 	/* Write IOSF data register */
 	IXGBE_WRITE_REG(hw, IXGBE_SB_IOSF_INDIRECT_DATA, data);
-	/*
-	 * Check every 10 usec to see if the address cycle completed.
-	 * The SB IOSF BUSY bit will clear when the operation is
-	 * complete
-	 */
-	for (i = 0; i < IXGBE_MDIO_COMMAND_TIMEOUT; i++) {
-		usec_delay(10);
 
-		command = IXGBE_READ_REG(hw, IXGBE_SB_IOSF_INDIRECT_CTRL);
-		if ((command & IXGBE_SB_IOSF_CTRL_BUSY) == 0)
-			break;
-	}
+	ret = ixgbe_iosf_wait(hw, &command);
 
 	if ((command & IXGBE_SB_IOSF_CTRL_RESP_STAT_MASK) != 0) {
 		error = (command & IXGBE_SB_IOSF_CTRL_CMPL_ERR_MASK) >>
@@ -756,12 +784,7 @@ s32 ixgbe_write_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 		return IXGBE_ERR_PHY;
 	}
 
-	if (i == IXGBE_MDIO_COMMAND_TIMEOUT) {
-		ERROR_REPORT1(IXGBE_ERROR_POLLING, "Write timed out\n");
-		return IXGBE_ERR_PHY;
-	}
-
-	return IXGBE_SUCCESS;
+	return ret;
 }
 
 /**
@@ -775,7 +798,12 @@ s32 ixgbe_write_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 s32 ixgbe_read_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 			   u32 device_type, u32 *data)
 {
-	u32 i, command, error;
+	u32 command, error;
+	s32 ret;
+
+	ret = ixgbe_iosf_wait(hw, NULL);
+	if (ret != IXGBE_SUCCESS)
+		return ret;
 
 	command = ((reg_addr << IXGBE_SB_IOSF_CTRL_ADDR_SHIFT) |
 		   (device_type << IXGBE_SB_IOSF_CTRL_TARGET_SELECT_SHIFT));
@@ -783,18 +811,7 @@ s32 ixgbe_read_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 	/* Write IOSF control register */
 	IXGBE_WRITE_REG(hw, IXGBE_SB_IOSF_INDIRECT_CTRL, command);
 
-	/*
-	 * Check every 10 usec to see if the address cycle completed.
-	 * The SB IOSF BUSY bit will clear when the operation is
-	 * complete
-	 */
-	for (i = 0; i < IXGBE_MDIO_COMMAND_TIMEOUT; i++) {
-		usec_delay(10);
-
-		command = IXGBE_READ_REG(hw, IXGBE_SB_IOSF_INDIRECT_CTRL);
-		if ((command & IXGBE_SB_IOSF_CTRL_BUSY) == 0)
-			break;
-	}
+	ret = ixgbe_iosf_wait(hw, &command);
 
 	if ((command & IXGBE_SB_IOSF_CTRL_RESP_STAT_MASK) != 0) {
 		error = (command & IXGBE_SB_IOSF_CTRL_CMPL_ERR_MASK) >>
@@ -804,10 +821,8 @@ s32 ixgbe_read_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 		return IXGBE_ERR_PHY;
 	}
 
-	if (i == IXGBE_MDIO_COMMAND_TIMEOUT) {
-		ERROR_REPORT1(IXGBE_ERROR_POLLING, "Read timed out\n");
-		return IXGBE_ERR_PHY;
-	}
+	if (ret != IXGBE_SUCCESS)
+		return ret;
 
 	*data = IXGBE_READ_REG(hw, IXGBE_SB_IOSF_INDIRECT_DATA);
 
