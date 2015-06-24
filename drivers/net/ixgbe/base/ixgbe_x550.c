@@ -664,6 +664,7 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 	u16 autoneg_eee_reg;
 	u32 link_reg;
 	s32 status;
+	u32 fuse;
 
 	DEBUGFUNC("ixgbe_setup_eee_X550");
 
@@ -684,6 +685,11 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 			hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
 				IXGBE_MDIO_AUTO_NEG_DEV_TYPE, autoneg_eee_reg);
 		} else if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR) {
+			/* Not supported on first revision. */
+			fuse = IXGBE_READ_REG(hw, IXGBE_FUSES0_GROUP(0));
+			if (!(fuse & IXGBE_FUSES0_REV1))
+				return IXGBE_SUCCESS;
+
 			status = ixgbe_read_iosf_sb_reg_x550(hw,
 				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
@@ -693,9 +699,8 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 			link_reg |= IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KR |
 				    IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX;
 
-			/* Must disable FEC when EEE is enabled. */
-			link_reg &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_AN_FEC_REQ |
-				IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC);
+			/* Don't advertise FEC capability when EEE enabled. */
+			link_reg &= ~IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC;
 
 			status = ixgbe_write_iosf_sb_reg_x550(hw,
 				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
@@ -727,9 +732,8 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 			link_reg &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KR |
 				IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX);
 
-			/* Enable FEC when EEE is disabled. */
-			link_reg |= (IXGBE_KRM_LINK_CTRL_1_TETH_AN_FEC_REQ |
-				IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC);
+			/* Advertise FEC capability when EEE is disabled. */
+			link_reg |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC;
 
 			status = ixgbe_write_iosf_sb_reg_x550(hw,
 				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
