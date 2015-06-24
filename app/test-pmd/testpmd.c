@@ -1474,6 +1474,12 @@ close_port(portid_t pid)
 
 		port = &ports[pi];
 		if (rte_atomic16_cmpset(&(port->port_status),
+			RTE_PORT_CLOSED, RTE_PORT_CLOSED) == 1) {
+			printf("Port %d is already closed\n", pi);
+			continue;
+		}
+
+		if (rte_atomic16_cmpset(&(port->port_status),
 			RTE_PORT_STOPPED, RTE_PORT_HANDLING) == 0) {
 			printf("Port %d is now not stopped\n", pi);
 			continue;
