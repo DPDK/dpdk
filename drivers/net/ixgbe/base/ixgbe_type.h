@@ -3832,6 +3832,8 @@ struct ixgbe_hw {
 
 #define IXGBE_NOT_IMPLEMENTED			0x7FFFFFFF
 
+#define IXGBE_FUSES0_GROUP(_i)         (0x11158 + ((_i) * 4))
+#define IXGBE_FUSES0_300MHZ            (1 << 5)
 
 #define IXGBE_KRM_PORT_CAR_GEN_CTRL(P)	((P) ? 0x8010 : 0x4010)
 #define IXGBE_KRM_LINK_CTRL_1(P)	((P) ? 0x820C : 0x420C)
