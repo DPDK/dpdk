@@ -80,6 +80,10 @@ s32 ixgbe_init_ops_X550(struct ixgbe_hw *hw)
 	mac->ops.mdd_event = ixgbe_mdd_event_X550;
 	mac->ops.restore_mdd_vf = ixgbe_restore_mdd_vf_X550;
 	mac->ops.disable_rx = ixgbe_disable_rx_x550;
+	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T) {
+		hw->mac.ops.led_on = ixgbe_led_on_t_X550em;
+		hw->mac.ops.led_off = ixgbe_led_off_t_X550em;
+	}
 	return ret_val;
 }
 
@@ -3132,4 +3136,52 @@ s32 ixgbe_reset_phy_t_X550em(struct ixgbe_hw *hw)
 
 	/* Configure Link Status Alarm and Temperature Threshold interrupts */
 	return ixgbe_enable_lasi_ext_t_x550em(hw);
+}
+
+/**
+ *  ixgbe_led_on_t_X550em - Turns on the software controllable LEDs.
+ *  @hw: pointer to hardware structure
+ *  @led_idx: led number to turn on
+ **/
+s32 ixgbe_led_on_t_X550em(struct ixgbe_hw *hw, u32 led_idx)
+{
+	u16 phy_data;
+
+	DEBUGFUNC("ixgbe_led_on_t_X550em");
+
+	if (led_idx >= IXGBE_X557_MAX_LED_INDEX)
+		return IXGBE_ERR_PARAM;
+
+	/* To turn on the LED, set mode to ON. */
+	ixgbe_read_phy_reg(hw, IXGBE_X557_LED_PROVISIONING + led_idx,
+			   IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE, &phy_data);
+	phy_data |= IXGBE_X557_LED_MANUAL_SET_MASK;
+	ixgbe_write_phy_reg(hw, IXGBE_X557_LED_PROVISIONING + led_idx,
+			    IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE, phy_data);
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ *  ixgbe_led_off_t_X550em - Turns off the software controllable LEDs.
+ *  @hw: pointer to hardware structure
+ *  @led_idx: led number to turn off
+ **/
+s32 ixgbe_led_off_t_X550em(struct ixgbe_hw *hw, u32 led_idx)
+{
+	u16 phy_data;
+
+	DEBUGFUNC("ixgbe_led_off_t_X550em");
+
+	if (led_idx >= IXGBE_X557_MAX_LED_INDEX)
+		return IXGBE_ERR_PARAM;
+
+	/* To turn on the LED, set mode to ON. */
+	ixgbe_read_phy_reg(hw, IXGBE_X557_LED_PROVISIONING + led_idx,
+			   IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE, &phy_data);
+	phy_data &= ~IXGBE_X557_LED_MANUAL_SET_MASK;
+	ixgbe_write_phy_reg(hw, IXGBE_X557_LED_PROVISIONING + led_idx,
+			    IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE, phy_data);
+
+	return IXGBE_SUCCESS;
 }
