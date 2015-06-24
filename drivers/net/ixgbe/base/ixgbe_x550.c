@@ -2929,7 +2929,7 @@ s32 ixgbe_setup_fc_X550em(struct ixgbe_hw *hw)
 		goto out;
 	}
 
-	if (hw->phy.media_type == ixgbe_media_type_backplane) {
+	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR) {
 		ret_val = ixgbe_read_iosf_sb_reg_x550(hw,
 			IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
 			IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
@@ -2945,9 +2945,8 @@ s32 ixgbe_setup_fc_X550em(struct ixgbe_hw *hw)
 			IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
 			IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 
-		/* Not all devices fully support AN. */
-		if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR)
-			hw->fc.disable_fc_autoneg = true;
+		/* This device does not fully support AN. */
+		hw->fc.disable_fc_autoneg = true;
 	}
 
 out:
