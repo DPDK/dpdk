@@ -118,6 +118,7 @@ STATIC s32 ixgbe_get_cs4227_status(struct ixgbe_hw *hw)
 {
 	s32 status;
 	u16 value = 0;
+	u16 reg_slice, reg_val;
 	u8 retry;
 
 	for (retry = 0; retry < IXGBE_CS4227_RETRIES; ++retry) {
@@ -132,6 +133,77 @@ STATIC s32 ixgbe_get_cs4227_status(struct ixgbe_hw *hw)
 	if (value != IXGBE_CS4227_GLOBAL_ID_VALUE)
 		return IXGBE_ERR_PHY;
 
+	status = ixgbe_read_cs4227(hw, IXGBE_CS4227_SCRATCH, &value);
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* If this is the first time after power-on, check the ucode.
+	 * Otherwise, this will disrupt link on all ports. Because we
+	 * can only do this the first time, we must check all ports,
+	 * not just our own.
+	 */
+	if (value != IXGBE_CS4227_SCRATCH_VALUE) {
+		reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB;
+		reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
+		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
+		if (status != IXGBE_SUCCESS)
+			return status;
+
+		reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB;
+		reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
+		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
+		if (status != IXGBE_SUCCESS)
+			return status;
+
+		reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB + (1 << 12);
+		reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
+		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
+		if (status != IXGBE_SUCCESS)
+			return status;
+
+		reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB + (1 << 12);
+		reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
+		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
+		if (status != IXGBE_SUCCESS)
+			return status;
+
+		msec_delay(10);
+	}
+
+	/* Verify that the ucode is operational on all ports. */
+	reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB;
+	reg_val = 0xFFFF;
+	status = ixgbe_read_cs4227(hw, reg_slice, &reg_val);
+	if (status != IXGBE_SUCCESS)
+		return status;
+	if (reg_val != 0)
+		return IXGBE_ERR_PHY;
+
+	reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB;
+	reg_val = 0xFFFF;
+	status = ixgbe_read_cs4227(hw, reg_slice, &reg_val);
+	if (status != IXGBE_SUCCESS)
+		return status;
+	if (reg_val != 0)
+		return IXGBE_ERR_PHY;
+
+	reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB + (1 << 12);
+	reg_val = 0xFFFF;
+	status = ixgbe_read_cs4227(hw, reg_slice, &reg_val);
+	if (status != IXGBE_SUCCESS)
+		return status;
+	if (reg_val != 0)
+		return IXGBE_ERR_PHY;
+
+	reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB + (1 << 12);
+	reg_val = 0xFFFF;
+	status = ixgbe_read_cs4227(hw, reg_slice, &reg_val);
+	if (status != IXGBE_SUCCESS)
+		return status;
+	if (reg_val != 0)
+		return IXGBE_ERR_PHY;
+
+	/* Set scratch indicating that the diagnostic was successful. */
 	status = ixgbe_write_cs4227(hw, IXGBE_CS4227_SCRATCH,
 				    IXGBE_CS4227_SCRATCH_VALUE);
 	if (status != IXGBE_SUCCESS)
@@ -141,6 +213,7 @@ STATIC s32 ixgbe_get_cs4227_status(struct ixgbe_hw *hw)
 		return status;
 	if (value != IXGBE_CS4227_SCRATCH_VALUE)
 		return IXGBE_ERR_PHY;
+
 	return IXGBE_SUCCESS;
 }
 
@@ -1765,13 +1838,12 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 	if (ret_val != IXGBE_SUCCESS)
 		return ret_val;
 
-	/* Configure CS4227 for connection rate. */
+	/* Configure CS4227 for LINE connection rate then type. */
 	reg_slice = IXGBE_CS4227_LINE_SPARE22_MSB + (hw->bus.lan_id << 12);
 	reg_val = (speed & IXGBE_LINK_SPEED_10GB_FULL) ? 0 : 0x8000;
 	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
 					   reg_val);
 
-	/* Configure CS4227 for connection type. */
 	reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB + (hw->bus.lan_id << 12);
 	if (setup_linear)
 		reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
@@ -1780,12 +1852,12 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
 					   reg_val);
 
+	/* Configure CS4227 for HOST connection rate then type. */
 	reg_slice = IXGBE_CS4227_HOST_SPARE22_MSB + (hw->bus.lan_id << 12);
 	reg_val = (speed & IXGBE_LINK_SPEED_10GB_FULL) ? 0 : 0x8000;
 	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
 					   reg_val);
 
-	/* Configure CS4227 for connection type. */
 	reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB + (hw->bus.lan_id << 12);
 	if (setup_linear)
 		reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
