@@ -1648,7 +1648,7 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 {
 	s32 ret_val;
 	u16 reg_slice, reg_val;
-	bool setup_linear;
+	bool setup_linear = false;
 	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
 
 	/* Configure the external PHY. */
