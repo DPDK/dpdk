@@ -2481,6 +2481,7 @@ s32 ixgbe_enter_lplu_t_x550em(struct ixgbe_hw *hw)
 	u16 autoneg_status, an_10g_cntl_reg, autoneg_reg, speed;
 	s32 status;
 	ixgbe_link_speed lcd_speed;
+	u32 save_autoneg;
 
 	/* If blocked by MNG FW, then don't restart AN */
 	if (ixgbe_check_reset_blocked(hw))
@@ -2556,8 +2557,13 @@ s32 ixgbe_enter_lplu_t_x550em(struct ixgbe_hw *hw)
 	if (status != IXGBE_SUCCESS)
 		return status;
 
+	save_autoneg = hw->phy.autoneg_advertised;
+
 	/* Setup link at least common link speed */
 	status = hw->mac.ops.setup_link(hw, lcd_speed, false);
+
+	/* restore autoneg from before setting lplu speed */
+	hw->phy.autoneg_advertised = save_autoneg;
 
 	return status;
 }
