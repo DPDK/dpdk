@@ -111,6 +111,8 @@
 
 static uint64_t baseaddr_offset;
 
+static unsigned proc_pagemap_readable;
+
 #define RANDOMIZE_VA_SPACE_FILE "/proc/sys/kernel/randomize_va_space"
 
 /* Lock page in physical memory and prevent from swapping. */
@@ -134,6 +136,10 @@ rte_mem_virt2phy(const void *virtaddr)
 	unsigned long virt_pfn;
 	int page_size;
 	off_t offset;
+
+	/* Cannot parse /proc/self/pagemap, no need to log errors everywhere */
+	if (!proc_pagemap_readable)
+		return RTE_BAD_PHYS_ADDR;
 
 	/* standard page size */
 	page_size = getpagesize();
@@ -1546,12 +1552,32 @@ rte_eal_memdevice_init(void)
 	return 0;
 }
 
+static int
+test_proc_pagemap_readable(void)
+{
+	int fd = open("/proc/self/pagemap", O_RDONLY);
+
+	if (fd < 0)
+		return 0;
+	/* Is readable */
+	close(fd);
+
+	return 1;
+}
 
 /* init memory subsystem */
 int
 rte_eal_memory_init(void)
 {
 	RTE_LOG(INFO, EAL, "Setting up memory...\n");
+
+	proc_pagemap_readable = test_proc_pagemap_readable();
+	if (!proc_pagemap_readable)
+		RTE_LOG(ERR, EAL,
+			"Cannot open /proc/self/pagemap: %s. "
+			"virt2phys address translation will not work\n",
+			strerror(errno));
+
 	const int retval = rte_eal_process_type() == RTE_PROC_PRIMARY ?
 			rte_eal_hugepage_init() :
 			rte_eal_hugepage_attach();
