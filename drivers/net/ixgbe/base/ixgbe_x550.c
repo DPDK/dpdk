@@ -2556,48 +2556,8 @@ s32 ixgbe_enter_lplu_t_x550em(struct ixgbe_hw *hw)
 	if (status != IXGBE_SUCCESS)
 		return status;
 
-	/* Set AN advertizement to only include LCD  */
-	if (lcd_speed == IXGBE_LINK_SPEED_1GB_FULL) {
-		an_10g_cntl_reg &= ~IXGBE_MII_10GBASE_T_ADVERTISE;
-		autoneg_reg |= IXGBE_MII_1GBASE_T_ADVERTISE;
-	}
-
-	if (lcd_speed == IXGBE_LINK_SPEED_10GB_FULL) {
-		an_10g_cntl_reg |= IXGBE_MII_10GBASE_T_ADVERTISE;
-		autoneg_reg &= ~IXGBE_MII_1GBASE_T_ADVERTISE;
-	}
-
-	status = hw->phy.ops.write_reg(hw, IXGBE_MII_10GBASE_T_AUTONEG_CTRL_REG,
-			      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-			      an_10g_cntl_reg);
-
-	if (status != IXGBE_SUCCESS)
-		return status;
-
-	status = hw->phy.ops.write_reg(hw,
-			      IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
-			      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-			      autoneg_reg);
-
-	if (status != IXGBE_SUCCESS)
-		return status;
-
-	/* Restart PHY auto-negotiation. */
-	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_CONTROL,
-			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &autoneg_reg);
-
-	if (status != IXGBE_SUCCESS)
-		return status;
-
-	autoneg_reg |= IXGBE_MII_RESTART;
-
-	status = hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_CONTROL,
-			      IXGBE_MDIO_AUTO_NEG_DEV_TYPE, autoneg_reg);
-
-	if (status != IXGBE_SUCCESS)
-		return status;
-
-	status = ixgbe_setup_ixfi_x550em(hw, &lcd_speed);
+	/* Setup link at least common link speed */
+	status = hw->mac.ops.setup_link(hw, lcd_speed, false);
 
 	return status;
 }
