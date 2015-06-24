@@ -34,6 +34,24 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_api.h"
 #include "ixgbe_common.h"
 
+#define IXGBE_EMPTY_PARAM
+
+static const u32 ixgbe_mvals_base[IXGBE_MVALS_IDX_LIMIT] = {
+	IXGBE_MVALS_INIT(IXGBE_EMPTY_PARAM)
+};
+
+static const u32 ixgbe_mvals_X540[IXGBE_MVALS_IDX_LIMIT] = {
+	IXGBE_MVALS_INIT(_X540)
+};
+
+static const u32 ixgbe_mvals_X550[IXGBE_MVALS_IDX_LIMIT] = {
+	IXGBE_MVALS_INIT(_X550)
+};
+
+static const u32 ixgbe_mvals_X550EM_x[IXGBE_MVALS_IDX_LIMIT] = {
+	IXGBE_MVALS_INIT(_X550EM_x)
+};
+
 /**
  * ixgbe_dcb_get_rtrup2tc - read rtrup2tc reg
  * @hw: pointer to hardware structure
@@ -119,6 +137,8 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 		return IXGBE_ERR_DEVICE_NOT_SUPPORTED;
 	}
 
+	hw->mvals = ixgbe_mvals_base;
+
 	switch (hw->device_id) {
 	case IXGBE_DEV_ID_82598:
 	case IXGBE_DEV_ID_82598_BX:
@@ -159,13 +179,16 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_X540_VF:
 	case IXGBE_DEV_ID_X540_VF_HV:
 		hw->mac.type = ixgbe_mac_X540_vf;
+		hw->mvals = ixgbe_mvals_X540;
 		break;
 	case IXGBE_DEV_ID_X540T:
 	case IXGBE_DEV_ID_X540T1:
 		hw->mac.type = ixgbe_mac_X540;
+		hw->mvals = ixgbe_mvals_X540;
 		break;
 	case IXGBE_DEV_ID_X550T:
 		hw->mac.type = ixgbe_mac_X550;
+		hw->mvals = ixgbe_mvals_X550;
 		break;
 	case IXGBE_DEV_ID_X550EM_X_KX4:
 	case IXGBE_DEV_ID_X550EM_X_KR:
@@ -173,14 +196,17 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_X550EM_X_1G_T:
 	case IXGBE_DEV_ID_X550EM_X_SFP:
 		hw->mac.type = ixgbe_mac_X550EM_x;
+		hw->mvals = ixgbe_mvals_X550EM_x;
 		break;
 	case IXGBE_DEV_ID_X550_VF:
 	case IXGBE_DEV_ID_X550_VF_HV:
 		hw->mac.type = ixgbe_mac_X550_vf;
+		hw->mvals = ixgbe_mvals_X550;
 		break;
 	case IXGBE_DEV_ID_X550EM_X_VF:
 	case IXGBE_DEV_ID_X550EM_X_VF_HV:
 		hw->mac.type = ixgbe_mac_X550EM_x_vf;
+		hw->mvals = ixgbe_mvals_X550EM_x;
 		break;
 	default:
 		ret_val = IXGBE_ERR_DEVICE_NOT_SUPPORTED;
