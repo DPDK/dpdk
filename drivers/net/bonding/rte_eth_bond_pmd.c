@@ -1525,8 +1525,8 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 		bond_mode_8023ad_stop(eth_dev);
 
 		/* Discard all messages to/from mode 4 state machines */
-		for (i = 0; i < internals->slave_count; i++) {
-			port = &mode_8023ad_ports[internals->slaves[i].port_id];
+		for (i = 0; i < internals->active_slave_count; i++) {
+			port = &mode_8023ad_ports[internals->active_slaves[i]];
 
 			RTE_VERIFY(port->rx_ring != NULL);
 			while (rte_ring_dequeue(port->rx_ring, &pkt) != -ENOENT)
