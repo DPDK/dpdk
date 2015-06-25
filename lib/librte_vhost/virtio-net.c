@@ -45,6 +45,7 @@
 #include <rte_log.h>
 #include <rte_string_fns.h>
 #include <rte_memory.h>
+#include <rte_malloc.h>
 #include <rte_virtio_net.h>
 
 #include "vhost-net.h"
@@ -203,9 +204,9 @@ static void
 free_device(struct virtio_net_config_ll *ll_dev)
 {
 	/* Free any malloc'd memory */
-	free(ll_dev->dev.virtqueue[VIRTIO_RXQ]);
-	free(ll_dev->dev.virtqueue[VIRTIO_TXQ]);
-	free(ll_dev);
+	rte_free(ll_dev->dev.virtqueue[VIRTIO_RXQ]);
+	rte_free(ll_dev->dev.virtqueue[VIRTIO_TXQ]);
+	rte_free(ll_dev);
 }
 
 /*
@@ -279,7 +280,7 @@ new_device(struct vhost_device_ctx ctx)
 	struct vhost_virtqueue *virtqueue_rx, *virtqueue_tx;
 
 	/* Setup device and virtqueues. */
-	new_ll_dev = malloc(sizeof(struct virtio_net_config_ll));
+	new_ll_dev = rte_malloc(NULL, sizeof(struct virtio_net_config_ll), 0);
 	if (new_ll_dev == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%"PRIu64") Failed to allocate memory for dev.\n",
@@ -287,19 +288,19 @@ new_device(struct vhost_device_ctx ctx)
 		return -1;
 	}
 
-	virtqueue_rx = malloc(sizeof(struct vhost_virtqueue));
+	virtqueue_rx = rte_malloc(NULL, sizeof(struct vhost_virtqueue), 0);
 	if (virtqueue_rx == NULL) {
-		free(new_ll_dev);
+		rte_free(new_ll_dev);
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%"PRIu64") Failed to allocate memory for rxq.\n",
 			ctx.fh);
 		return -1;
 	}
 
-	virtqueue_tx = malloc(sizeof(struct vhost_virtqueue));
+	virtqueue_tx = rte_malloc(NULL, sizeof(struct vhost_virtqueue), 0);
 	if (virtqueue_tx == NULL) {
-		free(virtqueue_rx);
-		free(new_ll_dev);
+		rte_free(virtqueue_rx);
+		rte_free(new_ll_dev);
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%"PRIu64") Failed to allocate memory for txq.\n",
 			ctx.fh);
