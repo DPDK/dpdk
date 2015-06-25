@@ -38,6 +38,9 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#ifdef RTE_LIBRTE_VHOST_NUMA
+#include <numaif.h>
+#endif
 
 #include <sys/socket.h>
 
@@ -482,6 +485,88 @@ set_vring_num(struct vhost_device_ctx ctx, struct vhost_vring_state *state)
 }
 
 /*
+ * Reallocate virtio_det and vhost_virtqueue data structure to make them on the
+ * same numa node as the memory of vring descriptor.
+ */
+#ifdef RTE_LIBRTE_VHOST_NUMA
+static struct virtio_net*
+numa_realloc(struct virtio_net *dev, int index)
+{
+	int oldnode, newnode;
+	struct virtio_net_config_ll *old_ll_dev, *new_ll_dev = NULL;
+	struct vhost_virtqueue *old_vq, *new_vq = NULL;
+	int ret;
+	int realloc_dev = 0, realloc_vq = 0;
+
+	old_ll_dev = (struct virtio_net_config_ll *)dev;
+	old_vq = dev->virtqueue[index];
+
+	ret  = get_mempolicy(&newnode, NULL, 0, old_vq->desc,
+			MPOL_F_NODE | MPOL_F_ADDR);
+	ret = ret | get_mempolicy(&oldnode, NULL, 0, old_ll_dev,
+			MPOL_F_NODE | MPOL_F_ADDR);
+	if (ret) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Unable to get vring desc or dev numa information.\n");
+		return dev;
+	}
+	if (oldnode != newnode)
+		realloc_dev = 1;
+
+	ret = get_mempolicy(&oldnode, NULL, 0, old_vq,
+			MPOL_F_NODE | MPOL_F_ADDR);
+	if (ret) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Unable to get vq numa information.\n");
+		return dev;
+	}
+	if (oldnode != newnode)
+		realloc_vq = 1;
+
+	if (realloc_dev == 0 && realloc_vq == 0)
+		return dev;
+
+	if (realloc_dev)
+		new_ll_dev = rte_malloc_socket(NULL,
+			sizeof(struct virtio_net_config_ll), 0, newnode);
+	if (realloc_vq)
+		new_vq = rte_malloc_socket(NULL,
+			sizeof(struct vhost_virtqueue), 0, newnode);
+	if (!new_ll_dev && !new_vq)
+		return dev;
+
+	if (realloc_vq)
+		memcpy(new_vq, old_vq, sizeof(*new_vq));
+	if (realloc_dev)
+		memcpy(new_ll_dev, old_ll_dev, sizeof(*new_ll_dev));
+	(new_ll_dev ? new_ll_dev : old_ll_dev)->dev.virtqueue[index] =
+		new_vq ? new_vq : old_vq;
+	if (realloc_vq)
+		rte_free(old_vq);
+	if (realloc_dev) {
+		if (ll_root == old_ll_dev)
+			ll_root = new_ll_dev;
+		else {
+			struct virtio_net_config_ll *prev = ll_root;
+			while (prev->next != old_ll_dev)
+				prev = prev->next;
+			prev->next = new_ll_dev;
+			new_ll_dev->next = old_ll_dev->next;
+		}
+		rte_free(old_ll_dev);
+	}
+
+	return realloc_dev ? &new_ll_dev->dev : dev;
+}
+#else
+static struct virtio_net*
+numa_realloc(struct virtio_net *dev, int index __rte_unused)
+{
+	return dev;
+}
+#endif
+
+/*
  * Called from CUSE IOCTL: VHOST_SET_VRING_ADDR
  * The virtio device sends us the desc, used and avail ring addresses.
  * This function then converts these to our address space.
@@ -508,6 +593,9 @@ set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
 			dev->device_fh);
 		return -1;
 	}
+
+	dev = numa_realloc(dev, addr->index);
+	vq = dev->virtqueue[addr->index];
 
 	vq->avail = (struct vring_avail *)(uintptr_t)qva_to_vva(dev,
 			addr->avail_user_addr);

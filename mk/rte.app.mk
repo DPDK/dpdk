@@ -92,6 +92,10 @@ endif # ! CONFIG_RTE_BUILD_COMBINE_LIBS
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_PCAP)       += -lpcap
 
+ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
+_LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lnuma
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_USER),n)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lfuse
 endif

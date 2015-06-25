@@ -46,6 +46,10 @@ CFLAGS += -I vhost_cuse -lfuse
 LDFLAGS += -lfuse
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
+LDFLAGS += -lnuma
+endif
+
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_VHOST) := virtio-net.c vhost_rxtx.c
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_USER),y)
