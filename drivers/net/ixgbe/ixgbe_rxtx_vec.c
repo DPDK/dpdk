@@ -134,19 +134,10 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
  */
 #ifdef RTE_IXGBE_RX_OLFLAGS_ENABLE
 
-#ifdef RTE_NEXT_ABI
-#define OLFLAGS_MASK_V  (((uint64_t)PKT_RX_VLAN_PKT << 48) | \
-			((uint64_t)PKT_RX_VLAN_PKT << 32) | \
-			((uint64_t)PKT_RX_VLAN_PKT << 16) | \
-			((uint64_t)PKT_RX_VLAN_PKT))
-#else
-#define OLFLAGS_MASK     ((uint16_t)(PKT_RX_VLAN_PKT | PKT_RX_IPV4_HDR |\
-				     PKT_RX_IPV4_HDR_EXT | PKT_RX_IPV6_HDR |\
-				     PKT_RX_IPV6_HDR_EXT))
-#define OLFLAGS_MASK_V   (((uint64_t)OLFLAGS_MASK << 48) | \
-			  ((uint64_t)OLFLAGS_MASK << 32) | \
-			  ((uint64_t)OLFLAGS_MASK << 16) | \
-			  ((uint64_t)OLFLAGS_MASK))
+#ifndef RTE_NEXT_ABI
+#define OLFLAGS_MASK	((uint16_t)(PKT_RX_VLAN_PKT | PKT_RX_IPV4_HDR |\
+			PKT_RX_IPV4_HDR_EXT | PKT_RX_IPV6_HDR |\
+			PKT_RX_IPV6_HDR_EXT))
 #define PTYPE_SHIFT    (1)
 #endif /* RTE_NEXT_ABI */
 
@@ -156,23 +147,65 @@ static inline void
 desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 {
 #ifdef RTE_NEXT_ABI
-	__m128i vtag0, vtag1;
+	__m128i ptype0, ptype1, vtag0, vtag1;
 	union {
 		uint16_t e[4];
 		uint64_t dword;
 	} vol;
 
+	/* pkt type + vlan olflags mask */
+	const __m128i pkttype_msk = _mm_set_epi16(
+			0x0000, 0x0000, 0x0000, 0x0000,
+			PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT);
+
+	/* mask everything except rss type */
+	const __m128i rsstype_msk = _mm_set_epi16(
+			0x0000, 0x0000, 0x0000, 0x0000,
+			0x000F, 0x000F, 0x000F, 0x000F);
+
+	/* map rss type to rss hash flag */
+	const __m128i rss_flags = _mm_set_epi8(PKT_RX_FDIR, 0, 0, 0,
+			0, 0, 0, PKT_RX_RSS_HASH,
+			PKT_RX_RSS_HASH, 0, PKT_RX_RSS_HASH, 0,
+			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, 0);
+
+	ptype0 = _mm_unpacklo_epi16(descs[0], descs[1]);
+	ptype1 = _mm_unpacklo_epi16(descs[2], descs[3]);
 	vtag0 = _mm_unpackhi_epi16(descs[0], descs[1]);
 	vtag1 = _mm_unpackhi_epi16(descs[2], descs[3]);
+
+	ptype0 = _mm_unpacklo_epi32(ptype0, ptype1);
+	ptype0 = _mm_and_si128(ptype0, rsstype_msk);
+	ptype0 = _mm_shuffle_epi8(rss_flags, ptype0);
+
 	vtag1 = _mm_unpacklo_epi32(vtag0, vtag1);
 	vtag1 = _mm_srli_epi16(vtag1, VTAG_SHIFT);
-	vol.dword = _mm_cvtsi128_si64(vtag1) & OLFLAGS_MASK_V;
+	vtag1 = _mm_and_si128(vtag1, pkttype_msk);
+
+	vtag1 = _mm_or_si128(ptype0, vtag1);
+	vol.dword = _mm_cvtsi128_si64(vtag1);
 #else
 	__m128i ptype0, ptype1, vtag0, vtag1;
 	union {
 		uint16_t e[4];
 		uint64_t dword;
 	} vol;
+
+	/* pkt type + vlan olflags mask */
+	const __m128i pkttype_msk = _mm_set_epi16(
+			0x0000, 0x0000, 0x0000, 0x0000,
+			OLFLAGS_MASK, OLFLAGS_MASK, OLFLAGS_MASK, OLFLAGS_MASK);
+
+	/* mask everything except rss type */
+	const __m128i rsstype_msk = _mm_set_epi16(
+			0x0000, 0x0000, 0x0000, 0x0000,
+			0x000F, 0x000F, 0x000F, 0x000F);
+
+	/* rss type to PKT_RX_RSS_HASH translation */
+	const __m128i rss_flags = _mm_set_epi8(PKT_RX_FDIR, 0, 0, 0,
+			0, 0, 0, PKT_RX_RSS_HASH,
+			PKT_RX_RSS_HASH, 0, PKT_RX_RSS_HASH, 0,
+			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, 0);
 
 	ptype0 = _mm_unpacklo_epi16(descs[0], descs[1]);
 	ptype1 = _mm_unpacklo_epi16(descs[2], descs[3]);
@@ -182,11 +215,18 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 	ptype1 = _mm_unpacklo_epi32(ptype0, ptype1);
 	vtag1 = _mm_unpacklo_epi32(vtag0, vtag1);
 
+	ptype0 = _mm_and_si128(ptype1, rsstype_msk);
+	ptype0 = _mm_shuffle_epi8(rss_flags, ptype0);
+
 	ptype1 = _mm_slli_epi16(ptype1, PTYPE_SHIFT);
 	vtag1 = _mm_srli_epi16(vtag1, VTAG_SHIFT);
 
 	ptype1 = _mm_or_si128(ptype1, vtag1);
-	vol.dword = _mm_cvtsi128_si64(ptype1) & OLFLAGS_MASK_V;
+	ptype1 = _mm_and_si128(ptype1, pkttype_msk);
+
+	ptype0 = _mm_or_si128(ptype0, ptype1);
+
+	vol.dword = _mm_cvtsi128_si64(ptype0);
 #endif /* RTE_NEXT_ABI */
 
 	rx_pkts[0]->ol_flags = vol.e[0];
@@ -313,6 +353,9 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	for (pos = 0, nb_pkts_recd = 0; pos < RTE_IXGBE_VPMD_RX_BURST;
 			pos += RTE_IXGBE_DESCS_PER_LOOP,
 			rxdp += RTE_IXGBE_DESCS_PER_LOOP) {
+#ifdef RTE_NEXT_ABI
+		__m128i descs0[RTE_IXGBE_DESCS_PER_LOOP];
+#endif /* RTE_NEXT_ABI */
 		__m128i descs[RTE_IXGBE_DESCS_PER_LOOP];
 		__m128i pkt_mb1, pkt_mb2, pkt_mb3, pkt_mb4;
 		__m128i zero, staterr, sterr_tmp1, sterr_tmp2;
@@ -328,6 +371,33 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		/* B.1 load 1 mbuf point */
 		mbp1 = _mm_loadu_si128((__m128i *)&sw_ring[pos]);
 
+#ifdef RTE_NEXT_ABI
+		/* Read desc statuses backwards to avoid race condition */
+		/* A.1 load 4 pkts desc */
+		descs0[3] = _mm_loadu_si128((__m128i *)(rxdp + 3));
+
+		/* B.2 copy 2 mbuf point into rx_pkts  */
+		_mm_storeu_si128((__m128i *)&rx_pkts[pos], mbp1);
+
+		/* B.1 load 1 mbuf point */
+		mbp2 = _mm_loadu_si128((__m128i *)&sw_ring[pos+2]);
+
+		descs0[2] = _mm_loadu_si128((__m128i *)(rxdp + 2));
+		/* B.1 load 2 mbuf point */
+		descs0[1] = _mm_loadu_si128((__m128i *)(rxdp + 1));
+		descs0[0] = _mm_loadu_si128((__m128i *)(rxdp));
+
+		/* B.2 copy 2 mbuf point into rx_pkts  */
+		_mm_storeu_si128((__m128i *)&rx_pkts[pos+2], mbp2);
+
+		/* A* mask out 0~3 bits RSS type */
+		descs[3] = _mm_and_si128(descs0[3], desc_mask);
+		descs[2] = _mm_and_si128(descs0[2], desc_mask);
+
+		/* A* mask out 0~3 bits RSS type */
+		descs[1] = _mm_and_si128(descs0[1], desc_mask);
+		descs[0] = _mm_and_si128(descs0[0], desc_mask);
+#else
 		/* Read desc statuses backwards to avoid race condition */
 		/* A.1 load 4 pkts desc */
 		descs[3] = _mm_loadu_si128((__m128i *)(rxdp + 3));
@@ -336,7 +406,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		_mm_storeu_si128((__m128i *)&rx_pkts[pos], mbp1);
 
 		/* B.1 load 1 mbuf point */
-		mbp2 = _mm_loadu_si128((__m128i *)&sw_ring[pos+2]);
+		mbp2 = _mm_loadu_si128((__m128i *)&sw_ring[pos + 2]);
 
 		descs[2] = _mm_loadu_si128((__m128i *)(rxdp + 2));
 		/* B.1 load 2 mbuf point */
@@ -344,16 +414,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		descs[0] = _mm_loadu_si128((__m128i *)(rxdp));
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
-		_mm_storeu_si128((__m128i *)&rx_pkts[pos+2], mbp2);
-
-#ifdef RTE_NEXT_ABI
-		/* A* mask out 0~3 bits RSS type */
-		descs[3] = _mm_and_si128(descs[3], desc_mask);
-		descs[2] = _mm_and_si128(descs[2], desc_mask);
-
-		/* A* mask out 0~3 bits RSS type */
-		descs[1] = _mm_and_si128(descs[1], desc_mask);
-		descs[0] = _mm_and_si128(descs[0], desc_mask);
+		_mm_storeu_si128((__m128i *)&rx_pkts[pos + 2], mbp2);
 #endif /* RTE_NEXT_ABI */
 
 		/* avoid compiler reorder optimization */
@@ -370,10 +431,11 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 #ifdef RTE_NEXT_ABI
 		/* set ol_flags with vlan packet type */
+		desc_to_olflags_v(descs0, &rx_pkts[pos]);
 #else
 		/* set ol_flags with packet type and vlan tag */
-#endif /* RTE_NEXT_ABI */
 		desc_to_olflags_v(descs, &rx_pkts[pos]);
+#endif /* RTE_NEXT_ABI */
 
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
 		pkt_mb4 = _mm_add_epi16(pkt_mb4, crc_adjust);
