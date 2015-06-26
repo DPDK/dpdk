@@ -790,13 +790,9 @@ fm10k_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
-	if (hw->mac.default_vid && hw->mac.default_vid <= ETHER_MAX_VLAN_ID) {
-		/* Update default vlan */
+	/* Update default vlan */
+	if (hw->mac.default_vid && hw->mac.default_vid <= ETHER_MAX_VLAN_ID)
 		fm10k_vlan_filter_set(dev, hw->mac.default_vid, true);
-
-		/* Add default mac/vlan filter to PF/Switch manager */
-		fm10k_MAC_filter_set(dev, hw->mac.addr, true);
-	}
 
 	return 0;
 }
@@ -2152,6 +2148,8 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 
 	fm10k_mbx_unlock(hw);
 
+	/* Add default mac address */
+	fm10k_MAC_filter_set(dev, hw->mac.addr, true);
 
 	return 0;
 }
