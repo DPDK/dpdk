@@ -427,10 +427,15 @@ kni_sock_rcvmsg(struct socket *sock,
 
 #ifdef RTE_KNI_VHOST_VNET_HDR_EN
 	/* no need to copy hdr when no pkt received */
+#ifdef HAVE_IOV_ITER_MSGHDR
+	if (unlikely(copy_to_iter((void *)&vnet_hdr, vnet_hdr_len,
+		&m->msg_iter)))
+#else
 	if (unlikely(memcpy_toiovecend(m->msg_iov,
 		(void *)&vnet_hdr, 0, vnet_hdr_len)))
+#endif /* HAVE_IOV_ITER_MSGHDR */
 		return -EFAULT;
-#endif
+#endif /* RTE_KNI_VHOST_VNET_HDR_EN */
 	KNI_DBG_RX("kni_rcvmsg expect_len %ld, flags 0x%08x, pkt_len %d\n",
 		   (unsigned long)len, q->flags, pkt_len);
 
