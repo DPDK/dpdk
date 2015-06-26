@@ -353,8 +353,13 @@ except:
 }
 
 static int
+#ifdef HAVE_KIOCB_MSG_PARAM
 kni_sock_sndmsg(struct kiocb *iocb, struct socket *sock,
 	   struct msghdr *m, size_t total_len)
+#else
+kni_sock_sndmsg(struct socket *sock,
+	   struct msghdr *m, size_t total_len)
+#endif /* HAVE_KIOCB_MSG_PARAM */
 {
 	struct kni_vhost_queue *q =
 		container_of(sock->sk, struct kni_vhost_queue, sk);
@@ -387,8 +392,13 @@ kni_sock_sndmsg(struct kiocb *iocb, struct socket *sock,
 }
 
 static int
+#ifdef HAVE_KIOCB_MSG_PARAM
 kni_sock_rcvmsg(struct kiocb *iocb, struct socket *sock,
 	   struct msghdr *m, size_t len, int flags)
+#else
+kni_sock_rcvmsg(struct socket *sock,
+	   struct msghdr *m, size_t len, int flags)
+#endif /* HAVE_KIOCB_MSG_PARAM */
 {
 	int vnet_hdr_len = 0;
 	int pkt_len = 0;
