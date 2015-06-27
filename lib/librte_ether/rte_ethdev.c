@@ -91,7 +91,7 @@
 	} \
 } while(0)
 
-/* Macros to check for invlaid function pointers in dev_ops structure */
+/* Macros to check for invalid function pointers in dev_ops structure */
 #define FUNC_PTR_OR_ERR_RET(func, retval) do { \
 	if ((func) == NULL) { \
 		PMD_DEBUG_TRACE("Function not supported\n"); \
@@ -578,7 +578,7 @@ rte_eth_dev_detach_pdev(uint8_t port_id, struct rte_pci_addr *addr)
 	if (rte_eth_dev_get_addr_by_port(port_id, &freed_addr))
 		goto err;
 
-	/* Zerod pci addr means the port comes from virtual device */
+	/* Zeroed pci addr means the port comes from virtual device */
 	vp.domain = vp.bus = vp.devid = vp.function = 0;
 	if (rte_eal_compare_pci_addr(&vp, &freed_addr) == 0)
 		goto err;
@@ -1212,7 +1212,7 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 							ETHER_MAX_LEN;
 	}
 
-	/* multipe queue mode checking */
+	/* multiple queue mode checking */
 	diag = rte_eth_dev_check_mq_mode(port_id, nb_rx_q, nb_tx_q, dev_conf);
 	if (diag != 0) {
 		PMD_DEBUG_TRACE("port%d rte_eth_dev_check_mq_mode = %d\n",
@@ -1292,7 +1292,7 @@ rte_eth_dev_config_restore(uint8_t port_id)
 	else if (rte_eth_promiscuous_get(port_id) == 0)
 		rte_eth_promiscuous_disable(port_id);
 
-	/* replay allmulticast configuration */
+	/* replay all multicast configuration */
 	if (rte_eth_allmulticast_get(port_id) == 1)
 		rte_eth_allmulticast_enable(port_id);
 	else if (rte_eth_allmulticast_get(port_id) == 0)
@@ -2598,7 +2598,7 @@ rte_eth_dev_udp_tunnel_delete(uint8_t port_id,
 	dev = &rte_eth_devices[port_id];
 
 	if (udp_tunnel == NULL) {
-		PMD_DEBUG_TRACE("Invalid udp_tunnel parametr\n");
+		PMD_DEBUG_TRACE("Invalid udp_tunnel parameter\n");
 		return -EINVAL;
 	}
 
@@ -2700,7 +2700,7 @@ rte_eth_dev_mac_addr_add(uint8_t port_id, struct ether_addr *addr,
 	} else {
 		pool_mask = dev->data->mac_pool_sel[index];
 
-		/* Check if both MAC address and pool is alread there, and do nothing */
+		/* Check if both MAC address and pool is already there, and do nothing */
 		if (pool_mask & (1ULL << pool))
 			return 0;
 	}
