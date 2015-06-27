@@ -83,13 +83,14 @@
 		PMD_DEBUG_TRACE("Cannot run in secondary processes\n"); \
 		return (retval); \
 	} \
-} while(0)
+} while (0)
+
 #define PROC_PRIMARY_OR_RET() do { \
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) { \
 		PMD_DEBUG_TRACE("Cannot run in secondary processes\n"); \
 		return; \
 	} \
-} while(0)
+} while (0)
 
 /* Macros to check for invalid function pointers in dev_ops structure */
 #define FUNC_PTR_OR_ERR_RET(func, retval) do { \
@@ -97,18 +98,19 @@
 		PMD_DEBUG_TRACE("Function not supported\n"); \
 		return (retval); \
 	} \
-} while(0)
+} while (0)
+
 #define FUNC_PTR_OR_RET(func) do { \
 	if ((func) == NULL) { \
 		PMD_DEBUG_TRACE("Function not supported\n"); \
 		return; \
 	} \
-} while(0)
+} while (0)
 
 static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";
 struct rte_eth_dev rte_eth_devices[RTE_MAX_ETHPORTS];
-static struct rte_eth_dev_data *rte_eth_dev_data = NULL;
-static uint8_t nb_ports = 0;
+static struct rte_eth_dev_data *rte_eth_dev_data;
+static uint8_t nb_ports;
 
 /* spinlock for eth device callbacks */
 static rte_spinlock_t rte_eth_dev_cb_lock = RTE_SPINLOCK_INITIALIZER;
@@ -185,7 +187,7 @@ rte_eth_dev_data_alloc(void)
 	const unsigned flags = 0;
 	const struct rte_memzone *mz;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY){
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		mz = rte_memzone_reserve(MZ_RTE_ETH_DEV_DATA,
 				RTE_MAX_ETHPORTS * sizeof(*rte_eth_dev_data),
 				rte_socket_id(), flags);
@@ -241,7 +243,8 @@ rte_eth_dev_allocate(const char *name, enum rte_eth_dev_type type)
 		rte_eth_dev_data_alloc();
 
 	if (rte_eth_dev_allocated(name) != NULL) {
-		PMD_DEBUG_TRACE("Ethernet Device with name %s already allocated!\n", name);
+		PMD_DEBUG_TRACE("Ethernet Device with name %s already allocated!\n",
+				name);
 		return NULL;
 	}
 
@@ -303,7 +306,7 @@ rte_eth_dev_init(struct rte_pci_driver *pci_drv,
 	if (eth_dev == NULL)
 		return -ENOMEM;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY){
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		eth_dev->data->dev_private = rte_zmalloc("ethdev private structure",
 				  eth_drv->dev_private_size,
 				  RTE_CACHE_LINE_SIZE);
@@ -327,8 +330,8 @@ rte_eth_dev_init(struct rte_pci_driver *pci_drv,
 	if (diag == 0)
 		return 0;
 
-	PMD_DEBUG_TRACE("driver %s: eth_dev_init(vendor_id=0x%u device_id=0x%x)"
-			" failed\n", pci_drv->name,
+	PMD_DEBUG_TRACE("driver %s: eth_dev_init(vendor_id=0x%u device_id=0x%x) failed\n",
+			pci_drv->name,
 			(unsigned) pci_dev->id.vendor_id,
 			(unsigned) pci_dev->id.device_id);
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
@@ -754,6 +757,7 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 			return -(ENOMEM);
 		if (nb_queues > old_nb_queues) {
 			uint16_t new_qs = nb_queues - old_nb_queues;
+
 			memset(rxq + old_nb_queues, 0,
 				sizeof(rxq[0]) * new_qs);
 		}
@@ -878,8 +882,8 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 
 	if (dev->data->tx_queues == NULL) { /* first time configuration */
 		dev->data->tx_queues = rte_zmalloc("ethdev->tx_queues",
-				sizeof(dev->data->tx_queues[0]) * nb_queues,
-				RTE_CACHE_LINE_SIZE);
+						   sizeof(dev->data->tx_queues[0]) * nb_queues,
+						   RTE_CACHE_LINE_SIZE);
 		if (dev->data->tx_queues == NULL) {
 			dev->data->nb_tx_queues = 0;
 			return -(ENOMEM);
@@ -892,13 +896,14 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 		for (i = nb_queues; i < old_nb_queues; i++)
 			(*dev->dev_ops->tx_queue_release)(txq[i]);
 		txq = rte_realloc(txq, sizeof(txq[0]) * nb_queues,
-				RTE_CACHE_LINE_SIZE);
+				  RTE_CACHE_LINE_SIZE);
 		if (txq == NULL)
 			return -ENOMEM;
 		if (nb_queues > old_nb_queues) {
 			uint16_t new_qs = nb_queues - old_nb_queues;
+
 			memset(txq + old_nb_queues, 0,
-				sizeof(txq[0]) * new_qs);
+			       sizeof(txq[0]) * new_qs);
 		}
 
 		dev->data->tx_queues = txq;
@@ -912,6 +917,7 @@ static int
 rte_eth_dev_check_vf_rss_rxq_num(uint8_t port_id, uint16_t nb_rx_q)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+
 	switch (nb_rx_q) {
 	case 1:
 	case 2:
@@ -935,7 +941,7 @@ rte_eth_dev_check_vf_rss_rxq_num(uint8_t port_id, uint16_t nb_rx_q)
 
 static int
 rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
-		      const struct rte_eth_conf *dev_conf)
+			  const struct rte_eth_conf *dev_conf)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 
@@ -976,10 +982,10 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			if (nb_rx_q <= RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool)
 				if (rte_eth_dev_check_vf_rss_rxq_num(port_id, nb_rx_q) != 0) {
 					PMD_DEBUG_TRACE("ethdev port_id=%d"
-						" SRIOV active, invalid queue"
-						" number for VMDQ RSS, allowed"
-						" value are 1, 2 or 4\n",
-						port_id);
+							" SRIOV active, invalid queue"
+							" number for VMDQ RSS, allowed"
+							" value are 1, 2 or 4\n",
+							port_id);
 					return -EINVAL;
 				}
 			break;
@@ -1009,8 +1015,9 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		if ((nb_rx_q > RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool) ||
 		    (nb_tx_q > RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool)) {
 			PMD_DEBUG_TRACE("ethdev port_id=%d SRIOV active, "
-				    "queue number must less equal to %d\n",
-					port_id, RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool);
+					"queue number must less equal to %d\n",
+					port_id,
+					RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool);
 			return -EINVAL;
 		}
 	} else {
@@ -1025,8 +1032,8 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				return -EINVAL;
 			}
 			conf = &(dev_conf->rx_adv_conf.vmdq_dcb_conf);
-			if (! (conf->nb_queue_pools == ETH_16_POOLS ||
-			       conf->nb_queue_pools == ETH_32_POOLS)) {
+			if (!(conf->nb_queue_pools == ETH_16_POOLS ||
+			      conf->nb_queue_pools == ETH_32_POOLS)) {
 				PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB selected, "
 						"nb_queue_pools must be %d or %d\n",
 						port_id, ETH_16_POOLS, ETH_32_POOLS);
@@ -1043,8 +1050,8 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				return -EINVAL;
 			}
 			conf = &(dev_conf->tx_adv_conf.vmdq_dcb_tx_conf);
-			if (! (conf->nb_queue_pools == ETH_16_POOLS ||
-			       conf->nb_queue_pools == ETH_32_POOLS)) {
+			if (!(conf->nb_queue_pools == ETH_16_POOLS ||
+			      conf->nb_queue_pools == ETH_32_POOLS)) {
 				PMD_DEBUG_TRACE("ethdev port_id=%d VMDQ+DCB selected, "
 						"nb_queue_pools != %d or nb_queue_pools "
 						"!= %d\n",
@@ -1064,8 +1071,8 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				return -EINVAL;
 			}
 			conf = &(dev_conf->rx_adv_conf.dcb_rx_conf);
-			if (! (conf->nb_tcs == ETH_4_TCS ||
-			       conf->nb_tcs == ETH_8_TCS)) {
+			if (!(conf->nb_tcs == ETH_4_TCS ||
+			      conf->nb_tcs == ETH_8_TCS)) {
 				PMD_DEBUG_TRACE("ethdev port_id=%d DCB selected, "
 						"nb_tcs != %d or nb_tcs "
 						"!= %d\n",
@@ -1084,8 +1091,8 @@ rte_eth_dev_check_mq_mode(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				return -EINVAL;
 			}
 			conf = &(dev_conf->tx_adv_conf.dcb_tx_conf);
-			if (! (conf->nb_tcs == ETH_4_TCS ||
-			       conf->nb_tcs == ETH_8_TCS)) {
+			if (!(conf->nb_tcs == ETH_4_TCS ||
+			      conf->nb_tcs == ETH_8_TCS)) {
 				PMD_DEBUG_TRACE("ethdev port_id=%d DCB selected, "
 						"nb_tcs != %d or nb_tcs "
 						"!= %d\n",
@@ -1195,8 +1202,7 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				(unsigned)dev_conf->rxmode.max_rx_pkt_len,
 				(unsigned)dev_info.max_rx_pktlen);
 			return -EINVAL;
-		}
-		else if (dev_conf->rxmode.max_rx_pkt_len < ETHER_MIN_LEN) {
+		} else if (dev_conf->rxmode.max_rx_pkt_len < ETHER_MIN_LEN) {
 			PMD_DEBUG_TRACE("ethdev port_id=%d max_rx_pkt_len %u"
 				" < min valid value %u\n",
 				port_id,
@@ -1951,7 +1957,7 @@ rte_eth_dev_vlan_filter(uint8_t port_id, uint16_t vlan_id, int on)
 	}
 
 	dev = &rte_eth_devices[port_id];
-	if (! (dev->data->dev_conf.rxmode.hw_vlan_filter)) {
+	if (!(dev->data->dev_conf.rxmode.hw_vlan_filter)) {
 		PMD_DEBUG_TRACE("port %d: vlan-filtering disabled\n", port_id);
 		return -ENOSYS;
 	}
@@ -2023,27 +2029,27 @@ rte_eth_dev_set_vlan_offload(uint8_t port_id, int offload_mask)
 	/*check which option changed by application*/
 	cur = !!(offload_mask & ETH_VLAN_STRIP_OFFLOAD);
 	org = !!(dev->data->dev_conf.rxmode.hw_vlan_strip);
-	if (cur != org){
+	if (cur != org) {
 		dev->data->dev_conf.rxmode.hw_vlan_strip = (uint8_t)cur;
 		mask |= ETH_VLAN_STRIP_MASK;
 	}
 
 	cur = !!(offload_mask & ETH_VLAN_FILTER_OFFLOAD);
 	org = !!(dev->data->dev_conf.rxmode.hw_vlan_filter);
-	if (cur != org){
+	if (cur != org) {
 		dev->data->dev_conf.rxmode.hw_vlan_filter = (uint8_t)cur;
 		mask |= ETH_VLAN_FILTER_MASK;
 	}
 
 	cur = !!(offload_mask & ETH_VLAN_EXTEND_OFFLOAD);
 	org = !!(dev->data->dev_conf.rxmode.hw_vlan_extend);
-	if (cur != org){
+	if (cur != org) {
 		dev->data->dev_conf.rxmode.hw_vlan_extend = (uint8_t)cur;
 		mask |= ETH_VLAN_EXTEND_MASK;
 	}
 
 	/*no change*/
-	if(mask == 0)
+	if (mask == 0)
 		return ret;
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_offload_set, -ENOTSUP);
@@ -2066,13 +2072,13 @@ rte_eth_dev_get_vlan_offload(uint8_t port_id)
 	dev = &rte_eth_devices[port_id];
 
 	if (dev->data->dev_conf.rxmode.hw_vlan_strip)
-		ret |= ETH_VLAN_STRIP_OFFLOAD ;
+		ret |= ETH_VLAN_STRIP_OFFLOAD;
 
 	if (dev->data->dev_conf.rxmode.hw_vlan_filter)
-		ret |= ETH_VLAN_FILTER_OFFLOAD ;
+		ret |= ETH_VLAN_FILTER_OFFLOAD;
 
 	if (dev->data->dev_conf.rxmode.hw_vlan_extend)
-		ret |= ETH_VLAN_EXTEND_OFFLOAD ;
+		ret |= ETH_VLAN_EXTEND_OFFLOAD;
 
 	return ret;
 }
@@ -2117,8 +2123,8 @@ rte_eth_dev_fdir_add_signature_filter(uint8_t port_id,
 	if ((fdir_filter->l4type == RTE_FDIR_L4TYPE_SCTP
 	     || fdir_filter->l4type == RTE_FDIR_L4TYPE_NONE)
 	    && (fdir_filter->port_src || fdir_filter->port_dst)) {
-		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and " \
-				"None l4type, source & destinations ports " \
+		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and "
+				"None l4type, source & destinations ports "
 				"should be null!\n");
 		return -EINVAL;
 	}
@@ -2151,8 +2157,8 @@ rte_eth_dev_fdir_update_signature_filter(uint8_t port_id,
 	if ((fdir_filter->l4type == RTE_FDIR_L4TYPE_SCTP
 	     || fdir_filter->l4type == RTE_FDIR_L4TYPE_NONE)
 	    && (fdir_filter->port_src || fdir_filter->port_dst)) {
-		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and " \
-				"None l4type, source & destinations ports " \
+		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and "
+				"None l4type, source & destinations ports "
 				"should be null!\n");
 		return -EINVAL;
 	}
@@ -2185,8 +2191,8 @@ rte_eth_dev_fdir_remove_signature_filter(uint8_t port_id,
 	if ((fdir_filter->l4type == RTE_FDIR_L4TYPE_SCTP
 	     || fdir_filter->l4type == RTE_FDIR_L4TYPE_NONE)
 	    && (fdir_filter->port_src || fdir_filter->port_dst)) {
-		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and " \
-				"None l4type source & destinations ports " \
+		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and "
+				"None l4type source & destinations ports "
 				"should be null!\n");
 		return -EINVAL;
 	}
@@ -2206,7 +2212,7 @@ rte_eth_dev_fdir_get_infos(uint8_t port_id, struct rte_eth_fdir *fdir)
 	}
 
 	dev = &rte_eth_devices[port_id];
-	if (! (dev->data->dev_conf.fdir_conf.mode)) {
+	if (!(dev->data->dev_conf.fdir_conf.mode)) {
 		PMD_DEBUG_TRACE("port %d: pkt-filter disabled\n", port_id);
 		return -ENOSYS;
 	}
@@ -2241,8 +2247,8 @@ rte_eth_dev_fdir_add_perfect_filter(uint8_t port_id,
 	if ((fdir_filter->l4type == RTE_FDIR_L4TYPE_SCTP
 	     || fdir_filter->l4type == RTE_FDIR_L4TYPE_NONE)
 	    && (fdir_filter->port_src || fdir_filter->port_dst)) {
-		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and " \
-				"None l4type, source & destinations ports " \
+		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and "
+				"None l4type, source & destinations ports "
 				"should be null!\n");
 		return -EINVAL;
 	}
@@ -2281,8 +2287,8 @@ rte_eth_dev_fdir_update_perfect_filter(uint8_t port_id,
 	if ((fdir_filter->l4type == RTE_FDIR_L4TYPE_SCTP
 	     || fdir_filter->l4type == RTE_FDIR_L4TYPE_NONE)
 	    && (fdir_filter->port_src || fdir_filter->port_dst)) {
-		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and " \
-				"None l4type, source & destinations ports " \
+		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and "
+				"None l4type, source & destinations ports "
 				"should be null!\n");
 		return -EINVAL;
 	}
@@ -2319,8 +2325,8 @@ rte_eth_dev_fdir_remove_perfect_filter(uint8_t port_id,
 	if ((fdir_filter->l4type == RTE_FDIR_L4TYPE_SCTP
 	     || fdir_filter->l4type == RTE_FDIR_L4TYPE_NONE)
 	    && (fdir_filter->port_src || fdir_filter->port_dst)) {
-		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and " \
-				"None l4type, source & destinations ports " \
+		PMD_DEBUG_TRACE(" Port are meaningless for SCTP and "
+				"None l4type, source & destinations ports "
 				"should be null!\n");
 		return -EINVAL;
 	}
@@ -2345,7 +2351,7 @@ rte_eth_dev_fdir_set_masks(uint8_t port_id, struct rte_fdir_masks *fdir_mask)
 	}
 
 	dev = &rte_eth_devices[port_id];
-	if (! (dev->data->dev_conf.fdir_conf.mode)) {
+	if (!(dev->data->dev_conf.fdir_conf.mode)) {
 		PMD_DEBUG_TRACE("port %d: pkt-filter disabled\n", port_id);
 		return -ENOSYS;
 	}
@@ -2685,7 +2691,7 @@ rte_eth_dev_mac_addr_add(uint8_t port_id, struct ether_addr *addr,
 		return -EINVAL;
 	}
 	if (pool >= ETH_64_POOLS) {
-		PMD_DEBUG_TRACE("pool id must be 0-%d\n",ETH_64_POOLS - 1);
+		PMD_DEBUG_TRACE("pool id must be 0-%d\n", ETH_64_POOLS - 1);
 		return -EINVAL;
 	}
 
@@ -2768,13 +2774,12 @@ rte_eth_dev_set_vf_rxmode(uint8_t port_id,  uint16_t vf,
 	rte_eth_dev_info_get(port_id, &dev_info);
 
 	num_vfs = dev_info.max_vfs;
-	if (vf > num_vfs)
-	{
+	if (vf > num_vfs) {
 		PMD_DEBUG_TRACE("set VF RX mode:invalid VF id %d\n", vf);
 		return -EINVAL;
 	}
-	if (rx_mode == 0)
-	{
+
+	if (rx_mode == 0) {
 		PMD_DEBUG_TRACE("set VF RX mode:mode mask ca not be zero\n");
 		return -EINVAL;
 	}
@@ -2833,7 +2838,7 @@ rte_eth_dev_uc_hash_table_set(uint8_t port_id, struct ether_addr *addr,
 
 	if (index < 0) {
 		if (!on) {
-			PMD_DEBUG_TRACE("port %d: the MAC address was not"
+			PMD_DEBUG_TRACE("port %d: the MAC address was not "
 				"set in UTA\n", port_id);
 			return -EINVAL;
 		}
@@ -2879,7 +2884,7 @@ rte_eth_dev_uc_all_hash_table_set(uint8_t port_id, uint8_t on)
 }
 
 int
-rte_eth_dev_set_vf_rx(uint8_t port_id,uint16_t vf, uint8_t on)
+rte_eth_dev_set_vf_rx(uint8_t port_id, uint16_t vf, uint8_t on)
 {
 	uint16_t num_vfs;
 	struct rte_eth_dev *dev;
@@ -2894,18 +2899,17 @@ rte_eth_dev_set_vf_rx(uint8_t port_id,uint16_t vf, uint8_t on)
 	rte_eth_dev_info_get(port_id, &dev_info);
 
 	num_vfs = dev_info.max_vfs;
-	if (vf > num_vfs)
-	{
+	if (vf > num_vfs) {
 		PMD_DEBUG_TRACE("port %d: invalid vf id\n", port_id);
 		return -EINVAL;
 	}
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_vf_rx, -ENOTSUP);
-	return (*dev->dev_ops->set_vf_rx)(dev, vf,on);
+	return (*dev->dev_ops->set_vf_rx)(dev, vf, on);
 }
 
 int
-rte_eth_dev_set_vf_tx(uint8_t port_id,uint16_t vf, uint8_t on)
+rte_eth_dev_set_vf_tx(uint8_t port_id, uint16_t vf, uint8_t on)
 {
 	uint16_t num_vfs;
 	struct rte_eth_dev *dev;
@@ -2920,19 +2924,18 @@ rte_eth_dev_set_vf_tx(uint8_t port_id,uint16_t vf, uint8_t on)
 	rte_eth_dev_info_get(port_id, &dev_info);
 
 	num_vfs = dev_info.max_vfs;
-	if (vf > num_vfs)
-	{
+	if (vf > num_vfs) {
 		PMD_DEBUG_TRACE("set pool tx:invalid pool id=%d\n", vf);
 		return -EINVAL;
 	}
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_vf_tx, -ENOTSUP);
-	return (*dev->dev_ops->set_vf_tx)(dev, vf,on);
+	return (*dev->dev_ops->set_vf_tx)(dev, vf, on);
 }
 
 int
 rte_eth_dev_set_vf_vlan_filter(uint8_t port_id, uint16_t vlan_id,
-				 uint64_t vf_mask,uint8_t vlan_on)
+			       uint64_t vf_mask, uint8_t vlan_on)
 {
 	struct rte_eth_dev *dev;
 
@@ -2943,21 +2946,20 @@ rte_eth_dev_set_vf_vlan_filter(uint8_t port_id, uint16_t vlan_id,
 	}
 	dev = &rte_eth_devices[port_id];
 
-	if(vlan_id > ETHER_MAX_VLAN_ID)
-	{
+	if (vlan_id > ETHER_MAX_VLAN_ID) {
 		PMD_DEBUG_TRACE("VF VLAN filter:invalid VLAN id=%d\n",
 			vlan_id);
 		return -EINVAL;
 	}
-	if (vf_mask == 0)
-	{
+
+	if (vf_mask == 0) {
 		PMD_DEBUG_TRACE("VF VLAN filter:pool_mask can not be 0\n");
 		return -EINVAL;
 	}
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_vf_vlan_filter, -ENOTSUP);
 	return (*dev->dev_ops->set_vf_vlan_filter)(dev, vlan_id,
-						vf_mask,vlan_on);
+						   vf_mask, vlan_on);
 }
 
 int rte_eth_set_queue_rate_limit(uint8_t port_id, uint16_t queue_idx,
@@ -3049,20 +3051,18 @@ rte_eth_mirror_rule_set(uint8_t port_id,
 	}
 
 	if (mirror_conf->dst_pool >= ETH_64_POOLS) {
-		PMD_DEBUG_TRACE("Invalid dst pool, pool id must"
-			"be 0-%d\n",ETH_64_POOLS - 1);
+		PMD_DEBUG_TRACE("Invalid dst pool, pool id must be 0-%d\n",
+				ETH_64_POOLS - 1);
 		return -EINVAL;
 	}
 
 	if ((mirror_conf->rule_type_mask & ETH_VMDQ_POOL_MIRROR) &&
 		(mirror_conf->pool_mask == 0)) {
-		PMD_DEBUG_TRACE("Invalid mirror pool, pool mask can not"
-				"be 0.\n");
+		PMD_DEBUG_TRACE("Invalid mirror pool, pool mask can not be 0.\n");
 		return -EINVAL;
 	}
 
-	if(rule_id >= ETH_VMDQ_NUM_MIRROR_RULE)
-	{
+	if (rule_id >= ETH_VMDQ_NUM_MIRROR_RULE) {
 		PMD_DEBUG_TRACE("Invalid rule_id, rule_id must be 0-%d\n",
 			ETH_VMDQ_NUM_MIRROR_RULE - 1);
 		return -EINVAL;
@@ -3084,8 +3084,7 @@ rte_eth_mirror_rule_reset(uint8_t port_id, uint8_t rule_id)
 		return -ENODEV;
 	}
 
-	if(rule_id >= ETH_VMDQ_NUM_MIRROR_RULE)
-	{
+	if (rule_id >= ETH_VMDQ_NUM_MIRROR_RULE) {
 		PMD_DEBUG_TRACE("Invalid rule_id, rule_id must be 0-%d\n",
 			ETH_VMDQ_NUM_MIRROR_RULE-1);
 		return -EINVAL;
@@ -3168,8 +3167,8 @@ rte_eth_rx_descriptor_done(uint8_t port_id, uint16_t queue_id, uint16_t offset)
 
 	dev = &rte_eth_devices[port_id];
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_descriptor_done, -ENOTSUP);
-	return (*dev->dev_ops->rx_descriptor_done)( \
-		dev->data->rx_queues[queue_id], offset);
+	return (*dev->dev_ops->rx_descriptor_done)(dev->data->rx_queues[queue_id],
+						   offset);
 }
 #endif
 
@@ -3201,8 +3200,9 @@ rte_eth_dev_callback_register(uint8_t port_id,
 	}
 
 	/* create a new callback. */
-	if (user_cb == NULL && (user_cb = rte_zmalloc("INTR_USER_CALLBACK",
-			sizeof(struct rte_eth_dev_callback), 0)) != NULL) {
+	if (user_cb == NULL &&
+	    (user_cb = rte_zmalloc("INTR_USER_CALLBACK",
+				   sizeof(struct rte_eth_dev_callback), 0))) {
 		user_cb->cb_fn = cb_fn;
 		user_cb->cb_arg = cb_arg;
 		user_cb->event = event;
