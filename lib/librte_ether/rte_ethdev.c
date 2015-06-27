@@ -3290,10 +3290,7 @@ int rte_eth_dev_bypass_init(uint8_t port_id)
 		return -ENODEV;
 	}
 
-	if ((dev= &rte_eth_devices[port_id]) == NULL) {
-		PMD_DEBUG_TRACE("Invalid port device\n");
-		return -ENODEV;
-	}
+	dev = &rte_eth_devices[port_id];
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->bypass_init, -ENOTSUP);
 	(*dev->dev_ops->bypass_init)(dev);
@@ -3310,10 +3307,7 @@ rte_eth_dev_bypass_state_show(uint8_t port_id, uint32_t *state)
 		return -ENODEV;
 	}
 
-	if ((dev= &rte_eth_devices[port_id]) == NULL) {
-		PMD_DEBUG_TRACE("Invalid port device\n");
-		return -ENODEV;
-	}
+	dev = &rte_eth_devices[port_id];
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->bypass_state_show, -ENOTSUP);
 	(*dev->dev_ops->bypass_state_show)(dev, state);
 	return 0;
@@ -3329,10 +3323,7 @@ rte_eth_dev_bypass_state_set(uint8_t port_id, uint32_t *new_state)
 		return -ENODEV;
 	}
 
-	if ((dev= &rte_eth_devices[port_id]) == NULL) {
-		PMD_DEBUG_TRACE("Invalid port device\n");
-		return -ENODEV;
-	}
+	dev = &rte_eth_devices[port_id];
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->bypass_state_set, -ENOTSUP);
 	(*dev->dev_ops->bypass_state_set)(dev, new_state);
@@ -3349,10 +3340,7 @@ rte_eth_dev_bypass_event_show(uint8_t port_id, uint32_t event, uint32_t *state)
 		return -ENODEV;
 	}
 
-	if ((dev= &rte_eth_devices[port_id]) == NULL) {
-		PMD_DEBUG_TRACE("Invalid port device\n");
-		return -ENODEV;
-	}
+	dev = &rte_eth_devices[port_id];
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->bypass_state_show, -ENOTSUP);
 	(*dev->dev_ops->bypass_event_show)(dev, event, state);
@@ -3369,10 +3357,7 @@ rte_eth_dev_bypass_event_store(uint8_t port_id, uint32_t event, uint32_t state)
 		return -ENODEV;
 	}
 
-	if ((dev= &rte_eth_devices[port_id]) == NULL) {
-		PMD_DEBUG_TRACE("Invalid port device\n");
-		return -ENODEV;
-	}
+	dev = &rte_eth_devices[port_id];
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->bypass_event_set, -ENOTSUP);
 	(*dev->dev_ops->bypass_event_set)(dev, event, state);
@@ -3389,10 +3374,7 @@ rte_eth_dev_wd_timeout_store(uint8_t port_id, uint32_t timeout)
 		return -ENODEV;
 	}
 
-	if ((dev= &rte_eth_devices[port_id]) == NULL) {
-		PMD_DEBUG_TRACE("Invalid port device\n");
-		return -ENODEV;
-	}
+	dev = &rte_eth_devices[port_id];
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->bypass_wd_timeout_set, -ENOTSUP);
 	(*dev->dev_ops->bypass_wd_timeout_set)(dev, timeout);
@@ -3409,10 +3391,7 @@ rte_eth_dev_bypass_ver_show(uint8_t port_id, uint32_t *ver)
 		return -ENODEV;
 	}
 
-	if ((dev= &rte_eth_devices[port_id]) == NULL) {
-		PMD_DEBUG_TRACE("Invalid port device\n");
-		return -ENODEV;
-	}
+	dev = &rte_eth_devices[port_id];
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->bypass_ver_show, -ENOTSUP);
 	(*dev->dev_ops->bypass_ver_show)(dev, ver);
@@ -3429,10 +3408,7 @@ rte_eth_dev_bypass_wd_timeout_show(uint8_t port_id, uint32_t *wd_timeout)
 		return -ENODEV;
 	}
 
-	if ((dev= &rte_eth_devices[port_id]) == NULL) {
-		PMD_DEBUG_TRACE("Invalid port device\n");
-		return -ENODEV;
-	}
+	dev = &rte_eth_devices[port_id];
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->bypass_wd_timeout_show, -ENOTSUP);
 	(*dev->dev_ops->bypass_wd_timeout_show)(dev, wd_timeout);
@@ -3449,10 +3425,7 @@ rte_eth_dev_bypass_wd_reset(uint8_t port_id)
 		return -ENODEV;
 	}
 
-	if ((dev= &rte_eth_devices[port_id]) == NULL) {
-		PMD_DEBUG_TRACE("Invalid port device\n");
-		return -ENODEV;
-	}
+	dev = &rte_eth_devices[port_id];
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->bypass_wd_reset, -ENOTSUP);
 	(*dev->dev_ops->bypass_wd_reset)(dev);
