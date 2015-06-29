@@ -642,6 +642,58 @@ static void cxgbe_dev_stats_reset(struct rte_eth_dev *eth_dev)
 	}
 }
 
+static int cxgbe_flow_ctrl_get(struct rte_eth_dev *eth_dev,
+			       struct rte_eth_fc_conf *fc_conf)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct link_config *lc = &pi->link_cfg;
+	int rx_pause, tx_pause;
+
+	fc_conf->autoneg = lc->fc & PAUSE_AUTONEG;
+	rx_pause = lc->fc & PAUSE_RX;
+	tx_pause = lc->fc & PAUSE_TX;
+
+	if (rx_pause && tx_pause)
+		fc_conf->mode = RTE_FC_FULL;
+	else if (rx_pause)
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+	else if (tx_pause)
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+	else
+		fc_conf->mode = RTE_FC_NONE;
+	return 0;
+}
+
+static int cxgbe_flow_ctrl_set(struct rte_eth_dev *eth_dev,
+			       struct rte_eth_fc_conf *fc_conf)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	struct link_config *lc = &pi->link_cfg;
+
+	if (lc->supported & FW_PORT_CAP_ANEG) {
+		if (fc_conf->autoneg)
+			lc->requested_fc |= PAUSE_AUTONEG;
+		else
+			lc->requested_fc &= ~PAUSE_AUTONEG;
+	}
+
+	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
+	    (fc_conf->mode & RTE_FC_RX_PAUSE))
+		lc->requested_fc |= PAUSE_RX;
+	else
+		lc->requested_fc &= ~PAUSE_RX;
+
+	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
+	    (fc_conf->mode & RTE_FC_TX_PAUSE))
+		lc->requested_fc |= PAUSE_TX;
+	else
+		lc->requested_fc &= ~PAUSE_TX;
+
+	return t4_link_l1cfg(adapter, adapter->mbox, pi->tx_chan,
+			     &pi->link_cfg);
+}
+
 static struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.dev_start		= cxgbe_dev_start,
 	.dev_stop		= cxgbe_dev_stop,
@@ -663,6 +715,8 @@ static struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.rx_queue_release	= cxgbe_dev_rx_queue_release,
 	.stats_get		= cxgbe_dev_stats_get,
 	.stats_reset		= cxgbe_dev_stats_reset,
+	.flow_ctrl_get		= cxgbe_flow_ctrl_get,
+	.flow_ctrl_set		= cxgbe_flow_ctrl_set,
 };
 
 /*
