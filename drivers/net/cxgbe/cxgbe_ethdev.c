@@ -85,6 +85,39 @@
  */
 #include "t4_pci_id_tbl.h"
 
+static uint16_t cxgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+				uint16_t nb_pkts)
+{
+	struct sge_eth_txq *txq = (struct sge_eth_txq *)tx_queue;
+	uint16_t pkts_sent, pkts_remain;
+	uint16_t total_sent = 0;
+	int ret = 0;
+
+	CXGBE_DEBUG_TX(adapter, "%s: txq = %p; tx_pkts = %p; nb_pkts = %d\n",
+		       __func__, txq, tx_pkts, nb_pkts);
+
+	t4_os_lock(&txq->txq_lock);
+	/* free up desc from already completed tx */
+	reclaim_completed_tx(&txq->q);
+	while (total_sent < nb_pkts) {
+		pkts_remain = nb_pkts - total_sent;
+
+		for (pkts_sent = 0; pkts_sent < pkts_remain; pkts_sent++) {
+			ret = t4_eth_xmit(txq, tx_pkts[total_sent + pkts_sent]);
+			if (ret < 0)
+				break;
+		}
+		if (!pkts_sent)
+			break;
+		total_sent += pkts_sent;
+		/* reclaim as much as possible */
+		reclaim_completed_tx(&txq->q);
+	}
+
+	t4_os_unlock(&txq->txq_lock);
+	return total_sent;
+}
+
 static uint16_t cxgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				uint16_t nb_pkts)
 {
@@ -131,8 +164,11 @@ static void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 	device_info->reta_size = pi->rss_size;
 }
 
+static int cxgbe_dev_tx_queue_start(struct rte_eth_dev *eth_dev,
+				    uint16_t tx_queue_id);
 static int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev,
 				    uint16_t tx_queue_id);
+static void cxgbe_dev_tx_queue_release(void *q);
 static void cxgbe_dev_rx_queue_release(void *q);
 
 static int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
@@ -155,6 +191,98 @@ static int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
 		return err;
 
 	return 0;
+}
+
+static int cxgbe_dev_tx_queue_start(struct rte_eth_dev *eth_dev,
+				    uint16_t tx_queue_id)
+{
+	struct sge_eth_txq *txq = (struct sge_eth_txq *)
+				  (eth_dev->data->tx_queues[tx_queue_id]);
+
+	dev_debug(NULL, "%s: tx_queue_id = %d\n", __func__, tx_queue_id);
+
+	return t4_sge_eth_txq_start(txq);
+}
+
+static int cxgbe_dev_tx_queue_stop(struct rte_eth_dev *eth_dev,
+				   uint16_t tx_queue_id)
+{
+	struct sge_eth_txq *txq = (struct sge_eth_txq *)
+				  (eth_dev->data->tx_queues[tx_queue_id]);
+
+	dev_debug(NULL, "%s: tx_queue_id = %d\n", __func__, tx_queue_id);
+
+	return t4_sge_eth_txq_stop(txq);
+}
+
+static int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
+				    uint16_t queue_idx,	uint16_t nb_desc,
+				    unsigned int socket_id,
+				    const struct rte_eth_txconf *tx_conf)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	struct sge *s = &adapter->sge;
+	struct sge_eth_txq *txq = &s->ethtxq[pi->first_qset + queue_idx];
+	int err = 0;
+	unsigned int temp_nb_desc;
+
+	RTE_SET_USED(tx_conf);
+
+	dev_debug(adapter, "%s: eth_dev->data->nb_tx_queues = %d; queue_idx = %d; nb_desc = %d; socket_id = %d; pi->first_qset = %u\n",
+		  __func__, eth_dev->data->nb_tx_queues, queue_idx, nb_desc,
+		  socket_id, pi->first_qset);
+
+	/*  Free up the existing queue  */
+	if (eth_dev->data->tx_queues[queue_idx]) {
+		cxgbe_dev_tx_queue_release(eth_dev->data->tx_queues[queue_idx]);
+		eth_dev->data->tx_queues[queue_idx] = NULL;
+	}
+
+	eth_dev->data->tx_queues[queue_idx] = (void *)txq;
+
+	/* Sanity Checking
+	 *
+	 * nb_desc should be > 1023 and <= CXGBE_MAX_RING_DESC_SIZE
+	 */
+	temp_nb_desc = nb_desc;
+	if (nb_desc < CXGBE_MIN_RING_DESC_SIZE) {
+		dev_warn(adapter, "%s: number of descriptors must be >= %d. Using default [%d]\n",
+			 __func__, CXGBE_MIN_RING_DESC_SIZE,
+			 CXGBE_DEFAULT_TX_DESC_SIZE);
+		temp_nb_desc = CXGBE_DEFAULT_TX_DESC_SIZE;
+	} else if (nb_desc > CXGBE_MAX_RING_DESC_SIZE) {
+		dev_err(adapter, "%s: number of descriptors must be between %d and %d inclusive. Default [%d]\n",
+			__func__, CXGBE_MIN_RING_DESC_SIZE,
+			CXGBE_MAX_RING_DESC_SIZE, CXGBE_DEFAULT_TX_DESC_SIZE);
+		return -(EINVAL);
+	}
+
+	txq->q.size = temp_nb_desc;
+
+	err = t4_sge_alloc_eth_txq(adapter, txq, eth_dev, queue_idx,
+				   s->fw_evtq.cntxt_id, socket_id);
+
+	dev_debug(adapter, "%s: txq->q.cntxt_id= %d err = %d\n",
+		  __func__, txq->q.cntxt_id, err);
+
+	return err;
+}
+
+static void cxgbe_dev_tx_queue_release(void *q)
+{
+	struct sge_eth_txq *txq = (struct sge_eth_txq *)q;
+
+	if (txq) {
+		struct port_info *pi = (struct port_info *)
+				       (txq->eth_dev->data->dev_private);
+		struct adapter *adap = pi->adapter;
+
+		dev_debug(adapter, "%s: pi->port_id = %d; tx_queue_id = %d\n",
+			  __func__, pi->port_id, txq->q.cntxt_id);
+
+		t4_sge_eth_txq_release(adap, txq);
+	}
 }
 
 static int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev,
@@ -264,6 +392,10 @@ static void cxgbe_dev_rx_queue_release(void *q)
 static struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.dev_configure		= cxgbe_dev_configure,
 	.dev_infos_get		= cxgbe_dev_info_get,
+	.tx_queue_setup         = cxgbe_dev_tx_queue_setup,
+	.tx_queue_start		= cxgbe_dev_tx_queue_start,
+	.tx_queue_stop		= cxgbe_dev_tx_queue_stop,
+	.tx_queue_release	= cxgbe_dev_tx_queue_release,
 	.rx_queue_setup         = cxgbe_dev_rx_queue_setup,
 	.rx_queue_start		= cxgbe_dev_rx_queue_start,
 	.rx_queue_stop		= cxgbe_dev_rx_queue_stop,
@@ -286,6 +418,7 @@ static int eth_cxgbe_dev_init(struct rte_eth_dev *eth_dev)
 
 	eth_dev->dev_ops = &cxgbe_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &cxgbe_recv_pkts;
+	eth_dev->tx_pkt_burst = &cxgbe_xmit_pkts;
 
 	/* for secondary processes, we don't initialise any further as primary
 	 * has already done this work.

@@ -1005,6 +1005,7 @@ allocate_mac:
 		pi->eth_dev->data->dev_private = pi;
 		pi->eth_dev->driver = adapter->eth_dev->driver;
 		pi->eth_dev->dev_ops = adapter->eth_dev->dev_ops;
+		pi->eth_dev->tx_pkt_burst = adapter->eth_dev->tx_pkt_burst;
 		pi->eth_dev->rx_pkt_burst = adapter->eth_dev->rx_pkt_burst;
 		TAILQ_INIT(&pi->eth_dev->link_intr_cbs);
 

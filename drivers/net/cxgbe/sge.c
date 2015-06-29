@@ -68,12 +68,21 @@
 #include "t4_msg.h"
 #include "cxgbe.h"
 
+static inline void ship_tx_pkt_coalesce_wr(struct adapter *adap,
+					   struct sge_eth_txq *txq);
+
 /*
  * Max number of Rx buffers we replenish at a time.
  */
 #define MAX_RX_REFILL 16U
 
 #define NOMEM_TMR_IDX (SGE_NTIMERS - 1)
+
+/*
+ * Max Tx descriptor space we allow for an Ethernet packet to be inlined
+ * into a WR.
+ */
+#define MAX_IMM_TX_PKT_LEN 256
 
 /*
  * Rx buffer sizes for "usembufs" Free List buffers (one ingress packet
@@ -123,6 +132,81 @@ enum {
 	RX_SMALL_MTU_BUF = 0x2,   /* small MTU buffer */
 	RX_LARGE_MTU_BUF = 0x3,   /* large MTU buffer */
 };
+
+/**
+ * txq_avail - return the number of available slots in a Tx queue
+ * @q: the Tx queue
+ *
+ * Returns the number of descriptors in a Tx queue available to write new
+ * packets.
+ */
+static inline unsigned int txq_avail(const struct sge_txq *q)
+{
+	return q->size - 1 - q->in_use;
+}
+
+static int map_mbuf(struct rte_mbuf *mbuf, dma_addr_t *addr)
+{
+	struct rte_mbuf *m = mbuf;
+
+	for (; m; m = m->next, addr++) {
+		*addr = m->buf_physaddr + rte_pktmbuf_headroom(m);
+		if (*addr == 0)
+			goto out_err;
+	}
+	return 0;
+
+out_err:
+	return -ENOMEM;
+}
+
+/**
+ * free_tx_desc - reclaims Tx descriptors and their buffers
+ * @q: the Tx queue to reclaim descriptors from
+ * @n: the number of descriptors to reclaim
+ *
+ * Reclaims Tx descriptors from an SGE Tx queue and frees the associated
+ * Tx buffers.  Called with the Tx queue lock held.
+ */
+static void free_tx_desc(struct sge_txq *q, unsigned int n)
+{
+	struct tx_sw_desc *d;
+	unsigned int cidx = 0;
+
+	d = &q->sdesc[cidx];
+	while (n--) {
+		if (d->mbuf) {                       /* an SGL is present */
+			rte_pktmbuf_free(d->mbuf);
+			d->mbuf = NULL;
+		}
+		if (d->coalesce.idx) {
+			int i;
+
+			for (i = 0; i < d->coalesce.idx; i++) {
+				rte_pktmbuf_free(d->coalesce.mbuf[i]);
+				d->coalesce.mbuf[i] = NULL;
+			}
+			d->coalesce.idx = 0;
+		}
+		++d;
+		if (++cidx == q->size) {
+			cidx = 0;
+			d = q->sdesc;
+		}
+		RTE_MBUF_PREFETCH_TO_FREE(&q->sdesc->mbuf->pool);
+	}
+}
+
+static void reclaim_tx_desc(struct sge_txq *q, unsigned int n)
+{
+	unsigned int cidx = q->cidx;
+
+	while (n--) {
+		if (++cidx == q->size)
+			cidx = 0;
+	}
+	q->cidx = cidx;
+}
 
 /**
  * fl_cap - return the capacity of a free-buffer list
@@ -373,6 +457,742 @@ static unsigned int refill_fl(struct adapter *adap, struct sge_fl *q, int n)
 static inline void __refill_fl(struct adapter *adap, struct sge_fl *fl)
 {
 	refill_fl(adap, fl, min(MAX_RX_REFILL, fl_cap(fl) - fl->avail));
+}
+
+/*
+ * Return the number of reclaimable descriptors in a Tx queue.
+ */
+static inline int reclaimable(const struct sge_txq *q)
+{
+	int hw_cidx = ntohs(q->stat->cidx);
+
+	hw_cidx -= q->cidx;
+	if (hw_cidx < 0)
+		return hw_cidx + q->size;
+	return hw_cidx;
+}
+
+/**
+ * reclaim_completed_tx - reclaims completed Tx descriptors
+ * @q: the Tx queue to reclaim completed descriptors from
+ *
+ * Reclaims Tx descriptors that the SGE has indicated it has processed.
+ */
+void reclaim_completed_tx(struct sge_txq *q)
+{
+	unsigned int avail = reclaimable(q);
+
+	do {
+		/* reclaim as much as possible */
+		reclaim_tx_desc(q, avail);
+		q->in_use -= avail;
+		avail = reclaimable(q);
+	} while (avail);
+}
+
+/**
+ * sgl_len - calculates the size of an SGL of the given capacity
+ * @n: the number of SGL entries
+ *
+ * Calculates the number of flits needed for a scatter/gather list that
+ * can hold the given number of entries.
+ */
+static inline unsigned int sgl_len(unsigned int n)
+{
+	/*
+	 * A Direct Scatter Gather List uses 32-bit lengths and 64-bit PCI DMA
+	 * addresses.  The DSGL Work Request starts off with a 32-bit DSGL
+	 * ULPTX header, then Length0, then Address0, then, for 1 <= i <= N,
+	 * repeated sequences of { Length[i], Length[i+1], Address[i],
+	 * Address[i+1] } (this ensures that all addresses are on 64-bit
+	 * boundaries).  If N is even, then Length[N+1] should be set to 0 and
+	 * Address[N+1] is omitted.
+	 *
+	 * The following calculation incorporates all of the above.  It's
+	 * somewhat hard to follow but, briefly: the "+2" accounts for the
+	 * first two flits which include the DSGL header, Length0 and
+	 * Address0; the "(3*(n-1))/2" covers the main body of list entries (3
+	 * flits for every pair of the remaining N) +1 if (n-1) is odd; and
+	 * finally the "+((n-1)&1)" adds the one remaining flit needed if
+	 * (n-1) is odd ...
+	 */
+	n--;
+	return (3 * n) / 2 + (n & 1) + 2;
+}
+
+/**
+ * flits_to_desc - returns the num of Tx descriptors for the given flits
+ * @n: the number of flits
+ *
+ * Returns the number of Tx descriptors needed for the supplied number
+ * of flits.
+ */
+static inline unsigned int flits_to_desc(unsigned int n)
+{
+	return DIV_ROUND_UP(n, 8);
+}
+
+/**
+ * is_eth_imm - can an Ethernet packet be sent as immediate data?
+ * @m: the packet
+ *
+ * Returns whether an Ethernet packet is small enough to fit as
+ * immediate data. Return value corresponds to the headroom required.
+ */
+static inline int is_eth_imm(const struct rte_mbuf *m)
+{
+	unsigned int hdrlen = (m->ol_flags & PKT_TX_TCP_SEG) ?
+			      sizeof(struct cpl_tx_pkt_lso_core) : 0;
+
+	hdrlen += sizeof(struct cpl_tx_pkt);
+	if (m->pkt_len <= MAX_IMM_TX_PKT_LEN - hdrlen)
+		return hdrlen;
+
+	return 0;
+}
+
+/**
+ * calc_tx_flits - calculate the number of flits for a packet Tx WR
+ * @m: the packet
+ *
+ * Returns the number of flits needed for a Tx WR for the given Ethernet
+ * packet, including the needed WR and CPL headers.
+ */
+static inline unsigned int calc_tx_flits(const struct rte_mbuf *m)
+{
+	unsigned int flits;
+	int hdrlen;
+
+	/*
+	 * If the mbuf is small enough, we can pump it out as a work request
+	 * with only immediate data.  In that case we just have to have the
+	 * TX Packet header plus the mbuf data in the Work Request.
+	 */
+
+	hdrlen = is_eth_imm(m);
+	if (hdrlen)
+		return DIV_ROUND_UP(m->pkt_len + hdrlen, sizeof(__be64));
+
+	/*
+	 * Otherwise, we're going to have to construct a Scatter gather list
+	 * of the mbuf body and fragments.  We also include the flits necessary
+	 * for the TX Packet Work Request and CPL.  We always have a firmware
+	 * Write Header (incorporated as part of the cpl_tx_pkt_lso and
+	 * cpl_tx_pkt structures), followed by either a TX Packet Write CPL
+	 * message or, if we're doing a Large Send Offload, an LSO CPL message
+	 * with an embeded TX Packet Write CPL message.
+	 */
+	flits = sgl_len(m->nb_segs);
+	if (m->tso_segsz)
+		flits += (sizeof(struct fw_eth_tx_pkt_wr) +
+			  sizeof(struct cpl_tx_pkt_lso_core) +
+			  sizeof(struct cpl_tx_pkt_core)) / sizeof(__be64);
+	else
+		flits += (sizeof(struct fw_eth_tx_pkt_wr) +
+			  sizeof(struct cpl_tx_pkt_core)) / sizeof(__be64);
+	return flits;
+}
+
+/**
+ * write_sgl - populate a scatter/gather list for a packet
+ * @mbuf: the packet
+ * @q: the Tx queue we are writing into
+ * @sgl: starting location for writing the SGL
+ * @end: points right after the end of the SGL
+ * @start: start offset into mbuf main-body data to include in the SGL
+ * @addr: address of mapped region
+ *
+ * Generates a scatter/gather list for the buffers that make up a packet.
+ * The caller must provide adequate space for the SGL that will be written.
+ * The SGL includes all of the packet's page fragments and the data in its
+ * main body except for the first @start bytes.  @sgl must be 16-byte
+ * aligned and within a Tx descriptor with available space.  @end points
+ * write after the end of the SGL but does not account for any potential
+ * wrap around, i.e., @end > @sgl.
+ */
+static void write_sgl(struct rte_mbuf *mbuf, struct sge_txq *q,
+		      struct ulptx_sgl *sgl, u64 *end, unsigned int start,
+		      const dma_addr_t *addr)
+{
+	unsigned int i, len;
+	struct ulptx_sge_pair *to;
+	struct rte_mbuf *m = mbuf;
+	unsigned int nfrags = m->nb_segs;
+	struct ulptx_sge_pair buf[nfrags / 2];
+
+	len = m->data_len - start;
+	sgl->len0 = htonl(len);
+	sgl->addr0 = rte_cpu_to_be_64(addr[0]);
+
+	sgl->cmd_nsge = htonl(V_ULPTX_CMD(ULP_TX_SC_DSGL) |
+			      V_ULPTX_NSGE(nfrags));
+	if (likely(--nfrags == 0))
+		return;
+	/*
+	 * Most of the complexity below deals with the possibility we hit the
+	 * end of the queue in the middle of writing the SGL.  For this case
+	 * only we create the SGL in a temporary buffer and then copy it.
+	 */
+	to = (u8 *)end > (u8 *)q->stat ? buf : sgl->sge;
+
+	for (i = 0; nfrags >= 2; nfrags -= 2, to++) {
+		m = m->next;
+		to->len[0] = rte_cpu_to_be_32(m->data_len);
+		to->addr[0] = rte_cpu_to_be_64(addr[++i]);
+		m = m->next;
+		to->len[1] = rte_cpu_to_be_32(m->data_len);
+		to->addr[1] = rte_cpu_to_be_64(addr[++i]);
+	}
+	if (nfrags) {
+		m = m->next;
+		to->len[0] = rte_cpu_to_be_32(m->data_len);
+		to->len[1] = rte_cpu_to_be_32(0);
+		to->addr[0] = rte_cpu_to_be_64(addr[i + 1]);
+	}
+	if (unlikely((u8 *)end > (u8 *)q->stat)) {
+		unsigned int part0 = RTE_PTR_DIFF((u8 *)q->stat,
+						  (u8 *)sgl->sge);
+		unsigned int part1;
+
+		if (likely(part0))
+			memcpy(sgl->sge, buf, part0);
+		part1 = RTE_PTR_DIFF((u8 *)end, (u8 *)q->stat);
+		rte_memcpy(q->desc, RTE_PTR_ADD((u8 *)buf, part0), part1);
+		end = RTE_PTR_ADD((void *)q->desc, part1);
+	}
+	if ((uintptr_t)end & 8)           /* 0-pad to multiple of 16 */
+		*(u64 *)end = 0;
+}
+
+#define IDXDIFF(head, tail, wrap) \
+	((head) >= (tail) ? (head) - (tail) : (wrap) - (tail) + (head))
+
+#define Q_IDXDIFF(q, idx) IDXDIFF((q)->pidx, (q)->idx, (q)->size)
+
+/**
+ * ring_tx_db - ring a Tx queue's doorbell
+ * @adap: the adapter
+ * @q: the Tx queue
+ * @n: number of new descriptors to give to HW
+ *
+ * Ring the doorbel for a Tx queue.
+ */
+static inline void ring_tx_db(struct adapter *adap, struct sge_txq *q)
+{
+	int n = Q_IDXDIFF(q, dbidx);
+
+	/*
+	 * Make sure that all writes to the TX Descriptors are committed
+	 * before we tell the hardware about them.
+	 */
+	rte_wmb();
+
+	/*
+	 * If we don't have access to the new User Doorbell (T5+), use the old
+	 * doorbell mechanism; otherwise use the new BAR2 mechanism.
+	 */
+	if (unlikely(!q->bar2_addr)) {
+		u32 val = V_PIDX(n);
+
+		/*
+		 * For T4 we need to participate in the Doorbell Recovery
+		 * mechanism.
+		 */
+		if (!q->db_disabled)
+			t4_write_reg(adap, MYPF_REG(A_SGE_PF_KDOORBELL),
+				     V_QID(q->cntxt_id) | val);
+		else
+			q->db_pidx_inc += n;
+		q->db_pidx = q->pidx;
+	} else {
+		u32 val = V_PIDX_T5(n);
+
+		/*
+		 * T4 and later chips share the same PIDX field offset within
+		 * the doorbell, but T5 and later shrank the field in order to
+		 * gain a bit for Doorbell Priority.  The field was absurdly
+		 * large in the first place (14 bits) so we just use the T5
+		 * and later limits and warn if a Queue ID is too large.
+		 */
+		WARN_ON(val & F_DBPRIO);
+
+		writel(val | V_QID(q->bar2_qid),
+		       (void *)((uintptr_t)q->bar2_addr + SGE_UDB_KDOORBELL));
+
+		/*
+		 * This Write Memory Barrier will force the write to the User
+		 * Doorbell area to be flushed.  This is needed to prevent
+		 * writes on different CPUs for the same queue from hitting
+		 * the adapter out of order.  This is required when some Work
+		 * Requests take the Write Combine Gather Buffer path (user
+		 * doorbell area offset [SGE_UDB_WCDOORBELL..+63]) and some
+		 * take the traditional path where we simply increment the
+		 * PIDX (User Doorbell area SGE_UDB_KDOORBELL) and have the
+		 * hardware DMA read the actual Work Request.
+		 */
+		rte_wmb();
+	}
+	q->dbidx = q->pidx;
+}
+
+/*
+ * Figure out what HW csum a packet wants and return the appropriate control
+ * bits.
+ */
+static u64 hwcsum(enum chip_type chip, const struct rte_mbuf *m)
+{
+	int csum_type;
+
+	if (m->ol_flags & PKT_TX_IP_CKSUM) {
+		switch (m->ol_flags & PKT_TX_L4_MASK) {
+		case PKT_TX_TCP_CKSUM:
+			csum_type = TX_CSUM_TCPIP;
+			break;
+		case PKT_TX_UDP_CKSUM:
+			csum_type = TX_CSUM_UDPIP;
+			break;
+		default:
+			goto nocsum;
+		}
+	} else {
+		goto nocsum;
+	}
+
+	if (likely(csum_type >= TX_CSUM_TCPIP)) {
+		int hdr_len = V_TXPKT_IPHDR_LEN(m->l3_len);
+		int eth_hdr_len = m->l2_len;
+
+		if (CHELSIO_CHIP_VERSION(chip) <= CHELSIO_T5)
+			hdr_len |= V_TXPKT_ETHHDR_LEN(eth_hdr_len);
+		else
+			hdr_len |= V_T6_TXPKT_ETHHDR_LEN(eth_hdr_len);
+		return V_TXPKT_CSUM_TYPE(csum_type) | hdr_len;
+	}
+nocsum:
+	/*
+	 * unknown protocol, disable HW csum
+	 * and hope a bad packet is detected
+	 */
+	return F_TXPKT_L4CSUM_DIS;
+}
+
+static inline void txq_advance(struct sge_txq *q, unsigned int n)
+{
+	q->in_use += n;
+	q->pidx += n;
+	if (q->pidx >= q->size)
+		q->pidx -= q->size;
+}
+
+#define MAX_COALESCE_LEN 64000
+
+static inline int wraps_around(struct sge_txq *q, int ndesc)
+{
+	return (q->pidx + ndesc) > q->size ? 1 : 0;
+}
+
+static void tx_timer_cb(void *data)
+{
+	struct adapter *adap = (struct adapter *)data;
+	struct sge_eth_txq *txq = &adap->sge.ethtxq[0];
+	int i;
+
+	/* monitor any pending tx */
+	for (i = 0; i < adap->sge.max_ethqsets; i++, txq++) {
+		t4_os_lock(&txq->txq_lock);
+		if (txq->q.coalesce.idx) {
+			if (txq->q.coalesce.idx == txq->q.last_coal_idx &&
+			    txq->q.pidx == txq->q.last_pidx) {
+				ship_tx_pkt_coalesce_wr(adap, txq);
+			} else {
+				txq->q.last_coal_idx = txq->q.coalesce.idx;
+				txq->q.last_pidx = txq->q.pidx;
+			}
+		}
+		t4_os_unlock(&txq->txq_lock);
+	}
+	rte_eal_alarm_set(50, tx_timer_cb, (void *)adap);
+}
+
+/**
+ * ship_tx_pkt_coalesce_wr - finalizes and ships a coalesce WR
+ * @ adap: adapter structure
+ * @txq: tx queue
+ *
+ * writes the different fields of the pkts WR and sends it.
+ */
+static inline void ship_tx_pkt_coalesce_wr(struct adapter *adap,
+					   struct sge_eth_txq *txq)
+{
+	u32 wr_mid;
+	struct sge_txq *q = &txq->q;
+	struct fw_eth_tx_pkts_wr *wr;
+	unsigned int ndesc;
+
+	/* fill the pkts WR header */
+	wr = (void *)&q->desc[q->pidx];
+	wr->op_pkd = htonl(V_FW_WR_OP(FW_ETH_TX_PKTS_WR));
+
+	wr_mid = V_FW_WR_LEN16(DIV_ROUND_UP(q->coalesce.flits, 2));
+	ndesc = flits_to_desc(q->coalesce.flits);
+	wr->equiq_to_len16 = htonl(wr_mid);
+	wr->plen = cpu_to_be16(q->coalesce.len);
+	wr->npkt = q->coalesce.idx;
+	wr->r3 = 0;
+	wr->type = q->coalesce.type;
+
+	/* zero out coalesce structure members */
+	q->coalesce.idx = 0;
+	q->coalesce.flits = 0;
+	q->coalesce.len = 0;
+
+	txq_advance(q, ndesc);
+	txq->stats.coal_wr++;
+	txq->stats.coal_pkts += wr->npkt;
+
+	if (Q_IDXDIFF(q, equeidx) >= q->size / 2) {
+		q->equeidx = q->pidx;
+		wr_mid |= F_FW_WR_EQUEQ;
+		wr->equiq_to_len16 = htonl(wr_mid);
+	}
+	ring_tx_db(adap, q);
+}
+
+/**
+ * should_tx_packet_coalesce - decides wether to coalesce an mbuf or not
+ * @txq: tx queue where the mbuf is sent
+ * @mbuf: mbuf to be sent
+ * @nflits: return value for number of flits needed
+ * @adap: adapter structure
+ *
+ * This function decides if a packet should be coalesced or not.
+ */
+static inline int should_tx_packet_coalesce(struct sge_eth_txq *txq,
+					    struct rte_mbuf *mbuf,
+					    unsigned int *nflits,
+					    struct adapter *adap)
+{
+	struct sge_txq *q = &txq->q;
+	unsigned int flits, ndesc;
+	unsigned char type = 0;
+	int credits, hw_cidx = ntohs(q->stat->cidx);
+	int in_use = q->pidx - hw_cidx + flits_to_desc(q->coalesce.flits);
+
+	/* use coal WR type 1 when no frags are present */
+	type = (mbuf->nb_segs == 1) ? 1 : 0;
+
+	if (in_use < 0)
+		in_use += q->size;
+
+	if (unlikely(type != q->coalesce.type && q->coalesce.idx))
+		ship_tx_pkt_coalesce_wr(adap, txq);
+
+	/* calculate the number of flits required for coalescing this packet
+	 * without the 2 flits of the WR header. These are added further down
+	 * if we are just starting in new PKTS WR. sgl_len doesn't account for
+	 * the possible 16 bytes alignment ULP TX commands so we do it here.
+	 */
+	flits = (sgl_len(mbuf->nb_segs) + 1) & ~1U;
+	if (type == 0)
+		flits += (sizeof(struct ulp_txpkt) +
+			  sizeof(struct ulptx_idata)) / sizeof(__be64);
+	flits += sizeof(struct cpl_tx_pkt_core) / sizeof(__be64);
+	*nflits = flits;
+
+	/* If coalescing is on, the mbuf is added to a pkts WR */
+	if (q->coalesce.idx) {
+		ndesc = DIV_ROUND_UP(q->coalesce.flits + flits, 8);
+		credits = txq_avail(q) - ndesc;
+
+		/* If we are wrapping or this is last mbuf then, send the
+		 * already coalesced mbufs and let the non-coalesce pass
+		 * handle the mbuf.
+		 */
+		if (unlikely(credits < 0 || wraps_around(q, ndesc))) {
+			ship_tx_pkt_coalesce_wr(adap, txq);
+			return 0;
+		}
+
+		/* If the max coalesce len or the max WR len is reached
+		 * ship the WR and keep coalescing on.
+		 */
+		if (unlikely((q->coalesce.len + mbuf->pkt_len >
+						MAX_COALESCE_LEN) ||
+			     (q->coalesce.flits + flits >
+			      q->coalesce.max))) {
+			ship_tx_pkt_coalesce_wr(adap, txq);
+			goto new;
+		}
+		return 1;
+	}
+
+new:
+	/* start a new pkts WR, the WR header is not filled below */
+	flits += sizeof(struct fw_eth_tx_pkts_wr) / sizeof(__be64);
+	ndesc = flits_to_desc(q->coalesce.flits + flits);
+	credits = txq_avail(q) - ndesc;
+
+	if (unlikely(credits < 0 || wraps_around(q, ndesc)))
+		return 0;
+	q->coalesce.flits += 2;
+	q->coalesce.type = type;
+	q->coalesce.ptr = (unsigned char *)&q->desc[q->pidx] +
+			   2 * sizeof(__be64);
+	return 1;
+}
+
+/**
+ * tx_do_packet_coalesce - add an mbuf to a coalesce WR
+ * @txq: sge_eth_txq used send the mbuf
+ * @mbuf: mbuf to be sent
+ * @flits: flits needed for this mbuf
+ * @adap: adapter structure
+ * @pi: port_info structure
+ * @addr: mapped address of the mbuf
+ *
+ * Adds an mbuf to be sent as part of a coalesce WR by filling a
+ * ulp_tx_pkt command, ulp_tx_sc_imm command, cpl message and
+ * ulp_tx_sc_dsgl command.
+ */
+static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
+					struct rte_mbuf *mbuf,
+					int flits, struct adapter *adap,
+					const struct port_info *pi,
+					dma_addr_t *addr)
+{
+	u64 cntrl, *end;
+	struct sge_txq *q = &txq->q;
+	struct ulp_txpkt *mc;
+	struct ulptx_idata *sc_imm;
+	struct cpl_tx_pkt_core *cpl;
+	struct tx_sw_desc *sd;
+	unsigned int idx = q->coalesce.idx, len = mbuf->pkt_len;
+
+	if (q->coalesce.type == 0) {
+		mc = (struct ulp_txpkt *)q->coalesce.ptr;
+		mc->cmd_dest = htonl(V_ULPTX_CMD(4) | V_ULP_TXPKT_DEST(0) |
+				     V_ULP_TXPKT_FID(adap->sge.fw_evtq.cntxt_id) |
+				     F_ULP_TXPKT_RO);
+		mc->len = htonl(DIV_ROUND_UP(flits, 2));
+		sc_imm = (struct ulptx_idata *)(mc + 1);
+		sc_imm->cmd_more = htonl(V_ULPTX_CMD(ULP_TX_SC_IMM) |
+					 F_ULP_TX_SC_MORE);
+		sc_imm->len = htonl(sizeof(*cpl));
+		end = (u64 *)mc + flits;
+		cpl = (struct cpl_tx_pkt_core *)(sc_imm + 1);
+	} else {
+		end = (u64 *)q->coalesce.ptr + flits;
+		cpl = (struct cpl_tx_pkt_core *)q->coalesce.ptr;
+	}
+
+	/* update coalesce structure for this txq */
+	q->coalesce.flits += flits;
+	q->coalesce.ptr += flits * sizeof(__be64);
+	q->coalesce.len += mbuf->pkt_len;
+
+	/* fill the cpl message, same as in t4_eth_xmit, this should be kept
+	 * similar to t4_eth_xmit
+	 */
+	if (mbuf->ol_flags & PKT_TX_IP_CKSUM) {
+		cntrl = hwcsum(adap->params.chip, mbuf) |
+			       F_TXPKT_IPCSUM_DIS;
+		txq->stats.tx_cso++;
+	} else {
+		cntrl = F_TXPKT_L4CSUM_DIS | F_TXPKT_IPCSUM_DIS;
+	}
+
+	if (mbuf->ol_flags & PKT_TX_VLAN_PKT) {
+		txq->stats.vlan_ins++;
+		cntrl |= F_TXPKT_VLAN_VLD | V_TXPKT_VLAN(mbuf->vlan_tci);
+	}
+
+	cpl->ctrl0 = htonl(V_TXPKT_OPCODE(CPL_TX_PKT_XT) |
+			   V_TXPKT_INTF(pi->tx_chan) |
+			   V_TXPKT_PF(adap->pf));
+	cpl->pack = htons(0);
+	cpl->len = htons(len);
+	cpl->ctrl1 = cpu_to_be64(cntrl);
+	write_sgl(mbuf, q, (struct ulptx_sgl *)(cpl + 1), end, 0,  addr);
+	txq->stats.pkts++;
+	txq->stats.tx_bytes += len;
+
+	sd = &q->sdesc[q->pidx + (idx >> 1)];
+	if (!(idx & 1)) {
+		if (sd->coalesce.idx) {
+			int i;
+
+			for (i = 0; i < sd->coalesce.idx; i++) {
+				rte_pktmbuf_free(sd->coalesce.mbuf[i]);
+				sd->coalesce.mbuf[i] = NULL;
+			}
+		}
+	}
+
+	/* store pointers to the mbuf and the sgl used in free_tx_desc.
+	 * each tx desc can hold two pointers corresponding to the value
+	 * of ETH_COALESCE_PKT_PER_DESC
+	 */
+	sd->coalesce.mbuf[idx & 1] = mbuf;
+	sd->coalesce.sgl[idx & 1] = (struct ulptx_sgl *)(cpl + 1);
+	sd->coalesce.idx = (idx & 1) + 1;
+
+	/* send the coaelsced work request if max reached */
+	if (++q->coalesce.idx == ETH_COALESCE_PKT_NUM)
+		ship_tx_pkt_coalesce_wr(adap, txq);
+	return 0;
+}
+
+/**
+ * t4_eth_xmit - add a packet to an Ethernet Tx queue
+ * @txq: the egress queue
+ * @mbuf: the packet
+ *
+ * Add a packet to an SGE Ethernet Tx queue.  Runs with softirqs disabled.
+ */
+int t4_eth_xmit(struct sge_eth_txq *txq, struct rte_mbuf *mbuf)
+{
+	const struct port_info *pi;
+	struct cpl_tx_pkt_lso_core *lso;
+	struct adapter *adap;
+	struct rte_mbuf *m = mbuf;
+	struct fw_eth_tx_pkt_wr *wr;
+	struct cpl_tx_pkt_core *cpl;
+	struct tx_sw_desc *d;
+	dma_addr_t addr[m->nb_segs];
+	unsigned int flits, ndesc, cflits;
+	int l3hdr_len, l4hdr_len, eth_xtra_len;
+	int len, last_desc;
+	int credits;
+	u32 wr_mid;
+	u64 cntrl, *end;
+	bool v6;
+
+	/* Reject xmit if queue is stopped */
+	if (unlikely(txq->flags & EQ_STOPPED))
+		return -(EBUSY);
+
+	/*
+	 * The chip min packet length is 10 octets but play safe and reject
+	 * anything shorter than an Ethernet header.
+	 */
+	if (unlikely(m->pkt_len < ETHER_HDR_LEN)) {
+out_free:
+		rte_pktmbuf_free(m);
+		return 0;
+	}
+
+	rte_prefetch0(&((&txq->q)->sdesc->mbuf->pool));
+	pi = (struct port_info *)txq->eth_dev->data->dev_private;
+	adap = pi->adapter;
+
+	cntrl = F_TXPKT_L4CSUM_DIS | F_TXPKT_IPCSUM_DIS;
+	/* align the end of coalesce WR to a 512 byte boundary */
+	txq->q.coalesce.max = (8 - (txq->q.pidx & 7)) * 8;
+
+	if (!(m->ol_flags & PKT_TX_TCP_SEG)) {
+		if (should_tx_packet_coalesce(txq, mbuf, &cflits, adap)) {
+			if (unlikely(map_mbuf(mbuf, addr) < 0)) {
+				dev_warn(adap, "%s: mapping err for coalesce\n",
+					 __func__);
+				txq->stats.mapping_err++;
+				goto out_free;
+			}
+			return tx_do_packet_coalesce(txq, mbuf, cflits, adap,
+						     pi, addr);
+		} else {
+			return -EBUSY;
+		}
+	}
+
+	if (txq->q.coalesce.idx)
+		ship_tx_pkt_coalesce_wr(adap, txq);
+
+	flits = calc_tx_flits(m);
+	ndesc = flits_to_desc(flits);
+	credits = txq_avail(&txq->q) - ndesc;
+
+	if (unlikely(credits < 0)) {
+		dev_debug(adap, "%s: Tx ring %u full; credits = %d\n",
+			  __func__, txq->q.cntxt_id, credits);
+		return -EBUSY;
+	}
+
+	if (unlikely(map_mbuf(m, addr) < 0)) {
+		txq->stats.mapping_err++;
+		goto out_free;
+	}
+
+	wr_mid = V_FW_WR_LEN16(DIV_ROUND_UP(flits, 2));
+	if (Q_IDXDIFF(&txq->q, equeidx)  >= 64) {
+		txq->q.equeidx = txq->q.pidx;
+		wr_mid |= F_FW_WR_EQUEQ;
+	}
+
+	wr = (void *)&txq->q.desc[txq->q.pidx];
+	wr->equiq_to_len16 = htonl(wr_mid);
+	wr->r3 = rte_cpu_to_be_64(0);
+	end = (u64 *)wr + flits;
+
+	len = 0;
+	len += sizeof(*cpl);
+	lso = (void *)(wr + 1);
+	v6 = (m->ol_flags & PKT_TX_IPV6) != 0;
+	l3hdr_len = m->l3_len;
+	l4hdr_len = m->l4_len;
+	eth_xtra_len = m->l2_len - ETHER_HDR_LEN;
+	len += sizeof(*lso);
+	wr->op_immdlen = htonl(V_FW_WR_OP(FW_ETH_TX_PKT_WR) |
+			       V_FW_WR_IMMDLEN(len));
+	lso->lso_ctrl = htonl(V_LSO_OPCODE(CPL_TX_PKT_LSO) |
+			      F_LSO_FIRST_SLICE | F_LSO_LAST_SLICE |
+			      V_LSO_IPV6(v6) |
+			      V_LSO_ETHHDR_LEN(eth_xtra_len / 4) |
+			      V_LSO_IPHDR_LEN(l3hdr_len / 4) |
+			      V_LSO_TCPHDR_LEN(l4hdr_len / 4));
+	lso->ipid_ofst = htons(0);
+	lso->mss = htons(m->tso_segsz);
+	lso->seqno_offset = htonl(0);
+	if (is_t4(adap->params.chip))
+		lso->len = htonl(m->pkt_len);
+	else
+		lso->len = htonl(V_LSO_T5_XFER_SIZE(m->pkt_len));
+	cpl = (void *)(lso + 1);
+	cntrl = V_TXPKT_CSUM_TYPE(v6 ? TX_CSUM_TCPIP6 : TX_CSUM_TCPIP) |
+				  V_TXPKT_IPHDR_LEN(l3hdr_len) |
+				  V_TXPKT_ETHHDR_LEN(eth_xtra_len);
+	txq->stats.tso++;
+	txq->stats.tx_cso += m->tso_segsz;
+
+	if (m->ol_flags & PKT_TX_VLAN_PKT) {
+		txq->stats.vlan_ins++;
+		cntrl |= F_TXPKT_VLAN_VLD | V_TXPKT_VLAN(m->vlan_tci);
+	}
+
+	cpl->ctrl0 = htonl(V_TXPKT_OPCODE(CPL_TX_PKT_XT) |
+			   V_TXPKT_INTF(pi->tx_chan) |
+			   V_TXPKT_PF(adap->pf));
+	cpl->pack = htons(0);
+	cpl->len = htons(m->pkt_len);
+	cpl->ctrl1 = cpu_to_be64(cntrl);
+
+	txq->stats.pkts++;
+	txq->stats.tx_bytes += m->pkt_len;
+	last_desc = txq->q.pidx + ndesc - 1;
+	if (last_desc >= (int)txq->q.size)
+		last_desc -= txq->q.size;
+
+	d = &txq->q.sdesc[last_desc];
+	if (d->mbuf) {
+		rte_pktmbuf_free(d->mbuf);
+		d->mbuf = NULL;
+	}
+	write_sgl(m, &txq->q, (struct ulptx_sgl *)(cpl + 1), end, 0,
+		  addr);
+	txq->q.sdesc[last_desc].mbuf = m;
+	txq->q.sdesc[last_desc].sgl = (struct ulptx_sgl *)(cpl + 1);
+	txq_advance(&txq->q, ndesc);
+	ring_tx_db(adap, &txq->q);
+	return 0;
 }
 
 /**
@@ -1004,6 +1824,121 @@ err:
 	return ret;
 }
 
+static void init_txq(struct adapter *adap, struct sge_txq *q, unsigned int id)
+{
+	q->cntxt_id = id;
+	q->bar2_addr = bar2_address(adap, q->cntxt_id, T4_BAR2_QTYPE_EGRESS,
+				    &q->bar2_qid);
+	q->cidx = 0;
+	q->pidx = 0;
+	q->dbidx = 0;
+	q->in_use = 0;
+	q->equeidx = 0;
+	q->coalesce.idx = 0;
+	q->coalesce.len = 0;
+	q->coalesce.flits = 0;
+	q->last_coal_idx = 0;
+	q->last_pidx = 0;
+	q->stat = (void *)&q->desc[q->size];
+}
+
+int t4_sge_eth_txq_start(struct sge_eth_txq *txq)
+{
+	/*
+	 *  TODO: For flow-control, queue may be stopped waiting to reclaim
+	 *  credits.
+	 *  Ensure queue is in EQ_STOPPED state before starting it.
+	 */
+	if (!(txq->flags & EQ_STOPPED))
+		return -(EBUSY);
+
+	txq->flags &= ~EQ_STOPPED;
+
+	return 0;
+}
+
+int t4_sge_eth_txq_stop(struct sge_eth_txq *txq)
+{
+	txq->flags |= EQ_STOPPED;
+
+	return 0;
+}
+
+int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
+			 struct rte_eth_dev *eth_dev, uint16_t queue_id,
+			 unsigned int iqid, int socket_id)
+{
+	int ret, nentries;
+	struct fw_eq_eth_cmd c;
+	struct sge *s = &adap->sge;
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	char z_name[RTE_MEMZONE_NAMESIZE];
+	char z_name_sw[RTE_MEMZONE_NAMESIZE];
+
+	/* Add status entries */
+	nentries = txq->q.size + s->stat_len / sizeof(struct tx_desc);
+
+	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
+		 eth_dev->driver->pci_drv.name, "tx_ring",
+		 eth_dev->data->port_id, queue_id);
+	snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
+
+	txq->q.desc = alloc_ring(txq->q.size, sizeof(struct tx_desc),
+				 sizeof(struct tx_sw_desc), &txq->q.phys_addr,
+				 &txq->q.sdesc, s->stat_len, queue_id,
+				 socket_id, z_name, z_name_sw);
+	if (!txq->q.desc)
+		return -ENOMEM;
+
+	memset(&c, 0, sizeof(c));
+	c.op_to_vfn = htonl(V_FW_CMD_OP(FW_EQ_ETH_CMD) | F_FW_CMD_REQUEST |
+			    F_FW_CMD_WRITE | F_FW_CMD_EXEC |
+			    V_FW_EQ_ETH_CMD_PFN(adap->pf) |
+			    V_FW_EQ_ETH_CMD_VFN(0));
+	c.alloc_to_len16 = htonl(F_FW_EQ_ETH_CMD_ALLOC |
+				 F_FW_EQ_ETH_CMD_EQSTART | (sizeof(c) / 16));
+	c.autoequiqe_to_viid = htonl(F_FW_EQ_ETH_CMD_AUTOEQUEQE |
+				     V_FW_EQ_ETH_CMD_VIID(pi->viid));
+	c.fetchszm_to_iqid =
+		htonl(V_FW_EQ_ETH_CMD_HOSTFCMODE(X_HOSTFCMODE_NONE) |
+		      V_FW_EQ_ETH_CMD_PCIECHN(pi->tx_chan) |
+		      F_FW_EQ_ETH_CMD_FETCHRO | V_FW_EQ_ETH_CMD_IQID(iqid));
+	c.dcaen_to_eqsize =
+		htonl(V_FW_EQ_ETH_CMD_FBMIN(X_FETCHBURSTMIN_64B) |
+		      V_FW_EQ_ETH_CMD_FBMAX(X_FETCHBURSTMAX_512B) |
+		      V_FW_EQ_ETH_CMD_EQSIZE(nentries));
+	c.eqaddr = rte_cpu_to_be_64(txq->q.phys_addr);
+
+	ret = t4_wr_mbox(adap, adap->mbox, &c, sizeof(c), &c);
+	if (ret) {
+		rte_free(txq->q.sdesc);
+		txq->q.sdesc = NULL;
+		txq->q.desc = NULL;
+		return ret;
+	}
+
+	init_txq(adap, &txq->q, G_FW_EQ_ETH_CMD_EQID(ntohl(c.eqid_pkd)));
+	txq->stats.tso = 0;
+	txq->stats.pkts = 0;
+	txq->stats.tx_cso = 0;
+	txq->stats.coal_wr = 0;
+	txq->stats.vlan_ins = 0;
+	txq->stats.tx_bytes = 0;
+	txq->stats.coal_pkts = 0;
+	txq->stats.mapping_err = 0;
+	txq->flags |= EQ_STOPPED;
+	txq->eth_dev = eth_dev;
+	t4_os_lock_init(&txq->txq_lock);
+	return 0;
+}
+
+static void free_txq(struct sge_txq *q)
+{
+	q->cntxt_id = 0;
+	q->sdesc = NULL;
+	q->desc = NULL;
+}
+
 static void free_rspq_fl(struct adapter *adap, struct sge_rspq *rq,
 			 struct sge_fl *fl)
 {
@@ -1030,6 +1965,28 @@ void t4_sge_eth_rxq_release(struct adapter *adap, struct sge_eth_rxq *rxq)
 		t4_sge_eth_rxq_stop(adap, &rxq->rspq);
 		free_rspq_fl(adap, &rxq->rspq, rxq->fl.size ? &rxq->fl : NULL);
 	}
+}
+
+void t4_sge_eth_txq_release(struct adapter *adap, struct sge_eth_txq *txq)
+{
+	if (txq->q.desc) {
+		t4_sge_eth_txq_stop(txq);
+		reclaim_completed_tx(&txq->q);
+		t4_eth_eq_free(adap, adap->mbox, adap->pf, 0, txq->q.cntxt_id);
+		free_tx_desc(&txq->q, txq->q.size);
+		rte_free(txq->q.sdesc);
+		free_txq(&txq->q);
+	}
+}
+
+void t4_sge_tx_monitor_start(struct adapter *adap)
+{
+	rte_eal_alarm_set(50, tx_timer_cb, (void *)adap);
+}
+
+void t4_sge_tx_monitor_stop(struct adapter *adap)
+{
+	rte_eal_alarm_cancel(tx_timer_cb, (void *)adap);
 }
 
 /**
