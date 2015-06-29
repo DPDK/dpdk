@@ -213,6 +213,7 @@ F: drivers/net/af_packet/
 Chelsio cxgbe
 M: Rahul Lakkireddy <rahul.lakkireddy@chelsio.com>
 F: drivers/net/cxgbe/
+F: doc/guides/nics/cxgbe.rst
 
 Cisco enic
 F: drivers/net/enic/

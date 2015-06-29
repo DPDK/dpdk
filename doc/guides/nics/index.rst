@@ -40,6 +40,7 @@ Network Interface Controller Drivers
     :maxdepth: 3
     :numbered:
 
+    cxgbe
     e1000em
     ixgbe
     intel_vf

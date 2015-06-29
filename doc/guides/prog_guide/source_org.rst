@@ -97,6 +97,7 @@ The drivers directory has a net subdirectory which contains::
     drivers/net
     +-- af_packet          # poll mode driver based on linux af_packet
     +-- bonding            # bonding poll mode driver
+    +-- cxgbe              # Chelsio Terminator 10GbE/40GbE poll mode driver
     +-- e1000              # 1GbE poll mode drivers (igb and em)
     +-- enic               # Cisco VIC Ethernet NIC Poll-mode Driver
     +-- fm10k              # Host interface PMD driver for FM10000 Series
