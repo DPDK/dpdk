@@ -7,3 +7,4 @@ Guidelines
 
     coding_style
     design
+    versioning
