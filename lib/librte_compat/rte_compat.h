@@ -54,7 +54,7 @@
  * foo is exported as a global symbol.
  *
  * 2) rename the existing function int foo(char *string) to
- *	int __vsym foo_v20(char *string)
+ *	int foo_v20(char *string)
  *
  * 3) Add this macro immediately below the function
  *	VERSION_SYMBOL(foo, _v20, 2.0);
@@ -63,7 +63,7 @@
  *	char foo(int value, int otherval) { ...}
  *
  * 5) Mark the newest version as the default version
- *	BIND_DEFAULT_SYMBOL(foo, 2.1);
+ *	BIND_DEFAULT_SYMBOL(foo, _v21, 2.1);
  *
  */
 
@@ -79,31 +79,31 @@
  * Creates a symbol version table entry binding symbol <b>@DPDK_<n> to the internal
  * function name <b>_<e>
  */
-#define VERSION_SYMBOL(b, e, n) __asm__(".symver " RTE_STR(b) RTE_STR(e) ", "RTE_STR(b)"@DPDK_"RTE_STR(n))
+#define VERSION_SYMBOL(b, e, n) __asm__(".symver " RTE_STR(b) RTE_STR(e) ", " RTE_STR(b) "@DPDK_" RTE_STR(n))
 
 /*
  * BASE_SYMBOL
  * Creates a symbol version table entry binding unversioned symbol <b>
  * to the internal function <b>_<e>
  */
-#define BASE_SYMBOL(b, e) __asm__(".symver " RTE_STR(b) RTE_STR(e) ", "RTE_STR(b)"@")
+#define BASE_SYMBOL(b, e) __asm__(".symver " RTE_STR(b) RTE_STR(e) ", " RTE_STR(b)"@")
 
 /*
- * BNID_DEFAULT_SYMBOL
+ * BIND_DEFAULT_SYMBOL
  * Creates a symbol version entry instructing the linker to bind references to
  * symbol <b> to the internal symbol <b>_<e>
  */
-#define BIND_DEFAULT_SYMBOL(b, e, n) __asm__(".symver " RTE_STR(b) RTE_STR(e) ", "RTE_STR(b)"@@DPDK_"RTE_STR(n))
+#define BIND_DEFAULT_SYMBOL(b, e, n) __asm__(".symver " RTE_STR(b) RTE_STR(e) ", " RTE_STR(b) "@@DPDK_" RTE_STR(n))
 #define __vsym __attribute__((used))
 
 #else
 /*
  * No symbol versioning in use
  */
-#define VERSION_SYMBOL(b, e, v)
+#define VERSION_SYMBOL(b, e, n)
 #define __vsym
-#define BASE_SYMBOL(b, n)
-#define BIND_DEFAULT_SYMBOL(b, v)
+#define BASE_SYMBOL(b, e)
+#define BIND_DEFAULT_SYMBOL(b, e, n)
 
 /*
  * RTE_BUILD_SHARED_LIB=n
