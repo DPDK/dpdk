@@ -74,8 +74,12 @@ struct feature_entry {
 
 /**
  * An array that holds feature entries
+ *
+ * Defined in arch-specific rte_cpuflags.h.
  */
+#ifdef __DOXYGEN__
 static const struct feature_entry cpu_feature_table[];
+#endif
 
 /**
  * Execute CPUID instruction and get contents of a specific register
