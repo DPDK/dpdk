@@ -92,7 +92,7 @@ rte_cfgfile_load(const char *filename, int flags)
 	int allocated_entries = 0;
 	int curr_section = -1;
 	int curr_entry = -1;
-	char buffer[256];
+	char buffer[256] = {0};
 	int lineno = 0;
 	struct rte_cfgfile *cfg = NULL;
 
