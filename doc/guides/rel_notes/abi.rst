@@ -1,7 +1,7 @@
 ABI policy
 ==========
-See the guidelines document for details of the ABI policy.  ABI deprecation
-notices are to be posted here
+See the :doc:`guidelines document for details of the ABI policy </guidelines/versioning>`.
+ABI deprecation notices are to be posted here.
 
 Examples of Deprecation Notices
 -------------------------------
