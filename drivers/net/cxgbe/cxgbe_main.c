@@ -827,6 +827,50 @@ void t4_os_portmod_changed(const struct adapter *adap, int port_id)
 }
 
 /**
+ * link_start - enable a port
+ * @dev: the port to enable
+ *
+ * Performs the MAC and PHY actions needed to enable a port.
+ */
+int link_start(struct port_info *pi)
+{
+	struct adapter *adapter = pi->adapter;
+	int ret;
+
+	/*
+	 * We do not set address filters and promiscuity here, the stack does
+	 * that step explicitly.
+	 */
+	ret = t4_set_rxmode(adapter, adapter->mbox, pi->viid, 1500, -1, -1,
+			    -1, 1, true);
+	if (ret == 0) {
+		ret = t4_change_mac(adapter, adapter->mbox, pi->viid,
+				    pi->xact_addr_filt,
+				    (u8 *)&pi->eth_dev->data->mac_addrs[0],
+				    true, true);
+		if (ret >= 0) {
+			pi->xact_addr_filt = ret;
+			ret = 0;
+		}
+	}
+	if (ret == 0)
+		ret = t4_link_l1cfg(adapter, adapter->mbox, pi->tx_chan,
+				    &pi->link_cfg);
+	if (ret == 0) {
+		/*
+		 * Enabling a Virtual Interface can result in an interrupt
+		 * during the processing of the VI Enable command and, in some
+		 * paths, result in an attempt to issue another command in the
+		 * interrupt context.  Thus, we disable interrupts during the
+		 * course of the VI Enable command ...
+		 */
+		ret = t4_enable_vi_params(adapter, adapter->mbox, pi->viid,
+					  true, true, false);
+	}
+	return ret;
+}
+
+/**
  * cxgb4_write_rss - write the RSS table for a given port
  * @pi: the port
  * @queues: array of queue indices for RSS
@@ -905,6 +949,101 @@ int setup_rss(struct port_info *pi)
 		}
 	}
 	return 0;
+}
+
+/*
+ * Enable NAPI scheduling and interrupt generation for all Rx queues.
+ */
+static void enable_rx(struct adapter *adap)
+{
+	struct sge *s = &adap->sge;
+	struct sge_rspq *q = &s->fw_evtq;
+	int i, j;
+
+	/* 0-increment GTS to start the timer and enable interrupts */
+	t4_write_reg(adap, MYPF_REG(A_SGE_PF_GTS),
+		     V_SEINTARM(q->intr_params) |
+		     V_INGRESSQID(q->cntxt_id));
+
+	for_each_port(adap, i) {
+		const struct port_info *pi = &adap->port[i];
+		struct rte_eth_dev *eth_dev = pi->eth_dev;
+
+		for (j = 0; j < eth_dev->data->nb_rx_queues; j++) {
+			q = eth_dev->data->rx_queues[j];
+
+			/*
+			 * 0-increment GTS to start the timer and enable
+			 * interrupts
+			 */
+			t4_write_reg(adap, MYPF_REG(A_SGE_PF_GTS),
+				     V_SEINTARM(q->intr_params) |
+				     V_INGRESSQID(q->cntxt_id));
+		}
+	}
+}
+
+/**
+ * cxgb_up - enable the adapter
+ * @adap: adapter being enabled
+ *
+ * Called when the first port is enabled, this function performs the
+ * actions necessary to make an adapter operational, such as completing
+ * the initialization of HW modules, and enabling interrupts.
+ */
+int cxgbe_up(struct adapter *adap)
+{
+	enable_rx(adap);
+	t4_sge_tx_monitor_start(adap);
+	t4_intr_enable(adap);
+	adap->flags |= FULL_INIT_DONE;
+
+	/* TODO: deadman watchdog ?? */
+	return 0;
+}
+
+/*
+ * Close the port
+ */
+int cxgbe_down(struct port_info *pi)
+{
+	struct adapter *adapter = pi->adapter;
+	int err = 0;
+
+	err = t4_enable_vi(adapter, adapter->mbox, pi->viid, false, false);
+	if (err) {
+		dev_err(adapter, "%s: disable_vi failed: %d\n", __func__, err);
+		return err;
+	}
+
+	t4_reset_link_config(adapter, pi->port_id);
+	return 0;
+}
+
+/*
+ * Release resources when all the ports have been stopped.
+ */
+void cxgbe_close(struct adapter *adapter)
+{
+	struct port_info *pi;
+	int i;
+
+	if (adapter->flags & FULL_INIT_DONE) {
+		t4_intr_disable(adapter);
+		t4_sge_tx_monitor_stop(adapter);
+		t4_free_sge_resources(adapter);
+		for_each_port(adapter, i) {
+			pi = adap2pinfo(adapter, i);
+			if (pi->viid != 0)
+				t4_free_vi(adapter, adapter->mbox,
+					   adapter->pf, 0, pi->viid);
+			rte_free(pi->eth_dev->data->mac_addrs);
+		}
+		adapter->flags &= ~FULL_INIT_DONE;
+	}
+
+	if (adapter->flags & FW_OK)
+		t4_fw_bye(adapter, adapter->mbox);
 }
 
 int cxgbe_probe(struct adapter *adapter)

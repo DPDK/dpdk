@@ -1959,6 +1959,35 @@ static void free_rspq_fl(struct adapter *adap, struct sge_rspq *rq,
 	}
 }
 
+/*
+ * Clear all queues of the port
+ *
+ * Note:  This function must only be called after rx and tx path
+ * of the port have been disabled.
+ */
+void t4_sge_eth_clear_queues(struct port_info *pi)
+{
+	int i;
+	struct adapter *adap = pi->adapter;
+	struct sge_eth_rxq *rxq = &adap->sge.ethrxq[pi->first_qset];
+	struct sge_eth_txq *txq = &adap->sge.ethtxq[pi->first_qset];
+
+	for (i = 0; i < pi->n_rx_qsets; i++, rxq++) {
+		if (rxq->rspq.desc)
+			t4_sge_eth_rxq_stop(adap, &rxq->rspq);
+	}
+	for (i = 0; i < pi->n_tx_qsets; i++, txq++) {
+		if (txq->q.desc) {
+			struct sge_txq *q = &txq->q;
+
+			t4_sge_eth_txq_stop(txq);
+			reclaim_completed_tx(q);
+			free_tx_desc(q, q->size);
+			q->equeidx = q->pidx;
+		}
+	}
+}
+
 void t4_sge_eth_rxq_release(struct adapter *adap, struct sge_eth_rxq *rxq)
 {
 	if (rxq->rspq.desc) {
@@ -1987,6 +2016,35 @@ void t4_sge_tx_monitor_start(struct adapter *adap)
 void t4_sge_tx_monitor_stop(struct adapter *adap)
 {
 	rte_eal_alarm_cancel(tx_timer_cb, (void *)adap);
+}
+
+/**
+ * t4_free_sge_resources - free SGE resources
+ * @adap: the adapter
+ *
+ * Frees resources used by the SGE queue sets.
+ */
+void t4_free_sge_resources(struct adapter *adap)
+{
+	int i;
+	struct sge_eth_rxq *rxq = &adap->sge.ethrxq[0];
+	struct sge_eth_txq *txq = &adap->sge.ethtxq[0];
+
+	/* clean up Ethernet Tx/Rx queues */
+	for (i = 0; i < adap->sge.max_ethqsets; i++, rxq++, txq++) {
+		/* Free only the queues allocated */
+		if (rxq->rspq.desc) {
+			t4_sge_eth_rxq_release(adap, rxq);
+			rxq->rspq.eth_dev = NULL;
+		}
+		if (txq->q.desc) {
+			t4_sge_eth_txq_release(adap, txq);
+			txq->eth_dev = NULL;
+		}
+	}
+
+	if (adap->sge.fw_evtq.desc)
+		free_rspq_fl(adap, &adap->sge.fw_evtq, NULL);
 }
 
 /**

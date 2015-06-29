@@ -171,6 +171,117 @@ static int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev,
 static void cxgbe_dev_tx_queue_release(void *q);
 static void cxgbe_dev_rx_queue_release(void *q);
 
+/*
+ * Stop device.
+ */
+static void cxgbe_dev_close(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	int i, dev_down = 0;
+
+	CXGBE_FUNC_TRACE();
+
+	if (!(adapter->flags & FULL_INIT_DONE))
+		return;
+
+	cxgbe_down(pi);
+
+	/*
+	 *  We clear queues only if both tx and rx path of the port
+	 *  have been disabled
+	 */
+	t4_sge_eth_clear_queues(pi);
+
+	/*  See if all ports are down */
+	for_each_port(adapter, i) {
+		pi = adap2pinfo(adapter, i);
+		/*
+		 * Skip first port of the adapter since it will be closed
+		 * by DPDK
+		 */
+		if (i == 0)
+			continue;
+		dev_down += (pi->eth_dev->data->dev_started == 0) ? 1 : 0;
+	}
+
+	/* If rest of the ports are stopped, then free up resources */
+	if (dev_down == (adapter->params.nports - 1))
+		cxgbe_close(adapter);
+}
+
+/* Start the device.
+ * It returns 0 on success.
+ */
+static int cxgbe_dev_start(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	int err = 0, i;
+
+	CXGBE_FUNC_TRACE();
+
+	/*
+	 * If we don't have a connection to the firmware there's nothing we
+	 * can do.
+	 */
+	if (!(adapter->flags & FW_OK)) {
+		err = -ENXIO;
+		goto out;
+	}
+
+	if (!(adapter->flags & FULL_INIT_DONE)) {
+		err = cxgbe_up(adapter);
+		if (err < 0)
+			goto out;
+	}
+
+	err = setup_rss(pi);
+	if (err)
+		goto out;
+
+	for (i = 0; i < pi->n_tx_qsets; i++) {
+		err = cxgbe_dev_tx_queue_start(eth_dev, i);
+		if (err)
+			goto out;
+	}
+
+	for (i = 0; i < pi->n_rx_qsets; i++) {
+		err = cxgbe_dev_rx_queue_start(eth_dev, i);
+		if (err)
+			goto out;
+	}
+
+	err = link_start(pi);
+	if (err)
+		goto out;
+
+out:
+	return err;
+}
+
+/*
+ * Stop device: disable rx and tx functions to allow for reconfiguring.
+ */
+static void cxgbe_dev_stop(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+
+	CXGBE_FUNC_TRACE();
+
+	if (!(adapter->flags & FULL_INIT_DONE))
+		return;
+
+	cxgbe_down(pi);
+
+	/*
+	 *  We clear queues only if both tx and rx path of the port
+	 *  have been disabled
+	 */
+	t4_sge_eth_clear_queues(pi);
+}
+
 static int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
@@ -390,6 +501,9 @@ static void cxgbe_dev_rx_queue_release(void *q)
 }
 
 static struct eth_dev_ops cxgbe_eth_dev_ops = {
+	.dev_start		= cxgbe_dev_start,
+	.dev_stop		= cxgbe_dev_stop,
+	.dev_close		= cxgbe_dev_close,
 	.dev_configure		= cxgbe_dev_configure,
 	.dev_infos_get		= cxgbe_dev_info_get,
 	.tx_queue_setup         = cxgbe_dev_tx_queue_setup,
