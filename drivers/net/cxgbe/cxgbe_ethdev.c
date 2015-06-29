@@ -164,6 +164,67 @@ static void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 	device_info->reta_size = pi->rss_size;
 }
 
+static void cxgbe_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+
+	t4_set_rxmode(adapter, adapter->mbox, pi->viid, -1,
+		      1, -1, 1, -1, false);
+}
+
+static void cxgbe_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+
+	t4_set_rxmode(adapter, adapter->mbox, pi->viid, -1,
+		      0, -1, 1, -1, false);
+}
+
+static void cxgbe_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+
+	/* TODO: address filters ?? */
+
+	t4_set_rxmode(adapter, adapter->mbox, pi->viid, -1,
+		      -1, 1, 1, -1, false);
+}
+
+static void cxgbe_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+
+	/* TODO: address filters ?? */
+
+	t4_set_rxmode(adapter, adapter->mbox, pi->viid, -1,
+		      -1, 0, 1, -1, false);
+}
+
+static int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
+				 __rte_unused int wait_to_complete)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	struct sge *s = &adapter->sge;
+	struct rte_eth_link *old_link = &eth_dev->data->dev_link;
+	unsigned int work_done, budget = 4;
+
+	cxgbe_poll(&s->fw_evtq, NULL, budget, &work_done);
+	if (old_link->link_status == pi->link_cfg.link_ok)
+		return -1;  /* link not changed */
+
+	eth_dev->data->dev_link.link_status = pi->link_cfg.link_ok;
+	eth_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	eth_dev->data->dev_link.link_speed = pi->link_cfg.speed;
+
+	/* link has changed */
+	return 0;
+}
+
 static int cxgbe_dev_tx_queue_start(struct rte_eth_dev *eth_dev,
 				    uint16_t tx_queue_id);
 static int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev,
@@ -585,8 +646,13 @@ static struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.dev_start		= cxgbe_dev_start,
 	.dev_stop		= cxgbe_dev_stop,
 	.dev_close		= cxgbe_dev_close,
+	.promiscuous_enable	= cxgbe_dev_promiscuous_enable,
+	.promiscuous_disable	= cxgbe_dev_promiscuous_disable,
+	.allmulticast_enable	= cxgbe_dev_allmulticast_enable,
+	.allmulticast_disable	= cxgbe_dev_allmulticast_disable,
 	.dev_configure		= cxgbe_dev_configure,
 	.dev_infos_get		= cxgbe_dev_info_get,
+	.link_update		= cxgbe_dev_link_update,
 	.tx_queue_setup         = cxgbe_dev_tx_queue_setup,
 	.tx_queue_start		= cxgbe_dev_tx_queue_start,
 	.tx_queue_stop		= cxgbe_dev_tx_queue_stop,
