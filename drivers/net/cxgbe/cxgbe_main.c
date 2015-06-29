@@ -67,6 +67,249 @@
 #include "t4_msg.h"
 #include "cxgbe.h"
 
+/*
+ * Response queue handler for the FW event queue.
+ */
+static int fwevtq_handler(struct sge_rspq *q, const __be64 *rsp,
+			  __rte_unused const struct pkt_gl *gl)
+{
+	u8 opcode = ((const struct rss_header *)rsp)->opcode;
+
+	rsp++;                                          /* skip RSS header */
+
+	/*
+	 * FW can send EGR_UPDATEs encapsulated in a CPL_FW4_MSG.
+	 */
+	if (unlikely(opcode == CPL_FW4_MSG &&
+		     ((const struct cpl_fw4_msg *)rsp)->type ==
+		      FW_TYPE_RSSCPL)) {
+		rsp++;
+		opcode = ((const struct rss_header *)rsp)->opcode;
+		rsp++;
+		if (opcode != CPL_SGE_EGR_UPDATE) {
+			dev_err(q->adapter, "unexpected FW4/CPL %#x on FW event queue\n",
+				opcode);
+			goto out;
+		}
+	}
+
+	if (likely(opcode == CPL_SGE_EGR_UPDATE)) {
+		/* do nothing */
+	} else if (opcode == CPL_FW6_MSG || opcode == CPL_FW4_MSG) {
+		const struct cpl_fw6_msg *msg = (const void *)rsp;
+
+		t4_handle_fw_rpl(q->adapter, msg->data);
+	} else {
+		dev_err(adapter, "unexpected CPL %#x on FW event queue\n",
+			opcode);
+	}
+out:
+	return 0;
+}
+
+int setup_sge_fwevtq(struct adapter *adapter)
+{
+	struct sge *s = &adapter->sge;
+	int err = 0;
+	int msi_idx = 0;
+
+	err = t4_sge_alloc_rxq(adapter, &s->fw_evtq, true, adapter->eth_dev,
+			       msi_idx, NULL, fwevtq_handler, -1, NULL, 0,
+			       rte_socket_id());
+	return err;
+}
+
+static int closest_timer(const struct sge *s, int time)
+{
+	unsigned int i, match = 0;
+	int delta, min_delta = INT_MAX;
+
+	for (i = 0; i < ARRAY_SIZE(s->timer_val); i++) {
+		delta = time - s->timer_val[i];
+		if (delta < 0)
+			delta = -delta;
+		if (delta < min_delta) {
+			min_delta = delta;
+			match = i;
+		}
+	}
+	return match;
+}
+
+static int closest_thres(const struct sge *s, int thres)
+{
+	unsigned int i, match = 0;
+	int delta, min_delta = INT_MAX;
+
+	for (i = 0; i < ARRAY_SIZE(s->counter_val); i++) {
+		delta = thres - s->counter_val[i];
+		if (delta < 0)
+			delta = -delta;
+		if (delta < min_delta) {
+			min_delta = delta;
+			match = i;
+		}
+	}
+	return match;
+}
+
+/**
+ * cxgb4_set_rspq_intr_params - set a queue's interrupt holdoff parameters
+ * @q: the Rx queue
+ * @us: the hold-off time in us, or 0 to disable timer
+ * @cnt: the hold-off packet count, or 0 to disable counter
+ *
+ * Sets an Rx queue's interrupt hold-off time and packet count.  At least
+ * one of the two needs to be enabled for the queue to generate interrupts.
+ */
+int cxgb4_set_rspq_intr_params(struct sge_rspq *q, unsigned int us,
+			       unsigned int cnt)
+{
+	struct adapter *adap = q->adapter;
+	unsigned int timer_val;
+
+	if (cnt) {
+		int err;
+		u32 v, new_idx;
+
+		new_idx = closest_thres(&adap->sge, cnt);
+		if (q->desc && q->pktcnt_idx != new_idx) {
+			/* the queue has already been created, update it */
+			v = V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_DMAQ) |
+			    V_FW_PARAMS_PARAM_X(
+			    FW_PARAMS_PARAM_DMAQ_IQ_INTCNTTHRESH) |
+			    V_FW_PARAMS_PARAM_YZ(q->cntxt_id);
+			err = t4_set_params(adap, adap->mbox, adap->pf, 0, 1,
+					    &v, &new_idx);
+			if (err)
+				return err;
+		}
+		q->pktcnt_idx = new_idx;
+	}
+
+	timer_val = (us == 0) ? X_TIMERREG_RESTART_COUNTER :
+				closest_timer(&adap->sge, us);
+
+	if ((us | cnt) == 0)
+		q->intr_params = V_QINTR_TIMER_IDX(X_TIMERREG_UPDATE_CIDX);
+	else
+		q->intr_params = V_QINTR_TIMER_IDX(timer_val) |
+				 V_QINTR_CNT_EN(cnt > 0);
+	return 0;
+}
+
+static inline bool is_x_1g_port(const struct link_config *lc)
+{
+	return ((lc->supported & FW_PORT_CAP_SPEED_1G) != 0);
+}
+
+static inline bool is_x_10g_port(const struct link_config *lc)
+{
+	return ((lc->supported & FW_PORT_CAP_SPEED_10G) != 0 ||
+		(lc->supported & FW_PORT_CAP_SPEED_40G) != 0 ||
+		(lc->supported & FW_PORT_CAP_SPEED_100G) != 0);
+}
+
+inline void init_rspq(struct adapter *adap, struct sge_rspq *q,
+		      unsigned int us, unsigned int cnt,
+		      unsigned int size, unsigned int iqe_size)
+{
+	q->adapter = adap;
+	cxgb4_set_rspq_intr_params(q, us, cnt);
+	q->iqe_len = iqe_size;
+	q->size = size;
+}
+
+int cfg_queue_count(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adap = pi->adapter;
+	struct sge *s = &adap->sge;
+	unsigned int max_queues = s->max_ethqsets / adap->params.nports;
+
+	if ((eth_dev->data->nb_rx_queues < 1) ||
+	    (eth_dev->data->nb_tx_queues < 1))
+		return -EINVAL;
+
+	if ((eth_dev->data->nb_rx_queues > max_queues) ||
+	    (eth_dev->data->nb_tx_queues > max_queues))
+		return -EINVAL;
+
+	if (eth_dev->data->nb_rx_queues > pi->rss_size)
+		return -EINVAL;
+
+	/* We must configure RSS, since config has changed*/
+	pi->flags &= ~PORT_RSS_DONE;
+
+	pi->n_rx_qsets = eth_dev->data->nb_rx_queues;
+	pi->n_tx_qsets = eth_dev->data->nb_tx_queues;
+
+	return 0;
+}
+
+void cfg_queues(struct rte_eth_dev *eth_dev)
+{
+	struct rte_config *config = rte_eal_get_configuration();
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adap = pi->adapter;
+	struct sge *s = &adap->sge;
+	unsigned int i, nb_ports = 0, qidx = 0;
+	unsigned int q_per_port = 0;
+
+	if (!(adap->flags & CFG_QUEUES)) {
+		for_each_port(adap, i) {
+			struct port_info *tpi = adap2pinfo(adap, i);
+
+			nb_ports += (is_x_10g_port(&tpi->link_cfg)) ||
+				     is_x_1g_port(&tpi->link_cfg) ? 1 : 0;
+		}
+
+		/*
+		 * We default up to # of cores queues per 1G/10G port.
+		 */
+		if (nb_ports)
+			q_per_port = (MAX_ETH_QSETS -
+				     (adap->params.nports - nb_ports)) /
+				     nb_ports;
+
+		if (q_per_port > config->lcore_count)
+			q_per_port = config->lcore_count;
+
+		for_each_port(adap, i) {
+			struct port_info *pi = adap2pinfo(adap, i);
+
+			pi->first_qset = qidx;
+
+			/* Initially n_rx_qsets == n_tx_qsets */
+			pi->n_rx_qsets = (is_x_10g_port(&pi->link_cfg) ||
+					  is_x_1g_port(&pi->link_cfg)) ?
+					  q_per_port : 1;
+			pi->n_tx_qsets = pi->n_rx_qsets;
+
+			if (pi->n_rx_qsets > pi->rss_size)
+				pi->n_rx_qsets = pi->rss_size;
+
+			qidx += pi->n_rx_qsets;
+		}
+
+		s->max_ethqsets = qidx;
+
+		for (i = 0; i < ARRAY_SIZE(s->ethrxq); i++) {
+			struct sge_eth_rxq *r = &s->ethrxq[i];
+
+			init_rspq(adap, &r->rspq, 0, 0, 1024, 64);
+			r->usembufs = 1;
+			r->fl.size = (r->usembufs ? 1024 : 72);
+		}
+
+		for (i = 0; i < ARRAY_SIZE(s->ethtxq); i++)
+			s->ethtxq[i].q.size = 1024;
+
+		init_rspq(adap, &adap->sge.fw_evtq, 0, 0, 1024, 64);
+		adap->flags |= CFG_QUEUES;
+	}
+}
+
 static void setup_memwin(struct adapter *adap)
 {
 	u32 mem_win0_base;
@@ -87,6 +330,25 @@ static void setup_memwin(struct adapter *adap)
 	t4_read_reg(adap,
 		    PCIE_MEM_ACCESS_REG(A_PCIE_MEM_ACCESS_BASE_WIN,
 					MEMWIN_NIC));
+}
+
+static int init_rss(struct adapter *adap)
+{
+	unsigned int i;
+	int err;
+
+	err = t4_init_rss_mode(adap, adap->mbox);
+	if (err)
+		return err;
+
+	for_each_port(adap, i) {
+		struct port_info *pi = adap2pinfo(adap, i);
+
+		pi->rss = rte_zmalloc(NULL, pi->rss_size, 0);
+		if (!pi->rss)
+			return -ENOMEM;
+	}
+	return 0;
 }
 
 static void print_port_info(struct adapter *adap)
@@ -564,6 +826,87 @@ void t4_os_portmod_changed(const struct adapter *adap, int port_id)
 			 pi->port_id, pi->mod_type);
 }
 
+/**
+ * cxgb4_write_rss - write the RSS table for a given port
+ * @pi: the port
+ * @queues: array of queue indices for RSS
+ *
+ * Sets up the portion of the HW RSS table for the port's VI to distribute
+ * packets to the Rx queues in @queues.
+ */
+int cxgb4_write_rss(const struct port_info *pi, const u16 *queues)
+{
+	u16 *rss;
+	int i, err;
+	struct adapter *adapter = pi->adapter;
+	const struct sge_eth_rxq *rxq;
+
+	/*  Should never be called before setting up sge eth rx queues */
+	BUG_ON(!(adapter->flags & FULL_INIT_DONE));
+
+	rxq = &adapter->sge.ethrxq[pi->first_qset];
+	rss = rte_zmalloc(NULL, pi->rss_size * sizeof(u16), 0);
+	if (!rss)
+		return -ENOMEM;
+
+	/* map the queue indices to queue ids */
+	for (i = 0; i < pi->rss_size; i++, queues++)
+		rss[i] = rxq[*queues].rspq.abs_id;
+
+	err = t4_config_rss_range(adapter, adapter->pf, pi->viid, 0,
+				  pi->rss_size, rss, pi->rss_size);
+	/*
+	 * If Tunnel All Lookup isn't specified in the global RSS
+	 * Configuration, then we need to specify a default Ingress
+	 * Queue for any ingress packets which aren't hashed.  We'll
+	 * use our first ingress queue ...
+	 */
+	if (!err)
+		err = t4_config_vi_rss(adapter, adapter->mbox, pi->viid,
+				       F_FW_RSS_VI_CONFIG_CMD_IP6FOURTUPEN |
+				       F_FW_RSS_VI_CONFIG_CMD_IP6TWOTUPEN |
+				       F_FW_RSS_VI_CONFIG_CMD_IP4FOURTUPEN |
+				       F_FW_RSS_VI_CONFIG_CMD_IP4TWOTUPEN |
+				       F_FW_RSS_VI_CONFIG_CMD_UDPEN,
+				       rss[0]);
+	rte_free(rss);
+	return err;
+}
+
+/**
+ * setup_rss - configure RSS
+ * @adapter: the adapter
+ *
+ * Sets up RSS to distribute packets to multiple receive queues.  We
+ * configure the RSS CPU lookup table to distribute to the number of HW
+ * receive queues, and the response queue lookup table to narrow that
+ * down to the response queues actually configured for each port.
+ * We always configure the RSS mapping for all ports since the mapping
+ * table has plenty of entries.
+ */
+int setup_rss(struct port_info *pi)
+{
+	int j, err;
+	struct adapter *adapter = pi->adapter;
+
+	dev_debug(adapter, "%s:  pi->rss_size = %u; pi->n_rx_qsets = %u\n",
+		  __func__, pi->rss_size, pi->n_rx_qsets);
+
+	if (!pi->flags & PORT_RSS_DONE) {
+		if (adapter->flags & FULL_INIT_DONE) {
+			/* Fill default values with equal distribution */
+			for (j = 0; j < pi->rss_size; j++)
+				pi->rss[j] = j % pi->n_rx_qsets;
+
+			err = cxgb4_write_rss(pi, pi->rss);
+			if (err)
+				return err;
+			pi->flags |= PORT_RSS_DONE;
+		}
+	}
+	return 0;
+}
+
 int cxgbe_probe(struct adapter *adapter)
 {
 	struct port_info *pi;
@@ -662,6 +1005,7 @@ allocate_mac:
 		pi->eth_dev->data->dev_private = pi;
 		pi->eth_dev->driver = adapter->eth_dev->driver;
 		pi->eth_dev->dev_ops = adapter->eth_dev->dev_ops;
+		pi->eth_dev->rx_pkt_burst = adapter->eth_dev->rx_pkt_burst;
 		TAILQ_INIT(&pi->eth_dev->link_intr_cbs);
 
 		pi->eth_dev->data->mac_addrs = rte_zmalloc(name,
@@ -683,7 +1027,13 @@ allocate_mac:
 		}
 	}
 
+	cfg_queues(adapter->eth_dev);
+
 	print_port_info(adapter);
+
+	err = init_rss(adapter);
+	if (err)
+		goto out_free;
 
 	return 0;
 

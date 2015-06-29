@@ -85,7 +85,189 @@
  */
 #include "t4_pci_id_tbl.h"
 
+static uint16_t cxgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+				uint16_t nb_pkts)
+{
+	struct sge_eth_rxq *rxq = (struct sge_eth_rxq *)rx_queue;
+	unsigned int work_done;
+
+	CXGBE_DEBUG_RX(adapter, "%s: rxq->rspq.cntxt_id = %u; nb_pkts = %d\n",
+		       __func__, rxq->rspq.cntxt_id, nb_pkts);
+
+	if (cxgbe_poll(&rxq->rspq, rx_pkts, (unsigned int)nb_pkts, &work_done))
+		dev_err(adapter, "error in cxgbe poll\n");
+
+	CXGBE_DEBUG_RX(adapter, "%s: work_done = %u\n", __func__, work_done);
+	return work_done;
+}
+
+static void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
+			       struct rte_eth_dev_info *device_info)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	int max_queues = adapter->sge.max_ethqsets / adapter->params.nports;
+
+	device_info->min_rx_bufsize = 68; /* XXX: Smallest pkt size */
+	device_info->max_rx_pktlen = 1500; /* XXX: For now we support mtu */
+	device_info->max_rx_queues = max_queues;
+	device_info->max_tx_queues = max_queues;
+	device_info->max_mac_addrs = 1;
+	/* XXX: For now we support one MAC/port */
+	device_info->max_vfs = adapter->params.arch.vfcount;
+	device_info->max_vmdq_pools = 0; /* XXX: For now no support for VMDQ */
+
+	device_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP |
+				       DEV_RX_OFFLOAD_IPV4_CKSUM |
+				       DEV_RX_OFFLOAD_UDP_CKSUM |
+				       DEV_RX_OFFLOAD_TCP_CKSUM;
+
+	device_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
+				       DEV_TX_OFFLOAD_IPV4_CKSUM |
+				       DEV_TX_OFFLOAD_UDP_CKSUM |
+				       DEV_TX_OFFLOAD_TCP_CKSUM |
+				       DEV_TX_OFFLOAD_TCP_TSO;
+
+	device_info->reta_size = pi->rss_size;
+}
+
+static int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev,
+				    uint16_t tx_queue_id);
+static void cxgbe_dev_rx_queue_release(void *q);
+
+static int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	int err;
+
+	CXGBE_FUNC_TRACE();
+
+	if (!(adapter->flags & FW_QUEUE_BOUND)) {
+		err = setup_sge_fwevtq(adapter);
+		if (err)
+			return err;
+		adapter->flags |= FW_QUEUE_BOUND;
+	}
+
+	err = cfg_queue_count(eth_dev);
+	if (err)
+		return err;
+
+	return 0;
+}
+
+static int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev,
+				    uint16_t rx_queue_id)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adap = pi->adapter;
+	struct sge_rspq *q;
+
+	dev_debug(adapter, "%s: pi->port_id = %d; rx_queue_id = %d\n",
+		  __func__, pi->port_id, rx_queue_id);
+
+	q = eth_dev->data->rx_queues[rx_queue_id];
+	return t4_sge_eth_rxq_start(adap, q);
+}
+
+static int cxgbe_dev_rx_queue_stop(struct rte_eth_dev *eth_dev,
+				   uint16_t rx_queue_id)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adap = pi->adapter;
+	struct sge_rspq *q;
+
+	dev_debug(adapter, "%s: pi->port_id = %d; rx_queue_id = %d\n",
+		  __func__, pi->port_id, rx_queue_id);
+
+	q = eth_dev->data->rx_queues[rx_queue_id];
+	return t4_sge_eth_rxq_stop(adap, q);
+}
+
+static int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
+				    uint16_t queue_idx,	uint16_t nb_desc,
+				    unsigned int socket_id,
+				    const struct rte_eth_rxconf *rx_conf,
+				    struct rte_mempool *mp)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	struct sge *s = &adapter->sge;
+	struct sge_eth_rxq *rxq = &s->ethrxq[pi->first_qset + queue_idx];
+	int err = 0;
+	int msi_idx = 0;
+	unsigned int temp_nb_desc;
+
+	RTE_SET_USED(rx_conf);
+
+	dev_debug(adapter, "%s: eth_dev->data->nb_rx_queues = %d; queue_idx = %d; nb_desc = %d; socket_id = %d; mp = %p\n",
+		  __func__, eth_dev->data->nb_rx_queues, queue_idx, nb_desc,
+		  socket_id, mp);
+
+	/*  Free up the existing queue  */
+	if (eth_dev->data->rx_queues[queue_idx]) {
+		cxgbe_dev_rx_queue_release(eth_dev->data->rx_queues[queue_idx]);
+		eth_dev->data->rx_queues[queue_idx] = NULL;
+	}
+
+	eth_dev->data->rx_queues[queue_idx] = (void *)rxq;
+
+	/* Sanity Checking
+	 *
+	 * nb_desc should be > 0 and <= CXGBE_MAX_RING_DESC_SIZE
+	 */
+	temp_nb_desc = nb_desc;
+	if (nb_desc < CXGBE_MIN_RING_DESC_SIZE) {
+		dev_warn(adapter, "%s: number of descriptors must be >= %d. Using default [%d]\n",
+			 __func__, CXGBE_MIN_RING_DESC_SIZE,
+			 CXGBE_DEFAULT_RX_DESC_SIZE);
+		temp_nb_desc = CXGBE_DEFAULT_RX_DESC_SIZE;
+	} else if (nb_desc > CXGBE_MAX_RING_DESC_SIZE) {
+		dev_err(adapter, "%s: number of descriptors must be between %d and %d inclusive. Default [%d]\n",
+			__func__, CXGBE_MIN_RING_DESC_SIZE,
+			CXGBE_MAX_RING_DESC_SIZE, CXGBE_DEFAULT_RX_DESC_SIZE);
+		return -(EINVAL);
+	}
+
+	rxq->rspq.size = temp_nb_desc;
+	if ((&rxq->fl) != NULL)
+		rxq->fl.size = temp_nb_desc;
+
+	err = t4_sge_alloc_rxq(adapter, &rxq->rspq, false, eth_dev, msi_idx,
+			       &rxq->fl, t4_ethrx_handler,
+			       t4_get_mps_bg_map(adapter, pi->tx_chan), mp,
+			       queue_idx, socket_id);
+
+	dev_debug(adapter, "%s: err = %d; port_id = %d; cntxt_id = %u\n",
+		  __func__, err, pi->port_id, rxq->rspq.cntxt_id);
+	return err;
+}
+
+static void cxgbe_dev_rx_queue_release(void *q)
+{
+	struct sge_eth_rxq *rxq = (struct sge_eth_rxq *)q;
+	struct sge_rspq *rq = &rxq->rspq;
+
+	if (rq) {
+		struct port_info *pi = (struct port_info *)
+				       (rq->eth_dev->data->dev_private);
+		struct adapter *adap = pi->adapter;
+
+		dev_debug(adapter, "%s: pi->port_id = %d; rx_queue_id = %d\n",
+			  __func__, pi->port_id, rxq->rspq.cntxt_id);
+
+		t4_sge_eth_rxq_release(adap, rxq);
+	}
+}
+
 static struct eth_dev_ops cxgbe_eth_dev_ops = {
+	.dev_configure		= cxgbe_dev_configure,
+	.dev_infos_get		= cxgbe_dev_info_get,
+	.rx_queue_setup         = cxgbe_dev_rx_queue_setup,
+	.rx_queue_start		= cxgbe_dev_rx_queue_start,
+	.rx_queue_stop		= cxgbe_dev_rx_queue_stop,
+	.rx_queue_release	= cxgbe_dev_rx_queue_release,
 };
 
 /*
@@ -103,6 +285,7 @@ static int eth_cxgbe_dev_init(struct rte_eth_dev *eth_dev)
 	CXGBE_FUNC_TRACE();
 
 	eth_dev->dev_ops = &cxgbe_eth_dev_ops;
+	eth_dev->rx_pkt_burst = &cxgbe_recv_pkts;
 
 	/* for secondary processes, we don't initialise any further as primary
 	 * has already done this work.

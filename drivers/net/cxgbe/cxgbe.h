@@ -44,5 +44,11 @@
 #define CXGBE_DEFAULT_RX_DESC_SIZE    1024 /* Default RX ring size */
 
 int cxgbe_probe(struct adapter *adapter);
+void init_rspq(struct adapter *adap, struct sge_rspq *q, unsigned int us,
+	       unsigned int cnt, unsigned int size, unsigned int iqe_size);
+int setup_sge_fwevtq(struct adapter *adapter);
+void cfg_queues(struct rte_eth_dev *eth_dev);
+int cfg_queue_count(struct rte_eth_dev *eth_dev);
+int setup_rss(struct port_info *pi);
 
 #endif /* _CXGBE_H_ */
