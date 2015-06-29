@@ -75,5 +75,4 @@ DPDK_2.1 {
 
 	cmdline_poll;
 
-	local: *;
 } DPDK_2.0;

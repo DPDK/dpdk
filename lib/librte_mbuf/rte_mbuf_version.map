@@ -17,5 +17,4 @@ DPDK_2.1 {
 
 	rte_pktmbuf_pool_create;
 
-	local: *;
 } DPDK_2.0;

@@ -111,5 +111,4 @@ DPDK_2.1 {
 
 	rte_eth_dev_set_mc_addr_list;
 
-	local: *;
 } DPDK_2.0;
