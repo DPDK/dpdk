@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+#   Copyright(c) 2014-2015 Chelsio Communications.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Intel Corporation nor the names of its
+#     * Neither the name of Chelsio Communications nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -31,21 +31,48 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET) += af_packet
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += bonding
-DIRS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += cxgbe
-DIRS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000
-DIRS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += enic
-DIRS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += fm10k
-DIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e
-DIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe
-DIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL) += null
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += pcap
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_RING) += ring
-DIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio
-DIRS-$(CONFIG_RTE_LIBRTE_VMXNET3_PMD) += vmxnet3
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += xenvirt
+#
+# library name
+#
+LIB = librte_pmd_cxgbe.a
 
-include $(RTE_SDK)/mk/rte.sharelib.mk
-include $(RTE_SDK)/mk/rte.subdir.mk
+CFLAGS += -I$(SRCDIR)/base/
+CFLAGS += -I$(SRCDIR)
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+EXPORT_MAP := rte_pmd_cxgbe_version.map
+
+LIBABIVER := 1
+
+ifeq ($(CC), icc)
+#
+# CFLAGS for icc
+#
+CFLAGS_BASE_DRIVER = -wd174 -wd593 -wd869 -wd981 -wd2259
+else
+#
+# CFLAGS for gcc
+#
+ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
+CFLAGS     += -Wno-deprecated
+endif
+CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
+CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
+
+endif
+
+#
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += cxgbe_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += cxgbe_main.c
+SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += sge.c
+SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += base/t4_hw.c
+
+# this lib depends upon:
+DEPDIRS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += lib/librte_eal lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += lib/librte_mempool lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += lib/librte_net lib/librte_malloc
+
+include $(RTE_SDK)/mk/rte.lib.mk

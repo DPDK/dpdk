@@ -210,6 +210,10 @@ Linux AF_PACKET
 M: John W. Linville <linville@tuxdriver.com>
 F: drivers/net/af_packet/
 
+Chelsio cxgbe
+M: Rahul Lakkireddy <rahul.lakkireddy@chelsio.com>
+F: drivers/net/cxgbe/
+
 Cisco enic
 F: drivers/net/enic/
 
