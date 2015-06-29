@@ -310,6 +310,17 @@ void cfg_queues(struct rte_eth_dev *eth_dev)
 	}
 }
 
+void cxgbe_stats_get(struct port_info *pi, struct port_stats *stats)
+{
+	t4_get_port_stats_offset(pi->adapter, pi->tx_chan, stats,
+				 &pi->stats_base);
+}
+
+void cxgbe_stats_reset(struct port_info *pi)
+{
+	t4_clr_port_stats(pi->adapter, pi->tx_chan);
+}
+
 static void setup_memwin(struct adapter *adap)
 {
 	u32 mem_win0_base;

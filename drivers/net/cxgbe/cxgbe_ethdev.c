@@ -500,6 +500,87 @@ static void cxgbe_dev_rx_queue_release(void *q)
 	}
 }
 
+/*
+ * Get port statistics.
+ */
+static void cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
+				struct rte_eth_stats *eth_stats)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	struct sge *s = &adapter->sge;
+	struct port_stats ps;
+	unsigned int i;
+
+	cxgbe_stats_get(pi, &ps);
+
+	/* RX Stats */
+	eth_stats->ipackets = ps.rx_frames;
+	eth_stats->ibytes   = ps.rx_octets;
+	eth_stats->imcasts  = ps.rx_mcast_frames;
+	eth_stats->imissed  = ps.rx_ovflow0 + ps.rx_ovflow1 +
+			      ps.rx_ovflow2 + ps.rx_ovflow3 +
+			      ps.rx_trunc0 + ps.rx_trunc1 +
+			      ps.rx_trunc2 + ps.rx_trunc3;
+	eth_stats->ibadcrc  = ps.rx_fcs_err;
+	eth_stats->ibadlen  = ps.rx_jabber + ps.rx_too_long + ps.rx_runt;
+	eth_stats->ierrors  = ps.rx_symbol_err + eth_stats->ibadcrc +
+			      eth_stats->ibadlen + ps.rx_len_err +
+			      eth_stats->imissed;
+	eth_stats->rx_pause_xon  = ps.rx_pause;
+
+	/* TX Stats */
+	eth_stats->opackets = ps.tx_frames;
+	eth_stats->obytes   = ps.tx_octets;
+	eth_stats->oerrors  = ps.tx_error_frames;
+	eth_stats->tx_pause_xon  = ps.tx_pause;
+
+	for (i = 0; i < pi->n_rx_qsets; i++) {
+		struct sge_eth_rxq *rxq =
+			&s->ethrxq[pi->first_qset + i];
+
+		eth_stats->q_ipackets[i] = rxq->stats.pkts;
+		eth_stats->q_ibytes[i] = rxq->stats.rx_bytes;
+	}
+
+	for (i = 0; i < pi->n_tx_qsets; i++) {
+		struct sge_eth_txq *txq =
+			&s->ethtxq[pi->first_qset + i];
+
+		eth_stats->q_opackets[i] = txq->stats.pkts;
+		eth_stats->q_obytes[i] = txq->stats.tx_bytes;
+		eth_stats->q_errors[i] = txq->stats.mapping_err;
+	}
+}
+
+/*
+ * Reset port statistics.
+ */
+static void cxgbe_dev_stats_reset(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	struct sge *s = &adapter->sge;
+	unsigned int i;
+
+	cxgbe_stats_reset(pi);
+	for (i = 0; i < pi->n_rx_qsets; i++) {
+		struct sge_eth_rxq *rxq =
+			&s->ethrxq[pi->first_qset + i];
+
+		rxq->stats.pkts = 0;
+		rxq->stats.rx_bytes = 0;
+	}
+	for (i = 0; i < pi->n_tx_qsets; i++) {
+		struct sge_eth_txq *txq =
+			&s->ethtxq[pi->first_qset + i];
+
+		txq->stats.pkts = 0;
+		txq->stats.tx_bytes = 0;
+		txq->stats.mapping_err = 0;
+	}
+}
+
 static struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.dev_start		= cxgbe_dev_start,
 	.dev_stop		= cxgbe_dev_stop,
@@ -514,6 +595,8 @@ static struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.rx_queue_start		= cxgbe_dev_rx_queue_start,
 	.rx_queue_stop		= cxgbe_dev_rx_queue_stop,
 	.rx_queue_release	= cxgbe_dev_rx_queue_release,
+	.stats_get		= cxgbe_dev_stats_get,
+	.stats_reset		= cxgbe_dev_stats_reset,
 };
 
 /*
