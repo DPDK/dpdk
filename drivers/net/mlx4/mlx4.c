@@ -4458,17 +4458,18 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ibv_pd *pd = NULL;
 		struct priv *priv = NULL;
 		struct rte_eth_dev *eth_dev;
-#if defined(INLINE_RECV) || defined(RSS_SUPPORT)
+#ifdef HAVE_EXP_QUERY_DEVICE
 		struct ibv_exp_device_attr exp_device_attr;
-#endif
+#endif /* HAVE_EXP_QUERY_DEVICE */
 		struct ether_addr mac;
 		union ibv_gid temp_gid;
 
+#ifdef HAVE_EXP_QUERY_DEVICE
+		exp_device_attr.comp_mask = IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS;
 #ifdef RSS_SUPPORT
-		exp_device_attr.comp_mask =
-			(IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS |
-			 IBV_EXP_DEVICE_ATTR_RSS_TBL_SZ);
+		exp_device_attr.comp_mask |= IBV_EXP_DEVICE_ATTR_RSS_TBL_SZ;
 #endif /* RSS_SUPPORT */
+#endif /* HAVE_EXP_QUERY_DEVICE */
 
 		DEBUG("using port %u (%08" PRIx32 ")", port, test);
 
@@ -4513,11 +4514,12 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->port = port;
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
-#ifdef RSS_SUPPORT
+#ifdef HAVE_EXP_QUERY_DEVICE
 		if (ibv_exp_query_device(ctx, &exp_device_attr)) {
-			INFO("experimental ibv_exp_query_device");
+			ERROR("ibv_exp_query_device() failed");
 			goto port_error;
 		}
+#ifdef RSS_SUPPORT
 		if ((exp_device_attr.exp_device_cap_flags &
 		     IBV_EXP_DEVICE_QPG) &&
 		    (exp_device_attr.exp_device_cap_flags &
@@ -4569,6 +4571,7 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			     priv->inl_recv_size);
 		}
 #endif /* INLINE_RECV */
+#endif /* HAVE_EXP_QUERY_DEVICE */
 
 		(void)mlx4_getenv_int;
 		priv->vf = vf;

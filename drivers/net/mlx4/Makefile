@@ -112,6 +112,10 @@ mlx4_autoconf.h: $(RTE_SDK)/scripts/auto-config-h.sh
 		SEND_RAW_WR_SUPPORT \
 		infiniband/verbs.h \
 		type 'struct ibv_send_wr_raw' $(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_EXP_QUERY_DEVICE \
+		infiniband/verbs.h \
+		type 'struct ibv_exp_device_attr' $(AUTOCONF_OUTPUT)
 
 mlx4.o: mlx4_autoconf.h
 
