@@ -1025,6 +1025,8 @@ txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
 	return txq->mp2mr[i].lkey;
 }
 
+#if MLX4_PMD_SGE_WR_N > 1
+
 /**
  * Copy scattered mbuf contents to a single linear buffer.
  *
@@ -1056,6 +1058,146 @@ linearize_mbuf(linear_t *linear, struct rte_mbuf *buf)
 	} while (buf != NULL);
 	return size;
 }
+
+/**
+ * Handle scattered buffers for mlx4_tx_burst().
+ *
+ * @param txq
+ *   TX queue structure.
+ * @param segs
+ *   Number of segments in buf.
+ * @param elt
+ *   TX queue element to fill.
+ * @param[in] buf
+ *   Buffer to process.
+ * @param elts_head
+ *   Index of the linear buffer to use if necessary (normally txq->elts_head).
+ *
+ * @return
+ *   Processed packet size in bytes or (unsigned int)-1 in case of failure.
+ */
+static unsigned int
+tx_burst_sg(struct txq *txq, unsigned int segs, struct txq_elt *elt,
+	    struct rte_mbuf *buf, unsigned int elts_head)
+{
+	struct ibv_send_wr *wr = &elt->wr;
+	unsigned int sent_size = 0;
+	unsigned int j;
+	int linearize = 0;
+
+	/* When there are too many segments, extra segments are
+	 * linearized in the last SGE. */
+	if (unlikely(segs > elemof(elt->sges))) {
+		segs = (elemof(elt->sges) - 1);
+		linearize = 1;
+	}
+	/* Set WR fields. */
+	assert((rte_pktmbuf_mtod(buf, uintptr_t) -
+		(uintptr_t)buf) <= 0xffff);
+	WR_ID(wr->wr_id).offset =
+		(rte_pktmbuf_mtod(buf, uintptr_t) -
+		 (uintptr_t)buf);
+	wr->num_sge = segs;
+	/* Register segments as SGEs. */
+	for (j = 0; (j != segs); ++j) {
+		struct ibv_sge *sge = &elt->sges[j];
+		uint32_t lkey;
+
+		/* Retrieve Memory Region key for this memory pool. */
+		lkey = txq_mp2mr(txq, buf->pool);
+		if (unlikely(lkey == (uint32_t)-1)) {
+			/* MR does not exist. */
+			DEBUG("%p: unable to get MP <-> MR association",
+			      (void *)txq);
+			/* Clean up TX element. */
+			WR_ID(elt->wr.wr_id).offset = 0;
+#ifndef NDEBUG
+			/* For assert(). */
+			while (j) {
+				--j;
+				--sge;
+				sge->addr = 0;
+				sge->length = 0;
+				sge->lkey = 0;
+			}
+			wr->num_sge = 0;
+#endif
+			goto stop;
+		}
+		/* Sanity checks, only relevant with debugging enabled. */
+		assert(sge->addr == 0);
+		assert(sge->length == 0);
+		assert(sge->lkey == 0);
+		/* Update SGE. */
+		sge->addr = rte_pktmbuf_mtod(buf, uintptr_t);
+		if (txq->priv->vf)
+			rte_prefetch0((volatile void *)
+				      (uintptr_t)sge->addr);
+		sge->length = DATA_LEN(buf);
+		sge->lkey = lkey;
+		sent_size += sge->length;
+		buf = NEXT(buf);
+	}
+	/* If buf is not NULL here and is not going to be linearized,
+	 * nb_segs is not valid. */
+	assert(j == segs);
+	assert((buf == NULL) || (linearize));
+	/* Linearize extra segments. */
+	if (linearize) {
+		struct ibv_sge *sge = &elt->sges[segs];
+		linear_t *linear = &(*txq->elts_linear)[elts_head];
+		unsigned int size = linearize_mbuf(linear, buf);
+
+		assert(segs == (elemof(elt->sges) - 1));
+		if (size == 0) {
+			/* Invalid packet. */
+			DEBUG("%p: packet too large to be linearized.",
+			      (void *)txq);
+			/* Clean up TX element. */
+			WR_ID(elt->wr.wr_id).offset = 0;
+#ifndef NDEBUG
+			/* For assert(). */
+			while (j) {
+				--j;
+				--sge;
+				sge->addr = 0;
+				sge->length = 0;
+				sge->lkey = 0;
+			}
+			wr->num_sge = 0;
+#endif
+			goto stop;
+		}
+		/* If MLX4_PMD_SGE_WR_N is 1, free mbuf immediately
+		 * and clear offset from WR ID. */
+		if (elemof(elt->sges) == 1) {
+			do {
+				struct rte_mbuf *next = NEXT(buf);
+
+				rte_pktmbuf_free_seg(buf);
+				buf = next;
+			} while (buf != NULL);
+			WR_ID(wr->wr_id).offset = 0;
+		}
+		/* Set WR fields and fill SGE with linear buffer. */
+		++wr->num_sge;
+		/* Sanity checks, only relevant with debugging
+		 * enabled. */
+		assert(sge->addr == 0);
+		assert(sge->length == 0);
+		assert(sge->lkey == 0);
+		/* Update SGE. */
+		sge->addr = (uintptr_t)&(*linear)[0];
+		sge->length = size;
+		sge->lkey = txq->mr_linear->lkey;
+		sent_size += size;
+	}
+	return sent_size;
+stop:
+	return -1;
+}
+
+#endif /* MLX4_PMD_SGE_WR_N > 1 */
 
 /**
  * DPDK callback for TX.
@@ -1106,8 +1248,9 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 #ifdef MLX4_PMD_SOFT_COUNTERS
 		unsigned int sent_size = 0;
 #endif
+#ifndef NDEBUG
 		unsigned int j;
-		int linearize = 0;
+#endif
 		uint32_t send_flags = 0;
 
 		/* Clean up old buffer. */
@@ -1143,24 +1286,19 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		assert(wr->sg_list == &elt->sges[0]);
 		assert(wr->num_sge == 0);
 		assert(wr->opcode == IBV_WR_SEND);
-		/* When there are too many segments, extra segments are
-		 * linearized in the last SGE. */
-		if (unlikely(segs > elemof(elt->sges))) {
-			segs = (elemof(elt->sges) - 1);
-			linearize = 1;
-		}
-		/* Set WR fields. */
-		assert((rte_pktmbuf_mtod(buf, uintptr_t) -
-			(uintptr_t)buf) <= 0xffff);
-		WR_ID(wr->wr_id).offset =
-			(rte_pktmbuf_mtod(buf, uintptr_t) -
-			 (uintptr_t)buf);
-		wr->num_sge = segs;
-		/* Register segments as SGEs. */
-		for (j = 0; (j != segs); ++j) {
-			struct ibv_sge *sge = &elt->sges[j];
+		if (likely(segs == 1)) {
+			struct ibv_sge *sge = &elt->sges[0];
 			uint32_t lkey;
 
+			/* Set WR fields. */
+			assert((rte_pktmbuf_mtod(buf, uintptr_t) -
+				(uintptr_t)buf) <= 0xffff);
+			WR_ID(wr->wr_id).offset =
+				(rte_pktmbuf_mtod(buf, uintptr_t) -
+				 (uintptr_t)buf);
+			wr->num_sge = segs;
+			/* Register segment as SGE. */
+			sge = &elt->sges[0];
 			/* Retrieve Memory Region key for this memory pool. */
 			lkey = txq_mp2mr(txq, buf->pool);
 			if (unlikely(lkey == (uint32_t)-1)) {
@@ -1171,13 +1309,9 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				WR_ID(elt->wr.wr_id).offset = 0;
 #ifndef NDEBUG
 				/* For assert(). */
-				while (j) {
-					--j;
-					--sge;
-					sge->addr = 0;
-					sge->length = 0;
-					sge->lkey = 0;
-				}
+				sge->addr = 0;
+				sge->length = 0;
+				sge->lkey = 0;
 				wr->num_sge = 0;
 #endif
 				goto stop;
@@ -1197,63 +1331,21 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 #ifdef MLX4_PMD_SOFT_COUNTERS
 			sent_size += sge->length;
 #endif
-			buf = NEXT(buf);
-		}
-		/* If buf is not NULL here and is not going to be linearized,
-		 * nb_segs is not valid. */
-		assert(j == segs);
-		assert((buf == NULL) || (linearize));
-		/* Linearize extra segments. */
-		if (linearize) {
-			struct ibv_sge *sge = &elt->sges[segs];
-			linear_t *linear = &(*txq->elts_linear)[elts_head];
-			unsigned int size = linearize_mbuf(linear, buf);
+		} else {
+#if MLX4_PMD_SGE_WR_N > 1
+			unsigned int ret;
 
-			assert(segs == (elemof(elt->sges) - 1));
-			if (size == 0) {
-				/* Invalid packet. */
-				DEBUG("%p: packet too large to be linearized.",
-				      (void *)txq);
-				/* Clean up TX element. */
-				WR_ID(elt->wr.wr_id).offset = 0;
-#ifndef NDEBUG
-				/* For assert(). */
-				while (j) {
-					--j;
-					--sge;
-					sge->addr = 0;
-					sge->length = 0;
-					sge->lkey = 0;
-				}
-				wr->num_sge = 0;
-#endif
+			ret = tx_burst_sg(txq, segs, elt, buf, elts_head);
+			if (ret == (unsigned int)-1)
 				goto stop;
-			}
-			/* If MLX4_PMD_SGE_WR_N is 1, free mbuf immediately
-			 * and clear offset from WR ID. */
-			if (elemof(elt->sges) == 1) {
-				do {
-					struct rte_mbuf *next = NEXT(buf);
-
-					rte_pktmbuf_free_seg(buf);
-					buf = next;
-				} while (buf != NULL);
-				WR_ID(wr->wr_id).offset = 0;
-			}
-			/* Set WR fields and fill SGE with linear buffer. */
-			++wr->num_sge;
-			/* Sanity checks, only relevant with debugging
-			 * enabled. */
-			assert(sge->addr == 0);
-			assert(sge->length == 0);
-			assert(sge->lkey == 0);
-			/* Update SGE. */
-			sge->addr = (uintptr_t)&(*linear)[0];
-			sge->length = size;
-			sge->lkey = txq->mr_linear->lkey;
 #ifdef MLX4_PMD_SOFT_COUNTERS
-			sent_size += size;
+			sent_size += ret;
 #endif
+#else /* MLX4_PMD_SGE_WR_N > 1 */
+			DEBUG("%p: TX scattered buffers support not"
+			      " compiled in", (void *)txq);
+			goto stop;
+#endif /* MLX4_PMD_SGE_WR_N > 1 */
 		}
 		/* Link WRs together for ibv_post_send(). */
 		*wr_next = wr;
