@@ -1353,7 +1353,7 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	(void)conf; /* Thresholds configuration (ignored). */
 	if ((desc == 0) || (desc % MLX4_PMD_SGE_WR_N)) {
 		ERROR("%p: invalid number of TX descriptors (must be a"
-		      " multiple of %d)", (void *)dev, desc);
+		      " multiple of %d)", (void *)dev, MLX4_PMD_SGE_WR_N);
 		return EINVAL;
 	}
 	desc /= MLX4_PMD_SGE_WR_N;
@@ -3002,7 +3002,7 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	}
 	if ((desc == 0) || (desc % MLX4_PMD_SGE_WR_N)) {
 		ERROR("%p: invalid number of RX descriptors (must be a"
-		      " multiple of %d)", (void *)dev, desc);
+		      " multiple of %d)", (void *)dev, MLX4_PMD_SGE_WR_N);
 		return EINVAL;
 	}
 	/* Get mbuf length. */
