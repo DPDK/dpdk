@@ -139,6 +139,12 @@ static inline void wr_id_t_check(void)
 	(void)wr_id_t_check;
 }
 
+/* Transpose flags. Useful to convert IBV to DPDK flags. */
+#define TRANSPOSE(val, from, to) \
+	(((from) >= (to)) ? \
+	 (((val) & (from)) / ((from) / (to))) : \
+	 (((val) & (from)) * ((to) / (from))))
+
 struct mlx4_rxq_stats {
 	unsigned int idx; /**< Mapping index. */
 #ifdef MLX4_PMD_SOFT_COUNTERS
@@ -196,6 +202,7 @@ struct rxq {
 		struct rxq_elt (*no_sp)[]; /* RX elements. */
 	} elts;
 	unsigned int sp:1; /* Use scattered RX elements. */
+	unsigned int csum:1; /* Enable checksum offloading. */
 	uint32_t mb_len; /* Length of a mp-issued mbuf. */
 	struct mlx4_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
@@ -268,6 +275,7 @@ struct priv {
 	unsigned int hw_qpg:1; /* QP groups are supported. */
 	unsigned int hw_tss:1; /* TSS is supported. */
 	unsigned int hw_rss:1; /* RSS is supported. */
+	unsigned int hw_csum:1; /* Checksum offload is supported. */
 	unsigned int rss:1; /* RSS is enabled. */
 	unsigned int vf:1; /* This is a VF device. */
 #ifdef INLINE_RECV
@@ -1233,6 +1241,10 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			++elts_comp;
 			send_flags |= IBV_EXP_QP_BURST_SIGNALED;
 		}
+		/* Should we enable HW CKSUM offload */
+		if (buf->ol_flags &
+		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM))
+			send_flags |= IBV_EXP_QP_BURST_IP_CSUM;
 		if (likely(segs == 1)) {
 			uintptr_t addr;
 			uint32_t length;
@@ -2404,6 +2416,36 @@ rxq_cleanup(struct rxq *rxq)
 	memset(rxq, 0, sizeof(*rxq));
 }
 
+/**
+ * Translate RX completion flags to offload flags.
+ *
+ * @param[in] rxq
+ *   Pointer to RX queue structure.
+ * @param flags
+ *   RX completion flags returned by poll_length_flags().
+ *
+ * @return
+ *   Offload flags (ol_flags) for struct rte_mbuf.
+ */
+static inline uint32_t
+rxq_cq_to_ol_flags(const struct rxq *rxq, uint32_t flags)
+{
+	uint32_t ol_flags;
+
+	ol_flags =
+		TRANSPOSE(flags, IBV_EXP_CQ_RX_IPV4_PACKET, PKT_RX_IPV4_HDR) |
+		TRANSPOSE(flags, IBV_EXP_CQ_RX_IPV6_PACKET, PKT_RX_IPV6_HDR);
+	if (rxq->csum)
+		ol_flags |=
+			TRANSPOSE(~flags,
+				  IBV_EXP_CQ_RX_IP_CSUM_OK,
+				  PKT_RX_IP_CKSUM_BAD) |
+			TRANSPOSE(~flags,
+				  IBV_EXP_CQ_RX_TCP_UDP_CSUM_OK,
+				  PKT_RX_L4_CKSUM_BAD);
+	return ol_flags;
+}
+
 static uint16_t
 mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
 
@@ -2448,6 +2490,7 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		struct rte_mbuf **pkt_buf_next = &pkt_buf;
 		unsigned int seg_headroom = RTE_PKTMBUF_HEADROOM;
 		unsigned int j = 0;
+		uint32_t flags;
 
 		/* Sanity checks. */
 #ifdef NDEBUG
@@ -2458,7 +2501,8 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		assert(wr->num_sge == elemof(elt->sges));
 		assert(elts_head < rxq->elts_n);
 		assert(rxq->elts_head < rxq->elts_n);
-		ret = rxq->if_cq->poll_length(rxq->cq, NULL, NULL);
+		ret = rxq->if_cq->poll_length_flags(rxq->cq, NULL, NULL,
+						    &flags);
 		if (unlikely(ret < 0)) {
 			struct ibv_wc wc;
 			int wcs_n;
@@ -2584,7 +2628,7 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		NB_SEGS(pkt_buf) = j;
 		PORT(pkt_buf) = rxq->port_id;
 		PKT_LEN(pkt_buf) = pkt_buf_len;
-		pkt_buf->ol_flags = 0;
+		pkt_buf->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
 
 		/* Return packet. */
 		*(pkts++) = pkt_buf;
@@ -2661,6 +2705,7 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		struct rte_mbuf *seg = (void *)((uintptr_t)elt->sge.addr -
 			WR_ID(wr_id).offset);
 		struct rte_mbuf *rep;
+		uint32_t flags;
 
 		/* Sanity checks. */
 		assert(WR_ID(wr_id).id < rxq->elts_n);
@@ -2668,7 +2713,8 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		assert(wr->num_sge == 1);
 		assert(elts_head < rxq->elts_n);
 		assert(rxq->elts_head < rxq->elts_n);
-		ret = rxq->if_cq->poll_length(rxq->cq, NULL, NULL);
+		ret = rxq->if_cq->poll_length_flags(rxq->cq, NULL, NULL,
+						    &flags);
 		if (unlikely(ret < 0)) {
 			struct ibv_wc wc;
 			int wcs_n;
@@ -2742,7 +2788,7 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		NEXT(seg) = NULL;
 		PKT_LEN(seg) = len;
 		DATA_LEN(seg) = len;
-		seg->ol_flags = 0;
+		seg->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
 
 		/* Return packet. */
 		*(pkts++) = seg;
@@ -2925,6 +2971,11 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	/* Number of descriptors and mbufs currently allocated. */
 	desc_n = (tmpl.elts_n * (tmpl.sp ? MLX4_PMD_SGE_WR_N : 1));
 	mbuf_n = desc_n;
+	/* Toggle RX checksum offload if hardware supports it. */
+	if (priv->hw_csum) {
+		tmpl.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
+		rxq->csum = tmpl.csum;
+	}
 	/* Enable scattered packets support for this queue if necessary. */
 	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
 	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
@@ -3146,6 +3197,9 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		rte_pktmbuf_tailroom(buf)) == tmpl.mb_len);
 	assert(rte_pktmbuf_headroom(buf) == RTE_PKTMBUF_HEADROOM);
 	rte_pktmbuf_free(buf);
+	/* Toggle RX checksum offload if hardware supports it. */
+	if (priv->hw_csum)
+		tmpl.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
 	/* Enable scattered packets support for this queue if necessary. */
 	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
 	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
@@ -3643,6 +3697,18 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->max_rx_queues = max;
 	info->max_tx_queues = max;
 	info->max_mac_addrs = elemof(priv->mac);
+	info->rx_offload_capa =
+		(priv->hw_csum ?
+		 (DEV_RX_OFFLOAD_IPV4_CKSUM |
+		  DEV_RX_OFFLOAD_UDP_CKSUM |
+		  DEV_RX_OFFLOAD_TCP_CKSUM) :
+		 0);
+	info->tx_offload_capa =
+		(priv->hw_csum ?
+		 (DEV_TX_OFFLOAD_IPV4_CKSUM |
+		  DEV_TX_OFFLOAD_UDP_CKSUM |
+		  DEV_TX_OFFLOAD_TCP_CKSUM) :
+		 0);
 	priv_unlock(priv);
 }
 
@@ -4682,6 +4748,14 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			DEBUG("maximum RSS indirection table size: %u",
 			      exp_device_attr.max_rss_tbl_sz);
 #endif /* RSS_SUPPORT */
+
+		priv->hw_csum =
+			((exp_device_attr.exp_device_cap_flags &
+			  IBV_EXP_DEVICE_RX_CSUM_TCP_UDP_PKT) &&
+			 (exp_device_attr.exp_device_cap_flags &
+			  IBV_EXP_DEVICE_RX_CSUM_IP_PKT));
+		DEBUG("checksum offloading is %ssupported",
+		      (priv->hw_csum ? "" : "not "));
 
 #ifdef INLINE_RECV
 		priv->inl_recv_size = mlx4_getenv_int("MLX4_INLINE_RECV_SIZE");
