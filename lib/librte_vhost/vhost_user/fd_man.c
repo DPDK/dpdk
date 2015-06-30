@@ -188,6 +188,24 @@ fdset_del(struct fdset *pfdset, int fd)
 }
 
 /**
+ *  Unregister the fd at the specified slot from the fdset.
+ */
+static void
+fdset_del_slot(struct fdset *pfdset, int index)
+{
+	if (pfdset == NULL || index < 0 || index >= MAX_FDS)
+		return;
+
+	pthread_mutex_lock(&pfdset->fd_mutex);
+
+	pfdset->fd[index].fd = -1;
+	pfdset->fd[index].rcb = pfdset->fd[index].wcb = NULL;
+	pfdset->num--;
+
+	pthread_mutex_unlock(&pfdset->fd_mutex);
+}
+
+/**
  * This functions runs in infinite blocking loop until there is no fd in
  * pfdset. It calls corresponding r/w handler if there is event on the fd.
  *
@@ -248,8 +266,15 @@ fdset_event_dispatch(struct fdset *pfdset)
 			 * We don't allow fdset_del to be called in callback
 			 * directly.
 			 */
+			/*
+			 * When we are to clean up the fd from fdset,
+			 * because the fd is closed in the cb,
+			 * the old fd val could be reused by when creates new
+			 * listen fd in another thread, we couldn't call
+			 * fd_set_del.
+			 */
 			if (remove1 || remove2)
-				fdset_del(pfdset, fd);
+				fdset_del_slot(pfdset, i);
 		}
 	}
 }
