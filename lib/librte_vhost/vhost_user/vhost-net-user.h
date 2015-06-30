@@ -41,7 +41,7 @@
 #include "fd_man.h"
 
 struct vhost_server {
-	const char *path; /**< The path the uds is bind to. */
+	char *path; /**< The path the uds is bind to. */
 	int listenfd;     /**< The listener sockfd. */
 };
 

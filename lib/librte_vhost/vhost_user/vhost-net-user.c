@@ -66,6 +66,8 @@ struct connfd_ctx {
 struct _vhost_server {
 	struct vhost_server *server[MAX_VHOST_SERVER];
 	struct fdset fdset;
+	int vserver_cnt;
+	pthread_mutex_t server_mutex;
 };
 
 static struct _vhost_server g_vhost_server = {
@@ -74,9 +76,9 @@ static struct _vhost_server g_vhost_server = {
 		.fd_mutex = PTHREAD_MUTEX_INITIALIZER,
 		.num = 0
 	},
+	.vserver_cnt = 0,
+	.server_mutex = PTHREAD_MUTEX_INITIALIZER,
 };
-
-static int vserver_idx;
 
 static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_NONE] = "VHOST_USER_NONE",
@@ -427,7 +429,6 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 	}
 }
 
-
 /**
  * Creates and initialise the vhost server.
  */
@@ -436,33 +437,76 @@ rte_vhost_driver_register(const char *path)
 {
 	struct vhost_server *vserver;
 
-	if (vserver_idx == 0)
+	pthread_mutex_lock(&g_vhost_server.server_mutex);
+	if (ops == NULL)
 		ops = get_virtio_net_callbacks();
-	if (vserver_idx == MAX_VHOST_SERVER)
+
+	if (g_vhost_server.vserver_cnt == MAX_VHOST_SERVER) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"error: the number of servers reaches maximum\n");
+		pthread_mutex_unlock(&g_vhost_server.server_mutex);
 		return -1;
+	}
 
 	vserver = calloc(sizeof(struct vhost_server), 1);
-	if (vserver == NULL)
+	if (vserver == NULL) {
+		pthread_mutex_unlock(&g_vhost_server.server_mutex);
 		return -1;
-
-	unlink(path);
+	}
 
 	vserver->listenfd = uds_socket(path);
 	if (vserver->listenfd < 0) {
 		free(vserver);
+		pthread_mutex_unlock(&g_vhost_server.server_mutex);
 		return -1;
 	}
-	vserver->path = path;
+
+	vserver->path = strdup(path);
 
 	fdset_add(&g_vhost_server.fdset, vserver->listenfd,
-		vserver_new_vq_conn, NULL,
-		vserver);
+		vserver_new_vq_conn, NULL, vserver);
 
-	g_vhost_server.server[vserver_idx++] = vserver;
+	g_vhost_server.server[g_vhost_server.vserver_cnt++] = vserver;
+	pthread_mutex_unlock(&g_vhost_server.server_mutex);
 
 	return 0;
 }
 
+
+/**
+ * Unregister the specified vhost server
+ */
+int
+rte_vhost_driver_unregister(const char *path)
+{
+	int i;
+	int count;
+
+	pthread_mutex_lock(&g_vhost_server.server_mutex);
+
+	for (i = 0; i < g_vhost_server.vserver_cnt; i++) {
+		if (!strcmp(g_vhost_server.server[i]->path, path)) {
+			fdset_del(&g_vhost_server.fdset,
+				g_vhost_server.server[i]->listenfd);
+
+			close(g_vhost_server.server[i]->listenfd);
+			free(g_vhost_server.server[i]->path);
+			free(g_vhost_server.server[i]);
+
+			unlink(path);
+
+			count = --g_vhost_server.vserver_cnt;
+			g_vhost_server.server[i] = g_vhost_server.server[count];
+			g_vhost_server.server[count] = NULL;
+			pthread_mutex_unlock(&g_vhost_server.server_mutex);
+
+			return 0;
+		}
+	}
+	pthread_mutex_unlock(&g_vhost_server.server_mutex);
+
+	return -1;
+}
 
 int
 rte_vhost_driver_session_start(void)

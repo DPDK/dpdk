@@ -405,6 +405,15 @@ rte_vhost_driver_register(const char *dev_name)
 }
 
 /**
+ * An empty function for unregister
+ */
+int
+rte_vhost_driver_unregister(const char *dev_name __rte_unused)
+{
+	return 0;
+}
+
+/**
  * The CUSE session is launched allowing the application to receive open,
  * release and ioctl calls.
  */

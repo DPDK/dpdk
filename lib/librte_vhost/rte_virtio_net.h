@@ -188,6 +188,9 @@ int rte_vhost_enable_guest_notification(struct virtio_net *dev, uint16_t queue_i
 /* Register vhost driver. dev_name could be different for multiple instance support. */
 int rte_vhost_driver_register(const char *dev_name);
 
+/* Unregister vhost driver. This is only meaningful to vhost user. */
+int rte_vhost_driver_unregister(const char *dev_name);
+
 /* Register callbacks. */
 int rte_vhost_driver_callback_register(struct virtio_net_device_ops const * const);
 /* Start vhost driver session blocking loop. */

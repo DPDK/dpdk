@@ -13,3 +13,10 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_2.1 {
+	global:
+
+	rte_vhost_driver_unregister;
+
+} DPDK_2.0;
