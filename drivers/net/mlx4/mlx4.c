@@ -207,6 +207,7 @@ struct rxq {
 	uint32_t mb_len; /* Length of a mp-issued mbuf. */
 	struct mlx4_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
+	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 };
 
 /* TX element. */
@@ -248,6 +249,7 @@ struct txq {
 	linear_t (*elts_linear)[]; /* Linearized buffers. */
 	struct ibv_mr *mr_linear; /* Memory Region for linearized buffers. */
 	unsigned int socket; /* CPU socket ID for allocations. */
+	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 };
 
 struct priv {
@@ -908,6 +910,17 @@ txq_cleanup(struct txq *txq)
 		claim_zero(ibv_destroy_qp(txq->qp));
 	if (txq->cq != NULL)
 		claim_zero(ibv_destroy_cq(txq->cq));
+	if (txq->rd != NULL) {
+		struct ibv_exp_destroy_res_domain_attr attr = {
+			.comp_mask = 0,
+		};
+
+		assert(txq->priv != NULL);
+		assert(txq->priv->ctx != NULL);
+		claim_zero(ibv_exp_destroy_res_domain(txq->priv->ctx,
+						      txq->rd,
+						      &attr));
+	}
 	for (i = 0; (i != elemof(txq->mp2mr)); ++i) {
 		if (txq->mp2mr[i].mp == NULL)
 			break;
@@ -1388,7 +1401,9 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	};
 	union {
 		struct ibv_exp_query_intf_params params;
-		struct ibv_qp_init_attr init;
+		struct ibv_exp_qp_init_attr init;
+		struct ibv_exp_res_domain_init_attr rd;
+		struct ibv_exp_cq_init_attr cq;
 		struct ibv_exp_qp_attr mod;
 	} attr;
 	enum ibv_exp_query_intf_status status;
@@ -1402,7 +1417,24 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	}
 	desc /= MLX4_PMD_SGE_WR_N;
 	/* MRs will be registered in mp2mr[] later. */
-	tmpl.cq = ibv_create_cq(priv->ctx, desc, NULL, NULL, 0);
+	attr.rd = (struct ibv_exp_res_domain_init_attr){
+		.comp_mask = (IBV_EXP_RES_DOMAIN_THREAD_MODEL |
+			      IBV_EXP_RES_DOMAIN_MSG_MODEL),
+		.thread_model = IBV_EXP_THREAD_SINGLE,
+		.msg_model = IBV_EXP_MSG_HIGH_BW,
+	};
+	tmpl.rd = ibv_exp_create_res_domain(priv->ctx, &attr.rd);
+	if (tmpl.rd == NULL) {
+		ret = ENOMEM;
+		ERROR("%p: RD creation failure: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
+	}
+	attr.cq = (struct ibv_exp_cq_init_attr){
+		.comp_mask = IBV_EXP_CQ_INIT_ATTR_RES_DOMAIN,
+		.res_domain = tmpl.rd,
+	};
+	tmpl.cq = ibv_exp_create_cq(priv->ctx, desc, NULL, NULL, 0, &attr.cq);
 	if (tmpl.cq == NULL) {
 		ret = ENOMEM;
 		ERROR("%p: CQ creation failure: %s",
@@ -1413,7 +1445,7 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	      priv->device_attr.max_qp_wr);
 	DEBUG("priv->device_attr.max_sge is %d",
 	      priv->device_attr.max_sge);
-	attr.init = (struct ibv_qp_init_attr){
+	attr.init = (struct ibv_exp_qp_init_attr){
 		/* CQ to be associated with the send queue. */
 		.send_cq = tmpl.cq,
 		/* CQ to be associated with the receive queue. */
@@ -1435,9 +1467,13 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 		.qp_type = IBV_QPT_RAW_PACKET,
 		/* Do *NOT* enable this, completions events are managed per
 		 * TX burst. */
-		.sq_sig_all = 0
+		.sq_sig_all = 0,
+		.pd = priv->pd,
+		.res_domain = tmpl.rd,
+		.comp_mask = (IBV_EXP_QP_INIT_ATTR_PD |
+			      IBV_EXP_QP_INIT_ATTR_RES_DOMAIN),
 	};
-	tmpl.qp = ibv_create_qp(priv->pd, &attr.init);
+	tmpl.qp = ibv_exp_create_qp(priv->ctx, &attr.init);
 	if (tmpl.qp == NULL) {
 		ret = (errno ? errno : EINVAL);
 		ERROR("%p: QP creation failure: %s",
@@ -2426,6 +2462,17 @@ rxq_cleanup(struct rxq *rxq)
 	}
 	if (rxq->cq != NULL)
 		claim_zero(ibv_destroy_cq(rxq->cq));
+	if (rxq->rd != NULL) {
+		struct ibv_exp_destroy_res_domain_attr attr = {
+			.comp_mask = 0,
+		};
+
+		assert(rxq->priv != NULL);
+		assert(rxq->priv->ctx != NULL);
+		claim_zero(ibv_exp_destroy_res_domain(rxq->priv->ctx,
+						      rxq->rd,
+						      &attr));
+	}
 	if (rxq->mr != NULL)
 		claim_zero(ibv_dereg_mr(rxq->mr));
 	memset(rxq, 0, sizeof(*rxq));
@@ -2873,7 +2920,8 @@ repost:
  *   QP pointer or NULL in case of error.
  */
 static struct ibv_qp *
-rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc)
+rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
+	     struct ibv_exp_res_domain *rd)
 {
 	struct ibv_exp_qp_init_attr attr = {
 		/* CQ to be associated with the send queue. */
@@ -2892,8 +2940,10 @@ rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc)
 					 MLX4_PMD_SGE_WR_N),
 		},
 		.qp_type = IBV_QPT_RAW_PACKET,
-		.comp_mask = IBV_EXP_QP_INIT_ATTR_PD,
+		.comp_mask = (IBV_EXP_QP_INIT_ATTR_PD |
+			      IBV_EXP_QP_INIT_ATTR_RES_DOMAIN),
 		.pd = priv->pd,
+		.res_domain = rd,
 	};
 
 #ifdef INLINE_RECV
@@ -2923,7 +2973,7 @@ rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc)
  */
 static struct ibv_qp *
 rxq_setup_qp_rss(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
-		 int parent)
+		 int parent, struct ibv_exp_res_domain *rd)
 {
 	struct ibv_exp_qp_init_attr attr = {
 		/* CQ to be associated with the send queue. */
@@ -2943,8 +2993,10 @@ rxq_setup_qp_rss(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
 		},
 		.qp_type = IBV_QPT_RAW_PACKET,
 		.comp_mask = (IBV_EXP_QP_INIT_ATTR_PD |
+			      IBV_EXP_QP_INIT_ATTR_RES_DOMAIN |
 			      IBV_EXP_QP_INIT_ATTR_QPG),
-		.pd = priv->pd
+		.pd = priv->pd,
+		.res_domain = rd,
 	};
 
 #ifdef INLINE_RECV
@@ -3200,6 +3252,8 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	struct ibv_exp_qp_attr mod;
 	union {
 		struct ibv_exp_query_intf_params params;
+		struct ibv_exp_cq_init_attr cq;
+		struct ibv_exp_res_domain_init_attr rd;
 	} attr;
 	enum ibv_exp_query_intf_status status;
 	struct ibv_recv_wr *bad_wr;
@@ -3262,7 +3316,24 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		goto error;
 	}
 skip_mr:
-	tmpl.cq = ibv_create_cq(priv->ctx, desc, NULL, NULL, 0);
+	attr.rd = (struct ibv_exp_res_domain_init_attr){
+		.comp_mask = (IBV_EXP_RES_DOMAIN_THREAD_MODEL |
+			      IBV_EXP_RES_DOMAIN_MSG_MODEL),
+		.thread_model = IBV_EXP_THREAD_SINGLE,
+		.msg_model = IBV_EXP_MSG_HIGH_BW,
+	};
+	tmpl.rd = ibv_exp_create_res_domain(priv->ctx, &attr.rd);
+	if (tmpl.rd == NULL) {
+		ret = ENOMEM;
+		ERROR("%p: RD creation failure: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
+	}
+	attr.cq = (struct ibv_exp_cq_init_attr){
+		.comp_mask = IBV_EXP_CQ_INIT_ATTR_RES_DOMAIN,
+		.res_domain = tmpl.rd,
+	};
+	tmpl.cq = ibv_exp_create_cq(priv->ctx, desc, NULL, NULL, 0, &attr.cq);
 	if (tmpl.cq == NULL) {
 		ret = ENOMEM;
 		ERROR("%p: CQ creation failure: %s",
@@ -3275,10 +3346,11 @@ skip_mr:
 	      priv->device_attr.max_sge);
 #ifdef RSS_SUPPORT
 	if (priv->rss)
-		tmpl.qp = rxq_setup_qp_rss(priv, tmpl.cq, desc, parent);
+		tmpl.qp = rxq_setup_qp_rss(priv, tmpl.cq, desc, parent,
+					   tmpl.rd);
 	else
 #endif /* RSS_SUPPORT */
-		tmpl.qp = rxq_setup_qp(priv, tmpl.cq, desc);
+		tmpl.qp = rxq_setup_qp(priv, tmpl.cq, desc, tmpl.rd);
 	if (tmpl.qp == NULL) {
 		ret = (errno ? errno : EINVAL);
 		ERROR("%p: QP creation failure: %s",
