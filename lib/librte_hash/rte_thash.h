@@ -1,0 +1,231 @@
+/*-
+ *   BSD LICENSE
+ *
+ *   Copyright(c) 2015 Vladimir Medvedkin <medvedkinv@gmail.com>
+ *   All rights reserved.
+ *
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
+ *   are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
+ *       distribution.
+ *     * Neither the name of Intel Corporation nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
+ *
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef _RTE_THASH_H
+#define _RTE_THASH_H
+
+/**
+ * @file
+ *
+ * toeplitz hash functions.
+ */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * Software implementation of the Toeplitz hash function used by RSS.
+ * Can be used either for packet distribution on single queue NIC
+ * or for simulating of RSS computation on specific NIC (for example
+ * after GRE header decapsulating)
+ */
+
+#include <stdint.h>
+#include <rte_byteorder.h>
+#include <rte_vect.h>
+#include <rte_ip.h>
+
+/* Byte swap mask used for converting IPv6 address
+ * 4-byte chunks to CPU byte order
+ */
+static const __m128i rte_thash_ipv6_bswap_mask = {
+		0x0405060700010203, 0x0C0D0E0F08090A0B};
+
+/**
+ * length in dwords of input tuple to
+ * calculate hash of ipv4 header only
+ */
+#define RTE_THASH_V4_L3_LEN	((sizeof(struct rte_ipv4_tuple) -	\
+			sizeof(((struct rte_ipv4_tuple *)0)->sctp_tag)) / 4)
+
+/**
+ * length in dwords of input tuple to
+ * calculate hash of ipv4 header +
+ * transport header
+ */
+#define RTE_THASH_V4_L4_LEN	 ((sizeof(struct rte_ipv4_tuple)) / 4)
+
+/**
+ * length in dwords of input tuple to
+ * calculate hash of ipv6 header only
+ */
+#define RTE_THASH_V6_L3_LEN	((sizeof(struct rte_ipv6_tuple) -       \
+			sizeof(((struct rte_ipv6_tuple *)0)->sctp_tag)) / 4)
+
+/**
+ * length in dwords of input tuple to
+ * calculate hash of ipv6 header +
+ * transport header
+ */
+#define RTE_THASH_V6_L4_LEN	((sizeof(struct rte_ipv6_tuple)) / 4)
+
+/**
+ * IPv4 tuple
+ * addresses and ports/sctp_tag have to be CPU byte order
+ */
+struct rte_ipv4_tuple {
+	uint32_t	src_addr;
+	uint32_t	dst_addr;
+	union {
+		struct {
+			uint16_t dport;
+			uint16_t sport;
+		};
+		uint32_t        sctp_tag;
+	};
+};
+
+/**
+ * IPv6 tuple
+ * Addresses have to be filled by rte_thash_load_v6_addr()
+ * ports/sctp_tag have to be CPU byte order
+ */
+struct rte_ipv6_tuple {
+	uint8_t		src_addr[16];
+	uint8_t		dst_addr[16];
+	union {
+		struct {
+			uint16_t dport;
+			uint16_t sport;
+		};
+		uint32_t        sctp_tag;
+	};
+};
+
+union rte_thash_tuple {
+	struct rte_ipv4_tuple	v4;
+	struct rte_ipv6_tuple	v6;
+} __attribute__((aligned(XMM_SIZE)));
+
+/**
+ * Prepare special converted key to use with rte_softrss_be()
+ * @param orig
+ *   pointer to original RSS key
+ * @param targ
+ *   pointer to target RSS key
+ * @param len
+ *   RSS key length
+ */
+static inline void
+rte_convert_rss_key(const uint32_t *orig, uint32_t *targ, int len)
+{
+	int i;
+
+	for (i = 0; i < (len >> 2); i++)
+		targ[i] = rte_be_to_cpu_32(orig[i]);
+}
+
+/**
+ * Prepare and load IPv6 addresses (src and dst)
+ * into target tuple
+ * @param orig
+ *   Pointer to ipv6 header of the original packet
+ * @param targ
+ *   Pointer to rte_ipv6_tuple structure
+ */
+static inline void
+rte_thash_load_v6_addrs(const struct ipv6_hdr *orig, union rte_thash_tuple *targ)
+{
+	__m128i ipv6 = _mm_loadu_si128((const __m128i *)orig->src_addr);
+	*(__m128i *)targ->v6.src_addr =
+			_mm_shuffle_epi8(ipv6, rte_thash_ipv6_bswap_mask);
+	ipv6 = _mm_loadu_si128((const __m128i *)orig->dst_addr);
+	*(__m128i *)targ->v6.dst_addr =
+			_mm_shuffle_epi8(ipv6, rte_thash_ipv6_bswap_mask);
+}
+
+/**
+ * Generic implementation. Can be used with original rss_key
+ * @param input_tuple
+ *   Pointer to input tuple
+ * @param input_len
+ *   Length of input_tuple in 4-bytes chunks
+ * @param rss_key
+ *   Pointer to RSS hash key.
+ * @return
+ *   Calculated hash value.
+ */
+static inline uint32_t
+rte_softrss(uint32_t *input_tuple, uint32_t input_len,
+		const uint8_t *rss_key)
+{
+	uint32_t i, j, ret = 0;
+
+	for (j = 0; j < input_len; j++) {
+		for (i = 0; i < 32; i++) {
+			if (input_tuple[j] & (1 << (31 - i))) {
+				ret ^= rte_cpu_to_be_32(((const uint32_t *)rss_key)[j]) << i |
+					(uint32_t)((uint64_t)(rte_cpu_to_be_32(((const uint32_t *)rss_key)[j + 1])) >>
+					(32 - i));
+			}
+		}
+	}
+	return ret;
+}
+
+/**
+ * Optimized implementation.
+ * If you want the calculated hash value matches NIC RSS value
+ * you have to use special converted key with rte_convert_rss_key() fn.
+ * @param input_tuple
+ *   Pointer to input tuple
+ * @param input_len
+ *   Length of input_tuple in 4-bytes chunks
+ * @param *rss_key
+ *   Pointer to RSS hash key.
+ * @return
+ *   Calculated hash value.
+ */
+static inline uint32_t
+rte_softrss_be(uint32_t *input_tuple, uint32_t input_len,
+		const uint8_t *rss_key)
+{
+	uint32_t i, j, ret = 0;
+
+	for (j = 0; j < input_len; j++) {
+		for (i = 0; i < 32; i++) {
+			if (input_tuple[j] & (1 << (31 - i))) {
+				ret ^= ((const uint32_t *)rss_key)[j] << i |
+					(uint32_t)((uint64_t)(((const uint32_t *)rss_key)[j + 1]) >> (32 - i));
+			}
+		}
+	}
+	return ret;
+}
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _RTE_THASH_H */
