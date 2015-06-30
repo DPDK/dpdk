@@ -174,14 +174,12 @@ int pci_unbind_kernel_driver(struct rte_pci_device *dev);
  */
 int pci_uio_map_resource(struct rte_pci_device *dev);
 
-#ifdef RTE_LIBRTE_EAL_HOTPLUG
 /**
  * Unmap the PCI resource of a PCI device
  *
  * This function is private to EAL.
  */
 void pci_uio_unmap_resource(struct rte_pci_device *dev);
-#endif /* RTE_LIBRTE_EAL_HOTPLUG */
 
 /**
  * Allocate uio resource for PCI device

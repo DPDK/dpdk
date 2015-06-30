@@ -312,8 +312,8 @@ skipdev:
  * Scan the content of the PCI bus, and add the devices in the devices
  * list. Call pci_scan_one() for each pci entry found.
  */
-static int
-pci_scan(void)
+int
+rte_eal_pci_scan(void)
 {
 	int fd;
 	unsigned dev_count = 0;
@@ -369,7 +369,7 @@ rte_eal_pci_init(void)
 	if (internal_config.no_pci)
 		return 0;
 
-	if (pci_scan() < 0) {
+	if (rte_eal_pci_scan() < 0) {
 		RTE_LOG(ERR, EAL, "%s(): Cannot scan PCI bus\n", __func__);
 		return -1;
 	}

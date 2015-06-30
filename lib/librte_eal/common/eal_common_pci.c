@@ -167,7 +167,6 @@ pci_map_device(struct rte_pci_device *dev)
 	return ret;
 }
 
-#ifdef RTE_LIBRTE_EAL_HOTPLUG
 /* Unmap pci device */
 static void
 pci_unmap_device(struct rte_pci_device *dev)
@@ -192,7 +191,6 @@ pci_unmap_device(struct rte_pci_device *dev)
 		break;
 	}
 }
-#endif /* RTE_LIBRTE_EAL_HOTPLUG */
 
 /*
  * If vendor/device ID match, call the devinit() function of the
@@ -265,7 +263,6 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 	return 1;
 }
 
-#ifdef RTE_LIBRTE_EAL_HOTPLUG
 /*
  * If vendor/device ID match, call the devuninit() function of the
  * driver.
@@ -321,7 +318,6 @@ rte_eal_pci_close_one_driver(struct rte_pci_driver *dr,
 	/* return positive value if driver is not found */
 	return 1;
 }
-#endif /* RTE_LIBRTE_EAL_HOTPLUG */
 
 /*
  * If vendor/device ID match, call the devinit() function of all
@@ -350,7 +346,6 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 	return 1;
 }
 
-#ifdef RTE_LIBRTE_EAL_HOTPLUG
 /*
  * If vendor/device ID match, call the devuninit() function of all
  * registered driver for the given device. Return -1 if initialization
@@ -441,7 +436,6 @@ err_return:
 			dev->addr.devid, dev->addr.function);
 	return -1;
 }
-#endif /* RTE_LIBRTE_EAL_HOTPLUG */
 
 /*
  * Scan the content of the PCI bus, and call the devinit() function for

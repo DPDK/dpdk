@@ -397,7 +397,6 @@ void *pci_map_resource(void *requested_addr, int fd, off_t offset,
  */
 void pci_unmap_resource(void *requested_addr, size_t size);
 
-#ifdef RTE_LIBRTE_EAL_HOTPLUG
 /**
  * Probe the single PCI device.
  *
@@ -427,7 +426,6 @@ int rte_eal_pci_probe_one(const struct rte_pci_addr *addr);
  *   - Negative on error.
  */
 int rte_eal_pci_close_one(const struct rte_pci_addr *addr);
-#endif /* RTE_LIBRTE_EAL_HOTPLUG */
 
 /**
  * Dump the content of the PCI bus.

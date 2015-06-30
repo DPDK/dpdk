@@ -148,7 +148,6 @@ error:
 	return -1;
 }
 
-#ifdef RTE_LIBRTE_EAL_HOTPLUG
 static void
 pci_uio_unmap(struct mapped_pci_resource *uio_res)
 {
@@ -221,4 +220,3 @@ pci_uio_unmap_resource(struct rte_pci_device *dev)
 	dev->intr_handle.fd = -1;
 	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
 }
-#endif /* RTE_LIBRTE_EAL_HOTPLUG */

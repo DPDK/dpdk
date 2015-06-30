@@ -443,9 +443,6 @@ rte_eth_dev_count(void)
 	return nb_ports;
 }
 
-/* So far, DPDK hotplug function only supports linux */
-#ifdef RTE_LIBRTE_EAL_HOTPLUG
-
 static enum rte_eth_dev_type
 rte_eth_dev_get_device_type(uint8_t port_id)
 {
@@ -720,24 +717,6 @@ rte_eth_dev_detach(uint8_t port_id, char *name)
 	} else
 		return rte_eth_dev_detach_vdev(port_id, name);
 }
-#else /* RTE_LIBRTE_EAL_HOTPLUG */
-int
-rte_eth_dev_attach(const char *devargs __rte_unused,
-			uint8_t *port_id __rte_unused)
-{
-	RTE_LOG(ERR, EAL, "Hotplug support isn't enabled\n");
-	return -1;
-}
-
-/* detach the device, then store the name of the device */
-int
-rte_eth_dev_detach(uint8_t port_id __rte_unused,
-			char *name __rte_unused)
-{
-	RTE_LOG(ERR, EAL, "Hotplug support isn't enabled\n");
-	return -1;
-}
-#endif /* RTE_LIBRTE_EAL_HOTPLUG */
 
 static int
 rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)

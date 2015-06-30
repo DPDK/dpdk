@@ -121,12 +121,6 @@ CONFIG_RTE_LIBRTE_EAL_BSDAPP=y
 CONFIG_RTE_LIBRTE_EAL_LINUXAPP=n
 
 #
-# Compile Environment Abstraction Layer to support hotplug
-# So far, Hotplug functions only support linux
-#
-CONFIG_RTE_LIBRTE_EAL_HOTPLUG=n
-
-#
 # Compile Environment Abstraction Layer to support Vmware TSC map
 #
 CONFIG_RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT=y

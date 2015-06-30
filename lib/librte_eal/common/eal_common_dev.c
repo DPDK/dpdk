@@ -125,7 +125,6 @@ rte_eal_dev_init(void)
 	return 0;
 }
 
-#ifdef RTE_LIBRTE_EAL_HOTPLUG
 int
 rte_eal_vdev_uninit(const char *name)
 {
@@ -151,4 +150,3 @@ rte_eal_vdev_uninit(const char *name)
 	RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
 	return -EINVAL;
 }
-#endif /* RTE_LIBRTE_EAL_HOTPLUG */
