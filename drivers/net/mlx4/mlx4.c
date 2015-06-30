@@ -337,9 +337,11 @@ priv_unlock(struct priv *priv)
 static int
 priv_get_ifname(const struct priv *priv, char (*ifname)[IF_NAMESIZE])
 {
-	int ret = -1;
 	DIR *dir;
 	struct dirent *dent;
+	unsigned int dev_type = 0;
+	unsigned int dev_port_prev = ~0u;
+	char match[IF_NAMESIZE] = "";
 
 	{
 		MKSTR(path, "%s/device/net", priv->ctx->device->ibdev_path);
@@ -351,7 +353,7 @@ priv_get_ifname(const struct priv *priv, char (*ifname)[IF_NAMESIZE])
 	while ((dent = readdir(dir)) != NULL) {
 		char *name = dent->d_name;
 		FILE *file;
-		unsigned int dev_id;
+		unsigned int dev_port;
 		int r;
 
 		if ((name[0] == '.') &&
@@ -359,22 +361,47 @@ priv_get_ifname(const struct priv *priv, char (*ifname)[IF_NAMESIZE])
 		     ((name[1] == '.') && (name[2] == '\0'))))
 			continue;
 
-		MKSTR(path, "%s/device/net/%s/dev_id",
-		      priv->ctx->device->ibdev_path, name);
+		MKSTR(path, "%s/device/net/%s/%s",
+		      priv->ctx->device->ibdev_path, name,
+		      (dev_type ? "dev_id" : "dev_port"));
 
 		file = fopen(path, "rb");
-		if (file == NULL)
+		if (file == NULL) {
+			if (errno != ENOENT)
+				continue;
+			/*
+			 * Switch to dev_id when dev_port does not exist as
+			 * is the case with Linux kernel versions < 3.15.
+			 */
+try_dev_id:
+			match[0] = '\0';
+			if (dev_type)
+				break;
+			dev_type = 1;
+			dev_port_prev = ~0u;
+			rewinddir(dir);
 			continue;
-		r = fscanf(file, "%x", &dev_id);
-		fclose(file);
-		if ((r == 1) && (dev_id == (priv->port - 1u))) {
-			snprintf(*ifname, sizeof(*ifname), "%s", name);
-			ret = 0;
-			break;
 		}
+		r = fscanf(file, (dev_type ? "%x" : "%u"), &dev_port);
+		fclose(file);
+		if (r != 1)
+			continue;
+		/*
+		 * Switch to dev_id when dev_port returns the same value for
+		 * all ports. May happen when using a MOFED release older than
+		 * 3.0 with a Linux kernel >= 3.15.
+		 */
+		if (dev_port == dev_port_prev)
+			goto try_dev_id;
+		dev_port_prev = dev_port;
+		if (dev_port == (priv->port - 1u))
+			snprintf(match, sizeof(match), "%s", name);
 	}
 	closedir(dir);
-	return ret;
+	if (match[0] == '\0')
+		return -1;
+	strncpy(*ifname, match, sizeof(*ifname));
+	return 0;
 }
 
 /**
