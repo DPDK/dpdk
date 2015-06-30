@@ -346,7 +346,7 @@ Hashes
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/librte_hash/
 F: doc/guides/prog_guide/hash_lib.rst
-F: app/test/test_hash*
+F: app/test/test_*hash*
 F: app/test/test_func_reentrancy.c
 
 LPM

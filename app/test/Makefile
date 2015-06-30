@@ -82,6 +82,7 @@ SRCS-y += test_memcpy.c
 SRCS-y += test_memcpy_perf.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash.c
+SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_thash.c
 SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash_perf.c
 SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash_functions.c
 SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash_scaling.c
