@@ -195,9 +195,9 @@ struct rxq {
 	 * may contain several specifications, one per configured VLAN ID.
 	 */
 	BITFIELD_DECLARE(mac_configured, uint32_t, MLX4_MAX_MAC_ADDRESSES);
-	struct ibv_exp_flow *mac_flow[MLX4_MAX_MAC_ADDRESSES];
-	struct ibv_exp_flow *promisc_flow; /* Promiscuous flow. */
-	struct ibv_exp_flow *allmulti_flow; /* Multicast flow. */
+	struct ibv_flow *mac_flow[MLX4_MAX_MAC_ADDRESSES];
+	struct ibv_flow *promisc_flow; /* Promiscuous flow. */
+	struct ibv_flow *allmulti_flow; /* Multicast flow. */
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
@@ -1872,7 +1872,7 @@ rxq_mac_addr_del(struct rxq *rxq, unsigned int mac_index)
 	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5],
 	      mac_index);
 	assert(rxq->mac_flow[mac_index] != NULL);
-	claim_zero(ibv_exp_destroy_flow(rxq->mac_flow[mac_index]));
+	claim_zero(ibv_destroy_flow(rxq->mac_flow[mac_index]));
 	rxq->mac_flow[mac_index] = NULL;
 	BITFIELD_RESET(rxq->mac_configured, mac_index);
 }
@@ -1917,7 +1917,7 @@ rxq_mac_addr_add(struct rxq *rxq, unsigned int mac_index)
 	unsigned int vlans = 0;
 	unsigned int specs = 0;
 	unsigned int i, j;
-	struct ibv_exp_flow *flow;
+	struct ibv_flow *flow;
 
 	assert(mac_index < elemof(priv->mac));
 	if (BITFIELD_ISSET(rxq->mac_configured, mac_index))
@@ -1929,28 +1929,28 @@ rxq_mac_addr_add(struct rxq *rxq, unsigned int mac_index)
 	specs = (vlans ? vlans : 1);
 
 	/* Allocate flow specification on the stack. */
-	struct ibv_exp_flow_attr data
+	struct ibv_flow_attr data
 		[1 +
-		 (sizeof(struct ibv_exp_flow_spec_eth[specs]) /
-		  sizeof(struct ibv_exp_flow_attr)) +
-		 !!(sizeof(struct ibv_exp_flow_spec_eth[specs]) %
-		    sizeof(struct ibv_exp_flow_attr))];
-	struct ibv_exp_flow_attr *attr = (void *)&data[0];
-	struct ibv_exp_flow_spec_eth *spec = (void *)&data[1];
+		 (sizeof(struct ibv_flow_spec_eth[specs]) /
+		  sizeof(struct ibv_flow_attr)) +
+		 !!(sizeof(struct ibv_flow_spec_eth[specs]) %
+		    sizeof(struct ibv_flow_attr))];
+	struct ibv_flow_attr *attr = (void *)&data[0];
+	struct ibv_flow_spec_eth *spec = (void *)&data[1];
 
 	/*
 	 * No padding must be inserted by the compiler between attr and spec.
 	 * This layout is expected by libibverbs.
 	 */
 	assert(((uint8_t *)attr + sizeof(*attr)) == (uint8_t *)spec);
-	*attr = (struct ibv_exp_flow_attr){
-		.type = IBV_EXP_FLOW_ATTR_NORMAL,
+	*attr = (struct ibv_flow_attr){
+		.type = IBV_FLOW_ATTR_NORMAL,
 		.num_of_specs = specs,
 		.port = priv->port,
 		.flags = 0
 	};
-	*spec = (struct ibv_exp_flow_spec_eth){
-		.type = IBV_EXP_FLOW_SPEC_ETH,
+	*spec = (struct ibv_flow_spec_eth){
+		.type = IBV_FLOW_SPEC_ETH,
 		.size = sizeof(*spec),
 		.val = {
 			.dst_mac = {
@@ -1981,7 +1981,7 @@ rxq_mac_addr_add(struct rxq *rxq, unsigned int mac_index)
 	      vlans);
 	/* Create related flow. */
 	errno = 0;
-	flow = ibv_exp_create_flow(rxq->qp, attr);
+	flow = ibv_create_flow(rxq->qp, attr);
 	if (flow == NULL) {
 		int err = errno;
 
@@ -2168,9 +2168,9 @@ end:
 static int
 rxq_allmulticast_enable(struct rxq *rxq)
 {
-	struct ibv_exp_flow *flow;
-	struct ibv_exp_flow_attr attr = {
-		.type = IBV_EXP_FLOW_ATTR_MC_DEFAULT,
+	struct ibv_flow *flow;
+	struct ibv_flow_attr attr = {
+		.type = IBV_FLOW_ATTR_MC_DEFAULT,
 		.num_of_specs = 0,
 		.port = rxq->priv->port,
 		.flags = 0
@@ -2180,7 +2180,7 @@ rxq_allmulticast_enable(struct rxq *rxq)
 	if (rxq->allmulti_flow != NULL)
 		return EBUSY;
 	errno = 0;
-	flow = ibv_exp_create_flow(rxq->qp, &attr);
+	flow = ibv_create_flow(rxq->qp, &attr);
 	if (flow == NULL) {
 		/* It's not clear whether errno is always set in this case. */
 		ERROR("%p: flow configuration failed, errno=%d: %s",
@@ -2207,7 +2207,7 @@ rxq_allmulticast_disable(struct rxq *rxq)
 	DEBUG("%p: disabling allmulticast mode", (void *)rxq);
 	if (rxq->allmulti_flow == NULL)
 		return;
-	claim_zero(ibv_exp_destroy_flow(rxq->allmulti_flow));
+	claim_zero(ibv_destroy_flow(rxq->allmulti_flow));
 	rxq->allmulti_flow = NULL;
 	DEBUG("%p: allmulticast mode disabled", (void *)rxq);
 }
@@ -2224,9 +2224,9 @@ rxq_allmulticast_disable(struct rxq *rxq)
 static int
 rxq_promiscuous_enable(struct rxq *rxq)
 {
-	struct ibv_exp_flow *flow;
-	struct ibv_exp_flow_attr attr = {
-		.type = IBV_EXP_FLOW_ATTR_ALL_DEFAULT,
+	struct ibv_flow *flow;
+	struct ibv_flow_attr attr = {
+		.type = IBV_FLOW_ATTR_ALL_DEFAULT,
 		.num_of_specs = 0,
 		.port = rxq->priv->port,
 		.flags = 0
@@ -2238,7 +2238,7 @@ rxq_promiscuous_enable(struct rxq *rxq)
 	if (rxq->promisc_flow != NULL)
 		return EBUSY;
 	errno = 0;
-	flow = ibv_exp_create_flow(rxq->qp, &attr);
+	flow = ibv_create_flow(rxq->qp, &attr);
 	if (flow == NULL) {
 		/* It's not clear whether errno is always set in this case. */
 		ERROR("%p: flow configuration failed, errno=%d: %s",
@@ -2267,7 +2267,7 @@ rxq_promiscuous_disable(struct rxq *rxq)
 	DEBUG("%p: disabling promiscuous mode", (void *)rxq);
 	if (rxq->promisc_flow == NULL)
 		return;
-	claim_zero(ibv_exp_destroy_flow(rxq->promisc_flow));
+	claim_zero(ibv_destroy_flow(rxq->promisc_flow));
 	rxq->promisc_flow = NULL;
 	DEBUG("%p: promiscuous mode disabled", (void *)rxq);
 }
