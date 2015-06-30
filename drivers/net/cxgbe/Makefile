@@ -52,9 +52,9 @@ ifeq ($(CC), icc)
 CFLAGS_BASE_DRIVER = -wd174 -wd593 -wd869 -wd981 -wd2259
 else
 #
-# CFLAGS for gcc
+# CFLAGS for gcc/clang
 #
-ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
+ifeq ($(shell test $(CC) = gcc && test $(GCC_VERSION) -ge 44 && echo 1), 1)
 CFLAGS     += -Wno-deprecated
 endif
 CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
