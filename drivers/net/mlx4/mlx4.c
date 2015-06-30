@@ -200,6 +200,7 @@ struct rxq {
 	struct ibv_exp_flow *allmulti_flow; /* Multicast flow. */
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
+	unsigned int elts_head; /* Current index in (*elts)[]. */
 	union {
 		struct rxq_elt_sp (*sp)[]; /* Scattered RX elements. */
 		struct rxq_elt (*no_sp)[]; /* RX elements. */
@@ -1640,6 +1641,7 @@ rxq_alloc_elts_sp(struct rxq *rxq, unsigned int elts_n,
 	DEBUG("%p: allocated and configured %u WRs (%zu segments)",
 	      (void *)rxq, elts_n, (elts_n * elemof((*elts)[0].sges)));
 	rxq->elts_n = elts_n;
+	rxq->elts_head = 0;
 	rxq->elts.sp = elts;
 	assert(ret == 0);
 	return 0;
@@ -1785,6 +1787,7 @@ rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n, struct rte_mbuf **pool)
 	DEBUG("%p: allocated and configured %u single-segment WRs",
 	      (void *)rxq, elts_n);
 	rxq->elts_n = elts_n;
+	rxq->elts_head = 0;
 	rxq->elts.no_sp = elts;
 	assert(ret == 0);
 	return 0;
@@ -2320,6 +2323,8 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct rxq *rxq = (struct rxq *)dpdk_rxq;
 	struct rxq_elt_sp (*elts)[rxq->elts_n] = rxq->elts.sp;
+	const unsigned int elts_n = rxq->elts_n;
+	unsigned int elts_head = rxq->elts_head;
 	struct ibv_wc wcs[pkts_n];
 	struct ibv_recv_wr head;
 	struct ibv_recv_wr **next = &head.next;
@@ -2346,7 +2351,7 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		struct ibv_wc *wc = &wcs[i];
 		uint64_t wr_id = wc->wr_id;
 		uint32_t len = wc->byte_len;
-		struct rxq_elt_sp *elt = &(*elts)[wr_id];
+		struct rxq_elt_sp *elt = &(*elts)[elts_head];
 		struct ibv_recv_wr *wr = &elt->wr;
 		struct rte_mbuf *pkt_buf = NULL; /* Buffer returned in pkts. */
 		struct rte_mbuf **pkt_buf_next = &pkt_buf;
@@ -2354,10 +2359,15 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		unsigned int j = 0;
 
 		/* Sanity checks. */
+#ifdef NDEBUG
+		(void)wr_id;
+#endif
 		assert(wr_id < rxq->elts_n);
 		assert(wr_id == wr->wr_id);
 		assert(wr->sg_list == elt->sges);
 		assert(wr->num_sge == elemof(elt->sges));
+		assert(elts_head < rxq->elts_n);
+		assert(rxq->elts_head < rxq->elts_n);
 		/* Link completed WRs together for repost. */
 		*next = wr;
 		next = &wr->next;
@@ -2468,6 +2478,8 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		rxq->stats.ibytes += wc->byte_len;
 #endif
 repost:
+		if (++elts_head >= elts_n)
+			elts_head = 0;
 		continue;
 	}
 	*next = NULL;
@@ -2485,6 +2497,7 @@ repost:
 		      strerror(i));
 		abort();
 	}
+	rxq->elts_head = elts_head;
 #ifdef MLX4_PMD_SOFT_COUNTERS
 	/* Increase packets counter. */
 	rxq->stats.ipackets += ret;
@@ -2514,6 +2527,8 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct rxq *rxq = (struct rxq *)dpdk_rxq;
 	struct rxq_elt (*elts)[rxq->elts_n] = rxq->elts.no_sp;
+	const unsigned int elts_n = rxq->elts_n;
+	unsigned int elts_head = rxq->elts_head;
 	struct ibv_wc wcs[pkts_n];
 	struct ibv_recv_wr head;
 	struct ibv_recv_wr **next = &head.next;
@@ -2538,7 +2553,7 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		struct ibv_wc *wc = &wcs[i];
 		uint64_t wr_id = wc->wr_id;
 		uint32_t len = wc->byte_len;
-		struct rxq_elt *elt = &(*elts)[WR_ID(wr_id).id];
+		struct rxq_elt *elt = &(*elts)[elts_head];
 		struct ibv_recv_wr *wr = &elt->wr;
 		struct rte_mbuf *seg = (void *)((uintptr_t)elt->sge.addr -
 			WR_ID(wr_id).offset);
@@ -2549,6 +2564,8 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		assert(wr_id == wr->wr_id);
 		assert(wr->sg_list == &elt->sge);
 		assert(wr->num_sge == 1);
+		assert(elts_head < rxq->elts_n);
+		assert(rxq->elts_head < rxq->elts_n);
 		/* Link completed WRs together for repost. */
 		*next = wr;
 		next = &wr->next;
@@ -2609,6 +2626,8 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		rxq->stats.ibytes += wc->byte_len;
 #endif
 repost:
+		if (++elts_head >= elts_n)
+			elts_head = 0;
 		continue;
 	}
 	*next = NULL;
@@ -2626,6 +2645,7 @@ repost:
 		      strerror(i));
 		abort();
 	}
+	rxq->elts_head = elts_head;
 #ifdef MLX4_PMD_SOFT_COUNTERS
 	/* Increase packets counter. */
 	rxq->stats.ipackets += ret;
