@@ -51,6 +51,9 @@
 /* Maximum number of simultaneous VLAN filters supported. See above. */
 #define MLX4_MAX_VLAN_IDS 127
 
+/* Request send completion once in every 64 sends, might be less. */
+#define MLX4_PMD_TX_PER_COMP_REQ 64
+
 /* Maximum number of Scatter/Gather Elements per Work Request. */
 #ifndef MLX4_PMD_SGE_WR_N
 #define MLX4_PMD_SGE_WR_N 4

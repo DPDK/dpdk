@@ -243,6 +243,8 @@ struct txq {
 	unsigned int elts_head; /* Current index in (*elts)[]. */
 	unsigned int elts_tail; /* First element awaiting completion. */
 	unsigned int elts_comp; /* Number of completion requests. */
+	unsigned int elts_comp_cd; /* Countdown for next completion request. */
+	unsigned int elts_comp_cd_init; /* Initial value for countdown. */
 	struct mlx4_txq_stats stats; /* TX queue counters. */
 	linear_t (*elts_linear)[]; /* Linearized buffers. */
 	struct ibv_mr *mr_linear; /* Memory Region for linearized buffers. */
@@ -810,6 +812,12 @@ txq_alloc_elts(struct txq *txq, unsigned int elts_n)
 	txq->elts_head = 0;
 	txq->elts_tail = 0;
 	txq->elts_comp = 0;
+	/* Request send completion every MLX4_PMD_TX_PER_COMP_REQ packets or
+	 * at least 4 times per ring. */
+	txq->elts_comp_cd_init =
+		((MLX4_PMD_TX_PER_COMP_REQ < (elts_n / 4)) ?
+		 MLX4_PMD_TX_PER_COMP_REQ : (elts_n / 4));
+	txq->elts_comp_cd = txq->elts_comp_cd_init;
 	txq->elts_linear = elts_linear;
 	txq->mr_linear = mr_linear;
 	assert(ret == 0);
@@ -896,9 +904,9 @@ txq_cleanup(struct txq *txq)
  * Manage TX completions.
  *
  * When sending a burst, mlx4_tx_burst() posts several WRs.
- * To improve performance, a completion event is only required for the last of
- * them. Doing so discards completion information for other WRs, but this
- * information would not be used anyway.
+ * To improve performance, a completion event is only required once every
+ * MLX4_PMD_TX_PER_COMP_REQ sends. Doing so discards completion information
+ * for other WRs, but this information would not be used anyway.
  *
  * @param txq
  *   Pointer to TX queue structure.
@@ -910,7 +918,7 @@ static int
 txq_complete(struct txq *txq)
 {
 	unsigned int elts_comp = txq->elts_comp;
-	unsigned int elts_tail;
+	unsigned int elts_tail = txq->elts_tail;
 	const unsigned int elts_n = txq->elts_n;
 	struct ibv_wc wcs[elts_comp];
 	int wcs_n;
@@ -932,17 +940,12 @@ txq_complete(struct txq *txq)
 	elts_comp -= wcs_n;
 	assert(elts_comp <= txq->elts_comp);
 	/*
-	 * Work Completion ID contains the associated element index in
-	 * (*txq->elts)[]. Since WCs are returned in order, we only need to
-	 * look at the last WC to clear older Work Requests.
-	 *
 	 * Assume WC status is successful as nothing can be done about it
 	 * anyway.
 	 */
-	elts_tail = WR_ID(wcs[wcs_n - 1].wr_id).id;
-	/* Consume the last WC. */
-	if (++elts_tail >= elts_n)
-		elts_tail = 0;
+	elts_tail += wcs_n * txq->elts_comp_cd_init;
+	if (elts_tail >= elts_n)
+		elts_tail -= elts_n;
 	txq->elts_tail = elts_tail;
 	txq->elts_comp = elts_comp;
 	return 0;
@@ -1062,10 +1065,13 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	unsigned int elts_head = txq->elts_head;
 	const unsigned int elts_tail = txq->elts_tail;
 	const unsigned int elts_n = txq->elts_n;
+	unsigned int elts_comp_cd = txq->elts_comp_cd;
+	unsigned int elts_comp = 0;
 	unsigned int i;
 	unsigned int max;
 	int err;
 
+	assert(elts_comp_cd != 0);
 	txq_complete(txq);
 	max = (elts_n - (elts_head - elts_tail));
 	if (max > elts_n)
@@ -1243,6 +1249,12 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		else
 #endif
 			wr->send_flags = 0;
+		/* Request TX completion. */
+		if (unlikely(--elts_comp_cd == 0)) {
+			elts_comp_cd = txq->elts_comp_cd_init;
+			++elts_comp;
+			wr->send_flags |= IBV_SEND_SIGNALED;
+		}
 		if (++elts_head >= elts_n)
 			elts_head = 0;
 #ifdef MLX4_PMD_SOFT_COUNTERS
@@ -1259,14 +1271,11 @@ stop:
 	txq->stats.opackets += i;
 #endif
 	*wr_next = NULL;
-	/* The last WR is the only one asking for a completion event. */
-	containerof(wr_next, mlx4_send_wr_t, next)->
-		send_flags |= IBV_SEND_SIGNALED;
 	err = mlx4_post_send(txq->qp, head.next, &bad_wr);
 	if (unlikely(err)) {
 		unsigned int unsent = 0;
 
-		/* An error occurred, completion event is lost. Fix counters. */
+		/* An error occurred, fix counters. */
 		while (bad_wr != NULL) {
 			struct txq_elt *elt =
 				containerof(bad_wr, struct txq_elt, wr);
@@ -1285,6 +1294,14 @@ stop:
 				txq->stats.obytes -= wr->sg_list[j].length;
 #endif
 			++unsent;
+			if (wr->send_flags & IBV_SEND_SIGNALED) {
+				assert(elts_comp != 0);
+				--elts_comp;
+			}
+			if (elts_comp_cd == txq->elts_comp_cd_init)
+				elts_comp_cd = 1;
+			else
+				++elts_comp_cd;
 #ifndef NDEBUG
 			/* For assert(). */
 			for (j = 0; ((int)j < wr->num_sge); ++j) {
@@ -1310,9 +1327,10 @@ stop:
 		DEBUG("%p: mlx4_post_send() failed, %u unprocessed WRs: %s",
 		      (void *)txq, unsent,
 		      ((err <= -1) ? "Internal error" : strerror(err)));
-	} else
-		++txq->elts_comp;
+	}
 	txq->elts_head = elts_head;
+	txq->elts_comp += elts_comp;
+	txq->elts_comp_cd = elts_comp_cd;
 	return i;
 }
 
