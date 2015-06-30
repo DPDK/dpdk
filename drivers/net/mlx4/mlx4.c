@@ -139,15 +139,6 @@ static inline void wr_id_t_check(void)
 	(void)wr_id_t_check;
 }
 
-/* If raw send operations are available, use them since they are faster. */
-#ifdef SEND_RAW_WR_SUPPORT
-typedef struct ibv_send_wr_raw mlx4_send_wr_t;
-#define mlx4_post_send ibv_post_send_raw
-#else
-typedef struct ibv_send_wr mlx4_send_wr_t;
-#define mlx4_post_send ibv_post_send
-#endif
-
 struct mlx4_rxq_stats {
 	unsigned int idx; /**< Mapping index. */
 #ifdef MLX4_PMD_SOFT_COUNTERS
@@ -212,7 +203,7 @@ struct rxq {
 
 /* TX element. */
 struct txq_elt {
-	mlx4_send_wr_t wr; /* Work Request. */
+	struct ibv_send_wr wr; /* Work Request. */
 	struct ibv_sge sges[MLX4_PMD_SGE_WR_N]; /* Scatter/Gather Elements. */
 	/* mbuf pointer is derived from WR_ID(wr.wr_id).offset. */
 };
@@ -235,6 +226,8 @@ struct txq {
 	} mp2mr[MLX4_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_qp *qp; /* Queue Pair. */
+	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
+	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 #if MLX4_PMD_MAX_INLINE > 0
 	uint32_t max_inline; /* Max inline send size <= MLX4_PMD_MAX_INLINE. */
 #endif
@@ -797,7 +790,7 @@ txq_alloc_elts(struct txq *txq, unsigned int elts_n)
 	}
 	for (i = 0; (i != elts_n); ++i) {
 		struct txq_elt *elt = &(*elts)[i];
-		mlx4_send_wr_t *wr = &elt->wr;
+		struct ibv_send_wr *wr = &elt->wr;
 
 		/* Configure WR. */
 		WR_ID(wr->wr_id).id = i;
@@ -883,10 +876,33 @@ txq_free_elts(struct txq *txq)
 static void
 txq_cleanup(struct txq *txq)
 {
+	struct ibv_exp_release_intf_params params;
 	size_t i;
 
 	DEBUG("cleaning up %p", (void *)txq);
 	txq_free_elts(txq);
+	if (txq->if_qp != NULL) {
+		assert(txq->priv != NULL);
+		assert(txq->priv->ctx != NULL);
+		assert(txq->qp != NULL);
+		params = (struct ibv_exp_release_intf_params){
+			.comp_mask = 0,
+		};
+		claim_zero(ibv_exp_release_intf(txq->priv->ctx,
+						txq->if_qp,
+						&params));
+	}
+	if (txq->if_cq != NULL) {
+		assert(txq->priv != NULL);
+		assert(txq->priv->ctx != NULL);
+		assert(txq->cq != NULL);
+		params = (struct ibv_exp_release_intf_params){
+			.comp_mask = 0,
+		};
+		claim_zero(ibv_exp_release_intf(txq->priv->ctx,
+						txq->if_cq,
+						&params));
+	}
 	if (txq->qp != NULL)
 		claim_zero(ibv_destroy_qp(txq->qp));
 	if (txq->cq != NULL)
@@ -920,7 +936,6 @@ txq_complete(struct txq *txq)
 	unsigned int elts_comp = txq->elts_comp;
 	unsigned int elts_tail = txq->elts_tail;
 	const unsigned int elts_n = txq->elts_n;
-	struct ibv_wc wcs[elts_comp];
 	int wcs_n;
 
 	if (unlikely(elts_comp == 0))
@@ -929,7 +944,7 @@ txq_complete(struct txq *txq)
 	DEBUG("%p: processing %u work requests completions",
 	      (void *)txq, elts_comp);
 #endif
-	wcs_n = ibv_poll_cq(txq->cq, elts_comp, wcs);
+	wcs_n = txq->if_cq->poll_cnt(txq->cq, elts_comp);
 	if (unlikely(wcs_n == 0))
 		return 0;
 	if (unlikely(wcs_n < 0)) {
@@ -1059,9 +1074,8 @@ static uint16_t
 mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct txq *txq = (struct txq *)dpdk_txq;
-	mlx4_send_wr_t head;
-	mlx4_send_wr_t **wr_next = &head.next;
-	mlx4_send_wr_t *bad_wr;
+	struct ibv_send_wr head;
+	struct ibv_send_wr **wr_next = &head.next;
 	unsigned int elts_head = txq->elts_head;
 	const unsigned int elts_tail = txq->elts_tail;
 	const unsigned int elts_n = txq->elts_n;
@@ -1087,13 +1101,14 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	for (i = 0; (i != max); ++i) {
 		struct rte_mbuf *buf = pkts[i];
 		struct txq_elt *elt = &(*txq->elts)[elts_head];
-		mlx4_send_wr_t *wr = &elt->wr;
+		struct ibv_send_wr *wr = &elt->wr;
 		unsigned int segs = NB_SEGS(buf);
-#if (MLX4_PMD_MAX_INLINE > 0) || defined(MLX4_PMD_SOFT_COUNTERS)
+#ifdef MLX4_PMD_SOFT_COUNTERS
 		unsigned int sent_size = 0;
 #endif
 		unsigned int j;
 		int linearize = 0;
+		uint32_t send_flags = 0;
 
 		/* Clean up old buffer. */
 		if (likely(WR_ID(wr->wr_id).offset != 0)) {
@@ -1179,7 +1194,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					(uintptr_t)sge->addr);
 			sge->length = DATA_LEN(buf);
 			sge->lkey = lkey;
-#if (MLX4_PMD_MAX_INLINE > 0) || defined(MLX4_PMD_SOFT_COUNTERS)
+#ifdef MLX4_PMD_SOFT_COUNTERS
 			sent_size += sge->length;
 #endif
 			buf = NEXT(buf);
@@ -1236,24 +1251,19 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			sge->addr = (uintptr_t)&(*linear)[0];
 			sge->length = size;
 			sge->lkey = txq->mr_linear->lkey;
-#if (MLX4_PMD_MAX_INLINE > 0) || defined(MLX4_PMD_SOFT_COUNTERS)
+#ifdef MLX4_PMD_SOFT_COUNTERS
 			sent_size += size;
 #endif
 		}
 		/* Link WRs together for ibv_post_send(). */
 		*wr_next = wr;
 		wr_next = &wr->next;
-#if MLX4_PMD_MAX_INLINE > 0
-		if (sent_size <= txq->max_inline)
-			wr->send_flags = IBV_SEND_INLINE;
-		else
-#endif
-			wr->send_flags = 0;
+		assert(wr->send_flags == 0);
 		/* Request TX completion. */
 		if (unlikely(--elts_comp_cd == 0)) {
 			elts_comp_cd = txq->elts_comp_cd_init;
 			++elts_comp;
-			wr->send_flags |= IBV_SEND_SIGNALED;
+			send_flags |= IBV_EXP_QP_BURST_SIGNALED;
 		}
 		if (++elts_head >= elts_n)
 			elts_head = 0;
@@ -1261,6 +1271,24 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* Increment sent bytes counter. */
 		txq->stats.obytes += sent_size;
 #endif
+		/* Put SG list into send queue and ask for completion event. */
+#if MLX4_PMD_MAX_INLINE > 0
+		if ((segs == 1) &&
+		    (elt->sges[0].length <= txq->max_inline))
+			err = txq->if_qp->send_pending_inline
+				(txq->qp,
+				 (void *)(uintptr_t)elt->sges[0].addr,
+				 elt->sges[0].length,
+				 send_flags);
+		else
+#endif
+			err = txq->if_qp->send_pending_sg_list
+				(txq->qp,
+				 elt->sges,
+				 segs,
+				 send_flags);
+		if (unlikely(err))
+			goto stop;
 	}
 stop:
 	/* Take a shortcut if nothing must be sent. */
@@ -1271,62 +1299,13 @@ stop:
 	txq->stats.opackets += i;
 #endif
 	*wr_next = NULL;
-	err = mlx4_post_send(txq->qp, head.next, &bad_wr);
+	/* Ring QP doorbell. */
+	err = txq->if_qp->send_flush(txq->qp);
 	if (unlikely(err)) {
-		unsigned int unsent = 0;
-
-		/* An error occurred, fix counters. */
-		while (bad_wr != NULL) {
-			struct txq_elt *elt =
-				containerof(bad_wr, struct txq_elt, wr);
-			mlx4_send_wr_t *wr = &elt->wr;
-			mlx4_send_wr_t *next = wr->next;
-#if defined(MLX4_PMD_SOFT_COUNTERS) || !defined(NDEBUG)
-			unsigned int j;
-#endif
-
-			assert(wr == bad_wr);
-			/* Clean up TX element without freeing it, caller
-			 * should take care of this. */
-			WR_ID(elt->wr.wr_id).offset = 0;
-#ifdef MLX4_PMD_SOFT_COUNTERS
-			for (j = 0; ((int)j < wr->num_sge); ++j)
-				txq->stats.obytes -= wr->sg_list[j].length;
-#endif
-			++unsent;
-			if (wr->send_flags & IBV_SEND_SIGNALED) {
-				assert(elts_comp != 0);
-				--elts_comp;
-			}
-			if (elts_comp_cd == txq->elts_comp_cd_init)
-				elts_comp_cd = 1;
-			else
-				++elts_comp_cd;
-#ifndef NDEBUG
-			/* For assert(). */
-			for (j = 0; ((int)j < wr->num_sge); ++j) {
-				elt->sges[j].addr = 0;
-				elt->sges[j].length = 0;
-				elt->sges[j].lkey = 0;
-			}
-			wr->next = NULL;
-			wr->num_sge = 0;
-#endif
-			bad_wr = next;
-		}
-#ifdef MLX4_PMD_SOFT_COUNTERS
-		txq->stats.opackets -= unsent;
-#endif
-		assert(i >= unsent);
-		i -= unsent;
-		/* "Unsend" remaining packets. */
-		elts_head -= unsent;
-		if (elts_head >= elts_n)
-			elts_head += elts_n;
-		assert(elts_head < elts_n);
-		DEBUG("%p: mlx4_post_send() failed, %u unprocessed WRs: %s",
-		      (void *)txq, unsent,
-		      ((err <= -1) ? "Internal error" : strerror(err)));
+		/* A nonzero value is not supposed to be returned.
+		 * Nothing can be done about it. */
+		DEBUG("%p: send_flush() failed with error %d",
+		      (void *)txq, err);
 	}
 	txq->elts_head = elts_head;
 	txq->elts_comp += elts_comp;
@@ -1361,9 +1340,11 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 		.socket = socket
 	};
 	union {
+		struct ibv_exp_query_intf_params params;
 		struct ibv_qp_init_attr init;
 		struct ibv_exp_qp_attr mod;
 	} attr;
+	enum ibv_exp_query_intf_status status;
 	int ret = 0;
 
 	(void)conf; /* Thresholds configuration (ignored). */
@@ -1453,6 +1434,28 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	if (ret) {
 		ERROR("%p: QP state to IBV_QPS_RTS failed: %s",
 		      (void *)dev, strerror(ret));
+		goto error;
+	}
+	attr.params = (struct ibv_exp_query_intf_params){
+		.intf_scope = IBV_EXP_INTF_GLOBAL,
+		.intf = IBV_EXP_INTF_CQ,
+		.obj = tmpl.cq,
+	};
+	tmpl.if_cq = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
+	if (tmpl.if_cq == NULL) {
+		ERROR("%p: CQ interface family query failed with status %d",
+		      (void *)dev, status);
+		goto error;
+	}
+	attr.params = (struct ibv_exp_query_intf_params){
+		.intf_scope = IBV_EXP_INTF_GLOBAL,
+		.intf = IBV_EXP_INTF_QP_BURST,
+		.obj = tmpl.qp,
+	};
+	tmpl.if_qp = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
+	if (tmpl.if_qp == NULL) {
+		ERROR("%p: QP interface family query failed with status %d",
+		      (void *)dev, status);
 		goto error;
 	}
 	/* Clean up txq in case we're reinitializing it. */
