@@ -188,6 +188,8 @@ struct rxq {
 	struct ibv_mr *mr; /* Memory Region (for mp). */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_qp *qp; /* Queue Pair. */
+	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
+	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 	/*
 	 * Each VLAN ID requires a separate flow steering rule.
 	 */
@@ -2319,11 +2321,35 @@ rxq_promiscuous_disable(struct rxq *rxq)
 static void
 rxq_cleanup(struct rxq *rxq)
 {
+	struct ibv_exp_release_intf_params params;
+
 	DEBUG("cleaning up %p", (void *)rxq);
 	if (rxq->sp)
 		rxq_free_elts_sp(rxq);
 	else
 		rxq_free_elts(rxq);
+	if (rxq->if_qp != NULL) {
+		assert(rxq->priv != NULL);
+		assert(rxq->priv->ctx != NULL);
+		assert(rxq->qp != NULL);
+		params = (struct ibv_exp_release_intf_params){
+			.comp_mask = 0,
+		};
+		claim_zero(ibv_exp_release_intf(rxq->priv->ctx,
+						rxq->if_qp,
+						&params));
+	}
+	if (rxq->if_cq != NULL) {
+		assert(rxq->priv != NULL);
+		assert(rxq->priv->ctx != NULL);
+		assert(rxq->cq != NULL);
+		params = (struct ibv_exp_release_intf_params){
+			.comp_mask = 0,
+		};
+		claim_zero(ibv_exp_release_intf(rxq->priv->ctx,
+						rxq->if_cq,
+						&params));
+	}
 	if (rxq->qp != NULL) {
 		rxq_promiscuous_disable(rxq);
 		rxq_allmulticast_disable(rxq);
@@ -2360,34 +2386,23 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	struct rxq_elt_sp (*elts)[rxq->elts_n] = rxq->elts.sp;
 	const unsigned int elts_n = rxq->elts_n;
 	unsigned int elts_head = rxq->elts_head;
-	struct ibv_wc wcs[pkts_n];
 	struct ibv_recv_wr head;
 	struct ibv_recv_wr **next = &head.next;
 	struct ibv_recv_wr *bad_wr;
-	int ret = 0;
-	int wcs_n;
-	int i;
+	unsigned int i;
+	unsigned int pkts_ret = 0;
+	int ret;
 
 	if (unlikely(!rxq->sp))
 		return mlx4_rx_burst(dpdk_rxq, pkts, pkts_n);
 	if (unlikely(elts == NULL)) /* See RTE_DEV_CMD_SET_MTU. */
 		return 0;
-	wcs_n = ibv_poll_cq(rxq->cq, pkts_n, wcs);
-	if (unlikely(wcs_n == 0))
-		return 0;
-	if (unlikely(wcs_n < 0)) {
-		DEBUG("rxq=%p, ibv_poll_cq() failed (wc_n=%d)",
-		      (void *)rxq, wcs_n);
-		return 0;
-	}
-	assert(wcs_n <= (int)pkts_n);
-	/* For each work completion. */
-	for (i = 0; (i != wcs_n); ++i) {
-		struct ibv_wc *wc = &wcs[i];
-		uint64_t wr_id = wc->wr_id;
-		uint32_t len = wc->byte_len;
+	for (i = 0; (i != pkts_n); ++i) {
 		struct rxq_elt_sp *elt = &(*elts)[elts_head];
 		struct ibv_recv_wr *wr = &elt->wr;
+		uint64_t wr_id = wr->wr_id;
+		unsigned int len;
+		unsigned int pkt_buf_len;
 		struct rte_mbuf *pkt_buf = NULL; /* Buffer returned in pkts. */
 		struct rte_mbuf **pkt_buf_next = &pkt_buf;
 		unsigned int seg_headroom = RTE_PKTMBUF_HEADROOM;
@@ -2398,26 +2413,51 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		(void)wr_id;
 #endif
 		assert(wr_id < rxq->elts_n);
-		assert(wr_id == wr->wr_id);
 		assert(wr->sg_list == elt->sges);
 		assert(wr->num_sge == elemof(elt->sges));
 		assert(elts_head < rxq->elts_n);
 		assert(rxq->elts_head < rxq->elts_n);
+		ret = rxq->if_cq->poll_length(rxq->cq, NULL, NULL);
+		if (unlikely(ret < 0)) {
+			struct ibv_wc wc;
+			int wcs_n;
+
+			DEBUG("rxq=%p, poll_length() failed (ret=%d)",
+			      (void *)rxq, ret);
+			/* ibv_poll_cq() must be used in case of failure. */
+			wcs_n = ibv_poll_cq(rxq->cq, 1, &wc);
+			if (unlikely(wcs_n == 0))
+				break;
+			if (unlikely(wcs_n < 0)) {
+				DEBUG("rxq=%p, ibv_poll_cq() failed (wcs_n=%d)",
+				      (void *)rxq, wcs_n);
+				break;
+			}
+			assert(wcs_n == 1);
+			if (unlikely(wc.status != IBV_WC_SUCCESS)) {
+				/* Whatever, just repost the offending WR. */
+				DEBUG("rxq=%p, wr_id=%" PRIu64 ": bad work"
+				      " completion status (%d): %s",
+				      (void *)rxq, wc.wr_id, wc.status,
+				      ibv_wc_status_str(wc.status));
+#ifdef MLX4_PMD_SOFT_COUNTERS
+				/* Increment dropped packets counter. */
+				++rxq->stats.idropped;
+#endif
+				/* Link completed WRs together for repost. */
+				*next = wr;
+				next = &wr->next;
+				goto repost;
+			}
+			ret = wc.byte_len;
+		}
+		if (ret == 0)
+			break;
+		len = ret;
+		pkt_buf_len = len;
 		/* Link completed WRs together for repost. */
 		*next = wr;
 		next = &wr->next;
-		if (unlikely(wc->status != IBV_WC_SUCCESS)) {
-			/* Whatever, just repost the offending WR. */
-			DEBUG("rxq=%p, wr_id=%" PRIu64 ": bad work completion"
-			      " status (%d): %s",
-			      (void *)rxq, wc->wr_id, wc->status,
-			      ibv_wc_status_str(wc->status));
-#ifdef MLX4_PMD_SOFT_COUNTERS
-			/* Increase dropped packets counter. */
-			++rxq->stats.idropped;
-#endif
-			goto repost;
-		}
 		/*
 		 * Replace spent segments with new ones, concatenate and
 		 * return them as pkt_buf.
@@ -2502,42 +2542,43 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		assert(j != 0);
 		NB_SEGS(pkt_buf) = j;
 		PORT(pkt_buf) = rxq->port_id;
-		PKT_LEN(pkt_buf) = wc->byte_len;
+		PKT_LEN(pkt_buf) = pkt_buf_len;
 		pkt_buf->ol_flags = 0;
 
 		/* Return packet. */
 		*(pkts++) = pkt_buf;
-		++ret;
+		++pkts_ret;
 #ifdef MLX4_PMD_SOFT_COUNTERS
 		/* Increase bytes counter. */
-		rxq->stats.ibytes += wc->byte_len;
+		rxq->stats.ibytes += pkt_buf_len;
 #endif
 repost:
 		if (++elts_head >= elts_n)
 			elts_head = 0;
 		continue;
 	}
+	if (unlikely(i == 0))
+		return 0;
 	*next = NULL;
 	/* Repost WRs. */
 #ifdef DEBUG_RECV
-	DEBUG("%p: reposting %d WRs starting from %" PRIu64 " (%p)",
-	      (void *)rxq, wcs_n, wcs[0].wr_id, (void *)head.next);
+	DEBUG("%p: reposting %d WRs", (void *)rxq, i);
 #endif
-	i = ibv_post_recv(rxq->qp, head.next, &bad_wr);
-	if (unlikely(i)) {
+	ret = ibv_post_recv(rxq->qp, head.next, &bad_wr);
+	if (unlikely(ret)) {
 		/* Inability to repost WRs is fatal. */
 		DEBUG("%p: ibv_post_recv(): failed for WR %p: %s",
 		      (void *)rxq->priv,
 		      (void *)bad_wr,
-		      strerror(i));
+		      strerror(ret));
 		abort();
 	}
 	rxq->elts_head = elts_head;
 #ifdef MLX4_PMD_SOFT_COUNTERS
 	/* Increase packets counter. */
-	rxq->stats.ipackets += ret;
+	rxq->stats.ipackets += pkts_ret;
 #endif
-	return ret;
+	return pkts_ret;
 }
 
 /**
@@ -2564,58 +2605,64 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	struct rxq_elt (*elts)[rxq->elts_n] = rxq->elts.no_sp;
 	const unsigned int elts_n = rxq->elts_n;
 	unsigned int elts_head = rxq->elts_head;
-	struct ibv_wc wcs[pkts_n];
-	struct ibv_recv_wr head;
-	struct ibv_recv_wr **next = &head.next;
-	struct ibv_recv_wr *bad_wr;
-	int ret = 0;
-	int wcs_n;
-	int i;
+	struct ibv_sge sges[pkts_n];
+	unsigned int i;
+	unsigned int pkts_ret = 0;
+	int ret;
 
 	if (unlikely(rxq->sp))
 		return mlx4_rx_burst_sp(dpdk_rxq, pkts, pkts_n);
-	wcs_n = ibv_poll_cq(rxq->cq, pkts_n, wcs);
-	if (unlikely(wcs_n == 0))
-		return 0;
-	if (unlikely(wcs_n < 0)) {
-		DEBUG("rxq=%p, ibv_poll_cq() failed (wc_n=%d)",
-		      (void *)rxq, wcs_n);
-		return 0;
-	}
-	assert(wcs_n <= (int)pkts_n);
-	/* For each work completion. */
-	for (i = 0; (i != wcs_n); ++i) {
-		struct ibv_wc *wc = &wcs[i];
-		uint64_t wr_id = wc->wr_id;
-		uint32_t len = wc->byte_len;
+	for (i = 0; (i != pkts_n); ++i) {
 		struct rxq_elt *elt = &(*elts)[elts_head];
 		struct ibv_recv_wr *wr = &elt->wr;
+		uint64_t wr_id = wr->wr_id;
+		unsigned int len;
 		struct rte_mbuf *seg = (void *)((uintptr_t)elt->sge.addr -
 			WR_ID(wr_id).offset);
 		struct rte_mbuf *rep;
 
 		/* Sanity checks. */
 		assert(WR_ID(wr_id).id < rxq->elts_n);
-		assert(wr_id == wr->wr_id);
 		assert(wr->sg_list == &elt->sge);
 		assert(wr->num_sge == 1);
 		assert(elts_head < rxq->elts_n);
 		assert(rxq->elts_head < rxq->elts_n);
-		/* Link completed WRs together for repost. */
-		*next = wr;
-		next = &wr->next;
-		if (unlikely(wc->status != IBV_WC_SUCCESS)) {
-			/* Whatever, just repost the offending WR. */
-			DEBUG("rxq=%p, wr_id=%" PRIu32 ": bad work completion"
-			      " status (%d): %s",
-			      (void *)rxq, WR_ID(wr_id).id, wc->status,
-			      ibv_wc_status_str(wc->status));
+		ret = rxq->if_cq->poll_length(rxq->cq, NULL, NULL);
+		if (unlikely(ret < 0)) {
+			struct ibv_wc wc;
+			int wcs_n;
+
+			DEBUG("rxq=%p, poll_length() failed (ret=%d)",
+			      (void *)rxq, ret);
+			/* ibv_poll_cq() must be used in case of failure. */
+			wcs_n = ibv_poll_cq(rxq->cq, 1, &wc);
+			if (unlikely(wcs_n == 0))
+				break;
+			if (unlikely(wcs_n < 0)) {
+				DEBUG("rxq=%p, ibv_poll_cq() failed (wcs_n=%d)",
+				      (void *)rxq, wcs_n);
+				break;
+			}
+			assert(wcs_n == 1);
+			if (unlikely(wc.status != IBV_WC_SUCCESS)) {
+				/* Whatever, just repost the offending WR. */
+				DEBUG("rxq=%p, wr_id=%" PRIu64 ": bad work"
+				      " completion status (%d): %s",
+				      (void *)rxq, wc.wr_id, wc.status,
+				      ibv_wc_status_str(wc.status));
 #ifdef MLX4_PMD_SOFT_COUNTERS
-			/* Increase dropped packets counter. */
-			++rxq->stats.idropped;
+				/* Increment dropped packets counter. */
+				++rxq->stats.idropped;
 #endif
-			goto repost;
+				/* Add SGE to array for repost. */
+				sges[i] = elt->sge;
+				goto repost;
+			}
+			ret = wc.byte_len;
 		}
+		if (ret == 0)
+			break;
+		len = ret;
 		/*
 		 * Fetch initial bytes of packet descriptor into a
 		 * cacheline while allocating rep.
@@ -2644,6 +2691,9 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			 (uintptr_t)rep);
 		assert(WR_ID(wr->wr_id).id == WR_ID(wr_id).id);
 
+		/* Add SGE to array for repost. */
+		sges[i] = elt->sge;
+
 		/* Update seg information. */
 		SET_DATA_OFF(seg, RTE_PKTMBUF_HEADROOM);
 		NB_SEGS(seg) = 1;
@@ -2655,37 +2705,36 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 
 		/* Return packet. */
 		*(pkts++) = seg;
-		++ret;
+		++pkts_ret;
 #ifdef MLX4_PMD_SOFT_COUNTERS
 		/* Increase bytes counter. */
-		rxq->stats.ibytes += wc->byte_len;
+		rxq->stats.ibytes += len;
 #endif
 repost:
 		if (++elts_head >= elts_n)
 			elts_head = 0;
 		continue;
 	}
-	*next = NULL;
+	if (unlikely(i == 0))
+		return 0;
 	/* Repost WRs. */
 #ifdef DEBUG_RECV
-	DEBUG("%p: reposting %d WRs starting from %" PRIu32 " (%p)",
-	      (void *)rxq, wcs_n, WR_ID(wcs[0].wr_id).id, (void *)head.next);
+	DEBUG("%p: reposting %u WRs", (void *)rxq, i);
 #endif
-	i = ibv_post_recv(rxq->qp, head.next, &bad_wr);
-	if (unlikely(i)) {
+	ret = rxq->if_qp->recv_burst(rxq->qp, sges, i);
+	if (unlikely(ret)) {
 		/* Inability to repost WRs is fatal. */
-		DEBUG("%p: ibv_post_recv(): failed for WR %p: %s",
+		DEBUG("%p: recv_burst(): failed (ret=%d)",
 		      (void *)rxq->priv,
-		      (void *)bad_wr,
-		      strerror(i));
+		      ret);
 		abort();
 	}
 	rxq->elts_head = elts_head;
 #ifdef MLX4_PMD_SOFT_COUNTERS
 	/* Increase packets counter. */
-	rxq->stats.ipackets += ret;
+	rxq->stats.ipackets += pkts_ret;
 #endif
-	return ret;
+	return pkts_ret;
 }
 
 /**
@@ -3019,6 +3068,10 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		.socket = socket
 	};
 	struct ibv_exp_qp_attr mod;
+	union {
+		struct ibv_exp_query_intf_params params;
+	} attr;
+	enum ibv_exp_query_intf_status status;
 	struct ibv_recv_wr *bad_wr;
 	struct rte_mbuf *buf;
 	int ret = 0;
@@ -3160,6 +3213,28 @@ skip_alloc:
 	/* Save port ID. */
 	tmpl.port_id = dev->data->port_id;
 	DEBUG("%p: RTE port ID: %u", (void *)rxq, tmpl.port_id);
+	attr.params = (struct ibv_exp_query_intf_params){
+		.intf_scope = IBV_EXP_INTF_GLOBAL,
+		.intf = IBV_EXP_INTF_CQ,
+		.obj = tmpl.cq,
+	};
+	tmpl.if_cq = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
+	if (tmpl.if_cq == NULL) {
+		ERROR("%p: CQ interface family query failed with status %d",
+		      (void *)dev, status);
+		goto error;
+	}
+	attr.params = (struct ibv_exp_query_intf_params){
+		.intf_scope = IBV_EXP_INTF_GLOBAL,
+		.intf = IBV_EXP_INTF_QP_BURST,
+		.obj = tmpl.qp,
+	};
+	tmpl.if_qp = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
+	if (tmpl.if_qp == NULL) {
+		ERROR("%p: QP interface family query failed with status %d",
+		      (void *)dev, status);
+		goto error;
+	}
 	/* Clean up rxq in case we're reinitializing it. */
 	DEBUG("%p: cleaning-up old rxq just in case", (void *)rxq);
 	rxq_cleanup(rxq);
