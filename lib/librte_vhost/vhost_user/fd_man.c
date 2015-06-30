@@ -242,6 +242,13 @@ fdset_event_dispatch(struct fdset *pfdset)
 
 		pthread_mutex_unlock(&pfdset->fd_mutex);
 
+		/*
+		 * When select is blocked, other threads might unregister
+		 * listenfds from and register new listenfds into fdset.
+		 * When select returns, the entries for listenfds in the fdset
+		 * might have been updated. It is ok if there is unwanted call
+		 * for new listenfds.
+		 */
 		ret = select(maxfds + 1, &rfds, &wfds, NULL, &tv);
 		if (ret <= 0)
 			continue;
