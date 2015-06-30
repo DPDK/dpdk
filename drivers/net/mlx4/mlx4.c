@@ -203,6 +203,7 @@ struct rxq {
 	} elts;
 	unsigned int sp:1; /* Use scattered RX elements. */
 	unsigned int csum:1; /* Enable checksum offloading. */
+	unsigned int csum_l2tun:1; /* Same for L2 tunnels. */
 	uint32_t mb_len; /* Length of a mp-issued mbuf. */
 	struct mlx4_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
@@ -276,6 +277,7 @@ struct priv {
 	unsigned int hw_tss:1; /* TSS is supported. */
 	unsigned int hw_rss:1; /* RSS is supported. */
 	unsigned int hw_csum:1; /* Checksum offload is supported. */
+	unsigned int hw_csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int rss:1; /* RSS is enabled. */
 	unsigned int vf:1; /* This is a VF device. */
 #ifdef INLINE_RECV
@@ -1243,8 +1245,21 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		}
 		/* Should we enable HW CKSUM offload */
 		if (buf->ol_flags &
-		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM))
+		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
 			send_flags |= IBV_EXP_QP_BURST_IP_CSUM;
+			/* HW does not support checksum offloads at arbitrary
+			 * offsets but automatically recognizes the packet
+			 * type. For inner L3/L4 checksums, only VXLAN (UDP)
+			 * tunnels are currently supported.
+			 *
+			 * FIXME: since PKT_TX_UDP_TUNNEL_PKT has been removed,
+			 * the outer packet type is unknown. All we know is
+			 * that the L2 header is of unusual length (not
+			 * ETHER_HDR_LEN with or without 802.1Q header). */
+			if ((buf->l2_len != ETHER_HDR_LEN) &&
+			    (buf->l2_len != (ETHER_HDR_LEN + 4)))
+				send_flags |= IBV_EXP_QP_BURST_TUNNEL;
+		}
 		if (likely(segs == 1)) {
 			uintptr_t addr;
 			uint32_t length;
@@ -2443,6 +2458,25 @@ rxq_cq_to_ol_flags(const struct rxq *rxq, uint32_t flags)
 			TRANSPOSE(~flags,
 				  IBV_EXP_CQ_RX_TCP_UDP_CSUM_OK,
 				  PKT_RX_L4_CKSUM_BAD);
+	/*
+	 * PKT_RX_IP_CKSUM_BAD and PKT_RX_L4_CKSUM_BAD are used in place
+	 * of PKT_RX_EIP_CKSUM_BAD because the latter is not functional
+	 * (its value is 0).
+	 */
+	if ((flags & IBV_EXP_CQ_RX_TUNNEL_PACKET) && (rxq->csum_l2tun))
+		ol_flags |=
+			TRANSPOSE(flags,
+				  IBV_EXP_CQ_RX_OUTER_IPV4_PACKET,
+				  PKT_RX_TUNNEL_IPV4_HDR) |
+			TRANSPOSE(flags,
+				  IBV_EXP_CQ_RX_OUTER_IPV6_PACKET,
+				  PKT_RX_TUNNEL_IPV6_HDR) |
+			TRANSPOSE(~flags,
+				  IBV_EXP_CQ_RX_OUTER_IP_CSUM_OK,
+				  PKT_RX_IP_CKSUM_BAD) |
+			TRANSPOSE(~flags,
+				  IBV_EXP_CQ_RX_OUTER_TCP_UDP_CSUM_OK,
+				  PKT_RX_L4_CKSUM_BAD);
 	return ol_flags;
 }
 
@@ -2976,6 +3010,10 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 		tmpl.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
 		rxq->csum = tmpl.csum;
 	}
+	if (priv->hw_csum_l2tun) {
+		tmpl.csum_l2tun = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
+		rxq->csum_l2tun = tmpl.csum_l2tun;
+	}
 	/* Enable scattered packets support for this queue if necessary. */
 	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
 	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
@@ -3200,6 +3238,8 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	/* Toggle RX checksum offload if hardware supports it. */
 	if (priv->hw_csum)
 		tmpl.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
+	if (priv->hw_csum_l2tun)
+		tmpl.csum_l2tun = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
 	/* Enable scattered packets support for this queue if necessary. */
 	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
 	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
@@ -4427,6 +4467,8 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.mac_addr_remove = mlx4_mac_addr_remove,
 	.mac_addr_add = mlx4_mac_addr_add,
 	.mtu_set = mlx4_dev_set_mtu,
+	.udp_tunnel_add = NULL,
+	.udp_tunnel_del = NULL,
 	.fdir_add_signature_filter = NULL,
 	.fdir_update_signature_filter = NULL,
 	.fdir_remove_signature_filter = NULL,
@@ -4756,6 +4798,11 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			  IBV_EXP_DEVICE_RX_CSUM_IP_PKT));
 		DEBUG("checksum offloading is %ssupported",
 		      (priv->hw_csum ? "" : "not "));
+
+		priv->hw_csum_l2tun = !!(exp_device_attr.exp_device_cap_flags &
+					 IBV_EXP_DEVICE_VXLAN_SUPPORT);
+		DEBUG("L2 tunnel checksum offloads are %ssupported",
+		      (priv->hw_csum_l2tun ? "" : "not "));
 
 #ifdef INLINE_RECV
 		priv->inl_recv_size = mlx4_getenv_int("MLX4_INLINE_RECV_SIZE");
