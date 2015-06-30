@@ -1534,6 +1534,13 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 		.intf_scope = IBV_EXP_INTF_GLOBAL,
 		.intf = IBV_EXP_INTF_QP_BURST,
 		.obj = tmpl.qp,
+#ifdef HAVE_EXP_QP_BURST_CREATE_DISABLE_ETH_LOOPBACK
+		/* MC loopback must be disabled when not using a VF. */
+		.family_flags =
+			(!priv->vf ?
+			 IBV_EXP_QP_BURST_CREATE_DISABLE_ETH_LOOPBACK :
+			 0),
+#endif
 	};
 	tmpl.if_qp = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
 	if (tmpl.if_qp == NULL) {
