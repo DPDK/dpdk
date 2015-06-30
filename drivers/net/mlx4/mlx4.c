@@ -1205,6 +1205,9 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		max = pkts_n;
 	for (i = 0; (i != max); ++i) {
 		struct rte_mbuf *buf = pkts[i];
+		unsigned int elts_head_next =
+			(((elts_head + 1) == elts_n) ? 0 : elts_head + 1);
+		struct txq_elt *elt_next = &(*txq->elts)[elts_head_next];
 		struct txq_elt *elt = &(*txq->elts)[elts_head];
 		unsigned int segs = NB_SEGS(buf);
 #ifdef MLX4_PMD_SOFT_COUNTERS
@@ -1253,6 +1256,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			if (txq->priv->vf)
 				rte_prefetch0((volatile void *)
 					      (uintptr_t)addr);
+			RTE_MBUF_PREFETCH_TO_FREE(elt_next->buf);
 			/* Put packet into send queue. */
 #if MLX4_PMD_MAX_INLINE > 0
 			if (length <= txq->max_inline)
@@ -1283,6 +1287,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					  &sges);
 			if (ret.length == (unsigned int)-1)
 				goto stop;
+			RTE_MBUF_PREFETCH_TO_FREE(elt_next->buf);
 			/* Put SG list into send queue. */
 			err = txq->if_qp->send_pending_sg_list
 				(txq->qp,
@@ -1300,8 +1305,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			goto stop;
 #endif /* MLX4_PMD_SGE_WR_N > 1 */
 		}
-		if (++elts_head >= elts_n)
-			elts_head = 0;
+		elts_head = elts_head_next;
 #ifdef MLX4_PMD_SOFT_COUNTERS
 		/* Increment sent bytes counter. */
 		txq->stats.obytes += sent_size;
