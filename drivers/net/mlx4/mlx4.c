@@ -254,7 +254,6 @@ struct priv {
 	struct rte_eth_dev *dev; /* Ethernet device. */
 	struct ibv_context *ctx; /* Verbs context. */
 	struct ibv_device_attr device_attr; /* Device properties. */
-	struct ibv_port_attr port_attr; /* Physical port properties. */
 	struct ibv_pd *pd; /* Protection Domain. */
 	/*
 	 * MAC addresses array and configuration bit-field.
@@ -3820,29 +3819,37 @@ static int
 mlx4_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct ibv_port_attr port_attr;
-	static const uint8_t width_mult[] = {
-		/* Multiplier values taken from devinfo.c in libibverbs. */
-		0, 1, 4, 0, 8, 0, 0, 0, 12, 0
+	struct ethtool_cmd edata = {
+		.cmd = ETHTOOL_GSET
 	};
+	struct ifreq ifr;
+	struct rte_eth_link dev_link;
+	int link_speed = 0;
 
 	(void)wait_to_complete;
-	errno = ibv_query_port(priv->ctx, priv->port, &port_attr);
-	if (errno) {
-		WARN("port query failed: %s", strerror(errno));
+	if (priv_ifreq(priv, SIOCGIFFLAGS, &ifr)) {
+		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(errno));
 		return -1;
 	}
-	dev->data->dev_link = (struct rte_eth_link){
-		.link_speed = (ibv_rate_to_mbps(mult_to_ibv_rate
-						(port_attr.active_speed)) *
-			       width_mult[(port_attr.active_width %
-					   sizeof(width_mult))]),
-		.link_duplex = ETH_LINK_FULL_DUPLEX,
-		.link_status = (port_attr.state == IBV_PORT_ACTIVE)
-	};
-	if (memcmp(&port_attr, &priv->port_attr, sizeof(port_attr))) {
+	memset(&dev_link, 0, sizeof(dev_link));
+	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
+				(ifr.ifr_flags & IFF_RUNNING));
+	ifr.ifr_data = &edata;
+	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
+		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GSET) failed: %s",
+		     strerror(errno));
+		return -1;
+	}
+	link_speed = ethtool_cmd_speed(&edata);
+	if (link_speed == -1)
+		dev_link.link_speed = 0;
+	else
+		dev_link.link_speed = link_speed;
+	dev_link.link_duplex = ((edata.duplex == DUPLEX_HALF) ?
+				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
+	if (memcmp(&dev_link, &dev->data->dev_link, sizeof(dev_link))) {
 		/* Link status changed. */
-		priv->port_attr = port_attr;
+		dev->data->dev_link = dev_link;
 		return 0;
 	}
 	/* Link status is still the same. */
@@ -4487,7 +4494,6 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 		priv->ctx = ctx;
 		priv->device_attr = device_attr;
-		priv->port_attr = port_attr;
 		priv->port = port;
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
