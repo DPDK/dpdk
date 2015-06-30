@@ -84,12 +84,13 @@ Features and limitations
 - All multicast mode is supported.
 - Multiple MAC addresses (unicast, multicast) can be configured.
 - Scattered packets are supported for TX and RX.
+- Inner L3/L4 (IP, TCP and UDP) TX/RX checksum offloading and validation.
+- Outer L3 (IP) TX/RX checksum offloading and validation for VXLAN frames.
 
 .. break
 
 - RSS hash key cannot be modified.
 - Hardware counters are not implemented (they are software counters).
-- Checksum offloads are not supported yet.
 
 Configuration
 -------------
@@ -175,9 +176,8 @@ below.
 
   - **-1**: force device-managed flow steering (DMFS).
   - **-7**: configure optimized steering mode to improve performance with the
-    following limitation: Ethernet frames with the port MAC address as the
-    destination cannot be received, even in promiscuous mode. Additional MAC
-    addresses can still be set by ``rte_eth_dev_mac_addr_addr()``.
+    following limitation: VLAN filtering is not supported with this mode.
+    This is the recommended mode in case VLAN filter is not needed.
 
 Prerequisites
 -------------
@@ -232,8 +232,8 @@ DPDK and must be installed separately:
 
 Currently supported by DPDK:
 
-- Mellanox OFED **2.4-1**.
-- Firmware version **2.33.5000** and higher.
+- Mellanox OFED **3.0**.
+- Firmware version **2.34.5000** and higher.
 
 Getting Mellanox OFED
 ~~~~~~~~~~~~~~~~~~~~~
@@ -254,23 +254,6 @@ required from that distribution.
    Several versions of Mellanox OFED are available. Installing the version
    this DPDK release was developed and tested against is strongly
    recommended. Please check the `prerequisites`_.
-
-Getting libibverbs and libmlx4 from DPDK.org
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Based on Mellanox OFED, optimized libibverbs and libmlx4 versions can be
-optionally downloaded from DPDK.org:
-
-`<http://www.dpdk.org/download/mlx4>`_
-
-Some enhancements are done for better performance with DPDK applications and
-are not merged upstream yet.
-
-Since it is partly achieved by tuning compilation options to disable features
-not needed by DPDK, linking these libraries statically and avoid system-wide
-installation is the preferred method.
-
-Installation documentation is available from the above link.
 
 Usage example
 -------------
