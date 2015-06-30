@@ -2370,8 +2370,10 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				DEBUG("rxq=%p, wr_id=%" PRIu64 ":"
 				      " can't allocate a new mbuf",
 				      (void *)rxq, wr_id);
-				if (pkt_buf != NULL)
+				if (pkt_buf != NULL) {
+					*pkt_buf_next = NULL;
 					rte_pktmbuf_free(pkt_buf);
+				}
 				/* Increase out of memory counters. */
 				++rxq->stats.rx_nombuf;
 				++rxq->priv->dev->data->rx_mbuf_alloc_failed;
