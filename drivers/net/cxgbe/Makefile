@@ -49,7 +49,7 @@ ifeq ($(CC), icc)
 #
 # CFLAGS for icc
 #
-CFLAGS_BASE_DRIVER = -wd174 -wd593 -wd869 -wd981 -wd2259
+CFLAGS_BASE_DRIVER = -wd188
 else
 #
 # CFLAGS for gcc/clang
@@ -57,10 +57,19 @@ else
 ifeq ($(shell test $(CC) = gcc && test $(GCC_VERSION) -ge 44 && echo 1), 1)
 CFLAGS     += -Wno-deprecated
 endif
-CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
-CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
+CFLAGS_BASE_DRIVER =
 
 endif
+
+#
+# Add extra flags for base driver files (also known as shared code)
+# to disable warnings in them
+#
+BASE_DRIVER_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(SRCDIR)/base/*.c)))
+$(foreach obj, $(BASE_DRIVER_OBJS), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
+
+VPATH += $(SRCDIR)/base
+
 
 #
 # all source are stored in SRCS-y
@@ -68,7 +77,7 @@ endif
 SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += cxgbe_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += cxgbe_main.c
 SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += sge.c
-SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += base/t4_hw.c
+SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += t4_hw.c
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += lib/librte_eal lib/librte_ether

@@ -1670,7 +1670,8 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	if (fl) {
 		struct sge_eth_rxq *rxq = container_of(fl, struct sge_eth_rxq,
 						       fl);
-		enum chip_type chip = CHELSIO_CHIP_VERSION(adap->params.chip);
+		enum chip_type chip = (enum chip_type)CHELSIO_CHIP_VERSION(
+				adap->params.chip);
 
 		/*
 		 * Allocate the ring for the hardware free list (with space

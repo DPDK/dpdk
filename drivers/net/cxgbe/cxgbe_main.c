@@ -383,7 +383,8 @@ static void print_port_info(struct adapter *adap)
 		if (bufp != buf)
 			--bufp;
 		sprintf(bufp, "BASE-%s",
-			t4_get_port_type_description(pi->port_type));
+			t4_get_port_type_description(
+					(enum fw_port_type)pi->port_type));
 
 		dev_info(adap,
 			 " " PCI_PRI_FMT " Chelsio rev %d %s %s\n",
@@ -629,7 +630,7 @@ static int adap_init0(struct adapter *adap)
 			dev_err(adap, "Failed to restart. Exit.\n");
 			goto bye;
 		}
-		state &= ~DEV_STATE_INIT;
+		state = (enum dev_state)((unsigned)state & ~DEV_STATE_INIT);
 	}
 
 	t4_get_fw_version(adap, &adap->params.fw_vers);
