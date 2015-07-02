@@ -144,6 +144,28 @@ void ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 	return;
 }
 
+void ixgbe_pf_host_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct ixgbe_vf_info **vfinfo;
+	uint16_t vf_num;
+
+	PMD_INIT_FUNC_TRACE();
+
+	vfinfo = IXGBE_DEV_PRIVATE_TO_P_VFDATA(eth_dev->data->dev_private);
+
+	RTE_ETH_DEV_SRIOV(eth_dev).active = 0;
+	RTE_ETH_DEV_SRIOV(eth_dev).nb_q_per_pool = 0;
+	RTE_ETH_DEV_SRIOV(eth_dev).def_vmdq_idx = 0;
+	RTE_ETH_DEV_SRIOV(eth_dev).def_pool_q_idx = 0;
+
+	vf_num = dev_num_vf(eth_dev);
+	if (vf_num == 0)
+		return;
+
+	rte_free(*vfinfo);
+	*vfinfo = NULL;
+}
+
 int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 {
 	uint32_t vtctl, fcrth;

@@ -391,6 +391,8 @@ void ixgbe_vlan_hw_strip_disable_all(struct rte_eth_dev *dev);
 
 void ixgbe_pf_host_init(struct rte_eth_dev *eth_dev);
 
+void ixgbe_pf_host_uninit(struct rte_eth_dev *eth_dev);
+
 void ixgbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
 
 int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev);

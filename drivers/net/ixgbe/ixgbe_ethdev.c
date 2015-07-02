@@ -129,6 +129,7 @@
 				  | IXGBE_TIMINCA_INCVALUE)
 
 static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev);
+static int eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev);
 static int  ixgbe_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbe_dev_start(struct rte_eth_dev *dev);
 static void ixgbe_dev_stop(struct rte_eth_dev *dev);
@@ -200,6 +201,7 @@ static void ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_conf
 
 /* For Virtual Function support */
 static int eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev);
+static int eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev);
 static int  ixgbevf_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_start(struct rte_eth_dev *dev);
 static void ixgbevf_dev_stop(struct rte_eth_dev *dev);
@@ -1015,6 +1017,46 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int
+eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev;
+	struct ixgbe_hw *hw;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -EPERM;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	pci_dev = eth_dev->pci_dev;
+
+	if (hw->adapter_stopped == 0)
+		ixgbe_dev_close(eth_dev);
+
+	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
+
+	/* Unlock any pending hardware semaphore */
+	ixgbe_swfw_lock_reset(hw);
+
+	/* disable uio intr before callback unregister */
+	rte_intr_disable(&(pci_dev->intr_handle));
+	rte_intr_callback_unregister(&(pci_dev->intr_handle),
+		ixgbe_dev_interrupt_handler, (void *)eth_dev);
+
+	/* uninitialize PF if max_vfs not zero */
+	ixgbe_pf_host_uninit(eth_dev);
+
+	rte_free(eth_dev->data->mac_addrs);
+	eth_dev->data->mac_addrs = NULL;
+
+	rte_free(eth_dev->data->hash_mac_addrs);
+	eth_dev->data->hash_mac_addrs = NULL;
+
+	return 0;
+}
 
 /*
  * Negotiate mailbox API version with the PF.
@@ -1188,13 +1230,58 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+/* Virtual Function device uninit */
+
+static int
+eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct ixgbe_hw *hw;
+	unsigned i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -EPERM;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
+	if (hw->adapter_stopped == 0)
+		ixgbevf_dev_close(eth_dev);
+
+	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
+
+	/* Disable the interrupts for VF */
+	ixgbevf_intr_disable(hw);
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		ixgbe_dev_rx_queue_release(eth_dev->data->rx_queues[i]);
+		eth_dev->data->rx_queues[i] = NULL;
+	}
+	eth_dev->data->nb_rx_queues = 0;
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		ixgbe_dev_tx_queue_release(eth_dev->data->tx_queues[i]);
+		eth_dev->data->tx_queues[i] = NULL;
+	}
+	eth_dev->data->nb_tx_queues = 0;
+
+	rte_free(eth_dev->data->mac_addrs);
+	eth_dev->data->mac_addrs = NULL;
+
+	return 0;
+}
+
 static struct eth_driver rte_ixgbe_pmd = {
 	.pci_drv = {
 		.name = "rte_ixgbe_pmd",
 		.id_table = pci_id_ixgbe_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
+			RTE_PCI_DRV_DETACHABLE,
 	},
 	.eth_dev_init = eth_ixgbe_dev_init,
+	.eth_dev_uninit = eth_ixgbe_dev_uninit,
 	.dev_private_size = sizeof(struct ixgbe_adapter),
 };
 
@@ -1205,9 +1292,10 @@ static struct eth_driver rte_ixgbevf_pmd = {
 	.pci_drv = {
 		.name = "rte_ixgbevf_pmd",
 		.id_table = pci_id_ixgbevf_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_DETACHABLE,
 	},
 	.eth_dev_init = eth_ixgbevf_dev_init,
+	.eth_dev_uninit = eth_ixgbevf_dev_uninit,
 	.dev_private_size = sizeof(struct ixgbe_adapter),
 };
 
@@ -1577,7 +1665,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* stop adapter */
-	hw->adapter_stopped = FALSE;
+	hw->adapter_stopped = 0;
 	ixgbe_stop_adapter(hw);
 
 	/* reinitialize adapter
@@ -1735,7 +1823,7 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 
 	/* reset the NIC */
 	ixgbe_pf_reset_hw(hw);
-	hw->adapter_stopped = FALSE;
+	hw->adapter_stopped = 0;
 
 	/* stop adapter */
 	ixgbe_stop_adapter(hw);
@@ -3224,7 +3312,7 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	hw->adapter_stopped = TRUE;
+	hw->adapter_stopped = 1;
 	ixgbe_stop_adapter(hw);
 
 	/*
