@@ -118,6 +118,12 @@
 
 #define IXGBE_HKEY_MAX_INDEX 10
 
+/* Additional timesync values. */
+#define IXGBE_TIMINCA_16NS_SHIFT 24
+#define IXGBE_TIMINCA_INCVALUE   16000000
+#define IXGBE_TIMINCA_INIT       ((0x02 << IXGBE_TIMINCA_16NS_SHIFT) \
+				  | IXGBE_TIMINCA_INCVALUE)
+
 static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int  ixgbe_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbe_dev_start(struct rte_eth_dev *dev);
@@ -263,6 +269,14 @@ static int ixgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 				      struct ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);
 
+static int ixgbe_timesync_enable(struct rte_eth_dev *dev);
+static int ixgbe_timesync_disable(struct rte_eth_dev *dev);
+static int ixgbe_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+					    struct timespec *timestamp,
+					    uint32_t flags);
+static int ixgbe_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+					    struct timespec *timestamp);
+
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
  */
@@ -388,6 +402,10 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.rss_hash_conf_get    = ixgbe_dev_rss_hash_conf_get,
 	.filter_ctrl          = ixgbe_dev_filter_ctrl,
 	.set_mc_addr_list     = ixgbe_dev_set_mc_addr_list,
+	.timesync_enable      = ixgbe_timesync_enable,
+	.timesync_disable     = ixgbe_timesync_disable,
+	.timesync_read_rx_timestamp = ixgbe_timesync_read_rx_timestamp,
+	.timesync_read_tx_timestamp = ixgbe_timesync_read_tx_timestamp,
 };
 
 /*
@@ -4512,6 +4530,110 @@ ixgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 	mc_addr_list = (u8 *)mc_addr_set;
 	return ixgbe_update_mc_addr_list(hw, mc_addr_list, nb_mc_addr,
 					 ixgbe_dev_addr_list_itr, TRUE);
+}
+
+static int
+ixgbe_timesync_enable(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t tsync_ctl;
+	uint32_t tsauxc;
+
+	/* Enable system time for platforms where it isn't on by default. */
+	tsauxc = IXGBE_READ_REG(hw, IXGBE_TSAUXC);
+	tsauxc &= ~IXGBE_TSAUXC_DISABLE_SYSTIME;
+	IXGBE_WRITE_REG(hw, IXGBE_TSAUXC, tsauxc);
+
+	/* Start incrementing the register used to timestamp PTP packets. */
+	IXGBE_WRITE_REG(hw, IXGBE_TIMINCA, IXGBE_TIMINCA_INIT);
+
+	/* Enable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
+	IXGBE_WRITE_REG(hw, IXGBE_ETQF(IXGBE_ETQF_FILTER_1588),
+			(ETHER_TYPE_1588 |
+			 IXGBE_ETQF_FILTER_EN |
+			 IXGBE_ETQF_1588));
+
+	/* Enable timestamping of received PTP packets. */
+	tsync_ctl = IXGBE_READ_REG(hw, IXGBE_TSYNCRXCTL);
+	tsync_ctl |= IXGBE_TSYNCRXCTL_ENABLED;
+	IXGBE_WRITE_REG(hw, IXGBE_TSYNCRXCTL, tsync_ctl);
+
+	/* Enable timestamping of transmitted PTP packets. */
+	tsync_ctl = IXGBE_READ_REG(hw, IXGBE_TSYNCTXCTL);
+	tsync_ctl |= IXGBE_TSYNCTXCTL_ENABLED;
+	IXGBE_WRITE_REG(hw, IXGBE_TSYNCTXCTL, tsync_ctl);
+
+	return 0;
+}
+
+static int
+ixgbe_timesync_disable(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t tsync_ctl;
+
+	/* Disable timestamping of transmitted PTP packets. */
+	tsync_ctl = IXGBE_READ_REG(hw, IXGBE_TSYNCTXCTL);
+	tsync_ctl &= ~IXGBE_TSYNCTXCTL_ENABLED;
+	IXGBE_WRITE_REG(hw, IXGBE_TSYNCTXCTL, tsync_ctl);
+
+	/* Disable timestamping of received PTP packets. */
+	tsync_ctl = IXGBE_READ_REG(hw, IXGBE_TSYNCRXCTL);
+	tsync_ctl &= ~IXGBE_TSYNCRXCTL_ENABLED;
+	IXGBE_WRITE_REG(hw, IXGBE_TSYNCRXCTL, tsync_ctl);
+
+	/* Disable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
+	IXGBE_WRITE_REG(hw, IXGBE_ETQF(IXGBE_ETQF_FILTER_1588), 0);
+
+	/* Stop incrementating the System Time registers. */
+	IXGBE_WRITE_REG(hw, IXGBE_TIMINCA, 0);
+
+	return 0;
+}
+
+static int
+ixgbe_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+				 struct timespec *timestamp,
+				 uint32_t flags __rte_unused)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t tsync_rxctl;
+	uint32_t rx_stmpl;
+	uint32_t rx_stmph;
+
+	tsync_rxctl = IXGBE_READ_REG(hw, IXGBE_TSYNCRXCTL);
+	if ((tsync_rxctl & IXGBE_TSYNCRXCTL_VALID) == 0)
+		return -EINVAL;
+
+	rx_stmpl = IXGBE_READ_REG(hw, IXGBE_RXSTMPL);
+	rx_stmph = IXGBE_READ_REG(hw, IXGBE_RXSTMPH);
+
+	timestamp->tv_sec = (uint64_t)(((uint64_t)rx_stmph << 32) | rx_stmpl);
+	timestamp->tv_nsec = 0;
+
+	return  0;
+}
+
+static int
+ixgbe_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+				 struct timespec *timestamp)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t tsync_txctl;
+	uint32_t tx_stmpl;
+	uint32_t tx_stmph;
+
+	tsync_txctl = IXGBE_READ_REG(hw, IXGBE_TSYNCTXCTL);
+	if ((tsync_txctl & IXGBE_TSYNCTXCTL_VALID) == 0)
+		return -EINVAL;
+
+	tx_stmpl = IXGBE_READ_REG(hw, IXGBE_TXSTMPL);
+	tx_stmph = IXGBE_READ_REG(hw, IXGBE_TXSTMPH);
+
+	timestamp->tv_sec = (uint64_t)(((uint64_t)tx_stmph << 32) | tx_stmpl);
+	timestamp->tv_nsec = 0;
+
+	return  0;
 }
 
 static struct rte_driver rte_ixgbe_driver = {
