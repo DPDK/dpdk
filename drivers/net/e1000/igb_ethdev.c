@@ -76,6 +76,12 @@
 #define IGB_8_BIT_WIDTH  CHAR_BIT
 #define IGB_8_BIT_MASK   UINT8_MAX
 
+/* Additional timesync values. */
+#define E1000_ETQF_FILTER_1588 3
+#define E1000_TIMINCA_INCVALUE 16000000
+#define E1000_TIMINCA_INIT     ((0x02 << E1000_TIMINCA_16NS_SHIFT) \
+				| E1000_TIMINCA_INCVALUE)
+
 static int  eth_igb_configure(struct rte_eth_dev *dev);
 static int  eth_igb_start(struct rte_eth_dev *dev);
 static void eth_igb_stop(struct rte_eth_dev *dev);
@@ -199,6 +205,13 @@ static int eth_igb_filter_ctrl(struct rte_eth_dev *dev,
 static int eth_igb_set_mc_addr_list(struct rte_eth_dev *dev,
 				    struct ether_addr *mc_addr_set,
 				    uint32_t nb_mc_addr);
+static int igb_timesync_enable(struct rte_eth_dev *dev);
+static int igb_timesync_disable(struct rte_eth_dev *dev);
+static int igb_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+					  struct timespec *timestamp,
+					  uint32_t flags);
+static int igb_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+					  struct timespec *timestamp);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -276,6 +289,10 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.rss_hash_conf_get    = eth_igb_rss_hash_conf_get,
 	.filter_ctrl          = eth_igb_filter_ctrl,
 	.set_mc_addr_list     = eth_igb_set_mc_addr_list,
+	.timesync_enable      = igb_timesync_enable,
+	.timesync_disable     = igb_timesync_disable,
+	.timesync_read_rx_timestamp = igb_timesync_read_rx_timestamp,
+	.timesync_read_tx_timestamp = igb_timesync_read_tx_timestamp,
 };
 
 /*
@@ -3661,6 +3678,104 @@ eth_igb_set_mc_addr_list(struct rte_eth_dev *dev,
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	e1000_update_mc_addr_list(hw, (u8 *)mc_addr_set, nb_mc_addr);
 	return 0;
+}
+
+static int
+igb_timesync_enable(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t tsync_ctl;
+
+	/* Start incrementing the register used to timestamp PTP packets. */
+	E1000_WRITE_REG(hw, E1000_TIMINCA, E1000_TIMINCA_INIT);
+
+	/* Enable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
+	E1000_WRITE_REG(hw, E1000_ETQF(E1000_ETQF_FILTER_1588),
+			(ETHER_TYPE_1588 |
+			 E1000_ETQF_FILTER_ENABLE |
+			 E1000_ETQF_1588));
+
+	/* Enable timestamping of received PTP packets. */
+	tsync_ctl = E1000_READ_REG(hw, E1000_TSYNCRXCTL);
+	tsync_ctl |= E1000_TSYNCRXCTL_ENABLED;
+	E1000_WRITE_REG(hw, E1000_TSYNCRXCTL, tsync_ctl);
+
+	/* Enable Timestamping of transmitted PTP packets. */
+	tsync_ctl = E1000_READ_REG(hw, E1000_TSYNCTXCTL);
+	tsync_ctl |= E1000_TSYNCTXCTL_ENABLED;
+	E1000_WRITE_REG(hw, E1000_TSYNCTXCTL, tsync_ctl);
+
+	return 0;
+}
+
+static int
+igb_timesync_disable(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t tsync_ctl;
+
+	/* Disable timestamping of transmitted PTP packets. */
+	tsync_ctl = E1000_READ_REG(hw, E1000_TSYNCTXCTL);
+	tsync_ctl &= ~E1000_TSYNCTXCTL_ENABLED;
+	E1000_WRITE_REG(hw, E1000_TSYNCTXCTL, tsync_ctl);
+
+	/* Disable timestamping of received PTP packets. */
+	tsync_ctl = E1000_READ_REG(hw, E1000_TSYNCRXCTL);
+	tsync_ctl &= ~E1000_TSYNCRXCTL_ENABLED;
+	E1000_WRITE_REG(hw, E1000_TSYNCRXCTL, tsync_ctl);
+
+	/* Disable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
+	E1000_WRITE_REG(hw, E1000_ETQF(E1000_ETQF_FILTER_1588), 0);
+
+	/* Stop incrementating the System Time registers. */
+	E1000_WRITE_REG(hw, E1000_TIMINCA, 0);
+
+	return 0;
+}
+
+static int
+igb_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+			       struct timespec *timestamp,
+			       uint32_t flags __rte_unused)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t tsync_rxctl;
+	uint32_t rx_stmpl;
+	uint32_t rx_stmph;
+
+	tsync_rxctl = E1000_READ_REG(hw, E1000_TSYNCRXCTL);
+	if ((tsync_rxctl & E1000_TSYNCRXCTL_VALID) == 0)
+		return -EINVAL;
+
+	rx_stmpl = E1000_READ_REG(hw, E1000_RXSTMPL);
+	rx_stmph = E1000_READ_REG(hw, E1000_RXSTMPH);
+
+	timestamp->tv_sec = (uint64_t)(((uint64_t)rx_stmph << 32) | rx_stmpl);
+	timestamp->tv_nsec = 0;
+
+	return  0;
+}
+
+static int
+igb_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+			       struct timespec *timestamp)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t tsync_txctl;
+	uint32_t tx_stmpl;
+	uint32_t tx_stmph;
+
+	tsync_txctl = E1000_READ_REG(hw, E1000_TSYNCTXCTL);
+	if ((tsync_txctl & E1000_TSYNCTXCTL_VALID) == 0)
+		return -EINVAL;
+
+	tx_stmpl = E1000_READ_REG(hw, E1000_TXSTMPL);
+	tx_stmph = E1000_READ_REG(hw, E1000_TXSTMPH);
+
+	timestamp->tv_sec = (uint64_t)(((uint64_t)tx_stmph << 32) | tx_stmpl);
+	timestamp->tv_nsec = 0;
+
+	return  0;
 }
 
 static struct rte_driver pmd_igb_drv = {
