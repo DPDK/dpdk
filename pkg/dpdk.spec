@@ -82,6 +82,7 @@ make O=%{target} T=%{target} config
 sed -ri 's,(RTE_MACHINE=).*,\1%{machine},' %{target}/.config
 sed -ri 's,(RTE_APP_TEST=).*,\1n,'         %{target}/.config
 sed -ri 's,(RTE_BUILD_SHARED_LIB=).*,\1y,' %{target}/.config
+sed -ri 's,(RTE_NEXT_ABI=).*,\1n,'         %{target}/.config
 sed -ri 's,(LIBRTE_VHOST=).*,\1y,'         %{target}/.config
 sed -ri 's,(LIBRTE_PMD_PCAP=).*,\1y,'      %{target}/.config
 sed -ri 's,(LIBRTE_PMD_XENVIRT=).*,\1y,'   %{target}/.config

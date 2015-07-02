@@ -37,11 +37,13 @@ include $(RTE_SDK)/mk/internal/rte.depdirs-pre.mk
 
 # VPATH contains at least SRCDIR
 VPATH += $(SRCDIR)
+
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
-
 LIB := $(patsubst %.a,%.so.$(LIBABIVER),$(LIB))
+ifeq ($(CONFIG_RTE_NEXT_ABI),y)
+LIB := $(LIB).1
+endif
 CPU_LDFLAGS += --version-script=$(SRCDIR)/$(EXPORT_MAP)
-
 endif
 
 
@@ -167,12 +169,11 @@ endif
 # install lib in $(RTE_OUTPUT)/lib
 #
 $(RTE_OUTPUT)/lib/$(LIB): $(LIB)
-	$(eval LIBSONAME := $(basename $(LIB)))
 	@echo "  INSTALL-LIB $(LIB)"
 	@[ -d $(RTE_OUTPUT)/lib ] || mkdir -p $(RTE_OUTPUT)/lib
 	$(Q)cp -f $(LIB) $(RTE_OUTPUT)/lib
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
-	$(Q)ln -s -f $< $(RTE_OUTPUT)/lib/$(LIBSONAME)
+	$(Q)ln -s -f $< $(basename $(basename $@))
 endif
 
 #

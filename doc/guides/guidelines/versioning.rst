@@ -55,12 +55,18 @@ being provided. The requirements for doing so are:
 #. At least 3 acknowledgments of the need to do so must be made on the
    dpdk.org mailing list.
 
+#. The changes (including an alternative map file) must be gated with
+   the ``RTE_NEXT_ABI`` option, and provided with a deprecation notice at the
+   same time.
+   It will become the default ABI in the next release.
+
 #. A full deprecation cycle, as explained above, must be made to offer
    downstream consumers sufficient warning of the change.
 
-#. The ``LIBABIVER`` variable in the makefile(s) where the ABI changes are
-   incorporated must be incremented in parallel with the ABI changes
-   themselves.
+#. At the beginning of the next release cycle, every ``RTE_NEXT_ABI``
+   conditions will be removed, the ``LIBABIVER`` variable in the makefile(s)
+   where the ABI is changed will be incremented, and the map files will
+   be updated.
 
 Note that the above process for ABI deprecation should not be undertaken
 lightly. ABI stability is extremely important for downstream consumers of the
