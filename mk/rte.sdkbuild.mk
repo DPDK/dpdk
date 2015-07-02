@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -60,7 +60,7 @@ CLEANDIRS = $(addsuffix _clean,$(ROOTDIRS-y) $(ROOTDIRS-n) $(ROOTDIRS-))
 
 .PHONY: build
 build: $(ROOTDIRS-y)
-	@echo Build complete
+	@echo "Build complete [$(RTE_TARGET)]"
 ifneq ($(DESTDIR),)
 	$(Q)mkdir -p $(DESTDIR)
 	$(Q)tar -C $(RTE_SDK) -cf - mk scripts/*.sh | tar -C $(DESTDIR) -x \
