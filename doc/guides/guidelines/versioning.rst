@@ -122,9 +122,9 @@ The macros exported are:
   the linker to bind references to symbol ``b`` to the internal symbol
   ``b_e``.
 
-* ``MAP_STATIC_SYMBOL(f, p)``: Declare the prototype ``f``, and map it to the fully
-qualified function ``p``, so that if a symbol becomes versioned, it can still be
-mapped back to the public symbol name.
+* ``MAP_STATIC_SYMBOL(f, p)``: Declare the prototype ``f``, and map it to the
+  fully qualified function ``p``, so that if a symbol becomes versioned, it
+  can still be mapped back to the public symbol name.
 
 Examples of ABI Macro use
 -------------------------
