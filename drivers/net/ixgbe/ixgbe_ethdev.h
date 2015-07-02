@@ -313,6 +313,8 @@ struct ixgbe_adapter {
  */
 void ixgbe_dev_clear_queues(struct rte_eth_dev *dev);
 
+void ixgbe_dev_free_queues(struct rte_eth_dev *dev);
+
 void ixgbe_dev_rx_queue_release(void *rxq);
 
 void ixgbe_dev_tx_queue_release(void *txq);

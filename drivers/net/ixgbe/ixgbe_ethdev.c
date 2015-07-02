@@ -1939,6 +1939,8 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 	ixgbe_dev_stop(dev);
 	hw->adapter_stopped = 1;
 
+	ixgbe_dev_free_queues(dev);
+
 	ixgbe_disable_pcie_master(hw);
 
 	/* reprogram the RAR[0] in case user changed it. */
@@ -3337,6 +3339,8 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 	ixgbe_reset_hw(hw);
 
 	ixgbevf_dev_stop(dev);
+
+	ixgbe_dev_free_queues(dev);
 
 	/* reprogram the RAR[0] in case user changed it. */
 	ixgbe_set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
