@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -1240,6 +1240,21 @@ typedef int (*eth_set_mc_addr_list_t)(struct rte_eth_dev *dev,
 				      uint32_t nb_mc_addr);
 /**< @internal set the list of multicast addresses on an Ethernet device */
 
+typedef int (*eth_timesync_enable_t)(struct rte_eth_dev *dev);
+/**< @internal Function used to enable IEEE1588/802.1AS timestamping. */
+
+typedef int (*eth_timesync_disable_t)(struct rte_eth_dev *dev);
+/**< @internal Function used to disable IEEE1588/802.1AS timestamping. */
+
+typedef int (*eth_timesync_read_rx_timestamp_t)(struct rte_eth_dev *dev,
+						struct timespec *timestamp,
+						uint32_t flags);
+/**< @internal Function used to read an RX IEEE1588/802.1AS timestamp. */
+
+typedef int (*eth_timesync_read_tx_timestamp_t)(struct rte_eth_dev *dev,
+						struct timespec *timestamp);
+/**< @internal Function used to read a TX IEEE1588/802.1AS timestamp. */
+
 #ifdef RTE_NIC_BYPASS
 
 enum {
@@ -1398,6 +1413,15 @@ struct eth_dev_ops {
 	rss_hash_conf_get_t rss_hash_conf_get;
 	eth_filter_ctrl_t              filter_ctrl;          /**< common filter control*/
 	eth_set_mc_addr_list_t set_mc_addr_list; /**< set list of mcast addrs */
+
+	/** Turn IEEE1588/802.1AS timestamping on. */
+	eth_timesync_enable_t timesync_enable;
+	/** Turn IEEE1588/802.1AS timestamping off. */
+	eth_timesync_disable_t timesync_disable;
+	/** Read the IEEE1588/802.1AS RX timestamp. */
+	eth_timesync_read_rx_timestamp_t timesync_read_rx_timestamp;
+	/** Read the IEEE1588/802.1AS TX timestamp. */
+	eth_timesync_read_tx_timestamp_t timesync_read_tx_timestamp;
 };
 
 /**
@@ -3647,4 +3671,68 @@ int rte_eth_dev_set_mc_addr_list(uint8_t port_id,
 				 struct ether_addr *mc_addr_set,
 				 uint32_t nb_mc_addr);
 
+
+/**
+ * Enable IEEE1588/802.1AS timestamping for an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ *
+ * @return
+ *   - 0: Success.
+ *   - -ENODEV: The port ID is invalid.
+ *   - -ENOTSUP: The function is not supported by the Ethernet driver.
+ */
+extern int rte_eth_timesync_enable(uint8_t port_id);
+
+/**
+ * Disable IEEE1588/802.1AS timestamping for an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ *
+ * @return
+ *   - 0: Success.
+ *   - -ENODEV: The port ID is invalid.
+ *   - -ENOTSUP: The function is not supported by the Ethernet driver.
+ */
+extern int rte_eth_timesync_disable(uint8_t port_id);
+
+/**
+ * Read an IEEE1588/802.1AS RX timestamp from an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param timestamp
+ *   Pointer to the timestamp struct.
+ * @param flags
+ *   Device specific flags. Used to pass the RX timesync register index to
+ *   i40e. Unused in igb/ixgbe, pass 0 instead.
+ *
+ * @return
+ *   - 0: Success.
+ *   - -EINVAL: No timestamp is available.
+ *   - -ENODEV: The port ID is invalid.
+ *   - -ENOTSUP: The function is not supported by the Ethernet driver.
+ */
+extern int rte_eth_timesync_read_rx_timestamp(uint8_t port_id,
+					      struct timespec *timestamp,
+					      uint32_t flags);
+
+/**
+ * Read an IEEE1588/802.1AS TX timestamp from an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param timestamp
+ *   Pointer to the timestamp struct.
+ *
+ * @return
+ *   - 0: Success.
+ *   - -EINVAL: No timestamp is available.
+ *   - -ENODEV: The port ID is invalid.
+ *   - -ENOTSUP: The function is not supported by the Ethernet driver.
+ */
+extern int rte_eth_timesync_read_tx_timestamp(uint8_t port_id,
+					      struct timespec *timestamp);
 #endif /* _RTE_ETHDEV_H_ */

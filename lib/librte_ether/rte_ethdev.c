@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -3303,4 +3303,53 @@ rte_eth_dev_set_mc_addr_list(uint8_t port_id,
 	dev = &rte_eth_devices[port_id];
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_mc_addr_list, -ENOTSUP);
 	return dev->dev_ops->set_mc_addr_list(dev, mc_addr_set, nb_mc_addr);
+}
+
+int
+rte_eth_timesync_enable(uint8_t port_id)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->timesync_enable, -ENOTSUP);
+	return (*dev->dev_ops->timesync_enable)(dev);
+}
+
+int
+rte_eth_timesync_disable(uint8_t port_id)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->timesync_disable, -ENOTSUP);
+	return (*dev->dev_ops->timesync_disable)(dev);
+}
+
+int
+rte_eth_timesync_read_rx_timestamp(uint8_t port_id, struct timespec *timestamp,
+				   uint32_t flags)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->timesync_read_rx_timestamp, -ENOTSUP);
+	return (*dev->dev_ops->timesync_read_rx_timestamp)(dev, timestamp, flags);
+}
+
+int
+rte_eth_timesync_read_tx_timestamp(uint8_t port_id, struct timespec *timestamp)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->timesync_read_tx_timestamp, -ENOTSUP);
+	return (*dev->dev_ops->timesync_read_tx_timestamp)(dev, timestamp);
 }

@@ -110,5 +110,9 @@ DPDK_2.1 {
 	global:
 
 	rte_eth_dev_set_mc_addr_list;
+	rte_eth_timesync_disable;
+	rte_eth_timesync_enable;
+	rte_eth_timesync_read_rx_timestamp;
+	rte_eth_timesync_read_tx_timestamp;
 
 } DPDK_2.0;
