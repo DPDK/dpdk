@@ -2886,6 +2886,11 @@ i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
 	unsigned i;
 	uint16_t len;
 
+	if (!rxq) {
+		PMD_DRV_LOG(DEBUG, "Pointer to rxq is NULL");
+		return;
+	}
+
 #ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
 	if (check_rx_burst_bulk_alloc_preconditions(rxq) == 0)
 		len = (uint16_t)(rxq->nb_rx_desc + RTE_PMD_I40E_RX_MAX_BURST);
