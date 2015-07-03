@@ -1134,7 +1134,7 @@ eth_igb_close(struct rte_eth_dev *dev)
 		E1000_WRITE_REG(hw, E1000_82580_PHY_POWER_MGMT, phpm_reg);
 	}
 
-	igb_dev_clear_queues(dev);
+	igb_dev_free_queues(dev);
 
 	memset(&link, 0, sizeof(link));
 	rte_igb_dev_atomic_write_link_status(dev, &link);
@@ -2417,6 +2417,7 @@ igbvf_dev_close(struct rte_eth_dev *dev)
 
 	igbvf_dev_stop(dev);
 	adapter->stopped = 1;
+	igb_dev_free_queues(dev);
 }
 
 static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on)

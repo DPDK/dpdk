@@ -1602,6 +1602,12 @@ igb_dev_clear_queues(struct rte_eth_dev *dev)
 			igb_reset_rx_queue(rxq);
 		}
 	}
+}
+
+void
+igb_dev_free_queues(struct rte_eth_dev *dev)
+{
+	uint16_t i;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		eth_igb_rx_queue_release(dev->data->rx_queues[i]);

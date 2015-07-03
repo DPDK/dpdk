@@ -259,6 +259,7 @@ struct e1000_adapter {
 void eth_igb_tx_queue_release(void *txq);
 void eth_igb_rx_queue_release(void *rxq);
 void igb_dev_clear_queues(struct rte_eth_dev *dev);
+void igb_dev_free_queues(struct rte_eth_dev *dev);
 
 int eth_igb_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, unsigned int socket_id,
@@ -313,6 +314,7 @@ void eth_em_tx_queue_release(void *txq);
 void eth_em_rx_queue_release(void *rxq);
 
 void em_dev_clear_queues(struct rte_eth_dev *dev);
+void em_dev_free_queues(struct rte_eth_dev *dev);
 
 int eth_em_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, unsigned int socket_id,

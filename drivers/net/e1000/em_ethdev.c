@@ -659,6 +659,7 @@ eth_em_close(struct rte_eth_dev *dev)
 
 	eth_em_stop(dev);
 	adapter->stopped = 1;
+	em_dev_free_queues(dev);
 	e1000_phy_hw_reset(hw);
 	em_release_manageability(hw);
 	em_hw_control_release(hw);
