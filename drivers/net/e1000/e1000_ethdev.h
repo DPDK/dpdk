@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -229,7 +229,11 @@ struct e1000_adapter {
 	struct e1000_vfta       shadow_vfta;
 	struct e1000_vf_info    *vfdata;
 	struct e1000_filter_info filter;
+	bool stopped;
 };
+
+#define E1000_DEV_PRIVATE(adapter) \
+	((struct e1000_adapter *)adapter)
 
 #define E1000_DEV_PRIVATE_TO_HW(adapter) \
 	(&((struct e1000_adapter *)adapter)->hw)
@@ -336,5 +340,7 @@ uint16_t eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 uint16_t eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
+
+void igb_pf_host_uninit(struct rte_eth_dev *dev);
 
 #endif /* _E1000_ETHDEV_H_ */

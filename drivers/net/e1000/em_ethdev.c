@@ -224,6 +224,8 @@ static int
 eth_em_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
+	struct e1000_adapter *adapter =
+		E1000_DEV_PRIVATE(eth_dev->data->dev_private);
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct e1000_vfta * shadow_vfta =
@@ -246,6 +248,7 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->device_id = pci_dev->id.device_id;
+	adapter->stopped = 0;
 
 	/* For ICH8 support we'll need to map the flash memory BAR */
 
@@ -285,13 +288,47 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 	return (0);
 }
 
+static int
+eth_em_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev;
+	struct e1000_adapter *adapter =
+		E1000_DEV_PRIVATE(eth_dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -EPERM;
+
+	pci_dev = eth_dev->pci_dev;
+
+	if (adapter->stopped == 0)
+		eth_em_close(eth_dev);
+
+	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
+
+	rte_free(eth_dev->data->mac_addrs);
+	eth_dev->data->mac_addrs = NULL;
+
+	/* disable uio intr before callback unregister */
+	rte_intr_disable(&(pci_dev->intr_handle));
+	rte_intr_callback_unregister(&(pci_dev->intr_handle),
+		eth_em_interrupt_handler, (void *)eth_dev);
+
+	return 0;
+}
+
 static struct eth_driver rte_em_pmd = {
 	.pci_drv = {
 		.name = "rte_em_pmd",
 		.id_table = pci_id_em_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
+			RTE_PCI_DRV_DETACHABLE,
 	},
 	.eth_dev_init = eth_em_dev_init,
+	.eth_dev_uninit = eth_em_dev_uninit,
 	.dev_private_size = sizeof(struct e1000_adapter),
 };
 
@@ -451,6 +488,8 @@ em_set_pba(struct e1000_hw *hw)
 static int
 eth_em_start(struct rte_eth_dev *dev)
 {
+	struct e1000_adapter *adapter =
+		E1000_DEV_PRIVATE(dev->data->dev_private);
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret, mask;
@@ -570,6 +609,8 @@ eth_em_start(struct rte_eth_dev *dev)
 		}
 	}
 
+	adapter->stopped = 0;
+
 	PMD_INIT_LOG(DEBUG, "<<");
 
 	return (0);
@@ -613,8 +654,11 @@ static void
 eth_em_close(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_adapter *adapter =
+		E1000_DEV_PRIVATE(dev->data->dev_private);
 
 	eth_em_stop(dev);
+	adapter->stopped = 1;
 	e1000_phy_hw_reset(hw);
 	em_release_manageability(hw);
 	em_hw_control_release(hw);
