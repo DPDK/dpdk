@@ -298,8 +298,8 @@ i40evf_wait_cmd_done(struct rte_eth_dev *dev,
 	int i = 0;
 	enum i40evf_aq_result ret;
 
-#define MAX_TRY_TIMES 10
-#define ASQ_DELAY_MS  50
+#define MAX_TRY_TIMES 20
+#define ASQ_DELAY_MS  100
 	do {
 		/* Delay some time first */
 		rte_delay_ms(ASQ_DELAY_MS);
