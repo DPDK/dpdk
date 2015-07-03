@@ -45,14 +45,14 @@ extern "C" {
 #include "generic/rte_cpuflags.h"
 
 /* software based registers */
-enum cpu_register_t {
+enum cpu_register_t __RTE_REGISTER_UNDERLYING_TYPE {
 	REG_DUMMY = 0
 };
 
 /**
  * Enumeration of all CPU features supported
  */
-enum rte_cpu_flag_t {
+enum rte_cpu_flag_t __RTE_CPUFLAG_UNDERLYING_TYPE {
 	RTE_CPUFLAG_NUMFLAGS /**< This should always be the last! */
 };
 
