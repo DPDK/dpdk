@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -650,7 +650,7 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_pkts;
 }
 
-static void
+static void __attribute__((cold))
 ixgbe_tx_queue_release_mbufs(struct ixgbe_tx_queue *txq)
 {
 	unsigned i;
@@ -676,7 +676,7 @@ ixgbe_tx_queue_release_mbufs(struct ixgbe_tx_queue *txq)
 	}
 }
 
-static void
+static void __attribute__((cold))
 ixgbe_tx_free_swring(struct ixgbe_tx_queue *txq)
 {
 	if (txq == NULL)
@@ -688,7 +688,7 @@ ixgbe_tx_free_swring(struct ixgbe_tx_queue *txq)
 	}
 }
 
-static void
+static void __attribute__((cold))
 ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 {
 	static const union ixgbe_adv_tx_desc zeroed_desc = {{0}};
@@ -728,7 +728,7 @@ static const struct ixgbe_txq_ops vec_txq_ops = {
 	.reset = ixgbe_reset_tx_queue,
 };
 
-int
+int __attribute__((cold))
 ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq)
 {
 	uintptr_t p;
@@ -746,7 +746,8 @@ ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq)
 	return 0;
 }
 
-int ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq)
+int __attribute__((cold))
+ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq)
 {
 	if (txq->sw_ring == NULL)
 		return -1;
@@ -759,7 +760,8 @@ int ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq)
 	return 0;
 }
 
-int ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
+int __attribute__((cold))
+ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
 {
 #ifndef RTE_LIBRTE_IEEE1588
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
