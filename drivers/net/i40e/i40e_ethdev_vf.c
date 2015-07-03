@@ -1146,6 +1146,22 @@ err:
 }
 
 static int
+i40evf_uninit_vf(struct rte_eth_dev *dev)
+{
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (hw->adapter_stopped == 0)
+		i40evf_dev_close(dev);
+	rte_free(vf->vf_res);
+	vf->vf_res = NULL;
+
+	return 0;
+}
+
+static int
 i40evf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(\
@@ -1175,6 +1191,7 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 	hw->bus.device = eth_dev->pci_dev->addr.devid;
 	hw->bus.func = eth_dev->pci_dev->addr.function;
 	hw->hw_addr = (void *)eth_dev->pci_dev->mem_resource[0].addr;
+	hw->adapter_stopped = 0;
 
 	if(i40evf_init_vf(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "Init vf failed");
@@ -1195,6 +1212,28 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int
+i40evf_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -EPERM;
+
+	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
+
+	if (i40evf_uninit_vf(eth_dev) != 0) {
+		PMD_INIT_LOG(ERR, "i40evf_uninit_vf failed");
+		return -1;
+	}
+
+	rte_free(eth_dev->data->mac_addrs);
+	eth_dev->data->mac_addrs = NULL;
+
+	return 0;
+}
 /*
  * virtual function driver struct
  */
@@ -1202,9 +1241,10 @@ static struct eth_driver rte_i40evf_pmd = {
 	.pci_drv = {
 		.name = "rte_i40evf_pmd",
 		.id_table = pci_id_i40evf_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_DETACHABLE,
 	},
 	.eth_dev_init = i40evf_dev_init,
+	.eth_dev_uninit = i40evf_dev_uninit,
 	.dev_private_size = sizeof(struct i40e_vf),
 };
 
@@ -1524,6 +1564,8 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	hw->adapter_stopped = 0;
+
 	vf->max_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	vf->num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
 					dev->data->nb_tx_queues);
@@ -1723,6 +1765,7 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	i40evf_dev_stop(dev);
+	hw->adapter_stopped = 1;
 	i40evf_reset_vf(hw);
 	i40e_shutdown_adminq(hw);
 }

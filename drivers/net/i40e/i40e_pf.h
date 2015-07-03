@@ -123,5 +123,6 @@ void i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 				__rte_unused uint32_t retval,
 				uint8_t *msg, uint16_t msglen);
 int i40e_pf_host_init(struct rte_eth_dev *dev);
+int i40e_pf_host_uninit(struct rte_eth_dev *dev);
 
 #endif /* _I40E_PF_H_ */

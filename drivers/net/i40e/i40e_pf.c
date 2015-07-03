@@ -1061,3 +1061,37 @@ fail:
 
 	return ret;
 }
+
+int
+i40e_pf_host_uninit(struct rte_eth_dev *dev)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint32_t val;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/**
+	 * return if SRIOV not enabled, VF number not configured or
+	 * no queue assigned.
+	 */
+	if ((!hw->func_caps.sr_iov_1_1) ||
+		(pf->vf_num == 0) ||
+		(pf->vf_nb_qps == 0))
+		return I40E_SUCCESS;
+
+	/* free memory to store VF structure */
+	rte_free(pf->vfs);
+	pf->vfs = NULL;
+
+	/* Disable irq0 for VFR event */
+	i40e_pf_disable_irq0(hw);
+
+	/* Disable VF link status interrupt */
+	val = I40E_READ_REG(hw, I40E_PFGEN_PORTMDIO_NUM);
+	val &= ~I40E_PFGEN_PORTMDIO_NUM_VFLINK_STAT_ENA_MASK;
+	I40E_WRITE_REG(hw, I40E_PFGEN_PORTMDIO_NUM, val);
+	I40E_WRITE_FLUSH(hw);
+
+	return I40E_SUCCESS;
+}
