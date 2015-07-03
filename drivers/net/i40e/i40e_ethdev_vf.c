@@ -361,6 +361,7 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 		     args->in_args, args->in_args_size, NULL);
 	if (err) {
 		PMD_DRV_LOG(ERR, "fail to send cmd %d", args->ops);
+		_clear_cmd(vf);
 		return err;
 	}
 
@@ -368,8 +369,10 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 	/* read message and it's expected one */
 	if (!err && args->ops == info.ops)
 		_clear_cmd(vf);
-	else if (err)
+	else if (err) {
 		PMD_DRV_LOG(ERR, "Failed to read message from AdminQ");
+		_clear_cmd(vf);
+	}
 	else if (args->ops != info.ops)
 		PMD_DRV_LOG(ERR, "command mismatch, expect %u, get %u",
 			    args->ops, info.ops);
@@ -794,7 +797,7 @@ i40evf_stop_queues(struct rte_eth_dev *dev)
 	/* Stop TX queues first */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		if (i40evf_dev_tx_queue_stop(dev, i) != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start queue %u", i);
+			PMD_DRV_LOG(ERR, "Fail to stop queue %u", i);
 			return -1;
 		}
 	}
@@ -802,7 +805,7 @@ i40evf_stop_queues(struct rte_eth_dev *dev)
 	/* Then stop RX queues */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		if (i40evf_dev_rx_queue_stop(dev, i) != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start queue %u", i);
+			PMD_DRV_LOG(ERR, "Fail to stop queue %u", i);
 			return -1;
 		}
 	}
@@ -1431,7 +1434,7 @@ i40evf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		err = i40evf_switch_queue(dev, FALSE, tx_queue_id, FALSE);
 
 		if (err) {
-			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u of",
+			PMD_DRV_LOG(ERR, "Failed to switch TX queue %u off",
 				    tx_queue_id);
 			return err;
 		}
