@@ -1620,6 +1620,7 @@ i40evf_dev_stop(struct rte_eth_dev *dev)
 
 	i40evf_disable_queues_intr(hw);
 	i40evf_stop_queues(dev);
+	i40e_dev_clear_queues(dev);
 }
 
 static int
