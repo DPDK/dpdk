@@ -1063,6 +1063,7 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t reg;
+	int i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1079,6 +1080,14 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	/* release all the existing VSIs and VEBs */
 	i40e_fdir_teardown(pf);
 	i40e_vsi_release(pf->main_vsi);
+
+	for (i = 0; i < pf->nb_cfg_vmdq_vsi; i++) {
+		i40e_vsi_release(pf->vmdq[i].vsi);
+		pf->vmdq[i].vsi = NULL;
+	}
+
+	rte_free(pf->vmdq);
+	pf->vmdq = NULL;
 
 	/* shutdown the adminq */
 	i40e_aq_queue_shutdown(hw, true);
