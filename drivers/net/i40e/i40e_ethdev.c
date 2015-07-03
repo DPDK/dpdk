@@ -1069,6 +1069,7 @@ i40e_dev_close(struct rte_eth_dev *dev)
 
 	i40e_dev_stop(dev);
 	hw->adapter_stopped = 1;
+	i40e_dev_free_queues(dev);
 
 	/* Disable interrupt */
 	i40e_pf_disable_irq0(hw);

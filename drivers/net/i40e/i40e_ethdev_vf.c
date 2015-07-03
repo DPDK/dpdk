@@ -1770,6 +1770,7 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 
 	i40evf_dev_stop(dev);
 	hw->adapter_stopped = 1;
+	i40e_dev_free_queues(dev);
 	i40evf_reset_vf(hw);
 	i40e_shutdown_adminq(hw);
 }

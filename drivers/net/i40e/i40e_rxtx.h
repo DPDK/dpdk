@@ -199,6 +199,7 @@ int i40e_rx_queue_init(struct i40e_rx_queue *rxq);
 void i40e_free_tx_resources(struct i40e_tx_queue *txq);
 void i40e_free_rx_resources(struct i40e_rx_queue *rxq);
 void i40e_dev_clear_queues(struct rte_eth_dev *dev);
+void i40e_dev_free_queues(struct rte_eth_dev *dev);
 void i40e_reset_rx_queue(struct i40e_rx_queue *rxq);
 void i40e_reset_tx_queue(struct i40e_tx_queue *txq);
 void i40e_tx_queue_release_mbufs(struct i40e_tx_queue *txq);
