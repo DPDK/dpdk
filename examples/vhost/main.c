@@ -3051,10 +3051,10 @@ main(int argc, char *argv[])
 	if (mergeable == 0)
 		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_MRG_RXBUF);
 
-	/* Register CUSE device to handle IOCTLs. */
+	/* Register vhost(cuse or user) driver to handle vhost messages. */
 	ret = rte_vhost_driver_register((char *)&dev_basename);
 	if (ret != 0)
-		rte_exit(EXIT_FAILURE,"CUSE device setup failure.\n");
+		rte_exit(EXIT_FAILURE, "vhost driver register failure.\n");
 
 	rte_vhost_driver_callback_register(&virtio_net_device_ops);
 
