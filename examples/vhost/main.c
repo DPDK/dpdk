@@ -2871,6 +2871,16 @@ setup_mempool_tbl(int socket, uint32_t index, char *pool_name,
 	}
 }
 
+/* When we receive a INT signal, unregister vhost driver */
+static void
+sigint_handler(__rte_unused int signum)
+{
+	/* Unregister vhost driver. */
+	int ret = rte_vhost_driver_unregister((char *)&dev_basename);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE, "vhost driver unregister failure.\n");
+	exit(0);
+}
 
 /*
  * Main function, does initialisation and calls the per-lcore functions. The CUSE
@@ -2886,6 +2896,8 @@ main(int argc, char *argv[])
 	uint8_t portid;
 	uint16_t queue_id;
 	static pthread_t tid;
+
+	signal(SIGINT, sigint_handler);
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
