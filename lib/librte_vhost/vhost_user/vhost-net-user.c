@@ -122,8 +122,11 @@ uds_socket(const char *path)
 	un.sun_family = AF_UNIX;
 	snprintf(un.sun_path, sizeof(un.sun_path), "%s", path);
 	ret = bind(sockfd, (struct sockaddr *)&un, sizeof(un));
-	if (ret == -1)
+	if (ret == -1) {
+		RTE_LOG(ERR, VHOST_CONFIG, "fail to bind fd:%d, remove file:%s and try again.\n",
+			sockfd, path);
 		goto err;
+	}
 	RTE_LOG(INFO, VHOST_CONFIG, "bind to %s\n", path);
 
 	ret = listen(sockfd, MAX_VIRTIO_BACKLOG);
