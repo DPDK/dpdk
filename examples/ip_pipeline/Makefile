@@ -36,10 +36,16 @@ endif
 # Default target, can be overridden by command line or environment
 RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
+DIRS-(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline
+
 include $(RTE_SDK)/mk/rte.vars.mk
 
 # binary name
 APP = ip_pipeline
+
+VPATH += $(SRCDIR)/pipeline
+
+INC += $(wildcard *.h) $(wildcard pipeline/*.h)
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) := main.c
@@ -49,7 +55,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config_check.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += init.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += cpu_core_map.c
 
+CFLAGS += -I$(SRCDIR) -I$(SRCDIR)/pipeline
 CFLAGS += -O3
-CFLAGS += $(WERROR_FLAGS)
+CFLAGS += $(WERROR_FLAGS) -Wno-error=unused-function -Wno-error=unused-variable
 
 include $(RTE_SDK)/mk/rte.extapp.mk
