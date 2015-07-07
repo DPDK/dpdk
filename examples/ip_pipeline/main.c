@@ -49,5 +49,8 @@ main(int argc, char **argv)
 
 	app_config_check(&app);
 
+	/* Init */
+	app_init(&app);
+
 	return 0;
 }
