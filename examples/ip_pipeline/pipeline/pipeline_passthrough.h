@@ -31,17 +31,11 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "pipeline_passthrough.h"
-#include "pipeline_passthrough_be.h"
+#ifndef __INCLUDE_PIPELINE_PASSTHROUGH_H__
+#define __INCLUDE_PIPELINE_PASSTHROUGH_H__
 
-static struct pipeline_fe_ops pipeline_passthrough_fe_ops = {
-	.f_init = NULL,
-	.f_free = NULL,
-	.cmds = NULL,
-};
+#include "pipeline.h"
 
-struct pipeline_type pipeline_passthrough = {
-	.name = "PASS-THROUGH",
-	.be_ops = &pipeline_passthrough_be_ops,
-	.fe_ops = &pipeline_passthrough_fe_ops,
-};
+extern struct pipeline_type pipeline_passthrough;
+
+#endif
