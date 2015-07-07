@@ -44,6 +44,8 @@
 
 #include "app.h"
 #include "pipeline.h"
+#include "pipeline_common_fe.h"
+#include "pipeline_master.h"
 
 #define APP_NAME_SIZE	32
 
@@ -1280,6 +1282,9 @@ int app_init(struct app_params *app)
 	app_init_swq(app);
 	app_init_tm(app);
 	app_init_msgq(app);
+
+	app_pipeline_common_cmd_push(app);
+	app_pipeline_type_register(app, &pipeline_master);
 
 	app_init_pipelines(app);
 	app_init_threads(app);
