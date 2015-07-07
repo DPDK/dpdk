@@ -7887,6 +7887,12 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		IPV4_ADDR_TO_UINT(res->ip_src,
 			entry.input.flow.sctp4_flow.ip.src_ip);
 		/* need convert to big endian. */
+#ifdef RTE_NEXT_ABI
+		entry.input.flow.sctp4_flow.dst_port =
+				rte_cpu_to_be_16(res->port_dst);
+		entry.input.flow.sctp4_flow.src_port =
+				rte_cpu_to_be_16(res->port_src);
+#endif
 		entry.input.flow.sctp4_flow.verify_tag =
 				rte_cpu_to_be_32(res->verify_tag_value);
 		break;
@@ -7910,6 +7916,12 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		IPV6_ADDR_TO_ARRAY(res->ip_src,
 			entry.input.flow.sctp6_flow.ip.src_ip);
 		/* need convert to big endian. */
+#ifdef RTE_NEXT_ABI
+		entry.input.flow.sctp6_flow.dst_port =
+				rte_cpu_to_be_16(res->port_dst);
+		entry.input.flow.sctp6_flow.src_port =
+				rte_cpu_to_be_16(res->port_src);
+#endif
 		entry.input.flow.sctp6_flow.verify_tag =
 				rte_cpu_to_be_32(res->verify_tag_value);
 		break;
