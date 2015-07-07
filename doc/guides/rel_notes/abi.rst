@@ -24,3 +24,8 @@ Deprecation Notices
 
 * The Macros RTE_HASH_BUCKET_ENTRIES_MAX and RTE_HASH_KEY_LENGTH_MAX are
   deprecated and will be removed with version 2.2.
+
+* Significant ABI changes are planned for struct rte_mbuf, struct rte_kni_mbuf,
+  and several ``PKT_RX_`` flags will be removed, to support unified packet type
+  from release 2.1. Those changes may be enabled in the upcoming release 2.1
+  with CONFIG_RTE_NEXT_ABI.
