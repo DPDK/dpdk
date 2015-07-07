@@ -102,7 +102,72 @@ Prerequisites
 -------------
 
 - Requires firmware version **1.13.32.0** and higher. Visit
-  `Chelsio Communications <http://www.chelsio.com>`_ to get latest firmware.
+  `Chelsio Download Center <http://service.chelsio.com>`_ to get latest firmware
+  bundled with the latest Chelsio Unified Wire package. Installing and loading
+  the latest cxgb4 kernel driver from the Chelsio Unified Wire package should
+  get you the latest firmware. More information can be obtained from the User
+  Guide that is bundled with the Chelsio Unified Wire package.
+
+Steps to manually install the latest firmware from the downloaded source files
+are as follows:
+
+#. Load the kernel module:
+
+   .. code-block:: console
+
+      modprobe cxgb4
+
+#. Use ifconfig to get the interface name assigned to Chelsio card:
+
+   .. code-block:: console
+
+      ifconfig -a | grep "00:07:43"
+
+   Example output:
+
+   .. code-block:: console
+
+      p1p1      Link encap:Ethernet  HWaddr 00:07:43:2D:EA:C0
+      p1p2      Link encap:Ethernet  HWaddr 00:07:43:2D:EA:C8
+
+#. Install cxgbtool:
+
+   .. code-block:: console
+
+      cd <path_to_uwire>/tools/cxgbtool
+      make install
+
+#. Use cxgbtool to load the firmware config file onto the card:
+
+   .. code-block:: console
+
+      cxgbtool p1p1 loadcfg <path_to_uwire>/src/network/firmware/t5-config.txt
+
+#. Use cxgbtool to load the firmware image onto the card:
+
+   .. code-block:: console
+
+      cxgbtool p1p1 loadfw <path_to_uwire>/src/network/firmware/t5fw-*.bin
+
+#. Verify with ethtool:
+
+   .. code-block:: console
+
+      ethtool -i p1p1 | grep "firmware"
+
+   Example output:
+
+   .. code-block:: console
+
+      firmware-version: 1.13.32.0, TP 0.1.4.8
+
+Supported Chelsio T5 NICs
+-------------------------
+
+- 1G NICs: T502-BT
+- 10G NICs: T520-BT, T520-CR, T520-LL-CR, T520-SO-CR, T540-CR
+- 40G NICs: T580-CR, T580-LP-CR, T580-SO-CR
+- Other T5 NICs: T522-CR
 
 Sample Application Notes
 -------------------------
@@ -207,3 +272,20 @@ devices managed by librte_pmd_cxgbe.
       Port 1 Link Up - speed 10000 Mbps - full-duplex
       Done
       testpmd>
+
+.. note::
+
+   Flow control pause TX/RX is disabled by default and can be enabled via
+   testpmd as follows:
+
+   .. code-block:: console
+
+      testpmd> set flow_ctrl rx on tx on 0 0 0 0 mac_ctrl_frame_fwd off autoneg on 0
+      testpmd> set flow_ctrl rx on tx on 0 0 0 0 mac_ctrl_frame_fwd off autoneg on 1
+
+   To disable again, use:
+
+   .. code-block:: console
+
+      testpmd> set flow_ctrl rx off tx off 0 0 0 0 mac_ctrl_frame_fwd off autoneg off 0
+      testpmd> set flow_ctrl rx off tx off 0 0 0 0 mac_ctrl_frame_fwd off autoneg off 1
