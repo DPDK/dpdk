@@ -43,20 +43,9 @@ APP = ip_pipeline
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) := main.c
-SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config.c
-SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += init.c
-SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += cmdline.c
-SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_rx.c
-SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_tx.c
-SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_flow_classification.c
-SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_routing.c
-SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_passthrough.c
-SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_ipv4_frag.c
-SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_ipv4_ras.c
-
-ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
-SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_firewall.c
-endif
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config_parse.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config_parse_tm.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += cpu_core_map.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

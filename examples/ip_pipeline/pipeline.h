@@ -31,21 +31,57 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "app.h"
+#ifndef __INCLUDE_PIPELINE_H__
+#define __INCLUDE_PIPELINE_H__
 
-static struct app_params app;
+#include <cmdline_parse.h>
 
-int
-main(int argc, char **argv)
+#include "pipeline_be.h"
+
+/*
+ * Pipeline type front-end operations
+ */
+
+typedef void* (*pipeline_fe_op_init)(struct pipeline_params *params, void *arg);
+
+typedef int (*pipeline_fe_op_free)(void *pipeline);
+
+struct pipeline_fe_ops {
+	pipeline_fe_op_init f_init;
+	pipeline_fe_op_free f_free;
+	cmdline_parse_ctx_t *cmds;
+};
+
+/*
+ * Pipeline type
+ */
+
+struct pipeline_type {
+	const char *name;
+
+	/* pipeline back-end */
+	struct pipeline_be_ops *be_ops;
+
+	/* pipeline front-end */
+	struct pipeline_fe_ops *fe_ops;
+};
+
+static inline uint32_t
+pipeline_type_cmds_count(struct pipeline_type *ptype)
 {
-	rte_openlog_stream(stderr);
+	cmdline_parse_ctx_t *cmds;
+	uint32_t n_cmds;
 
-	/* Config */
-	app_config_init(&app);
+	if (ptype->fe_ops == NULL)
+		return 0;
 
-	app_config_args(&app, argc, argv);
+	cmds = ptype->fe_ops->cmds;
+	if (cmds == NULL)
+		return 0;
 
-	app_config_parse(&app, app.config_file);
+	for (n_cmds = 0; cmds[n_cmds]; n_cmds++);
 
-	return 0;
+	return n_cmds;
 }
+
+#endif
