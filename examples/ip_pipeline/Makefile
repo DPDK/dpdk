@@ -53,6 +53,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config_parse.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config_parse_tm.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config_check.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += init.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += thread.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += cpu_core_map.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_common_be.c

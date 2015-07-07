@@ -52,5 +52,11 @@ main(int argc, char **argv)
 	/* Init */
 	app_init(&app);
 
+	/* Run-time */
+	rte_eal_mp_remote_launch(
+		app_thread,
+		(void *) &app,
+		CALL_MASTER);
+
 	return 0;
 }
