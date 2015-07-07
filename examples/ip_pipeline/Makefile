@@ -45,6 +45,7 @@ APP = ip_pipeline
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) := main.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config_parse.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config_parse_tm.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config_check.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += cpu_core_map.c
 
 CFLAGS += -O3

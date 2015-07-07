@@ -47,5 +47,7 @@ main(int argc, char **argv)
 
 	app_config_parse(&app, app.config_file);
 
+	app_config_check(&app);
+
 	return 0;
 }
