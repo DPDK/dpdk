@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -32,282 +32,972 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include <string.h>
+#include <sys/queue.h>
+#include <netinet/in.h>
 
+#include <rte_common.h>
+#include <rte_hexdump.h>
 #include <rte_malloc.h>
-#include <rte_log.h>
-#include <rte_ethdev.h>
-#include <rte_ether.h>
-#include <rte_ip.h>
-#include <rte_byteorder.h>
+#include <cmdline_rdline.h>
+#include <cmdline_parse.h>
+#include <cmdline_parse_num.h>
+#include <cmdline_parse_string.h>
+#include <cmdline_parse_ipaddr.h>
+#include <cmdline_parse_etheraddr.h>
+#include <cmdline_socket.h>
 
-#include <rte_port_ring.h>
-#include <rte_table_acl.h>
-#include <rte_pipeline.h>
+#include "app.h"
+#include "pipeline_common_fe.h"
+#include "pipeline_firewall.h"
 
-#include "main.h"
+struct app_pipeline_firewall_rule {
+	struct pipeline_firewall_key key;
+	int32_t priority;
+	uint32_t port_id;
+	void *entry_ptr;
 
-struct app_core_firewall_message_handle_params {
-	struct rte_ring *ring_req;
-	struct rte_ring *ring_resp;
+	TAILQ_ENTRY(app_pipeline_firewall_rule) node;
+};
 
-	struct rte_pipeline *p;
-	uint32_t *port_out_id;
-	uint32_t table_id;
+struct app_pipeline_firewall {
+	/* parameters */
+	uint32_t n_ports_in;
+	uint32_t n_ports_out;
+
+	/* rules */
+	TAILQ_HEAD(, app_pipeline_firewall_rule) rules;
+	uint32_t n_rules;
+	uint32_t default_rule_present;
+	uint32_t default_rule_port_id;
+	void *default_rule_entry_ptr;
 };
 
 static void
-app_message_handle(struct app_core_firewall_message_handle_params *params);
+print_firewall_ipv4_rule(struct app_pipeline_firewall_rule *rule)
+{
+	printf("Prio = %" PRId32 " (SA = %" PRIu32 ".%" PRIu32
+		".%" PRIu32 ".%" PRIu32 "/%" PRIu32 ", "
+		"DA = %" PRIu32 ".%" PRIu32
+		".%"PRIu32 ".%" PRIu32 "/%" PRIu32 ", "
+		"SP = %" PRIu32 "-%" PRIu32 ", "
+		"DP = %" PRIu32 "-%" PRIu32 ", "
+		"Proto = %" PRIu32 " / 0x%" PRIx32 ") => "
+		"Port = %" PRIu32 " (entry ptr = %p)\n",
 
-enum {
-	PROTO_FIELD_IPV4,
-	SRC_FIELD_IPV4,
-	DST_FIELD_IPV4,
-	SRCP_FIELD_IPV4,
-	DSTP_FIELD_IPV4,
-	NUM_FIELDS_IPV4
-};
+		rule->priority,
 
-struct rte_acl_field_def ipv4_field_formats[NUM_FIELDS_IPV4] = {
-	{
-		.type = RTE_ACL_FIELD_TYPE_BITMASK,
-		.size = sizeof(uint8_t),
-		.field_index = PROTO_FIELD_IPV4,
-		.input_index = PROTO_FIELD_IPV4,
-		.offset = sizeof(struct ether_hdr) +
-			offsetof(struct ipv4_hdr, next_proto_id),
-	},
-	{
-		.type = RTE_ACL_FIELD_TYPE_MASK,
-		.size = sizeof(uint32_t),
-		.field_index = SRC_FIELD_IPV4,
-		.input_index = SRC_FIELD_IPV4,
-		.offset = sizeof(struct ether_hdr) +
-			offsetof(struct ipv4_hdr, src_addr),
-	},
-	{
-		.type = RTE_ACL_FIELD_TYPE_MASK,
-		.size = sizeof(uint32_t),
-		.field_index = DST_FIELD_IPV4,
-		.input_index = DST_FIELD_IPV4,
-		.offset = sizeof(struct ether_hdr) +
-			offsetof(struct ipv4_hdr, dst_addr),
-	},
-	{
-		.type = RTE_ACL_FIELD_TYPE_RANGE,
-		.size = sizeof(uint16_t),
-		.field_index = SRCP_FIELD_IPV4,
-		.input_index = SRCP_FIELD_IPV4,
-		.offset = sizeof(struct ether_hdr) + sizeof(struct ipv4_hdr),
-	},
-	{
-		.type = RTE_ACL_FIELD_TYPE_RANGE,
-		.size = sizeof(uint16_t),
-		.field_index = DSTP_FIELD_IPV4,
-		.input_index = SRCP_FIELD_IPV4,
-		.offset = sizeof(struct ether_hdr) + sizeof(struct ipv4_hdr) +
-			sizeof(uint16_t),
-	},
-};
+		(rule->key.key.ipv4_5tuple.src_ip >> 24) & 0xFF,
+		(rule->key.key.ipv4_5tuple.src_ip >> 16) & 0xFF,
+		(rule->key.key.ipv4_5tuple.src_ip >> 8) & 0xFF,
+		rule->key.key.ipv4_5tuple.src_ip & 0xFF,
+		rule->key.key.ipv4_5tuple.src_ip_mask,
 
-void
-app_main_loop_pipeline_firewall(void) {
-	struct rte_pipeline_params pipeline_params = {
-		.name = "pipeline",
-		.socket_id = rte_socket_id(),
-	};
+		(rule->key.key.ipv4_5tuple.dst_ip >> 24) & 0xFF,
+		(rule->key.key.ipv4_5tuple.dst_ip >> 16) & 0xFF,
+		(rule->key.key.ipv4_5tuple.dst_ip >> 8) & 0xFF,
+		rule->key.key.ipv4_5tuple.dst_ip & 0xFF,
+		rule->key.key.ipv4_5tuple.dst_ip_mask,
 
-	struct rte_pipeline *p;
-	uint32_t port_in_id[APP_MAX_PORTS];
-	uint32_t port_out_id[APP_MAX_PORTS];
-	uint32_t table_id;
-	uint32_t i;
+		rule->key.key.ipv4_5tuple.src_port_from,
+		rule->key.key.ipv4_5tuple.src_port_to,
 
-	uint32_t core_id = rte_lcore_id();
-	struct app_core_params *core_params = app_get_core_params(core_id);
-	struct app_core_firewall_message_handle_params mh_params;
+		rule->key.key.ipv4_5tuple.dst_port_from,
+		rule->key.key.ipv4_5tuple.dst_port_to,
 
-	if ((core_params == NULL) || (core_params->core_type != APP_CORE_FW))
-		rte_panic("Core %u misconfiguration\n", core_id);
+		rule->key.key.ipv4_5tuple.proto,
+		rule->key.key.ipv4_5tuple.proto_mask,
 
-	RTE_LOG(INFO, USER1, "Core %u is doing firewall\n", core_id);
-
-	/* Pipeline configuration */
-	p = rte_pipeline_create(&pipeline_params);
-	if (p == NULL)
-		rte_panic("Unable to configure the pipeline\n");
-
-	/* Input port configuration */
-	for (i = 0; i < app.n_ports; i++) {
-		struct rte_port_ring_reader_params port_ring_params = {
-			.ring = app.rings[core_params->swq_in[i]],
-		};
-
-		struct rte_pipeline_port_in_params port_params = {
-			.ops = &rte_port_ring_reader_ops,
-			.arg_create = (void *) &port_ring_params,
-			.f_action = NULL,
-			.arg_ah = NULL,
-			.burst_size = app.bsz_swq_rd,
-		};
-
-		if (rte_pipeline_port_in_create(p, &port_params,
-			&port_in_id[i]))
-			rte_panic("Unable to configure input port for "
-				"ring %d\n", i);
-	}
-
-	/* Output port configuration */
-	for (i = 0; i < app.n_ports; i++) {
-		struct rte_port_ring_writer_params port_ring_params = {
-			.ring = app.rings[core_params->swq_out[i]],
-			.tx_burst_sz = app.bsz_swq_wr,
-		};
-
-		struct rte_pipeline_port_out_params port_params = {
-			.ops = &rte_port_ring_writer_ops,
-			.arg_create = (void *) &port_ring_params,
-			.f_action = NULL,
-			.f_action_bulk = NULL,
-			.arg_ah = NULL,
-		};
-
-		if (rte_pipeline_port_out_create(p, &port_params,
-			&port_out_id[i]))
-			rte_panic("Unable to configure output port for "
-				"ring %d\n", i);
-	}
-
-	/* Table configuration */
-	{
-		struct rte_table_acl_params table_acl_params = {
-			.name = "test", /* unique identifier for acl contexts */
-			.n_rules = app.max_firewall_rules,
-			.n_rule_fields = DIM(ipv4_field_formats),
-		};
-
-		struct rte_pipeline_table_params table_params = {
-			.ops = &rte_table_acl_ops,
-			.arg_create = &table_acl_params,
-			.f_action_hit = NULL,
-			.f_action_miss = NULL,
-			.arg_ah = NULL,
-			.action_data_size = 0,
-		};
-
-		memcpy(table_acl_params.field_format, ipv4_field_formats,
-			sizeof(ipv4_field_formats));
-
-		if (rte_pipeline_table_create(p, &table_params, &table_id))
-			rte_panic("Unable to configure the ACL table\n");
-	}
-
-	/* Interconnecting ports and tables */
-	for (i = 0; i < app.n_ports; i++)
-		if (rte_pipeline_port_in_connect_to_table(p, port_in_id[i],
-			table_id))
-			rte_panic("Unable to connect input port %u to "
-				"table %u\n", port_in_id[i],  table_id);
-
-	/* Enable input ports */
-	for (i = 0; i < app.n_ports; i++)
-		if (rte_pipeline_port_in_enable(p, port_in_id[i]))
-			rte_panic("Unable to enable input port %u\n",
-				port_in_id[i]);
-
-	/* Check pipeline consistency */
-	if (rte_pipeline_check(p) < 0)
-		rte_panic("Pipeline consistency check failed\n");
-
-	/* Message handling */
-	mh_params.ring_req = app_get_ring_req(
-		app_get_first_core_id(APP_CORE_FW));
-	mh_params.ring_resp = app_get_ring_resp(
-		app_get_first_core_id(APP_CORE_FW));
-	mh_params.p = p;
-	mh_params.port_out_id = port_out_id;
-	mh_params.table_id = table_id;
-
-	/* Run-time */
-	for (i = 0; ; i++) {
-		rte_pipeline_run(p);
-
-		if ((i & APP_FLUSH) == 0) {
-			rte_pipeline_flush(p);
-			app_message_handle(&mh_params);
-		}
-	}
+		rule->port_id,
+		rule->entry_ptr);
 }
 
-void
-app_message_handle(struct app_core_firewall_message_handle_params *params)
+static struct app_pipeline_firewall_rule *
+app_pipeline_firewall_rule_find(struct app_pipeline_firewall *p,
+	struct pipeline_firewall_key *key)
 {
-	struct rte_ring *ring_req = params->ring_req;
-	struct rte_ring *ring_resp;
-	struct rte_mbuf *msg;
-	struct app_msg_req *req;
-	struct app_msg_resp *resp;
-	struct rte_pipeline *p;
-	uint32_t *port_out_id;
-	uint32_t table_id;
-	int result;
+	struct app_pipeline_firewall_rule *r;
 
-	/* Read request message */
-	result = rte_ring_sc_dequeue(ring_req, (void **) &msg);
-	if (result != 0)
+	TAILQ_FOREACH(r, &p->rules, node)
+		if (memcmp(key,
+			&r->key,
+			sizeof(struct pipeline_firewall_key)) == 0)
+			return r;
+
+	return NULL;
+}
+
+static void
+app_pipeline_firewall_ls(
+	struct app_params *app,
+	uint32_t pipeline_id)
+{
+	struct app_pipeline_firewall *p;
+	struct app_pipeline_firewall_rule *rule;
+	uint32_t n_rules;
+	int priority;
+
+	/* Check input arguments */
+	if (app == NULL)
 		return;
 
-	ring_resp = params->ring_resp;
-	p = params->p;
-	port_out_id = params->port_out_id;
-	table_id = params->table_id;
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return;
 
-	/* Handle request */
-	req = (struct app_msg_req *)rte_ctrlmbuf_data(msg);
-	switch (req->type) {
-	case APP_MSG_REQ_PING:
-	{
-		result = 0;
-		break;
+	n_rules = p->n_rules;
+	for (priority = 0; n_rules; priority++)
+		TAILQ_FOREACH(rule, &p->rules, node)
+			if (rule->priority == priority) {
+				print_firewall_ipv4_rule(rule);
+				n_rules--;
+			}
+
+	if (p->default_rule_present)
+		printf("Default rule: port %" PRIu32 " (entry ptr = %p)\n",
+			p->default_rule_port_id,
+			p->default_rule_entry_ptr);
+	else
+		printf("Default rule: DROP\n");
+
+	printf("\n");
+}
+
+static void*
+app_pipeline_firewall_init(struct pipeline_params *params,
+	__rte_unused void *arg)
+{
+	struct app_pipeline_firewall *p;
+	uint32_t size;
+
+	/* Check input arguments */
+	if ((params == NULL) ||
+		(params->n_ports_in == 0) ||
+		(params->n_ports_out == 0))
+		return NULL;
+
+	/* Memory allocation */
+	size = RTE_CACHE_LINE_ROUNDUP(sizeof(struct app_pipeline_firewall));
+	p = rte_zmalloc(NULL, size, RTE_CACHE_LINE_SIZE);
+	if (p == NULL)
+		return NULL;
+
+	/* Initialization */
+	p->n_ports_in = params->n_ports_in;
+	p->n_ports_out = params->n_ports_out;
+
+	TAILQ_INIT(&p->rules);
+	p->n_rules = 0;
+	p->default_rule_present = 0;
+	p->default_rule_port_id = 0;
+	p->default_rule_entry_ptr = NULL;
+
+	return (void *) p;
+}
+
+static int
+app_pipeline_firewall_free(void *pipeline)
+{
+	struct app_pipeline_firewall *p = pipeline;
+
+	/* Check input arguments */
+	if (p == NULL)
+		return -1;
+
+	/* Free resources */
+	while (!TAILQ_EMPTY(&p->rules)) {
+		struct app_pipeline_firewall_rule *rule;
+
+		rule = TAILQ_FIRST(&p->rules);
+		TAILQ_REMOVE(&p->rules, rule, node);
+		rte_free(rule);
 	}
 
-	case APP_MSG_REQ_FW_ADD:
+	rte_free(p);
+	return 0;
+}
+
+static int
+app_pipeline_firewall_key_check_and_normalize(struct pipeline_firewall_key *key)
+{
+	switch (key->type) {
+	case PIPELINE_FIREWALL_IPV4_5TUPLE:
 	{
-		struct rte_pipeline_table_entry entry = {
-			.action = RTE_PIPELINE_ACTION_PORT,
-			{.port_id = port_out_id[req->firewall_add.port]},
-		};
+		uint32_t src_ip_depth = key->key.ipv4_5tuple.src_ip_mask;
+		uint32_t dst_ip_depth = key->key.ipv4_5tuple.dst_ip_mask;
+		uint16_t src_port_from = key->key.ipv4_5tuple.src_port_from;
+		uint16_t src_port_to = key->key.ipv4_5tuple.src_port_to;
+		uint16_t dst_port_from = key->key.ipv4_5tuple.dst_port_from;
+		uint16_t dst_port_to = key->key.ipv4_5tuple.dst_port_to;
 
-		struct rte_pipeline_table_entry *entry_ptr;
+		uint32_t src_ip_netmask = 0;
+		uint32_t dst_ip_netmask = 0;
 
-		int key_found;
+		if ((src_ip_depth > 32) ||
+			(dst_ip_depth > 32) ||
+			(src_port_from > src_port_to) ||
+			(dst_port_from > dst_port_to))
+			return -1;
 
-		result = rte_pipeline_table_entry_add(p, table_id,
-			&req->firewall_add.add_params, &entry, &key_found,
-			&entry_ptr);
-		break;
-	}
+		if (src_ip_depth)
+			src_ip_netmask = (~0) << (32 - src_ip_depth);
 
-	case APP_MSG_REQ_FW_DEL:
-	{
-		int key_found;
+		if (dst_ip_depth)
+			dst_ip_netmask = ((~0) << (32 - dst_ip_depth));
 
-		result = rte_pipeline_table_entry_delete(p, table_id,
-			&req->firewall_del.delete_params, &key_found, NULL);
-		break;
+		key->key.ipv4_5tuple.src_ip &= src_ip_netmask;
+		key->key.ipv4_5tuple.dst_ip &= dst_ip_netmask;
+
+		return 0;
 	}
 
 	default:
-		rte_panic("FW unrecognized message type (%u)\n", req->type);
+		return -1;
+	}
+}
+
+int
+app_pipeline_firewall_add_rule(struct app_params *app,
+	uint32_t pipeline_id,
+	struct pipeline_firewall_key *key,
+	uint32_t priority,
+	uint32_t port_id)
+{
+	struct app_pipeline_firewall *p;
+	struct app_pipeline_firewall_rule *rule;
+	struct pipeline_firewall_add_msg_req *req;
+	struct pipeline_firewall_add_msg_rsp *rsp;
+	int new_rule;
+
+	/* Check input arguments */
+	if ((app == NULL) ||
+		(key == NULL) ||
+		(key->type != PIPELINE_FIREWALL_IPV4_5TUPLE))
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -1;
+
+	if (port_id >= p->n_ports_out)
+		return -1;
+
+	if (app_pipeline_firewall_key_check_and_normalize(key) != 0)
+		return -1;
+
+	/* Find existing rule or allocate new rule */
+	rule = app_pipeline_firewall_rule_find(p, key);
+	new_rule = (rule == NULL);
+	if (rule == NULL) {
+		rule = rte_malloc(NULL, sizeof(*rule), RTE_CACHE_LINE_SIZE);
+
+		if (rule == NULL)
+			return -1;
 	}
 
-	/* Fill in response message */
-	resp = (struct app_msg_resp *)rte_ctrlmbuf_data(msg);
-	resp->result = result;
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL) {
+		if (new_rule)
+			rte_free(rule);
+		return -1;
+	}
 
-	/* Send response */
-	do {
-		result = rte_ring_sp_enqueue(ring_resp, (void *) msg);
-	} while (result == -ENOBUFS);
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_FIREWALL_MSG_REQ_ADD;
+	memcpy(&req->key, key, sizeof(*key));
+	req->priority = priority;
+	req->port_id = port_id;
+
+	/* Send request and wait for response */
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL) {
+		if (new_rule)
+			rte_free(rule);
+		return -1;
+	}
+
+	/* Read response and write rule */
+	if (rsp->status ||
+		(rsp->entry_ptr == NULL) ||
+		((new_rule == 0) && (rsp->key_found == 0)) ||
+		((new_rule == 1) && (rsp->key_found == 1))) {
+		app_msg_free(app, rsp);
+		if (new_rule)
+			rte_free(rule);
+		return -1;
+	}
+
+	memcpy(&rule->key, key, sizeof(*key));
+	rule->priority = priority;
+	rule->port_id = port_id;
+	rule->entry_ptr = rsp->entry_ptr;
+
+	/* Commit rule */
+	if (new_rule) {
+		TAILQ_INSERT_TAIL(&p->rules, rule, node);
+		p->n_rules++;
+	}
+
+	print_firewall_ipv4_rule(rule);
+
+	/* Free response */
+	app_msg_free(app, rsp);
+
+	return 0;
 }
+
+int
+app_pipeline_firewall_delete_rule(struct app_params *app,
+	uint32_t pipeline_id,
+	struct pipeline_firewall_key *key)
+{
+	struct app_pipeline_firewall *p;
+	struct app_pipeline_firewall_rule *rule;
+	struct pipeline_firewall_del_msg_req *req;
+	struct pipeline_firewall_del_msg_rsp *rsp;
+
+	/* Check input arguments */
+	if ((app == NULL) ||
+		(key == NULL) ||
+		(key->type != PIPELINE_FIREWALL_IPV4_5TUPLE))
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -1;
+
+	if (app_pipeline_firewall_key_check_and_normalize(key) != 0)
+		return -1;
+
+	/* Find rule */
+	rule = app_pipeline_firewall_rule_find(p, key);
+	if (rule == NULL)
+		return 0;
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL)
+		return -1;
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_FIREWALL_MSG_REQ_DEL;
+	memcpy(&req->key, key, sizeof(*key));
+
+	/* Send request and wait for response */
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	if (rsp->status || !rsp->key_found) {
+		app_msg_free(app, rsp);
+		return -1;
+	}
+
+	/* Remove rule */
+	TAILQ_REMOVE(&p->rules, rule, node);
+	p->n_rules--;
+	rte_free(rule);
+
+	/* Free response */
+	app_msg_free(app, rsp);
+
+	return 0;
+}
+
+int
+app_pipeline_firewall_add_default_rule(struct app_params *app,
+	uint32_t pipeline_id,
+	uint32_t port_id)
+{
+	struct app_pipeline_firewall *p;
+	struct pipeline_firewall_add_default_msg_req *req;
+	struct pipeline_firewall_add_default_msg_rsp *rsp;
+
+	/* Check input arguments */
+	if (app == NULL)
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -1;
+
+	if (port_id >= p->n_ports_out)
+		return -1;
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL)
+		return -1;
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_FIREWALL_MSG_REQ_ADD_DEFAULT;
+	req->port_id = port_id;
+
+	/* Send request and wait for response */
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response and write rule */
+	if (rsp->status || (rsp->entry_ptr == NULL)) {
+		app_msg_free(app, rsp);
+		return -1;
+	}
+
+	p->default_rule_port_id = port_id;
+	p->default_rule_entry_ptr = rsp->entry_ptr;
+
+	/* Commit rule */
+	p->default_rule_present = 1;
+
+	/* Free response */
+	app_msg_free(app, rsp);
+
+	return 0;
+}
+
+int
+app_pipeline_firewall_delete_default_rule(struct app_params *app,
+	uint32_t pipeline_id)
+{
+	struct app_pipeline_firewall *p;
+	struct pipeline_firewall_del_default_msg_req *req;
+	struct pipeline_firewall_del_default_msg_rsp *rsp;
+
+	/* Check input arguments */
+	if (app == NULL)
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -1;
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL)
+		return -1;
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_FIREWALL_MSG_REQ_DEL_DEFAULT;
+
+	/* Send request and wait for response */
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response and write rule */
+	if (rsp->status) {
+		app_msg_free(app, rsp);
+		return -1;
+	}
+
+	/* Commit rule */
+	p->default_rule_present = 0;
+
+	/* Free response */
+	app_msg_free(app, rsp);
+
+	return 0;
+}
+
+/*
+ * p firewall add ipv4
+ */
+
+struct cmd_firewall_add_ipv4_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t pipeline_id;
+	cmdline_fixed_string_t firewall_string;
+	cmdline_fixed_string_t add_string;
+	cmdline_fixed_string_t ipv4_string;
+	int32_t priority;
+	cmdline_ipaddr_t src_ip;
+	uint32_t src_ip_mask;
+	cmdline_ipaddr_t dst_ip;
+	uint32_t dst_ip_mask;
+	uint16_t src_port_from;
+	uint16_t src_port_to;
+	uint16_t dst_port_from;
+	uint16_t dst_port_to;
+	uint8_t proto;
+	uint8_t proto_mask;
+	uint8_t port_id;
+};
+
+static void
+cmd_firewall_add_ipv4_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	void *data)
+{
+	struct cmd_firewall_add_ipv4_result *params = parsed_result;
+	struct app_params *app = data;
+	struct pipeline_firewall_key key;
+	int status;
+
+	key.type = PIPELINE_FIREWALL_IPV4_5TUPLE;
+	key.key.ipv4_5tuple.src_ip = rte_bswap32(
+		(uint32_t) params->src_ip.addr.ipv4.s_addr);
+	key.key.ipv4_5tuple.src_ip_mask = params->src_ip_mask;
+	key.key.ipv4_5tuple.dst_ip = rte_bswap32(
+		(uint32_t) params->dst_ip.addr.ipv4.s_addr);
+	key.key.ipv4_5tuple.dst_ip_mask = params->dst_ip_mask;
+	key.key.ipv4_5tuple.src_port_from = params->src_port_from;
+	key.key.ipv4_5tuple.src_port_to = params->src_port_to;
+	key.key.ipv4_5tuple.dst_port_from = params->dst_port_from;
+	key.key.ipv4_5tuple.dst_port_to = params->dst_port_to;
+	key.key.ipv4_5tuple.proto = params->proto;
+	key.key.ipv4_5tuple.proto_mask = params->proto_mask;
+
+	status = app_pipeline_firewall_add_rule(app,
+		params->pipeline_id,
+		&key,
+		params->priority,
+		params->port_id);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+cmdline_parse_token_string_t cmd_firewall_add_ipv4_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_ipv4_result, p_string,
+		"p");
+
+cmdline_parse_token_num_t cmd_firewall_add_ipv4_pipeline_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_ipv4_result, pipeline_id,
+		UINT32);
+
+cmdline_parse_token_string_t cmd_firewall_add_ipv4_firewall_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_ipv4_result,
+		firewall_string, "firewall");
+
+cmdline_parse_token_string_t cmd_firewall_add_ipv4_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_ipv4_result,
+		add_string, "add");
+
+cmdline_parse_token_string_t cmd_firewall_add_ipv4_ipv4_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_ipv4_result,
+		ipv4_string, "ipv4");
+
+cmdline_parse_token_num_t cmd_firewall_add_ipv4_priority =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_ipv4_result, priority,
+		INT32);
+
+cmdline_parse_token_ipaddr_t cmd_firewall_add_ipv4_src_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_firewall_add_ipv4_result, src_ip);
+
+cmdline_parse_token_num_t cmd_firewall_add_ipv4_src_ip_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_ipv4_result, src_ip_mask,
+		UINT32);
+
+cmdline_parse_token_ipaddr_t cmd_firewall_add_ipv4_dst_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_firewall_add_ipv4_result, dst_ip);
+
+cmdline_parse_token_num_t cmd_firewall_add_ipv4_dst_ip_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_ipv4_result, dst_ip_mask,
+		UINT32);
+
+cmdline_parse_token_num_t cmd_firewall_add_ipv4_src_port_from =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_ipv4_result,
+		src_port_from, UINT16);
+
+cmdline_parse_token_num_t cmd_firewall_add_ipv4_src_port_to =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_ipv4_result,
+		src_port_to, UINT16);
+
+cmdline_parse_token_num_t cmd_firewall_add_ipv4_dst_port_from =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_ipv4_result,
+		dst_port_from, UINT16);
+
+cmdline_parse_token_num_t cmd_firewall_add_ipv4_dst_port_to =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_ipv4_result,
+		dst_port_to, UINT16);
+
+cmdline_parse_token_num_t cmd_firewall_add_ipv4_proto =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_ipv4_result,
+		proto, UINT8);
+
+cmdline_parse_token_num_t cmd_firewall_add_ipv4_proto_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_ipv4_result,
+		proto_mask, UINT8);
+
+cmdline_parse_token_num_t cmd_firewall_add_ipv4_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_ipv4_result,
+		port_id, UINT8);
+
+cmdline_parse_inst_t cmd_firewall_add_ipv4 = {
+	.f = cmd_firewall_add_ipv4_parsed,
+	.data = NULL,
+	.help_str = "Firewall rule add",
+	.tokens = {
+		(void *) &cmd_firewall_add_ipv4_p_string,
+		(void *) &cmd_firewall_add_ipv4_pipeline_id,
+		(void *) &cmd_firewall_add_ipv4_firewall_string,
+		(void *) &cmd_firewall_add_ipv4_add_string,
+		(void *) &cmd_firewall_add_ipv4_ipv4_string,
+		(void *) &cmd_firewall_add_ipv4_priority,
+		(void *) &cmd_firewall_add_ipv4_src_ip,
+		(void *) &cmd_firewall_add_ipv4_src_ip_mask,
+		(void *) &cmd_firewall_add_ipv4_dst_ip,
+		(void *) &cmd_firewall_add_ipv4_dst_ip_mask,
+		(void *) &cmd_firewall_add_ipv4_src_port_from,
+		(void *) &cmd_firewall_add_ipv4_src_port_to,
+		(void *) &cmd_firewall_add_ipv4_dst_port_from,
+		(void *) &cmd_firewall_add_ipv4_dst_port_to,
+		(void *) &cmd_firewall_add_ipv4_proto,
+		(void *) &cmd_firewall_add_ipv4_proto_mask,
+		(void *) &cmd_firewall_add_ipv4_port_id,
+		NULL,
+	},
+};
+
+/*
+ * p firewall del ipv4
+ */
+
+struct cmd_firewall_del_ipv4_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t pipeline_id;
+	cmdline_fixed_string_t firewall_string;
+	cmdline_fixed_string_t del_string;
+	cmdline_fixed_string_t ipv4_string;
+	cmdline_ipaddr_t src_ip;
+	uint32_t src_ip_mask;
+	cmdline_ipaddr_t dst_ip;
+	uint32_t dst_ip_mask;
+	uint16_t src_port_from;
+	uint16_t src_port_to;
+	uint16_t dst_port_from;
+	uint16_t dst_port_to;
+	uint8_t proto;
+	uint8_t proto_mask;
+};
+
+static void
+cmd_firewall_del_ipv4_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	void *data)
+{
+	struct cmd_firewall_del_ipv4_result *params = parsed_result;
+	struct app_params *app = data;
+	struct pipeline_firewall_key key;
+	int status;
+
+	key.type = PIPELINE_FIREWALL_IPV4_5TUPLE;
+	key.key.ipv4_5tuple.src_ip = rte_bswap32(
+		(uint32_t) params->src_ip.addr.ipv4.s_addr);
+	key.key.ipv4_5tuple.src_ip_mask = params->src_ip_mask;
+	key.key.ipv4_5tuple.dst_ip = rte_bswap32(
+		(uint32_t) params->dst_ip.addr.ipv4.s_addr);
+	key.key.ipv4_5tuple.dst_ip_mask = params->dst_ip_mask;
+	key.key.ipv4_5tuple.src_port_from = params->src_port_from;
+	key.key.ipv4_5tuple.src_port_to = params->src_port_to;
+	key.key.ipv4_5tuple.dst_port_from = params->dst_port_from;
+	key.key.ipv4_5tuple.dst_port_to = params->dst_port_to;
+	key.key.ipv4_5tuple.proto = params->proto;
+	key.key.ipv4_5tuple.proto_mask = params->proto_mask;
+
+	status = app_pipeline_firewall_delete_rule(app,
+		params->pipeline_id,
+		&key);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+cmdline_parse_token_string_t cmd_firewall_del_ipv4_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_ipv4_result, p_string,
+		"p");
+
+cmdline_parse_token_num_t cmd_firewall_del_ipv4_pipeline_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_del_ipv4_result, pipeline_id,
+		UINT32);
+
+cmdline_parse_token_string_t cmd_firewall_del_ipv4_firewall_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_ipv4_result,
+		firewall_string, "firewall");
+
+cmdline_parse_token_string_t cmd_firewall_del_ipv4_del_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_ipv4_result,
+		del_string, "del");
+
+cmdline_parse_token_string_t cmd_firewall_del_ipv4_ipv4_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_ipv4_result,
+		ipv4_string, "ipv4");
+
+cmdline_parse_token_ipaddr_t cmd_firewall_del_ipv4_src_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_firewall_del_ipv4_result, src_ip);
+
+cmdline_parse_token_num_t cmd_firewall_del_ipv4_src_ip_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_del_ipv4_result, src_ip_mask,
+		UINT32);
+
+cmdline_parse_token_ipaddr_t cmd_firewall_del_ipv4_dst_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_firewall_del_ipv4_result, dst_ip);
+
+cmdline_parse_token_num_t cmd_firewall_del_ipv4_dst_ip_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_del_ipv4_result, dst_ip_mask,
+		UINT32);
+
+cmdline_parse_token_num_t cmd_firewall_del_ipv4_src_port_from =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_del_ipv4_result,
+		src_port_from, UINT16);
+
+cmdline_parse_token_num_t cmd_firewall_del_ipv4_src_port_to =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_del_ipv4_result, src_port_to,
+		UINT16);
+
+cmdline_parse_token_num_t cmd_firewall_del_ipv4_dst_port_from =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_del_ipv4_result,
+		dst_port_from, UINT16);
+
+cmdline_parse_token_num_t cmd_firewall_del_ipv4_dst_port_to =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_del_ipv4_result,
+		dst_port_to, UINT16);
+
+cmdline_parse_token_num_t cmd_firewall_del_ipv4_proto =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_del_ipv4_result,
+		proto, UINT8);
+
+cmdline_parse_token_num_t cmd_firewall_del_ipv4_proto_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_del_ipv4_result, proto_mask,
+		UINT8);
+
+cmdline_parse_inst_t cmd_firewall_del_ipv4 = {
+	.f = cmd_firewall_del_ipv4_parsed,
+	.data = NULL,
+	.help_str = "Firewall rule delete",
+	.tokens = {
+		(void *) &cmd_firewall_del_ipv4_p_string,
+		(void *) &cmd_firewall_del_ipv4_pipeline_id,
+		(void *) &cmd_firewall_del_ipv4_firewall_string,
+		(void *) &cmd_firewall_del_ipv4_del_string,
+		(void *) &cmd_firewall_del_ipv4_ipv4_string,
+		(void *) &cmd_firewall_del_ipv4_src_ip,
+		(void *) &cmd_firewall_del_ipv4_src_ip_mask,
+		(void *) &cmd_firewall_del_ipv4_dst_ip,
+		(void *) &cmd_firewall_del_ipv4_dst_ip_mask,
+		(void *) &cmd_firewall_del_ipv4_src_port_from,
+		(void *) &cmd_firewall_del_ipv4_src_port_to,
+		(void *) &cmd_firewall_del_ipv4_dst_port_from,
+		(void *) &cmd_firewall_del_ipv4_dst_port_to,
+		(void *) &cmd_firewall_del_ipv4_proto,
+		(void *) &cmd_firewall_del_ipv4_proto_mask,
+		NULL,
+	},
+};
+
+/*
+ * p firewall add default
+ */
+struct cmd_firewall_add_default_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t pipeline_id;
+	cmdline_fixed_string_t firewall_string;
+	cmdline_fixed_string_t add_string;
+	cmdline_fixed_string_t default_string;
+	uint8_t port_id;
+};
+
+static void
+cmd_firewall_add_default_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	void *data)
+{
+	struct cmd_firewall_add_default_result *params = parsed_result;
+	struct app_params *app = data;
+	int status;
+
+	status = app_pipeline_firewall_add_default_rule(app,
+		params->pipeline_id,
+		params->port_id);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+cmdline_parse_token_string_t cmd_firewall_add_default_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_default_result,
+		p_string, "p");
+
+cmdline_parse_token_num_t cmd_firewall_add_default_pipeline_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_default_result,
+		pipeline_id, UINT32);
+
+cmdline_parse_token_string_t cmd_firewall_add_default_firewall_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_default_result,
+	firewall_string, "firewall");
+
+cmdline_parse_token_string_t cmd_firewall_add_default_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_default_result,
+	add_string, "add");
+
+cmdline_parse_token_string_t cmd_firewall_add_default_default_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_default_result,
+		default_string, "default");
+
+cmdline_parse_token_num_t cmd_firewall_add_default_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_default_result, port_id,
+		UINT8);
+
+cmdline_parse_inst_t cmd_firewall_add_default = {
+	.f = cmd_firewall_add_default_parsed,
+	.data = NULL,
+	.help_str = "Firewall default rule add",
+	.tokens = {
+		(void *) &cmd_firewall_add_default_p_string,
+		(void *) &cmd_firewall_add_default_pipeline_id,
+		(void *) &cmd_firewall_add_default_firewall_string,
+		(void *) &cmd_firewall_add_default_add_string,
+		(void *) &cmd_firewall_add_default_default_string,
+		(void *) &cmd_firewall_add_default_port_id,
+		NULL,
+	},
+};
+
+/*
+ * p firewall del default
+ */
+struct cmd_firewall_del_default_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t pipeline_id;
+	cmdline_fixed_string_t firewall_string;
+	cmdline_fixed_string_t del_string;
+	cmdline_fixed_string_t default_string;
+};
+
+static void
+cmd_firewall_del_default_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	void *data)
+{
+	struct cmd_firewall_del_default_result *params = parsed_result;
+	struct app_params *app = data;
+	int status;
+
+	status = app_pipeline_firewall_delete_default_rule(app,
+		params->pipeline_id);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+cmdline_parse_token_string_t cmd_firewall_del_default_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_default_result,
+		p_string, "p");
+
+cmdline_parse_token_num_t cmd_firewall_del_default_pipeline_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_del_default_result,
+		pipeline_id, UINT32);
+
+cmdline_parse_token_string_t cmd_firewall_del_default_firewall_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_default_result,
+	firewall_string, "firewall");
+
+cmdline_parse_token_string_t cmd_firewall_del_default_del_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_default_result,
+		del_string, "del");
+
+cmdline_parse_token_string_t cmd_firewall_del_default_default_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_default_result,
+		default_string, "default");
+
+cmdline_parse_inst_t cmd_firewall_del_default = {
+	.f = cmd_firewall_del_default_parsed,
+	.data = NULL,
+	.help_str = "Firewall default rule delete",
+	.tokens = {
+		(void *) &cmd_firewall_del_default_p_string,
+		(void *) &cmd_firewall_del_default_pipeline_id,
+		(void *) &cmd_firewall_del_default_firewall_string,
+		(void *) &cmd_firewall_del_default_del_string,
+		(void *) &cmd_firewall_del_default_default_string,
+		NULL,
+	},
+};
+
+/*
+ * p firewall ls
+ */
+
+struct cmd_firewall_ls_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t pipeline_id;
+	cmdline_fixed_string_t firewall_string;
+	cmdline_fixed_string_t ls_string;
+};
+
+static void
+cmd_firewall_ls_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	void *data)
+{
+	struct cmd_firewall_ls_result *params = parsed_result;
+	struct app_params *app = data;
+
+	app_pipeline_firewall_ls(app, params->pipeline_id);
+}
+
+cmdline_parse_token_string_t cmd_firewall_ls_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_ls_result, p_string,
+		"p");
+
+cmdline_parse_token_num_t cmd_firewall_ls_pipeline_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_ls_result, pipeline_id,
+		UINT32);
+
+cmdline_parse_token_string_t cmd_firewall_ls_firewall_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_ls_result,
+	firewall_string, "firewall");
+
+cmdline_parse_token_string_t cmd_firewall_ls_ls_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_ls_result, ls_string,
+	"ls");
+
+cmdline_parse_inst_t cmd_firewall_ls = {
+	.f = cmd_firewall_ls_parsed,
+	.data = NULL,
+	.help_str = "Firewall rule list",
+	.tokens = {
+		(void *) &cmd_firewall_ls_p_string,
+		(void *) &cmd_firewall_ls_pipeline_id,
+		(void *) &cmd_firewall_ls_firewall_string,
+		(void *) &cmd_firewall_ls_ls_string,
+		NULL,
+	},
+};
+
+static cmdline_parse_ctx_t pipeline_cmds[] = {
+	(cmdline_parse_inst_t *) &cmd_firewall_add_ipv4,
+	(cmdline_parse_inst_t *) &cmd_firewall_del_ipv4,
+	(cmdline_parse_inst_t *) &cmd_firewall_add_default,
+	(cmdline_parse_inst_t *) &cmd_firewall_del_default,
+	(cmdline_parse_inst_t *) &cmd_firewall_ls,
+	NULL,
+};
+
+static struct pipeline_fe_ops pipeline_firewall_fe_ops = {
+	.f_init = app_pipeline_firewall_init,
+	.f_free = app_pipeline_firewall_free,
+	.cmds = pipeline_cmds,
+};
+
+struct pipeline_type pipeline_firewall = {
+	.name = "FIREWALL",
+	.be_ops = &pipeline_firewall_be_ops,
+	.fe_ops = &pipeline_firewall_fe_ops,
+};

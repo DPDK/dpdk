@@ -62,6 +62,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_master_be.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_master.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_passthrough_be.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_passthrough.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_firewall_be.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_firewall.c
 
 CFLAGS += -I$(SRCDIR) -I$(SRCDIR)/pipeline
 CFLAGS += -O3
