@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -252,6 +252,15 @@ static const struct eth_dev_ops ops = {
 	.mac_addr_add = eth_mac_addr_add,
 };
 
+static struct eth_driver rte_ring_pmd = {
+	.pci_drv = {
+		.name = "rte_ring_pmd",
+		.drv_flags = RTE_PCI_DRV_DETACHABLE,
+	},
+};
+
+static struct rte_pci_id id_table;
+
 int
 rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		const unsigned nb_rx_queues,
@@ -263,8 +272,6 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	struct rte_pci_device *pci_dev = NULL;
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
-	struct eth_driver *eth_drv = NULL;
-	struct rte_pci_id *id_table = NULL;
 
 	unsigned i;
 
@@ -288,10 +295,6 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	if (pci_dev == NULL)
 		goto error;
 
-	id_table = rte_zmalloc_socket(name, sizeof(*id_table), 0, numa_node);
-	if (id_table == NULL)
-		goto error;
-
 	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, numa_node);
 	if (internals == NULL)
 		goto error;
@@ -301,9 +304,6 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	if (eth_dev == NULL)
 		goto error;
 
-	eth_drv = rte_zmalloc_socket(name, sizeof(*eth_drv), 0, numa_node);
-	if (eth_drv == NULL)
-		goto error;
 
 	/* now put it all together
 	 * - store queue data in internals,
@@ -323,21 +323,22 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		internals->tx_ring_queues[i].rng = tx_queues[i];
 	}
 
-	eth_drv->pci_drv.name = ring_ethdev_driver_name;
-	eth_drv->pci_drv.id_table = id_table;
+	rte_ring_pmd.pci_drv.name = ring_ethdev_driver_name;
+	rte_ring_pmd.pci_drv.id_table = &id_table;
 
 	pci_dev->numa_node = numa_node;
-	pci_dev->driver = &eth_drv->pci_drv;
+	pci_dev->driver = &rte_ring_pmd.pci_drv;
 
 	data->dev_private = internals;
 	data->port_id = eth_dev->data->port_id;
+	memmove(data->name, eth_dev->data->name, sizeof(data->name));
 	data->nb_rx_queues = (uint16_t)nb_rx_queues;
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &internals->address;
 
 	eth_dev->data = data;
-	eth_dev->driver = eth_drv;
+	eth_dev->driver = &rte_ring_pmd;
 	eth_dev->dev_ops = &ops;
 	eth_dev->pci_dev = pci_dev;
 	TAILQ_INIT(&(eth_dev->link_intr_cbs));
@@ -532,20 +533,37 @@ rte_pmd_ring_devinit(const char *name, const char *params)
 
 	RTE_LOG(INFO, PMD, "Initializing pmd_ring for %s\n", name);
 
-	if (params == NULL || params[0] == '\0')
-		eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
+	if (params == NULL || params[0] == '\0') {
+		ret = eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
+		if (ret == -1) {
+			RTE_LOG(INFO, PMD,
+				"Attach to pmd_ring for %s\n", name);
+			ret = eth_dev_ring_create(name, rte_socket_id(),
+						  DEV_ATTACH);
+		}
+	}
 	else {
 		kvlist = rte_kvargs_parse(params, valid_arguments);
 
 		if (!kvlist) {
 			RTE_LOG(INFO, PMD, "Ignoring unsupported parameters when creating"
 					" rings-backed ethernet device\n");
-			eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
-			return 0;
+			ret = eth_dev_ring_create(name, rte_socket_id(),
+						  DEV_CREATE);
+			if (ret == -1) {
+				RTE_LOG(INFO, PMD,
+					"Attach to pmd_ring for %s\n",
+					name);
+				ret = eth_dev_ring_create(name, rte_socket_id(),
+							  DEV_ATTACH);
+			}
+			return ret;
 		} else {
 			ret = rte_kvargs_count(kvlist, ETH_RING_NUMA_NODE_ACTION_ARG);
-			info = rte_zmalloc("struct node_action_list", sizeof(struct node_action_list) +
-					   (sizeof(struct node_action_pair) * ret), 0);
+			info = rte_zmalloc("struct node_action_list",
+					   sizeof(struct node_action_list) +
+					   (sizeof(struct node_action_pair) * ret),
+					   0);
 			if (!info)
 				goto out_free;
 
@@ -559,8 +577,18 @@ rte_pmd_ring_devinit(const char *name, const char *params)
 				goto out_free;
 
 			for (info->count = 0; info->count < info->total; info->count++) {
-				eth_dev_ring_create(name, info->list[info->count].node,
-						    info->list[info->count].action);
+				ret = eth_dev_ring_create(name,
+							  info->list[info->count].node,
+							  info->list[info->count].action);
+				if ((ret == -1) &&
+				    (info->list[info->count].action == DEV_CREATE)) {
+					RTE_LOG(INFO, PMD,
+						"Attach to pmd_ring for %s\n",
+						name);
+					ret = eth_dev_ring_create(name,
+							info->list[info->count].node,
+							DEV_ATTACH);
+				}
 			}
 		}
 	}
@@ -571,10 +599,35 @@ out_free:
 	return ret;
 }
 
+static int
+rte_pmd_ring_devuninit(const char *name)
+{
+	struct rte_eth_dev *eth_dev = NULL;
+
+	RTE_LOG(INFO, PMD, "Un-Initializing pmd_ring for %s\n", name);
+
+	if (name == NULL)
+		return -EINVAL;
+
+	/* find an ethdev entry */
+	eth_dev = rte_eth_dev_allocated(name);
+	if (eth_dev == NULL)
+		return -ENODEV;
+
+	eth_dev_stop(eth_dev);
+	rte_free(eth_dev->data->dev_private);
+	rte_free(eth_dev->data);
+	rte_free(eth_dev->pci_dev);
+
+	rte_eth_dev_release_port(eth_dev);
+	return 0;
+}
+
 static struct rte_driver pmd_ring_drv = {
 	.name = "eth_ring",
 	.type = PMD_VDEV,
 	.init = rte_pmd_ring_devinit,
+	.uninit = rte_pmd_ring_devuninit,
 };
 
 PMD_REGISTER_DRIVER(pmd_ring_drv);
