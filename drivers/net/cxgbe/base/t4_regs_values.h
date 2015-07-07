@@ -68,6 +68,7 @@
  * Egress Context field values
  */
 #define X_FETCHBURSTMIN_64B		2
+#define X_FETCHBURSTMIN_128B		3
 #define X_FETCHBURSTMAX_256B		2
 #define X_FETCHBURSTMAX_512B		3
 

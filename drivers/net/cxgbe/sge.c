@@ -74,7 +74,7 @@ static inline void ship_tx_pkt_coalesce_wr(struct adapter *adap,
 /*
  * Max number of Rx buffers we replenish at a time.
  */
-#define MAX_RX_REFILL 16U
+#define MAX_RX_REFILL 64U
 
 #define NOMEM_TMR_IDX (SGE_NTIMERS - 1)
 
@@ -238,39 +238,6 @@ static inline bool fl_starving(const struct adapter *adapter,
 	return fl->avail - fl->pend_cred <= s->fl_starve_thres;
 }
 
-static inline unsigned int get_buf_size(struct adapter *adapter,
-					const struct rx_sw_desc *d)
-{
-	struct sge *s = &adapter->sge;
-	unsigned int rx_buf_size_idx = d->dma_addr & RX_BUF_SIZE;
-	unsigned int buf_size;
-
-	switch (rx_buf_size_idx) {
-	case RX_SMALL_PG_BUF:
-		buf_size = PAGE_SIZE;
-		break;
-
-	case RX_LARGE_PG_BUF:
-		buf_size = PAGE_SIZE << s->fl_pg_order;
-		break;
-
-	case RX_SMALL_MTU_BUF:
-		buf_size = FL_MTU_SMALL_BUFSIZE(adapter);
-		break;
-
-	case RX_LARGE_MTU_BUF:
-		buf_size = FL_MTU_LARGE_BUFSIZE(adapter);
-		break;
-
-	default:
-		BUG_ON(1);
-		buf_size = 0; /* deal with bogus compiler warnings */
-		/* NOTREACHED */
-	}
-
-	return buf_size;
-}
-
 /**
  * free_rx_bufs - free the Rx buffers on an SGE free list
  * @q: the SGE free list to free buffers from
@@ -319,7 +286,8 @@ static void unmap_rx_buf(struct sge_fl *q)
 
 static inline void ring_fl_db(struct adapter *adap, struct sge_fl *q)
 {
-	if (q->pend_cred >= 8) {
+	/* see if we have exceeded q->size / 4 */
+	if (q->pend_cred >= (q->size / 4)) {
 		u32 val = adap->params.arch.sge_fl_db;
 
 		if (is_t4(adap->params.chip))
@@ -356,15 +324,6 @@ static inline void ring_fl_db(struct adapter *adap, struct sge_fl *q)
 	}
 }
 
-static inline struct rte_mbuf *cxgbe_rxmbuf_alloc(struct rte_mempool *mp)
-{
-	struct rte_mbuf *m;
-
-	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check_raw(m, 0);
-	return m;
-}
-
 static inline void set_rx_sw_desc(struct rx_sw_desc *sd, void *buf,
 				  dma_addr_t mapping)
 {
@@ -393,9 +352,20 @@ static unsigned int refill_fl_usembufs(struct adapter *adap, struct sge_fl *q,
 	__be64 *d = &q->desc[q->pidx];
 	struct rx_sw_desc *sd = &q->sdesc[q->pidx];
 	unsigned int buf_size_idx = RX_SMALL_MTU_BUF;
+	struct rte_mbuf *buf_bulk[n];
+	int ret, i;
 
-	while (n--) {
-		struct rte_mbuf *mbuf = cxgbe_rxmbuf_alloc(rxq->rspq.mb_pool);
+	ret = rte_mempool_get_bulk(rxq->rspq.mb_pool, (void *)buf_bulk, n);
+	if (unlikely(ret != 0)) {
+		dev_debug(adap, "%s: failed to allocated fl entries in bulk ..\n",
+			  __func__);
+		q->alloc_failed++;
+		rxq->rspq.eth_dev->data->rx_mbuf_alloc_failed++;
+		goto out;
+	}
+
+	for (i = 0; i < n; i++) {
+		struct rte_mbuf *mbuf = buf_bulk[i];
 		dma_addr_t mapping;
 
 		if (!mbuf) {
@@ -405,11 +375,13 @@ static unsigned int refill_fl_usembufs(struct adapter *adap, struct sge_fl *q,
 			goto out;
 		}
 
+		rte_mbuf_refcnt_set(mbuf, 1);
 		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 		mbuf->next = NULL;
+		mbuf->nb_segs = 1;
+		mbuf->port = rxq->rspq.port_id;
 
 		mapping = (dma_addr_t)(mbuf->buf_physaddr + mbuf->data_off);
-
 		mapping |= buf_size_idx;
 		*d++ = cpu_to_be64(mapping);
 		set_rx_sw_desc(sd, mbuf, mapping);
@@ -668,6 +640,7 @@ static void write_sgl(struct rte_mbuf *mbuf, struct sge_txq *q,
 	((head) >= (tail) ? (head) - (tail) : (wrap) - (tail) + (head))
 
 #define Q_IDXDIFF(q, idx) IDXDIFF((q)->pidx, (q)->idx, (q)->size)
+#define R_IDXDIFF(q, idx) IDXDIFF((q)->cidx, (q)->idx, (q)->size)
 
 /**
  * ring_tx_db - ring a Tx queue's doorbell
@@ -1354,31 +1327,6 @@ int t4_ethrx_handler(struct sge_rspq *q, const __be64 *rsp,
 }
 
 /**
- * restore_rx_bufs - put back a packet's Rx buffers
- * @q: the SGE free list
- * @frags: number of FL buffers to restore
- *
- * Puts back on an FL the Rx buffers.  The buffers have already been
- * unmapped and are left unmapped, we mark them so to prevent further
- * unmapping attempts.
- *
- * This function undoes a series of @unmap_rx_buf calls when we find out
- * that the current packet can't be processed right away afterall and we
- * need to come back to it later.  This is a very rare event and there's
- * no effort to make this particularly efficient.
- */
-static void restore_rx_bufs(struct sge_fl *q, int frags)
-{
-	while (frags--) {
-		if (q->cidx == 0)
-			q->cidx = q->size - 1;
-		else
-			q->cidx--;
-		q->avail++;
-	}
-}
-
-/**
  * is_new_response - check if a response is newly written
  * @r: the response descriptor
  * @q: the response queue
@@ -1431,7 +1379,6 @@ static int process_responses(struct sge_rspq *q, int budget,
 	int budget_left = budget;
 	const struct rsp_ctrl *rc;
 	struct sge_eth_rxq *rxq = container_of(q, struct sge_eth_rxq, rspq);
-	struct adapter *adapter = q->adapter;
 
 	while (likely(budget_left)) {
 		rc = (const struct rsp_ctrl *)
@@ -1447,63 +1394,46 @@ static int process_responses(struct sge_rspq *q, int budget,
 		rsp_type = G_RSPD_TYPE(rc->u.type_gen);
 
 		if (likely(rsp_type == X_RSPD_TYPE_FLBUF)) {
-			struct pkt_gl si;
-			const struct rx_sw_desc *rsd;
-			struct rte_mbuf *pkt = NULL;
-			u32 len = ntohl(rc->pldbuflen_qid), bufsz, frags;
+			const struct rx_sw_desc *rsd =
+						&rxq->fl.sdesc[rxq->fl.cidx];
+			const struct rss_header *rss_hdr =
+						(const void *)q->cur_desc;
+			const struct cpl_rx_pkt *cpl =
+						(const void *)&q->cur_desc[1];
+			bool csum_ok = cpl->csum_calc && !cpl->err_vec;
+			struct rte_mbuf *pkt;
+			u32 len = ntohl(rc->pldbuflen_qid);
 
-			si.usembufs = rxq->usembufs;
-			/*
-			 * In "use mbufs" mode, we don't pack multiple
-			 * ingress packets per buffer (mbuf) so we
-			 * should _always_ get a "New Buffer" flags
-			 * from the SGE.  Also, since we hand the
-			 * mbuf's up to the host stack for it to
-			 * eventually free, we don't release the mbuf's
-			 * in the driver (in contrast to the "packed
-			 * page" mode where the driver needs to
-			 * release its reference on the page buffers).
-			 */
 			BUG_ON(!(len & F_RSPD_NEWBUF));
-			len = G_RSPD_LEN(len);
-			si.tot_len = len;
+			pkt = rsd->buf;
+			pkt->data_len = G_RSPD_LEN(len);
+			pkt->pkt_len = pkt->data_len;
+			unmap_rx_buf(&rxq->fl);
 
-			/* gather packet fragments */
-			for (frags = 0; len; frags++) {
-				rsd = &rxq->fl.sdesc[rxq->fl.cidx];
-				bufsz = min(get_buf_size(adapter, rsd),	len);
-				pkt = rsd->buf;
-				pkt->data_len = bufsz;
-				pkt->pkt_len = bufsz;
-				si.mbufs[frags] = pkt;
-				len -= bufsz;
-				unmap_rx_buf(&rxq->fl);
+			if (cpl->l2info & htonl(F_RXF_IP)) {
+				pkt->ol_flags |= PKT_RX_IPV4_HDR;
+				if (unlikely(!csum_ok))
+					pkt->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+
+				if ((cpl->l2info &
+				     htonl(F_RXF_UDP | F_RXF_TCP)) && !csum_ok)
+					pkt->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+			} else if (cpl->l2info & htonl(F_RXF_IP6)) {
+				pkt->ol_flags |= PKT_RX_IPV6_HDR;
 			}
 
-			si.va = RTE_PTR_ADD(si.mbufs[0]->buf_addr,
-					    si.mbufs[0]->data_off);
-			rte_prefetch1(si.va);
-
-			/*
-			 * For the "use mbuf" case here, we can end up
-			 * chewing through our Free List very rapidly
-			 * with one entry per Ingress packet getting
-			 * consumed.  So if the handler() successfully
-			 * consumed the mbuf, check to see if we can
-			 * refill the Free List incrementally in the
-			 * loop ...
-			 */
-			si.nfrags = frags;
-			ret = q->handler(q, q->cur_desc, &si);
-
-			if (unlikely(ret != 0)) {
-				restore_rx_bufs(&rxq->fl, frags);
-			} else {
-				rx_pkts[budget - budget_left] = pkt;
-				if (fl_cap(&rxq->fl) - rxq->fl.avail >= 8)
-					__refill_fl(q->adapter, &rxq->fl);
+			if (!rss_hdr->filter_tid && rss_hdr->hash_type) {
+				pkt->ol_flags |= PKT_RX_RSS_HASH;
+				pkt->hash.rss = ntohl(rss_hdr->hash_val);
 			}
 
+			if (cpl->vlan_ex) {
+				pkt->ol_flags |= PKT_RX_VLAN_PKT;
+				pkt->vlan_tci = ntohs(cpl->vlan);
+			}
+			rxq->stats.pkts++;
+			rxq->stats.rx_bytes += pkt->pkt_len;
+			rx_pkts[budget - budget_left] = pkt;
 		} else if (likely(rsp_type == X_RSPD_TYPE_CPL)) {
 			ret = q->handler(q, q->cur_desc, NULL);
 		} else {
@@ -1518,6 +1448,34 @@ static int process_responses(struct sge_rspq *q, int budget,
 
 		rspq_next(q);
 		budget_left--;
+
+		if (R_IDXDIFF(q, gts_idx) >= 64) {
+			unsigned int cidx_inc = R_IDXDIFF(q, gts_idx);
+			unsigned int params;
+			u32 val;
+
+			__refill_fl(q->adapter, &rxq->fl);
+			params = V_QINTR_TIMER_IDX(X_TIMERREG_UPDATE_CIDX);
+			q->next_intr_params = params;
+			val = V_CIDXINC(cidx_inc) | V_SEINTARM(params);
+
+			if (unlikely(!q->bar2_addr))
+				t4_write_reg(q->adapter, MYPF_REG(A_SGE_PF_GTS),
+					     val |
+					     V_INGRESSQID((u32)q->cntxt_id));
+			else {
+				writel(val | V_INGRESSQID(q->bar2_qid),
+				       (void *)((uintptr_t)q->bar2_addr +
+				       SGE_UDB_GTS));
+				/*
+				 * This Write memory Barrier will force the
+				 * write to the User Doorbell area to be
+				 * flushed.
+				 */
+				wmb();
+			}
+			q->gts_idx = q->cidx;
+		}
 	}
 
 	/*
@@ -1526,7 +1484,7 @@ static int process_responses(struct sge_rspq *q, int budget,
 	 * refill the Free List.
 	 */
 
-	if (q->offset >= 0 && fl_cap(&rxq->fl) - rxq->fl.avail >= 8)
+	if (q->offset >= 0 && fl_cap(&rxq->fl) - rxq->fl.avail >= 64)
 		__refill_fl(q->adapter, &rxq->fl);
 
 	return budget - budget_left;
@@ -1535,36 +1493,9 @@ static int process_responses(struct sge_rspq *q, int budget,
 int cxgbe_poll(struct sge_rspq *q, struct rte_mbuf **rx_pkts,
 	       unsigned int budget, unsigned int *work_done)
 {
-	unsigned int params;
-	u32 val;
 	int err = 0;
 
 	*work_done = process_responses(q, budget, rx_pkts);
-	params = V_QINTR_TIMER_IDX(X_TIMERREG_UPDATE_CIDX);
-	q->next_intr_params = params;
-	val = V_CIDXINC(*work_done) | V_SEINTARM(params);
-
-	if (*work_done) {
-		/*
-		 * If we don't have access to the new User GTS (T5+),
-		 * use the old doorbell mechanism; otherwise use the new
-		 * BAR2 mechanism.
-		 */
-		if (unlikely(!q->bar2_addr))
-			t4_write_reg(q->adapter, MYPF_REG(A_SGE_PF_GTS),
-				     val | V_INGRESSQID((u32)q->cntxt_id));
-		else {
-			writel(val | V_INGRESSQID(q->bar2_qid),
-			       (void *)((uintptr_t)q->bar2_addr +
-			       SGE_UDB_GTS));
-			/*
-			 * This Write memory Barrier will force the write to
-			 * the User Doorbell area to be flushed.
-			 */
-			wmb();
-		}
-	}
-
 	return err;
 }
 
@@ -1717,7 +1648,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 		 * Hence maximum allowed burst size will be 448 bytes.
 		 */
 		c.fl0dcaen_to_fl0cidxfthresh =
-			htons(V_FW_IQ_CMD_FL0FBMIN(X_FETCHBURSTMIN_64B) |
+			htons(V_FW_IQ_CMD_FL0FBMIN(X_FETCHBURSTMIN_128B) |
 			      V_FW_IQ_CMD_FL0FBMAX((chip <= CHELSIO_T5) ?
 			      X_FETCHBURSTMAX_512B : X_FETCHBURSTMAX_256B));
 		c.fl0size = htons(flsz);
@@ -1730,6 +1661,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 
 	iq->cur_desc = iq->desc;
 	iq->cidx = 0;
+	iq->gts_idx = 0;
 	iq->gen = 1;
 	iq->next_intr_params = iq->intr_params;
 	iq->cntxt_id = ntohs(c.iqid);
@@ -1739,6 +1671,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	iq->size--;                           /* subtract status entry */
 	iq->eth_dev = eth_dev;
 	iq->handler = hnd;
+	iq->port_id = pi->port_id;
 	iq->mb_pool = mp;
 
 	/* set offset to -1 to distinguish ingress queues without FL */

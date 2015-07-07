@@ -149,6 +149,7 @@ struct sge_rspq {                   /* state for an SGE response queue */
 	unsigned int bar2_qid;      /* Queue ID for BAR2 Queue registers */
 
 	unsigned int cidx;          /* consumer index */
+	unsigned int gts_idx;	    /* last gts write sent */
 	unsigned int iqe_len;       /* entry size */
 	unsigned int size;          /* capacity of response queue */
 	int offset;                 /* offset into current Rx buffer */
@@ -157,6 +158,7 @@ struct sge_rspq {                   /* state for an SGE response queue */
 	u8 intr_params;             /* interrupt holdoff parameters */
 	u8 next_intr_params;        /* holdoff params for next interrupt */
 	u8 pktcnt_idx;              /* interrupt packet threshold */
+	u8 port_id;		    /* associated port-id */
 	u8 idx;                     /* queue index within its group */
 	u16 cntxt_id;               /* SGE relative QID for the response Q */
 	u16 abs_id;                 /* absolute SGE id for the response q */
