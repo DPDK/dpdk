@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -31,444 +31,1515 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include <cmdline_parse.h>
+#include <cmdline_parse_num.h>
+#include <cmdline_parse_string.h>
+#include <cmdline_parse_ipaddr.h>
+#include <cmdline_parse_etheraddr.h>
 
-#include <rte_malloc.h>
-#include <rte_log.h>
-#include <rte_ethdev.h>
-#include <rte_ether.h>
-#include <rte_ip.h>
-#include <rte_byteorder.h>
+#include "app.h"
+#include "pipeline_common_fe.h"
+#include "pipeline_routing.h"
 
-#include <rte_port_ring.h>
-#include <rte_table_lpm.h>
-#include <rte_table_hash.h>
-#include <rte_pipeline.h>
+struct app_pipeline_routing_route {
+	struct pipeline_routing_route_key key;
+	struct app_pipeline_routing_route_params params;
+	void *entry_ptr;
 
-#include "main.h"
-
-#include <unistd.h>
-
-struct app_routing_table_entry {
-	struct rte_pipeline_table_entry head;
-	uint32_t nh_ip;
-	uint32_t nh_iface;
+	TAILQ_ENTRY(app_pipeline_routing_route) node;
 };
 
-struct app_arp_table_entry {
-	struct rte_pipeline_table_entry head;
-	struct ether_addr nh_arp;
+struct app_pipeline_routing_arp_entry {
+	struct pipeline_routing_arp_key key;
+	struct ether_addr macaddr;
+	void *entry_ptr;
+
+	TAILQ_ENTRY(app_pipeline_routing_arp_entry) node;
 };
 
-static inline void
-app_routing_table_write_metadata(
-	struct rte_mbuf *pkt,
-	struct app_routing_table_entry *entry)
+struct pipeline_routing {
+	/* Parameters */
+	uint32_t n_ports_in;
+	uint32_t n_ports_out;
+
+	/* Routes */
+	TAILQ_HEAD(, app_pipeline_routing_route) routes;
+	uint32_t n_routes;
+
+	uint32_t default_route_present;
+	uint32_t default_route_port_id;
+	void *default_route_entry_ptr;
+
+	/* ARP entries */
+	TAILQ_HEAD(, app_pipeline_routing_arp_entry) arp_entries;
+	uint32_t n_arp_entries;
+
+	uint32_t default_arp_entry_present;
+	uint32_t default_arp_entry_port_id;
+	void *default_arp_entry_ptr;
+};
+
+static void *
+pipeline_routing_init(struct pipeline_params *params,
+	__rte_unused void *arg)
 {
-	struct app_pkt_metadata *c =
-		(struct app_pkt_metadata *) RTE_MBUF_METADATA_UINT8_PTR(pkt, 0);
+	struct pipeline_routing *p;
+	uint32_t size;
 
-	c->arp_key.nh_ip = entry->nh_ip;
-	c->arp_key.nh_iface = entry->nh_iface;
+	/* Check input arguments */
+	if ((params == NULL) ||
+		(params->n_ports_in == 0) ||
+		(params->n_ports_out == 0))
+		return NULL;
+
+	/* Memory allocation */
+	size = RTE_CACHE_LINE_ROUNDUP(sizeof(struct pipeline_routing));
+	p = rte_zmalloc(NULL, size, RTE_CACHE_LINE_SIZE);
+	if (p == NULL)
+		return NULL;
+
+	/* Initialization */
+	p->n_ports_in = params->n_ports_in;
+	p->n_ports_out = params->n_ports_out;
+
+	TAILQ_INIT(&p->routes);
+	p->n_routes = 0;
+
+	TAILQ_INIT(&p->arp_entries);
+	p->n_arp_entries = 0;
+
+	return p;
 }
 
 static int
-app_routing_table_ah(
-	struct rte_mbuf **pkts,
-	uint64_t *pkts_mask,
-	struct rte_pipeline_table_entry **entries,
-	__attribute__((unused)) void *arg)
+app_pipeline_routing_free(void *pipeline)
 {
-	uint64_t pkts_in_mask = *pkts_mask;
+	struct pipeline_routing *p = pipeline;
 
-	if ((pkts_in_mask & (pkts_in_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_in_mask);
-		uint32_t i;
+	/* Check input arguments */
+	if (p == NULL)
+		return -1;
 
-		for (i = 0; i < n_pkts; i++) {
-			struct rte_mbuf *m = pkts[i];
-			struct app_routing_table_entry *a =
-				(struct app_routing_table_entry *) entries[i];
+	/* Free resources */
+	while (!TAILQ_EMPTY(&p->routes)) {
+		struct app_pipeline_routing_route *route;
 
-			app_routing_table_write_metadata(m, a);
-		}
-	} else
-		for ( ; pkts_in_mask; ) {
-			struct rte_mbuf *m;
-			struct app_routing_table_entry *a;
-			uint64_t pkt_mask;
-			uint32_t packet_index;
+		route = TAILQ_FIRST(&p->routes);
+		TAILQ_REMOVE(&p->routes, route, node);
+		rte_free(route);
+	}
 
-			packet_index = __builtin_ctzll(pkts_in_mask);
-			pkt_mask = 1LLU << packet_index;
-			pkts_in_mask &= ~pkt_mask;
+	while (!TAILQ_EMPTY(&p->arp_entries)) {
+		struct app_pipeline_routing_arp_entry *arp_entry;
 
-			m = pkts[packet_index];
-			a = (struct app_routing_table_entry *)
-				entries[packet_index];
-			app_routing_table_write_metadata(m, a);
-		}
+		arp_entry = TAILQ_FIRST(&p->arp_entries);
+		TAILQ_REMOVE(&p->arp_entries, arp_entry, node);
+		rte_free(arp_entry);
+	}
 
+	rte_free(p);
 	return 0;
 }
 
-static inline void
-app_arp_table_write_metadata(
-	struct rte_mbuf *pkt,
-	struct app_arp_table_entry *entry)
+static struct app_pipeline_routing_route *
+app_pipeline_routing_find_route(struct pipeline_routing *p,
+		const struct pipeline_routing_route_key *key)
 {
-	struct app_pkt_metadata *c =
-		(struct app_pkt_metadata *) RTE_MBUF_METADATA_UINT8_PTR(pkt, 0);
-	ether_addr_copy(&entry->nh_arp, &c->nh_arp);
-}
+	struct app_pipeline_routing_route *it, *found;
 
-static int
-app_arp_table_ah(
-	struct rte_mbuf **pkts,
-	uint64_t *pkts_mask,
-	struct rte_pipeline_table_entry **entries,
-	__attribute__((unused)) void *arg)
-{
-	uint64_t pkts_in_mask = *pkts_mask;
-
-	if ((pkts_in_mask & (pkts_in_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_in_mask);
-		uint32_t i;
-
-		for (i = 0; i < n_pkts; i++) {
-			struct rte_mbuf *m = pkts[i];
-			struct app_arp_table_entry *a =
-				(struct app_arp_table_entry *) entries[i];
-
-			app_arp_table_write_metadata(m, a);
-		}
-	} else {
-		for ( ; pkts_in_mask; ) {
-			struct rte_mbuf *m;
-			struct app_arp_table_entry *a;
-			uint64_t pkt_mask;
-			uint32_t packet_index;
-
-			packet_index = __builtin_ctzll(pkts_in_mask);
-			pkt_mask = 1LLU << packet_index;
-			pkts_in_mask &= ~pkt_mask;
-
-			m = pkts[packet_index];
-			a = (struct app_arp_table_entry *)
-				entries[packet_index];
-			app_arp_table_write_metadata(m, a);
+	found = NULL;
+	TAILQ_FOREACH(it, &p->routes, node) {
+		if ((key->type == it->key.type) &&
+			(key->key.ipv4.ip == it->key.key.ipv4.ip) &&
+			(key->key.ipv4.depth == it->key.key.ipv4.depth)) {
+			found = it;
+			break;
 		}
 	}
 
+	return found;
+}
+
+static struct app_pipeline_routing_arp_entry *
+app_pipeline_routing_find_arp_entry(struct pipeline_routing *p,
+		const struct pipeline_routing_arp_key *key)
+{
+	struct app_pipeline_routing_arp_entry *it, *found;
+
+	found = NULL;
+	TAILQ_FOREACH(it, &p->arp_entries, node) {
+		if ((key->type == it->key.type) &&
+			(key->key.ipv4.port_id == it->key.key.ipv4.port_id) &&
+			(key->key.ipv4.ip == it->key.key.ipv4.ip)) {
+			found = it;
+			break;
+		}
+	}
+
+	return found;
+}
+
+static void
+print_route(const struct app_pipeline_routing_route *route)
+{
+	if (route->key.type == PIPELINE_ROUTING_ROUTE_IPV4) {
+		const struct pipeline_routing_route_key_ipv4 *key =
+				&route->key.key.ipv4;
+
+		printf("IP Prefix = %" PRIu32 ".%" PRIu32
+			".%" PRIu32 ".%" PRIu32 "/%" PRIu32 " => "
+			"(Port = %" PRIu32 ", Next Hop IP = "
+			"%" PRIu32 ".%" PRIu32 ".%" PRIu32 ".%" PRIu32 ")\n",
+			(key->ip >> 24) & 0xFF,
+			(key->ip >> 16) & 0xFF,
+			(key->ip >> 8) & 0xFF,
+			key->ip & 0xFF,
+
+			key->depth,
+			route->params.port_id,
+
+			(route->params.ip >> 24) & 0xFF,
+			(route->params.ip >> 16) & 0xFF,
+			(route->params.ip >> 8) & 0xFF,
+			route->params.ip & 0xFF);
+	}
+}
+
+static void
+print_arp_entry(const struct app_pipeline_routing_arp_entry *entry)
+{
+	printf("(Port = %" PRIu32 ", IP = %" PRIu32 ".%" PRIu32
+		".%" PRIu32 ".%" PRIu32 ") => "
+		"HWaddress = %02" PRIx32 ":%02" PRIx32 ":%02" PRIx32
+		":%02" PRIx32 ":%02" PRIx32 ":%02" PRIx32 "\n",
+		entry->key.key.ipv4.port_id,
+		(entry->key.key.ipv4.ip >> 24) & 0xFF,
+		(entry->key.key.ipv4.ip >> 16) & 0xFF,
+		(entry->key.key.ipv4.ip >> 8) & 0xFF,
+		entry->key.key.ipv4.ip & 0xFF,
+
+		entry->macaddr.addr_bytes[0],
+		entry->macaddr.addr_bytes[1],
+		entry->macaddr.addr_bytes[2],
+		entry->macaddr.addr_bytes[3],
+		entry->macaddr.addr_bytes[4],
+		entry->macaddr.addr_bytes[5]);
+}
+
+static int
+app_pipeline_routing_route_ls(struct app_params *app, uint32_t pipeline_id)
+{
+	struct pipeline_routing *p;
+	struct app_pipeline_routing_route *it;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -EINVAL;
+
+	TAILQ_FOREACH(it, &p->routes, node)
+		print_route(it);
+
+	if (p->default_route_present)
+		printf("Default route: port %" PRIu32 " (entry ptr = %p)\n",
+				p->default_route_port_id,
+				p->default_route_entry_ptr);
+	else
+		printf("Default: DROP\n");
+
 	return 0;
 }
 
-static uint64_t app_arp_table_hash(
-	void *key,
-	__attribute__((unused)) uint32_t key_size,
-	__attribute__((unused)) uint64_t seed)
+int
+app_pipeline_routing_add_route(struct app_params *app,
+	uint32_t pipeline_id,
+	struct pipeline_routing_route_key *key,
+	struct app_pipeline_routing_route_params *route_params)
 {
-	uint32_t *k = (uint32_t *) key;
+	struct pipeline_routing *p;
 
-	return k[1];
+	struct pipeline_routing_route_add_msg_req *req;
+	struct pipeline_routing_route_add_msg_rsp *rsp;
+
+	struct app_pipeline_routing_route *entry;
+
+	int new_entry;
+
+	/* Check input arguments */
+	if ((app == NULL) ||
+		(key == NULL) ||
+		(route_params == NULL))
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -1;
+
+	switch (key->type) {
+	case PIPELINE_ROUTING_ROUTE_IPV4:
+	{
+		uint32_t depth = key->key.ipv4.depth;
+		uint32_t netmask;
+
+		/* key */
+		if ((depth == 0) || (depth > 32))
+			return -1;
+
+		netmask = (~0) << (32 - depth);
+		key->key.ipv4.ip &= netmask;
+
+		/* route params */
+		if (route_params->port_id >= p->n_ports_out)
+			return -1;
+	}
+	break;
+
+	default:
+		return -1;
+	}
+
+	/* Find existing rule or allocate new rule */
+	entry = app_pipeline_routing_find_route(p, key);
+	new_entry = (entry == NULL);
+	if (entry == NULL) {
+		entry = rte_malloc(NULL, sizeof(*entry), RTE_CACHE_LINE_SIZE);
+
+		if (entry == NULL)
+			return -1;
+	}
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL) {
+		if (new_entry)
+			rte_free(entry);
+		return -1;
+	}
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_ROUTING_MSG_REQ_ROUTE_ADD;
+	memcpy(&req->key, key, sizeof(*key));
+	req->flags = route_params->flags;
+	req->port_id = route_params->port_id;
+	req->ip = route_params->ip;
+
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL) {
+		if (new_entry)
+			rte_free(entry);
+		return -1;
+	}
+
+	/* Read response and write entry */
+	if (rsp->status ||
+		(rsp->entry_ptr == NULL) ||
+		((new_entry == 0) && (rsp->key_found == 0)) ||
+		((new_entry == 1) && (rsp->key_found == 1))) {
+		app_msg_free(app, rsp);
+		if (new_entry)
+			rte_free(entry);
+		return -1;
+	}
+
+	memcpy(&entry->key, key, sizeof(*key));
+	memcpy(&entry->params, route_params, sizeof(*route_params));
+	entry->entry_ptr = rsp->entry_ptr;
+
+	/* Commit entry */
+	if (new_entry) {
+		TAILQ_INSERT_TAIL(&p->routes, entry, node);
+		p->n_routes++;
+	}
+
+	print_route(entry);
+
+	/* Message buffer free */
+	app_msg_free(app, rsp);
+	return 0;
 }
 
-struct app_core_routing_message_handle_params {
-	struct rte_ring *ring_req;
-	struct rte_ring *ring_resp;
-	struct rte_pipeline *p;
-	uint32_t *port_out_id;
-	uint32_t routing_table_id;
-	uint32_t arp_table_id;
+int
+app_pipeline_routing_delete_route(struct app_params *app,
+	uint32_t pipeline_id,
+	struct pipeline_routing_route_key *key)
+{
+	struct pipeline_routing *p;
+
+	struct pipeline_routing_route_delete_msg_req *req;
+	struct pipeline_routing_route_delete_msg_rsp *rsp;
+
+	struct app_pipeline_routing_route *entry;
+
+	/* Check input arguments */
+	if ((app == NULL) ||
+		(key == NULL))
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -1;
+
+	switch (key->type) {
+	case PIPELINE_ROUTING_ROUTE_IPV4:
+	{
+		uint32_t depth = key->key.ipv4.depth;
+		uint32_t netmask;
+
+		/* key */
+		if ((depth == 0) || (depth > 32))
+			return -1;
+
+		netmask = (~0) << (32 - depth);
+		key->key.ipv4.ip &= netmask;
+	}
+	break;
+
+	default:
+		return -1;
+	}
+
+	/* Find rule */
+	entry = app_pipeline_routing_find_route(p, key);
+	if (entry == NULL)
+		return 0;
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL)
+		return -1;
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_ROUTING_MSG_REQ_ROUTE_DEL;
+	memcpy(&req->key, key, sizeof(*key));
+
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	if (rsp->status || !rsp->key_found) {
+		app_msg_free(app, rsp);
+		return -1;
+	}
+
+	/* Remove route */
+	TAILQ_REMOVE(&p->routes, entry, node);
+	p->n_routes--;
+	rte_free(entry);
+
+	/* Free response */
+	app_msg_free(app, rsp);
+
+	return 0;
+}
+
+int
+app_pipeline_routing_add_default_route(struct app_params *app,
+	uint32_t pipeline_id,
+	uint32_t port_id)
+{
+	struct pipeline_routing *p;
+
+	struct pipeline_routing_route_add_default_msg_req *req;
+	struct pipeline_routing_route_add_default_msg_rsp *rsp;
+
+	/* Check input arguments */
+	if (app == NULL)
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -1;
+
+	if (port_id >= p->n_ports_out)
+		return -1;
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL)
+		return -1;
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_ROUTING_MSG_REQ_ROUTE_ADD_DEFAULT;
+	req->port_id = port_id;
+
+	/* Send request and wait for response */
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response and write route */
+	if (rsp->status || (rsp->entry_ptr == NULL)) {
+		app_msg_free(app, rsp);
+		return -1;
+	}
+
+	p->default_route_port_id = port_id;
+	p->default_route_entry_ptr = rsp->entry_ptr;
+
+	/* Commit route */
+	p->default_route_present = 1;
+
+	/* Free response */
+	app_msg_free(app, rsp);
+
+	return 0;
+}
+
+int
+app_pipeline_routing_delete_default_route(struct app_params *app,
+	uint32_t pipeline_id)
+{
+	struct pipeline_routing *p;
+
+	struct pipeline_routing_arp_delete_default_msg_req *req;
+	struct pipeline_routing_arp_delete_default_msg_rsp *rsp;
+
+	/* Check input arguments */
+	if (app == NULL)
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -1;
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL)
+		return -1;
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_ROUTING_MSG_REQ_ROUTE_DEL_DEFAULT;
+
+	/* Send request and wait for response */
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response and write route */
+	if (rsp->status) {
+		app_msg_free(app, rsp);
+		return -1;
+	}
+
+	/* Commit route */
+	p->default_route_present = 0;
+
+	/* Free response */
+	app_msg_free(app, rsp);
+
+	return 0;
+}
+
+static int
+app_pipeline_routing_arp_ls(struct app_params *app, uint32_t pipeline_id)
+{
+	struct pipeline_routing *p;
+	struct app_pipeline_routing_arp_entry *it;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -EINVAL;
+
+	TAILQ_FOREACH(it, &p->arp_entries, node)
+		print_arp_entry(it);
+
+	if (p->default_arp_entry_present)
+		printf("Default entry: port %" PRIu32 " (entry ptr = %p)\n",
+				p->default_arp_entry_port_id,
+				p->default_arp_entry_ptr);
+	else
+		printf("Default: DROP\n");
+
+	return 0;
+}
+
+int
+app_pipeline_routing_add_arp_entry(struct app_params *app, uint32_t pipeline_id,
+		struct pipeline_routing_arp_key *key,
+		struct ether_addr *macaddr)
+{
+	struct pipeline_routing *p;
+
+	struct pipeline_routing_arp_add_msg_req *req;
+	struct pipeline_routing_arp_add_msg_rsp *rsp;
+
+	struct app_pipeline_routing_arp_entry *entry;
+
+	int new_entry;
+
+	/* Check input arguments */
+	if ((app == NULL) ||
+		(key == NULL) ||
+		(macaddr == NULL))
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -1;
+
+	switch (key->type) {
+	case PIPELINE_ROUTING_ARP_IPV4:
+	{
+		uint32_t port_id = key->key.ipv4.port_id;
+
+		/* key */
+		if (port_id >= p->n_ports_out)
+			return -1;
+	}
+	break;
+
+	default:
+		return -1;
+	}
+
+	/* Find existing entry or allocate new */
+	entry = app_pipeline_routing_find_arp_entry(p, key);
+	new_entry = (entry == NULL);
+	if (entry == NULL) {
+		entry = rte_malloc(NULL, sizeof(*entry), RTE_CACHE_LINE_SIZE);
+
+		if (entry == NULL)
+			return -1;
+	}
+
+	/* Message buffer allocation */
+	req = app_msg_alloc(app);
+	if (req == NULL) {
+		if (new_entry)
+			rte_free(entry);
+		return -1;
+	}
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_ROUTING_MSG_REQ_ARP_ADD;
+	memcpy(&req->key, key, sizeof(*key));
+	ether_addr_copy(macaddr, &req->macaddr);
+
+	/* Send request and wait for response */
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL) {
+		if (new_entry)
+			rte_free(entry);
+		return -1;
+	}
+
+	/* Read response and write entry */
+	if (rsp->status ||
+		(rsp->entry_ptr == NULL) ||
+		((new_entry == 0) && (rsp->key_found == 0)) ||
+		((new_entry == 1) && (rsp->key_found == 1))) {
+		app_msg_free(app, rsp);
+		if (new_entry)
+			rte_free(entry);
+		return -1;
+	}
+
+	memcpy(&entry->key, key, sizeof(*key));
+	ether_addr_copy(macaddr, &entry->macaddr);
+	entry->entry_ptr = rsp->entry_ptr;
+
+	/* Commit entry */
+	if (new_entry) {
+		TAILQ_INSERT_TAIL(&p->arp_entries, entry, node);
+		p->n_arp_entries++;
+	}
+
+	print_arp_entry(entry);
+
+	/* Message buffer free */
+	app_msg_free(app, rsp);
+	return 0;
+}
+
+int
+app_pipeline_routing_delete_arp_entry(struct app_params *app,
+	uint32_t pipeline_id,
+	struct pipeline_routing_arp_key *key)
+{
+	struct pipeline_routing *p;
+
+	struct pipeline_routing_arp_delete_msg_req *req;
+	struct pipeline_routing_arp_delete_msg_rsp *rsp;
+
+	struct app_pipeline_routing_arp_entry *entry;
+
+	/* Check input arguments */
+	if ((app == NULL) ||
+		(key == NULL))
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -EINVAL;
+
+	switch (key->type) {
+	case PIPELINE_ROUTING_ARP_IPV4:
+	{
+		uint32_t port_id = key->key.ipv4.port_id;
+
+		/* key */
+		if (port_id >= p->n_ports_out)
+			return -1;
+	}
+	break;
+
+	default:
+		return -1;
+	}
+
+	/* Find rule */
+	entry = app_pipeline_routing_find_arp_entry(p, key);
+	if (entry == NULL)
+		return 0;
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL)
+		return -1;
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_ROUTING_MSG_REQ_ARP_DEL;
+	memcpy(&req->key, key, sizeof(*key));
+
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	if (rsp->status || !rsp->key_found) {
+		app_msg_free(app, rsp);
+		return -1;
+	}
+
+	/* Remove entry */
+	TAILQ_REMOVE(&p->arp_entries, entry, node);
+	p->n_arp_entries--;
+	rte_free(entry);
+
+	/* Free response */
+	app_msg_free(app, rsp);
+
+	return 0;
+}
+
+int
+app_pipeline_routing_add_default_arp_entry(struct app_params *app,
+		uint32_t pipeline_id,
+		uint32_t port_id)
+{
+	struct pipeline_routing *p;
+
+	struct pipeline_routing_arp_add_default_msg_req *req;
+	struct pipeline_routing_arp_add_default_msg_rsp *rsp;
+
+	/* Check input arguments */
+	if (app == NULL)
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -1;
+
+	if (port_id >= p->n_ports_out)
+		return -1;
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL)
+		return -1;
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_ROUTING_MSG_REQ_ARP_ADD_DEFAULT;
+	req->port_id = port_id;
+
+	/* Send request and wait for response */
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response and write entry */
+	if (rsp->status || rsp->entry_ptr == NULL) {
+		app_msg_free(app, rsp);
+		return -1;
+	}
+
+	p->default_arp_entry_port_id = port_id;
+	p->default_arp_entry_ptr = rsp->entry_ptr;
+
+	/* Commit entry */
+	p->default_arp_entry_present = 1;
+
+	/* Free response */
+	app_msg_free(app, rsp);
+
+	return 0;
+}
+
+int
+app_pipeline_routing_delete_default_arp_entry(struct app_params *app,
+	uint32_t pipeline_id)
+{
+	struct pipeline_routing *p;
+
+	struct pipeline_routing_arp_delete_default_msg_req *req;
+	struct pipeline_routing_arp_delete_default_msg_rsp *rsp;
+
+	/* Check input arguments */
+	if (app == NULL)
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -EINVAL;
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL)
+		return -ENOMEM;
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_ROUTING_MSG_REQ_ARP_DEL_DEFAULT;
+
+	/* Send request and wait for response */
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL)
+		return -ETIMEDOUT;
+
+	/* Read response and write entry */
+	if (rsp->status) {
+		app_msg_free(app, rsp);
+		return rsp->status;
+	}
+
+	/* Commit entry */
+	p->default_arp_entry_present = 0;
+
+	/* Free response */
+	app_msg_free(app, rsp);
+
+	return 0;
+}
+
+/*
+ * route add
+ */
+
+struct cmd_route_add_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t route_string;
+	cmdline_fixed_string_t add_string;
+	cmdline_ipaddr_t ip;
+	uint32_t depth;
+	uint32_t port;
+	cmdline_ipaddr_t nh_ip;
 };
 
 static void
-app_message_handle(struct app_core_routing_message_handle_params *params);
+cmd_route_add_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_route_add_result *params = parsed_result;
+	struct app_params *app = data;
+	struct pipeline_routing_route_key key;
+	struct app_pipeline_routing_route_params rt_params;
+	int status;
 
-void
-app_main_loop_pipeline_routing(void) {
-	struct rte_pipeline_params pipeline_params = {
-		.name = "pipeline",
-		.socket_id = rte_socket_id(),
-	};
+	/* Create route */
+	key.type = PIPELINE_ROUTING_ROUTE_IPV4;
+	key.key.ipv4.ip = rte_bswap32((uint32_t) params->ip.addr.ipv4.s_addr);
+	key.key.ipv4.depth = params->depth;
 
-	struct rte_pipeline *p;
-	uint32_t port_in_id[APP_MAX_PORTS];
-	uint32_t port_out_id[APP_MAX_PORTS];
-	uint32_t routing_table_id, arp_table_id;
-	uint32_t i;
+	rt_params.flags = 0; /* remote route */
+	rt_params.port_id = params->port;
+	rt_params.ip = rte_bswap32((uint32_t) params->nh_ip.addr.ipv4.s_addr);
 
-	uint32_t core_id = rte_lcore_id();
-	struct app_core_params *core_params = app_get_core_params(core_id);
-	struct app_core_routing_message_handle_params mh_params;
+	status = app_pipeline_routing_add_route(app,
+		params->p,
+		&key,
+		&rt_params);
 
-	if ((core_params == NULL) || (core_params->core_type != APP_CORE_RT))
-		rte_panic("Core %u misconfiguration\n", core_id);
-
-	RTE_LOG(INFO, USER1, "Core %u is doing routing\n", core_id);
-
-	/* Pipeline configuration */
-	p = rte_pipeline_create(&pipeline_params);
-	if (p == NULL)
-		rte_panic("Unable to configure the pipeline\n");
-
-	/* Input port configuration */
-	for (i = 0; i < app.n_ports; i++) {
-		struct rte_port_ring_reader_params port_ring_params = {
-			.ring = app.rings[core_params->swq_in[i]],
-		};
-
-		struct rte_pipeline_port_in_params port_params = {
-			.ops = &rte_port_ring_reader_ops,
-			.arg_create = (void *) &port_ring_params,
-			.f_action = NULL,
-			.arg_ah = NULL,
-			.burst_size = app.bsz_swq_rd,
-		};
-
-		if (rte_pipeline_port_in_create(p, &port_params,
-			&port_in_id[i]))
-			rte_panic("Unable to configure input port for "
-				"ring %d\n", i);
-	}
-
-	/* Output port configuration */
-	for (i = 0; i < app.n_ports; i++) {
-		struct rte_port_ring_writer_params port_ring_params = {
-			.ring = app.rings[core_params->swq_out[i]],
-			.tx_burst_sz = app.bsz_swq_wr,
-		};
-
-		struct rte_pipeline_port_out_params port_params = {
-			.ops = &rte_port_ring_writer_ops,
-			.arg_create = (void *) &port_ring_params,
-			.f_action = NULL,
-			.f_action_bulk = NULL,
-			.arg_ah = NULL,
-		};
-
-		if (rte_pipeline_port_out_create(p, &port_params,
-			&port_out_id[i]))
-			rte_panic("Unable to configure output port for "
-				"ring %d\n", i);
-	}
-
-	/* Routing table configuration */
-	{
-		struct rte_table_lpm_params table_lpm_params = {
-			.n_rules = app.max_routing_rules,
-			.entry_unique_size =
-				sizeof(struct app_routing_table_entry),
-			.offset = __builtin_offsetof(struct app_pkt_metadata,
-				flow_key.ip_dst),
-		};
-
-		struct rte_pipeline_table_params table_params = {
-			.ops = &rte_table_lpm_ops,
-			.arg_create = &table_lpm_params,
-			.f_action_hit = app_routing_table_ah,
-			.f_action_miss = NULL,
-			.arg_ah = NULL,
-			.action_data_size =
-				sizeof(struct app_routing_table_entry) -
-				sizeof(struct rte_pipeline_table_entry),
-		};
-
-		if (rte_pipeline_table_create(p, &table_params,
-			&routing_table_id))
-			rte_panic("Unable to configure the LPM table\n");
-	}
-
-	/* ARP table configuration */
-	{
-		struct rte_table_hash_key8_lru_params table_arp_params = {
-			.n_entries = app.max_arp_rules,
-			.f_hash = app_arp_table_hash,
-			.seed = 0,
-			.signature_offset = 0, /* Unused */
-			.key_offset = __builtin_offsetof(
-				struct app_pkt_metadata, arp_key),
-		};
-
-		struct rte_pipeline_table_params table_params = {
-			.ops = &rte_table_hash_key8_lru_dosig_ops,
-			.arg_create = &table_arp_params,
-			.f_action_hit = app_arp_table_ah,
-			.f_action_miss = NULL,
-			.arg_ah = NULL,
-			.action_data_size = sizeof(struct app_arp_table_entry) -
-				sizeof(struct rte_pipeline_table_entry),
-		};
-
-		if (rte_pipeline_table_create(p, &table_params, &arp_table_id))
-			rte_panic("Unable to configure the ARP table\n");
-	}
-
-	/* Interconnecting ports and tables */
-	for (i = 0; i < app.n_ports; i++) {
-		if (rte_pipeline_port_in_connect_to_table(p, port_in_id[i],
-			routing_table_id))
-			rte_panic("Unable to connect input port %u to "
-				"table %u\n", port_in_id[i],  routing_table_id);
-	}
-
-	/* Enable input ports */
-	for (i = 0; i < app.n_ports; i++)
-		if (rte_pipeline_port_in_enable(p, port_in_id[i]))
-			rte_panic("Unable to enable input port %u\n",
-				port_in_id[i]);
-
-	/* Check pipeline consistency */
-	if (rte_pipeline_check(p) < 0)
-		rte_panic("Pipeline consistency check failed\n");
-
-	/* Message handling */
-	mh_params.ring_req =
-		app_get_ring_req(app_get_first_core_id(APP_CORE_RT));
-	mh_params.ring_resp =
-		app_get_ring_resp(app_get_first_core_id(APP_CORE_RT));
-	mh_params.p = p;
-	mh_params.port_out_id = port_out_id;
-	mh_params.routing_table_id = routing_table_id;
-	mh_params.arp_table_id = arp_table_id;
-
-	/* Run-time */
-	for (i = 0; ; i++) {
-		rte_pipeline_run(p);
-
-		if ((i & APP_FLUSH) == 0) {
-			rte_pipeline_flush(p);
-			app_message_handle(&mh_params);
-		}
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
 	}
 }
 
-void
-app_message_handle(struct app_core_routing_message_handle_params *params)
-{
-	struct rte_ring *ring_req = params->ring_req;
-	struct rte_ring *ring_resp;
-	void *msg;
-	struct app_msg_req *req;
-	struct app_msg_resp *resp;
-	struct rte_pipeline *p;
-	uint32_t *port_out_id;
-	uint32_t routing_table_id, arp_table_id;
-	int result;
+static cmdline_parse_token_string_t cmd_route_add_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add_result, p_string,
+	"p");
 
-	/* Read request message */
-	result = rte_ring_sc_dequeue(ring_req, &msg);
-	if (result != 0)
+static cmdline_parse_token_num_t cmd_route_add_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add_route_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add_result, route_string,
+	"route");
+
+static cmdline_parse_token_string_t cmd_route_add_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add_result, add_string,
+	"add");
+
+static cmdline_parse_token_ipaddr_t cmd_route_add_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_route_add_result, ip);
+
+static cmdline_parse_token_num_t cmd_route_add_depth =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add_result, depth, UINT32);
+
+static cmdline_parse_token_num_t cmd_route_add_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add_result, port, UINT32);
+
+static cmdline_parse_token_ipaddr_t cmd_route_add_nh_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_route_add_result, nh_ip);
+
+static cmdline_parse_inst_t cmd_route_add = {
+	.f = cmd_route_add_parsed,
+	.data = NULL,
+	.help_str = "Route add",
+	.tokens = {
+		(void *)&cmd_route_add_p_string,
+		(void *)&cmd_route_add_p,
+		(void *)&cmd_route_add_route_string,
+		(void *)&cmd_route_add_add_string,
+		(void *)&cmd_route_add_ip,
+		(void *)&cmd_route_add_depth,
+		(void *)&cmd_route_add_port,
+		(void *)&cmd_route_add_nh_ip,
+		NULL,
+	},
+};
+
+/*
+ * route del
+ */
+
+struct cmd_route_del_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t route_string;
+	cmdline_fixed_string_t del_string;
+	cmdline_ipaddr_t ip;
+	uint32_t depth;
+};
+
+static void
+cmd_route_del_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_route_del_result *params = parsed_result;
+	struct app_params *app = data;
+	struct pipeline_routing_route_key key;
+
+	int status;
+
+	/* Create route */
+	key.type = PIPELINE_ROUTING_ROUTE_IPV4;
+	key.key.ipv4.ip = rte_bswap32((uint32_t) params->ip.addr.ipv4.s_addr);
+	key.key.ipv4.depth = params->depth;
+
+	status = app_pipeline_routing_delete_route(app, params->p, &key);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_route_del_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_del_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_route_del_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_del_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_del_route_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_del_result, route_string,
+	"route");
+
+static cmdline_parse_token_string_t cmd_route_del_del_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_del_result, del_string,
+	"del");
+
+static cmdline_parse_token_ipaddr_t cmd_route_del_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_route_del_result, ip);
+
+static cmdline_parse_token_num_t cmd_route_del_depth =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_del_result, depth, UINT32);
+
+static cmdline_parse_inst_t cmd_route_del = {
+	.f = cmd_route_del_parsed,
+	.data = NULL,
+	.help_str = "Route delete",
+	.tokens = {
+		(void *)&cmd_route_del_p_string,
+		(void *)&cmd_route_del_p,
+		(void *)&cmd_route_del_route_string,
+		(void *)&cmd_route_del_del_string,
+		(void *)&cmd_route_del_ip,
+		(void *)&cmd_route_del_depth,
+		NULL,
+	},
+};
+
+/*
+ * route add default
+ */
+
+struct cmd_route_add_default_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t route_string;
+	cmdline_fixed_string_t add_string;
+	cmdline_fixed_string_t default_string;
+	uint32_t port;
+};
+
+static void
+cmd_route_add_default_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	void *data)
+{
+	struct cmd_route_add_default_result *params = parsed_result;
+	struct app_params *app = data;
+	int status;
+
+	status = app_pipeline_routing_add_default_route(app, params->p,
+			params->port);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_route_add_default_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add_default_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_route_add_default_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add_default_result, p, UINT32);
+
+cmdline_parse_token_string_t cmd_route_add_default_route_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add_default_result,
+		route_string, "route");
+
+cmdline_parse_token_string_t cmd_route_add_default_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add_default_result,
+		add_string, "add");
+
+cmdline_parse_token_string_t cmd_route_add_default_default_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add_default_result,
+	default_string, "default");
+
+cmdline_parse_token_num_t cmd_route_add_default_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add_default_result,
+		port, UINT32);
+
+cmdline_parse_inst_t cmd_route_add_default = {
+	.f = cmd_route_add_default_parsed,
+	.data = NULL,
+	.help_str = "Route default set",
+	.tokens = {
+		(void *)&cmd_route_add_default_p_string,
+		(void *)&cmd_route_add_default_p,
+		(void *)&cmd_route_add_default_route_string,
+		(void *)&cmd_route_add_default_add_string,
+		(void *)&cmd_route_add_default_default_string,
+		(void *)&cmd_route_add_default_port,
+		NULL,
+	},
+};
+
+/*
+ * route del default
+ */
+
+struct cmd_route_del_default_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t route_string;
+	cmdline_fixed_string_t del_string;
+	cmdline_fixed_string_t default_string;
+};
+
+static void
+cmd_route_del_default_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	 void *data)
+{
+	struct cmd_route_del_default_result *params = parsed_result;
+	struct app_params *app = data;
+	int status;
+
+	status = app_pipeline_routing_delete_default_route(app, params->p);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_route_del_default_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_del_default_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_route_del_default_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_del_default_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_del_default_route_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_del_default_result,
+		route_string, "route");
+
+static cmdline_parse_token_string_t cmd_route_del_default_del_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_del_default_result,
+		del_string, "del");
+
+static cmdline_parse_token_string_t cmd_route_del_default_default_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_del_default_result,
+	default_string, "default");
+
+
+static cmdline_parse_inst_t cmd_route_del_default = {
+	.f = cmd_route_del_default_parsed,
+	.data = NULL,
+	.help_str = "Route default clear",
+	.tokens = {
+		(void *)&cmd_route_del_default_p_string,
+		(void *)&cmd_route_del_default_p,
+		(void *)&cmd_route_del_default_route_string,
+		(void *)&cmd_route_del_default_del_string,
+		(void *)&cmd_route_del_default_default_string,
+		NULL,
+	},
+};
+
+/*
+ * route ls
+ */
+
+struct cmd_route_ls_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t route_string;
+	cmdline_fixed_string_t ls_string;
+};
+
+static void
+cmd_route_ls_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_route_ls_result *params = parsed_result;
+	struct app_params *app = data;
+	int status;
+
+	status = app_pipeline_routing_route_ls(app, params->p);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_route_ls_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_ls_result, p_string, "p");
+
+static cmdline_parse_token_num_t cmd_route_ls_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_ls_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_ls_route_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_ls_result,
+	route_string, "route");
+
+static cmdline_parse_token_string_t cmd_route_ls_ls_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_ls_result, ls_string,
+	"ls");
+
+static cmdline_parse_inst_t cmd_route_ls = {
+	.f = cmd_route_ls_parsed,
+	.data = NULL,
+	.help_str = "Route list",
+	.tokens = {
+		(void *)&cmd_route_ls_p_string,
+		(void *)&cmd_route_ls_p,
+		(void *)&cmd_route_ls_route_string,
+		(void *)&cmd_route_ls_ls_string,
+		NULL,
+	},
+};
+
+/*
+ * arp add
+ */
+
+struct cmd_arp_add_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t arp_string;
+	cmdline_fixed_string_t add_string;
+	uint32_t port_id;
+	cmdline_ipaddr_t ip;
+	struct ether_addr macaddr;
+
+};
+
+static void
+cmd_arp_add_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_arp_add_result *params = parsed_result;
+	struct app_params *app = data;
+
+	struct pipeline_routing_arp_key key;
+	int status;
+
+	key.type = PIPELINE_ROUTING_ARP_IPV4;
+	key.key.ipv4.port_id = params->port_id;
+	key.key.ipv4.ip = rte_cpu_to_be_32(params->ip.addr.ipv4.s_addr);
+
+	status = app_pipeline_routing_add_arp_entry(app,
+		params->p,
+		&key,
+		&params->macaddr);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_arp_add_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_add_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_arp_add_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_arp_add_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_arp_add_arp_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_add_result, arp_string, "arp");
+
+static cmdline_parse_token_string_t cmd_arp_add_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_add_result, add_string, "add");
+
+static cmdline_parse_token_num_t cmd_arp_add_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_arp_add_result, port_id, UINT32);
+
+static cmdline_parse_token_ipaddr_t cmd_arp_add_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_arp_add_result, ip);
+
+static cmdline_parse_token_etheraddr_t cmd_arp_add_macaddr =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_arp_add_result, macaddr);
+
+static cmdline_parse_inst_t cmd_arp_add = {
+	.f = cmd_arp_add_parsed,
+	.data = NULL,
+	.help_str = "ARP add",
+	.tokens = {
+		(void *)&cmd_arp_add_p_string,
+		(void *)&cmd_arp_add_p,
+		(void *)&cmd_arp_add_arp_string,
+		(void *)&cmd_arp_add_add_string,
+		(void *)&cmd_arp_add_port_id,
+		(void *)&cmd_arp_add_ip,
+		(void *)&cmd_arp_add_macaddr,
+		NULL,
+	},
+};
+
+/*
+ * arp del
+ */
+
+struct cmd_arp_del_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t arp_string;
+	cmdline_fixed_string_t del_string;
+	uint32_t port_id;
+	cmdline_ipaddr_t ip;
+};
+
+static void
+cmd_arp_del_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_arp_del_result *params = parsed_result;
+	struct app_params *app = data;
+
+	struct pipeline_routing_arp_key key;
+	int status;
+
+	key.type = PIPELINE_ROUTING_ARP_IPV4;
+	key.key.ipv4.ip = rte_cpu_to_be_32(params->ip.addr.ipv4.s_addr);
+	key.key.ipv4.port_id = params->port_id;
+
+	status = app_pipeline_routing_delete_arp_entry(app, params->p, &key);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_arp_del_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_del_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_arp_del_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_arp_del_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_arp_del_arp_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_del_result, arp_string, "arp");
+
+static cmdline_parse_token_string_t cmd_arp_del_del_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_del_result, del_string, "del");
+
+static cmdline_parse_token_num_t cmd_arp_del_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_arp_del_result, port_id, UINT32);
+
+static cmdline_parse_token_ipaddr_t cmd_arp_del_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_arp_del_result, ip);
+
+static cmdline_parse_inst_t cmd_arp_del = {
+	.f = cmd_arp_del_parsed,
+	.data = NULL,
+	.help_str = "ARP delete",
+	.tokens = {
+		(void *)&cmd_arp_del_p_string,
+		(void *)&cmd_arp_del_p,
+		(void *)&cmd_arp_del_arp_string,
+		(void *)&cmd_arp_del_del_string,
+		(void *)&cmd_arp_del_port_id,
+		(void *)&cmd_arp_del_ip,
+		NULL,
+	},
+};
+
+/*
+ * arp add default
+ */
+
+struct cmd_arp_add_default_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t arp_string;
+	cmdline_fixed_string_t add_string;
+	cmdline_fixed_string_t default_string;
+	uint32_t port_id;
+};
+
+static void
+cmd_arp_add_default_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_arp_add_default_result *params = parsed_result;
+	struct app_params *app = data;
+
+	int status;
+
+	status = app_pipeline_routing_add_default_arp_entry(app,
+		params->p,
+		params->port_id);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_arp_add_default_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_add_default_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_arp_add_default_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_arp_add_default_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_arp_add_default_arp_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_add_default_result, arp_string,
+	"arp");
+
+static cmdline_parse_token_string_t cmd_arp_add_default_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_add_default_result, add_string,
+	"add");
+
+static cmdline_parse_token_string_t cmd_arp_add_default_default_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_add_default_result,
+		default_string, "default");
+
+static cmdline_parse_token_num_t cmd_arp_add_default_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_arp_add_default_result, port_id,
+	UINT32);
+
+static cmdline_parse_inst_t cmd_arp_add_default = {
+	.f = cmd_arp_add_default_parsed,
+	.data = NULL,
+	.help_str = "ARP add default",
+	.tokens = {
+		(void *)&cmd_arp_add_default_p_string,
+		(void *)&cmd_arp_add_default_p,
+		(void *)&cmd_arp_add_default_arp_string,
+		(void *)&cmd_arp_add_default_add_string,
+		(void *)&cmd_arp_add_default_default_string,
+		(void *)&cmd_arp_add_default_port_id,
+		NULL,
+	},
+};
+
+/*
+ * arp del default
+ */
+
+struct cmd_arp_del_default_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t arp_string;
+	cmdline_fixed_string_t del_string;
+	cmdline_fixed_string_t default_string;
+};
+
+static void
+cmd_arp_del_default_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_arp_del_default_result *params = parsed_result;
+	struct app_params *app = data;
+
+	int status;
+
+	status = app_pipeline_routing_delete_default_arp_entry(app, params->p);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_arp_del_default_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_del_default_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_arp_del_default_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_arp_del_default_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_arp_del_default_arp_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_del_default_result, arp_string,
+	"arp");
+
+static cmdline_parse_token_string_t cmd_arp_del_default_del_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_del_default_result, del_string,
+	"del");
+
+static cmdline_parse_token_string_t cmd_arp_del_default_default_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_del_default_result,
+		default_string, "default");
+
+static cmdline_parse_inst_t cmd_arp_del_default = {
+	.f = cmd_arp_del_default_parsed,
+	.data = NULL,
+	.help_str = "ARP delete default",
+	.tokens = {
+		(void *)&cmd_arp_del_default_p_string,
+		(void *)&cmd_arp_del_default_p,
+		(void *)&cmd_arp_del_default_arp_string,
+		(void *)&cmd_arp_del_default_del_string,
+		(void *)&cmd_arp_del_default_default_string,
+		NULL,
+	},
+};
+
+/*
+ * arp ls
+ */
+
+struct cmd_arp_ls_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t arp_string;
+	cmdline_fixed_string_t ls_string;
+};
+
+static void
+cmd_arp_ls_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_arp_ls_result *params = parsed_result;
+	struct app_params *app = data;
+	struct pipeline_routing *p;
+
+	p = app_pipeline_data_fe(app, params->p);
+	if (p == NULL)
 		return;
 
-	ring_resp = params->ring_resp;
-	p = params->p;
-	port_out_id = params->port_out_id;
-	routing_table_id = params->routing_table_id;
-	arp_table_id = params->arp_table_id;
-
-	/* Handle request */
-	req = (struct app_msg_req *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
-	switch (req->type) {
-	case APP_MSG_REQ_PING:
-	{
-		result = 0;
-		break;
-	}
-
-	case APP_MSG_REQ_RT_ADD:
-	{
-		struct app_routing_table_entry entry = {
-			.head = {
-				.action = RTE_PIPELINE_ACTION_TABLE,
-				{.table_id = arp_table_id},
-			},
-			.nh_ip = req->routing_add.nh_ip,
-			.nh_iface = port_out_id[req->routing_add.port],
-		};
-
-		struct rte_table_lpm_key key = {
-			.ip = req->routing_add.ip,
-			.depth = req->routing_add.depth,
-		};
-
-		struct rte_pipeline_table_entry *entry_ptr;
-
-		int key_found;
-
-		result = rte_pipeline_table_entry_add(p, routing_table_id, &key,
-			(struct rte_pipeline_table_entry *) &entry, &key_found,
-			&entry_ptr);
-		break;
-	}
-
-	case APP_MSG_REQ_RT_DEL:
-	{
-		struct rte_table_lpm_key key = {
-			.ip = req->routing_del.ip,
-			.depth = req->routing_del.depth,
-		};
-
-		int key_found;
-
-		result = rte_pipeline_table_entry_delete(p, routing_table_id,
-			&key, &key_found, NULL);
-		break;
-	}
-
-	case APP_MSG_REQ_ARP_ADD:
-	{
-
-		struct app_arp_table_entry entry = {
-			.head = {
-				.action = RTE_PIPELINE_ACTION_PORT,
-				{.port_id =
-					port_out_id[req->arp_add.out_iface]},
-			},
-			.nh_arp = req->arp_add.nh_arp,
-		};
-
-		struct app_arp_key arp_key = {
-			.nh_ip = req->arp_add.nh_ip,
-			.nh_iface = port_out_id[req->arp_add.out_iface],
-		};
-
-		struct rte_pipeline_table_entry *entry_ptr;
-
-		int key_found;
-
-		result = rte_pipeline_table_entry_add(p, arp_table_id, &arp_key,
-			(struct rte_pipeline_table_entry *) &entry, &key_found,
-			&entry_ptr);
-		break;
-	}
-
-	case APP_MSG_REQ_ARP_DEL:
-	{
-		struct app_arp_key arp_key = {
-			.nh_ip = req->arp_del.nh_ip,
-			.nh_iface = port_out_id[req->arp_del.out_iface],
-		};
-
-		int key_found;
-
-		result = rte_pipeline_table_entry_delete(p, arp_table_id,
-			&arp_key, &key_found, NULL);
-		break;
-	}
-
-	default:
-		rte_panic("RT Unrecognized message type (%u)\n", req->type);
-	}
-
-	/* Fill in response message */
-	resp = (struct app_msg_resp *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
-	resp->result = result;
-
-	/* Send response */
-	do {
-		result = rte_ring_sp_enqueue(ring_resp, msg);
-	} while (result == -ENOBUFS);
+	app_pipeline_routing_arp_ls(app, params->p);
 }
+
+static cmdline_parse_token_string_t cmd_arp_ls_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_ls_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_arp_ls_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_arp_ls_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_arp_ls_arp_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_ls_result, arp_string,
+	"arp");
+
+static cmdline_parse_token_string_t cmd_arp_ls_ls_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_arp_ls_result, ls_string,
+	"ls");
+
+static cmdline_parse_inst_t cmd_arp_ls = {
+	.f = cmd_arp_ls_parsed,
+	.data = NULL,
+	.help_str = "ARP list",
+	.tokens = {
+		(void *)&cmd_arp_ls_p_string,
+		(void *)&cmd_arp_ls_p,
+		(void *)&cmd_arp_ls_arp_string,
+		(void *)&cmd_arp_ls_ls_string,
+		NULL,
+	},
+};
+
+static cmdline_parse_ctx_t pipeline_cmds[] = {
+	(cmdline_parse_inst_t *)&cmd_route_add,
+	(cmdline_parse_inst_t *)&cmd_route_del,
+	(cmdline_parse_inst_t *)&cmd_route_add_default,
+	(cmdline_parse_inst_t *)&cmd_route_del_default,
+	(cmdline_parse_inst_t *)&cmd_route_ls,
+	(cmdline_parse_inst_t *)&cmd_arp_add,
+	(cmdline_parse_inst_t *)&cmd_arp_del,
+	(cmdline_parse_inst_t *)&cmd_arp_add_default,
+	(cmdline_parse_inst_t *)&cmd_arp_del_default,
+	(cmdline_parse_inst_t *)&cmd_arp_ls,
+	NULL,
+};
+
+static struct pipeline_fe_ops pipeline_routing_fe_ops = {
+	.f_init = pipeline_routing_init,
+	.f_free = app_pipeline_routing_free,
+	.cmds = pipeline_cmds,
+};
+
+struct pipeline_type pipeline_routing = {
+	.name = "ROUTING",
+	.be_ops = &pipeline_routing_be_ops,
+	.fe_ops = &pipeline_routing_fe_ops,
+};
