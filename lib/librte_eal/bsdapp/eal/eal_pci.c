@@ -83,7 +83,7 @@
  * enabling bus master.
  */
 
-struct uio_map {
+struct pci_map {
 	void *addr;
 	uint64_t offset;
 	uint64_t size;
@@ -94,16 +94,16 @@ struct uio_map {
  * For multi-process we need to reproduce all PCI mappings in secondary
  * processes, so save them in a tailq.
  */
-struct uio_resource {
-	TAILQ_ENTRY(uio_resource) next;
+struct mapped_pci_resource {
+	TAILQ_ENTRY(mapped_pci_resource) next;
 
 	struct rte_pci_addr pci_addr;
 	char path[PATH_MAX];
 	size_t nb_maps;
-	struct uio_map maps[PCI_MAX_RESOURCE];
+	struct pci_map maps[PCI_MAX_RESOURCE];
 };
 
-TAILQ_HEAD(uio_res_list, uio_resource);
+TAILQ_HEAD(mapped_pci_res_list, mapped_pci_resource);
 
 static struct rte_tailq_elem rte_uio_tailq = {
 	.name = "UIO_RESOURCE_LIST",
@@ -162,9 +162,9 @@ static int
 pci_uio_map_secondary(struct rte_pci_device *dev)
 {
 	size_t i;
-	struct uio_resource *uio_res;
-	struct uio_res_list *uio_res_list =
-			RTE_TAILQ_CAST(rte_uio_tailq.head, uio_res_list);
+	struct mapped_pci_resource *uio_res;
+	struct mapped_pci_res_list *uio_res_list =
+			RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
 
 	TAILQ_FOREACH(uio_res, uio_res_list, next) {
 
@@ -201,10 +201,10 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	uint64_t offset;
 	uint64_t pagesz;
 	struct rte_pci_addr *loc = &dev->addr;
-	struct uio_resource *uio_res = NULL;
-	struct uio_res_list *uio_res_list =
-			RTE_TAILQ_CAST(rte_uio_tailq.head, uio_res_list);
-	struct uio_map *maps;
+	struct mapped_pci_resource *uio_res = NULL;
+	struct mapped_pci_res_list *uio_res_list =
+			RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
+	struct pci_map *maps;
 
 	dev->intr_handle.fd = -1;
 	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
