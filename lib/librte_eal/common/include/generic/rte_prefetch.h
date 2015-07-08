@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -51,14 +51,14 @@
  * @param p
  *   Address to prefetch
  */
-static inline void rte_prefetch0(volatile void *p);
+static inline void rte_prefetch0(const volatile void *p);
 
 /**
  * Prefetch a cache line into all cache levels except the 0th cache level.
  * @param p
  *   Address to prefetch
  */
-static inline void rte_prefetch1(volatile void *p);
+static inline void rte_prefetch1(const volatile void *p);
 
 /**
  * Prefetch a cache line into all cache levels except the 0th and 1th cache
@@ -66,6 +66,6 @@ static inline void rte_prefetch1(volatile void *p);
  * @param p
  *   Address to prefetch
  */
-static inline void rte_prefetch2(volatile void *p);
+static inline void rte_prefetch2(const volatile void *p);
 
 #endif /* _RTE_PREFETCH_H_ */
