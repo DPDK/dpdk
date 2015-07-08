@@ -115,23 +115,15 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 			void *mapaddr = pci_map_resource(uio_res->maps[i].addr,
 					fd, (off_t)uio_res->maps[i].offset,
 					(size_t)uio_res->maps[i].size, 0);
-			if (mapaddr != uio_res->maps[i].addr) {
-				if (mapaddr == MAP_FAILED)
-					RTE_LOG(ERR, EAL,
-							"Cannot mmap device resource file %s: %s\n",
-							uio_res->maps[i].path,
-							strerror(errno));
-				else
-					RTE_LOG(ERR, EAL,
-							"Cannot mmap device resource file %s to address: %p\n",
-							uio_res->maps[i].path,
-							uio_res->maps[i].addr);
-
-				close(fd);
-				return -1;
-			}
 			/* fd is not needed in slave process, close it */
 			close(fd);
+			if (mapaddr != uio_res->maps[i].addr) {
+				RTE_LOG(ERR, EAL,
+					"Cannot mmap device resource file %s to address: %p\n",
+					uio_res->maps[i].path,
+					uio_res->maps[i].addr);
+				return -1;
+			}
 		}
 		return 0;
 	}
@@ -353,8 +345,11 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 		/* allocate memory to keep path */
 		maps[map_idx].path = rte_malloc(NULL, strlen(devname) + 1, 0);
-		if (maps[map_idx].path == NULL)
+		if (maps[map_idx].path == NULL) {
+			RTE_LOG(ERR, EAL, "Cannot allocate memory for path: %s\n",
+					strerror(errno));
 			goto error;
+		}
 
 		/*
 		 * open resource file, to mmap it
