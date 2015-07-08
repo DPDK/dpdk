@@ -96,28 +96,6 @@ pci_unbind_kernel_driver(struct rte_pci_device *dev __rte_unused)
 	return -ENOTSUP;
 }
 
-/* map a particular resource from a file */
-static void *
-pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size,
-		 int additional_flags)
-{
-	void *mapaddr;
-
-	/* Map the PCI memory resource of device */
-	mapaddr = mmap(requested_addr, size, PROT_READ | PROT_WRITE,
-			MAP_SHARED | additional_flags, fd, offset);
-	if (mapaddr == MAP_FAILED) {
-		RTE_LOG(ERR, EAL,
-			"%s(): cannot mmap(%d, %p, 0x%lx, 0x%lx): %s (%p)\n",
-			__func__, fd, requested_addr,
-			(unsigned long)size, (unsigned long)offset,
-			strerror(errno), mapaddr);
-	} else
-		RTE_LOG(DEBUG, EAL, "  PCI memory mapped at %p\n", mapaddr);
-
-	return mapaddr;
-}
-
 static int
 pci_uio_map_secondary(struct rte_pci_device *dev)
 {

@@ -42,13 +42,8 @@
 extern void *pci_map_addr;
 void *pci_find_max_end_va(void);
 
-void *pci_map_resource(void *requested_addr, int fd, off_t offset,
-	       size_t size, int additional_flags);
-
 /* map IGB_UIO resource prototype */
 int pci_uio_map_resource(struct rte_pci_device *dev);
-
-void pci_unmap_resource(void *requested_addr, size_t size);
 
 #ifdef RTE_LIBRTE_EAL_HOTPLUG
 /* unmap IGB_UIO resource prototype */

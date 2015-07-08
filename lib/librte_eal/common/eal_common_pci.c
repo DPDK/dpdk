@@ -67,6 +67,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/queue.h>
+#include <sys/mman.h>
 
 #include <rte_interrupts.h>
 #include <rte_log.h>
@@ -96,6 +97,44 @@ static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 			return devargs;
 	}
 	return NULL;
+}
+
+/* map a particular resource from a file */
+void *
+pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size,
+		 int additional_flags)
+{
+	void *mapaddr;
+
+	/* Map the PCI memory resource of device */
+	mapaddr = mmap(requested_addr, size, PROT_READ | PROT_WRITE,
+			MAP_SHARED | additional_flags, fd, offset);
+	if (mapaddr == MAP_FAILED) {
+		RTE_LOG(ERR, EAL, "%s(): cannot mmap(%d, %p, 0x%lx, 0x%lx): %s (%p)\n",
+			__func__, fd, requested_addr,
+			(unsigned long)size, (unsigned long)offset,
+			strerror(errno), mapaddr);
+	} else
+		RTE_LOG(DEBUG, EAL, "  PCI memory mapped at %p\n", mapaddr);
+
+	return mapaddr;
+}
+
+/* unmap a particular resource */
+void
+pci_unmap_resource(void *requested_addr, size_t size)
+{
+	if (requested_addr == NULL)
+		return;
+
+	/* Unmap the PCI memory resource of device */
+	if (munmap(requested_addr, size)) {
+		RTE_LOG(ERR, EAL, "%s(): cannot munmap(%p, 0x%lx): %s\n",
+			__func__, requested_addr, (unsigned long)size,
+			strerror(errno));
+	} else
+		RTE_LOG(DEBUG, EAL, "  PCI memory unmapped at %p\n",
+				requested_addr);
 }
 
 /*
