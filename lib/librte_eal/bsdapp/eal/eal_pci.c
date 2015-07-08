@@ -187,28 +187,27 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 	return 1;
 }
 
-/* map the PCI resource of a PCI device in virtual memory */
-static int
-pci_uio_map_resource(struct rte_pci_device *dev)
+static void
+pci_uio_free_resource(struct rte_pci_device *dev,
+		struct mapped_pci_resource *uio_res)
 {
-	int i, map_idx = 0;
+	rte_free(uio_res);
+
+	if (dev->intr_handle.fd) {
+		close(dev->intr_handle.fd);
+		dev->intr_handle.fd = -1;
+		dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+	}
+}
+
+static int
+pci_uio_alloc_resource(struct rte_pci_device *dev,
+		struct mapped_pci_resource **uio_res)
+{
 	char devname[PATH_MAX]; /* contains the /dev/uioX */
-	void *mapaddr;
-	uint64_t phaddr;
-	uint64_t offset;
-	uint64_t pagesz;
-	struct rte_pci_addr *loc = &dev->addr;
-	struct mapped_pci_resource *uio_res = NULL;
-	struct mapped_pci_res_list *uio_res_list =
-			RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
-	struct pci_map *maps;
+	struct rte_pci_addr *loc;
 
-	dev->intr_handle.fd = -1;
-	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
-
-	/* secondary processes - use already recorded details */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return pci_uio_map_secondary(dev);
+	loc = &dev->addr;
 
 	snprintf(devname, sizeof(devname), "/dev/uio@pci:%u:%u:%u",
 			dev->addr.bus, dev->addr.devid, dev->addr.function);
@@ -229,18 +228,53 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
 
 	/* allocate the mapping details for secondary processes*/
-	if ((uio_res = rte_zmalloc("UIO_RES", sizeof (*uio_res), 0)) == NULL) {
+	*uio_res = rte_zmalloc("UIO_RES", sizeof(**uio_res), 0);
+	if (*uio_res == NULL) {
 		RTE_LOG(ERR, EAL,
 			"%s(): cannot store uio mmap details\n", __func__);
 		goto error;
 	}
 
-	snprintf(uio_res->path, sizeof(uio_res->path), "%s", devname);
-	memcpy(&uio_res->pci_addr, &dev->addr, sizeof(uio_res->pci_addr));
+	snprintf((*uio_res)->path, sizeof((*uio_res)->path), "%s", devname);
+	memcpy(&(*uio_res)->pci_addr, &dev->addr, sizeof((*uio_res)->pci_addr));
 
+	return 0;
+
+error:
+	pci_uio_free_resource(dev, *uio_res);
+	return -1;
+}
+
+/* map the PCI resource of a PCI device in virtual memory */
+static int
+pci_uio_map_resource(struct rte_pci_device *dev)
+{
+	int i, map_idx = 0, ret;
+	char *devname;
+	void *mapaddr;
+	uint64_t phaddr;
+	uint64_t offset;
+	uint64_t pagesz;
+	struct mapped_pci_resource *uio_res = NULL;
+	struct mapped_pci_res_list *uio_res_list =
+		RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
+	struct pci_map *maps;
+
+	dev->intr_handle.fd = -1;
+	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+
+	/* secondary processes - use already recorded details */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return pci_uio_map_secondary(dev);
+
+	/* allocate uio resource */
+	ret = pci_uio_alloc_resource(dev, &uio_res);
+	if (ret)
+		return ret;
 
 	/* Map all BARs */
 	pagesz = sysconf(_SC_PAGESIZE);
+	devname = uio_res->path;
 
 	maps = uio_res->maps;
 	for (i = 0; i != PCI_MAX_RESOURCE; i++) {
@@ -296,12 +330,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 error:
 	for (i = 0; i < map_idx; i++)
 		rte_free(maps[i].path);
-	rte_free(uio_res);
-	if (dev->intr_handle.fd >= 0) {
-		close(dev->intr_handle.fd);
-		dev->intr_handle.fd = -1;
-		dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
-	}
+	pci_uio_free_resource(dev, uio_res);
 	return -1;
 }
 
