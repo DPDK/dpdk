@@ -161,9 +161,10 @@ fail:
 static int
 pci_uio_map_secondary(struct rte_pci_device *dev)
 {
-        size_t i;
-        struct uio_resource *uio_res;
-	struct uio_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, uio_res_list);
+	size_t i;
+	struct uio_resource *uio_res;
+	struct uio_res_list *uio_res_list =
+			RTE_TAILQ_CAST(rte_uio_tailq.head, uio_res_list);
 
 	TAILQ_FOREACH(uio_res, uio_res_list, next) {
 
@@ -201,7 +202,8 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	uint64_t pagesz;
 	struct rte_pci_addr *loc = &dev->addr;
 	struct uio_resource *uio_res;
-	struct uio_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, uio_res_list);
+	struct uio_res_list *uio_res_list =
+			RTE_TAILQ_CAST(rte_uio_tailq.head, uio_res_list);
 	struct uio_map *maps;
 
 	dev->intr_handle.fd = -1;
@@ -311,7 +313,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 	/* FreeBSD has no NUMA support (yet) */
 	dev->numa_node = 0;
 
-/* parse resources */
+	/* parse resources */
 	switch (conf->pc_hdr & PCIM_HDRTYPE) {
 	case PCIM_HDRTYPE_NORMAL:
 		max = PCIR_MAX_BAR_0;

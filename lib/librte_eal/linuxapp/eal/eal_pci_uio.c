@@ -92,7 +92,8 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 {
 	int fd, i;
 	struct mapped_pci_resource *uio_res;
-	struct mapped_pci_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
+	struct mapped_pci_res_list *uio_res_list =
+			RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
 
 	TAILQ_FOREACH(uio_res, uio_res_list, next) {
 
@@ -272,7 +273,8 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	uint64_t phaddr;
 	struct rte_pci_addr *loc = &dev->addr;
 	struct mapped_pci_resource *uio_res;
-	struct mapped_pci_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
+	struct mapped_pci_res_list *uio_res_list =
+			RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
 	struct pci_map *maps;
 
 	dev->intr_handle.fd = -1;
@@ -417,7 +419,8 @@ static struct mapped_pci_resource *
 pci_uio_find_resource(struct rte_pci_device *dev)
 {
 	struct mapped_pci_resource *uio_res;
-	struct mapped_pci_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
+	struct mapped_pci_res_list *uio_res_list =
+			RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
 
 	if (dev == NULL)
 		return NULL;
@@ -436,7 +439,8 @@ void
 pci_uio_unmap_resource(struct rte_pci_device *dev)
 {
 	struct mapped_pci_resource *uio_res;
-	struct mapped_pci_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
+	struct mapped_pci_res_list *uio_res_list =
+			RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
 
 	if (dev == NULL)
 		return;
