@@ -5786,8 +5786,7 @@ i40e_aq_add_mirror_rule(struct i40e_hw *hw,
 			uint16_t count, uint16_t *rule_id)
 {
 	struct i40e_aq_desc desc;
-	struct i40e_aqc_add_delete_mirror_rule *cmd =
-		(struct i40e_aqc_add_delete_mirror_rule *)&desc.params.raw;
+	struct i40e_aqc_add_delete_mirror_rule cmd;
 	struct i40e_aqc_add_delete_mirror_rule_completion *resp =
 		(struct i40e_aqc_add_delete_mirror_rule_completion *)
 		&desc.params.raw;
@@ -5796,18 +5795,20 @@ i40e_aq_add_mirror_rule(struct i40e_hw *hw,
 
 	i40e_fill_default_direct_cmd_desc(&desc,
 					  i40e_aqc_opc_add_mirror_rule);
+	memset(&cmd, 0, sizeof(cmd));
 
 	buff_len = sizeof(uint16_t) * count;
 	desc.datalen = rte_cpu_to_le_16(buff_len);
 	if (buff_len > 0)
 		desc.flags |= rte_cpu_to_le_16(
 			(uint16_t)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
-	cmd->rule_type = rte_cpu_to_le_16(rule_type <<
+	cmd.rule_type = rte_cpu_to_le_16(rule_type <<
 				I40E_AQC_MIRROR_RULE_TYPE_SHIFT);
-	cmd->num_entries = rte_cpu_to_le_16(count);
-	cmd->seid = rte_cpu_to_le_16(seid);
-	cmd->destination = rte_cpu_to_le_16(dst_id);
+	cmd.num_entries = rte_cpu_to_le_16(count);
+	cmd.seid = rte_cpu_to_le_16(seid);
+	cmd.destination = rte_cpu_to_le_16(dst_id);
 
+	rte_memcpy(&desc.params.raw, &cmd, sizeof(cmd));
 	status = i40e_asq_send_command(hw, &desc, entries, buff_len, NULL);
 	PMD_DRV_LOG(INFO, "i40e_aq_add_mirror_rule, aq_status %d,"
 			 "rule_id = %u"
@@ -5836,30 +5837,30 @@ i40e_aq_del_mirror_rule(struct i40e_hw *hw,
 		uint16_t count, uint16_t rule_id)
 {
 	struct i40e_aq_desc desc;
-	struct i40e_aqc_add_delete_mirror_rule *cmd =
-		(struct i40e_aqc_add_delete_mirror_rule *)&desc.params.raw;
+	struct i40e_aqc_add_delete_mirror_rule cmd;
 	uint16_t buff_len = 0;
 	enum i40e_status_code status;
 	void *buff = NULL;
 
 	i40e_fill_default_direct_cmd_desc(&desc,
 					  i40e_aqc_opc_delete_mirror_rule);
-
+	memset(&cmd, 0, sizeof(cmd));
 	if (rule_type == I40E_AQC_MIRROR_RULE_TYPE_VLAN) {
 		desc.flags |= rte_cpu_to_le_16((uint16_t)(I40E_AQ_FLAG_BUF |
 							  I40E_AQ_FLAG_RD));
-		cmd->num_entries = count;
+		cmd.num_entries = count;
 		buff_len = sizeof(uint16_t) * count;
 		desc.datalen = rte_cpu_to_le_16(buff_len);
 		buff = (void *)entries;
 	} else
 		/* rule id is filled in destination field for deleting mirror rule */
-		cmd->destination = rte_cpu_to_le_16(rule_id);
+		cmd.destination = rte_cpu_to_le_16(rule_id);
 
-	cmd->rule_type = rte_cpu_to_le_16(rule_type <<
+	cmd.rule_type = rte_cpu_to_le_16(rule_type <<
 				I40E_AQC_MIRROR_RULE_TYPE_SHIFT);
-	cmd->seid = rte_cpu_to_le_16(seid);
+	cmd.seid = rte_cpu_to_le_16(seid);
 
+	rte_memcpy(&desc.params.raw, &cmd, sizeof(cmd));
 	status = i40e_asq_send_command(hw, &desc, buff, buff_len, NULL);
 
 	return status;
