@@ -39,7 +39,7 @@
 #
 # examples for RTE_EXEC_ENV: linuxapp, bsdapp
 #
-ifeq ($(RTE_BUILD_SHARED_LIB),y)
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 EXECENV_CFLAGS  = -pthread -fPIC
 else
 EXECENV_CFLAGS  = -pthread
@@ -49,7 +49,7 @@ EXECENV_LDFLAGS =
 EXECENV_LDLIBS  = -lexecinfo
 EXECENV_ASFLAGS =
 
-ifeq ($(RTE_BUILD_SHARED_LIB),y)
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 EXECENV_LDLIBS += -lgcc_s
 endif
 

@@ -37,7 +37,7 @@ include $(RTE_SDK)/mk/internal/rte.depdirs-pre.mk
 
 # VPATH contains at least SRCDIR
 VPATH += $(SRCDIR)
-ifeq ($(RTE_BUILD_SHARED_LIB),y)
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 
 LIB := $(patsubst %.a,%.so.$(LIBABIVER),$(LIB))
 CPU_LDFLAGS += --version-script=$(SRCDIR)/$(EXPORT_MAP)
@@ -87,7 +87,7 @@ O_TO_S_DO = @set -e; \
 	$(O_TO_S) && \
 	echo $(O_TO_S_CMD) > $(call exe2cmd,$(@))
 
-ifeq ($(RTE_BUILD_SHARED_LIB),n)
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
 O_TO_C = $(AR) crus $(LIB_ONE) $(OBJS-y)
 O_TO_C_STR = $(subst ','\'',$(O_TO_C)) #'# fix syntax highlight
 O_TO_C_DISP = $(if $(V),"$(O_TO_C_STR)","  AR_C $(@)")
@@ -110,7 +110,7 @@ lib_dir = [ -d $(RTE_OUTPUT)/lib ] || mkdir -p $(RTE_OUTPUT)/lib;
 #
 # Archive objects in .a file if needed
 #
-ifeq ($(RTE_BUILD_SHARED_LIB),y)
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 $(LIB): $(OBJS-y) $(DEP_$(LIB)) FORCE
 ifeq ($(LIBABIVER),)
 	@echo "Must Specify a $(LIB) ABI version"
@@ -130,7 +130,7 @@ endif
 		$(depfile_newer)),\
 		$(O_TO_S_DO))
 
-ifeq ($(RTE_BUILD_COMBINE_LIBS),y)
+ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),y)
 	$(if $(or \
         $(file_missing),\
         $(call cmdline_changed,$(O_TO_C_STR)),\
@@ -153,7 +153,7 @@ $(LIB): $(OBJS-y) $(DEP_$(LIB)) FORCE
 	    $(depfile_missing),\
 	    $(depfile_newer)),\
 	    $(O_TO_A_DO))
-ifeq ($(RTE_BUILD_COMBINE_LIBS),y)
+ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),y)
 	$(if $(or \
         $(file_missing),\
         $(call cmdline_changed,$(O_TO_C_STR)),\
@@ -171,7 +171,7 @@ $(RTE_OUTPUT)/lib/$(LIB): $(LIB)
 	@echo "  INSTALL-LIB $(LIB)"
 	@[ -d $(RTE_OUTPUT)/lib ] || mkdir -p $(RTE_OUTPUT)/lib
 	$(Q)cp -f $(LIB) $(RTE_OUTPUT)/lib
-ifeq ($(RTE_BUILD_SHARED_LIB),y)
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 	$(Q)ln -s -f $< $(RTE_OUTPUT)/lib/$(LIBSONAME)
 endif
 

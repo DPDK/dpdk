@@ -34,8 +34,8 @@ include $(RTE_SDK)/mk/internal/rte.build-pre.mk
 # VPATH contains at least SRCDIR
 VPATH += $(SRCDIR)
 
-ifeq ($(RTE_BUILD_COMBINE_LIBS),y)
-ifeq ($(RTE_BUILD_SHARED_LIB),y)
+ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),y)
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 LIB_ONE := lib$(RTE_LIBNAME).so
 else
 LIB_ONE := lib$(RTE_LIBNAME).a
@@ -75,8 +75,8 @@ O_TO_A_DO = @set -e; \
 # Archive objects to share library
 #
 
-ifeq ($(RTE_BUILD_COMBINE_LIBS),y)
-ifeq ($(RTE_BUILD_SHARED_LIB),y)
+ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),y)
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 $(LIB_ONE): FORCE
 	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	$(O_TO_S_DO)
