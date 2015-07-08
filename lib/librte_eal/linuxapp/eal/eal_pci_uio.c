@@ -337,19 +337,79 @@ error:
 	return -1;
 }
 
+static int
+pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
+		struct mapped_pci_resource *uio_res, int map_idx)
+{
+	int fd;
+	char devname[PATH_MAX]; /* contains the /dev/uioX */
+	void *mapaddr;
+	struct rte_pci_addr *loc;
+	struct pci_map *maps;
+
+	loc = &dev->addr;
+	maps = uio_res->maps;
+
+	/* update devname for mmap  */
+	snprintf(devname, sizeof(devname),
+			SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/resource%d",
+			loc->domain, loc->bus, loc->devid,
+			loc->function, res_idx);
+
+	/* allocate memory to keep path */
+	maps[map_idx].path = rte_malloc(NULL, strlen(devname) + 1, 0);
+	if (maps[map_idx].path == NULL) {
+		RTE_LOG(ERR, EAL, "Cannot allocate memory for path: %s\n",
+				strerror(errno));
+		return -1;
+	}
+
+	/*
+	 * open resource file, to mmap it
+	 */
+	fd = open(devname, O_RDWR);
+	if (fd < 0) {
+		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
+				devname, strerror(errno));
+		goto error;
+	}
+
+	/* try mapping somewhere close to the end of hugepages */
+	if (pci_map_addr == NULL)
+		pci_map_addr = pci_find_max_end_va();
+
+	mapaddr = pci_map_resource(pci_map_addr, fd, 0,
+			(size_t)dev->mem_resource[res_idx].len, 0);
+	close(fd);
+	if (mapaddr == MAP_FAILED)
+		goto error;
+
+	pci_map_addr = RTE_PTR_ADD(mapaddr,
+			(size_t)dev->mem_resource[res_idx].len);
+
+	maps[map_idx].phaddr = dev->mem_resource[res_idx].phys_addr;
+	maps[map_idx].size = dev->mem_resource[res_idx].len;
+	maps[map_idx].addr = mapaddr;
+	maps[map_idx].offset = 0;
+	strcpy(maps[map_idx].path, devname);
+	dev->mem_resource[res_idx].addr = mapaddr;
+
+	return 0;
+
+error:
+	rte_free(maps[map_idx].path);
+	return -1;
+}
+
 /* map the PCI resource of a PCI device in virtual memory */
 int
 pci_uio_map_resource(struct rte_pci_device *dev)
 {
 	int i, map_idx = 0, ret;
-	char devname[PATH_MAX]; /* contains the /dev/uioX */
-	void *mapaddr;
 	uint64_t phaddr;
-	struct rte_pci_addr *loc = &dev->addr;
 	struct mapped_pci_resource *uio_res = NULL;
 	struct mapped_pci_res_list *uio_res_list =
 		RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
-	struct pci_map *maps;
 
 	dev->intr_handle.fd = -1;
 	dev->intr_handle.uio_cfg_fd = -1;
@@ -365,63 +425,18 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		return ret;
 
 	/* Map all BARs */
-	maps = uio_res->maps;
 	for (i = 0; i != PCI_MAX_RESOURCE; i++) {
-		int fd;
-
 		/* skip empty BAR */
 		phaddr = dev->mem_resource[i].phys_addr;
 		if (phaddr == 0)
 			continue;
 
-
-		/* update devname for mmap  */
-		snprintf(devname, sizeof(devname),
-				SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/resource%d",
-				loc->domain, loc->bus, loc->devid, loc->function,
-				i);
-
-		/* allocate memory to keep path */
-		maps[map_idx].path = rte_malloc(NULL, strlen(devname) + 1, 0);
-		if (maps[map_idx].path == NULL) {
-			RTE_LOG(ERR, EAL, "Cannot allocate memory for path: %s\n",
-					strerror(errno));
+		ret = pci_uio_map_resource_by_index(dev, i,
+				uio_res, map_idx);
+		if (ret)
 			goto error;
-		}
 
-		/*
-		 * open resource file, to mmap it
-		 */
-		fd = open(devname, O_RDWR);
-		if (fd < 0) {
-			RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
-					devname, strerror(errno));
-			rte_free(maps[map_idx].path);
-			goto error;
-		}
-
-		/* try mapping somewhere close to the end of hugepages */
-		if (pci_map_addr == NULL)
-			pci_map_addr = pci_find_max_end_va();
-
-		mapaddr = pci_map_resource(pci_map_addr, fd, 0,
-				(size_t)dev->mem_resource[i].len, 0);
-		close(fd);
-		if (mapaddr == MAP_FAILED) {
-			rte_free(maps[map_idx].path);
-			goto error;
-		}
-
-		pci_map_addr = RTE_PTR_ADD(mapaddr,
-				(size_t)dev->mem_resource[i].len);
-
-		maps[map_idx].phaddr = dev->mem_resource[i].phys_addr;
-		maps[map_idx].size = dev->mem_resource[i].len;
-		maps[map_idx].addr = mapaddr;
-		maps[map_idx].offset = 0;
-		strcpy(maps[map_idx].path, devname);
 		map_idx++;
-		dev->mem_resource[i].addr = mapaddr;
 	}
 
 	uio_res->nb_maps = map_idx;
@@ -434,7 +449,7 @@ error:
 	for (i = 0; i < map_idx; i++) {
 		pci_unmap_resource(uio_res->maps[i].addr,
 				(size_t)uio_res->maps[i].size);
-		rte_free(maps[i].path);
+		rte_free(uio_res->maps[i].path);
 	}
 	pci_uio_free_resource(dev, uio_res);
 	return -1;
