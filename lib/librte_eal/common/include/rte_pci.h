@@ -220,6 +220,34 @@ struct rte_pci_driver {
 /** Device driver supports detaching capability */
 #define RTE_PCI_DRV_DETACHABLE	0x0010
 
+/**
+ * A structure describing a PCI mapping.
+ */
+struct pci_map {
+	void *addr;
+	char *path;
+	uint64_t offset;
+	uint64_t size;
+	uint64_t phaddr;
+};
+
+/**
+ * A structure describing a mapped PCI resource.
+ * For multi-process we need to reproduce all PCI mappings in secondary
+ * processes, so save them in a tailq.
+ */
+struct mapped_pci_resource {
+	TAILQ_ENTRY(mapped_pci_resource) next;
+
+	struct rte_pci_addr pci_addr;
+	char path[PATH_MAX];
+	int nb_maps;
+	struct pci_map maps[PCI_MAX_RESOURCE];
+};
+
+/** mapped pci device list */
+TAILQ_HEAD(mapped_pci_res_list, mapped_pci_resource);
+
 /**< Internal use only - Macro used by pci addr parsing functions **/
 #define GET_PCIADDR_FIELD(in, fd, lim, dlm)                   \
 do {                                                               \

@@ -82,30 +82,6 @@
  * network card, only providing access to PCI BAR to applications, and
  * enabling bus master.
  */
-
-struct pci_map {
-	void *addr;
-	char *path;
-	uint64_t offset;
-	uint64_t size;
-	uint64_t phaddr;
-};
-
-/*
- * For multi-process we need to reproduce all PCI mappings in secondary
- * processes, so save them in a tailq.
- */
-struct mapped_pci_resource {
-	TAILQ_ENTRY(mapped_pci_resource) next;
-
-	struct rte_pci_addr pci_addr;
-	char path[PATH_MAX];
-	int nb_maps;
-	struct pci_map maps[PCI_MAX_RESOURCE];
-};
-
-TAILQ_HEAD(mapped_pci_res_list, mapped_pci_resource);
-
 static struct rte_tailq_elem rte_uio_tailq = {
 	.name = "UIO_RESOURCE_LIST",
 };
