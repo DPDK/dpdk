@@ -241,6 +241,9 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 	/* FreeBSD has no NUMA support (yet) */
 	dev->numa_node = 0;
 
+	/* FreeBSD has only one pass through driver */
+	dev->kdrv = RTE_KDRV_NIC_UIO;
+
 	/* parse resources */
 	switch (conf->pc_hdr & PCIM_HDRTYPE) {
 	case PCIM_HDRTYPE_NORMAL:

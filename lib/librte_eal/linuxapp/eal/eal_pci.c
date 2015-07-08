@@ -522,59 +522,6 @@ pci_config_space_set(struct rte_pci_device *dev)
 }
 #endif
 
-static int
-pci_map_device(struct rte_pci_device *dev)
-{
-	int ret = -1;
-
-	/* try mapping the NIC resources using VFIO if it exists */
-	switch (dev->kdrv) {
-	case RTE_KDRV_VFIO:
-#ifdef VFIO_PRESENT
-		if (pci_vfio_is_enabled())
-			ret = pci_vfio_map_resource(dev);
-#endif
-		break;
-	case RTE_KDRV_IGB_UIO:
-	case RTE_KDRV_UIO_GENERIC:
-		/* map resources for devices that use uio */
-		ret = pci_uio_map_resource(dev);
-		break;
-	default:
-		RTE_LOG(DEBUG, EAL, "  Not managed by a supported kernel driver,"
-			" skipped\n");
-		ret = 1;
-		break;
-	}
-
-	return ret;
-}
-
-#ifdef RTE_LIBRTE_EAL_HOTPLUG
-static void
-pci_unmap_device(struct rte_pci_device *dev)
-{
-	if (dev == NULL)
-		return;
-
-	/* try unmapping the NIC resources using VFIO if it exists */
-	switch (dev->kdrv) {
-	case RTE_KDRV_VFIO:
-		RTE_LOG(ERR, EAL, "Hotplug doesn't support vfio yet\n");
-		break;
-	case RTE_KDRV_IGB_UIO:
-	case RTE_KDRV_UIO_GENERIC:
-		/* unmap resources for devices that use uio */
-		pci_uio_unmap_resource(dev);
-		break;
-	default:
-		RTE_LOG(DEBUG, EAL, "  Not managed by a supported kernel driver,"
-			" skipped\n");
-		break;
-	}
-}
-#endif /* RTE_LIBRTE_EAL_HOTPLUG */
-
 /*
  * If vendor/device ID match, call the devinit() function of the
  * driver.

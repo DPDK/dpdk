@@ -527,6 +527,7 @@ rte_eth_dev_is_detachable(uint8_t port_id)
 		switch (rte_eth_devices[port_id].pci_dev->kdrv) {
 		case RTE_KDRV_IGB_UIO:
 		case RTE_KDRV_UIO_GENERIC:
+		case RTE_KDRV_NIC_UIO:
 			break;
 		case RTE_KDRV_VFIO:
 		default:

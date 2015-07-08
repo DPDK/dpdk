@@ -155,6 +155,25 @@ struct rte_pci_driver;
 struct rte_pci_device;
 
 /**
+ * Map this device
+ *
+ * This function is private to EAL.
+ *
+ * @return
+ *   0 on success, negative on error
+ */
+int pci_map_device(struct rte_pci_device *dev);
+
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+/**
+ * Unmap this device
+ *
+ * This function is private to EAL.
+ */
+void pci_unmap_device(struct rte_pci_device *dev);
+#endif /* RTE_LIBRTE_EAL_HOTPLUG */
+
+/**
  * Map the PCI resource of a PCI device in virtual memory
  *
  * This function is private to EAL.
