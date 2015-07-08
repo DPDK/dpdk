@@ -84,7 +84,7 @@
  */
 
 /* unbind kernel driver for this device */
-static int
+int
 pci_unbind_kernel_driver(struct rte_pci_device *dev __rte_unused)
 {
 	RTE_LOG(ERR, EAL, "RTE_PCI_DRV_FORCE_UNBIND flag is not implemented "
@@ -356,71 +356,6 @@ error:
 	if (fd >= 0)
 		close(fd);
 	return -1;
-}
-
-/*
- * If vendor/device ID match, call the devinit() function of the
- * driver.
- */
-int
-rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *dev)
-{
-	const struct rte_pci_id *id_table;
-	int ret;
-
-	for (id_table = dr->id_table ; id_table->vendor_id != 0; id_table++) {
-
-		/* check if device's identifiers match the driver's ones */
-		if (id_table->vendor_id != dev->id.vendor_id &&
-				id_table->vendor_id != PCI_ANY_ID)
-			continue;
-		if (id_table->device_id != dev->id.device_id &&
-				id_table->device_id != PCI_ANY_ID)
-			continue;
-		if (id_table->subsystem_vendor_id != dev->id.subsystem_vendor_id &&
-				id_table->subsystem_vendor_id != PCI_ANY_ID)
-			continue;
-		if (id_table->subsystem_device_id != dev->id.subsystem_device_id &&
-				id_table->subsystem_device_id != PCI_ANY_ID)
-			continue;
-
-		struct rte_pci_addr *loc = &dev->addr;
-
-		RTE_LOG(DEBUG, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
-				loc->domain, loc->bus, loc->devid, loc->function,
-				dev->numa_node);
-
-		RTE_LOG(DEBUG, EAL, "  probe driver: %x:%x %s\n", dev->id.vendor_id,
-				dev->id.device_id, dr->name);
-
-		/* no initialization when blacklisted, return without error */
-		if (dev->devargs != NULL &&
-			dev->devargs->type == RTE_DEVTYPE_BLACKLISTED_PCI) {
-
-			RTE_LOG(DEBUG, EAL, "  Device is blacklisted, not initializing\n");
-			return 0;
-		}
-
-		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
-			/* map resources for devices that use igb_uio */
-			ret = pci_uio_map_resource(dev);
-			if (ret != 0)
-				return ret;
-		} else if (dr->drv_flags & RTE_PCI_DRV_FORCE_UNBIND &&
-		           rte_eal_process_type() == RTE_PROC_PRIMARY) {
-			/* unbind current driver */
-			if (pci_unbind_kernel_driver(dev) < 0)
-				return -1;
-		}
-
-		/* reference driver structure */
-		dev->driver = dr;
-
-		/* call the driver devinit() function */
-		return dr->devinit(dr, dev);
-	}
-	/* return positive value if driver is not found */
-	return 1;
 }
 
 /* Init the PCI EAL subsystem */

@@ -138,7 +138,7 @@ pci_unmap_resource(void *requested_addr, size_t size)
 }
 
 /* Map pci device */
-int
+static int
 pci_map_device(struct rte_pci_device *dev)
 {
 	int ret = -1;
@@ -169,7 +169,7 @@ pci_map_device(struct rte_pci_device *dev)
 
 #ifdef RTE_LIBRTE_EAL_HOTPLUG
 /* Unmap pci device */
-void
+static void
 pci_unmap_device(struct rte_pci_device *dev)
 {
 	if (dev == NULL)
@@ -191,6 +191,135 @@ pci_unmap_device(struct rte_pci_device *dev)
 			" skipped\n");
 		break;
 	}
+}
+#endif /* RTE_LIBRTE_EAL_HOTPLUG */
+
+/*
+ * If vendor/device ID match, call the devinit() function of the
+ * driver.
+ */
+static int
+rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *dev)
+{
+	int ret;
+	const struct rte_pci_id *id_table;
+
+	for (id_table = dr->id_table; id_table->vendor_id != 0; id_table++) {
+
+		/* check if device's identifiers match the driver's ones */
+		if (id_table->vendor_id != dev->id.vendor_id &&
+				id_table->vendor_id != PCI_ANY_ID)
+			continue;
+		if (id_table->device_id != dev->id.device_id &&
+				id_table->device_id != PCI_ANY_ID)
+			continue;
+		if (id_table->subsystem_vendor_id != dev->id.subsystem_vendor_id &&
+				id_table->subsystem_vendor_id != PCI_ANY_ID)
+			continue;
+		if (id_table->subsystem_device_id != dev->id.subsystem_device_id &&
+				id_table->subsystem_device_id != PCI_ANY_ID)
+			continue;
+
+		struct rte_pci_addr *loc = &dev->addr;
+
+		RTE_LOG(DEBUG, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
+				loc->domain, loc->bus, loc->devid, loc->function,
+				dev->numa_node);
+
+		RTE_LOG(DEBUG, EAL, "  probe driver: %x:%x %s\n", dev->id.vendor_id,
+				dev->id.device_id, dr->name);
+
+		/* no initialization when blacklisted, return without error */
+		if (dev->devargs != NULL &&
+			dev->devargs->type == RTE_DEVTYPE_BLACKLISTED_PCI) {
+			RTE_LOG(DEBUG, EAL, "  Device is blacklisted, not initializing\n");
+			return 1;
+		}
+
+		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
+#ifdef RTE_PCI_CONFIG
+			/*
+			 * Set PCIe config space for high performance.
+			 * Return value can be ignored.
+			 */
+			pci_config_space_set(dev);
+#endif
+			/* map resources for devices that use igb_uio */
+			ret = pci_map_device(dev);
+			if (ret != 0)
+				return ret;
+		} else if (dr->drv_flags & RTE_PCI_DRV_FORCE_UNBIND &&
+				rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			/* unbind current driver */
+			if (pci_unbind_kernel_driver(dev) < 0)
+				return -1;
+		}
+
+		/* reference driver structure */
+		dev->driver = dr;
+
+		/* call the driver devinit() function */
+		return dr->devinit(dr, dev);
+	}
+	/* return positive value if driver is not found */
+	return 1;
+}
+
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+/*
+ * If vendor/device ID match, call the devuninit() function of the
+ * driver.
+ */
+static int
+rte_eal_pci_close_one_driver(struct rte_pci_driver *dr,
+		struct rte_pci_device *dev)
+{
+	const struct rte_pci_id *id_table;
+
+	if ((dr == NULL) || (dev == NULL))
+		return -EINVAL;
+
+	for (id_table = dr->id_table; id_table->vendor_id != 0; id_table++) {
+
+		/* check if device's identifiers match the driver's ones */
+		if (id_table->vendor_id != dev->id.vendor_id &&
+				id_table->vendor_id != PCI_ANY_ID)
+			continue;
+		if (id_table->device_id != dev->id.device_id &&
+				id_table->device_id != PCI_ANY_ID)
+			continue;
+		if (id_table->subsystem_vendor_id != dev->id.subsystem_vendor_id &&
+				id_table->subsystem_vendor_id != PCI_ANY_ID)
+			continue;
+		if (id_table->subsystem_device_id != dev->id.subsystem_device_id &&
+				id_table->subsystem_device_id != PCI_ANY_ID)
+			continue;
+
+		struct rte_pci_addr *loc = &dev->addr;
+
+		RTE_LOG(DEBUG, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
+				loc->domain, loc->bus, loc->devid,
+				loc->function, dev->numa_node);
+
+		RTE_LOG(DEBUG, EAL, "  remove driver: %x:%x %s\n", dev->id.vendor_id,
+				dev->id.device_id, dr->name);
+
+		/* call the driver devuninit() function */
+		if (dr->devuninit && (dr->devuninit(dev) < 0))
+			return -1;	/* negative value is an error */
+
+		/* clear driver structure */
+		dev->driver = NULL;
+
+		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
+			/* unmap resources for devices that use igb_uio */
+			pci_unmap_device(dev);
+
+		return 0;
+	}
+
+	/* return positive value if driver is not found */
+	return 1;
 }
 #endif /* RTE_LIBRTE_EAL_HOTPLUG */
 

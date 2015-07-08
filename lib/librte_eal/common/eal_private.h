@@ -155,23 +155,14 @@ struct rte_pci_driver;
 struct rte_pci_device;
 
 /**
- * Map this device
+ * Unbind kernel driver for this device
  *
  * This function is private to EAL.
  *
  * @return
  *   0 on success, negative on error
  */
-int pci_map_device(struct rte_pci_device *dev);
-
-#ifdef RTE_LIBRTE_EAL_HOTPLUG
-/**
- * Unmap this device
- *
- * This function is private to EAL.
- */
-void pci_unmap_device(struct rte_pci_device *dev);
-#endif /* RTE_LIBRTE_EAL_HOTPLUG */
+int pci_unbind_kernel_driver(struct rte_pci_device *dev);
 
 /**
  * Map the PCI resource of a PCI device in virtual memory
@@ -191,32 +182,6 @@ int pci_uio_map_resource(struct rte_pci_device *dev);
  */
 void pci_uio_unmap_resource(struct rte_pci_device *dev);
 #endif /* RTE_LIBRTE_EAL_HOTPLUG */
-
-/**
- * Mmap memory for single PCI device
- *
- * This function is private to EAL.
- *
- * @return
- *   0 on success, negative on error
- */
-int rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr,
-		struct rte_pci_device *dev);
-
-/**
- * Munmap memory for single PCI device
- *
- * This function is private to EAL.
- *
- * @param	dr
- *  The pointer to the pci driver structure
- * @param	dev
- *  The pointer to the pci device structure
- * @return
- *   0 on success, negative on error
- */
-int rte_eal_pci_close_one_driver(struct rte_pci_driver *dr,
-		struct rte_pci_device *dev);
 
 /**
  * Allocate uio resource for PCI device
