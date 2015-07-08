@@ -464,8 +464,12 @@ pci_uio_unmap_resource(struct rte_pci_device *dev)
 
 	/* close fd if in primary process */
 	close(dev->intr_handle.fd);
-
 	dev->intr_handle.fd = -1;
+
+	/* close cfg_fd if in primary process */
+	close(dev->intr_handle.uio_cfg_fd);
+	dev->intr_handle.uio_cfg_fd = -1;
+
 	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
 }
 #endif /* RTE_LIBRTE_EAL_HOTPLUG */
