@@ -201,7 +201,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	uint64_t offset;
 	uint64_t pagesz;
 	struct rte_pci_addr *loc = &dev->addr;
-	struct uio_resource *uio_res;
+	struct uio_resource *uio_res = NULL;
 	struct uio_res_list *uio_res_list =
 			RTE_TAILQ_CAST(rte_uio_tailq.head, uio_res_list);
 	struct uio_map *maps;
@@ -227,7 +227,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	if (dev->intr_handle.fd < 0) {
 		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
 			devname, strerror(errno));
-		return -1;
+		goto error;
 	}
 	dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
 
@@ -235,7 +235,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	if ((uio_res = rte_zmalloc("UIO_RES", sizeof (*uio_res), 0)) == NULL) {
 		RTE_LOG(ERR, EAL,
 			"%s(): cannot store uio mmap details\n", __func__);
-		return -1;
+		goto error;
 	}
 
 	snprintf(uio_res->path, sizeof(uio_res->path), "%s", devname);
@@ -262,8 +262,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 		    (mapaddr = pci_map_resource(NULL, devname, (off_t)offset,
 						(size_t)maps[j].size)
 		    ) == NULL) {
-			rte_free(uio_res);
-			return -1;
+			goto error;
 		}
 
 		maps[j].addr = mapaddr;
@@ -274,6 +273,15 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	TAILQ_INSERT_TAIL(uio_res_list, uio_res, next);
 
 	return 0;
+
+error:
+	rte_free(uio_res);
+	if (dev->intr_handle.fd >= 0) {
+		close(dev->intr_handle.fd);
+		dev->intr_handle.fd = -1;
+		dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+	}
+	return -1;
 }
 
 /* Scan one pci sysfs entry, and fill the devices list from it. */
