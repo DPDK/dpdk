@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -91,6 +91,27 @@ EAL_REGISTER_TAILQ(rte_hash_tailq)
 
 /* The high bit is always set in real signatures */
 #define NULL_SIGNATURE          0
+
+struct rte_hash {
+	char name[RTE_HASH_NAMESIZE];	/**< Name of the hash. */
+	uint32_t entries;		/**< Total table entries. */
+	uint32_t bucket_entries;	/**< Bucket entries. */
+	uint32_t key_len;		/**< Length of hash key. */
+	rte_hash_function hash_func;	/**< Function used to calculate hash. */
+	uint32_t hash_func_init_val;	/**< Init value used by hash_func. */
+	uint32_t num_buckets;		/**< Number of buckets in table. */
+	uint32_t bucket_bitmask;	/**< Bitmask for getting bucket index
+							from hash signature. */
+	hash_sig_t sig_msb;	/**< MSB is always set in valid signatures. */
+	uint8_t *sig_tbl;	/**< Flat array of hash signature buckets. */
+	uint32_t sig_tbl_bucket_size;	/**< Signature buckets may be padded for
+					   alignment reasons, and this is the
+					   bucket size used by sig_tbl. */
+	uint8_t *key_tbl;	/**< Flat array of key value buckets. */
+	uint32_t key_tbl_key_size;	/**< Keys may be padded for alignment
+					   reasons, and this is the key size
+					   used	by key_tbl. */
+};
 
 /* Returns a pointer to the first signature in specified bucket. */
 static inline hash_sig_t *
@@ -289,6 +310,13 @@ rte_hash_free(struct rte_hash *h)
 
 	rte_free(h);
 	rte_free(te);
+}
+
+hash_sig_t
+rte_hash_hash(const struct rte_hash *h, const void *key)
+{
+	/* calc hash result by key */
+	return h->hash_func(key, h->key_len, h->hash_func_init_val);
 }
 
 static inline int32_t

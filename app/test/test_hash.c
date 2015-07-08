@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -1108,10 +1108,6 @@ test_hash_creation_with_good_parameters(void)
 	handle = rte_hash_create(&params);
 	if (handle == NULL) {
 		printf("Creating hash with null hash_func failed\n");
-		return -1;
-	}
-	if (handle->hash_func == NULL) {
-		printf("Hash function should have been DEFAULT_HASH_FUNC\n");
 		return -1;
 	}
 

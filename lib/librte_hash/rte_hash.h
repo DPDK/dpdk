@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -41,7 +41,6 @@
  */
 
 #include <stdint.h>
-#include <sys/queue.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -84,27 +83,8 @@ struct rte_hash_parameters {
 	int socket_id;			/**< NUMA Socket ID for memory. */
 };
 
-/** A hash table structure. */
-struct rte_hash {
-	char name[RTE_HASH_NAMESIZE];	/**< Name of the hash. */
-	uint32_t entries;		/**< Total table entries. */
-	uint32_t bucket_entries;	/**< Bucket entries. */
-	uint32_t key_len;		/**< Length of hash key. */
-	rte_hash_function hash_func;	/**< Function used to calculate hash. */
-	uint32_t hash_func_init_val;	/**< Init value used by hash_func. */
-	uint32_t num_buckets;		/**< Number of buckets in table. */
-	uint32_t bucket_bitmask;	/**< Bitmask for getting bucket index
-							from hash signature. */
-	hash_sig_t sig_msb;	/**< MSB is always set in valid signatures. */
-	uint8_t *sig_tbl;	/**< Flat array of hash signature buckets. */
-	uint32_t sig_tbl_bucket_size;	/**< Signature buckets may be padded for
-					   alignment reasons, and this is the
-					   bucket size used by sig_tbl. */
-	uint8_t *key_tbl;	/**< Flat array of key value buckets. */
-	uint32_t key_tbl_key_size;	/**< Keys may be padded for alignment
-					   reasons, and this is the key size
-					   used	by key_tbl. */
-};
+/** @internal A hash table structure. */
+struct rte_hash;
 
 /**
  * Create a new hash table.
@@ -262,7 +242,6 @@ int32_t
 rte_hash_lookup_with_hash(const struct rte_hash *h,
 				const void *key, hash_sig_t sig);
 
-
 /**
  * Calc a hash value by key. This operation is not multi-process safe.
  *
@@ -273,12 +252,8 @@ rte_hash_lookup_with_hash(const struct rte_hash *h,
  * @return
  *   - hash value
  */
-static inline hash_sig_t
-rte_hash_hash(const struct rte_hash *h, const void *key)
-{
-	/* calc hash result by key */
-	return h->hash_func(key, h->key_len, h->hash_func_init_val);
-}
+hash_sig_t
+rte_hash_hash(const struct rte_hash *h, const void *key);
 
 #define rte_hash_lookup_multi rte_hash_lookup_bulk
 /**
