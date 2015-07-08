@@ -42,13 +42,12 @@
 extern void *pci_map_addr;
 void *pci_find_max_end_va(void);
 
-/* map IGB_UIO resource prototype */
-int pci_uio_map_resource(struct rte_pci_device *dev);
-
-#ifdef RTE_LIBRTE_EAL_HOTPLUG
-/* unmap IGB_UIO resource prototype */
-void pci_uio_unmap_resource(struct rte_pci_device *dev);
-#endif /* RTE_LIBRTE_EAL_HOTPLUG */
+int pci_uio_alloc_resource(struct rte_pci_device *dev,
+		struct mapped_pci_resource **uio_res);
+void pci_uio_free_resource(struct rte_pci_device *dev,
+		struct mapped_pci_resource *uio_res);
+int pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
+		struct mapped_pci_resource *uio_res, int map_idx);
 
 #ifdef VFIO_PRESENT
 

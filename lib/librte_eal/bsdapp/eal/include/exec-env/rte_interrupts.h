@@ -48,6 +48,7 @@ enum rte_intr_handle_type {
 /** Handle for interrupts. */
 struct rte_intr_handle {
 	int fd;                          /**< file descriptor */
+	int uio_cfg_fd;                  /**< UIO config file descriptor */
 	enum rte_intr_handle_type type;  /**< handle type */
 };
 
