@@ -46,6 +46,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <string.h>
+#include <limits.h>
 
 #include <rte_log.h>
 #include <rte_byteorder.h>
@@ -122,7 +123,7 @@ __rte_jhash_2hashes(const void *key, uint32_t length, uint32_t *pc,
 	const uint32_t *k = key;
 	const uint32_t s = 0;
 #else
-	const uint32_t *k = (uint32_t *)(uintptr_t)key & (uintptr_t)~3);
+	const uint32_t *k = (uint32_t *)((uintptr_t)key & (uintptr_t)~3);
 	const uint32_t s = ((uintptr_t)key & 3) * CHAR_BIT;
 #endif
 	if (!check_align || s == 0) {
