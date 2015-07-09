@@ -121,16 +121,12 @@ vmxnet3_comp_ring_adv_next2proc(struct vmxnet3_comp_ring *ring)
 }
 
 struct vmxnet3_txq_stats {
-	uint64_t               drop_total; /* # of pkts dropped by the driver, the
-									   * counters below track droppings due to
-									   * different reasons
-									   */
-	uint64_t               drop_oversized;
-	uint64_t               drop_hdr_inspect_err;
-	uint64_t               drop_tso;
-	uint64_t               deferred;
-	uint64_t               tx_ring_full;
-	uint64_t               linearized;  /* # of pkts linearized */
+	uint64_t	drop_total; /* # of pkts dropped by the driver,
+				     * the counters below track droppings due to
+				     * different reasons
+				     */
+	uint64_t	drop_tso;
+	uint64_t	tx_ring_full;
 };
 
 typedef struct vmxnet3_tx_ctx {
