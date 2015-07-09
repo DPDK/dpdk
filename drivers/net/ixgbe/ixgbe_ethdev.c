@@ -704,7 +704,7 @@ ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 		(hw->mac.type != ixgbe_mac_X550EM_x))
 		return -ENOSYS;
 
-	PMD_INIT_LOG(INFO, "Setting port %d, %s queue_id %d to stat index %d",
+	PMD_INIT_LOG(DEBUG, "Setting port %d, %s queue_id %d to stat index %d",
 		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX",
 		     queue_id, stat_idx);
 
@@ -730,20 +730,20 @@ ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 	else
 		stat_mappings->rqsmr[n] |= qsmr_mask;
 
-	PMD_INIT_LOG(INFO, "Set port %d, %s queue_id %d to stat index %d",
+	PMD_INIT_LOG(DEBUG, "Set port %d, %s queue_id %d to stat index %d",
 		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX",
 		     queue_id, stat_idx);
-	PMD_INIT_LOG(INFO, "%s[%d] = 0x%08x", is_rx ? "RQSMR" : "TQSM", n,
+	PMD_INIT_LOG(DEBUG, "%s[%d] = 0x%08x", is_rx ? "RQSMR" : "TQSM", n,
 		     is_rx ? stat_mappings->rqsmr[n] : stat_mappings->tqsm[n]);
 
 	/* Now write the mapping in the appropriate register */
 	if (is_rx) {
-		PMD_INIT_LOG(INFO, "Write 0x%x to RX IXGBE stat mapping reg:%d",
+		PMD_INIT_LOG(DEBUG, "Write 0x%x to RX IXGBE stat mapping reg:%d",
 			     stat_mappings->rqsmr[n], n);
 		IXGBE_WRITE_REG(hw, IXGBE_RQSMR(n), stat_mappings->rqsmr[n]);
 	}
 	else {
-		PMD_INIT_LOG(INFO, "Write 0x%x to TX IXGBE stat mapping reg:%d",
+		PMD_INIT_LOG(DEBUG, "Write 0x%x to TX IXGBE stat mapping reg:%d",
 			     stat_mappings->tqsm[n], n);
 		IXGBE_WRITE_REG(hw, IXGBE_TQSM(n), stat_mappings->tqsm[n]);
 	}
@@ -2659,7 +2659,7 @@ ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 
 	/* read-on-clear nic registers here */
 	eicr = IXGBE_READ_REG(hw, IXGBE_EICR);
-	PMD_DRV_LOG(INFO, "eicr %x", eicr);
+	PMD_DRV_LOG(DEBUG, "eicr %x", eicr);
 
 	intr->flags = 0;
 
@@ -2724,7 +2724,7 @@ ixgbe_dev_link_status_print(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(INFO, " Port %d: Link Down",
 				(int)(dev->data->port_id));
 	}
-	PMD_INIT_LOG(INFO, "PCI Address: %04d:%02d:%02d:%d",
+	PMD_INIT_LOG(DEBUG, "PCI Address: %04d:%02d:%02d:%d",
 				dev->pci_dev->addr.domain,
 				dev->pci_dev->addr.bus,
 				dev->pci_dev->addr.devid,
