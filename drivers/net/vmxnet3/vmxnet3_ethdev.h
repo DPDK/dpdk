@@ -107,7 +107,6 @@ struct vmxnet3_hw {
 	uint8_t num_tx_queues;
 	uint8_t num_rx_queues;
 	uint8_t bufs_per_pkt;
-	uint16_t cur_mtu;
 
 	Vmxnet3_TxQueueDesc   *tqd_start;	/* start address of all tx queue desc */
 	Vmxnet3_RxQueueDesc   *rqd_start;	/* start address of all rx queue desc */

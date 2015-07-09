@@ -216,7 +216,6 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 
 	hw->num_rx_queues = 1;
 	hw->num_tx_queues = 1;
-	hw->cur_mtu = ETHER_MTU;
 	hw->bufs_per_pkt = 1;
 
 	/* Check h/w version compatibility with driver. */
@@ -391,7 +390,6 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 
 	devRead->misc.queueDescPA  = hw->queueDescPA;
 	devRead->misc.queueDescLen = hw->queue_desc_len;
-	devRead->misc.mtu          = hw->cur_mtu;
 	devRead->misc.numTxQueues  = hw->num_tx_queues;
 	devRead->misc.numRxQueues  = hw->num_rx_queues;
 

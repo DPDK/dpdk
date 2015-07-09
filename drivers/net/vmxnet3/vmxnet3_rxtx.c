@@ -368,16 +368,6 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				continue;
 			}
 
-			/* Needs to minus ether header len */
-			if (txm->data_len > (hw->cur_mtu + ETHER_HDR_LEN)) {
-				PMD_TX_LOG(DEBUG, "Packet data_len higher than MTU");
-				rte_pktmbuf_free(tx_pkts[nb_tx]);
-				txq->stats.drop_total++;
-
-				nb_tx++;
-				continue;
-			}
-
 			txd = (Vmxnet3_TxDesc *)(txq->cmd_ring.base + txq->cmd_ring.next2fill);
 			if (rte_pktmbuf_pkt_len(txm) <= VMXNET3_HDR_COPY_SIZE) {
 				struct Vmxnet3_TxDataDesc *tdd;
