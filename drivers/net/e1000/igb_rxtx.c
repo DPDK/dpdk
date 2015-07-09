@@ -590,6 +590,101 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
  *  RX functions
  *
  **********************************************************************/
+#ifdef RTE_NEXT_ABI
+#define IGB_PACKET_TYPE_IPV4              0X01
+#define IGB_PACKET_TYPE_IPV4_TCP          0X11
+#define IGB_PACKET_TYPE_IPV4_UDP          0X21
+#define IGB_PACKET_TYPE_IPV4_SCTP         0X41
+#define IGB_PACKET_TYPE_IPV4_EXT          0X03
+#define IGB_PACKET_TYPE_IPV4_EXT_SCTP     0X43
+#define IGB_PACKET_TYPE_IPV6              0X04
+#define IGB_PACKET_TYPE_IPV6_TCP          0X14
+#define IGB_PACKET_TYPE_IPV6_UDP          0X24
+#define IGB_PACKET_TYPE_IPV6_EXT          0X0C
+#define IGB_PACKET_TYPE_IPV6_EXT_TCP      0X1C
+#define IGB_PACKET_TYPE_IPV6_EXT_UDP      0X2C
+#define IGB_PACKET_TYPE_IPV4_IPV6         0X05
+#define IGB_PACKET_TYPE_IPV4_IPV6_TCP     0X15
+#define IGB_PACKET_TYPE_IPV4_IPV6_UDP     0X25
+#define IGB_PACKET_TYPE_IPV4_IPV6_EXT     0X0D
+#define IGB_PACKET_TYPE_IPV4_IPV6_EXT_TCP 0X1D
+#define IGB_PACKET_TYPE_IPV4_IPV6_EXT_UDP 0X2D
+#define IGB_PACKET_TYPE_MAX               0X80
+#define IGB_PACKET_TYPE_MASK              0X7F
+#define IGB_PACKET_TYPE_SHIFT             0X04
+static inline uint32_t
+igb_rxd_pkt_info_to_pkt_type(uint16_t pkt_info)
+{
+	static const uint32_t
+		ptype_table[IGB_PACKET_TYPE_MAX] __rte_cache_aligned = {
+		[IGB_PACKET_TYPE_IPV4] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4,
+		[IGB_PACKET_TYPE_IPV4_EXT] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT,
+		[IGB_PACKET_TYPE_IPV6] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6,
+		[IGB_PACKET_TYPE_IPV4_IPV6] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_TUNNEL_IP |
+			RTE_PTYPE_INNER_L3_IPV6,
+		[IGB_PACKET_TYPE_IPV6_EXT] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6_EXT,
+		[IGB_PACKET_TYPE_IPV4_IPV6_EXT] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_TUNNEL_IP |
+			RTE_PTYPE_INNER_L3_IPV6_EXT,
+		[IGB_PACKET_TYPE_IPV4_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP,
+		[IGB_PACKET_TYPE_IPV6_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP,
+		[IGB_PACKET_TYPE_IPV4_IPV6_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_TUNNEL_IP |
+			RTE_PTYPE_INNER_L3_IPV6 | RTE_PTYPE_INNER_L4_TCP,
+		[IGB_PACKET_TYPE_IPV6_EXT_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_TCP,
+		[IGB_PACKET_TYPE_IPV4_IPV6_EXT_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_TUNNEL_IP |
+			RTE_PTYPE_INNER_L3_IPV6_EXT | RTE_PTYPE_INNER_L4_TCP,
+		[IGB_PACKET_TYPE_IPV4_UDP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP,
+		[IGB_PACKET_TYPE_IPV6_UDP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP,
+		[IGB_PACKET_TYPE_IPV4_IPV6_UDP] =  RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_TUNNEL_IP |
+			RTE_PTYPE_INNER_L3_IPV6 | RTE_PTYPE_INNER_L4_UDP,
+		[IGB_PACKET_TYPE_IPV6_EXT_UDP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_UDP,
+		[IGB_PACKET_TYPE_IPV4_IPV6_EXT_UDP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_TUNNEL_IP |
+			RTE_PTYPE_INNER_L3_IPV6_EXT | RTE_PTYPE_INNER_L4_UDP,
+		[IGB_PACKET_TYPE_IPV4_SCTP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_SCTP,
+		[IGB_PACKET_TYPE_IPV4_EXT_SCTP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_L4_SCTP,
+	};
+	if (unlikely(pkt_info & E1000_RXDADV_PKTTYPE_ETQF))
+		return RTE_PTYPE_UNKNOWN;
+
+	pkt_info = (pkt_info >> IGB_PACKET_TYPE_SHIFT) & IGB_PACKET_TYPE_MASK;
+
+	return ptype_table[pkt_info];
+}
+
+static inline uint64_t
+rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
+{
+	uint64_t pkt_flags = ((hl_tp_rs & 0x0F) == 0) ?  0 : PKT_RX_RSS_HASH;
+
+#if defined(RTE_LIBRTE_IEEE1588)
+	static uint32_t ip_pkt_etqf_map[8] = {
+		0, 0, 0, PKT_RX_IEEE1588_PTP,
+		0, 0, 0, 0,
+	};
+
+	pkt_flags |= ip_pkt_etqf_map[(hl_tp_rs >> 4) & 0x07];
+#endif
+
+	return pkt_flags;
+}
+#else /* RTE_NEXT_ABI */
 static inline uint64_t
 rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
 {
@@ -617,6 +712,7 @@ rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
 #endif
 	return pkt_flags | (((hl_tp_rs & 0x0F) == 0) ?  0 : PKT_RX_RSS_HASH);
 }
+#endif /* RTE_NEXT_ABI */
 
 static inline uint64_t
 rx_desc_status_to_pkt_flags(uint32_t rx_status)
@@ -790,6 +886,10 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		pkt_flags = pkt_flags | rx_desc_status_to_pkt_flags(staterr);
 		pkt_flags = pkt_flags | rx_desc_error_to_pkt_flags(staterr);
 		rxm->ol_flags = pkt_flags;
+#ifdef RTE_NEXT_ABI
+		rxm->packet_type = igb_rxd_pkt_info_to_pkt_type(rxd.wb.lower.
+						lo_dword.hs_rss.pkt_info);
+#endif
 
 		/*
 		 * Store the mbuf address into the next entry of the array
@@ -1024,6 +1124,10 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		pkt_flags = pkt_flags | rx_desc_status_to_pkt_flags(staterr);
 		pkt_flags = pkt_flags | rx_desc_error_to_pkt_flags(staterr);
 		first_seg->ol_flags = pkt_flags;
+#ifdef RTE_NEXT_ABI
+		first_seg->packet_type = igb_rxd_pkt_info_to_pkt_type(rxd.wb.
+					lower.lo_dword.hs_rss.pkt_info);
+#endif
 
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_packet_prefetch((char *)first_seg->buf_addr +
