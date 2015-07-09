@@ -92,14 +92,18 @@ extern "C" {
 #define PKT_RX_HBUF_OVERFLOW (0ULL << 0)  /**< Header buffer overflow. */
 #define PKT_RX_RECIP_ERR     (0ULL << 0)  /**< Hardware processing error. */
 #define PKT_RX_MAC_ERR       (0ULL << 0)  /**< MAC error. */
+#ifndef RTE_NEXT_ABI
 #define PKT_RX_IPV4_HDR      (1ULL << 5)  /**< RX packet with IPv4 header. */
 #define PKT_RX_IPV4_HDR_EXT  (1ULL << 6)  /**< RX packet with extended IPv4 header. */
 #define PKT_RX_IPV6_HDR      (1ULL << 7)  /**< RX packet with IPv6 header. */
 #define PKT_RX_IPV6_HDR_EXT  (1ULL << 8)  /**< RX packet with extended IPv6 header. */
+#endif /* RTE_NEXT_ABI */
 #define PKT_RX_IEEE1588_PTP  (1ULL << 9)  /**< RX IEEE1588 L2 Ethernet PT Packet. */
 #define PKT_RX_IEEE1588_TMST (1ULL << 10) /**< RX IEEE1588 L2/L4 timestamped packet.*/
+#ifndef RTE_NEXT_ABI
 #define PKT_RX_TUNNEL_IPV4_HDR (1ULL << 11) /**< RX tunnel packet with IPv4 header.*/
 #define PKT_RX_TUNNEL_IPV6_HDR (1ULL << 12) /**< RX tunnel packet with IPv6 header. */
+#endif /* RTE_NEXT_ABI */
 #define PKT_RX_FDIR_ID       (1ULL << 13) /**< FD id reported if FDIR match. */
 #define PKT_RX_FDIR_FLX      (1ULL << 14) /**< Flexible bytes reported if FDIR match. */
 #define PKT_RX_QINQ_PKT      (1ULL << 15)  /**< RX packet with double VLAN stripped. */

@@ -251,14 +251,18 @@ const char *rte_get_rx_ol_flag_name(uint64_t mask)
 	/* case PKT_RX_HBUF_OVERFLOW: return "PKT_RX_HBUF_OVERFLOW"; */
 	/* case PKT_RX_RECIP_ERR: return "PKT_RX_RECIP_ERR"; */
 	/* case PKT_RX_MAC_ERR: return "PKT_RX_MAC_ERR"; */
+#ifndef RTE_NEXT_ABI
 	case PKT_RX_IPV4_HDR: return "PKT_RX_IPV4_HDR";
 	case PKT_RX_IPV4_HDR_EXT: return "PKT_RX_IPV4_HDR_EXT";
 	case PKT_RX_IPV6_HDR: return "PKT_RX_IPV6_HDR";
 	case PKT_RX_IPV6_HDR_EXT: return "PKT_RX_IPV6_HDR_EXT";
+#endif /* RTE_NEXT_ABI */
 	case PKT_RX_IEEE1588_PTP: return "PKT_RX_IEEE1588_PTP";
 	case PKT_RX_IEEE1588_TMST: return "PKT_RX_IEEE1588_TMST";
+#ifndef RTE_NEXT_ABI
 	case PKT_RX_TUNNEL_IPV4_HDR: return "PKT_RX_TUNNEL_IPV4_HDR";
 	case PKT_RX_TUNNEL_IPV6_HDR: return "PKT_RX_TUNNEL_IPV6_HDR";
+#endif /* RTE_NEXT_ABI */
 	default: return NULL;
 	}
 }
