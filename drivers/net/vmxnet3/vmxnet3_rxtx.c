@@ -305,26 +305,23 @@ vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *txq)
 		(comp_ring->base + comp_ring->next2proc);
 
 	while (tcd->gen == comp_ring->gen) {
-
 		/* Release cmd_ring descriptor and free mbuf */
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
 		VMXNET3_ASSERT(txq->cmd_ring.base[tcd->txdIdx].txd.eop == 1);
 #endif
-		mbuf = txq->cmd_ring.buf_info[tcd->txdIdx].m;
-		if (unlikely(mbuf == NULL))
-			rte_panic("EOP desc does not point to a valid mbuf");
-		else
-			rte_pktmbuf_free(mbuf);
+		while (txq->cmd_ring.next2comp != tcd->txdIdx) {
+			mbuf = txq->cmd_ring.buf_info[txq->cmd_ring.next2comp].m;
+			txq->cmd_ring.buf_info[txq->cmd_ring.next2comp].m = NULL;
+			rte_pktmbuf_free_seg(mbuf);
 
-
-		txq->cmd_ring.buf_info[tcd->txdIdx].m = NULL;
-		/* Mark the txd for which tcd was generated as completed */
-		vmxnet3_cmd_ring_adv_next2comp(&txq->cmd_ring);
+			/* Mark the txd for which tcd was generated as completed */
+			vmxnet3_cmd_ring_adv_next2comp(&txq->cmd_ring);
+			completed++;
+		}
 
 		vmxnet3_comp_ring_adv_next2proc(comp_ring);
 		tcd = (struct Vmxnet3_TxCompDesc *)(comp_ring->base +
 						    comp_ring->next2proc);
-		completed++;
 	}
 
 	PMD_TX_LOG(DEBUG, "Processed %d tx comps & command descs.", completed);
@@ -335,13 +332,8 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		  uint16_t nb_pkts)
 {
 	uint16_t nb_tx;
-	Vmxnet3_TxDesc *txd = NULL;
-	vmxnet3_buf_info_t *tbi = NULL;
-	struct vmxnet3_hw *hw;
-	struct rte_mbuf *txm;
 	vmxnet3_tx_queue_t *txq = tx_queue;
-
-	hw = txq->hw;
+	struct vmxnet3_hw *hw = txq->hw;
 
 	if (unlikely(txq->stopped)) {
 		PMD_TX_LOG(DEBUG, "Tx queue is stopped.");
@@ -353,75 +345,69 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	nb_tx = 0;
 	while (nb_tx < nb_pkts) {
+		Vmxnet3_GenericDesc *gdesc;
+		vmxnet3_buf_info_t *tbi;
+		uint32_t first2fill, avail, dw2;
+		struct rte_mbuf *txm = tx_pkts[nb_tx];
+		struct rte_mbuf *m_seg = txm;
 
-		if (vmxnet3_cmd_ring_desc_avail(&txq->cmd_ring)) {
-			int copy_size = 0;
+		/* Is this packet execessively fragmented, then drop */
+		if (unlikely(txm->nb_segs > VMXNET3_MAX_TXD_PER_PKT)) {
+			++txq->stats.drop_too_many_segs;
+			++txq->stats.drop_total;
+			rte_pktmbuf_free(txm);
+			++nb_tx;
+			continue;
+		}
 
-			txm = tx_pkts[nb_tx];
-			/* Don't support scatter packets yet, free them if met */
-			if (txm->nb_segs != 1) {
-				PMD_TX_LOG(DEBUG, "Don't support scatter packets yet, drop!");
-				rte_pktmbuf_free(tx_pkts[nb_tx]);
-				txq->stats.drop_total++;
+		/* Is command ring full? */
+		avail = vmxnet3_cmd_ring_desc_avail(&txq->cmd_ring);
+		if (txm->nb_segs > avail) {
+			++txq->stats.tx_ring_full;
+			break;
+		}
 
-				nb_tx++;
-				continue;
-			}
-
-			txd = (Vmxnet3_TxDesc *)(txq->cmd_ring.base + txq->cmd_ring.next2fill);
-			if (rte_pktmbuf_pkt_len(txm) <= VMXNET3_HDR_COPY_SIZE) {
-				struct Vmxnet3_TxDataDesc *tdd;
-
-				tdd = txq->data_ring.base + txq->cmd_ring.next2fill;
-				copy_size = rte_pktmbuf_pkt_len(txm);
-				rte_memcpy(tdd->data, rte_pktmbuf_mtod(txm, char *), copy_size);
-			}
-
-			/* Fill the tx descriptor */
+		/* use the previous gen bit for the SOP desc */
+		dw2 = (txq->cmd_ring.gen ^ 0x1) << VMXNET3_TXD_GEN_SHIFT;
+		first2fill = txq->cmd_ring.next2fill;
+		do {
+			/* Remember the transmit buffer for cleanup */
 			tbi = txq->cmd_ring.buf_info + txq->cmd_ring.next2fill;
-			tbi->bufPA = RTE_MBUF_DATA_DMA_ADDR(txm);
-			if (copy_size)
-				txd->addr = rte_cpu_to_le_64(txq->data_ring.basePA +
-							txq->cmd_ring.next2fill *
-							sizeof(struct Vmxnet3_TxDataDesc));
-			else
-				txd->addr = tbi->bufPA;
-			txd->len = txm->data_len;
+			tbi->m = m_seg;
 
-			/* Mark the last descriptor as End of Packet. */
-			txd->cq = 1;
-			txd->eop = 1;
-
-			/* Add VLAN tag if requested */
-			if (txm->ol_flags & PKT_TX_VLAN_PKT) {
-				txd->ti = 1;
-				txd->tci = rte_cpu_to_le_16(txm->vlan_tci);
-			}
-
-			/* Record current mbuf for freeing it later in tx complete */
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
-			VMXNET3_ASSERT(txm);
-#endif
-			tbi->m = txm;
-
-			/* Set the offloading mode to default */
-			txd->hlen = 0;
-			txd->om = VMXNET3_OM_NONE;
-			txd->msscof = 0;
-
-			/* finally flip the GEN bit of the SOP desc  */
-			txd->gen = txq->cmd_ring.gen;
-			txq->shared->ctrl.txNumDeferred++;
+			/* NB: the following assumes that VMXNET3 maximum
+			   transmit buffer size (16K) is greater than
+			   maximum sizeof mbuf segment size. */
+			gdesc = txq->cmd_ring.base + txq->cmd_ring.next2fill;
+			gdesc->txd.addr = RTE_MBUF_DATA_DMA_ADDR(m_seg);
+			gdesc->dword[2] = dw2 | m_seg->data_len;
+			gdesc->dword[3] = 0;
 
 			/* move to the next2fill descriptor */
 			vmxnet3_cmd_ring_adv_next2fill(&txq->cmd_ring);
-			nb_tx++;
 
-		} else {
-			PMD_TX_LOG(DEBUG, "No free tx cmd desc(s)");
-			txq->stats.drop_total += (nb_pkts - nb_tx);
-			break;
+			/* use the right gen for non-SOP desc */
+			dw2 = txq->cmd_ring.gen << VMXNET3_TXD_GEN_SHIFT;
+		} while ((m_seg = m_seg->next) != NULL);
+
+		/* Update the EOP descriptor */
+		gdesc->dword[3] |= VMXNET3_TXD_EOP | VMXNET3_TXD_CQ;
+
+		/* Add VLAN tag if present */
+		gdesc = txq->cmd_ring.base + first2fill;
+		if (txm->ol_flags & PKT_TX_VLAN_PKT) {
+			gdesc->txd.ti = 1;
+			gdesc->txd.tci = txm->vlan_tci;
 		}
+
+		/* TODO: Add transmit checksum offload here */
+
+		/* flip the GEN bit on the SOP */
+		rte_compiler_barrier();
+		gdesc->dword[2] ^= VMXNET3_TXD_GEN;
+
+		txq->shared->ctrl.txNumDeferred++;
+		nb_tx++;
 	}
 
 	PMD_TX_LOG(DEBUG, "vmxnet3 txThreshold: %u", txq->shared->ctrl.txThreshold);
@@ -720,12 +706,6 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	int size;
 
 	PMD_INIT_FUNC_TRACE();
-
-	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOMULTSEGS) !=
-	    ETH_TXQ_FLAGS_NOMULTSEGS) {
-		PMD_INIT_LOG(ERR, "TX Multi segment not support yet");
-		return -EINVAL;
-	}
 
 	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOXSUMS) !=
 	    ETH_TXQ_FLAGS_NOXSUMS) {

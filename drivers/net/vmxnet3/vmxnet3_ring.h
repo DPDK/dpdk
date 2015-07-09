@@ -125,6 +125,7 @@ struct vmxnet3_txq_stats {
 				     * the counters below track droppings due to
 				     * different reasons
 				     */
+	uint64_t	drop_too_many_segs;
 	uint64_t	drop_tso;
 	uint64_t	tx_ring_full;
 };
