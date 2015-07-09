@@ -121,6 +121,8 @@ struct vmxnet3_hw {
 	VMXNET3_RSSConf		 *rss_conf;
 	uint64_t			 rss_confPA;
 	vmxnet3_mf_table_t   *mf_table;
+	uint32_t	      shadow_vfta[VMXNET3_VFT_SIZE];
+#define VMXNET3_VFT_TABLE_SIZE     (VMXNET3_VFT_SIZE * sizeof(uint32_t))
 };
 
 #define VMXNET3_GET_ADDR_LO(reg)   ((uint32_t)(reg))
@@ -173,7 +175,6 @@ int  vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 int vmxnet3_dev_rxtx_init(struct rte_eth_dev *dev);
 
 int vmxnet3_rss_configure(struct rte_eth_dev *dev);
-int vmxnet3_vlan_configure(struct rte_eth_dev *dev);
 
 uint16_t vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);

@@ -85,6 +85,12 @@ static void vmxnet3_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
 static void vmxnet3_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
+static int vmxnet3_dev_vlan_filter_set(struct rte_eth_dev *dev,
+				       uint16_t vid, int on);
+static void vmxnet3_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static void vmxnet3_dev_vlan_offload_set_clear(struct rte_eth_dev *dev,
+						int mask, int clear);
+
 #if PROCESS_SYS_EVENTS == 1
 static void vmxnet3_process_events(struct vmxnet3_hw *);
 #endif
@@ -111,6 +117,8 @@ static const struct eth_dev_ops vmxnet3_eth_dev_ops = {
 	.link_update          = vmxnet3_dev_link_update,
 	.stats_get            = vmxnet3_dev_stats_get,
 	.dev_infos_get        = vmxnet3_dev_info_get,
+	.vlan_filter_set      = vmxnet3_dev_vlan_filter_set,
+	.vlan_offload_set     = vmxnet3_dev_vlan_offload_set,
 	.rx_queue_setup       = vmxnet3_dev_rx_queue_setup,
 	.rx_queue_release     = vmxnet3_dev_rx_queue_release,
 	.tx_queue_setup       = vmxnet3_dev_tx_queue_setup,
@@ -368,7 +376,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	Vmxnet3_DSDevRead *devRead = &shared->devRead;
 	uint32_t *mac_ptr;
 	uint32_t val, i;
-	int ret;
+	int ret, mask;
 
 	shared->magic = VMXNET3_REV1_MAGIC;
 	devRead->misc.driverInfo.version = VMXNET3_DRIVER_VERSION_NUM;
@@ -439,9 +447,6 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.hw_ip_checksum)
 		devRead->misc.uptFeatures |= VMXNET3_F_RXCSUM;
 
-	if (dev->data->dev_conf.rxmode.hw_vlan_strip)
-		devRead->misc.uptFeatures |= VMXNET3_F_RXVLAN;
-
 	if (port_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
 		ret = vmxnet3_rss_configure(dev);
 		if (ret != VMXNET3_SUCCESS)
@@ -453,11 +458,14 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 		devRead->rssConfDesc.confPA  = hw->rss_confPA;
 	}
 
-	if (dev->data->dev_conf.rxmode.hw_vlan_filter) {
-		ret = vmxnet3_vlan_configure(dev);
-		if (ret != VMXNET3_SUCCESS)
-			return ret;
-	}
+	mask = 0;
+	if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+		mask |= ETH_VLAN_STRIP_MASK;
+
+	if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+		mask |= ETH_VLAN_FILTER_MASK;
+
+	vmxnet3_dev_vlan_offload_set_clear(dev, mask, 1);
 
 	PMD_INIT_LOG(DEBUG,
 		     "Writing MAC Address : %02x:%02x:%02x:%02x:%02x:%02x",
@@ -693,8 +701,13 @@ static void
 vmxnet3_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
+	uint32_t *vf_table = hw->shared->devRead.rxFilterConf.vfTable;
 
+	memset(vf_table, 0, VMXNET3_VFT_TABLE_SIZE);
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_PROMISC, 1);
+
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+			       VMXNET3_CMD_UPDATE_VLAN_FILTERS);
 }
 
 /* Promiscuous supported only if Vmxnet3_DriverShared is initialized in adapter */
@@ -702,8 +715,12 @@ static void
 vmxnet3_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
+	uint32_t *vf_table = hw->shared->devRead.rxFilterConf.vfTable;
 
+	memcpy(vf_table, hw->shadow_vfta, VMXNET3_VFT_TABLE_SIZE);
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_PROMISC, 0);
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+			       VMXNET3_CMD_UPDATE_VLAN_FILTERS);
 }
 
 /* Allmulticast supported only if Vmxnet3_DriverShared is initialized in adapter */
@@ -722,6 +739,76 @@ vmxnet3_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_ALL_MULTI, 0);
+}
+
+/* Enable/disable filter on vlan */
+static int
+vmxnet3_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vid, int on)
+{
+	struct vmxnet3_hw *hw = dev->data->dev_private;
+	struct Vmxnet3_RxFilterConf *rxConf = &hw->shared->devRead.rxFilterConf;
+	uint32_t *vf_table = rxConf->vfTable;
+
+	/* save state for restore */
+	if (on)
+		VMXNET3_SET_VFTABLE_ENTRY(hw->shadow_vfta, vid);
+	else
+		VMXNET3_CLEAR_VFTABLE_ENTRY(hw->shadow_vfta, vid);
+
+	/* don't change active filter if in promiscious mode */
+	if (rxConf->rxMode & VMXNET3_RXM_PROMISC)
+		return 0;
+
+	/* set in hardware */
+	if (on)
+		VMXNET3_SET_VFTABLE_ENTRY(vf_table, vid);
+	else
+		VMXNET3_CLEAR_VFTABLE_ENTRY(vf_table, vid);
+
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+			       VMXNET3_CMD_UPDATE_VLAN_FILTERS);
+	return 0;
+}
+
+static void
+vmxnet3_dev_vlan_offload_set_clear(struct rte_eth_dev *dev,
+				   int mask, int clear)
+{
+	struct vmxnet3_hw *hw = dev->data->dev_private;
+	Vmxnet3_DSDevRead *devRead = &hw->shared->devRead;
+	uint32_t *vf_table = devRead->rxFilterConf.vfTable;
+
+	if (mask & ETH_VLAN_STRIP_MASK)
+		devRead->misc.uptFeatures |= UPT1_F_RXVLAN;
+	else
+		devRead->misc.uptFeatures &= ~UPT1_F_RXVLAN;
+
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+			       VMXNET3_CMD_UPDATE_FEATURE);
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (clear) {
+			memset(hw->shadow_vfta, 0,
+			       VMXNET3_VFT_TABLE_SIZE);
+			/* allow untagged pkts */
+			VMXNET3_SET_VFTABLE_ENTRY(hw->shadow_vfta, 0);
+		}
+		memcpy(vf_table, hw->shadow_vfta, VMXNET3_VFT_TABLE_SIZE);
+	} else {
+		/* allow any pkts -- no filtering */
+		if (clear)
+			memset(hw->shadow_vfta, 0xff, VMXNET3_VFT_TABLE_SIZE);
+		memset(vf_table, 0xff, VMXNET3_VFT_TABLE_SIZE);
+	}
+
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+			       VMXNET3_CMD_UPDATE_VLAN_FILTERS);
+}
+
+static void
+vmxnet3_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	vmxnet3_dev_vlan_offload_set_clear(dev, mask, 0);
 }
 
 #if PROCESS_SYS_EVENTS == 1

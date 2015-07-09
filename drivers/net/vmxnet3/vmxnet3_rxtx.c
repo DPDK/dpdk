@@ -737,9 +737,9 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOOFFLOADS) !=
-	    ETH_TXQ_FLAGS_NOOFFLOADS) {
-		PMD_INIT_LOG(ERR, "TX not support offload function yet");
+	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOXSUMS) !=
+	    ETH_TXQ_FLAGS_NOXSUMS) {
+		PMD_INIT_LOG(ERR, "TX no support for checksum offload yet");
 		return -EINVAL;
 	}
 
@@ -1038,31 +1038,6 @@ vmxnet3_rss_configure(struct rte_eth_dev *dev)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_IPV6;
 	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_TCP_IPV6;
-
-	return VMXNET3_SUCCESS;
-}
-
-/*
- * Configure VLAN Filter feature
- */
-int
-vmxnet3_vlan_configure(struct rte_eth_dev *dev)
-{
-	uint8_t i;
-	struct vmxnet3_hw *hw = dev->data->dev_private;
-	uint32_t *vf_table = hw->shared->devRead.rxFilterConf.vfTable;
-
-	PMD_INIT_FUNC_TRACE();
-
-	/* Verify if this tag is already set */
-	for (i = 0; i < VMXNET3_VFT_SIZE; i++) {
-		/* Filter all vlan tags out by default */
-		vf_table[i] = 0;
-		/* To-Do: Provide another routine in dev_ops for user config */
-
-		PMD_INIT_LOG(DEBUG, "Registering VLAN portid: %"PRIu8" tag %u",
-					dev->data->port_id, vf_table[i]);
-	}
 
 	return VMXNET3_SUCCESS;
 }
