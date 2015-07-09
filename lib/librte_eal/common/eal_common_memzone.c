@@ -77,18 +77,6 @@ memzone_lookup_thread_unsafe(const char *name)
 }
 
 /*
- * Return a pointer to a correctly filled memzone descriptor. If the
- * allocation cannot be done, return NULL.
- */
-const struct rte_memzone *
-rte_memzone_reserve(const char *name, size_t len, int socket_id,
-		      unsigned flags)
-{
-	return rte_memzone_reserve_aligned(name,
-			len, socket_id, flags, RTE_CACHE_LINE_SIZE);
-}
-
-/*
  * Helper function for memzone_reserve_aligned_thread_unsafe().
  * Calculate address offset from the start of the segment.
  * Align offset in that way that it satisfy istart alignmnet and
@@ -307,45 +295,10 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	return mz;
 }
 
-/*
- * Return a pointer to a correctly filled memzone descriptor (with a
- * specified alignment). If the allocation cannot be done, return NULL.
- */
-const struct rte_memzone *
-rte_memzone_reserve_aligned(const char *name, size_t len,
-		int socket_id, unsigned flags, unsigned align)
-{
-	struct rte_mem_config *mcfg;
-	const struct rte_memzone *mz = NULL;
-
-	/* both sizes cannot be explicitly called for */
-	if (((flags & RTE_MEMZONE_1GB) && (flags & RTE_MEMZONE_2MB))
-		|| ((flags & RTE_MEMZONE_16MB) && (flags & RTE_MEMZONE_16GB))) {
-		rte_errno = EINVAL;
-		return NULL;
-	}
-
-	/* get pointer to global configuration */
-	mcfg = rte_eal_get_configuration()->mem_config;
-
-	rte_rwlock_write_lock(&mcfg->mlock);
-
-	mz = memzone_reserve_aligned_thread_unsafe(
-		name, len, socket_id, flags, align, 0);
-
-	rte_rwlock_write_unlock(&mcfg->mlock);
-
-	return mz;
-}
-
-/*
- * Return a pointer to a correctly filled memzone descriptor (with a
- * specified alignment and boundary).
- * If the allocation cannot be done, return NULL.
- */
-const struct rte_memzone *
-rte_memzone_reserve_bounded(const char *name, size_t len,
-		int socket_id, unsigned flags, unsigned align, unsigned bound)
+static const struct rte_memzone *
+rte_memzone_reserve_thread_safe(const char *name, size_t len,
+				int socket_id, unsigned flags, unsigned align,
+				unsigned bound)
 {
 	struct rte_mem_config *mcfg;
 	const struct rte_memzone *mz = NULL;
@@ -370,6 +323,42 @@ rte_memzone_reserve_bounded(const char *name, size_t len,
 	return mz;
 }
 
+/*
+ * Return a pointer to a correctly filled memzone descriptor (with a
+ * specified alignment and boundary). If the allocation cannot be done,
+ * return NULL.
+ */
+const struct rte_memzone *
+rte_memzone_reserve_bounded(const char *name, size_t len, int socket_id,
+			    unsigned flags, unsigned align, unsigned bound)
+{
+	return rte_memzone_reserve_thread_safe(name, len, socket_id, flags,
+					       align, bound);
+}
+
+/*
+ * Return a pointer to a correctly filled memzone descriptor (with a
+ * specified alignment). If the allocation cannot be done, return NULL.
+ */
+const struct rte_memzone *
+rte_memzone_reserve_aligned(const char *name, size_t len, int socket_id,
+			    unsigned flags, unsigned align)
+{
+	return rte_memzone_reserve_thread_safe(name, len, socket_id, flags,
+					       align, 0);
+}
+
+/*
+ * Return a pointer to a correctly filled memzone descriptor. If the
+ * allocation cannot be done, return NULL.
+ */
+const struct rte_memzone *
+rte_memzone_reserve(const char *name, size_t len, int socket_id,
+		    unsigned flags)
+{
+	return rte_memzone_reserve_thread_safe(name, len, socket_id,
+					       flags, RTE_CACHE_LINE_SIZE, 0);
+}
 
 /*
  * Lookup for the memzone identified by the given name
