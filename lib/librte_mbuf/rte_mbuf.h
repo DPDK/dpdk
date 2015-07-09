@@ -339,6 +339,9 @@ struct rte_mbuf {
 	/** Size of the application private data. In case of an indirect
 	 * mbuf, it stores the direct mbuf private data size. */
 	uint16_t priv_size;
+
+	/** Timesync flags for use with IEEE1588. */
+	uint16_t timesync;
 } __rte_cache_aligned;
 
 static inline uint16_t rte_pktmbuf_priv_size(struct rte_mempool *mp);
