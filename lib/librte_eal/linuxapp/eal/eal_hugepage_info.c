@@ -63,7 +63,7 @@ static const char sys_dir_path[] = "/sys/kernel/mm/hugepages";
 
 /* this function is only called from eal_hugepage_info_init which itself
  * is only called from a primary process */
-static int32_t
+static uint32_t
 get_num_hugepages(const char *subdir)
 {
 	char path[PATH_MAX];
@@ -87,10 +87,17 @@ get_num_hugepages(const char *subdir)
 				subdir);
 
 	/* adjust num_pages */
-	if (num_pages > 0)
+	if (num_pages >= resv_pages)
 		num_pages -= resv_pages;
+	else if (resv_pages)
+		num_pages = 0;
 
-	return (int32_t)num_pages;
+	/* we want to return a uint32_t and more than this looks suspicious
+	 * anyway ... */
+	if (num_pages > UINT32_MAX)
+		num_pages = UINT32_MAX;
+
+	return num_pages;
 }
 
 static uint64_t
@@ -288,12 +295,13 @@ eal_hugepage_info_init(void)
 
 			/* first, check if we have a mountpoint */
 			if (hpi->hugedir == NULL){
-				int32_t num_pages;
-				if ((num_pages = get_num_hugepages(dirent->d_name)) > 0)
-					RTE_LOG(INFO, EAL, "%u hugepages of size %llu reserved, "\
-							"but no mounted hugetlbfs found for that size\n",
-							(unsigned)num_pages,
-							(unsigned long long)hpi->hugepage_sz);
+				uint32_t num_pages;
+
+				num_pages = get_num_hugepages(dirent->d_name);
+				if (num_pages > 0)
+					RTE_LOG(INFO, EAL, "%" PRIu32 " hugepages of size %" PRIu64 " reserved, "
+						"but no mounted hugetlbfs found for that size\n",
+						num_pages, hpi->hugepage_sz);
 			} else {
 				/* try to obtain a writelock */
 				hpi->lock_descriptor = open(hpi->hugedir, O_RDONLY);
