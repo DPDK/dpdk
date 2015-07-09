@@ -287,12 +287,13 @@ eal_hugepage_info_init(void)
 		rte_panic("Cannot open directory %s to read system hugepage "
 			  "info\n", sys_dir_path);
 
-	dirent = readdir(dir);
-	while (dirent != NULL) {
+	for (dirent = readdir(dir); dirent != NULL; dirent = readdir(dir)) {
 		struct hugepage_info *hpi;
 
 		if (strncmp(dirent->d_name, dirent_start_text,
-			    dirent_start_len) == 0) {
+			    dirent_start_len) != 0)
+			continue;
+
 			hpi = &internal_config.hugepage_info[num_sizes];
 			hpi->hugepage_sz = rte_str_to_size(&dirent->d_name[dirent_start_len]);
 			hpi->hugedir = get_hugepage_dir(hpi->hugepage_sz);
@@ -306,21 +307,20 @@ eal_hugepage_info_init(void)
 					RTE_LOG(INFO, EAL, "%" PRIu32 " hugepages of size %" PRIu64 " reserved, "
 						"but no mounted hugetlbfs found for that size\n",
 						num_pages, hpi->hugepage_sz);
-			} else {
+				continue;
+			}
+
 				/* try to obtain a writelock */
 				hpi->lock_descriptor = open(hpi->hugedir, O_RDONLY);
 
 				/* if blocking lock failed */
 				if (flock(hpi->lock_descriptor, LOCK_EX) == -1) {
 					RTE_LOG(CRIT, EAL, "Failed to lock hugepage directory!\n");
-					closedir(dir);
-					return -1;
+					break;
 				}
 				/* clear out the hugepages dir from unused pages */
-				if (clear_hugedir(hpi->hugedir) == -1) {
-					closedir(dir);
-					return -1;
-				}
+				if (clear_hugedir(hpi->hugedir) == -1)
+					break;
 
 				/* for now, put all pages into socket 0,
 				 * later they will be sorted */
@@ -333,11 +333,13 @@ eal_hugepage_info_init(void)
 #endif
 
 				num_sizes++;
-			}
-		}
-		dirent = readdir(dir);
 	}
 	closedir(dir);
+
+	/* something went wrong, and we broke from the for loop above */
+	if (dirent != NULL)
+		return -1;
+
 	internal_config.num_hugepage_sizes = num_sizes;
 
 	/* sort the page directory entries by size, largest to smallest */
