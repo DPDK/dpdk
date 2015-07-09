@@ -306,9 +306,7 @@ vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *txq)
 
 	while (tcd->gen == comp_ring->gen) {
 		/* Release cmd_ring descriptor and free mbuf */
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
 		VMXNET3_ASSERT(txq->cmd_ring.base[tcd->txdIdx].txd.eop == 1);
-#endif
 		while (txq->cmd_ring.next2comp != tcd->txdIdx) {
 			mbuf = txq->cmd_ring.buf_info[txq->cmd_ring.next2comp].m;
 			txq->cmd_ring.buf_info[txq->cmd_ring.next2comp].m = NULL;
@@ -585,16 +583,13 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		PMD_RX_LOG(DEBUG, "rxd idx: %d ring idx: %d.", idx, ring_idx);
 
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
 		VMXNET3_ASSERT(rcd->len <= rxd->len);
 		VMXNET3_ASSERT(rbi->m);
-#endif
+
 		if (unlikely(rcd->len == 0)) {
 			PMD_RX_LOG(DEBUG, "Rx buf was skipped. rxring[%d][%d]\n)",
 				   ring_idx, idx);
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
 			VMXNET3_ASSERT(rcd->sop && rcd->eop);
-#endif
 			rte_pktmbuf_free_seg(rbi->m);
 			goto rcd_done;
 		}
@@ -607,9 +602,8 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rte_pktmbuf_free_seg(rbi->m);
 			goto rcd_done;
 		}
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
 		VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_HEAD);
-#endif
+
 		/* Get the packet buffer pointer from buf_info */
 		rxm = rbi->m;
 
