@@ -117,9 +117,15 @@ struct rte_kni_mbuf {
 	uint16_t data_off;      /**< Start address of data in segment buffer. */
 	char pad1[4];
 	uint64_t ol_flags;      /**< Offload features. */
+#ifdef RTE_NEXT_ABI
+	char pad2[4];
+	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
+	uint16_t data_len;      /**< Amount of data in segment buffer. */
+#else
 	char pad2[2];
 	uint16_t data_len;      /**< Amount of data in segment buffer. */
 	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
+#endif
 
 	/* fields on second cache line */
 	char pad3[8] __attribute__((__aligned__(RTE_CACHE_LINE_SIZE)));

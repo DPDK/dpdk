@@ -276,6 +276,28 @@ struct rte_mbuf {
 	/* remaining bytes are set on RX when pulling packet from descriptor */
 	MARKER rx_descriptor_fields1;
 
+#ifdef RTE_NEXT_ABI
+	/*
+	 * The packet type, which is the combination of outer/inner L2, L3, L4
+	 * and tunnel types.
+	 */
+	union {
+		uint32_t packet_type; /**< L2/L3/L4 and tunnel information. */
+		struct {
+			uint32_t l2_type:4; /**< (Outer) L2 type. */
+			uint32_t l3_type:4; /**< (Outer) L3 type. */
+			uint32_t l4_type:4; /**< (Outer) L4 type. */
+			uint32_t tun_type:4; /**< Tunnel type. */
+			uint32_t inner_l2_type:4; /**< Inner L2 type. */
+			uint32_t inner_l3_type:4; /**< Inner L3 type. */
+			uint32_t inner_l4_type:4; /**< Inner L4 type. */
+		};
+	};
+
+	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
+	uint16_t data_len;        /**< Amount of data in segment buffer. */
+	uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
+#else /* RTE_NEXT_ABI */
 	/**
 	 * The packet type, which is used to indicate ordinary packet and also
 	 * tunneled packet format, i.e. each number is represented a type of
@@ -287,6 +309,7 @@ struct rte_mbuf {
 	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
 	uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
 	uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
+#endif /* RTE_NEXT_ABI */
 	union {
 		uint32_t rss;     /**< RSS hash result if RSS enabled */
 		struct {
@@ -307,6 +330,9 @@ struct rte_mbuf {
 	} hash;                   /**< hash information */
 
 	uint32_t seqn; /**< Sequence number. See also rte_reorder_insert() */
+#ifdef RTE_NEXT_ABI
+	uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
+#endif /* RTE_NEXT_ABI */
 
 	/* second cache line - fields only used in slow path or on TX */
 	MARKER cacheline1 __rte_cache_aligned;
