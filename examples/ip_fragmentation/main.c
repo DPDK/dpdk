@@ -283,7 +283,11 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 	len = qconf->tx_mbufs[port_out].len;
 
 	/* if this is an IPv4 packet */
+#ifdef RTE_NEXT_ABI
+	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
+#else
 	if (m->ol_flags & PKT_RX_IPV4_HDR) {
+#endif
 		struct ipv4_hdr *ip_hdr;
 		uint32_t ip_dst;
 		/* Read the lookup key (i.e. ip_dst) from the input packet */
@@ -317,9 +321,14 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 			if (unlikely (len2 < 0))
 				return;
 		}
+#ifdef RTE_NEXT_ABI
+	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
+		/* if this is an IPv6 packet */
+#else
 	}
 	/* if this is an IPv6 packet */
 	else if (m->ol_flags & PKT_RX_IPV6_HDR) {
+#endif
 		struct ipv6_hdr *ip_hdr;
 
 		ipv6 = 1;

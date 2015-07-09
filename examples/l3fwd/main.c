@@ -939,7 +939,11 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
+#ifdef RTE_NEXT_ABI
+	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
+#else
 	if (m->ol_flags & PKT_RX_IPV4_HDR) {
+#endif
 		/* Handle IPv4 headers.*/
 		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
 						   sizeof(struct ether_hdr));
@@ -970,8 +974,11 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
 
 		send_single_packet(m, dst_port);
-
+#ifdef RTE_NEXT_ABI
+	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
+#else
 	} else {
+#endif
 		/* Handle IPv6 headers.*/
 		struct ipv6_hdr *ipv6_hdr;
 
@@ -990,8 +997,13 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
 
 		send_single_packet(m, dst_port);
+#ifdef RTE_NEXT_ABI
+	} else
+		/* Free the mbuf that contains non-IPV4/IPV6 packet */
+		rte_pktmbuf_free(m);
+#else
 	}
-
+#endif
 }
 
 #ifdef DO_RFC_1812_CHECKS
@@ -1015,12 +1027,19 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
  * to BAD_PORT value.
  */
 static inline __attribute__((always_inline)) void
+#ifdef RTE_NEXT_ABI
+rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t ptype)
+#else
 rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t flags)
+#endif
 {
 	uint8_t ihl;
 
+#ifdef RTE_NEXT_ABI
+	if (RTE_ETH_IS_IPV4_HDR(ptype)) {
+#else
 	if ((flags & PKT_RX_IPV4_HDR) != 0) {
-
+#endif
 		ihl = ipv4_hdr->version_ihl - IPV4_MIN_VER_IHL;
 
 		ipv4_hdr->time_to_live--;
@@ -1050,11 +1069,19 @@ get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 	struct ipv6_hdr *ipv6_hdr;
 	struct ether_hdr *eth_hdr;
 
+#ifdef RTE_NEXT_ABI
+	if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type)) {
+#else
 	if (pkt->ol_flags & PKT_RX_IPV4_HDR) {
+#endif
 		if (rte_lpm_lookup(qconf->ipv4_lookup_struct, dst_ipv4,
 				&next_hop) != 0)
 			next_hop = portid;
+#ifdef RTE_NEXT_ABI
+	} else if (RTE_ETH_IS_IPV6_HDR(pkt->packet_type)) {
+#else
 	} else if (pkt->ol_flags & PKT_RX_IPV6_HDR) {
+#endif
 		eth_hdr = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
 		ipv6_hdr = (struct ipv6_hdr *)(eth_hdr + 1);
 		if (rte_lpm6_lookup(qconf->ipv6_lookup_struct,
@@ -1088,12 +1115,52 @@ process_packet(struct lcore_conf *qconf, struct rte_mbuf *pkt,
 	ve = val_eth[dp];
 
 	dst_port[0] = dp;
+#ifdef RTE_NEXT_ABI
+	rfc1812_process(ipv4_hdr, dst_port, pkt->packet_type);
+#else
 	rfc1812_process(ipv4_hdr, dst_port, pkt->ol_flags);
+#endif
 
 	te =  _mm_blend_epi16(te, ve, MASK_ETH);
 	_mm_store_si128((__m128i *)eth_hdr, te);
 }
 
+#ifdef RTE_NEXT_ABI
+/*
+ * Read packet_type and destination IPV4 addresses from 4 mbufs.
+ */
+static inline void
+processx4_step1(struct rte_mbuf *pkt[FWDSTEP],
+		__m128i *dip,
+		uint32_t *ipv4_flag)
+{
+	struct ipv4_hdr *ipv4_hdr;
+	struct ether_hdr *eth_hdr;
+	uint32_t x0, x1, x2, x3;
+
+	eth_hdr = rte_pktmbuf_mtod(pkt[0], struct ether_hdr *);
+	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+	x0 = ipv4_hdr->dst_addr;
+	ipv4_flag[0] = pkt[0]->packet_type & RTE_PTYPE_L3_IPV4;
+
+	eth_hdr = rte_pktmbuf_mtod(pkt[1], struct ether_hdr *);
+	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+	x1 = ipv4_hdr->dst_addr;
+	ipv4_flag[0] &= pkt[1]->packet_type;
+
+	eth_hdr = rte_pktmbuf_mtod(pkt[2], struct ether_hdr *);
+	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+	x2 = ipv4_hdr->dst_addr;
+	ipv4_flag[0] &= pkt[2]->packet_type;
+
+	eth_hdr = rte_pktmbuf_mtod(pkt[3], struct ether_hdr *);
+	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+	x3 = ipv4_hdr->dst_addr;
+	ipv4_flag[0] &= pkt[3]->packet_type;
+
+	dip[0] = _mm_set_epi32(x3, x2, x1, x0);
+}
+#else /* RTE_NEXT_ABI */
 /*
  * Read ol_flags and destination IPV4 addresses from 4 mbufs.
  */
@@ -1126,14 +1193,24 @@ processx4_step1(struct rte_mbuf *pkt[FWDSTEP], __m128i *dip, uint32_t *flag)
 
 	dip[0] = _mm_set_epi32(x3, x2, x1, x0);
 }
+#endif /* RTE_NEXT_ABI */
 
 /*
  * Lookup into LPM for destination port.
  * If lookup fails, use incoming port (portid) as destination port.
  */
 static inline void
+#ifdef RTE_NEXT_ABI
+processx4_step2(const struct lcore_conf *qconf,
+		__m128i dip,
+		uint32_t ipv4_flag,
+		uint8_t portid,
+		struct rte_mbuf *pkt[FWDSTEP],
+		uint16_t dprt[FWDSTEP])
+#else
 processx4_step2(const struct lcore_conf *qconf, __m128i dip, uint32_t flag,
 	uint8_t portid, struct rte_mbuf *pkt[FWDSTEP], uint16_t dprt[FWDSTEP])
+#endif /* RTE_NEXT_ABI */
 {
 	rte_xmm_t dst;
 	const  __m128i bswap_mask = _mm_set_epi8(12, 13, 14, 15, 8, 9, 10, 11,
@@ -1143,7 +1220,11 @@ processx4_step2(const struct lcore_conf *qconf, __m128i dip, uint32_t flag,
 	dip = _mm_shuffle_epi8(dip, bswap_mask);
 
 	/* if all 4 packets are IPV4. */
+#ifdef RTE_NEXT_ABI
+	if (likely(ipv4_flag)) {
+#else
 	if (likely(flag != 0)) {
+#endif
 		rte_lpm_lookupx4(qconf->ipv4_lookup_struct, dip, dprt, portid);
 	} else {
 		dst.x = dip;
@@ -1193,6 +1274,16 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 	_mm_store_si128(p[2], te[2]);
 	_mm_store_si128(p[3], te[3]);
 
+#ifdef RTE_NEXT_ABI
+	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[0] + 1),
+		&dst_port[0], pkt[0]->packet_type);
+	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[1] + 1),
+		&dst_port[1], pkt[1]->packet_type);
+	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[2] + 1),
+		&dst_port[2], pkt[2]->packet_type);
+	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[3] + 1),
+		&dst_port[3], pkt[3]->packet_type);
+#else /* RTE_NEXT_ABI */
 	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[0] + 1),
 		&dst_port[0], pkt[0]->ol_flags);
 	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[1] + 1),
@@ -1201,6 +1292,7 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 		&dst_port[2], pkt[2]->ol_flags);
 	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[3] + 1),
 		&dst_port[3], pkt[3]->ol_flags);
+#endif /* RTE_NEXT_ABI */
 }
 
 /*
@@ -1387,7 +1479,11 @@ main_loop(__attribute__((unused)) void *dummy)
 	uint16_t *lp;
 	uint16_t dst_port[MAX_PKT_BURST];
 	__m128i dip[MAX_PKT_BURST / FWDSTEP];
+#ifdef RTE_NEXT_ABI
+	uint32_t ipv4_flag[MAX_PKT_BURST / FWDSTEP];
+#else
 	uint32_t flag[MAX_PKT_BURST / FWDSTEP];
+#endif
 	uint16_t pnum[MAX_PKT_BURST + 1];
 #endif
 
@@ -1457,6 +1553,18 @@ main_loop(__attribute__((unused)) void *dummy)
 				 */
 				int32_t n = RTE_ALIGN_FLOOR(nb_rx, 4);
 				for (j = 0; j < n ; j+=4) {
+#ifdef RTE_NEXT_ABI
+					uint32_t pkt_type =
+						pkts_burst[j]->packet_type &
+						pkts_burst[j+1]->packet_type &
+						pkts_burst[j+2]->packet_type &
+						pkts_burst[j+3]->packet_type;
+					if (pkt_type & RTE_PTYPE_L3_IPV4) {
+						simple_ipv4_fwd_4pkts(
+						&pkts_burst[j], portid, qconf);
+					} else if (pkt_type &
+						RTE_PTYPE_L3_IPV6) {
+#else /* RTE_NEXT_ABI */
 					uint32_t ol_flag = pkts_burst[j]->ol_flags
 							& pkts_burst[j+1]->ol_flags
 							& pkts_burst[j+2]->ol_flags
@@ -1465,6 +1573,7 @@ main_loop(__attribute__((unused)) void *dummy)
 						simple_ipv4_fwd_4pkts(&pkts_burst[j],
 									portid, qconf);
 					} else if (ol_flag & PKT_RX_IPV6_HDR) {
+#endif /* RTE_NEXT_ABI */
 						simple_ipv6_fwd_4pkts(&pkts_burst[j],
 									portid, qconf);
 					} else {
@@ -1489,13 +1598,21 @@ main_loop(__attribute__((unused)) void *dummy)
 			for (j = 0; j != k; j += FWDSTEP) {
 				processx4_step1(&pkts_burst[j],
 					&dip[j / FWDSTEP],
+#ifdef RTE_NEXT_ABI
+					&ipv4_flag[j / FWDSTEP]);
+#else
 					&flag[j / FWDSTEP]);
+#endif
 			}
 
 			k = RTE_ALIGN_FLOOR(nb_rx, FWDSTEP);
 			for (j = 0; j != k; j += FWDSTEP) {
 				processx4_step2(qconf, dip[j / FWDSTEP],
+#ifdef RTE_NEXT_ABI
+					ipv4_flag[j / FWDSTEP], portid,
+#else
 					flag[j / FWDSTEP], portid,
+#endif
 					&pkts_burst[j], &dst_port[j]);
 			}
 

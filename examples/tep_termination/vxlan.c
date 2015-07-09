@@ -180,8 +180,12 @@ decapsulation(struct rte_mbuf *pkt)
 	 * (rfc7348) or that the rx offload flag is set (i40e only
 	 * currently)*/
 	if (udp_hdr->dst_port != rte_cpu_to_be_16(DEFAULT_VXLAN_PORT) &&
+#ifdef RTE_NEXT_ABI
+		(pkt->packet_type & RTE_PTYPE_TUNNEL_MASK) == 0)
+#else
 			(pkt->ol_flags & (PKT_RX_TUNNEL_IPV4_HDR |
 				PKT_RX_TUNNEL_IPV6_HDR)) == 0)
+#endif
 		return -1;
 	outer_header_len = info.outer_l2_len + info.outer_l3_len
 		+ sizeof(struct udp_hdr) + sizeof(struct vxlan_hdr);
