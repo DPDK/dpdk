@@ -887,8 +887,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 			ixgbe_set_tx_function(eth_dev, txq);
 		} else {
 			/* Use default TX function if we get here */
-			PMD_INIT_LOG(INFO, "No TX queues configured yet. "
-			                   "Using default TX function.");
+			PMD_INIT_LOG(NOTICE, "No TX queues configured yet. "
+			                     "Using default TX function.");
 		}
 
 		ixgbe_set_rx_function(eth_dev);
@@ -1470,7 +1470,7 @@ ixgbe_vlan_hw_strip_disable(struct rte_eth_dev *dev, uint16_t queue)
 
 	if (hw->mac.type == ixgbe_mac_82598EB) {
 		/* No queue level support */
-		PMD_INIT_LOG(INFO, "82598EB not support queue level hw strip");
+		PMD_INIT_LOG(NOTICE, "82598EB not support queue level hw strip");
 		return;
 	}
 	else {
@@ -1494,7 +1494,7 @@ ixgbe_vlan_hw_strip_enable(struct rte_eth_dev *dev, uint16_t queue)
 
 	if (hw->mac.type == ixgbe_mac_82598EB) {
 		/* No queue level supported */
-		PMD_INIT_LOG(INFO, "82598EB not support queue level hw strip");
+		PMD_INIT_LOG(NOTICE, "82598EB not support queue level hw strip");
 		return;
 	}
 	else {
@@ -3410,12 +3410,12 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 	 */
 #ifndef RTE_LIBRTE_IXGBE_PF_DISABLE_STRIP_CRC
 	if (!conf->rxmode.hw_strip_crc) {
-		PMD_INIT_LOG(INFO, "VF can't disable HW CRC Strip");
+		PMD_INIT_LOG(NOTICE, "VF can't disable HW CRC Strip");
 		conf->rxmode.hw_strip_crc = 1;
 	}
 #else
 	if (conf->rxmode.hw_strip_crc) {
-		PMD_INIT_LOG(INFO, "VF can't enable HW CRC Strip");
+		PMD_INIT_LOG(NOTICE, "VF can't enable HW CRC Strip");
 		conf->rxmode.hw_strip_crc = 0;
 	}
 #endif

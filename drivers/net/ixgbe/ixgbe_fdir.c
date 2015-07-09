@@ -377,7 +377,7 @@ ixgbe_set_fdir_flex_conf(struct rte_eth_dev *dev,
 	fdirm = IXGBE_READ_REG(hw, IXGBE_FDIRM);
 
 	if (conf == NULL) {
-		PMD_DRV_LOG(INFO, "NULL pointer.");
+		PMD_DRV_LOG(ERR, "NULL pointer.");
 		return -EINVAL;
 	}
 
