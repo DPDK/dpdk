@@ -294,45 +294,50 @@ eal_hugepage_info_init(void)
 			    dirent_start_len) != 0)
 			continue;
 
-			hpi = &internal_config.hugepage_info[num_sizes];
-			hpi->hugepage_sz = rte_str_to_size(&dirent->d_name[dirent_start_len]);
-			hpi->hugedir = get_hugepage_dir(hpi->hugepage_sz);
+		hpi = &internal_config.hugepage_info[num_sizes];
+		hpi->hugepage_sz =
+			rte_str_to_size(&dirent->d_name[dirent_start_len]);
+		hpi->hugedir = get_hugepage_dir(hpi->hugepage_sz);
 
-			/* first, check if we have a mountpoint */
-			if (hpi->hugedir == NULL) {
-				uint32_t num_pages;
+		/* first, check if we have a mountpoint */
+		if (hpi->hugedir == NULL) {
+			uint32_t num_pages;
 
-				num_pages = get_num_hugepages(dirent->d_name);
-				if (num_pages > 0)
-					RTE_LOG(INFO, EAL, "%" PRIu32 " hugepages of size %" PRIu64 " reserved, "
-						"but no mounted hugetlbfs found for that size\n",
-						num_pages, hpi->hugepage_sz);
-				continue;
-			}
+			num_pages = get_num_hugepages(dirent->d_name);
+			if (num_pages > 0)
+				RTE_LOG(INFO, EAL,
+					"%" PRIu32 " hugepages of size "
+					"%" PRIu64 " reserved, but no mounted "
+					"hugetlbfs found for that size\n",
+					num_pages, hpi->hugepage_sz);
+			continue;
+		}
 
-				/* try to obtain a writelock */
-				hpi->lock_descriptor = open(hpi->hugedir, O_RDONLY);
+		/* try to obtain a writelock */
+		hpi->lock_descriptor = open(hpi->hugedir, O_RDONLY);
 
-				/* if blocking lock failed */
-				if (flock(hpi->lock_descriptor, LOCK_EX) == -1) {
-					RTE_LOG(CRIT, EAL, "Failed to lock hugepage directory!\n");
-					break;
-				}
-				/* clear out the hugepages dir from unused pages */
-				if (clear_hugedir(hpi->hugedir) == -1)
-					break;
+		/* if blocking lock failed */
+		if (flock(hpi->lock_descriptor, LOCK_EX) == -1) {
+			RTE_LOG(CRIT, EAL,
+				"Failed to lock hugepage directory!\n");
+			break;
+		}
+		/* clear out the hugepages dir from unused pages */
+		if (clear_hugedir(hpi->hugedir) == -1)
+			break;
 
-				/* for now, put all pages into socket 0,
-				 * later they will be sorted */
-				hpi->num_pages[0] = get_num_hugepages(dirent->d_name);
+		/* for now, put all pages into socket 0,
+		 * later they will be sorted */
+		hpi->num_pages[0] = get_num_hugepages(dirent->d_name);
 
 #ifndef RTE_ARCH_64
-				/* for 32-bit systems, limit number of hugepages to 1GB per page size */
-				hpi->num_pages[0] = RTE_MIN(hpi->num_pages[0],
-						RTE_PGSIZE_1G / hpi->hugepage_sz);
+		/* for 32-bit systems, limit number of hugepages to
+		 * 1GB per page size */
+		hpi->num_pages[0] = RTE_MIN(hpi->num_pages[0],
+					    RTE_PGSIZE_1G / hpi->hugepage_sz);
 #endif
 
-				num_sizes++;
+		num_sizes++;
 	}
 	closedir(dir);
 
@@ -347,9 +352,9 @@ eal_hugepage_info_init(void)
 		unsigned j;
 		for (j = i+1; j < num_sizes; j++)
 			if (internal_config.hugepage_info[j-1].hugepage_sz <
-					internal_config.hugepage_info[j].hugepage_sz)
+			     internal_config.hugepage_info[j].hugepage_sz)
 				swap_hpi(&internal_config.hugepage_info[j-1],
-						&internal_config.hugepage_info[j]);
+					 &internal_config.hugepage_info[j]);
 	}
 
 	/* now we have all info, check we have at least one valid size */
