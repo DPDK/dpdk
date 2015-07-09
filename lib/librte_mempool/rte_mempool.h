@@ -142,6 +142,12 @@ struct rte_mempool_objsz {
 /** Mempool over one chunk of physically continuous memory */
 #define	MEMPOOL_PG_NUM_DEFAULT	1
 
+#ifndef RTE_MEMPOOL_ALIGN
+#define RTE_MEMPOOL_ALIGN	RTE_CACHE_LINE_SIZE
+#endif
+
+#define RTE_MEMPOOL_ALIGN_MASK	(RTE_MEMPOOL_ALIGN - 1)
+
 /**
  * Mempool object header structure
  *

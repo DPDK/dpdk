@@ -120,10 +120,10 @@ static unsigned optimize_object_size(unsigned obj_size)
 		nrank = 1;
 
 	/* process new object size */
-	new_obj_size = (obj_size + RTE_CACHE_LINE_MASK) / RTE_CACHE_LINE_SIZE;
+	new_obj_size = (obj_size + RTE_MEMPOOL_ALIGN_MASK) / RTE_MEMPOOL_ALIGN;
 	while (get_gcd(new_obj_size, nrank * nchan) != 1)
 		new_obj_size++;
-	return new_obj_size * RTE_CACHE_LINE_SIZE;
+	return new_obj_size * RTE_MEMPOOL_ALIGN;
 }
 
 static void
@@ -267,7 +267,7 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 #endif
 	if ((flags & MEMPOOL_F_NO_CACHE_ALIGN) == 0)
 		sz->header_size = RTE_ALIGN_CEIL(sz->header_size,
-			RTE_CACHE_LINE_SIZE);
+			RTE_MEMPOOL_ALIGN);
 
 	/* trailer contains the cookie in debug mode */
 	sz->trailer_size = 0;
@@ -281,9 +281,9 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 	if ((flags & MEMPOOL_F_NO_CACHE_ALIGN) == 0) {
 		sz->total_size = sz->header_size + sz->elt_size +
 			sz->trailer_size;
-		sz->trailer_size += ((RTE_CACHE_LINE_SIZE -
-				  (sz->total_size & RTE_CACHE_LINE_MASK)) &
-				 RTE_CACHE_LINE_MASK);
+		sz->trailer_size += ((RTE_MEMPOOL_ALIGN -
+				  (sz->total_size & RTE_MEMPOOL_ALIGN_MASK)) &
+				 RTE_MEMPOOL_ALIGN_MASK);
 	}
 
 	/*
@@ -498,7 +498,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	 * cache-aligned
 	 */
 	private_data_size = (private_data_size +
-			     RTE_CACHE_LINE_MASK) & (~RTE_CACHE_LINE_MASK);
+			     RTE_MEMPOOL_ALIGN_MASK) & (~RTE_MEMPOOL_ALIGN_MASK);
 
 	if (! rte_eal_has_hugepages()) {
 		/*
@@ -525,6 +525,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	 * enough to hold mempool header and metadata plus mempool objects.
 	 */
 	mempool_size = MEMPOOL_HEADER_SIZE(mp, pg_num) + private_data_size;
+	mempool_size = RTE_ALIGN_CEIL(mempool_size, RTE_MEMPOOL_ALIGN);
 	if (vaddr == NULL)
 		mempool_size += (size_t)objsz.total_size * n;
 
@@ -580,6 +581,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	/* calculate address of the first element for continuous mempool. */
 	obj = (char *)mp + MEMPOOL_HEADER_SIZE(mp, pg_num) +
 		private_data_size;
+	obj = RTE_PTR_ALIGN_CEIL(obj, RTE_MEMPOOL_ALIGN);
 
 	/* populate address translation fields. */
 	mp->pg_num = pg_num;
