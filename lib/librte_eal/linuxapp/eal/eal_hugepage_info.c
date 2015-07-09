@@ -279,22 +279,26 @@ eal_hugepage_info_init(void)
 	const char dirent_start_text[] = "hugepages-";
 	const size_t dirent_start_len = sizeof(dirent_start_text) - 1;
 	unsigned i, num_sizes = 0;
+	DIR *dir;
+	struct dirent *dirent;
 
-	DIR *dir = opendir(sys_dir_path);
+	dir = opendir(sys_dir_path);
 	if (dir == NULL)
-		rte_panic("Cannot open directory %s to read system hugepage info\n",
-				sys_dir_path);
+		rte_panic("Cannot open directory %s to read system hugepage "
+			  "info\n", sys_dir_path);
 
-	struct dirent *dirent = readdir(dir);
-	while(dirent != NULL){
-		if (strncmp(dirent->d_name, dirent_start_text, dirent_start_len) == 0){
-			struct hugepage_info *hpi = \
-					&internal_config.hugepage_info[num_sizes];
+	dirent = readdir(dir);
+	while (dirent != NULL) {
+		struct hugepage_info *hpi;
+
+		if (strncmp(dirent->d_name, dirent_start_text,
+			    dirent_start_len) == 0) {
+			hpi = &internal_config.hugepage_info[num_sizes];
 			hpi->hugepage_sz = rte_str_to_size(&dirent->d_name[dirent_start_len]);
 			hpi->hugedir = get_hugepage_dir(hpi->hugepage_sz);
 
 			/* first, check if we have a mountpoint */
-			if (hpi->hugedir == NULL){
+			if (hpi->hugedir == NULL) {
 				uint32_t num_pages;
 
 				num_pages = get_num_hugepages(dirent->d_name);
@@ -337,10 +341,10 @@ eal_hugepage_info_init(void)
 	internal_config.num_hugepage_sizes = num_sizes;
 
 	/* sort the page directory entries by size, largest to smallest */
-	for (i = 0; i < num_sizes; i++){
+	for (i = 0; i < num_sizes; i++) {
 		unsigned j;
 		for (j = i+1; j < num_sizes; j++)
-			if (internal_config.hugepage_info[j-1].hugepage_sz < \
+			if (internal_config.hugepage_info[j-1].hugepage_sz <
 					internal_config.hugepage_info[j].hugepage_sz)
 				swap_hpi(&internal_config.hugepage_info[j-1],
 						&internal_config.hugepage_info[j]);
@@ -349,7 +353,7 @@ eal_hugepage_info_init(void)
 	/* now we have all info, check we have at least one valid size */
 	for (i = 0; i < num_sizes; i++)
 		if (internal_config.hugepage_info[i].hugedir != NULL &&
-				internal_config.hugepage_info[i].num_pages[0] > 0)
+		    internal_config.hugepage_info[i].num_pages[0] > 0)
 			return 0;
 
 	/* no valid hugepage mounts available, return error */
