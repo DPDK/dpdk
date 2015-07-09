@@ -94,7 +94,7 @@
 #define TIME_S 5
 #define MEMPOOL_ELT_SIZE 2048
 #define MAX_KEEP 128
-#define MEMPOOL_SIZE ((RTE_MAX_LCORE*(MAX_KEEP+RTE_MEMPOOL_CACHE_MAX_SIZE))-1)
+#define MEMPOOL_SIZE ((rte_lcore_count()*(MAX_KEEP+RTE_MEMPOOL_CACHE_MAX_SIZE))-1)
 
 static struct rte_mempool *mp;
 static struct rte_mempool *mp_cache, *mp_nocache;
