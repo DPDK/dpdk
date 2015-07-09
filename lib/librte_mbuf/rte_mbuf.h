@@ -75,9 +75,10 @@ extern "C" {
  *
  * - RX flags start at bit position zero, and get added to the left of previous
  *   flags.
- * - The most-significant 8 bits are reserved for generic mbuf flags
- * - TX flags therefore start at bit position 55 (i.e. 63-8), and new flags get
- *   added to the right of the previously defined flags
+ * - The most-significant 3 bits are reserved for generic mbuf flags
+ * - TX flags therefore start at bit position 60 (i.e. 63-3), and new flags get
+ *   added to the right of the previously defined flags i.e. they should count
+ *   downwards, not upwards.
  *
  * Keep these flags synchronized with rte_get_rx_ol_flag_name() and
  * rte_get_tx_ol_flag_name().
@@ -200,6 +201,8 @@ extern "C" {
  * header of the tunneled packet is an IPv6 packet.
  */
 #define PKT_TX_OUTER_IPV6    (1ULL << 60)
+
+#define __RESERVED           (1ULL << 61) /**< reserved for future mbuf use */
 
 #define IND_ATTACHED_MBUF    (1ULL << 62) /**< Indirect attached mbuf */
 
