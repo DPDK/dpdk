@@ -113,7 +113,8 @@ align_phys_boundary(const struct rte_memseg *ms, size_t len, size_t align,
 
 static const struct rte_memzone *
 memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
-		int socket_id, unsigned flags, unsigned align, unsigned bound)
+		int socket_id, uint64_t size_mask, unsigned align,
+		unsigned bound)
 {
 	struct rte_mem_config *mcfg;
 	unsigned i = 0;
@@ -201,18 +202,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		if ((requested_len + addr_offset) > free_memseg[i].len)
 			continue;
 
-		/* check flags for hugepage sizes */
-		if ((flags & RTE_MEMZONE_2MB) &&
-				free_memseg[i].hugepage_sz == RTE_PGSIZE_1G)
-			continue;
-		if ((flags & RTE_MEMZONE_1GB) &&
-				free_memseg[i].hugepage_sz == RTE_PGSIZE_2M)
-			continue;
-		if ((flags & RTE_MEMZONE_16MB) &&
-				free_memseg[i].hugepage_sz == RTE_PGSIZE_16G)
-			continue;
-		if ((flags & RTE_MEMZONE_16GB) &&
-				free_memseg[i].hugepage_sz == RTE_PGSIZE_16M)
+		if ((size_mask & free_memseg[i].hugepage_sz) == 0)
 			continue;
 
 		/* this segment is the best until now */
@@ -244,16 +234,6 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 
 	/* no segment found */
 	if (memseg_idx == -1) {
-		/*
-		 * If RTE_MEMZONE_SIZE_HINT_ONLY flag is specified,
-		 * try allocating again without the size parameter otherwise -fail.
-		 */
-		if ((flags & RTE_MEMZONE_SIZE_HINT_ONLY)  &&
-		    ((flags & RTE_MEMZONE_1GB) || (flags & RTE_MEMZONE_2MB)
-		|| (flags & RTE_MEMZONE_16MB) || (flags & RTE_MEMZONE_16GB)))
-			return memzone_reserve_aligned_thread_unsafe(name,
-				len, socket_id, 0, align, bound);
-
 		rte_errno = ENOMEM;
 		return NULL;
 	}
@@ -302,13 +282,18 @@ rte_memzone_reserve_thread_safe(const char *name, size_t len,
 {
 	struct rte_mem_config *mcfg;
 	const struct rte_memzone *mz = NULL;
+	uint64_t size_mask = 0;
 
-	/* both sizes cannot be explicitly called for */
-	if (((flags & RTE_MEMZONE_1GB) && (flags & RTE_MEMZONE_2MB))
-		|| ((flags & RTE_MEMZONE_16MB) && (flags & RTE_MEMZONE_16GB))) {
-		rte_errno = EINVAL;
-		return NULL;
-	}
+	if (flags & RTE_MEMZONE_2MB)
+		size_mask |= RTE_PGSIZE_2M;
+	if (flags & RTE_MEMZONE_16MB)
+		size_mask |= RTE_PGSIZE_16M;
+	if (flags & RTE_MEMZONE_1GB)
+		size_mask |= RTE_PGSIZE_1G;
+	if (flags & RTE_MEMZONE_16GB)
+		size_mask |= RTE_PGSIZE_16G;
+	if (!size_mask)
+		size_mask = UINT64_MAX;
 
 	/* get pointer to global configuration */
 	mcfg = rte_eal_get_configuration()->mem_config;
@@ -316,7 +301,18 @@ rte_memzone_reserve_thread_safe(const char *name, size_t len,
 	rte_rwlock_write_lock(&mcfg->mlock);
 
 	mz = memzone_reserve_aligned_thread_unsafe(
-		name, len, socket_id, flags, align, bound);
+		name, len, socket_id, size_mask, align, bound);
+
+	/*
+	 * If we failed to allocate the requested page size, and the
+	 * RTE_MEMZONE_SIZE_HINT_ONLY flag is specified, try allocating
+	 * again.
+	 */
+	if (!mz && rte_errno == ENOMEM && size_mask != UINT64_MAX &&
+	    flags & RTE_MEMZONE_SIZE_HINT_ONLY) {
+		mz = memzone_reserve_aligned_thread_unsafe(
+			name, len, socket_id, UINT64_MAX, align, bound);
+	}
 
 	rte_rwlock_write_unlock(&mcfg->mlock);
 
