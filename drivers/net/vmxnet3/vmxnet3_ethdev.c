@@ -155,9 +155,36 @@ gpa_zone_reserve(struct rte_eth_dev *dev, uint32_t size,
  *   - On success, zero.
  *   - On failure, negative value.
  */
-static inline int
-rte_vmxnet3_dev_atomic_write_link_status(struct rte_eth_dev *dev,
-				struct rte_eth_link *link)
+
+static int
+vmxnet3_dev_atomic_read_link_status(struct rte_eth_dev *dev,
+				    struct rte_eth_link *link)
+{
+	struct rte_eth_link *dst = link;
+	struct rte_eth_link *src = &(dev->data->dev_link);
+
+	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
+				*(uint64_t *)src) == 0)
+		return -1;
+
+	return 0;
+}
+
+/**
+ * Atomically writes the link status information into global
+ * structure rte_eth_dev.
+ *
+ * @param dev
+ *   - Pointer to the structure rte_eth_dev to write to.
+ *   - Pointer to the buffer to be saved with the link status.
+ *
+ * @return
+ *   - On success, zero.
+ *   - On failure, negative value.
+ */
+static int
+vmxnet3_dev_atomic_write_link_status(struct rte_eth_dev *dev,
+				     struct rte_eth_link *link)
 {
 	struct rte_eth_link *dst = &(dev->data->dev_link);
 	struct rte_eth_link *src = link;
@@ -388,6 +415,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	devRead->misc.driverInfo.vmxnet3RevSpt = 1;
 	devRead->misc.driverInfo.uptVerSpt     = 1;
 
+	devRead->misc.mtu = rte_le_to_cpu_32(dev->data->mtu);
 	devRead->misc.queueDescPA  = hw->queueDescPA;
 	devRead->misc.queueDescLen = hw->queue_desc_len;
 	devRead->misc.numTxQueues  = hw->num_tx_queues;
@@ -573,7 +601,7 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 
 	/* Clear recorded link status */
 	memset(&link, 0, sizeof(link));
-	rte_vmxnet3_dev_atomic_write_link_status(dev, &link);
+	vmxnet3_dev_atomic_write_link_status(dev, &link);
 }
 
 /*
@@ -656,28 +684,27 @@ static int
 vmxnet3_dev_link_update(struct rte_eth_dev *dev, __attribute__((unused)) int wait_to_complete)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
-	struct rte_eth_link link;
+	struct rte_eth_link old, link;
 	uint32_t ret;
+
+	if (dev->data->dev_started == 0)
+		return -1; /* Link status doesn't change for stopped dev */
+
+	memset(&link, 0, sizeof(link));
+	vmxnet3_dev_atomic_read_link_status(dev, &old);
 
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_GET_LINK);
 	ret = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
-
-	if (!ret) {
-		PMD_INIT_LOG(ERR, "Link Status Negative : %s()", __func__);
-		return -1;
-	}
 
 	if (ret & 0x1) {
 		link.link_status = 1;
 		link.link_duplex = ETH_LINK_FULL_DUPLEX;
 		link.link_speed = ETH_LINK_SPEED_10000;
-
-		rte_vmxnet3_dev_atomic_write_link_status(dev, &link);
-
-		return 0;
 	}
 
-	return -1;
+	vmxnet3_dev_atomic_write_link_status(dev, &link);
+
+	return (old.link_status == link.link_status) ? -1 : 0;
 }
 
 /* Updating rxmode through Vmxnet3_DriverShared structure in adapter */
