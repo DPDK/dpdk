@@ -65,10 +65,7 @@ ifneq ($(BUILDING_RTE_SDK),)
   RTE_SDK_BIN := $(RTE_OUTPUT)
 endif
 
-RTE_LIBNAME := $(CONFIG_RTE_LIBNAME:"%"=%)
-ifeq ($(RTE_LIBNAME),)
-RTE_LIBNAME := intel_dpdk
-endif
+RTE_LIBNAME := dpdk
 
 # RTE_TARGET is deducted from config when we are building the SDK.
 # Else, when building an external app, RTE_TARGET must be specified
