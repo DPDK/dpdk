@@ -190,7 +190,7 @@ test_crc32_hash_alg_equiv(void)
 	unsigned i, j;
 	size_t data_len;
 
-	printf("# CRC32 implementations equivalence test\n");
+	printf("\n# CRC32 implementations equivalence test\n");
 	for (i = 0; i < CRC32_ITERATIONS; i++) {
 		/* Randomizing data_len of data set */
 		data_len = (size_t) ((rte_rand() % sizeof(data64)) + 1);
@@ -785,7 +785,7 @@ fbk_hash_unit_test(void)
 
 	/* Try creating hashes with invalid parameters */
 	printf("# Testing hash creation with invalid parameters "
-			"- expert error msgs\n");
+			"- expect error msgs\n");
 	handle = rte_fbk_hash_create(&invalid_params_1);
 	RETURN_IF_ERROR_FBK(handle != NULL, "fbk hash creation should have failed");
 
@@ -1087,6 +1087,7 @@ static int test_hash_creation_with_bad_parameters(void)
 	}
 
 	rte_hash_free(handle);
+	printf("# Test successful. No more errors expected\n");
 
 	return 0;
 }
@@ -1142,6 +1143,65 @@ test_hash_creation_with_good_parameters(void)
 	}
 
 	rte_hash_free(tmp);
+	rte_hash_free(handle);
+
+	return 0;
+}
+
+#define ITERATIONS 50
+/*
+ * Test to see the average table utilization (entries added/max entries)
+ * before hitting a random entry that cannot be added
+ */
+static int test_average_table_utilization(void)
+{
+	struct rte_hash *handle;
+	uint8_t simple_key[RTE_HASH_KEY_LENGTH_MAX];
+	unsigned i, j;
+	unsigned added_keys, average_keys_added = 0;
+	int ret;
+
+	printf("\n# Running test to determine average utilization"
+	       "\n  before adding elements begins to fail\n");
+	printf("Measuring performance, please wait");
+	fflush(stdout);
+	ut_params.entries = 1 << 20;
+	ut_params.name = "test_average_utilization";
+	ut_params.hash_func = rte_jhash;
+	handle = rte_hash_create(&ut_params);
+	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
+
+	for (j = 0; j < ITERATIONS; j++) {
+		ret = 0;
+		/* Add random entries until key cannot be added */
+		for (added_keys = 0; ret >= 0; added_keys++) {
+			for (i = 0; i < ut_params.key_len; i++)
+				simple_key[i] = rte_rand() % 255;
+			ret = rte_hash_add_key(handle, simple_key);
+		}
+		if (ret != -ENOSPC) {
+			printf("Unexpected error when adding keys\n");
+			rte_hash_free(handle);
+			return -1;
+		}
+
+		average_keys_added += added_keys;
+
+		/* Reset the table */
+		rte_hash_free(handle);
+		handle = rte_hash_create(&ut_params);
+		RETURN_IF_ERROR(handle == NULL, "hash creation failed");
+
+		/* Print a dot to show progress on operations */
+		printf(".");
+		fflush(stdout);
+	}
+
+	average_keys_added /= ITERATIONS;
+
+	printf("\nAverage table utilization = %.2f%% (%u/%u)\n",
+		((double) average_keys_added / ut_params.entries * 100),
+		average_keys_added, ut_params.entries);
 	rte_hash_free(handle);
 
 	return 0;
@@ -1404,6 +1464,8 @@ test_hash(void)
 	if (test_hash_creation_with_bad_parameters() < 0)
 		return -1;
 	if (test_hash_creation_with_good_parameters() < 0)
+		return -1;
+	if (test_average_table_utilization() < 0)
 		return -1;
 
 	run_hash_func_tests();
