@@ -600,8 +600,9 @@ i40e_xmit_cleanup(struct i40e_tx_queue *txq)
 		desc_to_clean_to = (uint16_t)(desc_to_clean_to - nb_tx_desc);
 
 	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
-	if (!(txd[desc_to_clean_to].cmd_type_offset_bsz &
-		rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))) {
+	if ((txd[desc_to_clean_to].cmd_type_offset_bsz &
+			rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) !=
+			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE)) {
 		PMD_TX_FREE_LOG(DEBUG, "TX descriptor %4u is not done "
 			"(port=%d queue=%d)", desc_to_clean_to,
 				txq->port_id, txq->queue_id);
@@ -1488,8 +1489,9 @@ i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 	struct i40e_tx_entry *txep;
 	uint16_t i;
 
-	if (!(txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
-			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE)))
+	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+			rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) !=
+			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
 
 	txep = &(txq->sw_ring[txq->tx_next_dd - (txq->tx_rs_thresh - 1)]);

@@ -1128,7 +1128,8 @@ i40e_fdir_filter_programming(struct i40e_pf *pf,
 
 	for (i = 0; i < I40E_FDIR_WAIT_COUNT; i++) {
 		rte_delay_us(I40E_FDIR_WAIT_INTERVAL_US);
-		if (txdp->cmd_type_offset_bsz &
+		if ((txdp->cmd_type_offset_bsz &
+				rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) ==
 				rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
 			break;
 	}
