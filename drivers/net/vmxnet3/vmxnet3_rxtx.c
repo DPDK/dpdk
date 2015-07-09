@@ -499,6 +499,43 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 		return i;
 }
 
+
+/* Receive side checksum and other offloads */
+static void
+vmxnet3_rx_offload(const Vmxnet3_RxCompDesc *rcd, struct rte_mbuf *rxm)
+{
+	/* Check for hardware stripped VLAN tag */
+	if (rcd->ts) {
+		rxm->ol_flags |= PKT_RX_VLAN_PKT;
+		rxm->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
+	}
+
+	/* Check for RSS */
+	if (rcd->rssType != VMXNET3_RCD_RSS_TYPE_NONE) {
+		rxm->ol_flags |= PKT_RX_RSS_HASH;
+		rxm->hash.rss = rcd->rssHash;
+	}
+
+	/* Check packet type, checksum errors, etc. Only support IPv4 for now. */
+	if (rcd->v4) {
+		struct ether_hdr *eth = rte_pktmbuf_mtod(rxm, struct ether_hdr *);
+		struct ipv4_hdr *ip = (struct ipv4_hdr *)(eth + 1);
+
+		if (((ip->version_ihl & 0xf) << 2) > (int)sizeof(struct ipv4_hdr))
+			rxm->ol_flags |= PKT_RX_IPV4_HDR_EXT;
+		else
+			rxm->ol_flags |= PKT_RX_IPV4_HDR;
+
+		if (!rcd->cnc) {
+			if (!rcd->ipc)
+				rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+
+			if ((rcd->tcp || rcd->udp) && !rcd->tuc)
+				rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+		}
+	}
+}
+
 /*
  * Process the Rx Completion Ring of given vmxnet3_rx_queue
  * for nb_pkts burst and return the number of packets received
@@ -599,17 +636,6 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			goto rcd_done;
 		}
 
-		/* Check for hardware stripped VLAN tag */
-		if (rcd->ts) {
-			PMD_RX_LOG(DEBUG, "Received packet with vlan ID: %d.",
-				   rcd->tci);
-			rxm->ol_flags = PKT_RX_VLAN_PKT;
-			/* Copy vlan tag in packet buffer */
-			rxm->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
-		} else {
-			rxm->ol_flags = 0;
-			rxm->vlan_tci = 0;
-		}
 
 		/* Initialize newly received packet buffer */
 		rxm->port = rxq->port_id;
@@ -618,25 +644,10 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->pkt_len = (uint16_t)rcd->len;
 		rxm->data_len = (uint16_t)rcd->len;
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rxm->ol_flags = 0;
+		rxm->vlan_tci = 0;
 
-		/* Check packet type, checksum errors, etc. Only support IPv4 for now. */
-		if (rcd->v4) {
-			struct ether_hdr *eth = rte_pktmbuf_mtod(rxm, struct ether_hdr *);
-			struct ipv4_hdr *ip = (struct ipv4_hdr *)(eth + 1);
-
-			if (((ip->version_ihl & 0xf) << 2) > (int)sizeof(struct ipv4_hdr))
-				rxm->ol_flags |= PKT_RX_IPV4_HDR_EXT;
-			else
-				rxm->ol_flags |= PKT_RX_IPV4_HDR;
-
-			if (!rcd->cnc) {
-				if (!rcd->ipc)
-					rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-
-				if ((rcd->tcp || rcd->udp) && !rcd->tuc)
-					rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-			}
-		}
+		vmxnet3_rx_offload(rcd, rxm);
 
 		rx_pkts[nb_rx++] = rxm;
 rcd_done:
