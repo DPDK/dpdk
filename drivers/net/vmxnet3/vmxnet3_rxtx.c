@@ -83,16 +83,16 @@
 #define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
 	(uint64_t) ((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
 
-static uint32_t rxprod_reg[2] = {VMXNET3_REG_RXPROD, VMXNET3_REG_RXPROD2};
+static const uint32_t rxprod_reg[2] = {VMXNET3_REG_RXPROD, VMXNET3_REG_RXPROD2};
 
-static inline int vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t* , uint8_t);
-static inline void vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *);
+static int vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t*, uint8_t);
+static void vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *);
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER_NOT_USED
 static void vmxnet3_rxq_dump(struct vmxnet3_rx_queue *);
 static void vmxnet3_txq_dump(struct vmxnet3_tx_queue *);
 #endif
 
-static inline struct rte_mbuf *
+static struct rte_mbuf *
 rte_rxmbuf_alloc(struct rte_mempool *mp)
 {
 	struct rte_mbuf *m;
@@ -156,7 +156,7 @@ vmxnet3_txq_dump(struct vmxnet3_tx_queue *txq)
 }
 #endif
 
-static inline void
+static void
 vmxnet3_cmd_ring_release_mbufs(vmxnet3_cmd_ring_t *ring)
 {
 	while (ring->next2comp != ring->next2fill) {
@@ -295,7 +295,7 @@ vmxnet3_dev_clear_queues(struct rte_eth_dev *dev)
 	}
 }
 
-static inline void
+static void
 vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *txq)
 {
 	int completed = 0;
@@ -432,7 +432,7 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
  *      only for LRO.
  *
  */
-static inline int
+static int
 vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 {
 	int err = 0;
