@@ -1657,6 +1657,8 @@ int rte_eth_dev_attach(const char *devargs, uint8_t *port_id);
 
 /**
  * Detach a Ethernet device specified by port identifier.
+ * This function must be called when the device is in the
+ * closed state.
  *
  * @param port_id
  *   The port identifier of the device to detach.
@@ -2010,7 +2012,9 @@ extern int rte_eth_dev_set_link_up(uint8_t port_id);
 extern int rte_eth_dev_set_link_down(uint8_t port_id);
 
 /**
- * Close an Ethernet device. The device cannot be restarted!
+ * Close a stopped Ethernet device. The device cannot be restarted!
+ * The function frees all resources except for needed by the
+ * closed state. To free these resources, call rte_eth_dev_detach().
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
