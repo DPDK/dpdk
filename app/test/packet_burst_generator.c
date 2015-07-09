@@ -273,19 +273,21 @@ nomore_mbuf:
 		if (ipv4) {
 			pkt->vlan_tci  = ETHER_TYPE_IPv4;
 			pkt->l3_len = sizeof(struct ipv4_hdr);
-
+#ifndef RTE_NEXT_ABI
 			if (vlan_enabled)
 				pkt->ol_flags = PKT_RX_IPV4_HDR | PKT_RX_VLAN_PKT;
 			else
 				pkt->ol_flags = PKT_RX_IPV4_HDR;
+#endif
 		} else {
 			pkt->vlan_tci  = ETHER_TYPE_IPv6;
 			pkt->l3_len = sizeof(struct ipv6_hdr);
-
+#ifndef RTE_NEXT_ABI
 			if (vlan_enabled)
 				pkt->ol_flags = PKT_RX_IPV6_HDR | PKT_RX_VLAN_PKT;
 			else
 				pkt->ol_flags = PKT_RX_IPV6_HDR;
+#endif
 		}
 
 		pkts_burst[nb_pkt] = pkt;

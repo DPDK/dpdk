@@ -459,20 +459,33 @@ app_main_loop_rx_metadata(void) {
 			signature = RTE_MBUF_METADATA_UINT32_PTR(m, 0);
 			key = RTE_MBUF_METADATA_UINT8_PTR(m, 32);
 
+#ifdef RTE_NEXT_ABI
+			if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
+#else
 			if (m->ol_flags & PKT_RX_IPV4_HDR) {
+#endif
 				ip_hdr = (struct ipv4_hdr *)
 					&m_data[sizeof(struct ether_hdr)];
 				ip_dst = ip_hdr->dst_addr;
 
 				k32 = (uint32_t *) key;
 				k32[0] = ip_dst & 0xFFFFFF00;
+#ifdef RTE_NEXT_ABI
+			} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
+#else
 			} else {
+#endif
 				ipv6_hdr = (struct ipv6_hdr *)
 					&m_data[sizeof(struct ether_hdr)];
 				ipv6_dst = ipv6_hdr->dst_addr;
 
 				memcpy(key, ipv6_dst, 16);
+#ifdef RTE_NEXT_ABI
+			} else
+				continue;
+#else
 			}
+#endif
 
 			*signature = test_hash(key, 0, 0);
 		}
