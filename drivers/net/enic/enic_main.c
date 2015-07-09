@@ -423,7 +423,11 @@ static int enic_rq_indicate_buf(struct vnic_rq *rq,
 		rx_pkt->pkt_len = bytes_written;
 
 		if (ipv4) {
+#ifdef RTE_NEXT_ABI
+			rx_pkt->packet_type = RTE_PTYPE_L3_IPV4;
+#else
 			rx_pkt->ol_flags |= PKT_RX_IPV4_HDR;
+#endif
 			if (!csum_not_calc) {
 				if (unlikely(!ipv4_csum_ok))
 					rx_pkt->ol_flags |= PKT_RX_IP_CKSUM_BAD;
@@ -432,7 +436,11 @@ static int enic_rq_indicate_buf(struct vnic_rq *rq,
 					rx_pkt->ol_flags |= PKT_RX_L4_CKSUM_BAD;
 			}
 		} else if (ipv6)
+#ifdef RTE_NEXT_ABI
+			rx_pkt->packet_type = RTE_PTYPE_L3_IPV6;
+#else
 			rx_pkt->ol_flags |= PKT_RX_IPV6_HDR;
+#endif
 	} else {
 		/* Header split */
 		if (sop && !eop) {
@@ -445,7 +453,11 @@ static int enic_rq_indicate_buf(struct vnic_rq *rq,
 				*rx_pkt_bucket = rx_pkt;
 				rx_pkt->pkt_len = bytes_written;
 				if (ipv4) {
+#ifdef RTE_NEXT_ABI
+					rx_pkt->packet_type = RTE_PTYPE_L3_IPV4;
+#else
 					rx_pkt->ol_flags |= PKT_RX_IPV4_HDR;
+#endif
 					if (!csum_not_calc) {
 						if (unlikely(!ipv4_csum_ok))
 							rx_pkt->ol_flags |=
@@ -457,13 +469,22 @@ static int enic_rq_indicate_buf(struct vnic_rq *rq,
 							    PKT_RX_L4_CKSUM_BAD;
 					}
 				} else if (ipv6)
+#ifdef RTE_NEXT_ABI
+					rx_pkt->packet_type = RTE_PTYPE_L3_IPV6;
+#else
 					rx_pkt->ol_flags |= PKT_RX_IPV6_HDR;
+#endif
 			} else {
 				/* Payload */
 				hdr_rx_pkt = *rx_pkt_bucket;
 				hdr_rx_pkt->pkt_len += bytes_written;
 				if (ipv4) {
+#ifdef RTE_NEXT_ABI
+					hdr_rx_pkt->packet_type =
+						RTE_PTYPE_L3_IPV4;
+#else
 					hdr_rx_pkt->ol_flags |= PKT_RX_IPV4_HDR;
+#endif
 					if (!csum_not_calc) {
 						if (unlikely(!ipv4_csum_ok))
 							hdr_rx_pkt->ol_flags |=
@@ -475,7 +496,12 @@ static int enic_rq_indicate_buf(struct vnic_rq *rq,
 							    PKT_RX_L4_CKSUM_BAD;
 					}
 				} else if (ipv6)
+#ifdef RTE_NEXT_ABI
+					hdr_rx_pkt->packet_type =
+						RTE_PTYPE_L3_IPV6;
+#else
 					hdr_rx_pkt->ol_flags |= PKT_RX_IPV6_HDR;
+#endif
 
 			}
 		}
