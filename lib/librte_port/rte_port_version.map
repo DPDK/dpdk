@@ -16,3 +16,13 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_2.1 {
+	global:
+
+	rte_port_ethdev_writer_nodrop_ops;
+	rte_port_ring_reader_ipv6_frag_ops;
+	rte_port_ring_writer_ipv6_ras_ops;
+	rte_port_ring_writer_nodrop_ops;
+
+} DPDK_2.0;
