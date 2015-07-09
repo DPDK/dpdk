@@ -55,6 +55,7 @@
 #include "base/i40e_prototype.h"
 #include "base/i40e_adminq_cmd.h"
 #include "base/i40e_type.h"
+#include "base/i40e_register.h"
 #include "i40e_ethdev.h"
 #include "i40e_rxtx.h"
 #include "i40e_pf.h"
@@ -105,6 +106,12 @@
 	(1UL << RTE_ETH_FLOW_NONFRAG_IPV6_SCTP) | \
 	(1UL << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER) | \
 	(1UL << RTE_ETH_FLOW_L2_PAYLOAD))
+
+#define I40E_PTP_40GB_INCVAL  0x0199999999ULL
+#define I40E_PTP_10GB_INCVAL  0x0333333333ULL
+#define I40E_PTP_1GB_INCVAL   0x2000000000ULL
+#define I40E_PRTTSYN_TSYNENA  0x80000000
+#define I40E_PRTTSYN_TSYNTYPE 0x0e000000
 
 static int eth_i40e_dev_init(struct rte_eth_dev *eth_dev);
 static int i40e_dev_configure(struct rte_eth_dev *dev);
@@ -217,6 +224,14 @@ static int i40e_mirror_rule_set(struct rte_eth_dev *dev,
 			uint8_t sw_id, uint8_t on);
 static int i40e_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t sw_id);
 
+static int i40e_timesync_enable(struct rte_eth_dev *dev);
+static int i40e_timesync_disable(struct rte_eth_dev *dev);
+static int i40e_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+					   struct timespec *timestamp,
+					   uint32_t flags);
+static int i40e_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+					   struct timespec *timestamp);
+
 static const struct rte_pci_id pci_id_i40e_map[] = {
 #define RTE_PCI_DEV_ID_DECL_I40E(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"
@@ -269,6 +284,10 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.filter_ctrl                  = i40e_dev_filter_ctrl,
 	.mirror_rule_set              = i40e_mirror_rule_set,
 	.mirror_rule_reset            = i40e_mirror_rule_reset,
+	.timesync_enable              = i40e_timesync_enable,
+	.timesync_disable             = i40e_timesync_disable,
+	.timesync_read_rx_timestamp   = i40e_timesync_read_rx_timestamp,
+	.timesync_read_tx_timestamp   = i40e_timesync_read_tx_timestamp,
 };
 
 static struct eth_driver rte_i40e_pmd = {
@@ -6085,4 +6104,128 @@ i40e_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t sw_id)
 		return -ENOENT;
 	}
 	return 0;
+}
+
+static int
+i40e_timesync_enable(struct rte_eth_dev *dev)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_link *link = &dev->data->dev_link;
+	uint32_t tsync_ctl_l;
+	uint32_t tsync_ctl_h;
+	uint32_t tsync_inc_l;
+	uint32_t tsync_inc_h;
+
+	switch (link->link_speed) {
+	case ETH_LINK_SPEED_40G:
+		tsync_inc_l = I40E_PTP_40GB_INCVAL & 0xFFFFFFFF;
+		tsync_inc_h = I40E_PTP_40GB_INCVAL >> 32;
+		break;
+	case ETH_LINK_SPEED_10G:
+		tsync_inc_l = I40E_PTP_10GB_INCVAL & 0xFFFFFFFF;
+		tsync_inc_h = I40E_PTP_10GB_INCVAL >> 32;
+		break;
+	case ETH_LINK_SPEED_1000:
+		tsync_inc_l = I40E_PTP_1GB_INCVAL & 0xFFFFFFFF;
+		tsync_inc_h = I40E_PTP_1GB_INCVAL >> 32;
+		break;
+	default:
+		tsync_inc_l = 0x0;
+		tsync_inc_h = 0x0;
+	}
+
+	/* Clear timesync registers. */
+	I40E_READ_REG(hw, I40E_PRTTSYN_STAT_0);
+	I40E_READ_REG(hw, I40E_PRTTSYN_TXTIME_H);
+	I40E_READ_REG(hw, I40E_PRTTSYN_RXTIME_L(0));
+	I40E_READ_REG(hw, I40E_PRTTSYN_RXTIME_L(1));
+	I40E_READ_REG(hw, I40E_PRTTSYN_RXTIME_L(2));
+	I40E_READ_REG(hw, I40E_PRTTSYN_RXTIME_L(3));
+	I40E_READ_REG(hw, I40E_PRTTSYN_TXTIME_H);
+
+	/* Set the timesync increment value. */
+	I40E_WRITE_REG(hw, I40E_PRTTSYN_INC_L, tsync_inc_l);
+	I40E_WRITE_REG(hw, I40E_PRTTSYN_INC_H, tsync_inc_h);
+
+	/* Enable timestamping of PTP packets. */
+	tsync_ctl_l = I40E_READ_REG(hw, I40E_PRTTSYN_CTL0);
+	tsync_ctl_l |= I40E_PRTTSYN_TSYNENA;
+
+	tsync_ctl_h = I40E_READ_REG(hw, I40E_PRTTSYN_CTL1);
+	tsync_ctl_h |= I40E_PRTTSYN_TSYNENA;
+	tsync_ctl_h |= I40E_PRTTSYN_TSYNTYPE;
+
+	I40E_WRITE_REG(hw, I40E_PRTTSYN_CTL0, tsync_ctl_l);
+	I40E_WRITE_REG(hw, I40E_PRTTSYN_CTL1, tsync_ctl_h);
+
+	return 0;
+}
+
+static int
+i40e_timesync_disable(struct rte_eth_dev *dev)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t tsync_ctl_l;
+	uint32_t tsync_ctl_h;
+
+	/* Disable timestamping of transmitted PTP packets. */
+	tsync_ctl_l = I40E_READ_REG(hw, I40E_PRTTSYN_CTL0);
+	tsync_ctl_l &= ~I40E_PRTTSYN_TSYNENA;
+
+	tsync_ctl_h = I40E_READ_REG(hw, I40E_PRTTSYN_CTL1);
+	tsync_ctl_h &= ~I40E_PRTTSYN_TSYNENA;
+
+	I40E_WRITE_REG(hw, I40E_PRTTSYN_CTL0, tsync_ctl_l);
+	I40E_WRITE_REG(hw, I40E_PRTTSYN_CTL1, tsync_ctl_h);
+
+	/* Set the timesync increment value. */
+	I40E_WRITE_REG(hw, I40E_PRTTSYN_INC_L, 0x0);
+	I40E_WRITE_REG(hw, I40E_PRTTSYN_INC_H, 0x0);
+
+	return 0;
+}
+
+static int
+i40e_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+				struct timespec *timestamp, uint32_t flags)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t sync_status;
+	uint32_t rx_stmpl;
+	uint32_t rx_stmph;
+	uint32_t index = flags & 0x03;
+
+	sync_status = I40E_READ_REG(hw, I40E_PRTTSYN_STAT_1);
+	if ((sync_status & (1 << index)) == 0)
+		return -EINVAL;
+
+	rx_stmpl = I40E_READ_REG(hw, I40E_PRTTSYN_RXTIME_L(index));
+	rx_stmph = I40E_READ_REG(hw, I40E_PRTTSYN_RXTIME_H(index));
+
+	timestamp->tv_sec = (uint64_t)(((uint64_t)rx_stmph << 32) | rx_stmpl);
+	timestamp->tv_nsec = 0;
+
+	return  0;
+}
+
+static int
+i40e_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+				struct timespec *timestamp)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t sync_status;
+	uint32_t tx_stmpl;
+	uint32_t tx_stmph;
+
+	sync_status = I40E_READ_REG(hw, I40E_PRTTSYN_STAT_0);
+	if ((sync_status & I40E_PRTTSYN_STAT_0_TXTIME_MASK) == 0)
+		return -EINVAL;
+
+	tx_stmpl = I40E_READ_REG(hw, I40E_PRTTSYN_TXTIME_L);
+	tx_stmph = I40E_READ_REG(hw, I40E_PRTTSYN_TXTIME_H);
+
+	timestamp->tv_sec = (uint64_t)(((uint64_t)tx_stmph << 32) | tx_stmpl);
+	timestamp->tv_nsec = 0;
+
+	return  0;
 }

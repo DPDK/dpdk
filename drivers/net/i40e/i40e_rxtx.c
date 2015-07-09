@@ -185,7 +185,7 @@ i40e_rxd_ptype_to_pkt_flags(uint64_t qword)
 	static const uint64_t ip_ptype_map[I40E_MAX_PKT_TYPE] = {
 		0, /* PTYPE 0 */
 		0, /* PTYPE 1 */
-		0, /* PTYPE 2 */
+		PKT_RX_IEEE1588_PTP, /* PTYPE 2 */
 		0, /* PTYPE 3 */
 		0, /* PTYPE 4 */
 		0, /* PTYPE 5 */
@@ -741,7 +741,19 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 			if (pkt_flags & PKT_RX_FDIR)
 				pkt_flags |= i40e_rxd_build_fdir(&rxdp[j], mb);
 
+#ifdef RTE_LIBRTE_IEEE1588
+			uint16_t tsyn = (qword1
+					 & (I40E_RXD_QW1_STATUS_TSYNVALID_MASK
+					   | I40E_RXD_QW1_STATUS_TSYNINDX_MASK))
+					 >> I40E_RX_DESC_STATUS_TSYNINDX_SHIFT;
+
+			if (tsyn & 0x04)
+				pkt_flags |= PKT_RX_IEEE1588_TMST;
+
+			mb->timesync = tsyn & 0x03;
+#endif
 			mb->ol_flags |= pkt_flags;
+
 		}
 
 		for (j = 0; j < I40E_LOOK_AHEAD; j++)
@@ -923,6 +935,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		qword1 = rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len);
 		rx_status = (qword1 & I40E_RXD_QW1_STATUS_MASK)
 				>> I40E_RXD_QW1_STATUS_SHIFT;
+
 		/* Check the DD bit first */
 		if (!(rx_status & (1 << I40E_RX_DESC_STATUS_DD_SHIFT)))
 			break;
@@ -980,6 +993,16 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (pkt_flags & PKT_RX_FDIR)
 			pkt_flags |= i40e_rxd_build_fdir(&rxd, rxm);
 
+#ifdef RTE_LIBRTE_IEEE1588
+		uint16_t tsyn = (qword1 & (I40E_RXD_QW1_STATUS_TSYNVALID_MASK
+					| I40E_RXD_QW1_STATUS_TSYNINDX_MASK))
+					>> I40E_RX_DESC_STATUS_TSYNINDX_SHIFT;
+
+		if (tsyn & 0x04)
+			pkt_flags |= PKT_RX_IEEE1588_TMST;
+
+		rxm->timesync = tsyn & 0x03;
+#endif
 		rxm->ol_flags |= pkt_flags;
 
 		rx_pkts[nb_rx++] = rxm;
@@ -1030,6 +1053,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		qword1 = rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len);
 		rx_status = (qword1 & I40E_RXD_QW1_STATUS_MASK) >>
 					I40E_RXD_QW1_STATUS_SHIFT;
+
 		/* Check the DD bit */
 		if (!(rx_status & (1 << I40E_RX_DESC_STATUS_DD_SHIFT)))
 			break;
@@ -1139,6 +1163,16 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		if (pkt_flags & PKT_RX_FDIR)
 			pkt_flags |= i40e_rxd_build_fdir(&rxd, rxm);
 
+#ifdef RTE_LIBRTE_IEEE1588
+		uint16_t tsyn = (qword1 & (I40E_RXD_QW1_STATUS_TSYNVALID_MASK
+					| I40E_RXD_QW1_STATUS_TSYNINDX_MASK))
+					>> I40E_RX_DESC_STATUS_TSYNINDX_SHIFT;
+
+		if (tsyn & 0x04)
+			pkt_flags |= PKT_RX_IEEE1588_TMST;
+
+		first_seg->timesync = tsyn & 0x03;
+#endif
 		first_seg->ol_flags |= pkt_flags;
 
 		/* Prefetch data of first segment, if configured to do so. */
@@ -2389,6 +2423,10 @@ i40e_tx_queue_init(struct i40e_tx_queue *txq)
 	tx_ctx.new_context = 1;
 	tx_ctx.base = txq->tx_ring_phys_addr / I40E_QUEUE_BASE_ADDR_UNIT;
 	tx_ctx.qlen = txq->nb_tx_desc;
+
+#ifdef RTE_LIBRTE_IEEE1588
+	tx_ctx.timesync_ena = 1;
+#endif
 	tx_ctx.rdylist = rte_le_to_cpu_16(vsi->info.qs_handle[0]);
 	if (vsi->type == I40E_VSI_FDIR)
 		tx_ctx.fd_ena = TRUE;
