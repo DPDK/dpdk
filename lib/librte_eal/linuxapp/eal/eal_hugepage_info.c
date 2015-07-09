@@ -189,15 +189,6 @@ get_hugepage_dir(uint64_t hugepage_sz)
 	return retval;
 }
 
-static inline void
-swap_hpi(struct hugepage_info *a, struct hugepage_info *b)
-{
-	char buf[sizeof(*a)];
-	memcpy(buf, a, sizeof(buf));
-	memcpy(a, b, sizeof(buf));
-	memcpy(b, buf, sizeof(buf));
-}
-
 /*
  * Clear the hugepage directory of whatever hugepage files
  * there are. Checks if the file is locked (i.e.
@@ -268,6 +259,15 @@ error:
 	return -1;
 }
 
+static int
+compare_hpi(const void *a, const void *b)
+{
+	const struct hugepage_info *hpi_a = a;
+	const struct hugepage_info *hpi_b = b;
+
+	return hpi_b->hugepage_sz - hpi_a->hugepage_sz;
+}
+
 /*
  * when we initialize the hugepage info, everything goes
  * to socket 0 by default. it will later get sorted by memory
@@ -293,6 +293,9 @@ eal_hugepage_info_init(void)
 		if (strncmp(dirent->d_name, dirent_start_text,
 			    dirent_start_len) != 0)
 			continue;
+
+		if (num_sizes >= MAX_HUGEPAGE_SIZES)
+			break;
 
 		hpi = &internal_config.hugepage_info[num_sizes];
 		hpi->hugepage_sz =
@@ -348,14 +351,8 @@ eal_hugepage_info_init(void)
 	internal_config.num_hugepage_sizes = num_sizes;
 
 	/* sort the page directory entries by size, largest to smallest */
-	for (i = 0; i < num_sizes; i++) {
-		unsigned j;
-		for (j = i+1; j < num_sizes; j++)
-			if (internal_config.hugepage_info[j-1].hugepage_sz <
-			     internal_config.hugepage_info[j].hugepage_sz)
-				swap_hpi(&internal_config.hugepage_info[j-1],
-					 &internal_config.hugepage_info[j]);
-	}
+	qsort(&internal_config.hugepage_info[0], num_sizes,
+	      sizeof(internal_config.hugepage_info[0]), compare_hpi);
 
 	/* now we have all info, check we have at least one valid size */
 	for (i = 0; i < num_sizes; i++)
