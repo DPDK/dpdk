@@ -60,8 +60,12 @@ extern "C" {
 
 #define RTE_MEMZONE_2MB            0x00000001   /**< Use 2MB pages. */
 #define RTE_MEMZONE_1GB            0x00000002   /**< Use 1GB pages. */
-#define RTE_MEMZONE_16MB            0x00000100   /**< Use 16MB pages. */
-#define RTE_MEMZONE_16GB            0x00000200   /**< Use 16GB pages. */
+#define RTE_MEMZONE_16MB           0x00000100   /**< Use 16MB pages. */
+#define RTE_MEMZONE_16GB           0x00000200   /**< Use 16GB pages. */
+#define RTE_MEMZONE_256KB          0x00010000   /**< Use 256KB pages. */
+#define RTE_MEMZONE_256MB          0x00020000   /**< Use 256MB pages. */
+#define RTE_MEMZONE_512MB          0x00040000   /**< Use 512MB pages. */
+#define RTE_MEMZONE_4GB            0x00080000   /**< Use 4GB pages. */
 #define RTE_MEMZONE_SIZE_HINT_ONLY 0x00000004   /**< Use available page size */
 
 /**
@@ -110,11 +114,15 @@ struct rte_memzone {
  *   constraint for the reserved zone.
  * @param flags
  *   The flags parameter is used to request memzones to be
- *   taken from 1GB or 2MB hugepages.
- *   - RTE_MEMZONE_2MB - Reserve from 2MB pages
- *   - RTE_MEMZONE_1GB - Reserve from 1GB pages
- *   - RTE_MEMZONE_16MB - Reserve from 16MB pages
- *   - RTE_MEMZONE_16GB - Reserve from 16GB pages
+ *   taken from specifically sized hugepages.
+ *   - RTE_MEMZONE_2MB - Reserved from 2MB pages
+ *   - RTE_MEMZONE_1GB - Reserved from 1GB pages
+ *   - RTE_MEMZONE_16MB - Reserved from 16MB pages
+ *   - RTE_MEMZONE_16GB - Reserved from 16GB pages
+ *   - RTE_MEMZONE_256KB - Reserved from 256KB pages
+ *   - RTE_MEMZONE_256MB - Reserved from 256MB pages
+ *   - RTE_MEMZONE_512MB - Reserved from 512MB pages
+ *   - RTE_MEMZONE_4GB - Reserved from 4GB pages
  *   - RTE_MEMZONE_SIZE_HINT_ONLY - Allow alternative page size to be used if
  *                                  the requested page size is unavailable.
  *                                  If this flag is not set, the function
@@ -157,11 +165,15 @@ const struct rte_memzone *rte_memzone_reserve(const char *name,
  *   constraint for the reserved zone.
  * @param flags
  *   The flags parameter is used to request memzones to be
- *   taken from 1GB or 2MB hugepages.
- *   - RTE_MEMZONE_2MB - Reserve from 2MB pages
- *   - RTE_MEMZONE_1GB - Reserve from 1GB pages
- *   - RTE_MEMZONE_16MB - Reserve from 16MB pages
- *   - RTE_MEMZONE_16GB - Reserve from 16GB pages
+ *   taken from specifically sized hugepages.
+ *   - RTE_MEMZONE_2MB - Reserved from 2MB pages
+ *   - RTE_MEMZONE_1GB - Reserved from 1GB pages
+ *   - RTE_MEMZONE_16MB - Reserved from 16MB pages
+ *   - RTE_MEMZONE_16GB - Reserved from 16GB pages
+ *   - RTE_MEMZONE_256KB - Reserved from 256KB pages
+ *   - RTE_MEMZONE_256MB - Reserved from 256MB pages
+ *   - RTE_MEMZONE_512MB - Reserved from 512MB pages
+ *   - RTE_MEMZONE_4GB - Reserved from 4GB pages
  *   - RTE_MEMZONE_SIZE_HINT_ONLY - Allow alternative page size to be used if
  *                                  the requested page size is unavailable.
  *                                  If this flag is not set, the function
@@ -209,11 +221,15 @@ const struct rte_memzone *rte_memzone_reserve_aligned(const char *name,
  *   constraint for the reserved zone.
  * @param flags
  *   The flags parameter is used to request memzones to be
- *   taken from 1GB or 2MB hugepages.
- *   - RTE_MEMZONE_2MB - Reserve from 2MB pages
- *   - RTE_MEMZONE_1GB - Reserve from 1GB pages
- *   - RTE_MEMZONE_16MB - Reserve from 16MB pages
- *   - RTE_MEMZONE_16GB - Reserve from 16GB pages
+ *   taken from specifically sized hugepages.
+ *   - RTE_MEMZONE_2MB - Reserved from 2MB pages
+ *   - RTE_MEMZONE_1GB - Reserved from 1GB pages
+ *   - RTE_MEMZONE_16MB - Reserved from 16MB pages
+ *   - RTE_MEMZONE_16GB - Reserved from 16GB pages
+ *   - RTE_MEMZONE_256KB - Reserved from 256KB pages
+ *   - RTE_MEMZONE_256MB - Reserved from 256MB pages
+ *   - RTE_MEMZONE_512MB - Reserved from 512MB pages
+ *   - RTE_MEMZONE_4GB - Reserved from 4GB pages
  *   - RTE_MEMZONE_SIZE_HINT_ONLY - Allow alternative page size to be used if
  *                                  the requested page size is unavailable.
  *                                  If this flag is not set, the function

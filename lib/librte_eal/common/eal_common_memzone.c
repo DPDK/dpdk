@@ -284,12 +284,20 @@ rte_memzone_reserve_thread_safe(const char *name, size_t len,
 	const struct rte_memzone *mz = NULL;
 	uint64_t size_mask = 0;
 
+	if (flags & RTE_MEMZONE_256KB)
+		size_mask |= RTE_PGSIZE_256K;
 	if (flags & RTE_MEMZONE_2MB)
 		size_mask |= RTE_PGSIZE_2M;
 	if (flags & RTE_MEMZONE_16MB)
 		size_mask |= RTE_PGSIZE_16M;
+	if (flags & RTE_MEMZONE_256MB)
+		size_mask |= RTE_PGSIZE_256M;
+	if (flags & RTE_MEMZONE_512MB)
+		size_mask |= RTE_PGSIZE_512M;
 	if (flags & RTE_MEMZONE_1GB)
 		size_mask |= RTE_PGSIZE_1G;
+	if (flags & RTE_MEMZONE_4GB)
+		size_mask |= RTE_PGSIZE_4G;
 	if (flags & RTE_MEMZONE_16GB)
 		size_mask |= RTE_PGSIZE_16G;
 	if (!size_mask)
