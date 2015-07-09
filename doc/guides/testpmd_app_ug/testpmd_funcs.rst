@@ -635,6 +635,8 @@ The available information categories are:
 
 *   icmpecho: receives a burst of packets, lookup for IMCP echo requests and, if any, send back ICMP echo replies.
 
+*   ieee1588: demonstrate L2 IEEE1588 V2 PTP timestamping for RX and TX. Requires ``CONFIG_RTE_LIBRTE_IEEE1588=y``.
+    Note: TX timestamping is only available in the "Full Featured" TX path. To force ``testpmd`` into this mode set ``--txqflags=0``.
 
 Example:
 

@@ -315,7 +315,7 @@ They must be separated from the EAL options, shown in the previous section, with
 
 *   --forward-mode=N
 
-    Set forwarding mode. (N: io|mac|mac_retry|mac_swap|flowgen|rxonly|txonly|csum|icmpecho)
+    Set forwarding mode. (N: io|mac|mac_retry|mac_swap|flowgen|rxonly|txonly|csum|icmpecho|ieee1588)
 
 *   --rss-ip
 
