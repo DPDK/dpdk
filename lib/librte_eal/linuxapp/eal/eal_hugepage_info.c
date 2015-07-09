@@ -61,31 +61,24 @@
 
 static const char sys_dir_path[] = "/sys/kernel/mm/hugepages";
 
+/* this function is only called from eal_hugepage_info_init which itself
+ * is only called from a primary process */
 static int32_t
 get_num_hugepages(const char *subdir)
 {
 	char path[PATH_MAX];
 	long unsigned resv_pages, num_pages = 0;
-	const char *nr_hp_file;
+	const char *nr_hp_file = "free_hugepages";
 	const char *nr_rsvd_file = "resv_hugepages";
 
 	/* first, check how many reserved pages kernel reports */
 	snprintf(path, sizeof(path), "%s/%s/%s",
 			sys_dir_path, subdir, nr_rsvd_file);
-
 	if (eal_parse_sysfs_value(path, &resv_pages) < 0)
 		return 0;
 
-	/* if secondary process, just look at the number of hugepages,
-	 * otherwise look at number of free hugepages */
-	if (internal_config.process_type == RTE_PROC_SECONDARY)
-		nr_hp_file = "nr_hugepages";
-	else
-		nr_hp_file = "free_hugepages";
-
 	snprintf(path, sizeof(path), "%s/%s/%s",
 			sys_dir_path, subdir, nr_hp_file);
-
 	if (eal_parse_sysfs_value(path, &num_pages) < 0)
 		return 0;
 
@@ -93,8 +86,8 @@ get_num_hugepages(const char *subdir)
 		RTE_LOG(WARNING, EAL, "No free hugepages reported in %s\n",
 				subdir);
 
-	/* adjust num_pages in case of primary process */
-	if (num_pages > 0 && internal_config.process_type == RTE_PROC_PRIMARY)
+	/* adjust num_pages */
+	if (num_pages > 0)
 		num_pages -= resv_pages;
 
 	return (int32_t)num_pages;
