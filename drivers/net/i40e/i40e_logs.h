@@ -35,8 +35,7 @@
 #define _I40E_LOGS_H_
 
 #define PMD_INIT_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, RTE_LOGTYPE_PMD, \
-		"PMD: %s(): " fmt "\n", __func__, ##args)
+	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ##args)
 
 #ifdef RTE_LIBRTE_I40E_DEBUG_INIT
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
