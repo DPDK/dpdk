@@ -50,3 +50,10 @@ Deprecation Notices
 
 * ABI change is planned to extend the SCTP flow's key input from release 2.1.
   The change may be enabled in the release 2.1 with CONFIG_RTE_NEXT_ABI.
+
+* ABI changes are planned for struct rte_eth_fdir_filter and
+  rte_eth_fdir_masks in order to support new flow director modes,
+  MAC VLAN and Cloud, on x550. The MAC VLAN mode means the MAC and
+  VLAN are monitored. The Cloud mode is for VxLAN and NVGRE, and
+  the tunnel type, TNI/VNI, inner MAC and inner VLAN are monitored.
+  The release 2.2 will contain these changes without backwards compatibility.
