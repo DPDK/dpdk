@@ -3542,6 +3542,8 @@ int rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type,
  * that can be used to later remove the callback using
  * rte_eth_remove_rx_callback().
  *
+ * Multiple functions are called in the order that they are added.
+ *
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param queue_id
@@ -3566,6 +3568,8 @@ void *rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
  * packets sent on a given NIC port queue. The return value is a pointer
  * that can be used to later remove the callback using
  * rte_eth_remove_tx_callback().
+ *
+ * Multiple functions are called in the order that they are added.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.

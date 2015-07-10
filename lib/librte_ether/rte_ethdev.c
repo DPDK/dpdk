@@ -3179,8 +3179,20 @@ rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
 
 	cb->fn.rx = fn;
 	cb->param = user_param;
-	cb->next = rte_eth_devices[port_id].post_rx_burst_cbs[queue_id];
-	rte_eth_devices[port_id].post_rx_burst_cbs[queue_id] = cb;
+
+	/* Add the callbacks in fifo order. */
+	struct rte_eth_rxtx_callback *tail =
+		rte_eth_devices[port_id].post_rx_burst_cbs[queue_id];
+
+	if (!tail) {
+		rte_eth_devices[port_id].post_rx_burst_cbs[queue_id] = cb;
+
+	} else {
+		while (tail->next)
+			tail = tail->next;
+		tail->next = cb;
+	}
+
 	return cb;
 }
 
@@ -3208,8 +3220,20 @@ rte_eth_add_tx_callback(uint8_t port_id, uint16_t queue_id,
 
 	cb->fn.tx = fn;
 	cb->param = user_param;
-	cb->next = rte_eth_devices[port_id].pre_tx_burst_cbs[queue_id];
-	rte_eth_devices[port_id].pre_tx_burst_cbs[queue_id] = cb;
+
+	/* Add the callbacks in fifo order. */
+	struct rte_eth_rxtx_callback *tail =
+		rte_eth_devices[port_id].pre_tx_burst_cbs[queue_id];
+
+	if (!tail) {
+		rte_eth_devices[port_id].pre_tx_burst_cbs[queue_id] = cb;
+
+	} else {
+		while (tail->next)
+			tail = tail->next;
+		tail->next = cb;
+	}
+
 	return cb;
 }
 
