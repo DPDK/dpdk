@@ -1,5 +1,7 @@
-Coding Style
-============
+.. _coding_style:
+
+DPDK Coding Style
+=================
 
 Description
 -----------
@@ -31,7 +33,7 @@ Usual Comments
 ~~~~~~~~~~~~~~
 
 These comments should be used in normal cases.
-To document a public API, a doxygen-like format must be used: refer to Doxygen Documentation.
+To document a public API, a doxygen-like format must be used: refer to :ref:`doxygen_guidelines`.
 
 .. code-block:: c
 
@@ -491,7 +493,7 @@ Prototypes
 * Function prototypes should be listed in a logical order, preferably alphabetical unless there is a compelling reason to use a different ordering.
 * Functions that are used locally in more than one module go into a separate header file, for example, "extern.h".
 * Do not use the ``__P`` macro.
-* Functions that are part of an external API should be documented using Doxygen-like comments above declarations. See the Doxgen documentation topic for details.
+* Functions that are part of an external API should be documented using Doxygen-like comments above declarations. See :ref:`doxygen_guidelines` for details.
 * Functions that are part of the external API must have an ``rte_`` prefix on the function name.
 * Do not use uppercase letters - either in the form of ALL_UPPERCASE, or CamelCase - in function names. Lower-case letters and underscores only.
 * When prototyping functions, associate names with parameter types, for example:
@@ -683,127 +685,3 @@ Control Statements
                  usage();
                  /* NOTREACHED */
          }
-
-Doxygen Documentation
----------------------
-
-The API documentation is automatically generated in the DPDK framework.
-That is why all files that are part of the public API must be documented using Doxygen syntax.
-
-The public API comprises functions of DPDK that can be used by an external application that will use the SDK.
-Only the Doxygen syntax described in the coding rules (this document) should be used in the code.
-All the Doxygen features are described in the Doxygen manual online.
-
-Documenting a Function
-~~~~~~~~~~~~~~~~~~~~~~
-
-All public functions must be documented. The documentation is placed in the header file, above the declaration of the function.
-The definition of the function may be documented, but using standard comments (not in doxygen format).
-The following is an example of function documentation:
-
-.. code-block:: c
-
- /**
-  * Summary here; one sentence on one line (should not exceed 80 chars).
-  *
-  * A more detailed description goes here.
-  *
-  * A blank line forms a paragraph. There should be no trailing white-space
-  * anywhere.
-  *
-  * @param first
-  *   "@param" is a Doxygen directive to describe a function parameter. Like
-  *   some other directives, it takes a term/summary on the same line and a
-  *   description (this text) indented by 2 spaces on the next line. All
-  *   descriptive text should wrap at 80 chars, without going over.
-  *   Newlines are NOT supported within directives; if a newline would be
-  *   before this text, it would be appended to the general description above.
-  * @param second
-  *   There should be no newline between multiple directives (of the same
-  *   type).
-  *
-  * @return
-  *   "@return" is a different Doxygen directive to describe the return value
-  *   of a function, if there is any.
-  */
- int rte_foo(int first, int second)
-
-
-Documenting Files
-~~~~~~~~~~~~~~~~~
-
-Each public file may start with a comment describing what the file does. For example:
-
-.. code-block:: c
-
- /**
-  * @file
-  * This file describes the coding rules of RTE.
-  *
-  * It contains the coding rules of C code, ASM code, reStructured
-  * Text documentation, and of course how to use doxygen to document
-  * public API.
-  */
-
-
-Documenting Constants and Variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Examples:
-
-.. code-block:: c
-
- /**
-  * The definition of a funny TRUE.
-  */
- #define TRUE 0
-
- #define TRUE 1 /**< another way to document a macro */
-
- /**
-  * Frequency of the HPET counter in Hz
-  *
-  * @see rte_eal_hpet_init()
-  */
- extern uint64_t eal_hpet_resolution_hz;
-
-
-Documenting Structures
-~~~~~~~~~~~~~~~~~~~~~~
-
-Public structures should also be documented.
-The ``/**<`` sequence can be used to documented the fields of the structure, as shown in the following example:
-
-.. code-block:: c
-
- /**
-  * Structure describing a memzone, which is a contiguous portions of
-  * physical memory identified by a name.
-  */
- struct rte_memzone {
-
- #define MEMZONE_NAMESIZE 32
-   char name[MEMZONE_NAMESIZE]; /**< name of the memory zone */
-
-   phys_addr_t phys_addr;       /**< start physical address */
-   void *addr;                  /**< start virtual address */
-   uint64_t len;                /**< len of the memzone */
-
-   int socket_id;               /**< NUMA socket id */
- };
-
-
-See Also Sections
-~~~~~~~~~~~~~~~~~
-
-The @see keyword can be used to highlight a link to an existing function, file, or URL.
-This directive should be placed on one line, without anything else, at the bottom of the documentation header.
-
-.. code-block:: c
-
- /**
-  * (documentation of function, file, ...)
-  *
-  * @see rte_foo()
-  * @see eal_memzone.c
-  */

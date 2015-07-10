@@ -577,3 +577,169 @@ Hyperlinks
 
 * The use of a label is preferred since it works across files and will still work if the header text changes.
 
+
+.. _doxygen_guidelines:
+
+Doxygen Guidelines
+------------------
+
+The DPDK API is documented using Doxygen comment annotations in the header files.
+Doxygen is a very powerful tool, it is extremely configurable and with a little effort can be used to create expressive documents.
+See the `Doxygen website <http://www.stack.nl/~dimitri/doxygen/>`_ for full details on how to use it.
+
+The following are some guidelines for use of Doxygen in the DPDK API documentation:
+
+* New libraries that are documented with Doxygen should be added to the Doxygen configuration file: ``doc/api/doxy-api.conf``.
+  It is only required to add the directory that contains the files.
+  It isn't necessary to explicitly name each file since the configuration matches all ``rte_*.h`` files in the directory.
+
+* Use proper capitalization and punctuation in the Doxygen comments since they will become sentences in the documentation.
+  This in particular applies to single line comments, which is the case the is most often forgotten.
+
+* Use ``@`` style Doxygen commands instead of ``\`` style commands.
+
+* Add a general description of each library at the head of the main header files:
+
+  .. code-block:: c
+
+      /**
+       * @file
+       * RTE Mempool.
+       *
+       * A memory pool is an allocator of fixed-size object. It is
+       * identified by its name, and uses a ring to store free objects.
+       * ...
+       */
+
+* Document the purpose of a function, the parameters used and the return
+  value:
+
+  .. code-block:: c
+
+     /**
+      * Attach a new Ethernet device specified by arguments.
+      *
+      * @param devargs
+      *  A pointer to a strings array describing the new device
+      *  to be attached. The strings should be a pci address like
+      *  `0000:01:00.0` or **virtual** device name like `eth_pcap0`.
+      * @param port_id
+      *  A pointer to a port identifier actually attached.
+      *
+      * @return
+      *  0 on success and port_id is filled, negative on error.
+      */
+     int rte_eth_dev_attach(const char *devargs, uint8_t *port_id);
+
+* Doxygen supports Markdown style syntax such as bold, italics, fixed width text and lists.
+  For example the second line in the ``devargs`` parameter in the previous example will be rendered as:
+
+     The strings should be a pci address like ``0000:01:00.0`` or **virtual** device name like ``eth_pcap0``.
+
+* Use ``-`` instead of ``*`` for lists within the Doxygen comment since the latter can get confused with the comment delimiter.
+
+* Add an empty line between the function description, the ``@params`` and ``@return`` for readability.
+
+* Place the ``@params`` description on separate line and indent it by 2 spaces.
+  (It would be better to use no indentation since this is more common and also because checkpatch complains about leading
+  whitespace in comments.
+  However this is the convention used in the existing DPDK code.)
+
+* Documented functions can be linked to simply by adding ``()`` to the function name:
+
+  .. code-block:: c
+
+      /**
+       * The functions exported by the application Ethernet API to setup
+       * a device designated by its port identifier must be invoked in
+       * the following order:
+       *     - rte_eth_dev_configure()
+       *     - rte_eth_tx_queue_setup()
+       *     - rte_eth_rx_queue_setup()
+       *     - rte_eth_dev_start()
+       */
+
+  In the API documentation the functions will be rendered as links, see the
+  `online section of the rte_ethdev.h docs <http://dpdk.org/doc/api/rte__ethdev_8h.html>`_ that contains the above text.
+
+* The ``@see`` keyword can be used to create a *see also* link to another file or library.
+  This directive should be placed on one line at the bottom of the documentation section.
+
+  .. code-block:: c
+
+     /**
+      * ...
+      *
+      * Some text that references mempools.
+      *
+      * @see eal_memzone.c
+      */
+
+* Doxygen supports two types of comments for documenting variables, constants and members: prefix and postfix:
+
+  .. code-block:: c
+
+     /** This is a prefix comment. */
+     #define RTE_FOO_ERROR  0x023.
+
+     #define RTE_BAR_ERROR  0x024. /**< This is a postfix comment. */
+
+* Postfix comments are preferred for struct members and constants if they can be documented in the same way:
+
+  .. code-block:: c
+
+     struct rte_eth_stats {
+         uint64_t ipackets; /**< Total number of received packets. */
+         uint64_t opackets; /**< Total number of transmitted packets.*/
+         uint64_t ibytes;   /**< Total number of received bytes. */
+         uint64_t obytes;   /**< Total number of transmitted bytes. */
+         uint64_t imissed;  /**< Total of RX missed packets. */
+         uint64_t ibadcrc;  /**< Total of RX packets with CRC error. */
+         uint64_t ibadlen;  /**< Total of RX packets with bad length. */
+     }
+
+  Note: postfix comments should be aligned with spaces not tabs in accordance
+  with the :ref:`coding_style`.
+
+* If a single comment type can't be used, due to line length limitations then
+  prefix comments should be preferred.
+  For example this section of the code contains prefix comments, postfix comments on the same line and postfix
+  comments on a separate line:
+
+  .. code-block:: c
+
+     /** Number of elements in the elt_pa array. */
+     uint32_t    pg_num __rte_cache_aligned;
+     uint32_t    pg_shift;     /**< LOG2 of the physical pages. */
+     uintptr_t   pg_mask;      /**< Physical page mask value. */
+     uintptr_t   elt_va_start;
+     /**< Virtual address of the first mempool object. */
+     uintptr_t   elt_va_end;
+     /**< Virtual address of the <size + 1> mempool object. */
+     phys_addr_t elt_pa[MEMPOOL_PG_NUM_DEFAULT];
+     /**< Array of physical page addresses for the mempool buffer. */
+
+  This doesn't have an effect on the rendered documentation but it is confusing for the developer reading the code.
+  It this case it would be clearer to use prefix comments throughout:
+
+  .. code-block:: c
+
+     /** Number of elements in the elt_pa array. */
+     uint32_t    pg_num __rte_cache_aligned;
+     /** LOG2 of the physical pages. */
+     uint32_t    pg_shift;
+     /** Physical page mask value. */
+     uintptr_t   pg_mask;
+     /** Virtual address of the first mempool object. */
+     uintptr_t   elt_va_start;
+     /** Virtual address of the <size + 1> mempool object. */
+     uintptr_t   elt_va_end;
+     /** Array of physical page addresses for the mempool buffer. */
+     phys_addr_t elt_pa[MEMPOOL_PG_NUM_DEFAULT];
+
+* Check for Doxygen warnings in new code by checking the API documentation build::
+
+     make doc-api-html >/dev/null
+
+* Read the rendered section of the documentation that you have added for correctness, clarity and consistency
+  with the surrounding text.
