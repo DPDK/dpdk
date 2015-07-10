@@ -329,7 +329,7 @@ fm10k_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	 * little-endian order.
 	 */
 	reta = 0;
-	for (i = 0, j = 0; i < FM10K_RETA_SIZE; i++, j++) {
+	for (i = 0, j = 0; i < FM10K_MAX_RSS_INDICES; i++, j++) {
 		if (j == dev->data->nb_rx_queues)
 			j = 0;
 		reta = (reta << CHAR_BIT) | j;
