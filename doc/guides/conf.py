@@ -38,6 +38,7 @@ from pygments.formatters.latex import LatexFormatter
 project = 'DPDK'
 
 html_show_copyright = False
+highlight_language = 'none'
 
 version = subprocess.check_output(['make', '-sRrC', '../../', 'showversion']).decode('utf-8')
 release = version
