@@ -83,7 +83,7 @@ struct rte_hash *h[NUM_KEYSIZES];
 uint8_t slot_taken[MAX_ENTRIES];
 
 /* Array to store number of cycles per operation */
-uint64_t cycles[NUM_KEYSIZES][NUM_OPERATIONS][2];
+uint64_t cycles[NUM_KEYSIZES][NUM_OPERATIONS][2][2];
 
 /* Array to store all input keys */
 uint8_t keys[KEYS_TO_ADD][MAX_KEYSIZE];
@@ -106,11 +106,16 @@ static struct rte_hash_parameters ut_params = {
 };
 
 static int
-create_table(unsigned table_index)
+create_table(unsigned with_data, unsigned table_index)
 {
 	char name[RTE_HASH_NAMESIZE];
 
-	sprintf(name, "test_hash%d", hashtest_key_lens[table_index]);
+	if (with_data)
+		/* Table will store 8-byte data */
+		sprintf(name, "test_hash%d_data", hashtest_key_lens[table_index]);
+	else
+		sprintf(name, "test_hash%d", hashtest_key_lens[table_index]);
+
 	ut_params.name = name;
 	ut_params.key_len = hashtest_key_lens[table_index];
 	ut_params.socket_id = rte_socket_id();
@@ -234,6 +239,7 @@ get_input_keys(unsigned with_pushes, unsigned table_index)
 			else {
 				/* Store the returned position and mark slot as taken */
 				slot_taken[ret] = 1;
+				positions[i] = ret;
 				buckets[bucket_idx]++;
 				success = 1;
 				i++;
@@ -249,53 +255,47 @@ get_input_keys(unsigned with_pushes, unsigned table_index)
 }
 
 static int
-timed_adds(unsigned with_hash, unsigned table_index)
+timed_adds(unsigned with_hash, unsigned with_data, unsigned table_index)
 {
 	unsigned i;
 	const uint64_t start_tsc = rte_rdtsc();
+	void *data;
 	int32_t ret;
 
 	for (i = 0; i < KEYS_TO_ADD; i++) {
-		if (with_hash)
+		data = (void *) ((uintptr_t) signatures[i]);
+		if (with_hash && with_data) {
+			ret = rte_hash_add_key_with_hash_data(h[table_index],
+						(const void *) keys[i],
+						signatures[i], data);
+			if (ret < 0) {
+				printf("Failed to add key number %u\n", ret);
+				return -1;
+			}
+		} else if (with_hash && !with_data) {
 			ret = rte_hash_add_key_with_hash(h[table_index],
 						(const void *) keys[i],
 						signatures[i]);
-		else
+			if (ret >= 0)
+				positions[i] = ret;
+			else {
+				printf("Failed to add key number %u\n", ret);
+				return -1;
+			}
+		} else if (!with_hash && with_data) {
+			ret = rte_hash_add_key_data(h[table_index],
+						(const void *) keys[i],
+						data);
+			if (ret < 0) {
+				printf("Failed to add key number %u\n", ret);
+				return -1;
+			}
+		} else {
 			ret = rte_hash_add_key(h[table_index], keys[i]);
-
-		if (ret >= 0)
-			positions[i] = ret;
-		else {
-			printf("Failed to add key number %u\n", ret);
-			return -1;
-		}
-	}
-
-	const uint64_t end_tsc = rte_rdtsc();
-	const uint64_t time_taken = end_tsc - start_tsc;
-
-	cycles[table_index][ADD][with_hash] = time_taken/KEYS_TO_ADD;
-	return 0;
-}
-
-static int
-timed_lookups(unsigned with_hash, unsigned table_index)
-{
-	unsigned i, j;
-	const uint64_t start_tsc = rte_rdtsc();
-	int32_t ret;
-
-	for (i = 0; i < NUM_LOOKUPS/KEYS_TO_ADD; i++) {
-		for (j = 0; j < KEYS_TO_ADD; j++) {
-			if (with_hash)
-				ret = rte_hash_lookup_with_hash(h[table_index],
-							(const void *) keys[j],
-							signatures[j]);
-			else
-				ret = rte_hash_lookup(h[table_index], keys[j]);
-			if (ret < 0 || ret != positions[j]) {
-				printf("Key looked up in %d, should be in %d\n",
-					ret, positions[j]);
+			if (ret >= 0)
+				positions[i] = ret;
+			else {
+				printf("Failed to add key number %u\n", ret);
 				return -1;
 			}
 		}
@@ -304,33 +304,65 @@ timed_lookups(unsigned with_hash, unsigned table_index)
 	const uint64_t end_tsc = rte_rdtsc();
 	const uint64_t time_taken = end_tsc - start_tsc;
 
-	cycles[table_index][LOOKUP][with_hash] = time_taken/NUM_LOOKUPS;
+	cycles[table_index][ADD][with_hash][with_data] = time_taken/KEYS_TO_ADD;
 
 	return 0;
 }
 
 static int
-timed_lookups_multi(unsigned table_index)
+timed_lookups(unsigned with_hash, unsigned with_data, unsigned table_index)
 {
-	unsigned i, j, k;
-	int32_t positions_burst[BURST_SIZE];
-	const void *keys_burst[BURST_SIZE];
+	unsigned i, j;
 	const uint64_t start_tsc = rte_rdtsc();
+	void *ret_data;
+	void *expected_data;
+	int32_t ret;
 
 	for (i = 0; i < NUM_LOOKUPS/KEYS_TO_ADD; i++) {
-		for (j = 0; j < KEYS_TO_ADD/BURST_SIZE; j++) {
-			for (k = 0; k < BURST_SIZE; k++)
-				keys_burst[k] = keys[j * BURST_SIZE + k];
-
-			rte_hash_lookup_bulk(h[table_index],
-						(const void **) keys_burst,
-						BURST_SIZE,
-						positions_burst);
-			for (k = 0; k < BURST_SIZE; k++) {
-				if (positions_burst[k] != positions[j * BURST_SIZE + k]) {
+		for (j = 0; j < KEYS_TO_ADD; j++) {
+			if (with_hash && with_data) {
+				ret = rte_hash_lookup_with_hash_data(h[table_index],
+							(const void *) keys[j],
+							signatures[j], &ret_data);
+				if (ret < 0) {
+					printf("Key number %u was not found\n", j);
+					return -1;
+				}
+				expected_data = (void *) ((uintptr_t) signatures[j]);
+				if (ret_data != expected_data) {
+					printf("Data returned for key number %u is %p,"
+					       " but should be %p\n", j, ret_data,
+						expected_data);
+					return -1;
+				}
+			} else if (with_hash && !with_data) {
+				ret = rte_hash_lookup_with_hash(h[table_index],
+							(const void *) keys[j],
+							signatures[j]);
+				if (ret < 0 || ret != positions[j]) {
 					printf("Key looked up in %d, should be in %d\n",
-						positions_burst[k],
-						positions[j * BURST_SIZE + k]);
+						ret, positions[j]);
+					return -1;
+				}
+			} else if (!with_hash && with_data) {
+				ret = rte_hash_lookup_data(h[table_index],
+							(const void *) keys[j], &ret_data);
+				if (ret < 0) {
+					printf("Key number %u was not found\n", j);
+					return -1;
+				}
+				expected_data = (void *) ((uintptr_t) signatures[j]);
+				if (ret_data != expected_data) {
+					printf("Data returned for key number %u is %p,"
+					       " but should be %p\n", j, ret_data,
+						expected_data);
+					return -1;
+				}
+			} else {
+				ret = rte_hash_lookup(h[table_index], keys[j]);
+				if (ret < 0 || ret != positions[j]) {
+					printf("Key looked up in %d, should be in %d\n",
+						ret, positions[j]);
 					return -1;
 				}
 			}
@@ -340,19 +372,87 @@ timed_lookups_multi(unsigned table_index)
 	const uint64_t end_tsc = rte_rdtsc();
 	const uint64_t time_taken = end_tsc - start_tsc;
 
-	cycles[table_index][LOOKUP_MULTI][0] = time_taken/NUM_LOOKUPS;
+	cycles[table_index][LOOKUP][with_hash][with_data] = time_taken/NUM_LOOKUPS;
 
 	return 0;
 }
 
 static int
-timed_deletes(unsigned with_hash, unsigned table_index)
+timed_lookups_multi(unsigned with_data, unsigned table_index)
+{
+	unsigned i, j, k;
+	int32_t positions_burst[BURST_SIZE];
+	const void *keys_burst[BURST_SIZE];
+	void *expected_data[BURST_SIZE];
+	void *ret_data[BURST_SIZE];
+	uint64_t hit_mask;
+	int ret;
+
+	const uint64_t start_tsc = rte_rdtsc();
+
+	for (i = 0; i < NUM_LOOKUPS/KEYS_TO_ADD; i++) {
+		for (j = 0; j < KEYS_TO_ADD/BURST_SIZE; j++) {
+			for (k = 0; k < BURST_SIZE; k++)
+				keys_burst[k] = keys[j * BURST_SIZE + k];
+			if (with_data) {
+				ret = rte_hash_lookup_bulk_data(h[table_index],
+					(const void **) keys_burst,
+					BURST_SIZE,
+					&hit_mask,
+					ret_data);
+				if (ret != BURST_SIZE) {
+					printf("Expect to find %u keys,"
+					       " but found %d\n", BURST_SIZE, ret);
+					return -1;
+				}
+				for (k = 0; k < BURST_SIZE; k++) {
+					if ((hit_mask & (1ULL << k))  == 0) {
+						printf("Key number %u not found\n",
+							j * BURST_SIZE + k);
+						return -1;
+					}
+					expected_data[k] = (void *) ((uintptr_t) signatures[j * BURST_SIZE + k]);
+					if (ret_data[k] != expected_data[k]) {
+						printf("Data returned for key number %u is %p,"
+						       " but should be %p\n", j * BURST_SIZE + k,
+							ret_data[k], expected_data[k]);
+						return -1;
+					}
+				}
+			} else {
+				rte_hash_lookup_bulk(h[table_index],
+						(const void **) keys_burst,
+						BURST_SIZE,
+						positions_burst);
+				for (k = 0; k < BURST_SIZE; k++) {
+					if (positions_burst[k] != positions[j * BURST_SIZE + k]) {
+						printf("Key looked up in %d, should be in %d\n",
+							positions_burst[k],
+							positions[j * BURST_SIZE + k]);
+						return -1;
+					}
+				}
+			}
+		}
+	}
+
+	const uint64_t end_tsc = rte_rdtsc();
+	const uint64_t time_taken = end_tsc - start_tsc;
+
+	cycles[table_index][LOOKUP_MULTI][0][with_data] = time_taken/NUM_LOOKUPS;
+
+	return 0;
+}
+
+static int
+timed_deletes(unsigned with_hash, unsigned with_data, unsigned table_index)
 {
 	unsigned i;
 	const uint64_t start_tsc = rte_rdtsc();
 	int32_t ret;
 
 	for (i = 0; i < KEYS_TO_ADD; i++) {
+		/* There are no delete functions with data, so just call two functions */
 		if (with_hash)
 			ret = rte_hash_del_key_with_hash(h[table_index],
 							(const void *) keys[i],
@@ -371,7 +471,7 @@ timed_deletes(unsigned with_hash, unsigned table_index)
 	const uint64_t end_tsc = rte_rdtsc();
 	const uint64_t time_taken = end_tsc - start_tsc;
 
-	cycles[table_index][DELETE][with_hash] = time_taken/KEYS_TO_ADD;
+	cycles[table_index][DELETE][with_hash][with_data] = time_taken/KEYS_TO_ADD;
 
 	return 0;
 }
@@ -391,62 +491,67 @@ reset_table(unsigned table_index)
 static int
 run_all_tbl_perf_tests(unsigned with_pushes)
 {
-	unsigned i, j, with_hash;
+	unsigned i, j, with_data, with_hash;
 
 	printf("Measuring performance, please wait");
 	fflush(stdout);
-	for (i = 0; i < NUM_KEYSIZES; i++) {
-		if (create_table(i) < 0)
-			return -1;
 
-		if (get_input_keys(with_pushes, i) < 0)
-			return -1;
-		for (with_hash = 0; with_hash <= 1; with_hash++) {
-			if (timed_adds(with_hash, i) < 0)
+	for (with_data = 0; with_data <= 1; with_data++) {
+		for (i = 0; i < NUM_KEYSIZES; i++) {
+			if (create_table(with_data, i) < 0)
 				return -1;
 
-			for (j = 0; j < NUM_SHUFFLES; j++)
-				shuffle_input_keys(i);
-
-			if (timed_lookups(with_hash, i) < 0)
+			if (get_input_keys(with_pushes, i) < 0)
 				return -1;
+			for (with_hash = 0; with_hash <= 1; with_hash++) {
+				if (timed_adds(with_hash, with_data, i) < 0)
+					return -1;
 
-			if (timed_lookups_multi(i) < 0)
-				return -1;
+				for (j = 0; j < NUM_SHUFFLES; j++)
+					shuffle_input_keys(i);
 
-			if (timed_deletes(with_hash, i) < 0)
-				return -1;
+				if (timed_lookups(with_hash, with_data, i) < 0)
+					return -1;
 
-			reset_table(i);
+				if (timed_lookups_multi(with_data, i) < 0)
+					return -1;
 
-			/* Print a dot to show progress on operations */
-			printf(".");
-			fflush(stdout);
+				if (timed_deletes(with_hash, with_data, i) < 0)
+					return -1;
+
+				/* Print a dot to show progress on operations */
+				printf(".");
+				fflush(stdout);
+
+				reset_table(i);
+			}
+			free_table(i);
 		}
-
-		free_table(i);
 	}
+
 	printf("\nResults (in CPU cycles/operation)\n");
-	printf("---------------------------------\n");
-	printf("\nWithout pre-computed hash values\n");
-	printf("\n%-18s%-18s%-18s%-18s%-18s\n",
-			"Keysize", "Add", "Lookup", "Lookup_bulk", "Delete");
-	for (i = 0; i < NUM_KEYSIZES; i++) {
-		printf("%-18d", hashtest_key_lens[i]);
-		for (j = 0; j < NUM_OPERATIONS; j++)
-			printf("%-18"PRIu64, cycles[i][j][0]);
-		printf("\n");
-	}
-	printf("\nWith pre-computed hash values\n");
-	printf("\n%-18s%-18s%-18s%-18s%-18s\n",
-			"Keysize", "Add", "Lookup", "Lookup_bulk", "Delete");
-	for (i = 0; i < NUM_KEYSIZES; i++) {
-		printf("%-18d", hashtest_key_lens[i]);
-		for (j = 0; j < NUM_OPERATIONS; j++)
-			printf("%-18"PRIu64, cycles[i][j][1]);
-		printf("\n");
-	}
+	printf("-----------------------------------\n");
+	for (with_data = 0; with_data <= 1; with_data++) {
+		if (with_data)
+			printf("\n Operations with 8-byte data\n");
+		else
+			printf("\n Operations without data\n");
+		for (with_hash = 0; with_hash <= 1; with_hash++) {
+			if (with_hash)
+				printf("\nWith pre-computed hash values\n");
+			else
+				printf("\nWithout pre-computed hash values\n");
 
+			printf("\n%-18s%-18s%-18s%-18s%-18s\n",
+			"Keysize", "Add", "Lookup", "Lookup_bulk", "Delete");
+			for (i = 0; i < NUM_KEYSIZES; i++) {
+				printf("%-18d", hashtest_key_lens[i]);
+				for (j = 0; j < NUM_OPERATIONS; j++)
+					printf("%-18"PRIu64, cycles[i][j][with_hash][with_data]);
+				printf("\n");
+			}
+		}
+	}
 	return 0;
 }
 
@@ -546,7 +651,6 @@ test_hash_perf(void)
 		if (run_all_tbl_perf_tests(with_pushes) < 0)
 			return -1;
 	}
-
 	if (fbk_hash_perf_test() < 0)
 		return -1;
 

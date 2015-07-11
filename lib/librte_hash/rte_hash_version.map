@@ -22,6 +22,12 @@ DPDK_2.0 {
 DPDK_2.1 {
 	global:
 
+	rte_hash_add_key_data;
+	rte_hash_add_key_with_hash_data;
+	rte_hash_create;
+	rte_hash_lookup_bulk_data;
+	rte_hash_lookup_data;
+	rte_hash_lookup_with_hash_data;
 	rte_hash_reset;
 
 } DPDK_2.0;

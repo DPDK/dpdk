@@ -80,11 +80,11 @@ struct rte_hash_parameters {
 	rte_hash_function hash_func;	/**< Primary Hash function used to calculate hash. */
 	uint32_t hash_func_init_val;	/**< Init value used by hash_func. */
 	int socket_id;			/**< NUMA Socket ID for memory. */
+	uint8_t extra_flag;		/**< Indicate if additional parameters are present. */
 };
 
 /** @internal A hash table structure. */
 struct rte_hash;
-
 
 /**
  * Create a new hash table.
@@ -134,6 +134,48 @@ rte_hash_free(struct rte_hash *h);
  */
 void
 rte_hash_reset(struct rte_hash *h);
+
+/**
+ * Add a key-value pair to an existing hash table.
+ * This operation is not multi-thread safe
+ * and should only be called from one thread.
+ *
+ * @param h
+ *   Hash table to add the key to.
+ * @param key
+ *   Key to add to the hash table.
+ * @param data
+ *   Data to add to the hash table.
+ * @return
+ *   - 0 if added successfully
+ *   - -EINVAL if the parameters are invalid.
+ *   - -ENOSPC if there is no space in the hash for this key.
+ */
+int
+rte_hash_add_key_data(const struct rte_hash *h, const void *key, void *data);
+
+/**
+ * Add a key-value pair with a pre-computed hash value
+ * to an existing hash table.
+ * This operation is not multi-thread safe
+ * and should only be called from one thread.
+ *
+ * @param h
+ *   Hash table to add the key to.
+ * @param key
+ *   Key to add to the hash table.
+ * @param sig
+ *   Precomputed hash value for 'key'
+ * @param data
+ *   Data to add to the hash table.
+ * @return
+ *   - 0 if added successfully
+ *   - -EINVAL if the parameters are invalid.
+ *   - -ENOSPC if there is no space in the hash for this key.
+ */
+int32_t
+rte_hash_add_key_with_hash_data(const struct rte_hash *h, const void *key,
+						hash_sig_t sig, void *data);
 
 /**
  * Add a key to an existing hash table. This operation is not multi-thread safe
@@ -212,6 +254,47 @@ rte_hash_del_key(const struct rte_hash *h, const void *key);
 int32_t
 rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key, hash_sig_t sig);
 
+
+/**
+ * Find a key-value pair in the hash table.
+ * This operation is multi-thread safe.
+ *
+ * @param h
+ *   Hash table to look in.
+ * @param key
+ *   Key to find.
+ * @param data
+ *   Output with pointer to data returned from the hash table.
+ * @return
+ *   0 if successful lookup
+ *   - EINVAL if the parameters are invalid.
+ *   - ENOENT if the key is not found.
+ */
+int
+rte_hash_lookup_data(const struct rte_hash *h, const void *key, void **data);
+
+/**
+ * Find a key-value pair with a pre-computed hash value
+ * to an existing hash table.
+ * This operation is multi-thread safe.
+ *
+ * @param h
+ *   Hash table to look in.
+ * @param key
+ *   Key to find.
+ * @param sig
+ *   Precomputed hash value for 'key'
+ * @param data
+ *   Output with pointer to data returned from the hash table.
+ * @return
+ *   0 if successful lookup
+ *   - EINVAL if the parameters are invalid.
+ *   - ENOENT if the key is not found.
+ */
+int
+rte_hash_lookup_with_hash_data(const struct rte_hash *h, const void *key,
+					hash_sig_t sig, void **data);
+
 /**
  * Find a key in the hash table.
  * This operation is multi-thread safe.
@@ -266,6 +349,28 @@ hash_sig_t
 rte_hash_hash(const struct rte_hash *h, const void *key);
 
 #define rte_hash_lookup_multi rte_hash_lookup_bulk
+#define rte_hash_lookup_multi_data rte_hash_lookup_bulk_data
+/**
+ * Find multiple keys in the hash table.
+ * This operation is multi-thread safe.
+ *
+ * @param h
+ *   Hash table to look in.
+ * @param keys
+ *   A pointer to a list of keys to look for.
+ * @param num_keys
+ *   How many keys are in the keys list (less than RTE_HASH_LOOKUP_BULK_MAX).
+ * @param hit_mask
+ *   Output containing a bitmask with all successful lookups.
+ * @param data
+ *   Output containing array of data returned from all the successful lookups.
+ * @return
+ *   -EINVAL if there's an error, otherwise number of successful lookups.
+ */
+int
+rte_hash_lookup_bulk_data(const struct rte_hash *h, const void **keys,
+		      uint32_t num_keys, uint64_t *hit_mask, void *data[]);
+
 /**
  * Find multiple keys in the hash table.
  * This operation is multi-thread safe.
@@ -288,7 +393,6 @@ rte_hash_hash(const struct rte_hash *h, const void *key);
 int
 rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 		      uint32_t num_keys, int32_t *positions);
-
 #ifdef __cplusplus
 }
 #endif
