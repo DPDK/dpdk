@@ -393,6 +393,28 @@ rte_hash_lookup_bulk_data(const struct rte_hash *h, const void **keys,
 int
 rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 		      uint32_t num_keys, int32_t *positions);
+
+/**
+ * Iterate through the hash table, returning key-value pairs.
+ *
+ * @param h
+ *   Hash table to iterate
+ * @param key
+ *   Output containing the key where current iterator
+ *   was pointing at
+ * @param data
+ *   Output containing the data associated with key.
+ *   Returns NULL if data was not stored.
+ * @param next
+ *   Pointer to iterator. Should be 0 to start iterating the hash table.
+ *   Iterator is incremented after each call of this function.
+ * @return
+ *   Position where key was stored, if successful.
+ *   - -EINVAL if the parameters are invalid.
+ *   - -ENOENT if end of the hash table.
+ */
+int32_t
+rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32_t *next);
 #ifdef __cplusplus
 }
 #endif

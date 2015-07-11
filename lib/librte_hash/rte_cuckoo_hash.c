@@ -1081,6 +1081,47 @@ rte_hash_lookup_bulk_data(const struct rte_hash *h, const void **keys,
 	return __builtin_popcountl(*hit_mask);
 }
 
+int32_t
+rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32_t *next)
+{
+	uint32_t bucket_idx, idx, position;
+	struct rte_hash_key *next_key;
+
+	RETURN_IF_TRUE(((h == NULL) || (next == NULL)), -EINVAL);
+
+	const uint32_t total_entries = h->num_buckets * RTE_HASH_BUCKET_ENTRIES;
+	/* Out of bounds */
+	if (*next >= total_entries)
+		return -ENOENT;
+
+	/* Calculate bucket and index of current iterator */
+	bucket_idx = *next / RTE_HASH_BUCKET_ENTRIES;
+	idx = *next % RTE_HASH_BUCKET_ENTRIES;
+
+	/* If current position is empty, go to the next one */
+	while (h->buckets[bucket_idx].signatures[idx].sig == NULL_SIGNATURE) {
+		(*next)++;
+		/* End of table */
+		if (*next == total_entries)
+			return -ENOENT;
+		bucket_idx = *next / RTE_HASH_BUCKET_ENTRIES;
+		idx = *next % RTE_HASH_BUCKET_ENTRIES;
+	}
+
+	/* Get position of entry in key table */
+	position = h->buckets[bucket_idx].key_idx[idx];
+	next_key = (struct rte_hash_key *) ((char *)h->key_store +
+				position * h->key_entry_size);
+	/* Return key and data */
+	*key = next_key->key;
+	*data = next_key->pdata;
+
+	/* Increment iterator */
+	(*next)++;
+
+	return (position - 1);
+}
+
 /* Functions to compare multiple of 16 byte keys (up to 128 bytes) */
 static int
 rte_hash_k16_cmp_eq(const void *key1, const void *key2, size_t key_len __rte_unused)

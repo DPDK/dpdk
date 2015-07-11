@@ -1149,6 +1149,70 @@ static int test_average_table_utilization(void)
 	return 0;
 }
 
+#define NUM_ENTRIES 1024
+static int test_hash_iteration(void)
+{
+	struct rte_hash *handle;
+	unsigned i;
+	uint8_t keys[NUM_ENTRIES][RTE_HASH_KEY_LENGTH_MAX];
+	const void *next_key;
+	void *next_data;
+	void *data[NUM_ENTRIES];
+	unsigned added_keys;
+	uint32_t iter = 0;
+	int ret = 0;
+
+	ut_params.entries = NUM_ENTRIES;
+	ut_params.name = "test_hash_iteration";
+	ut_params.hash_func = rte_jhash;
+	ut_params.key_len = 16;
+	handle = rte_hash_create(&ut_params);
+	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
+
+	/* Add random entries until key cannot be added */
+	for (added_keys = 0; added_keys < NUM_ENTRIES; added_keys++) {
+		data[added_keys] = (void *) ((uintptr_t) rte_rand());
+		for (i = 0; i < ut_params.key_len; i++)
+			keys[added_keys][i] = rte_rand() % 255;
+		ret = rte_hash_add_key_data(handle, keys[added_keys], data[added_keys]);
+		if (ret < 0)
+			break;
+	}
+
+	/* Iterate through the hash table */
+	while (rte_hash_iterate(handle, &next_key, &next_data, &iter) >= 0) {
+		/* Search for the key in the list of keys added */
+		for (i = 0; i < NUM_ENTRIES; i++) {
+			if (memcmp(next_key, keys[i], ut_params.key_len) == 0) {
+				if (next_data != data[i]) {
+					printf("Data found in the hash table is"
+					       "not the data added with the key\n");
+					goto err;
+				}
+				added_keys--;
+				break;
+			}
+		}
+		if (i == NUM_ENTRIES) {
+			printf("Key found in the hash table was not added\n");
+			goto err;
+		}
+	}
+
+	/* Check if all keys have been iterated */
+	if (added_keys != 0) {
+		printf("There were still %u keys to iterate\n", added_keys);
+		goto err;
+	}
+
+	rte_hash_free(handle);
+	return 0;
+
+err:
+	rte_hash_free(handle);
+	return -1;
+}
+
 static uint8_t key[16] = {0x00, 0x01, 0x02, 0x03,
 			0x04, 0x05, 0x06, 0x07,
 			0x08, 0x09, 0x0a, 0x0b,
@@ -1407,6 +1471,8 @@ test_hash(void)
 	if (test_hash_creation_with_good_parameters() < 0)
 		return -1;
 	if (test_average_table_utilization() < 0)
+		return -1;
+	if (test_hash_iteration() < 0)
 		return -1;
 
 	run_hash_func_tests();
