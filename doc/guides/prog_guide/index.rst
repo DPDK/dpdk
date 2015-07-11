@@ -241,3 +241,7 @@ Programmer's Guide
 :numref:`table_qos_33` :ref:`table_qos_33`
 
 :numref:`table_qos_34` :ref:`table_qos_34`
+
+:numref:`table_hash_lib_1` :ref:`table_hash_lib_1`
+
+:numref:`table_hash_lib_2` :ref:`table_hash_lib_2`
