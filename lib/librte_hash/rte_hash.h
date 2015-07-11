@@ -47,20 +47,20 @@ extern "C" {
 #endif
 
 /** Maximum size of hash table that can be created. */
-#define RTE_HASH_ENTRIES_MAX			(1 << 26)
+#define RTE_HASH_ENTRIES_MAX			(1 << 30)
 
-/** Maximum bucket size that can be created. */
-#define RTE_HASH_BUCKET_ENTRIES_MAX		16
+/** @deprecated Maximum bucket size that can be created. */
+#define RTE_HASH_BUCKET_ENTRIES_MAX		4
 
-/** Maximum length of key that can be used. */
+/** @deprecated Maximum length of key that can be used. */
 #define RTE_HASH_KEY_LENGTH_MAX			64
 
-/** Max number of keys that can be searched for using rte_hash_lookup_multi. */
-#define RTE_HASH_LOOKUP_BULK_MAX		16
-#define RTE_HASH_LOOKUP_MULTI_MAX		RTE_HASH_LOOKUP_BULK_MAX
-
-/** Max number of characters in hash name.*/
+/** Maximum number of characters in hash name.*/
 #define RTE_HASH_NAMESIZE			32
+
+/** Maximum number of keys that can be searched for using rte_hash_lookup_bulk. */
+#define RTE_HASH_LOOKUP_BULK_MAX		64
+#define RTE_HASH_LOOKUP_MULTI_MAX		RTE_HASH_LOOKUP_BULK_MAX
 
 /** Signature of key that is stored internally. */
 typedef uint32_t hash_sig_t;
@@ -70,21 +70,21 @@ typedef uint32_t (*rte_hash_function)(const void *key, uint32_t key_len,
 				      uint32_t init_val);
 
 /**
- * Parameters used when creating the hash table. The total table entries and
- * bucket entries must be a power of 2.
+ * Parameters used when creating the hash table.
  */
 struct rte_hash_parameters {
 	const char *name;		/**< Name of the hash. */
 	uint32_t entries;		/**< Total hash table entries. */
-	uint32_t bucket_entries;	/**< Bucket entries. */
+	uint32_t bucket_entries;        /**< Bucket entries. */
 	uint32_t key_len;		/**< Length of hash key. */
-	rte_hash_function hash_func;	/**< Function used to calculate hash. */
+	rte_hash_function hash_func;	/**< Primary Hash function used to calculate hash. */
 	uint32_t hash_func_init_val;	/**< Init value used by hash_func. */
 	int socket_id;			/**< NUMA Socket ID for memory. */
 };
 
 /** @internal A hash table structure. */
 struct rte_hash;
+
 
 /**
  * Create a new hash table.
@@ -105,7 +105,6 @@ struct rte_hash;
  */
 struct rte_hash *
 rte_hash_create(const struct rte_hash_parameters *params);
-
 
 /**
  * Find an existing hash table object and return a pointer to it.
@@ -129,7 +128,8 @@ void
 rte_hash_free(struct rte_hash *h);
 
 /**
- * Add a key to an existing hash table. This operation is not multi-thread safe
+ * Add a key to an existing hash table.
+ * This operation is not multi-thread safe
  * and should only be called from one thread.
  *
  * @param h
@@ -146,7 +146,8 @@ int32_t
 rte_hash_add_key(const struct rte_hash *h, const void *key);
 
 /**
- * Add a key to an existing hash table. This operation is not multi-thread safe
+ * Add a key to an existing hash table.
+ * This operation is not multi-thread safe
  * and should only be called from one thread.
  *
  * @param h
@@ -154,7 +155,7 @@ rte_hash_add_key(const struct rte_hash *h, const void *key);
  * @param key
  *   Key to add to the hash table.
  * @param sig
- *   Hash value to add to the hash table.
+ *   Precomputed hash value for 'key'.
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOSPC if there is no space in the hash for this key.
@@ -162,12 +163,12 @@ rte_hash_add_key(const struct rte_hash *h, const void *key);
  *     array of user data. This value is unique for this key.
  */
 int32_t
-rte_hash_add_key_with_hash(const struct rte_hash *h,
-				const void *key, hash_sig_t sig);
+rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key, hash_sig_t sig);
 
 /**
- * Remove a key from an existing hash table. This operation is not multi-thread
- * safe and should only be called from one thread.
+ * Remove a key from an existing hash table.
+ * This operation is not multi-thread safe
+ * and should only be called from one thread.
  *
  * @param h
  *   Hash table to remove the key from.
@@ -184,15 +185,16 @@ int32_t
 rte_hash_del_key(const struct rte_hash *h, const void *key);
 
 /**
- * Remove a key from an existing hash table. This operation is not multi-thread
- * safe and should only be called from one thread.
+ * Remove a key from an existing hash table.
+ * This operation is not multi-thread safe
+ * and should only be called from one thread.
  *
  * @param h
  *   Hash table to remove the key from.
  * @param key
  *   Key to remove from the hash table.
  * @param sig
- *   Hash value to remove from the hash table.
+ *   Precomputed hash value for 'key'.
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOENT if the key is not found.
@@ -201,12 +203,11 @@ rte_hash_del_key(const struct rte_hash *h, const void *key);
  *     value that was returned when the key was added.
  */
 int32_t
-rte_hash_del_key_with_hash(const struct rte_hash *h,
-				const void *key, hash_sig_t sig);
-
+rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key, hash_sig_t sig);
 
 /**
- * Find a key in the hash table. This operation is multi-thread safe.
+ * Find a key in the hash table.
+ * This operation is multi-thread safe.
  *
  * @param h
  *   Hash table to look in.
@@ -223,14 +224,15 @@ int32_t
 rte_hash_lookup(const struct rte_hash *h, const void *key);
 
 /**
- * Find a key in the hash table. This operation is multi-thread safe.
+ * Find a key in the hash table.
+ * This operation is multi-thread safe.
  *
  * @param h
  *   Hash table to look in.
  * @param key
  *   Key to find.
  * @param sig
- *   Hash value to find.
+ *   Hash value to remove from the hash table.
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOENT if the key is not found.
@@ -243,7 +245,8 @@ rte_hash_lookup_with_hash(const struct rte_hash *h,
 				const void *key, hash_sig_t sig);
 
 /**
- * Calc a hash value by key. This operation is not multi-process safe.
+ * Calc a hash value by key.
+ * This operation is not multi-thread safe.
  *
  * @param h
  *   Hash table to look in.
@@ -257,7 +260,8 @@ rte_hash_hash(const struct rte_hash *h, const void *key);
 
 #define rte_hash_lookup_multi rte_hash_lookup_bulk
 /**
- * Find multiple keys in the hash table. This operation is multi-thread safe.
+ * Find multiple keys in the hash table.
+ * This operation is multi-thread safe.
  *
  * @param h
  *   Hash table to look in.
@@ -277,6 +281,7 @@ rte_hash_hash(const struct rte_hash *h, const void *key);
 int
 rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 		      uint32_t num_keys, int32_t *positions);
+
 #ifdef __cplusplus
 }
 #endif

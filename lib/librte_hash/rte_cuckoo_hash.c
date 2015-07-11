@@ -1,0 +1,1027 @@
+/*-
+ *   BSD LICENSE
+ *
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   All rights reserved.
+ *
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
+ *   are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
+ *       distribution.
+ *     * Neither the name of Intel Corporation nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
+ *
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <string.h>
+#include <stdint.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <sys/queue.h>
+
+#include <rte_common.h>
+#include <rte_memory.h>         /* for definition of RTE_CACHE_LINE_SIZE */
+#include <rte_log.h>
+#include <rte_memcpy.h>
+#include <rte_prefetch.h>
+#include <rte_branch_prediction.h>
+#include <rte_memzone.h>
+#include <rte_malloc.h>
+#include <rte_eal.h>
+#include <rte_eal_memconfig.h>
+#include <rte_per_lcore.h>
+#include <rte_errno.h>
+#include <rte_string_fns.h>
+#include <rte_cpuflags.h>
+#include <rte_log.h>
+#include <rte_rwlock.h>
+#include <rte_spinlock.h>
+#include <rte_ring.h>
+
+#include "rte_hash.h"
+
+TAILQ_HEAD(rte_hash_list, rte_tailq_entry);
+
+static struct rte_tailq_elem rte_hash_tailq = {
+	.name = "RTE_HASH",
+};
+EAL_REGISTER_TAILQ(rte_hash_tailq)
+
+/* Macro to enable/disable run-time checking of function parameters */
+#if defined(RTE_LIBRTE_HASH_DEBUG)
+#define RETURN_IF_TRUE(cond, retval) do { \
+	if (cond) \
+		return retval; \
+} while (0)
+#else
+#define RETURN_IF_TRUE(cond, retval)
+#endif
+
+/* Hash function used if none is specified */
+#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+#include <rte_hash_crc.h>
+#define DEFAULT_HASH_FUNC       rte_hash_crc
+#else
+#include <rte_jhash.h>
+#define DEFAULT_HASH_FUNC       rte_jhash
+#endif
+
+/** Number of items per bucket. */
+#define RTE_HASH_BUCKET_ENTRIES		4
+
+#define NULL_SIGNATURE			0
+
+typedef int (*rte_hash_cmp_eq_t)(const void *key1, const void *key2, size_t key_len);
+static int rte_hash_k16_cmp_eq(const void *key1, const void *key2, size_t key_len);
+static int rte_hash_k32_cmp_eq(const void *key1, const void *key2, size_t key_len);
+static int rte_hash_k48_cmp_eq(const void *key1, const void *key2, size_t key_len);
+static int rte_hash_k64_cmp_eq(const void *key1, const void *key2, size_t key_len);
+static int rte_hash_k80_cmp_eq(const void *key1, const void *key2, size_t key_len);
+static int rte_hash_k96_cmp_eq(const void *key1, const void *key2, size_t key_len);
+static int rte_hash_k112_cmp_eq(const void *key1, const void *key2, size_t key_len);
+static int rte_hash_k128_cmp_eq(const void *key1, const void *key2, size_t key_len);
+
+/** A hash table structure. */
+struct rte_hash {
+	char name[RTE_HASH_NAMESIZE];   /**< Name of the hash. */
+	uint32_t entries;               /**< Total table entries. */
+	uint32_t num_buckets;           /**< Number of buckets in table. */
+	uint32_t key_len;               /**< Length of hash key. */
+	rte_hash_function hash_func;    /**< Function used to calculate hash. */
+	rte_hash_cmp_eq_t rte_hash_cmp_eq; /**< Function used to compare keys. */
+	uint32_t hash_func_init_val;    /**< Init value used by hash_func. */
+	uint32_t bucket_bitmask;        /**< Bitmask for getting bucket index
+						from hash signature. */
+	uint32_t key_entry_size;         /**< Size of each key entry. */
+
+	struct rte_ring *free_slots;    /**< Ring that stores all indexes
+						of the free slots in the key table */
+	void *key_store;                /**< Table storing all keys and data */
+	struct rte_hash_bucket *buckets;	/**< Table with buckets storing all the
+							hash values and key indexes
+							to the key table*/
+} __rte_cache_aligned;
+
+/* Structure storing both primary and secondary hashes */
+struct rte_hash_signatures {
+	union {
+		struct {
+			hash_sig_t current;
+			hash_sig_t alt;
+		};
+		uint64_t sig;
+	};
+};
+
+/** Bucket structure */
+struct rte_hash_bucket {
+	struct rte_hash_signatures signatures[RTE_HASH_BUCKET_ENTRIES];
+	/* Includes dummy key index that always contains index 0 */
+	uint32_t key_idx[RTE_HASH_BUCKET_ENTRIES + 1];
+	uint8_t flag[RTE_HASH_BUCKET_ENTRIES];
+} __rte_cache_aligned;
+
+struct rte_hash *
+rte_hash_find_existing(const char *name)
+{
+	struct rte_hash *h = NULL;
+	struct rte_tailq_entry *te;
+	struct rte_hash_list *hash_list;
+
+	hash_list = RTE_TAILQ_CAST(rte_hash_tailq.head, rte_hash_list);
+
+	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
+	TAILQ_FOREACH(te, hash_list, next) {
+		h = (struct rte_hash *) te->data;
+		if (strncmp(name, h->name, RTE_HASH_NAMESIZE) == 0)
+			break;
+	}
+	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
+
+	if (te == NULL) {
+		rte_errno = ENOENT;
+		return NULL;
+	}
+	return h;
+}
+
+struct rte_hash *
+rte_hash_create(const struct rte_hash_parameters *params)
+{
+	struct rte_hash *h = NULL;
+	struct rte_tailq_entry *te = NULL;
+	struct rte_hash_list *hash_list;
+	struct rte_ring *r = NULL;
+	char hash_name[RTE_HASH_NAMESIZE];
+	void *ptr, *k = NULL;
+	void *buckets = NULL;
+	char ring_name[RTE_RING_NAMESIZE];
+	unsigned i;
+
+	hash_list = RTE_TAILQ_CAST(rte_hash_tailq.head, rte_hash_list);
+
+	if (params == NULL) {
+		RTE_LOG(ERR, HASH, "rte_hash_create has no parameters\n");
+		return NULL;
+	}
+
+	/* Check for valid parameters */
+	if ((params->entries > RTE_HASH_ENTRIES_MAX) ||
+			(params->entries < RTE_HASH_BUCKET_ENTRIES) ||
+			!rte_is_power_of_2(RTE_HASH_BUCKET_ENTRIES) ||
+			(params->key_len == 0)) {
+		rte_errno = EINVAL;
+		RTE_LOG(ERR, HASH, "rte_hash_create has invalid parameters\n");
+		return NULL;
+	}
+
+	snprintf(hash_name, sizeof(hash_name), "HT_%s", params->name);
+
+	/* Guarantee there's no existing */
+	h = rte_hash_find_existing(params->name);
+	if (h != NULL)
+		return h;
+
+	te = rte_zmalloc("HASH_TAILQ_ENTRY", sizeof(*te), 0);
+	if (te == NULL) {
+		RTE_LOG(ERR, HASH, "tailq entry allocation failed\n");
+		goto err;
+	}
+
+	h = (struct rte_hash *)rte_zmalloc_socket(hash_name, sizeof(struct rte_hash),
+					RTE_CACHE_LINE_SIZE, params->socket_id);
+
+	if (h == NULL) {
+		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		goto err;
+	}
+
+	const uint32_t num_buckets = rte_align32pow2(params->entries)
+					/ RTE_HASH_BUCKET_ENTRIES;
+
+	buckets = rte_zmalloc_socket(NULL,
+				num_buckets * sizeof(struct rte_hash_bucket),
+				RTE_CACHE_LINE_SIZE, params->socket_id);
+
+	if (buckets == NULL) {
+		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		goto err;
+	}
+
+	const uint32_t key_entry_size = params->key_len;
+	/* Store all keys and leave the first entry as a dummy entry for lookup_bulk */
+	const uint64_t key_tbl_size = key_entry_size * (params->entries + 1);
+
+	k = rte_zmalloc_socket(NULL, key_tbl_size,
+			RTE_CACHE_LINE_SIZE, params->socket_id);
+
+	if (k == NULL) {
+		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		goto err;
+	}
+
+	/* Select function to compare keys */
+	switch (params->key_len) {
+	case 16:
+		h->rte_hash_cmp_eq = rte_hash_k16_cmp_eq;
+		break;
+	case 32:
+		h->rte_hash_cmp_eq = rte_hash_k32_cmp_eq;
+		break;
+	case 48:
+		h->rte_hash_cmp_eq = rte_hash_k48_cmp_eq;
+		break;
+	case 64:
+		h->rte_hash_cmp_eq = rte_hash_k64_cmp_eq;
+		break;
+	case 80:
+		h->rte_hash_cmp_eq = rte_hash_k80_cmp_eq;
+		break;
+	case 96:
+		h->rte_hash_cmp_eq = rte_hash_k96_cmp_eq;
+		break;
+	case 112:
+		h->rte_hash_cmp_eq = rte_hash_k112_cmp_eq;
+		break;
+	case 128:
+		h->rte_hash_cmp_eq = rte_hash_k128_cmp_eq;
+		break;
+	default:
+		/* If key is not multiple of 16, use generic memcmp */
+		h->rte_hash_cmp_eq = memcmp;
+	}
+
+	snprintf(ring_name, sizeof(ring_name), "HT_%s", params->name);
+	r = rte_ring_lookup(ring_name);
+	if (r != NULL) {
+		/* clear the free ring */
+		while (rte_ring_dequeue(r, &ptr) == 0)
+			rte_pause();
+	} else
+		r = rte_ring_create(ring_name, rte_align32pow2(params->entries + 1),
+				params->socket_id, 0);
+	if (r == NULL) {
+		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		goto err;
+	}
+
+	/* Setup hash context */
+	snprintf(h->name, sizeof(h->name), "%s", params->name);
+	h->entries = params->entries;
+	h->key_len = params->key_len;
+	h->key_entry_size = key_entry_size;
+	h->hash_func_init_val = params->hash_func_init_val;
+
+	h->num_buckets = num_buckets;
+	h->bucket_bitmask = h->num_buckets - 1;
+	h->buckets = buckets;
+	h->hash_func = (params->hash_func == NULL) ?
+		DEFAULT_HASH_FUNC : params->hash_func;
+
+	h->key_store = k;
+	h->free_slots = r;
+
+	/* populate the free slots ring. Entry zero is reserved for key misses */
+	for (i = 1; i < params->entries + 1; i++)
+		rte_ring_sp_enqueue(r, (void *)((uintptr_t) i));
+
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	te->data = (void *) h;
+	TAILQ_INSERT_TAIL(hash_list, te, next);
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+
+	return h;
+err:
+	rte_free(te);
+	rte_free(h);
+	rte_free(buckets);
+	rte_free(k);
+	return NULL;
+}
+
+void
+rte_hash_free(struct rte_hash *h)
+{
+	struct rte_tailq_entry *te;
+	struct rte_hash_list *hash_list;
+
+	if (h == NULL)
+		return;
+
+	hash_list = RTE_TAILQ_CAST(rte_hash_tailq.head, rte_hash_list);
+
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
+	/* find out tailq entry */
+	TAILQ_FOREACH(te, hash_list, next) {
+		if (te->data == (void *) h)
+			break;
+	}
+
+	if (te == NULL) {
+		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+		return;
+	}
+
+	TAILQ_REMOVE(hash_list, te, next);
+
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+
+	rte_free(h->key_store);
+	rte_free(h->buckets);
+	rte_free(h);
+	rte_free(te);
+}
+
+hash_sig_t
+rte_hash_hash(const struct rte_hash *h, const void *key)
+{
+	/* calc hash result by key */
+	return h->hash_func(key, h->key_len, h->hash_func_init_val);
+}
+
+/* Calc the secondary hash value from the primary hash value of a given key */
+static inline hash_sig_t
+rte_hash_secondary_hash(const hash_sig_t primary_hash)
+{
+	static const unsigned all_bits_shift = 12;
+	static const unsigned alt_bits_xor = 0x5bd1e995;
+
+	uint32_t tag = primary_hash >> all_bits_shift;
+
+	return (primary_hash ^ ((tag + 1) * alt_bits_xor));
+}
+
+/* Search for an entry that can be pushed to its alternative location */
+static inline int
+make_space_bucket(const struct rte_hash *h, struct rte_hash_bucket *bkt)
+{
+	unsigned i, j;
+	int ret;
+	uint32_t next_bucket_idx;
+	struct rte_hash_bucket *next_bkt[RTE_HASH_BUCKET_ENTRIES];
+
+	/*
+	 * Push existing item (search for bucket with space in
+	 * alternative locations) to its alternative location
+	 */
+	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+		/* Search for space in alternative locations */
+		next_bucket_idx = bkt->signatures[i].alt & h->bucket_bitmask;
+		next_bkt[i] = &h->buckets[next_bucket_idx];
+		for (j = 0; j < RTE_HASH_BUCKET_ENTRIES; j++) {
+			if (next_bkt[i]->signatures[j].sig == NULL_SIGNATURE)
+				break;
+		}
+
+		if (j != RTE_HASH_BUCKET_ENTRIES)
+			break;
+	}
+
+	/* Alternative location has spare room (end of recursive function) */
+	if (i != RTE_HASH_BUCKET_ENTRIES) {
+		next_bkt[i]->signatures[j].alt = bkt->signatures[i].current;
+		next_bkt[i]->signatures[j].current = bkt->signatures[i].alt;
+		next_bkt[i]->key_idx[j] = bkt->key_idx[i];
+		return i;
+	}
+
+	/* Pick entry that has not been pushed yet */
+	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++)
+		if (bkt->flag[i] == 0)
+			break;
+
+	/* All entries have been pushed, so entry cannot be added */
+	if (i == RTE_HASH_BUCKET_ENTRIES) {
+		/* Reset flag */
+		bkt->flag[i] = 0;
+		return -ENOSPC;
+	}
+
+	/* Set flag to indicate that this entry is going to be pushed */
+	bkt->flag[i] = 1;
+	/* Need room in alternative bucket to insert the pushed entry */
+	ret = make_space_bucket(h, next_bkt[i]);
+	/*
+	 * After recursive function.
+	 * Clear flags and insert the pushed entry
+	 * in its alternative location if successful,
+	 * or return error
+	 */
+	bkt->flag[i] = 0;
+	if (ret >= 0) {
+		next_bkt[i]->signatures[ret].alt = bkt->signatures[i].current;
+		next_bkt[i]->signatures[ret].current = bkt->signatures[i].alt;
+		next_bkt[i]->key_idx[ret] = bkt->key_idx[i];
+		return i;
+	} else
+		return ret;
+
+}
+
+static inline int32_t
+__rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
+						hash_sig_t sig)
+{
+	hash_sig_t alt_hash;
+	uint32_t prim_bucket_idx, sec_bucket_idx;
+	unsigned i;
+	struct rte_hash_bucket *prim_bkt, *sec_bkt;
+	void *new_k, *k, *keys = h->key_store;
+	void *slot_id;
+	uint32_t new_idx;
+	int ret;
+
+	prim_bucket_idx = sig & h->bucket_bitmask;
+	prim_bkt = &h->buckets[prim_bucket_idx];
+	rte_prefetch0(prim_bkt);
+
+	alt_hash = rte_hash_secondary_hash(sig);
+	sec_bucket_idx = alt_hash & h->bucket_bitmask;
+	sec_bkt = &h->buckets[sec_bucket_idx];
+	rte_prefetch0(sec_bkt);
+
+	/* Get a new slot for storing the new key */
+	if (rte_ring_sc_dequeue(h->free_slots, &slot_id) != 0)
+		return -ENOSPC;
+	new_k = RTE_PTR_ADD(keys, (uintptr_t)slot_id * h->key_entry_size);
+	rte_prefetch0(new_k);
+	new_idx = (uint32_t)((uintptr_t) slot_id);
+
+	/* Check if key is already inserted in primary location */
+	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+		if (prim_bkt->signatures[i].current == sig &&
+				prim_bkt->signatures[i].alt == alt_hash)  {
+			k = (char *)keys + prim_bkt->key_idx[i] * h->key_entry_size;
+			if (h->rte_hash_cmp_eq(key, k, h->key_len) == 0) {
+				rte_ring_sp_enqueue(h->free_slots, &slot_id);
+				/*
+				 * Return index where key is stored,
+				 * substracting the first dummy index
+				 */
+				return (prim_bkt->key_idx[i] - 1);
+			}
+		}
+	}
+
+	/* Check if key is already inserted in secondary location */
+	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+		if (sec_bkt->signatures[i].alt == sig &&
+				sec_bkt->signatures[i].current == alt_hash)  {
+			k = (char *)keys + sec_bkt->key_idx[i] * h->key_entry_size;
+			if (h->rte_hash_cmp_eq(key, k, h->key_len) == 0) {
+				rte_ring_sp_enqueue(h->free_slots, &slot_id);
+				/*
+				 * Return index where key is stored,
+				 * substracting the first dummy index
+				 */
+				return (sec_bkt->key_idx[i] - 1);
+			}
+		}
+	}
+
+	/* Copy key */
+	rte_memcpy(new_k, key, h->key_len);
+
+	/* Insert new entry is there is room in the primary bucket */
+	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+		/* Check if slot is available */
+		if (likely(prim_bkt->signatures[i].sig == NULL_SIGNATURE)) {
+			prim_bkt->signatures[i].current = sig;
+			prim_bkt->signatures[i].alt = alt_hash;
+			prim_bkt->key_idx[i] = new_idx;
+			return new_idx - 1;
+		}
+	}
+
+	/* Primary bucket is full, so we need to make space for new entry */
+	ret = make_space_bucket(h, prim_bkt);
+	/*
+	 * After recursive function.
+	 * Insert the new entry in the position of the pushed entry
+	 * if successful or return error and
+	 * store the new slot back in the ring
+	 */
+	if (ret >= 0) {
+		prim_bkt->signatures[ret].current = sig;
+		prim_bkt->signatures[ret].alt = alt_hash;
+		prim_bkt->key_idx[ret] = new_idx;
+		return (new_idx - 1);
+	}
+
+	/* Error in addition, store new slot back in the ring and return error */
+	rte_ring_sp_enqueue(h->free_slots,
+		(void *)((uintptr_t) new_idx));
+	return ret;
+
+}
+
+int32_t
+rte_hash_add_key_with_hash(const struct rte_hash *h,
+			const void *key, hash_sig_t sig)
+{
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+	return __rte_hash_add_key_with_hash(h, key, sig);
+}
+
+int32_t
+rte_hash_add_key(const struct rte_hash *h, const void *key)
+{
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+	return __rte_hash_add_key_with_hash(h, key, rte_hash_hash(h, key));
+}
+
+static inline int32_t
+__rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
+					hash_sig_t sig)
+{
+	uint32_t bucket_idx;
+	hash_sig_t alt_hash;
+	unsigned i;
+	struct rte_hash_bucket *bkt;
+	void *k, *keys = h->key_store;
+
+	bucket_idx = sig & h->bucket_bitmask;
+	bkt = &h->buckets[bucket_idx];
+
+	/* Check if key is in primary location */
+	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+		if (bkt->signatures[i].current == sig &&
+				bkt->signatures[i].sig != NULL_SIGNATURE) {
+			k = (char *)keys + bkt->key_idx[i] * h->key_entry_size;
+			if (h->rte_hash_cmp_eq(key, k, h->key_len) == 0)
+				/*
+				 * Return index where key is stored,
+				 * substracting the first dummy index
+				 */
+				return (bkt->key_idx[i] - 1);
+		}
+	}
+
+	/* Calculate secondary hash */
+	alt_hash = rte_hash_secondary_hash(sig);
+	bucket_idx = alt_hash & h->bucket_bitmask;
+	bkt = &h->buckets[bucket_idx];
+
+	/* Check if key is in secondary location */
+	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+		if (bkt->signatures[i].current == alt_hash &&
+				bkt->signatures[i].alt == sig) {
+			k = (char *)keys + bkt->key_idx[i] * h->key_entry_size;
+			if (h->rte_hash_cmp_eq(key, k, h->key_len) == 0)
+				/*
+				 * Return index where key is stored,
+				 * substracting the first dummy index
+				 */
+				return (bkt->key_idx[i] - 1);
+		}
+	}
+
+	return -ENOENT;
+}
+
+int32_t
+rte_hash_lookup_with_hash(const struct rte_hash *h,
+			const void *key, hash_sig_t sig)
+{
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+	return __rte_hash_lookup_with_hash(h, key, sig);
+}
+
+int32_t
+rte_hash_lookup(const struct rte_hash *h, const void *key)
+{
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+	return __rte_hash_lookup_with_hash(h, key, rte_hash_hash(h, key));
+}
+
+static inline int32_t
+__rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
+						hash_sig_t sig)
+{
+	uint32_t bucket_idx;
+	hash_sig_t alt_hash;
+	unsigned i;
+	struct rte_hash_bucket *bkt;
+	void *k, *keys = h->key_store;
+
+	bucket_idx = sig & h->bucket_bitmask;
+	bkt = &h->buckets[bucket_idx];
+
+	/* Check if key is in primary location */
+	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+		if (bkt->signatures[i].current == sig &&
+				bkt->signatures[i].sig != NULL_SIGNATURE) {
+			k = (char *)keys + bkt->key_idx[i] * h->key_entry_size;
+			if (h->rte_hash_cmp_eq(key, k, h->key_len) == 0) {
+				bkt->signatures[i].sig = NULL_SIGNATURE;
+				rte_ring_sp_enqueue(h->free_slots,
+						(void *)((uintptr_t)bkt->key_idx[i]));
+				/*
+				 * Return index where key is stored,
+				 * substracting the first dummy index
+				 */
+				return (bkt->key_idx[i] - 1);
+			}
+		}
+	}
+
+	/* Calculate secondary hash */
+	alt_hash = rte_hash_secondary_hash(sig);
+	bucket_idx = alt_hash & h->bucket_bitmask;
+	bkt = &h->buckets[bucket_idx];
+
+	/* Check if key is in secondary location */
+	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+		if (bkt->signatures[i].current == alt_hash &&
+				bkt->signatures[i].sig != NULL_SIGNATURE) {
+			k = (char *)keys + bkt->key_idx[i] * h->key_entry_size;
+			if (h->rte_hash_cmp_eq(key, k, h->key_len) == 0) {
+				bkt->signatures[i].sig = NULL_SIGNATURE;
+				rte_ring_sp_enqueue(h->free_slots,
+						(void *)((uintptr_t)bkt->key_idx[i]));
+				/*
+				 * Return index where key is stored,
+				 * substracting the first dummy index
+				 */
+				return (bkt->key_idx[i] - 1);
+			}
+		}
+	}
+
+	return -ENOENT;
+}
+
+int32_t
+rte_hash_del_key_with_hash(const struct rte_hash *h,
+			const void *key, hash_sig_t sig)
+{
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+	return __rte_hash_del_key_with_hash(h, key, sig);
+}
+
+int32_t
+rte_hash_del_key(const struct rte_hash *h, const void *key)
+{
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+	return __rte_hash_del_key_with_hash(h, key, rte_hash_hash(h, key));
+}
+
+/* Lookup bulk stage 0: Prefetch input key */
+static inline void
+lookup_stage0(unsigned *idx, uint64_t *lookup_mask,
+		const void * const *keys)
+{
+	*idx = __builtin_ctzl(*lookup_mask);
+	if (*lookup_mask == 0)
+		*idx = 0;
+
+	rte_prefetch0(keys[*idx]);
+	*lookup_mask &= ~(1llu << *idx);
+}
+
+/*
+ * Lookup bulk stage 1: Calculate primary/secondary hashes
+ * and prefetch primary/secondary buckets
+ */
+static inline void
+lookup_stage1(unsigned idx, hash_sig_t *prim_hash, hash_sig_t *sec_hash,
+		const struct rte_hash_bucket **primary_bkt,
+		const struct rte_hash_bucket **secondary_bkt,
+		hash_sig_t *hash_vals, const void * const *keys,
+		const struct rte_hash *h)
+{
+	*prim_hash = rte_hash_hash(h, keys[idx]);
+	hash_vals[idx] = *prim_hash;
+	*sec_hash = rte_hash_secondary_hash(*prim_hash);
+
+	*primary_bkt = &h->buckets[*prim_hash & h->bucket_bitmask];
+	*secondary_bkt = &h->buckets[*sec_hash & h->bucket_bitmask];
+
+	rte_prefetch0(*primary_bkt);
+	rte_prefetch0(*secondary_bkt);
+}
+
+/*
+ * Lookup bulk stage 2:  Search for match hashes in primary/secondary locations
+ * and prefetch first key slot
+ */
+static inline void
+lookup_stage2(unsigned idx, hash_sig_t prim_hash, hash_sig_t sec_hash,
+		const struct rte_hash_bucket *prim_bkt,
+		const struct rte_hash_bucket *sec_bkt,
+		const void **key_slot, int32_t *positions,
+		uint64_t *extra_hits_mask, const void *keys,
+		const struct rte_hash *h)
+{
+	unsigned prim_hash_matches, sec_hash_matches, key_idx, i;
+	unsigned total_hash_matches;
+
+	prim_hash_matches = 1 << RTE_HASH_BUCKET_ENTRIES;
+	sec_hash_matches = 1 << RTE_HASH_BUCKET_ENTRIES;
+	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+		prim_hash_matches |= ((prim_hash == prim_bkt->signatures[i].current) << i);
+		sec_hash_matches |= ((sec_hash == sec_bkt->signatures[i].current) << i);
+	}
+
+	key_idx = prim_bkt->key_idx[__builtin_ctzl(prim_hash_matches)];
+	if (key_idx == 0)
+		key_idx = sec_bkt->key_idx[__builtin_ctzl(sec_hash_matches)];
+
+	total_hash_matches = (prim_hash_matches |
+				(sec_hash_matches << (RTE_HASH_BUCKET_ENTRIES + 1)));
+	*key_slot = (const char *)keys + key_idx * h->key_entry_size;
+
+	rte_prefetch0(*key_slot);
+	/*
+	 * Return index where key is stored,
+	 * substracting the first dummy index
+	 */
+	positions[idx] = (key_idx - 1);
+
+	*extra_hits_mask |= (uint64_t)(__builtin_popcount(total_hash_matches) > 3) << idx;
+
+}
+
+
+/* Lookup bulk stage 3: Check if key matches, update hit mask */
+static inline void
+lookup_stage3(unsigned idx, const void *key_slot, const void * const *keys,
+		uint64_t *hits, const struct rte_hash *h)
+{
+	unsigned hit;
+
+	hit = !h->rte_hash_cmp_eq(key_slot, keys[idx], h->key_len);
+	*hits |= (uint64_t)(hit) << idx;
+}
+
+static inline void
+__rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
+		      uint32_t num_keys, int32_t *positions)
+{
+	uint64_t hits = 0;
+	uint64_t extra_hits_mask = 0;
+	uint64_t lookup_mask, miss_mask;
+	unsigned idx;
+	const void *key_store = h->key_store;
+	hash_sig_t hash_vals[RTE_HASH_LOOKUP_BULK_MAX];
+
+	unsigned idx00, idx01, idx10, idx11, idx20, idx21, idx30, idx31;
+	const struct rte_hash_bucket *primary_bkt10, *primary_bkt11;
+	const struct rte_hash_bucket *secondary_bkt10, *secondary_bkt11;
+	const struct rte_hash_bucket *primary_bkt20, *primary_bkt21;
+	const struct rte_hash_bucket *secondary_bkt20, *secondary_bkt21;
+	const void *k_slot20, *k_slot21, *k_slot30, *k_slot31;
+	hash_sig_t primary_hash10, primary_hash11;
+	hash_sig_t secondary_hash10, secondary_hash11;
+	hash_sig_t primary_hash20, primary_hash21;
+	hash_sig_t secondary_hash20, secondary_hash21;
+
+	lookup_mask = (uint64_t) -1 >> (64 - num_keys);
+	miss_mask = lookup_mask;
+
+	lookup_stage0(&idx00, &lookup_mask, keys);
+	lookup_stage0(&idx01, &lookup_mask, keys);
+
+	idx10 = idx00, idx11 = idx01;
+
+	lookup_stage0(&idx00, &lookup_mask, keys);
+	lookup_stage0(&idx01, &lookup_mask, keys);
+	lookup_stage1(idx10, &primary_hash10, &secondary_hash10,
+			&primary_bkt10, &secondary_bkt10, hash_vals, keys, h);
+	lookup_stage1(idx11, &primary_hash11, &secondary_hash11,
+			&primary_bkt11,	&secondary_bkt11, hash_vals, keys, h);
+
+	primary_bkt20 = primary_bkt10;
+	primary_bkt21 = primary_bkt11;
+	secondary_bkt20 = secondary_bkt10;
+	secondary_bkt21 = secondary_bkt11;
+	primary_hash20 = primary_hash10;
+	primary_hash21 = primary_hash11;
+	secondary_hash20 = secondary_hash10;
+	secondary_hash21 = secondary_hash11;
+	idx20 = idx10, idx21 = idx11;
+	idx10 = idx00, idx11 = idx01;
+
+	lookup_stage0(&idx00, &lookup_mask, keys);
+	lookup_stage0(&idx01, &lookup_mask, keys);
+	lookup_stage1(idx10, &primary_hash10, &secondary_hash10,
+			&primary_bkt10, &secondary_bkt10, hash_vals, keys, h);
+	lookup_stage1(idx11, &primary_hash11, &secondary_hash11,
+			&primary_bkt11,	&secondary_bkt11, hash_vals, keys, h);
+	lookup_stage2(idx20, primary_hash20, secondary_hash20, primary_bkt20,
+			secondary_bkt20, &k_slot20, positions, &extra_hits_mask,
+			key_store, h);
+	lookup_stage2(idx21, primary_hash21, secondary_hash21, primary_bkt21,
+			secondary_bkt21, &k_slot21, positions, &extra_hits_mask,
+			key_store, h);
+
+	while (lookup_mask) {
+		k_slot30 = k_slot20, k_slot31 = k_slot21;
+		idx30 = idx20, idx31 = idx21;
+		primary_bkt20 = primary_bkt10;
+		primary_bkt21 = primary_bkt11;
+		secondary_bkt20 = secondary_bkt10;
+		secondary_bkt21 = secondary_bkt11;
+		primary_hash20 = primary_hash10;
+		primary_hash21 = primary_hash11;
+		secondary_hash20 = secondary_hash10;
+		secondary_hash21 = secondary_hash11;
+		idx20 = idx10, idx21 = idx11;
+		idx10 = idx00, idx11 = idx01;
+
+		lookup_stage0(&idx00, &lookup_mask, keys);
+		lookup_stage0(&idx01, &lookup_mask, keys);
+		lookup_stage1(idx10, &primary_hash10, &secondary_hash10,
+			&primary_bkt10, &secondary_bkt10, hash_vals, keys, h);
+		lookup_stage1(idx11, &primary_hash11, &secondary_hash11,
+			&primary_bkt11,	&secondary_bkt11, hash_vals, keys, h);
+		lookup_stage2(idx20, primary_hash20, secondary_hash20,
+			primary_bkt20, secondary_bkt20, &k_slot20, positions,
+			&extra_hits_mask, key_store, h);
+		lookup_stage2(idx21, primary_hash21, secondary_hash21,
+			primary_bkt21, secondary_bkt21,	&k_slot21, positions,
+			&extra_hits_mask, key_store, h);
+		lookup_stage3(idx30, k_slot30, keys, &hits, h);
+		lookup_stage3(idx31, k_slot31, keys, &hits, h);
+	}
+
+	k_slot30 = k_slot20, k_slot31 = k_slot21;
+	idx30 = idx20, idx31 = idx21;
+	primary_bkt20 = primary_bkt10;
+	primary_bkt21 = primary_bkt11;
+	secondary_bkt20 = secondary_bkt10;
+	secondary_bkt21 = secondary_bkt11;
+	primary_hash20 = primary_hash10;
+	primary_hash21 = primary_hash11;
+	secondary_hash20 = secondary_hash10;
+	secondary_hash21 = secondary_hash11;
+	idx20 = idx10, idx21 = idx11;
+	idx10 = idx00, idx11 = idx01;
+
+	lookup_stage1(idx10, &primary_hash10, &secondary_hash10,
+		&primary_bkt10, &secondary_bkt10, hash_vals, keys, h);
+	lookup_stage1(idx11, &primary_hash11, &secondary_hash11,
+		&primary_bkt11,	&secondary_bkt11, hash_vals, keys, h);
+	lookup_stage2(idx20, primary_hash20, secondary_hash20, primary_bkt20,
+		secondary_bkt20, &k_slot20, positions, &extra_hits_mask,
+		key_store, h);
+	lookup_stage2(idx21, primary_hash21, secondary_hash21, primary_bkt21,
+		secondary_bkt21, &k_slot21, positions, &extra_hits_mask,
+		key_store, h);
+	lookup_stage3(idx30, k_slot30, keys, &hits, h);
+	lookup_stage3(idx31, k_slot31, keys, &hits, h);
+
+	k_slot30 = k_slot20, k_slot31 = k_slot21;
+	idx30 = idx20, idx31 = idx21;
+	primary_bkt20 = primary_bkt10;
+	primary_bkt21 = primary_bkt11;
+	secondary_bkt20 = secondary_bkt10;
+	secondary_bkt21 = secondary_bkt11;
+	primary_hash20 = primary_hash10;
+	primary_hash21 = primary_hash11;
+	secondary_hash20 = secondary_hash10;
+	secondary_hash21 = secondary_hash11;
+	idx20 = idx10, idx21 = idx11;
+
+	lookup_stage2(idx20, primary_hash20, secondary_hash20, primary_bkt20,
+		secondary_bkt20, &k_slot20, positions, &extra_hits_mask,
+		key_store, h);
+	lookup_stage2(idx21, primary_hash21, secondary_hash21, primary_bkt21,
+		secondary_bkt21, &k_slot21, positions, &extra_hits_mask,
+		key_store, h);
+	lookup_stage3(idx30, k_slot30, keys, &hits, h);
+	lookup_stage3(idx31, k_slot31, keys, &hits, h);
+
+	k_slot30 = k_slot20, k_slot31 = k_slot21;
+	idx30 = idx20, idx31 = idx21;
+
+	lookup_stage3(idx30, k_slot30, keys, &hits, h);
+	lookup_stage3(idx31, k_slot31, keys, &hits, h);
+
+	/* ignore any items we have already found */
+	extra_hits_mask &= ~hits;
+
+	if (unlikely(extra_hits_mask)) {
+		/* run a single search for each remaining item */
+		do {
+			idx = __builtin_ctzl(extra_hits_mask);
+			positions[idx] = rte_hash_lookup_with_hash(h, keys[idx],
+							hash_vals[idx]);
+			extra_hits_mask &= ~(1llu << idx);
+			if (positions[idx] >= 0)
+				hits |= 1llu << idx;
+		} while (extra_hits_mask);
+	}
+
+	miss_mask &= ~hits;
+	if (unlikely(miss_mask)) {
+		do {
+			idx = __builtin_ctzl(miss_mask);
+			positions[idx] = -ENOENT;
+			miss_mask &= ~(1llu << idx);
+		} while (miss_mask);
+	}
+}
+
+int
+rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
+		      uint32_t num_keys, int32_t *positions)
+{
+	RETURN_IF_TRUE(((h == NULL) || (keys == NULL) || (num_keys == 0) ||
+			(num_keys > RTE_HASH_LOOKUP_BULK_MAX) ||
+			(positions == NULL)), -EINVAL);
+
+	__rte_hash_lookup_bulk(h, keys, num_keys, positions);
+	return 0;
+}
+
+/* Functions to compare multiple of 16 byte keys (up to 128 bytes) */
+static int
+rte_hash_k16_cmp_eq(const void *key1, const void *key2, size_t key_len __rte_unused)
+{
+	const __m128i k1 = _mm_loadu_si128((const __m128i *) key1);
+	const __m128i k2 = _mm_loadu_si128((const __m128i *) key2);
+	const __m128i x = _mm_xor_si128(k1, k2);
+
+	return !_mm_test_all_zeros(x, x);
+}
+
+static int
+rte_hash_k32_cmp_eq(const void *key1, const void *key2, size_t key_len)
+{
+	return rte_hash_k16_cmp_eq(key1, key2, key_len) ||
+		rte_hash_k16_cmp_eq((const char *) key1 + 16,
+				(const char *) key2 + 16, key_len);
+}
+
+static int
+rte_hash_k48_cmp_eq(const void *key1, const void *key2, size_t key_len)
+{
+	return rte_hash_k16_cmp_eq(key1, key2, key_len) ||
+		rte_hash_k16_cmp_eq((const char *) key1 + 16,
+				(const char *) key2 + 16, key_len) ||
+		rte_hash_k16_cmp_eq((const char *) key1 + 32,
+				(const char *) key2 + 32, key_len);
+}
+
+static int
+rte_hash_k64_cmp_eq(const void *key1, const void *key2, size_t key_len)
+{
+	return rte_hash_k32_cmp_eq(key1, key2, key_len) ||
+		rte_hash_k32_cmp_eq((const char *) key1 + 32,
+				(const char *) key2 + 32, key_len);
+}
+
+static int
+rte_hash_k80_cmp_eq(const void *key1, const void *key2, size_t key_len)
+{
+	return rte_hash_k64_cmp_eq(key1, key2, key_len) ||
+		rte_hash_k16_cmp_eq((const char *) key1 + 64,
+				(const char *) key2 + 64, key_len);
+}
+
+static int
+rte_hash_k96_cmp_eq(const void *key1, const void *key2, size_t key_len)
+{
+	return rte_hash_k64_cmp_eq(key1, key2, key_len) ||
+		rte_hash_k32_cmp_eq((const char *) key1 + 64,
+				(const char *) key2 + 64, key_len);
+}
+
+static int
+rte_hash_k112_cmp_eq(const void *key1, const void *key2, size_t key_len)
+{
+	return rte_hash_k64_cmp_eq(key1, key2, key_len) ||
+		rte_hash_k32_cmp_eq((const char *) key1 + 64,
+				(const char *) key2 + 64, key_len) ||
+		rte_hash_k16_cmp_eq((const char *) key1 + 96,
+				(const char *) key2 + 96, key_len);
+}
+
+static int
+rte_hash_k128_cmp_eq(const void *key1, const void *key2, size_t key_len)
+{
+	return rte_hash_k64_cmp_eq(key1, key2, key_len) ||
+		rte_hash_k64_cmp_eq((const char *) key1 + 64,
+				(const char *) key2 + 64, key_len);
+}

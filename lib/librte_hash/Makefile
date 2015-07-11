@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,7 @@ EXPORT_MAP := rte_hash_version.map
 LIBABIVER := 1
 
 # all source are stored in SRCS-y
-SRCS-$(CONFIG_RTE_LIBRTE_HASH) := rte_hash.c
+SRCS-$(CONFIG_RTE_LIBRTE_HASH) := rte_cuckoo_hash.c
 SRCS-$(CONFIG_RTE_LIBRTE_HASH) += rte_fbk_hash.c
 
 # install this header file
@@ -52,7 +52,7 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_HASH)-include += rte_jhash.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_HASH)-include += rte_thash.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_HASH)-include += rte_fbk_hash.h
 
-# this lib needs eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_HASH) += lib/librte_eal lib/librte_malloc
+# this lib needs eal and ring
+DEPDIRS-$(CONFIG_RTE_LIBRTE_HASH) += lib/librte_eal lib/librte_malloc lib/librte_ring
 
 include $(RTE_SDK)/mk/rte.lib.mk

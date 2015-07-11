@@ -162,7 +162,7 @@ shuffle_input_keys(unsigned table_index)
  * ALL can fit in hash table (no errors)
  */
 static int
-get_input_keys(unsigned table_index)
+get_input_keys(unsigned with_pushes, unsigned table_index)
 {
 	unsigned i, j;
 	unsigned bucket_idx, incr, success = 1;
@@ -216,9 +216,14 @@ get_input_keys(unsigned table_index)
 		success = 0;
 		signatures[i] = rte_hash_hash(h[table_index], keys[i]);
 		bucket_idx = signatures[i] & bucket_bitmask;
-		/* If bucket is full, do not try to insert the key */
-		if (buckets[bucket_idx] == BUCKET_SIZE)
-			continue;
+		/*
+		 * If we are not inserting keys in secondary location,
+		 * when bucket is full, do not try to insert the key
+		 */
+		if (with_pushes == 0)
+			if (buckets[bucket_idx] == BUCKET_SIZE)
+				continue;
+
 		/* If key can be added, leave in successful key arrays "keys" */
 		ret = rte_hash_add_key_with_hash(h[table_index], keys[i],
 						signatures[i]);
@@ -388,9 +393,9 @@ reset_table(unsigned table_index)
 }
 
 static int
-run_all_tbl_perf_tests(void)
+run_all_tbl_perf_tests(unsigned with_pushes)
 {
-	unsigned i, j;
+	unsigned i, j, with_hash;
 
 	printf("Measuring performance, please wait");
 	fflush(stdout);
@@ -398,46 +403,32 @@ run_all_tbl_perf_tests(void)
 		if (create_table(i) < 0)
 			return -1;
 
-		if (get_input_keys(i) < 0)
+		if (get_input_keys(with_pushes, i) < 0)
 			return -1;
+		for (with_hash = 0; with_hash <= 1; with_hash++) {
+			if (timed_adds(with_hash, i) < 0)
+				return -1;
 
-		if (timed_adds(0, i) < 0)
-			return -1;
+			for (j = 0; j < NUM_SHUFFLES; j++)
+				shuffle_input_keys(i);
 
-		for (j = 0; j < NUM_SHUFFLES; j++)
-			shuffle_input_keys(i);
+			if (timed_lookups(with_hash, i) < 0)
+				return -1;
 
-		if (timed_lookups(0, i) < 0)
-			return -1;
+			if (timed_lookups_multi(i) < 0)
+				return -1;
 
-		if (timed_lookups_multi(i) < 0)
-			return -1;
+			if (timed_deletes(with_hash, i) < 0)
+				return -1;
 
-		if (timed_deletes(0, i) < 0)
-			return -1;
+			if (reset_table(i) < 0)
+				return -1;
 
-		/* Print a dot to show progress on operations */
-		printf(".");
-		fflush(stdout);
+			/* Print a dot to show progress on operations */
+			printf(".");
+			fflush(stdout);
 
-		if (reset_table(i) < 0)
-			return -1;
-
-		if (timed_adds(1, i) < 0)
-			return -1;
-
-		for (j = 0; j < NUM_SHUFFLES; j++)
-			shuffle_input_keys(i);
-
-		if (timed_lookups(1, i) < 0)
-			return -1;
-
-		if (timed_deletes(1, i) < 0)
-			return -1;
-
-		/* Print a dot to show progress on operations */
-		printf(".");
-		fflush(stdout);
+		}
 
 		free_table(i);
 	}
@@ -551,8 +542,16 @@ fbk_hash_perf_test(void)
 static int
 test_hash_perf(void)
 {
-	if (run_all_tbl_perf_tests() < 0)
-		return -1;
+	unsigned with_pushes;
+
+	for (with_pushes = 0; with_pushes <= 1; with_pushes++) {
+		if (with_pushes == 0)
+			printf("\nALL ELEMENTS IN PRIMARY LOCATION\n");
+		else
+			printf("\nELEMENTS IN PRIMARY OR SECONDARY LOCATION\n");
+		if (run_all_tbl_perf_tests(with_pushes) < 0)
+			return -1;
+	}
 
 	if (fbk_hash_perf_test() < 0)
 		return -1;

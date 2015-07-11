@@ -169,7 +169,6 @@ static struct flow_key keys[5] = { {
 /* Parameters used for hash table in unit test functions. Name set later. */
 static struct rte_hash_parameters ut_params = {
 	.entries = 64,
-	.bucket_entries = 4,
 	.key_len = sizeof(struct flow_key), /* 13 */
 	.hash_func = rte_jhash,
 	.hash_func_init_val = 0,
@@ -516,8 +515,17 @@ static int test_five_keys(void)
 		pos[i] = rte_hash_lookup(handle, &keys[i]);
 		print_key_info("Lkp", &keys[i], pos[i]);
 		RETURN_IF_ERROR(pos[i] != -ENOENT,
-				"failed to find key (pos[%u]=%d)", i, pos[i]);
+				"found non-existent key (pos[%u]=%d)", i, pos[i]);
 	}
+
+	/* Lookup multi */
+	ret = rte_hash_lookup_multi(handle, &key_array[0], 5, (int32_t *)pos);
+	if (ret == 0)
+		for (i = 0; i < 5; i++) {
+			print_key_info("Lkp", key_array[i], pos[i]);
+			RETURN_IF_ERROR(pos[i] != -ENOENT,
+					"found not-existent key (pos[%u]=%d)", i, pos[i]);
+		}
 
 	rte_hash_free(handle);
 
@@ -527,21 +535,18 @@ static int test_five_keys(void)
 /*
  * Add keys to the same bucket until bucket full.
  *	- add 5 keys to the same bucket (hash created with 4 keys per bucket):
- *	  first 4 successful, 5th unsuccessful
- *	- lookup the 5 keys: 4 hits, 1 miss
- *	- add the 5 keys again: 4 OK, one error as bucket is full
- *	- lookup the 5 keys: 4 hits (updated data), 1 miss
- *	- delete the 5 keys: 5 OK (even if the 5th is not in the table)
+ *	  first 4 successful, 5th successful, pushing existing item in bucket
+ *	- lookup the 5 keys: 5 hits
+ *	- add the 5 keys again: 5 OK
+ *	- lookup the 5 keys: 5 hits (updated data)
+ *	- delete the 5 keys: 5 OK
  *	- lookup the 5 keys: 5 misses
- *	- add the 5th key: OK
- *	- lookup the 5th key: hit
  */
 static int test_full_bucket(void)
 {
 	struct rte_hash_parameters params_pseudo_hash = {
 		.name = "test4",
 		.entries = 64,
-		.bucket_entries = 4,
 		.key_len = sizeof(struct flow_key), /* 13 */
 		.hash_func = pseudo_hash,
 		.hash_func_init_val = 0,
@@ -555,7 +560,7 @@ static int test_full_bucket(void)
 	handle = rte_hash_create(&params_pseudo_hash);
 	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
 
-	/* Fill bucket*/
+	/* Fill bucket */
 	for (i = 0; i < 4; i++) {
 		pos[i] = rte_hash_add_key(handle, &keys[i]);
 		print_key_info("Add", &keys[i], pos[i]);
@@ -563,47 +568,39 @@ static int test_full_bucket(void)
 			"failed to add key (pos[%u]=%d)", i, pos[i]);
 		expected_pos[i] = pos[i];
 	}
-	/* This shouldn't work because the bucket is full */
+	/*
+	 * This should work and will push one of the items
+	 * in the bucket because it is full
+	 */
 	pos[4] = rte_hash_add_key(handle, &keys[4]);
 	print_key_info("Add", &keys[4], pos[4]);
-	RETURN_IF_ERROR(pos[4] != -ENOSPC,
-			"fail: added key to full bucket (pos[4]=%d)", pos[4]);
+	RETURN_IF_ERROR(pos[4] < 0,
+			"failed to add key (pos[4]=%d)", pos[4]);
+	expected_pos[4] = pos[4];
 
 	/* Lookup */
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < 5; i++) {
 		pos[i] = rte_hash_lookup(handle, &keys[i]);
 		print_key_info("Lkp", &keys[i], pos[i]);
 		RETURN_IF_ERROR(pos[i] != expected_pos[i],
 			"failed to find key (pos[%u]=%d)", i, pos[i]);
 	}
-	pos[4] = rte_hash_lookup(handle, &keys[4]);
-	print_key_info("Lkp", &keys[4], pos[4]);
-	RETURN_IF_ERROR(pos[4] != -ENOENT,
-			"fail: found non-existent key (pos[4]=%d)", pos[4]);
 
 	/* Add - update */
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < 5; i++) {
 		pos[i] = rte_hash_add_key(handle, &keys[i]);
 		print_key_info("Add", &keys[i], pos[i]);
 		RETURN_IF_ERROR(pos[i] != expected_pos[i],
 			"failed to add key (pos[%u]=%d)", i, pos[i]);
 	}
-	pos[4] = rte_hash_add_key(handle, &keys[4]);
-	print_key_info("Add", &keys[4], pos[4]);
-	RETURN_IF_ERROR(pos[4] != -ENOSPC,
-			"fail: added key to full bucket (pos[4]=%d)", pos[4]);
 
 	/* Lookup */
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < 5; i++) {
 		pos[i] = rte_hash_lookup(handle, &keys[i]);
 		print_key_info("Lkp", &keys[i], pos[i]);
 		RETURN_IF_ERROR(pos[i] != expected_pos[i],
 			"failed to find key (pos[%u]=%d)", i, pos[i]);
 	}
-	pos[4] = rte_hash_lookup(handle, &keys[4]);
-	print_key_info("Lkp", &keys[4], pos[4]);
-	RETURN_IF_ERROR(pos[4] != -ENOENT,
-			"fail: found non-existent key (pos[4]=%d)", pos[4]);
 
 	/* Delete 1 key, check other keys are still found */
 	pos[1] = rte_hash_del_key(handle, &keys[1]);
@@ -623,34 +620,20 @@ static int test_full_bucket(void)
 	RETURN_IF_ERROR(pos[1] < 0, "failed to add key (pos[1]=%d)", pos[1]);
 
 	/* Delete */
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < 5; i++) {
 		pos[i] = rte_hash_del_key(handle, &keys[i]);
 		print_key_info("Del", &keys[i], pos[i]);
 		RETURN_IF_ERROR(pos[i] != expected_pos[i],
 			"failed to delete key (pos[%u]=%d)", i, pos[i]);
 	}
-	pos[4] = rte_hash_del_key(handle, &keys[4]);
-	print_key_info("Del", &keys[4], pos[4]);
-	RETURN_IF_ERROR(pos[4] != -ENOENT,
-			"fail: deleted non-existent key (pos[4]=%d)", pos[4]);
 
 	/* Lookup */
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < 5; i++) {
 		pos[i] = rte_hash_lookup(handle, &keys[i]);
 		print_key_info("Lkp", &keys[i], pos[i]);
 		RETURN_IF_ERROR(pos[i] != -ENOENT,
 			"fail: found non-existent key (pos[%u]=%d)", i, pos[i]);
 	}
-
-	/* Add and lookup the 5th key */
-	pos[4] = rte_hash_add_key(handle, &keys[4]);
-	print_key_info("Add", &keys[4], pos[4]);
-	RETURN_IF_ERROR(pos[4] < 0, "failed to add key (pos[4]=%d)", pos[4]);
-	expected_pos[4] = pos[4];
-	pos[4] = rte_hash_lookup(handle, &keys[4]);
-	print_key_info("Lkp", &keys[4], pos[4]);
-	RETURN_IF_ERROR(pos[4] != expected_pos[4],
-			"failed to find key (pos[4]=%d)", pos[4]);
 
 	rte_hash_free(handle);
 
@@ -991,6 +974,7 @@ static int test_fbk_hash_find_existing(void)
 	return 0;
 }
 
+#define BUCKET_ENTRIES 4
 /*
  * Do tests for hash creation with bad parameters.
  */
@@ -1017,18 +1001,8 @@ static int test_hash_creation_with_bad_parameters(void)
 	}
 
 	memcpy(&params, &ut_params, sizeof(params));
-	params.name = "creation_with_bad_parameters_1";
-	params.bucket_entries = RTE_HASH_BUCKET_ENTRIES_MAX + 1;
-	handle = rte_hash_create(&params);
-	if (handle != NULL) {
-		rte_hash_free(handle);
-		printf("Impossible creating hash sucessfully with bucket_entries in parameter exceeded\n");
-		return -1;
-	}
-
-	memcpy(&params, &ut_params, sizeof(params));
 	params.name = "creation_with_bad_parameters_2";
-	params.entries = params.bucket_entries - 1;
+	params.entries = BUCKET_ENTRIES - 1;
 	handle = rte_hash_create(&params);
 	if (handle != NULL) {
 		rte_hash_free(handle);
@@ -1038,26 +1012,6 @@ static int test_hash_creation_with_bad_parameters(void)
 
 	memcpy(&params, &ut_params, sizeof(params));
 	params.name = "creation_with_bad_parameters_3";
-	params.entries = params.entries - 1;
-	handle = rte_hash_create(&params);
-	if (handle != NULL) {
-		rte_hash_free(handle);
-		printf("Impossible creating hash sucessfully if entries in parameter is not power of 2\n");
-		return -1;
-	}
-
-	memcpy(&params, &ut_params, sizeof(params));
-	params.name = "creation_with_bad_parameters_4";
-	params.bucket_entries = params.bucket_entries - 1;
-	handle = rte_hash_create(&params);
-	if (handle != NULL) {
-		rte_hash_free(handle);
-		printf("Impossible creating hash sucessfully if bucket_entries in parameter is not power of 2\n");
-		return -1;
-	}
-
-	memcpy(&params, &ut_params, sizeof(params));
-	params.name = "creation_with_bad_parameters_5";
 	params.key_len = 0;
 	handle = rte_hash_create(&params);
 	if (handle != NULL) {
@@ -1067,17 +1021,7 @@ static int test_hash_creation_with_bad_parameters(void)
 	}
 
 	memcpy(&params, &ut_params, sizeof(params));
-	params.name = "creation_with_bad_parameters_6";
-	params.key_len = RTE_HASH_KEY_LENGTH_MAX + 1;
-	handle = rte_hash_create(&params);
-	if (handle != NULL) {
-		rte_hash_free(handle);
-		printf("Impossible creating hash sucessfully if key_len is greater than the maximum\n");
-		return -1;
-	}
-
-	memcpy(&params, &ut_params, sizeof(params));
-	params.name = "creation_with_bad_parameters_7";
+	params.name = "creation_with_bad_parameters_4";
 	params.socket_id = RTE_MAX_NUMA_NODES + 1;
 	handle = rte_hash_create(&params);
 	if (handle != NULL) {
@@ -1214,7 +1158,6 @@ static uint8_t key[16] = {0x00, 0x01, 0x02, 0x03,
 static struct rte_hash_parameters hash_params_ex = {
 	.name = NULL,
 	.entries = 64,
-	.bucket_entries = 4,
 	.key_len = 0,
 	.hash_func = NULL,
 	.hash_func_init_val = 0,
