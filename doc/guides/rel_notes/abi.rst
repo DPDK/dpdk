@@ -21,3 +21,6 @@ Deprecation Notices
   1024 queues per port. This change will be in release 2.2.
   There is no backward compatibility planned from release 2.2.
   All binaries will need to be rebuilt from release 2.2.
+
+* The Macros RTE_HASH_BUCKET_ENTRIES_MAX and RTE_HASH_KEY_LENGTH_MAX are
+  deprecated and will be removed with version 2.2.
