@@ -382,14 +382,10 @@ free_table(unsigned table_index)
 	rte_hash_free(h[table_index]);
 }
 
-static int
+static void
 reset_table(unsigned table_index)
 {
-	free_table(table_index);
-	if (create_table(table_index) != 0)
-		return -1;
-
-	return 0;
+	rte_hash_reset(h[table_index]);
 }
 
 static int
@@ -421,13 +417,11 @@ run_all_tbl_perf_tests(unsigned with_pushes)
 			if (timed_deletes(with_hash, i) < 0)
 				return -1;
 
-			if (reset_table(i) < 0)
-				return -1;
+			reset_table(i);
 
 			/* Print a dot to show progress on operations */
 			printf(".");
 			fflush(stdout);
-
 		}
 
 		free_table(i);

@@ -371,6 +371,27 @@ rte_hash_secondary_hash(const hash_sig_t primary_hash)
 	return (primary_hash ^ ((tag + 1) * alt_bits_xor));
 }
 
+void
+rte_hash_reset(struct rte_hash *h)
+{
+	void *ptr;
+	unsigned i;
+
+	if (h == NULL)
+		return;
+
+	memset(h->buckets, 0, h->num_buckets * sizeof(struct rte_hash_bucket));
+	memset(h->key_store, 0, h->key_entry_size * (h->entries + 1));
+
+	/* clear the free ring */
+	while (rte_ring_dequeue(h->free_slots, &ptr) == 0)
+		rte_pause();
+
+	/* Repopulate the free slots ring. Entry zero is reserved for key misses */
+	for (i = 1; i < h->entries + 1; i++)
+		rte_ring_sp_enqueue(h->free_slots, (void *)((uintptr_t) i));
+}
+
 /* Search for an entry that can be pushed to its alternative location */
 static inline int
 make_space_bucket(const struct rte_hash *h, struct rte_hash_bucket *bkt)

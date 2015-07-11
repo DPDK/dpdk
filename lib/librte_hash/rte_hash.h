@@ -128,8 +128,15 @@ void
 rte_hash_free(struct rte_hash *h);
 
 /**
- * Add a key to an existing hash table.
- * This operation is not multi-thread safe
+ * Reset all hash structure, by zeroing all entries
+ * @param h
+ *   Hash table to reset
+ */
+void
+rte_hash_reset(struct rte_hash *h);
+
+/**
+ * Add a key to an existing hash table. This operation is not multi-thread safe
  * and should only be called from one thread.
  *
  * @param h

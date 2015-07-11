@@ -1132,9 +1132,7 @@ static int test_average_table_utilization(void)
 		average_keys_added += added_keys;
 
 		/* Reset the table */
-		rte_hash_free(handle);
-		handle = rte_hash_create(&ut_params);
-		RETURN_IF_ERROR(handle == NULL, "hash creation failed");
+		rte_hash_reset(handle);
 
 		/* Print a dot to show progress on operations */
 		printf(".");
