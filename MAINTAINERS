@@ -345,6 +345,7 @@ F: doc/guides/sample_app_ug/l3_forward_access_ctrl.rst
 
 Hashes
 M: Bruce Richardson <bruce.richardson@intel.com>
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: lib/librte_hash/
 F: doc/guides/prog_guide/hash_lib.rst
 F: app/test/test_*hash*
