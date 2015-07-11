@@ -92,6 +92,45 @@ pci_unbind_kernel_driver(struct rte_pci_device *dev __rte_unused)
 	return -ENOTSUP;
 }
 
+/* Map pci device */
+int
+pci_map_device(struct rte_pci_device *dev)
+{
+	int ret = -1;
+
+	/* try mapping the NIC resources */
+	switch (dev->kdrv) {
+	case RTE_KDRV_NIC_UIO:
+		/* map resources for devices that use uio */
+		ret = pci_uio_map_resource(dev);
+		break;
+	default:
+		RTE_LOG(DEBUG, EAL,
+			"  Not managed by a supported kernel driver, skipped\n");
+		ret = 1;
+		break;
+	}
+
+	return ret;
+}
+
+/* Unmap pci device */
+void
+pci_unmap_device(struct rte_pci_device *dev)
+{
+	/* try unmapping the NIC resources */
+	switch (dev->kdrv) {
+	case RTE_KDRV_NIC_UIO:
+		/* unmap resources for devices that use uio */
+		pci_uio_unmap_resource(dev);
+		break;
+	default:
+		RTE_LOG(DEBUG, EAL,
+			"  Not managed by a supported kernel driver, skipped\n");
+		break;
+	}
+}
+
 void
 pci_uio_free_resource(struct rte_pci_device *dev,
 		struct mapped_pci_resource *uio_res)
