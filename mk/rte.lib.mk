@@ -173,7 +173,11 @@ $(RTE_OUTPUT)/lib/$(LIB): $(LIB)
 	@[ -d $(RTE_OUTPUT)/lib ] || mkdir -p $(RTE_OUTPUT)/lib
 	$(Q)cp -f $(LIB) $(RTE_OUTPUT)/lib
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
+ifeq ($(CONFIG_RTE_NEXT_ABI),y)
 	$(Q)ln -s -f $< $(basename $(basename $@))
+else
+	$(Q)ln -s -f $< $(basename $@)
+endif
 endif
 
 #
