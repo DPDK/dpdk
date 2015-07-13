@@ -563,6 +563,14 @@ i40e_init_adminq_parameter(struct i40e_hw *hw)
 	hw->aq.asq_buf_size = I40E_AQ_BUF_SZ;
 }
 
+static inline int
+i40e_align_floor(int n)
+{
+	if (n == 0)
+		return 0;
+	return 1 << (sizeof(n) * CHAR_BIT - 1 - __builtin_clz(n));
+}
+
 #define I40E_VALID_FLOW(flow_type) \
 	((flow_type) == RTE_ETH_FLOW_FRAG_IPV4 || \
 	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV4_TCP || \

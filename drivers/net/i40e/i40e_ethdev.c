@@ -304,14 +304,6 @@ static struct eth_driver rte_i40e_pmd = {
 };
 
 static inline int
-i40e_align_floor(int n)
-{
-	if (n == 0)
-		return 0;
-	return (1 << (sizeof(n) * CHAR_BIT - 1 - __builtin_clz(n)));
-}
-
-static inline int
 rte_i40e_dev_atomic_read_link_status(struct rte_eth_dev *dev,
 				     struct rte_eth_link *link)
 {

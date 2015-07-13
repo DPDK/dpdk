@@ -1524,6 +1524,8 @@ i40evf_rx_init(struct rte_eth_dev *dev)
 
 	i40evf_config_rss(vf);
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		if (!rxq[i] || !rxq[i]->q_set)
+			continue;
 		if (i40evf_rxq_init(dev, rxq[i]) < 0)
 			return -EFAULT;
 	}
@@ -1905,6 +1907,7 @@ i40evf_config_rss(struct i40e_vf *vf)
 	struct i40e_hw *hw = I40E_VF_TO_HW(vf);
 	struct rte_eth_rss_conf rss_conf;
 	uint32_t i, j, lut = 0, nb_q = (I40E_VFQF_HLUT_MAX_INDEX + 1) * 4;
+	uint16_t num;
 
 	if (vf->dev_data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS) {
 		i40evf_disable_rss(vf);
@@ -1912,9 +1915,10 @@ i40evf_config_rss(struct i40e_vf *vf)
 		return 0;
 	}
 
+	num = i40e_align_floor(vf->dev_data->nb_rx_queues);
 	/* Fill out the look up table */
 	for (i = 0, j = 0; i < nb_q; i++, j++) {
-		if (j >= vf->num_queue_pairs)
+		if (j >= num)
 			j = 0;
 		lut = (lut << 8) | j;
 		if ((i & 3) == 3)
