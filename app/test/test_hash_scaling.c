@@ -129,7 +129,6 @@ test_hash_scaling(int locking_mode)
 	uint64_t i, key;
 	struct rte_hash_parameters hash_params = {
 		.entries = num_iterations*2,
-		.bucket_entries = 16,
 		.key_len = sizeof(key),
 		.hash_func = rte_hash_crc,
 		.hash_func_init_val = 0,

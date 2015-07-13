@@ -226,7 +226,6 @@ hash_create_free(__attribute__((unused)) void *arg)
 	struct rte_hash_parameters hash_params = {
 		.name = NULL,
 		.entries = 16,
-		.bucket_entries = 4,
 		.key_len = 4,
 		.hash_func = (rte_hash_function)rte_jhash_32b,
 		.hash_func_init_val = 0,

@@ -2162,7 +2162,6 @@ setup_hash(int socketid)
     struct rte_hash_parameters ipv4_l3fwd_hash_params = {
         .name = NULL,
         .entries = L3FWD_HASH_ENTRIES,
-        .bucket_entries = 4,
         .key_len = sizeof(union ipv4_5tuple_host),
         .hash_func = ipv4_hash_crc,
         .hash_func_init_val = 0,
@@ -2171,7 +2170,6 @@ setup_hash(int socketid)
     struct rte_hash_parameters ipv6_l3fwd_hash_params = {
         .name = NULL,
         .entries = L3FWD_HASH_ENTRIES,
-        .bucket_entries = 4,
         .key_len = sizeof(union ipv6_5tuple_host),
         .hash_func = ipv6_hash_crc,
         .hash_func_init_val = 0,

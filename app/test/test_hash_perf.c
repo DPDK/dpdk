@@ -100,7 +100,6 @@ int32_t positions[KEYS_TO_ADD];
 /* Parameters used for hash table in unit test functions. */
 static struct rte_hash_parameters ut_params = {
 	.entries = MAX_ENTRIES,
-	.bucket_entries = BUCKET_SIZE,
 	.hash_func = rte_jhash,
 	.hash_func_init_val = 0,
 };

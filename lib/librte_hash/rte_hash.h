@@ -75,7 +75,7 @@ typedef uint32_t (*rte_hash_function)(const void *key, uint32_t key_len,
 struct rte_hash_parameters {
 	const char *name;		/**< Name of the hash. */
 	uint32_t entries;		/**< Total hash table entries. */
-	uint32_t bucket_entries;        /**< Bucket entries. */
+	uint32_t reserved;		/**< Unused field. Should be set to 0 */
 	uint32_t key_len;		/**< Length of hash key. */
 	rte_hash_function hash_func;	/**< Primary Hash function used to calculate hash. */
 	uint32_t hash_func_init_val;	/**< Init value used by hash_func. */

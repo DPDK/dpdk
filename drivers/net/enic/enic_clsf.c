@@ -63,7 +63,6 @@
 
 #define SOCKET_0                0
 #define ENICPMD_CLSF_HASH_ENTRIES       ENICPMD_FDIR_MAX
-#define ENICPMD_CLSF_BUCKET_ENTRIES     4
 
 void enic_fdir_stats_get(struct enic *enic, struct rte_eth_fdir_stats *stats)
 {
@@ -245,7 +244,6 @@ int enic_clsf_init(struct enic *enic)
 	struct rte_hash_parameters hash_params = {
 		.name = "enicpmd_clsf_hash",
 		.entries = ENICPMD_CLSF_HASH_ENTRIES,
-		.bucket_entries = ENICPMD_CLSF_BUCKET_ENTRIES,
 		.key_len = RTE_HASH_KEY_LENGTH_MAX,
 		.hash_func = DEFAULT_HASH_FUNC,
 		.hash_func_init_val = 0,
