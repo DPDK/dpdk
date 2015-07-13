@@ -247,6 +247,7 @@ F: drivers/net/mlx4/
 F: doc/guides/nics/mlx4.rst
 
 RedHat virtio
+M: Huawei Xie <huawei.xie@intel.com>
 M: Changchun Ouyang <changchun.ouyang@intel.com>
 F: drivers/net/virtio/
 F: doc/guides/nics/virtio.rst
