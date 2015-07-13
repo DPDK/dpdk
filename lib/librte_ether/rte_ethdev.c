@@ -1381,6 +1381,11 @@ rte_eth_dev_close(uint8_t port_id)
 	FUNC_PTR_OR_RET(*dev->dev_ops->dev_close);
 	dev->data->dev_started = 0;
 	(*dev->dev_ops->dev_close)(dev);
+
+	rte_free(dev->data->rx_queues);
+	dev->data->rx_queues = NULL;
+	rte_free(dev->data->tx_queues);
+	dev->data->tx_queues = NULL;
 }
 
 int
