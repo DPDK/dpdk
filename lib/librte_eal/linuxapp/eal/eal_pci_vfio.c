@@ -728,7 +728,7 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 		struct vfio_region_info reg = { .argsz = sizeof(reg) };
 		void *bar_addr;
 		struct memreg {
-			uint32_t offset, size;
+			unsigned long offset, size;
 		} memreg[2] = {};
 
 		reg.index = i;
@@ -771,7 +771,7 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 				RTE_LOG(DEBUG, EAL,
 					"Trying to map BAR %d that contains the MSI-X "
 					"table. Trying offsets: "
-					"%04x:%04x, %04x:%04x\n", i,
+					"0x%04lx:0x%04lx, 0x%04lx:0x%04lx\n", i,
 					memreg[0].offset, memreg[0].size,
 					memreg[1].offset, memreg[1].size);
 			}
