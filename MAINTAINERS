@@ -220,6 +220,7 @@ Cisco enic
 F: drivers/net/enic/
 
 Intel e1000
+M: Wenzhuo Lu <wenzhuo.lu@intel.com>
 F: drivers/net/e1000/
 F: doc/guides/nics/e1000em.rst
 F: doc/guides/nics/intel_vf.rst
