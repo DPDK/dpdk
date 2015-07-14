@@ -65,6 +65,8 @@ static void
 fm10k_MAC_filter_set(struct rte_eth_dev *dev, const u8 *mac, bool add);
 static void
 fm10k_MACVLAN_remove_all(struct rte_eth_dev *dev);
+static void fm10k_tx_queue_release(void *queue);
+static void fm10k_rx_queue_release(void *queue);
 
 static void
 fm10k_mbx_initlock(struct fm10k_hw *hw)
@@ -804,11 +806,31 @@ fm10k_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		fm10k_dev_tx_queue_stop(dev, i);
+	if (dev->data->tx_queues)
+		for (i = 0; i < dev->data->nb_tx_queues; i++)
+			fm10k_dev_tx_queue_stop(dev, i);
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		fm10k_dev_rx_queue_stop(dev, i);
+	if (dev->data->rx_queues)
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
+			fm10k_dev_rx_queue_stop(dev, i);
+}
+
+static void
+fm10k_dev_queue_release(struct rte_eth_dev *dev)
+{
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dev->data->tx_queues) {
+		for (i = 0; i < dev->data->nb_tx_queues; i++)
+			fm10k_tx_queue_release(dev->data->tx_queues[i]);
+	}
+
+	if (dev->data->rx_queues) {
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
+			fm10k_rx_queue_release(dev->data->rx_queues[i]);
+	}
 }
 
 static void
@@ -823,6 +845,7 @@ fm10k_dev_close(struct rte_eth_dev *dev)
 	/* Stop mailbox service first */
 	fm10k_close_mbx_service(hw);
 	fm10k_dev_stop(dev);
+	fm10k_dev_queue_release(dev);
 	fm10k_stop_hw(hw);
 }
 
