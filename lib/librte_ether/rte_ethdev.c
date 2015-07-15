@@ -1661,26 +1661,35 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 {
 	struct rte_eth_stats eth_stats;
 	struct rte_eth_dev *dev;
-	unsigned count, i, q;
+	unsigned count = 0, i, q;
+	signed xcount = 0;
 	uint64_t val, *stats_ptr;
 
 	VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
 	dev = &rte_eth_devices[port_id];
 
-	/* implemented by the driver */
-	if (dev->dev_ops->xstats_get != NULL)
-		return (*dev->dev_ops->xstats_get)(dev, xstats, n);
-
-	/* else, return generic statistics */
+	/* Return generic statistics */
 	count = RTE_NB_STATS;
 	count += dev->data->nb_rx_queues * RTE_NB_RXQ_STATS;
 	count += dev->data->nb_tx_queues * RTE_NB_TXQ_STATS;
-	if (n < count)
-		return count;
+
+	/* implemented by the driver */
+	if (dev->dev_ops->xstats_get != NULL) {
+		/* Retrieve the xstats from the driver at the end of the
+		 * xstats struct.
+		 */
+		xcount = (*dev->dev_ops->xstats_get)(dev, &xstats[count],
+			 (n > count) ? n - count : 0);
+
+		if (xcount < 0)
+			return xcount;
+	}
+
+	if (n < count + xcount)
+		return count + xcount;
 
 	/* now fill the xstats structure */
-
 	count = 0;
 	rte_eth_stats_get(port_id, &eth_stats);
 
@@ -1722,7 +1731,7 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 		}
 	}
 
-	return count;
+	return count + xcount;
 }
 
 /* reset ethdev extended statistics */
