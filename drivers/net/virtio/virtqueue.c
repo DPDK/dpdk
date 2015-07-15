@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -60,11 +60,13 @@ virtqueue_detatch_unused(struct virtqueue *vq)
 	struct rte_mbuf *cookie;
 	int idx;
 
-	for (idx = 0; idx < vq->vq_nentries; idx++) {
-		if ((cookie = vq->vq_descx[idx].cookie) != NULL) {
-			vq->vq_descx[idx].cookie = NULL;
-			return cookie;
+	if (vq != NULL)
+		for (idx = 0; idx < vq->vq_nentries; idx++) {
+			cookie = vq->vq_descx[idx].cookie;
+			if (cookie != NULL) {
+				vq->vq_descx[idx].cookie = NULL;
+				return cookie;
+			}
 		}
-	}
 	return NULL;
 }
