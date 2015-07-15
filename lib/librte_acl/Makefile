@@ -75,6 +75,6 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_ACL)-include := rte_acl_osdep.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_ACL)-include += rte_acl.h
 
 # this lib needs eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_ACL) += lib/librte_eal lib/librte_malloc
+DEPDIRS-$(CONFIG_RTE_LIBRTE_ACL) += lib/librte_eal
 
 include $(RTE_SDK)/mk/rte.lib.mk

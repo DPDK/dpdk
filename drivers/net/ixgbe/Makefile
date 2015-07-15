@@ -117,7 +117,7 @@ endif
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += lib/librte_eal lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += lib/librte_mempool lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += lib/librte_net lib/librte_malloc
+DEPDIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += lib/librte_net
 
 ifeq ($(CONFIG_RTE_IXGBE_INC_VECTOR)$(CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC),yn)
 $(error The ixgbe vpmd depends on Rx bulk alloc)

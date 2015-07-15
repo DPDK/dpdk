@@ -42,7 +42,6 @@ DEPDIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += lib/librte_mbuf
 DEPDIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += lib/librte_eal
 DEPDIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += lib/librte_malloc
 
 # Basic CFLAGS.
 CFLAGS += -O3

@@ -61,7 +61,6 @@ SYMLINK-y-include += rte_eth_bond_8023ad.h
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_mbuf
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_malloc
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_eal
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_kvargs
 

@@ -48,6 +48,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_LPM) := rte_lpm.c rte_lpm6.c
 SYMLINK-$(CONFIG_RTE_LIBRTE_LPM)-include := rte_lpm.h rte_lpm6.h
 
 # this lib needs eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_LPM) += lib/librte_eal lib/librte_malloc
+DEPDIRS-$(CONFIG_RTE_LIBRTE_LPM) += lib/librte_eal
 
 include $(RTE_SDK)/mk/rte.lib.mk

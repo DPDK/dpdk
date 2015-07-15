@@ -97,6 +97,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += fm10k_api.c
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += lib/librte_eal lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += lib/librte_mempool lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += lib/librte_net lib/librte_malloc
+DEPDIRS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += lib/librte_net
 
 include $(RTE_SDK)/mk/rte.lib.mk

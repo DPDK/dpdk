@@ -75,7 +75,6 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_stub.h
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) := lib/librte_eal
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_mbuf
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_malloc
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_port
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_lpm
 ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)

@@ -83,12 +83,9 @@ F: app/test/test_debug.c
 F: app/test/test_devargs.c
 F: app/test/test_eal*
 F: app/test/test_errno.c
-F: app/test/test_func_reentrancy.c
 F: app/test/test_interrupts.c
 F: app/test/test_logs.c
 F: app/test/test_memcpy*
-F: app/test/test_memory.c
-F: app/test/test_memzone.c
 F: app/test/test_pci.c
 F: app/test/test_per_lcore.c
 F: app/test/test_prefetch.c
@@ -97,6 +94,20 @@ F: app/test/test_spinlock.c
 F: app/test/test_string_fns.c
 F: app/test/test_tailq.c
 F: app/test/test_version.c
+
+Memory Allocation
+M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
+F: lib/librte_eal/common/include/rte_mem*
+F: lib/librte_eal/common/include/rte_malloc.h
+F: lib/librte_eal/common/*malloc*
+F: lib/librte_eal/common/eal_common_mem*
+F: lib/librte_eal/common/eal_hugepages.h
+F: lib/librte_malloc/
+F: doc/guides/prog_guide/malloc_lib.rst
+F: app/test/test_func_reentrancy.c
+F: app/test/test_malloc.c
+F: app/test/test_memory.c
+F: app/test/test_memzone.c
 
 Secondary process
 K: RTE_PROC_
@@ -160,12 +171,6 @@ F: lib/librte_eal/bsdapp/nic_uio/
 
 Core Libraries
 --------------
-
-Dynamic memory
-F: lib/librte_malloc/
-F: doc/guides/prog_guide/malloc_lib.rst
-F: app/test/test_malloc.c
-F: app/test/test_func_reentrancy.c
 
 Memory pool
 M: Olivier Matz <olivier.matz@6wind.com>

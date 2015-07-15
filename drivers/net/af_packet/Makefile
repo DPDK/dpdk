@@ -58,7 +58,6 @@ SYMLINK-y-include += rte_eth_af_packet.h
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET) += lib/librte_mbuf
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET) += lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET) += lib/librte_malloc
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET) += lib/librte_kvargs
 
 include $(RTE_SDK)/mk/rte.lib.mk

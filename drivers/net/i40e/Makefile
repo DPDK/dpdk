@@ -102,6 +102,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_fdir.c
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_eal lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_mempool lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_net lib/librte_malloc
+DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_net
 
 include $(RTE_SDK)/mk/rte.lib.mk
