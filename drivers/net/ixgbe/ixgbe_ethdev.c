@@ -490,7 +490,15 @@ static const struct rte_ixgbe_xstats_name_off rte_ixgbe_stats_strings[] = {
 	{"fcoe_drop", offsetof(struct ixgbe_hw_stats, fcoerpdc)},
 	{"fc_last_error", offsetof(struct ixgbe_hw_stats, fclast)},
 	{"rx_broadcast_packets", offsetof(struct ixgbe_hw_stats, bprc)},
+	{"rx_phy_multicast_packets", offsetof(struct ixgbe_hw_stats, mprc)},
 	{"mgmt_pkts_dropped", offsetof(struct ixgbe_hw_stats, mngpdc)},
+	{"rx_crc_errors", offsetof(struct ixgbe_hw_stats, crcerrs)},
+	{"fdir_match", offsetof(struct ixgbe_hw_stats, fdirmatch)},
+	{"fdir_miss", offsetof(struct ixgbe_hw_stats, fdirmiss)},
+	{"tx_flow_control_xon", offsetof(struct ixgbe_hw_stats, lxontxc)},
+	{"rx_flow_control_xon", offsetof(struct ixgbe_hw_stats, lxonrxc)},
+	{"tx_flow_control_xoff", offsetof(struct ixgbe_hw_stats, lxofftxc)},
+	{"rx_flow_control_xoff", offsetof(struct ixgbe_hw_stats, lxoffrxc)},
 };
 
 #define IXGBE_NB_XSTATS (sizeof(rte_ixgbe_stats_strings) /	\
@@ -2022,7 +2030,6 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->ibytes = total_qbrc;
 	stats->opackets = hw_stats->gptc;
 	stats->obytes = hw_stats->gotc;
-	stats->imcasts = hw_stats->mprc;
 
 	for (i = 0; i < IXGBE_QUEUE_STAT_COUNTERS; i++) {
 		stats->q_ipackets[i] = hw_stats->qprc[i];
@@ -2033,28 +2040,17 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	}
 
 	/* Rx Errors */
-	stats->ibadcrc  = hw_stats->crcerrs;
-	stats->ibadlen  = hw_stats->rlec + hw_stats->ruc + hw_stats->roc;
-	stats->imissed  = total_missed_rx;
-	stats->ierrors  = stats->ibadcrc +
-	                  stats->ibadlen +
-	                  stats->imissed +
+	stats->ierrors  = hw_stats->crcerrs +
+	                  hw_stats->rlec +
+	                  hw_stats->ruc +
+	                  hw_stats->roc +
+	                  total_missed_rx +
 	                  hw_stats->illerrc + hw_stats->errbc;
 
 	/* Tx Errors */
 	/*txdgpc: packets that are DMA'ed*/
 	/*gptc: packets that are sent*/
 	stats->oerrors  = txdgpc - hw_stats->gptc;
-
-	/* XON/XOFF pause frames */
-	stats->tx_pause_xon  = hw_stats->lxontxc;
-	stats->rx_pause_xon  = hw_stats->lxonrxc;
-	stats->tx_pause_xoff = hw_stats->lxofftxc;
-	stats->rx_pause_xoff = hw_stats->lxoffrxc;
-
-	/* Flow Director Stats registers */
-	stats->fdirmatch = hw_stats->fdirmatch;
-	stats->fdirmiss = hw_stats->fdirmiss;
 }
 
 static void
@@ -2160,6 +2156,7 @@ ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->opackets = hw_stats->vfgptc;
 	stats->obytes = hw_stats->vfgotc;
 	stats->imcasts = hw_stats->vfmprc;
+	/* stats->imcasts should be removed as imcasts is deprecated */
 }
 
 static void
