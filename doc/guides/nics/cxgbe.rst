@@ -34,21 +34,21 @@ CXGBE Poll Mode Driver
 The CXGBE PMD (**librte_pmd_cxgbe**) provides poll mode driver support
 for **Chelsio T5** 10/40 Gbps family of adapters.
 
-More information can be found at `Chelsio Communications
+More information can be found at `Chelsio Communications Official Website
 <http://www.chelsio.com>`_.
 
 Features
 --------
 
-CXGBE PMD has the support for:
+CXGBE PMD has support for:
 
-- Multiple queues for TX and RX.
-- Receiver Side Steering (RSS).
-- VLAN filtering.
-- Checksum offload.
-- Promiscuous mode.
-- All multicast mode.
-- Port hardware statistics.
+- Multiple queues for TX and RX
+- Receiver Side Steering (RSS)
+- VLAN filtering
+- Checksum offload
+- Promiscuous mode
+- All multicast mode
+- Port hardware statistics
 
 Limitations
 -----------
@@ -57,46 +57,16 @@ The Chelsio T5 devices provide two/four ports but expose a single PCI bus
 address, thus, librte_pmd_cxgbe registers itself as a
 PCI driver that allocates one Ethernet device per detected port.
 
-For this reason, one cannot white/blacklist a single port without also
-white/blacklisting the others on the same device.
+For this reason, one cannot whitelist/blacklist a single port without
+whitelisting/blacklisting the other ports on the same device.
 
-Configuration
--------------
+Supported Chelsio T5 NICs
+-------------------------
 
-Compiling CXGBE PMD
-~~~~~~~~~~~~~~~~~~~
-
-These options can be modified in the ``.config`` file.
-
-- ``CONFIG_RTE_LIBRTE_CXGBE_PMD`` (default **y**)
-
-  Toggle compilation of librte_pmd_cxgbe driver.
-
-- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG`` (default **n**)
-
-  Toggle debugging code. Enabling this option adds additional generic debugging
-  messages at the cost of lower performance.
-
-- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG_REG`` (default **n**)
-
-  Toggle debugging code. Enabling this option adds additional registers related
-  run-time checks and debugging messages at the cost of lower performance.
-
-- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG_MBOX`` (default **n**)
-
-  Toggle debugging code. Enabling this option adds additional firmware mailbox
-  related run-time checks and debugging messages at the cost of lower
-  performance.
-
-- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG_TX`` (default **n**)
-
-  Toggle debugging code. Enabling this option adds additional transmission data
-  path run-time checks and debugging messages at the cost of lower performance.
-
-- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG_RX`` (default **n**)
-
-  Toggle debugging code. Enabling this option adds additional receiving data
-  path run-time checks and debugging messages at the cost of lower performance.
+- 1G NICs: T502-BT
+- 10G NICs: T520-BT, T520-CR, T520-LL-CR, T520-SO-CR, T540-CR
+- 40G NICs: T580-CR, T580-LP-CR, T580-SO-CR
+- Other T5 NICs: T522-CR
 
 Prerequisites
 -------------
@@ -107,6 +77,53 @@ Prerequisites
   the latest cxgb4 kernel driver from the Chelsio Unified Wire package should
   get you the latest firmware. More information can be obtained from the User
   Guide that is bundled with the Chelsio Unified Wire package.
+
+Pre-Installation Configuration
+------------------------------
+
+Config File Options
+~~~~~~~~~~~~~~~~~~~
+
+The following options can be modified in the ``.config`` file. Please note that
+enabling debugging options may affect system performance.
+
+- ``CONFIG_RTE_LIBRTE_CXGBE_PMD`` (default **y**)
+
+  Toggle compilation of librte_pmd_cxgbe driver.
+
+- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG`` (default **n**)
+
+  Toggle display of generic debugging messages.
+
+- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG_REG`` (default **n**)
+
+  Toggle display of registers related run-time check messages.
+
+- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG_MBOX`` (default **n**)
+
+  Toggle display of firmware mailbox related run-time check messages.
+
+- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG_TX`` (default **n**)
+
+  Toggle display of transmission data path run-time check messages.
+
+- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG_RX`` (default **n**)
+
+  Toggle display of receiving data path run-time check messages.
+
+Driver Compilation
+~~~~~~~~~~~~~~~~~~
+
+To compile CXGBE PMD for Linux x86_64 gcc target, run the following "make"
+command:
+
+.. code-block:: console
+
+   cd <DPDK-source-directory>
+   make config T=x86_64-native-linuxapp-gcc install
+
+Installation
+------------
 
 Steps to manually install the latest firmware from the downloaded source files
 are as follows:
@@ -160,14 +177,6 @@ are as follows:
    .. code-block:: console
 
       firmware-version: 1.13.32.0, TP 0.1.4.8
-
-Supported Chelsio T5 NICs
--------------------------
-
-- 1G NICs: T502-BT
-- 10G NICs: T520-BT, T520-CR, T520-LL-CR, T520-SO-CR, T540-CR
-- 40G NICs: T580-CR, T580-LP-CR, T580-SO-CR
-- Other T5 NICs: T522-CR
 
 Sample Application Notes
 -------------------------
@@ -241,6 +250,10 @@ devices managed by librte_pmd_cxgbe.
       sudo chmod 0666 /dev/vfio/*
 
       ./tools/dpdk_nic_bind.py --bind vfio-pci 0000:02:00.4
+
+   .. note::
+
+      CXGBE PMD currently only supports the binding of PF4 for Chelsio T5 NICs.
 
 #. Start testpmd with basic parameters:
 
