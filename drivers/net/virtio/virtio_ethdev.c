@@ -80,9 +80,6 @@ static int virtio_dev_link_update(struct rte_eth_dev *dev,
 static void virtio_set_hwaddr(struct virtio_hw *hw);
 static void virtio_get_hwaddr(struct virtio_hw *hw);
 
-static void virtio_dev_rx_queue_release(__rte_unused void *rxq);
-static void virtio_dev_tx_queue_release(__rte_unused void *txq);
-
 static void virtio_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 static void virtio_dev_stats_reset(struct rte_eth_dev *dev);
 static void virtio_dev_free_mbufs(struct rte_eth_dev *dev);
@@ -238,6 +235,20 @@ virtio_set_multiple_queues(struct rte_eth_dev *dev, uint16_t nb_queues)
 	}
 
 	return 0;
+}
+
+void
+virtio_dev_queue_release(struct virtqueue *vq) {
+	struct virtio_hw *hw = vq->hw;
+
+	if (vq) {
+		/* Select and deactivate the queue */
+		VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_SEL, vq->queue_id);
+		VIRTIO_WRITE_REG_4(hw, VIRTIO_PCI_QUEUE_PFN, 0);
+
+		rte_free(vq);
+		vq = NULL;
+	}
 }
 
 int virtio_dev_queue_setup(struct rte_eth_dev *dev,
@@ -553,10 +564,8 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.stats_reset             = virtio_dev_stats_reset,
 	.link_update             = virtio_dev_link_update,
 	.rx_queue_setup          = virtio_dev_rx_queue_setup,
-	/* meaningfull only to multiple queue */
 	.rx_queue_release        = virtio_dev_rx_queue_release,
 	.tx_queue_setup          = virtio_dev_tx_queue_setup,
-	/* meaningfull only to multiple queue */
 	.tx_queue_release        = virtio_dev_tx_queue_release,
 	/* collect stats per queue */
 	.queue_stats_mapping_set = virtio_dev_queue_stats_mapping_set,
@@ -1287,8 +1296,7 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 
-	rte_free(hw->cvq);
-	hw->cvq = NULL;
+	virtio_dev_queue_release(hw->cvq);
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
@@ -1332,19 +1340,6 @@ rte_virtio_pmd_init(const char *name __rte_unused,
 
 	rte_eth_driver_register(&rte_virtio_pmd);
 	return 0;
-}
-
-/*
- * Only 1 queue is supported, no queue release related operation
- */
-static void
-virtio_dev_rx_queue_release(__rte_unused void *rxq)
-{
-}
-
-static void
-virtio_dev_tx_queue_release(__rte_unused void *txq)
-{
 }
 
 /*

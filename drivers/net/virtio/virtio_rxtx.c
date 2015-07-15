@@ -401,6 +401,12 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
+void
+virtio_dev_rx_queue_release(void *rxq)
+{
+	virtio_dev_queue_release(rxq);
+}
+
 /*
  * struct rte_eth_dev *dev: Used to update dev
  * uint16_t nb_desc: Defaults to values read from config space
@@ -453,6 +459,12 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	dev->data->tx_queues[queue_idx] = vq;
 	return 0;
+}
+
+void
+virtio_dev_tx_queue_release(void *txq)
+{
+	virtio_dev_queue_release(txq);
 }
 
 static void
