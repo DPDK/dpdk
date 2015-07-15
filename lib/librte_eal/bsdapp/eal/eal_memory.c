@@ -75,6 +75,7 @@ rte_eal_contigmem_init(void)
 		addr = malloc(internal_config.memory);
 		mcfg->memseg[0].phys_addr = (phys_addr_t)(uintptr_t)addr;
 		mcfg->memseg[0].addr = addr;
+		mcfg->memseg[0].hugepage_sz = RTE_PGSIZE_4K;
 		mcfg->memseg[0].len = internal_config.memory;
 		mcfg->memseg[0].socket_id = 0;
 		return 0;
