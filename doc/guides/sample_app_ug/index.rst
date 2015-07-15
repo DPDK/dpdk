@@ -71,6 +71,7 @@ Sample Applications User Guide
     test_pipeline
     dist_app
     vm_power_management
+    proc_info
 
 **Figures**
 

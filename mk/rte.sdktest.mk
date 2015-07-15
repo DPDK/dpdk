@@ -66,7 +66,7 @@ test fast_test ring_test mempool_test perf_test:
 	fi
 
 # this is a special target to ease the pain of running coverage tests
-# this runs all the autotests, cmdline_test script and dump_cfg
+# this runs all the autotests, cmdline_test script and proc_info
 coverage:
 	@mkdir -p $(AUTOTEST_DIR) ; \
 	cd $(AUTOTEST_DIR) ; \
@@ -78,7 +78,7 @@ coverage:
 			$(RTE_OUTPUT)/app/test \
 			$(RTE_TARGET) \
 			$(BLACKLIST) $(WHITELIST) ; \
-		$(RTE_OUTPUT)/app/dump_cfg --file-prefix=ring_perf ; \
+		$(RTE_OUTPUT)/app/proc_info --file-prefix=ring_perf -- -m; \
 	else \
 		echo "No test found, please do a 'make build' first, or specify O=" ;\
 	fi

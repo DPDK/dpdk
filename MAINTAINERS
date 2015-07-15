@@ -451,6 +451,11 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: app/test-pmd/
 F: doc/guides/testpmd_app_ug/
 
+Dump tool
+M: Maryam Tahhan <maryam.tahhan@intel.com>
+M: John McNamara <john.mcnamara@intel.com>
+F: app/proc_info/
+
 
 Other Example Applications
 --------------------------
