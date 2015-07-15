@@ -67,7 +67,7 @@ struct rte_mem_config {
 	rte_rwlock_t qlock;   /**< used for tailq operation for thread safe. */
 	rte_rwlock_t mplock;  /**< only used by mempool LIB for thread-safe. */
 
-	uint32_t memzone_idx; /**< Index of memzone */
+	uint32_t memzone_cnt; /**< Number of allocated memzones */
 
 	/* memory segments and zones */
 	struct rte_memseg memseg[RTE_MAX_MEMSEG];    /**< Physmem descriptors. */

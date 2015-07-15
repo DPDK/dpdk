@@ -111,3 +111,9 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_2.1 {
+	global:
+
+	rte_memzone_free;
+} DPDK_2.0;

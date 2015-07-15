@@ -77,6 +77,23 @@ memzone_lookup_thread_unsafe(const char *name)
 	return NULL;
 }
 
+static inline struct rte_memzone *
+get_next_free_memzone(void)
+{
+	struct rte_mem_config *mcfg;
+	unsigned i = 0;
+
+	/* get pointer to global configuration */
+	mcfg = rte_eal_get_configuration()->mem_config;
+
+	for (i = 0; i < RTE_MAX_MEMZONE; i++) {
+		if (mcfg->memzone[i].addr == NULL)
+			return &mcfg->memzone[i];
+	}
+
+	return NULL;
+}
+
 /* This function will return the greatest free block if a heap has been
  * specified. If no heap has been specified, it will return the heap and
  * length of the greatest free block available in all heaps */
@@ -117,7 +134,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	mcfg = rte_eal_get_configuration()->mem_config;
 
 	/* no more room in config */
-	if (mcfg->memzone_idx >= RTE_MAX_MEMZONE) {
+	if (mcfg->memzone_cnt >= RTE_MAX_MEMZONE) {
 		RTE_LOG(ERR, EAL, "%s(): No more room in config\n", __func__);
 		rte_errno = ENOSPC;
 		return NULL;
@@ -206,7 +223,16 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	const struct malloc_elem *elem = malloc_elem_from_data(mz_addr);
 
 	/* fill the zone in config */
-	struct rte_memzone *mz = &mcfg->memzone[mcfg->memzone_idx++];
+	struct rte_memzone *mz = get_next_free_memzone();
+
+	if (mz == NULL) {
+		RTE_LOG(ERR, EAL, "%s(): Cannot find free memzone but there is room "
+				"in config!\n", __func__);
+		rte_errno = ENOSPC;
+		return NULL;
+	}
+
+	mcfg->memzone_cnt++;
 	snprintf(mz->name, sizeof(mz->name), "%s", name);
 	mz->phys_addr = rte_malloc_virt2phy(mz_addr);
 	mz->addr = mz_addr;
@@ -275,6 +301,42 @@ rte_memzone_reserve(const char *name, size_t len, int socket_id,
 {
 	return rte_memzone_reserve_thread_safe(name, len, socket_id,
 					       flags, RTE_CACHE_LINE_SIZE, 0);
+}
+
+int
+rte_memzone_free(const struct rte_memzone *mz)
+{
+	struct rte_mem_config *mcfg;
+	int ret = 0;
+	void *addr;
+	unsigned idx;
+
+	if (mz == NULL)
+		return -EINVAL;
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+
+	rte_rwlock_write_lock(&mcfg->mlock);
+
+	idx = ((uintptr_t)mz - (uintptr_t)mcfg->memzone);
+	idx = idx / sizeof(struct rte_memzone);
+
+	addr = mcfg->memzone[idx].addr;
+	if (addr == NULL)
+		ret = -EINVAL;
+	else if (mcfg->memzone_cnt == 0) {
+		rte_panic("%s(): memzone address not NULL but memzone_cnt is 0!\n",
+				__func__);
+	} else {
+		memset(&mcfg->memzone[idx], 0, sizeof(mcfg->memzone[idx]));
+		mcfg->memzone_cnt--;
+	}
+
+	rte_rwlock_write_unlock(&mcfg->mlock);
+
+	rte_free(addr);
+
+	return ret;
 }
 
 /*
@@ -349,7 +411,7 @@ rte_eal_memzone_init(void)
 	rte_rwlock_write_lock(&mcfg->mlock);
 
 	/* delete all zones */
-	mcfg->memzone_idx = 0;
+	mcfg->memzone_cnt = 0;
 	memset(mcfg->memzone, 0, sizeof(mcfg->memzone));
 
 	rte_rwlock_write_unlock(&mcfg->mlock);

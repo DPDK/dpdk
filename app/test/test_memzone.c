@@ -432,7 +432,6 @@ test_memzone_reserve_max(void)
 		printf("Expected size = %zu, actual size = %zu\n", maxlen, mz->len);
 		rte_dump_physmem_layout(stdout);
 		rte_memzone_dump(stdout);
-
 		return -1;
 	}
 	return 0;
@@ -472,7 +471,6 @@ test_memzone_reserve_max_aligned(void)
 				maxlen, mz->len);
 		rte_dump_physmem_layout(stdout);
 		rte_memzone_dump(stdout);
-
 		return -1;
 	}
 	return 0;
@@ -684,6 +682,82 @@ test_memzone_bounded(void)
 }
 
 static int
+test_memzone_free(void)
+{
+	const struct rte_memzone *mz[RTE_MAX_MEMZONE];
+	int i;
+	char name[20];
+
+	mz[0] = rte_memzone_reserve("tempzone0", 2000, SOCKET_ID_ANY, 0);
+	mz[1] = rte_memzone_reserve("tempzone1", 4000, SOCKET_ID_ANY, 0);
+
+	if (mz[0] > mz[1])
+		return -1;
+	if (!rte_memzone_lookup("tempzone0"))
+		return -1;
+	if (!rte_memzone_lookup("tempzone1"))
+		return -1;
+
+	if (rte_memzone_free(mz[0])) {
+		printf("Fail memzone free - tempzone0\n");
+		return -1;
+	}
+	if (rte_memzone_lookup("tempzone0")) {
+		printf("Found previously free memzone - tempzone0\n");
+		return -1;
+	}
+	mz[2] = rte_memzone_reserve("tempzone2", 2000, SOCKET_ID_ANY, 0);
+
+	if (mz[2] > mz[1]) {
+		printf("tempzone2 should have gotten the free entry from tempzone0\n");
+		return -1;
+	}
+	if (rte_memzone_free(mz[2])) {
+		printf("Fail memzone free - tempzone2\n");
+		return -1;
+	}
+	if (rte_memzone_lookup("tempzone2")) {
+		printf("Found previously free memzone - tempzone2\n");
+		return -1;
+	}
+	if (rte_memzone_free(mz[1])) {
+		printf("Fail memzone free - tempzone1\n");
+		return -1;
+	}
+	if (rte_memzone_lookup("tempzone1")) {
+		printf("Found previously free memzone - tempzone1\n");
+		return -1;
+	}
+
+	i = 0;
+	do {
+		snprintf(name, sizeof(name), "tempzone%u", i);
+		mz[i] = rte_memzone_reserve(name, 1, SOCKET_ID_ANY, 0);
+	} while (mz[i++] != NULL);
+
+	if (rte_memzone_free(mz[0])) {
+		printf("Fail memzone free - tempzone0\n");
+		return -1;
+	}
+	mz[0] = rte_memzone_reserve("tempzone0new", 0, SOCKET_ID_ANY, 0);
+
+	if (mz[0] == NULL) {
+		printf("Fail to create memzone - tempzone0new - when MAX memzones were "
+				"created and one was free\n");
+		return -1;
+	}
+
+	for (i = i - 2; i >= 0; i--) {
+		if (rte_memzone_free(mz[i])) {
+			printf("Fail memzone free - tempzone%d\n", i);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int
 test_memzone(void)
 {
 	const struct rte_memzone *memzone1;
@@ -761,6 +835,10 @@ test_memzone(void)
 	mz = rte_memzone_reserve("testzone1", 100,
 			SOCKET_ID_ANY, 0);
 	if (mz != NULL)
+		return -1;
+
+	printf("test free memzone\n");
+	if (test_memzone_free() < 0)
 		return -1;
 
 	printf("test reserving memzone with bigger size than the maximum\n");

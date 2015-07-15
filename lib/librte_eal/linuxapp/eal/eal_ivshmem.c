@@ -768,12 +768,12 @@ rte_eal_ivshmem_obj_init(void)
 		seg = &ivshmem_config->segment[i];
 
 		/* add memzone */
-		if (mcfg->memzone_idx == RTE_MAX_MEMZONE) {
+		if (mcfg->memzone_cnt == RTE_MAX_MEMZONE) {
 			RTE_LOG(ERR, EAL, "No more memory zones available!\n");
 			return -1;
 		}
 
-		idx = mcfg->memzone_idx;
+		idx = mcfg->memzone_cnt;
 
 		RTE_LOG(DEBUG, EAL, "Found memzone: '%s' at %p (len 0x%" PRIx64 ")\n",
 				seg->entry.mz.name, seg->entry.mz.addr, seg->entry.mz.len);
@@ -796,13 +796,13 @@ rte_eal_ivshmem_obj_init(void)
 			}
 		}
 
-		mcfg->memzone_idx++;
+		mcfg->memzone_cnt++;
 	}
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
 	/* find rings */
-	for (i = 0; i < mcfg->memzone_idx; i++) {
+	for (i = 0; i < mcfg->memzone_cnt; i++) {
 		mz = &mcfg->memzone[i];
 
 		/* check if memzone has a ring prefix */

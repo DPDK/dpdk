@@ -256,6 +256,17 @@ const struct rte_memzone *rte_memzone_reserve_bounded(const char *name,
 			unsigned flags, unsigned align, unsigned bound);
 
 /**
+ * Free a memzone.
+ *
+ * @param mz
+ *   A pointer to the memzone
+ * @return
+ *  -EINVAL - invalid parameter
+ *  0 - success
+ */
+int rte_memzone_free(const struct rte_memzone *mz);
+
+/**
  * Lookup for a memzone.
  *
  * Get a pointer to a descriptor of an already reserved memory
