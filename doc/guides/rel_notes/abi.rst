@@ -29,3 +29,8 @@ Deprecation Notices
   and several ``PKT_RX_`` flags will be removed, to support unified packet type
   from release 2.1. Those changes may be enabled in the upcoming release 2.1
   with CONFIG_RTE_NEXT_ABI.
+
+* librte_malloc library has been integrated into librte_eal. The 2.1 release
+  creates a dummy/empty malloc library to fulfill binaries with dynamic linking
+  dependencies on librte_malloc.so. Such dummy library will not be created from
+  release 2.2 so binaries will need to be rebuilt.
