@@ -720,12 +720,14 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 		 * for epoll_wait.
 		 */
 		bytes_read = read(events[n].data.fd, &buf, bytes_read);
+		if (bytes_read < 0) {
+			if (errno == EINTR || errno == EWOULDBLOCK)
+				continue;
 
-		if (bytes_read < 0)
 			RTE_LOG(ERR, EAL, "Error reading from file "
 				"descriptor %d: %s\n", events[n].data.fd,
 							strerror(errno));
-		else if (bytes_read == 0)
+		} else if (bytes_read == 0)
 			RTE_LOG(ERR, EAL, "Read nothing from file "
 				"descriptor %d\n", events[n].data.fd);
 
