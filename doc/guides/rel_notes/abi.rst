@@ -34,3 +34,7 @@ Deprecation Notices
   creates a dummy/empty malloc library to fulfill binaries with dynamic linking
   dependencies on librte_malloc.so. Such dummy library will not be created from
   release 2.2 so binaries will need to be rebuilt.
+
+* The following fields have been deprecated in rte_eth_stats:
+  imissed, ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
+  tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff

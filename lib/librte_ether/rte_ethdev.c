@@ -142,17 +142,8 @@ static const struct rte_eth_xstats_name_off rte_stats_strings[] = {
 	{"rx_bytes", offsetof(struct rte_eth_stats, ibytes)},
 	{"tx_bytes", offsetof(struct rte_eth_stats, obytes)},
 	{"tx_errors", offsetof(struct rte_eth_stats, oerrors)},
-	{"rx_missed_errors", offsetof(struct rte_eth_stats, imissed)},
-	{"rx_crc_errors", offsetof(struct rte_eth_stats, ibadcrc)},
-	{"rx_bad_length_errors", offsetof(struct rte_eth_stats, ibadlen)},
 	{"rx_errors", offsetof(struct rte_eth_stats, ierrors)},
 	{"alloc_rx_buff_failed", offsetof(struct rte_eth_stats, rx_nombuf)},
-	{"fdir_match", offsetof(struct rte_eth_stats, fdirmatch)},
-	{"fdir_miss", offsetof(struct rte_eth_stats, fdirmiss)},
-	{"tx_flow_control_xon", offsetof(struct rte_eth_stats, tx_pause_xon)},
-	{"rx_flow_control_xon", offsetof(struct rte_eth_stats, rx_pause_xon)},
-	{"tx_flow_control_xoff", offsetof(struct rte_eth_stats, tx_pause_xoff)},
-	{"rx_flow_control_xoff", offsetof(struct rte_eth_stats, rx_pause_xoff)},
 };
 #define RTE_NB_STATS (sizeof(rte_stats_strings) / sizeof(rte_stats_strings[0]))
 

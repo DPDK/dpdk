@@ -194,19 +194,29 @@ struct rte_eth_stats {
 	uint64_t opackets;  /**< Total number of successfully transmitted packets.*/
 	uint64_t ibytes;    /**< Total number of successfully received bytes. */
 	uint64_t obytes;    /**< Total number of successfully transmitted bytes. */
-	uint64_t imissed;   /**< Total of RX missed packets (e.g full FIFO). */
-	uint64_t ibadcrc;   /**< Total of RX packets with CRC error. */
-	uint64_t ibadlen;   /**< Total of RX packets with bad length. */
+	uint64_t imissed;
+	/**< Deprecated; Total of RX missed packets (e.g full FIFO). */
+	uint64_t ibadcrc;
+	/**< Deprecated; Total of RX packets with CRC error. */
+	uint64_t ibadlen;
+	/**< Deprecated; Total of RX packets with bad length. */
 	uint64_t ierrors;   /**< Total number of erroneous received packets. */
 	uint64_t oerrors;   /**< Total number of failed transmitted packets. */
-	uint64_t imcasts;   /**< Total number of multicast received packets. */
+	uint64_t imcasts;
+	/**< Deprecated; Total number of multicast received packets. */
 	uint64_t rx_nombuf; /**< Total number of RX mbuf allocation failures. */
-	uint64_t fdirmatch; /**< Total number of RX packets matching a filter. */
-	uint64_t fdirmiss;  /**< Total number of RX packets not matching any filter. */
-	uint64_t tx_pause_xon;  /**< Total nb. of XON pause frame sent. */
-	uint64_t rx_pause_xon;  /**< Total nb. of XON pause frame received. */
-	uint64_t tx_pause_xoff; /**< Total nb. of XOFF pause frame sent. */
-	uint64_t rx_pause_xoff; /**< Total nb. of XOFF pause frame received. */
+	uint64_t fdirmatch;
+	/**< Deprecated; Total number of RX packets matching a filter. */
+	uint64_t fdirmiss;
+	/**< Deprecated; Total number of RX packets not matching any filter. */
+	uint64_t tx_pause_xon;
+	 /**< Deprecated; Total nb. of XON pause frame sent. */
+	uint64_t rx_pause_xon;
+	/**< Deprecated; Total nb. of XON pause frame received. */
+	uint64_t tx_pause_xoff;
+	/**< Deprecated; Total nb. of XOFF pause frame sent. */
+	uint64_t rx_pause_xoff;
+	/**< Deprecated; Total nb. of XOFF pause frame received. */
 	uint64_t q_ipackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	/**< Total number of queue RX packets. */
 	uint64_t q_opackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
