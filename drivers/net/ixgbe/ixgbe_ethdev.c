@@ -1817,23 +1817,15 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 	ixgbe_set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
 }
 
-/*
- * This function is based on ixgbe_update_stats_counters() in base/ixgbe.c
- */
 static void
-ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+ixgbe_read_stats_registers(struct ixgbe_hw *hw, struct ixgbe_hw_stats
+						   *hw_stats, uint64_t *total_missed_rx,
+						   uint64_t *total_qbrc, uint64_t *total_qprc,
+						   uint64_t *rxnfgpc, uint64_t *txdgpc,
+						   uint64_t *total_qprdc)
 {
-	struct ixgbe_hw *hw =
-			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_hw_stats *hw_stats =
-			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 	uint32_t bprc, lxon, lxoff, total;
-	uint64_t total_missed_rx, total_qbrc, total_qprc;
 	unsigned i;
-
-	total_missed_rx = 0;
-	total_qbrc = 0;
-	total_qprc = 0;
 
 	hw_stats->crcerrs += IXGBE_READ_REG(hw, IXGBE_CRCERRS);
 	hw_stats->illerrc += IXGBE_READ_REG(hw, IXGBE_ILLERRC);
@@ -1846,7 +1838,7 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		/* global total per queue */
 		hw_stats->mpc[i] += mp;
 		/* Running comprehensive total for stats display */
-		total_missed_rx += hw_stats->mpc[i];
+		*total_missed_rx += hw_stats->mpc[i];
 		if (hw->mac.type == ixgbe_mac_82598EB)
 			hw_stats->rnbc[i] +=
 			    IXGBE_READ_REG(hw, IXGBE_RNBC(i));
@@ -1870,10 +1862,11 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		hw_stats->qbtc[i] += IXGBE_READ_REG(hw, IXGBE_QBTC_L(i));
 		hw_stats->qbtc[i] +=
 		    ((uint64_t)IXGBE_READ_REG(hw, IXGBE_QBTC_H(i)) << 32);
-		hw_stats->qprdc[i] += IXGBE_READ_REG(hw, IXGBE_QPRDC(i));
+		*total_qprdc += hw_stats->qprdc[i] +=
+				IXGBE_READ_REG(hw, IXGBE_QPRDC(i));
 
-		total_qprc += hw_stats->qprc[i];
-		total_qbrc += hw_stats->qbrc[i];
+		*total_qprc += hw_stats->qprc[i];
+		*total_qbrc += hw_stats->qbrc[i];
 	}
 	hw_stats->mlfc += IXGBE_READ_REG(hw, IXGBE_MLFC);
 	hw_stats->mrfc += IXGBE_READ_REG(hw, IXGBE_MRFC);
@@ -1881,6 +1874,8 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	/* Note that gprc counts missed packets */
 	hw_stats->gprc += IXGBE_READ_REG(hw, IXGBE_GPRC);
+	*rxnfgpc += IXGBE_READ_REG(hw, IXGBE_RXNFGPC);
+	*txdgpc += IXGBE_READ_REG(hw, IXGBE_TXDGPC);
 
 	if (hw->mac.type != ixgbe_mac_82598EB) {
 		hw_stats->gorc += IXGBE_READ_REG(hw, IXGBE_GORCL);
@@ -1958,6 +1953,35 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		hw_stats->fcoedwtc += IXGBE_READ_REG(hw, IXGBE_FCOEDWTC);
 	}
 
+	/* Flow Director Stats registers */
+	hw_stats->fdirmatch += IXGBE_READ_REG(hw, IXGBE_FDIRMATCH);
+	hw_stats->fdirmiss += IXGBE_READ_REG(hw, IXGBE_FDIRMISS);
+}
+
+/*
+ * This function is based on ixgbe_update_stats_counters() in ixgbe/ixgbe.c
+ */
+static void
+ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct ixgbe_hw *hw =
+			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_hw_stats *hw_stats =
+			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+	uint64_t total_missed_rx, total_qbrc, total_qprc, total_qprdc;
+	uint64_t rxnfgpc, txdgpc;
+	unsigned i;
+
+	total_missed_rx = 0;
+	total_qbrc = 0;
+	total_qprc = 0;
+	total_qprdc = 0;
+	rxnfgpc = 0;
+	txdgpc = 0;
+
+	ixgbe_read_stats_registers(hw, hw_stats, &total_missed_rx, &total_qbrc,
+			&total_qprc, &rxnfgpc, &txdgpc, &total_qprdc);
+
 	if (stats == NULL)
 		return;
 
@@ -1986,7 +2010,9 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	                  hw_stats->illerrc + hw_stats->errbc;
 
 	/* Tx Errors */
-	stats->oerrors  = 0;
+	/*txdgpc: packets that are DMA'ed*/
+	/*gptc: packets that are sent*/
+	stats->oerrors  = txdgpc - hw_stats->gptc;
 
 	/* XON/XOFF pause frames */
 	stats->tx_pause_xon  = hw_stats->lxontxc;
@@ -1995,8 +2021,6 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->rx_pause_xoff = hw_stats->lxoffrxc;
 
 	/* Flow Director Stats registers */
-	hw_stats->fdirmatch += IXGBE_READ_REG(hw, IXGBE_FDIRMATCH);
-	hw_stats->fdirmiss += IXGBE_READ_REG(hw, IXGBE_FDIRMISS);
 	stats->fdirmatch = hw_stats->fdirmatch;
 	stats->fdirmiss = hw_stats->fdirmiss;
 }
