@@ -37,7 +37,6 @@
 #include <sys/queue.h>
 
 #include <rte_memory.h>
-#include <rte_memzone.h>
 #include <rte_eal.h>
 #include <rte_launch.h>
 #include <rte_per_lcore.h>
@@ -56,10 +55,10 @@
  */
 void
 malloc_elem_init(struct malloc_elem *elem,
-		struct malloc_heap *heap, const struct rte_memzone *mz, size_t size)
+		struct malloc_heap *heap, const struct rte_memseg *ms, size_t size)
 {
 	elem->heap = heap;
-	elem->mz = mz;
+	elem->ms = ms;
 	elem->prev = NULL;
 	memset(&elem->free_list, 0, sizeof(elem->free_list));
 	elem->state = ELEM_FREE;
@@ -70,12 +69,12 @@ malloc_elem_init(struct malloc_elem *elem,
 }
 
 /*
- * initialise a dummy malloc_elem header for the end-of-memzone marker
+ * initialise a dummy malloc_elem header for the end-of-memseg marker
  */
 void
 malloc_elem_mkend(struct malloc_elem *elem, struct malloc_elem *prev)
 {
-	malloc_elem_init(elem, prev->heap, prev->mz, 0);
+	malloc_elem_init(elem, prev->heap, prev->ms, 0);
 	elem->prev = prev;
 	elem->state = ELEM_BUSY; /* mark busy so its never merged */
 }
@@ -86,12 +85,24 @@ malloc_elem_mkend(struct malloc_elem *elem, struct malloc_elem *prev)
  * fit, return NULL.
  */
 static void *
-elem_start_pt(struct malloc_elem *elem, size_t size, unsigned align)
+elem_start_pt(struct malloc_elem *elem, size_t size, unsigned align,
+		size_t bound)
 {
-	const uintptr_t end_pt = (uintptr_t)elem +
+	const size_t bmask = ~(bound - 1);
+	uintptr_t end_pt = (uintptr_t)elem +
 			elem->size - MALLOC_ELEM_TRAILER_LEN;
-	const uintptr_t new_data_start = RTE_ALIGN_FLOOR((end_pt - size), align);
-	const uintptr_t new_elem_start = new_data_start - MALLOC_ELEM_HEADER_LEN;
+	uintptr_t new_data_start = RTE_ALIGN_FLOOR((end_pt - size), align);
+	uintptr_t new_elem_start;
+
+	/* check boundary */
+	if ((new_data_start & bmask) != ((end_pt - 1) & bmask)) {
+		end_pt = RTE_ALIGN_FLOOR(end_pt, bound);
+		new_data_start = RTE_ALIGN_FLOOR((end_pt - size), align);
+		if (((end_pt - 1) & bmask) != (new_data_start & bmask))
+			return NULL;
+	}
+
+	new_elem_start = new_data_start - MALLOC_ELEM_HEADER_LEN;
 
 	/* if the new start point is before the exist start, it won't fit */
 	return (new_elem_start < (uintptr_t)elem) ? NULL : (void *)new_elem_start;
@@ -102,9 +113,10 @@ elem_start_pt(struct malloc_elem *elem, size_t size, unsigned align)
  * alignment request from the current element
  */
 int
-malloc_elem_can_hold(struct malloc_elem *elem, size_t size, unsigned align)
+malloc_elem_can_hold(struct malloc_elem *elem, size_t size,	unsigned align,
+		size_t bound)
 {
-	return elem_start_pt(elem, size, align) != NULL;
+	return elem_start_pt(elem, size, align, bound) != NULL;
 }
 
 /*
@@ -115,10 +127,10 @@ static void
 split_elem(struct malloc_elem *elem, struct malloc_elem *split_pt)
 {
 	struct malloc_elem *next_elem = RTE_PTR_ADD(elem, elem->size);
-	const unsigned old_elem_size = (uintptr_t)split_pt - (uintptr_t)elem;
-	const unsigned new_elem_size = elem->size - old_elem_size;
+	const size_t old_elem_size = (uintptr_t)split_pt - (uintptr_t)elem;
+	const size_t new_elem_size = elem->size - old_elem_size;
 
-	malloc_elem_init(split_pt, elem->heap, elem->mz, new_elem_size);
+	malloc_elem_init(split_pt, elem->heap, elem->ms, new_elem_size);
 	split_pt->prev = elem;
 	next_elem->prev = split_pt;
 	elem->size = old_elem_size;
@@ -168,8 +180,9 @@ malloc_elem_free_list_index(size_t size)
 void
 malloc_elem_free_list_insert(struct malloc_elem *elem)
 {
-	size_t idx = malloc_elem_free_list_index(elem->size - MALLOC_ELEM_HEADER_LEN);
+	size_t idx;
 
+	idx = malloc_elem_free_list_index(elem->size - MALLOC_ELEM_HEADER_LEN);
 	elem->state = ELEM_FREE;
 	LIST_INSERT_HEAD(&elem->heap->free_head[idx], elem, free_list);
 }
@@ -190,12 +203,26 @@ elem_free_list_remove(struct malloc_elem *elem)
  * is not done here, as it's done there previously.
  */
 struct malloc_elem *
-malloc_elem_alloc(struct malloc_elem *elem, size_t size, unsigned align)
+malloc_elem_alloc(struct malloc_elem *elem, size_t size, unsigned align,
+		size_t bound)
 {
-	struct malloc_elem *new_elem = elem_start_pt(elem, size, align);
-	const unsigned old_elem_size = (uintptr_t)new_elem - (uintptr_t)elem;
+	struct malloc_elem *new_elem = elem_start_pt(elem, size, align, bound);
+	const size_t old_elem_size = (uintptr_t)new_elem - (uintptr_t)elem;
+	const size_t trailer_size = elem->size - old_elem_size - size -
+		MALLOC_ELEM_OVERHEAD;
 
-	if (old_elem_size < MALLOC_ELEM_OVERHEAD + MIN_DATA_SIZE){
+	elem_free_list_remove(elem);
+
+	if (trailer_size > MALLOC_ELEM_OVERHEAD + MIN_DATA_SIZE) {
+		/* split it, too much free space after elem */
+		struct malloc_elem *new_free_elem =
+				RTE_PTR_ADD(new_elem, size + MALLOC_ELEM_OVERHEAD);
+
+		split_elem(elem, new_free_elem);
+		malloc_elem_free_list_insert(new_free_elem);
+	}
+
+	if (old_elem_size < MALLOC_ELEM_OVERHEAD + MIN_DATA_SIZE) {
 		/* don't split it, pad the element instead */
 		elem->state = ELEM_BUSY;
 		elem->pad = old_elem_size;
@@ -208,8 +235,6 @@ malloc_elem_alloc(struct malloc_elem *elem, size_t size, unsigned align)
 			new_elem->size = elem->size - elem->pad;
 			set_header(new_elem);
 		}
-		/* remove element from free list */
-		elem_free_list_remove(elem);
 
 		return new_elem;
 	}
@@ -219,7 +244,6 @@ malloc_elem_alloc(struct malloc_elem *elem, size_t size, unsigned align)
 	 * Re-insert original element, in case its new size makes it
 	 * belong on a different list.
 	 */
-	elem_free_list_remove(elem);
 	split_elem(elem, new_elem);
 	new_elem->state = ELEM_BUSY;
 	malloc_elem_free_list_insert(elem);

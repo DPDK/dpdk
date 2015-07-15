@@ -47,9 +47,9 @@ enum elem_state {
 
 struct malloc_elem {
 	struct malloc_heap *heap;
-	struct malloc_elem *volatile prev;      /* points to prev elem in memzone */
+	struct malloc_elem *volatile prev;      /* points to prev elem in memseg */
 	LIST_ENTRY(malloc_elem) free_list;      /* list of free elements in heap */
-	const struct rte_memzone *mz;
+	const struct rte_memseg *ms;
 	volatile enum elem_state state;
 	uint32_t pad;
 	size_t size;
@@ -136,11 +136,11 @@ malloc_elem_from_data(const void *data)
 void
 malloc_elem_init(struct malloc_elem *elem,
 		struct malloc_heap *heap,
-		const struct rte_memzone *mz,
+		const struct rte_memseg *ms,
 		size_t size);
 
 /*
- * initialise a dummy malloc_elem header for the end-of-memzone marker
+ * initialise a dummy malloc_elem header for the end-of-memseg marker
  */
 void
 malloc_elem_mkend(struct malloc_elem *elem,
@@ -151,14 +151,16 @@ malloc_elem_mkend(struct malloc_elem *elem,
  * of the requested size and with the requested alignment
  */
 int
-malloc_elem_can_hold(struct malloc_elem *elem, size_t size, unsigned align);
+malloc_elem_can_hold(struct malloc_elem *elem, size_t size,
+		unsigned align, size_t bound);
 
 /*
  * reserve a block of data in an existing malloc_elem. If the malloc_elem
  * is much larger than the data block requested, we split the element in two.
  */
 struct malloc_elem *
-malloc_elem_alloc(struct malloc_elem *elem, size_t size, unsigned align);
+malloc_elem_alloc(struct malloc_elem *elem, size_t size,
+		unsigned align, size_t bound);
 
 /*
  * free a malloc_elem block by adding it to the free list. If the

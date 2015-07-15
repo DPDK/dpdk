@@ -73,9 +73,6 @@ struct rte_mem_config {
 	struct rte_memseg memseg[RTE_MAX_MEMSEG];    /**< Physmem descriptors. */
 	struct rte_memzone memzone[RTE_MAX_MEMZONE]; /**< Memzone descriptors. */
 
-	/* Runtime Physmem descriptors. */
-	struct rte_memseg free_memseg[RTE_MAX_MEMSEG];
-
 	struct rte_tailq_head tailq_head[RTE_MAX_TAILQ]; /**< Tailqs for objects */
 
 	/* Heaps of Malloc per socket */

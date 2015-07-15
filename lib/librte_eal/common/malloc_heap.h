@@ -53,15 +53,15 @@ malloc_get_numa_socket(void)
 }
 
 void *
-malloc_heap_alloc(struct malloc_heap *heap, const char *type,
-		size_t size, unsigned align);
+malloc_heap_alloc(struct malloc_heap *heap,	const char *type, size_t size,
+		unsigned flags, size_t align, size_t bound);
 
 int
 malloc_heap_get_stats(const struct malloc_heap *heap,
 		struct rte_malloc_socket_stats *socket_stats);
 
 int
-rte_eal_heap_memzone_init(void);
+rte_eal_malloc_heap_init(void);
 
 #ifdef __cplusplus
 }

@@ -50,15 +50,15 @@
 #include <rte_string_fns.h>
 #include <rte_common.h>
 
+#include "malloc_heap.h"
+#include "malloc_elem.h"
 #include "eal_private.h"
-
-/* internal copy of free memory segments */
-static struct rte_memseg *free_memseg = NULL;
 
 static inline const struct rte_memzone *
 memzone_lookup_thread_unsafe(const char *name)
 {
 	const struct rte_mem_config *mcfg;
+	const struct rte_memzone *mz;
 	unsigned i = 0;
 
 	/* get pointer to global configuration */
@@ -68,62 +68,50 @@ memzone_lookup_thread_unsafe(const char *name)
 	 * the algorithm is not optimal (linear), but there are few
 	 * zones and this function should be called at init only
 	 */
-	for (i = 0; i < RTE_MAX_MEMZONE && mcfg->memzone[i].addr != NULL; i++) {
-		if (!strncmp(name, mcfg->memzone[i].name, RTE_MEMZONE_NAMESIZE))
+	for (i = 0; i < RTE_MAX_MEMZONE; i++) {
+		mz = &mcfg->memzone[i];
+		if (mz->addr != NULL && !strncmp(name, mz->name, RTE_MEMZONE_NAMESIZE))
 			return &mcfg->memzone[i];
 	}
 
 	return NULL;
 }
 
-/*
- * Helper function for memzone_reserve_aligned_thread_unsafe().
- * Calculate address offset from the start of the segment.
- * Align offset in that way that it satisfy istart alignmnet and
- * buffer of the  requested length would not cross specified boundary.
- */
-static inline phys_addr_t
-align_phys_boundary(const struct rte_memseg *ms, size_t len, size_t align,
-	size_t bound)
+/* This function will return the greatest free block if a heap has been
+ * specified. If no heap has been specified, it will return the heap and
+ * length of the greatest free block available in all heaps */
+static size_t
+find_heap_max_free_elem(int *s, unsigned align)
 {
-	phys_addr_t addr_offset, bmask, end, start;
-	size_t step;
+	struct rte_mem_config *mcfg;
+	struct rte_malloc_socket_stats stats;
+	int i, socket = *s;
+	size_t len = 0;
 
-	step = RTE_MAX(align, bound);
-	bmask = ~((phys_addr_t)bound - 1);
+	/* get pointer to global configuration */
+	mcfg = rte_eal_get_configuration()->mem_config;
 
-	/* calculate offset to closest alignment */
-	start = RTE_ALIGN_CEIL(ms->phys_addr, align);
-	addr_offset = start - ms->phys_addr;
+	for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
+		if ((socket != SOCKET_ID_ANY) && (socket != i))
+			continue;
 
-	while (addr_offset + len < ms->len) {
-
-		/* check, do we meet boundary condition */
-		end = start + len - (len != 0);
-		if ((start & bmask) == (end & bmask))
-			break;
-
-		/* calculate next offset */
-		start = RTE_ALIGN_CEIL(start + 1, step);
-		addr_offset = start - ms->phys_addr;
+		malloc_heap_get_stats(&mcfg->malloc_heaps[i], &stats);
+		if (stats.greatest_free_size > len) {
+			len = stats.greatest_free_size;
+			*s = i;
+		}
 	}
 
-	return addr_offset;
+	return (len - MALLOC_ELEM_OVERHEAD - align);
 }
 
 static const struct rte_memzone *
 memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
-		int socket_id, uint64_t size_mask, unsigned align,
-		unsigned bound)
+		int socket_id, unsigned flags, unsigned align, unsigned bound)
 {
 	struct rte_mem_config *mcfg;
-	unsigned i = 0;
-	int memseg_idx = -1;
-	uint64_t addr_offset, seg_offset = 0;
 	size_t requested_len;
-	size_t memseg_len = 0;
-	phys_addr_t memseg_physaddr;
-	void *memseg_addr;
+	int socket, i;
 
 	/* get pointer to global configuration */
 	mcfg = rte_eal_get_configuration()->mem_config;
@@ -155,7 +143,6 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	if (align < RTE_CACHE_LINE_SIZE)
 		align = RTE_CACHE_LINE_SIZE;
 
-
 	/* align length on cache boundary. Check for overflow before doing so */
 	if (len > SIZE_MAX - RTE_CACHE_LINE_MASK) {
 		rte_errno = EINVAL; /* requested size too big */
@@ -169,108 +156,65 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	requested_len = RTE_MAX((size_t)RTE_CACHE_LINE_SIZE,  len);
 
 	/* check that boundary condition is valid */
-	if (bound != 0 &&
-			(requested_len > bound || !rte_is_power_of_2(bound))) {
+	if (bound != 0 && (requested_len > bound || !rte_is_power_of_2(bound))) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
 
-	/* find the smallest segment matching requirements */
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		/* last segment */
-		if (free_memseg[i].addr == NULL)
-			break;
+	if ((socket_id != SOCKET_ID_ANY) && (socket_id >= RTE_MAX_NUMA_NODES)) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
 
-		/* empty segment, skip it */
-		if (free_memseg[i].len == 0)
-			continue;
+	if (!rte_eal_has_hugepages())
+		socket_id = SOCKET_ID_ANY;
 
-		/* bad socket ID */
-		if (socket_id != SOCKET_ID_ANY &&
-		    free_memseg[i].socket_id != SOCKET_ID_ANY &&
-		    socket_id != free_memseg[i].socket_id)
-			continue;
+	if (len == 0) {
+		if (bound != 0)
+			requested_len = bound;
+		else
+			requested_len = find_heap_max_free_elem(&socket_id, align);
+	}
 
-		/*
-		 * calculate offset to closest alignment that
-		 * meets boundary conditions.
-		 */
-		addr_offset = align_phys_boundary(free_memseg + i,
-			requested_len, align, bound);
+	if (socket_id == SOCKET_ID_ANY)
+		socket = malloc_get_numa_socket();
+	else
+		socket = socket_id;
 
-		/* check len */
-		if ((requested_len + addr_offset) > free_memseg[i].len)
-			continue;
+	/* allocate memory on heap */
+	void *mz_addr = malloc_heap_alloc(&mcfg->malloc_heaps[socket], NULL,
+			requested_len, flags, align, bound);
 
-		if ((size_mask & free_memseg[i].hugepage_sz) == 0)
-			continue;
+	if ((mz_addr == NULL) && (socket_id == SOCKET_ID_ANY)) {
+		/* try other heaps */
+		for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
+			if (socket == i)
+				continue;
 
-		/* this segment is the best until now */
-		if (memseg_idx == -1) {
-			memseg_idx = i;
-			memseg_len = free_memseg[i].len;
-			seg_offset = addr_offset;
-		}
-		/* find the biggest contiguous zone */
-		else if (len == 0) {
-			if (free_memseg[i].len > memseg_len) {
-				memseg_idx = i;
-				memseg_len = free_memseg[i].len;
-				seg_offset = addr_offset;
-			}
-		}
-		/*
-		 * find the smallest (we already checked that current
-		 * zone length is > len
-		 */
-		else if (free_memseg[i].len + align < memseg_len ||
-				(free_memseg[i].len <= memseg_len + align &&
-				addr_offset < seg_offset)) {
-			memseg_idx = i;
-			memseg_len = free_memseg[i].len;
-			seg_offset = addr_offset;
+			mz_addr = malloc_heap_alloc(&mcfg->malloc_heaps[i],
+					NULL, requested_len, flags, align, bound);
+			if (mz_addr != NULL)
+				break;
 		}
 	}
 
-	/* no segment found */
-	if (memseg_idx == -1) {
+	if (mz_addr == NULL) {
 		rte_errno = ENOMEM;
 		return NULL;
 	}
 
-	/* save aligned physical and virtual addresses */
-	memseg_physaddr = free_memseg[memseg_idx].phys_addr + seg_offset;
-	memseg_addr = RTE_PTR_ADD(free_memseg[memseg_idx].addr,
-			(uintptr_t) seg_offset);
-
-	/* if we are looking for a biggest memzone */
-	if (len == 0) {
-		if (bound == 0)
-			requested_len = memseg_len - seg_offset;
-		else
-			requested_len = RTE_ALIGN_CEIL(memseg_physaddr + 1,
-				bound) - memseg_physaddr;
-	}
-
-	/* set length to correct value */
-	len = (size_t)seg_offset + requested_len;
-
-	/* update our internal state */
-	free_memseg[memseg_idx].len -= len;
-	free_memseg[memseg_idx].phys_addr += len;
-	free_memseg[memseg_idx].addr =
-		(char *)free_memseg[memseg_idx].addr + len;
+	const struct malloc_elem *elem = malloc_elem_from_data(mz_addr);
 
 	/* fill the zone in config */
 	struct rte_memzone *mz = &mcfg->memzone[mcfg->memzone_idx++];
 	snprintf(mz->name, sizeof(mz->name), "%s", name);
-	mz->phys_addr = memseg_physaddr;
-	mz->addr = memseg_addr;
-	mz->len = requested_len;
-	mz->hugepage_sz = free_memseg[memseg_idx].hugepage_sz;
-	mz->socket_id = free_memseg[memseg_idx].socket_id;
+	mz->phys_addr = rte_malloc_virt2phy(mz_addr);
+	mz->addr = mz_addr;
+	mz->len = (requested_len == 0 ? elem->size : requested_len);
+	mz->hugepage_sz = elem->ms->hugepage_sz;
+	mz->socket_id = elem->ms->socket_id;
 	mz->flags = 0;
-	mz->memseg_id = memseg_idx;
+	mz->memseg_id = elem->ms - rte_eal_get_configuration()->mem_config->memseg;
 
 	return mz;
 }
@@ -282,26 +226,6 @@ rte_memzone_reserve_thread_safe(const char *name, size_t len,
 {
 	struct rte_mem_config *mcfg;
 	const struct rte_memzone *mz = NULL;
-	uint64_t size_mask = 0;
-
-	if (flags & RTE_MEMZONE_256KB)
-		size_mask |= RTE_PGSIZE_256K;
-	if (flags & RTE_MEMZONE_2MB)
-		size_mask |= RTE_PGSIZE_2M;
-	if (flags & RTE_MEMZONE_16MB)
-		size_mask |= RTE_PGSIZE_16M;
-	if (flags & RTE_MEMZONE_256MB)
-		size_mask |= RTE_PGSIZE_256M;
-	if (flags & RTE_MEMZONE_512MB)
-		size_mask |= RTE_PGSIZE_512M;
-	if (flags & RTE_MEMZONE_1GB)
-		size_mask |= RTE_PGSIZE_1G;
-	if (flags & RTE_MEMZONE_4GB)
-		size_mask |= RTE_PGSIZE_4G;
-	if (flags & RTE_MEMZONE_16GB)
-		size_mask |= RTE_PGSIZE_16G;
-	if (!size_mask)
-		size_mask = UINT64_MAX;
 
 	/* get pointer to global configuration */
 	mcfg = rte_eal_get_configuration()->mem_config;
@@ -309,18 +233,7 @@ rte_memzone_reserve_thread_safe(const char *name, size_t len,
 	rte_rwlock_write_lock(&mcfg->mlock);
 
 	mz = memzone_reserve_aligned_thread_unsafe(
-		name, len, socket_id, size_mask, align, bound);
-
-	/*
-	 * If we failed to allocate the requested page size, and the
-	 * RTE_MEMZONE_SIZE_HINT_ONLY flag is specified, try allocating
-	 * again.
-	 */
-	if (!mz && rte_errno == ENOMEM && size_mask != UINT64_MAX &&
-	    flags & RTE_MEMZONE_SIZE_HINT_ONLY) {
-		mz = memzone_reserve_aligned_thread_unsafe(
-			name, len, socket_id, UINT64_MAX, align, bound);
-	}
+		name, len, socket_id, flags, align, bound);
 
 	rte_rwlock_write_unlock(&mcfg->mlock);
 
@@ -412,45 +325,6 @@ rte_memzone_dump(FILE *f)
 }
 
 /*
- * called by init: modify the free memseg list to have cache-aligned
- * addresses and cache-aligned lengths
- */
-static int
-memseg_sanitize(struct rte_memseg *memseg)
-{
-	unsigned phys_align;
-	unsigned virt_align;
-	unsigned off;
-
-	phys_align = memseg->phys_addr & RTE_CACHE_LINE_MASK;
-	virt_align = (unsigned long)memseg->addr & RTE_CACHE_LINE_MASK;
-
-	/*
-	 * sanity check: phys_addr and addr must have the same
-	 * alignment
-	 */
-	if (phys_align != virt_align)
-		return -1;
-
-	/* memseg is really too small, don't bother with it */
-	if (memseg->len < (2 * RTE_CACHE_LINE_SIZE)) {
-		memseg->len = 0;
-		return 0;
-	}
-
-	/* align start address */
-	off = (RTE_CACHE_LINE_SIZE - phys_align) & RTE_CACHE_LINE_MASK;
-	memseg->phys_addr += off;
-	memseg->addr = (char *)memseg->addr + off;
-	memseg->len -= off;
-
-	/* align end address */
-	memseg->len &= ~((uint64_t)RTE_CACHE_LINE_MASK);
-
-	return 0;
-}
-
-/*
  * Init the memzone subsystem
  */
 int
@@ -458,13 +332,9 @@ rte_eal_memzone_init(void)
 {
 	struct rte_mem_config *mcfg;
 	const struct rte_memseg *memseg;
-	unsigned i = 0;
 
 	/* get pointer to global configuration */
 	mcfg = rte_eal_get_configuration()->mem_config;
-
-	/* mirror the runtime memsegs from config */
-	free_memseg = mcfg->free_memseg;
 
 	/* secondary processes don't need to initialise anything */
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
@@ -478,33 +348,13 @@ rte_eal_memzone_init(void)
 
 	rte_rwlock_write_lock(&mcfg->mlock);
 
-	/* fill in uninitialized free_memsegs */
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		if (memseg[i].addr == NULL)
-			break;
-		if (free_memseg[i].addr != NULL)
-			continue;
-		memcpy(&free_memseg[i], &memseg[i], sizeof(struct rte_memseg));
-	}
-
-	/* make all zones cache-aligned */
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		if (free_memseg[i].addr == NULL)
-			break;
-		if (memseg_sanitize(&free_memseg[i]) < 0) {
-			RTE_LOG(ERR, EAL, "%s(): Sanity check failed\n", __func__);
-			rte_rwlock_write_unlock(&mcfg->mlock);
-			return -1;
-		}
-	}
-
 	/* delete all zones */
 	mcfg->memzone_idx = 0;
 	memset(mcfg->memzone, 0, sizeof(mcfg->memzone));
 
 	rte_rwlock_write_unlock(&mcfg->mlock);
 
-	return 0;
+	return rte_eal_malloc_heap_init();
 }
 
 /* Walk all reserved memory zones */

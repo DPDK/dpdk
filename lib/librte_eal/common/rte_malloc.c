@@ -39,7 +39,6 @@
 
 #include <rte_memcpy.h>
 #include <rte_memory.h>
-#include <rte_memzone.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_branch_prediction.h>
@@ -77,6 +76,9 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket_arg)
 	if (size == 0 || (align && !rte_is_power_of_2(align)))
 		return NULL;
 
+	if (!rte_eal_has_hugepages())
+		socket_arg = SOCKET_ID_ANY;
+
 	if (socket_arg == SOCKET_ID_ANY)
 		socket = malloc_get_numa_socket();
 	else
@@ -87,7 +89,7 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket_arg)
 		return NULL;
 
 	ret = malloc_heap_alloc(&mcfg->malloc_heaps[socket], type,
-				size, align == 0 ? 1 : align);
+				size, 0, align == 0 ? 1 : align, 0);
 	if (ret != NULL || socket_arg != SOCKET_ID_ANY)
 		return ret;
 
@@ -98,7 +100,7 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket_arg)
 			continue;
 
 		ret = malloc_heap_alloc(&mcfg->malloc_heaps[i], type,
-					size, align == 0 ? 1 : align);
+					size, 0, align == 0 ? 1 : align, 0);
 		if (ret != NULL)
 			return ret;
 	}
@@ -256,5 +258,5 @@ rte_malloc_virt2phy(const void *addr)
 	const struct malloc_elem *elem = malloc_elem_from_data(addr);
 	if (elem == NULL)
 		return 0;
-	return elem->mz->phys_addr + ((uintptr_t)addr - (uintptr_t)elem->mz->addr);
+	return elem->ms->phys_addr + ((uintptr_t)addr - (uintptr_t)elem->ms->addr);
 }

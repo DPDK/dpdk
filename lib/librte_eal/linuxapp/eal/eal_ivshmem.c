@@ -725,15 +725,6 @@ map_all_segments(void)
 		 * expect memsegs to be empty */
 		memcpy(&mcfg->memseg[i], &ms,
 				sizeof(struct rte_memseg));
-		memcpy(&mcfg->free_memseg[i], &ms,
-				sizeof(struct rte_memseg));
-
-
-		/* adjust the free_memseg so that there's no free space left */
-		mcfg->free_memseg[i].ioremap_addr += mcfg->free_memseg[i].len;
-		mcfg->free_memseg[i].phys_addr += mcfg->free_memseg[i].len;
-		mcfg->free_memseg[i].addr_64 += mcfg->free_memseg[i].len;
-		mcfg->free_memseg[i].len = 0;
 
 		close(fd);
 

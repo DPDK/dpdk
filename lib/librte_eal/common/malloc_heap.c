@@ -39,7 +39,6 @@
 #include <sys/queue.h>
 
 #include <rte_memory.h>
-#include <rte_memzone.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_launch.h>
@@ -54,123 +53,125 @@
 #include "malloc_elem.h"
 #include "malloc_heap.h"
 
-/* since the memzone size starts with a digit, it will appear unquoted in
- * rte_config.h, so quote it so it can be passed to rte_str_to_size */
-#define MALLOC_MEMZONE_SIZE RTE_STR(RTE_MALLOC_MEMZONE_SIZE)
-
-/*
- * returns the configuration setting for the memzone size as a size_t value
- */
-static inline size_t
-get_malloc_memzone_size(void)
+static unsigned
+check_hugepage_sz(unsigned flags, uint64_t hugepage_sz)
 {
-	return rte_str_to_size(MALLOC_MEMZONE_SIZE);
+	unsigned check_flag = 0;
+
+	if (!(flags & ~RTE_MEMZONE_SIZE_HINT_ONLY))
+		return 1;
+
+	switch (hugepage_sz) {
+	case RTE_PGSIZE_256K:
+		check_flag = RTE_MEMZONE_256KB;
+		break;
+	case RTE_PGSIZE_2M:
+		check_flag = RTE_MEMZONE_2MB;
+		break;
+	case RTE_PGSIZE_16M:
+		check_flag = RTE_MEMZONE_16MB;
+		break;
+	case RTE_PGSIZE_256M:
+		check_flag = RTE_MEMZONE_256MB;
+		break;
+	case RTE_PGSIZE_512M:
+		check_flag = RTE_MEMZONE_512MB;
+		break;
+	case RTE_PGSIZE_1G:
+		check_flag = RTE_MEMZONE_1GB;
+		break;
+	case RTE_PGSIZE_4G:
+		check_flag = RTE_MEMZONE_4GB;
+		break;
+	case RTE_PGSIZE_16G:
+		check_flag = RTE_MEMZONE_16GB;
+	}
+
+	return (check_flag & flags);
 }
 
 /*
- * reserve an extra memory zone and make it available for use by a particular
- * heap. This reserves the zone and sets a dummy malloc_elem header at the end
+ * Expand the heap with a memseg.
+ * This reserves the zone and sets a dummy malloc_elem header at the end
  * to prevent overflow. The rest of the zone is added to free list as a single
  * large free block
  */
-static int
-malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
+static void
+malloc_heap_add_memseg(struct malloc_heap *heap, struct rte_memseg *ms)
 {
-	const unsigned mz_flags = 0;
-	const size_t block_size = get_malloc_memzone_size();
-	/* ensure the data we want to allocate will fit in the memzone */
-	const size_t min_size = size + align + MALLOC_ELEM_OVERHEAD * 2;
-	const struct rte_memzone *mz = NULL;
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	unsigned numa_socket = heap - mcfg->malloc_heaps;
-
-	size_t mz_size = min_size;
-	if (mz_size < block_size)
-		mz_size = block_size;
-
-	char mz_name[RTE_MEMZONE_NAMESIZE];
-	snprintf(mz_name, sizeof(mz_name), "MALLOC_S%u_HEAP_%u",
-		     numa_socket, heap->mz_count++);
-
-	/* try getting a block. if we fail and we don't need as big a block
-	 * as given in the config, we can shrink our request and try again
-	 */
-	do {
-		mz = rte_memzone_reserve(mz_name, mz_size, numa_socket,
-					 mz_flags);
-		if (mz == NULL)
-			mz_size /= 2;
-	} while (mz == NULL && mz_size > min_size);
-	if (mz == NULL)
-		return -1;
-
 	/* allocate the memory block headers, one at end, one at start */
-	struct malloc_elem *start_elem = (struct malloc_elem *)mz->addr;
-	struct malloc_elem *end_elem = RTE_PTR_ADD(mz->addr,
-			mz_size - MALLOC_ELEM_OVERHEAD);
+	struct malloc_elem *start_elem = (struct malloc_elem *)ms->addr;
+	struct malloc_elem *end_elem = RTE_PTR_ADD(ms->addr,
+			ms->len - MALLOC_ELEM_OVERHEAD);
 	end_elem = RTE_PTR_ALIGN_FLOOR(end_elem, RTE_CACHE_LINE_SIZE);
+	const size_t elem_size = (uintptr_t)end_elem - (uintptr_t)start_elem;
 
-	const unsigned elem_size = (uintptr_t)end_elem - (uintptr_t)start_elem;
-	malloc_elem_init(start_elem, heap, mz, elem_size);
+	malloc_elem_init(start_elem, heap, ms, elem_size);
 	malloc_elem_mkend(end_elem, start_elem);
 	malloc_elem_free_list_insert(start_elem);
 
-	/* increase heap total size by size of new memzone */
-	heap->total_size+=mz_size - MALLOC_ELEM_OVERHEAD;
-	return 0;
+	heap->total_size += elem_size;
 }
 
 /*
  * Iterates through the freelist for a heap to find a free element
  * which can store data of the required size and with the requested alignment.
+ * If size is 0, find the biggest available elem.
  * Returns null on failure, or pointer to element on success.
  */
 static struct malloc_elem *
-find_suitable_element(struct malloc_heap *heap, size_t size, unsigned align)
+find_suitable_element(struct malloc_heap *heap, size_t size,
+		unsigned flags, size_t align, size_t bound)
 {
 	size_t idx;
-	struct malloc_elem *elem;
+	struct malloc_elem *elem, *alt_elem = NULL;
 
 	for (idx = malloc_elem_free_list_index(size);
-		idx < RTE_HEAP_NUM_FREELISTS; idx++)
-	{
+			idx < RTE_HEAP_NUM_FREELISTS; idx++) {
 		for (elem = LIST_FIRST(&heap->free_head[idx]);
-			!!elem; elem = LIST_NEXT(elem, free_list))
-		{
-			if (malloc_elem_can_hold(elem, size, align))
-				return elem;
+				!!elem; elem = LIST_NEXT(elem, free_list)) {
+			if (malloc_elem_can_hold(elem, size, align, bound)) {
+				if (check_hugepage_sz(flags, elem->ms->hugepage_sz))
+					return elem;
+				if (alt_elem == NULL)
+					alt_elem = elem;
+			}
 		}
 	}
+
+	if ((alt_elem != NULL) && (flags & RTE_MEMZONE_SIZE_HINT_ONLY))
+		return alt_elem;
+
 	return NULL;
 }
 
 /*
- * Main function called by malloc to allocate a block of memory from the
- * heap. It locks the free list, scans it, and adds a new memzone if the
- * scan fails. Once the new memzone is added, it re-scans and should return
+ * Main function to allocate a block of memory from the heap.
+ * It locks the free list, scans it, and adds a new memseg if the
+ * scan fails. Once the new memseg is added, it re-scans and should return
  * the new element after releasing the lock.
  */
 void *
 malloc_heap_alloc(struct malloc_heap *heap,
-		const char *type __attribute__((unused)), size_t size, unsigned align)
+		const char *type __attribute__((unused)), size_t size, unsigned flags,
+		size_t align, size_t bound)
 {
+	struct malloc_elem *elem;
+
 	size = RTE_CACHE_LINE_ROUNDUP(size);
 	align = RTE_CACHE_LINE_ROUNDUP(align);
-	rte_spinlock_lock(&heap->lock);
-	struct malloc_elem *elem = find_suitable_element(heap, size, align);
-	if (elem == NULL){
-		if ((malloc_heap_add_memzone(heap, size, align)) == 0)
-			elem = find_suitable_element(heap, size, align);
-	}
 
-	if (elem != NULL){
-		elem = malloc_elem_alloc(elem, size, align);
+	rte_spinlock_lock(&heap->lock);
+
+	elem = find_suitable_element(heap, size, flags, align, bound);
+	if (elem != NULL) {
+		elem = malloc_elem_alloc(elem, size, align, bound);
 		/* increase heap's count of allocated elements */
 		heap->alloc_count++;
 	}
 	rte_spinlock_unlock(&heap->lock);
-	return elem == NULL ? NULL : (void *)(&elem[1]);
 
+	return elem == NULL ? NULL : (void *)(&elem[1]);
 }
 
 /*
@@ -204,5 +205,23 @@ malloc_heap_get_stats(const struct malloc_heap *heap,
 	socket_stats->heap_allocsz_bytes = (socket_stats->heap_totalsz_bytes -
 			socket_stats->heap_freesz_bytes);
 	socket_stats->alloc_count = heap->alloc_count;
+	return 0;
+}
+
+int
+rte_eal_malloc_heap_init(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	unsigned ms_cnt;
+	struct rte_memseg *ms;
+
+	if (mcfg == NULL)
+		return -1;
+
+	for (ms = &mcfg->memseg[0], ms_cnt = 0;
+			(ms_cnt < RTE_MAX_MEMSEG) && (ms->len > 0);
+			ms_cnt++, ms++)
+		malloc_heap_add_memseg(&mcfg->malloc_heaps[ms->socket_id], ms);
+
 	return 0;
 }

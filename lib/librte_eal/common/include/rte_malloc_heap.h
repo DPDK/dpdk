@@ -40,7 +40,7 @@
 #include <rte_memory.h>
 
 /* Number of free lists per heap, grouped by size. */
-#define RTE_HEAP_NUM_FREELISTS  5
+#define RTE_HEAP_NUM_FREELISTS  13
 
 /**
  * Structure to hold malloc heap
@@ -48,7 +48,6 @@
 struct malloc_heap {
 	rte_spinlock_t lock;
 	LIST_HEAD(, malloc_elem) free_head[RTE_HEAP_NUM_FREELISTS];
-	unsigned mz_count;
 	unsigned alloc_count;
 	size_t total_size;
 } __rte_cache_aligned;
