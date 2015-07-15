@@ -707,6 +707,9 @@ struct _kc_ethtool_pauseparam {
        (LINUX_VERSION_CODE < KERNEL_VERSION(3,1,0)))
 /* SLES11 SP3 is at least 3.0.61+ based */
 #define SLE_VERSION_CODE SLE_VERSION(11,3,0)
+#elif ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,28) )
+/* SLES12 is at least 3.12.28+ based */
+#define SLE_VERSION_CODE SLE_VERSION(12,0,0)
 #endif /* LINUX_VERSION_CODE == KERNEL_VERSION(x,y,z) */
 #endif /* CONFIG_SUSE_KERNEL */
 #ifndef SLE_VERSION_CODE
@@ -3864,6 +3867,7 @@ static inline struct sk_buff *__kc__vlan_hwaccel_put_tag(struct sk_buff *skb,
 #if (!(UBUNTU_KERNEL_CODE >= UBUNTU_KERNEL_VERSION(3,13,0,30,54) \
     && (UBUNTU_RELEASE_CODE == UBUNTU_RELEASE_VERSION(12,4) \
      || UBUNTU_RELEASE_CODE == UBUNTU_RELEASE_VERSION(14,4))))
+#if (!(SLE_VERSION_CODE == SLE_VERSION(12,0,0)))
 #ifdef NETIF_F_RXHASH
 #define PKT_HASH_TYPE_L3 0
 static inline void
@@ -3872,6 +3876,7 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 	skb->rxhash = hash;
 }
 #endif /* NETIF_F_RXHASH */
+#endif /* < SLES12 */
 #endif /* < 3.13.0-30.54 (Ubuntu 14.04) */
 #endif /* < RHEL7 */
 #endif /* < 3.14.0 */
