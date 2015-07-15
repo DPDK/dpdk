@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -51,6 +51,7 @@
 #include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_common.h>
+#include <rte_errno.h>
 
 #include <rte_memory.h>
 #include <rte_eal.h>
@@ -63,6 +64,7 @@
 
 
 static int eth_virtio_dev_init(struct rte_eth_dev *eth_dev);
+static int eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev);
 static int  virtio_dev_configure(struct rte_eth_dev *dev);
 static int  virtio_dev_start(struct rte_eth_dev *dev);
 static void virtio_dev_stop(struct rte_eth_dev *dev);
@@ -324,8 +326,12 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	mz = rte_memzone_reserve_aligned(vq_name, vq->vq_ring_size,
 		socket_id, 0, VIRTIO_PCI_VRING_ALIGN);
 	if (mz == NULL) {
-		rte_free(vq);
-		return -ENOMEM;
+		if (rte_errno == EEXIST)
+			mz = rte_memzone_lookup(vq_name);
+		if (mz == NULL) {
+			rte_free(vq);
+			return -ENOMEM;
+		}
 	}
 
 	/*
@@ -358,8 +364,13 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			vq_size * hw->vtnet_hdr_size,
 			socket_id, 0, RTE_CACHE_LINE_SIZE);
 		if (vq->virtio_net_hdr_mz == NULL) {
-			rte_free(vq);
-			return -ENOMEM;
+			if (rte_errno == EEXIST)
+				vq->virtio_net_hdr_mz =
+					rte_memzone_lookup(vq_name);
+			if (vq->virtio_net_hdr_mz == NULL) {
+				rte_free(vq);
+				return -ENOMEM;
+			}
 		}
 		vq->virtio_net_hdr_mem =
 			vq->virtio_net_hdr_mz->phys_addr;
@@ -372,8 +383,13 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		vq->virtio_net_hdr_mz = rte_memzone_reserve_aligned(vq_name,
 			PAGE_SIZE, socket_id, 0, RTE_CACHE_LINE_SIZE);
 		if (vq->virtio_net_hdr_mz == NULL) {
-			rte_free(vq);
-			return -ENOMEM;
+			if (rte_errno == EEXIST)
+				vq->virtio_net_hdr_mz =
+					rte_memzone_lookup(vq_name);
+			if (vq->virtio_net_hdr_mz == NULL) {
+				rte_free(vq);
+				return -ENOMEM;
+			}
 		}
 		vq->virtio_net_hdr_mem =
 			vq->virtio_net_hdr_mz->phys_addr;
@@ -1250,12 +1266,52 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int
+eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev;
+	struct virtio_hw *hw = eth_dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		return -EPERM;
+
+	if (hw->started == 1) {
+		virtio_dev_stop(eth_dev);
+		virtio_dev_close(eth_dev);
+	}
+	pci_dev = eth_dev->pci_dev;
+
+	eth_dev->dev_ops = NULL;
+	eth_dev->tx_pkt_burst = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+
+	rte_free(hw->cvq);
+	hw->cvq = NULL;
+
+	rte_free(eth_dev->data->mac_addrs);
+	eth_dev->data->mac_addrs = NULL;
+
+	/* reset interrupt callback  */
+	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
+		rte_intr_callback_unregister(&pci_dev->intr_handle,
+						virtio_interrupt_handler,
+						eth_dev);
+
+	PMD_INIT_LOG(DEBUG, "dev_uninit completed");
+
+	return 0;
+}
+
 static struct eth_driver rte_virtio_pmd = {
 	.pci_drv = {
 		.name = "rte_virtio_pmd",
 		.id_table = pci_id_virtio_map,
+		.drv_flags = RTE_PCI_DRV_DETACHABLE,
 	},
 	.eth_dev_init = eth_virtio_dev_init,
+	.eth_dev_uninit = eth_virtio_dev_uninit,
 	.dev_private_size = sizeof(struct virtio_hw),
 };
 
@@ -1398,6 +1454,8 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 			     "Before freeing rxq[%d] used and unused buf", i);
 		VIRTQUEUE_DUMP((struct virtqueue *)dev->data->rx_queues[i]);
 
+		PMD_INIT_LOG(DEBUG, "rx_queues[%d]=%p",
+				i, dev->data->rx_queues[i]);
 		while ((buf = (struct rte_mbuf *)virtqueue_detatch_unused(
 					dev->data->rx_queues[i])) != NULL) {
 			rte_pktmbuf_free(buf);
