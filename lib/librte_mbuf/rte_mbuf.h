@@ -598,7 +598,7 @@ extern "C" {
 /**
  * Mask of inner layer 3 packet types.
  */
-#define RTE_PTYPE_INNER_INNER_L3_MASK       0x00f00000
+#define RTE_PTYPE_INNER_L3_MASK             0x00f00000
 /**
  * TCP (Transmission Control Protocol) packet type.
  * It is used for inner packet only.
@@ -680,19 +680,22 @@ extern "C" {
 /**
  * Check if the (outer) L3 header is IPv4. To avoid comparing IPv4 types one by
  * one, bit 4 is selected to be used for IPv4 only. Then checking bit 4 can
- * determin if it is an IPV4 packet.
+ * determine if it is an IPV4 packet.
  */
 #define  RTE_ETH_IS_IPV4_HDR(ptype) ((ptype) & RTE_PTYPE_L3_IPV4)
 
 /**
  * Check if the (outer) L3 header is IPv4. To avoid comparing IPv4 types one by
  * one, bit 6 is selected to be used for IPv4 only. Then checking bit 6 can
- * determin if it is an IPV4 packet.
+ * determine if it is an IPV4 packet.
  */
 #define  RTE_ETH_IS_IPV6_HDR(ptype) ((ptype) & RTE_PTYPE_L3_IPV6)
 
 /* Check if it is a tunneling packet */
-#define RTE_ETH_IS_TUNNEL_PKT(ptype) ((ptype) & RTE_PTYPE_TUNNEL_MASK)
+#define RTE_ETH_IS_TUNNEL_PKT(ptype) ((ptype) & (RTE_PTYPE_TUNNEL_MASK | \
+                                                 RTE_PTYPE_INNER_L2_MASK | \
+                                                 RTE_PTYPE_INNER_L3_MASK | \
+                                                 RTE_PTYPE_INNER_L4_MASK))
 #endif /* RTE_NEXT_ABI */
 
 /**

@@ -288,7 +288,7 @@ pkt_burst_receive(struct fwd_stream *fs)
 			}
 
 			/* inner L3 packet type */
-			ptype = mb->packet_type & RTE_PTYPE_INNER_INNER_L3_MASK;
+			ptype = mb->packet_type & RTE_PTYPE_INNER_L3_MASK;
 			switch (ptype) {
 			case RTE_PTYPE_INNER_L3_IPV4:
 				printf(" - Inner L3 type: IPV4");
