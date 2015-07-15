@@ -39,17 +39,17 @@ extern "C" {
 
 #include "generic/rte_prefetch.h"
 
-static inline void rte_prefetch0(volatile void *p)
+static inline void rte_prefetch0(const volatile void *p)
 {
 	__builtin_prefetch((const void *)(uintptr_t)p, 0, 3);
 }
 
-static inline void rte_prefetch1(volatile void *p)
+static inline void rte_prefetch1(const volatile void *p)
 {
 	__builtin_prefetch((const void *)(uintptr_t)p, 0, 2);
 }
 
-static inline void rte_prefetch2(volatile void *p)
+static inline void rte_prefetch2(const volatile void *p)
 {
 	__builtin_prefetch((const void *)(uintptr_t)p, 0, 1);
 }
