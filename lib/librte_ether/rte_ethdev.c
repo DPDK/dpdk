@@ -111,7 +111,7 @@
 #define VALID_PORTID_OR_ERR_RET(port_id, retval) do {		\
 	if (!rte_eth_dev_is_valid_port(port_id)) {		\
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id); \
-		return -EINVAL;					\
+		return retval;					\
 	}							\
 } while (0)
 
