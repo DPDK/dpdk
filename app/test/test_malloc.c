@@ -56,10 +56,6 @@
 
 #define N 10000
 
-#define QUOTE_(x) #x
-#define QUOTE(x) QUOTE_(x)
-#define MALLOC_MEMZONE_SIZE QUOTE(RTE_MALLOC_MEMZONE_SIZE)
-
 /*
  * Malloc
  * ======
@@ -292,60 +288,6 @@ test_str_to_size(void)
 }
 
 static int
-test_big_alloc(void)
-{
-	int socket = 0;
-	struct rte_malloc_socket_stats pre_stats, post_stats;
-	size_t size =rte_str_to_size(MALLOC_MEMZONE_SIZE)*2;
-	int align = 0;
-#ifndef RTE_LIBRTE_MALLOC_DEBUG
-	int overhead = RTE_CACHE_LINE_SIZE + RTE_CACHE_LINE_SIZE;
-#else
-	int overhead = RTE_CACHE_LINE_SIZE + RTE_CACHE_LINE_SIZE + RTE_CACHE_LINE_SIZE;
-#endif
-
-	rte_malloc_get_socket_stats(socket, &pre_stats);
-
-	void *p1 = rte_malloc_socket("BIG", size , align, socket);
-	if (!p1)
-		return -1;
-	rte_malloc_get_socket_stats(socket,&post_stats);
-
-	/* Check statistics reported are correct */
-	/* Allocation may increase, or may be the same as before big allocation */
-	if (post_stats.heap_totalsz_bytes < pre_stats.heap_totalsz_bytes) {
-		printf("Malloc statistics are incorrect - heap_totalsz_bytes\n");
-		return -1;
-	}
-	/* Check that allocated size adds up correctly */
-	if (post_stats.heap_allocsz_bytes !=
-			pre_stats.heap_allocsz_bytes + size + align + overhead) {
-		printf("Malloc statistics are incorrect - alloc_size\n");
-		return -1;
-	}
-	/* Check free size against tested allocated size */
-	if (post_stats.heap_freesz_bytes !=
-			post_stats.heap_totalsz_bytes - post_stats.heap_allocsz_bytes) {
-		printf("Malloc statistics are incorrect - heap_freesz_bytes\n");
-		return -1;
-	}
-	/* Number of allocated blocks must increase after allocation */
-	if (post_stats.alloc_count != pre_stats.alloc_count + 1) {
-		printf("Malloc statistics are incorrect - alloc_count\n");
-		return -1;
-	}
-	/* New blocks now available - just allocated 1 but also 1 new free */
-	if (post_stats.free_count != pre_stats.free_count &&
-			post_stats.free_count != pre_stats.free_count - 1) {
-		printf("Malloc statistics are incorrect - free_count\n");
-		return -1;
-	}
-
-	rte_free(p1);
-	return 0;
-}
-
-static int
 test_multi_alloc_statistics(void)
 {
 	int socket = 0;
@@ -399,10 +341,6 @@ test_multi_alloc_statistics(void)
 	/* After freeing both allocations check stats return to original */
 	rte_malloc_get_socket_stats(socket, &post_stats);
 
-	/*
-	 * Check that no new blocks added after small allocations
-	 * i.e. < RTE_MALLOC_MEMZONE_SIZE
-	 */
 	if(second_stats.heap_totalsz_bytes != first_stats.heap_totalsz_bytes) {
 		printf("Incorrect heap statistics: Total size \n");
 		return -1;
@@ -443,18 +381,6 @@ test_multi_alloc_statistics(void)
 		printf("Malloc statistics are incorrect - freed alloc\n");
 		return -1;
 	}
-	return 0;
-}
-
-static int
-test_memzone_size_alloc(void)
-{
-	void *p1 = rte_malloc("BIG", (size_t)(rte_str_to_size(MALLOC_MEMZONE_SIZE) - 128), 64);
-	if (!p1)
-		return -1;
-	rte_free(p1);
-	/* one extra check - check no crashes if free(NULL) */
-	rte_free(NULL);
 	return 0;
 }
 
@@ -934,18 +860,6 @@ test_malloc(void)
 		return -1;
 	}
 	else printf("test_str_to_size() passed\n");
-
-	if (test_memzone_size_alloc() < 0){
-		printf("test_memzone_size_alloc() failed\n");
-		return -1;
-	}
-	else printf("test_memzone_size_alloc() passed\n");
-
-	if (test_big_alloc() < 0){
-		printf("test_big_alloc() failed\n");
-		return -1;
-	}
-	else printf("test_big_alloc() passed\n");
 
 	if (test_zero_aligned_alloc() < 0){
 		printf("test_zero_aligned_alloc() failed\n");

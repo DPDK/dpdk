@@ -44,6 +44,9 @@
 #include <rte_eal_memconfig.h>
 #include <rte_common.h>
 #include <rte_string_fns.h>
+#include <rte_errno.h>
+#include <rte_malloc.h>
+#include "../../lib/librte_eal/common/malloc_elem.h"
 
 #include "test.h"
 
@@ -378,65 +381,37 @@ test_memzone_reserve_flags(void)
 	return 0;
 }
 
+
+/* Find the heap with the greatest free block size */
+static size_t
+find_max_block_free_size(const unsigned _align)
+{
+	struct rte_malloc_socket_stats stats;
+	unsigned i, align = _align;
+	size_t len = 0;
+
+	for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
+		rte_malloc_get_socket_stats(i, &stats);
+		if (stats.greatest_free_size > len)
+			len = stats.greatest_free_size;
+	}
+
+	if (align < RTE_CACHE_LINE_SIZE)
+		align = RTE_CACHE_LINE_ROUNDUP(align+1);
+
+	if (len <= MALLOC_ELEM_OVERHEAD + align)
+		return 0;
+
+	return len - MALLOC_ELEM_OVERHEAD - align;
+}
+
 static int
 test_memzone_reserve_max(void)
 {
 	const struct rte_memzone *mz;
-	const struct rte_config *config;
-	const struct rte_memseg *ms;
-	int memseg_idx = 0;
-	int memzone_idx = 0;
-	size_t len = 0;
-	void* last_addr;
-	size_t maxlen = 0;
+	size_t maxlen;
 
-	/* get pointer to global configuration */
-	config = rte_eal_get_configuration();
-
-	ms = rte_eal_get_physmem_layout();
-
-	for (memseg_idx = 0; memseg_idx < RTE_MAX_MEMSEG; memseg_idx++){
-		/* ignore smaller memsegs as they can only get smaller */
-		if (ms[memseg_idx].len < maxlen)
-			continue;
-
-		/* align everything */
-		last_addr = RTE_PTR_ALIGN_CEIL(ms[memseg_idx].addr, RTE_CACHE_LINE_SIZE);
-		len = ms[memseg_idx].len - RTE_PTR_DIFF(last_addr, ms[memseg_idx].addr);
-		len &= ~((size_t) RTE_CACHE_LINE_MASK);
-
-		/* cycle through all memzones */
-		for (memzone_idx = 0; memzone_idx < RTE_MAX_MEMZONE; memzone_idx++) {
-
-			/* stop when reaching last allocated memzone */
-			if (config->mem_config->memzone[memzone_idx].addr == NULL)
-				break;
-
-			/* check if the memzone is in our memseg and subtract length */
-			if ((config->mem_config->memzone[memzone_idx].addr >=
-			     ms[memseg_idx].addr) &&
-			    (config->mem_config->memzone[memzone_idx].addr <
-			     (RTE_PTR_ADD(ms[memseg_idx].addr, ms[memseg_idx].len)))) {
-				/* since the zones can now be aligned and occasionally skip
-				 * some space, we should calculate the length based on
-				 * reported length and start addresses difference. Addresses
-				 * are allocated sequentially so we don't need to worry about
-				 * them being in the right order.
-				 */
-				len -= RTE_PTR_DIFF(
-						    config->mem_config->memzone[memzone_idx].addr,
-						    last_addr);
-				len -= config->mem_config->memzone[memzone_idx].len;
-				last_addr = RTE_PTR_ADD(config->mem_config->memzone[memzone_idx].addr,
-							(size_t) config->mem_config->memzone[memzone_idx].len);
-			}
-		}
-
-		/* we don't need to calculate offset here since length
-		 * is always cache-aligned */
-		if (len > maxlen)
-			maxlen = len;
-	}
+	maxlen = find_max_block_free_size(0);
 
 	if (maxlen == 0) {
 		printf("There is no space left!\n");
@@ -445,7 +420,8 @@ test_memzone_reserve_max(void)
 
 	mz = rte_memzone_reserve("max_zone", 0, SOCKET_ID_ANY, 0);
 	if (mz == NULL){
-		printf("Failed to reserve a big chunk of memory\n");
+		printf("Failed to reserve a big chunk of memory - %s\n",
+				rte_strerror(rte_errno));
 		rte_dump_physmem_layout(stdout);
 		rte_memzone_dump(stdout);
 		return -1;
@@ -453,8 +429,7 @@ test_memzone_reserve_max(void)
 
 	if (mz->len != maxlen) {
 		printf("Memzone reserve with 0 size did not return bigest block\n");
-		printf("Expected size = %zu, actual size = %zu\n",
-		       maxlen, mz->len);
+		printf("Expected size = %zu, actual size = %zu\n", maxlen, mz->len);
 		rte_dump_physmem_layout(stdout);
 		rte_memzone_dump(stdout);
 
@@ -467,81 +442,24 @@ static int
 test_memzone_reserve_max_aligned(void)
 {
 	const struct rte_memzone *mz;
-	const struct rte_config *config;
-	const struct rte_memseg *ms;
-	int memseg_idx = 0;
-	int memzone_idx = 0;
-	uintptr_t addr_offset;
-	size_t len = 0;
-	void* last_addr;
 	size_t maxlen = 0;
 
 	/* random alignment */
 	rte_srand((unsigned)rte_rdtsc());
 	const unsigned align = 1 << ((rte_rand() % 8) + 5); /* from 128 up to 4k alignment */
 
-	/* get pointer to global configuration */
-	config = rte_eal_get_configuration();
+	maxlen = find_max_block_free_size(align);
 
-	ms = rte_eal_get_physmem_layout();
-
-	addr_offset = 0;
-
-	for (memseg_idx = 0; memseg_idx < RTE_MAX_MEMSEG; memseg_idx++){
-
-		/* ignore smaller memsegs as they can only get smaller */
-		if (ms[memseg_idx].len < maxlen)
-			continue;
-
-		/* align everything */
-		last_addr = RTE_PTR_ALIGN_CEIL(ms[memseg_idx].addr, RTE_CACHE_LINE_SIZE);
-		len = ms[memseg_idx].len - RTE_PTR_DIFF(last_addr, ms[memseg_idx].addr);
-		len &= ~((size_t) RTE_CACHE_LINE_MASK);
-
-		/* cycle through all memzones */
-		for (memzone_idx = 0; memzone_idx < RTE_MAX_MEMZONE; memzone_idx++) {
-
-			/* stop when reaching last allocated memzone */
-			if (config->mem_config->memzone[memzone_idx].addr == NULL)
-				break;
-
-			/* check if the memzone is in our memseg and subtract length */
-			if ((config->mem_config->memzone[memzone_idx].addr >=
-					ms[memseg_idx].addr) &&
-					(config->mem_config->memzone[memzone_idx].addr <
-					(RTE_PTR_ADD(ms[memseg_idx].addr, ms[memseg_idx].len)))) {
-				/* since the zones can now be aligned and occasionally skip
-				 * some space, we should calculate the length based on
-				 * reported length and start addresses difference.
-				 */
-				len -= (uintptr_t) RTE_PTR_SUB(
-						config->mem_config->memzone[memzone_idx].addr,
-						(uintptr_t) last_addr);
-				len -= config->mem_config->memzone[memzone_idx].len;
-				last_addr =
-						RTE_PTR_ADD(config->mem_config->memzone[memzone_idx].addr,
-						(size_t) config->mem_config->memzone[memzone_idx].len);
-			}
-		}
-
-		/* make sure we get the alignment offset */
-		if (len > maxlen) {
-			addr_offset = RTE_PTR_ALIGN_CEIL((uintptr_t) last_addr, align) - (uintptr_t) last_addr;
-			maxlen = len;
-		}
-	}
-
-	if (maxlen == 0 || maxlen == addr_offset) {
+	if (maxlen == 0) {
 		printf("There is no space left for biggest %u-aligned memzone!\n", align);
 		return 0;
 	}
 
-	maxlen -= addr_offset;
-
 	mz = rte_memzone_reserve_aligned("max_zone_aligned", 0,
 			SOCKET_ID_ANY, 0, align);
 	if (mz == NULL){
-		printf("Failed to reserve a big chunk of memory\n");
+		printf("Failed to reserve a big chunk of memory - %s\n",
+				rte_strerror(rte_errno));
 		rte_dump_physmem_layout(stdout);
 		rte_memzone_dump(stdout);
 		return -1;
@@ -762,282 +680,6 @@ test_memzone_bounded(void)
 	if ((rc = check_memzone_bounded("bounded_1K_MAX", 0, 64, 1024)) != 0)
 		return (rc);
 
-	return (0);
-}
-
-static int
-test_memzone_reserve_memory_in_smallest_segment(void)
-{
-	const struct rte_memzone *mz;
-	const struct rte_memseg *ms, *min_ms, *prev_min_ms;
-	size_t min_len, prev_min_len;
-	const struct rte_config *config;
-	int i;
-
-	config = rte_eal_get_configuration();
-
-	min_ms = NULL;  /*< smallest segment */
-	prev_min_ms = NULL; /*< second smallest segment */
-
-	/* find two smallest segments */
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		ms = &config->mem_config->free_memseg[i];
-
-		if (ms->addr == NULL)
-			break;
-		if (ms->len == 0)
-			continue;
-
-		if (min_ms == NULL)
-			min_ms = ms;
-		else if (min_ms->len > ms->len) {
-			/* set last smallest to second last */
-			prev_min_ms = min_ms;
-
-			/* set new smallest */
-			min_ms = ms;
-		} else if ((prev_min_ms == NULL)
-			|| (prev_min_ms->len > ms->len))
-			prev_min_ms = ms;
-	}
-
-	if (min_ms == NULL || prev_min_ms == NULL) {
-		printf("Smallest segments not found!\n");
-		return -1;
-	}
-
-	min_len = min_ms->len;
-	prev_min_len = prev_min_ms->len;
-
-	/* try reserving a memzone in the smallest memseg */
-	mz = rte_memzone_reserve("smallest_mz", RTE_CACHE_LINE_SIZE,
-			SOCKET_ID_ANY, 0);
-	if (mz == NULL) {
-		printf("Failed to reserve memory from smallest memseg!\n");
-		return -1;
-	}
-	if (prev_min_ms->len != prev_min_len &&
-			min_ms->len != min_len - RTE_CACHE_LINE_SIZE) {
-		printf("Reserved memory from wrong memseg!\n");
-		return -1;
-	}
-
-	return 0;
-}
-
-/* this test is a bit  tricky, and thus warrants explanation.
- *
- * first, we find two smallest memsegs to conduct our experiments on.
- *
- * then, we bring them within alignment from each other: if second segment is
- * twice+ as big as the first, reserve memory from that segment; if second
- * segment is comparable in length to the first, then cut the first segment
- * down until it becomes less than half of second segment, and then cut down
- * the second segment to be within alignment of the first.
- *
- * then, we have to pass the following test: if segments are within alignment
- * of each other (that is, the difference is less than 256 bytes, which is what
- * our alignment will be), segment with smallest offset should be picked.
- *
- * we know that min_ms will be our smallest segment, so we need to make sure
- * that we adjust the alignments so that the bigger segment has smallest
- * alignment (in our case, smallest segment will have 64-byte alignment, while
- * bigger segment will have 128-byte alignment).
- */
-static int
-test_memzone_reserve_memory_with_smallest_offset(void)
-{
-	const struct rte_memseg *ms, *min_ms, *prev_min_ms;
-	size_t len, min_len, prev_min_len;
-	const struct rte_config *config;
-	int i, align;
-
-	config = rte_eal_get_configuration();
-
-	min_ms = NULL;  /*< smallest segment */
-	prev_min_ms = NULL; /*< second smallest segment */
-	align = RTE_CACHE_LINE_SIZE * 4;
-
-	/* find two smallest segments */
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		ms = &config->mem_config->free_memseg[i];
-
-		if (ms->addr == NULL)
-			break;
-		if (ms->len == 0)
-			continue;
-
-		if (min_ms == NULL)
-			min_ms = ms;
-		else if (min_ms->len > ms->len) {
-			/* set last smallest to second last */
-			prev_min_ms = min_ms;
-
-			/* set new smallest */
-			min_ms = ms;
-		} else if ((prev_min_ms == NULL)
-			|| (prev_min_ms->len > ms->len)) {
-			prev_min_ms = ms;
-		}
-	}
-
-	if (min_ms == NULL || prev_min_ms == NULL) {
-		printf("Smallest segments not found!\n");
-		return -1;
-	}
-
-	prev_min_len = prev_min_ms->len;
-	min_len = min_ms->len;
-
-	/* if smallest segment is bigger than half of bigger segment */
-	if (prev_min_ms->len - min_ms->len <= min_ms->len) {
-
-		len = (min_ms->len * 2) - prev_min_ms->len;
-
-		/* make sure final length is *not* aligned */
-		while (((min_ms->addr_64 + len) & (align-1)) == 0)
-			len += RTE_CACHE_LINE_SIZE;
-
-		if (rte_memzone_reserve("dummy_mz1", len, SOCKET_ID_ANY, 0) == NULL) {
-			printf("Cannot reserve memory!\n");
-			return -1;
-		}
-
-		/* check if we got memory from correct segment */
-		if (min_ms->len != min_len - len) {
-			printf("Reserved memory from wrong segment!\n");
-			return -1;
-		}
-	}
-    /* if we don't need to touch smallest segment but it's aligned */
-    else if ((min_ms->addr_64 & (align-1)) == 0) {
-            if (rte_memzone_reserve("align_mz1", RTE_CACHE_LINE_SIZE,
-                    SOCKET_ID_ANY, 0) == NULL) {
-                            printf("Cannot reserve memory!\n");
-                            return -1;
-            }
-            if (min_ms->len != min_len - RTE_CACHE_LINE_SIZE) {
-                    printf("Reserved memory from wrong segment!\n");
-                    return -1;
-            }
-    }
-
-	/* if smallest segment is less than half of bigger segment */
-	if (prev_min_ms->len - min_ms->len > min_ms->len) {
-		len = prev_min_ms->len - min_ms->len - align;
-
-		/* make sure final length is aligned */
-		while (((prev_min_ms->addr_64 + len) & (align-1)) != 0)
-			len += RTE_CACHE_LINE_SIZE;
-
-		if (rte_memzone_reserve("dummy_mz2", len, SOCKET_ID_ANY, 0) == NULL) {
-			printf("Cannot reserve memory!\n");
-			return -1;
-		}
-
-		/* check if we got memory from correct segment */
-		if (prev_min_ms->len != prev_min_len - len) {
-			printf("Reserved memory from wrong segment!\n");
-			return -1;
-		}
-	}
-	len = RTE_CACHE_LINE_SIZE;
-
-
-
-	prev_min_len = prev_min_ms->len;
-	min_len = min_ms->len;
-
-	if (min_len >= prev_min_len || prev_min_len - min_len > (unsigned) align) {
-		printf("Segments are of wrong lengths!\n");
-		return -1;
-	}
-
-	/* try reserving from a bigger segment */
-	if (rte_memzone_reserve_aligned("smallest_offset", len, SOCKET_ID_ANY, 0, align) ==
-			NULL) {
-		printf("Cannot reserve memory!\n");
-		return -1;
-	}
-
-	/* check if we got memory from correct segment */
-	if (min_ms->len != min_len && prev_min_ms->len != (prev_min_len - len)) {
-		printf("Reserved memory from segment with smaller offset!\n");
-		return -1;
-	}
-
-	return 0;
-}
-
-static int
-test_memzone_reserve_remainder(void)
-{
-	const struct rte_memzone *mz1, *mz2;
-	const struct rte_memseg *ms, *min_ms = NULL;
-	size_t min_len;
-	const struct rte_config *config;
-	int i, align;
-
-	min_len = 0;
-	align = RTE_CACHE_LINE_SIZE;
-
-	config = rte_eal_get_configuration();
-
-	/* find minimum free contiguous length */
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		ms = &config->mem_config->free_memseg[i];
-
-		if (ms->addr == NULL)
-			break;
-		if (ms->len == 0)
-			continue;
-
-		if (min_len == 0 || ms->len < min_len) {
-			min_len = ms->len;
-			min_ms = ms;
-
-			/* find maximum alignment this segment is able to hold */
-			align = RTE_CACHE_LINE_SIZE;
-			while ((ms->addr_64 & (align-1)) == 0) {
-				align <<= 1;
-			}
-		}
-	}
-
-	if (min_ms == NULL) {
-		printf("Minimal sized segment not found!\n");
-		return -1;
-	}
-
-	/* try reserving min_len bytes with alignment - this should not affect our
-	 * memseg, the memory will be taken from a different one.
-	 */
-	mz1 = rte_memzone_reserve_aligned("reserve_remainder_1", min_len,
-			SOCKET_ID_ANY, 0, align);
-	if (mz1 == NULL) {
-		printf("Failed to reserve %zu bytes aligned on %i bytes\n", min_len,
-				align);
-		return -1;
-	}
-	if (min_ms->len != min_len) {
-		printf("Memseg memory should not have been reserved!\n");
-		return -1;
-	}
-
-	/* try reserving min_len bytes with less alignment - this should fill up
-	 * the segment.
-	 */
-	mz2 = rte_memzone_reserve("reserve_remainder_2", min_len,
-			SOCKET_ID_ANY, 0);
-	if (mz2 == NULL) {
-		printf("Failed to reserve %zu bytes\n", min_len);
-		return -1;
-	}
-	if (min_ms->len != 0) {
-		printf("Memseg memory should have been reserved!\n");
-		return -1;
-	}
-
 	return 0;
 }
 
@@ -1125,14 +767,6 @@ test_memzone(void)
 	if (test_memzone_reserving_zone_size_bigger_than_the_maximum() < 0)
 		return -1;
 
-	printf("test reserving memory in smallest segments\n");
-	if (test_memzone_reserve_memory_in_smallest_segment() < 0)
-		return -1;
-
-	printf("test reserving memory in segments with smallest offsets\n");
-	if (test_memzone_reserve_memory_with_smallest_offset() < 0)
-		return -1;
-
 	printf("test memzone_reserve flags\n");
 	if (test_memzone_reserve_flags() < 0)
 		return -1;
@@ -1147,10 +781,6 @@ test_memzone(void)
 
 	printf("test invalid alignment for memzone_reserve\n");
 	if (test_memzone_invalid_alignment() < 0)
-		return -1;
-
-	printf("test reserving amounts of memory equal to segment's length\n");
-	if (test_memzone_reserve_remainder() < 0)
 		return -1;
 
 	printf("test reserving the largest size memzone possible\n");
