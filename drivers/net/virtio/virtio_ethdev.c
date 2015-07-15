@@ -439,6 +439,22 @@ virtio_dev_cq_queue_setup(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx,
 }
 
 static void
+virtio_free_queues(struct rte_eth_dev *dev)
+{
+	unsigned int i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		virtio_dev_rx_queue_release(dev->data->rx_queues[i]);
+
+	dev->data->nb_rx_queues = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		virtio_dev_tx_queue_release(dev->data->tx_queues[i]);
+
+	dev->data->nb_tx_queues = 0;
+}
+
+static void
 virtio_dev_close(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
@@ -452,6 +468,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 	vtpci_reset(hw);
 	hw->started = 0;
 	virtio_dev_free_mbufs(dev);
+	virtio_free_queues(dev);
 }
 
 static void
