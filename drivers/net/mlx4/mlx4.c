@@ -1263,14 +1263,17 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			/* HW does not support checksum offloads at arbitrary
 			 * offsets but automatically recognizes the packet
 			 * type. For inner L3/L4 checksums, only VXLAN (UDP)
-			 * tunnels are currently supported.
-			 *
-			 * FIXME: since PKT_TX_UDP_TUNNEL_PKT has been removed,
+			 * tunnels are currently supported. */
+#ifdef RTE_NEXT_ABI
+			if (RTE_ETH_IS_TUNNEL_PKT(buf->packet_type))
+#else
+			/* FIXME: since PKT_TX_UDP_TUNNEL_PKT has been removed,
 			 * the outer packet type is unknown. All we know is
 			 * that the L2 header is of unusual length (not
 			 * ETHER_HDR_LEN with or without 802.1Q header). */
 			if ((buf->l2_len != ETHER_HDR_LEN) &&
 			    (buf->l2_len != (ETHER_HDR_LEN + 4)))
+#endif
 				send_flags |= IBV_EXP_QP_BURST_TUNNEL;
 		}
 		if (likely(segs == 1)) {
@@ -2485,6 +2488,41 @@ rxq_cleanup(struct rxq *rxq)
 	memset(rxq, 0, sizeof(*rxq));
 }
 
+#ifdef RTE_NEXT_ABI
+/**
+ * Translate RX completion flags to packet type.
+ *
+ * @param flags
+ *   RX completion flags returned by poll_length_flags().
+ *
+ * @return
+ *   Packet type for struct rte_mbuf.
+ */
+static inline uint32_t
+rxq_cq_to_pkt_type(uint32_t flags)
+{
+	uint32_t pkt_type;
+
+	if (flags & IBV_EXP_CQ_RX_TUNNEL_PACKET)
+		pkt_type =
+			TRANSPOSE(flags,
+			          IBV_EXP_CQ_RX_OUTER_IPV4_PACKET, RTE_PTYPE_L3_IPV4) |
+			TRANSPOSE(flags,
+			          IBV_EXP_CQ_RX_OUTER_IPV6_PACKET, RTE_PTYPE_L3_IPV6) |
+			TRANSPOSE(flags,
+			          IBV_EXP_CQ_RX_IPV4_PACKET, RTE_PTYPE_INNER_L3_IPV4) |
+			TRANSPOSE(flags,
+			          IBV_EXP_CQ_RX_IPV6_PACKET, RTE_PTYPE_INNER_L3_IPV6);
+	else
+		pkt_type =
+			TRANSPOSE(flags,
+			          IBV_EXP_CQ_RX_IPV4_PACKET, RTE_PTYPE_L3_IPV4) |
+			TRANSPOSE(flags,
+			          IBV_EXP_CQ_RX_IPV6_PACKET, RTE_PTYPE_L3_IPV6);
+	return pkt_type;
+}
+#endif /* RTE_NEXT_ABI */
+
 /**
  * Translate RX completion flags to offload flags.
  *
@@ -2499,11 +2537,13 @@ rxq_cleanup(struct rxq *rxq)
 static inline uint32_t
 rxq_cq_to_ol_flags(const struct rxq *rxq, uint32_t flags)
 {
-	uint32_t ol_flags;
+	uint32_t ol_flags = 0;
 
+#ifndef RTE_NEXT_ABI
 	ol_flags =
 		TRANSPOSE(flags, IBV_EXP_CQ_RX_IPV4_PACKET, PKT_RX_IPV4_HDR) |
 		TRANSPOSE(flags, IBV_EXP_CQ_RX_IPV6_PACKET, PKT_RX_IPV6_HDR);
+#endif
 	if (rxq->csum)
 		ol_flags |=
 			TRANSPOSE(~flags,
@@ -2519,12 +2559,14 @@ rxq_cq_to_ol_flags(const struct rxq *rxq, uint32_t flags)
 	 */
 	if ((flags & IBV_EXP_CQ_RX_TUNNEL_PACKET) && (rxq->csum_l2tun))
 		ol_flags |=
+#ifndef RTE_NEXT_ABI
 			TRANSPOSE(flags,
 				  IBV_EXP_CQ_RX_OUTER_IPV4_PACKET,
 				  PKT_RX_TUNNEL_IPV4_HDR) |
 			TRANSPOSE(flags,
 				  IBV_EXP_CQ_RX_OUTER_IPV6_PACKET,
 				  PKT_RX_TUNNEL_IPV6_HDR) |
+#endif
 			TRANSPOSE(~flags,
 				  IBV_EXP_CQ_RX_OUTER_IP_CSUM_OK,
 				  PKT_RX_IP_CKSUM_BAD) |
@@ -2716,6 +2758,9 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		NB_SEGS(pkt_buf) = j;
 		PORT(pkt_buf) = rxq->port_id;
 		PKT_LEN(pkt_buf) = pkt_buf_len;
+#ifdef RTE_NEXT_ABI
+		pkt_buf->packet_type = rxq_cq_to_pkt_type(flags);
+#endif
 		pkt_buf->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
 
 		/* Return packet. */
@@ -2876,6 +2921,9 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		NEXT(seg) = NULL;
 		PKT_LEN(seg) = len;
 		DATA_LEN(seg) = len;
+#ifdef RTE_NEXT_ABI
+		seg->packet_type = rxq_cq_to_pkt_type(flags);
+#endif
 		seg->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
 
 		/* Return packet. */
