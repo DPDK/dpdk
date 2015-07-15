@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -1541,8 +1541,6 @@ detach_port(uint8_t port_id)
 		printf("Please close port first\n");
 		return;
 	}
-
-	rte_eth_promiscuous_disable(port_id);
 
 	if (rte_eth_dev_detach(port_id, name))
 		return;
