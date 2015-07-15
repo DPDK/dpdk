@@ -142,7 +142,7 @@ struct rte_hash_key {
 		void *pdata;
 	};
 	/* Variable key size */
-	char key[];
+	char key[0];
 } __attribute__((aligned(KEY_ALIGNMENT)));
 
 /** Bucket structure */
