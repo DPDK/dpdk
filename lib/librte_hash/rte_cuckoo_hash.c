@@ -446,11 +446,8 @@ make_space_bucket(const struct rte_hash *h, struct rte_hash_bucket *bkt)
 			break;
 
 	/* All entries have been pushed, so entry cannot be added */
-	if (i == RTE_HASH_BUCKET_ENTRIES) {
-		/* Reset flag */
-		bkt->flag[i] = 0;
+	if (i == RTE_HASH_BUCKET_ENTRIES)
 		return -ENOSPC;
-	}
 
 	/* Set flag to indicate that this entry is going to be pushed */
 	bkt->flag[i] = 1;
