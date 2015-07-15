@@ -143,7 +143,10 @@ static int ixgbe_dev_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
 static void ixgbe_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
+static int ixgbe_dev_xstats_get(struct rte_eth_dev *dev,
+				struct rte_eth_xstats *xstats, unsigned n);
 static void ixgbe_dev_stats_reset(struct rte_eth_dev *dev);
+static void ixgbe_dev_xstats_reset(struct rte_eth_dev *dev);
 static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 					     uint16_t queue_id,
 					     uint8_t stat_idx,
@@ -371,7 +374,9 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.allmulticast_disable = ixgbe_dev_allmulticast_disable,
 	.link_update          = ixgbe_dev_link_update,
 	.stats_get            = ixgbe_dev_stats_get,
+	.xstats_get           = ixgbe_dev_xstats_get,
 	.stats_reset          = ixgbe_dev_stats_reset,
+	.xstats_reset         = ixgbe_dev_xstats_reset,
 	.queue_stats_mapping_set = ixgbe_dev_queue_stats_mapping_set,
 	.dev_infos_get        = ixgbe_dev_info_get,
 	.mtu_set              = ixgbe_dev_mtu_set,
@@ -463,6 +468,33 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.get_reg_length       = ixgbevf_get_reg_length,
 	.get_reg              = ixgbevf_get_regs,
 };
+
+/* store statistics names and its offset in stats structure */
+struct rte_ixgbe_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned offset;
+};
+
+static const struct rte_ixgbe_xstats_name_off rte_ixgbe_stats_strings[] = {
+	{"rx_illegal_byte_err", offsetof(struct ixgbe_hw_stats, errbc)},
+	{"rx_len_err", offsetof(struct ixgbe_hw_stats, rlec)},
+	{"rx_undersize_count", offsetof(struct ixgbe_hw_stats, ruc)},
+	{"rx_oversize_count", offsetof(struct ixgbe_hw_stats, roc)},
+	{"rx_fragment_count", offsetof(struct ixgbe_hw_stats, rfc)},
+	{"rx_jabber_count", offsetof(struct ixgbe_hw_stats, rjc)},
+	{"l3_l4_xsum_error", offsetof(struct ixgbe_hw_stats, xec)},
+	{"mac_local_fault", offsetof(struct ixgbe_hw_stats, mlfc)},
+	{"mac_remote_fault", offsetof(struct ixgbe_hw_stats, mrfc)},
+	{"mac_short_pkt_discard", offsetof(struct ixgbe_hw_stats, mspdc)},
+	{"fccrc_error", offsetof(struct ixgbe_hw_stats, fccrc)},
+	{"fcoe_drop", offsetof(struct ixgbe_hw_stats, fcoerpdc)},
+	{"fc_last_error", offsetof(struct ixgbe_hw_stats, fclast)},
+	{"rx_broadcast_packets", offsetof(struct ixgbe_hw_stats, bprc)},
+	{"mgmt_pkts_dropped", offsetof(struct ixgbe_hw_stats, mngpdc)},
+};
+
+#define IXGBE_NB_XSTATS (sizeof(rte_ixgbe_stats_strings) /	\
+		sizeof(rte_ixgbe_stats_strings[0]))
 
 /**
  * Atomically reads the link status information from global
@@ -2033,6 +2065,61 @@ ixgbe_dev_stats_reset(struct rte_eth_dev *dev)
 
 	/* HW registers are cleared on read */
 	ixgbe_dev_stats_get(dev, NULL);
+
+	/* Reset software totals */
+	memset(stats, 0, sizeof(*stats));
+}
+
+static int
+ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
+					 unsigned n)
+{
+	struct ixgbe_hw *hw =
+			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_hw_stats *hw_stats =
+			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+	uint64_t total_missed_rx, total_qbrc, total_qprc, total_qprdc;
+	uint64_t rxnfgpc, txdgpc;
+	unsigned i, count = IXGBE_NB_XSTATS;
+
+	if (n < count)
+		return count;
+
+	total_missed_rx = 0;
+	total_qbrc = 0;
+	total_qprc = 0;
+	total_qprdc = 0;
+	rxnfgpc = 0;
+	txdgpc = 0;
+
+	ixgbe_read_stats_registers(hw, hw_stats, &total_missed_rx, &total_qbrc,
+							   &total_qprc, &rxnfgpc, &txdgpc, &total_qprdc);
+
+	/* If this is a reset xstats is NULL, and we have cleared the
+	 * registers by reading them.
+	 */
+	if (!xstats)
+		return 0;
+
+	/* Extended stats */
+	for (i = 0; i < IXGBE_NB_XSTATS; i++) {
+		snprintf(xstats[i].name, sizeof(xstats[i].name),
+				"%s", rte_ixgbe_stats_strings[i].name);
+		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
+							rte_ixgbe_stats_strings[i].offset);
+	}
+
+	return count;
+}
+
+static void
+ixgbe_dev_xstats_reset(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw_stats *stats =
+			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+
+	/* HW registers are cleared on read */
+	ixgbe_dev_xstats_get(dev, NULL, IXGBE_NB_XSTATS);
 
 	/* Reset software totals */
 	memset(stats, 0, sizeof(*stats));
