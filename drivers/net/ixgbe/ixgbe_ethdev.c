@@ -2045,7 +2045,16 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	                  hw_stats->ruc +
 	                  hw_stats->roc +
 	                  total_missed_rx +
-	                  hw_stats->illerrc + hw_stats->errbc;
+	                  hw_stats->illerrc +
+	                  hw_stats->errbc +
+	                  hw_stats->xec +
+	                  hw_stats->mlfc +
+	                  hw_stats->mrfc +
+	                  hw_stats->rfc +
+	                  hw_stats->rjc +
+	                  hw_stats->fccrc +
+	                  hw_stats->fclast +
+	                  (rxnfgpc - hw_stats->gprc); /* PHY Errors*/
 
 	/* Tx Errors */
 	/*txdgpc: packets that are DMA'ed*/
